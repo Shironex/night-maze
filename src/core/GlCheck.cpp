@@ -10,6 +10,11 @@ namespace core {
 
 namespace {
 
+// Most errors that one checkGlErrors call reads. Normally the loop ends much earlier, at
+// GL_NO_ERROR. The limit exists because glGetError can keep returning an error forever when
+// the OpenGL context is lost or not current, and then an unbounded loop would hang the program.
+constexpr int MAX_ERRORS_PER_CHECK = 16;
+
 // Converts an OpenGL error code to the name used in the OpenGL documentation.
 const char* glErrorName(GLenum error) {
     switch (error) {
@@ -34,10 +39,18 @@ void checkGlErrors(const char* call, const char* file, int line) {
     // OpenGL keeps a set of error flags, so one call can leave more than one error behind.
     // glGetError returns and clears one flag at a time until it reports GL_NO_ERROR.
     GLenum error = glGetError();
-    while (error != GL_NO_ERROR) {
+    int errorCount = 0;
+    while (error != GL_NO_ERROR && errorCount < MAX_ERRORS_PER_CHECK) {
         logError(std::string(glErrorName(error)) + " after " + call + " (" + file + ":" +
                  std::to_string(line) + ")");
+        errorCount += 1;
         error = glGetError();
+    }
+
+    // Still an error after the limit: stop reading instead of spinning forever.
+    if (error != GL_NO_ERROR) {
+        logError("Stopped reading OpenGL errors after " + std::to_string(MAX_ERRORS_PER_CHECK) +
+                 " errors (is the OpenGL context lost or not current?)");
     }
 }
 

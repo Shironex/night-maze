@@ -60,7 +60,7 @@ Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` p
 | Plik | Co zawiera |
 |---|---|
 | [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp) | deklaracja `core::checkGlErrors` i makro `GL_CHECK` w dwóch wersjach (Debug, Release). Dołącza `<glad/gl.h>` |
-| [`src/core/GlCheck.cpp`](../../../src/core/GlCheck.cpp) | `checkGlErrors` i pomocnicza `glErrorName` |
+| [`src/core/GlCheck.cpp`](../../../src/core/GlCheck.cpp) | `checkGlErrors`, pomocnicza `glErrorName` i stała `MAX_ERRORS_PER_CHECK` |
 | [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | trzy użycia w `onRender`: `glViewport`, `glClearColor`, `glClear` |
 
 ### 5.2 Makro
@@ -110,15 +110,34 @@ void checkGlErrors(const char* call, const char* file, int line) {
     // OpenGL keeps a set of error flags, so one call can leave more than one error behind.
     // glGetError returns and clears one flag at a time until it reports GL_NO_ERROR.
     GLenum error = glGetError();
-    while (error != GL_NO_ERROR) {
+    int errorCount = 0;
+    while (error != GL_NO_ERROR && errorCount < MAX_ERRORS_PER_CHECK) {
         logError(std::string(glErrorName(error)) + " after " + call + " (" + file + ":" +
                  std::to_string(line) + ")");
+        errorCount += 1;
         error = glGetError();
+    }
+
+    // Still an error after the limit: stop reading instead of spinning forever.
+    if (error != GL_NO_ERROR) {
+        logError("Stopped reading OpenGL errors after " + std::to_string(MAX_ERRORS_PER_CHECK) +
+                 " errors (is the OpenGL context lost or not current?)");
     }
 }
 ```
 
 **Dlaczego pętla.** Jedno wywołanie `glGetError` zwraca jedną flagę i ją kasuje (sekcja 2.1). Gdybym czytał tylko raz, pozostałe flagi zostałyby w kontekście i wyskoczyłyby przy **następnym** `GL_CHECK`, obciążając winą niewinne wywołanie. Pętla "osusza" flagi do zera, więc każdy `GL_CHECK` zaczyna z czystym stanem.
+
+**Dlaczego pętla ma limit.** Warunek `error != GL_NO_ERROR` zakłada, że `glGetError` w końcu zwróci `GL_NO_ERROR`. Tak jest w zdrowym kontekście, ale gdy kontekst OpenGL jest utracony albo nie jest bieżący, `glGetError` może zwracać błąd bez końca i pętla bez limitu zawiesiłaby program w środku klatki. Dlatego liczę odczytane błędy w `errorCount` i przerywam po `MAX_ERRORS_PER_CHECK`:
+
+```cpp
+// Most errors that one checkGlErrors call reads. Normally the loop ends much earlier, at
+// GL_NO_ERROR. The limit exists because glGetError can keep returning an error forever when
+// the OpenGL context is lost or not current, and then an unbounded loop would hang the program.
+constexpr int MAX_ERRORS_PER_CHECK = 16;
+```
+
+Stała stoi w anonimowej przestrzeni nazw w `GlCheck.cpp`, obok `glErrorName`. Wartość 16 jest z dużym zapasem: OpenGL 4.1 ma tylko pięć rodzajów błędów (tabela w sekcji 3), więc w zdrowym kontekście pętla kończy się po kilku obrotach. Po pętli sprawdzam, dlaczego się skończyła. Jeśli `error` to `GL_NO_ERROR`, flagi są wyczyszczone i nic więcej nie robię. Jeśli `error` nadal jest błędem, pętlę zatrzymał limit, więc wypisuję jedną dodatkową linię: `[error] Stopped reading OpenGL errors after 16 errors (is the OpenGL context lost or not current?)`. Ostatni odczytany błąd nie jest już wypisywany z nazwą, zastępuje go właśnie ta linia.
 
 Parametry to `const char*`, bo dokładnie taki typ mają napis z `#call` i `__FILE__` (literały napisowe), a `line` to `int`, jak `__LINE__`. Komunikat składam ze `std::string` i wysyłam do `logError` ([`window-context.md`](window-context.md), sekcja 5.5).
 
@@ -172,6 +191,7 @@ To wszystkie własne wywołania `gl*` w klatce M0 (opis samych funkcji: [`window
 5. **Efekt uboczny w argumencie.** Argument makra jest wklejany jako tekst. W obecnej definicji występuje raz jako instrukcja i raz jako napis (`#call`), więc wykonuje się raz. Gdyby ktoś przerobił makro tak, że `call` pojawia się dwa razy jako kod, wywołanie OpenGL wykonałoby się dwukrotnie.
 6. **Zalew komunikatów.** Błędne wywołanie w `onRender` wypisuje linię w każdej klatce, czyli 60 lub więcej linii na sekundę. Program najlepiej od razu zatrzymać i przeczytać pierwszą linię.
 7. **Błędy shaderów.** Nieudana kompilacja shadera nie jest błędem `glGetError` (sekcja 4).
+8. **Pętla `glGetError` bez limitu.** W wielu poradnikach jest samo `while (glGetError() != GL_NO_ERROR)`. Gdy kontekst jest utracony albo nie jest bieżący, `glGetError` może zwracać błąd za każdym razem i taka pętla nigdy się nie kończy: program wisi i nic nie wypisuje. U mnie pętla kończy się najpóźniej po `MAX_ERRORS_PER_CHECK` odczytach. Linia `Stopped reading OpenGL errors after 16 errors` w konsoli oznacza więc problem z kontekstem, a nie 16 osobnych pomyłek w kodzie.
 
 ## 8. Ćwiczenia
 
@@ -187,19 +207,22 @@ To wszystkie własne wywołania `gl*` w klatce M0 (opis samych funkcji: [`window
 2. **Dlaczego `glGetError` jest wołane w pętli?**
    OpenGL może trzymać kilka flag błędów, a jedno `glGetError` zwraca i kasuje tylko jedną. Pętla do `GL_NO_ERROR` czyści wszystkie, żeby błąd nie został przypisany późniejszemu wywołaniu.
 
-3. **Dlaczego nie używam `glDebugMessageCallback`?**
+3. **Dlaczego ta pętla ma limit `MAX_ERRORS_PER_CHECK`?**
+   Bo przy utraconym albo niebieżącym kontekście `glGetError` może zwracać błąd bez końca i pętla bez limitu zawiesiłaby program. Liczę odczytane błędy w `errorCount`, po 16 przerywam i wypisuję jedną linię z informacją, że limit został osiągnięty. W zdrowym kontekście limit nie ma znaczenia, bo rodzajów błędów jest pięć.
+
+4. **Dlaczego nie używam `glDebugMessageCallback`?**
    To funkcja z OpenGL 4.3, a projekt celuje w 4.1 Core, najwyższą wersję na macOS. W nagłówku GLAD wygenerowanym dla 4.1 tej funkcji nie ma.
 
-4. **Czym różni się `GL_CHECK` w Debug i w Release i skąd program wie, która to konfiguracja?**
+5. **Czym różni się `GL_CHECK` w Debug i w Release i skąd program wie, która to konfiguracja?**
    W Debug po wywołaniu sprawdza `glGetError` i loguje błędy, w Release zostaje samo wywołanie. Decyduje `#ifndef NDEBUG`: CMake definiuje `NDEBUG` w konfiguracji Release.
 
-5. **Po co `do { ... } while (false)`?**
+6. **Po co `do { ... } while (false)`?**
    Żeby makro złożone z dwóch instrukcji zachowywało się jak jedna i wymagało średnika. Dzięki temu jest bezpieczne w `if` bez klamer, także z `else`.
 
-6. **Log wskazuje błąd przy poprawnym `glViewport`. Co się stało?**
+7. **Log wskazuje błąd przy poprawnym `glViewport`. Co się stało?**
    Flagę zostawiło wcześniejsze wywołanie bez `GL_CHECK` (własne albo z biblioteki). Flaga czeka w kontekście do pierwszego odczytu, a pierwszym odczytem był `GL_CHECK` przy `glViewport`.
 
-7. **Jak opakować wywołanie, które zwraca wartość?**
+8. **Jak opakować wywołanie, które zwraca wartość?**
    Z przypisaniem w środku: `GL_CHECK(id = glCreateShader(GL_VERTEX_SHADER));`, a zmienną `id` deklaruję przed makrem.
 
 ## 10. Źródła

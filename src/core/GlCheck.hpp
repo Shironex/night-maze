@@ -7,8 +7,8 @@
 
 namespace core {
 
-/// Reads every pending OpenGL error and logs it together with the call text and its location.
-/// Used by GL_CHECK, not meant to be called directly.
+/// Reads the pending OpenGL errors (up to a fixed limit per call) and logs each one together
+/// with the call text and its location. Used by GL_CHECK, not meant to be called directly.
 void checkGlErrors(const char* call, const char* file, int line);
 
 } // namespace core
