@@ -1,7 +1,7 @@
 # Moduł gfx: shadery i programowalny potok
 
 Kamień milowy: M1. Temat wykładu: 2 (Programowalny potok).
-Kod: [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp).
+Kod: [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), shadery [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) i [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md). Ten dokument korzysta z makra `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)), z logowania ([`../core/window-context.md`](../core/window-context.md), sekcja 5.5) i ze ścieżek do assetów ([`../core/paths.md`](../core/paths.md)).
 
@@ -18,7 +18,7 @@ Klasa `gfx::Shader` robi dokładnie to. Jest cienkim opakowaniem na **jeden obie
 | Błąd jest logowany z nazwą pliku i pełnym tekstem sterownika, a do tego zapamiętany w `lastError()` | Błędów kompilacji GLSL nie widzi `glGetError` ani `GL_CHECK`. Bez własnego odczytu nie byłoby żadnej informacji |
 | RAII i tylko przenoszenie (move-only) | Program OpenGL jest zwalniany dokładnie raz, automatycznie, bez ręcznego `glDeleteProgram` w kodzie gry |
 
-Stan na dziś: klasa jest gotowa i zbudowana w bibliotece `engine`, ale **żaden kod jej jeszcze nie używa**. W repozytorium nie ma jeszcze plików shaderów ani katalogu `assets/`. Pierwszym użytkownikiem będzie trójkąt rysowany w `game::NightMazeApp`, w dalszej części M1. Klasa nie ma też jeszcze funkcji ustawiających uniformy: dojdą razem z pierwszym shaderem, który uniformu potrzebuje (kostka z macierzą MVP).
+Stan na dziś: `game::NightMazeApp` ma jeden obiekt `gfx::Shader`, zbudowany z plików `assets/shaders/basic.vert` i `assets/shaders/basic.frag`, i rysuje nim jeden kolorowy trójkąt. Shader jest wczytywany **tylko raz, przy starcie programu**: `reload()` istnieje i działa, ale nic go jeszcze nie woła, bo nie ma przycisku w panelu debug (to następny krok M1). Klasa nie ma też jeszcze funkcji ustawiających uniformy: dojdą razem z pierwszym shaderem, który uniformu potrzebuje (kostka z macierzą MVP).
 
 ## 2. Teoria
 
@@ -203,41 +203,83 @@ Kto nie odczyta statusu, dostaje program, który "działa" i niczego nie rysuje.
 
 ## 4. Shadery
 
-W tym commicie w repozytorium **nie ma jeszcze żadnego pliku shadera** ani katalogu `assets/`. Pojawią się razem z trójkątem, w dalszej części M1, jako `assets/shaders/triangle.vert` i `assets/shaders/triangle.frag`. Poniższe dwa listingi to **przykłady ogólne, a nie kod projektu**: pokazują najmniejszą parę shaderów, jaką klasa `Shader` potrafi wczytać, żeby było wiadomo, co ma znaleźć się w takich plikach. Oba skompilowały się i zlinkowały w teście klasy opisanym w sekcji 5.11.
+Projekt ma na dziś jedną parę shaderów w katalogu [`assets/shaders/`](../../../assets/shaders/). Nazwa `basic` jest celowo neutralna: te same pliki dostaną później macierz przekształcenia i posłużą do rysowania kostki.
 
-Przykład ogólny, shader wierzchołków:
+### 4.1 `basic.vert`: shader wierzchołków
+
+Cały plik [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert):
 
 ```glsl
 #version 410 core
-layout(location = 0) in vec3 aPosition;
+// Vertex shader: runs once for every vertex and decides where it lands on the screen.
+// See docs/modules/gfx/shaders.md
+
+// Inputs: the attributes of one vertex, read from the vertex buffer. The location numbers
+// are the attribute indices that the C++ code uses when it describes the vertex layout.
+layout(location = 0) in vec3 aPosition; // x, y, z
+layout(location = 1) in vec3 aColor;    // red, green, blue, each from 0 to 1
+
+// Output to the fragment shader. The rasterizer blends it between the three vertices of
+// a triangle, so every fragment receives its own in-between color.
+out vec3 vColor;
+
 void main() {
+    // gl_Position is the built-in output every vertex shader must write: the position in
+    // clip space. There are no matrices yet, so the position from the buffer is used as
+    // it is. With w = 1 it is already in normalized device coordinates: x and y from -1
+    // to 1 cover the whole window.
     gl_Position = vec4(aPosition, 1.0);
+
+    // Pass the color through unchanged.
+    vColor = aColor;
 }
 ```
 
 | Linia | Co robi |
 |---|---|
-| `#version 410 core` | GLSL 4.10, profil Core. Musi być pierwszą linią pliku |
-| `layout(location = 0) in vec3 aPosition;` | Atrybut wierzchołka numer 0: trzy liczby `float`, pozycja |
-| `void main() {` | Funkcja wykonywana raz dla każdego wierzchołka |
-| `gl_Position = vec4(aPosition, 1.0);` | Pozycja w przestrzeni przycięcia. Z `vec3` robię `vec4`, dopisując `w = 1`, więc pozycja z bufora jest od razu pozycją w NDC (sekcja 2.2) |
+| `#version 410 core` | GLSL 4.10, profil Core. Musi być pierwszą linią pliku, dlatego komentarz z opisem stoi dopiero pod nią |
+| `layout(location = 0) in vec3 aPosition;` | Atrybut wierzchołka numer 0: trzy liczby `float`, pozycja. Numer 0 to stała `POSITION_ATTRIBUTE` w `NightMazeApp.cpp` |
+| `layout(location = 1) in vec3 aColor;` | Atrybut numer 1: trzy liczby `float`, kolor. Numer 1 to stała `COLOR_ATTRIBUTE` |
+| `out vec3 vColor;` | Wyjście do następnego etapu. Shader wierzchołków zapisuje tu kolor swojego wierzchołka, a rasteryzacja interpoluje go między trzema wierzchołkami trójkąta |
+| `void main() {` | Funkcja wykonywana raz dla każdego wierzchołka, czyli dla trójkąta trzy razy na klatkę |
+| `gl_Position = vec4(aPosition, 1.0);` | Pozycja w przestrzeni przycięcia. Z `vec3` robię `vec4`, dopisując `w = 1`, więc pozycja z bufora jest od razu pozycją w NDC (sekcja 2.2). Tu pojawi się mnożenie przez macierz, gdy dojdzie kostka |
+| `vColor = aColor;` | Kolor przechodzi bez zmian |
 
-Przykład ogólny, shader fragmentów:
+### 4.2 `basic.frag`: shader fragmentów
+
+Cały plik [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag):
 
 ```glsl
 #version 410 core
+// Fragment shader: runs once for every fragment (pixel candidate) and decides its color.
+// See docs/modules/gfx/shaders.md
+
+// Input from the vertex shader: same name and type as its "out vec3 vColor". The value is
+// already interpolated for this fragment.
+in vec3 vColor;
+
+// Output: the color written to the framebuffer (red, green, blue, alpha).
 out vec4 fragColor;
+
 void main() {
-    fragColor = vec4(1.0, 0.5, 0.2, 1.0);
+    // Alpha 1 means fully opaque.
+    fragColor = vec4(vColor, 1.0);
 }
 ```
 
 | Linia | Co robi |
 |---|---|
+| `in vec3 vColor;` | Wejście: ta sama nazwa i ten sam typ co `out vec3 vColor` w shaderze wierzchołków. Po tej nazwie linker łączy oba etapy. Wartość jest już zinterpolowana dla tego fragmentu |
 | `out vec4 fragColor;` | Wyjście shadera: kolor fragmentu. Nazwa jest dowolna. Shader fragmentów z jednym wyjściem zapisuje je do pierwszego bufora koloru |
-| `fragColor = vec4(1.0, 0.5, 0.2, 1.0);` | Stały kolor (czerwony 1, zielony 0,5, niebieski 0,2, alfa 1) dla każdego fragmentu, czyli jednolicie pomarańczowy trójkąt |
+| `fragColor = vec4(vColor, 1.0);` | Kolor z trzech składowych i alfa równa 1, czyli pełne krycie |
+
+### 4.3 Skąd biorą się kolory na ekranie
+
+Dane wierzchołków w `NightMazeApp.cpp` dają lewemu dolnemu wierzchołkowi kolor czerwony, prawemu dolnemu zielony, a górnemu niebieski ([`buffers-vao.md`](buffers-vao.md), sekcja 5.7). Shader wierzchołków przepisuje te kolory do `vColor`. Dla każdego piksela wewnątrz trójkąta rasteryzacja wylicza `vColor` jako średnią ważoną trzech wierzchołków, z wagami zależnymi od odległości. Dlatego przy rogach trójkąt jest prawie czysto czerwony, zielony i niebieski, a w środku ciężkości wszystkie trzy składowe są równe (szary). W żadnym z dwóch shaderów nie ma ani jednej linii, która to przejście liczy: robi je etap stały potoku.
 
 Rozszerzenia plików (`.vert`, `.frag`) nie mają dla OpenGL żadnego znaczenia: o typie shadera decyduje stała podana do `glCreateShader`, a nie nazwa pliku. Rozszerzenia są dla ludzi i dla edytora, który według nich włącza kolorowanie składni GLSL ([`../../guides/project-structure.md`](../../guides/project-structure.md), sekcja 3.10).
+
+Jak pliki z `assets/` trafiają obok programu, opisuje [`../core/paths.md`](../core/paths.md) (sekcja 5.8) i [`../../guides/project-structure.md`](../../guides/project-structure.md) (sekcja 3.1, blok 7).
 
 ## 5. Kod w projekcie
 
@@ -247,6 +289,8 @@ Rozszerzenia plików (`.vert`, `.frag`) nie mają dla OpenGL żadnego znaczenia:
 |---|---|
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `lastError`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<filesystem>` i `<string>` |
 | [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp) | implementacja i siedem funkcji pomocniczych w anonimowej przestrzeni nazw: `pathText`, `readTextFile`, `shaderInfoLog`, `programInfoLog`, `compileShader`, `linkProgram`, `buildProgram` |
+| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | jedyna para shaderów projektu (sekcja 4) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | jedyny użytkownik klasy: pole `m_shader`, wczytanie w konstruktorze, `isValid()` i `use()` w `onRender` (sekcja 5.10) |
 
 Oba pliki są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`), GLAD i biblioteki standardowej.
 
@@ -679,23 +723,63 @@ Przypisanie różni się od konstruktora jednym: obiekt po lewej stronie **już 
 
 `return *this;` zwraca referencję do obiektu po lewej, jak każdy operator przypisania, żeby dało się pisać `a = b = c`.
 
-### 5.10 Jak tego użyć
+### 5.10 Gdzie klasa jest używana
 
-Tego kodu **nie ma jeszcze w projekcie**. To zapowiedź użycia z następnego kroku M1, żeby było widać, do czego służy publiczne API:
+Jedynym użytkownikiem jest `game::NightMazeApp`. Cztery miejsca.
 
-- obiekt będzie polem `game::NightMazeApp`, zbudowanym ze ścieżek `core::assetPath("shaders/triangle.vert")` i `core::assetPath("shaders/triangle.frag")`,
-- w `onRender`, przed wywołaniem rysującym: sprawdzenie `isValid()` i `use()`,
-- przycisk w panelu debug zawoła `reload()` i pokaże `lastError()`.
+**Pole** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
-Jako pole klasy pochodnej od `core::Application` obiekt zostanie zniszczony przed oknem, czyli dopóki kontekst OpenGL jeszcze istnieje ([`../core/README.md`](../core/README.md), sekcja 7).
+```cpp
+gfx::Shader m_shader;
+```
+
+Jako pole klasy pochodnej od `core::Application` obiekt powstaje po oknie i kontekście OpenGL, a ginie przed nimi ([`../core/README.md`](../core/README.md), sekcja 7).
+
+**Nazwy plików** w anonimowej przestrzeni nazw [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp):
+
+```cpp
+// Shader files, relative to the assets directory.
+constexpr const char* VERTEX_SHADER_FILE = "shaders/basic.vert";
+constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
+```
+
+**Wczytanie** na liście inicjalizacyjnej konstruktora:
+
+```cpp
+m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FILE)),
+```
+
+`core::assetPath` zamienia nazwę względną na pełną ścieżkę w katalogu `assets/` obok pliku wykonywalnego ([`../core/paths.md`](../core/paths.md)), więc shadery znajdują się niezależnie od katalogu roboczego. Wynik `assetPath` jest obiektem tymczasowym, który trafia do parametru konstruktora `Shader` przez przeniesienie (sekcja 5.8). Konstruktor `Shader` nie rzuca przy błędzie w shaderze. Wyjątek może natomiast rzucić samo `core::assetPath`, gdy system nie potrafi podać położenia programu: wtedy konstruktor aplikacji zostaje przerwany, a wyjątek łapie `catch` w `main` i program kończy się linią `[error] Fatal: ...`.
+
+**Rysowanie** w `NightMazeApp::onRender`, po `glClear`:
+
+```cpp
+// Without a shader program there is nothing to draw with. The load error was logged
+// once, when the shader was created, so the frame stays at the clear color.
+if (m_shader.isValid()) {
+    m_shader.use();
+    m_vertexArray.bind();
+    // Every three vertices, starting at vertex 0, form one triangle.
+    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT));
+}
+```
+
+| Linia | Co robi i dlaczego |
+|---|---|
+| `if (m_shader.isValid())` | Gdy shader się nie wczytał, rysowanie jest pomijane w całości. Klatka to wtedy samo tło, a panele debug działają normalnie. Błąd został wypisany **raz**, przez `reload()` wołane z konstruktora, a nie co klatkę |
+| `m_shader.use();` | `glUseProgram`: wybiera program dla następnego wywołania rysującego. Wołane co klatkę, bo backend ImGui ustawia przy rysowaniu paneli własny program |
+| `m_vertexArray.bind();` | Wybiera opis danych wierzchołków ([`buffers-vao.md`](buffers-vao.md)) |
+| `glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)` | Uruchamia potok z sekcji 2.1 dla trzech wierzchołków |
+
+`reload()` nie jest dziś wołane nigdzie poza konstruktorem `Shader`. Zmiana pliku shadera wymaga więc ponownego uruchomienia programu (ale nie kompilacji C++).
 
 ### 5.11 Jak to zostało sprawdzone
 
-Klasy nie woła jeszcze nic w programie `night_maze`, więc sprawdziłem ją na Macu małym programem testowym poza repozytorium: ukryte okno GLFW z kontekstem 4.1 Core, biblioteka `engine` z buildu Debug i kilka plików shaderów w katalogu tymczasowym. Wyniki (sterownik Apple, `GL_VERSION` 4.1 Metal):
+**Test samej klasy.** Zanim klasa dostała użytkownika, sprawdziłem ją na Macu małym programem testowym poza repozytorium: ukryte okno GLFW z kontekstem 4.1 Core, biblioteka `engine` z buildu Debug i kilka plików shaderów w katalogu tymczasowym. Wyniki (sterownik Apple, `GL_VERSION` 4.1 Metal):
 
 | Próba | Wynik |
 |---|---|
-| para z sekcji 4 | `isValid()` prawda, `lastError()` pusty |
+| najprostsza poprawna para (jeden atrybut pozycji, stały kolor) | `isValid()` prawda, `lastError()` pusty |
 | nieistniejący plik | `isValid()` fałsz, `Shader file cannot be opened: <ścieżka>` |
 | brak średnika w shaderze wierzchołków | `Shader compilation failed: <ścieżka>`, potem `ERROR: 0:5: '}' : syntax error: syntax error` |
 | brak linii `#version` | `ERROR: 0:1: '' :  #version required and missing.` |
@@ -709,13 +793,32 @@ Klasy nie woła jeszcze nic w programie `night_maze`, więc sprawdziłem ją na 
 
 Zwraca uwagę trzeci wiersz: brakujący średnik był w linii 4, a sterownik wskazał linię 5, bo błąd zauważył dopiero przy następnym znaku (`}`). Numer linii w dzienniku to miejsce, w którym kompilator się zgubił, a nie zawsze miejsce pomyłki.
 
+**Program `night_maze`.** Po dodaniu trójkąta uruchomiłem program na Macu trzy razy, każdorazowo na około 3 sekundy, i przeczytałem jego wyjście (`<repo>` to katalog repozytorium):
+
+| Próba | Wyjście programu | Wynik |
+|---|---|---|
+| start z katalogu repozytorium | dwie linie `[info]` z `GL_VERSION` i `GL_RENDERER`, żadnej linii `[error]` | program działa |
+| start z katalogu `/tmp` (inny katalog roboczy) | to samo | shadery znalezione, bo ścieżka idzie przez `core::assetPath` |
+| usunięty średnik w linii 14 pliku `basic.frag` | jak niżej | błąd wypisany **raz**, program działa dalej (nie zamknął się przez 3 sekundy) |
+
+```text
+[info] GL_VERSION:  4.1 Metal - 90.5
+[info] GL_RENDERER: Apple M3
+[error] Shader compilation failed: <repo>/build/debug/assets/shaders/basic.frag
+ERROR: 0:15: '}' : syntax error: syntax error
+```
+
+Ścieżka w komunikacie prowadzi przez `build/debug/assets`, czyli przez dowiązanie obok programu, a nie wprost do katalogu repozytorium: to jest ścieżka, którą zbudowało `core::assetPath`. Sterownik wskazuje linię 15, choć średnika brakuje w linii 14 (uwaga pod tabelą wyżej).
+
+Te uruchomienia sprawdzały wyjście tekstowe, a nie obraz w oknie. To, że te same pliki shaderów z tymi samymi danymi wierzchołków dają czerwony, zielony i niebieski róg, potwierdził osobny test z ukrytym oknem i `glReadPixels` ([`buffers-vao.md`](buffers-vao.md), sekcja 5.9).
+
 Na Windowsie klasa nie była jeszcze kompilowana ani uruchamiana.
 
 ## 6. Panel ImGui
 
-`Shader` nie ma jeszcze elementu w panelu. Dziś jedynym wyjściem klasy jest konsola: linia `[error] Shader compilation failed: ...` z dziennikiem sterownika.
+`Shader` nie ma jeszcze elementu w panelu. Dziś jedynym wyjściem klasy jest konsola: linia `[error] Shader compilation failed: ...` z dziennikiem sterownika. Skutek działania shadera widać za to w oknie: trójkąt za panelem Renderer.
 
-Panel "Shaders" z przyciskiem "Reload shaders" i polem pokazującym `lastError()` powstanie w dalszej części M1 (PRD wymienia przycisk "Reload shaders" jako pokaz tematu 2). Publiczne API klasy jest pod niego przygotowane: `reload()` zwraca `bool`, a `lastError()` trzyma gotowy tekst w UTF-8.
+Panel "Shaders" z przyciskiem "Reload shaders" i polem pokazującym `lastError()` jest następnym krokiem M1 (PRD wymienia przycisk "Reload shaders" jako pokaz tematu 2). Do tego czasu shader jest wczytywany tylko przy starcie programu, więc po zmianie pliku trzeba program uruchomić ponownie. Publiczne API klasy jest pod panel przygotowane: `reload()` zwraca `bool`, a `lastError()` trzyma gotowy tekst w UTF-8.
 
 ## 7. Pułapki
 
@@ -731,20 +834,27 @@ Panel "Shaders" z przyciskiem "Reload shaders" i polem pokazującym `lastError()
 10. **Dziennik czytany po usunięciu obiektu.** `glGetShaderInfoLog` dla usuniętego shadera zwraca błąd OpenGL zamiast tekstu. W `compileShader` i `linkProgram` dziennik jest odczytywany przed `glDeleteShader` i `glDeleteProgram`.
 11. **Numer linii w błędzie wskazuje za daleko.** Brak średnika w linii 4 sterownik zgłasza w linii 5 (sekcja 5.11). Trzeba patrzeć też linię wyżej.
 12. **Shader pod złym typem.** `glCreateShader(GL_VERTEX_SHADER)` z tekstem shadera fragmentów zwykle kończy się mylącym błędem kompilacji albo linkowania. O typie decyduje kolejność argumentów konstruktora `Shader` (najpierw wierzchołków, potem fragmentów), a nie rozszerzenie pliku.
-13. **Stary obraz po zmianie pliku.** Zapisanie pliku shadera samo niczego nie zmienia w działającym programie: `Shader` nie obserwuje dysku. Trzeba zawołać `reload()`.
+13. **Stary obraz po zmianie pliku.** Zapisanie pliku shadera samo niczego nie zmienia w działającym programie: `Shader` nie obserwuje dysku. Trzeba zawołać `reload()`, a dopóki nie ma przycisku w panelu, uruchomić program ponownie.
+14. **Windows: program czyta kopię shaderów.** Na macOS katalog `assets` obok programu jest dowiązaniem do katalogu w repozytorium, więc program widzi plik zaraz po zapisaniu. Na Windowsie jest to **kopia**, robiona od nowa przy każdym budowaniu: po zmianie pliku w `assets\shaders\` trzeba najpierw zbudować (`cmake --build --preset debug`), a dopiero potem wczytać shader ponownie ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7).
+15. **Niezgodne nazwy `out` i `in`.** `out vec3 vColor` w `basic.vert` i `in vec3 vColor` w `basic.frag` są łączone po nazwie. Literówka w jednej z nich nie jest błędem kompilacji żadnego z plików, tylko błędem **linkowania**.
 
 ## 8. Ćwiczenia
 
-Klasy nie używa jeszcze żaden kod w `night_maze`, więc część ćwiczeń robi się na kartce, a część wymaga tymczasowego kodu. Po dodaniu trójkąta ćwiczenia zostaną przepisane na działający program.
+Shader jest wczytywany przy starcie, więc po każdej zmianie pliku `.vert` albo `.frag` trzeba uruchomić program ponownie. Kompilacja C++ nie jest potrzebna: na macOS wystarczy `./build/debug/night_maze`, bo `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Na Windowsie przed uruchomieniem trzeba wykonać `cmake --build --preset debug`, które odświeża kopię shaderów obok programu. Po każdym ćwiczeniu przywróć plik (`git checkout assets/shaders`).
 
-1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne. Dla trójkąta zakrywającego 10 000 pikseli zapisz, ile razy wykona się shader wierzchołków, a ile razy shader fragmentów.
-2. **Współrzędne NDC.** Dla shadera wierzchołków z sekcji 4 i trzech wierzchołków `(-0.5, -0.5, 0)`, `(0.5, -0.5, 0)`, `(0, 0.5, 0)` narysuj okno i zaznacz, gdzie wypadną wierzchołki. Gdzie wypadłby wierzchołek `(2, 0, 0)` i co się z nim stanie?
-3. **Ścieżki przez `buildProgram`.** Dla każdego z czterech wyjść funkcji `buildProgram` (sekcja 5.7) wypisz po kolei wszystkie wywołania `glCreate*` i `glDelete*`, które się wykonają, i sprawdź, że każdemu `glCreate*` odpowiada `glDelete*` albo zwrócenie identyfikatora.
-4. **Pierwsze uruchomienie klasy.** W `NightMazeApp.cpp` dołącz tymczasowo `"gfx/Shader.hpp"` i `<filesystem>`, a na końcu `NightMazeApp::onRender` dopisz `gfx::Shader shader(std::filesystem::path("nie_ma.vert"), std::filesystem::path("nie_ma.frag"));`. Zbuduj i uruchom. Jaka linia pojawia się w konsoli i jak często? Dlaczego program się nie zamyka? Wycofaj zmiany.
-5. **Błąd kompilacji.** Zapisz dwa pliki z sekcji 4 w dowolnym katalogu, usuń średnik w shaderze wierzchołków i w kodzie z ćwiczenia 4 podaj pełne ścieżki tych plików. Przeczytaj komunikat: która część pochodzi z `Shader.cpp`, a która ze sterownika? Którą linię wskazuje sterownik i dlaczego? Wycofaj zmiany.
-6. **Błąd linkowania.** W shaderze fragmentów z ćwiczenia 5 (przy poprawnym shaderze wierzchołków) dopisz `in vec3 vColor;` i użyj go: `fragColor = vec4(vColor, 1.0);`. Czym różni się komunikat od poprzedniego? Dlaczego wymienia oba pliki? Wycofaj zmiany.
-7. **Przeniesienie na kartce.** Dla kodu `Shader a(p1, p2); Shader b = std::move(a);` zapisz wartość `m_program` w obu obiektach po każdej linii (przyjmij, że program dostał identyfikator 3). Ile razy i z jakim argumentem zostanie zawołane `glDeleteProgram`, gdy oba obiekty wyjdą z zasięgu? Powtórz, zakładając, że w konstruktorze przenoszącym brakuje linii `other.m_program = 0;`.
-8. **Przypisanie do siebie.** Prześledź na kartce `a = std::move(a);` dla obiektu z programem 3, najpierw z warunkiem `if (this == &other)`, potem bez niego. W jakim stanie zostaje obiekt w drugim przypadku?
+1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne. Trójkąt projektu zakrywa w oknie 1280 x 720 około 115 tysięcy punktów (na ekranie Retina cztery razy więcej pikseli). Ile razy na klatkę wykonuje się `main` z `basic.vert`, a ile razy `main` z `basic.frag`?
+2. **Stały kolor.** W `basic.frag` zamień `vec4(vColor, 1.0)` na `vec4(1.0, 0.5, 0.2, 1.0)`. Uruchom program. Jaki jest trójkąt? Czy shader nadal się linkuje, mimo że `vColor` nie jest już używane?
+3. **Literówka.** Usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i uruchom program. Przeczytaj linię `[error]`: która część pochodzi z `Shader.cpp`, a która ze sterownika? Którą linię wskazuje sterownik i dlaczego nie tę ze średnikiem? Co widać w oknie i czy panel Renderer działa? Wskaż w `NightMazeApp::onRender` linię, dzięki której program się nie wysypał.
+4. **Błąd linkowania.** W `basic.frag` zmień nazwę `vColor` na `vColour` w obu liniach, w których występuje. Uruchom program. Czym różni się komunikat od poprzedniego i dlaczego wymienia oba pliki?
+5. **Zamienione numery atrybutów.** W `basic.vert` zamień `location = 0` z `location = 1` (pozycja dostaje 1, kolor 0). Uruchom program. Shader czyta teraz kolory jako pozycje, a pozycje jako kolory. Policz na kartce, gdzie wypadną trzy wierzchołki, i porównaj z ekranem. Dlaczego nie ma żadnego błędu w konsoli?
+6. **Pozycja jako kolor.** W `basic.vert` zamień `vColor = aColor;` na `vColor = aPosition + 0.5;`. Jaki kolor ma każdy róg i dlaczego? Co by było bez `+ 0.5`?
+7. **Składowa `w`.** W `basic.vert` zamień `vec4(aPosition, 1.0)` na `vec4(aPosition, 2.0)`. Co stało się z rozmiarem trójkąta? Wyjaśnij to dzieleniem perspektywicznym z sekcji 2.2. Sprawdź też wartość `0.5`.
+8. **Przesunięcie i odbicie.** Zmień `gl_Position` tak, żeby trójkąt był przesunięty o 0,5 w prawo, a potem tak, żeby stał na głowie. Nie zmieniaj kodu C++.
+9. **Wersja GLSL.** Zmień pierwszą linię `basic.vert` na `#version 460 core`, potem usuń ją całkiem. Zapisz oba komunikaty. Który z nich pojawiłby się także na PC z nowym sterownikiem?
+10. **Ścieżki przez `buildProgram`.** Dla każdego z czterech wyjść funkcji `buildProgram` (sekcja 5.7) wypisz po kolei wszystkie wywołania `glCreate*` i `glDelete*`, które się wykonają, i sprawdź, że każdemu `glCreate*` odpowiada `glDelete*` albo zwrócenie identyfikatora. Które wyjście wystąpiło w ćwiczeniu 3, a które w ćwiczeniu 4?
+11. **Brak pliku.** W `NightMazeApp.cpp` zmień `VERTEX_SHADER_FILE` na nieistniejącą nazwę, zbuduj i uruchom. Jaka linia pojawia się w konsoli i ile razy? Wycofaj zmianę.
+12. **Przeniesienie na kartce.** Dla kodu `Shader a(p1, p2); Shader b = std::move(a);` zapisz wartość `m_program` w obu obiektach po każdej linii (przyjmij, że program dostał identyfikator 3). Ile razy i z jakim argumentem zostanie zawołane `glDeleteProgram`, gdy oba obiekty wyjdą z zasięgu? Powtórz, zakładając, że w konstruktorze przenoszącym brakuje linii `other.m_program = 0;`.
+13. **Przypisanie do siebie.** Prześledź na kartce `a = std::move(a);` dla obiektu z programem 3, najpierw z warunkiem `if (this == &other)`, potem bez niego. W jakim stanie zostaje obiekt w drugim przypadku?
 
 ## 9. Pytania kontrolne
 
@@ -807,6 +917,15 @@ Klasy nie używa jeszcze żaden kod w `night_maze`, więc część ćwiczeń rob
 
 20. **`glGetUniformLocation` zwraca -1, choć nazwa jest poprawna. Co się stało?**
     Kompilator usunął uniform, bo nie wpływa na wynik shadera (jest nieużyty albo jego użycie zostało zoptymalizowane). Dla OpenGL taki uniform nie istnieje. Ustawianie położenia -1 jest ignorowane bez błędu.
+
+21. **Kiedy dziś wczytywany jest shader i co trzeba zrobić po zmianie pliku `.frag`?**
+    Raz, w konstruktorze `NightMazeApp` (konstruktor `Shader` woła `reload()`). Przycisku przeładowania jeszcze nie ma, więc po zmianie pliku uruchamiam program ponownie. Kompilacja C++ nie jest potrzebna, bo shader jest plikiem czytanym w czasie działania.
+
+22. **Co się dzieje w klatce, gdy shader się nie wczytał?**
+    `m_shader.isValid()` zwraca fałsz i `onRender` pomija `use()`, `bind()` i `glDrawArrays`. Klatka to samo tło i panele. Błąd został wypisany raz, przy wczytaniu, a nie co klatkę.
+
+23. **Skąd w trójkącie płynne przejście kolorów, skoro shader fragmentów tylko przepisuje `vColor`?**
+    Shader wierzchołków zapisuje `vColor` dla trzech wierzchołków, a rasteryzacja interpoluje tę wartość dla każdego fragmentu. Shader fragmentów dostaje już wartość pośrednią.
 
 ## 10. Źródła
 

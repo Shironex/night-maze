@@ -1,22 +1,22 @@
 # Moduł core: ścieżki do assetów
 
-Kamień milowy: M1. Temat wykładu: 1 (moduł `core`), pierwszy użytkownik pojawi się w temacie 2 (Programowalny potok).
-Kod: [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`src/core/Paths.cpp`](../../../src/core/Paths.cpp).
+Kamień milowy: M1. Temat wykładu: 1 (moduł `core`), pierwszy użytkownik należy do tematu 2 (Programowalny potok).
+Kod: [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`src/core/Paths.cpp`](../../../src/core/Paths.cpp), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), krok budowania w [`CMakeLists.txt`](../../../CMakeLists.txt).
 
 Część modułu `core`. Wstęp do całego modułu jest w [`README.md`](README.md). Pozostałe części: [`window-context.md`](window-context.md) (okno i kontekst), [`main-loop.md`](main-loop.md) (pętla i czas), [`input.md`](input.md) (klawiatura i mysz), [`gl-check.md`](gl-check.md) (błędy OpenGL).
 
 ## 1. Po co to jest
 
-Program będzie wczytywał pliki z dysku: shadery, potem modele i tekstury. Wszystkie mają leżeć w katalogu `assets/`. Pytanie brzmi: jak program ma ten katalog znaleźć. Najprostsza odpowiedź, czyli ścieżka względna (relative path) `"assets/shaders/triangle.vert"`, działa tylko wtedy, gdy program został uruchomiony z "właściwego" miejsca. Ten sam plik `.exe` uruchomiony z terminala, z IDE i dwuklikiem dostaje trzy różne katalogi robocze (working directory), a ścieżka względna jest liczona właśnie od katalogu roboczego. To ta sama historia co z plikiem `imgui.ini`, który raz powstaje w katalogu repozytorium, a raz obok programu ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Dla `imgui.ini` skutkiem jest tylko inny układ paneli. Dla shaderów skutkiem byłby program, który się nie uruchamia.
+Program wczytuje pliki z dysku: dziś shadery, później modele i tekstury. Wszystkie mają leżeć w katalogu `assets/`. Pytanie brzmi: jak program ma ten katalog znaleźć. Najprostsza odpowiedź, czyli ścieżka względna (relative path) `"assets/shaders/basic.vert"`, działa tylko wtedy, gdy program został uruchomiony z "właściwego" miejsca. Ten sam plik `.exe` uruchomiony z terminala, z IDE i dwuklikiem dostaje trzy różne katalogi robocze (working directory), a ścieżka względna jest liczona właśnie od katalogu roboczego. To ta sama historia co z plikiem `imgui.ini`, który raz powstaje w katalogu repozytorium, a raz obok programu ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Dla `imgui.ini` skutkiem jest tylko inny układ paneli. Dla shaderów skutkiem byłby program, który niczego nie rysuje.
 
 Dlatego szukam assetów **względem pliku wykonywalnego**, a nie względem katalogu roboczego. Dwie funkcje w `core`:
 
 - `core::executableDir()` zwraca bezwzględną ścieżkę katalogu, w którym leży uruchomiony program,
-- `core::assetPath("shaders/triangle.vert")` zwraca `executableDir() / "assets" / "shaders/triangle.vert"`.
+- `core::assetPath("shaders/basic.vert")` zwraca `executableDir() / "assets" / "shaders/basic.vert"`.
 
 PRD (sekcja 6) wymienia "ścieżki do assetów" jako jedną z odpowiedzialności warstwy `core`.
 
-Stan na dziś: obie funkcje są gotowe i zbudowane w bibliotece `engine`, ale **żaden kod ich jeszcze nie woła**. Pierwszym użytkownikiem będzie wczytywanie shaderów w M1. Katalog `assets/` jeszcze nie istnieje, ani w repozytorium, ani obok programu, i żaden krok CMake go nie tworzy: pojawi się razem z pierwszymi plikami shaderów.
+Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z podkatalogiem `shaders/` i dwoma plikami (`basic.vert`, `basic.frag`). Pierwszym i na razie jedynym użytkownikiem `core::assetPath` jest konstruktor `game::NightMazeApp`, który buduje tak ścieżki obu plików shaderów. Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię odświeżaną przy każdym budowaniu (sekcja 5.8).
 
 ## 2. Teoria
 
@@ -94,7 +94,7 @@ Ta część modułu nie ma związku z OpenGL: nie woła żadnej funkcji `gl*` an
 
 ## 4. Shadery
 
-Ta część modułu nie ma shaderów. Jest dla nich przygotowaniem: pliki `.vert` i `.frag` będą leżeć w `assets/shaders/`, a kod, który je wczyta w M1, zapyta o ich położenie przez `core::assetPath`.
+Ta część modułu nie ma shaderów, ale to przez nią program je znajduje: pliki `basic.vert` i `basic.frag` leżą w `assets/shaders/`, a `game::NightMazeApp` pyta o ich położenie przez `core::assetPath` (sekcja 5.8). Same shadery opisuje [`../gfx/shaders.md`](../gfx/shaders.md).
 
 ## 5. Kod w projekcie
 
@@ -125,13 +125,13 @@ flowchart TD
 std::filesystem::path executableDir();
 
 /// Path of a file in the assets directory that lies next to the executable, for example
-/// assetPath("shaders/triangle.vert"). It does not check that the file exists: the code
+/// assetPath("shaders/basic.vert"). It does not check that the file exists: the code
 /// that opens the file reports that.
 std::filesystem::path assetPath(const std::filesystem::path& relativePath);
 ```
 
 - Obie funkcje zwracają `std::filesystem::path` przez wartość. Wołający dostaje własny obiekt i może go od razu przekazać dalej, na przykład do `std::ifstream`.
-- `assetPath` przyjmuje `const std::filesystem::path&`. Literał `"shaders/triangle.vert"` zamienia się na `path` niejawnie, więc wywołanie `assetPath("shaders/triangle.vert")` działa bez dodatkowego zapisu.
+- `assetPath` przyjmuje `const std::filesystem::path&`. Literał `"shaders/basic.vert"` zamienia się na `path` niejawnie, więc wywołanie `assetPath("shaders/basic.vert")` działa bez dodatkowego zapisu.
 - Nagłówek nie dołącza ani `<windows.h>`, ani `<mach-o/dyld.h>`. Nagłówki systemowe są tylko w pliku `.cpp`, więc nie "wyciekają" do plików, które dołączają `core/Paths.hpp` (sekcja 7, pułapka 5).
 - `std::filesystem::filesystem_error`, który może rzucić `canonical`, dziedziczy po `std::runtime_error` (przez `std::system_error`), więc zdanie "Throws std::runtime_error" jest prawdziwe także dla niego. Wyjątek doleci do `catch (const std::exception&)` w `main`.
 
@@ -276,13 +276,44 @@ std::filesystem::path assetPath(const std::filesystem::path& relativePath) {
 - `assetPath` **nie sprawdza**, czy plik istnieje. To celowe: funkcja tylko buduje ścieżkę. Błąd "nie ma pliku" zgłosi kod, który plik otwiera, bo tylko on wie, co z tym zrobić i jaki komunikat wypisać.
 - Każde wywołanie pyta system od nowa. Nie zapamiętuję wyniku w zmiennej statycznej: to byłby ukryty stan globalny, a pytanie jest tanie i zadawane tylko przy wczytywaniu plików, nie co klatkę.
 
-### 5.8 Jak to zostało sprawdzone
+### 5.8 Pierwszy użytkownik i katalog `assets` obok programu
 
-Na macOS gałąź sprawdziłem małym programem testowym poza repozytorium, który dołącza `src/core/Paths.cpp` i wypisuje wynik obu funkcji. Uruchomiony z własnego katalogu, z katalogu `/`, przez ścieżkę z `..`, przez dowiązanie symboliczne i przez `PATH` za każdym razem wypisał ten sam katalog prawdziwego pliku. W samym programie `night_maze` funkcje nie są jeszcze wołane, więc w działającej grze nie ma czego obserwować.
+**Wywołanie.** W [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) nazwy plików są stałymi w anonimowej przestrzeni nazw, a ścieżki powstają na liście inicjalizacyjnej konstruktora:
+
+```cpp
+// Shader files, relative to the assets directory.
+constexpr const char* VERTEX_SHADER_FILE = "shaders/basic.vert";
+constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
+```
+
+```cpp
+m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FILE)),
+```
+
+Nazwy są względne i zapisane z ukośnikiem `/`, który `std::filesystem::path` rozumie na obu systemach. Dla programu w `<repo>/build/debug/night_maze` wynikiem jest `<repo>/build/debug/assets/shaders/basic.vert`.
+
+**Wyjątek.** `executableDir` może rzucić `std::runtime_error`. Dzieje się to wtedy w trakcie konstruowania pola `m_shader`, czyli wewnątrz konstruktora aplikacji wołanego w bloku `try` funkcji `main`. Część bazowa (`core::Application` z oknem) jest już zbudowana, więc C++ niszczy ją poprawnie, a `catch (const std::exception&)` w `main` wypisuje `[error] Fatal: ...` i zwraca kod błędu. Brak samego pliku shadera wyjątkiem **nie** jest: zgłasza go `gfx::Shader` linią `[error]` i program działa dalej ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 5.8).
+
+**Skąd `assets` obok programu.** `assetPath` szuka katalogu `assets` w katalogu pliku wykonywalnego, czyli w `build/debug`, a pliki leżą w repozytorium, w `<repo>/assets`. Łączy je blok w [`CMakeLists.txt`](../../../CMakeLists.txt), inny dla każdego systemu:
+
+| System | Mechanizm CMake | Polecenie | Skutek |
+|---|---|---|---|
+| macOS | polecenie `POST_BUILD` targetu `night_maze`, wykonywane po zlinkowaniu programu | `cmake -E create_symlink <repo>/assets <katalog programu>/assets` | `build/debug/assets` jest **dowiązaniem symbolicznym** do katalogu w repozytorium. Program czyta zawsze aktualne pliki, bez budowania |
+| Windows | osobny target `copy_assets`, wykonywany przy każdym budowaniu | `cmake -E copy_directory <repo>/assets <katalog programu>/assets` | obok `night_maze.exe` leży **kopia** katalogu. Program czyta kopię, a kopię odświeża każde `cmake --build --preset debug` |
+
+Dlaczego dwie gałęzie, dlaczego różne mechanizmy i co robi każda linia tego bloku, opisuje [`../../guides/project-structure.md`](../../guides/project-structure.md) (sekcja 3.1, blok 7).
+
+Dwa różne dowiązania nie powinny się mylić. Dowiązanie **do programu** (pułapka 9) rozwija `canonical` w `executableFile`, żeby katalogiem programu był katalog prawdziwego pliku. Dowiązanie **`assets`** jest zwykłym elementem ścieżki: `assetPath` go nie rozwija, robi to system operacyjny w chwili otwierania pliku. Dlatego w komunikatach błędów widać ścieżkę przez `build/debug/assets`, a nie przez `<repo>/assets`.
+
+### 5.9 Jak to zostało sprawdzone
+
+Na macOS gałąź sprawdziłem najpierw małym programem testowym poza repozytorium, który dołącza `src/core/Paths.cpp` i wypisuje wynik obu funkcji. Uruchomiony z własnego katalogu, z katalogu `/`, przez ścieżkę z `..`, przez dowiązanie symboliczne i przez `PATH` za każdym razem wypisał ten sam katalog prawdziwego pliku.
+
+Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalogu repozytorium i z katalogu `/tmp` wczytał shadery bez żadnej linii `[error]`. Sprawdziłem też krok budowania: dowiązanie `build/debug/assets` i `build/release/assets` wskazuje ścieżkę bezwzględną `<repo>/assets`, ponowne wykonanie kroku przy istniejącym dowiązaniu kończy się powodzeniem, a `make clean` usuwa dowiązanie razem z katalogiem `build/`, nie ruszając plików w `<repo>/assets`.
 
 ## 6. Panel ImGui
 
-Ścieżki nie mają elementu w panelu. Gdy pojawią się shadery, skutkiem błędnej ścieżki będzie linia `[error]` w konsoli od kodu, który otwiera plik.
+Ścieżki nie mają elementu w panelu. Skutkiem błędnej ścieżki jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli, wypisana przez `gfx::Shader`, i brak trójkąta w oknie.
 
 ## 7. Pułapki
 
@@ -296,15 +327,18 @@ Na macOS gałąź sprawdziłem małym programem testowym poza repozytorium, któ
 8. **`MAX_PATH`.** Bufor na 260 znaków wygląda w poradnikach jak norma, ale dłuższe ścieżki istnieją. Za mały bufor nie daje błędu wprost: funkcja zwraca obciętą ścieżkę i rozmiar bufora, więc bez sprawdzenia wyniku program szukałby assetów w nieistniejącym katalogu.
 9. **Dowiązanie symboliczne do programu.** Bez `canonical` katalogiem programu byłby katalog dowiązania (sekcja 5.5). Z `canonical` jest nim katalog prawdziwego pliku i tam musi leżeć `assets/`.
 10. **`canonical` czyta dysk.** W odróżnieniu od `operator/` i `parent_path()` wymaga, żeby plik istniał, i rzuca wyjątek, gdy go nie ma. Dla ścieżki działającego programu plik istnieje, ale tej funkcji nie należy używać "na zapas" dla ścieżek plików, których może nie być.
-11. **Katalog programu to nie katalog repozytorium.** `executableDir()` wskazuje `build/debug` (na Windowsie z generatorem Visual Studio `build\debug\Debug`), a nie korzeń repozytorium. Katalog `assets/` musi więc trafić obok programu podczas budowania. Dziś żaden krok CMake tego nie robi.
+11. **Katalog programu to nie katalog repozytorium.** `executableDir()` wskazuje `build/debug` (na Windowsie z generatorem Visual Studio `build\debug\Debug`), a nie korzeń repozytorium. Katalog `assets/` musi więc trafić obok programu podczas budowania. Robi to build (sekcja 5.8). Program skopiowany ręcznie w inne miejsce bez katalogu `assets` nie znajdzie shaderów.
+12. **Kopia na Windowsie się starzeje.** Program czyta tam kopię katalogu `assets`, a nie pliki z repozytorium. Po zmianie shadera trzeba zbudować (`cmake --build --preset debug`), bo dopiero budowanie odświeża kopię. Budowanie samego targetu `night_maze` (możliwe przy F5 w Visual Studio) kopii nie odświeża ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Na macOS problemu nie ma, bo dowiązanie zawsze prowadzi do aktualnych plików.
+13. **Usuwanie przez dowiązanie.** `build/debug/assets` na macOS to dowiązanie do prawdziwego katalogu. Polecenie, które wchodzi w dowiązania (na przykład `rm -rf build/debug/assets/`, z ukośnikiem na końcu), usunęłoby pliki z repozytorium. `make clean` używa `cmake -E rm -rf build`, które usuwa samo dowiązanie.
 
 ## 8. Ćwiczenia
 
 1. **Katalog programu a katalog roboczy.** W `src/main.cpp` dołącz tymczasowo `"core/Paths.hpp"` i `<filesystem>`, a na początku bloku `try` w `main` dopisz `core::logInfo("exe: " + core::executableDir().string());` oraz `core::logInfo("cwd: " + std::filesystem::current_path().string());`. Zbuduj i uruchom program dwa razy: z katalogu repozytorium (`./build/debug/night_maze`) i z katalogu `build/debug` (`./night_maze`). Która linia się zmienia, a która nie? Wycofaj zmiany.
 2. **Dowiązanie.** Z kodem z ćwiczenia 1 utwórz w katalogu domowym dowiązanie symboliczne do programu (`ln -s "$PWD/build/debug/night_maze" ~/nm`) i uruchom `~/nm`. Jaki katalog wypisuje `exe`? Zakomentuj tymczasowo `canonical` (zwracając `std::filesystem::path(buffer.c_str())`), zbuduj i powtórz. Wyjaśnij różnicę, przywróć kod i usuń dowiązanie.
-3. **`assetPath` bez pliku.** Z kodem z ćwiczenia 1 dopisz `core::logInfo(core::assetPath("shaders/triangle.vert").string());`. Program wypisuje ścieżkę, choć katalog `assets/` nie istnieje. Wskaż w kodzie, dlaczego nie ma błędu, i powiedz, kto ten błąd zgłosi, gdy plik będzie naprawdę otwierany. Wycofaj zmiany.
+3. **`assetPath` bez pliku.** Z kodem z ćwiczenia 1 dopisz `core::logInfo(core::assetPath("shaders/nie_ma.vert").string());`. Program wypisuje ścieżkę, choć takiego pliku nie ma. Wskaż w kodzie, dlaczego nie ma błędu. Potem w `NightMazeApp.cpp` zmień tymczasowo `VERTEX_SHADER_FILE` na tę nazwę i zobacz, kto i jaką linią zgłasza brak pliku. Wycofaj zmiany.
 4. **Argument bezwzględny.** W tym samym miejscu wypisz `core::assetPath("/tmp/x").string()`. Wyjaśnij wynik regułą `operator/` z sekcji 7. Wycofaj zmiany.
-5. **Na kartce.** Dla programu w `/Users/a/night-maze/build/debug/night_maze` zapisz wynik `executableFile()`, `executableDir()` i `assetPath("models/gate.obj")`.
+5. **Dowiązanie `assets`.** Wykonaj `ls -l build/debug/assets` i `ls build/debug/assets/shaders`. Dokąd prowadzi dowiązanie i czy ścieżka jest bezwzględna? Zmień kolor w `assets/shaders/basic.frag` i uruchom program bez budowania. Dlaczego zmiana jest widoczna? Wycofaj zmianę.
+6. **Na kartce.** Dla programu w `/Users/a/night-maze/build/debug/night_maze` zapisz wynik `executableFile()`, `executableDir()` i `assetPath("models/gate.obj")`.
 
 ## 9. Pytania kontrolne
 
@@ -345,7 +379,10 @@ Na macOS gałąź sprawdziłem małym programem testowym poza repozytorium, któ
     Nagłówek wprowadza ogromną liczbę nazw i makr. W pliku `.hpp` trafiłby do każdego pliku, który ten nagłówek dołącza. `WIN32_LEAN_AND_MEAN` pomija rzadko używane części, `NOMINMAX` zabrania definiowania makr `min` i `max`, które kolidują z `std::min` i `std::max`.
 
 13. **Kto dziś woła `executableDir` i `assetPath`?**
-    Nikt. Funkcje są zbudowane w `engine` i sprawdzone osobnym programem testowym na macOS. Pierwszym użytkownikiem będzie wczytywanie shaderów w M1, a katalog `assets/` jeszcze nie istnieje.
+    Konstruktor `game::NightMazeApp`: buduje przez `assetPath` ścieżki plików `shaders/basic.vert` i `shaders/basic.frag` i przekazuje je do `gfx::Shader`. `executableDir` jest wołane tylko pośrednio, z `assetPath`.
+
+14. **Skąd katalog `assets` bierze się obok programu i czym różnią się systemy?**
+    Z bloku w `CMakeLists.txt`. Na macOS polecenie `POST_BUILD` po zlinkowaniu `night_maze` tworzy dowiązanie symboliczne do `<repo>/assets`, więc program widzi zmiany w plikach od razu. Na Windowsie target `copy_assets` kopiuje katalog przy każdym budowaniu (dowiązania wymagają tam trybu dewelopera albo uprawnień administratora), więc program czyta kopię i po zmianie shadera trzeba najpierw zbudować.
 
 ## 10. Źródła
 

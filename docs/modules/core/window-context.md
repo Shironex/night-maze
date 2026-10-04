@@ -85,7 +85,7 @@ Wersja w hintach to **minimum**, a nie wartość dokładna. Na Windowsie sterown
 
 ### 3.2 Jedna klatka
 
-Kod klatki jest w [`NightMazeApp::onRender`](../../../src/game/NightMazeApp.cpp):
+Początek każdej klatki jest w [`NightMazeApp::onRender`](../../../src/game/NightMazeApp.cpp):
 
 ```cpp
 const core::Size framebuffer = window().framebufferSize();
@@ -103,6 +103,8 @@ GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
 | `m_debugUI.draw(...)` | wykonuje | Wołane już poza grą, w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp), po powrocie z `NightMazeApp::onRender`: rysuje panele ImGui na wierzchu (opis w [`../debug-ui.md`](../debug-ui.md)) |
 | `glfwSwapBuffers(m_handle)` | wykonuje | Wołane w `Application::run` po `onRender`: zamienia bufory, przy vsync czeka na odświeżenie monitora |
 
+Po tych trzech wywołaniach `onRender` rysuje trójkąt (`glUseProgram`, `glBindVertexArray`, `glDrawArrays` przez klasy `gfx`). Tę część klatki opisuje [`../gfx/README.md`](../gfx/README.md), sekcja 6.
+
 Viewport ustawiam w każdej klatce, a nie raz przy starcie, i biorę go z `glfwGetFramebufferSize`. Dzięki temu bez żadnego callbacku obsługuję zmianę rozmiaru okna oraz ekrany Retina (sekcja 7). Makro `GL_CHECK` wokół każdego wywołania opisuje [`gl-check.md`](gl-check.md).
 
 ### 3.3 Zamknięcie: destruktor `Window`
@@ -116,11 +118,11 @@ Window::~Window() {
 
 `glfwDestroyWindow` niszczy okno razem z jego kontekstem OpenGL, a `glfwTerminate` zwalnia stan biblioteki. Wszystko, co używa kontekstu (ImGui, a później shadery, bufory i tekstury), musi zostać zwolnione **wcześniej**. O to dba kolejność niszczenia pól opisana w [`README.md`](README.md), sekcja 7.
 
-W M0 moduł `core` nie tworzy jeszcze żadnych obiektów OpenGL (żadnych `glGen*`, żadnych `glBind*`). Jedyny zasób to kontekst. Obiekty OpenGL tworzy warstwa `gfx`: program shaderów (`gfx::Shader`), bufory (`gfx::Buffer`) i tablicę wierzchołków (`gfx::VertexArray`), zob. [`../gfx/README.md`](../gfx/README.md).
+Moduł `core` nie tworzy żadnych obiektów OpenGL (żadnych `glGen*`, żadnych `glBind*`). Jedyny zasób to kontekst. Obiekty OpenGL tworzy warstwa `gfx`: program shaderów (`gfx::Shader`), bufory (`gfx::Buffer`) i tablicę wierzchołków (`gfx::VertexArray`), zob. [`../gfx/README.md`](../gfx/README.md).
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Klasa `gfx::Shader`, która wczytuje i kompiluje shadery, już istnieje ([`../gfx/shaders.md`](../gfx/shaders.md)), a pierwsze pliki shaderów projektu (`#version 410 core`) pojawią się w M1 razem z trójkątem, a jedyne shadery działające już teraz należą do backendu ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
+Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (`assets/shaders/basic.vert` i `basic.frag`, `#version 410 core`) należą do warstwy `gfx` i rysują trójkąt po wyczyszczeniu ekranu ([`../gfx/shaders.md`](../gfx/shaders.md)), a jedyne shadery działające już teraz należą do backendu ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
 
 ## 5. Kod w projekcie
 
@@ -131,7 +133,7 @@ Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez p
 | [`src/core/Window.hpp`](../../../src/core/Window.hpp) | struktura `Size`, deklaracja klasy `Window`, deklaracja wyprzedzająca `struct GLFWwindow;` |
 | [`src/core/Window.cpp`](../../../src/core/Window.cpp) | konstruktor (cała inicjalizacja), destruktor, cienkie metody opakowujące GLFW, pomocnicze `onGlfwError` i `glString` |
 | [`src/core/Log.hpp`](../../../src/core/Log.hpp), [`.cpp`](../../../src/core/Log.cpp) | `logInfo`, `logWarn`, `logError` |
-| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użycie `framebufferSize()` w `glViewport` i czyszczenie ekranu |
+| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użycie `framebufferSize()` w `glViewport` i czyszczenie ekranu na początku `onRender` |
 
 ### 5.2 `Window`: trudne miejsca
 

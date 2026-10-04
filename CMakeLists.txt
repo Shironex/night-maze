@@ -65,3 +65,35 @@ add_executable(night_maze
 )
 target_link_libraries(night_maze PRIVATE engine imgui)
 night_maze_enable_warnings(night_maze)
+
+# ---- assets: shaders (later models and textures) next to the executable ---------------
+# The program looks for assets/ in the directory of its own executable (core::assetPath).
+# $<TARGET_FILE_DIR:night_maze> is that directory. It is a generator expression, filled in
+# when the build runs, because the Visual Studio generator adds a Debug/ or Release/ level.
+if(WIN32)
+    # Windows: copy the directory. Symbolic links need Developer Mode or administrator
+    # rights there. copy_assets is a custom target without output files, so its command
+    # runs on every build of the default (ALL) target: "cmake --build --preset debug"
+    # refreshes the copy even when no C++ file changed. Building only the night_maze
+    # target does not run it.
+    add_custom_target(copy_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:night_maze>/assets
+        COMMENT "Copying assets next to the executable"
+        VERBATIM
+    )
+    # copy_assets is built after night_maze, so the directory of the executable exists
+    # before the copy. The dependency goes one way only: night_maze does not depend on
+    # copy_assets.
+    add_dependencies(copy_assets night_maze)
+else()
+    # macOS: a symbolic link to the directory in the repository, made each time
+    # night_maze has been linked (POST_BUILD). A shader edited in assets/ is seen by the
+    # next reload, without building.
+    add_custom_command(TARGET night_maze POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+                ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:night_maze>/assets
+        COMMENT "Linking assets next to the executable"
+        VERBATIM
+    )
+endif()

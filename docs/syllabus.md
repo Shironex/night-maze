@@ -2,14 +2,14 @@
 
 Ściąga przed kartkówką i obroną. Gdy prowadzący zapyta o temat, w tej tabeli znajduję plik, który go realizuje, dokument, który go tłumaczy, i miejsce w panelu ImGui, w którym pokażę efekt na żywo.
 
-Stan: **M0 zrobione, M1 w toku**. Zrealizowany jest temat 1. Temat 2 jest zrobiony **częściowo**: istnieją klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray` z dokumentami, ale nie ma jeszcze plików shaderów, trójkąta ani przycisku w ImGui. Tematy od 3 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
+Stan: **M0 zrobione, M1 w toku**. Zrealizowany jest temat 1. Temat 2 jest zrobiony **częściowo**: klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, shadery `assets/shaders/basic.*` i trójkąt rysowany przez `game::NightMazeApp` są gotowe i opisane. Brakuje pokazu w ImGui (przycisk "Reload shaders"). Tematy od 3 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
 
 ## Tabela tematów
 
 | # | Temat wykładu | Status | Dokument | Pliki kodu | Przełącznik w ImGui |
 |---|---|---|---|---|---|
 | 1 | Pierwszy program OpenGL | **zrobione (M0)** | [`modules/core/README.md`](modules/core/README.md) (wstęp), [`window-context.md`](modules/core/window-context.md), [`main-loop.md`](modules/core/main-loop.md), [`input.md`](modules/core/input.md), [`gl-check.md`](modules/core/gl-check.md), [`paths.md`](modules/core/paths.md) | zob. tabela "Temat 1 szczegółowo" niżej | Panel Renderer: `FPS`, `Frame time`, `Framebuffer`, `Window`, `OpenGL`, `GPU`, `Clear color`. Klawisz `~` (na lewo od `1`) chowa i pokazuje panele |
-| 2 | Programowalny potok | **częściowo (M1 w toku)** | [`modules/gfx/README.md`](modules/gfx/README.md) (wstęp), [`shaders.md`](modules/gfx/shaders.md), [`buffers-vao.md`](modules/gfx/buffers-vao.md) | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp), [`Buffer.cpp`](../src/gfx/Buffer.cpp), [`VertexArray.cpp`](../src/gfx/VertexArray.cpp) i ich nagłówki, zob. tabela "Temat 2 szczegółowo" niżej. Planowane: pliki `assets/shaders/`, trójkąt w `src/game/` | jeszcze nic. Planowane: panel Shaders z przyciskiem "Reload shaders" i ostatnim błędem |
+| 2 | Programowalny potok | **częściowo (M1 w toku)**: rysowanie działa, brak przycisku w ImGui | [`modules/gfx/README.md`](modules/gfx/README.md) (wstęp, droga klatki), [`shaders.md`](modules/gfx/shaders.md), [`buffers-vao.md`](modules/gfx/buffers-vao.md) | [`src/gfx/`](../src/gfx/) (Shader, Buffer, VertexArray), [`assets/shaders/basic.vert`](../assets/shaders/basic.vert), [`basic.frag`](../assets/shaders/basic.frag), [`src/game/NightMazeApp.cpp`](../src/game/NightMazeApp.cpp), zob. tabela "Temat 2 szczegółowo" niżej | jeszcze nic w panelu, efekt widać w oknie (trójkąt). Planowane: panel Shaders z przyciskiem "Reload shaders" i ostatnim błędem |
 | 3 | Przekształcenia przestrzeni | planowane, M1 | planowane: `transforms-camera.md` | planowane: `src/scene/` (Transform, Camera) | planowane: pozycja i rotacja kamery, FOV |
 | 4 | Wczytywanie OBJ | planowane, M2 + M3 | planowane: `obj-loader.md` | planowane: `src/assets/` (ObjLoader, AssetCache) | planowane: lista załadowanych modeli |
 | 5 | Tekstury | planowane, M2 + M3 | planowane: `textures.md`, `images.md` | planowane: `src/gfx/` (Texture2D), `src/assets/` (ImageLoader) | planowane: podgląd tekstur, przełącznik normal map |
@@ -39,9 +39,9 @@ Realizacja według PRD: okno GLFW, kontekst 4.1 Core, pętla gry ze stałym krok
 | Klawiatura, blokada klawiatury | [`src/core/Input.cpp`](../src/core/Input.cpp), [`Input.hpp`](../src/core/Input.hpp) | `update`, `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`, `KEY_COUNT` | [`core/input.md`](modules/core/input.md), 5.2 do 5.6 |
 | Mysz: przyciski, przesunięcie, przechwycenie kursora, blokada myszy | [`src/core/Input.cpp`](../src/core/Input.cpp), [`Input.hpp`](../src/core/Input.hpp), [`src/core/Application.cpp`](../src/core/Application.cpp) | `update`, `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setCursorCaptured`, `setMouseBlocked`, `MOUSE_BUTTON_COUNT`, obsługa Escape w `Application::run` | [`core/input.md`](modules/core/input.md), 2.4 do 2.8 i 5.7 do 5.10 |
 | Błędy OpenGL | [`src/core/GlCheck.hpp`](../src/core/GlCheck.hpp), [`GlCheck.cpp`](../src/core/GlCheck.cpp) | makro `GL_CHECK`, `checkGlErrors` | [`core/gl-check.md`](modules/core/gl-check.md), 5.2 i 5.3 |
-| Ścieżki do assetów względem pliku wykonywalnego (jeszcze bez użytkownika w kodzie) | [`src/core/Paths.cpp`](../src/core/Paths.cpp), [`Paths.hpp`](../src/core/Paths.hpp) | `executableDir`, `assetPath`, pomocnicza `executableFile` w gałęziach `#if` dla macOS i Windows, stała `ASSETS_DIRECTORY` | [`core/paths.md`](modules/core/paths.md), 2.3 do 2.6 i 5.3 do 5.7 |
+| Ścieżki do assetów względem pliku wykonywalnego, katalog `assets` obok programu | [`src/core/Paths.cpp`](../src/core/Paths.cpp), [`Paths.hpp`](../src/core/Paths.hpp) | `executableDir`, `assetPath`, pomocnicza `executableFile` w gałęziach `#if` dla macOS i Windows, stała `ASSETS_DIRECTORY` | [`core/paths.md`](modules/core/paths.md), 2.3 do 2.6 i 5.3 do 5.7 |
 | Logowanie | [`src/core/Log.cpp`](../src/core/Log.cpp), [`Log.hpp`](../src/core/Log.hpp) | `logInfo`, `logWarn`, `logError` | [`core/window-context.md`](modules/core/window-context.md), 5.5 |
-| Klatka gry: viewport i czyszczenie | [`src/game/NightMazeApp.cpp`](../src/game/NightMazeApp.cpp), [`NightMazeApp.hpp`](../src/game/NightMazeApp.hpp) | `NightMazeApp::onRender`, `clearColor` | [`core/window-context.md`](modules/core/window-context.md), 3.2, oraz [`core/README.md`](modules/core/README.md), 6 |
+| Klatka gry: viewport i czyszczenie (rysowanie trójkąta: temat 2) | [`src/game/NightMazeApp.cpp`](../src/game/NightMazeApp.cpp), [`NightMazeApp.hpp`](../src/game/NightMazeApp.hpp) | `NightMazeApp::onRender`, `clearColor` | [`core/window-context.md`](modules/core/window-context.md), 3.2, oraz [`core/README.md`](modules/core/README.md), 6 |
 | Kolejność pól i niszczenia | [`src/core/Application.hpp`](../src/core/Application.hpp), [`src/main.cpp`](../src/main.cpp) | pola `m_window`, `m_input`, `m_time`, pole `m_debugUI` | [`core/README.md`](modules/core/README.md), 7 |
 | Loader funkcji OpenGL | [`external/glad/`](../external/glad/) | kod generowany, opis w [`libraries/glad.md`](libraries/glad.md) | [`core/window-context.md`](modules/core/window-context.md), 5.2 |
 
@@ -49,11 +49,11 @@ Dokumenty uzupełniające do tematu 1: [`libraries/glfw.md`](libraries/glfw.md),
 
 ## Temat 2 szczegółowo
 
-Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: przycisk "Reload shaders". Stan: istnieją klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, których żaden kod programu jeszcze nie używa. Nie ma plików shaderów, trójkąta ani panelu.
+Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: przycisk "Reload shaders". Stan: `game::NightMazeApp` rysuje jeden kolorowy trójkąt klasami `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray` oraz shaderami `basic.vert` i `basic.frag`. Shader jest wczytywany przy starcie. `Shader::reload` jest gotowe, ale nie ma jeszcze panelu z przyciskiem, który by je wołał.
 
 | Zagadnienie | Plik | Najważniejsze miejsce w kodzie | Dokument i sekcja |
 |---|---|---|---|
-| Potok renderowania, etapy programowalne, GLSL | brak kodu, sama teoria | brak | [`gfx/shaders.md`](modules/gfx/shaders.md), 2.1 do 2.4 |
+| Potok renderowania, etapy programowalne, GLSL | [`assets/shaders/basic.vert`](../assets/shaders/basic.vert), [`basic.frag`](../assets/shaders/basic.frag) | `layout(location = N) in`, `out vec3 vColor`, `gl_Position`, `fragColor` | [`gfx/shaders.md`](modules/gfx/shaders.md), 2.1 do 2.4 i 4 |
 | RAII i przenoszenie dla obiektów OpenGL | [`src/gfx/Shader.hpp`](../src/gfx/Shader.hpp), [`Shader.cpp`](../src/gfx/Shader.cpp) | destruktor, `= delete`, konstruktor przenoszący, przypisanie przenoszące | [`gfx/README.md`](modules/gfx/README.md), 2, oraz [`gfx/shaders.md`](modules/gfx/shaders.md), 5.9 |
 | Wczytanie pliku shadera | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp) | `readTextFile`, `pathText` | [`gfx/shaders.md`](modules/gfx/shaders.md), 5.3 |
 | Kompilacja, status i dziennik shadera | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp) | `compileShader`, `shaderInfoLog` | [`gfx/shaders.md`](modules/gfx/shaders.md), 3.1, 3.3, 5.4 i 5.5 |
@@ -62,7 +62,10 @@ Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: pr
 | Bufor wierzchołków i bufor indeksów, `glBufferData`, podpowiedź użycia | [`src/gfx/Buffer.cpp`](../src/gfx/Buffer.cpp), [`Buffer.hpp`](../src/gfx/Buffer.hpp) | konstruktor `Buffer::Buffer`, `bind`, pole `m_target` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.2, 2.6, 2.8 i 5.3 |
 | Tablica wierzchołków: co pamięta VAO, dlaczego Core jej wymaga | [`src/gfx/VertexArray.cpp`](../src/gfx/VertexArray.cpp), [`VertexArray.hpp`](../src/gfx/VertexArray.hpp) | konstruktor, `bind` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.4, 2.5 i 5.5 |
 | Atrybuty wierzchołka, krok i przesunięcie, przesunięcie jako wskaźnik | [`src/gfx/VertexArray.cpp`](../src/gfx/VertexArray.cpp) | `VertexArray::setFloatAttribute` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.3, 4 i 5.6 |
-| `glDrawArrays` a `glDrawElements`, NDC, kierunek nawijania | brak kodu, sama teoria | brak | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.7 i 2.9 |
+| Dane wierzchołków, stałe układu (krok, przesunięcia), konfiguracja | [`src/game/NightMazeApp.cpp`](../src/game/NightMazeApp.cpp), [`NightMazeApp.hpp`](../src/game/NightMazeApp.hpp) | `VERTICES`, `VERTEX_STRIDE`, `COLOR_OFFSET`, konstruktor `NightMazeApp`, pola `m_shader`, `m_vertexArray`, `m_vertexBuffer` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 5.7 |
+| Rysowanie: `glDrawArrays`, NDC, kierunek nawijania | [`src/game/NightMazeApp.cpp`](../src/game/NightMazeApp.cpp) | `NightMazeApp::onRender` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.7, 2.9 i 5.7, [`gfx/shaders.md`](modules/gfx/shaders.md), 5.10 |
+| Cała klatka: od tablicy liczb do pikseli | wszystkie powyższe | diagram | [`gfx/README.md`](modules/gfx/README.md), 6 |
+| Shadery jako pliki obok programu | [`CMakeLists.txt`](../CMakeLists.txt), [`src/core/Paths.cpp`](../src/core/Paths.cpp) | blok `assets` (dowiązanie przez `POST_BUILD` na macOS, kopia przez target `copy_assets` na Windowsie), `core::assetPath` | [`core/paths.md`](modules/core/paths.md), 5.8, [`guides/project-structure.md`](guides/project-structure.md), 3.1 blok 7 |
 
 ## Panele ImGui (narzędzie do wszystkich tematów)
 
@@ -79,7 +82,7 @@ Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: pr
 | Kamień milowy | Zakres według PRD | Tematy wykładu |
 |---|---|---|
 | M0 (zrobione) | Repozytorium, CMake i FetchContent, okno GLFW 4.1, GLAD, ImGui, `GL_CHECK` | 1 |
-| M1 (w toku) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray` | 2, 3 |
+| M1 (w toku) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray`, trójkąt | 2, 3 |
 | M2 + M3 | Generator labiryntu, kolizje AABB, tekstury, loader OBJ, pierwsze modele | 4, 5, 14 |
 | M4 + M5 | Księżyc, latarka, kryształy, Gouraud vs Phong, zbieranie, bateria, brama | 6, 7 |
 | M6 | Skybox, teren z heightmapy, trawa w shaderze geometrii | 8, 9, 13 |

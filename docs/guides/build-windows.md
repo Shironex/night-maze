@@ -265,7 +265,7 @@ oraz błędy z `GL_CHECK` i z callbacku błędów GLFW. Bez konsoli nie byłoby 
 - Jeśli program kończy się błędem przy starcie, konsola otwarta dwuklikiem zniknie od razu.
   Wtedy uruchamiamy z terminala, żeby przeczytać linię `[error] Fatal: ...`.
 
-## 7. Katalog roboczy i `imgui.ini`
+## 7. Katalog roboczy, `imgui.ini` i katalog `assets`
 
 Dear ImGui zapisuje układ paneli w pliku `imgui.ini` w **katalogu roboczym (working
 directory)** procesu, a nie obok pliku `.exe`.
@@ -280,13 +280,49 @@ Plik jest w `.gitignore`, więc nigdzie nie przeszkadza w repozytorium. Skutkiem
 katalogów jest tylko to, że układ paneli ustawiony przy uruchomieniu z terminala nie jest
 widoczny przy uruchomieniu z IDE i odwrotnie.
 
-Katalog roboczy byłby naprawdę ważny od M1, gdy program zacznie wczytywać pliki z
-`assets/` (shadery, modele). Reguła wyszukiwania zasobów jest już ustalona i wspólna dla obu
-systemów: pliki są szukane względem pliku `.exe`, a nie katalogu roboczego, przez
-`core::assetPath` ([`../modules/core/paths.md`](../modules/core/paths.md)). Na Windowsie
-położenie programu podaje `GetModuleFileNameW`. Ten kod nie był jeszcze kompilowany przez
-MSVC, a żaden kod go jeszcze nie woła (punkty na liście kontrolnej w sekcji 11). PRD wymaga
-budowania ścieżek wyłącznie przez `std::filesystem`.
+Dla plików z `assets/` (dziś shadery, później modele i tekstury) katalog roboczy **nie ma
+znaczenia**: program szuka ich względem pliku `.exe`, przez `core::assetPath`
+([`../modules/core/paths.md`](../modules/core/paths.md)). Na Windowsie położenie programu
+podaje `GetModuleFileNameW`. Ten kod jest już wołany przy każdym starcie (wczytywanie
+shaderów), ale nie był jeszcze kompilowany przez MSVC ani uruchamiany na PC (punkty na
+liście kontrolnej w sekcji 11). PRD wymaga budowania ścieżek wyłącznie przez
+`std::filesystem`.
+
+### Katalog `assets` na Windowsie: kopia, nie dowiązanie
+
+Program oczekuje katalogu `assets` obok `night_maze.exe`, czyli w `build\debug\Debug\assets\`.
+Na macOS build tworzy w tym miejscu dowiązanie symboliczne do katalogu w repozytorium. Na
+Windowsie utworzenie dowiązania wymaga trybu dewelopera albo uprawnień administratora, więc
+build **kopiuje** katalog: robi to target `copy_assets` poleceniem `cmake -E copy_directory`
+([`project-structure.md`](project-structure.md), sekcja 3.1, blok 7).
+
+Program czyta więc kopię, a nie pliki z repozytorium. Kopia jest robiona od nowa **przy
+każdym budowaniu** targetu domyślnego, także wtedy, gdy żaden plik C++ się nie zmienił.
+Reguła pracy z shaderami na Windowsie:
+
+1. zmień plik w `assets\shaders\`,
+2. zbuduj: `cmake --build --preset debug` (albo `make debug`),
+3. uruchom program ponownie (gdy pojawi się przycisk "Reload shaders": naciśnij go).
+
+Na macOS krok 2 nie jest potrzebny.
+
+Uwagi:
+
+- Budowanie **samego** targetu `night_maze` (`cmake --build --preset debug --target night_maze`)
+  kopii nie odświeża, bo `night_maze` nie zależy od `copy_assets`. Uruchomienie klawiszem F5
+  w Visual Studio może budować tylko projekt startowy. Jeśli tak jest, przed F5 trzeba
+  zbudować całe rozwiązanie (Build Solution). To punkt do sprawdzenia z listy w sekcji 11.
+- Edytowanie plików wprost w `build\debug\Debug\assets\` działa, ale zmiany przepadną przy
+  następnym budowaniu, bo kopia zostanie nadpisana plikami z repozytorium.
+- `copy_directory` nadpisuje istniejące pliki, ale nie usuwa z kopii plików, których nie ma
+  już w repozytorium. Po usunięciu albo zmianie nazwy shadera warto skasować katalog
+  `build\debug\Debug\assets\` i zbudować ponownie.
+- Kopię można też zrobić ręcznie, bez budowania:
+  `cmake -E copy_directory assets build\debug\Debug\assets`.
+
+**Ten przebieg nie został jeszcze sprawdzony na PC.** Sam mechanizm sprawdziłem na Macu z
+tymczasowo wymuszoną gałęzią Windows: build bez zmian w C++ odświeżył kopię bez linkowania
+programu, a budowanie z `--target night_maze` jej nie odświeżyło.
 
 ## 8. RenderDoc
 
@@ -304,9 +340,9 @@ Typowe użycie: w RenderDoc, w zakładce Launch Application, wskazujemy
 `build\debug\Debug\night_maze.exe`, ustawiamy Working Directory na katalog repozytorium,
 uruchamiamy program i przechwytujemy klatkę klawiszem F12 lub PrintScreen.
 
-W M0 w przechwyconej klatce będzie tylko czyszczenie ekranu i rysowanie ImGui. Narzędzie
-stanie się naprawdę użyteczne od M1 (pierwsza geometria) i przy cieniach oraz efektach
-pozaekranowych.
+Dziś w przechwyconej klatce jest czyszczenie ekranu, jedno wywołanie `glDrawArrays` z
+trójkątem (można obejrzeć bufor wierzchołków, wejścia i wyjścia shaderów `basic`) i rysowanie
+ImGui. Narzędzie stanie się naprawdę użyteczne przy cieniach i efektach pozaekranowych.
 
 ## 9. Końce linii: `.gitattributes`
 
@@ -345,6 +381,8 @@ czytelności historii Gita.
 | FPS dużo wyższe niż odświeżanie monitora | sterownik wymusza wyłączony vsync | sprawdź ustawienie synchronizacji pionowej w panelu sterownika |
 | Ostrzeżenia `/W4` z plików w `_deps` lub `external` | nagłówki systemowe nie zostały wyciszone | zanotuj wersje CMake i MSVC, to punkt z listy kontrolnej |
 | Układ paneli nie zapamiętuje się | różne katalogi robocze | sekcja 7 |
+| `[error] Shader file cannot be opened: ...\assets\shaders\basic.vert`, w oknie samo tło | obok `night_maze.exe` nie ma katalogu `assets` (program skopiowany ręcznie albo zbudowano tylko target `night_maze`, bez `copy_assets`) | `cmake --build --preset debug`, sekcja 7 |
+| Zmiana w pliku shadera nie jest widoczna po ponownym uruchomieniu | program czyta kopię obok `.exe`, a po zmianie pliku nie było budowania albo zbudowano tylko target `night_maze` (na przykład F5 w Visual Studio) | `cmake --build --preset debug` albo Build Solution, sekcja 7 |
 | Cursor lub VS Code pokazuje "file not found" przy każdym `#include`, choć build przechodzi | generator Visual Studio nie tworzy `compile_commands.json`, którego szuka `.clangd` | skonfiguruj `build\debug` generatorem Ninja, sekcja 4 |
 
 ## 11. Lista kontrolna pierwszego buildu na Windowsie
@@ -384,6 +422,8 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 **Uruchomienie**
 
 - [ ] okno 1280 x 720 z tytułem "Night Maze" otwiera się, tło jest ciemnogranatowe
+- [ ] na środku okna widać trójkąt: lewy dolny róg czerwony, prawy dolny zielony, górny
+      niebieski, z płynnym przejściem kolorów
 - [ ] otwiera się okno konsoli z dwiema liniami `[info]`
 - [ ] zapisać dokładny napis `GL_VERSION` (oczekiwane: wersja 4.1 lub wyższa) i `GL_RENDERER`
 - [ ] w konsoli nie ma linii `[error]`
@@ -419,44 +459,58 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 
 **Ścieżki do assetów (`core::executableDir`, `core::assetPath`)**
 
-Opis: [`../modules/core/paths.md`](../modules/core/paths.md). Dziś nikt tych funkcji nie
-woła, więc w działającym programie nie ma czego obserwować. Pierwszy punkt da się sprawdzić
-od razu, pozostałe dopiero po pojawieniu się shaderów.
+Opis: [`../modules/core/paths.md`](../modules/core/paths.md) i sekcja 7 tego dokumentu.
+Funkcje są wołane przy każdym starcie programu (wczytywanie shaderów).
 
 - [ ] ćwiczenie 1 z `paths.md` (tymczasowe `core::logInfo` w `main`): `executableDir()`
       wypisuje katalog pliku `.exe` (z generatorem Visual Studio `build\debug\Debug`) i nie
       zmienia się przy uruchomieniu z innego katalogu roboczego. Wycofać zmianę
-- [ ] po pojawieniu się shaderów: katalog `assets\` leży obok `night_maze.exe`
-- [ ] po pojawieniu się shaderów: program startuje bez linii `[error]` uruchomiony z
+- [ ] po buildzie katalog `build\debug\Debug\assets\shaders\` istnieje i zawiera `basic.vert`
+      oraz `basic.frag` (to samo dla `build\release\Release\`). Zapisać, czy w wyjściu buildu
+      pojawia się linia `Copying assets next to the executable`
+- [ ] drugi build bez żadnych zmian: linia `Copying assets next to the executable` pojawia
+      się ponownie, a program nie jest linkowany (oczekiwane: tak)
+- [ ] zmiana koloru w `assets\shaders\basic.frag`, potem `cmake --build --preset debug` i
+      uruchomienie: program pokazuje nowy kolor (oczekiwane: tak). Wycofać zmianę
+- [ ] to samo, ale z `cmake --build --preset debug --target night_maze`: zapisać, czy
+      program widzi zmianę (oczekiwane: nie)
+- [ ] Visual Studio: zmiana w shaderze, potem samo F5. Zapisać, czy kopia została
+      odświeżona (czyli czy F5 buduje też `copy_assets`), i jeśli nie, czy pomaga Build
+      Solution
+- [ ] program startuje bez linii `[error]` i pokazuje trójkąt uruchomiony z
       katalogu repozytorium, z innego katalogu roboczego (na przykład `C:\`), dwuklikiem i z
       Visual Studio (F5)
-- [ ] po pojawieniu się shaderów: program startuje z katalogu, którego ścieżka zawiera
+- [ ] program startuje i pokazuje trójkąt z katalogu, którego ścieżka zawiera
       polską literę (na przykład kopia `build\debug\Debug` w `C:\Users\<nazwa>\Żółw\`)
 
 **Klasa `gfx::Shader`**
 
 Opis: [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md). Klasa była kompilowana i
-sprawdzana tylko na macOS. Dziś nikt jej nie woła, więc od razu da się sprawdzić tylko
-pierwszy punkt.
+sprawdzana tylko na macOS.
 
 - [ ] `src/gfx/Shader.cpp` kompiluje się w MSVC z `/W4 /permissive-` bez ostrzeżeń (w
       szczególności `pathText`: `std::string` budowany z iteratorów `std::u8string`)
-- [ ] po pojawieniu się shaderów: celowy błąd składni w pliku shadera daje linię `[error]`
-      ze ścieżką pliku i dziennikiem sterownika (zapisać format linii, różni się od Apple)
-- [ ] po pojawieniu się shaderów: ścieżka z polską literą w komunikacie błędu nie zamyka
+- [ ] celowy błąd składni (usunięty średnik w `basic.frag`, potem `cmake --build --preset
+      debug`): w konsoli jest **jedna** linia `[error] Shader compilation failed:` ze ścieżką pliku
+      i dziennikiem sterownika, okno pokazuje samo tło i panel, program się nie zamyka.
+      Zapisać dokładną linię sterownika (format różni się od Apple, przykład NVIDII w
+      `shaders.md`, sekcja 2.6, nie był mierzony). Przywrócić plik
+- [ ] ścieżka z polską literą w komunikacie błędu nie zamyka
       programu (w konsoli litera może być wyświetlona błędnie, to dopuszczalne)
 
 **Klasy `gfx::Buffer` i `gfx::VertexArray`**
 
 Opis: [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md). Klasy były
-kompilowane i sprawdzane tylko na macOS. Dziś nikt ich nie woła, więc od razu da się
-sprawdzić tylko pierwszy punkt.
+kompilowane i sprawdzane tylko na macOS.
 
 - [ ] `src/gfx/Buffer.cpp` i `src/gfx/VertexArray.cpp` kompilują się w MSVC z
       `/W4 /permissive-` bez ostrzeżeń (w szczególności `reinterpret_cast<const void*>` z
       `std::size_t` w `setFloatAttribute` i `static_cast<GLsizeiptr>` w konstruktorze
       `Buffer`)
-- [ ] po pojawieniu się trójkąta: trójkąt jest widoczny i w konsoli nie ma linii `[error]`
+- [ ] `src/game/NightMazeApp.cpp` kompiluje się bez ostrzeżeń (stałe `VERTEX_STRIDE` i
+      `COLOR_OFFSET` liczone z `sizeof(float)`, tablica `VERTICES`)
+- [ ] trójkąt jest widoczny i w konsoli nie ma linii `[error]`, także żadnej
+      `GL_INVALID_OPERATION after glDrawArrays`
 
 **Git i narzędzia**
 

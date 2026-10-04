@@ -1,11 +1,11 @@
 # Moduł gfx: obiekty OpenGL w klasach C++
 
 Kamień milowy: M1. Temat wykładu: 2 (Programowalny potok).
-Kod: [`src/gfx/`](../../../src/gfx/).
+Kod: [`src/gfx/`](../../../src/gfx/), shadery w [`assets/shaders/`](../../../assets/shaders/), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
 Moduł `core` daje okno, kontekst OpenGL i pętlę. Żeby coś narysować, potrzebne są jeszcze **obiekty OpenGL**: program shaderów, bufory z danymi wierzchołków, opis układu tych danych, później tekstury i bufory ramki. Każdy taki obiekt żyje w pamięci karty graficznej, a mój program zna go tylko jako liczbę (identyfikator) i musi go sam utworzyć oraz sam usunąć. Moduł `gfx` zamyka te obiekty w małych klasach C++: jedna klasa, jeden obiekt OpenGL, bez wiedzy o grze i bez wiedzy o tym, co jest rysowane. To cienkie opakowania (thin wrappers), a nie silnik renderujący: nie ukrywają OpenGL, tylko pilnują, żeby obiekt został utworzony, użyty i zwolniony poprawnie.
 
-Na dziś moduł ma trzy klasy, `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, i jeszcze **żadnego użytkownika** w programie. Ten plik jest wstępem do modułu: opisuje wspólną zasadę wszystkich klas `gfx` (RAII i tylko przenoszenie), miejsce modułu w warstwach i indeks dokumentów.
+Na dziś moduł ma trzy klasy: `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`. Używa ich `game::NightMazeApp`, które rysuje nimi jeden kolorowy trójkąt. Ten plik jest wstępem do modułu: opisuje wspólną zasadę wszystkich klas `gfx` (RAII i tylko przenoszenie), miejsce modułu w warstwach, indeks dokumentów i drogę jednej klatki od tablicy liczb do pikseli (sekcja 6).
 
 ## 1. Dokumenty modułu
 
@@ -106,6 +106,7 @@ flowchart TD
     Main --> Game["game/<br/>NightMazeApp"]
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, Paths, GL_CHECK"]
     Game --> Core
+    Game --> Gfx
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Gfx --> Glad["GLAD"]
     Core --> Glad
@@ -118,7 +119,7 @@ Strzałka znaczy "zna i dołącza nagłówki". Zasady dla `gfx`:
 1. `gfx/` zależy tylko od `core/`, GLAD i biblioteki standardowej. `Shader.cpp` dołącza `core/GlCheck.hpp` i `core/Log.hpp`, a `Buffer.cpp` i `VertexArray.cpp` samo `core/GlCheck.hpp`. Nie dołącza GLFW: do tworzenia obiektów OpenGL wystarcza bieżący kontekst, a skąd on się wziął, `gfx` nie musi wiedzieć.
 2. `core/` nie zna `gfx/`. Zależność idzie w jedną stronę: `core <- gfx`.
 3. `gfx/` nie zna `game/`, `debug/` ani ImGui. Nic w nim nie jest specyficzne dla Night Maze, więc cała warstwa nadaje się do zadań laboratoryjnych.
-4. Na diagramie do `gfx/` nie prowadzi jeszcze żadna strzałka: ani `game/`, ani `debug/` nie dołączają dziś żadnego nagłówka z `gfx/`. Pierwszym użytkownikiem będzie `game::NightMazeApp` (trójkąt), a potem panel debug z przyciskiem przeładowania shaderów.
+4. Jedynym użytkownikiem `gfx/` jest dziś `game/`: `NightMazeApp.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Shader.hpp` i `gfx/VertexArray.hpp`. `debug/` nie dołącza jeszcze niczego z `gfx/`. Zacznie, gdy powstanie panel z przyciskiem przeładowania shaderów.
 
 `gfx` nie wie też nic o katalogu `assets/`. `Shader` dostaje gotowe ścieżki plików, a zbudowanie ich przez `core::assetPath` ([`../core/paths.md`](../core/paths.md)) jest sprawą wołającego.
 
@@ -128,9 +129,11 @@ W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/gfx/*` należą do tej 
 
 | Plik kodu | Co zawiera | Dokument |
 |---|---|---|
-| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | RAII na obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów: `reload`, `isValid`, `use`, `lastError`. Nikt jej jeszcze nie używa | [`shaders.md`](shaders.md) |
-| [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`.cpp`](../../../src/gfx/Buffer.cpp) | RAII na jeden bufor OpenGL wypełniany raz, w konstruktorze. Cel `GL_ARRAY_BUFFER` (wierzchołki) albo `GL_ELEMENT_ARRAY_BUFFER` (indeksy), `bind`. Nikt jej jeszcze nie używa | [`buffers-vao.md`](buffers-vao.md) |
-| [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`.cpp`](../../../src/gfx/VertexArray.cpp) | RAII na jeden obiekt tablicy wierzchołków (VAO): `bind`, `setFloatAttribute`. Nikt jej jeszcze nie używa | [`buffers-vao.md`](buffers-vao.md) |
+| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | RAII na obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów: `reload`, `isValid`, `use`, `lastError`. Użycie: pole `m_shader` w `NightMazeApp` | [`shaders.md`](shaders.md) |
+| [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`.cpp`](../../../src/gfx/Buffer.cpp) | RAII na jeden bufor OpenGL wypełniany raz, w konstruktorze. Cel `GL_ARRAY_BUFFER` (wierzchołki) albo `GL_ELEMENT_ARRAY_BUFFER` (indeksy), `bind`. Użycie: pole `m_vertexBuffer` w `NightMazeApp` | [`buffers-vao.md`](buffers-vao.md) |
+| [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`.cpp`](../../../src/gfx/VertexArray.cpp) | RAII na jeden obiekt tablicy wierzchołków (VAO): `bind`, `setFloatAttribute`. Użycie: pole `m_vertexArray` w `NightMazeApp` | [`buffers-vao.md`](buffers-vao.md) |
+| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | para shaderów projektu: pozycja i kolor wierzchołka na wejściu, kolor interpolowany na wyjściu | [`shaders.md`](shaders.md), sekcja 4 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik wszystkich trzech klas: dane wierzchołków, konfiguracja w konstruktorze, rysowanie w `onRender` | [`shaders.md`](shaders.md), sekcja 5.10, i [`buffers-vao.md`](buffers-vao.md), sekcja 5.7 |
 
 ## 5. Wymaganie wspólne: żywy kontekst OpenGL
 
@@ -143,7 +146,48 @@ Każda klasa `gfx` woła funkcje `gl*` w konstruktorze i w destruktorze, a każd
 
 Oba warunki spełnia się jednym sposobem: obiekt `gfx` jest **polem klasy pochodnej** od `core::Application`. Część bazowa (z oknem) jest konstruowana przed polami klasy pochodnej i niszczona po nich ([`../core/README.md`](../core/README.md), sekcja 7).
 
-## 6. Pytania kontrolne
+## 6. Jedna klatka: od tablicy liczb do pikseli
+
+Trzy klasy i dwa pliki shaderów są częściami jednego mechanizmu. Diagram pokazuje, co powstaje raz (przy starcie, w konstruktorze `NightMazeApp`) i co dzieje się w każdej klatce (w `NightMazeApp::onRender`).
+
+```mermaid
+flowchart TD
+    subgraph Start["raz, w konstruktorze NightMazeApp"]
+        Files["assets/shaders/basic.vert<br/>assets/shaders/basic.frag"] -->|"core::assetPath, potem kompilacja i linkowanie"| Shader["gfx::Shader m_shader<br/>program OpenGL"]
+        Vertices["VERTICES w NightMazeApp.cpp<br/>18 liczb float: 3 wierzchołki x (pozycja, kolor)"] -->|"glBufferData, 72 bajty"| Buffer["gfx::Buffer m_vertexBuffer<br/>bufor na karcie"]
+        Layout["stałe układu<br/>krok 24, przesunięcia 0 i 12"] -->|"setFloatAttribute x2"| Vao["gfx::VertexArray m_vertexArray<br/>opis atrybutów 0 i 1"]
+        Vao -. "pamięta, z którego bufora czytać" .-> Buffer
+    end
+    subgraph Frame["co klatkę, w onRender"]
+        Clear["glViewport, glClearColor, glClear"] --> Use["m_shader.use()"]
+        Use --> Bind["m_vertexArray.bind()"]
+        Bind --> Draw["glDrawArrays(GL_TRIANGLES, 0, 3)"]
+    end
+    Shader --> Use
+    Vao --> Bind
+    Draw --> VS["basic.vert, 3 razy<br/>aPosition do gl_Position, aColor do vColor"]
+    VS --> Rast["składanie trójkąta i rasteryzacja<br/>interpolacja vColor"]
+    Rast --> FS["basic.frag, raz na fragment<br/>vColor do fragColor"]
+    FS --> FB["bufor ramki, potem panele ImGui i swapBuffers"]
+```
+
+| Krok | Kto | Kiedy | Dokument |
+|---|---|---|---|
+| Pliki shaderów stają się programem OpenGL | `gfx::Shader` | raz, przy starcie | [`shaders.md`](shaders.md), sekcje 4 i 5 |
+| Tablica `VERTICES` trafia do pamięci karty | `gfx::Buffer` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcje 5.3 i 5.7 |
+| Opis "atrybut 0 to pozycja, atrybut 1 to kolor" zostaje zapisany | `gfx::VertexArray` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcje 5.6 i 5.7 |
+| Wybór programu i opisu danych, wywołanie rysujące | `NightMazeApp::onRender` | co klatkę | [`shaders.md`](shaders.md), sekcja 5.10 |
+| Shader wierzchołków, rasteryzacja, shader fragmentów | karta graficzna | co klatkę | [`shaders.md`](shaders.md), sekcje 2.1 i 4 |
+
+Trzy rzeczy, które muszą się zgadzać między tymi częściami, i których OpenGL za mnie nie sprawdzi:
+
+1. numery atrybutów w C++ (`POSITION_ATTRIBUTE`, `COLOR_ATTRIBUTE`) i `layout(location = N)` w `basic.vert`,
+2. krok i przesunięcia w C++ i faktyczny układ liczb w `VERTICES`,
+3. liczba wierzchołków w `glDrawArrays` i liczba wierzchołków w buforze.
+
+W klatce nie ma żadnego wysyłania danych ani kompilacji: wszystko, co kosztowne, stało się przy starcie. Klatka to trzy wywołania wybierające stan i jedno rysujące.
+
+## 7. Pytania kontrolne
 
 Pytania z odpowiedziami do konkretnych klas są w sekcji 9 dokumentów tematycznych. Trzy pytania dotyczące treści tego pliku:
 
@@ -156,7 +200,7 @@ Pytania z odpowiedziami do konkretnych klas są w sekcji 9 dokumentów tematyczn
 3. **Co robi `std::move`?**
    Samo nic nie przenosi. Rzutuje obiekt na referencję do r-wartości, czyli pozwala wybrać konstruktor albo przypisanie przenoszące, które wykonają właściwą pracę.
 
-## 7. Źródła
+## 8. Źródła
 
 - LearnOpenGL, rozdział "Hello Triangle" (<https://learnopengl.com/Getting-started/Hello-Triangle>): obiekty OpenGL potrzebne do pierwszego trójkąta.
 - Khronos OpenGL Wiki, "OpenGL Object" (<https://www.khronos.org/opengl/wiki/OpenGL_Object>): tworzenie, nazwy i usuwanie obiektów, znaczenie nazwy 0. "Common Mistakes" (<https://www.khronos.org/opengl/wiki/Common_Mistakes>), część "The Object Oriented Language Problem": dokładnie ten błąd z kopiowaniem opakowania i destruktorem.

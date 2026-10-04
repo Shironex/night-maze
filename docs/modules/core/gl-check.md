@@ -61,7 +61,7 @@ Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` p
 |---|---|
 | [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp) | deklaracja `core::checkGlErrors` i makro `GL_CHECK` w dwóch wersjach (Debug, Release). Dołącza `<glad/gl.h>` |
 | [`src/core/GlCheck.cpp`](../../../src/core/GlCheck.cpp) | `checkGlErrors`, pomocnicza `glErrorName` i stała `MAX_ERRORS_PER_CHECK` |
-| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | trzy użycia w `onRender`: `glViewport`, `glClearColor`, `glClear` |
+| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | cztery użycia w `onRender`: `glViewport`, `glClearColor`, `glClear`, `glDrawArrays` |
 
 ### 5.2 Makro
 
@@ -176,7 +176,7 @@ GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
 GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
 ```
 
-To wszystkie własne wywołania `gl*` w klatce M0 (opis samych funkcji: [`window-context.md`](window-context.md), sekcja 3.2). Wywołania `glGetString` w konstruktorze `Window` nie są opakowane: stoją przed pierwszą klatką, a ich wynik jest i tak sprawdzany pod kątem `nullptr`. Backend ImGui woła OpenGL własnym loaderem i mojego makra nie używa.
+To początek każdej klatki (opis samych funkcji: [`window-context.md`](window-context.md), sekcja 3.2). Po nim `onRender` rysuje trójkąt: `GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT));`, a `glUseProgram` i `glBindVertexArray` są opakowane w makro wewnątrz klas `gfx` ([`../gfx/README.md`](../gfx/README.md), sekcja 6). W makro opakowane jest też każde wywołanie w `src/gfx/`. Wywołania `glGetString` w konstruktorze `Window` nie są opakowane: stoją przed pierwszą klatką, a ich wynik jest i tak sprawdzany pod kątem `nullptr`. Backend ImGui woła OpenGL własnym loaderem i mojego makra nie używa.
 
 ## 6. Panel ImGui
 
@@ -196,7 +196,7 @@ To wszystkie własne wywołania `gl*` w klatce M0 (opis samych funkcji: [`window
 ## 8. Ćwiczenia
 
 1. **Celowy błąd OpenGL.** W `NightMazeApp::onRender` dopisz `GL_CHECK(glEnable(GL_COLOR_BUFFER_BIT));`. Zbuduj Debug i przeczytaj komunikat: jaka nazwa błędu, jaki tekst wywołania, jaka linia? Następnie zbuduj Release i sprawdź, że komunikat zniknął. Usuń linię.
-2. **Wina przypisana komu innemu.** Dopisz to samo błędne wywołanie, ale **bez** makra: `glEnable(GL_COLOR_BUFFER_BIT);`, na końcu `NightMazeApp::onRender`, po `glClear`. Zbuduj Debug i sprawdź, które wywołanie i która linia pojawiają się w komunikacie. Wyjaśnij, dlaczego log wskazuje poprawną linię kodu jako winną. Usuń linię.
+2. **Wina przypisana komu innemu.** Dopisz to samo błędne wywołanie, ale **bez** makra: `glEnable(GL_COLOR_BUFFER_BIT);`, na końcu `NightMazeApp::onRender`, po rysowaniu trójkąta. Zbuduj Debug i sprawdź, które wywołanie i która linia pojawiają się w komunikacie. Wyjaśnij, dlaczego log wskazuje poprawną linię kodu jako winną. Usuń linię.
 3. **Rozwinięcie makra.** Napisz na kartce, do czego preprocesor rozwinie `GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));` w Debug i w Release. Porównaj z wynikiem `clang++ -E` (opcja `-E` kończy pracę po preprocesorze): ścieżki nagłówków i makra dla `NightMazeApp.cpp` weź z `build/debug/compile_commands.json`.
 
 ## 9. Pytania kontrolne

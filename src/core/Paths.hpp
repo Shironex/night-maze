@@ -11,7 +11,7 @@ namespace core {
 std::filesystem::path executableDir();
 
 /// Path of a file in the assets directory that lies next to the executable, for example
-/// assetPath("shaders/triangle.vert"). It does not check that the file exists: the code
+/// assetPath("shaders/basic.vert"). It does not check that the file exists: the code
 /// that opens the file reports that.
 std::filesystem::path assetPath(const std::filesystem::path& relativePath);
 

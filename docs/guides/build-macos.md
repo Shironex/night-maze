@@ -62,7 +62,8 @@ Co robią kolejne kroki:
    źródłowego do listy). Jeśli o tym zapomnimy, następny krok i tak sam wykryje zmianę w
    `CMakeLists.txt` i uruchomi konfigurację ponownie.
 2. `cmake --build --preset debug` to **budowanie (build)**. Uruchamia `make`, który kompiluje
-   tylko zmienione pliki i linkuje program.
+   tylko zmienione pliki i linkuje program. Po linkowaniu tworzy obok programu dowiązanie
+   `build/debug/assets` do katalogu `assets/` z repozytorium (opis niżej, "Katalog `assets`").
 3. `./build/debug/night_maze` uruchamia program.
 
 Budowanie na wielu rdzeniach (domyślny `make` kompiluje po jednym pliku naraz):
@@ -77,6 +78,11 @@ Po poprawnym starcie w terminalu pojawiają się dwie linie z `core::Window`:
 [info] GL_VERSION:  4.1 Metal - 90.5
 [info] GL_RENDERER: Apple M3
 ```
+
+W oknie widać ciemnogranatowe tło, na środku trójkąt z czerwonym (lewy dolny), zielonym
+(prawy dolny) i niebieskim (górny) rogiem i płynnym przejściem kolorów między nimi, a na
+wierzchu panel "Renderer". Linia `[error] Shader ...` w terminalu oznacza, że shader się nie
+wczytał: wtedy okno pokazuje samo tło ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
 
 `4.1` potwierdza, że dostaliśmy kontekst, o który prosiliśmy. `Metal` oznacza, że OpenGL na
 Apple Silicon jest warstwą zbudowaną nad Metalem. Druga linia zależy od procesora w danym
@@ -95,6 +101,34 @@ wpisywanie wartości): klawiatura należy wtedy do panelu. Opis w
 
 Panel "Renderer" pokazuje FPS, czas klatki, rozmiar framebuffera i okna, wersję OpenGL,
 nazwę karty oraz edytor koloru tła. Panel można przeciągnąć do krawędzi okna (docking).
+
+### Katalog `assets` i praca z shaderami
+
+Program wczytuje shadery z katalogu `assets` leżącego **obok pliku wykonywalnego**, czyli z
+`build/debug/assets` ([`../modules/core/paths.md`](../modules/core/paths.md)). Na macOS ten
+katalog jest dowiązaniem symbolicznym, które build tworzy po zlinkowaniu programu:
+
+```sh
+ls -l build/debug/assets
+# build/debug/assets -> /Users/<nazwa>/.../night-maze/assets
+```
+
+Skutki praktyczne:
+
+- Plik shadera edytuję w `assets/shaders/` w repozytorium. Program widzi zmianę przy
+  następnym wczytaniu, **bez budowania**. Dziś shader jest wczytywany tylko przy starcie, więc
+  wystarczy ponownie uruchomić `./build/debug/night_maze`.
+- Program działa uruchomiony z dowolnego katalogu roboczego, bo ścieżka do shaderów nie
+  zależy od katalogu roboczego.
+- `make clean` (albo `rm -rf build`) usuwa dowiązanie, a nie pliki w `assets/`. Następny
+  build tworzy je ponownie.
+- Dowiązanie ma ścieżkę bezwzględną. Po przeniesieniu repozytorium w inne miejsce trzeba
+  zbudować program od nowa (`make clean`, potem `make debug`).
+- Na Windowsie w tym miejscu jest kopia, a nie dowiązanie, odświeżana przy każdym
+  budowaniu ([`build-windows.md`](build-windows.md), sekcja 7).
+
+Co robi każda linia kroku CMake: [`project-structure.md`](project-structure.md), sekcja 3.1,
+blok 7.
 
 ### Skróty: `make`
 
@@ -237,7 +271,8 @@ Po buildzie w `build/debug` znajdują się między innymi:
 | Plik | Co to jest |
 |---|---|
 | `night_maze` | program |
-| `libengine.a` | nasza biblioteka statyczna `engine` (kod z `src/core`) |
+| `assets` | dowiązanie symboliczne do katalogu `assets/` z repozytorium, tworzone po linkowaniu |
+| `libengine.a` | nasza biblioteka statyczna `engine` (kod z `src/core` i `src/gfx`) |
 | `libimgui.a` | biblioteka `imgui` zdefiniowana w `Dependencies.cmake` |
 | `external/glad/libglad.a` | biblioteka `glad` |
 | `_deps/glfw-build/src/libglfw3.a` | biblioteka `glfw` |
@@ -443,6 +478,8 @@ pokazuje część tych samych diagnostyk w edytorze, bo czyta ten sam plik `.cla
 | `'glad/glad.h' file not found` | kod skopiowany z poradnika dla GLAD 1 | u nas `<glad/gl.h>` i `gladLoadGL(glfwGetProcAddress)` |
 | `[error] GLFW error ...` i `Fatal: Failed to create a window with an OpenGL 4.1 Core context` | system nie udostępnił kontekstu 4.1 Core | przeczytaj opis w linii `GLFW error`. Na Macu z Apple Silicon nie powinno wystąpić |
 | Ostrzeżenia `'gl...' is deprecated: first deprecated in macOS 10.14` | plik kompilowany bez `GL_SILENCE_DEPRECATION` | definicja jest `PUBLIC` na targecie `engine`. Sprawdź, czy nowy target linkuje `engine` |
+| `[error] Shader file cannot be opened: .../build/debug/assets/shaders/basic.vert`, w oknie samo tło | obok programu nie ma katalogu `assets`: program skopiowany ręcznie w inne miejsce albo repozytorium przeniesione po zbudowaniu (dowiązanie wskazuje starą ścieżkę) | `ls -l build/debug/assets`. Odtwórz dowiązanie pełnym buildem: `make clean`, potem `make debug` |
+| `[error] Shader compilation failed: ...` z linią `ERROR: 0:N: ...`, w oknie samo tło | błąd w pliku shadera, `N` to numer linii według sterownika | popraw plik w `assets/shaders/` i uruchom program ponownie. Opis w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7 |
 | Okno otwiera się, ale panel "Renderer" jest niewidoczny | panele ukryte klawiszem `~` albo zapisany układ poza oknem | naciśnij `~` (na lewo od `1`). Jeśli nie pomaga, usuń `imgui.ini` z katalogu, z którego uruchamiasz program |
 | Esc nie zamyka programu, `~` nie chowa paneli | aktywny jest widżet ImGui (wpisywanie albo przeciąganie wartości), więc klawiatura gry jest zablokowana | zakończ edycję (Enter, Esc albo kliknięcie poza polem). Opis w [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6 |
 | Układ paneli nie zapamiętuje się między uruchomieniami | program startuje z różnych katalogów roboczych (terminal i IDE) | `imgui.ini` powstaje w katalogu roboczym. Ustaw ten sam katalog w IDE |

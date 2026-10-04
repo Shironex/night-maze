@@ -3,8 +3,9 @@
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny w
 trakcie kamienia milowego M1: po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
-klasami `Shader`, `Buffer` i `VertexArray`. Docelową strukturę (z `renderer/`, `scene/`, `assets/`) opisuje PRD w
-sekcji 6.
+klasami `Shader`, `Buffer` i `VertexArray`, katalog `assets/` z pierwszymi shaderami i
+pierwszy trójkąt. Docelową strukturę (z `renderer/`, `scene/` i `src/assets/`) opisuje
+PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
 [`build-windows.md`](build-windows.md), tutaj ich nie powtarzamy.
@@ -26,6 +27,10 @@ night-maze/
 ├── .vscode/                    # ustawienia obszaru roboczego Cursor i VS Code
 │   ├── extensions.json         # rekomendowane rozszerzenia
 │   └── settings.json           # clangd, presety CMake, formatowanie przy zapisie, GLSL
+├── assets/                     # pliki wczytywane przez program w czasie działania
+│   └── shaders/                # shadery GLSL
+│       ├── basic.frag              # shader fragmentów: kolor z interpolacji
+│       └── basic.vert              # shader wierzchołków: pozycja i kolor
 ├── cmake/
 │   └── Dependencies.cmake      # FetchContent: GLFW, GLM i Dear ImGui, target imgui
 ├── external/
@@ -52,7 +57,7 @@ night-maze/
 │   │   └── panels/
 │   │       └── RendererPanel.hpp/.cpp  # panel "Renderer"
 │   ├── game/                   # gra
-│   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie czyści ekran)
+│   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie rysuje trójkąt)
 │   └── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
 │       ├── Buffer.hpp/.cpp         # bufor wierzchołków albo indeksów
 │       ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload
@@ -93,7 +98,8 @@ wypisane na początku drzewa, przed katalogami.
 
 | Katalog | Rola | Kto pisze kod |
 |---|---|---|
-| `src/` | cały nasz kod | my |
+| `src/` | cały nasz kod C++ | my |
+| `assets/` | pliki, które program wczytuje w czasie działania: dziś shadery GLSL, później modele i tekstury. Nie są kompilowane razem z programem. Krok budowania umieszcza katalog obok pliku wykonywalnego (sekcja 3.1, blok 7) | my |
 | `cmake/` | pomocnicze pliki CMake dołączane przez `include(...)` | my |
 | `external/` | cudzy kod trzymany w repozytorium | generator GLAD, nie edytujemy |
 | `docs/` | dokumentacja do nauki | my |
@@ -110,17 +116,19 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Time.*` | `core::Time`: delta czasu, akumulator stałego kroku (`FIXED_DT`), uśrednione FPS | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
-| `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Na razie nikt tych funkcji nie woła | [`../modules/core/paths.md`](../modules/core/paths.md) |
-| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `lastError`. RAII, tylko przenoszenie. Na razie nikt tej klasy nie używa | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
-| `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Na razie nikt tej klasy nie używa | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
-| `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Na razie nikt tej klasy nie używa | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
-| `src/game/NightMazeApp.*` | `game::NightMazeApp`: `onUpdate`, `onRender` (viewport, czyszczenie ekranu), kolor tła | [`../modules/core/README.md`](../modules/core/README.md) |
+| `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Woła je konstruktor `game::NightMazeApp` przy wczytywaniu shaderów | [`../modules/core/paths.md`](../modules/core/paths.md) |
+| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `lastError`. RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
+| `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
+| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane trzech wierzchołków ze stałymi układu, tablica wierzchołków i bufor. Konstruktor wczytuje shader i wysyła dane, `onRender` ustawia viewport, czyści ekran i rysuje trójkąt (`glDrawArrays`) | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6 |
+| `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core`: atrybuty pozycji i koloru, kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
 | `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
 
 Każdy plik źródłowy zaczyna się komentarzem z jednym zdaniem opisu i odnośnikiem
-`See docs/modules/...`. To wymaganie z PRD (sekcja 7). Odnośnik wskazuje najbardziej
+`See docs/modules/...`. To wymaganie z PRD (sekcja 7). Dotyczy też plików shaderów, w
+których komentarz stoi pod linią `#version`, bo ta musi być pierwsza. Odnośnik wskazuje najbardziej
 szczegółowy dokument, czyli ten z kolumny "Dokument" powyżej, na przykład
 `// See docs/modules/core/input.md` w `Input.hpp`.
 
@@ -135,16 +143,15 @@ main.cpp   łączy game/ i debug/
    │
    ├── debug/   zależy od core/ (i od Dear ImGui), nic nie zależy od debug/
    │
-   └── game/    zależy od core/, nie zna debug/
+   └── game/    zależy od gfx/ i core/, nie zna debug/
           │
-        gfx/    zależy od core/, nie zna game/ ani debug/ (na razie nikt go nie dołącza)
+        gfx/    zależy od core/, nie zna game/ ani debug/
           │
         core/   nie zna ani gfx/, ani game/, ani debug/
 ```
 
 Pełny łańcuch z PRD to `core <- gfx <- renderer <- scene <- game`. Warstw `renderer/` i
-`scene/` jeszcze nie ma. Linia między `game/` a `gfx/` pokazuje kolejność warstw, a nie
-istniejącą zależność: `game/` dołączy `gfx/` dopiero razem z trójkątem.
+`scene/` jeszcze nie ma, więc `game/` korzysta dziś z `gfx/` bezpośrednio.
 
 Jak to widać w kodzie:
 
@@ -157,7 +164,8 @@ Jak to widać w kodzie:
 - Nagłówki w `src/gfx/` dołączają `<glad/gl.h>` i bibliotekę standardową, a pliki `.cpp` do
   tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp`). Nic z GLFW, `game/` ani
   `debug/`.
-- `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp` i nic z `debug/`. Komentarz w
+- `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp`, trzy nagłówki z `gfx/`
+  (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`) i nic z `debug/`. Komentarz w
   klasie mówi wprost: "It knows nothing about the debug UI".
 - `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp` i nagłówki
   ImGui.
@@ -366,6 +374,110 @@ night_maze_enable_warnings(night_maze)
 - `PRIVATE engine imgui`: program niczego dalej nie przekazuje, więc `PRIVATE` wystarcza.
   ImGui linkuje tylko `night_maze`, nigdy `engine`.
 - Kod `game/` i `debug/` jest dziś częścią programu, nie biblioteki `engine`.
+
+**Blok 7: katalog `assets` obok programu**
+
+```cmake
+if(WIN32)
+    # Windows: copy the directory. Symbolic links need Developer Mode or administrator
+    # rights there. copy_assets is a custom target without output files, so its command
+    # runs on every build of the default (ALL) target: "cmake --build --preset debug"
+    # refreshes the copy even when no C++ file changed. Building only the night_maze
+    # target does not run it.
+    add_custom_target(copy_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:night_maze>/assets
+        COMMENT "Copying assets next to the executable"
+        VERBATIM
+    )
+    # copy_assets is built after night_maze, so the directory of the executable exists
+    # before the copy. The dependency goes one way only: night_maze does not depend on
+    # copy_assets.
+    add_dependencies(copy_assets night_maze)
+else()
+    # macOS: a symbolic link to the directory in the repository, made each time
+    # night_maze has been linked (POST_BUILD). A shader edited in assets/ is seen by the
+    # next reload, without building.
+    add_custom_command(TARGET night_maze POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+                ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:night_maze>/assets
+        COMMENT "Linking assets next to the executable"
+        VERBATIM
+    )
+endif()
+```
+
+Problem, który ten blok rozwiązuje: program szuka katalogu `assets` obok własnego pliku
+wykonywalnego (`core::assetPath`, [`../modules/core/paths.md`](../modules/core/paths.md)),
+czyli w `build/debug/`, a pliki leżą w repozytorium, w `assets/`. Każdy system dostaje inne
+rozwiązanie i inny mechanizm CMake.
+
+Elementy wspólne:
+
+| Element | Znaczenie |
+|---|---|
+| `if(WIN32)` | prawda przy budowaniu dla Windowsa. Gałąź `else()` obejmuje macOS |
+| `COMMAND ${CMAKE_COMMAND} -E ...` | `${CMAKE_COMMAND}` to pełna ścieżka do programu `cmake`, a tryb `-E` udostępnia małe, przenośne narzędzia (kopiowanie, usuwanie, dowiązania). Dzięki temu nie wołam `ln -s` ani `xcopy`, które istnieją tylko na jednym systemie |
+| `${CMAKE_SOURCE_DIR}/assets` | `CMAKE_SOURCE_DIR` to katalog głównego `CMakeLists.txt`, czyli korzeń repozytorium, jako ścieżka **bezwzględna** |
+| `$<TARGET_FILE_DIR:night_maze>` | **wyrażenie generatora** (generator expression): katalog, w którym leży plik wykonywalny targetu. Jest wyliczane dopiero podczas generowania i budowania, a nie przy czytaniu `CMakeLists.txt`. To konieczne, bo generator Visual Studio dokłada podkatalog konfiguracji: `build/debug/Debug/`. Zwykła zmienna, na przykład `${CMAKE_BINARY_DIR}`, wskazałaby `build/debug/`, czyli nie katalog pliku `.exe` |
+| `COMMENT "..."` | tekst wypisywany w trakcie budowania, gdy polecenie się wykonuje |
+| `VERBATIM` | argumenty polecenia są przekazywane dokładnie tak, jak je zapisano, z poprawnym cytowaniem dla danej powłoki (na przykład gdy ścieżka zawiera spację) |
+
+Gałąź macOS, **polecenie doklejone do targetu**:
+
+| Element | Znaczenie |
+|---|---|
+| `add_custom_command(TARGET night_maze ...)` | dokleja własne polecenie do budowania istniejącego targetu. Nie tworzy nowego targetu |
+| `POST_BUILD` | polecenie wykonuje się **po zlinkowaniu** `night_maze`. Gdy program jest aktualny i nie jest linkowany, polecenie się nie wykonuje. Dla dowiązania to wystarcza: raz utworzone, zawsze prowadzi do aktualnych plików |
+| `create_symlink <cel> <nazwa>` | tworzy dowiązanie symboliczne `<nazwa>` wskazujące na `<cel>`. Istniejące dowiązanie o tej nazwie jest zastępowane, więc krok można powtarzać |
+
+Gałąź Windows, **osobny target**:
+
+| Element | Znaczenie |
+|---|---|
+| `add_custom_target(copy_assets ...)` | tworzy nowy target o nazwie `copy_assets`, który niczego nie kompiluje, tylko wykonuje polecenie. Taki target nie ma plików wynikowych, po których CMake mógłby poznać, że jest aktualny, więc jego polecenie wykonuje się **przy każdym budowaniu** tego targetu |
+| `ALL` | dołącza `copy_assets` do targetu domyślnego, czyli do tego, co buduje `cmake --build --preset debug` bez opcji `--target`. Bez `ALL` trzeba by go budować osobno |
+| `copy_directory <skąd> <dokąd>` | kopiuje katalog z całą zawartością. Istniejące pliki nadpisuje. Plików usuniętych w źródle **nie** usuwa z kopii |
+| `add_dependencies(copy_assets night_maze)` | `copy_assets` jest budowany **po** `night_maze`. Katalog pliku wykonywalnego istnieje więc, zanim zacznie się kopiowanie. Zależność idzie w jedną stronę: `night_maze` nie zależy od `copy_assets` (zależność w obie strony byłaby cyklem i błędem konfiguracji) |
+
+Zależność jest zapisana jawnie przez `add_dependencies`, a nie zostawiona wyrażeniu
+generatora. Dokumentacja CMake (`add_custom_target`) obiecuje automatyczną zależność od
+targetu tylko dla wyrażeń `TARGET_FILE`, `TARGET_LINKER_FILE`, `TARGET_SONAME_FILE` i
+`TARGET_PDB_FILE`. `TARGET_FILE_DIR` na tej liście nie ma.
+
+**Dlaczego dwie gałęzie.** Dowiązanie jest lepsze: zajmuje zero miejsca i zawsze prowadzi do
+aktualnych plików, więc shader zmieniony w edytorze jest widoczny przy następnym wczytaniu,
+bez budowania. Na Windowsie utworzenie dowiązania symbolicznego wymaga jednak włączonego
+trybu dewelopera albo uprawnień administratora, a build ma działać na świeżo skonfigurowanym
+komputerze. Dlatego tam katalog jest kopiowany.
+
+**Dlaczego na Windowsie target, a nie `POST_BUILD`.** Kopia się starzeje: po zmianie pliku w
+`assets/` trzeba ją zrobić od nowa. Polecenie `POST_BUILD` wykonuje się tylko przy linkowaniu
+programu, a zmiana shadera nie zmienia żadnego pliku C++, więc niczego nie linkuje. Target
+`copy_assets` wykonuje się przy każdym budowaniu, więc na Windowsie obowiązuje prosta
+reguła: **zbuduj, potem wczytaj shadery ponownie**.
+
+| Polecenie | Czy odświeża kopię |
+|---|---|
+| `cmake --build --preset debug` (także `make debug`, `make run`) | tak, zawsze, także gdy żaden plik C++ się nie zmienił |
+| `cmake --build --preset debug --target copy_assets` | tak (i najpierw buduje `night_maze`, jeśli trzeba) |
+| `cmake --build --preset debug --target night_maze` | **nie**: `night_maze` nie zależy od `copy_assets` |
+
+Trzeci wiersz ma znaczenie dla IDE: uruchomienie programu klawiszem F5 w Visual Studio może
+zbudować tylko projekt startowy, czyli sam `night_maze`. Czy tak jest, trzeba sprawdzić na PC
+([`build-windows.md`](build-windows.md), sekcja 11).
+
+Ten mechanizm sprawdziłem na Macu, wymuszając tymczasowo gałąź Windows (warunek zmieniony na
+`if(TRUE)`): pierwszy build utworzył prawdziwy katalog `build/debug/assets` z kopią plików,
+drugi build po zmianie samego komentarza w shaderze wypisał `Copying assets next to the
+executable` i odświeżył kopię bez linkowania, a budowanie z `--target night_maze` kopii nie
+odświeżyło. Na samym Windowsie blok nie był jeszcze uruchamiany.
+
+Jeden katalog buildu nigdy nie przechodzi z jednego mechanizmu na drugi (to dwa różne
+systemy operacyjne), więc blok nie zawiera żadnego sprzątania po "tym drugim" wariancie.
+
+Pliki z `assets/` nie są na żadnej liście źródeł: kompilator C++ ich nie widzi. Nowy plik
+shadera nie wymaga więc zmiany w `CMakeLists.txt` (sekcja 5).
 
 ### 3.2. `CMakePresets.json`
 
@@ -659,7 +771,7 @@ formacie JSON z komentarzami, który oba edytory akceptują.
 | `cmake.configureOnOpen` | `false` | CMake Tools nie uruchamia konfiguracji samo przy otwarciu katalogu. Konfigurację wykonujemy świadomie, poleceniem `cmake --preset debug` |
 | `[cpp]` / `editor.formatOnSave` | `true` | edytor formatuje plik C++ przy każdym zapisie. Ustawienie jest wewnątrz bloku `[cpp]`, więc nie dotyczy innych języków, w szczególności wygenerowanego kodu C w `external/glad` |
 | `[cpp]` / `editor.defaultFormatter` | `"llvm-vs-code-extensions.vscode-clangd"` | dla plików C++ formaterem jest clangd, który stosuje reguły z `.clang-format` (sekcja 3.5) |
-| `files.associations` | `*.vert`, `*.frag`, `*.geom`, `*.glsl` na `glsl` | pliki shaderów są traktowane jako język GLSL (kolorowanie składni). Samych plików jeszcze nie ma, pojawią się w M1 |
+| `files.associations` | `*.vert`, `*.frag`, `*.geom`, `*.glsl` na `glsl` | pliki shaderów są traktowane jako język GLSL (kolorowanie składni). Dziś są to `assets/shaders/basic.vert` i `basic.frag` |
 
 Dlaczego tak:
 
@@ -762,6 +874,7 @@ Układ `build/debug` na Macu (generator Unix Makefiles), odczytany z dysku:
 ```text
 build/debug/
 ├── night_maze                  # program
+├── assets -> <repo>/assets     # dowiązanie symboliczne do katalogu assets/ z repozytorium
 ├── libengine.a                 # biblioteka statyczna engine (src/core, src/gfx)
 ├── libimgui.a                  # biblioteka statyczna imgui
 ├── compile_commands.json       # polecenie kompilacji każdego pliku
@@ -787,6 +900,7 @@ build/debug/
 | Artefakt | Skąd się bierze | Do czego służy |
 |---|---|---|
 | `night_maze` | linkowanie targetu `night_maze` | program, który uruchamiamy |
+| `assets` | polecenie `POST_BUILD` targetu `night_maze` (sekcja 3.1, blok 7) | dowiązanie symboliczne do `<repo>/assets` ze ścieżką bezwzględną. Tędy program znajduje shadery. Usunięcie katalogu `build/` usuwa samo dowiązanie, pliki w repozytorium zostają |
 | `libengine.a` | target `engine` | skompilowany kod `src/core` i `src/gfx`, wklejany do programu |
 | `libimgui.a` | target `imgui` z `Dependencies.cmake` | skompilowany rdzeń ImGui i dwa backendy |
 | `external/glad/libglad.a` | target `glad` | skompilowany `gl.c` |
@@ -797,8 +911,9 @@ build/debug/
 | `CMakeFiles/` | konfiguracja i build | pliki obiektowe (`.o`), zależności między plikami, log konfiguracji |
 | `_deps/*-src` | FetchContent | pobrany kod. Przydatny do czytania: `imgui-src/imgui_demo.cpp`, `glfw-src/docs/`, `glm-src/manual.md` |
 
-Wszystkie biblioteki są statyczne, więc program `night_maze` jest jednym samodzielnym
-plikiem. Do działania potrzebuje tylko bibliotek systemowych.
+Wszystkie biblioteki są statyczne, więc program `night_maze` jest jednym plikiem
+wykonywalnym. Do działania potrzebuje bibliotek systemowych i katalogu `assets` obok
+siebie.
 
 Położenie plików `.a` odzwierciedla drzewo źródeł: target zdefiniowany w głównym
 `CMakeLists.txt` trafia do korzenia katalogu buildu, target z `external/glad` do
@@ -813,7 +928,9 @@ Generator Visual Studio jest wielokonfiguracyjny, więc wyniki każdej konfigura
 do dodatkowego podkatalogu. Oczekiwane położenie programu to
 `build\debug\Debug\night_maze.exe` i `build\release\Release\night_maze.exe`, a biblioteki
 mają rozszerzenie `.lib` zamiast `.a`. W katalogu buildu zamiast `Makefile` jest rozwiązanie
-`.sln` i pliki projektów `.vcxproj`, a `compile_commands.json` nie powstaje.
+`.sln` i pliki projektów `.vcxproj`, a `compile_commands.json` nie powstaje. Katalog `assets`
+obok programu (`build\debug\Debug\assets\`) jest tam zwykłym katalogiem z **kopią** plików,
+a nie dowiązaniem. Kopię robi przy każdym budowaniu target `copy_assets` (sekcja 3.1, blok 7).
 
 Ten układ wynika z dokumentacji CMake i nie został jeszcze sprawdzony na PC. Wyjaśnienie i
 lista kontrolna są w [`build-windows.md`](build-windows.md).
@@ -890,6 +1007,23 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
 Nowy panel debugowy ma dodatkowe kroki (wywołanie w `DebugUI::draw`, a dla nowych danych
 pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
 [`../modules/debug-ui.md`](../modules/debug-ui.md).
+
+### Nowy plik shadera albo inny asset
+
+1. **Utwórz plik w `assets/`**, shader w `assets/shaders/`. Nazwa pary shaderów jest wspólna,
+   różni się rozszerzeniem: `.vert` dla shadera wierzchołków, `.frag` dla shadera
+   fragmentów. Edytor rozpoznaje je jako GLSL (sekcja 3.10).
+2. **Pierwsza linia shadera to `#version 410 core`.** Pod nią komentarz z jednym zdaniem
+   opisu i odnośnikiem `See docs/modules/...`, tak jak w plikach C++.
+3. **Niczego nie dopisuj w `CMakeLists.txt`.** Krok z bloku 7 obejmuje cały katalog `assets/`.
+4. **W kodzie buduj ścieżkę przez `core::assetPath`**, z nazwą względną wobec `assets/`, na
+   przykład `core::assetPath("shaders/basic.vert")`. Wzór: stałe `VERTEX_SHADER_FILE` i
+   `FRAGMENT_SHADER_FILE` w `src/game/NightMazeApp.cpp`.
+5. **macOS:** nic więcej, dowiązanie `build/<preset>/assets` widzi nowy plik od razu.
+   **Windows:** kopię obok `night_maze.exe` odświeża każde `cmake --build --preset debug`
+   ([`build-windows.md`](build-windows.md), sekcja 7).
+6. **Opisz plik** w dokumencie modułu (sekcja 4 szablonu, "Shadery") i w drzewie na początku
+   tego dokumentu.
 
 ### Nowa biblioteka zewnętrzna
 

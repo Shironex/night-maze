@@ -1,7 +1,7 @@
 # Moduł gfx: bufory i tablica wierzchołków
 
 Kamień milowy: M1. Temat wykładu: 2 (Programowalny potok).
-Kod: [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp), [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp).
+Kod: [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp), [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Druga część tematu 2, czyli shadery i sam potok, jest w [`shaders.md`](shaders.md): ten dokument zakłada jej znajomość. Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
@@ -23,7 +23,7 @@ Dwie klasy opakowują te obiekty:
 
 Obie są cienkimi opakowaniami typu RAII, których nie da się kopiować, a da się przenosić, tak jak `gfx::Shader`. Celowo nie ma tu żadnej abstrakcji "układu wierzchołka": atrybuty opisuję pojedynczymi wywołaniami z jawnym krokiem i przesunięciem w bajtach, bo właśnie te liczby trzeba umieć wytłumaczyć.
 
-Stan na dziś: obie klasy są gotowe i zbudowane w bibliotece `engine`, ale **żaden kod ich jeszcze nie używa**. Pierwszym użytkownikiem będzie trójkąt w `game::NightMazeApp`, w następnym kroku M1.
+Stan na dziś: `game::NightMazeApp` ma jeden `gfx::VertexArray` i jeden `gfx::Buffer` z danymi trzech wierzchołków i co klatkę rysuje nimi trójkąt przez `glDrawArrays` (sekcja 5.7). Bufora indeksów i `glDrawElements` program jeszcze nie używa: dojdą razem z kostką.
 
 ## 2. Teoria
 
@@ -85,6 +85,8 @@ Dwie liczby opisują położenie atrybutu w takim buforze:
 Karta wylicza adres atrybutu dla wierzchołka numer `i` jako `przesunięcie + i * krok`. Kolor wierzchołka 1 zaczyna się więc w bajcie 12 + 1 * 24 = 36, zgodnie z diagramem.
 
 Gdy wierzchołek ma tylko pozycję, krok to 12, a przesunięcie 0.
+
+Układ z tej sekcji (pozycja i kolor, krok 24, przesunięcia 0 i 12) to dokładnie układ wierzchołka w projekcie. Stałe, które go opisują w kodzie, są w sekcji 5.7.
 
 ### 2.4 Tablica wierzchołków (VAO): co pamięta, a czego nie
 
@@ -181,9 +183,9 @@ Daje to dziewięć stałych, od `GL_STATIC_DRAW` do `GL_STREAM_COPY`. To tylko p
 
 ### 2.9 Gdzie postawić trójkąt: NDC i kierunek nawijania
 
-Dopóki nie ma macierzy, pozycje z bufora trafiają do `gl_Position` bez zmian i są od razu **znormalizowanymi współrzędnymi urządzenia** (NDC, [`shaders.md`](shaders.md), sekcja 2.2): środek okna to (0, 0), lewa krawędź x = -1, prawa x = 1, dół y = -1, góra y = 1. Trójkąt o wierzchołkach (-0,5, -0,5), (0,5, -0,5), (0, 0,5) leży więc na środku okna i zajmuje połowę jego szerokości i wysokości. Proporcje okna nie są uwzględnione: w oknie 1280 x 720 ten trójkąt jest rozciągnięty w poziomie.
+Dopóki nie ma macierzy, pozycje z bufora trafiają do `gl_Position` bez zmian i są od razu **znormalizowanymi współrzędnymi urządzenia** (NDC, [`shaders.md`](shaders.md), sekcja 2.2): środek okna to (0, 0), lewa krawędź x = -1, prawa x = 1, dół y = -1, góra y = 1. Trójkąt o wierzchołkach (-0,5, -0,5), (0,5, -0,5), (0, 0,5), czyli ten z `NightMazeApp.cpp`, leży więc na środku okna i zajmuje połowę jego szerokości i wysokości. Proporcje okna nie są uwzględnione: w oknie 1280 x 720 ten trójkąt jest rozciągnięty w poziomie.
 
-**Kierunek nawijania** (winding order) to kolejność, w jakiej wierzchołki trójkąta obiegają go na ekranie. OpenGL domyślnie uznaje trójkąt za zwrócony przodem, gdy jego wierzchołki idą **przeciwnie do ruchu wskazówek zegara** (counter clockwise, CCW). Trzy wierzchołki z przykładu (lewy dolny, prawy dolny, górny) są właśnie w tej kolejności. Dziś nie ma to widocznego skutku, bo odrzucanie tylnych ścian (face culling) jest domyślnie wyłączone i rysowane są obie strony. Warto jednak od początku trzymać się kolejności CCW: po włączeniu `glEnable(GL_CULL_FACE)` trójkąty nawinięte odwrotnie znikają.
+**Kierunek nawijania** (winding order) to kolejność, w jakiej wierzchołki trójkąta obiegają go na ekranie. OpenGL domyślnie uznaje trójkąt za zwrócony przodem, gdy jego wierzchołki idą **przeciwnie do ruchu wskazówek zegara** (counter clockwise, CCW). Trzy wierzchołki trójkąta w projekcie (lewy dolny, prawy dolny, górny) są właśnie w tej kolejności. Dziś nie ma to widocznego skutku, bo odrzucanie tylnych ścian (face culling) jest domyślnie wyłączone i rysowane są obie strony. Warto jednak od początku trzymać się kolejności CCW: po włączeniu `glEnable(GL_CULL_FACE)` trójkąty nawinięte odwrotnie znikają.
 
 ## 3. Jak to działa w OpenGL
 
@@ -243,35 +245,37 @@ Trzy zależności, z których każda jest źródłem pułapki z sekcji 7:
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów, ale jest z nimi ściśle związana: **numer atrybutu** podany w C++ musi być tym samym numerem co `layout(location = N)` w shaderze wierzchołków. Poniższy przykład jest **ogólny, to nie jest kod projektu**: w repozytorium nie ma jeszcze plików shaderów ani kodu, który używa `VertexArray`. Para shaderów z tego przykładu skompilowała się i narysowała trójkąt w teście z sekcji 5.9.
+Ta część modułu nie ma własnych shaderów, ale jest z nimi ściśle związana: **numer atrybutu** podany w C++ musi być tym samym numerem co `layout(location = N)` w shaderze wierzchołków.
 
-Przykład ogólny, shader wierzchołków z dwoma atrybutami:
+Wejścia shadera wierzchołków projektu, [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) (cały plik omawia [`shaders.md`](shaders.md), sekcja 4.1):
 
 ```glsl
-#version 410 core
-layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec3 aColor;
-out vec3 vColor;
-void main() {
-    gl_Position = vec4(aPosition, 1.0);
-    vColor = aColor;
-}
+layout(location = 0) in vec3 aPosition; // x, y, z
+layout(location = 1) in vec3 aColor;    // red, green, blue, each from 0 to 1
 ```
 
-Przykład ogólny, odpowiadający mu opis atrybutów po stronie C++ (układ z sekcji 2.3):
+Odpowiadające im stałe i wywołania w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp):
 
-```text
-vertexArray.setFloatAttribute(0, 3, 6 * sizeof(float), 0);
-vertexArray.setFloatAttribute(1, 3, 6 * sizeof(float), 3 * sizeof(float));
+```cpp
+// Attribute numbers: the same as layout(location = N) in basic.vert.
+constexpr GLuint POSITION_ATTRIBUTE = 0;
+constexpr GLuint COLOR_ATTRIBUTE = 1;
+```
+
+```cpp
+m_vertexArray.setFloatAttribute(POSITION_ATTRIBUTE, POSITION_COMPONENTS, VERTEX_STRIDE,
+                                POSITION_OFFSET);
+m_vertexArray.setFloatAttribute(COLOR_ATTRIBUTE, COLOR_COMPONENTS, VERTEX_STRIDE, COLOR_OFFSET);
 ```
 
 | Po stronie C++ | Po stronie GLSL | Co musi się zgadzać |
 |---|---|---|
-| `index` równe 0 | `layout(location = 0)` | numer |
-| `componentCount` równe 3 | `vec3` | liczba składowych. Gdy bufor daje mniej składowych, niż ma typ w shaderze, brakujące są uzupełniane: `y` i `z` zerem, `w` jedynką |
-| `GL_FLOAT` | `vec3` (typ zmiennoprzecinkowy) | rodzaj typu |
+| `POSITION_ATTRIBUTE` równe 0 | `layout(location = 0)` przy `aPosition` | numer |
+| `COLOR_ATTRIBUTE` równe 1 | `layout(location = 1)` przy `aColor` | numer |
+| `POSITION_COMPONENTS` i `COLOR_COMPONENTS` równe 3 | `vec3` | liczba składowych. Gdy bufor daje mniej składowych, niż ma typ w shaderze, brakujące są uzupełniane: `y` i `z` zerem, `w` jedynką |
+| `GL_FLOAT` (wewnątrz `setFloatAttribute`) | `vec3` (typ zmiennoprzecinkowy) | rodzaj typu |
 
-OpenGL nie sprawdza tej zgodności. Zły numer nie daje błędu kompilacji ani błędu `glGetError`: shader dostaje po prostu dane innego atrybutu albo wartość domyślną.
+OpenGL nie sprawdza tej zgodności. Zły numer nie daje błędu kompilacji ani błędu `glGetError`: shader dostaje po prostu dane innego atrybutu albo wartość domyślną. Numery są w dwóch plikach (jednym C++ i jednym GLSL) i nic poza komentarzem ich nie wiąże, dlatego komentarz nad stałymi wskazuje plik shadera.
 
 Gdyby w shaderze nie było `layout(location = ...)`, numery przydzieliłby linker i trzeba by o nie pytać funkcją `glGetAttribLocation` po zlinkowaniu programu. Jawne numery w shaderze są prostsze: VAO można skonfigurować, nie znając programu.
 
@@ -285,6 +289,7 @@ Gdyby w shaderze nie było `layout(location = ...)`, numery przydzieliłby linke
 | [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp) | implementacja |
 | [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp) | klasa `gfx::VertexArray`: konstruktor domyślny, destruktor, zablokowane kopiowanie, przenoszenie, `bind`, `setFloatAttribute` |
 | [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp) | implementacja |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | jedyny użytkownik obu klas: pola `m_vertexArray` i `m_vertexBuffer`, dane wierzchołków `VERTICES`, stałe układu, konfiguracja w konstruktorze, rysowanie w `onRender` (sekcja 5.7) |
 
 Wszystkie cztery pliki są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Obie klasy zależą tylko od `core` (`GL_CHECK`), GLAD i biblioteki standardowej. Żadna nie ma funkcji pomocniczych ani stałych: całość to konstruktor, destruktor, dwie funkcje przenoszące i jedna albo dwie funkcje robocze.
 
@@ -535,19 +540,150 @@ Parametry mają typy dokładnie takie, jakich chce OpenGL, żeby w środku nie b
 
 **Który bufor.** Funkcja nie ma parametru "bufor". `glVertexAttribPointer` zapisuje w VAO ten bufor, który **w chwili wywołania** jest związany z `GL_ARRAY_BUFFER`. Wołający musi więc mieć związany właściwy `Buffer`: albo dopiero co go utworzył (konstruktor zostawia go związanego), albo zawołał `bind()`. Rozważałem przekazywanie `const Buffer&` jako parametru, żeby funkcja wiązała bufor sama. Zostałem przy obecnej postaci, bo jest wiernym odbiciem tego, jak działa OpenGL, a zależność od wiązania jest i tak rzeczą, którą trzeba rozumieć.
 
-### 5.7 Jak tego użyć
+### 5.7 Użycie w `NightMazeApp`: trójkąt
 
-Tego kodu **nie ma jeszcze w projekcie**. To kolejność, w jakiej klasy trzeba będzie wywołać, wynikająca z sekcji 3.2:
+Wszystko, co dotyczy geometrii, jest w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
-| Krok | Wywołanie | Dlaczego w tym miejscu |
+**Stałe układu wierzchołka** (anonimowa przestrzeń nazw w `.cpp`):
+
+```cpp
+// One vertex is a position (x, y, z) followed by a color (red, green, blue), all floats.
+constexpr GLint POSITION_COMPONENTS = 3;
+constexpr GLint COLOR_COMPONENTS = 3;
+constexpr GLint FLOATS_PER_VERTEX = POSITION_COMPONENTS + COLOR_COMPONENTS;
+
+// Stride: bytes from the start of one vertex to the start of the next one.
+constexpr GLsizei VERTEX_STRIDE = static_cast<GLsizei>(FLOATS_PER_VERTEX * sizeof(float));
+// Offsets: where each attribute starts inside one vertex, in bytes.
+constexpr std::size_t POSITION_OFFSET = 0;
+constexpr std::size_t COLOR_OFFSET = POSITION_COMPONENTS * sizeof(float);
+
+constexpr GLsizei VERTEX_COUNT = 3;
+// Number of floats in the whole vertex data.
+constexpr int VERTEX_FLOAT_COUNT = VERTEX_COUNT * FLOATS_PER_VERTEX;
+```
+
+| Stała | Wartość | Skąd |
 |---|---|---|
-| 1 | utworzyć `VertexArray` i zawołać `bind()` | wiązanie bufora indeksów trafi do bieżącego VAO |
-| 2 | utworzyć `Buffer` z celem `GL_ARRAY_BUFFER` | konstruktor zostawia go związanego |
-| 3 | `setFloatAttribute` dla każdego atrybutu | zapisuje format i bufor z kroku 2 |
-| 4 | (tylko z indeksami) utworzyć `Buffer` z celem `GL_ELEMENT_ARRAY_BUFFER` | VAO z kroku 1 jest nadal bieżący |
-| 5 | przy rysowaniu: `Shader::use()`, `VertexArray::bind()`, `glDrawArrays` albo `glDrawElements` | |
+| `POSITION_COMPONENTS`, `COLOR_COMPONENTS` | 3 i 3 | pozycja to x, y, z, kolor to czerwony, zielony, niebieski |
+| `FLOATS_PER_VERTEX` | 6 | suma składowych wszystkich atrybutów |
+| `VERTEX_STRIDE` | 24 | 6 liczb razy `sizeof(float)`, czyli 4 bajty. `sizeof` zwraca `std::size_t`, a parametr `setFloatAttribute` to `GLsizei` (liczba ze znakiem), stąd `static_cast` |
+| `POSITION_OFFSET` | 0 | pozycja jest pierwsza w wierzchołku |
+| `COLOR_OFFSET` | 12 | przed kolorem leżą 3 liczby pozycji po 4 bajty |
+| `VERTEX_COUNT` | 3 | jeden trójkąt |
+| `VERTEX_FLOAT_COUNT` | 18 | 3 wierzchołki po 6 liczb. To rozmiar tablicy `VERTICES`. Jest osobną stałą typu `int`, a nie mnożeniem wpisanym w nawiasy ostre `std::array`, bo tam wynik mnożenia dwóch liczb `int` byłby niejawnie zamieniany na `std::size_t`, co zgłasza clang-tidy (`bugprone-implicit-widening-of-multiplication-result`) |
 
-Gdy obiekty są polami klasy, kolejność deklaracji pól wyznacza kolejność konstrukcji ([`../core/README.md`](../core/README.md), sekcja 7), więc `VertexArray` ma być zadeklarowany przed buforem indeksów.
+Żadna z tych liczb nie jest wpisana wprost w wywołaniu: każda ma nazwę i jest wyliczona z poprzednich, więc dodanie atrybutu zmienia jedno miejsce. Typy stałych są takie same jak typy parametrów, do których trafiają (`GLint`, `GLsizei`, `std::size_t`), żeby w wywołaniach nie było rzutowań.
+
+**Dane wierzchołków:**
+
+```cpp
+// Three vertices of one triangle, listed counter clockwise. There are no matrices yet, so
+// the positions are normalized device coordinates: x and y from -1 to 1 cover the window.
+constexpr std::array<float, VERTEX_FLOAT_COUNT> VERTICES = {
+    // x, y, z,          red, green, blue
+    -0.5F, -0.5F, 0.0F, 1.0F, 0.0F, 0.0F, // bottom left, red
+    0.5F,  -0.5F, 0.0F, 0.0F, 1.0F, 0.0F, // bottom right, green
+    0.0F,  0.5F,  0.0F, 0.0F, 0.0F, 1.0F, // top, blue
+};
+```
+
+- Rozmiar tablicy to `VERTEX_FLOAT_COUNT`, czyli `VERTEX_COUNT * FLOATS_PER_VERTEX`, czyli 18. Jest wyliczony z tych samych stałych co rysowanie, więc liczba wierzchołków w danych i w `glDrawArrays` nie może się rozjechać: za dużo liczb w nawiasach to błąd kompilacji.
+- Jeden wiersz to jeden wierzchołek: trzy liczby pozycji, trzy liczby koloru. To układ przeplatany z sekcji 2.3.
+- `constexpr` i anonimowa przestrzeń nazw: tablica jest stałą czasu kompilacji, widoczną tylko w tym pliku. Nie jest zmienną globalną z mutowalnym stanem.
+- Przyrostek `F` oznacza literał typu `float`. Bez niego `0.5` byłoby typu `double`.
+- Kolejność wierzchołków (lewy dolny, prawy dolny, górny) jest przeciwna do ruchu wskazówek zegara (sekcja 2.9).
+
+Bajty tego bufora, tak jak leżą na karcie (72 bajty, trzy wierzchołki po 24):
+
+```mermaid
+flowchart LR
+    subgraph V0["wierzchołek 0: bajty od 0 do 23"]
+        direction LR
+        P0["pozycja<br/>-0.5, -0.5, 0.0<br/>bajty od 0 do 11"] --- C0["kolor<br/>1, 0, 0<br/>bajty od 12 do 23"]
+    end
+    subgraph V1["wierzchołek 1: bajty od 24 do 47"]
+        direction LR
+        P1["pozycja<br/>0.5, -0.5, 0.0<br/>bajty od 24 do 35"] --- C1["kolor<br/>0, 1, 0<br/>bajty od 36 do 47"]
+    end
+    subgraph V2["wierzchołek 2: bajty od 48 do 71"]
+        direction LR
+        P2["pozycja<br/>0.0, 0.5, 0.0<br/>bajty od 48 do 59"] --- C2["kolor<br/>0, 0, 1<br/>bajty od 60 do 71"]
+    end
+    V0 --- V1 --- V2
+```
+
+Atrybut 0 (pozycja) czyta bajty 0, 24, 48: przesunięcie 0, krok 24. Atrybut 1 (kolor) czyta bajty 12, 36, 60: przesunięcie 12, krok 24.
+
+**Pola klasy** (`NightMazeApp.hpp`):
+
+```cpp
+// OpenGL objects. They are members of a class derived from core::Application, so they
+// are created after the window and its OpenGL context, and destroyed before them.
+//
+// Order: the vertex array first, then the vertex buffer. Members are constructed top
+// to bottom and the constructor body runs after all of them. At that point the buffer,
+// created last, is still bound to GL_ARRAY_BUFFER, and that is how the attribute setup
+// in the body tells the vertex array which buffer to read from.
+gfx::Shader m_shader;
+gfx::VertexArray m_vertexArray;
+gfx::Buffer m_vertexBuffer;
+```
+
+**Konstruktor:**
+
+```cpp
+NightMazeApp::NightMazeApp()
+    : core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze"),
+      m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FILE)),
+      // The size is in bytes: number of floats times the size of one float.
+      m_vertexBuffer(GL_ARRAY_BUFFER, VERTICES.data(), VERTICES.size() * sizeof(float)) {
+    // m_vertexBuffer has just been created, so it is still bound to GL_ARRAY_BUFFER.
+    // Each call below records that buffer in m_vertexArray for one attribute.
+    m_vertexArray.setFloatAttribute(POSITION_ATTRIBUTE, POSITION_COMPONENTS, VERTEX_STRIDE,
+                                    POSITION_OFFSET);
+    m_vertexArray.setFloatAttribute(COLOR_ATTRIBUTE, COLOR_COMPONENTS, VERTEX_STRIDE, COLOR_OFFSET);
+}
+```
+
+Kolejność zdarzeń jest wyznaczona przez kolejność **deklaracji** pól, a nie przez kolejność na liście inicjalizacyjnej ([`../core/README.md`](../core/README.md), sekcja 7):
+
+| # | Co się wykonuje | Wywołania OpenGL | Stan po tym kroku |
+|---|---|---|---|
+| 1 | `core::Application(...)`, część bazowa | brak własnych, powstaje okno i kontekst | można wołać `gl*` |
+| 2 | `m_clearColor` | brak | |
+| 3 | `m_shader(...)` | kompilacja i linkowanie ([`shaders.md`](shaders.md)) | program gotowy albo błąd w logu |
+| 4 | `m_vertexArray`, konstruktor domyślny (nie ma go na liście, więc wykonuje się sam, w swojej kolejności) | `glGenVertexArrays` | VAO istnieje, nie jest związany |
+| 5 | `m_vertexBuffer(GL_ARRAY_BUFFER, ...)` | `glGenBuffers`, `glBindBuffer`, `glBufferData` | 72 bajty na karcie, bufor związany z `GL_ARRAY_BUFFER` |
+| 6 | ciało konstruktora: `setFloatAttribute` dla pozycji | `glBindVertexArray`, `glEnableVertexAttribArray(0)`, `glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 24, 0)` | VAO związany, atrybut 0 czyta z bufora z kroku 5 |
+| 7 | ciało konstruktora: `setFloatAttribute` dla koloru | `glBindVertexArray`, `glEnableVertexAttribArray(1)`, `glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, 12)` | atrybut 1 czyta z tego samego bufora |
+
+Szczegóły, o które można zostać zapytanym:
+
+- `VERTICES.data()` zwraca `const float*` do pierwszego elementu. Zamienia się niejawnie na `const void*`, którego chce `Buffer`.
+- `VERTICES.size() * sizeof(float)` to rozmiar w bajtach: 18 razy 4, czyli 72. `size()` zwraca liczbę elementów, nie bajtów (sekcja 7, pułapka 7).
+- Krok 6 działa, bo między krokiem 5 a 6 nikt nie zmienił wiązania `GL_ARRAY_BUFFER`. To wiązanie jest stanem globalnym kontekstu, więc dla samego bufora wierzchołków nie ma znaczenia, czy VAO powstał przed buforem, czy po nim: liczy się tylko to, co jest związane **w chwili** `setFloatAttribute`. Kolejność "najpierw VAO" stanie się konieczna dopiero przy buforze indeksów, którego wiązanie należy do VAO (sekcja 2.4).
+- Dane wierzchołków są wysyłane na kartę raz, przy starcie. W klatce nie ma żadnego `glBufferData`.
+
+**Rysowanie** w `NightMazeApp::onRender`:
+
+```cpp
+if (m_shader.isValid()) {
+    m_shader.use();
+    m_vertexArray.bind();
+    // Every three vertices, starting at vertex 0, form one triangle.
+    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT));
+}
+```
+
+| Linia | Co robi |
+|---|---|
+| `m_vertexArray.bind();` | Jedno wywołanie przywraca cały opis: dwa włączone atrybuty, ich format i bufor. Bufora nie wiążę osobno, bo VAO go pamięta |
+| `glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)` | `GL_TRIANGLES`: każde trzy wierzchołki to trójkąt. `0`: zacznij od wierzchołka numer 0. `VERTEX_COUNT`: użyj trzech wierzchołków. To jedyne miejsce w klatce, w którym uruchamia się potok z [`shaders.md`](shaders.md), sekcja 2.1 |
+
+`bind()` jest wołane co klatkę, choć VAO jest jeden: backend ImGui przy rysowaniu paneli wiąże własny VAO i własny program, a po sobie przywraca poprzedni stan. Nie polegam na tym i przed rysowaniem ustawiam wszystko, czego potrzebuję.
+
+**Niszczenie.** Pola giną w kolejności odwrotnej do deklaracji: `m_vertexBuffer`, `m_vertexArray`, `m_shader`, a dopiero potem część bazowa z oknem. Wszystkie trzy destruktory mają więc żywy kontekst.
 
 ### 5.8 Czas życia: bufor a VAO, który go używa
 
@@ -558,11 +694,11 @@ VAO przechowuje odwołanie do bufora, a nie jego kopię. Co się dzieje, gdy `Bu
 | bufor usunięty, gdy używający go VAO **nie jest** bieżący | VAO nadal rysuje poprawnie. OpenGL zwalnia nazwę bufora, ale dane trzyma, dopóki VAO się do nich odwołuje |
 | bufor usunięty, gdy używający go VAO **jest** bieżący | OpenGL odłącza bufor od bieżącego VAO. Następne rysowanie daje `GL_INVALID_OPERATION` i niczego nie rysuje |
 
-Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co najmniej tak długo jak `VertexArray`, który z niego czyta. Najprościej trzymać je jako pola tej samej klasy.
+Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co najmniej tak długo jak `VertexArray`, który z niego czyta. Najprościej trzymać je jako pola tej samej klasy, tak jak `m_vertexArray` i `m_vertexBuffer` w `NightMazeApp`. Przy zamykaniu programu bufor ginie tam tuż przed VAO, co jest bez znaczenia, bo po nim nikt już nie rysuje.
 
 ### 5.9 Jak to zostało sprawdzone
 
-Klas nie woła jeszcze nic w programie `night_maze`, więc sprawdziłem je na Macu małym programem testowym poza repozytorium: ukryte okno GLFW z kontekstem 4.1 Core, biblioteka `engine` z buildu Debug, shadery z sekcji 4 i trójkąt z sekcji 2.9 w kolorze czerwonym na niebieskim tle. Wynik rysowania odczytywałem funkcją `glReadPixels`. Wyniki (sterownik Apple, `GL_VERSION` 4.1 Metal):
+**Test samych klas.** Zanim klasy dostały użytkownika, sprawdziłem je na Macu małym programem testowym poza repozytorium: ukryte okno GLFW z kontekstem 4.1 Core, biblioteka `engine` z buildu Debug, para shaderów z atrybutami pozycji i koloru oraz trójkąt o pozycjach z sekcji 2.9, cały w kolorze czerwonym na niebieskim tle. Wynik rysowania odczytywałem funkcją `glReadPixels`. Wyniki (sterownik Apple, `GL_VERSION` 4.1 Metal):
 
 | Próba | Wynik |
 |---|---|
@@ -577,6 +713,18 @@ Klas nie woła jeszcze nic w programie `night_maze`, więc sprawdziłem je na Ma
 | usunięcie bufora, gdy jego VAO nie jest bieżący, i gdy jest bieżący | jak w tabeli z sekcji 5.8 |
 | `glGetError` po zniszczeniu wszystkich obiektów | `GL_NO_ERROR` |
 
+**Dane i shadery projektu.** Drugi test, też z ukrytym oknem, użył prawdziwych plików `assets/shaders/basic.vert` i `basic.frag`, tych samych 18 liczb co `VERTICES` i tych samych wartości kroku i przesunięć (24, 0, 12). Kolory odczytane przez `glReadPixels` (czerwony, zielony, niebieski, od 0 do 255):
+
+| Punkt (NDC) | Kolor | Oczekiwany |
+|---|---|---|
+| tuż przy lewym dolnym rogu trójkąta | 238, 9, 8 | prawie czysty czerwony |
+| tuż przy prawym dolnym rogu | 8, 239, 8 | prawie czysty zielony |
+| tuż pod górnym rogiem | 6, 6, 243 | prawie czysty niebieski |
+| środek ciężkości (0, -1/6) | 85, 86, 84 | po jednej trzeciej każdego koloru |
+| poza trójkątem | 5, 8, 20 | kolor tła (0,02, 0,03, 0,08) |
+
+**Program `night_maze`.** Uruchomiony na około 3 sekundy z katalogu repozytorium i z innego katalogu roboczego nie wypisał żadnej linii `[error]`, w tym żadnego błędu OpenGL od `GL_CHECK` wokół `glDrawArrays` ([`shaders.md`](shaders.md), sekcja 5.11). Samego obrazu w oknie programu te uruchomienia nie sprawdzały.
+
 Na Windowsie klasy nie były jeszcze kompilowane ani uruchamiane.
 
 ## 6. Panel ImGui
@@ -589,7 +737,7 @@ Na Windowsie klasy nie były jeszcze kompilowane ani uruchamiane.
 2. **Odwiązanie EBO przy bieżącym VAO.** `glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)` "dla porządku" po konfiguracji, gdy VAO jest jeszcze związany, zapisuje w nim "brak bufora indeksów". Odwiązywać wolno dopiero po `glBindVertexArray(0)`, a najlepiej wcale. Z `GL_ARRAY_BUFFER` jest odwrotnie: jego odwiązanie po `glVertexAttribPointer` niczego nie psuje, bo VAO tego wiązania nie przechowuje.
 3. **Zły bufor związany w chwili `setFloatAttribute`.** Atrybut czyta z bufora związanego z `GL_ARRAY_BUFFER` w chwili wywołania. Utworzenie drugiego `Buffer(GL_ARRAY_BUFFER, ...)` między utworzeniem pierwszego a `setFloatAttribute` zmienia to wiązanie i atrybut zostaje przypisany do drugiego bufora. Gdy z `GL_ARRAY_BUFFER` nie jest związane nic, a przesunięcie jest różne od zera, `glVertexAttribPointer` zgłasza `GL_INVALID_OPERATION`.
 4. **Zły krok albo przesunięcie.** Nie dają żadnego błędu OpenGL. Shader dostaje liczby z niewłaściwych miejsc bufora: trójkąt jest zdeformowany, kolory są pozycjami, a przy zbyt dużym kroku karta czyta poza buforem (wynik nieokreślony). Typowe pomyłki: krok podany w liczbie `float` zamiast w bajtach (6 zamiast 24), krok równy rozmiarowi jednego atrybutu zamiast całego wierzchołka, przesunięcie w liczbie `float` zamiast w bajtach (3 zamiast 12).
-5. **`sizeof` na wskaźniku zamiast na tablicy.** `sizeof(vertices)` daje rozmiar całej tablicy w bajtach tylko wtedy, gdy `vertices` jest tablicą (`float[9]` albo `std::array<float, 9>`). Gdy tablica została przekazana do funkcji jako `const float*`, `sizeof` zwraca rozmiar **wskaźnika** (8 bajtów) i do bufora trafiają dwie liczby `float`. Dla `std::vector` `sizeof` zwraca rozmiar samego obiektu wektora (zwykle 24 bajty), a nie danych: tam trzeba `vertices.size() * sizeof(float)`.
+5. **`sizeof` na wskaźniku zamiast na tablicy.** `sizeof(vertices)` daje rozmiar całej tablicy w bajtach tylko wtedy, gdy `vertices` jest tablicą (`float[9]` albo `std::array<float, 9>`). Gdy tablica została przekazana do funkcji jako `const float*`, `sizeof` zwraca rozmiar **wskaźnika** (8 bajtów) i do bufora trafiają dwie liczby `float`. Dla `std::vector` `sizeof` zwraca rozmiar samego obiektu wektora (zwykle 24 bajty), a nie danych: tam trzeba `vertices.size() * sizeof(float)`. Projekt liczy rozmiar zawsze tym drugim sposobem (`VERTICES.size() * sizeof(float)`), bo działa on dla każdego kontenera.
 6. **`count` w `glDrawArrays`.** To liczba wierzchołków, nie trójkątów i nie liczb `float`. Dla trójkąta 3, nie 1 i nie 9. Za mała wartość rysuje część geometrii, za duża czyta poza buforem.
 7. **Liczba elementów zamiast bajtów w konstruktorze `Buffer`.** `Buffer(GL_ARRAY_BUFFER, vertices.data(), vertices.size())` wysyła 9 bajtów zamiast 36. Parametr nazywa się `sizeInBytes` właśnie po to.
 8. **Niewłączony atrybut.** Samo `glVertexAttribPointer` bez `glEnableVertexAttribArray` nie wystarcza: atrybut pozostaje wyłączony i shader dostaje wartość stałą (domyślnie zera z `w = 1`). `setFloatAttribute` robi oba kroki, więc ta pułapka dotyczy kodu pisanego z pominięciem klasy.
@@ -603,16 +751,24 @@ Na Windowsie klasy nie były jeszcze kompilowane ani uruchamiane.
 
 ## 8. Ćwiczenia
 
-Klas nie używa jeszcze żaden kod w `night_maze`, więc ćwiczenia są na kartce. Po dodaniu trójkąta zostaną uzupełnione o zmiany w działającym programie.
+Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każdym ćwiczeniu wycofaj zmianę (`git checkout src/game`).
 
-1. **Krok i przesunięcie.** Wierzchołek ma pozycję (`vec3`), normalną (`vec3`) i współrzędne tekstury (`vec2`), w tej kolejności, w układzie przeplatanym. Podaj krok oraz przesunięcie każdego atrybutu w bajtach. Zapisz trzy wywołania `setFloatAttribute` dla numerów 0, 1 i 2. W którym bajcie bufora zaczynają się współrzędne tekstury wierzchołka numer 2?
-2. **Diagram bajtów.** Narysuj dla układu z ćwiczenia 1 diagram taki jak w sekcji 2.3, dla dwóch kolejnych wierzchołków.
-3. **Rozmiary.** Dla `std::array<float, 18> vertices` podaj wartości `sizeof(vertices)`, `vertices.size()` i `sizeof(float)`. Którą z nich podajesz jako `sizeInBytes`? Ile wierzchołków opisuje ta tablica przy kroku 24, a ile przy kroku 12, i jaką wartość `count` podasz wtedy w `glDrawArrays`?
-4. **Co pamięta VAO.** Dla ciągu z sekcji 3.1 (kroki od 1 do 8) wypisz po każdym kroku: co jest związane z `GL_ARRAY_BUFFER`, co zapisał VAO dla atrybutu 0 i jakie jest wiązanie `GL_ELEMENT_ARRAY_BUFFER` w VAO. Potem dopisz na końcu `glBindBuffer(GL_ARRAY_BUFFER, 0)` oraz `glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)` i powiedz, które z nich zepsuje rysowanie.
-5. **Indeksy prostokąta.** Dla czterech rogów ponumerowanych 0 (lewy dolny), 1 (prawy dolny), 2 (prawy górny), 3 (lewy górny) zapisz sześć indeksów dwóch trójkątów tak, żeby oba były nawinięte przeciwnie do ruchu wskazówek zegara. Policz bajty z indeksami i bez, przy wierzchołku 24 bajtowym.
-6. **Kolejność tworzenia.** Ktoś napisał: `gfx::Buffer indices(GL_ELEMENT_ARRAY_BUFFER, ...); gfx::VertexArray vertexArray; vertexArray.bind();`. Co jest nie tak i jaki będzie objaw przy `glDrawElements`? Popraw kolejność.
-7. **Przeniesienie.** Dla `gfx::Buffer a(GL_ARRAY_BUFFER, data, size); gfx::Buffer b = std::move(a);` zapisz `m_id` i `m_target` obu obiektów po każdej linii (przyjmij identyfikator 1). Ile razy i z jaką wartością zostanie zawołane `glDeleteBuffers`? Czy VAO, który zapisał bufor 1 przed przeniesieniem, trzeba konfigurować ponownie?
-8. **Przesunięcie jako wskaźnik.** Jaką wartość ma `offsetAsPointer` dla atrybutu koloru z sekcji 2.3? Co by się stało, gdyby OpenGL naprawdę odczytał pamięć pod tym adresem, i dlaczego tego nie robi?
+1. **Przesuń wierzchołek.** Zmień pozycję górnego wierzchołka na `0.0F, 0.9F, 0.0F`. Potem ustaw x prawego dolnego na `1.5F`. Co się stało z częścią trójkąta poza zakresem od -1 do 1 i który etap potoku za to odpowiada?
+2. **Kolory.** Ustaw wszystkim trzem wierzchołkom ten sam kolor. Potem daj jednemu wierzchołkowi kolor `2.0F, 0.0F, 0.0F`. Co widać i dlaczego wartość powyżej 1 nie jest "jaśniejsza"?
+3. **Drugi trójkąt.** Dopisz do `VERTICES` trzy kolejne wierzchołki (na przykład mały trójkąt w prawym górnym rogu). Zbuduj **bez** zmiany `VERTEX_COUNT` i przeczytaj błąd kompilacji. Potem zmień `VERTEX_COUNT` na 6. Które linie kodu nie wymagały żadnej zmiany i dlaczego?
+4. **Za mały `count`.** Bez innych zmian podaj w `glDrawArrays` liczbę 2 zamiast `VERTEX_COUNT`. Co widać? Dlaczego nie ma błędu OpenGL?
+5. **Zły krok.** Zmień `VERTEX_STRIDE` na `POSITION_COMPONENTS * sizeof(float)` (12 zamiast 24). Zanim uruchomisz, policz na kartce z diagramu bajtów w sekcji 5.7, jakie trzy pozycje i jakie trzy kolory odczyta karta (wierzchołek numer `i` zaczyna się w bajcie `przesunięcie + i * 12`). Uruchom i porównaj. Czy w konsoli jest błąd?
+6. **Złe przesunięcie.** Przywróć krok i zmień `COLOR_OFFSET` na 0. Jakie kolory mają teraz rogi i skąd się wzięły? (Ujemna składowa koloru jest przycinana do 0.)
+7. **Krok w złych jednostkach.** Ustaw `VERTEX_STRIDE` na 6 (liczba `float`, a nie bajtów). Opisz wynik. To jedna z najczęstszych pomyłek.
+8. **Rozmiar w elementach.** W konstruktorze podaj jako rozmiar samo `VERTICES.size()` (18 zamiast 72 bajtów). Ile pełnych liczb `float` trafiło na kartę? Co widać?
+9. **Inny prymityw.** Zamień `GL_TRIANGLES` na `GL_LINE_LOOP`, potem na `GL_POINTS` (przed rysowaniem dopisz tymczasowo `GL_CHECK(glPointSize(10.0F));`). Dane i shadery się nie zmieniły. Co zmienił pierwszy parametr `glDrawArrays`?
+10. **Kierunek nawijania.** Dopisz tymczasowo w `onRender` przed rysowaniem `GL_CHECK(glEnable(GL_CULL_FACE));`. Trójkąt jest widoczny. Zamień miejscami dwa wiersze w `VERTICES`. Dlaczego zniknął? Usuń `glEnable` i sprawdź, że wraca.
+11. **Wyłączony atrybut.** Usuń drugie wywołanie `setFloatAttribute` (kolor). Jaki kolor ma trójkąt i skąd ta wartość (sekcja 7, pułapka 8)?
+12. **Kolejność pól.** Zamień w `NightMazeApp.hpp` kolejność deklaracji `m_vertexArray` i `m_vertexBuffer`. Program nadal działa. Wyjaśnij dlaczego, korzystając z tabeli "VAO nie pamięta" w sekcji 2.4. Dla jakiego bufora taka zamiana byłaby błędem?
+13. **Krok i przesunięcie na kartce.** Wierzchołek ma pozycję (`vec3`), normalną (`vec3`) i współrzędne tekstury (`vec2`), w tej kolejności, w układzie przeplatanym. Podaj krok oraz przesunięcie każdego atrybutu w bajtach i zapisz stałe w stylu `COLOR_OFFSET`. W którym bajcie bufora zaczynają się współrzędne tekstury wierzchołka numer 2?
+14. **Indeksy prostokąta na kartce.** Dla czterech rogów ponumerowanych 0 (lewy dolny), 1 (prawy dolny), 2 (prawy górny), 3 (lewy górny) zapisz sześć indeksów dwóch trójkątów tak, żeby oba były nawinięte przeciwnie do ruchu wskazówek zegara. Policz bajty z indeksami i bez, przy wierzchołku 24 bajtowym.
+15. **Przeniesienie na kartce.** Dla `gfx::Buffer a(GL_ARRAY_BUFFER, data, size); gfx::Buffer b = std::move(a);` zapisz `m_id` i `m_target` obu obiektów po każdej linii (przyjmij identyfikator 1). Ile razy i z jaką wartością zostanie zawołane `glDeleteBuffers`? Czy VAO, który zapisał bufor 1 przed przeniesieniem, trzeba konfigurować ponownie?
+16. **Przesunięcie jako wskaźnik.** Jaką wartość ma `offsetAsPointer` w drugim wywołaniu `setFloatAttribute` z konstruktora? Co by się stało, gdyby OpenGL naprawdę odczytał pamięć pod tym adresem, i dlaczego tego nie robi?
 
 ## 9. Pytania kontrolne
 
@@ -666,6 +822,18 @@ Klas nie używa jeszcze żaden kod w `night_maze`, więc ćwiczenia są na kartc
 
 17. **Co znaczą współrzędne (-0,5, -0,5), (0,5, -0,5), (0, 0,5) bez żadnej macierzy i w jakiej kolejności są nawinięte?**
     To od razu NDC: trójkąt na środku okna, zajmujący połowę szerokości i wysokości. Lewy dolny, prawy dolny, górny to kolejność przeciwna do ruchu wskazówek zegara, czyli domyślny przód w OpenGL.
+
+18. **Prześledź, co dzieje się w konstruktorze `NightMazeApp` po stronie OpenGL.**
+    Po oknie i shaderze powstaje VAO (`glGenVertexArrays`), potem bufor: `glGenBuffers`, `glBindBuffer(GL_ARRAY_BUFFER)`, `glBufferData` z 72 bajtami. W ciele konstruktora dwa razy `setFloatAttribute`: wiąże VAO, włącza atrybut i zapisuje format (3 x `GL_FLOAT`, krok 24, przesunięcie 0 albo 12) razem z buforem, który jest wciąż związany z `GL_ARRAY_BUFFER`.
+
+19. **Skąd wartości `VERTEX_STRIDE` i `COLOR_OFFSET`?**
+    Wierzchołek to 3 liczby pozycji i 3 liczby koloru, razem 6 liczb `float` po 4 bajty: krok 24. Kolor zaczyna się po trzech liczbach pozycji: przesunięcie 12. W kodzie obie wartości są wyliczone ze stałych `POSITION_COMPONENTS`, `COLOR_COMPONENTS` i `sizeof(float)`.
+
+20. **Dlaczego w `onRender` nie ma `m_vertexBuffer.bind()`?**
+    Bo VAO zapamiętał bufor dla każdego atrybutu w chwili `setFloatAttribute`. Do rysowania wystarcza związanie VAO. Wiązanie `GL_ARRAY_BUFFER` nie ma wpływu na `glDrawArrays`.
+
+21. **Co by się stało, gdyby `VERTEX_COUNT` w `glDrawArrays` wynosiło 2, a co gdyby 6?**
+    Przy 2 nie powstaje żaden pełny trójkąt i nic nie jest rysowane, bez błędu. Przy 6 karta czytałaby wierzchołki od 3 do 5 spoza 72 bajtów bufora: wynik nieokreślony.
 
 ## 10. Źródła
 

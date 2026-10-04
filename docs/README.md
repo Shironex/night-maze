@@ -2,7 +2,7 @@
 
 Dokumentacja jest materiałem do nauki: z samej lektury ma się dać nauczyć danego tematu wykładu, przygotować do kartkówki i do obrony, na której tłumaczę każdą linię kodu. Każdy moduł jest skończony dopiero wtedy, gdy ma tutaj swój dokument (PRD, sekcja 7).
 
-Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **M1 w toku**: są już mysz, ścieżki do assetów, GLM i klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, ale program jeszcze niczego nie rysuje. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
+Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **M1 w toku**: są już mysz, ścieżki do assetów, GLM, klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, katalog `assets/` z pierwszą parą shaderów i pierwszy trójkąt na ekranie. Brakuje jeszcze panelu z przyciskiem "Reload shaders", kostki i kamery. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
 
 ## Spis treści
 
@@ -32,10 +32,10 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/core/main-loop.md`](modules/core/main-loop.md) | `src/core/Application.*`, `src/core/Time.*` | 1. Pętla gry ze stałym krokiem, akumulator, `alpha`, uśredniony FPS |
 | [`modules/core/input.md`](modules/core/input.md) | `src/core/Input.*` | 1. Klawiatura i mysz: odpytywanie, zbocze na klatkę, przesunięcie myszy, przechwycenie kursora, blokada klawiatury i myszy na czas pracy z panelem |
 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | `src/core/GlCheck.*` | 1. Makro `GL_CHECK`, model błędów `glGetError`, Debug a Release |
-| [`modules/core/paths.md`](modules/core/paths.md) | `src/core/Paths.*` | 1. Ścieżki do assetów względem pliku wykonywalnego: katalog roboczy, wywołania systemowe macOS i Windows, `std::filesystem::path`. Pierwszy użytkownik w M1 (shadery) |
-| [`modules/gfx/README.md`](modules/gfx/README.md) | `src/gfx/` | 2. Programowalny potok: wstęp do modułu `gfx`, RAII i semantyka przenoszenia dla obiektów OpenGL, miejsce w warstwach, indeks plików |
-| [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | `src/gfx/Shader.*` | 2. Potok renderowania, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, błędy sterownika, wczytywanie na żywo. Klasa jeszcze bez użytkownika w programie |
-| [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | `src/gfx/Buffer.*`, `src/gfx/VertexArray.*` | 2. Dane wierzchołków, VBO, VAO i jego stan, układ przeplatany (krok i przesunięcie), EBO, `glDrawArrays` a `glDrawElements`. Klasy jeszcze bez użytkownika w programie |
+| [`modules/core/paths.md`](modules/core/paths.md) | `src/core/Paths.*` | 1. Ścieżki do assetów względem pliku wykonywalnego: katalog roboczy, wywołania systemowe macOS i Windows, `std::filesystem::path`, katalog `assets` obok programu. Użytkownik: wczytywanie shaderów w `NightMazeApp` |
+| [`modules/gfx/README.md`](modules/gfx/README.md) | `src/gfx/` | 2. Programowalny potok: wstęp do modułu `gfx`, RAII i semantyka przenoszenia dla obiektów OpenGL, miejsce w warstwach, indeks plików, droga jednej klatki od danych do pikseli |
+| [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | `src/gfx/Shader.*`, `assets/shaders/basic.*`, `src/game/NightMazeApp.*` | 2. Potok renderowania, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, błędy sterownika, wczytywanie na żywo, shadery `assets/shaders/basic.*` linia po linii |
+| [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | `src/gfx/Buffer.*`, `src/gfx/VertexArray.*`, `src/game/NightMazeApp.*` | 2. Dane wierzchołków, VBO, VAO i jego stan, układ przeplatany (krok i przesunięcie), EBO, `glDrawArrays` a `glDrawElements`, dane i konfiguracja trójkąta w `NightMazeApp` |
 | [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui, podpięcie nakładki w `main.cpp`, jak dodać nowy panel |
 
 ### Biblioteki (`libraries/`)
@@ -63,13 +63,13 @@ Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materia�
 | 8 | [`modules/core/main-loop.md`](modules/core/main-loop.md) | Pętla główna i stały krok czasowy |
 | 9 | [`modules/core/input.md`](modules/core/input.md) | Klawiatura, mysz i ich blokada |
 | 10 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | Wykrywanie błędów OpenGL |
-| 11 | [`modules/core/paths.md`](modules/core/paths.md) | Jak program znajdzie pliki z `assets/` niezależnie od katalogu roboczego. Na dziś sam mechanizm, bez użytkownika w kodzie |
+| 11 | [`modules/core/paths.md`](modules/core/paths.md) | Jak program znajduje pliki z `assets/` niezależnie od katalogu roboczego i skąd ten katalog bierze się obok programu |
 | 12 | [`libraries/imgui.md`](libraries/imgui.md) | Jak działa biblioteka paneli |
 | 13 | [`modules/debug-ui.md`](modules/debug-ui.md) | Jak panele są wpięte w mój projekt i jak dodać własny |
 | 14 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera (M1). Na dziś sama biblioteka, bez kodu w projekcie |
-| 15 | [`modules/gfx/README.md`](modules/gfx/README.md) | Temat 2: dlaczego obiekty OpenGL są zamknięte w klasach, RAII i przenoszenie zamiast kopiowania |
-| 16 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | Programowalny potok, GLSL i klasa `Shader`. Na dziś sama klasa, bez plików shaderów i bez rysowania |
-| 17 | [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | Skąd shader wierzchołków bierze dane: bufory, atrybuty, VAO. Na dziś same klasy, bez rysowania |
+| 15 | [`modules/gfx/README.md`](modules/gfx/README.md) | Temat 2: dlaczego obiekty OpenGL są zamknięte w klasach, RAII i przenoszenie zamiast kopiowania, droga klatki od danych do pikseli |
+| 16 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | Programowalny potok, GLSL, klasa `Shader` i shadery `basic.vert` oraz `basic.frag` |
+| 17 | [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | Skąd shader wierzchołków bierze dane: bufory, atrybuty, VAO, dane trójkąta. Po tym kroku cały kod rysujący trójkąt jest wyjaśniony |
 | 18 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
 
 ## Jak się uczyć z dokumentu modułu
