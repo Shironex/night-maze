@@ -21,8 +21,11 @@ flowchart TD
     S["while (!m_window.shouldClose())"] --> P["m_window.pollEvents()"]
     P --> I["m_input.update()"]
     I --> E{"wasKeyPressed(GLFW_KEY_ESCAPE)?"}
-    E -->|tak| C["m_window.requestClose()"]
+    E -->|tak| K{"m_input.isCursorCaptured()?"}
+    K -->|tak| X["m_input.setCursorCaptured(false)"]
+    K -->|nie| C["m_window.requestClose()"]
     E -->|nie| T["m_time.beginFrame()"]
+    X --> T
     C --> T
     T --> Q{"m_time.consumeFixedStep()?"}
     Q -->|"tak: w akumulatorze jest pełny krok"| U["onUpdate(Time::FIXED_DT)"]
@@ -112,8 +115,14 @@ void Application::run() {
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();
+        // Escape first gives a captured cursor back, and closes the window only when
+        // the cursor is not captured.
         if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE)) {
-            m_window.requestClose();
+            if (m_input.isCursorCaptured()) {
+                m_input.setCursorCaptured(false);
+            } else {
+                m_window.requestClose();
+            }
         }
 
         // Simulation: as many fixed steps as fit into the time that has passed.
@@ -134,9 +143,10 @@ void Application::run() {
 | `m_time.reset();` | Jedyna linia przed pętlą, wykonuje się raz. Zegar zaczyna mierzyć dopiero tutaj, więc pierwsza klatka nie zawiera czasu startu programu (sekcja 5.4) |
 | `while (!m_window.shouldClose())` | Pętla trwa, dopóki nikt nie poprosił o zamknięcie okna: ani system (krzyżyk), ani `requestClose()` |
 | `m_window.pollEvents();` | Najpierw zdarzenia, bo od nich zależy stan klawiszy czytany w następnej linii |
-| `m_input.update();` | Migawka klawiatury, dokładnie raz na obrót pętli ([`input.md`](input.md)) |
-| `if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE))` | Escape zamyka program. Sprawdzenie stoi **przed** pętlą kroków, czyli wykonuje się raz na klatkę. Gdy klawiatura jest zablokowana (ImGui używa jej samo), `wasKeyPressed` zwraca `false` i Escape nie zamyka programu ([`input.md`](input.md), sekcja 5.6) |
-| `m_window.requestClose();` | Tylko ustawia flagę. Bieżąca klatka wykona się do końca, a pętla zakończy się przy następnym sprawdzeniu warunku |
+| `m_input.update();` | Migawka klawiatury i myszy, dokładnie raz na obrót pętli ([`input.md`](input.md)) |
+| `if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE))` | Obsługa Escape. Sprawdzenie stoi **przed** pętlą kroków, czyli wykonuje się raz na klatkę. Gdy klawiatura jest zablokowana (ImGui używa jej samo), `wasKeyPressed` zwraca `false` i Escape nie robi nic ([`input.md`](input.md), sekcja 5.6) |
+| `if (m_input.isCursorCaptured()) { m_input.setCursorCaptured(false); }` | Jeśli kursor jest przechwycony, Escape tylko go zwalnia i program działa dalej. Dziś nikt nie przechwytuje kursora, więc ta gałąź się nie wykonuje ([`input.md`](input.md), sekcje 5.7 i 5.9) |
+| `else { m_window.requestClose(); }` | Kursor nie jest przechwycony, więc Escape zamyka program. Tylko ustawia flagę. Bieżąca klatka wykona się do końca, a pętla zakończy się przy następnym sprawdzeniu warunku |
 | `m_time.beginFrame();` | Pomiar czasu od poprzedniej klatki i dopisanie go do akumulatora |
 | `while (m_time.consumeFixedStep()) { onUpdate(Time::FIXED_DT); }` | Od zera do 30 kroków symulacji. Argumentem jest zawsze ta sama stała, nigdy czas zmierzony |
 | `onRender(m_time.alpha());` | Jedno rysowanie na klatkę, z informacją, jak daleko jesteśmy między krokami |

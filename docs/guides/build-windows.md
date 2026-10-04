@@ -379,6 +379,8 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 - [ ] Esc zamyka program, kod wyjścia 0
 - [ ] podczas wpisywania wartości w polu `Clear color` (Ctrl i kliknięcie) Esc anuluje tylko
   edycję i nie zamyka programu, a `~` nie chowa paneli
+- [ ] kursor myszy jest cały czas widoczny, a Esc zamyka program jednym naciśnięciem (kursor
+  nie jest jeszcze nigdzie przechwytywany, więc gałąź zwalniania kursora się nie wykonuje)
 - [ ] krzyżyk okna zamyka program bez błędów w konsoli
 - [ ] docking: panel "Renderer" daje się przeciągnąć i zadokować do krawędzi okna, środek
       pozostaje przezroczysty

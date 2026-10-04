@@ -3,7 +3,7 @@
 Kamień milowy: M0. Temat wykładu: 1 (Pierwszy program OpenGL).
 Kod: [`src/core/`](../../../src/core/), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), [`src/main.cpp`](../../../src/main.cpp).
 
-Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, kontekst OpenGL (context) związany z tym oknem oraz pętlę, która co klatkę odbiera zdarzenia, przesuwa symulację i rysuje obraz. Moduł `core` dostarcza dokładnie to i nic więcej: klasę `Window` (okno GLFW z kontekstem OpenGL 4.1 Core i funkcjami załadowanymi przez GLAD), klasę `Application` (pętla główna ze stałym krokiem symulacji), `Input` (stan klawiatury), `Time` (zegar klatki), `Log` (komunikaty na konsolę) i makro `GL_CHECK` (wykrywanie błędów OpenGL w buildzie Debug). To jest realizacja tematu 1 wykładu, "Pierwszy program OpenGL": po M0 program otwiera okno, czyści je kolorem nocnego nieba i pokazuje FPS. Wszystkie późniejsze moduły (`gfx`, `renderer`, `scene`, `game`) stoją na tej warstwie, a ona sama nie wie o żadnym z nich.
+Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, kontekst OpenGL (context) związany z tym oknem oraz pętlę, która co klatkę odbiera zdarzenia, przesuwa symulację i rysuje obraz. Moduł `core` dostarcza dokładnie to i nic więcej: klasę `Window` (okno GLFW z kontekstem OpenGL 4.1 Core i funkcjami załadowanymi przez GLAD), klasę `Application` (pętla główna ze stałym krokiem symulacji), `Input` (stan klawiatury i myszy), `Time` (zegar klatki), `Log` (komunikaty na konsolę) i makro `GL_CHECK` (wykrywanie błędów OpenGL w buildzie Debug). To jest realizacja tematu 1 wykładu, "Pierwszy program OpenGL": po M0 program otwiera okno, czyści je kolorem nocnego nieba i pokazuje FPS. Wszystkie późniejsze moduły (`gfx`, `renderer`, `scene`, `game`) stoją na tej warstwie, a ona sama nie wie o żadnym z nich.
 
 Moduł jest opisany w czterech dokumentach tematycznych. Ten plik jest ich wspólnym wstępem: pokazuje, jak części pasują do siebie, opisuje klatkę jako całość i to, jak program dziedziczy po `core::Application`.
 
@@ -13,7 +13,7 @@ Moduł jest opisany w czterech dokumentach tematycznych. Ten plik jest ich wspó
 |---|---|---|
 | [`window-context.md`](window-context.md) | okno, inicjalizacja GLFW, hinty kontekstu, ładowanie GLAD, vsync, rozmiar okna a rozmiar framebuffera, logowanie | `Window`, `Log` |
 | [`main-loop.md`](main-loop.md) | pętla główna, zegar klatki, stały krok czasowy z akumulatorem, ograniczenie 0,25 s, `alpha`, uśredniony FPS | `Application`, `Time` |
-| [`input.md`](input.md) | klawiatura: odpytywanie, stan ciągły i zbocze, `KEY_COUNT`, blokada klawiatury na czas pracy z panelem | `Input` |
+| [`input.md`](input.md) | klawiatura i mysz: odpytywanie, stan ciągły i zbocze, `KEY_COUNT`, przesunięcie myszy, przechwycenie kursora, blokada klawiatury i myszy na czas pracy z panelem | `Input` |
 | [`gl-check.md`](gl-check.md) | makro `GL_CHECK`, model błędów `glGetError`, różnica Debug i Release | `GlCheck` |
 
 Każdy z czterech dokumentów jest samodzielną jednostką nauki i ma te same dziesięć sekcji: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
@@ -28,7 +28,7 @@ Proponowana kolejność czytania: ten plik, potem `window-context.md`, `main-loo
 | [`src/core/Log.hpp`](../../../src/core/Log.hpp), [`.cpp`](../../../src/core/Log.cpp) | `logInfo`, `logWarn`, `logError` | [`window-context.md`](window-context.md), sekcja 5.5 |
 | [`src/core/Application.hpp`](../../../src/core/Application.hpp), [`.cpp`](../../../src/core/Application.cpp) | klasa bazowa programu: posiada `Window`, `Input`, `Time`, prowadzi pętlę | [`main-loop.md`](main-loop.md), dziedziczenie w tym pliku (sekcja 6) |
 | [`src/core/Time.hpp`](../../../src/core/Time.hpp), [`.cpp`](../../../src/core/Time.cpp) | czas klatki, akumulator stałego kroku, uśredniony FPS | [`main-loop.md`](main-loop.md) |
-| [`src/core/Input.hpp`](../../../src/core/Input.hpp), [`.cpp`](../../../src/core/Input.cpp) | migawka stanu klawiatury, `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked` | [`input.md`](input.md) |
+| [`src/core/Input.hpp`](../../../src/core/Input.hpp), [`.cpp`](../../../src/core/Input.cpp) | migawka stanu klawiatury i myszy: `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`, `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setMouseBlocked`, `setCursorCaptured` | [`input.md`](input.md) |
 | [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp), [`.cpp`](../../../src/core/GlCheck.cpp) | makro `GL_CHECK` i funkcja `checkGlErrors` | [`gl-check.md`](gl-check.md) |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`, w M0 ustawia viewport i czyści ekran | ten plik (sekcja 6), wywołania OpenGL klatki w [`window-context.md`](window-context.md), sekcja 3.2 |
 | [`src/main.cpp`](../../../src/main.cpp) | klasa `DebugNightMazeApp` (gra plus nakładka debug) i `main`: tworzy aplikację, woła `run()`, łapie wyjątki | ten plik (sekcje 5 i 6), nakładka w [`../debug-ui.md`](../debug-ui.md) |
@@ -56,7 +56,7 @@ Trzy rzeczy do zapamiętania:
 2. `game/` zna `core/`, ale nie zna `debug/`.
 3. `debug/` może zależeć od wszystkiego, ale nic nie może zależeć od `debug/`. Jedynym plikiem, który zna jednocześnie `game/` i `debug/`, jest `main.cpp`.
 
-Ta reguła tłumaczy dwie decyzje opisane niżej: dlaczego nakładka debug jest podpinana w `main.cpp` (sekcja 6) i dlaczego `core::Input` dostaje od `main.cpp` neutralną flagę "klawiatura zablokowana", zamiast samemu pytać ImGui ([`input.md`](input.md), sekcja 5.6).
+Ta reguła tłumaczy dwie decyzje opisane niżej: dlaczego nakładka debug jest podpinana w `main.cpp` (sekcja 6) i dlaczego `core::Input` dostaje od `main.cpp` neutralne flagi "klawiatura zablokowana" i "mysz zablokowana", zamiast samemu pytać ImGui ([`input.md`](input.md), sekcje 5.6 i 5.10).
 
 ## 4. Klatka jako całość
 
@@ -75,7 +75,11 @@ sequenceDiagram
     Run->>Win: pollEvents()
     Run->>In: update()
     Run->>In: wasKeyPressed(GLFW_KEY_ESCAPE)
-    Run->>Win: requestClose(), tylko gdy Escape
+    alt Escape i kursor przechwycony
+        Run->>In: setCursorCaptured(false)
+    else Escape i kursor wolny
+        Run->>Win: requestClose()
+    end
     Run->>T: beginFrame()
     loop dopóki consumeFixedStep() zwraca true
         Run->>App: onUpdate(Time::FIXED_DT)
@@ -87,6 +91,8 @@ sequenceDiagram
     App->>UI: draw(time(), window(), clearColor())
     App->>UI: wantsKeyboard()
     App->>In: setKeyboardBlocked(...)
+    App->>UI: wantsMouse()
+    App->>In: setMouseBlocked(...)
     Run->>Win: swapBuffers()
 ```
 
@@ -94,11 +100,12 @@ sequenceDiagram
 |---|---|---|
 | Start zegara, raz przed pętlą (nie należy do obrotu) | `m_time.reset()` | [`main-loop.md`](main-loop.md), sekcja 5.4 |
 | Zdarzenia systemu | `m_window.pollEvents()` | [`window-context.md`](window-context.md) |
-| Migawka klawiatury i Escape | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)` | [`input.md`](input.md) |
+| Migawka klawiatury i myszy, Escape (zwalnia przechwycony kursor albo zamyka program) | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)`, `isCursorCaptured()` | [`input.md`](input.md), sekcja 5.7 |
 | Pomiar czasu, kroki symulacji | `m_time.beginFrame()`, `consumeFixedStep()`, `onUpdate` | [`main-loop.md`](main-loop.md) |
 | Rysowanie gry | `NightMazeApp::onRender`: `glViewport`, `glClearColor`, `glClear` w `GL_CHECK` | [`window-context.md`](window-context.md), [`gl-check.md`](gl-check.md) |
 | Przełącznik paneli i panele | `wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)`, `m_debugUI.draw(...)` | [`../debug-ui.md`](../debug-ui.md) |
 | Blokada klawiatury na następną klatkę | `input().setKeyboardBlocked(m_debugUI.wantsKeyboard())` | [`input.md`](input.md), sekcja 5.6 |
+| Blokada myszy na następną klatkę | `input().setMouseBlocked(m_debugUI.wantsMouse())` | [`input.md`](input.md), sekcja 5.10 |
 | Zamiana buforów | `m_window.swapBuffers()` | [`window-context.md`](window-context.md) |
 
 ## 5. Od `main` do pierwszej klatki
@@ -180,9 +187,12 @@ protected:
         m_debugUI.draw(time(), window(), clearColor());
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
-        // or a widget is active). If so, block the game's keyboard from the next frame
-        // on, so typing does not trigger Escape, the panel toggle or player movement.
+        // or a widget is active) and the mouse (the cursor is over a panel or a widget is
+        // being dragged). Block each device for the game from the next frame on, so typing
+        // does not trigger Escape, the panel toggle or player movement, and working with
+        // a panel does not click or look around in the scene.
         input().setKeyboardBlocked(m_debugUI.wantsKeyboard());
+        input().setMouseBlocked(m_debugUI.wantsMouse());
     }
 
 private:
@@ -197,9 +207,9 @@ private:
 Szczegóły tej klasy, o które można zostać zapytanym:
 
 - `game::NightMazeApp::onRender(alpha);` to wywołanie **z kwalifikacją nazwą klasy**. Wyłącza ono mechanizm wirtualny i woła dokładnie wersję bazową (rysowanie gry). Samo `onRender(alpha)` wywołałoby wirtualnie tę samą funkcję, czyli nieskończoną rekurencję.
-- Kolejność w `onRender`: najpierw gra rysuje scenę, potem panele lądują na wierzchu, a na końcu `main.cpp` przekazuje do `core::Input` informację, czy ImGui używa klawiatury.
+- Kolejność w `onRender`: najpierw gra rysuje scenę, potem panele lądują na wierzchu, a na końcu `main.cpp` przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy.
 - Przełącznik paneli to klawisz `~` (na lewo od `1`, w GLFW `GLFW_KEY_GRAVE_ACCENT`). Sprawdzam go przez `wasKeyPressed` w `onRender`, czyli dokładnie raz na klatkę (dlaczego nie w `onUpdate`: [`input.md`](input.md), sekcja 5.5).
-- Ostatnia linia `onRender` to całe powiązanie klawiatury gry z ImGui. `core/` nie wie, kto i dlaczego blokuje klawiaturę, a `debug/` nie wie, co gra zrobi z tą informacją. Pełny opis: [`input.md`](input.md), sekcja 5.6.
+- Dwie ostatnie linie `onRender` to całe powiązanie klawiatury i myszy gry z ImGui. `core/` nie wie, kto i dlaczego blokuje wejście, a `debug/` nie wie, co gra zrobi z tą informacją. Pełny opis: [`input.md`](input.md), sekcje 5.6 i 5.10.
 - `final` zabrania dalszego dziedziczenia po tej klasie. Anonimowa przestrzeń nazw sprawia, że klasa jest widoczna tylko w `main.cpp`.
 - Klasa nie ma własnego konstruktora. Kompilator generuje domyślny: buduje część bazową (`NightMazeApp`), a potem pole `m_debugUI` z inicjalizatora przy deklaracji, `{window()}`.
 - `clearColor()` to chroniony akcesor w `NightMazeApp` zwracający referencję do prywatnego `m_clearColor`. Gra udostępnia swój stan klasie pochodnej, nie wiedząc, kto i po co go użyje.
@@ -272,7 +282,7 @@ Pytania z odpowiedziami są w sekcji 9 każdego dokumentu tematycznego. Razem tw
 |---|---|
 | [`window-context.md`](window-context.md), sekcja 9 | kontekst i `glfwMakeContextCurrent`, `gladLoadGL(glfwGetProcAddress)`, hinty, ręczne `glfwTerminate()` przed `throw`, `reinterpret_cast` przy `glGetString`, rozmiar okna a framebuffera, vsync, `std::flush` w logach |
 | [`main-loop.md`](main-loop.md), sekcja 9 | kolejność kroków pętli, stały krok z akumulatorem, spirala śmierci, `alpha()`, `std::chrono::duration<double>`, uśredniony FPS, zero kroków w klatce |
-| [`input.md`](input.md), sekcja 9 | `KEY_COUNT` i `static_assert`, `isKeyDown` a `wasKeyPressed`, zakaz `wasKeyPressed` w `onUpdate`, blokada klawiatury i jej opóźnienie, brak fałszywego zbocza po odblokowaniu |
+| [`input.md`](input.md), sekcja 9 | `KEY_COUNT` i `static_assert`, `isKeyDown` a `wasKeyPressed`, zakaz `wasKeyPressed` w `onUpdate`, blokada klawiatury i jej opóźnienie, brak fałszywego zbocza po odblokowaniu, odpytywanie myszy, przesunięcie i problem pierwszego odczytu, tryby kursora, surowy ruch myszy, Escape a przechwycony kursor |
 | [`gl-check.md`](gl-check.md), sekcja 9 | działanie `GL_CHECK`, dlaczego makro, pętla `glGetError`, Debug a Release, błąd przypisany nie temu wywołaniu |
 | ten plik, niżej | kolejność pól i niszczenia, miejsce `DebugUI` w architekturze |
 
@@ -282,7 +292,7 @@ Dwa pytania dotyczące treści tego pliku:
    Pola powstają w kolejności deklaracji, a `Input` potrzebuje uchwytu z już istniejącego `Window`. Niszczenie idzie odwrotnie, więc okno i kontekst znikają na końcu, po wszystkim, co z nich korzysta (w tym po `DebugUI`, które jest polem klasy pochodnej w `main.cpp`, a pola giną przed klasami bazowymi).
 
 2. **Dlaczego `DebugUI` jest polem klasy w `main.cpp`, a nie w `game::NightMazeApp`?**
-   Bo `game/` nie może zależeć od `debug/` (warstwy z PRD). `main.cpp` to jedyne miejsce znające obie warstwy: `DebugNightMazeApp` dziedziczy po grze, w `onRender` woła najpierw `game::NightMazeApp::onRender(alpha)`, a potem rysuje panele i przekazuje do `core::Input` flagę blokady klawiatury.
+   Bo `game/` nie może zależeć od `debug/` (warstwy z PRD). `main.cpp` to jedyne miejsce znające obie warstwy: `DebugNightMazeApp` dziedziczy po grze, w `onRender` woła najpierw `game::NightMazeApp::onRender(alpha)`, a potem rysuje panele i przekazuje do `core::Input` flagi blokady klawiatury i myszy.
 
 ## 10. Źródła
 

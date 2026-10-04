@@ -352,17 +352,21 @@ Ważne szczegóły:
           m_debugUI.draw(time(), window(), clearColor());
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
-          // or a widget is active). If so, block the game's keyboard from the next frame
-          // on, so typing does not trigger Escape, the panel toggle or player movement.
+          // or a widget is active) and the mouse (the cursor is over a panel or a widget is
+          // being dragged). Block each device for the game from the next frame on, so typing
+          // does not trigger Escape, the panel toggle or player movement, and working with
+          // a panel does not click or look around in the scene.
           input().setKeyboardBlocked(m_debugUI.wantsKeyboard());
+          input().setMouseBlocked(m_debugUI.wantsMouse());
       }
   ```
 
   Najpierw gra rysuje swoją klatkę (na razie `glViewport`, `glClearColor`, `glClear` w
   [`NightMazeApp::onRender`](../../src/game/NightMazeApp.cpp)), a dopiero potem ImGui rysuje
   na tym, co już jest w buforze, więc panele są na wierzchu sceny. Zamiana buforów
-  (`swapBuffers`) następuje później, w `Application::run`. Ostatnia linia, `setKeyboardBlocked`,
-  nie rysuje niczego: przekazuje grze informację z ImGui o klawiaturze (sekcja 3.8).
+  (`swapBuffers`) następuje później, w `Application::run`. Dwie ostatnie linie,
+  `setKeyboardBlocked` i `setMouseBlocked`, nie rysują niczego: przekazują grze informację z
+  ImGui o klawiaturze i o myszy (sekcja 3.8).
 - Backend renderera na czas rysowania zmienia stan OpenGL (blending, scissor test, wyłączony
   test głębi), a po zakończeniu przywraca poprzedni. Od M1, gdy pojawi się scena 3D, warto o
   tym pamiętać przy szukaniu błędów stanu.
@@ -458,7 +462,7 @@ chce dane wejście dla siebie, przez dwa pola `ImGuiIO`:
 Zasada: do ImGui wejście przekazujemy zawsze (robi to backend), a **gra powinna ignorować
 wejście, gdy odpowiednia flaga jest ustawiona**.
 
-**Klawiatura: zrobione.** `core::Input` czyta klawisze bezpośrednio przez `glfwGetKey`, z
+**Klawiatura.** `core::Input` czyta klawisze bezpośrednio przez `glfwGetKey`, z
 pominięciem ImGui, więc sam z siebie nie wie, że ktoś właśnie pisze w panelu. Flagę
 przekazuje mu `main.cpp`. W [`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp) jest
 funkcja, która ją odczytuje:
@@ -482,19 +486,33 @@ ImGui: dostaje neutralną flagę "klawiatura zablokowana". Pełny opis, razem z 
 blokady i tym, dlaczego po jej zdjęciu nie ma fałszywego "właśnie wciśnięty", jest w
 [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6.
 
-**Mysz: do zrobienia w M1.** Flagi `WantCaptureMouse` kod jeszcze nie sprawdza. W M0 to nie
-przeszkadza, bo gra nie reaguje na mysz. Kamera FPS zacznie jej używać i bez sprawdzania
-flagi przeciąganie suwaka w panelu obracałoby jednocześnie kamerę. Wzorzec będzie taki:
+**Mysz.** Mechanizm jest ten sam. `core::Input` czyta mysz bezpośrednio przez
+`glfwGetMouseButton` i `glfwGetCursorPos`, a flagę dostaje od `main.cpp`. W `DebugUI.cpp`:
 
 ```cpp
-// szkic na M1, tego kodu jeszcze nie ma w projekcie
-if (!ImGui::GetIO().WantCaptureMouse) {
-    // obrót kamery myszą
+bool DebugUI::wantsMouse() const {
+    return ImGui::GetIO().WantCaptureMouse;
 }
 ```
 
+a w `DebugNightMazeApp::onRender`, zaraz po linii blokady klawiatury:
+
+```cpp
+input().setMouseBlocked(m_debugUI.wantsMouse());
+```
+
+Dopóki blokada myszy jest ustawiona, `Input::isMouseButtonDown` i
+`Input::wasMouseButtonPressed` zwracają `false`, a `Input::mouseDeltaX` i
+`Input::mouseDeltaY` zwracają 0. Przezroczysty środek obszaru dokowania
+(`PassthruCentralNode`, sekcja 3.6) nie liczy się jako okno ImGui pod kursorem, więc nad
+sceną `WantCaptureMouse` jest fałszywe i mysz należy do gry. Na dziś gra nie pyta jeszcze o
+mysz, więc blokada nie ma widocznego skutku. Pierwszym odbiorcą będzie kamera w M1: bez
+blokady przeciąganie suwaka w panelu obracałoby jednocześnie kamerę. Opis po stronie `core`:
+[`../modules/core/input.md`](../modules/core/input.md), sekcja 5.10.
+
 Flagi są aktualizowane w `ImGui::NewFrame()`, więc odczytane wcześniej w tej samej klatce
-opisują stan z klatki poprzedniej. Dlatego `wantsKeyboard()` wołamy po `draw`, a nie przed.
+opisują stan z klatki poprzedniej. Dlatego `wantsKeyboard()` i `wantsMouse()` wołamy po
+`draw`, a nie przed.
 Samo `NewFrame` liczy flagę klawiatury na podstawie widżetu, który był aktywny po poprzedniej
 klatce, więc kliknięcie w pole jest widoczne we fladze klatkę później. W praktyce to
 wystarcza: człowiek nie zdąży nacisnąć klawisza w ciągu dwóch klatek od kliknięcia.
@@ -549,8 +567,9 @@ w `CMakeLists.txt`. Pełna instrukcja krok po kroku jest w
 10. **Rozmyty interfejs na Retinie.** Gdyby panele były nieostre lub w złej skali, trzeba
     sprawdzić, czy `ImGui_ImplGlfw_NewFrame` jest wołane co klatkę: to ono przekazuje skalę
     framebuffera.
-11. **Brak ochrony przed `WantCaptureMouse`.** Klawiatura jest już rozdzielona (sekcja 3.8),
-    mysz jeszcze nie. Stanie się to realnym problemem od M1.
+11. **Pytanie o mysz z pominięciem `core::Input`.** Blokada `WantCaptureMouse` działa tylko
+    dla pytań zadanych przez `input()` (sekcja 3.8). Kod gry wołający bezpośrednio
+    `glfwGetCursorPos` albo `glfwGetMouseButton` widziałby też mysz używaną przez panel.
 12. **Klawisz gry "nie działa" przy aktywnym widżecie.** Gdy trwa edycja albo przeciąganie w
     panelu, gra nie widzi klawiatury (Esc, `~`). To skutek `WantCaptureKeyboard`, nie błąd.
 
@@ -591,7 +610,9 @@ w `CMakeLists.txt`. Pełna instrukcja krok po kroku jest w
    ImGui zgłasza tą flagą, że samo używa klawiatury (aktywny jest dowolny widżet albo okno
    modalne). `DebugUI::wantsKeyboard()` ją zwraca, a `main.cpp` po `draw` przekazuje do
    `input().setKeyboardBlocked(...)`. Przy blokadzie gra nie widzi żadnego klawisza, więc Esc
-   w polu panelu nie zamyka programu. Odpowiednik dla myszy, `WantCaptureMouse`, czeka na M1.
+   w polu panelu nie zamyka programu. Odpowiednik dla myszy działa tak samo:
+   `WantCaptureMouse` (kursor nad panelem albo trwające przeciąganie) wraca przez
+   `DebugUI::wantsMouse()` i trafia do `input().setMouseBlocked(...)`.
 
 ## 6. Oficjalna dokumentacja
 

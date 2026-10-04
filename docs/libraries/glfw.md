@@ -142,7 +142,7 @@ ręcznie, sposobem działającym w 3.24.
 ## 3. Najważniejsze API z przykładami z naszego kodu
 
 Wszystkie wywołania GLFW związane z oknem są w
-[`src/core/Window.cpp`](../../src/core/Window.cpp), a klawiatura w
+[`src/core/Window.cpp`](../../src/core/Window.cpp), a klawiatura i mysz w
 [`src/core/Input.cpp`](../../src/core/Input.cpp).
 
 ### 3.1. Callback błędów: `glfwSetErrorCallback`
@@ -305,7 +305,7 @@ To dwie różne czynności, obie raz na klatkę, i łatwo je pomylić.
 | | `glfwPollEvents()` | `glfwSwapBuffers(window)` |
 |---|---|---|
 | Kierunek | system operacyjny do programu | program do ekranu |
-| Co robi | odbiera oczekujące zdarzenia (klawisze, mysz, zmiana rozmiaru, przycisk zamknięcia), uruchamia callbacki, aktualizuje stan klawiszy | zamienia bufor tylny (back buffer), po którym rysowaliśmy, z przednim (front buffer), który widać |
+| Co robi | odbiera oczekujące zdarzenia (klawisze, mysz, zmiana rozmiaru, przycisk zamknięcia), uruchamia callbacki, aktualizuje stan klawiszy, przycisków myszy i pozycję kursora | zamienia bufor tylny (back buffer), po którym rysowaliśmy, z przednim (front buffer), który widać |
 | Bez tego | okno "nie odpowiada", `glfwGetKey` zwraca stare dane, okna nie da się zamknąć | na ekranie nigdy nic się nie pojawi |
 | Blokuje? | nie, wraca od razu | tak, przy vsync czeka na odświeżenie ekranu |
 
@@ -320,8 +320,14 @@ void Application::run() {
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();
+        // Escape first gives a captured cursor back, and closes the window only when
+        // the cursor is not captured.
         if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE)) {
-            m_window.requestClose();
+            if (m_input.isCursorCaptured()) {
+                m_input.setCursorCaptured(false);
+            } else {
+                m_window.requestClose();
+            }
         }
 
         // Simulation: as many fixed steps as fit into the time that has passed.
@@ -397,17 +403,20 @@ GLFW oferuje dwa sposoby czytania klawiatury:
 - **odpytywanie (polling)** (`glfwGetKey`): sami pytamy, czy klawisz jest teraz wciśnięty.
 
 `core::Input` używa odpytywania. Cały mechanizm to kilka linii w
-[`src/core/Input.cpp`](../../src/core/Input.cpp):
+[`src/core/Input.cpp`](../../src/core/Input.cpp). Początek `Input::update` (dalsza część
+funkcji dotyczy myszy, sekcja 3.10):
 
 ```cpp
-void Input::update() {
     m_previous = m_current;
     // GLFW key codes start at GLFW_KEY_SPACE (32), lower values are not valid keys.
     for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; ++key) {
         m_current[key] = glfwGetKey(m_window, key) == GLFW_PRESS;
     }
-}
+```
 
+i dwa pytania:
+
+```cpp
 bool Input::isKeyDown(int key) const {
     return !m_keyboardBlocked && isValidKey(key) && m_current[key];
 }
@@ -447,7 +456,85 @@ Zgodność tej liczby z GLFW sprawdza kompilator w `Input.cpp`:
 Jeżeli kiedyś zmienimy wersję GLFW i `GLFW_KEY_LAST` się zmieni, build się nie skompiluje,
 zamiast po cichu czytać poza tablicą.
 
-### 3.10. `GLFW_INCLUDE_NONE`
+### 3.10. Mysz przez odpytywanie: przyciski, kursor i tryb kursora
+
+Mysz czytamy tak samo jak klawiaturę: przez odpytywanie, bez callbacków. Callbacki pozycji
+kursora i przycisków myszy są zajęte przez backend ImGui (pułapka 9), a odpytywanie niczego
+nie podmienia. Funkcje GLFW, których używamy:
+
+| Funkcja | Gdzie | Co robi |
+|---|---|---|
+| `glfwGetMouseButton(window, button)` | `Input::update` | Zwraca `GLFW_PRESS` albo `GLFW_RELEASE` dla przycisku, stan z ostatniego `glfwPollEvents`. Przyciski mają numery od `GLFW_MOUSE_BUTTON_1` (0) do `GLFW_MOUSE_BUTTON_LAST` (7). `GLFW_MOUSE_BUTTON_LEFT`, `RIGHT`, `MIDDLE` to numery 0, 1, 2 |
+| `glfwGetCursorPos(window, &x, &y)` | `Input::update` | Wpisuje pozycję kursora jako `double`, we współrzędnych ekranu (sekcja 3.8), względem lewego górnego rogu obszaru roboczego okna. Oś y rośnie w dół |
+| `glfwSetInputMode(window, GLFW_CURSOR, tryb)` | `Input::setCursorCaptured` | Ustawia tryb kursora (tabela niżej) |
+| `glfwRawMouseMotionSupported()` | `Input::setCursorCaptured` | Zwraca `GLFW_TRUE`, jeśli platforma obsługuje surowy ruch myszy |
+| `glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, wartość)` | `Input::setCursorCaptured` | Włącza albo wyłącza surowy ruch myszy (raw mouse motion) |
+
+Odczyt w `Input::update`, zaraz po klawiszach:
+
+```cpp
+    m_mousePrevious = m_mouseCurrent;
+    for (int button = GLFW_MOUSE_BUTTON_1; button <= GLFW_MOUSE_BUTTON_LAST; ++button) {
+        m_mouseCurrent[button] = glfwGetMouseButton(m_window, button) == GLFW_PRESS;
+    }
+
+    // Cursor position in screen coordinates, relative to the top left corner of the window.
+    double cursorX = 0.0;
+    double cursorY = 0.0;
+    glfwGetCursorPos(m_window, &cursorX, &cursorY);
+```
+
+GLFW podaje **pozycję** kursora. Kamerze potrzebne jest **przesunięcie** od poprzedniej klatki,
+więc `Input` samo odejmuje pozycję zapamiętaną klatkę wcześniej i udostępnia wynik jako
+`mouseDeltaX()` i `mouseDeltaY()`.
+
+Tryby kursora (`GLFW_CURSOR`):
+
+| Tryb | Zachowanie |
+|---|---|
+| `GLFW_CURSOR_NORMAL` | zwykły, widoczny kursor. Tryb domyślny |
+| `GLFW_CURSOR_HIDDEN` | kursor niewidoczny nad oknem, ale dalej ograniczony krawędziami ekranu. Nie używamy |
+| `GLFW_CURSOR_DISABLED` | kursor schowany i zatrzymany w oknie. `glfwGetCursorPos` zwraca wtedy pozycję wirtualną, która nie jest ograniczona ekranem. Tryb do sterowania kamerą myszą |
+
+Przełączanie trybu jest w jednym miejscu, `Input::setCursorCaptured`:
+
+```cpp
+    // GLFW_CURSOR_DISABLED hides the cursor and gives unlimited virtual movement,
+    // GLFW_CURSOR_NORMAL is the ordinary visible cursor.
+    glfwSetInputMode(m_window, GLFW_CURSOR, captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    // Raw motion skips the system's pointer acceleration, which suits mouse look.
+    // Not every platform has it, and it only has an effect while the cursor is disabled.
+    if (glfwRawMouseMotionSupported() == GLFW_TRUE) {
+        glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, captured ? GLFW_TRUE : GLFW_FALSE);
+    }
+```
+
+Jak to czytać:
+
+- **Surowy ruch myszy** to dane prosto z urządzenia, bez przyspieszenia i skalowania, które
+  system nakłada na zwykły kursor. Ten sam ruch ręki daje wtedy zawsze ten sam obrót kamery.
+- Surowy ruch działa tylko w trybie `GLFW_CURSOR_DISABLED` i nie na każdej platformie. W GLFW
+  3.4 `glfwRawMouseMotionSupported()` zwraca prawdę na Windowsie, a fałsz na macOS. Dlatego
+  pytamy przed włączeniem: `glfwSetInputMode` z `GLFW_RAW_MOUSE_MOTION` na platformie bez
+  wsparcia zgłasza błąd GLFW.
+- Zmiana trybu kursora może sprawić, że pozycja zwracana przez `glfwGetCursorPos` odskoczy
+  (przejście między pozycją prawdziwą a wirtualną). `Input` po każdej zmianie trybu zgłasza w
+  następnej klatce zerowe przesunięcie.
+- Na dziś `setCursorCaptured(true)` nie jest nigdzie wołane, więc program działa cały czas w
+  trybie `GLFW_CURSOR_NORMAL`. Jedyne wywołanie to `setCursorCaptured(false)` po Escape w
+  `Application::run`. Przechwytywać kursor będzie kamera w M1.
+
+`Input.hpp` zna liczbę przycisków tak samo jak liczbę klawiszy: przez gołą liczbę 7 sprawdzaną
+w `Input.cpp`:
+
+```cpp
+    static_assert(MOUSE_BUTTON_COUNT == GLFW_MOUSE_BUTTON_LAST + 1,
+                  "MOUSE_BUTTON_COUNT must cover every GLFW mouse button");
+```
+
+Pełny opis: [`../modules/core/input.md`](../modules/core/input.md), sekcje 5.8 do 5.10.
+
+### 3.11. `GLFW_INCLUDE_NONE`
 
 Nagłówek `GLFW/glfw3.h` domyślnie sam dołącza systemowy nagłówek OpenGL (na macOS
 `OpenGL/gl.h`, na Windowsie `GL/gl.h`). My chcemy, żeby deklaracje OpenGL pochodziły wyłącznie
@@ -502,10 +589,19 @@ które oznaczyło całe OpenGL jako przestarzałe.
 9. **Własne callbacki a ImGui.** Backend ImGui instaluje swoje callbacki GLFW. Jeśli kiedyś
    dodamy własne przez `glfwSet...Callback` po utworzeniu `DebugUI`, nadpiszemy callbacki
    ImGui i panele przestaną reagować. Szczegóły w [`imgui.md`](imgui.md). Odpytywanie przez
-   `glfwGetKey` nie ma tego problemu.
+   `glfwGetKey`, `glfwGetMouseButton` i `glfwGetCursorPos` nie ma tego problemu.
 10. **Stary tutorial, stary hint.** Poradniki pisane pod GLFW 3.3 owijają
     `GLFW_OPENGL_FORWARD_COMPAT` w `#ifdef __APPLE__`. U nas hint jest ustawiany zawsze, na
     obu systemach, celowo: żeby Windows zachowywał się tak samo jak macOS.
+11. **Skok pozycji kursora po zmianie trybu.** Po `glfwSetInputMode(..., GLFW_CURSOR, ...)`
+    pozycja z `glfwGetCursorPos` może odskoczyć. Przesunięcie liczone w tej klatce byłoby
+    jednym wielkim szarpnięciem, dlatego `Input` je zeruje (sekcja 3.10).
+12. **Pozycja myszy to nie piksele.** `glfwGetCursorPos` zwraca współrzędne ekranu, czyli
+    jednostki `glfwGetWindowSize`, nie `glfwGetFramebufferSize`. Na Retinie różnią się
+    dwukrotnie (sekcja 3.8).
+13. **`GLFW_RAW_MOUSE_MOTION` bez sprawdzenia wsparcia.** Na platformie bez surowego ruchu
+    (macOS w GLFW 3.4) `glfwSetInputMode` zgłasza błąd przez callback błędów. Najpierw
+    `glfwRawMouseMotionSupported()`.
 
 ## 5. Pytania kontrolne
 
@@ -540,7 +636,14 @@ które oznaczyło całe OpenGL jako przestarzałe.
    Raz na klatkę zapisuje stan wszystkich klawiszy z `glfwGetKey` i pamięta stan z poprzedniej
    klatki. "Właśnie wciśnięty" to: teraz wciśnięty i poprzednio nie.
 
-8. **Po co w `Dependencies.cmake` para `get_target_property` / `set_target_properties` z
+8. **Jak `core::Input` czyta mysz i czym są tryby kursora?**
+   Raz na klatkę pyta `glfwGetMouseButton` o każdy przycisk i `glfwGetCursorPos` o pozycję,
+   a przesunięcie liczy jako różnicę pozycji z dwóch kolejnych klatek. Tryb
+   `GLFW_CURSOR_NORMAL` to zwykły kursor, `GLFW_CURSOR_DISABLED` chowa go i daje wirtualną
+   pozycję bez ograniczeń (sterowanie kamerą). Surowy ruch myszy włączamy tylko po
+   sprawdzeniu `glfwRawMouseMotionSupported()`.
+
+9. **Po co w `Dependencies.cmake` para `get_target_property` / `set_target_properties` z
    `INTERFACE_SYSTEM_INCLUDE_DIRECTORIES`?**
    Oznacza katalog nagłówków GLFW jako systemowy (`-isystem`), żeby cudze nagłówki nie
    generowały ostrzeżeń przy naszych ostrych flagach. Opcja `SYSTEM` w `FetchContent_Declare`

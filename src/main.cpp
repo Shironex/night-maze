@@ -28,9 +28,12 @@ protected:
         m_debugUI.draw(time(), window(), clearColor());
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
-        // or a widget is active). If so, block the game's keyboard from the next frame
-        // on, so typing does not trigger Escape, the panel toggle or player movement.
+        // or a widget is active) and the mouse (the cursor is over a panel or a widget is
+        // being dragged). Block each device for the game from the next frame on, so typing
+        // does not trigger Escape, the panel toggle or player movement, and working with
+        // a panel does not click or look around in the scene.
         input().setKeyboardBlocked(m_debugUI.wantsKeyboard());
+        input().setMouseBlocked(m_debugUI.wantsMouse());
     }
 
 private:

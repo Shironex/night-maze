@@ -10,11 +10,12 @@
 
 namespace core {
 
-/// Owns the window, the keyboard state and the frame clock, and runs the main loop.
+/// Owns the window, the keyboard and mouse state and the frame clock, and runs the main loop.
 ///
 /// A concrete program derives from this class and fills in onUpdate and onRender.
 /// Each frame: poll events, run zero or more fixed updates, render once, swap buffers.
-/// Escape closes the window (unless the keyboard is blocked, see Input).
+/// Escape releases a captured cursor, or closes the window when the cursor is not captured
+/// (unless the keyboard is blocked, see Input).
 class Application {
 public:
     /// Creates the window and the OpenGL context. Throws std::runtime_error on failure.

@@ -36,7 +36,8 @@ flowchart TD
     G -->|nie| J
     J --> K["ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())"]
     K --> M["input().setKeyboardBlocked(m_debugUI.wantsKeyboard())"]
-    M --> L["Application::run: swapBuffers"]
+    M --> N["input().setMouseBlocked(m_debugUI.wantsMouse())"]
+    N --> L["Application::run: swapBuffers"]
 ```
 
 **Docking.** Używam gałęzi `docking` biblioteki (tag przypięty w [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake)). Pozwala ona przyczepiać panele do krawędzi okna i do siebie nawzajem, łączyć je w zakładki i zapamiętać układ. To ważne na obronie: przy kilku panelach chcę jednym ruchem ustawić sobie widok dla danego tematu.
@@ -66,7 +67,7 @@ ImGui_ImplOpenGL3_Init("#version 410");
 | `ImGui_ImplGlfw_InitForOpenGL(handle, true)` | Podłącza backend platformy do mojego okna (o argumencie `true` niżej) |
 | `ImGui_ImplOpenGL3_Init("#version 410")` | Podłącza backend renderera i zapamiętuje wersję GLSL dla jego shaderów |
 
-**Argument `true` w `ImGui_ImplGlfw_InitForOpenGL`.** To parametr `install_callbacks`. Z wartością `true` backend sam rejestruje w GLFW swoje funkcje zwrotne (callbacki): klawiszy, znaków, przycisków myszy, kółka, pozycji kursora, wejścia kursora w okno i fokusu okna. GLFW przechowuje tylko **jeden** callback danego typu na okno, a funkcja `glfwSet...Callback` zwraca poprzednio ustawiony. Backend zapamiętuje te poprzednie i woła je ze swoich callbacków, czyli buduje łańcuch (chaining): moje ewentualne wcześniejsze callbacki nadal by działały. W M0 moduł `core` nie ustawia żadnych callbacków wejścia (`Input` odpytuje `glfwGetKey`), więc nic się nie gryzie. Z wartością `false` musiałbym sam zarejestrować callbacki i ręcznie przekazywać każde zdarzenie do funkcji `ImGui_ImplGlfw_...Callback`.
+**Argument `true` w `ImGui_ImplGlfw_InitForOpenGL`.** To parametr `install_callbacks`. Z wartością `true` backend sam rejestruje w GLFW swoje funkcje zwrotne (callbacki): klawiszy, znaków, przycisków myszy, kółka, pozycji kursora, wejścia kursora w okno i fokusu okna. GLFW przechowuje tylko **jeden** callback danego typu na okno, a funkcja `glfwSet...Callback` zwraca poprzednio ustawiony. Backend zapamiętuje te poprzednie i woła je ze swoich callbacków, czyli buduje łańcuch (chaining): moje ewentualne wcześniejsze callbacki nadal by działały. Moduł `core` nie ustawia żadnych callbacków wejścia (`Input` odpytuje `glfwGetKey`, `glfwGetMouseButton` i `glfwGetCursorPos`), więc nic się nie gryzie. Z wartością `false` musiałbym sam zarejestrować callbacki i ręcznie przekazywać każde zdarzenie do funkcji `ImGui_ImplGlfw_...Callback`.
 
 Obiekty OpenGL backendu (program shaderów, bufory wierzchołków i indeksów, tekstura czcionki) nie powstają w `Init`, tylko leniwie, przy pierwszym `ImGui_ImplOpenGL3_NewFrame()`.
 
@@ -139,9 +140,9 @@ Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera:
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/debug/DebugUI.hpp`](../../src/debug/DebugUI.hpp), [`.cpp`](../../src/debug/DebugUI.cpp) | Klasa `DebugUI`: cykl życia ImGui (RAII), klatka ImGui, dockspace, wywołanie paneli, widoczność, `wantsKeyboard()` |
+| [`src/debug/DebugUI.hpp`](../../src/debug/DebugUI.hpp), [`.cpp`](../../src/debug/DebugUI.cpp) | Klasa `DebugUI`: cykl życia ImGui (RAII), klatka ImGui, dockspace, wywołanie paneli, widoczność, `wantsKeyboard()`, `wantsMouse()` |
 | [`src/debug/panels/RendererPanel.hpp`](../../src/debug/panels/RendererPanel.hpp), [`.cpp`](../../src/debug/panels/RendererPanel.cpp) | Funkcja `drawRendererPanel`: panel "Renderer" |
-| [`src/main.cpp`](../../src/main.cpp) | Klasa `DebugNightMazeApp`: posiada `DebugUI`, obsługuje klawisz `~`, woła `draw` po narysowaniu gry, przekazuje do `core::Input` blokadę klawiatury |
+| [`src/main.cpp`](../../src/main.cpp) | Klasa `DebugNightMazeApp`: posiada `DebugUI`, obsługuje klawisz `~`, woła `draw` po narysowaniu gry, przekazuje do `core::Input` blokadę klawiatury i myszy |
 | [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) | Pobranie ImGui i definicja celu `imgui` (ImGui nie ma własnego CMake) |
 | [`CMakeLists.txt`](../../CMakeLists.txt) | Pliki `src/debug/*` są częścią programu `night_maze`, nie biblioteki `engine` |
 
@@ -151,7 +152,7 @@ Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera:
 flowchart LR
     Main["DebugNightMazeApp (main.cpp)<br/>posiada m_debugUI"] -->|"draw(time(), window(), clearColor())"| UI["debug::DebugUI<br/>cykl życia ImGui, m_visible"]
     Main -->|"dziedziczy, woła onRender gry"| Game["game::NightMazeApp<br/>posiada m_clearColor"]
-    Main -->|"setKeyboardBlocked(wantsKeyboard())"| In["core::Input"]
+    Main -->|"setKeyboardBlocked(wantsKeyboard()), setMouseBlocked(wantsMouse())"| In["core::Input"]
     UI -->|"drawRendererPanel(time, window, clearColor)"| Panel["debug::drawRendererPanel<br/>funkcja bez stanu"]
     Panel -->|"czyta: fps(), frameTimeMs()"| Time["core::Time"]
     Panel -->|"czyta: framebufferSize(), windowSize(), glVersion(), glRenderer()"| Win["core::Window"]
@@ -173,9 +174,12 @@ protected:
         m_debugUI.draw(time(), window(), clearColor());
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
-        // or a widget is active). If so, block the game's keyboard from the next frame
-        // on, so typing does not trigger Escape, the panel toggle or player movement.
+        // or a widget is active) and the mouse (the cursor is over a panel or a widget is
+        // being dragged). Block each device for the game from the next frame on, so typing
+        // does not trigger Escape, the panel toggle or player movement, and working with
+        // a panel does not click or look around in the scene.
         input().setKeyboardBlocked(m_debugUI.wantsKeyboard());
+        input().setMouseBlocked(m_debugUI.wantsMouse());
     }
 
 private:
@@ -183,7 +187,7 @@ private:
 };
 ```
 
-`main.cpp` to jedyny plik, który dołącza zarówno `game/NightMazeApp.hpp`, jak i `debug/DebugUI.hpp`. Klasa dziedziczy po grze, nadpisuje `onRender`, woła w nim wersję gry (`game::NightMazeApp::onRender(alpha)`, z nazwą klasy, żeby ominąć mechanizm wirtualny i nie wpaść w rekurencję), potem dorysowuje panele, a na końcu przekazuje do `core::Input` informację, czy ImGui używa klawiatury (sekcja 5.6). Gra ze swojej strony udostępnia tylko chroniony akcesor `clearColor()` i nie wie, kto z niego skorzysta. Kierunek zależności wygląda więc tak: `main.cpp` zna `game` i `debug`, `debug` zna `core`, `game` zna `core`, a `game` i `debug` nie znają się nawzajem.
+`main.cpp` to jedyny plik, który dołącza zarówno `game/NightMazeApp.hpp`, jak i `debug/DebugUI.hpp`. Klasa dziedziczy po grze, nadpisuje `onRender`, woła w nim wersję gry (`game::NightMazeApp::onRender(alpha)`, z nazwą klasy, żeby ominąć mechanizm wirtualny i nie wpaść w rekurencję), potem dorysowuje panele, a na końcu przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy (sekcja 5.6). Gra ze swojej strony udostępnia tylko chroniony akcesor `clearColor()` i nie wie, kto z niego skorzysta. Kierunek zależności wygląda więc tak: `main.cpp` zna `game` i `debug`, `debug` zna `core`, `game` zna `core`, a `game` i `debug` nie znają się nawzajem.
 
 Trzy decyzje, które trzeba umieć uzasadnić:
 
@@ -226,12 +230,13 @@ void drawRendererPanel(const core::Time& time, const core::Window& window,
 
 ### 5.4 Gdzie moduł jest wywoływany
 
-Wszystkie cztery miejsca są w `DebugNightMazeApp` w [`main.cpp`](../../src/main.cpp):
+Wszystkie pięć miejsc jest w `DebugNightMazeApp` w [`main.cpp`](../../src/main.cpp):
 
 - Tworzenie: inicjalizator pola przy deklaracji, `debug::DebugUI m_debugUI{window()};`. Wykonuje się po zbudowaniu całej części bazowej, więc okno i kontekst już istnieją.
 - Przełączanie: `if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) { m_debugUI.toggleVisible(); }` w `onRender`, czyli dokładnie raz na klatkę. Dlaczego nie w `onUpdate`, wyjaśnia [`core/input.md`](core/input.md), sekcja 5.5.
 - Rysowanie: `m_debugUI.draw(time(), window(), clearColor());`, po powrocie z `game::NightMazeApp::onRender`.
-- Blokada klawiatury gry: ostatnia linia `onRender`, `input().setKeyboardBlocked(m_debugUI.wantsKeyboard());` (sekcja 5.6).
+- Blokada klawiatury gry: przedostatnia linia `onRender`, `input().setKeyboardBlocked(m_debugUI.wantsKeyboard());` (sekcja 5.6).
+- Blokada myszy gry: ostatnia linia `onRender`, `input().setMouseBlocked(m_debugUI.wantsMouse());` (sekcja 5.6).
 
 ### 5.5 Jak dodać nowy panel
 
@@ -294,33 +299,42 @@ drawTimingPanel(time);
 
 Zasady, których się trzymam przy panelach: unikalny tytuł w `Begin` (dwa panele o tym samym tytule zlałyby się w jedno okno), żadnych zmiennych globalnych i `static` na stan, żadnych wywołań `gl*` w panelu.
 
-### 5.6 Klawiatura: gra czy ImGui
+### 5.6 Klawiatura i mysz: gra czy ImGui
 
-Ten sam klawisz widzą dwaj odbiorcy. ImGui dostaje naciśnięcia przez callbacki backendu GLFW, a gra czyta je przez `core::Input`, czyli prosto z GLFW. Bez dodatkowego mechanizmu Escape wciśnięty po to, żeby anulować edycję pola w panelu, zamknąłby program, a klawisz `~` wpisany w pole schowałby panele.
+Ten sam klawisz i to samo kliknięcie widzą dwaj odbiorcy. ImGui dostaje wejście przez callbacki backendu GLFW, a gra czyta je przez `core::Input`, czyli prosto z GLFW. Bez dodatkowego mechanizmu Escape wciśnięty po to, żeby anulować edycję pola w panelu, zamknąłby program, klawisz `~` wpisany w pole schowałby panele, a przeciąganie suwaka w panelu byłoby dla gry zwykłym ruchem myszy.
 
-Moduł `debug` dokłada do rozwiązania jedną funkcję:
+Moduł `debug` dokłada do rozwiązania dwie funkcje:
 
 ```cpp
 bool DebugUI::wantsKeyboard() const {
     return ImGui::GetIO().WantCaptureKeyboard;
 }
+
+bool DebugUI::wantsMouse() const {
+    return ImGui::GetIO().WantCaptureMouse;
+}
 ```
 
 `ImGui::GetIO()` zwraca strukturę `ImGuiIO`, przez którą ImGui wymienia dane z programem. Pole `WantCaptureKeyboard` jest ustawiane przez samą bibliotekę i znaczy: "używam teraz klawiatury, aplikacja powinna zignorować klawisze". ImGui ustawia je, gdy aktywny jest **dowolny widżet** (edycja pola, przeciąganie suwaka albo wartości, trzymany przycisk, przesuwane okno panelu) albo otwarte jest okno modalne, a nie tylko w polach tekstowych. Aktywny widżet może bowiem sam używać klawiszy: Escape anuluje edycję, Tab przechodzi do następnego pola, Ctrl, Shift i Alt zmieniają zachowanie przeciągania.
 
-Funkcja jest `const` i niczego nie zmienia. `DebugUI` nie wie, co wołający zrobi z odpowiedzią, i nie dołącza niczego z `game/`. Wartość przekazuje dalej `main.cpp`:
+Pole `WantCaptureMouse` znaczy to samo dla myszy: "używam teraz myszy, aplikacja powinna zignorować kliknięcia i ruch". Warunek jest inny niż przy klawiaturze. ImGui ustawia je, gdy kursor jest **nad oknem ImGui** (panelem) albo gdy trwa przeciąganie rozpoczęte na widżecie, nawet jeśli kursor wyjechał już poza panel. Przezroczysty węzeł centralny obszaru dokowania (`PassthruCentralNode`, sekcja 3.2) nie liczy się jako okno pod kursorem, więc nad sceną pole jest fałszywe i mysz należy do gry.
+
+Obie funkcje są `const` i niczego nie zmieniają. `DebugUI` nie wie, co wołający zrobi z odpowiedzią, i nie dołącza niczego z `game/`. Wartości przekazuje dalej `main.cpp`:
 
 ```cpp
 input().setKeyboardBlocked(m_debugUI.wantsKeyboard());
+input().setMouseBlocked(m_debugUI.wantsMouse());
 ```
 
-Dopóki blokada jest ustawiona, `core::Input::isKeyDown` i `wasKeyPressed` zwracają `false` dla każdego klawisza. Trzy rzeczy, które trzeba umieć wyjaśnić:
+Dopóki blokada klawiatury jest ustawiona, `core::Input::isKeyDown` i `wasKeyPressed` zwracają `false` dla każdego klawisza. Dopóki ustawiona jest blokada myszy, `isMouseButtonDown` i `wasMouseButtonPressed` zwracają `false` dla każdego przycisku, a `mouseDeltaX` i `mouseDeltaY` zwracają 0. Trzy rzeczy, które trzeba umieć wyjaśnić:
 
-1. **Kierunek zależności zostaje nienaruszony.** `core/` nie dołącza ImGui: dostaje neutralną flagę "klawiatura zablokowana" i nie wie, kto ją ustawił. `debug/` nie zna gry. Oba końce skleja `main.cpp`.
-2. **Wartość jest odczytywana po `draw`.** ImGui aktualizuje `WantCaptureKeyboard` w `ImGui::NewFrame()`, a ten jest wołany wewnątrz `draw`. Odczyt przed `draw` dałby wartość o klatkę starszą.
-3. **Blokada działa od następnej klatki.** Pytania o klawisze w bieżącej klatce (Escape w `Application::run`, `~` na początku `onRender`) padły przed tą linią. Dlaczego to opóźnienie nie szkodzi i dlaczego po zdjęciu blokady nie pojawia się fałszywe "właśnie wciśnięty", opisuje [`core/input.md`](core/input.md), sekcja 5.6.
+1. **Kierunek zależności zostaje nienaruszony.** `core/` nie dołącza ImGui: dostaje dwie neutralne flagi, "klawiatura zablokowana" i "mysz zablokowana", i nie wie, kto je ustawił. `debug/` nie zna gry. Oba końce skleja `main.cpp`.
+2. **Wartości są odczytywane po `draw`.** ImGui aktualizuje `WantCaptureKeyboard` i `WantCaptureMouse` w `ImGui::NewFrame()`, a ten jest wołany wewnątrz `draw`. Odczyt przed `draw` dałby wartości o klatkę starsze.
+3. **Blokada działa od następnej klatki.** Pytania o klawisze w bieżącej klatce (Escape w `Application::run`, `~` na początku `onRender`) padły przed tymi liniami. Dlaczego to opóźnienie nie szkodzi i dlaczego po zdjęciu blokady nie pojawia się fałszywe "właśnie wciśnięty", opisuje [`core/input.md`](core/input.md), sekcje 5.6 i 5.10.
 
-Blokada dotyczy także samego przełącznika paneli: podczas edycji pola klawisz `~` trafia do pola, a nie do `toggleVisible()`. Mysz nie jest jeszcze objęta tym mechanizmem (sekcja 7, pułapka 7).
+Blokada dotyczy także samego przełącznika paneli: podczas edycji pola klawisz `~` trafia do pola, a nie do `toggleVisible()`.
+
+Blokada myszy nie ma dziś widocznego skutku, bo gra nie pyta jeszcze `core::Input` o mysz. Pierwszym odbiorcą będzie kamera w M1.
 
 ## 6. Panel ImGui
 
@@ -348,13 +362,14 @@ Zachowanie całej nakładki:
 4. **Widżety poza klatką.** Każde `ImGui::...` rysujące coś musi być między `ImGui::NewFrame()` a `ImGui::Render()`. Dlatego panele wołam tylko z `DebugUI::draw`.
 5. **Kolejność niszczenia.** `DebugUI` zniszczone po oknie woła OpenGL i GLFW bez kontekstu. Pole `m_debugUI` musi pozostać polem klasy pochodnej od `core::Application` (dziś `DebugNightMazeApp`), bo pola giną przed klasami bazowymi (zob. [`core/README.md`](core/README.md), sekcja 7).
 6. **Własny callback GLFW ustawiony po utworzeniu `DebugUI`.** `glfwSetKeyCallback` i pokrewne **podmieniają** callback zainstalowany przez backend, więc ImGui przestaje dostawać dany rodzaj zdarzeń. Własne callbacki trzeba ustawić przed konstruktorem `DebugUI` (wtedy backend je połączy w łańcuch) albo samemu wołać poprzedni callback zwrócony przez `glfwSet...Callback`.
-7. **Gra i ImGui reagują na tę samą mysz.** Klawiatura jest rozdzielona (sekcja 5.6), ale mysz jeszcze nie: `core::Input` nie obsługuje myszy, a nikt nie sprawdza `ImGui::GetIO().WantCaptureMouse`. W M0 to nie przeszkadza, bo gra nie reaguje na mysz. Przy kamerze FPS w M1 trzeba będzie dodać analogiczny mechanizm, inaczej przeciąganie suwaka w panelu obracałoby jednocześnie kamerę.
+7. **Gra i ImGui reagowałyby na tę samą mysz.** Bez linii `input().setMouseBlocked(m_debugUI.wantsMouse());` każdy kod gry pytający `core::Input` o mysz widziałby też kliknięcia i ruch przeznaczone dla panelu: przeciąganie suwaka obracałoby jednocześnie kamerę, a kliknięcie w panel byłoby kliknięciem w scenę. Flaga blokady myszy temu zapobiega (sekcja 5.6). Warunek jest jeden: gra musi pytać o mysz przez `input()`, a nie bezpośrednio przez GLFW.
 8. **`imgui.ini` zależy od katalogu roboczego.** Uruchomienie z IDE i z terminala może dać dwa różne układy, bo plik ląduje w innym katalogu.
 9. **Małe panele na Windowsie przy skalowaniu 150% lub 200%.** Na macOS skalę Retiny obsługuje para rozmiar okna i framebuffer. Na Windowsie framebuffer i okno mają ten sam rozmiar w pikselach, więc czcionka ImGui pozostaje mała, dopóki sam jej nie przeskaluję.
 10. **Błąd OpenGL przypisany nie temu, kto zawinił.** Backend ImGui nie używa mojego `GL_CHECK`. Gdyby zostawił flagę błędu, zgłosi ją pierwszy `GL_CHECK` w następnej klatce (zwykle `glViewport`).
 
 11. **"Klawisz `~` nie chowa paneli".** Aktywny widżet ImGui blokuje klawiaturę gry, więc przełącznik nie reaguje, dopóki trwa edycja albo przeciąganie. To zamierzone. Wystarczy zakończyć edycję (Enter, Escape albo kliknięcie poza polem).
-12. **`setKeyboardBlocked` zapomniane w nowym programie.** Blokada nie jest częścią `DebugUI::draw`, tylko osobną linią w `main.cpp`. Program, który posiada `DebugUI`, ale nie przekazuje `wantsKeyboard()` do `core::Input`, wraca do starego zachowania: Escape w polu tekstowym zamyka program.
+12. **`setKeyboardBlocked` albo `setMouseBlocked` zapomniane w nowym programie.** Blokady nie są częścią `DebugUI::draw`, tylko osobnymi liniami w `main.cpp`. Program, który posiada `DebugUI`, ale nie przekazuje `wantsKeyboard()` i `wantsMouse()` do `core::Input`, wraca do starego zachowania: Escape w polu tekstowym zamyka program, a gra widzi mysz używaną przez panel.
+13. **Przechwycony kursor nie odcina ImGui od myszy.** W trybie `GLFW_CURSOR_DISABLED` backend GLFW nie zmienia kształtu kursora, ale pozycję kursora (wtedy wirtualną) nadal przekazuje do ImGui. Niewidoczny kursor może więc znaleźć się nad panelem i ustawić `WantCaptureMouse`. Dziś nikt nie przechwytuje kursora, więc tego nie widać. Trzeba to uwzględnić w `main.cpp`, gdy kamera zacznie przechwytywać kursor ([`core/input.md`](core/input.md), sekcja 7, pułapka 15).
 
 ## 8. Ćwiczenia
 
@@ -364,6 +379,7 @@ Zachowanie całej nakładki:
 4. **Demo ImGui.** W `DebugUI::draw`, wewnątrz `if (m_visible)`, dopisz tymczasowo `ImGui::ShowDemoWindow();`. Aby się zlinkowało, dodaj `${imgui_SOURCE_DIR}/imgui_demo.cpp` do celu `imgui` w `cmake/Dependencies.cmake`. Przejrzyj dostępne widżety, a potem wycofaj obie zmiany.
 
 5. **Kto ma klawiaturę.** Kliknij z wciśniętym Ctrl w jedną ze składowych `Clear color`, żeby przejść w tryb wpisywania, i naciśnij kolejno `~` oraz Escape. Zapisz, co się stało z panelami, z polem i z programem. Potem zakomentuj w `main.cpp` linię `input().setKeyboardBlocked(m_debugUI.wantsKeyboard());`, zbuduj i powtórz. Wyjaśnij różnicę, wskazując, w której funkcji `core::Input` zapada decyzja. Przywróć linię.
+6. **Kto ma mysz.** Na końcu `DebugNightMazeApp::onRender` w `main.cpp` dopisz tymczasowo (z nagłówkiem `"core/Log.hpp"`, który jest już dołączony) `if (m_debugUI.wantsMouse()) { core::logInfo("ImGui has the mouse"); }`. Przesuwaj kursor nad panelem Renderer, nad pustym środkiem okna i zacznij przeciągać wartość `Clear color`, wyjeżdżając kursorem poza panel. Zapisz, kiedy komunikat się pojawia. Wycofaj zmianę.
 
 ## 9. Pytania kontrolne
 
@@ -408,6 +424,9 @@ Zachowanie całej nakładki:
 
 14. **Którym klawiszem chowam panele i dlaczego obsługa stoi w `onRender`?**
     Klawiszem `~` na lewo od `1` (`GLFW_KEY_GRAVE_ACCENT`). `wasKeyPressed` to zbocze liczone raz na klatkę, a `onRender` wykonuje się dokładnie raz na klatkę, w odróżnieniu od `onUpdate`.
+
+15. **Jak program rozstrzyga, czy mysz trafia do gry, czy do panelu, i czym warunek różni się od klawiatury?**
+    `DebugUI::wantsMouse()` zwraca `ImGui::GetIO().WantCaptureMouse`, a `main.cpp` przekazuje to do `input().setMouseBlocked(...)`. Od następnej klatki `core::Input` odpowiada grze, że żaden przycisk nie jest wciśnięty, a przesunięcie myszy wynosi 0. Przy klawiaturze liczy się aktywny widżet, przy myszy wystarczy kursor nad panelem (albo trwające przeciąganie). Przezroczysty środek obszaru dokowania nie blokuje myszy.
 
 ## 10. Źródła
 

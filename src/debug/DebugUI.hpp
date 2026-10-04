@@ -32,6 +32,11 @@ public:
     /// ImGui computes this at the start of each frame it builds, so it lags by a frame.
     bool wantsKeyboard() const;
 
+    /// True while ImGui uses the mouse itself: the cursor is over a panel or a widget is
+    /// being dragged. The transparent middle of the dock area does not count.
+    /// ImGui computes this at the start of each frame it builds, so it lags by a frame.
+    bool wantsMouse() const;
+
     /// Builds and renders the debug UI on top of the current frame.
     /// Call it last in the frame, after the scene has been drawn.
     void draw(const core::Time& time, const core::Window& window, std::array<float, 3>& clearColor);

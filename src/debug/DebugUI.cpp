@@ -35,6 +35,10 @@ bool DebugUI::wantsKeyboard() const {
     return ImGui::GetIO().WantCaptureKeyboard;
 }
 
+bool DebugUI::wantsMouse() const {
+    return ImGui::GetIO().WantCaptureMouse;
+}
+
 void DebugUI::draw(const core::Time& time, const core::Window& window,
                    std::array<float, 3>& clearColor) {
     // An ImGui frame is started every frame, also when hidden, so that ImGui keeps

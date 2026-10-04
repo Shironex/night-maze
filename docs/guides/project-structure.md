@@ -40,7 +40,7 @@ night-maze/
 │   ├── core/                   # warstwa bazowa: okno, wejście, czas, logi, GL_CHECK
 │   │   ├── Application.hpp/.cpp    # klasa bazowa programu, pętla główna
 │   │   ├── GlCheck.hpp/.cpp        # makro GL_CHECK
-│   │   ├── Input.hpp/.cpp          # stan klawiatury, blokada klawiatury
+│   │   ├── Input.hpp/.cpp          # stan klawiatury i myszy, blokady, kursor
 │   │   ├── Log.hpp/.cpp            # logowanie do konsoli
 │   │   ├── Time.hpp/.cpp           # zegar klatki, stały krok symulacji, FPS
 │   │   └── Window.hpp/.cpp         # okno GLFW i kontekst OpenGL (RAII)
@@ -91,9 +91,9 @@ wypisane na początku drzewa, przed katalogami.
 | Plik | Co zawiera | Dokument |
 |---|---|---|
 | `src/main.cpp` | `main()` z obsługą wyjątków oraz klasę `DebugNightMazeApp`, która dokłada interfejs debugowy do gry | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
-| `src/core/Application.*` | `core::Application`: posiada `Window`, `Input`, `Time`, prowadzi pętlę główną, obsługuje Esc | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
+| `src/core/Application.*` | `core::Application`: posiada `Window`, `Input`, `Time`, prowadzi pętlę główną, obsługuje Esc (zwolnienie przechwyconego kursora albo zamknięcie programu) | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
 | `src/core/Window.*` | `core::Window`: inicjalizacja GLFW, okno, kontekst 4.1 Core, `gladLoadGL`, vsync | [`../modules/core/window-context.md`](../modules/core/window-context.md), [`../libraries/glfw.md`](../libraries/glfw.md) |
-| `src/core/Input.*` | `core::Input`: odpytywanie klawiszy, `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked` | [`../modules/core/input.md`](../modules/core/input.md) |
+| `src/core/Input.*` | `core::Input`: odpytywanie klawiszy i myszy. Klawiatura: `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`. Mysz: `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setMouseBlocked`, `setCursorCaptured`, `isCursorCaptured` | [`../modules/core/input.md`](../modules/core/input.md) |
 | `src/core/Time.*` | `core::Time`: delta czasu, akumulator stałego kroku (`FIXED_DT`), uśrednione FPS | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
@@ -125,8 +125,9 @@ main.cpp   łączy game/ i debug/
 Jak to widać w kodzie:
 
 - `src/core/` dołącza tylko własne nagłówki, GLAD, GLFW i bibliotekę standardową. Także
-  blokada klawiatury na czas pracy z panelem jest zrobiona bez ImGui w `core/`:
-  `core::Input` ma neutralną flagę `setKeyboardBlocked`, a ustawia ją `main.cpp`.
+  blokada klawiatury i myszy na czas pracy z panelem jest zrobiona bez ImGui w `core/`:
+  `core::Input` ma neutralne flagi `setKeyboardBlocked` i `setMouseBlocked`, a ustawia je
+  `main.cpp`.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp` i nic z `debug/`. Komentarz w
   klasie mówi wprost: "It knows nothing about the debug UI".
 - `src/debug/DebugUI.cpp` dołącza `core/Window.hpp` i nagłówki ImGui.
@@ -134,7 +135,7 @@ Jak to widać w kodzie:
   `debug/DebugUI.hpp`. Definiuje klasę `DebugNightMazeApp final : public game::NightMazeApp`,
   która posiada `debug::DebugUI m_debugUI{window()}` i w `onRender` najpierw woła
   `game::NightMazeApp::onRender(alpha)`, potem obsługuje klawisz `~` (przełącznik paneli),
-  rysuje panele i przekazuje do `core::Input` informację, czy ImGui używa klawiatury.
+  rysuje panele i przekazuje do `core::Input` informację, czy ImGui używa klawiatury i myszy.
 
 Po co ta dyscyplina: grę da się zbudować i zrozumieć bez paneli debugowych, a panele można
 rozbudowywać bez dotykania logiki gry. W docelowej architekturze między `core/` a `game/`

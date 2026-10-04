@@ -30,7 +30,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/core/README.md`](modules/core/README.md) | `src/core/`, `src/game/NightMazeApp.*`, `src/main.cpp` | 1. Pierwszy program OpenGL: wstęp do modułu `core`, diagram warstw i klas, klatka jako całość, dziedziczenie po `core::Application`, indeks plików |
 | [`modules/core/window-context.md`](modules/core/window-context.md) | `src/core/Window.*`, `src/core/Log.*` | 1. Okno GLFW, kontekst 4.1 Core, GLAD, vsync, rozmiar okna a framebuffera, logowanie |
 | [`modules/core/main-loop.md`](modules/core/main-loop.md) | `src/core/Application.*`, `src/core/Time.*` | 1. Pętla gry ze stałym krokiem, akumulator, `alpha`, uśredniony FPS |
-| [`modules/core/input.md`](modules/core/input.md) | `src/core/Input.*` | 1. Klawiatura: odpytywanie, zbocze na klatkę, blokada klawiatury na czas pracy z panelem |
+| [`modules/core/input.md`](modules/core/input.md) | `src/core/Input.*` | 1. Klawiatura i mysz: odpytywanie, zbocze na klatkę, przesunięcie myszy, przechwycenie kursora, blokada klawiatury i myszy na czas pracy z panelem |
 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | `src/core/GlCheck.*` | 1. Makro `GL_CHECK`, model błędów `glGetError`, Debug a Release |
 | [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui, podpięcie nakładki w `main.cpp`, jak dodać nowy panel |
 
@@ -56,7 +56,7 @@ Kolejność jest zgodna z kolejnością wykładów. W M0 zrealizowany jest temat
 | 6 | [`modules/core/README.md`](modules/core/README.md) | Temat 1 z lotu ptaka: warstwy, klatka jako całość, od `main` do pierwszej klatki. Kroki od 6 do 10 to najważniejsza część M0 |
 | 7 | [`modules/core/window-context.md`](modules/core/window-context.md) | Okno, kontekst, GLAD, vsync |
 | 8 | [`modules/core/main-loop.md`](modules/core/main-loop.md) | Pętla główna i stały krok czasowy |
-| 9 | [`modules/core/input.md`](modules/core/input.md) | Klawiatura i jej blokada |
+| 9 | [`modules/core/input.md`](modules/core/input.md) | Klawiatura, mysz i ich blokada |
 | 10 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | Wykrywanie błędów OpenGL |
 | 11 | [`libraries/imgui.md`](libraries/imgui.md) | Jak działa biblioteka paneli |
 | 12 | [`modules/debug-ui.md`](modules/debug-ui.md) | Jak panele są wpięte w mój projekt i jak dodać własny |

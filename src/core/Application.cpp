@@ -16,8 +16,14 @@ void Application::run() {
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();
+        // Escape first gives a captured cursor back, and closes the window only when
+        // the cursor is not captured.
         if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE)) {
-            m_window.requestClose();
+            if (m_input.isCursorCaptured()) {
+                m_input.setCursorCaptured(false);
+            } else {
+                m_window.requestClose();
+            }
         }
 
         // Simulation: as many fixed steps as fit into the time that has passed.

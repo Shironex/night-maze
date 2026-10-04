@@ -37,6 +37,7 @@ Realizacja według PRD: okno GLFW, kontekst 4.1 Core, pętla gry ze stałym krok
 | Pętla główna | [`src/core/Application.cpp`](../src/core/Application.cpp), [`Application.hpp`](../src/core/Application.hpp) | `Application::run`, `onUpdate`, `onRender` | [`core/main-loop.md`](modules/core/main-loop.md), 2.1 i 5.2 |
 | Stały krok, akumulator, `alpha`, FPS | [`src/core/Time.cpp`](../src/core/Time.cpp), [`Time.hpp`](../src/core/Time.hpp) | `beginFrame`, `consumeFixedStep`, `alpha`, stałe `FIXED_DT` i `MAX_FRAME_TIME` | [`core/main-loop.md`](modules/core/main-loop.md), 2.2 do 2.4 i 5.4 |
 | Klawiatura, blokada klawiatury | [`src/core/Input.cpp`](../src/core/Input.cpp), [`Input.hpp`](../src/core/Input.hpp) | `update`, `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`, `KEY_COUNT` | [`core/input.md`](modules/core/input.md), 5.2 do 5.6 |
+| Mysz: przyciski, przesunięcie, przechwycenie kursora, blokada myszy | [`src/core/Input.cpp`](../src/core/Input.cpp), [`Input.hpp`](../src/core/Input.hpp), [`src/core/Application.cpp`](../src/core/Application.cpp) | `update`, `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setCursorCaptured`, `setMouseBlocked`, `MOUSE_BUTTON_COUNT`, obsługa Escape w `Application::run` | [`core/input.md`](modules/core/input.md), 2.4 do 2.8 i 5.7 do 5.10 |
 | Błędy OpenGL | [`src/core/GlCheck.hpp`](../src/core/GlCheck.hpp), [`GlCheck.cpp`](../src/core/GlCheck.cpp) | makro `GL_CHECK`, `checkGlErrors` | [`core/gl-check.md`](modules/core/gl-check.md), 5.2 i 5.3 |
 | Logowanie | [`src/core/Log.cpp`](../src/core/Log.cpp), [`Log.hpp`](../src/core/Log.hpp) | `logInfo`, `logWarn`, `logError` | [`core/window-context.md`](modules/core/window-context.md), 5.5 |
 | Klatka gry: viewport i czyszczenie | [`src/game/NightMazeApp.cpp`](../src/game/NightMazeApp.cpp), [`NightMazeApp.hpp`](../src/game/NightMazeApp.hpp) | `NightMazeApp::onRender`, `clearColor` | [`core/window-context.md`](modules/core/window-context.md), 3.2, oraz [`core/README.md`](modules/core/README.md), 6 |
@@ -51,7 +52,7 @@ Dokumenty uzupełniające do tematu 1: [`libraries/glfw.md`](libraries/glfw.md),
 |---|---|---|
 | Cykl życia ImGui, klatka ImGui, dockspace | [`modules/debug-ui.md`](modules/debug-ui.md) | [`src/debug/DebugUI.cpp`](../src/debug/DebugUI.cpp), [`DebugUI.hpp`](../src/debug/DebugUI.hpp) |
 | Panel Renderer | [`modules/debug-ui.md`](modules/debug-ui.md) | [`src/debug/panels/RendererPanel.cpp`](../src/debug/panels/RendererPanel.cpp), [`RendererPanel.hpp`](../src/debug/panels/RendererPanel.hpp) |
-| Podpięcie nakładki do gry, klawisz `~`, blokada klawiatury gry | [`modules/debug-ui.md`](modules/debug-ui.md) (sekcje 5.4 i 5.6), [`modules/core/input.md`](modules/core/input.md) (sekcja 5.6) | [`src/main.cpp`](../src/main.cpp) |
+| Podpięcie nakładki do gry, klawisz `~`, blokada klawiatury i myszy gry | [`modules/debug-ui.md`](modules/debug-ui.md) (sekcje 5.4 i 5.6), [`modules/core/input.md`](modules/core/input.md) (sekcje 5.6 i 5.10) | [`src/main.cpp`](../src/main.cpp) |
 | Biblioteka | [`libraries/imgui.md`](libraries/imgui.md) | [`cmake/Dependencies.cmake`](../cmake/Dependencies.cmake) |
 
 ## Kamienie milowe a tematy
