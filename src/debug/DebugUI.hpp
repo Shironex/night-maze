@@ -34,7 +34,14 @@ public:
     /// True while ImGui uses the mouse itself: the cursor is over a panel or a widget is
     /// being dragged. The transparent middle of the dock area does not count.
     /// ImGui computes this at the start of each frame it builds, so it lags by a frame.
+    /// Always false while the mouse is switched off with setMouseEnabled(false).
     bool wantsMouse() const;
+
+    /// Lets ImGui use the mouse (true) or makes it ignore the mouse (false). Switch it
+    /// off while the game owns the mouse (the cursor is captured for mouse look): the
+    /// hidden cursor still has a position, and without this it would hover and click the
+    /// panels it passes over. Call it before draw, it takes effect in that draw.
+    void setMouseEnabled(bool enabled);
 
     /// Builds and renders the debug UI on top of the current frame.
     /// Call it last in the frame, after the scene has been drawn.

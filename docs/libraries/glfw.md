@@ -523,9 +523,12 @@ Jak to czytać:
 - Zmiana trybu kursora może sprawić, że pozycja zwracana przez `glfwGetCursorPos` odskoczy
   (przejście między pozycją prawdziwą a wirtualną). `Input` po każdej zmianie trybu zgłasza w
   następnej klatce zerowe przesunięcie.
-- Na dziś `setCursorCaptured(true)` nie jest nigdzie wołane, więc program działa cały czas w
-  trybie `GLFW_CURSOR_NORMAL`. Jedyne wywołanie to `setCursorCaptured(false)` po Escape w
-  `Application::run`. Przechwytywać kursor będzie kamera w M1.
+- Kursor przechwytuje kamera: `NightMazeApp::onRender` woła `setCursorCaptured(true)` po
+  kliknięciu lewym przyciskiem w scenę, a `Application::run` woła `setCursorCaptured(false)`
+  po Escape. Między jednym a drugim program działa w trybie `GLFW_CURSOR_DISABLED` i mysz
+  obraca kamerę
+  ([`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja
+  5.11).
 
 `Input.hpp` zna liczbę przycisków tak samo jak liczbę klawiszy: przez gołą liczbę 7 sprawdzaną
 w `Input.cpp`:

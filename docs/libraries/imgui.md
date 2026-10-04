@@ -326,6 +326,7 @@ void DebugUI::draw(const DebugContext& context) {
         // what it reads and what it edits.
         drawRendererPanel(context.time, context.window, context.clearColor);
         drawShadersPanel(context.shader);
+        drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
@@ -336,7 +337,8 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele pokazują i edytują (`time`, `window`, `clearColor`, `shader`). Buduje ją co klatkę `main.cpp`.
+panele pokazują i edytują (`time`, `window`, `clearColor`, `shader`, `camera`,
+`mouseSensitivity`, `moveSpeed`). Buduje ją co klatkę `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
@@ -344,7 +346,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, `drawRendererPanel` (czyli `Begin`, `Text`, `ColorEdit3`, `End`), `drawShadersPanel` (`Begin`, `Text`, `Button`, `TextWrapped`, `End`) | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, `drawRendererPanel` (czyli `Begin`, `Text`, `ColorEdit3`, `End`), `drawShadersPanel` (`Begin`, `Text`, `Button`, `TextWrapped`, `End`), `drawCameraPanel` (`Begin`, `TextWrapped`, `DragFloat3`, `SliderFloat`, `End`) | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -366,12 +368,19 @@ Ważne szczegóły:
           if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) {
               m_debugUI.toggleVisible();
           }
+          // While the cursor is captured the mouse belongs to the camera. The hidden cursor
+          // still has a position that moves with the mouse, so the panels must ignore it,
+          // otherwise it would hover and click them unseen.
+          m_debugUI.setMouseEnabled(!input().isCursorCaptured());
           // The context is rebuilt every frame: it only holds references, so it is cheap.
           m_debugUI.draw(debug::DebugContext{
               .time = time(),
               .window = window(),
               .clearColor = clearColor(),
               .shader = shader(),
+              .camera = camera(),
+              .mouseSensitivity = mouseSensitivity(),
+              .moveSpeed = moveSpeed(),
           });
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -390,10 +399,12 @@ Ważne szczegóły:
   na tym, co już jest w buforze, więc panele są na wierzchu sceny. Zamiana buforów
   (`swapBuffers`) następuje później, w `Application::run`. Dwie ostatnie linie,
   `setKeyboardBlocked` i `setMouseBlocked`, nie rysują niczego: przekazują grze informację z
-  ImGui o klawiaturze i o myszy (sekcja 3.8).
+  ImGui o klawiaturze i o myszy (sekcja 3.8). Linia `setMouseEnabled` przed `draw` działa w
+  drugą stronę: mówi ImGui, czy wolno mu używać myszy (też sekcja 3.8).
 - Backend renderera na czas rysowania zmienia stan OpenGL (blending, scissor test, wyłączony
-  test głębi), a po zakończeniu przywraca poprzedni. Od M1, gdy pojawi się scena 3D, warto o
-  tym pamiętać przy szukaniu błędów stanu.
+  test głębi), a po zakończeniu przywraca poprzedni. Scena 3D zależy od testu głębi, więc
+  warto o tym pamiętać przy szukaniu błędów stanu: gra włącza test głębi co klatkę i nie
+  polega na tym, że backend po sobie posprząta.
 - **Widżet może wywołać kod, który woła OpenGL.** Przycisk "Reload shaders" kompiluje i
   linkuje shadery w etapie 2, przed `ImGui::Render()`. Jest to bezpieczne, bo w etapach 2 i 3
   ImGui nie woła OpenGL, a backend w etapie 4 sam ustawia swój program i przywraca
@@ -520,7 +531,14 @@ blokady i tym, dlaczego po jej zdjęciu nie ma fałszywego "właśnie wciśnięt
 
 ```cpp
 bool DebugUI::wantsMouse() const {
-    return ImGui::GetIO().WantCaptureMouse;
+    const ImGuiIO& io = ImGui::GetIO();
+    // With the mouse switched off ImGui still sets WantCaptureMouse while a button is
+    // held down and the hidden cursor is at the position of a panel. Nothing in the panel
+    // reacts, but the caller would block the mouse for the game, so the answer is no.
+    if ((io.ConfigFlags & ImGuiConfigFlags_NoMouse) != 0) {
+        return false;
+    }
+    return io.WantCaptureMouse;
 }
 ```
 
@@ -534,10 +552,45 @@ Dopóki blokada myszy jest ustawiona, `Input::isMouseButtonDown` i
 `Input::wasMouseButtonPressed` zwracają `false`, a `Input::mouseDeltaX` i
 `Input::mouseDeltaY` zwracają 0. Przezroczysty środek obszaru dokowania
 (`PassthruCentralNode`, sekcja 3.6) nie liczy się jako okno ImGui pod kursorem, więc nad
-sceną `WantCaptureMouse` jest fałszywe i mysz należy do gry. Na dziś gra nie pyta jeszcze o
-mysz, więc blokada nie ma widocznego skutku. Pierwszym odbiorcą będzie kamera w M1: bez
-blokady przeciąganie suwaka w panelu obracałoby jednocześnie kamerę. Opis po stronie `core`:
-[`../modules/core/input.md`](../modules/core/input.md), sekcja 5.10.
+sceną `WantCaptureMouse` jest fałszywe i mysz należy do gry. Odbiorcą blokady jest kamera:
+bez niej kliknięcie w panel przechwytywałoby kursor, a przeciąganie suwaka byłoby dla gry
+ruchem myszy. Opis po stronie `core`:
+[`../modules/core/input.md`](../modules/core/input.md), sekcja 5.10. Warunek na początku
+`wantsMouse()` wyjaśnia następny akapit.
+
+**`ImGuiConfigFlags_NoMouse`: ImGui bez myszy.** Gdy kamera przechwyci kursor (tryb
+`GLFW_CURSOR_DISABLED`), kursora nie widać, ale backend GLFW nadal przekazuje do ImGui jego
+pozycję (wirtualną) i kliknięcia. W tym trybie pomija tylko zmianę kształtu kursora.
+Niewidoczny kursor najeżdżałby więc na panele i klikał w nie. ImGui ma na to flagę
+konfiguracyjną, którą w projekcie przestawia jedna funkcja `DebugUI`:
+
+```cpp
+void DebugUI::setMouseEnabled(bool enabled) {
+    // ConfigFlags is a set of bits. With the NoMouse bit set, ImGui treats no panel as
+    // being under the cursor when it starts a frame, so nothing is hovered or clicked.
+    ImGuiIO& io = ImGui::GetIO();
+    if (enabled) {
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+    } else {
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    }
+}
+```
+
+`main.cpp` woła ją co klatkę przed `draw`:
+`m_debugUI.setMouseEnabled(!input().isCursorCaptured());`.
+
+- Flaga jest czytana w `ImGui::NewFrame()`. Przy ustawionej fladze ImGui kasuje informację o
+  oknie pod kursorem, więc żaden widżet nie jest najechany ani klikany. Działa to w tej
+  samej klatce, w której flaga została ustawiona, bo `NewFrame` jest wołane w `draw`.
+- Pozycja myszy nie jest kasowana, a `WantCaptureMouse` nie jest zerowane we wszystkich
+  przypadkach: przycisk wciśnięty, gdy niewidoczny kursor jest nad panelem, ImGui nadal
+  zgłasza jako swój. Dlatego `wantsMouse()` przy tej fladze zwraca `false` samo.
+- `&= ~flaga` zdejmuje jeden bit, `|= flaga` go ustawia. Pozostałe flagi, w tym
+  `ImGuiConfigFlags_DockingEnable`, zostają bez zmian.
+
+Pełny opis, z kolejnością zdarzeń w klatce kliknięcia i w klatce z Escape:
+[`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.6.
 
 Flagi są aktualizowane w `ImGui::NewFrame()`, więc odczytane wcześniej w tej samej klatce
 opisują stan z klatki poprzedniej. Dlatego `wantsKeyboard()` i `wantsMouse()` wołamy po
@@ -565,7 +618,7 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok `drawRendererPanel` i `drawShadersPanel`, dopisanie plików do `add_executable`
+wywołanie w `DebugUI::draw` obok `drawRendererPanel`, `drawShadersPanel` i `drawCameraPanel`, dopisanie plików do `add_executable`
 w `CMakeLists.txt`. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
 jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 [`../modules/debug-ui.md`](../modules/debug-ui.md) i tam należy jej szukać.
@@ -602,6 +655,12 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
     `glfwGetCursorPos` albo `glfwGetMouseButton` widziałby też mysz używaną przez panel.
 12. **Klawisz gry "nie działa" przy aktywnym widżecie.** Gdy trwa edycja albo przeciąganie w
     panelu, gra nie widzi klawiatury (Esc, `~`). To skutek `WantCaptureKeyboard`, nie błąd.
+13. **Ukryty kursor nadal "chodzi" po panelach.** Tryb `GLFW_CURSOR_DISABLED` nie odcina
+    ImGui od myszy: backend przekazuje pozycję i kliknięcia jak zwykle. Program, który
+    przechwytuje kursor, musi na ten czas ustawić `ImGuiConfigFlags_NoMouse`
+    (`DebugUI::setMouseEnabled(false)`, sekcja 3.8). Suwak ImGui ma też drugą drogę wejścia,
+    o której łatwo zapomnieć: Ctrl i kliknięcie pozwala wpisać liczbę spoza zakresu, chyba że
+    suwak ma flagę `ImGuiSliderFlags_AlwaysClamp` (tak jak wszystkie suwaki panelu Camera).
 
 ## 5. Pytania kontrolne
 
@@ -643,6 +702,12 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
    w polu panelu nie zamyka programu. Odpowiednik dla myszy działa tak samo:
    `WantCaptureMouse` (kursor nad panelem albo trwające przeciąganie) wraca przez
    `DebugUI::wantsMouse()` i trafia do `input().setMouseBlocked(...)`.
+
+10. **Do czego służy `ImGuiConfigFlags_NoMouse` i kiedy projekt ją ustawia?**
+    Każe ImGui ignorować mysz: w `NewFrame` kasowana jest informacja o oknie pod kursorem,
+    więc panele nie reagują. `main.cpp` ustawia ją przez `DebugUI::setMouseEnabled(false)`,
+    gdy kamera przechwyciła kursor, bo backend GLFW przekazuje pozycję także ukrytego
+    kursora. Po Escape flaga jest zdejmowana w tej samej klatce.
 
 ## 6. Oficjalna dokumentacja
 

@@ -5,7 +5,7 @@ Kod: [`src/scene/`](../../../src/scene/), użycie w [`src/game/NightMazeApp.cpp`
 
 Moduł `gfx` umie narysować to, co dostanie: bufor wierzchołków, program shaderów. Nie wie, **gdzie** w świecie coś stoi ani **skąd** jest oglądane. Na te dwa pytania odpowiada moduł `scene`: opisuje położenie obiektów i kamerę, a z tego opisu liczy macierze, które shader wierzchołków mnoży przez każdy wierzchołek. Docelowo (PRD, sekcja 6) warstwa `scene/` ma zawierać encje, transformy, kamerę, światła, kolizje i selekcję. Na dziś ma dwie struktury: `scene::Transform` i `scene::Camera`.
 
-Używa ich `game::NightMazeApp`: ma jeden `Transform` (obrócona kostka) i jedną `Camera` (na razie nieruchomą), co klatkę liczy z nich macierze modelu, widoku i rzutowania i wysyła je do shadera przez `gfx::Shader::setMat4`. Sterowanie kamerą i panel Camera dojdą w dalszej części M1. Ten plik jest wstępem do modułu: wspólna zasada obu struktur, miejsce modułu w warstwach i indeks dokumentów.
+Używa ich `game::NightMazeApp`: ma jeden `Transform` (obrócona kostka) i jedną `Camera`, którą steruje z klawiatury i myszy (lot wokół kostki). Co klatkę liczy z nich macierze modelu, widoku i rzutowania i wysyła je do shadera przez `gfx::Shader::setMat4`. Pola kamery edytuje też panel Camera z `debug/`. Ten plik jest wstępem do modułu: wspólna zasada obu struktur, miejsce modułu w warstwach i indeks dokumentów.
 
 ## 1. Dokumenty modułu
 
@@ -34,7 +34,7 @@ Z tego wynikają trzy rzeczy:
 
 1. **Macierze liczy procesor.** `Transform::matrix()`, `Camera::viewMatrix()` i `Camera::projectionMatrix()` to zwykłe funkcje C++ zwracające `glm::mat4`. OpenGL dowiaduje się o macierzy dopiero wtedy, gdy kod rysujący wyśle ją do shadera: w projekcie robi to `NightMazeApp::onRender` przez `gfx::Shader::setMat4`.
 2. **Kod da się sprawdzić bez okna.** Wystarczy program konsolowy, który woła funkcje i wypisuje wyniki. Tak została sprawdzona matematyka obu struktur, zanim dostały użytkownika ([`transforms-camera.md`](transforms-camera.md), sekcja 5.8).
-3. **Struktury nie znają wejścia ani czasu.** `Camera` nie czyta klawiatury ani myszy i nie ma prędkości ruchu. Ma pola i funkcję `rotate`, a o tym, kiedy i o ile je zmienić, decyduje właściciel kamery. Dzięki temu ta sama kamera nadaje się do gry, do zadania laboratoryjnego i do sterowania z panelu.
+3. **Struktury nie znają wejścia ani czasu.** `Camera` nie czyta klawiatury ani myszy i nie ma prędkości ruchu. Ma pola i funkcję `rotate`, a o tym, kiedy i o ile je zmienić, decyduje właściciel kamery (dziś `game::NightMazeApp`: mysz obraca, klawisze przesuwają). Dzięki temu ta sama kamera nadaje się do gry, do zadania laboratoryjnego i do sterowania z panelu.
 
 Kąty są wszędzie trzymane w stopniach, z jednostką w nazwie pola (`rotationDegrees`, `yawDegrees`, `fovDegrees`), a zamiana na radiany odbywa się w miejscu użycia.
 
@@ -48,6 +48,7 @@ flowchart TD
     Game --> Core
     Game --> Gfx
     Debug --> Gfx
+    Debug --> Scene
     Game --> Scene
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Gfx --> Glm
@@ -58,14 +59,14 @@ flowchart TD
     Debug --> ImGui["Dear ImGui"]
 ```
 
-Strzałka znaczy "zna i dołącza nagłówki". Diagram pokazuje stan faktyczny: `scene/` dołącza dziś tylko `game/` (`NightMazeApp.hpp` dołącza `scene/Camera.hpp` i `scene/Transform.hpp`), a samo `scene/` dołącza tylko GLM. `gfx/` też dołącza GLM, od kiedy `Shader::setMat4` przyjmuje `glm::mat4`.
+Strzałka znaczy "zna i dołącza nagłówki". Diagram pokazuje stan faktyczny: `scene/` dołączają `game/` (`NightMazeApp.hpp` dołącza `scene/Camera.hpp` i `scene/Transform.hpp`) i `debug/` (`CameraPanel.cpp` dołącza `scene/Camera.hpp`), a samo `scene/` dołącza tylko GLM. `gfx/` też dołącza GLM, od kiedy `Shader::setMat4` przyjmuje `glm::mat4`.
 
 Pełny łańcuch warstw z PRD to `core <- gfx <- renderer <- scene <- game`. Warstwy `renderer/` w M1 nie ma, więc dziś łańcuch to `core <- gfx <- scene <- game`. Zasady dla `scene`:
 
 1. `scene/` **może** zależeć od `core/`, `gfx/` i GLM. Dziś korzysta tylko z GLM: `Transform` i `Camera` nie potrzebują ani okna, ani obiektów OpenGL.
 2. `scene/` nie zna `game/`, `debug/`, ImGui ani wejścia. Nie dołącza GLFW: o klawiszach i myszy wie tylko ten, kto steruje kamerą.
 3. `core/` i `gfx/` nie znają `scene/`. Zależność idzie w jedną stronę.
-4. Użytkownikiem jest `game/`: posiada kamerę i transform kostki i wysyła ich macierze do shadera. Drugim będzie `debug/` (panel edytujący pola kamery). Oba kierunki są dozwolone.
+4. Użytkownikami są `game/` i `debug/`. `game/` posiada kamerę i transform kostki, steruje kamerą i wysyła macierze do shadera. `debug/` ma panel Camera, który edytuje pola kamery przez referencję. Oba kierunki są dozwolone.
 
 W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/scene/*` należą do tej samej biblioteki statycznej `engine` co `src/core/*` i `src/gfx/*`. Nic w nich nie jest specyficzne dla Night Maze, więc warstwa nadaje się do zadań laboratoryjnych. GLM jest linkowane do `engine` jako `PUBLIC`, bo nagłówki `scene/` (i `gfx/Shader.hpp`) pokazują typy `glm::vec3` i `glm::mat4` w swoim API: każdy, kto je dołączy, musi znaleźć `<glm/glm.hpp>` ([`../../libraries/glm.md`](../../libraries/glm.md), sekcja 2).
 
@@ -75,7 +76,8 @@ W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/scene/*` należą do te
 |---|---|---|
 | [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp), [`.cpp`](../../../src/scene/Transform.cpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i funkcja `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Użycie: pole `m_cubeTransform` w `NightMazeApp` | [`transforms-camera.md`](transforms-camera.md), sekcje 5.2 i 5.3 |
 | [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp), [`.cpp`](../../../src/scene/Camera.cpp) | struktura `Camera`: pola `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałe `WORLD_UP` i `MAX_PITCH_DEGREES`, funkcje `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Użycie: pole `m_camera` w `NightMazeApp` | [`transforms-camera.md`](transforms-camera.md), sekcje od 5.4 do 5.7 |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik obu struktur: obrót kostki, proporcje z rozmiaru framebuffera, wysłanie trzech macierzy co klatkę | [`transforms-camera.md`](transforms-camera.md), sekcje 5.9 i 5.10 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik obu struktur: obrót kostki, proporcje z rozmiaru framebuffera, wysłanie trzech macierzy co klatkę, sterowanie kamerą (obrót myszą, ruch klawiszami, interpolacja pozycji) | [`transforms-camera.md`](transforms-camera.md), sekcje 5.9, 5.10 i 5.11 |
+| [`src/debug/panels/CameraPanel.hpp`](../../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../../src/debug/panels/CameraPanel.cpp) | `debug::drawCameraPanel`: panel "Camera". Nie należy do `scene/` ani do biblioteki `engine`, ale jest pokazem struktury `Camera` | [`transforms-camera.md`](transforms-camera.md), sekcja 6 |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) | uniformy `uModel`, `uView`, `uProjection` i mnożenie przez nie pozycji wierzchołka | [`transforms-camera.md`](transforms-camera.md), sekcja 4 |
 
 ## 5. Konwencja układu współrzędnych
@@ -103,7 +105,7 @@ Pytania z odpowiedziami do matematyki i kodu są w [`transforms-camera.md`](tran
    Może od `core/`, `gfx/` i GLM. Dziś dołącza tylko GLM i bibliotekę standardową. Nie może znać `game/`, `debug/`, ImGui ani wejścia.
 
 3. **Dlaczego `Camera` nie obsługuje klawiatury i myszy?**
-   Bo to kwestia sterowania, a nie kamery. `scene/` jest częścią biblioteki `engine` i ma nadawać się do innych programów. Wejście czyta właściciel kamery i przekłada je na zmiany pól oraz wywołania `rotate`.
+   Bo to kwestia sterowania, a nie kamery. `scene/` jest częścią biblioteki `engine` i ma nadawać się do innych programów. Wejście czyta właściciel kamery i przekłada je na zmiany pól oraz wywołania `rotate`: robi to `game::NightMazeApp` ([`transforms-camera.md`](transforms-camera.md), sekcja 5.11).
 
 ## 7. Źródła
 

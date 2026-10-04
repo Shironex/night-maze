@@ -13,6 +13,10 @@ namespace gfx {
 class Shader;
 } // namespace gfx
 
+namespace scene {
+struct Camera;
+} // namespace scene
+
 namespace debug {
 
 /// Everything the debug panels may read or edit this frame.
@@ -33,6 +37,12 @@ struct DebugContext {
     std::array<float, 3>& clearColor;
     /// Shader program the game draws with, editable: the Shaders panel reloads it.
     gfx::Shader& shader;
+    /// Camera of the game, editable: position, angles and projection.
+    scene::Camera& camera;
+    /// Mouse look sensitivity in degrees per screen coordinate unit, editable.
+    float& mouseSensitivity;
+    /// Camera movement speed in metres per second, editable.
+    float& moveSpeed;
 };
 
 } // namespace debug

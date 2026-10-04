@@ -81,24 +81,35 @@ Po poprawnym starcie w terminalu pojawiają się dwie linie z `core::Window`:
 
 W oknie widać ciemnogranatowe tło, na środku kostkę obróconą tak, że widać trzy jej ściany
 (czerwoną z przodu, niebieską z lewej i turkusową u góry, każda w jednolitym kolorze), a na
-wierzchu panele "Renderer" i "Shaders". Kostka zachowuje proporcje przy zmianie rozmiaru
-okna. Linia `[error] Shader ...` w terminalu oznacza, że shader się nie
+wierzchu panele "Renderer", "Shaders" i "Camera". Kostka zachowuje proporcje przy zmianie
+rozmiaru okna. Po kliknięciu w scenę kursor znika i kamerą można latać wokół kostki
+(tabela niżej). Linia `[error] Shader ...` w terminalu oznacza, że shader się nie
 wczytał: wtedy okno pokazuje samo tło ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
 
 `4.1` potwierdza, że dostaliśmy kontekst, o który prosiliśmy. `Metal` oznacza, że OpenGL na
 Apple Silicon jest warstwą zbudowaną nad Metalem. Druga linia zależy od procesora w danym
 Macu.
 
-### Sterowanie w M0
+### Sterowanie
 
-| Klawisz | Działanie | Gdzie w kodzie |
+| Klawisz albo mysz | Działanie | Gdzie w kodzie |
 |---|---|---|
-| Esc | zamyka program | `Application::run` w [`src/core/Application.cpp`](../../src/core/Application.cpp) |
+| lewy przycisk myszy w scenie | przechwytuje kursor (kursor znika) i włącza sterowanie kamerą | `NightMazeApp::onRender` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
+| ruch myszy przy przechwyconym kursorze | obraca kamerę | tamże |
+| W, S, A, D przy przechwyconym kursorze | lot do przodu, do tyłu, w lewo, w prawo | `NightMazeApp::onUpdate`, tamże |
+| spacja, lewy Shift przy przechwyconym kursorze | lot w górę, w dół | tamże |
+| Esc | przy przechwyconym kursorze oddaje kursor, przy wolnym zamyka program | `Application::run` w [`src/core/Application.cpp`](../../src/core/Application.cpp) |
 | `~` (na lewo od `1`, `GLFW_KEY_GRAVE_ACCENT`) | pokazuje lub ukrywa interfejs debugowy | `DebugNightMazeApp::onRender` w [`src/main.cpp`](../../src/main.cpp) |
 
-Oba klawisze są ignorowane, dopóki aktywny jest widżet panelu ImGui (na przykład trwa
+Klawisze są ignorowane, dopóki aktywny jest widżet panelu ImGui (na przykład trwa
 wpisywanie wartości): klawiatura należy wtedy do panelu. Opis w
-[`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6.
+[`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6. Kliknięcie w panel nie
+przechwytuje kursora, a przy przechwyconym kursorze panele nie reagują na mysz: żeby
+przesunąć suwak, trzeba najpierw nacisnąć Esc. Sterowanie kamerą opisuje
+[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcje 5.11
+i 6. Na macOS GLFW 3.4 nie ma surowego ruchu myszy, więc obrót korzysta z ruchu kursora po
+przyspieszeniu systemowym ([`../modules/core/input.md`](../modules/core/input.md), sekcja
+2.7).
 
 Panel "Renderer" pokazuje FPS, czas klatki, rozmiar framebuffera i okna, wersję OpenGL,
 nazwę karty oraz edytor koloru tła. Panel można przeciągnąć do krawędzi okna (docking).

@@ -5,6 +5,8 @@
 #include "core/GlCheck.hpp"
 #include "core/Paths.hpp"
 
+#include <GLFW/glfw3.h>
+
 #include <cstddef>
 
 namespace game {
@@ -122,11 +124,71 @@ NightMazeApp::NightMazeApp()
     m_cubeTransform.rotationDegrees = {CUBE_ROTATION_X_DEGREES, CUBE_ROTATION_Y_DEGREES, 0.0F};
 }
 
-void NightMazeApp::onUpdate(double /*fixedDt*/) {
-    // No simulation yet.
+void NightMazeApp::onUpdate(double fixedDt) {
+    // Remember where the camera was before this step. It is done in every step, also
+    // when the camera does not move, so that onRender never blends with an old position.
+    m_previousCameraPosition = m_camera.position;
+
+    // The camera is controlled only while the cursor is captured: one click in the scene
+    // switches on both mouse look and movement, Escape switches both off.
+    if (!input().isCursorCaptured()) {
+        return;
+    }
+
+    // Free flight (there are no collisions yet): W and S move along the view direction,
+    // so looking up while holding W also climbs. A and D move sideways, Space and Left
+    // Shift move straight up and down. Opposite keys cancel each other.
+    const glm::vec3 forward = m_camera.forward();
+    const glm::vec3 right = m_camera.right();
+    glm::vec3 direction{0.0F};
+    if (input().isKeyDown(GLFW_KEY_W)) {
+        direction += forward;
+    }
+    if (input().isKeyDown(GLFW_KEY_S)) {
+        direction -= forward;
+    }
+    if (input().isKeyDown(GLFW_KEY_D)) {
+        direction += right;
+    }
+    if (input().isKeyDown(GLFW_KEY_A)) {
+        direction -= right;
+    }
+    if (input().isKeyDown(GLFW_KEY_SPACE)) {
+        direction += scene::Camera::WORLD_UP;
+    }
+    if (input().isKeyDown(GLFW_KEY_LEFT_SHIFT)) {
+        direction -= scene::Camera::WORLD_UP;
+    }
+
+    // Two keys at once give a vector longer than 1 (about 1.41 for W and D), which would
+    // make diagonal movement faster. Normalizing brings the length back to 1. With no key
+    // held the vector is zero and must be left alone: normalizing it divides by zero.
+    if (glm::length(direction) > 0.0F) {
+        direction = glm::normalize(direction);
+    }
+
+    // Distance of one step: metres per second times seconds.
+    m_camera.position += direction * (m_moveSpeed * static_cast<float>(fixedDt));
 }
 
-void NightMazeApp::onRender(double /*alpha*/) {
+void NightMazeApp::onRender(double alpha) {
+    // Mouse look. It runs here, once per frame, and not in onUpdate: a click and a mouse
+    // delta describe one frame, and onUpdate runs zero or more times per frame.
+    if (!input().isCursorCaptured()) {
+        // A click on a debug panel does not arrive here: main.cpp blocks the mouse for
+        // the game while the debug UI is using it.
+        if (input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+            input().setCursorCaptured(true);
+        }
+    } else {
+        // Mouse movement to the right is positive and positive yaw turns right, so x is
+        // used as it is. Screen y grows downwards while pitch grows upwards, hence the
+        // minus sign: moving the mouse up (negative y) looks up.
+        const float yawDelta = static_cast<float>(input().mouseDeltaX()) * m_mouseSensitivity;
+        const float pitchDelta = -static_cast<float>(input().mouseDeltaY()) * m_mouseSensitivity;
+        m_camera.rotate(yawDelta, pitchDelta);
+    }
+
     // The viewport is set in pixels, so it must come from the framebuffer size, which
     // differs from the window size on Retina displays. Querying it every frame also
     // handles window resizing.
@@ -148,8 +210,9 @@ void NightMazeApp::onRender(double /*alpha*/) {
     // A minimized window can have a framebuffer of size 0 x 0. The aspect ratio would
     // then be 0 / 0, which is NaN (not a number): glm::perspective stops the program with
     // an assert in a Debug build and returns a matrix with NaN in it in a Release build.
-    // There is nothing to draw in such a frame anyway.
-    if (framebuffer.height == 0) {
+    // A size of 0 in one direction only gives an aspect ratio of 0 or infinity, and
+    // a matrix that is just as useless. There is nothing to draw in such a frame anyway.
+    if (framebuffer.width == 0 || framebuffer.height == 0) {
         return;
     }
 
@@ -164,10 +227,17 @@ void NightMazeApp::onRender(double /*alpha*/) {
     const float aspectRatio =
         static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
 
+    // The simulation moves the camera in fixed steps, and this frame is drawn at some
+    // moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
+    // between the position before the last step and the position after it keeps the
+    // movement smooth at any frame rate. m_camera.position itself is not changed.
+    const glm::vec3 eye =
+        glm::mix(m_previousCameraPosition, m_camera.position, static_cast<float>(alpha));
+
     // The uniforms belong to the program in use, so use() comes before setMat4.
     m_shader.use();
     m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
-    m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(m_camera.position));
+    m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(eye));
     m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));
 
     m_vertexArray.bind();

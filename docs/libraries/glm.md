@@ -10,7 +10,10 @@ używa.
 `translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i `normalize`.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera. Wszystko spotyka się w
-`game::NightMazeApp`, które co klatkę liczy trzy macierze i wysyła je do `basic.vert`.
+`game::NightMazeApp`, które co klatkę liczy trzy macierze i wysyła je do `basic.vert`, a
+przy sterowaniu kamerą woła `length`, `normalize` i `mix` (sekcja 3.8). Panel Camera
+(`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui mogło edytować pozycję
+kamery.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -455,10 +458,41 @@ glm::vec3 Camera::right() const {
 - `cross` zależy od kolejności: `cross(a, b)` to `-cross(b, a)`. W układzie prawoskrętnym
   `cross(x, y)` daje `z`.
 - `mix(x, y, 0.0F)` zwraca `x`, `mix(x, y, 1.0F)` zwraca `y`, a `0.5F` punkt w połowie.
-  Działa dla liczb i dla wektorów. Tak liczy się pozycję do narysowania między dwoma
-  krokami symulacji: `mix(previous, current, alpha)` (o `alpha`:
-  [`../modules/core/main-loop.md`](../modules/core/main-loop.md)).
+  Działa dla liczb i dla wektorów.
 - W GLSL te same funkcje nazywają się tak samo i liczą to samo.
+
+`normalize` i `length` w ruchu kamery, `NightMazeApp::onUpdate` w
+[`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp):
+
+```cpp
+// Two keys at once give a vector longer than 1 (about 1.41 for W and D), which would
+// make diagonal movement faster. Normalizing brings the length back to 1. With no key
+// held the vector is zero and must be left alone: normalizing it divides by zero.
+if (glm::length(direction) > 0.0F) {
+    direction = glm::normalize(direction);
+}
+```
+
+`direction` to suma kierunków wciśniętych klawiszy. `glm::length` zwraca jej długość
+(pierwiastek z sumy kwadratów składowych), a `glm::normalize` dzieli wektor przez tę długość.
+Warunek jest konieczny: dla wektora zerowego `normalize` dzieli zero przez zero (pułapka 9).
+
+`mix` przy rysowaniu, `NightMazeApp::onRender` w tym samym pliku:
+
+```cpp
+// The simulation moves the camera in fixed steps, and this frame is drawn at some
+// moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
+// between the position before the last step and the position after it keeps the
+// movement smooth at any frame rate. m_camera.position itself is not changed.
+const glm::vec3 eye =
+    glm::mix(m_previousCameraPosition, m_camera.position, static_cast<float>(alpha));
+```
+
+Tak liczy się pozycję do narysowania między dwoma krokami symulacji. Trzeci argument musi
+mieć typ składowych wektora (`float`), a `alpha` przychodzi jako `double`, stąd
+`static_cast<float>`. Pełny opis obu fragmentów:
+[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcje 2.12
+i 5.11 (o `alpha`: [`../modules/core/main-loop.md`](../modules/core/main-loop.md), sekcja 2.4).
 
 ### 3.9. `glm::value_ptr` i wysyłanie macierzy do shadera
 
@@ -485,7 +519,7 @@ po linii [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 5.12. 
 
 ```cpp
 m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
-m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(m_camera.position));
+m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(eye));
 m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));
 ```
 
@@ -534,7 +568,8 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
    sprawia, że kamera stale patrzy w okolice początku układu.
 9. **`normalize` wektora zerowego.** Dzielenie przez długość 0 daje `NaN` we wszystkich
    składowych, a `NaN` rozchodzi się po macierzach i obraz znika. Typowe miejsce: sumowanie
-   kierunków ruchu, gdy żaden klawisz nie jest wciśnięty.
+   kierunków ruchu, gdy żaden klawisz nie jest wciśnięty. `NightMazeApp::onUpdate` normalizuje
+   sumę tylko wtedy, gdy `glm::length(direction) > 0.0F` (sekcja 3.8).
 10. **`aspect` z dzielenia całkowitego albo z zerową wysokością.** `width / height` na
     typach `int` daje 1 zamiast 1.777. Dzielić trzeba liczby `float`. Przy framebufferze o
     wysokości 0 (zminimalizowane okno) wychodzi dzielenie przez zero, więc ten przypadek

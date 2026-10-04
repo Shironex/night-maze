@@ -771,7 +771,7 @@ Kolejność zdarzeń jest wyznaczona przez kolejność **deklaracji** pól, a ni
 | 4 | `m_vertexArray`, konstruktor domyślny (nie ma go na liście, więc wykonuje się sam, w swojej kolejności) | `glGenVertexArrays`, `glBindVertexArray` | VAO istnieje i **jest bieżący** |
 | 5 | `m_vertexBuffer(GL_ARRAY_BUFFER, ...)` | `glGenBuffers`, `glBindBuffer(GL_ARRAY_BUFFER, ...)`, `glBufferData` | 576 bajtów na karcie, bufor związany z `GL_ARRAY_BUFFER`. VAO jeszcze o nim nie wie |
 | 6 | `m_indexBuffer(GL_ELEMENT_ARRAY_BUFFER, ...)` | `glGenBuffers`, `glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ...)`, `glBufferData` | 144 bajty na karcie. Samo związanie **zapisało bufor indeksów w bieżącym VAO** z kroku 4. Wiązanie `GL_ARRAY_BUFFER` z kroku 5 jest nietknięte, bo to inny cel |
-| 7 | `m_cubeTransform`, `m_camera` | brak, to zwykłe dane | wartości domyślne |
+| 7 | `m_cubeTransform`, `m_camera`, `m_previousCameraPosition`, `m_mouseSensitivity`, `m_moveSpeed` | brak, to zwykłe dane | wartości domyślne. `m_previousCameraPosition` kopiuje pozycję kamery, więc stoi po `m_camera` ([`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.11) |
 | 8 | ciało konstruktora: `setFloatAttribute` dla pozycji | `glBindVertexArray`, `glEnableVertexAttribArray(0)`, `glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 24, 0)` | atrybut 0 czyta z bufora z kroku 5 |
 | 9 | ciało konstruktora: `setFloatAttribute` dla koloru | `glBindVertexArray`, `glEnableVertexAttribArray(1)`, `glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, 12)` | atrybut 1 czyta z tego samego bufora |
 | 10 | ciało konstruktora: obrót kostki | brak | `m_cubeTransform.rotationDegrees` to (25, 35, 0) ([`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9) |
@@ -810,7 +810,7 @@ To wywołanie jest jedynym miejscem w klatce, w którym uruchamia się potok z [
 
 `bind()` jest wołane co klatkę, choć VAO jest jeden: backend ImGui przy rysowaniu paneli wiąże własny VAO i własny program, a po sobie przywraca poprzedni stan. Nie polegam na tym i przed rysowaniem ustawiam wszystko, czego potrzebuję.
 
-**Niszczenie.** Pola giną w kolejności odwrotnej do deklaracji: `m_camera`, `m_cubeTransform` (zwykłe dane), potem `m_indexBuffer`, `m_vertexBuffer`, `m_vertexArray`, `m_shader`, a dopiero potem część bazowa z oknem. Wszystkie cztery destruktory wołające OpenGL mają więc żywy kontekst.
+**Niszczenie.** Pola giną w kolejności odwrotnej do deklaracji: `m_moveSpeed`, `m_mouseSensitivity`, `m_previousCameraPosition`, `m_camera`, `m_cubeTransform` (zwykłe dane), potem `m_indexBuffer`, `m_vertexBuffer`, `m_vertexArray`, `m_shader`, a dopiero potem część bazowa z oknem. Wszystkie cztery destruktory wołające OpenGL mają więc żywy kontekst.
 
 ### 5.8 Czas życia: bufor a VAO, który go używa
 

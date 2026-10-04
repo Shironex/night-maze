@@ -443,7 +443,8 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 - [ ] minimalizacja okna i przywrócenie: program nie kończy pracy, w konsoli nie ma linii
       `[error]` ani komunikatu o asercji, kostka wraca. Zapisać, jaki rozmiar framebuffera
       pokazuje panel Renderer zaraz po przywróceniu (na Windowsie zminimalizowane okno ma
-      framebuffer 0 x 0, a `NightMazeApp::onRender` pomija wtedy rysowanie)
+      framebuffer 0 x 0, a `NightMazeApp::onRender` pomija wtedy rysowanie: sprawdza
+      szerokość i wysokość)
 - [ ] otwiera się okno konsoli z dwiema liniami `[info]`
 - [ ] zapisać dokładny napis `GL_VERSION` (oczekiwane: wersja 4.1 lub wyższa) i `GL_RENDERER`
 - [ ] w konsoli nie ma linii `[error]`
@@ -453,11 +454,11 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 **Sterowanie i interfejs**
 
 - [ ] klawisz `~` (na lewo od `1`) ukrywa i pokazuje panele
-- [ ] Esc zamyka program, kod wyjścia 0
+- [ ] Esc przy widocznym kursorze zamyka program, kod wyjścia 0
 - [ ] podczas wpisywania wartości w polu `Clear color` (Ctrl i kliknięcie) Esc anuluje tylko
   edycję i nie zamyka programu, a `~` nie chowa paneli
-- [ ] kursor myszy jest cały czas widoczny, a Esc zamyka program jednym naciśnięciem (kursor
-  nie jest jeszcze nigdzie przechwytywany, więc gałąź zwalniania kursora się nie wykonuje)
+- [ ] dopóki nikt nie kliknął w scenę, kursor myszy jest widoczny, a Esc zamyka program
+  jednym naciśnięciem
 - [ ] krzyżyk okna zamyka program bez błędów w konsoli
 - [ ] docking: panel "Renderer" daje się przeciągnąć i zadokować do krawędzi okna, środek
       pozostaje przezroczysty
@@ -550,6 +551,60 @@ kompilowany i sprawdzany tylko na macOS.
       i podpowiedź pokazują ścieżkę bez zamknięcia programu. Zapisać, jak wyświetla się
       polska litera (domyślna czcionka ImGui nie ma wszystkich polskich liter, więc
       oczekiwany jest znak zastępczy)
+
+**Kamera: sterowanie i panel Camera**
+
+Opis: [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md),
+sekcje 5.11 i 6, [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.6. Kod był
+kompilowany tylko na macOS, a sterowanie nie było jeszcze sprawdzane na Windowsie. Windows
+jest jedyną z dwóch platform, na której GLFW włącza surowy ruch myszy
+(`GLFW_RAW_MOUSE_MOTION`), więc obrót myszą działa tu inną ścieżką niż na Macu.
+
+- [ ] `src/game/NightMazeApp.cpp`, `src/debug/panels/CameraPanel.cpp`,
+      `src/debug/DebugUI.cpp` i `src/main.cpp` kompilują się w MSVC z `/W4 /permissive-` bez
+      ostrzeżeń (w szczególności `static_cast<float>` z `double` przy `mouseDeltaX`, `fixedDt`
+      i `alpha`, `glm::mix` z trzecim argumentem `float`, domyślny inicjalizator pola
+      `m_previousCameraPosition = m_camera.position`, `io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse`
+      i trzy nowe pola `DebugContext` w kolejności deklaracji)
+- [ ] panel "Camera" jest widoczny, daje się zadokować i pokazuje `Position` 0, 0, 3,
+      `Yaw` 0, `Pitch` 0, `FOV` 60
+- [ ] kliknięcie lewym przyciskiem w scenę chowa kursor, a kursor nie wyjeżdża poza okno
+      (także na drugi monitor)
+- [ ] pierwsza klatka po kliknięciu: obraz nie szarpie (kamera nie odskakuje)
+- [ ] ruch myszy w prawo obraca kamerę w prawo (kostka ucieka w lewo), ruch do góry podnosi
+      wzrok. `Pitch` zatrzymuje się na 89 i na -89
+- [ ] obrót jest płynny i ten sam ruch ręki daje ten sam obrót niezależnie od szybkości ruchu
+      (surowy ruch myszy, bez przyspieszenia systemowego). Zapisać, czy czułość domyślna
+      0,1 jest wygodna, czy wymaga innej wartości niż na Macu
+- [ ] długi obrót w jedną stronę (kilka pełnych obrotów): kamera kręci się bez zatrzymania,
+      `Yaw` zawija się przez 360
+- [ ] W, S, A, D, spacja i lewy Shift przesuwają kamerę zgodnie z opisem, ruch po skosie
+      (W i D) nie jest szybszy, klawisze przeciwne (W i S) się znoszą
+- [ ] przy widocznym kursorze klawisze ruchu nie przesuwają kamery
+- [ ] pierwszy Esc przy przechwyconym kursorze oddaje kursor (pojawia się w miejscu, w którym
+      zniknął) i nie zamyka programu, drugi Esc zamyka program
+- [ ] po Esc, **bez ruszania myszą**, kliknięcie w scenę znowu przechwytuje kursor i żaden
+      panel nie reaguje na to kliknięcie. Zapisać wynik także dla sytuacji, w której przed
+      Esc mysz była długo przesuwana w stronę zadokowanego panelu (to samo sprawdzić na
+      Macu: po zwolnieniu kursora ImGui może do pierwszego ruchu myszy pamiętać ostatnią
+      pozycję ukrytego kursora)
+- [ ] suwaki panelu Camera (na przykład `FOV`) działają, a ich przeciąganie nie obraca kamery
+      i nie chowa kursora, także gdy kursor wyjedzie przy przeciąganiu nad scenę
+- [ ] kliknięcie w panel (pasek tytułu, suwak) nie chowa kursora
+- [ ] przy przechwyconym kursorze panele nie reagują na mysz: kręcenie myszą tak, żeby ukryty
+      kursor "przeszedł" nad zadokowanym panelem, nie zatrzymuje obrotu, nie podświetla
+      widżetów i nie zmienia żadnej wartości, także przy klikaniu i przy trzymaniu przycisku
+- [ ] Alt+Tab przy przechwyconym kursorze: kursor jest widoczny w innym programie. Po
+      powrocie do okna zapisać, czy kursor jest znowu schowany i czy kamera nie odskoczyła
+- [ ] ruch jest płynny na monitorze o odświeżaniu innym niż 60 Hz (na przykład 144 Hz): lot
+      bokiem (D) obok kostki przy `Move speed` 20 nie szarpie. Zapisać FPS z panelu Renderer
+- [ ] to samo przy wyłączonym vsync w panelu sterownika (kilkaset FPS, większość klatek bez
+      kroku symulacji): ruch nadal płynny, prędkość lotu i czułość myszy takie same
+- [ ] `Near plane` powyżej około 2,2 odsłania wnętrze kostki, powyżej 3,9 kostka znika,
+      `Far plane` poniżej około 2,1 też ją chowa (kamera w pozycji startowej)
+- [ ] minimalizacja okna przy przechwyconym kursorze i przywrócenie: bez linii `[error]` i
+      bez asercji
+- [ ] w konsoli przez cały test nie ma linii `[error]`
 
 **Klasy `gfx::Buffer` i `gfx::VertexArray`**
 

@@ -1,6 +1,6 @@
 # Moduł core: fundament programu
 
-Kamień milowy: M0, uzupełniany w M1 (mysz, ścieżki do assetów). Temat wykładu: 1 (Pierwszy program OpenGL).
+Kamień milowy: M0, uzupełniany w M1 (mysz, ścieżki do assetów, pierwszy użytkownik stałego kroku i myszy: kamera). Temat wykładu: 1 (Pierwszy program OpenGL).
 Kod: [`src/core/`](../../../src/core/), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), [`src/main.cpp`](../../../src/main.cpp).
 
 Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, kontekst OpenGL (context) związany z tym oknem oraz pętlę, która co klatkę odbiera zdarzenia, przesuwa symulację i rysuje obraz. Moduł `core` dostarcza dokładnie to i nic więcej: klasę `Window` (okno GLFW z kontekstem OpenGL 4.1 Core i funkcjami załadowanymi przez GLAD), klasę `Application` (pętla główna ze stałym krokiem symulacji), `Input` (stan klawiatury i myszy), `Time` (zegar klatki), `Log` (komunikaty na konsolę), makro `GL_CHECK` (wykrywanie błędów OpenGL w buildzie Debug) i funkcje `executableDir`, `assetPath` oraz `pathText` z `Paths` (ścieżki do plików z `assets/`, liczone od położenia programu, i zamiana ścieżki na tekst). To jest realizacja tematu 1 wykładu, "Pierwszy program OpenGL": po M0 program otwiera okno, czyści je kolorem nocnego nieba i pokazuje FPS. Wszystkie późniejsze moduły (`gfx`, `renderer`, `scene`, `game`) stoją na tej warstwie, a ona sama nie wie o żadnym z nich.
@@ -43,13 +43,14 @@ Architektura projektu (PRD, sekcja 6) ma warstwy z zależnościami w jedną stro
 
 ```mermaid
 flowchart TD
-    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, DebugContext, drawRendererPanel, drawShadersPanel"]
+    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, DebugContext, drawRendererPanel, drawShadersPanel, drawCameraPanel"]
     Main --> Game["game/<br/>NightMazeApp"]
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, GL_CHECK"]
     Game --> Core
     Game --> Gfx
     Game --> Scene
     Debug --> Gfx
+    Debug --> Scene
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Gfx --> Glm
     Scene["scene/<br/>Transform, Camera"] --> Glm["GLM"]
@@ -65,7 +66,7 @@ Pięć rzeczy do zapamiętania:
 2. `game/` zna `core/`, `gfx/` i `scene/`, ale nie zna `debug/`.
 3. `debug/` może zależeć od wszystkiego, ale nic nie może zależeć od `debug/`. Jedynym plikiem, który zna jednocześnie `game/` i `debug/`, jest `main.cpp`.
 4. `gfx/` (opakowania obiektów OpenGL, na dziś klasy `Shader`, `Buffer` i `VertexArray`) zna tylko `core/`, GLAD i GLM (typ macierzy w `Shader::setMat4`). Używa go `game/` (rysowanie) i `debug/` (panel "Shaders" woła `Shader::reload()`). Opis warstwy: [`../gfx/README.md`](../gfx/README.md).
-5. `scene/` (struktury `Transform` i `Camera`: macierze modelu, widoku i rzutowania) to sama matematyka na GLM. Może zależeć od `core/` i `gfx/`, dziś dołącza tylko GLM. Używa go `game/`: `NightMazeApp` ma kamerę i transform kostki i co klatkę wysyła ich macierze do shadera. Opis warstwy: [`../scene/README.md`](../scene/README.md).
+5. `scene/` (struktury `Transform` i `Camera`: macierze modelu, widoku i rzutowania) to sama matematyka na GLM. Może zależeć od `core/` i `gfx/`, dziś dołącza tylko GLM. Używa go `game/`: `NightMazeApp` ma kamerę i transform kostki, steruje kamerą z klawiatury i myszy i co klatkę wysyła macierze do shadera. Używa go też `debug/`: panel "Camera" edytuje pola kamery. Opis warstwy: [`../scene/README.md`](../scene/README.md).
 
 Ta reguła tłumaczy dwie decyzje opisane niżej: dlaczego nakładka debug jest podpinana w `main.cpp` (sekcja 6) i dlaczego `core::Input` dostaje od `main.cpp` neutralne flagi "klawiatura zablokowana" i "mysz zablokowana", zamiast samemu pytać ImGui ([`input.md`](input.md), sekcje 5.6 i 5.10).
 
@@ -94,13 +95,18 @@ sequenceDiagram
     Run->>T: beginFrame()
     loop dopóki consumeFixedStep() zwraca true
         Run->>App: onUpdate(Time::FIXED_DT)
+        App->>In: isCursorCaptured(), isKeyDown(W, S, A, D, spacja, lewy Shift), czyli ruch kamery
     end
     Run->>T: alpha()
     Run->>App: onRender(alpha)
+    App->>In: kursor wolny, to wasMouseButtonPressed(lewy) i setCursorCaptured(true)
+    App->>In: kursor przechwycony, to mouseDeltaX(), mouseDeltaY(), czyli obrót kamery
     App->>App: NightMazeApp onRender, czyli glViewport, glEnable(GL_DEPTH_TEST), glClearColor, glClear
-    App->>App: gdy jest co rysować, to m_shader.use(), setMat4 x3, m_vertexArray.bind(), glDrawElements
+    App->>App: gdy jest co rysować, to oko z glm mix i alpha, m_shader.use(), setMat4 x3, m_vertexArray.bind(), glDrawElements
     App->>In: wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)
-    App->>UI: draw(DebugContext z time(), window(), clearColor(), shader())
+    App->>In: isCursorCaptured()
+    App->>UI: setMouseEnabled(kursor nieprzechwycony)
+    App->>UI: draw(DebugContext z time(), window(), clearColor(), shader(), camera(), mouseSensitivity(), moveSpeed())
     App->>UI: wantsKeyboard()
     App->>In: setKeyboardBlocked(...)
     App->>UI: wantsMouse()
@@ -114,9 +120,11 @@ sequenceDiagram
 | Zdarzenia systemu | `m_window.pollEvents()` | [`window-context.md`](window-context.md) |
 | Migawka klawiatury i myszy, Escape (zwalnia przechwycony kursor albo zamyka program) | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)`, `isCursorCaptured()` | [`input.md`](input.md), sekcja 5.7 |
 | Pomiar czasu, kroki symulacji | `m_time.beginFrame()`, `consumeFixedStep()`, `onUpdate` | [`main-loop.md`](main-loop.md) |
+| Symulacja: ruch kamery | `NightMazeApp::onUpdate`: zapamiętanie poprzedniej pozycji, a przy przechwyconym kursorze `isKeyDown` dla sześciu klawiszy i przesunięcie o `m_moveSpeed * fixedDt` | [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.11 |
+| Mysz kamery | początek `NightMazeApp::onRender`: kliknięcie w scenę przechwytuje kursor, przy przechwyconym kursorze przesunięcie myszy obraca kamerę | [`input.md`](input.md), sekcja 5.9, [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.11 |
 | Rysowanie gry: stan i tło | `NightMazeApp::onRender`: `glViewport`, `glEnable(GL_DEPTH_TEST)`, `glClearColor`, `glClear` (kolor i głębia) w `GL_CHECK` | [`window-context.md`](window-context.md), [`gl-check.md`](gl-check.md) |
-| Rysowanie gry: kostka | pominięte, gdy framebuffer ma wysokość 0 albo `m_shader.isValid()` jest fałszem. Inaczej `m_shader.use()`, trzy razy `m_shader.setMat4(...)` z macierzami z `m_cubeTransform` i `m_camera`, `m_vertexArray.bind()`, `glDrawElements` | [`../gfx/README.md`](../gfx/README.md), sekcja 6, [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
-| Przełącznik paneli i panele | `wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)`, `m_debugUI.draw(...)` | [`../debug-ui.md`](../debug-ui.md) |
+| Rysowanie gry: kostka | pominięte, gdy framebuffer ma szerokość albo wysokość 0 albo `m_shader.isValid()` jest fałszem. Inaczej pozycja oka z `glm::mix` i `alpha`, `m_shader.use()`, trzy razy `m_shader.setMat4(...)` z macierzami z `m_cubeTransform` i `m_camera`, `m_vertexArray.bind()`, `glDrawElements` | [`../gfx/README.md`](../gfx/README.md), sekcja 6, [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
+| Przełącznik paneli, mysz dla ImGui i panele | `wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)`, `m_debugUI.setMouseEnabled(!input().isCursorCaptured())`, `m_debugUI.draw(...)` | [`../debug-ui.md`](../debug-ui.md), sekcja 5.6 |
 | Blokada klawiatury na następną klatkę | `input().setKeyboardBlocked(m_debugUI.wantsKeyboard())` | [`input.md`](input.md), sekcja 5.6 |
 | Blokada myszy na następną klatkę | `input().setMouseBlocked(m_debugUI.wantsMouse())` | [`input.md`](input.md), sekcja 5.10 |
 | Zamiana buforów | `m_window.swapBuffers()` | [`window-context.md`](window-context.md) |
@@ -190,10 +198,16 @@ classDiagram
         -Buffer m_indexBuffer
         -Transform m_cubeTransform
         -Camera m_camera
+        -vec3 m_previousCameraPosition
+        -float m_mouseSensitivity
+        -float m_moveSpeed
         #onUpdate(fixedDt)
         #onRender(alpha)
         #clearColor()
         #shader()
+        #camera()
+        #mouseSensitivity()
+        #moveSpeed()
     }
     class DebugNightMazeApp {
         <<main>>
@@ -216,12 +230,19 @@ protected:
         if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) {
             m_debugUI.toggleVisible();
         }
+        // While the cursor is captured the mouse belongs to the camera. The hidden cursor
+        // still has a position that moves with the mouse, so the panels must ignore it,
+        // otherwise it would hover and click them unseen.
+        m_debugUI.setMouseEnabled(!input().isCursorCaptured());
         // The context is rebuilt every frame: it only holds references, so it is cheap.
         m_debugUI.draw(debug::DebugContext{
             .time = time(),
             .window = window(),
             .clearColor = clearColor(),
             .shader = shader(),
+            .camera = camera(),
+            .mouseSensitivity = mouseSensitivity(),
+            .moveSpeed = moveSpeed(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -245,12 +266,12 @@ private:
 Szczegóły tej klasy, o które można zostać zapytanym:
 
 - `game::NightMazeApp::onRender(alpha);` to wywołanie **z kwalifikacją nazwą klasy**. Wyłącza ono mechanizm wirtualny i woła dokładnie wersję bazową (rysowanie gry). Samo `onRender(alpha)` wywołałoby wirtualnie tę samą funkcję, czyli nieskończoną rekurencję.
-- Kolejność w `onRender`: najpierw gra rysuje scenę, potem panele lądują na wierzchu, a na końcu `main.cpp` przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy.
+- Kolejność w `onRender`: najpierw gra obsługuje mysz kamery i rysuje scenę, potem `main.cpp` mówi ImGui, czy wolno mu używać myszy (`setMouseEnabled`: nie, gdy kursor jest przechwycony przez kamerę), panele lądują na wierzchu, a na końcu `main.cpp` przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy.
 - Przełącznik paneli to klawisz `~` (na lewo od `1`, w GLFW `GLFW_KEY_GRAVE_ACCENT`). Sprawdzam go przez `wasKeyPressed` w `onRender`, czyli dokładnie raz na klatkę (dlaczego nie w `onUpdate`: [`input.md`](input.md), sekcja 5.5).
-- Dwie ostatnie linie `onRender` to całe powiązanie klawiatury i myszy gry z ImGui. `core/` nie wie, kto i dlaczego blokuje wejście, a `debug/` nie wie, co gra zrobi z tą informacją. Pełny opis: [`input.md`](input.md), sekcje 5.6 i 5.10.
+- Linia `setMouseEnabled` i dwie ostatnie linie `onRender` to całe powiązanie klawiatury i myszy gry z ImGui. `core/` nie wie, kto i dlaczego blokuje wejście, a `debug/` nie wie, co gra zrobi z tą informacją ani dlaczego ma zignorować mysz. Pełny opis: [`input.md`](input.md), sekcje 5.6, 5.10 i 5.11.
 - `final` zabrania dalszego dziedziczenia po tej klasie. Anonimowa przestrzeń nazw sprawia, że klasa jest widoczna tylko w `main.cpp`.
 - Klasa nie ma własnego konstruktora. Kompilator generuje domyślny: buduje część bazową (`NightMazeApp`), a potem pole `m_debugUI` z inicjalizatora przy deklaracji, `{window()}`.
-- `clearColor()` to chroniony akcesor w `NightMazeApp` zwracający referencję do prywatnego `m_clearColor`. Gra udostępnia swój stan klasie pochodnej, nie wiedząc, kto i po co go użyje.
+- `clearColor()` to chroniony akcesor w `NightMazeApp` zwracający referencję do prywatnego `m_clearColor`. Tak samo działają `shader()`, `camera()`, `mouseSensitivity()` i `moveSpeed()`. Gra udostępnia swój stan klasie pochodnej, nie wiedząc, kto i po co go użyje.
 - `shader()` działa tak samo dla prywatnego `m_shader`: zwraca `gfx::Shader&`, przez które panel "Shaders" woła `reload()` ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 6.2).
 
 Dwie rzeczy warte uwagi w samej klasie bazowej:
@@ -293,14 +314,14 @@ Tu działa druga część tej samej reguły: najpierw konstruowana jest **częś
 | Konstrukcja (z góry na dół) | Niszczenie (z góry na dół) |
 |---|---|
 | `Application::m_window` (GLFW, okno, kontekst, GLAD) | `DebugNightMazeApp::m_debugUI` (zamknięcie ImGui, okno i kontekst jeszcze żyją) |
-| `Application::m_input` | `NightMazeApp::m_camera`, `NightMazeApp::m_cubeTransform` (zwykłe dane, nic do zwolnienia) |
+| `Application::m_input` | `NightMazeApp::m_moveSpeed`, `m_mouseSensitivity`, `m_previousCameraPosition`, `m_camera`, `m_cubeTransform` (zwykłe dane, nic do zwolnienia) |
 | `Application::m_time` | `NightMazeApp::m_indexBuffer` (`glDeleteBuffers`) |
 | `NightMazeApp::m_clearColor` | `NightMazeApp::m_vertexBuffer` (`glDeleteBuffers`) |
 | `NightMazeApp::m_shader` (kompilacja i linkowanie, potrzebuje kontekstu) | `NightMazeApp::m_vertexArray` (`glDeleteVertexArrays`) |
 | `NightMazeApp::m_vertexArray` (`glGenVertexArrays`, `glBindVertexArray`) | `NightMazeApp::m_shader` (`glDeleteProgram`) |
 | `NightMazeApp::m_vertexBuffer` (`glGenBuffers`, `glBufferData`) | `NightMazeApp::m_clearColor` |
 | `NightMazeApp::m_indexBuffer` (`glGenBuffers`, `glBufferData`, zapisany w związanym VAO) | `Application::m_time` |
-| `NightMazeApp::m_cubeTransform`, `NightMazeApp::m_camera` (zwykłe dane, bez OpenGL) | `Application::m_input` |
+| `NightMazeApp::m_cubeTransform`, `m_camera`, `m_previousCameraPosition` (kopia pozycji kamery, dlatego po niej), `m_mouseSensitivity`, `m_moveSpeed` (zwykłe dane, bez OpenGL) | `Application::m_input` |
 | ciało konstruktora `NightMazeApp` (opis atrybutów, obrót kostki) | `Application::m_window` (okno, kontekst, `glfwTerminate`) |
 | `DebugNightMazeApp::m_debugUI` (potrzebuje okna i kontekstu) | |
 

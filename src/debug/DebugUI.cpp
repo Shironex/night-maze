@@ -4,6 +4,7 @@
 
 #include "core/Window.hpp"
 #include "debug/DebugContext.hpp"
+#include "debug/panels/CameraPanel.hpp"
 #include "debug/panels/RendererPanel.hpp"
 #include "debug/panels/ShadersPanel.hpp"
 
@@ -38,7 +39,25 @@ bool DebugUI::wantsKeyboard() const {
 }
 
 bool DebugUI::wantsMouse() const {
-    return ImGui::GetIO().WantCaptureMouse;
+    const ImGuiIO& io = ImGui::GetIO();
+    // With the mouse switched off ImGui still sets WantCaptureMouse while a button is
+    // held down and the hidden cursor is at the position of a panel. Nothing in the panel
+    // reacts, but the caller would block the mouse for the game, so the answer is no.
+    if ((io.ConfigFlags & ImGuiConfigFlags_NoMouse) != 0) {
+        return false;
+    }
+    return io.WantCaptureMouse;
+}
+
+void DebugUI::setMouseEnabled(bool enabled) {
+    // ConfigFlags is a set of bits. With the NoMouse bit set, ImGui treats no panel as
+    // being under the cursor when it starts a frame, so nothing is hovered or clicked.
+    ImGuiIO& io = ImGui::GetIO();
+    if (enabled) {
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+    } else {
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    }
 }
 
 void DebugUI::draw(const DebugContext& context) {
@@ -58,6 +77,7 @@ void DebugUI::draw(const DebugContext& context) {
         // what it reads and what it edits.
         drawRendererPanel(context.time, context.window, context.clearColor);
         drawShadersPanel(context.shader);
+        drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.

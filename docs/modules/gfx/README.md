@@ -109,6 +109,7 @@ flowchart TD
     Game --> Gfx
     Game --> Scene
     Debug --> Gfx
+    Debug --> Scene
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Gfx --> Glm
     Scene["scene/<br/>Transform, Camera"] --> Glm["GLM"]

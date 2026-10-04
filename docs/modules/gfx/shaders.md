@@ -825,8 +825,9 @@ m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FI
 // A minimized window can have a framebuffer of size 0 x 0. The aspect ratio would
 // then be 0 / 0, which is NaN (not a number): glm::perspective stops the program with
 // an assert in a Debug build and returns a matrix with NaN in it in a Release build.
-// There is nothing to draw in such a frame anyway.
-if (framebuffer.height == 0) {
+// A size of 0 in one direction only gives an aspect ratio of 0 or infinity, and
+// a matrix that is just as useless. There is nothing to draw in such a frame anyway.
+if (framebuffer.width == 0 || framebuffer.height == 0) {
     return;
 }
 
@@ -841,10 +842,17 @@ if (!m_shader.isValid()) {
 const float aspectRatio =
     static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
 
+// The simulation moves the camera in fixed steps, and this frame is drawn at some
+// moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
+// between the position before the last step and the position after it keeps the
+// movement smooth at any frame rate. m_camera.position itself is not changed.
+const glm::vec3 eye =
+    glm::mix(m_previousCameraPosition, m_camera.position, static_cast<float>(alpha));
+
 // The uniforms belong to the program in use, so use() comes before setMat4.
 m_shader.use();
 m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
-m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(m_camera.position));
+m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(eye));
 m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));
 
 m_vertexArray.bind();
@@ -858,17 +866,18 @@ GL_CHECK(glDrawElements(GL_TRIANGLES, INDEX_COUNT, GL_UNSIGNED_INT, nullptr));
 
 | Linia | Co robi i dlaczego |
 |---|---|
-| `if (framebuffer.height == 0) { return; }` | Zminimalizowane okno: nie ma pikseli do narysowania, a proporcji nie da się policzyć. Szczegóły: [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
+| `if (framebuffer.width == 0 \|\| framebuffer.height == 0) { return; }` | Zminimalizowane okno albo okno o zerowej szerokości: nie ma pikseli do narysowania, a proporcji nie da się policzyć. Szczegóły: [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
 | `if (!m_shader.isValid()) { return; }` | Gdy shader się nie wczytał, rysowanie jest pomijane w całości. Klatka to wtedy samo tło, a panele debug działają normalnie, bo rysuje je `DebugNightMazeApp::onRender` po powrocie z tej funkcji. Błąd został wypisany **raz**, przez `reload()` wołane z konstruktora, a nie co klatkę |
 | `const float aspectRatio = ...` | proporcje obrazu dla macierzy rzutowania, z rozmiaru framebuffera |
-| `m_shader.use();` | `glUseProgram`: wybiera program dla następnych wywołań. Stoi **przed** `setMat4`, bo `glUniform*` pisze do programu bieżącego. Wołane co klatkę, bo backend ImGui ustawia przy rysowaniu paneli własny program |
+| `m_shader.use();` | `glUseProgram`: wybiera program dla następnych wywołań. Stoi **przed** `setMat4`, bo `glUniform*` pisze do programu bieżącego. Wołane co klatkę, bo klatka sama ustawia stan, od którego zależy. Backend ImGui przy rysowaniu paneli ustawia własny program i zwykle przywraca potem program gry, ale nie po klatce, w której program został przeładowany (sekcja 6.3) |
+| `const glm::vec3 eye = glm::mix(...)` | punkt, z którego rysowana jest klatka: pozycja kamery między dwoma krokami symulacji ([`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.11) |
 | `m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());` | macierz modelu kostki trafia do `uModel` |
-| `m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(m_camera.position));` | macierz widoku trafia do `uView` |
+| `m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(eye));` | macierz widoku trafia do `uView` |
 | `m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));` | macierz rzutowania trafia do `uProjection` |
 | `m_vertexArray.bind();` | Wybiera opis danych wierzchołków i bufor indeksów ([`buffers-vao.md`](buffers-vao.md)) |
 | `glDrawElements(GL_TRIANGLES, INDEX_COUNT, GL_UNSIGNED_INT, nullptr)` | Uruchamia potok z sekcji 2.1 dla 36 indeksów, czyli 12 trójkątów ([`buffers-vao.md`](buffers-vao.md), sekcja 5.7) |
 
-Macierze są wysyłane **co klatkę**, choć kostka i kamera dziś się nie ruszają. Powody są trzy: macierz rzutowania zależy od rozmiaru okna, który może się zmienić w każdej chwili. Po `reload()` nowy program ma wszystkie uniformy wyzerowane (sekcja 2.8), więc wartości wysłane raz przy starcie przepadłyby po pierwszym naciśnięciu "Reload shaders". A gdy kamera zacznie się poruszać, i tak będą inne w każdej klatce.
+Macierze są wysyłane **co klatkę**, choć kostka się nie rusza. Powody są trzy: macierz rzutowania zależy od rozmiaru okna, który może się zmienić w każdej chwili. Po `reload()` nowy program ma wszystkie uniformy wyzerowane (sekcja 2.8), więc wartości wysłane raz przy starcie przepadłyby po pierwszym naciśnięciu "Reload shaders". A kamera lata i obraca się, więc macierz widoku jest inna w każdej klatce ruchu.
 
 **Akcesor** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), obok `clearColor()`:
 
@@ -1150,7 +1159,15 @@ sequenceDiagram
 2. **`reload()` nie zmienia stanu, na którym polega backend.** Tworzy obiekty shaderów i program, kompiluje, linkuje i usuwa (sekcja 3.1). Nie woła `glUseProgram`, nie wiąże buforów, tekstur ani VAO.
 3. **Backend ustawia własny stan od zera.** `RenderDrawData` zapamiętuje bieżący stan, potem samo woła `glUseProgram` dla swojego programu, wiąże swoje VAO i bufory. Nie zakłada, że ktoś zostawił mu poprawny program.
 4. **Backend jest przygotowany na usunięty program.** Po udanym przeładowaniu stary program jest jeszcze bieżący (gra ustawiła go w tej klatce), więc `glDeleteProgram` tylko oznacza go do usunięcia (sekcja 7, pułapka 4). Backend zapamiętuje go jako "poprzedni program", przełącza się na własny i w tej chwili stary program znika naprawdę. Na końcu backend przywraca poprzedni program tylko wtedy, gdy ten jeszcze istnieje. W źródle jest to linia `if (last_program == 0 || glIsProgram(last_program)) glUseProgram(last_program);` z komentarzem, że bez tego sprawdzenia przywrócenie programu oczekującego na usunięcie dałoby błąd OpenGL.
-5. **Gra nie zostaje z usuniętym programem.** Po takiej klatce bieżącym programem jest program ImGui. W następnej klatce `NightMazeApp::onRender` woła `m_shader.use()` przed ustawieniem macierzy i przed `glDrawElements`, a `use()` i `setMat4()` czytają aktualne `m_program`, czyli już nowy identyfikator. Nowy program zaczyna z wyzerowanymi uniformami, ale trzy macierze są wysyłane co klatkę, więc dostaje je przed pierwszym rysowaniem. Nikt poza klasą `Shader` nie przechowuje identyfikatora programu.
+5. **Który program jest bieżący po klatce.** Zależy to od tego, czy program gry przetrwał klatkę. W źródle backendu `RenderDrawData` zapamiętuje `GL_CURRENT_PROGRAM`, w `ImGui_ImplOpenGL3_SetupRenderState` woła `glUseProgram` dla własnego programu (zawsze, także gdy nie ma żadnego panelu do narysowania), a na końcu wykonuje linię z punktu 4. Wynikają z tego trzy przypadki:
+
+   | Klatka | Co robi backend na końcu | Bieżący program po klatce |
+   |---|---|---|
+   | zwykła (bez przeładowania albo z nieudanym) | zapamiętany program gry istnieje, więc `glIsProgram` zwraca prawdę i backend go **przywraca** | program gry, ten sam co przed rysowaniem paneli |
+   | z udanym przeładowaniem | zapamiętany stary program został usunięty w chwili przełączenia na program ImGui, `glIsProgram` zwraca fałsz, backend **niczego nie przywraca** | program ImGui |
+   | okno o zerowym rozmiarze (zminimalizowane) | `RenderDrawData` wraca na samym początku, zanim cokolwiek zapamięta albo ustawi | bez zmian: backend w takiej klatce nie dotyka stanu OpenGL |
+
+   Żaden z tych przypadków nie szkodzi grze, bo gra nie polega na tym, co zostało po poprzedniej klatce. W następnej klatce `NightMazeApp::onRender` woła `m_shader.use()` przed ustawieniem macierzy i przed `glDrawElements`, a `use()` i `setMat4()` czytają aktualne `m_program`, czyli już nowy identyfikator. Nowy program zaczyna z wyzerowanymi uniformami, ale trzy macierze są wysyłane co klatkę, więc dostaje je przed pierwszym rysowaniem. Nikt poza klasą `Shader` nie przechowuje identyfikatora programu.
 
 Przy nieudanym przeładowaniu nic z tego nie zachodzi: `m_program` się nie zmienia, żaden używany program nie jest usuwany, a backend przywraca ten sam program co zwykle.
 

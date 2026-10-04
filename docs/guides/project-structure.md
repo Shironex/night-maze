@@ -1,11 +1,13 @@
-# Struktura projektu (stan M1 w toku)
+# Struktura projektu (stan M1: kod kompletny na macOS)
 
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
-konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny w
-trakcie kamienia milowego M1: po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
+konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny po
+ostatnim kroku kamienia milowego M1 (kod kompletny na macOS, na Windowsie jeszcze
+niesprawdzony, bez tagu): po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
 klasami `Shader`, `Buffer` i `VertexArray`, katalog `assets/` z pierwszymi shaderami,
-warstwa `scene/` ze strukturami `Transform` i `Camera` oraz kostka rysowana z macierzami
-modelu, widoku i rzutowania. Docelową
+warstwa `scene/` ze strukturami `Transform` i `Camera`, kostka rysowana z macierzami
+modelu, widoku i rzutowania, latająca kamera sterowana myszą i klawiaturą oraz panel
+Camera. Docelową
 strukturę (z `renderer/` i `src/assets/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -56,6 +58,7 @@ night-maze/
 │   │   ├── DebugContext.hpp        # referencje do danych dla paneli
 │   │   ├── DebugUI.hpp/.cpp        # kontekst ImGui i cykl klatki
 │   │   └── panels/
+│   │       ├── CameraPanel.hpp/.cpp    # panel "Camera": pozycja, kąty, FOV, sterowanie
 │   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer"
 │   │       └── ShadersPanel.hpp/.cpp   # panel "Shaders", przycisk Reload shaders
 │   ├── game/                   # gra
@@ -130,10 +133,11 @@ wypisane na początku drzewa, przed katalogami.
 | `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), wiązany już w konstruktorze, `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
 | `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Sama matematyka na GLM, bez OpenGL. Używa jej `NightMazeApp` (pole `m_cubeTransform`) | [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
 | `src/scene/Camera.*` | `scene::Camera`: struktura z publicznymi polami `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałymi `WORLD_UP` i `MAX_PITCH_DEGREES` oraz funkcjami `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Sama matematyka na GLM, bez OpenGL i bez wejścia. Używa jej `NightMazeApp` (pole `m_camera`) | [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md) |
-| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane kostki (24 wierzchołki ze stałymi układu, 36 indeksów), tablica wierzchołków, bufor wierzchołków i bufor indeksów, `scene::Transform` kostki i `scene::Camera`. Konstruktor wczytuje shader, wysyła dane i ustawia obrót kostki. `onRender` ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera, wysyła macierze modelu, widoku i rzutowania i rysuje kostkę (`glDrawElements`). Chronione akcesory `clearColor()` i `shader()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6, macierze w [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja 5.9 |
+| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane kostki (24 wierzchołki ze stałymi układu, 36 indeksów), tablica wierzchołków, bufor wierzchołków i bufor indeksów, `scene::Transform` kostki i `scene::Camera`, ustawienia sterowania kamerą (czułość myszy, prędkość ruchu). Konstruktor wczytuje shader, wysyła dane i ustawia obrót kostki. `onUpdate` przesuwa kamerę klawiszami W, A, S, D, spacja i lewy Shift stałym krokiem. `onRender` przechwytuje kursor po kliknięciu w scenę i obraca kamerę myszą, ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera i pozycję oka między dwoma krokami symulacji, wysyła macierze modelu, widoku i rzutowania i rysuje kostkę (`glDrawElements`). Chronione akcesory `clearColor()`, `shader()`, `camera()`, `mouseSensitivity()` i `moveSpeed()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6, macierze i sterowanie kamerą w [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcje 5.9 i 5.11 |
 | `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core`: atrybuty pozycji i koloru, uniformy `uModel`, `uView`, `uProjection` (macierze), kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders" | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
-| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`, `shader`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
-| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
+| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`, `shader`, `camera`, `mouseSensitivity`, `moveSpeed`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
+| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony) | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
+| `src/debug/panels/CameraPanel.*` | `debug::drawCameraPanel`: panel "Camera" (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, prędkość ruchu) | [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja 6 |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
 | `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (pliki programu shaderów, przycisk "Reload shaders", ostatni błąd wczytania) | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6 |
 
@@ -174,7 +178,8 @@ Jak to widać w kodzie:
   `<windows.h>` na Windowsie), bo położenie programu zna tylko system operacyjny. Także
   blokada klawiatury i myszy na czas pracy z panelem jest zrobiona bez ImGui w `core/`:
   `core::Input` ma neutralne flagi `setKeyboardBlocked` i `setMouseBlocked`, a ustawia je
-  `main.cpp`.
+  `main.cpp`. W drugą stronę działa to tak samo: `core::Input` wie tylko, czy kursor jest
+  przechwycony, a o tym, że ImGui ma wtedy ignorować mysz, decyduje `main.cpp`.
 - Nagłówki w `src/gfx/` dołączają `<glad/gl.h>` i bibliotekę standardową, a pliki `.cpp` do
   tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp` i `core/Paths.hpp`). `Shader.hpp`
   dołącza też `<glm/glm.hpp>`, a `Shader.cpp` `<glm/gtc/type_ptr.hpp>`, bo `setMat4`
@@ -184,10 +189,14 @@ Jak to widać w kodzie:
   `<cmath>`). Nic z GLAD, GLFW, `core/`, `gfx/`, `game/` ani `debug/`.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp`, trzy nagłówki z `gfx/`
   (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`), dwa ze `scene/` (`Camera.hpp`,
-  `Transform.hpp`) i nic z `debug/`. Komentarz w
-  klasie mówi wprost: "It knows nothing about the debug UI".
-- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`, nagłówki obu
+  `Transform.hpp`), `<glm/glm.hpp>` (pole typu `glm::vec3`) i nic z `debug/`. Komentarz w
+  klasie mówi wprost: "It knows nothing about the debug UI". `NightMazeApp.cpp` dołącza do
+  tego `<GLFW/glfw3.h>`, ale tylko dla stałych klawiszy i przycisku myszy (`GLFW_KEY_W`,
+  `GLFW_MOUSE_BUTTON_LEFT`): o stan wejścia pyta wyłącznie `core::Input`.
+- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`, nagłówki trzech
   paneli i nagłówki ImGui.
+- `src/debug/panels/CameraPanel.cpp` dołącza `scene/Camera.hpp` i
+  `<glm/gtc/type_ptr.hpp>`: to pierwszy plik w `debug/`, który zna `scene/`.
 - `src/debug/panels/ShadersPanel.cpp` dołącza `core/Paths.hpp` i `gfx/Shader.hpp`: to
   pierwszy plik w `debug/`, który zna `gfx/`. Kierunek jest dozwolony, bo `debug/` może
   zależeć od każdej warstwy.
@@ -196,8 +205,9 @@ Jak to widać w kodzie:
   `DebugNightMazeApp final : public game::NightMazeApp`, która posiada
   `debug::DebugUI m_debugUI{window()}` i w `onRender` najpierw woła
   `game::NightMazeApp::onRender(alpha)`, potem obsługuje klawisz `~` (przełącznik paneli),
-  buduje `debug::DebugContext`, rysuje panele i przekazuje do `core::Input` informację, czy
-  ImGui używa klawiatury i myszy.
+  wyłącza mysz w ImGui, gdy kursor jest przechwycony przez kamerę
+  (`m_debugUI.setMouseEnabled`), buduje `debug::DebugContext`, rysuje panele i przekazuje do
+  `core::Input` informację, czy ImGui używa klawiatury i myszy.
 
 Po co ta dyscyplina: grę da się zbudować i zrozumieć bez paneli debugowych, a panele można
 rozbudowywać bez dotykania logiki gry. W docelowej architekturze między `gfx/` a `scene/`
@@ -388,6 +398,8 @@ add_executable(night_maze
     src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
+    src/debug/panels/CameraPanel.cpp
+    src/debug/panels/CameraPanel.hpp
     src/debug/panels/RendererPanel.cpp
     src/debug/panels/RendererPanel.hpp
     src/debug/panels/ShadersPanel.cpp
