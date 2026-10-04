@@ -2,14 +2,15 @@
 
 Dokument biblioteki dla kamienia milowego M1. Opisuje konfigurację z
 [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i tę część API, której projekt
-używa albo zaraz będzie używał.
+używa.
 
-**Stan na dziś: GLM używają struktury `scene::Transform` i `scene::Camera`**
-([`src/scene/`](../../src/scene/), opis w
-[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md)). To one
-wołają `translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i
-`normalize`. Klasa `Shader` jeszcze GLM nie dołącza: funkcja wysyłająca macierz do shadera
-(sekcja 3.9) dojdzie razem z kostką.
+**Stan na dziś: GLM używają struktury `scene::Transform` i `scene::Camera` oraz klasa
+`gfx::Shader`.** Struktury z [`src/scene/`](../../src/scene/) (opis w
+[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md)) wołają
+`translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i `normalize`.
+`Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
+(sekcja 3.9), żeby wysłać macierz do shadera. Wszystko spotyka się w
+`game::NightMazeApp`, które co klatkę liczy trzy macierze i wysyła je do `basic.vert`.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -116,17 +117,18 @@ opcje w chwili dołączenia.
 W głównym [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
-# GLM is PUBLIC because headers of engine (scene/Transform.hpp, scene/Camera.hpp) expose
-# GLM types, so every target that includes them needs the GLM include path too.
+# GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
+# scene/Camera.hpp) expose GLM types, so every target that includes them needs the GLM
+# include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 ```
 
 "Linkowanie" targetu `INTERFACE` niczego nie dopisuje do linkera. Oznacza tylko: przekaż
 `engine` ścieżkę nagłówków GLM.
 
-Dlaczego `PUBLIC`: nagłówki warstwy `scene` pokazują typy GLM w swoim API (pozycja kamery
-jako `glm::vec3`, macierz widoku jako `glm::mat4`), a `gfx` dołączy do nich, gdy `Shader`
-dostanie metodę ustawiającą uniform typu `mat4`. Każdy plik, który dołączy taki nagłówek,
+Dlaczego `PUBLIC`: nagłówki warstw `scene` i `gfx` pokazują typy GLM w swoim API (pozycja
+kamery jako `glm::vec3`, macierz widoku jako `glm::mat4`, parametr `const glm::mat4&` w
+`Shader::setMat4`). Każdy plik, który dołączy taki nagłówek,
 także w `night_maze`, musi znaleźć `<glm/glm.hpp>`. Przy `PRIVATE` ścieżkę znałby tylko
 `engine` i kod gry by się nie kompilował.
 
@@ -155,9 +157,10 @@ skrócone):
 Katalogiem nagłówków jest korzeń repozytorium GLM (`_deps/glm-src`), a nagłówki leżą w jego
 podkatalogu `glm/`. Stąd zapis `#include <glm/glm.hpp>`.
 
-Sprawdzenie na Macu (clang, Debug i Release): pliki `src/scene/Transform.cpp` i
-`src/scene/Camera.cpp`, pierwsze w projekcie dołączające GLM, kompilują się bez żadnego
-ostrzeżenia, a clang-tidy z regułami projektu niczego w nich nie zgłasza. Na Windowsie
+Sprawdzenie na Macu (clang, Debug i Release): pliki dołączające GLM
+(`src/scene/Transform.cpp`, `src/scene/Camera.cpp`, `src/gfx/Shader.cpp` i przez nagłówki
+`src/game/NightMazeApp.cpp`) kompilują się bez żadnego ostrzeżenia, a clang-tidy z regułami
+projektu niczego w nich nie zgłasza. Na Windowsie
 (MSVC, `/W4`) nie było to jeszcze sprawdzane.
 
 ### Co GLM robi w swoim `CMakeLists.txt` i dlaczego nas to nie dotyczy
@@ -191,8 +194,9 @@ wystarcza `<glm/glm.hpp>`. Dwa pozostałe nagłówki dołącza się w pliku `.cp
 buduje macierz albo wysyła ją do OpenGL.
 
 Tak jest w `src/scene/`: `Transform.hpp` i `Camera.hpp` dołączają samo `<glm/glm.hpp>`, a
-`Transform.cpp` i `Camera.cpp` dodatkowo `<glm/gtc/matrix_transform.hpp>`. Nagłówka
-`<glm/gtc/type_ptr.hpp>` nie dołącza jeszcze żaden plik.
+`Transform.cpp` i `Camera.cpp` dodatkowo `<glm/gtc/matrix_transform.hpp>`. W `src/gfx/`
+`Shader.hpp` dołącza `<glm/glm.hpp>` (parametr typu `glm::mat4`), a `Shader.cpp`
+`<glm/gtc/type_ptr.hpp>` (funkcja `value_ptr`).
 
 ### 3.2. Wektory: `vec2`, `vec3`, `vec4`
 
@@ -458,14 +462,31 @@ glm::vec3 Camera::right() const {
 
 ### 3.9. `glm::value_ptr` i wysyłanie macierzy do shadera
 
-Tej funkcji projekt jeszcze nie używa: żadna macierz nie jest dziś wysyłana do shadera.
-Pierwszym użyciem będzie metoda klasy `Shader` ustawiająca uniform typu `mat4`.
+`Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp):
 
 ```cpp
-// Przykład, nie kod projektu.
-#include <glm/gtc/type_ptr.hpp>
+void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
+    // The location is the number of the uniform inside this program. It is looked up on
+    // every call: a few lookups per frame cost nothing, and there is no cache that could
+    // go stale after reload(). -1 means the program has no active uniform with this name.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
 
-GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
+    // 1: one matrix. GL_FALSE: do not transpose, GLM stores a matrix column by column,
+    // which is the order OpenGL expects. value_ptr gives the address of its 16 floats.
+    // OpenGL ignores location -1 without raising an error.
+    GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
+}
+```
+
+Nagłówek `<glm/gtc/type_ptr.hpp>` jest dołączony na górze tego pliku. Funkcję omawia linia
+po linii [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 5.12. Woła ją
+`NightMazeApp::onRender`, trzy razy na klatkę:
+
+```cpp
+m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
+m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(m_camera.position));
+m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));
 ```
 
 OpenGL to API w języku C i nie zna typu `glm::mat4`. Przyjmuje wskaźnik `const GLfloat*` na
@@ -476,13 +497,15 @@ Argumenty `glUniformMatrix4fv`:
 
 | Argument | Wartość | Znaczenie |
 |---|---|---|
-| `location` | wynik `glGetUniformLocation` | który uniform ustawić |
+| `location` | wynik `glGetUniformLocation` | który uniform ustawić. -1 (nie ma takiego uniformu) jest ignorowane bez błędu |
 | `count` | `1` | ile macierzy (więcej niż 1 dla tablicy uniformów) |
 | `transpose` | `GL_FALSE` | czy OpenGL ma transponować macierz. GLM przechowuje ją już w układzie kolumnowym, czyli tak, jak chce OpenGL |
 | `value` | `glm::value_ptr(matrix)` | wskaźnik na dane |
 
 Wskaźnik jest ważny tak długo, jak żyje obiekt macierzy. Nie wolno brać `value_ptr` od
-wartości tymczasowej i używać go w następnej instrukcji.
+wartości tymczasowej i używać go w następnej instrukcji. W `setMat4` macierz jest parametrem
+(referencją), więc żyje przez całe wywołanie, a OpenGL kopiuje 16 liczb, zanim
+`glUniformMatrix4fv` wróci.
 
 Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(color))`.
 
@@ -539,8 +562,9 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
     `#define` w jednym pliku. Makro zmienia zachowanie funkcji `inline`, więc różna wartość w
     różnych plikach `.cpp` oznacza dwie różne definicje tej samej funkcji w jednym programie.
 14. **MSVC.** Nic z tej listy nie było jeszcze sprawdzane na Windowsie.
-    - Pierwszymi plikami, które MSVC skompiluje razem z GLM, są `src/scene/Transform.cpp` i
-      `src/scene/Camera.cpp`. Oprócz samych nagłówków używają stałych
+    - Plikami, które MSVC skompiluje razem z GLM, są `src/scene/Transform.cpp`,
+      `src/scene/Camera.cpp`, `src/gfx/Shader.cpp` i każdy plik dołączający ich nagłówki.
+      Pliki `scene` oprócz samych nagłówków używają stałych
       `constexpr glm::vec3` (`AXIS_X`, `Camera::WORLD_UP`), czyli konstruktorów GLM
       wykonywanych w czasie kompilacji.
     - Nagłówki GLM używają anonimowych struktur (stąd zamienne nazwy `x` i `r`), przed

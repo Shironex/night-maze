@@ -22,8 +22,9 @@ public:
     ///
     /// The buffer is left bound to target. For GL_ELEMENT_ARRAY_BUFFER this matters: that
     /// binding is not global, it is stored in the vertex array that is bound at the moment.
-    /// So bind the VertexArray first and create the element buffer after it, otherwise the
-    /// indices are attached to no vertex array (or to the wrong one).
+    /// So create the element buffer while its VertexArray is the bound one, otherwise the
+    /// indices are attached to no vertex array (or to the wrong one). The VertexArray
+    /// constructor binds, so creating the vertex array just before the buffer is enough.
     Buffer(GLenum target, const void* data, std::size_t sizeInBytes);
     ~Buffer();
 

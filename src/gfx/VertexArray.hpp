@@ -19,7 +19,8 @@ namespace gfx {
 /// must be destroyed before the window.
 class VertexArray {
 public:
-    /// Creates an empty vertex array: no attribute is enabled yet.
+    /// Creates an empty vertex array (no attribute is enabled yet) and binds it, so that
+    /// a Buffer created after it is recorded in this vertex array.
     VertexArray();
     ~VertexArray();
 

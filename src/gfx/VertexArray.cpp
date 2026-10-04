@@ -9,6 +9,10 @@ namespace gfx {
 VertexArray::VertexArray() {
     // glGenVertexArrays writes new ids into an array. Here the array is the one member.
     GL_CHECK(glGenVertexArrays(1, &m_id));
+    // Bind it right away. An element (index) buffer records itself in the vertex array
+    // that is bound at the moment the buffer is created, so this vertex array has to be
+    // the bound one before the next object, usually a Buffer, is constructed.
+    GL_CHECK(glBindVertexArray(m_id));
 }
 
 VertexArray::~VertexArray() {

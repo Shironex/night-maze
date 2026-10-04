@@ -91,19 +91,22 @@ Początek każdej klatki jest w [`NightMazeApp::onRender`](../../../src/game/Nig
 const core::Size framebuffer = window().framebufferSize();
 GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
 
+GL_CHECK(glEnable(GL_DEPTH_TEST));
+
 GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
-GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
 
 | Wywołanie | Rodzaj | Co robi |
 |---|---|---|
 | `glViewport(0, 0, w, h)` | ustawia stan | Określa prostokąt bufora (w pikselach, początek w lewym dolnym rogu), na który mapowane są współrzędne znormalizowane (NDC) z zakresu od -1 do 1 |
+| `glEnable(GL_DEPTH_TEST)` | ustawia stan | Włącza test głębi: fragment trafia do bufora tylko wtedy, gdy jest bliżej kamery niż to, co już tam jest. Potrzebny od chwili, gdy na ekranie jest bryła ([`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcje 3 i 5.9) |
 | `glClearColor(r, g, b, a)` | ustawia stan | Zapamiętuje kolor czyszczenia. Niczego nie rysuje |
-| `glClear(GL_COLOR_BUFFER_BIT)` | wykonuje | Wypełnia bufor koloru zapamiętanym kolorem. Argument to maska bitowa: później dojdą `GL_DEPTH_BUFFER_BIT` i `GL_STENCIL_BUFFER_BIT` |
+| `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | wykonuje | Wypełnia bufor koloru zapamiętanym kolorem, a bufor głębi wartością 1 ("najdalej"). Argument to maska bitowa, dwie flagi połączone bitowym "lub". Później dojdzie `GL_STENCIL_BUFFER_BIT` |
 | `m_debugUI.draw(...)` | wykonuje | Wołane już poza grą, w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp), po powrocie z `NightMazeApp::onRender`: rysuje panele ImGui na wierzchu (opis w [`../debug-ui.md`](../debug-ui.md)) |
 | `glfwSwapBuffers(m_handle)` | wykonuje | Wołane w `Application::run` po `onRender`: zamienia bufory, przy vsync czeka na odświeżenie monitora |
 
-Po tych trzech wywołaniach `onRender` rysuje trójkąt (`glUseProgram`, `glBindVertexArray`, `glDrawArrays` przez klasy `gfx`). Tę część klatki opisuje [`../gfx/README.md`](../gfx/README.md), sekcja 6.
+Po tych czterech wywołaniach `onRender` rysuje kostkę: `glUseProgram`, trzy macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Tę część klatki opisuje [`../gfx/README.md`](../gfx/README.md), sekcja 6.
 
 Viewport ustawiam w każdej klatce, a nie raz przy starcie, i biorę go z `glfwGetFramebufferSize`. Dzięki temu bez żadnego callbacku obsługuję zmianę rozmiaru okna oraz ekrany Retina (sekcja 7). Makro `GL_CHECK` wokół każdego wywołania opisuje [`gl-check.md`](gl-check.md).
 
@@ -122,7 +125,7 @@ Moduł `core` nie tworzy żadnych obiektów OpenGL (żadnych `glGen*`, żadnych 
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (`assets/shaders/basic.vert` i `basic.frag`, `#version 410 core`) należą do warstwy `gfx` i rysują trójkąt po wyczyszczeniu ekranu ([`../gfx/shaders.md`](../gfx/shaders.md)), a jedyne shadery działające już teraz należą do backendu ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
+Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (`assets/shaders/basic.vert` i `basic.frag`, `#version 410 core`) należą do warstwy `gfx` i rysują kostkę po wyczyszczeniu ekranu ([`../gfx/shaders.md`](../gfx/shaders.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
 
 ## 5. Kod w projekcie
 

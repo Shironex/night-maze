@@ -32,7 +32,7 @@ Proponowana kolejność czytania: ten plik, potem `window-context.md`, `main-loo
 | [`src/core/Input.hpp`](../../../src/core/Input.hpp), [`.cpp`](../../../src/core/Input.cpp) | migawka stanu klawiatury i myszy: `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`, `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setMouseBlocked`, `setCursorCaptured` | [`input.md`](input.md) |
 | [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp), [`.cpp`](../../../src/core/GlCheck.cpp) | makro `GL_CHECK` i funkcja `checkGlErrors` | [`gl-check.md`](gl-check.md) |
 | [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`.cpp`](../../../src/core/Paths.cpp) | `executableDir` i `assetPath`: ścieżki do plików z `assets/` względem pliku wykonywalnego. Jedyny kod w `src/` z gałęziami `#if` dla macOS i Windows. Woła je konstruktor `NightMazeApp` przy wczytywaniu shaderów. `pathText`: ścieżka jako tekst UTF-8, dla `gfx::Shader` i panelu "Shaders" | [`paths.md`](paths.md) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`, posiada shader, tablicę wierzchołków i bufor, co klatkę ustawia viewport, czyści ekran i rysuje trójkąt | ten plik (sekcje 6 i 7), czyszczenie w [`window-context.md`](window-context.md), sekcja 3.2, rysowanie w [`../gfx/README.md`](../gfx/README.md), sekcja 6 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`, posiada shader, tablicę wierzchołków, bufor wierzchołków i bufor indeksów oraz `scene::Transform` kostki i `scene::Camera`. Co klatkę ustawia viewport, włącza test głębi, czyści ekran, wysyła trzy macierze i rysuje kostkę | ten plik (sekcje 6 i 7), czyszczenie w [`window-context.md`](window-context.md), sekcja 3.2, rysowanie w [`../gfx/README.md`](../gfx/README.md), sekcja 6, macierze w [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
 | [`src/main.cpp`](../../../src/main.cpp) | klasa `DebugNightMazeApp` (gra plus nakładka debug) i `main`: tworzy aplikację, woła `run()`, łapie wyjątki | ten plik (sekcje 5 i 6), nakładka w [`../debug-ui.md`](../debug-ui.md) |
 
 W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/core/*` tworzą, razem z `src/gfx/*` i `src/scene/*`, bibliotekę statyczną `engine`, a `main.cpp`, `game/` i `debug/` tworzą program `night_maze`, który ją linkuje. `engine` ma publiczne definicje `GLFW_INCLUDE_NONE` (GLFW nie dołącza systemowego nagłówka OpenGL, robi to GLAD) i `GL_SILENCE_DEPRECATION` (macOS oznacza cały OpenGL jako przestarzały i bez tej definicji zasypuje build ostrzeżeniami).
@@ -48,8 +48,10 @@ flowchart TD
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, GL_CHECK"]
     Game --> Core
     Game --> Gfx
+    Game --> Scene
     Debug --> Gfx
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
+    Gfx --> Glm
     Scene["scene/<br/>Transform, Camera"] --> Glm["GLM"]
     Debug --> ImGui["Dear ImGui"]
     Core --> Glfw["GLFW"]
@@ -59,11 +61,11 @@ flowchart TD
 
 Pięć rzeczy do zapamiętania:
 
-1. `core/` nie zna ani `gfx/`, ani `game/`, ani `debug/`, ani ImGui. Biblioteka `engine` linkuje tylko `glad`, `glfw` i nagłówki GLM (`glm::glm-header-only`). Samo `core/` z GLM nie korzysta: dołącza je warstwa `scene/`.
-2. `game/` zna `core/` i `gfx/`, ale nie zna `debug/`.
+1. `core/` nie zna ani `gfx/`, ani `game/`, ani `debug/`, ani ImGui. Biblioteka `engine` linkuje tylko `glad`, `glfw` i nagłówki GLM (`glm::glm-header-only`). Samo `core/` z GLM nie korzysta: dołączają je warstwy `scene/` i `gfx/`.
+2. `game/` zna `core/`, `gfx/` i `scene/`, ale nie zna `debug/`.
 3. `debug/` może zależeć od wszystkiego, ale nic nie może zależeć od `debug/`. Jedynym plikiem, który zna jednocześnie `game/` i `debug/`, jest `main.cpp`.
-4. `gfx/` (opakowania obiektów OpenGL, na dziś klasy `Shader`, `Buffer` i `VertexArray`) zna tylko `core/` i GLAD. Używa go `game/` (rysowanie) i `debug/` (panel "Shaders" woła `Shader::reload()`). Opis warstwy: [`../gfx/README.md`](../gfx/README.md).
-5. `scene/` (struktury `Transform` i `Camera`: macierze modelu, widoku i rzutowania) to sama matematyka na GLM. Może zależeć od `core/` i `gfx/`, dziś dołącza tylko GLM. Do `scene/` nie prowadzi na diagramie żadna strzałka, bo żaden plik jeszcze go nie dołącza: pierwszym użytkownikiem będzie `game/`, gdy trójkąt zastąpi kostka. Opis warstwy: [`../scene/README.md`](../scene/README.md).
+4. `gfx/` (opakowania obiektów OpenGL, na dziś klasy `Shader`, `Buffer` i `VertexArray`) zna tylko `core/`, GLAD i GLM (typ macierzy w `Shader::setMat4`). Używa go `game/` (rysowanie) i `debug/` (panel "Shaders" woła `Shader::reload()`). Opis warstwy: [`../gfx/README.md`](../gfx/README.md).
+5. `scene/` (struktury `Transform` i `Camera`: macierze modelu, widoku i rzutowania) to sama matematyka na GLM. Może zależeć od `core/` i `gfx/`, dziś dołącza tylko GLM. Używa go `game/`: `NightMazeApp` ma kamerę i transform kostki i co klatkę wysyła ich macierze do shadera. Opis warstwy: [`../scene/README.md`](../scene/README.md).
 
 Ta reguła tłumaczy dwie decyzje opisane niżej: dlaczego nakładka debug jest podpinana w `main.cpp` (sekcja 6) i dlaczego `core::Input` dostaje od `main.cpp` neutralne flagi "klawiatura zablokowana" i "mysz zablokowana", zamiast samemu pytać ImGui ([`input.md`](input.md), sekcje 5.6 i 5.10).
 
@@ -95,8 +97,8 @@ sequenceDiagram
     end
     Run->>T: alpha()
     Run->>App: onRender(alpha)
-    App->>App: NightMazeApp onRender, czyli glViewport, glClearColor, glClear
-    App->>App: gdy shader jest poprawny, to m_shader.use(), m_vertexArray.bind(), glDrawArrays
+    App->>App: NightMazeApp onRender, czyli glViewport, glEnable(GL_DEPTH_TEST), glClearColor, glClear
+    App->>App: gdy jest co rysować, to m_shader.use(), setMat4 x3, m_vertexArray.bind(), glDrawElements
     App->>In: wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)
     App->>UI: draw(DebugContext z time(), window(), clearColor(), shader())
     App->>UI: wantsKeyboard()
@@ -112,8 +114,8 @@ sequenceDiagram
 | Zdarzenia systemu | `m_window.pollEvents()` | [`window-context.md`](window-context.md) |
 | Migawka klawiatury i myszy, Escape (zwalnia przechwycony kursor albo zamyka program) | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)`, `isCursorCaptured()` | [`input.md`](input.md), sekcja 5.7 |
 | Pomiar czasu, kroki symulacji | `m_time.beginFrame()`, `consumeFixedStep()`, `onUpdate` | [`main-loop.md`](main-loop.md) |
-| Rysowanie gry: tło | `NightMazeApp::onRender`: `glViewport`, `glClearColor`, `glClear` w `GL_CHECK` | [`window-context.md`](window-context.md), [`gl-check.md`](gl-check.md) |
-| Rysowanie gry: trójkąt | `m_shader.isValid()`, `m_shader.use()`, `m_vertexArray.bind()`, `glDrawArrays` | [`../gfx/README.md`](../gfx/README.md), sekcja 6 |
+| Rysowanie gry: stan i tło | `NightMazeApp::onRender`: `glViewport`, `glEnable(GL_DEPTH_TEST)`, `glClearColor`, `glClear` (kolor i głębia) w `GL_CHECK` | [`window-context.md`](window-context.md), [`gl-check.md`](gl-check.md) |
+| Rysowanie gry: kostka | pominięte, gdy framebuffer ma wysokość 0 albo `m_shader.isValid()` jest fałszem. Inaczej `m_shader.use()`, trzy razy `m_shader.setMat4(...)` z macierzami z `m_cubeTransform` i `m_camera`, `m_vertexArray.bind()`, `glDrawElements` | [`../gfx/README.md`](../gfx/README.md), sekcja 6, [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
 | Przełącznik paneli i panele | `wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)`, `m_debugUI.draw(...)` | [`../debug-ui.md`](../debug-ui.md) |
 | Blokada klawiatury na następną klatkę | `input().setKeyboardBlocked(m_debugUI.wantsKeyboard())` | [`input.md`](input.md), sekcja 5.6 |
 | Blokada myszy na następną klatkę | `input().setMouseBlocked(m_debugUI.wantsMouse())` | [`input.md`](input.md), sekcja 5.10 |
@@ -152,17 +154,19 @@ virtual void onRender(double alpha) = 0;
 NightMazeApp::NightMazeApp()
     : core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze"),
       m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FILE)),
-      // The size is in bytes: number of floats times the size of one float.
-      m_vertexBuffer(GL_ARRAY_BUFFER, VERTICES.data(), VERTICES.size() * sizeof(float)) {
-    // m_vertexBuffer has just been created, so it is still bound to GL_ARRAY_BUFFER.
-    // Each call below records that buffer in m_vertexArray for one attribute.
+      // The sizes are in bytes: number of elements times the size of one element.
+      m_vertexBuffer(GL_ARRAY_BUFFER, VERTICES.data(), VERTICES.size() * sizeof(float)),
+      m_indexBuffer(GL_ELEMENT_ARRAY_BUFFER, INDICES.data(), INDICES.size() * sizeof(GLuint)) {
+    // m_vertexBuffer is still bound to GL_ARRAY_BUFFER (m_indexBuffer uses another binding
+    // point). Each call below records that buffer in m_vertexArray for one attribute.
     m_vertexArray.setFloatAttribute(POSITION_ATTRIBUTE, POSITION_COMPONENTS, VERTEX_STRIDE,
                                     POSITION_OFFSET);
     m_vertexArray.setFloatAttribute(COLOR_ATTRIBUTE, COLOR_COMPONENTS, VERTEX_STRIDE, COLOR_OFFSET);
-}
+
+    m_cubeTransform.rotationDegrees = {CUBE_ROTATION_X_DEGREES, CUBE_ROTATION_Y_DEGREES, 0.0F};
 ```
 
-Pierwszy element listy inicjalizacyjnej przekazuje rozmiar i tytuł do klasy bazowej, która tworzy okno i kontekst OpenGL. `INITIAL_WIDTH` i `INITIAL_HEIGHT` to stałe `constexpr` w anonimowej przestrzeni nazw pliku `.cpp`: mają nazwy (żadnych magicznych liczb) i są niewidoczne poza tym plikiem. Pozostała część konstruktora przygotowuje rysowanie trójkąta: wczytuje shader, wysyła dane wierzchołków na kartę i opisuje ich układ. Z punktu widzenia modułu `core` ważne jest tu tylko to, że te obiekty są **polami klasy pochodnej** i powstają po oknie (sekcja 7). Co robi każda linia, opisują [`../gfx/shaders.md`](../gfx/shaders.md) (sekcja 5.10) i [`../gfx/buffers-vao.md`](../gfx/buffers-vao.md) (sekcja 5.7).
+Pierwszy element listy inicjalizacyjnej przekazuje rozmiar i tytuł do klasy bazowej, która tworzy okno i kontekst OpenGL. `INITIAL_WIDTH` i `INITIAL_HEIGHT` to stałe `constexpr` w anonimowej przestrzeni nazw pliku `.cpp`: mają nazwy (żadnych magicznych liczb) i są niewidoczne poza tym plikiem. Pozostała część konstruktora przygotowuje rysowanie kostki: wczytuje shader, wysyła dane wierzchołków i indeksy na kartę, ustawia obrót kostki i opisuje ich układ. Z punktu widzenia modułu `core` ważne jest tu tylko to, że te obiekty są **polami klasy pochodnej** i powstają po oknie (sekcja 7). Co robi każda linia, opisują [`../gfx/shaders.md`](../gfx/shaders.md) (sekcja 5.10) i [`../gfx/buffers-vao.md`](../gfx/buffers-vao.md) (sekcja 5.7).
 
 **Trzy poziomy dziedziczenia.** W programie są trzy klasy, każda w innej warstwie:
 
@@ -183,6 +187,9 @@ classDiagram
         -Shader m_shader
         -VertexArray m_vertexArray
         -Buffer m_vertexBuffer
+        -Buffer m_indexBuffer
+        -Transform m_cubeTransform
+        -Camera m_camera
         #onUpdate(fixedDt)
         #onRender(alpha)
         #clearColor()
@@ -286,16 +293,18 @@ Tu działa druga część tej samej reguły: najpierw konstruowana jest **częś
 | Konstrukcja (z góry na dół) | Niszczenie (z góry na dół) |
 |---|---|
 | `Application::m_window` (GLFW, okno, kontekst, GLAD) | `DebugNightMazeApp::m_debugUI` (zamknięcie ImGui, okno i kontekst jeszcze żyją) |
-| `Application::m_input` | `NightMazeApp::m_vertexBuffer` (`glDeleteBuffers`) |
-| `Application::m_time` | `NightMazeApp::m_vertexArray` (`glDeleteVertexArrays`) |
-| `NightMazeApp::m_clearColor` | `NightMazeApp::m_shader` (`glDeleteProgram`) |
-| `NightMazeApp::m_shader` (kompilacja i linkowanie, potrzebuje kontekstu) | `NightMazeApp::m_clearColor` |
-| `NightMazeApp::m_vertexArray` (`glGenVertexArrays`) | `Application::m_time` |
-| `NightMazeApp::m_vertexBuffer` (`glGenBuffers`, `glBufferData`) | `Application::m_input` |
-| ciało konstruktora `NightMazeApp` (opis atrybutów) | `Application::m_window` (okno, kontekst, `glfwTerminate`) |
+| `Application::m_input` | `NightMazeApp::m_camera`, `NightMazeApp::m_cubeTransform` (zwykłe dane, nic do zwolnienia) |
+| `Application::m_time` | `NightMazeApp::m_indexBuffer` (`glDeleteBuffers`) |
+| `NightMazeApp::m_clearColor` | `NightMazeApp::m_vertexBuffer` (`glDeleteBuffers`) |
+| `NightMazeApp::m_shader` (kompilacja i linkowanie, potrzebuje kontekstu) | `NightMazeApp::m_vertexArray` (`glDeleteVertexArrays`) |
+| `NightMazeApp::m_vertexArray` (`glGenVertexArrays`, `glBindVertexArray`) | `NightMazeApp::m_shader` (`glDeleteProgram`) |
+| `NightMazeApp::m_vertexBuffer` (`glGenBuffers`, `glBufferData`) | `NightMazeApp::m_clearColor` |
+| `NightMazeApp::m_indexBuffer` (`glGenBuffers`, `glBufferData`, zapisany w związanym VAO) | `Application::m_time` |
+| `NightMazeApp::m_cubeTransform`, `NightMazeApp::m_camera` (zwykłe dane, bez OpenGL) | `Application::m_input` |
+| ciało konstruktora `NightMazeApp` (opis atrybutów, obrót kostki) | `Application::m_window` (okno, kontekst, `glfwTerminate`) |
 | `DebugNightMazeApp::m_debugUI` (potrzebuje okna i kontekstu) | |
 
-Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i okno, już istnieje), a destruktor `DebugUI`, który zwalnia obiekty OpenGL backendu ImGui, ma jeszcze żywy kontekst. Ta sama zasada dotyczy pól `NightMazeApp` posiadających zasoby OpenGL: `m_shader`, `m_vertexArray` i `m_vertexBuffer`. Jako pola klasy pochodnej od `Application` powstają po oknie i są niszczone przed nim, więc każde `glGen*`, `glCreate*` i `glDelete*` ma żywy kontekst. To samo będzie dotyczyć tekstur i kolejnych buforów.
+Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i okno, już istnieje), a destruktor `DebugUI`, który zwalnia obiekty OpenGL backendu ImGui, ma jeszcze żywy kontekst. Ta sama zasada dotyczy pól `NightMazeApp` posiadających zasoby OpenGL: `m_shader`, `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer`. Jako pola klasy pochodnej od `Application` powstają po oknie i są niszczone przed nim, więc każde `glGen*`, `glCreate*` i `glDelete*` ma żywy kontekst. To samo będzie dotyczyć tekstur i kolejnych buforów.
 
 **`NightMazeApp` (w `NightMazeApp.hpp`):**
 
@@ -303,11 +312,12 @@ Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i 
 gfx::Shader m_shader;
 gfx::VertexArray m_vertexArray;
 gfx::Buffer m_vertexBuffer;
+gfx::Buffer m_indexBuffer;
 ```
 
-Tu kolejność deklaracji decyduje o tym, co jest związane w OpenGL w chwili wejścia do ciała konstruktora: bufor wierzchołków powstaje ostatni, więc jest wciąż związany z `GL_ARRAY_BUFFER`, gdy ciało konstruktora opisuje atrybuty. Szczegóły: [`../gfx/buffers-vao.md`](../gfx/buffers-vao.md), sekcja 5.7. Gdyby natomiast ktoś trzymał obiekt z zasobami GL dłużej niż `Application` (na przykład jako zmienną globalną albo lokalną w `main` zadeklarowaną przed `app`), jego destruktor wołałby `glDelete*` bez kontekstu.
+Tu kolejność deklaracji decyduje o tym, co jest związane w OpenGL w chwili tworzenia kolejnego pola. Konstruktor `m_vertexArray` wiąże nowy VAO, więc bufor indeksów, tworzony dwa pola dalej, zapisuje się właśnie w nim. Bufor wierzchołków jest wciąż związany z `GL_ARRAY_BUFFER`, gdy ciało konstruktora opisuje atrybuty, bo bufor indeksów używa innego celu. Szczegóły: [`../gfx/buffers-vao.md`](../gfx/buffers-vao.md), sekcja 5.7. Gdyby natomiast ktoś trzymał obiekt z zasobami GL dłużej niż `Application` (na przykład jako zmienną globalną albo lokalną w `main` zadeklarowaną przed `app`), jego destruktor wołałby `glDelete*` bez kontekstu.
 
-**Pułapka do tej sekcji.** Obiekt z zasobami OpenGL żyjący dłużej niż `Window` woła funkcje `gl*` bez kontekstu. Podobnie zmiana kolejności pól w `Application` psuje konstrukcję `Input`. Dotyczy to dziś wprost trzech pól `gfx` w `NightMazeApp`.
+**Pułapka do tej sekcji.** Obiekt z zasobami OpenGL żyjący dłużej niż `Window` woła funkcje `gl*` bez kontekstu. Podobnie zmiana kolejności pól w `Application` psuje konstrukcję `Input`. Dotyczy to dziś wprost czterech pól `gfx` w `NightMazeApp`.
 
 ## 8. Różnice między systemami w jednym miejscu
 

@@ -4,7 +4,8 @@ Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego s�
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny w
 trakcie kamienia milowego M1: po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
 klasami `Shader`, `Buffer` i `VertexArray`, katalog `assets/` z pierwszymi shaderami,
-pierwszy trójkąt oraz warstwa `scene/` ze strukturami `Transform` i `Camera`. Docelową
+warstwa `scene/` ze strukturami `Transform` i `Camera` oraz kostka rysowana z macierzami
+modelu, widoku i rzutowania. Docelową
 strukturę (z `renderer/` i `src/assets/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -30,7 +31,7 @@ night-maze/
 ├── assets/                     # pliki wczytywane przez program w czasie działania
 │   └── shaders/                # shadery GLSL
 │       ├── basic.frag              # shader fragmentów: kolor z interpolacji
-│       └── basic.vert              # shader wierzchołków: pozycja i kolor
+│       └── basic.vert              # shader wierzchołków: trzy macierze, pozycja i kolor
 ├── cmake/
 │   └── Dependencies.cmake      # FetchContent: GLFW, GLM i Dear ImGui, target imgui
 ├── external/
@@ -58,10 +59,10 @@ night-maze/
 │   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer"
 │   │       └── ShadersPanel.hpp/.cpp   # panel "Shaders", przycisk Reload shaders
 │   ├── game/                   # gra
-│   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie rysuje trójkąt)
+│   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie rysuje kostkę)
 │   ├── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
 │   │   ├── Buffer.hpp/.cpp         # bufor wierzchołków albo indeksów
-│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload
+│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload, setMat4
 │   │   └── VertexArray.hpp/.cpp    # tablica wierzchołków (VAO), opis atrybutów
 │   └── scene/                  # opis sceny: dane i matematyka na GLM, bez OpenGL
 │       ├── Camera.hpp/.cpp         # kamera: kierunek, macierz widoku i rzutowania
@@ -124,13 +125,13 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
 | `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `core::pathText`: ścieżka jako tekst UTF-8 do logu i do paneli. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Woła je konstruktor `game::NightMazeApp` przy wczytywaniu shaderów | [`../modules/core/paths.md`](../modules/core/paths.md) |
-| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `lastError`, `vertexPath`, `fragmentPath`. RAII, tylko przenoszenie. Używa jej `NightMazeApp`, a panel "Shaders" woła `reload` | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `setMat4` (uniform typu `mat4`, przez `glGetUniformLocation` i `glUniformMatrix4fv`), `lastError`, `vertexPath`, `fragmentPath`. RAII, tylko przenoszenie. Używa jej `NightMazeApp`, a panel "Shaders" woła `reload` | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
 | `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
-| `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
-| `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Sama matematyka na GLM, bez OpenGL. Gra jej jeszcze nie używa | [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
-| `src/scene/Camera.*` | `scene::Camera`: struktura z publicznymi polami `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałymi `WORLD_UP` i `MAX_PITCH_DEGREES` oraz funkcjami `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Sama matematyka na GLM, bez OpenGL i bez wejścia. Gra jej jeszcze nie używa | [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md) |
-| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane trzech wierzchołków ze stałymi układu, tablica wierzchołków i bufor. Konstruktor wczytuje shader i wysyła dane, `onRender` ustawia viewport, czyści ekran i rysuje trójkąt (`glDrawArrays`). Chronione akcesory `clearColor()` i `shader()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6 |
-| `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core`: atrybuty pozycji i koloru, kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders" | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
+| `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), wiązany już w konstruktorze, `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
+| `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Sama matematyka na GLM, bez OpenGL. Używa jej `NightMazeApp` (pole `m_cubeTransform`) | [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
+| `src/scene/Camera.*` | `scene::Camera`: struktura z publicznymi polami `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałymi `WORLD_UP` i `MAX_PITCH_DEGREES` oraz funkcjami `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Sama matematyka na GLM, bez OpenGL i bez wejścia. Używa jej `NightMazeApp` (pole `m_camera`) | [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md) |
+| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane kostki (24 wierzchołki ze stałymi układu, 36 indeksów), tablica wierzchołków, bufor wierzchołków i bufor indeksów, `scene::Transform` kostki i `scene::Camera`. Konstruktor wczytuje shader, wysyła dane i ustawia obrót kostki. `onRender` ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera, wysyła macierze modelu, widoku i rzutowania i rysuje kostkę (`glDrawElements`). Chronione akcesory `clearColor()` i `shader()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6, macierze w [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja 5.9 |
+| `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core`: atrybuty pozycji i koloru, uniformy `uModel`, `uView`, `uProjection` (macierze), kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders" | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
 | `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`, `shader`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
@@ -153,20 +154,18 @@ main.cpp   łączy game/ i debug/
    │
    ├── debug/   zależy od core/ i gfx/ (i od Dear ImGui), nic nie zależy od debug/
    │
-   └── game/    zależy od gfx/ i core/, nie zna debug/
+   └── game/    zależy od scene/, gfx/ i core/, nie zna debug/
           │
-        gfx/    zależy od core/, nie zna game/ ani debug/
+        scene/  może zależeć od gfx/ i core/, dziś dołącza tylko GLM. Nie zna game/ ani debug/
           │
-        core/   nie zna ani gfx/, ani game/, ani debug/
-
-scene/     może zależeć od gfx/ i core/, dziś dołącza tylko GLM. Nie zna game/ ani debug/.
-           Żaden plik jeszcze go nie dołącza, dlatego stoi obok drzewa.
+        gfx/    zależy od core/ (i od GLM), nie zna scene/, game/ ani debug/
+          │
+        core/   nie zna ani gfx/, ani scene/, ani game/, ani debug/
 ```
 
 Pełny łańcuch z PRD to `core <- gfx <- renderer <- scene <- game`. Warstwy `renderer/`
-jeszcze nie ma, więc dziś łańcuch to `core <- gfx <- scene <- game`. Warstwa `scene/` już
-istnieje, ale `game/` jej jeszcze nie dołącza i korzysta tylko z `gfx/` i `core/`: miejsce
-`scene/` między `gfx/` a `game/` zajmie w drzewie wtedy, gdy trójkąt zastąpi kostka.
+jeszcze nie ma, więc dziś łańcuch to `core <- gfx <- scene <- game`, a `game/` korzysta z
+`gfx/` bezpośrednio: samo wysyła macierze do shadera i samo woła `glDrawElements`.
 
 Jak to widać w kodzie:
 
@@ -177,13 +176,15 @@ Jak to widać w kodzie:
   `core::Input` ma neutralne flagi `setKeyboardBlocked` i `setMouseBlocked`, a ustawia je
   `main.cpp`.
 - Nagłówki w `src/gfx/` dołączają `<glad/gl.h>` i bibliotekę standardową, a pliki `.cpp` do
-  tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp` i `core/Paths.hpp`). Nic z GLFW, `game/` ani
-  `debug/`.
+  tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp` i `core/Paths.hpp`). `Shader.hpp`
+  dołącza też `<glm/glm.hpp>`, a `Shader.cpp` `<glm/gtc/type_ptr.hpp>`, bo `setMat4`
+  przyjmuje `glm::mat4`. Nic z GLFW, `scene/`, `game/` ani `debug/`.
 - Nagłówki w `src/scene/` dołączają tylko `<glm/glm.hpp>`, a pliki `.cpp` do tego
   `<glm/gtc/matrix_transform.hpp>` i bibliotekę standardową (`Camera.cpp`: `<algorithm>` i
   `<cmath>`). Nic z GLAD, GLFW, `core/`, `gfx/`, `game/` ani `debug/`.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp`, trzy nagłówki z `gfx/`
-  (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`) i nic z `debug/`. Komentarz w
+  (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`), dwa ze `scene/` (`Camera.hpp`,
+  `Transform.hpp`) i nic z `debug/`. Komentarz w
   klasie mówi wprost: "It knows nothing about the debug UI".
 - `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`, nagłówki obu
   paneli i nagłówki ImGui.
@@ -325,8 +326,9 @@ add_library(engine STATIC
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-# GLM is PUBLIC because headers of engine (scene/Transform.hpp, scene/Camera.hpp) expose
-# GLM types, so every target that includes them needs the GLM include path too.
+# GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
+# scene/Camera.hpp) expose GLM types, so every target that includes them needs the GLM
+# include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it
@@ -343,8 +345,8 @@ night_maze_enable_warnings(engine)
 - `target_include_directories(engine PUBLIC .../src)`: korzeniem ścieżek `#include` jest
   `src/`. Stąd zapis `#include "core/Window.hpp"` w każdym pliku, niezależnie od katalogu.
 - `target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)`: `engine` używa
-  GLAD, GLFW i GLM. GLM dołączają dziś pliki z `src/scene/` (`Transform` i `Camera`).
-  `Shader` jeszcze nie, bo nie ma funkcji ustawiających uniformy. `glm::glm-header-only`
+  GLAD, GLFW i GLM. GLM dołączają pliki z `src/scene/` (`Transform` i `Camera`) oraz
+  `src/gfx/Shader.*` (macierz jako parametr `setMat4`). `glm::glm-header-only`
   to target `INTERFACE` (same nagłówki), więc "linkowanie" go oznacza tylko dodanie ścieżki
   nagłówków ([`../libraries/glm.md`](../libraries/glm.md), sekcja 2).
 - `target_compile_definitions`: dwa makra preprocesora, widoczne w linii poleceń
@@ -362,8 +364,8 @@ Wszystko przy `engine` jest `PUBLIC`, bo jego nagłówki (na przykład `core/GlC
 same dołączają `<glad/gl.h>`. Każdy, kto dołącza nagłówek `engine`, potrzebuje więc ścieżek
 do GLAD i GLFW oraz tych samych makr. Dzięki `PUBLIC` target `night_maze` dostaje to
 automatycznie, linkując tylko `engine`. Z tego samego powodu `PUBLIC` jest GLM: nagłówki
-warstwy `scene` (`scene/Transform.hpp`, `scene/Camera.hpp`) pokazują typy `glm::vec3` i
-`glm::mat4` w swoim API.
+warstw `gfx` i `scene` (`gfx/Shader.hpp`, `scene/Transform.hpp`, `scene/Camera.hpp`) pokazują
+typy `glm::vec3` i `glm::mat4` w swoim API.
 
 Dwie definicje `PUBLIC`:
 

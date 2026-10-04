@@ -3,6 +3,7 @@
 #pragma once
 
 #include <glad/gl.h>
+#include <glm/glm.hpp>
 
 #include <filesystem>
 #include <string>
@@ -43,6 +44,12 @@ public:
     /// Makes this program the one used by the following draw calls (glUseProgram).
     /// Check isValid() first: without a program nothing useful is drawn.
     void use() const;
+
+    /// Sets the uniform variable of type mat4 called name to matrix (glUniformMatrix4fv).
+    /// The program must be in use: call use() first, because OpenGL writes the value into
+    /// the program that is current. A name the program does not have (a typo, or a uniform
+    /// the compiler removed because the shader never reads it) is ignored without an error.
+    void setMat4(const char* name, const glm::mat4& matrix) const;
 
     /// Message of the last failed load: the file name or names and the driver's info log.
     /// Empty after a successful load.

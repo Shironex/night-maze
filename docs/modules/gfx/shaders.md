@@ -18,7 +18,7 @@ Klasa `gfx::Shader` robi dokładnie to. Jest cienkim opakowaniem na **jeden obie
 | Błąd jest logowany z nazwą pliku i pełnym tekstem sterownika, a do tego zapamiętany w `lastError()` | Błędów kompilacji GLSL nie widzi `glGetError` ani `GL_CHECK`. Bez własnego odczytu nie byłoby żadnej informacji |
 | RAII i tylko przenoszenie (move-only) | Program OpenGL jest zwalniany dokładnie raz, automatycznie, bez ręcznego `glDeleteProgram` w kodzie gry |
 
-Stan na dziś: `game::NightMazeApp` ma jeden obiekt `gfx::Shader`, zbudowany z plików `assets/shaders/basic.vert` i `assets/shaders/basic.frag`, i rysuje nim jeden kolorowy trójkąt. Shader jest wczytywany przy starcie programu i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** (sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa nie ma jeszcze funkcji ustawiających uniformy: dojdą razem z pierwszym shaderem, który uniformu potrzebuje (kostka z macierzą MVP).
+Stan na dziś: `game::NightMazeApp` ma jeden obiekt `gfx::Shader`, zbudowany z plików `assets/shaders/basic.vert` i `assets/shaders/basic.frag`, i rysuje nim kostkę o sześciu kolorowych ścianach. Shader jest wczytywany przy starcie programu i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** (sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma jedną funkcję ustawiającą uniform, `setMat4` (sekcja 5.12): `NightMazeApp` wysyła nią co klatkę macierze modelu, widoku i rzutowania.
 
 ## 2. Teoria
 
@@ -63,7 +63,7 @@ Po shaderze OpenGL sam wykonuje dwa kroki:
 
 Potem `glViewport` zamienia NDC na piksele bufora ([`../core/window-context.md`](../core/window-context.md), sekcja 3.2).
 
-Dla pierwszego trójkąta wystarczy `w = 1`. Wtedy dzielenie niczego nie zmienia i współrzędne podane w shaderze są od razu współrzędnymi NDC: punkt `(0, 0)` to środek okna, `(-1, -1)` lewy dolny róg, `(1, 1)` prawy górny. Inne `w` pojawi się razem z macierzą rzutowania perspektywicznego ([`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 2.9).
+Najprostszy shader wpisuje `w = 1`. Wtedy dzielenie niczego nie zmienia i współrzędne podane w shaderze są od razu współrzędnymi NDC: punkt `(0, 0)` to środek okna, `(-1, -1)` lewy dolny róg, `(1, 1)` prawy górny. Shader projektu mnoży pozycję przez trzy macierze, a ostatnia z nich, macierz rzutowania perspektywicznego, wpisuje do `w` odległość wierzchołka od kamery. Dzielenie przez takie `w` pomniejsza to, co daleko ([`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 2.9).
 
 Poza `gl_Position` shader wierzchołków może przekazać dalej własne wartości (kolor, współrzędne tekstury) przez zmienne `out`.
 
@@ -143,6 +143,29 @@ flowchart TD
     Ok -- tak --> Swap["glDeleteProgram(stary), m_program = nowy<br/>wyczyść m_lastError, zwróć true"]
 ```
 
+### 2.8 Uniformy
+
+Shader ma dwa rodzaje danych wejściowych z C++. **Atrybut** (`in` w shaderze wierzchołków) ma inną wartość dla każdego wierzchołka i pochodzi z bufora. **Uniform** ma jedną wartość dla całego wywołania rysującego: wszystkie wierzchołki i wszystkie fragmenty widzą to samo. Typowe uniformy to macierze, kolor i pozycja światła, czas, numer tekstury.
+
+| Własność | Znaczenie |
+|---|---|
+| należy do **programu** | wartość jest zapisana w obiekcie programu, nie w kontekście i nie w VAO. Dwa programy z uniformem o tej samej nazwie mają dwie osobne wartości |
+| ma **położenie** (location) | liczbę całkowitą nadaną przy linkowaniu. O położenie pyta się po nazwie: `glGetUniformLocation(program, "uModel")` |
+| jest **trwały** | raz ustawiona wartość zostaje w programie do następnego ustawienia. `glUseProgram` jej nie zeruje |
+| po linkowaniu ma wartość **zero** | nowy program (także ten po `reload()`) zaczyna z samymi zerami. Macierz zerowa zamienia każdy wierzchołek w punkt `(0, 0, 0, 0)`, czyli nic nie widać |
+| może być **nieaktywny** | uniform, który nie wpływa na wynik shadera, kompilator usuwa. Dla OpenGL taki uniform nie istnieje: jego położenie to -1 |
+
+W OpenGL 4.1 są dwie rodziny funkcji ustawiających uniform:
+
+| Funkcja | Do którego programu pisze | Uwagi |
+|---|---|---|
+| `glUniformMatrix4fv(location, ...)` i reszta `glUniform*` | do programu **bieżącego**, czyli wybranego ostatnim `glUseProgram` | klasyczna postać, ta z wykładu i z LearnOpenGL. Wymaga `use()` przed ustawieniem |
+| `glProgramUniformMatrix4fv(program, location, ...)` i reszta `glProgramUniform*` | do programu podanego w pierwszym argumencie | w rdzeniu od OpenGL 4.1. Nie zależy od bieżącego programu |
+
+Projekt używa pierwszej. Druga byłaby odporniejsza na pomyłkę "zapomniałem `use()`", ale wybrałem postać, którą pokazuje wykład i każdy poradnik, żeby kod dało się porównać z materiałami bez tłumaczenia. Zależność od bieżącego programu jest przy tym rzeczą, którą i tak trzeba rozumieć: tak samo działają bufory i VAO ([`buffers-vao.md`](buffers-vao.md), sekcja 2.2).
+
+Położenie -1 jest w `glUniform*` celowo dozwolone: wywołanie nic nie robi i **nie zgłasza błędu**. Dzięki temu można bezkarnie ustawiać uniform, który kompilator akurat usunął. Ceną jest to, że literówka w nazwie wygląda dokładnie tak samo (pułapka 8).
+
 ## 3. Jak to działa w OpenGL
 
 ### 3.1 Wywołania w kolejności
@@ -167,6 +190,13 @@ Zbudowanie jednego programu z dwóch plików to następujący ciąg wywołań. K
 | 14 | `glUseProgram(program)` | Ustawia program jako bieżący: używają go wszystkie następne wywołania rysujące, aż do kolejnego `glUseProgram` |
 | 15 | `glDeleteProgram(program)` | Usuwa program. Dla wartości 0 nie robi nic i nie zgłasza błędu. Jeśli program jest akurat bieżący, zostaje oznaczony do usunięcia i znika, gdy przestanie być bieżący |
 
+Ustawienie uniformu typu `mat4`, co klatkę, po kroku 14:
+
+| # | Wywołanie | Co robi |
+|---|---|---|
+| 16 | `glGetUniformLocation(program, name)` | Zwraca położenie aktywnego uniformu o podanej nazwie w zlinkowanym programie albo -1, gdy takiego nie ma. Nie wymaga, żeby program był bieżący |
+| 17 | `glUniformMatrix4fv(location, count, transpose, value)` | Kopiuje `count` macierzy 4 x 4 (po 16 liczb `float`) spod wskaźnika `value` do uniformu **bieżącego** programu. `transpose` równe `GL_FALSE` znaczy: liczby leżą kolumnami, tak jak chce OpenGL. Położenie -1 jest ignorowane bez błędu. Gdy żaden program nie jest bieżący: `GL_INVALID_OPERATION` |
+
 Wszystkie te funkcje są w rdzeniu OpenGL od wersji 2.0, więc są dostępne w 4.1 Core i w nagłówku GLAD projektu.
 
 ### 3.2 Diagram obiektów
@@ -186,6 +216,7 @@ sequenceDiagram
     Cpp->>GL: glDeleteShader x2
     Note over Cpp,GL: zostaje jeden obiekt: program
     Cpp->>GL: glUseProgram (co klatkę, przed rysowaniem)
+    Cpp->>GL: glGetUniformLocation, glUniformMatrix4fv (co klatkę, po glUseProgram)
     Cpp->>GL: glDeleteProgram (destruktor albo udany reload)
 ```
 
@@ -203,7 +234,7 @@ Kto nie odczyta statusu, dostaje program, który "działa" i niczego nie rysuje.
 
 ## 4. Shadery
 
-Projekt ma na dziś jedną parę shaderów w katalogu [`assets/shaders/`](../../../assets/shaders/). Nazwa `basic` jest celowo neutralna: te same pliki dostaną później macierz przekształcenia i posłużą do rysowania kostki.
+Projekt ma na dziś jedną parę shaderów w katalogu [`assets/shaders/`](../../../assets/shaders/). Nazwa `basic` jest celowo neutralna: to najprostsza para, która umie postawić obiekt w scenie (trzy macierze) i pokolorować go kolorem z wierzchołków.
 
 ### 4.1 `basic.vert`: shader wierzchołków
 
@@ -216,8 +247,14 @@ Cały plik [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert):
 
 // Inputs: the attributes of one vertex, read from the vertex buffer. The location numbers
 // are the attribute indices that the C++ code uses when it describes the vertex layout.
-layout(location = 0) in vec3 aPosition; // x, y, z
+layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the object
 layout(location = 1) in vec3 aColor;    // red, green, blue, each from 0 to 1
+
+// Uniforms: set from C++ (gfx::Shader::setMat4), the same for every vertex of one draw call.
+// See docs/modules/scene/transforms-camera.md
+uniform mat4 uModel;      // local space to world space: where the object stands
+uniform mat4 uView;       // world space to view space: where the camera is and looks
+uniform mat4 uProjection; // view space to clip space: perspective
 
 // Output to the fragment shader. The rasterizer blends it between the three vertices of
 // a triangle, so every fragment receives its own in-between color.
@@ -225,10 +262,15 @@ out vec3 vColor;
 
 void main() {
     // gl_Position is the built-in output every vertex shader must write: the position in
-    // clip space. There are no matrices yet, so the position from the buffer is used as
-    // it is. With w = 1 it is already in normalized device coordinates: x and y from -1
-    // to 1 cover the whole window.
-    gl_Position = vec4(aPosition, 1.0);
+    // clip space. The expression is read from right to left, the matrix nearest to the
+    // vector is applied first:
+    //   vec4(aPosition, 1.0)  the vertex in local space, w = 1 because it is a point
+    //   uModel * ...          the vertex in world space
+    //   uView * ...           the vertex in view space, as seen from the camera
+    //   uProjection * ...     the vertex in clip space
+    // After this shader the graphics card divides x, y and z by w (the distance from the
+    // camera), which is what makes distant things small.
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 
     // Pass the color through unchanged.
     vColor = aColor;
@@ -238,12 +280,19 @@ void main() {
 | Linia | Co robi |
 |---|---|
 | `#version 410 core` | GLSL 4.10, profil Core. Musi być pierwszą linią pliku, dlatego komentarz z opisem stoi dopiero pod nią |
-| `layout(location = 0) in vec3 aPosition;` | Atrybut wierzchołka numer 0: trzy liczby `float`, pozycja. Numer 0 to stała `POSITION_ATTRIBUTE` w `NightMazeApp.cpp` |
+| `layout(location = 0) in vec3 aPosition;` | Atrybut wierzchołka numer 0: trzy liczby `float`, pozycja w przestrzeni lokalnej obiektu. Numer 0 to stała `POSITION_ATTRIBUTE` w `NightMazeApp.cpp` |
 | `layout(location = 1) in vec3 aColor;` | Atrybut numer 1: trzy liczby `float`, kolor. Numer 1 to stała `COLOR_ATTRIBUTE` |
+| `uniform mat4 uModel;` | Macierz modelu: z przestrzeni lokalnej do przestrzeni świata. Ustawiana z C++ przez `setMat4("uModel", ...)`, wartość z `scene::Transform::matrix()` |
+| `uniform mat4 uView;` | Macierz widoku: ze świata do przestrzeni kamery. Wartość z `scene::Camera::viewMatrix()` |
+| `uniform mat4 uProjection;` | Macierz rzutowania: z przestrzeni kamery do przestrzeni przycięcia. Wartość z `scene::Camera::projectionMatrix()` |
 | `out vec3 vColor;` | Wyjście do następnego etapu. Shader wierzchołków zapisuje tu kolor swojego wierzchołka, a rasteryzacja interpoluje go między trzema wierzchołkami trójkąta |
-| `void main() {` | Funkcja wykonywana raz dla każdego wierzchołka, czyli dla trójkąta trzy razy na klatkę |
-| `gl_Position = vec4(aPosition, 1.0);` | Pozycja w przestrzeni przycięcia. Z `vec3` robię `vec4`, dopisując `w = 1`, więc pozycja z bufora jest od razu pozycją w NDC (sekcja 2.2). Tu pojawi się mnożenie przez macierz, gdy dojdzie kostka |
+| `void main() {` | Funkcja wykonywana raz dla każdego wierzchołka wskazanego przez indeksy. Kostka ma 24 wierzchołki |
+| `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | Pozycja w przestrzeni przycięcia. Z `vec3` robię `vec4`, dopisując `w = 1` (bo to punkt), i mnożę kolejno przez trzy macierze. Wyrażenie czyta się **od prawej do lewej**: najpierw `uModel`, potem `uView`, na końcu `uProjection` |
 | `vColor = aColor;` | Kolor przechodzi bez zmian |
+
+Dlaczego mnożenie czyta się od prawej, czym są te trzy przestrzenie i co dokładnie dzieje się z jednym wierzchołkiem kostki na liczbach, opisuje [`../scene/transforms-camera.md`](../scene/transforms-camera.md) (sekcje 2.1, 4 i 5.10). Nazwy uniformów w shaderze muszą być identyczne z napisami w C++ (stałe `MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM` w `NightMazeApp.cpp`, sekcja 5.10).
+
+**Trzy uniformy zamiast jednego.** Shader mógłby dostać jedną gotową macierz, iloczyn wszystkich trzech policzony w C++. Tak robi wiele prawdziwych rendererów: jedno mnożenie macierzy na wierzchołek zamiast trzech. W projekcie macierze są osobno celowo: każdą da się podmienić i obejrzeć skutek (ćwiczenia w [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 8), a przy oświetleniu w M4 shader i tak będzie potrzebował pozycji w przestrzeni świata, czyli wyniku samego `uModel`.
 
 ### 4.2 `basic.frag`: shader fragmentów
 
@@ -275,7 +324,7 @@ void main() {
 
 ### 4.3 Skąd biorą się kolory na ekranie
 
-Dane wierzchołków w `NightMazeApp.cpp` dają lewemu dolnemu wierzchołkowi kolor czerwony, prawemu dolnemu zielony, a górnemu niebieski ([`buffers-vao.md`](buffers-vao.md), sekcja 5.7). Shader wierzchołków przepisuje te kolory do `vColor`. Dla każdego piksela wewnątrz trójkąta rasteryzacja wylicza `vColor` jako średnią ważoną trzech wierzchołków, z wagami zależnymi od odległości. Dlatego przy rogach trójkąt jest prawie czysto czerwony, zielony i niebieski, a w środku ciężkości wszystkie trzy składowe są równe (szary). W żadnym z dwóch shaderów nie ma ani jednej linii, która to przejście liczy: robi je etap stały potoku.
+Dane wierzchołków w `NightMazeApp.cpp` dają każdej ścianie kostki cztery wierzchołki o **tym samym** kolorze: przednia jest czerwona, tylna zielona, lewa niebieska, prawa żółta, górna turkusowa, dolna purpurowa ([`buffers-vao.md`](buffers-vao.md), sekcja 5.7). Shader wierzchołków przepisuje kolor do `vColor`. Dla każdego piksela wewnątrz trójkąta rasteryzacja wylicza `vColor` jako średnią ważoną trzech wierzchołków, z wagami zależnymi od odległości. Średnia z trzech równych wartości to ta sama wartość, więc ściana jest jednolita. Interpolacja nadal działa, tylko nie ma czego mieszać: wystarczy dać jednemu wierzchołkowi inny kolor, żeby zobaczyć płynne przejście ([`buffers-vao.md`](buffers-vao.md), ćwiczenie 2). W żadnym z dwóch shaderów nie ma ani jednej linii, która to przejście liczy: robi je etap stały potoku.
 
 Rozszerzenia plików (`.vert`, `.frag`) nie mają dla OpenGL żadnego znaczenia: o typie shadera decyduje stała podana do `glCreateShader`, a nie nazwa pliku. Rozszerzenia są dla ludzi i dla edytora, który według nich włącza kolorowanie składni GLSL ([`../../guides/project-structure.md`](../../guides/project-structure.md), sekcja 3.10).
 
@@ -287,13 +336,13 @@ Jak pliki z `assets/` trafiają obok programu, opisuje [`../core/paths.md`](../c
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `lastError`, `vertexPath`, `fragmentPath`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<filesystem>` i `<string>` |
+| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `setMat4`, `lastError`, `vertexPath`, `fragmentPath`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<glm/glm.hpp>` (typ `glm::mat4`), `<filesystem>` i `<string>` |
 | [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp) | implementacja i sześć funkcji pomocniczych w anonimowej przestrzeni nazw: `readTextFile`, `shaderInfoLog`, `programInfoLog`, `compileShader`, `linkProgram`, `buildProgram` |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | jedyna para shaderów projektu (sekcja 4) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel obiektu: pole `m_shader`, wczytanie w konstruktorze, `isValid()` i `use()` w `onRender`, chroniony akcesor `shader()` (sekcja 5.10) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel obiektu: pole `m_shader`, wczytanie w konstruktorze, `isValid()`, `use()` i trzy razy `setMat4()` w `onRender`, chroniony akcesor `shader()` (sekcja 5.10) |
 | [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | funkcja `debug::drawShadersPanel`: panel "Shaders" z przyciskiem "Reload shaders" (sekcja 6). Należy do programu `night_maze`, nie do biblioteki `engine` |
 
-Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`, `pathText`), GLAD i biblioteki standardowej. Nie wie nic o panelu ani o ImGui.
+Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`, `pathText`), GLAD, GLM (typ macierzy w `setMat4`) i biblioteki standardowej. Nie wie nic o panelu ani o ImGui.
 
 ```mermaid
 flowchart TD
@@ -380,6 +429,8 @@ void Shader::use() const {
 ```
 
 `use()` nie sprawdza `isValid()`. Dla obiektu bez programu wykona `glUseProgram(0)`, czyli "żaden program", a rysowanie w takim stanie nie daje określonego wyniku. Sprawdzenie należy do wołającego. `use()` jest `const`, bo nie zmienia obiektu C++, zmienia stan kontekstu OpenGL.
+
+Szósta funkcja, `setMat4`, ustawia uniform. Opisuje ją sekcja 5.12.
 
 ### 5.3 Wczytanie pliku: `readTextFile` i `core::pathText`
 
@@ -731,7 +782,7 @@ Przypisanie różni się od konstruktora jednym: obiekt po lewej stronie **już 
 
 ### 5.10 Gdzie klasa jest używana
 
-Właścicielem obiektu jest `game::NightMazeApp`: cztery miejsca poniżej. Piątym jest chroniony akcesor, przez który obiekt trafia do panelu debug.
+Właścicielem obiektu jest `game::NightMazeApp`: pięć miejsc poniżej. Szóstym jest chroniony akcesor, przez który obiekt trafia do panelu debug.
 
 **Pole** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
@@ -749,6 +800,17 @@ constexpr const char* VERTEX_SHADER_FILE = "shaders/basic.vert";
 constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
 ```
 
+**Nazwy uniformów** w tym samym miejscu:
+
+```cpp
+// Names of the matrix uniforms: the same as the "uniform mat4" lines in basic.vert.
+constexpr const char* MODEL_UNIFORM = "uModel";
+constexpr const char* VIEW_UNIFORM = "uView";
+constexpr const char* PROJECTION_UNIFORM = "uProjection";
+```
+
+To jedyny łącznik między kodem C++ a liniami `uniform mat4 ...` w `basic.vert`: zwykłe napisy. Kompilator C++ nie wie nic o shaderze, więc literówki nie wykryje (pułapka 8).
+
 **Wczytanie** na liście inicjalizacyjnej konstruktora:
 
 ```cpp
@@ -760,27 +822,58 @@ m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FI
 **Rysowanie** w `NightMazeApp::onRender`, po `glClear`:
 
 ```cpp
+// A minimized window can have a framebuffer of size 0 x 0. The aspect ratio would
+// then be 0 / 0, which is NaN (not a number): glm::perspective stops the program with
+// an assert in a Debug build and returns a matrix with NaN in it in a Release build.
+// There is nothing to draw in such a frame anyway.
+if (framebuffer.height == 0) {
+    return;
+}
+
 // Without a shader program there is nothing to draw with. The load error was logged
 // once, when the shader was created, so the frame stays at the clear color.
-if (m_shader.isValid()) {
-    m_shader.use();
-    m_vertexArray.bind();
-    // Every three vertices, starting at vertex 0, form one triangle.
-    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT));
+if (!m_shader.isValid()) {
+    return;
 }
+
+// Width divided by height of the same pixels the viewport covers. The casts make it
+// a division of floats: 1280 / 720 as integers would be 1.
+const float aspectRatio =
+    static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
+
+// The uniforms belong to the program in use, so use() comes before setMat4.
+m_shader.use();
+m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
+m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(m_camera.position));
+m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));
+
+m_vertexArray.bind();
+// Draws INDEX_COUNT indices from the element buffer recorded in the vertex array,
+// every three of them form one triangle. GL_UNSIGNED_INT is the type of one index
+// (GLuint). The last parameter has the type "pointer" for historical reasons, like in
+// glVertexAttribPointer: with an element buffer bound it is the byte offset of the
+// first index inside that buffer, and nullptr means offset 0, the start of the buffer.
+GL_CHECK(glDrawElements(GL_TRIANGLES, INDEX_COUNT, GL_UNSIGNED_INT, nullptr));
 ```
 
 | Linia | Co robi i dlaczego |
 |---|---|
-| `if (m_shader.isValid())` | Gdy shader się nie wczytał, rysowanie jest pomijane w całości. Klatka to wtedy samo tło, a panele debug działają normalnie. Błąd został wypisany **raz**, przez `reload()` wołane z konstruktora, a nie co klatkę |
-| `m_shader.use();` | `glUseProgram`: wybiera program dla następnego wywołania rysującego. Wołane co klatkę, bo backend ImGui ustawia przy rysowaniu paneli własny program |
-| `m_vertexArray.bind();` | Wybiera opis danych wierzchołków ([`buffers-vao.md`](buffers-vao.md)) |
-| `glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)` | Uruchamia potok z sekcji 2.1 dla trzech wierzchołków |
+| `if (framebuffer.height == 0) { return; }` | Zminimalizowane okno: nie ma pikseli do narysowania, a proporcji nie da się policzyć. Szczegóły: [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
+| `if (!m_shader.isValid()) { return; }` | Gdy shader się nie wczytał, rysowanie jest pomijane w całości. Klatka to wtedy samo tło, a panele debug działają normalnie, bo rysuje je `DebugNightMazeApp::onRender` po powrocie z tej funkcji. Błąd został wypisany **raz**, przez `reload()` wołane z konstruktora, a nie co klatkę |
+| `const float aspectRatio = ...` | proporcje obrazu dla macierzy rzutowania, z rozmiaru framebuffera |
+| `m_shader.use();` | `glUseProgram`: wybiera program dla następnych wywołań. Stoi **przed** `setMat4`, bo `glUniform*` pisze do programu bieżącego. Wołane co klatkę, bo backend ImGui ustawia przy rysowaniu paneli własny program |
+| `m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());` | macierz modelu kostki trafia do `uModel` |
+| `m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(m_camera.position));` | macierz widoku trafia do `uView` |
+| `m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));` | macierz rzutowania trafia do `uProjection` |
+| `m_vertexArray.bind();` | Wybiera opis danych wierzchołków i bufor indeksów ([`buffers-vao.md`](buffers-vao.md)) |
+| `glDrawElements(GL_TRIANGLES, INDEX_COUNT, GL_UNSIGNED_INT, nullptr)` | Uruchamia potok z sekcji 2.1 dla 36 indeksów, czyli 12 trójkątów ([`buffers-vao.md`](buffers-vao.md), sekcja 5.7) |
+
+Macierze są wysyłane **co klatkę**, choć kostka i kamera dziś się nie ruszają. Powody są trzy: macierz rzutowania zależy od rozmiaru okna, który może się zmienić w każdej chwili. Po `reload()` nowy program ma wszystkie uniformy wyzerowane (sekcja 2.8), więc wartości wysłane raz przy starcie przepadłyby po pierwszym naciśnięciu "Reload shaders". A gdy kamera zacznie się poruszać, i tak będą inne w każdej klatce.
 
 **Akcesor** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), obok `clearColor()`:
 
 ```cpp
-/// Shader program of the triangle, exposed so the debug UI can reload it live.
+/// Shader program of the cube, exposed so the debug UI can reload it live.
 gfx::Shader& shader() { return m_shader; }
 ```
 
@@ -808,7 +901,7 @@ Zwraca referencję bez `const`, bo wołający ma móc zawołać `reload()`. Jest
 
 Zwraca uwagę trzeci wiersz: brakujący średnik był w linii 4, a sterownik wskazał linię 5, bo błąd zauważył dopiero przy następnym znaku (`}`). Numer linii w dzienniku to miejsce, w którym kompilator się zgubił, a nie zawsze miejsce pomyłki.
 
-**Program `night_maze`.** Po dodaniu trójkąta uruchomiłem program na Macu trzy razy, każdorazowo na około 3 sekundy, i przeczytałem jego wyjście (`<repo>` to katalog repozytorium):
+**Program `night_maze` (wersja z trójkątem).** Po dodaniu pierwszej geometrii, jednego trójkąta, uruchomiłem program na Macu trzy razy, każdorazowo na około 3 sekundy, i przeczytałem jego wyjście (`<repo>` to katalog repozytorium):
 
 | Próba | Wyjście programu | Wynik |
 |---|---|---|
@@ -825,9 +918,9 @@ ERROR: 0:15: '}' : syntax error: syntax error
 
 Ścieżka w komunikacie prowadzi przez `build/debug/assets`, czyli przez dowiązanie obok programu, a nie wprost do katalogu repozytorium: to jest ścieżka, którą zbudowało `core::assetPath`. Sterownik wskazuje linię 15, choć średnika brakuje w linii 14 (uwaga pod tabelą wyżej).
 
-Te uruchomienia sprawdzały wyjście tekstowe, a nie obraz w oknie. To, że te same pliki shaderów z tymi samymi danymi wierzchołków dają czerwony, zielony i niebieski róg, potwierdził osobny test z ukrytym oknem i `glReadPixels` ([`buffers-vao.md`](buffers-vao.md), sekcja 5.9).
+Te uruchomienia sprawdzały wyjście tekstowe, a nie obraz w oknie. Obraz sprawdzał wtedy osobny test z ukrytym oknem i `glReadPixels` ([`buffers-vao.md`](buffers-vao.md), sekcja 5.9).
 
-**Panel Shaders.** Przycisku nie da się kliknąć z automatu w prawdziwym programie, więc ścieżkę kodu panelu sprawdziłem na Macu osobnym programem testowym poza repozytorium. Ukryte okno GLFW, ImGui zainicjalizowane tymi samymi wywołaniami co w `DebugUI`, prawdziwe `drawShadersPanel` z `ShadersPanel.cpp`, a w każdej klatce ta sama kolejność co w programie: `use()`, `bind()`, `glDrawArrays`, potem klatka ImGui z panelem i `RenderDrawData`. Kliknięcie było wstrzyknięte do ImGui jako zdarzenia myszy (`ImGuiIO::AddMousePosEvent`, `AddMouseButtonEvent`), a pliki shaderów były kopią w katalogu tymczasowym.
+**Panel Shaders (wersja z trójkątem).** Przycisku nie da się kliknąć z automatu w prawdziwym programie, więc ścieżkę kodu panelu sprawdziłem na Macu osobnym programem testowym poza repozytorium, gdy program rysował jeszcze trójkąt bez macierzy. Kod panelu i `Shader::reload` od tamtej pory się nie zmienił. Ukryte okno GLFW, ImGui zainicjalizowane tymi samymi wywołaniami co w `DebugUI`, prawdziwe `drawShadersPanel` z `ShadersPanel.cpp`, a w każdej klatce ta sama kolejność co w ówczesnym programie: `use()`, `bind()`, `glDrawArrays`, potem klatka ImGui z panelem i `RenderDrawData`. Kliknięcie było wstrzyknięte do ImGui jako zdarzenia myszy (`ImGuiIO::AddMousePosEvent`, `AddMouseButtonEvent`), a pliki shaderów były kopią w katalogu tymczasowym.
 
 | Próba | Wynik |
 |---|---|
@@ -844,7 +937,70 @@ ERROR: 0:15: '}' : syntax error: syntax error
 
 Test nie obejmuje `DebugUI::draw` ani `main.cpp` (te sprawdza kompilacja i uruchomienie programu: start bez linii `[error]`), nie sprawdza wyglądu panelu (kolor tekstu błędu, zawijanie, podpowiedź z pełną ścieżką) i nie zastępuje kliknięcia prawdziwą myszą w prawdziwym oknie. To zostaje do sprawdzenia ręcznego (sekcja 6.4).
 
+**Kostka i uniformy.** Po zamianie trójkąta na kostkę sprawdziłem prawdziwy kod rysujący testem z ukrytym oknem, który wołał `NightMazeApp::onRender` i czytał obraz przez `glReadPixels` (pełna tabela: [`buffers-vao.md`](buffers-vao.md), sekcja 5.9). Wyniki dotyczące shadera i uniformów:
+
+| Próba | Wynik |
+|---|---|
+| prawdziwe `basic.vert`, `basic.frag` i trzy wywołania `setMat4` | środek okna czerwony (ściana przednia), róg w kolorze tła, w klatce dokładnie trzy kolory ścian, `glGetError` czysty |
+| literówka w nazwie uniformu w C++ (`"uModle"` zamiast `"uModel"`, w kopii pliku poza repozytorium) | **pusta klatka**: każdy piksel w kolorze tła. `glGetError` czysty, w konsoli żadnej linii `[error]`, program działa dalej |
+| `gl_Position = vec4(aPosition, 1.0);` (bez macierzy) | zielony prostokąt na środku, połowa szerokości i wysokości okna. Zielona jest ściana **tylna**: bez macierzy rzutowania mniejsze z znaczy "bliżej". Trzy uniformy stają się nieaktywne, błędu brak |
+| `uModel * uView * uProjection` (odwrotna kolejność) | pusta klatka, błędu brak |
+| `uView * uModel` (bez rzutowania) | pusta klatka: kostka ma w przestrzeni widoku z od -3,9 do -2,1, czyli poza zakresem od -1 do 1, i jest w całości przycinana |
+| zamienione `location = 0` i `location = 1` | pusta klatka, błędu brak |
+
+Program `night_maze` uruchomiony na około 3 sekundy z katalogu repozytorium wypisał dwie linie `[info]` i żadnej linii `[error]`.
+
 Na Windowsie klasa i panel nie były jeszcze kompilowane ani uruchamiane.
+
+### 5.12 Uniformy: `setMat4`
+
+Deklaracja w [`Shader.hpp`](../../../src/gfx/Shader.hpp):
+
+```cpp
+/// Sets the uniform variable of type mat4 called name to matrix (glUniformMatrix4fv).
+/// The program must be in use: call use() first, because OpenGL writes the value into
+/// the program that is current. A name the program does not have (a typo, or a uniform
+/// the compiler removed because the shader never reads it) is ignored without an error.
+void setMat4(const char* name, const glm::mat4& matrix) const;
+```
+
+Implementacja w [`Shader.cpp`](../../../src/gfx/Shader.cpp):
+
+```cpp
+void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
+    // The location is the number of the uniform inside this program. It is looked up on
+    // every call: a few lookups per frame cost nothing, and there is no cache that could
+    // go stale after reload(). -1 means the program has no active uniform with this name.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // 1: one matrix. GL_FALSE: do not transpose, GLM stores a matrix column by column,
+    // which is the order OpenGL expects. value_ptr gives the address of its 16 floats.
+    // OpenGL ignores location -1 without raising an error.
+    GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
+}
+```
+
+| Element | Co robi i dlaczego |
+|---|---|
+| `const char* name` | nazwa uniformu dokładnie taka jak w shaderze, na przykład `"uModel"`. Zwykły napis C, bo taki przyjmuje `glGetUniformLocation` i taki jest literał w kodzie wołającym |
+| `const glm::mat4& matrix` | referencja do stałej: 64 bajty macierzy nie są kopiowane, a funkcja nie może jej zmienić. Przyjmuje też wartość tymczasową, na przykład wynik `m_camera.projectionMatrix(aspectRatio)` |
+| `const` na końcu deklaracji | funkcja nie zmienia obiektu C++ (`m_program` zostaje ten sam). Zmienia stan obiektu programu po stronie OpenGL, tak jak `use()` zmienia stan kontekstu |
+| `GLint location = -1;` | położenie jest liczbą ze znakiem, bo -1 znaczy "nie ma". Wartość początkowa -1 zostaje, gdyby wywołanie się nie powiodło |
+| `GL_CHECK(location = glGetUniformLocation(m_program, name));` | pytam sterownik o położenie uniformu w **moim** programie. Wywołanie zwraca wartość, więc przypisanie stoi wewnątrz makra ([`../core/gl-check.md`](../core/gl-check.md)) |
+| `1` | liczba macierzy. Więcej niż 1 tylko dla uniformu będącego tablicą |
+| `GL_FALSE` | parametr `transpose`: nie transponuj. GLM trzyma macierz kolumnami (column-major), czyli w tym samym układzie, w jakim czyta ją OpenGL ([`../../libraries/glm.md`](../../libraries/glm.md), sekcje 3.3 i 3.9). `GL_TRUE` zamieniłoby wiersze z kolumnami i zepsuło przekształcenie |
+| `glm::value_ptr(matrix)` | wskaźnik `const float*` na pierwszą z 16 liczb macierzy. OpenGL to API w C i nie zna typu `glm::mat4`. Funkcja jest w `<glm/gtc/type_ptr.hpp>`, dołączanym tylko w `Shader.cpp` |
+
+Trzy decyzje, które trzeba umieć obronić:
+
+**Położenie jest wyszukiwane przy każdym wywołaniu, bez pamięci podręcznej.** Typowa klasa shadera trzyma mapę "nazwa na położenie", żeby nie pytać sterownika co klatkę. Tu jej nie ma: trzy wyszukiwania na klatkę to koszt niemierzalny, a każda pamięć podręczna musiałaby być czyszczona w `reload()`, bo nowy program może nadać uniformom inne położenia. Mapa, o której czyszczeniu można zapomnieć, to gorsza wymiana niż trzy wywołania.
+
+**Program musi być w użyciu.** `glUniformMatrix4fv` nie przyjmuje identyfikatora programu: pisze do programu bieżącego (sekcja 2.8). `setMat4` **nie woła** `use()` samo. Gdyby wołało, ustawienie uniformu po cichu zmieniałoby bieżący program, a trzy macierze oznaczałyby trzy zbędne `glUseProgram`. Kolejność "najpierw `use()`, potem `setMat4`" należy do wołającego i jest zapisana w komentarzu Doxygen. Jej złamanie nie zawsze daje błąd: macierz trafia wtedy do innego programu (pułapka 20).
+
+**Nieznana nazwa jest ignorowana po cichu.** Dla nazwy, której program nie ma, `glGetUniformLocation` zwraca -1, a `glUniformMatrix4fv` z położeniem -1 nic nie robi i nie zgłasza błędu. `setMat4` tego nie sprawdza i niczego nie loguje. Rozważałem `logWarn` przy -1 i odrzuciłem z dwóch powodów. Funkcja jest wołana co klatkę, więc ostrzeżenie pojawiałoby się 60 razy na sekundę i zalało konsolę. Po drugie -1 nie zawsze jest pomyłką: uniform usunięty przez kompilator jako nieużywany (na przykład w trakcie eksperymentu z shaderem, ćwiczenie 7) też ma położenie -1, a ustawianie go jest poprawne. Skutek trzeba po prostu znać: literówka w nazwie daje pusty ekran bez żadnego komunikatu (pułapka 8).
+
+Klasa ma tylko `setMat4`. Uniformy innych typów (`vec3`, `float`, `int`) dojdą wtedy, gdy shader będzie ich potrzebował.
 
 ## 6. Panel ImGui
 
@@ -944,7 +1100,7 @@ flowchart LR
 Akcesor w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
 ```cpp
-/// Shader program of the triangle, exposed so the debug UI can reload it live.
+/// Shader program of the cube, exposed so the debug UI can reload it live.
 gfx::Shader& shader() { return m_shader; }
 ```
 
@@ -977,7 +1133,7 @@ sequenceDiagram
     participant Panel as drawShadersPanel
     participant GL as OpenGL
     participant Backend as backend ImGui
-    Game->>GL: glUseProgram(stary), glDrawArrays
+    Game->>GL: glUseProgram(stary), glUniformMatrix4fv x3, glDrawElements
     Note over Panel: klatka ImGui, kliknięty przycisk
     Panel->>GL: reload() buduje nowy program
     Panel->>GL: glDeleteProgram(stary)
@@ -987,14 +1143,14 @@ sequenceDiagram
     Note over GL: stary przestał być bieżący i znika naprawdę
     Backend->>GL: glIsProgram(stary) zwraca fałsz, backend go nie przywraca
     Note over Game: następna klatka
-    Game->>GL: glUseProgram(nowy), glDrawArrays
+    Game->>GL: glUseProgram(nowy), glUniformMatrix4fv x3, glDrawElements
 ```
 
 1. **Między `NewFrame` a `Render` ImGui nie woła OpenGL.** Widżety tylko dopisują geometrię do list w pamięci. `ImGui_ImplOpenGL3_NewFrame()` wykonało się wcześniej, a rysowanie następuje dopiero w `RenderDrawData`. `reload()` nie trafia więc w środek żadnej operacji backendu.
 2. **`reload()` nie zmienia stanu, na którym polega backend.** Tworzy obiekty shaderów i program, kompiluje, linkuje i usuwa (sekcja 3.1). Nie woła `glUseProgram`, nie wiąże buforów, tekstur ani VAO.
 3. **Backend ustawia własny stan od zera.** `RenderDrawData` zapamiętuje bieżący stan, potem samo woła `glUseProgram` dla swojego programu, wiąże swoje VAO i bufory. Nie zakłada, że ktoś zostawił mu poprawny program.
 4. **Backend jest przygotowany na usunięty program.** Po udanym przeładowaniu stary program jest jeszcze bieżący (gra ustawiła go w tej klatce), więc `glDeleteProgram` tylko oznacza go do usunięcia (sekcja 7, pułapka 4). Backend zapamiętuje go jako "poprzedni program", przełącza się na własny i w tej chwili stary program znika naprawdę. Na końcu backend przywraca poprzedni program tylko wtedy, gdy ten jeszcze istnieje. W źródle jest to linia `if (last_program == 0 || glIsProgram(last_program)) glUseProgram(last_program);` z komentarzem, że bez tego sprawdzenia przywrócenie programu oczekującego na usunięcie dałoby błąd OpenGL.
-5. **Gra nie zostaje z usuniętym programem.** Po takiej klatce bieżącym programem jest program ImGui. W następnej klatce `NightMazeApp::onRender` woła `m_shader.use()` przed `glDrawArrays`, a `use()` czyta aktualne `m_program`, czyli już nowy identyfikator. Nikt poza klasą `Shader` nie przechowuje identyfikatora programu.
+5. **Gra nie zostaje z usuniętym programem.** Po takiej klatce bieżącym programem jest program ImGui. W następnej klatce `NightMazeApp::onRender` woła `m_shader.use()` przed ustawieniem macierzy i przed `glDrawElements`, a `use()` i `setMat4()` czytają aktualne `m_program`, czyli już nowy identyfikator. Nowy program zaczyna z wyzerowanymi uniformami, ale trzy macierze są wysyłane co klatkę, więc dostaje je przed pierwszym rysowaniem. Nikt poza klasą `Shader` nie przechowuje identyfikatora programu.
 
 Przy nieudanym przeładowaniu nic z tego nie zachodzi: `m_program` się nie zmienia, żaden używany program nie jest usuwany, a backend przywraca ten sam program co zwykle.
 
@@ -1006,12 +1162,12 @@ Wersja dla macOS, gdzie `build/debug/assets` jest dowiązaniem do katalogu w rep
 
 1. Uruchom program (`make run`). W panelu Shaders: `Vertex: basic.vert`, `Fragment: basic.frag`, `Program: valid`, `Last load: OK`. Najedź kursorem na linię `Fragment`, żeby pokazać pełną ścieżkę.
 2. Nie zamykając programu, otwórz w edytorze [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag) i zamień linię `fragColor = vec4(vColor, 1.0);` na `fragColor = vec4(1.0, 0.5, 0.0, 1.0);`. Zapisz plik. **Obraz się nie zmienia**: program nie obserwuje dysku.
-3. Naciśnij `Reload shaders`. Trójkąt staje się jednolicie pomarańczowy, w panelu zostaje `Last load: OK`. Kod C++ nie był kompilowany, okno nie było zamykane.
+3. Naciśnij `Reload shaders`. Cała kostka staje się jednolicie pomarańczowa: ściany przestają się od siebie różnić i zostaje sama sylwetka. W panelu zostaje `Last load: OK`. Kod C++ nie był kompilowany, okno nie było zamykane.
 4. Wprowadź literówkę: usuń średnik na końcu zmienionej linii. Zapisz i naciśnij `Reload shaders`.
-5. W panelu pojawia się `Last load: failed` i czerwony tekst: `Shader compilation failed: <ścieżka>/basic.frag`, a pod nim linia sterownika (na Macu `ERROR: 0:15: '}' : syntax error: syntax error`). Ten sam tekst jest w konsoli jako linia `[error]`. Linia `Program` nadal pokazuje `valid`, a **trójkąt jest nadal pomarańczowy**: rysuje go poprzedni program.
-6. Przywróć plik do pierwotnej postaci (`git checkout assets/shaders`), naciśnij `Reload shaders`. Wraca `Last load: OK` i trójkąt z płynnym przejściem kolorów.
+5. W panelu pojawia się `Last load: failed` i czerwony tekst: `Shader compilation failed: <ścieżka>/basic.frag`, a pod nim linia sterownika (na Macu `ERROR: 0:15: '}' : syntax error: syntax error`). Ten sam tekst jest w konsoli jako linia `[error]`. Linia `Program` nadal pokazuje `valid`, a **kostka jest nadal pomarańczowa**: rysuje ją poprzedni program.
+6. Przywróć plik do pierwotnej postaci (`git checkout assets/shaders`), naciśnij `Reload shaders`. Wraca `Last load: OK` i kostka z trzema widocznymi ścianami: czerwoną, niebieską i turkusową.
 
-Co przy tym mówię: krok 2 pokazuje, że shader jest plikiem czytanym w czasie działania (zasada "Shadery jako pliki"). Krok 3 to cały potok budowania programu z sekcji 3.1 wykonany na żądanie. Krok 5 pokazuje dwie rzeczy naraz: że błąd GLSL trzeba odczytać samemu z dziennika sterownika (sekcja 3.3) i że `reload()` jest operacją "wszystko albo nic" (sekcja 2.7). Numer linii 15 przy średniku brakującym w linii 14 tłumaczy pułapka 11.
+Co przy tym mówię: krok 2 pokazuje, że shader jest plikiem czytanym w czasie działania (zasada "Shadery jako pliki"). Krok 3 to cały potok budowania programu z sekcji 3.1 wykonany na żądanie. Kostka nie znika ani na jedną klatkę, choć nowy program ma wyzerowane uniformy: macierze są wysyłane co klatkę (sekcja 5.10). Krok 5 pokazuje dwie rzeczy naraz: że błąd GLSL trzeba odczytać samemu z dziennika sterownika (sekcja 3.3) i że `reload()` jest operacją "wszystko albo nic" (sekcja 2.7). Numer linii 15 przy średniku brakującym w linii 14 tłumaczy pułapka 11.
 
 ### 6.5 Różnica na Windowsie
 
@@ -1034,7 +1190,7 @@ Bez kroku 2 panel pokaże `Last load: OK`, a obraz się nie zmieni, bo program w
 5. **Destruktor bez kontekstu.** `~Shader` woła `glDeleteProgram`, a każda funkcja `gl*` wymaga bieżącego kontekstu. Obiekt `Shader` żyjący dłużej niż okno (zmienna globalna, zmienna lokalna w `main` zadeklarowana przed aplikacją) wywoła OpenGL po zniszczeniu kontekstu. Poprawne miejsce to pole klasy pochodnej od `core::Application` ([`../core/README.md`](../core/README.md), sekcja 7). Z tego samego powodu obiektu nie można utworzyć **przed** powstaniem okna.
 6. **Kopiowanie opakowania.** Gdyby kopiowanie nie było zablokowane, `Shader b = a;` dałoby dwa obiekty z tym samym identyfikatorem i drugi destruktor usuwałby już usunięty program (albo, co gorsza, nowy obiekt, który dostał ten sam numer). Dzięki `= delete` taka linia się nie kompiluje. Typowa sytuacja, w której to wychodzi: przekazanie `Shader` do funkcji przez wartość. Przekazuję przez `const Shader&`.
 7. **Użycie obiektu po przeniesieniu.** Po `Shader b = std::move(a);` obiekt `a` ma `isValid() == false`. `a.use()` ustawi wtedy program 0.
-8. **Uniform usunięty przez optymalizację daje położenie -1.** Kompilator GLSL usuwa uniformy, które nie wpływają na wynik shadera (zadeklarowane, ale nieużyte, albo użyte tylko w obliczeniu, którego wynik jest potem ignorowany). `glGetUniformLocation` zwraca dla takiej nazwy -1, tak samo jak dla literówki w nazwie. Ustawianie uniformu o położeniu -1 jest po cichu ignorowane, więc nie ma błędu, tylko wartość "nie dochodzi". W teście z sekcji 5.11 nieużyty `uniform vec3 uTint` dostał położenie -1, a użyty `uUsed` położenie 0. Klasa `Shader` nie ma jeszcze funkcji do uniformów, ale ta pułapka wróci razem z nimi.
+8. **Położenie -1: literówka w nazwie uniformu albo uniform usunięty przez kompilator.** `glGetUniformLocation` zwraca -1 w dwóch sytuacjach, których nie da się od siebie odróżnić. Pierwsza to nazwa, której w shaderze nie ma: `setMat4("uModle", ...)`. Druga to uniform, który kompilator GLSL usunął, bo nie wpływa na wynik shadera (zadeklarowany, ale nieużyty, albo użyty tylko w obliczeniu, którego wynik jest potem ignorowany). Ustawianie uniformu o położeniu -1 jest po cichu ignorowane: nie ma błędu OpenGL, nie ma linii w konsoli, `setMat4` też niczego nie loguje (sekcja 5.12). Wartość po prostu "nie dochodzi", a uniform zostaje z zerami. Zmierzone w teście (sekcja 5.11): literówka w `"uModel"` daje macierz zerową w shaderze, wszystkie wierzchołki w jednym punkcie i **pusty ekran bez żadnego komunikatu**. Gdy kostka znika po zmianie w kodzie C++, pierwszą rzeczą do sprawdzenia są trzy napisy z nazwami uniformów.
 9. **`use()` bez sprawdzenia `isValid()`.** Dla obiektu bez programu `use()` ustawia program 0 i rysowanie nie daje określonego wyniku (zwykle nic nie widać). Po nieudanym wczytaniu w konstruktorze trzeba albo pominąć rysowanie, albo poprawić plik i zawołać `reload()`.
 10. **Dziennik czytany po usunięciu obiektu.** `glGetShaderInfoLog` dla usuniętego shadera zwraca błąd OpenGL zamiast tekstu. W `compileShader` i `linkProgram` dziennik jest odczytywany przed `glDeleteShader` i `glDeleteProgram`.
 11. **Numer linii w błędzie wskazuje za daleko.** Brak średnika w linii 4 sterownik zgłasza w linii 5 (sekcja 5.11). Trzeba patrzeć też linię wyżej.
@@ -1046,29 +1202,37 @@ Bez kroku 2 panel pokaże `Last load: OK`, a obraz się nie zmieni, bo program w
 17. **`Program: valid` i czerwony błąd jednocześnie.** To nie jest błąd panelu. `isValid()` mówi, czy jest czym rysować, a `lastError()`, czy ostatnie wczytanie się udało. Po nieudanym przeładowaniu oba są prawdziwe naraz: rysuje poprzedni program (sekcja 5.8).
 18. **`Last load: OK`, a obraz bez zmian.** Program wczytał poprawnie plik, tylko nie ten, który przed chwilą zmieniłem. Na Windowsie to nieodświeżona kopia `assets` (pułapka 14). Na obu systemach: zmiana zapisana w innym pliku niż ten z podpowiedzi w panelu albo niezapisany plik w edytorze.
 19. **Błąd tylko jednego pliku naraz.** Gdy zepsute są oba pliki, panel pokazuje błąd shadera wierzchołków, bo `buildProgram` kończy pracę na pierwszym niepowodzeniu (sekcja 5.7). Błąd shadera fragmentów pojawi się po naprawieniu pierwszego i kolejnym kliknięciu.
+20. **`setMat4` przed `use()`.** `glUniform*` pisze do programu bieżącego. Bez `use()` macierz trafia do programu, który akurat jest bieżący, czyli do tego, który ktoś wybrał ostatnio. Jeśli tamten program nie ma uniformu pod tym położeniem albo ma uniform innego typu, OpenGL zgłasza `GL_INVALID_OPERATION` i `GL_CHECK` to wypisze. Jeśli typ się zgadza, błędu nie ma, a zepsuty zostaje cudzy shader. Gdy bieżącego programu nie ma wcale, błąd jest zawsze.
+21. **Uniformy po `reload()`.** Nowy program zaczyna z samymi zerami (sekcja 2.8). Kod, który ustawia uniform raz, przy starcie, traci tę wartość po pierwszym przeładowaniu shadera. W projekcie macierze są wysyłane co klatkę, więc problemu nie ma, ale każdy uniform ustawiany "raz" trzeba po `reload()` ustawić ponownie.
+22. **`GL_TRUE` jako `transpose`.** Macierz z GLM jest już w układzie kolumnowym. `GL_TRUE` transponuje ją: przesunięcie ląduje w ostatnim wierszu zamiast w ostatniej kolumnie i obraz znika albo jest zdeformowany.
+23. **Zła kolejność mnożenia w shaderze.** `uModel * uView * uProjection * vec4(...)` kompiluje się bez ostrzeżeń i daje pusty ekran (zmierzone, sekcja 5.11). Macierz najbliżej wektora działa pierwsza, więc poprawna kolejność to `uProjection * uView * uModel`.
 
 ## 8. Ćwiczenia
 
 Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo `.frag` zapisz plik i naciśnij `Reload shaders` w panelu Shaders. Kompilacja C++ nie jest potrzebna. Na macOS przycisk od razu widzi zmianę, bo `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Na Windowsie przed naciśnięciem przycisku trzeba wykonać `cmake --build --preset debug`, które odświeża kopię shaderów obok programu. Ćwiczenia 3 i 11 dotyczą błędu **przy starcie**, więc tam program trzeba uruchomić od nowa. Po każdym ćwiczeniu przywróć plik (`git checkout assets/shaders`) i naciśnij przycisk jeszcze raz.
 
-1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne. Trójkąt projektu zakrywa w oknie 1280 x 720 około 115 tysięcy punktów (na ekranie Retina cztery razy więcej pikseli). Ile razy na klatkę wykonuje się `main` z `basic.vert`, a ile razy `main` z `basic.frag`?
-2. **Stały kolor.** W `basic.frag` zamień `vec4(vColor, 1.0)` na `vec4(1.0, 0.5, 0.2, 1.0)`. Naciśnij `Reload shaders`. Jaki jest trójkąt? Czy shader nadal się linkuje, mimo że `vColor` nie jest już używane?
+1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne. Trzy widoczne ściany kostki zakrywają w oknie 1280 x 720 około 73 tysięcy punktów (na ekranie Retina cztery razy więcej pikseli: zmierzone 291 620). Kostka ma 24 wierzchołki i 36 indeksów. Ile razy na klatkę wykonuje się `main` z `basic.vert`? Ile razy co najmniej wykonuje się `main` z `basic.frag` i dlaczego może więcej (pomyśl o ścianach tylnych i teście głębi)?
+2. **Stały kolor.** W `basic.frag` zamień `vec4(vColor, 1.0)` na `vec4(1.0, 0.5, 0.2, 1.0)`. Naciśnij `Reload shaders`. Jak wygląda kostka i dlaczego nie widać już krawędzi między ścianami? Czy shader nadal się linkuje, mimo że `vColor` nie jest już używane?
 3. **Literówka przy starcie.** Zamknij program, usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i uruchom program od nowa. Przeczytaj linię `[error]`: która część pochodzi z `Shader.cpp`, a która ze sterownika? Którą linię wskazuje sterownik i dlaczego nie tę ze średnikiem? Co widać w oknie, co pokazuje linia `Program` w panelu Shaders i czy panele działają? Wskaż w `NightMazeApp::onRender` linię, dzięki której program się nie wysypał. Na koniec, nie zamykając programu, przywróć średnik i naciśnij `Reload shaders`: co się zmieniło w oknie i w panelu?
 4. **Błąd linkowania.** W `basic.frag` zmień nazwę `vColor` na `vColour` w obu liniach, w których występuje. Naciśnij `Reload shaders`. Czym różni się komunikat od poprzedniego i dlaczego wymienia oba pliki?
-5. **Zamienione numery atrybutów.** W `basic.vert` zamień `location = 0` z `location = 1` (pozycja dostaje 1, kolor 0). Naciśnij `Reload shaders`. Shader czyta teraz kolory jako pozycje, a pozycje jako kolory. Policz na kartce, gdzie wypadną trzy wierzchołki, i porównaj z ekranem. Dlaczego nie ma żadnego błędu w konsoli?
-6. **Pozycja jako kolor.** W `basic.vert` zamień `vColor = aColor;` na `vColor = aPosition + 0.5;`. Jaki kolor ma każdy róg i dlaczego? Co by było bez `+ 0.5`?
-7. **Składowa `w`.** W `basic.vert` zamień `vec4(aPosition, 1.0)` na `vec4(aPosition, 2.0)`. Co stało się z rozmiarem trójkąta? Wyjaśnij to dzieleniem perspektywicznym z sekcji 2.2. Sprawdź też wartość `0.5`.
-8. **Przesunięcie i odbicie.** Zmień `gl_Position` tak, żeby trójkąt był przesunięty o 0,5 w prawo, a potem tak, żeby stał na głowie. Nie zmieniaj kodu C++.
+5. **Zamienione numery atrybutów.** W `basic.vert` zamień `location = 0` z `location = 1` (pozycja dostaje 1, kolor 0). Naciśnij `Reload shaders`. Shader czyta teraz kolory jako pozycje, a pozycje jako kolory. Kostka znika. Wyjaśnij to, patrząc na dane: gdzie lądują cztery wierzchołki jednej ściany, skoro mają ten sam kolor? Dlaczego nie ma żadnego błędu w konsoli?
+6. **Pozycja jako kolor.** W `basic.vert` zamień `vColor = aColor;` na `vColor = aPosition + 0.5;`. Ściany przestały być jednolite: dlaczego właśnie teraz widać interpolację? Jaki kolor ma róg (0,5, 0,5, 0,5), a jaki róg (-0,5, -0,5, -0,5)? Co by było bez `+ 0.5`?
+7. **Bez macierzy.** W `basic.vert` zamień linię z `gl_Position` na `gl_Position = vec4(aPosition, 1.0);` i naciśnij `Reload shaders`. Na środku jest zielony prostokąt o połowie szerokości i wysokości okna. Wyjaśnij trzy rzeczy: dlaczego prostokąt, a nie kwadrat, dlaczego widać ścianę **tylną** (zieloną), a nie przednią, i jakie położenie mają teraz uniformy `uModel`, `uView`, `uProjection` (sekcja 2.8). Dlaczego program C++, który nadal woła `setMat4`, nie zgłasza błędu?
+8. **Przesunięcie w przestrzeni lokalnej.** W `basic.vert` zamień `vec4(aPosition, 1.0)` na `vec4(aPosition + vec3(1.0, 0.0, 0.0), 1.0)`. Kostka przesunęła się, ale nie dokładnie w prawo ekranu. Dlaczego? W którym miejscu wyrażenia trzeba by dodać przesunięcie, żeby było przesunięciem w przestrzeni świata? Nie zmieniaj kodu C++.
 9. **Wersja GLSL.** Zmień pierwszą linię `basic.vert` na `#version 460 core`, potem usuń ją całkiem. Zapisz oba komunikaty. Który z nich pojawiłby się także na PC z nowym sterownikiem?
 10. **Ścieżki przez `buildProgram`.** Dla każdego z czterech wyjść funkcji `buildProgram` (sekcja 5.7) wypisz po kolei wszystkie wywołania `glCreate*` i `glDelete*`, które się wykonają, i sprawdź, że każdemu `glCreate*` odpowiada `glDelete*` albo zwrócenie identyfikatora. Które wyjście wystąpiło w ćwiczeniu 3, a które w ćwiczeniu 4?
 11. **Brak pliku.** W `NightMazeApp.cpp` zmień `VERTEX_SHADER_FILE` na nieistniejącą nazwę, zbuduj i uruchom. Jaka linia pojawia się w konsoli i ile razy? Wycofaj zmianę.
 12. **Przeniesienie na kartce.** Dla kodu `Shader a(p1, p2); Shader b = std::move(a);` zapisz wartość `m_program` w obu obiektach po każdej linii (przyjmij, że program dostał identyfikator 3). Ile razy i z jakim argumentem zostanie zawołane `glDeleteProgram`, gdy oba obiekty wyjdą z zasięgu? Powtórz, zakładając, że w konstruktorze przenoszącym brakuje linii `other.m_program = 0;`.
 13. **Przypisanie do siebie.** Prześledź na kartce `a = std::move(a);` dla obiektu z programem 3, najpierw z warunkiem `if (this == &other)`, potem bez niego. W jakim stanie zostaje obiekt w drugim przypadku?
-14. **Literówka w działającym programie.** Przy działającym programie usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i naciśnij `Reload shaders`. Porównaj z ćwiczeniem 3: co pokazuje linia `Program`, co widać w oknie, ile linii `[error]` jest w konsoli po trzech kliknięciach? Wskaż w `Shader::reload` linię, przez którą trójkąt nie zniknął.
+14. **Literówka w działającym programie.** Przy działającym programie usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i naciśnij `Reload shaders`. Porównaj z ćwiczeniem 3: co pokazuje linia `Program`, co widać w oknie, ile linii `[error]` jest w konsoli po trzech kliknięciach? Wskaż w `Shader::reload` linię, przez którą kostka nie zniknęła.
 15. **Brak pliku w działającym programie.** Przy działającym programie zmień nazwę pliku `assets/shaders/basic.frag` na `basic2.frag` i naciśnij `Reload shaders`. Jaki komunikat pokazuje panel i czym różni się od błędu kompilacji? Przywróć nazwę i naciśnij przycisk ponownie.
 16. **Napis formatujący.** W `ShadersPanel.cpp` zamień tymczasowo `ImGui::TextWrapped("%s", shader.lastError().c_str());` na `ImGui::TextWrapped(shader.lastError().c_str());` i zbuduj. Przeczytaj ostrzeżenie kompilatora. Wyjaśnij, co by się stało, gdyby komunikat sterownika zawierał `%d`. Wycofaj zmianę.
 17. **Droga referencji.** Bez zaglądania do sekcji 6.2 wypisz pliki, przez które referencja do `m_shader` przechodzi od pola w `NightMazeApp` do wywołania `shader.reload()` w panelu. Dla każdego pliku podaj, czy dołącza `gfx/Shader.hpp`, czy wystarcza mu deklaracja wyprzedzająca, i dlaczego.
 18. **Kolejność w klatce.** W `ShadersPanel.cpp` linie pokazujące `lastError()` stoją **pod** przyciskiem. Co pokazałby panel w klatce kliknięcia, gdyby stały nad nim? Czy użytkownik zauważyłby różnicę i dlaczego?
+19. **Literówka w nazwie uniformu.** W `NightMazeApp.cpp` zmień `MODEL_UNIFORM` na `"uModle"`, zbuduj i uruchom. Co widać w oknie, co w konsoli, co w panelu Shaders (`Program`, `Last load`)? Wyjaśnij, jaką wartość ma `uModel` w shaderze i gdzie lądują wierzchołki. Wycofaj zmianę.
+20. **`setMat4` przed `use()`.** W `NightMazeApp::onRender` przenieś linię `m_shader.use();` pod trzy wywołania `setMat4`. Zbuduj i uruchom. Czy w konsoli jest błąd i po którym wywołaniu? Co widać w pierwszej klatce, a co w następnych? Wycofaj zmianę.
+21. **Transpozycja.** W `Shader::setMat4` zamień `GL_FALSE` na `GL_TRUE`. Zbuduj i uruchom. Opisz obraz. Dla macierzy modelu samej kostki (sam obrót) transpozycja to obrót w przeciwną stronę: dlaczego? Która z trzech macierzy psuje się najbardziej i dlaczego? Wycofaj zmianę.
+22. **Uniform na kartce.** Dopisz na kartce do `basic.frag` uniform `uniform vec3 uTint;` i pomnóż przez niego kolor. Zapisz deklarację i implementację funkcji `setVec3` w stylu `setMat4` (wskazówka: `glUniform3fv(location, 1, glm::value_ptr(value))`). Co zobaczysz, jeśli zapomnisz ją zawołać, i dlaczego?
 
 ## 9. Pytania kontrolne
 
@@ -1136,10 +1300,10 @@ Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo 
     Przy starcie, w konstruktorze `NightMazeApp` (konstruktor `Shader` woła `reload()`), i po każdym naciśnięciu `Reload shaders` w panelu Shaders. Po zmianie pliku zapisuję go i naciskam przycisk. Kompilacja C++ nie jest potrzebna, bo shader jest plikiem czytanym w czasie działania. Na Windowsie przed naciśnięciem trzeba zbudować, żeby odświeżyć kopię katalogu `assets`.
 
 22. **Co się dzieje w klatce, gdy shader się nie wczytał?**
-    `m_shader.isValid()` zwraca fałsz i `onRender` pomija `use()`, `bind()` i `glDrawArrays`. Klatka to samo tło i panele. Błąd został wypisany raz, przy wczytaniu, a nie co klatkę.
+    `m_shader.isValid()` zwraca fałsz i `onRender` kończy się (`return`) przed `use()`, `setMat4()`, `bind()` i `glDrawElements`. Klatka to samo tło i panele. Błąd został wypisany raz, przy wczytaniu, a nie co klatkę.
 
-23. **Skąd w trójkącie płynne przejście kolorów, skoro shader fragmentów tylko przepisuje `vColor`?**
-    Shader wierzchołków zapisuje `vColor` dla trzech wierzchołków, a rasteryzacja interpoluje tę wartość dla każdego fragmentu. Shader fragmentów dostaje już wartość pośrednią.
+23. **Dlaczego każda ściana kostki ma jednolity kolor, skoro rasteryzacja interpoluje `vColor`?**
+    Shader wierzchołków zapisuje `vColor` dla trzech wierzchołków trójkąta, a rasteryzacja interpoluje tę wartość dla każdego fragmentu. Wszystkie cztery wierzchołki jednej ściany mają w danych ten sam kolor, więc wartość pośrednia jest tym samym kolorem. Dlatego kostka ma 24 wierzchołki, po 4 na ścianę, a nie 8 wspólnych.
 
 24. **Co pokazuje panel Shaders i skąd bierze każdą wartość?**
     Nazwy obu plików (`vertexPath()`, `fragmentPath()`, zamienione na tekst przez `core::pathText`, pełna ścieżka w podpowiedzi), stan programu (`isValid()`), przycisk wołający `reload()` oraz wynik ostatniego wczytania: `OK`, gdy `lastError()` jest pusty, albo jego tekst na czerwono. Panel nie ma własnego stanu: wszystko czyta co klatkę z obiektu `Shader`.
@@ -1159,10 +1323,29 @@ Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo 
 29. **Jak wygląda przeładowanie shadera na Windowsie i dlaczego inaczej niż na macOS?**
     Program czyta tam kopię katalogu `assets` obok pliku `.exe`, a nie pliki z repozytorium. Po zapisaniu pliku trzeba więc wykonać `cmake --build --preset debug`, które odświeża kopię, i dopiero wtedy nacisnąć `Reload shaders`. Na macOS obok programu jest dowiązanie do katalogu w repozytorium, więc wystarcza sam przycisk.
 
+27. **Co robi `setMat4`, linia po linii?**
+    Pyta sterownik o położenie uniformu o podanej nazwie w programie obiektu (`glGetUniformLocation`), a potem kopiuje do niego 16 liczb macierzy (`glUniformMatrix4fv`): jedna macierz, bez transpozycji, wskaźnik z `glm::value_ptr`. Położenie jest wyszukiwane za każdym razem, bez pamięci podręcznej.
+
+28. **Dlaczego przed `setMat4` musi stać `use()`?**
+    `glUniformMatrix4fv` nie przyjmuje identyfikatora programu, tylko pisze do programu bieżącego, wybranego przez `glUseProgram`. Bez `use()` macierz trafiłaby do innego programu albo wywołanie skończyłoby się `GL_INVALID_OPERATION`. W OpenGL 4.1 jest też `glProgramUniform*` z programem jako argumentem, ale projekt używa postaci z wykładu.
+
+29. **Co się stanie przy literówce w nazwie uniformu?**
+    `glGetUniformLocation` zwróci -1, a `glUniformMatrix4fv` z położeniem -1 jest ignorowane bez błędu. Uniform w shaderze zostaje z zerami. Dla macierzy modelu oznacza to wszystkie wierzchołki w jednym punkcie i pusty ekran, bez żadnego komunikatu. To samo położenie -1 ma uniform usunięty przez kompilator jako nieużywany.
+
+30. **Dlaczego `transpose` to `GL_FALSE`?**
+    GLM przechowuje macierz kolumnami, tak samo jak oczekuje jej OpenGL i GLSL. Nie ma czego transponować.
+
+31. **Dlaczego shader ma trzy osobne macierze, a nie jedną?**
+    Dla nauki: każdą da się podmienić osobno i zobaczyć skutek, a wyrażenie `uProjection * uView * uModel * vec4(aPosition, 1.0)` pokazuje wprost drogę wierzchołka przez przestrzenie. Prawdziwy renderer często wysyła jeden gotowy iloczyn. Macierz modelu osobno przyda się też przy oświetleniu.
+
+32. **Dlaczego macierze są wysyłane co klatkę, skoro kostka stoi w miejscu?**
+    Macierz rzutowania zależy od proporcji okna, które mogą się zmienić. Po `reload()` nowy program ma uniformy wyzerowane, więc wartości wysłane raz by przepadły. A ruchoma kamera i tak zmienia macierz widoku w każdej klatce.
+
 ## 10. Źródła
 
 - LearnOpenGL, rozdział "Hello Triangle" (<https://learnopengl.com/Getting-started/Hello-Triangle>): potok graficzny, shader wierzchołków i fragmentów, kompilacja, linkowanie, odczyt dziennika.
 - LearnOpenGL, rozdział "Shaders" (<https://learnopengl.com/Getting-started/Shaders>): GLSL, typy, `in` i `out`, uniformy, własna klasa shadera wczytująca pliki.
+- docs.gl, OpenGL 4: `glGetUniformLocation` (<https://docs.gl/gl4/glGetUniformLocation>), `glUniform` (<https://docs.gl/gl4/glUniform>, w tym `glUniformMatrix4fv` i zachowanie dla położenia -1), `glProgramUniform` (<https://docs.gl/gl4/glProgramUniform>).
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glCreateShader`, `glShaderSource`, `glCompileShader`, `glGetShader` (`glGetShaderiv`), `glGetShaderInfoLog`, `glCreateProgram`, `glAttachShader`, `glDetachShader`, `glLinkProgram`, `glGetProgram` (`glGetProgramiv`), `glGetProgramInfoLog`, `glUseProgram`, `glDeleteShader`, `glDeleteProgram` (w tym zdanie o ignorowaniu wartości 0 i o programie będącym w użyciu).
 - Khronos OpenGL Wiki: "Rendering Pipeline Overview" (<https://www.khronos.org/opengl/wiki/Rendering_Pipeline_Overview>), "Shader Compilation" (<https://www.khronos.org/opengl/wiki/Shader_Compilation>), "GLSL Object" (<https://www.khronos.org/opengl/wiki/GLSL_Object>), "Uniform (GLSL)" (<https://www.khronos.org/opengl/wiki/Uniform_(GLSL)>, o uniformach nieaktywnych).
 - cppreference: semantyka przenoszenia (<https://en.cppreference.com/w/cpp/language/move_constructor>, <https://en.cppreference.com/w/cpp/language/move_assignment>), `std::filesystem::path::u8string`, `std::basic_ifstream`.

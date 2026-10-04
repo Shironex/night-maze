@@ -85,7 +85,7 @@ Sama pętla nie woła żadnej funkcji `gl*`. Jej związek z OpenGL to kolejnoś�
 |---|---|
 | `m_window.pollEvents()` | nic w OpenGL. GLFW odbiera zdarzenia systemu (klawisze, zmiana rozmiaru, krzyżyk) |
 | `onUpdate(Time::FIXED_DT)` | nic w OpenGL. Symulacja nie rysuje |
-| `onRender(m_time.alpha())` | jedyne miejsce w pętli, w którym wolno wołać `gl*`. Dziś: `glViewport`, `glClearColor`, `glClear` i rysowanie trójkąta (`glDrawArrays`) w `NightMazeApp::onRender`, a potem backend ImGui ([`window-context.md`](window-context.md), sekcja 3.2) |
+| `onRender(m_time.alpha())` | jedyne miejsce w pętli, w którym wolno wołać `gl*`. Dziś: `glViewport`, `glEnable(GL_DEPTH_TEST)`, `glClearColor`, `glClear`, wysłanie trzech macierzy i rysowanie kostki (`glDrawElements`) w `NightMazeApp::onRender`, a potem backend ImGui ([`window-context.md`](window-context.md), sekcja 3.2) |
 | `m_window.swapBuffers()` | `glfwSwapBuffers`: tylny bufor trafia na ekran. Przy vsync to wywołanie **czeka** na odświeżenie monitora |
 
 Ostatni wiersz tłumaczy, skąd bierze się czas klatki mierzony przez `Time`. Przy włączonym vsync (`glfwSwapInterval(1)`) większość czasu klatki to czekanie wewnątrz `glfwSwapBuffers`, dlatego FPS trzyma się częstotliwości monitora. Pętla nie ma własnego ogranicznika ani usypiania: bez vsync kręci się tak szybko, jak pozwala procesor i karta.

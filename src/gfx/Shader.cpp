@@ -6,6 +6,8 @@
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include <cstddef>
 #include <fstream>
 #include <sstream>
@@ -215,6 +217,19 @@ bool Shader::reload() {
 
 void Shader::use() const {
     GL_CHECK(glUseProgram(m_program));
+}
+
+void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
+    // The location is the number of the uniform inside this program. It is looked up on
+    // every call: a few lookups per frame cost nothing, and there is no cache that could
+    // go stale after reload(). -1 means the program has no active uniform with this name.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // 1: one matrix. GL_FALSE: do not transpose, GLM stores a matrix column by column,
+    // which is the order OpenGL expects. value_ptr gives the address of its 16 floats.
+    // OpenGL ignores location -1 without raising an error.
+    GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
 }
 
 } // namespace gfx

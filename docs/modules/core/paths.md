@@ -344,7 +344,7 @@ Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalo
 
 ## 6. Panel ImGui
 
-Ścieżki nie mają własnego panelu, ale widać je w panelu **Shaders** ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 6): linie `Vertex` i `Fragment` pokazują nazwy plików, a podpowiedź (tooltip) po najechaniu kursorem pełną ścieżkę zbudowaną przez `core::assetPath`. Oba teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak trójkąta.
+Ścieżki nie mają własnego panelu, ale widać je w panelu **Shaders** ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 6): linie `Vertex` i `Fragment` pokazują nazwy plików, a podpowiedź (tooltip) po najechaniu kursorem pełną ścieżkę zbudowaną przez `core::assetPath`. Oba teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak kostki.
 
 ## 7. Pułapki
 

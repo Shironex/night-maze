@@ -348,9 +348,9 @@ Typowe użycie: w RenderDoc, w zakładce Launch Application, wskazujemy
 `build\debug\Debug\night_maze.exe`, ustawiamy Working Directory na katalog repozytorium,
 uruchamiamy program i przechwytujemy klatkę klawiszem F12 lub PrintScreen.
 
-Dziś w przechwyconej klatce jest czyszczenie ekranu, jedno wywołanie `glDrawArrays` z
-trójkątem (można obejrzeć bufor wierzchołków, wejścia i wyjścia shaderów `basic`) i rysowanie
-ImGui. Narzędzie stanie się naprawdę użyteczne przy cieniach i efektach pozaekranowych.
+Dziś w przechwyconej klatce jest czyszczenie ekranu, jedno wywołanie `glDrawElements` z
+kostką (można obejrzeć bufor wierzchołków, bufor indeksów, trzy macierze w uniformach, bufor
+głębi oraz wejścia i wyjścia shaderów `basic`) i rysowanie ImGui. Narzędzie stanie się naprawdę użyteczne przy cieniach i efektach pozaekranowych.
 
 ## 9. Końce linii: `.gitattributes`
 
@@ -435,8 +435,15 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 **Uruchomienie**
 
 - [ ] okno 1280 x 720 z tytułem "Night Maze" otwiera się, tło jest ciemnogranatowe
-- [ ] na środku okna widać trójkąt: lewy dolny róg czerwony, prawy dolny zielony, górny
-      niebieski, z płynnym przejściem kolorów
+- [ ] na środku okna widać kostkę z trzema ścianami w jednolitych kolorach: czerwoną z
+      przodu, niebieską z lewej, turkusową u góry. Żadna ściana nie "prześwituje" przez
+      inną (test głębi działa)
+- [ ] zmiana rozmiaru okna myszą (szersze, węższe, wyższe niż szersze): kostka zachowuje
+      proporcje, nie rozciąga się, zostaje na środku
+- [ ] minimalizacja okna i przywrócenie: program nie kończy pracy, w konsoli nie ma linii
+      `[error]` ani komunikatu o asercji, kostka wraca. Zapisać, jaki rozmiar framebuffera
+      pokazuje panel Renderer zaraz po przywróceniu (na Windowsie zminimalizowane okno ma
+      framebuffer 0 x 0, a `NightMazeApp::onRender` pomija wtedy rysowanie)
 - [ ] otwiera się okno konsoli z dwiema liniami `[info]`
 - [ ] zapisać dokładny napis `GL_VERSION` (oczekiwane: wersja 4.1 lub wyższa) i `GL_RENDERER`
 - [ ] w konsoli nie ma linii `[error]`
@@ -490,10 +497,10 @@ Funkcje są wołane przy każdym starcie programu (wczytywanie shaderów).
 - [ ] Visual Studio: zmiana w shaderze, potem samo F5. Zapisać, czy kopia została
       odświeżona (czyli czy F5 buduje też `copy_assets`), i jeśli nie, czy pomaga Build
       Solution
-- [ ] program startuje bez linii `[error]` i pokazuje trójkąt uruchomiony z
+- [ ] program startuje bez linii `[error]` i pokazuje kostkę uruchomiony z
       katalogu repozytorium, z innego katalogu roboczego (na przykład `C:\`), dwuklikiem i z
       Visual Studio (F5)
-- [ ] program startuje i pokazuje trójkąt z katalogu, którego ścieżka zawiera
+- [ ] program startuje i pokazuje kostkę z katalogu, którego ścieżka zawiera
       polską literę (na przykład kopia `build\debug\Debug` w `C:\Users\<nazwa>\Żółw\`)
 
 **Klasa `gfx::Shader`**
@@ -528,12 +535,12 @@ kompilowany i sprawdzany tylko na macOS.
 - [ ] przeładowanie udane: przy działającym programie zmiana koloru w
       `assets\shaders\basic.frag`, `cmake --build --preset debug` w drugim terminalu,
       potem "Reload shaders". Zapisać, czy build przechodzi przy działającym programie
-      (oczekiwane: tak, bez linkowania) i czy trójkąt zmienia kolor (oczekiwane: tak)
+      (oczekiwane: tak, bez linkowania) i czy kostka zmienia kolor (oczekiwane: tak)
 - [ ] to samo bez budowania: "Reload shaders" zaraz po zapisaniu pliku. Oczekiwane:
       `Last load: OK` i obraz bez zmian (program czyta kopię)
 - [ ] przeładowanie nieudane: usunięty średnik w `basic.frag`, build, "Reload shaders".
       Oczekiwane: `Last load: failed`, czerwony tekst z nazwą pliku i dziennikiem sterownika,
-      ten sam tekst w konsoli jako `[error]`, `Program: valid`, trójkąt bez zmian. Zapisać
+      ten sam tekst w konsoli jako `[error]`, `Program: valid`, kostka bez zmian. Zapisać
       dokładną linię sterownika
 - [ ] naprawa: przywrócony plik, build, "Reload shaders". Oczekiwane: `Last load: OK`,
       pierwotne kolory
@@ -554,9 +561,13 @@ kompilowane i sprawdzane tylko na macOS.
       `std::size_t` w `setFloatAttribute` i `static_cast<GLsizeiptr>` w konstruktorze
       `Buffer`)
 - [ ] `src/game/NightMazeApp.cpp` kompiluje się bez ostrzeżeń (stałe `VERTEX_STRIDE` i
-      `COLOR_OFFSET` liczone z `sizeof(float)`, tablica `VERTICES`)
-- [ ] trójkąt jest widoczny i w konsoli nie ma linii `[error]`, także żadnej
-      `GL_INVALID_OPERATION after glDrawArrays`
+      `COLOR_OFFSET` liczone z `sizeof(float)`, tablice `VERTICES` i `INDICES`, rozmiar
+      `INDICES.size() * sizeof(GLuint)`, dzielenie `static_cast<float>` przy proporcjach,
+      `nullptr` jako ostatni argument `glDrawElements`)
+- [ ] `src/gfx/Shader.cpp` i `Shader.hpp` kompilują się bez ostrzeżeń z nagłówkami GLM
+      (`<glm/glm.hpp>` w nagłówku, `<glm/gtc/type_ptr.hpp>` i `glm::value_ptr` w `setMat4`)
+- [ ] kostka jest widoczna i w konsoli nie ma linii `[error]`, także żadnej
+      `GL_INVALID_OPERATION after glDrawElements` ani po `glUniformMatrix4fv`
 
 **Git i narzędzia**
 

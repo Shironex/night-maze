@@ -47,8 +47,9 @@ add_library(engine STATIC
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-# GLM is PUBLIC because headers of engine (scene/Transform.hpp, scene/Camera.hpp) expose
-# GLM types, so every target that includes them needs the GLM include path too.
+# GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
+# scene/Camera.hpp) expose GLM types, so every target that includes them needs the GLM
+# include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it

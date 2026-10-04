@@ -23,7 +23,7 @@ Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FP
 
 ```mermaid
 flowchart TD
-    A["DebugNightMazeApp::onRender (main.cpp)"] --> B["game::NightMazeApp::onRender: glViewport, glClearColor, glClear, glDrawArrays (scena)"]
+    A["DebugNightMazeApp::onRender (main.cpp)"] --> B["game::NightMazeApp::onRender: glViewport, glEnable, glClearColor, glClear, glDrawElements (scena)"]
     B --> T["klawisz ~ ? m_debugUI.toggleVisible()"]
     T --> C["DebugUI::draw(DebugContext)"]
     C --> D["ImGui_ImplOpenGL3_NewFrame()"]

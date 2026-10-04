@@ -384,8 +384,8 @@ Ważne szczegóły:
       }
   ```
 
-  Najpierw gra rysuje swoją klatkę (na razie tło i jeden trójkąt: `glViewport`, `glClearColor`,
-  `glClear`, `glDrawArrays` w
+  Najpierw gra rysuje swoją klatkę (na razie tło i jedną kostkę: `glViewport`, `glEnable`,
+  `glClearColor`, `glClear`, `glDrawElements` w
   [`NightMazeApp::onRender`](../../src/game/NightMazeApp.cpp)), a dopiero potem ImGui rysuje
   na tym, co już jest w buforze, więc panele są na wierzchu sceny. Zamiana buforów
   (`swapBuffers`) następuje później, w `Application::run`. Dwie ostatnie linie,

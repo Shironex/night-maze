@@ -79,9 +79,10 @@ Po poprawnym starcie w terminalu pojawiają się dwie linie z `core::Window`:
 [info] GL_RENDERER: Apple M3
 ```
 
-W oknie widać ciemnogranatowe tło, na środku trójkąt z czerwonym (lewy dolny), zielonym
-(prawy dolny) i niebieskim (górny) rogiem i płynnym przejściem kolorów między nimi, a na
-wierzchu panel "Renderer". Linia `[error] Shader ...` w terminalu oznacza, że shader się nie
+W oknie widać ciemnogranatowe tło, na środku kostkę obróconą tak, że widać trzy jej ściany
+(czerwoną z przodu, niebieską z lewej i turkusową u góry, każda w jednolitym kolorze), a na
+wierzchu panele "Renderer" i "Shaders". Kostka zachowuje proporcje przy zmianie rozmiaru
+okna. Linia `[error] Shader ...` w terminalu oznacza, że shader się nie
 wczytał: wtedy okno pokazuje samo tło ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
 
 `4.1` potwierdza, że dostaliśmy kontekst, o który prosiliśmy. `Metal` oznacza, że OpenGL na

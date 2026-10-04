@@ -215,8 +215,10 @@ dostaje go pośrednio przez `core/GlCheck.hpp` i woła:
 ```cpp
     GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
 
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
+
     GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
 
 Typy i stałe (`GLenum`, `GLubyte`, `GL_VERSION`, `GL_COLOR_BUFFER_BIT`) też pochodzą z
