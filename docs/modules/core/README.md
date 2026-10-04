@@ -70,6 +70,7 @@ sequenceDiagram
     participant T as Time
     participant App as DebugNightMazeApp
     participant UI as DebugUI
+    Note over Run,T: raz przed pętlą: m_time.reset()
     Run->>Win: shouldClose()
     Run->>Win: pollEvents()
     Run->>In: update()
@@ -91,6 +92,7 @@ sequenceDiagram
 
 | Krok | Kod | Dokument |
 |---|---|---|
+| Start zegara, raz przed pętlą (nie należy do obrotu) | `m_time.reset()` | [`main-loop.md`](main-loop.md), sekcja 5.4 |
 | Zdarzenia systemu | `m_window.pollEvents()` | [`window-context.md`](window-context.md) |
 | Migawka klawiatury i Escape | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)` | [`input.md`](input.md) |
 | Pomiar czasu, kroki symulacji | `m_time.beginFrame()`, `consumeFixedStep()`, `onUpdate` | [`main-loop.md`](main-loop.md) |
@@ -126,7 +128,7 @@ virtual void onUpdate(double fixedDt) = 0;
 virtual void onRender(double alpha) = 0;
 ```
 
-`= 0` oznacza funkcję czysto wirtualną: `Application` jest klasą abstrakcyjną i nie da się utworzyć jej obiektu. `NightMazeApp` nadpisuje obie funkcje (słowo `override` każe kompilatorowi sprawdzić, że sygnatura naprawdę zgadza się z bazową). Dostęp do okna, wejścia i zegara klasa pochodna ma przez chronione akcesory `window()`, `input()`, `time()`, a same pola są prywatne, więc pochodna nie może ich podmienić ani zniszczyć. `window()` i `input()` zwracają zwykłe referencje, a `time()` referencję `const`: klasa pochodna może zegar czytać, ale nie może wołać `beginFrame()` ani `consumeFixedStep()`, bo zegar przesuwa wyłącznie `run()`.
+`= 0` oznacza funkcję czysto wirtualną: `Application` jest klasą abstrakcyjną i nie da się utworzyć jej obiektu. `NightMazeApp` nadpisuje obie funkcje (słowo `override` każe kompilatorowi sprawdzić, że sygnatura naprawdę zgadza się z bazową). Dostęp do okna, wejścia i zegara klasa pochodna ma przez chronione akcesory `window()`, `input()`, `time()`, a same pola są prywatne, więc pochodna nie może ich podmienić ani zniszczyć. `window()` i `input()` zwracają zwykłe referencje, a `time()` referencję `const`: klasa pochodna może zegar czytać, ale nie może wołać `reset()`, `beginFrame()` ani `consumeFixedStep()`, bo zegar ustawia i przesuwa wyłącznie `run()`.
 
 ```cpp
 NightMazeApp::NightMazeApp() : core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze") {}

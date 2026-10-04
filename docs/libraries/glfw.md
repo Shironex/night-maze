@@ -314,6 +314,9 @@ W naszym kodzie obie funkcje są opakowane w metody `Window::pollEvents` i
 
 ```cpp
 void Application::run() {
+    // Start measuring here, so the first frame does not include the start-up time.
+    m_time.reset();
+
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();

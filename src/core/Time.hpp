@@ -25,6 +25,11 @@ public:
 
     Time();
 
+    /// Restarts the measurement: the next beginFrame() measures the time since this call.
+    /// Application::run calls it once before the loop, so the time spent on start-up
+    /// (creating the window, loading assets) is not counted as one long first frame.
+    void reset();
+
     /// Call once at the start of every frame. Measures the time since the previous call.
     void beginFrame();
 

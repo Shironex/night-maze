@@ -8,6 +8,10 @@ namespace core {
 
 Time::Time() : m_lastFrameStart(Clock::now()) {}
 
+void Time::reset() {
+    m_lastFrameStart = Clock::now();
+}
+
 void Time::beginFrame() {
     const Clock::time_point now = Clock::now();
     // duration<double> converts the clock's native ticks to seconds as a double.

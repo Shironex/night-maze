@@ -10,6 +10,9 @@ Application::Application(int width, int height, const std::string& title)
     : m_window(width, height, title), m_input(m_window.nativeHandle()) {}
 
 void Application::run() {
+    // Start measuring here, so the first frame does not include the start-up time.
+    m_time.reset();
+
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();

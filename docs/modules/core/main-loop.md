@@ -17,6 +17,7 @@ Każdy program czasu rzeczywistego to pętla, która powtarza cztery kroki: zdar
 
 ```mermaid
 flowchart TD
+    Z["m_time.reset(), raz przed pętlą"] --> S
     S["while (!m_window.shouldClose())"] --> P["m_window.pollEvents()"]
     P --> I["m_input.update()"]
     I --> E{"wasKeyPressed(GLFW_KEY_ESCAPE)?"}
@@ -99,12 +100,15 @@ Ta część modułu nie ma shaderów i żadnej wartości do nich nie przekazuje.
 | [`src/core/Application.hpp`](../../../src/core/Application.hpp) | klasa bazowa programu: pola `m_window`, `m_input`, `m_time`, czysto wirtualne `onUpdate` i `onRender`, chronione akcesory |
 | [`src/core/Application.cpp`](../../../src/core/Application.cpp) | konstruktor i `run()`, czyli cała pętla |
 | [`src/core/Time.hpp`](../../../src/core/Time.hpp) | stałe `FIXED_DT`, `MAX_FRAME_TIME`, `FPS_REFRESH_INTERVAL`, deklaracja klasy `Time` |
-| [`src/core/Time.cpp`](../../../src/core/Time.cpp) | `beginFrame`, `consumeFixedStep`, `alpha` |
+| [`src/core/Time.cpp`](../../../src/core/Time.cpp) | konstruktor, `reset`, `beginFrame`, `consumeFixedStep`, `alpha` |
 
 ### 5.2 `Application::run` linia po linii
 
 ```cpp
 void Application::run() {
+    // Start measuring here, so the first frame does not include the start-up time.
+    m_time.reset();
+
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();
@@ -127,6 +131,7 @@ void Application::run() {
 
 | Linia | Dlaczego tak i dlaczego w tym miejscu |
 |---|---|
+| `m_time.reset();` | Jedyna linia przed pętlą, wykonuje się raz. Zegar zaczyna mierzyć dopiero tutaj, więc pierwsza klatka nie zawiera czasu startu programu (sekcja 5.4) |
 | `while (!m_window.shouldClose())` | Pętla trwa, dopóki nikt nie poprosił o zamknięcie okna: ani system (krzyżyk), ani `requestClose()` |
 | `m_window.pollEvents();` | Najpierw zdarzenia, bo od nich zależy stan klawiszy czytany w następnej linii |
 | `m_input.update();` | Migawka klawiatury, dokładnie raz na obrót pętli ([`input.md`](input.md)) |
@@ -153,7 +158,7 @@ Application::Application(int width, int height, const std::string& title)
     : m_window(width, height, title), m_input(m_window.nativeHandle()) {}
 ```
 
-Pola powstają w kolejności deklaracji, a `m_input` potrzebuje uchwytu z już istniejącego okna. `m_time` nie ma na liście inicjalizacyjnej, więc budowane jest konstruktorem domyślnym `Time()`, który zapamiętuje chwilę startu. Pełne omówienie tej reguły, razem z kolejnością niszczenia i polem `m_debugUI` z `main.cpp`, jest w [`README.md`](README.md), sekcja 7.
+Pola powstają w kolejności deklaracji, a `m_input` potrzebuje uchwytu z już istniejącego okna. `m_time` nie ma na liście inicjalizacyjnej, więc budowane jest konstruktorem domyślnym `Time()`, który zapamiętuje chwilę swojego powstania (`run()` i tak ustawia ją na nowo przez `reset()`, sekcja 5.4). Pełne omówienie tej reguły, razem z kolejnością niszczenia i polem `m_debugUI` z `main.cpp`, jest w [`README.md`](README.md), sekcja 7.
 
 ### 5.4 `Time`: zegar klatki
 
@@ -226,7 +231,21 @@ Gdybym pokazywał `1 / dt` z pojedynczej klatki, liczba skakałaby tak szybko, �
 
 **Stałe.** Wszystkie trzy są `static constexpr double` w klasie `Time`: `FIXED_DT = 1.0 / 120.0`, `MAX_FRAME_TIME = 0.25`, `FPS_REFRESH_INTERVAL = 0.5`. `static` znaczy, że należą do klasy, a nie do obiektu (stąd zapis `Time::FIXED_DT` w `Application::run`), a `constexpr`, że są znane w czasie kompilacji.
 
-Pierwsza klatka: `m_lastFrameStart` ustawia konstruktor `Time` (`Time::Time() : m_lastFrameStart(Clock::now()) {}`), czyli jeszcze w trakcie budowania `Application`. Pierwszy `beginFrame` następuje dopiero po inicjalizacji ImGui, więc pierwszy pomiar zawiera czas startu. Ograniczenie do 0,25 s chroni symulację także przed tym.
+**Pierwsza klatka i `reset()`.**
+
+```cpp
+Time::Time() : m_lastFrameStart(Clock::now()) {}
+
+void Time::reset() {
+    m_lastFrameStart = Clock::now();
+}
+```
+
+Konstruktor `Time` ustawia `m_lastFrameStart` jeszcze w trakcie budowania `Application`, czyli **przed** resztą programu: po nim powstają pola klas pochodnych (ImGui, a w kolejnych kamieniach milowych shadery i zasoby). Gdyby pierwszy `beginFrame` liczył czas od konstruktora, cały czas ładowania zostałby zmierzony jako jedna długa klatka. Skutki byłyby dwa: symulacja wykonałaby na starcie do 30 kroków nadrabiających (`MAX_FRAME_TIME` ogranicza ten czas do 0,25 s, ale go nie usuwa), a pierwsza średnia FPS byłaby zaniżona, bo `realDelta` nie jest ograniczane.
+
+Dlatego `Application::run` zaczyna się od `m_time.reset();`. `reset()` ustawia `m_lastFrameStart` na bieżącą chwilę, więc pierwszy `beginFrame` mierzy tylko czas od wejścia do `run()` (czyli pierwsze `pollEvents` i `m_input.update()`). `reset()` nie rusza akumulatora ani liczników FPS: przed pętlą są one jeszcze zerami z inicjalizatorów w klasie. Konstruktor nadal inicjalizuje `m_lastFrameStart`, żeby pole nigdy nie było niezainicjalizowane, nawet gdyby ktoś użył `Time` bez `reset()`.
+
+`reset()` jest publiczne, ale klasa pochodna go nie zawoła: `Application::time()` zwraca `const Time&`, a `reset()` nie jest funkcją `const`. Zegar ustawia i przesuwa wyłącznie `run()`.
 
 ## 6. Panel ImGui
 
@@ -248,12 +267,15 @@ Pozostałe elementy panelu opisuje [`window-context.md`](window-context.md), sek
 5. **Zmienny `dt` w symulacji.** Do `onUpdate` trafia zawsze `Time::FIXED_DT`. Użycie w symulacji `time().deltaSeconds()` zamiast parametru `fixedDt` przywraca zależność od FPS, czyli problem, który stały krok miał usunąć.
 6. **`alpha()` czytane przed pętlą kroków.** Przed `while (m_time.consumeFixedStep())` akumulator może zawierać kilka pełnych kroków, więc wynik może być większy niż 1. Zakres `[0, 1)` obowiązuje dopiero po pętli.
 7. **FPS równe 0 na starcie.** To nie błąd: pierwsza średnia jest publikowana po 0,5 s.
+8. **Czas startu policzony jako klatka.** Zegar, który bierze pierwszy znacznik czasu w konstruktorze i nigdy go nie odświeża, wlicza całe ładowanie programu do pierwszej klatki: symulacja robi na starcie serię kroków nadrabiających, a pierwszy odczyt FPS jest zaniżony. Stąd `m_time.reset();` na początku `Application::run`. Kto dopisuje długą operację **wewnątrz** pętli (na przykład doczytanie zasobu w `onRender`), nadal dostanie długą klatkę, bo `reset()` jest wołane tylko raz.
 
 ## 8. Ćwiczenia
 
 1. **Licznik kroków.** W `NightMazeApp` dodaj pole `int m_stepsThisFrame = 0;`, zwiększaj je w `onUpdate`, a w `NightMazeApp::onRender` wypisz przez `core::logInfo` razem z `alpha` (odkomentuj nazwę parametru) i wyzeruj. Sprawdź, jakie wartości widać przy vsync, a jakie bez (ćwiczenie 1 w [`window-context.md`](window-context.md)). Potem wstaw na początku `onRender` sztuczne opóźnienie `std::this_thread::sleep_for(std::chrono::milliseconds(500))` i sprawdź, czy liczba kroków przekracza 30. Wycofaj zmiany.
 2. **Tabela na kartce.** Wypełnij ręcznie tabelę z sekcji 2.2 dla monitora 144 Hz (klatka 6,94 ms) dla pięciu kolejnych klatek: akumulator po `beginFrame`, liczba kroków, reszta, `alpha`. W której klatce kroków jest zero? Porównaj z wynikiem ćwiczenia 1, jeśli masz taki monitor.
 3. **Bez ograniczenia.** Zmień tymczasowo `MAX_FRAME_TIME` z `0.25` na `10.0`, zbuduj, uruchom z licznikiem z ćwiczenia 1 i przez kilka sekund przeciągaj okno za pasek tytułu. Zapisz największą liczbę kroków w jednej klatce i wyjaśnij, skąd się wzięła. Przywróć `0.25`.
+
+4. **Bez `reset()`.** W `DebugNightMazeApp` w `main.cpp` dodaj konstruktor, który tylko czeka: `DebugNightMazeApp() { std::this_thread::sleep_for(std::chrono::milliseconds(200)); }` (udaje ładowanie zasobów). Z licznikiem z ćwiczenia 1 sprawdź liczbę kroków w pierwszej klatce. Potem zakomentuj `m_time.reset();` w `Application::run`, zbuduj i sprawdź ponownie. Ile kroków przybyło i dlaczego akurat tyle (podpowiedź: 0,2 s podzielone przez `FIXED_DT`)? Wycofaj zmiany.
 
 ## 9. Pytania kontrolne
 
@@ -283,6 +305,9 @@ Pozostałe elementy panelu opisuje [`window-context.md`](window-context.md), sek
 
 9. **Dlaczego `consumeFixedStep` jest warunkiem pętli `while`, a nie zwykłym `if`?**
    Bo w jednej klatce może się zmieścić więcej niż jeden krok. Funkcja jednocześnie sprawdza, czy został pełny krok, i odejmuje go z akumulatora, więc pętla kończy się sama, gdy zostaje reszta mniejsza niż `FIXED_DT`.
+
+10. **Po co `m_time.reset();` na początku `Application::run`, skoro konstruktor `Time` już zapisuje czas?**
+    Konstruktor `Time` działa w trakcie budowania `Application`, przed resztą programu (pola klas pochodnych, ImGui, później shadery i zasoby). Bez `reset()` pierwszy `beginFrame` zmierzyłby całe ładowanie jako jedną klatkę: do 30 kroków symulacji na starcie i zaniżona pierwsza średnia FPS. `reset()` ustawia `m_lastFrameStart` na chwilę wejścia do `run()`. Klasa pochodna nie może go zawołać, bo `time()` zwraca `const Time&`.
 
 ## 10. Źródła
 
