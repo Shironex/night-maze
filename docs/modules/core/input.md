@@ -247,7 +247,12 @@ bool DebugUI::wantsKeyboard() const {
 A w `main.cpp`, na końcu `DebugNightMazeApp::onRender`, jedno łączy się z drugim:
 
 ```cpp
-m_debugUI.draw(time(), window(), clearColor());
+// The context is rebuilt every frame: it only holds references, so it is cheap.
+m_debugUI.draw(debug::DebugContext{
+    .time = time(),
+    .window = window(),
+    .clearColor = clearColor(),
+});
 
 // ImGui now knows whether it is using the keyboard (a text field is being edited
 // or a widget is active) and the mouse (the cursor is over a panel or a widget is

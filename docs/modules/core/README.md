@@ -43,7 +43,7 @@ Architektura projektu (PRD, sekcja 6) ma warstwy z zależnościami w jedną stro
 
 ```mermaid
 flowchart TD
-    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, drawRendererPanel"]
+    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, DebugContext, drawRendererPanel"]
     Main --> Game["game/<br/>NightMazeApp"]
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, GL_CHECK"]
     Game --> Core
@@ -90,7 +90,7 @@ sequenceDiagram
     Run->>App: onRender(alpha)
     App->>App: NightMazeApp onRender, czyli glViewport, glClearColor, glClear
     App->>In: wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)
-    App->>UI: draw(time(), window(), clearColor())
+    App->>UI: draw(DebugContext z time(), window(), clearColor())
     App->>UI: wantsKeyboard()
     App->>In: setKeyboardBlocked(...)
     App->>UI: wantsMouse()
@@ -186,7 +186,12 @@ protected:
         if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) {
             m_debugUI.toggleVisible();
         }
-        m_debugUI.draw(time(), window(), clearColor());
+        // The context is rebuilt every frame: it only holds references, so it is cheap.
+        m_debugUI.draw(debug::DebugContext{
+            .time = time(),
+            .window = window(),
+            .clearColor = clearColor(),
+        });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
         // or a widget is active) and the mouse (the cursor is over a panel or a widget is

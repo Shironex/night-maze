@@ -3,6 +3,7 @@
 #include "debug/DebugUI.hpp"
 
 #include "core/Window.hpp"
+#include "debug/DebugContext.hpp"
 #include "debug/panels/RendererPanel.hpp"
 
 #include <imgui.h>
@@ -39,8 +40,7 @@ bool DebugUI::wantsMouse() const {
     return ImGui::GetIO().WantCaptureMouse;
 }
 
-void DebugUI::draw(const core::Time& time, const core::Window& window,
-                   std::array<float, 3>& clearColor) {
+void DebugUI::draw(const DebugContext& context) {
     // An ImGui frame is started every frame, also when hidden, so that ImGui keeps
     // consuming input events and its internal timing stays correct.
     ImGui_ImplOpenGL3_NewFrame();
@@ -53,7 +53,9 @@ void DebugUI::draw(const core::Time& time, const core::Window& window,
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
                                      ImGuiDockNodeFlags_PassthruCentralNode);
 
-        drawRendererPanel(time, window, clearColor);
+        // Each panel gets exactly the members it needs, so its signature still shows
+        // what it reads and what it edits.
+        drawRendererPanel(context.time, context.window, context.clearColor);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.

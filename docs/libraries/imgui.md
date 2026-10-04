@@ -299,8 +299,7 @@ Nasze własne shadery będą zaczynać się od `#version 410 core`. Dla wersji 4
 Metoda `DebugUI::draw` w całości:
 
 ```cpp
-void DebugUI::draw(const core::Time& time, const core::Window& window,
-                   std::array<float, 3>& clearColor) {
+void DebugUI::draw(const DebugContext& context) {
     // An ImGui frame is started every frame, also when hidden, so that ImGui keeps
     // consuming input events and its internal timing stays correct.
     ImGui_ImplOpenGL3_NewFrame();
@@ -313,7 +312,9 @@ void DebugUI::draw(const core::Time& time, const core::Window& window,
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
                                      ImGuiDockNodeFlags_PassthruCentralNode);
 
-        drawRendererPanel(time, window, clearColor);
+        // Each panel gets exactly the members it needs, so its signature still shows
+        // what it reads and what it edits.
+        drawRendererPanel(context.time, context.window, context.clearColor);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
@@ -321,6 +322,11 @@ void DebugUI::draw(const core::Time& time, const core::Window& window,
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 ```
+
+Parametr `context` to struktura `debug::DebugContext` z
+[`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
+panele pokazują i edytują (`time`, `window`, `clearColor`). Buduje ją co klatkę `main.cpp`.
+Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
 
@@ -349,7 +355,12 @@ Ważne szczegóły:
           if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) {
               m_debugUI.toggleVisible();
           }
-          m_debugUI.draw(time(), window(), clearColor());
+          // The context is rebuilt every frame: it only holds references, so it is cheap.
+          m_debugUI.draw(debug::DebugContext{
+              .time = time(),
+              .window = window(),
+              .clearColor = clearColor(),
+          });
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
           // or a widget is active) and the mouse (the cursor is over a panel or a widget is
@@ -537,7 +548,8 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
 wywołanie w `DebugUI::draw` obok `drawRendererPanel`, dopisanie plików do `add_executable`
-w `CMakeLists.txt`. Pełna instrukcja krok po kroku jest w
+w `CMakeLists.txt`. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
+jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 [`../modules/debug-ui.md`](../modules/debug-ui.md) i tam należy jej szukać.
 
 ## 4. Pułapki

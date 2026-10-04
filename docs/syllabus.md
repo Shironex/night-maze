@@ -52,6 +52,7 @@ Dokumenty uzupełniające do tematu 1: [`libraries/glfw.md`](libraries/glfw.md),
 | Zagadnienie | Dokument | Pliki kodu |
 |---|---|---|
 | Cykl życia ImGui, klatka ImGui, dockspace | [`modules/debug-ui.md`](modules/debug-ui.md) | [`src/debug/DebugUI.cpp`](../src/debug/DebugUI.cpp), [`DebugUI.hpp`](../src/debug/DebugUI.hpp) |
+| Dane dla paneli: struktura `DebugContext` | [`modules/debug-ui.md`](modules/debug-ui.md) (sekcja 5.2) | [`src/debug/DebugContext.hpp`](../src/debug/DebugContext.hpp), [`src/main.cpp`](../src/main.cpp) |
 | Panel Renderer | [`modules/debug-ui.md`](modules/debug-ui.md) | [`src/debug/panels/RendererPanel.cpp`](../src/debug/panels/RendererPanel.cpp), [`RendererPanel.hpp`](../src/debug/panels/RendererPanel.hpp) |
 | Podpięcie nakładki do gry, klawisz `~`, blokada klawiatury i myszy gry | [`modules/debug-ui.md`](modules/debug-ui.md) (sekcje 5.4 i 5.6), [`modules/core/input.md`](modules/core/input.md) (sekcje 5.6 i 5.10) | [`src/main.cpp`](../src/main.cpp) |
 | Biblioteka | [`libraries/imgui.md`](libraries/imgui.md) | [`cmake/Dependencies.cmake`](../cmake/Dependencies.cmake) |

@@ -1,6 +1,7 @@
 // Program entry point: joins the game with the debug UI and runs it.
 // See docs/modules/debug-ui.md
 #include "core/Log.hpp"
+#include "debug/DebugContext.hpp"
 #include "debug/DebugUI.hpp"
 #include "game/NightMazeApp.hpp"
 
@@ -25,7 +26,12 @@ protected:
         if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) {
             m_debugUI.toggleVisible();
         }
-        m_debugUI.draw(time(), window(), clearColor());
+        // The context is rebuilt every frame: it only holds references, so it is cheap.
+        m_debugUI.draw(debug::DebugContext{
+            .time = time(),
+            .window = window(),
+            .clearColor = clearColor(),
+        });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
         // or a widget is active) and the mouse (the cursor is over a panel or a widget is

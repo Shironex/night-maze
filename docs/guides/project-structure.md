@@ -46,6 +46,7 @@ night-maze/
 │   │   ├── Time.hpp/.cpp           # zegar klatki, stały krok symulacji, FPS
 │   │   └── Window.hpp/.cpp         # okno GLFW i kontekst OpenGL (RAII)
 │   ├── debug/                  # interfejs debugowy (Dear ImGui)
+│   │   ├── DebugContext.hpp        # referencje do danych dla paneli
 │   │   ├── DebugUI.hpp/.cpp        # kontekst ImGui i cykl klatki
 │   │   └── panels/
 │   │       └── RendererPanel.hpp/.cpp  # panel "Renderer"
@@ -102,6 +103,7 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
 | `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Na razie nikt tych funkcji nie woła | [`../modules/core/paths.md`](../modules/core/paths.md) |
 | `src/game/NightMazeApp.*` | `game::NightMazeApp`: `onUpdate`, `onRender` (viewport, czyszczenie ekranu), kolor tła | [`../modules/core/README.md`](../modules/core/README.md) |
+| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
 
@@ -136,12 +138,15 @@ Jak to widać w kodzie:
   `main.cpp`.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp` i nic z `debug/`. Komentarz w
   klasie mówi wprost: "It knows nothing about the debug UI".
-- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp` i nagłówki ImGui.
+- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp` i nagłówki
+  ImGui.
 - `src/main.cpp` jest jedynym plikiem, który dołącza jednocześnie `game/NightMazeApp.hpp` i
-  `debug/DebugUI.hpp`. Definiuje klasę `DebugNightMazeApp final : public game::NightMazeApp`,
-  która posiada `debug::DebugUI m_debugUI{window()}` i w `onRender` najpierw woła
+  nagłówki z `debug/` (`debug/DebugContext.hpp`, `debug/DebugUI.hpp`). Definiuje klasę
+  `DebugNightMazeApp final : public game::NightMazeApp`, która posiada
+  `debug::DebugUI m_debugUI{window()}` i w `onRender` najpierw woła
   `game::NightMazeApp::onRender(alpha)`, potem obsługuje klawisz `~` (przełącznik paneli),
-  rysuje panele i przekazuje do `core::Input` informację, czy ImGui używa klawiatury i myszy.
+  buduje `debug::DebugContext`, rysuje panele i przekazuje do `core::Input` informację, czy
+  ImGui używa klawiatury i myszy.
 
 Po co ta dyscyplina: grę da się zbudować i zrozumieć bez paneli debugowych, a panele można
 rozbudowywać bez dotykania logiki gry. W docelowej architekturze między `core/` a `game/`
@@ -316,6 +321,7 @@ add_executable(night_maze
     src/main.cpp
     src/game/NightMazeApp.cpp
     src/game/NightMazeApp.hpp
+    src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
     src/debug/panels/RendererPanel.cpp
@@ -843,7 +849,8 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
 7. **Sprawdź regułę warstw**: plik w `core/` nie może dołączać niczego z `game/` ani
    `debug/`, plik w `game/` niczego z `debug/`.
 
-Nowy panel debugowy ma dodatkowe kroki (wywołanie w `DebugUI::draw`). Opisuje je
+Nowy panel debugowy ma dodatkowe kroki (wywołanie w `DebugUI::draw`, a dla nowych danych
+pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
 [`../modules/debug-ui.md`](../modules/debug-ui.md).
 
 ### Nowa biblioteka zewnętrzna

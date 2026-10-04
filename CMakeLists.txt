@@ -51,6 +51,7 @@ add_executable(night_maze
     src/main.cpp
     src/game/NightMazeApp.cpp
     src/game/NightMazeApp.hpp
+    src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
     src/debug/panels/RendererPanel.cpp

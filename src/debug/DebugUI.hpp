@@ -2,14 +2,13 @@
 // See docs/modules/debug-ui.md
 #pragma once
 
-#include <array>
-
 namespace core {
-class Time;
 class Window;
 } // namespace core
 
 namespace debug {
+
+struct DebugContext;
 
 /// Owns Dear ImGui for the lifetime of the object (RAII) and draws all debug panels.
 ///
@@ -39,7 +38,8 @@ public:
 
     /// Builds and renders the debug UI on top of the current frame.
     /// Call it last in the frame, after the scene has been drawn.
-    void draw(const core::Time& time, const core::Window& window, std::array<float, 3>& clearColor);
+    /// The context holds the data the panels show and edit, see DebugContext.hpp.
+    void draw(const DebugContext& context);
 
 private:
     bool m_visible = true;
