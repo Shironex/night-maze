@@ -87,14 +87,14 @@ project(NightMaze VERSION 0.1.0 LANGUAGES C CXX)
 add_subdirectory(external/glad)
 include(cmake/Dependencies.cmake)
 ...
-target_link_libraries(engine PUBLIC glad glfw)
+target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 ```
 
 - `LANGUAGES C CXX`: język C jest tu wymieniony właśnie przez GLAD. `gl.c` to plik w C i
   CMake musi mieć włączony kompilator C.
 - `add_subdirectory(external/glad)` przetwarza tamten `CMakeLists.txt` i tworzy target `glad`.
-- `target_link_libraries(engine PUBLIC glad glfw)`: `engine` używa GLAD i przekazuje go dalej
-  (do `night_maze`).
+- `target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)`: `engine` używa GLAD
+  i przekazuje go dalej (do `night_maze`).
 
 Zauważ, że `night_maze_enable_warnings` wołamy tylko dla `engine` i `night_maze`. GLAD
 kompiluje się z domyślnymi ostrzeżeniami kompilatora, bo to kod wygenerowany, którego nie
@@ -121,7 +121,7 @@ Przypięcie ma tu dwie warstwy:
 
 ### Dlaczego kod leży w `external/`, a nie jest pobierany przez FetchContent
 
-GLFW i ImGui pobieramy przy konfiguracji, GLAD nie. Powody:
+GLFW, GLM i ImGui pobieramy przy konfiguracji, GLAD nie. Powody:
 
 - **Repozytorium GLAD nie zawiera gotowego loadera, tylko generator** napisany w Pythonie.
   Pobranie go przez FetchContent oznaczałoby, że do zbudowania gry potrzebny jest Python z

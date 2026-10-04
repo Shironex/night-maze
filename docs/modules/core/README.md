@@ -52,7 +52,7 @@ flowchart TD
 
 Trzy rzeczy do zapamiętania:
 
-1. `core/` nie zna ani `game/`, ani `debug/`, ani ImGui. Biblioteka `engine` linkuje tylko `glad` i `glfw`.
+1. `core/` nie zna ani `game/`, ani `debug/`, ani ImGui. Biblioteka `engine` linkuje tylko `glad`, `glfw` i nagłówki GLM (`glm::glm-header-only`, na razie nieużywane w kodzie).
 2. `game/` zna `core/`, ale nie zna `debug/`.
 3. `debug/` może zależeć od wszystkiego, ale nic nie może zależeć od `debug/`. Jedynym plikiem, który zna jednocześnie `game/` i `debug/`, jest `main.cpp`.
 

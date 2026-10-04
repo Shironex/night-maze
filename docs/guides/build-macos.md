@@ -19,7 +19,7 @@ Wersja dla Windowsa: [`build-windows.md`](build-windows.md).
 |---|---|---|---|
 | Xcode Command Line Tools | kompilator `clang`, `make`, `git`, nagłówki systemowe i frameworki (Cocoa, OpenGL) | `xcode-select --install` | `clang --version` |
 | CMake w wersji co najmniej 3.24 | konfiguracja i uruchamianie buildu | `brew install cmake` | `cmake --version` |
-| git | CMake pobiera nim GLFW i ImGui | jest w Command Line Tools | `git --version` |
+| git | CMake pobiera nim GLFW, GLM i ImGui | jest w Command Line Tools | `git --version` |
 | Ninja | opcjonalny szybszy generator | `brew install ninja` | `ninja --version` |
 
 Uwagi:
@@ -30,8 +30,8 @@ Uwagi:
 - Skąd wymóg 3.24: `cmake_minimum_required(VERSION 3.24)` w
   [`CMakeLists.txt`](../../CMakeLists.txt) i `cmakeMinimumRequired` w
   [`CMakePresets.json`](../../CMakePresets.json).
-- Bibliotek (GLFW, ImGui, GLAD) nie instalujemy ręcznie. GLFW i ImGui pobiera CMake, GLAD
-  leży w repozytorium.
+- Bibliotek (GLFW, GLM, ImGui, GLAD) nie instalujemy ręcznie. GLFW, GLM i ImGui pobiera
+  CMake, GLAD leży w repozytorium.
 - Pierwsza konfiguracja wymaga dostępu do internetu.
 
 ## 2. Budowanie i uruchamianie
@@ -206,17 +206,19 @@ generatorem Ninja. Nie trafia do repozytorium.
 ## 4. Co pobiera FetchContent i dokąd
 
 Przy pierwszym `cmake --preset debug` CMake wykonuje
-[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje dwa repozytoria:
+[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje trzy repozytoria:
 
 | Biblioteka | Tag | Katalog źródeł |
 |---|---|---|
 | GLFW | `3.4` | `build/debug/_deps/glfw-src` |
+| GLM | `1.0.3` | `build/debug/_deps/glm-src` |
 | Dear ImGui | `v1.92.9b-docking` | `build/debug/_deps/imgui-src` |
 
 Dla każdej zależności w `_deps` powstają trzy katalogi:
 
 - `<nazwa>-src`: pobrany kod źródłowy,
-- `<nazwa>-build`: pliki powstałe przy jej budowaniu,
+- `<nazwa>-build`: pliki powstałe przy jej budowaniu (dla GLM i ImGui nie ma tam żadnej
+  biblioteki: GLM to same nagłówki, a ImGui kompiluje nasz target `imgui`),
 - `<nazwa>-subbuild`: pomocniczy projekt CMake, który wykonuje samo pobieranie.
 
 Rzeczy warte zapamiętania:
@@ -227,8 +229,8 @@ Rzeczy warte zapamiętania:
   nie zmieni.
 - Katalog `build/` jest w `.gitignore`. Pobrany kod nie trafia do repozytorium.
 - GLAD nie jest pobierany. Leży w `external/glad` (dlaczego: [`../libraries/glad.md`](../libraries/glad.md)).
-- Pobrane źródła są przydatne do nauki: `build/debug/_deps/imgui-src/imgui_demo.cpp` oraz
-  `build/debug/_deps/glfw-src/docs/`.
+- Pobrane źródła są przydatne do nauki: `build/debug/_deps/imgui-src/imgui_demo.cpp`,
+  `build/debug/_deps/glfw-src/docs/` oraz `build/debug/_deps/glm-src/manual.md`.
 
 Po buildzie w `build/debug` znajdują się między innymi:
 
@@ -326,7 +328,7 @@ Kolejność pierwszego uruchomienia:
 2. Wykonaj w terminalu `cmake --preset debug`. Dopiero wtedy powstaje
    `build/debug/compile_commands.json`. **Do tego momentu edytor podkreśla na czerwono
    dyrektywy `#include` i zgłasza błędy "file not found"**: clangd nie zna jeszcze ścieżek
-   do GLFW, GLAD i ImGui. To nie jest błąd w kodzie. Po konfiguracji błędy znikają (czasem
+   do GLFW, GLAD, GLM i ImGui. To nie jest błąd w kodzie. Po konfiguracji błędy znikają (czasem
    trzeba przeładować okno edytora albo wykonać polecenie "clangd: Restart language server").
 3. Budowanie i uruchamianie: z terminala wbudowanego w edytor (polecenia z sekcji 2) albo
    przez rozszerzenie CMake Tools, które dzięki `"cmake.useCMakePresets": "always"` korzysta

@@ -12,7 +12,7 @@
 | Narzędzie | Po co | Uwagi |
 |---|---|---|
 | Visual Studio 2022 z pakietem roboczym "Desktop development with C++" (Programowanie aplikacji klasycznych w C++) | kompilator MSVC, Windows SDK, wbudowany CMake | wybór z PRD. Alternatywa: CLion |
-| git dostępny w `PATH` | CMake klonuje nim GLFW i ImGui podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
+| git dostępny w `PATH` | CMake klonuje nim GLFW, GLM i ImGui podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
 | CMake w wersji co najmniej 3.24 | konfiguracja i build | jest częścią pakietu roboczego C++ w Visual Studio. Osobny instalator: <https://cmake.org/download/> |
 
 Uwagi:
@@ -22,7 +22,8 @@ Uwagi:
   kompilatora i narzędzi) albo zainstalować CMake osobno z opcją dodania do `PATH`.
 - Git jest potrzebny w tym samym terminalu, w którym uruchamiamy CMake. Jeśli
   `git --version` nie działa, konfiguracja zakończy się błędem przy pobieraniu GLFW.
-- Bibliotek nie instalujemy ręcznie. GLFW i ImGui pobiera CMake, GLAD jest w repozytorium.
+- Bibliotek nie instalujemy ręcznie. GLFW, GLM i ImGui pobiera CMake, GLAD jest w
+  repozytorium.
 - Sterownik karty graficznej musi obsługiwać OpenGL 4.1 lub nowszy. Aktualne sterowniki
   kart NVIDIA, AMD i Intel obsługują 4.6. Przy bardzo starym sterowniku okno się nie utworzy.
 
@@ -213,13 +214,16 @@ endfunction()
   odwrotnie. To ważne w projekcie na dwa systemy.
 - `PRIVATE`: flagi dotyczą tylko wskazanego targetu i nie przenoszą się na jego użytkowników.
 - Funkcję wywołujemy tylko dla `engine` i `night_maze`. GLFW, ImGui i GLAD kompilują się ze
-  swoimi domyślnymi ustawieniami.
+  swoimi domyślnymi ustawieniami. GLM nie ma własnych plików do skompilowania (same
+  nagłówki).
 
 Nagłówki bibliotek są oznaczone jako systemowe (`SYSTEM` w `target_include_directories`,
-`INTERFACE_SYSTEM_INCLUDE_DIRECTORIES` dla GLFW). Na Macu daje to `-isystem`. Nowsze wersje
-CMake i MSVC realizują to samo opcjami `/external:I` i `/external:W0`. Czy ostrzeżenia z
-nagłówków GLFW, GLAD i ImGui faktycznie nie pojawiają się pod `/W4`, trzeba potwierdzić przy
-pierwszym buildzie (punkt na liście kontrolnej).
+`INTERFACE_SYSTEM_INCLUDE_DIRECTORIES` dla GLFW i GLM). Na Macu daje to `-isystem`. Nowsze
+wersje CMake i MSVC realizują to samo opcjami `/external:I` i `/external:W0`. Czy ostrzeżenia
+z nagłówków GLFW, GLAD, GLM i ImGui faktycznie nie pojawiają się pod `/W4`, trzeba
+potwierdzić przy pierwszym buildzie (punkt na liście kontrolnej). Dla GLM ma to największe
+znaczenie, bo cały kod tej biblioteki kompiluje się wewnątrz naszych plików
+([`../libraries/glm.md`](../libraries/glm.md), sekcja 4, pułapka 14).
 
 Standard C++20 ustawia `set(CMAKE_CXX_STANDARD 20)` razem z `CMAKE_CXX_EXTENSIONS OFF`. Na
 MSVC przekłada się to na flagę `/std:c++20`.
@@ -329,7 +333,7 @@ czytelności historii Gita.
 | Objaw | Prawdopodobna przyczyna | Rozwiązanie |
 |---|---|---|
 | `'cmake' is not recognized` | CMake z Visual Studio nie jest w `PATH` zwykłego terminala | użyj "Developer PowerShell for VS 2022" albo zainstaluj CMake osobno |
-| Konfiguracja pada przy pobieraniu GLFW lub ImGui | brak `git` w `PATH` albo brak sieci | zainstaluj git, otwórz nowy terminal, sprawdź `git --version` |
+| Konfiguracja pada przy pobieraniu GLFW, GLM lub ImGui | brak `git` w `PATH` albo brak sieci | zainstaluj git, otwórz nowy terminal, sprawdź `git --version` |
 | Błąd o niezgodności generatora | katalog buildu utworzony innym generatorem (terminal a IDE) | usuń `build\debug` i skonfiguruj ponownie jednym narzędziem |
 | Nie ma pliku `build\debug\Debug\night_maze.exe` | użyto generatora jednokonfiguracyjnego (Ninja) | szukaj w `build\debug\night_maze.exe`, patrz sekcja 4 |
 | `Fatal: Failed to create a window with an OpenGL 4.1 Core context` | sterownik bez OpenGL 4.1, sesja pulpitu zdalnego albo maszyna wirtualna | zaktualizuj sterownik karty. Przeczytaj linię `GLFW error` powyżej |
@@ -353,7 +357,9 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 **Konfiguracja**
 
 - [ ] `cmake --preset debug` kończy się bez błędów
-- [ ] GLFW `3.4` i ImGui `v1.92.9b-docking` pobrały się do `build\debug\_deps`
+- [ ] GLFW `3.4`, GLM `1.0.3` i ImGui `v1.92.9b-docking` pobrały się do `build\debug\_deps`
+- [ ] w logu konfiguracji jest linia `GLM: Version 1.0.3`, a w rozwiązaniu nie ma projektu
+      biblioteki `glm` (`GLM_BUILD_LIBRARY` jest wyłączone)
 - [ ] zapisać generator z `build\debug\CMakeCache.txt` (`CMAKE_GENERATOR`), osobno dla
       terminala i dla "Open Folder" w Visual Studio
 
@@ -362,6 +368,9 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 - [ ] `cmake --build --preset debug` kończy się bez błędów
 - [ ] **zero ostrzeżeń pod `/W4`** w plikach z `src/`
 - [ ] brak ostrzeżeń pochodzących z nagłówków GLFW, GLAD i ImGui w naszych plikach
+- [ ] od chwili, gdy pierwszy plik w `src/` dołącza `<glm/glm.hpp>`: brak ostrzeżeń z
+      nagłówków GLM pod `/W4` (zapisać, czy katalog `_deps\glm-src` trafia do kompilatora
+      przez `/external:I`)
 - [ ] program jest w `build\debug\Debug\night_maze.exe` (albo zapisać faktyczną ścieżkę)
 
 **Uruchomienie**

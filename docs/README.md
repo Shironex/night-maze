@@ -40,6 +40,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 |---|---|---|
 | [`libraries/glfw.md`](libraries/glfw.md) | GLFW | Okno, kontekst OpenGL, wejście |
 | [`libraries/glad.md`](libraries/glad.md) | GLAD | Ładowanie funkcji OpenGL 4.1 Core |
+| [`libraries/glm.md`](libraries/glm.md) | GLM | Matematyka: wektory, macierze, przekształcenia. Podpięta do buildu, pierwsze użycie w M1 (`Shader`, `Transform`, `Camera`) |
 | [`libraries/imgui.md`](libraries/imgui.md) | Dear ImGui (gałąź docking) | Panele debug |
 
 ## Kolejność czytania
@@ -60,7 +61,8 @@ Kolejność jest zgodna z kolejnością wykładów. W M0 zrealizowany jest temat
 | 10 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | Wykrywanie błędów OpenGL |
 | 11 | [`libraries/imgui.md`](libraries/imgui.md) | Jak działa biblioteka paneli |
 | 12 | [`modules/debug-ui.md`](modules/debug-ui.md) | Jak panele są wpięte w mój projekt i jak dodać własny |
-| 13 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
+| 13 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera (M1). Na dziś sama biblioteka, bez kodu w projekcie |
+| 14 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
 
 ## Jak się uczyć z dokumentu modułu
 

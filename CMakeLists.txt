@@ -35,7 +35,9 @@ add_library(engine STATIC
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(engine PUBLIC glad glfw)
+# GLM is linked ahead of its first users (Shader, Transform, Camera). It is PUBLIC because
+# their headers will expose GLM types to every target that includes them.
+target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it
     GL_SILENCE_DEPRECATION # macOS marks all of OpenGL as deprecated

@@ -26,7 +26,7 @@ night-maze/
 │   ├── extensions.json         # rekomendowane rozszerzenia
 │   └── settings.json           # clangd, presety CMake, formatowanie przy zapisie, GLSL
 ├── cmake/
-│   └── Dependencies.cmake      # FetchContent: GLFW i Dear ImGui, target imgui
+│   └── Dependencies.cmake      # FetchContent: GLFW, GLM i Dear ImGui, target imgui
 ├── external/
 │   └── glad/                   # wygenerowany loader OpenGL 4.1 Core (kod w repozytorium)
 │       ├── CMakeLists.txt      # target glad (napisany ręcznie)
@@ -61,6 +61,7 @@ night-maze/
     ├── libraries/              # dokumenty bibliotek
     │   ├── glad.md
     │   ├── glfw.md
+    │   ├── glm.md
     │   └── imgui.md
     └── modules/                # dokumenty modułów
         ├── core/                   # moduł core, podzielony na dokumenty tematyczne
@@ -146,10 +147,11 @@ i nikt od niego.
 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
-| `engine` | biblioteka statyczna | `src/core/*` | `glad`, `glfw` (`PUBLIC`) |
+| `engine` | biblioteka statyczna | `src/core/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`) |
 | `night_maze` | program | `src/main.cpp`, `src/game/*`, `src/debug/*` | `engine`, `imgui` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
 | `glfw` | biblioteka statyczna | pobrana przez FetchContent | biblioteki systemowe |
+| `glm-header-only` (alias `glm::glm-header-only`) | target `INTERFACE`: same nagłówki, nic się nie kompiluje | pobrany przez FetchContent | nic |
 | `imgui` | biblioteka statyczna | pobrana przez FetchContent, lista plików w `Dependencies.cmake` | `glfw` |
 
 **Dlaczego `engine` jest osobną biblioteką.** Warstwy wielokrotnego użytku (teraz `core`,
@@ -210,7 +212,8 @@ include(cmake/Dependencies.cmake)
 ```
 
 - `add_subdirectory` przetwarza `external/glad/CMakeLists.txt` i tworzy target `glad`.
-- `include` wkleja zawartość `cmake/Dependencies.cmake`, który tworzy targety `glfw` i `imgui`.
+- `include` wkleja zawartość `cmake/Dependencies.cmake`, który tworzy targety `glfw`,
+  `glm-header-only` i `imgui`.
 
 Różnica: `add_subdirectory` wchodzi do katalogu z własnym `CMakeLists.txt` i własnym
 zakresem zmiennych. `include` wykonuje plik tak, jakby jego treść stała w tym miejscu.
@@ -230,7 +233,9 @@ endfunction()
 
 Własna funkcja CMake, żeby nie powtarzać tych samych flag przy każdym targecie. Wywołujemy
 ją tylko dla `engine` i `night_maze`. Cudzy kod (GLAD, GLFW, ImGui) kompiluje się ze swoimi
-domyślnymi ustawieniami, bo jego ostrzeżeń nie będziemy poprawiać.
+domyślnymi ustawieniami, bo jego ostrzeżeń nie będziemy poprawiać. GLM nie ma własnych
+plików do skompilowania (same nagłówki), więc jego ostrzeżenia wycisza wyłącznie oznaczenie
+nagłówków jako systemowe ([`../libraries/glm.md`](../libraries/glm.md)).
 
 - clang i GCC: `-Wall -Wextra` włączają szeroki zestaw ostrzeżeń, `-Wpedantic` ostrzega przed
   odstępstwami od standardu.
@@ -249,7 +254,9 @@ add_library(engine STATIC
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(engine PUBLIC glad glfw)
+# GLM is linked ahead of its first users (Shader, Transform, Camera). It is PUBLIC because
+# their headers will expose GLM types to every target that includes them.
+target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it
     GL_SILENCE_DEPRECATION # macOS marks all of OpenGL as deprecated
@@ -264,7 +271,11 @@ night_maze_enable_warnings(engine)
   drzewie projektu.
 - `target_include_directories(engine PUBLIC .../src)`: korzeniem ścieżek `#include` jest
   `src/`. Stąd zapis `#include "core/Window.hpp"` w każdym pliku, niezależnie od katalogu.
-- `target_link_libraries(engine PUBLIC glad glfw)`: `engine` używa GLAD i GLFW.
+- `target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)`: `engine` używa GLAD
+  i GLFW. GLM jest podpięte z wyprzedzeniem: na dziś żaden plik w `src/` go nie dołącza, a
+  pierwszymi użytkownikami będą w M1 `Shader`, `Transform` i `Camera`. `glm::glm-header-only`
+  to target `INTERFACE` (same nagłówki), więc "linkowanie" go oznacza tylko dodanie ścieżki
+  nagłówków ([`../libraries/glm.md`](../libraries/glm.md), sekcja 2).
 - `target_compile_definitions`: dwa makra preprocesora, widoczne w linii poleceń
   kompilatora jako `-DGLFW_INCLUDE_NONE -DGL_SILENCE_DEPRECATION`.
 
@@ -279,7 +290,8 @@ Trzy słowa kluczowe zasięgu, które trzeba umieć wyjaśnić:
 Wszystko przy `engine` jest `PUBLIC`, bo jego nagłówki (na przykład `core/GlCheck.hpp`)
 same dołączają `<glad/gl.h>`. Każdy, kto dołącza nagłówek `engine`, potrzebuje więc ścieżek
 do GLAD i GLFW oraz tych samych makr. Dzięki `PUBLIC` target `night_maze` dostaje to
-automatycznie, linkując tylko `engine`.
+automatycznie, linkując tylko `engine`. Z tego samego powodu `PUBLIC` jest GLM: nagłówki
+warstw `gfx` i `scene` będą pokazywać typy takie jak `glm::mat4` w swoim API.
 
 Dwie definicje `PUBLIC`:
 
@@ -343,6 +355,9 @@ wydań. Plik jest osobno, żeby główny `CMakeLists.txt` opisywał tylko nasze 
 | cztery linie `set(GLFW_... OFF CACHE BOOL "" FORCE)` | wyłączają dokumentację, testy, przykłady i instalację GLFW | [`../libraries/glfw.md`](../libraries/glfw.md) |
 | `FetchContent_Declare(glfw ... GIT_TAG 3.4 ...)` i `FetchContent_MakeAvailable(glfw)` | pobierają GLFW 3.4 i tworzą target `glfw` | [`../libraries/glfw.md`](../libraries/glfw.md) |
 | `get_target_property` i `set_target_properties(... INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ...)` | oznaczają nagłówki GLFW jako systemowe (bez ostrzeżeń) | [`../libraries/glfw.md`](../libraries/glfw.md) |
+| trzy linie `set(GLM_BUILD_... OFF CACHE BOOL "" FORCE)` | wyłączają bibliotekę statyczną, testy i instalację GLM: zostają same nagłówki | [`../libraries/glm.md`](../libraries/glm.md) |
+| `FetchContent_Declare(glm ... GIT_TAG 1.0.3 ...)` i `FetchContent_MakeAvailable(glm)` | pobierają GLM 1.0.3 i tworzą target `glm-header-only` (alias `glm::glm-header-only`) | [`../libraries/glm.md`](../libraries/glm.md) |
+| `get_target_property` i `set_target_properties(glm-header-only ... INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ...)` | oznaczają nagłówki GLM jako systemowe (bez ostrzeżeń) | [`../libraries/glm.md`](../libraries/glm.md) |
 | `FetchContent_Declare(imgui ... GIT_TAG v1.92.9b-docking ...)` i `FetchContent_MakeAvailable(imgui)` | pobierają Dear ImGui, bez tworzenia targetu | [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `add_library(imgui STATIC ...)`, `target_include_directories`, `target_link_libraries(imgui PUBLIC glfw)` | ręcznie zdefiniowany target `imgui` z rdzenia i dwóch backendów | [`../libraries/imgui.md`](../libraries/imgui.md) |
 
@@ -450,7 +465,7 @@ Pozostałe pola:
 - `WarningsAsErrors: ''`: żadna diagnostyka nie jest traktowana jak błąd. Narzędzie doradza,
   nie blokuje.
 - `HeaderFilterRegex: 'src/.*'`: diagnostyki z nagłówków pokazujemy tylko dla plików z
-  `src/`. Nagłówki GLFW, GLAD i ImGui są pomijane.
+  `src/`. Nagłówki GLFW, GLAD, GLM i ImGui są pomijane.
 
 Konwencja nazw z `CheckOptions`:
 
@@ -565,7 +580,7 @@ CompileFlags:
 | `CompilationDatabase` | `build/debug` | katalog, w którym clangd ma szukać `compile_commands.json`. Ścieżka względna liczy się od katalogu, w którym leży plik `.clangd` |
 
 Po co to jest: clangd musi znać dokładnie te same flagi co kompilator (ścieżki nagłówków
-GLFW, GLAD i ImGui, `-std=c++20`, makra `GLFW_INCLUDE_NONE` i `GL_SILENCE_DEPRECATION`).
+GLFW, GLAD, GLM i ImGui, `-std=c++20`, makra `GLFW_INCLUDE_NONE` i `GL_SILENCE_DEPRECATION`).
 Wszystko to zapisuje CMake w `build/debug/compile_commands.json` (sekcja 4.1). Sam z siebie
 clangd szuka tego pliku w katalogach nadrzędnych pliku źródłowego i w podkatalogu `build/`,
 ale nie w `build/debug/`, więc bez wskazówki by go nie znalazł.
@@ -715,6 +730,9 @@ build/debug/
     ├── glfw-src/               # kod źródłowy GLFW 3.4
     ├── glfw-build/             # wynik budowania GLFW, w tym src/libglfw3.a
     ├── glfw-subbuild/          # pomocniczy projekt, który wykonał pobranie
+    ├── glm-src/                # kod źródłowy GLM 1.0.3 (same nagłówki w glm-src/glm/)
+    ├── glm-build/              # tylko pliki robocze CMake: GLM niczego nie kompiluje
+    ├── glm-subbuild/           # pomocniczy projekt, który wykonał pobranie
     ├── imgui-src/              # kod źródłowy Dear ImGui v1.92.9b-docking
     ├── imgui-build/            # pusty: ImGui nie ma własnego CMakeLists.txt
     └── imgui-subbuild/         # pomocniczy projekt, który wykonał pobranie
@@ -727,10 +745,11 @@ build/debug/
 | `libimgui.a` | target `imgui` z `Dependencies.cmake` | skompilowany rdzeń ImGui i dwa backendy |
 | `external/glad/libglad.a` | target `glad` | skompilowany `gl.c` |
 | `_deps/glfw-build/src/libglfw3.a` | target `glfw` | skompilowane GLFW |
+| `_deps/glm-src/glm/` | FetchContent | nagłówki GLM. Biblioteki `.a` dla GLM nie ma: to target `INTERFACE`, a `GLM_BUILD_LIBRARY` jest wyłączone |
 | `compile_commands.json` | `CMAKE_EXPORT_COMPILE_COMMANDS=ON` z presetu `base` | wejście dla clangd i clang-tidy |
 | `CMakeCache.txt` | konfiguracja | trwałe zmienne CMake: ścieżka kompilatora, generator, opcje `GLFW_BUILD_*` |
 | `CMakeFiles/` | konfiguracja i build | pliki obiektowe (`.o`), zależności między plikami, log konfiguracji |
-| `_deps/*-src` | FetchContent | pobrany kod. Przydatny do czytania: `imgui-src/imgui_demo.cpp`, `glfw-src/docs/` |
+| `_deps/*-src` | FetchContent | pobrany kod. Przydatny do czytania: `imgui-src/imgui_demo.cpp`, `glfw-src/docs/`, `glm-src/manual.md` |
 
 Wszystkie biblioteki są statyczne, więc program `night_maze` jest jednym samodzielnym
 plikiem. Do działania potrzebuje tylko bibliotek systemowych.
@@ -829,6 +848,9 @@ Nowy panel debugowy ma dodatkowe kroki (wywołanie w `DebugUI::draw`). Opisuje j
   własnym `CMakeLists.txt` i `add_subdirectory` w głównym pliku.
 - W obu przypadkach nagłówki oznaczamy jako `SYSTEM`, a bibliotece nie włączamy naszych
   ostrzeżeń.
+- Biblioteka z samych nagłówków (jak GLM) nie ma niczego do skompilowania: linkujemy jej
+  target `INTERFACE`, który niesie tylko ścieżkę nagłówków. Wzór: blok GLM w
+  `cmake/Dependencies.cmake`.
 
 ### Dokumentacja
 

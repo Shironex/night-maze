@@ -21,7 +21,8 @@ różnice za jednym API, dzięki czemu `src/core/Window.cpp` jest identyczny na 
 - Nie rysuje. Nie zawiera ani jednej funkcji `gl*`. Rysowanie to OpenGL, czyli sterownik karty.
 - Nie ładuje funkcji OpenGL. Daje tylko `glfwGetProcAddress`, z którego korzysta GLAD
   (patrz [`glad.md`](glad.md)).
-- Nie ma matematyki (to będzie GLM), nie wczytuje obrazów ani modeli, nie odtwarza dźwięku.
+- Nie ma matematyki (to GLM, patrz [`glm.md`](glm.md)), nie wczytuje obrazów ani modeli, nie
+  odtwarza dźwięku.
 - Nie ma interfejsu użytkownika. Panele rysuje Dear ImGui (patrz [`imgui.md`](imgui.md)).
 - Nie prowadzi pętli gry. Pętlę piszemy sami w
   [`src/core/Application.cpp`](../../src/core/Application.cpp), GLFW dostarcza tylko klocki
@@ -94,7 +95,7 @@ jakbyśmy napisali `add_subdirectory`. Od tej chwili w naszym projekcie istnieje
 Z targetu korzystamy w głównym [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
-target_link_libraries(engine PUBLIC glad glfw)
+target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 ```
 
 `PUBLIC` oznacza, że każdy, kto linkuje `engine` (czyli `night_maze`), dostaje też nagłówki i
@@ -131,8 +132,10 @@ Efekt widać w `build/debug/compile_commands.json`. Katalog GLFW jest podany prz
 a nasz `src` przez zwykłe `-I`:
 
 ```text
--I.../night-maze/src -isystem .../external/glad/include -isystem .../build/debug/_deps/glfw-src/include
+-I.../night-maze/src -isystem .../external/glad/include -isystem .../build/debug/_deps/glfw-src/include -isystem .../build/debug/_deps/glm-src
 ```
+
+Ostatni katalog to GLM, oznaczony tym samym sposobem ([`glm.md`](glm.md), sekcja 2).
 
 Dlaczego tak okrężnie? Prostszy zapis to słowo `SYSTEM` w `FetchContent_Declare`, ale ta opcja
 istnieje dopiero od CMake 3.25. Nasze minimum to 3.24 (`cmake_minimum_required(VERSION 3.24)`

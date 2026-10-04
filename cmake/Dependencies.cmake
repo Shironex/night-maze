@@ -20,6 +20,28 @@ FetchContent_MakeAvailable(glfw)
 get_target_property(glfw_include_dirs glfw INTERFACE_INCLUDE_DIRECTORIES)
 set_target_properties(glfw PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${glfw_include_dirs}")
 
+# ---- GLM: vector and matrix math ------------------------------------------------------
+# GLM is header-only. By default its CMake build also compiles a static library that we do
+# not need, so switch that off: only the header-only interface target is used.
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.3
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(glm)
+
+# Treat the GLM headers as system headers so they cannot produce warnings in our code.
+# glm::glm-header-only is an alias, properties must be set on the real target name.
+get_target_property(glm_include_dirs glm-header-only INTERFACE_INCLUDE_DIRECTORIES)
+set_target_properties(glm-header-only PROPERTIES
+    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${glm_include_dirs}"
+)
+
 # ---- Dear ImGui (docking branch): debug panels ---------------------------------------
 # ImGui ships without a CMake build, so only download it and define the target ourselves.
 FetchContent_Declare(
