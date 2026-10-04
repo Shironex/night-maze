@@ -446,6 +446,18 @@ pierwszy punkt.
 - [ ] po pojawieniu się shaderów: ścieżka z polską literą w komunikacie błędu nie zamyka
       programu (w konsoli litera może być wyświetlona błędnie, to dopuszczalne)
 
+**Klasy `gfx::Buffer` i `gfx::VertexArray`**
+
+Opis: [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md). Klasy były
+kompilowane i sprawdzane tylko na macOS. Dziś nikt ich nie woła, więc od razu da się
+sprawdzić tylko pierwszy punkt.
+
+- [ ] `src/gfx/Buffer.cpp` i `src/gfx/VertexArray.cpp` kompilują się w MSVC z
+      `/W4 /permissive-` bez ostrzeżeń (w szczególności `reinterpret_cast<const void*>` z
+      `std::size_t` w `setFloatAttribute` i `static_cast<GLsizeiptr>` w konstruktorze
+      `Buffer`)
+- [ ] po pojawieniu się trójkąta: trójkąt jest widoczny i w konsoli nie ma linii `[error]`
+
 **Git i narzędzia**
 
 - [ ] po sklonowaniu i zbudowaniu `git status` nie pokazuje zmienionych plików (końce linii)

@@ -2,14 +2,14 @@
 
 Ściąga przed kartkówką i obroną. Gdy prowadzący zapyta o temat, w tej tabeli znajduję plik, który go realizuje, dokument, który go tłumaczy, i miejsce w panelu ImGui, w którym pokażę efekt na żywo.
 
-Stan: **M0 zrobione, M1 w toku**. Zrealizowany jest temat 1. Temat 2 jest zrobiony **częściowo**: istnieje klasa `gfx::Shader` z dokumentem, ale nie ma jeszcze plików shaderów, buforów, trójkąta ani przycisku w ImGui. Tematy od 3 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
+Stan: **M0 zrobione, M1 w toku**. Zrealizowany jest temat 1. Temat 2 jest zrobiony **częściowo**: istnieją klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray` z dokumentami, ale nie ma jeszcze plików shaderów, trójkąta ani przycisku w ImGui. Tematy od 3 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
 
 ## Tabela tematów
 
 | # | Temat wykładu | Status | Dokument | Pliki kodu | Przełącznik w ImGui |
 |---|---|---|---|---|---|
 | 1 | Pierwszy program OpenGL | **zrobione (M0)** | [`modules/core/README.md`](modules/core/README.md) (wstęp), [`window-context.md`](modules/core/window-context.md), [`main-loop.md`](modules/core/main-loop.md), [`input.md`](modules/core/input.md), [`gl-check.md`](modules/core/gl-check.md), [`paths.md`](modules/core/paths.md) | zob. tabela "Temat 1 szczegółowo" niżej | Panel Renderer: `FPS`, `Frame time`, `Framebuffer`, `Window`, `OpenGL`, `GPU`, `Clear color`. Klawisz `~` (na lewo od `1`) chowa i pokazuje panele |
-| 2 | Programowalny potok | **częściowo (M1 w toku)** | [`modules/gfx/README.md`](modules/gfx/README.md) (wstęp), [`shaders.md`](modules/gfx/shaders.md). Planowane: `buffers-vao.md` | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp), [`Shader.hpp`](../src/gfx/Shader.hpp), zob. tabela "Temat 2 szczegółowo" niżej. Planowane: Buffer, VertexArray, pliki `assets/shaders/`, trójkąt w `src/game/` | jeszcze nic. Planowane: panel Shaders z przyciskiem "Reload shaders" i ostatnim błędem |
+| 2 | Programowalny potok | **częściowo (M1 w toku)** | [`modules/gfx/README.md`](modules/gfx/README.md) (wstęp), [`shaders.md`](modules/gfx/shaders.md), [`buffers-vao.md`](modules/gfx/buffers-vao.md) | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp), [`Buffer.cpp`](../src/gfx/Buffer.cpp), [`VertexArray.cpp`](../src/gfx/VertexArray.cpp) i ich nagłówki, zob. tabela "Temat 2 szczegółowo" niżej. Planowane: pliki `assets/shaders/`, trójkąt w `src/game/` | jeszcze nic. Planowane: panel Shaders z przyciskiem "Reload shaders" i ostatnim błędem |
 | 3 | Przekształcenia przestrzeni | planowane, M1 | planowane: `transforms-camera.md` | planowane: `src/scene/` (Transform, Camera) | planowane: pozycja i rotacja kamery, FOV |
 | 4 | Wczytywanie OBJ | planowane, M2 + M3 | planowane: `obj-loader.md` | planowane: `src/assets/` (ObjLoader, AssetCache) | planowane: lista załadowanych modeli |
 | 5 | Tekstury | planowane, M2 + M3 | planowane: `textures.md`, `images.md` | planowane: `src/gfx/` (Texture2D), `src/assets/` (ImageLoader) | planowane: podgląd tekstur, przełącznik normal map |
@@ -49,7 +49,7 @@ Dokumenty uzupełniające do tematu 1: [`libraries/glfw.md`](libraries/glfw.md),
 
 ## Temat 2 szczegółowo
 
-Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: przycisk "Reload shaders". Stan: istnieje sama klasa `gfx::Shader`, której żaden kod programu jeszcze nie używa. Nie ma plików shaderów, klas `Buffer` i `VertexArray`, trójkąta ani panelu.
+Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: przycisk "Reload shaders". Stan: istnieją klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, których żaden kod programu jeszcze nie używa. Nie ma plików shaderów, trójkąta ani panelu.
 
 | Zagadnienie | Plik | Najważniejsze miejsce w kodzie | Dokument i sekcja |
 |---|---|---|---|
@@ -59,6 +59,10 @@ Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: pr
 | Kompilacja, status i dziennik shadera | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp) | `compileShader`, `shaderInfoLog` | [`gfx/shaders.md`](modules/gfx/shaders.md), 3.1, 3.3, 5.4 i 5.5 |
 | Linkowanie, status i dziennik programu | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp) | `linkProgram`, `programInfoLog`, `buildProgram` | [`gfx/shaders.md`](modules/gfx/shaders.md), 2.5, 2.6, 5.6 i 5.7 |
 | Wczytywanie na żywo z zachowaniem starego programu | [`src/gfx/Shader.cpp`](../src/gfx/Shader.cpp) | `Shader::reload`, `lastError`, `isValid` | [`gfx/shaders.md`](modules/gfx/shaders.md), 2.7 i 5.8 |
+| Bufor wierzchołków i bufor indeksów, `glBufferData`, podpowiedź użycia | [`src/gfx/Buffer.cpp`](../src/gfx/Buffer.cpp), [`Buffer.hpp`](../src/gfx/Buffer.hpp) | konstruktor `Buffer::Buffer`, `bind`, pole `m_target` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.2, 2.6, 2.8 i 5.3 |
+| Tablica wierzchołków: co pamięta VAO, dlaczego Core jej wymaga | [`src/gfx/VertexArray.cpp`](../src/gfx/VertexArray.cpp), [`VertexArray.hpp`](../src/gfx/VertexArray.hpp) | konstruktor, `bind` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.4, 2.5 i 5.5 |
+| Atrybuty wierzchołka, krok i przesunięcie, przesunięcie jako wskaźnik | [`src/gfx/VertexArray.cpp`](../src/gfx/VertexArray.cpp) | `VertexArray::setFloatAttribute` | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.3, 4 i 5.6 |
+| `glDrawArrays` a `glDrawElements`, NDC, kierunek nawijania | brak kodu, sama teoria | brak | [`gfx/buffers-vao.md`](modules/gfx/buffers-vao.md), 2.7 i 2.9 |
 
 ## Panele ImGui (narzędzie do wszystkich tematów)
 
@@ -75,7 +79,7 @@ Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: pr
 | Kamień milowy | Zakres według PRD | Tematy wykładu |
 |---|---|---|
 | M0 (zrobione) | Repozytorium, CMake i FetchContent, okno GLFW 4.1, GLAD, ImGui, `GL_CHECK` | 1 |
-| M1 (w toku) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasa `Shader` | 2, 3 |
+| M1 (w toku) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray` | 2, 3 |
 | M2 + M3 | Generator labiryntu, kolizje AABB, tekstury, loader OBJ, pierwsze modele | 4, 5, 14 |
 | M4 + M5 | Księżyc, latarka, kryształy, Gouraud vs Phong, zbieranie, bateria, brama | 6, 7 |
 | M6 | Skybox, teren z heightmapy, trawa w shaderze geometrii | 8, 9, 13 |

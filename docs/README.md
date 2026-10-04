@@ -2,7 +2,7 @@
 
 Dokumentacja jest materiałem do nauki: z samej lektury ma się dać nauczyć danego tematu wykładu, przygotować do kartkówki i do obrony, na której tłumaczę każdą linię kodu. Każdy moduł jest skończony dopiero wtedy, gdy ma tutaj swój dokument (PRD, sekcja 7).
 
-Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **M1 w toku**: są już mysz, ścieżki do assetów, GLM i klasa `gfx::Shader`, ale program jeszcze niczego nie rysuje. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
+Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **M1 w toku**: są już mysz, ścieżki do assetów, GLM i klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, ale program jeszcze niczego nie rysuje. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
 
 ## Spis treści
 
@@ -35,6 +35,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/core/paths.md`](modules/core/paths.md) | `src/core/Paths.*` | 1. Ścieżki do assetów względem pliku wykonywalnego: katalog roboczy, wywołania systemowe macOS i Windows, `std::filesystem::path`. Pierwszy użytkownik w M1 (shadery) |
 | [`modules/gfx/README.md`](modules/gfx/README.md) | `src/gfx/` | 2. Programowalny potok: wstęp do modułu `gfx`, RAII i semantyka przenoszenia dla obiektów OpenGL, miejsce w warstwach, indeks plików |
 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | `src/gfx/Shader.*` | 2. Potok renderowania, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, błędy sterownika, wczytywanie na żywo. Klasa jeszcze bez użytkownika w programie |
+| [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | `src/gfx/Buffer.*`, `src/gfx/VertexArray.*` | 2. Dane wierzchołków, VBO, VAO i jego stan, układ przeplatany (krok i przesunięcie), EBO, `glDrawArrays` a `glDrawElements`. Klasy jeszcze bez użytkownika w programie |
 | [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui, podpięcie nakładki w `main.cpp`, jak dodać nowy panel |
 
 ### Biblioteki (`libraries/`)
@@ -48,7 +49,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 
 ## Kolejność czytania
 
-Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki 15 i 16 zaczynają temat 2, "Programowalny potok".
+Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki od 15 do 17 to temat 2, "Programowalny potok".
 
 | Krok | Dokument | Po co na tym etapie |
 |---|---|---|
@@ -68,7 +69,8 @@ Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materia�
 | 14 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera (M1). Na dziś sama biblioteka, bez kodu w projekcie |
 | 15 | [`modules/gfx/README.md`](modules/gfx/README.md) | Temat 2: dlaczego obiekty OpenGL są zamknięte w klasach, RAII i przenoszenie zamiast kopiowania |
 | 16 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | Programowalny potok, GLSL i klasa `Shader`. Na dziś sama klasa, bez plików shaderów i bez rysowania |
-| 17 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
+| 17 | [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | Skąd shader wierzchołków bierze dane: bufory, atrybuty, VAO. Na dziś same klasy, bez rysowania |
+| 18 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
 
 ## Jak się uczyć z dokumentu modułu
 

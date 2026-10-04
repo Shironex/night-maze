@@ -5,19 +5,18 @@ Kod: [`src/gfx/`](../../../src/gfx/).
 
 Moduł `core` daje okno, kontekst OpenGL i pętlę. Żeby coś narysować, potrzebne są jeszcze **obiekty OpenGL**: program shaderów, bufory z danymi wierzchołków, opis układu tych danych, później tekstury i bufory ramki. Każdy taki obiekt żyje w pamięci karty graficznej, a mój program zna go tylko jako liczbę (identyfikator) i musi go sam utworzyć oraz sam usunąć. Moduł `gfx` zamyka te obiekty w małych klasach C++: jedna klasa, jeden obiekt OpenGL, bez wiedzy o grze i bez wiedzy o tym, co jest rysowane. To cienkie opakowania (thin wrappers), a nie silnik renderujący: nie ukrywają OpenGL, tylko pilnują, żeby obiekt został utworzony, użyty i zwolniony poprawnie.
 
-Na dziś moduł ma jedną klasę, `gfx::Shader`, i jeszcze **żadnego użytkownika** w programie. Ten plik jest wstępem do modułu: opisuje wspólną zasadę wszystkich klas `gfx` (RAII i tylko przenoszenie), miejsce modułu w warstwach i indeks dokumentów.
+Na dziś moduł ma trzy klasy, `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, i jeszcze **żadnego użytkownika** w programie. Ten plik jest wstępem do modułu: opisuje wspólną zasadę wszystkich klas `gfx` (RAII i tylko przenoszenie), miejsce modułu w warstwach i indeks dokumentów.
 
 ## 1. Dokumenty modułu
 
 | Dokument | Co opisuje | Klasy i pliki |
 |---|---|---|
 | [`shaders.md`](shaders.md) | programowalny potok, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, odczyt błędów sterownika, wczytywanie na żywo z zachowaniem starego programu | `Shader` |
+| [`buffers-vao.md`](buffers-vao.md) | dane wierzchołków i atrybuty, bufor wierzchołków (VBO), tablica wierzchołków (VAO) i co dokładnie pamięta, układ przeplatany z krokiem i przesunięciem, bufor indeksów (EBO), `glDrawArrays` a `glDrawElements`, podpowiedzi użycia | `Buffer`, `VertexArray` |
 
-Dokument tematyczny ma te same dziesięć sekcji co dokumenty modułu `core`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
+Każdy dokument tematyczny ma te same dziesięć sekcji co dokumenty modułu `core`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
 
-Drugi dokument, `buffers-vao.md`, dojdzie razem z klasami `Buffer` i `VertexArray` w następnym kroku M1. Do tego czasu nie ma go w repozytorium.
-
-Proponowana kolejność czytania: ten plik, potem [`shaders.md`](shaders.md). Wcześniej warto znać [`../core/gl-check.md`](../core/gl-check.md), bo każde wywołanie OpenGL w `gfx` jest opakowane w `GL_CHECK`.
+Proponowana kolejność czytania: ten plik, potem [`shaders.md`](shaders.md), potem [`buffers-vao.md`](buffers-vao.md). Wcześniej warto znać [`../core/gl-check.md`](../core/gl-check.md), bo każde wywołanie OpenGL w `gfx` jest opakowane w `GL_CHECK`.
 
 ## 2. Wspólna zasada: RAII i tylko przenoszenie
 
@@ -95,7 +94,7 @@ Reguła dla każdej klasy `gfx`, w tej kolejności:
 3. konstruktor przenoszący przejmuje identyfikator i **zeruje go w obiekcie źródłowym**,
 4. przypisanie przenoszące najpierw sprawdza przypisanie do samego siebie, potem zwalnia własny obiekt OpenGL, potem przejmuje identyfikator i zeruje go w źródle.
 
-Zero jest bezpieczne, bo OpenGL nigdy nie nadaje obiektowi identyfikatora 0, a `glDelete*` dla zera jest po cichu ignorowane. Kod obu funkcji przenoszących dla `Shader`, linia po linii, jest w [`shaders.md`](shaders.md), sekcja 5.9.
+Zero jest bezpieczne, bo OpenGL nigdy nie nadaje obiektowi identyfikatora 0, a `glDelete*` dla zera jest po cichu ignorowane. Kod obu funkcji przenoszących dla `Shader`, linia po linii, jest w [`shaders.md`](shaders.md), sekcja 5.9. `Buffer` i `VertexArray` stosują ten sam wzorzec ([`buffers-vao.md`](buffers-vao.md), sekcje 5.4 i 5.5).
 
 Kompilator nie wygeneruje tych funkcji poprawnie sam. Domyślny konstruktor przenoszący przenosi każde pole, a "przeniesienie" liczby to jej skopiowanie: identyfikator zostałby w obu obiektach. Dlatego w `gfx` obie funkcje są napisane ręcznie.
 
@@ -107,7 +106,7 @@ flowchart TD
     Main --> Game["game/<br/>NightMazeApp"]
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, Paths, GL_CHECK"]
     Game --> Core
-    Gfx["gfx/<br/>Shader"] --> Core
+    Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Gfx --> Glad["GLAD"]
     Core --> Glad
     Core --> Glfw["GLFW"]
@@ -116,7 +115,7 @@ flowchart TD
 
 Strzałka znaczy "zna i dołącza nagłówki". Zasady dla `gfx`:
 
-1. `gfx/` zależy tylko od `core/`, GLAD i biblioteki standardowej. `Shader.cpp` dołącza `core/GlCheck.hpp` i `core/Log.hpp`. Nie dołącza GLFW: do tworzenia obiektów OpenGL wystarcza bieżący kontekst, a skąd on się wziął, `gfx` nie musi wiedzieć.
+1. `gfx/` zależy tylko od `core/`, GLAD i biblioteki standardowej. `Shader.cpp` dołącza `core/GlCheck.hpp` i `core/Log.hpp`, a `Buffer.cpp` i `VertexArray.cpp` samo `core/GlCheck.hpp`. Nie dołącza GLFW: do tworzenia obiektów OpenGL wystarcza bieżący kontekst, a skąd on się wziął, `gfx` nie musi wiedzieć.
 2. `core/` nie zna `gfx/`. Zależność idzie w jedną stronę: `core <- gfx`.
 3. `gfx/` nie zna `game/`, `debug/` ani ImGui. Nic w nim nie jest specyficzne dla Night Maze, więc cała warstwa nadaje się do zadań laboratoryjnych.
 4. Na diagramie do `gfx/` nie prowadzi jeszcze żadna strzałka: ani `game/`, ani `debug/` nie dołączają dziś żadnego nagłówka z `gfx/`. Pierwszym użytkownikiem będzie `game::NightMazeApp` (trójkąt), a potem panel debug z przyciskiem przeładowania shaderów.
@@ -130,6 +129,8 @@ W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/gfx/*` należą do tej 
 | Plik kodu | Co zawiera | Dokument |
 |---|---|---|
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | RAII na obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów: `reload`, `isValid`, `use`, `lastError`. Nikt jej jeszcze nie używa | [`shaders.md`](shaders.md) |
+| [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`.cpp`](../../../src/gfx/Buffer.cpp) | RAII na jeden bufor OpenGL wypełniany raz, w konstruktorze. Cel `GL_ARRAY_BUFFER` (wierzchołki) albo `GL_ELEMENT_ARRAY_BUFFER` (indeksy), `bind`. Nikt jej jeszcze nie używa | [`buffers-vao.md`](buffers-vao.md) |
+| [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`.cpp`](../../../src/gfx/VertexArray.cpp) | RAII na jeden obiekt tablicy wierzchołków (VAO): `bind`, `setFloatAttribute`. Nikt jej jeszcze nie używa | [`buffers-vao.md`](buffers-vao.md) |
 
 ## 5. Wymaganie wspólne: żywy kontekst OpenGL
 

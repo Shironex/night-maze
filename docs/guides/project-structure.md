@@ -3,7 +3,7 @@
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny w
 trakcie kamienia milowego M1: po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
-klasą `Shader`. Docelową strukturę (z `renderer/`, `scene/`, `assets/`) opisuje PRD w
+klasami `Shader`, `Buffer` i `VertexArray`. Docelową strukturę (z `renderer/`, `scene/`, `assets/`) opisuje PRD w
 sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -54,7 +54,9 @@ night-maze/
 │   ├── game/                   # gra
 │   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie czyści ekran)
 │   └── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
-│       └── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload
+│       ├── Buffer.hpp/.cpp         # bufor wierzchołków albo indeksów
+│       ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload
+│       └── VertexArray.hpp/.cpp    # tablica wierzchołków (VAO), opis atrybutów
 └── docs/
     ├── PRD.pdf                 # dokument wymagań
     ├── README.md               # spis treści dokumentacji i kolejność czytania
@@ -78,6 +80,7 @@ night-maze/
         │   └── window-context.md       # okno, kontekst, GLAD, vsync, Log
         ├── gfx/                    # moduł gfx, podzielony na dokumenty tematyczne
         │   ├── README.md               # wstęp, RAII i przenoszenie, warstwy, indeks
+        │   ├── buffers-vao.md          # VBO, VAO, EBO, krok i przesunięcie
         │   └── shaders.md              # potok, GLSL, klasa Shader, reload
         └── debug-ui.md             # panele ImGui w projekcie
 ```
@@ -109,6 +112,8 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
 | `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Na razie nikt tych funkcji nie woła | [`../modules/core/paths.md`](../modules/core/paths.md) |
 | `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `lastError`. RAII, tylko przenoszenie. Na razie nikt tej klasy nie używa | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Na razie nikt tej klasy nie używa | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
+| `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Na razie nikt tej klasy nie używa | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
 | `src/game/NightMazeApp.*` | `game::NightMazeApp`: `onUpdate`, `onRender` (viewport, czyszczenie ekranu), kolor tła | [`../modules/core/README.md`](../modules/core/README.md) |
 | `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
@@ -149,8 +154,9 @@ Jak to widać w kodzie:
   blokada klawiatury i myszy na czas pracy z panelem jest zrobiona bez ImGui w `core/`:
   `core::Input` ma neutralne flagi `setKeyboardBlocked` i `setMouseBlocked`, a ustawia je
   `main.cpp`.
-- `src/gfx/Shader.hpp` dołącza `<glad/gl.h>` i bibliotekę standardową, a `Shader.cpp` do
-  tego `core/GlCheck.hpp` i `core/Log.hpp`. Nic z GLFW, `game/` ani `debug/`.
+- Nagłówki w `src/gfx/` dołączają `<glad/gl.h>` i bibliotekę standardową, a pliki `.cpp` do
+  tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp`). Nic z GLFW, `game/` ani
+  `debug/`.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp` i nic z `debug/`. Komentarz w
   klasie mówi wprost: "It knows nothing about the debug UI".
 - `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp` i nagłówki
@@ -184,7 +190,7 @@ od niego.
 Maze. Jako osobny target da się je bez zmian podłączyć do innego programu, w szczególności
 do zadań laboratoryjnych z tego samego kursu: nowy plik `main.cpp`, własna klasa pochodna po
 `core::Application`, `target_link_libraries(zadanie PRIVATE engine)` i okno z kontekstem
-4.1 Core, pętlą, `GL_CHECK` i klasą `gfx::Shader` jest gotowe. Granica targetu pilnuje też
+4.1 Core, pętlą, `GL_CHECK` i klasami `gfx` jest gotowe. Granica targetu pilnuje też
 reguły warstw: gdyby plik z `core/` albo `gfx/` spróbował dołączyć coś z `game/` albo ImGui,
 `engine` nie linkuje tych rzeczy i błąd wyszedłby szybko. Granicy między `core/` a `gfx/`
 target nie pilnuje, bo obie warstwy są w tej samej bibliotece: tu obowiązuje sama dyscyplina
@@ -278,8 +284,12 @@ add_library(engine STATIC
     ...
     src/core/Window.cpp
     src/core/Window.hpp
+    src/gfx/Buffer.cpp
+    src/gfx/Buffer.hpp
     src/gfx/Shader.cpp
     src/gfx/Shader.hpp
+    src/gfx/VertexArray.cpp
+    src/gfx/VertexArray.hpp
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -540,6 +550,11 @@ Stan na M0: narzędzie jest zainstalowane na Macu (LLVM 23.1.2) i przebieg po ws
 plikach `.cpp` z `src/` nie zgłasza żadnej diagnostyki. Jedyną poprawką po pierwszym
 przebiegu była zamiana `std::endl` na `'\n' << std::flush` w `Log.cpp`
 (sprawdzenie `performance-avoid-endl`).
+
+Pojedynczą diagnostykę można wyłączyć w kodzie komentarzem `// NOLINTNEXTLINE(nazwa-kontroli)`
+w linii poprzedzającej. W `src/` jest jedno takie miejsce: zamiana przesunięcia na wskaźnik w
+`src/gfx/VertexArray.cpp` (kontrola `performance-no-int-to-ptr`), opisana w
+[`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md), sekcja 5.6.
 
 Konfiguracja jest w repozytorium i narzędzie da się uruchomić powyższym poleceniem (więcej
 wariantów w [`build-macos.md`](build-macos.md), sekcja 7). Ten dokument nie podaje wyniku

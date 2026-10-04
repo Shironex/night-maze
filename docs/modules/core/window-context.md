@@ -116,7 +116,7 @@ Window::~Window() {
 
 `glfwDestroyWindow` niszczy okno razem z jego kontekstem OpenGL, a `glfwTerminate` zwalnia stan biblioteki. Wszystko, co używa kontekstu (ImGui, a później shadery, bufory i tekstury), musi zostać zwolnione **wcześniej**. O to dba kolejność niszczenia pól opisana w [`README.md`](README.md), sekcja 7.
 
-W M0 moduł `core` nie tworzy jeszcze żadnych obiektów OpenGL (żadnych `glGen*`, żadnych `glBind*`). Jedyny zasób to kontekst. Obiekty OpenGL tworzy warstwa `gfx`, na dziś jest to program shaderów w klasie `gfx::Shader` ([`../gfx/README.md`](../gfx/README.md)).
+W M0 moduł `core` nie tworzy jeszcze żadnych obiektów OpenGL (żadnych `glGen*`, żadnych `glBind*`). Jedyny zasób to kontekst. Obiekty OpenGL tworzy warstwa `gfx`: program shaderów (`gfx::Shader`), bufory (`gfx::Buffer`) i tablicę wierzchołków (`gfx::VertexArray`), zob. [`../gfx/README.md`](../gfx/README.md).
 
 ## 4. Shadery
 

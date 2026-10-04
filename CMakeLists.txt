@@ -34,8 +34,12 @@ add_library(engine STATIC
     src/core/Time.hpp
     src/core/Window.cpp
     src/core/Window.hpp
+    src/gfx/Buffer.cpp
+    src/gfx/Buffer.hpp
     src/gfx/Shader.cpp
     src/gfx/Shader.hpp
+    src/gfx/VertexArray.cpp
+    src/gfx/VertexArray.hpp
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)

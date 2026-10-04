@@ -47,7 +47,7 @@ flowchart TD
     Main --> Game["game/<br/>NightMazeApp"]
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, GL_CHECK"]
     Game --> Core
-    Gfx["gfx/<br/>Shader"] --> Core
+    Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Debug --> ImGui["Dear ImGui"]
     Core --> Glfw["GLFW"]
     Core --> Glad["GLAD"]
@@ -59,7 +59,7 @@ Cztery rzeczy do zapamiętania:
 1. `core/` nie zna ani `gfx/`, ani `game/`, ani `debug/`, ani ImGui. Biblioteka `engine` linkuje tylko `glad`, `glfw` i nagłówki GLM (`glm::glm-header-only`, na razie nieużywane w kodzie).
 2. `game/` zna `core/`, ale nie zna `debug/`.
 3. `debug/` może zależeć od wszystkiego, ale nic nie może zależeć od `debug/`. Jedynym plikiem, który zna jednocześnie `game/` i `debug/`, jest `main.cpp`.
-4. `gfx/` (opakowania obiektów OpenGL, na dziś klasa `Shader`) zna tylko `core/` i GLAD. Do `gfx/` nie prowadzi jeszcze żadna strzałka: ani `game/`, ani `debug/` go dziś nie używają. Opis warstwy: [`../gfx/README.md`](../gfx/README.md).
+4. `gfx/` (opakowania obiektów OpenGL, na dziś klasy `Shader`, `Buffer` i `VertexArray`) zna tylko `core/` i GLAD. Do `gfx/` nie prowadzi jeszcze żadna strzałka: ani `game/`, ani `debug/` go dziś nie używają. Opis warstwy: [`../gfx/README.md`](../gfx/README.md).
 
 Ta reguła tłumaczy dwie decyzje opisane niżej: dlaczego nakładka debug jest podpinana w `main.cpp` (sekcja 6) i dlaczego `core::Input` dostaje od `main.cpp` neutralne flagi "klawiatura zablokowana" i "mysz zablokowana", zamiast samemu pytać ImGui ([`input.md`](input.md), sekcje 5.6 i 5.10).
 
