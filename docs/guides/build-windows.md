@@ -280,9 +280,13 @@ Plik jest w `.gitignore`, więc nigdzie nie przeszkadza w repozytorium. Skutkiem
 katalogów jest tylko to, że układ paneli ustawiony przy uruchomieniu z terminala nie jest
 widoczny przy uruchomieniu z IDE i odwrotnie.
 
-Katalog roboczy stanie się naprawdę ważny od M1, gdy program zacznie wczytywać pliki z
-`assets/` (shadery, modele). Wtedy trzeba będzie ustalić jedną regułę wyszukiwania zasobów
-dla obu systemów. PRD wymaga budowania ścieżek wyłącznie przez `std::filesystem`.
+Katalog roboczy byłby naprawdę ważny od M1, gdy program zacznie wczytywać pliki z
+`assets/` (shadery, modele). Reguła wyszukiwania zasobów jest już ustalona i wspólna dla obu
+systemów: pliki są szukane względem pliku `.exe`, a nie katalogu roboczego, przez
+`core::assetPath` ([`../modules/core/paths.md`](../modules/core/paths.md)). Na Windowsie
+położenie programu podaje `GetModuleFileNameW`. Ten kod nie był jeszcze kompilowany przez
+MSVC, a żaden kod go jeszcze nie woła (punkty na liście kontrolnej w sekcji 11). PRD wymaga
+budowania ścieżek wyłącznie przez `std::filesystem`.
 
 ## 8. RenderDoc
 
@@ -371,6 +375,10 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 - [ ] od chwili, gdy pierwszy plik w `src/` dołącza `<glm/glm.hpp>`: brak ostrzeżeń z
       nagłówków GLM pod `/W4` (zapisać, czy katalog `_deps\glm-src` trafia do kompilatora
       przez `/external:I`)
+- [ ] `src/core/Paths.cpp` kompiluje się pod `/W4 /permissive-` bez ostrzeżeń: gałąź `_WIN32`
+      z `<windows.h>` i `GetModuleFileNameW` powstała na Macu i MSVC jeszcze jej nie widział
+      (zapisać ewentualne ostrzeżenia, na przykład o konwersji typów albo ponownej definicji
+      `NOMINMAX` lub `WIN32_LEAN_AND_MEAN`)
 - [ ] program jest w `build\debug\Debug\night_maze.exe` (albo zapisać faktyczną ścieżkę)
 
 **Uruchomienie**
@@ -408,6 +416,22 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 
 - [ ] `cmake --preset release` i `cmake --build --preset release` bez błędów i ostrzeżeń
 - [ ] `build\release\Release\night_maze.exe` uruchamia się i zachowuje tak samo
+
+**Ścieżki do assetów (`core::executableDir`, `core::assetPath`)**
+
+Opis: [`../modules/core/paths.md`](../modules/core/paths.md). Dziś nikt tych funkcji nie
+woła, więc w działającym programie nie ma czego obserwować. Pierwszy punkt da się sprawdzić
+od razu, pozostałe dopiero po pojawieniu się shaderów.
+
+- [ ] ćwiczenie 1 z `paths.md` (tymczasowe `core::logInfo` w `main`): `executableDir()`
+      wypisuje katalog pliku `.exe` (z generatorem Visual Studio `build\debug\Debug`) i nie
+      zmienia się przy uruchomieniu z innego katalogu roboczego. Wycofać zmianę
+- [ ] po pojawieniu się shaderów: katalog `assets\` leży obok `night_maze.exe`
+- [ ] po pojawieniu się shaderów: program startuje bez linii `[error]` uruchomiony z
+      katalogu repozytorium, z innego katalogu roboczego (na przykład `C:\`), dwuklikiem i z
+      Visual Studio (F5)
+- [ ] po pojawieniu się shaderów: program startuje z katalogu, którego ścieżka zawiera
+      polską literę (na przykład kopia `build\debug\Debug` w `C:\Users\<nazwa>\Żółw\`)
 
 **Git i narzędzia**
 

@@ -32,6 +32,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/core/main-loop.md`](modules/core/main-loop.md) | `src/core/Application.*`, `src/core/Time.*` | 1. Pętla gry ze stałym krokiem, akumulator, `alpha`, uśredniony FPS |
 | [`modules/core/input.md`](modules/core/input.md) | `src/core/Input.*` | 1. Klawiatura i mysz: odpytywanie, zbocze na klatkę, przesunięcie myszy, przechwycenie kursora, blokada klawiatury i myszy na czas pracy z panelem |
 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | `src/core/GlCheck.*` | 1. Makro `GL_CHECK`, model błędów `glGetError`, Debug a Release |
+| [`modules/core/paths.md`](modules/core/paths.md) | `src/core/Paths.*` | 1. Ścieżki do assetów względem pliku wykonywalnego: katalog roboczy, wywołania systemowe macOS i Windows, `std::filesystem::path`. Pierwszy użytkownik w M1 (shadery) |
 | [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui, podpięcie nakładki w `main.cpp`, jak dodać nowy panel |
 
 ### Biblioteki (`libraries/`)
@@ -54,15 +55,16 @@ Kolejność jest zgodna z kolejnością wykładów. W M0 zrealizowany jest temat
 | 3 | [`guides/build-macos.md`](guides/build-macos.md) albo [`guides/build-windows.md`](guides/build-windows.md) | Program musi się budować i uruchamiać, bo ćwiczenia polegają na zmienianiu kodu |
 | 4 | [`libraries/glfw.md`](libraries/glfw.md) | Skąd się bierze okno i kontekst |
 | 5 | [`libraries/glad.md`](libraries/glad.md) | Skąd się biorą funkcje `gl*` |
-| 6 | [`modules/core/README.md`](modules/core/README.md) | Temat 1 z lotu ptaka: warstwy, klatka jako całość, od `main` do pierwszej klatki. Kroki od 6 do 10 to najważniejsza część M0 |
+| 6 | [`modules/core/README.md`](modules/core/README.md) | Temat 1 z lotu ptaka: warstwy, klatka jako całość, od `main` do pierwszej klatki. Kroki od 6 do 11 to najważniejsza część M0 |
 | 7 | [`modules/core/window-context.md`](modules/core/window-context.md) | Okno, kontekst, GLAD, vsync |
 | 8 | [`modules/core/main-loop.md`](modules/core/main-loop.md) | Pętla główna i stały krok czasowy |
 | 9 | [`modules/core/input.md`](modules/core/input.md) | Klawiatura, mysz i ich blokada |
 | 10 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | Wykrywanie błędów OpenGL |
-| 11 | [`libraries/imgui.md`](libraries/imgui.md) | Jak działa biblioteka paneli |
-| 12 | [`modules/debug-ui.md`](modules/debug-ui.md) | Jak panele są wpięte w mój projekt i jak dodać własny |
-| 13 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera (M1). Na dziś sama biblioteka, bez kodu w projekcie |
-| 14 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
+| 11 | [`modules/core/paths.md`](modules/core/paths.md) | Jak program znajdzie pliki z `assets/` niezależnie od katalogu roboczego. Na dziś sam mechanizm, bez użytkownika w kodzie |
+| 12 | [`libraries/imgui.md`](libraries/imgui.md) | Jak działa biblioteka paneli |
+| 13 | [`modules/debug-ui.md`](modules/debug-ui.md) | Jak panele są wpięte w mój projekt i jak dodać własny |
+| 14 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera (M1). Na dziś sama biblioteka, bez kodu w projekcie |
+| 15 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
 
 ## Jak się uczyć z dokumentu modułu
 

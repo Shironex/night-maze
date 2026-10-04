@@ -28,6 +28,8 @@ add_library(engine STATIC
     src/core/Input.hpp
     src/core/Log.cpp
     src/core/Log.hpp
+    src/core/Paths.cpp
+    src/core/Paths.hpp
     src/core/Time.cpp
     src/core/Time.hpp
     src/core/Window.cpp

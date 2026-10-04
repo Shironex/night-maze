@@ -1,0 +1,357 @@
+# Moduł core: ścieżki do assetów
+
+Kamień milowy: M1. Temat wykładu: 1 (moduł `core`), pierwszy użytkownik pojawi się w temacie 2 (Programowalny potok).
+Kod: [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`src/core/Paths.cpp`](../../../src/core/Paths.cpp).
+
+Część modułu `core`. Wstęp do całego modułu jest w [`README.md`](README.md). Pozostałe części: [`window-context.md`](window-context.md) (okno i kontekst), [`main-loop.md`](main-loop.md) (pętla i czas), [`input.md`](input.md) (klawiatura i mysz), [`gl-check.md`](gl-check.md) (błędy OpenGL).
+
+## 1. Po co to jest
+
+Program będzie wczytywał pliki z dysku: shadery, potem modele i tekstury. Wszystkie mają leżeć w katalogu `assets/`. Pytanie brzmi: jak program ma ten katalog znaleźć. Najprostsza odpowiedź, czyli ścieżka względna (relative path) `"assets/shaders/triangle.vert"`, działa tylko wtedy, gdy program został uruchomiony z "właściwego" miejsca. Ten sam plik `.exe` uruchomiony z terminala, z IDE i dwuklikiem dostaje trzy różne katalogi robocze (working directory), a ścieżka względna jest liczona właśnie od katalogu roboczego. To ta sama historia co z plikiem `imgui.ini`, który raz powstaje w katalogu repozytorium, a raz obok programu ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Dla `imgui.ini` skutkiem jest tylko inny układ paneli. Dla shaderów skutkiem byłby program, który się nie uruchamia.
+
+Dlatego szukam assetów **względem pliku wykonywalnego**, a nie względem katalogu roboczego. Dwie funkcje w `core`:
+
+- `core::executableDir()` zwraca bezwzględną ścieżkę katalogu, w którym leży uruchomiony program,
+- `core::assetPath("shaders/triangle.vert")` zwraca `executableDir() / "assets" / "shaders/triangle.vert"`.
+
+PRD (sekcja 6) wymienia "ścieżki do assetów" jako jedną z odpowiedzialności warstwy `core`.
+
+Stan na dziś: obie funkcje są gotowe i zbudowane w bibliotece `engine`, ale **żaden kod ich jeszcze nie woła**. Pierwszym użytkownikiem będzie wczytywanie shaderów w M1. Katalog `assets/` jeszcze nie istnieje, ani w repozytorium, ani obok programu, i żaden krok CMake go nie tworzy: pojawi się razem z pierwszymi plikami shaderów.
+
+## 2. Teoria
+
+### 2.1 Katalog roboczy
+
+Każdy proces ma **katalog roboczy** (current working directory): katalog, od którego system liczy wszystkie ścieżki względne podane przez ten proces. Proces dziedziczy go po tym, kto go uruchomił. W C++ można go odczytać przez `std::filesystem::current_path()`.
+
+| Sposób uruchomienia | Katalog roboczy |
+|---|---|
+| `./build/debug/night_maze` wpisane w katalogu repozytorium | katalog repozytorium |
+| `./night_maze` wpisane w `build/debug` | `build/debug` |
+| dwuklik na pliku programu na Windowsie | katalog z plikiem `.exe` |
+| IDE (F5) | to, co ustawiono w konfiguracji uruchamiania |
+
+Program nie ma wpływu na to, skąd zostanie uruchomiony, więc nie może zakładać, że katalog roboczy to katalog repozytorium.
+
+### 2.2 Ścieżka bezwzględna i względna
+
+- **Ścieżka bezwzględna** (absolute path) zaczyna się od korzenia systemu plików (`/Users/...` na macOS, `C:\Users\...` na Windowsie) i wskazuje to samo miejsce niezależnie od katalogu roboczego.
+- **Ścieżka względna** (relative path) nie ma korzenia i system dokleja ją do katalogu roboczego.
+
+`executableDir()` zawsze zwraca ścieżkę bezwzględną, więc `assetPath(...)` też jest bezwzględna, o ile argument jest względny (sekcja 7, pułapka 2).
+
+### 2.3 Dlaczego nie `argv[0]`
+
+Pierwszy argument funkcji `main`, `argv[0]`, zwyczajowo zawiera nazwę programu, więc kusi, żeby z niego wyciągnąć katalog. To nie działa, bo `argv[0]` jest tylko napisem, który podał proces uruchamiający. Zmierzone na macOS małym programem testowym:
+
+| Jak uruchomiono | `argv[0]` |
+|---|---|
+| `../bin/raw` z sąsiedniego katalogu | `../bin/raw` (ścieżka względna, znów zależna od katalogu roboczego) |
+| `./rawlink` (dowiązanie symboliczne do programu) | `./rawlink` (ścieżka dowiązania, nie pliku) |
+| `raw`, znalezione przez zmienną `PATH` | `raw` (sama nazwa, bez żadnego katalogu) |
+
+Do tego proces uruchamiający może wpisać do `argv[0]` dowolny tekst, a standard C++ pozwala nawet na pusty napis. Trzeba więc zapytać system operacyjny.
+
+### 2.4 Pytanie do systemu operacyjnego
+
+Biblioteka standardowa C++ (w tym `std::filesystem`) nie ma funkcji "gdzie jest plik wykonywalny". Każdy system ma własne wywołanie:
+
+| System | Funkcja | Nagłówek |
+|---|---|---|
+| macOS | `_NSGetExecutablePath` | `<mach-o/dyld.h>` |
+| Windows | `GetModuleFileNameW` | `<windows.h>` |
+
+To jedyne miejsce w `src/`, w którym kod rozgałęzia się na systemy dyrektywą preprocesora `#if`. Preprocesor (opisany przy makrze `GL_CHECK`, [`gl-check.md`](gl-check.md), sekcja 2.2) zostawia kompilatorowi tylko jedną gałąź: na Macu kompilator w ogóle nie widzi kodu dla Windows i odwrotnie. Makro `__APPLE__` definiuje sam kompilator na systemach Apple, a `_WIN32` na Windowsie (także 64 bitowym).
+
+### 2.5 `std::filesystem::path`
+
+`std::filesystem::path` (nagłówek `<filesystem>`, C++17) to obiekt przechowujący ścieżkę. Sam z siebie nie dotyka dysku: to "napis, który wie, że jest ścieżką". Używam trzech jego operacji i jednej funkcji:
+
+| Operacja | Co robi | Czy czyta dysk |
+|---|---|---|
+| `a / b` (`operator/`) | skleja dwie części ścieżki, wstawiając między nie separator właściwy dla systemu | nie |
+| `p.parent_path()` | zwraca ścieżkę bez ostatniego elementu: dla `/a/b/night_maze` daje `/a/b` | nie |
+| `std::filesystem::path(napis)` | tworzy ścieżkę z napisu wąskiego (`char`) albo szerokiego (`wchar_t`) | nie |
+| `std::filesystem::canonical(p)` | zwraca ścieżkę bezwzględną do prawdziwego pliku: rozwija dowiązania symboliczne oraz elementy `.` i `..` | tak, plik musi istnieć |
+
+**Dlaczego nigdy nie sklejam ścieżek jako napisów.** Zapis `dir + "/assets/" + name` ma trzy wady. Separatorem na Windowsie jest `\`, a na macOS `/` (Windows zwykle akceptuje też `/`, ale wtedy w jednej ścieżce mieszają się oba). Łatwo o podwójny albo brakujący separator, gdy jedna z części już go ma albo nie ma. I najważniejsze: na Windowsie natywna ścieżka składa się ze znaków szerokich, więc sklejanie przez `std::string` wymusza konwersję, która może zepsuć znaki spoza ASCII (sekcja 2.6). `operator/` załatwia wszystkie trzy sprawy. PRD wymaga budowania ścieżek wyłącznie przez `std::filesystem`.
+
+### 2.6 Znaki szerokie na Windowsie
+
+Windows przechowuje nazwy plików w UTF-16, a jego funkcje systemowe występują parami: wersja z końcówką `A` przyjmuje i zwraca `char` w lokalnej stronie kodowej (ANSI code page), a wersja z końcówką `W` używa `wchar_t` (znak szeroki, wide character, na Windowsie 16 bitów). Strona kodowa ma tylko 256 znaków i zależy od ustawień systemu, więc ścieżka z literami spoza niej nie da się w niej zapisać. To nie jest przypadek teoretyczny: katalog użytkownika często zawiera imię, na przykład `C:\Users\Łukasz\...`, a program leży właśnie gdzieś pod nim.
+
+Dlatego wołam `GetModuleFileNameW`, trzymam wynik w `std::wstring` (napis ze znaków `wchar_t`) i buduję `std::filesystem::path` prosto z niego. Na Windowsie `path` przechowuje ścieżkę wewnętrznie właśnie jako `wchar_t`, więc po drodze nie ma żadnej konwersji. Na macOS ścieżki są napisami `char` w UTF-8 i problem nie występuje.
+
+## 3. Jak to działa w OpenGL
+
+Ta część modułu nie ma związku z OpenGL: nie woła żadnej funkcji `gl*` ani GLFW. Rozmawia z systemem operacyjnym i z biblioteką standardową:
+
+| Wywołanie | System | Co robi |
+|---|---|---|
+| `_NSGetExecutablePath(buf, &bufsize)` | macOS | Kopiuje ścieżkę programu do bufora i zwraca 0. Gdy bufor jest za mały, zwraca -1 i wpisuje do `bufsize` wymagany rozmiar (razem z kończącym zerem). Zwraca "jakąś" ścieżkę do programu, niekoniecznie prawdziwą: może to być dowiązanie symboliczne |
+| `GetModuleFileNameW(hModule, lpFilename, nSize)` | Windows | Dla `hModule` równego `nullptr` wpisuje do bufora pełną ścieżkę programu bieżącego procesu. Zwraca liczbę zapisanych znaków bez kończącego zera. Gdy bufor jest za mały, obcina napis, zwraca `nSize` i ustawia błąd `ERROR_INSUFFICIENT_BUFFER`. Przy niepowodzeniu zwraca 0 |
+| `std::filesystem::canonical(p)` | oba (używane w gałęzi macOS) | Rozwija dowiązania i `..`, zwraca ścieżkę bezwzględną. Rzuca `std::filesystem::filesystem_error`, gdy plik nie istnieje |
+
+## 4. Shadery
+
+Ta część modułu nie ma shaderów. Jest dla nich przygotowaniem: pliki `.vert` i `.frag` będą leżeć w `assets/shaders/`, a kod, który je wczyta w M1, zapyta o ich położenie przez `core::assetPath`.
+
+## 5. Kod w projekcie
+
+### 5.1 Pliki
+
+| Plik | Co zawiera |
+|---|---|
+| [`src/core/Paths.hpp`](../../../src/core/Paths.hpp) | deklaracje `core::executableDir` i `core::assetPath`. Dołącza tylko `<filesystem>` |
+| [`src/core/Paths.cpp`](../../../src/core/Paths.cpp) | stała `ASSETS_DIRECTORY`, pomocnicza `executableFile` w dwóch wersjach (macOS, Windows) i obie funkcje publiczne |
+
+Oba pliki są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). To wolne funkcje (free functions) w przestrzeni nazw `core`: nie ma klasy, nie ma stanu, nie ma zmiennych globalnych i nic nie jest zapamiętywane między wywołaniami.
+
+```mermaid
+flowchart TD
+    Asset["assetPath(relativePath)"] --> Dir["executableDir()"]
+    Dir --> File["executableFile()<br/>jedna z dwóch wersji, wybór przez #if"]
+    File --> Mac["macOS: _NSGetExecutablePath<br/>potem std::filesystem::canonical"]
+    File --> Win["Windows: GetModuleFileNameW<br/>bufor std::wstring"]
+    Dir --> Parent["parent_path()<br/>katalog zamiast pliku"]
+    Asset --> Join["operator/<br/>katalog / assets / relativePath"]
+```
+
+### 5.2 Nagłówek
+
+```cpp
+/// Absolute path of the directory that contains the running executable.
+/// Throws std::runtime_error if the operating system cannot report it.
+std::filesystem::path executableDir();
+
+/// Path of a file in the assets directory that lies next to the executable, for example
+/// assetPath("shaders/triangle.vert"). It does not check that the file exists: the code
+/// that opens the file reports that.
+std::filesystem::path assetPath(const std::filesystem::path& relativePath);
+```
+
+- Obie funkcje zwracają `std::filesystem::path` przez wartość. Wołający dostaje własny obiekt i może go od razu przekazać dalej, na przykład do `std::ifstream`.
+- `assetPath` przyjmuje `const std::filesystem::path&`. Literał `"shaders/triangle.vert"` zamienia się na `path` niejawnie, więc wywołanie `assetPath("shaders/triangle.vert")` działa bez dodatkowego zapisu.
+- Nagłówek nie dołącza ani `<windows.h>`, ani `<mach-o/dyld.h>`. Nagłówki systemowe są tylko w pliku `.cpp`, więc nie "wyciekają" do plików, które dołączają `core/Paths.hpp` (sekcja 7, pułapka 5).
+- `std::filesystem::filesystem_error`, który może rzucić `canonical`, dziedziczy po `std::runtime_error` (przez `std::system_error`), więc zdanie "Throws std::runtime_error" jest prawdziwe także dla niego. Wyjątek doleci do `catch (const std::exception&)` w `main`.
+
+### 5.3 Nagłówki systemowe i `#if`
+
+```cpp
+// The C++ standard library cannot tell where the executable is, so each operating system
+// needs its own call. This is the only platform specific code in the file.
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+
+#include <cstdint>
+#elif defined(_WIN32)
+// Keep windows.h small, and stop it from defining the min and max macros, which break
+// std::min and std::max. The header is included only here, never in a .hpp file.
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#else
+#error "core/Paths.cpp supports macOS and Windows only"
+#endif
+```
+
+- `#if defined(__APPLE__)`, `#elif defined(_WIN32)`, `#else`: preprocesor wybiera dokładnie jedną gałąź.
+- `<mach-o/dyld.h>` deklaruje `_NSGetExecutablePath`. `<cstdint>` daje typ `std::uint32_t`, którego ta funkcja używa dla rozmiaru bufora.
+- `WIN32_LEAN_AND_MEAN` każe nagłówkowi `<windows.h>` pominąć rzadko używane części (krótsza kompilacja, mniej nazw). `NOMINMAX` zabrania mu definiowania makr `min` i `max`, które psują `std::min` i `std::max` z biblioteki standardowej. Oba makra muszą być zdefiniowane **przed** `#include <windows.h>`, inaczej nie mają skutku.
+- `#error` przerywa kompilację z podanym komunikatem. Projekt wspiera macOS i Windows. Zamiast pisać gałąź dla Linuksa, której nie mam jak przetestować, wolę czytelny błąd kompilacji.
+
+### 5.4 Stała `ASSETS_DIRECTORY`
+
+```cpp
+// Name of the directory with shaders, models and textures, next to the executable.
+constexpr const char* ASSETS_DIRECTORY = "assets";
+```
+
+Nazwa katalogu jest w jednym miejscu i ma nazwę, zamiast być literałem w środku wyrażenia. `constexpr` oznacza stałą znaną w czasie kompilacji. Stała stoi w anonimowej przestrzeni nazw, więc jest widoczna tylko w `Paths.cpp`.
+
+### 5.5 `executableFile` na macOS
+
+```cpp
+// Full path of the executable file on macOS.
+std::filesystem::path executableFile() {
+    // The first call has no buffer (size 0), so it fails on purpose and writes the size
+    // it needs, including the terminating zero, into size.
+    std::uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+
+    // The second call gets a buffer of exactly that size and returns 0 on success.
+    std::string buffer(size, '\0');
+    if (_NSGetExecutablePath(buffer.data(), &size) != 0) {
+        throw std::runtime_error("Failed to read the executable path (_NSGetExecutablePath)");
+    }
+
+    // The reported path may go through a symbolic link or contain ".." parts. canonical
+    // resolves both and returns the absolute path of the real file. c_str() stops at the
+    // terminating zero that the system wrote into the buffer.
+    return std::filesystem::canonical(buffer.c_str());
+}
+```
+
+| Linia | Co robi |
+|---|---|
+| `std::uint32_t size = 0;` | Rozmiar bufora. Funkcja systemowa chce dokładnie tego typu, przez wskaźnik, bo sama do niego pisze |
+| `_NSGetExecutablePath(nullptr, &size);` | Pierwsze wywołanie, celowo z rozmiarem 0. Bufor jest "za mały", więc funkcja zwraca -1 i wpisuje do `size` potrzebny rozmiar. Wyniku nie sprawdzam: wiem, że to niepowodzenie, chodzi tylko o `size` |
+| `std::string buffer(size, '\0');` | Napis o długości `size`, wypełniony zerami. Pamięć leży na stercie i zwalnia się sama (RAII). Dzięki temu nie zakładam żadnej maksymalnej długości ścieżki |
+| `_NSGetExecutablePath(buffer.data(), &size) != 0` | Drugie wywołanie z buforem właściwego rozmiaru. `buffer.data()` daje wskaźnik `char*` do pamięci napisu. Wynik różny od 0 to błąd, więc rzucam wyjątek |
+| `std::filesystem::canonical(buffer.c_str())` | `buffer` ma długość `size`, czyli ścieżkę plus kończące zero. `c_str()` daje `const char*`, a `path` zbudowany ze wskaźnika czyta do pierwszego zera, więc zero nie trafia do ścieżki. `canonical` zamienia wynik na prawdziwą ścieżkę bezwzględną |
+
+Dlaczego `canonical` jest potrzebne, widać w pomiarze (program testowy uruchomiony na trzy sposoby, `<S>` to katalog testu):
+
+| Jak uruchomiono | Co zwraca `_NSGetExecutablePath` | Po `canonical` i `parent_path()` |
+|---|---|---|
+| `../bin/raw` z katalogu `<S>/other` | `<S>/other/../bin/raw` | `<S>/bin` |
+| `./rawlink` (dowiązanie w `<S>/other` do `<S>/bin/raw`) | `<S>/other/rawlink` | `<S>/bin` |
+| `raw` znalezione przez `PATH` | `<S>/bin/raw` | `<S>/bin` |
+
+W drugim wierszu bez `canonical` katalogiem programu byłby `<S>/other`, czyli katalog dowiązania, a `assets/` leży obok prawdziwego pliku.
+
+### 5.6 `executableFile` na Windowsie
+
+**Ta gałąź nie została jeszcze skompilowana ani uruchomiona.** Jest napisana według dokumentacji Microsoftu i czeka na pierwszy build na PC ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11).
+
+```cpp
+// Longest path Windows can report, in wide characters, including the terminating zero.
+// MAX_PATH (260) is not a hard limit on current Windows, so one buffer of the documented
+// maximum is used instead of growing a small buffer in a loop.
+constexpr DWORD MAX_LONG_PATH_LENGTH = 32768;
+
+// Full path of the executable file on Windows.
+std::filesystem::path executableFile() {
+    // Wide characters (UTF-16), so a user name with non ASCII letters is not damaged.
+    // The buffer lives on the heap: 32768 wide characters are 64 KB, too much for the stack.
+    std::wstring buffer(MAX_LONG_PATH_LENGTH, L'\0');
+
+    // nullptr as the module means the executable of the current process. The function
+    // returns the number of characters written, without the terminating zero.
+    const DWORD length = GetModuleFileNameW(nullptr, buffer.data(), MAX_LONG_PATH_LENGTH);
+    if (length == 0) {
+        throw std::runtime_error("Failed to read the executable path (GetModuleFileNameW)");
+    }
+    // A result equal to the buffer size means the path did not fit and was cut off.
+    if (length >= MAX_LONG_PATH_LENGTH) {
+        throw std::runtime_error("The executable path is too long (GetModuleFileNameW)");
+    }
+
+    // Cut the string down to the characters that were written. The path is built from the
+    // wide string directly, without converting it to narrow characters.
+    buffer.resize(length);
+    return std::filesystem::path(buffer);
+}
+```
+
+| Linia | Co robi |
+|---|---|
+| `constexpr DWORD MAX_LONG_PATH_LENGTH = 32768;` | `DWORD` to 32 bitowa liczba bez znaku z `<windows.h>`, typ parametru `nSize` i typ wyniku funkcji. Stara stała `MAX_PATH` (260 znaków) nie jest już twardą granicą: Windows obsługuje ścieżki do około 32767 znaków. Bufor ma 32768, czyli maksimum plus kończące zero |
+| `std::wstring buffer(MAX_LONG_PATH_LENGTH, L'\0');` | Napis ze znaków szerokich, wypełniony zerami. `L'\0'` to literał znaku szerokiego. Bufor jest na stercie: 32768 znaków po 2 bajty to 64 KB, za dużo na zmienną lokalną na stosie |
+| `GetModuleFileNameW(nullptr, buffer.data(), MAX_LONG_PATH_LENGTH)` | `nullptr` jako moduł oznacza program bieżącego procesu. `buffer.data()` daje `wchar_t*`. Trzeci argument to rozmiar bufora w znakach |
+| `if (length == 0)` | Zero oznacza niepowodzenie funkcji |
+| `if (length >= MAX_LONG_PATH_LENGTH)` | Gdy ścieżka się nie mieści, funkcja obcina ją i zwraca rozmiar bufora (oraz ustawia `ERROR_INSUFFICIENT_BUFFER`). Poprawny wynik jest zawsze mniejszy od rozmiaru bufora, więc wystarczy porównać wynik i nie trzeba wołać `GetLastError`. Obciętej ścieżki nie wolno użyć, stąd wyjątek |
+| `buffer.resize(length);` | Skracam napis do znaków faktycznie zapisanych. Bez tego `path` dostałby ścieżkę z tysiącami znaków zerowych na końcu |
+| `return std::filesystem::path(buffer);` | Ścieżka zbudowana wprost z `std::wstring`, bez przejścia przez `char` (sekcja 2.6) |
+
+Wybrałem jeden duży bufor zamiast pętli powiększającej mały bufor, bo jest prostszy do wytłumaczenia: jedno wywołanie, dwa warunki. Koszt to 64 KB przydzielone na chwilę przy każdym wywołaniu.
+
+Gałąź Windows nie woła `canonical`: `GetModuleFileNameW` zwraca pełną ścieżkę pliku, z którego załadowano program.
+
+### 5.7 Funkcje publiczne
+
+```cpp
+std::filesystem::path executableDir() {
+    return executableFile().parent_path();
+}
+
+std::filesystem::path assetPath(const std::filesystem::path& relativePath) {
+    // operator/ joins path parts with the separator of the current system.
+    return executableDir() / ASSETS_DIRECTORY / relativePath;
+}
+```
+
+- `executableDir` odcina nazwę pliku: z `/.../build/debug/night_maze` zostaje `/.../build/debug`. Ta funkcja jest już wspólna dla obu systemów, bo różnice zamknęła `executableFile`.
+- `assetPath` skleja trzy części operatorem `/`. Wyrażenie liczy się od lewej: najpierw `executableDir() / ASSETS_DIRECTORY` (tu `const char*` zamienia się na `path`), potem wynik `/ relativePath`. Dla `assetPath("shaders/x")` w programie testowym leżącym w `<S>/bin` wynik to `<S>/bin/assets/shaders/x`.
+- `assetPath` **nie sprawdza**, czy plik istnieje. To celowe: funkcja tylko buduje ścieżkę. Błąd "nie ma pliku" zgłosi kod, który plik otwiera, bo tylko on wie, co z tym zrobić i jaki komunikat wypisać.
+- Każde wywołanie pyta system od nowa. Nie zapamiętuję wyniku w zmiennej statycznej: to byłby ukryty stan globalny, a pytanie jest tanie i zadawane tylko przy wczytywaniu plików, nie co klatkę.
+
+### 5.8 Jak to zostało sprawdzone
+
+Na macOS gałąź sprawdziłem małym programem testowym poza repozytorium, który dołącza `src/core/Paths.cpp` i wypisuje wynik obu funkcji. Uruchomiony z własnego katalogu, z katalogu `/`, przez ścieżkę z `..`, przez dowiązanie symboliczne i przez `PATH` za każdym razem wypisał ten sam katalog prawdziwego pliku. W samym programie `night_maze` funkcje nie są jeszcze wołane, więc w działającej grze nie ma czego obserwować.
+
+## 6. Panel ImGui
+
+Ścieżki nie mają elementu w panelu. Gdy pojawią się shadery, skutkiem błędnej ścieżki będzie linia `[error]` w konsoli od kodu, który otwiera plik.
+
+## 7. Pułapki
+
+1. **Ścieżka względna "działa u mnie".** `"assets/shaders/x.vert"` działa przy uruchomieniu z katalogu, w którym leży `assets/`, i przestaje działać z każdego innego. Błąd wychodzi dopiero u kogoś, kto uruchomił program inaczej (IDE, dwuklik). Dlatego ścieżki do assetów mają iść przez `core::assetPath`.
+2. **Argument bezwzględny w `assetPath`.** `operator/` ma regułę: jeśli prawa strona jest ścieżką bezwzględną, **zastępuje** lewą. `assetPath("/etc/passwd")` zwróci więc `/etc/passwd`, a nie plik w `assets/`. Argument ma być względny, bez ukośnika na początku.
+3. **`argv[0]` jako położenie programu.** To tylko napis od procesu uruchamiającego: bywa względny, bywa samą nazwą, bywa dowiązaniem (sekcja 2.3).
+4. **Sklejanie ścieżek jak napisów.** `dir + "/" + name` albo `dir + "\\" + name` wiąże kod z jednym systemem i na Windowsie wymusza konwersję do `char` (sekcja 2.5).
+5. **`<windows.h>` w nagłówku.** Ten nagłówek definiuje tysiące nazw i makr (bez `NOMINMAX` także `min` i `max`), które potem psują niewinny kod w plikach dołączających mój nagłówek. Dlatego jest tylko w `Paths.cpp`, w gałęzi `_WIN32`.
+6. **Wersja `A` zamiast `W`.** `GetModuleFileNameA` zwraca `char` w lokalnej stronie kodowej i gubi znaki, których w niej nie ma. Program działałby u mnie, a nie u kogoś z polską literą w nazwie użytkownika.
+7. **`path::string()` na Windowsie.** `string()` zamienia ścieżkę na `char` i może zgubić znaki spoza strony kodowej (albo rzucić wyjątek). Do otwierania plików przekazuję sam obiekt `path` (`std::ifstream` przyjmuje `std::filesystem::path`), a `string()` zostawiam do komunikatów w logu.
+8. **`MAX_PATH`.** Bufor na 260 znaków wygląda w poradnikach jak norma, ale dłuższe ścieżki istnieją. Za mały bufor nie daje błędu wprost: funkcja zwraca obciętą ścieżkę i rozmiar bufora, więc bez sprawdzenia wyniku program szukałby assetów w nieistniejącym katalogu.
+9. **Dowiązanie symboliczne do programu.** Bez `canonical` katalogiem programu byłby katalog dowiązania (sekcja 5.5). Z `canonical` jest nim katalog prawdziwego pliku i tam musi leżeć `assets/`.
+10. **`canonical` czyta dysk.** W odróżnieniu od `operator/` i `parent_path()` wymaga, żeby plik istniał, i rzuca wyjątek, gdy go nie ma. Dla ścieżki działającego programu plik istnieje, ale tej funkcji nie należy używać "na zapas" dla ścieżek plików, których może nie być.
+11. **Katalog programu to nie katalog repozytorium.** `executableDir()` wskazuje `build/debug` (na Windowsie z generatorem Visual Studio `build\debug\Debug`), a nie korzeń repozytorium. Katalog `assets/` musi więc trafić obok programu podczas budowania. Dziś żaden krok CMake tego nie robi.
+
+## 8. Ćwiczenia
+
+1. **Katalog programu a katalog roboczy.** W `src/main.cpp` dołącz tymczasowo `"core/Paths.hpp"` i `<filesystem>`, a na początku bloku `try` w `main` dopisz `core::logInfo("exe: " + core::executableDir().string());` oraz `core::logInfo("cwd: " + std::filesystem::current_path().string());`. Zbuduj i uruchom program dwa razy: z katalogu repozytorium (`./build/debug/night_maze`) i z katalogu `build/debug` (`./night_maze`). Która linia się zmienia, a która nie? Wycofaj zmiany.
+2. **Dowiązanie.** Z kodem z ćwiczenia 1 utwórz w katalogu domowym dowiązanie symboliczne do programu (`ln -s "$PWD/build/debug/night_maze" ~/nm`) i uruchom `~/nm`. Jaki katalog wypisuje `exe`? Zakomentuj tymczasowo `canonical` (zwracając `std::filesystem::path(buffer.c_str())`), zbuduj i powtórz. Wyjaśnij różnicę, przywróć kod i usuń dowiązanie.
+3. **`assetPath` bez pliku.** Z kodem z ćwiczenia 1 dopisz `core::logInfo(core::assetPath("shaders/triangle.vert").string());`. Program wypisuje ścieżkę, choć katalog `assets/` nie istnieje. Wskaż w kodzie, dlaczego nie ma błędu, i powiedz, kto ten błąd zgłosi, gdy plik będzie naprawdę otwierany. Wycofaj zmiany.
+4. **Argument bezwzględny.** W tym samym miejscu wypisz `core::assetPath("/tmp/x").string()`. Wyjaśnij wynik regułą `operator/` z sekcji 7. Wycofaj zmiany.
+5. **Na kartce.** Dla programu w `/Users/a/night-maze/build/debug/night_maze` zapisz wynik `executableFile()`, `executableDir()` i `assetPath("models/gate.obj")`.
+
+## 9. Pytania kontrolne
+
+1. **Dlaczego nie wystarczy ścieżka względna `"assets/shaders/x.vert"`?**
+   Ścieżka względna jest liczona od katalogu roboczego procesu, a ten zależy od sposobu uruchomienia (terminal, IDE, dwuklik). Program działałby tylko uruchomiony z jednego konkretnego katalogu.
+
+2. **Co to jest katalog roboczy i skąd proces go ma?**
+   To katalog, od którego system liczy ścieżki względne procesu. Proces dziedziczy go po tym, kto go uruchomił. W C++ odczytuje go `std::filesystem::current_path()`.
+
+3. **Dlaczego nie biorę katalogu programu z `argv[0]`?**
+   `argv[0]` to napis podany przez proces uruchamiający. Bywa ścieżką względną, samą nazwą (gdy program znaleziono przez `PATH`), ścieżką dowiązania albo czymkolwiek innym. System operacyjny zna prawdziwe położenie pliku, więc pytam jego.
+
+4. **Jakie funkcje systemowe podają położenie programu i dlaczego są za `#if`?**
+   Na macOS `_NSGetExecutablePath` z `<mach-o/dyld.h>`, na Windowsie `GetModuleFileNameW` z `<windows.h>`. Biblioteka standardowa nie ma odpowiednika, a każda z tych funkcji istnieje tylko na swoim systemie, więc preprocesor musi zostawić kompilatorowi jedną gałąź.
+
+5. **Po co dwa wywołania `_NSGetExecutablePath`?**
+   Pierwsze, z rozmiarem 0, celowo się nie udaje i wpisuje do `size` potrzebny rozmiar bufora. Drugie dostaje bufor dokładnie tej wielkości. Dzięki temu nie zakładam maksymalnej długości ścieżki.
+
+6. **Co robi `std::filesystem::canonical` i dlaczego jest w gałęzi macOS?**
+   Rozwija dowiązania symboliczne oraz `.` i `..` i zwraca bezwzględną ścieżkę prawdziwego pliku. `_NSGetExecutablePath` może zwrócić ścieżkę dowiązania albo ścieżkę z `..` w środku, a `assets/` leży obok prawdziwego pliku.
+
+7. **Dlaczego `GetModuleFileNameW`, a nie wersja `A`, i dlaczego bufor to `std::wstring`?**
+   Windows trzyma nazwy plików w UTF-16. Wersja `A` zamienia je na lokalną stronę kodową i gubi znaki spoza niej, na przykład polskie litery w nazwie użytkownika. Wersja `W` oddaje `wchar_t`, a `std::filesystem::path` na Windowsie przechowuje właśnie takie znaki, więc nie ma konwersji.
+
+8. **Jak kod rozpoznaje, że ścieżka nie zmieściła się w buforze na Windowsie?**
+   `GetModuleFileNameW` zwraca wtedy rozmiar bufora (i ustawia `ERROR_INSUFFICIENT_BUFFER`), a przy sukcesie liczbę mniejszą od rozmiaru. Warunek `length >= MAX_LONG_PATH_LENGTH` rzuca wyjątek. Wynik 0 oznacza niepowodzenie samej funkcji.
+
+9. **Dlaczego bufor ma 32768 znaków, a nie `MAX_PATH`?**
+   `MAX_PATH` (260) nie jest twardą granicą na obecnym Windowsie, ścieżki mogą mieć do około 32767 znaków. Jeden bufor o tym rozmiarze (plus zero) wystarcza zawsze i jest prostszy niż pętla powiększająca bufor. Leży na stercie, bo to 64 KB.
+
+10. **Dlaczego ścieżki sklejam operatorem `/`, a nie dodawaniem napisów?**
+    `operator/` wstawia separator właściwy dla systemu, nie dubluje go i nie wymaga konwersji znaków szerokich na wąskie. Napisy z `"/"` albo `"\\"` wiążą kod z jednym systemem.
+
+11. **Co zwróci `assetPath` dla pliku, którego nie ma?**
+    Normalną ścieżkę. Funkcja tylko ją buduje i nie zagląda na dysk. Brak pliku zgłasza kod, który go otwiera.
+
+12. **Dlaczego `<windows.h>` jest tylko w `Paths.cpp` i po co `WIN32_LEAN_AND_MEAN` oraz `NOMINMAX`?**
+    Nagłówek wprowadza ogromną liczbę nazw i makr. W pliku `.hpp` trafiłby do każdego pliku, który ten nagłówek dołącza. `WIN32_LEAN_AND_MEAN` pomija rzadko używane części, `NOMINMAX` zabrania definiowania makr `min` i `max`, które kolidują z `std::min` i `std::max`.
+
+13. **Kto dziś woła `executableDir` i `assetPath`?**
+    Nikt. Funkcje są zbudowane w `engine` i sprawdzone osobnym programem testowym na macOS. Pierwszym użytkownikiem będzie wczytywanie shaderów w M1, a katalog `assets/` jeszcze nie istnieje.
+
+## 10. Źródła
+
+- Apple, strona podręcznika `dyld(3)` (w terminalu na macOS: `man 3 dyld`), opis `_NSGetExecutablePath`: zwracana wartość, rozmiar bufora, uwaga o dowiązaniach symbolicznych.
+- Microsoft Learn, `GetModuleFileNameW`: <https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew> (parametry, zwracana wartość, obcięcie i `ERROR_INSUFFICIENT_BUFFER`).
+- Microsoft Learn, "Maximum Path Length Limitation": <https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation> (`MAX_PATH` i ścieżki do 32767 znaków).
+- cppreference, biblioteka `std::filesystem`: <https://en.cppreference.com/w/cpp/filesystem> (strony `path`, `path::operator/`, `path::parent_path`, `canonical`, `current_path`).
+- Przewodniki w tym repozytorium: [`../../guides/build-windows.md`](../../guides/build-windows.md) (sekcja 7 o katalogu roboczym, sekcja 11 z listą kontrolną), [`../../guides/project-structure.md`](../../guides/project-structure.md) (sekcja 4.3 o `imgui.ini`).
+- PRD ([`../../PRD.pdf`](../../PRD.pdf)), sekcja 6: odpowiedzialności warstwy `core`.

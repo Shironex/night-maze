@@ -37,11 +37,12 @@ night-maze/
 │       └── src/gl.c            # loader wypełniający wskaźniki funkcji
 ├── src/
 │   ├── main.cpp                # punkt wejścia, łączy game/ z debug/
-│   ├── core/                   # warstwa bazowa: okno, wejście, czas, logi, GL_CHECK
+│   ├── core/                   # warstwa bazowa: okno, wejście, czas, logi, ścieżki, GL_CHECK
 │   │   ├── Application.hpp/.cpp    # klasa bazowa programu, pętla główna
 │   │   ├── GlCheck.hpp/.cpp        # makro GL_CHECK
 │   │   ├── Input.hpp/.cpp          # stan klawiatury i myszy, blokady, kursor
 │   │   ├── Log.hpp/.cpp            # logowanie do konsoli
+│   │   ├── Paths.hpp/.cpp          # ścieżki do assetów względem programu
 │   │   ├── Time.hpp/.cpp           # zegar klatki, stały krok symulacji, FPS
 │   │   └── Window.hpp/.cpp         # okno GLFW i kontekst OpenGL (RAII)
 │   ├── debug/                  # interfejs debugowy (Dear ImGui)
@@ -69,6 +70,7 @@ night-maze/
         │   ├── gl-check.md             # GL_CHECK i błędy OpenGL
         │   ├── input.md                # klawiatura i jej blokada
         │   ├── main-loop.md            # pętla główna, stały krok, FPS
+        │   ├── paths.md                # ścieżki do assetów, katalog programu
         │   └── window-context.md       # okno, kontekst, GLAD, vsync, Log
         └── debug-ui.md             # panele ImGui w projekcie
 ```
@@ -98,6 +100,7 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Time.*` | `core::Time`: delta czasu, akumulator stałego kroku (`FIXED_DT`), uśrednione FPS | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
+| `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Na razie nikt tych funkcji nie woła | [`../modules/core/paths.md`](../modules/core/paths.md) |
 | `src/game/NightMazeApp.*` | `game::NightMazeApp`: `onUpdate`, `onRender` (viewport, czyszczenie ekranu), kolor tła | [`../modules/core/README.md`](../modules/core/README.md) |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
@@ -125,7 +128,9 @@ main.cpp   łączy game/ i debug/
 
 Jak to widać w kodzie:
 
-- `src/core/` dołącza tylko własne nagłówki, GLAD, GLFW i bibliotekę standardową. Także
+- `src/core/` dołącza tylko własne nagłówki, GLAD, GLFW i bibliotekę standardową. Jedynym
+  wyjątkiem jest `Paths.cpp`, który dołącza nagłówek systemowy (`<mach-o/dyld.h>` na macOS,
+  `<windows.h>` na Windowsie), bo położenie programu zna tylko system operacyjny. Także
   blokada klawiatury i myszy na czas pracy z panelem jest zrobiona bez ImGui w `core/`:
   `core::Input` ma neutralne flagi `setKeyboardBlocked` i `setMouseBlocked`, a ustawia je
   `main.cpp`.
@@ -809,15 +814,16 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
    `game`, `debug`). Publiczne API dostaje komentarze Doxygen (`///`).
 
 3. **Dopisz oba pliki do właściwej listy w `CMakeLists.txt`**, zachowując kolejność
-   alfabetyczną. Przykład dla nowej klasy w `core`:
+   alfabetyczną. Przykład dla wymyślonej klasy `Random` w `core` (takiego pliku w projekcie nie
+   ma, to tylko ilustracja):
 
    ```cmake
    add_library(engine STATIC
        ...
-       src/core/Log.cpp
-       src/core/Log.hpp
-       src/core/Paths.cpp      # nowy plik
-       src/core/Paths.hpp      # nowy plik
+       src/core/Paths.cpp
+       src/core/Paths.hpp
+       src/core/Random.cpp     # nowy plik
+       src/core/Random.hpp     # nowy plik
        src/core/Time.cpp
        ...
    )
@@ -826,7 +832,8 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
    Bez tego kroku plik nie zostanie skompilowany, a objawem będzie błąd linkera
    `undefined symbol`.
 
-4. **Dołączaj nagłówki ścieżką od `src/`**: `#include "core/Paths.hpp"`.
+4. **Dołączaj nagłówki ścieżką od `src/`**: `#include "core/Random.hpp"` (dla przykładu z
+   kroku 3).
 
 5. **Zbuduj.** CMake wykryje zmianę w `CMakeLists.txt` i sam powtórzy konfigurację
    ([`build-macos.md`](build-macos.md), sekcja 2).
