@@ -1,0 +1,212 @@
+# Moduł core: GL_CHECK i błędy OpenGL
+
+Kamień milowy: M0. Temat wykładu: 1 (Pierwszy program OpenGL).
+Kod: [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp), [`src/core/GlCheck.cpp`](../../../src/core/GlCheck.cpp), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
+
+Część modułu `core`. Wstęp do całego modułu jest w [`README.md`](README.md). Pozostałe części: [`window-context.md`](window-context.md) (okno i kontekst), [`main-loop.md`](main-loop.md) (pętla i czas), [`input.md`](input.md) (klawiatura).
+
+## 1. Po co to jest
+
+OpenGL nie rzuca wyjątków i nie zwraca kodów błędów. Błędne wywołanie jest po cichu ignorowane, a w kontekście ustawia się flaga błędu, którą trzeba samemu odczytać przez `glGetError`. Nowoczesny sposób, czyli callback `glDebugMessageCallback`, wymaga OpenGL 4.3, a macOS kończy się na 4.1. Zostaje więc `glGetError` po każdym wywołaniu, a żeby nie pisać tego ręcznie, mam makro `GL_CHECK`: opakowuję nim każde własne wywołanie `gl*`, a w buildzie Debug dostaję w konsoli nazwę błędu, tekst wywołania, plik i numer linii. Na Macu to razem z panelami ImGui jedyne narzędzie diagnostyczne, bo RenderDoc tam nie działa.
+
+## 2. Teoria
+
+### 2.1 Model błędów OpenGL
+
+Trzy cechy, z których wynika cała konstrukcja makra:
+
+1. **Błąd nie przerywa programu.** Funkcja `gl*`, która dostała złe argumenty, zwykle nie robi nic (wyjątkiem jest `GL_OUT_OF_MEMORY`, po którym stan kontekstu jest nieokreślony). Program działa dalej, tylko obraz jest zły albo pusty.
+2. **Błąd jest flagą w kontekście.** Zostaje tam, dopóki ktoś jej nie odczyta. Nie jest związany z wywołaniem, które go spowodowało: `glGetError` mówi "od ostatniego odczytu coś poszło źle", a nie "to wywołanie było złe".
+3. **Flag może być kilka.** Specyfikacja OpenGL pozwala implementacji trzymać kilka flag błędów naraz. Jedno wywołanie `glGetError` zwraca jedną flagę i ją kasuje. Dopiero gdy zwróci `GL_NO_ERROR`, wiadomo, że wszystkie są wyczyszczone.
+
+Wniosek: żeby błąd przypisać do konkretnego wywołania, trzeba pytać o błędy **zaraz po** tym wywołaniu i zawsze czytać flagi do końca.
+
+### 2.2 Preprocesor i makra
+
+Makro jest przetwarzane przez **preprocesor**, czyli przed właściwą kompilacją: tekst `GL_CHECK(...)` zostaje zastąpiony tekstem z definicji. To zamiana tekstu, a nie wywołanie funkcji. Dzięki temu makro potrafi dwie rzeczy niedostępne dla funkcji: zamienić swój argument na napis (operator `#`) oraz podać plik i linię **miejsca użycia** (`__FILE__`, `__LINE__`). Cena: makro nie zna typów, nie ma zasięgu i trzeba uważać, do czego się rozwija (sekcja 5.2).
+
+### 2.3 Debug a Release
+
+`NDEBUG` to standardowe makro ("no debug"), to samo, które wyłącza `assert`. CMake definiuje je automatycznie w konfiguracji Release (flaga `-DNDEBUG`). W Debug `NDEBUG` nie istnieje. `GL_CHECK` korzysta z tego rozróżnienia: w Debug sprawdza błędy, w Release zostaje samo wywołanie, bo `glGetError` po każdej funkcji kosztuje (wymusza synchronizację ze sterownikiem).
+
+## 3. Jak to działa w OpenGL
+
+Jedyna funkcja OpenGL w tej części modułu to `glGetError`:
+
+| Wywołanie | Co robi |
+|---|---|
+| `glGetError()` | Zwraca jedną z ustawionych flag błędu jako `GLenum` i ją kasuje. Gdy żadna nie jest ustawiona, zwraca `GL_NO_ERROR` (wartość 0) |
+
+Kody, które mogą wrócić w OpenGL 4.1:
+
+| Kod błędu | Typowa przyczyna |
+|---|---|
+| `GL_INVALID_ENUM` | stała, której dana funkcja nie przyjmuje |
+| `GL_INVALID_VALUE` | liczba spoza zakresu (ujemny rozmiar, zły indeks) |
+| `GL_INVALID_OPERATION` | wywołanie niedozwolone w bieżącym stanie (na przykład rysowanie bez związanego VAO w profilu Core) |
+| `GL_INVALID_FRAMEBUFFER_OPERATION` | rysowanie do niekompletnego framebuffera |
+| `GL_OUT_OF_MEMORY` | brak pamięci, stan kontekstu po tym błędzie jest nieokreślony |
+
+`glGetError` wymaga bieżącego kontekstu i załadowanych wskaźników GLAD, tak jak każda inna funkcja `gl*` ([`window-context.md`](window-context.md), sekcja 3.1).
+
+## 4. Shadery
+
+Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` przy shaderach **nie** wykryje: nieudana kompilacja albo linkowanie shadera nie ustawia flagi błędu OpenGL. Wynik trzeba odczytać osobno (status kompilacji i log), co pojawi się w M1 razem z klasą `Shader`.
+
+## 5. Kod w projekcie
+
+### 5.1 Pliki
+
+| Plik | Co zawiera |
+|---|---|
+| [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp) | deklaracja `core::checkGlErrors` i makro `GL_CHECK` w dwóch wersjach (Debug, Release). Dołącza `<glad/gl.h>` |
+| [`src/core/GlCheck.cpp`](../../../src/core/GlCheck.cpp) | `checkGlErrors` i pomocnicza `glErrorName` |
+| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | trzy użycia w `onRender`: `glViewport`, `glClearColor`, `glClear` |
+
+### 5.2 Makro
+
+```cpp
+#ifndef NDEBUG
+#define GL_CHECK(call)                                                                             \
+    do {                                                                                           \
+        call;                                                                                      \
+        core::checkGlErrors(#call, __FILE__, __LINE__);                                            \
+    } while (false)
+#else
+#define GL_CHECK(call)                                                                             \
+    do {                                                                                           \
+        call;                                                                                      \
+    } while (false)
+#endif
+```
+
+Znak `\` na końcu linii oznacza "definicja ciągnie się dalej". Po kolei:
+
+- **`call;`** wstawia argument makra jako zwykłą instrukcję. Dla `GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));` powstaje `glClear(GL_COLOR_BUFFER_BIT);`. Przecinki wewnątrz nawiasów wywołania nie rozdzielają argumentów makra, dlatego `GL_CHECK(glViewport(0, 0, w, h))` działa.
+- **`#call`** to operator zamiany na napis (stringification): preprocesor wstawia tekst argumentu w cudzysłowie, czyli `"glClear(GL_COLOR_BUFFER_BIT)"`. Dzięki temu log mówi, **które** wywołanie zawiodło, dokładnie tak, jak je napisałem. Tego nie da się zrobić zwykłą funkcją: funkcja dostaje wartości, a nie tekst kodu.
+- **`__FILE__` i `__LINE__`** to wbudowane makra preprocesora: ścieżka bieżącego pliku i numer bieżącej linii. Ponieważ makro rozwija się **w miejscu użycia**, wskazują plik i linię, w której napisałem `GL_CHECK`, a nie `GlCheck.hpp`. To drugi powód, dla którego to musi być makro.
+- **`do { ... } while (false)`** sprawia, że dwie instrukcje zachowują się jak jedna i wymagają średnika na końcu. Pętla wykonuje się dokładnie raz, a kompilator ją usuwa. Bez tej sztuczki taki kod byłby błędny:
+
+  ```cpp
+  if (visible)
+      GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+  else
+      skip();
+  ```
+
+  Gdyby makro rozwijało się do dwóch gołych instrukcji, do `if` należałaby tylko pierwsza. Gdyby rozwijało się do samego bloku `{ ... }`, średnik po nim zakończyłby instrukcję `if` i `else` nie miałoby do czego się odnieść (błąd kompilacji).
+- **`#ifndef NDEBUG`** wybiera wersję (sekcja 2.3). W Debug makro sprawdza błędy. W Release zostaje samo wywołanie.
+
+Wywołania zwracające wartość zapisuję z przypisaniem w środku: `GL_CHECK(id = glCreateShader(GL_VERTEX_SHADER));` (przykład z komentarza w `GlCheck.hpp`, w kodzie M0 jeszcze takiego użycia nie ma). Zmienna musi być zadeklarowana **przed** makrem: deklaracja wewnątrz `GL_CHECK(...)` trafiłaby do bloku `do { }` i zniknęła razem z nim.
+
+Makro nie należy do przestrzeni nazw (preprocesor ich nie zna), dlatego stoi poza `namespace core` i woła funkcję pełną nazwą `core::checkGlErrors`.
+
+### 5.3 Funkcja sprawdzająca
+
+Kod: [`GlCheck.cpp`](../../../src/core/GlCheck.cpp).
+
+```cpp
+void checkGlErrors(const char* call, const char* file, int line) {
+    // OpenGL keeps a set of error flags, so one call can leave more than one error behind.
+    // glGetError returns and clears one flag at a time until it reports GL_NO_ERROR.
+    GLenum error = glGetError();
+    while (error != GL_NO_ERROR) {
+        logError(std::string(glErrorName(error)) + " after " + call + " (" + file + ":" +
+                 std::to_string(line) + ")");
+        error = glGetError();
+    }
+}
+```
+
+**Dlaczego pętla.** Jedno wywołanie `glGetError` zwraca jedną flagę i ją kasuje (sekcja 2.1). Gdybym czytał tylko raz, pozostałe flagi zostałyby w kontekście i wyskoczyłyby przy **następnym** `GL_CHECK`, obciążając winą niewinne wywołanie. Pętla "osusza" flagi do zera, więc każdy `GL_CHECK` zaczyna z czystym stanem.
+
+Parametry to `const char*`, bo dokładnie taki typ mają napis z `#call` i `__FILE__` (literały napisowe), a `line` to `int`, jak `__LINE__`. Komunikat składam ze `std::string` i wysyłam do `logError` ([`window-context.md`](window-context.md), sekcja 5.5).
+
+Przykładowy komunikat (ścieżka i numer linii zależą od miejsca użycia): `[error] GL_INVALID_ENUM after glEnable(GL_COLOR_BUFFER_BIT) (/.../src/game/NightMazeApp.cpp:29)`.
+
+### 5.4 `glErrorName`
+
+```cpp
+const char* glErrorName(GLenum error) {
+    switch (error) {
+    case GL_INVALID_ENUM:
+        return "GL_INVALID_ENUM";
+    case GL_INVALID_VALUE:
+        return "GL_INVALID_VALUE";
+    case GL_INVALID_OPERATION:
+        return "GL_INVALID_OPERATION";
+    case GL_INVALID_FRAMEBUFFER_OPERATION:
+        return "GL_INVALID_FRAMEBUFFER_OPERATION";
+    case GL_OUT_OF_MEMORY:
+        return "GL_OUT_OF_MEMORY";
+    default:
+        return "unknown OpenGL error";
+    }
+}
+```
+
+`glGetError` zwraca liczbę (`GLenum`), a w logu chcę nazwę z dokumentacji OpenGL. `switch` zamienia jedno na drugie, a gałąź `default` obsługuje kod, którego nie znam, zamiast zwracać pusty wskaźnik. Funkcja zwraca wskaźnik na literał napisowy (żyje przez cały czas działania programu) i siedzi w anonimowej przestrzeni nazw, więc jest widoczna tylko w `GlCheck.cpp`.
+
+### 5.5 Gdzie makro jest używane
+
+```cpp
+const core::Size framebuffer = window().framebufferSize();
+GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
+
+GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
+GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+```
+
+To wszystkie własne wywołania `gl*` w klatce M0 (opis samych funkcji: [`window-context.md`](window-context.md), sekcja 3.2). Wywołania `glGetString` w konstruktorze `Window` nie są opakowane: stoją przed pierwszą klatką, a ich wynik jest i tak sprawdzany pod kątem `nullptr`. Backend ImGui woła OpenGL własnym loaderem i mojego makra nie używa.
+
+## 6. Panel ImGui
+
+`GL_CHECK` nie ma elementu w panelu. Jego wyjściem jest konsola: linie `[error] ...` na standardowym wyjściu błędów. Panel Renderer przydaje się pośrednio: edytowalny `Clear color` pozwala od razu zobaczyć, czy klatka jest w ogóle rysowana, gdy konsola pokazuje błędy.
+
+## 7. Pułapki
+
+1. **`GL_CHECK` obwinia nie to wywołanie.** Flaga błędu zostaje w kontekście, dopóki ktoś jej nie odczyta. Jeśli błąd spowoduje wywołanie **bez** `GL_CHECK` (także wewnątrz cudzej biblioteki, na przykład backendu ImGui), zgłosi go dopiero najbliższy `GL_CHECK` przy zupełnie innej funkcji (w M0 zwykle `glViewport` w następnej klatce). Wniosek: każde własne `gl*` opakowuję w makro.
+2. **`GL_CHECK` nie działa w Release.** To celowe, ale oznacza, że błąd widoczny tylko w Release trzeba szukać, przełączając się na Debug.
+3. **Brak debug callbacku.** `glDebugMessageCallback` to OpenGL 4.3. Wiele poradników go używa, na macOS to się nie skompiluje (GLAD 4.1 nie ma tej funkcji). Stąd `GL_CHECK`.
+4. **Deklaracja wewnątrz makra.** `GL_CHECK(GLuint id = glCreateShader(...));` kompiluje się, ale `id` istnieje tylko wewnątrz bloku `do { }`. Zmienną deklaruję przed makrem.
+5. **Efekt uboczny w argumencie.** Argument makra jest wklejany jako tekst. W obecnej definicji występuje raz jako instrukcja i raz jako napis (`#call`), więc wykonuje się raz. Gdyby ktoś przerobił makro tak, że `call` pojawia się dwa razy jako kod, wywołanie OpenGL wykonałoby się dwukrotnie.
+6. **Zalew komunikatów.** Błędne wywołanie w `onRender` wypisuje linię w każdej klatce, czyli 60 lub więcej linii na sekundę. Program najlepiej od razu zatrzymać i przeczytać pierwszą linię.
+7. **Błędy shaderów.** Nieudana kompilacja shadera nie jest błędem `glGetError` (sekcja 4).
+
+## 8. Ćwiczenia
+
+1. **Celowy błąd OpenGL.** W `NightMazeApp::onRender` dopisz `GL_CHECK(glEnable(GL_COLOR_BUFFER_BIT));`. Zbuduj Debug i przeczytaj komunikat: jaka nazwa błędu, jaki tekst wywołania, jaka linia? Następnie zbuduj Release i sprawdź, że komunikat zniknął. Usuń linię.
+2. **Wina przypisana komu innemu.** Dopisz to samo błędne wywołanie, ale **bez** makra: `glEnable(GL_COLOR_BUFFER_BIT);`, na końcu `NightMazeApp::onRender`, po `glClear`. Zbuduj Debug i sprawdź, które wywołanie i która linia pojawiają się w komunikacie. Wyjaśnij, dlaczego log wskazuje poprawną linię kodu jako winną. Usuń linię.
+3. **Rozwinięcie makra.** Napisz na kartce, do czego preprocesor rozwinie `GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));` w Debug i w Release. Porównaj z wynikiem `clang++ -E` (opcja `-E` kończy pracę po preprocesorze): ścieżki nagłówków i makra dla `NightMazeApp.cpp` weź z `build/debug/compile_commands.json`.
+
+## 9. Pytania kontrolne
+
+1. **Jak działa `GL_CHECK` i dlaczego to makro, a nie funkcja?**
+   Wykonuje wywołanie, a w Debug woła `checkGlErrors(#call, __FILE__, __LINE__)`. Tylko makro potrafi zamienić kod na napis (`#call`) i podać plik oraz linię miejsca użycia. `do { } while (false)` robi z tego jedną instrukcję. W Release (`NDEBUG`) zostaje samo wywołanie.
+
+2. **Dlaczego `glGetError` jest wołane w pętli?**
+   OpenGL może trzymać kilka flag błędów, a jedno `glGetError` zwraca i kasuje tylko jedną. Pętla do `GL_NO_ERROR` czyści wszystkie, żeby błąd nie został przypisany późniejszemu wywołaniu.
+
+3. **Dlaczego nie używam `glDebugMessageCallback`?**
+   To funkcja z OpenGL 4.3, a projekt celuje w 4.1 Core, najwyższą wersję na macOS. W nagłówku GLAD wygenerowanym dla 4.1 tej funkcji nie ma.
+
+4. **Czym różni się `GL_CHECK` w Debug i w Release i skąd program wie, która to konfiguracja?**
+   W Debug po wywołaniu sprawdza `glGetError` i loguje błędy, w Release zostaje samo wywołanie. Decyduje `#ifndef NDEBUG`: CMake definiuje `NDEBUG` w konfiguracji Release.
+
+5. **Po co `do { ... } while (false)`?**
+   Żeby makro złożone z dwóch instrukcji zachowywało się jak jedna i wymagało średnika. Dzięki temu jest bezpieczne w `if` bez klamer, także z `else`.
+
+6. **Log wskazuje błąd przy poprawnym `glViewport`. Co się stało?**
+   Flagę zostawiło wcześniejsze wywołanie bez `GL_CHECK` (własne albo z biblioteki). Flaga czeka w kontekście do pierwszego odczytu, a pierwszym odczytem był `GL_CHECK` przy `glViewport`.
+
+7. **Jak opakować wywołanie, które zwraca wartość?**
+   Z przypisaniem w środku: `GL_CHECK(id = glCreateShader(GL_VERTEX_SHADER));`, a zmienną `id` deklaruję przed makrem.
+
+## 10. Źródła
+
+- docs.gl (<https://docs.gl>), strona funkcji `glGetError` dla OpenGL 4.
+- LearnOpenGL, rozdział "Debugging" (<https://learnopengl.com/In-Practice/Debugging>): `glGetError`, makro z `__FILE__` i `__LINE__`, debug output dostępny od 4.3.
+- Dokument biblioteki w tym repozytorium: [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego funkcji z 4.2+ nie ma w nagłówku).
+- Przewodnik budowania: [`../../guides/build-macos.md`](../../guides/build-macos.md), sekcja 5 (flagi Debug i Release).
+- Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o pierwszym programie).
+- "OpenGL. Księga eksperta" (rozdziały wprowadzające: maszyna stanów, obsługa błędów).
