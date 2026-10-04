@@ -53,6 +53,11 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest w
 [`build-macos.md`](build-macos.md), sekcja 3. Plik jest wspólny dla obu systemów.
 
+Plik [`Makefile`](../../Makefile) ze skrótami (`make run`, `make check`) na Windowsie nie był
+jeszcze uruchamiany. Wymaga programu `make` i powłoki typu Unix (na przykład Git Bash), a
+bez nich wystarczą polecenia `cmake` podane wyżej. Opis:
+[`project-structure.md`](project-structure.md), sekcja 3.12.
+
 ## 3. Generator Visual Studio jest wielokonfiguracyjny
 
 To najważniejsza różnica względem Maca i częste pytanie na przeglądzie kodu.

@@ -96,6 +96,22 @@ wpisywanie wartości): klawiatura należy wtedy do panelu. Opis w
 Panel "Renderer" pokazuje FPS, czas klatki, rozmiar framebuffera i okna, wersję OpenGL,
 nazwę karty oraz edytor koloru tła. Panel można przeciągnąć do krawędzi okna (docking).
 
+### Skróty: `make`
+
+Te same polecenia mają krótsze odpowiedniki w pliku [`Makefile`](../../Makefile) w katalogu
+głównym repozytorium:
+
+```sh
+make run          # konfiguracja, build Debug i uruchomienie
+make run-release  # to samo dla Release
+make check        # format-check, oba buildy i clang-tidy: komplet przed commitem
+make              # lista wszystkich celów
+```
+
+`Makefile` niczego nie buduje sam, tylko woła polecenia `cmake --preset ...` opisane wyżej,
+więc oba sposoby są równoważne. Każdy cel i każdą linię pliku opisuje
+[`project-structure.md`](project-structure.md), sekcja 3.12.
+
 ## 3. Co robią presety: `CMakePresets.json`
 
 Preset to nazwany zestaw ustawień CMake zapisany w repozytorium. Zamiast pamiętać długie

@@ -16,6 +16,7 @@ Stan z systemu plików, bez `build/` i `.git/`:
 night-maze/
 ├── CMakeLists.txt              # główny opis buildu: targety engine i night_maze
 ├── CMakePresets.json           # presety debug i release
+├── Makefile                    # skróty do codziennych poleceń: make run, make check
 ├── .clang-format               # styl formatowania kodu
 ├── .clang-tidy                 # reguły analizy statycznej i konwencja nazw
 ├── .clangd                     # gdzie clangd ma szukać compile_commands.json
@@ -626,6 +627,66 @@ Niczego nie wymusza.
 | `vadimcn.vscode-lldb` | CodeLLDB | debugger oparty na LLDB: pułapki i podgląd zmiennych w buildzie Debug |
 | `slevesque.shader` | Shader languages support | kolorowanie składni GLSL dla plików z `files.associations` |
 | `bierner.markdown-mermaid` | Markdown Preview Mermaid Support | diagramy Mermaid w podglądzie Markdown, czyli diagramy z tej dokumentacji |
+
+### 3.12. `Makefile`
+
+Plik ze **skrótami** do poleceń, których używa się codziennie. Niczego sam nie kompiluje:
+każdy cel (target) woła CMake przez presety albo narzędzie (`clang-format`, `clang-tidy`).
+Dzięki temu jest jedno źródło prawdy o budowaniu (`CMakeLists.txt` i `CMakePresets.json`),
+a `Makefile` tylko oszczędza pisania. Nie należy go mylić z plikiem
+`build/<preset>/Makefile`, który generuje CMake (sekcja 4.1): tamten jest artefaktem buildu,
+ten jest napisany ręcznie i leży w Gicie.
+
+| Polecenie | Co wykonuje | Kiedy używać |
+|---|---|---|
+| `make` albo `make help` | wypisuje listę celów | gdy nie pamiętam nazw |
+| `make debug` | `cmake --preset debug`, potem `cmake --build --preset debug` | zwykły build w trakcie pracy |
+| `make release` | to samo dla presetu `release` | pomiar wydajności, wersja do pokazania |
+| `make run` | `make debug`, potem uruchamia `build/debug/night_maze` | najczęstsze polecenie |
+| `make run-release` | `make release`, potem uruchamia `build/release/night_maze` | sprawdzenie 60 FPS |
+| `make format` | `clang-format -i` na wszystkich plikach `.cpp` i `.hpp` z `src/` | naprawia formatowanie w miejscu |
+| `make format-check` | `clang-format --dry-run --Werror` | tylko sprawdza, niczego nie zmienia |
+| `make tidy` | `make debug`, potem `clang-tidy` na plikach `.cpp` z `src/` | analiza statyczna |
+| `make check` | `format-check`, `debug`, `release`, `tidy` | wszystko przed commitem i przed tagiem |
+| `make clean` | usuwa katalog `build/` | gdy konfiguracja się zepsuła albo chcę czystego buildu |
+
+Elementy pliku, które trzeba umieć wyjaśnić:
+
+- **Reguła** ma postać `cel: zależności`, a pod nią polecenia. Linie poleceń **muszą zaczynać
+  się od znaku tabulacji**, nie od spacji. To najczęstszy błąd przy edycji (`missing
+  separator`).
+- **Zależności** to cele wykonywane wcześniej. `run: debug` znaczy: najpierw zbuduj Debug,
+  potem uruchom. `check: format-check debug release tidy` wykonuje cztery cele po kolei i
+  zatrzymuje się na pierwszym, który zakończy się błędem.
+- **`.PHONY`** mówi, że wymienione nazwy to polecenia, a nie pliki. `make` z natury sprawdza,
+  czy plik o nazwie celu istnieje i jest aktualny. Bez `.PHONY` katalog albo plik o nazwie
+  `debug` sprawiłby, że `make debug` nic by nie zrobił.
+- **`:=`** to przypisanie zmiennej wyliczane od razu, raz. `$(shell ...)` uruchamia polecenie
+  powłoki i wstawia jego wynik, na przykład listę plików z `find src -name '*.cpp'`.
+- **`@` przed poleceniem** wyłącza wypisanie samego polecenia. Używam go tylko przy `echo`,
+  żeby tekst nie pojawiał się dwa razy. Pozostałe polecenia są wypisywane, więc widać, co
+  dokładnie zostało uruchomione.
+- **`ifeq ($(OS),Windows_NT)`** wybiera ścieżkę programu. Na Windowsie generator Visual Studio
+  dodaje podkatalog konfiguracji i rozszerzenie `.exe` (sekcja 4.2).
+- **`CLANG_TIDY`** bierze `clang-tidy` z `PATH`, a gdy go tam nie ma, z pakietu `llvm`
+  Homebrew, który celowo nie jest dodawany do `PATH` (sekcja 3.6). `$$` w pliku Makefile to
+  jeden znak `$` przekazany do powłoki.
+- **`TIDY_EXTRA_ARGS`** na macOS dopisuje ścieżkę do SDK (`xcrun --show-sdk-path`), bez której
+  clang-tidy z Homebrew nie znajduje nagłówków biblioteki standardowej.
+- **`--warnings-as-errors='*'`** w celu `tidy` zamienia każdą diagnostykę w błąd, żeby
+  `make check` zatrzymał się na niej. Samo `.clang-tidy` ma `WarningsAsErrors: ''`, czyli w
+  edytorze clang-tidy tylko doradza. Bramką jest dopiero `make check`.
+- **`cmake -E rm -rf build`** w celu `clean` to wbudowane w CMake, przenośne usuwanie
+  katalogu, działające tak samo na macOS i na Windowsie.
+
+Program jest uruchamiany z katalogu głównego repozytorium, więc `imgui.ini` zawsze trafia w
+to samo miejsce (sekcja 4.3).
+
+Stan na M0: na Macu sprawdzone zostały `make`, `make check`, `make run` oraz to, że
+`make format-check` kończy się błędem dla źle sformatowanego pliku. Na Windowsie plik nie
+był uruchamiany: wymaga programu `make` (na przykład z Git Bash, MSYS2 albo Chocolatey), a
+cele `format`, `format-check` i `tidy` korzystają z poleceń `find` i `command -v`, więc
+potrzebują powłoki typu Unix. Bez `make` wszystkie polecenia z tabeli można wpisać ręcznie.
 
 ## 4. Artefakty generowane podczas budowania (poza Gitem)
 
