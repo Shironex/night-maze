@@ -2,7 +2,7 @@
 
 Ściąga przed kartkówką i obroną. Gdy prowadzący zapyta o temat, w tej tabeli znajduję plik, który go realizuje, dokument, który go tłumaczy, i miejsce w panelu ImGui, w którym pokażę efekt na żywo.
 
-Stan: **M0 zrobione, kod M1 kompletny na macOS** (bez tagu: zostało ręczne sprawdzenie sterowania kamerą i sprawdzenie na Windowsie). Zrealizowane są tematy 1, 2 i 3. Temat 2 to klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, shadery `assets/shaders/basic.*`, kostka rysowana przez `game::NightMazeApp` z bufora wierzchołków i bufora indeksów oraz panel Shaders z przyciskiem "Reload shaders". Temat 3 to struktury `scene::Transform` i `scene::Camera`, trzy macierze wysyłane do shadera jako uniformy, test głębi, latająca kamera sterowana myszą i klawiaturą oraz panel Camera. Tematy od 4 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
+Stan: **M0 zrobione, kod M1 kompletny na macOS** (sterowanie kamerą sprawdzone ręcznie na macOS; bez tagu, bo zostało sprawdzenie na Windowsie). Zrealizowane są tematy 1, 2 i 3. Temat 2 to klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, shadery `assets/shaders/basic.*`, kostka rysowana przez `game::NightMazeApp` z bufora wierzchołków i bufora indeksów oraz panel Shaders z przyciskiem "Reload shaders". Temat 3 to struktury `scene::Transform` i `scene::Camera`, trzy macierze wysyłane do shadera jako uniformy, test głębi, latająca kamera sterowana myszą i klawiaturą oraz panel Camera. Tematy od 4 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
 
 ## Tabela tematów
 
@@ -111,7 +111,7 @@ Dokument uzupełniający do tematu 3: [`libraries/glm.md`](libraries/glm.md).
 | Kamień milowy | Zakres według PRD | Tematy wykładu |
 |---|---|---|
 | M0 (zrobione) | Repozytorium, CMake i FetchContent, okno GLFW 4.1, GLAD, ImGui, `GL_CHECK` | 1 |
-| M1 (kod kompletny na macOS, bez tagu) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray`, panel Shaders z przyciskiem "Reload shaders", struktury `scene::Transform` i `scene::Camera`, kostka z macierzami model, view i projection, latająca kamera (mysz i klawiatura), panel Camera. Zostało: ręczne sprawdzenie sterowania kamerą i sprawdzenie na Windowsie | 2, 3 |
+| M1 (kod kompletny na macOS, bez tagu) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray`, panel Shaders z przyciskiem "Reload shaders", struktury `scene::Transform` i `scene::Camera`, kostka z macierzami model, view i projection, latająca kamera (mysz i klawiatura), panel Camera. Sterowanie kamerą sprawdzone ręcznie na macOS. Zostało: sprawdzenie na Windowsie | 2, 3 |
 | M2 + M3 | Generator labiryntu, kolizje AABB, tekstury, loader OBJ, pierwsze modele | 4, 5, 14 |
 | M4 + M5 | Księżyc, latarka, kryształy, Gouraud vs Phong, zbieranie, bateria, brama | 6, 7 |
 | M6 | Skybox, teren z heightmapy, trawa w shaderze geometrii | 8, 9, 13 |
