@@ -5,19 +5,33 @@ Kod: [`src/scene/`](../../../src/scene/), użycie w [`src/game/NightMazeApp.cpp`
 
 Moduł `gfx` umie narysować to, co dostanie: bufor wierzchołków, program shaderów. Nie wie, **gdzie** w świecie coś stoi ani **skąd** jest oglądane. Na te dwa pytania odpowiada moduł `scene`: opisuje położenie obiektów i kamerę, a z tego opisu liczy macierze, które shader wierzchołków mnoży przez każdy wierzchołek. Docelowo (PRD, sekcja 6) warstwa `scene/` ma zawierać encje, transformy, kamerę, światła, kolizje i selekcję. Na dziś ma dwie struktury: `scene::Transform` i `scene::Camera`.
 
-Używa ich `game::NightMazeApp`: ma jeden `Transform` (obrócona kostka) i jedną `Camera`, którą steruje z klawiatury i myszy (lot wokół kostki). Co klatkę liczy z nich macierze modelu, widoku i rzutowania i wysyła je do shadera przez `gfx::Shader::setMat4`. Pola kamery edytuje też panel Camera z `debug/`. Ten plik jest wstępem do modułu: wspólna zasada obu struktur, miejsce modułu w warstwach i indeks dokumentów.
+Używa ich `game::NightMazeApp`: ma jeden `Transform` (obrócona kostka) i jedną `Camera`, którą steruje z klawiatury i myszy (lot wokół kostki). Co klatkę liczy z nich macierze modelu, widoku i rzutowania i wysyła je do shadera przez `gfx::Shader::setMat4`. Pola kamery edytuje też panel Camera z `debug/`.
+
+Moduł jest opisany w trzech dokumentach tematycznych. Ten plik jest ich wspólnym wstępem: indeks dokumentów i plików kodu, wspólna zasada obu struktur, miejsce modułu w warstwach i konwencja układu współrzędnych.
 
 ## 1. Dokumenty modułu
 
 | Dokument | Co opisuje | Struktury i pliki |
 |---|---|---|
-| [`transforms-camera.md`](transforms-camera.md) | przestrzenie współrzędnych (lokalna, świata, widoku, przycięcia, NDC, okna), współrzędne jednorodne, macierze przesunięcia, obrotu i skali, znaczenie kolejności, kąty Eulera i blokada przegubu, macierz widoku i `lookAt`, kamera FPS (yaw, pitch, wektor kierunku), rzutowanie perspektywiczne, nieliniowa głębia, konwencja układu projektu | `Transform`, `Camera` |
+| [`transforms.md`](transforms.md) | przestrzenie współrzędnych (lokalna, świata, widoku, przycięcia, NDC, okna), współrzędne jednorodne, macierze przesunięcia, obrotu i skali, znaczenie kolejności, kąty Eulera i blokada przegubu, macierz modelu, trzy macierze w shaderze `basic.vert`, obrót kostki | `Transform`, `basic.vert` |
+| [`camera.md`](camera.md) | macierz widoku i `lookAt`, kamera FPS (yaw, pitch, wektor kierunku), rzutowanie perspektywiczne, nieliniowa głębia, z NDC do pikseli, konwencja układu projektu, trzy macierze w `NightMazeApp::onRender`, test głębi, proporcje i okno o rozmiarze zero, droga jednego wierzchołka na liczbach | `Camera`, `NightMazeApp` |
+| [`camera-controls.md`](camera-controls.md) | sterowanie kamerą: obrót myszą, ruch klawiszami stałym krokiem, normalizacja kierunku, interpolacja pozycji z `alpha`, panel Camera i scenariusz pokazu, panel a przechwycony kursor | `NightMazeApp`, `drawCameraPanel` |
 
-Dokument tematyczny ma te same dziesięć sekcji co dokumenty modułów `core` i `gfx`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
+Każdy z trzech dokumentów jest samodzielną jednostką nauki i ma te same dziesięć sekcji co dokumenty modułów `core` i `gfx`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
 
-Proponowana kolejność czytania: [`../../libraries/glm.md`](../../libraries/glm.md) (typy i funkcje biblioteki), ten plik, potem [`transforms-camera.md`](transforms-camera.md). Wcześniej warto znać [`../gfx/shaders.md`](../gfx/shaders.md), sekcja 2.2, bo tam jest opisane, co shader wierzchołków musi zapisać do `gl_Position`.
+Proponowana kolejność czytania: [`../../libraries/glm.md`](../../libraries/glm.md) (typy i funkcje biblioteki), ten plik, potem [`transforms.md`](transforms.md), [`camera.md`](camera.md), [`camera-controls.md`](camera-controls.md). Wcześniej warto znać [`../gfx/shaders.md`](../gfx/shaders.md), sekcja 2.2: opis tego, co shader wierzchołków musi zapisać do `gl_Position`. Przed `camera-controls.md` przydają się [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`) i [`../core/input.md`](../core/input.md) (mysz i przechwycenie kursora).
 
-## 2. Wspólna zasada: dane i matematyka, bez OpenGL
+## 2. Indeks: plik kodu, dokument
+
+| Plik kodu | Co zawiera | Dokument |
+|---|---|---|
+| [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp), [`.cpp`](../../../src/scene/Transform.cpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i funkcja `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Użycie: pole `m_cubeTransform` w `NightMazeApp` | [`transforms.md`](transforms.md), sekcje 5.2 i 5.3 |
+| [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp), [`.cpp`](../../../src/scene/Camera.cpp) | struktura `Camera`: pola `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałe `WORLD_UP` i `MAX_PITCH_DEGREES`, funkcje `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Użycie: pole `m_camera` w `NightMazeApp` | [`camera.md`](camera.md), sekcje od 5.2 do 5.5 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik obu struktur: obrót kostki, proporcje z rozmiaru framebuffera, wysłanie trzech macierzy co klatkę, sterowanie kamerą (obrót myszą, ruch klawiszami, interpolacja pozycji) | obrót kostki w [`transforms.md`](transforms.md), sekcja 5.4, trzy macierze i proporcje w [`camera.md`](camera.md), sekcje 5.7 i 5.8, sterowanie kamerą w [`camera-controls.md`](camera-controls.md), sekcje od 5.2 do 5.5 |
+| [`src/debug/panels/CameraPanel.hpp`](../../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../../src/debug/panels/CameraPanel.cpp) | `debug::drawCameraPanel`: panel "Camera". Nie należy do `scene/` ani do biblioteki `engine`, ale jest pokazem struktury `Camera` | [`camera-controls.md`](camera-controls.md), sekcja 6 |
+| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) | uniformy `uModel`, `uView`, `uProjection` i mnożenie przez nie pozycji wierzchołka | [`transforms.md`](transforms.md), sekcja 4 |
+
+## 3. Wspólna zasada: dane i matematyka, bez OpenGL
 
 Klasy `gfx` opakowują obiekty żyjące na karcie graficznej, więc mają konstruktory, destruktory i zakaz kopiowania ([`../gfx/README.md`](../gfx/README.md), sekcja 2). Struktury `scene` są ich przeciwieństwem:
 
@@ -33,12 +47,12 @@ Klasy `gfx` opakowują obiekty żyjące na karcie graficznej, więc mają konstr
 Z tego wynikają trzy rzeczy:
 
 1. **Macierze liczy procesor.** `Transform::matrix()`, `Camera::viewMatrix()` i `Camera::projectionMatrix()` to zwykłe funkcje C++ zwracające `glm::mat4`. OpenGL dowiaduje się o macierzy dopiero wtedy, gdy kod rysujący wyśle ją do shadera: w projekcie robi to `NightMazeApp::onRender` przez `gfx::Shader::setMat4`.
-2. **Kod da się sprawdzić bez okna.** Wystarczy program konsolowy, który woła funkcje i wypisuje wyniki. Tak została sprawdzona matematyka obu struktur, zanim dostały użytkownika ([`transforms-camera.md`](transforms-camera.md), sekcja 5.8).
+2. **Kod da się sprawdzić bez okna.** Wystarczy program konsolowy, który woła funkcje i wypisuje wyniki. Tak została sprawdzona matematyka obu struktur, zanim dostały użytkownika ([`camera.md`](camera.md), sekcja 5.6, i [`transforms.md`](transforms.md), sekcja 5.5).
 3. **Struktury nie znają wejścia ani czasu.** `Camera` nie czyta klawiatury ani myszy i nie ma prędkości ruchu. Ma pola i funkcję `rotate`, a o tym, kiedy i o ile je zmienić, decyduje właściciel kamery (dziś `game::NightMazeApp`: mysz obraca, klawisze przesuwają). Dzięki temu ta sama kamera nadaje się do gry, do zadania laboratoryjnego i do sterowania z panelu.
 
 Kąty są wszędzie trzymane w stopniach, z jednostką w nazwie pola (`rotationDegrees`, `yawDegrees`, `fovDegrees`), a zamiana na radiany odbywa się w miejscu użycia.
 
-## 3. Miejsce w warstwach
+## 4. Miejsce w warstwach
 
 ```mermaid
 flowchart TD
@@ -70,19 +84,9 @@ Pełny łańcuch warstw z PRD to `core <- gfx <- renderer <- scene <- game`. War
 
 W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/scene/*` należą do tej samej biblioteki statycznej `engine` co `src/core/*` i `src/gfx/*`. Nic w nich nie jest specyficzne dla Night Maze, więc warstwa nadaje się do zadań laboratoryjnych. GLM jest linkowane do `engine` jako `PUBLIC`, bo nagłówki `scene/` (i `gfx/Shader.hpp`) pokazują typy `glm::vec3` i `glm::mat4` w swoim API: każdy, kto je dołączy, musi znaleźć `<glm/glm.hpp>` ([`../../libraries/glm.md`](../../libraries/glm.md), sekcja 2).
 
-## 4. Indeks: plik kodu, dokument
-
-| Plik kodu | Co zawiera | Dokument |
-|---|---|---|
-| [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp), [`.cpp`](../../../src/scene/Transform.cpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i funkcja `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Użycie: pole `m_cubeTransform` w `NightMazeApp` | [`transforms-camera.md`](transforms-camera.md), sekcje 5.2 i 5.3 |
-| [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp), [`.cpp`](../../../src/scene/Camera.cpp) | struktura `Camera`: pola `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałe `WORLD_UP` i `MAX_PITCH_DEGREES`, funkcje `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Użycie: pole `m_camera` w `NightMazeApp` | [`transforms-camera.md`](transforms-camera.md), sekcje od 5.4 do 5.7 |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik obu struktur: obrót kostki, proporcje z rozmiaru framebuffera, wysłanie trzech macierzy co klatkę, sterowanie kamerą (obrót myszą, ruch klawiszami, interpolacja pozycji) | [`transforms-camera.md`](transforms-camera.md), sekcje 5.9, 5.10 i 5.11 |
-| [`src/debug/panels/CameraPanel.hpp`](../../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../../src/debug/panels/CameraPanel.cpp) | `debug::drawCameraPanel`: panel "Camera". Nie należy do `scene/` ani do biblioteki `engine`, ale jest pokazem struktury `Camera` | [`transforms-camera.md`](transforms-camera.md), sekcja 6 |
-| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) | uniformy `uModel`, `uView`, `uProjection` i mnożenie przez nie pozycji wierzchołka | [`transforms-camera.md`](transforms-camera.md), sekcja 4 |
-
 ## 5. Konwencja układu współrzędnych
 
-Jedna konwencja dla całego projektu, opisana dokładnie w [`transforms-camera.md`](transforms-camera.md), sekcja 2.11:
+Jedna konwencja dla całego projektu, opisana dokładnie w [`camera.md`](camera.md), sekcja 2.5:
 
 | Ustalenie | Wartość |
 |---|---|
@@ -96,7 +100,16 @@ To konwencja OpenGL i wartości domyślne GLM. PRD (sekcja 9) ustala te same osi
 
 ## 6. Pytania kontrolne
 
-Pytania z odpowiedziami do matematyki i kodu są w [`transforms-camera.md`](transforms-camera.md), sekcja 9. Trzy pytania dotyczące treści tego pliku:
+Pytania z odpowiedziami do matematyki i kodu są w sekcji 9 każdego dokumentu tematycznego (tabela niżej).
+
+| Dokument | Czego dotyczą pytania |
+|---|---|
+| [`transforms.md`](transforms.md), sekcja 9 | łańcuch przestrzeni, macierze 4 x 4, `w = 1` a `w = 0`, kolejność w `Transform::matrix()`, stopnie i radiany, struktury z publicznymi polami, obrót kostki |
+| [`camera.md`](camera.md), sekcja 9 | macierz widoku i `lookAt`, wzór na `forward()`, wektor w prawo, ograniczenie pitch, zawijanie yaw, parametr `eye`, rzutowanie i dzielenie przez `w`, nieliniowa głębia, proporcje, konwencja układu, droga wierzchołka, test głębi, framebuffer o rozmiarze zero |
+| [`camera-controls.md`](camera-controls.md), sekcja 9 | ruch myszy a obrót, minus przy `mouseDeltaY`, obrót w `onRender` a ruch w `onUpdate`, normalizacja kierunku, lot a chodzenie, interpolacja z `alpha`, ruch tylko przy przechwyconym kursorze, panel Camera |
+| ten plik, niżej | różnica między `scene` a `gfx`, zależności warstwy, dlaczego kamera nie zna wejścia |
+
+Trzy pytania dotyczące treści tego pliku:
 
 1. **Czym struktury `scene` różnią się od klas `gfx`?**
    Klasy `gfx` posiadają obiekt OpenGL: tworzą go w konstruktorze, usuwają w destruktorze i nie dają się kopiować. Struktury `scene` to same liczby z publicznymi polami: nie wołają OpenGL, nie potrzebują kontekstu i kopiują się jak zwykłe dane.
@@ -105,11 +118,11 @@ Pytania z odpowiedziami do matematyki i kodu są w [`transforms-camera.md`](tran
    Może od `core/`, `gfx/` i GLM. Dziś dołącza tylko GLM i bibliotekę standardową. Nie może znać `game/`, `debug/`, ImGui ani wejścia.
 
 3. **Dlaczego `Camera` nie obsługuje klawiatury i myszy?**
-   Bo to kwestia sterowania, a nie kamery. `scene/` jest częścią biblioteki `engine` i ma nadawać się do innych programów. Wejście czyta właściciel kamery i przekłada je na zmiany pól oraz wywołania `rotate`: robi to `game::NightMazeApp` ([`transforms-camera.md`](transforms-camera.md), sekcja 5.11).
+   Bo to kwestia sterowania, a nie kamery. `scene/` jest częścią biblioteki `engine` i ma nadawać się do innych programów. Wejście czyta właściciel kamery i przekłada je na zmiany pól oraz wywołania `rotate`: robi to `game::NightMazeApp` ([`camera-controls.md`](camera-controls.md), sekcje od 5.2 do 5.4).
 
 ## 7. Źródła
 
 - LearnOpenGL, rozdziały "Transformations", "Coordinate Systems" i "Camera": <https://learnopengl.com/Getting-started/Transformations>, <https://learnopengl.com/Getting-started/Coordinate-Systems>, <https://learnopengl.com/Getting-started/Camera>.
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 6 (podział na warstwy, zawartość `scene/`), sekcja 9 (konwencja osi).
 - Dokument biblioteki: [`../../libraries/glm.md`](../../libraries/glm.md).
-- Szczegółowe źródła są w sekcji 10 dokumentu [`transforms-camera.md`](transforms-camera.md).
+- Szczegółowe źródła do każdego zagadnienia są w sekcji 10 dokumentów tematycznych.

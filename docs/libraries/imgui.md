@@ -409,7 +409,7 @@ Ważne szczegóły:
   linkuje shadery w etapie 2, przed `ImGui::Render()`. Jest to bezpieczne, bo w etapach 2 i 3
   ImGui nie woła OpenGL, a backend w etapie 4 sam ustawia swój program i przywraca
   poprzedni tylko wtedy, gdy ten jeszcze istnieje (sprawdza `glIsProgram`). Pełny opis:
-  [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6.3.
+  [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6.3.
 
 ### 3.5. Reguła `Begin` / `End`
 

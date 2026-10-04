@@ -308,7 +308,7 @@ Na macOS krok 2 nie jest potrzebny. Pominięcie go na Windowsie nie daje błędu
 `Last load: OK`, a obraz się nie zmienia, bo program wczytał poprawnie starą kopię pliku.
 Podpowiedź (tooltip) nad linią `Vertex` albo `Fragment` w panelu pokazuje pełną ścieżkę
 czytanego pliku, czyli kopii w `build\debug\Debug\assets\shaders\`
-([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6.5).
+([`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6.5).
 
 Krok 2 powinien dać się wykonać przy działającym programie: gdy nie zmienił się żaden plik
 C++, budowanie nie linkuje `night_maze.exe` od nowa, tylko kopiuje katalog `assets`. Nie
@@ -506,7 +506,7 @@ Funkcje są wołane przy każdym starcie programu (wczytywanie shaderów).
 
 **Klasa `gfx::Shader`**
 
-Opis: [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md). Klasa była kompilowana i
+Opis: [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md). Klasa była kompilowana i
 sprawdzana tylko na macOS.
 
 - [ ] `src/gfx/Shader.cpp` i `src/core/Paths.cpp` kompilują się w MSVC z `/W4 /permissive-`
@@ -522,7 +522,7 @@ sprawdzana tylko na macOS.
 
 **Panel Shaders i przeładowanie shaderów**
 
-Opis: [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6. Panel był
+Opis: [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6. Panel był
 kompilowany i sprawdzany tylko na macOS.
 
 - [ ] `src/debug/panels/ShadersPanel.cpp`, `src/debug/DebugContext.hpp` i `src/main.cpp`
@@ -546,7 +546,7 @@ kompilowany i sprawdzany tylko na macOS.
 - [ ] naprawa: przywrócony plik, build, "Reload shaders". Oczekiwane: `Last load: OK`,
       pierwotne kolory
 - [ ] po kilku przeładowaniach w konsoli nie ma żadnej linii `[error] GL_...` (backend ImGui
-      i usunięty stary program, `shaders.md`, sekcja 6.3)
+      i usunięty stary program, `shader-hot-reload.md`, sekcja 6.3)
 - [ ] ścieżka z polską literą (kopia katalogu programu jak w punkcie o `Żółw` wyżej): panel
       i podpowiedź pokazują ścieżkę bez zamknięcia programu. Zapisać, jak wyświetla się
       polska litera (domyślna czcionka ImGui nie ma wszystkich polskich liter, więc
@@ -554,8 +554,8 @@ kompilowany i sprawdzany tylko na macOS.
 
 **Kamera: sterowanie i panel Camera**
 
-Opis: [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md),
-sekcje 5.11 i 6, [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.6. Kod był
+Opis: [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md),
+sekcje 5 i 6, [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.6. Kod był
 kompilowany tylko na macOS, a sterowanie nie było jeszcze sprawdzane na Windowsie. Windows
 jest jedyną z dwóch platform, na której GLFW włącza surowy ruch myszy
 (`GLFW_RAW_MOUSE_MOTION`), więc obrót myszą działa tu inną ścieżką niż na Macu.
@@ -608,7 +608,8 @@ jest jedyną z dwóch platform, na której GLFW włącza surowy ruch myszy
 
 **Klasy `gfx::Buffer` i `gfx::VertexArray`**
 
-Opis: [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md). Klasy były
+Opis: [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) (klasy) i
+[`../modules/gfx/indexed-drawing.md`](../modules/gfx/indexed-drawing.md) (kostka w `NightMazeApp`). Klasy były
 kompilowane i sprawdzane tylko na macOS.
 
 - [ ] `src/gfx/Buffer.cpp` i `src/gfx/VertexArray.cpp` kompilują się w MSVC z

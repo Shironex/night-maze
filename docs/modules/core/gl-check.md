@@ -51,7 +51,7 @@ Kody, które mogą wrócić w OpenGL 4.1:
 
 ## 4. Shadery
 
-Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` przy shaderach **nie** wykryje: nieudana kompilacja albo linkowanie shadera nie ustawia flagi błędu OpenGL. Wynik trzeba odczytać osobno: status przez `glGetShaderiv(GL_COMPILE_STATUS)` i `glGetProgramiv(GL_LINK_STATUS)`, a tekst błędu z dziennika sterownika. Robi to klasa `gfx::Shader`, opisana w [`../gfx/shaders.md`](../gfx/shaders.md) (sekcje 3.3, 5.5 i 5.6).
+Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` przy shaderach **nie** wykryje: nieudana kompilacja albo linkowanie shadera nie ustawia flagi błędu OpenGL. Wynik trzeba odczytać osobno: status przez `glGetShaderiv(GL_COMPILE_STATUS)` i `glGetProgramiv(GL_LINK_STATUS)`, a tekst błędu z dziennika sterownika. Robi to klasa `gfx::Shader`, opisana w [`../gfx/shader-class.md`](../gfx/shader-class.md) (sekcje 3.3, 5.5 i 5.6).
 
 ## 5. Kod w projekcie
 
@@ -192,7 +192,7 @@ To początek każdej klatki (opis samych funkcji: [`window-context.md`](window-c
 4. **Deklaracja wewnątrz makra.** `GL_CHECK(GLuint id = glCreateShader(...));` kompiluje się, ale `id` istnieje tylko wewnątrz bloku `do { }`. Zmienną deklaruję przed makrem.
 5. **Efekt uboczny w argumencie.** Argument makra jest wklejany jako tekst. W obecnej definicji występuje raz jako instrukcja i raz jako napis (`#call`), więc wykonuje się raz. Gdyby ktoś przerobił makro tak, że `call` pojawia się dwa razy jako kod, wywołanie OpenGL wykonałoby się dwukrotnie.
 6. **Zalew komunikatów.** Błędne wywołanie w `onRender` wypisuje linię w każdej klatce, czyli 60 lub więcej linii na sekundę. Program najlepiej od razu zatrzymać i przeczytać pierwszą linię.
-7. **Błędy shaderów.** Nieudana kompilacja ani nieudane linkowanie shadera nie są błędem `glGetError` (sekcja 4). Jak się je odczytuje: [`../gfx/shaders.md`](../gfx/shaders.md), sekcja 3.3.
+7. **Błędy shaderów.** Nieudana kompilacja ani nieudane linkowanie shadera nie są błędem `glGetError` (sekcja 4). Jak się je odczytuje: [`../gfx/shader-class.md`](../gfx/shader-class.md), sekcja 3.3.
 8. **Pętla `glGetError` bez limitu.** W wielu poradnikach jest samo `while (glGetError() != GL_NO_ERROR)`. Gdy kontekst jest utracony albo nie jest bieżący, `glGetError` może zwracać błąd za każdym razem i taka pętla nigdy się nie kończy: program wisi i nic nie wypisuje. U mnie pętla kończy się najpóźniej po `MAX_ERRORS_PER_CHECK` odczytach. Linia `Stopped reading OpenGL errors after 16 errors` w konsoli oznacza więc problem z kontekstem, a nie 16 osobnych pomyłek w kodzie.
 
 ## 8. Ćwiczenia

@@ -6,7 +6,8 @@ używa.
 
 **Stan na dziś: GLM używają struktury `scene::Transform` i `scene::Camera` oraz klasa
 `gfx::Shader`.** Struktury z [`src/scene/`](../../src/scene/) (opis w
-[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md)) wołają
+[`../modules/scene/transforms.md`](../modules/scene/transforms.md) i
+[`../modules/scene/camera.md`](../modules/scene/camera.md)) wołają
 `translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i `normalize`.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera. Wszystko spotyka się w
@@ -345,7 +346,7 @@ glm::mat4 Transform::matrix() const {
 
 Powstaje `T * Ry * Rx * Rz * S`. Osie obrotu to nazwane stałe z tego samego pliku
 (`constexpr glm::vec3 AXIS_Y{0.0F, 1.0F, 0.0F};` i dwie podobne). Omówienie linia po linii:
-[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja 5.3.
+[`../modules/scene/transforms.md`](../modules/scene/transforms.md), sekcja 5.3.
 
 ### 3.6. `glm::lookAt`: macierz widoku
 
@@ -379,8 +380,8 @@ glm::mat4 Camera::viewMatrix(const glm::vec3& eye) const {
 
 `forward()` to kierunek patrzenia policzony z kątów yaw i pitch, a `WORLD_UP` to stała
 `(0, 1, 0)`. Co dokładnie buduje `lookAt` (trzy wektory bazy kamery) i dlaczego pozycja oka
-jest parametrem: [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md),
-sekcje 2.7 i 5.7.
+jest parametrem: [`../modules/scene/camera.md`](../modules/scene/camera.md),
+sekcje 2.1 i 5.5.
 
 ### 3.7. `glm::perspective` i `glm::radians`
 
@@ -433,7 +434,7 @@ pola), a `glm::radians` stoi w miejscu użycia. Tak samo zaczyna się `Camera::f
 ```
 
 Teoria rzutowania (bryła widzenia, dzielenie perspektywiczne, nieliniowa głębia):
-[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja 2.9.
+[`../modules/scene/camera.md`](../modules/scene/camera.md), sekcja 2.3.
 
 ### 3.8. `normalize`, `cross`, `dot`, `mix`
 
@@ -491,8 +492,8 @@ const glm::vec3 eye =
 Tak liczy się pozycję do narysowania między dwoma krokami symulacji. Trzeci argument musi
 mieć typ składowych wektora (`float`), a `alpha` przychodzi jako `double`, stąd
 `static_cast<float>`. Pełny opis obu fragmentów:
-[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcje 2.12
-i 5.11 (o `alpha`: [`../modules/core/main-loop.md`](../modules/core/main-loop.md), sekcja 2.4).
+[`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcje 2.2, 2.4,
+5.4 i 5.5 (o `alpha`: [`../modules/core/main-loop.md`](../modules/core/main-loop.md), sekcja 2.4).
 
 ### 3.9. `glm::value_ptr` i wysyłanie macierzy do shadera
 
@@ -514,7 +515,7 @@ void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
 ```
 
 Nagłówek `<glm/gtc/type_ptr.hpp>` jest dołączony na górze tego pliku. Funkcję omawia linia
-po linii [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 5.12. Woła ją
+po linii [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), sekcja 5.1. Woła ją
 `NightMazeApp::onRender`, trzy razy na klatkę:
 
 ```cpp

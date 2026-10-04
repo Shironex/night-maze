@@ -34,10 +34,16 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/core/gl-check.md`](modules/core/gl-check.md) | `src/core/GlCheck.*` | 1. Makro `GL_CHECK`, model błędów `glGetError`, Debug a Release |
 | [`modules/core/paths.md`](modules/core/paths.md) | `src/core/Paths.*` | 1. Ścieżki do assetów względem pliku wykonywalnego: katalog roboczy, wywołania systemowe macOS i Windows, `std::filesystem::path`, katalog `assets` obok programu, ścieżka jako tekst UTF-8 (`pathText`). Użytkownik: wczytywanie shaderów w `NightMazeApp` |
 | [`modules/gfx/README.md`](modules/gfx/README.md) | `src/gfx/` | 2. Programowalny potok: wstęp do modułu `gfx`, RAII i semantyka przenoszenia dla obiektów OpenGL, miejsce w warstwach, indeks plików, droga jednej klatki od danych do pikseli |
-| [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | `src/gfx/Shader.*`, `assets/shaders/basic.*`, `src/game/NightMazeApp.*`, `src/debug/panels/ShadersPanel.*` | 2. Potok renderowania, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, błędy sterownika, wczytywanie na żywo, uniformy i `Shader::setMat4`, shadery `assets/shaders/basic.*` linia po linii, panel Shaders z przyciskiem "Reload shaders" i scenariusz pokazu na obronie |
-| [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | `src/gfx/Buffer.*`, `src/gfx/VertexArray.*`, `src/game/NightMazeApp.*` | 2. Dane wierzchołków, VBO, VAO i jego stan, układ przeplatany (krok i przesunięcie), EBO, `glDrawArrays` a `glDrawElements`, dane kostki (24 wierzchołki, 36 indeksów), kolejność tworzenia obiektów i rysowanie w `NightMazeApp` |
+| [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | `assets/shaders/basic.*`, `src/game/NightMazeApp.*` | 2. Potok renderowania, shader wierzchołków i fragmentów, podstawy GLSL, obiekt shadera a obiekt programu, kompilacja a linkowanie jako pojęcia, shadery `assets/shaders/basic.*` linia po linii, skąd biorą się kolory, użycie programu w `NightMazeApp` |
+| [`modules/gfx/shader-class.md`](modules/gfx/shader-class.md) | `src/gfx/Shader.*` | 2. Klasa `gfx::Shader` linia po linii: wywołania OpenGL w kolejności, błędy sterownika i dziennik, wczytanie pliku, kompilacja, linkowanie, konstruktor i destruktor, przenoszenie, testy klasy |
+| [`modules/gfx/uniforms.md`](modules/gfx/uniforms.md) | `src/gfx/Shader.*` (`setMat4`), `assets/shaders/basic.vert`, `src/game/NightMazeApp.*` | 2. Uniformy: atrybut a uniform, `glGetUniformLocation` i `glUniformMatrix4fv`, `Shader::setMat4` linia po linii, trzy macierze w `basic.vert`, położenie -1, `use()` przed `setMat4` |
+| [`modules/gfx/shader-hot-reload.md`](modules/gfx/shader-hot-reload.md) | `src/gfx/Shader.*` (`reload`), `src/debug/panels/ShadersPanel.*` | 2. Wczytywanie shaderów na żywo z zachowaniem starego programu, przeładowanie w środku klatki ImGui, panel Shaders z przyciskiem "Reload shaders", scenariusz pokazu na obronie, różnica na Windowsie |
+| [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | `src/gfx/Buffer.*`, `src/gfx/VertexArray.*` | 2. Dane wierzchołków i atrybuty, VBO, VAO i jego stan, układ przeplatany (krok i przesunięcie), dlaczego profil Core wymaga VAO, podpowiedź użycia, klasy `Buffer` i `VertexArray` linia po linii, `setFloatAttribute`, czas życia bufora i VAO |
+| [`modules/gfx/indexed-drawing.md`](modules/gfx/indexed-drawing.md) | `src/game/NightMazeApp.*` | 2. Indeksy i bufor indeksów (EBO), `glDrawArrays` a `glDrawElements`, współrzędne lokalne i kierunek nawijania, dane kostki (24 wierzchołki, 36 indeksów), kolejność tworzenia obiektów i rysowanie w `NightMazeApp` |
 | [`modules/scene/README.md`](modules/scene/README.md) | `src/scene/` | 3. Przekształcenia przestrzeni: wstęp do modułu `scene`, czym struktury z danymi różnią się od klas `gfx`, miejsce w warstwach, konwencja układu współrzędnych, indeks plików |
-| [`modules/scene/transforms-camera.md`](modules/scene/transforms-camera.md) | `src/scene/Transform.*`, `src/scene/Camera.*`, `assets/shaders/basic.vert`, `src/game/NightMazeApp.*`, `src/debug/panels/CameraPanel.*` | 3. Przestrzenie współrzędnych, współrzędne jednorodne, macierze przesunięcia, obrotu i skali, kolejność przekształceń, kąty Eulera, macierz widoku i `lookAt`, kamera FPS (yaw, pitch, wektor kierunku, ograniczenie pitch), rzutowanie perspektywiczne i nieliniowa głębia, struktury `Transform` i `Camera` linia po linii, trzy macierze w shaderze, test głębi, proporcje okna, droga jednego wierzchołka kostki na liczbach, sterowanie kamerą (obrót myszą raz na klatkę, ruch klawiszami stałym krokiem, interpolacja z `alpha`), panel Camera i scenariusz pokazu |
+| [`modules/scene/transforms.md`](modules/scene/transforms.md) | `src/scene/Transform.*`, `assets/shaders/basic.vert`, `src/game/NightMazeApp.*` | 3. Przestrzenie współrzędnych, współrzędne jednorodne, macierze przesunięcia, obrotu i skali, kolejność przekształceń, kąty Eulera, macierz modelu, struktura `Transform` linia po linii, trzy macierze w shaderze, obrót kostki |
+| [`modules/scene/camera.md`](modules/scene/camera.md) | `src/scene/Camera.*`, `src/game/NightMazeApp.*` | 3. Macierz widoku i `lookAt`, kamera FPS (yaw, pitch, wektor kierunku, ograniczenie pitch), rzutowanie perspektywiczne i nieliniowa głębia, z NDC do pikseli, konwencja układu, struktura `Camera` linia po linii, trzy macierze w `onRender`, test głębi, proporcje okna, droga jednego wierzchołka kostki na liczbach |
+| [`modules/scene/camera-controls.md`](modules/scene/camera-controls.md) | `src/game/NightMazeApp.*`, `src/debug/panels/CameraPanel.*` | 3. Sterowanie kamerą (obrót myszą raz na klatkę, ruch klawiszami stałym krokiem, normalizacja kierunku, interpolacja z `alpha`), panel Camera i scenariusz pokazu, panel a przechwycony kursor |
 | [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui (Renderer, Shaders, Camera), podpięcie nakładki w `main.cpp`, kto ma klawiaturę i mysz (blokady, `setMouseEnabled`), jak dodać nowy panel |
 
 ### Biblioteki (`libraries/`)
@@ -51,7 +57,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 
 ## Kolejność czytania
 
-Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki od 15 do 17 to temat 2, "Programowalny potok". Kroki 18 i 19 to temat 3, "Przekształcenia przestrzeni".
+Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki od 15 do 21 to temat 2, "Programowalny potok". Kroki od 22 do 25 to temat 3, "Przekształcenia przestrzeni".
 
 | Krok | Dokument | Po co na tym etapie |
 |---|---|---|
@@ -68,13 +74,19 @@ Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materia�
 | 11 | [`modules/core/paths.md`](modules/core/paths.md) | Jak program znajduje pliki z `assets/` niezależnie od katalogu roboczego i skąd ten katalog bierze się obok programu |
 | 12 | [`libraries/imgui.md`](libraries/imgui.md) | Jak działa biblioteka paneli |
 | 13 | [`modules/debug-ui.md`](modules/debug-ui.md) | Jak panele są wpięte w mój projekt i jak dodać własny |
-| 14 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera. Fragmenty kodu projektu pochodzą z `src/scene/` (kroki 18 i 19) |
+| 14 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera. Fragmenty kodu projektu pochodzą z `src/scene/` (kroki od 22 do 25) |
 | 15 | [`modules/gfx/README.md`](modules/gfx/README.md) | Temat 2: dlaczego obiekty OpenGL są zamknięte w klasach, RAII i przenoszenie zamiast kopiowania, droga klatki od danych do pikseli |
-| 16 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | Programowalny potok, GLSL, klasa `Shader`, shadery `basic.vert` oraz `basic.frag` i panel Shaders (przeładowanie na żywo) |
-| 17 | [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | Skąd shader wierzchołków bierze dane: bufory, atrybuty, VAO, indeksy, dane kostki. Po tym kroku wyjaśnione jest wszystko w kodzie rysującym poza macierzami |
-| 18 | [`modules/scene/README.md`](modules/scene/README.md) | Temat 3: po co warstwa `scene`, dlaczego jej struktury to same dane i matematyka bez OpenGL, konwencja układu współrzędnych |
-| 19 | [`modules/scene/transforms-camera.md`](modules/scene/transforms-camera.md) | Przestrzenie współrzędnych, macierze model, view i projection, kamera FPS, struktury `Transform` i `Camera`. Po tym kroku cały kod rysujący kostkę jest wyjaśniony, razem z drogą wierzchołka od bufora do piksela, a także sterowanie kamerą (sekcje 2.12 i 5.11, do których przydają się kroki 8, 9 i 13: pętla ze stałym krokiem, wejście i panele) i panel Camera |
-| 20 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
+| 16 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | Programowalny potok, GLSL, shadery `basic.vert` oraz `basic.frag`, użycie programu w klatce |
+| 17 | [`modules/gfx/shader-class.md`](modules/gfx/shader-class.md) | Klasa `Shader`: jak pliki shaderów stają się programem OpenGL i jak odczytać błąd sterownika |
+| 18 | [`modules/gfx/uniforms.md`](modules/gfx/uniforms.md) | Uniformy i `Shader::setMat4`: jak wartości z C++ trafiają do shadera |
+| 19 | [`modules/gfx/shader-hot-reload.md`](modules/gfx/shader-hot-reload.md) | Przeładowanie shaderów na żywo i panel Shaders |
+| 20 | [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | Skąd shader wierzchołków bierze dane: bufory, atrybuty, VAO |
+| 21 | [`modules/gfx/indexed-drawing.md`](modules/gfx/indexed-drawing.md) | Indeksy, dane kostki i `glDrawElements`. Po tym kroku wyjaśnione jest wszystko w kodzie rysującym poza macierzami |
+| 22 | [`modules/scene/README.md`](modules/scene/README.md) | Temat 3: po co warstwa `scene`, dlaczego jej struktury to same dane i matematyka bez OpenGL, konwencja układu współrzędnych |
+| 23 | [`modules/scene/transforms.md`](modules/scene/transforms.md) | Przestrzenie współrzędnych, macierze przesunięcia, obrotu i skali, macierz modelu, struktura `Transform` |
+| 24 | [`modules/scene/camera.md`](modules/scene/camera.md) | Macierze view i projection, kamera FPS, struktura `Camera`. Po tym kroku cały kod rysujący kostkę jest wyjaśniony, razem z drogą wierzchołka od bufora do piksela |
+| 25 | [`modules/scene/camera-controls.md`](modules/scene/camera-controls.md) | Sterowanie kamerą (sekcje 2 i 5, do których przydają się kroki 8, 9 i 13: pętla ze stałym krokiem, wejście i panele) i panel Camera |
+| 26 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
 
 ## Jak się uczyć z dokumentu modułu
 

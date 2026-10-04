@@ -11,12 +11,16 @@ Na dziś moduł ma trzy klasy: `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`
 
 | Dokument | Co opisuje | Klasy i pliki |
 |---|---|---|
-| [`shaders.md`](shaders.md) | programowalny potok, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, odczyt błędów sterownika, wczytywanie na żywo z zachowaniem starego programu, panel "Shaders" z przyciskiem "Reload shaders" | `Shader`, `drawShadersPanel` |
-| [`buffers-vao.md`](buffers-vao.md) | dane wierzchołków i atrybuty, bufor wierzchołków (VBO), tablica wierzchołków (VAO) i co dokładnie pamięta, układ przeplatany z krokiem i przesunięciem, bufor indeksów (EBO), `glDrawArrays` a `glDrawElements`, podpowiedzi użycia | `Buffer`, `VertexArray` |
+| [`shaders.md`](shaders.md) | programowalny potok, shader wierzchołków i fragmentów, podstawy GLSL, obiekt shadera a obiekt programu, kompilacja a linkowanie jako pojęcia, para `basic.vert` i `basic.frag`, skąd biorą się kolory, użycie programu w klatce | `basic.vert`, `basic.frag`, użycie w `NightMazeApp` |
+| [`shader-class.md`](shader-class.md) | klasa `Shader` w kodzie: wywołania OpenGL w kolejności, odczyt błędów sterownika, wczytanie pliku, kompilacja, linkowanie, budowanie programu, konstruktor, destruktor, przenoszenie, testy klasy | `Shader` |
+| [`uniforms.md`](uniforms.md) | uniformy: atrybut a uniform, położenie i `glGetUniformLocation`, `glUniformMatrix4fv`, trzy macierze w `basic.vert`, położenie -1, `use()` przed `setMat4` | `Shader::setMat4` |
+| [`shader-hot-reload.md`](shader-hot-reload.md) | wczytywanie na żywo z zachowaniem starego programu, przeładowanie w środku klatki ImGui, panel "Shaders" z przyciskiem "Reload shaders", pokaz na obronie, różnica na Windowsie | `Shader::reload`, `drawShadersPanel` |
+| [`buffers-vao.md`](buffers-vao.md) | dane wierzchołków i atrybuty, bufor wierzchołków (VBO), układ przeplatany z krokiem i przesunięciem, tablica wierzchołków (VAO) i co dokładnie pamięta, dlaczego profil Core wymaga VAO, podpowiedzi użycia, `setFloatAttribute`, czas życia bufora i VAO | `Buffer`, `VertexArray` |
+| [`indexed-drawing.md`](indexed-drawing.md) | indeksy i bufor indeksów (EBO), `glDrawArrays` a `glDrawElements`, współrzędne lokalne i kierunek nawijania, kostka: 24 wierzchołki i 36 indeksów, kolejność pól i konstruktor wiążący VAO, testy kostki | dane i rysowanie w `NightMazeApp` |
 
 Każdy dokument tematyczny ma te same dziesięć sekcji co dokumenty modułu `core`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
 
-Proponowana kolejność czytania: ten plik, potem [`shaders.md`](shaders.md), potem [`buffers-vao.md`](buffers-vao.md). Wcześniej warto znać [`../core/gl-check.md`](../core/gl-check.md), bo każde wywołanie OpenGL w `gfx` jest opakowane w `GL_CHECK`.
+Proponowana kolejność czytania: ten plik, potem [`shaders.md`](shaders.md), [`shader-class.md`](shader-class.md), [`uniforms.md`](uniforms.md) i [`shader-hot-reload.md`](shader-hot-reload.md), potem [`buffers-vao.md`](buffers-vao.md), potem [`indexed-drawing.md`](indexed-drawing.md). Wcześniej warto znać [`../core/gl-check.md`](../core/gl-check.md), bo każde wywołanie OpenGL w `gfx` jest opakowane w `GL_CHECK`.
 
 ## 2. Wspólna zasada: RAII i tylko przenoszenie
 
@@ -94,7 +98,7 @@ Reguła dla każdej klasy `gfx`, w tej kolejności:
 3. konstruktor przenoszący przejmuje identyfikator i **zeruje go w obiekcie źródłowym**,
 4. przypisanie przenoszące najpierw sprawdza przypisanie do samego siebie, potem zwalnia własny obiekt OpenGL, potem przejmuje identyfikator i zeruje go w źródle.
 
-Zero jest bezpieczne, bo OpenGL nigdy nie nadaje obiektowi identyfikatora 0, a `glDelete*` dla zera jest po cichu ignorowane. Kod obu funkcji przenoszących dla `Shader`, linia po linii, jest w [`shaders.md`](shaders.md), sekcja 5.9. `Buffer` i `VertexArray` stosują ten sam wzorzec ([`buffers-vao.md`](buffers-vao.md), sekcje 5.4 i 5.5).
+Zero jest bezpieczne, bo OpenGL nigdy nie nadaje obiektowi identyfikatora 0, a `glDelete*` dla zera jest po cichu ignorowane. Kod obu funkcji przenoszących dla `Shader`, linia po linii, jest w [`shader-class.md`](shader-class.md), sekcja 5.9. `Buffer` i `VertexArray` stosują ten sam wzorzec ([`buffers-vao.md`](buffers-vao.md), sekcje 5.4 i 5.5).
 
 Kompilator nie wygeneruje tych funkcji poprawnie sam. Domyślny konstruktor przenoszący przenosi każde pole, a "przeniesienie" liczby to jej skopiowanie: identyfikator zostałby w obu obiektach. Dlatego w `gfx` obie funkcje są napisane ręcznie.
 
@@ -124,7 +128,7 @@ Strzałka znaczy "zna i dołącza nagłówki". Zasady dla `gfx`:
 1. `gfx/` zależy tylko od `core/`, GLAD, GLM i biblioteki standardowej. GLM dołącza tylko `Shader`: `Shader.hpp` potrzebuje typu `glm::mat4` dla `setMat4`, a `Shader.cpp` funkcji `glm::value_ptr`. `Shader.cpp` dołącza `core/GlCheck.hpp`, `core/Log.hpp` i `core/Paths.hpp` (funkcja `core::pathText` do komunikatów błędów), a `Buffer.cpp` i `VertexArray.cpp` samo `core/GlCheck.hpp`. Nie dołącza GLFW: do tworzenia obiektów OpenGL wystarcza bieżący kontekst, a skąd on się wziął, `gfx` nie musi wiedzieć.
 2. `core/` nie zna `gfx/`. Zależność idzie w jedną stronę: `core <- gfx`.
 3. `gfx/` nie zna `game/`, `debug/` ani ImGui. Nic w nim nie jest specyficzne dla Night Maze, więc cała warstwa nadaje się do zadań laboratoryjnych.
-4. `gfx/` ma dwóch użytkowników. `game/`: `NightMazeApp.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Shader.hpp` i `gfx/VertexArray.hpp`. `debug/`: `ShadersPanel.cpp` dołącza `gfx/Shader.hpp`, bo panel "Shaders" czyta stan obiektu `Shader` i woła jego `reload()` ([`shaders.md`](shaders.md), sekcja 6). To dozwolony kierunek: `debug/` może zależeć od każdej warstwy.
+4. `gfx/` ma dwóch użytkowników. `game/`: `NightMazeApp.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Shader.hpp` i `gfx/VertexArray.hpp`. `debug/`: `ShadersPanel.cpp` dołącza `gfx/Shader.hpp`, bo panel "Shaders" czyta stan obiektu `Shader` i woła jego `reload()` ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6). To dozwolony kierunek: `debug/` może zależeć od każdej warstwy.
 5. `gfx/` nie zna `scene/`. Warstwa `scene/` (struktury `Transform` i `Camera`, [`../scene/README.md`](../scene/README.md)) stoi w łańcuchu nad `gfx/`. `Shader::setMat4` przyjmuje zwykłe `glm::mat4` i nie wie, skąd macierz pochodzi: oba moduły spotykają się dopiero w `game/`, gdzie `NightMazeApp` bierze macierz z `Transform` albo `Camera` i podaje ją shaderowi.
 
 `gfx` nie wie też nic o katalogu `assets/`. `Shader` dostaje gotowe ścieżki plików, a zbudowanie ich przez `core::assetPath` ([`../core/paths.md`](../core/paths.md)) jest sprawą wołającego.
@@ -135,12 +139,12 @@ W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/gfx/*` należą do tej 
 
 | Plik kodu | Co zawiera | Dokument |
 |---|---|---|
-| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | RAII na obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów: `reload`, `isValid`, `use`, `setMat4` (uniform typu `mat4`), `lastError`, `vertexPath`, `fragmentPath`. Użycie: pole `m_shader` w `NightMazeApp`, panel "Shaders" | [`shaders.md`](shaders.md) |
+| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | RAII na obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów: `reload`, `isValid`, `use`, `setMat4` (uniform typu `mat4`), `lastError`, `vertexPath`, `fragmentPath`. Użycie: pole `m_shader` w `NightMazeApp`, panel "Shaders" | [`shader-class.md`](shader-class.md), `setMat4` w [`uniforms.md`](uniforms.md), `reload` w [`shader-hot-reload.md`](shader-hot-reload.md) |
 | [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`.cpp`](../../../src/gfx/Buffer.cpp) | RAII na jeden bufor OpenGL wypełniany raz, w konstruktorze. Cel `GL_ARRAY_BUFFER` (wierzchołki) albo `GL_ELEMENT_ARRAY_BUFFER` (indeksy), `bind`. Użycie: pola `m_vertexBuffer` i `m_indexBuffer` w `NightMazeApp` | [`buffers-vao.md`](buffers-vao.md) |
 | [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`.cpp`](../../../src/gfx/VertexArray.cpp) | RAII na jeden obiekt tablicy wierzchołków (VAO), wiązany już w konstruktorze: `bind`, `setFloatAttribute`. Użycie: pole `m_vertexArray` w `NightMazeApp` | [`buffers-vao.md`](buffers-vao.md) |
-| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | para shaderów projektu: pozycja i kolor wierzchołka na wejściu, trzy macierze jako uniformy, kolor interpolowany na wyjściu | [`shaders.md`](shaders.md), sekcja 4 |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik wszystkich trzech klas: dane wierzchołków i indeksy kostki, konfiguracja w konstruktorze, rysowanie w `onRender`, akcesor `shader()` dla panelu debug | [`shaders.md`](shaders.md), sekcja 5.10, i [`buffers-vao.md`](buffers-vao.md), sekcja 5.7 |
-| [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | `debug::drawShadersPanel`: panel "Shaders". Nie należy do `gfx/` ani do biblioteki `engine`, ale jest pokazem klasy `Shader` | [`shaders.md`](shaders.md), sekcja 6 |
+| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | para shaderów projektu: pozycja i kolor wierzchołka na wejściu, trzy macierze jako uniformy, kolor interpolowany na wyjściu | [`shaders.md`](shaders.md), sekcja 4, uniformy w [`uniforms.md`](uniforms.md), sekcja 4 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik wszystkich trzech klas: dane wierzchołków i indeksy kostki, konfiguracja w konstruktorze, rysowanie w `onRender`, akcesor `shader()` dla panelu debug | [`shaders.md`](shaders.md), sekcja 5.1, i [`indexed-drawing.md`](indexed-drawing.md), sekcja 5 |
+| [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | `debug::drawShadersPanel`: panel "Shaders". Nie należy do `gfx/` ani do biblioteki `engine`, ale jest pokazem klasy `Shader` | [`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6 |
 
 ## 5. Wymaganie wspólne: żywy kontekst OpenGL
 
@@ -187,13 +191,13 @@ flowchart TD
 
 | Krok | Kto | Kiedy | Dokument |
 |---|---|---|---|
-| Pliki shaderów stają się programem OpenGL | `gfx::Shader` | przy starcie i po każdym naciśnięciu "Reload shaders" | [`shaders.md`](shaders.md), sekcje 4, 5 i 6 |
-| VAO powstaje i zostaje związany, zanim powstaną bufory | `gfx::VertexArray` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcje 5.5 i 5.7 |
-| Tablice `VERTICES` i `INDICES` trafiają do pamięci karty. Bufor indeksów zapisuje się przy tym w związanym VAO | `gfx::Buffer`, dwa obiekty | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcje 5.3 i 5.7 |
-| Opis "atrybut 0 to pozycja, atrybut 1 to kolor" zostaje zapisany | `gfx::VertexArray` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcje 5.6 i 5.7 |
-| Stan klatki: viewport, test głębi, czyszczenie koloru i głębi | `NightMazeApp::onRender` | co klatkę | [`../core/window-context.md`](../core/window-context.md), sekcja 3.2, [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
-| Wybór programu, trzy macierze do uniformów | `NightMazeApp::onRender`, `gfx::Shader::setMat4` | co klatkę | [`shaders.md`](shaders.md), sekcje 5.10 i 5.12, [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.9 |
-| Wybór opisu danych, wywołanie rysujące `glDrawElements` | `NightMazeApp::onRender` | co klatkę | [`buffers-vao.md`](buffers-vao.md), sekcja 5.7 |
+| Pliki shaderów stają się programem OpenGL | `gfx::Shader` | przy starcie i po każdym naciśnięciu "Reload shaders" | [`shaders.md`](shaders.md), sekcja 4, [`shader-class.md`](shader-class.md), sekcja 5, [`shader-hot-reload.md`](shader-hot-reload.md), sekcje 5.2 i 6 |
+| VAO powstaje i zostaje związany, zanim powstaną bufory | `gfx::VertexArray` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcja 5.5, [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.5 |
+| Tablice `VERTICES` i `INDICES` trafiają do pamięci karty. Bufor indeksów zapisuje się przy tym w związanym VAO | `gfx::Buffer`, dwa obiekty | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcja 5.3, [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.5 |
+| Opis "atrybut 0 to pozycja, atrybut 1 to kolor" zostaje zapisany | `gfx::VertexArray` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcja 5.6, [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.5 |
+| Stan klatki: viewport, test głębi, czyszczenie koloru i głębi | `NightMazeApp::onRender` | co klatkę | [`../core/window-context.md`](../core/window-context.md), sekcja 3.2, [`../scene/camera.md`](../scene/camera.md), sekcja 5.7 |
+| Wybór programu, trzy macierze do uniformów | `NightMazeApp::onRender`, `gfx::Shader::setMat4` | co klatkę | [`shaders.md`](shaders.md), sekcja 5.1, [`uniforms.md`](uniforms.md), sekcja 5.1, [`../scene/camera.md`](../scene/camera.md), sekcja 5.7 |
+| Wybór opisu danych, wywołanie rysujące `glDrawElements` | `NightMazeApp::onRender` | co klatkę | [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.6 |
 | Shader wierzchołków, rasteryzacja, shader fragmentów, test głębi | karta graficzna | co klatkę | [`shaders.md`](shaders.md), sekcje 2.1 i 4 |
 
 Pięć rzeczy, które muszą się zgadzać między tymi częściami, i których OpenGL za mnie nie sprawdzi:

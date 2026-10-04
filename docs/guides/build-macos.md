@@ -84,7 +84,8 @@ W oknie widać ciemnogranatowe tło, na środku kostkę obróconą tak, że wida
 wierzchu panele "Renderer", "Shaders" i "Camera". Kostka zachowuje proporcje przy zmianie
 rozmiaru okna. Po kliknięciu w scenę kursor znika i kamerą można latać wokół kostki
 (tabela niżej). Linia `[error] Shader ...` w terminalu oznacza, że shader się nie
-wczytał: wtedy okno pokazuje samo tło ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
+wczytał: wtedy okno pokazuje samo tło ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md),
+sekcja 5.1).
 
 `4.1` potwierdza, że dostaliśmy kontekst, o który prosiliśmy. `Metal` oznacza, że OpenGL na
 Apple Silicon jest warstwą zbudowaną nad Metalem. Druga linia zależy od procesora w danym
@@ -106,7 +107,7 @@ wpisywanie wartości): klawiatura należy wtedy do panelu. Opis w
 [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6. Kliknięcie w panel nie
 przechwytuje kursora, a przy przechwyconym kursorze panele nie reagują na mysz: żeby
 przesunąć suwak, trzeba najpierw nacisnąć Esc. Sterowanie kamerą opisuje
-[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcje 5.11
+[`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcje 5
 i 6. Na macOS GLFW 3.4 nie ma surowego ruchu myszy, więc obrót korzysta z ruchu kursora po
 przyspieszeniu systemowym ([`../modules/core/input.md`](../modules/core/input.md), sekcja
 2.7).
@@ -491,7 +492,7 @@ pokazuje część tych samych diagnostyk w edytorze, bo czyta ten sam plik `.cla
 | `[error] GLFW error ...` i `Fatal: Failed to create a window with an OpenGL 4.1 Core context` | system nie udostępnił kontekstu 4.1 Core | przeczytaj opis w linii `GLFW error`. Na Macu z Apple Silicon nie powinno wystąpić |
 | Ostrzeżenia `'gl...' is deprecated: first deprecated in macOS 10.14` | plik kompilowany bez `GL_SILENCE_DEPRECATION` | definicja jest `PUBLIC` na targecie `engine`. Sprawdź, czy nowy target linkuje `engine` |
 | `[error] Shader file cannot be opened: .../build/debug/assets/shaders/basic.vert`, w oknie samo tło | obok programu nie ma katalogu `assets`: program skopiowany ręcznie w inne miejsce albo repozytorium przeniesione po zbudowaniu (dowiązanie wskazuje starą ścieżkę) | `ls -l build/debug/assets`. Odtwórz dowiązanie pełnym buildem: `make clean`, potem `make debug` |
-| `[error] Shader compilation failed: ...` z linią `ERROR: 0:N: ...`, w oknie samo tło | błąd w pliku shadera, `N` to numer linii według sterownika | popraw plik w `assets/shaders/` i naciśnij "Reload shaders" w panelu Shaders (albo uruchom program ponownie). Opis w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7 |
+| `[error] Shader compilation failed: ...` z linią `ERROR: 0:N: ...`, w oknie samo tło | błąd w pliku shadera, `N` to numer linii według sterownika | popraw plik w `assets/shaders/` i naciśnij "Reload shaders" w panelu Shaders (albo uruchom program ponownie). Opis w [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), sekcje 3.3 i 7, oraz w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7 |
 | Okno otwiera się, ale panel "Renderer" jest niewidoczny | panele ukryte klawiszem `~` albo zapisany układ poza oknem | naciśnij `~` (na lewo od `1`). Jeśli nie pomaga, usuń `imgui.ini` z katalogu, z którego uruchamiasz program |
 | Esc nie zamyka programu, `~` nie chowa paneli | aktywny jest widżet ImGui (wpisywanie albo przeciąganie wartości), więc klawiatura gry jest zablokowana | zakończ edycję (Enter, Esc albo kliknięcie poza polem). Opis w [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6 |
 | Układ paneli nie zapamiętuje się między uruchomieniami | program startuje z różnych katalogów roboczych (terminal i IDE) | `imgui.ini` powstaje w katalogu roboczym. Ustaw ten sam katalog w IDE |

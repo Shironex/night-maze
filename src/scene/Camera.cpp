@@ -1,5 +1,5 @@
 // Camera: a position and two angles, turned into the view and projection matrices.
-// See docs/modules/scene/transforms-camera.md
+// See docs/modules/scene/camera.md
 #include "scene/Camera.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>

@@ -8,7 +8,7 @@ layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the obj
 layout(location = 1) in vec3 aColor;    // red, green, blue, each from 0 to 1
 
 // Uniforms: set from C++ (gfx::Shader::setMat4), the same for every vertex of one draw call.
-// See docs/modules/scene/transforms-camera.md
+// See docs/modules/scene/transforms.md
 uniform mat4 uModel;      // local space to world space: where the object stands
 uniform mat4 uView;       // world space to view space: where the camera is and looks
 uniform mat4 uProjection; // view space to clip space: perspective

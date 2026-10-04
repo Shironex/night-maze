@@ -75,7 +75,7 @@ Po pętli kroków w akumulatorze zostaje reszta z przedziału `[0, FIXED_DT)`. `
 stan_rysowany = stan_poprzedni * (1 - alpha) + stan_bieżący * alpha
 ```
 
-Bez interpolacji ruch przy 120 krokach na sekundę i monitorze 144 Hz lekko "szarpie", bo niektóre klatki pokazują ten sam stan symulacji dwa razy. Pierwszym stanem, który jest interpolowany, jest pozycja kamery: `NightMazeApp::onUpdate` przesuwa ją stałym krokiem, a `NightMazeApp::onRender` rysuje z punktu między pozycją sprzed ostatniego kroku a pozycją bieżącą (sekcja 5.5). Przykład na liczbach, klatka po klatce, jest w [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 2.12.
+Bez interpolacji ruch przy 120 krokach na sekundę i monitorze 144 Hz lekko "szarpie", bo niektóre klatki pokazują ten sam stan symulacji dwa razy. Pierwszym stanem, który jest interpolowany, jest pozycja kamery: `NightMazeApp::onUpdate` przesuwa ją stałym krokiem, a `NightMazeApp::onRender` rysuje z punktu między pozycją sprzed ostatniego kroku a pozycją bieżącą (sekcja 5.5). Przykład na liczbach, klatka po klatce, jest w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 2.4.
 
 Interpolacja wymaga dwóch rzeczy od kodu symulacji: musi pamiętać stan **sprzed** ostatniego kroku i musi zapisywać go na początku każdego kroku. Jej ceną jest obraz spóźniony o najwyżej jeden krok (8,33 ms), bo rysowany jest punkt między dwoma ostatnimi stanami, a nie stan najnowszy.
 
@@ -261,7 +261,7 @@ Dlatego `Application::run` zaczyna się od `m_time.reset();`. `reset()` ustawia 
 
 ### 5.5 Pierwszy użytkownik: ruch kamery
 
-`game::NightMazeApp` wypełnia obie funkcje wirtualne i korzysta z obu parametrów. Pełny opis sterowania kamerą jest w [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.11. Tutaj tylko to, co dotyczy pętli.
+`game::NightMazeApp` wypełnia obie funkcje wirtualne i korzysta z obu parametrów. Pełny opis sterowania kamerą jest w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcje od 5.2 do 5.5. Tutaj tylko to, co dotyczy pętli.
 
 Początek i koniec `NightMazeApp::onUpdate`:
 
@@ -326,7 +326,7 @@ Pozostałe elementy panelu opisuje [`window-context.md`](window-context.md), sek
 8. **Czas startu policzony jako klatka.** Zegar, który bierze pierwszy znacznik czasu w konstruktorze i nigdy go nie odświeża, wlicza całe ładowanie programu do pierwszej klatki: symulacja robi na starcie serię kroków nadrabiających, a pierwszy odczyt FPS jest zaniżony. Stąd `m_time.reset();` na początku `Application::run`. Kto dopisuje długą operację **wewnątrz** pętli (na przykład doczytanie zasobu w `onRender`), nadal dostanie długą klatkę, bo `reset()` jest wołane tylko raz.
 
 9. **Interpolacja bez zapamiętanego stanu poprzedniego.** `alpha` ma sens tylko dla pary stanów "przed ostatnim krokiem" i "po nim". Stan poprzedni trzeba zapisywać na początku **każdego** kroku, także wtedy, gdy nic się nie rusza. Zapisywany tylko przy ruchu zostawia po zatrzymaniu starą wartość i obraz drga w rytmie `alpha`.
-10. **Stan zmieniony poza krokiem.** Wartość interpolowana zmieniona z innego miejsca niż `onUpdate` (na przykład pozycja kamery wpisana w panelu) do najbliższego kroku ma starą wartość "poprzednią". W klatce bez kroku rysowany jest wtedy punkt pośredni. Dla kamery trwa to najwyżej jeden krok i jest opisane w [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 5.11.
+10. **Stan zmieniony poza krokiem.** Wartość interpolowana zmieniona z innego miejsca niż `onUpdate` (na przykład pozycja kamery wpisana w panelu) do najbliższego kroku ma starą wartość "poprzednią". W klatce bez kroku rysowany jest wtedy punkt pośredni. Dla kamery trwa to najwyżej jeden krok i jest opisane w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5.5.
 11. **Dane jednej klatki w `onUpdate`.** Przesunięcie myszy, tak jak `wasKeyPressed`, opisuje jedną klatkę. Obrót kamery liczony w `onUpdate` zależałby od FPS ([`input.md`](input.md), sekcja 2.8).
 
 ## 8. Ćwiczenia
@@ -335,7 +335,7 @@ Pozostałe elementy panelu opisuje [`window-context.md`](window-context.md), sek
 2. **Tabela na kartce.** Wypełnij ręcznie tabelę z sekcji 2.2 dla monitora 144 Hz (klatka 6,94 ms) dla pięciu kolejnych klatek: akumulator po `beginFrame`, liczba kroków, reszta, `alpha`. W której klatce kroków jest zero? Porównaj z wynikiem ćwiczenia 1, jeśli masz taki monitor.
 3. **Bez ograniczenia.** Zmień tymczasowo `MAX_FRAME_TIME` z `0.25` na `10.0`, zbuduj, uruchom z licznikiem z ćwiczenia 1 i przez kilka sekund przeciągaj okno za pasek tytułu. Zapisz największą liczbę kroków w jednej klatce i wyjaśnij, skąd się wzięła. Przywróć `0.25`.
 
-4. **Bez `reset()`.** W `DebugNightMazeApp` w `main.cpp` dodaj konstruktor, który tylko czeka: `DebugNightMazeApp() { std::this_thread::sleep_for(std::chrono::milliseconds(200)); }` (udaje ładowanie zasobów). Z licznikiem z ćwiczenia 1 sprawdź liczbę kroków w pierwszej klatce. Potem zakomentuj `m_time.reset();` w `Application::run`, zbuduj i sprawdź ponownie. Ile kroków przybyło i dlaczego akurat tyle (podpowiedź: 0,2 s podzielone przez `FIXED_DT`)? Wycofaj zmiany.5. **Bez interpolacji.** W `NightMazeApp::onRender` zamień `m_camera.viewMatrix(eye)` na `m_camera.viewMatrix(m_camera.position)`. W panelu Camera ustaw `Move speed` na 20, kliknij w scenę i leć bokiem (D) obok kostki. Porównaj płynność krawędzi kostki z wersją oryginalną, najlepiej na monitorze o odświeżaniu innym niż 60 albo 120 Hz albo przy wyłączonym vsync. Wyjaśnij różnicę tabelą z [`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 2.12. Wycofaj zmianę.
+4. **Bez `reset()`.** W `DebugNightMazeApp` w `main.cpp` dodaj konstruktor, który tylko czeka: `DebugNightMazeApp() { std::this_thread::sleep_for(std::chrono::milliseconds(200)); }` (udaje ładowanie zasobów). Z licznikiem z ćwiczenia 1 sprawdź liczbę kroków w pierwszej klatce. Potem zakomentuj `m_time.reset();` w `Application::run`, zbuduj i sprawdź ponownie. Ile kroków przybyło i dlaczego akurat tyle (podpowiedź: 0,2 s podzielone przez `FIXED_DT`)? Wycofaj zmiany.5. **Bez interpolacji.** W `NightMazeApp::onRender` zamień `m_camera.viewMatrix(eye)` na `m_camera.viewMatrix(m_camera.position)`. W panelu Camera ustaw `Move speed` na 20, kliknij w scenę i leć bokiem (D) obok kostki. Porównaj płynność krawędzi kostki z wersją oryginalną, najlepiej na monitorze o odświeżaniu innym niż 60 albo 120 Hz albo przy wyłączonym vsync. Wyjaśnij różnicę tabelą z [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 2.4. Wycofaj zmianę.
 6. **Krok 10 razy na sekundę.** Zmień tymczasowo `FIXED_DT` na `1.0 / 10.0` i leć kamerą. Czy ruch nadal jest płynny i dlaczego? Potem dodatkowo wyłącz interpolację jak w ćwiczeniu 5 i opisz, co widać. O ile sekund obraz jest teraz spóźniony względem symulacji? Przywróć `1.0 / 120.0`.
 
 ## 9. Pytania kontrolne

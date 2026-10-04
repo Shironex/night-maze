@@ -1,5 +1,5 @@
 // "Shaders" debug panel: the files of the shader program, a reload button and the last error.
-// See docs/modules/gfx/shaders.md
+// See docs/modules/gfx/shader-hot-reload.md
 #include "debug/panels/ShadersPanel.hpp"
 
 #include "core/Paths.hpp"

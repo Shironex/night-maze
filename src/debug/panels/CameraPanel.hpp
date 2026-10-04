@@ -1,5 +1,5 @@
 // "Camera" debug panel: position, angles and projection of the camera, and its controls.
-// See docs/modules/scene/transforms-camera.md
+// See docs/modules/scene/camera-controls.md
 #pragma once
 
 namespace scene {

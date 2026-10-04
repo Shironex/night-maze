@@ -1,5 +1,5 @@
 // Shader program: a vertex and a fragment shader loaded from files, compiled and linked.
-// See docs/modules/gfx/shaders.md
+// See docs/modules/gfx/shader-class.md
 #include "gfx/Shader.hpp"
 
 #include "core/GlCheck.hpp"

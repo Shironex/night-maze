@@ -527,8 +527,8 @@ Jak to czytać:
   kliknięciu lewym przyciskiem w scenę, a `Application::run` woła `setCursorCaptured(false)`
   po Escape. Między jednym a drugim program działa w trybie `GLFW_CURSOR_DISABLED` i mysz
   obraca kamerę
-  ([`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja
-  5.11).
+  ([`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcja
+  5.3).
 
 `Input.hpp` zna liczbę przycisków tak samo jak liczbę klawiszy: przez gołą liczbę 7 sprawdzaną
 w `Input.cpp`:

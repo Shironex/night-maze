@@ -302,7 +302,7 @@ std::string pathText(const std::filesystem::path& path) {
 - Najprostsze `path.string()` ma na Windowsie wadę (sekcja 7, pułapka 7): zamienia znaki szerokie na lokalną stronę kodową i **rzuca wyjątek**, gdy jakiegoś znaku w niej nie ma. Tekst ścieżki trafia do komunikatów o błędach, a komunikat o błędzie nie może sam być źródłem wyjątku (konstruktor `gfx::Shader` obiecuje, że nie rzuca).
 - `u8string()` zwraca UTF-8, w którym da się zapisać każdą ścieżkę. W C++20 jego typem jest `std::u8string` (napis ze znaków `char8_t`), a nie `std::string`, stąd druga linia: konstruktor `std::string` z parą iteratorów (początek i koniec napisu `utf8`) kopiuje znaki jeden po drugim, zamieniając każdy `char8_t` na `char` o tej samej wartości bajtu.
 - Drugi zysk: ImGui oczekuje tekstu w UTF-8, więc wynik da się pokazać w panelu bez dalszych zamian.
-- Funkcja jest w `core`, a nie w `gfx`, bo potrzebują jej dwie warstwy: `gfx::Shader` składa z niej komunikaty błędów ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 5.5), a panel "Shaders" z `debug/` pokazuje nazwy plików (sekcja 6 tamże). Jedna funkcja w najniższej warstwie zastępuje dwie kopie tych samych trzech linii.
+- Funkcja jest w `core`, a nie w `gfx`, bo potrzebują jej dwie warstwy: `gfx::Shader` składa z niej komunikaty błędów ([`../gfx/shader-class.md`](../gfx/shader-class.md), sekcja 5.5), a panel "Shaders" z `debug/` pokazuje nazwy plików ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6). Jedna funkcja w najniższej warstwie zastępuje dwie kopie tych samych trzech linii.
 - Wołający może podać część ścieżki: `core::pathText(path.filename())` daje samą nazwę pliku, na przykład `basic.vert`.
 
 ### 5.8 Pierwszy użytkownik i katalog `assets` obok programu
@@ -321,7 +321,7 @@ m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FI
 
 Nazwy są względne i zapisane z ukośnikiem `/`, który `std::filesystem::path` rozumie na obu systemach. Dla programu w `<repo>/build/debug/night_maze` wynikiem jest `<repo>/build/debug/assets/shaders/basic.vert`.
 
-**Wyjątek.** `executableDir` może rzucić `std::runtime_error`. Dzieje się to wtedy w trakcie konstruowania pola `m_shader`, czyli wewnątrz konstruktora aplikacji wołanego w bloku `try` funkcji `main`. Część bazowa (`core::Application` z oknem) jest już zbudowana, więc C++ niszczy ją poprawnie, a `catch (const std::exception&)` w `main` wypisuje `[error] Fatal: ...` i zwraca kod błędu. Brak samego pliku shadera wyjątkiem **nie** jest: zgłasza go `gfx::Shader` linią `[error]` i program działa dalej ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 5.8).
+**Wyjątek.** `executableDir` może rzucić `std::runtime_error`. Dzieje się to wtedy w trakcie konstruowania pola `m_shader`, czyli wewnątrz konstruktora aplikacji wołanego w bloku `try` funkcji `main`. Część bazowa (`core::Application` z oknem) jest już zbudowana, więc C++ niszczy ją poprawnie, a `catch (const std::exception&)` w `main` wypisuje `[error] Fatal: ...` i zwraca kod błędu. Brak samego pliku shadera wyjątkiem **nie** jest: zgłasza go `gfx::Shader` linią `[error]` i program działa dalej ([`../gfx/shader-class.md`](../gfx/shader-class.md), sekcja 5.8).
 
 **Skąd `assets` obok programu.** `assetPath` szuka katalogu `assets` w katalogu pliku wykonywalnego, czyli w `build/debug`, a pliki leżą w repozytorium, w `<repo>/assets`. Łączy je blok w [`CMakeLists.txt`](../../../CMakeLists.txt), inny dla każdego systemu:
 
@@ -344,7 +344,7 @@ Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalo
 
 ## 6. Panel ImGui
 
-Ścieżki nie mają własnego panelu, ale widać je w panelu **Shaders** ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 6): linie `Vertex` i `Fragment` pokazują nazwy plików, a podpowiedź (tooltip) po najechaniu kursorem pełną ścieżkę zbudowaną przez `core::assetPath`. Oba teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak kostki.
+Ścieżki nie mają własnego panelu, ale widać je w panelu **Shaders** ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6): linie `Vertex` i `Fragment` pokazują nazwy plików, a podpowiedź (tooltip) po najechaniu kursorem pełną ścieżkę zbudowaną przez `core::assetPath`. Oba teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak kostki.
 
 ## 7. Pułapki
 
