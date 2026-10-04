@@ -433,6 +433,19 @@ od razu, pozostałe dopiero po pojawieniu się shaderów.
 - [ ] po pojawieniu się shaderów: program startuje z katalogu, którego ścieżka zawiera
       polską literę (na przykład kopia `build\debug\Debug` w `C:\Users\<nazwa>\Żółw\`)
 
+**Klasa `gfx::Shader`**
+
+Opis: [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md). Klasa była kompilowana i
+sprawdzana tylko na macOS. Dziś nikt jej nie woła, więc od razu da się sprawdzić tylko
+pierwszy punkt.
+
+- [ ] `src/gfx/Shader.cpp` kompiluje się w MSVC z `/W4 /permissive-` bez ostrzeżeń (w
+      szczególności `pathText`: `std::string` budowany z iteratorów `std::u8string`)
+- [ ] po pojawieniu się shaderów: celowy błąd składni w pliku shadera daje linię `[error]`
+      ze ścieżką pliku i dziennikiem sterownika (zapisać format linii, różni się od Apple)
+- [ ] po pojawieniu się shaderów: ścieżka z polską literą w komunikacie błędu nie zamyka
+      programu (w konsoli litera może być wyświetlona błędnie, to dopuszczalne)
+
 **Git i narzędzia**
 
 - [ ] po sklonowaniu i zbudowaniu `git status` nie pokazuje zmienionych plików (końce linii)

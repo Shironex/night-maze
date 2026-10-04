@@ -18,7 +18,7 @@ function(night_maze_enable_warnings target)
     endif()
 endfunction()
 
-# ---- engine: reusable layers (core now; gfx, assets, renderer, scene later) -----------
+# ---- engine: reusable layers (core and gfx now; assets, renderer, scene later) -------
 add_library(engine STATIC
     src/core/Application.cpp
     src/core/Application.hpp
@@ -34,6 +34,8 @@ add_library(engine STATIC
     src/core/Time.hpp
     src/core/Window.cpp
     src/core/Window.hpp
+    src/gfx/Shader.cpp
+    src/gfx/Shader.hpp
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)

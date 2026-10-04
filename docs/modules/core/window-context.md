@@ -116,11 +116,11 @@ Window::~Window() {
 
 `glfwDestroyWindow` niszczy okno razem z jego kontekstem OpenGL, a `glfwTerminate` zwalnia stan biblioteki. Wszystko, co używa kontekstu (ImGui, a później shadery, bufory i tekstury), musi zostać zwolnione **wcześniej**. O to dba kolejność niszczenia pól opisana w [`README.md`](README.md), sekcja 7.
 
-W M0 moduł `core` nie tworzy jeszcze żadnych obiektów OpenGL (żadnych `glGen*`, żadnych `glBind*`). Jedyny zasób to kontekst. Obiekty pojawią się w M1 w warstwie `gfx`.
+W M0 moduł `core` nie tworzy jeszcze żadnych obiektów OpenGL (żadnych `glGen*`, żadnych `glBind*`). Jedyny zasób to kontekst. Obiekty OpenGL tworzy warstwa `gfx`, na dziś jest to program shaderów w klasie `gfx::Shader` ([`../gfx/README.md`](../gfx/README.md)).
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Pierwsze shadery projektu (`#version 410 core`) pojawią się w M1 razem z klasą `Shader` i trójkątem, a jedyne shadery działające już teraz należą do backendu ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
+Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Klasa `gfx::Shader`, która wczytuje i kompiluje shadery, już istnieje ([`../gfx/shaders.md`](../gfx/shaders.md)), a pierwsze pliki shaderów projektu (`#version 410 core`) pojawią się w M1 razem z trójkątem, a jedyne shadery działające już teraz należą do backendu ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
 
 ## 5. Kod w projekcie
 

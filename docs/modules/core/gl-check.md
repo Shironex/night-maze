@@ -51,7 +51,7 @@ Kody, które mogą wrócić w OpenGL 4.1:
 
 ## 4. Shadery
 
-Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` przy shaderach **nie** wykryje: nieudana kompilacja albo linkowanie shadera nie ustawia flagi błędu OpenGL. Wynik trzeba odczytać osobno (status kompilacji i log), co pojawi się w M1 razem z klasą `Shader`.
+Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` przy shaderach **nie** wykryje: nieudana kompilacja albo linkowanie shadera nie ustawia flagi błędu OpenGL. Wynik trzeba odczytać osobno: status przez `glGetShaderiv(GL_COMPILE_STATUS)` i `glGetProgramiv(GL_LINK_STATUS)`, a tekst błędu z dziennika sterownika. Robi to klasa `gfx::Shader`, opisana w [`../gfx/shaders.md`](../gfx/shaders.md) (sekcje 3.3, 5.5 i 5.6).
 
 ## 5. Kod w projekcie
 
@@ -97,7 +97,7 @@ Znak `\` na końcu linii oznacza "definicja ciągnie się dalej". Po kolei:
   Gdyby makro rozwijało się do dwóch gołych instrukcji, do `if` należałaby tylko pierwsza. Gdyby rozwijało się do samego bloku `{ ... }`, średnik po nim zakończyłby instrukcję `if` i `else` nie miałoby do czego się odnieść (błąd kompilacji).
 - **`#ifndef NDEBUG`** wybiera wersję (sekcja 2.3). W Debug makro sprawdza błędy. W Release zostaje samo wywołanie.
 
-Wywołania zwracające wartość zapisuję z przypisaniem w środku: `GL_CHECK(id = glCreateShader(GL_VERTEX_SHADER));` (przykład z komentarza w `GlCheck.hpp`, w kodzie M0 jeszcze takiego użycia nie ma). Zmienna musi być zadeklarowana **przed** makrem: deklaracja wewnątrz `GL_CHECK(...)` trafiłaby do bloku `do { }` i zniknęła razem z nim.
+Wywołania zwracające wartość zapisuję z przypisaniem w środku: `GL_CHECK(id = glCreateShader(GL_VERTEX_SHADER));` (przykład z komentarza w `GlCheck.hpp`, w kodzie tak zapisane są `glCreateShader` i `glCreateProgram` w [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp)). Zmienna musi być zadeklarowana **przed** makrem: deklaracja wewnątrz `GL_CHECK(...)` trafiłaby do bloku `do { }` i zniknęła razem z nim.
 
 Makro nie należy do przestrzeni nazw (preprocesor ich nie zna), dlatego stoi poza `namespace core` i woła funkcję pełną nazwą `core::checkGlErrors`.
 
@@ -190,7 +190,7 @@ To wszystkie własne wywołania `gl*` w klatce M0 (opis samych funkcji: [`window
 4. **Deklaracja wewnątrz makra.** `GL_CHECK(GLuint id = glCreateShader(...));` kompiluje się, ale `id` istnieje tylko wewnątrz bloku `do { }`. Zmienną deklaruję przed makrem.
 5. **Efekt uboczny w argumencie.** Argument makra jest wklejany jako tekst. W obecnej definicji występuje raz jako instrukcja i raz jako napis (`#call`), więc wykonuje się raz. Gdyby ktoś przerobił makro tak, że `call` pojawia się dwa razy jako kod, wywołanie OpenGL wykonałoby się dwukrotnie.
 6. **Zalew komunikatów.** Błędne wywołanie w `onRender` wypisuje linię w każdej klatce, czyli 60 lub więcej linii na sekundę. Program najlepiej od razu zatrzymać i przeczytać pierwszą linię.
-7. **Błędy shaderów.** Nieudana kompilacja shadera nie jest błędem `glGetError` (sekcja 4).
+7. **Błędy shaderów.** Nieudana kompilacja ani nieudane linkowanie shadera nie są błędem `glGetError` (sekcja 4). Jak się je odczytuje: [`../gfx/shaders.md`](../gfx/shaders.md), sekcja 3.3.
 8. **Pętla `glGetError` bez limitu.** W wielu poradnikach jest samo `while (glGetError() != GL_NO_ERROR)`. Gdy kontekst jest utracony albo nie jest bieżący, `glGetError` może zwracać błąd za każdym razem i taka pętla nigdy się nie kończy: program wisi i nic nie wypisuje. U mnie pętla kończy się najpóźniej po `MAX_ERRORS_PER_CHECK` odczytach. Linia `Stopped reading OpenGL errors after 16 errors` w konsoli oznacza więc problem z kontekstem, a nie 16 osobnych pomyłek w kodzie.
 
 ## 8. Ćwiczenia

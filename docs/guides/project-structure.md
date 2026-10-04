@@ -1,9 +1,10 @@
-# Struktura projektu (stan M0)
+# Struktura projektu (stan M1 w toku)
 
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
-konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny po
-kamieniu milowym M0. Docelową strukturę (z `gfx/`, `renderer/`, `scene/`, `assets/`) opisuje
-PRD w sekcji 6.
+konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny w
+trakcie kamienia milowego M1: po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
+klasą `Shader`. Docelową strukturę (z `renderer/`, `scene/`, `assets/`) opisuje PRD w
+sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
 [`build-windows.md`](build-windows.md), tutaj ich nie powtarzamy.
@@ -50,8 +51,10 @@ night-maze/
 │   │   ├── DebugUI.hpp/.cpp        # kontekst ImGui i cykl klatki
 │   │   └── panels/
 │   │       └── RendererPanel.hpp/.cpp  # panel "Renderer"
-│   └── game/                   # gra
-│       └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie czyści ekran)
+│   ├── game/                   # gra
+│   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie czyści ekran)
+│   └── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
+│       └── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload
 └── docs/
     ├── PRD.pdf                 # dokument wymagań
     ├── README.md               # spis treści dokumentacji i kolejność czytania
@@ -73,6 +76,9 @@ night-maze/
         │   ├── main-loop.md            # pętla główna, stały krok, FPS
         │   ├── paths.md                # ścieżki do assetów, katalog programu
         │   └── window-context.md       # okno, kontekst, GLAD, vsync, Log
+        ├── gfx/                    # moduł gfx, podzielony na dokumenty tematyczne
+        │   ├── README.md               # wstęp, RAII i przenoszenie, warstwy, indeks
+        │   └── shaders.md              # potok, GLSL, klasa Shader, reload
         └── debug-ui.md             # panele ImGui w projekcie
 ```
 
@@ -102,6 +108,7 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
 | `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Na razie nikt tych funkcji nie woła | [`../modules/core/paths.md`](../modules/core/paths.md) |
+| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `lastError`. RAII, tylko przenoszenie. Na razie nikt tej klasy nie używa | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
 | `src/game/NightMazeApp.*` | `game::NightMazeApp`: `onUpdate`, `onRender` (viewport, czyszczenie ekranu), kolor tła | [`../modules/core/README.md`](../modules/core/README.md) |
 | `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
@@ -125,8 +132,14 @@ main.cpp   łączy game/ i debug/
    │
    └── game/    zależy od core/, nie zna debug/
           │
-        core/   nie zna ani game/, ani debug/
+        gfx/    zależy od core/, nie zna game/ ani debug/ (na razie nikt go nie dołącza)
+          │
+        core/   nie zna ani gfx/, ani game/, ani debug/
 ```
+
+Pełny łańcuch z PRD to `core <- gfx <- renderer <- scene <- game`. Warstw `renderer/` i
+`scene/` jeszcze nie ma. Linia między `game/` a `gfx/` pokazuje kolejność warstw, a nie
+istniejącą zależność: `game/` dołączy `gfx/` dopiero razem z trójkątem.
 
 Jak to widać w kodzie:
 
@@ -136,6 +149,8 @@ Jak to widać w kodzie:
   blokada klawiatury i myszy na czas pracy z panelem jest zrobiona bez ImGui w `core/`:
   `core::Input` ma neutralne flagi `setKeyboardBlocked` i `setMouseBlocked`, a ustawia je
   `main.cpp`.
+- `src/gfx/Shader.hpp` dołącza `<glad/gl.h>` i bibliotekę standardową, a `Shader.cpp` do
+  tego `core/GlCheck.hpp` i `core/Log.hpp`. Nic z GLFW, `game/` ani `debug/`.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp` i nic z `debug/`. Komentarz w
   klasie mówi wprost: "It knows nothing about the debug UI".
 - `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp` i nagłówki
@@ -149,29 +164,31 @@ Jak to widać w kodzie:
   ImGui używa klawiatury i myszy.
 
 Po co ta dyscyplina: grę da się zbudować i zrozumieć bez paneli debugowych, a panele można
-rozbudowywać bez dotykania logiki gry. W docelowej architekturze między `core/` a `game/`
-dojdą warstwy `gfx/`, `renderer/` i `scene/`, a `debug/` nadal będzie zależeć od wszystkich
-i nikt od niego.
+rozbudowywać bez dotykania logiki gry. W docelowej architekturze między `gfx/` a `game/`
+dojdą warstwy `renderer/` i `scene/`, a `debug/` nadal będzie zależeć od wszystkich i nikt
+od niego.
 
 ### Dwa targety: `engine` i `night_maze`
 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
-| `engine` | biblioteka statyczna | `src/core/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`) |
+| `engine` | biblioteka statyczna | `src/core/*`, `src/gfx/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`) |
 | `night_maze` | program | `src/main.cpp`, `src/game/*`, `src/debug/*` | `engine`, `imgui` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
 | `glfw` | biblioteka statyczna | pobrana przez FetchContent | biblioteki systemowe |
 | `glm-header-only` (alias `glm::glm-header-only`) | target `INTERFACE`: same nagłówki, nic się nie kompiluje | pobrany przez FetchContent | nic |
 | `imgui` | biblioteka statyczna | pobrana przez FetchContent, lista plików w `Dependencies.cmake` | `glfw` |
 
-**Dlaczego `engine` jest osobną biblioteką.** Warstwy wielokrotnego użytku (teraz `core`,
-później `gfx`, `assets`, `renderer`, `scene`) nie zawierają niczego specyficznego dla Night
+**Dlaczego `engine` jest osobną biblioteką.** Warstwy wielokrotnego użytku (teraz `core` i
+`gfx`, później `assets`, `renderer`, `scene`) nie zawierają niczego specyficznego dla Night
 Maze. Jako osobny target da się je bez zmian podłączyć do innego programu, w szczególności
 do zadań laboratoryjnych z tego samego kursu: nowy plik `main.cpp`, własna klasa pochodna po
 `core::Application`, `target_link_libraries(zadanie PRIVATE engine)` i okno z kontekstem
-4.1 Core, pętlą i `GL_CHECK` jest gotowe. Granica targetu pilnuje też reguły warstw: gdyby
-plik z `core/` spróbował dołączyć coś z `game/` albo ImGui, `engine` nie linkuje tych
-rzeczy i błąd wyszedłby szybko.
+4.1 Core, pętlą, `GL_CHECK` i klasą `gfx::Shader` jest gotowe. Granica targetu pilnuje też
+reguły warstw: gdyby plik z `core/` albo `gfx/` spróbował dołączyć coś z `game/` albo ImGui,
+`engine` nie linkuje tych rzeczy i błąd wyszedłby szybko. Granicy między `core/` a `gfx/`
+target nie pilnuje, bo obie warstwy są w tej samej bibliotece: tu obowiązuje sama dyscyplina
+dyrektyw `#include`.
 
 Biblioteka statyczna (static library) to archiwum skompilowanych plików obiektowych
 (`.a` na macOS, `.lib` na Windowsie), które linker wkleja do programu. Nie ma osobnego pliku
@@ -261,6 +278,8 @@ add_library(engine STATIC
     ...
     src/core/Window.cpp
     src/core/Window.hpp
+    src/gfx/Shader.cpp
+    src/gfx/Shader.hpp
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -282,8 +301,9 @@ night_maze_enable_warnings(engine)
 - `target_include_directories(engine PUBLIC .../src)`: korzeniem ścieżek `#include` jest
   `src/`. Stąd zapis `#include "core/Window.hpp"` w każdym pliku, niezależnie od katalogu.
 - `target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)`: `engine` używa GLAD
-  i GLFW. GLM jest podpięte z wyprzedzeniem: na dziś żaden plik w `src/` go nie dołącza, a
-  pierwszymi użytkownikami będą w M1 `Shader`, `Transform` i `Camera`. `glm::glm-header-only`
+  i GLFW. GLM jest podpięte z wyprzedzeniem: na dziś żaden plik w `src/` go nie dołącza
+  (także `Shader`, który nie ma jeszcze funkcji ustawiających uniformy), a pierwszymi
+  użytkownikami będą w M1 `Shader`, `Transform` i `Camera`. `glm::glm-header-only`
   to target `INTERFACE` (same nagłówki), więc "linkowanie" go oznacza tylko dodanie ścieżki
   nagłówków ([`../libraries/glm.md`](../libraries/glm.md), sekcja 2).
 - `target_compile_definitions`: dwa makra preprocesora, widoczne w linii poleceń
@@ -482,7 +502,7 @@ Konwencja nazw z `CheckOptions`:
 
 | Co | Styl | Przykład z kodu |
 |---|---|---|
-| przestrzeń nazw (`NamespaceCase`) | `lower_case` | `core`, `game`, `debug` |
+| przestrzeń nazw (`NamespaceCase`) | `lower_case` | `core`, `gfx`, `game`, `debug` |
 | klasa, struktura, enum (`ClassCase`, `StructCase`, `EnumCase`) | `CamelCase` | `Window`, `Size`, `DebugUI` |
 | funkcja i metoda (`FunctionCase`) | `camelBack` | `pollEvents`, `wasKeyPressed`, `drawRendererPanel` |
 | zmienna i parametr (`VariableCase`, `ParameterCase`) | `camelBack` | `framebuffer`, `clearColor`, `fixedDt` |
@@ -727,7 +747,7 @@ Układ `build/debug` na Macu (generator Unix Makefiles), odczytany z dysku:
 ```text
 build/debug/
 ├── night_maze                  # program
-├── libengine.a                 # biblioteka statyczna engine (src/core)
+├── libengine.a                 # biblioteka statyczna engine (src/core, src/gfx)
 ├── libimgui.a                  # biblioteka statyczna imgui
 ├── compile_commands.json       # polecenie kompilacji każdego pliku
 ├── CMakeCache.txt              # zapamiętane ustawienia konfiguracji
@@ -752,7 +772,7 @@ build/debug/
 | Artefakt | Skąd się bierze | Do czego służy |
 |---|---|---|
 | `night_maze` | linkowanie targetu `night_maze` | program, który uruchamiamy |
-| `libengine.a` | target `engine` | skompilowany kod `src/core`, wklejany do programu |
+| `libengine.a` | target `engine` | skompilowany kod `src/core` i `src/gfx`, wklejany do programu |
 | `libimgui.a` | target `imgui` z `Dependencies.cmake` | skompilowany rdzeń ImGui i dwa backendy |
 | `external/glad/libglad.a` | target `glad` | skompilowany `gl.c` |
 | `_deps/glfw-build/src/libglfw3.a` | target `glfw` | skompilowane GLFW |
@@ -809,7 +829,9 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
 
    | Kod | Katalog | Target w `CMakeLists.txt` |
    |---|---|---|
-   | wielokrotnego użytku, bez wiedzy o grze i bez ImGui | `src/core/` (później `src/gfx/`, `src/renderer/`, `src/scene/`, `src/assets/`) | `add_library(engine STATIC ...)` |
+   | podstawa programu, bez OpenGL poza `GL_CHECK`: okno, pętla, wejście, czas, logi, ścieżki | `src/core/` | `add_library(engine STATIC ...)` |
+   | opakowanie jednego obiektu OpenGL (RAII, tylko przenoszenie), bez wiedzy o grze i bez ImGui | `src/gfx/` | `add_library(engine STATIC ...)` |
+   | inny kod wielokrotnego użytku, bez wiedzy o grze i bez ImGui | później `src/renderer/`, `src/scene/`, `src/assets/` | `add_library(engine STATIC ...)` |
    | logika Night Maze | `src/game/` | `add_executable(night_maze ...)` |
    | panel debugowy | `src/debug/panels/` | `add_executable(night_maze ...)` |
 
@@ -817,7 +839,7 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
    pliku to komentarz z jednym zdaniem opisu i odnośnikiem `See docs/modules/<dokument>.md`
    (dla modułu podzielonego na katalog: `See docs/modules/<moduł>/<dokument>.md`).
    Nagłówek zaczyna się od `#pragma once`, kod jest w przestrzeni nazw warstwy (`core`,
-   `game`, `debug`). Publiczne API dostaje komentarze Doxygen (`///`).
+   `gfx`, `game`, `debug`). Publiczne API dostaje komentarze Doxygen (`///`).
 
 3. **Dopisz oba pliki do właściwej listy w `CMakeLists.txt`**, zachowując kolejność
    alfabetyczną. Przykład dla wymyślonej klasy `Random` w `core` (takiego pliku w projekcie nie
@@ -846,8 +868,9 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
 
 6. **Sformatuj** kod narzędziem clang-format ([`build-macos.md`](build-macos.md), sekcja 7).
 
-7. **Sprawdź regułę warstw**: plik w `core/` nie może dołączać niczego z `game/` ani
-   `debug/`, plik w `game/` niczego z `debug/`.
+7. **Sprawdź regułę warstw**: plik w `core/` nie może dołączać niczego z `gfx/`, `game/`
+   ani `debug/`, plik w `gfx/` niczego z `game/` ani `debug/`, plik w `game/` niczego z
+   `debug/`.
 
 Nowy panel debugowy ma dodatkowe kroki (wywołanie w `DebugUI::draw`, a dla nowych danych
 pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
@@ -873,7 +896,7 @@ tym samym commicie co kod.
 
 | Co dodajesz | Gdzie trafia dokument |
 |---|---|
-| nowy moduł lub klasa w istniejącym module | `docs/modules/<moduł>.md` (szablon 10 sekcji z PRD, sekcja 7). Duży moduł ma katalog `docs/modules/<moduł>/` z plikiem `README.md` (wstęp i indeks) i dokumentami tematycznymi, z których każdy ma pełne 10 sekcji. Wzór: `docs/modules/core/` |
+| nowy moduł lub klasa w istniejącym module | `docs/modules/<moduł>.md` (szablon 10 sekcji z PRD, sekcja 7). Duży moduł ma katalog `docs/modules/<moduł>/` z plikiem `README.md` (wstęp i indeks) i dokumentami tematycznymi, z których każdy ma pełne 10 sekcji. Wzór: `docs/modules/core/` i `docs/modules/gfx/` |
 | nowa biblioteka | `docs/libraries/<biblioteka>.md` |
 | zmiana w budowaniu, narzędziach lub strukturze | `docs/guides/` (ten plik, `build-macos.md`, `build-windows.md`) |
 | decyzja "dlaczego tak, a nie inaczej" | `docs/decisions/` (katalog przewidziany w PRD, jeszcze nie istnieje) |
