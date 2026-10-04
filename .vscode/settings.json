@@ -1,0 +1,19 @@
+{
+    // clangd provides completion and diagnostics (configured by .clangd), so the other
+    // C++ extension's IntelliSense is switched off to avoid duplicate, wrong errors.
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.arguments": ["--header-insertion=never"],
+    "cmake.useCMakePresets": "always",
+    "cmake.configureOnOpen": false,
+    // Format on save only for C++, so the generated C code in external/glad is left alone.
+    "[cpp]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "files.associations": {
+        "*.vert": "glsl",
+        "*.frag": "glsl",
+        "*.geom": "glsl",
+        "*.glsl": "glsl"
+    }
+}

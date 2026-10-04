@@ -1,0 +1,5 @@
+# clangd (code completion and diagnostics in the editor) reads the compiler flags from
+# the Debug build. Run "cmake --preset debug" once so that this file exists:
+# build/debug/compile_commands.json
+CompileFlags:
+  CompilationDatabase: build/debug

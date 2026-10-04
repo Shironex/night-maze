@@ -1,0 +1,24 @@
+# Build output
+build/
+out/
+/compile_commands.json
+
+# IDEs and editors
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+cmake-build-*/
+CMakeUserPresets.json
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime files
+imgui.ini
+
+# Python virtual environment used to regenerate GLAD
+.glad-venv/
