@@ -466,7 +466,7 @@ cały główny viewport, czyli na całe nasze okno. Argumenty:
 **Po co `PassthruCentralNode`.** Obszar dokowania ma węzeł centralny (central node): środek,
 który zostaje po zadokowaniu paneli przy krawędziach. Domyślnie ImGui wypełniłoby go swoim
 tłem i zasłoniło scenę. Z tą flagą pusty środek jest przezroczysty i przepuszcza zdarzenia
-myszy, więc widać przez niego to, co narysował OpenGL (na razie kolor tła, później labirynt).
+myszy, więc widać przez niego to, co narysował OpenGL (na razie kolor tła i kostkę, później labirynt).
 
 Kolejność ma znaczenie: obszar dokowania tworzymy przed panelami, które mają się w nim
 dokować.
