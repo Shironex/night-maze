@@ -18,7 +18,7 @@ function(night_maze_enable_warnings target)
     endif()
 endfunction()
 
-# ---- engine: reusable layers (core and gfx now; assets, renderer, scene later) -------
+# ---- engine: reusable layers (core, gfx and scene now; assets and renderer later) -----
 add_library(engine STATIC
     src/core/Application.cpp
     src/core/Application.hpp
@@ -40,11 +40,15 @@ add_library(engine STATIC
     src/gfx/Shader.hpp
     src/gfx/VertexArray.cpp
     src/gfx/VertexArray.hpp
+    src/scene/Camera.cpp
+    src/scene/Camera.hpp
+    src/scene/Transform.cpp
+    src/scene/Transform.hpp
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-# GLM is linked ahead of its first users (Shader, Transform, Camera). It is PUBLIC because
-# their headers will expose GLM types to every target that includes them.
+# GLM is PUBLIC because headers of engine (scene/Transform.hpp, scene/Camera.hpp) expose
+# GLM types, so every target that includes them needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it

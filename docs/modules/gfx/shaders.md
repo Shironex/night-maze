@@ -63,7 +63,7 @@ Po shaderze OpenGL sam wykonuje dwa kroki:
 
 Potem `glViewport` zamienia NDC na piksele bufora ([`../core/window-context.md`](../core/window-context.md), sekcja 3.2).
 
-Dla pierwszego trójkąta wystarczy `w = 1`. Wtedy dzielenie niczego nie zmienia i współrzędne podane w shaderze są od razu współrzędnymi NDC: punkt `(0, 0)` to środek okna, `(-1, -1)` lewy dolny róg, `(1, 1)` prawy górny. Inne `w` pojawi się razem z macierzą rzutowania perspektywicznego ([`../../libraries/glm.md`](../../libraries/glm.md)).
+Dla pierwszego trójkąta wystarczy `w = 1`. Wtedy dzielenie niczego nie zmienia i współrzędne podane w shaderze są od razu współrzędnymi NDC: punkt `(0, 0)` to środek okna, `(-1, -1)` lewy dolny róg, `(1, 1)` prawy górny. Inne `w` pojawi się razem z macierzą rzutowania perspektywicznego ([`../scene/transforms-camera.md`](../scene/transforms-camera.md), sekcja 2.9).
 
 Poza `gl_Position` shader wierzchołków może przekazać dalej własne wartości (kolor, współrzędne tekstury) przez zmienne `out`.
 

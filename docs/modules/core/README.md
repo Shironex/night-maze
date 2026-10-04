@@ -35,7 +35,7 @@ Proponowana kolejność czytania: ten plik, potem `window-context.md`, `main-loo
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`, posiada shader, tablicę wierzchołków i bufor, co klatkę ustawia viewport, czyści ekran i rysuje trójkąt | ten plik (sekcje 6 i 7), czyszczenie w [`window-context.md`](window-context.md), sekcja 3.2, rysowanie w [`../gfx/README.md`](../gfx/README.md), sekcja 6 |
 | [`src/main.cpp`](../../../src/main.cpp) | klasa `DebugNightMazeApp` (gra plus nakładka debug) i `main`: tworzy aplikację, woła `run()`, łapie wyjątki | ten plik (sekcje 5 i 6), nakładka w [`../debug-ui.md`](../debug-ui.md) |
 
-W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/core/*` tworzą, razem z `src/gfx/*`, bibliotekę statyczną `engine`, a `main.cpp`, `game/` i `debug/` tworzą program `night_maze`, który ją linkuje. `engine` ma publiczne definicje `GLFW_INCLUDE_NONE` (GLFW nie dołącza systemowego nagłówka OpenGL, robi to GLAD) i `GL_SILENCE_DEPRECATION` (macOS oznacza cały OpenGL jako przestarzały i bez tej definicji zasypuje build ostrzeżeniami).
+W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/core/*` tworzą, razem z `src/gfx/*` i `src/scene/*`, bibliotekę statyczną `engine`, a `main.cpp`, `game/` i `debug/` tworzą program `night_maze`, który ją linkuje. `engine` ma publiczne definicje `GLFW_INCLUDE_NONE` (GLFW nie dołącza systemowego nagłówka OpenGL, robi to GLAD) i `GL_SILENCE_DEPRECATION` (macOS oznacza cały OpenGL jako przestarzały i bez tej definicji zasypuje build ostrzeżeniami).
 
 ## 3. Warstwy
 
@@ -50,18 +50,20 @@ flowchart TD
     Game --> Gfx
     Debug --> Gfx
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
+    Scene["scene/<br/>Transform, Camera"] --> Glm["GLM"]
     Debug --> ImGui["Dear ImGui"]
     Core --> Glfw["GLFW"]
     Core --> Glad["GLAD"]
     Gfx --> Glad
 ```
 
-Cztery rzeczy do zapamiętania:
+Pięć rzeczy do zapamiętania:
 
-1. `core/` nie zna ani `gfx/`, ani `game/`, ani `debug/`, ani ImGui. Biblioteka `engine` linkuje tylko `glad`, `glfw` i nagłówki GLM (`glm::glm-header-only`, na razie nieużywane w kodzie).
+1. `core/` nie zna ani `gfx/`, ani `game/`, ani `debug/`, ani ImGui. Biblioteka `engine` linkuje tylko `glad`, `glfw` i nagłówki GLM (`glm::glm-header-only`). Samo `core/` z GLM nie korzysta: dołącza je warstwa `scene/`.
 2. `game/` zna `core/` i `gfx/`, ale nie zna `debug/`.
 3. `debug/` może zależeć od wszystkiego, ale nic nie może zależeć od `debug/`. Jedynym plikiem, który zna jednocześnie `game/` i `debug/`, jest `main.cpp`.
 4. `gfx/` (opakowania obiektów OpenGL, na dziś klasy `Shader`, `Buffer` i `VertexArray`) zna tylko `core/` i GLAD. Używa go `game/` (rysowanie) i `debug/` (panel "Shaders" woła `Shader::reload()`). Opis warstwy: [`../gfx/README.md`](../gfx/README.md).
+5. `scene/` (struktury `Transform` i `Camera`: macierze modelu, widoku i rzutowania) to sama matematyka na GLM. Może zależeć od `core/` i `gfx/`, dziś dołącza tylko GLM. Do `scene/` nie prowadzi na diagramie żadna strzałka, bo żaden plik jeszcze go nie dołącza: pierwszym użytkownikiem będzie `game/`, gdy trójkąt zastąpi kostka. Opis warstwy: [`../scene/README.md`](../scene/README.md).
 
 Ta reguła tłumaczy dwie decyzje opisane niżej: dlaczego nakładka debug jest podpinana w `main.cpp` (sekcja 6) i dlaczego `core::Input` dostaje od `main.cpp` neutralne flagi "klawiatura zablokowana" i "mysz zablokowana", zamiast samemu pytać ImGui ([`input.md`](input.md), sekcje 5.6 i 5.10).
 

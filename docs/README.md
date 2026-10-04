@@ -2,7 +2,7 @@
 
 Dokumentacja jest materiałem do nauki: z samej lektury ma się dać nauczyć danego tematu wykładu, przygotować do kartkówki i do obrony, na której tłumaczę każdą linię kodu. Każdy moduł jest skończony dopiero wtedy, gdy ma tutaj swój dokument (PRD, sekcja 7).
 
-Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **M1 w toku**: są już mysz, ścieżki do assetów, GLM, klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, katalog `assets/` z pierwszą parą shaderów, pierwszy trójkąt na ekranie i panel Shaders z przyciskiem "Reload shaders". Brakuje jeszcze kostki i kamery. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
+Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **M1 w toku**: są już mysz, ścieżki do assetów, GLM, klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, katalog `assets/` z pierwszą parą shaderów, pierwszy trójkąt na ekranie, panel Shaders z przyciskiem "Reload shaders" oraz struktury `scene::Transform` i `scene::Camera` (macierze modelu, widoku i rzutowania, jeszcze niepodłączone do gry). Brakuje jeszcze kostki rysowanej z tymi macierzami i sterowania kamerą. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
 
 ## Spis treści
 
@@ -36,6 +36,8 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/gfx/README.md`](modules/gfx/README.md) | `src/gfx/` | 2. Programowalny potok: wstęp do modułu `gfx`, RAII i semantyka przenoszenia dla obiektów OpenGL, miejsce w warstwach, indeks plików, droga jednej klatki od danych do pikseli |
 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | `src/gfx/Shader.*`, `assets/shaders/basic.*`, `src/game/NightMazeApp.*`, `src/debug/panels/ShadersPanel.*` | 2. Potok renderowania, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, błędy sterownika, wczytywanie na żywo, shadery `assets/shaders/basic.*` linia po linii, panel Shaders z przyciskiem "Reload shaders" i scenariusz pokazu na obronie |
 | [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | `src/gfx/Buffer.*`, `src/gfx/VertexArray.*`, `src/game/NightMazeApp.*` | 2. Dane wierzchołków, VBO, VAO i jego stan, układ przeplatany (krok i przesunięcie), EBO, `glDrawArrays` a `glDrawElements`, dane i konfiguracja trójkąta w `NightMazeApp` |
+| [`modules/scene/README.md`](modules/scene/README.md) | `src/scene/` | 3. Przekształcenia przestrzeni: wstęp do modułu `scene`, czym struktury z danymi różnią się od klas `gfx`, miejsce w warstwach, konwencja układu współrzędnych, indeks plików |
+| [`modules/scene/transforms-camera.md`](modules/scene/transforms-camera.md) | `src/scene/Transform.*`, `src/scene/Camera.*` | 3. Przestrzenie współrzędnych, współrzędne jednorodne, macierze przesunięcia, obrotu i skali, kolejność przekształceń, kąty Eulera, macierz widoku i `lookAt`, kamera FPS (yaw, pitch, wektor kierunku, ograniczenie pitch), rzutowanie perspektywiczne i nieliniowa głębia, struktury `Transform` i `Camera` linia po linii |
 | [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui, podpięcie nakładki w `main.cpp`, jak dodać nowy panel |
 
 ### Biblioteki (`libraries/`)
@@ -44,12 +46,12 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 |---|---|---|
 | [`libraries/glfw.md`](libraries/glfw.md) | GLFW | Okno, kontekst OpenGL, wejście |
 | [`libraries/glad.md`](libraries/glad.md) | GLAD | Ładowanie funkcji OpenGL 4.1 Core |
-| [`libraries/glm.md`](libraries/glm.md) | GLM | Matematyka: wektory, macierze, przekształcenia. Podpięta do buildu, pierwsze użycie w M1 (`Shader`, `Transform`, `Camera`) |
+| [`libraries/glm.md`](libraries/glm.md) | GLM | Matematyka: wektory, macierze, przekształcenia. Używają jej `scene::Transform` i `scene::Camera` |
 | [`libraries/imgui.md`](libraries/imgui.md) | Dear ImGui (gałąź docking) | Panele debug |
 
 ## Kolejność czytania
 
-Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki od 15 do 17 to temat 2, "Programowalny potok".
+Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki od 15 do 17 to temat 2, "Programowalny potok". Kroki 18 i 19 to temat 3, "Przekształcenia przestrzeni".
 
 | Krok | Dokument | Po co na tym etapie |
 |---|---|---|
@@ -66,11 +68,13 @@ Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materia�
 | 11 | [`modules/core/paths.md`](modules/core/paths.md) | Jak program znajduje pliki z `assets/` niezależnie od katalogu roboczego i skąd ten katalog bierze się obok programu |
 | 12 | [`libraries/imgui.md`](libraries/imgui.md) | Jak działa biblioteka paneli |
 | 13 | [`modules/debug-ui.md`](modules/debug-ui.md) | Jak panele są wpięte w mój projekt i jak dodać własny |
-| 14 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera (M1). Na dziś sama biblioteka, bez kodu w projekcie |
+| 14 | [`libraries/glm.md`](libraries/glm.md) | Wektory i macierze, zanim pojawią się shadery, przekształcenia i kamera. Fragmenty kodu projektu pochodzą z `src/scene/` (kroki 18 i 19) |
 | 15 | [`modules/gfx/README.md`](modules/gfx/README.md) | Temat 2: dlaczego obiekty OpenGL są zamknięte w klasach, RAII i przenoszenie zamiast kopiowania, droga klatki od danych do pikseli |
 | 16 | [`modules/gfx/shaders.md`](modules/gfx/shaders.md) | Programowalny potok, GLSL, klasa `Shader`, shadery `basic.vert` oraz `basic.frag` i panel Shaders (przeładowanie na żywo) |
 | 17 | [`modules/gfx/buffers-vao.md`](modules/gfx/buffers-vao.md) | Skąd shader wierzchołków bierze dane: bufory, atrybuty, VAO, dane trójkąta. Po tym kroku cały kod rysujący trójkąt jest wyjaśniony |
-| 18 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
+| 18 | [`modules/scene/README.md`](modules/scene/README.md) | Temat 3: po co warstwa `scene`, dlaczego jej struktury to same dane i matematyka bez OpenGL, konwencja układu współrzędnych |
+| 19 | [`modules/scene/transforms-camera.md`](modules/scene/transforms-camera.md) | Przestrzenie współrzędnych, macierze model, view i projection, kamera FPS, struktury `Transform` i `Camera`. Na dziś teoria i kod sprawdzony na liczbach, bez obrazu na ekranie |
+| 20 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
 
 ## Jak się uczyć z dokumentu modułu
 

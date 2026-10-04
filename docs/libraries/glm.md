@@ -2,13 +2,18 @@
 
 Dokument biblioteki dla kamienia milowego M1. Opisuje konfigurację z
 [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i tę część API, której projekt
-będzie potrzebował.
+używa albo zaraz będzie używał.
 
-**Stan na dziś: GLM jest podpięte do buildu, ale żaden plik w `src/` jeszcze go nie dołącza.**
-Pierwszymi użytkownikami będą w M1 klasy `Shader` (ustawianie uniformów macierzowych),
-`Transform` i `Camera`. Dlatego w tym dokumencie nie ma fragmentów "z naszego kodu": wszystkie
-bloki C++ poniżej to **przykłady użycia API**, a nie kod projektu. Fragmenty CMake są
-prawdziwe i skopiowane z repozytorium.
+**Stan na dziś: GLM używają struktury `scene::Transform` i `scene::Camera`**
+([`src/scene/`](../../src/scene/), opis w
+[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md)). To one
+wołają `translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i
+`normalize`. Klasa `Shader` jeszcze GLM nie dołącza: funkcja wysyłająca macierz do shadera
+(sekcja 3.9) dojdzie razem z kostką.
+
+W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
+`// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
+kod skopiowany z repozytorium. Fragmenty CMake są prawdziwe i skopiowane z repozytorium.
 
 ## 1. Czym jest GLM
 
@@ -111,18 +116,19 @@ opcje w chwili dołączenia.
 W głównym [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
-# GLM is linked ahead of its first users (Shader, Transform, Camera). It is PUBLIC because
-# their headers will expose GLM types to every target that includes them.
+# GLM is PUBLIC because headers of engine (scene/Transform.hpp, scene/Camera.hpp) expose
+# GLM types, so every target that includes them needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 ```
 
 "Linkowanie" targetu `INTERFACE` niczego nie dopisuje do linkera. Oznacza tylko: przekaż
 `engine` ścieżkę nagłówków GLM.
 
-Dlaczego `PUBLIC`: nagłówki warstw `gfx` i `scene` będą pokazywać typy GLM w swoim API (na
-przykład metoda ustawiająca uniform typu `mat4` albo pozycja kamery jako `vec3`). Każdy plik,
-który dołączy taki nagłówek, także w `night_maze`, musi wtedy znaleźć `<glm/glm.hpp>`. Przy
-`PRIVATE` ścieżkę znałby tylko `engine` i kod gry by się nie kompilował.
+Dlaczego `PUBLIC`: nagłówki warstwy `scene` pokazują typy GLM w swoim API (pozycja kamery
+jako `glm::vec3`, macierz widoku jako `glm::mat4`), a `gfx` dołączy do nich, gdy `Shader`
+dostanie metodę ustawiającą uniform typu `mat4`. Każdy plik, który dołączy taki nagłówek,
+także w `night_maze`, musi znaleźć `<glm/glm.hpp>`. Przy `PRIVATE` ścieżkę znałby tylko
+`engine` i kod gry by się nie kompilował.
 
 ### Nagłówki GLM jako systemowe
 
@@ -149,10 +155,10 @@ skrócone):
 Katalogiem nagłówków jest korzeń repozytorium GLM (`_deps/glm-src`), a nagłówki leżą w jego
 podkatalogu `glm/`. Stąd zapis `#include <glm/glm.hpp>`.
 
-Sprawdzenie na Macu (clang, Debug i Release): po tymczasowym dopisaniu do jednego pliku w
-`engine` i jednego w `night_maze` trzech nagłówków z sekcji 3.1 i kilku wywołań build przeszedł
-bez żadnego ostrzeżenia. Próbny kod został usunięty. Na Windowsie (MSVC, `/W4`) nie było to
-jeszcze sprawdzane.
+Sprawdzenie na Macu (clang, Debug i Release): pliki `src/scene/Transform.cpp` i
+`src/scene/Camera.cpp`, pierwsze w projekcie dołączające GLM, kompilują się bez żadnego
+ostrzeżenia, a clang-tidy z regułami projektu niczego w nich nie zgłasza. Na Windowsie
+(MSVC, `/W4`) nie było to jeszcze sprawdzane.
 
 ### Co GLM robi w swoim `CMakeLists.txt` i dlaczego nas to nie dotyczy
 
@@ -165,7 +171,8 @@ kompilacji naszych plików ich nie ma.
 
 ## 3. Najważniejsze API
 
-Wszystkie fragmenty C++ w tej sekcji to przykłady, nie kod projektu.
+Bloki z komentarzem `// Przykład, nie kod projektu.` to przykłady. Pozostałe bloki C++ są
+skopiowane z `src/scene/` i mają nad sobą nazwę pliku.
 
 ### 3.1. Które nagłówki dołączać
 
@@ -182,6 +189,10 @@ Wszystkie fragmenty C++ w tej sekcji to przykłady, nie kod projektu.
 W nagłówku `.hpp`, który tylko deklaruje pole albo parametr typu `glm::vec3` lub `glm::mat4`,
 wystarcza `<glm/glm.hpp>`. Dwa pozostałe nagłówki dołącza się w pliku `.cpp`, który faktycznie
 buduje macierz albo wysyła ją do OpenGL.
+
+Tak jest w `src/scene/`: `Transform.hpp` i `Camera.hpp` dołączają samo `<glm/glm.hpp>`, a
+`Transform.cpp` i `Camera.cpp` dodatkowo `<glm/gtc/matrix_transform.hpp>`. Nagłówka
+`<glm/gtc/type_ptr.hpp>` nie dołącza jeszcze żaden plik.
 
 ### 3.2. Wektory: `vec2`, `vec3`, `vec4`
 
@@ -222,7 +233,7 @@ glm::mat4 identity(1.0F);   // jedynki na przekątnej, zera poza nią
 
 Konstruktor z jedną liczbą wpisuje ją na przekątną. `glm::mat4(1.0F)` to macierz
 jednostkowa, `glm::mat4(0.0F)` to same zera. Dlaczego nie samo `glm::mat4 m;`, wyjaśnia
-pułapka 2.
+pułapka 2. W projekcie od takiej macierzy zaczyna `Transform::matrix()` (sekcja 3.5).
 
 **Układ kolumnowy (column-major).** GLM przechowuje macierz tak jak GLSL i OpenGL: jako
 cztery kolumny, jedna po drugiej. Pierwszy indeks wybiera **kolumnę**, drugi **wiersz**:
@@ -306,6 +317,29 @@ macierzy modelu: obiekt skaluje się i obraca wokół własnego środka, a dopie
 miejsce w świecie. Gdyby przesunięcie zadziałało przed obrotem, obiekt krążyłby wokół
 początku układu świata.
 
+**W projekcie.** Dokładnie ten wzorzec, z trzema obrotami zamiast jednego, to
+`Transform::matrix()` w [`src/scene/Transform.cpp`](../../src/scene/Transform.cpp):
+
+```cpp
+glm::mat4 Transform::matrix() const {
+    // Start from the identity matrix ("change nothing"). Each glm function below
+    // multiplies its matrix on the right side, so the last call is the first one applied
+    // to a vertex: the lines read top to bottom, the vertex is transformed bottom to top.
+    glm::mat4 model(1.0F);
+    model = glm::translate(model, position);
+    // GLM takes angles in radians.
+    model = glm::rotate(model, glm::radians(rotationDegrees.y), AXIS_Y);
+    model = glm::rotate(model, glm::radians(rotationDegrees.x), AXIS_X);
+    model = glm::rotate(model, glm::radians(rotationDegrees.z), AXIS_Z);
+    model = glm::scale(model, scale);
+    return model;
+}
+```
+
+Powstaje `T * Ry * Rx * Rz * S`. Osie obrotu to nazwane stałe z tego samego pliku
+(`constexpr glm::vec3 AXIS_Y{0.0F, 1.0F, 0.0F};` i dwie podobne). Omówienie linia po linii:
+[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja 5.3.
+
 ### 3.6. `glm::lookAt`: macierz widoku
 
 ```cpp
@@ -326,6 +360,20 @@ kamery. Kamera FPS zna zwykle pozycję i kierunek patrzenia, więc jako `center`
 GLM domyślnie używa układu prawoskrętnego (right-handed), tak jak OpenGL: `lookAt` to w tej
 konfiguracji `lookAtRH`. W przestrzeni kamery kamera stoi w początku układu i patrzy wzdłuż
 **ujemnej** osi Z, oś X wskazuje w prawo, a oś Y w górę.
+
+**W projekcie.** `Camera::viewMatrix` w [`src/scene/Camera.cpp`](../../src/scene/Camera.cpp):
+
+```cpp
+glm::mat4 Camera::viewMatrix(const glm::vec3& eye) const {
+    // lookAt wants a point to look at, not a direction: one step forward from the eye.
+    return glm::lookAt(eye, eye + forward(), WORLD_UP);
+}
+```
+
+`forward()` to kierunek patrzenia policzony z kątów yaw i pitch, a `WORLD_UP` to stała
+`(0, 1, 0)`. Co dokładnie buduje `lookAt` (trzy wektory bazy kamery) i dlaczego pozycja oka
+jest parametrem: [`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md),
+sekcje 2.7 i 5.7.
 
 ### 3.7. `glm::perspective` i `glm::radians`
 
@@ -358,6 +406,28 @@ wzdłuż ujemnej osi Z.
 `glm::radians(degrees)` zamienia stopnie na radiany (mnoży przez pi / 180).
 `glm::degrees` robi odwrotnie. Wszystkie funkcje GLM przyjmują kąty w radianach.
 
+**W projekcie.** `Camera::projectionMatrix` w
+[`src/scene/Camera.cpp`](../../src/scene/Camera.cpp):
+
+```cpp
+glm::mat4 Camera::projectionMatrix(float aspectRatio) const {
+    // GLM takes the field of view in radians.
+    return glm::perspective(glm::radians(fovDegrees), aspectRatio, nearPlane, farPlane);
+}
+```
+
+Pola `fovDegrees`, `nearPlane` i `farPlane` mają wartości domyślne 60, 0,1 i 100. Proporcje
+podaje wołający. Zasada projektu: kąty w polach są w stopniach (jednostka jest w nazwie
+pola), a `glm::radians` stoi w miejscu użycia. Tak samo zaczyna się `Camera::forward()`:
+
+```cpp
+    const float yaw = glm::radians(yawDegrees);
+    const float pitch = glm::radians(pitchDegrees);
+```
+
+Teoria rzutowania (bryła widzenia, dzielenie perspektywiczne, nieliniowa głębia):
+[`../modules/scene/transforms-camera.md`](../modules/scene/transforms-camera.md), sekcja 2.9.
+
 ### 3.8. `normalize`, `cross`, `dot`, `mix`
 
 | Funkcja | Wynik | Do czego |
@@ -368,9 +438,14 @@ wzdłuż ujemnej osi Z.
 | `glm::mix(x, y, a)` | `x * (1 - a) + y * a`: interpolacja liniowa | płynne przejście między dwiema wartościami |
 | `glm::length(v)` | długość wektora | odległości |
 
+`Camera::right` w [`src/scene/Camera.cpp`](../../src/scene/Camera.cpp):
+
 ```cpp
-// Przykład, nie kod projektu.
-glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
+glm::vec3 Camera::right() const {
+    // The cross product is perpendicular to both vectors. Its length is cos(pitch), not
+    // 1, so it has to be normalized. The pitch limit keeps that length above zero.
+    return glm::normalize(glm::cross(forward(), WORLD_UP));
+}
 ```
 
 - `cross` zależy od kolejności: `cross(a, b)` to `-cross(b, a)`. W układzie prawoskrętnym
@@ -382,6 +457,9 @@ glm::vec3 right = glm::normalize(glm::cross(front, worldUp));
 - W GLSL te same funkcje nazywają się tak samo i liczą to samo.
 
 ### 3.9. `glm::value_ptr` i wysyłanie macierzy do shadera
+
+Tej funkcji projekt jeszcze nie używa: żadna macierz nie jest dziś wysyłana do shadera.
+Pierwszym użyciem będzie metoda klasy `Shader` ustawiająca uniform typu `mat4`.
 
 ```cpp
 // Przykład, nie kod projektu.
@@ -461,6 +539,10 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
     `#define` w jednym pliku. Makro zmienia zachowanie funkcji `inline`, więc różna wartość w
     różnych plikach `.cpp` oznacza dwie różne definicje tej samej funkcji w jednym programie.
 14. **MSVC.** Nic z tej listy nie było jeszcze sprawdzane na Windowsie.
+    - Pierwszymi plikami, które MSVC skompiluje razem z GLM, są `src/scene/Transform.cpp` i
+      `src/scene/Camera.cpp`. Oprócz samych nagłówków używają stałych
+      `constexpr glm::vec3` (`AXIS_X`, `Camera::WORLD_UP`), czyli konstruktorów GLM
+      wykonywanych w czasie kompilacji.
     - Nagłówki GLM używają anonimowych struktur (stąd zamienne nazwy `x` i `r`), przed
       czym MSVC ostrzega pod `/W4` (C4201). GLM samo wyłącza to ostrzeżenie wokół swoich
       definicji (`#pragma warning(disable: 4201)` w `glm/detail/type_vec3.hpp` i
@@ -479,8 +561,9 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
    `GLM_BUILD_LIBRARY OFF` wyłącza zbędną bibliotekę statyczną.
 
 2. **Dlaczego `engine` linkuje GLM jako `PUBLIC`?**
-   Bo nagłówki `engine` będą pokazywać typy GLM w swoim API. Każdy target, który je dołącza
-   (`night_maze`), musi znać ścieżkę do `<glm/glm.hpp>`.
+   Bo nagłówki `engine` (`scene/Transform.hpp`, `scene/Camera.hpp`) pokazują typy GLM w
+   swoim API. Każdy target, który je dołącza (`night_maze`), musi znać ścieżkę do
+   `<glm/glm.hpp>`.
 
 3. **Po co `INTERFACE_SYSTEM_INCLUDE_DIRECTORIES` i dlaczego ustawiamy ją na
    `glm-header-only`, a nie na `glm::glm-header-only`?**

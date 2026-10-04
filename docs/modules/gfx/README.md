@@ -109,6 +109,7 @@ flowchart TD
     Game --> Gfx
     Debug --> Gfx
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
+    Scene["scene/<br/>Transform, Camera"] --> Glm["GLM"]
     Gfx --> Glad["GLAD"]
     Core --> Glad
     Core --> Glfw["GLFW"]
@@ -121,10 +122,11 @@ Strzałka znaczy "zna i dołącza nagłówki". Zasady dla `gfx`:
 2. `core/` nie zna `gfx/`. Zależność idzie w jedną stronę: `core <- gfx`.
 3. `gfx/` nie zna `game/`, `debug/` ani ImGui. Nic w nim nie jest specyficzne dla Night Maze, więc cała warstwa nadaje się do zadań laboratoryjnych.
 4. `gfx/` ma dwóch użytkowników. `game/`: `NightMazeApp.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Shader.hpp` i `gfx/VertexArray.hpp`. `debug/`: `ShadersPanel.cpp` dołącza `gfx/Shader.hpp`, bo panel "Shaders" czyta stan obiektu `Shader` i woła jego `reload()` ([`shaders.md`](shaders.md), sekcja 6). To dozwolony kierunek: `debug/` może zależeć od każdej warstwy.
+5. `gfx/` nie zna `scene/`. Warstwa `scene/` (struktury `Transform` i `Camera`, [`../scene/README.md`](../scene/README.md)) stoi w łańcuchu nad `gfx/` i może z niego korzystać, ale dziś dołącza tylko GLM i nikt jej jeszcze nie dołącza, stąd brak strzałek do niej na diagramie.
 
 `gfx` nie wie też nic o katalogu `assets/`. `Shader` dostaje gotowe ścieżki plików, a zbudowanie ich przez `core::assetPath` ([`../core/paths.md`](../core/paths.md)) jest sprawą wołającego.
 
-W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/gfx/*` należą do tej samej biblioteki statycznej `engine` co `src/core/*`. Granicy między `core` a `gfx` nie pilnuje więc linker, tylko dyscyplina dyrektyw `#include`.
+W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/gfx/*` należą do tej samej biblioteki statycznej `engine` co `src/core/*` i `src/scene/*`. Granic między tymi warstwami nie pilnuje więc linker, tylko dyscyplina dyrektyw `#include`.
 
 ## 4. Indeks: plik kodu, dokument
 

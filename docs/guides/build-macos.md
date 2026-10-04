@@ -272,7 +272,7 @@ Po buildzie w `build/debug` znajdują się między innymi:
 |---|---|
 | `night_maze` | program |
 | `assets` | dowiązanie symboliczne do katalogu `assets/` z repozytorium, tworzone po linkowaniu |
-| `libengine.a` | nasza biblioteka statyczna `engine` (kod z `src/core` i `src/gfx`) |
+| `libengine.a` | nasza biblioteka statyczna `engine` (kod z `src/core`, `src/gfx` i `src/scene`) |
 | `libimgui.a` | biblioteka `imgui` zdefiniowana w `Dependencies.cmake` |
 | `external/glad/libglad.a` | biblioteka `glad` |
 | `_deps/glfw-build/src/libglfw3.a` | biblioteka `glfw` |

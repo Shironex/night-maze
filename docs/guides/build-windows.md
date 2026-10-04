@@ -418,9 +418,14 @@ ewentualne ostrzeżenia) warto zapisać i na ich podstawie poprawić ten dokumen
 - [ ] `cmake --build --preset debug` kończy się bez błędów
 - [ ] **zero ostrzeżeń pod `/W4`** w plikach z `src/`
 - [ ] brak ostrzeżeń pochodzących z nagłówków GLFW, GLAD i ImGui w naszych plikach
-- [ ] od chwili, gdy pierwszy plik w `src/` dołącza `<glm/glm.hpp>`: brak ostrzeżeń z
-      nagłówków GLM pod `/W4` (zapisać, czy katalog `_deps\glm-src` trafia do kompilatora
-      przez `/external:I`)
+- [ ] `src/scene/Transform.cpp` i `src/scene/Camera.cpp` to pierwsze pliki, które dołączają
+      GLM (`<glm/glm.hpp>`, `<glm/gtc/matrix_transform.hpp>`): brak ostrzeżeń z nagłówków
+      GLM pod `/W4` (zapisać, czy katalog `_deps\glm-src` trafia do kompilatora przez
+      `/external:I`)
+- [ ] te same dwa pliki kompilują się pod `/W4 /permissive-` bez ostrzeżeń we własnym
+      kodzie. Do sprawdzenia w szczególności: stałe `constexpr glm::vec3` (`AXIS_X`,
+      `AXIS_Y`, `AXIS_Z` w `Transform.cpp`, `static constexpr` `Camera::WORLD_UP` w
+      `Camera.hpp`), `std::sin`, `std::cos` i `std::floor` na typie `float`, `std::clamp`
 - [ ] `src/core/Paths.cpp` kompiluje się pod `/W4 /permissive-` bez ostrzeżeń: gałąź `_WIN32`
       z `<windows.h>` i `GetModuleFileNameW` powstała na Macu i MSVC jeszcze jej nie widział
       (zapisać ewentualne ostrzeżenia, na przykład o konwersji typów albo ponownej definicji

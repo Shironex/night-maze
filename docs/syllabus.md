@@ -2,7 +2,7 @@
 
 Ściąga przed kartkówką i obroną. Gdy prowadzący zapyta o temat, w tej tabeli znajduję plik, który go realizuje, dokument, który go tłumaczy, i miejsce w panelu ImGui, w którym pokażę efekt na żywo.
 
-Stan: **M0 zrobione, M1 w toku**. Zrealizowane są tematy 1 i 2. Temat 2 to klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, shadery `assets/shaders/basic.*`, trójkąt rysowany przez `game::NightMazeApp` i panel Shaders z przyciskiem "Reload shaders". Tematy od 3 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
+Stan: **M0 zrobione, M1 w toku**. Zrealizowane są tematy 1 i 2, temat 3 jest w toku. Temat 2 to klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, shadery `assets/shaders/basic.*`, trójkąt rysowany przez `game::NightMazeApp` i panel Shaders z przyciskiem "Reload shaders". Z tematu 3 są struktury `scene::Transform` i `scene::Camera` z macierzami modelu, widoku i rzutowania, jeszcze niepodłączone do gry. Tematy od 4 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
 
 ## Tabela tematów
 
@@ -10,7 +10,7 @@ Stan: **M0 zrobione, M1 w toku**. Zrealizowane są tematy 1 i 2. Temat 2 to klas
 |---|---|---|---|---|---|
 | 1 | Pierwszy program OpenGL | **zrobione (M0)** | [`modules/core/README.md`](modules/core/README.md) (wstęp), [`window-context.md`](modules/core/window-context.md), [`main-loop.md`](modules/core/main-loop.md), [`input.md`](modules/core/input.md), [`gl-check.md`](modules/core/gl-check.md), [`paths.md`](modules/core/paths.md) | zob. tabela "Temat 1 szczegółowo" niżej | Panel Renderer: `FPS`, `Frame time`, `Framebuffer`, `Window`, `OpenGL`, `GPU`, `Clear color`. Klawisz `~` (na lewo od `1`) chowa i pokazuje panele |
 | 2 | Programowalny potok | **zrobione (M1)** | [`modules/gfx/README.md`](modules/gfx/README.md) (wstęp, droga klatki), [`shaders.md`](modules/gfx/shaders.md), [`buffers-vao.md`](modules/gfx/buffers-vao.md) | [`src/gfx/`](../src/gfx/) (Shader, Buffer, VertexArray), [`assets/shaders/basic.vert`](../assets/shaders/basic.vert), [`basic.frag`](../assets/shaders/basic.frag), [`src/game/NightMazeApp.cpp`](../src/game/NightMazeApp.cpp), [`src/debug/panels/ShadersPanel.cpp`](../src/debug/panels/ShadersPanel.cpp), zob. tabela "Temat 2 szczegółowo" niżej | Panel Shaders: przycisk `Reload shaders` (wczytanie shaderów na żywo), `Vertex`, `Fragment`, `Program`, `Last load` z tekstem błędu sterownika. Scenariusz pokazu: [`shaders.md`](modules/gfx/shaders.md), sekcja 6.4 |
-| 3 | Przekształcenia przestrzeni | planowane, M1 | planowane: `transforms-camera.md` | planowane: `src/scene/` (Transform, Camera) | planowane: pozycja i rotacja kamery, FOV |
+| 3 | Przekształcenia przestrzeni | **w toku (M1)**: matematyka gotowa, gra jej jeszcze nie używa | [`modules/scene/README.md`](modules/scene/README.md) (wstęp), [`transforms-camera.md`](modules/scene/transforms-camera.md) | [`src/scene/`](../src/scene/) (Transform, Camera), zob. tabela "Temat 3 szczegółowo" niżej. Brakuje: uniformy macierzowe w shaderze, kostka, sterowanie kamerą | planowane: panel Camera (pozycja i rotacja kamery, FOV) |
 | 4 | Wczytywanie OBJ | planowane, M2 + M3 | planowane: `obj-loader.md` | planowane: `src/assets/` (ObjLoader, AssetCache) | planowane: lista załadowanych modeli |
 | 5 | Tekstury | planowane, M2 + M3 | planowane: `textures.md`, `images.md` | planowane: `src/gfx/` (Texture2D), `src/assets/` (ImageLoader) | planowane: podgląd tekstur, przełącznik normal map |
 | 6 | Światło kierunkowe i punktowe | planowane, M4 + M5 | planowane: `lights.md` | planowane: `src/scene/` (Light), `src/game/` (Flashlight, Crystal) | planowane: edytor świateł (kolor, siła, tłumienie) |
@@ -68,6 +68,22 @@ Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: pr
 | Cała klatka: od tablicy liczb do pikseli | wszystkie powyższe | diagram | [`gfx/README.md`](modules/gfx/README.md), 6 |
 | Shadery jako pliki obok programu | [`CMakeLists.txt`](../CMakeLists.txt), [`src/core/Paths.cpp`](../src/core/Paths.cpp) | blok `assets` (dowiązanie przez `POST_BUILD` na macOS, kopia przez target `copy_assets` na Windowsie), `core::assetPath` | [`core/paths.md`](modules/core/paths.md), 5.8, [`guides/project-structure.md`](guides/project-structure.md), 3.1 blok 7 |
 
+## Temat 3 szczegółowo
+
+Realizacja według PRD: Model/View/Projection, kamera FPS, hierarchia transformów. Pokaz w ImGui: pozycja i rotacja kamery, FOV. Stan: są struktury `scene::Transform` i `scene::Camera`, które liczą trzy macierze. Żaden kod gry ich jeszcze nie woła, shader nie ma uniformów, panelu Camera nie ma. Hierarchii transformów nie ma.
+
+| Zagadnienie | Plik | Najważniejsze miejsce w kodzie | Dokument i sekcja |
+|---|---|---|---|
+| Przestrzenie współrzędnych, współrzędne jednorodne, konwencja układu | teoria | diagram łańcucha przestrzeni | [`scene/transforms-camera.md`](modules/scene/transforms-camera.md), 2.1, 2.2 i 2.11 |
+| Macierz modelu: przesunięcie, obrót, skala i ich kolejność | [`src/scene/Transform.cpp`](../src/scene/Transform.cpp), [`Transform.hpp`](../src/scene/Transform.hpp) | `Transform::matrix`, pola `position`, `rotationDegrees`, `scale`, stałe `AXIS_X`, `AXIS_Y`, `AXIS_Z` | [`scene/transforms-camera.md`](modules/scene/transforms-camera.md), 2.3 do 2.6, 5.2 i 5.3 |
+| Kierunek patrzenia z kątów yaw i pitch, wektor w prawo | [`src/scene/Camera.cpp`](../src/scene/Camera.cpp), [`Camera.hpp`](../src/scene/Camera.hpp) | `Camera::forward`, `Camera::right`, stała `WORLD_UP` | [`scene/transforms-camera.md`](modules/scene/transforms-camera.md), 2.8 i 5.5 |
+| Obrót kamery: zawijanie yaw, ograniczenie pitch | [`src/scene/Camera.cpp`](../src/scene/Camera.cpp) | `Camera::rotate`, stałe `MAX_PITCH_DEGREES`, `FULL_TURN_DEGREES` | [`scene/transforms-camera.md`](modules/scene/transforms-camera.md), 2.8 i 5.6 |
+| Macierz widoku, `lookAt` | [`src/scene/Camera.cpp`](../src/scene/Camera.cpp) | `Camera::viewMatrix` | [`scene/transforms-camera.md`](modules/scene/transforms-camera.md), 2.7 i 5.7 |
+| Rzutowanie perspektywiczne, FOV, proporcje, bliska i daleka płaszczyzna, głębia | [`src/scene/Camera.cpp`](../src/scene/Camera.cpp), [`Camera.hpp`](../src/scene/Camera.hpp) | `Camera::projectionMatrix`, pola `fovDegrees`, `nearPlane`, `farPlane` | [`scene/transforms-camera.md`](modules/scene/transforms-camera.md), 2.9, 2.10 i 5.7 |
+| Miejsce warstwy `scene` w architekturze | [`CMakeLists.txt`](../CMakeLists.txt) | lista źródeł targetu `engine` | [`scene/README.md`](modules/scene/README.md), 2 i 3 |
+
+Dokument uzupełniający do tematu 3: [`libraries/glm.md`](libraries/glm.md).
+
 ## Panele ImGui (narzędzie do wszystkich tematów)
 
 | Zagadnienie | Dokument | Pliki kodu |
@@ -84,7 +100,7 @@ Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: pr
 | Kamień milowy | Zakres według PRD | Tematy wykładu |
 |---|---|---|
 | M0 (zrobione) | Repozytorium, CMake i FetchContent, okno GLFW 4.1, GLAD, ImGui, `GL_CHECK` | 1 |
-| M1 (w toku) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray`, trójkąt, panel Shaders z przyciskiem "Reload shaders" | 2, 3 |
+| M1 (w toku) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray`, trójkąt, panel Shaders z przyciskiem "Reload shaders", struktury `scene::Transform` i `scene::Camera` | 2, 3 |
 | M2 + M3 | Generator labiryntu, kolizje AABB, tekstury, loader OBJ, pierwsze modele | 4, 5, 14 |
 | M4 + M5 | Księżyc, latarka, kryształy, Gouraud vs Phong, zbieranie, bateria, brama | 6, 7 |
 | M6 | Skybox, teren z heightmapy, trawa w shaderze geometrii | 8, 9, 13 |
