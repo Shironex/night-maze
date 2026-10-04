@@ -28,6 +28,9 @@ protected:
     /// Background color (red, green, blue), exposed so the debug UI can edit it live.
     std::array<float, 3>& clearColor() { return m_clearColor; }
 
+    /// Shader program of the triangle, exposed so the debug UI can reload it live.
+    gfx::Shader& shader() { return m_shader; }
+
 private:
     // A dark night blue.
     std::array<float, 3> m_clearColor{0.02F, 0.03F, 0.08F};

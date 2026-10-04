@@ -1,8 +1,9 @@
 # Dear ImGui 1.92.9b (gałąź docking)
 
 Dokument biblioteki dla kamienia milowego M0. Opisuje użycie Dear ImGui w
-[`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp) i
-[`src/debug/panels/RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp) oraz
+[`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp),
+[`src/debug/panels/RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp) i
+[`src/debug/panels/ShadersPanel.cpp`](../../src/debug/panels/ShadersPanel.cpp) oraz
 konfigurację z [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake).
 
 Architekturę modułu `debug` i instrukcję "jak dodać nowy panel" zawiera
@@ -47,6 +48,15 @@ button->onClick = [] { reloadShaders(); };
 if (ImGui::Button("Reload")) {
     reloadShaders();
 }
+```
+
+Prawdziwy odpowiednik tej drugiej postaci jest w
+[`ShadersPanel.cpp`](../../src/debug/panels/ShadersPanel.cpp):
+
+```cpp
+        if (ImGui::Button("Reload shaders")) {
+            shader.reload();
+        }
 ```
 
 Skutki praktyczne:
@@ -315,6 +325,7 @@ void DebugUI::draw(const DebugContext& context) {
         // Each panel gets exactly the members it needs, so its signature still shows
         // what it reads and what it edits.
         drawRendererPanel(context.time, context.window, context.clearColor);
+        drawShadersPanel(context.shader);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
@@ -325,7 +336,7 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele pokazują i edytują (`time`, `window`, `clearColor`). Buduje ją co klatkę `main.cpp`.
+panele pokazują i edytują (`time`, `window`, `clearColor`, `shader`). Buduje ją co klatkę `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
@@ -333,7 +344,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, `drawRendererPanel` (czyli `Begin`, `Text`, `ColorEdit3`, `End`) | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, `drawRendererPanel` (czyli `Begin`, `Text`, `ColorEdit3`, `End`), `drawShadersPanel` (`Begin`, `Text`, `Button`, `TextWrapped`, `End`) | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -360,6 +371,7 @@ Ważne szczegóły:
               .time = time(),
               .window = window(),
               .clearColor = clearColor(),
+              .shader = shader(),
           });
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -382,6 +394,11 @@ Ważne szczegóły:
 - Backend renderera na czas rysowania zmienia stan OpenGL (blending, scissor test, wyłączony
   test głębi), a po zakończeniu przywraca poprzedni. Od M1, gdy pojawi się scena 3D, warto o
   tym pamiętać przy szukaniu błędów stanu.
+- **Widżet może wywołać kod, który woła OpenGL.** Przycisk "Reload shaders" kompiluje i
+  linkuje shadery w etapie 2, przed `ImGui::Render()`. Jest to bezpieczne, bo w etapach 2 i 3
+  ImGui nie woła OpenGL, a backend w etapie 4 sam ustawia swój program i przywraca
+  poprzedni tylko wtedy, gdy ten jeszcze istnieje (sprawdza `glIsProgram`). Pełny opis:
+  [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6.3.
 
 ### 3.5. Reguła `Begin` / `End`
 
@@ -548,7 +565,7 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok `drawRendererPanel`, dopisanie plików do `add_executable`
+wywołanie w `DebugUI::draw` obok `drawRendererPanel` i `drawShadersPanel`, dopisanie plików do `add_executable`
 w `CMakeLists.txt`. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
 jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 [`../modules/debug-ui.md`](../modules/debug-ui.md) i tam należy jej szukać.

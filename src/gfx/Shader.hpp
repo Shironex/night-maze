@@ -48,6 +48,12 @@ public:
     /// Empty after a successful load.
     const std::string& lastError() const { return m_lastError; }
 
+    /// File the vertex shader is read from, as given to the constructor.
+    const std::filesystem::path& vertexPath() const { return m_vertexPath; }
+
+    /// File the fragment shader is read from, as given to the constructor.
+    const std::filesystem::path& fragmentPath() const { return m_fragmentPath; }
+
 private:
     std::filesystem::path m_vertexPath;
     std::filesystem::path m_fragmentPath;

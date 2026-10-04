@@ -3,6 +3,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 
 namespace core {
 
@@ -14,5 +15,9 @@ std::filesystem::path executableDir();
 /// assetPath("shaders/basic.vert"). It does not check that the file exists: the code
 /// that opens the file reports that.
 std::filesystem::path assetPath(const std::filesystem::path& relativePath);
+
+/// A path as UTF-8 text, for log messages and for labels in the debug UI. It works for
+/// every path on both systems and does not depend on the code page of Windows.
+std::string pathText(const std::filesystem::path& path);
 
 } // namespace core

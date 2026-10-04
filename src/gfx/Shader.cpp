@@ -4,6 +4,7 @@
 
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
+#include "core/Paths.hpp"
 
 #include <cstddef>
 #include <fstream>
@@ -13,16 +14,6 @@
 namespace gfx {
 
 namespace {
-
-// A path as UTF-8 text for error messages. u8string() gives UTF-8 on every system, and
-// its characters (char8_t) are copied one by one into a std::string. path::string() is
-// not used: on Windows it converts to the local code page and throws when a letter of
-// the path does not exist there.
-std::string pathText(const std::filesystem::path& path) {
-    const std::u8string utf8 = path.u8string();
-    std::string text(utf8.begin(), utf8.end());
-    return text;
-}
 
 // Reads a whole text file into text. Returns false when the file cannot be opened.
 bool readTextFile(const std::filesystem::path& path, std::string& text) {
@@ -78,7 +69,7 @@ std::string programInfoLog(GLuint program) {
 GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string& error) {
     std::string source;
     if (!readTextFile(path, source)) {
-        error = "Shader file cannot be opened: " + pathText(path);
+        error = "Shader file cannot be opened: " + core::pathText(path);
         return 0;
     }
 
@@ -96,7 +87,7 @@ GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string
     GLint status = GL_FALSE;
     GL_CHECK(glGetShaderiv(shader, GL_COMPILE_STATUS, &status));
     if (status != GL_TRUE) {
-        error = "Shader compilation failed: " + pathText(path) + "\n" + shaderInfoLog(shader);
+        error = "Shader compilation failed: " + core::pathText(path) + "\n" + shaderInfoLog(shader);
         GL_CHECK(glDeleteShader(shader));
         return 0;
     }
@@ -152,8 +143,8 @@ GLuint buildProgram(const std::filesystem::path& vertexPath,
     GL_CHECK(glDeleteShader(fragmentShader));
 
     if (program == 0) {
-        error = "Shader linking failed: " + pathText(vertexPath) + " + " + pathText(fragmentPath) +
-                "\n" + infoLog;
+        error = "Shader linking failed: " + core::pathText(vertexPath) + " + " +
+                core::pathText(fragmentPath) + "\n" + infoLog;
     }
     return program;
 }

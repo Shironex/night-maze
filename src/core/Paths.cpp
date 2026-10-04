@@ -92,4 +92,13 @@ std::filesystem::path assetPath(const std::filesystem::path& relativePath) {
     return executableDir() / ASSETS_DIRECTORY / relativePath;
 }
 
+// u8string() gives UTF-8 on every system, and its characters (char8_t) are copied one by
+// one into a std::string. path::string() is not used: on Windows it converts to the local
+// code page and throws when a letter of the path does not exist there.
+std::string pathText(const std::filesystem::path& path) {
+    const std::u8string utf8 = path.u8string();
+    std::string text(utf8.begin(), utf8.end());
+    return text;
+}
+
 } // namespace core

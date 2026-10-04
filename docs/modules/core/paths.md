@@ -14,9 +14,11 @@ Dlatego szukam assetów **względem pliku wykonywalnego**, a nie względem katal
 - `core::executableDir()` zwraca bezwzględną ścieżkę katalogu, w którym leży uruchomiony program,
 - `core::assetPath("shaders/basic.vert")` zwraca `executableDir() / "assets" / "shaders/basic.vert"`.
 
+Trzecia funkcja, `core::pathText(path)`, nie szuka niczego: zamienia ścieżkę na tekst w UTF-8, żeby dało się ją wypisać w logu i pokazać w panelu debug (sekcja 5.7).
+
 PRD (sekcja 6) wymienia "ścieżki do assetów" jako jedną z odpowiedzialności warstwy `core`.
 
-Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z podkatalogiem `shaders/` i dwoma plikami (`basic.vert`, `basic.frag`). Pierwszym i na razie jedynym użytkownikiem `core::assetPath` jest konstruktor `game::NightMazeApp`, który buduje tak ścieżki obu plików shaderów. Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię odświeżaną przy każdym budowaniu (sekcja 5.8).
+Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z podkatalogiem `shaders/` i dwoma plikami (`basic.vert`, `basic.frag`). Pierwszym i na razie jedynym użytkownikiem `core::assetPath` jest konstruktor `game::NightMazeApp`, który buduje tak ścieżki obu plików shaderów. `core::pathText` wołają `gfx::Shader` (komunikaty błędów) i panel "Shaders" (nazwy plików). Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię odświeżaną przy każdym budowaniu (sekcja 5.8).
 
 ## 2. Teoria
 
@@ -102,8 +104,8 @@ Ta część modułu nie ma shaderów, ale to przez nią program je znajduje: pli
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/core/Paths.hpp`](../../../src/core/Paths.hpp) | deklaracje `core::executableDir` i `core::assetPath`. Dołącza tylko `<filesystem>` |
-| [`src/core/Paths.cpp`](../../../src/core/Paths.cpp) | stała `ASSETS_DIRECTORY`, pomocnicza `executableFile` w dwóch wersjach (macOS, Windows) i obie funkcje publiczne |
+| [`src/core/Paths.hpp`](../../../src/core/Paths.hpp) | deklaracje `core::executableDir`, `core::assetPath` i `core::pathText`. Dołącza tylko `<filesystem>` i `<string>` |
+| [`src/core/Paths.cpp`](../../../src/core/Paths.cpp) | stała `ASSETS_DIRECTORY`, pomocnicza `executableFile` w dwóch wersjach (macOS, Windows) i trzy funkcje publiczne |
 
 Oba pliki są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). To wolne funkcje (free functions) w przestrzeni nazw `core`: nie ma klasy, nie ma stanu, nie ma zmiennych globalnych i nic nie jest zapamiętywane między wywołaniami.
 
@@ -115,7 +117,10 @@ flowchart TD
     File --> Win["Windows: GetModuleFileNameW<br/>bufor std::wstring"]
     Dir --> Parent["parent_path()<br/>katalog zamiast pliku"]
     Asset --> Join["operator/<br/>katalog / assets / relativePath"]
+    Text["pathText(path)"] --> U8["path::u8string()<br/>potem kopia znaków do std::string"]
 ```
+
+`pathText` stoi na diagramie osobno: nie woła pozostałych funkcji i nie pyta systemu o nic.
 
 ### 5.2 Nagłówek
 
@@ -128,10 +133,15 @@ std::filesystem::path executableDir();
 /// assetPath("shaders/basic.vert"). It does not check that the file exists: the code
 /// that opens the file reports that.
 std::filesystem::path assetPath(const std::filesystem::path& relativePath);
+
+/// A path as UTF-8 text, for log messages and for labels in the debug UI. It works for
+/// every path on both systems and does not depend on the code page of Windows.
+std::string pathText(const std::filesystem::path& path);
 ```
 
-- Obie funkcje zwracają `std::filesystem::path` przez wartość. Wołający dostaje własny obiekt i może go od razu przekazać dalej, na przykład do `std::ifstream`.
+- `executableDir` i `assetPath` zwracają `std::filesystem::path` przez wartość. Wołający dostaje własny obiekt i może go od razu przekazać dalej, na przykład do `std::ifstream`.
 - `assetPath` przyjmuje `const std::filesystem::path&`. Literał `"shaders/basic.vert"` zamienia się na `path` niejawnie, więc wywołanie `assetPath("shaders/basic.vert")` działa bez dodatkowego zapisu.
+- `pathText` idzie w drugą stronę: dostaje `path`, zwraca `std::string`. Stąd `<string>` w nagłówku.
 - Nagłówek nie dołącza ani `<windows.h>`, ani `<mach-o/dyld.h>`. Nagłówki systemowe są tylko w pliku `.cpp`, więc nie "wyciekają" do plików, które dołączają `core/Paths.hpp` (sekcja 7, pułapka 5).
 - `std::filesystem::filesystem_error`, który może rzucić `canonical`, dziedziczy po `std::runtime_error` (przez `std::system_error`), więc zdanie "Throws std::runtime_error" jest prawdziwe także dla niego. Wyjątek doleci do `catch (const std::exception&)` w `main`.
 
@@ -276,6 +286,25 @@ std::filesystem::path assetPath(const std::filesystem::path& relativePath) {
 - `assetPath` **nie sprawdza**, czy plik istnieje. To celowe: funkcja tylko buduje ścieżkę. Błąd "nie ma pliku" zgłosi kod, który plik otwiera, bo tylko on wie, co z tym zrobić i jaki komunikat wypisać.
 - Każde wywołanie pyta system od nowa. Nie zapamiętuję wyniku w zmiennej statycznej: to byłby ukryty stan globalny, a pytanie jest tanie i zadawane tylko przy wczytywaniu plików, nie co klatkę.
 
+Trzecia funkcja publiczna zamienia ścieżkę na tekst:
+
+```cpp
+// u8string() gives UTF-8 on every system, and its characters (char8_t) are copied one by
+// one into a std::string. path::string() is not used: on Windows it converts to the local
+// code page and throws when a letter of the path does not exist there.
+std::string pathText(const std::filesystem::path& path) {
+    const std::u8string utf8 = path.u8string();
+    std::string text(utf8.begin(), utf8.end());
+    return text;
+}
+```
+
+- Najprostsze `path.string()` ma na Windowsie wadę (sekcja 7, pułapka 7): zamienia znaki szerokie na lokalną stronę kodową i **rzuca wyjątek**, gdy jakiegoś znaku w niej nie ma. Tekst ścieżki trafia do komunikatów o błędach, a komunikat o błędzie nie może sam być źródłem wyjątku (konstruktor `gfx::Shader` obiecuje, że nie rzuca).
+- `u8string()` zwraca UTF-8, w którym da się zapisać każdą ścieżkę. W C++20 jego typem jest `std::u8string` (napis ze znaków `char8_t`), a nie `std::string`, stąd druga linia: konstruktor `std::string` z parą iteratorów (początek i koniec napisu `utf8`) kopiuje znaki jeden po drugim, zamieniając każdy `char8_t` na `char` o tej samej wartości bajtu.
+- Drugi zysk: ImGui oczekuje tekstu w UTF-8, więc wynik da się pokazać w panelu bez dalszych zamian.
+- Funkcja jest w `core`, a nie w `gfx`, bo potrzebują jej dwie warstwy: `gfx::Shader` składa z niej komunikaty błędów ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 5.5), a panel "Shaders" z `debug/` pokazuje nazwy plików (sekcja 6 tamże). Jedna funkcja w najniższej warstwie zastępuje dwie kopie tych samych trzech linii.
+- Wołający może podać część ścieżki: `core::pathText(path.filename())` daje samą nazwę pliku, na przykład `basic.vert`.
+
 ### 5.8 Pierwszy użytkownik i katalog `assets` obok programu
 
 **Wywołanie.** W [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) nazwy plików są stałymi w anonimowej przestrzeni nazw, a ścieżki powstają na liście inicjalizacyjnej konstruktora:
@@ -311,9 +340,11 @@ Na macOS gałąź sprawdziłem najpierw małym programem testowym poza repozytor
 
 Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalogu repozytorium i z katalogu `/tmp` wczytał shadery bez żadnej linii `[error]`. Sprawdziłem też krok budowania: dowiązanie `build/debug/assets` i `build/release/assets` wskazuje ścieżkę bezwzględną `<repo>/assets`, ponowne wykonanie kroku przy istniejącym dowiązaniu kończy się powodzeniem, a `make clean` usuwa dowiązanie razem z katalogiem `build/`, nie ruszając plików w `<repo>/assets`.
 
+`pathText` sprawdziłem na macOS małym programem poza repozytorium: dla ścieżki `katalog/zażółć/basic.vert` zwraca 29 bajtów (polskie litery zajmują w UTF-8 po dwa bajty), a dla `filename()` tej ścieżki napis `basic.vert`. Na Windowsie funkcja nie była jeszcze uruchamiana.
+
 ## 6. Panel ImGui
 
-Ścieżki nie mają elementu w panelu. Skutkiem błędnej ścieżki jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli, wypisana przez `gfx::Shader`, i brak trójkąta w oknie.
+Ścieżki nie mają własnego panelu, ale widać je w panelu **Shaders** ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 6): linie `Vertex` i `Fragment` pokazują nazwy plików, a podpowiedź (tooltip) po najechaniu kursorem pełną ścieżkę zbudowaną przez `core::assetPath`. Oba teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak trójkąta.
 
 ## 7. Pułapki
 
@@ -323,7 +354,7 @@ Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalo
 4. **Sklejanie ścieżek jak napisów.** `dir + "/" + name` albo `dir + "\\" + name` wiąże kod z jednym systemem i na Windowsie wymusza konwersję do `char` (sekcja 2.5).
 5. **`<windows.h>` w nagłówku.** Ten nagłówek definiuje tysiące nazw i makr (bez `NOMINMAX` także `min` i `max`), które potem psują niewinny kod w plikach dołączających mój nagłówek. Dlatego jest tylko w `Paths.cpp`, w gałęzi `_WIN32`.
 6. **Wersja `A` zamiast `W`.** `GetModuleFileNameA` zwraca `char` w lokalnej stronie kodowej i gubi znaki, których w niej nie ma. Program działałby u mnie, a nie u kogoś z polską literą w nazwie użytkownika.
-7. **`path::string()` na Windowsie.** `string()` zamienia ścieżkę na `char` i może zgubić znaki spoza strony kodowej (albo rzucić wyjątek). Do otwierania plików przekazuję sam obiekt `path` (`std::ifstream` przyjmuje `std::filesystem::path`), a `string()` zostawiam do komunikatów w logu w ćwiczeniach. Kod, który nie może rzucić wyjątku, zamienia ścieżkę na tekst przez `u8string()`: tak robi `gfx::Shader` ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 5.3).
+7. **`path::string()` na Windowsie.** `string()` zamienia ścieżkę na `char` i może zgubić znaki spoza strony kodowej (albo rzucić wyjątek). Do otwierania plików przekazuję sam obiekt `path` (`std::ifstream` przyjmuje `std::filesystem::path`), a `string()` zostawiam do komunikatów w logu w ćwiczeniach. Kod, który nie może rzucić wyjątku, zamienia ścieżkę na tekst przez `u8string()`: tak robi `core::pathText` (sekcja 5.7).
 8. **`MAX_PATH`.** Bufor na 260 znaków wygląda w poradnikach jak norma, ale dłuższe ścieżki istnieją. Za mały bufor nie daje błędu wprost: funkcja zwraca obciętą ścieżkę i rozmiar bufora, więc bez sprawdzenia wyniku program szukałby assetów w nieistniejącym katalogu.
 9. **Dowiązanie symboliczne do programu.** Bez `canonical` katalogiem programu byłby katalog dowiązania (sekcja 5.5). Z `canonical` jest nim katalog prawdziwego pliku i tam musi leżeć `assets/`.
 10. **`canonical` czyta dysk.** W odróżnieniu od `operator/` i `parent_path()` wymaga, żeby plik istniał, i rzuca wyjątek, gdy go nie ma. Dla ścieżki działającego programu plik istnieje, ale tej funkcji nie należy używać "na zapas" dla ścieżek plików, których może nie być.
@@ -384,11 +415,14 @@ Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalo
 14. **Skąd katalog `assets` bierze się obok programu i czym różnią się systemy?**
     Z bloku w `CMakeLists.txt`. Na macOS polecenie `POST_BUILD` po zlinkowaniu `night_maze` tworzy dowiązanie symboliczne do `<repo>/assets`, więc program widzi zmiany w plikach od razu. Na Windowsie target `copy_assets` kopiuje katalog przy każdym budowaniu (dowiązania wymagają tam trybu dewelopera albo uprawnień administratora), więc program czyta kopię i po zmianie shadera trzeba najpierw zbudować.
 
+15. **Po co jest `pathText` i dlaczego używa `u8string()`, a nie `string()`?**
+    Zamienia ścieżkę na tekst do logu i do panelu debug. Na Windowsie `string()` zamienia ścieżkę na lokalną stronę kodową i rzuca wyjątek, gdy znaku nie da się w niej zapisać. `u8string()` daje UTF-8, który mieści każdą ścieżkę i jest tym, czego oczekuje ImGui. Wynik ma typ `std::u8string`, więc kopiuję jego znaki do `std::string`.
+
 ## 10. Źródła
 
 - Apple, strona podręcznika `dyld(3)` (w terminalu na macOS: `man 3 dyld`), opis `_NSGetExecutablePath`: zwracana wartość, rozmiar bufora, uwaga o dowiązaniach symbolicznych.
 - Microsoft Learn, `GetModuleFileNameW`: <https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew> (parametry, zwracana wartość, obcięcie i `ERROR_INSUFFICIENT_BUFFER`).
 - Microsoft Learn, "Maximum Path Length Limitation": <https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation> (`MAX_PATH` i ścieżki do 32767 znaków).
-- cppreference, biblioteka `std::filesystem`: <https://en.cppreference.com/w/cpp/filesystem> (strony `path`, `path::operator/`, `path::parent_path`, `canonical`, `current_path`).
+- cppreference, biblioteka `std::filesystem`: <https://en.cppreference.com/w/cpp/filesystem> (strony `path`, `path::operator/`, `path::parent_path`, `path::u8string`, `canonical`, `current_path`).
 - Przewodniki w tym repozytorium: [`../../guides/build-windows.md`](../../guides/build-windows.md) (sekcja 7 o katalogu roboczym, sekcja 11 z listą kontrolną), [`../../guides/project-structure.md`](../../guides/project-structure.md) (sekcja 4.3 o `imgui.ini`).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)), sekcja 6: odpowiedzialności warstwy `core`.

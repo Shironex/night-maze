@@ -302,9 +302,17 @@ Reguła pracy z shaderami na Windowsie:
 
 1. zmień plik w `assets\shaders\`,
 2. zbuduj: `cmake --build --preset debug` (albo `make debug`),
-3. uruchom program ponownie (gdy pojawi się przycisk "Reload shaders": naciśnij go).
+3. naciśnij przycisk "Reload shaders" w panelu Shaders (albo uruchom program ponownie).
 
-Na macOS krok 2 nie jest potrzebny.
+Na macOS krok 2 nie jest potrzebny. Pominięcie go na Windowsie nie daje błędu: panel pokazuje
+`Last load: OK`, a obraz się nie zmienia, bo program wczytał poprawnie starą kopię pliku.
+Podpowiedź (tooltip) nad linią `Vertex` albo `Fragment` w panelu pokazuje pełną ścieżkę
+czytanego pliku, czyli kopii w `build\debug\Debug\assets\shaders\`
+([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6.5).
+
+Krok 2 powinien dać się wykonać przy działającym programie: gdy nie zmienił się żaden plik
+C++, budowanie nie linkuje `night_maze.exe` od nowa, tylko kopiuje katalog `assets`. Nie
+było to jeszcze sprawdzone na PC (punkt na liście kontrolnej w sekcji 11).
 
 Uwagi:
 
@@ -488,8 +496,9 @@ Funkcje są wołane przy każdym starcie programu (wczytywanie shaderów).
 Opis: [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md). Klasa była kompilowana i
 sprawdzana tylko na macOS.
 
-- [ ] `src/gfx/Shader.cpp` kompiluje się w MSVC z `/W4 /permissive-` bez ostrzeżeń (w
-      szczególności `pathText`: `std::string` budowany z iteratorów `std::u8string`)
+- [ ] `src/gfx/Shader.cpp` i `src/core/Paths.cpp` kompilują się w MSVC z `/W4 /permissive-`
+      bez ostrzeżeń (w szczególności `core::pathText` w `Paths.cpp`: `std::string` budowany z
+      iteratorów `std::u8string`)
 - [ ] celowy błąd składni (usunięty średnik w `basic.frag`, potem `cmake --build --preset
       debug`): w konsoli jest **jedna** linia `[error] Shader compilation failed:` ze ścieżką pliku
       i dziennikiem sterownika, okno pokazuje samo tło i panel, program się nie zamyka.
@@ -497,6 +506,38 @@ sprawdzana tylko na macOS.
       `shaders.md`, sekcja 2.6, nie był mierzony). Przywrócić plik
 - [ ] ścieżka z polską literą w komunikacie błędu nie zamyka
       programu (w konsoli litera może być wyświetlona błędnie, to dopuszczalne)
+
+**Panel Shaders i przeładowanie shaderów**
+
+Opis: [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6. Panel był
+kompilowany i sprawdzany tylko na macOS.
+
+- [ ] `src/debug/panels/ShadersPanel.cpp`, `src/debug/DebugContext.hpp` i `src/main.cpp`
+      kompilują się w MSVC z `/W4 /permissive-` bez ostrzeżeń (w szczególności stała
+      `constexpr ImVec4 ERROR_TEXT_COLOR` i inicjalizatory desygnowane `DebugContext` z nowym
+      polem `.shader` w kolejności deklaracji)
+- [ ] panel "Shaders" jest widoczny, daje się zadokować i pokazuje `Vertex: basic.vert`,
+      `Fragment: basic.frag`, `Program: valid`, `Last load: OK`
+- [ ] podpowiedź nad linią `Fragment` pokazuje pełną ścieżkę kopii w
+      `build\debug\Debug\assets\shaders\` (z ukośnikami wstecznymi)
+- [ ] przeładowanie udane: przy działającym programie zmiana koloru w
+      `assets\shaders\basic.frag`, `cmake --build --preset debug` w drugim terminalu,
+      potem "Reload shaders". Zapisać, czy build przechodzi przy działającym programie
+      (oczekiwane: tak, bez linkowania) i czy trójkąt zmienia kolor (oczekiwane: tak)
+- [ ] to samo bez budowania: "Reload shaders" zaraz po zapisaniu pliku. Oczekiwane:
+      `Last load: OK` i obraz bez zmian (program czyta kopię)
+- [ ] przeładowanie nieudane: usunięty średnik w `basic.frag`, build, "Reload shaders".
+      Oczekiwane: `Last load: failed`, czerwony tekst z nazwą pliku i dziennikiem sterownika,
+      ten sam tekst w konsoli jako `[error]`, `Program: valid`, trójkąt bez zmian. Zapisać
+      dokładną linię sterownika
+- [ ] naprawa: przywrócony plik, build, "Reload shaders". Oczekiwane: `Last load: OK`,
+      pierwotne kolory
+- [ ] po kilku przeładowaniach w konsoli nie ma żadnej linii `[error] GL_...` (backend ImGui
+      i usunięty stary program, `shaders.md`, sekcja 6.3)
+- [ ] ścieżka z polską literą (kopia katalogu programu jak w punkcie o `Żółw` wyżej): panel
+      i podpowiedź pokazują ścieżkę bez zamknięcia programu. Zapisać, jak wyświetla się
+      polska litera (domyślna czcionka ImGui nie ma wszystkich polskich liter, więc
+      oczekiwany jest znak zastępczy)
 
 **Klasy `gfx::Buffer` i `gfx::VertexArray`**
 

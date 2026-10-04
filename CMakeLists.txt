@@ -62,6 +62,8 @@ add_executable(night_maze
     src/debug/DebugUI.hpp
     src/debug/panels/RendererPanel.cpp
     src/debug/panels/RendererPanel.hpp
+    src/debug/panels/ShadersPanel.cpp
+    src/debug/panels/ShadersPanel.hpp
 )
 target_link_libraries(night_maze PRIVATE engine imgui)
 night_maze_enable_warnings(night_maze)

@@ -5,13 +5,13 @@ Kod: [`src/gfx/`](../../../src/gfx/), shadery w [`assets/shaders/`](../../../ass
 
 Moduł `core` daje okno, kontekst OpenGL i pętlę. Żeby coś narysować, potrzebne są jeszcze **obiekty OpenGL**: program shaderów, bufory z danymi wierzchołków, opis układu tych danych, później tekstury i bufory ramki. Każdy taki obiekt żyje w pamięci karty graficznej, a mój program zna go tylko jako liczbę (identyfikator) i musi go sam utworzyć oraz sam usunąć. Moduł `gfx` zamyka te obiekty w małych klasach C++: jedna klasa, jeden obiekt OpenGL, bez wiedzy o grze i bez wiedzy o tym, co jest rysowane. To cienkie opakowania (thin wrappers), a nie silnik renderujący: nie ukrywają OpenGL, tylko pilnują, żeby obiekt został utworzony, użyty i zwolniony poprawnie.
 
-Na dziś moduł ma trzy klasy: `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`. Używa ich `game::NightMazeApp`, które rysuje nimi jeden kolorowy trójkąt. Ten plik jest wstępem do modułu: opisuje wspólną zasadę wszystkich klas `gfx` (RAII i tylko przenoszenie), miejsce modułu w warstwach, indeks dokumentów i drogę jednej klatki od tablicy liczb do pikseli (sekcja 6).
+Na dziś moduł ma trzy klasy: `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`. Używa ich `game::NightMazeApp`, które rysuje nimi jeden kolorowy trójkąt. Panel debug "Shaders" pozwala wczytać shadery ponownie w działającym programie (przycisk "Reload shaders"). Ten plik jest wstępem do modułu: opisuje wspólną zasadę wszystkich klas `gfx` (RAII i tylko przenoszenie), miejsce modułu w warstwach, indeks dokumentów i drogę jednej klatki od tablicy liczb do pikseli (sekcja 6).
 
 ## 1. Dokumenty modułu
 
 | Dokument | Co opisuje | Klasy i pliki |
 |---|---|---|
-| [`shaders.md`](shaders.md) | programowalny potok, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, odczyt błędów sterownika, wczytywanie na żywo z zachowaniem starego programu | `Shader` |
+| [`shaders.md`](shaders.md) | programowalny potok, shader wierzchołków i fragmentów, podstawy GLSL, kompilacja i linkowanie, odczyt błędów sterownika, wczytywanie na żywo z zachowaniem starego programu, panel "Shaders" z przyciskiem "Reload shaders" | `Shader`, `drawShadersPanel` |
 | [`buffers-vao.md`](buffers-vao.md) | dane wierzchołków i atrybuty, bufor wierzchołków (VBO), tablica wierzchołków (VAO) i co dokładnie pamięta, układ przeplatany z krokiem i przesunięciem, bufor indeksów (EBO), `glDrawArrays` a `glDrawElements`, podpowiedzi użycia | `Buffer`, `VertexArray` |
 
 Każdy dokument tematyczny ma te same dziesięć sekcji co dokumenty modułu `core`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
@@ -107,6 +107,7 @@ flowchart TD
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, Paths, GL_CHECK"]
     Game --> Core
     Game --> Gfx
+    Debug --> Gfx
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Gfx --> Glad["GLAD"]
     Core --> Glad
@@ -116,10 +117,10 @@ flowchart TD
 
 Strzałka znaczy "zna i dołącza nagłówki". Zasady dla `gfx`:
 
-1. `gfx/` zależy tylko od `core/`, GLAD i biblioteki standardowej. `Shader.cpp` dołącza `core/GlCheck.hpp` i `core/Log.hpp`, a `Buffer.cpp` i `VertexArray.cpp` samo `core/GlCheck.hpp`. Nie dołącza GLFW: do tworzenia obiektów OpenGL wystarcza bieżący kontekst, a skąd on się wziął, `gfx` nie musi wiedzieć.
+1. `gfx/` zależy tylko od `core/`, GLAD i biblioteki standardowej. `Shader.cpp` dołącza `core/GlCheck.hpp`, `core/Log.hpp` i `core/Paths.hpp` (funkcja `core::pathText` do komunikatów błędów), a `Buffer.cpp` i `VertexArray.cpp` samo `core/GlCheck.hpp`. Nie dołącza GLFW: do tworzenia obiektów OpenGL wystarcza bieżący kontekst, a skąd on się wziął, `gfx` nie musi wiedzieć.
 2. `core/` nie zna `gfx/`. Zależność idzie w jedną stronę: `core <- gfx`.
 3. `gfx/` nie zna `game/`, `debug/` ani ImGui. Nic w nim nie jest specyficzne dla Night Maze, więc cała warstwa nadaje się do zadań laboratoryjnych.
-4. Jedynym użytkownikiem `gfx/` jest dziś `game/`: `NightMazeApp.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Shader.hpp` i `gfx/VertexArray.hpp`. `debug/` nie dołącza jeszcze niczego z `gfx/`. Zacznie, gdy powstanie panel z przyciskiem przeładowania shaderów.
+4. `gfx/` ma dwóch użytkowników. `game/`: `NightMazeApp.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Shader.hpp` i `gfx/VertexArray.hpp`. `debug/`: `ShadersPanel.cpp` dołącza `gfx/Shader.hpp`, bo panel "Shaders" czyta stan obiektu `Shader` i woła jego `reload()` ([`shaders.md`](shaders.md), sekcja 6). To dozwolony kierunek: `debug/` może zależeć od każdej warstwy.
 
 `gfx` nie wie też nic o katalogu `assets/`. `Shader` dostaje gotowe ścieżki plików, a zbudowanie ich przez `core::assetPath` ([`../core/paths.md`](../core/paths.md)) jest sprawą wołającego.
 
@@ -129,11 +130,12 @@ W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/gfx/*` należą do tej 
 
 | Plik kodu | Co zawiera | Dokument |
 |---|---|---|
-| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | RAII na obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów: `reload`, `isValid`, `use`, `lastError`. Użycie: pole `m_shader` w `NightMazeApp` | [`shaders.md`](shaders.md) |
+| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | RAII na obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów: `reload`, `isValid`, `use`, `lastError`, `vertexPath`, `fragmentPath`. Użycie: pole `m_shader` w `NightMazeApp`, panel "Shaders" | [`shaders.md`](shaders.md) |
 | [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`.cpp`](../../../src/gfx/Buffer.cpp) | RAII na jeden bufor OpenGL wypełniany raz, w konstruktorze. Cel `GL_ARRAY_BUFFER` (wierzchołki) albo `GL_ELEMENT_ARRAY_BUFFER` (indeksy), `bind`. Użycie: pole `m_vertexBuffer` w `NightMazeApp` | [`buffers-vao.md`](buffers-vao.md) |
 | [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`.cpp`](../../../src/gfx/VertexArray.cpp) | RAII na jeden obiekt tablicy wierzchołków (VAO): `bind`, `setFloatAttribute`. Użycie: pole `m_vertexArray` w `NightMazeApp` | [`buffers-vao.md`](buffers-vao.md) |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | para shaderów projektu: pozycja i kolor wierzchołka na wejściu, kolor interpolowany na wyjściu | [`shaders.md`](shaders.md), sekcja 4 |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik wszystkich trzech klas: dane wierzchołków, konfiguracja w konstruktorze, rysowanie w `onRender` | [`shaders.md`](shaders.md), sekcja 5.10, i [`buffers-vao.md`](buffers-vao.md), sekcja 5.7 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik wszystkich trzech klas: dane wierzchołków, konfiguracja w konstruktorze, rysowanie w `onRender`, akcesor `shader()` dla panelu debug | [`shaders.md`](shaders.md), sekcja 5.10, i [`buffers-vao.md`](buffers-vao.md), sekcja 5.7 |
+| [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | `debug::drawShadersPanel`: panel "Shaders". Nie należy do `gfx/` ani do biblioteki `engine`, ale jest pokazem klasy `Shader` | [`shaders.md`](shaders.md), sekcja 6 |
 
 ## 5. Wymaganie wspólne: żywy kontekst OpenGL
 
@@ -148,7 +150,7 @@ Oba warunki spełnia się jednym sposobem: obiekt `gfx` jest **polem klasy pocho
 
 ## 6. Jedna klatka: od tablicy liczb do pikseli
 
-Trzy klasy i dwa pliki shaderów są częściami jednego mechanizmu. Diagram pokazuje, co powstaje raz (przy starcie, w konstruktorze `NightMazeApp`) i co dzieje się w każdej klatce (w `NightMazeApp::onRender`).
+Trzy klasy i dwa pliki shaderów są częściami jednego mechanizmu. Diagram pokazuje, co powstaje raz (przy starcie, w konstruktorze `NightMazeApp`) i co dzieje się w każdej klatce (w `NightMazeApp::onRender`). Program shaderów powstaje przy starcie, a potem od nowa po każdym naciśnięciu "Reload shaders" w panelu debug.
 
 ```mermaid
 flowchart TD
@@ -169,11 +171,12 @@ flowchart TD
     VS --> Rast["składanie trójkąta i rasteryzacja<br/>interpolacja vColor"]
     Rast --> FS["basic.frag, raz na fragment<br/>vColor do fragColor"]
     FS --> FB["bufor ramki, potem panele ImGui i swapBuffers"]
+    Reload["panel Shaders<br/>przycisk Reload shaders"] -. "na żądanie: Shader::reload()" .-> Shader
 ```
 
 | Krok | Kto | Kiedy | Dokument |
 |---|---|---|---|
-| Pliki shaderów stają się programem OpenGL | `gfx::Shader` | raz, przy starcie | [`shaders.md`](shaders.md), sekcje 4 i 5 |
+| Pliki shaderów stają się programem OpenGL | `gfx::Shader` | przy starcie i po każdym naciśnięciu "Reload shaders" | [`shaders.md`](shaders.md), sekcje 4, 5 i 6 |
 | Tablica `VERTICES` trafia do pamięci karty | `gfx::Buffer` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcje 5.3 i 5.7 |
 | Opis "atrybut 0 to pozycja, atrybut 1 to kolor" zostaje zapisany | `gfx::VertexArray` | raz, przy starcie | [`buffers-vao.md`](buffers-vao.md), sekcje 5.6 i 5.7 |
 | Wybór programu i opisu danych, wywołanie rysujące | `NightMazeApp::onRender` | co klatkę | [`shaders.md`](shaders.md), sekcja 5.10 |
@@ -185,7 +188,7 @@ Trzy rzeczy, które muszą się zgadzać między tymi częściami, i których Op
 2. krok i przesunięcia w C++ i faktyczny układ liczb w `VERTICES`,
 3. liczba wierzchołków w `glDrawArrays` i liczba wierzchołków w buforze.
 
-W klatce nie ma żadnego wysyłania danych ani kompilacji: wszystko, co kosztowne, stało się przy starcie. Klatka to trzy wywołania wybierające stan i jedno rysujące.
+W zwykłej klatce nie ma żadnego wysyłania danych ani kompilacji: wszystko, co kosztowne, stało się przy starcie. Klatka to trzy wywołania wybierające stan i jedno rysujące. Wyjątkiem jest klatka, w której naciśnięto "Reload shaders": wtedy shadery są kompilowane i linkowane od nowa, raz.
 
 ## 7. Pytania kontrolne
 

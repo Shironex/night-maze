@@ -5,6 +5,7 @@
 #include "core/Window.hpp"
 #include "debug/DebugContext.hpp"
 #include "debug/panels/RendererPanel.hpp"
+#include "debug/panels/ShadersPanel.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -56,6 +57,7 @@ void DebugUI::draw(const DebugContext& context) {
         // Each panel gets exactly the members it needs, so its signature still shows
         // what it reads and what it edits.
         drawRendererPanel(context.time, context.window, context.clearColor);
+        drawShadersPanel(context.shader);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.

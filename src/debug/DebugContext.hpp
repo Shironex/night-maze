@@ -9,6 +9,10 @@ class Time;
 class Window;
 } // namespace core
 
+namespace gfx {
+class Shader;
+} // namespace gfx
+
 namespace debug {
 
 /// Everything the debug panels may read or edit this frame.
@@ -27,6 +31,8 @@ struct DebugContext {
     const core::Window& window;
     /// Background color (red, green, blue in the range 0 to 1), editable.
     std::array<float, 3>& clearColor;
+    /// Shader program the game draws with, editable: the Shaders panel reloads it.
+    gfx::Shader& shader;
 };
 
 } // namespace debug

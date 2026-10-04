@@ -55,7 +55,8 @@ night-maze/
 │   │   ├── DebugContext.hpp        # referencje do danych dla paneli
 │   │   ├── DebugUI.hpp/.cpp        # kontekst ImGui i cykl klatki
 │   │   └── panels/
-│   │       └── RendererPanel.hpp/.cpp  # panel "Renderer"
+│   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer"
+│   │       └── ShadersPanel.hpp/.cpp   # panel "Shaders", przycisk Reload shaders
 │   ├── game/                   # gra
 │   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie rysuje trójkąt)
 │   └── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
@@ -116,15 +117,16 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Time.*` | `core::Time`: delta czasu, akumulator stałego kroku (`FIXED_DT`), uśrednione FPS | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
-| `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Woła je konstruktor `game::NightMazeApp` przy wczytywaniu shaderów | [`../modules/core/paths.md`](../modules/core/paths.md) |
-| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `lastError`. RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `core::pathText`: ścieżka jako tekst UTF-8 do logu i do paneli. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Woła je konstruktor `game::NightMazeApp` przy wczytywaniu shaderów | [`../modules/core/paths.md`](../modules/core/paths.md) |
+| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `lastError`, `vertexPath`, `fragmentPath`. RAII, tylko przenoszenie. Używa jej `NightMazeApp`, a panel "Shaders" woła `reload` | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
 | `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
 | `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
-| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane trzech wierzchołków ze stałymi układu, tablica wierzchołków i bufor. Konstruktor wczytuje shader i wysyła dane, `onRender` ustawia viewport, czyści ekran i rysuje trójkąt (`glDrawArrays`) | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6 |
-| `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core`: atrybuty pozycji i koloru, kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
-| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
+| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane trzech wierzchołków ze stałymi układu, tablica wierzchołków i bufor. Konstruktor wczytuje shader i wysyła dane, `onRender` ustawia viewport, czyści ekran i rysuje trójkąt (`glDrawArrays`). Chronione akcesory `clearColor()` i `shader()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6 |
+| `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core`: atrybuty pozycji i koloru, kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders" | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
+| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`, `shader`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard` | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
+| `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (pliki programu shaderów, przycisk "Reload shaders", ostatni błąd wczytania) | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 6 |
 
 Każdy plik źródłowy zaczyna się komentarzem z jednym zdaniem opisu i odnośnikiem
 `See docs/modules/...`. To wymaganie z PRD (sekcja 7). Dotyczy też plików shaderów, w
@@ -141,7 +143,7 @@ Zależności są jednokierunkowe. Niższa warstwa nigdy nie wie o wyższej.
 ```text
 main.cpp   łączy game/ i debug/
    │
-   ├── debug/   zależy od core/ (i od Dear ImGui), nic nie zależy od debug/
+   ├── debug/   zależy od core/ i gfx/ (i od Dear ImGui), nic nie zależy od debug/
    │
    └── game/    zależy od gfx/ i core/, nie zna debug/
           │
@@ -162,13 +164,16 @@ Jak to widać w kodzie:
   `core::Input` ma neutralne flagi `setKeyboardBlocked` i `setMouseBlocked`, a ustawia je
   `main.cpp`.
 - Nagłówki w `src/gfx/` dołączają `<glad/gl.h>` i bibliotekę standardową, a pliki `.cpp` do
-  tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp`). Nic z GLFW, `game/` ani
+  tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp` i `core/Paths.hpp`). Nic z GLFW, `game/` ani
   `debug/`.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp`, trzy nagłówki z `gfx/`
   (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`) i nic z `debug/`. Komentarz w
   klasie mówi wprost: "It knows nothing about the debug UI".
-- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp` i nagłówki
-  ImGui.
+- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`, nagłówki obu
+  paneli i nagłówki ImGui.
+- `src/debug/panels/ShadersPanel.cpp` dołącza `core/Paths.hpp` i `gfx/Shader.hpp`: to
+  pierwszy plik w `debug/`, który zna `gfx/`. Kierunek jest dozwolony, bo `debug/` może
+  zależeć od każdej warstwy.
 - `src/main.cpp` jest jedynym plikiem, który dołącza jednocześnie `game/NightMazeApp.hpp` i
   nagłówki z `debug/` (`debug/DebugContext.hpp`, `debug/DebugUI.hpp`). Definiuje klasę
   `DebugNightMazeApp final : public game::NightMazeApp`, która posiada
@@ -364,6 +369,8 @@ add_executable(night_maze
     src/debug/DebugUI.hpp
     src/debug/panels/RendererPanel.cpp
     src/debug/panels/RendererPanel.hpp
+    src/debug/panels/ShadersPanel.cpp
+    src/debug/panels/ShadersPanel.hpp
 )
 target_link_libraries(night_maze PRIVATE engine imgui)
 night_maze_enable_warnings(night_maze)

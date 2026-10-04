@@ -31,6 +31,7 @@ protected:
             .time = time(),
             .window = window(),
             .clearColor = clearColor(),
+            .shader = shader(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

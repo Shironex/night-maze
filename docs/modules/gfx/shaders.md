@@ -1,7 +1,7 @@
 # Moduł gfx: shadery i programowalny potok
 
 Kamień milowy: M1. Temat wykładu: 2 (Programowalny potok).
-Kod: [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), shadery [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) i [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
+Kod: [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), shadery [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) i [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), panel w [`src/debug/panels/ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md). Ten dokument korzysta z makra `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)), z logowania ([`../core/window-context.md`](../core/window-context.md), sekcja 5.5) i ze ścieżek do assetów ([`../core/paths.md`](../core/paths.md)).
 
@@ -18,7 +18,7 @@ Klasa `gfx::Shader` robi dokładnie to. Jest cienkim opakowaniem na **jeden obie
 | Błąd jest logowany z nazwą pliku i pełnym tekstem sterownika, a do tego zapamiętany w `lastError()` | Błędów kompilacji GLSL nie widzi `glGetError` ani `GL_CHECK`. Bez własnego odczytu nie byłoby żadnej informacji |
 | RAII i tylko przenoszenie (move-only) | Program OpenGL jest zwalniany dokładnie raz, automatycznie, bez ręcznego `glDeleteProgram` w kodzie gry |
 
-Stan na dziś: `game::NightMazeApp` ma jeden obiekt `gfx::Shader`, zbudowany z plików `assets/shaders/basic.vert` i `assets/shaders/basic.frag`, i rysuje nim jeden kolorowy trójkąt. Shader jest wczytywany **tylko raz, przy starcie programu**: `reload()` istnieje i działa, ale nic go jeszcze nie woła, bo nie ma przycisku w panelu debug (to następny krok M1). Klasa nie ma też jeszcze funkcji ustawiających uniformy: dojdą razem z pierwszym shaderem, który uniformu potrzebuje (kostka z macierzą MVP).
+Stan na dziś: `game::NightMazeApp` ma jeden obiekt `gfx::Shader`, zbudowany z plików `assets/shaders/basic.vert` i `assets/shaders/basic.frag`, i rysuje nim jeden kolorowy trójkąt. Shader jest wczytywany przy starcie programu i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** (sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa nie ma jeszcze funkcji ustawiających uniformy: dojdą razem z pierwszym shaderem, który uniformu potrzebuje (kostka z macierzą MVP).
 
 ## 2. Teoria
 
@@ -287,12 +287,13 @@ Jak pliki z `assets/` trafiają obok programu, opisuje [`../core/paths.md`](../c
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `lastError`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<filesystem>` i `<string>` |
-| [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp) | implementacja i siedem funkcji pomocniczych w anonimowej przestrzeni nazw: `pathText`, `readTextFile`, `shaderInfoLog`, `programInfoLog`, `compileShader`, `linkProgram`, `buildProgram` |
+| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `lastError`, `vertexPath`, `fragmentPath`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<filesystem>` i `<string>` |
+| [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp) | implementacja i sześć funkcji pomocniczych w anonimowej przestrzeni nazw: `readTextFile`, `shaderInfoLog`, `programInfoLog`, `compileShader`, `linkProgram`, `buildProgram` |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | jedyna para shaderów projektu (sekcja 4) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | jedyny użytkownik klasy: pole `m_shader`, wczytanie w konstruktorze, `isValid()` i `use()` w `onRender` (sekcja 5.10) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel obiektu: pole `m_shader`, wczytanie w konstruktorze, `isValid()` i `use()` w `onRender`, chroniony akcesor `shader()` (sekcja 5.10) |
+| [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | funkcja `debug::drawShadersPanel`: panel "Shaders" z przyciskiem "Reload shaders" (sekcja 6). Należy do programu `night_maze`, nie do biblioteki `engine` |
 
-Oba pliki są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`), GLAD i biblioteki standardowej.
+Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`, `pathText`), GLAD i biblioteki standardowej. Nie wie nic o panelu ani o ImGui.
 
 ```mermaid
 flowchart TD
@@ -306,7 +307,8 @@ flowchart TD
     CompV --> SLog["shaderInfoLog(shader)"]
     CompF --> SLog
     Link --> PLog["programInfoLog(program)"]
-    CompV --> PText["pathText(path)"]
+    CompV --> PText["core::pathText(path)<br/>z core/Paths.hpp"]
+    CompF --> PText
     Build --> PText
 ```
 
@@ -345,13 +347,13 @@ private:
 | Element | Dlaczego tak |
 |---|---|
 | ścieżki jako `std::filesystem::path` | `Shader` nie wie nic o katalogu `assets/`. Pełną ścieżkę buduje wołający przez `core::assetPath` ([`../core/paths.md`](../core/paths.md)). Dzięki temu klasa nadaje się też do zadań laboratoryjnych, w których pliki leżą gdzie indziej |
-| ścieżki są zapamiętane w polach | `reload()` nie ma parametrów: obiekt sam wie, z których plików powstał |
+| ścieżki są zapamiętane w polach | `reload()` nie ma parametrów: obiekt sam wie, z których plików powstał. Panel debug odczytuje je przez `vertexPath()` i `fragmentPath()` |
 | `m_program = 0` | 0 to "nie ma programu". Jedno pole pełni rolę identyfikatora i flagi poprawności, bez osobnego `bool` |
 | `m_lastError` | ten sam tekst, który trafił do konsoli, zostaje w obiekcie, żeby panel debug mógł go pokazać |
 | `= delete` przy kopiowaniu | kopia miałaby ten sam identyfikator programu i oba destruktory wołałyby `glDeleteProgram` dla tego samego obiektu ([`README.md`](README.md), sekcja 2.2) |
 | `noexcept` przy przenoszeniu | obietnica, że te funkcje nie rzucają wyjątków. Kontenery biblioteki standardowej (na przykład `std::vector` przy powiększaniu) przenoszą elementy tylko wtedy, gdy przeniesienie jest `noexcept`. Przy typie, którego nie da się kopiować, to konieczność |
 
-Trzy krótkie funkcje są zdefiniowane w nagłówku albo mają jedną linię w `.cpp`:
+Pięć krótkich funkcji jest zdefiniowanych w nagłówku albo ma jedną linię w `.cpp`:
 
 ```cpp
 bool isValid() const { return m_program != 0; }
@@ -362,6 +364,16 @@ const std::string& lastError() const { return m_lastError; }
 ```
 
 ```cpp
+/// File the vertex shader is read from, as given to the constructor.
+const std::filesystem::path& vertexPath() const { return m_vertexPath; }
+
+/// File the fragment shader is read from, as given to the constructor.
+const std::filesystem::path& fragmentPath() const { return m_fragmentPath; }
+```
+
+Oba akcesory ścieżek zwracają `const&` do pola: nic nie jest kopiowane, a wołający nie może ścieżki zmienić. Zwracają `std::filesystem::path`, a nie gotowy napis, bo to wołający wie, czego potrzebuje: panel bierze z nich samą nazwę pliku (`filename()`) do etykiety i całą ścieżkę do podpowiedzi (sekcja 6.1).
+
+```cpp
 void Shader::use() const {
     GL_CHECK(glUseProgram(m_program));
 }
@@ -369,7 +381,7 @@ void Shader::use() const {
 
 `use()` nie sprawdza `isValid()`. Dla obiektu bez programu wykona `glUseProgram(0)`, czyli "żaden program", a rysowanie w takim stanie nie daje określonego wyniku. Sprawdzenie należy do wołającego. `use()` jest `const`, bo nie zmienia obiektu C++, zmienia stan kontekstu OpenGL.
 
-### 5.3 Wczytanie pliku: `readTextFile` i `pathText`
+### 5.3 Wczytanie pliku: `readTextFile` i `core::pathText`
 
 ```cpp
 // Reads a whole text file into text. Returns false when the file cannot be opened.
@@ -401,19 +413,13 @@ Wynik wraca przez parametr `std::string& text`, a wartość zwracana `bool` mów
 
 Tryb tekstowy ma na Windowsie jedną konsekwencję: końce linii `\r\n` są przy czytaniu zamieniane na `\n`. Kompilatorowi GLSL jest to obojętne.
 
+Ścieżkę na tekst do komunikatu błędu zamienia `core::pathText` z [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), opisane linia po linii w [`../core/paths.md`](../core/paths.md) (sekcja 5.7):
+
 ```cpp
-// A path as UTF-8 text for error messages. u8string() gives UTF-8 on every system, and
-// its characters (char8_t) are copied one by one into a std::string. path::string() is
-// not used: on Windows it converts to the local code page and throws when a letter of
-// the path does not exist there.
-std::string pathText(const std::filesystem::path& path) {
-    const std::u8string utf8 = path.u8string();
-    std::string text(utf8.begin(), utf8.end());
-    return text;
-}
+std::string pathText(const std::filesystem::path& path);
 ```
 
-Ta funkcja zamienia ścieżkę na tekst do komunikatu błędu. Najprostsze `path.string()` ma na Windowsie wadę opisaną w [`../core/paths.md`](../core/paths.md) (sekcja 7, pułapka 7): zamienia znaki szerokie na lokalną stronę kodową i **rzuca wyjątek**, gdy jakiegoś znaku w niej nie ma. Konstruktor `Shader` obiecuje, że nie rzuca, więc komunikat o błędzie nie może sam być źródłem wyjątku. `u8string()` zwraca UTF-8, w którym da się zapisać każdą ścieżkę. W C++20 jego typem jest `std::u8string` (napis ze znaków `char8_t`), a nie `std::string`, stąd druga linia: konstruktor `std::string` z parą iteratorów (początek i koniec napisu `utf8`) kopiuje znaki jeden po drugim, zamieniając każdy `char8_t` na `char` o tej samej wartości bajtu. Drugi zysk: ImGui oczekuje tekstu w UTF-8, więc `lastError()` da się wyświetlić w panelu bez dalszych zamian.
+Funkcja była najpierw prywatną funkcją pomocniczą w `Shader.cpp`. Przeniosłem ją do `core`, gdy tej samej zamiany zaczął potrzebować panel "Shaders" (nazwy plików w etykietach): `debug/` nie ma dostępu do anonimowej przestrzeni nazw w `Shader.cpp`, a kopia tych samych trzech linii w panelu byłaby powtórzeniem. Dla `Shader` ważne są dwie jej własności. Po pierwsze **nie rzuca wyjątku** dla ścieżki, której nie da się zapisać w stronie kodowej Windowsa (inaczej niż `path.string()`), a konstruktor `Shader` obiecuje, że nie rzuca, więc komunikat o błędzie nie może sam być źródłem wyjątku. Po drugie zwraca UTF-8, czyli to, czego oczekuje ImGui, więc `lastError()` da się wyświetlić w panelu bez dalszych zamian.
 
 ### 5.4 Dziennik sterownika: `shaderInfoLog` i `programInfoLog`
 
@@ -476,7 +482,7 @@ Dwie prawie identyczne funkcje są tu świadomym wyborem. Wspólna wersja wymaga
 GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string& error) {
     std::string source;
     if (!readTextFile(path, source)) {
-        error = "Shader file cannot be opened: " + pathText(path);
+        error = "Shader file cannot be opened: " + core::pathText(path);
         return 0;
     }
 
@@ -494,7 +500,7 @@ GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string
     GLint status = GL_FALSE;
     GL_CHECK(glGetShaderiv(shader, GL_COMPILE_STATUS, &status));
     if (status != GL_TRUE) {
-        error = "Shader compilation failed: " + pathText(path) + "\n" + shaderInfoLog(shader);
+        error = "Shader compilation failed: " + core::pathText(path) + "\n" + shaderInfoLog(shader);
         GL_CHECK(glDeleteShader(shader));
         return 0;
     }
@@ -580,8 +586,8 @@ GLuint buildProgram(const std::filesystem::path& vertexPath,
     GL_CHECK(glDeleteShader(fragmentShader));
 
     if (program == 0) {
-        error = "Shader linking failed: " + pathText(vertexPath) + " + " + pathText(fragmentPath) +
-                "\n" + infoLog;
+        error = "Shader linking failed: " + core::pathText(vertexPath) + " + " +
+                core::pathText(fragmentPath) + "\n" + infoLog;
     }
     return program;
 }
@@ -725,7 +731,7 @@ Przypisanie różni się od konstruktora jednym: obiekt po lewej stronie **już 
 
 ### 5.10 Gdzie klasa jest używana
 
-Jedynym użytkownikiem jest `game::NightMazeApp`. Cztery miejsca.
+Właścicielem obiektu jest `game::NightMazeApp`: cztery miejsca poniżej. Piątym jest chroniony akcesor, przez który obiekt trafia do panelu debug.
 
 **Pole** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
@@ -771,7 +777,16 @@ if (m_shader.isValid()) {
 | `m_vertexArray.bind();` | Wybiera opis danych wierzchołków ([`buffers-vao.md`](buffers-vao.md)) |
 | `glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT)` | Uruchamia potok z sekcji 2.1 dla trzech wierzchołków |
 
-`reload()` nie jest dziś wołane nigdzie poza konstruktorem `Shader`. Zmiana pliku shadera wymaga więc ponownego uruchomienia programu (ale nie kompilacji C++).
+**Akcesor** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), obok `clearColor()`:
+
+```cpp
+/// Shader program of the triangle, exposed so the debug UI can reload it live.
+gfx::Shader& shader() { return m_shader; }
+```
+
+Zwraca referencję bez `const`, bo wołający ma móc zawołać `reload()`. Jest chroniony (`protected`), więc sięgnie po niego tylko klasa pochodna: `DebugNightMazeApp` w `main.cpp`, które przekazuje referencję do panelu przez `DebugContext` (sekcja 6.2). Gra nie dołącza przy tym niczego z `debug/`.
+
+`reload()` jest więc wołane w dwóch miejscach: w konstruktorze `Shader` (pierwsze wczytanie) i w panelu "Shaders" po naciśnięciu przycisku. Sama gra go nie woła.
 
 ### 5.11 Jak to zostało sprawdzone
 
@@ -812,20 +827,210 @@ ERROR: 0:15: '}' : syntax error: syntax error
 
 Te uruchomienia sprawdzały wyjście tekstowe, a nie obraz w oknie. To, że te same pliki shaderów z tymi samymi danymi wierzchołków dają czerwony, zielony i niebieski róg, potwierdził osobny test z ukrytym oknem i `glReadPixels` ([`buffers-vao.md`](buffers-vao.md), sekcja 5.9).
 
-Na Windowsie klasa nie była jeszcze kompilowana ani uruchamiana.
+**Panel Shaders.** Przycisku nie da się kliknąć z automatu w prawdziwym programie, więc ścieżkę kodu panelu sprawdziłem na Macu osobnym programem testowym poza repozytorium. Ukryte okno GLFW, ImGui zainicjalizowane tymi samymi wywołaniami co w `DebugUI`, prawdziwe `drawShadersPanel` z `ShadersPanel.cpp`, a w każdej klatce ta sama kolejność co w programie: `use()`, `bind()`, `glDrawArrays`, potem klatka ImGui z panelem i `RenderDrawData`. Kliknięcie było wstrzyknięte do ImGui jako zdarzenia myszy (`ImGuiIO::AddMousePosEvent`, `AddMouseButtonEvent`), a pliki shaderów były kopią w katalogu tymczasowym.
+
+| Próba | Wynik |
+|---|---|
+| zapisanie zmienionego `basic.frag` bez kliknięcia | ten sam identyfikator programu, obraz bez zmian |
+| kolor zmieniony na `vec4(1.0, 0.5, 0.0, 1.0)`, kliknięcie | nowy identyfikator programu po `use()`, `glIsProgram(stary)` fałsz, `lastError()` pusty, piksel wewnątrz trójkąta z `glReadPixels`: (255, 128, 0) zamiast (64, 128, 64) |
+| usunięty średnik w tej linii, kliknięcie | ten sam identyfikator programu co przed kliknięciem, `isValid()` prawda, `lastError()` z tekstem jak niżej, piksel nadal pomarańczowy, panel rysuje więcej tekstu (1200 wierzchołków zamiast 356) |
+| plik przywrócony, kliknięcie | nowy identyfikator, poprzedni usunięty, `lastError()` pusty, kolory interpolowane wróciły, panel rysuje tyle tekstu co na początku |
+| `glGetError` po scenie i po `RenderDrawData`, w każdej klatce testu | `GL_NO_ERROR` |
+
+```text
+[error] Shader compilation failed: <katalog testu>/shaders/basic.frag
+ERROR: 0:15: '}' : syntax error: syntax error
+```
+
+Test nie obejmuje `DebugUI::draw` ani `main.cpp` (te sprawdza kompilacja i uruchomienie programu: start bez linii `[error]`), nie sprawdza wyglądu panelu (kolor tekstu błędu, zawijanie, podpowiedź z pełną ścieżką) i nie zastępuje kliknięcia prawdziwą myszą w prawdziwym oknie. To zostaje do sprawdzenia ręcznego (sekcja 6.4).
+
+Na Windowsie klasa i panel nie były jeszcze kompilowane ani uruchamiane.
 
 ## 6. Panel ImGui
 
-`Shader` nie ma jeszcze elementu w panelu. Dziś jedynym wyjściem klasy jest konsola: linia `[error] Shader compilation failed: ...` z dziennikiem sterownika. Skutek działania shadera widać za to w oknie: trójkąt za panelem Renderer.
+Panel **Shaders** (kod: [`ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp)) jest pokazem tematu 2 na obronie: przycisk "Reload shaders" wczytuje shadery ponownie w działającym programie. Panel pokazuje jeden program, ten z pola `NightMazeApp::m_shader`. Jak nakładka z panelami jest wpięta w program, opisuje [`../debug-ui.md`](../debug-ui.md).
 
-Panel "Shaders" z przyciskiem "Reload shaders" i polem pokazującym `lastError()` jest następnym krokiem M1 (PRD wymienia przycisk "Reload shaders" jako pokaz tematu 2). Do tego czasu shader jest wczytywany tylko przy starcie programu, więc po zmianie pliku trzeba program uruchomić ponownie. Publiczne API klasy jest pod panel przygotowane: `reload()` zwraca `bool`, a `lastError()` trzyma gotowy tekst w UTF-8.
+| Element | Rodzaj | Skąd wartość | Czego uczy |
+|---|---|---|---|
+| `Vertex: basic.vert`, `Fragment: basic.frag` | odczyt | `vertexPath()` i `fragmentPath()`, zamienione na tekst przez `core::pathText` | Program powstaje z dwóch plików, po jednym na etap. Po najechaniu kursorem na linię pojawia się podpowiedź (tooltip) z pełną ścieżką: widać w niej, że program czyta pliki z katalogu `assets` obok pliku wykonywalnego |
+| `Program: valid` albo `Program: not valid` | odczyt | `isValid()` | Czy jest zlinkowany program, którym można rysować. Po nieudanym przeładowaniu zostaje `valid`, bo działa poprzedni program |
+| `Reload shaders` | przycisk | woła `reload()` | Wczytywanie na żywo (sekcja 2.7): pliki są czytane, kompilowane i linkowane od nowa, bez zamykania okna i bez kompilacji C++ |
+| `Last load: OK` albo `Last load: failed` i czerwony tekst pod spodem | odczyt | `lastError()` | Błąd kompilacji GLSL nie jest błędem OpenGL (sekcja 3.3): jedyną informacją jest tekst sterownika, który klasa zapamiętała. Ten sam tekst jest w konsoli jako linia `[error]` |
+
+Dwie ostatnie linie odpowiadają na dwa różne pytania (tabela stanów w sekcji 5.8). `Program: valid` razem z czerwonym błędem to nie sprzeczność, tylko dokładnie ten stan, dla którego `reload()` zostało tak napisane: nowe pliki się nie kompilują, a obraz rysuje poprzedni program.
+
+### 6.1 Kod panelu
+
+Cała funkcja z [`ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp) i stała nad nią:
+
+```cpp
+// Text color of a failed load (red, green, blue, alpha): a light red that stands out from
+// the white text of the rest of the panel.
+constexpr ImVec4 ERROR_TEXT_COLOR{1.0F, 0.4F, 0.4F, 1.0F};
+```
+
+```cpp
+void drawShadersPanel(gfx::Shader& shader) {
+    if (ImGui::Begin("Shaders")) {
+        // The label shows only the file name. The full path appears as a tooltip when the
+        // mouse rests on the line. ImGui expects UTF-8, which core::pathText returns.
+        const std::string vertexFile = core::pathText(shader.vertexPath().filename());
+        const std::string vertexFullPath = core::pathText(shader.vertexPath());
+        ImGui::Text("Vertex: %s", vertexFile.c_str());
+        ImGui::SetItemTooltip("%s", vertexFullPath.c_str());
+
+        const std::string fragmentFile = core::pathText(shader.fragmentPath().filename());
+        const std::string fragmentFullPath = core::pathText(shader.fragmentPath());
+        ImGui::Text("Fragment: %s", fragmentFile.c_str());
+        ImGui::SetItemTooltip("%s", fragmentFullPath.c_str());
+
+        // Valid means that there is a linked program to draw with. After a failed reload
+        // it is still the previous program.
+        ImGui::Text("Program: %s", shader.isValid() ? "valid" : "not valid");
+
+        ImGui::Separator();
+        // Button returns true only in the frame in which it was clicked. The result of
+        // reload() is not needed here: the lines below read it from lastError().
+        if (ImGui::Button("Reload shaders")) {
+            shader.reload();
+        }
+
+        if (shader.lastError().empty()) {
+            ImGui::TextUnformatted("Last load: OK");
+        } else {
+            ImGui::TextUnformatted("Last load: failed");
+            // The message contains text written by the driver, so it goes in as an
+            // argument of "%s" and never as the format string itself.
+            ImGui::PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR);
+            ImGui::TextWrapped("%s", shader.lastError().c_str());
+            ImGui::PopStyleColor();
+        }
+    }
+    ImGui::End();
+}
+```
+
+| Fragment | Co robi i dlaczego |
+|---|---|
+| `gfx::Shader& shader` bez `const` | Panel woła `reload()`, które zmienia obiekt. Z samej sygnatury widać, że panel nie tylko czyta ([`../debug-ui.md`](../debug-ui.md), sekcja 5.2, decyzja 3) |
+| `shader.vertexPath().filename()` | `filename()` zwraca ostatni element ścieżki jako nowy obiekt `path`: z `<repo>/build/debug/assets/shaders/basic.vert` zostaje `basic.vert` |
+| `core::pathText(...)` | Zamiana `path` na tekst w UTF-8 ([`../core/paths.md`](../core/paths.md), sekcja 5.7). Panel nie woła `path::string()`, które na Windowsie potrafi rzucić wyjątek |
+| `const std::string vertexFile = ...` | Wynik `pathText` zapisuję w nazwanej zmiennej, żeby linia z `ImGui::Text` była krótka i czytelna. `%s` chce napisu C, stąd `.c_str()` |
+| `ImGui::SetItemTooltip("%s", ...)` | Dotyczy **poprzedniego** widżetu, czyli linii z nazwą pliku. Podpowiedź pojawia się, gdy kursor chwilę nad nią stoi |
+| `shader.isValid() ? "valid" : "not valid"` | Operator warunkowy wybiera jeden z dwóch literałów. Oba są stałymi napisami C, więc pasują do `%s` |
+| `if (ImGui::Button("Reload shaders")) { shader.reload(); }` | Tryb natychmiastowy: `Button` rysuje przycisk i zwraca `true` tylko w tej klatce, w której został kliknięty. Nie ma callbacka ani zdarzenia ([`../../libraries/imgui.md`](../../libraries/imgui.md)) |
+| wynik `reload()` jest ignorowany | `reload()` zwraca `bool`, ale panel go nie potrzebuje: te same informacje są w `lastError()` i `isValid()`, które linie niżej czytają już po przeładowaniu, jeszcze w tej samej klatce |
+| `ImGui::TextUnformatted("Last load: OK")` | Stały tekst bez znaczników `%`. `TextUnformatted` wypisuje napis dokładnie tak, jak go dostał |
+| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | Zmiana koloru tekstu dla widżetów między tymi dwiema liniami. Każde `Push` musi mieć swoje `Pop`, inaczej kolor zostałby na resztę klatki, a ImGui zgłasza niedopasowanie jako błąd. Kolor jest nazwaną stałą, a nie czterema liczbami w środku wywołania |
+| `ImGui::TextWrapped("%s", shader.lastError().c_str())` | Komunikat ma kilka linii i długą ścieżkę, więc jest zawijany do szerokości panelu. `"%s"` jest tu konieczne (niżej) |
+
+**Dlaczego `"%s"`, a nie sam napis.** `ImGui::Text` i `ImGui::TextWrapped` działają jak `printf`: pierwszy argument to **napis formatujący**, w którym znak `%` rozpoczyna znacznik. Tekst błędu pochodzi od sterownika karty i może zawierać znak `%` (na przykład w nazwie albo w komunikacie). Podany jako napis formatujący kazałby funkcji czytać argumenty, których nie ma, co jest niezdefiniowanym zachowaniem. Podany jako argument dla `"%s"` jest tylko kopiowany. Kompilator też tego pilnuje: `ImGui::TextWrapped(shader.lastError().c_str())` daje w clang ostrzeżenie `format string is not a string literal (potentially insecure)`.
+
+Panel trzyma się zasad wszystkich paneli ([`../debug-ui.md`](../debug-ui.md), sekcja 5.5): jest wolną funkcją bez stanu, nie ma zmiennych globalnych ani `static`, i sam nie woła żadnej funkcji `gl*`. Wywołania OpenGL wykonuje `Shader::reload`, panel tylko o nie prosi.
+
+### 6.2 Jak shader trafia do panelu
+
+`debug/` nie zna `game/`, więc panel nie sięga po `m_shader` sam. Referencja idzie tą samą drogą co kolor tła ([`../debug-ui.md`](../debug-ui.md), sekcja 5.5, krok 5):
+
+```mermaid
+flowchart LR
+    Field["NightMazeApp::m_shader<br/>pole prywatne"] --> Acc["NightMazeApp::shader()<br/>chroniony akcesor"]
+    Acc --> Ctx["DebugContext::shader<br/>pole gfx::Shader&"]
+    Ctx --> Draw["DebugUI::draw<br/>drawShadersPanel(context.shader)"]
+    Draw --> Panel["drawShadersPanel(gfx::Shader& shader)"]
+    Panel -->|"przycisk"| Reload["Shader::reload()"]
+```
+
+Akcesor w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
+
+```cpp
+/// Shader program of the triangle, exposed so the debug UI can reload it live.
+gfx::Shader& shader() { return m_shader; }
+```
+
+Pole w [`DebugContext.hpp`](../../../src/debug/DebugContext.hpp):
+
+```cpp
+/// Shader program the game draws with, editable: the Shaders panel reloads it.
+gfx::Shader& shader;
+```
+
+Linia w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp) i wywołanie w `DebugUI::draw`:
+
+```cpp
+.shader = shader(),
+```
+
+```cpp
+drawShadersPanel(context.shader);
+```
+
+Gra nadal nie dołącza niczego z `debug/`: udostępnia chroniony akcesor i nie wie, kto z niego skorzysta. `DebugContext.hpp` i `ShadersPanel.hpp` nie dołączają `gfx/Shader.hpp`, wystarcza im deklaracja wyprzedzająca `class Shader;`, bo używają typu tylko przez referencję. Pełny nagłówek dołącza `ShadersPanel.cpp`, które woła funkcje klasy.
+
+### 6.3 Przeładowanie w środku klatki ImGui
+
+Przycisk jest widżetem, więc `reload()` wykonuje się **wewnątrz** klatki ImGui: po `ImGui::NewFrame()`, a przed `ImGui::Render()` i `ImGui_ImplOpenGL3_RenderDrawData(...)`. To wywołania OpenGL w miejscu, w którym reszta kodu paneli żadnych nie robi. Sprawdziłem w źródle backendu (`imgui_impl_opengl3.cpp`, ImGui 1.92.9b), że nie przeszkadza to ani ImGui, ani grze:
+
+```mermaid
+sequenceDiagram
+    participant Game as NightMazeApp::onRender
+    participant Panel as drawShadersPanel
+    participant GL as OpenGL
+    participant Backend as backend ImGui
+    Game->>GL: glUseProgram(stary), glDrawArrays
+    Note over Panel: klatka ImGui, kliknięty przycisk
+    Panel->>GL: reload() buduje nowy program
+    Panel->>GL: glDeleteProgram(stary)
+    Note over GL: stary jest bieżący, więc tylko oznaczony do usunięcia
+    Backend->>GL: RenderDrawData zapamiętuje GL_CURRENT_PROGRAM (stary)
+    Backend->>GL: glUseProgram(program ImGui)
+    Note over GL: stary przestał być bieżący i znika naprawdę
+    Backend->>GL: glIsProgram(stary) zwraca fałsz, backend go nie przywraca
+    Note over Game: następna klatka
+    Game->>GL: glUseProgram(nowy), glDrawArrays
+```
+
+1. **Między `NewFrame` a `Render` ImGui nie woła OpenGL.** Widżety tylko dopisują geometrię do list w pamięci. `ImGui_ImplOpenGL3_NewFrame()` wykonało się wcześniej, a rysowanie następuje dopiero w `RenderDrawData`. `reload()` nie trafia więc w środek żadnej operacji backendu.
+2. **`reload()` nie zmienia stanu, na którym polega backend.** Tworzy obiekty shaderów i program, kompiluje, linkuje i usuwa (sekcja 3.1). Nie woła `glUseProgram`, nie wiąże buforów, tekstur ani VAO.
+3. **Backend ustawia własny stan od zera.** `RenderDrawData` zapamiętuje bieżący stan, potem samo woła `glUseProgram` dla swojego programu, wiąże swoje VAO i bufory. Nie zakłada, że ktoś zostawił mu poprawny program.
+4. **Backend jest przygotowany na usunięty program.** Po udanym przeładowaniu stary program jest jeszcze bieżący (gra ustawiła go w tej klatce), więc `glDeleteProgram` tylko oznacza go do usunięcia (sekcja 7, pułapka 4). Backend zapamiętuje go jako "poprzedni program", przełącza się na własny i w tej chwili stary program znika naprawdę. Na końcu backend przywraca poprzedni program tylko wtedy, gdy ten jeszcze istnieje. W źródle jest to linia `if (last_program == 0 || glIsProgram(last_program)) glUseProgram(last_program);` z komentarzem, że bez tego sprawdzenia przywrócenie programu oczekującego na usunięcie dałoby błąd OpenGL.
+5. **Gra nie zostaje z usuniętym programem.** Po takiej klatce bieżącym programem jest program ImGui. W następnej klatce `NightMazeApp::onRender` woła `m_shader.use()` przed `glDrawArrays`, a `use()` czyta aktualne `m_program`, czyli już nowy identyfikator. Nikt poza klasą `Shader` nie przechowuje identyfikatora programu.
+
+Przy nieudanym przeładowaniu nic z tego nie zachodzi: `m_program` się nie zmienia, żaden używany program nie jest usuwany, a backend przywraca ten sam program co zwykle.
+
+Punkty 4 i 5 potwierdził test z sekcji 5.11: po kliknięciu `glIsProgram` dla starego identyfikatora zwraca fałsz, a `glGetError` po żadnej klatce nie zgłasza błędu.
+
+### 6.4 Pokaz na obronie krok po kroku
+
+Wersja dla macOS, gdzie `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Różnica na Windowsie jest w sekcji 6.5.
+
+1. Uruchom program (`make run`). W panelu Shaders: `Vertex: basic.vert`, `Fragment: basic.frag`, `Program: valid`, `Last load: OK`. Najedź kursorem na linię `Fragment`, żeby pokazać pełną ścieżkę.
+2. Nie zamykając programu, otwórz w edytorze [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag) i zamień linię `fragColor = vec4(vColor, 1.0);` na `fragColor = vec4(1.0, 0.5, 0.0, 1.0);`. Zapisz plik. **Obraz się nie zmienia**: program nie obserwuje dysku.
+3. Naciśnij `Reload shaders`. Trójkąt staje się jednolicie pomarańczowy, w panelu zostaje `Last load: OK`. Kod C++ nie był kompilowany, okno nie było zamykane.
+4. Wprowadź literówkę: usuń średnik na końcu zmienionej linii. Zapisz i naciśnij `Reload shaders`.
+5. W panelu pojawia się `Last load: failed` i czerwony tekst: `Shader compilation failed: <ścieżka>/basic.frag`, a pod nim linia sterownika (na Macu `ERROR: 0:15: '}' : syntax error: syntax error`). Ten sam tekst jest w konsoli jako linia `[error]`. Linia `Program` nadal pokazuje `valid`, a **trójkąt jest nadal pomarańczowy**: rysuje go poprzedni program.
+6. Przywróć plik do pierwotnej postaci (`git checkout assets/shaders`), naciśnij `Reload shaders`. Wraca `Last load: OK` i trójkąt z płynnym przejściem kolorów.
+
+Co przy tym mówię: krok 2 pokazuje, że shader jest plikiem czytanym w czasie działania (zasada "Shadery jako pliki"). Krok 3 to cały potok budowania programu z sekcji 3.1 wykonany na żądanie. Krok 5 pokazuje dwie rzeczy naraz: że błąd GLSL trzeba odczytać samemu z dziennika sterownika (sekcja 3.3) i że `reload()` jest operacją "wszystko albo nic" (sekcja 2.7). Numer linii 15 przy średniku brakującym w linii 14 tłumaczy pułapka 11.
+
+### 6.5 Różnica na Windowsie
+
+Na Windowsie katalog `assets` obok programu jest **kopią**, a nie dowiązaniem ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Przycisk czyta kopię, więc po zapisaniu pliku w `assets\shaders\` trzeba najpierw ją odświeżyć:
+
+1. zapisz plik shadera w repozytorium,
+2. w drugim terminalu wykonaj `cmake --build --preset debug`,
+3. naciśnij `Reload shaders`.
+
+Oczekuję, że krok 2 da się wykonać przy działającym programie: gdy nie zmienił się żaden plik C++, budowanie nie linkuje `night_maze.exe` od nowa, tylko kopiuje katalog `assets`. Nie było to jeszcze sprawdzone na PC (punkt na liście kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11).
+
+Bez kroku 2 panel pokaże `Last load: OK`, a obraz się nie zmieni, bo program wczytał poprawnie stary plik. Podpowiedź z pełną ścieżką w panelu pokazuje, który plik jest czytany. Szczegóły i wariant dla Visual Studio: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7. Na Windowsie panel nie był jeszcze uruchamiany.
 
 ## 7. Pułapki
 
 1. **Błędy kompilacji i linkowania są niewidoczne dla `glGetError`.** `GL_CHECK(glCompileShader(shader))` nigdy nie zgłosi błędu składni GLSL. Jedynym źródłem informacji jest `GL_COMPILE_STATUS`, `GL_LINK_STATUS` i dziennik (sekcja 3.3). Program, który ich nie czyta, po prostu niczego nie rysuje.
 2. **Brak `#version` albo `#version` nie w pierwszej linii.** Bez tej dyrektywy kompilator przyjmuje GLSL 1.10, w którym nie ma `layout`, `in` ani `out` w dzisiejszym znaczeniu. Sterownik Apple zgłasza wprost `#version required and missing`. Przed `#version` mogą stać tylko komentarze i białe znaki, żaden kod.
 3. **Wersja GLSL z poradnika.** LearnOpenGL używa `#version 330 core`: na Macu to się kompiluje (kontekst 4.1 przyjmuje też starsze wersje Core), ale nie ma wtedy funkcji GLSL 4.x, więc w projekcie piszę `#version 410 core`. Poradniki dla Windowsa używają często `#version 420`, `430`, `450` albo `460`: te na macOS **nie kompilują się wcale** (`version '460' is not supported`), bo macOS kończy się na OpenGL 4.1. Na PC z nowszym sterownikiem taki shader zadziała, więc błąd wychodzi dopiero po przeniesieniu kodu na Maca.
-4. **Usunięcie programu, który jest w użyciu.** `glDeleteProgram` dla bieżącego programu nie usuwa go od razu, tylko oznacza do usunięcia. Program znika, gdy przestanie być bieżący. Po udanym `reload()` stary program jest więc jeszcze "bieżący" do najbliższego `use()`, które ustawi nowy. W pętli gry `use()` jest wołane co klatkę, więc niczego nie trzeba robić. Błędem byłoby zapamiętać identyfikator programu poza klasą i używać go po `reload()`.
+4. **Usunięcie programu, który jest w użyciu.** `glDeleteProgram` dla bieżącego programu nie usuwa go od razu, tylko oznacza do usunięcia. Program znika, gdy przestanie być bieżący. Po udanym `reload()` stary program jest więc jeszcze "bieżący" do najbliższego `glUseProgram` z innym programem. W programie `night_maze` jest nim rysowanie paneli przez backend ImGui jeszcze w tej samej klatce, a w następnej `use()` ustawia nowy program (sekcja 6.3). W pętli gry `use()` jest wołane co klatkę, więc niczego nie trzeba robić. Błędem byłoby zapamiętać identyfikator programu poza klasą i używać go po `reload()`.
 5. **Destruktor bez kontekstu.** `~Shader` woła `glDeleteProgram`, a każda funkcja `gl*` wymaga bieżącego kontekstu. Obiekt `Shader` żyjący dłużej niż okno (zmienna globalna, zmienna lokalna w `main` zadeklarowana przed aplikacją) wywoła OpenGL po zniszczeniu kontekstu. Poprawne miejsce to pole klasy pochodnej od `core::Application` ([`../core/README.md`](../core/README.md), sekcja 7). Z tego samego powodu obiektu nie można utworzyć **przed** powstaniem okna.
 6. **Kopiowanie opakowania.** Gdyby kopiowanie nie było zablokowane, `Shader b = a;` dałoby dwa obiekty z tym samym identyfikatorem i drugi destruktor usuwałby już usunięty program (albo, co gorsza, nowy obiekt, który dostał ten sam numer). Dzięki `= delete` taka linia się nie kompiluje. Typowa sytuacja, w której to wychodzi: przekazanie `Shader` do funkcji przez wartość. Przekazuję przez `const Shader&`.
 7. **Użycie obiektu po przeniesieniu.** Po `Shader b = std::move(a);` obiekt `a` ma `isValid() == false`. `a.use()` ustawi wtedy program 0.
@@ -834,19 +1039,23 @@ Panel "Shaders" z przyciskiem "Reload shaders" i polem pokazującym `lastError()
 10. **Dziennik czytany po usunięciu obiektu.** `glGetShaderInfoLog` dla usuniętego shadera zwraca błąd OpenGL zamiast tekstu. W `compileShader` i `linkProgram` dziennik jest odczytywany przed `glDeleteShader` i `glDeleteProgram`.
 11. **Numer linii w błędzie wskazuje za daleko.** Brak średnika w linii 4 sterownik zgłasza w linii 5 (sekcja 5.11). Trzeba patrzeć też linię wyżej.
 12. **Shader pod złym typem.** `glCreateShader(GL_VERTEX_SHADER)` z tekstem shadera fragmentów zwykle kończy się mylącym błędem kompilacji albo linkowania. O typie decyduje kolejność argumentów konstruktora `Shader` (najpierw wierzchołków, potem fragmentów), a nie rozszerzenie pliku.
-13. **Stary obraz po zmianie pliku.** Zapisanie pliku shadera samo niczego nie zmienia w działającym programie: `Shader` nie obserwuje dysku. Trzeba zawołać `reload()`, a dopóki nie ma przycisku w panelu, uruchomić program ponownie.
-14. **Windows: program czyta kopię shaderów.** Na macOS katalog `assets` obok programu jest dowiązaniem do katalogu w repozytorium, więc program widzi plik zaraz po zapisaniu. Na Windowsie jest to **kopia**, robiona od nowa przy każdym budowaniu: po zmianie pliku w `assets\shaders\` trzeba najpierw zbudować (`cmake --build --preset debug`), a dopiero potem wczytać shader ponownie ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7).
+13. **Stary obraz po zmianie pliku.** Zapisanie pliku shadera samo niczego nie zmienia w działającym programie: `Shader` nie obserwuje dysku. Trzeba zawołać `reload()`, czyli nacisnąć `Reload shaders` w panelu Shaders (albo uruchomić program ponownie).
+14. **Windows: program czyta kopię shaderów.** Na macOS katalog `assets` obok programu jest dowiązaniem do katalogu w repozytorium, więc program widzi plik zaraz po zapisaniu. Na Windowsie jest to **kopia**, robiona od nowa przy każdym budowaniu: po zmianie pliku w `assets\shaders\` trzeba najpierw zbudować (`cmake --build --preset debug`), a dopiero potem nacisnąć `Reload shaders` ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Objaw pominięcia budowania: panel pokazuje `Last load: OK`, a obraz się nie zmienia (sekcja 6.5).
 15. **Niezgodne nazwy `out` i `in`.** `out vec3 vColor` w `basic.vert` i `in vec3 vColor` w `basic.frag` są łączone po nazwie. Literówka w jednej z nich nie jest błędem kompilacji żadnego z plików, tylko błędem **linkowania**.
+16. **Tekst sterownika jako napis formatujący.** `ImGui::TextWrapped(shader.lastError().c_str())` traktuje komunikat jak format `printf`: znak `%` w tekście sterownika kazałby funkcji czytać nieistniejące argumenty. Poprawnie: `ImGui::TextWrapped("%s", shader.lastError().c_str())` albo `ImGui::TextUnformatted` (sekcja 6.1).
+17. **`Program: valid` i czerwony błąd jednocześnie.** To nie jest błąd panelu. `isValid()` mówi, czy jest czym rysować, a `lastError()`, czy ostatnie wczytanie się udało. Po nieudanym przeładowaniu oba są prawdziwe naraz: rysuje poprzedni program (sekcja 5.8).
+18. **`Last load: OK`, a obraz bez zmian.** Program wczytał poprawnie plik, tylko nie ten, który przed chwilą zmieniłem. Na Windowsie to nieodświeżona kopia `assets` (pułapka 14). Na obu systemach: zmiana zapisana w innym pliku niż ten z podpowiedzi w panelu albo niezapisany plik w edytorze.
+19. **Błąd tylko jednego pliku naraz.** Gdy zepsute są oba pliki, panel pokazuje błąd shadera wierzchołków, bo `buildProgram` kończy pracę na pierwszym niepowodzeniu (sekcja 5.7). Błąd shadera fragmentów pojawi się po naprawieniu pierwszego i kolejnym kliknięciu.
 
 ## 8. Ćwiczenia
 
-Shader jest wczytywany przy starcie, więc po każdej zmianie pliku `.vert` albo `.frag` trzeba uruchomić program ponownie. Kompilacja C++ nie jest potrzebna: na macOS wystarczy `./build/debug/night_maze`, bo `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Na Windowsie przed uruchomieniem trzeba wykonać `cmake --build --preset debug`, które odświeża kopię shaderów obok programu. Po każdym ćwiczeniu przywróć plik (`git checkout assets/shaders`).
+Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo `.frag` zapisz plik i naciśnij `Reload shaders` w panelu Shaders. Kompilacja C++ nie jest potrzebna. Na macOS przycisk od razu widzi zmianę, bo `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Na Windowsie przed naciśnięciem przycisku trzeba wykonać `cmake --build --preset debug`, które odświeża kopię shaderów obok programu. Ćwiczenia 3 i 11 dotyczą błędu **przy starcie**, więc tam program trzeba uruchomić od nowa. Po każdym ćwiczeniu przywróć plik (`git checkout assets/shaders`) i naciśnij przycisk jeszcze raz.
 
 1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne. Trójkąt projektu zakrywa w oknie 1280 x 720 około 115 tysięcy punktów (na ekranie Retina cztery razy więcej pikseli). Ile razy na klatkę wykonuje się `main` z `basic.vert`, a ile razy `main` z `basic.frag`?
-2. **Stały kolor.** W `basic.frag` zamień `vec4(vColor, 1.0)` na `vec4(1.0, 0.5, 0.2, 1.0)`. Uruchom program. Jaki jest trójkąt? Czy shader nadal się linkuje, mimo że `vColor` nie jest już używane?
-3. **Literówka.** Usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i uruchom program. Przeczytaj linię `[error]`: która część pochodzi z `Shader.cpp`, a która ze sterownika? Którą linię wskazuje sterownik i dlaczego nie tę ze średnikiem? Co widać w oknie i czy panel Renderer działa? Wskaż w `NightMazeApp::onRender` linię, dzięki której program się nie wysypał.
-4. **Błąd linkowania.** W `basic.frag` zmień nazwę `vColor` na `vColour` w obu liniach, w których występuje. Uruchom program. Czym różni się komunikat od poprzedniego i dlaczego wymienia oba pliki?
-5. **Zamienione numery atrybutów.** W `basic.vert` zamień `location = 0` z `location = 1` (pozycja dostaje 1, kolor 0). Uruchom program. Shader czyta teraz kolory jako pozycje, a pozycje jako kolory. Policz na kartce, gdzie wypadną trzy wierzchołki, i porównaj z ekranem. Dlaczego nie ma żadnego błędu w konsoli?
+2. **Stały kolor.** W `basic.frag` zamień `vec4(vColor, 1.0)` na `vec4(1.0, 0.5, 0.2, 1.0)`. Naciśnij `Reload shaders`. Jaki jest trójkąt? Czy shader nadal się linkuje, mimo że `vColor` nie jest już używane?
+3. **Literówka przy starcie.** Zamknij program, usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i uruchom program od nowa. Przeczytaj linię `[error]`: która część pochodzi z `Shader.cpp`, a która ze sterownika? Którą linię wskazuje sterownik i dlaczego nie tę ze średnikiem? Co widać w oknie, co pokazuje linia `Program` w panelu Shaders i czy panele działają? Wskaż w `NightMazeApp::onRender` linię, dzięki której program się nie wysypał. Na koniec, nie zamykając programu, przywróć średnik i naciśnij `Reload shaders`: co się zmieniło w oknie i w panelu?
+4. **Błąd linkowania.** W `basic.frag` zmień nazwę `vColor` na `vColour` w obu liniach, w których występuje. Naciśnij `Reload shaders`. Czym różni się komunikat od poprzedniego i dlaczego wymienia oba pliki?
+5. **Zamienione numery atrybutów.** W `basic.vert` zamień `location = 0` z `location = 1` (pozycja dostaje 1, kolor 0). Naciśnij `Reload shaders`. Shader czyta teraz kolory jako pozycje, a pozycje jako kolory. Policz na kartce, gdzie wypadną trzy wierzchołki, i porównaj z ekranem. Dlaczego nie ma żadnego błędu w konsoli?
 6. **Pozycja jako kolor.** W `basic.vert` zamień `vColor = aColor;` na `vColor = aPosition + 0.5;`. Jaki kolor ma każdy róg i dlaczego? Co by było bez `+ 0.5`?
 7. **Składowa `w`.** W `basic.vert` zamień `vec4(aPosition, 1.0)` na `vec4(aPosition, 2.0)`. Co stało się z rozmiarem trójkąta? Wyjaśnij to dzieleniem perspektywicznym z sekcji 2.2. Sprawdź też wartość `0.5`.
 8. **Przesunięcie i odbicie.** Zmień `gl_Position` tak, żeby trójkąt był przesunięty o 0,5 w prawo, a potem tak, żeby stał na głowie. Nie zmieniaj kodu C++.
@@ -855,6 +1064,11 @@ Shader jest wczytywany przy starcie, więc po każdej zmianie pliku `.vert` albo
 11. **Brak pliku.** W `NightMazeApp.cpp` zmień `VERTEX_SHADER_FILE` na nieistniejącą nazwę, zbuduj i uruchom. Jaka linia pojawia się w konsoli i ile razy? Wycofaj zmianę.
 12. **Przeniesienie na kartce.** Dla kodu `Shader a(p1, p2); Shader b = std::move(a);` zapisz wartość `m_program` w obu obiektach po każdej linii (przyjmij, że program dostał identyfikator 3). Ile razy i z jakim argumentem zostanie zawołane `glDeleteProgram`, gdy oba obiekty wyjdą z zasięgu? Powtórz, zakładając, że w konstruktorze przenoszącym brakuje linii `other.m_program = 0;`.
 13. **Przypisanie do siebie.** Prześledź na kartce `a = std::move(a);` dla obiektu z programem 3, najpierw z warunkiem `if (this == &other)`, potem bez niego. W jakim stanie zostaje obiekt w drugim przypadku?
+14. **Literówka w działającym programie.** Przy działającym programie usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i naciśnij `Reload shaders`. Porównaj z ćwiczeniem 3: co pokazuje linia `Program`, co widać w oknie, ile linii `[error]` jest w konsoli po trzech kliknięciach? Wskaż w `Shader::reload` linię, przez którą trójkąt nie zniknął.
+15. **Brak pliku w działającym programie.** Przy działającym programie zmień nazwę pliku `assets/shaders/basic.frag` na `basic2.frag` i naciśnij `Reload shaders`. Jaki komunikat pokazuje panel i czym różni się od błędu kompilacji? Przywróć nazwę i naciśnij przycisk ponownie.
+16. **Napis formatujący.** W `ShadersPanel.cpp` zamień tymczasowo `ImGui::TextWrapped("%s", shader.lastError().c_str());` na `ImGui::TextWrapped(shader.lastError().c_str());` i zbuduj. Przeczytaj ostrzeżenie kompilatora. Wyjaśnij, co by się stało, gdyby komunikat sterownika zawierał `%d`. Wycofaj zmianę.
+17. **Droga referencji.** Bez zaglądania do sekcji 6.2 wypisz pliki, przez które referencja do `m_shader` przechodzi od pola w `NightMazeApp` do wywołania `shader.reload()` w panelu. Dla każdego pliku podaj, czy dołącza `gfx/Shader.hpp`, czy wystarcza mu deklaracja wyprzedzająca, i dlaczego.
+18. **Kolejność w klatce.** W `ShadersPanel.cpp` linie pokazujące `lastError()` stoją **pod** przyciskiem. Co pokazałby panel w klatce kliknięcia, gdyby stały nad nim? Czy użytkownik zauważyłby różnicę i dlaczego?
 
 ## 9. Pytania kontrolne
 
@@ -909,7 +1123,7 @@ Shader jest wczytywany przy starcie, więc po każdej zmianie pliku `.vert` albo
 17. **Co się stanie, gdy obiekt `Shader` przeżyje okno?**
     Destruktor zawoła `glDeleteProgram` bez bieżącego kontekstu OpenGL, co jest błędem (w praktyce awaria albo zignorowane wywołanie i wyciek). Dlatego `Shader` ma być polem klasy pochodnej od `core::Application`: pola giną przed klasą bazową, która posiada okno.
 
-18. **Dlaczego `pathText` używa `u8string()`, a nie `string()`?**
+18. **Dlaczego `core::pathText` używa `u8string()`, a nie `string()`?**
     Na Windowsie `string()` zamienia ścieżkę na lokalną stronę kodową i rzuca wyjątek, gdy znaku nie da się w niej zapisać. Konstruktor `Shader` ma nie rzucać, więc tekst do komunikatu powstaje z UTF-8, który mieści każdą ścieżkę. Dodatkowo UTF-8 jest tym, czego oczekuje ImGui.
 
 19. **Shader z `#version 460` działa na PC, a na Macu nie. Dlaczego?**
@@ -918,14 +1132,32 @@ Shader jest wczytywany przy starcie, więc po każdej zmianie pliku `.vert` albo
 20. **`glGetUniformLocation` zwraca -1, choć nazwa jest poprawna. Co się stało?**
     Kompilator usunął uniform, bo nie wpływa na wynik shadera (jest nieużyty albo jego użycie zostało zoptymalizowane). Dla OpenGL taki uniform nie istnieje. Ustawianie położenia -1 jest ignorowane bez błędu.
 
-21. **Kiedy dziś wczytywany jest shader i co trzeba zrobić po zmianie pliku `.frag`?**
-    Raz, w konstruktorze `NightMazeApp` (konstruktor `Shader` woła `reload()`). Przycisku przeładowania jeszcze nie ma, więc po zmianie pliku uruchamiam program ponownie. Kompilacja C++ nie jest potrzebna, bo shader jest plikiem czytanym w czasie działania.
+21. **Kiedy wczytywany jest shader i co trzeba zrobić po zmianie pliku `.frag`?**
+    Przy starcie, w konstruktorze `NightMazeApp` (konstruktor `Shader` woła `reload()`), i po każdym naciśnięciu `Reload shaders` w panelu Shaders. Po zmianie pliku zapisuję go i naciskam przycisk. Kompilacja C++ nie jest potrzebna, bo shader jest plikiem czytanym w czasie działania. Na Windowsie przed naciśnięciem trzeba zbudować, żeby odświeżyć kopię katalogu `assets`.
 
 22. **Co się dzieje w klatce, gdy shader się nie wczytał?**
     `m_shader.isValid()` zwraca fałsz i `onRender` pomija `use()`, `bind()` i `glDrawArrays`. Klatka to samo tło i panele. Błąd został wypisany raz, przy wczytaniu, a nie co klatkę.
 
 23. **Skąd w trójkącie płynne przejście kolorów, skoro shader fragmentów tylko przepisuje `vColor`?**
     Shader wierzchołków zapisuje `vColor` dla trzech wierzchołków, a rasteryzacja interpoluje tę wartość dla każdego fragmentu. Shader fragmentów dostaje już wartość pośrednią.
+
+24. **Co pokazuje panel Shaders i skąd bierze każdą wartość?**
+    Nazwy obu plików (`vertexPath()`, `fragmentPath()`, zamienione na tekst przez `core::pathText`, pełna ścieżka w podpowiedzi), stan programu (`isValid()`), przycisk wołający `reload()` oraz wynik ostatniego wczytania: `OK`, gdy `lastError()` jest pusty, albo jego tekst na czerwono. Panel nie ma własnego stanu: wszystko czyta co klatkę z obiektu `Shader`.
+
+25. **Jak panel z `debug/` dostaje shader, który jest prywatnym polem gry?**
+    `NightMazeApp` udostępnia chroniony akcesor `shader()`. `DebugNightMazeApp` w `main.cpp` wpisuje jego wynik do pola `shader` struktury `DebugContext`, a `DebugUI::draw` przekazuje `context.shader` do `drawShadersPanel`. Gra nie dołącza niczego z `debug/`, a `debug/` niczego z `game/`.
+
+26. **Po nieudanym przeładowaniu panel pokazuje `Program: valid` i czerwony błąd. Czy to sprzeczność?**
+    Nie. `isValid()` odpowiada na pytanie, czy jest program, którym można rysować, i jest nim poprzedni program. `lastError()` odpowiada na pytanie, czy ostatnie wczytanie się udało. `reload()` celowo nie dotyka `m_program` przy błędzie.
+
+27. **`reload()` wykonuje się w środku klatki ImGui. Dlaczego to bezpieczne?**
+    Między `NewFrame` a `Render` ImGui nie woła OpenGL, a `reload()` nie zmienia powiązań (program, VAO, bufory, tekstury). Backend w `RenderDrawData` sam ustawia swój program i stan. Stary program, usunięty jako bieżący, jest tylko oznaczony do usunięcia. Backend przy przywracaniu stanu sprawdza `glIsProgram` i nie przywraca programu, którego już nie ma. Gra w następnej klatce woła `use()` z nowym identyfikatorem.
+
+28. **Dlaczego tekst błędu jest przekazywany jako argument `"%s"`?**
+    Funkcje tekstowe ImGui traktują pierwszy argument jak format `printf`. Tekst pochodzi od sterownika i może zawierać `%`, co kazałoby funkcji czytać argumenty, których nie ma. Jako argument `"%s"` tekst jest tylko kopiowany.
+
+29. **Jak wygląda przeładowanie shadera na Windowsie i dlaczego inaczej niż na macOS?**
+    Program czyta tam kopię katalogu `assets` obok pliku `.exe`, a nie pliki z repozytorium. Po zapisaniu pliku trzeba więc wykonać `cmake --build --preset debug`, które odświeża kopię, i dopiero wtedy nacisnąć `Reload shaders`. Na macOS obok programu jest dowiązanie do katalogu w repozytorium, więc wystarcza sam przycisk.
 
 ## 10. Źródła
 
@@ -934,7 +1166,8 @@ Shader jest wczytywany przy starcie, więc po każdej zmianie pliku `.vert` albo
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glCreateShader`, `glShaderSource`, `glCompileShader`, `glGetShader` (`glGetShaderiv`), `glGetShaderInfoLog`, `glCreateProgram`, `glAttachShader`, `glDetachShader`, `glLinkProgram`, `glGetProgram` (`glGetProgramiv`), `glGetProgramInfoLog`, `glUseProgram`, `glDeleteShader`, `glDeleteProgram` (w tym zdanie o ignorowaniu wartości 0 i o programie będącym w użyciu).
 - Khronos OpenGL Wiki: "Rendering Pipeline Overview" (<https://www.khronos.org/opengl/wiki/Rendering_Pipeline_Overview>), "Shader Compilation" (<https://www.khronos.org/opengl/wiki/Shader_Compilation>), "GLSL Object" (<https://www.khronos.org/opengl/wiki/GLSL_Object>), "Uniform (GLSL)" (<https://www.khronos.org/opengl/wiki/Uniform_(GLSL)>, o uniformach nieaktywnych).
 - cppreference: semantyka przenoszenia (<https://en.cppreference.com/w/cpp/language/move_constructor>, <https://en.cppreference.com/w/cpp/language/move_assignment>), `std::filesystem::path::u8string`, `std::basic_ifstream`.
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`../core/gl-check.md`](../core/gl-check.md), [`../core/paths.md`](../core/paths.md), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego tylko 4.1), [`../../libraries/glm.md`](../../libraries/glm.md).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`../core/gl-check.md`](../core/gl-check.md), [`../core/paths.md`](../core/paths.md), [`../debug-ui.md`](../debug-ui.md) (jak panele są wpięte w program), [`../../libraries/imgui.md`](../../libraries/imgui.md), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego tylko 4.1), [`../../libraries/glm.md`](../../libraries/glm.md).
+- Dear ImGui, plik `backends/imgui_impl_opengl3.cpp` (funkcja `ImGui_ImplOpenGL3_RenderDrawData`: zapamiętanie i przywrócenie stanu, sprawdzenie `glIsProgram`) oraz `imgui.h` (`Button`, `TextUnformatted`, `TextWrapped`, `PushStyleColor`, `SetItemTooltip`).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o shaderach i języku GLSL).
 - "OpenGL. Księga eksperta" (rozdziały o potoku programowalnym i shaderach).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): temat 2 w mapowaniu na wykłady oraz zasady "RAII dla obiektów GL" i "Shadery jako pliki".
