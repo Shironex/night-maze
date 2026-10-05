@@ -3,12 +3,13 @@
 Przewodnik dla kamienia milowego M0. Polecenia budowania i uruchamiania z tego dokumentu
 zostały uruchomione na Macu na kodzie M0 i M1, w konfiguracji z tabeli niżej. **Kod M2 + M3
 (testy, labirynt, gracz, modele, tekstury, nowe panele) nie był na macOS ani budowany, ani
-uruchamiany.** To samo dotyczy oświetlenia, czyli pierwszej części M4 (światła, cztery
-tryby cieniowania, blok uniformów, `#include` w shaderach, panel Lights): powstało na
-Windowsie 2026-10-05 i na macOS nikt go nie zbudował. Wszystko, co ten dokument mówi o tym
+uruchamiany.** To samo dotyczy obu części M4: oświetlenia (światła, cztery
+tryby cieniowania, blok uniformów, `#include` w shaderach, panel Lights) i map normalnych
+(styczne, czwarty atrybut wierzchołka, `common/normal_map.glsl`, pole `Normal mapping`).
+Powstały na Windowsie 2026-10-05 i na macOS nikt ich nie zbudował. Wszystko, co ten dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
-do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS" i "M4
-(oświetlenie) na macOS".
+do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
+(oświetlenie) na macOS" i "M4 (mapy normalnych) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -194,20 +195,20 @@ też uruchomić wprost, wtedy widać raport biblioteki doctest:
 ```
 
 Oczekiwany koniec wyjścia. Liczby z Windowsa, zmierzone tam w konfiguracjach Debug i Release
-2026-10-05, dla dwunastu plików z testami: `ColliderTests.cpp` 12 przypadków,
-`ImageLoaderTests.cpp` 7, `LightingTests.cpp` 16, `LightTests.cpp` 20,
+2026-10-05, dla trzynastu plików z testami: `ColliderTests.cpp` 12 przypadków,
+`ImageLoaderTests.cpp` 9, `LightingTests.cpp` 17, `LightTests.cpp` 20,
 `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12, `MazeTests.cpp` 6,
-`MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 18, `PlayerTests.cpp` 13,
-`ShaderSourceTests.cpp` 22 i `TransformTests.cpp` 4:
+`MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 20, `PlayerTests.cpp` 13,
+`ShaderSourceTests.cpp` 22, `TangentTests.cpp` 9 i `TransformTests.cpp` 4:
 
 ```text
-[doctest] test cases:   149 |   149 passed | 0 failed | 0 skipped
-[doctest] assertions: 61240 | 61240 passed | 0 failed |
+[doctest] test cases:   163 |   163 passed | 0 failed | 0 skipped
+[doctest] assertions: 62220 | 62220 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
-Przed oświetleniem (2026-10-05) program miał osiem plików z testami i odpowiednio mniej
-przypadków.
+Przed oświetleniem (2026-10-05) program miał osiem plików z testami, a przed mapami
+normalnych dwanaście, i odpowiednio mniej przypadków.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -229,8 +230,8 @@ nie wykonał):
 - [ ] nagłówek doctest trafia do kompilatora przez `-isystem` i nie daje ostrzeżeń w plikach
       testów
 - [ ] `ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release:
-      zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 149 przypadków i
-      61240 asercji, liczby z Windowsa z 2026-10-05)
+      zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 163 przypadki i
+      62220 asercji, liczby z Windowsa z 2026-10-05)
 - [ ] **najważniejszy punkt**: przechodzą testy `golden maze: 4 x 4 cells from seed 1 has
       exactly these walls` i `randomBelow gives the same numbers on every system`. To jest
       pomiar, że macOS i Windows generują ten sam labirynt
@@ -246,16 +247,18 @@ nie wykonał):
       na macOS" niżej)
 
 **Loader OBJ i siatka (temat 4): do zrobienia przy pierwszym buildzie tego kodu na Macu.**
-Kod powstał na Windowsie (2026-10-05) i tam jest zmierzony: 18 przypadków testowych i 804
-asercje w `tests/ObjLoaderTests.cpp`. Na Macu nikt go jeszcze nie kompilował:
+Kod powstał na Windowsie (2026-10-05) i tam jest zmierzony: dziś, razem z testami linii
+`map_Bump` i stycznych, 20 przypadków testowych i 1576 asercji w `tests/ObjLoaderTests.cpp`.
+Na Macu nikt go jeszcze nie kompilował:
 
 - [ ] `src/assets/ObjLoader.*`, `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` i
       `tests/ObjLoaderTests.cpp` kompilują się bez ostrzeżeń pod `-Wall -Wextra -Wpedantic`
-- [ ] przechodzą trzy asercje czasu kompilacji: `sizeof(gfx::Vertex) == 8 * sizeof(float)` i
+- [ ] przechodzą trzy asercje czasu kompilacji: `sizeof(gfx::Vertex)` równe 11 liczbom
+      `float` (44 bajty, od M4 z polem `tangent`) i
       `std::is_standard_layout_v<gfx::Vertex>` w `Vertex.hpp` oraz
       `std::is_same_v<GLuint, std::uint32_t>` w `Mesh.cpp`
 - [ ] `./build/debug/night_maze_tests --source-file='*ObjLoaderTests*'`: zapisać liczbę
-      przypadków i asercji (oczekiwane 18 i 804)
+      przypadków i asercji (oczekiwane 20 i 1576)
 - [ ] przechodzi przypadek `parseObj: numbers` i podprzypadki z błędnymi liczbami w
       `parseObj: a bad line is reported with its line number`. Liczby czyta
       `std::istringstream` z klasycznym locale, a libc++ może traktować teksty graniczne
@@ -271,8 +274,8 @@ asercje w `tests/ObjLoaderTests.cpp`. Na Macu nikt go jeszcze nie kompilował:
       ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), sekcja 5.4)
 
 **Tekstury (temat 5): do zrobienia przy pierwszym buildzie tego kodu na Macu.** Kod powstał
-na Windowsie (2026-10-05) i tam jest zmierzony: 7 przypadków testowych i 35 asercji w
-`tests/ImageLoaderTests.cpp` oraz program z ukrytym oknem dla klasy `gfx::Texture2D`
+na Windowsie (2026-10-05) i tam jest zmierzony: dziś, razem z testami map normalnych, 9
+przypadków testowych i 57 asercji w `tests/ImageLoaderTests.cpp` oraz program z ukrytym oknem dla klasy `gfx::Texture2D`
 ([`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 5.9). Na Macu nikt go
 jeszcze nie kompilował:
 
@@ -293,7 +296,7 @@ jeszcze nie kompilował:
       ścieżka z literału `u8"..."` (typ `char8_t`) w teście i `reinterpret_cast` wyniku
       `glGetStringi` w `Texture2D.cpp`
 - [ ] `./build/debug/night_maze_tests --source-file='*ImageLoaderTests*'`: zapisać liczbę
-      przypadków i asercji (oczekiwane 7 i 35)
+      przypadków i asercji (oczekiwane 9 i 57)
 - [ ] przechodzą przypadki `the rows are flipped: ...` i `a path with letters outside ASCII
       can be loaded`: oba zapisują plik do katalogu tymczasowego systemu
       (`std::filesystem::temp_directory_path()`) i usuwają go po sobie. Drugi tworzy plik o
@@ -341,9 +344,9 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
       `std::ranges::find` w `AssetCache.cpp`, `constexpr std::span<const scene::Aabb>` w
       `PlayerTests.cpp`, `static_cast<ImTextureID>` z `GLuint` w `AssetsPanel.cpp`. Zapisać
       każde ostrzeżenie
-- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 149 przypadków testowych i
-      61240 asercji, `Status: SUCCESS!` (liczby z Windowsa z 2026-10-05, razem z testami
-      oświetlenia)
+- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 163 przypadki testowe i
+      62220 asercji, `Status: SUCCESS!` (liczby z Windowsa z 2026-10-05, razem z testami
+      oświetlenia i map normalnych)
 - [ ] przechodzą nowe przypadki zależne od zaokrągleń `float`: `a player wandering through a
       closed maze never leaves it or enters a wall` i `a player pressing into a wall slides
       along it and past the pillars` z `tests/PlayerTests.cpp` oraz `a box that hugs a wall
@@ -474,7 +477,8 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       bez zmian
 - [ ] `Random seed`: nowa liczba w polu `Seed` i od razu nowy labirynt
 - [ ] panel Assets, `View mode`: `Normals as colour` (podłoga jasnozielona, ściany w
-      kolorach zależnych od kierunku), `UVs as colour` (czerwono-zielone powtarzające się
+      kolorach zależnych od kierunku, a przy zaznaczonym polu `Normal mapping` i trybie
+      `Lighting` innym niż `Gouraud` z rysunkiem fug z map normalnych), `UVs as colour` (czerwono-zielone powtarzające się
       przejścia), `Textured` przywraca obraz
 - [ ] panel Assets, `Filter`: `Nearest` (kwadratowe teksele z bliska, migotanie w oddali),
       `Bilinear` (gładko z bliska, migotanie w oddali), `Trilinear` (spokojnie w oddali)
@@ -492,7 +496,8 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
 - [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
       `assets/textures/floor_stone.png` (na Macu to plik w repozytorium, bo `assets` obok
       programu jest dowiązaniem), uruchomić. Oczekiwane: podłoga bez rysunku kamienia
-      (biała w trybie `Unlit`, w kolorze padającego światła w trybach z oświetleniem), jedna
+      (biała w trybie `Unlit`, w kolorze padającego światła w trybach z oświetleniem, przy
+      `Phong` i `Blinn-Phong` nadal z reliefem fug, bo mapa normalnych wczytuje się osobno), jedna
       linia `[error]`, w panelu Assets `no texture (white)` i sekcja `Failed to load`. **Przywrócić
       nazwę pliku** i sprawdzić `git status`
 - [ ] zmiana rozmiaru okna, tryb pełnoekranowy macOS i powrót: obraz wypełnia okno, płytki
@@ -503,7 +508,7 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
 
 ### M4 (oświetlenie) na macOS: lista w całości otwarta
 
-Pierwsza część M4 (światła, cztery tryby cieniowania, blok uniformów, `#include` w
+Druga część M4, mapy normalnych, ma własną listę zaraz po tej. Pierwsza część M4 (światła, cztery tryby cieniowania, blok uniformów, `#include` w
 shaderach, panel Lights, układ siedmiu paneli) powstała na Windowsie 2026-10-05 i tam jest
 zbudowana i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcja 13).
 **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
@@ -539,10 +544,11 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
       a obie struktury mają układ standardowy. Kłopot z `offsetof` na Windowsie dotyczył
       nagłówków biblioteki C Microsoftu czytanych przez clang, których na Macu nie ma.
       Niesprawdzone
-- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 149 przypadków testowych i
-      61240 asercji, `Status: SUCCESS!` (liczby z Windowsa)
+- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 163 przypadki testowe i
+      62220 asercji, `Status: SUCCESS!` (liczby z Windowsa, razem z testami map
+      normalnych)
 - [ ] cztery nowe pliki testów osobno, opcją `--source-file`: `'*ShaderSourceTests*'` 22
-      przypadki, `'*LightTests*'` 20, `'*LightingTests*'` 16, `'*TransformTests*'` 4
+      przypadki, `'*LightTests*'` 20, `'*LightingTests*'` 17, `'*TransformTests*'` 4
       (liczby przypadków z Windowsa). Uwaga: wzorzec `'*LightTests*'` nie pasuje do
       `LightingTests.cpp`, a `'*Light*'` pasuje do obu plików
 - [ ] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `a light made for a radius
@@ -673,9 +679,107 @@ Nazwy widżetów są zapisane tak jak w kodzie paneli.
       linii kończy się napisem `: OK`
 - [ ] panel Assets, `View mode` równy `Normals as colour` i `UVs as colour` przy trybie
       `Blinn-Phong`: labirynt rysuje program `textured`, bez świateł, a znaczniki świateł
-      nadal są widoczne
+      nadal są widoczne. Widok normalnych pokazuje normalne używane przez wybrany tryb
+      (lista map normalnych niżej)
 - [ ] przez cały test w terminalu nie pojawia się żadna linia `[error]` poza tymi
       wywołanymi celowo
+
+### M4 (mapy normalnych) na macOS: lista w całości otwarta
+
+Druga część M4 (mapy normalnych z pola wysokości, linia `map_Bump` w MTL, styczne
+wierzchołków, czwarty atrybut, plik `common/normal_map.glsl`, druga jednostka teksturująca,
+pole `Normal mapping` w panelu Assets) powstała na Windowsie 2026-10-05 i tam jest zbudowana
+i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcje 13.3 i 13.4).
+**Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
+odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
+[`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), decyzja:
+[`../decisions/tangents-on-load.md`](../decisions/tangents-on-load.md).
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/assets/Tangents.*` i `tests/TangentTests.cpp`. Zmienione: `src/gfx/Vertex.hpp`,
+      `src/gfx/Mesh.*`, `src/assets/ObjLoader.*`, `src/assets/AssetCache.*`,
+      `src/game/Lighting.*`, `MazeRenderer.*`, `NightMazeApp.*`, `ShaderUniforms.hpp`,
+      `src/debug/DebugUI.cpp`, `src/debug/panels/AssetsPanel.*` i trzy pliki testów.
+      Miejsca warte uwagi: `constexpr glm::vec3` jako stałe osi w `Tangents.cpp`,
+      `std::span<gfx::Vertex>` budowany z `std::vector` i z `std::array` w wywołaniach
+      `computeTangents` (w teście także pusta lista `{}` jako zakres indeksów),
+      inicjalizatory desygnowane `gfx::Vertex{.position = ...}`, które teraz pomijają także
+      pole `tangent`. Zapisać każde ostrzeżenie
+- [ ] przechodzą asercje czasu kompilacji w `Vertex.hpp`: rozmiar równy 11 liczbom `float`
+      (44 bajty) i układ standardowy
+- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 163 przypadki testowe i 62220
+      asercji, `Status: SUCCESS!` (liczby z Windowsa z 2026-10-05)
+- [ ] pliki testów osobno, opcją `--source-file`: `'*TangentTests*'` 9 przypadków i 177
+      asercji, `'*ObjLoaderTests*'` 20 i 1576, `'*ImageLoaderTests*'` 9 i 57,
+      `'*LightingTests*'` 17 i 133 (liczby z Windowsa, Debug, 2026-10-05)
+- [ ] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `computeTangents: the
+      tangent is made perpendicular to the normal (Gram-Schmidt)`, `computeTangents: a
+      vertex shared by two triangles gets the average tangent` i sprawdzenia stycznych w
+      trzech przypadkach `loadObj` (długość 1, iloczyn skalarny z normalną równy 0,
+      `cross(N, T)` w górę)
+- [ ] przechodzą dwa przypadki map normalnych w `tests/ImageLoaderTests.cpp` (`the normal
+      maps of the game load, and most of their texels are flat` i `the wall normal map
+      follows the OpenGL convention: a joint is a groove`): czytają pliki PNG z
+      repozytorium, więc wynik nie zależy od Blendera na Macu
+- [ ] clang-format i clang-tidy bez uwag na nowych i zmienionych plikach
+
+**Shadery (największe ryzyko)**
+
+- [ ] gra startuje bez linii `[error]`: kompilator GLSL Apple przyjmuje
+      `common/normal_map.glsl` wklejony do `lit.frag` i do `textured.frag`. Miejsca, których
+      ten kompilator jeszcze nie widział: drugi plik dołączany w jednym shaderze (dwie pary
+      dyrektyw `#line` z numerami źródeł 1 i 2), `uniform bool` ustawiany przez
+      `glUniform1i`, konstruktor `mat3(t, b, n)` z trzech wektorów, wejście
+      `layout(location = 3)` w shaderach wierzchołków
+- [ ] zapisać ostrzeżenia z dziennika kompilacji, jeśli są: w trybie `Textured` program
+      `textured` czyta sampler `uNormalMap` tylko w jednej gałęzi `if`, a w programie `lit`
+      funkcja `surfaceNormal` wraca wcześniej przy wyłączonym przełączniku
+- [ ] celowy błąd w `assets/shaders/common/normal_map.glsl`, potem `Reload shaders`: linie
+      `lit.vert + lit.frag` i `textured.vert + textured.frag` są czerwone, a komunikat pod
+      nimi nazywa plik `common/normal_map.glsl` (format Apple `ERROR: 2:...` dla `lit.frag`,
+      w którym to drugi plik dołączany, i `ERROR: 1:...` dla `textured.frag`). Potem
+      `git checkout assets/shaders` i `Reload shaders`
+- [ ] brak błędu OpenGL przy wiązaniu dwóch tekstur: w buildzie Debug żadnej linii z
+      `GL_INVALID_...` po kilku klatkach i po przełączeniu trybów `Lighting`
+
+**Obraz i panel**
+
+- [ ] start w trybie `Blinn-Phong`: fugi ścian i podłogi są rowkami (nie wałkami) na
+      ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze
+- [ ] światło z boku: po przejściu latarki na drugą stronę jasne i ciemne skosy zamieniają
+      się miejscami
+- [ ] pole `Normal mapping` w panelu Assets: odznaczone daje płaskie ściany, zaznaczone
+      przywraca relief od razu. To samo przy `Phong`
+- [ ] `Lighting` równe `Gouraud` i `Unlit`: pole niczego nie zmienia w obrazie
+- [ ] `View mode` równe `Normals as colour`: rysunek fug widać przy `Unlit`, `Phong` i
+      `Blinn-Phong`, nie widać go przy `Gouraud` ani przy odznaczonym polu
+- [ ] lista `Models`: linia `normal map:` pod każdą częścią. Lista `Textures`: cztery
+      tekstury, dwie jasnoniebieskie, podglądy stoją prosto
+- [ ] ekran Retina: zapisać, czy relief w oddali migocze w ruchu przy filtrze `Trilinear` i
+      czy anizotropia to zmienia (na Windowsie oceniono to tylko na nieruchomych klatkach)
+- [ ] celowo brakująca mapa normalnych: zmienić nazwę
+      `assets/textures/floor_stone_normal.png` (na Macu to plik w repozytorium, bo `assets`
+      obok programu jest dowiązaniem), uruchomić. Oczekiwane: podłoga z teksturą koloru,
+      ale płaska pod latarką, jedna linia `[error]`, w panelu Assets `normal map: none
+      (flat)` i sekcja `Failed to load`. **Przywrócić nazwę pliku** i sprawdzić `git status`
+
+**Skrypty Blendera**
+
+- [ ] uruchomić na Macu `blender --background --factory-startup --python
+      tools/blender/make_textures.py` i trzy skrypty modeli tą samą wersją Blendera
+      (5.2.1), potem `git status` i `git diff --stat`. Na Windowsie dwa uruchomienia dały
+      identyczne skróty dziesięciu plików. **Nie wiadomo, czy Mac da te same bajty**: mapy
+      normalnych przechodzą przez `np.linalg.norm`, dzielenie i zaokrąglanie do 8 bitów, a
+      NumPy na procesorze ARM może dać wynik różny o ostatni bit, co po zaokrągleniu zmienia
+      pojedyncze bajty. Inna może być też kompresja PNG. Zapisać, które pliki się różnią
+- [ ] jeśli pliki PNG się różnią: porównać piksele, nie bajty pliku, i zapisać największą
+      różnicę. Różnica o 1 na 255 w pojedynczych tekselach nie zmienia obrazu, ale wtedy
+      zasada "skrypt odtwarza pliki co do bajta" obowiązuje tylko w obrębie jednego systemu
+- [ ] po próbie przywrócić pliki z repozytorium (`git checkout assets`), żeby testy
+      czytały te same mapy co na Windowsie
 
 ### Skróty: `make`
 

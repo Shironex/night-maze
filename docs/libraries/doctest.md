@@ -5,9 +5,11 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`CMakeLists.txt`](../../CMakeLists.txt) oraz tę część API, której używają testy w katalogu
 [`tests/`](../../tests/).
 
-**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z trzynastu
-plików: `tests/main.cpp` (punkt wejścia) i dwunastu plików z testami. Osiem pierwszych
-wierszy tabeli to stan po M2 + M3, cztery ostatnie doszły z oświetleniem (M4):
+**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z czternastu
+plików: `tests/main.cpp` (punkt wejścia) i trzynastu plików z testami. Osiem pierwszych
+wierszy tabeli to stan po M2 + M3, cztery następne doszły z oświetleniem (pierwsza część M4),
+a ostatni z mapami normalnych (druga część M4), które dopisały też przypadki do trzech
+istniejących plików:
 
 | Plik | Przypadków | Co sprawdza | Dokument |
 |---|---|---|---|
@@ -17,17 +19,19 @@ wierszy tabeli to stan po M2 + M3, cztery ostatnie doszły z oświetleniem (M4):
 | `MazeLayoutTests.cpp` | 12 | układ w świecie i pudełka kolizji labiryntu | tamże |
 | `MazeWorldTests.cpp` | 8 | `buildMazeWorld`: macierze modelu, pudełka, start | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
 | `PlayerTests.cpp` | 13 | gracz: chodzenie, sprint, ślizganie, noclip | [`../modules/game/player.md`](../modules/game/player.md) |
-| `ObjLoaderTests.cpp` | 18 | loader OBJ i MTL | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
-| `ImageLoaderTests.cpp` | 7 | loader obrazów | [`../modules/assets/images.md`](../modules/assets/images.md) |
+| `ObjLoaderTests.cpp` | 20 | loader OBJ i MTL, od M4 także linia mapy normalnych `map_Bump` i styczne modeli gry | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
+| `ImageLoaderTests.cpp` | 9 | loader obrazów, od M4 także zawartość map normalnych (średnia, konwencja kanału zielonego) | [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `ShaderSourceTests.cpp` | 22 | tekst shadera: `expandIncludes` (dyrektywa `#include`, linie `#line`, błędy) i `nameSourceFiles` (nazwy plików w komunikatach sterownika) | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `LightTests.cpp` | 20 | matematyka świateł: zanik z odległością, stożek reflektora, `directionFromAngles`, bajty bloku świateł (`packLightBlock`) | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
-| `LightingTests.cpp` | 16 | ustawienia oświetlenia gry: ślepe zaułki (`isDeadEnd`, `deadEndLightPositions`), wartości domyślne, `buildLightSet` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
+| `LightingTests.cpp` | 17 | ustawienia oświetlenia gry: ślepe zaułki (`isDeadEnd`, `deadEndLightPositions`), wartości domyślne, `usesNormalMap`, `buildLightSet` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
 | `TransformTests.cpp` | 4 | macierz normalnych (`scene::normalMatrix`) | [`../modules/scene/transforms.md`](../modules/scene/transforms.md) |
+| `TangentTests.cpp` | 9 | styczne wierzchołków: `triangleTangents`, `computeTangents`, `countMirroredTriangles` | [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md) |
 
-Razem 149 przypadków testowych i 61240 asercji: tyle pokazał program na Windowsie w
-konfiguracjach Debug i Release (MSVC 19.44, 2026-10-05). Liczbę 149 potwierdza też
-policzenie makr `TEST_CASE` w plikach: 12 + 6 + 11 + 12 + 8 + 13 + 18 + 7 + 22 + 20 + 16 + 4.
-Poprzedni stan, po M2 + M3 (2026-10-05), to osiem plików z testami. **Na macOS testy
+Razem 163 przypadki testowe i 62220 asercji: tyle pokazał program na Windowsie w
+konfiguracjach Debug i Release (MSVC 19.44, 2026-10-05). Liczbę 163 potwierdza też
+policzenie makr `TEST_CASE` w plikach: 12 + 6 + 11 + 12 + 8 + 13 + 20 + 9 + 22 + 20 + 17 + 4 + 9.
+Poprzednie stany: po pierwszej części M4 dwanaście plików z testami, a po M2 + M3 osiem
+(wszystkie 2026-10-05). **Na macOS testy
 nie były jeszcze budowane ani uruchamiane.** Kod, który wymaga kontekstu OpenGL
 (`gfx::Mesh`, `gfx::Texture2D`, `gfx::UniformBuffer`, `gfx::Shader`, `assets::AssetCache`,
 klasy rysujące i panele), testów jednostkowych nie ma.
@@ -186,8 +190,9 @@ add_library(game_logic STATIC
     src/game/Player.cpp
     src/game/Player.hpp
 )
-# PUBLIC: the headers of this library (MazeLayout.hpp, MazeWorld.hpp, Player.hpp) include
-# scene/Collider.hpp and GLM, so whoever includes them needs the include paths of engine.
+# PUBLIC: the headers of this library (Lighting.hpp, MazeLayout.hpp, MazeWorld.hpp,
+# Player.hpp) include headers of engine (scene/Collider.hpp, scene/Light.hpp) and GLM,
+# so whoever includes them needs the include paths of engine.
 # The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
@@ -202,7 +207,10 @@ i testy ([`../modules/game/README.md`](../modules/game/README.md), sekcja 3). Ko
 Z oświetleniem (M4) podział jest ten sam. Kod bez okna, który ma mieć testy, trafił do
 bibliotek: `gfx/ShaderSource`, `scene/Light`, `scene/LightBlock` i `scene::normalMatrix`
 (`scene/Transform`) są w `engine`, a `game/Lighting` w `game_logic`. Kod, który woła OpenGL
-(`gfx::UniformBuffer`, `game::LightRig`, panel Lights), testów nie ma.
+(`gfx::UniformBuffer`, `game::LightRig`, panel Lights), testów nie ma. Z mapami normalnych tak
+samo: matematyka stycznych (`assets/Tangents`) jest w `engine` i ma własny plik testów, a
+funkcja `usesNormalMap` jest w `game/Lighting`. Kod GLSL (`common/normal_map.glsl`) i wiązanie
+drugiej tekstury testów nie mają.
 
 ```cmake
 # ---- night_maze_tests: unit tests of the code that runs without a window --------------
@@ -223,6 +231,7 @@ add_executable(night_maze_tests
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
     tests/ShaderSourceTests.cpp
+    tests/TangentTests.cpp
     tests/TransformTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
@@ -484,7 +493,7 @@ Wynik zmierzony na Windowsie (Debug, 2026-10-05, przed dodaniem testów oświetl
 ```
 
 "1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwał
-wtedy około 0,1 s. Dla programu ze 149 przypadkami (2026-10-05) zmierzone są liczby z
+wtedy około 0,1 s. Dla programu ze 163 przypadkami (2026-10-05) zmierzone są liczby z
 raportu doctest niżej. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
 datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas.
 
@@ -512,13 +521,13 @@ Wynik zmierzony na Windowsie 2026-10-05 (te same liczby w Debug i w Release):
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:   149 |   149 passed | 0 failed | 0 skipped
-[doctest] assertions: 61240 | 61240 passed | 0 failed |
+[doctest] test cases:   163 |   163 passed | 0 failed | 0 skipped
+[doctest] assertions: 62220 | 62220 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
-Zmierzone są liczby i napis `Status: SUCCESS!`. Odstępy przed liczbami odtworzyłem z raportu
-z 2026-10-05: doctest wyrównuje obie liczby do szerokości dłuższej z nich.
+Zmierzone są liczby i napis `Status: SUCCESS!`. Odstępy przed liczbami odtworzyłem z
+wcześniejszego raportu z 2026-10-05: doctest wyrównuje obie liczby do szerokości dłuższej z nich.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -586,7 +595,8 @@ sekcja 5.8).
     nazwa z przecinkiem wymaga poprzedzenia go ukośnikiem wstecznym. Prościej filtrować
     początkiem nazwy z gwiazdką.
 12. **Testy nie obejmują niczego z OpenGL.** Zielony wynik testów mówi o kolizjach,
-    labiryncie, graczu, loaderach plików, matematyce świateł i składaniu tekstu shadera. O
+    labiryncie, graczu, loaderach plików, matematyce świateł, stycznych i składaniu tekstu
+    shadera. O
     kompilacji shaderów, buforach i rysowaniu nie mówi nic: te rzeczy sprawdza się
     uruchomieniem programu. Dwa przykłady z M4. `tests/ShaderSourceTests.cpp` sprawdza, że
     `#include` jest zastępowany treścią pliku i że numer w komunikacie błędu zamienia się w

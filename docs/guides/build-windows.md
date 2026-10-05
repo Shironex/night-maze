@@ -12,11 +12,12 @@
 > testy jednostkowe przechodzące w obu konfiguracjach, start gry w oteksturowanym labiryncie bez linii
 > `[error]` i zrzuty ekranu kilku stanów (sekcja 12).
 >
-> **Zmierzone 2026-10-05 (oświetlenie, pierwsza część M4):** build Debug i Release bez
-> ostrzeżeń, 149 przypadków testowych i 61240 asercji w obu konfiguracjach, clang-format i
+> **Zmierzone 2026-10-05 (M4: oświetlenie i mapy normalnych):** build Debug i Release bez
+> ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu konfiguracjach, clang-format i
 > clang-tidy bez uwag, start gry w oświetlonej nocnej scenie bez linii `[error]`, w tym bez
-> żadnej z nazwą błędu OpenGL (`GL_...`), oraz zrzuty ekranu czterech trybów oświetlenia i
-> kilku innych stanów (sekcja 13.1).
+> żadnej z nazwą błędu OpenGL (`GL_...`), zrzuty ekranu czterech trybów oświetlenia i
+> kilku innych stanów (sekcja 13.1) oraz zrzuty ekranu map normalnych: kierunek reliefu,
+> reakcja na kierunek światła, tryby `Gouraud` i `Unlit` bez zmian (sekcja 13.3).
 >
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N i F, obrót myszą, przyciski, listy i suwaki paneli, w
@@ -130,8 +131,9 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
   Napisy zależą od karty i sterownika. Sterownik NVIDII oddał kontekst dokładnie w wersji
   4.1, o którą prosi program. Komputer ma też zintegrowaną kartę AMD Radeon: system sam
   wybrał kartę NVIDIA. Po nich pamięć podręczna assetów wypisuje po jednej linii `[info]`
-  na każdy wczytany plik (`Loaded texture: ...` dla dwóch tekstur i `Loaded model: ...` dla
-  trzech modeli, co wynika z kodu `assets::AssetCache`). Zmierzone jest to, że na starcie
+  na każdy wczytany plik (`Loaded texture: ...` dla czterech tekstur, czyli dwóch obrazów
+  koloru i od M4 dwóch map normalnych, i `Loaded model: ...` dla trzech modeli, co wynika z
+  kodu `assets::AssetCache`). Zmierzone jest to, że na starcie
   nie ma żadnej linii `[error]`, w tym żadnej z nazwą błędu OpenGL (`GL_INVALID_...`), także
   po dodaniu oświetlenia (2026-10-05). Dokładnej liczby linii `[info]` przy tych pomiarach
   nie zapisałem.
@@ -155,7 +157,7 @@ Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest
 
 Zwykły build buduje też program testowy `night_maze_tests.exe` (kolizje, labirynt, gracz,
 loadery, a od M4 także tekst shaderów z `#include`, matematyka świateł, ustawienia
-oświetlenia i macierz normalnych: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
+oświetlenia, macierz normalnych i styczne wierzchołków: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
 deweloperskim:
 
 ```bat
@@ -191,19 +193,19 @@ build\debug\Debug\night_maze_tests.exe
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:   149 |   149 passed | 0 failed | 0 skipped
-[doctest] assertions: 61240 | 61240 passed | 0 failed |
+[doctest] test cases:   163 |   163 passed | 0 failed | 0 skipped
+[doctest] assertions: 62220 | 62220 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
 Te same liczby daje `build\release\Release\night_maze_tests.exe` (oba pomiary 2026-10-05,
-po dodaniu oświetlenia. Zmierzone są liczby i napis `Status: SUCCESS!`, odstępy przed
-liczbami odtworzyłem z raportu z poprzedniego dnia). Przypadki w plikach:
-`ColliderTests.cpp` 12, `ImageLoaderTests.cpp` 7, `LightingTests.cpp` 16, `LightTests.cpp`
+po dodaniu map normalnych. Zmierzone są liczby i napis `Status: SUCCESS!`, odstępy przed
+liczbami odtworzyłem z wcześniejszego raportu). Przypadki w plikach:
+`ColliderTests.cpp` 12, `ImageLoaderTests.cpp` 9, `LightingTests.cpp` 17, `LightTests.cpp`
 20, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12, `MazeTests.cpp` 6,
-`MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 18, `PlayerTests.cpp` 13,
-`ShaderSourceTests.cpp` 22, `TransformTests.cpp` 4, razem 149. Dzień wcześniej, po kroku
-łączącym M2 + M3, program miał osiem plików z testami.
+`MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 20, `PlayerTests.cpp` 13,
+`ShaderSourceTests.cpp` 22, `TangentTests.cpp` 9, `TransformTests.cpp` 4, razem 163. Po
+kroku łączącym M2 + M3 program miał osiem plików z testami, dziś ma trzynaście.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
 
@@ -1056,8 +1058,8 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` i `tests/ObjLoaderTests.cpp` budują się bez
       ostrzeżeń pod `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem
       Visual Studio (osobne katalogi buildu). `night_maze_tests.exe
-      --source-file=*ObjLoaderTests*`: 18 przypadków testowych, 804 asercje, `Status:
-      SUCCESS!`. Konfiguracji Release dla tych plików wtedy nie budowałem (po M2 + M3 jest
+      --source-file=*ObjLoaderTests*`: wtedy 18 przypadków testowych i 804 asercje, dziś, po
+      mapach normalnych, 20 przypadków i 1576 asercji, `Status: SUCCESS!`. Konfiguracji Release dla tych plików wtedy nie budowałem (po M2 + M3 jest
       zbudowana i przetestowana, sekcja 12). `gfx::Mesh` był wtedy tylko skompilowany, bez
       użytkownika. Dziś tworzą go `assets::AssetCache` i `game::ColliderLines`, testu
       jednostkowego nadal nie ma ([`../modules/gfx/mesh.md`](../modules/gfx/mesh.md))
@@ -1082,8 +1084,8 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       `setVec3`) i `tests/ImageLoaderTests.cpp` budują się bez ostrzeżeń pod
       `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem Visual
       Studio (osobne katalogi buildu). `night_maze_tests.exe
-      --source-file=*ImageLoaderTests*`: 7 przypadków testowych, 35 asercji, `Status:
-      SUCCESS!`. Cały program testowy razem z testami loadera OBJ też przechodził (liczby po
+      --source-file=*ImageLoaderTests*`: wtedy 7 przypadków testowych i 35 asercji, dziś, po
+      mapach normalnych, 9 przypadków i 57 asercji, `Status: SUCCESS!`. Cały program testowy razem z testami loadera OBJ też przechodził (liczby po
       M2 + M3: sekcja 12). Konfiguracji Release dla tych plików wtedy nie budowałem. Test nazwy pliku ze
       znakami spoza ASCII (polskie litery i znak japoński) przechodzi przy stronie kodowej
       systemu 1250 ([`../modules/assets/images.md`](../modules/assets/images.md),
@@ -1109,8 +1111,8 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
 - [x] tekstury w oknie gry: po kroku łączącym M2 + M3 `Texture2D` ma użytkownika
       (`assets::AssetCache`), a labirynt jest oteksturowany. Filtry i anizotropia na ścianach
       są sprawdzone na zrzutach ekranu, ręczne klikanie widżetów panelu Assets jest otwarte
-      (sekcja 12). Pokaz tematu 5 z PRD (podgląd tekstur) niesie panel "Assets". Przełącznika
-      map normalnych z PRD nie ma: mapy normalnych są przeniesione do M4
+      (sekcja 12). Pokaz tematu 5 z PRD (podgląd tekstur) niesie panel "Assets". Przełącznik
+      map normalnych z PRD doszedł razem z mapami w M4 (sekcje 13.3 i 13.4)
 - [x] diagnostyka w `Paths.cpp` poprawiona (`return {buffer};`), clang-tidy na zmienionych
       plikach nie zgłasza niczego (sekcja 12). Na Macu ta gałąź nie jest kompilowana
 - [ ] te same testy na macOS: dopiero to porównanie mierzy, że oba systemy generują ten sam
@@ -1153,8 +1155,8 @@ był budowany ([`build-macos.md`](build-macos.md)) i nie ma tagu.
 **Ta sekcja jest zapisem stanu z 2026-10-05**, sprzed oświetlenia. Program miał wtedy o jeden
 panel mniej (bez Lights), o dwa programy shaderów mniej (bez `lit` i `gouraud`), panel
 Shaders z kilkoma liniami na program, równo jasny labirynt i mniej testów. Punkty `[x]`
-są pomiarami z tamtego dnia i opisują tamten stan. Dzisiejsze liczby (149 i
-61240), siedem paneli i pięć programów opisuje sekcja 13. Punkty otwarte `[ ]` w sekcji
+są pomiarami z tamtego dnia i opisują tamten stan. Dzisiejsze liczby (163 i
+62220), siedem paneli, pięć programów i mapy normalnych opisuje sekcja 13. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie.
 
 ### 12.1. Zmierzone (2026-10-05)
@@ -1272,8 +1274,9 @@ Start i układ paneli:
       `Wall box: 0.30 m thick (the visible wall: 0.20 m)`, pudełko gracza `min: 0.70, 0.00,
       0.70` i `max: 1.30, 1.80, 1.30`
 - [ ] panel Assets: trzy modele (`floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`),
-      każdy z jedną częścią i nazwą pliku tekstury, dwie tekstury z podglądem
-      (`floor_stone.png`, `wall_stone.png`), brak sekcji `Failed to load`
+      każdy z jedną częścią, nazwą pliku tekstury i linią `normal map:` z nazwą mapy
+      normalnych, cztery tekstury z podglądem (`floor_stone.png`, `wall_stone.png` i ich
+      mapy `floor_stone_normal.png`, `wall_stone_normal.png`), brak sekcji `Failed to load`
 
 Chodzenie i kolizje (kliknąć w scenę, kursor znika):
 
@@ -1336,8 +1339,11 @@ ustawić `Lighting` w panelu Renderer na `Unlit`):
       na +X czerwonawe, na +Z niebieskawe, a zwrócone w przeciwne strony ciemne w tym
       kanale, więc dwie strony tej samej ściany mają różne kolory. `UVs as colour`: czerwono-zielone przejścia, które zaczynają się od nowa tam,
       gdzie tekstura się powtarza. `Textured` przywraca obraz. Kostka i linie pudełek nie
-      zmieniają wyglądu. Oba widoki wyglądają tak samo w każdym trybie `Lighting`: rysuje
-      je zawsze program `textured`, bez świateł (sekcja 13.2)
+      zmieniają wyglądu. Oba widoki rysuje zawsze program `textured`, bez świateł (sekcja
+      13.2). Opisane kolory normalnych to kolory podstawowe powierzchni: przy zaznaczonym
+      polu `Normal mapping` i trybie `Lighting` innym niż `Gouraud` widać na nich jeszcze
+      rysunek fug z map normalnych (sekcja 13.4). Żeby zobaczyć same normalne modelu,
+      odznaczyć `Normal mapping`
 - [ ] `Filter`, `Nearest`: z bliska widać kwadratowe teksele, w oddali obraz ziarni się i
       migocze przy ruchu. `Bilinear`: z bliska gładko, w oddali nadal migocze. `Trilinear`
       (ustawienie startowe): w oddali spokojnie, ale rozmyte
@@ -1367,8 +1373,10 @@ Shadery i brakujący plik:
 - [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
       `build\debug\Debug\assets\textures\floor_stone.png` (kopii, nie pliku w repozytorium),
       uruchomić. Oczekiwane: w trybie `Unlit` podłoga jest biała (`Kd` materiału to biel), w
-      trybach z oświetleniem jest gładka, bez rysunku kamienia, w kolorze padającego na nią
-      światła (biała tekstura zastępcza razy światło), ściany bez zmian,
+      trybach z oświetleniem nie ma rysunku kamienia i ma kolor padającego na nią
+      światła (biała tekstura zastępcza razy światło). Mapa normalnych podłogi wczytała się
+      niezależnie, więc w trybach `Phong` i `Blinn-Phong` na białej podłodze nadal widać
+      relief fug. Ściany bez zmian,
       w konsoli jedna linia `[error]`, w panelu Assets przy części `floor_stone` napis
       `no texture (white)` i sekcja `Failed to load` z nazwą pliku na czerwono. Przywrócić
       nazwę pliku
@@ -1394,9 +1402,10 @@ Okno:
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tymi wywołanymi
       celowo
 
-## 13. Lista kontrolna M4: oświetlenie
+## 13. Lista kontrolna M4: oświetlenie i mapy normalnych
 
-Pierwsza część kamienia milowego M4: trzy rodzaje świateł (księżyc, latarka gracza, światła
+Sekcje 13.1 i 13.2 to pierwsza część M4 (oświetlenie), sekcje 13.3 i 13.4 to druga część
+(mapy normalnych). Pierwsza część kamienia milowego M4: trzy rodzaje świateł (księżyc, latarka gracza, światła
 punktowe w ślepych zaułkach), cztery tryby cieniowania labiryntu, blok uniformów ze
 światłami, dyrektywa `#include` w shaderach, panel Lights i układ siedmiu paneli. Opis kodu:
 [`../modules/scene/lights.md`](../modules/scene/lights.md) (rodzaje świateł, model odbicia,
@@ -1411,8 +1420,8 @@ układ `std140`), [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-in
 [`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md) i
 [`../decisions/dead-end-lights.md`](../decisions/dead-end-lights.md).
 
-Kamień milowy **nie jest zamknięty**: mapy normalnych są następną częścią M4, część ręczna
-poniżej jest otwarta, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i
+Kamień milowy **nie jest zamknięty**: kod obu części jest kompletny, ale części ręczne
+poniżej (13.2 i 13.4) są otwarte, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i
 nie ma tagu. Czego w tej części nie ma: cieni (światła świecą przez ściany, cienie są w
 planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
 
@@ -1421,13 +1430,16 @@ planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
 Środowisko: MSVC 19.44, karta NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74.
 
 - [x] build Debug i Release: zero ostrzeżeń pod `/W4 /permissive-`
-- [x] `night_maze_tests.exe` w Debug i w Release: 149 przypadków testowych, 61240 asercji,
-      wszystkie przechodzą. Przypadki w plikach (policzone także jako makra `TEST_CASE`):
-      `ColliderTests.cpp` 12, `ImageLoaderTests.cpp` 7, `LightingTests.cpp` 16,
+- [x] `night_maze_tests.exe` w Debug i w Release: wszystkie przypadki przechodzą. Liczby
+      podaję dla stanu dzisiejszego, po obu częściach M4: 163 przypadki testowe i 62220
+      asercji (sekcja 13.3). Przypadki w plikach (policzone także jako makra `TEST_CASE`):
+      `ColliderTests.cpp` 12, `ImageLoaderTests.cpp` 9, `LightingTests.cpp` 17,
       `LightTests.cpp` 20, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12,
-      `MazeTests.cpp` 6, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 18, `PlayerTests.cpp`
-      13, `ShaderSourceTests.cpp` 22, `TransformTests.cpp` 4. Cztery nowe pliki to 62
-      przypadki
+      `MazeTests.cpp` 6, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 20, `PlayerTests.cpp`
+      13, `ShaderSourceTests.cpp` 22, `TangentTests.cpp` 9, `TransformTests.cpp` 4. Z
+      oświetleniem doszły cztery pliki (`ShaderSourceTests.cpp`, `LightTests.cpp`,
+      `LightingTests.cpp`, `TransformTests.cpp`), z mapami normalnych piąty
+      (`TangentTests.cpp`)
 - [x] clang-format i clang-tidy: żadnej uwagi
 - [x] clang-tidy wymagał jednej zmiany konfiguracji: linii
       `ExtraArgs: ['-D_CRT_USE_BUILTIN_OFFSETOF']` w `.clang-tidy` (ten sam przełącznik jest
@@ -1472,8 +1484,10 @@ planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
   Numer 63 to linia w pliku `common/lighting.glsl`, a nie w tekście po wklejeniu: pilnują
   tego dyrektywy `#line`, które program dopisuje wokół dołączonego pliku. Z kodu
   (`gfx::nameSourceFiles`) wynika też, że komunikat shadera z więcej niż jednym plikiem
-  kończy się linią legendy, dla `lit.frag` w postaci
-  `Source files: 0 = lit.frag, 1 = common/lighting.glsl`
+  kończy się linią legendy. W chwili tego pomiaru `lit.frag` dołączał jeden plik i legenda
+  miała postać `Source files: 0 = lit.frag, 1 = common/lighting.glsl`. Dziś `lit.frag`
+  dołącza też `common/normal_map.glsl`, więc legenda ma trzy pozycje: tego komunikatu po
+  zmianie nikt nie wywołał (punkt otwarty w sekcji 13.4)
 - [x] shader bez `#include` też dostaje nazwę pliku w komunikacie: `basic.frag(4)` w
       miejscu `0(4)`
 
@@ -1650,13 +1664,107 @@ Widoki debug w trybie z oświetleniem:
 - [ ] przy `Lighting` równym `Blinn-Phong` wybrać w panelu Assets `View mode`
       `Normals as colour`, potem `UVs as colour`. Labirynt jest wtedy rysowany programem
       `textured`, bez świateł, tak samo jak w trybie `Unlit`, ale znaczniki świateł nadal
-      są widoczne. `Textured` przywraca oświetlony obraz. W trybie `Unlit` te same widoki
+      są widoczne. Widok normalnych pokazuje normalne używane przez wybrany tryb: z map
+      normalnych w trybach `Unlit`, `Phong` i `Blinn-Phong`, z samej siatki w trybie
+      `Gouraud` (sekcja 13.4). `Textured` przywraca oświetlony obraz. W trybie `Unlit` te same widoki
       nie mają znaczników
 
 Na koniec:
 
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tymi wywołanymi
       celowo, w szczególności żadna z `GL_INVALID_...` po kilku przeładowaniach shaderów
+
+### 13.3. Zmierzone: mapy normalnych (2026-10-05)
+
+Druga część M4. Środowisko to samo: MSVC 19.44, karta NVIDIA GeForce RTX 4070 Ti SUPER,
+sterownik 610.74. Opis kodu: [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md),
+decyzja: [`../decisions/tangents-on-load.md`](../decisions/tangents-on-load.md).
+
+- [x] build Debug i Release: zero ostrzeżeń pod `/W4 /permissive-`
+- [x] `night_maze_tests.exe` w Debug i w Release: 163 przypadki testowe, 62220 asercji,
+      wszystkie przechodzą. Doszło 14 przypadków: nowy plik `TangentTests.cpp` (9 przypadków,
+      177 asercji), po dwa w `ObjLoaderTests.cpp` (dziś 20 i 1576) i `ImageLoaderTests.cpp`
+      (dziś 9 i 57), jeden w `LightingTests.cpp` (dziś 17 i 133). Liczby z plików osobno:
+      opcja `--source-file`, Debug
+- [x] clang-format i clang-tidy: żadnej uwagi
+- [x] gra startuje bez linii `[error]`, w tym bez żadnej z nazwą błędu OpenGL (`GL_...`), w
+      buildzie Debug. Z tego wynika, że programy `lit` i `textured` skompilowały się z
+      drugim plikiem dołączanym `common/normal_map.glsl`, że obie mapy normalnych się
+      wczytały i że żaden model nie dostał ostrzeżenia o lustrzanych trójkątach
+- [x] kierunek reliefu na zrzutach ekranu: fugi czytają się jako rowki, a nie jako wałki, na
+      ścianach wzdłuż osi X, na ścianach wzdłuż osi Z (obróconych o 90 stopni), na słupku i
+      na podłodze
+- [x] reakcja na kierunek światła: po przejściu światła z lewej strony na prawą jasne i
+      ciemne skosy fug zamieniają się miejscami
+- [x] średnia jasność zrzutu (skala od 0 do 255) z mapami normalnych i bez nich jest prawie
+      równa: ściana wzdłuż X 43,29 i 44,00, ściana wzdłuż Z 35,85 i 36,16, słupek 35,26 i
+      35,55, podłoga 22,69 i 22,86. Mapa przesuwa światło między skosami, nie przyciemnia
+      sceny
+- [x] tryby `Gouraud` i `Unlit`: zrzuty ekranu identyczne co do piksela z mapami włączonymi
+      i wyłączonymi
+- [x] skrypty Blendera są powtarzalne: dwa kolejne uruchomienia skryptu tekstur i skryptów
+      modeli dały identyczne skróty wszystkich dziesięciu plików wyjściowych (4 PNG, 3 OBJ,
+      3 MTL). Obrazy koloru i pliki `.obj` są bajt w bajt takie same jak przed tą częścią,
+      każdy plik `.mtl` dostał jedną linię `map_Bump`
+- [x] liczba wierzchołków i indeksów modeli bez zmian: ściana i słupek 60 i 90, podłoga 4 i
+      6 (styczne nie dodają wierzchołków)
+
+Żaden z tych stanów nie był ustawiany kliknięciem w panelu: pola `Normal mapping` nikt
+jeszcze nie kliknął ręką. Znane ograniczenia obrazu (podwójnie ciemne fugi, słaba siatka w
+ziarnie przy bardzo płaskim kącie światła, migotanie w oddali ocenione tylko na
+nieruchomych klatkach) opisuje [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md),
+sekcja 2.12.
+
+### 13.4. Otwarte: mapy normalnych, test ręczny na około pięć minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów
+jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/AssetsPanel.cpp`. Program uruchomiony jak w sekcji 13.2, bez `imgui.ini`.
+
+- [ ] układ: panel Assets stoi w prawej kolumnie pod panelem Maze. Pod listą `View mode`
+      jest pole `Normal mapping` (zaznaczone) i notatka, pod nimi `Filter` i
+      `Anisotropy`. Sprawdzić, czy panel nie zasłania innego i czy do list `Models` i
+      `Textures` trzeba przewijać (panel jest niski, przewijanie jest spodziewane)
+- [ ] panel Assets, lista `Models`: pod każdą częścią modelu jest linia
+      `normal map: wall_stone_normal.png` (ściana i słupek) albo
+      `normal map: floor_stone_normal.png` (podłoga)
+- [ ] panel Assets, lista `Textures`: cztery tekstury z podglądem, każda 512 x 512:
+      `floor_stone.png`, `floor_stone_normal.png`, `wall_stone.png`, `wall_stone_normal.png`
+      (kolejność według wczytania może być inna). Podglądy map normalnych są jasnoniebieskie
+      z kolorowymi kreskami fug i stoją prosto
+- [ ] `Lighting` równe `Blinn-Phong`, podejść do ściany z włączoną latarką: fugi są rowkami.
+      Odznaczyć `Normal mapping`: ściana staje się płaska, plama latarki przesuwa się po
+      rysunku kamieni. Zaznaczyć: relief wraca od razu, bez przeładowania
+- [ ] to samo przy `Lighting` równym `Phong`
+- [ ] stanąć blisko ściany i patrzeć wzdłuż niej, tak żeby latarka świeciła pod płaskim
+      kątem: relief jest najmocniejszy. Zrobić krok tak, żeby światło padało z drugiej
+      strony: jasne i ciemne skosy zamieniają się miejscami. Zanotować, czy w ziarnie widać
+      regularną siatkę i czy przeszkadza
+- [ ] przejść korytarzem i obserwować dalekie ściany i podłogę: czy relief migocze w ruchu.
+      Powtórzyć z `Filter` równym `Nearest` i `Trilinear` oraz z `Anisotropy` 1 i 16
+      (ustawienia działają także na mapy normalnych)
+- [ ] `View mode` równe `Normals as colour` przy `Lighting` równym `Blinn-Phong`: na każdej
+      ścianie widać kolor podstawowy z rysunkiem fug w innych odcieniach. Odznaczyć
+      `Normal mapping`: każda ściana ma jeden jednolity kolor. Zaznaczyć z powrotem
+- [ ] `View mode` równe `Normals as colour` przy `Lighting` równym `Gouraud`: ściany są
+      jednolite także przy zaznaczonym `Normal mapping` (widok pokazuje normalne, których
+      używa wybrany tryb). Przy `Unlit` rysunek fug wraca
+- [ ] `View mode` równe `Textured`, `Lighting` równe `Gouraud`: przełączanie
+      `Normal mapping` niczego nie zmienia. To samo przy `Unlit`
+- [ ] brakująca mapa normalnych: zamknąć program, zmienić nazwę kopii
+      `build\debug\Debug\assets\textures\floor_stone_normal.png` (kopii, nie pliku w
+      repozytorium), uruchomić. Oczekiwane: podłoga ma teksturę koloru, ale pod latarką jest
+      płaska (płaska mapa zastępcza), ściany bez zmian, w konsoli jedna linia `[error]`, w
+      panelu Assets przy części `floor_stone` napis `normal map: none (flat)` i sekcja
+      `Failed to load` z nazwą pliku. Przywrócić nazwę pliku
+- [ ] `Reload shaders` przy włączonych mapach: wszystkie pięć linii kończy się napisem
+      `: OK`, relief nie znika (numery jednostek i przełącznik są wysyłane w każdej klatce)
+- [ ] błąd w drugim pliku dołączanym: dopisać literę w `common/normal_map.glsl` w kopii
+      `assets` obok programu, `Reload shaders`. Oczekiwane: programy `lit` i `textured` mają
+      `FAILED` z nazwą `common/normal_map.glsl` i numerem linii w tym pliku, pozostałe trzy
+      `: OK`, obraz się nie zmienia. Cofnąć zmianę i przeładować
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tymi wywołanymi
+      celowo
 
 ## 14. Powiązane dokumenty
 

@@ -52,4 +52,4 @@ W M4 **nie ma korekcji gamma i nie ma tekstur sRGB**. Wartości z tekstur są u�
 
 - W M7, przy framebufferze HDR: wtedy tekstury koloru dostają format sRGB, a ostatni przebieg koduje wynik. To zaplanowany koniec tej notatki.
 - Wcześniej, gdyby prowadzący wymagał poprawnej gammy już przy temacie 6. Najmniejsza poprawna zmiana to tekstury koloru w `GL_SRGB8` (parametr przy tworzeniu `gfx::Texture2D`) i kodowanie na końcu trzech shaderów fragmentów labiryntu, z ponownym dobraniem świateł.
-- Przy mapach normalnych (następna część M4) trzeba pamiętać o odwrotnej stronie tej decyzji: mapa normalnych przechowuje kierunki, a nie kolory, i **nigdy** nie może być teksturą sRGB. Gdy w M7 tekstury koloru staną się sRGB, format musi być wybierany dla każdej tekstury osobno.
+- Mapy normalnych (druga część M4, już zrobione: [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 3 i pułapka 3) mają odwrotną stronę tej decyzji: mapa normalnych przechowuje kierunki, a nie kolory, i **nigdy** nie może być teksturą sRGB. Gdy w M7 tekstury koloru staną się sRGB, format musi być wybierany dla każdej tekstury osobno.
