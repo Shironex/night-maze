@@ -1,5 +1,5 @@
 # Shared helpers of the Blender scripts: scene reset, box building, UV projection, textured
-# material, OBJ export with fixed options and review renders.
+# material with a normal map, OBJ export with fixed options and review renders.
 # See docs/guides/blender.md
 #
 # Two coordinate systems meet in this file:
@@ -139,18 +139,41 @@ def box_project_uvs(mesh):
             uv_layer.data[loop_index].uv = (u / METRES_PER_UV_UNIT, v / METRES_PER_UV_UNIT)
 
 
-def assign_textured_material(model, material_name, texture_file):
-    """Gives the object one material whose color comes from a PNG in assets/textures."""
+def assign_textured_material(model, material_name, texture_file, normal_map_file):
+    """Gives the object one material with a color picture and a normal map.
+
+    Both are names of PNG files in assets/textures.
+    """
     material = bpy.data.materials.new(material_name)
     nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    # Every new material already has this node: it describes the surface.
+    surface = nodes["Principled BSDF"]
 
     # The exporter writes map_Kd only for an Image Texture node that is connected to the
-    # Base Color input of the Principled BSDF node, which every new material already has.
+    # Base Color input of the Principled BSDF node.
     image_node = nodes.new("ShaderNodeTexImage")
     image_node.image = bpy.data.images.load(os.path.join(TEXTURES_DIR, texture_file))
-    material.node_tree.links.new(
-        image_node.outputs["Color"], nodes["Principled BSDF"].inputs["Base Color"]
-    )
+    links.new(image_node.outputs["Color"], surface.inputs["Base Color"])
+
+    # The normal map: a second Image Texture node, then a Normal Map node that turns its
+    # colors into directions, then the Normal input of the surface. For this chain the
+    # exporter writes the line "map_Bump -bm 1.000000 <file>" (-bm is the Strength of the
+    # Normal Map node, which is 1 by default).
+    normal_image_node = nodes.new("ShaderNodeTexImage")
+    normal_image_node.image = bpy.data.images.load(os.path.join(TEXTURES_DIR, normal_map_file))
+    # The picture holds directions, not colors, so Blender must not convert it from sRGB.
+    normal_image_node.image.colorspace_settings.name = "Non-Color"
+    normal_map_node = nodes.new("ShaderNodeNormalMap")
+    # Tangent space of the UV map that box_project_uvs creates.
+    normal_map_node.space = "TANGENT"
+    normal_map_node.uv_map = "uv"
+    links.new(normal_image_node.outputs["Color"], normal_map_node.inputs["Color"])
+    links.new(normal_map_node.outputs["Normal"], surface.inputs["Normal"])
+
+    # The review renders (Workbench) show the picture of the active image node. Without
+    # this line that would be the node created last: the normal map.
+    nodes.active = image_node
 
     model.data.materials.append(material)
 

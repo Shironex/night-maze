@@ -1,11 +1,13 @@
 # Moduł assets: wczytywanie obrazów
 
-Kamień milowy: M2 + M3. Temat wykładu: 5 (Tekstury), część po stronie procesora.
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszły dwa pliki map normalnych i dwa testy na nich). Temat wykładu: 5 (Tekstury), część po stronie procesora.
 Kod: [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp), testy w [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), biblioteka dekodująca w [`external/stb/stb_image.c`](../../../external/stb/stb_image.c).
 
 Część modułu `assets`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument opisuje drogę od pliku PNG na dysku do tablicy bajtów w pamięci programu. Co dzieje się z tą tablicą dalej, czyli jak powstaje z niej tekstura na karcie graficznej, opisuje [`../gfx/textures.md`](../gfx/textures.md). Bibliotekę, która dekoduje plik, opisuje [`../../libraries/stb_image.md`](../../libraries/stb_image.md). Skąd biorą się same pliki PNG, opisuje [`../../guides/blender.md`](../../guides/blender.md), sekcja 7.
 
 **Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go woła: `assets::AssetCache::texture` wczytuje nim każdy plik tekstury raz i tworzy z wyniku `gfx::Texture2D` (sekcja 5.6). Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń, testy przechodzą, a tekstury w grze mają na zrzutach ekranu właściwą orientację. **Na macOS ten kod nie był jeszcze budowany.**
+
+Od drugiej części M4 ten sam loader, bez żadnej zmiany w kodzie, wczytuje też **mapy normalnych** (normal maps): `wall_stone_normal.png` i `floor_stone_normal.png`. Dla loadera to zwykłe obrazy RGB 512 x 512. Zmieniły się tylko testy: doszły dwa przypadki, które czytają te pliki i sprawdzają ich zawartość (sekcja 5.7). Kolejność wierszy z sekcji 2.3 ma dla map normalnych dodatkowe znaczenie, opisane w sekcji 2.6.
 
 ## 1. Po co to jest
 
@@ -117,6 +119,8 @@ Dlaczego nie zrobić tego w shaderze (`1.0 - v`)? Obraz wyszedłby taki sam, tak
 
 Odwrócenie raz, przy wczytaniu, nie kosztuje też nic w czasie rysowania.
 
+Od kiedy są mapy normalnych, doszedł czwarty powód, już nie organizacyjny: odwrócenie obrazu mapy normalnych w shaderze przez `1 - v` wymagałoby jeszcze zmiany znaku zielonego kanału, a odwrócenie wierszy w loaderze nie wymaga niczego (sekcja 2.6).
+
 ### 2.4 Ścieżki ze znakami spoza ASCII
 
 Na Windowsie nazwa pliku to tekst w UTF-16 (znaki szerokie). Stare funkcje C (`fopen`) przyjmują nazwę jako `char*` w **lokalnej stronie kodowej**, która mieści tylko część znaków: na polskim Windowsie strona 1250 ma polskie litery, ale nie ma na przykład znaków japońskich. Ścieżka ze znakiem spoza strony kodowej nie da się wtedy w ogóle zapisać ([`../core/paths.md`](../core/paths.md), sekcja 2.6).
@@ -132,6 +136,23 @@ Brak pliku z teksturą nie jest powodem, żeby zatrzymać program: gra może nar
 - wypisuje błąd **raz** przez `core::logError`,
 - ten sam tekst zostawia w parametrze `error`, żeby wołający mógł go pokazać na przykład w panelu debug,
 - nie zmienia parametru `image`.
+
+### 2.6 Kolejność wierszy a zielony kanał mapy normalnych
+
+Mapa normalnych to obraz, w którym trzy kanały piksela nie są kolorem, tylko kierunkiem: czerwony to składowa x, zielony y, niebieski z, każda przeliczona z zakresu od -1 do 1 na bajt od 0 do 255 (`bajt = (składowa * 0.5 + 0.5) * 255`). Kierunek jest zapisany względem samego obrazu: x to "w prawo na obrazie", y to "w górę obrazu", z to "z powierzchni na zewnątrz". Płaski teksel `(0, 0, 1)` ma bajty `(128, 128, 255)`. Pełny opis jest w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcje 2.3 do 2.5.
+
+Dla loadera wynika z tego jedno pytanie: **czy odwrócenie wierszy psuje zielony kanał?** Nie, i właśnie dlatego wszystko się zgadza bez żadnej poprawki:
+
+| Ogniwo | Co ustala |
+|---|---|
+| skrypt tekstur ([`../../guides/blender.md`](../../guides/blender.md), sekcja 7.2) | liczy nachylenie w tablicy, w której wiersz 0 jest **dolnym** wierszem obrazu. Zielony kanał znaczy więc "w górę obrazu" (konwencja OpenGL, +Y w górę) |
+| plik PNG | zapisuje ten sam obraz od górnego wiersza. Treść pikseli się nie zmienia, zmienia się tylko kolejność wierszy w pliku |
+| `loadImage` | odwraca kolejność wierszy z powrotem: wiersz 0 w `Image::pixels` jest znów dolnym wierszem obrazu, czyli `v = 0` |
+| UV modeli | `v` rośnie w górę ściany ([`obj-loader.md`](obj-loader.md), sekcja 2.8) |
+
+Loader przestawia **wiersze**, a bajtów w pikselach nie dotyka. Obraz na ścianie stoi więc tak, jak go skrypt policzył, a "w górę obrazu" znaczy "tam, gdzie rośnie `v`". Zielony kanał nie wymaga zmiany znaku w żadnym miejscu: ani w skrypcie, ani w loaderze, ani w shaderze.
+
+Pomyłka w tym łańcuchu nie daje żadnego błędu, tylko odwrócony relief: fugi, które powinny być wgłębieniami, wyglądałyby jak grzbiety. Na zwykłej teksturze kamienia odwrócenie wierszy prawie nie rzuca się w oczy (pułapka 1), na mapie normalnych widać je pod każdym światłem. Dlatego konwencję sprawdza osobny test na prawdziwym pliku (sekcja 5.7).
 
 ## 3. Jak to działa w OpenGL
 
@@ -152,7 +173,7 @@ Ta sekcja nie ma zastosowania: loader nie ma shaderów i żaden shader nie widzi
 | [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp) | struktura `assets::Image`, deklaracja `assets::loadImage`. Dołącza tylko `<filesystem>`, `<string>` i `<vector>` |
 | [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp) | stała `KEEP_FILE_CHANNELS`, funkcje pomocnicze `readBinaryFile` i `fail`, implementacja `loadImage`. Jedyny plik projektu, który dołącza `<stb_image.h>` |
 | [`external/stb/stb_image.c`](../../../external/stb/stb_image.c) | dwie linie, które kompilują implementację stb_image do biblioteki `stb_image` ([`../../libraries/stb_image.md`](../../libraries/stb_image.md), sekcja 2) |
-| [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 7 przypadków testowych (sekcja 5.7) |
+| [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 9 przypadków testowych (sekcja 5.7) |
 
 Oba pliki z `src/assets/` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: `core/Log.hpp` (wypisanie błędu), `core/Paths.hpp` (`core::pathText`, czyli ścieżka jako tekst UTF-8 do komunikatu), stb_image i biblioteka standardowa. Nic z GLAD, GLFW, GLM, `gfx/`, `scene/` ani `game/`.
 
@@ -395,11 +416,13 @@ Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopi�
 
 ### 5.7 Testy
 
-[`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), 7 przypadków, 35 asercji. Jak czytać i uruchamiać testy: [`../../libraries/doctest.md`](../../libraries/doctest.md).
+[`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), 9 przypadków, 57 asercji (przed mapami normalnych: 7 i 35). Jak czytać i uruchamiać testy: [`../../libraries/doctest.md`](../../libraries/doctest.md).
 
 | Przypadek testowy | Co sprawdza |
 |---|---|
 | `the stone textures of the game load with the size and channels they were made with` | prawdziwe pliki `wall_stone.png` i `floor_stone.png`: 512 x 512, 3 kanały, 786432 bajty, pusty tekst błędu |
+| `the normal maps of the game load, and most of their texels are flat` | nowy. Prawdziwe pliki `wall_stone_normal.png` i `floor_stone_normal.png`: 512 x 512, 3 kanały, pusty tekst błędu. Średnia całego obrazu: czerwony i zielony w granicach 2% od 128, niebieski powyżej 245 |
+| `the wall normal map follows the OpenGL convention: a joint is a groove` | nowy. Na `wall_stone_normal.png`: zielony kanał na skosie pod poziomą fugą jest powyżej 150, a nad fugą poniżej 106. Czerwony kanał na skosie po lewej stronie pionowej fugi jest powyżej 150, a po prawej poniżej 106. Najmniejszy niebieski bajt całego obrazu jest większy od 128 |
 | `the rows are flipped: the first row in memory is the bottom row of the file` | obrazek 2 x 3 zapisany przez sam test: wynik ma dokładnie te same piksele z wierszami w odwrotnej kolejności |
 | `a path with letters outside ASCII can be loaded` | ten sam obrazek pod nazwą z polskimi literami i jednym znakiem japońskim |
 | `a missing file is reported and leaves the image unchanged` | wynik `false`, w tekście błędu `cannot be opened` i nazwa pliku, obiekt `Image` z wcześniejszą zawartością nietknięty |
@@ -417,6 +440,59 @@ target_compile_definitions(night_maze_tests PRIVATE
 
 W pliku testu makro zamienia się na napis, z którego funkcja pomocnicza `assetsDirectory()` robi ścieżkę (`return NIGHT_MAZE_ASSETS_DIR;` przy typie wyniku `std::filesystem::path`). Program gry tak nie robi (szuka katalogu `assets` obok własnego pliku wykonywalnego, [`../core/paths.md`](../core/paths.md)), bo ma działać także po przeniesieniu na inny komputer. Test jest zawsze uruchamiany z repozytorium, więc ścieżka wkompilowana na stałe mu wystarcza. Z tego samego makra korzystają testy loadera OBJ.
 
+**Średnia kanału: `channelAverage`.** Oba nowe przypadki korzystają z jednej funkcji pomocniczej z anonimowej przestrzeni nazw pliku testów:
+
+```cpp
+double channelAverage(const assets::Image& image, int channel, int firstColumn, int firstRow,
+                      int columnCount, int rowCount) {
+    double sum = 0.0;
+    for (int row = firstRow; row < firstRow + rowCount; ++row) {
+        for (int column = firstColumn; column < firstColumn + columnCount; ++column) {
+            const std::size_t pixel =
+                static_cast<std::size_t>(row) * static_cast<std::size_t>(image.width) +
+                static_cast<std::size_t>(column);
+            sum += image.pixels[pixel * static_cast<std::size_t>(image.channels) +
+                                static_cast<std::size_t>(channel)];
+        }
+    }
+    return sum / (static_cast<double>(columnCount) * static_cast<double>(rowCount));
+}
+```
+
+Zwraca średnią wartość (od 0 do 255) jednego kanału w prostokącie obrazu. Numer piksela to `row * width + column`, a numer bajtu to numer piksela razy liczba kanałów plus numer kanału (0 czerwony, 1 zielony, 2 niebieski): to wzór z sekcji 2.1 i pułapki 6 w użyciu. `row = 0` to pierwszy wiersz w pamięci, czyli **dolny** wiersz obrazu. Rzutowania na `std::size_t` przed mnożeniem są tu z tego samego powodu co w loaderze (pytanie 8).
+
+**Test "większość tekseli jest płaska".** Lica kamieni są prawie płaskie, a dwa skosy każdej fugi są odchylone w przeciwne strony, więc ich odchylenia znoszą się w średniej. Średni kolor całej mapy powinien być bliski `(128, 128, 255)`. Średnia daleka od tej wartości znaczyłaby, że mapa przechyla światło na każdej ścianie w jedną stronę, na przykład przez błąd znaku albo złe zaokrąglenie przy zapisie. `doctest::Approx(128.0).epsilon(0.02)` dopuszcza odchyłkę względną 2%, czyli około 2,5 poziomu jasności. Niebieski nie może dojść do 255, bo skosy i nierówności go obniżają, stąd warunek "powyżej 245".
+
+**Test konwencji: fuga jest wgłębieniem.** To jest sprawdzenie całego łańcucha z sekcji 2.6 na prawdziwym pliku. Najważniejszy fragment:
+
+```cpp
+    constexpr int BLOCK_MIDDLE_FIRST_COLUMN = 24;
+    constexpr int BLOCK_MIDDLE_COLUMN_COUNT = 80;
+    constexpr int TOP_BEVEL_ROW = 58;   // below the joint between the rows 63 and 64
+    constexpr int BOTTOM_BEVEL_ROW = 5; // above the joint at the bottom of the picture
+    const double greenBelowJoint = channelAverage(image, 1, BLOCK_MIDDLE_FIRST_COLUMN,
+                                                  TOP_BEVEL_ROW, BLOCK_MIDDLE_COLUMN_COUNT, 1);
+    const double greenAboveJoint = channelAverage(image, 1, BLOCK_MIDDLE_FIRST_COLUMN,
+                                                  BOTTOM_BEVEL_ROW, BLOCK_MIDDLE_COLUMN_COUNT, 1);
+    CHECK(greenBelowJoint > 150.0);
+    CHECK(greenAboveJoint < 106.0);
+```
+
+Skąd te liczby. Blok ściany ma w teksturze 128 x 64 piksele. Dolny rząd bloków zajmuje wiersze od 0 do 63 (licząc od dołu, bo loader oddaje dolny wiersz jako pierwszy), a jego pierwszy blok kolumny od 0 do 127. Każdy bok bloku ma 3 piksele fugi, a potem 5 pikseli skosu wznoszącego się do lica ([`../../guides/blender.md`](../../guides/blender.md), sekcja 7.2).
+
+| Miejsce | Wiersz albo kolumna | Co to jest | W którą stronę jest zwrócone | Oczekiwany kanał |
+|---|---|---|---|---|
+| skos **pod** poziomą fugą (między wierszami 63 i 64) | wiersz 58 | górna krawędź bloku | w górę, y dodatnie | zielony powyżej 128 (test: powyżej 150) |
+| skos **nad** fugą na dole obrazu | wiersz 5 | dolna krawędź następnego bloku | w dół, y ujemne | zielony poniżej 128 (test: poniżej 106) |
+| skos **po lewej** stronie pionowej fugi (między kolumnami 127 i 128) | kolumna 122 | prawa krawędź bloku | w prawo, x dodatnie | czerwony powyżej 128 (test: powyżej 150) |
+| skos **po prawej** stronie fugi przy lewym brzegu obrazu | kolumna 5 | lewa krawędź bloku | w lewo, x ujemne | czerwony poniżej 128 (test: poniżej 106) |
+
+Średnia jest brana ze środkowych 80 kolumn bloku (dla zielonego) albo ze środkowych 32 wierszy (dla czerwonego), żeby nie zahaczyć o skosy przy rogach bloku. Progi 150 i 106 leżą daleko od 128, więc drobny szum reliefu nie może odwrócić wyniku.
+
+Co test by wykrył: mapę w konwencji DirectX (zielony to -Y) albo grzbiet zamiast wgłębienia (odwrócony znak wysokości w skrypcie), bo wtedy obie pary nierówności wyszłyby odwrotnie. Wykryłby też **brak odwracania wierszy w loaderze**: wiersz 58 byłby wtedy liczony od góry obrazu i trafiał w inne miejsce reliefu. Ostatnia część testu przechodzi po wszystkich bajtach niebieskich (co trzeci bajt, zaczynając od indeksu 2) i sprawdza, że każdy jest większy od 128: każdy teksel wskazuje z powierzchni na zewnątrz, żaden do środka.
+
+Czego ten test **nie** mówi: że relief dobrze wygląda w grze. To zależy jeszcze od stycznych w wierzchołkach i od shadera ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)). Na zrzutach ekranu z Windowsa (2026-10-05) fugi czytają się jako wgłębienia na ścianach, słupkach i podłodze.
+
 **Obrazek testowy.** Test odwracania nie używa PNG. Zapisanie PNG wymagałoby kompresji i sum kontrolnych, czyli kodera w teście. Zamiast tego test zapisuje plik w formacie **PPM** (odmiana binarna, nagłówek `P6`): trzy linie tekstu (znacznik formatu, szerokość i wysokość, największa wartość) i potem surowe bajty pikseli, górny wiersz pierwszy. stb_image czyta ten format. Odwracanie wierszy dzieje się w loaderze **po** dekodowaniu, więc nie zależy od formatu pliku: jeśli działa dla PPM, działa dla PNG.
 
 Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą kolejność wierszy, jak i odwrócenie kolejności w wierszu. Szerokość różna od wysokości wykrywa zamianę tych dwóch liczb.
@@ -425,13 +501,13 @@ Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą
 
 **Linie `[error]` w wyjściu testów.** Trzy przypadki celowo wywołują błąd, a loader wypisuje go przez `core::logError`. W wyjściu programu testowego widać więc trzy linie `[error] Image file ...`. To nie są nieudane testy: wynik podaje ostatnia linia raportu doctest.
 
-**Wynik.** Na Windowsie (MSVC 19.44, konfiguracja Debug, 2026-10-05) wszystkie 7 przypadków przechodzi. Na macOS testy nie były jeszcze uruchamiane.
+**Wynik.** Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie 9 przypadków i 57 asercji tego pliku przechodzi (cały program testowy: 163 przypadki i 62220 asercji w Debug i w Release). Na macOS testy nie były jeszcze uruchamiane. Oba nowe testy czytają pliki PNG zapisane na Windowsie: jeśli skrypt tekstur uruchomiony na Macu da inne bajty, testy nadal powinny przechodzić (progi mają duży zapas), ale tego nikt nie sprawdził.
 
 Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcje 5.9 i 5.10): na zrzutach ekranu z gry na Windowsie tekstury ścian i podłogi nie są odwrócone ani odbite.
 
 ## 6. Panel ImGui
 
-Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
+Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Od drugiej części M4 lista ma cztery pozycje: dwa obrazy koloru i dwie mapy normalnych, których miniatury są jasnoniebieskie (większość tekseli jest bliska `(128, 128, 255)`). Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
 
 ## 7. Pułapki
 
@@ -441,10 +517,11 @@ Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, 
 4. **Ścieżka jako `std::string`.** `path.string()` na Windowsie zamienia nazwę na lokalną stronę kodową i rzuca wyjątek, gdy znaku tam nie ma. Loader nigdzie nie zamienia ścieżki na tekst przed otwarciem pliku, a do komunikatów używa `core::pathText`.
 5. **Liczba kanałów inna niż 3 albo 4.** Loader zostawia kanały pliku. PNG zapisany w programie graficznym jako "grayscale" ma 1 kanał. `gfx::Texture2D` takiego obrazu nie przyjmie: wypisze błąd i tekstura nie powstanie. Tekstury gry trzeba zapisywać jako RGB albo RGBA.
 6. **Zakładanie, że kanałów jest zawsze 3.** Kod, który liczy pozycję piksela jako `(y * width + x) * 3`, przestanie działać dla pierwszego pliku z kanałem alfa. Zawsze `* image.channels`.
-7. **Wiersz 0 to dół.** Kto czyta `Image::pixels` we własnym kodzie (na przykład przyszła mapa wysokości terenu), musi pamiętać, że `y = 0` to dolny wiersz obrazu, a nie górny, jak w programie graficznym.
+7. **Wiersz 0 to dół.** Kto czyta `Image::pixels` we własnym kodzie (na przykład przyszła mapa wysokości terenu), musi pamiętać, że `y = 0` to dolny wiersz obrazu, a nie górny, jak w programie graficznym. Test konwencji mapy normalnych jest pierwszym takim kodem w projekcie: jego numery wierszy liczą się od dołu.
 8. **Użycie `image` po nieudanym wczytaniu.** Funkcja nie zmienia `image` przy błędzie. Jeśli obiekt był pusty, zostaje pusty: szerokość 0 i `pixels.data()` bez danych. Wynik `loadImage` trzeba sprawdzić przed utworzeniem tekstury.
-9. **Kolory w sRGB.** Bajty w pliku PNG są zapisane w przestrzeni sRGB. Loader oddaje je bez zmian i tak samo trafiają na kartę. Poprawna obsługa gammy nie jest jeszcze zrobiona ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10).
+9. **Kolory w sRGB.** Bajty w pliku PNG są zapisane w przestrzeni sRGB. Loader oddaje je bez zmian i tak samo trafiają na kartę. Poprawna obsługa gammy nie jest jeszcze zrobiona ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10). Dla map normalnych "bez zmian" jest dokładnie tym, czego trzeba: ich bajty to kierunki, nie kolory, i żadne przeliczenie z sRGB nie może ich dotknąć. Kiedy w M7 obrazy koloru zaczną być wczytywane jako sRGB, mapy normalnych muszą zostać przy formacie liniowym.
 10. **Brak kopii `assets` na Windowsie.** Program czyta `assets` obok pliku `.exe`, a tam leży kopia robiona podczas budowania ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Nowa tekstura dodana do repozytorium nie istnieje dla programu, dopóki kopia nie zostanie odświeżona. Testów to nie dotyczy: czytają katalog z repozytorium.
+11. **Mapa normalnych z innego programu.** Mapa wypalona w programie trzymającym się konwencji DirectX ma w zielonym kanale -Y. Loader wczyta ją bez błędu, a relief w grze wyjdzie odwrócony w pionie. Loader nie ma jak tego wykryć: to tylko bajty. Poprawką byłoby odwrócenie zielonego kanału w pliku (`255 - g`), nie w loaderze.
 
 ## 8. Ćwiczenia
 
@@ -457,6 +534,8 @@ Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --
 5. **Wymuszone kanały.** Zmień `KEEP_FILE_CHANNELS` na 4 i przypisz `loaded.channels = 4`. Który test przestaje przechodzić i jaką wartość ma teraz czwarty bajt każdego piksela tekstury ściany? Co by się zepsuło, gdybyś zmienił tylko stałą, a `loaded.channels` zostawił?
 6. **Wyciek.** Usuń linię `stbi_image_free(decoded);`. Testy nadal przechodzą. Ile bajtów wycieka przy każdym wywołaniu dla tekstury ściany i dlaczego żaden test tego nie widzi?
 7. **Własny komunikat.** Dopisz test, który podaje jako ścieżkę katalog `assets/textures` zamiast pliku. Zanim go uruchomisz, przewidź, która gałąź błędu się wykona na Windowsie.
+8. **Bez odwracania, a mapa normalnych.** Powtórz ćwiczenie 1 (zamień `(rowCount - 1 - row)` na `row`) i uruchom testy. Oprócz testu odwracania przestaje przechodzić test konwencji mapy normalnych. Która z jego nierówności zawodzi i dlaczego test "większość tekseli jest płaska" przechodzi dalej? (Średnia całego obrazu nie zależy od kolejności wierszy.)
+9. **Piksel na kartce.** Policz ręcznie, pod którym indeksem w `Image::pixels` leży zielony bajt piksela z kolumny 24 i wiersza 58 mapy `wall_stone_normal.png`. (`(58 * 512 + 24) * 3 + 1 = 89161`.)
 
 ## 9. Pytania kontrolne
 
@@ -493,6 +572,15 @@ Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --
 11. **Ile pamięci zajmuje wczytana tekstura ściany i dlaczego więcej niż plik?**
     512 * 512 * 3 = 786432 bajty. Plik PNG jest skompresowany, a tablica pikseli nie.
 
+12. **Czy loader traktuje mapę normalnych inaczej niż obraz koloru?**
+    Nie. To ten sam plik PNG z trzema kanałami i ta sama funkcja `loadImage`, bez żadnej flagi. Różnica jest dopiero w shaderze, który czyta bajty jako kierunek, a nie kolor.
+
+13. **Dlaczego odwracanie wierszy nie psuje zielonego kanału mapy normalnych?**
+    Bo loader zmienia tylko kolejność wierszy, a bajtów w pikselach nie dotyka. Skrypt zapisał w zielonym kanale kierunek "w górę obrazu", a po odwróceniu wierszy góra obrazu jest tam, gdzie `v` rośnie. Zielony kanał znaczy więc "w stronę rosnącego `v`", czyli konwencja OpenGL, i żadna zmiana znaku nie jest potrzebna.
+
+14. **Jak test sprawdza, że fuga mapy normalnych jest wgłębieniem, a nie grzbietem?**
+    Czyta prawdziwy plik `wall_stone_normal.png` i porównuje zielony kanał na dwóch skosach przy poziomej fudze: skos pod fugą (górna krawędź bloku) jest zwrócony w górę i ma zielony powyżej 128, skos nad fugą jest zwrócony w dół i ma zielony poniżej 128. To samo dla czerwonego kanału przy fudze pionowej. Mapa w konwencji DirectX albo grzbiet zamiast wgłębienia dałyby wynik odwrotny.
+
 ## 10. Źródła
 
 - LearnOpenGL, rozdział "Textures" (<https://learnopengl.com/Getting-started/Textures>), części "Loading and creating textures" i "stb_image.h": wczytanie obrazu biblioteką stb i uwaga o odwróconej osi y.
@@ -500,4 +588,4 @@ Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --
 - cppreference: `std::basic_ifstream` (<https://en.cppreference.com/w/cpp/io/basic_ifstream/basic_ifstream>, konstruktor z `std::filesystem::path`), `std::istreambuf_iterator` (<https://en.cppreference.com/w/cpp/iterator/istreambuf_iterator>), `std::copy_n` (<https://en.cppreference.com/w/cpp/algorithm/copy_n>).
 - Opis formatu PPM (Netpbm): <https://netpbm.sourceforge.net/doc/ppm.html>.
 - Specyfikacja PNG (W3C): <https://www.w3.org/TR/png/> (dla ciekawych: kolejność wierszy i kompresja).
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `assets`), [`obj-loader.md`](obj-loader.md) (drugi loader, ta sama obsługa błędów), [`../gfx/textures.md`](../gfx/textures.md) (co dzieje się z pikselami dalej), [`../../libraries/stb_image.md`](../../libraries/stb_image.md), [`../core/paths.md`](../core/paths.md) (ścieżki i znaki szerokie), [`../../guides/blender.md`](../../guides/blender.md) (skąd są tekstury).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `assets`), [`obj-loader.md`](obj-loader.md) (drugi loader, ta sama obsługa błędów), [`../gfx/textures.md`](../gfx/textures.md) (co dzieje się z pikselami dalej), [`../../libraries/stb_image.md`](../../libraries/stb_image.md), [`../core/paths.md`](../core/paths.md) (ścieżki i znaki szerokie), [`../../guides/blender.md`](../../guides/blender.md) (skąd są tekstury i mapy normalnych, sekcja 7), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (co shader robi z mapą normalnych).

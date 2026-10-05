@@ -72,7 +72,9 @@ def build(shots):
 
     model = common.create_mesh_object(NAME, vertices, faces)
     common.box_project_uvs(model.data)
-    common.assign_textured_material(model, "wall_stone", "wall_stone.png")
+    common.assign_textured_material(
+        model, "wall_stone", "wall_stone.png", "wall_stone_normal.png"
+    )
     common.export_obj(NAME)
 
     if shots:
