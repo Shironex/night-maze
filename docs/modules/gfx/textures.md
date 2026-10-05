@@ -1,11 +1,13 @@
 # Moduł gfx: tekstury
 
 Kamień milowy: M2 + M3. Temat wykładu: 5 (Tekstury).
-Kod: [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp), settery `setInt` i `setVec3` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp).
+Kod: [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp), shadery [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag), settery `setInt` i `setVec3` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument zakłada znajomość shaderów ([`shaders.md`](shaders.md)), uniformów ([`uniforms.md`](uniforms.md)) i atrybutów wierzchołka ([`buffers-vao.md`](buffers-vao.md)). Skąd biorą się bajty obrazu, opisuje [`../assets/images.md`](../assets/images.md), a skąd pliki PNG i współrzędne UV modeli, [`../../guides/blender.md`](../../guides/blender.md), sekcje 6 i 7. Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś:** klasa `gfx::Texture2D` i dwa nowe settery uniformów są napisane. **Gra ich jeszcze nie używa:** `NightMazeApp` nadal rysuje kostkę o kolorowych ścianach, żaden shader projektu nie próbkuje tekstury i panelu Textures nie ma. Wpięcie tekstur w klatkę i panel to następny krok tego kamienia milowego. Klasa wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9). **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.**
+**Stan na dziś:** gra rysuje labirynt z teksturami. Ściany, słupki i płytki podłogi są rysowane programem z pary `textured.vert` i `textured.frag` (sekcja 4). Tekstury tworzy i przechowuje `assets::AssetCache` ([`../assets/asset-cache.md`](../assets/asset-cache.md)), a wiąże je i ustawia sampler `game::MazeRenderer` ([`../game/maze-rendering.md`](../game/maze-rendering.md)). Filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Klasa `Texture2D` wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9), a obraz w grze na zrzutach ekranu (sekcja 5.10). Widżetów panelu nikt jeszcze nie klikał ręcznie. **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.**
+
+W tym kamieniu milowym **nie ma oświetlenia** (dochodzi w M4), więc scena jest równo jasna: kolor piksela to kolor tekstury pomnożony przez kolor materiału.
 
 Dwie rzeczy z tematu 5 są celowo odłożone: **mapy normalnych** (normal maps) dojdą w M4 razem z oświetleniem, bo bez światła nie mają czego zmieniać, a **przestrzeń sRGB i korekcja gamma** nie są jeszcze obsługiwane (sekcja 2.10).
 
@@ -13,14 +15,14 @@ Dwie rzeczy z tematu 5 są celowo odłożone: **mapy normalnych** (normal maps) 
 
 Kostka z M1 ma kolor zapisany w wierzchołkach: sześć ścian, sześć kolorów. Ściana z kamienia tak się nie da zrobić: wzór fug i kamieni to tysiące szczegółów, a ściana ma kilka trójkątów. **Tekstura** (texture) to obraz przechowywany na karcie graficznej, z którego shader fragmentów odczytuje kolor osobno dla każdego piksela ekranu. Geometria zostaje prosta, a szczegół pochodzi z obrazu.
 
-Żeby to zadziałało, potrzebne są cztery rzeczy. Ten dokument opisuje pierwszą w kodzie, a pozostałe jako teorię i plan:
+Żeby to zadziałało, potrzebne są cztery rzeczy:
 
 | Rzecz | Gdzie | Stan |
 |---|---|---|
 | obraz na karcie graficznej i sposób jego odczytu | klasa `gfx::Texture2D` | jest |
 | współrzędne tekstury w wierzchołkach | atrybut `uv` w `gfx::Vertex`, pliki OBJ ([`mesh.md`](mesh.md), [`../assets/obj-loader.md`](../assets/obj-loader.md)) | osobny dokument |
-| uniform typu `sampler2D` i funkcja `texture()` w shaderze | shadery | następny krok (sekcja 4) |
-| numer jednostki teksturującej wysłany do samplera | `Shader::setInt` | setter jest, nikt go jeszcze nie woła |
+| uniform typu `sampler2D` i funkcja `texture()` w shaderze | `assets/shaders/textured.frag` | jest (sekcja 4) |
+| numer jednostki teksturującej wysłany do samplera | `Shader::setInt`, wołany w `MazeRenderer::draw` | jest (sekcja 4.3) |
 
 Klasa `gfx::Texture2D`:
 
@@ -29,7 +31,7 @@ Klasa `gfx::Texture2D`:
 | konstruktor | tworzy teksturę 2D z surowych bajtów (3 albo 4 kanały), buduje mipmapy, tworzy obiekt samplera z filtrowaniem trójliniowym i zawijaniem `GL_REPEAT` |
 | `bind(unit)` | wiąże teksturę i jej sampler z jednostką teksturującą o podanym numerze |
 | `setFilter`, `setAnisotropy` | zmieniają sposób próbkowania w działającym programie |
-| `filter`, `anisotropy`, `maxAnisotropy`, `id`, `width`, `height`, `isValid` | odczyt stanu, między innymi dla przyszłego panelu |
+| `filter`, `anisotropy`, `maxAnisotropy`, `id`, `width`, `height`, `isValid` | odczyt stanu, między innymi dla panelu Assets |
 | destruktor | usuwa oba obiekty OpenGL |
 
 Klasa przyjmuje **surowe bajty**, a nie `assets::Image`. Warstwa `gfx` nie zna warstwy `assets`: tekstura może powstać z pliku, ale też z tablicy wyliczonej w kodzie.
@@ -195,7 +197,7 @@ Liczba musi być ta sama w obu miejscach. Identyfikator tekstury (tu 7) nie poja
 
 `glBindTexture` nie przyjmuje numeru jednostki. Działa na jednostce **aktywnej**, którą wybiera `glActiveTexture`. To ten sam model "wybierz, potem działaj" co przy buforach ([`buffers-vao.md`](buffers-vao.md), sekcja 2.2), tylko o jeden poziom głębszy: najpierw jednostka, potem cel.
 
-**Dlaczego numer ustawiam z C++.** GLSL od wersji 4.20 pozwala wpisać jednostkę wprost w shaderze: `layout(binding = 0) uniform sampler2D uTexture;`. Projekt używa `#version 410 core`, bo to najnowsza wersja na macOS, a tam ten zapis nie istnieje. Zostaje `glUniform1i`. Sampler ma po linkowaniu wartość 0, jak każdy uniform, więc program z jedną teksturą na jednostce 0 działa nawet bez `setInt`. Mimo to wysyłam numer jawnie: przy drugiej teksturze przestałoby to działać, a przyczyny nie byłoby widać.
+**Dlaczego numer ustawiam z C++.** GLSL od wersji 4.20 pozwala wpisać jednostkę wprost w shaderze: `layout(binding = 0) uniform sampler2D uTexture;`. Projekt używa `#version 410 core`, bo to najnowsza wersja na macOS, a tam ten zapis nie istnieje. Zostaje `glUniform1i`. Sampler ma po linkowaniu wartość 0, jak każdy uniform, więc program z jedną teksturą na jednostce 0 działa nawet bez `setInt`. Mimo to wysyłam numer jawnie: przy drugiej teksturze przestałoby to działać, a przyczyny nie byłoby widać. W grze robi to `MazeRenderer::draw` w każdej klatce (sekcja 4.3).
 
 ### 2.8 Parametry tekstury a obiekt samplera
 
@@ -334,67 +336,229 @@ Niekompletna tekstura **nie zgłasza błędu**. Każdy odczyt z niej zwraca czar
 
 ## 4. Shadery
 
-**Żaden shader projektu nie próbkuje jeszcze tekstury.** `basic.vert` i `basic.frag` nadal przekazują kolor wierzchołka ([`shaders.md`](shaders.md), sekcja 4) i ten krok ich nie zmienia. Poniżej jest GLSL, którego potrzebuje shader z teksturą: to opis tego, co doda następny krok, a nie kod z repozytorium. Parę shaderów z tymi samymi elementami (atrybut UV, `sampler2D`, `texture()`), tylko bez macierzy, zbudowałem w programie sprawdzającym z sekcji 5.9.
+Labirynt rysuje para [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag). To pierwsze shadery projektu, które czytają teksturę. Para `basic.vert` i `basic.frag` ([`shaders.md`](shaders.md), sekcja 4) została bez zmian i nadal rysuje kostkę kolorem z wierzchołków. Trzecia para, `color.vert` i `color.frag`, rysuje linie pudełek kolizji jednym kolorem i opisuje ją [`../scene/collision.md`](../scene/collision.md), sekcja 4.
 
-Shader wierzchołków dostaje współrzędne tekstury jako atrybut i przekazuje je dalej:
+W tych shaderach **nie ma oświetlenia**: żadnego wektora światła, żadnego iloczynu skalarnego z normalną. Normalna jest przekazywana do shadera fragmentów tylko po to, żeby dało się ją pokazać jako kolor (tryb podglądu 1). Oświetlenie i mapy normalnych to M4.
+
+### 4.1 `textured.vert`: shader wierzchołków
 
 ```glsl
-// Przykład, nie kod projektu.
 #version 410 core
+// Vertex shader of textured models: places the vertex on the screen and passes its
+// texture coordinate and its normal on to the fragment shader.
+// See docs/modules/gfx/textures.md
 
-layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec2 aUv;        // texture coordinates of this vertex
+// Inputs: the three attributes of gfx::Vertex. The location numbers are the constants
+// POSITION_ATTRIBUTE, NORMAL_ATTRIBUTE and UV_ATTRIBUTE of src/gfx/Vertex.hpp.
+layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the model
+layout(location = 1) in vec3 aNormal;   // direction the surface faces, length 1
+layout(location = 2) in vec2 aUv;       // texture coordinate (u, v), v = 0 is the bottom
 
-uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProjection;
+// Uniforms: set from C++ (gfx::Shader::setMat4). uModel changes with every object,
+// uView and uProjection are the same for the whole frame.
+uniform mat4 uModel;      // local space to world space: where the object stands
+uniform mat4 uView;       // world space to view space: where the camera is and looks
+uniform mat4 uProjection; // view space to clip space: perspective
 
-out vec2 vUv;                            // interpolated across the triangle
+// Outputs to the fragment shader. The rasterizer blends them between the three vertices
+// of a triangle. The fragment shader declares inputs with the same names and types.
+out vec2 vUv;     // texture coordinate
+out vec3 vNormal; // normal in world space
 
 void main() {
-    vUv = aUv;
+    // The same chain as in basic.vert, read from right to left: local space, world
+    // space, view space, clip space.
     gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+
+    // The texture coordinate goes through unchanged: it belongs to the surface, not to
+    // the place where the object stands.
+    vUv = aUv;
+
+    // A normal is a direction, not a point, so it must turn with the object but must not
+    // be moved by the translation. mat3(uModel) is the upper left 3 x 3 part of the
+    // matrix: rotation and scale without the translation. That is correct as long as
+    // the scale is the same on all three axes, which holds for every object of the
+    // maze (scale 1). Unequal scale would need the inverse transpose of that matrix.
+    vNormal = mat3(uModel) * aNormal;
 }
 ```
 
-Shader fragmentów próbkuje teksturę:
+| Linia | Znaczenie |
+|---|---|
+| `#version 410 core` | GLSL 4.10, profil Core: najnowsza wersja dostępna na macOS ([`shaders.md`](shaders.md), sekcja 2.4) |
+| `layout(location = 0) in vec3 aPosition;` | atrybut numer 0: pozycja w przestrzeni lokalnej modelu. Numer to stała `POSITION_ATTRIBUTE` z [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp) |
+| `layout(location = 1) in vec3 aNormal;` | atrybut numer 1 (`NORMAL_ATTRIBUTE`): normalna wierzchołka. Uwaga: w `basic.vert` numer 1 to **kolor**. Numery są umową między konkretnym shaderem a konkretnym VAO ([`mesh.md`](mesh.md), sekcja 2.4), a nie własnością numeru |
+| `layout(location = 2) in vec2 aUv;` | atrybut numer 2 (`UV_ATTRIBUTE`): współrzędne tekstury, dwie liczby. `v = 0` to dół obrazu (sekcja 2.1) |
+| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `basic.vert` ([`../scene/transforms.md`](../scene/transforms.md), sekcja 4). `uModel` zmienia się dla każdego obiektu, dwie pozostałe są ustawiane raz na klatkę |
+| `out vec2 vUv;` | wyjście do shadera fragmentów. Rasteryzator interpoluje je między trzema wierzchołkami trójkąta, więc każdy fragment dostaje własne `(u, v)` |
+| `out vec3 vNormal;` | normalna w przestrzeni świata, też interpolowana |
+| `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | ten sam łańcuch co w `basic.vert`, czytany od prawej: przestrzeń lokalna, świata, widoku, przycinania. `1.0` w czwartej składowej oznacza punkt, więc przesunięcie z macierzy działa |
+| `vUv = aUv;` | współrzędne tekstury przechodzą bez zmian. Należą do powierzchni modelu, a nie do miejsca, w którym model stoi: przestawiona ściana ma ten sam wzór |
+| `vNormal = mat3(uModel) * aNormal;` | normalna obrócona razem z obiektem, ale nieprzesunięta (wyjaśnienie niżej) |
+
+**Dlaczego `mat3(uModel)`, a nie całe `uModel`.** Normalna jest **kierunkiem**, nie punktem. Kierunek ma się obracać razem z obiektem, ale przesunięcie obiektu nie może go zmieniać: ściana przestawiona o 10 m dalej jest zwrócona w tę samą stronę. `mat3(uModel)` wycina z macierzy 4 x 4 lewy górny blok 3 x 3, czyli obrót i skalę, a gubi czwartą kolumnę z przesunięciem. To samo dałoby `(uModel * vec4(aNormal, 0.0)).xyz`: zero w czwartej składowej też wyłącza przesunięcie ([`../scene/transforms.md`](../scene/transforms.md), sekcja 2).
+
+**Kiedy to jest poprawne.** Tylko wtedy, gdy skala jest taka sama na wszystkich trzech osiach. Skala nierówna (na przykład obiekt rozciągnięty dwa razy w osi x) przekrzywia normalne: przestają być prostopadłe do powierzchni. Poprawna macierz dla normalnych to wtedy odwrócona i transponowana macierz 3 x 3: `transpose(inverse(mat3(uModel)))`. W labiryncie każda macierz modelu to samo przesunięcie albo przesunięcie z obrotem o 90 stopni wokół osi Y, ze skalą 1 ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), więc prostsza postać wystarcza. Sam obrót nie zmienia długości wektora, więc normalna wychodzi z shadera wierzchołków z długością 1.
+
+### 4.2 `textured.frag`: shader fragmentów
 
 ```glsl
-// Przykład, nie kod projektu.
 #version 410 core
+// Fragment shader of textured models: the colour of a fragment is the texture at its
+// texture coordinate, multiplied by a tint. Two debug views show the normal or the
+// texture coordinate as a colour instead. There is no lighting here.
+// See docs/modules/gfx/textures.md
 
-in vec2 vUv;
+// Inputs from the vertex shader: same names and types as its outputs, already
+// interpolated for this fragment.
+in vec2 vUv;     // texture coordinate
+in vec3 vNormal; // normal in world space, no longer exactly of length 1
 
-uniform sampler2D uTexture;              // holds a texture unit number, set with glUniform1i
+// The texture to read. A sampler does not hold a texture: it holds the NUMBER OF A
+// TEXTURE UNIT, set from C++ with gfx::Shader::setInt. The texture bound to that unit
+// (gfx::Texture2D::bind) is the one that is read.
+uniform sampler2D uTexture;
 
+// Colour the texture is multiplied by: the diffuse colour of the material. White
+// (1, 1, 1) leaves the texture unchanged.
+uniform vec3 uTint;
+
+// What to show. The numbers are the values of game::ViewMode in C++.
+//   0: the texture multiplied by the tint (the normal picture)
+//   1: the normal as a colour
+//   2: the texture coordinate as a colour
+uniform int uViewMode;
+
+// Output: the color written to the framebuffer (red, green, blue, alpha).
 out vec4 fragColor;
 
 void main() {
-    fragColor = texture(uTexture, vUv);
+    if (uViewMode == 1) {
+        // Interpolation between vertices can shorten a normal, so its length is brought
+        // back to 1. Each component is then between -1 and 1, and a colour needs 0 to 1:
+        // half of it plus one half. A surface facing +X comes out reddish, +Y (up)
+        // greenish, +Z bluish, and the opposite directions dark in that channel.
+        vec3 normal = normalize(vNormal);
+        fragColor = vec4(normal * 0.5 + 0.5, 1.0);
+    } else if (uViewMode == 2) {
+        // u goes to red and v to green. The coordinates of the models run past 1 (the
+        // texture repeats), so only the fractional part is shown: the colour starts
+        // again from black wherever the texture starts again.
+        fragColor = vec4(fract(vUv), 0.0, 1.0);
+    } else {
+        // texture() reads the texture at vUv with the filter, the mipmaps and the
+        // wrapping set in OpenGL. It returns red, green, blue, alpha. Only the colour is
+        // used: the models are opaque, so alpha is written as 1.
+        vec3 texel = texture(uTexture, vUv).rgb;
+        fragColor = vec4(texel * uTint, 1.0);
+    }
 }
 ```
 
-| Element | Znaczenie |
-|---|---|
-| `in vec2 aUv` | atrybut wierzchołka: dwie liczby, `u` i `v`. Numer `location` musi zgadzać się z opisem atrybutu w VAO ([`buffers-vao.md`](buffers-vao.md), sekcja 4) |
-| `out vec2 vUv` i `in vec2 vUv` | para o tej samej nazwie: shader wierzchołków zapisuje, rasteryzator interpoluje, shader fragmentów czyta wartość dla swojego piksela |
-| `uniform sampler2D uTexture` | sampler tekstury 2D. Wartością jest numer jednostki teksturującej (sekcja 2.7). Samplera nie da się utworzyć ani zmienić w shaderze, można go tylko przekazać do funkcji próbkującej |
-| `texture(uTexture, vUv)` | funkcja wbudowana GLSL: odczytuje teksturę w punkcie `vUv`, stosując filtr, mipmapy, anizotropię i zawijanie ustawione w OpenGL. Zwraca `vec4` (R, G, B, A), każda składowa od 0 do 1 |
+**Wejścia, uniformy, wyjście:**
 
-Trzy uwagi:
+| Linia | Znaczenie |
+|---|---|
+| `in vec2 vUv;` i `in vec3 vNormal;` | para do wyjść shadera wierzchołków: te same nazwy i typy. Zgodność sprawdza linkowanie programu ([`shaders.md`](shaders.md), sekcja 2.6). Wartości są już zinterpolowane dla tego fragmentu |
+| `uniform sampler2D uTexture;` | sampler tekstury 2D. Jego wartością jest **numer jednostki teksturującej** (sekcja 2.7), ustawiany przez `Shader::setInt`. Samplera nie da się utworzyć ani zmienić w shaderze, można go tylko przekazać do funkcji próbkującej |
+| `uniform vec3 uTint;` | kolor, przez który mnożona jest tekstura: kolor rozproszony materiału (linia `Kd` pliku MTL, [`../assets/obj-loader.md`](../assets/obj-loader.md), sekcja 2.3). Biały `(1, 1, 1)` nie zmienia tekstury |
+| `uniform int uViewMode;` | co pokazać: 0, 1 albo 2. Liczby są wartościami typu `game::ViewMode` z [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp): `Textured = 0`, `Normals = 1`, `Uvs = 2`. Shader nie zna typu wyliczeniowego z C++, więc obie strony muszą pilnować tych samych liczb (pułapka 19) |
+| `out vec4 fragColor;` | kolor zapisywany do framebuffera: czerwony, zielony, niebieski, alfa |
+
+**Gałąź `else` (`uViewMode` równe 0, zwykły obraz).** Do tej gałęzi trafia też każda wartość inna niż 1 i 2.
+
+| Linia | Znaczenie |
+|---|---|
+| `texture(uTexture, vUv)` | funkcja wbudowana GLSL: odczytuje teksturę w punkcie `vUv`, stosując filtr, mipmapy, anizotropię i zawijanie ustawione w OpenGL (w projekcie: na obiekcie samplera, sekcja 2.8). Zwraca `vec4` (R, G, B, A), każda składowa od 0 do 1 |
+| `.rgb` | wybór trzech pierwszych składowych ([`shaders.md`](shaders.md), sekcja 2.4). Kanał alfa jest pomijany: modele labiryntu są nieprzezroczyste |
+| `vec3 texel = ...;` | kolor teksela po filtrowaniu |
+| `texel * uTint` | mnożenie dwóch `vec3` w GLSL działa **składowa po składowej**: czerwony razy czerwony, zielony razy zielony, niebieski razy niebieski. To nie jest iloczyn skalarny ani wektorowy |
+| `fragColor = vec4(texel * uTint, 1.0);` | alfa równa 1: piksel w pełni kryjący |
+
+Mnożenie przez `uTint` ma dwa zastosowania. Pierwsze: materiał może przyciemnić albo zabarwić teksturę. Wszystkie trzy materiały gry mają `Kd 1.000000 1.000000 1.000000`, więc dziś tekstury wychodzą bez zmian. Drugie: część modelu **bez** tekstury dostaje białą teksturę zastępczą 1 x 1, a wtedy `texel` to `(1, 1, 1)` i wynikiem jest sam kolor materiału. Jeden shader obsługuje więc oba przypadki bez dodatkowej gałęzi ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 2).
+
+**Gałąź `uViewMode == 1` (normalne jako kolor):**
+
+| Linia | Znaczenie |
+|---|---|
+| `vec3 normal = normalize(vNormal);` | przywraca długość 1. Interpolacja liniowa między dwiema normalnymi o długości 1 daje wektor **krótszy**, jeśli normalne różnią się kierunkiem (cięciwa jest krótsza od łuku). Modele labiryntu mają cieniowanie płaskie ([`../../guides/blender.md`](../../guides/blender.md)), więc trzy wierzchołki trójkąta mają tę samą normalną i skrócenia tu nie ma, ale shader nie może na tym polegać |
+| `normal * 0.5 + 0.5` | składowa normalnej jest w zakresie od -1 do 1, a składowa koloru od 0 do 1. Połowa wartości plus połowa przenosi jeden zakres w drugi: -1 daje 0, 0 daje 0,5, 1 daje 1. Liczba `0.5` jest dodawana do każdej składowej wektora |
+| `fragColor = vec4(..., 1.0);` | kierunek zapisany jako kolor |
+
+Co wychodzi dla powierzchni labiryntu. To arytmetyka ze wzoru, a kierunki są według konwencji z [`../scene/README.md`](../scene/README.md), sekcja 5:
+
+| Powierzchnia | Normalna | Kolor `normal * 0.5 + 0.5` |
+|---|---|---|
+| podłoga i powierzchnie zwrócone w górę | `(0, 1, 0)` | `(0,5, 1, 0,5)`: jasnozielony |
+| powierzchnia zwrócona na wschód (+X) | `(1, 0, 0)` | `(1, 0,5, 0,5)`: jasnoczerwony |
+| powierzchnia zwrócona na zachód (-X) | `(-1, 0, 0)` | `(0, 0,5, 0,5)`: ciemny morski |
+| powierzchnia zwrócona na południe (+Z) | `(0, 0, 1)` | `(0,5, 0,5, 1)`: jasnoniebieski |
+| powierzchnia zwrócona na północ (-Z) | `(0, 0, -1)` | `(0,5, 0,5, 0)`: oliwkowy |
+
+To jest **podgląd diagnostyczny, a nie oświetlenie**. Służy do sprawdzenia dwóch rzeczy: że loader wczytał normalne i że `mat3(uModel)` obraca je razem ze ścianami biegnącymi wzdłuż osi Z. Gdyby normalne się nie obracały, duże powierzchnie wszystkich ścian miałyby tylko dwa kolory (te dla +Z i -Z) zamiast czterech.
+
+**Gałąź `uViewMode == 2` (współrzędne tekstury jako kolor):**
+
+| Linia | Znaczenie |
+|---|---|
+| `fract(vUv)` | część ułamkowa każdej składowej: `fract(1.25)` to `0.25`. Współrzędne modeli wychodzą poza 1, bo tekstura się powtarza (sekcja 2.6). Bez `fract` wszystko powyżej 1 zostałoby przy zapisie do framebuffera obcięte do pełnej jasności i nie byłoby widać, gdzie zaczyna się kolejne powtórzenie |
+| `vec4(fract(vUv), 0.0, 1.0)` | konstruktor `vec4` z `vec2` i dwóch liczb: `u` trafia do kanału czerwonego, `v` do zielonego, niebieski to 0, alfa to 1 |
+
+W jednym powtórzeniu tekstury kolor idzie od czarnego w lewym dolnym rogu `(0, 0)`, przez czerwony przy prawym dolnym `(1, 0)` i zielony przy lewym górnym `(0, 1)`, do żółtego przy prawym górnym `(1, 1)`. Na granicy powtórzeń kolor skacze z powrotem do czerni. Ten podgląd pokazuje, czy współrzędne są odwrócone albo odbite lustrzanie: przy odwróconej osi `v` zielony rósłby w dół.
+
+Trzy uwagi do funkcji `texture`:
 
 - Bajt 255 z pliku staje się w shaderze liczbą 1,0, a bajt 0 liczbą 0,0. To zamiana wykonywana przez kartę dla formatów takich jak `GL_RGB8` (formaty znormalizowane).
 - Tekstura RGB nie ma kanału alfa. `texture()` zwraca wtedy `a = 1,0`.
 - W GLSL 4.10 funkcja nazywa się `texture`. Stare poradniki używają `texture2D`, której w profilu Core już nie ma.
 
-Po stronie C++ takiemu shaderowi trzeba podać numer jednostki. Zmierzone w programie sprawdzającym:
+**Dlaczego `if` w shaderze, a nie trzy programy.** Trzy tryby różnią się jedną gałęzią. Osobne pary plików powielałyby cały shader wierzchołków i wymagały wyboru programu w C++. Warunek stoi na uniformie, więc ma tę samą wartość dla wszystkich fragmentów klatki. Kosztu tego warunku nie mierzyłem.
+
+### 4.3 Strona C++: kto ustawia uniformy
+
+Uniformy ustawiają trzy miejsca. Nazwy są stałymi z [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`uniforms.md`](uniforms.md), sekcja 5.5).
+
+Raz na klatkę, w `NightMazeApp::drawMaze`:
 
 ```cpp
-// Przykład, nie kod projektu.
-shader.use();
-shader.setInt("uTexture", 2);   // the sampler reads texture unit 2
-texture.bind(2);                // the texture and its sampler object go to unit 2
+    m_texturedShader.use();
+    m_texturedShader.setMat4(VIEW_UNIFORM, view);
+    m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
+    // The enum values are the numbers textured.frag compares uViewMode with.
+    m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
 ```
+
+Raz na klatkę, na początku `MazeRenderer::draw`:
+
+```cpp
+    // The sampler reads the unit the textures are bound to below. It is set in every
+    // frame and not once at start-up: after a shader reload all uniforms are back at 0.
+    shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
+```
+
+Dla każdej części modelu i każdego obiektu, w `MazeRenderer::drawInstances`:
+
+```cpp
+    for (const assets::ModelPart& part : model->parts) {
+        part.texture->bind(TEXTURE_UNIT);
+        shader.setVec3(TINT_UNIFORM, part.color);
+
+        for (const glm::mat4& modelMatrix : modelMatrices) {
+            shader.setMat4(MODEL_UNIFORM, modelMatrix);
+            model->mesh.draw(part.firstIndex, part.indexCount);
+        }
+    }
+```
+
+| Uniform shadera | Kto ustawia | Jak często | Wartość |
+|---|---|---|---|
+| `uView`, `uProjection` | `NightMazeApp::drawMaze` | raz na klatkę | macierze kamery ([`../scene/camera.md`](../scene/camera.md), sekcja 5) |
+| `uViewMode` | `NightMazeApp::drawMaze` | raz na klatkę | `static_cast<int>(m_viewMode)`: 0, 1 albo 2 |
+| `uTexture` | `MazeRenderer::draw` | raz na klatkę | `TEXTURE_UNIT`, czyli 0 |
+| `uTint` | `MazeRenderer::drawInstances` | raz na część modelu | `part.color` (kolor `Kd`) |
+| `uModel` | `MazeRenderer::drawInstances` | raz na obiekt | macierz modelu obiektu |
+
+Obie liczby łańcucha z sekcji 2.7 pochodzą z jednej stałej `TEXTURE_UNIT = 0` w `MazeRenderer.cpp`: trafia do samplera przez `setInt` i do `Texture2D::bind`. **Wszystkie tekstury labiryntu idą przez jednostkę 0**: przed rysowaniem kolejnej części wiązana jest tam jej tekstura, a poprzednia przestaje być widoczna dla shadera. Jednostka 1 i dalsze nie są używane, bo shader czyta jedną teksturę naraz. Pętle `drawInstances` omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5.
 
 ## 5. Kod w projekcie
 
@@ -405,6 +569,10 @@ texture.bind(2);                // the texture and its sampler object go to unit
 | [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp) | typ wyliczeniowy `gfx::TextureFilter`, klasa `gfx::Texture2D`. Dołącza tylko `<glad/gl.h>` |
 | [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp) | stałe, trzy funkcje pomocnicze (`hasAnisotropicFiltering`, `queryMaxAnisotropy`, `applyFilter`), implementacja klasy |
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | `setInt` (dla samplerów) i `setVec3`. Opis w [`uniforms.md`](uniforms.md), sekcja 5.4 |
+| [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert), [`textured.frag`](../../../assets/shaders/textured.frag) | shadery modeli z teksturą (sekcja 4) |
+| [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp), [`.cpp`](../../../src/assets/AssetCache.cpp) | użytkownik klasy: tworzy `Texture2D` z każdego pliku obrazu raz, tworzy białą teksturę zastępczą 1 x 1, ustawia filtr i anizotropię wszystkim teksturom naraz ([`../assets/asset-cache.md`](../assets/asset-cache.md)) |
+| [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) | użytkownik klasy: woła `bind` i ustawia sampler (sekcja 4.3) |
+| [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | panel Assets: filtr, anizotropia, tryb podglądu, miniatury (sekcja 6) |
 
 Oba pliki `Texture2D` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` (jeden komunikat błędu) i biblioteka standardowa (`<algorithm>` dla `std::clamp`, `<cstring>` dla `std::strcmp`, `<string>` dla `std::to_string`). Nic z `assets/`, GLM ani GLFW.
 
@@ -762,7 +930,7 @@ Poziom anizotropii i filtr są niezależne. Anizotropia ma sens razem z filtrem 
 
 ### 5.9 Jak to zostało sprawdzone
 
-Klasa potrzebuje kontekstu OpenGL, więc testy jednostkowe jej nie obejmują ([`../../libraries/doctest.md`](../../libraries/doctest.md), sekcja 1). Sprawdziłem ją na Windowsie małym programem poza repozytorium: ukryte okno GLFW 64 x 96 z kontekstem 4.1 Core, biblioteka `engine` z buildu Debug, para shaderów z sekcji 4 (bez macierzy, z dodatkowym uniformem `uTint` typu `vec3`), prostokąt na cały ekran z UV od 0 do 1 i odczyt wyniku przez `glReadPixels`. Konfiguracja: karta NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74, `GL_VERSION` równe `4.1.0 NVIDIA 610.74`, 2026-10-05.
+Klasa potrzebuje kontekstu OpenGL, więc testy jednostkowe jej nie obejmują ([`../../libraries/doctest.md`](../../libraries/doctest.md), sekcja 1). Sprawdziłem ją na Windowsie małym programem poza repozytorium: ukryte okno GLFW 64 x 96 z kontekstem 4.1 Core, biblioteka `engine` z buildu Debug, para shaderów próbnych z tymi samymi elementami co shadery z sekcji 4 (atrybut UV, `sampler2D`, `texture()`, uniform `uTint` typu `vec3`), ale bez macierzy, prostokąt na cały ekran z UV od 0 do 1 i odczyt wyniku przez `glReadPixels`. Konfiguracja: karta NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74, `GL_VERSION` równe `4.1.0 NVIDIA 610.74`, 2026-10-05.
 
 **Tworzenie i stan.** Tekstura z pliku `wall_stone.png` wczytanego przez `assets::loadImage`:
 
@@ -819,15 +987,45 @@ Ostatni wiersz to pomiar, z którego wynika wybór obiektu samplera (sekcja 2.8)
 
 **Kompilacja.** `Texture2D.cpp` i `Shader.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń, generatorem Ninja i generatorem Visual Studio.
 
-**Czego nie sprawdziłem.** Niczego na macOS (sterownik Apple, GLSL 4.10 Metal): ani kompilacji pod clang, ani tego, czy rozszerzenie jest na liście, ani tabeli z anizotropią. Nie sprawdziłem tekstury RGBA z prawdziwego pliku ani tekstur o rozmiarze innym niż potęga dwójki (poza 2 x 3). Lista do wykonania na Macu jest w [`../../guides/build-macos.md`](../../guides/build-macos.md), sekcja 2.
+**Czego nie sprawdziłem.** Niczego na macOS (sterownik Apple, GLSL 4.10 Metal): ani kompilacji pod clang, ani tego, czy rozszerzenie jest na liście, ani tabeli z anizotropią. Nie sprawdziłem tekstury RGBA z prawdziwego pliku ani tekstur o rozmiarze innym niż potęga dwójki (poza 2 x 3 i białą teksturą 1 x 1 w grze). Lista do wykonania na Macu jest w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+
+### 5.10 Tekstury w grze: co zostało sprawdzone
+
+Sekcja 5.9 sprawdza klasę osobno. Tu jest to, co wiadomo o teksturach w działającej grze, na Windowsie (MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74, 2026-10-05).
+
+**Zmierzone.** Build Debug i Release bez ostrzeżeń. Gra startuje bez żadnej linii `[error]` i bez linii `GL_`, czyli cztery nowe pliki shaderów kompilują się i linkują na tym sterowniku, a przy starcie żadne wywołanie nie zgłasza błędu OpenGL.
+
+**Sprawdzone na zrzutach ekranu:**
+
+| Co | Wynik |
+|---|---|
+| widok startowy wewnątrz labiryntu | tekstury na ścianach, słupkach i podłodze są we właściwej orientacji: nie do góry nogami i bez odbicia lustrzanego |
+| tryb podglądu "normalne jako kolor" | obraz zgodny z gałęzią `uViewMode == 1` |
+| tryb podglądu "UV jako kolor" | obraz zgodny z gałęzią `uViewMode == 2` |
+| porównanie filtrów na ścianie widzianej pod ostrym kątem | cztery ustawienia obejrzane obok siebie: `Nearest`, `Bilinear`, `Trilinear` i `Trilinear` z anizotropią 16 |
+| miniatury tekstur w panelu Assets | we właściwej orientacji |
+| brak pliku tekstury | część modelu jest rysowana białą teksturą zastępczą, w konsoli jest jedna linia `[error]` |
+
+**Czego nikt jeszcze nie zrobił ręcznie.** Stany z tabeli (inny tryb podglądu, inny filtr, anizotropia 16) były ustawiane tymczasowymi wstawkami w kodzie, które zostały usunięte, a nie kliknięciem w panel. Lista wyboru `View mode`, lista `Filter` i suwak `Anisotropy` nie były więc jeszcze używane myszą. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nie sprawdzono niczego: ani kompilacji shaderów przez sterownik Apple, ani obrazu.
 
 ## 6. Panel ImGui
 
-Panelu jeszcze nie ma. Planowany jest panel **Textures** (PRD: "podgląd tekstur"), który powstanie razem z wpięciem tekstur w klatkę: miniatura tekstury, jej rozmiar, lista wyboru filtra (`Nearest`, `Bilinear`, `Trilinear`) i suwak anizotropii od 1 do `maxAnisotropy()`. Klasa ma już wszystko, czego panel potrzebuje: `setFilter`, `setAnisotropy` i akcesory. Przełącznik map normalnych z PRD dojdzie w M4.
+Tekstury mają panel **Assets**. PRD nie ma panelu o takiej nazwie: w sekcji 3 wymienia tylko pokazy w ImGui, dla tematu 4 "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Panel Assets z kodu niesie oba pokazy naraz: listę modeli i podgląd tekstur. Kod: [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp). Panel linia po linii i scenariusz pokazu na obronie są w [`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6. Tu jest tylko to, co dotyczy tematu 5:
 
-Jedna rzecz do zapamiętania na ten panel. Miniatura w ImGui (`ImGui::Image`) dostaje sam identyfikator tekstury, a backend OpenGL biblioteki ImGui na czas rysowania paneli wiąże z jednostką 0 **własny obiekt samplera** (filtr liniowy, `GL_CLAMP_TO_EDGE`) i po sobie przywraca poprzedni. To odczyt z pliku `imgui_impl_opengl3.cpp` w wersji używanej przez projekt, nie pomiar. Miniatura w panelu będzie więc zawsze wygładzona liniowo, niezależnie od filtra wybranego dla tekstury. Skutek zmiany filtra będzie widać na ścianach w scenie, a nie na miniaturze.
+| Widżet (etykieta w panelu) | Co zmienia | Co widać |
+|---|---|---|
+| lista `View mode`: `Textured`, `Normals as colour`, `UVs as colour` | uniform `uViewMode` shadera `textured.frag` (sekcja 4.2) | zwykły obraz, normalne jako kolor albo współrzędne tekstury jako kolor |
+| lista `Filter`: `Nearest`, `Bilinear`, `Trilinear` | filtr **wszystkich** tekstur naraz, przez `AssetCache::setFilter`, które woła `Texture2D::setFilter` dla każdej | z bliska: kwadratowe teksele albo wygładzenie. Z daleka: migotanie albo spokojny obraz (sekcje 2.3 i 2.4) |
+| suwak `Anisotropy`, od 1 do `maxAnisotropy()` | poziom anizotropii wszystkich tekstur, przez `AssetCache::setAnisotropy` | ostrość podłogi i ścian widzianych pod ostrym kątem (sekcja 2.5). Gdy sterownik nie ma rozszerzenia, suwak jest wyszarzony i pod nim stoi wyjaśnienie |
+| lista pod nagłówkiem `Textures` | nic, tylko pokazuje | nazwa pliku, rozmiar w pikselach i miniatura 128 x 128 każdej wczytanej tekstury |
 
-Druga rzecz: orientacja miniatury. Dane tekstury mają dolny wiersz jako pierwszy, a `ImGui::Image` umieszcza współrzędną `uv0` (domyślnie `(0, 0)`) w **lewym górnym** rogu obrazka i `uv1` (domyślnie `(1, 1)`) w prawym dolnym. Z wartościami domyślnymi miniatura wyszłaby do góry nogami. Panel musi podać `uv0 = (0, 1)` i `uv1 = (1, 0)`. To wniosek z deklaracji w `imgui.h` i z układu danych, do sprawdzenia przy pisaniu panelu.
+Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
+
+**Miniatura nie pokazuje filtra.** `ImGui::Image` dostaje sam identyfikator tekstury (`Texture2D::id()`). Backend OpenGL biblioteki ImGui (wersja 1.92.9b, plik `imgui_impl_opengl3.cpp`) na czas rysowania paneli wiąże z jednostką 0 **własny obiekt samplera** z filtrem liniowym i zawijaniem `GL_CLAMP_TO_EDGE`, a po sobie przywraca poprzedni. To odczyt z kodu biblioteki, nie pomiar. Miniatura jest więc zawsze wygładzona liniowo, niezależnie od filtra wybranego w panelu. Skutek zmiany filtra i anizotropii widać na ścianach w scenie, a nie na miniaturze. Panel mówi to wprost tekstem pod suwakiem.
+
+**Orientacja miniatury.** Dane tekstury mają dolny wiersz jako pierwszy, a `ImGui::Image` umieszcza współrzędną `uv0` (domyślnie `(0, 0)`) w **lewym górnym** rogu obrazka i `uv1` (domyślnie `(1, 1)`) w prawym dolnym. Z wartościami domyślnymi miniatura wyszłaby do góry nogami. Panel podaje więc `uv0 = (0, 1)` i `uv1 = (1, 0)`. Na zrzucie ekranu z Windowsa miniatury są we właściwej orientacji (sekcja 5.10).
+
+**Stan sprawdzenia.** Widżetów nikt jeszcze nie klikał ręcznie (sekcja 5.10). Na macOS panel nie był uruchamiany.
 
 ## 7. Pułapki
 
@@ -835,9 +1033,9 @@ Druga rzecz: orientacja miniatury. Dane tekstury mają dolny wiersz jako pierwsz
 2. **Obraz do góry nogami.** OpenGL uznaje pierwszy wiersz danych za dolny, pliki obrazów zaczynają od górnego. Klasa wymaga dolnego wiersza jako pierwszego i sama niczego nie odwraca: robi to `assets::loadImage`. Kto poda dane z innego źródła, musi zadbać o kolejność sam.
 3. **Pochylony obraz: wyrównanie wierszy.** Dane RGB o szerokości, dla której `szerokość * 3` nie dzieli się przez 4, wysłane przy domyślnym `GL_UNPACK_ALIGNMENT` równym 4, wychodzą skośnie i z przekłamanymi kolorami (zmierzone na 2 x 3). Tekstury 512 x 512 tego nie pokazują, bo 1536 dzieli się przez 4. Klasa ustawia wyrównanie 1.
 4. **Sampler w shaderze dostaje identyfikator tekstury zamiast numeru jednostki.** `setInt("uTexture", texture.id())` to najczęstsza pomyłka. Przy pierwszej teksturze identyfikator to często 1, a jednostka 0, więc obraz jest czarny (zmierzone: sampler na jednostce bez tekstury daje czerń bez błędu). Do samplera idzie ta sama liczba, którą dostało `bind`.
-5. **`setInt` przed `use()`.** Jak każdy uniform, sampler jest zapisywany w programie bieżącym ([`uniforms.md`](uniforms.md), pułapka 2). Po `reload()` shadera wraca do wartości 0.
+5. **`setInt` przed `use()`.** Jak każdy uniform, sampler jest zapisywany w programie bieżącym ([`uniforms.md`](uniforms.md), pułapka 2). Po `reload()` shadera wraca do wartości 0. Dlatego `MazeRenderer::draw` ustawia `uTexture` w każdej klatce, a nie raz przy starcie (sekcja 4.3).
 6. **Sampler ustawiony przez `glUniform1f`.** Zmierzone: `GL_INVALID_OPERATION`. Uniform typu sampler przyjmuje tylko `glUniform1i`. Dlatego klasa `Shader` ma osobne `setInt`.
-7. **Obiekt samplera zostaje na jednostce.** Po `bind(2)` sampler tej tekstury jest związany z jednostką 2, dopóki inna `Texture2D` nie zrobi tam własnego `bind`. Tekstura związana z tą jednostką ręcznie (`glBindTexture` po identyfikatorze) będzie czytana z **cudzym** filtrem i zawijaniem, a jej własne parametry będą zignorowane (zmierzone). W projekcie wszystkie tekstury mają iść przez `Texture2D::bind`.
+7. **Obiekt samplera zostaje na jednostce.** Po `bind(2)` sampler tej tekstury jest związany z jednostką 2, dopóki inna `Texture2D` nie zrobi tam własnego `bind`. Tekstura związana z tą jednostką ręcznie (`glBindTexture` po identyfikatorze) będzie czytana z **cudzym** filtrem i zawijaniem, a jej własne parametry będą zignorowane (zmierzone). W projekcie wszystkie tekstury gry idą przez `Texture2D::bind`. Jedynym kodem, który wiąże teksturę gry po samym identyfikatorze, jest ImGui przy rysowaniu miniatur, i ono wiąże własny sampler (sekcja 6).
 8. **`glBindSampler(GL_TEXTURE0 + unit, ...)`.** `glActiveTexture` chce stałej `GL_TEXTURE0 + unit`, a `glBindSampler` zwykłego numeru. Pomylenie daje `GL_INVALID_VALUE` (zmierzone).
 9. **Filtr z mipmapami jako filtr powiększenia.** `GL_TEXTURE_MAG_FILTER` przyjmuje tylko `GL_NEAREST` i `GL_LINEAR`. Inna wartość to `GL_INVALID_ENUM` (zmierzone). `TextureFilter` nie pozwala tego wyrazić.
 10. **`GL_CLAMP_TO_EDGE` na ścianach.** UV modeli wychodzą poza zakres od 0 do 1. Bez `GL_REPEAT` górna część ściany byłaby rozciągniętym ostatnim wierszem tekstury.
@@ -849,10 +1047,15 @@ Druga rzecz: orientacja miniatury. Dane tekstury mają dolny wiersz jako pierwsz
 16. **Kopiowanie opakowania.** Jak w `Buffer`: kopia miałaby te same dwa identyfikatory. `= delete` zamienia to w błąd kompilacji.
 17. **Zły wskaźnik albo za krótka tablica.** `glTexImage2D` czyta `szerokość * wysokość * kanały` bajtów spod wskaźnika i nie zna długości tablicy. Zbyt krótka tablica to czytanie cudzej pamięci, bez błędu OpenGL.
 18. **Kolory bez korekcji gamma.** Tekstura jest przechowywana jako `GL_RGB8`, a nie `GL_SRGB8` (sekcja 2.10). Dopóki nie ma oświetlenia, obraz jest poprawny. Po dodaniu światła trzeba będzie to rozstrzygnąć.
+19. **Liczby trybu podglądu w trzech miejscach.** `textured.frag` porównuje `uViewMode` z liczbami 1 i 2, a C++ wysyła `static_cast<int>(m_viewMode)`. Zmiana kolejności wartości w `game::ViewMode` bez zmiany shadera (albo odwrotnie) nie daje żadnego błędu: panel pokazuje jedną nazwę, a ekran inny tryb. Trzecim miejscem jest napis `VIEW_MODE_ITEMS` w panelu Assets, którego kolejność też musi zgadzać się z typem wyliczeniowym.
+20. **Nieustawiony `uTint` daje czarny labirynt.** Uniform typu `vec3` ma po linkowaniu wartość `(0, 0, 0)`. Mnożenie tekstury przez zero to czerń, bez żadnego błędu. Literówka w nazwie `"uTint"` wyglądałaby tak samo, bo położenie -1 jest po cichu ignorowane ([`uniforms.md`](uniforms.md), sekcja 2.3). Stąd nazwy w jednym nagłówku `ShaderUniforms.hpp`.
+21. **`mat3(uModel)` przy nierównej skali.** Normalne wychodzą przekrzywione, gdy obiekt jest rozciągnięty tylko w jednej osi (sekcja 4.1). Dziś żaden obiekt rysowany tym shaderem nie ma skali innej niż 1. Kto doda taki obiekt, musi zmienić shader na `transpose(inverse(mat3(uModel)))`. Dopóki nie ma oświetlenia, błąd byłoby widać tylko w trybie podglądu normalnych.
+22. **Podgląd normalnych to nie światło.** Kolory w trybie 1 nie zależą od żadnego źródła światła ani od kamery. Na obronie nie wolno tego nazwać cieniowaniem.
+23. **Ten sam numer atrybutu, inne znaczenie.** `location = 1` to kolor w `basic.vert` i normalna w `textured.vert`. Siatka `gfx::Mesh` narysowana programem `basic` pokazałaby normalne jako kolory, a VAO kostki nie ma w ogóle atrybutu numer 2, którego oczekuje `textured.vert`. OpenGL nie zgłasza żadnej z tych pomyłek.
 
 ## 8. Ćwiczenia
 
-Gra nie rysuje jeszcze tekstur, więc ćwiczenia od 1 do 6 są na kartce albo na samym kodzie klasy. Ćwiczenia od 7 do 10 wymagają tekstur w scenie i dadzą się wykonać po następnym kroku kamienia milowego.
+Ćwiczenia od 1 do 6 są na kartce albo na samym kodzie klasy. Ćwiczenia od 7 do 12 robi się w działającej grze: filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Ćwiczenie 13 jest znowu na kartce. Po ćwiczeniu, które zmienia kod albo shader, wycofaj zmianę (`git checkout src assets`). Na Windowsie po zmianie pliku shadera trzeba odświeżyć kopię katalogu `assets` obok programu: `cmake --build --preset debug --target copy_assets` ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.5).
 
 1. **Poziomy na kartce.** Tekstura ma 1024 x 256 tekseli. Wypisz rozmiary wszystkich poziomów mipmap. Ile ich jest? (Wskazówka: wymiar, który doszedł do 1, zostaje 1.)
 2. **Pamięć na kartce.** Tekstura 2048 x 2048 RGBA, 8 bitów na kanał. Ile bajtów zajmuje poziom 0, a ile cały łańcuch mipmap w przybliżeniu?
@@ -860,10 +1063,13 @@ Gra nie rysuje jeszcze tekstur, więc ćwiczenia od 1 do 6 są na kartce albo na
 4. **Wyrównanie.** Dla obrazów RGB o szerokościach 1, 2, 3, 4, 5 i 100 policz długość wiersza w bajtach i odstęp między początkami wierszy, jaki założy OpenGL przy `GL_UNPACK_ALIGNMENT` równym 4. Dla których szerokości obraz wyjdzie dobrze mimo złego ustawienia?
 5. **Zawijanie na kartce.** Tekstura to cztery pola w szachownicę (2 x 2 teksele). Prostokąt ma UV od `(-1, -1)` do `(2, 2)`. Narysuj wynik dla `GL_REPEAT`, `GL_MIRRORED_REPEAT` i `GL_CLAMP_TO_EDGE`.
 6. **Łańcuch na kartce.** Tekstura ma identyfikator 7 i jest związana z jednostką 2. Sampler w shaderze nazywa się `uAlbedo`. Zapisz dwa wywołania klas projektu, które je połączą, i trzy wywołania OpenGL, które za nimi stoją. Co zobaczysz, gdy do samplera trafi liczba 7?
-7. **Filtry na żywo** (po wpięciu tekstur). Podejdź do ściany tak blisko, żeby widzieć pojedyncze teksele, i przełącz filtr między `Nearest` i `Bilinear`. Potem spójrz wzdłuż długiego korytarza i przełącz między `Bilinear` i `Trilinear`, poruszając lekko kamerą. Opisz różnicę w obu sytuacjach.
-8. **Anizotropia na żywo** (po wpięciu tekstur). Ustaw `Trilinear`, patrz na podłogę pod ostrym kątem i przesuwaj poziom anizotropii od 1 do maksimum. W której odległości od kamery widać największą zmianę? Dlaczego ściana, na którą patrzysz na wprost, się nie zmienia?
-9. **Bez mipmap** (po wpięciu tekstur). Usuń linię `glGenerateMipmap` z konstruktora i w `bind` usuń linię `glBindSampler`. Co widać i co pokazuje konsola? Przywróć `glBindSampler`: czy obraz wraca dla wszystkich trzech filtrów? Wycofaj zmiany.
-10. **Zawijanie na żywo** (po wpięciu tekstur). Zmień w konstruktorze oba `GL_REPEAT` na `GL_CLAMP_TO_EDGE`. Które części ścian się zmieniły i dlaczego akurat te (porównaj z zakresem UV w [`../../guides/blender.md`](../../guides/blender.md), sekcja 6)? Wycofaj zmianę.
+7. **Filtry na żywo.** Podejdź do ściany tak blisko, żeby widzieć pojedyncze teksele, i przełącz filtr między `Nearest` i `Bilinear`. Potem spójrz wzdłuż długiego korytarza i przełącz między `Bilinear` i `Trilinear`, poruszając lekko kamerą. Opisz różnicę w obu sytuacjach.
+8. **Anizotropia na żywo.** Ustaw `Trilinear`, patrz na podłogę pod ostrym kątem i przesuwaj poziom anizotropii od 1 do maksimum. W której odległości od kamery widać największą zmianę? Dlaczego ściana, na którą patrzysz na wprost, się nie zmienia?
+9. **Bez mipmap.** Usuń linię `glGenerateMipmap` z konstruktora i w `bind` usuń linię `glBindSampler`. Co widać i co pokazuje konsola? Przywróć `glBindSampler`: czy obraz wraca dla wszystkich trzech filtrów? Wycofaj zmiany.
+10. **Zawijanie na żywo.** Zmień w konstruktorze oba `GL_REPEAT` na `GL_CLAMP_TO_EDGE`. Które części ścian się zmieniły i dlaczego akurat te (porównaj z zakresem UV w [`../../guides/blender.md`](../../guides/blender.md), sekcja 6)? Wycofaj zmianę.
+11. **Odcień w shaderze.** W `textured.frag` zamień `texel * uTint` na `texel * vec3(1.0, 0.5, 0.5)` i przeładuj shadery przyciskiem `Reload shaders`. Co się stało z kolorem ścian i dlaczego mnożenie, a nie dodawanie, zostawia ciemne miejsca tekstury ciemnymi? Wycofaj zmianę.
+12. **Podgląd UV bez `fract`.** W gałęzi `uViewMode == 2` zamień `fract(vUv)` na `vUv`, przeładuj shadery i włącz tryb `UVs as colour`. Które części ścian straciły gradient i dlaczego (jaki kolor ma fragment o `u = 1,7`)? Wycofaj zmianę.
+13. **Normalna na kartce.** Ściana biegnąca wzdłuż osi Z powstaje z modelu obróconego o 90 stopni wokół osi Y. Model ma ścianę boczną o normalnej `(0, 0, 1)`. Jaką normalną ma ta ściana w przestrzeni świata i jaki kolor pokaże tryb `Normals as colour`? (Wskazówka: macierz obrotu wokół osi Y z [`../scene/transforms.md`](../scene/transforms.md), sekcja 2. Odpowiedź: `(1, 0, 0)`, kolor `(1, 0,5, 0,5)`.)
 
 ## 9. Pytania kontrolne
 
@@ -916,7 +1122,28 @@ Gra nie rysuje jeszcze tekstur, więc ćwiczenia od 1 do 6 są na kartce albo na
     UV ścian wychodzą celowo poza zakres od 0 do 1, żeby jedno powtórzenie tekstury zajmowało zawsze 2 m. Z przycinaniem do krawędzi część ściany byłaby rozmazanym ostatnim wierszem.
 
 17. **Czego z tematu tekstur projekt jeszcze nie robi?**
-    Nie ma tekstur w scenie ani panelu (następny krok), map normalnych (M4, razem z oświetleniem) ani obsługi sRGB i gammy.
+    Nie ma map normalnych (M4, razem z oświetleniem) ani obsługi sRGB i gammy. Nie ma też oświetlenia, więc scena jest równo jasna.
+
+18. **Co robi linia `vec3 texel = texture(uTexture, vUv).rgb;`?**
+    Odczytuje teksturę z jednostki, której numer jest w samplerze `uTexture`, w punkcie `vUv`, z filtrem, mipmapami i zawijaniem ustawionymi na obiekcie samplera. Z czterech zwróconych składowych bierze trzy pierwsze: kolor bez alfy.
+
+19. **Po co mnożenie przez `uTint`?**
+    To kolor rozproszenia materiału (`Kd`). Mnożenie składowa po składowej przyciemnia albo zabarwia teksturę, a biały jej nie zmienia. Dzięki niemu część modelu bez tekstury, rysowana białą teksturą 1 x 1, wychodzi w samym kolorze materiału i shader nie potrzebuje osobnej gałęzi.
+
+20. **Dlaczego normalna jest mnożona przez `mat3(uModel)`, a nie przez `uModel`, i kiedy to nie wystarcza?**
+    Normalna jest kierunkiem: ma się obracać z obiektem, ale przesunięcie nie może jej zmieniać. `mat3` wycina obrót i skalę bez przesunięcia. Przy skali różnej na osiach normalne przestają być prostopadłe do powierzchni i trzeba użyć odwróconej i transponowanej macierzy 3 x 3. W labiryncie skala wynosi 1.
+
+21. **Dlaczego w trybie podglądu normalnych jest `normalize` i `* 0.5 + 0.5`?**
+    Interpolacja między wierzchołkami może skrócić wektor, więc `normalize` przywraca długość 1. Składowe kierunku są od -1 do 1, a koloru od 0 do 1: połowa plus połowa przenosi jeden zakres w drugi.
+
+22. **Skąd shader wie, który tryb pokazać, i co wiąże liczby 0, 1, 2 z C++?**
+    Z uniformu `int uViewMode`, ustawianego raz na klatkę przez `setInt` wartością `static_cast<int>(m_viewMode)`. Liczby są wartościami typu `game::ViewMode`. Zgodności nikt nie sprawdza automatycznie: to umowa zapisana w komentarzach po obu stronach.
+
+23. **Ile jednostek teksturujących używa gra i dlaczego wystarcza jedna?**
+    Jedną, numer 0. Shader czyta jedną teksturę naraz, a przed każdą częścią modelu `MazeRenderer` wiąże z tą jednostką jej teksturę. Sampler `uTexture` ma przez całą klatkę wartość 0.
+
+24. **Dlaczego miniatura w panelu Assets nie zmienia się po zmianie filtra?**
+    Bo rysuje ją ImGui, które wiąże z jednostką własny obiekt samplera (liniowy, `GL_CLAMP_TO_EDGE`), a obiekt samplera związany z jednostką decyduje o sposobie odczytu. Filtr wybrany w panelu jest zapisany w samplerze tekstury, który trafia na jednostkę tylko przez `Texture2D::bind`.
 
 ## 10. Źródła
 
@@ -924,6 +1151,6 @@ Gra nie rysuje jeszcze tekstur, więc ćwiczenia od 1 do 6 są na kartce albo na
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glTexImage2D` (<https://docs.gl/gl4/glTexImage2D>), `glGenerateMipmap`, `glTexParameter` (lista parametrów i wartości domyślnych), `glSamplerParameter` (<https://docs.gl/gl4/glSamplerParameter>), `glBindSampler` (<https://docs.gl/gl4/glBindSampler>), `glGenSamplers`, `glActiveTexture`, `glBindTexture`, `glPixelStore` (<https://docs.gl/gl4/glPixelStore>), `glGetString` (w tym `glGetStringi`), `glUniform`.
 - Specyfikacja rozszerzenia `GL_EXT_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt>): wartości stałych 0x84FE i 0x84FF, zakres poziomu. Wersja z rdzenia 4.6: `GL_ARB_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/ARB/ARB_texture_filter_anisotropic.txt>).
 - Khronos OpenGL Wiki: "Texture" (<https://www.khronos.org/opengl/wiki/Texture>, w tym kompletność tekstury), "Sampler Object" (<https://www.khronos.org/opengl/wiki/Sampler_Object>, pierwszeństwo samplera przed parametrami tekstury), "Sampler (GLSL)" (<https://www.khronos.org/opengl/wiki/Sampler_(GLSL)>), "Pixel Transfer" (<https://www.khronos.org/opengl/wiki/Pixel_Transfer>, wyrównanie wierszy), "Common Mistakes" (<https://www.khronos.org/opengl/wiki/Common_Mistakes>, części o mipmapach i wyrównaniu).
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy tekstury i panel Assets), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je wiąże przy rysowaniu), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o teksturach).
 - "OpenGL. Księga eksperta" (rozdziały o teksturowaniu i filtrowaniu).
