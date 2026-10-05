@@ -221,8 +221,9 @@ void Shader::use() const {
 
 void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
     // The location is the number of the uniform inside this program. It is looked up on
-    // every call: a few lookups per frame cost nothing, and there is no cache that could
-    // go stale after reload(). -1 means the program has no active uniform with this name.
+    // every call: a few hundred lookups per frame (one per drawn object) are still cheap,
+    // and there is no cache that could go stale after reload(). -1 means the program has
+    // no active uniform with this name.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
 

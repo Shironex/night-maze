@@ -106,7 +106,7 @@ GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 | `m_debugUI.draw(...)` | wykonuje | Wołane już poza grą, w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp), po powrocie z `NightMazeApp::onRender`: rysuje panele ImGui na wierzchu (opis w [`../debug-ui.md`](../debug-ui.md)) |
 | `glfwSwapBuffers(m_handle)` | wykonuje | Wołane w `Application::run` po `onRender`: zamienia bufory, przy vsync czeka na odświeżenie monitora |
 
-Po tych czterech wywołaniach `onRender` rysuje kostkę: `glUseProgram`, trzy macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Tę część klatki opisuje [`../gfx/README.md`](../gfx/README.md), sekcja 6.
+Po tych czterech wywołaniach `onRender` rysuje scenę w trzech częściach: labirynt, kostkę nad komórką wyjścia i, na życzenie, linie pudełek kolizji. Każda część to `glUseProgram`, macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Kolejność i kod tej części klatki opisuje [`README.md`](README.md), sekcje 6.6 i 6.7, a drogę od danych do pikseli [`../gfx/README.md`](../gfx/README.md), sekcja 6.
 
 Viewport ustawiam w każdej klatce, a nie raz przy starcie, i biorę go z `glfwGetFramebufferSize`. Dzięki temu bez żadnego callbacku obsługuję zmianę rozmiaru okna oraz ekrany Retina (sekcja 7). Makro `GL_CHECK` wokół każdego wywołania opisuje [`gl-check.md`](gl-check.md).
 
@@ -125,7 +125,7 @@ Moduł `core` nie tworzy żadnych obiektów OpenGL (żadnych `glGen*`, żadnych 
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (`assets/shaders/basic.vert` i `basic.frag`, `#version 410 core`) należą do warstwy `gfx` i rysują kostkę po wyczyszczeniu ekranu ([`../gfx/shaders.md`](../gfx/shaders.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
+Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (trzy pary plików w `assets/shaders/`: `basic`, `textured` i `color`, wszystkie `#version 410 core`) rysują kostkę, labirynt i linie pudełek kolizji po wyczyszczeniu ekranu ([`../gfx/shaders.md`](../gfx/shaders.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
 
 ## 5. Kod w projekcie
 

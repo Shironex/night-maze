@@ -20,6 +20,8 @@ endfunction()
 
 # ---- engine: reusable layers (assets, core, gfx and scene now; renderer later) --------
 add_library(engine STATIC
+    src/assets/AssetCache.cpp
+    src/assets/AssetCache.hpp
     src/assets/ImageLoader.cpp
     src/assets/ImageLoader.hpp
     src/assets/ObjLoader.cpp
@@ -72,9 +74,10 @@ target_compile_definitions(engine PUBLIC
 night_maze_enable_warnings(engine)
 
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
-# The maze, its generator and its layout in the world are plain data and math. They live
-# in a library of their own, and not in the night_maze executable, so that the test
-# program can link them too: a test cannot link code that is inside another executable.
+# The maze, its generator, its layout in the world and the player are plain data and
+# math. They live in a library of their own, and not in the night_maze executable, so that
+# the test program can link them too: a test cannot link code that is inside another
+# executable.
 add_library(game_logic STATIC
     src/game/Maze.cpp
     src/game/Maze.hpp
@@ -82,24 +85,41 @@ add_library(game_logic STATIC
     src/game/MazeGenerator.hpp
     src/game/MazeLayout.cpp
     src/game/MazeLayout.hpp
+    src/game/MazeWorld.cpp
+    src/game/MazeWorld.hpp
+    src/game/Player.cpp
+    src/game/Player.hpp
 )
-# PUBLIC: game/MazeLayout.hpp includes scene/Collider.hpp and GLM, so whoever includes it
-# needs the include paths of engine. The src/ include root comes from engine as well.
+# PUBLIC: the headers of this library (MazeLayout.hpp, MazeWorld.hpp, Player.hpp) include
+# scene/Collider.hpp and GLM, so whoever includes them needs the include paths of engine.
+# The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
-# NightMazeApp stays in the executable: it needs a window and an OpenGL context, so it is
-# not something a test can run.
+# NightMazeApp and the two classes that draw (MazeRenderer, ColliderLines) stay in the
+# executable: they need a window and an OpenGL context, so they are not something a test
+# can run.
 add_executable(night_maze
     src/main.cpp
+    src/game/ColliderLines.cpp
+    src/game/ColliderLines.hpp
+    src/game/MazeRenderer.cpp
+    src/game/MazeRenderer.hpp
     src/game/NightMazeApp.cpp
     src/game/NightMazeApp.hpp
+    src/game/ShaderUniforms.hpp
     src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
+    src/debug/panels/AssetsPanel.cpp
+    src/debug/panels/AssetsPanel.hpp
     src/debug/panels/CameraPanel.cpp
     src/debug/panels/CameraPanel.hpp
+    src/debug/panels/CollisionPanel.cpp
+    src/debug/panels/CollisionPanel.hpp
+    src/debug/panels/MazePanel.cpp
+    src/debug/panels/MazePanel.hpp
     src/debug/panels/RendererPanel.cpp
     src/debug/panels/RendererPanel.hpp
     src/debug/panels/ShadersPanel.cpp
@@ -120,14 +140,16 @@ add_executable(night_maze_tests
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
+    tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
+    tests/PlayerTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
 night_maze_enable_warnings(night_maze_tests)
-# The loader tests read the real models and textures. A test must not depend on the
-# directory it is started from, so the absolute path of assets/ in the repository is
-# compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
+# The loader tests (of images and of OBJ models) read the real files of the game. A test
+# must not depend on the directory it is started from, so the absolute path of assets/ in
+# the repository is compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
 target_compile_definitions(night_maze_tests PRIVATE
     NIGHT_MAZE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
 )
@@ -136,7 +158,7 @@ target_compile_definitions(night_maze_tests PRIVATE
 # code 0. The program is part of the default build, so the tests always compile.
 add_test(NAME night_maze_tests COMMAND night_maze_tests)
 
-# ---- assets: shaders (later models and textures) next to the executable ---------------
+# ---- assets: shaders, models and textures next to the executable -----------------------
 # The program looks for assets/ in the directory of its own executable (core::assetPath).
 # $<TARGET_FILE_DIR:night_maze> is that directory. It is a generator expression, filled in
 # when the build runs, because the Visual Studio generator adds a Debug/ or Release/ level.

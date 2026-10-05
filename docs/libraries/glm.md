@@ -10,14 +10,17 @@ używa.
 [`../modules/scene/camera.md`](../modules/scene/camera.md)) wołają
 `translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i `normalize`.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
-(sekcja 3.9), żeby wysłać macierz do shadera. Wszystko spotyka się w
-`game::NightMazeApp`, które co klatkę liczy trzy macierze i wysyła je do `basic.vert`, a
-przy sterowaniu kamerą woła `length`, `normalize` i `mix` (sekcja 3.8). Panel Camera
-(`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui mogło edytować pozycję
-kamery. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też kolizje
-(`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa narożniki,
-dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2) i układ labiryntu
-(`src/game/MazeLayout.*`: pozycje ścian i słupków). Ten kod nie buduje żadnej macierzy.
+(sekcja 3.9), żeby wysłać macierz do shadera, a `Shader::setVec3` tak samo wysyła wektor.
+Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz widoku i macierz
+rzutowania, wysyła je do trzech programów shaderów i woła `mix` przy liczeniu pozycji oka
+(sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
+kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
+narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ
+labiryntu (`src/game/MazeLayout.*`: pozycje ścian i słupków) i gracz
+([`src/game/Player.cpp`](../../src/game/Player.cpp): `length` i `normalize` dla kierunku
+ruchu). `src/game/MazeWorld.*` trzyma gotowe macierze modelu jako `std::vector<glm::mat4>`,
+a wierzchołek siatki (`gfx::Vertex`) to dwa `glm::vec3` i jeden `glm::vec2`.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -471,38 +474,36 @@ glm::vec3 Camera::right() const {
   Działa dla liczb i dla wektorów.
 - W GLSL te same funkcje nazywają się tak samo i liczą to samo.
 
-`normalize` i `length` w ruchu kamery, `NightMazeApp::onUpdate` w
-[`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp):
+`normalize` i `length` w ruchu gracza, `Player::update` w
+[`src/game/Player.cpp`](../../src/game/Player.cpp):
 
 ```cpp
-// Two keys at once give a vector longer than 1 (about 1.41 for W and D), which would
-// make diagonal movement faster. Normalizing brings the length back to 1. With no key
-// held the vector is zero and must be left alone: normalizing it divides by zero.
-if (glm::length(direction) > 0.0F) {
-    direction = glm::normalize(direction);
-}
+    // Two keys at once give a vector longer than 1 (about 1.41 for W and D), which would
+    // make diagonal movement faster. Normalizing brings the length back to 1. With no key
+    // held the vector is zero and must be left alone: normalizing it divides by zero.
+    if (glm::length(direction) > 0.0F) {
+        direction = glm::normalize(direction);
+    }
 ```
 
 `direction` to suma kierunków wciśniętych klawiszy. `glm::length` zwraca jej długość
 (pierwiastek z sumy kwadratów składowych), a `glm::normalize` dzieli wektor przez tę długość.
 Warunek jest konieczny: dla wektora zerowego `normalize` dzieli zero przez zero (pułapka 9).
 
-`mix` przy rysowaniu, `NightMazeApp::onRender` w tym samym pliku:
+`mix` przy rysowaniu, `NightMazeApp::onRender` w
+[`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp):
 
 ```cpp
-// The simulation moves the camera in fixed steps, and this frame is drawn at some
-// moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
-// between the position before the last step and the position after it keeps the
-// movement smooth at any frame rate. m_camera.position itself is not changed.
-const glm::vec3 eye =
-    glm::mix(m_previousCameraPosition, m_camera.position, static_cast<float>(alpha));
+    const glm::vec3 feet =
+        glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
+    const glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
 ```
 
-Tak liczy się pozycję do narysowania między dwoma krokami symulacji. Trzeci argument musi
-mieć typ składowych wektora (`float`), a `alpha` przychodzi jako `double`, stąd
-`static_cast<float>`. Pełny opis obu fragmentów:
-[`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcje 2.2, 2.4,
-5.4 i 5.5 (o `alpha`: [`../modules/core/main-loop.md`](../modules/core/main-loop.md), sekcja 2.4).
+Tak liczy się pozycję do narysowania między dwoma krokami symulacji: najpierw stopy gracza,
+potem oko o stałą wysokość wyżej. Trzeci argument `mix` musi mieć typ składowych wektora
+(`float`), a `alpha` przychodzi jako `double`, stąd `static_cast<float>`. Pełny opis obu
+fragmentów: [`../modules/game/player.md`](../modules/game/player.md), sekcja 5, i
+[`../modules/core/main-loop.md`](../modules/core/main-loop.md), sekcje 2.4 i 5.5.
 
 ### 3.9. `glm::value_ptr` i wysyłanie macierzy do shadera
 
@@ -511,8 +512,9 @@ mieć typ składowych wektora (`float`), a `alpha` przychodzi jako `double`, st�
 ```cpp
 void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
     // The location is the number of the uniform inside this program. It is looked up on
-    // every call: a few lookups per frame cost nothing, and there is no cache that could
-    // go stale after reload(). -1 means the program has no active uniform with this name.
+    // every call: a few hundred lookups per frame (one per drawn object) are still cheap,
+    // and there is no cache that could go stale after reload(). -1 means the program has
+    // no active uniform with this name.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
 
@@ -524,14 +526,19 @@ void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
 ```
 
 Nagłówek `<glm/gtc/type_ptr.hpp>` jest dołączony na górze tego pliku. Funkcję omawia linia
-po linii [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), sekcja 5.1. Woła ją
-`NightMazeApp::onRender`, trzy razy na klatkę:
+po linii [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), sekcja 5. Wołają ją
+trzy funkcje rysujące `NightMazeApp` oraz `MazeRenderer` i `ColliderLines` (po razie dla
+każdego rysowanego obiektu). Przykład z `NightMazeApp::drawCube`:
 
 ```cpp
-m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
-m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(eye));
-m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));
+    m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
+    m_shader.setMat4(VIEW_UNIFORM, view);
+    m_shader.setMat4(PROJECTION_UNIFORM, projection);
 ```
+
+`view` i `projection` to macierze policzone raz na klatkę w `onRender`
+(`m_camera.viewMatrix(eye)` i `m_camera.projectionMatrix(aspectRatio)`), a nazwy uniformów
+są stałymi z [`src/game/ShaderUniforms.hpp`](../../src/game/ShaderUniforms.hpp).
 
 OpenGL to API w języku C i nie zna typu `glm::mat4`. Przyjmuje wskaźnik `const GLfloat*` na
 16 liczb. `glm::value_ptr(matrix)` zwraca właśnie taki wskaźnik: adres pierwszej składowej,
@@ -578,7 +585,7 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
    sprawia, że kamera stale patrzy w okolice początku układu.
 9. **`normalize` wektora zerowego.** Dzielenie przez długość 0 daje `NaN` we wszystkich
    składowych, a `NaN` rozchodzi się po macierzach i obraz znika. Typowe miejsce: sumowanie
-   kierunków ruchu, gdy żaden klawisz nie jest wciśnięty. `NightMazeApp::onUpdate` normalizuje
+   kierunków ruchu, gdy żaden klawisz nie jest wciśnięty. `Player::update` normalizuje
    sumę tylko wtedy, gdy `glm::length(direction) > 0.0F` (sekcja 3.8).
 10. **`aspect` z dzielenia całkowitego albo z zerową wysokością.** `width / height` na
     typach `int` daje 1 zamiast 1.777. Dzielić trzeba liczby `float`. Przy framebufferze o

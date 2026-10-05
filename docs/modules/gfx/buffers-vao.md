@@ -262,7 +262,8 @@ Gdyby w shaderze nie było `layout(location = ...)`, numery przydzieliłby linke
 | [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp) | implementacja |
 | [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp) | klasa `gfx::VertexArray`: konstruktor domyślny, destruktor, zablokowane kopiowanie, przenoszenie, `bind`, `setFloatAttribute` |
 | [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp) | implementacja |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | jedyny użytkownik obu klas: pola `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer`, dane wierzchołków `VERTICES`, indeksy `INDICES`, stałe układu, konfiguracja w konstruktorze, rysowanie w `onRender` ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pierwszy użytkownik obu klas, kostka: pola `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer`, dane wierzchołków `VERTICES`, indeksy `INDICES`, stałe układu, konfiguracja w konstruktorze, rysowanie w `drawCube` ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5) |
+| [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`.cpp`](../../../src/gfx/Mesh.cpp) | drugi użytkownik: klasa `gfx::Mesh` ma te same trzy pola w tej samej kolejności i z nich rysuje modele labiryntu oraz linie pudełek kolizji ([`mesh.md`](mesh.md)) |
 
 Wszystkie cztery pliki są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Obie klasy zależą tylko od `core` (`GL_CHECK`), GLAD i biblioteki standardowej. Żadna nie ma funkcji pomocniczych ani stałych: całość to konstruktor, destruktor, dwie funkcje przenoszące i jedna albo dwie funkcje robocze.
 
@@ -517,7 +518,7 @@ Parametry mają typy dokładnie takie, jakich chce OpenGL, żeby w środku nie b
 
 `reinterpret_cast` to rzutowanie, które każe kompilatorowi potraktować te same bity jako inny typ. Jest w projekcie używane rzadko i zawsze z komentarzem. Pozostałe miejsca to `glString` w `Window.cpp`, wykrywanie rozszerzenia w `Texture2D.cpp` (oba zamieniają tekst zwrócony przez OpenGL na `const char*`) i takie samo przesunięcie jak tutaj w `Mesh.cpp`.
 
-**`NOLINTNEXTLINE`.** clang-tidy ma kontrolę `performance-no-int-to-ptr`, która zgłasza każdą zamianę liczby na wskaźnik (bo zwykle jest to błąd albo przeszkoda dla optymalizacji). Tutaj zamiana jest wymagana przez API i nie da się jej uniknąć. Komentarz `// NOLINTNEXTLINE(performance-no-int-to-ptr)` wyłącza tę jedną kontrolę dla jednej, następnej linii. To jedyne takie wyłączenie w `src/`.
+**`NOLINTNEXTLINE`.** clang-tidy ma kontrolę `performance-no-int-to-ptr`, która zgłasza każdą zamianę liczby na wskaźnik (bo zwykle jest to błąd albo przeszkoda dla optymalizacji). Tutaj zamiana jest wymagana przez API i nie da się jej uniknąć. Komentarz `// NOLINTNEXTLINE(performance-no-int-to-ptr)` wyłącza tę jedną kontrolę dla jednej, następnej linii. W `src/` są dwa takie wyłączenia i oba mają ten sam powód: to w `VertexArray::setFloatAttribute` (przesunięcie atrybutu dla `glVertexAttribPointer`) i drugie w `Mesh::draw` (przesunięcie pierwszego indeksu dla `glDrawElements`, [`mesh.md`](mesh.md), sekcja 5.5). Innych komentarzy `NOLINT` w `src/` nie ma.
 
 **Który bufor.** Funkcja nie ma parametru "bufor". `glVertexAttribPointer` zapisuje w VAO ten bufor, który **w chwili wywołania** jest związany z `GL_ARRAY_BUFFER`. Wołający musi więc mieć związany właściwy `Buffer`: albo dopiero co go utworzył (konstruktor zostawia go związanego), albo zawołał `bind()`. Rozważałem przekazywanie `const Buffer&` jako parametru, żeby funkcja wiązała bufor sama. Zostałem przy obecnej postaci, bo jest wiernym odbiciem tego, jak działa OpenGL, a zależność od wiązania jest i tak rzeczą, którą trzeba rozumieć.
 
@@ -530,7 +531,7 @@ VAO przechowuje odwołanie do bufora, a nie jego kopię. Co się dzieje, gdy `Bu
 | bufor usunięty, gdy używający go VAO **nie jest** bieżący | VAO nadal rysuje poprawnie. OpenGL zwalnia nazwę bufora, ale dane trzyma, dopóki VAO się do nich odwołuje |
 | bufor usunięty, gdy używający go VAO **jest** bieżący | OpenGL odłącza bufor od bieżącego VAO. Następne rysowanie daje `GL_INVALID_OPERATION` i niczego nie rysuje |
 
-Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co najmniej tak długo jak `VertexArray`, który z niego czyta. Najprościej trzymać je jako pola tej samej klasy, tak jak `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` w `NightMazeApp`. Przy zamykaniu programu oba bufory giną tam tuż przed VAO, co jest bez znaczenia, bo po nim nikt już nie rysuje.
+Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co najmniej tak długo jak `VertexArray`, który z niego czyta. Najprościej trzymać je jako pola tej samej klasy, tak jak `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` w `NightMazeApp` i w `gfx::Mesh`. Przy zamykaniu programu oba bufory giną tam tuż przed VAO, co jest bez znaczenia, bo po nim nikt już nie rysuje.
 
 ### 5.8 Jak to zostało sprawdzone
 
@@ -553,7 +554,7 @@ Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co naj
 
 Test gotowej kostki, czyli prawdziwego kodu rysującego z `NightMazeApp`, jest w [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.7.
 
-Na Windowsie (2026-10-05) `Buffer.cpp` i `VertexArray.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń, a program `night_maze` rysuje nimi kostkę bez żadnej linii `[error]` ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11). Testów z ukrytym oknem z tej sekcji na Windowsie nie powtarzałem.
+Na Windowsie (2026-10-05) `Buffer.cpp` i `VertexArray.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń, a program `night_maze` rysuje nimi kostkę, a przez `gfx::Mesh` także labirynt, bez żadnej linii `[error]` ([`../../guides/build-windows.md`](../../guides/build-windows.md)). Testów z ukrytym oknem z tej sekcji na Windowsie nie powtarzałem.
 
 ## 6. Panel ImGui
 
@@ -572,6 +573,7 @@ Na Windowsie (2026-10-05) `Buffer.cpp` i `VertexArray.cpp` kompilują się w MSV
 9. **Rysowanie bez VAO.** W profilu Core `glDrawArrays` i `glDrawElements` bez związanego VAO daje `GL_INVALID_OPERATION` (sekcja 2.5). Kod z poradnika dla profilu zgodności, który konfiguruje atrybuty bez VAO, na Macu nie narysuje nic.
 10. **`GL_FLOAT` a typ danych w C++.** `setFloatAttribute` zakłada, że w buforze leżą liczby `float` (4 bajty). Tablica `double` wysłana do bufora zostanie odczytana jako dwa razy więcej bezsensownych liczb `float`.
 11. **Kopiowanie opakowania.** Jak w `Shader`: kopia miałaby ten sam identyfikator i dwa destruktory usuwałyby ten sam obiekt. `= delete` zamienia to w błąd kompilacji ([`README.md`](README.md), sekcja 2.2).
+12. **Utworzenie siatki zabiera wiązanie.** Konstruktor `VertexArray` wiąże nowy VAO, a konstruktor `Buffer` wiąże nowy bufor ze swoim celem. Każdy obiekt `gfx::Mesh` robi jedno i drugie, bo ma własny VAO i dwa własne bufory. Kod, który polega na tym, że "mój bufor jest jeszcze związany", przestaje działać, gdy między utworzeniem bufora a `setFloatAttribute` powstanie jakakolwiek siatka. `setFloatAttribute` samo wiąże właściwy VAO, ale bufora nie: atrybuty zostałyby zapisane w dobrym VAO i wskazywały **cudzy bufor wierzchołków**, ten z ostatnio utworzonej siatki (to szczególny przypadek pułapki 1). W `NightMazeApp` tak właśnie jest zbudowana kostka: `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` powstają na liście inicjalizacyjnej, a `setFloatAttribute` jest wołane dopiero w ciele konstruktora. Dlatego pola, przez które powstają siatki (`m_assets`, `m_mazeRenderer`, które wczytuje przez nie modele, i `m_colliderLines`), są w nagłówku zadeklarowane **przed** trzema polami kostki, a komentarz nad nimi mówi to wprost: "They stand BEFORE the cube on purpose". Pola są tworzone w kolejności deklaracji, więc siatki powstają wcześniej i nie mają już jak zabrać kostce wiązania. Przestawienie tych deklaracji nie daje błędu kompilacji ani błędu OpenGL, tylko kostkę rysowaną z danych innej siatki. Trzy programy shaderów mogą stać gdziekolwiek, bo utworzenie programu niczego nie wiąże.
 
 Pułapki dotyczące bufora indeksów, liczby i typu indeksów, kierunku nawijania i kolejności pól w `NightMazeApp` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 7.
 
@@ -629,7 +631,10 @@ Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każd
     Żeby `bind()` nie potrzebowało parametru i żeby bufora nie dało się związać z innym celem niż ten, dla którego powstał.
 
 13. **Dlaczego w `VertexArray.cpp` jest komentarz `NOLINTNEXTLINE`?**
-    clang-tidy zgłasza zamianę liczby na wskaźnik (`performance-no-int-to-ptr`). Tutaj wymaga jej API OpenGL, więc kontrola jest wyłączona dla tej jednej linii, z komentarzem wyjaśniającym powód.
+    clang-tidy zgłasza zamianę liczby na wskaźnik (`performance-no-int-to-ptr`). Tutaj wymaga jej API OpenGL, więc kontrola jest wyłączona dla tej jednej linii, z komentarzem wyjaśniającym powód. Drugie takie miejsce w `src/` to `Mesh::draw`, z tego samego powodu.
+
+14. **Dlaczego w `NightMazeApp.hpp` pola tworzące siatki stoją przed polami kostki?**
+    Utworzenie siatki wiąże jej własny VAO i bufory. Kostka wiąże swój VAO i bufory na liście inicjalizacyjnej, a atrybuty opisuje dopiero w ciele konstruktora, licząc na to, że jej bufor jest nadal związany. Siatka utworzona pomiędzy zostawiłaby związany własny bufor wierzchołków i atrybuty kostki wskazałyby na niego. Pola powstają w kolejności deklaracji, więc siatki zadeklarowane wcześniej powstają przed kostką.
 
 Pytania o indeksy, kostkę i `glDrawElements` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 9.
 

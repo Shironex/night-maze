@@ -1,6 +1,8 @@
-// "Shaders" debug panel: the files of the shader program, a reload button and the last error.
+// "Shaders" debug panel: the files of every shader program, a reload button and the errors.
 // See docs/modules/gfx/shader-hot-reload.md
 #pragma once
+
+#include <span>
 
 namespace gfx {
 class Shader;
@@ -9,7 +11,10 @@ class Shader;
 namespace debug {
 
 /// Draws the "Shaders" panel. Called by DebugUI::draw, inside the ImGui frame.
-/// shader is not const: the "Reload shaders" button calls shader.reload().
-void drawShadersPanel(gfx::Shader& shader);
+///
+/// shaders is the list of the programs of the game. The pointers are const (the list
+/// cannot be changed), the shaders they point at are not: the "Reload shaders" button
+/// calls reload() on every one of them. No pointer may be null.
+void drawShadersPanel(std::span<gfx::Shader* const> shaders);
 
 } // namespace debug

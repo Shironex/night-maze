@@ -4,10 +4,21 @@
 
 #include <array>
 
+namespace assets {
+class AssetCache;
+} // namespace assets
+
 namespace core {
 class Time;
 class Window;
 } // namespace core
+
+namespace game {
+enum class ViewMode;
+struct MazeSettings;
+struct MazeWorld;
+struct Player;
+} // namespace game
 
 namespace gfx {
 class Shader;
@@ -35,14 +46,28 @@ struct DebugContext {
     const core::Window& window;
     /// Background color (red, green, blue in the range 0 to 1), editable.
     std::array<float, 3>& clearColor;
-    /// Shader program the game draws with, editable: the Shaders panel reloads it.
+    /// Shader program of the marker cube, editable: the Shaders panel reloads it.
     gfx::Shader& shader;
-    /// Camera of the game, editable: position, angles and projection.
+    /// Camera of the game, editable: angles and projection.
     scene::Camera& camera;
     /// Mouse look sensitivity in degrees per screen coordinate unit, editable.
     float& mouseSensitivity;
-    /// Camera movement speed in metres per second, editable.
-    float& moveSpeed;
+    /// Shader program of the maze (textured models), editable: reloaded like shader.
+    gfx::Shader& texturedShader;
+    /// Shader program of the collision box lines, editable: reloaded like shader.
+    gfx::Shader& colorShader;
+    /// The player, editable: position, speeds and the noclip mode.
+    game::Player& player;
+    /// Request for the next maze, editable: size, seed and the "regenerate" flag.
+    game::MazeSettings& mazeSettings;
+    /// The maze in play, read only: its plan and its collision boxes.
+    const game::MazeWorld& mazeWorld;
+    /// Loaded models and textures, editable: the Assets panel changes the filtering.
+    assets::AssetCache& assets;
+    /// What the textured shader shows (picture, normals or UVs), editable.
+    game::ViewMode& viewMode;
+    /// Whether the collision boxes are drawn as lines, editable.
+    bool& drawColliders;
 };
 
 } // namespace debug

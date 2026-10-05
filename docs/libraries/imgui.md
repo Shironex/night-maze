@@ -155,7 +155,7 @@ kompilatora są podane przez `-isystem`). `PUBLIC` przekazuje te katalogi do `ni
 Podłączenie do programu w [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
-target_link_libraries(night_maze PRIVATE engine imgui)
+target_link_libraries(night_maze PRIVATE engine game_logic imgui)
 ```
 
 ImGui linkuje tylko `night_maze`, a nie `engine`. To odzwierciedla architekturę z PRD:
@@ -325,8 +325,19 @@ void DebugUI::draw(const DebugContext& context) {
         // Each panel gets exactly the members it needs, so its signature still shows
         // what it reads and what it edits.
         drawRendererPanel(context.time, context.window, context.clearColor);
-        drawShadersPanel(context.shader);
-        drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed);
+
+        // The Shaders panel takes a list, so that a new program is one more entry here
+        // and no change in the panel. The array holds pointers, because a reference
+        // cannot be an element of an array.
+        constexpr int SHADER_COUNT = 3;
+        const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
+            &context.shader, &context.texturedShader, &context.colorShader};
+        drawShadersPanel(shaders);
+
+        drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
+        drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
+        drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
+        drawAssetsPanel(context.assets, context.viewMode);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
@@ -337,8 +348,8 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele pokazują i edytują (`time`, `window`, `clearColor`, `shader`, `camera`,
-`mouseSensitivity`, `moveSpeed`). Buduje ją co klatkę `main.cpp`.
+panele pokazują i edytują (czternaście pól: od `time` i `window` po `viewMode` i
+`drawColliders`). Buduje ją co klatkę `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
@@ -346,7 +357,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, `drawRendererPanel` (czyli `Begin`, `Text`, `ColorEdit3`, `End`), `drawShadersPanel` (`Begin`, `Text`, `Button`, `TextWrapped`, `End`), `drawCameraPanel` (`Begin`, `TextWrapped`, `DragFloat3`, `SliderFloat`, `End`) | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem sześć funkcji paneli. Każda woła `SetNextWindowPos`, `SetNextWindowSize`, `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`), `drawAssetsPanel` (`Combo`, `SliderFloat`, `Image`). Widżety nowych paneli: sekcja 3.11 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -380,7 +391,14 @@ Ważne szczegóły:
               .shader = shader(),
               .camera = camera(),
               .mouseSensitivity = mouseSensitivity(),
-              .moveSpeed = moveSpeed(),
+              .texturedShader = texturedShader(),
+              .colorShader = colorShader(),
+              .player = player(),
+              .mazeSettings = mazeSettings(),
+              .mazeWorld = mazeWorld(),
+              .assets = assets(),
+              .viewMode = viewMode(),
+              .drawColliders = drawColliders(),
           });
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -393,8 +411,8 @@ Ważne szczegóły:
       }
   ```
 
-  Najpierw gra rysuje swoją klatkę (na razie tło i jedną kostkę: `glViewport`, `glEnable`,
-  `glClearColor`, `glClear`, `glDrawElements` w
+  Najpierw gra rysuje swoją klatkę (tło, labirynt, kostkę i na życzenie linie pudełek
+  kolizji: `glViewport`, `glEnable`, `glClearColor`, `glClear` i wywołania `glDrawElements` w
   [`NightMazeApp::onRender`](../../src/game/NightMazeApp.cpp)), a dopiero potem ImGui rysuje
   na tym, co już jest w buforze, więc panele są na wierzchu sceny. Zamiana buforów
   (`swapBuffers`) następuje później, w `Application::run`. Dwie ostatnie linie,
@@ -466,7 +484,7 @@ cały główny viewport, czyli na całe nasze okno. Argumenty:
 **Po co `PassthruCentralNode`.** Obszar dokowania ma węzeł centralny (central node): środek,
 który zostaje po zadokowaniu paneli przy krawędziach. Domyślnie ImGui wypełniłoby go swoim
 tłem i zasłoniło scenę. Z tą flagą pusty środek jest przezroczysty i przepuszcza zdarzenia
-myszy, więc widać przez niego to, co narysował OpenGL (na razie kolor tła i kostkę, później labirynt).
+myszy, więc widać przez niego to, co narysował OpenGL (labirynt).
 
 Kolejność ma znaczenie: obszar dokowania tworzymy przed panelami, które mają się w nim
 dokować.
@@ -486,6 +504,11 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   komputera, a nie część projektu.
 - Skasowanie pliku przywraca układ domyślny. To pierwsza rzecz do zrobienia, gdy panel
   "zniknął" albo wyjechał poza okno.
+- Układ domyślny naszych sześciu paneli ustawiają pary `SetNextWindowPos` i
+  `SetNextWindowSize` z warunkiem `ImGuiCond_FirstUseEver` (sekcja 3.11). Ten warunek działa
+  tylko dla okna, którego w `imgui.ini` jeszcze nie ma. Stary plik z wpisami dla paneli
+  Renderer, Shaders i Camera zatrzyma je na starych miejscach, a nowe panele staną według
+  kodu. Tabela pozycji: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.
 
 ### 3.8. `WantCaptureKeyboard` i `WantCaptureMouse`
 
@@ -618,10 +641,125 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok `drawRendererPanel`, `drawShadersPanel` i `drawCameraPanel`, dopisanie plików do `add_executable`
-w `CMakeLists.txt`. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
+wywołanie w `DebugUI::draw` obok pozostałych sześciu funkcji `draw...Panel`, dopisanie plików
+do `add_executable` w `CMakeLists.txt`. Przed `Begin` para `SetNextWindowPos` i
+`SetNextWindowSize` z `ImGuiCond_FirstUseEver`, żeby panel przy pierwszym uruchomieniu nie
+przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
 jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 [`../modules/debug-ui.md`](../modules/debug-ui.md) i tam należy jej szukać.
+
+### 3.11. Widżety paneli Maze, Collision i Assets
+
+Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
+Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
+
+**Pozycja i rozmiar na pierwsze uruchomienie** (wszystkie sześć paneli, tu
+[`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp)):
+
+```cpp
+    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+```
+
+Funkcje `SetNextWindow...` dotyczą okna, które otworzy najbliższe `Begin`. Drugi argument to
+warunek: `ImGuiCond_FirstUseEver` stosuje wartość tylko wtedy, gdy ImGui nie ma dla tego okna
+danych w `imgui.ini`. Bez warunku (`ImGuiCond_Always`) panel wracałby na miejsce w każdej
+klatce i nie dałoby się go przesunąć.
+
+**Widżety edytujące wartość przez wskaźnik.** Wszystkie działają tak jak `ColorEdit3`: dostają
+adres zmiennej, pokazują jej wartość i zapisują nową, gdy użytkownik coś zmieni. Zwracają
+`true` w klatce, w której wartość się zmieniła.
+
+| Funkcja | Przykład z kodu | Plik | Co trzeba wiedzieć |
+|---|---|---|---|
+| `SliderInt` | `ImGui::SliderInt("Width", &settings.width, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells", ImGuiSliderFlags_AlwaysClamp);` | `MazePanel.cpp` | suwak liczby całkowitej. Format jak w `printf`. `AlwaysClamp` przycina także wartość wpisaną z klawiatury (Ctrl i kliknięcie) |
+| `InputScalar` | `ImGui::InputScalar("Seed", ImGuiDataType_U32, &settings.seed, &SEED_STEP);` | `MazePanel.cpp` | pole liczbowe dowolnego typu. Typ nazywa drugi argument i **musi** zgadzać się ze zmienną (tu `std::uint32_t`), bo funkcja dostaje `void*` i kompilator tego nie sprawdzi. Czwarty argument to wskaźnik na krok przycisków plus i minus |
+| `Checkbox` | `ImGui::Checkbox("Draw collision boxes", &drawColliders);` | `CollisionPanel.cpp` | pole wyboru na zmiennej `bool` |
+| `Combo` | `ImGui::Combo("View mode", &viewModeIndex, VIEW_MODE_ITEMS)` | `AssetsPanel.cpp` | lista rozwijana. Pracuje na **numerze** wybranej pozycji (`int`), nie na wyliczeniu, więc kod rzutuje `enum class` na `int` i z powrotem |
+| `SliderFloat` w bloku `BeginDisabled` | `ImGui::BeginDisabled(!anisotropySupported);` ... `ImGui::EndDisabled();` | `AssetsPanel.cpp` | wszystko między tą parą jest wyszarzone i nie reaguje, gdy argument jest prawdą. `EndDisabled` woła się **zawsze**, tak jak `End` |
+
+Lista pozycji dla `Combo` to jeden napis, w którym każda pozycja kończy się znakiem zerowym:
+
+```cpp
+constexpr const char* VIEW_MODE_ITEMS = "Textured\0Normals as colour\0UVs as colour\0";
+constexpr const char* FILTER_ITEMS = "Nearest\0Bilinear\0Trilinear\0";
+```
+
+Zwykły napis w C kończy się na pierwszym zerze, więc ImGui czyta dalej, aż trafi na **dwa**
+zera z rzędu: ostatnie jawne `\0` i zero, które kompilator dopisuje na końcu każdego literału.
+Kolejność pozycji jest taka jak kolejność wartości wyliczeń `game::ViewMode` i
+`gfx::TextureFilter`, bo numer pozycji staje się wartością wyliczenia.
+
+**Teksty i układ.**
+
+| Funkcja | Gdzie | Co robi |
+|---|---|---|
+| `SeparatorText("Models")` | `AssetsPanel.cpp` | pozioma kreska z podpisem: nagłówek części panelu |
+| `TextUnformatted(text)` | `AssetsPanel.cpp`, `CollisionPanel.cpp`, `ShadersPanel.cpp` | tekst bez formatowania. Bezpieczny dla napisów, które mogą zawierać znak `%` (nazwy plików, komunikaty sterownika) |
+| `SetItemTooltip("%s", fullPath.c_str())` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | podpowiedź dla **poprzedniego** widżetu, pokazywana po najechaniu kursorem |
+| `SameLine()` | `MazePanel.cpp` | następny widżet staje w tej samej linii (przyciski `Regenerate` i `Random seed` obok siebie) |
+| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | zmiana koloru tekstu dla widżetów między tą parą. Każde `Push` musi mieć swoje `Pop` |
+
+**Obrazek z tekstury OpenGL** ([`AssetsPanel.cpp`](../../src/debug/panels/AssetsPanel.cpp)):
+
+```cpp
+        const auto textureId = static_cast<ImTextureID>(loaded.texture.id());
+        ImGui::Image(textureId, {PREVIEW_SIZE, PREVIEW_SIZE}, {0.0F, 1.0F}, {1.0F, 0.0F});
+```
+
+| Argument | Znaczenie |
+|---|---|
+| `textureId` | ImGui nie zna typów OpenGL. Tekstura to dla niego liczba, którą odda backendowi renderera, a backend OpenGL3 traktuje ją jako identyfikator obiektu tekstury i woła z nią `glBindTexture`. Rzutowanie tylko poszerza `GLuint` do typu liczbowego `ImTextureID` |
+| `{PREVIEW_SIZE, PREVIEW_SIZE}` | rozmiar obrazka w panelu: 128 na 128 jednostek, niezależnie od rozmiaru tekstury |
+| `{0.0F, 1.0F}` (`uv0`) | współrzędna tekstury **lewego górnego** rogu obrazka |
+| `{1.0F, 0.0F}` (`uv1`) | współrzędna tekstury **prawego dolnego** rogu |
+
+Wartości domyślne to `uv0 = (0, 0)` i `uv1 = (1, 1)`: ImGui zakłada, że `v = 0` to górny
+wiersz obrazu. W naszych teksturach `v = 0` to wiersz **dolny** (tak wczytuje je
+`assets::loadImage`, bo tak liczy OpenGL), więc z wartościami domyślnymi podgląd byłby do góry
+nogami. Zamiana `v` w obu rogach odwraca go z powrotem. Na Windowsie podglądy są sprawdzone
+na zrzucie ekranu (2026-10-05): stoją poprawnie.
+
+**Sampler backendu.** Backend OpenGL3 w naszej wersji (1.92.9b) ma dwa własne obiekty
+samplerów i przed rysowaniem wiąże pierwszy z nich z jednostką 0
+(`build/debug/_deps/imgui-src/backends/imgui_impl_opengl3.cpp`, w funkcji tworzącej obiekty
+urządzenia):
+
+```cpp
+            GL_CALL(glSamplerParameteri(bd->TexSamplers[sampler_n], GL_TEXTURE_MIN_FILTER, (sampler_n == 0) ? GL_LINEAR : GL_NEAREST));
+            GL_CALL(glSamplerParameteri(bd->TexSamplers[sampler_n], GL_TEXTURE_MAG_FILTER, (sampler_n == 0) ? GL_LINEAR : GL_NEAREST));
+            GL_CALL(glSamplerParameteri(bd->TexSamplers[sampler_n], GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+            GL_CALL(glSamplerParameteri(bd->TexSamplers[sampler_n], GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+```
+
+Sampler związany z jednostką wygrywa z parametrami tekstury, a nasz sampler (ten z
+`gfx::Texture2D`) jest związany tylko wtedy, gdy teksturę wiąże `Texture2D::bind`. Skutek:
+wszystko, co rysuje ImGui, także nasze tekstury w `ImGui::Image`, jest czytane z filtrem
+liniowym, bez mipmap, z zawijaniem `GL_CLAMP_TO_EDGE`. Podgląd w panelu Assets **nie reaguje**
+na filtr i anizotropię wybrane w tym samym panelu: ich skutek widać w scenie. Po narysowaniu
+backend przywraca sampler, który był związany wcześniej, tak jak resztę stanu.
+
+**Rysowanie własnych kształtów: lista rysowania**
+([`MazePanel.cpp`](../../src/debug/panels/MazePanel.cpp), plan labiryntu):
+
+| Funkcja | Co robi |
+|---|---|
+| `ImGui::GetContentRegionAvail()` | ile miejsca zostało w panelu od kursora do prawego i dolnego brzegu. Z szerokości liczona jest skala planu |
+| `ImGui::GetCursorScreenPos()` | miejsce, w którym ImGui postawiłoby następny widżet, we współrzędnych ekranu. To lewy górny róg planu |
+| `ImGui::GetWindowDrawList()` | lista rysowania bieżącego okna (`ImDrawList*`). Kształty dodane do niej są rysowane razem z panelem i przycinane do niego |
+| `drawList->AddLine(p1, p2, color)` | odcinek między dwoma punktami ekranu. Tak rysowana jest każda ściana i kreska kierunku patrzenia |
+| `drawList->AddCircleFilled(center, radius, color)` | wypełnione koło: kropka gracza |
+| `IM_COL32(r, g, b, a)` | makro składające kolor z czterech liczb od 0 do 255 w jedną liczbę `ImU32` |
+| `ImGui::Dummy(size)` | niewidzialny widżet o podanym rozmiarze. Lista rysowania nie przesuwa kursora, więc bez `Dummy` panel nie wiedziałby, że plan zajmuje miejsce: następny widżet stanąłby na planie, a przewijanie liczyłoby złą wysokość |
+
+Współrzędne w liście rysowania to współrzędne **ekranu** ImGui (piksele okna programu, y w
+dół), a nie współrzędne wewnątrz panelu. Dlatego plan zaczyna od `GetCursorScreenPos()` i do
+każdego punktu dodaje ten początek. Jak punkt świata zamienia się na punkt planu, opisuje
+[`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 6.
+
+Stan sprawdzenia: wygląd planu, podglądów i list jest sprawdzony na zrzutach ekranu z
+Windowsa (2026-10-05). Samych kontrolek (kliknięcia w `Combo`, suwaki, pola wyboru, przyciski)
+nikt jeszcze ręcznie nie sprawdzał. Na macOS panele nie były uruchamiane.
 
 ## 4. Pułapki
 

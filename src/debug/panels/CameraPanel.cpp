@@ -1,7 +1,8 @@
-// "Camera" debug panel: position, angles and projection of the camera, and its controls.
+// "Camera" debug panel: angles and projection of the camera, the player it follows, controls.
 // See docs/modules/scene/camera-controls.md
 #include "debug/panels/CameraPanel.hpp"
 
+#include "game/Player.hpp"
 #include "scene/Camera.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
@@ -13,6 +14,11 @@
 namespace debug {
 
 namespace {
+
+// Where the panel appears and how big it is the first time the program runs (later ImGui
+// remembers it in imgui.ini): the middle of the left edge of a 1280 x 720 window.
+constexpr ImVec2 FIRST_POSITION{10.0F, 210.0F};
+constexpr ImVec2 FIRST_SIZE{300.0F, 300.0F};
 
 // How much the position changes for one pixel of dragging, in metres.
 constexpr float POSITION_DRAG_SPEED = 0.05F;
@@ -26,12 +32,12 @@ constexpr float MAX_YAW_DEGREES = 360.0F;
 constexpr float MIN_FOV_DEGREES = 20.0F;
 constexpr float MAX_FOV_DEGREES = 120.0F;
 
-// The near plane must stay above 0. The upper limit is far enough to cut into the cube
-// from the default camera position.
+// The near plane must stay above 0. The upper limit is far enough to cut into the walls
+// around the player.
 constexpr float MIN_NEAR_PLANE = 0.01F;
 constexpr float MAX_NEAR_PLANE = 10.0F;
 
-// The lower limit is small enough to cut the cube off from behind.
+// The lower limit is small enough to cut off the far end of a corridor.
 constexpr float MIN_FAR_PLANE = 1.0F;
 constexpr float MAX_FAR_PLANE = 200.0F;
 
@@ -42,21 +48,34 @@ constexpr float MIN_PLANE_DISTANCE = 0.1F;
 constexpr float MIN_MOUSE_SENSITIVITY = 0.01F;
 constexpr float MAX_MOUSE_SENSITIVITY = 1.0F;
 
+// Limits of the three speeds of the player, in metres per second. At the upper limit one
+// fixed step (1/120 s) is about 17 cm long, still short next to a wall box (30 cm thick).
+// scene::moveAndSlide never jumps over a box whatever the step, but it moves one axis at
+// a time, and that staircase path only stays close to the straight one for short steps.
 constexpr float MIN_MOVE_SPEED = 0.5F;
 constexpr float MAX_MOVE_SPEED = 20.0F;
 
 } // namespace
 
-void drawCameraPanel(scene::Camera& camera, float& mouseSensitivity, float& moveSpeed) {
+void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity) {
+    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Camera")) {
         ImGui::TextWrapped("Click the scene to capture the mouse, Esc releases it. While "
-                           "captured: mouse looks around, W A S D move, Space goes up, Left "
-                           "Shift goes down.");
+                           "captured the mouse looks around. Walking: W A S D walk level, "
+                           "Left Shift sprints. Noclip (key N): W A S D fly along the view, "
+                           "Space goes up, Left Shift goes down.");
 
         ImGui::Separator();
-        // DragFloat3 edits three floats through the pointer: x, y and z of the position.
-        // It has no limits, the camera may stand anywhere.
-        ImGui::DragFloat3("Position", glm::value_ptr(camera.position), POSITION_DRAG_SPEED);
+        ImGui::Text("Mode: %s", player.noclip ? "noclip (free flight)" : "walking");
+        // The camera has no position of its own to edit: after every fixed step the game
+        // puts it at the eyes of the player. So the field that can be dragged is the
+        // position of the player (the feet), and the eye is only shown. DragFloat3 edits
+        // three floats through the pointer: x, y and z. While walking the game keeps y at
+        // the floor, so a change of y lasts only in noclip mode.
+        ImGui::DragFloat3("Player feet", glm::value_ptr(player.position), POSITION_DRAG_SPEED);
+        ImGui::Text("Eye: %.2f, %.2f, %.2f", camera.position.x, camera.position.y,
+                    camera.position.z);
 
         // A slider can also be typed into (Ctrl and click), and a typed value may be
         // outside the limits. AlwaysClamp forces it back between them. It matters most
@@ -83,8 +102,12 @@ void drawCameraPanel(scene::Camera& camera, float& mouseSensitivity, float& move
         ImGui::Separator();
         ImGui::SliderFloat("Mouse sensitivity", &mouseSensitivity, MIN_MOUSE_SENSITIVITY,
                            MAX_MOUSE_SENSITIVITY, "%.2f deg/unit", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::SliderFloat("Move speed", &moveSpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED, "%.1f m/s",
-                           ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SliderFloat("Walk speed", &player.walkSpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED,
+                           "%.1f m/s", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SliderFloat("Sprint speed", &player.sprintSpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED,
+                           "%.1f m/s", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SliderFloat("Fly speed", &player.flySpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED,
+                           "%.1f m/s", ImGuiSliderFlags_AlwaysClamp);
     }
     ImGui::End();
 }

@@ -1,11 +1,11 @@
 # Moduł debug: panele ImGui
 
-Kamień milowy: M0 (nakładka i panel Renderer), M1 (panele Shaders i Camera, `DebugContext`, mysz). Kod: [`src/debug/`](../../src/debug/) oraz [`src/main.cpp`](../../src/main.cpp), gdzie nakładka jest podpinana do gry.
+Kamień milowy: M0 (nakładka i panel Renderer), M1 (panele Shaders i Camera, `DebugContext`, mysz), M2 + M3 (panele Maze, Collision i Assets, czternaście pól `DebugContext`, układ domyślny paneli). Kod: [`src/debug/`](../../src/debug/) oraz [`src/main.cpp`](../../src/main.cpp), gdzie nakładka jest podpinana do gry.
 Teoria samej biblioteki (tryb natychmiastowy, backendy, docking) jest w [`../libraries/imgui.md`](../libraries/imgui.md). Ten dokument opisuje, jak ImGui jest wpięte w **mój** projekt i jak dodać nowy panel.
 
 ## 1. Po co to jest
 
-Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FPS, rozmiar framebuffera, wersję sterownika) i zmieniać parametry w działającym programie, bez przebudowywania. Moduł `debug` daje do tego nakładkę z panelami Dear ImGui rysowaną na wierzchu sceny. Nie realizuje osobnego tematu wykładu, ale obsługuje wszystkie piętnaście: każdy temat dostaje w panelu przełącznik, którym na obronie pokażę efekt "przed i po" (PRD, sekcje 3 i 10). Dziś istnieją trzy panele: **Renderer**, pokazujący dane z tematu 1 (FPS, czas klatki), **Shaders**, pokaz tematu 2 (przycisk "Reload shaders"), i **Camera**, pokaz tematu 3 (pozycja, kąty, FOV, płaszczyzny przycinania, czułość myszy, prędkość ruchu).
+Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FPS, rozmiar framebuffera, wersję sterownika) i zmieniać parametry w działającym programie, bez przebudowywania. Moduł `debug` daje do tego nakładkę z panelami Dear ImGui rysowaną na wierzchu sceny. Nie realizuje osobnego tematu wykładu, ale obsługuje wszystkie piętnaście: każdy temat dostaje w panelu przełącznik, którym na obronie pokażę efekt "przed i po" (PRD, sekcje 3 i 10). Dziś istnieje sześć paneli: **Renderer**, pokazujący dane z tematu 1 (FPS, czas klatki), **Shaders**, pokaz tematu 2 (przycisk "Reload shaders" dla trzech programów), **Camera**, pokaz tematu 3 (pozycja gracza, kąty, FOV, płaszczyzny przycinania, czułość myszy, trzy prędkości gracza), **Maze** (rozmiar i ziarno labiryntu, przyciski "Regenerate" i "Random seed", plan z góry), **Collision**, pokaz tematu 14 (rysowanie pudełek kolizji, tryb noclip), i **Assets**, pokaz tematów 4 i 5 (tryb widoku, filtr tekstur, anizotropia, lista modeli i tekstur). PRD nie ma panelu o tej nazwie: w sekcji 3 wymienia dla tematu 4 pokaz "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Panel Assets niesie oba pokazy (przełącznika map normalnych jeszcze nie ma, to M4).
 
 ## 2. Teoria
 
@@ -23,7 +23,7 @@ Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FP
 
 ```mermaid
 flowchart TD
-    A["DebugNightMazeApp::onRender (main.cpp)"] --> B["game::NightMazeApp::onRender: mysz kamery, glViewport, glEnable, glClearColor, glClear, glDrawElements (scena)"]
+    A["DebugNightMazeApp::onRender (main.cpp)"] --> B["game::NightMazeApp::onRender: prośba o nowy labirynt, klawisz N, mysz kamery, glViewport, glEnable, glClearColor, glClear, scena (labirynt, kostka, linie pudełek)"]
     B --> T["klawisz ~ ? m_debugUI.toggleVisible()"]
     T --> ME["m_debugUI.setMouseEnabled(!input().isCursorCaptured())"]
     ME --> C["DebugUI::draw(DebugContext)"]
@@ -35,7 +35,10 @@ flowchart TD
     H --> I["drawRendererPanel(...)"]
     I --> S["drawShadersPanel(...)"]
     S --> CP["drawCameraPanel(...)"]
-    CP --> J["ImGui::Render()"]
+    CP --> MP["drawMazePanel(...)"]
+    MP --> CO["drawCollisionPanel(...)"]
+    CO --> AP["drawAssetsPanel(...)"]
+    AP --> J["ImGui::Render()"]
     G -->|nie| J
     J --> K["ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())"]
     K --> M["input().setKeyboardBlocked(m_debugUI.wantsKeyboard())"]
@@ -88,8 +91,16 @@ if (m_visible) {
                                  ImGuiDockNodeFlags_PassthruCentralNode);
 
     drawRendererPanel(context.time, context.window, context.clearColor);
-    drawShadersPanel(context.shader);
-    drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed);
+
+    constexpr int SHADER_COUNT = 3;
+    const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
+        &context.shader, &context.texturedShader, &context.colorShader};
+    drawShadersPanel(shaders);
+
+    drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
+    drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
+    drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
+    drawAssetsPanel(context.assets, context.viewMode);
 }
 
 ImGui::Render();
@@ -104,9 +115,11 @@ ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 | `ImGui::Render()` | Zamyka klatkę i zamienia wywołania widżetów na listy rysowania (wierzchołki, indeksy, prostokąty przycinania). **Jeszcze nic nie rysuje** |
 | `ImGui_ImplOpenGL3_RenderDrawData(...)` | Wysyła te listy do OpenGL |
 
+Fragment jest tu pokazany bez komentarzy, które stoją w pliku. Sześć wywołań paneli omawia sekcja 5.2.
+
 `RenderDrawData` robi po kolei: zapamiętuje bieżący stan OpenGL, ustawia własny (włączone mieszanie kolorów `GL_BLEND` i test nożycowy `GL_SCISSOR_TEST`, wyłączony test głębi `GL_DEPTH_TEST` i odrzucanie ścian), ustawia viewport na cały framebuffer i macierz rzutu prostokątnego, tworzy tymczasowe VAO, wgrywa wierzchołki do buforów, rysuje przez `glDrawElements` i na końcu **przywraca zapamiętany stan**. Dzięki temu ImGui nie psuje ustawień renderera sceny, na przykład w późniejszych kamieniach milowych nie wyłączy mi testu głębi na stałe.
 
-Jeden element stanu jest przywracany warunkowo: bieżący program shaderów. Backend zapamiętuje go na początku (`GL_CURRENT_PROGRAM`), a na końcu przywraca tylko wtedy, gdy ten program jeszcze istnieje (w źródle: `if (last_program == 0 || glIsProgram(last_program)) glUseProgram(last_program);`). Ma to znaczenie dla panelu Shaders, którego przycisk usuwa stary program gry w środku klatki ImGui ([`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6.3).
+Jeden element stanu jest przywracany warunkowo: bieżący program shaderów. Backend zapamiętuje go na początku (`GL_CURRENT_PROGRAM`), a na końcu przywraca tylko wtedy, gdy ten program jeszcze istnieje (w źródle: `if (last_program == 0 || glIsProgram(last_program)) glUseProgram(last_program);`). Ma to znaczenie dla panelu Shaders, którego przycisk usuwa stare programy gry w środku klatki ImGui ([`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6.3).
 
 Związek z Retiną: backend platformy podaje ImGui rozmiar okna we współrzędnych ekranu oraz skalę `framebuffer / okno`. ImGui układa panele we współrzędnych okna (te same jednostki co pozycja myszy), a backend renderera mnoży je przez skalę przy rysowaniu. Dlatego panele są ostre i klikalne na ekranie 2x bez żadnego kodu z mojej strony.
 
@@ -118,7 +131,7 @@ Związek z Retiną: backend platformy podaje ImGui rozmiar okna we współrzędn
 | `viewport` | `ImGui::GetMainViewport()` | Obszar pokrywa główne okno programu |
 | `flags` | `ImGuiDockNodeFlags_PassthruCentralNode` | Środek obszaru jest przezroczysty i przepuszcza mysz |
 
-Obszar dokowania ma **węzeł centralny** (central node): to miejsce, które zostaje, gdy panele zajmą krawędzie. Domyślnie ImGui zamalowuje pusty węzeł centralny jednolitym tłem i przechwytuje w nim kliknięcia. Skutek: scena 3D znika pod szarym prostokątem. Flaga `PassthruCentralNode` wyłącza to tło i przepuszcza wejście, więc przez środek widać scenę (w M0: kolor czyszczenia), a panele zajmują tylko tyle miejsca, ile im dam.
+Obszar dokowania ma **węzeł centralny** (central node): to miejsce, które zostaje, gdy panele zajmą krawędzie. Domyślnie ImGui zamalowuje pusty węzeł centralny jednolitym tłem i przechwytuje w nim kliknięcia. Skutek: scena 3D znika pod szarym prostokątem. Flaga `PassthruCentralNode` wyłącza to tło i przepuszcza wejście, więc przez środek widać scenę (w M0 był to sam kolor czyszczenia, dziś labirynt), a panele zajmują tylko tyle miejsca, ile im dam.
 
 **Dlaczego klatka ImGui działa także wtedy, gdy UI jest ukryte.** Po naciśnięciu klawisza `~` `m_visible` jest `false`, pomijam tylko dockspace i panele, ale `NewFrame`, `Render` i `RenderDrawData` wykonują się dalej. Powody:
 
@@ -139,7 +152,9 @@ Kolejność odwrotna do inicjalizacji. `ImGui_ImplOpenGL3_Shutdown` usuwa obiekt
 
 ## 4. Shadery
 
-Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera: napis `"#version 410"` przekazany do `ImGui_ImplOpenGL3_Init` jest doklejany jako pierwsza linia jego wbudowanego shadera wierzchołków i fragmentów, które backend kompiluje i linkuje przy pierwszej klatce. Wersja musi pasować do kontekstu: OpenGL 4.1 to GLSL 4.10, a domyślne w wielu przykładach `"#version 130"` nie skompiluje się w profilu Core na macOS. Shadery pisane przeze mnie (`assets/shaders/basic.vert` i `basic.frag`) należą do gry, a nie do modułu `debug`, ale moduł ma dla nich panel **Shaders** z przyciskiem przeładowania (sekcja 6 i [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6). PRD (sekcja 10) opisuje ten panel jako listę programów. Dziś program jest jeden, więc panel pokazuje jeden, bez listy.
+Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera: napis `"#version 410"` przekazany do `ImGui_ImplOpenGL3_Init` jest doklejany jako pierwsza linia jego wbudowanego shadera wierzchołków i fragmentów, które backend kompiluje i linkuje przy pierwszej klatce. Wersja musi pasować do kontekstu: OpenGL 4.1 to GLSL 4.10, a domyślne w wielu przykładach `"#version 130"` nie skompiluje się w profilu Core na macOS. Shadery pisane przeze mnie (trzy pary plików w `assets/shaders/`: `basic`, `textured` i `color`) należą do gry, a nie do modułu `debug`, ale moduł ma dla nich panel **Shaders** z przyciskiem przeładowania (sekcja 6 i [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6). PRD (sekcja 10) opisuje ten panel jako listę programów i tak dziś działa: panel dostaje listę trzech programów i pokazuje blok linii dla każdego.
+
+Backend ma też własne obiekty samplerów. W wersji z katalogu budowania (1.92.9b) wszystko, co rysuje, w tym podglądy tekstur z panelu Assets, jest czytane przez jego sampler z filtrem liniowym i zawijaniem `GL_CLAMP_TO_EDGE`, a nie przez sampler mojej tekstury ([`../libraries/imgui.md`](../libraries/imgui.md), sekcja 3). Dlatego filtr wybrany w panelu Assets widać w scenie, a nie w podglądach.
 
 ## 5. Kod w projekcie
 
@@ -150,8 +165,11 @@ Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera:
 | [`src/debug/DebugUI.hpp`](../../src/debug/DebugUI.hpp), [`.cpp`](../../src/debug/DebugUI.cpp) | Klasa `DebugUI`: cykl życia ImGui (RAII), klatka ImGui, dockspace, wywołanie paneli, widoczność, `wantsKeyboard()`, `wantsMouse()`, `setMouseEnabled()` |
 | [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp) | Struktura `DebugContext`: referencje do wszystkiego, co panele mogą w tej klatce odczytać albo edytować. Sam nagłówek, bez pliku `.cpp` |
 | [`src/debug/panels/RendererPanel.hpp`](../../src/debug/panels/RendererPanel.hpp), [`.cpp`](../../src/debug/panels/RendererPanel.cpp) | Funkcja `drawRendererPanel`: panel "Renderer" |
-| [`src/debug/panels/ShadersPanel.hpp`](../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../src/debug/panels/ShadersPanel.cpp) | Funkcja `drawShadersPanel`: panel "Shaders" (pliki programu, przycisk "Reload shaders", ostatni błąd). Opis linia po linii: [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6 |
-| [`src/debug/panels/CameraPanel.hpp`](../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../src/debug/panels/CameraPanel.cpp) | Funkcja `drawCameraPanel`: panel "Camera" (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, prędkość ruchu). Opis linia po linii: [`scene/camera-controls.md`](scene/camera-controls.md), sekcja 6 |
+| [`src/debug/panels/ShadersPanel.hpp`](../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../src/debug/panels/ShadersPanel.cpp) | Funkcja `drawShadersPanel`: panel "Shaders" (jeden przycisk "Reload shaders" dla wszystkich programów, a dla każdego programu jego pliki, stan i ostatni błąd). Opis linia po linii: [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6 |
+| [`src/debug/panels/CameraPanel.hpp`](../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../src/debug/panels/CameraPanel.cpp) | Funkcja `drawCameraPanel`: panel "Camera" (tryb, pozycja stóp gracza, oko, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, trzy prędkości gracza). Opis linia po linii: [`scene/camera-controls.md`](scene/camera-controls.md), sekcja 6 |
+| [`src/debug/panels/MazePanel.hpp`](../../src/debug/panels/MazePanel.hpp), [`.cpp`](../../src/debug/panels/MazePanel.cpp) | Funkcja `drawMazePanel`: panel "Maze" (rozmiar, ziarno, "Regenerate", "Random seed", plan labiryntu z góry z graczem). Opis linia po linii: [`game/maze-generator.md`](game/maze-generator.md), sekcja 6 |
+| [`src/debug/panels/CollisionPanel.hpp`](../../src/debug/panels/CollisionPanel.hpp), [`.cpp`](../../src/debug/panels/CollisionPanel.cpp) | Funkcja `drawCollisionPanel`: panel "Collision" (rysowanie pudełek, noclip, liczby pudełek, pudełko gracza). Opis linia po linii: [`scene/collision.md`](scene/collision.md), sekcja 6 |
+| [`src/debug/panels/AssetsPanel.hpp`](../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../src/debug/panels/AssetsPanel.cpp) | Funkcja `drawAssetsPanel`: panel "Assets" (tryb widoku, filtr, anizotropia, modele, tekstury z podglądem, lista nieudanych wczytań). Opis linia po linii: [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6 |
 | [`src/main.cpp`](../../src/main.cpp) | Klasa `DebugNightMazeApp`: posiada `DebugUI`, obsługuje klawisz `~`, wyłącza mysz w ImGui na czas przechwycenia kursora, co klatkę buduje `DebugContext` i woła `draw` po narysowaniu gry, przekazuje do `core::Input` blokadę klawiatury i myszy |
 | [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) | Pobranie ImGui i definicja celu `imgui` (ImGui nie ma własnego CMake) |
 | [`CMakeLists.txt`](../../CMakeLists.txt) | Pliki `src/debug/*` są częścią programu `night_maze`, nie biblioteki `engine` |
@@ -160,21 +178,24 @@ Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera:
 
 ```mermaid
 flowchart LR
-    Main["DebugNightMazeApp (main.cpp)<br/>posiada m_debugUI"] -->|"setMouseEnabled(...), draw(DebugContext: time, window, clearColor, shader, camera, mouseSensitivity, moveSpeed)"| UI["debug::DebugUI<br/>cykl życia ImGui, m_visible"]
-    Main -->|"dziedziczy, woła onRender gry"| Game["game::NightMazeApp<br/>posiada m_clearColor, m_shader, m_camera, m_mouseSensitivity, m_moveSpeed"]
+    Main["DebugNightMazeApp (main.cpp)<br/>posiada m_debugUI"] -->|"setMouseEnabled(...), draw(DebugContext: 14 referencji)"| UI["debug::DebugUI<br/>cykl życia ImGui, m_visible"]
+    Main -->|"dziedziczy, woła onRender gry"| Game["game::NightMazeApp<br/>właściciel całego stanu gry"]
     Main -->|"czyta isCursorCaptured()<br/>setKeyboardBlocked(wantsKeyboard()), setMouseBlocked(wantsMouse())"| In["core::Input"]
-    UI -->|"drawRendererPanel(context.time, context.window, context.clearColor)"| Panel["debug::drawRendererPanel<br/>funkcja bez stanu"]
-    Panel -->|"czyta: fps(), frameTimeMs()"| Time["core::Time"]
-    Panel -->|"czyta: framebufferSize(), windowSize(), glVersion(), glRenderer()"| Win["core::Window"]
-    Panel -->|"zapisuje m_clearColor przez referencję"| Game
-    UI -->|"drawShadersPanel(context.shader)"| SPanel["debug::drawShadersPanel<br/>funkcja bez stanu"]
-    SPanel -->|"czyta: vertexPath(), fragmentPath(), isValid(), lastError()<br/>woła: reload()"| Shader["gfx::Shader<br/>pole m_shader gry"]
-    Game -->|"posiada"| Shader
-    UI -->|"drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed)"| CPanel["debug::drawCameraPanel<br/>funkcja bez stanu"]
-    CPanel -->|"zapisuje pola przez referencję"| Cam["scene::Camera<br/>pole m_camera gry"]
-    CPanel -->|"zapisuje m_mouseSensitivity i m_moveSpeed przez referencję"| Game
-    Game -->|"posiada"| Cam
+    UI --> RP["drawRendererPanel<br/>time, window, clearColor"]
+    UI --> SP["drawShadersPanel<br/>lista trzech gfx::Shader*"]
+    UI --> CP["drawCameraPanel<br/>camera, player, mouseSensitivity"]
+    UI --> MP["drawMazePanel<br/>mazeSettings, mazeWorld, player, camera"]
+    UI --> CO["drawCollisionPanel<br/>mazeWorld, player, drawColliders"]
+    UI --> AP["drawAssetsPanel<br/>assets, viewMode"]
+    RP -->|"czyta czas i okno, zapisuje m_clearColor"| Game
+    SP -->|"woła reload() na trzech programach"| Game
+    CP -->|"zapisuje kąty i rzutowanie kamery, pozycję i prędkości gracza, czułość myszy"| Game
+    MP -->|"zapisuje m_mazeSettings, czyta m_mazeWorld, m_player, m_camera"| Game
+    CO -->|"zapisuje m_drawColliders i m_player.noclip, czyta m_mazeWorld"| Game
+    AP -->|"woła setFilter i setAnisotropy na m_assets, zapisuje m_viewMode"| Game
 ```
+
+Sześć paneli to sześć wolnych funkcji bez stanu. Każda strzałka do gry idzie przez referencję z `DebugContext`: panel nie zna klasy `NightMazeApp`, zna tylko typy danych, które dostał (`scene::Camera`, `game::Player`, `game::MazeSettings`, `game::MazeWorld`, `assets::AssetCache`, `game::ViewMode`, `gfx::Shader`).
 
 **Dlaczego `DebugUI` należy do klasy w `main.cpp`, a nie do gry.** W architekturze projektu (PRD, sekcja 6) `debug/` zależy od wszystkich warstw, ale **nic nie zależy od `debug/`**. Gdyby `game::NightMazeApp` miało pole `DebugUI`, plik gry dołączałby `debug/DebugUI.hpp` i gra nie dałaby się zbudować bez paneli. Dlatego sklejenie odbywa się piętro wyżej:
 
@@ -200,7 +221,14 @@ protected:
             .shader = shader(),
             .camera = camera(),
             .mouseSensitivity = mouseSensitivity(),
-            .moveSpeed = moveSpeed(),
+            .texturedShader = texturedShader(),
+            .colorShader = colorShader(),
+            .player = player(),
+            .mazeSettings = mazeSettings(),
+            .mazeWorld = mazeWorld(),
+            .assets = assets(),
+            .viewMode = viewMode(),
+            .drawColliders = drawColliders(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -213,17 +241,29 @@ protected:
     }
 
 private:
+    // Members are destroyed before base classes, so ImGui shuts down while the window
+    // and its OpenGL context (owned by core::Application) still exist.
     debug::DebugUI m_debugUI{window()};
 };
 ```
 
-`main.cpp` to jedyny plik, który dołącza zarówno `game/NightMazeApp.hpp`, jak i nagłówki z `debug/` (`debug/DebugContext.hpp` i `debug/DebugUI.hpp`). Klasa dziedziczy po grze, nadpisuje `onRender`, woła w nim wersję gry (`game::NightMazeApp::onRender(alpha)`, z nazwą klasy, żeby ominąć mechanizm wirtualny i nie wpaść w rekurencję), potem mówi ImGui, czy wolno mu używać myszy, buduje `DebugContext` i dorysowuje panele, a na końcu przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy (sekcja 5.6). Gra ze swojej strony udostępnia tylko chronione akcesory `clearColor()`, `shader()`, `camera()`, `mouseSensitivity()` i `moveSpeed()` i nie wie, kto z nich skorzysta. Kierunek zależności wygląda więc tak: `main.cpp` zna `game` i `debug`, `debug` zna `core`, `gfx` i `scene` (panel Shaders dołącza `gfx/Shader.hpp`, panel Camera dołącza `scene/Camera.hpp`), `game` zna `core`, `gfx` i `scene`, a `game` i `debug` nie znają się nawzajem.
+`main.cpp` to jedyny plik, który dołącza zarówno `game/NightMazeApp.hpp`, jak i `debug/DebugUI.hpp` (oraz `debug/DebugContext.hpp`). Klasa dziedziczy po grze, nadpisuje `onRender`, woła w nim wersję gry (`game::NightMazeApp::onRender(alpha)`, z nazwą klasy, żeby ominąć mechanizm wirtualny i nie wpaść w rekurencję), potem mówi ImGui, czy wolno mu używać myszy, buduje `DebugContext` i dorysowuje panele, a na końcu przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy (sekcja 5.6). Gra ze swojej strony udostępnia tylko dwanaście chronionych akcesorów (`clearColor()`, `shader()`, `texturedShader()`, `colorShader()`, `camera()`, `mouseSensitivity()`, `player()`, `mazeSettings()`, `mazeWorld()`, `assets()`, `viewMode()`, `drawColliders()`, tabela w [`core/README.md`](core/README.md), sekcja 6) i nie wie, kto z nich skorzysta. Kierunek zależności wygląda więc tak: `main.cpp` zna `game` i `debug`. `debug` zna `core`, `gfx`, `scene`, `assets` i typy danych z `game` (panel Shaders dołącza `gfx/Shader.hpp`, panel Camera `scene/Camera.hpp` i `game/Player.hpp`, panele Maze i Collision `game/MazeWorld.hpp`, `game/MazeLayout.hpp` i `game/Player.hpp`, panel Assets `assets/AssetCache.hpp` i `game/MazeRenderer.hpp` dla wyliczenia `ViewMode`). `game` zna `core`, `gfx`, `scene` i `assets`, ale niczego z `debug`. Zależność jest więc jednostronna: panele znają dane gry, gra nie zna paneli. Komentarz w `main.cpp` ("the only place where the game meets the debug UI") mówi to samo: to jedyne miejsce, które tworzy obiekty obu warstw i je łączy.
 
 Trzy decyzje, które trzeba umieć uzasadnić:
 
 1. **`DebugUI` to RAII na ImGui.** Konstruktor inicjalizuje, destruktor zamyka, kopiowanie jest zablokowane (`= delete`), bo kontekst ImGui jest jeden. Nie da się zapomnieć o `Shutdown`.
-2. **Panel to wolna funkcja, nie klasa.** `drawRendererPanel` nie ma własnego stanu (tak samo `drawShadersPanel` i `drawCameraPanel`). Wszystko, co pokazuje i edytuje, dostaje w argumentach. Zgodnie z zasadą "dane zamiast kodu" (PRD, sekcja 6) stan należy do właściciela: kolor tła jest polem `game::NightMazeApp::m_clearColor`, a panel tylko go edytuje przez referencję.
-3. **`const` mówi, co panel może zmienić.** `const core::Time&` i `const core::Window&` są tylko do odczytu. `std::array<float, 3>& clearColor` bez `const` to jedyna rzecz, którą panel modyfikuje. Z samej sygnatury widać, co jest przełącznikiem. Tak samo `drawShadersPanel(gfx::Shader& shader)` bierze shader bez `const`, bo jego przycisk woła `reload()`, a `drawCameraPanel(scene::Camera& camera, float& mouseSensitivity, float& moveSpeed)` bierze trzy referencje bez `const`, bo edytuje wszystkie trzy. Ta sama umowa obowiązuje w polach `DebugContext` (niżej).
+2. **Panel to wolna funkcja, nie klasa.** `drawRendererPanel` nie ma własnego stanu (tak samo pozostałych pięć funkcji paneli). Wszystko, co pokazuje i edytuje, dostaje w argumentach. Zgodnie z zasadą "dane zamiast kodu" (PRD, sekcja 6) stan należy do właściciela: kolor tła jest polem `game::NightMazeApp::m_clearColor`, a panel tylko go edytuje przez referencję.
+3. **`const` mówi, co panel może zmienić.** `const core::Time&` i `const core::Window&` są tylko do odczytu. `std::array<float, 3>& clearColor` bez `const` to jedyna rzecz, którą panel modyfikuje. Z samej sygnatury widać, co jest przełącznikiem. Tak samo czyta się pozostałe sygnatury:
+
+   | Sygnatura | Tylko do odczytu | Edytowalne |
+   |---|---|---|
+   | `drawShadersPanel(std::span<gfx::Shader* const> shaders)` | sama lista (wskaźników nie da się przestawić) | shadery, na które wskazują: przycisk woła `reload()` |
+   | `drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity)` | nic | kąty i rzutowanie kamery, pozycja i prędkości gracza, czułość |
+   | `drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world, const game::Player& player, const scene::Camera& camera)` | labirynt w grze, gracz i kamera (rysowane na planie) | prośba o następny labirynt |
+   | `drawCollisionPanel(const game::MazeWorld& world, game::Player& player, bool& drawColliders)` | labirynt (liczenie pudełek) | `player.noclip` i przełącznik rysowania |
+   | `drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode)` | nic | filtr i anizotropia wszystkich tekstur, tryb widoku |
+
+   Ta sama umowa obowiązuje w polach `DebugContext` (niżej).
 
 **`DebugContext`: jedna struktura zamiast listy parametrów.** `DebugUI::draw` ma jeden parametr:
 
@@ -241,33 +281,102 @@ struct DebugContext {
     const core::Window& window;
     /// Background color (red, green, blue in the range 0 to 1), editable.
     std::array<float, 3>& clearColor;
-    /// Shader program the game draws with, editable: the Shaders panel reloads it.
+    /// Shader program of the marker cube, editable: the Shaders panel reloads it.
     gfx::Shader& shader;
-    /// Camera of the game, editable: position, angles and projection.
+    /// Camera of the game, editable: angles and projection.
     scene::Camera& camera;
     /// Mouse look sensitivity in degrees per screen coordinate unit, editable.
     float& mouseSensitivity;
-    /// Camera movement speed in metres per second, editable.
-    float& moveSpeed;
+    /// Shader program of the maze (textured models), editable: reloaded like shader.
+    gfx::Shader& texturedShader;
+    /// Shader program of the collision box lines, editable: reloaded like shader.
+    gfx::Shader& colorShader;
+    /// The player, editable: position, speeds and the noclip mode.
+    game::Player& player;
+    /// Request for the next maze, editable: size, seed and the "regenerate" flag.
+    game::MazeSettings& mazeSettings;
+    /// The maze in play, read only: its plan and its collision boxes.
+    const game::MazeWorld& mazeWorld;
+    /// Loaded models and textures, editable: the Assets panel changes the filtering.
+    assets::AssetCache& assets;
+    /// What the textured shader shows (picture, normals or UVs), editable.
+    game::ViewMode& viewMode;
+    /// Whether the collision boxes are drawn as lines, editable.
+    bool& drawColliders;
 };
 ```
 
-Powód jest praktyczny. Gdyby `draw` brało każdą wartość osobno (`draw(time, window, clearColor, shader)`), każdy nowy panel z nowymi danymi wydłużałby listę parametrów w trzech miejscach naraz: w deklaracji w `DebugUI.hpp`, w definicji w `DebugUI.cpp` i w wywołaniu w `main.cpp`. Ze strukturą sygnatura `draw` się nie zmienia: dochodzi jedno pole w `DebugContext` i jedna linia w `main.cpp`. Tak właśnie doszedł panel Shaders: pole `shader` i linia `.shader = shader(),`, bez zmiany w `DebugUI.hpp`. Panel Camera dołożył trzy pola (`camera`, `mouseSensitivity`, `moveSpeed`) i trzy linie. Rzeczy, które trzeba umieć wyjaśnić:
+Czternaście pól w kolejności deklaracji i ich właściciele:
 
-1. **Dlaczego referencje.** Struktura niczego nie posiada i niczego nie kopiuje. Każde pole wskazuje na obiekt, którego właścicielem jest aplikacja: `time` i `window` to pola `core::Application`, `clearColor` to `game::NightMazeApp::m_clearColor`, `shader` to `m_shader`, `camera` to `m_camera`, `mouseSensitivity` to `m_mouseSensitivity`, a `moveSpeed` to `m_moveSpeed` tej samej klasy. Kopia `m_clearColor` w strukturze byłaby bezużyteczna, bo panel edytowałby kopię, a `glClearColor` dalej dostawałby oryginał. Referencja zamiast wskaźnika oznacza też, że pole nie może być puste: nie ma `nullptr` do sprawdzania.
-2. **Dlaczego jest budowana co klatkę.** `main.cpp` tworzy obiekt tymczasowy `debug::DebugContext{...}` bezpośrednio w wywołaniu `draw`. Koszt to siedem referencji, czyli siedem adresów. W zamian nie ma żadnego stanu do przechowywania i pilnowania: `DebugUI` nie zapamiętuje kontekstu, a `DebugNightMazeApp` nie ma dodatkowego pola.
+| # | Pole | Typ | Skąd pochodzi (`main.cpp`) | Kto czyta albo pisze |
+|---|---|---|---|---|
+| 1 | `time` | `const core::Time&` | `time()`, pole `core::Application` | Renderer (odczyt) |
+| 2 | `window` | `const core::Window&` | `window()`, pole `core::Application` | Renderer (odczyt) |
+| 3 | `clearColor` | `std::array<float, 3>&` | `clearColor()`, `m_clearColor` | Renderer (edycja) |
+| 4 | `shader` | `gfx::Shader&` | `shader()`, `m_shader` (kostka) | Shaders (`reload()`) |
+| 5 | `camera` | `scene::Camera&` | `camera()`, `m_camera` | Camera (edycja), Maze (odczyt) |
+| 6 | `mouseSensitivity` | `float&` | `mouseSensitivity()`, `m_mouseSensitivity` | Camera (edycja) |
+| 7 | `texturedShader` | `gfx::Shader&` | `texturedShader()`, `m_texturedShader` (labirynt) | Shaders (`reload()`) |
+| 8 | `colorShader` | `gfx::Shader&` | `colorShader()`, `m_colorShader` (linie pudełek) | Shaders (`reload()`) |
+| 9 | `player` | `game::Player&` | `player()`, `m_player` | Camera i Collision (edycja), Maze (odczyt) |
+| 10 | `mazeSettings` | `game::MazeSettings&` | `mazeSettings()`, `m_mazeSettings` | Maze (edycja) |
+| 11 | `mazeWorld` | `const game::MazeWorld&` | `mazeWorld()`, `m_mazeWorld` | Maze i Collision (odczyt) |
+| 12 | `assets` | `assets::AssetCache&` | `assets()`, `m_assets` | Assets (`setFilter`, `setAnisotropy`, listy) |
+| 13 | `viewMode` | `game::ViewMode&` | `viewMode()`, `m_viewMode` | Assets (edycja) |
+| 14 | `drawColliders` | `bool&` | `drawColliders()`, `m_drawColliders` | Collision (edycja) |
+
+Kolejność pól to historia: pierwsze sześć pochodzi z M0 i M1, osiem następnych doszło w M2 + M3 i zostało dopisanych **na końcu**. Dlatego dwa nowe shadery (pola 7 i 8) nie stoją obok pierwszego (pole 4). Ma to skutek w `main.cpp`: inicjalizatory desygnowane muszą iść w kolejności deklaracji pól, więc linia `.texturedShader = texturedShader(),` stoi po `.mouseSensitivity = mouseSensitivity(),`, a nie po `.shader = shader(),` (pułapka 15). Pole `moveSpeed` z M1 zniknęło: prędkości są dziś trzy i należą do gracza (`player.walkSpeed`, `player.sprintSpeed`, `player.flySpeed`), więc przychodzą razem z polem `player`.
+
+Powód jest praktyczny. Gdyby `draw` brało każdą wartość osobno (`draw(time, window, clearColor, shader)`), każdy nowy panel z nowymi danymi wydłużałby listę parametrów w trzech miejscach naraz: w deklaracji w `DebugUI.hpp`, w definicji w `DebugUI.cpp` i w wywołaniu w `main.cpp`. Ze strukturą sygnatura `draw` się nie zmienia: dochodzi jedno pole w `DebugContext` i jedna linia w `main.cpp`. Tak właśnie doszedł panel Shaders: pole `shader` i linia `.shader = shader(),`, bez zmiany w `DebugUI.hpp`. Trzy panele z M2 + M3 dołożyły osiem pól i osiem linii, a `DebugUI.hpp` nadal jest ten sam. Rzeczy, które trzeba umieć wyjaśnić:
+
+1. **Dlaczego referencje.** Struktura niczego nie posiada i niczego nie kopiuje. Każde pole wskazuje na obiekt, którego właścicielem jest aplikacja: `time` i `window` to pola `core::Application`, `clearColor` to `game::NightMazeApp::m_clearColor`, a pozostałe jedenaście to pola tej samej klasy (tabela wyżej). Kopia `m_clearColor` w strukturze byłaby bezużyteczna, bo panel edytowałby kopię, a `glClearColor` dalej dostawałby oryginał. Referencja zamiast wskaźnika oznacza też, że pole nie może być puste: nie ma `nullptr` do sprawdzania.
+2. **Dlaczego jest budowana co klatkę.** `main.cpp` tworzy obiekt tymczasowy `debug::DebugContext{...}` bezpośrednio w wywołaniu `draw`. Koszt to czternaście referencji, czyli czternaście adresów. W zamian nie ma żadnego stanu do przechowywania i pilnowania: `DebugUI` nie zapamiętuje kontekstu, a `DebugNightMazeApp` nie ma dodatkowego pola.
 3. **Czas życia (lifetime).** Obiekt tymczasowy żyje do końca pełnego wyrażenia, czyli do średnika po wywołaniu `draw`. To wystarcza, bo panele używają go tylko w trakcie `draw`. Struktury nie wolno zachować na później (na przykład w polu klasy): przeżyłaby klatkę, w której powstała, a jej referencje mogłyby wskazywać na obiekty już zniszczone.
 4. **Dlaczego inicjalizatory desygnowane (designated initializers, C++20).** Zapis `.time = time()` nazywa pole, do którego trafia wartość, więc wywołanie czyta się bez zaglądania do definicji struktury. Pola referencyjnego nie da się pominąć: referencja musi zostać zainicjalizowana, więc brak pola na liście jest błędem kompilacji, a nie cichą wartością domyślną (sekcja 7, pułapki 14 i 15).
-5. **Dlaczego panel nadal dostaje jawne parametry.** `DebugUI::draw` woła `drawRendererPanel(context.time, context.window, context.clearColor)`, `drawShadersPanel(context.shader)` i `drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed)`, a nie `drawRendererPanel(context)`. Dzięki temu sygnatura panelu dalej mówi, co dokładnie czyta i co edytuje (decyzja 3 wyżej). Panel biorący cały `DebugContext` miałby dostęp do wszystkiego i z jego sygnatury nic by nie wynikało.
-6. **`const DebugContext&` nie robi z pól stałych.** `draw` bierze kontekst przez `const&`, a mimo to panel zmienia kolor tła. To nie jest obejście `const`. Stałość obiektu dotyczy jego własnych pól, a polem jest tu **referencja**, nie tablica. Referencji i tak nie da się przestawić na inny obiekt, więc `const` na strukturze niczego w niej nie zmienia, i nie przechodzi na obiekt, na który referencja wskazuje. O tym, czy przez pole wolno pisać, decyduje wyłącznie typ pola: `const core::Time&` jest tylko do odczytu, `std::array<float, 3>&`, `gfx::Shader&`, `scene::Camera&` i `float&` są edytowalne, niezależnie od tego, czy sama struktura jest `const`. Tak samo zachowuje się wskaźnik: w stałym obiekcie pole `float* p` staje się `float* const p` (nie można przestawić wskaźnika), ale `*p = 1.0F` nadal się kompiluje.
+5. **Dlaczego panel nadal dostaje jawne parametry.** `DebugUI::draw` woła `drawRendererPanel(context.time, context.window, context.clearColor)`, `drawCameraPanel(context.camera, context.player, context.mouseSensitivity)` i tak dalej, a nie `drawRendererPanel(context)`. Dzięki temu sygnatura panelu dalej mówi, co dokładnie czyta i co edytuje (decyzja 3 wyżej). Panel biorący cały `DebugContext` miałby dostęp do wszystkiego i z jego sygnatury nic by nie wynikało.
+6. **`const DebugContext&` nie robi z pól stałych.** `draw` bierze kontekst przez `const&`, a mimo to panel zmienia kolor tła. To nie jest obejście `const`. Stałość obiektu dotyczy jego własnych pól, a polem jest tu **referencja**, nie tablica. Referencji i tak nie da się przestawić na inny obiekt, więc `const` na strukturze niczego w niej nie zmienia, i nie przechodzi na obiekt, na który referencja wskazuje. O tym, czy przez pole wolno pisać, decyduje wyłącznie typ pola: `const core::Time&` i `const game::MazeWorld&` są tylko do odczytu, `std::array<float, 3>&`, `gfx::Shader&`, `scene::Camera&`, `game::Player&`, `float&` i `bool&` są edytowalne, niezależnie od tego, czy sama struktura jest `const`. Tak samo zachowuje się wskaźnik: w stałym obiekcie pole `float* p` staje się `float* const p` (nie można przestawić wskaźnika), ale `*p = 1.0F` nadal się kompiluje.
 
-Nagłówki `DebugContext.hpp`, `DebugUI.hpp`, `RendererPanel.hpp`, `ShadersPanel.hpp` i `CameraPanel.hpp` nie dołączają ani `imgui.h`, ani nagłówków `core`, `gfx` i `scene`: wystarczają im deklaracje wyprzedzające (forward declarations), bo używają tych typów tylko przez referencję. `DebugContext.hpp` i `RendererPanel.hpp` deklarują `class Time;` i `class Window;` w przestrzeni nazw `core`, `DebugContext.hpp` i `ShadersPanel.hpp` deklarują `class Shader;` w przestrzeni nazw `gfx`, `DebugContext.hpp` i `CameraPanel.hpp` deklarują `struct Camera;` w przestrzeni nazw `scene` (słowo `struct`, bo tak jest zdefiniowana kamera: deklaracja powinna zgadzać się z definicją), a `DebugUI.hpp` deklaruje `class Window;` (dla konstruktora) i `struct DebugContext;` (dla `draw`). Pełną definicję `DebugContext` dołączają tylko `DebugUI.cpp`, które czyta pola, i `main.cpp`, które strukturę buduje. ImGui jest dołączane wyłącznie w plikach `.cpp`, więc reszta projektu nie zależy od tej biblioteki.
+Nagłówki `DebugContext.hpp`, `DebugUI.hpp` i sześć nagłówków paneli nie dołączają ani `imgui.h`, ani nagłówków `core`, `gfx`, `scene`, `game` i `assets`: wystarczają im deklaracje wyprzedzające (forward declarations), bo używają tych typów tylko przez referencję albo wskaźnik. `DebugContext.hpp` deklaruje tak wszystkie swoje typy: `class AssetCache;` w `assets`, `class Time;` i `class Window;` w `core`, `enum class ViewMode;`, `struct MazeSettings;`, `struct MazeWorld;` i `struct Player;` w `game`, `class Shader;` w `gfx` i `struct Camera;` w `scene`. Wyliczenie `enum class` da się zadeklarować z wyprzedzeniem, bo jego typ bazowy jest znany (domyślnie `int`). Jedyne dołączenia w nagłówkach to `<array>` (w `DebugContext.hpp` i `RendererPanel.hpp`, dla `std::array<float, 3>`) i `<span>` (w `ShadersPanel.hpp`). Słowo `struct` albo `class` w deklaracji zgadza się z definicją (`struct Camera`, `struct Player`, `class AssetCache`). `DebugUI.hpp` deklaruje `class Window;` (dla konstruktora) i `struct DebugContext;` (dla `draw`). Pełną definicję `DebugContext` dołączają tylko `DebugUI.cpp`, które czyta pola, i `main.cpp`, które strukturę buduje. ImGui jest dołączane wyłącznie w plikach `.cpp`, więc reszta projektu nie zależy od tej biblioteki.
+
+**Lista shaderów: tablica wskaźników widziana jako `std::span`.** Jedno z sześciu wywołań w `DebugUI::draw` wymaga wyjaśnienia:
+
+```cpp
+        // The Shaders panel takes a list, so that a new program is one more entry here
+        // and no change in the panel. The array holds pointers, because a reference
+        // cannot be an element of an array.
+        constexpr int SHADER_COUNT = 3;
+        const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
+            &context.shader, &context.texturedShader, &context.colorShader};
+        drawShadersPanel(shaders);
+```
+
+| Fragment | Znaczenie |
+|---|---|
+| `std::array<gfx::Shader*, SHADER_COUNT>` | tablica trzech **wskaźników**. Tablicy referencji w C++ nie ma (referencja nie jest obiektem, nie ma adresu ani rozmiaru), więc lista obiektów, których nie posiadam, to lista wskaźników |
+| `&context.shader` | adres obiektu, na który wskazuje pole referencyjne, czyli adres `NightMazeApp::m_shader`. Żaden z trzech nie może być pusty |
+| `const std::array<...> shaders` | stała jest tablica (jej trzy wskaźniki), a nie shadery |
+| `drawShadersPanel(shaders)` | parametr ma typ `std::span<gfx::Shader* const>`: widok na ciąg stałych wskaźników do niestałych shaderów. `std::array` zamienia się na `std::span` bez kopiowania. `const` stoi po gwiazdce, więc dotyczy wskaźnika: panel nie może podmienić elementu listy, ale może zawołać `reload()` na shaderze |
+
+Kolejny program to jeden wpis więcej w tej tablicy (i większe `SHADER_COUNT`), bez zmiany w panelu.
 
 ### 5.3 Panel Renderer linia po linii
 
 ```cpp
+// Where the panel appears and how big it is the first time the program runs (later ImGui
+// remembers it in imgui.ini): the top of the left edge of a 1280 x 720 window.
+constexpr ImVec2 FIRST_POSITION{10.0F, 10.0F};
+constexpr ImVec2 FIRST_SIZE{300.0F, 190.0F};
+```
+
+```cpp
 void drawRendererPanel(const core::Time& time, const core::Window& window,
                        std::array<float, 3>& clearColor) {
+    // FirstUseEver: the two calls count only when imgui.ini has no entry for this panel
+    // yet. After that the user decides where the panel is.
+    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // Begin returns false when the panel is collapsed or hidden behind another tab.
+    // End must be called in both cases.
     if (ImGui::Begin("Renderer")) {
         ImGui::Text("FPS: %.1f", time.fps());
         ImGui::Text("Frame time: %.2f ms", time.frameTimeMs());
@@ -282,12 +391,14 @@ void drawRendererPanel(const core::Time& time, const core::Window& window,
         ImGui::TextWrapped("GPU: %s", window.glRenderer().c_str());
 
         ImGui::Separator();
+        // ColorEdit3 reads and writes three floats through the pointer.
         ImGui::ColorEdit3("Clear color", clearColor.data());
     }
     ImGui::End();
 }
 ```
 
+- `ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver)` i `ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver)` dotyczą **następnego** okna, czyli tego, które zaraz otworzy `Begin`. Warunek `ImGuiCond_FirstUseEver` znaczy: zastosuj tylko wtedy, gdy ImGui nie ma dla tego okna zapisanych danych w `imgui.ini`. Od pierwszego uruchomienia o miejscu panelu decyduje użytkownik (sekcja 5.7).
 - `ImGui::Begin("Renderer")` otwiera okno ImGui o tym tytule. Tytuł jest jednocześnie **identyfikatorem**: po nim ImGui pamięta pozycję i dokowanie panelu. Zwraca `false`, gdy panel jest zwinięty albo schowany za inną zakładką, i wtedy pomijam zawartość (oszczędność pracy).
 - `ImGui::End()` stoi **poza** `if` i wykonuje się zawsze. Każde `Begin` musi mieć swoje `End`, niezależnie od zwróconej wartości.
 - `ImGui::Text` działa jak `printf`: `%.1f` to liczba z jedną cyfrą po przecinku, `%d` liczba całkowita, `%s` napis w stylu C, dlatego przy `std::string` potrzebne jest `.c_str()`.
@@ -301,7 +412,7 @@ Wszystkie sześć miejsc jest w `DebugNightMazeApp` w [`main.cpp`](../../src/mai
 - Tworzenie: inicjalizator pola przy deklaracji, `debug::DebugUI m_debugUI{window()};`. Wykonuje się po zbudowaniu całej części bazowej, więc okno i kontekst już istnieją.
 - Przełączanie: `if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) { m_debugUI.toggleVisible(); }` w `onRender`, czyli dokładnie raz na klatkę. Dlaczego nie w `onUpdate`, wyjaśnia [`core/input.md`](core/input.md), sekcja 5.5.
 - Mysz dla ImGui: `m_debugUI.setMouseEnabled(!input().isCursorCaptured());` tuż przed `draw` (sekcja 5.6).
-- Rysowanie: `m_debugUI.draw(debug::DebugContext{...});` z polami `.time = time()`, `.window = window()`, `.clearColor = clearColor()`, `.shader = shader()`, `.camera = camera()`, `.mouseSensitivity = mouseSensitivity()` i `.moveSpeed = moveSpeed()`, po powrocie z `game::NightMazeApp::onRender`.
+- Rysowanie: `m_debugUI.draw(debug::DebugContext{...});` z czternastoma polami (sekcja 5.2), po powrocie z `game::NightMazeApp::onRender`.
 - Blokada klawiatury gry: przedostatnia linia `onRender`, `input().setKeyboardBlocked(m_debugUI.wantsKeyboard());` (sekcja 5.6).
 - Blokada myszy gry: ostatnia linia `onRender`, `input().setMouseBlocked(m_debugUI.wantsMouse());` (sekcja 5.6).
 
@@ -328,7 +439,7 @@ void drawTimingPanel(const core::Time& time);
 } // namespace debug
 ```
 
-**Krok 2. Implementacja** `src/debug/panels/TimingPanel.cpp`. Zawsze ten sam szkielet: `if (ImGui::Begin(...)) { ... }` i `ImGui::End()` poza `if`:
+**Krok 2. Implementacja** `src/debug/panels/TimingPanel.cpp`. Zawsze ten sam szkielet: pozycja i rozmiar na pierwsze uruchomienie, `if (ImGui::Begin(...)) { ... }` i `ImGui::End()` poza `if`:
 
 ```cpp
 #include "debug/panels/TimingPanel.hpp"
@@ -339,7 +450,17 @@ void drawTimingPanel(const core::Time& time);
 
 namespace debug {
 
+namespace {
+
+// Where the panel appears the first time the program runs: a free place of a 1280 x 720 window.
+constexpr ImVec2 FIRST_POSITION{670.0F, 520.0F};
+constexpr ImVec2 FIRST_SIZE{290.0F, 190.0F};
+
+} // namespace
+
 void drawTimingPanel(const core::Time& time) {
+    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Timing")) {
         ImGui::Text("Fixed step: %.3f ms", 1000.0 * core::Time::FIXED_DT);
         ImGui::Text("Delta: %.3f ms", 1000.0 * time.deltaSeconds());
@@ -351,18 +472,17 @@ void drawTimingPanel(const core::Time& time) {
 } // namespace debug
 ```
 
-**Krok 3. CMake.** Dopisz oba pliki do listy `add_executable(night_maze ...)` w [`CMakeLists.txt`](../../CMakeLists.txt), obok `CameraPanel`, `RendererPanel` i `ShadersPanel`, w kolejności alfabetycznej. Bez tego linker zgłosi brak symbolu `drawTimingPanel`.
+**Krok 3. CMake.** Dopisz oba pliki do listy `add_executable(night_maze ...)` w [`CMakeLists.txt`](../../CMakeLists.txt), obok `AssetsPanel`, `CameraPanel`, `CollisionPanel`, `MazePanel`, `RendererPanel` i `ShadersPanel`, w kolejności alfabetycznej. Bez tego linker zgłosi brak symbolu `drawTimingPanel`.
 
 **Krok 4. Wywołanie.** W [`DebugUI.cpp`](../../src/debug/DebugUI.cpp) dodaj `#include "debug/panels/TimingPanel.hpp"` i wywołanie wewnątrz `if (m_visible)`, po `DockSpaceOverViewport`:
 
 ```cpp
-drawRendererPanel(context.time, context.window, context.clearColor);
-drawShadersPanel(context.shader);
-drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed);
+drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
+drawAssetsPanel(context.assets, context.viewMode);
 drawTimingPanel(context.time);
 ```
 
-Panel dostaje tylko te pola kontekstu, których potrzebuje, nigdy całego `context`.
+Panel dostaje tylko te pola kontekstu, których potrzebuje, nigdy całego `context`. Pozycję `FIRST_POSITION` dobieram tak, żeby nowy panel nie przykrył żadnego z istniejących (tabela w sekcji 5.7).
 
 **Krok 5. Dane.** Ten przykład korzysta z `context.time`, które jest już w `DebugContext`. Jeśli panel potrzebuje nowych danych, trzeba je doprowadzić tą samą drogą co kolor tła, w pięciu miejscach:
 
@@ -374,31 +494,33 @@ Panel dostaje tylko te pola kontekstu, których potrzebuje, nigdy całego `conte
 
 Sygnatura `DebugUI::draw` się nie zmienia. Kod w `game/` nadal nie dołącza niczego z `debug/`. Dane tylko do odczytu mają w strukturze i w sygnaturze panelu typ `const&`, edytowalne zwykłą referencję.
 
-Prawdziwy przykład kroku 5 jest już w repozytorium: panel **Shaders**. Te same pięć miejsc w jego wypadku:
+Prawdziwy przykład kroku 5 jest już w repozytorium: panel **Collision** i jego przełącznik rysowania pudełek. Te same pięć miejsc w jego wypadku:
 
 | # | Miejsce | Kod |
 |---|---|---|
-| 1 | pole właściciela, [`NightMazeApp.hpp`](../../src/game/NightMazeApp.hpp) | `gfx::Shader m_shader;` (pole istniało wcześniej, bo gra nim rysuje) |
-| 2 | chroniony akcesor, tamże | `gfx::Shader& shader() { return m_shader; }` |
-| 3 | pole kontekstu, [`DebugContext.hpp`](../../src/debug/DebugContext.hpp) | `gfx::Shader& shader;` i deklaracja wyprzedzająca `class Shader;` w przestrzeni nazw `gfx` |
-| 4 | linia w [`main.cpp`](../../src/main.cpp) | `.shader = shader(),` po `.clearColor = clearColor(),` |
-| 5 | przekazanie do panelu, [`DebugUI.cpp`](../../src/debug/DebugUI.cpp) | `drawShadersPanel(context.shader);` |
+| 1 | pole właściciela, [`NightMazeApp.hpp`](../../src/game/NightMazeApp.hpp) | `bool m_drawColliders = false;` |
+| 2 | chroniony akcesor, tamże | `bool& drawColliders() { return m_drawColliders; }` |
+| 3 | pole kontekstu, [`DebugContext.hpp`](../../src/debug/DebugContext.hpp) | `bool& drawColliders;` na końcu struktury |
+| 4 | linia w [`main.cpp`](../../src/main.cpp) | `.drawColliders = drawColliders(),` jako ostatnia |
+| 5 | przekazanie do panelu, [`DebugUI.cpp`](../../src/debug/DebugUI.cpp) | `drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);` |
 
-Pole jest edytowalne (bez `const`), bo przycisk panelu woła `shader.reload()`. Różnica wobec koloru tła: panel nie zmienia tu liczby, tylko woła funkcję obiektu, a ta wykonuje wywołania OpenGL. Sam panel nadal nie woła żadnej funkcji `gl*`.
+Panel zmienia jedną wartość `bool`, a skutek widać w następnej klatce: `NightMazeApp::onRender` sprawdza `m_drawColliders` i woła albo nie woła `drawColliderLines`. Panel nie rysuje pudełek sam i nie woła żadnej funkcji `gl*`.
 
-Drugi prawdziwy przykład to panel **Camera**, który potrzebował trzech nowych danych naraz:
+Drugi prawdziwy przykład to panel **Shaders**, którego przycisk nie zmienia liczby, tylko woła funkcję obiektu:
 
 | # | Miejsce | Kod |
 |---|---|---|
-| 1 | pola właściciela, [`NightMazeApp.hpp`](../../src/game/NightMazeApp.hpp) | `scene::Camera m_camera;` (istniało wcześniej), `float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;`, `float m_moveSpeed = DEFAULT_MOVE_SPEED;` |
-| 2 | chronione akcesory, tamże | `scene::Camera& camera() { return m_camera; }`, `float& mouseSensitivity() { return m_mouseSensitivity; }`, `float& moveSpeed() { return m_moveSpeed; }` |
-| 3 | pola kontekstu, [`DebugContext.hpp`](../../src/debug/DebugContext.hpp) | `scene::Camera& camera;`, `float& mouseSensitivity;`, `float& moveSpeed;` i deklaracja wyprzedzająca `struct Camera;` w przestrzeni nazw `scene` |
-| 4 | linie w [`main.cpp`](../../src/main.cpp) | `.camera = camera(),`, `.mouseSensitivity = mouseSensitivity(),`, `.moveSpeed = moveSpeed(),` po `.shader = shader(),` |
-| 5 | przekazanie do panelu, [`DebugUI.cpp`](../../src/debug/DebugUI.cpp) | `drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed);` |
+| 1 | pola właściciela, [`NightMazeApp.hpp`](../../src/game/NightMazeApp.hpp) | `gfx::Shader m_shader;`, `gfx::Shader m_texturedShader;`, `gfx::Shader m_colorShader;` (pola istnieją, bo gra nimi rysuje) |
+| 2 | chronione akcesory, tamże | `gfx::Shader& shader() { return m_shader; }` i dwa analogiczne |
+| 3 | pola kontekstu, [`DebugContext.hpp`](../../src/debug/DebugContext.hpp) | `gfx::Shader& shader;`, `gfx::Shader& texturedShader;`, `gfx::Shader& colorShader;` i deklaracja wyprzedzająca `class Shader;` w przestrzeni nazw `gfx` |
+| 4 | linie w [`main.cpp`](../../src/main.cpp) | `.shader = shader(),`, a dalej `.texturedShader = texturedShader(),` i `.colorShader = colorShader(),` |
+| 5 | przekazanie do panelu, [`DebugUI.cpp`](../../src/debug/DebugUI.cpp) | tablica trzech wskaźników i `drawShadersPanel(shaders);` (sekcja 5.2) |
 
-Akcesory są trzy, a nie jeden zwracający "ustawienia kamery": każdy oddaje dokładnie jedno pole i z jego nazwy widać, co panel dostaje. Czułość i prędkość nie są polami `scene::Camera`, bo opisują sterowanie, a nie kamerę, więc nie mogą przyjść razem z nią. Ten panel, tak jak Renderer, zmienia same liczby: skutek widać w następnej klatce, gdy gra policzy z nich macierze.
+Pola są edytowalne (bez `const`), bo przycisk panelu woła `reload()`, a ta funkcja wykonuje wywołania OpenGL. Sam panel nadal nie woła żadnej funkcji `gl*`.
 
-**Krok 6. Sprawdzenie i dokumentacja.** Zbuduj, uruchom, zadokuj panel do krawędzi, uruchom ponownie i sprawdź, że układ się zachował. Dopisz panel do sekcji 6 dokumentu modułu, którego dotyczy, oraz do kolumny "Przełącznik w ImGui" w [`../syllabus.md`](../syllabus.md).
+Trzeci wzór to dane, które przychodzą **razem ze swoim obiektem**. Panel Camera edytuje trzy prędkości gracza, ale w `DebugContext` nie ma pól `walkSpeed`, `sprintSpeed` ani `flySpeed`: jest jedno pole `player`, a panel sięga po `player.walkSpeed`. Osobne pole w kontekście dostaje tylko to, co nie należy do żadnego przekazywanego obiektu, na przykład `mouseSensitivity` (opisuje sterowanie, a nie kamerę ani gracza) albo `viewMode` i `drawColliders` (ustawienia rysowania aplikacji).
+
+**Krok 6. Sprawdzenie i dokumentacja.** Zbuduj, uruchom, zadokuj panel do krawędzi, uruchom ponownie i sprawdź, że układ się zachował. Skasuj `imgui.ini` z katalogu roboczego i sprawdź, że przy pierwszym uruchomieniu panel staje w swoim miejscu i niczego nie przykrywa. Dopisz panel do sekcji 6 dokumentu modułu, którego dotyczy (tam też wskazuje komentarz `// See docs/...` na górze obu plików panelu), do tabeli w sekcji 5.7 tego dokumentu oraz do kolumny "Przełącznik w ImGui" w [`../syllabus.md`](../syllabus.md).
 
 Zasady, których się trzymam przy panelach: unikalny tytuł w `Begin` (dwa panele o tym samym tytule zlałyby się w jedno okno), żadnych zmiennych globalnych i `static` na stan, żadnych wywołań `gl*` w panelu.
 
@@ -499,9 +621,32 @@ Nie ma klatki, w której mysz mają oba systemy naraz, ani takiej, w której nie
 
 Dlaczego funkcja jest w `DebugUI`, a wywołanie w `main.cpp`: `core/` nie może znać ImGui, więc `Application::run` nie może przestawiać flagi samo przy zwalnianiu kursora. `debug/` nie może znać gry, więc `DebugUI` nie pyta, czy kamera coś przechwyciła: dostaje gotowe "włącz" albo "wyłącz". Regułę zna tylko `main.cpp`.
 
+### 5.7 Układ domyślny: `ImGuiCond_FirstUseEver` i `imgui.ini`
+
+Każda z sześciu funkcji paneli zaczyna się tak samo: dwie stałe w anonimowej przestrzeni nazw swojego pliku i dwa wywołania przed `Begin` (kod panelu Renderer w sekcji 5.3). Wartości są dobrane dla okna 1280 x 720, czyli rozmiaru startowego (`INITIAL_WIDTH`, `INITIAL_HEIGHT` w `NightMazeApp.cpp`), tak żeby panele się nie nakładały i zostawiały środek okna na scenę:
+
+| Panel | `FIRST_POSITION` (x, y) | `FIRST_SIZE` (szerokość, wysokość) | Zajmuje x od do | Zajmuje y od do | Miejsce |
+|---|---|---|---|---|---|
+| Renderer | 10, 10 | 300, 190 | 10 do 310 | 10 do 200 | góra lewej krawędzi |
+| Camera | 10, 210 | 300, 300 | 10 do 310 | 210 do 510 | środek lewej krawędzi |
+| Shaders | 10, 520 | 300, 190 | 10 do 310 | 520 do 710 | dół lewej krawędzi |
+| Maze | 970, 10 | 300, 430 | 970 do 1270 | 10 do 440 | góra prawej krawędzi |
+| Collision | 970, 450 | 300, 260 | 970 do 1270 | 450 do 710 | dół prawej krawędzi |
+| Assets | 320, 400 | 340, 310 | 320 do 660 | 400 do 710 | dolna krawędź, na prawo od lewej kolumny |
+
+Jednostką są współrzędne okna ImGui (te same co pozycja myszy), z początkiem w lewym górnym rogu i osią y w dół. Między panelami jest 10 jednostek odstępu.
+
+Trzy rzeczy, które z tego wynikają:
+
+1. **To pozycje, nie dokowanie.** Panele startują jako okna pływające w wyznaczonych miejscach. Nie są przyczepione do krawędzi: po zmianie rozmiaru okna programu zostają tam, gdzie były, więc w oknie większym niż 1280 x 720 prawa kolumna nie stoi przy prawej krawędzi, a w mniejszym może wyjść poza widok. Zadokowanie robi się ręcznie, przeciągając panel za pasek tytułu.
+2. **`imgui.ini` wygrywa.** ImGui zapisuje pozycję, rozmiar i dokowanie każdego okna w pliku `imgui.ini` w katalogu roboczym programu. `ImGuiCond_FirstUseEver` działa tylko dla okna, którego w tym pliku nie ma. Plik jest w [`.gitignore`](../../.gitignore), więc każda kopia repozytorium ma własny. Skutek praktyczny: jeśli w katalogu, z którego uruchamiam program, leży `imgui.ini` z czasów M1 z wpisami `[Window][Renderer]`, `[Window][Shaders]` i `[Window][Camera]`, te trzy panele zostaną na starych miejscach, a tylko Maze, Collision i Assets staną według tabeli. Żeby zobaczyć cały układ domyślny, trzeba skasować `imgui.ini` z katalogu roboczego przed uruchomieniem.
+3. **Stałe są w sześciu plikach, nie w jednym.** Każdy panel zna tylko własne miejsce. Dodając panel albo zmieniając rozmiar któregoś, trzeba samemu sprawdzić tę tabelę: nic w kodzie nie pilnuje, żeby prostokąty się nie nakładały.
+
+Stan sprawdzenia: wartości w tabeli są przepisane z kodu. Układ przy 1280 x 720 i przy zmaksymalizowanym oknie nie był jeszcze sprawdzony ręcznie po skasowaniu `imgui.ini`: to otwarta pozycja listy kontrolnej w [`../guides/build-windows.md`](../guides/build-windows.md). Na macOS dochodzi pytanie o ekran Retina: pozycje są we współrzędnych okna, a nie w pikselach framebuffera, więc powinny wyglądać tak samo, ale nikt tego jeszcze nie uruchomił ([`../guides/build-macos.md`](../guides/build-macos.md)).
+
 ## 6. Panel ImGui
 
-Są trzy panele. Pierwszy to **Renderer**:
+Jest sześć paneli. Tabele niżej są skrótem: kod każdego panelu linia po linii jest w dokumencie, na który wskazuje komentarz na górze jego plików. Pierwszy to **Renderer**:
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
@@ -514,32 +659,69 @@ Drugi to **Shaders**, pokaz tematu 2. Pełny opis, kod linia po linii i scenariu
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
-| `Vertex`, `Fragment` | odczyt | Z których dwóch plików powstał program. Podpowiedź po najechaniu kursorem pokazuje pełną ścieżkę |
+| `Reload shaders` | przycisk | Wczytywanie na żywo: pliki wszystkich trzech programów są czytane, kompilowane i linkowane od nowa w działającym programie. Program, którego przeładowanie się nie udało, działa dalej w poprzedniej wersji |
+| `Vertex`, `Fragment` (dla każdego programu) | odczyt | Z których dwóch plików powstał program. Podpowiedź po najechaniu kursorem pokazuje pełną ścieżkę |
 | `Program` | odczyt | `valid` albo `not valid`: czy jest zlinkowany program, którym można rysować |
-| `Reload shaders` | przycisk | Wczytywanie na żywo: pliki są czytane, kompilowane i linkowane od nowa w działającym programie |
 | `Last load` | odczyt | `OK` albo `failed` z tekstem błędu na czerwono (nazwa pliku i dziennik sterownika) |
 
 Trzeci to **Camera**, pokaz tematu 3. Kod linia po linii, znaczenie każdej kontrolki i scenariusz pokazu na obronie są w [`scene/camera-controls.md`](scene/camera-controls.md), sekcja 6:
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
-| linia pomocy | odczyt | Sterowanie: kliknięcie w scenę przechwytuje mysz, Escape ją oddaje, W A S D, spacja, lewy Shift |
-| `Position` | edycja (trzy pola przeciągane) | Macierz widoku: kamera w prawo, obraz w lewo |
+| linia pomocy | odczyt | Sterowanie: kliknięcie w scenę przechwytuje mysz, Escape ją oddaje, chodzenie (W A S D, lewy Shift to sprint), noclip pod klawiszem N (W A S D wzdłuż kierunku patrzenia, spacja w górę, lewy Shift w dół) |
+| `Mode` | odczyt | `walking` albo `noclip (free flight)` |
+| `Player feet` | edycja (trzy pola przeciągane) | Pozycja gracza. Kamera nie ma własnej pozycji do edycji: po każdym kroku staje w oczach gracza |
+| `Eye` | odczyt | Pozycja kamery: 1,7 m nad stopami |
 | `Yaw`, `Pitch` | edycja (suwaki) | Kierunek patrzenia z dwóch kątów, zawijanie yaw, ograniczenie pitch do 89 stopni |
 | `FOV` | edycja (suwak) | Kąt widzenia jako zoom |
 | `Near plane`, `Far plane` | edycja (suwaki) | Płaszczyzny przycinania: co jest bliżej albo dalej, znika |
-| `Mouse sensitivity`, `Move speed` | edycja (suwaki) | Ustawienia sterowania: stopnie na jednostkę ruchu myszy, metry na sekundę |
+| `Mouse sensitivity` | edycja (suwak) | Stopnie na jednostkę ruchu myszy |
+| `Walk speed`, `Sprint speed`, `Fly speed` | edycja (suwaki) | Trzy prędkości gracza w metrach na sekundę |
 
-PRD (sekcja 10) wymienia dla tego panelu także tryb noclip. Nie ma go, bo nie ma jeszcze kolizji (M2).
+Czwarty to **Maze**. Kod linia po linii i rysowanie planu: [`game/maze-generator.md`](game/maze-generator.md), sekcja 6. Droga prośby od panelu do nowego labiryntu: [`game/maze-rendering.md`](game/maze-rendering.md), sekcja 5:
+
+| Element | Rodzaj | Czego uczy |
+|---|---|---|
+| `Width`, `Height` | edycja (suwaki całkowite, od 2 do 40 komórek) | Rozmiar następnego labiryntu. Sama zmiana suwaka niczego nie przebudowuje |
+| `Seed` | edycja (pole liczbowe z przyciskami plus i minus) | Ziarno generatora: ten sam rozmiar i ziarno dają ten sam labirynt |
+| `Regenerate` | przycisk | Ustawia flagę prośby. Gra buduje labirynt na początku następnej klatki |
+| `Random seed` | przycisk | Losuje ziarno z `std::random_device` i od razu prosi o nowy labirynt |
+| `In play`, `Walls`, `pillars` | odczyt | Labirynt, który jest właśnie w grze: rozmiar, ziarno, liczba ścian i słupków |
+| plan | rysunek | Ściany z góry, północ u góry, zielona kropka gracza i kreska kierunku patrzenia |
+
+Piąty to **Collision**, pokaz tematu 14. Kod linia po linii i scenariusz pokazu: [`scene/collision.md`](scene/collision.md), sekcja 6:
+
+| Element | Rodzaj | Czego uczy |
+|---|---|---|
+| `Draw collision boxes` | pole wyboru | Rysuje pudełka kolizji liniami: żółte dla ścian i słupków, zielone dla gracza |
+| `Noclip (key N)` | pole wyboru | To samo pole co klawisz N: lot bez kolizji |
+| `Wall boxes`, `Pillar boxes`, `All boxes` | odczyt | Ile pudełek gracz sprawdza w każdym kroku |
+| grubość pudełka ściany | odczyt | Pudełko kolizji ściany (0,30 m) jest grubsze niż widoczna ściana (0,20 m) |
+| `Player box`, `min`, `max` | odczyt | Dwa narożniki pudełka gracza, liczone z jego pozycji w każdej klatce |
+
+Szósty to **Assets**, pokaz tematów 4 i 5. Kod linia po linii i scenariusz pokazu dla każdej kontrolki: [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6:
+
+| Element | Rodzaj | Czego uczy |
+|---|---|---|
+| `View mode` | lista (`Textured`, `Normals as colour`, `UVs as colour`) | Co wpisuje shader fragmentów: obraz, normalne albo współrzędne tekstury |
+| `Filter` | lista (`Nearest`, `Bilinear`, `Trilinear`) | Filtrowanie wszystkich tekstur naraz |
+| `Anisotropy` | suwak (wyszarzony, gdy sterownik nie ma rozszerzenia) | Filtrowanie anizotropowe na powierzchniach widzianych pod płaskim kątem |
+| `Models` | odczyt | Wczytane modele: plik, liczba wierzchołków i trójkątów, części z materiałami |
+| `Textures` | odczyt z podglądem | Wczytane tekstury: plik, rozmiar, obrazek 128 x 128 |
+| `Failed to load` | odczyt (tylko gdy coś się nie wczytało) | Pliki, których nie udało się wczytać, na czerwono |
+
+PRD (sekcja 10) wymienia tryb noclip przy panelu Camera. W kodzie przełącznik jest w panelu Collision (bo wyłącza kolizje) i pod klawiszem N, a panel Camera pokazuje tylko bieżący tryb.
+
+Stan sprawdzenia paneli na Windowsie (2026-10-05): program startuje bez linii `[error]`, a na zrzutach ekranu sprawdzone są plan w panelu Maze (zgodny z widokiem z góry), podglądy tekstur w panelu Assets (nieodwrócone) oraz skutki obu trybów widoku, czterech ustawień filtrowania i brakującej tekstury. Te stany zostały ustawione tymczasowym kodem, którego już nie ma. Samych kontrolek nikt jeszcze nie klikał: przyciski `Regenerate` i `Random seed`, `Reload shaders` z trzema programami, listy `View mode` i `Filter`, suwak `Anisotropy`, pola wyboru panelu Collision i klawisz N czekają na ręczne sprawdzenie (lista w [`../guides/build-windows.md`](../guides/build-windows.md)). Na macOS nic z tego nie było uruchamiane.
 
 Zachowanie całej nakładki:
 
 - Gdy kursor jest przechwycony przez kamerę (po kliknięciu w scenę), panele są widoczne i pokazują bieżące wartości, ale nie reagują na mysz: ani na najechanie, ani na kliknięcie (sekcja 5.6). Żeby użyć panelu, trzeba najpierw nacisnąć Escape.
 
 - Klawisz **`~`** (grawis, grave accent, na lewo od `1`, w kodzie `GLFW_KEY_GRAVE_ACCENT`) chowa i pokazuje wszystkie panele (start: widoczne, `m_visible = true`). PRD ([`../PRD.pdf`](../PRD.pdf)) nadal podaje w tym miejscu pierwszy klawisz funkcyjny (z górnego rzędu klawiatury). Klawisz został zmieniony celowo i obowiązuje to, co jest w kodzie.
-- Gdy aktywny jest widżet panelu (edycja pola, przeciąganie wartości), gra nie widzi klawiatury: Escape nie zamyka programu, a `~` nie chowa paneli (sekcja 5.6).
+- Gdy aktywny jest widżet panelu (edycja pola, przeciąganie wartości), gra nie widzi klawiatury: Escape nie zamyka programu, `~` nie chowa paneli, a N nie przełącza noclip (sekcja 5.6). Dotyczy to na przykład wpisywania ziarna w panelu Maze.
 - Panel można przeciągnąć za pasek tytułu i **zadokować** do krawędzi okna. Środek zostaje przezroczysty dzięki `PassthruCentralNode`.
-- Układ paneli ImGui zapisuje w pliku `imgui.ini` w **katalogu roboczym** programu. Plik jest w `.gitignore`, bo to ustawienie lokalne. Skasowanie go przywraca układ domyślny. Przy pierwszym uruchomieniu, gdy pliku jeszcze nie ma, trzy panele otwierają się jeden na drugim, w tym samym miejscu (zaobserwowane na Windowsie, ale nie jest to cecha tego systemu): trzeba je raz rozsunąć myszą.
+- Układ paneli ImGui zapisuje w pliku `imgui.ini` w **katalogu roboczym** programu. Plik jest w `.gitignore`, bo to ustawienie lokalne. Skasowanie go przywraca układ domyślny: sześć paneli w miejscach z tabeli w sekcji 5.7. W M1 panele nie miały pozycji startowych i przy pierwszym uruchomieniu otwierały się jeden na drugim. Stary `imgui.ini` z tamtego czasu nadal trzyma je w tamtych miejscach.
 
 ## 7. Pułapki
 
@@ -550,7 +732,7 @@ Zachowanie całej nakładki:
 5. **Kolejność niszczenia.** `DebugUI` zniszczone po oknie woła OpenGL i GLFW bez kontekstu. Pole `m_debugUI` musi pozostać polem klasy pochodnej od `core::Application` (dziś `DebugNightMazeApp`), bo pola giną przed klasami bazowymi (zob. [`core/README.md`](core/README.md), sekcja 7).
 6. **Własny callback GLFW ustawiony po utworzeniu `DebugUI`.** `glfwSetKeyCallback` i pokrewne **podmieniają** callback zainstalowany przez backend, więc ImGui przestaje dostawać dany rodzaj zdarzeń. Własne callbacki trzeba ustawić przed konstruktorem `DebugUI` (wtedy backend je połączy w łańcuch) albo samemu wołać poprzedni callback zwrócony przez `glfwSet...Callback`.
 7. **Gra i ImGui reagowałyby na tę samą mysz.** Bez linii `input().setMouseBlocked(m_debugUI.wantsMouse());` każdy kod gry pytający `core::Input` o mysz widziałby też kliknięcia i ruch przeznaczone dla panelu: przeciąganie suwaka obracałoby jednocześnie kamerę, a kliknięcie w panel byłoby kliknięciem w scenę. Flaga blokady myszy temu zapobiega (sekcja 5.6). Warunek jest jeden: gra musi pytać o mysz przez `input()`, a nie bezpośrednio przez GLFW.
-8. **`imgui.ini` zależy od katalogu roboczego.** Uruchomienie z IDE i z terminala może dać dwa różne układy, bo plik ląduje w innym katalogu.
+8. **`imgui.ini` zależy od katalogu roboczego.** Uruchomienie z IDE i z terminala może dać dwa różne układy, bo plik ląduje w innym katalogu. Ten sam plik sprawia, że pozycje `FIRST_POSITION` "nie działają": `ImGuiCond_FirstUseEver` dotyczy tylko okna, którego w pliku jeszcze nie ma (sekcja 5.7).
 9. **Małe panele na Windowsie przy skalowaniu 150% lub 200%.** Na macOS skalę Retiny obsługuje para rozmiar okna i framebuffer. Na Windowsie framebuffer i okno mają ten sam rozmiar w pikselach, więc czcionka ImGui pozostaje mała, dopóki sam jej nie przeskaluję.
 10. **Błąd OpenGL przypisany nie temu, kto zawinił.** Backend ImGui nie używa mojego `GL_CHECK`. Gdyby zostawił flagę błędu, zgłosi ją pierwszy `GL_CHECK` w następnej klatce (zwykle `glViewport`).
 
@@ -562,6 +744,9 @@ Zachowanie całej nakładki:
 16. **`DebugContext` zachowany na później.** Struktura zapisana w polu klasy albo w zmiennej żyjącej dłużej niż klatka trzyma referencje do obiektów, które mogą już nie istnieć (wiszące referencje, dangling references). Kontekst buduję co klatkę i używam go tylko w trakcie `draw`.
 17. **"Przecież `context` jest `const`, a panel coś zmienia".** To poprawne i zamierzone: `const` na strukturze nie przechodzi przez pole referencyjne (sekcja 5.2). Chcąc zabronić edycji, zmieniam typ pola na `const ...&`, a nie sposób przekazania struktury.
 18. **Panel, którego przycisk wykonuje wywołania OpenGL.** Przycisk "Reload shaders" woła `Shader::reload()` między `ImGui::NewFrame()` a `ImGui::Render()`, czyli w środku klatki ImGui. To bezpieczne, bo ImGui w tym czasie nie woła OpenGL, a backend w `RenderDrawData` sam ustawia swój stan i nie przywraca programu, który został usunięty ([`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6.3). Nie wynika z tego, że panel może robić w OpenGL cokolwiek: funkcja wołana z panelu nie powinna zostawiać zmienionych powiązań (programu, VAO, buforów, tekstur), a sam panel nadal nie woła `gl*` bezpośrednio.
+19. **Panel dodany bez pozycji startowej.** Bez pary `SetNextWindowPos` i `SetNextWindowSize` nowy panel otwiera się w domyślnym miejscu ImGui i przykrywa panel Renderer albo scenę. Pozycję trzeba też dobrać tak, żeby nie nachodziła na pozostałe (tabela w sekcji 5.7).
+20. **Panel, który sam zmienia stan gry w środku klatki.** Panel Maze nie woła `buildMazeWorld`. Ustawia flagę w `MazeSettings`, a gra wymienia labirynt na początku następnej klatki. Gdyby panel robił to sam, scena tej klatki byłaby już narysowana ze starego labiryntu, a panele Maze i Collision rysowane po nim pokazywałyby nowy.
+21. **Pole `const` w kontekście, a panel chce pisać.** `mazeWorld` jest `const game::MazeWorld&`. Próba zmiany labiryntu z panelu nie skompiluje się i tak ma być: jedyną drogą do nowego labiryntu jest `mazeSettings`.
 
 ## 8. Ćwiczenia
 
@@ -573,7 +758,8 @@ Zachowanie całej nakładki:
 5. **Kto ma klawiaturę.** Kliknij z wciśniętym Ctrl w jedną ze składowych `Clear color`, żeby przejść w tryb wpisywania, i naciśnij kolejno `~` oraz Escape. Zapisz, co się stało z panelami, z polem i z programem. Potem zakomentuj w `main.cpp` linię `input().setKeyboardBlocked(m_debugUI.wantsKeyboard());`, zbuduj i powtórz. Wyjaśnij różnicę, wskazując, w której funkcji `core::Input` zapada decyzja. Przywróć linię.
 6. **Kto ma mysz.** Na końcu `DebugNightMazeApp::onRender` w `main.cpp` dopisz tymczasowo (z nagłówkiem `"core/Log.hpp"`, który jest już dołączony) `if (m_debugUI.wantsMouse()) { core::logInfo("ImGui has the mouse"); }`. Przesuwaj kursor nad panelem Renderer, nad pustym środkiem okna i zacznij przeciągać wartość `Clear color`, wyjeżdżając kursorem poza panel. Zapisz, kiedy komunikat się pojawia. Wycofaj zmianę.
 7. **Kontekst pod lupą.** W `main.cpp` usuń tymczasowo linię `.clearColor = clearColor(),` z `debug::DebugContext{...}`, zbuduj i przeczytaj błąd kompilatora. Przywróć linię, a potem zamień miejscami linie `.window` i `.clearColor` i zbuduj ponownie: zapisz, czy twój kompilator to zgłosił (sekcja 7, pułapka 15). Na koniec w `DebugContext.hpp` dopisz tymczasowo `const` do pola `clearColor` (`const std::array<float, 3>& clearColor;`) i sprawdź, w której linii którego pliku kompilacja się zatrzymuje. Wyjaśnij dlaczego akurat tam. Wycofaj wszystkie zmiany.8. **Przechwycony kursor bez `setMouseEnabled`.** Zakomentuj w `main.cpp` linię `m_debugUI.setMouseEnabled(!input().isCursorCaptured());`, zbuduj, zadokuj panel Camera przy prawej krawędzi okna, kliknij w scenę i kręć myszą powoli w prawo. Kiedy obrót się zatrzymuje? Co się dzieje, gdy wtedy klikniesz? Przywróć linię, a zamiast tego usuń warunek z `DebugUI::wantsMouse()` (zostaw samo `return io.WantCaptureMouse;`) i sprawdź, co dzieje się z obrotem, gdy podczas sterowania kamerą przytrzymasz lewy przycisk myszy. Wyjaśnij oba wyniki punktami z sekcji 5.6 i wycofaj zmiany.
-9. **Nowa kontrolka kamery.** Dodaj do panelu Camera przycisk `Reset`, który przywraca pozycję `(0, 0, 3)`, yaw 0 i pitch 0. Nie potrzebujesz nowego pola w `DebugContext`: dlaczego? Zrób to bez gołych liczb w panelu (podpowiedź: `camera = scene::Camera{};` przywraca wszystkie wartości domyślne struktury, także FOV).
+9. **Nowa kontrolka kamery.** Dodaj do panelu Camera przycisk `Reset view`, który przywraca yaw 0, pitch 0 i domyślne FOV. Nie potrzebujesz nowego pola w `DebugContext`: dlaczego? Zrób to bez gołych liczb w panelu (podpowiedź: `camera = scene::Camera{};` przywraca wszystkie wartości domyślne struktury). Ta linia zmienia też `camera.position` na `(0, 0, 3)`. Dlaczego gracz mimo to zostaje na miejscu, a pozycja kamery wraca do jego oczu najpóźniej po jednym kroku symulacji (podpowiedź: ostatnia linia `NightMazeApp::onUpdate`)?
+10. **Układ domyślny.** Zamknij program, skasuj `imgui.ini` z katalogu, z którego go uruchamiasz, i uruchom ponownie. Porównaj pozycje paneli z tabelą w sekcji 5.7. Potem przesuń panel Maze, zamknij program i znajdź w nowym `imgui.ini` wpis `[Window][Maze]`.
 
 ## 9. Pytania kontrolne
 
@@ -611,7 +797,7 @@ Zachowanie całej nakładki:
     `ColorEdit3` zapisuje przez wskaźnik do `NightMazeApp::m_clearColor` (referencję daje akcesor `clearColor()`). W następnej klatce `NightMazeApp::onRender` woła `glClearColor` z nowymi wartościami, a `glClear` ich używa.
 
 12. **Dlaczego gra nie posiada `DebugUI` i gdzie w takim razie ono żyje?**
-    `game/` nie może zależeć od `debug/`. `DebugUI` jest polem `DebugNightMazeApp` w `main.cpp`, jedynym pliku znającym obie warstwy. Klasa dziedziczy po grze i po jej `onRender` dorysowuje panele.
+    `game/` nie może zależeć od `debug/`. `DebugUI` jest polem `DebugNightMazeApp` w `main.cpp`, jedynym pliku, który tworzy obiekty obu warstw. Klasa dziedziczy po grze i po jej `onRender` dorysowuje panele.
 
 13. **Jak program rozstrzyga, czy klawisz trafia do gry, czy do panelu?**
     `DebugUI::wantsKeyboard()` zwraca `ImGui::GetIO().WantCaptureKeyboard`, czyli informację, że aktywny jest jakiś widżet ImGui. `DebugNightMazeApp::onRender` przekazuje ją po `draw` do `input().setKeyboardBlocked(...)`. Od następnej klatki `isKeyDown` i `wasKeyPressed` zwracają `false`, więc Escape nie zamyka programu, a `~` nie chowa paneli. `core/` nie zna ImGui: dostaje tylko neutralną flagę.
@@ -628,16 +814,28 @@ Zachowanie całej nakładki:
 17. **`DebugUI::draw` bierze `const DebugContext&`. Jak to możliwe, że panel zmienia kolor tła?**
     `const` na strukturze dotyczy jej pól, a polem jest referencja `std::array<float, 3>&`. Stałość nie przechodzi przez referencję na obiekt, na który ona wskazuje, więc przez to pole wolno pisać. Pola `const core::Time&` i `const core::Window&` są tylko do odczytu, bo `const` jest w ich typie. O edytowalności decyduje typ pola, nie stałość struktury.
 
-18. **Co trzeba było zmienić, żeby panel Shaders dostał shader gry, i czego zmieniać nie trzeba było?**
-    Doszedł chroniony akcesor `shader()` w `game::NightMazeApp`, pole `gfx::Shader& shader` w `DebugContext`, linia `.shader = shader(),` w `main.cpp` i wywołanie `drawShadersPanel(context.shader)` w `DebugUI::draw`. Sygnatura `DebugUI::draw` została ta sama, a gra nadal nie dołącza niczego z `debug/`. Pole nie ma `const`, bo przycisk panelu woła `reload()`.
-19. **Jak panel Camera dostaje kamerę i ustawienia sterowania?**
-    Tą samą drogą co kolor tła i shader. `game::NightMazeApp` ma pola `m_camera`, `m_mouseSensitivity` i `m_moveSpeed` oraz chronione akcesory `camera()`, `mouseSensitivity()` i `moveSpeed()`. `main.cpp` wpisuje je do trzech pól `DebugContext`, a `DebugUI::draw` woła `drawCameraPanel(context.camera, context.mouseSensitivity, context.moveSpeed)`. Panel edytuje pola przez referencje. Gra nie dołącza niczego z `debug/`.
+18. **Jak panel Shaders dostaje trzy programy gry?**
+    `game::NightMazeApp` ma chronione akcesory `shader()`, `texturedShader()` i `colorShader()`, `DebugContext` trzy pola `gfx::Shader&`, a `main.cpp` trzy linie. `DebugUI::draw` buduje z nich `std::array<gfx::Shader*, 3>` i przekazuje do `drawShadersPanel(std::span<gfx::Shader* const>)`. Tablica wskaźników, bo tablicy referencji nie ma. Sygnatura `DebugUI::draw` została ta sama, a gra nadal nie dołącza niczego z `debug/`. Pola nie mają `const`, bo przycisk panelu woła `reload()`.
+19. **Jak panel Camera dostaje kamerę, gracza i czułość myszy?**
+    Tą samą drogą co kolor tła i shader. `game::NightMazeApp` ma pola `m_camera`, `m_player` i `m_mouseSensitivity` oraz chronione akcesory `camera()`, `player()` i `mouseSensitivity()`. `main.cpp` wpisuje je do trzech pól `DebugContext`, a `DebugUI::draw` woła `drawCameraPanel(context.camera, context.player, context.mouseSensitivity)`. Trzy prędkości są polami gracza, więc przychodzą razem z nim. Panel edytuje pola przez referencje. Gra nie dołącza niczego z `debug/`.
 
 20. **Co się dzieje z panelami, gdy kamera przechwyci kursor, i dlaczego potrzebny jest do tego osobny kod?**
     Panele przestają reagować na mysz. Backend GLFW ImGui przekazuje pozycję kursora także w trybie `GLFW_CURSOR_DISABLED`, więc niewidoczny kursor najeżdżałby na panele i klikał w nie. `main.cpp` woła przed `draw` `m_debugUI.setMouseEnabled(!input().isCursorCaptured())`, co ustawia `ImGuiConfigFlags_NoMouse`: ImGui w `NewFrame` kasuje wtedy informację o oknie pod kursorem. Flaga działa w tej samej klatce, w której została ustawiona.
 
 21. **Dlaczego `wantsMouse()` zwraca `false`, gdy mysz ImGui jest wyłączona, skoro flaga `NoMouse` już jest ustawiona?**
     Bo `NoMouse` nie zeruje `WantCaptureMouse` w każdym przypadku. Przycisk wciśnięty, gdy niewidoczny kursor jest nad panelem, ImGui nadal uznaje za swoje kliknięcie i zgłasza `WantCaptureMouse`, dopóki przycisk jest trzymany. `main.cpp` zablokowałby wtedy grze mysz i obrót kamery by zamarł.
+
+21. **Co robi `ImGuiCond_FirstUseEver` i dlaczego po skopiowaniu repozytorium ze starym `imgui.ini` część paneli stoi w złym miejscu?**
+    Warunek każe zastosować pozycję i rozmiar tylko dla okna, o którym ImGui nie ma zapisanych danych. Dane są w `imgui.ini` w katalogu roboczym. Panel, który ma tam wpis, zostaje tam, gdzie był. Panel bez wpisu staje według stałych `FIRST_POSITION` i `FIRST_SIZE`.
+
+22. **Dlaczego lista shaderów to tablica wskaźników, a nie referencji, i co znaczy `std::span<gfx::Shader* const>`?**
+    Referencja nie jest obiektem, więc nie może być elementem tablicy. `std::span<gfx::Shader* const>` to widok na ciąg stałych wskaźników do niestałych shaderów: listy nie da się zmienić, shadery tak.
+
+23. **Dlaczego w `main.cpp` linia `.texturedShader` stoi po `.mouseSensitivity`, a nie obok `.shader`?**
+    Inicjalizatory desygnowane muszą iść w kolejności deklaracji pól struktury, a nowe pola `DebugContext` były dopisywane na końcu.
+
+24. **Który panel może zmienić labirynt?**
+    Żaden bezpośrednio. Pole `mazeWorld` jest `const`. Panel Maze zapisuje rozmiar, ziarno i flagę `regenerate` w `mazeSettings`, a gra buduje labirynt na początku następnej klatki.
 
 ## 10. Źródła
 
@@ -647,6 +845,7 @@ Zachowanie całej nakładki:
 - Dokumenty modułu `core`, z którymi ten moduł się styka: [`core/README.md`](core/README.md) (warstwy, kolejność niszczenia), [`core/input.md`](core/input.md) (blokada klawiatury).
 - Dokument panelu Shaders: [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6.
 - Dokument panelu Camera i sterowania kamerą: [`scene/camera-controls.md`](scene/camera-controls.md), sekcje 5 i 6.
+- Dokumenty trzech paneli z M2 + M3: [`game/maze-generator.md`](game/maze-generator.md), sekcja 6 (Maze), [`scene/collision.md`](scene/collision.md), sekcja 6 (Collision), [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6 (Assets).
 - Źródła ImGui dokładnie w naszej wersji, lokalnie po pierwszej konfiguracji: `build/debug/_deps/imgui-src/imgui.cpp` (funkcja `UpdateHoveredWindowAndCaptureFlags`: flaga `ImGuiConfigFlags_NoMouse`, `WantCaptureMouse`) i `build/debug/_deps/imgui-src/backends/imgui_impl_glfw.cpp` (historia zmian na górze pliku, funkcja `ImGui_ImplGlfw_UpdateMouseCursor`).
 - Dokumentacja GLFW: <https://www.glfw.org/docs/latest/> (przewodnik o wejściu: callbacki klawiatury i myszy).
 - docs.gl (<https://docs.gl>): `glBlendFunc`, `glScissor`, `glDrawElements`, czyli funkcje, na których opiera się backend.

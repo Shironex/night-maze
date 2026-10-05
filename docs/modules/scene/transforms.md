@@ -1,6 +1,6 @@
 # Moduł scene: przekształcenia i macierz modelu
 
-Kamień milowy: M1. Temat wykładu: 3 (Przekształcenia przestrzeni).
+Kamień milowy: M1, nowi użytkownicy `Transform` w M2 + M3 (labirynt, linie pudełek kolizji). Temat wykładu: 3 (Przekształcenia przestrzeni).
 Kod: [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp), [`src/scene/Transform.cpp`](../../../src/scene/Transform.cpp), shader [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Pozostałe części: [`camera.md`](camera.md) (macierz widoku, rzutowanie, struktura `Camera`, trzy macierze w klatce) i [`camera-controls.md`](camera-controls.md) (sterowanie kamerą, panel Camera). Ten dokument korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): typy `vec3` i `mat4`, układ kolumnowy, funkcje budujące macierze) i z pojęć potoku renderowania z [`../gfx/shaders.md`](../gfx/shaders.md) (opis tego, co musi zrobić shader wierzchołków: przestrzeń przycięcia, dzielenie perspektywiczne, NDC).
@@ -204,7 +204,7 @@ Mnożenie macierzy jest łączne, więc `uProjection * uView * uModel * v` daje 
 
 Macierz widoku i rzutowania jest wspólna dla całej klatki, macierz modelu jest inna dla każdego obiektu. Stąd trzy osobne uniformy: `uView` i `uProjection` wystarczy ustawić raz na klatkę, a `uModel` przed każdym obiektem. Prawdziwy renderer często wysyła zamiast tego jeden gotowy iloczyn policzony w C++ (jedno mnożenie na wierzchołek zamiast trzech). Tutaj macierze są osobno celowo, żeby każdą dało się podmienić i obejrzeć skutek. Shader fragmentów nie bierze udziału w przekształceniach.
 
-Nazwy `uModel`, `uView` i `uProjection` muszą być identyczne z napisami w C++ (stałe `MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM`, [`camera.md`](camera.md), sekcja 5.7). Literówka nie daje żadnego błędu, tylko pusty ekran ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 7, pułapka 1).
+Nazwy `uModel`, `uView` i `uProjection` muszą być identyczne z napisami w C++ (stałe `MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM` w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), [`camera.md`](camera.md), sekcja 5.7). Te same trzy uniformy pod tymi samymi nazwami deklarują dwa nowsze shadery wierzchołków, `textured.vert` i `color.vert`, i mnożą przez nie pozycję tą samą linią co `basic.vert` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4, [`collision.md`](collision.md), sekcja 4). Literówka nie daje żadnego błędu, tylko pusty ekran ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 7, pułapka 1).
 
 ## 5. Kod w projekcie
 
@@ -214,10 +214,12 @@ Nazwy `uModel`, `uView` i `uProjection` muszą być identyczne z napisami w C++ 
 |---|---|
 | [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i deklaracja `matrix()` |
 | [`src/scene/Transform.cpp`](../../../src/scene/Transform.cpp) | stałe `AXIS_X`, `AXIS_Y`, `AXIS_Z` i funkcja `Transform::matrix()` |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik struktury: pole `m_cubeTransform` i stałe obrotu kostki (sekcja 5.4). Wysłanie macierzy modelu do shadera razem z dwiema pozostałymi: [`camera.md`](camera.md), sekcja 5.7 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik struktury: pole `m_cubeTransform`, stałe obrotu kostki i jej pozycja nad komórką wyjścia (sekcja 5.4). Wysłanie macierzy modelu do shadera razem z dwiema pozostałymi: [`camera.md`](camera.md), sekcja 5.7 |
+| [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) | drugi użytkownik: macierze modelu płytek podłogi, ścian i słupków, w tym obrót ściany o 90 stopni wokół osi Y (sekcja 5.4, [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp) | trzeci użytkownik: skala i przesunięcie sześcianu jednostkowego na rozmiar i miejsce pudełka kolizji (sekcja 5.4, [`collision.md`](collision.md), sekcja 5) |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) | uniformy `uModel`, `uView`, `uProjection` i mnożenie pozycji przez macierze (sekcja 4) |
 
-Pliki struktury `Camera` wymienia [`camera.md`](camera.md), sekcja 5.1, a pliki sterowania kamerą i panelu [`camera-controls.md`](camera-controls.md), sekcja 5.1.
+Pliki struktury `Camera` wymienia [`camera.md`](camera.md), sekcja 5.1, a pliki sterowania kamerą i panelu [`camera-controls.md`](camera-controls.md), sekcja 5.
 
 Cztery pliki z `src/scene/` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Nagłówki dołączają tylko `<glm/glm.hpp>` (typy `vec3` i `mat4`). Funkcje budujące macierze (`<glm/gtc/matrix_transform.hpp>`) dołączają dopiero pliki `.cpp`, więc kto dołącza `Camera.hpp`, nie płaci czasem kompilacji za resztę GLM.
 
@@ -300,29 +302,75 @@ Wynik to `T * Ry * Rx * Rz * S`. Wierzchołek stoi po prawej stronie tego iloczy
 
 Kolejność obrotów jest ustalona raz, tutaj, i opisana w komentarzu Doxygen przy polu `rotationDegrees`. Uzasadnienie jest w sekcji 2.6.
 
-### 5.4 Użycie w `NightMazeApp`: obrót kostki
+### 5.4 Trzej użytkownicy: kostka, labirynt, linie pudełek
 
-Jedynym obiektem z `Transform` jest dziś kostka: pole `m_cubeTransform` w `game::NightMazeApp`. Deklarację pola (stoi obok kamery) i wysłanie macierzy modelu do shadera opisuje [`camera.md`](camera.md), sekcja 5.7. Tutaj to, co dotyczy samego przekształcenia.
+`Transform` ma dziś trzech użytkowników i każdy korzysta z innej części struktury:
 
-**Obrót kostki.** Stałe w anonimowej przestrzeni nazw `NightMazeApp.cpp` i jedna linia w ciele konstruktora:
+| Użytkownik | `position` | `rotationDegrees` | `scale` | Kiedy liczy macierz |
+|---|---|---|---|---|
+| kostka (`NightMazeApp::m_cubeTransform`) | nad komórką wyjścia | 25 stopni wokół X, 35 wokół Y | 1 | co klatkę, w `drawCube` |
+| labirynt (`MazeWorld.cpp`) | środek komórki, środek ściany albo róg siatki | 0, a dla ściany wzdłuż osi Z 90 stopni wokół Y | 1 | raz, przy budowie labiryntu |
+| linie pudełek (`ColliderLines.cpp`) | narożnik `min` pudełka | 0 | rozmiar pudełka | co klatkę, dla każdego pudełka, gdy rysowanie jest włączone |
+
+**Kostka.** Pole `m_cubeTransform` w `game::NightMazeApp`. Stałe w anonimowej przestrzeni nazw `NightMazeApp.cpp` i jedna linia w ciele konstruktora:
 
 ```cpp
-// The cube is turned so that the default camera sees three of its faces: tilted towards
-// the camera around the x axis (the top comes into view), then turned around the y axis
-// (the left side comes into view).
+// The cube is turned so that three of its faces are seen at once: tilted around the
+// x axis, then turned around the y axis. It no longer stands in front of the camera: it
+// floats above the far corner cell of the maze as a marker (see enterMaze).
 constexpr float CUBE_ROTATION_X_DEGREES = 25.0F;
 constexpr float CUBE_ROTATION_Y_DEGREES = 35.0F;
 ```
 
 ```cpp
-m_cubeTransform.rotationDegrees = {CUBE_ROTATION_X_DEGREES, CUBE_ROTATION_Y_DEGREES, 0.0F};
+    m_cubeTransform.rotationDegrees = {CUBE_ROTATION_X_DEGREES, CUBE_ROTATION_Y_DEGREES, 0.0F};
 ```
 
-Kostka oglądana dokładnie z przodu byłaby czerwonym kwadratem: nie byłoby widać, że to bryła. Obrót o 25 stopni wokół osi X pochyla ją górą w stronę kamery (widać ścianę górną), a obrót o 35 stopni wokół osi Y odwraca ją tak, że widać ścianę lewą. Zgodnie z kolejnością z sekcji 2.6 najpierw działa obrót wokół X, potem wokół Y. Trzeci kąt jest zerem. Przypisanie w klamrach tworzy `glm::vec3` z trzech liczb. Kostka się nie animuje: `onUpdate` przesuwa tylko kamerę, a macierz modelu jest w każdej klatce taka sama.
+Pozycję kostka dostaje w `enterMaze`, przy starcie i po każdej wymianie labiryntu:
+
+```cpp
+    // The marker cube floats above the far corner cell, the place of the future exit.
+    m_cubeTransform.position =
+        m_mazeWorld.exitPosition + glm::vec3{0.0F, CUBE_HEIGHT_ABOVE_FLOOR, 0.0F};
+```
+
+`exitPosition` to środek komórki w przeciwległym narożniku labiryntu na poziomie podłogi, a `CUBE_HEIGHT_ABOVE_FLOOR` wynosi `4.5F`. Dla labiryntu startowego 10 x 10 środek kostki jest w `(19, 4,5, 19)`, wyraźnie nad ścianami (3 m). Z poziomu podłogi kostkę zasłaniają ściany, dopóki nie jest się blisko. Dobrze widać ją z góry, w trybie noclip. Dane kostki, jej bufory i shadery `basic` nie zmieniły się od M1.
+
+Kostka oglądana dokładnie z przodu byłaby czerwonym kwadratem: nie byłoby widać, że to bryła. Obrót o 25 stopni wokół osi X pochyla ją górą do przodu (w stronę +Z), a obrót o 35 stopni wokół osi Y odwraca ją tak, że od tej samej strony widać też ścianę lewą. Zgodnie z kolejnością z sekcji 2.6 najpierw działa obrót wokół X, potem wokół Y. Trzeci kąt jest zerem. Przypisanie w klamrach tworzy `glm::vec3` z trzech liczb. Kostka się nie animuje: `onUpdate` przesuwa tylko gracza, a macierz modelu kostki zmienia się tylko wtedy, gdy zmienia się labirynt. Macierz to `T * Ry * Rx` (skala jest jednostkowa): obrót wokół własnego środka, a potem przeniesienie nad komórkę wyjścia. Gdyby kolejność była odwrotna, kostka okrążałaby początek układu w promieniu kilkudziesięciu metrów.
+
+**Labirynt: obrót ściany o 90 stopni.** Model ściany leży wzdłuż osi X. Ściana na zachodniej albo wschodniej krawędzi komórki ma biec wzdłuż osi Z, więc `MazeWorld.cpp` obraca ją o ćwierć obrotu wokół osi Y:
+
+```cpp
+// The wall model lies along the X axis. A quarter turn around Y lays it along Z.
+constexpr glm::vec3 WALL_ALONG_Z_ROTATION{0.0F, QUARTER_TURN_DEGREES, 0.0F};
+```
+
+```cpp
+glm::mat4 wallMatrix(const WallSegment& segment) {
+    scene::Transform transform;
+    transform.position = segment.position;
+    if (segment.axis == WallAxis::AlongZ) {
+        transform.rotationDegrees = WALL_ALONG_Z_ROTATION;
+    }
+    return transform.matrix();
+}
+```
+
+Macierz to `T * Ry(90)`: najpierw obrót modelu wokół jego własnego początku (środka podstawy ściany), potem przesunięcie na środek krawędzi komórki. Koniec modelu `(1, 0, 0)` po obrocie o 90 stopni wokół Y ląduje w `(0, 0, -1)` (macierz obrotu wokół osi Y z sekcji 2), czyli ściana rzeczywiście biegnie wzdłuż Z. Test `a wall along X keeps the model as it is, a wall along Z turns it a quarter` sprawdza to dla każdej ściany labiryntu 4 x 4. Płytki podłogi i słupki dostają `Transform` z samą pozycją. Wszystkie macierze są liczone raz, w `buildMazeWorld`, a w klatce są już tylko wysyłane ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5).
+
+**Linie pudełek: skala i przesunięcie.** `ColliderLines` ma jedną siatkę: krawędzie sześcianu od `(0, 0, 0)` do `(1, 1, 1)`. Każde pudełko kolizji to ten sześcian rozciągnięty i przestawiony:
+
+```cpp
+        scene::Transform transform;
+        transform.position = box.min - glm::vec3{LINE_MARGIN};
+        transform.scale = box.max - box.min + glm::vec3{2.0F * LINE_MARGIN};
+```
+
+To jedyne miejsce w projekcie, które używa pola `scale`, i to ze skalą **niejednorodną** (inną na każdej osi). Macierz to `T * S`: narożnik `(0, 0, 0)` sześcianu zostaje w zerze po skalowaniu i trafia przesunięciem na narożnik `min`, a narożnik `(1, 1, 1)` po skalowaniu ma współrzędne równe rozmiarowi pudełka i po przesunięciu trafia na `max`. Działa to tylko dlatego, że sześcian ma narożnik, a nie środek, w początku swojego układu ([`collision.md`](collision.md), sekcja 5). Skala niejednorodna psuje normalne (pułapka 5), ale linie normalnych nie używają.
 
 Która ściana jest zwrócona do kamery, widać po jej normalnej (wektorze prostopadłym do ściany, skierowanym na zewnątrz) po obrocie:
 
-| Ściana | Normalna przed obrotem | Normalna po obrocie | Widoczna z kamery w `(0, 0, 3)` |
+| Ściana kostki | Normalna przed obrotem | Normalna po obrocie | Widoczna z kamery stojącej przed kostką po stronie +Z (tak stała kamera w M1) |
 |---|---|---|---|
 | przednia (czerwona) | `(0, 0, 1)` | `(0,52, -0,42, 0,74)` | tak |
 | lewa (niebieska) | `(-1, 0, 0)` | `(-0,82, 0, 0,57)` | tak |
@@ -349,19 +397,22 @@ Matematykę `Transform` sprawdził ten sam tymczasowy program konsolowy, który 
 2. **Kolejność mnożenia.** `model * view * projection` zamiast `projection * view * model` kompiluje się i daje pusty ekran. To samo dotyczy kolejności translate, rotate, scale: zamiana przesunięcia z obrotem sprawia, że obiekt krąży wokół początku układu świata zamiast obracać się w miejscu (sekcja 2.4).
 3. **`glm::mat4 m;` zamiast `glm::mat4 m(1.0F);`.** Konstruktor domyślny GLM 1.0.3 niczego nie ustawia: zmienna lokalna ma przypadkowe wartości, a `glm::mat4 m{};` same zera. Macierz zerowa pomnożona przez cokolwiek daje zera, więc obiekt znika. Macierz jednostkową trzeba zapisać jawnie ([`../../libraries/glm.md`](../../libraries/glm.md), pułapka 2).
 4. **Kolejność kątów Eulera.** Te same trzy liczby w `rotationDegrees` oznaczają inny obrót w programie, który stosuje inną kolejność osi (na przykład w Blenderze, gdzie domyślna kolejność to XYZ). Przy przenoszeniu kątów z innego narzędzia trzeba sprawdzić jego konwencję.
-5. **Skala niejednorodna a normalne.** Pozycje przekształca macierz modelu, ale wektorów normalnych nie wolno przekształcać tą samą macierzą, gdy skala jest różna na różnych osiach: przestają być prostopadłe do powierzchni. Potrzebna jest osobna macierz normalnych (odwrócona i transponowana część 3 x 3 macierzy modelu). Dziś nie ma normalnych ani oświetlenia, to pułapka na M4.
+5. **Skala niejednorodna a normalne.** Pozycje przekształca macierz modelu, ale wektorów normalnych nie wolno przekształcać tą samą macierzą, gdy skala jest różna na różnych osiach: przestają być prostopadłe do powierzchni. Potrzebna jest osobna macierz normalnych (odwrócona i transponowana część 3 x 3 macierzy modelu). Dziś normalne są już w siatkach modeli, a `textured.vert` przekształca je przez `mat3(uModel)`, co jest poprawne, bo wszystkie obiekty labiryntu mają skalę 1 ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4). Oświetlenia jeszcze nie ma (M4), więc normalne widać tylko w trybie widoku `Normals as colour`. Jedyny obiekt ze skalą niejednorodną to linie pudełek kolizji, które normalnych nie używają.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 3 robi się na kartce (kalkulator wystarczy). Ćwiczenia od 4 do 7 to zmiany w działającym programie: zmiana w `NightMazeApp.cpp` wymaga zbudowania (`make run`), zmiana w `basic.vert` tylko zapisania pliku i przycisku `Reload shaders`. Po każdym ćwiczeniu wycofaj zmianę (`git checkout src assets/shaders`).
+Ćwiczenia od 1 do 3 robi się na kartce (kalkulator wystarczy). Ćwiczenia od 4 do 8 to zmiany w działającym programie: zmiana w `NightMazeApp.cpp` wymaga zbudowania (`make run`), zmiana w `basic.vert` tylko zapisania pliku i przycisku `Reload shaders` (na Windowsie najpierw `cmake --build --preset debug --target copy_assets`). Po każdym ćwiczeniu wycofaj zmianę (`git checkout src assets/shaders`).
+
+Ćwiczenia od 4 do 7 dotyczą kostki, a ta wisi dziś nad komórką wyjścia, w `(19, 4,5, 19)` dla labiryntu startowego. Żeby ją oglądać, włącz noclip (klawisz N albo pole wyboru w panelu Collision), wzleć nad ściany (spacja) i podleć do przeciwległego narożnika. `basic.vert` rysuje tylko kostkę, więc zmiany w tym pliku nie ruszają labiryntu.
 
 1. **Kolejność przekształceń.** Wierzchołek `(0, 0, 1)`, skala 3, obrót o 90 stopni wokół osi Y, przesunięcie o `(0, 2, 0)`. Policz wynik dla `T * R * S` i dla `R * S * T`. Odpowiedź: `(3, 2, 0)` i `(3, 6, 0)`.
 2. **Macierz z pól.** Zapisz na kartce macierz 4 x 4, którą zwróci `Transform::matrix()` dla `position = (1, 2, 3)`, `scale = (2, 2, 2)` i zerowych kątów. Wskaż, w których elementach `m[kolumna][wiersz]` leży przesunięcie. Odpowiedź: przekątna `2, 2, 2, 1`, przesunięcie w `m[3][0]`, `m[3][1]`, `m[3][2]`.
 3. **Blokada przegubu.** Dla `Transform` z kątem x = 90 pokaż na przykładzie wierzchołka `(1, 0, 0)`, że kąty `(90, 30, 0)` i `(90, 0, -30)` dają ten sam wynik. Wyjaśnij, co to znaczy dla liczby stopni swobody.
-4. **Kolejność mnożenia w shaderze.** W `basic.vert` zamień wyrażenie na `uModel * uView * uProjection * vec4(aPosition, 1.0)` i naciśnij `Reload shaders`. Co widać i czy panel Shaders zgłasza błąd? Potem spróbuj `uView * uModel * vec4(aPosition, 1.0)` (bez rzutowania): ekran też jest pusty. Wyjaśnij to wartością z kostki w przestrzeni widoku i warunkiem przycinania `-w <= z <= w`. Na koniec `uProjection * uModel * vec4(aPosition, 1.0)` (bez macierzy widoku): gdzie teraz stoi kamera względem kostki i co widać?
-5. **Skala niejednorodna.** Dopisz w konstruktorze `m_cubeTransform.scale = {2.0F, 0.5F, 1.0F};`. Wzdłuż których krawędzi kostka się wydłużyła: osi ekranu czy własnych osi kostki? Wyjaśnij to kolejnością `T * R * S`.
-6. **Obrót.** Ustaw obie stałe `CUBE_ROTATION_X_DEGREES` i `CUBE_ROTATION_Y_DEGREES` na 0. Widać czerwony kwadrat: dlaczego kwadrat, a nie prostokąt, skoro okno ma proporcje 16:9? Potem ustaw X na 90, a Y na 45 i przewidź przed uruchomieniem, które ściany będą widoczne.
-7. **Druga kostka.** Dodaj pole `scene::Transform m_secondCubeTransform;`, w konstruktorze ustaw mu `position = {1.5F, 0.0F, -1.0F}`, a w `onRender` po pierwszym `glDrawElements` dopisz `m_shader.setMat4(MODEL_UNIFORM, m_secondCubeTransform.matrix());` i drugie takie samo `glDrawElements`. Których macierzy nie trzeba wysyłać drugi raz i dlaczego? Czy trzeba drugiego bufora wierzchołków? Przesuń drugą kostkę tak, żeby częściowo chowała się za pierwszą, i wyłącz test głębi: co się zmieniło?
+4. **Kolejność mnożenia w shaderze.** W `basic.vert` zamień wyrażenie na `uModel * uView * uProjection * vec4(aPosition, 1.0)` i naciśnij `Reload shaders`. Co dzieje się z kostką i czy panel Shaders zgłasza błąd? Potem spróbuj `uView * uModel * vec4(aPosition, 1.0)` (bez rzutowania): kostki też nie ma. Wyjaśnij to wartością z kostki w przestrzeni widoku i warunkiem przycinania `-w <= z <= w`. Na koniec `uProjection * uModel * vec4(aPosition, 1.0)` (bez macierzy widoku): gdzie teraz "stoi" kamera kostki, w którą stronę patrzy i czy kostka w `(19, 4,5, 19)` może być widoczna?
+5. **Skala niejednorodna.** Dopisz w konstruktorze `m_cubeTransform.scale = {2.0F, 0.5F, 1.0F};`. Wzdłuż których krawędzi kostka się wydłużyła: osi świata czy własnych osi kostki? Wyjaśnij to kolejnością `T * R * S`.
+6. **Obrót.** Ustaw obie stałe `CUBE_ROTATION_X_DEGREES` i `CUBE_ROTATION_Y_DEGREES` na 0 i obejrzyj kostkę od strony +Z, z tej samej wysokości. Widać czerwony kwadrat: dlaczego kwadrat, a nie prostokąt, skoro okno ma proporcje 16:9? Potem ustaw X na 90, a Y na 45 i przewidź przed uruchomieniem, które ściany będą widoczne.
+7. **Druga kostka.** Dodaj pole `scene::Transform m_secondCubeTransform;` (pod `m_cubeTransform`), na końcu `enterMaze` ustaw mu `position = m_cubeTransform.position + glm::vec3{1.5F, 0.0F, -1.0F}`, a w `drawCube` po `glDrawElements` dopisz `m_shader.setMat4(MODEL_UNIFORM, m_secondCubeTransform.matrix());` i drugie takie samo `glDrawElements`. Których macierzy nie trzeba wysyłać drugi raz i dlaczego? Czy trzeba drugiego bufora wierzchołków? Przesuń drugą kostkę tak, żeby częściowo chowała się za pierwszą, i wyłącz test głębi: co się zmieniło?
+8. **Ściana bez obrotu.** W `MazeWorld.cpp` zakomentuj w `wallMatrix` trzy linie `if (segment.axis == WallAxis::AlongZ) { ... }`, zbuduj i uruchom. Jak wyglądają ściany, które powinny biec wzdłuż osi Z? Włącz `Draw collision boxes` w panelu Collision: czy żółte pudełka nadal stoją tam, gdzie powinny, i dlaczego (podpowiedź: pudełka kolizji nie powstają z macierzy modelu)? Uruchom testy: który przypadek z `tests/MazeWorldTests.cpp` to wykrywa?
 
 ## 9. Pytania kontrolne
 

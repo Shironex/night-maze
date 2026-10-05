@@ -2,7 +2,12 @@
 // See docs/modules/core/README.md
 #pragma once
 
+#include "assets/AssetCache.hpp"
 #include "core/Application.hpp"
+#include "game/ColliderLines.hpp"
+#include "game/MazeRenderer.hpp"
+#include "game/MazeWorld.hpp"
+#include "game/Player.hpp"
 #include "gfx/Buffer.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/VertexArray.hpp"
@@ -15,15 +20,18 @@
 
 namespace game {
 
-/// The game itself. For now it clears the screen and draws one colored cube, seen through
-/// a camera that flies around it: the mouse turns the camera, the keyboard moves it.
+/// The game itself: a generated maze of textured walls, pillars and floor tiles, and a
+/// player who walks through it in first person without passing through the walls. The
+/// mouse turns the camera, the keyboard moves the player. A coloured cube floats above
+/// the far corner cell as a marker of the future exit.
 ///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels on top of the frame.
 class NightMazeApp : public core::Application {
 public:
-    /// Creates the window (through core::Application), loads the shader and uploads
-    /// the vertex and index data of the cube.
+    /// Creates the window (through core::Application), loads the shaders and the models,
+    /// uploads the vertex and index data of the cube, generates the first maze and puts
+    /// the player at its start.
     NightMazeApp();
 
 protected:
@@ -36,24 +44,60 @@ protected:
     /// Shader program of the cube, exposed so the debug UI can reload it live.
     gfx::Shader& shader() { return m_shader; }
 
-    /// The camera, exposed so the debug UI can show and edit its position, angles and
-    /// projection live.
+    /// Shader program of the maze (textured models), exposed for the same reason.
+    gfx::Shader& texturedShader() { return m_texturedShader; }
+
+    /// Shader program of the collision box lines, exposed for the same reason.
+    gfx::Shader& colorShader() { return m_colorShader; }
+
+    /// The camera, exposed so the debug UI can show and edit its angles and projection
+    /// live. Its position follows the eyes of the player, see player().
     scene::Camera& camera() { return m_camera; }
 
     /// Mouse look sensitivity in degrees per screen coordinate unit of mouse movement,
     /// exposed so the debug UI can edit it live.
     float& mouseSensitivity() { return m_mouseSensitivity; }
 
-    /// Camera movement speed in metres per second, exposed so the debug UI can edit it live.
-    float& moveSpeed() { return m_moveSpeed; }
+    /// The player, exposed so the debug UI can show and edit its position, its speeds
+    /// and the noclip mode live.
+    Player& player() { return m_player; }
+
+    /// The request for the next maze, exposed so the debug UI can ask for a new one.
+    MazeSettings& mazeSettings() { return m_mazeSettings; }
+
+    /// The maze in play, read only: the debug UI draws its plan and counts its boxes.
+    const MazeWorld& mazeWorld() const { return m_mazeWorld; }
+
+    /// The loaded models and textures, exposed so the debug UI can list them and change
+    /// the texture filtering live.
+    assets::AssetCache& assets() { return m_assets; }
+
+    /// What the textured shader shows, exposed so the debug UI can switch it live.
+    ViewMode& viewMode() { return m_viewMode; }
+
+    /// Whether the collision boxes are drawn as lines, exposed so the debug UI can
+    /// switch it live.
+    bool& drawColliders() { return m_drawColliders; }
 
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
     // hand movement turns the camera equally on a Retina display.
     static constexpr float DEFAULT_MOUSE_SENSITIVITY = 0.1F;
-    // Camera speed in metres per second (one world unit is one metre).
-    static constexpr float DEFAULT_MOVE_SPEED = 3.0F;
+
+    /// Builds the maze described by m_mazeSettings and enters it (enterMaze).
+    void regenerateMaze();
+
+    /// What has to happen whenever m_mazeWorld holds a new maze: moves the marker cube
+    /// above its far corner cell and puts the player at its start, looking down an open
+    /// passage.
+    void enterMaze();
+
+    /// The three parts of a frame. Each one selects its own shader program and sets
+    /// its uniforms.
+    void drawMaze(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawCube(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 
     // A dark night blue.
     std::array<float, 3> m_clearColor{0.02F, 0.03F, 0.08F};
@@ -63,31 +107,55 @@ private:
     //
     // Order: members are constructed top to bottom, and the constructor body runs after
     // all of them.
-    //   1. m_vertexArray: its constructor binds it, so the two buffers below are created
+    //   1. The three shader programs. They bind no buffer, so their place does not matter.
+    //   2. m_assets, m_mazeRenderer (it loads the models through m_assets, so it comes
+    //      after it) and m_colliderLines. The last two create meshes, and creating a mesh
+    //      binds its own vertex array and buffers. They stand BEFORE the cube on purpose:
+    //      the cube relies on its buffer still being bound when the constructor body
+    //      runs, and a mesh created after it would take that binding away.
+    //   3. m_vertexArray: its constructor binds it, so the two buffers below are created
     //      while it is the bound vertex array.
-    //   2. m_vertexBuffer: stays bound to GL_ARRAY_BUFFER, and that is how the attribute
+    //   4. m_vertexBuffer: stays bound to GL_ARRAY_BUFFER, and that is how the attribute
     //      setup in the constructor body tells the vertex array which buffer to read from.
-    //   3. m_indexBuffer: binding it to GL_ELEMENT_ARRAY_BUFFER records it in the bound
+    //   5. m_indexBuffer: binding it to GL_ELEMENT_ARRAY_BUFFER records it in the bound
     //      vertex array. It uses a different binding point, so m_vertexBuffer stays bound.
     gfx::Shader m_shader;
+    gfx::Shader m_texturedShader;
+    gfx::Shader m_colorShader;
+    assets::AssetCache m_assets;
+    MazeRenderer m_mazeRenderer;
+    ColliderLines m_colliderLines;
     gfx::VertexArray m_vertexArray;
     gfx::Buffer m_vertexBuffer;
     gfx::Buffer m_indexBuffer;
 
     // Where the cube stands and how it is turned (the model matrix).
     scene::Transform m_cubeTransform;
-    // Where the scene is seen from (the view and projection matrices). Its position is
-    // simulation state: onUpdate moves it in fixed steps.
-    scene::Camera m_camera;
-    // Camera position before the last fixed step. onRender draws from a point between
-    // this one and m_camera.position. It starts equal to the camera position, so the
-    // frames before the first step are drawn from where the camera stands. Declared after
-    // m_camera, because members are initialized top to bottom.
-    glm::vec3 m_previousCameraPosition = m_camera.position;
 
-    // How the camera is controlled. These belong to the controls, not to the camera.
+    // The request for the next maze (edited by the debug UI) and the maze in play.
+    MazeSettings m_mazeSettings;
+    MazeWorld m_mazeWorld;
+
+    // The player is simulation state: onUpdate moves it in fixed steps.
+    Player m_player;
+    // Position of the player before the last fixed step. onRender draws from a point
+    // between this one and m_player.position. It starts equal to the position of the
+    // player, so the frames before the first step are drawn from where the player stands.
+    // Declared after m_player, because members are initialized top to bottom.
+    glm::vec3 m_previousPlayerPosition = m_player.position;
+
+    // Where the scene is seen from (the view and projection matrices). The angles are
+    // turned by the mouse. The position is not controlled directly: after every fixed
+    // step it is set to the eyes of the player.
+    scene::Camera m_camera;
+
+    // What the textured shader shows: the picture, or one of the two debug views.
+    ViewMode m_viewMode = ViewMode::Textured;
+    // Whether the collision boxes are drawn as lines on top of the scene.
+    bool m_drawColliders = false;
+
+    // How the camera is turned. It belongs to the controls, not to the camera.
     float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;
-    float m_moveSpeed = DEFAULT_MOVE_SPEED;
 };
 
 } // namespace game

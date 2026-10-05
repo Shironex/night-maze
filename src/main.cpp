@@ -15,8 +15,8 @@ namespace {
 
 /// The game with the debug UI drawn on top of every frame.
 ///
-/// This is the only place that knows about both game/ and debug/, so the game itself
-/// never depends on the debug panels.
+/// This is the only place where the game meets the debug UI. The panels read game types,
+/// but nothing in game/ includes debug code, so the game never depends on the panels.
 class DebugNightMazeApp final : public game::NightMazeApp {
 protected:
     void onRender(double alpha) override {
@@ -38,7 +38,14 @@ protected:
             .shader = shader(),
             .camera = camera(),
             .mouseSensitivity = mouseSensitivity(),
-            .moveSpeed = moveSpeed(),
+            .texturedShader = texturedShader(),
+            .colorShader = colorShader(),
+            .player = player(),
+            .mazeSettings = mazeSettings(),
+            .mazeWorld = mazeWorld(),
+            .assets = assets(),
+            .viewMode = viewMode(),
+            .drawColliders = drawColliders(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

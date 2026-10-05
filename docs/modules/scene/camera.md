@@ -1,6 +1,6 @@
 # Moduł scene: kamera, macierz widoku i rzutowanie
 
-Kamień milowy: M1. Temat wykładu: 3 (Przekształcenia przestrzeni).
+Kamień milowy: M1, użycie w grze zmienione w M2 + M3 (kamera stoi w oczach gracza). Temat wykładu: 3 (Przekształcenia przestrzeni).
 Kod: [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp), [`src/scene/Camera.cpp`](../../../src/scene/Camera.cpp), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Pozostałe części: [`transforms.md`](transforms.md) (przestrzenie współrzędnych, macierze przesunięcia, obrotu i skali, macierz modelu) i [`camera-controls.md`](camera-controls.md) (sterowanie kamerą, panel Camera). Ten dokument zakłada znajomość [`transforms.md`](transforms.md) (sekcje od 2.1 do 2.5: łańcuch przestrzeni, współrzędne jednorodne, czytanie iloczynu od prawej) i korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `lookAt`, `perspective`, `radians`, `cross`, `normalize`).
@@ -11,7 +11,9 @@ Macierz modelu z [`transforms.md`](transforms.md) stawia obiekt w świecie. Żeb
 
 Ten dokument opisuje też miejsce, w którym trzy macierze spotykają się w jednej klatce, czyli `NightMazeApp::onRender`: test głębi, proporcje obrazu, zabezpieczenie przed framebufferem o rozmiarze zero i drogę jednego wierzchołka przez cały łańcuch na liczbach.
 
-Stan na dziś: `game::NightMazeApp` ma jeden `Transform` (kostka) i jedną `Camera`. Co klatkę liczy z nich trzy macierze i wysyła je do shadera `basic.vert`, który mnoży przez nie każdy wierzchołek kostki (shader: [`transforms.md`](transforms.md), sekcja 4, kod: sekcje 5.7 i 5.8). Kostka jest obrócona na stałe ([`transforms.md`](transforms.md), sekcja 5.4). Kamerą można latać: sterowanie nią i panel Camera opisuje [`camera-controls.md`](camera-controls.md).
+Stan na dziś: `game::NightMazeApp` ma jedną `Camera`. Co klatkę liczy z niej macierz widoku i macierz rzutowania, raz, i wysyła je do trzech programów shaderów: `textured` (labirynt), `basic` (kostka nad komórką wyjścia) i `color` (linie pudełek kolizji). Macierz modelu każdy rysowany obiekt ma własną (kod: sekcja 5.7). Kamera nie ma już własnego sterowania pozycją: jej kąty obraca mysz ([`camera-controls.md`](camera-controls.md)), a pozycję po każdym kroku symulacji dostaje z oczu gracza ([`../game/player.md`](../game/player.md)). Struktura `Camera` ma też drugiego użytkownika: `Player::update` tworzy tymczasową kamerę i używa jej jak kalkulatora kierunków `forward()` i `right()` (sekcja 5.3).
+
+Przykład liczbowy w sekcji 5.8 i część ćwiczeń używają sceny z M1: kamery domyślnej w `(0, 0, 3)` patrzącej na kostkę w początku układu. To nadal poprawna ilustracja rachunku, ale program po starcie wygląda dziś inaczej (kamera w `(1, 1,7, 1)` wewnątrz labiryntu). Mówię o tym wprost w każdym takim miejscu.
 
 ## 2. Teoria
 
@@ -242,7 +244,7 @@ Macierze to zwykła matematyka na procesorze. `Transform` i `Camera` nie wołaj�
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | czyści kolor i głębię | przy włączonym teście głębi bufor głębi trzeba czyścić co klatkę, inaczej zostają w nim wartości z poprzedniej |
 | `glDepthRange(0, 1)` | zakres, na który trafia z z NDC | wartość domyślna, nie zmieniam jej |
 
-Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glViewport`, `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, a `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5.1), po trzy razy na klatkę.
+Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glViewport`, `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, a `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania są wysyłane po razie do każdego używanego programu, a macierz modelu raz dla każdego rysowanego obiektu.
 
 Kolejność w klatce:
 
@@ -250,13 +252,14 @@ Kolejność w klatce:
 flowchart TD
     A["glViewport(0, 0, szerokość, wysokość framebuffera)"] --> B["glEnable(GL_DEPTH_TEST)"]
     B --> C["glClearColor, glClear(kolor i głębia)"]
-    C --> D{"szerokość albo wysokość framebuffera 0<br/>albo brak programu?"}
+    C --> D{"szerokość albo wysokość framebuffera 0?"}
     D -- tak --> End["koniec: samo tło"]
     D -- nie --> E["aspectRatio = szerokość / wysokość (float)"]
-    E --> X["eye = glm::mix(poprzednia pozycja, pozycja, alpha)"]
-    X --> F["m_shader.use(): glUseProgram"]
-    F --> G["setMat4 x3: uModel, uView, uProjection<br/>glGetUniformLocation, glUniformMatrix4fv"]
-    G --> H["m_vertexArray.bind(), glDrawElements"]
+    E --> X["feet = glm::mix(poprzednia pozycja gracza, pozycja gracza, alpha)<br/>eye = feet + wysokość oczu"]
+    X --> V["view = m_camera.viewMatrix(eye)<br/>projection = m_camera.projectionMatrix(aspectRatio)"]
+    V --> M["drawMaze: m_texturedShader.use(), uView, uProjection, uViewMode,<br/>potem uModel i rysowanie dla każdego obiektu"]
+    M --> F["drawCube: m_shader.use(), uModel, uView, uProjection,<br/>m_vertexArray.bind(), glDrawElements"]
+    F --> L["gdy włączone: drawColliderLines: m_colorShader.use(), uView, uProjection,<br/>potem uModel i rysowanie dla każdego pudełka"]
 ```
 
 Trzy zależności w tej kolejności:
@@ -281,9 +284,10 @@ Kamera nie ma własnego shadera. Macierz widoku i macierz rzutowania trafiają d
 |---|---|
 | [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp) | struktura `Camera`: stałe `WORLD_UP` i `MAX_PITCH_DEGREES`, pola `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, deklaracje pięciu funkcji |
 | [`src/scene/Camera.cpp`](../../../src/scene/Camera.cpp) | stała `FULL_TURN_DEGREES` i funkcje `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix` |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik kamery: pole `m_camera` obok `m_cubeTransform`, liczenie proporcji i wysłanie trzech macierzy w `onRender` (sekcje 5.7 i 5.8) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik kamery: pole `m_camera`, liczenie proporcji, oka i dwóch macierzy w `onRender`, wysłanie ich do trzech programów w `drawMaze`, `drawCube` i `drawColliderLines` (sekcja 5.7) |
+| [`src/game/Player.cpp`](../../../src/game/Player.cpp) | drugi użytkownik: `Player::update` liczy kierunki ruchu przez tymczasową `scene::Camera` (sekcja 5.3, [`../game/player.md`](../game/player.md), sekcja 5) |
 
-Miejsce plików `src/scene/` w bibliotece `engine` i powód, dla którego `Camera` jest strukturą z publicznymi polami, opisuje [`transforms.md`](transforms.md), sekcja 5.1. Pliki shadera są wymienione tam, a pliki sterowania kamerą i panelu w [`camera-controls.md`](camera-controls.md), sekcja 5.1.
+Miejsce plików `src/scene/` w bibliotece `engine` i powód, dla którego `Camera` jest strukturą z publicznymi polami, opisuje [`transforms.md`](transforms.md), sekcja 5.1. Pliki shadera są wymienione tam, a pliki sterowania kamerą i panelu w [`camera-controls.md`](camera-controls.md), sekcja 5.
 
 ### 5.2 `Camera`: stałe i pola
 
@@ -299,7 +303,7 @@ Miejsce plików `src/scene/` w bibliotece `engine` i powód, dla którego `Camer
 
 | Stała | Znaczenie |
 |---|---|
-| `WORLD_UP` | góra świata, `(0, 1, 0)`, zgodnie z konwencją "Y w górę" (sekcja 2.5). Używają jej `right()` i `viewMatrix()`. Jest publiczna, bo używa jej też kod, który porusza kamerą w górę i w dół (`NightMazeApp::onUpdate`, [`camera-controls.md`](camera-controls.md), sekcja 5.4) |
+| `WORLD_UP` | góra świata, `(0, 1, 0)`, zgodnie z konwencją "Y w górę" (sekcja 2.5). Używają jej `right()` i `viewMatrix()`. Jest publiczna, bo używa jej też kod, który przesuwa gracza w górę i w dół w trybie noclip (`Player::update`, [`../game/player.md`](../game/player.md), sekcja 5) |
 | `MAX_PITCH_DEGREES` | 89 stopni: największe pochylenie w górę i w dół (sekcja 2.2) |
 
 `static constexpr` w strukturze oznacza stałą czasu kompilacji wspólną dla wszystkich obiektów: nie zajmuje miejsca w obiekcie `Camera` i jest dostępna jako `scene::Camera::WORLD_UP`. Tak samo zapisane są stałe `core::Time::FIXED_DT` i `core::Input::KEY_COUNT`.
@@ -342,7 +346,7 @@ Dwie decyzje:
 - **`nearPlane` i `farPlane` są polami, a nie stałymi.** To własność konkretnej kamery i konkretnej sceny: druga kamera (na przykład patrząca z góry na cały labirynt) potrzebuje innych wartości niż kamera gracza, a zadanie laboratoryjne zbudowane na `engine` może mieć inną skalę świata. Pola pozwalają też zobaczyć z-fighting na własne oczy przez zmianę jednej liczby (pułapka 4).
 - **Nazwy `nearPlane` i `farPlane`, a nie `near` i `far`.** Nagłówek `<windows.h>` definiuje `near` i `far` jako puste makra (pozostałość po 16-bitowym Windowsie). W pliku, który dołączyłby i `<windows.h>`, i `Camera.hpp`, pole o nazwie `near` zniknęłoby w preprocesorze i kod przestałby się kompilować.
 
-Struktura nie ma prędkości ruchu ani czułości myszy. To nie są własności kamery, tylko sposobu sterowania nią, więc należą do kodu gry: są polami `NightMazeApp` ([`camera-controls.md`](camera-controls.md), sekcja 5.2).
+Struktura nie ma prędkości ruchu ani czułości myszy. To nie są własności kamery, tylko sposobu sterowania, więc należą do kodu gry: czułość myszy jest polem `NightMazeApp` ([`camera-controls.md`](camera-controls.md), sekcja 5), a trzy prędkości (chodzenia, biegu i lotu) są polami `game::Player` ([`../game/player.md`](../game/player.md), sekcja 5).
 
 ### 5.3 `forward()` i `right()`
 
@@ -380,6 +384,18 @@ glm::vec3 Camera::right() const {
 
 Funkcji `up()` (góra kamery) nie ma: nic jej jeszcze nie potrzebuje, a `glm::lookAt` liczy ją sobie sam.
 
+**Kamera jako kalkulator kierunków.** Te dwie funkcje mają drugiego użytkownika poza rysowaniem. `Player::update` ([`src/game/Player.cpp`](../../../src/game/Player.cpp)) musi wiedzieć, gdzie jest "przód" i "prawo" dla podanych kątów, i zamiast powtarzać wzory z sinusami tworzy tymczasową kamerę:
+
+```cpp
+    scene::Camera view;
+    view.yawDegrees = yawDegrees;
+    view.pitchDegrees = noclip ? pitchDegrees : LEVEL_PITCH_DEGREES;
+    const glm::vec3 forward = view.forward();
+    const glm::vec3 right = view.right();
+```
+
+Pozycja tej kamery nie jest czytana, liczą się tylko dwa kąty. W trybie chodzenia pitch jest zastępowany zerem: `forward()` nie ma wtedy składowej pionowej i zachowuje długość 1, więc patrzenie w podłogę nie spowalnia gracza. `right()` jest poziome przy każdym pitch. Dzięki temu kierunek ruchu i obraz na ekranie zawsze pochodzą z tych samych wzorów. Reszta funkcji: [`../game/player.md`](../game/player.md), sekcja 5.
+
 ### 5.4 `rotate()`
 
 ```cpp
@@ -409,7 +425,7 @@ void Camera::rotate(float yawDeltaDegrees, float pitchDeltaDegrees) {
 
 **Dlaczego nie `std::fmod`.** `std::fmod(-10, 360)` zwraca -10, bo zachowuje znak pierwszego argumentu. Zakres wychodziłby od -360 do 360 i ten sam kierunek miałby dwie różne wartości. Wzór z `std::floor` daje jeden zakres, od 0 do 360.
 
-`rotate` to jedyna funkcja `Camera`, która nie jest `const`: zmienia pola. Pilnuje zakresów tylko dla zmian, które przez nią przechodzą. Wartość wpisana wprost w pole `pitchDegrees` nie jest sprawdzana (pułapka 3). Woła ją `NightMazeApp::onRender` z przesunięciem myszy przeliczonym na stopnie ([`camera-controls.md`](camera-controls.md), sekcja 5.3).
+`rotate` to jedyna funkcja `Camera`, która nie jest `const`: zmienia pola. Pilnuje zakresów tylko dla zmian, które przez nią przechodzą. Wartość wpisana wprost w pole `pitchDegrees` nie jest sprawdzana (pułapka 3). Woła ją `NightMazeApp::onRender` z przesunięciem myszy przeliczonym na stopnie ([`camera-controls.md`](camera-controls.md), sekcja 5).
 
 ### 5.5 `viewMatrix()` i `projectionMatrix()`
 
@@ -426,7 +442,7 @@ glm::mat4 Camera::viewMatrix(const glm::vec3& eye) const {
 | `center` | `eye + forward()` | **punkt**, na który patrzę: jeden krok do przodu od oka. `lookAt` nie przyjmuje kierunku. Odległość punktu nie ma znaczenia, liczy się tylko kierunek od `eye` do niego |
 | `up` | `WORLD_UP` | góra świata jako wskazówka (sekcja 2.1) |
 
-**Dlaczego pozycja oka jest parametrem, a nie polem `position`.** Symulacja idzie stałym krokiem, a klatka jest rysowana w dowolnej chwili między dwoma krokami ([`../core/main-loop.md`](../core/main-loop.md), sekcja 2.4). Kamera porusza się w krokach symulacji, więc płynny obraz wymaga rysowania z punktu leżącego **między** pozycją z poprzedniego kroku a bieżącą: `glm::mix(previous, current, alpha)` ([`camera-controls.md`](camera-controls.md), sekcja 2.4). Pole `position` jest stanem symulacji, którego rysowanie nie rusza. Dlatego funkcja dostaje punkt, z którego ma patrzeć, od wołającego. `NightMazeApp` liczy ten punkt w `onRender` i woła `m_camera.viewMatrix(eye)` (sekcja 5.7 i [`camera-controls.md`](camera-controls.md), sekcja 5.5). Kamera, która stoi w miejscu, mogłaby podać po prostu własne pole.
+**Dlaczego pozycja oka jest parametrem, a nie polem `position`.** Symulacja idzie stałym krokiem, a klatka jest rysowana w dowolnej chwili między dwoma krokami ([`../core/main-loop.md`](../core/main-loop.md), sekcja 2.4). Gracz, w którego oczach stoi kamera, porusza się w krokach symulacji, więc płynny obraz wymaga rysowania z punktu leżącego **między** pozycją z poprzedniego kroku a bieżącą: `glm::mix(previous, current, alpha)`. Pole `position` jest stanem symulacji (po każdym kroku dostaje pozycję oczu gracza), którego rysowanie nie rusza. Dlatego funkcja dostaje punkt, z którego ma patrzeć, od wołającego. `NightMazeApp` liczy ten punkt w `onRender` z pozycji stóp gracza i woła `m_camera.viewMatrix(eye)` (sekcja 5.7 i [`../core/main-loop.md`](../core/main-loop.md), sekcja 5.5). Kamera, która stoi w miejscu, mogłaby podać po prostu własne pole.
 
 ```cpp
 glm::mat4 Camera::projectionMatrix(float aspectRatio) const {
@@ -471,116 +487,136 @@ Trzy wiersze tej tabeli, które dotyczą `Transform`, są w [`transforms.md`](tr
 
 Build Debug i Release (clang, `-Wall -Wextra -Wpedantic`) przechodzi bez ostrzeżeń, a clang-tidy z regułami projektu nie zgłasza niczego w plikach `src/scene/`. Na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05) build Debug i Release też przechodzi bez ostrzeżeń.
 
-### 5.7 Użycie w `NightMazeApp`: trzy macierze w `onRender`
+### 5.7 Użycie w `NightMazeApp`: dwie macierze na klatkę, trzy programy
 
-Właścicielem obu struktur jest `game::NightMazeApp` ([`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp)). Dane kostki, bufory i samo wywołanie rysujące opisuje [`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), sekcja 5. Tutaj wszystko, co dotyczy macierzy.
+Właścicielem kamery jest `game::NightMazeApp` ([`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp)). Całą klasę, w tym kolejność w `onRender`, opisuje [`../core/README.md`](../core/README.md), sekcja 6. Tutaj wszystko, co dotyczy macierzy.
 
-**Pola** (`NightMazeApp.hpp`), pod obiektami OpenGL:
+**Pole** (`NightMazeApp.hpp`):
 
 ```cpp
-// Where the cube stands and how it is turned (the model matrix).
-scene::Transform m_cubeTransform;
-// Where the scene is seen from (the view and projection matrices). Its position is
-// simulation state: onUpdate moves it in fixed steps.
-scene::Camera m_camera;
+    // Where the scene is seen from (the view and projection matrices). The angles are
+    // turned by the mouse. The position is not controlled directly: after every fixed
+    // step it is set to the eyes of the player.
+    scene::Camera m_camera;
 ```
 
-To zwykłe pola z wartościami domyślnymi: kamera w `(0, 0, 3)` patrzy wzdłuż -Z na początek układu, kostka stoi w początku układu. Pola sterowania kamerą, które stoją pod nimi, opisuje [`camera-controls.md`](camera-controls.md), sekcja 5.2. Nie są na liście inicjalizacyjnej konstruktora i nie wołają OpenGL, więc ich miejsce wśród pól nie ma znaczenia dla kolejności tworzenia obiektów OpenGL.
+Trzy rodzaje pól kamery mają dziś trzech różnych "kierowców":
 
-**Obrót kostki.** Stałe `CUBE_ROTATION_X_DEGREES` i `CUBE_ROTATION_Y_DEGREES` oraz przypisanie w ciele konstruktora opisuje [`transforms.md`](transforms.md), sekcja 5.4.
+| Pola `Camera` | Kto je zmienia | Kiedy |
+|---|---|---|
+| `yawDegrees`, `pitchDegrees` | mysz przez `m_camera.rotate` ([`camera-controls.md`](camera-controls.md), sekcja 5), suwaki panelu Camera, a przy wejściu do labiryntu `enterMaze` (yaw w otwarty bok komórki startowej, pitch 0) | raz na klatkę |
+| `position` | ostatnia linia `onUpdate`: `m_camera.position = m_player.eyePosition();` | po każdym stałym kroku |
+| `fovDegrees`, `nearPlane`, `farPlane` | tylko panel Camera | gdy ruszam suwak |
 
-**Nazwy uniformów:**
+Pole `position` ma wartość domyślną `(0, 0, 3)` tylko do chwili, gdy konstruktor zawoła `enterMaze()`. Po starcie kamera stoi w oczach gracza: `(1, 1,7, 1)`.
+
+**Nazwy uniformów** nie są już stałymi w `NightMazeApp.cpp`. Trzy klasy rysujące muszą się co do nich zgadzać, więc stoją w jednym nagłówku, [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5):
 
 ```cpp
-// Names of the matrix uniforms: the same as the "uniform mat4" lines in basic.vert.
+/// The three matrices. basic.vert, textured.vert and color.vert all declare them under
+/// the same names.
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
 ```
 
-**Początek `onRender`: stan, od którego zależy obraz.** Przed tym fragmentem stoi jeszcze obsługa myszy ([`camera-controls.md`](camera-controls.md), sekcja 5.3).
+**Początek `onRender`: stan, od którego zależy obraz.** Przed tym fragmentem stoją jeszcze: obsługa prośby o nowy labirynt, klawisz N i obsługa myszy ([`../core/README.md`](../core/README.md), sekcja 6, [`camera-controls.md`](camera-controls.md), sekcja 5).
 
 ```cpp
-const core::Size framebuffer = window().framebufferSize();
-GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
+    const core::Size framebuffer = window().framebufferSize();
+    GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
 
-// Depth test: a fragment is kept only if it is nearer to the camera than what is
-// already drawn at that pixel, so the near faces of the cube hide the far ones in
-// whatever order the triangles are drawn. It is switched on every frame, next to the
-// other state this frame relies on, instead of once at start-up: the frame then does
-// not depend on other code (the debug UI changes this state) leaving it switched on.
-GL_CHECK(glEnable(GL_DEPTH_TEST));
+    // Depth test: a fragment is kept only if it is nearer to the camera than what is
+    // already drawn at that pixel, so the near walls hide the far ones in whatever order
+    // the triangles are drawn. It is switched on every frame, next to the other state
+    // this frame relies on, instead of once at start-up: the frame then does not depend
+    // on other code (the debug UI changes this state) leaving it switched on.
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
 
-// The depth buffer has to be cleared together with the color, otherwise the depths of
-// the previous frame would hide the new one.
-GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
-GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    // The depth buffer has to be cleared together with the color, otherwise the depths of
+    // the previous frame would hide the new one.
+    GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
 
 | Linia | Znaczenie dla przekształceń |
 |---|---|
 | `window().framebufferSize()` | rozmiar obszaru rysowania w pikselach. Z tych samych dwóch liczb powstanie viewport i proporcje |
 | `glViewport(0, 0, framebuffer.width, framebuffer.height)` | kwadrat NDC trafia na cały framebuffer (sekcja 2.4) |
-| `glEnable(GL_DEPTH_TEST)` | test głębi (sekcja 3) |
+| `glEnable(GL_DEPTH_TEST)` | test głębi (sekcja 3). W labiryncie to on sprawia, że bliska ściana zasłania dalsze korytarze, choć ściany są rysowane w kolejności listy, a nie od najdalszej |
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | jedno wywołanie czyści oba bufory. `\|` to bitowe "lub": łączy dwie flagi w jedną maskę |
 
-**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (viewport, test głębi, kolor czyszczenia), a potem wybiera program i VAO. Koszt to jedno wywołanie na klatkę.
+**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (viewport, test głębi, kolor czyszczenia), a potem każda z trzech funkcji rysujących wybiera swój program. Koszt to jedno wywołanie na klatkę.
 
-**Reszta: proporcje, oko i trzy macierze.**
+**Reszta: proporcje, oko i dwie macierze.**
 
 ```cpp
-// A minimized window can have a framebuffer of size 0 x 0. The aspect ratio would
-// then be 0 / 0, which is NaN (not a number): glm::perspective stops the program with
-// an assert in a Debug build and returns a matrix with NaN in it in a Release build.
-// A size of 0 in one direction only gives an aspect ratio of 0 or infinity, and
-// a matrix that is just as useless. There is nothing to draw in such a frame anyway.
-if (framebuffer.width == 0 || framebuffer.height == 0) {
-    return;
-}
+    // A minimized window can have a framebuffer of size 0 x 0. The aspect ratio would
+    // then be 0 / 0, which is NaN (not a number): glm::perspective stops the program with
+    // an assert in a Debug build and returns a matrix with NaN in it in a Release build.
+    // A size of 0 in one direction only gives an aspect ratio of 0 or infinity, and
+    // a matrix that is just as useless. There is nothing to draw in such a frame anyway.
+    if (framebuffer.width == 0 || framebuffer.height == 0) {
+        return;
+    }
 
-// Without a shader program there is nothing to draw with. The load error was logged
-// once, when the shader was created, so the frame stays at the clear color.
-if (!m_shader.isValid()) {
-    return;
-}
+    // Width divided by height of the same pixels the viewport covers. The casts make it
+    // a division of floats: 1280 / 720 as integers would be 1.
+    const float aspectRatio =
+        static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
+```
 
-// Width divided by height of the same pixels the viewport covers. The casts make it
-// a division of floats: 1280 / 720 as integers would be 1.
-const float aspectRatio =
-    static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
+```cpp
+    const glm::vec3 feet =
+        glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
+    const glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
 
-// The simulation moves the camera in fixed steps, and this frame is drawn at some
-// moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
-// between the position before the last step and the position after it keeps the
-// movement smooth at any frame rate. m_camera.position itself is not changed.
-const glm::vec3 eye =
-    glm::mix(m_previousCameraPosition, m_camera.position, static_cast<float>(alpha));
+    // The two matrices that are the same for everything drawn in this frame.
+    const glm::mat4 view = m_camera.viewMatrix(eye);
+    const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
 
-// The uniforms belong to the program in use, so use() comes before setMat4.
-m_shader.use();
-m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
-m_shader.setMat4(VIEW_UNIFORM, m_camera.viewMatrix(eye));
-m_shader.setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio));
+    drawMaze(view, projection);
+    drawCube(view, projection);
+    if (m_drawColliders) {
+        drawColliderLines(view, projection);
+    }
 ```
 
 | Linia | Znaczenie |
 |---|---|
-| `if (framebuffer.width == 0 \|\| framebuffer.height == 0) { return; }` | **Okno zminimalizowane albo ściśnięte do zera.** Framebuffer może mieć wtedy rozmiar 0 x 0. Proporcje to byłoby `0 / 0`, czyli `NaN`: w buildzie Debug `glm::perspective` zatrzymuje program asercją, a w Release zwraca macierz z `NaN`. Sama wysokość 0 daje proporcje równe nieskończoności, a sama szerokość 0 daje proporcje 0, przez które macierz rzutowania dzieli (jej pierwszy wyraz to `f / aspect`). Oba przypadki przechodzą przez asercję GLM i dają bezużyteczną macierz, dlatego sprawdzam obie liczby. Framebuffer o szerokości 0 da się uzyskać naprawdę: w teście z [`camera-controls.md`](camera-controls.md), sekcja 5.6, okno o rozmiarze 0 x 300 miało framebuffer 0 x 600. W takiej klatce i tak nie ma ani jednego piksela do narysowania. Sprawdzenie stoi po `glClear`, więc stan i bufory są ustawione jak zawsze |
-| `if (!m_shader.isValid()) { return; }` | bez programu nie ma czym rysować ([`../gfx/shaders.md`](../gfx/shaders.md), sekcja 5.1) |
+| `if (framebuffer.width == 0 \|\| framebuffer.height == 0) { return; }` | **Okno zminimalizowane albo ściśnięte do zera.** Framebuffer może mieć wtedy rozmiar 0 x 0. Proporcje to byłoby `0 / 0`, czyli `NaN`: w buildzie Debug `glm::perspective` zatrzymuje program asercją, a w Release zwraca macierz z `NaN`. Sama wysokość 0 daje proporcje równe nieskończoności, a sama szerokość 0 daje proporcje 0, przez które macierz rzutowania dzieli (jej pierwszy wyraz to `f / aspect`). Oba przypadki przechodzą przez asercję GLM i dają bezużyteczną macierz, dlatego sprawdzam obie liczby. Framebuffer o szerokości 0 da się uzyskać naprawdę: w teście z M1 okno o rozmiarze 0 x 300 miało framebuffer 0 x 600 ([`camera-controls.md`](camera-controls.md), sekcja 5). W takiej klatce i tak nie ma ani jednego piksela do narysowania. Sprawdzenie stoi po `glClear`, więc stan i bufory są ustawione jak zawsze |
 | `static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height)` | **Proporcje.** `width` i `height` są typu `int`, a dzielenie dwóch liczb `int` jest całkowite: 2560 / 1440 dałoby 1. Rzutowanie obu na `float` daje 1,778. Liczone co klatkę, więc zmiana rozmiaru okna od razu zmienia macierz rzutowania |
-| `const glm::vec3 eye = glm::mix(m_previousCameraPosition, m_camera.position, static_cast<float>(alpha));` | punkt, z którego rysowana jest ta klatka: między pozycją sprzed ostatniego kroku a pozycją bieżącą ([`camera-controls.md`](camera-controls.md), sekcje 2.4 i 5.5) |
-| `m_shader.use();` | przed `setMat4`, bo uniformy trafiają do programu w użyciu |
-| `setMat4(MODEL_UNIFORM, m_cubeTransform.matrix())` | macierz modelu: przestrzeń lokalna kostki do świata |
-| `setMat4(VIEW_UNIFORM, m_camera.viewMatrix(eye))` | macierz widoku dla oka z poprzedniej linii. Kierunek patrzenia pochodzi z bieżących kątów kamery |
-| `setMat4(PROJECTION_UNIFORM, m_camera.projectionMatrix(aspectRatio))` | macierz rzutowania z proporcjami tej klatki |
+| `glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha))` | pozycja stóp gracza między pozycją sprzed ostatniego kroku a pozycją bieżącą ([`../core/main-loop.md`](../core/main-loop.md), sekcje 2.4 i 5.5) |
+| `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | punkt, z którego rysowana jest ta klatka: 1,7 m nad stopami. To nie jest `m_camera.position`, tylko jego wygładzona wersja |
+| `m_camera.viewMatrix(eye)` | macierz widoku dla tego oka. Kierunek patrzenia pochodzi z bieżących kątów kamery |
+| `m_camera.projectionMatrix(aspectRatio)` | macierz rzutowania z proporcjami tej klatki |
+| `const glm::mat4 view`, `const glm::mat4 projection` | obie macierze liczę raz i trzymam w zmiennych lokalnych, bo trafią do trzech programów. W M1 program był jeden i wyniki szły wprost do `setMat4` jako obiekty tymczasowe |
 
-Każda z trzech funkcji zwraca `glm::mat4` przez wartość, a `setMat4` przyjmuje `const glm::mat4&`: wynik żyje jako obiekt tymczasowy do końca instrukcji, czyli dokładnie tak długo, jak trzeba.
+**Sprawdzenia programu przeniosły się do funkcji rysujących.** W M1 `onRender` wracało, gdy jedyny program był niepoprawny. Dziś programów jest trzy i każda funkcja sprawdza swój (`if (!m_shader.isValid()) { return; }` w `drawCube`, analogicznie w dwóch pozostałych), więc błąd w jednym pliku shadera wyłącza tylko jego część sceny.
 
-Po tych liniach zostają `m_vertexArray.bind()` i `glDrawElements` ([`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), sekcja 5.6).
+**Kto ustawia którą macierz.** Każda z trzech funkcji dostaje `view` i `projection` przez `const glm::mat4&` i ustawia je w swoim programie po `use()`:
+
+| Funkcja | Program | `uView`, `uProjection` | `uModel` |
+|---|---|---|---|
+| `drawMaze` | `m_texturedShader` | raz na klatkę | `MazeRenderer` ustawia go dla każdej płytki, ściany i słupka z macierzy policzonych przy budowie labiryntu ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| `drawCube` | `m_shader` | raz na klatkę | `m_cubeTransform.matrix()`, raz ([`transforms.md`](transforms.md), sekcja 5.4) |
+| `drawColliderLines` | `m_colorShader` | raz na klatkę, tylko gdy rysowanie pudełek jest włączone | `ColliderLines` liczy go dla każdego pudełka: skala i przesunięcie sześcianu jednostkowego ([`collision.md`](collision.md), sekcja 5) |
+
+Fragment `drawCube` z trzema macierzami w jednym miejscu:
+
+```cpp
+    // The uniforms belong to the program in use, so use() comes before setMat4.
+    m_shader.use();
+    m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
+    m_shader.setMat4(VIEW_UNIFORM, view);
+    m_shader.setMat4(PROJECTION_UNIFORM, projection);
+```
+
+Po tych liniach zostają `m_vertexArray.bind()` i `glDrawElements` ([`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), sekcja 5).
 
 ### 5.8 Droga jednego wierzchołka na liczbach
 
-Jeden wierzchołek kostki prześledzony przez cały łańcuch z [`transforms.md`](transforms.md), sekcja 2.1, z prawdziwymi wartościami programu tuż po starcie, zanim kamera się ruszy (pozycja `(0, 0, 3)`, yaw 0, pitch 0): wierzchołek numer 2, prawy górny róg ściany przedniej, o pozycji lokalnej `(0,5, 0,5, 0,5)`. Okno 1280 x 720 na ekranie Retina, czyli framebuffer 2560 x 1440 i proporcje 1,778.
+Jeden wierzchołek kostki prześledzony przez cały łańcuch z [`transforms.md`](transforms.md), sekcja 2.1. **Scena przykładu to scena z M1**, a nie dzisiejszy start programu: kostka o boku 1 w początku układu (bez przesunięcia, z obrotem 25 i 35 stopni) i kamera domyślna (pozycja `(0, 0, 3)`, yaw 0, pitch 0). Tak program wyglądał po starcie w M1 i dla tej sceny rachunek został porównany z odczytaną klatką. Dziś kostka wisi w `exitPosition + (0, 4,5, 0)`, a kamera startuje w `(1, 1,7, 1)`, więc liczby byłyby inne, ale kolejne kroki rachunku są dokładnie te same. Śledzony jest wierzchołek numer 2, prawy górny róg ściany przedniej, o pozycji lokalnej `(0,5, 0,5, 0,5)`. Okno 1280 x 720 na ekranie Retina, czyli framebuffer 2560 x 1440 i proporcje 1,778.
 
 **Trzy macierze** (zapis matematyczny, wartości zaokrąglone):
 
@@ -611,7 +647,7 @@ Jak to policzyć ręcznie:
 - Krok 4: `0,770 / 2,742 = 0,281`, `0,419 / 2,742 = 0,153`, `2,548 / 2,742 = 0,929`.
 - Krok 5: x: `(0,281 + 1) / 2 * 2560 = 1640`. y: `(0,153 + 1) / 2 * 1440 = 830`. Głębia: `(0,929 + 1) / 2 = 0,965`.
 
-Wynik zgadza się z pomiarem: prostokąt zajęty przez kostkę w odczytanej klatce kończy się z prawej strony na x = 1638 ([`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), sekcja 5.7), a ten wierzchołek jest wysunięty najdalej w prawo.
+Wynik zgadza się z pomiarem z M1: prostokąt zajęty przez kostkę w odczytanej wtedy klatce kończył się z prawej strony na x = 1638 ([`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), sekcja 5), a ten wierzchołek jest wysunięty najdalej w prawo. Dla dzisiejszej sceny takiego pomiaru nie robiłem.
 
 Dla porównania środek kostki, punkt lokalny `(0, 0, 0)`: obrót go nie rusza, w przestrzeni widoku to `(0, 0, -3)`, w przestrzeni przycięcia `(0, 0, 2,806, 3)`, w NDC `(0, 0, 0,935)`, czyli piksel `(1280, 720)`: dokładnie środek okna. Wierzchołek 2 ma mniejszą głębię (0,965) niż środek kostki (0,968), bo po obrocie jest bliżej kamery.
 
@@ -631,7 +667,7 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
 6. **Yaw kamery a obrót wokół osi Y.** Dodatni yaw obraca kamerę w prawo (zgodnie z ruchem wskazówek zegara, patrząc z góry), a dodatni `rotationDegrees.y` w `Transform` obraca obiekt w lewo (reguła prawej dłoni). Obiekt, który ma być zwrócony tam, gdzie patrzy kamera, dostaje `rotationDegrees.y = -yawDegrees`.
 7. **Kamera wewnątrz obiektu albo za blisko.** Wszystko bliżej niż `nearPlane` jest obcinane, więc ściana przy samej kamerze znika i widać, co jest za nią. To nie błąd macierzy, tylko skutek istnienia bliskiej płaszczyzny.
 8. **`near` i `far` jako nazwy.** `<windows.h>` definiuje je jako makra. Pola nazywają się `nearPlane` i `farPlane` (sekcja 5.2). Tych dwóch słów nie należy używać jako nazw zmiennych także w innych plikach.
-9. **Bryła bez testu głębi.** Bez `glEnable(GL_DEPTH_TEST)` o widoczności decyduje kolejność rysowania: ściany rysowane później zamalowują wcześniejsze i kostka wygląda jak wywrócona na lewą stronę. Wygląda to jak błąd w danych albo w macierzach, a jest brakiem jednej linii stanu.
+9. **Bryła bez testu głębi.** Bez `glEnable(GL_DEPTH_TEST)` o widoczności decyduje kolejność rysowania: trójkąty rysowane później zamalowują wcześniejsze. Kostka wygląda wtedy jak wywrócona na lewą stronę, a w labiryncie przez bliską ścianę "widać" dalsze korytarze, bo zostały narysowane po niej. Wygląda to jak błąd w danych albo w macierzach, a jest brakiem jednej linii stanu.
 10. **Test głębi bez czyszczenia bufora głębi.** `glClear(GL_COLOR_BUFFER_BIT)` bez `GL_DEPTH_BUFFER_BIT` zostawia w buforze głębię poprzedniej klatki. Nowe fragmenty o tej samej głębi przegrywają test `GL_LESS` i nieruchomy obiekt znika po pierwszej klatce, a ruchomy zostawia "dziury".
 11. **Proporcje przy zminimalizowanym oknie.** Framebuffer 0 x 0 daje `0 / 0`, czyli `NaN`. W buildzie Debug `glm::perspective` kończy wtedy program asercją, w Release macierz zawiera `NaN`. `onRender` wraca przed liczeniem proporcji, gdy szerokość albo wysokość jest zerem (sekcja 5.7): sama szerokość 0 daje proporcje 0 i macierz z nieskończonością, bez żadnej asercji. Na macOS zminimalizowane okno zwykle zachowuje rozmiar, więc bez tego sprawdzenia błąd wyszedłby dopiero na Windowsie.
 12. **Proporcje ze starego rozmiaru.** Macierz rzutowania policzona raz, przy starcie, przestaje pasować po zmianie rozmiaru okna: viewport się zmienia, a ściśnięcie osi x w macierzy nie, więc obraz jest rozciągnięty. W projekcie proporcje i macierz są liczone co klatkę.
@@ -648,10 +684,10 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
 5. **Rzutowanie.** FOV 90 stopni, proporcje 1, punkt w przestrzeni widoku `(2, 1, -4)`. Policz x i y w NDC. Odpowiedź: `tan(45 stopni) = 1`, więc `f = 1`, x = 2 / 4 = 0,5, y = 1 / 4 = 0,25. Jak zmieni się x przy proporcjach 2? Odpowiedź: 0,25.
 6. **Głębia.** Ze wzoru `z_ndc = (far + near) / (far - near) - 2 * far * near / ((far - near) * d)` policz z w NDC dla near 1, far 10 i odległości d równych 1, 2, 5 i 10. Odpowiedź: -1, około 0,111, około 0,778, 1. Jaka część zakresu przypada na odległości od 1 do 2?
 7. **Piksel.** Framebuffer 2560 x 1440, `glViewport(0, 0, 2560, 1440)`. W który piksel trafia punkt NDC `(0,5, -0,5)`? Odpowiedź: x = 1920, y = 360, licząc od lewego dolnego rogu.
-8. **Odsuń kamerę.** W panelu Camera ustaw `Position` na `(0, 0, 6)` (Ctrl i kliknięcie w pole pozwala wpisać liczbę). Ile razy mniejsza jest kostka na ekranie i z którego wzoru sekcji 2.3 to wynika? Potem ustaw `(2, 0, 3)`: w którą stronę ekranu przesunęła się kostka i dlaczego w przeciwną niż kamera? Czy kamera nadal patrzy na kostkę?
-9. **Kąt widzenia.** Ustaw suwak `FOV` na 30, potem na 100. Opisz rozmiar kostki i zniekształcenie. Policz dla obu wartości `f = 1 / tan(fov / 2)` i porównaj z tym, ile razy zmieniła się wysokość kostki na ekranie.
-10. **Bez testu głębi.** Zakomentuj w `onRender` linię `GL_CHECK(glEnable(GL_DEPTH_TEST));`. Które ściany widać i dlaczego właśnie te (porównaj z kolejnością wierszy w `INDICES`)? Przywróć linię i zamiast tego usuń `| GL_DEPTH_BUFFER_BIT` z `glClear`. Co dzieje się z kostką po pierwszej klatce i dlaczego (pułapka 10)?
-11. **Proporcje.** W `onRender` zamień argument `projectionMatrix(aspectRatio)` na `projectionMatrix(1.0F)`. Jak wygląda kostka i co dzieje się z nią przy zmianie rozmiaru okna? Potem przywróć `aspectRatio`, ale usuń oba `static_cast<float>`: przeczytaj ostrzeżenie kompilatora i opisz obraz w oknie 1280 x 720 oraz w oknie zwężonym tak, żeby było wyższe niż szersze.
+8. **Odsuń kamerę.** Stań w korytarzu twarzą do ściany na jego końcu i zapamiętaj, ile ekranu zajmuje. W panelu Camera przeciągnij `Player feet` tak, żeby stanąć dwa razy dalej od tej ściany (Ctrl i kliknięcie w pole pozwala wpisać liczbę, a w trybie chodzenia zmieniaj tylko x i z). Ile razy mniejsza jest ściana na ekranie i z którego wzoru sekcji 2.3 to wynika? Potem przesuń gracza o pół metra w bok: w którą stronę ekranu przesunęła się ściana i dlaczego w przeciwną niż kamera? Pozycji kamery nie da się wpisać wprost: dlaczego (sekcja 5.7)?
+9. **Kąt widzenia.** Ustaw suwak `FOV` na 30, potem na 100. Stań w korytarzu twarzą do ściany na jego końcu. Opisz jej rozmiar na ekranie i zniekształcenie ścian bocznych. Policz dla obu wartości `f = 1 / tan(fov / 2)` i porównaj z tym, ile razy zmieniła się wysokość tej ściany na ekranie.
+10. **Bez testu głębi.** Zakomentuj w `onRender` linię `GL_CHECK(glEnable(GL_DEPTH_TEST));`. Przejdź się po labiryncie: które ściany są widoczne "przez" inne i dlaczego właśnie te (podpowiedź: `MazeRenderer` rysuje najpierw wszystkie płytki podłogi, potem ściany w kolejności listy, potem słupki)? Przywróć linię i zamiast tego usuń `| GL_DEPTH_BUFFER_BIT` z `glClear`. Co dzieje się z obrazem po pierwszej klatce, gdy stoisz, i co, gdy się ruszasz (pułapka 10)?
+11. **Proporcje.** W `onRender` zamień argument `projectionMatrix(aspectRatio)` na `projectionMatrix(1.0F)`. Jak wyglądają kwadratowe płytki podłogi i co dzieje się z obrazem przy zmianie rozmiaru okna? Potem przywróć `aspectRatio`, ale usuń oba `static_cast<float>`: przeczytaj ostrzeżenie kompilatora i opisz obraz w oknie 1280 x 720 oraz w oknie zwężonym tak, żeby było wyższe niż szersze.
 
 ## 9. Pytania kontrolne
 
@@ -671,7 +707,7 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
    Obrót w poziomie nie ma granicy, a 370 stopni to ten sam kierunek co 10, więc zawijanie tylko utrzymuje czytelną liczbę. `std::fmod` zachowuje znak argumentu i dałby zakres od -360 do 360. Wzór z `std::floor` daje zakres od 0 do 360.
 
 6. **Dlaczego `viewMatrix` dostaje pozycję oka jako parametr?**
-   Symulacja idzie stałym krokiem, a klatka jest rysowana między krokami. Płynny ruch wymaga rysowania z pozycji zmieszanej z poprzedniej i bieżącej (`mix` z `alpha`), a pole `position` ma pozostać stanem symulacji. Parametr rozdziela te dwie rzeczy: `NightMazeApp::onRender` podaje `glm::mix(m_previousCameraPosition, m_camera.position, alpha)`.
+   Symulacja idzie stałym krokiem, a klatka jest rysowana między krokami. Płynny ruch wymaga rysowania z pozycji zmieszanej z poprzedniej i bieżącej (`mix` z `alpha`), a pole `position` ma pozostać stanem symulacji. Parametr rozdziela te dwie rzeczy: `NightMazeApp::onRender` podaje pozycję stóp gracza zmieszaną z dwóch kroków (`glm::mix(m_previousPlayerPosition, m_player.position, alpha)`) i podniesioną o wysokość oczu.
 
 7. **Jakie parametry ma rzutowanie perspektywiczne i co robi dzielenie przez `w`?**
    Pionowy kąt widzenia, proporcje, odległość bliskiej i dalekiej płaszczyzny. Macierz rzutowania wpisuje do `w` odległość punktu od kamery (`-z` w przestrzeni widoku). Karta dzieli x, y i z przez `w`, więc dalsze punkty trafiają bliżej środka ekranu: to jest perspektywa.
@@ -689,7 +725,7 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
     Pozycja lokalna `(0,5, 0,5, 0,5)` dostaje `w = 1`. Macierz modelu (obrót kostki) daje pozycję w świecie `(0,79, 0,24, 0,26)`. Macierz widoku (kamera w `(0, 0, 3)`) odejmuje 3 od z: `(0,79, 0,24, -2,74)`. Macierz rzutowania skaluje x i y i wpisuje do `w` odległość 2,74: to jest `gl_Position`. Karta dzieli przez `w` (NDC `(0,28, 0,15, 0,93)`) i przelicza na piksele według `glViewport`: około `(1640, 830)` w framebufferze 2560 x 1440.
 
 12. **Gdzie w kodzie powstają trzy macierze i jak trafiają do shadera?**
-    W `NightMazeApp::onRender`: `m_cubeTransform.matrix()`, `m_camera.viewMatrix(eye)` i `m_camera.projectionMatrix(aspectRatio)`. Każdą wysyła `m_shader.setMat4` pod nazwę `uModel`, `uView` albo `uProjection`, po `m_shader.use()`. W `basic.vert` mnoży je linia `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);`.
+    Macierz widoku i macierz rzutowania powstają w `NightMazeApp::onRender`, raz na klatkę: `m_camera.viewMatrix(eye)` i `m_camera.projectionMatrix(aspectRatio)`. Trafiają do `drawMaze`, `drawCube` i `drawColliderLines`, a każda z tych funkcji po `use()` wysyła je przez `setMat4` pod nazwy `uView` i `uProjection` swojego programu. Macierz modelu jest osobna dla każdego obiektu: dla kostki `m_cubeTransform.matrix()`, dla części labiryntu macierze z `MazeWorld`, dla linii pudełek macierz liczona z pudełka. We wszystkich trzech shaderach wierzchołków mnoży je ta sama linia: `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);`.
 
 13. **Co robi test głębi i dlaczego jest włączany co klatkę?**
     Fragment jest zapisywany tylko wtedy, gdy jest bliżej kamery niż to, co już jest w buforze głębi, więc bliższe ściany zasłaniają dalsze niezależnie od kolejności rysowania. Bufor głębi jest czyszczony razem z kolorem. `glEnable(GL_DEPTH_TEST)` stoi w `onRender`, bo klatka ma sama ustawiać stan, od którego zależy: backend ImGui wyłącza test głębi na czas rysowania paneli.

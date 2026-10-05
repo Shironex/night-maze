@@ -3,7 +3,7 @@
 Kamień milowy: M1. Temat wykładu: 2 (Programowalny potok).
 Kod: [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
-Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument jest dalszym ciągiem [`shaders.md`](shaders.md): tam jest potok, język GLSL i dwa shadery projektu, tutaj kod klasy, która buduje z nich program OpenGL. Dwie funkcje klasy mają własne dokumenty: `setMat4` jest w [`uniforms.md`](uniforms.md), a `reload` i panel "Shaders" w [`shader-hot-reload.md`](shader-hot-reload.md). Ten dokument korzysta z makra `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)), z logowania ([`../core/window-context.md`](../core/window-context.md), sekcja 5.5) i ze ścieżek do assetów ([`../core/paths.md`](../core/paths.md)).
+Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument jest dalszym ciągiem [`shaders.md`](shaders.md): tam jest potok, język GLSL i shadery `basic.*`, tutaj kod klasy, która buduje z nich program OpenGL. Część funkcji klasy ma własne dokumenty: settery `setMat4`, `setInt` i `setVec3` są w [`uniforms.md`](uniforms.md), a `reload` i panel "Shaders" w [`shader-hot-reload.md`](shader-hot-reload.md). Ten dokument korzysta z makra `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)), z logowania ([`../core/window-context.md`](../core/window-context.md), sekcja 5.5) i ze ścieżek do assetów ([`../core/paths.md`](../core/paths.md)).
 
 ## 1. Po co to jest
 
@@ -95,8 +95,8 @@ Klasa nie ma własnych shaderów i nie zna ich treści: dostaje dwie ścieżki i
 |---|---|
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `setMat4`, `setInt`, `setVec3`, `lastError`, `vertexPath`, `fragmentPath`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<glm/glm.hpp>` (typy `glm::mat4` i `glm::vec3`), `<filesystem>` i `<string>` |
 | [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp) | implementacja i sześć funkcji pomocniczych w anonimowej przestrzeni nazw: `readTextFile`, `shaderInfoLog`, `programInfoLog`, `compileShader`, `linkProgram`, `buildProgram` |
-| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | jedyna para shaderów projektu ([`shaders.md`](shaders.md), sekcja 4) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel obiektu: pole `m_shader`, wczytanie w konstruktorze, `isValid()`, `use()` i trzy razy `setMat4()` w `onRender`, chroniony akcesor `shader()` ([`shaders.md`](shaders.md), sekcja 5.1) |
+| [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | pierwsza z trzech par shaderów projektu i ta, na której pokazane są przykłady w tym dokumencie ([`shaders.md`](shaders.md), sekcja 4). Dwie pozostałe, `textured.*` i `color.*`, buduje ta sama klasa bez żadnej zmiany ([`textures.md`](textures.md), sekcja 4, i [`../scene/collision.md`](../scene/collision.md), sekcja 4) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel trzech obiektów: pola `m_shader`, `m_texturedShader` i `m_colorShader`, wczytanie w konstruktorze, `isValid()`, `use()` i settery w funkcjach `drawCube`, `drawMaze` i `drawColliderLines`, chronione akcesory `shader()`, `texturedShader()` i `colorShader()` ([`shaders.md`](shaders.md), sekcja 5.1) |
 | [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | funkcja `debug::drawShadersPanel`: panel "Shaders" z przyciskiem "Reload shaders" ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6). Należy do programu `night_maze`, nie do biblioteki `engine` |
 
 Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`, `pathText`), GLAD, GLM (typ macierzy w `setMat4` i wektora w `setVec3`) i biblioteki standardowej. Nie wie nic o panelu ani o ImGui.
@@ -539,7 +539,7 @@ Te uruchomienia sprawdzały wyjście tekstowe, a nie obraz w oknie. Obraz sprawd
 
 Dwie dalsze serie prób są opisane przy swoich tematach: test panelu Shaders i przeładowania kliknięciem w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 5.3), a test kostki, trzech macierzy i literówki w nazwie uniformu w [`uniforms.md`](uniforms.md) (sekcja 5.3).
 
-**Windows (2026-10-05).** `Shader.cpp` i `ShadersPanel.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń (Debug i Release). Program `night_maze` uruchomiony na karcie NVIDIA wypisał dwie linie `[info]`, żadnej linii `[error]` i narysował kostkę, a z usuniętym średnikiem w pliku `basic.frag` wypisał błąd **raz** i działał dalej z samym tłem i panelami:
+**Windows (2026-10-05), wersja z M1 z samą kostką.** `Shader.cpp` i `ShadersPanel.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń (Debug i Release). Program `night_maze` uruchomiony na karcie NVIDIA wypisał dwie linie `[info]`, żadnej linii `[error]` i narysował kostkę, a z usuniętym średnikiem w pliku `basic.frag` wypisał błąd **raz** i działał dalej z samym tłem i panelami:
 
 ```text
 [info] GL_VERSION:  4.1.0 NVIDIA 610.74
@@ -550,7 +550,9 @@ Dwie dalsze serie prób są opisane przy swoich tematach: test panelu Shaders i 
 
 Linia sterownika ma inny format niż na Macu ([`shaders.md`](shaders.md), sekcja 2.6), ale wskazuje linię 15, tak jak sterownik Apple w próbie wyżej. Ścieżka ma mieszane ukośniki: wsteczne w części z katalogu programu i zwykły przed nazwą pliku, bo nazwa `shaders/basic.frag` jest w kodzie zapisana z `/` ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Pozostałych prób z tabel wyżej (test klasy z ukrytym oknem, brak pliku, błąd linkowania) na Windowsie nie powtarzałem, a przycisku `Reload shaders` nikt tam jeszcze nie nacisnął ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11).
 
-Gdzie obiekt klasy jest tworzony i używany w klatce, opisuje [`shaders.md`](shaders.md) (sekcja 5.1).
+**Windows (2026-10-05), wersja z M2 + M3.** Klasa się nie zmieniła, ale ma teraz trzy obiekty. Program z trzema parami shaderów buduje się w MSVC 19.44 bez ostrzeżeń (Debug i Release) i startuje bez linii `[error]` i bez linii `GL_`, czyli pliki `textured.*` i `color.*` kompilują się i linkują na sterowniku NVIDIA. Próby z zepsutym plikiem nie powtarzałem dla nowych shaderów. Na macOS cztery nowe pliki nie były jeszcze kompilowane przez sterownik Apple.
+
+Gdzie obiekty klasy są tworzone i używane w klatce, opisuje [`shaders.md`](shaders.md) (sekcja 5.1).
 
 ## 6. Panel ImGui
 
@@ -573,7 +575,7 @@ Pułapki dotyczące języka GLSL są w [`shaders.md`](shaders.md) (sekcja 7), un
 
 Zasady pracy z przyciskiem `Reload shaders` są opisane w [`shaders.md`](shaders.md) (sekcja 8). Ćwiczenia 1 i 4 wymagają uruchomienia programu od nowa, a 3, 5 i 6 robi się na kartce.
 
-1. **Literówka przy starcie.** Zamknij program, usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i uruchom program od nowa. Przeczytaj linię `[error]`: która część pochodzi z `Shader.cpp`, a która ze sterownika? Którą linię wskazuje sterownik i dlaczego nie tę ze średnikiem? Co widać w oknie, co pokazuje linia `Program` w panelu Shaders i czy panele działają? Wskaż w `NightMazeApp::onRender` linię, dzięki której program się nie wysypał. Na koniec, nie zamykając programu, przywróć średnik i naciśnij `Reload shaders`: co się zmieniło w oknie i w panelu?
+1. **Literówka przy starcie.** Zamknij program, usuń średnik po `fragColor = vec4(vColor, 1.0)` w `basic.frag` i uruchom program od nowa (na Windowsie najpierw odśwież kopię: `cmake --build --preset debug --target copy_assets`). Przeczytaj linię `[error]`: która część pochodzi z `Shader.cpp`, a która ze sterownika? Którą linię wskazuje sterownik i dlaczego nie tę ze średnikiem? Czego brakuje w scenie (kostka unosi się nad narożną komórką labiryntu naprzeciw startu, widać ją z góry w trybie noclip), co pokazuje linia `Program` w bloku `basic` panelu Shaders i czy labirynt i panele działają? Wskaż w `NightMazeApp::drawCube` linię, dzięki której program się nie wysypał. Powtórz to samo z `textured.frag`: czego brakuje teraz? Na koniec, nie zamykając programu, przywróć średnik i naciśnij `Reload shaders`: co się zmieniło w oknie i w panelu?
 2. **Błąd linkowania.** W `basic.frag` zmień nazwę `vColor` na `vColour` w obu liniach, w których występuje. Naciśnij `Reload shaders`. Czym różni się komunikat od poprzedniego i dlaczego wymienia oba pliki?
 3. **Ścieżki przez `buildProgram`.** Dla każdego z czterech wyjść funkcji `buildProgram` (sekcja 5.7) wypisz po kolei wszystkie wywołania `glCreate*` i `glDelete*`, które się wykonają, i sprawdź, że każdemu `glCreate*` odpowiada `glDelete*` albo zwrócenie identyfikatora. Które wyjście wystąpiło w ćwiczeniu 1, a które w ćwiczeniu 2?
 4. **Brak pliku.** W `NightMazeApp.cpp` zmień `VERTEX_SHADER_FILE` na nieistniejącą nazwę, zbuduj i uruchom. Jaka linia pojawia się w konsoli i ile razy? Wycofaj zmianę.
