@@ -465,7 +465,7 @@ TEST_CASE("the mesh has one vertex per grid point and two triangles per square")
           terrain.gridPoint(terrain.columns() - 1, terrain.rows() - 1));
 
     // Every index points at a vertex.
-    const std::uint32_t largest = *std::max_element(mesh.indices.begin(), mesh.indices.end());
+    const std::uint32_t largest = *std::ranges::max_element(mesh.indices);
     CHECK(largest == mesh.vertices.size() - 1);
 }
 
@@ -617,8 +617,7 @@ TEST_CASE("the heightmap of the game loads and gives gentle ground inside the de
     const game::Heightmap heightmap = game::heightmapFromImage(image);
     REQUIRE(heightmap.values.size() == 65536U);
     // The picture uses the whole range: its darkest pixel is black, its brightest white.
-    const auto [darkest, brightest] =
-        std::minmax_element(heightmap.values.begin(), heightmap.values.end());
+    const auto [darkest, brightest] = std::ranges::minmax_element(heightmap.values);
     CHECK(*darkest == 0.0F);
     CHECK(*brightest == 1.0F);
 

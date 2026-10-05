@@ -155,7 +155,7 @@ Obie linie pochodzą z [`assets/shaders/skybox.frag`](../../../assets/shaders/sk
 | [`src/gfx/Cubemap.cpp`](../../../src/gfx/Cubemap.cpp) | trzy stałe i implementacja klasy |
 | [`src/game/Skybox.hpp`](../../../src/game/Skybox.hpp), [`.cpp`](../../../src/game/Skybox.cpp) | jedyny użytkownik: pole `m_cubemap`, funkcja `loadSkyCubemap`, wywołanie `bind` w `Skybox::draw` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcje 5.4 i 5.5) |
 
-Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` (jeden komunikat błędu) i biblioteka standardowa (`<algorithm>` dla `std::any_of`, `<string>` dla `std::to_string`). Nic z `assets/`, GLM ani GLFW.
+Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` (jeden komunikat błędu) i biblioteka standardowa (`<algorithm>` dla `std::ranges::any_of`, `<string>` dla `std::to_string`). Nic z `assets/`, GLM ani GLFW.
 
 ### 5.2 Nagłówek
 
@@ -240,9 +240,9 @@ Stoją w anonimowej przestrzeni nazw pliku `.cpp`, więc są widoczne tylko w ni
 ```cpp
 Cubemap::Cubemap(int size, int channels, const FacePixels& faces) {
     const bool channelsSupported = channels == RGB_CHANNELS || channels == RGBA_CHANNELS;
-    // std::any_of asks the question "is there a face without pixels" of all six entries.
-    const bool faceMissing = std::any_of(
-        faces.begin(), faces.end(), [](const unsigned char* pixels) { return pixels == nullptr; });
+    // any_of asks the question "is there a face without pixels" of all six entries.
+    const bool faceMissing =
+        std::ranges::any_of(faces, [](const unsigned char* pixels) { return pixels == nullptr; });
     if (size < 1 || !channelsSupported || faceMissing) {
         core::logError("Cubemap cannot be created: it needs a face size of at least 1, 3 or 4 "
                        "channels and pixel data for all six faces, but got a size of " +
@@ -255,7 +255,7 @@ Cubemap::Cubemap(int size, int channels, const FacePixels& faces) {
 | Linia | Znaczenie |
 |---|---|
 | `channelsSupported` | tylko 3 albo 4 kanały. Obraz w odcieniach szarości (1 albo 2 kanały) jest odrzucany, jak w `Texture2D` |
-| `std::any_of(..., [](const unsigned char* pixels) { return pixels == nullptr; })` | algorytm biblioteki standardowej z funkcją lambda: zwraca prawdę, gdy warunek zachodzi dla **choć jednego** elementu. Tu: czy którejś ścianie brakuje pikseli |
+| `std::ranges::any_of(faces, [](const unsigned char* pixels) { return pixels == nullptr; })` | algorytm biblioteki standardowej z funkcją lambda: zwraca prawdę, gdy warunek zachodzi dla **choć jednego** elementu. Tu: czy którejś ścianie brakuje pikseli |
 | `return;` po błędzie | konstruktor kończy się bez wyjątku, a pola zostają zerami: `isValid()` zwraca fałsz, destruktor nie ma czego usuwać. Ten sam wzorzec błędu co w `Shader` i `Texture2D`: komunikat raz, obiekt pusty, program działa dalej |
 
 Czego konstruktor **nie** może sprawdzić: ile bajtów naprawdę jest pod każdym wskaźnikiem. Komentarz w nagłówku mówi, że każdy musi wskazywać `size * size * channels` bajtów. Za mało bajtów oznacza czytanie poza tablicą wewnątrz `glTexImage2D`. W grze pilnuje tego `loadSkyCubemap`, które przed wywołaniem porównuje rozmiary sześciu obrazów.

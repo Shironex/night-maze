@@ -144,8 +144,8 @@ Terrain::Terrain(int mazeWidth, int mazeHeight, const Heightmap& heightmap, floa
         }
     }
 
-    // minmax_element returns a pair of iterators: to the smallest and to the largest.
-    const auto [lowest, highest] = std::minmax_element(m_heights.begin(), m_heights.end());
+    // minmax_element returns two iterators: to the smallest and to the largest.
+    const auto [lowest, highest] = std::ranges::minmax_element(m_heights);
     m_minHeight = *lowest;
     m_maxHeight = *highest;
 }

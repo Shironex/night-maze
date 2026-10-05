@@ -1005,7 +1005,7 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
       C++20), zwrot obiektu tylko przenoszalnego listą w klamrach
       (`return {first.width, first.channels, pixels};` i `return {};` w `loadSkyCubemap`),
       pętla po liście w klamrach w teście (`for (const float firstSign : {-1.0F, 1.0F})`)
-      i lambda w `std::any_of` w `Cubemap.cpp`
+      i lambda w `std::ranges::any_of` w `Cubemap.cpp`
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
       przechodzą (po pierwszej części M6 było ich 221, dziś jest 256). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
       powinny przejść bez zmian, bo to te same bajty z repozytorium
@@ -1084,7 +1084,7 @@ i przez testy ręczne.
       Miejsca warte uwagi: inicjalizatory desygnowane z pominiętymi polami
       (`{.position = tuft.position, .uv = {tuft.random, 0.0F}}` w `GrassRenderer.cpp`,
       `{.type = GL_VERTEX_SHADER, .path = &vertexPath}` w `Shader.cpp`), `std::max` z listą
-      w klamrach i wiązanie strukturalne wyniku `std::minmax_element` w `Terrain.cpp`,
+      w klamrach i wiązanie strukturalne wyniku `std::ranges::minmax_element` w `Terrain.cpp`,
       stała `constexpr glm::mat4 IDENTITY{1.0F}` w `TerrainRenderer.cpp`, `std::lround`
       w `Grass.cpp` i przypisanie wewnątrz makra
       (`GL_CHECK(cullingWasOn = glIsEnabled(GL_CULL_FACE))`)

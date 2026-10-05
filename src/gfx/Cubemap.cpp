@@ -26,9 +26,9 @@ constexpr GLint TIGHT_ROW_ALIGNMENT = 1;
 
 Cubemap::Cubemap(int size, int channels, const FacePixels& faces) {
     const bool channelsSupported = channels == RGB_CHANNELS || channels == RGBA_CHANNELS;
-    // std::any_of asks the question "is there a face without pixels" of all six entries.
-    const bool faceMissing = std::any_of(
-        faces.begin(), faces.end(), [](const unsigned char* pixels) { return pixels == nullptr; });
+    // any_of asks the question "is there a face without pixels" of all six entries.
+    const bool faceMissing =
+        std::ranges::any_of(faces, [](const unsigned char* pixels) { return pixels == nullptr; });
     if (size < 1 || !channelsSupported || faceMissing) {
         core::logError("Cubemap cannot be created: it needs a face size of at least 1, 3 or 4 "
                        "channels and pixel data for all six faces, but got a size of " +

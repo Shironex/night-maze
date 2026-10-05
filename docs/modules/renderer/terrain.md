@@ -567,13 +567,13 @@ Wzór na liczbę punktów z sekcji 2.2. Labirynt zaczyna się w początku układ
 Wzór z sekcji 2.3, linia w linię. Wysokości lądują w jednym wektorze, wiersz po wierszu: punkt `(column, row)` ma indeks `row * m_columns + column`.
 
 ```cpp
-    const auto [lowest, highest] = std::minmax_element(m_heights.begin(), m_heights.end());
+    const auto [lowest, highest] = std::ranges::minmax_element(m_heights);
     m_minHeight = *lowest;
     m_maxHeight = *highest;
 }
 ```
 
-`std::minmax_element` zwraca parę iteratorów, a `auto [a, b]` (structured binding) rozpakowuje ją na dwie nazwy. Najniższą i najwyższą wysokość pokazuje panel.
+`std::ranges::minmax_element` (wersja algorytmu, która bierze cały kontener zamiast pary `begin()` i `end()`) zwraca dwa iteratory, a `auto [a, b]` (structured binding) rozpakowuje ją na dwie nazwy. Najniższą i najwyższą wysokość pokazuje panel.
 
 Konstruktor domyślny `Terrain()` robi płaski teren z jednego kwadratu 1 x 1 m na `y = 0`. Jego rozmiar nie ma znaczenia: punkt poza siatką dostaje wysokość brzegu, a cały brzeg jest na zerze.
 

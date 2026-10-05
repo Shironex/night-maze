@@ -774,7 +774,7 @@ Testy jednostkowe w bibliotece doctest ([`../../libraries/doctest.md`](../../lib
 | `noclip moves up and down, and forward follows the pitch` | spacja, Shift, W z pitch 30, W ze sprintem | `(0, 6, 0)`, `(0, -6, 0)` (także pod grunt), wysokość 3 m przy drodze 6 m, sprint bez wpływu |
 | `switching noclip off brings the feet back to the ground` | gracz w `(1, 5, 1)`, jeden krok bez klawiszy | `(1, 0, 1)` |
 
-Wszystkie 13 przypadków chodzi po **płaskim** gruncie: plik ma stałą `const game::Terrain FLAT_GROUND;` (teren z konstruktora domyślnego, `y = 0` wszędzie) i podaje ją jako ostatni argument każdego `player.update`. Stąd zera w kolumnie wyników: to te same liczby co przed M6. Zmieniły się tylko nazwy jednego przypadku i dwóch podprzypadków (`floor` na `ground`).
+Wszystkie 13 przypadków chodzi po **płaskim** gruncie: plik ma stałą `const game::Terrain flatGround;` (teren z konstruktora domyślnego, `y = 0` wszędzie) i podaje ją jako ostatni argument każdego `player.update`. Stąd zera w kolumnie wyników: to te same liczby co przed M6. Zmieniły się tylko nazwy jednego przypadku i dwóch podprzypadków (`floor` na `ground`).
 
 Liczba 1,55 w dwóch wierszach to `CELL_SIZE - WALL_COLLISION_THICKNESS / 2 - BODY_WIDTH / 2`, czyli `2 - 0,15 - 0,3`: linia siatki, minus połowa pudełka ściany, minus połowa ciała.
 

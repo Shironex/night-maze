@@ -35,13 +35,13 @@ constexpr float WALL_CONTACT_DISTANCE =
 
 // The ground of the tests in this file: flat, at y = 0. How the player follows uneven
 // ground is tested in TerrainTests.cpp.
-const game::Terrain FLAT_GROUND;
+const game::Terrain flatGround;
 
 // Runs the same input for a number of fixed steps.
 void runSteps(game::Player& player, const game::PlayerInput& input, float yawDegrees,
               float pitchDegrees, int stepCount, std::span<const scene::Aabb> obstacles) {
     for (int i = 0; i < stepCount; ++i) {
-        player.update(input, yawDegrees, pitchDegrees, STEP_SECONDS, obstacles, FLAT_GROUND);
+        player.update(input, yawDegrees, pitchDegrees, STEP_SECONDS, obstacles, flatGround);
     }
 }
 
@@ -242,7 +242,7 @@ TEST_CASE("a player wandering through a closed maze never leaves it or enters a 
         bool insideObstacle = false;
         bool outsideMaze = false;
         for (int i = 0; i < STEPS_PER_TURN; ++i) {
-            player.update(input, yaw, NO_PITCH, STEP_SECONDS, obstacles, FLAT_GROUND);
+            player.update(input, yaw, NO_PITCH, STEP_SECONDS, obstacles, flatGround);
 
             const scene::Aabb box = player.box();
             const scene::Aabb inner{.min = box.min + margin, .max = box.max - margin};
@@ -320,7 +320,7 @@ TEST_CASE("switching noclip off brings the feet back to the ground") {
     player.noclip = false;
 
     // One step with no key held is enough.
-    player.update({}, YAW_NORTH, NO_PITCH, STEP_SECONDS, NO_OBSTACLES, FLAT_GROUND);
+    player.update({}, YAW_NORTH, NO_PITCH, STEP_SECONDS, NO_OBSTACLES, flatGround);
 
     checkVector(player.position, {1.0F, 0.0F, 1.0F});
 }
