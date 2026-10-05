@@ -1,7 +1,7 @@
 # Losowość: własna funkcja `randomBelow` zamiast rozkładów z biblioteki standardowej
 
 Data: 2026-10-05. Stan: obowiązuje.
-Kod: [`src/game/MazeGenerator.hpp`](../../src/game/MazeGenerator.hpp), [`MazeGenerator.cpp`](../../src/game/MazeGenerator.cpp). Dokument modułu: [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 2.6 i 5.4.
+Kod: [`src/game/MazeGenerator.hpp`](../../src/game/MazeGenerator.hpp), [`MazeGenerator.cpp`](../../src/game/MazeGenerator.cpp), od M5 także [`src/game/Crystals.cpp`](../../src/game/Crystals.cpp) (`placeCrystals`). Dokument modułu: [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 2.6 i 5.4.
 
 ## 1. Kontekst
 
@@ -43,7 +43,7 @@ Liczby losowe pochodzą z `std::mt19937` zasianego jedną liczbą 32-bitową. Za
 
 **Skutki dla reszty kodu.**
 
-- Każda losowość w grze, od której zależy rozgrywka (rozmieszczenie kryształów, wybór wyjścia), ma iść przez `std::mt19937` z jawnym ziarnem i `randomBelow`.
+- Każda losowość w grze, od której zależy rozgrywka, ma iść przez `std::mt19937` z jawnym ziarnem i `randomBelow`. W M5 tak powstało rozmieszczenie kryształów: `placeCrystals` ma własny generator, zasiany ziarnem labiryntu powiększonym o stałą, tasuje komórki ręcznie napisanym algorytmem Fishera-Yatesa na `randomBelow` (zamiast `std::shuffle`) i tak samo losuje wariant modelu. Generator labiryntu nie dostał przy tym żadnego losowania, więc labirynty wzorcowe się nie zmieniły. Wyjście nie jest losowane wcale: wynika z gotowej siatki ([`exit-farthest-cell.md`](exit-farthest-cell.md)).
 - Na wynik wpływa także **kolejność** i **liczba** losowań. Kolejność kierunków (North, East, South, West) i komórka startowa są częścią "formatu" labiryntu. Dodanie jednego losowania w środku generatora zmienia wszystkie labirynty.
 - Generator jest zmienną lokalną funkcji, nie globalną: dwa wywołania nie mogą sobie przeszkodzić.
 - W generatorze nie ma liczb zmiennoprzecinkowych. Ich wyniki mogą się różnić między procesorami i ustawieniami kompilatora na ostatniej cyfrze, a tu jedna cyfra zmienia wybór sąsiada.
@@ -54,4 +54,4 @@ Liczby losowe pochodzą z `std::mt19937` zasianego jedną liczbą 32-bitową. Za
 
 - Gdy pierwszy przebieg testów na macOS pokaże inny labirynt wzorcowy. Wtedy trzeba znaleźć, która z trzech warstw (generator, zamiana na zakres, kolejność) się różni.
 - Gdy gra będzie potrzebowała losowych liczb zmiennoprzecinkowych o powtarzalnym wyniku (na przykład losowe przesunięcie kryształu w komórce). `std::uniform_real_distribution` ma ten sam problem co wersja całkowita, więc potrzebna będzie druga własna funkcja, zbudowana na `randomBelow`.
-- Gdy losowość ma być tylko ozdobą bez wpływu na rozgrywkę (migotanie latarki): tam zgodność między systemami nie jest potrzebna i wolno użyć czegokolwiek, byle z osobnego generatora.
+- Gdy losowość ma być tylko ozdobą bez wpływu na rozgrywkę: tam zgodność między systemami nie jest potrzebna i wolno użyć czegokolwiek, byle z osobnego generatora. Na razie takiego miejsca nie ma. Migotanie latarki z M5 (`flashlightFlicker`) w ogóle nie losuje: to iloczyn dwóch sinusów od czasu, a kołysanie i pulsowanie kryształów to też funkcje czasu.

@@ -11,22 +11,24 @@ Ograniczenia, które zawężają wybór:
 
 - każdą linię kodu muszę umieć wyjaśnić na obronie,
 - świat gry to wyłącznie ściany równoległe do osi X albo Z, słupki o kwadratowej podstawie i płaska podłoga,
-- nic w grze nie odbija się, nie toczy i nie przewraca. Porusza się tylko gracz,
+- nic w grze nie odbija się, nie toczy i nie przewraca. Jedyne bryły kolizji, które się przesuwają, należą do gracza: jego pudełko, a od M5 także kula zasięgu,
 - kod ma dać się sprawdzić testami bez okna i dawać ten sam wynik na macOS i na Windowsie.
 
 ## 2. Decyzja
 
 Kolizje są własnym, małym kodem: struktura `scene::Aabb`, test `scene::overlaps` i funkcja `scene::moveAndSlide`, która przesuwa pudełko oś po osi (x, z, y) i na każdej osi mierzy odstęp do najbliższej przeszkody. Bez silnika fizyki i bez biblioteki zewnętrznej.
 
+Od M5 w tym samym pliku jest druga bryła, `scene::Sphere`, z dwoma testami nakładania (kula z kulą, kula z pudełkiem). Decyzji to nie zmienia: kule odpowiadają tylko "tak albo nie" (zbieranie kryształów, strefa wyjścia) i niczego nie zatrzymują. Przesuwa się nadal pudełko wśród pudełek.
+
 ## 3. Rozważane możliwości
 
 | Możliwość | Zalety | Wady |
 |---|---|---|
-| **AABB i ruch oś po osi z pomiarem odstępu (wybrana)** | około 70 linii kodu (bez komentarzy), które da się wyjaśnić w całości. Pasuje do świata z samych prostopadłościanów. Ślizganie wychodzi samo, bez osobnego kodu. Na jednej osi nie ma tunelowania. Łatwe do testowania | droga po "schodkach" zamiast po prostej, więc wymaga krótkich kroków. Tylko bryły nieobrócone. Brak grawitacji, masy, odbić |
+| **AABB i ruch oś po osi z pomiarem odstępu (wybrana)** | około 70 linii kodu (bez komentarzy, policzone przed dodaniem kul w M5), które da się wyjaśnić w całości. Pasuje do świata z samych prostopadłościanów. Ślizganie wychodzi samo, bez osobnego kodu. Na jednej osi nie ma tunelowania. Łatwe do testowania | droga po "schodkach" zamiast po prostej, więc wymaga krótkich kroków. Tylko bryły nieobrócone. Brak grawitacji, masy, odbić |
 | AABB i test dyskretny: przesuń, sprawdź `overlaps`, cofnij albo wypchnij | jeszcze prostszy do opisania, to jest wersja z większości wprowadzeń | tunelowanie przy długim kroku. Wypychanie wymaga wyboru kierunku. Błędy zaokrągleń `float` dotyczą jej tak samo, więc tolerancja też byłaby potrzebna. Tej wersji nie napisałem, więc nie mam dla niej pomiarów |
 | Silnik fizyki jako biblioteka zewnętrzna | gotowe bryły obrócone, siatki, grawitacja, kontrolery postaci | tysiące linii cudzego kodu, których nie wyjaśnię. Nowa duża zależność do zbudowania na dwóch systemach. Prawie żadna z jego możliwości nie jest grze potrzebna. Temat wykładu to wstęp do kolizji, a nie użycie gotowego silnika |
 | Kolizje wprost na siatce labiryntu: "czy między komórką A i B jest ściana" | zero geometrii, bardzo szybkie | gracz byłby punktem bez rozmiaru. Brak płynnego ślizgania przy ścianie, która ma grubość. Nie nadaje się do niczego poza labiryntem. Nie realizuje tematu AABB |
-| Kula albo kapsuła dla gracza przeciw AABB ścian | gładkie omijanie narożników | test i reakcja są trudniejsze (najbliższy punkt, wektor wypchnięcia). Kula jest zaplanowana dla kryształów, gdzie wystarczy sam test, bez reakcji |
+| Kula albo kapsuła dla gracza przeciw AABB ścian | gładkie omijanie narożników | test i reakcja są trudniejsze (najbliższy punkt, wektor wypchnięcia). Kula trafiła tam, gdzie wystarczy sam test, bez reakcji: do zbierania kryształów i do strefy wyjścia (M5) |
 
 ## 4. Uzasadnienie i skutki
 
@@ -48,6 +50,7 @@ Kolizje są własnym, małym kodem: struktura `scene::Aabb`, test `scene::overla
 ## 5. Kiedy wrócić do tej decyzji
 
 - Gdy w grze pojawi się obiekt obrócony o kąt inny niż wielokrotność 90 stopni, z którym gracz ma kolidować.
+- Gdy coś ma się zatrzymywać albo ślizgać na kuli (na przykład okrągła przeszkoda): dzisiejsze testy kul mówią tylko, czy bryły na siebie nachodzą, i nie liczą, o ile wolno się przesunąć.
 - Gdy pojawią się obiekty poruszające się szybko (pociski): schodkowa droga i lista sprawdzana w całości przestaną wystarczać.
 - Gdy lista przeszkód urośnie tak, że sprawdzanie każdej w każdym kroku będzie widoczne w czasie klatki. Wtedy najpierw siatka komórek jako wstępne odsiewanie, a nie zmiana samego testu.
 - Gdy gra dostanie grawitację, skoki albo schody: trzeba będzie co najmniej reguły "stoję na czymś".

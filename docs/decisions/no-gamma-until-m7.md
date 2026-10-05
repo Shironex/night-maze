@@ -42,6 +42,7 @@ W M4 **nie ma korekcji gamma i nie ma tekstur sRGB**. Wartości z tekstur są u�
 - Światła sumują się na wartościach nieliniowych. Widać to jako zbyt ciemne półcienie i zbyt gwałtowne przejście od ciemnego do jasnego na brzegu plamy latarki i na krzywej tłumienia.
 - Odbłyski wyglądają na mniejsze i ostrzejsze, niż wynika z wykładnika.
 - Wartości startowe w `game::LightingSettings` (światło otoczenia, intensywności, promienie) są dobrane **do tego stanu**. Po wprowadzeniu gammy scena będzie wyraźnie jaśniejsza w ciemnych partiach i trzeba będzie je dobrać od nowa.
+- To samo dotyczy liczb z M5: siła własnego świecenia kryształów (`CRYSTAL_GLOW_STRENGTH`, składnik `uEmissive`) i głębokość ich pulsowania są dobrane do obrazu bez gammy i bez HDR, w którym kolor jaśniejszy niż 1 jest po prostu obcinany.
 - Wyniku nie da się porównać liczbowo z poprawnym rendererem: "5 procent jasności na promieniu" to 5 procent wartości w rachunku, a nie 5 procent jasności na ekranie.
 
 **Co zostaje poprawne.** Geometria światła: które strony ścian są oświetlone, gdzie jest plama latarki, gdzie jest odbłysk, różnice między Gouraudem a Phongiem i między Phongiem a Blinnem-Phongiem. To jest treść tematów 6 i 7 i to pokazuję na obronie. Tryb `Unlit` (sam odczyt tekstury) jest poprawny tak jak w M3.

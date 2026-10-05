@@ -2,7 +2,7 @@
 // See docs/modules/game/maze-rendering.md
 #include "game/MazeWorld.hpp"
 
-#include "game/Lighting.hpp"
+#include "game/Exit.hpp"
 #include "game/MazeGenerator.hpp"
 #include "scene/Transform.hpp"
 
@@ -11,8 +11,7 @@ namespace game {
 namespace {
 
 // The start cell: the north-west corner of the maze.
-constexpr int START_COLUMN = 0;
-constexpr int START_ROW = 0;
+constexpr MazeCell START_CELL{.x = 0, .z = 0};
 
 // Yaw grows by a quarter turn from one compass direction to the next one clockwise.
 constexpr float QUARTER_TURN_DEGREES = 90.0F;
@@ -27,22 +26,12 @@ glm::mat4 placedAt(const glm::vec3& position) {
     return transform.matrix();
 }
 
-// Model matrix of one wall segment.
-glm::mat4 wallMatrix(const WallSegment& segment) {
-    scene::Transform transform;
-    transform.position = segment.position;
-    if (segment.axis == WallAxis::AlongZ) {
-        transform.rotationDegrees = WALL_ALONG_Z_ROTATION;
-    }
-    return transform.matrix();
-}
-
 // Yaw towards the first side of the start cell that has no wall, in the fixed order of
 // ALL_DIRECTIONS. In a generated maze that is East or South: North and West are the
 // border. A maze of one cell has no open side, the player then looks North.
 float startYaw(const Maze& maze) {
     for (const Direction direction : ALL_DIRECTIONS) {
-        if (!maze.hasWall(START_COLUMN, START_ROW, direction)) {
+        if (!maze.hasWall(START_CELL.x, START_CELL.z, direction)) {
             return yawTowards(direction);
         }
     }
@@ -57,6 +46,15 @@ float yawTowards(Direction direction) {
     return static_cast<float>(static_cast<int>(direction)) * QUARTER_TURN_DEGREES;
 }
 
+glm::mat4 wallModelMatrix(const WallSegment& segment) {
+    scene::Transform transform;
+    transform.position = segment.position;
+    if (segment.axis == WallAxis::AlongZ) {
+        transform.rotationDegrees = WALL_ALONG_Z_ROTATION;
+    }
+    return transform.matrix();
+}
+
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
     MazeWorld world(generateMaze(width, height, seed));
     world.seed = seed;
@@ -65,8 +63,6 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
     world.walls = wallSegments(maze);
     world.pillars = pillarPositions(maze);
     world.colliders = mazeColliders(maze);
-    // The start cell gets no light of its own: the player stands there with a flashlight.
-    world.pointLightPositions = deadEndLightPositions(maze, START_COLUMN, START_ROW);
 
     // One floor tile per cell. The tile model is 2 x 2 m with its origin in the middle,
     // exactly one cell.
@@ -76,15 +72,29 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
         }
     }
     for (const WallSegment& segment : world.walls) {
-        world.wallMatrices.push_back(wallMatrix(segment));
+        world.wallMatrices.push_back(wallModelMatrix(segment));
     }
     for (const glm::vec3& position : world.pillars) {
         world.pillarMatrices.push_back(placedAt(position));
     }
 
-    world.startPosition = cellCenter(START_COLUMN, START_ROW);
+    world.startPosition = cellCenter(START_CELL.x, START_CELL.z);
     world.startYawDegrees = startYaw(maze);
-    world.exitPosition = cellCenter(maze.width() - 1, maze.height() - 1);
+
+    // The exit, its gate and the zone that wins the round.
+    const ExitPlacement exit = placeExit(maze, START_CELL);
+    world.exitCell = exit.cell;
+    world.exitPosition = cellCenter(exit.cell.x, exit.cell.z);
+    world.exitZone = exitZone(exit.cell);
+    world.hasGate = exit.hasGate;
+    if (exit.hasGate) {
+        world.gate = exit.gate;
+        world.gateBox = wallBox(exit.gate);
+    }
+
+    // The crystals: never in the start cell (the player would collect one without
+    // moving) and never in the exit cell (it is behind the gate).
+    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
     return world;
 }
 

@@ -11,7 +11,7 @@ Mapa normalnych w przestrzeni stycznej wymaga w każdym wierzchołku trzech kier
 - gdzie zrobić krok, który czyni `T` prostopadłą do `N` (ortogonalizacja Grama-Schmidta): na procesorze raz, czy w shaderze co klatkę,
 - czy przechowywać `B` albo znak skrętności, czy odtwarzać `B` w shaderze jako `cross(N, T)`.
 
-Ograniczenia: modele gry to trzy proste bryły z płaskim cieniowaniem (każda ściana ma własne wierzchołki), eksportowane skryptem z Blendera do OBJ, a każdą linię kodu muszę umieć wytłumaczyć na obronie.
+Ograniczenia: modele gry to proste bryły z płaskim cieniowaniem (każda ściana ma własne wierzchołki), eksportowane skryptem z Blendera do OBJ, a każdą linię kodu muszę umieć wytłumaczyć na obronie. Gdy decyzja zapadała (M4), modeli było trzy: ściana, słupek i płyta podłogi. W M5 doszły dwa kryształy i brama, też z płaskim cieniowaniem (linia `s 0` w plikach).
 
 ## 2. Decyzja
 
@@ -21,7 +21,7 @@ Styczne liczy `assets::computeTangents` na końcu `parseObj`, z pozycji i wspó�
 
 | Możliwość | Zalety | Wady |
 |---|---|---|
-| **Liczenie przy wczytaniu, Gram-Schmidt na procesorze, samo `T` w wierzchołku (wybrana)** | pliki modeli zostają bez zmian (bajt w bajt). Jedna funkcja bez OpenGL, w całości pokryta testami. Shader dostaje gotową parę i jest krótki. Wierzchołek rośnie o 12 bajtów, nie o 16 ani 24 | nie obsługuje lustrzanych UV. Shader nie poprawia prostopadłości po interpolacji, co na modelu gładko cieniowanym dałoby drobny błąd. Koszt przy starcie (pomijalny przy 124 wierzchołkach trzech modeli) |
+| **Liczenie przy wczytaniu, Gram-Schmidt na procesorze, samo `T` w wierzchołku (wybrana)** | pliki modeli zostają bez zmian (bajt w bajt). Jedna funkcja bez OpenGL, w całości pokryta testami. Shader dostaje gotową parę i jest krótki. Wierzchołek rośnie o 12 bajtów, nie o 16 ani 24 | nie obsługuje lustrzanych UV. Shader nie poprawia prostopadłości po interpolacji, co na modelu gładko cieniowanym dałoby drobny błąd. Koszt przy starcie (pomijalny: trzy modele z M4 mają razem 124 wierzchołki, a każdy z trzech modeli z M5 ma ich najwyżej 210, bo tyle ma indeksów po podziale ścian na trójkąty) |
 | Styczne w pliku modelu (format z atrybutem stycznej, na przykład glTF) | styczne takie, jakie policzył program do modelowania, zgodne z tym, czym wypalono mapę | nowy format i nowy loader w miejsce OBJ, który jest tematem 4 wykładu. Mapy projektu nie są wypalane z modelu, tylko liczone z pola wysokości, więc zgodność z algorytmem Blendera nic tu nie daje |
 | Osobny plik ze stycznymi obok `.obj`, pisany przez skrypt Blendera | OBJ zostaje, styczne z Blendera | drugi plik na model, własny format, dwa miejsca, które muszą się zgadzać co do kolejności wierzchołków. Loader OBJ skleja wierzchołki po swojemu, więc kolejność z Blendera nie przenosi się wprost |
 | Gram-Schmidt w shaderze wierzchołków, co klatkę | wersja z większości samouczków. Poprawna także wtedy, gdy macierz modelu ma nierówną skalę i używa się jednej macierzy dla obu wektorów | ten sam wynik liczony od nowa dla każdego wierzchołka w każdej klatce. Projekt i tak przekształca `N` i `T` dwiema właściwymi macierzami, więc para zostaje prostopadła bez tego kroku |
@@ -36,18 +36,19 @@ Styczne liczy `assets::computeTangents` na końcu `parseObj`, z pozycji i wspó�
 
 **Dlaczego bez ponownej ortogonalizacji w shaderze.** Interpolacja między wierzchołkami może zepsuć kąt prosty tylko wtedy, gdy miesza **różne** wektory. W modelach gry każda ściana ma własne wierzchołki z tą samą normalną i tą samą styczną, więc interpolacja miesza wektory identyczne. Po stronie macierzy para też jest bezpieczna: normalna idzie przez macierz normalnych, styczna przez `mat3(uModel)`, a te dwie macierze zachowują prostopadłość dla każdej macierzy modelu.
 
-**Dlaczego bez znaku skrętności.** Żaden trójkąt trzech modeli nie ma lustrzanej bazy. Skrypt nakłada UV tak, że na każdej stronie bryły `u` rośnie w prawo dla patrzącego z zewnątrz. Nie jest to założenie na słowo: `countMirroredTriangles` to liczy, a testy trzech modeli wymagają zera. Znak, który zawsze wynosi `+1`, byłby kodem bez pokazu.
+**Dlaczego bez znaku skrętności.** Żaden trójkąt trzech modeli kamiennych (ściana, słupek, podłoga) nie ma lustrzanej bazy. Skrypt nakłada UV tak, że na każdej stronie bryły `u` rośnie w prawo dla patrzącego z zewnątrz. Nie jest to założenie na słowo: `countMirroredTriangles` to liczy, a testy tych trzech modeli wymagają zera. Znak, który zawsze wynosi `+1`, byłby kodem bez pokazu. Dla modeli z M5 (dwa kryształy i brama) takiego testu nie ma: pilnuje ich tylko ostrzeżenie `loadObj` w logu, a jego braku przy starcie programu sam nie potwierdziłem.
 
 **Co przez to tracę.**
 
 - Model z lustrzanymi UV (typowy dla postaci: połowa twarzy odbita) pokaże na odbitych trójkątach relief odwrócony. Dostanie ostrzeżenie w logu, ale nie naprawi się sam.
 - Model gładko cieniowany będzie miał po interpolacji `T` i `N` odchylone od kąta prostego o ułamek stopnia. Relief pozostanie czytelny, ale nie będzie ściśle poprawny.
 - Styczne nie muszą zgadzać się z tymi, których użyłby Blender (algorytm MikkTSpace). Dla map liczonych z pola wysokości nie ma to znaczenia. Dla mapy wypalonej z modelu o dużej liczbie trójkątów miałoby.
-- Wierzchołek ma 44 bajty zamiast 32, także w siatkach, które stycznej nie używają (linie kolizji, kostki świateł).
+- Wierzchołek ma 44 bajty zamiast 32, także w siatkach, które stycznej nie używają (linie pudełek i kul kolizji).
 
 ## 5. Kiedy wrócić do tej decyzji
 
 - Gdy `loadObj` wypisze dla jakiegoś modelu ostrzeżenie o lustrzanych trójkątach: wtedy styczna dostaje czwartą składową ze znakiem, a shader mnoży przez nią bitangentę.
-- Gdy dojdzie model gładko cieniowany z mapą normalnych (na przykład model kryształu): wtedy w `surfaceNormal` trzeba dopisać krok Grama-Schmidta po interpolacji.
+- Gdy dojdzie model gładko cieniowany z mapą normalnych: wtedy w `surfaceNormal` trzeba dopisać krok Grama-Schmidta po interpolacji. Kryształy z M5, które podawałem tu jako przykład, powstały z płaskim cieniowaniem, więc ten warunek jeszcze nie zaszedł.
+- Gdy test albo log pokaże lustrzane trójkąty w którymś z modeli z M5: dla nich zero nie jest jeszcze przypięte testem.
 - Gdy mapy normalnych zaczną być wypalane w Blenderze z modeli o dużej liczbie trójkątów, a nie liczone z pola wysokości: wtedy styczne muszą pochodzić z tego samego algorytmu co przy wypalaniu, czyli z pliku.
 - Gdy projekt zmieni format modeli na taki, który styczne przechowuje.

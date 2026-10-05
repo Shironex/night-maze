@@ -78,7 +78,7 @@ struct Player {
     /// Walking uses only the yaw: forward is level, wherever the camera looks. Noclip
     /// uses both: forward is the view direction.
     ///
-    /// obstacles are the collision boxes of the world (game::mazeColliders). They are
+    /// obstacles are the collision boxes in the way (game::roundObstacles). They are
     /// ignored in noclip mode.
     void update(const PlayerInput& input, float yawDegrees, float pitchDegrees, float stepSeconds,
                 std::span<const scene::Aabb> obstacles);

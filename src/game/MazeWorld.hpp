@@ -2,6 +2,7 @@
 // See docs/modules/game/maze-rendering.md
 #pragma once
 
+#include "game/Crystals.hpp"
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
 #include "scene/Collider.hpp"
@@ -61,12 +62,10 @@ struct MazeWorld {
     std::vector<glm::mat4> wallMatrices;
     std::vector<glm::mat4> pillarMatrices;
 
-    /// The obstacle list for the player: the box of every wall, then of every pillar.
+    /// The obstacles that never change: the box of every wall, then of every pillar. The
+    /// gate is not in this list, because it stops being an obstacle when it opens: the
+    /// obstacle list of a round is built by game::roundObstacles.
     std::vector<scene::Aabb> colliders;
-
-    /// Where the point lights of the maze hang: in its dead ends, at most
-    /// scene::MAX_POINT_LIGHTS of them (see deadEndLightPositions in game/Lighting.hpp).
-    std::vector<glm::vec3> pointLightPositions;
 
     /// Where the player starts: the centre of cell (0, 0), feet on the floor.
     glm::vec3 startPosition{0.0F};
@@ -74,14 +73,35 @@ struct MazeWorld {
     /// Camera yaw at the start, in degrees: towards the first open side of the start cell.
     float startYawDegrees = 0.0F;
 
-    /// The centre of the far corner cell (width - 1, height - 1) at floor level: the
-    /// place of the future exit.
+    /// The exit cell: the cell farthest from the start, counted in passages walked
+    /// (game::farthestCell), and its centre at floor level.
+    MazeCell exitCell;
     glm::vec3 exitPosition{0.0F};
+
+    /// The gate across the open side of the exit cell. hasGate is false only in a maze
+    /// of one cell, whose exit cell has no open side: gate and gateBox mean nothing then.
+    bool hasGate = false;
+    WallSegment gate;
+    /// The collision box of the closed gate: the same box a wall segment there would have.
+    scene::Aabb gateBox;
+
+    /// The box in the middle of the exit cell that wins the round when the player enters
+    /// it while the gate is open (game::exitZone).
+    scene::Aabb exitZone;
+
+    /// The crystals of the maze, chosen from its seed (game::placeCrystals). Which of
+    /// them are already collected is not stored here: that is the state of a round.
+    std::vector<CrystalSpawn> crystals;
 };
 
 /// Camera yaw, in degrees, that looks in the given direction: 0 for North (-Z), 90 for
 /// East (+X), 180 for South (+Z) and 270 for West (-X). See scene::Camera::yawDegrees.
 float yawTowards(Direction direction);
+
+/// Model matrix of a wall segment: the wall model moved to the position of the segment
+/// and, for a segment along Z, turned a quarter around the vertical axis. The gate uses
+/// it too: its model follows the same convention as the wall model.
+glm::mat4 wallModelMatrix(const WallSegment& segment);
 
 /// Generates a maze (game::generateMaze) and computes everything else in MazeWorld
 /// from it. Throws std::invalid_argument for a size that Maze does not accept.

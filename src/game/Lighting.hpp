@@ -2,13 +2,11 @@
 // See docs/modules/game/flashlight.md
 #pragma once
 
-#include "game/Maze.hpp"
 #include "scene/Light.hpp"
 
 #include <glm/glm.hpp>
 
 #include <span>
-#include <vector>
 
 namespace game {
 
@@ -59,7 +57,8 @@ struct LightingSettings {
     glm::vec3 moonColor{0.55F, 0.65F, 1.0F};
     float moonIntensity = 0.3F;
 
-    /// The flashlight, a spot light at the eye of the player. Key F switches it.
+    /// The flashlight, a spot light at the eye of the player. Key F switches it. An
+    /// empty battery switches it off and keeps it off (game::updateRound).
     bool flashlightOn = true;
     /// A warm white.
     glm::vec3 flashlightColor{1.0F, 0.9F, 0.72F};
@@ -70,8 +69,9 @@ struct LightingSettings {
     /// How far the flashlight reaches, in metres (scene::attenuationForRadius).
     float flashlightRange = 16.0F;
 
-    /// The point lights in the dead ends of the maze. They all share these settings.
-    /// A cyan-teal, the colour of the crystals that will take their place.
+    /// The point lights of the crystals: one hangs just above every crystal that has not
+    /// been collected yet. They all share these settings. A cyan-teal: the colour the
+    /// crystals glow in (their emissive colour is derived from it).
     glm::vec3 pointColor{0.2F, 0.9F, 0.8F};
     float pointIntensity = 2.0F;
     /// How far one of them reaches, in metres: one and a half cells.
@@ -99,24 +99,6 @@ struct LightingSettings {
 /// normals of the maps in it, so the answer is true there.
 bool usesNormalMap(const LightingSettings& settings);
 
-/// How high above the floor a point light of the maze hangs, in metres.
-constexpr float POINT_LIGHT_HEIGHT = 1.4F;
-
-/// True when the cell in column x and row z is a dead end: it has a wall on exactly
-/// three of its four sides, so there is one way in and no way on.
-/// Throws std::out_of_range when the cell is not in the maze.
-bool isDeadEnd(const Maze& maze, int x, int z);
-
-/// Where the point lights of a maze hang: POINT_LIGHT_HEIGHT above the centre of every
-/// dead end, except the cell (skipColumn, skipRow), which is the start cell.
-///
-/// The order is fixed: row after row, cell after cell. At most scene::MAX_POINT_LIGHTS
-/// positions are returned. A maze with more dead ends than that keeps an evenly spread
-/// choice of them (number i of the result is dead end number i * count / maximum), so
-/// the lights are not all in the first rows. Nothing here is random: the same maze
-/// always gets the same lights.
-std::vector<glm::vec3> deadEndLightPositions(const Maze& maze, int skipColumn, int skipRow);
-
 /// The lights of one frame.
 ///
 /// eye and viewDirection are where the camera stands and where it looks in this frame:
@@ -124,8 +106,9 @@ std::vector<glm::vec3> deadEndLightPositions(const Maze& maze, int skipColumn, i
 /// Pass the same eye the view matrix is built from (the blend of two fixed steps), not
 /// the position of the last step, or the cone would trail behind the picture.
 ///
-/// pointPositions are the places of the point lights (MazeWorld::pointLightPositions).
-/// Positions past scene::MAX_POINT_LIGHTS are ignored.
+/// pointPositions are the places of the point lights: one above every crystal that has
+/// not been collected yet (game::crystalLightPositions). The function does not know
+/// where they come from. Positions past scene::MAX_POINT_LIGHTS are ignored.
 scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3& eye,
                               const glm::vec3& viewDirection,
                               std::span<const glm::vec3> pointPositions);

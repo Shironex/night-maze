@@ -133,7 +133,6 @@ TEST_CASE("the player starts in the first cell and looks down an open passage") 
         const game::MazeWorld world = game::buildMazeWorld(6, 5, seed);
 
         checkVector(world.startPosition, game::cellCenter(0, 0));
-        checkVector(world.exitPosition, game::cellCenter(5, 4));
 
         // The first cell is in the north-west corner: north and west are the border, so
         // the open side is east or south. The yaw must point at a side without a wall.
@@ -150,8 +149,11 @@ TEST_CASE("a maze of one cell has no open side: the player looks north") {
 
     CHECK(world.startYawDegrees == 0.0F);
     checkVector(world.startPosition, game::cellCenter(0, 0));
-    // The only cell is the start and the far corner at once.
+    // The only cell is the start and the exit at once, and it has no side for a gate.
     checkVector(world.exitPosition, game::cellCenter(0, 0));
+    CHECK(world.exitCell == game::MazeCell{.x = 0, .z = 0});
+    CHECK_FALSE(world.hasGate);
+    CHECK(world.crystals.empty());
     CHECK(world.floorMatrices.size() == 1U);
     CHECK(world.wallMatrices.size() == 4U);
     CHECK(world.pillarMatrices.size() == 4U);
