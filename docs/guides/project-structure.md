@@ -10,8 +10,13 @@ modelu, widoku i rzutowania, latająca kamera sterowana myszą i klawiaturą ora
 Camera. Z kamienia milowego M2 + M3 jest już kod bez okna: kolizje (`src/scene/Collider.*`),
 labirynt z generatorem i układem w świecie (`src/game/Maze*`), biblioteka `game_logic`,
 katalog `tests/` z programem testowym `night_maze_tests` i biblioteka doctest. Ta część jest
-zbudowana i przetestowana na Windowsie, na macOS jeszcze nie. Docelową
-strukturę (z `renderer/` i `src/assets/`) opisuje PRD w sekcji 6.
+zbudowana i przetestowana na Windowsie, na macOS jeszcze nie. Doszły też loader modeli OBJ
+(`src/assets/ObjLoader.*`) z testami oraz wierzchołek i siatka (`src/gfx/Vertex.hpp`,
+`src/gfx/Mesh.*`), których program jeszcze nie używa. Z tematu 5 doszły loader obrazów
+(`src/assets/ImageLoader.*`) z testami, biblioteka stb_image (`external/stb/` i blok w
+`cmake/Dependencies.cmake`) oraz klasa tekstury (`src/gfx/Texture2D.*`), też jeszcze bez
+użytkownika w programie. Docelową
+strukturę (z `renderer/` i pełną warstwą `src/assets/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
 [`build-windows.md`](build-windows.md), tutaj ich nie powtarzamy.
@@ -38,17 +43,23 @@ night-maze/
 │       ├── basic.frag              # shader fragmentów: kolor z interpolacji
 │       └── basic.vert              # shader wierzchołków: trzy macierze, pozycja i kolor
 ├── cmake/
-│   └── Dependencies.cmake      # FetchContent: GLFW, GLM, Dear ImGui i doctest, target imgui
+│   └── Dependencies.cmake      # FetchContent: GLFW, GLM, Dear ImGui, doctest i stb, targety imgui i stb_image
 ├── external/
-│   └── glad/                   # wygenerowany loader OpenGL 4.1 Core (kod w repozytorium)
-│       ├── CMakeLists.txt      # target glad (napisany ręcznie)
-│       ├── README.md           # jak wygenerować ponownie
-│       ├── include/
-│       │   ├── KHR/khrplatform.h   # typy zależne od platformy
-│       │   └── glad/gl.h           # deklaracje API OpenGL
-│       └── src/gl.c            # loader wypełniający wskaźniki funkcji
+│   ├── glad/                   # wygenerowany loader OpenGL 4.1 Core (kod w repozytorium)
+│   │   ├── CMakeLists.txt      # target glad (napisany ręcznie)
+│   │   ├── README.md           # jak wygenerować ponownie
+│   │   ├── include/
+│   │   │   ├── KHR/khrplatform.h   # typy zależne od platformy
+│   │   │   └── glad/gl.h           # deklaracje API OpenGL
+│   │   └── src/gl.c            # loader wypełniający wskaźniki funkcji
+│   └── stb/                    # stb_image: w repozytorium tylko plik z implementacją
+│       ├── README.md           # skąd jest nagłówek i jak zmienić wersję
+│       └── stb_image.c         # dwie linie: makro i #include pobranego nagłówka
 ├── src/
 │   ├── main.cpp                # punkt wejścia, łączy game/ z debug/
+│   ├── assets/                 # wczytywanie plików z assets/ do danych procesora, bez OpenGL
+│   │   ├── ImageLoader.hpp/.cpp    # plik obrazu na piksele, dolny wiersz pierwszy
+│   │   └── ObjLoader.hpp/.cpp      # parser OBJ i MTL: wierzchołki, indeksy, części, materiały
 │   ├── core/                   # warstwa bazowa: okno, wejście, czas, logi, ścieżki, GL_CHECK
 │   │   ├── Application.hpp/.cpp    # klasa bazowa programu, pętla główna
 │   │   ├── GlCheck.hpp/.cpp        # makro GL_CHECK
@@ -71,7 +82,10 @@ night-maze/
 │   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie rysuje kostkę)
 │   ├── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
 │   │   ├── Buffer.hpp/.cpp         # bufor wierzchołków albo indeksów
-│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload, setMat4
+│   │   ├── Mesh.hpp/.cpp           # siatka: VAO i dwa bufory jednego modelu, draw
+│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload, setMat4, setInt, setVec3
+│   │   ├── Texture2D.hpp/.cpp      # tekstura 2D z mipmapami i obiekt samplera
+│   │   ├── Vertex.hpp              # jeden wierzchołek modelu: pozycja, normalna, uv
 │   │   └── VertexArray.hpp/.cpp    # tablica wierzchołków (VAO), opis atrybutów
 │   └── scene/                  # opis sceny: dane i matematyka na GLM, bez OpenGL
 │       ├── Camera.hpp/.cpp         # kamera: kierunek, macierz widoku i rzutowania
@@ -80,9 +94,11 @@ night-maze/
 ├── tests/                      # testy jednostkowe (doctest): program night_maze_tests
 │   ├── main.cpp                    # punkt wejścia: main() generuje doctest
 │   ├── ColliderTests.cpp           # testy scene::Aabb, overlaps i moveAndSlide
+│   ├── ImageLoaderTests.cpp        # testy loadImage: tekstury gry, odwracanie wierszy, błędy
 │   ├── MazeGeneratorTests.cpp      # testy randomBelow i generateMaze, labirynt wzorcowy
 │   ├── MazeLayoutTests.cpp         # testy układu w świecie i kolizji w labiryncie
-│   └── MazeTests.cpp               # testy klasy Maze i kierunków
+│   ├── MazeTests.cpp               # testy klasy Maze i kierunków
+│   └── ObjLoaderTests.cpp          # testy parseObj, parseMtl i loadObj
 └── docs/
     ├── PRD.pdf                 # dokument wymagań
     ├── README.md               # spis treści dokumentacji i kolejność czytania
@@ -100,8 +116,13 @@ night-maze/
     │   ├── glad.md
     │   ├── glfw.md
     │   ├── glm.md
-    │   └── imgui.md
+    │   ├── imgui.md
+    │   └── stb_image.md
     └── modules/                # dokumenty modułów
+        ├── assets/                 # moduł assets: wczytywanie plików
+        │   ├── README.md               # wstęp, dane procesora bez OpenGL, warstwy, indeks
+        │   ├── images.md               # loader obrazów, odwracanie wierszy, testy
+        │   └── obj-loader.md           # format OBJ i MTL, mapa trójek, parser
         ├── core/                   # moduł core, podzielony na dokumenty tematyczne
         │   ├── README.md               # wstęp, warstwy, klatka jako całość, indeks
         │   ├── gl-check.md             # GL_CHECK i błędy OpenGL
@@ -116,10 +137,12 @@ night-maze/
         │   ├── README.md               # wstęp, RAII i przenoszenie, warstwy, indeks
         │   ├── buffers-vao.md          # VBO, VAO, krok i przesunięcie, Buffer, VertexArray
         │   ├── indexed-drawing.md      # EBO, glDrawElements, dane kostki
+        │   ├── mesh.md                 # Vertex, Mesh, rysowanie zakresu indeksów
         │   ├── shader-class.md         # klasa Shader: kompilacja, linkowanie, błędy
         │   ├── shader-hot-reload.md    # reload, panel Shaders
         │   ├── shaders.md              # potok, GLSL, basic.vert i basic.frag
-        │   └── uniforms.md             # uniformy, setMat4
+        │   ├── textures.md             # tekstury, filtry, mipmapy, samplery, Texture2D
+        │   └── uniforms.md             # uniformy, setMat4, setInt, setVec3
         ├── scene/                  # moduł scene, podzielony na dokumenty tematyczne
         │   ├── README.md               # wstęp, dane bez OpenGL, warstwy, indeks
         │   ├── camera-controls.md      # sterowanie kamerą, panel Camera
@@ -145,7 +168,7 @@ wypisane na początku drzewa, przed katalogami.
 | `tests/` | testy jednostkowe: osobny program `night_maze_tests`, który woła kod z bibliotek `engine` i `game_logic` i sprawdza wyniki ([`../libraries/doctest.md`](../libraries/doctest.md)) | my |
 | `assets/` | pliki, które program wczytuje w czasie działania: dziś shadery GLSL, później modele i tekstury. Nie są kompilowane razem z programem. Krok budowania umieszcza katalog obok pliku wykonywalnego (sekcja 3.1, blok 7) | my |
 | `cmake/` | pomocnicze pliki CMake dołączane przez `include(...)` | my |
-| `external/` | cudzy kod trzymany w repozytorium | generator GLAD, nie edytujemy |
+| `external/` | cudzy kod trzymany w repozytorium (`glad/`) oraz plik, który kompiluje pobraną bibliotekę stb_image (`stb/`) | `glad/`: generator GLAD, nie edytujemy. `stb/`: dwa małe pliki napisane ręcznie |
 | `docs/` | dokumentacja do nauki | my |
 | `build/` | wszystko, co powstaje podczas budowania | CMake i kompilator, poza Gitem |
 
@@ -161,9 +184,15 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
 | `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `core::pathText`: ścieżka jako tekst UTF-8 do logu i do paneli. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Woła je konstruktor `game::NightMazeApp` przy wczytywaniu shaderów | [`../modules/core/paths.md`](../modules/core/paths.md) |
-| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `setMat4` (uniform typu `mat4`, przez `glGetUniformLocation` i `glUniformMatrix4fv`), `lastError`, `vertexPath`, `fragmentPath`. RAII, tylko przenoszenie. Używa jej `NightMazeApp`, a panel "Shaders" woła `reload` | [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), `setMat4` w [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), `reload` w [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `setMat4` (uniform typu `mat4`, przez `glGetUniformLocation` i `glUniformMatrix4fv`), `setInt` (uniform typu `int` albo sampler, `glUniform1i`), `setVec3` (uniform typu `vec3`, `glUniform3fv`), `lastError`, `vertexPath`, `fragmentPath`. RAII, tylko przenoszenie. Używa jej `NightMazeApp`, a panel "Shaders" woła `reload`. `setInt` i `setVec3` nie mają jeszcze użytkownika | [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), `setMat4`, `setInt` i `setVec3` w [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), `reload` w [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
 | `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
 | `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), wiązany już w konstruktorze, `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
+| `src/gfx/Texture2D.*` | typ `gfx::TextureFilter` (`Nearest`, `Bilinear`, `Trilinear`) i klasa `gfx::Texture2D`: jedna tekstura 2D z pełnym łańcuchem mipmap i jej obiekt samplera. Konstruktor przyjmuje surowe bajty (szerokość, wysokość, 3 albo 4 kanały, wskaźnik, dolny wiersz pierwszy) i woła `glTexImage2D` oraz `glGenerateMipmap`. `bind(unit)` wiąże teksturę i sampler z jednostką teksturującą, `setFilter` i `setAnisotropy` zmieniają próbkowanie w działającym programie, akcesory `filter`, `anisotropy`, `maxAnisotropy`, `id`, `width`, `height`, `isValid`. Filtrowanie anizotropowe jest wykrywane jako rozszerzenie. RAII, tylko przenoszenie. Nie ma jeszcze użytkownika ani testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/textures.md`](../modules/gfx/textures.md) |
+| `src/gfx/Vertex.hpp` | `gfx::Vertex`: jeden wierzchołek modelu jako struktura (pola `position`, `normal`, `uv`: 8 liczb `float`, 32 bajty), stałe `POSITION_COMPONENTS`, `NORMAL_COMPONENTS`, `UV_COMPONENTS` i numery atrybutów `POSITION_ATTRIBUTE` (0), `NORMAL_ATTRIBUTE` (1), `UV_ATTRIBUTE` (2), dwa `static_assert` (rozmiar bez dopełnienia, układ standardowy). Sam nagłówek, bez GLAD. Używają jej `gfx::Mesh`, loader OBJ i testy | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcja 5.2 |
+| `src/gfx/Mesh.*` | `gfx::Mesh`: siatka jednego modelu na karcie. Posiada `VertexArray`, bufor wierzchołków i bufor indeksów, w konstruktorze wysyła dane ze `std::span` i opisuje trzy atrybuty przez `sizeof(Vertex)` i `offsetof`. `draw()` rysuje całość, `draw(firstIndex, indexCount)` zakres indeksów (`glDrawElements`), prymityw jest parametrem konstruktora (domyślnie `GL_TRIANGLES`). RAII przez pola, tylko przenoszenie. W programie nikt jej jeszcze nie tworzy | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcje od 5.3 do 5.5 |
+| `src/assets/ObjLoader.*` | struktury `assets::ObjPart`, `assets::ObjMaterial`, `assets::ObjModel` i funkcje `assets::parseObj` (tekst OBJ na wierzchołki, indeksy i części), `assets::parseMtl` (tekst MTL na materiały) oraz `assets::loadObj` (plik OBJ razem z plikami MTL, ścieżki tekstur względem pliku MTL). Ręcznie napisany parser, bez OpenGL i bez wyjątków: wynik `bool` i tekst błędu z numerem linii. W programie nikt jeszcze nie woła `loadObj` | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), wstęp do warstwy w [`../modules/assets/README.md`](../modules/assets/README.md) |
+| `src/assets/ImageLoader.*` | struktura `assets::Image` (szerokość, wysokość, liczba kanałów, bajty pikseli z dolnym wierszem jako pierwszym) i funkcja `assets::loadImage`: czyta plik w trybie binarnym, dekoduje go biblioteką stb_image i odwraca kolejność wierszy. Wynik `bool`, tekst błędu przez referencję, jedno logowanie, bez wyjątków. Bez OpenGL. Jedyny plik projektu, który dołącza `<stb_image.h>`. W programie nikt jej jeszcze nie woła | [`../modules/assets/images.md`](../modules/assets/images.md) |
+| `external/stb/stb_image.c` | jedyny plik, w którym kompiluje się implementacja stb_image: makro `STB_IMAGE_IMPLEMENTATION` i dołączenie nagłówka pobranego przez FetchContent. Plik C, poza naszymi ostrzeżeniami, tworzy bibliotekę `stb_image` | [`../libraries/stb_image.md`](../libraries/stb_image.md), sekcja 2 |
 | `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Sama matematyka na GLM, bez OpenGL. Używa jej `NightMazeApp` (pole `m_cubeTransform`) | [`../modules/scene/transforms.md`](../modules/scene/transforms.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
 | `src/scene/Camera.*` | `scene::Camera`: struktura z publicznymi polami `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałymi `WORLD_UP` i `MAX_PITCH_DEGREES` oraz funkcjami `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Sama matematyka na GLM, bez OpenGL i bez wejścia. Używa jej `NightMazeApp` (pole `m_camera`) | [`../modules/scene/camera.md`](../modules/scene/camera.md) |
 | `src/scene/Collider.*` | `scene::Aabb` (pudełko o ścianach równoległych do osi: pola `min` i `max`, funkcja `fromCenter`), stała `CONTACT_TOLERANCE`, funkcje `scene::overlaps` (czy dwa pudełka na siebie nachodzą) i `scene::moveAndSlide` (o ile wolno przesunąć pudełko wśród przeszkód, oś po osi, ze ślizganiem po ścianach). Sama matematyka na GLM, bez OpenGL i bez wejścia. Używają jej `game/MazeLayout` i testy. W programie nikt jeszcze nie woła `moveAndSlide` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
@@ -179,7 +208,9 @@ wypisane na początku drzewa, przed katalogami.
 | `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (pliki programu shaderów, przycisk "Reload shaders", ostatni błąd wczytania) | [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6 |
 | `tests/main.cpp` | punkt wejścia programu testowego: makro `DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN` i dołączenie nagłówka doctest, który generuje `main()` | [`../libraries/doctest.md`](../libraries/doctest.md), sekcja 3.1 |
 | `tests/ColliderTests.cpp` | 12 przypadków testowych `scene::Aabb`, `overlaps` i `moveAndSlide` | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 5.7 |
+| `tests/ImageLoaderTests.cpp` | 7 przypadków testowych loadera obrazów: obie tekstury gry (512 x 512, 3 kanały), odwracanie wierszy na obrazku 2 x 3 zapisanym przez test, ścieżka ze znakami spoza ASCII, brak pliku, plik niebędący obrazem, pusty plik | [`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7 |
 | `tests/MazeTests.cpp`, `MazeGeneratorTests.cpp`, `MazeLayoutTests.cpp` | 29 przypadków testowych labiryntu: klasa `Maze`, generator (w tym labirynt wzorcowy 4 na 4 z ziarna 1), układ w świecie i jego współpraca z kolizjami | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5.8 |
+| `tests/ObjLoaderTests.cpp` | 18 przypadków testowych loadera OBJ: reguły formatu na napisach wpisanych w kod, przypadki błędów z numerem linii i trzy prawdziwe modele z `assets/models/` | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), sekcja 5.9 |
 
 Każdy plik źródłowy zaczyna się komentarzem z jednym zdaniem opisu i odnośnikiem
 `See docs/modules/...`. To wymaganie z PRD (sekcja 7). Dotyczy też plików shaderów, w
@@ -217,6 +248,11 @@ Od kamienia milowego M2 + M3 dochodzą dwie rzeczy, których rysunek nie pokazuj
 `scene/` i GLM. Katalog `tests/` stoi na samej górze, obok `main.cpp`: zależy od tej części
 `game/` i od `scene/`, a od niego nie zależy nic.
 
+Doszła też warstwa `assets/` (wczytywanie plików), której rysunek również nie pokazuje.
+Stoi nad `gfx/` i `core/`: dołącza `gfx/Vertex.hpp`, `core/Log.hpp` i `core/Paths.hpp`, a
+OpenGL nie woła. Z `src/` nikt jej jeszcze nie dołącza: jedynym użytkownikiem są testy.
+Opis: [`../modules/assets/README.md`](../modules/assets/README.md), sekcja 4.
+
 Jak to widać w kodzie:
 
 - `src/core/` dołącza tylko własne nagłówki, GLAD, GLFW i bibliotekę standardową. Jedynym
@@ -235,12 +271,25 @@ Jak to widać w kodzie:
   `<glm/gtc/matrix_transform.hpp>`. Z biblioteki standardowej: `Camera.cpp` bierze
   `<algorithm>` i `<cmath>`, a `Collider.cpp` `<algorithm>`, `<array>` i `<cmath>`. Nic z GLAD,
   GLFW, `core/`, `gfx/`, `game/` ani `debug/`.
+- Dwa nowe nagłówki `src/gfx/` różnią się od reszty. `Vertex.hpp` **nie dołącza GLAD**: tylko
+  `<glm/glm.hpp>`, `<cstdint>` i `<type_traits>`, żeby mogły go używać loader i testy.
+  `Mesh.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Vertex.hpp`, `gfx/VertexArray.hpp`,
+  `<glad/gl.h>`, `<cstdint>` i `<span>`, a `Mesh.cpp` do tego `core/GlCheck.hpp`.
+- `src/gfx/Texture2D.hpp` dołącza tylko `<glad/gl.h>`, a `Texture2D.cpp` do tego
+  `core/GlCheck.hpp`, `core/Log.hpp` i bibliotekę standardową. Nie dołącza niczego z
+  `assets/`: teksturę tworzy się z surowych bajtów, a nie z `assets::Image`.
+- `src/assets/ImageLoader.hpp` dołącza tylko bibliotekę standardową, a `ImageLoader.cpp` do
+  tego `core/Log.hpp`, `core/Paths.hpp` i `<stb_image.h>`. To jedyny plik w `src/`, który
+  zna stb_image. Nic z GLAD, GLFW, GLM, `gfx/`, `scene/`, `game/` ani `debug/`.
+- `src/assets/ObjLoader.hpp` dołącza `gfx/Vertex.hpp`, `<glm/glm.hpp>` i bibliotekę
+  standardową, a `ObjLoader.cpp` do tego `core/Log.hpp` i `core/Paths.hpp`. Nic z GLAD,
+  GLFW, `scene/`, `game/` ani `debug/`: dlatego loader daje się testować bez okna.
 - Pliki logiki labiryntu w `src/game/` (`Maze.*`, `MazeGenerator.*`, `MazeLayout.*`) dołączają
   bibliotekę standardową, a `MazeLayout.hpp` także `<glm/glm.hpp>`, `game/Maze.hpp` i
   `scene/Collider.hpp`. Nic z GLAD, GLFW, `core/`, `gfx/` ani `debug/`: dlatego dają się
   testować bez okna.
 - Pliki w `tests/` dołączają `<doctest/doctest.h>`, nagłówki testowanego kodu
-  (`scene/Collider.hpp`, `game/Maze.hpp`, `game/MazeGenerator.hpp`, `game/MazeLayout.hpp`) i
+  (`scene/Collider.hpp`, `game/Maze.hpp`, `game/MazeGenerator.hpp`, `game/MazeLayout.hpp`, `assets/ObjLoader.hpp`, `assets/ImageLoader.hpp`) i
   bibliotekę standardową. Żaden plik w `src/` nie dołącza niczego z `tests/` ani nagłówka
   doctest.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp`, trzy nagłówki z `gfx/`
@@ -273,7 +322,7 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
-| `engine` | biblioteka statyczna | `src/core/*`, `src/gfx/*`, `src/scene/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`) |
+| `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
 | `game_logic` | biblioteka statyczna | `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*` | `engine` (`PUBLIC`) |
 | `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/debug/*` | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
 | `night_maze_tests` | program | `tests/*.cpp` | `game_logic`, `doctest::doctest` (`PRIVATE`) |
@@ -282,9 +331,10 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 | `glm-header-only` (alias `glm::glm-header-only`) | target `INTERFACE`: same nagłówki, nic się nie kompiluje | pobrany przez FetchContent | nic |
 | `imgui` | biblioteka statyczna | pobrana przez FetchContent, lista plików w `Dependencies.cmake` | `glfw` |
 | `doctest` (alias `doctest::doctest`) | target `INTERFACE`: jeden nagłówek, nic się nie kompiluje | pobrany przez FetchContent | nic |
+| `stb_image` | biblioteka statyczna | `external/stb/stb_image.c`, nagłówek pobrany przez FetchContent. Target zdefiniowany w `Dependencies.cmake` | nic |
 
 **Dlaczego `engine` jest osobną biblioteką.** Warstwy wielokrotnego użytku (teraz `core`,
-`gfx` i `scene`, później `assets` i `renderer`) nie zawierają niczego specyficznego dla Night
+`gfx`, `scene` i `assets`, później `renderer`) nie zawierają niczego specyficznego dla Night
 Maze. Jako osobny target da się je bez zmian podłączyć do innego programu, w szczególności
 do zadań laboratoryjnych z tego samego kursu: nowy plik `main.cpp`, własna klasa pochodna po
 `core::Application`, `target_link_libraries(zadanie PRIVATE engine)` i okno z kontekstem
@@ -353,7 +403,7 @@ include(cmake/Dependencies.cmake)
 
 - `add_subdirectory` przetwarza `external/glad/CMakeLists.txt` i tworzy target `glad`.
 - `include` wkleja zawartość `cmake/Dependencies.cmake`, który tworzy targety `glfw`,
-  `glm-header-only`, `imgui` i `doctest`.
+  `glm-header-only`, `imgui`, `doctest` i `stb_image`.
 
 Różnica: `add_subdirectory` wchodzi do katalogu z własnym `CMakeLists.txt` i własnym
 zakresem zmiennych. `include` wykonuje plik tak, jakby jego treść stała w tym miejscu.
@@ -373,7 +423,7 @@ endfunction()
 
 Własna funkcja CMake, żeby nie powtarzać tych samych flag przy każdym targecie. Wywołujemy
 ją tylko dla naszych czterech targetów: `engine`, `game_logic`, `night_maze` i
-`night_maze_tests`. Cudzy kod (GLAD, GLFW, ImGui) kompiluje się ze swoimi
+`night_maze_tests`. Cudzy kod (GLAD, GLFW, ImGui, stb_image) kompiluje się ze swoimi
 domyślnymi ustawieniami, bo jego ostrzeżeń nie będziemy poprawiać. GLM i doctest nie mają
 własnych plików do skompilowania (same nagłówki), więc ich ostrzeżenia wycisza wyłącznie
 oznaczenie nagłówków jako systemowe ([`../libraries/glm.md`](../libraries/glm.md),
@@ -388,6 +438,10 @@ oznaczenie nagłówków jako systemowe ([`../libraries/glm.md`](../libraries/glm
 
 ```cmake
 add_library(engine STATIC
+    src/assets/ImageLoader.cpp
+    src/assets/ImageLoader.hpp
+    src/assets/ObjLoader.cpp
+    src/assets/ObjLoader.hpp
     src/core/Application.cpp
     src/core/Application.hpp
     ...
@@ -395,8 +449,13 @@ add_library(engine STATIC
     src/core/Window.hpp
     src/gfx/Buffer.cpp
     src/gfx/Buffer.hpp
+    src/gfx/Mesh.cpp
+    src/gfx/Mesh.hpp
     src/gfx/Shader.cpp
     src/gfx/Shader.hpp
+    src/gfx/Texture2D.cpp
+    src/gfx/Texture2D.hpp
+    src/gfx/Vertex.hpp
     src/gfx/VertexArray.cpp
     src/gfx/VertexArray.hpp
     src/scene/Camera.cpp
@@ -412,6 +471,9 @@ target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # scene/Camera.hpp, scene/Collider.hpp) expose GLM types, so every target that includes
 # them needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
+# stb_image is PRIVATE: only assets/ImageLoader.cpp includes its header, no header of
+# engine does, so the targets that use engine do not need its include path.
+target_link_libraries(engine PRIVATE stb_image)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it
     GL_SILENCE_DEPRECATION # macOS marks all of OpenGL as deprecated
@@ -431,6 +493,10 @@ night_maze_enable_warnings(engine)
   `src/gfx/Shader.*` (macierz jako parametr `setMat4`). `glm::glm-header-only`
   to target `INTERFACE` (same nagłówki), więc "linkowanie" go oznacza tylko dodanie ścieżki
   nagłówków ([`../libraries/glm.md`](../libraries/glm.md), sekcja 2).
+- `target_link_libraries(engine PRIVATE stb_image)`: druga linia linkowania, tym razem
+  `PRIVATE`. Nagłówek `stb_image.h` dołącza tylko `assets/ImageLoader.cpp`, żaden nagłówek
+  `engine` go nie pokazuje, więc targety korzystające z `engine` nie potrzebują jego ścieżki
+  ([`../libraries/stb_image.md`](../libraries/stb_image.md), sekcja 2).
 - `target_compile_definitions`: dwa makra preprocesora, widoczne w linii poleceń
   kompilatora jako `-DGLFW_INCLUDE_NONE -DGL_SILENCE_DEPRECATION`.
 
@@ -538,13 +604,21 @@ enable_testing()
 add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
+    tests/ImageLoaderTests.cpp
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
+    tests/ObjLoaderTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
 night_maze_enable_warnings(night_maze_tests)
+# The loader tests read the real models and textures. A test must not depend on the
+# directory it is started from, so the absolute path of assets/ in the repository is
+# compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
+target_compile_definitions(night_maze_tests PRIVATE
+    NIGHT_MAZE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+)
 
 # One CTest test: it runs the whole test program and passes when the program exits with
 # code 0. The program is part of the default build, so the tests always compile.
@@ -560,10 +634,17 @@ Drugi program w projekcie. Każdą linię omawia
   (jest częścią targetu domyślnego), więc testy zawsze się kompilują.
 - `target_link_libraries(... PRIVATE game_logic doctest::doctest)`: kod testowany i
   biblioteka testów. `engine` przychodzi przez `game_logic`.
+- `target_compile_definitions(night_maze_tests PRIVATE NIGHT_MAZE_ASSETS_DIR="...")`:
+  definiuje makro preprocesora o wartości będącej napisem, bezwzględną ścieżką katalogu
+  `assets` w repozytorium (`CMAKE_SOURCE_DIR` to korzeń repozytorium). Testy loaderów
+  czytają prawdziwe modele i tekstury, a nie mogą zależeć od katalogu, z którego je
+  uruchomiono. `PRIVATE`: makro widzą tylko pliki testów
+  ([`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7).
 - `add_test(...)` rejestruje jeden test CTest: uruchomienie całego programu.
 
 Na Windowsie blok 7 kopiuje katalog `assets` tylko obok `night_maze`. Program testowy leży w
-tym samym katalogu, ale assetów nie czyta.
+tym samym katalogu, ale z tej kopii nie korzysta: testy loaderów czytają katalog `assets` z
+repozytorium, przez makro `NIGHT_MAZE_ASSETS_DIR`.
 
 **Blok 7: katalog `assets` obok programu**
 
@@ -711,7 +792,7 @@ Różnicę między generatorem jedno i wielokonfiguracyjnym wyjaśnia
 ### 3.3. `cmake/Dependencies.cmake`
 
 Zależności pobierane podczas konfiguracji przez moduł FetchContent, przypięte do tagów
-wydań. Plik jest osobno, żeby główny `CMakeLists.txt` opisywał tylko nasze targety.
+wydań (stb, które tagów nie ma, do commita). Plik jest osobno, żeby główny `CMakeLists.txt` opisywał tylko nasze targety.
 
 | Fragment | Co robi | Szczegółowy opis |
 |---|---|---|
@@ -726,11 +807,19 @@ wydań. Plik jest osobno, żeby główny `CMakeLists.txt` opisywał tylko nasze 
 | `add_library(imgui STATIC ...)`, `target_include_directories`, `target_link_libraries(imgui PUBLIC glfw)` | ręcznie zdefiniowany target `imgui` z rdzenia i dwóch backendów | [`../libraries/imgui.md`](../libraries/imgui.md) |
 | trzy linie `set(DOCTEST_... CACHE BOOL "" FORCE)` | wyłączają bibliotekę statyczną z gotowym `main`, testy samego doctest i reguły instalacji | [`../libraries/doctest.md`](../libraries/doctest.md) |
 | `FetchContent_Declare(doctest ... GIT_TAG v2.5.3 ...)` i `FetchContent_MakeAvailable(doctest)` | pobierają doctest 2.5.3 i tworzą target `doctest` (alias `doctest::doctest`). Nagłówek jest systemowy bez naszego kroku: tak deklaruje go `CMakeLists.txt` samego doctest | [`../libraries/doctest.md`](../libraries/doctest.md) |
+| `FetchContent_Declare(stb ... GIT_TAG 2c980bb5...)` i `FetchContent_MakeAvailable(stb)` | pobierają repozytorium stb w jednym, wskazanym commicie (repozytorium nie ma tagów, a płytki klon nie umie pobrać commita, więc bez `GIT_SHALLOW`). Targetu nie tworzą | [`../libraries/stb_image.md`](../libraries/stb_image.md) |
+| `add_library(stb_image STATIC ...)`, `target_include_directories(... SYSTEM PUBLIC ...)`, `target_compile_definitions(stb_image PUBLIC STBI_NO_STDIO)` | ręcznie zdefiniowany target `stb_image`: jeden plik `external/stb/stb_image.c`, nagłówek jako systemowy, bez funkcji otwierających pliki po nazwie | [`../libraries/stb_image.md`](../libraries/stb_image.md) |
 
 Pierwsza linia komentarza w pliku przypomina, dlaczego nie ma tu GLAD: to kod wygenerowany,
 który leży w `external/glad`.
 
 Zmiana wersji biblioteki to zmiana jednej linii `GIT_TAG` i ponowna konfiguracja.
+
+Obok bloku stb leży w repozytorium katalog `external/stb/` z dwoma plikami: `stb_image.c`
+(dwie linie, które kompilują implementację pobranego nagłówka) i `README.md` (skąd jest
+nagłówek i jak zmienić wersję). To nasz kod, nie wygenerowany: w odróżnieniu od
+`external/glad/` katalog nie ma własnego `CMakeLists.txt`, bo target potrzebuje zmiennej
+`stb_SOURCE_DIR`, która powstaje dopiero w `Dependencies.cmake`.
 
 ### 3.4. `external/glad/`
 
@@ -1154,7 +1243,8 @@ Położenie plików `.a` odzwierciedla drzewo źródeł: target zdefiniowany w g
 Układ powyżej pochodzi sprzed kamienia milowego M2 + M3. Po nim w katalogu buildu dochodzą:
 biblioteka `game_logic`, program `night_maze_tests`, katalogi `_deps/doctest-src`,
 `_deps/doctest-build` i `_deps/doctest-subbuild` oraz plik `CTestTestfile.cmake` (lista
-testów dla `ctest`). Na Macu tego układu jeszcze nie odczytałem z dysku. Oczekiwane nazwy to
+testów dla `ctest`). Dochodzą też biblioteka `stb_image` i katalogi `_deps/stb-src`
+(12 MB, całe repozytorium stb z historią), `_deps/stb-build` i `_deps/stb-subbuild`. Na Macu tego układu jeszcze nie odczytałem z dysku. Oczekiwane nazwy to
 `libgame_logic.a` i `night_maze_tests` w korzeniu `build/debug`. Na Windowsie jest zmierzony
 (sekcja 4.2).
 
@@ -1212,7 +1302,8 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
    | podstawa programu, bez OpenGL poza `GL_CHECK`: okno, pętla, wejście, czas, logi, ścieżki | `src/core/` | `add_library(engine STATIC ...)` |
    | opakowanie jednego obiektu OpenGL (RAII, tylko przenoszenie), bez wiedzy o grze i bez ImGui | `src/gfx/` | `add_library(engine STATIC ...)` |
    | opis sceny: dane i matematyka (transformy, kamera), bez wiedzy o grze, bez wejścia i bez ImGui | `src/scene/` | `add_library(engine STATIC ...)` |
-   | inny kod wielokrotnego użytku, bez wiedzy o grze i bez ImGui | później `src/renderer/`, `src/assets/` | `add_library(engine STATIC ...)` |
+   | wczytywanie plików z `assets/` do danych procesora, bez OpenGL, bez wiedzy o grze i bez ImGui | `src/assets/` | `add_library(engine STATIC ...)` |
+   | inny kod wielokrotnego użytku, bez wiedzy o grze i bez ImGui | później `src/renderer/` | `add_library(engine STATIC ...)` |
    | logika Night Maze, która nie potrzebuje okna ani OpenGL (ma dać się testować) | `src/game/` | `add_library(game_logic STATIC ...)` |
    | kod gry, który potrzebuje okna, kontekstu OpenGL albo wejścia | `src/game/` | `add_executable(night_maze ...)` |
    | test jednostkowy | `tests/` | `add_executable(night_maze_tests ...)` |
@@ -1302,6 +1393,10 @@ pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
   `target_link_libraries` przy targecie, który jej używa.
 - Wygenerowana lub jednoplikowa, trzymana w repozytorium: nowy katalog w `external/` z
   własnym `CMakeLists.txt` i `add_subdirectory` w głównym pliku.
+- Pobierana, ale bez własnego CMake i z implementacją w nagłówku (jak stb_image): blok
+  FetchContent, pod nim ręcznie zdefiniowany target z jednym plikiem z `external/`, który
+  kompiluje implementację. Bez tagów wydań: `GIT_TAG` z pełnym skrótem commita i bez
+  `GIT_SHALLOW`. Wzór: blok stb w `cmake/Dependencies.cmake`.
 - W obu przypadkach nagłówki oznaczamy jako `SYSTEM`, a bibliotece nie włączamy naszych
   ostrzeżeń.
 - Biblioteka z samych nagłówków (jak GLM) nie ma niczego do skompilowania: linkujemy jej

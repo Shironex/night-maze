@@ -13,9 +13,12 @@ końcu zapisuje plik OBJ. Polecenia dla Windowsa z sekcji 3 zostały uruchomione
 
 Polecenia dla macOS (sekcja 3) **nie były jeszcze uruchomione na Macu**.
 
-Stan: skrypty, trzy modele i dwie tekstury są w repozytorium. Kod C++, który wczytuje pliki
-OBJ, jeszcze w nim nie istnieje, więc gra tych plików na razie nie rysuje. Sekcja 5 opisuje
-dokładnie, co jest w plikach, właśnie po to, żeby dało się do nich napisać własny parser.
+Stan: skrypty, trzy modele i dwie tekstury są w repozytorium. Istnieje też kod C++, który
+wczytuje pliki OBJ i MTL: własny parser `assets::loadObj`
+([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)). Jego testy wczytują
+wszystkie trzy modele i sprawdzają liczby i wymiary z sekcji 8. Gra tych plików jeszcze nie
+rysuje: program nie woła jeszcze loadera. Sekcja 5 opisuje dokładnie, co jest w plikach, i
+była podstawą do napisania parsera.
 
 ## 1. Skrypt jest źródłem, plik OBJ jest wynikiem
 
@@ -580,6 +583,7 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
 ## 12. Powiązane dokumenty
 
 - Układ współrzędnych gry: [`../modules/scene/README.md`](../modules/scene/README.md)
+- Parser plików OBJ i MTL: [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)
 - Struktura repozytorium: [`project-structure.md`](project-structure.md)
 - Skąd program bierze katalog `assets`: [`../modules/core/paths.md`](../modules/core/paths.md)
 - Dokumentacja Blendera, API Pythona: <https://docs.blender.org/api/current/>

@@ -19,7 +19,7 @@ Wersja dla Windowsa: [`build-windows.md`](build-windows.md).
 |---|---|---|---|
 | Xcode Command Line Tools | kompilator `clang`, `make`, `git`, nagłówki systemowe i frameworki (Cocoa, OpenGL) | `xcode-select --install` | `clang --version` |
 | CMake w wersji co najmniej 3.24 | konfiguracja i uruchamianie buildu | `brew install cmake` | `cmake --version` |
-| git | CMake pobiera nim GLFW, GLM, ImGui i doctest | jest w Command Line Tools | `git --version` |
+| git | CMake pobiera nim GLFW, GLM, ImGui, doctest i stb | jest w Command Line Tools | `git --version` |
 | Ninja | opcjonalny szybszy generator | `brew install ninja` | `ninja --version` |
 
 Uwagi:
@@ -30,8 +30,8 @@ Uwagi:
 - Skąd wymóg 3.24: `cmake_minimum_required(VERSION 3.24)` w
   [`CMakeLists.txt`](../../CMakeLists.txt) i `cmakeMinimumRequired` w
   [`CMakePresets.json`](../../CMakePresets.json).
-- Bibliotek (GLFW, GLM, ImGui, doctest, GLAD) nie instalujemy ręcznie. GLFW, GLM, ImGui i
-  doctest pobiera CMake, GLAD leży w repozytorium.
+- Bibliotek (GLFW, GLM, ImGui, doctest, stb_image, GLAD) nie instalujemy ręcznie. GLFW, GLM,
+  ImGui, doctest i stb pobiera CMake, GLAD leży w repozytorium.
 - Pierwsza konfiguracja wymaga dostępu do internetu.
 
 ## 2. Budowanie i uruchamianie
@@ -165,13 +165,20 @@ też uruchomić wprost, wtedy widać raport biblioteki doctest:
 ./build/debug/night_maze_tests
 ```
 
-Oczekiwany koniec wyjścia, taki jak zmierzony na Windowsie:
+Oczekiwany koniec wyjścia, taki jak zmierzony na Windowsie w konfiguracji Debug
+(2026-10-05, sześć plików z testami: `ColliderTests.cpp`, `MazeTests.cpp`,
+`MazeGeneratorTests.cpp`, `MazeLayoutTests.cpp`, `ObjLoaderTests.cpp` i
+`ImageLoaderTests.cpp`):
 
 ```text
-[doctest] test cases:    41 |    41 passed | 0 failed | 0 skipped
-[doctest] assertions: 58114 | 58114 passed | 0 failed |
+[doctest] test cases:    66 |    66 passed | 0 failed | 0 skipped
+[doctest] assertions: 58953 | 58953 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
+
+Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
+podają loaderom zły plik, i nie oznaczają nieudanego testu. Same testy kolizji i labiryntu
+(cztery pierwsze pliki) to 41 przypadków i 58114 asercji.
 
 Opis biblioteki, makr i opcji programu: [`../libraries/doctest.md`](../libraries/doctest.md).
 
@@ -190,7 +197,8 @@ nie wykonał):
 - [ ] nagłówek doctest trafia do kompilatora przez `-isystem` i nie daje ostrzeżeń w plikach
       testów
 - [ ] `ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release:
-      zapisać liczbę przypadków i asercji (oczekiwane 41 i 58114)
+      zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 66 i 58953,
+      z czego testy kolizji i labiryntu to 41 i 58114)
 - [ ] **najważniejszy punkt**: przechodzą testy `golden maze: 4 x 4 cells from seed 1 has
       exactly these walls` i `randomBelow gives the same numbers on every system`. To jest
       pomiar, że macOS i Windows generują ten sam labirynt
@@ -204,6 +212,70 @@ nie wykonał):
       `tests/*.cpp` (na Windowsie LLVM 19.1.5 nie zgłasza niczego w tych plikach)
 - [ ] program `./build/debug/night_maze` buduje się i działa jak wcześniej (nowy kod nie
       jest jeszcze wołany przez grę)
+
+**Loader OBJ i siatka (temat 4): do zrobienia przy pierwszym buildzie tego kodu na Macu.**
+Kod powstał na Windowsie (2026-10-05) i tam jest zmierzony: 18 przypadków testowych i 804
+asercje w `tests/ObjLoaderTests.cpp`. Na Macu nikt go jeszcze nie kompilował:
+
+- [ ] `src/assets/ObjLoader.*`, `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` i
+      `tests/ObjLoaderTests.cpp` kompilują się bez ostrzeżeń pod `-Wall -Wextra -Wpedantic`
+- [ ] przechodzą trzy asercje czasu kompilacji: `sizeof(gfx::Vertex) == 8 * sizeof(float)` i
+      `std::is_standard_layout_v<gfx::Vertex>` w `Vertex.hpp` oraz
+      `std::is_same_v<GLuint, std::uint32_t>` w `Mesh.cpp`
+- [ ] `./build/debug/night_maze_tests --source-file='*ObjLoaderTests*'`: zapisać liczbę
+      przypadków i asercji (oczekiwane 18 i 804)
+- [ ] przechodzi przypadek `parseObj: numbers` i podprzypadki z błędnymi liczbami w
+      `parseObj: a bad line is reported with its line number`. Liczby czyta
+      `std::istringstream` z klasycznym locale, a libc++ może traktować teksty graniczne
+      (`+2`, `2.5E2`, `1.5x`, `--1`) inaczej niż biblioteka MSVC
+- [ ] przechodzą trzy przypadki `loadObj: wall_straight.obj`, `wall_pillar.obj` i
+      `floor_tile.obj`: ścieżka z `NIGHT_MAZE_ASSETS_DIR` i ścieżki tekstur po
+      `lexically_normal()` porównują się poprawnie także z separatorem `/`
+- [ ] przechodzi przypadek `loadObj: material libraries and texture paths of files written by
+      the test` (zapis do katalogu tymczasowego systemu i sprzątanie po sobie)
+- [ ] sprawdzić, czy `std::from_chars` dla `float` kompiluje się Apple clangiem przy
+      domyślnej wersji docelowej systemu. Jeśli tak, `parseFloat` w `ObjLoader.cpp` można
+      uprościć. Dziś używa strumienia właśnie dlatego, że tego nie sprawdziłem
+      ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), sekcja 5.4)
+
+**Tekstury (temat 5): do zrobienia przy pierwszym buildzie tego kodu na Macu.** Kod powstał
+na Windowsie (2026-10-05) i tam jest zmierzony: 7 przypadków testowych i 35 asercji w
+`tests/ImageLoaderTests.cpp` oraz program z ukrytym oknem dla klasy `gfx::Texture2D`
+([`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 5.9). Na Macu nikt go
+jeszcze nie kompilował:
+
+- [ ] `cmake --preset debug` pobiera repozytorium stb w commicie
+      `2c980bb59875b0d32144a71867fbdebb2f77cd20` do `build/debug/_deps/stb-src` (pełny
+      klon, bez `GIT_SHALLOW`), a pierwsza linia `stb_image.h` to `stb_image - v2.30`.
+      Repozytorium stb nie ma pliku `CMakeLists.txt`, więc CMake 4 nie ma czego odrzucić,
+      ale to wniosek, nie pomiar
+- [ ] `external/stb/stb_image.c` kompiluje się Apple clangiem jako C. Zapisać, czy daje
+      ostrzeżenia: ten plik celowo nie dostaje `-Wall -Wextra -Wpedantic`, więc nawet jeśli
+      są, nie przerywają buildu. Na Windowsie nie ma żadnych
+- [ ] `stb_image.h` trafia do kompilacji `src/assets/ImageLoader.cpp` przez `-isystem` i
+      nie daje ostrzeżeń w naszym pliku
+- [ ] `src/assets/ImageLoader.*`, `src/gfx/Texture2D.*`, `src/gfx/Shader.*` i
+      `tests/ImageLoaderTests.cpp` kompilują się bez ostrzeżeń pod `-Wall -Wextra
+      -Wpedantic`. Miejsca, których Apple clang z libc++ jeszcze nie widział: wypełnienie
+      `std::vector<unsigned char>` z `std::istreambuf_iterator<char>` w `readBinaryFile`,
+      ścieżka z literału `u8"..."` (typ `char8_t`) w teście i `reinterpret_cast` wyniku
+      `glGetStringi` w `Texture2D.cpp`
+- [ ] `./build/debug/night_maze_tests --source-file='*ImageLoaderTests*'`: zapisać liczbę
+      przypadków i asercji (oczekiwane 7 i 35)
+- [ ] przechodzą przypadki `the rows are flipped: ...` i `a path with letters outside ASCII
+      can be loaded`: oba zapisują plik do katalogu tymczasowego systemu
+      (`std::filesystem::temp_directory_path()`) i usuwają go po sobie. Drugi tworzy plik o
+      nazwie z polskimi literami i znakiem japońskim
+- [ ] klasa `gfx::Texture2D` na sterowniku Apple: czy na liście rozszerzeń jest
+      `GL_EXT_texture_filter_anisotropic`, jaką wartość ma `maxAnisotropy()` i czy
+      konstruktor nie zostawia błędu w `glGetError`. Do sprawdzenia programem z ukrytym
+      oknem albo dopiero po wpięciu tekstur w grę, w panelu Textures
+- [ ] powtórzyć pomiar pasów z [`../modules/gfx/textures.md`](../modules/gfx/textures.md),
+      sekcja 5.9: czy poziom anizotropii ustawiony na obiekcie samplera zmienia obraz (na
+      Windowsie: szary przy 1, czarne i białe pasy przy 16) i czy ustawiony przez
+      `glTexParameterf` na samej teksturze też działa (na Windowsie nie działał)
+- [ ] po wpięciu tekstur w grę: tekstura na ścianie nie jest do góry nogami ani pochylona,
+      a `texture()` w shaderze `#version 410 core` kompiluje się na sterowniku Apple
 
 Po wykonaniu punkty trzeba odhaczyć i dopisać wynik, tak jak na liście w
 [`build-windows.md`](build-windows.md), sekcja 11.
@@ -319,7 +391,7 @@ generatorem Ninja. Nie trafia do repozytorium.
 ## 4. Co pobiera FetchContent i dokąd
 
 Przy pierwszym `cmake --preset debug` CMake wykonuje
-[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje cztery repozytoria:
+[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje pięć repozytoriów:
 
 | Biblioteka | Tag | Katalog źródeł |
 |---|---|---|
@@ -327,10 +399,14 @@ Przy pierwszym `cmake --preset debug` CMake wykonuje
 | GLM | `1.0.3` | `build/debug/_deps/glm-src` |
 | Dear ImGui | `v1.92.9b-docking` | `build/debug/_deps/imgui-src` |
 | doctest | `v2.5.3` | `build/debug/_deps/doctest-src` |
+| stb (dla stb_image) | brak tagów, commit `2c980bb5...` | `build/debug/_deps/stb-src` |
 
 Czwarty wiersz doszedł w kamieniu milowym M2 + M3 i na Macu nie był jeszcze pobierany
 (sekcja 2, "Testy jednostkowe"). Na Windowsie katalog `doctest-src` powstaje zgodnie z
-tabelą.
+tabelą. Piąty wiersz doszedł w tym samym kamieniu milowym i też nie był jeszcze pobierany na
+Macu. Repozytorium stb jest klonowane w całości, z historią (na Windowsie 12 MB), bo jest
+przypięte do commita, a nie do tagu ([`../libraries/stb_image.md`](../libraries/stb_image.md),
+sekcja 2).
 
 Dla każdej zależności w `_deps` powstają trzy katalogi:
 

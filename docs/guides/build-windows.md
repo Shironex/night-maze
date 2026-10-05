@@ -22,7 +22,7 @@
 | Narzędzie | Po co | Uwagi |
 |---|---|---|
 | Visual Studio 2022 albo same "Build Tools for Visual Studio 2022", z pakietem roboczym "Desktop development with C++" (Programowanie aplikacji klasycznych w C++) | kompilator MSVC, Windows SDK, MSBuild, dołączone CMake i Ninja | do pracy z terminala wystarczają same Build Tools (tak było na moim PC). IDE jest potrzebne tylko do sekcji 4. Alternatywa: CLion |
-| git dostępny w `PATH` | CMake klonuje nim GLFW, GLM, ImGui i doctest podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
+| git dostępny w `PATH` | CMake klonuje nim GLFW, GLM, ImGui, doctest i stb podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
 | CMake w wersji co najmniej 3.24 | konfiguracja i build | jest częścią pakietu roboczego C++ (u mnie 3.31.6-msvc6). Osobny instalator: <https://cmake.org/download/> |
 
 Środowisko, na którym wykonałem pomiary z tego dokumentu (2026-10-05):
@@ -45,8 +45,8 @@ Uwagi:
   `PATH`.
 - Git jest potrzebny w tym samym terminalu, w którym uruchamiamy CMake. Jeśli
   `git --version` nie działa, konfiguracja zakończy się błędem przy pobieraniu GLFW.
-- Bibliotek nie instalujemy ręcznie. GLFW, GLM, ImGui i doctest pobiera CMake, GLAD jest w
-  repozytorium.
+- Bibliotek nie instalujemy ręcznie. GLFW, GLM, ImGui, doctest i stb (dla stb_image) pobiera
+  CMake, GLAD jest w repozytorium.
 - Sterownik karty graficznej musi obsługiwać OpenGL 4.1 lub nowszy. Aktualne sterowniki
   kart NVIDIA, AMD i Intel obsługują 4.6. Przy bardzo starym sterowniku okno się nie utworzy.
 
@@ -160,7 +160,10 @@ build\debug\Debug\night_maze_tests.exe
 [doctest] Status: SUCCESS!
 ```
 
-Te same liczby daje `build\release\Release\night_maze_tests.exe`. Program testowy nie
+Te same liczby dawało `build\release\Release\night_maze_tests.exe`. To wyjście zostało
+zmierzone przed dodaniem testów loadera OBJ i loadera obrazów. Z nimi program w konfiguracji
+Debug pokazuje 66 przypadków testowych i 58953 asercje (2026-10-05, sekcja 11), a
+konfiguracja Release nie była jeszcze z nimi uruchamiana. Program testowy nie
 otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
 
@@ -347,8 +350,8 @@ endfunction()
   odwrotnie. To ważne w projekcie na dwa systemy.
 - `PRIVATE`: flagi dotyczą tylko wskazanego targetu i nie przenoszą się na jego użytkowników.
 - Funkcję wywołujemy tylko dla naszych czterech targetów: `engine`, `game_logic`,
-  `night_maze` i `night_maze_tests`. GLFW, ImGui i GLAD kompilują się ze swoimi domyślnymi
-  ustawieniami. GLM i doctest nie mają własnych plików do skompilowania (same nagłówki).
+  `night_maze` i `night_maze_tests`. GLFW, ImGui, GLAD i stb_image kompilują się ze swoimi
+  domyślnymi ustawieniami. GLM i doctest nie mają własnych plików do skompilowania (same nagłówki).
 
 Nagłówki bibliotek są oznaczone jako systemowe (`SYSTEM` w `target_include_directories`,
 `INTERFACE_SYSTEM_INCLUDE_DIRECTORIES` dla GLFW i GLM). Na Macu daje to `-isystem`. Na
@@ -913,6 +916,63 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       wycofana). Ograniczenie: to clang 19 w trybie zgodności z MSVC i z biblioteką
       standardową MSVC, a nie Apple clang z libc++. Samej flagi `-Wpedantic` osobną próbą nie
       sprawdzałem
+- [x] loader OBJ i siatka (temat 4, 2026-10-05): `src/assets/ObjLoader.*`,
+      `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` i `tests/ObjLoaderTests.cpp` budują się bez
+      ostrzeżeń pod `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem
+      Visual Studio (osobne katalogi buildu). `night_maze_tests.exe
+      --source-file=*ObjLoaderTests*`: 18 przypadków testowych, 804 asercje, `Status:
+      SUCCESS!`. Konfiguracji Release dla tych plików nie budowałem. `gfx::Mesh` jest tylko
+      skompilowany: nie ma testu ani użytkownika
+      ([`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcja 5.6)
+- [x] clang-tidy 19.1.5 z bazy poleceń buildu Ninja na `src/gfx/Mesh.cpp`,
+      `src/assets/ObjLoader.cpp` i `tests/ObjLoaderTests.cpp`: żadnej diagnostyki z regułami
+      projektu (`.clang-tidy`) i żadnej z samymi diagnostykami kompilatora clang
+      (`--checks=-*,clang-diagnostic-*,readability-identifier-naming` z `-Wall -Wextra
+      -Wpedantic`). Ograniczenie to samo co wyżej: clang 19 z biblioteką standardową MSVC,
+      nie Apple clang z libc++. clang-format `--dry-run --Werror` na sześciu nowych plikach
+      nie zgłasza różnic
+- [x] stb_image (temat 5, 2026-10-05): `cmake --preset debug` pobiera repozytorium stb w
+      commicie `2c980bb59875b0d32144a71867fbdebb2f77cd20` do `_deps\stb-src` (12 MB, pełny
+      klon, bo bez `GIT_SHALLOW`), pierwsza linia `stb_image.h` to `stb_image - v2.30`.
+      Target `stb_image` buduje się z jednego pliku `external\stb\stb_image.c` bez
+      ostrzeżeń, generatorem Ninja i generatorem Visual Studio. W poleceniu kompilacji
+      tego pliku nie ma `/W4`, a katalog `_deps\stb-src` trafia do kompilacji
+      `ImageLoader.cpp` przez `/external:I` z wyłączonymi ostrzeżeniami. `-DSTBI_NO_STDIO`
+      jest w poleceniach obu plików
+      ([`../libraries/stb_image.md`](../libraries/stb_image.md), sekcja 2)
+- [x] loader obrazów, tekstura i settery uniformów (temat 5, 2026-10-05):
+      `src/assets/ImageLoader.*`, `src/gfx/Texture2D.*`, `src/gfx/Shader.*` (`setInt`,
+      `setVec3`) i `tests/ImageLoaderTests.cpp` budują się bez ostrzeżeń pod
+      `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem Visual
+      Studio (osobne katalogi buildu). `night_maze_tests.exe
+      --source-file=*ImageLoaderTests*`: 7 przypadków testowych, 35 asercji, `Status:
+      SUCCESS!`. Cały program testowy razem z testami loadera OBJ: 66 przypadków, 58953
+      asercje. Konfiguracji Release dla tych plików nie budowałem. Test nazwy pliku ze
+      znakami spoza ASCII (polskie litery i znak japoński) przechodzi przy stronie kodowej
+      systemu 1250 ([`../modules/assets/images.md`](../modules/assets/images.md),
+      sekcja 5.7)
+- [x] clang-tidy 19.1.5 z regułami projektu (`.clang-tidy`, baza poleceń buildu Ninja) na
+      `src/assets/ImageLoader.cpp`, `src/gfx/Texture2D.cpp`, `src/gfx/Shader.cpp` i
+      `tests/ImageLoaderTests.cpp`: żadnej diagnostyki. clang-format `--dry-run --Werror` na
+      siedmiu plikach tego kroku nie zgłasza różnic. Samych diagnostyk kompilatora clang
+      (`-Wall -Wextra -Wpedantic`) osobną próbą nie sprawdzałem
+- [x] `gfx::Texture2D` sprawdzona programem z ukrytym oknem, poza repozytorium (karta
+      NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74, `GL_VERSION` równe `4.1.0 NVIDIA
+      610.74`): tworzenie, mipmapy do poziomu 1 x 1, orientacja (pierwszy piksel danych w
+      lewym dolnym rogu), wyrównanie wierszy, trzy filtry, anizotropia od 1 do 16,
+      przenoszenie, złe argumenty, `glGetError` czysty. Rozszerzenie
+      `GL_EXT_texture_filter_anisotropic` jest na liście sterownika (404 rozszerzenia).
+      Pełne tabele: [`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 5.9
+- [x] zmierzona osobliwość tego komputera: poziom anizotropii ustawiony na obiekcie
+      tekstury (`glTexParameterf`) nie daje błędu, odczytuje się jako 1 i nie zmienia
+      obrazu, a ustawiony na obiekcie samplera (`glSamplerParameterf`) działa. Dlatego
+      `Texture2D` trzyma filtr, zawijanie i anizotropię w obiekcie samplera. Przyczyny nie
+      ustaliłem ([`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcje 2.8 i
+      5.9)
+- [ ] tekstury w oknie gry: `Texture2D` nie ma jeszcze użytkownika, więc program
+      `night_maze.exe` po tym kroku wygląda tak samo jak przed nim. Ręczne sprawdzenie
+      filtrów i anizotropii na ścianach labiryntu będzie możliwe po wpięciu tekstur w
+      klatkę i dodaniu panelu Textures
 - [ ] poprawić albo świadomie wyciszyć tę diagnostykę w `Paths.cpp` (na Macu gałąź nie jest
       kompilowana, więc `make tidy` jej tam nie widzi)
 - [ ] te same testy na macOS: dopiero to porównanie mierzy, że oba systemy generują ten sam

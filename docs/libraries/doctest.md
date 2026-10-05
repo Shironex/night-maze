@@ -5,14 +5,20 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`CMakeLists.txt`](../../CMakeLists.txt) oraz tę część API, której używają testy w katalogu
 [`tests/`](../../tests/).
 
-**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z pięciu
-plików: `tests/main.cpp` (punkt wejścia) i czterech plików z testami: `ColliderTests.cpp`
+**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z siedmiu
+plików: `tests/main.cpp` (punkt wejścia) i sześciu plików z testami: `ColliderTests.cpp`
 (kolizje, [`../modules/scene/collision.md`](../modules/scene/collision.md)), `MazeTests.cpp`,
 `MazeGeneratorTests.cpp` i `MazeLayoutTests.cpp` (labirynt,
-[`../modules/game/maze-generator.md`](../modules/game/maze-generator.md)). Razem 41
-przypadków testowych i 58114 asercji. Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie
-przechodzą w konfiguracji Debug i Release. **Na macOS testy nie były jeszcze budowane ani
-uruchamiane.**
+[`../modules/game/maze-generator.md`](../modules/game/maze-generator.md)),
+`ObjLoaderTests.cpp` (loader OBJ,
+[`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)) i
+`ImageLoaderTests.cpp` (loader obrazów,
+[`../modules/assets/images.md`](../modules/assets/images.md)). Razem 66 przypadków testowych
+i 58953 asercje: tyle pokazał program na Windowsie w konfiguracji Debug (MSVC 19.44,
+2026-10-05). Wyjścia programu przytoczone w sekcji 4 (41 przypadków, 58114 asercji) pochodzą
+sprzed dodania testów obu loaderów: tamten zestaw przechodził w konfiguracji Debug i Release.
+Z testami loaderów konfiguracja Release nie była jeszcze uruchamiana. **Na macOS testy nie
+były jeszcze budowane ani uruchamiane.**
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -47,8 +53,8 @@ zanim ruszy `main`. Nowy test to nowy blok `TEST_CASE` w dowolnym pliku testowym
 - Nie jest programem `ctest`. `ctest` to osobne narzędzie z pakietu CMake, które uruchamia
   programy testowe i patrzy na ich kod wyjścia. O doctest nic nie wie.
 - Nie otwiera okna i nie tworzy kontekstu OpenGL. Dlatego testami objęty jest tylko kod,
-  który ich nie potrzebuje: kolizje i logika labiryntu. Klas `gfx` ani `NightMazeApp` w
-  testach nie ma.
+  który ich nie potrzebuje: kolizje, logika labiryntu i dwa loadery plików (OBJ i obrazy).
+  Klas `gfx`, które tworzą obiekty OpenGL, ani `NightMazeApp` w testach nie ma.
 - Nie mierzy pokrycia kodu testami i niczego nie udowadnia o kodzie, którego żaden test nie
   woła.
 
@@ -174,13 +180,21 @@ enable_testing()
 add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
+    tests/ImageLoaderTests.cpp
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
+    tests/ObjLoaderTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
 night_maze_enable_warnings(night_maze_tests)
+# The loader tests read the real models and textures. A test must not depend on the
+# directory it is started from, so the absolute path of assets/ in the repository is
+# compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
+target_compile_definitions(night_maze_tests PRIVATE
+    NIGHT_MAZE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+)
 
 # One CTest test: it runs the whole test program and passes when the program exits with
 # code 0. The program is part of the default build, so the tests always compile.
@@ -190,12 +204,13 @@ add_test(NAME night_maze_tests COMMAND night_maze_tests)
 | Linia | Znaczenie |
 |---|---|
 | `enable_testing()` | włącza obsługę testów w CMake: podczas generowania powstaje w katalogu buildu plik z listą testów, który czyta `ctest`. Musi stać w głównym `CMakeLists.txt`, bo `ctest` szuka listy w korzeniu katalogu buildu |
-| `add_executable(night_maze_tests ...)` | zwykły program z pięciu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
+| `add_executable(night_maze_tests ...)` | zwykły program z siedmiu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
 | `target_link_libraries(... PRIVATE game_logic doctest::doctest)` | kod testowany i biblioteka testów. "Linkowanie" targetu `INTERFACE` `doctest::doctest` oznacza tylko dodanie ścieżek nagłówków |
 | `night_maze_enable_warnings(night_maze_tests)` | testy kompilują się z tymi samymi ścisłymi ostrzeżeniami co reszta naszego kodu (`/W4 /permissive-` albo `-Wall -Wextra -Wpedantic`) |
+| `target_compile_definitions(night_maze_tests PRIVATE NIGHT_MAZE_ASSETS_DIR="...")` | makro preprocesora z bezwzględną ścieżką katalogu `assets` w repozytorium. Testy loaderów czytają nim prawdziwe modele i tekstury niezależnie od katalogu, z którego uruchomiono program ([`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7) |
 | `add_test(NAME night_maze_tests COMMAND night_maze_tests)` | rejestruje **jeden** test CTest: "uruchom ten program". `COMMAND` z nazwą targetu CMake zamienia na pełną ścieżkę pliku wykonywalnego, także z podkatalogiem `Debug\` generatora Visual Studio |
 
-Dla `ctest` cały program jest jednym testem: przechodzi, gdy kod wyjścia to 0. Liczbę 41
+Dla `ctest` cały program jest jednym testem: przechodzi, gdy kod wyjścia to 0. Liczbę
 przypadków widać dopiero w wyjściu samego programu (sekcja 4). doctest ma moduł CMake, który
 rejestruje każdy `TEST_CASE` jako osobny test CTest (`doctest_discover_tests`). Nie używam
 go: jedna linia `add_test` jest prostsza, a szczegóły i tak pokazuje `--output-on-failure`.
@@ -519,8 +534,8 @@ sekcja 5.8).
 11. **Nazwa testu jako filtr.** Opcja `-tc` traktuje przecinek jako separator wzorców, więc
     nazwa z przecinkiem wymaga poprzedzenia go ukośnikiem wstecznym. Prościej filtrować
     początkiem nazwy z gwiazdką.
-12. **Testy nie obejmują niczego z OpenGL.** Zielony wynik testów mówi o kolizjach i
-    labiryncie. O shaderach, buforach i rysowaniu nie mówi nic: te rzeczy sprawdza się
+12. **Testy nie obejmują niczego z OpenGL.** Zielony wynik testów mówi o kolizjach,
+    labiryncie i loaderach plików. O shaderach, buforach i rysowaniu nie mówi nic: te rzeczy sprawdza się
     uruchomieniem programu.
 
 ## 6. Pytania kontrolne
