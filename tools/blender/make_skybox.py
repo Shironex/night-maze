@@ -73,7 +73,9 @@ FACES = (
 # moonYawDegrees and moonPitchDegrees of game::LightingSettings in src/game/Lighting.hpp.
 # They say which way the light travels, so the disc is painted in the opposite direction:
 # where the light comes from. When the defaults change there, change them here and run
-# this script again (the test in tests/SkyboxTests.cpp fails until then).
+# this script again. The test in tests/SkyboxTests.cpp looks for the disc where the default
+# light comes from: it fails only when the two sides are more than about 2 degrees apart
+# (the disc has a radius of MOON_RADIUS_DEGREES), a smaller difference goes unnoticed.
 #
 # Known limit: the picture is fixed. Moving the moon light in the Lights panel of the game
 # changes the light on the walls, and the painted moon stays where it is.

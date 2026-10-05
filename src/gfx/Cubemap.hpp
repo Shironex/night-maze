@@ -1,5 +1,5 @@
 // Cubemap: six square pictures on the graphics card, sampled with a direction.
-// See docs/modules/renderer/skybox.md
+// See docs/modules/gfx/cubemap.md
 #pragma once
 
 #include <glad/gl.h>

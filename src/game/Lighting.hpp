@@ -50,16 +50,19 @@ struct LightingSettings {
     /// -Z, 90 towards +X), pitch below 0 means downwards. The yaw is deliberately not
     /// a multiple of 45 degrees: the walls face four directions, and this way each of
     /// them gets a different share of the light. There are no shadows before M7, so the
-    /// moon also lights walls and floor that stand in the shade of another wall.
+    /// moon also lights walls and ground that stand in the shade of another wall.
     ///
     /// COUPLING WITH THE SKY: the moon disc of the skybox is painted where this light
     /// comes from, which is the direction opposite to the one the two defaults below
     /// describe. The pictures are generated with the same two numbers
     /// (MOON_LIGHT_YAW_DEGREES and MOON_LIGHT_PITCH_DEGREES in
     /// tools/blender/make_skybox.py). When a default changes here, change it there and
-    /// generate the sky again: a test in tests/SkyboxTests.cpp fails until then. Known
-    /// limit: the picture is fixed, so moving the moon in the Lights panel changes the
-    /// light on the walls while the painted moon stays where it is.
+    /// generate the sky again. A test in tests/SkyboxTests.cpp looks for the disc where
+    /// the default light comes from, and the disc has a radius of 2.2 degrees: the test
+    /// fails only when the defaults moved by more than about 2 degrees, a smaller change
+    /// goes unnoticed. Known limit: the picture is fixed, so moving the moon in the
+    /// Lights panel changes the light on the walls while the painted moon stays where
+    /// it is.
     float moonYawDegrees = 25.0F;
     float moonPitchDegrees = -50.0F;
     /// A cool, dim blue-white.
@@ -94,8 +97,8 @@ struct LightingSettings {
     float shininess = 32.0F;
 
     /// Normal mapping: the normal of every fragment is read from the normal map of the
-    /// material instead of being taken from the mesh, which gives the flat walls and the
-    /// floor joints and bumps under the lights. See usesNormalMap for where it applies.
+    /// material instead of being taken from the mesh, which gives the flat walls joints
+    /// and the ground stones and bumps under the lights. See usesNormalMap for where it applies.
     bool normalMapping = true;
 };
 

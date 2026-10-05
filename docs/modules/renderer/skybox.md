@@ -5,9 +5,9 @@ Kod: klasa [`src/game/Skybox.hpp`](../../../src/game/Skybox.hpp) i [`Skybox.cpp`
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasa nazywa się `game::Skybox` i leży w `src/game/`, wyjaśniają [`README.md`](README.md) i notatka [`../../decisions/skybox-in-game-layer.md`](../../decisions/skybox-in-game-layer.md). Dokument zakłada znajomość tekstur 2D ([`../gfx/textures.md`](../gfx/textures.md): teksele, filtry, zawijanie, jednostki teksturujące, obiekt samplera), macierzy widoku i rzutowania oraz testu głębi ([`../scene/camera.md`](../scene/camera.md)) i loadera obrazów ([`../assets/images.md`](../assets/images.md)). Samą klasę `gfx::Cubemap` linia po linii opisuje [`../gfx/cubemap.md`](../gfx/cubemap.md): tutaj jest teoria tekstury sześciennej i wszystko, co robi z nią gra.
 
-**Stan na dziś:** nad ścianami labiryntu widać nocne niebo: ciemnogranatowe tło jaśniejsze przy horyzoncie, gwiazdy, pas Drogi Mlecznej i tarczę księżyca z poświatą. Niebo jest teksturą sześcienną (cube map) z sześciu plików PNG 1024 x 1024, rysowaną przez `game::Skybox` jako ostatnie wywołanie rysujące sceny. Włącza je i wyłącza pole wyboru `Skybox` w panelu Renderer (startuje zaznaczone), jasność zmienia suwak `Sky brightness`. Programów shaderów jest od tej części pięć: doszedł `skybox`.
+**Stan na dziś:** nad ścianami labiryntu i nad wzgórzami wokół niego widać nocne niebo: ciemnogranatowe tło jaśniejsze przy horyzoncie, gwiazdy, pas Drogi Mlecznej i tarczę księżyca z poświatą. Niebo jest teksturą sześcienną (cube map) z sześciu plików PNG 1024 x 1024, rysowaną przez `game::Skybox` jako ostatnie wywołanie rysujące sceny. Włącza je i wyłącza pole wyboru `Skybox` w panelu Renderer (startuje zaznaczone), jasność zmienia suwak `Sky brightness`. Od tej części programów shaderów było pięć: doszedł `skybox`. Dziś jest ich sześć, bo druga część M6 dodała `grass` (trawa, [`grass-geometry.md`](grass-geometry.md)).
 
-Zgłoszone dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 221 przypadków testowych i 85175 asercji w obu konfiguracjach. Liczby zgadzają się z kodem: po M5 było 215 i 85098, doszło 5 przypadków i 71 asercji w `tests/SkyboxTests.cpp` oraz 1 przypadek i 6 asercji w `tests/ImageLoaderTests.cpp`. Orientacja nieba była sprawdzona na zrzutach ekranu: księżyc w środku obrazu przy kamerze ustawionej na yaw 205 i pitch 50, poziomy horyzont, brak szwów między ścianami sześcianu. Wersji kompilatora, karty i sterownika dla tego pomiaru nie zapisano. **Nikt jeszcze nie kliknął myszą** pola `Skybox`, suwaka `Sky brightness` ani przycisku `Reload shaders` przy pięciu programach. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** M6 jest w toku i nie jest zamknięty.
+Zgłoszone dla Windowsa (2026-10-05) dla tej części: build Debug i Release bez ostrzeżeń, 221 przypadków testowych i 85175 asercji w obu konfiguracjach (dziś, po terenie i trawie, 256 przypadków i 101232 asercje). Liczby zgadzają się z kodem: po M5 było 215 i 85098, doszło 5 przypadków i 71 asercji w `tests/SkyboxTests.cpp` oraz 1 przypadek i 6 asercji w `tests/ImageLoaderTests.cpp`. Orientacja nieba była sprawdzona na zrzutach ekranu: księżyc w środku obrazu przy kamerze ustawionej na yaw 205 i pitch 50, poziomy horyzont, brak szwów między ścianami sześcianu. Wersji kompilatora, karty i sterownika dla tego pomiaru nie zapisano. **Nikt jeszcze nie kliknął myszą** pola `Skybox`, suwaka `Sky brightness` ani przycisku `Reload shaders` (wtedy przy pięciu programach, dziś przy sześciu). **Na macOS ten kod nie był ani budowany, ani uruchamiany.** M6 jest dziś kompletny w kodzie na Windowsie (niebo, teren, trawa) i nie jest zamknięty: macOS i testy ręczne są otwarte.
 
 ## 1. Po co to jest
 
@@ -198,27 +198,27 @@ gl_Position = position.xyww;
 | Piksel | Co jest w buforze głębi | Test `1,0 <= bufor` | Wynik |
 |---|---|---|---|
 | nic na nim nie narysowano | 1,0 (po `glClear`) | prawda | niebo |
-| ściana, podłoga, kryształ, brama, linia kolizji | mniej niż 1,0 | fałsz | zostaje to, co było |
+| ściana, teren (grunt i wzgórza), trawa, kryształ, brama, linia kolizji | mniej niż 1,0 | fałsz | zostaje to, co było |
 
 **Dlaczego na końcu.** Niebo można narysować jako pierwsze albo jako ostatnie i obraz wyjdzie ten sam. Różnica jest w pracy karty:
 
 | Kolejność | Ile fragmentów nieba przechodzi przez shader fragmentów |
 |---|---|
-| niebo pierwsze | wszystkie piksele ekranu (ponad 900 tysięcy w oknie 1280 x 720), z czego większość zostanie potem zamalowana ścianami |
+| niebo pierwsze | wszystkie piksele ekranu (ponad 900 tysięcy w oknie 1280 x 720), z czego większość zostanie potem zamalowana ścianami, a od drugiej części M6 także gruntem i wzgórzami |
 | niebo ostatnie | tylko te, na których nic nie narysowano: karta może odrzucić resztę testem głębi **przed** uruchomieniem shadera fragmentów |
 
-Uczciwie o tym "może": wczesny test głębi (early depth test) to optymalizacja sterownika. Wolno mu ją zastosować, gdy shader fragmentów nie zapisuje `gl_FragDepth` i nie używa `discard`, a `skybox.frag` nie robi żadnej z tych rzeczy. W GLSL 4.10 nie da się jej jednak wymusić. **Zysku nie mierzyłem.** W labiryncie, w którym większość ekranu zajmują ściany, oszczędność powinna być największa.
+Uczciwie o tym "może": wczesny test głębi (early depth test) to optymalizacja sterownika. Wolno mu ją zastosować, gdy shader fragmentów nie zapisuje `gl_FragDepth` i nie używa `discard`, a `skybox.frag` nie robi żadnej z tych rzeczy. W GLSL 4.10 nie da się jej jednak wymusić. **Zysku nie mierzyłem.** W labiryncie, w którym większość ekranu zajmują ściany i grunt, oszczędność powinna być największa. Nie jest to więc gwarancja, że zasłonięte piksele nieba "nie kosztują pracy shadera fragmentów", jak mówił komentarz w `onRender` do pierwszej części M6. Prawdziwe zdanie brzmi: nieprzezroczysta geometria narysowana przed niebem jest już w buforze głębi, więc tam, gdzie karta stosuje wczesny test głębi, zasłonięte fragmenty nieba odpadają przed shaderem. Komentarz został poprawiony i mówi dziś właśnie to (sekcja 5.6).
 
 **Zapis głębi wyłączony.** `glDepthMask(GL_FALSE)` na czas rysowania nieba: nic nigdy nie jest za niebem, więc jego głębi nie ma po co zapisywać. Przy głębi równej dokładnie 1,0 zapis i tak niczego by nie zmienił, ale wyłączenie go jest zabezpieczeniem na wypadek, gdyby głębia wyszła o włos mniejsza.
 
-**Co z rzeczami rysowanymi po niebie.** Komentarz w `onRender` kończy się zdaniem, że wszystko, co ma leżeć przed niebem, trzeba narysować nad tą linią. To jest bezpieczna reguła porządkowa, ale mówi więcej, niż wymaga OpenGL, i na obronie trzeba umieć ją uściślić:
+**Co z rzeczami rysowanymi po niebie.** Komentarz w `onRender` kończył się do pierwszej części M6 zdaniem, że wszystko, co ma leżeć przed niebem, trzeba narysować nad tą linią. Mówiło to więcej, niż wymaga OpenGL. Dziś komentarz mówi wprost to, co pokazuje tabela: obraz byłby taki sam przy niebie narysowanym wcześniej, bo test głębi porządkuje rzeczy nieprzezroczyste, a po niebie musiałoby przyjść tylko coś, co nie zapisuje głębi, na przykład efekt przezroczysty:
 
 | Co jest rysowane | Przed niebem | Po niebie |
 |---|---|---|
 | obiekt nieprzezroczysty (ściana, model) | poprawnie, i niebo nie jest cieniowane pod nim | **też poprawnie**: niebo zostawia w buforze głębię 1,0, więc obiekt przechodzi zwykły test `GL_LESS` i zamalowuje niebo. Traci się tylko oszczędność: piksele nieba pod nim zostały już policzone |
 | obiekt przezroczysty z mieszaniem kolorów (takiego w grze jeszcze nie ma) | **źle**. Jeśli zapisuje głębię, niebo za nim się nie narysuje i przez obiekt prześwituje kolor czyszczenia. Jeśli jej nie zapisuje, niebo narysowane później zamaluje go w całości | poprawnie: miesza się z niebem, które już jest w buforze koloru |
 
-Kolejność "niebo na końcu" jest więc regułą dla sceny nieprzezroczystej, taką jak dzisiejsza. Pierwszy obiekt przezroczysty będzie musiał być rysowany **po** niebie, czyli wbrew dosłownemu brzmieniu komentarza.
+Kolejność "niebo na końcu" jest więc regułą dla sceny nieprzezroczystej, taką jak dzisiejsza. Pierwszy obiekt przezroczysty będzie musiał być rysowany **po** niebie, i tak właśnie mówi dziś ostatnie zdanie komentarza.
 
 ### 2.8 Skąd biorą się obrazy: kierunek dla każdego piksela
 
@@ -263,7 +263,7 @@ Prawdziwy księżyc ma promień około 0,26 stopnia. Namalowany jest ponad osiem
 
 **Dithering przeciw pasom.** Kanał 8-bitowy ma 256 poziomów, a ciemne niebo używa kilku z nich: kolor zenitu `(0.010, 0.016, 0.045)` to poziomy 3, 4 i 11. Gładki gradient zapisany wprost wyszedłby jako szerokie pasy z widocznymi stopniami między nimi (banding). `save_face` dodaje więc przed zaokrągleniem losową liczbę od -0,5 do 0,5 poziomu. Stopień rozpada się na drobne ziarno, które oko uśrednia z powrotem do gładkiego przejścia.
 
-Cena jest w rozmiarze plików. PNG kompresuje bezstratnie, czyli szuka powtórzeń, a ziarno powtórzeń nie ma. Sześć plików zajmuje razem **5 278 627 bajtów** (około 5,3 MB, czyli 5,03 MiB), od 860 524 do 904 707 bajtów każdy. To około 28% surowych danych, których jest `1024 * 1024 * 3 = 3 145 728` bajtów na ścianę. Gładki gradient bez ziarna i bez gwiazd skompresowałby się o rzędy wielkości lepiej, ale tego nie mierzyłem. Dla porównania: osiem tekstur 512 x 512 z `assets/textures/` zajmuje razem 2 397 744 bajty, więc niebo to dziś ponad dwie trzecie wagi wszystkich obrazów gry.
+Cena jest w rozmiarze plików. PNG kompresuje bezstratnie, czyli szuka powtórzeń, a ziarno powtórzeń nie ma. Sześć plików zajmuje razem **5 278 627 bajtów** (około 5,28 MB, czyli 5,03 MiB), od 860 524 do 904 707 bajtów każdy. To około 28% surowych danych, których jest `1024 * 1024 * 3 = 3 145 728` bajtów na ścianę. Gładki gradient bez ziarna i bez gwiazd skompresowałby się o rzędy wielkości lepiej, ale tego nie mierzyłem. Dla porównania: osiem tekstur 512 x 512 z `assets/textures/` zajmuje razem 2 397 744 bajty, więc niebo to dziś ponad dwie trzecie wagi wszystkich obrazów gry.
 
 **Rozdzielczość.** Jedna ściana obejmuje 90 stopni na 1024 pikselach, więc teksel w środku ściany ma około 0,11 stopnia. Gra pokazuje 60 stopni (`fovDegrees`) na 720 pikselach wysokości okna, czyli około 0,08 stopnia na piksel ekranu. Niebo jest więc w oknie 1280 x 720 rysowane blisko własnej rozdzielczości, z lekkim powiększeniem: jeden teksel to mniej więcej 1,3 piksela. Na ekranie Retina, gdzie framebuffer ma dwa razy więcej pikseli w pionie, jeden teksel zajmie już około 2,7 piksela i gwiazdy będą wyraźnie miększe. Tego nie oglądałem.
 
@@ -357,7 +357,7 @@ OpenGL jest maszyną stanów, więc przebieg, który coś przestawia, musi wiedz
 
 ## 4. Shadery
 
-Jedna para, piąty program gry. Oba pliki mają na górze komentarz z odnośnikiem do tego dokumentu.
+Jedna para, piąty program gry (z sześciu: szósty, `grass`, doszedł w drugiej części M6). Oba pliki mają na górze komentarz z odnośnikiem do tego dokumentu.
 
 ### 4.1 `skybox.vert`
 
@@ -471,7 +471,7 @@ void main() {
 | `in vec3 vDirection;` | para do wyjścia `skybox.vert`, już zinterpolowana dla tego fragmentu |
 | `uniform samplerCube uSkybox;` | nowy typ samplera. Jak `sampler2D`, **nie przechowuje identyfikatora tekstury, tylko numer jednostki teksturującej** ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.7). Różnica: czyta wiązanie `GL_TEXTURE_CUBE_MAP` tej jednostki, a nie `GL_TEXTURE_2D` |
 | `uniform float uBrightness;` | mnożnik koloru. 1 pokazuje obrazy takie, jakie są w plikach |
-| `uniform int uViewMode;` | ta sama nazwa i te same liczby co w `textured.frag`: wartości `game::ViewMode` (`Textured = 0`, `Normals = 1`, `Uvs = 2`) |
+| `uniform int uViewMode;` | ta sama nazwa i te same liczby co w `textured.frag` (a od drugiej części M6 także w `grass.frag`): wartości `game::ViewMode` (`Textured = 0`, `Normals = 1`, `Uvs = 2`) |
 | `if (uViewMode != 0)` | oba widoki diagnostyczne dają ten sam obraz nieba. Niebo nie ma normalnej ani pary `(u, v)`: jego współrzędną tekstury jest kierunek, więc w obu widokach pokazuje właśnie kierunek |
 | `fragColor = vec4(normalize(vDirection) * 0.5 + 0.5, 1.0);` | to samo kodowanie co normalne w `textured.frag`: każda składowa z zakresu od -1 do 1 na zakres od 0 do 1. Tutaj `normalize` **jest** potrzebne, bo kolor ma zależeć tylko od kierunku, a nie od tego, czy fragment leży w środku ściany, czy w narożniku |
 | `vec3 sky = texture(uSkybox, vDirection).rgb;` | **sedno tematu 8.** Ta sama funkcja `texture`, ale z samplerem `samplerCube` jej drugim argumentem jest `vec3`, kierunek. Wybór ściany i teksela z sekcji 2.3 wykonuje karta |
@@ -501,7 +501,7 @@ Wszystkie pięć uniformów programu ustawia jedna funkcja, `Skybox::draw` (sekc
 | `uViewMode` | `VIEW_MODE_UNIFORM` | `setInt` | `static_cast<int>(viewMode)` |
 | `uSkybox` | `SKYBOX_UNIFORM` | `setInt` | `SKYBOX_TEXTURE_UNIT`, czyli 0 |
 
-Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Nagłówek ma dziś szesnaście nazw zwykłych uniformów pięciu programów.
+Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Po tej części nagłówek miał szesnaście nazw zwykłych uniformów pięciu programów. Dziś ma dwadzieścia nazw dla sześciu programów: druga część M6 dodała cztery uniformy trawy (`uTime`, `uBladeHeight`, `uWindStrength`, `uLit`), a `uViewMode` czyta teraz także `grass.frag`.
 
 ## 5. Kod w projekcie
 
@@ -580,7 +580,7 @@ constexpr std::array<std::uint32_t, FACE_COUNT * INDICES_PER_FACE> CUBE_TRIANGLE
 | 36 indeksów | 6 ścian po 2 trójkąty po 3 indeksy. Stałe `FACE_COUNT` i `INDICES_PER_FACE` zamiast gołej liczby |
 | kolejność indeksów | narożniki każdego trójkąta idą **przeciwnie do ruchu wskazówek zegara dla patrzącego ze środka sześcianu**, bo tam jest kamera. Dla ściany -Z: 0 (lewy dolny), 1 (prawy dolny), 2 (prawy górny). Gra nie włącza dziś odrzucania tylnych ścian (`GL_CULL_FACE`), więc kolejność nie zmienia obrazu. Gdyby je kiedyś włączyła, niebo zostanie widoczne |
 
-Komentarz nad `CUBE_CORNERS` w kodzie mówi, że rozmiar sześcianu nie ma znaczenia, "dopóki jest większy niż odległość bliskiej płaszczyzny kamery". Pierwsza część jest prawdą, a zastrzeżenie jest ostrożniejsze, niż trzeba: przy `gl_Position = position.xyww` bliska płaszczyzna w ogóle nie przycina sześcianu (sekcja 2.7).
+Komentarz nad `CUBE_CORNERS` w kodzie mówi, że rozmiar sześcianu nie ma znaczenia, i podaje powód: "skybox.vert writes the depth of every vertex as 1.0 (xyww), so no corner can end up in front of the near plane of the camera". Przy `gl_Position = position.xyww` bliska płaszczyzna w ogóle nie przycina sześcianu (sekcja 2.7). Do pierwszej części M6 komentarz miał w tym miejscu zastrzeżenie o rozmiarze większym niż odległość bliskiej płaszczyzny: było ostrożniejsze, niż trzeba, i zostało usunięte.
 
 ### 5.4 Wczytanie: `loadSkyCubemap` i konstruktor
 
@@ -636,7 +636,7 @@ Skybox::Skybox() : m_cubemap(loadSkyCubemap()), m_cube(CUBE_CORNERS, CUBE_TRIANG
 | `return {first.width, first.channels, pixels};` | konstruktor `Cubemap(size, channels, faces)`. Karta kopiuje piksele podczas `glTexImage2D`, więc obrazy mogą zniknąć razem z końcem funkcji. Liczby kanałów 1 i 2 odrzuci dopiero `Cubemap` (przyjmuje 3 albo 4) |
 | `Skybox::Skybox() : m_cubemap(loadSkyCubemap()), m_cube(CUBE_CORNERS, CUBE_TRIANGLES) {}` | oba pola powstają na liście inicjalizacyjnej. Funkcja zwraca `Cubemap` przez wartość, a pole przejmuje go bez kopii: klasa jest tylko przenoszalna |
 
-`Skybox` jest ostatnim polem z obiektami OpenGL w `NightMazeApp` (`m_skybox`, po `m_lightRig`), a `m_skyboxShader` stoi za `m_gouraudShader`. Jak wszystkie pola z zasobami OpenGL, powstają po oknie i giną przed nim ([`../core/README.md`](../core/README.md), sekcja 7).
+`Skybox` jest ostatnim polem z obiektami OpenGL w `NightMazeApp` (`m_skybox`, po `m_lightRig`), a `m_skyboxShader` stoi za `m_gouraudShader` (od drugiej części M6 za nim jest jeszcze `m_grassShader`). Jak wszystkie pola z zasobami OpenGL, powstają po oknie i giną przed nim ([`../core/README.md`](../core/README.md), sekcja 7).
 
 **Gdy czegoś brakuje, gra działa dalej.** Brak pliku, obraz innej wielkości albo błąd w shaderze nie zatrzymują programu: `draw` nic nie rysuje i tłem zostaje kolor czyszczenia. Błąd jest w konsoli raz, z chwili utworzenia obiektów.
 
@@ -676,7 +676,7 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
     // ("nearer than what is there") would reject the sky everywhere, 1.0 is not less
     // than 1.0. GL_LEQUAL also lets a fragment through at the same depth. So the sky
     // passes on the pixels that still hold the cleared depth and fails wherever a wall,
-    // the floor or a crystal was drawn, whose depth is smaller.
+    // the ground or a crystal was drawn, whose depth is smaller.
     GL_CHECK(glDepthFunc(GL_LEQUAL));
     // The sky must not write its depth: nothing is ever behind it.
     GL_CHECK(glDepthMask(GL_FALSE));
@@ -694,7 +694,7 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
 | `if (!m_cubemap.isValid() \|\| !shader.isValid()) return;` | bez obrazów albo bez programu nie ma nieba. Po nieudanym **przeładowaniu** shadera program zostaje ważny (poprzednia wersja), więc drugi warunek dotyczy tylko nieudanego pierwszego wczytania |
 | parametr `const gfx::Shader& shader` | `Skybox` nie posiada programu. Program jest polem `NightMazeApp`, jak cztery pozostałe, żeby panel Shaders mógł go przeładować tą samą drogą |
 | `shader.setMat4(VIEW_UNIFORM, view);` | macierz widoku **nieokrojona**. Decyzja, że przesunięcie znika, jest w jednym miejscu, w shaderze: wołający nie musi niczego przygotowywać i podaje te same dwie macierze co wszędzie |
-| `shader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(viewMode));` | liczby `game::ViewMode` są umową z `skybox.frag`, tak jak z `textured.frag` |
+| `shader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(viewMode));` | liczby `game::ViewMode` są umową z `skybox.frag`, tak jak z `textured.frag` i z `grass.frag`. Komentarz przy wyliczeniu w `MazeRenderer.hpp` wymienia dziś wszystkie trzy pliki |
 | `shader.setInt(SKYBOX_UNIFORM, ...)` i `m_cubemap.bind(SKYBOX_TEXTURE_UNIT)` | dwa ogniwa tego samego łańcucha, z tą samą stałą: sampler wskazuje jednostkę, jednostka wskazuje teksturę |
 | `glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)` | sekcja 2.5. Wołane w każdej klatce, chociaż wystarczyłoby raz: ta sama zasada co przy `glEnable(GL_DEPTH_TEST)` w `onRender`, czyli klatka nie polega na tym, co zostawił ktoś inny |
 | `glDepthFunc(GL_LEQUAL)`, `glDepthMask(GL_FALSE)` | sekcja 2.7 |
@@ -705,17 +705,21 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
 
 ```cpp
     drawMaze(view, projection);
+    drawGrass(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
     }
 
     // The sky comes LAST, after everything that writes depth. It is drawn at the largest
-    // depth and passes the depth test only where nothing else was drawn, so the pixels
-    // hidden behind walls cost no fragment shader work (drawn first, the whole screen
-    // would be shaded and then mostly painted over). It does not depend on the lighting
-    // mode: the sky is not lit, it is the same picture in all four. The debug views
-    // change it, see Skybox::draw. Whatever is added to the frame later and should lie
-    // in front of the sky has to be drawn above this line.
+    // depth and passes the depth test only where nothing else was drawn. With the walls
+    // and hills already in the depth buffer, the graphics card can reject the hidden sky
+    // fragments before it runs skybox.frag for them (the early depth test, which it may
+    // use here because the shader neither discards nor writes depth). Drawn first, the
+    // whole screen would be shaded and then mostly painted over. The sky does not depend
+    // on the lighting mode: it is not lit, it is the same picture in all four. The debug
+    // views change it, see Skybox::draw. The picture would be the same with the sky
+    // drawn earlier (the depth test sorts opaque things out). Only something that does
+    // not write depth, like a transparent effect, would have to come after the sky.
     if (m_skyboxSettings.enabled) {
         m_skybox.draw(m_skyboxShader, view, projection, m_skyboxSettings, m_viewMode);
     }
@@ -724,9 +728,10 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
 
 | Linia | Znaczenie |
 |---|---|
-| miejsce: po `drawMaze` i po `drawColliderLines` | po wszystkim, co zapisuje głębię. Linie kolizji też ją zapisują, więc niebo ich nie zamalowuje |
+| miejsce: po `drawMaze`, po `drawGrass` (od drugiej części M6) i po `drawColliderLines` | po wszystkim, co zapisuje głębię: po terenie, ścianach, bramie, kryształach i trawie. Linie kolizji też ją zapisują, więc niebo ich nie zamalowuje |
+| komentarz nad `if` | mówi trzy rzeczy. Niebo jest na największej głębi i przechodzi test tylko tam, gdzie nic nie narysowano. Ściany i wzgórza są już w buforze głębi, więc karta **może** odrzucić zasłonięte fragmenty nieba przed uruchomieniem `skybox.frag` (wczesny test głębi, dozwolony tu, bo shader nie używa `discard` i nie zapisuje głębi). Obraz byłby ten sam przy niebie narysowanym wcześniej, a po niebie musiałoby stać tylko coś, co głębi nie zapisuje, na przykład efekt przezroczysty (sekcja 2.7) |
 | `if (m_skyboxSettings.enabled)` | cały przełącznik z PRD: jedno pole logiczne. Wyłączone niebo to brak jednego wywołania rysującego, a tłem jest znów kolor czyszczenia |
-| `view`, `projection` | te same zmienne, z którymi narysowany został labirynt |
+| `view`, `projection` | te same zmienne, z którymi narysowane zostały teren, labirynt i trawa |
 | `m_viewMode` | tryb podglądu z panelu Assets. Niebo **nie** dostaje trybu oświetlenia: jest takie samo w `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong` |
 
 Panele i HUD są rysowane później, w `main.cpp`, na wierzchu gotowej sceny ([`../debug-ui.md`](../debug-ui.md)).
@@ -785,10 +790,10 @@ Czego testy **nie** sprawdzają:
 
 ### 5.9 Jak to zostało sprawdzone
 
-- **Build i testy** (zgłoszone dla Windowsa, 2026-10-05): Debug i Release bez ostrzeżeń, 221 przypadków i 85175 asercji w obu konfiguracjach.
+- **Build i testy** (zgłoszone dla Windowsa, 2026-10-05): Debug i Release bez ostrzeżeń, 221 przypadków i 85175 asercji w obu konfiguracjach po tej części. Po drugiej części M6 cały program testowy ma 256 przypadków i 101232 asercje.
 - **Obraz** (zgłoszone, zrzuty ekranu z Windowsa): księżyc w środku ekranu przy kamerze na yaw 205 i pitch 50, horyzont poziomy, bez widocznych szwów.
 - **Pliki** (sprawdzone przeze mnie na plikach z repozytorium): sześć nagłówków PNG mówi 1024 x 1024, 8 bitów, RGB bez alfy. Razem 5 278 627 bajtów. Piksel księżyca jest tam, gdzie wskazuje rachunek z sekcji 2.3.
-- **Nie sprawdzone ręcznie:** kliknięcie pola `Skybox`, przeciągnięcie suwaka `Sky brightness`, `Reload shaders` przy pięciu programach, widoki diagnostyczne nieba, układ paneli po zmianie wysokości. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 15.
+- **Nie sprawdzone ręcznie:** kliknięcie pola `Skybox`, przeciągnięcie suwaka `Sky brightness`, `Reload shaders` (dziś przy sześciu programach), widoki diagnostyczne nieba, układ paneli po zmianie wysokości. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 15.
 - **Nie zmierzone:** czas klatki z niebem i bez, zysk z rysowania na końcu, czas wczytania sześciu plików przy starcie, powtarzalność skryptu.
 - **macOS:** nic. Kompilator GLSL Apple nie widział jeszcze `skybox.vert` ani `skybox.frag`, a niebo na ekranie Retina nie było oglądane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
@@ -826,7 +831,7 @@ Kontrolki, które zmieniają niebo:
 | Renderer | suwak `Sky brightness` | `uBrightness` | jasność nieba. Powyżej około 1,04 tarcza księżyca zaczyna się przepalać do bieli |
 | Renderer | `Clear color` | `m_clearColor` | **tylko przy odznaczonym `Skybox`**: z niebem żaden piksel nie zostaje w kolorze czyszczenia |
 | Assets | lista `View mode` | `uViewMode` | `Normals as colour` i `UVs as colour` zamieniają niebo w mapę kierunków (tabela kolorów w sekcji 4.2) |
-| Shaders | `Reload shaders` | przeładowanie pięciu programów | piąta linia panelu: `skybox.vert + skybox.frag: OK` |
+| Shaders | `Reload shaders` | przeładowanie sześciu programów | piąta linia panelu: `skybox.vert + skybox.frag: OK` (szósta, od drugiej części M6: `grass.vert + grass.geom + grass.frag: OK`) |
 | Lights | `Moon yaw`, `Moon pitch` | kierunek światła księżyca | światło na ścianach się zmienia, **tarcza na niebie nie** |
 | Camera | `Yaw`, `Pitch` | kierunek patrzenia | yaw 205 i pitch 50 ustawiają księżyc w środku ekranu |
 
@@ -857,7 +862,7 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
 8. **Kierunek po obrocie kamery.** `vDirection` musi być kierunkiem w przestrzeni świata. Przekazanie `mat3(uView) * aPosition` przykleiłoby niebo do ekranu: obracanie kamery niczego by nie zmieniało.
 9. **Pełna macierz widoku.** Bez `mat4(mat3(uView))` sześcian stoi w początku układu świata, a gracz jest zwykle daleko poza nim. Widać wtedy małe pudełko z niebem namalowanym na ścianach, rysowane za wszystkim, a reszta tła jest kolorem czyszczenia.
 10. **Niekwadratowe albo różne ściany.** Tekstura sześcienna, której ściany nie są kwadratami jednej wielkości, jest niekompletna: OpenGL nie zgłasza błędu, a `texture()` zwraca czerń. `loadSkyCubemap` sprawdza to przed utworzeniem tekstury i wypisuje błąd.
-11. **Kolejność względem nieba.** Obiekt nieprzezroczysty narysowany po niebie wygląda poprawnie: niebo zostawia głębię 1,0, więc zwykły test głębi przepuszcza wszystko, co bliższe. Kłopot jest z obiektami przezroczystymi rysowanymi **przed** niebem: te, które nie zapisują głębi, niebo zamaluje, a przez te, które ją zapisują, będzie prześwitywał kolor czyszczenia zamiast nieba. Przezroczyste rysuje się po niebie (sekcja 2.7). Komentarz w `onRender` mówi tylko o pierwszym przypadku. Dziś w grze nie ma nic przezroczystego.
+11. **Kolejność względem nieba.** Obiekt nieprzezroczysty narysowany po niebie wygląda poprawnie: niebo zostawia głębię 1,0, więc zwykły test głębi przepuszcza wszystko, co bliższe. Kłopot jest z obiektami przezroczystymi rysowanymi **przed** niebem: te, które nie zapisują głębi, niebo zamaluje, a przez te, które ją zapisują, będzie prześwitywał kolor czyszczenia zamiast nieba. Przezroczyste rysuje się po niebie (sekcja 2.7). Komentarz w `onRender` mówi dziś o obu przypadkach: nieprzezroczyste porządkuje test głębi, a po niebie musiałoby przyjść tylko to, co głębi nie zapisuje. Dziś w grze nie ma nic przezroczystego: trawa jest nieprzezroczysta i zapisuje głębię, więc stoi przed niebem.
 12. **Jasność powyżej 1.** Framebuffer okna obcina wartości do 1. Suwak `Sky brightness` powyżej 1 rozjaśnia tło i gwiazdy, ale tarcza księżyca zaczyna się przepalać: najpierw jej najjaśniejsze miejsca (od około 1,04), a przy około 1,5 także ciemne plamy, i wtedy jest już płaską białą plamą. To nie błąd shadera: bufora HDR nie ma do M7.
 13. **Brak gammy.** Kolory skryptu są dobrane na oko dla obrazu wyświetlanego bez korekcji ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Gdy w M7 tekstury koloru przejdą na sRGB, niebo trzeba będzie obejrzeć od nowa.
 14. **Stary `imgui.ini`.** Zapisana wysokość panelu Renderer (230) chowa pole `Skybox` i suwak pod krawędzią panelu. Wygląda to tak, jakby kontrolek nie było.
@@ -940,7 +945,7 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
     Nie maluje ścian osobno. Dla każdego piksela liczy kierunek, w którym jest widziany, a kolor nieba jest funkcją tylko tego kierunku. Dwa piksele po dwóch stronach krawędzi mają prawie ten sam kierunek, więc prawie ten sam kolor.
 
 19. **Po co dithering i ile kosztuje?**
-    Ciemny gradient używa kilku z 256 poziomów kanału i bez pomocy wyszedłby w pasy. Losowa liczba do pół poziomu dodana przed zaokrągleniem zamienia stopnie w ziarno. Kosztuje rozmiar plików: ziarna nie da się skompresować, więc sześć plików PNG zajmuje około 5,3 MB.
+    Ciemny gradient używa kilku z 256 poziomów kanału i bez pomocy wyszedłby w pasy. Losowa liczba do pół poziomu dodana przed zaokrągleniem zamienia stopnie w ziarno. Kosztuje rozmiar plików: ziarna nie da się skompresować, więc sześć plików PNG zajmuje około 5,28 MB.
 
 20. **Gdzie jest namalowany księżyc i skąd skrypt to wie?**
     W kierunku przeciwnym do kierunku światła księżyca: `-directionFromAngles(25, -50)`, czyli `(-0,272, 0,766, 0,583)`, na ścianie +Y. Skrypt ma kopie dwóch wartości domyślnych z `game::LightingSettings`.

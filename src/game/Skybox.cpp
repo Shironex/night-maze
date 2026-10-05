@@ -40,8 +40,8 @@ constexpr std::size_t INDICES_PER_FACE = 6; // two triangles
 // The corners of a cube that reaches from -1 to 1 on every axis, with the camera in its
 // middle. Only the position is filled in: the sky has no normal and no texture
 // coordinate, the position itself is the direction the cube map is read with. The size
-// of the cube does not matter (see skybox.vert), as long as it is larger than the near
-// plane of the camera is far.
+// of the cube does not matter: skybox.vert writes the depth of every vertex as 1.0
+// (xyww), so no corner can end up in front of the near plane of the camera.
 constexpr std::array<gfx::Vertex, CORNER_COUNT> CUBE_CORNERS = {
     gfx::Vertex{.position = {-1.0F, -1.0F, -1.0F}}, // 0
     gfx::Vertex{.position = {1.0F, -1.0F, -1.0F}},  // 1
@@ -140,7 +140,7 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
     // ("nearer than what is there") would reject the sky everywhere, 1.0 is not less
     // than 1.0. GL_LEQUAL also lets a fragment through at the same depth. So the sky
     // passes on the pixels that still hold the cleared depth and fails wherever a wall,
-    // the floor or a crystal was drawn, whose depth is smaller.
+    // the ground or a crystal was drawn, whose depth is smaller.
     GL_CHECK(glDepthFunc(GL_LEQUAL));
     // The sky must not write its depth: nothing is ever behind it.
     GL_CHECK(glDepthMask(GL_FALSE));
