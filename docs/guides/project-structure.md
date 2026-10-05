@@ -1612,13 +1612,13 @@ ten jest napisany ręcznie i leży w Gicie.
 | `make` albo `make help` | wypisuje listę celów | gdy nie pamiętam nazw |
 | `make debug` | `cmake --preset debug`, potem `cmake --build --preset debug` | zwykły build w trakcie pracy |
 | `make release` | to samo dla presetu `release` | pomiar wydajności, wersja do pokazania |
-| `make run` | `make debug`, potem uruchamia `build/debug/night_maze` | najczęstsze polecenie |
-| `make run-release` | `make release`, potem uruchamia `build/release/night_maze` | sprawdzenie 60 FPS |
+| `make run` | `make debug`, potem uruchamia `build/debug/night_maze` (na Windowsie `build/debug/Debug/night_maze.exe`) | najczęstsze polecenie |
+| `make run-release` | `make release`, potem uruchamia `build/release/night_maze` (na Windowsie `build/release/Release/night_maze.exe`) | sprawdzenie 60 FPS |
 | `make test` | `make debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure` | testy jednostkowe po zmianie w kolizjach albo labiryncie |
 | `make test-release` | `make release`, potem `ctest --test-dir build/release -C Release --output-on-failure` | te same testy na kodzie z optymalizacjami |
 | `make format` | `clang-format -i` na wszystkich plikach `.cpp` i `.hpp` z `src/` i `tests/` | naprawia formatowanie w miejscu |
 | `make format-check` | `clang-format --dry-run --Werror` na tych samych plikach | tylko sprawdza, niczego nie zmienia |
-| `make tidy` | `make debug`, potem `clang-tidy` na plikach `.cpp` z `src/` i `tests/` | analiza statyczna |
+| `make tidy` | `make debug`, potem `clang-tidy` na plikach `.cpp` z `src/` i `tests/`. Na Windowsie przedtem `cmake --preset debug -G Ninja -B build/ninja-debug` | analiza statyczna |
 | `make check` | `format-check`, `test`, `test-release`, `tidy` | wszystko przed commitem i przed tagiem |
 | `make clean` | usuwa katalog `build/` | gdy konfiguracja się zepsuła albo chcę czystego buildu |
 
@@ -1640,6 +1640,11 @@ Elementy pliku, które trzeba umieć wyjaśnić:
   `debug` sprawiłby, że `make debug` nic by nie zrobił.
 - **`:=`** to przypisanie zmiennej wyliczane od razu, raz. `$(shell ...)` uruchamia polecenie
   powłoki i wstawia jego wynik, na przykład listę plików z `find src tests -name '*.cpp'`.
+- **`$(wildcard ...)`** zastępuje `find` na Windowsie. Tam `make` uruchomiony z PowerShella
+  nie ma powłoki typu Unix, a `find` to inny program (szuka tekstu w plikach), więc lista
+  plików wychodziła pusta. `$(wildcard)` wykonuje sam `make`, ale nie schodzi w podkatalogi:
+  każdy wzorzec to jeden poziom (`src/*.cpp`, `src/*/*.cpp`, `src/*/*/*.cpp`). Głębszy
+  katalog wymaga dopisania kolejnego wzorca.
 - **`@` przed poleceniem** wyłącza wypisanie samego polecenia. Używam go tylko przy `echo`,
   żeby tekst nie pojawiał się dwa razy. Pozostałe polecenia są wypisywane, więc widać, co
   dokładnie zostało uruchomione.
@@ -1647,7 +1652,15 @@ Elementy pliku, które trzeba umieć wyjaśnić:
   dodaje podkatalog konfiguracji i rozszerzenie `.exe` (sekcja 4.2).
 - **`CLANG_TIDY`** bierze `clang-tidy` z `PATH`, a gdy go tam nie ma, z pakietu `llvm`
   Homebrew, który celowo nie jest dodawany do `PATH` (sekcja 3.6). `$$` w pliku Makefile to
-  jeden znak `$` przekazany do powłoki.
+  jeden znak `$` przekazany do powłoki. Na Windowsie `CLANG_FORMAT` i `CLANG_TIDY` wskazują
+  programy dołączone do Build Tools, przez zmienną `VCINSTALLDIR`, którą ustawia środowisko
+  deweloperskie (te programy nie trafiają do `PATH` nawet tam).
+- **`TIDY_BUILD_DIR`** to katalog, z którego `clang-tidy` czyta `compile_commands.json`. Na
+  Macu jest nim `build/debug`. Generator Visual Studio tego pliku nie zapisuje, więc na
+  Windowsie cel `tidy` konfiguruje osobny katalog `build/ninja-debug` generatorem Ninja.
+  Sama konfiguracja wystarcza, nic się tam nie kompiluje.
+- **`uname` i `xcrun`** są pytane tylko poza Windowsem (`ifneq ($(OS),Windows_NT)`), bo na
+  Windowsie tych programów nie ma.
 - **`TIDY_EXTRA_ARGS`** na macOS dopisuje ścieżkę do SDK (`xcrun --show-sdk-path`), bez której
   clang-tidy z Homebrew nie znajduje nagłówków biblioteki standardowej.
 - **`--warnings-as-errors='*'`** w celu `tidy` zamienia każdą diagnostykę w błąd, żeby

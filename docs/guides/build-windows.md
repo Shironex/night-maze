@@ -249,9 +249,21 @@ przypadki i 62220 asercji, sekcja 13), dziś ma szesnaście.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
 
-Plik [`Makefile`](../../Makefile) ze skrótami (`make run`, `make check`) na Windowsie nie był
-uruchamiany: na moim PC nie ma programu `make`. Plik wymaga `make` i powłoki typu Unix (na
-przykład Git Bash), a bez nich wystarczą polecenia `cmake` podane wyżej. Opis:
+Plik [`Makefile`](../../Makefile) ze skrótami (`make run`, `make check`) działa też na
+Windowsie, pod dwoma warunkami. Po pierwsze potrzebny jest program `make` (u mnie GNU Make
+4.4.1 zainstalowany przez scoop). Po drugie `make` trzeba uruchamiać w środowisku
+deweloperskim z sekcji 2: w zwykłym terminalu nie ma `cmake` ani `ctest`, więc każdy cel
+kończy się błędem `CreateProcess(NULL, cmake --preset debug, ...) failed`. Powłoka typu Unix
+nie jest potrzebna: plik działa z PowerShella i z Git Basha uruchomionego z tego środowiska
+(`& "C:\Program Files\Git\bin\bash.exe"`, samo `bash` to u mnie WSL).
+
+Stan z 2026-10-05: `make -n` (przebieg na sucho) przechodzi dla wszystkich dwunastu celów w
+obu powłokach, a `make test` został naprawdę uruchomiony i przeszedł w obu, na kopii
+ostatniego commita. Cele `run`, `run-release`, `format`, `test-release` oraz pełne `tidy`
+i `check` nie były jeszcze uruchamiane na Windowsie. Cel `tidy` konfiguruje tu dodatkowy
+katalog `build\ninja-debug` generatorem Ninja, bo generator Visual Studio nie zapisuje
+`compile_commands.json` (sekcja 3). `make help` z PowerShella wypisuje tekst razem ze
+znakami cudzysłowu: to tylko kosmetyka. Opis pliku:
 [`project-structure.md`](project-structure.md), sekcja 3.12.
 
 ## 3. Generator Visual Studio jest wielokonfiguracyjny

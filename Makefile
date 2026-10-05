@@ -16,17 +16,55 @@ endif
 
 # Our own source files: the program in src/ and its unit tests in tests/ (third-party code
 # in external/ and build/ is never checked).
-SOURCES := $(shell find src tests -name '*.cpp')
-HEADERS := $(shell find src tests -name '*.hpp')
+# On Windows make may have no Unix shell (started from PowerShell it runs commands directly
+# or through cmd.exe, where "find" is a different program), so the files are listed by make
+# itself. $(wildcard) does not search subfolders: each pattern is one folder level, and
+# src/ is at most two levels deep. A deeper folder needs one more pattern here.
+ifeq ($(OS),Windows_NT)
+    SOURCES := $(wildcard src/*.cpp src/*/*.cpp src/*/*/*.cpp tests/*.cpp)
+    HEADERS := $(wildcard src/*.hpp src/*/*.hpp src/*/*/*.hpp tests/*.hpp)
+else
+    SOURCES := $(shell find src tests -name '*.cpp')
+    HEADERS := $(shell find src tests -name '*.hpp')
+endif
 
-# clang-tidy: use the one on PATH if there is one, otherwise the Homebrew LLVM package,
-# which is not added to PATH on macOS.
-CLANG_TIDY := $(shell command -v clang-tidy 2>/dev/null || echo "$$(brew --prefix llvm 2>/dev/null)/bin/clang-tidy")
+# clang-format and clang-tidy.
+# Windows: both come with the Visual Studio C++ tools but are not added to PATH, not even
+# in the developer shell. That shell sets VCINSTALLDIR (it ends with a backslash), so the
+# full path is built from it. The quotes are needed because the path contains spaces.
+# Without the developer shell the tools are expected on PATH.
+# macOS: clang-format is on PATH. clang-tidy: use the one on PATH if there is one,
+# otherwise the Homebrew LLVM package, which is not added to PATH on macOS.
+ifeq ($(OS),Windows_NT)
+    ifdef VCINSTALLDIR
+        CLANG_FORMAT := "$(VCINSTALLDIR)Tools/Llvm/x64/bin/clang-format.exe"
+        CLANG_TIDY   := "$(VCINSTALLDIR)Tools/Llvm/x64/bin/clang-tidy.exe"
+    else
+        CLANG_FORMAT := clang-format
+        CLANG_TIDY   := clang-tidy
+    endif
+else
+    CLANG_FORMAT := clang-format
+    CLANG_TIDY   := $(shell command -v clang-tidy 2>/dev/null || echo "$$(brew --prefix llvm 2>/dev/null)/bin/clang-tidy")
+endif
+
+# clang-tidy reads the compiler flags from the file compile_commands.json in a build
+# directory. On macOS that is build/debug. The Visual Studio generator used on Windows
+# does not write this file, so there a second directory is configured with the Ninja
+# generator only for clang-tidy.
+ifeq ($(OS),Windows_NT)
+    TIDY_BUILD_DIR := build/ninja-debug
+else
+    TIDY_BUILD_DIR := build/debug
+endif
 
 # On macOS clang-tidy from Homebrew needs to be told where the system SDK is,
-# otherwise it cannot find the standard library headers.
-ifeq ($(shell uname -s),Darwin)
-    TIDY_EXTRA_ARGS := --extra-arg=-isysroot --extra-arg=$(shell xcrun --show-sdk-path)
+# otherwise it cannot find the standard library headers. uname does not exist on Windows,
+# so it is only asked on the other systems.
+ifneq ($(OS),Windows_NT)
+    ifeq ($(shell uname -s),Darwin)
+        TIDY_EXTRA_ARGS := --extra-arg=-isysroot --extra-arg=$(shell xcrun --show-sdk-path)
+    endif
 endif
 
 # These names are commands, not files. Without this line a file or folder called
@@ -76,15 +114,20 @@ test-release: release
 	ctest --test-dir build/release -C Release --output-on-failure
 
 format:
-	clang-format -i $(SOURCES) $(HEADERS)
+	$(CLANG_FORMAT) -i $(SOURCES) $(HEADERS)
 
 format-check:
-	clang-format --dry-run --Werror $(SOURCES) $(HEADERS)
+	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES) $(HEADERS)
 
-# clang-tidy reads the compiler flags from build/debug/compile_commands.json,
-# so the Debug configuration has to exist first.
+# clang-tidy needs compile_commands.json (see TIDY_BUILD_DIR above), so the Debug
+# configuration has to exist first. On Windows the extra step configures the Ninja
+# directory: configuring is enough to write the file, nothing is compiled there.
+# The star is in double quotes because cmd.exe does not understand single quotes.
 tidy: debug
-	$(CLANG_TIDY) --quiet -p build/debug --warnings-as-errors='*' $(TIDY_EXTRA_ARGS) $(SOURCES)
+ifeq ($(OS),Windows_NT)
+	cmake --preset debug -G Ninja -B $(TIDY_BUILD_DIR)
+endif
+	$(CLANG_TIDY) --quiet -p $(TIDY_BUILD_DIR) --warnings-as-errors="*" $(TIDY_EXTRA_ARGS) $(SOURCES)
 
 # test and test-release build both versions first (their prerequisites debug and release).
 check: format-check test test-release tidy
