@@ -96,7 +96,8 @@ target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 - `target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)`: `engine` używa GLAD
   i przekazuje go dalej (do `night_maze`).
 
-Zauważ, że `night_maze_enable_warnings` wołamy tylko dla `engine` i `night_maze`. GLAD
+Zauważ, że `night_maze_enable_warnings` wołamy tylko dla naszych targetów (`engine`,
+`game_logic`, `night_maze`, `night_maze_tests`). GLAD
 kompiluje się z domyślnymi ostrzeżeniami kompilatora, bo to kod wygenerowany, którego nie
 poprawiamy.
 

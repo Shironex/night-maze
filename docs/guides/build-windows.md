@@ -7,7 +7,9 @@
 >
 > **Zmierzone:** konfiguracja i build Debug oraz Release (zero ostrzeżeń pod `/W4`),
 > uruchomienie programu (okno, kostka, dwie linie `[info]`, panele), kopia katalogu `assets`,
-> błąd kompilacji shadera przy starcie, generator Ninja.
+> błąd kompilacji shadera przy starcie, generator Ninja. Kod z M2 + M3 (kolizje, labirynt,
+> testy) powstał na tym PC: build Debug i Release bez ostrzeżeń i testy jednostkowe w obu
+> konfiguracjach (sekcja 2, "Testy jednostkowe").
 >
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (sterowanie,
 > kamera, zmiana rozmiaru okna, docking, przycisk "Reload shaders"), praca w Visual Studio
@@ -20,7 +22,7 @@
 | Narzędzie | Po co | Uwagi |
 |---|---|---|
 | Visual Studio 2022 albo same "Build Tools for Visual Studio 2022", z pakietem roboczym "Desktop development with C++" (Programowanie aplikacji klasycznych w C++) | kompilator MSVC, Windows SDK, MSBuild, dołączone CMake i Ninja | do pracy z terminala wystarczają same Build Tools (tak było na moim PC). IDE jest potrzebne tylko do sekcji 4. Alternatywa: CLion |
-| git dostępny w `PATH` | CMake klonuje nim GLFW, GLM i ImGui podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
+| git dostępny w `PATH` | CMake klonuje nim GLFW, GLM, ImGui i doctest podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
 | CMake w wersji co najmniej 3.24 | konfiguracja i build | jest częścią pakietu roboczego C++ (u mnie 3.31.6-msvc6). Osobny instalator: <https://cmake.org/download/> |
 
 Środowisko, na którym wykonałem pomiary z tego dokumentu (2026-10-05):
@@ -43,7 +45,7 @@ Uwagi:
   `PATH`.
 - Git jest potrzebny w tym samym terminalu, w którym uruchamiamy CMake. Jeśli
   `git --version` nie działa, konfiguracja zakończy się błędem przy pobieraniu GLFW.
-- Bibliotek nie instalujemy ręcznie. GLFW, GLM i ImGui pobiera CMake, GLAD jest w
+- Bibliotek nie instalujemy ręcznie. GLFW, GLM, ImGui i doctest pobiera CMake, GLAD jest w
   repozytorium.
 - Sterownik karty graficznej musi obsługiwać OpenGL 4.1 lub nowszy. Aktualne sterowniki
   kart NVIDIA, AMD i Intel obsługują 4.6. Przy bardzo starym sterowniku okno się nie utworzy.
@@ -115,6 +117,52 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 
 Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest w
 [`build-macos.md`](build-macos.md), sekcja 3. Plik jest wspólny dla obu systemów.
+
+### Testy jednostkowe
+
+Zwykły build buduje też program testowy `night_maze_tests.exe` (kolizje i labirynt, kod bez
+okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
+deweloperskim:
+
+```bat
+ctest --test-dir build/debug -C Debug --output-on-failure
+ctest --test-dir build/release -C Release --output-on-failure
+```
+
+- `-C Debug` jest **wymagane** z generatorem Visual Studio: jeden katalog buildu mieści tu
+  kilka konfiguracji (sekcja 3) i `ctest` musi wiedzieć, którą uruchomić. Zmierzone bez tego
+  argumentu: `Test not available without configuration.  (Missing "-C <config>"?)`, wynik
+  `***Not Run`, kod wyjścia 8.
+- `--output-on-failure` wypisuje raport programu testowego, gdy test nie przejdzie.
+- `ctest` niczego nie buduje. Po zmianie kodu najpierw `cmake --build --preset debug`.
+
+Zmierzone 2026-10-05 (po czystym buildzie obu presetów, bez ostrzeżeń):
+
+```text
+    Start 1: night_maze_tests
+1/1 Test #1: night_maze_tests .................   Passed    0.40 sec
+
+100% tests passed, 0 tests failed out of 1
+```
+
+Dla `ctest` cały program jest jednym testem. Szczegóły pokazuje sam program:
+
+```bat
+build\debug\Debug\night_maze_tests.exe
+```
+
+```text
+[doctest] doctest version is "2.5.3"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:    41 |    41 passed | 0 failed | 0 skipped
+[doctest] assertions: 58114 | 58114 passed | 0 failed |
+[doctest] Status: SUCCESS!
+```
+
+Te same liczby daje `build\release\Release\night_maze_tests.exe`. Program testowy nie
+otwiera okna. Opis biblioteki, makr i opcji programu:
+[`../libraries/doctest.md`](../libraries/doctest.md).
 
 Plik [`Makefile`](../../Makefile) ze skrótami (`make run`, `make check`) na Windowsie nie był
 uruchamiany: na moim PC nie ma programu `make`. Plik wymaga `make` i powłoki typu Unix (na
@@ -298,9 +346,9 @@ endfunction()
   sensie, że kod, który przejdzie na MSVC, ma większą szansę skompilować się w clang, i
   odwrotnie. To ważne w projekcie na dwa systemy.
 - `PRIVATE`: flagi dotyczą tylko wskazanego targetu i nie przenoszą się na jego użytkowników.
-- Funkcję wywołujemy tylko dla `engine` i `night_maze`. GLFW, ImGui i GLAD kompilują się ze
-  swoimi domyślnymi ustawieniami. GLM nie ma własnych plików do skompilowania (same
-  nagłówki).
+- Funkcję wywołujemy tylko dla naszych czterech targetów: `engine`, `game_logic`,
+  `night_maze` i `night_maze_tests`. GLFW, ImGui i GLAD kompilują się ze swoimi domyślnymi
+  ustawieniami. GLM i doctest nie mają własnych plików do skompilowania (same nagłówki).
 
 Nagłówki bibliotek są oznaczone jako systemowe (`SYSTEM` w `target_include_directories`,
 `INTERFACE_SYSTEM_INCLUDE_DIRECTORIES` dla GLFW i GLM). Na Macu daje to `-isystem`. Na
@@ -308,7 +356,11 @@ Windowsie CMake i MSVC realizują to samo opcją `/external:I` i wyłączeniem o
 takich katalogów. Zmierzone w wygenerowanym projekcie: katalogi `external/glad/include`,
 `_deps/glfw-src/include` i `_deps/glm-src` trafiają do kompilatora przez `/external:I`, a
 ustawienie `ExternalWarningLevel` ma wartość `TurnOffAllWarnings`. Z tych nagłówków nie
-pojawia się pod `/W4` żadne ostrzeżenie. Dla GLM ma to największe znaczenie, bo cały kod tej
+pojawia się pod `/W4` żadne ostrzeżenie. To samo jest zmierzone dla doctest w projekcie
+`night_maze_tests`: katalogi `_deps/doctest-src` i `_deps/doctest-src/doctest` trafiają do
+kompilatora przez `/external:I`, choć w `Dependencies.cmake` nie ma dla nich naszego kroku
+(nagłówek oznacza jako systemowy `CMakeLists.txt` samego doctest,
+[`../libraries/doctest.md`](../libraries/doctest.md), sekcja 2). Dla GLM ma to największe znaczenie, bo cały kod tej
 biblioteki kompiluje się wewnątrz naszych plików ([`../libraries/glm.md`](../libraries/glm.md),
 sekcja 4, pułapka 14).
 
@@ -818,6 +870,54 @@ Windowsie klasy są skompilowane i rysują kostkę.
       `GL_INVALID_OPERATION after glDrawElements` ani po `glUniformMatrix4fv` (build Debug,
       w którym `GL_CHECK` jest aktywne)
 
+**Testy jednostkowe i kod bez okna (M2 + M3)**
+
+Opis: [`../libraries/doctest.md`](../libraries/doctest.md),
+[`../modules/scene/collision.md`](../modules/scene/collision.md),
+[`../modules/game/maze-generator.md`](../modules/game/maze-generator.md). Ten kod powstał na
+Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego pisaniu.
+
+- [x] `cmake --preset debug` pobiera doctest: w `build\debug\_deps` są katalogi
+      `doctest-src`, `doctest-build` i `doctest-subbuild`, plik
+      `doctest-src\scripts\version.txt` zawiera `2.5.3`
+- [x] czysty build (`--clean-first`) presetów `debug` i `release`: kod wyjścia 0, zero
+      ostrzeżeń pod `/W4 /permissive-`, także w `src/scene/Collider.*`, `src/game/Maze*` i w
+      pięciu plikach `tests/`
+- [x] nagłówek doctest nie daje ostrzeżeń: katalogi `_deps/doctest-src` i
+      `_deps/doctest-src/doctest` trafiają do kompilatora przez `/external:I`,
+      `ExternalWarningLevel` to `TurnOffAllWarnings`
+- [x] powstają `build\debug\Debug\game_logic.lib` i `build\debug\Debug\night_maze_tests.exe`
+      (to samo w `build\release\Release\`)
+- [x] `ctest --test-dir build/debug -C Debug --output-on-failure`: `100% tests passed, 0 tests
+      failed out of 1`, kod wyjścia 0. To samo dla `build/release` i `-C Release`
+- [x] `ctest` bez `-C`: test nie jest uruchamiany (`***Not Run`, kod wyjścia 8)
+- [x] program testowy uruchomiony wprost, Debug i Release: 41 przypadków testowych, 58114
+      asercji, `Status: SUCCESS!`
+- [x] labirynt wzorcowy (4 na 4, ziarno 1) jest ten sam w Debug i w Release i zgadza się z
+      niezależnym skryptem w Pythonie
+- [x] program `night_maze.exe` nadal się buduje w obu konfiguracjach (nie uruchamiałem go po
+      tej zmianie: nowy kod nie jest jeszcze wołany przez grę)
+- [x] generator Ninja (`cmake --build build\ninja-debug`): build przechodzi, testy przechodzą
+      (`ctest --test-dir build/ninja-debug`, tu bez `-C`)
+- [x] clang-format 19.1.5: `--dry-run --Werror` na plikach z `src/` i `tests/` nie zgłasza
+      różnic
+- [x] clang-tidy 19.1.5 z bazy poleceń `build\ninja-debug`: żadnej diagnostyki w nowych
+      plikach i w testach. Jedna w starszym pliku: `modernize-return-braced-init-list` w
+      `src/core/Paths.cpp` (gałąź Windows, linia `return std::filesystem::path(buffer);`)
+- [x] diagnostyki kompilatora clang dla nowych plików i testów, jako zastępstwo za build na
+      Macu: `clang-tidy --checks=-*,clang-diagnostic-*,readability-identifier-naming
+      --extra-arg=/clang:-Wpedantic -p build\ninja-debug` na czterech nowych plikach `.cpp` z
+      `src/` i pięciu z `tests/`: żadnej diagnostyki. Sprawdzenie, że polecenie w ogóle coś
+      widzi: po tymczasowym dopisaniu nieużywanej zmiennej i porównania `int` z `unsigned`
+      zgłasza `clang-diagnostic-unused-variable` i `clang-diagnostic-sign-compare` (zmiana
+      wycofana). Ograniczenie: to clang 19 w trybie zgodności z MSVC i z biblioteką
+      standardową MSVC, a nie Apple clang z libc++. Samej flagi `-Wpedantic` osobną próbą nie
+      sprawdzałem
+- [ ] poprawić albo świadomie wyciszyć tę diagnostykę w `Paths.cpp` (na Macu gałąź nie jest
+      kompilowana, więc `make tidy` jej tam nie widzi)
+- [ ] te same testy na macOS: dopiero to porównanie mierzy, że oba systemy generują ten sam
+      labirynt (lista w [`build-macos.md`](build-macos.md), sekcja 2, "Testy jednostkowe")
+
 **Git i narzędzia**
 
 - [x] po skonfigurowaniu i zbudowaniu (Debug, Release, Ninja) `git status` nie pokazuje
@@ -844,6 +944,7 @@ Windowsie klasy są skompilowane i rysują kostkę.
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
 - Biblioteki: [`../libraries/glfw.md`](../libraries/glfw.md),
-  [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md)
+  [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
+  [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md)
 - Dokumentacja CMake (generatory, presety): <https://cmake.org/cmake/help/latest/>

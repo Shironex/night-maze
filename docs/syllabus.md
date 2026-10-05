@@ -2,7 +2,7 @@
 
 Ściąga przed kartkówką i obroną. Gdy prowadzący zapyta o temat, w tej tabeli znajduję plik, który go realizuje, dokument, który go tłumaczy, i miejsce w panelu ImGui, w którym pokażę efekt na żywo.
 
-Stan: **M0 zrobione, kod M1 kompletny, zbudowany i uruchomiony na macOS i na Windowsie** (Windows: 2026-10-05, Debug i Release, automatyczna część listy kontrolnej z [`guides/build-windows.md`](guides/build-windows.md) zaliczona; sterowanie kamerą sprawdzone ręcznie tylko na macOS; bez tagu, bo zostało ręczne sprawdzenie sterowania na Windowsie). Zrealizowane są tematy 1, 2 i 3. Temat 2 to klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, shadery `assets/shaders/basic.*`, kostka rysowana przez `game::NightMazeApp` z bufora wierzchołków i bufora indeksów oraz panel Shaders z przyciskiem "Reload shaders". Temat 3 to struktury `scene::Transform` i `scene::Camera`, trzy macierze wysyłane do shadera jako uniformy, test głębi, latająca kamera sterowana myszą i klawiaturą oraz panel Camera. Tematy od 4 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
+Stan: **M0 zrobione, kod M1 kompletny, zbudowany i uruchomiony na macOS i na Windowsie** (Windows: 2026-10-05, Debug i Release, automatyczna część listy kontrolnej z [`guides/build-windows.md`](guides/build-windows.md) zaliczona; sterowanie kamerą sprawdzone ręcznie tylko na macOS; bez tagu, bo zostało ręczne sprawdzenie sterowania na Windowsie). Zrealizowane są tematy 1, 2 i 3. Temat 2 to klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, shadery `assets/shaders/basic.*`, kostka rysowana przez `game::NightMazeApp` z bufora wierzchołków i bufora indeksów oraz panel Shaders z przyciskiem "Reload shaders". Temat 3 to struktury `scene::Transform` i `scene::Camera`, trzy macierze wysyłane do shadera jako uniformy, test głębi, latająca kamera sterowana myszą i klawiaturą oraz panel Camera. Temat 14 jest zrealizowany **częściowo** (kamień milowy M2 + M3 w toku): istnieje kod kolizji AABB z testami jednostkowymi oraz logika labiryntu, która dostarcza pudełka ścian, ale gracza, który by z kolizji korzystał, i panelu Collision jeszcze nie ma. Ten kod jest zbudowany i przetestowany na Windowsie (2026-10-05), na macOS jeszcze nie. Pozostałe tematy od 4 do 15 są **planowane**: podaję dla nich kamień milowy i zakres z PRD (sekcje 3, 7 i 11), bez odnośników, bo tych plików jeszcze nie ma. Wiersz zostaje uzupełniony w tym samym commicie, w którym powstaje kod tematu.
 
 ## Tabela tematów
 
@@ -21,7 +21,7 @@ Stan: **M0 zrobione, kod M1 kompletny, zbudowany i uruchomiony na macOS i na Win
 | 11 | Shadow mapping | planowane, M7 | planowane: `shadows.md` | planowane: `src/renderer/` (ShadowPass) | planowane: podgląd shadow mapy, bias |
 | 12 | Environment mapping | planowane, M8 | planowane: `env-mapping.md` | planowane: `src/renderer/`, shadery `reflect` | planowane: współczynnik odbicia i refrakcji |
 | 13 | Implementacja podłoża | planowane, M6 | planowane: `terrain.md` | planowane: `src/renderer/`, shadery `terrain` | planowane: skala wysokości, wireframe |
-| 14 | Wstęp do kolizji | planowane, M2 + M3 | planowane: `collision.md` | planowane: `src/scene/` (Collider) | planowane: rysowanie brył kolizji |
+| 14 | Wstęp do kolizji | **częściowo (M2 + M3 w toku)**: kod i testy są, gracza i panelu nie ma | [`modules/scene/collision.md`](modules/scene/collision.md), pudełka labiryntu w [`modules/game/maze-generator.md`](modules/game/maze-generator.md) | [`src/scene/Collider.cpp`](../src/scene/Collider.cpp), [`Collider.hpp`](../src/scene/Collider.hpp), [`src/game/MazeLayout.cpp`](../src/game/MazeLayout.cpp), [`tests/ColliderTests.cpp`](../tests/ColliderTests.cpp), zob. tabela "Temat 14 szczegółowo" niżej | jeszcze nie ma. Planowane: panel Collision z rysowaniem brył kolizji. Do tego czasu pokazem są testy: `ctest --test-dir build/debug -C Debug --output-on-failure` |
 | 15 | Selekcja obiektów | planowane, M8 | planowane: `picking.md` | planowane: `src/scene/` (Raycast) | planowane: podświetlenie wybranego obiektu |
 
 Nazwy planowanych dokumentów i klas pochodzą z PRD (sekcje 6 i 7) i mogą się zmienić w trakcie pracy. Obowiązuje to, co jest w tabeli po oznaczeniu tematu jako zrobiony.
@@ -71,7 +71,7 @@ Realizacja według PRD: klasa Shader, hot-reload GLSL z dysku. Pokaz w ImGui: pr
 
 ## Temat 3 szczegółowo
 
-Realizacja według PRD: Model/View/Projection, kamera FPS, hierarchia transformów. Pokaz w ImGui: pozycja i rotacja kamery, FOV. Stan: struktury `scene::Transform` i `scene::Camera` liczą trzy macierze, `NightMazeApp` wysyła je co klatkę do `basic.vert` i rysuje obróconą kostkę z testem głębi. Kamerą można latać wokół kostki: kliknięcie w scenę przechwytuje kursor, mysz obraca, klawisze przesuwają, Escape oddaje kursor. Panel Camera edytuje pola kamery i ustawienia sterowania. Hierarchii transformów nie ma (żaden obiekt jej jeszcze nie potrzebuje), a trybu noclip z listy paneli PRD też nie, bo nie ma kolizji.
+Realizacja według PRD: Model/View/Projection, kamera FPS, hierarchia transformów. Pokaz w ImGui: pozycja i rotacja kamery, FOV. Stan: struktury `scene::Transform` i `scene::Camera` liczą trzy macierze, `NightMazeApp` wysyła je co klatkę do `basic.vert` i rysuje obróconą kostkę z testem głębi. Kamerą można latać wokół kostki: kliknięcie w scenę przechwytuje kursor, mysz obraca, klawisze przesuwają, Escape oddaje kursor. Panel Camera edytuje pola kamery i ustawienia sterowania. Hierarchii transformów nie ma (żaden obiekt jej jeszcze nie potrzebuje), a trybu noclip z listy paneli PRD też nie, bo kamera nie korzysta jeszcze z kolizji (kod kolizji istnieje, temat 14).
 
 | Zagadnienie | Plik | Najważniejsze miejsce w kodzie | Dokument i sekcja |
 |---|---|---|---|
@@ -94,6 +94,39 @@ Realizacja według PRD: Model/View/Projection, kamera FPS, hierarchia transform�
 
 Dokument uzupełniający do tematu 3: [`libraries/glm.md`](libraries/glm.md).
 
+## Temat 14 szczegółowo
+
+Realizacja według PRD: AABB gracza przeciw ścianom (siatka), kule dla kryształów. Pokaz w ImGui: rysowanie brył kolizji. Stan: istnieje struktura `scene::Aabb`, test nakładania `scene::overlaps` i funkcja `scene::moveAndSlide`, która przesuwa pudełko wśród przeszkód oś po osi, tak że ślizga się ono po ścianach. `game::mazeColliders` liczy pudełka ścian i słupków labiryntu. Całość jest sprawdzona testami jednostkowymi (12 przypadków samych kolizji i 3 razem z labiryntem). **Nie ma jeszcze**: gracza (w programie nikt nie woła `moveAndSlide`, kamera lata bez kolizji), testów kul, panelu Collision i rysowania pudełek.
+
+| Zagadnienie | Plik | Najważniejsze miejsce w kodzie | Dokument i sekcja |
+|---|---|---|---|
+| Bryła otaczająca, AABB jako dwa narożniki albo środek i połowy rozmiarów | [`src/scene/Collider.hpp`](../src/scene/Collider.hpp), [`Collider.cpp`](../src/scene/Collider.cpp) | struktura `Aabb`, pola `min` i `max`, `Aabb::fromCenter` | [`scene/collision.md`](modules/scene/collision.md), 2.1 i 5.2 |
+| Test nakładania: przedziały na trzech osiach, oś rozdzielająca | [`src/scene/Collider.cpp`](../src/scene/Collider.cpp) | `sharedLength`, `overlaps`, stałe `AXIS_X`, `AXIS_Y`, `AXIS_Z` | [`scene/collision.md`](modules/scene/collision.md), 2.2 i 5.3 |
+| Dotyk a nakładanie | [`src/scene/Collider.cpp`](../src/scene/Collider.cpp), [`tests/ColliderTests.cpp`](../tests/ColliderTests.cpp) | ostra nierówność w `overlaps`, podprzypadek `touching is not overlapping` | [`scene/collision.md`](modules/scene/collision.md), 2.3 |
+| Wykrywanie dyskretne a przemiatanie, tunelowanie | teoria, [`tests/ColliderTests.cpp`](../tests/ColliderTests.cpp) | podprzypadek `a step much longer than the wall is thick does not jump over it` | [`scene/collision.md`](modules/scene/collision.md), 2.4 i 2.5 |
+| Reakcja: ruch oś po osi, korytarz ruchu, odstęp, ślizganie po ścianie | [`src/scene/Collider.cpp`](../src/scene/Collider.cpp) | `allowedDistance`, `moveAndSlide`, stała `AXIS_ORDER` | [`scene/collision.md`](modules/scene/collision.md), 2.6, 5.4 i 5.5 |
+| Tolerancja styku, błędy zaokrągleń `float` | [`src/scene/Collider.hpp`](../src/scene/Collider.hpp), [`Collider.cpp`](../src/scene/Collider.cpp) | stała `CONTACT_TOLERANCE`, dwa porównania w `allowedDistance` | [`scene/collision.md`](modules/scene/collision.md), 2.7 i 5.4 |
+| Ograniczenie: droga po schodkach, związek ze stałym krokiem | [`src/scene/Collider.cpp`](../src/scene/Collider.cpp), [`src/core/Time.hpp`](../src/core/Time.hpp) | komentarz w `moveAndSlide`, `FIXED_DT`, `MAX_FRAME_TIME`, test `documented limit: ...` | [`scene/collision.md`](modules/scene/collision.md), 2.8, [`core/main-loop.md`](modules/core/main-loop.md), 2.2 |
+| Pudełka kolizji ścian i słupków labiryntu | [`src/game/MazeLayout.cpp`](../src/game/MazeLayout.cpp), [`MazeLayout.hpp`](../src/game/MazeLayout.hpp) | `wallBox`, `pillarBox`, `mazeColliders`, stałe `WALL_THICKNESS`, `PILLAR_SIZE` | [`game/maze-generator.md`](modules/game/maze-generator.md), 2.7 i 5.7 |
+| Kolizje razem z labiryntem: zamknięta komórka, wędrówka, słupek zatrzymujący gracza przy ścianie | [`tests/MazeLayoutTests.cpp`](../tests/MazeLayoutTests.cpp) | trzy ostatnie przypadki testowe pliku | [`scene/collision.md`](modules/scene/collision.md), 5.7 i pułapka 1 |
+| Kula z kulą i kula z AABB (dla kryształów) | jeszcze nie ma | planowane, M4 + M5 | [`scene/collision.md`](modules/scene/collision.md), 2.9 |
+| Pokaz w ImGui: rysowanie brył kolizji, panel Collision | jeszcze nie ma | planowane, razem z graczem | [`scene/collision.md`](modules/scene/collision.md), 6 |
+| Miejsce kolizji w architekturze, dlaczego nie silnik fizyki | [`CMakeLists.txt`](../CMakeLists.txt) | lista źródeł targetu `engine` | [`scene/README.md`](modules/scene/README.md), 3 i 4, [`decisions/collision-aabb-sliding.md`](decisions/collision-aabb-sliding.md) |
+
+## Logika gry i testy (poza numerowanymi tematami)
+
+Labirynt nie jest osobnym tematem wykładu, ale dostarcza geometrię do tematów 4, 5 i 14 i jest wymaganiem PRD (sekcja 2). Testy jednostkowe są narzędziem do sprawdzania kodu, który nie ma jeszcze pokazu na ekranie.
+
+| Zagadnienie | Dokument | Pliki kodu |
+|---|---|---|
+| Moduł `game`: aplikacja a logika bez okna, biblioteka `game_logic` | [`modules/game/README.md`](modules/game/README.md) | [`CMakeLists.txt`](../CMakeLists.txt) (targety `game_logic`, `night_maze`, `night_maze_tests`) |
+| Zapis labiryntu: siatka komórek, ściany na krawędziach, kierunki | [`modules/game/maze-generator.md`](modules/game/maze-generator.md) (sekcje 2.1, 2.2, 5.2 i 5.3) | [`src/game/Maze.cpp`](../src/game/Maze.cpp), [`Maze.hpp`](../src/game/Maze.hpp) |
+| Generator: recursive backtracker iteracyjnie, labirynt doskonały | [`modules/game/maze-generator.md`](modules/game/maze-generator.md) (sekcje 2.3 do 2.5 i 5.5) | [`src/game/MazeGenerator.cpp`](../src/game/MazeGenerator.cpp), [`MazeGenerator.hpp`](../src/game/MazeGenerator.hpp) |
+| Liczby losowe takie same na macOS i Windowsie, błąd reszty z dzielenia | [`modules/game/maze-generator.md`](modules/game/maze-generator.md) (sekcje 2.6 i 5.4), [`decisions/deterministic-random.md`](decisions/deterministic-random.md) | [`src/game/MazeGenerator.cpp`](../src/game/MazeGenerator.cpp) (`randomBelow`) |
+| Układ w świecie: środki komórek, segmenty ścian, słupki | [`modules/game/maze-generator.md`](modules/game/maze-generator.md) (sekcje 2.7, 5.6 i 5.7) | [`src/game/MazeLayout.cpp`](../src/game/MazeLayout.cpp), [`MazeLayout.hpp`](../src/game/MazeLayout.hpp) |
+| Testy jednostkowe: biblioteka, program testowy, `ctest`, labirynt wzorcowy | [`libraries/doctest.md`](libraries/doctest.md), [`modules/game/maze-generator.md`](modules/game/maze-generator.md) (sekcja 5.8) | [`tests/`](../tests/), [`cmake/Dependencies.cmake`](../cmake/Dependencies.cmake), [`Makefile`](../Makefile) (`make test`) |
+| Pokaz w ImGui: panel Maze (ziarno, rozmiar, "Regeneruj") | jeszcze nie ma, planowane razem z rysowaniem labiryntu | jeszcze nie ma |
+
 ## Panele ImGui (narzędzie do wszystkich tematów)
 
 | Zagadnienie | Dokument | Pliki kodu |
@@ -112,7 +145,7 @@ Dokument uzupełniający do tematu 3: [`libraries/glm.md`](libraries/glm.md).
 |---|---|---|
 | M0 (zrobione) | Repozytorium, CMake i FetchContent, okno GLFW 4.1, GLAD, ImGui, `GL_CHECK` | 1 |
 | M1 (kod kompletny, zbudowany na macOS i Windowsie, bez tagu) | `gfx`: Shader, Buffer, VAO. Trójkąt, potem kostka z MVP. Kamera FPS. Zrobione: mysz, ścieżki do assetów, GLM, klasy `Shader`, `Buffer`, `VertexArray`, panel Shaders z przyciskiem "Reload shaders", struktury `scene::Transform` i `scene::Camera`, kostka z macierzami model, view i projection, latająca kamera (mysz i klawiatura), panel Camera. Sterowanie kamerą sprawdzone ręcznie na macOS. Na Windowsie zbudowane i uruchomione (Debug i Release), automatyczna część listy kontrolnej zaliczona. Zostało: ręczne sprawdzenie sterowania na Windowsie | 2, 3 |
-| M2 + M3 | Generator labiryntu, kolizje AABB, tekstury, loader OBJ, pierwsze modele | 4, 5, 14 |
+| M2 + M3 (w toku) | Generator labiryntu, kolizje AABB, tekstury, loader OBJ, pierwsze modele. Zrobione: kolizje AABB ze ślizganiem (`scene::Collider`), labirynt, generator z ziarna i układ ścian w świecie (`game::Maze`, `generateMaze`, `MazeLayout`), testy jednostkowe w doctest (41 przypadków, Windows: Debug i Release). Zostało: uruchomienie testów na macOS, loader OBJ, tekstury, rysowanie labiryntu z modeli, gracz z kolizjami, panele Maze i Collision | 4, 5, 14 |
 | M4 + M5 | Księżyc, latarka, kryształy, Gouraud vs Phong, zbieranie, bateria, brama | 6, 7 |
 | M6 | Skybox, teren z heightmapy, trawa w shaderze geometrii | 8, 9, 13 |
 | M7 | HDR FBO, bloom, mgła, minimapa, shadow mapping latarki i księżyca | 10, 11 |

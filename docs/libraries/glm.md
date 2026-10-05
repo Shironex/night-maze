@@ -14,7 +14,10 @@ używa.
 `game::NightMazeApp`, które co klatkę liczy trzy macierze i wysyła je do `basic.vert`, a
 przy sterowaniu kamerą woła `length`, `normalize` i `mix` (sekcja 3.8). Panel Camera
 (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui mogło edytować pozycję
-kamery.
+kamery. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też kolizje
+(`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa narożniki,
+dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2) i układ labiryntu
+(`src/game/MazeLayout.*`: pozycje ścian i słupków). Ten kod nie buduje żadnej macierzy.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -122,8 +125,8 @@ W głównym [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
 # GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
-# scene/Camera.hpp) expose GLM types, so every target that includes them needs the GLM
-# include path too.
+# scene/Camera.hpp, scene/Collider.hpp) expose GLM types, so every target that includes
+# them needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 ```
 
@@ -226,6 +229,10 @@ glm::vec3 twice = position * 2.0F;
   działa), `w = 0` to kierunek (przesunięcie go nie zmienia).
 - Operator `*` między dwoma wektorami mnoży **składowa po składowej**. To nie jest iloczyn
   skalarny ani wektorowy (do nich służą `dot` i `cross`, sekcja 3.8).
+- Do składowej można sięgnąć także **numerem**: `v[0]` to ta sama liczba co `v.x`, `v[1]` to
+  `v.y`, `v[2]` to `v.z`. Przydaje się, gdy jedna funkcja ma działać dla dowolnej osi. Tak
+  jest w [`src/scene/Collider.cpp`](../../src/scene/Collider.cpp), gdzie numer osi jest
+  parametrem ([`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 5.3).
 
 ### 3.3. Macierze: `mat3`, `mat4` i zapis kolumnowy
 

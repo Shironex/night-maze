@@ -1,4 +1,4 @@
-# Struktura projektu (stan M1: kod kompletny, zbudowany na macOS i Windowsie)
+# Struktura projektu (stan: M1 kompletny, M2 + M3 w toku)
 
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny po
@@ -7,7 +7,10 @@ Windowsie, ręczne sprawdzenie sterowania na Windowsie jeszcze otwarte, bez tagu
 klasami `Shader`, `Buffer` i `VertexArray`, katalog `assets/` z pierwszymi shaderami,
 warstwa `scene/` ze strukturami `Transform` i `Camera`, kostka rysowana z macierzami
 modelu, widoku i rzutowania, latająca kamera sterowana myszą i klawiaturą oraz panel
-Camera. Docelową
+Camera. Z kamienia milowego M2 + M3 jest już kod bez okna: kolizje (`src/scene/Collider.*`),
+labirynt z generatorem i układem w świecie (`src/game/Maze*`), biblioteka `game_logic`,
+katalog `tests/` z programem testowym `night_maze_tests` i biblioteka doctest. Ta część jest
+zbudowana i przetestowana na Windowsie, na macOS jeszcze nie. Docelową
 strukturę (z `renderer/` i `src/assets/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -19,9 +22,9 @@ Stan z systemu plików, bez `build/` i `.git/`:
 
 ```text
 night-maze/
-├── CMakeLists.txt              # główny opis buildu: targety engine i night_maze
+├── CMakeLists.txt              # główny opis buildu: engine, game_logic, night_maze, testy
 ├── CMakePresets.json           # presety debug i release
-├── Makefile                    # skróty do codziennych poleceń: make run, make check
+├── Makefile                    # skróty do codziennych poleceń: make run, make test, make check
 ├── .clang-format               # styl formatowania kodu
 ├── .clang-tidy                 # reguły analizy statycznej i konwencja nazw
 ├── .clangd                     # gdzie clangd ma szukać compile_commands.json
@@ -35,7 +38,7 @@ night-maze/
 │       ├── basic.frag              # shader fragmentów: kolor z interpolacji
 │       └── basic.vert              # shader wierzchołków: trzy macierze, pozycja i kolor
 ├── cmake/
-│   └── Dependencies.cmake      # FetchContent: GLFW, GLM i Dear ImGui, target imgui
+│   └── Dependencies.cmake      # FetchContent: GLFW, GLM, Dear ImGui i doctest, target imgui
 ├── external/
 │   └── glad/                   # wygenerowany loader OpenGL 4.1 Core (kod w repozytorium)
 │       ├── CMakeLists.txt      # target glad (napisany ręcznie)
@@ -62,6 +65,9 @@ night-maze/
 │   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer"
 │   │       └── ShadersPanel.hpp/.cpp   # panel "Shaders", przycisk Reload shaders
 │   ├── game/                   # gra
+│   │   ├── Maze.hpp/.cpp           # labirynt: siatka komórek, ściany na krawędziach
+│   │   ├── MazeGenerator.hpp/.cpp  # generator labiryntu z ziarna, randomBelow
+│   │   ├── MazeLayout.hpp/.cpp     # układ w świecie: ściany, słupki, pudełka kolizji
 │   │   └── NightMazeApp.hpp/.cpp   # aplikacja Night Maze (na razie rysuje kostkę)
 │   ├── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
 │   │   ├── Buffer.hpp/.cpp         # bufor wierzchołków albo indeksów
@@ -69,16 +75,28 @@ night-maze/
 │   │   └── VertexArray.hpp/.cpp    # tablica wierzchołków (VAO), opis atrybutów
 │   └── scene/                  # opis sceny: dane i matematyka na GLM, bez OpenGL
 │       ├── Camera.hpp/.cpp         # kamera: kierunek, macierz widoku i rzutowania
+│       ├── Collider.hpp/.cpp       # pudełka AABB, test nakładania, ruch ze ślizganiem
 │       └── Transform.hpp/.cpp      # pozycja, obrót, skala i macierz modelu
+├── tests/                      # testy jednostkowe (doctest): program night_maze_tests
+│   ├── main.cpp                    # punkt wejścia: main() generuje doctest
+│   ├── ColliderTests.cpp           # testy scene::Aabb, overlaps i moveAndSlide
+│   ├── MazeGeneratorTests.cpp      # testy randomBelow i generateMaze, labirynt wzorcowy
+│   ├── MazeLayoutTests.cpp         # testy układu w świecie i kolizji w labiryncie
+│   └── MazeTests.cpp               # testy klasy Maze i kierunków
 └── docs/
     ├── PRD.pdf                 # dokument wymagań
     ├── README.md               # spis treści dokumentacji i kolejność czytania
     ├── syllabus.md             # tabela: temat wykładu, dokument, pliki kodu
+    ├── decisions/              # notatki "dlaczego tak, a nie inaczej"
+    │   ├── README.md               # czym jest notatka, układ, lista notatek
+    │   ├── collision-aabb-sliding.md   # AABB i ślizganie zamiast silnika fizyki
+    │   └── deterministic-random.md     # własna randomBelow zamiast rozkładów std
     ├── guides/                 # przewodniki
     │   ├── build-macos.md          # budowanie na macOS
     │   ├── build-windows.md        # budowanie na Windowsie
     │   └── project-structure.md    # ten dokument
     ├── libraries/              # dokumenty bibliotek
+    │   ├── doctest.md
     │   ├── glad.md
     │   ├── glfw.md
     │   ├── glm.md
@@ -91,6 +109,9 @@ night-maze/
         │   ├── main-loop.md            # pętla główna, stały krok, FPS
         │   ├── paths.md                # ścieżki do assetów, katalog programu
         │   └── window-context.md       # okno, kontekst, GLAD, vsync, Log
+        ├── game/                   # moduł game
+        │   ├── README.md               # wstęp, aplikacja a logika bez okna, indeks
+        │   └── maze-generator.md       # labirynt, generator, układ w świecie
         ├── gfx/                    # moduł gfx, podzielony na dokumenty tematyczne
         │   ├── README.md               # wstęp, RAII i przenoszenie, warstwy, indeks
         │   ├── buffers-vao.md          # VBO, VAO, krok i przesunięcie, Buffer, VertexArray
@@ -103,9 +124,14 @@ night-maze/
         │   ├── README.md               # wstęp, dane bez OpenGL, warstwy, indeks
         │   ├── camera-controls.md      # sterowanie kamerą, panel Camera
         │   ├── camera.md               # macierz widoku, rzutowanie, Camera
+        │   ├── collision.md            # AABB, test nakładania, ruch ze ślizganiem
         │   └── transforms.md           # przestrzenie, macierz modelu, Transform
         └── debug-ui.md             # panele ImGui w projekcie
 ```
+
+Drzewo nie pokazuje jeszcze katalogów `tools/blender/`, `assets/models/` i `assets/textures/`
+ani pliku `docs/guides/blender.md` (modele ścian, słupka i podłogi oraz skrypty, które je
+budują). Opisuje je [`blender.md`](blender.md).
 
 Zapis `Window.hpp/.cpp` oznacza parę plików `Window.hpp` i `Window.cpp`. Zgodnie z zasadą z
 PRD nagłówek i implementacja leżą obok siebie w `src/`, nie ma osobnego katalogu `include/`. Pliki konfiguracyjne z katalogu głównego są
@@ -115,7 +141,8 @@ wypisane na początku drzewa, przed katalogami.
 
 | Katalog | Rola | Kto pisze kod |
 |---|---|---|
-| `src/` | cały nasz kod C++ | my |
+| `src/` | cały nasz kod C++ poza testami | my |
+| `tests/` | testy jednostkowe: osobny program `night_maze_tests`, który woła kod z bibliotek `engine` i `game_logic` i sprawdza wyniki ([`../libraries/doctest.md`](../libraries/doctest.md)) | my |
 | `assets/` | pliki, które program wczytuje w czasie działania: dziś shadery GLSL, później modele i tekstury. Nie są kompilowane razem z programem. Krok budowania umieszcza katalog obok pliku wykonywalnego (sekcja 3.1, blok 7) | my |
 | `cmake/` | pomocnicze pliki CMake dołączane przez `include(...)` | my |
 | `external/` | cudzy kod trzymany w repozytorium | generator GLAD, nie edytujemy |
@@ -139,6 +166,10 @@ wypisane na początku drzewa, przed katalogami.
 | `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), wiązany już w konstruktorze, `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używa jej `NightMazeApp` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
 | `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Sama matematyka na GLM, bez OpenGL. Używa jej `NightMazeApp` (pole `m_cubeTransform`) | [`../modules/scene/transforms.md`](../modules/scene/transforms.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
 | `src/scene/Camera.*` | `scene::Camera`: struktura z publicznymi polami `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałymi `WORLD_UP` i `MAX_PITCH_DEGREES` oraz funkcjami `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Sama matematyka na GLM, bez OpenGL i bez wejścia. Używa jej `NightMazeApp` (pole `m_camera`) | [`../modules/scene/camera.md`](../modules/scene/camera.md) |
+| `src/scene/Collider.*` | `scene::Aabb` (pudełko o ścianach równoległych do osi: pola `min` i `max`, funkcja `fromCenter`), stała `CONTACT_TOLERANCE`, funkcje `scene::overlaps` (czy dwa pudełka na siebie nachodzą) i `scene::moveAndSlide` (o ile wolno przesunąć pudełko wśród przeszkód, oś po osi, ze ślizganiem po ścianach). Sama matematyka na GLM, bez OpenGL i bez wejścia. Używają jej `game/MazeLayout` i testy. W programie nikt jeszcze nie woła `moveAndSlide` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
+| `src/game/Maze.*` | typ `game::Direction` (North, East, South, West), stałe `DIRECTION_COUNT` i `ALL_DIRECTIONS`, funkcje `opposite`, `columnStep`, `rowStep`, klasa `game::Maze`: siatka komórek ze ścianami na krawędziach (`width`, `height`, `contains`, `hasWall`, `removeWall`, stała `MAX_SIZE`). Bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 5.2 i 5.3 |
+| `src/game/MazeGenerator.*` | `game::randomBelow` (losowa liczba poniżej granicy, taka sama na każdym systemie) i `game::generateMaze` (labirynt doskonały z rozmiaru i ziarna, algorytm recursive backtracker z własnym stosem). Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 5.4 i 5.5 |
+| `src/game/MazeLayout.*` | stałe wymiarów w metrach (`CELL_SIZE`, `WALL_LENGTH`, `WALL_HEIGHT`, `WALL_THICKNESS`, `PILLAR_SIZE`, `PILLAR_HEIGHT`), typy `WallAxis` i `WallSegment`, funkcje `cellCenter`, `wallSegments`, `pillarPositions`, `wallBox`, `pillarBox`, `mazeColliders`. Część biblioteki `game_logic`. Program jeszcze ich nie woła | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 5.6 i 5.7 |
 | `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, shader `basic`, dane kostki (24 wierzchołki ze stałymi układu, 36 indeksów), tablica wierzchołków, bufor wierzchołków i bufor indeksów, `scene::Transform` kostki i `scene::Camera`, ustawienia sterowania kamerą (czułość myszy, prędkość ruchu). Konstruktor wczytuje shader, wysyła dane i ustawia obrót kostki. `onUpdate` przesuwa kamerę klawiszami W, A, S, D, spacja i lewy Shift stałym krokiem. `onRender` przechwytuje kursor po kliknięciu w scenę i obraca kamerę myszą, ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera i pozycję oka między dwoma krokami symulacji, wysyła macierze modelu, widoku i rzutowania i rysuje kostkę (`glDrawElements`). Chronione akcesory `clearColor()`, `shader()`, `camera()`, `mouseSensitivity()` i `moveSpeed()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), rysowanie w [`../modules/gfx/README.md`](../modules/gfx/README.md), sekcja 6, dane kostki w [`../modules/gfx/indexed-drawing.md`](../modules/gfx/indexed-drawing.md), sekcja 5, macierze w [`../modules/scene/camera.md`](../modules/scene/camera.md), sekcja 5.7, sterowanie kamerą w [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcja 5 |
 | `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core`: atrybuty pozycji i koloru, uniformy `uModel`, `uView`, `uProjection` (macierze), kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders" | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
 | `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują (`time`, `window`, `clearColor`, `shader`, `camera`, `mouseSensitivity`, `moveSpeed`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2 |
@@ -146,12 +177,16 @@ wypisane na początku drzewa, przed katalogami.
 | `src/debug/panels/CameraPanel.*` | `debug::drawCameraPanel`: panel "Camera" (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, prędkość ruchu) | [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcja 6 |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
 | `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (pliki programu shaderów, przycisk "Reload shaders", ostatni błąd wczytania) | [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6 |
+| `tests/main.cpp` | punkt wejścia programu testowego: makro `DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN` i dołączenie nagłówka doctest, który generuje `main()` | [`../libraries/doctest.md`](../libraries/doctest.md), sekcja 3.1 |
+| `tests/ColliderTests.cpp` | 12 przypadków testowych `scene::Aabb`, `overlaps` i `moveAndSlide` | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 5.7 |
+| `tests/MazeTests.cpp`, `MazeGeneratorTests.cpp`, `MazeLayoutTests.cpp` | 29 przypadków testowych labiryntu: klasa `Maze`, generator (w tym labirynt wzorcowy 4 na 4 z ziarna 1), układ w świecie i jego współpraca z kolizjami | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5.8 |
 
 Każdy plik źródłowy zaczyna się komentarzem z jednym zdaniem opisu i odnośnikiem
 `See docs/modules/...`. To wymaganie z PRD (sekcja 7). Dotyczy też plików shaderów, w
 których komentarz stoi pod linią `#version`, bo ta musi być pierwsza. Odnośnik wskazuje najbardziej
 szczegółowy dokument, czyli ten z kolumny "Dokument" powyżej, na przykład
-`// See docs/modules/core/input.md` w `Input.hpp`.
+`// See docs/modules/core/input.md` w `Input.hpp`. Pliki testów mają taki sam nagłówek i
+wskazują dokument kodu, który sprawdzają.
 
 ## 2. Warstwy i targety
 
@@ -177,6 +212,11 @@ Pełny łańcuch z PRD to `core <- gfx <- renderer <- scene <- game`. Warstwy `r
 jeszcze nie ma, więc dziś łańcuch to `core <- gfx <- scene <- game`, a `game/` korzysta z
 `gfx/` bezpośrednio: samo wysyła macierze do shadera i samo woła `glDrawElements`.
 
+Od kamienia milowego M2 + M3 dochodzą dwie rzeczy, których rysunek nie pokazuje. Katalog
+`game/` ma część bez okna (`Maze`, `MazeGenerator`, `MazeLayout`), która zależy tylko od
+`scene/` i GLM. Katalog `tests/` stoi na samej górze, obok `main.cpp`: zależy od tej części
+`game/` i od `scene/`, a od niego nie zależy nic.
+
 Jak to widać w kodzie:
 
 - `src/core/` dołącza tylko własne nagłówki, GLAD, GLFW i bibliotekę standardową. Jedynym
@@ -190,9 +230,19 @@ Jak to widać w kodzie:
   tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp` i `core/Paths.hpp`). `Shader.hpp`
   dołącza też `<glm/glm.hpp>`, a `Shader.cpp` `<glm/gtc/type_ptr.hpp>`, bo `setMat4`
   przyjmuje `glm::mat4`. Nic z GLFW, `scene/`, `game/` ani `debug/`.
-- Nagłówki w `src/scene/` dołączają tylko `<glm/glm.hpp>`, a pliki `.cpp` do tego
-  `<glm/gtc/matrix_transform.hpp>` i bibliotekę standardową (`Camera.cpp`: `<algorithm>` i
-  `<cmath>`). Nic z GLAD, GLFW, `core/`, `gfx/`, `game/` ani `debug/`.
+- Nagłówki w `src/scene/` dołączają tylko `<glm/glm.hpp>` (a `Collider.hpp` do tego `<span>`
+  z biblioteki standardowej). Pliki `Transform.cpp` i `Camera.cpp` dołączają też
+  `<glm/gtc/matrix_transform.hpp>`. Z biblioteki standardowej: `Camera.cpp` bierze
+  `<algorithm>` i `<cmath>`, a `Collider.cpp` `<algorithm>`, `<array>` i `<cmath>`. Nic z GLAD,
+  GLFW, `core/`, `gfx/`, `game/` ani `debug/`.
+- Pliki logiki labiryntu w `src/game/` (`Maze.*`, `MazeGenerator.*`, `MazeLayout.*`) dołączają
+  bibliotekę standardową, a `MazeLayout.hpp` także `<glm/glm.hpp>`, `game/Maze.hpp` i
+  `scene/Collider.hpp`. Nic z GLAD, GLFW, `core/`, `gfx/` ani `debug/`: dlatego dają się
+  testować bez okna.
+- Pliki w `tests/` dołączają `<doctest/doctest.h>`, nagłówki testowanego kodu
+  (`scene/Collider.hpp`, `game/Maze.hpp`, `game/MazeGenerator.hpp`, `game/MazeLayout.hpp`) i
+  bibliotekę standardową. Żaden plik w `src/` nie dołącza niczego z `tests/` ani nagłówka
+  doctest.
 - `src/game/NightMazeApp.hpp` dołącza `core/Application.hpp`, trzy nagłówki z `gfx/`
   (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`), dwa ze `scene/` (`Camera.hpp`,
   `Transform.hpp`), `<glm/glm.hpp>` (pole typu `glm::vec3`) i nic z `debug/`. Komentarz w
@@ -219,16 +269,19 @@ Po co ta dyscyplina: grę da się zbudować i zrozumieć bez paneli debugowych, 
 rozbudowywać bez dotykania logiki gry. W docelowej architekturze między `gfx/` a `scene/`
 dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i nikt od niego.
 
-### Dwa targety: `engine` i `night_maze`
+### Targety: `engine`, `game_logic`, `night_maze` i `night_maze_tests`
 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
 | `engine` | biblioteka statyczna | `src/core/*`, `src/gfx/*`, `src/scene/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`) |
-| `night_maze` | program | `src/main.cpp`, `src/game/*`, `src/debug/*` | `engine`, `imgui` (`PRIVATE`) |
+| `game_logic` | biblioteka statyczna | `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*` | `engine` (`PUBLIC`) |
+| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/debug/*` | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
+| `night_maze_tests` | program | `tests/*.cpp` | `game_logic`, `doctest::doctest` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
 | `glfw` | biblioteka statyczna | pobrana przez FetchContent | biblioteki systemowe |
 | `glm-header-only` (alias `glm::glm-header-only`) | target `INTERFACE`: same nagłówki, nic się nie kompiluje | pobrany przez FetchContent | nic |
 | `imgui` | biblioteka statyczna | pobrana przez FetchContent, lista plików w `Dependencies.cmake` | `glfw` |
+| `doctest` (alias `doctest::doctest`) | target `INTERFACE`: jeden nagłówek, nic się nie kompiluje | pobrany przez FetchContent | nic |
 
 **Dlaczego `engine` jest osobną biblioteką.** Warstwy wielokrotnego użytku (teraz `core`,
 `gfx` i `scene`, później `assets` i `renderer`) nie zawierają niczego specyficznego dla Night
@@ -240,6 +293,15 @@ gotowe. Granica targetu pilnuje też reguły warstw: gdyby plik z `core/`, `gfx/
 spróbował dołączyć coś z `game/` albo ImGui, `engine` nie linkuje tych rzeczy i błąd
 wyszedłby szybko. Granic między `core/`, `gfx/` i `scene/` target nie pilnuje, bo te warstwy
 są w tej samej bibliotece: tu obowiązuje sama dyscyplina dyrektyw `#include`.
+
+**Dlaczego `game_logic` jest osobną biblioteką.** Program testowy jest drugim, osobnym
+programem i może dolinkować tylko kod z biblioteki: kod skompilowany wprost w programie
+`night_maze` jest dla niego niedostępny. Dlatego ta część gry, która nie potrzebuje okna
+(labirynt, generator, układ w świecie), jest biblioteką statyczną, którą linkują i gra, i
+testy. `NightMazeApp` zostaje w programie, bo potrzebuje okna i kontekstu OpenGL, których
+test nie ma. `game_logic` nie trafia do `engine`, bo `engine` ma nie zawierać niczego
+specyficznego dla Night Maze. Więcej: [`../modules/game/README.md`](../modules/game/README.md),
+sekcja 3.
 
 Biblioteka statyczna (static library) to archiwum skompilowanych plików obiektowych
 (`.a` na macOS, `.lib` na Windowsie), które linker wkleja do programu. Nie ma osobnego pliku
@@ -291,7 +353,7 @@ include(cmake/Dependencies.cmake)
 
 - `add_subdirectory` przetwarza `external/glad/CMakeLists.txt` i tworzy target `glad`.
 - `include` wkleja zawartość `cmake/Dependencies.cmake`, który tworzy targety `glfw`,
-  `glm-header-only` i `imgui`.
+  `glm-header-only`, `imgui` i `doctest`.
 
 Różnica: `add_subdirectory` wchodzi do katalogu z własnym `CMakeLists.txt` i własnym
 zakresem zmiennych. `include` wykonuje plik tak, jakby jego treść stała w tym miejscu.
@@ -310,10 +372,12 @@ endfunction()
 ```
 
 Własna funkcja CMake, żeby nie powtarzać tych samych flag przy każdym targecie. Wywołujemy
-ją tylko dla `engine` i `night_maze`. Cudzy kod (GLAD, GLFW, ImGui) kompiluje się ze swoimi
-domyślnymi ustawieniami, bo jego ostrzeżeń nie będziemy poprawiać. GLM nie ma własnych
-plików do skompilowania (same nagłówki), więc jego ostrzeżenia wycisza wyłącznie oznaczenie
-nagłówków jako systemowe ([`../libraries/glm.md`](../libraries/glm.md)).
+ją tylko dla naszych czterech targetów: `engine`, `game_logic`, `night_maze` i
+`night_maze_tests`. Cudzy kod (GLAD, GLFW, ImGui) kompiluje się ze swoimi
+domyślnymi ustawieniami, bo jego ostrzeżeń nie będziemy poprawiać. GLM i doctest nie mają
+własnych plików do skompilowania (same nagłówki), więc ich ostrzeżenia wycisza wyłącznie
+oznaczenie nagłówków jako systemowe ([`../libraries/glm.md`](../libraries/glm.md),
+[`../libraries/doctest.md`](../libraries/doctest.md)).
 
 - clang i GCC: `-Wall -Wextra` włączają szeroki zestaw ostrzeżeń, `-Wpedantic` ostrzega przed
   odstępstwami od standardu.
@@ -337,14 +401,16 @@ add_library(engine STATIC
     src/gfx/VertexArray.hpp
     src/scene/Camera.cpp
     src/scene/Camera.hpp
+    src/scene/Collider.cpp
+    src/scene/Collider.hpp
     src/scene/Transform.cpp
     src/scene/Transform.hpp
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
-# scene/Camera.hpp) expose GLM types, so every target that includes them needs the GLM
-# include path too.
+# scene/Camera.hpp, scene/Collider.hpp) expose GLM types, so every target that includes
+# them needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it
@@ -361,7 +427,7 @@ night_maze_enable_warnings(engine)
 - `target_include_directories(engine PUBLIC .../src)`: korzeniem ścieżek `#include` jest
   `src/`. Stąd zapis `#include "core/Window.hpp"` w każdym pliku, niezależnie od katalogu.
 - `target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)`: `engine` używa
-  GLAD, GLFW i GLM. GLM dołączają pliki z `src/scene/` (`Transform` i `Camera`) oraz
+  GLAD, GLFW i GLM. GLM dołączają pliki z `src/scene/` (`Transform`, `Camera` i `Collider`) oraz
   `src/gfx/Shader.*` (macierz jako parametr `setMat4`). `glm::glm-header-only`
   to target `INTERFACE` (same nagłówki), więc "linkowanie" go oznacza tylko dodanie ścieżki
   nagłówków ([`../libraries/glm.md`](../libraries/glm.md), sekcja 2).
@@ -380,8 +446,8 @@ Wszystko przy `engine` jest `PUBLIC`, bo jego nagłówki (na przykład `core/GlC
 same dołączają `<glad/gl.h>`. Każdy, kto dołącza nagłówek `engine`, potrzebuje więc ścieżek
 do GLAD i GLFW oraz tych samych makr. Dzięki `PUBLIC` target `night_maze` dostaje to
 automatycznie, linkując tylko `engine`. Z tego samego powodu `PUBLIC` jest GLM: nagłówki
-warstw `gfx` i `scene` (`gfx/Shader.hpp`, `scene/Transform.hpp`, `scene/Camera.hpp`) pokazują
-typy `glm::vec3` i `glm::mat4` w swoim API.
+warstw `gfx` i `scene` (`gfx/Shader.hpp`, `scene/Transform.hpp`, `scene/Camera.hpp`,
+`scene/Collider.hpp`) pokazują typy `glm::vec3` i `glm::mat4` w swoim API.
 
 Dwie definicje `PUBLIC`:
 
@@ -394,9 +460,45 @@ Dwie definicje `PUBLIC`:
 Definiowanie makr w CMake zamiast `#define` w plikach ma jedną ważną zaletę: nie da się o
 nich zapomnieć w nowym pliku.
 
+**Blok 5a: target `game_logic`**
+
+Bloki 5a i 6a doszły w kamieniu milowym M2 + M3. Mają numery z literą, żeby odnośniki
+"blok 7" z innych dokumentów pozostały prawdziwe. W pliku stoją w tej kolejności: 5, 5a, 6,
+6a, 7.
+
+```cmake
+# ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
+# The maze, its generator and its layout in the world are plain data and math. They live
+# in a library of their own, and not in the night_maze executable, so that the test
+# program can link them too: a test cannot link code that is inside another executable.
+add_library(game_logic STATIC
+    src/game/Maze.cpp
+    src/game/Maze.hpp
+    src/game/MazeGenerator.cpp
+    src/game/MazeGenerator.hpp
+    src/game/MazeLayout.cpp
+    src/game/MazeLayout.hpp
+)
+# PUBLIC: game/MazeLayout.hpp includes scene/Collider.hpp and GLM, so whoever includes it
+# needs the include paths of engine. The src/ include root comes from engine as well.
+target_link_libraries(game_logic PUBLIC engine)
+night_maze_enable_warnings(game_logic)
+```
+
+- `add_library(game_logic STATIC ...)`: druga nasza biblioteka statyczna, z sześciu plików
+  logiki labiryntu. Lista jest jawna, tak jak przy `engine`.
+- `target_link_libraries(game_logic PUBLIC engine)`: `game_logic` używa `scene::Aabb` z
+  `engine`. `PUBLIC`, bo nagłówek `game/MazeLayout.hpp` sam dołącza `scene/Collider.hpp` i
+  GLM: każdy, kto go dołączy, potrzebuje ścieżek nagłówków `engine`. Dzięki temu nie ma tu
+  osobnego `target_include_directories`: korzeń `src/` przychodzi z `engine`.
+- `night_maze_enable_warnings(game_logic)`: te same ścisłe ostrzeżenia co dla `engine`.
+
 **Blok 6: target `night_maze`**
 
 ```cmake
+# ---- night_maze: the application and its debug UI -------------------------------------
+# NightMazeApp stays in the executable: it needs a window and an OpenGL context, so it is
+# not something a test can run.
 add_executable(night_maze
     src/main.cpp
     src/game/NightMazeApp.cpp
@@ -411,15 +513,57 @@ add_executable(night_maze
     src/debug/panels/ShadersPanel.cpp
     src/debug/panels/ShadersPanel.hpp
 )
-target_link_libraries(night_maze PRIVATE engine imgui)
+target_link_libraries(night_maze PRIVATE engine game_logic imgui)
 night_maze_enable_warnings(night_maze)
 ```
 
 - `add_executable` tworzy program. Bez słowa `WIN32`, więc na Windowsie jest to aplikacja
   konsolowa (opis w [`build-windows.md`](build-windows.md)).
-- `PRIVATE engine imgui`: program niczego dalej nie przekazuje, więc `PRIVATE` wystarcza.
-  ImGui linkuje tylko `night_maze`, nigdy `engine`.
-- Kod `game/` i `debug/` jest dziś częścią programu, nie biblioteki `engine`.
+- `PRIVATE engine game_logic imgui`: program niczego dalej nie przekazuje, więc `PRIVATE`
+  wystarcza. ImGui linkuje tylko `night_maze`, nigdy `engine` ani `game_logic`.
+- `game_logic` jest na liście, choć `NightMazeApp` jeszcze nie woła labiryntu: zacznie w
+  następnym kroku tego kamienia milowego. Samo `engine` wystarczyłoby dziś do zbudowania
+  programu.
+- Z kodu gry w programie zostają `NightMazeApp` i cały katalog `debug/`. Reszta `game/` jest
+  w bibliotece `game_logic` (blok 5a).
+
+**Blok 6a: target `night_maze_tests`**
+
+```cmake
+# ---- night_maze_tests: unit tests of the code that runs without a window --------------
+# enable_testing() makes CMake write the list of tests into the build directory, where
+# the ctest program finds it. It has to be called in this top-level file.
+enable_testing()
+
+add_executable(night_maze_tests
+    tests/main.cpp
+    tests/ColliderTests.cpp
+    tests/MazeGeneratorTests.cpp
+    tests/MazeLayoutTests.cpp
+    tests/MazeTests.cpp
+)
+# game_logic brings engine with it (scene/Collider is part of engine).
+target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
+night_maze_enable_warnings(night_maze_tests)
+
+# One CTest test: it runs the whole test program and passes when the program exits with
+# code 0. The program is part of the default build, so the tests always compile.
+add_test(NAME night_maze_tests COMMAND night_maze_tests)
+```
+
+Drugi program w projekcie. Każdą linię omawia
+[`../libraries/doctest.md`](../libraries/doctest.md), sekcja 2. W skrócie:
+
+- `enable_testing()` włącza zapis listy testów do katalogu buildu, gdzie znajduje ją program
+  `ctest`.
+- `add_executable(night_maze_tests ...)` buduje program testowy przy każdym zwykłym buildzie
+  (jest częścią targetu domyślnego), więc testy zawsze się kompilują.
+- `target_link_libraries(... PRIVATE game_logic doctest::doctest)`: kod testowany i
+  biblioteka testów. `engine` przychodzi przez `game_logic`.
+- `add_test(...)` rejestruje jeden test CTest: uruchomienie całego programu.
+
+Na Windowsie blok 7 kopiuje katalog `assets` tylko obok `night_maze`. Program testowy leży w
+tym samym katalogu, ale assetów nie czyta.
 
 **Blok 7: katalog `assets` obok programu**
 
@@ -580,6 +724,8 @@ wydań. Plik jest osobno, żeby główny `CMakeLists.txt` opisywał tylko nasze 
 | `get_target_property` i `set_target_properties(glm-header-only ... INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ...)` | oznaczają nagłówki GLM jako systemowe (bez ostrzeżeń) | [`../libraries/glm.md`](../libraries/glm.md) |
 | `FetchContent_Declare(imgui ... GIT_TAG v1.92.9b-docking ...)` i `FetchContent_MakeAvailable(imgui)` | pobierają Dear ImGui, bez tworzenia targetu | [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `add_library(imgui STATIC ...)`, `target_include_directories`, `target_link_libraries(imgui PUBLIC glfw)` | ręcznie zdefiniowany target `imgui` z rdzenia i dwóch backendów | [`../libraries/imgui.md`](../libraries/imgui.md) |
+| trzy linie `set(DOCTEST_... CACHE BOOL "" FORCE)` | wyłączają bibliotekę statyczną z gotowym `main`, testy samego doctest i reguły instalacji | [`../libraries/doctest.md`](../libraries/doctest.md) |
+| `FetchContent_Declare(doctest ... GIT_TAG v2.5.3 ...)` i `FetchContent_MakeAvailable(doctest)` | pobierają doctest 2.5.3 i tworzą target `doctest` (alias `doctest::doctest`). Nagłówek jest systemowy bez naszego kroku: tak deklaruje go `CMakeLists.txt` samego doctest | [`../libraries/doctest.md`](../libraries/doctest.md) |
 
 Pierwsza linia komentarza w pliku przypomina, dlaczego nie ma tu GLAD: to kod wygenerowany,
 który leży w `external/glad`.
@@ -885,10 +1031,12 @@ ten jest napisany ręcznie i leży w Gicie.
 | `make release` | to samo dla presetu `release` | pomiar wydajności, wersja do pokazania |
 | `make run` | `make debug`, potem uruchamia `build/debug/night_maze` | najczęstsze polecenie |
 | `make run-release` | `make release`, potem uruchamia `build/release/night_maze` | sprawdzenie 60 FPS |
-| `make format` | `clang-format -i` na wszystkich plikach `.cpp` i `.hpp` z `src/` | naprawia formatowanie w miejscu |
-| `make format-check` | `clang-format --dry-run --Werror` | tylko sprawdza, niczego nie zmienia |
-| `make tidy` | `make debug`, potem `clang-tidy` na plikach `.cpp` z `src/` | analiza statyczna |
-| `make check` | `format-check`, `debug`, `release`, `tidy` | wszystko przed commitem i przed tagiem |
+| `make test` | `make debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure` | testy jednostkowe po zmianie w kolizjach albo labiryncie |
+| `make test-release` | `make release`, potem `ctest --test-dir build/release -C Release --output-on-failure` | te same testy na kodzie z optymalizacjami |
+| `make format` | `clang-format -i` na wszystkich plikach `.cpp` i `.hpp` z `src/` i `tests/` | naprawia formatowanie w miejscu |
+| `make format-check` | `clang-format --dry-run --Werror` na tych samych plikach | tylko sprawdza, niczego nie zmienia |
+| `make tidy` | `make debug`, potem `clang-tidy` na plikach `.cpp` z `src/` i `tests/` | analiza statyczna |
+| `make check` | `format-check`, `test`, `test-release`, `tidy` | wszystko przed commitem i przed tagiem |
 | `make clean` | usuwa katalog `build/` | gdy konfiguracja się zepsuła albo chcę czystego buildu |
 
 Elementy pliku, które trzeba umieć wyjaśnić:
@@ -897,13 +1045,18 @@ Elementy pliku, które trzeba umieć wyjaśnić:
   się od znaku tabulacji**, nie od spacji. To najczęstszy błąd przy edycji (`missing
   separator`).
 - **Zależności** to cele wykonywane wcześniej. `run: debug` znaczy: najpierw zbuduj Debug,
-  potem uruchom. `check: format-check debug release tidy` wykonuje cztery cele po kolei i
-  zatrzymuje się na pierwszym, który zakończy się błędem.
+  potem uruchom. `check: format-check test test-release tidy` wykonuje cztery cele po kolei i
+  zatrzymuje się na pierwszym, który zakończy się błędem. Oba buildy nie znikły z `check`:
+  `test` ma zależność `debug`, a `test-release` zależność `release`, więc build poprzedza
+  testy.
+- **`ctest ... -C Debug`** w celu `test`: `-C` wskazuje konfigurację do przetestowania.
+  Generator Visual Studio jej wymaga (jeden katalog buildu mieści tam Debug i Release),
+  generatory jednokonfiguracyjne ją ignorują, więc jedna linia działa na obu systemach.
 - **`.PHONY`** mówi, że wymienione nazwy to polecenia, a nie pliki. `make` z natury sprawdza,
   czy plik o nazwie celu istnieje i jest aktualny. Bez `.PHONY` katalog albo plik o nazwie
   `debug` sprawiłby, że `make debug` nic by nie zrobił.
 - **`:=`** to przypisanie zmiennej wyliczane od razu, raz. `$(shell ...)` uruchamia polecenie
-  powłoki i wstawia jego wynik, na przykład listę plików z `find src -name '*.cpp'`.
+  powłoki i wstawia jego wynik, na przykład listę plików z `find src tests -name '*.cpp'`.
 - **`@` przed poleceniem** wyłącza wypisanie samego polecenia. Używam go tylko przy `echo`,
   żeby tekst nie pojawiał się dwa razy. Pozostałe polecenia są wypisywane, więc widać, co
   dokładnie zostało uruchomione.
@@ -929,6 +1082,17 @@ był uruchamiany (na PC, na którym budowałem projekt 2026-10-05, nie ma `make`
 programu `make` (na przykład z Git Bash, MSYS2 albo Chocolatey), a
 cele `format`, `format-check` i `tidy` korzystają z poleceń `find` i `command -v`, więc
 potrzebują powłoki typu Unix. Bez `make` wszystkie polecenia z tabeli można wpisać ręcznie.
+
+Stan po zmianach z M2 + M3 (cele `test` i `test-release`, katalog `tests/` w listach plików,
+nowy skład `check`): **plik w tej postaci nie był jeszcze uruchamiany** ani na Macu, ani na
+Windowsie. Polecenia, które wołają nowe cele, są zmierzone osobno na Windowsie:
+`ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release
+przechodzą, `clang-format --dry-run --Werror` na plikach z `src/` i `tests/` nie zgłasza
+niczego. Przebieg clang-tidy (LLVM 19.1.5, z bazy poleceń generatora Ninja) nie zgłasza
+niczego w nowych plikach ani w testach. Zgłasza natomiast jedną diagnostykę w starszym
+pliku, w gałęzi kompilowanej tylko na Windowsie: `modernize-return-braced-init-list` w
+`src/core/Paths.cpp`. Z `--warnings-as-errors='*'` cel `tidy` zatrzymałby się więc na niej na
+Windowsie. Na Macu ta gałąź nie jest kompilowana.
 
 ## 4. Artefakty generowane podczas budowania (poza Gitem)
 
@@ -987,6 +1151,13 @@ Położenie plików `.a` odzwierciedla drzewo źródeł: target zdefiniowany w g
 `CMakeLists.txt` trafia do korzenia katalogu buildu, target z `external/glad` do
 `external/glad/`, a GLFW do `_deps/glfw-build/`.
 
+Układ powyżej pochodzi sprzed kamienia milowego M2 + M3. Po nim w katalogu buildu dochodzą:
+biblioteka `game_logic`, program `night_maze_tests`, katalogi `_deps/doctest-src`,
+`_deps/doctest-build` i `_deps/doctest-subbuild` oraz plik `CTestTestfile.cmake` (lista
+testów dla `ctest`). Na Macu tego układu jeszcze nie odczytałem z dysku. Oczekiwane nazwy to
+`libgame_logic.a` i `night_maze_tests` w korzeniu `build/debug`. Na Windowsie jest zmierzony
+(sekcja 4.2).
+
 `build/release` ma taki sam układ, osobne `_deps` i inne flagi kompilacji. Różnice między
 Debug a Release opisuje [`build-macos.md`](build-macos.md), sekcja 5.
 
@@ -999,6 +1170,11 @@ W katalogu buildu zamiast `Makefile` jest rozwiązanie `.sln` i pliki projektów
 `compile_commands.json` nie powstaje. Katalog `assets` obok programu
 (`build\debug\Debug\assets\`) jest tam zwykłym katalogiem z **kopią** plików, a nie
 dowiązaniem. Kopię robi target `copy_assets` (sekcja 3.1, blok 7).
+
+Od M2 + M3 w tym samym podkatalogu leżą też `game_logic.lib` i program testowy:
+`build\debug\Debug\night_maze_tests.exe` i `build\release\Release\night_maze_tests.exe`
+(zmierzone). W korzeniu katalogu buildu są `CTestTestfile.cmake` i projekt `RUN_TESTS.vcxproj`,
+który CMake dodaje po `enable_testing()`.
 
 Zmierzone na Windowsie 2026-10-05: oba położenia programu, generator `Visual Studio 17 2022`
 i katalogi `assets\shaders\` z kopią obu shaderów obok każdego z programów. Reszta akapitu
@@ -1037,7 +1213,9 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
    | opakowanie jednego obiektu OpenGL (RAII, tylko przenoszenie), bez wiedzy o grze i bez ImGui | `src/gfx/` | `add_library(engine STATIC ...)` |
    | opis sceny: dane i matematyka (transformy, kamera), bez wiedzy o grze, bez wejścia i bez ImGui | `src/scene/` | `add_library(engine STATIC ...)` |
    | inny kod wielokrotnego użytku, bez wiedzy o grze i bez ImGui | później `src/renderer/`, `src/assets/` | `add_library(engine STATIC ...)` |
-   | logika Night Maze | `src/game/` | `add_executable(night_maze ...)` |
+   | logika Night Maze, która nie potrzebuje okna ani OpenGL (ma dać się testować) | `src/game/` | `add_library(game_logic STATIC ...)` |
+   | kod gry, który potrzebuje okna, kontekstu OpenGL albo wejścia | `src/game/` | `add_executable(night_maze ...)` |
+   | test jednostkowy | `tests/` | `add_executable(night_maze_tests ...)` |
    | panel debugowy | `src/debug/panels/` | `add_executable(night_maze ...)` |
 
 2. **Utwórz parę plików** `Nazwa.hpp` i `Nazwa.cpp` obok siebie. Pierwsze linie każdego
@@ -1075,11 +1253,29 @@ przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../librar
 
 7. **Sprawdź regułę warstw**: plik w `core/` nie może dołączać niczego z `gfx/`, `scene/`,
    `game/` ani `debug/`, plik w `gfx/` niczego z `scene/`, `game/` ani `debug/`, plik w
-   `scene/` niczego z `game/` ani `debug/`, plik w `game/` niczego z `debug/`.
+   `scene/` niczego z `game/` ani `debug/`, plik w `game/` niczego z `debug/`. Plik biblioteki
+   `game_logic` dodatkowo niczego z GLAD, GLFW, `core/` ani `gfx/`.
 
 Nowy panel debugowy ma dodatkowe kroki (wywołanie w `DebugUI::draw`, a dla nowych danych
 pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
 [`../modules/debug-ui.md`](../modules/debug-ui.md).
+
+### Nowy test
+
+1. **Do istniejącego pliku**: nowy blok `TEST_CASE("...") { ... }` w odpowiednim pliku w
+   `tests/`. Niczego więcej nie trzeba: test rejestruje się sam
+   ([`../libraries/doctest.md`](../libraries/doctest.md), sekcja 1).
+2. **Nowy plik testowy**: `tests/<Nazwa>Tests.cpp` z nagłówkiem (zdanie opisu i
+   `See docs/...`), dołączeniem testowanego nagłówka i `<doctest/doctest.h>`. Makra
+   `DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN` **nie** powtarzać: jest tylko w `tests/main.cpp`.
+3. **Dopisz plik do `add_executable(night_maze_tests ...)`** w `CMakeLists.txt`. Bez tego
+   plik nie jest kompilowany, a jego testy po cichu nie istnieją.
+4. **Kod, który ma być testowany, musi być w bibliotece** (`engine` albo `game_logic`), nie w
+   programie `night_maze`.
+5. **Zbuduj i uruchom**: `cmake --build --preset debug`, potem
+   `ctest --test-dir build/debug -C Debug --output-on-failure`. Sprawdź w wyjściu programu
+   testowego, że liczba przypadków wzrosła.
+6. **Sformatuj** plik testu tak jak każdy inny (`make format` obejmuje `tests/`).
 
 ### Nowy plik shadera albo inny asset
 
@@ -1119,10 +1315,10 @@ tym samym commicie co kod.
 
 | Co dodajesz | Gdzie trafia dokument |
 |---|---|
-| nowy moduł lub klasa w istniejącym module | `docs/modules/<moduł>.md` (szablon 10 sekcji z PRD, sekcja 7). Duży moduł ma katalog `docs/modules/<moduł>/` z plikiem `README.md` (wstęp i indeks) i dokumentami tematycznymi, z których każdy ma pełne 10 sekcji. Wzór: `docs/modules/core/`, `docs/modules/gfx/` i `docs/modules/scene/` |
+| nowy moduł lub klasa w istniejącym module | `docs/modules/<moduł>.md` (szablon 10 sekcji z PRD, sekcja 7). Duży moduł ma katalog `docs/modules/<moduł>/` z plikiem `README.md` (wstęp i indeks) i dokumentami tematycznymi, z których każdy ma pełne 10 sekcji. Wzór: `docs/modules/core/`, `docs/modules/gfx/`, `docs/modules/scene/` i `docs/modules/game/` |
 | nowa biblioteka | `docs/libraries/<biblioteka>.md` |
 | zmiana w budowaniu, narzędziach lub strukturze | `docs/guides/` (ten plik, `build-macos.md`, `build-windows.md`) |
-| decyzja "dlaczego tak, a nie inaczej" | `docs/decisions/` (katalog przewidziany w PRD, jeszcze nie istnieje) |
+| decyzja "dlaczego tak, a nie inaczej" | `docs/decisions/<temat>.md`, według układu z [`../decisions/README.md`](../decisions/README.md), plus wiersz na liście notatek w tym pliku |
 
 Po dodaniu pliku, katalogu albo targetu trzeba też zaktualizować drzewo i tabele w tym
 dokumencie.

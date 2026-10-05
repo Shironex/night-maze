@@ -2,7 +2,7 @@
 
 Dokumentacja jest materiałem do nauki: z samej lektury ma się dać nauczyć danego tematu wykładu, przygotować do kartkówki i do obrony, na której tłumaczę każdą linię kodu. Każdy moduł jest skończony dopiero wtedy, gdy ma tutaj swój dokument (PRD, sekcja 7).
 
-Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **kamień milowy M1**: kod jest kompletny (mysz, ścieżki do assetów, GLM, klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, katalog `assets/` z pierwszą parą shaderów, panel Shaders z przyciskiem "Reload shaders", struktury `scene::Transform` i `scene::Camera`, kostka rysowana z macierzami modelu, widoku i rzutowania, latająca kamera sterowana myszą i klawiaturą, panel Camera). Kod jest zbudowany i uruchomiony na macOS i na Windowsie (2026-10-05, MSVC, Debug i Release, bez ostrzeżeń), a automatyczna część listy kontrolnej z [`guides/build-windows.md`](guides/build-windows.md) (sekcja 11) jest zaliczona. M1 nie jest jeszcze zamknięty: sterowanie kamerą zostało sprawdzone ręcznie na macOS, ale na Windowsie ręczne sprawdzenie sterowania i paneli jest nadal otwarte, a tagu wersji nie ma. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
+Stan: **kamień milowy M0** zrobiony (repozytorium, CMake, okno GLFW z OpenGL 4.1 Core, GLAD, ImGui, `GL_CHECK`), **kamień milowy M1**: kod jest kompletny (mysz, ścieżki do assetów, GLM, klasy `gfx::Shader`, `gfx::Buffer` i `gfx::VertexArray`, katalog `assets/` z pierwszą parą shaderów, panel Shaders z przyciskiem "Reload shaders", struktury `scene::Transform` i `scene::Camera`, kostka rysowana z macierzami modelu, widoku i rzutowania, latająca kamera sterowana myszą i klawiaturą, panel Camera). Kod jest zbudowany i uruchomiony na macOS i na Windowsie (2026-10-05, MSVC, Debug i Release, bez ostrzeżeń), a automatyczna część listy kontrolnej z [`guides/build-windows.md`](guides/build-windows.md) (sekcja 11) jest zaliczona. M1 nie jest jeszcze zamknięty: sterowanie kamerą zostało sprawdzone ręcznie na macOS, ale na Windowsie ręczne sprawdzenie sterowania i paneli jest nadal otwarte, a tagu wersji nie ma. **Kamień milowy M2 + M3 jest zaczęty**: istnieje kod bez okna i jego testy jednostkowe, czyli pudełka kolizji AABB z ruchem ślizgającym się po ścianach (`scene::Aabb`, `scene::moveAndSlide`), labirynt, jego generator z ziarna i układ ścian w świecie (`game::Maze`, `game::generateMaze`, `game::wallSegments`) oraz program testowy `night_maze_tests` w bibliotece doctest. Na Windowsie build Debug i Release przechodzi bez ostrzeżeń, a 41 przypadków testowych przechodzi w obu konfiguracjach (2026-10-05). Na macOS ten kod nie był jeszcze budowany. Program go jeszcze nie używa: nadal rysuje kostkę, a gracza, rysowania labiryntu, loadera OBJ, tekstur i paneli Maze oraz Collision jeszcze nie ma. Kolejne dokumenty dochodzą razem z kodem kolejnych kamieni milowych, do M9. Plan tematów jest w [`syllabus.md`](syllabus.md).
 
 ## Spis treści
 
@@ -44,6 +44,9 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/scene/transforms.md`](modules/scene/transforms.md) | `src/scene/Transform.*`, `assets/shaders/basic.vert`, `src/game/NightMazeApp.*` | 3. Przestrzenie współrzędnych, współrzędne jednorodne, macierze przesunięcia, obrotu i skali, kolejność przekształceń, kąty Eulera, macierz modelu, struktura `Transform` linia po linii, trzy macierze w shaderze, obrót kostki |
 | [`modules/scene/camera.md`](modules/scene/camera.md) | `src/scene/Camera.*`, `src/game/NightMazeApp.*` | 3. Macierz widoku i `lookAt`, kamera FPS (yaw, pitch, wektor kierunku, ograniczenie pitch), rzutowanie perspektywiczne i nieliniowa głębia, z NDC do pikseli, konwencja układu, struktura `Camera` linia po linii, trzy macierze w `onRender`, test głębi, proporcje okna, droga jednego wierzchołka kostki na liczbach |
 | [`modules/scene/camera-controls.md`](modules/scene/camera-controls.md) | `src/game/NightMazeApp.*`, `src/debug/panels/CameraPanel.*` | 3. Sterowanie kamerą (obrót myszą raz na klatkę, ruch klawiszami stałym krokiem, normalizacja kierunku, interpolacja z `alpha`), panel Camera i scenariusz pokazu, panel a przechwycony kursor |
+| [`modules/scene/collision.md`](modules/scene/collision.md) | `src/scene/Collider.*`, `tests/ColliderTests.cpp` | 14. Wstęp do kolizji: bryły otaczające i AABB, test nakładania przedziałów na osiach, wykrywanie dyskretne a przemiatanie, tunelowanie, ruch oś po osi i ślizganie, tolerancja styku, droga po schodkach a stały krok, kula jako następny krok, `Aabb`, `overlaps` i `moveAndSlide` linia po linii, testy. Gracz i panel Collision jeszcze nie istnieją |
+| [`modules/game/README.md`](modules/game/README.md) | `src/game/`, `tests/` | Logika gry (poza tematami wykładu): wstęp do modułu `game`, podział na aplikację i logikę bez okna, biblioteka `game_logic` i program testowy, miejsce w warstwach, indeks plików |
+| [`modules/game/maze-generator.md`](modules/game/maze-generator.md) | `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `tests/Maze*.cpp` | Logika gry: siatka komórek ze ścianami na krawędziach, labirynt doskonały, recursive backtracker krok po kroku z przykładem, wersja iteracyjna, liczby losowe takie same na każdym systemie (`std::mt19937`, `randomBelow`, błąd reszty z dzielenia), układ w świecie (komórki, ściany, słupki, pudełka kolizji), labirynt wzorcowy w testach |
 | [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui (Renderer, Shaders, Camera), podpięcie nakładki w `main.cpp`, kto ma klawiaturę i mysz (blokady, `setMouseEnabled`), jak dodać nowy panel |
 
 ### Biblioteki (`libraries/`)
@@ -52,12 +55,23 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 |---|---|---|
 | [`libraries/glfw.md`](libraries/glfw.md) | GLFW | Okno, kontekst OpenGL, wejście |
 | [`libraries/glad.md`](libraries/glad.md) | GLAD | Ładowanie funkcji OpenGL 4.1 Core |
-| [`libraries/glm.md`](libraries/glm.md) | GLM | Matematyka: wektory, macierze, przekształcenia. Używają jej `scene::Transform` i `scene::Camera` |
+| [`libraries/glm.md`](libraries/glm.md) | GLM | Matematyka: wektory, macierze, przekształcenia. Używają jej `scene::Transform`, `scene::Camera`, `scene::Aabb` i układ labiryntu w `game/MazeLayout` |
 | [`libraries/imgui.md`](libraries/imgui.md) | Dear ImGui (gałąź docking) | Panele debug |
+| [`libraries/doctest.md`](libraries/doctest.md) | doctest | Testy jednostkowe kodu bez okna: kolizji i labiryntu. Program `night_maze_tests`, uruchamiany przez `ctest` |
+
+### Decyzje (`decisions/`)
+
+Krótkie notatki "dlaczego tak, a nie inaczej". Czym jest notatka i jak ją napisać: [`decisions/README.md`](decisions/README.md).
+
+| Dokument | Decyzja |
+|---|---|
+| [`decisions/README.md`](decisions/README.md) | Wstęp: czym notatka o decyzji różni się od dokumentu modułu, układ notatki, lista notatek |
+| [`decisions/collision-aabb-sliding.md`](decisions/collision-aabb-sliding.md) | Kolizje jako własne pudełka AABB i ruch oś po osi ze ślizganiem, bez silnika fizyki |
+| [`decisions/deterministic-random.md`](decisions/deterministic-random.md) | Losowość z `std::mt19937` i własnej funkcji `randomBelow`, bez rozkładów z biblioteki standardowej |
 
 ## Kolejność czytania
 
-Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki od 15 do 21 to temat 2, "Programowalny potok". Kroki od 22 do 25 to temat 3, "Przekształcenia przestrzeni".
+Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materiał do tematu 1, "Pierwszy program OpenGL", i narzędzia potrzebne przy następnych tematach. Kroki od 15 do 21 to temat 2, "Programowalny potok". Kroki od 22 do 25 to temat 3, "Przekształcenia przestrzeni". Kroki od 26 do 30 to początek kamienia milowego M2 + M3: testy jednostkowe, temat 14, "Wstęp do kolizji", i labirynt.
 
 | Krok | Dokument | Po co na tym etapie |
 |---|---|---|
@@ -86,13 +100,18 @@ Kolejność jest zgodna z kolejnością wykładów. Kroki od 1 do 14 to materia�
 | 23 | [`modules/scene/transforms.md`](modules/scene/transforms.md) | Przestrzenie współrzędnych, macierze przesunięcia, obrotu i skali, macierz modelu, struktura `Transform` |
 | 24 | [`modules/scene/camera.md`](modules/scene/camera.md) | Macierze view i projection, kamera FPS, struktura `Camera`. Po tym kroku cały kod rysujący kostkę jest wyjaśniony, razem z drogą wierzchołka od bufora do piksela |
 | 25 | [`modules/scene/camera-controls.md`](modules/scene/camera-controls.md) | Sterowanie kamerą (sekcje 2 i 5, do których przydają się kroki 8, 9 i 13: pętla ze stałym krokiem, wejście i panele) i panel Camera |
-| 26 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
+| 26 | [`libraries/doctest.md`](libraries/doctest.md) | Jak czytać i uruchamiać testy jednostkowe, zanim pojawi się kod, który jest sprawdzany tylko nimi |
+| 27 | [`modules/scene/collision.md`](modules/scene/collision.md) | Temat 14: pudełka AABB, test nakładania, ruch ze ślizganiem po ścianach. Przydaje się krok 8 (stały krok symulacji) |
+| 28 | [`modules/game/README.md`](modules/game/README.md) | Moduł `game`: co jest logiką gry, dlaczego część bez okna jest osobną biblioteką |
+| 29 | [`modules/game/maze-generator.md`](modules/game/maze-generator.md) | Labirynt: zapis, generator z ziarna, układ ścian i słupków w świecie, pudełka kolizji z kroku 27 |
+| 30 | [`decisions/README.md`](decisions/README.md) i dwie notatki | Dlaczego własne AABB zamiast silnika fizyki i własna funkcja losująca zamiast rozkładów standardowych: pytania "dlaczego tak" na obronę |
+| 31 | [`syllabus.md`](syllabus.md) | Powtórka: który plik realizuje który temat |
 
 ## Jak się uczyć z dokumentu modułu
 
 1. Przeczytaj sekcje od 1 do 3 (po co, teoria, wywołania OpenGL) bez otwierania kodu.
 2. Otwórz pliki z sekcji 5 obok dokumentu i przejdź kod linia po linii, porównując z opisem.
-3. Uruchom program i sprawdź w panelu ImGui to, co opisuje sekcja 6.
+3. Uruchom program i sprawdź w panelu ImGui to, co opisuje sekcja 6. Dla kodu, który nie ma jeszcze panelu (kolizje, labirynt), uruchom zamiast tego testy ([`libraries/doctest.md`](libraries/doctest.md), sekcja 4).
 4. Zrób ćwiczenia z sekcji 8. Każde to mała zmiana w kodzie, którą trzeba potem wycofać.
 5. Zakryj odpowiedzi i odpowiedz na głos na pytania z sekcji 9. To jest próba obrony.
 6. Sekcję 7 (pułapki) przeczytaj jeszcze raz przed kartkówką: to najczęstsze pytania "co by było, gdyby".

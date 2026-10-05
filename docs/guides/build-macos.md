@@ -19,7 +19,7 @@ Wersja dla Windowsa: [`build-windows.md`](build-windows.md).
 |---|---|---|---|
 | Xcode Command Line Tools | kompilator `clang`, `make`, `git`, nagłówki systemowe i frameworki (Cocoa, OpenGL) | `xcode-select --install` | `clang --version` |
 | CMake w wersji co najmniej 3.24 | konfiguracja i uruchamianie buildu | `brew install cmake` | `cmake --version` |
-| git | CMake pobiera nim GLFW, GLM i ImGui | jest w Command Line Tools | `git --version` |
+| git | CMake pobiera nim GLFW, GLM, ImGui i doctest | jest w Command Line Tools | `git --version` |
 | Ninja | opcjonalny szybszy generator | `brew install ninja` | `ninja --version` |
 
 Uwagi:
@@ -30,8 +30,8 @@ Uwagi:
 - Skąd wymóg 3.24: `cmake_minimum_required(VERSION 3.24)` w
   [`CMakeLists.txt`](../../CMakeLists.txt) i `cmakeMinimumRequired` w
   [`CMakePresets.json`](../../CMakePresets.json).
-- Bibliotek (GLFW, GLM, ImGui, GLAD) nie instalujemy ręcznie. GLFW, GLM i ImGui pobiera
-  CMake, GLAD leży w repozytorium.
+- Bibliotek (GLFW, GLM, ImGui, doctest, GLAD) nie instalujemy ręcznie. GLFW, GLM, ImGui i
+  doctest pobiera CMake, GLAD leży w repozytorium.
 - Pierwsza konfiguracja wymaga dostępu do internetu.
 
 ## 2. Budowanie i uruchamianie
@@ -143,6 +143,71 @@ Skutki praktyczne:
 Co robi każda linia kroku CMake: [`project-structure.md`](project-structure.md), sekcja 3.1,
 blok 7.
 
+### Testy jednostkowe
+
+> **Na macOS jeszcze nie uruchomione.** Kod kolizji i labiryntu oraz jego testy powstały na
+> Windowsie (2026-10-05) i tam są zmierzone: [`build-windows.md`](build-windows.md),
+> sekcja 2. Wszystko w tym podrozdziale jest dla Maca oczekiwaniem, nie pomiarem.
+
+Zwykły build (`cmake --build --preset debug`) buduje też program testowy
+`build/debug/night_maze_tests`. Testy uruchamia `ctest`, program z pakietu CMake:
+
+```sh
+ctest --test-dir build/debug -C Debug --output-on-failure
+ctest --test-dir build/release -C Release --output-on-failure
+```
+
+Argument `-C` jest potrzebny generatorowi Visual Studio na Windowsie. Generator Unix
+Makefiles go ignoruje, więc polecenie jest wspólne dla obu systemów. Program testowy można
+też uruchomić wprost, wtedy widać raport biblioteki doctest:
+
+```sh
+./build/debug/night_maze_tests
+```
+
+Oczekiwany koniec wyjścia, taki jak zmierzony na Windowsie:
+
+```text
+[doctest] test cases:    41 |    41 passed | 0 failed | 0 skipped
+[doctest] assertions: 58114 | 58114 passed | 0 failed |
+[doctest] Status: SUCCESS!
+```
+
+Opis biblioteki, makr i opcji programu: [`../libraries/doctest.md`](../libraries/doctest.md).
+
+**Do zrobienia przy pierwszym buildzie tego kodu na Macu** (punkty otwarte, nikt ich jeszcze
+nie wykonał):
+
+- [ ] `cmake --preset debug` pobiera doctest `v2.5.3` do `build/debug/_deps/doctest-src` i
+      kończy się bez błędów (doctest deklaruje `cmake_minimum_required(VERSION 3.14)`, więc
+      CMake 4 nie powinien go odrzucić)
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic` w nowych plikach: `src/scene/Collider.*`, `src/game/Maze*`
+      i `tests/*.cpp`. Kompilator Apple clang z biblioteką libc++ nie widział jeszcze tego
+      kodu. Na Windowsie diagnostyki kompilatora clang 19 (przez clang-tidy, z biblioteką
+      standardową MSVC) nie zgłaszają w nim niczego
+      ([`build-windows.md`](build-windows.md), sekcja 11), ale to inna biblioteka standardowa
+- [ ] nagłówek doctest trafia do kompilatora przez `-isystem` i nie daje ostrzeżeń w plikach
+      testów
+- [ ] `ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release:
+      zapisać liczbę przypadków i asercji (oczekiwane 41 i 58114)
+- [ ] **najważniejszy punkt**: przechodzą testy `golden maze: 4 x 4 cells from seed 1 has
+      exactly these walls` i `randomBelow gives the same numbers on every system`. To jest
+      pomiar, że macOS i Windows generują ten sam labirynt
+      ([`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5.8)
+- [ ] przechodzi test `a box wandering through a generated maze never ends up inside a wall`
+      (wynik zależy od zaokrągleń `float`, które mogą się różnić między procesorami na
+      ostatniej cyfrze: test ma na to zapas, ale to pierwsze uruchomienie na ARM)
+- [ ] `make test`, `make test-release` i `make check` działają (cele są nowe, plik `Makefile`
+      w tej postaci nie był jeszcze uruchamiany)
+- [ ] `make tidy` nie zgłasza niczego w `src/scene/Collider.cpp`, `src/game/Maze*.cpp` ani w
+      `tests/*.cpp` (na Windowsie LLVM 19.1.5 nie zgłasza niczego w tych plikach)
+- [ ] program `./build/debug/night_maze` buduje się i działa jak wcześniej (nowy kod nie
+      jest jeszcze wołany przez grę)
+
+Po wykonaniu punkty trzeba odhaczyć i dopisać wynik, tak jak na liście w
+[`build-windows.md`](build-windows.md), sekcja 11.
+
 ### Skróty: `make`
 
 Te same polecenia mają krótsze odpowiedniki w pliku [`Makefile`](../../Makefile) w katalogu
@@ -151,7 +216,8 @@ głównym repozytorium:
 ```sh
 make run          # konfiguracja, build Debug i uruchomienie
 make run-release  # to samo dla Release
-make check        # format-check, oba buildy i clang-tidy: komplet przed commitem
+make test         # build Debug i testy jednostkowe
+make check        # format-check, oba buildy z testami i clang-tidy: komplet przed commitem
 make              # lista wszystkich celów
 ```
 
@@ -253,19 +319,24 @@ generatorem Ninja. Nie trafia do repozytorium.
 ## 4. Co pobiera FetchContent i dokąd
 
 Przy pierwszym `cmake --preset debug` CMake wykonuje
-[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje trzy repozytoria:
+[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje cztery repozytoria:
 
 | Biblioteka | Tag | Katalog źródeł |
 |---|---|---|
 | GLFW | `3.4` | `build/debug/_deps/glfw-src` |
 | GLM | `1.0.3` | `build/debug/_deps/glm-src` |
 | Dear ImGui | `v1.92.9b-docking` | `build/debug/_deps/imgui-src` |
+| doctest | `v2.5.3` | `build/debug/_deps/doctest-src` |
+
+Czwarty wiersz doszedł w kamieniu milowym M2 + M3 i na Macu nie był jeszcze pobierany
+(sekcja 2, "Testy jednostkowe"). Na Windowsie katalog `doctest-src` powstaje zgodnie z
+tabelą.
 
 Dla każdej zależności w `_deps` powstają trzy katalogi:
 
 - `<nazwa>-src`: pobrany kod źródłowy,
-- `<nazwa>-build`: pliki powstałe przy jej budowaniu (dla GLM i ImGui nie ma tam żadnej
-  biblioteki: GLM to same nagłówki, a ImGui kompiluje nasz target `imgui`),
+- `<nazwa>-build`: pliki powstałe przy jej budowaniu (dla GLM, ImGui i doctest nie ma tam
+  żadnej biblioteki: GLM i doctest to same nagłówki, a ImGui kompiluje nasz target `imgui`),
 - `<nazwa>-subbuild`: pomocniczy projekt CMake, który wykonuje samo pobieranie.
 
 Rzeczy warte zapamiętania:
@@ -412,19 +483,21 @@ Instalacja: `brew install clang-format` (Command Line Tools go nie zawierają).
 Sformatowanie wszystkich naszych plików:
 
 ```sh
-find src -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
+find src tests -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
 ```
 
 Sprawdzenie bez modyfikowania plików (kod wyjścia różny od zera, gdy coś wymaga zmian):
 
 ```sh
-find src -name '*.cpp' -o -name '*.hpp' | xargs clang-format --dry-run --Werror
+find src tests -name '*.cpp' -o -name '*.hpp' | xargs clang-format --dry-run --Werror
 ```
 
-To drugie polecenie zostało uruchomione na obecnym kodzie M0 (clang-format 22.1.7) i nie
-zgłasza żadnych różnic.
+To drugie polecenie zostało uruchomione na kodzie M0 (clang-format 22.1.7), jeszcze w
+wersji dla samego `src/`, i nie zgłaszało żadnych różnic. W wersji z katalogiem `tests/`
+(M2 + M3) na Macu nie było jeszcze uruchamiane. Na Windowsie sprawdzenie plików z `src/` i
+`tests/` narzędziem clang-format 19.1.5 nie zgłasza różnic.
 
-Formatujemy tylko `src/`. Katalogu `external/glad` nie dotykamy, bo to kod wygenerowany.
+Formatujemy `src/` i `tests/`. Katalogu `external/glad` nie dotykamy, bo to kod wygenerowany.
 
 Ważny szczegół ustawień: `SortIncludes: CaseSensitive` razem z `IncludeBlocks: Preserve`.
 Formater sortuje dyrektywy `#include` tylko wewnątrz bloków oddzielonych pustą linią. Dzięki
@@ -456,7 +529,7 @@ Sprawdzenie jednego pliku:
 Sprawdzenie wszystkich naszych plików `.cpp`:
 
 ```sh
-find src -name '*.cpp' | xargs "$(brew --prefix llvm)/bin/clang-tidy" -p build/debug \
+find src tests -name '*.cpp' | xargs "$(brew --prefix llvm)/bin/clang-tidy" -p build/debug \
     --extra-arg=-isysroot --extra-arg="$(xcrun --show-sdk-path)"
 ```
 
@@ -513,7 +586,8 @@ cmake --build --preset debug
 
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
 - Biblioteki: [`../libraries/glfw.md`](../libraries/glfw.md),
-  [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md)
+  [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
+  [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md)
 - Windows: [`build-windows.md`](build-windows.md)
 - Dokumentacja CMake (presety, FetchContent): <https://cmake.org/cmake/help/latest/>
