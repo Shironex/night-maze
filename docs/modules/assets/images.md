@@ -5,7 +5,7 @@ Kod: [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`src/
 
 Część modułu `assets`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument opisuje drogę od pliku PNG na dysku do tablicy bajtów w pamięci programu. Co dzieje się z tą tablicą dalej, czyli jak powstaje z niej tekstura na karcie graficznej, opisuje [`../gfx/textures.md`](../gfx/textures.md). Bibliotekę, która dekoduje plik, opisuje [`../../libraries/stb_image.md`](../../libraries/stb_image.md). Skąd biorą się same pliki PNG, opisuje [`../../guides/blender.md`](../../guides/blender.md), sekcja 7.
 
-**Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go jeszcze nie woła: `NightMazeApp` nadal rysuje kostkę bez tekstur. Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń i testy przechodzą. **Na macOS ten kod nie był jeszcze budowany.**
+**Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go woła: `assets::AssetCache::texture` wczytuje nim każdy plik tekstury raz i tworzy z wyniku `gfx::Texture2D` (sekcja 5.6). Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń, testy przechodzą, a tekstury w grze mają na zrzutach ekranu właściwą orientację. **Na macOS ten kod nie był jeszcze budowany.**
 
 ## 1. Po co to jest
 
@@ -362,17 +362,36 @@ Między `stbi_load_from_memory` a `stbi_image_free` nie ma żadnego `return`, wi
 
 ### 5.6 Jak wołać loader
 
-Kodu, który woła `loadImage` w grze, jeszcze nie ma. Tak będzie wyglądało połączenie z teksturą (przykład, nie kod projektu):
+W grze `loadImage` woła jedno miejsce: `assets::AssetCache::texture` w [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp). Fragment od wczytania pliku do utworzenia tekstury:
 
 ```cpp
-// Przykład, nie kod projektu.
-assets::Image image;
-std::string error;
-if (assets::loadImage(core::assetPath("textures/wall_stone.png"), image, error)) {
+    // loadImage logs its own error.
+    Image image;
+    std::string error;
+    if (!loadImage(key, image, error)) {
+        m_failedPaths.push_back(key);
+        return nullptr;
+    }
+
+    // The constructor logs an error and leaves the texture not valid when the picture
+    // has a channel count it does not accept (grey pictures have 1 or 2 channels).
     gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data());
-    // image może teraz zniknąć: OpenGL ma własną kopię pikseli.
-}
+    if (!texture.isValid()) {
+        core::logError("Texture cannot be used: " + core::pathText(key));
+        m_failedPaths.push_back(key);
+        return nullptr;
+    }
 ```
+
+| Linia | Znaczenie |
+|---|---|
+| `Image image;` i `std::string error;` | dwa parametry wyjściowe loadera. `error` nie jest tu potem czytany: `loadImage` samo wypisuje błąd przez `core::logError`, co mówi komentarz nad nimi |
+| `if (!loadImage(key, image, error))` | `key` to ścieżka pliku po uporządkowaniu (`lexically_normal`). Wynik `false` oznacza brak pliku albo plik, którego biblioteka nie umie zdekodować |
+| `m_failedPaths.push_back(key); return nullptr;` | pamięć podręczna zapamiętuje, że ten plik się nie wczytał, i nie próbuje ponownie. Wołający dostaje pusty wskaźnik i używa białej tekstury zastępczej ([`asset-cache.md`](asset-cache.md), sekcja 2) |
+| `gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data());` | cztery pola `Image` to dokładnie cztery argumenty konstruktora tekstury. `pixels.data()` to wskaźnik na pierwszy bajt, czyli na dolny wiersz obrazu, tak jak chce OpenGL (sekcja 2) |
+| `if (!texture.isValid())` | loader oddaje obraz o dowolnej liczbie kanałów, a `Texture2D` przyjmuje tylko 3 albo 4. Obraz w skali szarości (1 albo 2 kanały) wczytuje się więc poprawnie, a odrzuca go dopiero tekstura |
+
+Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopię pikseli ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.6), więc bajty w pamięci procesora nie są dalej potrzebne. Loader nie jest wołany nigdzie indziej: ani `NightMazeApp`, ani `MazeRenderer` nie czytają plików obrazów same.
 
 ### 5.7 Testy
 
@@ -408,11 +427,11 @@ Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą
 
 **Wynik.** Na Windowsie (MSVC 19.44, konfiguracja Debug, 2026-10-05) wszystkie 7 przypadków przechodzi. Na macOS testy nie były jeszcze uruchamiane.
 
-Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.9).
+Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcje 5.9 i 5.10): na zrzutach ekranu z gry na Windowsie tekstury ścian i podłogi nie są odwrócone ani odbite.
 
 ## 6. Panel ImGui
 
-Loader nie ma panelu i nie jest on planowany: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do oglądania. Jego wynik będzie widać pośrednio w planowanym panelu Textures ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6), który jeszcze nie istnieje. Błąd wczytania widać w konsoli jako linię `[error] Image file ...`.
+Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
 
 ## 7. Pułapki
 

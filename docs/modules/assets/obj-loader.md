@@ -3,9 +3,9 @@
 Kamień milowy: M2 + M3. Temat wykładu: 4 (Wczytywanie OBJ).
 Kod: [`src/assets/ObjLoader.hpp`](../../../src/assets/ObjLoader.hpp), [`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp), testy w [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp), pliki wejściowe w [`assets/models/`](../../../assets/models/).
 
-Część modułu `assets`. Wstęp do modułu jest w [`README.md`](README.md). Skąd biorą się pliki `.obj` i `.mtl` i jakie mają konwencje, opisuje [`../../guides/blender.md`](../../guides/blender.md). Dokąd trafia wynik, opisuje [`../gfx/mesh.md`](../gfx/mesh.md).
+Część modułu `assets`. Wstęp do modułu jest w [`README.md`](README.md). Skąd biorą się pliki `.obj` i `.mtl` i jakie mają konwencje, opisuje [`../../guides/blender.md`](../../guides/blender.md). Dokąd trafia wynik, opisują [`../gfx/mesh.md`](../gfx/mesh.md) (siatka na karcie) i [`asset-cache.md`](asset-cache.md) (kto woła loader i co robi z materiałami).
 
-**Stan.** Loader istnieje, jest częścią biblioteki `engine` i ma 18 przypadków testowych, w tym wczytanie trzech prawdziwych modeli gry. **Program go jeszcze nie woła**: `NightMazeApp` nadal rysuje kostkę. Rysowanie modeli, pamięć podręczna assetów (asset cache) i panel Models dochodzą w następnym kroku kamienia milowego. Parser jest napisany ręcznie, bez biblioteki Assimp ani żadnej innej: zrozumienie formatu jest celem tego tematu.
+**Stan.** Loader jest częścią biblioteki `engine` i ma 18 przypadków testowych, w tym wczytanie trzech prawdziwych modeli gry. Program go woła: `assets::AssetCache::model` wczytuje nim przy starcie trzy modele labiryntu (płytkę podłogi, ścianę i słupek), tworzy z wyniku siatki `gfx::Mesh` i tekstury, a `game::MazeRenderer` rysuje je shaderami `textured.vert` i `textured.frag` (sekcje 3 i 4). Wczytane modele pokazuje panel Assets (sekcja 6). Parser jest napisany ręcznie, bez biblioteki Assimp ani żadnej innej: zrozumienie formatu jest celem tego tematu.
 
 ## 1. Po co to jest
 
@@ -237,7 +237,7 @@ Loader nie woła żadnej funkcji `gl*`. `ObjLoader.hpp` i `ObjLoader.cpp` nie do
 flowchart LR
     F["wall_straight.obj<br/>wall_straight.mtl"] -->|"assets::loadObj"| M["assets::ObjModel<br/>vertices, indices,<br/>parts, materials"]
     M -->|"vertices, indices"| G["gfx::Mesh<br/>VAO, VBO, EBO"]
-    M -->|"materials[i].diffuseTexture"| T["loader obrazów,<br/>potem tekstura OpenGL"]
+    M -->|"materials[i].diffuseTexture"| T["assets::loadImage,<br/>potem gfx::Texture2D"]
     M -->|"parts[i].firstIndex,<br/>parts[i].indexCount"| D["Mesh::draw(first, count)"]
     G --> D
     T --> D
@@ -248,14 +248,38 @@ flowchart LR
 | `vertices` (`std::vector<gfx::Vertex>`) | bufor wierzchołków: `glBufferData(GL_ARRAY_BUFFER, ...)`, 32 bajty na wierzchołek |
 | `indices` (`std::vector<std::uint32_t>`) | bufor indeksów: `glBufferData(GL_ELEMENT_ARRAY_BUFFER, ...)`, rysowany jako `GL_UNSIGNED_INT` |
 | `parts[i].firstIndex`, `parts[i].indexCount` | argumenty `glDrawElements`: liczba indeksów i przesunięcie (`firstIndex * 4` bajtów) |
-| `materials[i].diffuseTexture` | ścieżka pliku, z którego powstanie tekstura wiązana przed narysowaniem części |
-| `materials[i].diffuseColor` | wartość uniformu koloru w shaderze |
+| `materials[i].diffuseTexture` | ścieżka pliku, z którego powstaje tekstura `gfx::Texture2D`, wiązana z jednostką 0 przed narysowaniem części |
+| `materials[i].diffuseColor` | wartość uniformu `uTint` w `textured.frag` |
 
-Dwa pierwsze wiersze to jedno wywołanie konstruktora: `gfx::Mesh mesh(model.vertices, model.indices);` ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5.4). `std::vector` zamienia się na `std::span` sam. **Ten kod jeszcze nie istnieje w programie**: schemat pokazuje, do czego dane są przygotowane, a połączenie zrobi następny krok kamienia milowego.
+Całe to połączenie jest w jednej funkcji, `assets::AssetCache::model` ([`asset-cache.md`](asset-cache.md), sekcja 5). Loader jest tam wołany tak:
+
+```cpp
+    // loadObj logs its own error.
+    ObjModel source;
+    std::string error;
+    if (!loadObj(key, source, error)) {
+        m_failedPaths.push_back(key);
+        return nullptr;
+    }
+```
+
+Dwa pierwsze wiersze tabeli to jedno wywołanie konstruktora, `gfx::Mesh(source.vertices, source.indices)` ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5.7): `std::vector` zamienia się na `std::span` sam. Części z `source.parts` są przepisywane do struktur `assets::ModelPart`, każda z kolorem i teksturą swojego materiału, a `ObjModel` ginie na końcu funkcji: karta ma już własną kopię danych. Trzy rzeczy, które pamięć podręczna dokłada do wyniku loadera: model bez żadnej ściany jest odrzucany z własnym komunikatem, część bez tekstury albo z teksturą, której nie dało się wczytać, dostaje białą teksturę zastępczą, a plik, który raz się nie wczytał, nie jest czytany ponownie.
 
 ## 4. Shadery
 
-Loader nie ma shadera. Shadera, który rysowałby wczytany model z teksturą, **jeszcze nie ma** w repozytorium: istniejąca para `basic.vert` i `basic.frag` czyta pozycję i kolor, a nie pozycję, normalną i uv. Shader z teksturą dochodzi w następnym kroku. Numery atrybutów, których będzie musiał użyć, są już ustalone w `gfx/Vertex.hpp`: pozycja 0, normalna 1, uv 2 ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 2.4).
+Loader nie ma własnego shadera, ale wczytane modele rysuje para [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`textured.frag`](../../../assets/shaders/textured.frag), opisana linia po linii w [`../gfx/textures.md`](../gfx/textures.md) (sekcja 4). Każde pole wyniku loadera ma w niej swoje miejsce:
+
+| Dane z pliku | Pole wyniku loadera | Gdzie w shaderze |
+|---|---|---|
+| linie `v` | `Vertex::position` | `layout(location = 0) in vec3 aPosition;` |
+| linie `vn` | `Vertex::normal` | `layout(location = 1) in vec3 aNormal;` |
+| linie `vt` | `Vertex::uv` | `layout(location = 2) in vec2 aUv;` |
+| `Kd` z pliku MTL | `ObjMaterial::diffuseColor` | `uniform vec3 uTint;` |
+| `map_Kd` z pliku MTL | `ObjMaterial::diffuseTexture` | `uniform sampler2D uTexture;` (tekstura związana z jednostką, której numer jest w samplerze) |
+
+Numery atrybutów są ustalone w `gfx/Vertex.hpp`: pozycja 0, normalna 1, uv 2 ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 2.4). Pierwsza para shaderów projektu, `basic.vert` i `basic.frag`, do modeli się nie nadaje: czyta pozycję i **kolor**, a nie pozycję, normalną i uv.
+
+Normalne z pliku nie służą jeszcze do oświetlenia, bo oświetlenia w tym kamieniu milowym nie ma (M4). Shader umie je tylko pokazać jako kolor, w trybie podglądu `Normals as colour`. Drugi tryb, `UVs as colour`, pokazuje tak samo współrzędne z linii `vt`. Oba są sposobem na obejrzenie na ekranie tego, co loader wczytał.
 
 ## 5. Kod w projekcie
 
@@ -866,7 +890,17 @@ Testy błędów `loadObj` celowo wywołują logowanie, więc w wyjściu programu
 
 ## 6. Panel ImGui
 
-Loader nie ma jeszcze panelu, bo program go jeszcze nie woła. Planowany panel Models (lista wczytanych modeli z liczbą wierzchołków, trójkątów i materiałów) dochodzi w następnym kroku razem z rysowaniem modeli. Do tego czasu pokazem działania są testy (sekcja 5.9).
+Wynik loadera pokazuje panel **Assets** (kod: [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp)). PRD w sekcji 3 wymienia dla tematu 4 pokaz "Lista załadowanych modeli": to część tego panelu pod nagłówkiem `Models`. Panel linia po linii i scenariusz pokazu są w [`asset-cache.md`](asset-cache.md), sekcja 6. Tu jest to, co dotyczy loadera:
+
+| Element panelu | Skąd pochodzi | Co pokazuje dla modeli gry |
+|---|---|---|
+| nazwa pliku modelu, pełna ścieżka w podpowiedzi | `LoadedModel::path` | `floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`, w kolejności wczytania |
+| `... vertices, ... triangles` | liczba elementów `ObjModel::vertices` i jedna trzecia liczby `ObjModel::indices`, zapamiętane przy wczytaniu | 4 i 2 dla płytki, 60 i 30 dla ściany, 60 i 30 dla słupka: te same liczby co w tabeli z sekcji 5.9 |
+| `part '...': ... triangles, ...` | `ObjPart::material`, `ObjPart::indexCount` podzielone przez 3, nazwa pliku z `ObjMaterial::diffuseTexture` | jedna część na model, materiał `floor_stone` albo `wall_stone` i plik tekstury. Część bez własnej tekstury ma napis `no texture (white)` |
+| lista `View mode` | uniform `uViewMode` shadera | normalne z linii `vn` albo współrzędne z linii `vt` jako kolor |
+| lista pod nagłówkiem `Failed to load` | ścieżki, dla których `loadObj` albo `loadImage` zwróciło `false` | pusta, gdy wszystko się wczytało. Nagłówek pojawia się tylko wtedy, gdy jest co pokazać |
+
+Liczby z drugiego i trzeciego wiersza to wniosek z kodu panelu i z wyników testów loadera. Samych wartości w panelu nikt jeszcze nie odczytał z ekranu. Na Windowsie (2026-10-05) sprawdzone jest na zrzutach ekranu, że modele rysują się z teksturami we właściwej orientacji, że oba tryby podglądu działają i że brak pliku tekstury daje białą teksturę zastępczą i jedną linię `[error]`. Widżetów panelu nikt jeszcze nie klikał ręcznie, a na macOS nie sprawdzono niczego.
 
 ## 7. Pułapki
 
@@ -878,13 +912,15 @@ Loader nie ma jeszcze panelu, bo program go jeszcze nie woła. Planowany panel M
 6. **Przecinek dziesiętny z locale.** `atof` i `std::stof` zależą od globalnego locale. Przy polskim `0.14` czyta się jako `0`. Model robi się płaski albo znika, bez żadnego komunikatu. Parser czyta liczby strumieniem z klasycznym locale (sekcja 5.4).
 7. **Indeksy ujemne.** Liczą się od końca listy **w chwili czytania ściany**. Przeliczanie ich po wczytaniu całego pliku daje złe elementy w pliku, w którym ściany przeplatają się z wierzchołkami.
 8. **Czworokąty.** Plik z innego narzędzia może mieć linie `f` z czterema narożnikami. Loader, który czyta zawsze trzy, po cichu gubi połowę każdej ściany. Parser dzieli wielokąty wachlarzem, ale tylko wypukłe wychodzą na pewno dobrze.
-9. **Tekstura do góry nogami.** `v = 0` to dół obrazu, a plik PNG zaczyna się od górnego wiersza. To nie jest błąd loadera OBJ i nie wolno go naprawiać tutaj (na przykład przez `v = 1 - v`), bo UV moich modeli wychodzą poza zakres od 0 do 1 i liczy się ich dokładna wartość. Odwrócenie należy do wczytywania obrazu ([`images.md`](images.md)).
+9. **Tekstura do góry nogami.** `v = 0` to dół obrazu, a plik PNG zaczyna się od górnego wiersza. To nie jest błąd loadera OBJ: format OBJ ma tę samą konwencję co OpenGL (`v` rośnie w górę), więc parser przepisuje `vt` do `Vertex::uv` bez zmian, a jedyną rzeczą niezgodną jest kolejność wierszy w pliku obrazu. Poprawkę robi więc `assets::loadImage`, które kopiuje wiersze w odwrotnej kolejności ([`images.md`](images.md), sekcja 2). Zamiana `v` na `1 - v` w loaderze OBJ albo w shaderze dałaby **ten sam obraz**, także dla UV spoza zakresu od 0 do 1, których moje modele mają dużo (na przykład `-0.5` i `1.5` w `wall_straight.obj`): przy zawijaniu `GL_REPEAT` liczy się tylko część ułamkowa współrzędnej, a `1 - v` to odbicie lustrzane i przesunięcie o całą liczbę powtórzeń, więc zawijanie niczego tu nie psuje. Powody, żeby odwracać obraz, a nie współrzędne, są inne. Odwrócenie wierszy robi się raz, na procesorze, przy wczytaniu. Wszyscy odbiorcy tekstury (każdy shader, a także `ImGui::Image` w panelu) mają jedną konwencję i żaden nie musi pamiętać o poprawce. Zgadza się to z opisem pola `gfx::Vertex::uv` ("v = 0 is the bottom row of the image"). Prawdziwa pułapka to **podwójna poprawka**: odwrócony obraz i dodatkowo `1 - v` gdziekolwiek dają znów teksturę do góry nogami.
 10. **Ścieżka tekstury względem złego katalogu.** `map_Kd` jest względem pliku MTL, `mtllib` względem pliku OBJ. Otwieranie ich względem katalogu roboczego działa tylko wtedy, gdy program startuje z jednego konkretnego miejsca ([`../core/paths.md`](../core/paths.md)).
 11. **`v` a `vt` i `vn`.** Sprawdzanie tylko pierwszego znaku linii (`line[0] == 'v'`) wrzuca normalne i uv do listy pozycji. Trzeba porównywać całe słowo kluczowe.
 12. **Brak znaku nowej linii na końcu pliku.** Pętla "czytaj do `\n`" gubi ostatnią linię, czyli ostatni trójkąt. `takeLine` ma na to osobną gałąź.
-13. **Ta sama tekstura wczytana dwa razy.** `wall_straight.mtl` i `wall_pillar.mtl` wskazują ten sam plik PNG. Loader zwraca dla obu identyczną, uporządkowaną ścieżkę, ale sam niczego nie zapamiętuje: o to, żeby obraz trafił na kartę raz, musi zadbać kod, który z loadera korzysta.
+13. **Ta sama tekstura wczytana dwa razy.** `wall_straight.mtl` i `wall_pillar.mtl` wskazują ten sam plik PNG. Loader zwraca dla obu identyczną, uporządkowaną ścieżkę, ale sam niczego nie zapamiętuje: o to, żeby obraz trafił na kartę raz, dba kod, który z loadera korzysta. Robi to `assets::AssetCache`, dla którego ta uporządkowana ścieżka jest kluczem ([`asset-cache.md`](asset-cache.md), sekcja 2).
 14. **`-0.0000` w normalnych.** To zwykłe zero ze znakiem minus. Czyta się poprawnie i w porównaniach jest równe `0.0`.
 15. **Spacje w nazwach.** Nazwa materiału i nazwa pliku to reszta linii, nie jedno pole. `map_Kd old stone.png` cięte na pola dałoby plik `old`.
+16. **Poprawny plik, którego nie da się narysować.** Plik OBJ bez ani jednej linii `f` jest dla `loadObj` poprawny: funkcja zwraca `true` i pusty model. Loader nie ocenia, czy wynik się do czegoś nadaje. Odrzuca go dopiero `AssetCache::model`, z komunikatem `Model has no faces: ...`.
+17. **Loader nie sprawdza, czy plik tekstury istnieje.** `ObjMaterial::diffuseTexture` to tylko ścieżka zbudowana z tekstu. Model z literówką w `map_Kd` wczytuje się bez błędu, a brak pliku wychodzi dopiero przy wczytywaniu obrazu: w grze część jest wtedy rysowana białą teksturą i w konsoli jest jedna linia `[error]` (zmierzone na Windowsie).
 
 ## 8. Ćwiczenia
 
@@ -968,6 +1004,15 @@ Testy uruchamia `ctest --test-dir build/debug -C Debug --output-on-failure`. Po 
 
 18. **Dlaczego parsowanie jest oddzielone od czytania plików?**
     Żeby dało się je testować bez plików i bez okna: `parseObj` i `parseMtl` dostają tekst i zwracają dane, więc test podaje napis wpisany w kod. Pliki, katalogi i logowanie są tylko w `loadObj`.
+
+19. **Kto w programie woła `loadObj` i co dzieje się z wynikiem?**
+    `assets::AssetCache::model`, raz dla każdego pliku. Z `vertices` i `indices` powstaje `gfx::Mesh`, części są przepisywane do `ModelPart` z kolorem `Kd` i teksturą swojego materiału, a sam `ObjModel` ginie na końcu funkcji. Rysuje `MazeRenderer` shaderami `textured.*`.
+
+20. **Dlaczego orientację tekstury poprawia loader obrazów, a nie `1 - v` w loaderze OBJ albo w shaderze?**
+    Wynik na ekranie byłby ten sam, także dla UV spoza zakresu od 0 do 1: przy `GL_REPEAT` liczy się część ułamkowa, a `1 - v` to odbicie i przesunięcie o całe powtórzenia. Powody są organizacyjne: odwrócenie wierszy robi się raz przy wczytaniu, każdy odbiorca tekstury ma tę samą konwencję (`v = 0` na dole, jak w OBJ i w OpenGL), a współrzędne z pliku modelu zostają nietknięte.
+
+21. **Gdzie w shaderze lądują linie `v`, `vn`, `vt`, `Kd` i `map_Kd`?**
+    `v`, `vn` i `vt` to atrybuty wierzchołka numer 0, 1 i 2 (`aPosition`, `aNormal`, `aUv` w `textured.vert`). `Kd` to uniform `uTint`, przez który mnożony jest kolor tekstury. `map_Kd` to plik tekstury wiązanej z jednostką, której numer ma sampler `uTexture`.
 
 ## 10. Źródła
 

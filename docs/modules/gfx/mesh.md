@@ -1,11 +1,11 @@
 # Moduł gfx: wierzchołek i siatka (`Vertex`, `Mesh`)
 
 Kamień milowy: M2 + M3. Temat wykładu: 4 (Wczytywanie OBJ), część po stronie karty graficznej. Korzysta z tematu 2 (bufory, VAO, `glDrawElements`).
-Kod: [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp), [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp).
+Kod: [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp), [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp). Użytkownicy: [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp), [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość [`buffers-vao.md`](buffers-vao.md) (bufor, VAO, krok i przesunięcie, klasy `Buffer` i `VertexArray`) oraz [`indexed-drawing.md`](indexed-drawing.md) (indeksy, `glDrawElements`, kolejność pól). Skąd biorą się dane siatki, opisuje [`../assets/obj-loader.md`](../assets/obj-loader.md).
 
-**Stan.** Struktura `gfx::Vertex` i klasa `gfx::Mesh` istnieją i kompilują się w bibliotece `engine`, ale **program ich jeszcze nie używa**: `NightMazeApp` nadal rysuje kostkę własnymi polami `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer`. `Vertex` jest już używany przez loader OBJ i jego testy. `Mesh` nie ma jeszcze żadnego wywołania w repozytorium: pierwszym użytkownikiem będzie rysowanie modeli labiryntu w następnym kroku kamienia milowego M2 + M3. Co z tego wynika dla sprawdzenia kodu, mówi sekcja 5.6.
+**Stan.** Struktura `gfx::Vertex` i klasa `gfx::Mesh` są w bibliotece `engine` i mają w programie dwóch użytkowników (sekcja 5.7). `assets::AssetCache` tworzy po jednej siatce z trójkątów dla każdego modelu labiryntu, a `game::MazeRenderer` rysuje je częściami, przez `draw(firstIndex, indexCount)`. `game::ColliderLines` ma jedną siatkę z odcinków (`GL_LINES`): sześcian z 8 narożników i 24 indeksów, którym rysuje pudełka kolizji. Kostka z M1 została przy własnych polach `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` w `NightMazeApp`. `Mesh` nadal **nie ma testu jednostkowego**, bo wymaga kontekstu OpenGL. Co wiadomo o jej działaniu, mówi sekcja 5.6.
 
 ## 1. Po co to jest
 
@@ -129,7 +129,7 @@ Pierwszy parametr `glDrawElements` mówi, jak grupować indeksy:
 | `GL_TRIANGLES` | każde trzy kolejne indeksy to trójkąt | 3 |
 | `GL_LINES` | każde dwa kolejne indeksy to odcinek | 2 |
 
-Dane i klasa są te same, zmienia się tylko interpretacja. `Mesh` przyjmuje prymityw w konstruktorze (domyślnie `GL_TRIANGLES`), bo planowane rysowanie pudełek kolizji użyje tej samej klasy z `GL_LINES`: 8 wierzchołków pudełka i 24 indeksy dwunastu krawędzi.
+Dane i klasa są te same, zmienia się tylko interpretacja. `Mesh` przyjmuje prymityw w konstruktorze (domyślnie `GL_TRIANGLES`), bo rysowanie pudełek kolizji używa tej samej klasy z `GL_LINES`: 8 wierzchołków sześcianu i 24 indeksy dwunastu krawędzi (sekcja 5.7).
 
 ## 3. Jak to działa w OpenGL
 
@@ -159,7 +159,14 @@ Sygnatura `glDrawElements(mode, count, type, indices)`:
 
 ## 4. Shadery
 
-`Mesh` nie ma własnego shadera i żadnego nie zna. W repozytorium **nie ma jeszcze shadera**, który czytałby układ `Vertex`: para `basic.vert` i `basic.frag` deklaruje pozycję pod numerem 0 i **kolor** pod numerem 1, a `Vertex` ma pod numerem 1 normalną. Narysowanie `Mesh` shaderem `basic` pokazałoby więc normalne jako kolory. Shader z teksturą, zgodny z numerami z sekcji 2.4, dochodzi w następnym kroku razem z rysowaniem modeli.
+`Mesh` nie ma własnego shadera i żadnego nie zna. Układ `Vertex` czytają dwie pary shaderów projektu:
+
+| Shader wierzchołków | Które atrybuty deklaruje | Co rysuje |
+|---|---|---|
+| `textured.vert` | wszystkie trzy: `aPosition` (0), `aNormal` (1), `aUv` (2) | modele labiryntu ([`textures.md`](textures.md), sekcja 4.1) |
+| `color.vert` | tylko `aPosition` (0) | linie pudełek kolizji ([`../scene/collision.md`](../scene/collision.md), sekcja 4) |
+
+`color.vert` pokazuje zasadę z sekcji 2.4: siatka ma włączone trzy atrybuty, a shader czyta jeden. Dwa pozostałe są po prostu ignorowane. Trzecia para, `basic.vert` i `basic.frag`, **nie nadaje się** do rysowania `Mesh`: deklaruje pozycję pod numerem 0 i **kolor** pod numerem 1, a `Vertex` ma pod numerem 1 normalną. Narysowanie `Mesh` shaderem `basic` pokazałoby normalne jako kolory, bez żadnego błędu.
 
 ## 5. Kod w projekcie
 
@@ -345,14 +352,48 @@ Uczciwie: **mało**.
 |---|---|
 | `Vertex.hpp` | kompiluje się, oba `static_assert` przechodzą pod MSVC 19.44 (Windows, 2026-10-05). Struktura jest używana przez loader OBJ i jego 18 przypadków testowych ([`../assets/obj-loader.md`](../assets/obj-loader.md), sekcja 5.9) |
 | `Mesh.hpp`, `Mesh.cpp` | kompilują się bez ostrzeżeń pod MSVC `/W4 /permissive-`, `static_assert` typu indeksu przechodzi |
-| działanie `Mesh` | **niesprawdzone**. Klasa wymaga kontekstu OpenGL, którego program testowy nie ma, więc nie ma testu jednostkowego. Żaden kod w repozytorium jeszcze jej nie tworzy ani nie rysuje |
-| macOS | niesprawdzone: ani kompilacja, ani asercje. Pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md) |
+| działanie `Mesh` z trójkątami | sprawdzone **na obrazie**, nie testem. Na Windowsie (2026-10-05, NVIDIA GeForce RTX 4070 Ti SUPER) gra rysuje nią ściany, słupki i podłogę labiryntu: na zrzutach ekranu ściany widziane z góry zgadzają się z planem w panelu Maze, tekstury są we właściwej orientacji, a program nie wypisuje żadnej linii `[error]` ani `GL_`, czyli `GL_CHECK` po `glDrawElements` jest czysty. Rysowanie zakresem działa na modelach, które mają po jednej części: zakres obejmuje wtedy całą siatkę. Modelu z kilkoma częściami w grze nie ma, więc rysowanie zakresu zaczynającego się od indeksu innego niż 0 **nie było sprawdzone** |
+| działanie `Mesh` z odcinkami (`GL_LINES`) | sprawdzone na obrazie: na zrzucie ekranu z widoku z góry żółte pudełka leżą na ścianach i słupkach |
+| test jednostkowy | nie ma. Klasa wymaga kontekstu OpenGL, którego program testowy nie ma |
+| macOS | niesprawdzone: ani kompilacja, ani asercje, ani obraz. Pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md) |
 
-Pierwszym prawdziwym sprawdzeniem będzie narysowanie modeli labiryntu w następnym kroku: wtedy zobaczę obraz i wynik `GL_CHECK` po `glDrawElements`. Do tego czasu poprawność `Mesh` opiera się na tym, że powtarza krok po kroku kod kostki, który jest sprawdzony na obu systemach ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5.7).
+### 5.7 Kto używa `Mesh`
+
+**Modele labiryntu.** `assets::AssetCache::model` tworzy siatkę z wyniku loadera OBJ i chowa ją w strukturze `LoadedModel` ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 5). Linia z [`AssetCache.cpp`](../../../src/assets/AssetCache.cpp):
+
+```cpp
+        .mesh = gfx::Mesh(source.vertices, source.indices),
+```
+
+`source.vertices` to `std::vector<gfx::Vertex>`, a `source.indices` to `std::vector<std::uint32_t>`: oba zamieniają się na `std::span` same. Trzeciego argumentu nie ma, więc prymitywem jest domyślne `GL_TRIANGLES`. Wyrażenie tworzy obiekt tymczasowy, który trafia do pola `mesh` przez przeniesienie: to jedno z miejsc, dla których `Mesh` musi być przenoszalny. Dane w `source` giną na końcu funkcji, a karta ma już własną kopię.
+
+Rysuje `game::MazeRenderer::drawInstances` ([`MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp)), jedną część modelu naraz:
+
+```cpp
+            model->mesh.draw(part.firstIndex, part.indexCount);
+```
+
+`part` to `assets::ModelPart`: zakres indeksów jednego materiału, przepisany z `ObjPart` loadera (sekcja 2.5). Tekstura i kolor części są ustawiane przed tą linią, a macierz modelu tuż nad nią ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5). Trzy modele gry mają po jednej części, więc każde takie wywołanie rysuje całą siatkę.
+
+**Linie pudełek kolizji.** `game::ColliderLines` ma jedno pole `gfx::Mesh m_unitCube` i tworzy je na liście inicjalizacyjnej konstruktora ([`ColliderLines.cpp`](../../../src/game/ColliderLines.cpp)):
+
+```cpp
+ColliderLines::ColliderLines() : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES) {}
+```
+
+| Argument | Co to jest |
+|---|---|
+| `UNIT_CUBE_CORNERS` | `std::array` ośmiu `gfx::Vertex`: narożniki sześcianu od `(0, 0, 0)` do `(1, 1, 1)`. Wypełniona jest tylko pozycja, normalna i uv zostają zerami, bo `color.vert` ich nie czyta |
+| `UNIT_CUBE_EDGES` | `std::array` 24 liczb `std::uint32_t`: 12 krawędzi po 2 indeksy |
+| `GL_LINES` | każde dwa kolejne indeksy to jeden odcinek. To jedyne miejsce w projekcie, które podaje trzeci argument konstruktora |
+
+Rysowanie to `m_unitCube.draw();` dla każdego pudełka, po ustawieniu macierzy modelu, która rozciąga sześcian do rozmiarów pudełka i przesuwa go na miejsce ([`../scene/collision.md`](../scene/collision.md), sekcja 5). Jedna siatka na karcie obsługuje więc wszystkie pudełka.
+
+Oba użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiałach: ta sama klasa rysuje modele z teksturą programem `textured` i gołe odcinki programem `color`.
 
 ## 6. Panel ImGui
 
-`Mesh` i `Vertex` nie mają elementu w panelu. Planowany panel Models (lista wczytanych modeli z liczbą wierzchołków i trójkątów) dochodzi w następnym kroku razem z rysowaniem modeli.
+`Mesh` i `Vertex` nie mają własnego panelu. Siatki widać w dwóch panelach pośrednio. Panel **Assets** pokazuje listę wczytanych modeli z liczbą wierzchołków i trójkątów oraz części każdego modelu z liczbą trójkątów ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6). Liczby te pochodzą ze struktury `LoadedModel`, a nie z `Mesh`: sama siatka pamięta tylko liczbę indeksów. Panel **Collision** włącza rysowanie pudełek, czyli siatki z odcinków ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
 
 ## 7. Pułapki
 
@@ -366,17 +407,21 @@ Pierwszym prawdziwym sprawdzeniem będzie narysowanie modeli labiryntu w następ
 8. **`Mesh` utworzony przed oknem albo żyjący dłużej niż okno.** Jak każda klasa `gfx` wymaga żywego kontekstu OpenGL przez całe życie ([`README.md`](README.md), sekcja 5).
 9. **Rysowanie obiektem, z którego przeniesiono.** Po `Mesh b = std::move(a);` obiekt `a` nie ma VAO. `a.draw()` wiąże VAO numer 0 i woła `glDrawElements`, co w profilu Core kończy się błędem `GL_INVALID_OPERATION`.
 10. **Puste tablice.** `Mesh` z zerową liczbą indeksów jest poprawny: `draw()` woła `glDrawElements` z liczbą 0 i nic nie rysuje.
+11. **Utworzenie siatki zmienia wiązania.** Konstruktor zostawia związany nowy VAO, a z `GL_ARRAY_BUFFER` nowy bufor wierzchołków. Kod, który po utworzeniu własnych buforów liczy na to, że nadal są związane, nie może między tymi krokami tworzyć siatek. Dlatego w `NightMazeApp.hpp` pola, przez które powstają siatki, stoją przed polami kostki ([`buffers-vao.md`](buffers-vao.md), pułapka 12).
+12. **Prymityw niezgodny z indeksami.** Klasa nie sprawdza, czy liczba indeksów pasuje do prymitywu. Indeksy trójkątów narysowane jako `GL_LINES` dają przypadkowe odcinki, a indeksy odcinków narysowane jako `GL_TRIANGLES` przypadkowe trójkąty (ćwiczenie 5).
+13. **Szerokość linii.** `ColliderLines` zostawia domyślną szerokość 1 piksela. Profil Core nie musi obsługiwać szerszych linii przez `glLineWidth`, a komentarz w `ColliderLines.cpp` mówi, że macOS ich nie obsługuje. Tego na Macu nie sprawdzałem.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 4 da się zrobić już teraz (kartka albo kompilacja). Ćwiczenia 5 i 6 wymagają kodu, który rysuje `Mesh`, czyli następnego kroku kamienia milowego.
+Ćwiczenia od 1 do 4 robi się na kartce albo samą kompilacją. Ćwiczenia od 5 do 7 zmieniają kod, który rysuje `Mesh`: po każdym zbuduj i uruchom grę, a na końcu wycofaj zmianę (`git checkout src`).
 
 1. **Bajty na kartce.** Siatka ma 60 wierzchołków i 90 indeksów (tyle ma `wall_straight.obj`). Ile bajtów zajmuje bufor wierzchołków, ile bufor indeksów? W którym bajcie zaczyna się pole `uv` wierzchołka numer 7? Odpowiedzi: 1920, 360, 248 (7 razy 32 plus 24).
 2. **Zakres na kartce.** Model ma części: kamień (`firstIndex` 0, `indexCount` 60) i drewno (`firstIndex` 60, `indexCount` 30). Jakie argumenty dostanie `glDrawElements` przy rysowaniu drewna? Odpowiedź: liczba 30, przesunięcie 240 bajtów.
 3. **Asercja w działaniu.** Dopisz tymczasowo do `Vertex` pole `float extra = 0.0F;` i zbuduj projekt. Przeczytaj komunikat kompilatora. Potem zamień je na `char flag = 0;`. Ile wynosi teraz `sizeof(Vertex)` i dlaczego nie 33? Wycofaj zmianę.
 4. **Układ standardowy.** Dopisz tymczasowo do `Vertex` funkcję `virtual void f() {}`. Obie asercje zgłaszają błąd: dlaczego zmienił się rozmiar i dlaczego `offsetof` przestaje być bezpieczne?
-5. **Odcinki zamiast trójkątów.** Utwórz `Mesh` z tych samych danych z prymitywem `GL_LINES`. Co widać i dlaczego to nie jest siatka krawędzi modelu? (Wskazówka: indeksy są pogrupowane trójkami, a `GL_LINES` czyta je parami.)
-6. **Pół modelu.** Narysuj tylko `draw(0, indexCount() / 2)`. Zadbaj, żeby liczba była podzielna przez 3. Co się stanie, gdy nie będzie?
+5. **Odcinki zamiast trójkątów.** W `AssetCache.cpp` dopisz trzeci argument: `gfx::Mesh(source.vertices, source.indices, GL_LINES)`. Co widać i dlaczego to nie jest siatka krawędzi modelu? (Wskazówka: indeksy są pogrupowane trójkami, a `GL_LINES` czyta je parami.)
+6. **Pół modelu.** W `MazeRenderer::drawInstances` zamień `part.indexCount` na `part.indexCount / 2`. Których ścian modeli brakuje? Liczba indeksów ściany (90) dzieli się na pół bez reszty z dzielenia przez 3. Co by się stało z ostatnim, niepełnym trójkątem, gdyby się nie dzieliła?
+7. **Trójkąty z krawędzi.** W `ColliderLines.cpp` usuń argument `GL_LINES`. Włącz rysowanie pudełek w panelu Collision. Co widać zamiast krawędzi i ile trójkątów powstaje z 24 indeksów?
 
 ## 9. Pytania kontrolne
 
@@ -411,10 +456,16 @@ Pierwszym prawdziwym sprawdzeniem będzie narysowanie modeli labiryntu w następ
     Nie rysuje nic. Suma `firstIndex + indexCount` na liczbach 32-bitowych bez znaku mogłaby się przekręcić i dać małą wartość, więc warunek sprawdza osobno początek i to, czy długość mieści się w reszcie bufora.
 
 11. **Po co parametr `primitive`?**
-    Mówi `glDrawElements`, jak grupować indeksy: trójkami (`GL_TRIANGLES`) albo parami (`GL_LINES`). Ta sama klasa narysuje model i, w przyszłości, krawędzie pudełek kolizji.
+    Mówi `glDrawElements`, jak grupować indeksy: trójkami (`GL_TRIANGLES`) albo parami (`GL_LINES`). Ta sama klasa rysuje modele labiryntu i krawędzie pudełek kolizji.
 
 12. **Czy `Mesh` jest przetestowany?**
-    Nie testem jednostkowym: wymaga kontekstu OpenGL, a program testowy nie tworzy okna. Dziś jest tylko skompilowany. Zostanie sprawdzony na obrazie, gdy gra zacznie rysować modele.
+    Nie testem jednostkowym: wymaga kontekstu OpenGL, a program testowy nie tworzy okna. Jest sprawdzony na obrazie na Windowsie: gra rysuje nim labirynt i pudełka kolizji bez błędów OpenGL. Rysowanie zakresu, który nie zaczyna się od indeksu 0, nie było sprawdzone, bo modele gry mają po jednej części.
+
+13. **Kto w programie tworzy obiekty `Mesh` i ile ich jest?**
+    `assets::AssetCache` tworzy po jednym dla każdego wczytanego modelu: trzy dla labiryntu (płytka podłogi, ściana, słupek). `game::ColliderLines` ma jeden, sześcian z krawędzi. Razem cztery siatki na karcie, niezależnie od rozmiaru labiryntu: każdy obiekt sceny to ta sama siatka z inną macierzą modelu.
+
+14. **Dlaczego jedna siatka sześcianu wystarcza do narysowania wszystkich pudełek kolizji?**
+    Bo pudełko o krawędziach równoległych do osi to sześcian jednostkowy po skalowaniu i przesunięciu. Rozmiar i miejsce pudełka są w macierzy modelu, a geometria na karcie jest wspólna.
 
 ## 10. Źródła
 
@@ -422,4 +473,4 @@ Pierwszym prawdziwym sprawdzeniem będzie narysowanie modeli labiryntu w następ
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glDrawElements`, `glVertexAttribPointer`.
 - Khronos OpenGL Wiki, "Vertex Specification" (<https://www.khronos.org/opengl/wiki/Vertex_Specification>): układ przeplatany, krok i przesunięcie.
 - cppreference: `offsetof` (<https://en.cppreference.com/w/cpp/types/offsetof>), `std::is_standard_layout` (<https://en.cppreference.com/w/cpp/types/is_standard_layout>), `std::span` (<https://en.cppreference.com/w/cpp/container/span>), `static_assert` (<https://en.cppreference.com/w/cpp/language/static_assert>).
-- Dokumenty w tym repozytorium: [`buffers-vao.md`](buffers-vao.md), [`indexed-drawing.md`](indexed-drawing.md), [`README.md`](README.md), [`../assets/obj-loader.md`](../assets/obj-loader.md), [`../assets/README.md`](../assets/README.md).
+- Dokumenty w tym repozytorium: [`buffers-vao.md`](buffers-vao.md), [`indexed-drawing.md`](indexed-drawing.md), [`README.md`](README.md), [`../assets/obj-loader.md`](../assets/obj-loader.md), [`../assets/README.md`](../assets/README.md), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy siatki modeli), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je rysuje), [`../scene/collision.md`](../scene/collision.md) (siatka z odcinków), [`textures.md`](textures.md) (shadery `textured.*`).

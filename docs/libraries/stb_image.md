@@ -7,8 +7,10 @@ loader obrazów w [`src/assets/ImageLoader.cpp`](../../src/assets/ImageLoader.cp
 
 **Stan na dziś: stb_image woła jeden plik projektu, `src/assets/ImageLoader.cpp`.** Funkcja
 `assets::loadImage` zamienia nim plik PNG na tablicę bajtów
-([`../modules/assets/images.md`](../modules/assets/images.md)). Gra jej jeszcze nie woła:
-wołają ją testy jednostkowe (`tests/ImageLoaderTests.cpp`). Na Windowsie (MSVC 19.44,
+([`../modules/assets/images.md`](../modules/assets/images.md)). Wołają ją testy jednostkowe
+(`tests/ImageLoaderTests.cpp`) i gra: `assets::AssetCache::texture` wczytuje nią tekstury
+modeli labiryntu ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md)).
+Na Windowsie (MSVC 19.44,
 2026-10-05) biblioteka kompiluje się bez ostrzeżeń i testy loadera przechodzą. **Na macOS
 ten kod nie był jeszcze budowany.**
 
