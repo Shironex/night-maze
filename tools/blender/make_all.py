@@ -1,0 +1,28 @@
+# Regenerates every generated asset of the game in one Blender process: the textures first,
+# then the models.
+# See docs/guides/blender.md
+#
+# Run from the repository root:
+#   blender --background --factory-startup --python tools/blender/make_all.py
+# Add "-- --shots" at the end to also write review renders to the temporary folder.
+import os
+import sys
+
+# Blender does not add the folder of the script to the module search path, so the other
+# scripts next to this file would not be found without this line.
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+import build_floor_tile
+import build_wall_pillar
+import build_wall_straight
+import make_textures
+
+shots = "--shots" in sys.argv
+
+# The textures come first: a model script loads its PNG to build the material, and the
+# review renders show it.
+make_textures.build()
+
+build_wall_straight.build(shots)
+build_wall_pillar.build(shots)
+build_floor_tile.build(shots)

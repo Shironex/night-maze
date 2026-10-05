@@ -1,0 +1,2 @@
+# Python bytecode caches that appear when Blender imports the helper modules.
+__pycache__/
