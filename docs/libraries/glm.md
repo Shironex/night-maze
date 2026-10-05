@@ -77,10 +77,16 @@ Windowsie zbudowany w Debug i Release bez ostrzeżeń, a testy przechodziły (21
 85098 asercji, stan po M5). Kod M6 (niebo, teren, trawa) jest na Windowsie kompletny: build
 bez ostrzeżeń zgłosił wykonawca, a 256 przypadków testowych i 101232 asercje uruchomiłem
 sam na programach testowych Debug i Release (2026-10-05). Po pierwszej części M7 zgłoszone
-jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139 (Windows, 2026-10-05). Ta część dodała jedno nowe
+jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412 (Windows, 2026-10-05). Pierwsza część M7 dodała jedno nowe
 miejsce użycia GLM: `gfx::srgbToLinear` i `gfx::linearToSrgb` w `src/gfx/ColorSpace.hpp`
 przyjmują i zwracają `glm::vec3` (kolor przeliczany kanał po kanale,
-[`../modules/gfx/color-space.md`](../modules/gfx/color-space.md)). Na macOS kod M4, M5 i M6 nie był
+[`../modules/gfx/color-space.md`](../modules/gfx/color-space.md)). Trzecia część M7 (mgła i winieta)
+dodała dwa pliki z GLM w bibliotece `game_logic`: `src/game/Fog.*` (`glm::length` dla
+odległości powierzchni od oka i mnożenie `glm::mat4` przez `glm::vec4` w
+`worldPositionFromDepth`) oraz `src/game/Vignette.*` (`glm::length` i `glm::smoothstep`),
+a `NightMazeApp::onRender` odwraca iloczyn `projection * view` funkcją `glm::inverse`
+([`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 2.19,
+5.12 i 5.13). Na macOS kod M4, M5 i M6 nie był
 budowany.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem

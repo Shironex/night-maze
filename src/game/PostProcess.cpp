@@ -1,11 +1,12 @@
 // PostProcess: the HDR framebuffer the scene is drawn into, the bloom passes that make
 // bright things glow, and the composite pass that brings the picture to the window with
-// exposure, tone mapping and gamma correction.
+// fog, exposure, tone mapping, a vignette and gamma correction.
 // See docs/modules/renderer/post-process.md
 #include "game/PostProcess.hpp"
 
 #include "core/GlCheck.hpp"
 #include "game/ShaderUniforms.hpp"
+#include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 
 #include <algorithm>
@@ -22,6 +23,10 @@ constexpr GLuint SOURCE_TEXTURE_UNIT = 0;
 // The composite pass reads two pictures: the scene from the unit above and the bloom
 // from this one.
 constexpr GLuint BLOOM_TEXTURE_UNIT = 1;
+
+// The fog of the composite pass reads a third picture, the depth of the scene, from
+// this unit.
+constexpr GLuint DEPTH_TEXTURE_UNIT = 2;
 
 // The values of the uniform uHorizontal in post/blur.frag: the direction of a blur pass.
 constexpr int BLUR_HORIZONTAL = 1;
@@ -214,7 +219,7 @@ void PostProcess::drawBloom(const gfx::Shader& brightShader, const gfx::Shader& 
 }
 
 void PostProcess::composite(const gfx::Shader& shader, const PostProcessSettings& settings,
-                            core::Size windowSize) const {
+                            core::Size windowSize, const SceneView& view) const {
     // From here on everything lands in the window: this pass, and the debug UI after it.
     gfx::Framebuffer::bindDefault(windowSize.width, windowSize.height);
     if (!m_scene.isValid() || !shader.isValid()) {
@@ -232,6 +237,26 @@ void PostProcess::composite(const gfx::Shader& shader, const PostProcessSettings
     GL_CHECK(glDisable(GL_FRAMEBUFFER_SRGB));
 
     shader.use();
+
+    // The fog. Switched off, the shader does not read the depth texture at all, so the
+    // picture is exactly the one of a frame without fog. The sampler gets its unit
+    // either way: a sampler that was never set reads unit 0, the picture of the scene.
+    const FogSettings& fog = settings.fog;
+    shader.setInt(COMPOSITE_FOG_ENABLED_UNIFORM, fog.enabled ? 1 : 0);
+    shader.setInt(COMPOSITE_DEPTH_UNIFORM, static_cast<int>(DEPTH_TEXTURE_UNIT));
+    shader.setFloat(COMPOSITE_FOG_DENSITY_UNIFORM, fog.density);
+    shader.setFloat(COMPOSITE_FOG_BASE_HEIGHT_UNIFORM, fog.baseHeight);
+    shader.setFloat(COMPOSITE_FOG_HEIGHT_FALLOFF_UNIFORM, fog.heightFalloff);
+    // The colour of the fog is an sRGB value and the picture it is mixed into is
+    // linear, so it is converted here, once per frame.
+    shader.setVec3(COMPOSITE_FOG_COLOR_UNIFORM, gfx::srgbToLinear(fog.color));
+    shader.setMat4(COMPOSITE_INVERSE_VIEW_PROJECTION_UNIFORM, view.inverseViewProjection);
+    shader.setVec3(COMPOSITE_EYE_UNIFORM, view.eye);
+    if (fog.enabled) {
+        // Reading the depth of the scene is allowed here because the window is the
+        // target: the scene framebuffer is not being drawn into.
+        m_scene.bindDepthTexture(DEPTH_TEXTURE_UNIT);
+    }
 
     // The bloom is added only when it was asked for AND drawBloom has drawn it in this
     // frame. Otherwise the shader does not read the bloom texture at all, so the
@@ -252,6 +277,12 @@ void PostProcess::composite(const gfx::Shader& shader, const PostProcessSettings
     shader.setFloat(COMPOSITE_EXPOSURE_UNIFORM, settings.exposure);
     // The enum values are the numbers post/composite.frag compares uToneMapping with.
     shader.setInt(COMPOSITE_TONE_MAPPING_UNIFORM, static_cast<int>(settings.toneMapping));
+
+    // The vignette. Switched off, the shader skips its line.
+    const VignetteSettings& vignette = settings.vignette;
+    shader.setInt(COMPOSITE_VIGNETTE_ENABLED_UNIFORM, vignette.enabled ? 1 : 0);
+    shader.setFloat(COMPOSITE_VIGNETTE_STRENGTH_UNIFORM, vignette.strength);
+    shader.setFloat(COMPOSITE_VIGNETTE_RADIUS_UNIFORM, vignette.radius);
 
     drawFullscreenTriangle();
 }

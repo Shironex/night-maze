@@ -53,7 +53,17 @@
 > (zmierzone przed zmianą świecenia kryształów), poświata kryształów i księżyca na zrzutach
 > ekranu i liczba klatek na sekundę z bloomem i bez (sekcja 18.1). Żadnego z tych pomiarów
 > nie powtarzałem. Wersji kompilatora, karty graficznej i sterownika dla tej części nie
-> zapisano. M7 jest rozpoczęty, nie kompletny: mgły, winiety, minimapy i cieni nie ma.
+> zapisano. Po tej części M7 był rozpoczęty, nie kompletny: mgły, winiety, minimapy
+> i cieni nie było.
+>
+> **Zgłoszone 2026-10-05 (M7, część 3: mgła i winieta):** bramka `make check` przechodzi,
+> zero ostrzeżeń w Debug i w Release, 294 przypadki testowe i 102412 asercji w obu
+> konfiguracjach, z wyłączoną mgłą i winietą obraz identyczny co do piksela z drugą
+> częścią, oba widoki diagnostyczne identyczne przy włączonych wartościach startowych
+> i liczba klatek na sekundę z oboma efektami i bez nich (sekcja 19.1). Żadnego z tych
+> pomiarów nie powtarzałem. Wersji kompilatora, karty graficznej i sterownika dla tej
+> części nie zapisano. M7 jest rozpoczęty, nie kompletny: są bufor HDR, bloom, mgła
+> i winieta, minimapy i cieni nie ma.
 >
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
@@ -61,14 +71,15 @@
 > bateria, przejście przez otwartą bramę, karta wygranej, HUD przy ukrytych panelach,
 > rozwijanie paneli Camera i Gameplay, pole `Skybox` i suwak `Sky brightness`, chodzenie po
 > nierównym podłożu, panele Terrain i Grass z ich suwakami i polami wyboru, panel
-> Framebuffers z suwakiem ekspozycji, listą krzywych i podglądami, zmiana
-> rozmiaru okna,
+> Framebuffers z suwakiem ekspozycji, listą krzywych i podglądami, jego dwie zakładki
+> z kontrolkami bloomu, mgły i winiety, zmiana rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
 > są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
-> M6), 16 (teren i trawa, druga część M6) i 17 (bufor HDR i gamma, pierwsza część M7)
-> rozróżniają punkty zmierzone
+> M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
+> 18 (bloom, druga część M7) i 19 (mgła i winieta, trzecia część M7) rozróżniają punkty
+> zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
 > Sekcje 11, 12 i 13 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach
 > `[x]` opisują program z dnia pomiaru (z kostką z M1, a w sekcji 13 także z kostkami
@@ -79,7 +90,8 @@
 > płaskie płytki (model `floor_tile.obj` z teksturą `floor_stone.png`): druga część M6
 > usunęła je i zastąpiła terenem z mapy wysokości, więc słowo "podłoga" w punktach `[x]`
 > tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
-> pokazuje dziś, opisują sekcje 2, 14, 15 i 16.
+> pokazuje dziś, opisują sekcje 2, 14, 15 i 16, a koniec klatki (bufor HDR, bloom, mgłę
+> i winietę) sekcje 17, 18 i 19.
 
 ## 1. Wymagania
 
@@ -299,10 +311,12 @@ przypadki i 62220 asercji, sekcja 13), po M5 szesnaście (215 i 85098, sekcja 14
 pierwszej części M6 siedemnaście (221 i 85175, sekcja 15), po drugiej dziewiętnaście (256
 i 101232, sekcja 16: lista wyżej). Po pierwszej części M7 miał dwadzieścia jeden:
 doszły `ColorSpaceTests.cpp` (9 przypadków) i `FramebufferTests.cpp` (3),
-a `LightingTests.cpp` ma 11 (269 przypadków i 102103 asercje, sekcja 17.1). Dziś, po
-drugiej części M7, ma dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypadków). Zgłoszone
-liczby dla tego stanu to **276 przypadków i 102139 asercji** w Debug i w Release
-(sekcja 18.1). Blok wyjścia programu wyżej jest zapisem
+a `LightingTests.cpp` ma 11 (269 przypadków i 102103 asercje, sekcja 17.1). Po
+drugiej części M7 miał dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypadków, razem
+276 przypadków i 102139 asercji, sekcja 18.1). Dziś, po trzeciej części M7, ma
+dwadzieścia cztery: doszły `FogTests.cpp` (11 przypadków) i `VignetteTests.cpp` (7).
+Zgłoszone liczby dla tego stanu to **294 przypadki i 102412 asercji** w Debug
+i w Release (sekcja 19.1). Blok wyjścia programu wyżej jest zapisem
 z drugiej części M6: nowego wyjścia nie przepisywałem, bo sam go nie uruchamiałem.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
@@ -1318,7 +1332,9 @@ pierwszej części M6 (221 i 85175, pięć programów, niebo) sekcja 15, stan po
 i 101232, dziesięć paneli, sześć programów, teren w miejscu płytek podłogi i trawa)
 sekcja 16, stan po pierwszej części M7 (zgłoszone 269 i 102103, jedenaście paneli, osiem
 programów, scena rysowana do bufora HDR, gamma i nowe wartości świateł) sekcja 17,
-a dzisiejszy (zgłoszone 276 i 102139, dziesięć programów, bloom) sekcja 18. Punkty otwarte `[ ]` w sekcji
+stan po drugiej (zgłoszone 276 i 102139, dziesięć programów, bloom) sekcja 18,
+a dzisiejszy (zgłoszone 294 i 102412, nadal dziesięć programów, mgła i winieta)
+sekcja 19. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie. Punkty `[x]`
 mówią o podłodze z płytek (`floor_tile.obj`, `floor_stone.png`), którą druga część M6
 usunęła.
@@ -2502,7 +2518,8 @@ Z tą częścią kod M6 jest kompletny na Windowsie (skybox, teren, trawa). Kami
 **nie jest zamknięty**: część ręczna poniżej (16.2) i część ręczna skyboxa (15.2) są
 otwarte w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md))
 i nie ma tagu. **Nie są zbudowane:** iskry wokół kryształów, które PRD wymienia w temacie
-9 obok trawy, oraz cienie, mgła i bloom (plan M7).
+9 obok trawy, oraz cienie (plan M7). Bloom i mgła, których po tej części też nie było,
+doszły w drugiej i trzeciej części M7 (sekcje 18 i 19).
 
 ### 16.1. Zmierzone (2026-10-05)
 
@@ -2842,8 +2859,8 @@ zastąpiona.
 
 Kamień milowy M7 jest **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest w toku:
 po tej części były bufor HDR, przebieg składający i podglądy załączników, a bloom doszedł
-w części drugiej (sekcja 18). **Nie są zbudowane:** mgła, winieta, minimapa i cienie
-(temat 11). Część ręczna poniżej (17.2) jest otwarta
+w części drugiej (sekcja 18), a mgła i winieta w trzeciej (sekcja 19). **Nie są
+zbudowane:** minimapa i cienie (temat 11). Część ręczna poniżej (17.2) jest otwarta
 w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i nie ma
 tagu.
 
@@ -2938,7 +2955,10 @@ pamiętać o pięciu różnicach:
 
 - panel Framebuffers wygląda inaczej: kontrolki stoją w dwóch kolumnach, `Depth range`
   jest w tabeli nad kreską, pod linią `Scene framebuffer` jest linia `Bloom targets`,
-  a obrazów jest cztery. Układ dzisiejszy opisuje sekcja 18.2
+  a obrazów jest cztery. Ten układ opisuje sekcja 18.2. Od trzeciej części M7 tabela
+  kontrolek jest dodatkowo w zakładce `Tone and bloom`, obok zakładki `Fog and vignette`
+  (sekcja 19.2), a kroki o wyglądzie sceny najlepiej wykonać z odznaczonymi polami `Fog`
+  i `Vignette`, bo opisują obraz bez mgły i bez winiety
 - podpisy obrazów brzmią dziś `HDR colour` i `Depth`, a nie `Colour (HDR, cut off at 1)`
   i `Depth (as distance)`. Dawne dopiski są w podpowiedziach po najechaniu kursorem
 - kroki o wyglądzie kryształu, ekspozycji i krzywych najlepiej wykonać z **odznaczonym**
@@ -3145,10 +3165,10 @@ Framebuffers w nowym układzie). Decyzje:
 i [`../decisions/crystal-glow-raised-for-bloom.md`](../decisions/crystal-glow-raised-for-bloom.md).
 
 Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest
-w toku: są bufor HDR, przebieg składający, podglądy załączników i bloom. **Nie są
-zbudowane:** mgła, winieta, minimapa i cienie (temat 11). Część ręczna poniżej (18.2) jest
-otwarta w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i nie
-ma tagu.
+w toku: są bufor HDR, przebieg składający, podglądy załączników i bloom. Mgła i winieta
+doszły w części trzeciej (sekcja 19). **Nie są zbudowane:** minimapa i cienie (temat 11).
+Część ręczna poniżej (18.2) jest otwarta w całości, na macOS kod nie był budowany
+([`build-macos.md`](build-macos.md)) i nie ma tagu.
 
 ### 18.1. Zgłoszone (2026-10-05)
 
@@ -3410,7 +3430,433 @@ Na koniec:
 - [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
       zostały zapisane
 
-## 19. Powiązane dokumenty
+## 19. Lista kontrolna M7, część 3: mgła i winieta
+
+Trzecia część kamienia milowego M7 dodaje dwa efekty, które nie potrzebują ani nowego
+przebiegu, ani nowego bufora: oba są liniami istniejącego przebiegu składającego
+(`post/composite.frag`). Mgła miesza kolor sceny z kolorem mgły tym mocniej, im dalej od
+oka i im niżej leży powierzchnia. Odległość i wysokość bierze z pozycji w świecie, którą
+shader odtwarza dla każdego piksela z tekstury głębi sceny i z macierzy odwrotnej do
+`projection * view`. Winieta przyciemnia rogi gotowego obrazu. Kolejność w `main` ma
+teraz siedem kroków: scena, mgła, bloom, ekspozycja, mapowanie tonów, winieta, kodowanie
+sRGB. Doszły: pliki `src/game/Fog.hpp` i `Fog.cpp` (ustawienia `FogSettings`, funkcje
+`fogHeightFactor`, `fogAmount`, `fogAmountAt` i `worldPositionFromDepth`),
+`src/game/Vignette.hpp` i `Vignette.cpp` (ustawienia `VignetteSettings`, funkcja
+`vignetteFactor`, stałe `SCREEN_CENTER` i `VIGNETTE_CORNER_DISTANCE`), wszystkie
+w bibliotece `game_logic`, oraz pliki testów `tests/FogTests.cpp`
+i `tests/VignetteTests.cpp`. Zmieniły się: `post/composite.frag` (jedenaście nowych
+uniformów i cztery funkcje), klasa `game::PostProcess` (funkcja `composite` dostaje
+strukturę `SceneView` z macierzą odwrotną i pozycją oka, a tekstura głębi sceny trafia na
+jednostkę teksturującą 2), `PostProcessSettings` (pola `fog` i `vignette`),
+`ShaderUniforms.hpp` (jedenaście nazw), `NightMazeApp` (budowa `SceneView` w `onRender`,
+a kopia ustawień dla widoków diagnostycznych wyłącza już pięć rzeczy), panel Framebuffers
+(dwie zakładki), `DebugContext.hpp` (sam komentarz, pól jest nadal trzydzieści)
+i `CMakeLists.txt`. **Nie doszedł** żaden program shaderów (jest ich nadal dziesięć),
+żaden framebuffer ani żaden panel (jest ich nadal jedenaście).
+Opis kodu: [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md)
+(sekcje 2.17 do 2.22: prawo wykładnicze mgły, odległość od oka zamiast głębi, pozycja
+w świecie z głębi, współczynnik wysokości i to, co psuje branie go w samym pikselu, niebo,
+kolor mgły i miejsce w kolejności, winieta. Sekcje 4.2 i 4.9, 5.6, 5.7, 5.12 i 5.13:
+shader i kod linia po linii), [`../modules/debug-ui.md`](../modules/debug-ui.md) (panel
+Framebuffers z dwiema zakładkami). Decyzje:
+[`../decisions/fog-distance-from-reconstructed-position.md`](../decisions/fog-distance-from-reconstructed-position.md),
+[`../decisions/fog-height-at-the-pixel.md`](../decisions/fog-height-at-the-pixel.md),
+[`../decisions/fog-no-special-case-for-sky.md`](../decisions/fog-no-special-case-for-sky.md),
+[`../decisions/bloom-from-unfogged-scene.md`](../decisions/bloom-from-unfogged-scene.md)
+i [`../decisions/vignette-not-aspect-corrected.md`](../decisions/vignette-not-aspect-corrected.md).
+
+Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest
+w toku: są bufor HDR, przebieg składający, podglądy załączników, bloom, mgła i winieta.
+**Nie są zbudowane:** minimapa i cienie (temat 11). Część ręczna poniżej (19.2) jest
+otwarta w całości, tak samo jak części ręczne 17.2 i 18.2, na macOS kod nie był budowany
+([`build-macos.md`](build-macos.md)) i nie ma tagu.
+
+### 19.1. Zgłoszone (2026-10-05)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
+nie zapisano, więc ich tu nie podaję (środowisko wcześniejszych pomiarów jest w sekcji 1).
+**Żadnego z poniższych punktów nie powtarzałem przy pisaniu tej sekcji**: wszystkie są
+zgłoszone z dnia, w którym powstał kod. Sam policzyłem tylko makra `TEST_CASE` w plikach
+testów (294 w dwudziestu czterech plikach, w tym 11 w `FogTests.cpp` i 7
+w `VignetteTests.cpp`), a liczby w tabeli wartości startowych i zakresy suwaków
+przepisałem z kodu. Liczby asercji są zgłoszone: asercji wykonanych nie da się policzyć
+z samego kodu, bo część stoi w pętlach.
+
+Bramka i testy:
+
+- [x] `make check` przechodzi: formatowanie (clang-format), buildy Debug i Release, testy
+      w obu, clang-tidy
+- [x] build Debug i Release: zero ostrzeżeń
+- [x] `night_maze_tests.exe` w Debug i w Release: 294 przypadki testowe i 102412 asercji,
+      wszystkie przechodzą. Względem drugiej części M7 (276 przypadków i 102139 asercji)
+      doszły dwa pliki: `FogTests.cpp` (11 przypadków i 241 asercji)
+      i `VignetteTests.cpp` (7 przypadków i 32 asercje), razem 18 przypadków i 273
+      asercje, `276 + 18 = 294` i `102139 + 273 = 102412`
+
+Porównanie obrazu z drugą częścią M7:
+
+- [x] z odznaczonymi polami `Fog` i `Vignette` obraz jest identyczny co do piksela
+      z obrazem drugiej części. Przy wyłączonej mgle shader nie czyta tekstury głębi
+      i nie jest ona wiązana
+- [x] oba widoki diagnostyczne (`Normals as colour` i `UVs as colour`) są identyczne
+      z drugą częścią **przy włączonych wartościach startowych**, czyli z zaznaczonymi
+      polami `Fog` i `Vignette`: kopia ustawień dla tych widoków wyłącza oba efekty
+
+Koszt, Release, panele ukryte. **Jeden spokojny przebieg**, nie zakresy z kilku:
+
+- [x] 1280 x 720: około 1880 klatek na sekundę z oboma efektami i około 1900 bez nich
+- [x] 2560 x 1440: około 1145 z oboma efektami i około 1158 bez nich
+
+To jest różnica około 1 %, czyli przy jednym przebiegu w granicach szumu pomiaru: z tych
+liczb wynika tylko tyle, że kosztu nie widać. Nie da się ich zestawić z zakresami
+z sekcji 18.1 (inna sesja pomiarowa).
+
+Wartości startowe (wszystkie nowe). Kontrolki stoją w panelu Framebuffers, w zakładce
+`Fog and vignette`. W nawiasie jest napis, jaki pokazuje suwak:
+
+| Ustawienie | Wartość |
+|---|---|
+| `Fog` | zaznaczone |
+| `Density` | 0,1 na metr (`0.100 /m`), suwak od 0 do 0,5 |
+| `Base height` | 0,5 m (`0.50 m`), suwak od -2 do 6 |
+| `Height falloff` | 0,4 na metr (`0.40 /m`), suwak od 0 do 3 |
+| `Fog colour` | `(0.14, 0.18, 0.26)` jako sRGB, pole wyboru koloru bez zakresu |
+| `Vignette` | zaznaczone |
+| `Strength` | 0,3 (`0.30`), suwak od 0 do 1 |
+| `Radius` | 0,4 (`0.40`), suwak od 0 do 0,65 |
+| `VIGNETTE_CORNER_DISTANCE` (stała, bez kontrolki) | 0,70710678: odległość od środka ekranu do rogu we współrzędnych tekstury |
+| `DEPTH_TEXTURE_UNIT` (stała) | 2: jednostka teksturująca tekstury głębi w przebiegu składającym |
+
+Bez zmian zostały: `SHADER_COUNT` (10), wysokość panelu `FRAMEBUFFERS_HEIGHT` (344)
+i siedem kontrolek z poprzednich części, które stoją teraz w zakładce `Tone and bloom`.
+
+Co te wartości znaczą w liczbach (policzone ze wzoru, nie zmierzone na ekranie): na
+podłożu mgła zabiera 18 % koloru po 2 m, 63 % po 10 m i 95 % po 30 m, a połowę po 6,9 m.
+Współczynnik wysokości wynosi 1 do wysokości 0,5 m, 0,67 na 1,5 m i 0,37 na 3 m, czyli na
+wierzchu ściany. Winieta mnoży środek ekranu przez 1,0, środek każdej krawędzi przez
+0,925, a róg przez 0,70.
+
+Znane ograniczenia tej części, zapisane także w kodzie i w dokumencie modułu:
+
+- wysokość jest brana **w samym pikselu**, a nie sumowana wzdłuż promienia. Z 30 m nad
+  podłożem, patrząc prosto w dół, podłoże dostaje około 95 % mgły, a dokładna całka dałaby
+  około 22 %: z wysoka w trybie noclip labirynt jest prawie zakryty
+  ([`../decisions/fog-height-at-the-pixel.md`](../decisions/fog-height-at-the-pixel.md))
+- niebo nie ma osobnego przypadku: piksel nieba ma głębię 1, czyli punkt na dalekiej
+  płaszczyźnie obcinania (100 m). Ta płaszczyzna jest płaska i obraca się z kamerą, więc
+  ten sam niski pas nieba jest 100 m od oka na środku ekranu i od 143 do 155 m przy
+  bokach. Mgła na ścianach i na podłożu od obrotu kamery nie zależy, ale cienki pas
+  zamglenia na samym niebie może się przy obrocie lekko zmieniać. Tego nikt nie oglądał:
+  jest punktem listy 19.2
+- winieta nie jest poprawiana o proporcje okna: jasny środek jest elipsą w kształcie okna
+
+Czego dla tej części nie zapisano i czego dlatego tu nie twierdzę: wersji kompilatora,
+karty i sterownika, listy zrzutów ekranu ani liczby widoków, w których porównywano obraz
+z drugą częścią, tego, czy przy pomiarze liczby klatek bloom był włączony, rozrzutu
+liczby klatek między uruchomieniami, kosztu samej mgły i samej winiety osobno, zachowania
+buildu Debug (linie `GL_`) przy włączonej mgle po zmianie rozmiaru okna i po minimalizacji
+ani tego, czy zakładki, osiem kontrolek i cztery obrazy mieszczą się w panelu bez paska
+przewijania.
+
+Żadnej kontrolki mgły ani winiety nikt nie kliknął myszą, nikt nie przełączył zakładki
+i nikt nie użył przycisku `Reload shaders` po tej zmianie. Na macOS nic z tej części nie
+było budowane ani uruchamiane.
+
+### 19.2. Otwarte: test ręczny na około dwadzieścia minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
+być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze wzorów, nie z klikania
+ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/FramebuffersPanel.cpp`, `RendererPanel.cpp`, `AssetsPanel.cpp`
+i `CameraPanel.cpp`. Ustawień mgły i winiety program nigdzie nie zapisuje, więc ponowne
+uruchomienie gry zawsze przywraca wartości startowe.
+
+Listy 17.2 i 18.2 też są otwarte. Ich kroki dotyczące kontrolek panelu Framebuffers
+wykonuje się teraz w zakładce `Tone and bloom`.
+
+Przygotowanie:
+
+- [ ] uruchomić grę z terminala. Oczekiwane w konsoli: żadnej linii `[error]`,
+      w szczególności żadnej o shaderze `composite.frag`
+- [ ] otworzyć panele klawiszem akcentu i rozwinąć panel Framebuffers
+
+Panel Framebuffers w nowym układzie:
+
+- [ ] na górze panelu jest pasek z dwiema zakładkami: `Tone and bloom`
+      i `Fog and vignette`. Po starcie wybrana jest pierwsza
+- [ ] zakładka `Tone and bloom` ma te same siedem kontrolek co w sekcji 18.2, w dwóch
+      kolumnach i czterech wierszach: `Exposure` i `Tone mapping`, `Bloom`
+      i `Blur iterations`, `Threshold` i `Intensity`, `Depth range` i puste miejsce.
+      Wartości startowe: `1.00`, `ACES (fitted)`, zaznaczone, `6`, `0.80`, `1.00`, `15 m`
+- [ ] kliknąć zakładkę `Fog and vignette`: osiem kontrolek w dwóch kolumnach i czterech
+      wierszach: `Fog` i `Density`, `Base height` i `Height falloff`, `Fog colour`
+      i `Vignette`, `Strength` i `Radius`
+- [ ] wartości startowe w tej zakładce: `Fog` zaznaczone, `0.100 /m`, `0.50 m`,
+      `0.40 /m`, `Vignette` zaznaczone, `0.30`, `0.40`. `Fog colour` to trzy pola
+      z liczbami i kwadrat z kolorem: oczekiwane `36`, `46` i `66` (R, G, B w skali od 0 do
+      255, bo kod nie zmienia domyślnego trybu `ColorEdit3`) i ciemny, szaroniebieski
+      kwadrat. Zapisać, jeśli pola pokazują co innego
+- [ ] pod zakładkami nic się nie zmieniło: kreska, linie `Scene framebuffer: 1280 x 720
+      px, GL_RGBA16F + GL_DEPTH_COMPONENT24` i `Bloom targets (3): 640 x 360 px,
+      GL_RGBA16F`, a pod nimi cztery obrazy `HDR colour`, `Depth`, `Bright pass` i `Bloom`
+- [ ] przełączyć zakładki kilka razy: linie i obrazy pod nimi nie skaczą w pionie (obie
+      zakładki mają po cztery wiersze), wartości kontrolek zostają, a obraz gry się nie
+      zmienia
+- [ ] zapisać, czy w **każdej** z dwóch zakładek cała zawartość mieści się w panelu bez
+      paska przewijania. Wysokość panelu (344) nie została zmieniona, a doszedł wiersz
+      zakładek
+- [ ] najechać kursorem na każdą z piętnastu kontrolek (siedem w pierwszej zakładce, osiem
+      w drugiej) i na każdy z czterech obrazów: przy każdym pojawia się podpowiedź.
+      Podpowiedź przy `Tone mapping` kończy się teraz słowami `without exposure, tone
+      mapping, bloom, fog and vignette.` Początki ośmiu nowych: `Far and low surfaces fade
+      into the fog colour.`, `Fog: amount = 1 - exp(-density * height factor *
+      distance).`, `Fog: up to this world height the fog has its full density.`, `Fog: how
+      fast it thins out above the base height:`, `The colour surfaces fade into, as an
+      sRGB value.`, `The corners of the finished picture are darkened, after tone
+      mapping.`, `Vignette: the share of the light the corners lose.`, `Vignette: the
+      distance from the middle of the screen at which the darkening starts.`
+
+Włącznik mgły:
+
+- [ ] stanąć na początku długiego korytarza. Odznaczyć `Fog`: koniec korytarza, dalekie
+      podłoże i niebo tuż nad horyzontem odzyskują własne kolory. Najmniej zmienia się
+      to, co stoi blisko: dwa metry przed kamerą mgła zabiera na podłożu 18 %, a na
+      ścianie na wysokości oczu mniej
+- [ ] zaznaczyć z powrotem: mgła wraca od razu
+- [ ] przy odznaczonym polu `Fog` ruch suwaków `Density`, `Base height`
+      i `Height falloff` oraz zmiana `Fog colour` nie zmieniają obrazu
+- [ ] cztery obrazy w panelu są takie same przy zaznaczonym i przy odznaczonym polu `Fog`
+      (pokazują bufory, a mgła powstaje dopiero w przebiegu składającym)
+
+Gęstość (`Density`):
+
+- [ ] przesunąć w lewo do `0.000 /m`: obraz jest taki sam jak przy odznaczonym polu `Fog`,
+      także na niebie
+- [ ] przesuwać powoli w prawo: mgła gęstnieje **płynnie**, bez skoków i bez pasów
+- [ ] przesunąć do `0.500 /m`: połowa koloru podłoża znika już po 1,4 m, labiryntu prawie
+      nie widać, ściana pięć metrów dalej ma u podstawy prawie sam kolor mgły. Niebo
+      wysoko nad głową zostaje czyste
+- [ ] wpisać wartość spoza zakresu (Ctrl i kliknięcie, potem `2`): zostaje przycięta do
+      `0.500 /m`. Ustawić z powrotem `0.100 /m`
+
+Wysokość podstawy (`Base height`):
+
+- [ ] przesunąć do `-2.00 m`: mgła przy podłożu rzednie (podłoże leży wtedy ponad dwa
+      metry nad podstawą i dostaje mniej niż połowę gęstości), korytarz widać dalej
+- [ ] przesunąć do `6.00 m`: całe ściany (mają 3 m) stoją w pełnej gęstości, więc wierzch
+      dalekiej ściany jest tak samo zamglony jak jej podstawa, a pas zamglenia nad
+      horyzontem jest wyższy
+- [ ] ustawić z powrotem `0.50 m`
+
+Zanik z wysokością (`Height falloff`):
+
+- [ ] przesunąć do `0.00 /m`: mgła jest taka sama na każdej wysokości, **razem z niebem**.
+      Całe niebo ma kolor mgły (punkt nieba jest 100 m od oka), gwiazdy znikają, a wierzch
+      dalekiej ściany jest zamglony jak jej podstawa. Tarcza księżyca też wtapia się
+      w mgłę, ale w jej miejscu **zostaje miękka poświata**: bloom jest liczony ze sceny
+      bez mgły i dodawany po mgle
+- [ ] przy `0.00 /m` odznaczyć `Bloom` w zakładce `Tone and bloom`: poświata księżyca
+      znika i niebo jest jednolite. Zaznaczyć z powrotem
+- [ ] przesunąć do `3.00 /m`: mgła jest warstwą grubości około metra. Dalekie podłoże
+      nadal znika, ale ściany powyżej mniej więcej półtora metra są prawie czyste, a pas
+      zamglenia nad horyzontem jest cieńszy
+- [ ] ustawić z powrotem `0.40 /m`
+
+Długi korytarz (ustawienia startowe):
+
+- [ ] koniec korytarza wtapia się w kolor mgły: podłoże 10 m dalej ma około dwóch trzecich
+      koloru mgły, 30 m dalej prawie sam kolor mgły
+- [ ] na dalekich ścianach mgła słabnie ku górze: wierzch ściany jest wyraźniejszy niż jej
+      podstawa (na 3 m gęstość to około jedna trzecia pełnej)
+- [ ] iść powoli korytarzem: mgła cofa się płynnie, bez pasów i bez migotania. Zapisać,
+      czy na ciemnych ścianach widać schodki koloru
+- [ ] poświecić latarką w głąb korytarza: plama latarki na dalekiej ścianie jest przez
+      mgłę bledsza, a sama mgła w snopie światła **nie świeci** (mgła zastępuje kolor
+      powierzchni, nie jest oświetlana). Zapisać, czy to razi
+
+Obrót w miejscu (mgła nie może pływać):
+
+- [ ] odznaczyć `Vignette` i zgasić latarkę klawiszem F, bo oba efekty zmieniają jasność
+      przy brzegach ekranu i udawałyby zmianę mgły
+- [ ] stanąć kilka metrów przed ścianą i obracać kamerę w lewo i w prawo, tak żeby ten sam
+      kawałek ściany przechodził ze środka ekranu do jego brzegu: mgła na tym kawałku
+      **się nie zmienia**. Nie jaśnieje ani nie gęstnieje przy brzegu i nie pulsuje
+- [ ] to samo w korytarzu, patrząc wzdłuż niego i obracając kamerę aż koniec korytarza
+      dojdzie do brzegu ekranu, oraz przy ruchu kamery w górę i w dół: mgła na ścianach
+      i na podłożu stoi w miejscu. To jest powód, dla którego shader liczy odległość od
+      oka, a nie głębię wzdłuż osi widoku
+      ([`../decisions/fog-distance-from-reconstructed-position.md`](../decisions/fog-distance-from-reconstructed-position.md))
+- [ ] nadal bez winiety i bez latarki spojrzeć na niski pas nieba tuż nad horyzontem,
+      stojąc na podłożu tam, gdzie horyzont widać (wzdłuż długiego korytarza albo przy
+      wyjściu), i obracać kamerę **powoli**. Zapisać, czy zamglenie samego nieba jest przy
+      bokach ekranu słabsze niż na środku i czy przy obrocie widać, jak się przesuwa. Ze
+      wzoru wynika, że dla oka na wysokości stojącego gracza 3 stopnie nad horyzontem
+      mgły jest około 53 % na środku i od 31 do 36 % przy bokach. Z wyższego punktu
+      (w trybie noclip) wszystkie te wartości są mniejsze, ale środek nadal powinien być
+      bardziej zamglony niż boki. Nikt tego nie oglądał
+- [ ] zaznaczyć `Vignette` z powrotem i włączyć latarkę
+
+Widok z góry w trybie noclip (znane ograniczenie):
+
+- [ ] nacisnąć N: panel Camera pokazuje `Mode: noclip (free flight)`. Kliknąć w scenę
+      (klawisze ruchu działają tylko przy przechwyconej myszy) i lecieć w górę klawiszem
+      Spacja, aż środkowa liczba pola `Player feet` w panelu Camera pokaże około 30
+      (można ją też wpisać: Ctrl i kliknięcie w środkowe pole)
+- [ ] spojrzeć prosto w dół: labirynt jest **prawie zakryty mgłą**. Ze wzoru podłoże
+      dostaje około 95 % mgły, wierzchy ścian około 65 %, więc z labiryntu powinien
+      zostać blady rysunek wierzchów ścian. To jest znane ograniczenie (wysokość brana
+      w pikselu, sekcja 19.1), nie błąd do naprawienia w tej części. Zapisać, jak to
+      wygląda
+- [ ] opadać klawiszem lewy Shift: labirynt wyłania się stopniowo, bez skoku
+- [ ] nacisnąć N jeszcze raz: gracz wraca na podłoże, panel pokazuje `Mode: walking`
+
+Niebo i księżyc:
+
+- [ ] spojrzeć na księżyc i w gwiazdy: są wyraźne, tak jak przy odznaczonym polu `Fog`
+      (porównać, klikając pole)
+- [ ] spojrzeć na horyzont: niebo tuż nad nim jest zamglone, a przejście w czyste niebo
+      wyżej jest płynne, bez widocznej krawędzi. Ze wzoru: prawie sama mgła na horyzoncie,
+      około połowy 3 stopnie nad nim, poniżej 1 % od około 10 stopni
+- [ ] obejrzeć krawędź ściany na tle nieba: zapisać, czy wzdłuż niej widać jasną albo
+      ciemną obwódkę
+- [ ] odznaczyć pole `Skybox` w panelu Renderer: niebo zastępuje kolor tła, a pas zamglenia
+      przy horyzoncie **zostaje** (wyczyszczony bufor głębi też ma wartość 1). Zaznaczyć
+      z powrotem
+- [ ] przesunąć `Far plane` w panelu Camera ze `100.0 m` na około `20.0 m`: zapisać, jak
+      zmienia się zamglenie nieba (punkt nieba leży na dalekiej płaszczyźnie, więc mgła
+      na niebie od niej zależy). Wrócić na `100.0 m`
+
+Kryształ przez mgłę:
+
+- [ ] stanąć na końcu długiego korytarza, z kryształem na drugim końcu: bryła kryształu
+      blednie w mgle, a jego poświata **zostaje** (bloom jest liczony ze sceny bez mgły
+      i dodawany po mgle,
+      [`../decisions/bloom-from-unfogged-scene.md`](../decisions/bloom-from-unfogged-scene.md))
+- [ ] w zakładce `Tone and bloom` odznaczyć `Bloom`: poświata znika i z kryształu zostaje
+      blada plama w mgle. Zaznaczyć z powrotem
+- [ ] podejść do kryształu na krok: wygląda jak przed tą częścią, mgła go prawie nie
+      dotyka
+
+Kolor mgły (`Fog colour`):
+
+- [ ] kliknąć kwadrat z kolorem i wybrać czystą czerwień (`255`, `0`, `0`): koniec
+      korytarza i horyzont wtapiają się w czerwień, bliskie rzeczy zostają bez zmian
+- [ ] porównać czerwień w oddali z kwadratem w panelu: na ekranie jest **ciemniejsza**
+      (kolor jest mieszany przed ekspozycją i mapowaniem tonów, a krzywa ACES dociska
+      ciemne i średnie tony)
+- [ ] odznaczyć `Vignette` i `Bloom` (poświata jest dodawana po mgle i rozjaśniałaby ją),
+      ustawić `Tone mapping` na `None (clamp)` przy `Exposure` `1.00` i przesunąć
+      `Density` do `0.500 /m`: najgłębsza mgła na środku ekranu ma teraz **ten sam** kolor
+      co kwadrat (przeliczenie z sRGB i kodowanie na sRGB się znoszą). Zapisać, czy tak
+      jest. Przywrócić `ACES (fitted)`, `0.100 /m`, winietę i bloom
+- [ ] przywrócić kolor startowy: wpisać w trzy pola `36`, `46` i `66` (Ctrl i kliknięcie
+      w pole). To daje sRGB 0,141, 0,180 i 0,259, czyli kolor startowy z dokładnością do
+      jednego poziomu z 255. Dokładnie `(0.14, 0.18, 0.26)` wraca po ponownym
+      uruchomieniu gry
+
+Ekspozycja i mapowanie tonów razem z mgłą:
+
+- [ ] `Exposure` na `0.25`: mgła ciemnieje razem ze sceną. `Exposure` na `4.00`: jaśnieje
+      razem z nią. Wrócić na `1.00`
+- [ ] przełączyć `Tone mapping` na `None (clamp)` i na `Reinhard`: mgła jest widoczna
+      w każdym trybie. Zapisać, jak zmienia się jej jasność. Zostawić `ACES (fitted)`
+- [ ] przesunąć `Depth range`: zmienia się tylko obraz `Depth` w panelu, mgła w oknie
+      **nie** (mgła nie korzysta z zakresu podglądu głębi)
+
+Włącznik winiety:
+
+- [ ] spojrzeć na coś równo oświetlonego, co wypełnia cały ekran (na przykład ściana
+      z bliska przy liście `Lighting` ustawionej na `Unlit`). Odznaczyć `Vignette`: rogi
+      lekko jaśnieją, środek ekranu się nie zmienia. Efekt jest z założenia subtelny: róg
+      traci 30 %, środek krawędzi 7,5 %
+- [ ] zaznaczyć z powrotem: rogi ciemnieją od razu. Wszystkie cztery tak samo
+- [ ] panele i pasek HUD **nie są** przyciemniane w rogach: są rysowane po przebiegu
+      składającym
+
+Winieta przesadzona:
+
+- [ ] `Strength` na `1.00`: same rogi są czarne, środek ekranu się nie zmienia, a środek
+      każdej krawędzi traci około jednej czwartej światła
+- [ ] `Strength` na `0.00`: obraz jest taki sam jak przy odznaczonym polu `Vignette`
+- [ ] przy `Strength` `1.00` przesunąć `Radius` do `0.00`: ciemnienie zaczyna się od
+      samego środka, jasny zostaje tylko środek ekranu, a przy środkach krawędzi zostaje
+      około jednej piątej światła
+- [ ] `Radius` na `0.65`: ciemne są tylko same rogi, wąskimi plamami, a środki krawędzi
+      są nietknięte
+- [ ] ustawić `Radius` na `0.40` i przy `Strength` `1.00` zrobić okno szerokie i niskie:
+      jasny środek jest **elipsą w kształcie okna**, nie kołem. Potem okno wąskie
+      i wysokie: elipsa jest wysoka. W obu wszystkie cztery rogi są jednakowo ciemne
+      ([`../decisions/vignette-not-aspect-corrected.md`](../decisions/vignette-not-aspect-corrected.md))
+- [ ] wpisać w `Radius` wartość spoza zakresu (Ctrl i kliknięcie, potem `0.9`): zostaje
+      przycięta do `0.65`. Ustawić z powrotem `Strength` `0.30` i `Radius` `0.40`
+
+Oba widoki diagnostyczne (panel Assets, lista `View mode`):
+
+- [ ] `Normals as colour`: obraz jest taki jak przed tą częścią, **bez mgły i bez
+      winiety**: dalekie ściany mają tak samo czyste kolory jak bliskie, a rogi ekranu nie
+      są ciemniejsze. Pola `Fog` i `Vignette` w panelu Framebuffers są **nadal
+      zaznaczone**
+- [ ] `UVs as colour`: to samo
+- [ ] w obu widokach ruch suwaków z zakładki `Fog and vignette` i zmiana `Fog colour` nie
+      zmieniają obrazu
+- [ ] wrócić do `Textured`: mgła i winieta wracają z takimi ustawieniami, jakie zostawiłem
+
+Podglądy:
+
+- [ ] obraz `HDR colour` **nie ma** ani mgły, ani winiety: daleki koniec korytarza jest
+      w nim wyraźniejszy niż w oknie, a rogi nie są ciemniejsze (podgląd pokazuje bufor
+      sceny, a oba efekty powstają dopiero w przebiegu składającym)
+- [ ] obrazy `Depth`, `Bright pass` i `Bloom` wyglądają tak jak w drugiej części
+
+Zmiana rozmiaru okna:
+
+- [ ] przeciągnąć krawędź okna i puścić: mgła leży na tych samych ścianach co przedtem,
+      nie jest przesunięta ani przeskalowana względem sceny
+- [ ] zmaksymalizować okno: mgła i winieta wyglądają tak samo jak w oknie 1280 x 720
+      (żaden z efektów nie zależy od liczby pikseli)
+- [ ] zrobić okno bardzo wąskie i bardzo niskie: gra działa, w konsoli nie ma linii
+      `[error]`
+- [ ] zminimalizować okno na kilka sekund i przywrócić: obraz z mgłą i winietą wraca od
+      razu, bez linii `[error]`, także w buildzie Debug bez linii `GL_`
+
+Przeładowanie shaderów (panel Shaders):
+
+- [ ] lista ma nadal dziesięć linii, wszystkie `OK`. Mgła i winieta są w linii
+      `composite.vert + composite.frag: OK`
+- [ ] ustawić coś innego niż wartości startowe (na przykład `Density` `0.200 /m`
+      i czerwony kolor mgły) i nacisnąć `Reload shaders`: wszystkie dziesięć linii zostają
+      `OK`, a obraz wygląda tak samo jak przed kliknięciem (uniformy są wysyłane w każdej
+      klatce). Przywrócić ustawienia
+- [ ] w pliku `assets/shaders/post/composite.frag` w funkcji `fogHeightFactor` zamienić
+      linię `return exp(-uFogHeightFalloff * heightAboveBase);` na `return 1.0;`,
+      skopiować assety (`cmake --build --preset debug --target copy_assets`)
+      i przeładować: obraz jest taki sam jak przy `Height falloff` równym `0.00 /m`, czyli
+      mgła zakrywa także niebo, a suwaki `Base height` i `Height falloff` przestają
+      działać. Linia programu zostaje `OK` i nie powinno być linii `[error]`: oba uniformy
+      przestają być aktywne, a ustawienie uniformu, którego program nie ma, OpenGL pomija
+      bez błędu. Przywrócić linię, skopiować assety i przeładować
+- [ ] w tym samym pliku przenieść cały blok `if (uBloomEnabled == 1) { ... }` nad blok
+      `if (uFogEnabled == 1) { ... }`, skopiować assety i przeładować: poświata dalekiego
+      kryształu blednie teraz w mgle razem z jego bryłą. Przywrócić kolejność, skopiować
+      assety i przeładować
+- [ ] zepsuć `assets/shaders/post/composite.frag` (na przykład usunąć średnik w funkcji
+      `fogAmount`), skopiować assety i przeładować: linia `composite.vert +
+      composite.frag` jest czerwona z nazwą pliku w komunikacie, a gra działa dalej ze
+      starym programem, z mgłą i winietą. Naprawić, skopiować assety i przeładować
+
+Na koniec:
+
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi
+      celowo
+- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z panelu Renderer,
+      z zaznaczonymi polami `Fog` i `Vignette` i z oboma odznaczonymi, w oknie 1280 x 720
+      i po zmaksymalizowaniu: zapisać cztery wartości. Zgłoszone liczby są w sekcji 19.1,
+      zmierzone przy ukrytych panelach. Jeśli liczba stoi na częstotliwości odświeżania
+      monitora, zapisać to
+- [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
+      zostały zapisane
+
+## 20. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)

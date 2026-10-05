@@ -39,8 +39,8 @@ namespace game {
 ///
 /// The scene is not drawn into the window directly. It is drawn into an HDR framebuffer
 /// (game::PostProcess). Its bright parts are blurred into a glow (bloom), and a last
-/// pass brings the picture to the window with that glow, exposure, tone mapping and
-/// gamma correction.
+/// pass brings the picture to the window with fog near the ground, that glow, exposure,
+/// tone mapping, a vignette and gamma correction.
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
@@ -101,7 +101,8 @@ protected:
     gfx::Shader& blurShader() { return m_blurShader; }
 
     /// The exposure, the tone mapping and the preview switch of the composite pass and
-    /// the settings of the bloom, exposed so the debug UI can edit them live.
+    /// the settings of the bloom, the fog and the vignette, exposed so the debug UI can
+    /// edit them live.
     PostProcessSettings& postProcessSettings() { return m_postProcessSettings; }
 
     /// The framebuffers of the frame, read only: the debug UI shows their sizes, their
@@ -304,7 +305,7 @@ private:
     SkyboxSettings m_skyboxSettings;
 
     // The exposure and the tone mapping of the composite pass and the settings of the
-    // bloom.
+    // bloom, the fog and the vignette.
     PostProcessSettings m_postProcessSettings;
 
     // How the camera is turned. It belongs to the controls, not to the camera.

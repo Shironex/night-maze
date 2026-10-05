@@ -12,13 +12,15 @@ Powstały na Windowsie 2026-10-05 i na macOS nikt ich nie zbudował. To samo dot
 niebo, piąty program shaderów) i drugiej (teren z mapy wysokości w miejscu płytek podłogi,
 trawa z shadera geometrii, szósty program, panele Terrain i Grass), oraz pierwszej części
 M7, też z 2026-10-05 (scena rysowana do bufora HDR, przebieg składający z mapowaniem tonów,
-korekcja gamma, siódmy i ósmy program, panel Framebuffers). Wszystko, co ten
-dokument mówi o tym
+korekcja gamma, siódmy i ósmy program, panel Framebuffers), drugiej (bloom, dziewiąty
+i dziesiąty program) i trzeciej (mgła z bufora głębi i winieta w przebiegu składającym).
+Wszystko, co ten dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
 (oświetlenie) na macOS", "M4 (mapy normalnych) na macOS", "M5 (rozgrywka) na macOS",
-"M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS" i "M7, część 1
-(bufor HDR i gamma) na macOS".
+"M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS", "M7, część 1
+(bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS" i "M7, część 3 (mgła
+i winieta) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -240,9 +242,11 @@ normalnych dwanaście, po M4 trzynaście (163 przypadki i 62220 asercji), po M5 
 mniej przypadków. Blok wyżej to stan po drugiej części M6 (dziewiętnaście plików). Po
 pierwszej części M7 plików było dwadzieścia jeden: doszły `ColorSpaceTests.cpp` (9
 przypadków) i `FramebufferTests.cpp` (3), a `LightingTests.cpp` ma 11 (zgłoszone dla
-Windowsa 269 przypadków i 102103 asercje). Dziś, po drugiej części M7, plików jest
-dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypadków). Zgłoszone dla Windowsa liczby
-tego stanu to 276 przypadków i 102139 asercji.
+Windowsa 269 przypadków i 102103 asercje). Po drugiej części M7 plików było
+dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypadków, zgłoszone dla Windowsa 276
+przypadków i 102139 asercji). Dziś, po trzeciej części M7, plików jest dwadzieścia
+cztery: doszły `FogTests.cpp` (11 przypadków) i `VignetteTests.cpp` (7). Zgłoszone dla
+Windowsa liczby tego stanu to 294 przypadki i 102412 asercji.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -1017,7 +1021,8 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
       pętla po liście w klamrach w teście (`for (const float firstSign : {-1.0F, 1.0F})`)
       i lambda w `std::ranges::any_of` w `Cubemap.cpp`
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
-      przechodzą (po pierwszej części M6 było ich 221, po drugiej 256, dziś zgłoszone 269). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
+      przechodzą (po pierwszej części M6 było ich 221, po drugiej 256, po pierwszej
+      części M7 zgłoszone 269, po drugiej 276, a dziś, po trzeciej, 294). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
       powinny przejść bez zmian, bo to te same bajty z repozytorium
 
 **Shadery i OpenGL**
@@ -1100,7 +1105,8 @@ i przez testy ręczne.
       (`GL_CHECK(cullingWasOn = glIsEnabled(GL_CULL_FACE))`)
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki przechodzą.
       Po tej części było ich 256 (na Windowsie 101232 asercje), po pierwszej części
-      M7 zgłoszone 269 i 102103, a dziś, po drugiej, 276 i 102139
+      M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, a dziś, po trzeciej, 294
+      i 102412
 - [ ] **te same wysokości co na Windowsie.** Teren jest liczony na liczbach `float`
       z pliku `heightmap.png`, bez funkcji, których wynik zależy od biblioteki. Po starcie
       panel Camera powinien pokazać `Player feet` z y równym 0.124, a panel Terrain linie
@@ -1208,14 +1214,14 @@ z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
 [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md),
 [`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md),
 [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md). M7 jest
-rozpoczęty, nie kompletny: mgły, winiety, minimapy i cieni nie ma na żadnym
-systemie. Bloom doszedł w drugiej części i ma osobną listę niżej.
+rozpoczęty, nie kompletny: minimapy i cieni nie ma na żadnym systemie. Bloom doszedł
+w drugiej części, a mgła i winieta w trzeciej: mają osobne listy niżej.
 
 Lista powstała dla programu z pierwszej części. W dzisiejszym programie panel
 Framebuffers ma inny układ i cztery obrazy, podpisy obrazów brzmią `HDR colour` i `Depth`
-(a nie `Colour (HDR, cut off at 1)` i `Depth (as distance)`), programów jest dziesięć,
-a przypadków testowych 276: różnice są wypisane na początku sekcji 17.2
-w [`build-windows.md`](build-windows.md).
+(a nie `Colour (HDR, cut off at 1)` i `Depth (as distance)`), kontrolki stoją w zakładce
+`Tone and bloom`, programów jest dziesięć, a przypadków testowych 294: różnice są
+wypisane na początku sekcji 17.2 w [`build-windows.md`](build-windows.md).
 
 **Build i testy**
 
@@ -1335,6 +1341,13 @@ Windowsie. Opis kodu:
 [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 2.11
 do 2.15, 4.6 do 4.8, 5.10 i 5.11.
 
+Lista powstała dla programu z drugiej części. W dzisiejszym programie siedem kontrolek
+bloomu, ekspozycji i podglądu głębi stoi w zakładce `Tone and bloom` panelu Framebuffers
+(obok zakładki `Fog and vignette`), plików testów jest dwadzieścia cztery, a przypadków
+testowych 294 (zgłoszone dla Windowsa 102412 asercji). Kroki o wyglądzie poświaty
+najlepiej wykonać z odznaczonymi polami `Fog` i `Vignette`. Mgła i winieta mają własną
+listę zaraz po tej.
+
 **Build i testy**
 
 - [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
@@ -1427,6 +1440,139 @@ do 2.15, 4.6 do 4.8, 5.10 i 5.11.
       próg, intensywność, iteracje, podglądy, kryształ z bliska i z daleka, księżyc
       i gwiazdy, latarka, oba widoki debugowania, zmiana rozmiaru, `Reload shaders` przy
       dziesięciu programach (na macOS bez kroku kopiowania assetów)
+
+### M7, część 3 (mgła i winieta) na macOS: lista w całości otwarta
+
+Trzecia część kamienia milowego M7 (mgła wykładnicza ze współczynnikiem wysokości, liczona
+w przebiegu składającym z pozycji w świecie odtworzonej z tekstury głębi sceny, i winieta
+po mapowaniu tonów: pliki `src/game/Fog.*` i `src/game/Vignette.*`, jedenaście nowych
+uniformów i cztery funkcje w `post/composite.frag`, struktura `SceneView` przekazywana do
+`PostProcess::composite`, tekstura głębi na jednostce teksturującej 2, dwie zakładki
+w panelu Framebuffers) powstała na Windowsie 2026-10-05 i tam jest zgłoszona jako
+zbudowana i przetestowana ([`build-windows.md`](build-windows.md), sekcja 19). Nie doszedł
+żaden program shaderów, żaden framebuffer ani żaden panel. **Na macOS nikt jej nie
+zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania
+wynikają z kodu, z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
+[`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 2.17
+do 2.22, 4.2, 4.9, 5.6, 5.7, 5.12 i 5.13. M7 jest nadal rozpoczęty, nie kompletny:
+minimapy i cieni nie ma na żadnym systemie.
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/game/Fog.hpp`, `src/game/Fog.cpp`, `src/game/Vignette.hpp`,
+      `src/game/Vignette.cpp`, `tests/FogTests.cpp`, `tests/VignetteTests.cpp`. Zmienione:
+      `src/game/PostProcess.*`, `src/game/NightMazeApp.*`, `src/game/ShaderUniforms.hpp`,
+      `src/debug/panels/FramebuffersPanel.*`, `src/debug/DebugContext.hpp` (sam komentarz)
+      i `CMakeLists.txt`. Miejsca warte uwagi: stała `constexpr glm::vec2 SCREEN_CENTER`
+      w nagłówku `Vignette.hpp`, inicjalizacja z nazwami pól
+      (`const SceneView sceneView{.inverseViewProjection = ..., .eye = eye}`)
+      w `NightMazeApp.cpp`, `glm::inverse` na macierzy `mat4` i `std::exp` na liczbach
+      `float` w `Fog.cpp`
+- [ ] `ctest --test-dir build/debug --output-on-failure`: 294 przypadki, wszystkie
+      przechodzą (zgłoszone dla Windowsa 102412 asercji, z czego 241 w `FogTests.cpp`
+      i 32 w `VignetteTests.cpp`). `FogTests.cpp` porównuje wyniki `std::exp` z wartościami
+      do czterech miejsc (`0.4966` i `0.5507` z tolerancją 0,001) i pozycję odtworzoną
+      z głębi z pozycją wyjściową z tolerancją 0,01, a `VignetteTests.cpp` porównuje
+      współczynniki z domyślną tolerancją `doctest::Approx`: zapisać, czy któryś
+      przypadek nie przechodzi na libc++ i Apple Silicon przez ostatnią cyfrę
+- [ ] gra startuje bez linii `[error]`, w szczególności bez linii o shaderze
+      `composite.frag`
+
+**Shader mgły i winiety na sterowniku Apple (GLSL 4.10 na OpenGL 4.1)**
+
+- [ ] panel Shaders: nadal dziesięć linii, wszystkie `OK`. Mgła i winieta są w linii
+      `composite.vert + composite.frag: OK`
+- [ ] `composite.frag` kompiluje się: funkcje `smoothstep`, `exp`, `mix`, `length`
+      i `max`, uniform typu `mat4` w shaderze fragmentów, mnożenie `mat4` przez `vec4`,
+      dzielenie przez `world.w` i **trzeci** sampler `sampler2D` w jednym programie.
+      Wszystko to jest w rdzeniu GLSL 4.10, ale kompilator shaderów Apple tej wersji pliku
+      jeszcze nie widział. Zapisać cały komunikat, jeśli linia jest czerwona
+- [ ] trzy samplery czytają trzy różne jednostki: `uScene` 0, `uBloom` 1, `uDepth` 2.
+      Mgła, która zależy od koloru ścian zamiast od odległości, znaczyłaby, że `uDepth`
+      czyta jednostkę 0, czyli obraz sceny
+- [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy włączonej mgle, przy
+      otwartym panelu Framebuffers, po zmianie rozmiaru okna i po minimalizacji. Po klatce
+      z mgłą tekstura głębi sceny zostaje związana z jednostką 2, a następna klatka rysuje
+      do framebuffera, który tę teksturę ma jako załącznik. Żaden shader sceny nie czyta
+      jednostki 2, więc nie jest to pętla sprzężenia, ale sterownik Apple tego układu
+      jeszcze nie widział: zapisać każdą linię `GL_` i każde migotanie obrazu
+
+**Odczyt głębi `GL_DEPTH_COMPONENT24` i dokładność na kartach Apple**
+
+- [ ] mgła w ogóle jest: koniec długiego korytarza wtapia się w kolor mgły. Brak mgły
+      przy zaznaczonym polu `Fog` albo mgła jednolita na całym ekranie znaczyłyby, że
+      odczyt tekstury głębi przez zwykły `sampler2D` zwraca na tej karcie coś innego niż
+      głębię w kanale czerwonym
+- [ ] obraz `Depth` w panelu Framebuffers jest poprawny (czyta tę samą teksturę od
+      pierwszej części M7, na macOS też jeszcze niesprawdzony): jeśli on działa, a mgła
+      nie, błąd jest w odtwarzaniu pozycji, nie w odczycie
+- [ ] mgła na dalekich ścianach i na dalekim podłożu jest gładka: bez pasów, schodków
+      i migotania przy ruchu. Krok 24-bitowej głębi przy płaszczyznach 0,1 m i 100 m to
+      około pół milimetra w odległości 30 m i około 6 mm przy 100 m (policzone), więc
+      pasów być nie powinno. Pasy znaczyłyby, że karta dała bufor głębi o mniejszej
+      dokładności niż ta, o którą prosi kod
+- [ ] krawędź ściany na tle nieba: bez jasnej ani ciemnej obwódki. Tekstura głębi ma filtr
+      `GL_NEAREST` i ten sam rozmiar co obraz sceny, więc obwódki być nie powinno
+- [ ] obrót kamery w miejscu przed ścianą, z odznaczonym polem `Vignette` i zgaszoną
+      latarką: mgła na ścianie się nie zmienia i nie pulsuje. Pływanie mgły znaczyłoby
+      niezgodność macierzy `uInverseViewProjection` z macierzami, którymi narysowano scenę
+- [ ] widok z góry w trybie noclip (klawisz N, w górę Spacja, w dół lewy Shift): z około
+      30 m labirynt jest prawie zakryty mgłą, tak samo jak na Windowsie. To znane
+      ograniczenie ([`../decisions/fog-height-at-the-pixel.md`](../decisions/fog-height-at-the-pixel.md)),
+      nie błąd Maca
+
+**Ekran Retina**
+
+- [ ] na ekranie Retina bufor sceny ma dwa razy więcej pikseli w każdą stronę niż okno
+      w punktach (dla okna 1280 x 720 oczekiwane `Scene framebuffer: 2560 x 1440 px`).
+      Mgła czyta teksturę głębi tą samą współrzędną `vUv` co obraz sceny i nie dostaje
+      żadnego rozmiaru, więc powinna leżeć dokładnie na ścianach, nieprzesunięta
+      i nieprzeskalowana
+- [ ] winieta jest liczona we współrzędnych tekstury (od 0 do 1 w obu kierunkach), więc
+      nie zależy od liczby pikseli: rogi są tak samo ciemne i w tym samym miejscu co na
+      monitorze o skali 1. Jasny środek jest elipsą w kształcie okna
+- [ ] przeciągnąć okno między ekranem Retina a zewnętrznym monitorem o skali 1 (jeśli
+      jest): mgła i winieta wyglądają tak samo na obu, bez linii `[error]`
+
+**Liczba klatek z mgłą i winietą**
+
+- [ ] Release, ustawienia startowe, panele ukryte, okno 1280 x 720 na ekranie Retina
+      (bufor sceny 2560 x 1440): zapisać liczbę klatek na sekundę z zaznaczonymi polami
+      `Fog` i `Vignette` i z oboma odznaczonymi. PRD wymaga stabilnych 60 klatek w 1440p
+      na MacBooku. Na Windowsie zgłoszono w tym rozmiarze około 1145 klatek z oboma
+      efektami i około 1158 bez nich (jeden przebieg, różnica w granicach szumu), ale na
+      innej karcie: dla MacBooka nic z tego nie wynika
+- [ ] mgła kosztuje na każdy piksel ekranu jeden odczyt tekstury więcej, jedno mnożenie
+      przez macierz i dwa wywołania `exp`: zapisać, czy na karcie Apple różnica jest
+      większa niż zgłoszony na Windowsie 1 %
+- [ ] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
+      ekranu: zapisać, czy tak jest, bo wtedy liczba z panelu Renderer nie mówi nic
+      o zapasie
+
+**Wygląd i panel**
+
+- [ ] mgła obok zrzutu ekranu z Windowsa: podobna gęstość i barwa. Kolor
+      `(0.14, 0.18, 0.26)`, gęstość 0,1 i siła winiety 0,3 to wartości startowe
+      z Windowsa: zapisać, czy na ekranie MacBooka mgła nie jest za jasna albo za
+      niebieska, a rogi za ciemne
+- [ ] niebo: księżyc i gwiazdy są wyraźne, pas tuż nad horyzontem jest zamglony. Przy
+      powolnym obrocie kamery zapisać, czy zamglenie samego nieba zmienia się przy bokach
+      ekranu (na Windowsie też jeszcze nieoglądane)
+- [ ] kryształ na końcu korytarza: bryła blednie w mgle, poświata zostaje
+- [ ] rozwinięty panel Framebuffers mieści pasek dwóch zakładek, cztery wiersze kontrolek
+      w każdej z nich, dwie linie informacyjne i cztery obrazy bez przewijania przy skali
+      ekranu Maca. Przełączanie zakładek nie przesuwa linii ani obrazów
+- [ ] pole `Fog colour`: trzy pola z liczbami `36`, `46`, `66` i kwadrat z kolorem, okno
+      wyboru koloru otwiera się i mieści na ekranie
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 19.2: panel
+      w nowym układzie, włącznik mgły, gęstość, wysokość podstawy, zanik z wysokością,
+      długi korytarz, obrót w miejscu, widok z góry, niebo i księżyc, kryształ przez
+      mgłę, kolor mgły, ekspozycja i mapowanie tonów, włącznik winiety, winieta
+      przesadzona, oba widoki diagnostyczne, podglądy, zmiana rozmiaru, `Reload shaders`
+      przy dziesięciu programach i próby na pliku `composite.frag` (na macOS bez kroku
+      kopiowania assetów)
 
 ### Skróty: `make`
 

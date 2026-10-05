@@ -110,7 +110,8 @@ struct DebugContext {
     /// Shader program of the attachment previews, editable: reloaded like texturedShader.
     gfx::Shader& previewShader;
     /// The exposure and the tone mapping of the composite pass, the preview switch, the
-    /// range of the depth preview and the settings of the bloom, editable.
+    /// range of the depth preview and the settings of the bloom, the fog and the
+    /// vignette, editable.
     game::PostProcessSettings& postProcessSettings;
     /// The framebuffers of the frame, read only: sizes, formats and the previews of
     /// the attachments of the scene framebuffer and of the bloom.

@@ -1,5 +1,6 @@
 // "Framebuffers" debug panel: exposure and tone mapping of the composite pass, the
-// settings of the bloom, and previews of the scene framebuffer and of the bloom targets.
+// settings of the bloom, the fog and the vignette, and previews of the scene framebuffer
+// and of the bloom targets.
 // See docs/modules/renderer/post-process.md
 #include "debug/panels/FramebuffersPanel.hpp"
 
@@ -37,6 +38,31 @@ constexpr float MAX_BLOOM_INTENSITY = 2.0F;
 constexpr float MIN_DEPTH_RANGE = 2.0F;
 constexpr float MAX_DEPTH_RANGE = 100.0F;
 
+// Range of the fog density slider, per metre. 0 is no fog. At the upper end half of
+// a surface is gone after 1.4 m: the maze can hardly be seen.
+constexpr float MIN_FOG_DENSITY = 0.0F;
+constexpr float MAX_FOG_DENSITY = 0.5F;
+
+// Range of the slider of the height up to which the fog has its full density, in metres
+// of world height: from below the lowest ground to above the tops of the walls.
+constexpr float MIN_FOG_BASE_HEIGHT = -2.0F;
+constexpr float MAX_FOG_BASE_HEIGHT = 6.0F;
+
+// Range of the slider of the height falloff of the fog, per metre. 0 gives the same
+// density at every height. At the upper end the fog is a layer about a metre thick.
+constexpr float MIN_FOG_HEIGHT_FALLOFF = 0.0F;
+constexpr float MAX_FOG_HEIGHT_FALLOFF = 3.0F;
+
+// Range of the vignette strength slider: the share of the light the corners lose.
+constexpr float MIN_VIGNETTE_STRENGTH = 0.0F;
+constexpr float MAX_VIGNETTE_STRENGTH = 1.0F;
+
+// Range of the vignette radius slider, in texture coordinates from the middle of the
+// screen. The upper end stays below the distance to a corner
+// (game::VIGNETTE_CORNER_DISTANCE): the darkening needs some room to fade in.
+constexpr float MIN_VIGNETTE_RADIUS = 0.0F;
+constexpr float MAX_VIGNETTE_RADIUS = 0.65F;
+
 // The widgets stand in a table of this many columns, so that the panel is short enough
 // to show the pictures under them without scrolling.
 constexpr int SETTING_COLUMNS = 2;
@@ -71,14 +97,14 @@ void drawPreview(const char* caption, const char* tooltip, const gfx::Framebuffe
     ImGui::SetItemTooltip("%s", tooltip);
 }
 
-// The widgets of the panel, in a table of SETTING_COLUMNS columns: the two numbers of the
-// composite pass (post/composite.frag), the switch and the three numbers of the bloom
-// (game::BloomSettings) and the range of the depth preview. Every widget writes through
-// the pointer it is given.
-void drawSettings(game::PostProcessSettings& settings) {
+// The widgets of the first tab, in a table of SETTING_COLUMNS columns: the two numbers of
+// the composite pass (post/composite.frag), the switch and the three numbers of the
+// bloom (game::BloomSettings) and the range of the depth preview. Every widget writes
+// through the pointer it is given.
+void drawToneAndBloomSettings(game::PostProcessSettings& settings) {
     // BeginTable returns false when no part of the table can be seen (it is scrolled out
     // of the panel). Nothing is drawn then, and EndTable must not be called.
-    if (!ImGui::BeginTable("settings", SETTING_COLUMNS)) {
+    if (!ImGui::BeginTable("tone and bloom", SETTING_COLUMNS)) {
         return;
     }
 
@@ -96,7 +122,7 @@ void drawSettings(game::PostProcessSettings& settings) {
     }
     ImGui::SetItemTooltip("How colours brighter than 1 are brought into the range of\n"
                           "the screen. The debug views (normals, UVs) are shown\n"
-                          "without exposure and tone mapping.");
+                          "without exposure, tone mapping, bloom, fog and vignette.");
 
     game::BloomSettings& bloom = settings.bloom;
     ImGui::TableNextColumn();
@@ -129,6 +155,86 @@ void drawSettings(game::PostProcessSettings& settings) {
                           "black at 0 m, white at this distance and beyond.");
 
     ImGui::EndTable();
+}
+
+// The widgets of the second tab, in a table like the first one: the switch, the three
+// numbers and the colour of the fog (game::FogSettings), and the switch and the two
+// numbers of the vignette (game::VignetteSettings).
+void drawFogAndVignetteSettings(game::PostProcessSettings& settings) {
+    if (!ImGui::BeginTable("fog and vignette", SETTING_COLUMNS)) {
+        return;
+    }
+
+    game::FogSettings& fog = settings.fog;
+    ImGui::TableNextColumn();
+    ImGui::Checkbox("Fog", &fog.enabled);
+    ImGui::SetItemTooltip("Far and low surfaces fade into the fog colour. Computed in\n"
+                          "the composite pass from the depth of the scene. The debug\n"
+                          "views (normals, UVs) are shown without it.");
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Density", &fog.density, MIN_FOG_DENSITY, MAX_FOG_DENSITY, "%.3f /m",
+                       ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("Fog: amount = 1 - exp(-density * height factor * distance).\n"
+                          "At 0.1, half of a surface on the ground is gone after 6.9 m.");
+
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Base height", &fog.baseHeight, MIN_FOG_BASE_HEIGHT, MAX_FOG_BASE_HEIGHT,
+                       "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("Fog: up to this world height the fog has its full density.\n"
+                          "The ground of the maze lies between 0 and 0.5 m.");
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Height falloff", &fog.heightFalloff, MIN_FOG_HEIGHT_FALLOFF,
+                       MAX_FOG_HEIGHT_FALLOFF, "%.2f /m", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("Fog: how fast it thins out above the base height:\n"
+                          "height factor = exp(-falloff * metres above the base).\n"
+                          "0 gives the same fog at every height, the sky included.");
+
+    ImGui::TableNextColumn();
+    // &fog.color.x is the address of the first of the three floats of the vector, which
+    // lie next to each other: the array of three floats ImGui asks for.
+    ImGui::ColorEdit3("Fog colour", &fog.color.x);
+    ImGui::SetItemTooltip("The colour surfaces fade into, as an sRGB value. It is mixed\n"
+                          "in before exposure and tone mapping, so on the screen the\n"
+                          "fog is darker than this swatch.");
+    game::VignetteSettings& vignette = settings.vignette;
+    ImGui::TableNextColumn();
+    ImGui::Checkbox("Vignette", &vignette.enabled);
+    ImGui::SetItemTooltip("The corners of the finished picture are darkened, after tone\n"
+                          "mapping. The debug views (normals, UVs) are shown without it.");
+
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Strength", &vignette.strength, MIN_VIGNETTE_STRENGTH, MAX_VIGNETTE_STRENGTH,
+                       "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("Vignette: the share of the light the corners lose.\n"
+                          "0 changes nothing, 1 makes them black.");
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Radius", &vignette.radius, MIN_VIGNETTE_RADIUS, MAX_VIGNETTE_RADIUS, "%.2f",
+                       ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("Vignette: the distance from the middle of the screen at which\n"
+                          "the darkening starts. 0.5 is the middle of an edge, 0.71\n"
+                          "a corner. Not corrected for the shape of the window.");
+
+    ImGui::EndTable();
+}
+
+// The settings, in two tabs so that the panel stays short enough to show the pictures
+// under them without scrolling: both tabs have four rows of widgets.
+void drawSettings(game::PostProcessSettings& settings) {
+    // BeginTabBar returns false when the bar cannot be seen. EndTabBar must not be
+    // called then. BeginTabItem returns true for the tab that is selected, and only
+    // that one draws its widgets.
+    if (!ImGui::BeginTabBar("settings")) {
+        return;
+    }
+    if (ImGui::BeginTabItem("Tone and bloom")) {
+        drawToneAndBloomSettings(settings);
+        ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Fog and vignette")) {
+        drawFogAndVignetteSettings(settings);
+        ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
 }
 
 } // namespace

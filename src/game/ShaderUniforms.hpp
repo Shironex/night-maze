@@ -72,6 +72,29 @@ constexpr const char* COMPOSITE_BLOOM_UNIFORM = "uBloom";
 constexpr const char* COMPOSITE_BLOOM_ENABLED_UNIFORM = "uBloomEnabled";
 constexpr const char* COMPOSITE_BLOOM_INTENSITY_UNIFORM = "uBloomIntensity";
 
+/// post/composite.frag, the fog: whether it is mixed in (1) or the depth is not read at
+/// all (0), the sampler of the depth texture of the scene (the number of a third
+/// texture unit), the density per metre, the world height up to which the fog has that
+/// density, how fast it thins out above (per metre) and its colour, a linear colour.
+constexpr const char* COMPOSITE_FOG_ENABLED_UNIFORM = "uFogEnabled";
+constexpr const char* COMPOSITE_DEPTH_UNIFORM = "uDepth";
+constexpr const char* COMPOSITE_FOG_DENSITY_UNIFORM = "uFogDensity";
+constexpr const char* COMPOSITE_FOG_BASE_HEIGHT_UNIFORM = "uFogBaseHeight";
+constexpr const char* COMPOSITE_FOG_HEIGHT_FALLOFF_UNIFORM = "uFogHeightFalloff";
+constexpr const char* COMPOSITE_FOG_COLOR_UNIFORM = "uFogColor";
+
+/// post/composite.frag, for the fog too: the inverse of projection * view of the scene
+/// and the position of the eye in world space (game::SceneView).
+constexpr const char* COMPOSITE_INVERSE_VIEW_PROJECTION_UNIFORM = "uInverseViewProjection";
+constexpr const char* COMPOSITE_EYE_UNIFORM = "uEye";
+
+/// post/composite.frag, the vignette: whether the corners are darkened (1) or not (0),
+/// how much light they lose and the distance from the middle of the screen at which
+/// the darkening starts.
+constexpr const char* COMPOSITE_VIGNETTE_ENABLED_UNIFORM = "uVignetteEnabled";
+constexpr const char* COMPOSITE_VIGNETTE_STRENGTH_UNIFORM = "uVignetteStrength";
+constexpr const char* COMPOSITE_VIGNETTE_RADIUS_UNIFORM = "uVignetteRadius";
+
 /// post/bright.frag: the sampler of the scene picture and the brightness above which
 /// light takes part in the bloom.
 constexpr const char* BRIGHT_SCENE_UNIFORM = "uScene";

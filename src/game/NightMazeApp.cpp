@@ -452,13 +452,16 @@ void NightMazeApp::onRender(double alpha) {
 
     // The two debug views show data as colours (a normal, a texture coordinate), not
     // light. An exposure or a tone mapping curve would change those numbers, and
-    // a bloom would make the bright ones glow, so all three are switched off for them,
-    // in a copy: the settings the debug UI shows stay.
+    // a bloom would make the bright ones glow, a fog would mix its colour into them and
+    // a vignette would darken them towards the corners, so all five are switched off
+    // for them, in a copy: the settings the debug UI shows stay.
     PostProcessSettings compositeSettings = m_postProcessSettings;
     if (m_viewMode != ViewMode::Textured) {
         compositeSettings.exposure = NEUTRAL_EXPOSURE;
         compositeSettings.toneMapping = ToneMapping::None;
         compositeSettings.bloom.enabled = false;
+        compositeSettings.fog.enabled = false;
+        compositeSettings.vignette.enabled = false;
     }
 
     // The bloom: the bright parts of the finished scene, blurred in targets of half the
@@ -466,10 +469,16 @@ void NightMazeApp::onRender(double alpha) {
     // draws nothing and tells the composite pass so.
     m_postProcess.drawBloom(m_brightPassShader, m_blurShader, m_previewShader, compositeSettings);
 
-    // The last pass: back to the window, and the HDR picture goes into it with the
-    // bloom, exposure, tone mapping and the sRGB encoding. The debug UI is drawn after
-    // this function returns (main.cpp), straight into the window.
-    m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer);
+    // The fog of the last pass finds the place in the world every pixel shows. For that
+    // it needs the way back from the screen to the world: the inverse of the two
+    // matrices the scene was drawn with, multiplied in the order a vertex shader applies
+    // them (the view first, then the projection), and the eye they were built for.
+    const SceneView sceneView{.inverseViewProjection = glm::inverse(projection * view), .eye = eye};
+
+    // The last pass: back to the window, and the HDR picture goes into it with the fog,
+    // the bloom, exposure, tone mapping, the vignette and the sRGB encoding. The debug
+    // UI is drawn after this function returns (main.cpp), straight into the window.
+    m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer, sceneView);
 }
 
 glm::vec3 NightMazeApp::crystalEmissive() const {

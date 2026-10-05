@@ -94,8 +94,8 @@ night_maze_enable_warnings(engine)
 
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
 # The maze, its generator, its layout in the world, the terrain it stands on, the places
-# of the grass, the player, the settings of the lighting and of the bloom and the rules
-# of a round (exit, crystals, battery) are plain data and math.
+# of the grass, the player, the settings of the lighting, of the bloom, of the fog and of
+# the vignette and the rules of a round (exit, crystals, battery) are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -106,6 +106,8 @@ add_library(game_logic STATIC
     src/game/Crystals.hpp
     src/game/Exit.cpp
     src/game/Exit.hpp
+    src/game/Fog.cpp
+    src/game/Fog.hpp
     src/game/Grass.cpp
     src/game/Grass.hpp
     src/game/Lighting.cpp
@@ -124,6 +126,8 @@ add_library(game_logic STATIC
     src/game/Round.hpp
     src/game/Terrain.cpp
     src/game/Terrain.hpp
+    src/game/Vignette.cpp
+    src/game/Vignette.hpp
 )
 # PUBLIC: the headers of this library (Crystals.hpp, Exit.hpp, Lighting.hpp,
 # MazeLayout.hpp, MazeWorld.hpp, Player.hpp, Round.hpp, Terrain.hpp) include headers of
@@ -210,6 +214,7 @@ add_executable(night_maze_tests
     tests/ColorSpaceTests.cpp
     tests/CrystalTests.cpp
     tests/ExitTests.cpp
+    tests/FogTests.cpp
     tests/FramebufferTests.cpp
     tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
@@ -227,6 +232,7 @@ add_executable(night_maze_tests
     tests/TangentTests.cpp
     tests/TerrainTests.cpp
     tests/TransformTests.cpp
+    tests/VignetteTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)

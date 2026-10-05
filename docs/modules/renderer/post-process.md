@@ -1,17 +1,19 @@
-# Moduł renderer: post-process, scena w buforze HDR, bloom i przebieg składający
+# Moduł renderer: post-process, scena w buforze HDR, bloom, mgła, winieta i przebieg składający
 
-Kamień milowy: M7, część pierwsza (bufor HDR, przebieg składający, ekspozycja, mapowanie tonów, poprawna gamma, podgląd załączników) i część druga (bloom: poświata wokół jasnych miejsc). Mgła, winieta, cienie i minimapa to dalsze części M7 i **nie ma ich w kodzie**. Temat wykładu: 10 (Rendering pozaekranowy).
-Kod: klasa [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp) i [`PostProcess.cpp`](../../../src/game/PostProcess.cpp), ustawienia i matematyka bloomu w [`src/game/Bloom.hpp`](../../../src/game/Bloom.hpp) i [`Bloom.cpp`](../../../src/game/Bloom.cpp), shadery [`assets/shaders/post/composite.vert`](../../../assets/shaders/post/composite.vert), [`post/composite.frag`](../../../assets/shaders/post/composite.frag), [`post/preview.frag`](../../../assets/shaders/post/preview.frag), [`post/bright.frag`](../../../assets/shaders/post/bright.frag), [`post/blur.frag`](../../../assets/shaders/post/blur.frag), wspólne pliki [`common/color.glsl`](../../../assets/shaders/common/color.glsl) i [`common/depth.glsl`](../../../assets/shaders/common/depth.glsl), obiekt framebuffera [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), wywołania w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`onRender`), panel [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp), nazwy uniformów w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), testy [`tests/BloomTests.cpp`](../../../tests/BloomTests.cpp).
+Kamień milowy: M7, część pierwsza (bufor HDR, przebieg składający, ekspozycja, mapowanie tonów, poprawna gamma, podgląd załączników) część druga (bloom: poświata wokół jasnych miejsc) i część trzecia (mgła liczona z bufora głębi i winieta). Cienie i minimapa to dalsze części M7 i **nie ma ich w kodzie**. Temat wykładu: 10 (Rendering pozaekranowy).
+Kod: klasa [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp) i [`PostProcess.cpp`](../../../src/game/PostProcess.cpp), ustawienia i matematyka bloomu w [`src/game/Bloom.hpp`](../../../src/game/Bloom.hpp) i [`Bloom.cpp`](../../../src/game/Bloom.cpp), mgły w [`src/game/Fog.hpp`](../../../src/game/Fog.hpp) i [`Fog.cpp`](../../../src/game/Fog.cpp), winiety w [`src/game/Vignette.hpp`](../../../src/game/Vignette.hpp) i [`Vignette.cpp`](../../../src/game/Vignette.cpp), shadery [`assets/shaders/post/composite.vert`](../../../assets/shaders/post/composite.vert), [`post/composite.frag`](../../../assets/shaders/post/composite.frag), [`post/preview.frag`](../../../assets/shaders/post/preview.frag), [`post/bright.frag`](../../../assets/shaders/post/bright.frag), [`post/blur.frag`](../../../assets/shaders/post/blur.frag), wspólne pliki [`common/color.glsl`](../../../assets/shaders/common/color.glsl) i [`common/depth.glsl`](../../../assets/shaders/common/depth.glsl), obiekt framebuffera [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), wywołania w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`onRender`), panel [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp), nazwy uniformów w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), testy [`tests/BloomTests.cpp`](../../../tests/BloomTests.cpp), [`tests/FogTests.cpp`](../../../tests/FogTests.cpp) i [`tests/VignetteTests.cpp`](../../../tests/VignetteTests.cpp).
 
-Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasa nazywa się `game::PostProcess` i leży w `src/game/`, wyjaśniają [`README.md`](README.md) i notatka [`../../decisions/post-process-in-game-layer.md`](../../decisions/post-process-in-game-layer.md). Dokument zakłada znajomość tekstur 2D ([`../gfx/textures.md`](../gfx/textures.md)), macierzy rzutowania i testu głębi ([`../scene/camera.md`](../scene/camera.md)) oraz dyrektywy `#include` w shaderach ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Dwa tematy mają własne dokumenty i tutaj są tylko używane: obiekt framebuffera i klasę `gfx::Framebuffer` linia po linii opisuje [`../gfx/framebuffers.md`](../gfx/framebuffers.md), a przestrzeń sRGB, wartości liniowe i całą drogę koloru przez potok opisuje [`../gfx/color-space.md`](../gfx/color-space.md).
+Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasa nazywa się `game::PostProcess` i leży w `src/game/`, wyjaśniają [`README.md`](README.md) i notatka [`../../decisions/post-process-in-game-layer.md`](../../decisions/post-process-in-game-layer.md). Dokument zakłada znajomość tekstur 2D ([`../gfx/textures.md`](../gfx/textures.md)), macierzy widoku, macierzy rzutowania i testu głębi ([`../scene/camera.md`](../scene/camera.md)) oraz dyrektywy `#include` w shaderach ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Dwa tematy mają własne dokumenty i tutaj są tylko używane: obiekt framebuffera i klasę `gfx::Framebuffer` linia po linii opisuje [`../gfx/framebuffers.md`](../gfx/framebuffers.md), a przestrzeń sRGB, wartości liniowe i całą drogę koloru przez potok opisuje [`../gfx/color-space.md`](../gfx/color-space.md).
 
-**Stan na dziś:** scena 3D nie jest już rysowana prosto do okna. Trafia do własnego framebuffera z teksturą koloru `GL_RGBA16F` i teksturą głębi `GL_DEPTH_COMPONENT24`, a do okna przenosi ją ostatni przebieg klatki, **przebieg składający** (composite): jeden trójkąt na cały ekran, który mnoży kolor przez ekspozycję, stosuje krzywą mapowania tonów i koduje wynik do sRGB. Od drugiej części M7 między sceną a przebiegiem składającym stoi **bloom**: przebieg jasności (bright pass) wybiera z obrazu sceny światło jaśniejsze od progu, rozmycie Gaussa rozlewa je na sąsiednie piksele, a przebieg składający dodaje wynik do sceny przed ekspozycją. Wszystko to dzieje się w trzech celach `GL_RGBA16F` o połowie szerokości i połowie wysokości bufora sceny. Panel **Framebuffers** ma suwak ekspozycji, listę krzywych, przełącznik i trzy liczby bloomu, zakres podglądu głębi, rozmiary i formaty bufora sceny i celów bloomu oraz cztery podglądy: załącznika koloru, załącznika głębi, wyniku przebiegu jasności i gotowej poświaty. Programów shaderów jest dziesięć: w pierwszej części doszły `composite` i `preview`, w drugiej `bright` i `blur`.
+**Stan na dziś:** scena 3D nie jest już rysowana prosto do okna. Trafia do własnego framebuffera z teksturą koloru `GL_RGBA16F` i teksturą głębi `GL_DEPTH_COMPONENT24`, a do okna przenosi ją ostatni przebieg klatki, **przebieg składający** (composite): jeden trójkąt na cały ekran, który mnoży kolor przez ekspozycję, stosuje krzywą mapowania tonów i koduje wynik do sRGB. Od drugiej części M7 między sceną a przebiegiem składającym stoi **bloom**: przebieg jasności (bright pass) wybiera z obrazu sceny światło jaśniejsze od progu, rozmycie Gaussa rozlewa je na sąsiednie piksele, a przebieg składający dodaje wynik do sceny przed ekspozycją. Wszystko to dzieje się w trzech celach `GL_RGBA16F` o połowie szerokości i połowie wysokości bufora sceny. Panel **Framebuffers** ma suwak ekspozycji, listę krzywych, przełącznik i trzy liczby bloomu, zakres podglądu głębi, rozmiary i formaty bufora sceny i celów bloomu oraz cztery podglądy: załącznika koloru, załącznika głębi, wyniku przebiegu jasności i gotowej poświaty. Programów shaderów jest dziesięć: w pierwszej części doszły `composite` i `preview`, w drugiej `bright` i `blur`. Trzecia część nie dodała ani programu, ani framebuffera, ani przebiegu: **mgła** i **winieta** to nowe linie tego samego `composite.frag`. Mgła zastępuje kolor powierzchni kolorem mgły tym mocniej, im dalej od oka i im niżej leży to, co pokazuje piksel: miejsce w świecie odtwarza z tekstury głębi sceny i odwrotności macierzy widoku i rzutowania. Winieta przyciemnia gotowy obraz w stronę rogów ekranu. Obie mają swoje ustawienia i wzory także w C++ (`game/Fog.*`, `game/Vignette.*`), pod testami, a w panelu Framebuffers drugą zakładkę z ośmioma kontrolkami.
 
-Temat 10 wykładu jest **w trakcie**. PRD wymienia w nim: scenę w buforze HDR, post-process (bloom, mgła, winieta), minimapę i podgląd załączników. Z tej listy są: bufor HDR, przebieg składający, bloom i podgląd załączników. **Nie ma:** mgły, winiety ani minimapy. Miejsca, w których dojdą, są oznaczone w sekcji 2.16.
+Temat 10 wykładu jest **w trakcie**. PRD wymienia w nim: scenę w buforze HDR, post-process (bloom, mgła, winieta), minimapę i podgląd załączników. Z tej listy są: bufor HDR, przebieg składający, bloom, mgła, winieta i podgląd załączników. **Nie ma minimapy**, więc temat nie jest zamknięty. To, czego jeszcze brakuje, wylicza sekcja 2.16.
 
 Zgłoszone dla Windowsa (2026-10-05) dla **pierwszej części**, nie powtórzone przy pisaniu tego dokumentu: bramka `make check` przechodziła (formatowanie, testy Debug i Release, clang-tidy), zero ostrzeżeń, wtedy 269 przypadków testowych i 102103 asercje w obu konfiguracjach. Build Debug bez błędów OpenGL przy otwartych podglądach, po zmianie rozmiaru okna na 1400 x 800 oraz po zminimalizowaniu (framebuffer 0 x 0) i przywróceniu. Liczba klatek w buildzie Release, bez synchronizacji pionowej, z ukrytymi panelami: około 2700 przed zmianą i około 2500 po niej w 1280 x 720, około 2020 przed i około 1960 po w 2560 x 1440.
 
 Zgłoszone dla Windowsa (2026-10-05) dla **drugiej części**, też nie powtórzone przeze mnie: bramka `make check` przechodzi, zero ostrzeżeń w Debug i Release, **276 przypadków testowych i 102139 asercji** w obu konfiguracjach. Różnica to plik `tests/BloomTests.cpp`: 7 przypadków i 36 asercji, co zgadza się z policzeniem makr w pliku. Poświata jest widoczna na zrzutach ekranu wokół kryształów (w najciemniejszej i w najjaśniejszej chwili pulsu, w trybach Unlit, Gouraud i Blinn-Phong) i wokół tarczy księżyca, a gwiazdy zostają punktami. Liczba klatek w Release z ukrytymi panelami, pomiar niespokojny: 1280 x 720 od 1900 do 2450 bez bloomu i od 1500 do 2150 z bloomem, 2560 x 1440 od 1370 do 1480 bez i od 880 do 925 z bloomem. Wersji kompilatora, karty i sterownika dla żadnego z tych pomiarów nie zapisano. **Nikt jeszcze nie kliknął myszą** kontrolek panelu, nie przeciągał krawędzi okna i nie użył `Reload shaders` przy dziesięciu programach. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Otwarte obserwacje: plama latarki na ścianie nie daje poświaty nawet z metra, a poświata jest mierzona w tekselach celu o połowie rozdzielczości, więc w 1440p jest na ekranie względnie cieńsza. Szczegóły w sekcji 5.9.
+
+Zgłoszone dla Windowsa (2026-10-05) dla **trzeciej części**, też nie powtórzone przeze mnie: bramka `make check` przechodzi, zero ostrzeżeń w Debug i Release, **294 przypadki testowe i 102412 asercji** w obu konfiguracjach. Różnica to dwa pliki: `tests/FogTests.cpp` (11 przypadków, 241 asercji) i `tests/VignetteTests.cpp` (7 przypadków, 32 asercje), co zgadza się z policzeniem makr w plikach. Z wyłączoną mgłą i winietą obraz jest identyczny co do piksela z obrazem drugiej części, a oba widoki diagnostyczne są identyczne także przy włączonych ustawieniach startowych. Liczba klatek w Release z ukrytymi panelami, jeden spokojny przebieg: 1280 x 720 około 1880 z obydwoma efektami i około 1900 bez nich, 2560 x 1440 około 1145 z nimi i około 1158 bez. **Nikt nie kliknął myszą** żadnej z ośmiu nowych kontrolek. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Znane ograniczenie, zapisane w kodzie: wysokość mgły jest brana tylko w miejscu, które pokazuje piksel, więc z dużej wysokości labirynt prawie znika we mgle (sekcja 2.20). Szczegóły w sekcji 5.9.
 
 ## 1. Po co to jest
 
@@ -23,7 +25,7 @@ Do M6 każde wywołanie rysujące zapisywało piksele prosto do okna. Okno przec
 | obrazu sceny nie da się przeczytać jak tekstury | żaden efekt nie może pracować na gotowym obrazie: rozmycie, poświata, mgła z głębi | kolor i głębia sceny są zwykłymi teksturami, które następny przebieg czyta przez `sampler2D` |
 | to, co zapisano, jest od razu tym, co widać | kodowanie do sRGB trzeba by robić w każdym shaderze sceny osobno | jedno miejsce na końcu klatki, w którym obraz jest dopasowywany do ekranu |
 
-Rysowanie do tekstury zamiast do okna nazywa się **renderingiem pozaekranowym** (offscreen rendering). To temat 10 wykładu. Dziś daje on pięć rzeczy:
+Rysowanie do tekstury zamiast do okna nazywa się **renderingiem pozaekranowym** (offscreen rendering). To temat 10 wykładu. Dziś daje on siedem rzeczy:
 
 | Rzecz | Gdzie | Sekcja |
 |---|---|---|
@@ -32,8 +34,10 @@ Rysowanie do tekstury zamiast do okna nazywa się **renderingiem pozaekranowym**
 | poprawna gamma w całym potoku | tekstury sRGB, kolory wpisane liczbami przeliczane raz, kodowanie na końcu | 2.3, całość w [`../gfx/color-space.md`](../gfx/color-space.md) |
 | podgląd obu załączników w panelu | `PostProcess::drawPreviews`, shader `post/preview.frag`, panel Framebuffers | 2.10, 4.3, 5.5, 6 |
 | bloom: poświata wokół tego, co w buforze jest jaśniejsze od progu (druga część M7) | `PostProcess::drawBloom`, shadery `post/bright.frag` i `post/blur.frag`, `game/Bloom.*`, dodanie w `post/composite.frag` | 2.11 do 2.15, 4.6 do 4.8, 5.10, 5.11 |
+| mgła: daleki i nisko leżący fragment sceny przechodzi w kolor mgły, liczone z **tekstury głębi** sceny (trzecia część M7) | `post/composite.frag` (`worldPositionFromDepth`, `fogHeightFactor`, `fogAmount`), `game/Fog.*`, `game::SceneView` | 2.17 do 2.21, 4.9, 5.12 |
+| winieta: gotowy obraz ciemnieje w stronę rogów (trzecia część M7) | `post/composite.frag` (`vignetteFactor`), `game/Vignette.*` | 2.22, 4.9, 5.13 |
 
-Pokaz z PRD dla tego tematu to "podgląd załączników FBO". Jest w panelu Framebuffers (sekcja 6). Od drugiej części panel pokazuje też oba kroki bloomu jako obrazy, więc efekt da się rozłożyć na oczach prowadzącego: co zostało po progu, co wyszło z rozmycia i co trafiło na ekran.
+Pokaz z PRD dla tego tematu to "podgląd załączników FBO". Jest w panelu Framebuffers (sekcja 6). Od drugiej części panel pokazuje też oba kroki bloomu jako obrazy, więc efekt da się rozłożyć na oczach prowadzącego: co zostało po progu, co wyszło z rozmycia i co trafiło na ekran. Mgła jest pierwszym efektem, który czyta **drugi** z załączników, głębię: to dla niej (i dla podglądu) głębia sceny jest teksturą, a nie renderbufferem.
 
 ## 2. Teoria
 
@@ -267,11 +271,12 @@ flowchart TD
     E --> F{"settings.previews?"}
     F -->|tak| G["drawPreviews: dwa małe framebuffery,<br/>kolor i głębia"]
     F -->|nie| K
-    G --> K["kopia ustawień: w widoku diagnostycznym<br/>bez ekspozycji, krzywej i bloomu"]
+    G --> K["kopia ustawień: w widoku diagnostycznym<br/>bez ekspozycji, krzywej, bloomu, mgły i winiety"]
     K --> L{"bloom włączony<br/>w kopii?"}
     L -->|tak| M["drawBloom: przebieg jasności,<br/>rozmycie Gaussa, trzy cele o połowie rozmiaru"]
-    L -->|nie| H
-    M --> H["composite: okno jest celem,<br/>bloom, ekspozycja, mapowanie tonów, sRGB"]
+    L -->|nie| V
+    M --> V["SceneView: odwrotność projection * view<br/>i pozycja oka, dla mgły"]
+    V --> H["composite: okno jest celem,<br/>mgła, bloom, ekspozycja, mapowanie tonów,<br/>winieta, sRGB"]
     H --> I["main.cpp: ImGui, panele i HUD,<br/>prosto do okna"]
 ```
 
@@ -289,22 +294,27 @@ To samo jako lista kroków `NightMazeApp::onRender` (kod w sekcji 5.7):
 | 6 | `drawPreviews`, tylko gdy `m_postProcessSettings.previews` jest prawdą (otwarty panel Framebuffers) | dwa framebuffery podglądu |
 | 7 | kopia ustawień dla widoków diagnostycznych (sekcja 2.9) | brak |
 | 8 | `m_postProcess.drawBloom(...)` z tą kopią: przebieg jasności, potem rozmycie, a przy otwartym panelu dwa podglądy (sekcje 2.11 do 2.14, kod w 5.11) | trzy cele bloomu, potem dwa framebuffery podglądu |
-| 9 | `m_postProcess.composite(...)`: okno staje się celem, trójkąt pełnoekranowy dodaje bloom do sceny i przenosi obraz | okno |
-| 10 | po powrocie z `onRender`: `DebugUI::draw` w [`src/main.cpp`](../../../src/main.cpp) rysuje panele i HUD | okno |
+| 9 | od trzeciej części M7: `SceneView` z odwrotnością `projection * view` i pozycją oka, czyli droga z ekranu z powrotem do świata dla mgły (sekcja 2.19) | brak |
+| 10 | `m_postProcess.composite(...)`: okno staje się celem, trójkąt pełnoekranowy miesza mgłę, dodaje bloom, stosuje ekspozycję, krzywą i winietę i przenosi obraz | okno |
+| 11 | po powrocie z `onRender`: `DebugUI::draw` w [`src/main.cpp`](../../../src/main.cpp) rysuje panele i HUD | okno |
 
 Bloom stoi **po** kopii ustawień, bo to kopia mówi mu, czy ma w ogóle rysować: w widoku diagnostycznym jest w niej wyłączony. Stoi **po** podglądach sceny, ale kolejność tych dwóch kroków nie ma znaczenia dla obrazu: oba tylko czytają bufor sceny. Miejsce na przyszłe przebiegi wskazuje komentarz w `onRender` między krokami 5 i 6: efekty liczone z gotowej sceny czytają tekstury bufora sceny i rysują do własnych framebufferów, a przebieg składający zostaje ostatni.
 
-### 2.9 Widoki diagnostyczne omijają ekspozycję, krzywą i bloom
+Mgła i winieta **nie są** takimi przebiegami i nie mają swojego kroku w tabeli: obie są liniami shadera przebiegu składającego (krok 10). Trzecia część M7 dodała do klatki tylko krok 9, jedno odwrócenie macierzy na procesorze.
 
-Lista `View` w panelu Assets ma dwa widoki, które nie pokazują światła, tylko **dane jako kolor**: normalne (`normal * 0.5 + 0.5`) i współrzędne tekstury. Liczba 0,5 w kanale ma znaczyć na ekranie dokładnie 0,5. Potok po scenie by to zepsuł w trzech miejscach, więc każde z nich ma swoją poprawkę:
+### 2.9 Widoki diagnostyczne omijają ekspozycję, krzywą, bloom, mgłę i winietę
+
+Lista `View` w panelu Assets ma dwa widoki, które nie pokazują światła, tylko **dane jako kolor**: normalne (`normal * 0.5 + 0.5`) i współrzędne tekstury. Liczba 0,5 w kanale ma znaczyć na ekranie dokładnie 0,5. Potok po scenie by to zepsuł w pięciu miejscach, więc każde z nich ma swoją poprawkę:
 
 | Co by zepsuło wynik | Poprawka | Gdzie |
 |---|---|---|
 | kodowanie do sRGB: 0,5 wyszłoby na ekranie jako 0,735 | shader sceny zapisuje `srgbToLinear(dane)`, a kodowanie na końcu to znosi: `linearToSrgb(srgbToLinear(x)) = x` | `textured.frag`, `grass.frag`, `skybox.frag` |
 | ekspozycja i krzywa: zmieniłyby liczby dowolnie | dla klatki w widoku diagnostycznym `onRender` robi **kopię** ustawień z ekspozycją 1 (`NEUTRAL_EXPOSURE`) i `ToneMapping::None` | `NightMazeApp::onRender` |
 | bloom: jasne dane dostałyby poświatę. W widoku UV róg, w którym obie współrzędne dochodzą do 1, to żółć (1, 1, 0) o jasności 0,93, czyli powyżej progu 0,8, więc te rogi rozlewałyby się na sąsiednie piksele i fałszowały ich liczby | w tej samej kopii `bloom.enabled = false`. `drawBloom` nic wtedy nie rysuje, a `composite` nie czyta tekstury bloomu | `NightMazeApp::onRender` |
+| mgła: domieszałaby swój kolor do danych, tym mocniej, im dalej. Normalna dalekiej ściany przestałaby być normalną | w tej samej kopii `fog.enabled = false`. `composite` nie wiąże wtedy tekstury głębi, a shader jej nie czyta | `NightMazeApp::onRender` |
+| winieta: przyciemniłaby dane w stronę rogów. Ta sama normalna miałaby w rogu ekranu 70 procent swojej liczby | w tej samej kopii `vignette.enabled = false` | `NightMazeApp::onRender` |
 
-Kopia, a nie zmiana pól: suwak, lista i pole `Bloom` w panelu Framebuffers nadal pokazują to, co ustawił użytkownik, i wracają do działania po przełączeniu widoku z powrotem na `Textured`. Panel pokazuje w takiej klatce `Bloom targets: not drawn (bloom off or a debug view)` i napis `(not drawn)` zamiast dwóch obrazów bloomu, chociaż pole `Bloom` jest nadal zaznaczone. Zgłoszony wynik porównania z poprzednim commitem: widoki normalnych i UV różnią się najwyżej o 1 poziom na 255.
+Komentarz w `onRender` liczy to wprost: "all five are switched off for them, in a copy". Kopia, a nie zmiana pól: suwak, lista i pola `Bloom`, `Fog` i `Vignette` w panelu Framebuffers nadal pokazują to, co ustawił użytkownik, i wracają do działania po przełączeniu widoku z powrotem na `Textured`. Panel pokazuje w takiej klatce `Bloom targets: not drawn (bloom off or a debug view)` i napis `(not drawn)` zamiast dwóch obrazów bloomu, chociaż pole `Bloom` jest nadal zaznaczone. Zgłoszony wynik porównania z poprzednim commitem (pierwsza część M7): widoki normalnych i UV różnią się najwyżej o 1 poziom na 255. Zgłoszone dla trzeciej części: oba widoki są identyczne z drugą częścią także przy włączonej mgle i winiecie w ustawieniach.
 
 ### 2.10 Podgląd załączników i głębia liniowa
 
@@ -366,10 +376,10 @@ Połowa zakresu liczb jest zużyta na pierwsze 10 centymetrów za płaszczyzną 
 Trzy uwagi do tego podglądu:
 
 - **Niebo jest białe.** Skybox jest rysowany na głębi 1 ([`skybox.md`](skybox.md), sekcja 2.7), a `linearDepth(1)` zwraca dokładnie `f`, czyli 100 m, więcej niż każdy zakres suwaka poza samym końcem.
-- **To nie jest odległość od oka w linii prostej**, tylko odległość od płaszczyzny kamery (wzdłuż kierunku patrzenia). Ściana prostopadła do kierunku patrzenia ma jedną szarość na całej szerokości, chociaż jej brzegi są dalej od oka niż środek.
+- **To nie jest odległość od oka w linii prostej**, tylko odległość od płaszczyzny kamery (wzdłuż kierunku patrzenia). Ściana prostopadła do kierunku patrzenia ma jedną szarość na całej szerokości, chociaż jej brzegi są dalej od oka niż środek. Dla podglądu to wystarcza. Dla mgły nie: dlatego mgła nie używa `linearDepth`, tylko odtwarza pozycję w świecie i mierzy odległość od oka (sekcje 2.18 i 2.19).
 - **Szarość nie jest kodowana do sRGB.** Komentarz w shaderze mówi dlaczego: to miara, a nie światło. Wartość 0,5 ma być na ekranie liczbą 0,5, czyli połową zakresu suwaka.
 
-Tekstura głębi jest czytana przez zwykły `sampler2D` jako jedna liczba w kanale czerwonym, z filtrem `GL_NEAREST` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)). To, że głębia w ogóle jest teksturą, a nie renderbufferem, uzasadnia notatka [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md).
+Tekstura głębi jest czytana przez zwykły `sampler2D` jako jedna liczba w kanale czerwonym, z filtrem `GL_NEAREST` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)). To, że głębia w ogóle jest teksturą, a nie renderbufferem, uzasadnia notatka [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md). Od trzeciej części M7 tę samą teksturę czyta drugi shader, `composite.frag`, dla mgły: też przez `sampler2D` i też jako jedną liczbę w kanale czerwonym, ale z jednostki 2 i bez przeliczania na metry.
 
 ### 2.11 Bloom: skąd poświata i dlaczego potrzebuje HDR
 
@@ -606,7 +616,7 @@ Ostatni krok bloomu jest jedną linią w `composite.frag`:
 
 **Dodawanie, nie mieszanie.** Poświata jest światłem, a światło z dwóch źródeł się sumuje. Scena nie jest przy tym przyciemniana ani zastępowana: jasna plama zostaje tam, gdzie była, a rozmyta kopia jej nadwyżki dochodzi do niej i do sąsiadów. Uczciwie: bloom **dodaje energię**. Światło ponad progiem jest w obrazie dwa razy, raz w scenie i drugi raz rozlane dookoła. To efekt wyglądu, nie model fizyczny. Suwak `Intensity` (`uBloomIntensity`, od 0 do 2, startowo 1) mnoży poświatę przed dodaniem: 0 nie dodaje nic, 2 podwaja.
 
-**Dlaczego przed ekspozycją i krzywą.** Komentarz funkcji `main` ustawia bloom jako krok 2, między odczytem sceny a ekspozycją. Trzy powody:
+**Dlaczego przed ekspozycją i krzywą.** Komentarz funkcji `main` ustawia bloom między odczytem sceny a ekspozycją: w drugiej części M7 jako krok 2, od trzeciej jako krok 3, bo przed nim stanęła mgła (sekcja 2.21). Trzy powody:
 
 | Powód | Wyjaśnienie |
 |---|---|
@@ -633,16 +643,317 @@ Kolor piksela to `tekstura * (światło rozproszone + uEmissive) + odbłysk`, wi
 
 ### 2.16 Planowane: czego jeszcze nie ma
 
-Poniższe efekty są w PRD (temat 10 i potok renderowania) i **nie istnieją w kodzie**. Każdy dostanie tu własną sekcję razem z kodem swojej części M7. Na razie jedyne, co o nich wiadomo z kodu, to miejsce w kolejności, zapisane w komentarzu funkcji `main` w `composite.frag`:
+Do drugiej części M7 ta sekcja wymieniała cztery efekty z PRD, których nie było w kodzie. Dwa z nich, mgła i winieta, powstały w trzeciej części i mają własne sekcje: mgła 2.17 do 2.21, winieta 2.22. Zostały dwa:
 
-| Efekt | Stan | Miejsce w kolejności według komentarza w `composite.frag` |
+| Efekt | Stan | Co o nim wiadomo z kodu |
 |---|---|---|
-| **Planowane: mgła** (z bufora głębi) | brak kodu | przed ekspozycją, w kroku 1 komentarza: efekt działa na samym świetle i potrzebuje wartości liniowych, które nie są obcięte. Funkcja `linearDepth` w `common/depth.glsl` jest wspólna właśnie po to, żeby czytać głębię w metrach |
-| **Planowane: winieta** | brak kodu | po mapowaniu tonów, przed kodowaniem: efekt działa na gotowym obrazie |
-| **Planowane: minimapa** (widok z góry w osobnym framebufferze) | brak kodu | osobny przebieg do własnego celu |
+| **Planowane: minimapa** (widok z góry w osobnym framebufferze) | brak kodu | osobny przebieg do własnego celu. To ostatnia brakująca rzecz z listy tematu 10 |
 | **Planowane: cienie** (temat 11, shadow mapping) | brak kodu | osobne przebiegi przed sceną. `gfx::ColorFormat::None` (framebuffer z samą głębią) jest przygotowany, ale ta ścieżka nie została nigdy wykonana |
 
-Nie ma też: drugiego załącznika koloru, automatycznej ekspozycji, bloomu w kilku rozdzielczościach naraz (łańcucha coraz mniejszych celów, który dałby szeroką poświatę taniej). Połowa rozdzielczości jest od drugiej części M7, ale tylko dla celów bloomu: bufor sceny ma nadal pełny rozmiar okna.
+Jedno zdanie z wcześniejszej wersji tej sekcji okazało się **fałszywe** i warto je znać, bo padało też w innych dokumentach: że mgła będzie czytać głębię funkcją `linearDepth` z `common/depth.glsl`. Nie czyta. `linearDepth` daje odległość od płaszczyzny kamery, a mgła potrzebuje odległości od oka w linii prostej i wysokości nad ziemią, więc odtwarza całą pozycję w świecie (sekcje 2.18 i 2.19). Plik `common/depth.glsl` ma nadal jednego użytkownika: podgląd głębi w `preview.frag` (sekcja 2.10).
+
+Nie ma też: drugiego załącznika koloru, automatycznej ekspozycji, bloomu w kilku rozdzielczościach naraz (łańcucha coraz mniejszych celów, który dałby szeroką poświatę taniej), mgły całkowanej wzdłuż promienia ani światła widocznego we mgle (snopa latarki). Połowa rozdzielczości jest od drugiej części M7, ale tylko dla celów bloomu: bufor sceny ma nadal pełny rozmiar okna.
+
+### 2.17 Mgła: co to jest i skąd prawo wykładnicze
+
+**Co robi mgła ze światłem.** Mgła to powietrze pełne drobnych kropel. Światło, które leci od ściany do oka, trafia po drodze na krople i dzieją się z nim dwie rzeczy naraz:
+
+| Zjawisko | Co się dzieje | Skutek dla piksela |
+|---|---|---|
+| pochłanianie i rozpraszanie **na zewnątrz** (absorption, out-scattering) | część światła ściany jest pochłaniana albo odbijana w bok i do oka nie dolatuje | ściana ciemnieje i blednie |
+| rozpraszanie **do środka** (in-scattering) | światło z innych źródeł (księżyc, niebo, otoczenie) odbija się od kropel w stronę oka | do piksela dochodzi własny kolor mgły |
+
+Jeśli do oka dolatuje ułamek `T` światła ściany (T jak transmittance, przepuszczalność), to resztę, `1 - T`, wypełnia kolor mgły:
+
+```text
+kolor = kolor ściany * T + kolor mgły * (1 - T)
+```
+
+To jest dokładnie funkcja `mix` z GLSL: `mix(a, b, t) = a * (1 - t) + b * t`. W kodzie `t` nazywa się `amount` (ile mgły) i jest równe `1 - T`. Cała fizyka sprowadza się więc do pytania: ile wynosi `T` po `d` metrach mgły.
+
+**Prawo wykładnicze w kilku liniach.** Założenie jest jedno: mgła jest wszędzie taka sama, więc każda równa warstwa zabiera **ten sam ułamek** tego, co do niej wpadło. Nie tę samą ilość, tylko ten sam ułamek. Niech jeden metr przepuszcza 90 procent:
+
+| Droga | Rachunek | Zostaje |
+|---|---|---|
+| 1 m | 0,9 | 90 procent |
+| 2 m | 0,9 * 0,9 | 81 procent |
+| 3 m | 0,9 * 0,9 * 0,9 | 72,9 procent |
+| d metrów | 0,9 do potęgi d | maleje, ale nigdy nie spada do zera |
+
+Mnożenie przez stały ułamek na każdy metr to funkcja wykładnicza. Zapis z gęstością: cienka warstwa o grubości `dx` zabiera ułamek `density * dx`, czyli `dI = -density * I * dx`. Rozwiązaniem tego równania jest
+
+```text
+T(d) = exp(-density * d)
+amount = 1 - exp(-density * d)
+```
+
+To prawo nazywa się prawem Beera-Lamberta. `density` to gęstość mgły na metr: im większa, tym szybciej `T` spada. W dawnym OpenGL ze stałym potokiem ten sam wzór był jednym z trzech wbudowanych trybów mgły (`GL_EXP`). W profilu Core wbudowanej mgły nie ma: liczy ją shader.
+
+**Liczby dla gęstości startowej 0,1 na metr** (przy ziemi, gdzie mgła ma pełną gęstość):
+
+| Odległość | `exp(-0,1 * d)`, tyle zostaje ze ściany | `amount`, tyle jest mgły |
+|---|---|---|
+| 2 m (jedna komórka labiryntu) | exp(-0,2) = 0,819 | 18 procent |
+| 6,9 m (`ln(2) / 0,1`) | 0,500 | 50 procent |
+| 10 m (`1 / 0,1`) | exp(-1) = 0,368 | 63 procent |
+| 30 m | exp(-3) = 0,050 | 95 procent |
+| 100 m (płaszczyzna daleka) | exp(-10) = 0,00005 | praktycznie 100 procent |
+
+Dwie liczby do zapamiętania są w komentarzu przy `FogSettings::density`: po `1 / density` metrach mgła zabiera 63 procent (`1 - 1 / e`), a po `ln(2) / density` metrach połowę. Przy 0,1 to 10 m i około 6,9 m, czyli trzy i pół komórki labiryntu.
+
+**Własność, którą sprawdza test.** Dwa odcinki jeden za drugim przepuszczają iloczyn tego, co przepuszcza każdy: `exp(-0,1 * 10) * exp(-0,1 * 5) = exp(-0,1 * 15)`. To jest to samo założenie o równych warstwach, zapisane od drugiej strony, i jeden z `CHECK` w przypadku `the fog follows the exponential law`.
+
+**Czego ten model nie robi.** Kolor mgły jest jedną stałą: mgła nie jaśnieje w snopie latarki, nie zmienia się z kierunkiem księżyca i nie rzuca cieni. Gęstość zależy tylko od wysokości (sekcja 2.20), nie ma w niej szumu ani ruchu. To mgła jako funkcja odległości, a nie symulacja objętości.
+
+### 2.18 Odległość od oka, a nie wartość głębi
+
+Wzór chce `d`: ile metrów mgły leży między okiem a powierzchnią. Tekstura głębi sceny ma dla każdego piksela jedną liczbę. Są trzy rzeczy, które można by z niej wziąć jako `d`, i tylko jedna jest dobra:
+
+| Kandydat | Co to jest | Co wychodzi |
+|---|---|---|
+| liczba z tekstury wprost | wartość od 0 do 1, nieliniowa: 2 m to 0,951, 10 m to 0,991, 30 m to 0,998 (sekcja 2.10) | prawie cała scena ma "odległość" między 0,95 a 1. Mgła byłaby jednolitą zasłoną, taką samą na ścianie przed nosem i na końcu korytarza |
+| `linearDepth`, głębia w metrach | odległość od **płaszczyzny kamery**, mierzona wzdłuż kierunku patrzenia | poprawna tylko w samym środku ekranu. Mgła zmienia się przy obrocie kamery (niżej) |
+| **odległość od oka w linii prostej** (wybrana) | długość odcinka od oka do punktu w świecie | zależy tylko od tego, gdzie stoję i gdzie jest ściana |
+
+**Co psuje głębia w metrach.** Punkt na ścianie leży 10 m od oka. Kamera gry ma pionowy kąt widzenia 60 stopni (`Camera::fovDegrees`), co przy oknie 16:9 daje w poziomie 45,7 stopnia od osi do krawędzi ekranu (`atan(tan(30°) * 16 / 9)`). Głębia wzdłuż osi patrzenia to `10 * cos(kąt od osi)`:
+
+| Gdzie na ekranie jest ten sam punkt | Kąt od osi patrzenia | Głębia wzdłuż osi | Mgła z głębi | Mgła z odległości |
+|---|---|---|---|---|
+| środek | 0° | 10,00 m | 63 procent | 63 procent |
+| w połowie drogi od środka do krawędzi | 27,2° | 8,89 m | 59 procent | 63 procent |
+| lewa albo prawa krawędź | 45,7° | 6,98 m | 50 procent | 63 procent |
+| róg | 49,7° | 6,47 m | 48 procent | 63 procent |
+
+Nikt się nie ruszył, ściana też nie, a mgła na niej zmieniła się z 63 na 50 procent tylko dlatego, że gracz obrócił głowę. Na ekranie widać to jako mgłę, która "pływa" po ścianach przy każdym ruchu myszy: gęstnieje w środku obrazu i rzednie przy krawędziach. Mgła liczona z głębi jest płaską ścianą prostopadłą do kierunku patrzenia, która obraca się razem z kamerą. Mgła liczona z odległości jest kulą wokół gracza, a kula po obrocie wygląda tak samo.
+
+**Dlaczego od razu cała pozycja.** Odległość dałoby się policzyć taniej: głębię w metrach podzielić przez cosinus kąta piksela. Ale mgła potrzebuje jeszcze **wysokości** punktu nad ziemią (sekcja 2.20), a tej z samej głębi nie ma. Pozycja w świecie daje obie rzeczy naraz: `length(position - uEye)` to odległość, `position.y` to wysokość. Stąd droga przez odwrotność macierzy (następna sekcja) i stąd `composite.frag` nie dołącza `common/depth.glsl`. Decyzję zapisuje notatka [`../../decisions/fog-distance-from-reconstructed-position.md`](../../decisions/fog-distance-from-reconstructed-position.md).
+
+### 2.19 Odtworzenie pozycji w świecie z głębi
+
+**Droga w przód**, którą przeszedł każdy wierzchołek sceny ([`../scene/camera.md`](../scene/camera.md)):
+
+```mermaid
+flowchart LR
+    W["pozycja w świecie<br/>(x, y, z, 1)"] -->|"macierz widoku"| V["przestrzeń kamery"]
+    V -->|"macierz rzutowania"| C["przestrzeń przycinania<br/>(x_c, y_c, z_c, w_c)"]
+    C -->|"dzielenie przez w_c<br/>(robi karta)"| N["NDC: każda oś<br/>od -1 do 1"]
+    N -->|"viewport i glDepthRange:<br/>(ndc + 1) / 2"| S["piksel ekranu (uv od 0 do 1)<br/>i głębia od 0 do 1"]
+```
+
+Przebieg składający zna koniec tej drogi: `vUv` piksela i liczbę z tekstury głębi. Funkcja `worldPositionFromDepth` idzie nią z powrotem w trzech krokach.
+
+**Krok 1: z zakresu 0..1 do NDC.**
+
+```glsl
+    vec4 ndc = vec4(vec3(uv, depth) * 2.0 - 1.0, 1.0);
+```
+
+Ostatni krok drogi w przód to `wartość = (ndc + 1) / 2`, osobno dla każdej osi. Odwrotność to `ndc = wartość * 2 - 1`. Dla `x` i `y` zgadza się to z tym, jak powstaje `vUv`: trójkąt pełnoekranowy ma pozycję `vUv * 2 - 1` (sekcja 2.4), więc `vUv` jest dokładnie `(ndc.xy + 1) / 2`. Dla głębi zgadza się, bo gra nie zmienia domyślnego `glDepthRange(0, 1)` (sekcja 2.10, krok 3). Czwarta składowa 1 mówi, że to punkt, a nie kierunek.
+
+**Krok 2: odwrotność macierzy.**
+
+```glsl
+    vec4 world = uInverseViewProjection * ndc;
+```
+
+W przód wierzchołek był mnożony przez `projection * view`. Odwrotność iloczynu cofa oba kroki naraz: `inverse(projection * view) = inverse(view) * inverse(projection)`, czyli najpierw z powrotem przez rzutowanie, potem przez widok. Odwracanie macierzy 4 x 4 jest drogie, więc robi je C++ **raz na klatkę** (`glm::inverse` w `onRender`), a shader dostaje gotowy wynik jako uniform i wykonuje jedno mnożenie macierzy przez wektor na piksel.
+
+**Krok 3: dzielenie przez `w`.**
+
+```glsl
+    return world.xyz / world.w;
+```
+
+To krok, o który najłatwiej zostać zapytanym. Po drodze w przód karta **podzieliła** pozycję przez `w_c`. Macierz jest przekształceniem liniowym i dzielenia cofnąć nie umie. Ale współrzędne jednorodne same przenoszą brakującą liczbę. Rachunek, z `M = projection * view`:
+
+```text
+w przód:   clip = M * (x, y, z, 1)            ndc = clip / w_c
+
+wstecz:    inverse(M) * (ndc, 1)
+         = inverse(M) * (clip / w_c)          bo (ndc, 1) to clip podzielone przez w_c,
+                                              także w czwartej składowej: w_c / w_c = 1
+         = (x, y, z, 1) / w_c                 bo inverse(M) * clip to punkt wyjściowy
+         = (x / w_c,  y / w_c,  z / w_c,  1 / w_c)
+```
+
+Wynik kroku 2 to więc pozycja w świecie **podzielona przez to samo `w_c`**, a jego czwarta składowa to `1 / w_c`. Dzieląc trzy pierwsze składowe przez czwartą, mnożę je z powrotem przez `w_c` i dostaję `(x, y, z)`. Bez tego kroku wynikiem jest pozycja pomniejszona `w_c` razy: punkt z przykładu niżej, 5 m przed okiem, wylądowałby 1 m przed nim, a mgła byłaby policzona dla zupełnie innego miejsca.
+
+**Przykład na liczbach.** Oko w początku układu, kamera patrzy wzdłuż -Z, punkt 5 m przed nią na osi: `(0, 0, -5)`. Płaszczyzny `n = 0,1` i `f = 100`.
+
+| Krok | Rachunek | Wynik |
+|---|---|---|
+| w przód: `z_c` i `w_c` (wzory z sekcji 2.10) | `z_c = 1,002002 * 5 - 0,2002`, `w_c = 5` | `z_c = 4,80981` |
+| w przód: NDC i głębia | `4,80981 / 5`, potem `(ndc + 1) / 2` | `ndc_z = 0,961962`, w teksturze 0,980981 |
+| wstecz, krok 1 | `uv = (0,5, 0,5)`, `0,980981 * 2 - 1` | `(0, 0, 0,961962, 1)` |
+| wstecz, krok 2 (tu sama odwrotność rzutowania, bo widok jest macierzą jednostkową) | `z = -1`, `w = -4,995 * 0,961962 + 5,005` | `(0, 0, -1, 0,2)` |
+| wstecz, krok 3 | `-1 / 0,2` | `(0, 0, -5)` |
+
+Czwarta składowa po kroku 2 to 0,2, czyli `1 / w_c = 1 / 5`: tak jak mówi rachunek wyżej. Dwie stałe w wierszu kroku 2 to `(n - f) / (2 f n) = -4,995` i `(f + n) / (2 f n) = 5,005`.
+
+**Trzy warunki, żeby to działało:**
+
+| Warunek | Jak jest spełniony |
+|---|---|
+| macierz musi być odwrotnością **tych samych** macierzy, którymi narysowano scenę w tej klatce | `onRender` buduje `SceneView` ze zmiennych `projection` i `view`, których użyły wszystkie wywołania rysujące sceny (sekcja 5.7) |
+| `uv` musi obejmować cały bufor sceny od 0 do 1 | trójkąt pełnoekranowy i bufor sceny wielkości okna: jeden piksel ekranu to jeden teksel głębi |
+| głębi nie wolno uśredniać między sąsiadami | tekstura głębi ma filtr `GL_NEAREST` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)). Średnia głębi ściany i nieba dałaby punkt wiszący w powietrzu |
+
+Oko (`uEye`) jest osobnym uniformem, chociaż dałoby się je wyłuskać z odwrotności macierzy widoku: `onRender` ma je już jako zmienną `eye`, tę samą, z której zbudowano macierz widoku i światła.
+
+Odpowiednik w C++ to `game::worldPositionFromDepth` w `Fog.cpp` (sekcja 5.12), te same trzy linie. Dwa testy sprawdzają je na prawdziwej kamerze gry: punkt 6 m przed okiem, przepuszczony w przód przez obie macierze i z powrotem, wraca na swoje miejsce, a środek ekranu z głębią 0 i 1 ląduje dokładnie na płaszczyźnie bliskiej i dalekiej.
+
+### 2.20 Współczynnik wysokości i co jest w nim nieścisłe
+
+**Mgła, która leży nisko.** Prawdziwa mgła przy ziemi jest gęsta, a wyżej rzednie. W kodzie gęstość zależy od wysokości `y` punktu w świecie:
+
+```text
+heightFactor = exp(-heightFalloff * max(y - baseHeight, 0))
+amount       = 1 - exp(-density * heightFactor * distance)
+```
+
+`heightFactor` to liczba od 0 do 1, przez którą mnożona jest gęstość. Do wysokości `baseHeight` wynosi 1 (pełna gęstość), a powyżej maleje wykładniczo: znowu "o ten sam ułamek na każdy metr", tym razem w górę. `max(..., 0)` pilnuje, żeby pod wysokością bazową różnica nie była ujemna: `exp(0)` to 1, więc w dołkach terenu mgła nie gęstnieje ponad `density`.
+
+Liczby dla wartości startowych, `baseHeight = 0,5` m i `heightFalloff = 0,4` na metr:
+
+| Wysokość `y` | Nad bazą | `heightFactor` | Mgła na tej wysokości 10 m od oka |
+|---|---|---|---|
+| 0,5 m i niżej (ziemia labiryntu) | 0 m | exp(0) = 1,000 | 63 procent |
+| 1,5 m | 1 m | exp(-0,4) = 0,670 | 49 procent |
+| 1,7 m (wysokość oczu, `Player::EYE_HEIGHT`) | 1,2 m | exp(-0,48) = 0,619 | 46 procent |
+| 3 m (szczyt ściany, `WALL_HEIGHT`) | 2,5 m | exp(-1) = 0,368 | 31 procent |
+| 10 m | 9,5 m | exp(-3,8) = 0,022 | 2 procent |
+
+Gęstość spada o połowę co `ln(2) / 0,4 = 1,73` m. Na jednej ścianie widać więc gradient: stopa tonie we mgle mocniej niż szczyt. Komentarz przy `baseHeight` mówi, że ziemia labiryntu leży między 0 a około 0,5 m, więc cała podłoga jest w najgęstszej mgle. Sam tej liczby nie mierzyłem. Z kodu terenu wynika tyle: przy skali wysokości 1 ziemia pod labiryntem nie przekracza `MAZE_RELIEF = 0,6` m, a między najniższym i najwyższym miejscem pod labiryntem startowym jest około 0,4 m. `baseHeight` jest stałą liczbą w metrach świata i **nie idzie za suwakiem skali wysokości terenu**: przy skali 2,5 wyższe miejsca podłogi wychodzą ponad bazę i mają trochę mniej mgły.
+
+`heightFalloff = 0` daje `heightFactor = 1` wszędzie: mgłę jednakową na każdej wysokości, razem z niebem (sekcja 2.21).
+
+**Co jest nieścisłe: wysokość jest brana tylko w pikselu.** Promień od oka do ściany przechodzi przez **różne** wysokości, a więc przez mgłę o różnej gęstości. Poprawny rachunek sumuje gęstość wzdłuż całej drogi (całka), a dopiero sumę wstawia do `exp`:
+
+```text
+poprawnie:   tau = całka wzdłuż promienia z density * heightFactor(y(s)) ds
+             amount = 1 - exp(-tau)
+
+w kodzie:    tau = density * heightFactor(y powierzchni) * distance
+```
+
+Kod zakłada więc, że cała droga biegnie na wysokości **celu**. Trzy przypadki pokazują, w którą stronę to się myli (liczby z obu wzorów, dla wartości startowych):
+
+| Sytuacja | Kod | Całka | Błąd |
+|---|---|---|---|
+| ziemia 8 m przed graczem, oko na 1,7 m | 56 procent | około 49 procent | za dużo: promień zaczyna w rzadszej mgle na wysokości oczu, a kod liczy całą drogę jak przy ziemi |
+| szczyt ściany (3 m) 8 m przed graczem | 26 procent | około 32 procent | za mało: promień zaczyna w gęstszej mgle niż ta na szczycie |
+| **widok z góry**: oko 30 m prosto nad podłogą | **95 procent** | około 22 procent | dużo za dużo: prawie cała droga wiedzie przez czyste powietrze, a kod liczy 30 m pełnej gęstości |
+
+Trzeci wiersz widać gołym okiem: po wzlocie w trybie noclip labirynt oglądany z wysoka **prawie znika** w kolorze mgły, chociaż gracz jest wysoko ponad nią. Prawdziwa mgła przyziemna z góry wygląda jak cienka, na wpół przezroczysta warstwa. Komentarz `KNOWN LIMIT` przy `game::fogAmountAt` opisuje dokładnie te dwa kierunki błędu.
+
+**Jak wyglądałaby wersja poprawna (wskazówka, nie kod gry).** Dla gęstości, która maleje wykładniczo z wysokością, całkę wzdłuż prostego odcinka da się policzyć wzorem, bez pętli. Dla końców odcinka na wysokościach `h0` (oko) i `h1` (powierzchnia), obu mierzonych nad bazą i obu nieujemnych, z `k = heightFalloff`:
+
+```text
+tau = density * distance * (exp(-k * h0) - exp(-k * h1)) / (k * (h1 - h0))
+```
+
+(dla `h0 = h1` ułamek przechodzi w `exp(-k * h0)`, a odcinek, który schodzi pod bazę, trzeba podzielić na część nad nią i część w pełnej gęstości). W silnikach nazywa się to mgłą wykładniczą z wysokością liczoną analitycznie. Sprawdzenie na trzecim wierszu tabeli: `h0 = 30`, `h1 = 0`, `tau = 0,1 * 30 * (0 - 1) / (0,4 * (0 - 30)) = 0,25`, a `1 - exp(-0,25) = 0,22`. Gra tego nie robi. Powody i warunki powrotu zapisuje notatka [`../../decisions/fog-height-at-the-pixel.md`](../../decisions/fog-height-at-the-pixel.md).
+
+### 2.21 Niebo, kolor mgły i miejsce mgły w kolejności kroków
+
+**Niebo nie ma osobnego przypadku.** Skybox jest rysowany na głębi 1 ([`skybox.md`](skybox.md), sekcja 2.7), więc piksel nieba ma w teksturze głębi dokładnie 1. `worldPositionFromDepth` daje dla niego punkt na **płaszczyźnie dalekiej**, 100 m od płaszczyzny kamery, w kierunku, w którym patrzy ten piksel. Shader traktuje ten punkt jak każdy inny. Wychodzi z tego właściwy obraz bez żadnego `if`:
+
+| Gdzie patrzy piksel nieba | Punkt na płaszczyźnie dalekiej | `heightFactor` | Mgła |
+|---|---|---|---|
+| poziomo, na horyzont | 100 m dalej, na wysokości oczu (1,7 m) | 0,619 | 99,8 procent |
+| 3 stopnie nad horyzont | 100 m dalej, na wysokości 6,9 m | 0,076 | 53 procent |
+| 5 stopni | na wysokości 10,4 m | 0,019 | 17 procent |
+| 10 stopni | na wysokości 19 m | 0,0006 | 0,6 procent |
+| na księżyc (50 stopni, `moonPitchDegrees = -50`) | na wysokości 78 m | praktycznie 0 | 0 |
+| w dół, pod horyzont (tam, gdzie kończy się teren) | poniżej bazy | 1 | 100 procent |
+
+Odległość 100 m sama zakryłaby niebo w całości (`exp(-10)`). Ratuje je wysokość: punkt daleko **i wysoko** leży tam, gdzie mgły prawie nie ma. Horyzont jest więc zamglony, pas przejścia ma kilka stopni, a księżyc i gwiazdy zostają czyste. Poniżej horyzontu mgła jest pełna i zakrywa krawędź, na której kończy się siatka terenu. Liczby w tabeli są **policzone ze wzoru** dla środka ekranu, nie odczytane z gry. Test `the default fog leaves the moon clear and hides the sky below the horizon` sprawdza pierwszy i ostatni z tych faktów na funkcji `fogAmountAt`.
+
+**Uczciwie: na niebie mgła jednak zależy od obrotu kamery.** Płaszczyzna daleka jest płaska i obraca się razem z kamerą. Ten sam kierunek na niebie trafia w nią 100 m od oka, gdy jest w środku ekranu, ale 143 m, gdy jest przy lewej albo prawej krawędzi (`100 / cos(45,7°)`), i 155 m w rogu. Dalszy punkt na tym samym promieniu leży wyżej, więc dostaje mniej mgły: 3 stopnie nad horyzontem to 53 procent mgły w środku ekranu, 36 procent przy krawędzi i 31 procent w rogu. Zdanie "mgła nie zmienia się przy obrocie" (sekcja 2.18) jest więc prawdą dla ścian, ziemi i wszystkiego, co ma prawdziwą głębię, a **nie** dla wąskiego pasa nieba tuż nad horyzontem. To wniosek z rachunku: na ekranie nikt tego jeszcze nie szukał, a wzgórza wokół labiryntu zasłaniają dużą część tego pasa. Jest na liście testu ręcznego. Decyzję o braku osobnego przypadku zapisuje notatka [`../../decisions/fog-no-special-case-for-sky.md`](../../decisions/fog-no-special-case-for-sky.md).
+
+**Kolor mgły i jego przestrzeń.** `FogSettings::color` to liczby **sRGB**, takie, jakie pokazuje próbnik koloru w panelu: startowo (0,14, 0,18, 0,26), zimny szaroniebieski między światłem otoczenia (0,105, 0,135, 0,225) a kolorem księżyca (0,55, 0,65, 1,0). Mieszanie światła ma sens tylko na wartościach liniowych, więc `PostProcess::composite` przelicza kolor raz na klatkę funkcją `gfx::srgbToLinear` i dopiero wynik wysyła jako `uFogColor`. To ta sama zasada co przy kolorach świateł i kolorze tła ([`../gfx/color-space.md`](../gfx/color-space.md)).
+
+| Krok | Czerwony | Zielony | Niebieski |
+|---|---|---|---|
+| `FogSettings::color`, liczby sRGB z próbnika | 0,140 | 0,180 | 0,260 |
+| po `gfx::srgbToLinear`, to trafia do `uFogColor` | 0,017 | 0,027 | 0,055 |
+| piksel w całości zamglony, po krzywej ACES (ekspozycja 1) | 0,008 | 0,017 | 0,051 |
+| ten sam piksel po kodowaniu, czyli na ekranie | 0,090 | 0,138 | 0,251 |
+
+Mgła na ekranie jest więc **ciemniejsza** niż próbka w panelu, najbardziej w czerwonym i zielonym. Komentarz przy polu i podpowiedź kontrolki `Fog colour` mówią to samo, a powód jest w sekcji 2.6: krzywa ACES przyciska ciemne tony, a kolor mgły jest mieszany **przed** nią. To nie błąd przeliczenia, tylko skutek tego, że mgła jest częścią sceny. Zdanie o ciemniejszej mgle dotyczy krzywej domyślnej: przy `Tone mapping: None (clamp)` i ekspozycji 1 piksel w całości zamglony ma na ekranie dokładnie kolor próbki, bo kodowanie znosi przeliczenie (`linearToSrgb(srgbToLinear(x)) = x`), a przy `Reinhard` jest tylko trochę ciemniejszy. Komentarz w kodzie i podpowiedź kontrolki mówią o tym bez tego zastrzeżenia.
+
+**Dlaczego mgła stoi przed dodaniem bloomu, przed ekspozycją i przed krzywą.** Komentarz funkcji `main` stawia ją jako krok 2, zaraz po odczycie sceny:
+
+| Kolejność | Dlaczego | Co by wyszło inaczej |
+|---|---|---|
+| mgła przed ekspozycją | `mix` to suma dwóch świateł z wagami. Ma sens tylko wtedy, gdy obie liczby są proporcjonalne do światła. Ekspozycja mnoży potem ścianę i mgłę razem | mgła dodana po ekspozycji miałaby stałą jasność niezależnie od suwaka `Exposure`: przy ekspozycji 4 ściana 10 m dalej (0,02 w buforze) ma po krzywej poprawnie 0,123, a z mgłą doklejoną za krzywą 0,044 |
+| mgła przed mapowaniem tonów | bufor przechowuje, **o ile** coś jest jaśniejsze od bieli. Mgła ma przysłonić 63 procent tej prawdziwej jasności | kryształ (zielony 3,150) 10 m dalej: poprawnie `0,368 * 3,150 + 0,632 * 0,027 = 1,176`, po ACES 0,84, nadal jasny. Po krzywej kryształ jest już ściśnięty do 0,957 i z mgłą wychodzi 0,36: świecąca rzecz gaśnie we mgle tak samo jak biała kartka |
+| mgła przed dodaniem bloomu | poświata dochodzi **po** mgle, więc nie jest zastępowana jej kolorem: kryształ świeci przez mgłę | odwrotna kolejność mieszałaby poświatę z kolorem mgły według głębi tego, co akurat leży pod poświatą, na przykład bliskiej ściany, na którą się rozlała |
+
+**Bloom czyta scenę bez mgły.** `drawBloom` biegnie przed `composite` i czyta teksturę koloru sceny, a mgła nie jest nigdy do tej tekstury zapisywana: powstaje dopiero w ostatnim przebiegu, w drodze do okna. Skutek: przebieg jasności widzi kryształ z pełną jasnością niezależnie od odległości, więc **poświata nie słabnie z mgłą**. Kryształ 30 m dalej ma bryłę w 95 procentach zastąpioną kolorem mgły, a poświatę taką samą jak z bliska (mniejszą na ekranie tylko dlatego, że sam kryształ jest mniejszy). To świadomy wybór wyglądu, nie fizyka: prawdziwa mgła osłabiłaby też źródło poświaty, a za to sama rozświetliłaby się wokół niego. Notatka [`../../decisions/bloom-from-unfogged-scene.md`](../../decisions/bloom-from-unfogged-scene.md).
+
+**Mgła wyłączona to dokładnie klatka bez mgły.** Przy `uFogEnabled = 0` shader nie czyta tekstury głębi i nie wykonuje żadnej z trzech funkcji, a `composite` nawet tej tekstury nie wiąże. Zgłoszone: z wyłączoną mgłą i winietą obraz jest identyczny co do piksela z obrazem drugiej części M7.
+
+### 2.22 Winieta
+
+**Co to jest.** Winieta (vignette) to przyciemnienie obrazu w stronę rogów. W fotografii bierze się z obiektywu: do brzegów matrycy dociera mniej światła niż do środka. W grze jest zabiegiem kompozycji: oko idzie do jaśniejszego środka, czyli tam, gdzie świeci latarka. Komentarz przy `VignetteSettings` mówi, że wartości startowe są celowo subtelne: środek ma przyciągać wzrok, ale ciemnej ramki nie ma być widać.
+
+**Wzór.** Każdy piksel gotowego obrazu jest mnożony przez jedną liczbę:
+
+```text
+distance = length(uv - (0,5, 0,5))
+factor   = 1 - strength * smoothstep(radius, VIGNETTE_CORNER_DISTANCE, distance)
+```
+
+| Składnik | Znaczenie |
+|---|---|
+| `distance` | odległość piksela od środka ekranu, liczona we **współrzędnych tekstury** (od 0 do 1 w obu kierunkach) |
+| `radius` (startowo 0,4) | do tej odległości obraz jest nietknięty |
+| `VIGNETTE_CORNER_DISTANCE = 0,70710678` | odległość od środka do rogu: długość wektora (0,5, 0,5), czyli pierwiastek z 0,5. Tu przyciemnienie jest pełne |
+| `strength` (startowo 0,3) | jaką część światła tracą rogi: 0 nic, 1 wszystko (czarne rogi) |
+
+**`smoothstep` po kolei.** `smoothstep(e0, e1, x)` to funkcja wbudowana w GLSL (i `glm::smoothstep` w C++). Robi dwie rzeczy:
+
+```text
+t = clamp((x - e0) / (e1 - e0), 0, 1)      gdzie x leży między krawędziami, od 0 do 1
+wynik = t * t * (3 - 2 * t)                 krzywa w kształcie S: 3t^2 - 2t^3
+```
+
+Poniżej `e0` wynik to 0, powyżej `e1` to 1, a pomiędzy rośnie gładko. Krzywa S ma na obu końcach **zerowe nachylenie**: startuje i kończy płasko. Zwykłe przejście liniowe (`t` bez drugiej linii) miałoby na promieniu załamanie, a oko widzi takie załamanie jasności jako cienki pierścień. Ze `smoothstep` nie widać, gdzie winieta się zaczyna.
+
+**Liczby dla wartości startowych** (`strength = 0,3`, `radius = 0,4`, mianownik `0,7071 - 0,4 = 0,3071`):
+
+| Miejsce na ekranie | `distance` | `t` | `smoothstep` | `factor` |
+|---|---|---|---|---|
+| środek | 0 | 0 | 0 | 1,000 |
+| na promieniu | 0,4 | 0 | 0 | 1,000 |
+| środek dowolnej krawędzi | 0,5 | 0,1 / 0,3071 = 0,326 | 0,326² * (3 - 0,651) = 0,249 | 1 - 0,3 * 0,249 = 0,925 |
+| między krawędzią a rogiem | 0,6 | 0,651 | 0,720 | 0,784 |
+| róg | 0,7071 | 1 | 1 | 0,700 |
+
+Rogi tracą 30 procent światła, środki krawędzi 7,5 procenta. Mnożenie jest na wartościach liniowych, więc na ekranie różnica jest mniejsza, niż sugeruje liczba: 70 procent światła to po zakodowaniu do sRGB około 85 procent wartości piksela.
+
+**Winieta nie jest poprawiana o proporcje okna.** Współrzędne tekstury biegną od 0 do 1 w poziomie i w pionie **niezależnie od kształtu okna**. Odległość 0,4 to więc 40 procent szerokości w poziomie i 40 procent wysokości w pionie:
+
+| Okno | Promień 0,4 w poziomie | Promień 0,4 w pionie | Kształt jasnego środka |
+|---|---|---|---|
+| 1280 x 720 | 512 pikseli | 288 pikseli | elipsa o proporcjach okna, 16:9 |
+| 720 x 720 | 288 pikseli | 288 pikseli | koło |
+| 600 x 1000 | 240 pikseli | 400 pikseli | elipsa stojąca |
+
+Jasny środek jest elipsą wpisaną w kształt okna, a nie kołem. W zamian **wszystkie cztery rogi są zawsze tak samo ciemne**, a środki wszystkich czterech krawędzi też, przy każdym kształcie okna: róg jest zawsze w odległości 0,7071, krawędź w 0,5. Wersja poprawiona o proporcje (odległość w poziomie pomnożona przez szerokość podzieloną przez wysokość) dawałaby koło, ale w szerokim oknie środki górnej i dolnej krawędzi zostałyby takie jak dziś (0,925), lewa i prawa krawędź miałyby pełne przyciemnienie na szerokim pasie (środek bocznej krawędzi wypada wtedy w odległości `0,5 * 16 / 9 = 0,889`, dalej niż róg bez poprawki), a odległość do rogu przestałaby być stałą: dla 16:9 wynosiłaby 1,02. Test `the vignette is measured in texture coordinates, the same in both directions` zapisuje ten wybór, a uzasadnia go notatka [`../../decisions/vignette-not-aspect-corrected.md`](../../decisions/vignette-not-aspect-corrected.md).
+
+**Dlaczego po mapowaniu tonów, a przed kodowaniem.** Komentarz funkcji `main` stawia winietę jako krok 6, między krzywą a `linearToSrgb`. To efekt **gotowego obrazu**, a nie światła w scenie:
+
+| Gdzie stałaby winieta | Co by robiła | Przykład dla rogu (`factor = 0,7`) |
+|---|---|---|
+| przed krzywą (razem z mgłą i bloomem) | działałaby jak mniejsza ekspozycja w rogach: przesuwałaby wejście krzywej, a krzywa nie jest prostą | jasny kryształ: 3,150 po ACES to 0,957, a `3,150 * 0,7` po ACES to 0,926, czyli tylko 3 procent ciemniej. Ciemny cień: 0,010 po ACES to 0,0038, a 0,007 po ACES to 0,0023, czyli 39 procent ciemniej. Jedna liczba, dwa zupełnie różne skutki |
+| **po krzywej, przed kodowaniem (tak jest)** | mnoży to, co widać: każdy piksel rogu traci te same 30 procent światła | 0,957 staje się 0,670, a 0,0038 staje się 0,0027 |
+| po kodowaniu do sRGB | mnożyłaby liczby, które nie są już proporcjonalne do światła | 0,7 na wartości zakodowanej to około 0,46 światła: winieta ponad dwa razy mocniejsza, niż mówi suwak |
+
+Winieta **nie dodaje** światła, tylko je zabiera, i to w zakresie od 0 do 1, więc po niej nie trzeba nic przycinać: wynik zostaje w zakresie, który przyjmuje kodowanie.
+
+**Winieta wyłączona** (`uVignetteEnabled = 0`) pomija jedną linię shadera. Przy `strength = 0` linia się wykonuje i mnoży przez 1. Widoki diagnostyczne winiety nie dostają (sekcja 2.9): przyciemniłaby liczby, które mają być czytane wprost.
 
 ## 3. Jak to działa w OpenGL
 
@@ -692,27 +1003,40 @@ W krokach B7 i B8 **najpierw** zmieniany jest cel, a **potem** wiązana tekstura
 | 10 | `glBindFramebuffer(GL_FRAMEBUFFER, 0)` z `glViewport` na rozmiar framebuffera okna | celem znowu jest okno |
 | 11 | `glDisable(GL_DEPTH_TEST)` | bufor głębi okna nie jest już nigdy czyszczony, więc test mógłby odrzucić trójkąt |
 | 12 | `glDisable(GL_FRAMEBUFFER_SRGB)` | OpenGL nie koduje przy zapisie: robi to shader |
-| 13 | `glUseProgram(composite)`, `glUniform1i(uBloomEnabled, 0 albo 1)`, `glUniform1i(uBloom, 1)`, `glUniform1f(uBloomIntensity, ...)` | trzy uniformy bloomu. Sampler `uBloom` dostaje numer **drugiej** jednostki |
-| 14 | tylko gdy bloom jest dodawany: `glActiveTexture(GL_TEXTURE1)`, `glBindTexture(GL_TEXTURE_2D, m_bloom)`, `glBindSampler(1, 0)` | rozmyta poświata na jednostce 1 |
-| 15 | `glUniform1i(uScene, 0)`, `glActiveTexture(GL_TEXTURE0)`, `glBindTexture(GL_TEXTURE_2D, kolor sceny)`, `glBindSampler(0, 0)` | tekstura HDR sceny na jednostce 0 |
-| 16 | `glUniform1f(uExposure, ...)`, `glUniform1i(uToneMapping, ...)` | dwa ustawienia z panelu |
-| 17 | `glBindVertexArray(pusty VAO)`, `glDrawArrays(GL_TRIANGLES, 0, 3)` | trójkąt pełnoekranowy do okna |
+| 13 | `glUseProgram(composite)`, potem uniformy mgły: `glUniform1i(uFogEnabled, 0 albo 1)`, `glUniform1i(uDepth, 2)`, trzy razy `glUniform1f` (`uFogDensity`, `uFogBaseHeight`, `uFogHeightFalloff`), `glUniform3fv(uFogColor)`, `glUniformMatrix4fv(uInverseViewProjection)`, `glUniform3fv(uEye)` | osiem uniformów mgły, od trzeciej części M7. Sampler `uDepth` dostaje numer **trzeciej** jednostki. Kolor jest już przeliczony na liniowy |
+| 14 | tylko gdy mgła jest włączona: `glActiveTexture(GL_TEXTURE2)`, `glBindTexture(GL_TEXTURE_2D, głębia sceny)`, `glBindSampler(2, 0)` | tekstura głębi sceny na jednostce 2 |
+| 15 | `glUniform1i(uBloomEnabled, 0 albo 1)`, `glUniform1i(uBloom, 1)`, `glUniform1f(uBloomIntensity, ...)` | trzy uniformy bloomu. Sampler `uBloom` dostaje numer **drugiej** jednostki |
+| 16 | tylko gdy bloom jest dodawany: `glActiveTexture(GL_TEXTURE1)`, `glBindTexture(GL_TEXTURE_2D, m_bloom)`, `glBindSampler(1, 0)` | rozmyta poświata na jednostce 1 |
+| 17 | `glUniform1i(uScene, 0)`, `glActiveTexture(GL_TEXTURE0)`, `glBindTexture(GL_TEXTURE_2D, kolor sceny)`, `glBindSampler(0, 0)` | tekstura HDR sceny na jednostce 0. To wiązanie jest ostatnie, więc aktywną jednostką zostaje 0 |
+| 18 | `glUniform1f(uExposure, ...)`, `glUniform1i(uToneMapping, ...)` | dwa ustawienia z panelu |
+| 19 | `glUniform1i(uVignetteEnabled, 0 albo 1)`, `glUniform1f(uVignetteStrength, ...)`, `glUniform1f(uVignetteRadius, ...)` | trzy uniformy winiety, od trzeciej części M7 |
+| 20 | `glBindVertexArray(pusty VAO)`, `glDrawArrays(GL_TRIANGLES, 0, 3)` | trójkąt pełnoekranowy do okna |
 
-Okno **nie jest czyszczone** przed krokiem 17: trójkąt pokrywa każdy piksel, więc `glClear` byłoby pracą wyrzuconą.
+Okno **nie jest czyszczone** przed krokiem 20: trójkąt pokrywa każdy piksel, więc `glClear` byłoby pracą wyrzuconą.
 
-**Dwie jednostki teksturujące w jednym przebiegu.** Przebieg składający jest jedynym przebiegiem po scenie, który czyta dwa obrazy naraz. Każdy sampler shadera trzyma numer jednostki: `uScene` numer 0 (stała `SOURCE_TEXTURE_UNIT`), `uBloom` numer 1 (`BLOOM_TEXTURE_UNIT`). Gdyby oba dostały ten sam numer, oba czytałyby tę samą teksturę i poświata byłaby kopią sceny.
+**Trzy jednostki teksturujące w jednym przebiegu.** Przebieg składający jest jedynym przebiegiem po scenie, który czyta kilka obrazów naraz: w drugiej części M7 dwa, od trzeciej trzy. Każdy sampler shadera trzyma numer jednostki:
 
-**Kroki 7, B5, 14 i 15: dlaczego `glBindSampler(unit, 0)`.** Każda `Texture2D` zostawia na jednostce swój obiekt samplera z `GL_REPEAT` i mipmapami ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.8). Obiekt samplera należy do jednostki i zastępuje parametry każdej tekstury przez nią czytanej. Tekstura załącznika ma jeden poziom, więc czytana cudzym samplerem z filtrem mipmap byłaby niekompletna i dałaby czerń. `Framebuffer::bindColorTexture` i `bindDepthTexture` odpinają więc sampler i tekstura jest czytana własnymi parametrami.
+| Sampler | Jednostka | Stała w `PostProcess.cpp` | Co na niej leży | Kiedy jest wiązane |
+|---|---|---|---|---|
+| `uScene` | 0 | `SOURCE_TEXTURE_UNIT` | tekstura koloru sceny, `GL_RGBA16F` | zawsze |
+| `uBloom` | 1 | `BLOOM_TEXTURE_UNIT` | `m_bloom`, rozmyta poświata o połowie rozmiaru | gdy bloom jest dodawany |
+| `uDepth` | 2 | `DEPTH_TEXTURE_UNIT` | tekstura głębi sceny, `GL_DEPTH_COMPONENT24` | gdy mgła jest włączona |
 
-**Co zostaje po klatce.** Związany domyślny framebuffer, viewport na rozmiar okna, test głębi **wyłączony**, na jednostce 0 tekstura koloru sceny bez obiektu samplera, na jednostce 1 tekstura `m_bloom` bez obiektu samplera (gdy bloom był dodawany), związany pusty VAO, program `composite` w użyciu. Następna klatka włącza test głębi sama (krok 3 tabeli w sekcji 2.8), a każdy przebieg sceny wiąże swoje tekstury, swój VAO i swój program.
+Gdyby dwa samplery dostały ten sam numer, czytałyby tę samą teksturę: poświata byłaby kopią sceny, a "głębia" czerwonym kanałem koloru. Dlatego numery są wysyłane w każdej klatce i zawsze, także wtedy, gdy dany efekt jest wyłączony (sekcja 5.6). Mgła czyta **głębię** i **kolor tego samego framebuffera** w jednym przebiegu. Wolno, bo w tym przebiegu framebuffer sceny nie jest celem: celem jest okno.
+
+**Kroki 7, B5, 14, 16 i 17: dlaczego `glBindSampler(unit, 0)`.** Każda `Texture2D` zostawia na jednostce swój obiekt samplera z `GL_REPEAT` i mipmapami ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.8). Obiekt samplera należy do jednostki i zastępuje parametry każdej tekstury przez nią czytanej. Tekstura załącznika ma jeden poziom, więc czytana cudzym samplerem z filtrem mipmap byłaby niekompletna i dałaby czerń. `Framebuffer::bindColorTexture` i `bindDepthTexture` odpinają więc sampler i tekstura jest czytana własnymi parametrami.
+
+**Co zostaje po klatce.** Związany domyślny framebuffer, viewport na rozmiar okna, test głębi **wyłączony**, na jednostce 0 tekstura koloru sceny bez obiektu samplera, na jednostce 1 tekstura `m_bloom` bez obiektu samplera (gdy bloom był dodawany), na jednostce 2 tekstura głębi sceny bez obiektu samplera (gdy mgła była włączona), aktywna jednostka 0, związany pusty VAO, program `composite` w użyciu. Następna klatka włącza test głębi sama (krok 3 tabeli w sekcji 2.8), a każdy przebieg sceny wiąże swoje tekstury, swój VAO i swój program.
 
 **Czy tekstura zostawiona na jednostce to pętla zwrotna?** Na początku następnej klatki tekstura koloru sceny nadal wisi na jednostce 0, a scena jest do niej rysowana. Tak samo `m_bloom` wisi na jednostce 1, kiedy następne `drawBloom` do niego rysuje. To **nie** jest pętla zwrotna. Niezdefiniowany wynik daje dopiero **odczyt** tekstury, która jest celem, a nie samo jej związanie. Programy `bright` i `blur` mają po jednym samplerze, który wskazuje jednostkę 0, a tam w chwili rysowania leży źródło, więc żaden ich sampler nie patrzy na teksturę celu. Shadery sceny wiążą na jednostkach, z których czytają, własne tekstury przed rysowaniem.
 
-Wszystkie użyte funkcje są w rdzeniu OpenGL 4.1: obiekty framebuffera i tekstury zmiennoprzecinkowe od 3.0, obiekty samplera od 3.3, `gl_VertexID` i `textureSize` w GLSL od 1.30, `glUniform1fv` od 2.0.
+Od trzeciej części to samo pytanie dotyczy **głębi**: tekstura głębi sceny zostaje na jednostce 2, a następna klatka do niej rysuje (test głębi czyta ją i zapisuje jako załącznik, nie jako teksturę). Odpowiedź jest ta sama. Żaden shader sceny nie ma samplera, który wskazuje jednostkę 2: modele czytają jednostki 0 i 1 (`TEXTURE_UNIT` i `NORMAL_MAP_UNIT` w `ModelDraw.cpp`), niebo jednostkę 0 (`SKYBOX_TEXTURE_UNIT`), a programy `bright`, `blur` i `preview` jednostkę 0. Stałych z numerem 2 nie ma w kodzie poza `DEPTH_TEXTURE_UNIT`. Kto doda do sceny trzecią teksturę (na przykład mapę cieni), musi o tym pamiętać: albo inna jednostka, albo własna tekstura związana przed rysowaniem.
+
+Wszystkie użyte funkcje są w rdzeniu OpenGL 4.1: obiekty framebuffera i tekstury zmiennoprzecinkowe od 3.0, obiekty samplera od 3.3, `gl_VertexID` i `textureSize` w GLSL od 1.30, `glUniform1fv` od 2.0. Funkcje GLSL użyte przez mgłę i winietę (`exp`, `mix`, `max`, `length`, `smoothstep`) są w języku od pierwszych wersji.
 
 ## 4. Shadery
 
-Pięć plików w `assets/shaders/post/` tworzy cztery programy: `composite` (`composite.vert` + `composite.frag`), `preview` (`composite.vert` + `preview.frag`) i, od drugiej części M7, `bright` (`composite.vert` + `bright.frag`) oraz `blur` (`composite.vert` + `blur.frag`). Shader wierzchołków jest wspólny dla wszystkich czterech. Dwa pliki dołączane leżą w `assets/shaders/common/`: `color.glsl` (kodowanie opisuje [`../gfx/color-space.md`](../gfx/color-space.md), funkcję `luminance` sekcja 4.8) i `depth.glsl` (sekcja 4.4). Shadery bloomu mają numery 4.6 i 4.7, po sekcji o stronie C++, żeby numery sekcji z pierwszej części zostały te same.
+Pięć plików w `assets/shaders/post/` tworzy cztery programy: `composite` (`composite.vert` + `composite.frag`), `preview` (`composite.vert` + `preview.frag`) i, od drugiej części M7, `bright` (`composite.vert` + `bright.frag`) oraz `blur` (`composite.vert` + `blur.frag`). Shader wierzchołków jest wspólny dla wszystkich czterech. Dwa pliki dołączane leżą w `assets/shaders/common/`: `color.glsl` (kodowanie opisuje [`../gfx/color-space.md`](../gfx/color-space.md), funkcję `luminance` sekcja 4.8) i `depth.glsl` (sekcja 4.4). Shadery bloomu mają numery 4.6 i 4.7, po sekcji o stronie C++, żeby numery sekcji z pierwszej części zostały te same. Z tego samego powodu funkcje mgły i winiety, które doszły do `composite.frag` w trzeciej części, mają własną sekcję 4.9 na końcu, a sekcja 4.2 pokazuje deklaracje i funkcję `main` w dzisiejszym kształcie. Trzecia część nie dodała żadnego pliku shadera.
 
 ### 4.1 `composite.vert`
 
@@ -777,6 +1101,25 @@ in vec2 vUv;
 // holds the number of a texture unit, set from C++ with glUniform1i.
 uniform sampler2D uScene;
 
+// The fog. uFogEnabled is 1 when it is mixed into the scene and 0 when the frame is
+// drawn without it: the depth texture is not read then.
+uniform int uFogEnabled;
+// The depth of the scene: for every pixel one number in the red channel, from 0 (near
+// plane) to 1 (far plane and the sky).
+uniform sampler2D uDepth;
+// The inverse of projection * view of the scene: from the screen back to the world.
+uniform mat4 uInverseViewProjection;
+// Where the scene is seen from, in world space.
+uniform vec3 uEye;
+// How thick the fog is at and below uFogBaseHeight, per metre.
+uniform float uFogDensity;
+// The world height (y) up to which the fog has its full density, in metres.
+uniform float uFogBaseHeight;
+// How fast the fog thins out above that height, per metre.
+uniform float uFogHeightFalloff;
+// The colour of the fog, a linear colour (C++ has converted it from sRGB).
+uniform vec3 uFogColor;
+
 // The bloom: the bright parts of the scene, blurred (linear HDR colours, half the size
 // of the scene). uBloomEnabled is 1 when it is added to the scene and 0 when the frame
 // is drawn without it: the texture is not read then. The glow is multiplied by
@@ -796,6 +1139,14 @@ uniform float uExposure;
 //   2: ACES (a fitted curve)
 uniform int uToneMapping;
 
+// The vignette. uVignetteEnabled is 1 when the corners are darkened and 0 when not.
+// uVignetteStrength is the share of the light the corners lose (0 to 1), and
+// uVignetteRadius the distance from the middle of the screen at which the darkening
+// starts, in texture coordinates.
+uniform int uVignetteEnabled;
+uniform float uVignetteStrength;
+uniform float uVignetteRadius;
+
 // Output: the color written to the window (red, green, blue, alpha).
 out vec4 fragColor;
 ```
@@ -804,14 +1155,21 @@ out vec4 fragColor;
 |---|---|
 | `#include "../common/color.glsl"` | dyrektywa własnego loadera, nie GLSL ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Ścieżka jest względna do pliku, który ją zawiera: plik leży w `post/`, więc wychodzi poziom wyżej. Shadery sceny dołączają ten sam plik jako `"common/color.glsl"` |
 | `uniform sampler2D uScene;` | sampler trzyma numer jednostki teksturującej. Typ `sampler2D` działa także dla tekstury zmiennoprzecinkowej: `texture()` zwraca wtedy wartości bez ograniczenia do 1 |
-| `uniform sampler2D uBloom;` | drugi sampler, z numerem **innej** jednostki niż `uScene` (1). Tekstura ma połowę szerokości i wysokości sceny, ale sampler o tym nie wie: współrzędne od 0 do 1 obejmują ją całą. "Half the size" w komentarzu znaczy połowę w każdym kierunku, czyli ćwierć pikseli |
+| `uniform sampler2D uBloom;` | drugi sampler, z numerem **innej** jednostki niż `uScene` (1). W pliku stoi za deklaracjami mgły, ale numer jednostki nie zależy od kolejności deklaracji. Tekstura ma połowę szerokości i wysokości sceny, ale sampler o tym nie wie: współrzędne od 0 do 1 obejmują ją całą. "Half the size" w komentarzu znaczy połowę w każdym kierunku, czyli ćwierć pikseli |
 | `uniform int uBloomEnabled;` | 1 albo 0. `int`, a nie `bool`, bo po stronie C++ ustawia go `setInt`, tak jak każdy przełącznik w shaderach gry |
 | `uniform float uBloomIntensity;` | mnożnik z suwaka `Intensity` |
+| `uniform int uFogEnabled;` | 1 albo 0, przełącznik mgły. Przy 0 tekstura głębi nie jest czytana |
+| `uniform sampler2D uDepth;` | trzeci sampler, numer jednostki 2. Tekstura głębi czytana przez zwykły `sampler2D` zwraca głębię w kanale czerwonym, od 0 do 1 (tak samo czyta ją `preview.frag`, sekcja 4.3) |
+| `uniform mat4 uInverseViewProjection;` | pierwsza macierz w shaderach po scenie: odwrotność `projection * view` tej klatki, policzona w C++ (sekcja 2.19) |
+| `uniform vec3 uEye;` | pozycja oka w świecie, do odległości |
+| `uFogDensity`, `uFogBaseHeight`, `uFogHeightFalloff` | trzy liczby z suwaków zakładki `Fog and vignette` (sekcje 2.17 i 2.20). Jednostki są w komentarzach: na metr, metry, na metr |
+| `uniform vec3 uFogColor;` | kolor mgły **liniowy**. Komentarz mówi wprost, że przeliczył go C++: w ustawieniach i w panelu jest liczbą sRGB (sekcja 2.21) |
 | `uniform float uExposure;` | mnożnik z suwaka `Exposure` |
 | `uniform int uToneMapping;` | liczba z listy `Tone mapping`. Wartości 0, 1, 2 to wartości `enum class ToneMapping` rzutowane na `int` |
+| `uVignetteEnabled`, `uVignetteStrength`, `uVignetteRadius` | przełącznik i dwie liczby winiety (sekcja 2.22). Promień jest we współrzędnych tekstury |
 | `out vec4 fragColor;` | jedyny shader gry, którego wyjście trafia do okna. Wszystkie pozostałe piszą do bufora sceny albo do podglądu |
 
-Dwie krzywe:
+Między deklaracjami a krzywymi stoją w pliku dwie stałe i cztery funkcje mgły i winiety. Opisuje je sekcja 4.9. Dwie krzywe:
 
 ```glsl
 // Reinhard: x / (1 + x), per channel. 0 stays 0, 1 becomes one half, and however bright
@@ -849,22 +1207,42 @@ Funkcja główna:
 ```glsl
 void main() {
     // The steps run in a fixed order, and each one works on the result of the one
-    // before. Later effects have their place in it:
+    // before:
     //
     //   1. the scene, in linear HDR colours
-    //      (effects that work on light itself, like fog, are added here, before the
-    //      exposure: they need linear values that are not cut off)
-    //   2. bloom, such an effect: the glow of the bright parts is added
-    //   3. exposure
-    //   4. tone mapping: from 0..infinity to 0..1
-    //      (effects that work on the finished picture, like a vignette, come here)
-    //   5. encoding to sRGB, always last
+    //   2. fog: an effect that works on light itself, so it comes before the exposure,
+    //      on linear values that are not cut off
+    //   3. bloom, such an effect too: the glow of the bright parts is added
+    //   4. exposure
+    //   5. tone mapping: from 0..infinity to 0..1
+    //   6. vignette: an effect that works on the finished picture
+    //   7. encoding to sRGB, always last
     vec3 color = texture(uScene, vUv).rgb;
+
+    // Fog: the further away a surface is and the lower it lies, the more of its colour
+    // is replaced by the colour of the fog. The distance is the length of the straight
+    // line from the eye to the surface, so the fog on a wall does not change when the
+    // camera turns. The height is taken at the surface only, not along that whole
+    // line: see game::fogAmountAt for what that gets wrong.
+    //
+    // The sky needs no case of its own. Its pixels have depth 1, which gives a point on
+    // the far clipping plane in the direction of the pixel. That point is far away, so
+    // the distance alone would hide the sky. But looking upwards it is also very high,
+    // where the height factor is almost 0: the moon and the stars stay clear, and only
+    // the sky close to the horizon, and below it, turns into fog.
+    if (uFogEnabled == 1) {
+        float depth = texture(uDepth, vUv).r;
+        vec3 position = worldPositionFromDepth(vUv, depth);
+        float amount = fogAmount(fogHeightFactor(position.y), length(position - uEye));
+        color = mix(color, uFogColor, amount);
+    }
 
     // Bloom: the glow is light, so it is ADDED to the light of the scene, and it is
     // added before the exposure and the tone mapping, which then treat it like the
-    // rest of the picture. The bloom texture is half as large as the screen: the linear
-    // filter stretches it, and the blur has left nothing sharp in it to look blocky.
+    // rest of the picture. It comes AFTER the fog: the glow of a crystal shines through
+    // the fog instead of being replaced by its colour. The bloom texture is half as
+    // large as the screen: the linear filter stretches it, and the blur has left
+    // nothing sharp in it to look blocky.
     if (uBloomEnabled == 1) {
         color += texture(uBloom, vUv).rgb * uBloomIntensity;
     }
@@ -879,6 +1257,14 @@ void main() {
         color = clamp(color, 0.0, 1.0);
     }
 
+    // Vignette: the corners of the finished picture are darkened. It comes after the
+    // tone mapping, so that it darkens what is seen and does not just shift the input
+    // of the curve, and before the encoding, because multiplying light by a number is
+    // only right on linear values.
+    if (uVignetteEnabled == 1) {
+        color *= vignetteFactor(vUv);
+    }
+
     // The screen expects sRGB encoded numbers. This is the one place where the frame
     // is encoded (gamma correction). GL_FRAMEBUFFER_SRGB stays off, so OpenGL does not
     // encode a second time, and the debug UI, drawn after this pass straight into the
@@ -889,16 +1275,24 @@ void main() {
 
 | Linia | Znaczenie |
 |---|---|
-| komentarz z pięcioma krokami | zapisana kolejność i miejsca na efekty, których jeszcze nie ma (sekcja 2.16). W pierwszej części M7 kroków było cztery, a bloom stał w nawiasie kroku 1 jako efekt planowany. Dziś jest krokiem 2 |
+| komentarz z siedmioma krokami | zapisana kolejność. W pierwszej części M7 kroków było cztery, a miejsca na bloom, mgłę i winietę stały w nawiasach jako zapowiedź. W drugiej części było ich pięć (doszedł bloom), dziś siedem i żadnego nawiasu: wszystkie zapowiedziane efekty są w kodzie |
 | `vec3 color = texture(uScene, vUv).rgb;` | krok 1, odczyt piksela sceny. Bufor sceny ma rozmiar framebuffera okna, więc jeden piksel ekranu to jeden teksel i filtr liniowy niczego nie miesza. Alfa bufora sceny nie jest używana |
-| `if (uBloomEnabled == 1) {` | krok 2 jest warunkowy. Przy 0 tekstura bloomu nie jest czytana wcale: nie ma mnożenia przez zero, tylko brak odczytu, więc na jednostce 1 może leżeć cokolwiek |
-| `color += texture(uBloom, vUv).rgb * uBloomIntensity;` | odczyt poświaty tym samym `vUv`, mnożenie przez suwak, **dodanie** do koloru sceny. Tu filtr liniowy pracuje: tekstura ma połowę rozmiaru, więc każdy piksel ekranu dostaje mieszankę czterech najbliższych tekseli (sekcje 2.14 i 2.15) |
-| `color *= uExposure;` | krok 3. Na wartościach liniowych, już z poświatą |
-| `if (uToneMapping == 1) ... else if (== 2) ... else` | krok 4. Gałąź `else` łapie 0 i każdą inną liczbę: obcięcie jest zachowaniem bezpiecznym |
+| `if (uFogEnabled == 1) {` | krok 2 jest warunkowy. Przy 0 nie ma odczytu głębi ani żadnego rachunku, więc na jednostce 2 może leżeć cokolwiek |
+| `float depth = texture(uDepth, vUv).r;` | głębia tego samego piksela, tym samym `vUv`. Kanał czerwony, liczba od 0 do 1. Filtr `GL_NEAREST`: dokładnie jeden teksel, bez mieszania z sąsiadem |
+| `vec3 position = worldPositionFromDepth(vUv, depth);` | miejsce w świecie, które pokazuje ten piksel (sekcja 2.19, funkcja w 4.9) |
+| `fogAmount(fogHeightFactor(position.y), length(position - uEye))` | dwie liczby z jednej pozycji: wysokość `position.y` idzie do współczynnika wysokości, a długość wektora od oka do punktu jest odległością w linii prostej. Wbudowane `length` to pierwiastek z sumy kwadratów trzech składowych |
+| `color = mix(color, uFogColor, amount);` | `kolor * (1 - amount) + kolor mgły * amount`. Zastąpienie, nie dodanie: mgła zabiera światło ściany i daje w zamian własne (sekcja 2.17) |
+| długi komentarz o niebie | piksel nieba ma głębię 1 i przechodzi przez te same cztery linie co ściana. Osobnej gałęzi nie ma (sekcja 2.21) |
+| `if (uBloomEnabled == 1) {` | krok 3 jest warunkowy. Przy 0 tekstura bloomu nie jest czytana wcale: nie ma mnożenia przez zero, tylko brak odczytu, więc na jednostce 1 może leżeć cokolwiek |
+| `color += texture(uBloom, vUv).rgb * uBloomIntensity;` | odczyt poświaty tym samym `vUv`, mnożenie przez suwak, **dodanie** do koloru sceny, już zamglonego. Tu filtr liniowy pracuje: tekstura ma połowę rozmiaru, więc każdy piksel ekranu dostaje mieszankę czterech najbliższych tekseli (sekcje 2.14 i 2.15). Komentarz nad blokiem dostał w trzeciej części zdanie o kolejności: poświata przychodzi **po** mgle, żeby świeciła przez nią |
+| `color *= uExposure;` | krok 4. Na wartościach liniowych, już z mgłą i poświatą |
+| `if (uToneMapping == 1) ... else if (== 2) ... else` | krok 5. Gałąź `else` łapie 0 i każdą inną liczbę: obcięcie jest zachowaniem bezpiecznym |
 | `color = clamp(color, 0.0, 1.0);` | tryb `None`. Samo `linearToSrgb` też przycina, więc ta linia nie zmienia obrazu. Zapisuje wprost, co ten tryb robi |
-| `fragColor = vec4(linearToSrgb(color), 1.0);` | krok 5, jedyne kodowanie klatki. Alfa 1: okno nie jest przezroczyste |
+| `if (uVignetteEnabled == 1) {` | krok 6, warunkowy |
+| `color *= vignetteFactor(vUv);` | cały kolor razy jedna liczba od `1 - uVignetteStrength` do 1. Po krzywej kolor jest między 0 a 1, a mnożnik nie przekracza 1, więc wynik zostaje w zakresie (sekcja 2.22) |
+| `fragColor = vec4(linearToSrgb(color), 1.0);` | krok 7, jedyne kodowanie klatki. Alfa 1: okno nie jest przezroczyste |
 
-`if` na uniformie nie kosztuje tyle co `if` na danych piksela: warunek jest ten sam dla wszystkich fragmentów klatki. Dotyczy to obu warunków, `uBloomEnabled` i `uToneMapping`.
+`if` na uniformie nie kosztuje tyle co `if` na danych piksela: warunek jest ten sam dla wszystkich fragmentów klatki. Dotyczy to wszystkich czterech warunków: `uFogEnabled`, `uBloomEnabled`, `uToneMapping` i `uVignetteEnabled`.
 
 ### 4.3 `preview.frag`
 
@@ -975,7 +1369,7 @@ float linearDepth(float stored, float near, float far) {
 }
 ```
 
-Plik nie ma linii `#version`: nie jest shaderem, tylko tekstem wklejanym w miejsce `#include`. Dwie linie funkcji to kroki 3 i 4 wyprowadzenia z sekcji 2.10. Komentarz nad funkcją podaje przykład "ściana 2 m dalej ma już 0,95": zgadza się z tabelą (0,9510 dla płaszczyzn 0,1 m i 100 m). Dziś jedynym użytkownikiem jest `preview.frag`. Bloom głębi nie czyta.
+Plik nie ma linii `#version`: nie jest shaderem, tylko tekstem wklejanym w miejsce `#include`. Dwie linie funkcji to kroki 3 i 4 wyprowadzenia z sekcji 2.10. Komentarz nad funkcją podaje przykład "ściana 2 m dalej ma już 0,95": zgadza się z tabelą (0,9510 dla płaszczyzn 0,1 m i 100 m). Jedynym użytkownikiem jest `preview.frag`, także po trzeciej części M7. Bloom głębi nie czyta. Mgła czyta głębię, ale **nie** tą funkcją: `linearDepth` daje odległość od płaszczyzny kamery, a mgła potrzebuje odległości od oka i wysokości, więc `composite.frag` ma własną funkcję `worldPositionFromDepth` i pliku `depth.glsl` nie dołącza (sekcje 2.18 i 4.9). Wcześniejsze wersje tego dokumentu zapowiadały, że plik jest wspólny właśnie dla mgły. Tak się nie stało.
 
 ### 4.5 Strona C++: kto ustawia uniformy
 
@@ -989,6 +1383,17 @@ Nazwy uniformów są stałymi w [`src/game/ShaderUniforms.hpp`](../../../src/gam
 | `uBloomIntensity` | `COMPOSITE_BLOOM_INTENSITY_UNIFORM` | `PostProcess::composite`, `setFloat` | `BloomSettings::intensity` |
 | `uExposure` | `COMPOSITE_EXPOSURE_UNIFORM` | `PostProcess::composite`, `setFloat` | `PostProcessSettings::exposure` (albo 1 w widoku diagnostycznym) |
 | `uToneMapping` | `COMPOSITE_TONE_MAPPING_UNIFORM` | `PostProcess::composite`, `setInt` | `PostProcessSettings::toneMapping` rzutowane na `int` |
+| `uFogEnabled` | `COMPOSITE_FOG_ENABLED_UNIFORM` | `PostProcess::composite`, `setInt` | 1, gdy `settings.fog.enabled`, inaczej 0 (w widoku diagnostycznym kopia ma tu fałsz) |
+| `uDepth` | `COMPOSITE_DEPTH_UNIFORM` | `PostProcess::composite`, `setInt` | `DEPTH_TEXTURE_UNIT`, czyli 2 |
+| `uFogDensity` | `COMPOSITE_FOG_DENSITY_UNIFORM` | `PostProcess::composite`, `setFloat` | `FogSettings::density` |
+| `uFogBaseHeight` | `COMPOSITE_FOG_BASE_HEIGHT_UNIFORM` | `PostProcess::composite`, `setFloat` | `FogSettings::baseHeight` |
+| `uFogHeightFalloff` | `COMPOSITE_FOG_HEIGHT_FALLOFF_UNIFORM` | `PostProcess::composite`, `setFloat` | `FogSettings::heightFalloff` |
+| `uFogColor` | `COMPOSITE_FOG_COLOR_UNIFORM` | `PostProcess::composite`, `setVec3` | `gfx::srgbToLinear(FogSettings::color)`: jedyny uniform tej tabeli, który jest po drodze przeliczany |
+| `uInverseViewProjection` | `COMPOSITE_INVERSE_VIEW_PROJECTION_UNIFORM` | `PostProcess::composite`, `setMat4` | `SceneView::inverseViewProjection`, policzone w `onRender` przez `glm::inverse(projection * view)` |
+| `uEye` | `COMPOSITE_EYE_UNIFORM` | `PostProcess::composite`, `setVec3` | `SceneView::eye`, zmienna `eye` z `onRender` |
+| `uVignetteEnabled` | `COMPOSITE_VIGNETTE_ENABLED_UNIFORM` | `PostProcess::composite`, `setInt` | 1, gdy `settings.vignette.enabled`, inaczej 0 |
+| `uVignetteStrength` | `COMPOSITE_VIGNETTE_STRENGTH_UNIFORM` | `PostProcess::composite`, `setFloat` | `VignetteSettings::strength` |
+| `uVignetteRadius` | `COMPOSITE_VIGNETTE_RADIUS_UNIFORM` | `PostProcess::composite`, `setFloat` | `VignetteSettings::radius` |
 | `uSource` | `PREVIEW_SOURCE_UNIFORM` | `PostProcess::drawPreviews`, `setInt` | `SOURCE_TEXTURE_UNIT`, czyli 0 |
 | `uMode` | `PREVIEW_MODE_UNIFORM` | `PostProcess::drawPreviews`, `setInt`, dwa razy w klatce. Od drugiej części także `PostProcess::drawBloom`, raz | `AttachmentPreview::Color` i `AttachmentPreview::Depth`. W `drawBloom` zawsze `Color` |
 | `uScene` w `bright.frag` | `BRIGHT_SCENE_UNIFORM` | `PostProcess::drawBloom`, `setInt` | `SOURCE_TEXTURE_UNIT`, czyli 0 |
@@ -999,11 +1404,11 @@ Nazwy uniformów są stałymi w [`src/game/ShaderUniforms.hpp`](../../../src/gam
 | `uNear`, `uFar` | `PREVIEW_NEAR_UNIFORM`, `PREVIEW_FAR_UNIFORM` | `PostProcess::drawPreviews`, `setFloat` | `m_camera.nearPlane`, `m_camera.farPlane` |
 | `uDepthRange` | `PREVIEW_DEPTH_RANGE_UNIFORM` | `PostProcess::drawPreviews`, `setFloat` | `PostProcessSettings::depthPreviewRange` |
 
-Osiem stałych z pierwszej części i osiem z drugiej (trzy `COMPOSITE_BLOOM_*`, dwie `BRIGHT_*`, trzy `BLUR_*`): plik `ShaderUniforms.hpp` ma dziś 36 stałych z nazwami zwykłych uniformów (i dwie stałe bloku świateł). `uScene` i `uSource` występują w dwóch shaderach każdy i mają po dwie stałe o tym samym napisie. To celowe: stała mówi, **którego** programu dotyczy, a zmiana nazwy w jednym shaderze nie rusza drugiego.
+Osiem stałych z pierwszej części, osiem z drugiej (trzy `COMPOSITE_BLOOM_*`, dwie `BRIGHT_*`, trzy `BLUR_*`) i jedenaście z trzeciej (sześć dla mgły razem z `COMPOSITE_DEPTH_UNIFORM`, dwie dla kamery, trzy `COMPOSITE_VIGNETTE_*`): plik `ShaderUniforms.hpp` ma dziś 47 stałych z nazwami zwykłych uniformów (i dwie stałe bloku świateł). Program `composite` ma z nich 17, najwięcej ze wszystkich programów po scenie. `uScene` i `uSource` występują w dwóch shaderach każdy i mają po dwie stałe o tym samym napisie. To celowe: stała mówi, **którego** programu dotyczy, a zmiana nazwy w jednym shaderze nie rusza drugiego.
 
 Programy powstają w konstruktorze `NightMazeApp` jako pola `m_compositeShader`, `m_previewShader`, `m_brightPassShader` i `m_blurShader`, wszystkie cztery z tym samym plikiem wierzchołków (`FULLSCREEN_VERTEX_SHADER_FILE`, czyli `shaders/post/composite.vert`). Pliki fragmentów to stałe `BRIGHT_PASS_FRAGMENT_SHADER_FILE` (`shaders/post/bright.frag`) i `BLUR_FRAGMENT_SHADER_FILE` (`shaders/post/blur.frag`).
 
-**Uniformy a przeładowanie shaderów.** `Reload shaders` tworzy nowy obiekt programu, w którym wszystkie uniformy mają wartość 0. Żaden z uniformów tej tabeli nie jest ustawiany "raz na starcie": wszystkie, razem z tablicą wag, są wysyłane w każdej klatce, więc po przeładowaniu obraz jest poprawny od następnej klatki.
+**Uniformy a przeładowanie shaderów.** `Reload shaders` tworzy nowy obiekt programu, w którym wszystkie uniformy mają wartość 0. Żaden z uniformów tej tabeli nie jest ustawiany "raz na starcie": wszystkie, razem z tablicą wag, macierzą i kolorem mgły, są wysyłane w każdej klatce, więc po przeładowaniu obraz jest poprawny od następnej klatki. Macierz zerowa byłaby tu szczególnie złośliwa: każdy piksel dostałby pozycję `0 / 0`.
 
 ### 4.6 `bright.frag`
 
@@ -1159,34 +1564,148 @@ float luminance(vec3 linear) {
 
 Jedynym użytkownikiem jest `bright.frag`. Plik `color.glsl` dołączają też shadery sceny, `composite.frag` i `preview.frag`: dostają stałą i funkcję, których nie wołają, co nic nie kosztuje (kompilator usuwa nieużywany kod). Odpowiednika tej funkcji w C++ nie ma i żaden test jej nie sprawdza.
 
+### 4.9 `composite.frag`: funkcje mgły i winiety
+
+Trzecia część M7 dopisała do `composite.frag` dwie stałe i cztery funkcje. Stoją w pliku między deklaracją `fragColor` a krzywymi mapowania tonów, a woła je funkcja `main` (sekcja 4.2):
+
+```glsl
+// The middle of the screen as a texture coordinate, and the distance from it to
+// a corner: the length of (0.5, 0.5), the square root of 0.5. The same numbers as
+// SCREEN_CENTER and VIGNETTE_CORNER_DISTANCE in src/game/Vignette.hpp.
+const vec2 SCREEN_CENTER = vec2(0.5, 0.5);
+const float VIGNETTE_CORNER_DISTANCE = 0.70710678;
+
+// The world position of the surface a pixel shows, from its texture coordinate on the
+// screen and the value of the depth texture there. The same steps as
+// game::worldPositionFromDepth in src/game/Fog.cpp.
+vec3 worldPositionFromDepth(vec2 uv, float depth) {
+    // Step 1: normalised device coordinates. The texture coordinate and the depth run
+    // from 0 to 1, and in normalised device coordinates all three axes run from -1 to
+    // 1, so each value is doubled and moved down by 1. The fourth component 1 makes it
+    // a point.
+    vec4 ndc = vec4(vec3(uv, depth) * 2.0 - 1.0, 1.0);
+
+    // Step 2: the inverse of projection * view takes the point back towards the world.
+    vec4 world = uInverseViewProjection * ndc;
+
+    // Step 3: divide by w. On the way to the screen the graphics card divided the clip
+    // space position by its w (the perspective division). A matrix cannot undo
+    // a division, so the result of step 2 is the world position divided by that w, and
+    // its own fourth component is 1 divided by that w. Dividing by it gives the world
+    // position back.
+    return world.xyz / world.w;
+}
+
+// How much of the full density the fog has at a world height: 1 at and below the base
+// height, and above it falling towards 0, by the same share for every metre. The same
+// formula as game::fogHeightFactor in src/game/Fog.cpp.
+float fogHeightFactor(float height) {
+    float heightAboveBase = max(height - uFogBaseHeight, 0.0);
+    return exp(-uFogHeightFalloff * heightAboveBase);
+}
+
+// How much of a surface is replaced by the colour of the fog, 0 to 1. Exponential fog:
+// every metre of fog lets the same share of the light through, so after d metres
+// exp(-density * d) of it is left, and the fog takes the rest. The same formula as
+// game::fogAmount in src/game/Fog.cpp. (The parameter is not called distance: that is
+// the name of a built-in function of GLSL.)
+float fogAmount(float heightFactor, float distanceToEye) {
+    return 1.0 - exp(-uFogDensity * heightFactor * distanceToEye);
+}
+
+// The number a pixel is multiplied by for the vignette: 1 inside the radius, then
+// falling smoothly to 1 - uVignetteStrength in the corners. The distance is measured in
+// texture coordinates, which run from 0 to 1 in both directions whatever the shape of
+// the window, so the bright middle is an ellipse of the shape of the window and the four
+// corners are always equally dark. The same formula as game::vignetteFactor in
+// src/game/Vignette.cpp.
+float vignetteFactor(vec2 uv) {
+    float distanceToCenter = length(uv - SCREEN_CENTER);
+    // smoothstep is 0 up to the first edge, 1 from the second edge on and an S shaped
+    // curve in between.
+    float darkening = smoothstep(uVignetteRadius, VIGNETTE_CORNER_DISTANCE, distanceToCenter);
+    return 1.0 - uVignetteStrength * darkening;
+}
+```
+
+Stałe:
+
+| Linia | Znaczenie |
+|---|---|
+| `const vec2 SCREEN_CENTER = vec2(0.5, 0.5);` | środek ekranu we współrzędnych tekstury. `const` w GLSL to stała czasu kompilacji shadera |
+| `const float VIGNETTE_CORNER_DISTANCE = 0.70710678;` | pierwiastek z 0,5: odległość od środka do rogu. Liczba wpisana, nie `sqrt(0.5)`, żeby dało się ją porównać znak po znaku z C++ |
+| komentarz "The same numbers as ... in src/game/Vignette.hpp" | te same dwie stałe istnieją w `Vignette.hpp`. Shader nie może dołączyć nagłówka C++, więc liczby są zapisane **dwa razy** i muszą się zgadzać (pułapka 33) |
+
+`worldPositionFromDepth`:
+
+| Linia | Znaczenie |
+|---|---|
+| `vec4 ndc = vec4(vec3(uv, depth) * 2.0 - 1.0, 1.0);` | `vec3(uv, depth)` skleja dwie współrzędne ekranu i głębię w jeden wektor. Mnożenie i odejmowanie działają na wszystkie trzy składowe naraz: z zakresu 0..1 na -1..1. Czwarta składowa 1: punkt (sekcja 2.19, krok 1) |
+| `vec4 world = uInverseViewProjection * ndc;` | macierz razy wektor kolumnowy. Wynik ma cztery składowe i **nie** jest jeszcze pozycją (krok 2) |
+| `return world.xyz / world.w;` | dzielenie przez czwartą składową cofa dzielenie perspektywiczne (krok 3). `.xyz` wybiera trzy pierwsze składowe, dzielenie wektora przez liczbę działa na każdą |
+| funkcja czyta `uInverseViewProjection` wprost | uniform jest zmienną globalną shadera, więc funkcja nie dostaje macierzy jako parametru. Odpowiednik w C++ dostaje (`inverseViewProjection`), bo tam nie ma uniformów |
+
+`fogHeightFactor` i `fogAmount`:
+
+| Linia | Znaczenie |
+|---|---|
+| `float heightAboveBase = max(height - uFogBaseHeight, 0.0);` | ile metrów nad wysokością bazową. Poniżej bazy różnica jest ujemna i `max` robi z niej 0 |
+| `return exp(-uFogHeightFalloff * heightAboveBase);` | 1 na bazie i pod nią, potem spadek o ten sam ułamek na każdy metr (sekcja 2.20) |
+| `float fogAmount(float heightFactor, float distanceToEye)` | parametr nazywa się `distanceToEye`, a nie `distance`: komentarz tłumaczy, że `distance` to nazwa funkcji wbudowanej GLSL (odległość między dwoma punktami). Parametr o tej nazwie by ją przesłonił |
+| `return 1.0 - exp(-uFogDensity * heightFactor * distanceToEye);` | `exp(...)` to część światła, która przeszła. Mgła zabiera resztę (sekcja 2.17) |
+
+`vignetteFactor`:
+
+| Linia | Znaczenie |
+|---|---|
+| `float distanceToCenter = length(uv - SCREEN_CENTER);` | odległość piksela od środka we współrzędnych tekstury: 0 w środku, 0,5 na środku krawędzi, 0,7071 w rogu |
+| `smoothstep(uVignetteRadius, VIGNETTE_CORNER_DISTANCE, distanceToCenter)` | 0 do promienia, 1 od rogu, krzywa S pomiędzy (sekcja 2.22). Pierwsza krawędź **musi** być mniejsza od drugiej: dla `uVignetteRadius >= 0,7071` wynik `smoothstep` jest w GLSL nieokreślony (pułapka 32) |
+| `return 1.0 - uVignetteStrength * darkening;` | od 1 (bez zmiany) do `1 - uVignetteStrength` (róg) |
+| komentarz nad funkcją | mówi wprost, że odległość jest we współrzędnych tekstury, więc jasny środek jest elipsą o kształcie okna, a cztery rogi są zawsze tak samo ciemne |
+
+**Każda z czterech funkcji ma bliźniaka w C++.** Komentarz nad każdą wskazuje go z nazwy:
+
+| GLSL, `post/composite.frag` | C++ | Różnica |
+|---|---|---|
+| `worldPositionFromDepth(uv, depth)` | `game::worldPositionFromDepth(uv, depth, inverseViewProjection)` w `Fog.cpp` | macierz jako parametr zamiast uniformu |
+| `fogHeightFactor(height)` | `game::fogHeightFactor(height, baseHeight, heightFalloff)` | dwa ustawienia jako parametry |
+| `fogAmount(heightFactor, distanceToEye)` | `game::fogAmount(density, heightFactor, distance)` | gęstość jako parametr. W C++ nazwa `distance` nic nie przesłania |
+| `vignetteFactor(uv)` | `game::vignetteFactor(uv, strength, radius)` w `Vignette.cpp` | dwa ustawienia jako parametry |
+
+Po co dwa razy to samo, wyjaśnia sekcja 5.12: shadera nie da się uruchomić w teście jednostkowym, a C++ tak. Ceną jest to, że zgodności dwóch zapisów pilnuje człowiek, nie kompilator.
+
 ## 5. Kod w projekcie
 
 ### 5.1 Pliki
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp) | `enum class ToneMapping`, `enum class AttachmentPreview`, `struct PostProcessSettings` (z polem `bloom`), klasa `PostProcess` |
-| [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) | siedem stałych, funkcje pomocnicze `fitTarget` i `previewWidthFor`, implementacja klasy z `drawBloom` |
+| [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp) | `enum class ToneMapping`, `enum class AttachmentPreview`, `struct PostProcessSettings` (z polami `bloom`, `fog` i `vignette`), od trzeciej części `struct SceneView`, klasa `PostProcess` |
+| [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) | osiem stałych, funkcje pomocnicze `fitTarget` i `previewWidthFor`, implementacja klasy z `drawBloom` |
 | [`src/game/Bloom.hpp`](../../../src/game/Bloom.hpp), [`Bloom.cpp`](../../../src/game/Bloom.cpp) | druga część M7: stałe bloomu, `struct BloomSettings`, funkcje `bloomTargetExtent` i `bloomBlurWeights`. Bez OpenGL, w bibliotece `game_logic` (sekcja 5.10) |
+| [`src/game/Fog.hpp`](../../../src/game/Fog.hpp), [`Fog.cpp`](../../../src/game/Fog.cpp) | trzecia część M7: `struct FogSettings`, funkcje `fogHeightFactor`, `fogAmount`, `fogAmountAt` i `worldPositionFromDepth`. Bez OpenGL, w bibliotece `game_logic` (sekcja 5.12) |
+| [`src/game/Vignette.hpp`](../../../src/game/Vignette.hpp), [`Vignette.cpp`](../../../src/game/Vignette.cpp) | trzecia część M7: stałe `SCREEN_CENTER` i `VIGNETTE_CORNER_DISTANCE`, `struct VignetteSettings`, funkcja `vignetteFactor`. Bez OpenGL, w bibliotece `game_logic` (sekcja 5.13) |
 | [`assets/shaders/post/composite.vert`](../../../assets/shaders/post/composite.vert) | trójkąt pełnoekranowy, wspólny dla czterech programów |
-| [`assets/shaders/post/composite.frag`](../../../assets/shaders/post/composite.frag) | dodanie bloomu, ekspozycja, mapowanie tonów, kodowanie do sRGB |
+| [`assets/shaders/post/composite.frag`](../../../assets/shaders/post/composite.frag) | mgła, dodanie bloomu, ekspozycja, mapowanie tonów, winieta, kodowanie do sRGB (sekcje 4.2 i 4.9) |
 | [`assets/shaders/post/preview.frag`](../../../assets/shaders/post/preview.frag) | podgląd koloru i głębi. Tryb koloru służy też podglądom bloomu |
 | [`assets/shaders/post/bright.frag`](../../../assets/shaders/post/bright.frag) | druga część M7: przebieg jasności (sekcja 4.6) |
 | [`assets/shaders/post/blur.frag`](../../../assets/shaders/post/blur.frag) | druga część M7: jeden kierunek rozmycia Gaussa (sekcja 4.7) |
-| [`assets/shaders/common/depth.glsl`](../../../assets/shaders/common/depth.glsl) | `linearDepth` |
+| [`assets/shaders/common/depth.glsl`](../../../assets/shaders/common/depth.glsl) | `linearDepth`, tylko dla podglądu głębi. Mgła go nie dołącza |
 | [`assets/shaders/common/color.glsl`](../../../assets/shaders/common/color.glsl) | `srgbToLinear`, `linearToSrgb` w GLSL ([`../gfx/color-space.md`](../gfx/color-space.md)) i, od drugiej części, `luminance` (sekcja 4.8) |
 | [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), [`.cpp`](../../../src/gfx/Framebuffer.cpp) | obiekt framebuffera ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_compositeShader`, `m_previewShader`, `m_brightPassShader`, `m_blurShader`, `m_postProcess`, `m_postProcessSettings`, akcesory `compositeShader()`, `previewShader()`, `brightPassShader()`, `blurShader()`, `postProcessSettings()`, `postProcess()`, funkcja `crystalEmissive`, stała `NEUTRAL_EXPOSURE`, kolejność klatki w `onRender` |
-| [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | szesnaście nazw uniformów tych przebiegów (sekcja 4.5) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_compositeShader`, `m_previewShader`, `m_brightPassShader`, `m_blurShader`, `m_postProcess`, `m_postProcessSettings`, akcesory `compositeShader()`, `previewShader()`, `brightPassShader()`, `blurShader()`, `postProcessSettings()`, `postProcess()`, funkcja `crystalEmissive`, stała `NEUTRAL_EXPOSURE`, kolejność klatki w `onRender`, od trzeciej części budowa `SceneView` |
+| [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | dwadzieścia siedem nazw uniformów tych przebiegów (sekcja 4.5) |
 | [`src/game/Crystals.hpp`](../../../src/game/Crystals.hpp) | `CRYSTAL_GLOW_STRENGTH`, w drugiej części podniesione z 2,5 do 4,0 (sekcja 2.15) |
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | nowa metoda `setFloatArray` (`glUniform1fv`), którą wysyłane są wagi ([`../gfx/shader-class.md`](../gfx/shader-class.md), [`../gfx/uniforms.md`](../gfx/uniforms.md)) |
-| [`src/debug/panels/FramebuffersPanel.hpp`](../../../src/debug/panels/FramebuffersPanel.hpp), [`.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp) | panel Framebuffers (sekcja 6) |
-| [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`src/debug/DebugUI.cpp`](../../../src/debug/DebugUI.cpp), [`src/main.cpp`](../../../src/main.cpp) | cztery pola kontekstu z pierwszej części (`compositeShader`, `previewShader`, `postProcessSettings`, `postProcess`) i dwa z drugiej (`brightPassShader`, `blurShader`), `SHADER_COUNT = 10`, zerowanie flagi `previews`, wywołanie panelu ([`../debug-ui.md`](../debug-ui.md)) |
+| [`src/debug/panels/FramebuffersPanel.hpp`](../../../src/debug/panels/FramebuffersPanel.hpp), [`.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp) | panel Framebuffers, od trzeciej części z dwiema zakładkami (sekcja 6) |
+| [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`src/debug/DebugUI.cpp`](../../../src/debug/DebugUI.cpp), [`src/main.cpp`](../../../src/main.cpp) | cztery pola kontekstu z pierwszej części (`compositeShader`, `previewShader`, `postProcessSettings`, `postProcess`) i dwa z drugiej (`brightPassShader`, `blurShader`), `SHADER_COUNT = 10`, zerowanie flagi `previews`, wywołanie panelu ([`../debug-ui.md`](../debug-ui.md)). Trzecia część zmieniła w `DebugContext.hpp` tylko komentarz pola `postProcessSettings` |
 | [`tests/BloomTests.cpp`](../../../tests/BloomTests.cpp) | siedem przypadków testowych dla `Bloom.*` (sekcja 5.8) |
+| [`tests/FogTests.cpp`](../../../tests/FogTests.cpp) | jedenaście przypadków testowych dla `Fog.*` (sekcja 5.8) |
+| [`tests/VignetteTests.cpp`](../../../tests/VignetteTests.cpp) | siedem przypadków testowych dla `Vignette.*` (sekcja 5.8) |
 
-`PostProcess.*` jest na liście źródeł programu `night_maze` w [`CMakeLists.txt`](../../../CMakeLists.txt), obok pozostałych klas rysujących: potrzebuje okna i kontekstu OpenGL, więc nie należy do bibliotek, które da się testować. `Framebuffer.*` i `ColorSpace.*` są w bibliotece `engine`. `Bloom.*` jest w bibliotece `game_logic`: to powód, dla którego ustawienia i matematyka bloomu są osobnym plikiem, a nie częścią `PostProcess.*`. Program testowy może linkować bibliotekę, a nie może linkować kodu, który siedzi w innym programie.
+`PostProcess.*` jest na liście źródeł programu `night_maze` w [`CMakeLists.txt`](../../../CMakeLists.txt), obok pozostałych klas rysujących: potrzebuje okna i kontekstu OpenGL, więc nie należy do bibliotek, które da się testować. `Framebuffer.*` i `ColorSpace.*` są w bibliotece `engine`. `Bloom.*`, a od trzeciej części także `Fog.*` i `Vignette.*`, są w bibliotece `game_logic`: to powód, dla którego ustawienia i matematyka efektów są osobnymi plikami, a nie częścią `PostProcess.*`. Program testowy może linkować bibliotekę, a nie może linkować kodu, który siedzi w innym programie.
 
-### 5.2 Ustawienia i dwa wyliczenia
+### 5.2 Ustawienia, dwa wyliczenia i `SceneView`
 
 ```cpp
 enum class ToneMapping {
@@ -1206,6 +1725,13 @@ struct PostProcessSettings {
     bool previews = false;
     float depthPreviewRange = 15.0F;
     BloomSettings bloom;
+    FogSettings fog;
+    VignetteSettings vignette;
+};
+
+struct SceneView {
+    glm::mat4 inverseViewProjection{1.0F};
+    glm::vec3 eye{0.0F};
 };
 ```
 
@@ -1219,8 +1745,13 @@ struct PostProcessSettings {
 | `previews = false` | podglądy kosztują dwa małe przebiegi, więc są rysowane tylko wtedy, gdy ktoś na nie patrzy. Pole ustawia interfejs debugowania **co klatkę** (sekcja 6.2) |
 | `depthPreviewRange = 15.0F` | 15 metrów jako biel: siedem i pół komórki labiryntu, czyli mniej więcej to, co widać w korytarzu |
 | `BloomSettings bloom;` | struktura w strukturze: cztery ustawienia bloomu z `game/Bloom.hpp` (sekcja 5.10). Jest polem, a nie osobnym argumentem funkcji, więc kopia ustawień dla widoku diagnostycznego (sekcja 2.9) obejmuje ją automatycznie |
+| `FogSettings fog;` | trzecia część M7: pięć ustawień mgły z `game/Fog.hpp` (sekcja 5.12). Z tego samego powodu pole, nie argument |
+| `VignetteSettings vignette;` | trzecia część M7: trzy ustawienia winiety z `game/Vignette.hpp` (sekcja 5.13) |
+| `struct SceneView` | to, co przebieg składający musi wiedzieć o kamerze, którą narysowano scenę. Osobna struktura, a nie pola `PostProcessSettings`: ustawienia edytuje panel i żyją między klatkami, a te dwie wartości są **liczone od nowa w każdej klatce** z ruchu gracza |
+| `glm::mat4 inverseViewProjection{1.0F};` | odwrotność `projection * view`. Wartość domyślna to macierz jednostkowa (`glm::mat4{1.0F}` wypełnia przekątną jedynkami): bezpieczny stan dla obiektu, którego nikt nie wypełnił |
+| `glm::vec3 eye{0.0F};` | pozycja oka w świecie, domyślnie początek układu |
 
-Struktura jest polem `NightMazeApp::m_postProcessSettings`, a panel edytuje ją przez referencję z `DebugContext`. Komentarz przy polu `previews` mówi nadal o "dwóch obrazach" i "dwóch małych przebiegach". Od drugiej części ta sama flaga włącza też dwa podglądy bloomu, więc obrazów jest do czterech.
+Struktura jest polem `NightMazeApp::m_postProcessSettings`, a panel edytuje ją przez referencję z `DebugContext`. Komentarz przy polu `previews` mówi nadal o "dwóch obrazach" i "dwóch małych przebiegach". Od drugiej części ta sama flaga włącza też dwa podglądy bloomu, więc obrazów jest do czterech. Trzecia część tego komentarza nie ruszyła i podglądów nie dodała: mgła i winieta nie mają własnych obrazów w panelu, bo nie mają własnych celów rysowania.
 
 ### 5.3 Klasa `PostProcess`
 
@@ -1238,7 +1769,7 @@ public:
                    const gfx::Shader& previewShader, const PostProcessSettings& settings);
 
     void composite(const gfx::Shader& shader, const PostProcessSettings& settings,
-                   core::Size windowSize) const;
+                   core::Size windowSize, const SceneView& view) const;
 
     const gfx::Framebuffer& sceneTarget() const { return m_scene; }
 
@@ -1282,8 +1813,9 @@ private:
 | programy shaderów jako parametry, nie pola | programy są polami `NightMazeApp`, tak jak wszystkie pozostałe, bo panel Shaders przeładowuje je z jednej listy. Ten sam układ ma `game::Skybox` |
 | `beginScene` zwraca `bool` | wołający musi wiedzieć, czy jest do czego rysować |
 | `composite` jest `const`, `drawPreviews` i `drawBloom` nie | `drawPreviews` i `drawBloom` tworzą i zmieniają rozmiar framebufferów (pola obiektu), a `drawBloom` zapisuje też `m_bloomDrawn`. `composite` zmienia tylko stan kontekstu OpenGL |
+| `composite` bierze `const SceneView& view` | czwarty parametr, od trzeciej części M7. Mgła zamienia głębię piksela na miejsce w świecie i potrzebuje do tego kamery tej klatki. Kamera jest parametrem, a nie polem klasy: `PostProcess` nie wie nic o graczu ani o `scene::Camera` i dostaje gotowe dwie wartości |
 | `drawBloom` bierze trzy programy | przebieg jasności, rozmycie i program podglądu dla dwóch małych obrazów. Programy są parametrami z tego samego powodu co wyżej |
-| `sceneTarget()` | dla przyszłych przebiegów, które czytają kolor albo głębię sceny, i dla panelu (rozmiar i formaty) |
+| `sceneTarget()` | dla przyszłych przebiegów, które czytają kolor albo głębię sceny, i dla panelu (rozmiar i formaty). Mgła z niego nie korzysta: `composite` jest metodą tej samej klasy i sięga po `m_scene` wprost |
 | `preview(which)` | panel dostaje framebuffer podglądu i pokazuje jego teksturę koloru |
 | `bloomDrawn()` | jedna informacja dla dwóch odbiorców: `composite` (czy dodać bloom) i panel (czy pokazać obrazy i rozmiar). Fałsz przed pierwszym `drawBloom` |
 | `bloomTarget()` | cel z gotową poświatą, dla panelu: rozmiar i format. Nieważny (`isValid()` fałsz), dopóki `drawBloom` ani razu nie rysowało |
@@ -1305,6 +1837,10 @@ constexpr GLuint SOURCE_TEXTURE_UNIT = 0;
 // from this one.
 constexpr GLuint BLOOM_TEXTURE_UNIT = 1;
 
+// The fog of the composite pass reads a third picture, the depth of the scene, from
+// this unit.
+constexpr GLuint DEPTH_TEXTURE_UNIT = 2;
+
 // The values of the uniform uHorizontal in post/blur.frag: the direction of a blur pass.
 constexpr int BLUR_HORIZONTAL = 1;
 constexpr int BLUR_VERTICAL = 0;
@@ -1318,7 +1854,7 @@ constexpr GLsizei TRIANGLE_VERTEX_COUNT = 3;
 constexpr int PREVIEW_HEIGHT = 180;
 ```
 
-Siedem stałych: trzy doszły w drugiej części. `BLUR_HORIZONTAL` i `BLUR_VERTICAL` to nazwy dla liczb 1 i 0, które shader porównuje z `uHorizontal`. Bez nich w kodzie stałoby `setInt(..., 1)` i trzeba by pamiętać, co jedynka znaczy.
+Osiem stałych: trzy doszły w drugiej części, a `DEPTH_TEXTURE_UNIT` w trzeciej. Trzy numery jednostek stoją obok siebie, więc od razu widać, że się nie powtarzają. `BLUR_HORIZONTAL` i `BLUR_VERTICAL` to nazwy dla liczb 1 i 0, które shader porównuje z `uHorizontal`. Bez nich w kodzie stałoby `setInt(..., 1)` i trzeba by pamiętać, co jedynka znaczy.
 
 ### 5.4 `beginScene`
 
@@ -1445,7 +1981,7 @@ Komentarz w nagłówku ostrzega: funkcja zostawia związany jeden z framebuffer�
 
 ```cpp
 void PostProcess::composite(const gfx::Shader& shader, const PostProcessSettings& settings,
-                            core::Size windowSize) const {
+                            core::Size windowSize, const SceneView& view) const {
     // From here on everything lands in the window: this pass, and the debug UI after it.
     gfx::Framebuffer::bindDefault(windowSize.width, windowSize.height);
     if (!m_scene.isValid() || !shader.isValid()) {
@@ -1463,6 +1999,26 @@ void PostProcess::composite(const gfx::Shader& shader, const PostProcessSettings
     GL_CHECK(glDisable(GL_FRAMEBUFFER_SRGB));
 
     shader.use();
+
+    // The fog. Switched off, the shader does not read the depth texture at all, so the
+    // picture is exactly the one of a frame without fog. The sampler gets its unit
+    // either way: a sampler that was never set reads unit 0, the picture of the scene.
+    const FogSettings& fog = settings.fog;
+    shader.setInt(COMPOSITE_FOG_ENABLED_UNIFORM, fog.enabled ? 1 : 0);
+    shader.setInt(COMPOSITE_DEPTH_UNIFORM, static_cast<int>(DEPTH_TEXTURE_UNIT));
+    shader.setFloat(COMPOSITE_FOG_DENSITY_UNIFORM, fog.density);
+    shader.setFloat(COMPOSITE_FOG_BASE_HEIGHT_UNIFORM, fog.baseHeight);
+    shader.setFloat(COMPOSITE_FOG_HEIGHT_FALLOFF_UNIFORM, fog.heightFalloff);
+    // The colour of the fog is an sRGB value and the picture it is mixed into is
+    // linear, so it is converted here, once per frame.
+    shader.setVec3(COMPOSITE_FOG_COLOR_UNIFORM, gfx::srgbToLinear(fog.color));
+    shader.setMat4(COMPOSITE_INVERSE_VIEW_PROJECTION_UNIFORM, view.inverseViewProjection);
+    shader.setVec3(COMPOSITE_EYE_UNIFORM, view.eye);
+    if (fog.enabled) {
+        // Reading the depth of the scene is allowed here because the window is the
+        // target: the scene framebuffer is not being drawn into.
+        m_scene.bindDepthTexture(DEPTH_TEXTURE_UNIT);
+    }
 
     // The bloom is added only when it was asked for AND drawBloom has drawn it in this
     // frame. Otherwise the shader does not read the bloom texture at all, so the
@@ -1484,6 +2040,12 @@ void PostProcess::composite(const gfx::Shader& shader, const PostProcessSettings
     // The enum values are the numbers post/composite.frag compares uToneMapping with.
     shader.setInt(COMPOSITE_TONE_MAPPING_UNIFORM, static_cast<int>(settings.toneMapping));
 
+    // The vignette. Switched off, the shader skips its line.
+    const VignetteSettings& vignette = settings.vignette;
+    shader.setInt(COMPOSITE_VIGNETTE_ENABLED_UNIFORM, vignette.enabled ? 1 : 0);
+    shader.setFloat(COMPOSITE_VIGNETTE_STRENGTH_UNIFORM, vignette.strength);
+    shader.setFloat(COMPOSITE_VIGNETTE_RADIUS_UNIFORM, vignette.radius);
+
     drawFullscreenTriangle();
 }
 
@@ -1500,16 +2062,27 @@ void PostProcess::drawFullscreenTriangle() const {
 | `return` po sprawdzeniu | bez sceny albo bez programu okno zostaje z tym, co w nim było. Panele nadal się rysują, więc błąd shadera da się przeczytać w panelu Shaders |
 | `glDisable(GL_DEPTH_TEST)` | scena zostawia test włączony. Bufor głębi okna nie jest już czyszczony przez nikogo, więc jego zawartość jest przypadkowa |
 | `glDisable(GL_FRAMEBUFFER_SRGB)` | sekcja 2.7 |
+| `const FogSettings& fog = settings.fog;` | krótsza nazwa na osiem następnych linii. Referencja do stałej: nic nie jest kopiowane |
+| `setInt(COMPOSITE_FOG_ENABLED_UNIFORM, fog.enabled ? 1 : 0)` | `bool` z C++ zamieniony na 1 albo 0. Tu wystarcza jeden warunek (przy bloomie są dwa): mgła nie ma własnego przebiegu, który mógłby się nie udać |
+| `setInt(COMPOSITE_DEPTH_UNIFORM, ...)` poza `if` | sampler dostaje numer jednostki 2 **zawsze**, także przy wyłączonej mgle. Komentarz mówi dlaczego: sampler, którego nikt nie ustawił, wskazuje jednostkę 0, czyli obraz sceny. Po przeładowaniu shadera `uDepth` i `uScene` wskazywałyby wtedy tę samą teksturę |
+| `setFloat` dla gęstości, wysokości bazowej i spadku | trzy liczby z suwaków, bez przeliczania |
+| `setVec3(COMPOSITE_FOG_COLOR_UNIFORM, gfx::srgbToLinear(fog.color))` | **jedyne przeliczenie** w tej funkcji. Kolor w ustawieniach jest liczbą sRGB, obraz, do którego jest domieszany, jest liniowy. Raz na klatkę, na procesorze: trzy wywołania funkcji zamiast przeliczania w każdym pikselu. Stąd nowe `#include "gfx/ColorSpace.hpp"` na górze pliku |
+| `setMat4(COMPOSITE_INVERSE_VIEW_PROJECTION_UNIFORM, view.inverseViewProjection)` | gotowa odwrotność z `onRender`. `composite` niczego nie odwraca |
+| `setVec3(COMPOSITE_EYE_UNIFORM, view.eye)` | pozycja oka tej samej klatki |
+| `if (fog.enabled) m_scene.bindDepthTexture(DEPTH_TEXTURE_UNIT);` | tekstura głębi sceny na jednostce 2, tylko gdy będzie czytana. Komentarz: wolno ją tu czytać, bo celem jest okno, a nie framebuffer sceny. `bindDepthTexture` odpina też obiekt samplera z jednostki ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)) |
 | `const bool addBloom = settings.bloom.enabled && m_bloomDrawn;` | dwa warunki naraz. Pierwszy: ustawienia tej klatki chcą bloomu (w widoku diagnostycznym kopia mówi "nie"). Drugi: `drawBloom` naprawdę go narysowało. Drugi jest potrzebny, bo `drawBloom` może wrócić wcześniej (zepsuty shader, nieudany cel), a wtedy w `m_bloom` leży obraz z dawnej klatki albo nic |
 | `setInt(COMPOSITE_BLOOM_ENABLED_UNIFORM, addBloom ? 1 : 0)` | `bool` z C++ zamieniony na 1 albo 0 dla uniformu `int` |
 | `setInt(COMPOSITE_BLOOM_UNIFORM, ...)` poza `if` | sampler dostaje numer jednostki zawsze, także gdy bloom nie jest dodawany (komentarz: "either way"). Skutek: `uScene` i `uBloom` nigdy nie wskazują tej samej jednostki, także zaraz po przeładowaniu shadera, kiedy oba startują z zerem |
-| `if (addBloom) m_bloom.bindColorTexture(BLOOM_TEXTURE_UNIT);` | tekstura poświaty na jednostce 1, tylko gdy będzie czytana. `bindColorTexture` zostawia jednostkę 1 jako aktywną, a następne wywołanie dla sceny przełącza aktywną z powrotem na 0 |
+| `if (addBloom) m_bloom.bindColorTexture(BLOOM_TEXTURE_UNIT);` | tekstura poświaty na jednostce 1, tylko gdy będzie czytana. `bindColorTexture` zostawia jednostkę 1 jako aktywną, a następne wywołanie dla sceny przełącza aktywną z powrotem na 0. Kolejność trzech wiązań to 2, 1, 0, więc po funkcji aktywna jest zawsze jednostka 0, niezależnie od tego, które efekty są włączone |
 | `static_cast<int>(SOURCE_TEXTURE_UNIT)` | stała ma typ `GLuint`, bo taki przyjmuje `bindColorTexture`. `setInt` przyjmuje `int` |
 | `static_cast<int>(settings.toneMapping)` | `enum class` nie zamienia się na liczbę samo. Wartości wyliczenia są liczbami, z którymi porównuje shader |
+| `const VignetteSettings& vignette = settings.vignette;` i trzy settery | przełącznik i dwie liczby winiety. Komentarz: przy wyłączonej shader pomija swoją linię. Winieta nie ma tekstury ani przeliczeń, więc to całość jej strony C++ w tej funkcji |
 | `m_triangle.bind();` | pusty VAO: profil Core nie rysuje bez związanego |
 | `glDrawArrays(GL_TRIANGLES, 0, 3)` | trzy wierzchołki bez danych. `glDrawArrays`, a nie `glDrawElements`: nie ma bufora indeksów |
 
 Funkcja zostawia test głębi wyłączony. Nagłówek mówi to wprost, a `onRender` włącza go na początku każdej klatki.
+
+Funkcja urosła w trzeciej części o blok mgły i blok winiety i ani jedno wywołanie rysujące: nadal kończy się jednym `drawFullscreenTriangle()`. Cała mgła i cała winieta po stronie C++ to ustawienie jedenastu uniformów i jedno wiązanie tekstury.
 
 ### 5.7 Miejsce w klatce: `onRender`
 
@@ -1541,11 +2114,18 @@ Fragmenty `NightMazeApp::onRender`, które należą do tego modułu (kod sceny m
                                    m_camera.farPlane);
     }
 
+    // The two debug views show data as colours (a normal, a texture coordinate), not
+    // light. An exposure or a tone mapping curve would change those numbers, and
+    // a bloom would make the bright ones glow, a fog would mix its colour into them and
+    // a vignette would darken them towards the corners, so all five are switched off
+    // for them, in a copy: the settings the debug UI shows stay.
     PostProcessSettings compositeSettings = m_postProcessSettings;
     if (m_viewMode != ViewMode::Textured) {
         compositeSettings.exposure = NEUTRAL_EXPOSURE;
         compositeSettings.toneMapping = ToneMapping::None;
         compositeSettings.bloom.enabled = false;
+        compositeSettings.fog.enabled = false;
+        compositeSettings.vignette.enabled = false;
     }
 
     // The bloom: the bright parts of the finished scene, blurred in targets of half the
@@ -1553,7 +2133,16 @@ Fragmenty `NightMazeApp::onRender`, które należą do tego modułu (kod sceny m
     // draws nothing and tells the composite pass so.
     m_postProcess.drawBloom(m_brightPassShader, m_blurShader, m_previewShader, compositeSettings);
 
-    m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer);
+    // The fog of the last pass finds the place in the world every pixel shows. For that
+    // it needs the way back from the screen to the world: the inverse of the two
+    // matrices the scene was drawn with, multiplied in the order a vertex shader applies
+    // them (the view first, then the projection), and the eye they were built for.
+    const SceneView sceneView{.inverseViewProjection = glm::inverse(projection * view), .eye = eye};
+
+    // The last pass: back to the window, and the HDR picture goes into it with the fog,
+    // the bloom, exposure, tone mapping, the vignette and the sRGB encoding. The debug
+    // UI is drawn after this function returns (main.cpp), straight into the window.
+    m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer, sceneView);
 ```
 
 | Linia | Znaczenie |
@@ -1563,13 +2152,16 @@ Fragmenty `NightMazeApp::onRender`, które należą do tego modułu (kod sceny m
 | `gfx::srgbToLinear(glm::vec3{...})` | kolor tła jest liczbą sRGB z próbnika w panelu Renderer, a bufor przechowuje wartości liniowe. Startowe (0,022, 0,033, 0,088) to liniowo (0,0017, 0,0026, 0,0083) |
 | `glClear(...)` | czyści dwie tekstury bufora sceny |
 | `m_camera.nearPlane`, `m_camera.farPlane` | te same pola, z których `projectionMatrix` zbudowało macierz tej klatki |
-| `PostProcessSettings compositeSettings = m_postProcessSettings;` | kopia całej struktury: pięć pól, w tym struktura `bloom` z czterema własnymi |
+| `PostProcessSettings compositeSettings = m_postProcessSettings;` | kopia całej struktury: siedem pól, w tym struktury `bloom` (cztery własne pola), `fog` (pięć) i `vignette` (trzy) |
 | `if (m_viewMode != ViewMode::Textured)` | każdy widok poza zwykłym obrazem jest widokiem danych (sekcja 2.9) |
 | `NEUTRAL_EXPOSURE` | nazwana stała 1,0 z anonimowej przestrzeni nazw pliku |
 | `compositeSettings.bloom.enabled = false;` | trzecia rzecz wyłączana dla widoku danych, w tej samej kopii. Pole `Bloom` w panelu zostaje zaznaczone |
+| `compositeSettings.fog.enabled = false;` i `compositeSettings.vignette.enabled = false;` | czwarta i piąta, od trzeciej części M7 (sekcja 2.9). Pola `Fog` i `Vignette` w panelu zostają zaznaczone |
 | `drawBloom(..., compositeSettings)` | dostaje **kopię**, nie oryginał: dzięki temu widzi wyłączenie dla widoku danych. Kopia niesie też flagę `previews`, więc `drawBloom` wie, czy rysować swoje dwa podglądy |
 | `drawBloom` bez `if` wokół | funkcja jest wołana zawsze, bo to ona zeruje `m_bloomDrawn`. Gdyby przy wyłączonym bloomie nie była wołana, pole zostałoby z wartością z poprzedniej klatki |
-| `composite(..., compositeSettings, framebuffer)` | te same ustawienia co bloom i ten sam rozmiar, z którym zaczęła się scena, jako rozmiar viewportu okna |
+| `const SceneView sceneView{.inverseViewProjection = glm::inverse(projection * view), .eye = eye};` | inicjalizacja z nazwanymi polami (designated initializers, C++20): widać, która wartość trafia do którego pola. `projection` i `view` to te same dwie zmienne, którymi wyżej w funkcji narysowano całą scenę, a `eye` to punkt, z którego zbudowano `view` i światła |
+| `projection * view`, potem `glm::inverse` | kolejność mnożenia jak w shaderze wierzchołków: najpierw widok, potem rzutowanie (macierz po prawej działa pierwsza). Odwrotność jest liczona **raz na klatkę**, zawsze, także przy wyłączonej mgle i w widoku diagnostycznym, kiedy nikt jej nie czyta. To rząd stu mnożeń na klatkę. Kod liczy ją bezwarunkowo i nie mówi dlaczego |
+| `composite(..., compositeSettings, framebuffer, sceneView)` | te same ustawienia co bloom, ten sam rozmiar, z którym zaczęła się scena, jako rozmiar viewportu okna, i kamera tej klatki |
 
 Gdy `onRender` wraca wcześniej (okno 0 x 0 albo brak bufora sceny), ani `drawBloom`, ani `composite` nie są wołane, ale `DebugUI::draw` w `main.cpp` i tak rysuje panele. `m_bloomDrawn` zostaje wtedy z ostatniej narysowanej klatki, więc panel pokazuje ostatnie obrazy. Związany jest wtedy framebuffer z poprzedniej klatki, czyli okno (ostatnie wiązanie zrobiło `composite` albo konstruktor `Framebuffer`, który zostawia domyślny).
 
@@ -1577,11 +2169,13 @@ Funkcja `crystalEmissive`, wydzielona w pierwszej części M7 z dwóch identyczn
 
 ### 5.8 Testy
 
-Klasa `PostProcess` **nie ma testów jednostkowych**: każda jej funkcja woła OpenGL, a program testowy nie tworzy okna. To samo dotyczy shaderów. Matematykę wokół niej pokrywają cztery pliki:
+Klasa `PostProcess` **nie ma testów jednostkowych**: każda jej funkcja woła OpenGL, a program testowy nie tworzy okna. To samo dotyczy shaderów. Matematykę wokół niej pokrywa sześć plików:
 
 | Plik | Co sprawdza | Co z tego dotyczy tego modułu |
 |---|---|---|
 | [`tests/BloomTests.cpp`](../../../tests/BloomTests.cpp) | `game::bloomTargetExtent`, `game::bloomBlurWeights`, wartości startowe `BloomSettings` | wszystko: to jedyne testy napisane dla bloomu. Siedem przypadków, lista niżej |
+| [`tests/FogTests.cpp`](../../../tests/FogTests.cpp) | `game::fogHeightFactor`, `game::fogAmount`, `game::fogAmountAt`, `game::worldPositionFromDepth`, wartości startowe `FogSettings` | wszystko: dwa wzory mgły i droga od piksela z głębią z powrotem do świata. Jedenaście przypadków, lista niżej |
+| [`tests/VignetteTests.cpp`](../../../tests/VignetteTests.cpp) | `game::vignetteFactor`, stała `VIGNETTE_CORNER_DISTANCE`, wartości startowe `VignetteSettings` | wszystko: wzór winiety. Siedem przypadków, lista niżej |
 | [`tests/ColorSpaceTests.cpp`](../../../tests/ColorSpaceTests.cpp) | `gfx::srgbToLinear` i `gfx::linearToSrgb` w C++ | ta sama formuła co `linearToSrgb` w `common/color.glsl`. Test "encoding undoes decoding for every byte of a picture" sprawdza, że dekodowanie i kodowanie znoszą się dla każdego z 256 bajtów z dokładnością lepszą niż ćwierć kroku. Na tym stoi poprawka widoków diagnostycznych (sekcja 2.9). Wersji GLSL test nie uruchamia |
 | [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp) | nazwy formatów i tekst stanu framebuffera | napisy, które pokazuje linia informacyjna panelu (`GL_RGBA16F`, `GL_DEPTH_COMPONENT24`) |
 | [`tests/LightingTests.cpp`](../../../tests/LightingTests.cpp) | `buildLightSet` przelicza cztery kolory z sRGB na liniowe i nie rusza intensywności | wartości, które trafiają do bufora HDR |
@@ -1600,11 +2194,43 @@ Siedem przypadków `BloomTests.cpp`:
 
 Razem 36 asercji: 3, 3, 3, 1, 13 (jedno `REQUIRE` i sześć obrotów pętli po dwa `CHECK`), 8 (sześć obrotów pętli i dwa `CHECK`) i 5.
 
-Czego **żaden** test nie sprawdza: wzorów Reinharda i ACES (istnieją tylko w GLSL), `linearDepth` (tylko w GLSL), tabeli trójkąta z `gl_VertexID`, kolejności kroków `onRender`, zgodności liczb wyliczenia `ToneMapping` z shaderem i z kolejnością wpisów listy w panelu. Z bloomu: wzoru przebiegu jasności i funkcji `luminance` (tylko w GLSL), pętli rozmycia w shaderze, kolejności ping-ponga w `drawBloom`, dodania w `composite.frag` i tego, że `BLUR_RADIUS` w `blur.frag` jest równe `BLOOM_BLUR_RADIUS` w C++ (pułapka 21). Komentarz na górze pliku testów mówi to wprost: same przebiegi są shaderami i sprawdza się je przez uruchomienie gry. Liczby w sekcjach 2.6, 2.10 i od 2.11 do 2.15 tego dokumentu zostały przeliczone osobnym skryptem z tych samych wzorów, nie odczytane z działającej gry.
+Jedenaście przypadków `FogTests.cpp`:
+
+| Przypadek | Co sprawdza | Dlaczego to ważne |
+|---|---|---|
+| `the fog has its full density at and below the base height` | współczynnik wysokości to 1 na bazie, pod nią i 10 m pod nią | `max(..., 0)`: w dołku mgła nie gęstnieje ponad `density` |
+| `the fog thins out above the base height` | po `ln(2) / falloff` metrach nad bazą zostaje połowa, po dwóch takich odcinkach ćwierć. Liczba policzona ręcznie: 2 m nad bazą przy spadku 0,35 to `exp(-0,7) = 0,4966`. Na 50 m wynik jest nieujemny i mniejszy od 0,001 | kształt wykładniczy w pionie i to, że współczynnik nie schodzi poniżej zera |
+| `a height falloff of zero gives the same fog at every height` | przy spadku 0 współczynnik to 1 na ziemi i 80 m nad nią | lewy koniec suwaka `Height falloff`: mgła jednakowa wszędzie |
+| `there is no fog at distance zero, at density zero and where the height factor is zero` | trzy zera dają `amount = 0` | `exp(0) = 1`, więc `1 - 1 = 0`: brak drogi, brak mgły albo brak gęstości to brak efektu |
+| `the fog grows with the distance and never passes one` | dla każdego metra od 1 do 100: więcej mgły niż metr bliżej i nie więcej niż 1 | mgła nie może maleć z odległością ani dać ujemnej przepuszczalności. Komentarz tłumaczy granicę 100 m: to płaszczyzna daleka, a dużo dalej `float` nie odróżnia już wyniku od 1 |
+| `the fog follows the exponential law` | połowa po `ln(2) / density`, `1 - 1 / e` po `1 / density`, liczba ręczna (10 m przy 0,08 to `1 - exp(-0,8) = 0,5507`), 10 m i potem 5 m przepuszczają tyle co 15 m, połowa współczynnika wysokości działa jak połowa gęstości | prawo Beera-Lamberta z sekcji 2.17 zapisane jako pięć sprawdzeń |
+| `the fog of a point uses its distance from the eye and its own height` | `fogAmountAt` dla punktu na ziemi (odległość to pierwiastek z 27,89) i dla punktu wysoko w tym samym miejscu: ten drugi ma mniej mgły | złożenie obu wzorów, czyli dokładnie to, co shader liczy dla jednego piksela: odległość w linii prostej i wysokość **celu** |
+| `a point of the world is found again from its pixel and its depth` | kamera gry obrócona o 35 i -12 stopni, punkt 6 m przed okiem. Funkcja pomocnicza testu `screenPointOf` robi drogę w przód (dwie macierze, dzielenie przez `w`, z -1..1 na 0..1), `worldPositionFromDepth` wraca. Sześć `REQUIRE` pilnuje, że punkt jest na ekranie i między płaszczyznami | trzy kroki z sekcji 2.19 na prawdziwych macierzach `scene::Camera`. Tolerancja to 1 procent (`epsilon(0.01)`): komentarz wyjaśnia, że głębia 6 m dalej to już 0,984, więc `float` trzyma odległość tylko z dokładnością do milimetrów |
+| `the middle of the screen at depth zero and one lies on the clipping planes` | środek ekranu z głębią 0 leży `nearPlane` od oka, z głębią 1 `farPlane` od oka, i to na wprost (iloczyn skalarny kierunku z `camera.forward()` to 1) | końce zakresu głębi i fakt, na którym stoi sekcja 2.21: głębia 1 to punkt na płaszczyźnie dalekiej |
+| `the default fog leaves the moon clear and hides the sky below the horizon` | przy wartościach startowych: punkt nieba w kierunku księżyca (z kątów `LightingSettings`) ma poniżej 1 procenta mgły, punkt prosto w dół na płaszczyźnie dalekiej ponad 99 procent | niebo bez osobnego przypadku. Jeśli ktoś zmieni wartości startowe tak, że mgła zakryje księżyc, ten test przestanie przechodzić |
+| `the default fog does not hide the maze` | mgła startuje włączona, gęstość i spadek są dodatnie, ziemia cztery komórki dalej (8 m) ma między 20 a 60 procent mgły, a szczyt ściany w tym samym miejscu mniej niż jej stopa | wartości startowe mają dawać mgłę widoczną, ale nie ślepą. Z rachunku: 56 procent przy ziemi i 26 procent na szczycie |
+
+Razem 241 asercji: 3, 5, 2, 3, 200 (sto obrotów pętli po dwa `CHECK`), 5, 3, 9 (sześć `REQUIRE` i trzy `CHECK`), 3, 2 i 6. Testy wzorów używają własnych liczb (gęstość 0,08, spadek 0,35), a nie wartości startowych z `FogSettings`, więc strojenie wyglądu ich nie rusza. Wartości startowych pilnują tylko dwa ostatnie przypadki.
+
+Siedem przypadków `VignetteTests.cpp`:
+
+| Przypadek | Co sprawdza | Dlaczego to ważne |
+|---|---|---|
+| `the corner distance is the length of half the screen diagonal` | stała równa się `sqrt(0,5)` i równa się długości wektora od środka do rogu (1, 1) | liczba 0,70710678 jest wpisana ręcznie. Test pilnuje wersji z C++, wersji z shadera nie |
+| `the vignette leaves the middle of the screen as it is` | współczynnik 1 w środku (także przy sile 1 i promieniu 0,1) i w punkcie 0,3 od środka przy promieniu 0,4 | wnętrze promienia jest nietknięte |
+| `a vignette of strength zero changes nothing anywhere` | siła 0 daje 1 w rogu i w dowolnym punkcie | lewy koniec suwaka `Strength` |
+| `the four corners lose the share of light the strength says` | przy sile 0,3 każdy z czterech rogów ma 0,7, a przy sile 1 róg ma 0 | znaczenie suwaka i symetria: cztery rogi są równe |
+| `the vignette gets darker from the radius to the corner` | siedem punktów na przekątnej, od tuż za promieniem do rogu: każdy ciemniejszy od poprzedniego i żaden poniżej `1 - strength`. Do tego punkt w połowie drogi między promieniem a rogiem: `smoothstep` daje tam 0,5, więc działa połowa siły | krzywa jest monotoniczna, a wartość w połowie zdradza, że to `smoothstep` (symetryczna krzywa S), a nie inna funkcja |
+| `the vignette is measured in texture coordinates, the same in both directions` | środek prawej krawędzi i środek górnej krawędzi dają ten sam współczynnik | zapisana decyzja: bez poprawki o proporcje okna (sekcja 2.22) |
+| `the default vignette is subtle` | startuje włączona, promień jest mniejszy od odległości do rogu, rogi zachowują co najmniej połowę światła, środki krawędzi ponad 85 procent | wartości startowe: z rachunku 0,70 i 0,925. Warunek na promień jest tym, czego wymaga `smoothstep` |
+
+Razem 32 asercje: 2, 3, 2, 5, 15 (siedem obrotów pętli po dwa `CHECK` i jeden `CHECK` za nią), 1 i 4.
+
+Czego **żaden** test nie sprawdza: wzorów Reinharda i ACES (istnieją tylko w GLSL), `linearDepth` (tylko w GLSL), tabeli trójkąta z `gl_VertexID`, kolejności kroków `onRender`, zgodności liczb wyliczenia `ToneMapping` z shaderem i z kolejnością wpisów listy w panelu. Z bloomu: wzoru przebiegu jasności i funkcji `luminance` (tylko w GLSL), pętli rozmycia w shaderze, kolejności ping-ponga w `drawBloom`, dodania w `composite.frag` i tego, że `BLUR_RADIUS` w `blur.frag` jest równe `BLOOM_BLUR_RADIUS` w C++ (pułapka 21). Komentarz na górze pliku testów mówi to wprost: same przebiegi są shaderami i sprawdza się je przez uruchomienie gry. Z mgły i winiety: czterech funkcji w wersji GLSL i ich **zgodności** z wersjami C++ (testy pilnują tylko C++), dwóch stałych winiety w shaderze, kolejności siedmiu kroków w `main`, przeliczenia koloru mgły z sRGB w `composite`, tego, że `SceneView` powstaje z tych samych macierzy co scena, oraz wyłączenia mgły i winiety w kopii ustawień dla widoków diagnostycznych. Oba nowe pliki testów mają na górze to samo zdanie co testy bloomu: shader powtarza wzory i sprawdza się go przez uruchomienie gry. Liczby w sekcjach 2.6, 2.10 i od 2.11 do 2.22 tego dokumentu zostały przeliczone osobnym skryptem z tych samych wzorów, nie odczytane z działającej gry.
 
 ### 5.9 Jak to zostało sprawdzone
 
-Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod, dla Windowsa, 2026-10-05. Przy pisaniu dokumentu nie było powtarzane. Najpierw pierwsza część M7, potem druga.
+Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod, dla Windowsa, 2026-10-05. Przy pisaniu dokumentu nie było powtarzane. Najpierw pierwsza część M7, potem druga i trzecia.
 
 **Pierwsza część M7 (bufor HDR, przebieg składający):**
 
@@ -1638,6 +2264,24 @@ Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod, dla Wind
 - **Otwarte obserwacje.** Plama latarki na ścianie nie daje poświaty nawet z odległości metra: ściana w świetle latarki zostaje pod progiem 0,8. Czy tak ma być, to decyzja o wyglądzie, której nikt jeszcze nie podjął (niższy próg zapaliłby też inne rzeczy, a jaśniejsza latarka zmieniłaby całą scenę). Druga: poświata jest mierzona w tekselach celu o połowie rozdzielczości, więc w 2560 x 1440 jest względem ekranu o połowę cieńsza niż w 1280 x 720 (sekcja 2.14). W większej rozdzielczości sprawdzono tylko wycinek obrazu.
 - **Nie sprawdzone:** macOS i wyświetlacz Retina (nic z tej części nie było tam budowane ani uruchamiane), klikanie kontrolek panelu myszą (zrzuty były robione bez niej), `Reload shaders` przy dziesięciu programach. Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 18.
 - **Nie zmierzone:** pamięć karty zajęta przez trzy cele (liczby w sekcji 2.14 są policzone z rozmiaru), koszt dwóch podglądów bloomu, zależność kosztu od liczby iteracji, jasność tekstury kryształu (sekcja 2.15).
+
+**Trzecia część M7 (mgła i winieta):**
+
+- **Bramka.** `make check` przechodzi: formatowanie, buildy Debug i Release z zerem ostrzeżeń, testy w obu, clang-tidy. **294 przypadki testowe i 102412 asercji** w obu konfiguracjach. Przyrost o 18 przypadków i 273 asercje zgadza się z dwoma nowymi plikami: `tests/FogTests.cpp` (11 i 241) i `tests/VignetteTests.cpp` (7 i 32), `276 + 18 = 294` i `102139 + 273 = 102412` (sekcja 5.8). Sam policzyłem dwie rzeczy: sumę makr `TEST_CASE` we wszystkich plikach `tests/*Tests.cpp` w stanie tej części (294, w 24 plikach) i asercje w dwóch nowych plikach, czytając je linia po linii. Samych testów nie uruchamiałem.
+- **Efekty wyłączone.** Z odznaczonymi polami `Fog` i `Vignette` obraz jest identyczny co do piksela z obrazem drugiej części. To potwierdza, że oba przełączniki naprawdę pomijają swoje linie shadera, a nie mnożą przez coś bliskiego jedynce.
+- **Widoki diagnostyczne.** Widok normalnych i widok UV są identyczne z drugą częścią także wtedy, gdy mgła i winieta są włączone w ustawieniach (wartości startowe). Kopia ustawień w `onRender` działa więc dla obu nowych efektów.
+- **Wydajność.** Release, panele ukryte, **jeden** spokojny przebieg pomiaru:
+
+| Rozdzielczość | Mgła i winieta wyłączone | Mgła i winieta włączone | W czasie klatki |
+|---|---|---|---|
+| 1280 x 720 | około 1900 klatek na sekundę | około 1880 | około 0,526 ms bez, około 0,532 ms z nimi |
+| 2560 x 1440 | około 1158 | około 1145 | około 0,864 ms bez, około 0,873 ms z nimi |
+
+  Różnica to około 1 procent, czyli mniej niż rozrzut, który ten sam pomiar miał w drugiej części. Uczciwy wniosek: koszt obu efektów jest na tej maszynie poniżej tego, co ten pomiar umie pokazać. Zgadza się to z rachunkiem: jeden odczyt tekstury, jedno mnożenie macierzy przez wektor, dwa `exp` i jeden `smoothstep` na piksel, bez żadnego nowego przebiegu. Liczb nie należy zestawiać z tabelą drugiej części wyżej: 1158 klatek w 2560 x 1440 nie mieści się w żadnym z tamtych dwóch zakresów (od 1370 do 1480 bez bloomu, od 880 do 925 z bloomem), więc to inna sesja pomiarowa. Zgłoszenie nie mówi też, czy bloom był przy tym pomiarze włączony. Wersji karty i sterownika nie zapisano. Dla MacBooka nie wynika z nich nic.
+- **Znane ograniczenie, zgłoszone razem z kodem.** Wysokość mgły jest brana w pikselu: z 30 m prosto nad podłogą ziemia ma około 95 procent mgły i labirynt jest prawie zakryty, a wysokie rzeczy oglądane z wnętrza mgły dostają jej za mało (sekcja 2.20). To zachowanie zapisane w komentarzu `KNOWN LIMIT`, nie usterka do naprawienia w tej części.
+- **Wniosek z rachunku, którego nikt nie oglądał na ekranie.** Wąski pas nieba tuż nad horyzontem dostaje przy krawędziach ekranu mniej mgły niż w środku (53 procent wobec 31 do 36 procent na 3 stopniach), więc przy obrocie kamery może się lekko zmieniać (sekcja 2.21). Ściany i ziemia tego nie mają.
+- **Nie sprawdzone:** macOS i wyświetlacz Retina (nic z tej części nie było tam budowane ani uruchamiane), klikanie ośmiu nowych kontrolek i przełączanie zakładek panelu myszą, `Reload shaders` po tej zmianie, zmiana rozmiaru okna z włączoną mgłą. Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 19.
+- **Nie zmierzone:** koszt samej mgły i samej winiety osobno, koszt przy panelu otwartym na zakładce `Fog and vignette`, rzeczywista wysokość ziemi labiryntu względem `baseHeight` (sekcja 2.20), wygląd mgły przy skali wysokości terenu innej niż 1.
 
 ### 5.10 `Bloom.hpp` i `Bloom.cpp`: ustawienia i matematyka bez OpenGL
 
@@ -1861,10 +2505,140 @@ Sprawdzenie reguły "nie czytaj tego, do czego rysujesz" dla wszystkich przebieg
 
 Podglądy pokazują **zawartość celów**, czyli poświatę przed pomnożeniem przez `Intensity`: suwak `Intensity` nie zmienia obrazu `Bloom` w panelu, tak jak suwak `Exposure` nie zmienia obrazu `HDR colour`. Funkcja zostawia związany jeden z własnych framebufferów (`m_bloom` albo `m_bloomPreview`), więc po niej musi nastąpić `composite`. Nagłówek mówi to wprost.
 
+### 5.12 `Fog.hpp` i `Fog.cpp`: ustawienia i wzory mgły bez OpenGL
+
+Nagłówek zaczyna się od zdania, które tłumaczy jego istnienie: "Plain data and math without OpenGL, like the rest of the game_logic library, so tests can use it." i od razu dodaje ostrzeżenie: mgłę dla każdego piksela liczy przebieg składający, który ma te same trzy wzory pod tymi samymi nazwami, i "the two files must agree".
+
+**Po co lustro w C++.** Shadera nie da się uruchomić w teście jednostkowym: program testowy nie tworzy okna ani kontekstu OpenGL. Wzory mgły są za to czystą matematyką, którą łatwo pomylić o znak albo o kolejność mnożenia macierzy. Zapisane drugi raz w C++, w bibliotece `game_logic`, dają trzy rzeczy:
+
+| Co daje | Jak |
+|---|---|
+| testy wzorów | jedenaście przypadków `FogTests.cpp` (sekcja 5.8) sprawdza prawo wykładnicze, współczynnik wysokości i drogę od piksela do świata na macierzach prawdziwej kamery |
+| testy wartości startowych | dwa przypadki pilnują, że startowa mgła nie zakrywa księżyca ani labiryntu |
+| jedno miejsce na ustawienia | `FogSettings` jest zwykłą strukturą: panel ją edytuje, `PostProcess` czyta, test tworzy bez okna |
+
+Czego lustro **nie** daje: gwarancji, że shader liczy to samo. Dwa zapisy trzeba zmieniać razem. To ten sam układ co `Bloom.*` i `blur.frag` (sekcja 5.10), z tą różnicą, że tam C++ liczy wagi **dla** shadera, a tu C++ shaderowi niczego nie liczy: funkcje `fogHeightFactor`, `fogAmount`, `fogAmountAt` i `worldPositionFromDepth` są wołane wyłącznie przez testy. Gra woła z tego pliku tylko konstruktor `FogSettings`.
+
+Ustawienia:
+
+```cpp
+struct FogSettings {
+    bool enabled = true;
+    float density = 0.1F;
+    float baseHeight = 0.5F;
+    float heightFalloff = 0.4F;
+    glm::vec3 color{0.14F, 0.18F, 0.26F};
+};
+```
+
+(Komentarze Doxygen są pominięte, ich treść jest w tabeli i w sekcjach 2.17 do 2.21.)
+
+| Pole | Wartość startowa | Znaczenie | Co mówi komentarz w kodzie |
+|---|---|---|---|
+| `enabled` | `true` | czy przebieg składający miesza mgłę | wyłączona daje dokładnie klatkę bez mgły: tekstura głębi nie jest nawet czytana |
+| `density` | 0,1 na metr | gęstość na wysokości bazowej i pod nią | po `1 / density` metrach 63 procent, po `ln(2) / density` połowa: 10 m i około 6,9 m, trzy i pół komórki |
+| `baseHeight` | 0,5 m | do tej wysokości świata mgła ma pełną gęstość | ziemia labiryntu leży między 0 a około 0,5 m, więc cała podłoga jest w najgęstszej mgle (tej liczby nie sprawdzałem, sekcja 2.20) |
+| `heightFalloff` | 0,4 na metr | jak szybko mgła rzednie nad bazą | gęstość spada o połowę co `ln(2) / heightFalloff`, czyli co około 1,7 m. Szczyty ścian (3 m, czyli 2,5 m nad bazą) stoją w mgle o gęstości około jednej trzeciej (`exp(-1) = 0,37`). 0 daje tę samą gęstość wszędzie |
+| `color` | sRGB (0,14, 0,18, 0,26) | kolor, w który przechodzi powierzchnia | zimny szaroniebieski między światłem otoczenia a światłem księżyca. Liczba sRGB, na liniową przelicza ją `PostProcess`. Na ekranie mgła jest ciemniejsza niż próbka, bo jest mieszana przed ekspozycją i krzywą |
+
+Komentarz nad strukturą mówi, że wartości startowe są częścią wyglądu nocy: cienka mgiełka, która leży w korytarzach i zostawia niebo czyste. Zakresów suwaków w tym pliku nie ma: należą do panelu (sekcja 6.1), bo korzysta z nich tylko panel.
+
+Cztery funkcje, całe ciało pliku `Fog.cpp`:
+
+```cpp
+float fogHeightFactor(float height, float baseHeight, float heightFalloff) {
+    // Below the base the difference is negative: std::max makes it 0, and exp(0) is 1.
+    const float heightAboveBase = std::max(height - baseHeight, 0.0F);
+    return std::exp(-heightFalloff * heightAboveBase);
+}
+
+float fogAmount(float density, float heightFactor, float distance) {
+    // exp(-x) is the share of the light that gets through. The fog takes the rest.
+    return 1.0F - std::exp(-density * heightFactor * distance);
+}
+
+float fogAmountAt(const FogSettings& settings, const glm::vec3& eye, const glm::vec3& point) {
+    const float heightFactor =
+        fogHeightFactor(point.y, settings.baseHeight, settings.heightFalloff);
+    return fogAmount(settings.density, heightFactor, glm::length(point - eye));
+}
+
+glm::vec3 worldPositionFromDepth(const glm::vec2& uv, float depth,
+                                 const glm::mat4& inverseViewProjection) {
+    // Step 1: from 0..1 to -1..1. The fourth component 1 makes it a point.
+    const glm::vec4 ndc{glm::vec3{uv, depth} * 2.0F - 1.0F, 1.0F};
+    // Step 2: back through the projection and the view.
+    const glm::vec4 world = inverseViewProjection * ndc;
+    // Step 3: undo the perspective division.
+    return glm::vec3{world} / world.w;
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `std::max(height - baseHeight, 0.0F)` | odpowiednik `max` z GLSL. Komentarz: pod bazą różnica jest ujemna, `std::max` robi z niej 0, a `exp(0)` to 1 |
+| `std::exp(-heightFalloff * heightAboveBase)` | `std::exp` z `<cmath>` dla `float`. Litera `F` przy liczbach pilnuje, żeby rachunek nie przeszedł po cichu na `double` |
+| `1.0F - std::exp(-density * heightFactor * distance)` | ten sam wzór co w shaderze. Tu parametr może nazywać się `distance` |
+| `fogAmountAt(settings, eye, point)` | złożenie: wysokość `point.y` do współczynnika, `glm::length(point - eye)` jako odległość. To jest dokładnie to, co funkcja `main` shadera robi w jednej linii. Tę funkcję wołają testy wartości startowych |
+| komentarz `KNOWN LIMIT` w nagłówku nad `fogAmountAt` | zapisane ograniczenie: wysokość tylko w miejscu powierzchni, nie wzdłuż promienia. Z góry za dużo mgły, z wnętrza mgły za mało na wysokich rzeczach, dokładna odpowiedź wymaga całki (sekcja 2.20) |
+| `const glm::vec4 ndc{glm::vec3{uv, depth} * 2.0F - 1.0F, 1.0F};` | krok 1: `glm::vec3{uv, depth}` skleja `vec2` i liczbę, tak jak `vec3(uv, depth)` w GLSL. GLM celowo naśladuje składnię GLSL, więc trzy linie funkcji są prawie znak w znak takie jak w shaderze |
+| `const glm::vec4 world = inverseViewProjection * ndc;` | krok 2 |
+| `return glm::vec3{world} / world.w;` | krok 3. `glm::vec3{world}` bierze trzy pierwsze składowe, odpowiednik `world.xyz` |
+
+Plik `Fog.hpp` dołącza tylko `<glm/glm.hpp>`: żadnego OpenGL, żadnego okna.
+
+### 5.13 `Vignette.hpp` i `Vignette.cpp`: ustawienia i wzór winiety bez OpenGL
+
+Ten sam układ co mgła i z tego samego powodu: dane i matematyka w bibliotece `game_logic`, pod testami, a piksele liczy `composite.frag` tym samym wzorem pod tą samą nazwą.
+
+```cpp
+constexpr glm::vec2 SCREEN_CENTER{0.5F, 0.5F};
+
+constexpr float VIGNETTE_CORNER_DISTANCE = 0.70710678F;
+
+struct VignetteSettings {
+    bool enabled = true;
+    float strength = 0.3F;
+    float radius = 0.4F;
+};
+```
+
+(Komentarze Doxygen są pominięte, ich treść jest w tabeli i w sekcji 2.22.)
+
+| Element | Wartość | Znaczenie |
+|---|---|---|
+| `SCREEN_CENTER` | (0,5, 0,5) | środek ekranu jako współrzędna tekstury. `constexpr glm::vec2`: stała czasu kompilacji typu wektorowego |
+| `VIGNETTE_CORNER_DISTANCE` | 0,70710678 | pierwiastek z 0,5, odległość od środka do rogu. Komentarz: ta sama liczba jest w `post/composite.frag`. Zgodność z `sqrt(0,5)` sprawdza pierwszy test |
+| `enabled` | `true` | czy przebieg składający przyciemnia rogi. Wyłączona daje dokładnie klatkę bez winiety |
+| `strength` | 0,3 | jaką część światła tracą rogi: 0 nic, 1 wszystko |
+| `radius` | 0,4 | odległość od środka, we współrzędnych tekstury, od której zaczyna się przyciemnienie. Komentarz: 0,5 to środek krawędzi, więc przy wartości startowej winieta zaczyna się trochę przed krawędziami. Mniejszy promień daje szersze i łagodniejsze przyciemnienie. Musi zostać poniżej `VIGNETTE_CORNER_DISTANCE` |
+
+Komentarz nad strukturą zapisuje wielkimi literami dwie rzeczy, o które można zapytać: odległość jest liczona we współrzędnych tekstury w **obu** kierunkach i winieta **nie** jest poprawiana o proporcje okna.
+
+Funkcja, całe ciało pliku `Vignette.cpp`:
+
+```cpp
+float vignetteFactor(const glm::vec2& uv, float strength, float radius) {
+    const float distance = glm::length(uv - SCREEN_CENTER);
+    // smoothstep is 0 up to the radius, 1 from the corner distance on, and in between
+    // an S shaped curve (3t^2 - 2t^3) without a visible start or end.
+    const float darkening = glm::smoothstep(radius, VIGNETTE_CORNER_DISTANCE, distance);
+    return 1.0F - strength * darkening;
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `glm::length(uv - SCREEN_CENTER)` | odległość od środka. Zmienna może się tu nazywać `distance`, w shaderze nazywa się `distanceToCenter` |
+| `glm::smoothstep(radius, VIGNETTE_CORNER_DISTANCE, distance)` | ta sama funkcja co w GLSL. Komentarz podaje jej wielomian: `3t^2 - 2t^3`, krzywa S bez widocznego początku i końca |
+| `return 1.0F - strength * darkening;` | od 1 w środku do `1 - strength` w rogu |
+
+Tej funkcji, tak jak czterech funkcji mgły, gra nie woła: służy testom. Warunek z komentarza przy `radius` (poniżej odległości do rogu) nie jest w funkcji sprawdzany. Pilnują go dwa miejsca: górna granica suwaka `MAX_VIGNETTE_RADIUS = 0.65` w panelu i `CHECK` w teście wartości startowych.
+
 
 ## 6. Panel ImGui
 
-Panel **Framebuffers** rysuje funkcja `debug::drawFramebuffersPanel` z [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp). To jedenasty panel interfejsu debugowania. Druga część M7 nie dodała panelu: kontrolki i obrazy bloomu doszły do tego samego. Jego miejsce wśród pozostałych i mechanikę paneli opisuje [`../debug-ui.md`](../debug-ui.md).
+Panel **Framebuffers** rysuje funkcja `debug::drawFramebuffersPanel` z [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp). To jedenasty panel interfejsu debugowania. Druga część M7 nie dodała panelu: kontrolki i obrazy bloomu doszły do tego samego. Trzecia też nie: osiem kontrolek mgły i winiety stanęło w tym samym panelu, a żeby nie urósł, kontrolki są od tej części podzielone na **dwie zakładki** (tabs): `Tone and bloom` i `Fog and vignette`. Linie informacyjne i cztery obrazy pod zakładkami się nie zmieniły. Jego miejsce wśród pozostałych i mechanikę paneli opisuje [`../debug-ui.md`](../debug-ui.md).
 
 ### 6.1 Kod panelu
 
@@ -1885,6 +2659,21 @@ constexpr float MAX_BLOOM_INTENSITY = 2.0F;
 constexpr float MIN_DEPTH_RANGE = 2.0F;
 constexpr float MAX_DEPTH_RANGE = 100.0F;
 
+constexpr float MIN_FOG_DENSITY = 0.0F;
+constexpr float MAX_FOG_DENSITY = 0.5F;
+
+constexpr float MIN_FOG_BASE_HEIGHT = -2.0F;
+constexpr float MAX_FOG_BASE_HEIGHT = 6.0F;
+
+constexpr float MIN_FOG_HEIGHT_FALLOFF = 0.0F;
+constexpr float MAX_FOG_HEIGHT_FALLOFF = 3.0F;
+
+constexpr float MIN_VIGNETTE_STRENGTH = 0.0F;
+constexpr float MAX_VIGNETTE_STRENGTH = 1.0F;
+
+constexpr float MIN_VIGNETTE_RADIUS = 0.0F;
+constexpr float MAX_VIGNETTE_RADIUS = 0.65F;
+
 constexpr int SETTING_COLUMNS = 2;
 
 constexpr float PREVIEW_COLUMNS = 4.0F;
@@ -1894,13 +2683,23 @@ Wpisy listy stoją w jednym napisie, każdy zakończony znakiem zera: tak chce `
 
 Zakresy suwaków bloomu należą do panelu, nie do `Bloom.hpp`: to granice wygody, a nie granice poprawności. Próg 0 znaczy, że w bloomie bierze udział cały obraz. Komentarz przy górnej granicy 4 mówi, że leży ona powyżej wszystkiego, co scena rysuje przy domyślnych światłach, więc tam bloom nic nie znajduje. Tego zdania nie sprawdzałem: z rachunku w sekcji 2.15 składnik emisyjny kryształu ma jasność do 2,455, ale to liczba sprzed mnożenia przez teksturę i bez światła latarki. Zakres liczby iteracji jest inaczej: to stałe `game::MIN_BLOOM_BLUR_ITERATIONS` i `MAX_BLOOM_BLUR_ITERATIONS` z `Bloom.hpp`, bo tych samych liczb używa `drawBloom`.
 
-Kontrolki stoją od drugiej części M7 w osobnej funkcji, w tabeli o dwóch kolumnach:
+Dziesięć stałych mgły i winiety (trzecia część M7) to też granice wygody i też należą do panelu. Komentarze przy nich mówią, co znaczą końce:
+
+| Suwak | Zakres | Co mówi komentarz przy stałych | Sprawdzenie |
+|---|---|---|---|
+| `Density` | 0 do 0,5 na metr | 0 to brak mgły. Na górnym końcu połowa powierzchni znika po 1,4 m: labiryntu prawie nie widać | `ln(2) / 0,5 = 1,39` m, zgadza się |
+| `Base height` | -2 do 6 m | od poniżej najniższej ziemi do ponad szczyty ścian | ściany mają 3 m. Najniższej ziemi nie mierzyłem |
+| `Height falloff` | 0 do 3 na metr | 0 daje tę samą gęstość na każdej wysokości. Na górnym końcu mgła jest warstwą grubości około metra | przy 3 na metr metr nad bazą zostaje `exp(-3) = 0,05` gęstości, zgadza się |
+| `Strength` | 0 do 1 | część światła, którą tracą rogi | cały sensowny zakres wzoru |
+| `Radius` | 0 do 0,65 | górny koniec zostaje poniżej odległości do rogu (`game::VIGNETTE_CORNER_DISTANCE`): przyciemnienie potrzebuje miejsca, żeby narosnąć | `0,65 < 0,7071`. To jedyna z tych granic, która jest też granicą **poprawności**: `smoothstep` z pierwszą krawędzią nie mniejszą od drugiej jest nieokreślony (pułapka 32) |
+
+Kontrolki stoją od drugiej części M7 w osobnej funkcji, w tabeli o dwóch kolumnach. W trzeciej części ta funkcja zmieniła nazwę z `drawSettings` na `drawToneAndBloomSettings` i rysuje zawartość pierwszej zakładki. Jej ciało się nie zmieniło poza identyfikatorem tabeli i jednym tekstem podpowiedzi:
 
 ```cpp
-void drawSettings(game::PostProcessSettings& settings) {
+void drawToneAndBloomSettings(game::PostProcessSettings& settings) {
     // BeginTable returns false when no part of the table can be seen (it is scrolled out
     // of the panel). Nothing is drawn then, and EndTable must not be called.
-    if (!ImGui::BeginTable("settings", SETTING_COLUMNS)) {
+    if (!ImGui::BeginTable("tone and bloom", SETTING_COLUMNS)) {
         return;
     }
 
@@ -1937,13 +2736,13 @@ void drawSettings(game::PostProcessSettings& settings) {
 }
 ```
 
-(Siedem wywołań `ImGui::SetItemTooltip`, po jednym za każdą kontrolką, jest tu pominiętych. Ich teksty są w tabeli sekcji 6.3.)
+(Siedem wywołań `ImGui::SetItemTooltip`, po jednym za każdą kontrolką, jest tu pominiętych. Ich teksty są w tabeli sekcji 6.3. Podpowiedź listy `Tone mapping` kończy się od trzeciej części słowami `without exposure, tone mapping, bloom, fog and vignette.`)
 
 | Linia | Znaczenie |
 |---|---|
-| `ImGui::BeginTable("settings", SETTING_COLUMNS)` | tabela ImGui o dwóch kolumnach. Zwraca fałsz, gdy żadna jej część nie jest widoczna, i wtedy **nie wolno** wołać `EndTable`: stąd wczesny `return`. To inna umowa niż przy `Begin` i `End` okna, gdzie `End` woła się zawsze |
+| `ImGui::BeginTable("tone and bloom", SETTING_COLUMNS)` | tabela ImGui o dwóch kolumnach. Napis jest identyfikatorem tabeli, nie podpisem: do drugiej części brzmiał `"settings"`, a dziś tę nazwę nosi pasek zakładek. Zwraca fałsz, gdy żadna jej część nie jest widoczna, i wtedy **nie wolno** wołać `EndTable`: stąd wczesny `return`. To inna umowa niż przy `Begin` i `End` okna, gdzie `End` woła się zawsze |
 | `ImGui::TableNextColumn()` | przejście do następnej komórki, a z ostatniej komórki wiersza do pierwszej komórki nowego wiersza. Siedem kontrolek wypełnia więc tabelę wierszami: `Exposure` i `Tone mapping`, `Bloom` i `Blur iterations`, `Threshold` i `Intensity`, `Depth range` i pusta komórka |
-| po co tabela | komentarz przy `SETTING_COLUMNS`: żeby panel był na tyle krótki, że cztery obrazy mieszczą się pod kontrolkami bez przewijania. Wysokość panelu (`FRAMEBUFFERS_HEIGHT = 344` w `PanelLayout.hpp`) nie zmieniła się w tej części |
+| po co tabela | komentarz przy `SETTING_COLUMNS`: żeby panel był na tyle krótki, że cztery obrazy mieszczą się pod kontrolkami bez przewijania. Wysokość panelu (`FRAMEBUFFERS_HEIGHT = 344` w `PanelLayout.hpp`) nie zmieniła się ani w drugiej, ani w trzeciej części |
 | `ImGuiSliderFlags_Logarithmic` | suwak ekspozycji w skali logarytmicznej (sekcja 2.5). `AlwaysClamp` trzyma w zakresie także wartość wpisaną z klawiatury |
 | `int toneMappingIndex = static_cast<int>(...)` i rzutowanie z powrotem | `Combo` pracuje na `int`, a pole jest `enum class`. `Combo` zwraca prawdę tylko w klatce, w której wybór się zmienił |
 | `game::BloomSettings& bloom = settings.bloom;` | krótsza nazwa dla czterech następnych kontrolek. Referencja, więc kontrolki piszą do prawdziwych ustawień |
@@ -1951,6 +2750,87 @@ void drawSettings(game::PostProcessSettings& settings) {
 | `ImGui::SliderInt("Blur iterations", ...)` | suwak liczb całkowitych, format `"%d"`. Granice z `Bloom.hpp` |
 | `SliderFloat("Threshold", ...)`, `SliderFloat("Intensity", ...)` | zwykłe suwaki liniowe, dwa miejsca po przecinku |
 | `SliderFloat("Depth range", ...)` | ten sam suwak co w pierwszej części, przeniesiony z miejsca pod linią informacyjną do tabeli |
+
+Druga zakładka i pasek zakładek (trzecia część M7):
+
+```cpp
+void drawFogAndVignetteSettings(game::PostProcessSettings& settings) {
+    if (!ImGui::BeginTable("fog and vignette", SETTING_COLUMNS)) {
+        return;
+    }
+
+    game::FogSettings& fog = settings.fog;
+    ImGui::TableNextColumn();
+    ImGui::Checkbox("Fog", &fog.enabled);
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Density", &fog.density, MIN_FOG_DENSITY, MAX_FOG_DENSITY, "%.3f /m",
+                       ImGuiSliderFlags_AlwaysClamp);
+
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Base height", &fog.baseHeight, MIN_FOG_BASE_HEIGHT, MAX_FOG_BASE_HEIGHT,
+                       "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Height falloff", &fog.heightFalloff, MIN_FOG_HEIGHT_FALLOFF,
+                       MAX_FOG_HEIGHT_FALLOFF, "%.2f /m", ImGuiSliderFlags_AlwaysClamp);
+
+    ImGui::TableNextColumn();
+    // &fog.color.x is the address of the first of the three floats of the vector, which
+    // lie next to each other: the array of three floats ImGui asks for.
+    ImGui::ColorEdit3("Fog colour", &fog.color.x);
+    game::VignetteSettings& vignette = settings.vignette;
+    ImGui::TableNextColumn();
+    ImGui::Checkbox("Vignette", &vignette.enabled);
+
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Strength", &vignette.strength, MIN_VIGNETTE_STRENGTH, MAX_VIGNETTE_STRENGTH,
+                       "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Radius", &vignette.radius, MIN_VIGNETTE_RADIUS, MAX_VIGNETTE_RADIUS, "%.2f",
+                       ImGuiSliderFlags_AlwaysClamp);
+
+    ImGui::EndTable();
+}
+
+// The settings, in two tabs so that the panel stays short enough to show the pictures
+// under them without scrolling: both tabs have four rows of widgets.
+void drawSettings(game::PostProcessSettings& settings) {
+    // BeginTabBar returns false when the bar cannot be seen. EndTabBar must not be
+    // called then. BeginTabItem returns true for the tab that is selected, and only
+    // that one draws its widgets.
+    if (!ImGui::BeginTabBar("settings")) {
+        return;
+    }
+    if (ImGui::BeginTabItem("Tone and bloom")) {
+        drawToneAndBloomSettings(settings);
+        ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Fog and vignette")) {
+        drawFogAndVignetteSettings(settings);
+        ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+}
+```
+
+(Osiem wywołań `ImGui::SetItemTooltip`, po jednym za każdą kontrolką drugiej zakładki, jest tu pominiętych. Ich teksty są w tabeli sekcji 6.3.)
+
+| Linia | Znaczenie |
+|---|---|
+| `ImGui::BeginTable("fog and vignette", SETTING_COLUMNS)` | druga tabela o dwóch kolumnach, z własnym identyfikatorem. Ta sama umowa: fałsz znaczy "nie rysuj i nie wołaj `EndTable`" |
+| kolejność komórek | wierszami: `Fog` i `Density`, `Base height` i `Height falloff`, `Fog colour` i `Vignette`, `Strength` i `Radius`. Cztery wiersze, tyle samo co na pierwszej zakładce (tam ostatnia komórka jest pusta) |
+| `game::FogSettings& fog = settings.fog;` | krótsza nazwa dla pięciu kontrolek mgły. Referencja, więc kontrolki piszą do prawdziwych ustawień |
+| `"%.3f /m"` przy `Density` | trzy miejsca po przecinku, bo cały zakres to 0 do 0,5, a wartość startowa 0,100. Jednostka `/m` jest częścią formatu: suwak pokazuje `0.100 /m` |
+| `"%.2f m"` i `"%.2f /m"` | wysokość w metrach, spadek na metr. Jednostki w suwaku przypominają, że to liczby w metrach świata |
+| `ImGuiSliderFlags_AlwaysClamp` na każdym suwaku | wartość wpisana z klawiatury (Ctrl i kliknięcie) też zostaje w zakresie. Dla `Radius` to zabezpieczenie poprawności, nie tylko wygody |
+| `ImGui::ColorEdit3("Fog colour", &fog.color.x);` | próbnik koloru: pisze trzy liczby `float` przez wskaźnik. Komentarz tłumaczy `&fog.color.x`: trzy składowe `glm::vec3` leżą w pamięci obok siebie, więc adres pierwszej jest adresem tablicy trzech liczb, o którą prosi ImGui. Panel Lights robi to samo przez `glm::value_ptr`, które zwraca ten sam adres, a panel Renderer przez `clearColor.data()`, bo tam kolor jest tablicą `std::array` |
+| próbnik pokazuje i zapisuje liczby **sRGB** | ImGui nie wie nic o przestrzeniach kolorów: to, co widać w próbce, trafia do `FogSettings::color` bez zmian, a na wartości liniowe przelicza je dopiero `composite` (sekcja 5.6) |
+| `game::VignetteSettings& vignette = settings.vignette;` w środku tabeli | deklaracja tuż przed pierwszym użyciem. W jednej tabeli stoją kontrolki dwóch efektów, bo razem dają dokładnie osiem komórek |
+| `ImGui::BeginTabBar("settings")` | pasek zakładek. Zwraca fałsz, gdy paska nie widać, i wtedy **nie wolno** wołać `EndTabBar`: ta sama umowa co `BeginTable`, inna niż `Begin` i `End` okna. To pierwsze użycie zakładek w interfejsie debugowania gry |
+| `if (ImGui::BeginTabItem("Tone and bloom")) { ... ImGui::EndTabItem(); }` | `BeginTabItem` rysuje zakładkę zawsze, a prawdę zwraca tylko dla **wybranej**. `EndTabItem` woła się tylko po prawdzie. Skutek: w jednej klatce biegnie kod jednej zakładki, a kontrolki drugiej nie istnieją |
+| która zakładka jest otwarta przy starcie | pierwsza, `Tone and bloom`: ImGui wybiera pierwszą zakładkę paska, dopóki użytkownik nie kliknie innej. Wybór żyje w ImGui, nie w ustawieniach gry |
+| komentarz nad `drawSettings` | powód zakładek: panel ma zostać na tyle krótki, żeby obrazy mieściły się pod kontrolkami bez przewijania. Piętnaście kontrolek w jednej tabeli dałoby osiem wierszy zamiast czterech |
+
+Ukrycie kontrolek na niewybranej zakładce **nie wyłącza efektu**: mgła działa tak samo, gdy otwarta jest zakładka `Tone and bloom`, i tak samo, gdy cały panel jest zwinięty. Zakładki dzielą tylko widok ustawień.
 
 Funkcja panelu:
 
@@ -2007,7 +2887,7 @@ void drawFramebuffersPanel(game::PostProcessSettings& settings,
 | `placePanelOnFirstUse(FRAMEBUFFERS_PLACEMENT)` | tylko przy pierwszym uruchomieniu (bez `imgui.ini`): panel startuje **zwinięty**, w trzecim rzędzie belek tytułowych u góry okna |
 | `const bool open = ImGui::Begin("Framebuffers");` | `Begin` zwraca fałsz dla zwiniętego panelu |
 | `settings.previews = open;` | protokół podglądów, sekcja 6.2 |
-| `drawSettings(settings);` | wszystkie kontrolki, w tabeli |
+| `drawSettings(settings);` | wszystkie kontrolki: pasek z dwiema zakładkami, na każdej tabela |
 | `ImGui::Text("Scene framebuffer: ...")` | linia informacyjna: rozmiar i formaty bufora sceny, na przykład `1280 x 720 px, GL_RGBA16F + GL_DEPTH_COMPONENT24`. Przed pierwszą udaną klatką pokazałaby `0 x 0 px, none + none` |
 | `ImGui::Text("Bloom targets (3): ...")` | druga linia informacyjna, na przykład `Bloom targets (3): 640 x 360 px, GL_RGBA16F`. Rozmiar i format czytane z `m_bloom`, a trzy cele są takie same. Liczba 3 jest wpisana w napis |
 | gałąź `else` | `Bloom targets: not drawn (bloom off or a debug view)`: gdy `bloomDrawn()` jest fałszem. Bez tego panel pokazywałby rozmiar celów, które w tej klatce nie były odświeżane |
@@ -2078,12 +2958,21 @@ Podglądy bloomu mają drugi warunek, niezależny od flagi: `bloomDrawn()`. Pane
 | Framebuffers | suwak `Threshold`, 0 do 4, startowo 0,80 | `uThreshold` | przy 0 świeci cały obraz i scena robi się mleczna. Przy 2 zostają tylko najjaśniejsze miejsca. Obraz `Bright pass` pokazuje na żywo, co przechodzi przez próg |
 | Framebuffers | suwak `Intensity`, 0 do 2, startowo 1,00 | `uBloomIntensity` | zmienia obraz w oknie, ale **nie** obraz `Bloom` w panelu: podgląd pokazuje cel przed mnożeniem. Przy 0 obraz w oknie jest taki sam jak z odznaczonym polem `Bloom`, tylko przebiegi nadal są rysowane |
 | Framebuffers | suwak `Depth range`, 2 do 100 m, startowo 15 m | `uDepthRange` | przy 100 m prawie cały labirynt jest czarny: tak mała część zakresu kamery jest naprawdę używana |
+| Framebuffers | zakładki `Tone and bloom` i `Fog and vignette` (trzecia część M7) | nic w grze: tylko to, które kontrolki widać | siedem kontrolek wyżej stoi na pierwszej zakładce, osiem niżej na drugiej. Linie i obrazy pod zakładkami są wspólne |
+| Framebuffers, zakładka `Fog and vignette` | pole `Fog`, startowo zaznaczone (podpowiedź: `Far and low surfaces fade into the fog colour. Computed in the composite pass from the depth of the scene. The debug views (normals, UVs) are shown without it.`) | `FogSettings::enabled`, przez nie `uFogEnabled` | "przed i po": odznaczone daje dokładnie klatkę bez mgły. Koniec długiego korytarza odzyskuje kontrast, horyzont robi się ostry. Obrazy `HDR colour` i `Depth` w panelu **nie zmieniają się**: mgła nie jest zapisywana do bufora sceny, a głębię tylko czyta |
+| Framebuffers, zakładka `Fog and vignette` | suwak `Density`, 0 do 0,5, startowo `0.100 /m` (podpowiedź: `Fog: amount = 1 - exp(-density * height factor * distance). At 0.1, half of a surface on the ground is gone after 6.9 m.`) | `uFogDensity` | przy 0 mgły nie ma, choć pole `Fog` jest zaznaczone. Przy 0,5 widać najwyżej dwie komórki. Prawo wykładnicze na żywo: podwojenie gęstości skraca o połowę odległość, po której ginie połowa ściany |
+| Framebuffers, zakładka `Fog and vignette` | suwak `Base height`, -2 do 6 m, startowo `0.50 m` (podpowiedź: `Fog: up to this world height the fog has its full density. The ground of the maze lies between 0 and 0.5 m.`) | `uFogBaseHeight` | przy -2 cała scena jest ponad bazą i mgła rzednie już od ziemi. Przy 6 także szczyty ścian toną w pełnej gęstości, a pas mgły na niebie idzie w górę |
+| Framebuffers, zakładka `Fog and vignette` | suwak `Height falloff`, 0 do 3, startowo `0.40 /m` (podpowiedź: `Fog: how fast it thins out above the base height: height factor = exp(-falloff * metres above the base). 0 gives the same fog at every height, the sky included.`) | `uFogHeightFalloff` | przy 0 **znika niebo**: punkt 100 m dalej ma prawie 100 procent mgły na każdej wysokości. To najlepszy dowód, że nieba nie chroni osobny warunek, tylko wysokość. Przy 3 mgła jest cienkim dywanem przy ziemi |
+| Framebuffers, zakładka `Fog and vignette` | próbnik `Fog colour`, startowo sRGB (0,14, 0,18, 0,26) (podpowiedź: `The colour surfaces fade into, as an sRGB value. It is mixed in before exposure and tone mapping, so on the screen the fog is darker than this swatch.`) | `FogSettings::color`, po przeliczeniu `uFogColor` | jaskrawa czerwień pokazuje od razu, gdzie mgła jest i ile jej jest: daleka ziemia czerwona, szczyty ścian mniej, księżyc wcale. Kolor w dali jest ciemniejszy niż próbka (sekcja 2.21) |
+| Framebuffers, zakładka `Fog and vignette` | pole `Vignette`, startowo zaznaczone (podpowiedź: `The corners of the finished picture are darkened, after tone mapping. The debug views (normals, UVs) are shown without it.`) | `VignetteSettings::enabled`, przez nie `uVignetteEnabled` | przy wartościach startowych różnica jest mała i najlepiej widać ją w rogach na tle nieba. Odznaczone daje dokładnie klatkę bez winiety |
+| Framebuffers, zakładka `Fog and vignette` | suwak `Strength`, 0 do 1, startowo `0.30` (podpowiedź: `Vignette: the share of the light the corners lose. 0 changes nothing, 1 makes them black.`) | `uVignetteStrength` | przy 1 rogi są czarne i widać kształt całej funkcji: gdzie się zaczyna i jak gładko narasta |
+| Framebuffers, zakładka `Fog and vignette` | suwak `Radius`, 0 do 0,65, startowo `0.40` (podpowiedź: `Vignette: the distance from the middle of the screen at which the darkening starts. 0.5 is the middle of an edge, 0.71 a corner. Not corrected for the shape of the window.`) | `uVignetteRadius` | przy 0 przyciemnienie zaczyna się w samym środku. Przy 0,65 zostaje wąski, stromy pas tuż przy rogach. Z siłą 1 i zmienianym kształtem okna widać elipsę zamiast koła |
 | Framebuffers | linia `Bloom targets (3): ...` | nic, tylko odczyt | połowa rozmiaru sceny w każdym kierunku, ten sam format `GL_RGBA16F`. Zmienia się razem z oknem |
-| Framebuffers | obraz `HDR colour` (podpowiedź: `The colour attachment of the scene, cut off at 1.`) | nic | zawartość bufora przed bloomem, ekspozycją i krzywą. Zmiana suwaka `Exposure` **nie** zmienia tego obrazu. Poświaty na nim nie ma: bloom nie jest zapisywany do bufora sceny |
-| Framebuffers | obraz `Depth` (podpowiedź: `The depth attachment of the scene, as a distance.`) | nic | głębia jako odległość: bliskie ściany ciemne, dalekie jasne, niebo białe |
+| Framebuffers | obraz `HDR colour` (podpowiedź: `The colour attachment of the scene, cut off at 1.`) | nic | zawartość bufora przed mgłą, bloomem, ekspozycją, krzywą i winietą. Zmiana suwaka `Exposure` **nie** zmienia tego obrazu. Poświaty, mgły ani winiety na nim nie ma: żadna z tych rzeczy nie jest zapisywana do bufora sceny |
+| Framebuffers | obraz `Depth` (podpowiedź: `The depth attachment of the scene, as a distance.`) | nic | głębia jako odległość: bliskie ściany ciemne, dalekie jasne, niebo białe. Od trzeciej części to jest też **wejście mgły**: obraz pokazuje te same dane, z których mgła liczy pozycję, tylko przeliczone inaczej (odległość od płaszczyzny kamery, sekcja 2.10) |
 | Framebuffers | obraz `Bright pass` (podpowiedź: `What the scene has above the bloom threshold.`) | nic | czarny obraz z kilkoma jasnymi plamami: kryształy, tarcza księżyca. Ostre krawędzie, bo to stan **przed** rozmyciem. Dowód, że trzeci cel nie jest zamazywany |
 | Framebuffers | obraz `Bloom` (podpowiedź: `The bright pass after the blur, before the intensity.`) | nic | te same plamy rozlane w miękkie koła. To jest dokładnie to, co przebieg składający dodaje do sceny (razy `Intensity`) |
-| Assets | lista `View` | widok diagnostyczny | po przełączeniu na normalne albo UV suwak `Exposure`, lista `Tone mapping` i kontrolki bloomu przestają wpływać na obraz, a obrazy bloomu pokazują `(not drawn)` (sekcja 2.9) |
+| Assets | lista `View` | widok diagnostyczny | po przełączeniu na normalne albo UV suwak `Exposure`, lista `Tone mapping`, kontrolki bloomu i wszystkie kontrolki zakładki `Fog and vignette` przestają wpływać na obraz, a obrazy bloomu pokazują `(not drawn)` (sekcja 2.9) |
 | Shaders | `Reload shaders` | przeładowanie dziesięciu programów | cztery ostatnie linie listy to programy `composite`, `preview`, `bright` i `blur`, wszystkie z plikiem `composite.vert` |
 
 ### 6.4 Scenariusz pokazu na obronie
@@ -2099,9 +2988,16 @@ Podglądy bloomu mają drugi warunek, niezależny od flagi: `bloomDrawn()`. Pane
 9. **Próg.** Przesuwam `Threshold` na 0,3: w obrazie `Bright pass` pojawiają się ściany w świetle latarki i niebo, scena robi się mleczna. Na 2: zostaje sam środek kryształu. Wracam na 0,8 i tłumaczę wzór z udziałem jasności (sekcja 2.12).
 10. **Iteracje.** `Blur iterations` z 6 na 1 i na 10. Mówię, ile to przebiegów (2 i 20) i dlaczego szerokość rośnie jak pierwiastek.
 11. **Widok danych.** W panelu Assets wybieram widok normalnych. Ruszam `Exposure`: obraz się nie zmienia. Obrazy bloomu pokazują `(not drawn)`. Wracam do `Textured`.
-12. **Kod.** Otwieram `composite.frag`: pięć kroków w komentarzu funkcji `main`, linia z `+=` dla bloomu i ostatnia linia z `linearToSrgb`. Potem `bright.frag` (jedna linia wzoru) i `blur.frag` (pętla z trzynastoma odczytami).
+12. **Mgła, przed i po.** Staję na początku długiego korytarza. Przechodzę na zakładkę `Fog and vignette` i odznaczam `Fog`: koniec korytarza robi się wyraźny, horyzont ostry. Zaznaczam z powrotem.
+13. **Mgła zależy od odległości, nie od kierunku.** Staję przed ścianą kilka metrów dalej i obracam się w miejscu: mgła na ścianie się nie zmienia. Mówię, co by się stało, gdyby odległością była głębia (sekcja 2.18), i pokazuję obraz `Depth` jako dane wejściowe.
+14. **Mgła leży nisko.** Ustawiam `Fog colour` na jaskrawą czerwień: ziemia w dali jest czerwona, szczyty ścian mniej, księżyc wcale. Przesuwam `Height falloff` do 0: niebo znika w czerwieni. Wracam na 0,40 i tłumaczę, że nieba nie chroni żaden `if`, tylko wysokość punktu na płaszczyźnie dalekiej (sekcja 2.21).
+15. **Znane ograniczenie, pokazane wprost.** Klawisz N, lot w górę nad labirynt, spojrzenie w dół: labirynt prawie znika. Mówię dlaczego (wysokość brana w pikselu, sekcja 2.20) i jak wyglądałaby wersja z całką. Wracam na ziemię, przywracam kolor mgły.
+16. **Kryształ we mgle.** Staję daleko od kryształu: bryła blednie, poświata zostaje. Odznaczam `Bloom`: poświata znika i zostaje sama zamglona bryła. Mówię, że bloom jest liczony ze sceny bez mgły.
+17. **Winieta.** `Strength` na 1: czarne rogi, jasna elipsa. Zwężam okno: elipsa zmienia kształt razem z oknem, rogi zostają czarne. Wracam na 0,30 i odznaczam `Vignette` dla porównania.
+18. **Widok danych jeszcze raz.** Widok normalnych: ani mgły, ani winiety, chociaż oba pola są zaznaczone.
+19. **Kod.** Otwieram `composite.frag`: siedem kroków w komentarzu funkcji `main`, cztery linie mgły z `mix`, linia z `+=` dla bloomu, linia winiety i ostatnia linia z `linearToSrgb`. Nad `main` trzy linie `worldPositionFromDepth`. Potem `bright.frag` (jedna linia wzoru) i `blur.frag` (pętla z trzynastoma odczytami). Na koniec `Fog.cpp`: te same wzory w C++ i test, który je sprawdza.
 
-Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0,3 i 2,0 są zgłoszone, ale były robione bez klikania.
+Kroków od 7 do 10 i od 12 do 18 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0,3 i 2,0 są zgłoszone, ale były robione bez klikania, a z trzeciej części zgłoszone są tylko porównania obrazu i liczby klatek. To, co piszę w krokach 12 do 18 o wyglądzie, wynika z kodu i z rachunku.
 
 ## 7. Pułapki
 
@@ -2109,7 +3005,7 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
 2. **Czytanie tekstury, do której się rysuje.** Pętla zwrotna, wynik niezdefiniowany. W `drawPreviews` i w `drawBloom` cel jest zmieniany **przed** związaniem tekstury źródłowej. Każdy przebieg, który czyta scenę, ma własny framebuffer. Wersja tej pułapki dla rozmycia to punkt 18.
 3. **Podwójne kodowanie.** `linearToSrgb` w shaderze i włączone `GL_FRAMEBUFFER_SRGB` na oknie sRGB dają obraz zakodowany dwa razy: wyblakły, bez czerni. Stąd jawne `glDisable` w `composite`.
 4. **Kodowanie przed krzywą albo ekspozycja po kodowaniu.** Kolejność jest sztywna: ekspozycja, krzywa, kodowanie. Każda inna daje obraz, który "jakoś wygląda", ale suwaki przestają znaczyć to, co znaczą.
-5. **Brak `clamp` we wzorze ACES.** Granica wzoru to 1,033. Bez przycięcia najjaśniejsze piksele wyszłyby poza zakres. W tej grze dalej jest `linearToSrgb`, które też przycina, więc błąd byłby niewidoczny, dopóki ktoś nie dopisze kroku między krzywą a kodowaniem (winieta).
+5. **Brak `clamp` we wzorze ACES.** Granica wzoru to 1,033. Bez przycięcia najjaśniejsze piksele wyszłyby poza zakres. W tej grze dalej jest `linearToSrgb`, które też przycina, więc w pierwszych dwóch częściach M7 błąd byłby niewidoczny. Od trzeciej części między krzywą a kodowaniem stoi winieta: bez `clamp` dostałaby w najjaśniejszych pikselach wartość 1,033 i rogi z bardzo jasnym światłem byłyby przyciemniane o 3 procent słabiej, niż mówi suwak.
 6. **Krzywe na kanał zmieniają barwę.** Bardzo jasny nasycony kolor bieleje (sekcja 2.6). To własność metody.
 7. **Test głębi zostaje wyłączony.** Po `composite`, po `drawPreviews` i po `drawBloom` `GL_DEPTH_TEST` jest wyłączony. Kod sceny, który polegałby na tym, że ktoś go wcześniej włączył, rysowałby ściany w kolejności wywołań. `onRender` włącza test w każdej klatce.
 8. **Bufor głębi okna nie jest czyszczony.** Nikt już nie woła `glClear` z oknem jako celem. Cokolwiek narysowane do okna z włączonym testem głębi porównywałoby się z przypadkową zawartością.
@@ -2120,7 +3016,7 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
 13. **Wspólny shader wierzchołków.** `composite.vert` należy do czterech programów. Błąd w tym pliku psuje przy przeładowaniu wszystkie cztery naraz: okno zostaje z ostatnią klatką, a bloom i podglądy znikają.
 14. **Liczby wyliczenia a shader.** `ToneMapping` i `AttachmentPreview` są przekazywane jako `int`. Wpis dopisany w środku wyliczenia bez zmiany `if` w shaderze i napisu `TONE_MAPPING_ITEMS` wybierałby po cichu inną krzywą. Żaden test tego nie pilnuje.
 15. **Płaszczyzny kamery w podglądzie głębi.** `uNear` i `uFar` muszą być tymi, którymi narysowano scenę. Inne wartości dają złe metry bez żadnego błędu.
-16. **Znane ograniczenia.** Bufor sceny ma pełną rozdzielczość okna, w połowie rozdzielczości pracuje tylko bloom. Framebuffer ma jeden załącznik koloru. Ekspozycja jest ręczna. Kolory `Kd` materiałów nie są przeliczane z sRGB (wszystkie modele gry mają `Kd` białe, więc różnicy nie ma). Mgły, winiety, minimapy i cieni nie ma.
+16. **Znane ograniczenia.** Bufor sceny ma pełną rozdzielczość okna, w połowie rozdzielczości pracuje tylko bloom. Framebuffer ma jeden załącznik koloru. Ekspozycja jest ręczna. Kolory `Kd` materiałów nie są przeliczane z sRGB (wszystkie modele gry mają `Kd` białe, więc różnicy nie ma). Minimapy i cieni nie ma. Mgła bierze wysokość tylko w pikselu, a jej kolor jest stałą, która nie reaguje na światła (punkty 35 i 39).
 17. **Bloom na wartościach LDR.** Jeśli scena jest obcięta do 1, zanim trafi do przebiegu jasności (bufor 8-bitowy, bloom policzony po mapowaniu tonów albo cele bloomu w `GL_RGBA8`), próg nie odróżnia kryształu od białej ściany: obie mają 1 (tabela w sekcji 2.11). Świeci wtedy wszystko, co jasne, tak samo mocno. W tym kodzie pilnują tego trzy rzeczy: scena w `GL_RGBA16F`, cele bloomu w `GL_RGBA16F` i miejsce bloomu przed ekspozycją i krzywą.
 18. **Rozmycie, które czyta i pisze tę samą teksturę.** Kusząca "optymalizacja": jeden cel i rozmycie w miejscu. Wynik jest niezdefiniowany: część pikseli byłaby czytana już po zapisie, część przed, zależnie od karty. Stąd dwa cele i ping-pong (sekcja 2.14). Pokrewny błąd: pomylenie kolejności `bind()` i `bindColorTexture()` albo zamiana `source` na zły cel w pętli. `GL_CHECK` tego nie złapie, bo OpenGL nie zgłasza pętli zwrotnej jako błędu.
 19. **Próg w złej przestrzeni kolorów.** Wagi Rec. 709 i próg 0,8 mają sens dla wartości **liniowych**. Policzenie jasności z liczb zakodowanych w sRGB daje inną liczbę: liniowe 0,8 to w sRGB 0,91, a szarość zakodowana jako 0,8 ma liniowo tylko 0,60. Próg ustawiony "na oko" na obrazie sRGB przepuszczałby więc dużo więcej. Druga wersja tego błędu: zakodowanie wyniku przebiegu jasności przez `linearToSrgb` "żeby podgląd wyglądał dobrze". Kodowanie należy do `preview.frag` i `composite.frag`, a cele bloomu zostają liniowe.
@@ -2131,10 +3027,24 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
 24. **Liczba iteracji bez ograniczenia.** Koszt rośnie liniowo: dziesięć iteracji to dwadzieścia przebiegów. `drawBloom` przycina liczbę do zakresu z `Bloom.hpp` niezależnie od suwaka.
 25. **Stary obraz w `m_bloom`.** Gdy `drawBloom` wraca wcześniej, w celu leży poświata z dawnej klatki. Dlatego `composite` pyta o `m_bloomDrawn`, a nie o `m_bloom.isValid()`, i dlatego `drawBloom` trzeba wołać w każdej klatce: to ono zeruje flagę.
 26. **Bloom dodaje światło.** Scena z bloomem jest jaśniejsza niż bez niego, bo nadwyżka ponad próg jest w obrazie dwa razy. Wartości świateł dobrane przy włączonym bloomie wyglądają inaczej po jego wyłączeniu i odwrotnie.
+27. **Mgła, która zakrywa niebo.** Piksel nieba ma głębię 1, czyli punkt 100 m dalej, a `1 - exp(-0,1 * 100)` to prawie 1. Mgła z samej odległości zamalowałaby całe niebo kolorem mgły, razem z księżycem. W tym kodzie nieba broni wyłącznie współczynnik wysokości: przy `Height falloff` równym 0 niebo znika. Odwrotny błąd to wycięcie nieba warunkiem `depth == 1`: horyzont byłby wtedy ostrą linią nad zamglonymi wzgórzami. I uwaga na pas tuż nad horyzontem: płaszczyzna daleka obraca się z kamerą, więc mgła na samym niebie nie jest w pełni niezależna od obrotu (sekcja 2.21).
+28. **Mgła po mapowaniu tonów albo po kodowaniu.** `mix` jest sumą dwóch świateł i ma sens tylko na liniowych wartościach HDR. Po krzywej jasne rzeczy są już ściśnięte poniżej 1, więc kryształ gasłby we mgle jak biała kartka (0,36 zamiast 0,84 z sekcji 2.21), a mgła nie reagowałaby na suwak `Exposure`. Po kodowaniu do sRGB dochodzi jeszcze mieszanie liczb, które nie są proporcjonalne do światła. Mgła stoi więc jako krok 2, przed wszystkim.
+29. **Nieliniowa głębia użyta jako odległość.** Liczba z tekstury głębi to nie metry: 2 m dają 0,951, 10 m 0,991, 30 m 0,998. Wstawiona do wzoru zamiast odległości daje mgłę prawie jednakową na całym ekranie, która gwałtownie znika tuż przed nosem. Objaw: mgła "przykleja się" do wszystkiego poza przedmiotami w zasięgu ręki.
+30. **Głębia w metrach zamiast odległości od oka.** Subtelniejsza wersja punktu 29: `linearDepth` daje metry, ale wzdłuż osi patrzenia. Ten sam punkt ściany ma 63 procent mgły w środku ekranu i 50 procent przy krawędzi (sekcja 2.18), więc mgła pływa po ścianach przy obracaniu się. Dlatego `composite.frag` nie dołącza `common/depth.glsl`.
+31. **Pozycja z głębi: trzy sposoby, żeby ją zepsuć.** Brak dzielenia przez `w` (wynik to pozycja pomniejszona `w_c` razy). Macierze w złej kolejności: `inverse(view * projection)` zamiast `inverse(projection * view)` daje bzdury bez żadnego błędu kompilacji. Macierze z innej klatki albo z innym współczynnikiem proporcji niż te, którymi narysowano scenę: mgła jest wtedy przesunięta względem geometrii i "ciągnie się" za kamerą. Kod pilnuje trzeciego tym, że `SceneView` powstaje w `onRender` z tych samych zmiennych co scena.
+32. **`smoothstep` z odwróconymi krawędziami.** GLSL mówi, że wynik `smoothstep(e0, e1, x)` jest nieokreślony, gdy `e0 >= e1`. Promień winiety równy albo większy od 0,7071 daje dzielenie przez zero albo odwrócony gradient, zależnie od karty. Dlatego suwak `Radius` kończy się na 0,65 i ma `AlwaysClamp`, a test wartości startowych sprawdza `radius < VIGNETTE_CORNER_DISTANCE`. Shader sam tego nie pilnuje: wartość wpisana w kod z pominięciem panelu przeszłaby.
+33. **Wzory i stałe w dwóch miejscach.** Cztery funkcje i dwie stałe istnieją w `composite.frag` i w `Fog.*` albo `Vignette.*`. Testy sprawdzają tylko C++. Zmiana wzoru w shaderze bez zmiany w C++ zostawia wszystkie testy zielone i obraz inny, niż mówi dokumentacja. Odwrotna zmiana psuje testy, a obraz zostaje. To cena testowalności (sekcja 5.12), ta sama co przy promieniu rozmycia (punkt 21).
+34. **Precyzja głębi daleko od kamery.** Tekstura głębi ma 24 bity, a prawie cały ich zakres jest zużyty blisko kamery (sekcja 2.10). Jeden krok 24-bitowej głębi to przy płaszczyznach 0,1 m i 100 m około 0,06 mm na 10 metrach, 1,5 mm na 50 metrach i 6 mm na 100 metrach: dla mgły bez znaczenia. To **nie** jest ogólna prawda: z płaszczyzną daleką 10 000 m jeden krok to już 0,6 m na kilometrze i 15 m na pięciu kilometrach, a mgła liczona z takiej pozycji układa się w widoczne pasy. Do tego w kroku 3 odtwarzania pozycji dzieli się przez liczbę bliską zera (dla płaszczyzny dalekiej `1 / w_c = 0,01`), co wzmacnia błędy zaokrągleń `float`. Wniosek praktyczny: nie oddalać płaszczyzny dalekiej ani nie przybliżać bliskiej bez potrzeby. Liczby policzone ze wzoru, nie zmierzone.
+35. **Wysokość brana w pikselu: widok z góry.** Z dużej wysokości ziemia dostaje mgłę jak za całą drogę w pełnej gęstości: 95 procent z 30 m zamiast około 22 procent (sekcja 2.20). W trybie noclip labirynt prawie znika. To zapisane ograniczenie, a nie błąd do "naprawienia" suwakiem: zmniejszenie gęstości poprawi widok z góry i zepsuje widok z korytarza.
+36. **Kolor mgły w złej przestrzeni.** `FogSettings::color` to liczby sRGB. Wysłane do shadera bez `gfx::srgbToLinear` byłyby potraktowane jak światło: (0,14, 0,18, 0,26) zamiast (0,017, 0,027, 0,055), czyli mgła od pięciu do ośmiu razy jaśniejsza, mleczna zamiast nocnej. Odwrotny błąd, przeliczenie dwa razy, daje mgłę prawie czarną.
+37. **Poświata nie wie o mgle.** Bloom jest liczony ze sceny bez mgły i dodawany po niej. Przy gęstej mgle (suwak `Density` w prawo) bryła dalekiego kryształu znika zupełnie, a jego poświata zostaje w pełnej sile: świecąca plama bez źródła. Przy wartościach startowych wygląda to jak światło, które przebija się przez mgłę, i taki był zamiar (sekcja 2.21). Poświata księżyca ma to samo: jest dodawana po mgle.
+38. **Sampler bez numeru jednostki.** Sampler, którego nikt nie ustawił, ma wartość 0, czyli jednostkę z obrazem sceny. `uDepth` czytałby wtedy czerwony kanał **koloru** jako głębię: ciemne piksele wyszłyby "przy kamerze", jasne "daleko", a mgła zależałaby od jasności ściany. Dlatego `composite` ustawia `uDepth` zawsze, także przy wyłączonej mgle i po każdym przeładowaniu shadera.
+39. **Mgła nie reaguje na światła.** Kolor mgły jest jedną stałą. Snop latarki nie rozświetla mgły, a przesunięcie księżyca albo zmiana światła otoczenia w panelu Lights nie zmienia jej barwy. Po zmianie świateł kolor mgły trzeba dobrać od nowa ręcznie. `Base height` też jest stałą w metrach świata i nie idzie za suwakiem skali wysokości terenu.
+40. **Winieta w złym miejscu.** Przed krzywą działa jak lokalna ekspozycja: prawie nie rusza jasnych rzeczy i mocno przyciemnia cienie. Po kodowaniu jest ponad dwa razy mocniejsza, niż mówi suwak (sekcja 2.22). I jeszcze jedno: winieta jest w przebiegu składającym, a ImGui rysuje **po** nim, więc panele i HUD nie są przyciemniane. Gdyby kiedyś interfejs gry miał być pod winietą, musiałby być rysowany przed nią.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 4 i od 10 do 13 są na kartce, pozostałe w działającej grze. Po zmianie pliku shadera na Windowsie: `cmake --build --preset debug --target copy_assets`, potem `Reload shaders`. Po ćwiczeniu wycofaj zmianę w pliku ręcznie.
+Ćwiczenia od 1 do 4, od 10 do 13 i od 20 do 23 są na kartce, pozostałe w działającej grze. Po zmianie pliku shadera na Windowsie: `cmake --build --preset debug --target copy_assets`, potem `Reload shaders`. Po ćwiczeniu wycofaj zmianę w pliku ręcznie.
 
 1. **Reinhard na kartce.** Policz `x / (1 + x)` dla 0,5, 3 i 9. Dla jakiego wejścia wynik to 0,9? (Odpowiedzi: 0,333, 0,75, 0,9. Wejście 9.)
 2. **ACES na kartce.** Policz wzór dla x = 0,5. (Odpowiedź: licznik `0,5 * (1,255 + 0,03) = 0,6425`, mianownik `0,5 * (1,215 + 0,59) + 0,14 = 1,0425`, wynik 0,616.)
@@ -2155,6 +3065,18 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
 17. **Bloom po krzywej.** W `composite.frag` przenieś blok `if (uBloomEnabled == 1)` za blok mapowania tonów (przed `linearToSrgb`). Porównaj środek kryształu i jego otoczenie z wersją poprawną. Rusz suwakiem `Exposure`: co robi teraz poświata?
 18. **Wagi bez normalizacji.** W `Bloom.cpp` zakomentuj pętlę, która dzieli przez `sum`, zbuduj i uruchom testy. Które przypadki nie przechodzą? Uruchom grę: co widać i dlaczego obraz zmienia się tak gwałtownie z liczbą iteracji? (Suma nieznormalizowanego jądra to 7,298, więc każdy przebieg mnoży jasność przez tę liczbę.)
 19. **Pełna rozdzielczość.** Zmień `BLOOM_DOWNSCALE` na 1 (trzeba przebudować program). Porównaj szerokość poświaty i liczbę klatek z ukrytymi panelami. Ile iteracji byłoby trzeba, żeby poświata miała starą szerokość (cztery razy tyle: szerokość rośnie jak pierwiastek z liczby iteracji), i dlaczego suwak na to nie pozwoli?
+20. **Mgła na kartce.** Dla gęstości 0,1 i współczynnika wysokości 1 policz, ile mgły ma ściana 4 m i 20 m od oka. Po ilu metrach mgła zabiera 90 procent? (Odpowiedzi: `1 - exp(-0,4) = 0,330`, `1 - exp(-2) = 0,865`. `ln(10) / 0,1 = 23` m.) Sprawdź, że 4 m i potem 16 m przepuszczają razem tyle co 20 m: `0,670 * 0,202 = 0,135`.
+21. **Wysokość na kartce.** Dla bazy 0,5 m i spadku 0,4 policz współczynnik wysokości na 2,5 m i na 6 m. Ile mgły ma punkt na wysokości 2,5 m, 10 m od oka? (Odpowiedzi: `exp(-0,8) = 0,449`, `exp(-2,2) = 0,111`. `1 - exp(-0,1 * 0,449 * 10) = 0,362`.)
+22. **Pozycja z głębi na kartce.** Oko w początku układu, kamera patrzy wzdłuż -Z, `n = 0,1`, `f = 100`. Środek ekranu ma w teksturze głębi 0,990991. Jak daleko jest powierzchnia? (Odpowiedź: `ndc = 0,981982`, `w = -4,995 * 0,981982 + 5,005 = 0,1`, `z = -1 / 0,1`, czyli 10 m. Zgadza się z tabelą w sekcji 2.10: 10 m to 0,9910.)
+23. **Winieta na kartce.** Dla siły 0,5 i promienia 0,2 policz współczynnik w punkcie `uv = (0,9, 0,5)`. (Odpowiedź: odległość 0,4, `t = 0,2 / 0,5071 = 0,394`, `smoothstep = 0,394² * (3 - 0,789) = 0,344`, współczynnik `1 - 0,5 * 0,344 = 0,828`.) Jaki współczynnik ma punkt `(0,5, 0,9)` i co to mówi o kształcie winiety w szerokim oknie?
+24. **Mgła z głębi zamiast z odległości.** W `composite.frag` dopisz pod pierwszym `#include` linię `#include "../common/depth.glsl"` i zamień w funkcji `main` `length(position - uEye)` na `linearDepth(depth, 0.1, 100.0)`. Stań trzy metry przed długą ścianą i obracaj się w miejscu. Co robi mgła na ścianie przy krawędziach ekranu? Dlaczego w środku ekranu nic się nie zmieniło?
+25. **Bez dzielenia przez `w`.** W `worldPositionFromDepth` zamień ostatnią linię na `return world.xyz;`. Co stało się z mgłą? Przejdź się po labiryncie: od czego zależy teraz jej ilość? (Podpowiedź: wynik to pozycja pomniejszona `w_c` razy, więc wszystkie punkty lądują w pobliżu początku układu świata, a "odległość" jest odległością oka od tego miejsca, prawie taką samą dla każdego piksela.)
+26. **Niebo z osobnym przypadkiem.** Zamień `if (uFogEnabled == 1) {` na `if (uFogEnabled == 1 && depth < 1.0) {` (odczyt głębi trzeba przenieść przed warunek). Spójrz na horyzont nad wzgórzami. Co wygląda gorzej niż przedtem? Potem ustaw `Height falloff` na 0 w wersji oryginalnej i w zmienionej i porównaj niebo.
+27. **Mgła po krzywej.** Przenieś blok mgły za blok mapowania tonów. Stań daleko od kryształu i porównaj jego jasność z wersją poprawną. Rusz suwakiem `Exposure`: co robi teraz mgła, a co robiła przedtem?
+28. **Winieta poprawiona o proporcje.** W `vignetteFactor` zamień pierwszą linię na dwie: `vec2 offset = uv - SCREEN_CENTER;` z `offset.x *= 16.0 / 9.0;` i `float distanceToCenter = length(offset);`. Ustaw `Strength` na 1. Jaki kształt ma jasny środek? Co stało się z górną i dolną krawędzią, a co z rogami, i dlaczego stała `VIGNETTE_CORNER_DISTANCE` przestała pasować?
+29. **Winieta bez `smoothstep`.** Zamień `smoothstep(uVignetteRadius, VIGNETTE_CORNER_DISTANCE, distanceToCenter)` na `clamp((distanceToCenter - uVignetteRadius) / (VIGNETTE_CORNER_DISTANCE - uVignetteRadius), 0.0, 1.0)`. Ustaw `Strength` na 1 i `Radius` na 0,3 i patrz na jednolite niebo. Czy widać, gdzie winieta się zaczyna?
+30. **Testy pilnują tylko C++.** W `Fog.cpp` zamień w `fogAmount` znak minus w wykładniku na plus, zbuduj i uruchom testy: które przypadki nie przechodzą? Cofnij. Teraz zrób tę samą zmianę w `composite.frag` i uruchom testy jeszcze raz. Co mówi wynik o tym, czego testy nie widzą (pułapka 33)?
+31. **Widok z góry.** W grze: klawisz N, lot w górę, spojrzenie prosto w dół na labirynt. Zmniejszaj `Density`, aż labirynt będzie czytelny, zapisz wartość, wyląduj i obejrzyj korytarz z tą samą wartością. Dlaczego jedna liczba nie pasuje do obu widoków (sekcja 2.20)?
 
 ## 9. Pytania kontrolne
 
@@ -2201,13 +3123,13 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
     Kodowałoby także ImGui, rysowane potem do tego samego okna, i rozjaśniłoby panele. Działa tylko, gdy framebuffer okna jest sRGB, co zależy od systemu. Z kodowaniem w shaderze groziłoby podwójnym kodowaniem.
 
 15. **W jakiej kolejności idzie klatka?**
-    `beginScene`, czyszczenie, scena z niebem na końcu, podglądy (tylko przy otwartym panelu), kopia ustawień, `drawBloom`, `composite`, ImGui.
+    `beginScene`, czyszczenie, scena z niebem na końcu, podglądy (tylko przy otwartym panelu), kopia ustawień, `drawBloom`, budowa `SceneView`, `composite`, ImGui. Mgła i winieta nie mają własnych kroków: są liniami shadera w `composite`.
 
 16. **Co się dzieje, gdy okno jest zminimalizowane?**
     Framebuffer okna ma 0 x 0. `onRender` kończy się od razu: nic nie jest rysowane, bufor sceny zachowuje ostatni rozmiar.
 
-17. **Dlaczego widoki diagnostyczne omijają ekspozycję, krzywą i bloom?**
-    Pokazują dane (normalną, współrzędną tekstury), a nie światło. Krzywa zmieniłaby liczby, a bloom rozlałby jasne dane na sąsiednie piksele. `onRender` robi kopię ustawień z ekspozycją 1, `ToneMapping::None` i wyłączonym bloomem, a shadery sceny zapisują `srgbToLinear(dane)`, żeby kodowanie na końcu oddało te same liczby.
+17. **Dlaczego widoki diagnostyczne omijają ekspozycję, krzywą, bloom, mgłę i winietę?**
+    Pokazują dane (normalną, współrzędną tekstury), a nie światło. Krzywa zmieniłaby liczby, bloom rozlałby jasne dane na sąsiednie piksele, mgła domieszałaby do nich swój kolor, a winieta przyciemniłaby je w rogach. `onRender` robi kopię ustawień z ekspozycją 1, `ToneMapping::None` i wyłączonymi bloomem, mgłą i winietą, a shadery sceny zapisują `srgbToLinear(dane)`, żeby kodowanie na końcu oddało te same liczby.
 
 18. **Dlaczego surowa głębia jest prawie biała?**
     Rzutowanie perspektywiczne zapisuje wartość, w której odległość stoi w mianowniku. Dla płaszczyzn 0,1 m i 100 m ściana 2 m dalej ma już 0,951, a 15 m dalej 0,994.
@@ -2225,7 +3147,7 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
     Tekstura framebuffera ma `v = 0` na dole, a ImGui rysuje od góry.
 
 23. **Czego z tematu 10 jeszcze nie ma?**
-    Mgły, winiety i minimapy. Są w planie dalszych części M7. Miejsca mgły i winiety w kolejności kroków są zapisane w komentarzu `composite.frag`.
+    Minimapy. Bufor HDR, przebieg składający, podglądy, bloom, mgła i winieta są w kodzie, więc temat jest w toku, a nie zamknięty. Cienie to osobny temat 11 i też ich nie ma.
 
 24. **Co to jest bloom i z jakich kroków się składa?**
     Poświata wokół miejsc jaśniejszych od progu. Trzy kroki: przebieg jasności zostawia światło ponad progiem, rozmycie Gaussa rozlewa je na sąsiadów, przebieg składający dodaje wynik do sceny.
@@ -2278,12 +3200,73 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
 40. **Czy poświata ma tę samą szerokość w każdej rozdzielczości?**
     Nie. Jest mierzona w pikselach celu, więc na większym ekranie jest względnie cieńsza. To znane, otwarte ograniczenie.
 
+41. **Co mgła robi ze światłem i jak zapisuje to shader?**
+    Część światła powierzchni jest po drodze pochłaniana albo rozpraszana w bok, a w zamian do oka dochodzi światło rozproszone przez samą mgłę. Jeśli przechodzi ułamek `T`, kolor to `powierzchnia * T + mgła * (1 - T)`, czyli `mix(scena, kolor mgły, amount)` z `amount = 1 - T`.
+
+42. **Skąd wykładnik we wzorze mgły?**
+    Z założenia, że każda równa warstwa mgły zabiera ten sam ułamek tego, co do niej wpadło. Mnożenie przez stały ułamek na każdy metr daje `T = exp(-density * d)`. To prawo Beera-Lamberta. Przy gęstości 0,1: 18 procent mgły po 2 m, 63 po 10 m, 95 po 30 m, połowa po 6,9 m.
+
+43. **Dlaczego odległością jest długość odcinka od oka, a nie głębia?**
+    Głębia w metrach to odległość od płaszczyzny kamery, wzdłuż osi patrzenia. Ten sam punkt 10 m od oka ma głębię 10 m w środku ekranu i 7 m przy krawędzi, więc mgła zmieniałaby się z 63 na 50 procent przy samym obrocie kamery. Odległość od oka zależy tylko od położenia gracza i ściany.
+
+44. **Dlaczego mgła nie używa `linearDepth` i do czego służy dziś `common/depth.glsl`?**
+    `linearDepth` daje odległość od płaszczyzny kamery, a mgła potrzebuje odległości od oka i wysokości punktu, więc odtwarza całą pozycję w świecie. `common/depth.glsl` dołącza tylko `preview.frag`, dla obrazu `Depth` w panelu.
+
+45. **Jak z piksela i głębi odtworzyć pozycję w świecie?**
+    Trzy kroki. `uv` i głębia z zakresu 0..1 na NDC: razy 2 minus 1, z czwartą składową 1. Mnożenie przez odwrotność `projection * view`. Podzielenie trzech pierwszych składowych wyniku przez czwartą.
+
+46. **Po co dzielenie przez `w` na końcu?**
+    W drodze na ekran karta podzieliła pozycję przez `w_c`, a macierz dzielenia nie cofa. Odwrotność macierzy zastosowana do NDC daje pozycję w świecie podzieloną przez `w_c`, z czwartą składową równą `1 / w_c`. Dzielenie przez tę składową przywraca właściwą pozycję.
+
+47. **Gdzie liczona jest odwrotność macierzy i dlaczego tam?**
+    W `NightMazeApp::onRender`, raz na klatkę, przez `glm::inverse(projection * view)`, z tych samych macierzy, którymi narysowano scenę. Shader dostaje ją jako uniform `uInverseViewProjection`. Odwracanie w shaderze powtarzałoby tę samą pracę dla każdego piksela.
+
+48. **Co robi współczynnik wysokości?**
+    Mnoży gęstość przez `exp(-heightFalloff * max(y - baseHeight, 0))`: 1 do wysokości bazowej, potem coraz mniej. Przy wartościach startowych 0,67 na 1,5 m i 0,37 na szczycie ściany (3 m). Dzięki niemu mgła leży w korytarzach, a niebo zostaje czyste.
+
+49. **Co jest nieścisłe w tym, jak mgła traktuje wysokość?**
+    Wysokość jest brana tylko w miejscu, które pokazuje piksel, a nie wzdłuż całego promienia. Z 30 m nad podłogą ziemia dostaje 95 procent mgły zamiast około 22, więc z góry labirynt prawie znika. Z wnętrza mgły wysokie rzeczy dostają jej trochę za mało. Poprawna wersja sumuje gęstość wzdłuż promienia (całka), co dla gęstości wykładniczej w wysokości ma gotowy wzór.
+
+50. **Dlaczego mgła nie zakrywa księżyca, skoro niebo jest "nieskończenie daleko"?**
+    Dla shadera niebo nie jest nieskończenie daleko: ma głębię 1, czyli punkt na płaszczyźnie dalekiej, 100 m w kierunku piksela. W kierunku księżyca ten punkt leży kilkadziesiąt metrów nad ziemią, gdzie współczynnik wysokości jest praktycznie zerem. Przy horyzoncie punkt jest nisko i mgła jest pełna. Osobnego warunku dla nieba nie ma.
+
+51. **Czy mgła naprawdę nie zależy od obrotu kamery?**
+    Dla geometrii nie zależy. Dla wąskiego pasa nieba nad horyzontem trochę zależy: punkt na płaszczyźnie dalekiej jest 100 m od oka w środku ekranu i do 155 m w rogu, a dalszy punkt na tym samym promieniu leży wyżej i ma mniej mgły. To wniosek z rachunku, nie obserwacja z ekranu.
+
+52. **W jakiej przestrzeni jest kolor mgły i dlaczego na ekranie jest ciemniejszy niż w panelu?**
+    W ustawieniach i w próbniku to liczby sRGB. `composite` przelicza je na liniowe (`gfx::srgbToLinear`) i dopiero takie miesza z liniowym obrazem. Mgła jest mieszana przed ekspozycją i krzywą ACES, a krzywa przyciska ciemne tony, więc (0,14, 0,18, 0,26) pojawia się na ekranie jako około (0,09, 0,14, 0,25).
+
+53. **Dlaczego mgła stoi przed dodaniem bloomu i przed mapowaniem tonów, a winieta po nim?**
+    Mgła i bloom działają na świetle sceny: mieszanie i dodawanie mają sens na liniowych wartościach HDR, a krzywa ma potem potraktować wynik jak resztę obrazu. Bloom jest dodawany po mgle, żeby poświata świeciła przez nią. Winieta działa na gotowym obrazie: po krzywej każdy piksel rogu traci ten sam ułamek światła, a przed krzywą jasne rzeczy prawie by nie ściemniały.
+
+54. **Czy poświata kryształu słabnie we mgle?**
+    Nie. Bloom jest liczony z tekstury koloru sceny, do której mgła nigdy nie jest zapisywana, i dodawany po mgle. Bryła dalekiego kryształu blednie, poświata zostaje. To wybór wyglądu, nie fizyka.
+
+55. **Podaj wzór winiety i powiedz, co robi `smoothstep`.**
+    `factor = 1 - strength * smoothstep(radius, 0,7071, distance)`, gdzie `distance` to odległość od środka ekranu we współrzędnych tekstury. `smoothstep` daje 0 do pierwszej krawędzi, 1 od drugiej, a pomiędzy krzywą `3t² - 2t³`, która zaczyna i kończy płasko, więc nie widać, gdzie winieta się zaczyna. Przy wartościach startowych: 1 w środku, 0,925 na środku krawędzi, 0,70 w rogu.
+
+56. **Dlaczego winieta nie jest poprawiana o proporcje okna i jak to wygląda?**
+    Odległość jest liczona we współrzędnych tekstury, które w obu kierunkach biegną od 0 do 1. Jasny środek jest elipsą o kształcie okna, nie kołem. W zamian wszystkie cztery rogi i środki wszystkich krawędzi są zawsze tak samo ciemne, a odległość do rogu jest stałą 0,7071 przy każdym kształcie okna.
+
+57. **Po co wzory mgły i winiety są zapisane drugi raz w C++?**
+    Żeby dało się je testować: shadera nie uruchomi się bez kontekstu OpenGL, a `Fog.*` i `Vignette.*` leżą w bibliotece `game_logic`, którą linkuje program testowy. Gra tych funkcji nie woła. Ceną jest to, że zgodności obu zapisów nie pilnuje nic poza uwagą autora.
+
+58. **Których jednostek teksturujących używa przebieg składający?**
+    Trzech: 0 dla koloru sceny, 1 dla poświaty, 2 dla głębi sceny. Głębia jest wiązana tylko przy włączonej mgle, ale sampler `uDepth` dostaje numer 2 zawsze, bo sampler bez numeru wskazywałby jednostkę 0, czyli kolor.
+
+59. **Jak panel mieści piętnaście kontrolek bez zmiany wysokości?**
+    W dwóch zakładkach: `Tone and bloom` z siedmioma kontrolkami i `Fog and vignette` z ośmioma, każda jako tabela o dwóch kolumnach i czterech wierszach. `BeginTabItem` zwraca prawdę tylko dla wybranej zakładki, więc w klatce rysuje się jedna.
+
 ## 10. Źródła
 
 - LearnOpenGL, "Framebuffers" (<https://learnopengl.com/Advanced-OpenGL/Framebuffers>): obiekt framebuffera, załączniki, rysowanie sceny do tekstury i prostokąt pełnoekranowy.
 - LearnOpenGL, "HDR" (<https://learnopengl.com/Advanced-Lighting/HDR>): bufor zmiennoprzecinkowy, mapowanie tonów Reinharda, ekspozycja.
 - LearnOpenGL, "Gamma Correction" (<https://learnopengl.com/Advanced-Lighting/Gamma-Correction>): tekstury sRGB i kodowanie na końcu potoku.
 - LearnOpenGL, "Bloom" (<https://learnopengl.com/Advanced-Lighting/Bloom>): przebieg jasności, rozdzielne rozmycie Gaussa z ping-pongiem między dwoma framebufferami, dodanie przed mapowaniem tonów. Różnice wobec tego kodu: tam jasne piksele wybiera drugi załącznik koloru i twardy próg, a wagi są wpisane w shader.
+- Prawo Beera-Lamberta (osłabienie światła w ośrodku pochłaniającym): podstawa wzoru `exp(-density * d)` z sekcji 2.17. Opis w każdym podręczniku optyki. Wzór w kodzie jest jego najprostszą postacią, ze stałą gęstością wzdłuż drogi.
+- Inigo Quilez, "Better Fog" (<https://iquilezles.org/articles/fog/>): mgła wykładnicza, mgła zależna od wysokości i wzór na całkę wzdłuż promienia, o którym mówi sekcja 2.20. Gra używa prostszej wersji bez całki.
+- Khronos OpenGL Wiki, "Compute eye space from window space" (<https://www.khronos.org/opengl/wiki/Compute_eye_space_from_window_space>): odtwarzanie pozycji z głębi, w tym dzielenie przez `w`.
+- docs.gl: funkcje GLSL `smoothstep` (<https://docs.gl/sl4/smoothstep>, z uwagą o nieokreślonym wyniku dla `edge0 >= edge1`), `mix` (<https://docs.gl/sl4/mix>) i `exp`. Dawna mgła stałego potoku, tryb `GL_EXP`: `glFog` (<https://docs.gl/gl2/glFog>).
 - Rekomendacja ITU-R BT.709 (Rec. 709): współczynniki luminancji 0,2126, 0,7152 i 0,0722 użyte w `REC709_LUMINANCE_WEIGHTS`.
 - Krzysztof Narkowicz, "ACES Filmic Tone Mapping Curve", wpis na blogu z 6 stycznia 2016 (<https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/>): wzór i pięć stałych użytych w `toneMapAces`.
 - Erik Reinhard, Michael Stark, Peter Shirley, James Ferwerda, "Photographic Tone Reproduction for Digital Images", SIGGRAPH 2002: operator `x / (1 + x)`.
@@ -2291,4 +3274,4 @@ Kroków od 7 do 10 nikt jeszcze nie przeszedł myszą: zrzuty ekranu dla progu 0
 - docs.gl: `glBindFramebuffer` (<https://docs.gl/gl4/glBindFramebuffer>), `glDrawArrays`, `glDepthRange`, `glEnable` (`GL_FRAMEBUFFER_SRGB`), `glUniform` (<https://docs.gl/gl4/glUniform>, wariant `glUniform1fv` dla tablic), funkcja GLSL `textureSize` (<https://docs.gl/sl4/textureSize>).
 - Specyfikacja OpenGL 4.1 Core (<https://registry.khronos.org/OpenGL/specs/gl/glspec41.core.pdf>): obiekty framebuffera, kodowanie sRGB przy zapisie.
 - Dokumenty w tym repozytorium: [`../gfx/framebuffers.md`](../gfx/framebuffers.md) (klasa `Framebuffer`), [`../gfx/color-space.md`](../gfx/color-space.md) (sRGB, wartości liniowe, droga koloru), [`../debug-ui.md`](../debug-ui.md) (panele, `RawTextureSampler`), [`skybox.md`](skybox.md) (niebo na głębi 1), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md) (shadery, które wypełniają bufor sceny), [`../scene/camera.md`](../scene/camera.md) (macierz rzutowania), [`../gfx/shader-includes.md`](../gfx/shader-includes.md) (`#include`).
-- Notatki o decyzjach: [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md), [`../../decisions/srgb-encode-in-shader.md`](../../decisions/srgb-encode-in-shader.md), [`../../decisions/aces-default-tone-mapping.md`](../../decisions/aces-default-tone-mapping.md), [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md), [`../../decisions/post-process-in-game-layer.md`](../../decisions/post-process-in-game-layer.md). Z drugiej części M7: [`../../decisions/bloom-half-resolution-three-targets.md`](../../decisions/bloom-half-resolution-three-targets.md), [`../../decisions/bright-pass-keeps-hue.md`](../../decisions/bright-pass-keeps-hue.md), [`../../decisions/blur-weights-computed-on-cpu.md`](../../decisions/blur-weights-computed-on-cpu.md), [`../../decisions/crystal-glow-raised-for-bloom.md`](../../decisions/crystal-glow-raised-for-bloom.md).
+- Notatki o decyzjach: [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md), [`../../decisions/srgb-encode-in-shader.md`](../../decisions/srgb-encode-in-shader.md), [`../../decisions/aces-default-tone-mapping.md`](../../decisions/aces-default-tone-mapping.md), [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md), [`../../decisions/post-process-in-game-layer.md`](../../decisions/post-process-in-game-layer.md). Z drugiej części M7: [`../../decisions/bloom-half-resolution-three-targets.md`](../../decisions/bloom-half-resolution-three-targets.md), [`../../decisions/bright-pass-keeps-hue.md`](../../decisions/bright-pass-keeps-hue.md), [`../../decisions/blur-weights-computed-on-cpu.md`](../../decisions/blur-weights-computed-on-cpu.md), [`../../decisions/crystal-glow-raised-for-bloom.md`](../../decisions/crystal-glow-raised-for-bloom.md). Z trzeciej części M7: [`../../decisions/fog-distance-from-reconstructed-position.md`](../../decisions/fog-distance-from-reconstructed-position.md), [`../../decisions/fog-height-at-the-pixel.md`](../../decisions/fog-height-at-the-pixel.md), [`../../decisions/fog-no-special-case-for-sky.md`](../../decisions/fog-no-special-case-for-sky.md), [`../../decisions/bloom-from-unfogged-scene.md`](../../decisions/bloom-from-unfogged-scene.md), [`../../decisions/vignette-not-aspect-corrected.md`](../../decisions/vignette-not-aspect-corrected.md).

@@ -1,13 +1,17 @@
 // PostProcess: the HDR framebuffer the scene is drawn into, the bloom passes that make
 // bright things glow, and the composite pass that brings the picture to the window with
-// exposure, tone mapping and gamma correction.
+// fog, exposure, tone mapping, a vignette and gamma correction.
 // See docs/modules/renderer/post-process.md
 #pragma once
 
 #include "core/Window.hpp"
 #include "game/Bloom.hpp"
+#include "game/Fog.hpp"
+#include "game/Vignette.hpp"
 #include "gfx/Framebuffer.hpp"
 #include "gfx/VertexArray.hpp"
+
+#include <glm/glm.hpp>
 
 namespace gfx {
 class Shader;
@@ -53,6 +57,26 @@ struct PostProcessSettings {
     /// The glow around bright things: the switch, the threshold, the intensity and the
     /// number of blur iterations (game/Bloom.hpp).
     BloomSettings bloom;
+
+    /// The fog near the ground: the switch, the density, the height it lies at and its
+    /// colour (game/Fog.hpp).
+    FogSettings fog;
+
+    /// The darkening towards the corners of the screen: the switch, the strength and
+    /// the radius (game/Vignette.hpp).
+    VignetteSettings vignette;
+};
+
+/// What the composite pass has to know about the camera the scene was drawn with. The
+/// fog needs it: it finds the place in the world every pixel shows.
+struct SceneView {
+    /// The inverse of projection * view, with the matrices the scene was drawn with:
+    /// it takes a point from normalised device coordinates back to world space
+    /// (game::worldPositionFromDepth).
+    glm::mat4 inverseViewProjection{1.0F};
+    /// Where the scene is seen from, in world space: the eye the view matrix was built
+    /// with.
+    glm::vec3 eye{0.0F};
 };
 
 /// Owns the framebuffer the whole 3D scene is drawn into, and draws the passes that
@@ -68,9 +92,9 @@ struct PostProcessSettings {
 ///   4. drawBloom: the bright pass copies what is brighter than a threshold into
 ///      a target of half the size, and a Gaussian blur spreads it out.
 ///   5. composite: the window becomes the target again, and one triangle over the whole
-///      screen reads the colour texture, adds the bloom and writes exposure, tone
-///      mapping and the sRGB encoding. After it the debug UI is drawn straight into
-///      the window.
+///      screen reads the colour texture, mixes in the fog (from the depth texture),
+///      adds the bloom and writes exposure, tone mapping, the vignette and the sRGB
+///      encoding. After it the debug UI is drawn straight into the window.
 ///
 /// Passes that are added later have their place between 2 and 5: they read
 /// sceneTarget() and draw into framebuffers of their own.
@@ -122,12 +146,15 @@ public:
 
     /// The last pass: makes the window the target again (viewport of size windowSize,
     /// its framebuffer size) and draws the scene picture into it with the composite
-    /// program (post/composite.vert and post/composite.frag): bloom (when
-    /// settings.bloom.enabled is set and drawBloom has drawn it in this frame),
-    /// exposure, tone mapping, sRGB encoding. It switches the depth test off and leaves
-    /// it off.
+    /// program (post/composite.vert and post/composite.frag): fog (when
+    /// settings.fog.enabled is set), bloom (when settings.bloom.enabled is set and
+    /// drawBloom has drawn it in this frame), exposure, tone mapping, vignette (when
+    /// settings.vignette.enabled is set), sRGB encoding. view describes the camera the
+    /// scene was drawn with: the fog reads the depth texture of the scene and needs it
+    /// to turn a depth into a place in the world. It switches the depth test off and
+    /// leaves it off.
     void composite(const gfx::Shader& shader, const PostProcessSettings& settings,
-                   core::Size windowSize) const;
+                   core::Size windowSize, const SceneView& view) const;
 
     /// The framebuffer of the scene, for passes that read its colour or its depth and
     /// for the debug UI. Not valid before the first successful beginScene.
