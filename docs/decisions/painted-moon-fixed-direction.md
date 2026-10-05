@@ -36,7 +36,7 @@ Tarcza księżyca z poświatą jest **częścią obrazu nieba**. Skrypt maluje j
 **Co przez to tracę.**
 
 - Suwaki `Moon yaw` i `Moon pitch` zmieniają światło, a tarcza stoi. Przy dużej zmianie kąta yaw widać księżyc z jednej strony i jasne ściany z drugiej. Suwak `Moon pitch` (od -90 do -5 stopni) pozwala ustawić światło prawie poziome, jak od księżyca tuż nad horyzontem, a tarcza stoi nadal 50 stopni nad nim.
-- Test nie jest dokładny. Sprawdza jeden piksel, a tarcza ma promień 2,2 stopnia, więc zmiana wartości domyślnej o mniej niż około 2 stopnie na niebie (około 2 stopni kąta pitch albo około 3 stopni kąta yaw) przechodzi niezauważona. Komentarze w kodzie mówią, że test "nie przechodzi, dopóki" obrazy nie zostaną wygenerowane od nowa: to prawda dopiero dla większych zmian.
+- Test nie jest dokładny. Sprawdza jeden piksel, a tarcza ma promień 2,2 stopnia, więc zmiana wartości domyślnej o mniej niż około 2 stopnie na niebie (około 2 stopni kąta pitch albo około 3 stopni kąta yaw) przechodzi niezauważona. Komentarze w `Lighting.hpp` i w skrypcie mówią to wprost: test nie przechodzi dopiero wtedy, gdy obie strony różnią się o więcej niż około 2 stopnie.
 - Zmiana domyślnego kierunku księżyca to trzy kroki zamiast jednego: liczby w `Lighting.hpp`, te same liczby w skrypcie, uruchomienie skryptu w Blenderze.
 - Tarcza jest zapisana w kanale 8-bitowym, więc nie może być jaśniejsza od bieli. Suwak `Sky brightness` powyżej 1 ją przepala.
 

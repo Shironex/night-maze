@@ -69,8 +69,8 @@ void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSe
         // The camera has no position of its own to edit: after every fixed step the game
         // puts it at the eyes of the player. So the field that can be dragged is the
         // position of the player (the feet), and the eye is only shown. DragFloat3 edits
-        // three floats through the pointer: x, y and z. While walking the game keeps y at
-        // the floor, so a change of y lasts only in noclip mode.
+        // three floats through the pointer: x, y and z. While walking the game keeps y on
+        // the ground, so a change of y lasts only in noclip mode.
         ImGui::DragFloat3("Player feet", glm::value_ptr(player.position), POSITION_DRAG_SPEED);
         ImGui::Text("Eye: %.2f, %.2f, %.2f", camera.position.x, camera.position.y,
                     camera.position.z);

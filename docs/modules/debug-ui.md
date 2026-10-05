@@ -1,11 +1,11 @@
 # Moduł debug: panele ImGui
 
-Kamień milowy: M0 (nakładka i panel Renderer), M1 (panele Shaders i Camera, `DebugContext`, mysz), M2 + M3 (panele Maze, Collision i Assets, czternaście pól `DebugContext`, układ domyślny paneli). Po M2 + M3 doszedł motyw paneli: własne kolory i odstępy, czcionka z pliku z polskimi literami, skala ekranu i układ domyślny w jednym pliku (sekcje 5.7 i 5.8). M4 (oświetlenie) dodał siódmy panel Lights, listę `Lighting` w panelu Renderer, dwa programy w panelu Shaders (było ich wtedy pięć), trzy pola `DebugContext` (razem siedemnaście) i układ, w którym panel Camera startuje zwinięty. M4 (mapy normalnych): pole wyboru `Normal mapping` i linie `normal map:` w panelu Assets, trzeci parametr `drawAssetsPanel`. M5 (rozgrywka): ósmy panel Gameplay, HUD gry rysowany przez `debug::drawHud` także wtedy, gdy panele są schowane (sekcja 5.9), cztery programy w panelu Shaders po usunięciu kostki z M1, osiemnaście pól `DebugContext` (ubyło `shader`, doszły `gameplay` i `round`), nowe parametry paneli Maze, Collision i Lights oraz układ, w którym panele Camera i Gameplay startują zwinięte obok siebie. M6, część pierwsza (skybox): pole `Skybox` i suwak `Sky brightness` w panelu Renderer (piąty parametr `drawRendererPanel`), piąty program w panelu Shaders, dwadzieścia pól `DebugContext` (doszły `skyboxShader` i `skybox`) i wyższy panel Renderer w układzie domyślnym (284 zamiast 230), przez co panel Lights pod nim się przewija. Kod: [`src/debug/`](../../src/debug/) oraz [`src/main.cpp`](../../src/main.cpp), gdzie nakładka jest podpinana do gry.
+Kamień milowy: M0 (nakładka i panel Renderer), M1 (panele Shaders i Camera, `DebugContext`, mysz), M2 + M3 (panele Maze, Collision i Assets, czternaście pól `DebugContext`, układ domyślny paneli). Po M2 + M3 doszedł motyw paneli: własne kolory i odstępy, czcionka z pliku z polskimi literami, skala ekranu i układ domyślny w jednym pliku (sekcje 5.7 i 5.8). M4 (oświetlenie) dodał siódmy panel Lights, listę `Lighting` w panelu Renderer, dwa programy w panelu Shaders (było ich wtedy pięć), trzy pola `DebugContext` (razem siedemnaście) i układ, w którym panel Camera startuje zwinięty. M4 (mapy normalnych): pole wyboru `Normal mapping` i linie `normal map:` w panelu Assets, trzeci parametr `drawAssetsPanel`. M5 (rozgrywka): ósmy panel Gameplay, HUD gry rysowany przez `debug::drawHud` także wtedy, gdy panele są schowane (sekcja 5.9), cztery programy w panelu Shaders po usunięciu kostki z M1, osiemnaście pól `DebugContext` (ubyło `shader`, doszły `gameplay` i `round`), nowe parametry paneli Maze, Collision i Lights oraz układ, w którym panele Camera i Gameplay startują zwinięte obok siebie. M6, część pierwsza (skybox): pole `Skybox` i suwak `Sky brightness` w panelu Renderer (piąty parametr `drawRendererPanel`), piąty program w panelu Shaders, dwadzieścia pól `DebugContext` (doszły `skyboxShader` i `skybox`) i wyższy panel Renderer w układzie domyślnym (284 zamiast 230), przez co panel Lights pod nim się przewija. M6, część druga (teren i trawa): dziewiąty i dziesiąty panel, Terrain i Grass, które startują zwinięte w drugim rzędzie pasków tytułów pod panelami Camera i Gameplay (pole `PanelPlacement::foldedRowsBefore` i funkcja `foldedRowsHeight`, sekcja 5.7), HUD przesunięty pod ten drugi rząd (sekcja 5.9.5), szósty program w panelu Shaders, pierwszy z trzema plikami (`grass.vert + grass.geom + grass.frag`), i dwadzieścia cztery pola `DebugContext` (doszły `grassShader`, `terrain`, `grass` i `grassTuftCount`). Kod: [`src/debug/`](../../src/debug/) oraz [`src/main.cpp`](../../src/main.cpp), gdzie nakładka jest podpinana do gry.
 Teoria samej biblioteki (tryb natychmiastowy, backendy, docking) jest w [`../libraries/imgui.md`](../libraries/imgui.md). Ten dokument opisuje, jak ImGui jest wpięte w **mój** projekt i jak dodać nowy panel.
 
 ## 1. Po co to jest
 
-Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FPS, rozmiar framebuffera, wersję sterownika) i zmieniać parametry w działającym programie, bez przebudowywania. Moduł `debug` daje do tego nakładkę z panelami Dear ImGui rysowaną na wierzchu sceny. Nie realizuje osobnego tematu wykładu, ale obsługuje wszystkie piętnaście: każdy temat dostaje w panelu przełącznik, którym na obronie pokażę efekt "przed i po" (PRD, sekcje 3 i 10). Dziś istnieje osiem paneli: **Renderer**, pokazujący dane z tematu 1 (FPS, czas klatki) przełącznik tematu 7 (lista `Lighting`: bez oświetlenia, Gouraud, Phong, Blinn-Phong) i, od pierwszej części M6, przełącznik tematu 8 (pole `Skybox` z suwakiem `Sky brightness`), **Shaders**, pokaz tematu 2 (przycisk "Reload shaders" dla pięciu programów), **Camera**, pokaz tematu 3 (pozycja gracza, kąty, FOV, płaszczyzny przycinania, czułość myszy, trzy prędkości gracza), **Gameplay** (stan rundy, przycisk nowej rundy, suwak baterii i liczby reguł gry), **Maze** (rozmiar i ziarno labiryntu, przyciski "Regenerate" i "Random seed", plan z góry z kryształami, bramą i strefą wyjścia), **Collision**, pokaz tematu 14 (rysowanie pudełek i sfer kolizji, tryb noclip), **Assets**, pokaz tematów 4 i 5 (tryb widoku, pole wyboru `Normal mapping`, filtr tekstur, anizotropia, lista modeli i tekstur), i **Lights**, pokaz tematu 6 (światło otoczenia, księżyc, latarka, światła punktowe nad kryształami, połysk). PRD nie ma panelu o nazwie Assets: w sekcji 3 wymienia dla tematu 4 pokaz "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Panel Assets niesie oba pokazy, razem z przełącznikiem map normalnych: polem wyboru `Normal mapping` pod listą `View mode` ([`gfx/normal-mapping.md`](gfx/normal-mapping.md), sekcja 6). Od M5 moduł rysuje jeszcze jedną rzecz, która nie jest panelem ani narzędziem: **HUD gry** (licznik kryształów, czas, pasek baterii, karta wygranej). Mieszka tutaj tylko dlatego, że tu jest ImGui (sekcja 5.9).
+Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FPS, rozmiar framebuffera, wersję sterownika) i zmieniać parametry w działającym programie, bez przebudowywania. Moduł `debug` daje do tego nakładkę z panelami Dear ImGui rysowaną na wierzchu sceny. Nie realizuje osobnego tematu wykładu, ale obsługuje wszystkie piętnaście: każdy temat dostaje w panelu przełącznik, którym na obronie pokażę efekt "przed i po" (PRD, sekcje 3 i 10). Dziś istnieje dziesięć paneli: **Renderer**, pokazujący dane z tematu 1 (FPS, czas klatki) przełącznik tematu 7 (lista `Lighting`: bez oświetlenia, Gouraud, Phong, Blinn-Phong) i, od pierwszej części M6, przełącznik tematu 8 (pole `Skybox` z suwakiem `Sky brightness`), **Shaders**, pokaz tematu 2 (przycisk "Reload shaders" dla sześciu programów), **Camera**, pokaz tematu 3 (pozycja gracza, kąty, FOV, płaszczyzny przycinania, czułość myszy, trzy prędkości gracza), **Gameplay** (stan rundy, przycisk nowej rundy, suwak baterii i liczby reguł gry), **Terrain**, pokaz tematu 13 (suwak skali wysokości terenu, pole `Wireframe`, rozmiar siatki, liczba trójkątów i zakres wysokości), **Grass**, pokaz tematu 9 (włącznik trawy z shadera geometrii, gęstość kępek, wysokość źdźbeł, siła wiatru, liczba kępek), **Maze** (rozmiar i ziarno labiryntu, przyciski "Regenerate" i "Random seed", plan z góry z kryształami, bramą i strefą wyjścia), **Collision**, pokaz tematu 14 (rysowanie pudełek i sfer kolizji, tryb noclip), **Assets**, pokaz tematów 4 i 5 (tryb widoku, pole wyboru `Normal mapping`, filtr tekstur, anizotropia, lista modeli i tekstur), i **Lights**, pokaz tematu 6 (światło otoczenia, księżyc, latarka, światła punktowe nad kryształami, połysk). PRD nie ma panelu o nazwie Assets: w sekcji 3 wymienia dla tematu 4 pokaz "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Panel Assets niesie oba pokazy, razem z przełącznikiem map normalnych: polem wyboru `Normal mapping` pod listą `View mode` ([`gfx/normal-mapping.md`](gfx/normal-mapping.md), sekcja 6). Od M5 moduł rysuje jeszcze jedną rzecz, która nie jest panelem ani narzędziem: **HUD gry** (licznik kryształów, czas, pasek baterii, karta wygranej). Mieszka tutaj tylko dlatego, że tu jest ImGui (sekcja 5.9).
 
 ## 2. Teoria
 
@@ -101,14 +101,16 @@ if (m_visible) {
     drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode,
                       context.skybox);
 
-    constexpr int SHADER_COUNT = 5;
+    constexpr int SHADER_COUNT = 6;
     const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-        &context.texturedShader, &context.colorShader, &context.litShader,
-        &context.gouraudShader, &context.skyboxShader};
+        &context.texturedShader, &context.colorShader,  &context.litShader,
+        &context.gouraudShader,  &context.skyboxShader, &context.grassShader};
     drawShadersPanel(shaders);
 
     drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
     drawGameplayPanel(context.round, context.gameplay);
+    drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
+    drawGrassPanel(context.grass, context.grassTuftCount);
     drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                   context.camera);
     drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
@@ -130,7 +132,7 @@ ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 | `ImGui::Render()` | Zamyka klatkę i zamienia wywołania widżetów na listy rysowania (wierzchołki, indeksy, prostokąty przycinania). **Jeszcze nic nie rysuje** |
 | `ImGui_ImplOpenGL3_RenderDrawData(...)` | Wysyła te listy do OpenGL |
 
-Fragment jest tu pokazany bez komentarzy i z wcięciem o jeden poziom mniejszym niż w pliku. Osiem wywołań paneli omawia sekcja 5.2, a wywołanie `drawHud`, które stoi **poza** blokiem `if (m_visible)`, sekcja 5.9. Kolejność wywołań nie jest kolejnością na ekranie: `drawLightsPanel` jest ostatnim panelem, a panel Lights staje w lewej kolumnie, bo o miejscu decyduje stała z `PanelLayout.hpp` (sekcja 5.7). Kolejność wywołań nie decyduje też o tym, co leży na wierzchu: HUD jest wołany po panelach, a jego pasek leży pod nimi (sekcja 5.9).
+Fragment jest tu pokazany bez komentarzy i z wcięciem o jeden poziom mniejszym niż w pliku. Dziesięć wywołań paneli omawia sekcja 5.2, a wywołanie `drawHud`, które stoi **poza** blokiem `if (m_visible)`, sekcja 5.9. Kolejność wywołań nie jest kolejnością na ekranie: `drawLightsPanel` jest ostatnim panelem, a panel Lights staje w lewej kolumnie, bo o miejscu decyduje stała z `PanelLayout.hpp` (sekcja 5.7). Kolejność wywołań nie decyduje też o tym, co leży na wierzchu: HUD jest wołany po panelach, a jego pasek leży pod nimi (sekcja 5.9).
 
 `RenderDrawData` robi po kolei: zapamiętuje bieżący stan OpenGL, ustawia własny (włączone mieszanie kolorów `GL_BLEND` i test nożycowy `GL_SCISSOR_TEST`, wyłączony test głębi `GL_DEPTH_TEST` i odrzucanie ścian), ustawia viewport na cały framebuffer i macierz rzutu prostokątnego, tworzy tymczasowe VAO, wgrywa wierzchołki do buforów, rysuje przez `glDrawElements` i na końcu **przywraca zapamiętany stan**. Dzięki temu ImGui nie psuje ustawień renderera sceny, na przykład w późniejszych kamieniach milowych nie wyłączy mi testu głębi na stałe.
 
@@ -168,7 +170,7 @@ Kolejność odwrotna do inicjalizacji. `ImGui_ImplOpenGL3_Shutdown` usuwa obiekt
 
 ## 4. Shadery
 
-Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera: napis `"#version 410"` przekazany do `ImGui_ImplOpenGL3_Init` jest doklejany jako pierwsza linia jego wbudowanego shadera wierzchołków i fragmentów, które backend kompiluje i linkuje przy pierwszej klatce. Wersja musi pasować do kontekstu: OpenGL 4.1 to GLSL 4.10, a domyślne w wielu przykładach `"#version 130"` nie skompiluje się w profilu Core na macOS. Shadery pisane przeze mnie (pięć par plików w `assets/shaders/`: `textured`, `color`, `lit`, `gouraud` i `skybox`, oraz wspólny plik `common/lighting.glsl`, dołączany przez programy `lit` i `gouraud`) należą do gry, a nie do modułu `debug`, ale moduł ma dla nich panel **Shaders** z przyciskiem przeładowania (sekcja 6 i [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6). PRD (sekcja 10) opisuje ten panel jako listę programów i tak dziś działa: panel dostaje listę pięciu programów i pokazuje jedną linię dla każdego (a pod nią tekst błędu, gdy wczytanie się nie udało).
+Moduł `debug` nie ma własnych plików shaderów. Shadery ma backend renderera: napis `"#version 410"` przekazany do `ImGui_ImplOpenGL3_Init` jest doklejany jako pierwsza linia jego wbudowanego shadera wierzchołków i fragmentów, które backend kompiluje i linkuje przy pierwszej klatce. Wersja musi pasować do kontekstu: OpenGL 4.1 to GLSL 4.10, a domyślne w wielu przykładach `"#version 130"` nie skompiluje się w profilu Core na macOS. Shadery pisane przeze mnie (pięć par plików w `assets/shaders/`: `textured`, `color`, `lit`, `gouraud` i `skybox`, oraz wspólny plik `common/lighting.glsl`, dołączany przez programy `lit` i `gouraud`) należą do gry, a nie do modułu `debug`, ale moduł ma dla nich panel **Shaders** z przyciskiem przeładowania (sekcja 6 i [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6). PRD (sekcja 10) opisuje ten panel jako listę programów i tak dziś działa: panel dostaje listę sześciu programów i pokazuje jedną linię dla każdego (a pod nią tekst błędu, gdy wczytanie się nie udało).
 
 Backend ma też własne obiekty samplerów. W wersji z katalogu budowania (1.92.9b) wszystko, co rysuje, w tym podglądy tekstur z panelu Assets, jest czytane przez jego sampler z filtrem liniowym i zawijaniem `GL_CLAMP_TO_EDGE`, a nie przez sampler mojej tekstury ([`../libraries/imgui.md`](../libraries/imgui.md), sekcja 3). Dlatego filtr wybrany w panelu Assets widać w scenie, a nie w podglądach. HUD z M5 też nie ma shaderów: to dwa zwykłe okna ImGui z tekstem i paskiem postępu, rysowane tym samym programem backendu co panele.
 
@@ -180,15 +182,17 @@ Backend ma też własne obiekty samplerów. W wersji z katalogu budowania (1.92.
 |---|---|
 | [`src/debug/DebugUI.hpp`](../../src/debug/DebugUI.hpp), [`.cpp`](../../src/debug/DebugUI.cpp) | Klasa `DebugUI`: cykl życia ImGui (RAII), zastosowanie motywu i wczytanie czcionki w konstruktorze, bajty czcionki (`m_fontBytes`), klatka ImGui, dockspace, wywołanie paneli i HUD, widoczność paneli, `wantsKeyboard()`, `wantsMouse()`, `setMouseEnabled()` |
 | [`src/debug/Theme.hpp`](../../src/debug/Theme.hpp), [`.cpp`](../../src/debug/Theme.cpp) | Motyw paneli: funkcja `colorFromBytes`, dziesięć stałych kolorów ze znaczeniem (tekst błędu `ERROR_TEXT_COLOR`, sześć kolorów planu od `PLAN_WALL_COLOR` do `PLAN_EXIT_COLOR` i trzy kolory HUD), `applyTheme` (kolory, metryki, skala ekranu) i `loadFont` (czcionka z `assets/fonts`). Sekcja 5.8 |
-| [`src/debug/PanelLayout.hpp`](../../src/debug/PanelLayout.hpp), [`.cpp`](../../src/debug/PanelLayout.cpp) | Układ domyślny: struktura `PanelPlacement` (miejsce, rozmiar i to, czy panel startuje zwinięty), osiem stałych z miejscami paneli i funkcja `placePanelOnFirstUse`. Sekcja 5.7 |
+| [`src/debug/PanelLayout.hpp`](../../src/debug/PanelLayout.hpp), [`.cpp`](../../src/debug/PanelLayout.cpp) | Układ domyślny: struktura `PanelPlacement` (miejsce, rozmiar, to, czy panel startuje zwinięty, i od M6 liczba rzędów zwiniętych pasków nad nim), dziesięć stałych z miejscami paneli, stała `FOLDED_ROW_COUNT` oraz funkcje `placePanelOnFirstUse` i `foldedRowsHeight`. Sekcja 5.7 |
 | [`src/debug/Hud.hpp`](../../src/debug/Hud.hpp), [`.cpp`](../../src/debug/Hud.cpp) | Funkcja `drawHud`: HUD gry, czyli pasek u góry okna (kryształy, czas, bateria, podpowiedź) i karta wygranej `You escaped`. Nie jest panelem: klawisz `~` go nie chowa. Architektura w sekcji 5.9, a to, co pokazuje i dlaczego: [`game/gameplay.md`](game/gameplay.md), sekcja 6 |
 | [`assets/fonts/`](../../assets/fonts/) | Plik czcionki `AtkinsonHyperlegible-Regular.ttf`, jej licencja `OFL.txt` i `README.md` ze źródłem i wersją. Cudzy materiał, nie kod |
 | [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp) | Struktura `DebugContext`: referencje do wszystkiego, co panele mogą w tej klatce odczytać albo edytować. Sam nagłówek, bez pliku `.cpp` |
 | [`src/debug/panels/RendererPanel.hpp`](../../src/debug/panels/RendererPanel.hpp), [`.cpp`](../../src/debug/panels/RendererPanel.cpp) | Funkcja `drawRendererPanel`: panel "Renderer" (statystyki klatki, dane sterownika, kolor czyszczenia, lista `Lighting` z trybem oświetlenia, od M6 pole `Skybox` i suwak `Sky brightness`). Sekcja 5.3 |
-| [`src/debug/panels/ShadersPanel.hpp`](../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../src/debug/panels/ShadersPanel.cpp) | Funkcja `drawShadersPanel`: panel "Shaders" (jeden przycisk "Reload shaders" dla wszystkich programów, a dla każdego programu jedna linia z nazwami jego dwóch plików i wynikiem ostatniego wczytania, pod nią tekst błędu). Opis linia po linii: [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6 |
+| [`src/debug/panels/ShadersPanel.hpp`](../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../src/debug/panels/ShadersPanel.cpp) | Funkcja `drawShadersPanel`: panel "Shaders" (jeden przycisk "Reload shaders" dla wszystkich programów, a dla każdego programu jedna linia z nazwami jego plików (dwóch, a dla programu z shaderem geometrii trzech) i wynikiem ostatniego wczytania, pod nią tekst błędu). Opis linia po linii: [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6 |
 | [`src/debug/panels/LightsPanel.hpp`](../../src/debug/panels/LightsPanel.hpp), [`.cpp`](../../src/debug/panels/LightsPanel.cpp) | Funkcja `drawLightsPanel`: panel "Lights" (światło otoczenia i cztery zwijane grupy: księżyc, latarka, światła punktowe, połysk). Opis linia po linii: [`scene/lights.md`](scene/lights.md), sekcja 6 |
 | [`src/debug/panels/CameraPanel.hpp`](../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../src/debug/panels/CameraPanel.cpp) | Funkcja `drawCameraPanel`: panel "Camera" (tryb, pozycja stóp gracza, oko, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, trzy prędkości gracza). Opis linia po linii: [`scene/camera-controls.md`](scene/camera-controls.md), sekcja 6 |
 | [`src/debug/panels/GameplayPanel.hpp`](../../src/debug/panels/GameplayPanel.hpp), [`.cpp`](../../src/debug/panels/GameplayPanel.cpp) | Funkcja `drawGameplayPanel`: panel "Gameplay" (stan rundy, przycisk `Restart round (key R)`, suwak `Battery`, pole `Battery drains` i pięć suwaków z liczbami reguł). Szkielet i droga danych: sekcja 5.5, znaczenie każdej kontrolki: [`game/gameplay.md`](game/gameplay.md), sekcja 6 |
+| [`src/debug/panels/TerrainPanel.hpp`](../../src/debug/panels/TerrainPanel.hpp), [`.cpp`](../../src/debug/panels/TerrainPanel.cpp) | Funkcja `drawTerrainPanel`: panel "Terrain" (suwak `Height scale`, pole `Wireframe`, trzy linie odczytu: siatka, trójkąty, zakres wysokości). Kod linia po linii: sekcja 5.10, znaczenie kontrolek: [`renderer/terrain.md`](renderer/terrain.md) |
+| [`src/debug/panels/GrassPanel.hpp`](../../src/debug/panels/GrassPanel.hpp), [`.cpp`](../../src/debug/panels/GrassPanel.cpp) | Funkcja `drawGrassPanel`: panel "Grass" (pole `Enabled`, suwaki `Density`, `Blade height` i `Wind strength`, linia z liczbą kępek i źdźbeł). Kod linia po linii: sekcja 5.10, znaczenie kontrolek: [`renderer/grass-geometry.md`](renderer/grass-geometry.md) |
 | [`src/debug/panels/MazePanel.hpp`](../../src/debug/panels/MazePanel.hpp), [`.cpp`](../../src/debug/panels/MazePanel.cpp) | Funkcja `drawMazePanel`: panel "Maze" (rozmiar, ziarno, "Regenerate", "Random seed", liczba kryształów i komórka wyjścia, plan labiryntu z góry z graczem, kryształami, bramą i strefą wyjścia). Opis linia po linii: [`game/maze-generator.md`](game/maze-generator.md), sekcja 6 |
 | [`src/debug/panels/CollisionPanel.hpp`](../../src/debug/panels/CollisionPanel.hpp), [`.cpp`](../../src/debug/panels/CollisionPanel.cpp) | Funkcja `drawCollisionPanel`: panel "Collision" (rysowanie pudełek i sfer, noclip, liczby pudełek i sfer zbierania, pudełko gracza). Opis linia po linii: [`scene/collision.md`](scene/collision.md), sekcja 6 |
 | [`src/debug/panels/AssetsPanel.hpp`](../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../src/debug/panels/AssetsPanel.cpp) | Funkcja `drawAssetsPanel`: panel "Assets" (tryb widoku, przełącznik mapowania normalnych, filtr, anizotropia, modele z teksturą i mapą normalnych każdej części, tekstury z podglądem, lista nieudanych wczytań). Opis linia po linii: [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6 |
@@ -200,22 +204,26 @@ Backend ma też własne obiekty samplerów. W wersji z katalogu budowania (1.92.
 
 ```mermaid
 flowchart LR
-    Main["DebugNightMazeApp (main.cpp)<br/>posiada m_debugUI"] -->|"setMouseEnabled(...), draw(DebugContext: 20 referencji)"| UI["debug::DebugUI<br/>cykl życia ImGui, m_visible"]
+    Main["DebugNightMazeApp (main.cpp)<br/>posiada m_debugUI"] -->|"setMouseEnabled(...), draw(DebugContext: 24 pola)"| UI["debug::DebugUI<br/>cykl życia ImGui, m_visible"]
     Main -->|"dziedziczy, woła onRender gry"| Game["game::NightMazeApp<br/>właściciel całego stanu gry"]
     Main -->|"czyta isCursorCaptured()<br/>setKeyboardBlocked(wantsKeyboard()), setMouseBlocked(wantsMouse())"| In["core::Input"]
     UI --> RP["drawRendererPanel<br/>time, window, clearColor, lighting.mode, skybox"]
-    UI --> SP["drawShadersPanel<br/>lista czterech gfx::Shader*"]
+    UI --> SP["drawShadersPanel<br/>lista sześciu gfx::Shader*"]
     UI --> CP["drawCameraPanel<br/>camera, player, mouseSensitivity"]
     UI --> GP["drawGameplayPanel<br/>round, gameplay"]
+    UI --> TP["drawTerrainPanel<br/>terrain, mazeWorld.terrain"]
+    UI --> GR["drawGrassPanel<br/>grass, grassTuftCount"]
     UI --> MP["drawMazePanel<br/>mazeSettings, mazeWorld, round, player, camera"]
     UI --> CO["drawCollisionPanel<br/>mazeWorld, round, player, drawColliders"]
     UI --> AP["drawAssetsPanel<br/>assets, viewMode, lighting.normalMapping"]
     UI --> LP["drawLightsPanel<br/>lighting, round"]
     UI --> HUD["drawHud (poza if m_visible)<br/>round, gameplay"]
     RP -->|"czyta czas i okno, zapisuje m_clearColor i m_lighting.mode"| Game
-    SP -->|"woła reload() na pięciu programach"| Game
+    SP -->|"woła reload() na sześciu programach"| Game
     CP -->|"zapisuje kąty i rzutowanie kamery, pozycję i prędkości gracza, czułość myszy"| Game
     GP -->|"zapisuje m_round.battery i pola m_gameplay (w tym prośbę restart), czyta resztę m_round"| Game
+    TP -->|"zapisuje m_terrainSettings (w tym prośbę rebuild), czyta m_mazeWorld.terrain"| Game
+    GR -->|"zapisuje m_grassSettings (w tym prośbę replant), dostaje liczbę kępek jako kopię"| Game
     MP -->|"zapisuje m_mazeSettings, czyta m_mazeWorld, m_round, m_player, m_camera"| Game
     CO -->|"zapisuje m_drawColliders i m_player.noclip, czyta m_mazeWorld i m_round"| Game
     AP -->|"woła setFilter i setAnisotropy na m_assets, zapisuje m_viewMode"| Game
@@ -223,7 +231,7 @@ flowchart LR
     HUD -->|"tylko czyta m_round i m_gameplay"| Game
 ```
 
-Osiem paneli to osiem wolnych funkcji bez stanu, a HUD jest dziewiątą. Każda strzałka do gry idzie przez referencję z `DebugContext`: panel nie zna klasy `NightMazeApp`, zna tylko typy danych, które dostał (`scene::Camera`, `game::Player`, `game::MazeSettings`, `game::MazeWorld`, `assets::AssetCache`, `game::ViewMode`, `game::LightingSettings`, `game::LightingMode`, `game::GameplaySettings`, `game::Round`, `gfx::Shader`).
+Dziesięć paneli to dziesięć wolnych funkcji bez stanu, a HUD jest jedenastą. Każda strzałka do gry idzie przez referencję z `DebugContext`: panel nie zna klasy `NightMazeApp`, zna tylko typy danych, które dostał (`scene::Camera`, `game::Player`, `game::MazeSettings`, `game::MazeWorld`, `assets::AssetCache`, `game::ViewMode`, `game::LightingSettings`, `game::LightingMode`, `game::GameplaySettings`, `game::Round`, `game::SkyboxSettings`, `game::TerrainSettings`, `game::Terrain`, `game::GrassSettings`, `gfx::Shader`).
 
 **Dlaczego `DebugUI` należy do klasy w `main.cpp`, a nie do gry.** W architekturze projektu (PRD, sekcja 6) `debug/` zależy od wszystkich warstw, ale **nic nie zależy od `debug/`**. Gdyby `game::NightMazeApp` miało pole `DebugUI`, plik gry dołączałby `debug/DebugUI.hpp` i gra nie dałaby się zbudować bez paneli. Dlatego sklejenie odbywa się piętro wyżej:
 
@@ -261,6 +269,12 @@ protected:
             .lighting = lighting(),
             .gameplay = gameplaySettings(),
             .round = round(),
+            .skyboxShader = skyboxShader(),
+            .skybox = skyboxSettings(),
+            .grassShader = grassShader(),
+            .terrain = terrainSettings(),
+            .grass = grassSettings(),
+            .grassTuftCount = grassTuftCount(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -279,12 +293,12 @@ private:
 };
 ```
 
-`main.cpp` to jedyny plik, który dołącza zarówno `game/NightMazeApp.hpp`, jak i `debug/DebugUI.hpp` (oraz `debug/DebugContext.hpp`). Klasa dziedziczy po grze, nadpisuje `onRender`, woła w nim wersję gry (`game::NightMazeApp::onRender(alpha)`, z nazwą klasy, żeby ominąć mechanizm wirtualny i nie wpaść w rekurencję), potem mówi ImGui, czy wolno mu używać myszy, buduje `DebugContext` i dorysowuje panele oraz HUD, a na końcu przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy (sekcja 5.6). Gra ze swojej strony udostępnia tylko szesnaście chronionych akcesorów (`clearColor()`, `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()`, `lighting()`, `camera()`, `mouseSensitivity()`, `player()`, `mazeSettings()`, `mazeWorld()`, `gameplaySettings()`, `round()`, `assets()`, `viewMode()`, `drawColliders()`, tabela w [`core/README.md`](core/README.md), sekcja 6) i nie wie, kto z nich skorzysta. Kierunek zależności wygląda więc tak: `main.cpp` zna `game` i `debug`. `debug` zna `core`, `gfx`, `scene`, `assets` i typy danych z `game` (panel Shaders dołącza `gfx/Shader.hpp`, panel Camera `scene/Camera.hpp` i `game/Player.hpp`, panele Maze i Collision `game/MazeWorld.hpp`, `game/MazeLayout.hpp`, `game/Player.hpp` i `game/Round.hpp`, panel Gameplay i plik `Hud.cpp` samo `game/Round.hpp`, panel Assets `assets/AssetCache.hpp` i `game/MazeRenderer.hpp` dla wyliczenia `ViewMode`, panel Renderer `game/Lighting.hpp` dla wyliczenia `LightingMode`, panel Lights `game/Lighting.hpp`, `game/Round.hpp` i `scene/Light.hpp`). Także `DebugUI.cpp` dołącza `game/Lighting.hpp`, bo sięga do pola `context.lighting.mode` i potrzebuje do tego pełnej definicji struktury. `game` zna `core`, `gfx`, `scene` i `assets`, ale niczego z `debug`. Zależność jest więc jednostronna: panele znają dane gry, gra nie zna paneli. Komentarz w `main.cpp` ("the only place where the game meets the debug UI") mówi to samo: to jedyne miejsce, które tworzy obiekty obu warstw i je łączy.
+`main.cpp` to jedyny plik, który dołącza zarówno `game/NightMazeApp.hpp`, jak i `debug/DebugUI.hpp` (oraz `debug/DebugContext.hpp`). Klasa dziedziczy po grze, nadpisuje `onRender`, woła w nim wersję gry (`game::NightMazeApp::onRender(alpha)`, z nazwą klasy, żeby ominąć mechanizm wirtualny i nie wpaść w rekurencję), potem mówi ImGui, czy wolno mu używać myszy, buduje `DebugContext` i dorysowuje panele oraz HUD, a na końcu przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy (sekcja 5.6). Gra ze swojej strony udostępnia tylko dwadzieścia dwa chronione akcesory (`clearColor()`, `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()`, `skyboxShader()`, `grassShader()`, `terrainSettings()`, `grassSettings()`, `grassTuftCount()`, `skyboxSettings()`, `lighting()`, `camera()`, `mouseSensitivity()`, `player()`, `mazeSettings()`, `mazeWorld()`, `gameplaySettings()`, `round()`, `assets()`, `viewMode()`, `drawColliders()`, tabela w [`core/README.md`](core/README.md), sekcja 6) i nie wie, kto z nich skorzysta. Kierunek zależności wygląda więc tak: `main.cpp` zna `game` i `debug`. `debug` zna `core`, `gfx`, `scene`, `assets` i typy danych z `game` (panel Shaders dołącza `gfx/Shader.hpp`, panel Camera `scene/Camera.hpp` i `game/Player.hpp`, panele Maze i Collision `game/MazeWorld.hpp`, `game/MazeLayout.hpp`, `game/Player.hpp` i `game/Round.hpp`, panel Gameplay i plik `Hud.cpp` samo `game/Round.hpp`, panel Assets `assets/AssetCache.hpp` i `game/MazeRenderer.hpp` dla wyliczenia `ViewMode`, panel Renderer `game/Lighting.hpp` dla wyliczenia `LightingMode`, panel Lights `game/Lighting.hpp`, `game/Round.hpp` i `scene/Light.hpp`). Także `DebugUI.cpp` dołącza `game/Lighting.hpp`, bo sięga do pola `context.lighting.mode` i potrzebuje do tego pełnej definicji struktury. `game` zna `core`, `gfx`, `scene` i `assets`, ale niczego z `debug`. Zależność jest więc jednostronna: panele znają dane gry, gra nie zna paneli. Komentarz w `main.cpp` ("the only place where the game meets the debug UI") mówi to samo: to jedyne miejsce, które tworzy obiekty obu warstw i je łączy.
 
 Trzy decyzje, które trzeba umieć uzasadnić:
 
 1. **`DebugUI` to RAII na ImGui.** Konstruktor inicjalizuje, destruktor zamyka, kopiowanie jest zablokowane (`= delete`), bo kontekst ImGui jest jeden. Nie da się zapomnieć o `Shutdown`.
-2. **Panel to wolna funkcja, nie klasa.** `drawRendererPanel` nie ma własnego stanu (tak samo pozostałych siedem funkcji paneli i `drawHud`). Wszystko, co pokazuje i edytuje, dostaje w argumentach. Zgodnie z zasadą "dane zamiast kodu" (PRD, sekcja 6) stan należy do właściciela: kolor tła jest polem `game::NightMazeApp::m_clearColor`, a panel tylko go edytuje przez referencję.
+2. **Panel to wolna funkcja, nie klasa.** `drawRendererPanel` nie ma własnego stanu (tak samo pozostałych dziewięć funkcji paneli i `drawHud`). Wszystko, co pokazuje i edytuje, dostaje w argumentach. Zgodnie z zasadą "dane zamiast kodu" (PRD, sekcja 6) stan należy do właściciela: kolor tła jest polem `game::NightMazeApp::m_clearColor`, a panel tylko go edytuje przez referencję.
 3. **`const` mówi, co panel może zmienić.** W sygnaturze panelu Renderer `const core::Time&` i `const core::Window&` są tylko do odczytu. `std::array<float, 3>& clearColor` i `game::LightingMode& lightingMode` bez `const` to dwie rzeczy, które panel modyfikuje. Z samej sygnatury widać, co jest przełącznikiem. Tak samo czyta się pozostałe sygnatury:
 
    | Sygnatura | Tylko do odczytu | Edytowalne |
@@ -292,6 +306,8 @@ Trzy decyzje, które trzeba umieć uzasadnić:
    | `drawShadersPanel(std::span<gfx::Shader* const> shaders)` | sama lista (wskaźników nie da się przestawić) | shadery, na które wskazują: przycisk woła `reload()` |
    | `drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity)` | nic | kąty i rzutowanie kamery, pozycja i prędkości gracza, czułość |
    | `drawGameplayPanel(game::Round& round, game::GameplaySettings& settings)` | z rundy wszystko poza baterią: panel tylko to wypisuje (typ tego nie pilnuje, niżej) | `round.battery` (suwak `Battery`) i wszystkie pola `settings`: liczby reguł, `batteryDrains` i prośba `restart` |
+   | `drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terrain)` | teren labiryntu w grze: rozmiar siatki, liczba trójkątów, najniższy i najwyższy punkt | skala wysokości, przełącznik siatki z krawędzi i prośba `rebuild` |
+   | `drawGrassPanel(game::GrassSettings& settings, std::size_t tuftCount)` | liczba kępek: przychodzi przez wartość, więc panel nie ma czego zmienić | włącznik, gęstość, wysokość źdźbeł, siła wiatru i prośba `replant` |
    | `drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world, const game::Round& round, const game::Player& player, const scene::Camera& camera)` | labirynt w grze, runda (kryształy i stan bramy), gracz i kamera (rysowane na planie) | prośba o następny labirynt |
    | `drawCollisionPanel(const game::MazeWorld& world, const game::Round& round, game::Player& player, bool& drawColliders)` | labirynt i runda (liczenie pudełek, pudełka bramy i sfer zbierania) | `player.noclip` i przełącznik rysowania |
    | `drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping)` | nic | filtr i anizotropia wszystkich tekstur, tryb widoku, przełącznik mapowania normalnych (pole `normalMapping` struktury `LightingSettings`: panel dostaje referencję do jednego `bool`, a nie całą strukturę) |
@@ -333,7 +349,7 @@ struct DebugContext {
     game::Player& player;
     /// Request for the next maze, editable: size, seed and the "regenerate" flag.
     game::MazeSettings& mazeSettings;
-    /// The maze in play, read only: its plan and its collision boxes.
+    /// The maze in play, read only: its plan, its collision boxes and its terrain.
     const game::MazeWorld& mazeWorld;
     /// Loaded models and textures, editable: the Assets panel changes the filtering.
     assets::AssetCache& assets;
@@ -359,10 +375,19 @@ struct DebugContext {
     gfx::Shader& skyboxShader;
     /// The switch and the brightness of the sky, editable.
     game::SkyboxSettings& skybox;
+    /// Shader program of the grass, editable: reloaded like texturedShader.
+    gfx::Shader& grassShader;
+    /// The height scale and the wireframe switch of the terrain, editable.
+    game::TerrainSettings& terrain;
+    /// The switch, the density, the blade height and the wind of the grass, editable.
+    game::GrassSettings& grass;
+    /// How many tufts of grass are drawn. A plain number, copied when the context is
+    /// built: the panels only show it.
+    std::size_t grassTuftCount;
 };
 ```
 
-Dwadzieścia pól w kolejności deklaracji i ich właściciele:
+Dwadzieścia cztery pola w kolejności deklaracji i ich właściciele:
 
 | # | Pole | Typ | Skąd pochodzi (`main.cpp`) | Kto czyta albo pisze |
 |---|---|---|---|---|
@@ -375,7 +400,7 @@ Dwadzieścia pól w kolejności deklaracji i ich właściciele:
 | 7 | `colorShader` | `gfx::Shader&` | `colorShader()`, `m_colorShader` (linie pudełek i sfer kolizji) | Shaders (`reload()`) |
 | 8 | `player` | `game::Player&` | `player()`, `m_player` | Camera i Collision (edycja), Maze (odczyt) |
 | 9 | `mazeSettings` | `game::MazeSettings&` | `mazeSettings()`, `m_mazeSettings` | Maze (edycja) |
-| 10 | `mazeWorld` | `const game::MazeWorld&` | `mazeWorld()`, `m_mazeWorld` | Maze i Collision (odczyt) |
+| 10 | `mazeWorld` | `const game::MazeWorld&` | `mazeWorld()`, `m_mazeWorld` | Maze i Collision (odczyt), Terrain (odczyt pola `terrain`) |
 | 11 | `assets` | `assets::AssetCache&` | `assets()`, `m_assets` | Assets (`setFilter`, `setAnisotropy`, listy) |
 | 12 | `viewMode` | `game::ViewMode&` | `viewMode()`, `m_viewMode` | Assets (edycja) |
 | 13 | `drawColliders` | `bool&` | `drawColliders()`, `m_drawColliders` | Collision (edycja) |
@@ -386,43 +411,47 @@ Dwadzieścia pól w kolejności deklaracji i ich właściciele:
 | 18 | `round` | `game::Round&` | `round()`, `m_round` | Gameplay (odczyt, edycja jednego pola `battery`), Maze, Collision, Lights i HUD (odczyt) |
 | 19 | `skyboxShader` | `gfx::Shader&` | `skyboxShader()`, `m_skyboxShader` (niebo) | Shaders (`reload()`) |
 | 20 | `skybox` | `game::SkyboxSettings&` | `skyboxSettings()`, `m_skyboxSettings` | Renderer (edycja pól `enabled` i `brightness`) |
+| 21 | `grassShader` | `gfx::Shader&` | `grassShader()`, `m_grassShader` (trawa, program z shaderem geometrii) | Shaders (`reload()`) |
+| 22 | `terrain` | `game::TerrainSettings&` | `terrainSettings()`, `m_terrainSettings` | Terrain (edycja pól `heightScale`, `wireframe` i `rebuild`) |
+| 23 | `grass` | `game::GrassSettings&` | `grassSettings()`, `m_grassSettings` | Grass (edycja wszystkich pól) |
+| 24 | `grassTuftCount` | `std::size_t` (wartość, nie referencja) | `grassTuftCount()`, czyli `m_grassRenderer.tuftCount()` | Grass (odczyt) |
 
-Kolejność pól to historia: pierwsze pięć pochodzi z M0 i M1, osiem następnych doszło w M2 + M3, trzy w M4, dwa w M5, a dwa ostatnie w pierwszej części M6, i wszystkie były dopisywane **na końcu**. Dlatego shadery są rozrzucone po strukturze (pola 6, 7, 14, 15 i 19) i nie stoją obok siebie. Do M4 pól z M0 i M1 było sześć: czwartym było `shader`, program kostki z M1. W M5 kostka zniknęła z gry razem z programem `basic`, więc zniknęło też pole, akcesor gry i linia w `main.cpp`, a numery następnych pól przesunęły się o jeden. Komentarz przy polu `colorShader` mówi dziś o jednym użytkowniku tego programu: liniach pudełek i sfer kolizji (znaczniki świateł z M4, które też nim rysowałem, zostały usunięte). Pole `lighting` obsługuje trzy panele: z mapami normalnych nie doszło nowe pole kontekstu, tylko nowe pole struktury `LightingSettings`, które `DebugUI::draw` podaje panelowi Assets jako `context.lighting.normalMapping`. Dwa pola z M5 obsługują razem pięć odbiorców: cztery panele i HUD. Kolejność ma skutek w `main.cpp`: inicjalizatory desygnowane muszą iść w kolejności deklaracji pól, więc linia `.litShader = litShader(),` stoi po `.drawColliders = drawColliders(),`, a nie obok `.colorShader = colorShader(),` (pułapka 15). Pole `moveSpeed` z M1 zniknęło wcześniej: prędkości są dziś trzy i należą do gracza (`player.walkSpeed`, `player.sprintSpeed`, `player.flySpeed`), więc przychodzą razem z polem `player`.
+Kolejność pól to historia: pierwsze pięć pochodzi z M0 i M1, osiem następnych doszło w M2 + M3, trzy w M4, dwa w M5, dwa w pierwszej części M6, a cztery ostatnie w drugiej (teren i trawa), i wszystkie były dopisywane **na końcu**. Dlatego shadery są rozrzucone po strukturze (pola 6, 7, 14, 15, 19 i 21) i nie stoją obok siebie. Do M4 pól z M0 i M1 było sześć: czwartym było `shader`, program kostki z M1. W M5 kostka zniknęła z gry razem z programem `basic`, więc zniknęło też pole, akcesor gry i linia w `main.cpp`, a numery następnych pól przesunęły się o jeden. Komentarz przy polu `colorShader` mówi dziś o jednym użytkowniku tego programu: liniach pudełek i sfer kolizji (znaczniki świateł z M4, które też nim rysowałem, zostały usunięte). Pole `lighting` obsługuje trzy panele: z mapami normalnych nie doszło nowe pole kontekstu, tylko nowe pole struktury `LightingSettings`, które `DebugUI::draw` podaje panelowi Assets jako `context.lighting.normalMapping`. Dwa pola z M5 obsługują razem pięć odbiorców: cztery panele i HUD. Kolejność ma skutek w `main.cpp`: inicjalizatory desygnowane muszą iść w kolejności deklaracji pól, więc linia `.litShader = litShader(),` stoi po `.drawColliders = drawColliders(),`, a nie obok `.colorShader = colorShader(),` (pułapka 15). Pole `moveSpeed` z M1 zniknęło wcześniej: prędkości są dziś trzy i należą do gracza (`player.walkSpeed`, `player.sprintSpeed`, `player.flySpeed`), więc przychodzą razem z polem `player`.
 
-Powód jest praktyczny. Gdyby `draw` brało każdą wartość osobno (`draw(time, window, clearColor, shader)`), każdy nowy panel z nowymi danymi wydłużałby listę parametrów w trzech miejscach naraz: w deklaracji w `DebugUI.hpp`, w definicji w `DebugUI.cpp` i w wywołaniu w `main.cpp`. Ze strukturą sygnatura `draw` się nie zmienia: dochodzi jedno pole w `DebugContext` i jedna linia w `main.cpp`. Tak doszedł w M1 panel Shaders: jedno pole i jedna linia, bez zmiany w `DebugUI.hpp`. Trzy panele z M2 + M3 dołożyły osiem pól i osiem linii, oświetlenie z M4 trzy pola i trzy linie, rozgrywka z M5 dwa pola i dwie linie (dla panelu Gameplay, trzech starszych paneli i HUD), a niebo z M6 znów dwa pola i dwie linie (program dla panelu Shaders i ustawienia dla panelu Renderer). Sygnatura `draw` w `DebugUI.hpp` jest przez cały ten czas ta sama. Rzeczy, które trzeba umieć wyjaśnić:
+Powód jest praktyczny. Gdyby `draw` brało każdą wartość osobno (`draw(time, window, clearColor, shader)`), każdy nowy panel z nowymi danymi wydłużałby listę parametrów w trzech miejscach naraz: w deklaracji w `DebugUI.hpp`, w definicji w `DebugUI.cpp` i w wywołaniu w `main.cpp`. Ze strukturą sygnatura `draw` się nie zmienia: dochodzi jedno pole w `DebugContext` i jedna linia w `main.cpp`. Tak doszedł w M1 panel Shaders: jedno pole i jedna linia, bez zmiany w `DebugUI.hpp`. Trzy panele z M2 + M3 dołożyły osiem pól i osiem linii, oświetlenie z M4 trzy pola i trzy linie, rozgrywka z M5 dwa pola i dwie linie (dla panelu Gameplay, trzech starszych paneli i HUD), a niebo z M6 znów dwa pola i dwie linie (program dla panelu Shaders i ustawienia dla panelu Renderer). Teren i trawa, druga część M6, dołożyły cztery pola i cztery linie: program trawy dla panelu Shaders, ustawienia dla paneli Terrain i Grass oraz liczbę kępek. Teren, który panel Terrain czyta, nie potrzebował nowego pola: jest częścią `mazeWorld` (`context.mazeWorld.terrain`). Sygnatura `draw` w `DebugUI.hpp` jest przez cały ten czas ta sama. Rzeczy, które trzeba umieć wyjaśnić:
 
-1. **Dlaczego referencje.** Struktura niczego nie posiada i niczego nie kopiuje. Każde pole wskazuje na obiekt, którego właścicielem jest aplikacja: `time` i `window` to pola `core::Application`, `clearColor` to `game::NightMazeApp::m_clearColor`, a pozostałe siedemnaście to pola tej samej klasy (tabela wyżej). Kopia `m_clearColor` w strukturze byłaby bezużyteczna, bo panel edytowałby kopię, a `glClearColor` dalej dostawałby oryginał. Referencja zamiast wskaźnika oznacza też, że pole nie może być puste: nie ma `nullptr` do sprawdzania.
-2. **Dlaczego jest budowana co klatkę.** `main.cpp` tworzy obiekt tymczasowy `debug::DebugContext{...}` bezpośrednio w wywołaniu `draw`. Koszt to dwadzieścia referencji, czyli dwadzieścia adresów. W zamian nie ma żadnego stanu do przechowywania i pilnowania: `DebugUI` nie zapamiętuje kontekstu, a `DebugNightMazeApp` nie ma dodatkowego pola.
+1. **Dlaczego referencje.** Struktura niczego nie posiada i, poza jedną liczbą, niczego nie kopiuje. Każde pole wskazuje na obiekt, którego właścicielem jest aplikacja: `time` i `window` to pola `core::Application`, `clearColor` to `game::NightMazeApp::m_clearColor`, a z pozostałych dwudziestu jeden dwadzieścia to referencje do pól tej samej klasy (tabela wyżej). Wyjątkiem jest ostatnie pole, `grassTuftCount`: zwykła liczba `std::size_t`, kopiowana przy budowie kontekstu. Gra nie trzyma jej w żadnym polu, do którego dałoby się zrobić referencję: akcesor `grassTuftCount()` pyta o nią `GrassRenderer::tuftCount()` i zwraca wartość, a panel Grass tylko ją wypisuje, więc kopia niczego nie psuje. Kopia `m_clearColor` w strukturze byłaby bezużyteczna, bo panel edytowałby kopię, a `glClearColor` dalej dostawałby oryginał. Referencja zamiast wskaźnika oznacza też, że pole nie może być puste: nie ma `nullptr` do sprawdzania.
+2. **Dlaczego jest budowana co klatkę.** `main.cpp` tworzy obiekt tymczasowy `debug::DebugContext{...}` bezpośrednio w wywołaniu `draw`. Koszt to dwadzieścia trzy referencje, czyli dwadzieścia trzy adresy, i jedna liczba. W zamian nie ma żadnego stanu do przechowywania i pilnowania: `DebugUI` nie zapamiętuje kontekstu, a `DebugNightMazeApp` nie ma dodatkowego pola.
 3. **Czas życia (lifetime).** Obiekt tymczasowy żyje do końca pełnego wyrażenia, czyli do średnika po wywołaniu `draw`. To wystarcza, bo panele używają go tylko w trakcie `draw`. Struktury nie wolno zachować na później (na przykład w polu klasy): przeżyłaby klatkę, w której powstała, a jej referencje mogłyby wskazywać na obiekty już zniszczone.
 4. **Dlaczego inicjalizatory desygnowane (designated initializers, C++20).** Zapis `.time = time()` nazywa pole, do którego trafia wartość, więc wywołanie czyta się bez zaglądania do definicji struktury. Pola referencyjnego nie da się pominąć: referencja musi zostać zainicjalizowana, więc brak pola na liście jest błędem kompilacji, a nie cichą wartością domyślną (sekcja 7, pułapki 14 i 15).
 5. **Dlaczego panel nadal dostaje jawne parametry.** `DebugUI::draw` woła `drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode, context.skybox)`, `drawCameraPanel(context.camera, context.player, context.mouseSensitivity)` i tak dalej, a nie `drawRendererPanel(context)`. Dzięki temu sygnatura panelu dalej mówi, co dokładnie czyta i co edytuje (decyzja 3 wyżej). Panel biorący cały `DebugContext` miałby dostęp do wszystkiego i z jego sygnatury nic by nie wynikało. Ta sama zasada działa o poziom niżej: panel Renderer dostaje `context.lighting.mode`, czyli jedno pole struktury `LightingSettings`, a nie całą strukturę. Zmienia tryb oświetlenia i nie ma jak ruszyć kolorów ani natężeń świateł, które należą do panelu Lights.
 6. **`const DebugContext&` nie robi z pól stałych.** `draw` bierze kontekst przez `const&`, a mimo to panel zmienia kolor tła. To nie jest obejście `const`. Stałość obiektu dotyczy jego własnych pól, a polem jest tu **referencja**, nie tablica. Referencji i tak nie da się przestawić na inny obiekt, więc `const` na strukturze niczego w niej nie zmienia, i nie przechodzi na obiekt, na który referencja wskazuje. O tym, czy przez pole wolno pisać, decyduje wyłącznie typ pola: `const core::Time&` i `const game::MazeWorld&` są tylko do odczytu, `std::array<float, 3>&`, `gfx::Shader&`, `scene::Camera&`, `game::Player&`, `game::LightingSettings&`, `game::GameplaySettings&`, `game::Round&`, `float&` i `bool&` są edytowalne, niezależnie od tego, czy sama struktura jest `const`. Tak samo zachowuje się wskaźnik: w stałym obiekcie pole `float* p` staje się `float* const p` (nie można przestawić wskaźnika), ale `*p = 1.0F` nadal się kompiluje.
 
-Nagłówki `DebugContext.hpp`, `DebugUI.hpp`, `Hud.hpp` i osiem nagłówków paneli nie dołączają ani `imgui.h`, ani nagłówków `core`, `gfx`, `scene`, `game` i `assets`: wystarczają im deklaracje wyprzedzające (forward declarations), bo używają tych typów tylko przez referencję albo wskaźnik. `DebugContext.hpp` deklaruje tak wszystkie swoje typy: `class AssetCache;` w `assets`, `class Time;` i `class Window;` w `core`, `enum class ViewMode;`, `struct GameplaySettings;`, `struct LightingSettings;`, `struct MazeSettings;`, `struct MazeWorld;`, `struct Player;`, `struct Round;` i `struct SkyboxSettings;` w `game`, `class Shader;` w `gfx` i `struct Camera;` w `scene`. Wyliczenie `enum class` da się zadeklarować z wyprzedzeniem, bo jego typ bazowy jest znany (domyślnie `int`). Tak samo `RendererPanel.hpp` deklaruje `enum class LightingMode;`, `LightsPanel.hpp` `struct LightingSettings;` i `struct Round;`, a `GameplayPanel.hpp` i `Hud.hpp` po dwie: `struct GameplaySettings;` i `struct Round;`. Jedyne dołączenia w tych nagłówkach to `<array>` (w `DebugContext.hpp` i `RendererPanel.hpp`, dla `std::array<float, 3>`), `<span>` (w `ShadersPanel.hpp`) i `<vector>` (w `DebugUI.hpp`, dla pola `m_fontBytes` z bajtami czcionki). Słowo `struct` albo `class` w deklaracji zgadza się z definicją (`struct Camera`, `struct Player`, `class AssetCache`). `DebugUI.hpp` deklaruje `class Window;` (dla konstruktora) i `struct DebugContext;` (dla `draw`). Pełną definicję `DebugContext` dołączają tylko `DebugUI.cpp`, które czyta pola, i `main.cpp`, które strukturę buduje. W tych jedenastu nagłówkach ImGui nie ma, więc `main.cpp`, które dołącza `DebugUI.hpp` i `DebugContext.hpp`, nie zależy od tej biblioteki. Wyjątkiem są dwa nagłówki wewnętrzne modułu, `Theme.hpp` i `PanelLayout.hpp`: pokazują typy ImGui (`ImVec4`, `ImVec2`), więc dołączają `<imgui.h>`. Dołączają je tylko pliki `.cpp` z `src/debug/`, które i tak używają ImGui, więc reguła "reszta projektu nie zna ImGui" zostaje prawdziwa.
+Nagłówki `DebugContext.hpp`, `DebugUI.hpp`, `Hud.hpp` i dziesięć nagłówków paneli nie dołączają ani `imgui.h`, ani nagłówków `core`, `gfx`, `scene`, `game` i `assets`: wystarczają im deklaracje wyprzedzające (forward declarations), bo używają tych typów tylko przez referencję albo wskaźnik. `DebugContext.hpp` deklaruje tak wszystkie swoje typy: `class AssetCache;` w `assets`, `class Time;` i `class Window;` w `core`, `enum class ViewMode;`, `struct GameplaySettings;`, `struct GrassSettings;`, `struct LightingSettings;`, `struct MazeSettings;`, `struct MazeWorld;`, `struct Player;`, `struct Round;`, `struct SkyboxSettings;` i `struct TerrainSettings;` w `game`, `class Shader;` w `gfx` i `struct Camera;` w `scene`. Wyliczenie `enum class` da się zadeklarować z wyprzedzeniem, bo jego typ bazowy jest znany (domyślnie `int`). Tak samo `RendererPanel.hpp` deklaruje `enum class LightingMode;`, `LightsPanel.hpp` `struct LightingSettings;` i `struct Round;`, a `GameplayPanel.hpp` i `Hud.hpp` po dwie: `struct GameplaySettings;` i `struct Round;`. `TerrainPanel.hpp` deklaruje `class Terrain;` i `struct TerrainSettings;` (teren jest klasą, bo pilnuje swojej siatki, ustawienia są strukturą), a `GrassPanel.hpp` samo `struct GrassSettings;`. Jedyne dołączenia w tych nagłówkach to `<array>` (w `DebugContext.hpp` i `RendererPanel.hpp`, dla `std::array<float, 3>`), `<cstddef>` (w `DebugContext.hpp` i `GrassPanel.hpp`, dla `std::size_t` liczby kępek), `<span>` (w `ShadersPanel.hpp`) i `<vector>` (w `DebugUI.hpp`, dla pola `m_fontBytes` z bajtami czcionki). Słowo `struct` albo `class` w deklaracji zgadza się z definicją (`struct Camera`, `struct Player`, `class AssetCache`). `DebugUI.hpp` deklaruje `class Window;` (dla konstruktora) i `struct DebugContext;` (dla `draw`). Pełną definicję `DebugContext` dołączają tylko `DebugUI.cpp`, które czyta pola, i `main.cpp`, które strukturę buduje. W tych trzynastu nagłówkach ImGui nie ma, więc `main.cpp`, które dołącza `DebugUI.hpp` i `DebugContext.hpp`, nie zależy od tej biblioteki. Wyjątkiem są dwa nagłówki wewnętrzne modułu, `Theme.hpp` i `PanelLayout.hpp`: pokazują typy ImGui (`ImVec4`, `ImVec2`), więc dołączają `<imgui.h>`. Dołączają je tylko pliki `.cpp` z `src/debug/`, które i tak używają ImGui, więc reguła "reszta projektu nie zna ImGui" zostaje prawdziwa.
 
-**Lista shaderów: tablica wskaźników widziana jako `std::span`.** Jedno z ośmiu wywołań paneli w `DebugUI::draw` wymaga wyjaśnienia:
+**Lista shaderów: tablica wskaźników widziana jako `std::span`.** Jedno z dziesięciu wywołań paneli w `DebugUI::draw` wymaga wyjaśnienia:
 
 ```cpp
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 5;
+        constexpr int SHADER_COUNT = 6;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader, &context.colorShader, &context.litShader,
-            &context.gouraudShader, &context.skyboxShader};
+            &context.texturedShader, &context.colorShader,  &context.litShader,
+            &context.gouraudShader,  &context.skyboxShader, &context.grassShader};
         drawShadersPanel(shaders);
 ```
 
 | Fragment | Znaczenie |
 |---|---|
-| `constexpr int SHADER_COUNT = 5;` | liczba programów gry: `textured`, `color`, `lit`, `gouraud` i `skybox`. Nazwana stała zamiast gołej piątki w typie tablicy |
-| `std::array<gfx::Shader*, SHADER_COUNT>` | tablica pięciu **wskaźników**. Tablicy referencji w C++ nie ma (referencja nie jest obiektem, nie ma adresu ani rozmiaru), więc lista obiektów, których nie posiadam, to lista wskaźników |
-| `&context.texturedShader` | adres obiektu, na który wskazuje pole referencyjne, czyli adres `NightMazeApp::m_texturedShader`. Żaden z pięciu nie może być pusty |
-| `const std::array<...> shaders` | stała jest tablica (jej pięć wskaźników), a nie shadery |
-| kolejność elementów | w tej kolejności panel wypisuje programy, od góry do dołu: `textured`, `color`, `lit`, `gouraud`, `skybox` |
+| `constexpr int SHADER_COUNT = 6;` | liczba programów gry: `textured`, `color`, `lit`, `gouraud`, `skybox` i `grass`. Nazwana stała zamiast gołej szóstki w typie tablicy |
+| `std::array<gfx::Shader*, SHADER_COUNT>` | tablica sześciu **wskaźników**. Tablicy referencji w C++ nie ma (referencja nie jest obiektem, nie ma adresu ani rozmiaru), więc lista obiektów, których nie posiadam, to lista wskaźników |
+| `&context.texturedShader` | adres obiektu, na który wskazuje pole referencyjne, czyli adres `NightMazeApp::m_texturedShader`. Żaden z sześciu nie może być pusty |
+| `const std::array<...> shaders` | stała jest tablica (jej sześć wskaźników), a nie shadery |
+| kolejność elementów | w tej kolejności panel wypisuje programy, od góry do dołu: `textured`, `color`, `lit`, `gouraud`, `skybox`, `grass` |
 | `drawShadersPanel(shaders)` | parametr ma typ `std::span<gfx::Shader* const>`: widok na ciąg stałych wskaźników do niestałych shaderów. `std::array` zamienia się na `std::span` bez kopiowania. `const` stoi po gwiazdce, więc dotyczy wskaźnika: panel nie może podmienić elementu listy, ale może zawołać `reload()` na shaderze |
 
-Kolejny program to jeden wpis więcej w tej tablicy (i większe `SHADER_COUNT`), bez zmiany w panelu. Tak doszły w M4 programy `lit` i `gouraud`: dwa wpisy, `SHADER_COUNT` z 3 na 5, a kod pętli w `ShadersPanel.cpp` został ten sam. W M5 lista skróciła się tą samą drogą: zniknął wpis programu kostki, `SHADER_COUNT` spadło z 5 na 4, a panel znów się nie zmienił. W pierwszej części M6 doszedł wpis programu nieba: `SHADER_COUNT` wróciło do 5, też bez zmiany w panelu. Liczba elementów w klamrach nie jest sprawdzana względem `SHADER_COUNT` w jedną stronę: za dużo elementów to błąd kompilacji, ale za mało zostawia na końcu tablicy wskaźnik pusty (`nullptr`), który panel wyłuskuje w każdej klatce (`drawShaderStatus(*shader)`). Dlatego stałą i listę zmieniam zawsze razem.
+Kolejny program to jeden wpis więcej w tej tablicy (i większe `SHADER_COUNT`), bez zmiany w panelu. Tak doszły w M4 programy `lit` i `gouraud`: dwa wpisy, `SHADER_COUNT` z 3 na 5, a kod pętli w `ShadersPanel.cpp` został ten sam. W M5 lista skróciła się tą samą drogą: zniknął wpis programu kostki, `SHADER_COUNT` spadło z 5 na 4, a panel znów się nie zmienił. W pierwszej części M6 doszedł wpis programu nieba: `SHADER_COUNT` wróciło do 5, też bez zmiany w panelu. W drugiej części M6 doszedł wpis programu trawy i `SHADER_COUNT` wynosi 6. Tym razem panel się zmienił, ale nie pętla po liście: program trawy ma trzy pliki, więc funkcja `drawShaderStatus` składa linię z dwóch albo trzech nazw (sekcja 6). Liczba elementów w klamrach nie jest sprawdzana względem `SHADER_COUNT` w jedną stronę: za dużo elementów to błąd kompilacji, ale za mało zostawia na końcu tablicy wskaźnik pusty (`nullptr`), który panel wyłuskuje w każdej klatce (`drawShaderStatus(*shader)`). Dlatego stałą i listę zmieniam zawsze razem.
 
 ### 5.3 Panel Renderer linia po linii
 
@@ -489,7 +518,7 @@ void drawRendererPanel(const core::Time& time, const core::Window& window,
 }
 ```
 
-- `placePanelOnFirstUse(RENDERER_PLACEMENT)` ustawia miejsce, rozmiar i stan zwinięcia **następnego** okna, czyli tego, które zaraz otworzy `Begin`, ale tylko wtedy, gdy ImGui nie ma dla tego okna zapisanych danych w `imgui.ini`. Stała `RENDERER_PLACEMENT` i funkcja są w `PanelLayout.hpp` i `PanelLayout.cpp`, wspólnych dla ośmiu paneli (sekcja 5.7). Plik panelu ma dziś trzy własne stałe, `LIGHTING_MODE_ITEMS` oraz `MIN_SKY_BRIGHTNESS` i `MAX_SKY_BRIGHTNESS`, w anonimowej przestrzeni nazw: są widoczne tylko w tym pliku.
+- `placePanelOnFirstUse(RENDERER_PLACEMENT)` ustawia miejsce, rozmiar i stan zwinięcia **następnego** okna, czyli tego, które zaraz otworzy `Begin`, ale tylko wtedy, gdy ImGui nie ma dla tego okna zapisanych danych w `imgui.ini`. Stała `RENDERER_PLACEMENT` i funkcja są w `PanelLayout.hpp` i `PanelLayout.cpp`, wspólnych dla dziesięciu paneli (sekcja 5.7). Plik panelu ma dziś trzy własne stałe, `LIGHTING_MODE_ITEMS` oraz `MIN_SKY_BRIGHTNESS` i `MAX_SKY_BRIGHTNESS`, w anonimowej przestrzeni nazw: są widoczne tylko w tym pliku.
 - `ImGui::Begin("Renderer")` otwiera okno ImGui o tym tytule. Tytuł jest jednocześnie **identyfikatorem**: po nim ImGui pamięta pozycję i dokowanie panelu. Zwraca `false`, gdy panel jest zwinięty albo schowany za inną zakładką, i wtedy pomijam zawartość (oszczędność pracy).
 - `ImGui::End()` stoi **poza** `if` i wykonuje się zawsze. Każde `Begin` musi mieć swoje `End`, niezależnie od zwróconej wartości.
 - `ImGui::Text` działa jak `printf`: `%.1f` to liczba z jedną cyfrą po przecinku, `%d` liczba całkowita, `%s` napis w stylu C, dlatego przy `std::string` potrzebne jest `.c_str()`.
@@ -548,7 +577,7 @@ Wszystkie sześć miejsc jest w `DebugNightMazeApp` w [`main.cpp`](../../src/mai
 - Tworzenie: inicjalizator pola przy deklaracji, `debug::DebugUI m_debugUI{window()};`. Wykonuje się po zbudowaniu całej części bazowej, więc okno i kontekst już istnieją.
 - Przełączanie: `if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) { m_debugUI.toggleVisible(); }` w `onRender`, czyli dokładnie raz na klatkę. Dlaczego nie w `onUpdate`, wyjaśnia [`core/input.md`](core/input.md), sekcja 5.5.
 - Mysz dla ImGui: `m_debugUI.setMouseEnabled(!input().isCursorCaptured());` tuż przed `draw` (sekcja 5.6).
-- Rysowanie: `m_debugUI.draw(debug::DebugContext{...});` z osiemnastoma polami (sekcja 5.2), po powrocie z `game::NightMazeApp::onRender`. To jedno wywołanie rysuje i panele, i HUD.
+- Rysowanie: `m_debugUI.draw(debug::DebugContext{...});` z dwudziestoma czterema polami (sekcja 5.2), po powrocie z `game::NightMazeApp::onRender`. To jedno wywołanie rysuje i panele, i HUD.
 - Blokada klawiatury gry: przedostatnia linia `onRender`, `input().setKeyboardBlocked(m_debugUI.wantsKeyboard());` (sekcja 5.6).
 - Blokada myszy gry: ostatnia linia `onRender`, `input().setMouseBlocked(m_debugUI.wantsMouse());` (sekcja 5.6).
 
@@ -575,7 +604,7 @@ void drawTimingPanel(const core::Time& time);
 } // namespace debug
 ```
 
-**Krok 2. Miejsce na pierwsze uruchomienie.** W [`PanelLayout.hpp`](../../src/debug/PanelLayout.hpp), pod ośmioma istniejącymi stałymi, dopisz dziewiątą. Tu zaczyna się kłopot, którego w M4 jeszcze nie było: w oknie 1280 x 720 **nie ma już wolnego prostokąta**. Kolumny i dolny rząd zajmuje sześć paneli, a cały pas nad dolnym rzędem należy do paneli Camera i Gameplay, które po rozwinięciu zajmują go od lewej kolumny do prawej (sekcja 5.7). Dziewiąty panel musi więc na coś nachodzić. W ćwiczeniu stawiam go tuż nad panelem Shaders, w prawym dolnym rogu widocznej sceny:
+**Krok 2. Miejsce na pierwsze uruchomienie.** W [`PanelLayout.hpp`](../../src/debug/PanelLayout.hpp), pod dziesięcioma istniejącymi stałymi, dopisz jedenastą. Tu zaczyna się kłopot, którego w M4 jeszcze nie było: w oknie 1280 x 720 **nie ma już wolnego prostokąta**. Kolumny i dolny rząd zajmuje sześć paneli, a cały pas nad dolnym rzędem należy do paneli Camera i Gameplay, które po rozwinięciu zajmują go od lewej kolumny do prawej (sekcja 5.7). Od M6 pod ich paskami stoi jeszcze drugi rząd pasków: zwinięte panele Terrain i Grass. Jedenasty panel musi więc na coś nachodzić. W ćwiczeniu stawiam go tuż nad panelem Shaders, w prawym dolnym rogu widocznej sceny:
 
 ```cpp
 inline constexpr PanelPlacement TIMING_PLACEMENT{
@@ -585,7 +614,7 @@ inline constexpr PanelPlacement TIMING_PLACEMENT{
 };
 ```
 
-Po podstawieniu: róg `BOTTOM_LEFT`, więc `offset` liczy się od lewej i od dolnej krawędzi okna. Lewa krawędź panelu to `SHADERS_LEFT` = 672, prawa 672 + 292 = 964. Dół panelu to `720 - (280 + 2 * 8) = 424`, góra `424 - 120 = 304`. Przy starcie prostokąt nie nachodzi na żaden panel: dolny rząd zaczyna się w y 432, prawa kolumna w x 972, a paski tytułów paneli Camera i Gameplay kończą się w y 30. Nachodzi natomiast na **rozwinięty** panel Gameplay (x od 640 do 964, y od 8 do 424) i zasłania część sceny. W ćwiczeniu to wystarcza. Prawdziwy dziewiąty panel wymagałby przeliczenia układu, na przykład zwężenia panelu Gameplay, i poprawienia komentarza "No two rectangles overlap". Pole `collapsed` pomijam, więc ma wartość domyślną `false` i panel startuje rozwinięty. Panel, na który w oknie nie ma już miejsca, dostaje `.collapsed = true`, tak jak Camera i Gameplay.
+Po podstawieniu: róg `BOTTOM_LEFT`, więc `offset` liczy się od lewej i od dolnej krawędzi okna. Lewa krawędź panelu to `SHADERS_LEFT` = 672, prawa 672 + 292 = 964. Dół panelu to `720 - (280 + 2 * 8) = 424`, góra `424 - 120 = 304`. Przy starcie prostokąt nie nachodzi na żaden panel: dolny rząd zaczyna się w y 432, prawa kolumna w x 972, a dwa rzędy pasków tytułów (Camera i Gameplay, pod nimi Terrain i Grass) kończą się w y 60. Nachodzi natomiast na **rozwinięty** panel Gameplay (x od 640 do 964, y od 8 do 424) i zasłania część sceny. W ćwiczeniu to wystarcza. Prawdziwy jedenasty panel wymagałby przeliczenia układu, na przykład zwężenia panelu Gameplay, i poprawienia komentarza "No two rectangles overlap". Pole `collapsed` pomijam, więc ma wartość domyślną `false` i panel startuje rozwinięty. Panel, na który w oknie nie ma już miejsca, dostaje `.collapsed = true`, tak jak Camera i Gameplay. Tak doszły w M6 panele Terrain i Grass: oba mają `.collapsed = true` i dodatkowo `.foldedRowsBefore = 1`, czyli stają o jeden rząd pasków niżej, niż mówi ich `offset` (sekcja 5.7). Kolejny zwinięty panel mógłby dostać `.foldedRowsBefore = 2`, ale wtedy trzeba też podnieść `FOLDED_ROW_COUNT` do 3, żeby HUD zszedł pod trzeci rząd.
 
 **Krok 3. Implementacja** `src/debug/panels/TimingPanel.cpp`. Zawsze ten sam szkielet: miejsce na pierwsze uruchomienie, `if (ImGui::Begin(...)) { ... }` i `ImGui::End()` poza `if`:
 
@@ -795,7 +824,7 @@ Dlaczego funkcja jest w `DebugUI`, a wywołanie w `main.cpp`: `core/` nie może 
 
 ### 5.7 Układ domyślny: `PanelLayout`, `ImGuiCond_FirstUseEver` i `imgui.ini`
 
-Miejsce, rozmiar i stan zwinięcia wszystkich ośmiu paneli przy pierwszym uruchomieniu są zapisane w **jednym** pliku, [`PanelLayout.hpp`](../../src/debug/PanelLayout.hpp). Każdy panel woła przed `Begin` jedną funkcję z jedną stałą, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);` (kod panelu Renderer w sekcji 5.3). Wcześniej (M2 + M3) każdy plik panelu miał własną parę stałych z pozycją w pikselach liczoną od lewego górnego rogu. Miało to dwie wady: prostokątów nie dało się porównać bez otwierania sześciu plików, a w oknie większym niż 1280 x 720 prawa kolumna zostawała w środku okna.
+Miejsce, rozmiar i stan zwinięcia wszystkich dziesięciu paneli przy pierwszym uruchomieniu są zapisane w **jednym** pliku, [`PanelLayout.hpp`](../../src/debug/PanelLayout.hpp). Każdy panel woła przed `Begin` jedną funkcję z jedną stałą, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);` (kod panelu Renderer w sekcji 5.3). Wcześniej (M2 + M3) każdy plik panelu miał własną parę stałych z pozycją w pikselach liczoną od lewego górnego rogu. Miało to dwie wady: prostokątów nie dało się porównać bez otwierania sześciu plików, a w oknie większym niż 1280 x 720 prawa kolumna zostawała w środku okna.
 
 **Jak opisane jest miejsce panelu.** Panel jest przyczepiony do jednego z czterech rogów okna:
 
@@ -814,6 +843,11 @@ struct PanelPlacement {
     /// True: the panel starts folded to its title bar and opens with a click on the arrow
     /// in that bar. For a panel the window has no free room for.
     bool collapsed = false;
+    /// How many rows of folded title bars stand between the offset and this panel. The
+    /// panel is moved away from its corner by that many bars, each with the gap after
+    /// it. The height of a bar depends on the size of the font, so it is not part of
+    /// the offset: it is asked from ImGui when the panel is placed.
+    int foldedRowsBefore = 0;
 };
 ```
 
@@ -832,7 +866,8 @@ inline constexpr ImVec2 BOTTOM_RIGHT{1.0F, 1.0F};
 | `corner` | róg okna, do którego panel jest przyczepiony. Zapisany jako para liczb 0 albo 1: `x = 0` to lewa krawędź, `x = 1` prawa, `y = 0` górna, `y = 1` dolna. Nazwane są wszystkie cztery rogi, choć dzisiejszy układ nie stawia żadnego panelu w prawym dolnym (`BOTTOM_RIGHT`) |
 | `offset` | odległość od tego rogu okna do **tego samego** rogu panelu. Dla `TOP_RIGHT` i `{8, 8}` prawy górny róg panelu stoi 8 jednostek od prawej i 8 od górnej krawędzi okna |
 | `size` | szerokość i wysokość panelu. Dla panelu zwiniętego to rozmiar, do którego się rozwinie |
-| `collapsed` | `true`: panel startuje zwinięty (collapsed) do samego paska tytułu i rozwija się po kliknięciu strzałki w tym pasku. Pole ma inicjalizator `= false`, więc stałe sześciu paneli go nie wymieniają, a wymieniają je tylko `CAMERA_PLACEMENT` i `GAMEPLAY_PLACEMENT`. Inicjalizator domyślny pola nie odbiera strukturze statusu agregatu (od C++14), dlatego inicjalizatory desygnowane działają dalej |
+| `collapsed` | `true`: panel startuje zwinięty (collapsed) do samego paska tytułu i rozwija się po kliknięciu strzałki w tym pasku. Pole ma inicjalizator `= false`, więc stałe sześciu paneli go nie wymieniają, a wymieniają je tylko `CAMERA_PLACEMENT`, `GAMEPLAY_PLACEMENT`, `TERRAIN_PLACEMENT` i `GRASS_PLACEMENT`. Inicjalizator domyślny pola nie odbiera strukturze statusu agregatu (od C++14), dlatego inicjalizatory desygnowane działają dalej |
+| `foldedRowsBefore` | od M6: ile rzędów zwiniętych pasków tytułów stoi między `offset` a panelem. Panel jest odsuwany od swojego rogu o tyle pasków, każdy z odstępem `PANEL_GAP` za nim. Domyślnie 0, więc osiem starszych stałych go nie wymienia. `TERRAIN_PLACEMENT` i `GRASS_PLACEMENT` mają 1: stoją w drugim rzędzie, pod paskami paneli Camera i Gameplay. Dlaczego to osobne pole, a nie większy `offset.y`: wysokość paska tytułu zależy od rozmiaru czcionki (`ImGui::GetFrameHeight()`), a nie od skali układu, więc nie da się jej wpisać jako stałej w jednostkach okna odniesienia. Funkcja `placePanelOnFirstUse` pyta o nią ImGui w chwili stawiania panelu (niżej, `foldedRowsHeight`) |
 
 Liczby są podane dla okna odniesienia 1280 x 720 przy skali ekranu 100%. To rozmiar startowy okna gry (`INITIAL_WIDTH`, `INITIAL_HEIGHT` w `NightMazeApp.cpp`).
 
@@ -873,7 +908,8 @@ inline constexpr float SHADERS_WIDTH =
 // Camera and Gameplay: the seventh and the eighth panel. Two columns and a bottom row
 // have room for six, so these two start folded to their title bars, side by side at the
 // top edge between the columns. Unfolded each reaches down to the bottom row and covers
-// its part of the scene and no other panel. Camera is a little shorter than its
+// its part of the scene and the folded bar under it (Terrain or Grass, see below), but no
+// other panel. Camera is a little shorter than its
 // contents, so it scrolls. Gameplay may start folded because the HUD shows the state of
 // the round all the time: the panel is for changing the rules.
 inline constexpr float CAMERA_WIDTH = 280.0F;
@@ -881,9 +917,21 @@ inline constexpr float CAMERA_HEIGHT = REFERENCE_HEIGHT - BOTTOM_ROW_HEIGHT - 3.
 inline constexpr float GAMEPLAY_LEFT = BOTTOM_ROW_LEFT + CAMERA_WIDTH + PANEL_GAP;
 inline constexpr float GAMEPLAY_WIDTH =
     REFERENCE_WIDTH - GAMEPLAY_LEFT - RIGHT_COLUMN_WIDTH - 2.0F * PANEL_GAP;
+
+// Terrain and Grass: the ninth and the tenth panel. They start folded too, in a second
+// row of title bars right under Camera and Gameplay, each as wide as the bar above it
+// (PanelPlacement::foldedRowsBefore is 1). Both panels are short: unfolded they cover
+// a strip of the scene below their bar and no other panel. An unfolded Camera or
+// Gameplay panel does cover the bar under it.
+inline constexpr float TERRAIN_HEIGHT = 170.0F;
+inline constexpr float GRASS_HEIGHT = 190.0F;
+
+// The number of rows of folded title bars at the top edge. The HUD starts below them
+// (Hud.cpp).
+inline constexpr int FOLDED_ROW_COUNT = 2;
 ```
 
-Jak te stałe zmieniały się między kamieniami milowymi i dlaczego. Tabela kończy się na M5. Pierwsza część M6 zmieniła dwie stałe: `RENDERER_HEIGHT` z `230.0F` na `284.0F`, bo panel Renderer dostał dwa wiersze (pole `Skybox` i suwak `Sky brightness`), i przez nią `LIGHTS_HEIGHT`, które jest liczone jako reszta kolumny: `720 - 284 - 3 * 8 = 412` zamiast 466. Panel Lights jest przez to o 54 jednostki niższy od swojej zawartości i się przewija, co komentarz w kodzie mówi wprost. Pozostałe stałe mają dziś wartości z kolumny M5:
+Jak te stałe zmieniały się między kamieniami milowymi i dlaczego. Tabela kończy się na M5. Pierwsza część M6 zmieniła dwie stałe: `RENDERER_HEIGHT` z `230.0F` na `284.0F`, bo panel Renderer dostał dwa wiersze (pole `Skybox` i suwak `Sky brightness`), i przez nią `LIGHTS_HEIGHT`, które jest liczone jako reszta kolumny: `720 - 284 - 3 * 8 = 412` zamiast 466. Panel Lights jest przez to o 54 jednostki niższy od swojej zawartości i się przewija, co komentarz w kodzie mówi wprost. Druga część M6 (teren i trawa) nie zmieniła żadnej z istniejących stałych: dopisała trzy nowe, `TERRAIN_HEIGHT = 170.0F`, `GRASS_HEIGHT = 190.0F` i `FOLDED_ROW_COUNT = 2` (ostatni blok kodu wyżej). Szerokości nowych paneli nie mają własnych stałych, bo każdy jest tak szeroki jak pasek nad nim: Terrain bierze `CAMERA_WIDTH`, a Grass `GAMEPLAY_WIDTH`. Pozostałe stałe mają dziś wartości z kolumny M5:
 
 | Stała | M2 + M3 | M4 | M5 | Powód |
 |---|---|---|---|---|
@@ -895,10 +943,11 @@ Jak te stałe zmieniały się między kamieniami milowymi i dlaczego. Tabela ko�
 | `GAMEPLAY_LEFT` | nie było | nie było | `352 + 280 + 8 = 640` | lewa krawędź nowego panelu: prawa krawędź panelu Camera plus odstęp |
 | `GAMEPLAY_WIDTH` | nie było | nie było | `1280 - 640 - 300 - 2 * 8 = 324` | reszta szerokości między kolumnami. Liczona tak samo jak `SHADERS_WIDTH`, więc prawa krawędź panelu Gameplay wypada tam, gdzie prawa krawędź panelu Shaders |
 
-**Osiem stałych z miejscami paneli:**
+**Dziesięć stałych z miejscami paneli:**
 
 ```cpp
-// The eight panels. No two rectangles overlap in a window of the reference size.
+// The ten panels. No two rectangles overlap in a window of the reference size, with the
+// four folded panels counted as their title bars.
 inline constexpr PanelPlacement RENDERER_PLACEMENT{
     .corner = TOP_LEFT,
     .offset = {PANEL_GAP, PANEL_GAP},
@@ -920,6 +969,20 @@ inline constexpr PanelPlacement GAMEPLAY_PLACEMENT{
     .offset = {GAMEPLAY_LEFT, PANEL_GAP},
     .size = {GAMEPLAY_WIDTH, CAMERA_HEIGHT},
     .collapsed = true,
+};
+inline constexpr PanelPlacement TERRAIN_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {BOTTOM_ROW_LEFT, PANEL_GAP},
+    .size = {CAMERA_WIDTH, TERRAIN_HEIGHT},
+    .collapsed = true,
+    .foldedRowsBefore = 1,
+};
+inline constexpr PanelPlacement GRASS_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {GAMEPLAY_LEFT, PANEL_GAP},
+    .size = {GAMEPLAY_WIDTH, GRASS_HEIGHT},
+    .collapsed = true,
+    .foldedRowsBefore = 1,
 };
 inline constexpr PanelPlacement MAZE_PLACEMENT{
     .corner = TOP_RIGHT,
@@ -953,6 +1016,8 @@ Po podstawieniu liczb, dla okna 1280 x 720 (jednostką są współrzędne okna I
 | Lights | `LIGHTS_PLACEMENT` | `TOP_LEFT` | 8, 300 | 336, 412 | 8 do 344 | 300 do 712 | rozwinięty, z paskiem przewijania |
 | Camera | `CAMERA_PLACEMENT` | `TOP_LEFT` | 352, 8 | 280, 416 | 352 do 632 | 8 do 424 (po rozwinięciu) | **zwinięty**: sam pasek tytułu |
 | Gameplay | `GAMEPLAY_PLACEMENT` | `TOP_LEFT` | 640, 8 | 324, 416 | 640 do 964 | 8 do 424 (po rozwinięciu) | **zwinięty**: sam pasek tytułu |
+| Terrain | `TERRAIN_PLACEMENT` | `TOP_LEFT` | 352, 8 plus jeden rząd pasków (30), czyli 38 | 280, 170 | 352 do 632 | 38 do 208 (po rozwinięciu) | **zwinięty**: sam pasek tytułu, y od 38 do 60 |
+| Grass | `GRASS_PLACEMENT` | `TOP_LEFT` | 640, 8 plus jeden rząd pasków (30), czyli 38 | 324, 190 | 640 do 964 | 38 do 228 (po rozwinięciu) | **zwinięty**: sam pasek tytułu, y od 38 do 60 |
 | Maze | `MAZE_PLACEMENT` | `TOP_RIGHT` | 8, 8 | 300, 480 | 972 do 1272 | 8 do 488 | rozwinięty |
 | Assets | `ASSETS_PLACEMENT` | `TOP_RIGHT` | 8, 496 | 300, 216 | 972 do 1272 | 496 do 712 | rozwinięty |
 | Collision | `COLLISION_PLACEMENT` | `BOTTOM_LEFT` | 352, 8 | 312, 280 | 352 do 664 | 432 do 712 | rozwinięty |
@@ -969,6 +1034,8 @@ Skąd te liczby (wszystko liczone ze stałych, nic z pomiaru. Rachunek powtórzy
 | prawa krawędź panelu Camera | 352 + `CAMERA_WIDTH` = 352 + 280 | 632 |
 | lewa krawędź panelu Gameplay | `GAMEPLAY_LEFT` = 352 + 280 + 8 | 640 (odstęp od panelu Camera 8) |
 | szerokość panelu Gameplay | `GAMEPLAY_WIDTH` = 1280 - 640 - 300 - 2 * 8 | 324, prawa krawędź w 640 + 324 = 964 (odstęp od prawej kolumny 8) |
+| góra paneli Terrain i Grass | `offset.y` 8 plus `foldedRowsHeight(1, 1)` = 1 * (22 + 8). Liczba 22 to wysokość paska przy czcionce 16 i `FramePadding.y` 3, nie stała z `PanelLayout.hpp` | 38 (paski pierwszego rzędu kończą się w 8 + 22 = 30, odstęp 8). Pasek drugiego rzędu kończy się w 38 + 22 = 60 |
+| dół rozwiniętych paneli Terrain i Grass | 38 + `TERRAIN_HEIGHT` 170 i 38 + `GRASS_HEIGHT` 190 | 208 i 228: oba kończą się daleko nad dolnym rzędem (432) |
 | góra dolnego rzędu | róg `BOTTOM_LEFT`: dół okna 720 minus `PANEL_GAP` 8 daje dół panelu 712, minus `BOTTOM_ROW_HEIGHT` 280 | 432 (dół rozwiniętych paneli Camera i Gameplay to 424, odstęp 8) |
 | prawa krawędź panelu Collision | 352 + `COLLISION_WIDTH` = 352 + 312 | 664 |
 | lewa krawędź panelu Shaders | `SHADERS_LEFT` = 352 + 312 + 8 | 672 |
@@ -980,15 +1047,18 @@ Skąd te liczby (wszystko liczone ze stałych, nic z pomiaru. Rachunek powtórzy
 
 | Pas | Para | Dlaczego się nie nakłada |
 |---|---|---|
-| lewa kolumna | Renderer i Lights | na osi y: 8 do 238 i 246 do 712 |
+| lewa kolumna | Renderer i Lights | na osi y: 8 do 292 i 300 do 712 |
 | prawa kolumna | Maze i Assets | na osi y: 8 do 488 i 496 do 712 |
 | środek | Collision i Shaders | na osi x: 352 do 664 i 672 do 964 |
 | środek | Camera i Gameplay (oba rozwinięte) | na osi x: 352 do 632 i 640 do 964 |
 | środek | Camera albo Gameplay (rozwinięty) i dolny rząd | na osi y: 8 do 424 i 432 do 712 |
+| środek | Terrain i Grass (oba rozwinięte) | na osi x: 352 do 632 i 640 do 964 |
+| środek | Terrain albo Grass (rozwinięty) i dolny rząd | na osi y: 38 do 208 albo 228 i 432 do 712 |
+| środek | pasek Camera albo Gameplay (zwinięty) i panel pod nim | na osi y: 8 do 30 i od 38 w dół |
 
-Panele Camera i Gameplay sprawdzam w stanie rozwiniętym, bo to większe prostokąty: zwinięte zajmują tylko swoje górne paski. Komentarz nad stałymi w kodzie ("No two rectangles overlap in a window of the reference size") mówi więc prawdę także po kliknięciu obu strzałek. Dotyczy on paneli: dwa okna HUD nie mają stałej w `PanelLayout.hpp` i z panelami mogą się nakładać (sekcja 5.9).
+Od M6 w tym rachunku jest jeden wyjątek, i komentarz nad stałymi mówi o nim wprost: "No two rectangles overlap in a window of the reference size, with the four folded panels counted as their title bars". Cztery panele startujące jako zwinięte liczą się więc jako paski. **Rozwinięty** panel Camera (y od 8 do 424) zakrywa pasek panelu Terrain pod sobą (y od 38 do 60), a rozwinięty Gameplay zakrywa pasek panelu Grass: to ta sama kolumna na osi x i wspólny przedział na osi y. Żeby dostać się do paska pod spodem, trzeba zwinąć panel nad nim albo go odsunąć. Do M5, przy jednym rzędzie pasków, komentarz mówił prawdę także po kliknięciu obu strzałek. Pozostałe pary nie nachodzą na siebie w żadnym stanie. Dotyczy on paneli: dwa okna HUD nie mają stałej w `PanelLayout.hpp` i z panelami mogą się nakładać (sekcja 5.9).
 
-Między panelami i przy krawędziach okna jest 8 jednostek odstępu (`PANEL_GAP`). Scena jest widoczna w środku górnej części okna, od x 352 do 964 i od y 8 do 424 (612 na 416 jednostek), z wyjątkiem dwóch pasków tytułów przy górnej krawędzi tego prostokąta: panelu Camera (280 jednostek szerokości) i panelu Gameplay (324), z odstępem 8 między nimi. Razem zajmują całą jego szerokość. Pasek ma wysokość równą wysokości czcionki plus dwa razy `FramePadding.y`, czyli 16 + 2 * 3 = 22 jednostki (wzór z `imgui.cpp`: `TitleBarHeight = g.FontSize + g.Style.FramePadding.y * 2.0f`), więc kończy się w y 8 + 22 = 30. Pod paskami, od y 46, wisi na środku pasek HUD (`HUD_TOP_OFFSET`, sekcja 5.9). Po rozwinięciu panelu Camera wolna zostaje prawa część prostokąta sceny (x od 640 do 964), po rozwinięciu panelu Gameplay lewa (x od 352 do 632), a po rozwinięciu obu między kolumnami nie widać sceny wcale, poza odstępami o szerokości 8. To cena ośmiu paneli w oknie 1280 x 720 i powód, dla którego oba startują zwinięte.
+Między panelami i przy krawędziach okna jest 8 jednostek odstępu (`PANEL_GAP`). Scena jest widoczna w środku górnej części okna, od x 352 do 964 i od y 8 do 424 (612 na 416 jednostek), z wyjątkiem dwóch pasków tytułów przy górnej krawędzi tego prostokąta: panelu Camera (280 jednostek szerokości) i panelu Gameplay (324), z odstępem 8 między nimi. Razem zajmują całą jego szerokość. Pasek ma wysokość równą wysokości czcionki plus dwa razy `FramePadding.y`, czyli 16 + 2 * 3 = 22 jednostki (wzór z `imgui.cpp`: `TitleBarHeight = g.FontSize + g.Style.FramePadding.y * 2.0f`), więc kończy się w y 8 + 22 = 30. Od M6 pod nimi, po odstępie 8, stoi drugi rząd takich samych pasków: Terrain pod Camera i Grass pod Gameplay, od y 38 do 60. Pod oboma rzędami, od y 76, wisi na środku pasek HUD (sekcja 5.9.5). Po rozwinięciu panelu Camera wolna zostaje prawa część prostokąta sceny (x od 640 do 964), po rozwinięciu panelu Gameplay lewa (x od 352 do 632), a po rozwinięciu obu między kolumnami nie widać sceny wcale, poza odstępami o szerokości 8. To cena dziesięciu paneli w oknie 1280 x 720 i powód, dla którego cztery z nich startują zwinięte. Panele Terrain i Grass są niskie: rozwinięte zakrywają pas sceny pod swoim paskiem (do y 208 i 228), a nie cały prostokąt.
 
 **Co mieści swoją zawartość.** Tabela z M2 + M3 miała w tym miejscu kolumnę ze zmierzonymi wysokościami zawartości (Renderer 202, Camera 452, Maze 478, Assets 714, Collision 271, Shaders 334, pomiar z 2026-10-05). Od tamtej pory treść albo rozmiar zmieniły się w każdym panelu, a nowego pomiaru wysokości nie mam. Podaję więc to, co mówią komentarze w `PanelLayout.hpp`, to, co da się policzyć, i to, co widać na zrzutach ekranu wykonawcy z M5 (Windows, 2026-10-05, stany ustawione tymczasowymi wstawkami, których już nie ma):
 
@@ -998,10 +1068,12 @@ Między panelami i przy krawędziach okna jest 8 jednostek odstępu (`PANEL_GAP`
 | Lights | "The Lights panel gets what is left, which is a little less than its contents (with its Moon group folded), so it scrolls" | do M5 panel miał 466 jednostek i mieścił zawartość przy zwiniętej grupie `Moon (directional)`. Od pierwszej części M6 ma 412, o 54 mniej (dwa wiersze oddane panelowi Renderer), więc przewija się także przy zwiniętej grupie. Po jej rozwinięciu przewija się bardziej (komentarz w `LightsPanel.cpp`). W M5 liczba wierszy się nie zmieniła: linia z liczbą świateł ma inną treść, a podpowiedź przy pustej baterii nie zajmuje miejsca w panelu |
 | Camera | "Camera is a little shorter than its contents, so it scrolls" | rozwinięty panel ma pasek przewijania. Wysokość spadła w M5 z 424 do 416, więc przewija się o 8 jednostek więcej |
 | Gameplay | "Gameplay may start folded because the HUD shows the state of the round all the time" | 324 na 416. Wysokość zawartości nie była mierzona. Na zrzucie rozwinięty panel pokazuje wszystkie kontrolki bez paska przewijania, a pod ostatnim suwakiem zostaje wolne miejsce |
+| Terrain | "Both panels are short: unfolded they cover a strip of the scene below their bar and no other panel" | 280 na 170: suwak, pole wyboru, separator i trzy linie tekstu. Wysokość zawartości nie była mierzona i rozwiniętego panelu nikt nie oglądał |
+| Grass | ten sam komentarz | 324 na 190: pole wyboru, trzy suwaki, separator i jedna linia tekstu. Wysokość zawartości nie była mierzona i rozwiniętego panelu nikt nie oglądał |
 | Maze | stała bez zmian (300 na 480) | w M5 doszła jedna linia tekstu (`Crystals: ..., exit in cell ...`), czyli 16 czcionki + 5 `ItemSpacing.y` = 21 jednostek. Stary pomiar 478 plus 21 daje 499, więcej niż 480: z rachunku wynika pasek przewijania, i widać go na zrzucie. Pasek zabiera planowi 12 jednostek szerokości (`SCROLLBAR_SIZE`), więc plan jest też odrobinę mniejszy |
 | Collision | "Collision and Shaders side by side, equally tall" | 312 na 280. Treść jest inna niż przy pomiarze 271 (legenda pięciu kolorów, dwie linie liczb zamiast trzech), więc stara liczba nie obowiązuje. Na zrzucie cała treść mieści się bez przewijania |
-| Assets | "that panel always scrolls" | stała bez zmian (300 na 216), treść dużo dłuższa niż przy pomiarze 714: od M4 pole wyboru `Normal mapping` z zawijaną notatką i linie `normal map:`, a od M5 sześć modeli i osiem tekstur z podglądami zamiast trzech i czterech. Bez przewijania widać listę `View mode`, pole `Normal mapping` z notatką, listę `Filter` i suwak `Anisotropy` (tak jest na zrzucie), a obie listy zasobów leżą niżej |
-| Shaders | "Collision and Shaders side by side, equally tall" | przycisk i pięć linii, po jednej na program. Bez błędów treść jest dużo niższa niż 280. Tekst błędu wydłuża panel i wtedy może pojawić się przewijanie |
+| Assets | "that panel always scrolls" | stała bez zmian (300 na 216), treść dużo dłuższa niż przy pomiarze 714: od M4 pole wyboru `Normal mapping` z zawijaną notatką i linie `normal map:`, a od M5 sześć modeli i osiem tekstur z podglądami zamiast trzech i czterech (od M6 modeli jest pięć: płytkę podłogi zastąpił teren, który modelem z pliku nie jest, a tekstur nadal osiem, bo parę tekstur podłogi zastąpiła para tekstur gruntu). Bez przewijania widać listę `View mode`, pole `Normal mapping` z notatką, listę `Filter` i suwak `Anisotropy` (tak jest na zrzucie), a obie listy zasobów leżą niżej |
+| Shaders | "Collision and Shaders side by side, equally tall" | przycisk i sześć linii, po jednej na program (linia programu trawy ma trzy nazwy plików i jest najdłuższa: w panelu o szerokości 292 może się zawinąć, czego nikt nie oglądał). Bez błędów treść jest dużo niższa niż 280. Tekst błędu wydłuża panel i wtedy może pojawić się przewijanie |
 
 **Funkcja, która z tego korzysta** ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
 
@@ -1027,8 +1099,12 @@ void placePanelOnFirstUse(const PanelPlacement& placement) {
     // (corner 0, direction +1), to the left and up from a right or bottom edge (corner 1,
     // direction -1).
     const ImVec2 inwards{1.0F - 2.0F * placement.corner.x, 1.0F - 2.0F * placement.corner.y};
+    // A panel in a later row of folded title bars stands further from its corner by the
+    // rows before it. That part is not scaled like the offset: it follows the font.
+    const float rowsBefore = foldedRowsHeight(placement.foldedRowsBefore, layoutScale);
     const ImVec2 panelCorner{windowCorner.x + inwards.x * placement.offset.x * layoutScale,
-                             windowCorner.y + inwards.y * placement.offset.y * layoutScale};
+                             windowCorner.y +
+                                 inwards.y * (placement.offset.y * layoutScale + rowsBefore)};
 
     // The third argument is the pivot: the point of the panel that is put at the given
     // position, with the same 0 to 1 meaning as the corner. With the pivot equal to the
@@ -1040,6 +1116,12 @@ void placePanelOnFirstUse(const PanelPlacement& placement) {
     // A folded panel shows only its title bar. The size above is the one it opens to.
     ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver);
 }
+
+float foldedRowsHeight(int count, float gapScale) {
+    // GetFrameHeight is the height of one line of widgets: the text plus the frame
+    // padding above and below it. The title bar of a panel is exactly that high.
+    return static_cast<float>(count) * (ImGui::GetFrameHeight() + PANEL_GAP * gapScale);
+}
 ```
 
 | Fragment | Co robi |
@@ -1049,20 +1131,22 @@ void placePanelOnFirstUse(const PanelPlacement& placement) {
 | `std::min({displayScale, ..., ...})` | `std::min` z listą w klamrach zwraca najmniejszą z trzech liczb. Układ rośnie ze skalą ekranu, żeby zmieściła się większa czcionka, ale nigdy bardziej, niż okno jest większe od okna odniesienia |
 | `windowCorner` | róg okna we współrzędnych ekranu: `corner` równe 0 daje początek, a 1 daje początek plus cały rozmiar |
 | `inwards` | kierunek "do środka okna". Wzór `1 - 2 * corner` daje `+1` dla rogu 0 (od lewej krawędzi idę w prawo) i `-1` dla rogu 1 (od prawej krawędzi idę w lewo) |
-| `panelCorner` | miejsce, w którym ma stanąć odpowiedni róg panelu: róg okna przesunięty do środka o `offset` razy skala układu |
+| `rowsBefore` | od M6: wysokość rzędów zwiniętych pasków, które stoją przed panelem. Dla ośmiu paneli z `foldedRowsBefore = 0` to 0, dla paneli Terrain i Grass jeden rząd |
+| `panelCorner` | miejsce, w którym ma stanąć odpowiedni róg panelu: róg okna przesunięty do środka o `offset` razy skala układu, a na osi y dodatkowo o `rowsBefore`. Ta druga część nie jest mnożona przez `layoutScale` w całości: wysokość paska idzie za czcionką, skalowany jest tylko odstęp |
+| `foldedRowsHeight(count, gapScale)` | `count * (ImGui::GetFrameHeight() + PANEL_GAP * gapScale)`: tyle rzędów, każdy to wysokość paska plus odstęp za nim. `GetFrameHeight()` zwraca wysokość jednej linii widżetów, czyli rozmiar czcionki plus `FramePadding.y` nad i pod tekstem: przy czcionce 16 i `FramePadding.y` 3 to 22, tyle samo co pasek tytułu. Funkcja pyta ImGui, więc wolno ją wołać tylko wewnątrz klatki ImGui (komentarz w nagłówku). Woła ją też `Hud.cpp`, z `FOLDED_ROW_COUNT`, żeby postawić HUD pod wszystkimi rzędami (sekcja 5.9.5) |
 | `ImGui::SetNextWindowPos(panelCorner, ImGuiCond_FirstUseEver, placement.corner)` | trzeci argument to **pivot**: punkt panelu, który ma trafić w podaną pozycję, w tych samych jednostkach 0 do 1. Pivot `(1, 1)` znaczy "ustaw panel tak, żeby jego prawy dolny róg był w tym punkcie", więc nie muszę sam odejmować rozmiaru panelu |
 | `ImGui::SetNextWindowSize({...}, ImGuiCond_FirstUseEver)` | rozmiar panelu razy skala układu. Dla panelu zwiniętego to rozmiar, który dostanie po rozwinięciu |
-| `ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver)` | stan zwinięcia: `true` zostawia z panelu sam pasek tytułu. Funkcja jest wołana dla **każdego** panelu, także z wartością `false`, więc nie ma tu żadnego `if`: sześć paneli dostaje "rozwinięty", a Camera i Gameplay "zwinięty" |
+| `ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver)` | stan zwinięcia: `true` zostawia z panelu sam pasek tytułu. Funkcja jest wołana dla **każdego** panelu, także z wartością `false`, więc nie ma tu żadnego `if`: sześć paneli dostaje "rozwinięty", a Camera, Gameplay, Terrain i Grass "zwinięty" |
 
 Wszystkie trzy funkcje `SetNextWindow...` dotyczą **następnego** okna, czyli tego, które zaraz otworzy `Begin`. Warunek `ImGuiCond_FirstUseEver` znaczy: zastosuj tylko wtedy, gdy ImGui nie ma dla tego okna zapisanych danych w `imgui.ini`. Od pierwszego uruchomienia o miejscu panelu decyduje użytkownik.
 
 **Panel zwinięty: co to znaczy w kodzie.** Zwinięcie to zwykła funkcja okna ImGui: strzałka po lewej stronie paska tytułu (albo dwuklik w pasek) zwija okno do paska i rozwija je z powrotem. Trzy skutki:
 
-1. `ImGui::Begin("Camera")` zwraca dla zwiniętego panelu `false`, więc `drawCameraPanel` pomija całą zawartość (żaden suwak nie jest budowany), a `ImGui::End()` wykonuje się jak zawsze. Tak samo `ImGui::Begin("Gameplay")` w `drawGameplayPanel`. To ta sama gałąź, o której mówi komentarz przy `Begin` w każdym panelu.
+1. `ImGui::Begin("Camera")` zwraca dla zwiniętego panelu `false`, więc `drawCameraPanel` pomija całą zawartość (żaden suwak nie jest budowany), a `ImGui::End()` wykonuje się jak zawsze. Tak samo `ImGui::Begin("Gameplay")` w `drawGameplayPanel`, `ImGui::Begin("Terrain")` w `drawTerrainPanel` i `ImGui::Begin("Grass")` w `drawGrassPanel`. To ta sama gałąź, o której mówi komentarz przy `Begin` w każdym panelu.
 2. Stan zwinięcia jest zapisywany w `imgui.ini` razem z pozycją i rozmiarem, jako linia `Collapsed=0` albo `Collapsed=1` we wpisie okna (funkcja `WindowSettingsHandler_WriteAll` w `imgui.cpp`). Po rozwinięciu panelu Camera i ponownym uruchomieniu programu panel jest więc rozwinięty: `ImGuiCond_FirstUseEver` już nie zadziała, bo wpis istnieje.
-3. Dlaczego akurat Camera i Gameplay. Dwie kolumny i dolny rząd mają miejsce na sześć paneli, a paneli jest osiem (komentarz nad `CAMERA_WIDTH`). W M4 dawne miejsce panelu Camera w lewej kolumnie zajął panel Lights, a Camera stanął tam, gdzie zwinięty zasłania najmniej: przy górnej krawędzi, tuż obok lewej kolumny. W M5 obok niego, po prawej, stanął Gameplay. Ten panel może startować zwinięty z innego powodu niż Camera: stan rundy cały czas pokazuje HUD, a panel służy do zmieniania reguł, czyli do pokazu, nie do gry.
+3. Dlaczego akurat Camera i Gameplay, a od M6 także Terrain i Grass. Dwie kolumny i dolny rząd mają miejsce na sześć paneli, a paneli jest dziesięć (komentarze nad `CAMERA_WIDTH` i `TERRAIN_HEIGHT`). W M4 dawne miejsce panelu Camera w lewej kolumnie zajął panel Lights, a Camera stanął tam, gdzie zwinięty zasłania najmniej: przy górnej krawędzi, tuż obok lewej kolumny. W M5 obok niego, po prawej, stanął Gameplay. Ten panel może startować zwinięty z innego powodu niż Camera: stan rundy cały czas pokazuje HUD, a panel służy do zmieniania reguł, czyli do pokazu, nie do gry. Terrain i Grass doszły w drugiej części M6 i dla nich nie było już nawet wolnego paska w pierwszym rzędzie, bo Camera i Gameplay zajmują całą jego szerokość. Stanęły więc rząd niżej, każdy pod paskiem o tej samej szerokości. Oba służą do pokazu tematów 13 i 9: w czasie zwykłej gry nic nie trzeba w nich zmieniać.
 
-Rozwijania paneli Camera i Gameplay kliknięciem nikt jeszcze nie sprawdził ręcznie: to, że rozwinięte prostokąty nie nachodzą na inne panele, wynika z rachunku wyżej, a oba rozwinięte panele widać na zrzucie ekranu wykonawcy, na którym stan zwinięcia ustawiła tymczasowa wstawka.
+Rozwijania paneli Terrain i Grass nikt jeszcze nie sprawdził ani ręcznie, ani na zrzucie rozwiniętego panelu, a liczby 38, 60, 208 i 228 w tabelach wyżej są rachunkiem ze stałych i z wysokości paska 22. Rozwijania paneli Camera i Gameplay kliknięciem też nikt jeszcze nie sprawdził ręcznie: to, że rozwinięte prostokąty nie nachodzą na inne panele, wynika z rachunku wyżej, a oba rozwinięte panele widać na zrzucie ekranu wykonawcy, na którym stan zwinięcia ustawiła tymczasowa wstawka.
 
 **Skala układu na liczbach.** `layoutScale` to najmniejsza z trzech liczb: skali ekranu, `szerokość okna / 1280` i `wysokość okna / 720`.
 
@@ -1077,7 +1161,7 @@ Rozwijania paneli Camera i Gameplay kliknięciem nikt jeszcze nie sprawdził rę
 Cztery rzeczy, które z tego wynikają:
 
 1. **To pozycje, nie dokowanie.** Panele startują jako okna pływające. Pozycja jest liczona **raz**, w pierwszej klatce, z rozmiaru okna w tej chwili. Po późniejszej zmianie rozmiaru okna programu panele zostają tam, gdzie były. Zadokowanie robi się ręcznie, przeciągając panel za pasek tytułu.
-2. **`imgui.ini` wygrywa.** ImGui zapisuje pozycję, rozmiar, stan zwinięcia i dokowanie każdego okna w pliku `imgui.ini` w katalogu roboczym programu. `ImGuiCond_FirstUseEver` działa tylko dla okna, którego w tym pliku nie ma. Plik jest w [`.gitignore`](../../.gitignore), więc każda kopia repozytorium ma własny. Skutek praktyczny: `imgui.ini` zapisany przez starszą wersję programu trzyma panele na starych miejscach. Dla przejścia z M4 na M5 wynika z kodu łagodny skutek (nikt go nie oglądał na ekranie): stary plik ma wpisy siedmiu paneli, więc zostają one w układzie z M4, z dolnym rzędem o wysokości 272 (góra w y 440), a wpisu `[Window][Gameplay]` nie ma, więc nowy panel staje według `GAMEPLAY_PLACEMENT`, zwinięty. Rozwinięty sięga do y 424 i na stare panele nie nachodzi. Dla wcześniejszego przejścia, na układ z M4, skutek był gorszy: stary plik ma wpis `[Window][Camera]` z miejscem w lewej kolumnie i ze stanem "rozwinięty", a wpisu `[Window][Lights]` nie ma, więc panel Lights stawał według `LIGHTS_PLACEMENT` (y od 246 do 712), prawie dokładnie na panelu Camera ze starego wpisu (y od 256 do 712, ta sama kolumna), a panel Shaders zostawał wyższy od panelu Collision. Żeby zobaczyć układ domyślny, trzeba skasować `imgui.ini` z katalogu roboczego przed uruchomieniem.
+2. **`imgui.ini` wygrywa.** ImGui zapisuje pozycję, rozmiar, stan zwinięcia i dokowanie każdego okna w pliku `imgui.ini` w katalogu roboczym programu. `ImGuiCond_FirstUseEver` działa tylko dla okna, którego w tym pliku nie ma. Plik jest w [`.gitignore`](../../.gitignore), więc każda kopia repozytorium ma własny. Skutek praktyczny: `imgui.ini` zapisany przez starszą wersję programu trzyma panele na starych miejscach. Dla przejścia na układ z M6 skutek wynika z kodu (nikt go nie oglądał): stary plik nie ma wpisów `[Window][Terrain]` ani `[Window][Grass]`, więc oba nowe panele stają według swoich stałych, zwinięte, w drugim rzędzie. Jeśli w starym pliku panel Camera albo Gameplay jest zapisany jako rozwinięty, zakrywa nowy pasek pod sobą, a HUD wisi niżej niż w M5 niezależnie od pliku, bo jego miejsce nie jest zapisywane. Dla przejścia z M4 na M5 wynika z kodu łagodny skutek (nikt go nie oglądał na ekranie): stary plik ma wpisy siedmiu paneli, więc zostają one w układzie z M4, z dolnym rzędem o wysokości 272 (góra w y 440), a wpisu `[Window][Gameplay]` nie ma, więc nowy panel staje według `GAMEPLAY_PLACEMENT`, zwinięty. Rozwinięty sięga do y 424 i na stare panele nie nachodzi. Dla wcześniejszego przejścia, na układ z M4, skutek był gorszy: stary plik ma wpis `[Window][Camera]` z miejscem w lewej kolumnie i ze stanem "rozwinięty", a wpisu `[Window][Lights]` nie ma, więc panel Lights stawał według `LIGHTS_PLACEMENT` (y od 246 do 712), prawie dokładnie na panelu Camera ze starego wpisu (y od 256 do 712, ta sama kolumna), a panel Shaders zostawał wyższy od panelu Collision. Żeby zobaczyć układ domyślny, trzeba skasować `imgui.ini` z katalogu roboczego przed uruchomieniem.
 3. **Układ jest w jednym pliku, ale nikt go nie sprawdza.** Stałe zależne (`LIGHTS_HEIGHT`, `CAMERA_HEIGHT`, `ASSETS_HEIGHT`, `SHADERS_WIDTH`, `GAMEPLAY_LEFT`, `GAMEPLAY_WIDTH`) są liczone z pozostałych, więc kolumny zawsze wypełniają okno odniesienia. Tego, czy zawartość mieści się w panelu, kod nie wie: po zmianie czcionki, odstępów albo treści panelu trzeba to zmierzyć od nowa.
 4. **Rozmiary wewnątrz paneli nie są skalowane przez ten kod.** `layoutScale` dotyczy tylko prostokątów paneli. Stałe w pikselach z plików paneli (podgląd tekstury 128 na 128, kropka gracza i kropki kryształów na planie) zostają takie same przy każdej skali ekranu. HUD skaluje swoje stałe sam i inną liczbą: mnoży je przez skalę ekranu (`FontScaleDpi`), a nie przez `layoutScale` (sekcja 5.9).
 
@@ -1088,6 +1172,8 @@ Stan sprawdzenia ma trzy części i nie wolno ich mieszać.
 **Układ siedmiu paneli (M4, historia).** Na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74) kod z M4 budował się w Debug i Release bez ostrzeżeń, gra startowała bez linii `[error]` i bez linii `GL_`, a widok startowy był obejrzany na zrzucie ekranu. Tamten układ miał dolny rząd o wysokości 272 i jeden zwinięty panel.
 
 **Układ ośmiu paneli (M5).** Zgłoszone przez wykonawcę dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach, a obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowe wstawki, które zostały potem usunięte (widok startowy z HUD, widok ze schowanymi panelami, oba panele rozwinięte, karta wygranej). Prostokąty z tabeli, brak nakładania i wolny obszar sceny są policzone ze stałych, a nie zmierzone. Wysokości zawartości nie były mierzone (tabela "Co mieści swoją zawartość" podaje komentarze z kodu, rachunek i to, co widać na zrzutach). Nikt nie sprawdził ręcznie: rozwinięcia paneli Camera i Gameplay kliknięciem, układu ośmiu paneli w większym oknie ani przy skali 150%. Na macOS nic z kodu M5 nie było budowane ani uruchamiane ([`../guides/build-macos.md`](../guides/build-macos.md)). Kamień milowy M5 ma kompletny kod na Windowsie i nie jest zamknięty.
+
+**Układ dziesięciu paneli (M6, część druga).** Zgłoszone przez wykonawcę dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, clang-format bez uwag, a obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowe wstawki, które zostały potem usunięte. 256 przypadków testowych i 101232 asercje przechodzą w Debug i w Release: to uruchomiłem sam na zbudowanych programach testowych. Że HUD stoi po zmianie około 30 pikseli niżej przy skali 100%, to zgłoszony pomiar, który zgadza się z rachunkiem (76 zamiast 46, sekcja 5.9.5). Prostokąty paneli Terrain i Grass, brak nakładania i miejsce drugiego rzędu pasków są policzone ze stałych, a nie zmierzone. Nikt nie sprawdził ręcznie: rozwinięcia paneli Terrain i Grass, żadnego ich suwaka ani pola wyboru, układu dziesięciu paneli w większym oknie ani przy skali 150%, ani zachowania ze starym `imgui.ini`. Na macOS nic z kodu M6 nie było budowane ani uruchamiane ([`../guides/build-macos.md`](../guides/build-macos.md)). Kamień milowy M6 ma kompletny kod na Windowsie i nie jest zamknięty.
 
 ### 5.8 Motyw: kolory, metryki, czcionka i skala ekranu
 
@@ -1727,7 +1813,11 @@ To wynika z kodu ImGui i z flag. Kliknięcia w miejscu paska HUD nikt jeszcze ni
 
 ```cpp
     const ImVec2 top = windowPoint(TOP_CENTER);
-    ImGui::SetNextWindowPos({top.x, top.y + HUD_TOP_OFFSET * scale}, ImGuiCond_Always, TOP_CENTER);
+    // The rows of title bars are measured with the real height of a bar, which follows
+    // the font (foldedRowsHeight).
+    const float rowsAbove = foldedRowsHeight(FOLDED_ROW_COUNT, scale);
+    ImGui::SetNextWindowPos({top.x, top.y + rowsAbove + HUD_TOP_OFFSET * scale}, ImGuiCond_Always,
+                            TOP_CENTER);
     ImGui::SetNextWindowBgAlpha(HUD_OPACITY);
 ```
 
@@ -1735,7 +1825,7 @@ To wynika z kodu ImGui i z flag. Kliknięcia w miejscu paska HUD nikt jeszcze ni
 
 | Stała w `Hud.cpp` | Wartość | Znaczenie |
 |---|---|---|
-| `HUD_TOP_OFFSET` | `46.0F` | odległość paska od górnej krawędzi okna. Paski tytułów zwiniętych paneli Camera i Gameplay kończą się w y 8 + 22 = 30 (sekcja 5.7), więc pasek HUD zaczyna się 16 jednostek pod nimi |
+| `HUD_TOP_OFFSET` | `2.0F * PANEL_GAP`, czyli 16 | od M6 to już nie cała odległość od górnej krawędzi okna, tylko jej stała część: wolne miejsce nad pierwszym rzędem pasków (jeden `PANEL_GAP`) plus dodatkowy odstęp między ostatnim rzędem a HUD (drugi `PANEL_GAP`), dzięki któremu HUD czyta się jako osobna rzecz. Resztę, czyli same rzędy pasków, liczy `foldedRowsHeight` (niżej). Do M5 stała wynosiła `46.0F` i była całą odległością |
 | `BATTERY_BAR_WIDTH` | `230.0F` | szerokość paska baterii. Od niej zależy szerokość całego okna paska |
 | `HUD_OPACITY`, `CARD_OPACITY` | `0.72F`, `0.9F` | alfa tła obu okien, podawana do `SetNextWindowBgAlpha`. Karta zasłania więcej, bo ma być czytana, a runda za nią jest skończona. Skutek dla kontrastu: sekcja 5.8.2 |
 | `CARD_TITLE_SCALE` | `1.8F` | ile razy tytuł karty jest większy od zwykłego tekstu |
@@ -1744,7 +1834,25 @@ To wynika z kodu ImGui i z flag. Kliknięcia w miejscu paska HUD nikt jeszcze ni
 
 Stałe są w pikselach przy skali ekranu 100% i `drawHud` mnoży je przez `ImGui::GetStyle().FontScaleDpi`, czyli przez skalę ekranu zapisaną w stylu przez `applyTheme`. To inna liczba niż `layoutScale` paneli (sekcja 5.7), która bywa mniejsza od skali ekranu. Wyjątkiem jest rozmiar czcionki tytułu: tę jedną wartość ImGui skaluje samo.
 
-`HUD_TOP_OFFSET` i wysokość paska tytułu nie są w kodzie powiązane: pierwsze to stała w `Hud.cpp`, drugie wynika z `PANEL_GAP` w `PanelLayout.hpp` i z metryk w `Theme.cpp`. Po zmianie rozmiaru czcionki albo odstępów 46 trzeba poprawić ręcznie (pułapka 38).
+**Skąd HUD wie, ile rzędów pasków jest nad nim (od M6).** Do M5 odległość HUD od górnej krawędzi była jedną liczbą, 46, dobraną ręcznie do jednego rzędu pasków: 8 odstępu, 22 wysokości paska i 16 zapasu. Stała i wysokość paska nie były w kodzie powiązane, więc po zmianie czcionki trzeba było poprawiać 46 ręcznie. Drugi rząd pasków (Terrain i Grass) wymusił zmianę, i zrobiłem ją tak, żeby ręczna liczba zniknęła:
+
+```cpp
+// The HUD stands below the rows of title bars of the panels that start folded at the top
+// edge (Camera and Gameplay, Terrain and Grass). This is the free space above the first
+// row plus the extra space between the last row and the HUD, which makes the HUD read as
+// a thing of its own: two panel gaps.
+constexpr float HUD_TOP_OFFSET = 2.0F * PANEL_GAP;
+```
+
+| Składnik | Wzór | Przy skali 100%, czcionce 16 i `FramePadding.y` 3 |
+|---|---|---|
+| rzędy pasków | `foldedRowsHeight(FOLDED_ROW_COUNT, scale)` = 2 * (`GetFrameHeight()` + 8 * `scale`) | 2 * (22 + 8) = 60 |
+| stała część | `HUD_TOP_OFFSET * scale` = 2 * 8 * `scale` | 16 |
+| góra paska HUD | suma, liczona od `top.y` | 76 |
+
+Rachunek po kolei: 8 wolnego miejsca, pasek pierwszego rzędu (do y 30), 8 odstępu, pasek drugiego rzędu (do y 60), 8 odstępu i jeszcze 8 dodatkowego, razem 76. Wzór grupuje to inaczej (każdy rząd z odstępem **za** sobą, a na końcu dwa odstępy), ale suma jest ta sama. Poprzednio było 46, więc HUD stoi o 30 jednostek niżej: dokładnie o jeden rząd, 22 + 8. Wykonawca zgłosił przesunięcie "około 30 pikseli" przy skali 100%. Tej trzydziestki nie ma w kodzie jako liczby i nie może być: wysokość paska pochodzi z `ImGui::GetFrameHeight()`, więc idzie za czcionką. `Hud.cpp` dołącza w tym celu `debug/PanelLayout.hpp`, z którego bierze `PANEL_GAP`, `FOLDED_ROW_COUNT` i `foldedRowsHeight`.
+
+Dwie rzeczy, które trzeba umieć powiedzieć. Po pierwsze, HUD jest odsuwany o **oba** rzędy zawsze, także gdy panele są schowane klawiszem `~` i żadnego paska nie widać: `FOLDED_ROW_COUNT` to stała, a nie liczba pasków na ekranie. HUD nie skacze więc przy chowaniu paneli, ale przy schowanych panelach wisi niżej, niż by musiał. Po drugie, powiązanie jest jednostronne: kto doda trzeci rząd (`foldedRowsBefore = 2`), musi sam podnieść `FOLDED_ROW_COUNT`, bo nic nie liczy rzędów ze stałych `..._PLACEMENT` (pułapka 38).
 
 **Co leży na wierzchu.** ImGui trzyma okna na liście uporządkowanej od tyłu do przodu. O miejscu na tej liście decydują trzy reguły (sprawdzone w źródle naszej wersji, `imgui.cpp`):
 
@@ -1761,12 +1869,185 @@ Na zrzutach ekranu wykonawcy (Windows, 2026-10-05) widać oba skutki naraz: przy
 
 **Znane ograniczenia** (oba wynikają z flag wyżej, żadne nie jest błędem w rachunku układu):
 
-- **Pasek HUD znika pod rozwiniętym panelem.** Rozwinięte panele Camera i Gameplay zajmują razem całą szerokość między kolumnami (x od 352 do 632 i od 640 do 964, y od 8 do 424), a pasek wisi na środku, od y 46. Kto gra z rozwiniętym panelem Gameplay, nie widzi baterii na HUD. Stan rundy widać wtedy w samym panelu (`Round`, `Crystals`, `Gate`, suwak `Battery`), a klawisz `~` chowa panele i odsłania pasek.
+- **Pasek HUD znika pod rozwiniętym panelem.** Rozwinięte panele Camera i Gameplay zajmują razem całą szerokość między kolumnami (x od 352 do 632 i od 640 do 964, y od 8 do 424), a pasek wisi na środku, od y 76. Kto gra z rozwiniętym panelem Gameplay, nie widzi baterii na HUD. Stan rundy widać wtedy w samym panelu (`Round`, `Crystals`, `Gate`, suwak `Battery`), a klawisz `~` chowa panele i odsłania pasek.
 - **Karta wygranej może zostać zasłonięta.** Panel kliknięty po pojawieniu się karty przechodzi przed nią. Z reguł wyżej wynika też coś, czego nikt nie oglądał na ekranie: okno karty powstaje raz, przy pierwszej wygranej, i zachowuje swoje miejsce na liście. Jeśli po pierwszej wygranej kliknę jakiś panel (choćby przycisk `Restart round (key R)` w panelu Gameplay), to przy następnej wygranej w tym samym uruchomieniu karta pojawi się **pod** tym panelem, o ile na siebie nachodzą. W układzie domyślnym karta stoi na środku okna, nad sceną, więc nachodzi na rozwinięte panele Camera i Gameplay. Na zrzucie jej dolna krawędź wypada tuż nad dolnym rzędem paneli. Lekarstwo jest to samo: klawisz `~` albo zwinięcie panelu. Klawisz R działa niezależnie od tego, czy kartę widać.
+
+### 5.10 Panele Terrain i Grass linia po linii (M6)
+
+Dwa panele z drugiej części M6 są krótkie i zbudowane tak samo, więc opisuję je razem. Co ich kontrolki znaczą dla terenu i dla trawy (wzór wysokości, `glPolygonMode`, shader geometrii), tłumaczą [`renderer/terrain.md`](renderer/terrain.md) i [`renderer/grass-geometry.md`](renderer/grass-geometry.md). Tutaj jest sam kod paneli i droga danych.
+
+**Nagłówki.** [`TerrainPanel.hpp`](../../src/debug/panels/TerrainPanel.hpp) i [`GrassPanel.hpp`](../../src/debug/panels/GrassPanel.hpp) deklarują po jednej funkcji:
+
+```cpp
+void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terrain);
+void drawGrassPanel(game::GrassSettings& settings, std::size_t tuftCount);
+```
+
+Sygnatury czyta się jak w sekcji 5.2: ustawienia bez `const` są edytowalne, teren z `const` jest tylko do odczytu, a liczba kępek przychodzi przez wartość. `DebugUI::draw` woła je tak:
+
+```cpp
+        drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
+        drawGrassPanel(context.grass, context.grassTuftCount);
+```
+
+Panel Terrain dostaje więc teren **z labiryntu w grze** (`MazeWorld::terrain`), a nie osobne pole kontekstu: po każdej przebudowie pokazuje liczby nowego terenu bez żadnej dodatkowej linii kodu.
+
+**`TerrainPanel.cpp`:**
+
+```cpp
+namespace {
+
+// The smallest height scale of the slider: a flat world. The largest one is
+// game::MAX_HEIGHT_SCALE.
+constexpr float MIN_HEIGHT_SCALE = 0.0F;
+
+} // namespace
+
+void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terrain) {
+    // First run only: the second row of title bars at the top edge of the window, under
+    // the Camera panel and folded like it (the constant is in PanelLayout.hpp). Later
+    // ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(TERRAIN_PLACEMENT);
+    if (ImGui::Begin("Terrain")) {
+        // SliderFloat returns true in every frame in which the value changed, so the
+        // terrain follows the slider while it is dragged. The panel only asks: the game
+        // builds the terrain at the start of its next frame.
+        if (ImGui::SliderFloat("Height scale", &settings.heightScale, MIN_HEIGHT_SCALE,
+                               game::MAX_HEIGHT_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+            settings.rebuild = true;
+        }
+        ImGui::SetItemTooltip("Every height of the terrain is multiplied by this number.\n"
+                              "0 is a flat world. The walls, the gate, the crystals and\n"
+                              "the player are put on the new ground at once.");
+
+        // Checkbox reads and writes a bool through the pointer.
+        ImGui::Checkbox("Wireframe", &settings.wireframe);
+        ImGui::SetItemTooltip("Draws the edges of the triangles of the terrain instead of\n"
+                              "their faces (glPolygonMode). Everything else stays filled.");
+
+        ImGui::Separator();
+        ImGui::Text("Grid: %d x %d points, %.2f m apart", terrain.columns(), terrain.rows(),
+                    terrain.spacing());
+        ImGui::Text("Triangles: %d", static_cast<int>(terrain.triangleCount()));
+        ImGui::Text("Height: %.2f m to %.2f m", terrain.minHeight(), terrain.maxHeight());
+    }
+    ImGui::End();
+}
+```
+
+| Fragment | Co robi |
+|---|---|
+| `MIN_HEIGHT_SCALE = 0.0F` | dolna granica suwaka, nazwana w pliku panelu. Górna to `game::MAX_HEIGHT_SCALE` z `Terrain.hpp`, czyli 2,5: ta jest regułą gry (chroni kolizje, [`renderer/terrain.md`](renderer/terrain.md)), więc panel jej nie powtarza, tylko ją czyta. Tę samą dolną granicę ma osobna stała w `NightMazeApp.cpp`, bo gra przycina wartość jeszcze raz |
+| `placePanelOnFirstUse(TERRAIN_PLACEMENT)` | pierwszy start: drugi rząd pasków, pod panelem Camera, zwinięty (sekcja 5.7) |
+| `if (ImGui::Begin("Terrain"))` | dla zwiniętego panelu `Begin` zwraca `false` i cała zawartość jest pomijana. `ImGui::End()` stoi poza `if`, jak w każdym panelu |
+| `ImGui::SliderFloat("Height scale", &settings.heightScale, 0, 2.5, "%.2f", ImGuiSliderFlags_AlwaysClamp)` | suwak pisze przez wskaźnik do pola `TerrainSettings::heightScale` i zwraca `true` w każdej klatce, w której wartość się zmieniła. `"%.2f"` pokazuje dwie cyfry po kropce. `AlwaysClamp` trzyma w zakresie także wartość wpisaną z klawiatury (Ctrl i kliknięcie) |
+| `settings.rebuild = true;` | panel **nie przebudowuje** terenu. Ustawia flagę prośby, a gra robi to na początku swojej następnej klatki (niżej). Suwak zwraca `true` w każdej klatce przeciągania, więc teren idzie za suwakiem na żywo: jedna przebudowa na klatkę |
+| `ImGui::SetItemTooltip(...)` | podpowiedź po najechaniu na poprzedni widżet. Dwa sąsiednie literały napisów kompilator skleja w jeden, a `\n` łamie linię w dymku |
+| `ImGui::Checkbox("Wireframe", &settings.wireframe)` | pole `TerrainSettings::wireframe`. Tu flagi prośby nie ma: gra czyta to pole w każdej klatce przy rysowaniu terenu (`m_terrainRenderer.draw(shader, m_terrainSettings.wireframe)`), więc niczego nie trzeba budować od nowa |
+| trzy linie `ImGui::Text` | odczyt z terenu w grze: `columns()` na `rows()` punktów siatki i odstęp `spacing()`, liczba trójkątów (`triangleCount()` zwraca `std::size_t`, a format `%d` chce `int`, stąd `static_cast`) oraz najniższy i najwyższy punkt siatki |
+
+Dla labiryntu startowego (10 x 10, skala 1) panel pokazuje `Grid: 97 x 97 points, 0.50 m apart`, `Triangles: 18432` i `Height: 0.00 m to 3.37 m`. Pierwsze dwie linie wynikają z wzorów w `Terrain.cpp` ((10 + 2 * 7) * 4 + 1 = 97 i 96 * 96 * 2 = 18432), trzecią przeliczyłem z pliku `heightmap.png` skryptem, który powtarza wzór wysokości. Samego panelu z tymi liczbami nikt nie oglądał rozwiniętego. Uwaga do trzeciej linii: to zakres **całej siatki**, razem ze wzgórzami poza labiryntem. Pod samym labiryntem grunt ma od 0,085 do 0,461 m.
+
+**`GrassPanel.cpp`:**
+
+```cpp
+namespace {
+
+// The density, in tufts per metre of wall and side. 0 plants nothing. The largest one is
+// game::MAX_GRASS_DENSITY.
+constexpr float MIN_DENSITY = 0.0F;
+
+// The height of the tallest blades, in metres: from stubble to knee high.
+constexpr float MIN_BLADE_HEIGHT = 0.05F;
+constexpr float MAX_BLADE_HEIGHT = 0.8F;
+
+// The strength of the wind: 0 is still air, 1 the default breeze.
+constexpr float MIN_WIND_STRENGTH = 0.0F;
+constexpr float MAX_WIND_STRENGTH = 3.0F;
+
+// The blades one tuft is made of: BLADE_COUNT in assets/shaders/grass.geom. The panel
+// only uses it to show a number, so a wrong value here changes nothing that is drawn.
+constexpr int BLADES_PER_TUFT = 3;
+
+} // namespace
+
+void drawGrassPanel(game::GrassSettings& settings, std::size_t tuftCount) {
+    // First run only: the second row of title bars at the top edge of the window, under
+    // the Gameplay panel and folded like it (the constant is in PanelLayout.hpp). Later
+    // ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(GRASS_PLACEMENT);
+    if (ImGui::Begin("Grass")) {
+        // Checkbox reads and writes a bool through the pointer.
+        ImGui::Checkbox("Enabled", &settings.enabled);
+
+        // SliderFloat returns true in every frame in which the value changed. The panel
+        // only asks: the game places the tufts at the start of its next frame.
+        if (ImGui::SliderFloat("Density", &settings.density, MIN_DENSITY, game::MAX_GRASS_DENSITY,
+                               "%.1f per m", ImGuiSliderFlags_AlwaysClamp)) {
+            settings.replant = true;
+        }
+        ImGui::SetItemTooltip("Tufts per metre of wall, on each side of the wall. The\n"
+                              "scatter on the hills follows in proportion.");
+
+        // These two are uniforms of the grass program: they change the blades the
+        // geometry shader builds, and no tuft has to be placed again.
+        ImGui::SliderFloat("Blade height", &settings.bladeHeight, MIN_BLADE_HEIGHT,
+                           MAX_BLADE_HEIGHT, "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SliderFloat("Wind strength", &settings.windStrength, MIN_WIND_STRENGTH,
+                           MAX_WIND_STRENGTH, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+
+        ImGui::Separator();
+        // One tuft is one point in the vertex buffer. The blades are made of it by the
+        // geometry shader, so their number is not stored anywhere.
+        const int tufts = static_cast<int>(tuftCount);
+        ImGui::Text("Tufts: %d (%d blades)", tufts, tufts * BLADES_PER_TUFT);
+    }
+    ImGui::End();
+}
+```
+
+| Fragment | Co robi |
+|---|---|
+| stałe zakresów | `Density` od 0 do `game::MAX_GRASS_DENSITY` (8), `Blade height` od 0,05 do 0,8 m, `Wind strength` od 0 do 3. Górna granica gęstości jest regułą gry i leży w `Grass.hpp`, pozostałe granice są sprawą panelu |
+| `BLADES_PER_TUFT = 3` | **powtórzenie** stałej `BLADE_COUNT` z pliku `assets/shaders/grass.geom`. Kod C++ nie ma jak przeczytać stałej z pliku GLSL, więc liczba jest wpisana drugi raz, a komentarz mówi wprost, czym to grozi: po zmianie `BLADE_COUNT` w shaderze panel pokaże złą liczbę źdźbeł, ale obraz się nie zmieni, bo panel używa jej tylko do napisu (pułapka 40) |
+| `placePanelOnFirstUse(GRASS_PLACEMENT)` | pierwszy start: drugi rząd pasków, pod panelem Gameplay, zwinięty |
+| `ImGui::Checkbox("Enabled", &settings.enabled)` | pole `GrassSettings::enabled`. Gra czyta je w każdej klatce: `drawGrass` wraca od razu, gdy jest fałszem. Kępki zostają na karcie graficznej, nie są tylko rysowane |
+| `ImGui::SliderFloat("Density", ..., "%.1f per m", ...)` | napis formatu może zawierać tekst: suwak pokazuje na przykład `2.5 per m`. Zmiana ustawia `settings.replant`, flagę prośby taką jak `rebuild` wyżej. Gęstość zmienia **dane** (liczbę i miejsca punktów w buforze wierzchołków), więc wymaga pracy po stronie gry |
+| suwaki `Blade height` i `Wind strength` | bez `if` i bez flagi. To uniformy programu trawy (`uBladeHeight`, `uWindStrength`): `GrassRenderer::draw` wysyła je w każdej klatce, a źdźbła i tak powstają od nowa w każdej klatce w shaderze geometrii. Żadnej kępki nie trzeba sadzić od nowa |
+| `const int tufts = static_cast<int>(tuftCount);` | `%d` chce `int`, a liczba kępek to `std::size_t` |
+| `ImGui::Text("Tufts: %d (%d blades)", ...)` | liczba kępek i liczba źdźbeł. Ta druga jest tylko iloczynem: źdźbeł nie ma w żadnym buforze. Przy ustawieniach startowych wychodzi `Tufts: 1843 (5529 blades)`: 1843 zgłosił wykonawca i ta sama liczba wychodzi z mojej symulacji generatora, 5529 to 1843 * 3 |
+
+**Wzorzec flagi prośby.** Oba panele mają po jednej kontrolce, która wymaga pracy poza panelem. Robią to samo, co panel Maze robi od M2 + M3 z polem `MazeSettings::regenerate` i panel Gameplay z `GameplaySettings::restart`: ustawiają flagę w strukturze ustawień, a gra obsługuje ją na początku następnej klatki, w `NightMazeApp::onRender`:
+
+```cpp
+    if (m_terrainSettings.rebuild) {
+        m_terrainSettings.rebuild = false;
+        rebuildTerrain();
+    }
+    if (m_grassSettings.replant) {
+        m_grassSettings.replant = false;
+        plantGrass();
+    }
+```
+
+| Kontrolka | Flaga | Co robi gra | Dlaczego nie panel |
+|---|---|---|---|
+| `Height scale` | `TerrainSettings::rebuild` | `rebuildTerrain()`: nowy teren, ściany, słupki i brama zatopione od nowa, kryształy rundy przestawione, lista przeszkód zbudowana od nowa, idący gracz postawiony na nowym gruncie, siatka terenu i trawa wysłane na kartę | panel zna tylko `TerrainSettings` i `const Terrain&`. Nie ma dostępu ani do `MazeWorld`, ani do rundy, ani do klas rysujących, i nie powinien mieć |
+| `Density` | `GrassSettings::replant` | `plantGrass()`: `placeGrass` wybiera miejsca od nowa, `GrassRenderer::upload` wymienia bufor punktów | panel nie zna `GrassRenderer` ani świata |
+
+Powody są trzy. Po pierwsze, kierunek zależności: panel edytuje dane, a gra decyduje, co z nich wynika. Po drugie, moment: panele są rysowane **po** scenie tej klatki (sekcja 5.4), więc przebudowa w środku panelu zmieniałaby świat, z którego dalsze panele tej samej klatki jeszcze czytają. Po trzecie, jedno miejsce: nowy labirynt, nowa skala wysokości i nowa gęstość trawy są obsługiwane obok siebie na początku `onRender`, w tej kolejności. Labirynt przebudowany w tej klatce jest już zbudowany z nowymi liczbami, a mimo to ustawione flagi `rebuild` i `replant` wykonują się potem jeszcze raz: komentarz w kodzie mówi, że to kosztuje trochę czasu raz i niczego nie zmienia.
+
+Gra nie ufa panelowi do końca: `rebuildTerrain` i `regenerateMaze` przycinają `heightScale` do zakresu od 0 do `MAX_HEIGHT_SCALE`, a `plantGrass` przycina `density` do zakresu od 0 do `MAX_GRASS_DENSITY` (`std::clamp`). Przy fladze `AlwaysClamp` suwak i tak nie wypuści wartości spoza zakresu, więc to drugie zabezpieczenie: reguła gry jest pilnowana w grze, a nie tylko w widżecie.
+
+**Opóźnienie o jedną klatkę.** Suwak zmienia `heightScale` w klatce N (w trakcie `DebugUI::draw`, po narysowaniu sceny), a teren jest przebudowywany na początku klatki N+1. Między tymi chwilami trzecia linia panelu (`Height: ...`) pokazuje jeszcze stary teren, bo czyta `mazeWorld.terrain`, a suwak pokazuje już nową skalę. Trwa to jedną klatkę i nie jest błędem.
+
+**Trzy komentarze w starszych panelach.** Druga część M6 zmieniła w panelach Camera, Lights i Maze tylko komentarze, bo podłogi z płytek już nie ma. W `CameraPanel.cpp` przy polu `Player feet`: gra trzyma `y` stóp "on the ground" (wcześniej "at the floor"), więc zmiana `y` w panelu utrzymuje się tylko w trybie noclip: w następnym kroku chodzenia `Player::update` nadpisuje ją wysokością terenu. W `LightsPanel.cpp` przy zakresie `Moon pitch`: światło bliskie 0 stopni "only grazes the ground". W `MazePanel.cpp` przy granicach suwaków rozmiaru: gra rysuje każdą ścianę i każdy słupek osobnym wywołaniem, około dwóch na komórkę (do M5 około trzech, bo dochodziła płytka podłogi), a teren ma 32 trójkąty na komórkę (4 x 4 kwadraty siatki po dwa trójkąty). Zakres suwaków, od 2 do 40 komórek, się nie zmienił.
+
+**Stan sprawdzenia.** Kod obu paneli jest przeczytany i zgodny z tym opisem. Żadnego z nich nikt nie rozwinął ręcznie i żadnej kontrolki nikt nie kliknął: skutki (płaski świat przy skali 0, siatka z krawędzi, trawa wyłączona) wykonawca oglądał na zrzutach ekranu, na których stan ustawiały tymczasowe wstawki w kodzie, usunięte po zrzutach. Lista do ręcznego przejścia jest w [`../guides/build-windows.md`](../guides/build-windows.md).
 
 ## 6. Panel ImGui
 
-Jest osiem paneli i HUD gry, który panelem nie jest (opis na końcu tej sekcji). Tabele niżej są skrótem: kod każdego panelu linia po linii jest w dokumencie, na który wskazuje komentarz na górze jego plików. Pierwszy to **Renderer** (kod linia po linii w sekcji 5.3):
+Jest dziesięć paneli i HUD gry, który panelem nie jest (opis na końcu tej sekcji). Tabele niżej są skrótem: kod każdego panelu linia po linii jest w dokumencie, na który wskazuje komentarz na górze jego plików. Pierwszy to **Renderer** (kod linia po linii w sekcji 5.3):
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
@@ -1782,13 +2063,13 @@ Drugi to **Shaders**, pokaz tematu 2. Pełny opis, kod linia po linii i scenariu
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
-| `Reload shaders` | przycisk | Wczytywanie na żywo: pliki wszystkich pięciu programów są czytane, kompilowane i linkowane od nowa w działającym programie. Plik dołączany przez kilka programów (`common/lighting.glsl`) czyta od nowa każdy z nich. Program, którego przeładowanie się nie udało, działa dalej w poprzedniej wersji |
-| `textured.vert + textured.frag: OK` (jedna linia na program, pięć linii, ostatnia to `skybox.vert + skybox.frag`) | odczyt | Z których dwóch plików powstał program i że ostatnie wczytanie się udało. W linii są same nazwy plików. Podpowiedź po najechaniu kursorem pokazuje obie pełne ścieżki, jedną pod drugą |
+| `Reload shaders` | przycisk | Wczytywanie na żywo: pliki wszystkich sześciu programów są czytane, kompilowane i linkowane od nowa w działającym programie. Plik dołączany przez kilka programów (`common/lighting.glsl`) czyta od nowa każdy z nich. Program, którego przeładowanie się nie udało, działa dalej w poprzedniej wersji |
+| `textured.vert + textured.frag: OK` (jedna linia na program, sześć linii, ostatnia to `grass.vert + grass.geom + grass.frag: OK`) | odczyt | Z których plików powstał program i że ostatnie wczytanie się udało. Nazwy są połączone znakiem ` + ` w kolejności, w jakiej etapy pracują: shader wierzchołków, shader geometrii (tylko gdy program go ma, `Shader::hasGeometryStage()`), shader fragmentów. Dziś trzy pliki ma jeden program, trawa. W linii są same nazwy plików. Podpowiedź po najechaniu kursorem pokazuje pełne ścieżki, po jednej w linii, w tej samej kolejności |
 | `lit.vert + lit.frag: FAILED, the previous program stays in use` | odczyt, na czerwono | Nieudane przeładowanie programu, który wcześniej działał: `isValid()` jest prawdą, gra rysuje dalej poprzednią wersją |
 | `... FAILED, there is no program to draw with` | odczyt, na czerwono | Nieudane **pierwsze** wczytanie: `isValid()` jest fałszem i część sceny rysowana tym programem znika |
 | tekst błędu pod linią `FAILED` | odczyt, na czerwono | Treść `lastError()`: dziennik sterownika, w którym numer pliku źródłowego jest zamieniony na jego nazwę, na przykład `common/lighting.glsl(63) : error C0000: ...`. Czerwień to stała motywu `ERROR_TEXT_COLOR` (sekcja 5.8.2) |
 
-Przed M4 panel pokazywał dla każdego programu cztery linie: osobno oba pliki, stan programu i wynik ostatniego wczytania. Z pięcioma programami byłoby to dwadzieścia linii, a dziś jest pięć. Informacja jest ta sama: nazwy obu plików, wynik ostatniego wczytania i to, czy jest czym rysować.
+Przed M4 panel pokazywał dla każdego programu cztery linie: osobno oba pliki, stan programu i wynik ostatniego wczytania. Z sześcioma programami byłoby to co najmniej dwadzieścia cztery linie, a dziś jest sześć. Informacja jest ta sama: nazwy plików, wynik ostatniego wczytania i to, czy jest czym rysować. Od drugiej części M6 funkcja `drawShaderStatus` nie zakłada już dwóch plików: skleja napis `files` z nazw i napis `fullPaths` ze ścieżek, a plik shadera geometrii dokłada w środku, gdy `hasGeometryStage()` jest prawdą. Kod linia po linii: [`gfx/shader-hot-reload.md`](gfx/shader-hot-reload.md), sekcja 6.
 
 Trzeci to **Camera**, pokaz tematu 3. Przy pierwszym uruchomieniu panel jest **zwinięty** do paska tytułu przy górnej krawędzi okna, na prawo od lewej kolumny: strzałka w pasku go rozwija (sekcja 5.7). Linia pomocy w panelu wymienia klawisze kamery i gracza, a klawiszy F i R w niej nie ma: są w etykietach `Flashlight on (key F)` i `Restart round (key R)`. Kod linia po linii, znaczenie każdej kontrolki i scenariusz pokazu na obronie są w [`scene/camera-controls.md`](scene/camera-controls.md), sekcja 6:
 
@@ -1822,7 +2103,27 @@ Czwarty to **Gameplay**, panel reguł rozgrywki z M5. Tak jak Camera startuje **
 
 Wszystkie suwaki mają flagę `ImGuiSliderFlags_AlwaysClamp`, więc także wartość wpisana z klawiatury (Ctrl i kliknięcie) zostaje w zakresie. Zakresy to nazwane stałe na górze `GameplayPanel.cpp`, a wartości startowe to inicjalizatory pól `game::GameplaySettings`.
 
-Piąty to **Maze**. Kod linia po linii i rysowanie planu: [`game/maze-generator.md`](game/maze-generator.md), sekcja 6. Droga prośby od panelu do nowego labiryntu: [`game/maze-rendering.md`](game/maze-rendering.md), sekcja 5:
+Piąty to **Terrain**, pokaz tematu 13 (teren z mapy wysokości). Startuje **zwinięty** w drugim rzędzie pasków, pod panelem Camera (sekcja 5.7). Kod linia po linii: sekcja 5.10, teoria i scenariusz pokazu: [`renderer/terrain.md`](renderer/terrain.md):
+
+| Element | Rodzaj | Co pokazuje albo zmienia |
+|---|---|---|
+| `Height scale` | suwak (od 0 do 2,5, start 1,00) | Liczba, przez którą mnożona jest każda wysokość terenu. 0 to płaski świat, 1 teren taki, jak zaprojektowany. Zmiana ustawia prośbę `rebuild`: gra buduje teren od nowa i stawia na nim ściany, bramę, kryształy i gracza. Podpowiedź po najechaniu mówi to samo |
+| `Wireframe` | pole wyboru (przy starcie odznaczone) | Teren jako krawędzie trójkątów zamiast wypełnionych ścian (`glPolygonMode`). Widać siatkę, z której jest zbudowany. Reszta sceny zostaje wypełniona |
+| `Grid: N x N points, 0.50 m apart` | odczyt | Liczba punktów siatki wzdłuż X i Z oraz odstęp między nimi. Dla labiryntu startowego 97 x 97 |
+| `Triangles: N` | odczyt | Dwa trójkąty na kwadrat siatki. Dla labiryntu startowego 18432 |
+| `Height: A m to B m` | odczyt | Najniższy i najwyższy punkt całej siatki, razem ze wzgórzami wokół labiryntu. Dla labiryntu startowego przy skali 1: od 0,00 do 3,37 m |
+
+Szósty to **Grass**, pokaz tematu 9 (shader geometrii). Startuje **zwinięty** w drugim rzędzie pasków, pod panelem Gameplay. Kod linia po linii: sekcja 5.10, teoria, shadery i scenariusz pokazu: [`renderer/grass-geometry.md`](renderer/grass-geometry.md):
+
+| Element | Rodzaj | Co pokazuje albo zmienia |
+|---|---|---|
+| `Enabled` | pole wyboru (przy starcie zaznaczone) | Czy trawa jest rysowana. Odznaczone pomija całe wywołanie rysujące trawy |
+| `Density` | suwak (od 0 do 8, start 2,5, pokazywany jako `2.5 per m`) | Kępki na metr ściany, liczone osobno po każdej stronie ściany. Rzadki rozsiew na wzgórzach idzie za tą liczbą proporcjonalnie. Zmiana ustawia prośbę `replant`: gra wybiera miejsca kępek od nowa. Zero nie sadzi niczego |
+| `Blade height` | suwak (od 0,05 do 0,8 m, start 0,30) | Wysokość najwyższych źdźbeł. Uniform shadera geometrii, działa od następnej klatki bez sadzenia |
+| `Wind strength` | suwak (od 0 do 3, start 1,00) | Jak daleko wiatr odchyla czubki źdźbeł. 0 to bezruch. Też uniform |
+| `Tufts: N (M blades)` | odczyt | Liczba kępek, czyli punktów w buforze wierzchołków, i liczba źdźbeł (trzy na kępkę), których w żadnym buforze nie ma: buduje je shader geometrii. Przy ustawieniach startowych 1843 kępki, 5529 źdźbeł |
+
+Siódmy to **Maze**. Kod linia po linii i rysowanie planu: [`game/maze-generator.md`](game/maze-generator.md), sekcja 6. Droga prośby od panelu do nowego labiryntu: [`game/maze-rendering.md`](game/maze-rendering.md), sekcja 5:
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
@@ -1834,7 +2135,7 @@ Piąty to **Maze**. Kod linia po linii i rysowanie planu: [`game/maze-generator.
 | `Crystals: N, exit in cell (x, z)` | odczyt | Ile kryształów ma ten labirynt i w której komórce jest wyjście. Dla labiryntu startowego (10 x 10, ziarno 1): 13 kryształów, wyjście w komórce (6, 5). Ile z nich otwiera bramę, to reguła rundy z panelu Gameplay |
 | plan | rysunek | Ściany z góry w kolorze bladego kamienia, północ u góry, bursztynowa kropka gracza i kreska kierunku patrzenia. Od M5 także: zielony obrys strefy wyjścia, brama jako gruba linia (w kolorze drewna, dopóki blokuje przejście, i przygaszona po otwarciu) oraz kryształy (turkusowa kropka dla leżącego, przygaszony okrąg w miejscu zebranego). Kolory to stałe motywu od `PLAN_WALL_COLOR` do `PLAN_EXIT_COLOR` (sekcja 5.8.2) |
 
-Szósty to **Collision**, pokaz tematu 14. Kod linia po linii i scenariusz pokazu: [`scene/collision.md`](scene/collision.md), sekcja 6:
+Ósmy to **Collision**, pokaz tematu 14. Kod linia po linii i scenariusz pokazu: [`scene/collision.md`](scene/collision.md), sekcja 6:
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
@@ -1845,7 +2146,7 @@ Szósty to **Collision**, pokaz tematu 14. Kod linia po linii i scenariusz pokaz
 | grubość pudełka ściany | odczyt | Pudełko kolizji ściany (0,30 m) jest grubsze niż widoczna ściana (0,20 m) |
 | `Player box`, `min`, `max` | odczyt | Dwa narożniki pudełka gracza, liczone z jego pozycji w każdej klatce |
 
-Siódmy to **Assets**, pokaz tematów 4 i 5. Kod linia po linii i scenariusz pokazu dla każdej kontrolki: [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6:
+Dziewiąty to **Assets**, pokaz tematów 4 i 5. Kod linia po linii i scenariusz pokazu dla każdej kontrolki: [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6:
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
@@ -1853,11 +2154,11 @@ Siódmy to **Assets**, pokaz tematów 4 i 5. Kod linia po linii i scenariusz pok
 | `Normal mapping` | pole wyboru (przy starcie zaznaczone) z notatką pod spodem | Mapowanie normalnych: te same ściany z reliefem i bez. Działa w trybach `Phong` i `Blinn-Phong` (panel Renderer) i w widoku `Normals as colour`. Tryb `Gouraud` liczy światło w wierzchołkach i z mapy normalnych nie skorzysta |
 | `Filter` | lista (`Nearest`, `Bilinear`, `Trilinear`) | Filtrowanie wszystkich tekstur naraz |
 | `Anisotropy` | suwak (wyszarzony, gdy sterownik nie ma rozszerzenia) | Filtrowanie anizotropowe na powierzchniach widzianych pod płaskim kątem |
-| `Models` | odczyt | Wczytane modele (od M5 sześć: podłoga, ściana, słupek, dwa kryształy i brama): plik, liczba wierzchołków i trójkątów, części z materiałami. Pod każdą częścią linia `normal map:` z nazwą pliku mapy normalnych albo `none (flat)`, gdy część korzysta z płaskiej mapy zastępczej |
-| `Textures` | odczyt z podglądem | Wczytane tekstury: plik, rozmiar, obrazek 128 x 128. W grze jest ich od M5 osiem: cztery obrazy koloru (kamień ściany i podłogi, kryształ, drewno bramy) i cztery mapy normalnych (`wall_stone_normal.png`, `floor_stone_normal.png`, `crystal_normal.png`, `gate_wood_normal.png`). Podgląd mapy normalnych jest jasnoniebieski, bo większość tekseli to kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)` |
+| `Models` | odczyt | Wczytane modele (dziś pięć: ściana, słupek, dwa kryształy i brama. W M5 było ich sześć, szóstym była płytka podłogi, którą w M6 zastąpił teren. Teren nie jest modelem z pliku, więc na liście go nie ma): plik, liczba wierzchołków i trójkątów, części z materiałami. Pod każdą częścią linia `normal map:` z nazwą pliku mapy normalnych albo `none (flat)`, gdy część korzysta z płaskiej mapy zastępczej |
+| `Textures` | odczyt z podglądem | Wczytane tekstury: plik, rozmiar, obrazek 128 x 128. W grze jest ich osiem: cztery obrazy koloru (kamień ściany, grunt terenu, kryształ, drewno bramy) i cztery mapy normalnych (`wall_stone_normal.png`, `ground_normal.png`, `crystal_normal.png`, `gate_wood_normal.png`). Parę tekstur gruntu (`ground.png`, `ground_normal.png`) wczytuje przez pamięć podręczną `game::TerrainRenderer`: w M6 zastąpiła parę tekstur podłogi. Mapy wysokości `heightmap.png` na liście nie ma: gra czyta ją raz wprost przez `assets::loadImage`, poza pamięcią podręczną, i nie robi z niej tekstury. Podgląd mapy normalnych jest jasnoniebieski, bo większość tekseli to kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)` |
 | `Failed to load` | odczyt (tylko gdy coś się nie wczytało) | Pliki, których nie udało się wczytać, na czerwono (ta sama stała `ERROR_TEXT_COLOR` co w panelu Shaders) |
 
-Ósmy to **Lights**, pokaz tematu 6. Kod linia po linii, znaczenie każdej kontrolki i scenariusz pokazu na obronie są w [`scene/lights.md`](scene/lights.md), sekcja 6. Wszystkie kontrolki piszą do pól jednej struktury, `game::LightingSettings` ([`game/flashlight.md`](game/flashlight.md)), a gra buduje z niej światła następnej klatki, więc każdą zmianę widać od razu:
+Dziesiąty to **Lights**, pokaz tematu 6. Kod linia po linii, znaczenie każdej kontrolki i scenariusz pokazu na obronie są w [`scene/lights.md`](scene/lights.md), sekcja 6. Wszystkie kontrolki piszą do pól jednej struktury, `game::LightingSettings` ([`game/flashlight.md`](game/flashlight.md)), a gra buduje z niej światła następnej klatki, więc każdą zmianę widać od razu:
 
 | Element | Rodzaj | Co zmienia |
 |---|---|---|
@@ -1890,7 +2191,7 @@ Panel dostaje też `const game::Round&`, ale czyta z niego tylko trzy rzeczy: ro
 
 PRD (sekcja 10) wymienia tryb noclip przy panelu Camera. W kodzie przełącznik jest w panelu Collision (bo wyłącza kolizje) i pod klawiszem N, a panel Camera pokazuje tylko bieżący tryb.
 
-Stan sprawdzenia paneli ma cztery części.
+Stan sprawdzenia paneli ma pięć części.
 
 **Sprzed M4 (Windows, 2026-10-05).** Na zrzutach ekranu sprawdzone są plan w panelu Maze (zgodny z widokiem z góry), podglądy tekstur w panelu Assets (nieodwrócone) oraz skutki obu trybów widoku, czterech ustawień filtrowania i brakującej tekstury. Te stany zostały ustawione tymczasowym kodem, którego już nie ma. Po zmianie motywu sprawdzone są na zrzutach: ówczesny układ paneli (bez Lights) przy pierwszym uruchomieniu, kolory i czcionka, polskie litery, tekst błędu w panelach Shaders i Assets w ich ówczesnej postaci oraz czcionka zastępcza (sekcja 5.8.6).
 
@@ -1900,7 +2201,9 @@ Stan sprawdzenia paneli ma cztery części.
 
 **M5 (Windows, 2026-10-05), zgłoszone przez wykonawcę.** Build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach. Obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowe wstawki w kodzie, które zostały potem usunięte: widok startowy z ośmioma panelami i HUD, ten sam widok ze schowanymi panelami (HUD zostaje), rozwinięte panele Camera i Gameplay, słaba i pusta bateria, karta wygranej, plan z kryształami, bramą i wyjściem. Stanów tych nie ustawiało klikanie w panele. O clang-format, clang-tidy, sterowniku i karcie graficznej dla M5 nic nie zostało zgłoszone, więc niczego o nich nie twierdzę. Kamień milowy ma kompletny kod na Windowsie i **nie jest zamknięty**.
 
-**Samych kontrolek nikt jeszcze nie klikał.** Dotyczy to starych paneli (przyciski `Regenerate` i `Random seed`, listy `View mode` i `Filter`, suwak `Anisotropy`, pola wyboru panelu Collision, klawisz N), wszystkiego, co doszło w M4 (lista `Lighting`, każdy widżet panelu Lights, klawisz F, rozwinięcie panelu Camera, przycisk `Reload shaders`, pole wyboru `Normal mapping`), i wszystkiego z M5: klawisza R, klawisza F przy pustej baterii, przycisku `Restart round (key R)`, suwaków i pola wyboru panelu Gameplay, rozwinięcia tego panelu, HUD przy schowanych panelach, karty wygranej i migotania oglądanego na żywo. Lista do ręcznego przejścia jest w [`../guides/build-windows.md`](../guides/build-windows.md). Na macOS nic z kodu M4 ani M5 nie było ani budowane, ani uruchamiane.
+**M6, część druga: teren i trawa (Windows, 2026-10-05), zgłoszone przez wykonawcę.** Build Debug i Release bez ostrzeżeń i clang-format bez uwag. Obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowe wstawki w kodzie, które zostały potem usunięte. Sam uruchomiłem zbudowane programy testowe: 256 przypadków testowych i 101232 asercje przechodzą w Debug i w Release. Z liczb, które pokazują nowe panele, przeliczyłem z kodu i z pliku mapy wysokości siatkę 97 x 97, 18432 trójkąty, zakres wysokości od 0,00 do 3,37 m i 1843 kępki. Paneli Terrain i Grass nikt nie rozwinął ręcznie, żadnej ich kontrolki nikt nie kliknął, a linii `grass.vert + grass.geom + grass.frag: OK` w panelu Shaders i przycisku `Reload shaders` przy sześciu programach nikt nie sprawdził ręcznie. Zgłoszone jest, że zepsuty `grass.geom` daje błąd z nazwą pliku (`grass.geom(84)`), a gra działa dalej. Kamień milowy M6 ma kompletny kod na Windowsie i nie jest zamknięty: macOS i testy ręczne są otwarte.
+
+**Samych kontrolek nikt jeszcze nie klikał.** Dotyczy to starych paneli (przyciski `Regenerate` i `Random seed`, listy `View mode` i `Filter`, suwak `Anisotropy`, pola wyboru panelu Collision, klawisz N), wszystkiego, co doszło w M4 (lista `Lighting`, każdy widżet panelu Lights, klawisz F, rozwinięcie panelu Camera, przycisk `Reload shaders`, pole wyboru `Normal mapping`), i wszystkiego z M5: klawisza R, klawisza F przy pustej baterii, przycisku `Restart round (key R)`, suwaków i pola wyboru panelu Gameplay, rozwinięcia tego panelu, HUD przy schowanych panelach, karty wygranej i migotania oglądanego na żywo. Lista do ręcznego przejścia jest w [`../guides/build-windows.md`](../guides/build-windows.md). Do tej listy dochodzi wszystko z drugiej części M6: rozwinięcie paneli Terrain i Grass, suwak `Height scale` (także przy 0 i 2,5), pole `Wireframe`, pole `Enabled`, suwaki `Density`, `Blade height` i `Wind strength` oraz przycisk `Reload shaders` przy sześciu programach. Na macOS nic z kodu M4, M5 ani M6 nie było ani budowane, ani uruchamiane.
 
 Zachowanie całej nakładki:
 
@@ -1909,8 +2212,8 @@ Zachowanie całej nakładki:
 - Klawisz **`~`** (grawis, grave accent, na lewo od `1`, w kodzie `GLFW_KEY_GRAVE_ACCENT`) chowa i pokazuje wszystkie panele (start: widoczne, `m_visible = true`). HUD gry nie jest panelem i zostaje na ekranie (sekcja 5.9). PRD ([`../PRD.pdf`](../PRD.pdf)) nadal podaje w tym miejscu pierwszy klawisz funkcyjny (z górnego rzędu klawiatury). Klawisz został zmieniony celowo i obowiązuje to, co jest w kodzie.
 - Gdy aktywny jest widżet panelu (edycja pola, przeciąganie wartości), gra nie widzi klawiatury: Escape nie zamyka programu, `~` nie chowa paneli, N nie przełącza noclip, F nie przełącza latarki, a R nie zaczyna nowej rundy (sekcja 5.6). Dotyczy to na przykład wpisywania ziarna w panelu Maze. Przy wolnym kursorze i bez aktywnego widżetu N, F i R działają.
 - Panel można przeciągnąć za pasek tytułu i **zadokować** do krawędzi okna. Środek zostaje przezroczysty dzięki `PassthruCentralNode`.
-- Układ paneli ImGui zapisuje w pliku `imgui.ini` w **katalogu roboczym** programu. Plik jest w `.gitignore`, bo to ustawienie lokalne. Skasowanie go przywraca układ domyślny: osiem paneli w miejscach z tabeli w sekcji 5.7, z panelami Camera i Gameplay zwiniętymi. HUD nie ma wpisu w tym pliku (`NoSavedSettings`). W M1 panele nie miały pozycji startowych i przy pierwszym uruchomieniu otwierały się jeden na drugim. Stary `imgui.ini` nadal trzyma panele w starych miejscach i rozmiarach: plik sprzed M4 stawia panel Camera pod panelem Lights, a plik z M4 trzyma dolny rząd o 8 jednostek niższy niż dziś, więc po przejściu na nowszą wersję najprościej go skasować.
-- W `imgui.ini` jest też stan zwinięcia każdego panelu (linia `Collapsed=`). Panel Camera albo Gameplay rozwinięty raz zostaje rozwinięty przy następnych uruchomieniach, a każdy inny panel zwinięty ręcznie zostaje zwinięty. Stan czterech zwijanych grup wewnątrz panelu Lights do pliku **nie** trafia: we wpisie okna są tylko pozycja, rozmiar, zwinięcie i dokowanie. Po każdym starcie grupy wracają więc do stanu z kodu: `Moon (directional)` zwinięta, trzy pozostałe rozwinięte.
+- Układ paneli ImGui zapisuje w pliku `imgui.ini` w **katalogu roboczym** programu. Plik jest w `.gitignore`, bo to ustawienie lokalne. Skasowanie go przywraca układ domyślny: dziesięć paneli w miejscach z tabeli w sekcji 5.7, z panelami Camera, Gameplay, Terrain i Grass zwiniętymi. HUD nie ma wpisu w tym pliku (`NoSavedSettings`). W M1 panele nie miały pozycji startowych i przy pierwszym uruchomieniu otwierały się jeden na drugim. Stary `imgui.ini` nadal trzyma panele w starych miejscach i rozmiarach: plik sprzed M4 stawia panel Camera pod panelem Lights, a plik z M4 trzyma dolny rząd o 8 jednostek niższy niż dziś, więc po przejściu na nowszą wersję najprościej go skasować.
+- W `imgui.ini` jest też stan zwinięcia każdego panelu (linia `Collapsed=`). Panel Camera, Gameplay, Terrain albo Grass rozwinięty raz zostaje rozwinięty przy następnych uruchomieniach, a każdy inny panel zwinięty ręcznie zostaje zwinięty. Stan czterech zwijanych grup wewnątrz panelu Lights do pliku **nie** trafia: we wpisie okna są tylko pozycja, rozmiar, zwinięcie i dokowanie. Po każdym starcie grupy wracają więc do stanu z kodu: `Moon (directional)` zwinięta, trzy pozostałe rozwinięte.
 - Wygląd paneli (kolory, odstępy, czcionka) nie jest zapisywany w `imgui.ini`. Ustawia go kod przy każdym starcie (sekcja 5.8).
 
 ## 7. Pułapki
@@ -1929,7 +2232,7 @@ Zachowanie całej nakładki:
 11. **"Klawisz `~` nie chowa paneli".** Aktywny widżet ImGui blokuje klawiaturę gry, więc przełącznik nie reaguje, dopóki trwa edycja albo przeciąganie. To zamierzone. Wystarczy zakończyć edycję (Enter, Escape albo kliknięcie poza polem).
 12. **`setKeyboardBlocked` albo `setMouseBlocked` zapomniane w nowym programie.** Blokady nie są częścią `DebugUI::draw`, tylko osobnymi liniami w `main.cpp`. Program, który posiada `DebugUI`, ale nie przekazuje `wantsKeyboard()` i `wantsMouse()` do `core::Input`, wraca do starego zachowania: Escape w polu tekstowym zamyka program, a gra widzi mysz używaną przez panel. To samo dotyczy `setMouseEnabled`: program, który przechwytuje kursor, musi wołać ją sam przed `draw` (pułapka 13).
 13. **Przechwycony kursor nie odcina ImGui od myszy.** W trybie `GLFW_CURSOR_DISABLED` backend GLFW nie zmienia kształtu kursora, ale pozycję kursora (wtedy wirtualną) nadal przekazuje do ImGui. Niewidoczny kursor może więc znaleźć się nad panelem, ustawić `WantCaptureMouse` i zamrozić obrót kamery albo kliknąć niewidoczny widżet. Rozwiązanie jest w kodzie: `main.cpp` woła `m_debugUI.setMouseEnabled(!input().isCursorCaptured());` przed `draw`, co ustawia flagę `ImGuiConfigFlags_NoMouse`, a `wantsMouse()` przy tej fladze zwraca `false` (sekcja 5.6). Sama flaga bez tego drugiego warunku nie wystarcza: ImGui nadal zgłasza `WantCaptureMouse`, dopóki trzymany jest przycisk wciśnięty "nad" panelem.
-14. **Nowe pole w `DebugContext` bez linii w `main.cpp`.** Pole jest referencją, a referencja musi być zainicjalizowana. Pominięcie go w `debug::DebugContext{...}` kończy się błędem kompilacji (clang: `reference member of type ... uninitialized`). To zamierzona ochrona: nie da się zapomnieć o podaniu danych. Zadziała tylko dla pól referencyjnych. Pole będące zwykłą wartością (na przykład `bool`) pominięte na liście dostałoby po cichu zero.
+14. **Nowe pole w `DebugContext` bez linii w `main.cpp`.** Pole jest referencją, a referencja musi być zainicjalizowana. Pominięcie go w `debug::DebugContext{...}` kończy się błędem kompilacji (clang: `reference member of type ... uninitialized`). To zamierzona ochrona: nie da się zapomnieć o podaniu danych. Zadziała tylko dla pól referencyjnych. Pole będące zwykłą wartością (na przykład `bool`) pominięte na liście dostałoby po cichu zero. Od M6 jest w strukturze jedno takie pole: `grassTuftCount` typu `std::size_t`. Gdyby linia `.grassTuftCount = grassTuftCount(),` zniknęła z `main.cpp`, kod by się skompilował, a panel Grass pokazywałby `Tufts: 0 (0 blades)` przy trawie widocznej w scenie. Pole stoi na końcu struktury, więc MSVC z `/W4` i clang z `-Wextra` zwykle ostrzegają o brakującym inicjalizatorze, ale to ostrzeżenie, nie błąd.
 15. **Kolejność inicjalizatorów desygnowanych inna niż kolejność pól.** C++20 wymaga, żeby desygnatory szły w kolejności deklaracji pól (inaczej niż w C99). Kompilatory traktują to różnie: Apple clang z flagami tego projektu (`-Wall -Wextra -Wpedantic`) przyjmuje złą kolejność bez słowa (ostrzega dopiero z `-Wreorder-init-list`), a GCC i MSVC zgłaszają błąd. Kod, który buduje się na Macu, może więc nie zbudować się na Windowsie. Linie w `main.cpp` piszę zawsze w kolejności pól z `DebugContext.hpp`.
 16. **`DebugContext` zachowany na później.** Struktura zapisana w polu klasy albo w zmiennej żyjącej dłużej niż klatka trzyma referencje do obiektów, które mogą już nie istnieć (wiszące referencje, dangling references). Kontekst buduję co klatkę i używam go tylko w trakcie `draw`.
 17. **"Przecież `context` jest `const`, a panel coś zmienia".** To poprawne i zamierzone: `const` na strukturze nie przechodzi przez pole referencyjne (sekcja 5.2). Chcąc zabronić edycji, zmieniam typ pola na `const ...&`, a nie sposób przekazania struktury.
@@ -1956,9 +2259,15 @@ Zachowanie całej nakładki:
 38. **Suwaki `Moon` nie ruszają księżyca na niebie.** Tarcza jest częścią obrazu nieba i stoi w domyślnym kierunku światła. Suwaki `Moon yaw` i `Moon pitch` panelu Lights zmieniają tylko światło na ścianach ([`renderer/skybox.md`](renderer/skybox.md), sekcja 2.9).
 36. **Karta `You escaped` jest zasłonięta albo nie widać jej wcale.** Karta nie ma flagi z pułapki 35, ale ma `NoInputs`, więc nie da się jej kliknąć i wyciągnąć na wierzch. Panel kliknięty po jej pojawieniu się przechodzi przed nią. Z kodu ImGui wynika też przypadek, którego nikt nie oglądał na ekranie: przy drugiej wygranej w tym samym uruchomieniu karta może pojawić się od razu pod panelem klikniętym po pierwszej (sekcja 5.9.5). Runda jest wtedy wygrana mimo niewidocznej karty: mówi o tym linia `Round: won` w panelu Gameplay, a klawisz R działa.
 37. **"Klawisz `~` nie chowa licznika kryształów".** I nie ma chować: HUD należy do gry, a nie do narzędzi, więc `drawHud` stoi poza `if (m_visible)`. Kto chce zrzut ekranu samej sceny, musi tymczasowo zakomentować wywołanie `drawHud` w `DebugUI::draw`.
-38. **Pasek HUD nachodzi na paski tytułów paneli po zmianie czcionki albo odstępów.** `HUD_TOP_OFFSET` (46 w `Hud.cpp`) jest dobrany ręcznie do dzisiejszego paska tytułu: `PANEL_GAP` 8 plus 22 jednostki wysokości, plus 16 zapasu. Nic w kodzie nie liczy tej stałej z `PanelLayout.hpp` ani z `Theme.cpp`, więc po zmianie `FONT_SIZE`, `FRAME_PADDING` albo `PANEL_GAP` trzeba ją poprawić samemu. Paskowi to nie szkodzi (to panele zasłaniają jego, nie on je), ale górna linia HUD chowa się wtedy pod paskami tytułów.
+38. **Pasek HUD nachodzi na paski tytułów paneli po dodaniu trzeciego rzędu.** Do M5 odległość HUD od góry była ręcznie dobraną liczbą 46 i po każdej zmianie czcionki trzeba ją było poprawiać. Od M6 ta część kłopotu zniknęła: `Hud.cpp` liczy rzędy pasków funkcją `foldedRowsHeight`, która pyta ImGui o prawdziwą wysokość paska, więc zmiana `FONT_SIZE`, `FRAME_PADDING` albo `PANEL_GAP` przesuwa HUD sama (sekcja 5.9.5). Została druga część: **liczba** rzędów to stała `FOLDED_ROW_COUNT` w `PanelLayout.hpp`, której nic nie liczy z pól `foldedRowsBefore`. Panel z `.foldedRowsBefore = 2` bez podniesienia `FOLDED_ROW_COUNT` do 3 stanie dokładnie tam, gdzie zaczyna się HUD. Paskowi to nie szkodzi (to panele zasłaniają jego, nie on je), ale górna linia HUD chowa się wtedy pod paskiem tytułu.
 39. **Przycisk dodany do HUD nie reaguje.** Okna HUD mają `ImGuiWindowFlags_NoInputs`: mysz przez nie przechodzi, więc żaden widżet w nich nie zostanie najechany ani kliknięty. Kontrolka, w którą da się kliknąć, należy do panelu (tak powstał przycisk `Restart round (key R)` w panelu Gameplay), a w HUD jest tylko napis z nazwą klawisza.
 40. **`game::Round&` bez `const` w panelu Gameplay to nie zaproszenie.** Panel dostaje rundę do zapisu z jednego powodu, suwaka `Battery`. Kompilator pozwoli mu zmienić także licznik kryształów albo stan rundy, ale gra liczy je sama w każdym kroku (`game::updateRound`) i liczby zapisane z panelu rozeszłyby się z listą kryształów. Podział na funkcje w `GameplayPanel.cpp` pilnuje tego ręcznie: wszystko poza baterią wypisuje `drawRoundState(const game::Round& round)`.
+41. **Nowych paneli Terrain i Grass "nie ma".** Są, ale startują zwinięte: to dwa paski tytułów w drugim rzędzie przy górnej krawędzi, pod paskami Camera i Gameplay. Jeśli w starym `imgui.ini` panel Camera albo Gameplay jest zapisany jako rozwinięty, zakrywa pasek pod sobą. Trzeba zwinąć panel nad nim, odsunąć go albo skasować `imgui.ini`.
+42. **Rozwinięty panel Camera zakrywa pasek Terrain (a Gameplay pasek Grass).** To nie błąd rachunku, tylko świadomy wyjątek: komentarz w `PanelLayout.hpp` mówi, że prostokąty się nie nakładają, gdy cztery zwinięte panele liczyć jako paski. Panele Terrain i Grass rozwinięte **razem** z panelem nad nimi leżą jeden na drugim, a na wierzchu jest ten kliknięty ostatnio.
+43. **Suwak `Height scale` przestawia świat, a nie tylko obraz.** Skala wysokości nie jest uniformem: każda zmiana buduje teren od nowa na procesorze i przestawia ściany, bramę, kryształy, pudełka kolizji i gracza (`rebuildTerrain`). Przeciąganie suwaka robi to w każdej klatce. Dla labiryntu startowego to 9409 wierzchołków na klatkę, co nie boli, ale przy labiryncie 40 x 40 siatka ma 217 x 217 punktów i 93312 trójkąty, więc przeciąganie może być wyraźnie wolniejsze. Tego nikt nie mierzył.
+44. **`Blade height` i `Wind strength` nie zmieniają liczby `Tufts`.** I nie mają: to uniformy shadera geometrii, a nie dane. Liczbę kępek zmienia tylko `Density` (i nowy labirynt albo nowa skala wysokości, po których trawa jest sadzona od nowa w tych samych miejscach na planie, na nowej wysokości).
+45. **Liczba źdźbeł w panelu Grass kłamie po zmianie shadera.** `BLADES_PER_TUFT` w `GrassPanel.cpp` jest ręczną kopią `BLADE_COUNT` z `grass.geom`. Po zmianie liczby źdźbeł w shaderze (i `Reload shaders`) obraz się zmieni, a napis nie. Trzeba poprawić obie stałe i zbudować program.
+46. **Linia `Height:` w panelu Terrain to nie zakres wysokości pod labiryntem.** `minHeight()` i `maxHeight()` obejmują całą siatkę, ze wzgórzami na marginesie. Przy skali 1 panel pokazuje do 3,37 m, a gracz w labiryncie chodzi po gruncie od 0,085 do 0,461 m.
 
 ## 8. Ćwiczenia
 
@@ -1982,6 +2291,10 @@ Zachowanie całej nakładki:
 17. **HUD, który zabiera mysz.** Usuń w `Hud.cpp` flagę `ImGuiWindowFlags_NoInputs` z `PICTURE_WINDOW_FLAGS` i dopisz w `main.cpp` tymczasowy komunikat z ćwiczenia 6. Zbuduj, najedź kursorem na pasek HUD i kliknij w niego. Zapisz, kiedy pojawia się komunikat i czy kliknięcie przechwytuje kursor. Wyjaśnij wynik funkcją `wantsMouse()` i sekcją 5.9.4. Wycofaj obie zmiany.
 18. **Kto leży na wierzchu.** Rozwiń panel Gameplay i zobacz, co stało się z paskiem HUD. Potem usuń w `Hud.cpp` flagę `ImGuiWindowFlags_NoBringToFrontOnFocus` ze `STATUS_WINDOW_FLAGS`, zbuduj i powtórz z rozwiniętym panelem. Co leży na wierzchu zaraz po starcie, a co po kliknięciu w panel? Wyjaśnij oba wyniki trzema regułami z sekcji 5.9.5 i powiedz, dlaczego wybrałem wersję z flagą. Wycofaj zmianę.
 19. **Suwak bez `const`.** Zmień w `GameplayPanel.hpp` i `GameplayPanel.cpp` pierwszy parametr `drawGameplayPanel` na `const game::Round& round`, zbuduj i przeczytaj błąd kompilatora: w której linii i dlaczego akurat tam? Co trzeba by zmienić w `DebugContext`, żeby pole `round` mogło być `const`, i co wtedy straci pokaz? Wycofaj zmianę.
+20. **Drugi rząd pasków.** Skasuj `imgui.ini`, uruchom program i zamknij go bez dotykania paneli. Odczytaj z nowego pliku linie `Pos=` wpisów `[Window][Camera]` i `[Window][Terrain]` i porównaj różnicę ich współrzędnych y z rachunkiem z sekcji 5.7 (jeden rząd: wysokość paska plus `PANEL_GAP`). Potem zmień w `PanelLayout.hpp` w `TERRAIN_PLACEMENT` `.foldedRowsBefore = 1` na `0`, skasuj plik, zbuduj i zobacz, gdzie stanął pasek Terrain. Wycofaj zmianę.
+21. **Trzeci rząd i HUD.** Zmień `FOLDED_ROW_COUNT` z 2 na 3, zbuduj i zmierz na zrzucie ekranu, o ile pikseli przesunął się pasek HUD. Porównaj z `ImGui::GetFrameHeight() + PANEL_GAP`. Potem zwiększ w `Theme.cpp` rozmiar czcionki o 4 i sprawdź, czy HUD nadal stoi pod paskami. Wyjaśnij, dlaczego do M5 trzeba by było przy tej zmianie poprawiać stałą ręcznie. Wycofaj zmiany.
+22. **Flaga prośby czy praca w panelu.** Zmień tymczasowo sygnaturę `drawGrassPanel` tak, żeby dostawała też `const game::MazeWorld&`, i spróbuj zawołać `game::placeGrass` wprost z panelu. Czego nadal brakuje, żeby trawa na ekranie się zmieniła? Wypisz, jakie nagłówki musiałby dołączyć panel, żeby to dokończyć, i wyjaśnij na tej liście, dlaczego panel ustawia tylko `settings.replant`. Wycofaj zmianę.
+23. **Trzy pliki w jednej linii.** Zepsuj celowo `assets/shaders/grass.geom` (na przykład usuń średnik), kliknij `Reload shaders` i odczytaj z panelu Shaders linię programu trawy i tekst błędu pod nią. Najedź kursorem na linię i policz ścieżki w podpowiedzi. Sprawdź, czy trawa w scenie zniknęła, czy rysuje się poprzednią wersją programu, i wyjaśnij to polem `isValid()`. Napraw plik i przeładuj.
 
 ## 9. Pytania kontrolne
 
@@ -2036,8 +2349,8 @@ Zachowanie całej nakładki:
 17. **`DebugUI::draw` bierze `const DebugContext&`. Jak to możliwe, że panel zmienia kolor tła?**
     `const` na strukturze dotyczy jej pól, a polem jest referencja `std::array<float, 3>&`. Stałość nie przechodzi przez referencję na obiekt, na który ona wskazuje, więc przez to pole wolno pisać. Pola `const core::Time&` i `const core::Window&` są tylko do odczytu, bo `const` jest w ich typie. O edytowalności decyduje typ pola, nie stałość struktury.
 
-18. **Jak panel Shaders dostaje pięć programów gry?**
-    `game::NightMazeApp` ma chronione akcesory `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()` i `skyboxShader()`, `DebugContext` pięć pól `gfx::Shader&`, a `main.cpp` pięć linii. `DebugUI::draw` buduje z nich `std::array<gfx::Shader*, SHADER_COUNT>` ze stałą `SHADER_COUNT = 5` i przekazuje do `drawShadersPanel(std::span<gfx::Shader* const>)`. Tablica wskaźników, bo tablicy referencji nie ma. Sygnatura `DebugUI::draw` została ta sama, a gra nadal nie dołącza niczego z `debug/`. Pola nie mają `const`, bo przycisk panelu woła `reload()`. W M4 programów też było pięć: piąty rysował kostkę z M1 i zniknął razem z nią w M5. Dzisiejszy piąty to program nieba z pierwszej części M6.
+18. **Jak panel Shaders dostaje sześć programów gry?**
+    `game::NightMazeApp` ma chronione akcesory `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()`, `skyboxShader()` i `grassShader()`, `DebugContext` sześć pól `gfx::Shader&`, a `main.cpp` sześć linii. `DebugUI::draw` buduje z nich `std::array<gfx::Shader*, SHADER_COUNT>` ze stałą `SHADER_COUNT = 6` i przekazuje do `drawShadersPanel(std::span<gfx::Shader* const>)`. Tablica wskaźników, bo tablicy referencji nie ma. Sygnatura `DebugUI::draw` została ta sama, a gra nadal nie dołącza niczego z `debug/`. Pola nie mają `const`, bo przycisk panelu woła `reload()`. W M4 programów też było pięć: piąty rysował kostkę z M1 i zniknął razem z nią w M5. Dzisiejszy piąty to program nieba z pierwszej części M6, a szósty to program trawy z drugiej: jedyny z trzema plikami, bo ma shader geometrii.
 19. **Jak panel Camera dostaje kamerę, gracza i czułość myszy?**
     Tą samą drogą co kolor tła i shader. `game::NightMazeApp` ma pola `m_camera`, `m_player` i `m_mouseSensitivity` oraz chronione akcesory `camera()`, `player()` i `mouseSensitivity()`. `main.cpp` wpisuje je do trzech pól `DebugContext`, a `DebugUI::draw` woła `drawCameraPanel(context.camera, context.player, context.mouseSensitivity)`. Trzy prędkości są polami gracza, więc przychodzą razem z nim. Panel edytuje pola przez referencje. Gra nie dołącza niczego z `debug/`.
 
@@ -2054,7 +2367,7 @@ Zachowanie całej nakładki:
     Referencja nie jest obiektem, więc nie może być elementem tablicy. `std::span<gfx::Shader* const>` to widok na ciąg stałych wskaźników do niestałych shaderów: listy nie da się zmienić, shadery tak.
 
 23. **Dlaczego w `main.cpp` linie `.litShader` i `.gouraudShader` nie stoją obok `.texturedShader` i `.colorShader`?**
-    Inicjalizatory desygnowane muszą iść w kolejności deklaracji pól struktury, a nowe pola `DebugContext` były dopisywane na końcu. Dwa pierwsze programy doszły w M2 + M3, dwa następne w M4, po ośmiu innych polach. Z tego samego powodu `.gameplay` i `.round` z M5 są dwiema ostatnimi liniami.
+    Inicjalizatory desygnowane muszą iść w kolejności deklaracji pól struktury, a nowe pola `DebugContext` były dopisywane na końcu. Dwa pierwsze programy doszły w M2 + M3, dwa następne w M4, po ośmiu innych polach. Z tego samego powodu po `.gameplay` i `.round` z M5 stoją dwie linie nieba i cztery linie terenu i trawy z M6: `.grassTuftCount` jest ostatnia.
 
 24. **Który panel może zmienić labirynt?**
     Żaden bezpośrednio. Pole `mazeWorld` jest `const`. Panel Maze zapisuje rozmiar, ziarno i flagę `regenerate` w `mazeSettings`, a gra buduje labirynt na początku następnej klatki.
@@ -2080,8 +2393,8 @@ Zachowanie całej nakładki:
 31. **Jak panel trafia do prawego dolnego rogu okna o dowolnym rozmiarze?**
     `placePanelOnFirstUse` liczy róg głównego viewportu, przesuwa go do środka o `offset` i woła `SetNextWindowPos` z pivotem równym temu rogowi. Pivot `(1, 1)` każe ustawić panel jego prawym dolnym rogiem w podanym punkcie. Dzieje się to raz, w pierwszej klatce, i tylko gdy `imgui.ini` nie ma wpisu panelu.
 
-32. **Ile jest paneli, gdzie stoją w oknie 1280 x 720 i dlaczego dwa z nich startują zwinięte?**
-    Osiem. Lewa kolumna: Renderer (336 x 284) nad Lights (336 x 412, z paskiem przewijania). Prawa kolumna: Maze (300 x 480) nad Assets (300 x 216). Dolny rząd między kolumnami: Collision (312 x 280) i Shaders (292 x 280). Dwie kolumny i dolny rząd mieszczą sześć paneli, więc siódmy i ósmy, Camera (280 x 416 po rozwinięciu) i Gameplay (324 x 416), stoją obok siebie przy górnej krawędzi między kolumnami i startują zwinięte do pasków tytułów: stałe `CAMERA_PLACEMENT` i `GAMEPLAY_PLACEMENT` mają `.collapsed = true`, a `placePanelOnFirstUse` przekazuje to pole do `ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver)`. Rozwinięte sięgają do y 424, a dolny rząd zaczyna się w y 432, więc nie zasłaniają żadnego panelu, tylko scenę i pasek HUD. Gameplay może startować zwinięty, bo stan rundy pokazuje HUD.
+32. **Ile jest paneli, gdzie stoją w oknie 1280 x 720 i dlaczego cztery z nich startują zwinięte?**
+    Dziesięć. Lewa kolumna: Renderer (336 x 284) nad Lights (336 x 412, z paskiem przewijania). Prawa kolumna: Maze (300 x 480) nad Assets (300 x 216). Dolny rząd między kolumnami: Collision (312 x 280) i Shaders (292 x 280). Dwie kolumny i dolny rząd mieszczą sześć paneli, więc siódmy i ósmy, Camera (280 x 416 po rozwinięciu) i Gameplay (324 x 416), stoją obok siebie przy górnej krawędzi między kolumnami i startują zwinięte do pasków tytułów: stałe `CAMERA_PLACEMENT` i `GAMEPLAY_PLACEMENT` mają `.collapsed = true`, a `placePanelOnFirstUse` przekazuje to pole do `ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver)`. Rozwinięte sięgają do y 424, a dolny rząd zaczyna się w y 432, więc nie zasłaniają żadnego rozwiniętego panelu, tylko scenę, pasek HUD i, od M6, zwinięty pasek pod sobą. Gameplay może startować zwinięty, bo stan rundy pokazuje HUD. Dziewiąty i dziesiąty panel, Terrain (280 x 170) i Grass (324 x 190), stoją w drugim rzędzie pasków, pod Camera i Gameplay (pytania 41 i 42).
 
 33. **Jak lista `Lighting` w panelu Renderer zmienia tryb oświetlenia i co musi się zgadzać, żeby działała poprawnie?**
     `DebugUI::draw` przekazuje do panelu `context.lighting.mode`, czyli referencję do pola `NightMazeApp::m_lighting.mode`. Panel rzutuje wyliczenie na `int`, podaje adres tej liczby do `ImGui::Combo` razem z napisem `"Unlit\0Gouraud\0Phong\0Blinn-Phong\0"`, a gdy `Combo` zwróci `true`, rzutuje numer z powrotem na `game::LightingMode`. Kolejność pozycji w napisie musi być taka jak kolejność wartości wyliczenia, bo numer pozycji staje się wartością bez żadnej tablicy pośredniej. W następnej klatce `NightMazeApp::drawMaze` wybiera według tej wartości program `textured`, `gouraud` albo `lit`, i tym samym programem rysuje bramę i kryształy.
@@ -2093,7 +2406,7 @@ Zachowanie całej nakładki:
     Panel jest narzędziem: da się go schować, przesunąć, zadokować i kliknąć. HUD jest częścią gry: dwa okna bez paska tytułu, bez wejścia, ustawiane przez kod w każdej klatce. Rysuję go ImGui, a `game/` nie może dołączać ImGui, więc funkcja `debug::drawHud` stoi w `src/debug/Hud.cpp`. Dostaje `const game::Round&` i `const game::GameplaySettings&`, czyli tylko czyta.
 
 36. **Dlaczego klawisz `~` chowa panele, a HUD zostaje?**
-    `toggleVisible()` zmienia pole `m_visible`, a w `DebugUI::draw` od tego pola zależy tylko blok z dockspace i ośmioma panelami. Wywołanie `drawHud(context.round, context.gameplay)` stoi za tym blokiem, przed `ImGui::Render()`, więc wykonuje się w każdej klatce.
+    `toggleVisible()` zmienia pole `m_visible`, a w `DebugUI::draw` od tego pola zależy tylko blok z dockspace i dziesięcioma panelami. Wywołanie `drawHud(context.round, context.gameplay)` stoi za tym blokiem, przed `ImGui::Render()`, więc wykonuje się w każdej klatce.
 
 37. **Dlaczego HUD nie zabiera grze myszy ani klawiatury?**
     Oba okna mają flagę `ImGuiWindowFlags_NoInputs`. ImGui pomija takie okno, gdy szuka okna pod kursorem, więc kursor nad paskiem nie ustawia `WantCaptureMouse` i `wantsMouse()` odpowiada tak, jakby HUD nie było. W HUD nie ma też widżetu, który mógłby stać się aktywny, więc nie ustawia `WantCaptureKeyboard`.
@@ -2112,6 +2425,27 @@ Zachowanie całej nakładki:
 
 37. **Dlaczego po aktualizacji programu nowych kontrolek może nie być widać?**
     Rozmiar startowy z `PanelLayout.hpp` działa tylko wtedy, gdy `imgui.ini` nie ma wpisu panelu (`ImGuiCond_FirstUseEver`). Stary plik pamięta panel Renderer o wysokości 230, a kontrolki nieba leżą niżej. Trzeba panel przewinąć, powiększyć albo usunąć `imgui.ini`.
+
+41. **Ile jest dziś paneli i gdzie stoją dwa najnowsze?**
+    Dziesięć. Terrain i Grass doszły w drugiej części M6 i startują zwinięte w drugim rzędzie pasków tytułów: Terrain pod paskiem Camera (ta sama szerokość, 280), Grass pod paskiem Gameplay (324). Rozwinięte mają 280 x 170 i 324 x 190. Ich stałe mają `.collapsed = true` i `.foldedRowsBefore = 1`.
+
+42. **Po co pole `foldedRowsBefore`, skoro panel można po prostu postawić niżej większym `offset.y`?**
+    Bo wysokość paska tytułu nie jest stałą układu: wynika z czcionki (`ImGui::GetFrameHeight()`, czyli rozmiar czcionki plus dwa razy `FramePadding.y`), a `offset` jest w jednostkach okna odniesienia i mnoży się przez `layoutScale`. Przy skali ekranu 150% w oknie 1280 x 720 `layoutScale` wynosi 1, a pasek jest 1,5 raza wyższy: stały `offset` postawiłby drugi rząd na pierwszym. `placePanelOnFirstUse` dodaje więc do pozycji `foldedRowsHeight(foldedRowsBefore, layoutScale)`, które pyta ImGui o prawdziwą wysokość paska.
+
+43. **Skąd HUD wie, jak nisko ma stanąć?**
+    Z sumy dwóch części: `foldedRowsHeight(FOLDED_ROW_COUNT, scale)`, czyli dwa rzędy po (wysokość paska + `PANEL_GAP`), i `HUD_TOP_OFFSET * scale`, czyli dwa odstępy `PANEL_GAP`. Przy skali 100% i pasku 22 to 60 + 16 = 76 jednostek od górnej krawędzi. Do M5 była to stała 46, więc HUD zszedł o jeden rząd, 30 jednostek. Liczby 30 nie ma w kodzie, bo zależy od czcionki.
+
+44. **Co się dzieje po przesunięciu suwaka `Height scale` i dlaczego nie dzieje się to w panelu?**
+    Panel zapisuje nową liczbę w `TerrainSettings::heightScale` i ustawia `rebuild = true`. Na początku następnej klatki `NightMazeApp::onRender` zeruje flagę i woła `rebuildTerrain()`: nowy teren, ściany i brama zatopione od nowa, kryształy i lista przeszkód przestawione, idący gracz postawiony na gruncie, siatka i trawa wysłane na kartę. Panel nie ma dostępu do tych obiektów (dostaje tylko ustawienia i teren do odczytu), a przebudowa w środku rysowania paneli zmieniałaby świat, który inne panele tej klatki jeszcze czytają. To ten sam wzór co `regenerate`, `restart` i `replant`.
+
+45. **Które suwaki panelu Grass wymagają sadzenia trawy od nowa, a które nie?**
+    Tylko `Density`: zmienia liczbę i miejsca punktów w buforze wierzchołków, więc ustawia flagę `replant`, a gra woła `placeGrass` i `GrassRenderer::upload`. `Blade height` i `Wind strength` to uniformy programu trawy: shader geometrii buduje źdźbła od nowa w każdej klatce, więc nowa wartość działa od razu. `Enabled` tylko pomija rysowanie.
+
+46. **Dlaczego `grassTuftCount` jest w `DebugContext` wartością, a nie referencją, i czym to grozi?**
+    Bo gra nie ma pola z tą liczbą: akcesor `grassTuftCount()` zwraca wynik `GrassRenderer::tuftCount()` przez wartość, a referencja do wartości tymczasowej nie przeżyłaby wyrażenia. Panel i tak tylko ją wypisuje. Ryzyko: pola będącego wartością wolno nie podać w inicjalizatorze desygnowanym (dostanie zero), więc brak linii w `main.cpp` nie jest błędem kompilacji jak przy referencji (pułapka 14).
+
+47. **Jak panel Shaders pokazuje program z trzema plikami?**
+    `drawShaderStatus` skleja nazwy plików znakiem ` + ` w kolejności etapów: plik wierzchołków, plik geometrii (tylko gdy `shader.hasGeometryStage()`), plik fragmentów. Dla trawy wychodzi `grass.vert + grass.geom + grass.frag: OK`. Podpowiedź pokazuje pełne ścieżki, po jednej w linii. Pętla po liście programów i lista w `DebugUI::draw` (sześć wskaźników, `SHADER_COUNT = 6`) nie musiały o trzecim pliku wiedzieć.
 
 ## 10. Źródła
 

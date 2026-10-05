@@ -2,6 +2,7 @@
 // See docs/modules/game/gameplay.md
 #include "debug/Hud.hpp"
 
+#include "debug/PanelLayout.hpp"
 #include "debug/Theme.hpp"
 #include "game/Round.hpp"
 
@@ -18,9 +19,11 @@ namespace {
 // Sizes in pixels at 100 % display scaling. They are multiplied by the display scale
 // (ImGuiStyle::FontScaleDpi, set by applyTheme), like the sizes of the panels.
 
-// Distance from the top edge of the window to the HUD: below the title bars of the
-// panels that start folded there (Camera and Gameplay).
-constexpr float HUD_TOP_OFFSET = 46.0F;
+// The HUD stands below the rows of title bars of the panels that start folded at the top
+// edge (Camera and Gameplay, Terrain and Grass). This is the free space above the first
+// row plus the extra space between the last row and the HUD, which makes the HUD read as
+// a thing of its own: two panel gaps.
+constexpr float HUD_TOP_OFFSET = 2.0F * PANEL_GAP;
 
 // Width of the battery bar, which is also what makes the HUD as wide as it is.
 constexpr float BATTERY_BAR_WIDTH = 230.0F;
@@ -128,7 +131,11 @@ void drawStatus(const game::Round& round, const game::GameplaySettings& settings
     // position. (0.5, 0) is the middle of its top edge, so the HUD is centred whatever
     // its width turns out to be.
     const ImVec2 top = windowPoint(TOP_CENTER);
-    ImGui::SetNextWindowPos({top.x, top.y + HUD_TOP_OFFSET * scale}, ImGuiCond_Always, TOP_CENTER);
+    // The rows of title bars are measured with the real height of a bar, which follows
+    // the font (foldedRowsHeight).
+    const float rowsAbove = foldedRowsHeight(FOLDED_ROW_COUNT, scale);
+    ImGui::SetNextWindowPos({top.x, top.y + rowsAbove + HUD_TOP_OFFSET * scale}, ImGuiCond_Always,
+                            TOP_CENTER);
     ImGui::SetNextWindowBgAlpha(HUD_OPACITY);
 
     // The name is never shown (there is no title bar). ImGui tells windows apart by it.

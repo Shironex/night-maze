@@ -3,6 +3,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 
 namespace assets {
 class AssetCache;
@@ -16,12 +17,14 @@ class Window;
 namespace game {
 enum class ViewMode;
 struct GameplaySettings;
+struct GrassSettings;
 struct LightingSettings;
 struct MazeSettings;
 struct MazeWorld;
 struct Player;
 struct Round;
 struct SkyboxSettings;
+struct TerrainSettings;
 } // namespace game
 
 namespace gfx {
@@ -65,7 +68,7 @@ struct DebugContext {
     game::Player& player;
     /// Request for the next maze, editable: size, seed and the "regenerate" flag.
     game::MazeSettings& mazeSettings;
-    /// The maze in play, read only: its plan and its collision boxes.
+    /// The maze in play, read only: its plan, its collision boxes and its terrain.
     const game::MazeWorld& mazeWorld;
     /// Loaded models and textures, editable: the Assets panel changes the filtering.
     assets::AssetCache& assets;
@@ -91,6 +94,15 @@ struct DebugContext {
     gfx::Shader& skyboxShader;
     /// The switch and the brightness of the sky, editable.
     game::SkyboxSettings& skybox;
+    /// Shader program of the grass, editable: reloaded like texturedShader.
+    gfx::Shader& grassShader;
+    /// The height scale and the wireframe switch of the terrain, editable.
+    game::TerrainSettings& terrain;
+    /// The switch, the density, the blade height and the wind of the grass, editable.
+    game::GrassSettings& grass;
+    /// How many tufts of grass are drawn. A plain number, copied when the context is
+    /// built: the panels only show it.
+    std::size_t grassTuftCount;
 };
 
 } // namespace debug

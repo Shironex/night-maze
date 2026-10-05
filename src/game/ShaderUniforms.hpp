@@ -13,7 +13,8 @@ namespace game {
 
 /// The three matrices. Every vertex shader (textured, color, lit, gouraud) declares
 /// them under the same names. skybox.vert has the view and the projection only: the sky
-/// is not placed anywhere in the world.
+/// is not placed anywhere in the world. The grass has the same two, in grass.geom: its
+/// points are already in world space.
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
@@ -32,15 +33,15 @@ constexpr const char* EMISSIVE_UNIFORM = "uEmissive";
 constexpr const char* NORMAL_MAP_UNIFORM = "uNormalMap";
 constexpr const char* NORMAL_MAP_ENABLED_UNIFORM = "uNormalMapEnabled";
 
-/// textured.frag and skybox.frag: what to show (a value of game::ViewMode).
+/// textured.frag, skybox.frag and grass.frag: what to show (a value of game::ViewMode).
 constexpr const char* VIEW_MODE_UNIFORM = "uViewMode";
 
 /// lit.vert and gouraud.vert: the matrix that takes normals to world space
 /// (scene::normalMatrix).
 constexpr const char* NORMAL_MATRIX_UNIFORM = "uNormalMatrix";
 
-/// common/lighting.glsl, so lit.frag and gouraud.vert: the highlight formula (a value of
-/// game::SpecularModel), how bright the highlight is and its exponent.
+/// common/lighting.glsl, so lit.frag, gouraud.vert and grass.frag: the highlight formula
+/// (a value of game::SpecularModel), how bright the highlight is and its exponent.
 constexpr const char* SPECULAR_MODEL_UNIFORM = "uSpecularModel";
 constexpr const char* SPECULAR_STRENGTH_UNIFORM = "uSpecularStrength";
 constexpr const char* SHININESS_UNIFORM = "uShininess";
@@ -61,5 +62,15 @@ constexpr const char* COLOR_UNIFORM = "uColor";
 /// the number the colour of the sky is multiplied by.
 constexpr const char* SKYBOX_UNIFORM = "uSkybox";
 constexpr const char* SKYBOX_BRIGHTNESS_UNIFORM = "uBrightness";
+
+/// grass.geom: the clock of the wind in seconds, the height of the tallest blades in
+/// metres and how far the wind pushes the tips (0: still air).
+constexpr const char* GRASS_TIME_UNIFORM = "uTime";
+constexpr const char* GRASS_BLADE_HEIGHT_UNIFORM = "uBladeHeight";
+constexpr const char* GRASS_WIND_STRENGTH_UNIFORM = "uWindStrength";
+
+/// grass.frag: whether the grass is lit by the lights of the scene (1) or shown at full
+/// brightness (0).
+constexpr const char* GRASS_LIT_UNIFORM = "uLit";
 
 } // namespace game

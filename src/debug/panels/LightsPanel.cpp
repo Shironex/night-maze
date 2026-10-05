@@ -20,7 +20,7 @@ constexpr float MIN_MOON_YAW_DEGREES = 0.0F;
 constexpr float MAX_MOON_YAW_DEGREES = 360.0F;
 
 // Its pitch is the angle of the travelling light against the ground: -90 shines straight
-// down, close to 0 the light only grazes the floor. Above 0 the moon would shine from
+// down, close to 0 the light only grazes the ground. Above 0 the moon would shine from
 // below the ground.
 constexpr float MIN_MOON_PITCH_DEGREES = -90.0F;
 constexpr float MAX_MOON_PITCH_DEGREES = -5.0F;

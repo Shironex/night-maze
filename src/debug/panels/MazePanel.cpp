@@ -24,9 +24,9 @@ namespace debug {
 
 namespace {
 
-// Limits of the size sliders, in cells. The game draws every floor tile, wall and pillar
-// with its own draw call, about three per cell, so a much larger maze would make the
-// frame slow. game::Maze itself accepts up to Maze::MAX_SIZE.
+// Limits of the size sliders, in cells. The game draws every wall and pillar with its
+// own draw call, about two per cell, and the terrain has 32 triangles per cell, so a much
+// larger maze would make the frame slow. game::Maze itself accepts up to Maze::MAX_SIZE.
 constexpr int MIN_MAZE_SIZE = 2;
 constexpr int MAX_MAZE_SIZE = 40;
 

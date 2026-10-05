@@ -10,7 +10,7 @@ Gracz ma chodzić po labiryncie i nie przechodzić przez ściany. PRD (sekcja 2)
 Ograniczenia, które zawężają wybór:
 
 - każdą linię kodu muszę umieć wyjaśnić na obronie,
-- świat gry to wyłącznie ściany równoległe do osi X albo Z, słupki o kwadratowej podstawie i płaska podłoga,
+- świat gry to wyłącznie ściany równoległe do osi X albo Z, słupki o kwadratowej podstawie i podłoże, po którym się tylko chodzi (do M5 płaska podłoga, od M6 łagodny teren z mapy wysokości),
 - nic w grze nie odbija się, nie toczy i nie przewraca. Jedyne bryły kolizji, które się przesuwają, należą do gracza: jego pudełko, a od M5 także kula zasięgu,
 - kod ma dać się sprawdzić testami bez okna i dawać ten sam wynik na macOS i na Windowsie.
 
@@ -43,7 +43,8 @@ Od M5 w tym samym pliku jest druga bryła, `scene::Sphere`, z dwoma testami nak�
 - Pudełko jedzie po schodkach (całe x, potem całe z, potem całe y). Błąd jest rzędu długości kroku, więc przesunięcie musi pochodzić ze stałego kroku symulacji: 2,5 cm przy 3 m/s i 1/120 s. Ograniczenie jest pokazane testem `documented limit: a step much longer than the boxes can go around an obstacle`.
 - Zagłębienie do 1 mm jest dopuszczone celowo (`CONTACT_TOLERANCE`). Bez tolerancji testy nie przechodzą, a pudełko wychodzi przez ścianę zamkniętej komórki: zmierzone na pierwszej wersji kodu, z pudełkami ścian 0,2 m, i nie powtórzone po zmianie ich grubości ([`../modules/scene/collision.md`](../modules/scene/collision.md), ćwiczenie 7).
 - Nie ma brył obróconych. Ściany labiryntu stoją tylko w dwóch ustawieniach i każde ma własne pudełko.
-- Nie ma grawitacji ani skoków. Gra ich nie przewiduje: gracz jest trzymany na wysokości podłogi jedną linią w `Player::update` ([`../modules/game/player.md`](../modules/game/player.md), sekcja 2).
+- Nie ma grawitacji ani skoków. Gra ich nie przewiduje: gracz jest trzymany na gruncie odczytem wysokości w `Player::update` ([`../modules/game/player.md`](../modules/game/player.md), sekcja 2). Do M5 była to stała wysokość płaskiej podłogi, od M6 `Terrain::heightAt`.
+- Teren z M6 nie jest przeszkodą: nie ma go na liście pudełek i `moveAndSlide` nic o nim nie wie. Decyzja wytrzymała tę zmianę bez dotykania `Collider.*`, pod jednym warunkiem po stronie gry: pudełka ścian, słupków i bramy zaczynają się na najniższym gruncie pod swoim obrysem ([`walls-sunk-to-lowest-corner.md`](walls-sunk-to-lowest-corner.md)), a grunt w labiryncie nie może różnić się wysokością o więcej niż gracz jest wysoki. Test nakładania jest trójwymiarowy, więc bez tego ściana mogłaby przestać zatrzymywać. Pilnuje tego granica `MAX_HEIGHT_SCALE`: `2,5 * 0,6 = 1,5` m wobec 1,8 m ciała gracza ([`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 2.13).
 
 **Sprawa rozstrzygnięta przy podłączaniu gracza: grubość pudełek ścian.** W pierwszej wersji pudełko ściany miało grubość widocznej ściany, 0,2 m, a pudełko słupka 0,3 m. Słupki wystawały więc 5 cm przed lico ścian i zatrzymywały gracza przytulonego do ściany co 2 m. Nie wynikało to z tej decyzji, tylko z wymiarów, i było przypięte testem. Rozważyłem trzy wyjścia: zostawić (kolizja zgodna z tym, co widać, ale chodzenie wzdłuż ściany irytuje), pominąć pudełka słupków (gracz wchodziłby w trzon słupka na narożnikach) albo pogrubić pudełka ścian do grubości słupków. Wybrałem trzecie: `WALL_COLLISION_THICKNESS = PILLAR_SIZE` (0,3 m), a osobna stała `WALL_VISUAL_THICKNESS` (0,2 m) opisuje model. Lica pudełek ścian i słupków leżą w jednej płaszczyźnie, a algorytm się nie zmienił: styk nie zatrzymuje ruchu. Cena to 5 cm odstępu między graczem a widocznym korpusem ściany. Test przypinający zatrzymanie został zastąpiony testem ślizgania obok słupków ([`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 2.7 i pułapka 6).
 
@@ -54,3 +55,4 @@ Od M5 w tym samym pliku jest druga bryła, `scene::Sphere`, z dwoma testami nak�
 - Gdy pojawią się obiekty poruszające się szybko (pociski): schodkowa droga i lista sprawdzana w całości przestaną wystarczać.
 - Gdy lista przeszkód urośnie tak, że sprawdzanie każdej w każdym kroku będzie widoczne w czasie klatki. Wtedy najpierw siatka komórek jako wstępne odsiewanie, a nie zmiana samego testu.
 - Gdy gra dostanie grawitację, skoki albo schody: trzeba będzie co najmniej reguły "stoję na czymś".
+- Gdy teren pod labiryntem ma stać się stromy (różnice wysokości bliskie wzrostowi gracza) albo dostać urwiska: odczyt wysokości przestanie wystarczać i grunt będzie musiał stać się przeszkodą.

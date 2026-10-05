@@ -27,8 +27,12 @@ void placePanelOnFirstUse(const PanelPlacement& placement) {
     // (corner 0, direction +1), to the left and up from a right or bottom edge (corner 1,
     // direction -1).
     const ImVec2 inwards{1.0F - 2.0F * placement.corner.x, 1.0F - 2.0F * placement.corner.y};
+    // A panel in a later row of folded title bars stands further from its corner by the
+    // rows before it. That part is not scaled like the offset: it follows the font.
+    const float rowsBefore = foldedRowsHeight(placement.foldedRowsBefore, layoutScale);
     const ImVec2 panelCorner{windowCorner.x + inwards.x * placement.offset.x * layoutScale,
-                             windowCorner.y + inwards.y * placement.offset.y * layoutScale};
+                             windowCorner.y +
+                                 inwards.y * (placement.offset.y * layoutScale + rowsBefore)};
 
     // The third argument is the pivot: the point of the panel that is put at the given
     // position, with the same 0 to 1 meaning as the corner. With the pivot equal to the
@@ -39,6 +43,12 @@ void placePanelOnFirstUse(const PanelPlacement& placement) {
                              ImGuiCond_FirstUseEver);
     // A folded panel shows only its title bar. The size above is the one it opens to.
     ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver);
+}
+
+float foldedRowsHeight(int count, float gapScale) {
+    // GetFrameHeight is the height of one line of widgets: the text plus the frame
+    // padding above and below it. The title bar of a panel is exactly that high.
+    return static_cast<float>(count) * (ImGui::GetFrameHeight() + PANEL_GAP * gapScale);
 }
 
 } // namespace debug

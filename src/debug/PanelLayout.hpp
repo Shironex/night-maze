@@ -22,6 +22,11 @@ struct PanelPlacement {
     /// True: the panel starts folded to its title bar and opens with a click on the arrow
     /// in that bar. For a panel the window has no free room for.
     bool collapsed = false;
+    /// How many rows of folded title bars stand between the offset and this panel. The
+    /// panel is moved away from its corner by that many bars, each with the gap after
+    /// it. The height of a bar depends on the size of the font, so it is not part of
+    /// the offset: it is asked from ImGui when the panel is placed.
+    int foldedRowsBefore = 0;
 };
 
 // The corners of the window: x is 0 at the left edge and 1 at the right edge, y is 0 at
@@ -66,7 +71,8 @@ inline constexpr float SHADERS_WIDTH =
 // Camera and Gameplay: the seventh and the eighth panel. Two columns and a bottom row
 // have room for six, so these two start folded to their title bars, side by side at the
 // top edge between the columns. Unfolded each reaches down to the bottom row and covers
-// its part of the scene and no other panel. Camera is a little shorter than its
+// its part of the scene and the folded bar under it (Terrain or Grass, see below), but no
+// other panel. Camera is a little shorter than its
 // contents, so it scrolls. Gameplay may start folded because the HUD shows the state of
 // the round all the time: the panel is for changing the rules.
 inline constexpr float CAMERA_WIDTH = 280.0F;
@@ -75,7 +81,20 @@ inline constexpr float GAMEPLAY_LEFT = BOTTOM_ROW_LEFT + CAMERA_WIDTH + PANEL_GA
 inline constexpr float GAMEPLAY_WIDTH =
     REFERENCE_WIDTH - GAMEPLAY_LEFT - RIGHT_COLUMN_WIDTH - 2.0F * PANEL_GAP;
 
-// The eight panels. No two rectangles overlap in a window of the reference size.
+// Terrain and Grass: the ninth and the tenth panel. They start folded too, in a second
+// row of title bars right under Camera and Gameplay, each as wide as the bar above it
+// (PanelPlacement::foldedRowsBefore is 1). Both panels are short: unfolded they cover
+// a strip of the scene below their bar and no other panel. An unfolded Camera or
+// Gameplay panel does cover the bar under it.
+inline constexpr float TERRAIN_HEIGHT = 170.0F;
+inline constexpr float GRASS_HEIGHT = 190.0F;
+
+// The number of rows of folded title bars at the top edge. The HUD starts below them
+// (Hud.cpp).
+inline constexpr int FOLDED_ROW_COUNT = 2;
+
+// The ten panels. No two rectangles overlap in a window of the reference size, with the
+// four folded panels counted as their title bars.
 inline constexpr PanelPlacement RENDERER_PLACEMENT{
     .corner = TOP_LEFT,
     .offset = {PANEL_GAP, PANEL_GAP},
@@ -97,6 +116,20 @@ inline constexpr PanelPlacement GAMEPLAY_PLACEMENT{
     .offset = {GAMEPLAY_LEFT, PANEL_GAP},
     .size = {GAMEPLAY_WIDTH, CAMERA_HEIGHT},
     .collapsed = true,
+};
+inline constexpr PanelPlacement TERRAIN_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {BOTTOM_ROW_LEFT, PANEL_GAP},
+    .size = {CAMERA_WIDTH, TERRAIN_HEIGHT},
+    .collapsed = true,
+    .foldedRowsBefore = 1,
+};
+inline constexpr PanelPlacement GRASS_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {GAMEPLAY_LEFT, PANEL_GAP},
+    .size = {GAMEPLAY_WIDTH, GRASS_HEIGHT},
+    .collapsed = true,
+    .foldedRowsBefore = 1,
 };
 inline constexpr PanelPlacement MAZE_PLACEMENT{
     .corner = TOP_RIGHT,
@@ -128,5 +161,11 @@ inline constexpr PanelPlacement SHADERS_PLACEMENT{
 /// multiplied by the display scale, so that the bigger font fits, but never by more than
 /// the window has room for compared with the reference size.
 void placePanelOnFirstUse(const PanelPlacement& placement);
+
+/// The height of count rows of folded title bars, each with the gap after it, in pixels
+/// of the screen. gapScale is what PANEL_GAP is multiplied by. The height of a bar is the
+/// real one: ImGui computes it from the font in use, so the rows fit at every display
+/// scale. Call it inside an ImGui frame.
+float foldedRowsHeight(int count, float gapScale);
 
 } // namespace debug

@@ -11,7 +11,7 @@ Mapa normalnych w przestrzeni stycznej wymaga w każdym wierzchołku trzech kier
 - gdzie zrobić krok, który czyni `T` prostopadłą do `N` (ortogonalizacja Grama-Schmidta): na procesorze raz, czy w shaderze co klatkę,
 - czy przechowywać `B` albo znak skrętności, czy odtwarzać `B` w shaderze jako `cross(N, T)`.
 
-Ograniczenia: modele gry to proste bryły z płaskim cieniowaniem (każda ściana ma własne wierzchołki), eksportowane skryptem z Blendera do OBJ, a każdą linię kodu muszę umieć wytłumaczyć na obronie. Gdy decyzja zapadała (M4), modeli było trzy: ściana, słupek i płyta podłogi. W M5 doszły dwa kryształy i brama, też z płaskim cieniowaniem (linia `s 0` w plikach).
+Ograniczenia: modele gry to proste bryły z płaskim cieniowaniem (każda ściana ma własne wierzchołki), eksportowane skryptem z Blendera do OBJ, a każdą linię kodu muszę umieć wytłumaczyć na obronie. Gdy decyzja zapadała (M4), modeli było trzy: ściana, słupek i płyta podłogi. W M5 doszły dwa kryształy i brama, też z płaskim cieniowaniem (linia `s 0` w plikach). Druga część M6 usunęła płytę podłogi: podłoże jest terenem z mapy wysokości, czyli siatką liczoną w kodzie, i ta sama funkcja `assets::computeTangents` liczy styczne także dla niej (`game::buildTerrainMesh`). Decyzja "licz na procesorze, raz, z pozycji i UV" objęła więc bez zmiany kodu siatkę, która w ogóle nie ma pliku ([`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)).
 
 ## 2. Decyzja
 
@@ -30,13 +30,13 @@ Styczne liczy `assets::computeTangents` na końcu `parseObj`, z pozycji i wspó�
 
 ## 4. Uzasadnienie i skutki
 
-**Dlaczego liczenie przy wczytaniu.** Wzór na styczną trójkąta to rozwiązanie układu dwóch równań z dwiema niewiadomymi: mieści się na kartce i da się go pokazać na jednym trójkącie ściany. Loader ma wszystko, czego wzór potrzebuje, w chwili gdy zna już wszystkie trójkąty. Pliki `.obj` nie zmieniły się ani o bajt, a liczba wierzchołków i indeksów została ta sama (ściana i słupek 60 i 90, podłoga 4 i 6).
+**Dlaczego liczenie przy wczytaniu.** Wzór na styczną trójkąta to rozwiązanie układu dwóch równań z dwiema niewiadomymi: mieści się na kartce i da się go pokazać na jednym trójkącie ściany. Loader ma wszystko, czego wzór potrzebuje, w chwili gdy zna już wszystkie trójkąty. Pliki `.obj` nie zmieniły się ani o bajt, a liczba wierzchołków i indeksów została ta sama (ściana i słupek 60 i 90, ówczesna płyta podłogi 4 i 6).
 
 **Dlaczego Gram-Schmidt na procesorze.** Wynik zależy tylko od danych modelu. Liczony raz, w funkcji bez OpenGL, jest sprawdzony testem na liczbach (`(1, 0, 0)` i normalna `(0,6, 0, 0,8)` dają `(0,8, 0, -0,6)`). Ten sam krok w shaderze byłby nietestowalny i powtarzany co klatkę.
 
 **Dlaczego bez ponownej ortogonalizacji w shaderze.** Interpolacja między wierzchołkami może zepsuć kąt prosty tylko wtedy, gdy miesza **różne** wektory. W modelach gry każda ściana ma własne wierzchołki z tą samą normalną i tą samą styczną, więc interpolacja miesza wektory identyczne. Po stronie macierzy para też jest bezpieczna: normalna idzie przez macierz normalnych, styczna przez `mat3(uModel)`, a te dwie macierze zachowują prostopadłość dla każdej macierzy modelu.
 
-**Dlaczego bez znaku skrętności.** Żaden trójkąt trzech modeli kamiennych (ściana, słupek, podłoga) nie ma lustrzanej bazy. Skrypt nakłada UV tak, że na każdej stronie bryły `u` rośnie w prawo dla patrzącego z zewnątrz. Nie jest to założenie na słowo: `countMirroredTriangles` to liczy, a testy tych trzech modeli wymagają zera. Znak, który zawsze wynosi `+1`, byłby kodem bez pokazu. Dla modeli z M5 (dwa kryształy i brama) takiego testu nie ma: pilnuje ich tylko ostrzeżenie `loadObj` w logu, a jego braku przy starcie programu sam nie potwierdziłem.
+**Dlaczego bez znaku skrętności.** Żaden trójkąt trzech ówczesnych modeli kamiennych (ściana, słupek, podłoga) nie ma lustrzanej bazy. Skrypt nakłada UV tak, że na każdej stronie bryły `u` rośnie w prawo dla patrzącego z zewnątrz. Nie jest to założenie na słowo: `countMirroredTriangles` to liczy, a testy tych modeli wymagały zera (dziś dwóch: test płyty podłogi zniknął razem z nią, a brak lustrzanych trójkątów terenu sprawdza przypadek `every triangle of the mesh faces up, and its texture is not mirrored` w `tests/TerrainTests.cpp`). Znak, który zawsze wynosi `+1`, byłby kodem bez pokazu. Dla modeli z M5 (dwa kryształy i brama) takiego testu nie ma: pilnuje ich tylko ostrzeżenie `loadObj` w logu, a jego braku przy starcie programu sam nie potwierdziłem.
 
 **Co przez to tracę.**
 

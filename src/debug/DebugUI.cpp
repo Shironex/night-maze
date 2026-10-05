@@ -10,11 +10,14 @@
 #include "debug/panels/CameraPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
 #include "debug/panels/GameplayPanel.hpp"
+#include "debug/panels/GrassPanel.hpp"
 #include "debug/panels/LightsPanel.hpp"
 #include "debug/panels/MazePanel.hpp"
 #include "debug/panels/RendererPanel.hpp"
 #include "debug/panels/ShadersPanel.hpp"
+#include "debug/panels/TerrainPanel.hpp"
 #include "game/Lighting.hpp"
+#include "game/MazeWorld.hpp"
 #include "game/Skybox.hpp"
 
 #include <imgui.h>
@@ -98,14 +101,16 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 5;
+        constexpr int SHADER_COUNT = 6;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader, &context.colorShader, &context.litShader,
-            &context.gouraudShader, &context.skyboxShader};
+            &context.texturedShader, &context.colorShader,  &context.litShader,
+            &context.gouraudShader,  &context.skyboxShader, &context.grassShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawGameplayPanel(context.round, context.gameplay);
+        drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
+        drawGrassPanel(context.grass, context.grassTuftCount);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                       context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);

@@ -6,6 +6,8 @@
 #include "core/Application.hpp"
 #include "game/ColliderLines.hpp"
 #include "game/GameplayRenderer.hpp"
+#include "game/Grass.hpp"
+#include "game/GrassRenderer.hpp"
 #include "game/LightRig.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
@@ -13,6 +15,8 @@
 #include "game/Player.hpp"
 #include "game/Round.hpp"
 #include "game/Skybox.hpp"
+#include "game/Terrain.hpp"
+#include "game/TerrainRenderer.hpp"
 #include "gfx/Shader.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
@@ -20,15 +24,17 @@
 #include <glm/glm.hpp>
 
 #include <array>
+#include <cstddef>
 #include <vector>
 
 namespace game {
 
-/// The game itself: a generated maze of textured walls, pillars and floor tiles at
-/// night, and a player who walks through it in first person without passing through the
-/// walls. The mouse turns the camera, the keyboard moves the player. The maze is lit by
-/// the moon, by the flashlight of the player and by the glowing crystals. Above the
-/// walls is the night sky, a skybox.
+/// The game itself: a generated maze of textured walls and pillars at night, standing
+/// on gently uneven ground that rises into hills around it (a heightmap terrain), and
+/// a player who walks through it in first person without passing through the walls.
+/// The mouse turns the camera, the keyboard moves the player. The maze is lit by the
+/// moon, by the flashlight of the player and by the glowing crystals. Grass grows along
+/// the walls, and above them is the night sky, a skybox.
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
@@ -69,6 +75,20 @@ protected:
 
     /// Shader program of the sky, exposed for the same reason.
     gfx::Shader& skyboxShader() { return m_skyboxShader; }
+
+    /// Shader program of the grass (with a geometry stage), exposed for the same reason.
+    gfx::Shader& grassShader() { return m_grassShader; }
+
+    /// The height scale and the wireframe switch of the terrain, exposed so the debug UI
+    /// can edit them live.
+    TerrainSettings& terrainSettings() { return m_terrainSettings; }
+
+    /// The switch, the density, the blade height and the wind of the grass, exposed so
+    /// the debug UI can edit them live.
+    GrassSettings& grassSettings() { return m_grassSettings; }
+
+    /// How many tufts of grass are on the graphics card, for the debug UI.
+    std::size_t grassTuftCount() const { return m_grassRenderer.tuftCount(); }
 
     /// The switch and the brightness of the sky, exposed so the debug UI can edit them
     /// live.
@@ -121,8 +141,23 @@ private:
     // hand movement turns the camera equally on a Retina display.
     static constexpr float DEFAULT_MOUSE_SENSITIVITY = 0.1F;
 
-    /// Builds the maze described by m_mazeSettings and starts a round in it (beginRound).
+    /// Builds the maze described by m_mazeSettings on its terrain and starts a round in
+    /// it (beginRound).
     void regenerateMaze();
+
+    /// Builds the terrain of the maze in play again with the height scale of
+    /// m_terrainSettings and puts everything back on it: the walls, the gate, the
+    /// crystals of the round, the obstacle list and the walking player. The round goes
+    /// on: nothing is collected or reset.
+    void rebuildTerrain();
+
+    /// Copies what stands on the ground of m_mazeWorld to the graphics card: the mesh of
+    /// the terrain and the points of the grass (plantGrass).
+    void uploadGround();
+
+    /// Chooses the places of the grass tufts again (game::placeGrass) and copies them to
+    /// the graphics card.
+    void plantGrass();
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed and the player at the
@@ -131,12 +166,14 @@ private:
     void beginRound();
 
     /// The parts of a frame. Each one selects its own shader program and sets its
-    /// uniforms. drawMaze draws the maze together with the crystals and the gate, and
-    /// has two ways to do it: without lighting (the textured program, also used for the
-    /// debug views of the normals and the texture coordinates) and with lighting.
+    /// uniforms. drawMaze draws the terrain and the maze together with the crystals and
+    /// the gate, and has two ways to do it: without lighting (the textured program, also
+    /// used for the debug views of the normals and the texture coordinates) and with
+    /// lighting. drawGrass draws the grass with its own program.
     void drawMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawGrass(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 
     // The colour every frame starts with: a very dark blue, darker than the ambient
@@ -149,23 +186,39 @@ private:
     // OpenGL objects. They are members of a class derived from core::Application, so they
     // are created after the window and its OpenGL context, and destroyed before them.
     //
-    // Order: members are constructed top to bottom. The two renderers ask m_assets for
-    // their models in their constructors, so they come after it.
+    // Order: members are constructed top to bottom. The renderers of the maze, the
+    // round and the terrain ask m_assets for their models and textures in their
+    // constructors, so they come after it.
     gfx::Shader m_texturedShader;
     gfx::Shader m_colorShader;
     gfx::Shader m_litShader;
     gfx::Shader m_gouraudShader;
     gfx::Shader m_skyboxShader;
+    gfx::Shader m_grassShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
+    TerrainRenderer m_terrainRenderer;
+    GrassRenderer m_grassRenderer;
     ColliderLines m_colliderLines;
     LightRig m_lightRig;
     Skybox m_skybox;
 
-    // The request for the next maze (edited by the debug UI) and the maze in play.
+    // The request for the next maze (edited by the debug UI).
     MazeSettings m_mazeSettings;
+
+    // The heightmap of the terrain, read from its picture once at start-up, and the
+    // settings of the terrain (edited by the debug UI). Both are declared before
+    // m_mazeWorld, because the first maze is built from them in the initializer list.
+    Heightmap m_heightmap;
+    TerrainSettings m_terrainSettings;
+
+    // The maze in play, standing on its terrain.
     MazeWorld m_mazeWorld;
+
+    // The settings of the grass (edited by the debug UI). The tufts themselves are not
+    // kept: they are placed, copied to the graphics card and forgotten.
+    GrassSettings m_grassSettings;
 
     // The numbers of the rules (edited by the debug UI) and the round in play. The round
     // is simulation state: onUpdate advances it in fixed steps. It starts empty and is
@@ -175,7 +228,8 @@ private:
 
     // What the player cannot walk through in this round: the boxes of the maze, plus the
     // box of the gate while it is closed (game::roundObstacles). A copy that is rebuilt
-    // only when it changes: at the start of a round and when the gate opens.
+    // only when it changes: at the start of a round, when the gate opens and when the
+    // terrain is built again with another height scale (the boxes move up or down).
     std::vector<scene::Aabb> m_obstacles;
 
     // The player is simulation state: onUpdate moves it in fixed steps.
@@ -185,6 +239,10 @@ private:
     // player, so the frames before the first step are drawn from where the player stands.
     // Declared after m_player, because members are initialized top to bottom.
     glm::vec3 m_previousPlayerPosition = m_player.position;
+    // Whether the player was in noclip mode in the last fixed step. The step in which
+    // a flying player starts to walk drops the feet to the ground, and that drop is the
+    // one change of height that must not be blended (see onUpdate).
+    bool m_playerWasFlying = false;
 
     // Where the scene is seen from (the view and projection matrices). The angles are
     // turned by the mouse. The position is not controlled directly: after every fixed

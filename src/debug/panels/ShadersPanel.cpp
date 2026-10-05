@@ -15,19 +15,25 @@ namespace debug {
 
 namespace {
 
-// One program: a line with its two files and how its last load went, and under it the
-// error message of a failed load.
+// One program: a line with its files and how its last load went, and under it the error
+// message of a failed load.
 void drawShaderStatus(const gfx::Shader& shader) {
-    // The line shows only the file names. The full paths appear as a tooltip when the
-    // mouse rests on the line. ImGui expects UTF-8, which core::pathText returns.
-    const std::string vertexFile = core::pathText(shader.vertexPath().filename());
-    const std::string fragmentFile = core::pathText(shader.fragmentPath().filename());
-    const std::string vertexFullPath = core::pathText(shader.vertexPath());
-    const std::string fragmentFullPath = core::pathText(shader.fragmentPath());
+    // The line shows only the file names, joined by " + " in the order the stages run:
+    // the vertex shader, the geometry shader of a program that has one, the fragment
+    // shader. The full paths, one per line, appear as a tooltip when the mouse rests on
+    // the line. ImGui expects UTF-8, which core::pathText returns.
+    std::string files = core::pathText(shader.vertexPath().filename());
+    std::string fullPaths = core::pathText(shader.vertexPath());
+    if (shader.hasGeometryStage()) {
+        files += " + " + core::pathText(shader.geometryPath().filename());
+        fullPaths += "\n" + core::pathText(shader.geometryPath());
+    }
+    files += " + " + core::pathText(shader.fragmentPath().filename());
+    fullPaths += "\n" + core::pathText(shader.fragmentPath());
 
     if (shader.lastError().empty()) {
-        ImGui::Text("%s + %s: OK", vertexFile.c_str(), fragmentFile.c_str());
-        ImGui::SetItemTooltip("%s\n%s", vertexFullPath.c_str(), fragmentFullPath.c_str());
+        ImGui::Text("%s: OK", files.c_str());
+        ImGui::SetItemTooltip("%s", fullPaths.c_str());
         return;
     }
 
@@ -36,10 +42,10 @@ void drawShaderStatus(const gfx::Shader& shader) {
     // nothing is drawn with this program. The red of the text is a colour of the theme
     // (Theme.hpp), shared with the Assets panel.
     ImGui::PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR);
-    ImGui::TextWrapped("%s + %s: FAILED, %s", vertexFile.c_str(), fragmentFile.c_str(),
+    ImGui::TextWrapped("%s: FAILED, %s", files.c_str(),
                        shader.isValid() ? "the previous program stays in use"
                                         : "there is no program to draw with");
-    ImGui::SetItemTooltip("%s\n%s", vertexFullPath.c_str(), fragmentFullPath.c_str());
+    ImGui::SetItemTooltip("%s", fullPaths.c_str());
     // The message contains text written by the driver, so it goes in as an argument of
     // "%s" and never as the format string itself. For an error inside an included file
     // it names that file (gfx::nameSourceFiles).

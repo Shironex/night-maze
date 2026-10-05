@@ -52,6 +52,10 @@ protected:
             .round = round(),
             .skyboxShader = skyboxShader(),
             .skybox = skyboxSettings(),
+            .grassShader = grassShader(),
+            .terrain = terrainSettings(),
+            .grass = grassSettings(),
+            .grassTuftCount = grassTuftCount(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
