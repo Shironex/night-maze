@@ -5,13 +5,13 @@ Kod: [`src/gfx/UniformBuffer.hpp`](../../../src/gfx/UniformBuffer.hpp), [`src/gf
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument zakłada znajomość zwykłych uniformów ([`uniforms.md`](uniforms.md)), buforów ([`buffers-vao.md`](buffers-vao.md)), przeładowania shaderów ([`shader-hot-reload.md`](shader-hot-reload.md)) oraz `sizeof`, `offsetof` i dopełnienia ([`mesh.md`](mesh.md), sekcje 2.2 i 2.3). Co znaczą same światła i jak shader liczy z nich jasność, opisuje [`../scene/lights.md`](../scene/lights.md). Dwa programy, które blok czytają, opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Skąd biorą się wartości świateł w każdej klatce i jak działa klasa `game::LightRig`, opisuje [`../game/flashlight.md`](../game/flashlight.md). Dyrektywę `#include`, przez którą deklaracja bloku trafia do dwóch shaderów, opisuje [`shader-includes.md`](shader-includes.md). Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś.** Gra ma jeden blok uniformów, `LightBlock`, o rozmiarze 928 bajtów. Czytają go dwa programy: `lit` (blok jest w `lit.frag`) i `gouraud` (blok jest w `gouraud.vert`). Dane wysyła raz na klatkę `game::LightRig::upload`, przez jeden obiekt `gfx::UniformBuffer` przypięty do punktu wiązania numer 1.
+**Stan na dziś.** Gra ma jeden blok uniformów, `LightBlock`, o rozmiarze 928 bajtów. Czytają go trzy programy: `lit` (blok jest w `lit.frag`), `gouraud` (blok jest w `gouraud.vert`) i, od drugiej części M6, `grass` (blok jest w `grass.frag`: trawę oświetlają te same światła co ściany, [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)). Dane wysyła raz na klatkę `game::LightRig::upload`, przez jeden obiekt `gfx::UniformBuffer` przypięty do punktu wiązania numer 1.
 
 Co zostało zmierzone na Windowsie w M4 (2026-10-05, MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74): build Debug i Release bez ostrzeżeń, wszystkie ówczesne testy zielone w obu, clang-format i clang-tidy bez uwag, start gry bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu z M4 sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia, latarka wyłączona, ślepy zaułek ze swoim światłem (w M4 światła punktowe wisiały w ślepych zaułkach) i ściany oświetlone przez księżyc obok nieoświetlonych. Z tego wynikają dwa wnioski o kodzie z tego dokumentu (to wnioski z kodu i pomiaru, a nie osobny pomiar): sterownik NVIDIA podał dla bloku w obu programach rozmiar 928 bajtów, bo inaczej `applyBlockBinding` wypisałoby linię `[error]` (sekcja 5.9), a dane ze struktury C++ trafiają tam, gdzie shader ich szuka, bo obraz jest oświetlony zgodnie z ustawieniami.
 
 Co zmieniło M5 (kod kompletny na Windowsie, kamień niezamknięty). Klasy `gfx::UniformBuffer`, funkcji `Shader::bindUniformBlock`, struktury `LightBlockData` i deklaracji bloku w `common/lighting.glsl` M5 nie dotknęło: blok ma nadal 928 bajtów i te same pola. Zmieniło się to, co do bloku trafia i kto go wysyła. Światła punktowe wiszą teraz nad kryształami, których gracz jeszcze nie zebrał (`game::crystalLightPositions`), i pulsują, a słaba bateria przyciemnia latarkę: obie zmiany robi `game::lightingForFrame` na kopii ustawień, zanim powstaną bajty (sekcja 5.10). Klasa `LightRig` straciła znaczniki świateł i ma już tylko bufor oraz funkcje `connect` i `upload`. Programów jest cztery zamiast pięciu, blok czytają nadal dwa. Według raportu z Windowsa (2026-10-05) build Debug i Release jest bez ostrzeżeń, a 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach. Obraz M5 był oglądany na zrzutach ekranu, ale osobnych wniosków o bloku z nich nie wyciągam.
 
-Czego nikt nie sprawdził: `gfx::UniformBuffer` i `Shader::bindUniformBlock` wymagają kontekstu OpenGL, więc **nie mają testów jednostkowych**. Nikt nie nacisnął ręcznie `Reload shaders`, ani przy pięciu programach w M4, ani przy czterech w M5, ani przy pięciu dziś, więc ponowne podpięcie bloku po **udanym** przeładowaniu wynika z kodu, a nie z obserwacji. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: każde zdanie o macOS w tym dokumencie jest niesprawdzone.
+Czego nikt nie sprawdził: `gfx::UniformBuffer` i `Shader::bindUniformBlock` wymagają kontekstu OpenGL, więc **nie mają testów jednostkowych**. Nikt nie nacisnął ręcznie `Reload shaders`, ani przy pięciu programach w M4, ani przy czterech w M5, ani przy sześciu dziś, więc ponowne podpięcie bloku po **udanym** przeładowaniu wynika z kodu, a nie z obserwacji. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: każde zdanie o macOS w tym dokumencie jest niesprawdzone.
 
 ## 1. Po co to jest
 
@@ -57,8 +57,8 @@ W projekcie obowiązuje prosta reguła podziału:
 
 | Rodzaj danych | Jak często się zmienia | Kto czyta | Mechanizm |
 |---|---|---|---|
-| światła sceny i pozycja kamery | raz na klatkę | oba programy oświetlające | blok `LightBlock` w buforze |
-| macierze `uView`, `uProjection` | raz na klatkę | każdy z pięciu programów | zwykłe uniformy, ustawiane w każdym programie osobno |
+| światła sceny i pozycja kamery | raz na klatkę | wszystkie trzy programy z oświetleniem: `lit`, `gouraud`, `grass` | blok `LightBlock` w buforze |
+| macierze `uView`, `uProjection` | raz na klatkę | każdy z sześciu programów | zwykłe uniformy, ustawiane w każdym programie osobno |
 | `uModel`, `uNormalMatrix`, `uTint` | dla każdego obiektu albo części modelu | program, który akurat rysuje | zwykłe uniformy |
 | materiał (`uSpecularModel`, `uSpecularStrength`, `uShininess`) | raz na klatkę | program, który akurat rysuje labirynt | zwykłe uniformy |
 
@@ -259,7 +259,7 @@ W specyfikacji GLSL 4.10 słowo `binding` nie występuje w ogóle: sekcja 4.3.8.
 
 ## 4. Shadery
 
-Blok jest zadeklarowany raz, w pliku [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). To nie jest samodzielny shader: jego tekst trafia do `lit.frag` i `gouraud.vert` przez linię `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md)). Dzięki temu oba programy mają deklarację identyczną co do znaku. Resztę tego pliku (funkcje liczące światło, uniformy materiału) omawia linia po linii [`../scene/lights.md`](../scene/lights.md). Tutaj jest tylko to, co wyznacza układ bajtów:
+Blok jest zadeklarowany raz, w pliku [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). To nie jest samodzielny shader: jego tekst trafia do `lit.frag`, `gouraud.vert` i (od drugiej części M6) `grass.frag` przez linię `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md)). Dzięki temu wszystkie trzy programy mają deklarację identyczną co do znaku. Resztę tego pliku (funkcje liczące światło, uniformy materiału) omawia linia po linii [`../scene/lights.md`](../scene/lights.md). Tutaj jest tylko to, co wyznacza układ bajtów:
 
 ```glsl
 // Length of the array of point lights. The same number as scene::MAX_POINT_LIGHTS in
@@ -309,7 +309,7 @@ layout(std140) uniform LightBlock {
 
 W komentarzach shadera składowe koloru są nazwane `rgb` i `a`, a w C++ `x, y, z` i `w`. To te same cztery liczby: w GLSL `v.rgb` i `v.xyz` to dwa zapisy tych samych składowych ([`shaders.md`](shaders.md), sekcja 2.4).
 
-**Blok w dwóch programach.** Program `lit` ma blok w shaderze fragmentów, a program `gouraud` w shaderze wierzchołków. Dla mechanizmu z sekcji 2.3 nie ma to znaczenia: blok należy do programu jako całości i ma w nim jeden indeks. Indeksy w dwóch programach nie muszą być równe, dlatego pyta się o nie osobno w każdym.
+**Blok w trzech programach.** Program `lit` ma blok w shaderze fragmentów, program `gouraud` w shaderze wierzchołków, a program `grass` (od drugiej części M6) znów w shaderze fragmentów, przy czym jest to program z trzema etapami. Dla mechanizmu z sekcji 2.3 nie ma to znaczenia: blok należy do programu jako całości i ma w nim jeden indeks. Indeksy w różnych programach nie muszą być równe, dlatego pyta się o nie osobno w każdym. Program trawy czyta z bloku to samo co pozostałe (funkcja `computeLighting` jest wspólna), a używa z wyniku tylko światła rozproszonego.
 
 **Układ `std140` nie zależy od tego, których pól shader używa.** Kompilator GLSL usuwa nieużywane zwykłe uniformy ([`uniforms.md`](uniforms.md), sekcja 2.1). Przesunięcia pól bloku `std140` wynikają z samej deklaracji, więc nieużywane pole nie przesuwa pozostałych. Specyfikacja GLSL 4.10 (sekcja 4.3.8.3) pozwala kompilatorowi optymalizować zawartość bloku według użycia tylko w układzie `packed`. Sam blok jest aktywny, gdy zawiera aktywne uniformy (specyfikacja OpenGL 4.1, sekcja 2.11.7): blok, którego shader w ogóle nie czyta, może nie mieć indeksu.
 
@@ -957,13 +957,15 @@ void LightRig::upload(const scene::LightSet& lights, const glm::vec3& cameraPosi
 W konstruktorze `NightMazeApp` ([`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp)):
 
 ```cpp
-    // The two lit programs read the lights from the uniform buffer of m_lightRig. Each
-    // program is told once: the shader repeats it by itself after a reload.
+    // The two lit programs and the grass program read the lights from the uniform buffer
+    // of m_lightRig. Each program is told once: the shader repeats it by itself after
+    // a reload.
     m_lightRig.connect(m_litShader);
     m_lightRig.connect(m_gouraudShader);
+    m_lightRig.connect(m_grassShader);
 ```
 
-Te dwie linie stoją w **ciele** konstruktora, więc wykonują się po wszystkich polach: programy już są zbudowane, bufor już istnieje. Pozostałe dwa programy (`textured` i `color`) nie mają bloku i nie są podpinane. Gdyby były, `applyBlockBinding` wróciłoby na `GL_INVALID_INDEX` bez skutku.
+Te trzy linie stoją w **ciele** konstruktora, więc wykonują się po wszystkich polach: programy już są zbudowane, bufor już istnieje. Trzecia doszła w drugiej części M6 razem z programem trawy. Pozostałe trzy programy (`textured`, `color` i `skybox`) nie mają bloku i nie są podpinane. Gdyby były, `applyBlockBinding` wróciłoby na `GL_INVALID_INDEX` bez skutku.
 
 W `NightMazeApp::onRender`, po policzeniu macierzy, a przed rysowaniem:
 
@@ -991,7 +993,7 @@ Wysyłka odbywa się **w każdej klatce i w każdym trybie**, także w trybie `U
 | Kiedy | Kto | Wywołania OpenGL | Ile razy |
 |---|---|---|---|
 | start, konstruktor `LightRig` | `UniformBuffer::UniformBuffer` | `glGenBuffers`, `glBindBuffer(GL_UNIFORM_BUFFER)`, `glBufferData` (928 bajtów, bez danych), `glBindBufferBase(GL_UNIFORM_BUFFER, 1, id)` | raz |
-| start, ciało konstruktora `NightMazeApp` | `Shader::bindUniformBlock` przez `LightRig::connect` | `glGetUniformBlockIndex`, `glUniformBlockBinding`, `glGetActiveUniformBlockiv` | raz dla `lit`, raz dla `gouraud` |
+| start, ciało konstruktora `NightMazeApp` | `Shader::bindUniformBlock` przez `LightRig::connect` | `glGetUniformBlockIndex`, `glUniformBlockBinding`, `glGetActiveUniformBlockiv` | raz dla `lit`, raz dla `gouraud`, raz dla `grass` |
 | udane `Shader::reload` programu z prośbą na liście | pętla w `reload` | te same trzy | raz na przeładowany program |
 | **każda klatka**, `onRender` | `UniformBuffer::update` przez `LightRig::upload` | `glBindBuffer(GL_UNIFORM_BUFFER, id)`, `glBufferSubData(GL_UNIFORM_BUFFER, 0, 928, ...)` | raz, niezależnie od trybu i liczby programów |
 | każda klatka, rysowanie | | **żadne**. Nie ma `glBindBufferBase` ani `glUniformBlockBinding` w klatce: oba stany są trwałe | 0 |
@@ -1024,7 +1026,7 @@ Uwaga do ostatniego przypadku. Komentarz w teście mówi, że rozmiar bloku `std
 | układ struktury C++ | `static_assert` w czasie kompilacji, MSVC 19.44, Debug i Release | build przechodzi bez ostrzeżeń |
 | ten sam kod pod clangiem z nagłówkami Microsoftu | clang-tidy z `-D_CRT_USE_BUILTIN_OFFSETOF` | bez uwag |
 | `packLightBlock` | siedem przypadków testowych z sekcji 5.12, w ramach całego programu testowego, Debug i Release | przechodziły w M4, a po M5 według raportu z Windowsa przechodzi cały program testowy: 215 przypadków i 85098 asercji |
-| rozmiar bloku według sterownika | brak linii `[error] Uniform block LightBlock is ...` przy starcie gry (sterownik NVIDIA 610.74) | wniosek: sterownik podał 928 dla obu programów |
+| rozmiar bloku według sterownika | brak linii `[error] Uniform block LightBlock is ...` przy starcie gry (sterownik NVIDIA 610.74) | wniosek: sterownik podał 928 dla obu programów, które gra miała w M4. Dla programu `grass` ten sam wniosek wynika ze zgłoszenia z drugiej części M6 (gra startuje i trawa jest oświetlona na zrzutach ekranu), bez osobnego zapisu logu |
 | dane docierają do shadera | zrzuty ekranu z M4: cztery tryby oświetlenia, latarka wyłączona, światło w ślepym zaułku (tam wisiały wtedy światła punktowe), ściany oświetlone i nieoświetlone przez księżyc | obraz zgodny z ustawieniami świateł |
 | stary program po nieudanym przeładowaniu zachowuje wiązanie | zrzut ekranu z błędem wstawionym do `common/lighting.glsl` | komunikat z nazwą pliku, a poprzedni program rysuje dalej |
 | ponowne podpięcie po **udanym** przeładowaniu | | **niesprawdzone**: nikt nie nacisnął `Reload shaders`, ani w M4, ani po M5. Wynika z kodu (sekcja 5.9) |
@@ -1040,7 +1042,7 @@ Blok uniformów i bufor nie mają własnego panelu: żaden panel nie pokazuje za
 
 **Panel Shaders, przycisk `Reload shaders`.** Przeładowanie buduje nowe obiekty programów. Jeśli po naciśnięciu labirynt jest nadal oświetlony tak samo, to znaczy, że pętla w `reload` podpięła blok nowego programu do punktu 1 (sekcja 5.9). Gdyby jej nie było, programy `lit` i `gouraud` straciłyby światła po pierwszym naciśnięciu. To jest dobry punkt pokazu na obronie, ale z zastrzeżeniem: **tego naciśnięcia nikt jeszcze nie wykonał**, więc opis pochodzi z kodu. Panel opisuje [`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.
 
-Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zmienia program rysujący labirynt z `gouraud` na `lit`. Światła się przy tym nie zmieniają, bo oba programy czytają ten sam bufor: to pokaz zdania "blok jest wspólny dla programów" ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)).
+Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zmienia program rysujący labirynt z `gouraud` na `lit`. Światła się przy tym nie zmieniają, bo oba programy czytają ten sam bufor, a trawa, rysowana cały czas trzecim programem, jest oświetlona tak samo jak ściany obok niej: to pokaz zdania "blok jest wspólny dla programów" ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)).
 
 ## 7. Pułapki
 
@@ -1072,7 +1074,7 @@ Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zm
 4. **Nowa pojemność.** Ile bajtów miałby blok dla 32 świateł punktowych? Które trzy miejsca w repozytorium trzeba zmienić i które dwa pliki testów i asercji przestaną przechodzić? (Odpowiedź: `160 + 32 * 48 = 1696`. `Light.hpp`, `lighting.glsl`, asercja z liczbą 928 w `LightBlock.hpp`. Do tego liczby 16 i 928 w `tests/LightTests.cpp`.)
 5. **Macierz w bloku.** Chcesz dodać do bloku macierz normalnych `mat3`. Ile bajtów zajmie i jakim typem C++ ją odwzorujesz? (Odpowiedź: 48 bajtów, trzy kolumny po 16. `glm::mat3` ma 36 bajtów i się nie nadaje. Najprościej użyć `mat4` po obu stronach albo trzech pól `vec4`.)
 6. **Bez dopełnienia.** Usuń pole `padding` ze struktury `LightBlockData` i zbuduj. Co zatrzymuje kompilację jako pierwsze? Potem usuń także asercję `offsetof(LightBlockData, padding) == 148` i pętlę po `block.padding` w `tests/LightTests.cpp` i zbuduj jeszcze raz. Które asercje nie przechodzą teraz i jakie liczby wychodzą? (Odpowiedź: najpierw zwykły błąd kompilacji, bo asercja i test odwołują się do pola, którego nie ma. Po ich usunięciu nie przechodzi `offsetof(LightBlockData, points) == 160`, bo tablica zaczyna się w 148, oraz obie asercje rozmiaru: 916 zamiast 928.)
-7. **Niezgodność rozmiaru.** Zmień w `lighting.glsl` `MAX_POINT_LIGHTS` na 8, nic w C++. Uruchom grę. Co wypisuje konsola i dlaczego kompilator C++ nie zaprotestował? (Odpowiedź: dla każdego z dwóch programów linia `[error] Uniform block LightBlock is 544 bytes in the shader, but 928 bytes in the C++ code`, bo `160 + 8 * 48 = 544`. Kompilator C++ nie czyta plików GLSL. Bufor jest większy, niż blok potrzebuje, więc pierwsze 8 świateł działa, a pozostałych shader nie widzi.)
+7. **Niezgodność rozmiaru.** Zmień w `lighting.glsl` `MAX_POINT_LIGHTS` na 8, nic w C++. Uruchom grę. Co wypisuje konsola i dlaczego kompilator C++ nie zaprotestował? (Odpowiedź: dla każdego z trzech programów z blokiem, czyli `lit`, `gouraud` i `grass`, linia `[error] Uniform block LightBlock is 544 bytes in the shader, but 928 bytes in the C++ code`, bo `160 + 8 * 48 = 544`. Kompilator C++ nie czyta plików GLSL. Bufor jest większy, niż blok potrzebuje, więc pierwsze 8 świateł działa, a pozostałych shader nie widzi.)
 8. **Bez `connect`.** Usuń z konstruktora `NightMazeApp` linię `m_lightRig.connect(m_gouraudShader);`, zbuduj i przełącz tryb na `Gouraud`. Zanim uruchomisz: co mówi o tej sytuacji specyfikacja? Potem opisz, co robi twój sterownik. Dlaczego tryb `Phong` działa nadal? (Odpowiedź: blok programu `gouraud` czyta z punktu 0, gdzie nie ma bufora: wynik nieokreślony. Program `lit` ma własne wiązanie, niezależne od programu `gouraud`.)
 9. **Punkt 0.** Zmień `LIGHT_BLOCK_BINDING_POINT` na 0 i powtórz ćwiczenie 8. Dlaczego tym razem tryb `Gouraud` działa i dlaczego to gorsza sytuacja niż w ćwiczeniu 8? (Odpowiedź: nowy program ma blok w punkcie 0, a tam siedzi teraz bufor. Brak `connect` jest ukryty i wyjdzie dopiero przy drugim bloku albo innym numerze.)
 10. **Zamiana pól.** Zamień w `lighting.glsl` kolejność linii `uSpotColor` i `uSpotAttenuation`. Czy pojawia się błąd kompilacji C++, błąd kompilacji shadera albo linia `[error]` o rozmiarze? Co się stanie z latarką? (Odpowiedź: żaden z trzech. Kolor latarki to teraz `(1, 2/16, 17/256)` z natężeniem 0, czyli latarka gaśnie, a jej tłumienie liczone jest z kolorem w miejscu składników.)
@@ -1085,7 +1087,7 @@ Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zm
    Zwykły uniform należy do programu, ma położenie i ustawia się go przez `glUniform*` w każdym programie osobno. Pola bloku nie mają położenia: ich wartości leżą w buforze na karcie, a program pamięta tylko numer punktu wiązania, z którego blok czyta. Jeden bufor może obsłużyć wiele programów.
 
 2. **Dlaczego światła są w bloku, a macierze nie?**
-   Świateł jest dużo (58 wartości z tablicą struktur), są wspólne dla dwóch programów i zmieniają się raz na klatkę: jedna wysyłka 928 bajtów zamiast setek wywołań. Macierze `uView` i `uProjection` to dwa wywołania na program i zostały zwykłymi uniformami, jak od M1.
+   Świateł jest dużo (58 wartości z tablicą struktur), są wspólne dla trzech programów (`lit`, `gouraud`, `grass`) i zmieniają się raz na klatkę: jedna wysyłka 928 bajtów zamiast setek wywołań. Macierze `uView` i `uProjection` to dwa wywołania na program i zostały zwykłymi uniformami, jak od M1.
 
 3. **Co to jest punkt wiązania i do czego jest podobny?**
    Ponumerowane gniazdo kontekstu dla bufora uniformów. Bufor wkłada się do gniazda przez `glBindBufferBase`, a blokowi programu podaje się numer gniazda przez `glUniformBlockBinding`. To ten sam układ co jednostka teksturująca między teksturą a samplerem.

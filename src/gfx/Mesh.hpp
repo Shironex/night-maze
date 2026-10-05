@@ -31,7 +31,8 @@ public:
     ///
     /// Every index must be smaller than vertices.size(): OpenGL does not check that.
     /// primitive says how the indices are grouped: GL_TRIANGLES (every 3 indices are one
-    /// triangle) or GL_LINES (every 2 indices are one line segment).
+    /// triangle), GL_LINES (every 2 indices are one line segment) or GL_POINTS (every
+    /// index is one point: the input of a geometry shader that builds its own triangles).
     ///
     /// The new vertex array is left bound.
     Mesh(std::span<const Vertex> vertices, std::span<const std::uint32_t> indices,
@@ -57,7 +58,8 @@ public:
     /// drawn at all.
     void draw(std::uint32_t firstIndex, std::uint32_t indexCount) const;
 
-    /// Number of indices in the mesh: 3 for every triangle, or 2 for every line.
+    /// Number of indices in the mesh: 3 for every triangle, 2 for every line or 1 for
+    /// every point.
     std::uint32_t indexCount() const { return m_indexCount; }
 
 private:

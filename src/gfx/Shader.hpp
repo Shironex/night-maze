@@ -1,4 +1,5 @@
-// Shader program: a vertex and a fragment shader loaded from files, compiled and linked.
+// Shader program: a vertex and a fragment shader (and optionally a geometry shader) loaded
+// from files, compiled and linked.
 // See docs/modules/gfx/shader-class.md
 #pragma once
 
@@ -26,6 +27,12 @@ struct UniformBlockBinding {
 
 /// Owns one OpenGL program object built from a vertex shader file and a fragment shader file.
 ///
+/// A program may have a third stage between the two: a geometry shader. It runs once for
+/// every primitive the vertex shader has finished (a point, a line or a triangle) and
+/// writes new primitives in its place, also more or fewer than it was given. The grass
+/// uses it to turn one point into a tuft of blades. It is optional: a program without
+/// a geometry file is built exactly as before.
+///
 /// A shader file may pull in other files with lines of the form
 /// #include "common/lighting.glsl". The name is relative to the directory of the shader
 /// file (assets/shaders). See gfx/ShaderSource.hpp.
@@ -36,10 +43,14 @@ struct UniformBlockBinding {
 /// the window.
 class Shader {
 public:
-    /// Remembers both file paths and tries to load the program. It does not throw: when
+    /// Remembers the file paths and tries to load the program. It does not throw: when
     /// loading fails the error is logged, isValid() returns false and lastError() holds
     /// the message.
-    Shader(std::filesystem::path vertexPath, std::filesystem::path fragmentPath);
+    ///
+    /// geometryPath is the file of the geometry shader. An empty path (the default)
+    /// means that the program has no geometry stage.
+    Shader(std::filesystem::path vertexPath, std::filesystem::path fragmentPath,
+           std::filesystem::path geometryPath = {});
     ~Shader();
 
     Shader(const Shader&) = delete;
@@ -50,10 +61,10 @@ public:
     /// Deletes the program this object owns, then takes over the program of other.
     Shader& operator=(Shader&& other) noexcept;
 
-    /// Reads both files again, together with the files they include, and builds a new
-    /// program. On success the new program replaces the old one and the function returns
-    /// true. On failure (a file cannot be opened, a wrong #include, a compile error,
-    /// a link error) the old program stays in use, the error is logged and kept in
+    /// Reads the files again (two, or three with a geometry shader), together with the
+    /// files they include, and builds a new program. On success the new program replaces the old
+    /// one and the function returns true. On failure (a file cannot be opened, a wrong #include, a
+    /// compile error, a link error) the old program stays in use, the error is logged and kept in
     /// lastError(), and the function returns false. The uniform block bindings given to
     /// bindUniformBlock are set again on the new program.
     bool reload();
@@ -122,9 +133,19 @@ public:
     /// File the fragment shader is read from, as given to the constructor.
     const std::filesystem::path& fragmentPath() const { return m_fragmentPath; }
 
+    /// True when the program has a geometry stage: a geometry file was given to the
+    /// constructor.
+    bool hasGeometryStage() const { return !m_geometryPath.empty(); }
+
+    /// File the geometry shader is read from, as given to the constructor. Empty when the
+    /// program has no geometry stage.
+    const std::filesystem::path& geometryPath() const { return m_geometryPath; }
+
 private:
     std::filesystem::path m_vertexPath;
     std::filesystem::path m_fragmentPath;
+    // Empty when the program has no geometry stage.
+    std::filesystem::path m_geometryPath;
     // Name (id) of the OpenGL program object. 0 is never a real program: it means "none".
     GLuint m_program = 0;
     std::string m_lastError;

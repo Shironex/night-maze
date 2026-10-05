@@ -1,9 +1,9 @@
 # Moduł gfx: shadery i programowalny potok
 
-Kamień milowy: M1 (dwie pary shaderów doszły w M2 + M3, dwie następne i plik dołączany w M4, w M5 pierwsza para z M1 została usunięta). Temat wykładu: 2 (Programowalny potok).
+Kamień milowy: M1 (dwie pary shaderów doszły w M2 + M3, dwie następne i plik dołączany w M4, w M5 pierwsza para z M1 została usunięta, w M6 doszły program nieba i program trawy, pierwszy z shaderem geometrii). Temat wykładu: 2 (Programowalny potok).
 Kod: shadery [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag), wejścia i wyjścia w [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), klasa w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp).
 
-Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Shadery są opisane w pięciu dokumentach. Ten opisuje programowalny potok, język GLSL, najprostszą parę shaderów projektu (`color.vert` i `color.frag`) linia po linii, przekazywanie wartości między etapami na parze `textured` i miejsca, w których programy są używane w klatce. Pełny opis pary `textured.*` (odczyt tekstury, tryby podglądu, uniformy) jest w [`textures.md`](textures.md) (sekcja 4), para `color.*` od strony rysowania pudełek kolizji w [`../scene/collision.md`](../scene/collision.md) (sekcja 4), a `lit.*` i `gouraud.*` w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Wspólny plik oświetlenia `common/lighting.glsl` opisuje [`../scene/lights.md`](../scene/lights.md), a drugi plik dołączany, `common/normal_map.glsl` (mapy normalnych), [`normal-mapping.md`](normal-mapping.md). [`shader-class.md`](shader-class.md) opisuje klasę `gfx::Shader`: wywołania OpenGL, kompilację, linkowanie i odczyt błędów w kodzie. [`uniforms.md`](uniforms.md) opisuje uniformy i funkcję `Shader::setMat4`, [`shader-includes.md`](shader-includes.md) dyrektywę `#include`, której GLSL nie ma, i nazwy plików w błędach, a [`shader-hot-reload.md`](shader-hot-reload.md) wczytywanie na żywo, funkcję `Shader::reload` i panel "Shaders". Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md).
+Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Shadery są opisane w pięciu dokumentach. Ten opisuje programowalny potok, język GLSL, najprostszą parę shaderów projektu (`color.vert` i `color.frag`) linia po linii, przekazywanie wartości między etapami na parze `textured` i miejsca, w których programy są używane w klatce. Pełny opis pary `textured.*` (odczyt tekstury, tryby podglądu, uniformy) jest w [`textures.md`](textures.md) (sekcja 4), para `color.*` od strony rysowania pudełek kolizji w [`../scene/collision.md`](../scene/collision.md) (sekcja 4), a `lit.*` i `gouraud.*` w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Trzeci, opcjonalny etap programu, shader geometrii, ma tu tylko swoje miejsce w potoku (sekcja 2.1): pełny opis, razem z trójką `grass.*` linia po linii, jest w [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md). Wspólny plik oświetlenia `common/lighting.glsl` opisuje [`../scene/lights.md`](../scene/lights.md), a drugi plik dołączany, `common/normal_map.glsl` (mapy normalnych), [`normal-mapping.md`](normal-mapping.md). [`shader-class.md`](shader-class.md) opisuje klasę `gfx::Shader`: wywołania OpenGL, kompilację, linkowanie i odczyt błędów w kodzie. [`uniforms.md`](uniforms.md) opisuje uniformy i funkcję `Shader::setMat4`, [`shader-includes.md`](shader-includes.md) dyrektywę `#include`, której GLSL nie ma, i nazwy plików w błędach, a [`shader-hot-reload.md`](shader-hot-reload.md) wczytywanie na żywo, funkcję `Shader::reload` i panel "Shaders". Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md).
 
 ## 1. Po co to jest
 
@@ -11,28 +11,28 @@ Od OpenGL 3.2 w profilu Core nie da się narysować niczego bez shaderów: stary
 
 Robi to klasa `gfx::Shader`, opisana linia po linii w [`shader-class.md`](shader-class.md). Ten dokument opisuje to, co klasa obsługuje: potok, język GLSL i shadery, na których najłatwiej go zobaczyć.
 
-Stan na dziś: `game::NightMazeApp` ma **pięć** obiektów `gfx::Shader`, czyli pięć programów. Piąty, `skybox` (pliki `skybox.vert` i `skybox.frag`), doszedł w pierwszej części M6, rysuje nocne niebo i jest opisany osobno, w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 4. Ten dokument omawia pozostałe cztery, które rysują scenę i linie:
+Stan na dziś: `game::NightMazeApp` ma **sześć** obiektów `gfx::Shader`, czyli sześć programów: `textured`, `color`, `lit`, `gouraud`, `skybox` i `grass`. Piąty, `skybox` (pliki `skybox.vert` i `skybox.frag`), doszedł w pierwszej części M6, rysuje nocne niebo i jest opisany osobno, w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 4. Szósty, `grass` (pliki `grass.vert`, `grass.geom` i `grass.frag`), doszedł w drugiej części M6, rysuje kępki trawy i jako jedyny ma trzy etapy: opisuje go [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md). Ten dokument omawia pozostałe cztery, które rysują scenę i linie:
 
 | Pole | Pliki | Co rysuje | Kiedy | Opis shaderów |
 |---|---|---|---|---|
-| `m_texturedShader` | `textured.vert`, `textured.frag` (dołącza `common/normal_map.glsl`) | scenę bez oświetlenia: ściany, słupki, płytki podłogi, bramę i kryształy z samymi teksturami (kryształy z własną poświatą), oraz oba widoki diagnostyczne (normalne i UV jako kolor) | tryb oświetlenia `Unlit` albo widok inny niż `Textured` | [`textures.md`](textures.md), sekcja 4. Wejścia i wyjścia etapów: ten dokument, sekcje 4.2 i 4.3 |
+| `m_texturedShader` | `textured.vert`, `textured.frag` (dołącza `common/normal_map.glsl`) | scenę bez oświetlenia: teren, ściany, słupki, bramę i kryształy z samymi teksturami (kryształy z własną poświatą), oraz oba widoki diagnostyczne (normalne i UV jako kolor) | tryb oświetlenia `Unlit` albo widok inny niż `Textured` | [`textures.md`](textures.md), sekcja 4. Wejścia i wyjścia etapów: ten dokument, sekcje 4.2 i 4.3 |
 | `m_colorShader` | `color.vert`, `color.frag` | linie pudełek i kul kolizji, jednym kolorem | gdy włączy je panel Collision | ten dokument, sekcja 4.1, i [`../scene/collision.md`](../scene/collision.md), sekcja 4 |
 | `m_litShader` | `lit.vert`, `lit.frag` (dołącza `common/lighting.glsl` i `common/normal_map.glsl`) | scenę z oświetleniem liczonym dla każdego fragmentu | tryby Phong i Blinn-Phong przy widoku `Textured`. **Tak startuje gra** (Blinn-Phong) | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 | `m_gouraudShader` | `gouraud.vert` (dołącza `common/lighting.glsl`), `gouraud.frag` | scenę z oświetleniem liczonym dla każdego wierzchołka | tryb Gouraud przy widoku `Textured` | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 
-Scenę rysuje w danej klatce **jeden** z trzech programów (`textured`, `lit` albo `gouraud`), a linie kolizji, gdy są włączone, program `color`. Razem z programem nieba, który rysuje na końcu klatki, gdy pole `Skybox` jest zaznaczone, w jednej klatce pracują więc najwyżej trzy różne programy, wybierane najwyżej trzema wywołaniami `use()` (sekcja 5.1). Pliki `common/lighting.glsl` i `common/normal_map.glsl` nie są shaderami i nie mają własnych programów: ich treść trafia do shaderów przez linię `#include`, którą wykonuje kod wczytujący, a nie sterownik ([`shader-includes.md`](shader-includes.md)).
+Scenę rysuje w danej klatce **jeden** z trzech programów (`textured`, `lit` albo `gouraud`), a linie kolizji, gdy są włączone, program `color`. Razem z programem trawy (gdy pole `Enabled` w panelu Grass jest zaznaczone) i programem nieba, który rysuje na końcu klatki, gdy pole `Skybox` jest zaznaczone, w jednej klatce pracują więc najwyżej cztery różne programy, wybierane najwyżej czterema wywołaniami `use()` (sekcja 5.1). "Scena" znaczy od drugiej części M6: teren (jedna siatka z mapy wysokości, która zastąpiła płytki podłogi, [`../renderer/terrain.md`](../renderer/terrain.md)), ściany, słupki, brama i kryształy. Pliki `common/lighting.glsl` i `common/normal_map.glsl` nie są shaderami i nie mają własnych programów: ich treść trafia do shaderów przez linię `#include`, którą wykonuje kod wczytujący, a nie sterownik ([`shader-includes.md`](shader-includes.md)).
 
-Wszystkie pięć programów jest wczytywanych przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma pięć funkcji ustawiających uniformy, `setMat4`, `setInt`, `setVec3`, `setMat3` i `setFloat` ([`uniforms.md`](uniforms.md)), i funkcję `bindUniformBlock`, która podłącza blok uniformów ze światłami ([`uniform-buffers.md`](uniform-buffers.md)).
+Wszystkie sześć programów jest wczytywanych przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma pięć funkcji ustawiających uniformy, `setMat4`, `setInt`, `setVec3`, `setMat3` i `setFloat` ([`uniforms.md`](uniforms.md)), i funkcję `bindUniformBlock`, która podłącza blok uniformów ze światłami ([`uniform-buffers.md`](uniform-buffers.md)).
 
 **Historia.** W M1 projekt miał jedną parę, `basic.vert` i `basic.frag`: pozycja i kolor wierzchołka na wejściu, trzy macierze, kolor interpolowany między wierzchołkami. Rysowała kostkę o sześciu kolorowych ścianach i ten dokument omawiał ją linia po linii. W M5 kostka i para `basic` zostały usunięte. Jej rolę w tym dokumencie przejęły dwie pary, które rysują grę: `color` jako najprostszy komplet (jeden atrybut, trzy macierze, jeden kolor) i `textured` jako przykład wartości, które shader wierzchołków przekazuje dalej. Długi komentarz o łańcuchu przestrzeni, który stał w `basic.vert`, jest dziś w `textured.vert`.
 
-**Stan sprawdzenia.** W M4 zmierzone na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74): build Debug i Release bez ostrzeżeń, gra startowała bez linii `[error]` i bez linii `GL_`, czyli wszystkie ówczesne pliki shaderów (w tym osiem dzisiejszych) i oba pliki dołączane kompilowały się na sterowniku NVIDIA. W M5 w shaderach doszedł uniform `uEmissive` ([`../game/gameplay.md`](../game/gameplay.md), sekcja 4). Dla M5 zgłoszone na Windowsie 2026-10-05: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi, obraz sprawdzony zrzutami ekranu. Na macOS nic z M4 ani z M5 nie było budowane ani uruchamiane, a ręcznie gry z M5 nikt jeszcze nie przeszedł.
+**Stan sprawdzenia.** W M4 zmierzone na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74): build Debug i Release bez ostrzeżeń, gra startowała bez linii `[error]` i bez linii `GL_`, czyli wszystkie ówczesne pliki shaderów (w tym osiem dzisiejszych) i oba pliki dołączane kompilowały się na sterowniku NVIDIA. W M5 w shaderach doszedł uniform `uEmissive` ([`../game/gameplay.md`](../game/gameplay.md), sekcja 4). Dla M5 zgłoszone na Windowsie 2026-10-05: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi, obraz sprawdzony zrzutami ekranu. Dla drugiej części M6 (Windows, 2026-10-05): 256 przypadków testowych i 101232 asercje w Debug i w Release (uruchomione dziś z istniejących buildów), a według zgłoszenia autora zmiany build jest bez ostrzeżeń i wszystkie trzynaście plików shaderów, w tym `grass.geom`, kompiluje się na sterowniku NVIDIA (trawa jest na zrzutach ekranu). Na macOS nic z M4, M5 ani M6 nie było budowane ani uruchamiane, a ręcznie gry z M5 ani z M6 nikt jeszcze nie przeszedł.
 
 ## 2. Teoria
 
 ### 2.1 Potok renderowania
 
-**Potok renderowania** (rendering pipeline) to stała sekwencja etapów, przez którą przechodzą dane od tablicy liczb w pamięci do kolorów pikseli na ekranie. Dla OpenGL 4.1 i dwóch shaderów, których używam, wygląda tak:
+**Potok renderowania** (rendering pipeline) to stała sekwencja etapów, przez którą przechodzą dane od tablicy liczb w pamięci do kolorów pikseli na ekranie. Dla OpenGL 4.1 i dwóch shaderów, których używa pięć z sześciu programów gry, wygląda tak (wersja z shaderem geometrii jest pod tabelą):
 
 ```mermaid
 flowchart TD
@@ -56,7 +56,28 @@ flowchart TD
 
 **Programowalne** są dwa etapy z tej listy: shader wierzchołków i shader fragmentów. Pozostałe są stałe: mogę je tylko konfigurować przez stan OpenGL, ale nie mogę podmienić ich kodu. Stąd nazwa tematu: programowalny potok.
 
-W pełnym potoku OpenGL 4.1 między shaderem wierzchołków a składaniem prymitywów są jeszcze dwa etapy opcjonalne: teselacja (tessellation) i shader geometrii (geometry shader). Na diagramie ich nie ma, bo `gfx::Shader` ich nie obsługuje: buduje program z dokładnie dwóch plików. Shader geometrii jest w planie projektu przy temacie 9 (trawa), kodu dla niego nie ma.
+W pełnym potoku OpenGL 4.1 między shaderem wierzchołków a rasteryzacją są jeszcze dwa etapy opcjonalne: teselacja (tessellation) i shader geometrii (geometry shader). Teselacji projekt nie używa i `gfx::Shader` jej nie obsługuje. **Shader geometrii** obsługuje od drugiej części M6: program może mieć trzeci plik ([`shader-class.md`](shader-class.md), sekcja 5.7), i ma go jeden program gry, `grass`.
+
+**Gdzie stoi shader geometrii.** Po shaderze wierzchołków, przed przycinaniem i rasteryzacją:
+
+```mermaid
+flowchart TD
+    VS["Shader wierzchołków<br/>raz na wierzchołek"] --> In["Prymityw wejściowy<br/>punkt, linia albo trójkąt z gotowych wierzchołków"]
+    In --> GS["Shader geometrii (geometry shader)<br/>programowalny, raz na prymityw"]
+    GS --> Out["Prymitywy wyjściowe<br/>punkty, paski linii albo paski trójkątów:<br/>zero, jeden albo wiele"]
+    Out --> Clip["Przycinanie, dzielenie przez w"]
+    Clip --> Rast["Rasteryzacja i dalej jak wyżej"]
+```
+
+Trzy rzeczy odróżniają go od dwóch pozostałych shaderów:
+
+| Cecha | Shader wierzchołków | Shader geometrii | Shader fragmentów |
+|---|---|---|---|
+| ile razy działa | raz na wierzchołek | raz na **prymityw**, który opuścił shader wierzchołków | raz na fragment |
+| co widzi | jeden wierzchołek | wszystkie wierzchołki swojego prymitywu naraz (tablica `gl_in[]`): 1 dla punktu, 2 dla linii, 3 dla trójkąta | jeden fragment |
+| ile wypisuje | dokładnie jeden wierzchołek | dowolną liczbę wierzchołków, od zera do zadeklarowanego `max_vertices`: może prymityw usunąć, przepuścić albo zamienić na wiele innych | jeden kolor |
+
+To jedyny etap, który **zmienia liczbę i rodzaj prymitywów**. W grze wchodzi do niego punkt (jedna kępka trawy, rysowana jako `GL_POINTS`), a wychodzą trzy paski trójkątów po pięć wierzchołków: trzy źdźbła. Bufor wierzchołków ma więc jeden wierzchołek na kępkę, a źdźbła istnieją tylko na karcie i powstają od nowa w każdej klatce, dzięki czemu mogą kołysać się na wietrze bez wysyłania danych. Gdy program ma shader geometrii, to on, a nie shader wierzchołków, jest ostatnim etapem, który pisze `gl_Position` w przestrzeni przycięcia: `grass.vert` zostawia pozycję w przestrzeni świata, a macierze widoku i rzutowania stosuje dopiero `grass.geom`. Wartości `out` shadera geometrii są tym, co rasteryzacja interpoluje dla shadera fragmentów. Składnię (`layout(points) in;`, `layout(triangle_strip, max_vertices = N) out;`, `EmitVertex()`, `EndPrimitive()`), koszt i wszystkie trzy pliki trawy linia po linii opisuje [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md).
 
 **Fragment a piksel.** Fragment to "kandydat na piksel": dane dla jednego piksela pochodzące z jednego trójkąta. Na ten sam piksel może przypaść wiele fragmentów (z trójkątów leżących jeden za drugim), a o tym, który wygra, decyduje test głębi. Dlatego shader nazywa się shaderem fragmentów, a nie pikseli.
 
@@ -326,7 +347,7 @@ Dwa widoki diagnostyczne są żywym obrazem interpolacji. Przełącza je lista `
         fragColor = vec4(fract(vUv), 0.0, 1.0);
 ```
 
-`u` idzie do kanału czerwonego, `v` do zielonego. Weźmy płytkę podłogi. Jej cztery wierzchołki mają w pliku `floor_tile.obj` współrzędne tekstury (0,5, -0,5), (-0,5, 0,5), (-0,5, -0,5) i (0,5, 0,5), czyli `u` rośnie od -0,5 do 0,5 wzdłuż osi X płytki, a `v` tak samo wzdłuż osi -Z. Shader wierzchołków wykonuje się dla płytki cztery razy i zapisuje cztery wartości `vUv`. Wszystkie pozostałe wartości, po jednej na każdy piksel płytki, wylicza rasteryzacja: w połowie drogi między rogiem o `u = -0,5` a rogiem o `u = 0,5` fragment dostaje `u = 0`. Funkcja `fract` zostawia część ułamkową, więc czerwień rośnie płynnie od 0,5 na krawędzi płytki do 1 tuż przed jej środkiem, w środku skacze do 0 i rośnie dalej do 0,5 na drugiej krawędzi. Płynne przejście to interpolacja, a skok to `fract`: w tym miejscu tekstura zaczyna się od nowa. Ten opis wynika z danych w pliku i z kodu shadera. Samego widoku dla M5 nie oglądałem.
+`u` idzie do kanału czerwonego, `v` do zielonego. Weźmy teren, który od drugiej części M6 jest podłożem gry (do M5 przykładem była tu płytka podłogi, model `floor_tile.obj`, usunięty razem z płytkami). Teren jest siatką punktów co 0,5 m, a współrzędną tekstury każdego wierzchołka liczy `game::buildTerrainMesh` z jego pozycji w świecie: `u = x / 4`, `v = -z / 4` (stała `GROUND_TEXTURE_SPAN = 4.0F`, czyli jedno powtórzenie tekstury na 4 m). Dwa sąsiednie wierzchołki wzdłuż osi X mają więc `u` różne o 0,125: na przykład 0,25 dla x = 1 m i 0,375 dla x = 1,5 m. Shader wierzchołków zapisuje `vUv` tylko w tych punktach. Wszystkie wartości pomiędzy, po jednej na każdy piksel, wylicza rasteryzacja: w połowie drogi fragment dostaje `u = 0,3125`. Funkcja `fract` zostawia część ułamkową, więc czerwień rośnie płynnie od 0 do 1 na odcinku 4 m, a tam, gdzie x jest wielokrotnością 4 m (`u` jest liczbą całkowitą), skacze z powrotem do 0. Płynne przejście to interpolacja, a skok to `fract`: w tym miejscu tekstura zaczyna się od nowa. Zieleń robi to samo wzdłuż osi Z, w przeciwną stronę. Ten opis wynika z kodu `buildTerrainMesh` i z kodu shadera. Samego widoku na terenie nie oglądałem.
 
 **`Normals as colour`.** Shader wypisuje normalną, przeliczoną z zakresu od -1 do 1 na zakres koloru od 0 do 1:
 
@@ -335,7 +356,7 @@ Dwa widoki diagnostyczne są żywym obrazem interpolacji. Przełącza je lista `
         fragColor = vec4(normal * 0.5 + 0.5, 1.0);
 ```
 
-Przy wyłączonym polu `Normal mapping` funkcja `surfaceNormal` zwraca znormalizowaną normalną modelu. Wszystkie wierzchołki płaskiej ściany mają **tę samą** normalną (dlatego róg prostopadłościanu jest w buforze kilka razy, [`indexed-drawing.md`](indexed-drawing.md), sekcja 2.1). Dla każdego piksela wewnątrz trójkąta rasteryzacja wylicza `vNormal` jako średnią ważoną trzech wierzchołków, z wagami zależnymi od położenia. Średnia z trzech równych wartości to ta sama wartość, więc cała ściana ma jeden kolor: podłoga o normalnej (0, 1, 0) wychodzi jako (0,5, 1, 0,5), czyli jasna zieleń. Interpolacja nadal działa, tylko nie ma czego mieszać. To ta sama obserwacja, którą w M1 dawała kostka: każda jej ściana miała cztery wierzchołki o tym samym kolorze i dlatego była jednolita. Z włączonym polem `Normal mapping` (i trybem oświetlenia innym niż Gouraud) normalna pochodzi z mapy normalnych czytanej w miejscu `vUv`, więc kolor zmienia się z piksela na piksel ([`normal-mapping.md`](normal-mapping.md)).
+Przy wyłączonym polu `Normal mapping` funkcja `surfaceNormal` zwraca znormalizowaną normalną modelu. Wszystkie wierzchołki płaskiej ściany mają **tę samą** normalną (dlatego róg prostopadłościanu jest w buforze kilka razy, [`indexed-drawing.md`](indexed-drawing.md), sekcja 2.1). Dla każdego piksela wewnątrz trójkąta rasteryzacja wylicza `vNormal` jako średnią ważoną trzech wierzchołków, z wagami zależnymi od położenia. Średnia z trzech równych wartości to ta sama wartość, więc cała ściana ma jeden kolor: ściana zwrócona w stronę +Z, o normalnej (0, 0, 1), wychodzi jako (0,5, 0,5, 1), czyli jasny błękit, a każda pozioma powierzchnia o normalnej (0, 1, 0), na przykład wierzch muru, jako (0,5, 1, 0,5), czyli jasna zieleń. Interpolacja nadal działa, tylko nie ma czego mieszać. Teren jest przypadkiem pośrednim: każdy jego wierzchołek ma własną normalną, policzoną z nachylenia podłoża (`Terrain::gridNormal`), ale w labiryncie nachylenia są małe, więc normalne są bliskie (0, 1, 0), a teren jest prawie jednolicie jasnozielony, z łagodnymi przejściami odcienia między wierzchołkami. To ta sama obserwacja, którą w M1 dawała kostka: każda jej ściana miała cztery wierzchołki o tym samym kolorze i dlatego była jednolita. Z włączonym polem `Normal mapping` (i trybem oświetlenia innym niż Gouraud) normalna pochodzi z mapy normalnych czytanej w miejscu `vUv`, więc kolor zmienia się z piksela na piksel ([`normal-mapping.md`](normal-mapping.md)).
 
 Oba widoki razem pokazują dwa przypadki tej samej reguły: wartość różna w wierzchołkach daje gradient (`vUv`), wartość równa w wierzchołkach daje płaski kolor (`vNormal` na płaskiej ścianie).
 
@@ -349,7 +370,7 @@ Kod, który buduje program z plików, czyli klasa `gfx::Shader`, jest opisany w 
 
 ### 5.1 Użycie w `NightMazeApp`
 
-Właścicielem wszystkich pięciu programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawiają się programy `color` i `textured`. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
+Właścicielem wszystkich sześciu programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawiają się programy `color` i `textured`. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
 
 **Pola** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
@@ -358,17 +379,30 @@ Właścicielem wszystkich pięciu programów jest `game::NightMazeApp`. Poniżej
     gfx::Shader m_colorShader;
     gfx::Shader m_litShader;
     gfx::Shader m_gouraudShader;
+    gfx::Shader m_skyboxShader;
+    gfx::Shader m_grassShader;
 ```
 
-Jako pola klasy pochodnej od `core::Application` obiekty powstają po oknie i kontekście OpenGL, a giną przed nimi ([`../core/README.md`](../core/README.md)). Pięć programów stoi na początku listy pól posiadających obiekty OpenGL. Ich miejsce względem pozostałych pól nie ma znaczenia: utworzenie programu nie wiąże żadnego bufora ani VAO. Komentarz nad polami wymienia jedyną zależność kolejności, która została po M5: oba renderery proszą `m_assets` o modele w swoich konstruktorach, więc stoją po nim.
+Jako pola klasy pochodnej od `core::Application` obiekty powstają po oknie i kontekście OpenGL, a giną przed nimi ([`../core/README.md`](../core/README.md)). Sześć programów stoi na początku listy pól posiadających obiekty OpenGL. Ich miejsce względem pozostałych pól nie ma znaczenia: utworzenie programu nie wiąże żadnego bufora ani VAO. Komentarz nad polami wymienia jedyną zależność kolejności: renderery labiryntu, rundy i terenu proszą `m_assets` o modele i tekstury w swoich konstruktorach, więc stoją po nim.
+
+Pięć obiektów powstaje w liście inicjalizacyjnej z dwóch ścieżek. Szósty dostaje trzy, a ścieżka shadera geometrii jest ostatnia, chociaż ten etap działa jako drugi ([`shader-class.md`](shader-class.md), sekcja 5.2):
+
+```cpp
+      // The geometry shader is the third argument, although it runs second: it is the
+      // optional one.
+      m_grassShader(core::assetPath(GRASS_VERTEX_SHADER_FILE),
+                    core::assetPath(GRASS_FRAGMENT_SHADER_FILE),
+                    core::assetPath(GRASS_GEOMETRY_SHADER_FILE)),
+```
 
 **Nazwy plików** w anonimowej przestrzeni nazw [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp):
 
 ```cpp
 // Shader files, relative to the assets directory. The scene without lighting is drawn
 // with the first pair, the lines of the collision boxes and spheres with the second, the
-// scene with lighting per fragment with the third and with lighting per vertex with the
-// fourth.
+// scene with lighting per fragment with the third, with lighting per vertex with the
+// fourth and the sky with the fifth. The grass has three files: between its vertex and
+// its fragment shader runs a geometry shader.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -443,7 +477,7 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
 
 Ostatnie zdanie komentarza dotyczy map normalnych: widok normalnych nie ma oświetlenia, ale pokazuje normalne, którymi cieniowałby wybrany tryb. Pod `Phong`, `Blinn-Phong` i `Unlit` są to (przy zaznaczonym polu `Normal mapping`) normalne z map, pod `Gouraud` normalne modelu ([`textures.md`](textures.md), sekcja 4, i [`normal-mapping.md`](normal-mapping.md)).
 
-`drawLitMaze` i przełącznik trybu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W jednej klatce `use()` jest więc wołane najwyżej trzy razy: raz dla sceny, raz dla linii i, od pierwszej części M6, raz dla nieba (w `Skybox::draw`).
+`drawLitMaze` i przełącznik trybu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W jednej klatce `use()` jest więc wołane najwyżej cztery razy: raz dla sceny, raz dla trawy (od drugiej części M6, w `GrassRenderer::draw`, wołanym z `NightMazeApp::drawGrass` zaraz po `drawMaze`), raz dla linii i raz dla nieba (od pierwszej części M6, w `Skybox::draw`).
 
 Kolejność rysowania nie wpływa na to, co zasłania co: rozstrzyga o tym test głębi, włączany wcześniej w `onRender` ([`../scene/camera.md`](../scene/camera.md), sekcja 5). Linie są rysowane na końcu, ale też z testem głębi, więc linia za ścianą jest przez nią zasłonięta.
 
@@ -467,6 +501,9 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     // would use, so with normal mapping the ones from the normal maps.
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
+    // The ground first, then what stands on it. The order does not change the picture
+    // (the depth test sorts it out), it only follows the way the scene is built.
+    m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do.
@@ -484,7 +521,8 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
 | `setMat4(VIEW_UNIFORM, view)` i `setMat4(PROJECTION_UNIFORM, projection)` | macierze kamery trafiają do `uView` i `uProjection` programu `textured`. Program `color` dostaje te same macierze osobno, bo uniform należy do programu |
 | `setInt(VIEW_MODE_UNIFORM, ...)` | który z trzech obrazów pokazuje `textured.frag`: 0 to tekstura, 1 to normalna jako kolor, 2 to UV jako kolor (sekcja 4.3) |
 | `setInt(NORMAL_MAP_ENABLED_UNIFORM, ...)` | przełącznik map normalnych dla widoku normalnych |
-| `m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);` | płytki, ściany i słupki. Program idzie jako parametr: `MazeRenderer` rysuje tym samym kodem każdym z trzech programów sceny ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| `m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);` | teren, jedna siatka i jedno wywołanie rysujące (od drugiej części M6, w miejscu stu płytek podłogi). Drugi argument przełącza rysowanie samych krawędzi trójkątów ([`../renderer/terrain.md`](../renderer/terrain.md)) |
+| `m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);` | ściany i słupki. Program idzie jako parametr: `MazeRenderer` rysuje tym samym kodem każdym z trzech programów sceny ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
 | `m_gameplayRenderer.draw(...)` | brama i niezebrane kryształy, tym samym programem, więc widać je także w widokach diagnostycznych ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
 
 Macierz modelu (`uModel`) nie jest ustawiana tutaj: ustawia ją dla każdego obiektu funkcja `game::drawModel`, tuż przed `Mesh::draw` ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5.6). Pełną listę uniformów pary `textured` i tego, kto je ustawia, ma [`textures.md`](textures.md), sekcja 4.
@@ -546,11 +584,11 @@ Zwracają referencję bez `const`, bo wołający ma móc zawołać `reload()`. S
 
 `reload()` jest więc wołane w dwóch miejscach: w konstruktorze `Shader` (pierwsze wczytanie) i w panelu "Shaders" po naciśnięciu przycisku. Sama gra go nie woła.
 
-**Stan sprawdzenia.** W M4 na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74) program budował się w Debug i w Release bez ostrzeżeń i startował bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone były wtedy między innymi widok po starcie i cztery tryby oświetlenia, czyli obraz z programów `textured`, `gouraud` i `lit`. Dla M5 zgłoszone na Windowsie 2026-10-05: build Debug i Release bez ostrzeżeń i obraz sprawdzony zrzutami ekranu. Przełącznika trybu, widoków diagnostycznych, linii kolizji i przycisku `Reload shaders` nikt w M5 nie klikał ręcznie. Na macOS żaden z ośmiu plików shaderów ani żaden z dwóch plików dołączanych nie był kompilowany przez sterownik Apple, który jest bardziej rygorystyczny wobec GLSL: to pozycja listy kontrolnej w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+**Stan sprawdzenia.** W M4 na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74) program budował się w Debug i w Release bez ostrzeżeń i startował bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone były wtedy między innymi widok po starcie i cztery tryby oświetlenia, czyli obraz z programów `textured`, `gouraud` i `lit`. Dla M5 zgłoszone na Windowsie 2026-10-05: build Debug i Release bez ostrzeżeń i obraz sprawdzony zrzutami ekranu. Przełącznika trybu, widoków diagnostycznych, linii kolizji i przycisku `Reload shaders` nikt w M5 nie klikał ręcznie. Dla drugiej części M6 stan jest w sekcji 1. Na macOS żaden z trzynastu plików shaderów (osiem z tabeli w sekcji 1, dwa nieba i trzy trawy) ani żaden z dwóch plików dołączanych nie był kompilowany przez sterownik Apple, który jest bardziej rygorystyczny wobec GLSL: to pozycja listy kontrolnej w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ## 6. Panel ImGui
 
-Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie pięć programów, i dla każdego programu jedną linię z nazwami obu plików i wynikiem ostatniego wczytania (`color.vert + color.frag: OK` albo czerwone `... FAILED, ...` z tekstem błędu pod spodem). Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Który program rysuje scenę, przełączają dwa inne panele: lista `Lighting` w panelu Renderer wybiera tryb oświetlenia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)), a lista `View mode` w panelu Assets tryb podglądu shadera `textured.frag`: `Textured`, `Normals as colour` albo `UVs as colour` ([`textures.md`](textures.md), sekcja 6). Program `color` włącza pole `Draw collision shapes` w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
+Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie sześć programów, i dla każdego programu jedną linię z nazwami jego plików i wynikiem ostatniego wczytania (`color.vert + color.frag: OK`, dla trawy `grass.vert + grass.geom + grass.frag: OK`, albo czerwone `... FAILED, ...` z tekstem błędu pod spodem). Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Który program rysuje scenę, przełączają dwa inne panele: lista `Lighting` w panelu Renderer wybiera tryb oświetlenia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)), a lista `View mode` w panelu Assets tryb podglądu shadera `textured.frag`: `Textured`, `Normals as colour` albo `UVs as colour` ([`textures.md`](textures.md), sekcja 6). Program `color` włącza pole `Draw collision shapes` w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
 
 ## 7. Pułapki
 
@@ -571,20 +609,20 @@ Pułapki dotyczące klasy `Shader` i odczytu błędów są w [`shader-class.md`]
 
 Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo `.frag` zapisz plik i naciśnij `Reload shaders` w panelu Shaders. Kompilacja C++ nie jest potrzebna. Na macOS przycisk od razu widzi zmianę, bo `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Na Windowsie przed naciśnięciem przycisku trzeba wykonać `cmake --build --preset debug --target copy_assets`, które odświeża kopię shaderów obok programu ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.5). Ćwiczenia 1 i 4 w [`shader-class.md`](shader-class.md) dotyczą błędu **przy starcie**, więc tam program trzeba uruchomić od nowa. Po każdym ćwiczeniu przywróć plik (`git checkout assets/shaders`) i naciśnij przycisk jeszcze raz.
 
-1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne. Płytka podłogi ma 4 wierzchołki i 6 indeksów, a labirynt domyślny 100 płytek. Ile razy na klatkę wykonuje się dla samych płytek `main` shadera wierzchołków: co najmniej i co najwyżej (karta może, ale nie musi, policzyć wspólny wierzchołek raz)? Od czego zależy, ile razy wykonuje się dla nich `main` shadera fragmentów, i dlaczego może to być więcej niż liczba pikseli podłogi widocznych na ekranie (pomyśl o ścianach rysowanych później i o teście głębi)?
+1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne i dorysuj miejsce shadera geometrii. Teren labiryntu domyślnego ma 97 x 97 = 9409 wierzchołków i 18432 trójkąty, czyli 55296 indeksów. Ile razy na klatkę wykonuje się dla samego terenu `main` shadera wierzchołków: co najmniej i co najwyżej (karta może, ale nie musi, policzyć wspólny wierzchołek raz)? Od czego zależy, ile razy wykonuje się dla niego `main` shadera fragmentów, i dlaczego może to być więcej niż liczba pikseli podłoża widocznych na ekranie (pomyśl o ścianach rysowanych później i o teście głębi)? Na koniec trawa: przy 1843 kępkach ile razy wykonuje się `main` w `grass.vert`, ile razy w `grass.geom` i ile wierzchołków wypisuje ten ostatni (15 na kępkę)?
 2. **Stały kolor.** W `color.frag` zamień `vec4(uColor, 1.0)` na `vec4(1.0, 0.5, 0.2, 1.0)`. Naciśnij `Reload shaders`. Jak wyglądają teraz linie pudełek labiryntu, gracza i kryształów? Czy shader nadal się linkuje, mimo że `uColor` nie jest już używane? Co dzieje się z wywołaniem `setVec3(COLOR_UNIFORM, ...)` w C++ ([`uniforms.md`](uniforms.md), sekcja 2.3)?
-3. **Zamienione numery atrybutów.** W `textured.vert` zamień `location = 1` z `location = 2` (normalna dostaje numer 2, współrzędna tekstury numer 1). Przełącz oświetlenie na `Unlit` i naciśnij `Reload shaders`. Shader czyta teraz pierwsze dwie liczby normalnej jako współrzędną tekstury. Jaką współrzędną tekstury mają wszystkie wierzchołki podłogi (normalna (0, 1, 0))? Jak wygląda więc cała podłoga i dlaczego każda płaska ściana ma jeden kolor? Dlaczego nie ma żadnego błędu w konsoli?
+3. **Zamienione numery atrybutów.** W `textured.vert` zamień `location = 1` z `location = 2` (normalna dostaje numer 2, współrzędna tekstury numer 1). Przełącz oświetlenie na `Unlit` i naciśnij `Reload shaders`. Shader czyta teraz pierwsze dwie liczby normalnej jako współrzędną tekstury. Jaką współrzędną tekstury dostają wierzchołki terenu (normalne bliskie (0, 1, 0))? Jak wygląda więc całe podłoże i dlaczego każda płaska ściana ma jeden kolor? Dlaczego nie ma żadnego błędu w konsoli?
 4. **Pozycja jako kolor: własne `out` i `in`.** Dopisz w `color.vert` przed `main` linię `out vec3 vColor;`, a w `main` linię `vColor = aPosition;`. W `color.frag` dopisz przed `main` linię `in vec3 vColor;` i zamień `uColor` w `main` na `vColor`. Naciśnij `Reload shaders`. Linie przestały być jednolite: dlaczego właśnie teraz widać interpolację? Jaki kolor ma narożnik (0, 0, 0) sześcianu jednostkowego, a jaki narożnik (1, 1, 1)? Jak wygląda krawędź między nimi? Dlaczego część każdego okręgu jest czarna (jego punkty mają współrzędne od -1 do 1)? To jest mechanizm, którym para `basic` z M1 kolorowała kostkę.
 5. **Literówka w nazwie.** W ćwiczeniu 4 zmień nazwę tylko w `color.frag` na `vColour` (w obu miejscach). Naciśnij `Reload shaders`. Który krok się nie udał, kompilacja czy linkowanie? Co pokazuje panel Shaders i dlaczego linie są nadal rysowane ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 2)?
 6. **Wersja GLSL.** Zmień pierwszą linię `color.vert` na `#version 460 core`, potem usuń ją całkiem. Zapisz oba komunikaty z panelu Shaders (albo brak komunikatu). Który z nich pojawiłby się także na PC z nowym sterownikiem?
-7. **Interpolacja na oko.** Wybierz widok `UVs as colour`. Znajdź na podłodze miejsce, w którym czerwień skacze z pełnej na zero. Gdzie ono leży względem krawędzi płytki i dlaczego (sekcja 4.3)? Potem wybierz `Normals as colour` i odznacz `Normal mapping`: dlaczego podłoga ma jeden kolor, a ściany wzdłuż osi X inny niż ściany wzdłuż osi Z?
+7. **Interpolacja na oko.** Wybierz widok `UVs as colour`. Znajdź na podłożu miejsce, w którym czerwień skacze z pełnej na zero. Co ile metrów powtarza się ten skok i dlaczego (sekcja 4.3)? Potem wybierz `Normals as colour` i odznacz `Normal mapping`: dlaczego podłoże w labiryncie ma prawie jeden kolor, a ściany wzdłuż osi X inny niż ściany wzdłuż osi Z? Jak zmienia się kolor podłoża na wzgórzach poza labiryntem (tryb noclip, klawisz N)?
 
 Ćwiczenia z klasą `Shader` i komunikatami błędów są w [`shader-class.md`](shader-class.md) (sekcja 8), z uniformami w [`uniforms.md`](uniforms.md) (sekcja 8), a z przeładowaniem i panelem Shaders w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 8).
 
 ## 9. Pytania kontrolne
 
 1. **Z jakich etapów składa się potok renderowania i które są programowalne?**
-   Dane wierzchołków, shader wierzchołków, składanie prymitywów (z przycinaniem i dzieleniem przez w), rasteryzacja, shader fragmentów, testy i mieszanie, bufor ramki. Programowalne są shader wierzchołków i shader fragmentów (oraz opcjonalne etapy teselacji i geometrii, których projekt nie używa). Reszta jest stała i tylko konfigurowana stanem OpenGL.
+   Dane wierzchołków, shader wierzchołków, składanie prymitywów (z przycinaniem i dzieleniem przez w), rasteryzacja, shader fragmentów, testy i mieszanie, bufor ramki. Programowalne są shader wierzchołków i shader fragmentów, a z etapów opcjonalnych shader geometrii, który działa między nimi raz na prymityw (w grze ma go jeden program, `grass`). Teselacji projekt nie używa. Reszta jest stała i tylko konfigurowana stanem OpenGL.
 
 2. **Co musi zapisać shader wierzchołków i w jakiej przestrzeni?**
    Zmienną `gl_Position`: pozycję wierzchołka w przestrzeni przycięcia, jako `vec4`. OpenGL sam przycina i dzieli `x`, `y`, `z` przez `w`, co daje NDC, czyli sześcian od -1 do 1. Przy `w = 1` współrzędne z shadera są od razu NDC.
@@ -614,10 +652,10 @@ Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo 
     Shader wierzchołków zapisuje `vNormal` dla trzech wierzchołków trójkąta, a rasteryzacja interpoluje tę wartość dla każdego fragmentu. Wszystkie wierzchołki płaskiej ściany mają w danych tę samą normalną, więc wartość pośrednia jest tą samą normalną i tym samym kolorem. Dlatego róg prostopadłościanu jest w buforze osobnym wierzchołkiem dla każdej ściany. W widoku `UVs as colour` wartości w wierzchołkach są różne i widać gradient.
 
 11. **Ile programów shaderów ma gra i dlaczego nie jeden?**
-    Cztery: `textured` (scena bez oświetlenia i widoki diagnostyczne, kolor z tekstury), `color` (linie pudełek i kul kolizji, kolor z uniformu), `lit` (scena z oświetleniem liczonym dla każdego fragmentu) i `gouraud` (scena z oświetleniem liczonym dla każdego wierzchołka). Różnią się wejściami i miejscem pracy: `color` czyta samą pozycję, pozostałe także normalną i współrzędne tekstury, a `lit` i `gouraud` liczą to samo światło w dwóch różnych etapach potoku. Jeden program musiałby obsłużyć dwa źródła koloru i wybór etapu, w którym liczy światło, a tego ostatniego nie da się przełączyć uniformem.
+    Sześć: `textured` (scena bez oświetlenia i widoki diagnostyczne, kolor z tekstury), `color` (linie pudełek i kul kolizji, kolor z uniformu), `lit` (scena z oświetleniem liczonym dla każdego fragmentu), `gouraud` (scena z oświetleniem liczonym dla każdego wierzchołka), `skybox` (niebo z tekstury sześciennej) i `grass` (trawa: punkty zamieniane na źdźbła w shaderze geometrii). Cztery pierwsze różnią się wejściami i miejscem pracy: `color` czyta samą pozycję, pozostałe także normalną i współrzędne tekstury, a `lit` i `gouraud` liczą to samo światło w dwóch różnych etapach potoku. Jeden program musiałby obsłużyć dwa źródła koloru i wybór etapu, w którym liczy światło, a tego ostatniego nie da się przełączyć uniformem.
 
 12. **W jakiej kolejności programy są używane w klatce i co je rozdziela?**
-    `drawMaze` (program `textured`, `lit` albo `gouraud`, zależnie od trybu oświetlenia i widoku) rysuje labirynt, bramę i kryształy, a potem, gdy rysowanie kształtów kolizji jest włączone, `drawColliderLines` (program `color`). Każda funkcja zaczyna od `use()` swojego programu i ustawia mu macierze widoku i rzutowania od nowa, bo uniform należy do programu. Po powrocie z `NightMazeApp::onRender` panele i HUD rysuje ImGui własnym programem.
+    `drawMaze` (program `textured`, `lit` albo `gouraud`, zależnie od trybu oświetlenia i widoku) rysuje teren, labirynt, bramę i kryształy, potem `drawGrass` (program `grass`, gdy trawa jest włączona), potem, gdy rysowanie kształtów kolizji jest włączone, `drawColliderLines` (program `color`), a na końcu sceny `Skybox::draw` (program `skybox`). Każda funkcja zaczyna od `use()` swojego programu i ustawia mu macierze widoku i rzutowania od nowa, bo uniform należy do programu. Po powrocie z `NightMazeApp::onRender` panele i HUD rysuje ImGui własnym programem.
 
 13. **Skąd w błędzie shadera bierze się nazwa pliku, skoro sterownik zna tylko numery?**
     Sterownik wypisuje numer napisu źródłowego i numer linii, na przykład `1(63)`. Kod wczytujący nadaje każdemu plikowi numer dyrektywą `#line` (0 to plik shadera, 1 pierwszy dołączony), zapamiętuje listę plików i po nieudanej kompilacji zamienia numer na początku linii na nazwę: `common/lighting.glsl(63)`. Reszty linii nie zmienia.

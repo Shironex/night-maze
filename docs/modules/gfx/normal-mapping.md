@@ -16,7 +16,7 @@ Część modułu `gfx`, chociaż technika przechodzi przez kilka warstw: skrypt 
 | [`../game/gameplay.md`](../game/gameplay.md) | kryształy i brama, które od M5 też mają mapy normalnych |
 | [`../game/flashlight.md`](../game/flashlight.md) | `LightingSettings::normalMapping` i `usesNormalMap` |
 
-**Stan na dziś (2026-10-05).** Kod z M4 jest kompletny i był zmierzony na Windowsie (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, wtedy 163 przypadki testowe i 62220 asercji w obu konfiguracjach, start gry bez linii `[error]` i `GL_`, a obraz sprawdzony na zrzutach ekranu (sekcja 5.11). M5 nie zmienił ani shaderów tej techniki, ani plików `Tangents.*`, ani loadera. Zmienił trzy rzeczy wokół: kod, który wiąże obie tekstury, przeszedł z `MazeRenderer::drawInstances` do wolnej funkcji `game::drawModel` w `src/game/ModelDraw.cpp`, doszły trzy modele z mapami normalnych (dwa kryształy i brama, sekcja 5.3) i zniknęły kostki świateł. Stan z M5 zgłoszony dla Windowsa tego samego dnia: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach. M5 jest kompletny w kodzie, ale nie zamknięty. **Nikt jeszcze nie kliknął ręcznie** pola `Normal mapping` w panelu Assets i nikt nie obejrzał ręcznie domyślnego układu paneli z tym polem. **Na macOS nic z tego nie było budowane ani uruchamiane**: lista i ryzyka są w [`../../guides/build-macos.md`](../../guides/build-macos.md). Shadery, `gfx::Mesh` i `assets::AssetCache` wymagają kontekstu OpenGL i nie mają testów jednostkowych. Testy mają: matematyka stycznych, parser MTL, zawartość plików map normalnych i funkcja `usesNormalMap`.
+**Stan na dziś (2026-10-05).** Kod z M4 jest kompletny i był zmierzony na Windowsie (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, wtedy 163 przypadki testowe i 62220 asercji w obu konfiguracjach, start gry bez linii `[error]` i `GL_`, a obraz sprawdzony na zrzutach ekranu (sekcja 5.11). M5 nie zmienił ani shaderów tej techniki, ani plików `Tangents.*`, ani loadera. Zmienił trzy rzeczy wokół: kod, który wiąże obie tekstury, przeszedł z `MazeRenderer::drawInstances` do wolnej funkcji `game::drawModel` w `src/game/ModelDraw.cpp`, doszły trzy modele z mapami normalnych (dwa kryształy i brama, sekcja 5.3) i zniknęły kostki świateł. Stan z M5 zgłoszony dla Windowsa tego samego dnia: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach. M5 jest kompletny w kodzie, ale nie zamknięty. **Druga część M6 (teren i trawa) zmieniła podłoże.** Płytki podłogi z modelem `floor_tile.obj` i parą `floor_stone.png`, `floor_stone_normal.png` zostały usunięte. Podłoże jest dziś terenem: jedną siatką zbudowaną w kodzie z mapy wysokości, z teksturą `ground.png` i mapą normalnych `ground_normal.png` ([`../renderer/terrain.md`](../renderer/terrain.md), [`../../decisions/floor-tiles-retired.md`](../../decisions/floor-tiles-retired.md)). Shadery tej techniki i pliki `Tangents.*` się nie zmieniły: teren dostaje styczne tą samą funkcją `assets::computeTangents` co modele, tylko wołaną z `game::buildTerrainMesh` zamiast z loadera, a jego dwie tekstury wiąże nowa funkcja `game::drawMesh`. Trawa map normalnych nie używa. Wszystkie pomiary w tym dokumencie, w których mowa o podłodze, zrobiono w M4 na płytkach i zostają jako zapis tamtego stanu: nowego podłoża z mapą normalnych nie mierzyłem. Stan po tej zmianie (Windows, 2026-10-05): 256 przypadków testowych i 101232 asercje w Debug i Release, uruchomione dziś z istniejących buildów. M6 jest kompletny w kodzie na Windowsie, ale nie zamknięty. **Nikt jeszcze nie kliknął ręcznie** pola `Normal mapping` w panelu Assets i nikt nie obejrzał ręcznie domyślnego układu paneli z tym polem. **Na macOS nic z tego nie było budowane ani uruchamiane**: lista i ryzyka są w [`../../guides/build-macos.md`](../../guides/build-macos.md). Shadery, `gfx::Mesh` i `assets::AssetCache` wymagają kontekstu OpenGL i nie mają testów jednostkowych. Testy mają: matematyka stycznych, parser MTL, zawartość plików map normalnych i funkcja `usesNormalMap`.
 
 ## 1. Po co to jest
 
@@ -28,7 +28,7 @@ Co do tego potrzeba i gdzie to jest w projekcie:
 
 | Rzecz | Gdzie |
 |---|---|
-| obraz z normalnymi, zgodny co do teksela z obrazem koloru | `assets/textures/wall_stone_normal.png`, `floor_stone_normal.png`, a od M5 także `crystal_normal.png` i `gate_wood_normal.png`, generowane przez `make_textures.py` |
+| obraz z normalnymi, zgodny co do teksela z obrazem koloru | `assets/textures/wall_stone_normal.png`, od M5 także `crystal_normal.png` i `gate_wood_normal.png`, a od drugiej części M6 `ground_normal.png` (w miejscu usuniętej `floor_stone_normal.png`), generowane przez `make_textures.py` |
 | informacja w materiale, która tekstura jest mapą normalnych | linia `map_Bump` w plikach `.mtl`, pole `ObjMaterial::normalTexture` |
 | kierunek "w prawo na teksturze" w każdym wierzchołku, czyli **styczna** (tangent) | pole `Vertex::tangent`, liczone przez `assets::computeTangents` |
 | druga tekstura związana z drugą jednostką teksturującą | `game::drawModel` w `src/game/ModelDraw.cpp`, sampler `uNormalMap` |
@@ -81,7 +81,7 @@ Projekt używa przestrzeni stycznej, jak prawie wszystkie mapy normalnych. To uk
           +-------> T  (u rośnie, prawa strona obrazu)
 ```
 
-Teksel `(0, 0, 1)` mówi "tu powierzchnia jest zwrócona tak samo jak trójkąt". Teksel `(0,6, 0, 0,8)` mówi "tu jest odchylona w stronę rosnącego `u`". Ta sama mapa nałożona na ścianę zwróconą na północ, na południe i na podłogę da za każdym razem poprawny relief, o ile shader zna `T`, `B` i `N` tej powierzchni w przestrzeni świata. `N` jest w modelu. `T` trzeba policzyć (sekcja 2.7). `B` wynika z dwóch pozostałych (sekcja 2.9).
+Teksel `(0, 0, 1)` mówi "tu powierzchnia jest zwrócona tak samo jak trójkąt". Teksel `(0,6, 0, 0,8)` mówi "tu jest odchylona w stronę rosnącego `u`". Ta sama mapa nałożona na ścianę zwróconą na północ, na południe i na poziomą powierzchnię da za każdym razem poprawny relief, o ile shader zna `T`, `B` i `N` tej powierzchni w przestrzeni świata. `N` jest w modelu. `T` trzeba policzyć (sekcja 2.7). `B` wynika z dwóch pozostałych (sekcja 2.9).
 
 To dlatego mapa ściany `wall_stone_normal.png` obsługuje wszystkie strony odcinka ściany, słupek i ściany obrócone o 90 stopni: jedna tekstura, wiele orientacji.
 
@@ -253,7 +253,7 @@ Modele często mają **lustrzane UV** (mirrored UVs): lewa połowa twarzy używa
 | tył | `(0, 0, -1)` | `(-1, 0, 0)` | `(0, 1, 0)`: w górę |
 | koniec `+X` | `(1, 0, 0)` | `(0, 0, -1)` | `(0, 1, 0)`: w górę |
 | koniec `-X` | `(-1, 0, 0)` | `(0, 0, 1)` | `(0, 1, 0)`: w górę |
-| podłoga | `(0, 1, 0)` | `(1, 0, 0)` | `(0, 0, -1)`: tam, gdzie rośnie `v` podłogi |
+| podłoże (płaskie miejsce terenu, do M5 płytka podłogi) | `(0, 1, 0)` | `(1, 0, 0)` | `(0, 0, -1)`: tam, gdzie rośnie `v` podłoża. Teren ma `u = x / 4` i `v = -z / 4`, więc `u` rośnie w stronę +X, a `v` w stronę -Z, tak samo jak na dawnej płytce |
 
 Kryształy z M5 mają skośne ścianki, do których rzut pudełkowy nie pasuje, więc dostają UV inną funkcją, `face_project_uvs` z `tools/blender/blender_common.py`. Każda ścianka jest rzutowana na własną płaszczyznę: `up` to kierunek wysokości na tyle, na ile ścianka pozwala, a `right` to prawa strona dla kogoś, kto patrzy na ściankę z zewnątrz. `right`, `up` i normalna tworzą układ prawoskrętny, więc tekstura z założenia nie jest odbiciem.
 
@@ -299,7 +299,7 @@ Można by odczytać mapę w shaderze wierzchołków, ale dałoby to normalną z 
 
 Rzeczy, które wiem o obecnym stanie i których nie ukrywam:
 
-1. **Fugi są przyciemnione dwa razy.** Obraz koloru (`wall_stone.png`, `floor_stone.png`) powstał, zanim gra miała oświetlenie, i ma wmalowane ciemniejsze fugi oraz ciemniejszy brzeg każdego kamienia. Z mapą normalnych skosy fug dostają jeszcze cień od światła. Obraz koloru został celowo bez zmian (jego pliki są bajt w bajt takie same jak przed tą częścią).
+1. **Fugi są przyciemnione dwa razy.** Obraz koloru (`wall_stone.png`, a do M5 także `floor_stone.png` płytek podłogi) powstał, zanim gra miała oświetlenie, i ma wmalowane ciemniejsze fugi oraz ciemniejszy brzeg każdego kamienia. Z mapą normalnych skosy fug dostają jeszcze cień od światła. Obraz koloru został celowo bez zmian (jego pliki są bajt w bajt takie same jak przed tą częścią).
 2. **Siatka w ziarnie przy bardzo płaskim kącie światła.** Gdy światło prawie ślizga się po ścianie, w drobnym ziarnie widać słaby regularny wzór. Prawdopodobna przyczyna: ziarno powstaje z szumu rozmytego filtrem pudełkowym osobno wzdłuż każdej osi obrazu (funkcja `blur`), a taki filtr zostawia ślad kierunków osi. Przyczyny nie badałem dokładniej.
 3. **Migotanie w oddali oceniono tylko na nieruchomych klatkach.** Mapa normalnych pomniejszana przez mipmapy potrafi iskrzyć przy ruchu kamery. Na zrzutach ekranu odległe ściany wyglądają spokojnie, ale nikt nie oceniał tego w ruchu.
 4. **Siła mapy jest stała.** Opcja `-bm` z linii `map_Bump` jest czytana, sprawdzana i ignorowana: gra używa mapy zawsze z pełną siłą. Nie ma suwaka siły.
@@ -334,7 +334,7 @@ Wywołania dla jednej części modelu, w kolejności z `game::setModelSamplers` 
 
 | # | Wywołanie | Co robi |
 |---|---|---|
-| 1 | `glUniform1i(location(uTexture), 0)` i `glUniform1i(location(uNormalMap), 1)` | w każdej klatce, na początku `MazeRenderer::draw` i `GameplayRenderer::draw`: każdy sampler dostaje numer swojej jednostki |
+| 1 | `glUniform1i(location(uTexture), 0)` i `glUniform1i(location(uNormalMap), 1)` | w każdej klatce, na początku `TerrainRenderer::draw` (od drugiej części M6), `MazeRenderer::draw` i `GameplayRenderer::draw`: każdy sampler dostaje numer swojej jednostki |
 | 2 | `glActiveTexture(GL_TEXTURE1)`, `glBindTexture(GL_TEXTURE_2D, mapa)`, `glBindSampler(1, ...)` | mapa normalnych na jednostkę 1 (`Texture2D::bind(1)`) |
 | 3 | `glActiveTexture(GL_TEXTURE0)`, `glBindTexture(GL_TEXTURE_2D, kolor)`, `glBindSampler(0, ...)` | obraz koloru na jednostkę 0 (`Texture2D::bind(0)`). Po tym kroku aktywna jest jednostka 0 |
 | 4 | `glDrawElements(...)` dla każdego obiektu | shader czyta obie tekstury |
@@ -535,7 +535,7 @@ Program `gouraud` nie dostał żadnej linii kodu, tylko komentarz, który mówi 
 
 ```mermaid
 flowchart LR
-    Script["make_textures.py<br/>wysokość, normal_map()"] --> Png["wall_stone_normal.png<br/>floor_stone_normal.png<br/>crystal_normal.png<br/>gate_wood_normal.png"]
+    Script["make_textures.py<br/>wysokość, normal_map()"] --> Png["wall_stone_normal.png<br/>ground_normal.png<br/>crystal_normal.png<br/>gate_wood_normal.png"]
     Build["build_*.py<br/>węzeł Normal Map"] --> Mtl["*.mtl<br/>linia map_Bump"]
     Mtl --> Parser["parseMtl<br/>ObjMaterial::normalTexture"]
     Obj["*.obj"] --> ParseObj["parseObj<br/>computeTangents"]
@@ -682,7 +682,7 @@ Styczne są liczone na końcu `parseObj`, gdy znane są już wszystkie trójkąt
         countMirroredTriangles(parser.model.vertices, parser.model.indices);
 ```
 
-Styczne nie dodają wierzchołków: są liczone po tym, jak wierzchołki już istnieją. Odcinek ściany i słupek mają nadal po 60 wierzchołków i 90 indeksów, płytka podłogi 4 i 6. Kryształy i brama idą przez to samo `parseObj`, więc dostają styczne tym samym kodem, bez żadnej linii napisanej specjalnie dla nich.
+Styczne nie dodają wierzchołków: są liczone po tym, jak wierzchołki już istnieją. Odcinek ściany i słupek mają nadal po 60 wierzchołków i 90 indeksów (płytka podłogi, usunięta w drugiej części M6, miała 4 i 6). Kryształy i brama idą przez to samo `parseObj`, więc dostają styczne tym samym kodem, bez żadnej linii napisanej specjalnie dla nich. Teren nie przechodzi przez loader, ale ostatnia linia `game::buildTerrainMesh` to `assets::computeTangents(mesh.vertices, mesh.indices);`: ta sama funkcja, te same dane wejściowe (wierzchołki z pozycją, normalną i UV oraz indeksy), ten sam wynik. Styczna terenu wychodzi bliska `+X`, bo `u` rośnie wzdłuż osi X, a Gram-Schmidt odchyla ją tylko o tyle, o ile normalna wierzchołka odchodzi od pionu.
 
 ### 5.5 `triangleTangents`: styczna jednego trójkąta
 
@@ -848,7 +848,7 @@ constexpr GLuint TEXTURE_UNIT = 0;
 constexpr GLuint NORMAL_MAP_UNIT = 1;
 ```
 
-Samplery są ustawiane w każdej klatce (`setModelSamplers`, wołana na początku `MazeRenderer::draw` i `GameplayRenderer::draw`), a tekstury wiązane raz na część modelu (`drawModel`):
+Samplery są ustawiane w każdej klatce (`setModelSamplers`, wołana na początku `TerrainRenderer::draw`, `MazeRenderer::draw` i `GameplayRenderer::draw`), a tekstury wiązane raz na część modelu (`drawModel`, a dla terenu raz w `drawMesh`, które wiąże `ground_normal.png` i `ground.png` w tej samej kolejności):
 
 ```cpp
 void setModelSamplers(const gfx::Shader& shader) {
@@ -907,7 +907,7 @@ Skutek, o którym trzeba pamiętać na pokazie: **widok "Normals as colour" przy
 | Plik | Przypadki | Co sprawdzają |
 |---|---|---|
 | `tests/TangentTests.cpp` (nowy w M4) | 9 | `triangleTangents`: tekstura prosto, obrócona o ćwierć obrotu, powtórzona dwa razy na metr (styczna dwa razy krótsza), trójkąt w dowolnym miejscu przestrzeni, kolejność rogów bez znaczenia, zdegenerowane UV odrzucone z nietkniętymi wyjściami. `computeTangents`: kwadrat z teksturą prosto, długość 1 niezależnie od gęstości tekstury, Gram-Schmidt na liczbach, średnia na wspólnym wierzchołku, brak `NaN` na danych zdegenerowanych, złe indeksy pominięte. `countMirroredTriangles`: tekstura prosto i obrócona nie są lustrzane, `u` odwrócone i normalne odwrócone są, zdegenerowane UV nie są liczone |
-| `tests/ObjLoaderTests.cpp` | 2 nowe i rozszerzone istniejące | linia `map_Bump` we wszystkich postaciach i z każdym błędem. Styczne po `parseObj`. Na trzech modelach kamiennych (`wall_straight.obj`, `wall_pillar.obj`, `floor_tile.obj`): plik mapy istnieje, styczne mają długość 1 i są prostopadłe do normalnych, `cross(N, T)` wskazuje w górę na każdej pionowej ścianie, żaden trójkąt nie jest lustrzany, styczna `+X` z przodu ściany i `-X` z tyłu |
+| `tests/ObjLoaderTests.cpp` | 2 nowe i rozszerzone istniejące | linia `map_Bump` we wszystkich postaciach i z każdym błędem. Styczne po `parseObj`. Na modelach kamiennych (w M4 trzech: `wall_straight.obj`, `wall_pillar.obj` i `floor_tile.obj`. Przypadek dla płytki został usunięty razem z nią w drugiej części M6, zostały dwa): plik mapy istnieje, styczne mają długość 1 i są prostopadłe do normalnych, `cross(N, T)` wskazuje w górę na każdej pionowej ścianie, żaden trójkąt nie jest lustrzany, styczna `+X` z przodu ściany i `-X` z tyłu |
 | `tests/ImageLoaderTests.cpp` | 2 nowe | dwie mapy kamienne mają 512 x 512 i 3 kanały, średnia jest blisko `(128, 128, 255)`, konwencja OpenGL (sekcja 2.5), niebieski zawsze powyżej 128 |
 | `tests/LightingTests.cpp` | 1 nowy | `normalMapping` domyślnie włączone, `usesNormalMap` dla czterech trybów w obu stanach pola |
 
@@ -929,7 +929,7 @@ Wszystko w dwóch tabelach poniżej to stan M4, przed M5: 2026-10-05, MSVC 19.44
 | reakcja na kierunek światła | przesunięcie światła z lewej na prawą zamienia, które skosy są jasne |
 | tryby `Gouraud` i `Unlit` | zrzuty ekranu identyczne co do piksela z polem włączonym i wyłączonym |
 | powtarzalność skryptów | dwa uruchomienia, identyczne skróty wszystkich dziesięciu plików, które wtedy istniały |
-| liczba wierzchołków i indeksów | bez zmian: ściana i słupek 60 i 90, podłoga 4 i 6 |
+| liczba wierzchołków i indeksów | bez zmian: ściana i słupek 60 i 90, ówczesna płytka podłogi 4 i 6 |
 
 Średnia jasność zrzutu ekranu z mapami normalnych i bez nich (skala od 0 do 255):
 
@@ -938,7 +938,7 @@ Wszystko w dwóch tabelach poniżej to stan M4, przed M5: 2026-10-05, MSVC 19.44
 | ściana wzdłuż X | 43,29 | 44,00 |
 | ściana wzdłuż Z | 35,85 | 36,16 |
 | słupek | 35,26 | 35,55 |
-| podłoga | 22,69 | 22,86 |
+| podłoga (wtedy płytki z teksturą `floor_stone.png`, usunięte w drugiej części M6) | 22,69 | 22,86 |
 
 Różnice poniżej 2 procent mówią, że mapa **przesuwa** światło między skosami, a nie przyciemnia ani nie rozjaśnia sceny jako całości. Tego należy oczekiwać od mapy, której średnia normalna jest płaska.
 
@@ -967,7 +967,7 @@ Przełącznik jest w panelu **Assets**, zaraz pod listą `View mode`, bo te dwie
 ### 6.2 Listy modeli i tekstur
 
 - W liście **Models** każda część modelu ma pod sobą linię `normal map: wall_stone_normal.png` albo `normal map: none (flat)`, gdy używa płaskiej tekstury zastępczej. Modeli jest dziś sześć i każdy ma jedną część z własną mapą.
-- W liście **Textures** jest dziś osiem tekstur z podglądem: cztery obrazy koloru i cztery mapy normalnych (kamień ściany, kamień podłogi, kryształ, drewno bramy). Do M4 były cztery. Mapy są w tej samej liście, bo dla pamięci podręcznej to tekstury jak inne. Ich podgląd jest jasnoniebieski, z kolorowymi kreskami na skosach (sekcja 2.4).
+- W liście **Textures** jest dziś osiem tekstur z podglądem: cztery obrazy koloru i cztery mapy normalnych (kamień ściany, podłoże, kryształ, drewno bramy. Do M5 w miejscu podłoża był kamień płytek podłogi). Do M4 były cztery. Mapy są w tej samej liście, bo dla pamięci podręcznej to tekstury jak inne. Ich podgląd jest jasnoniebieski, z kolorowymi kreskami na skosach (sekcja 2.4).
 - Lista `Filter` i suwak anizotropii działają także na mapy normalnych: to te same obiekty samplera.
 
 Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
@@ -980,7 +980,7 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 2. **Przełącznik.** W panelu Assets odznaczam `Normal mapping`. Ta sama ściana staje się płaska: plama latarki przesuwa się po rysunku kamieni jak po tapecie. Zaznaczam z powrotem. Mówię: geometria się nie zmieniła, zmieniła się tylko normalna we wzorze na światło.
 3. **Światło z boku.** Staję blisko ściany i patrzę wzdłuż niej, tak żeby latarka świeciła pod płaskim kątem. Relief jest najmocniejszy. Robię krok w bok tak, żeby światło padało z drugiej strony: jasne i ciemne skosy zamieniają się miejscami. Mówię: to jest dowód, że to nie jest namalowany cień.
 4. **Widok normalnych.** W `View mode` wybieram `Normals as colour`. Ściany mają swój podstawowy kolor (kierunek ściany) z rysunkiem fug w innych odcieniach. Odznaczam `Normal mapping`: zostaje jednolity kolor na każdej ścianie. Mówię: lewa wersja to normalna na teksel, prawa to normalna na trójkąt.
-5. **Ta sama mapa, różne orientacje.** W widoku normalnych pokazuję ścianę wzdłuż X, ścianę wzdłuż Z i podłogę. Kolor podstawowy jest inny (inna normalna modelu), rysunek fug ten sam. Mówię o przestrzeni stycznej i macierzy TBN.
+5. **Ta sama mapa, różne orientacje.** W widoku normalnych pokazuję ścianę wzdłuż X, ścianę wzdłuż Z i wierzch słupka. Kolor podstawowy jest inny (inna normalna modelu), rysunek fug ten sam. Podłoże ma dziś własną mapę (`ground_normal.png`: kamyki i mech zamiast fug), więc do tego porównania się nie nadaje. Mówię o przestrzeni stycznej i macierzy TBN.
 6. **Gouraud dla kontrastu.** Wracam do `Textured`. W panelu Renderer przełączam `Lighting` na `Gouraud`: relief znika, niezależnie od pola `Normal mapping`. Mówię: światło jest liczone w 4 wierzchołkach ściany, a mapa ma normalną na teksel. Wracam na `Phong`.
 7. **Widok normalnych w trybie Gouraud.** Przy `Gouraud` wybieram jeszcze `Normals as colour`: ściany są jednolite, mimo zaznaczonego pola. Mówię: widok pokazuje normalne, których użyłby wybrany tryb.
 8. **Tekstury.** Przewijam panel Assets do listy Textures: osiem pozycji, cztery niebieskie. Mówię o kodowaniu `n * 0,5 + 0,5` i o tym, dlaczego mapa jest niebieska. W liście Models pokazuję linię `normal map:` pod częścią modelu.
@@ -1019,10 +1019,10 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 7. **Zła kolejność iloczynu.** W `common/normal_map.glsl` zamień `cross(n, t)` na `cross(t, n)`. Które fugi się odwróciły, poziome czy pionowe, i dlaczego tylko te?
 8. **Konwencja DirectX.** Zamiast ćwiczenia 7 dopisz po linii z `mapped` linię `mapped.y = -mapped.y;`. Porównaj obraz z ćwiczeniem 7. Dlaczego jest taki sam?
 9. **Bez odkodowania.** Usuń `* 2.0 - 1.0`. Jak wygląda ściana i w którą stronę "przechyliło się" światło?
-10. **Bez `normalize`.** Zamień ostatnią linię funkcji na `return tangentToWorld * mapped;`. Obejrzyj daleką ścianę i podłogę przy filtrze `Trilinear`, potem `Nearest`. Gdzie różnica jest największa?
+10. **Bez `normalize`.** Zamień ostatnią linię funkcji na `return tangentToWorld * mapped;`. Obejrzyj daleką ścianę i podłoże przy filtrze `Trilinear`, potem `Nearest`. Gdzie różnica jest największa?
 11. **Obie tekstury na jednostce 0.** W `ModelDraw.cpp` zmień `NORMAL_MAP_UNIT` na 0. Co shader czyta jako normalne i jak to wygląda?
 12. **Styczna jako kolor.** W `textured.frag`, w gałęzi widoku normalnych, pokaż `normalize(vTangent) * 0.5 + 0.5` zamiast normalnej. Jaki kolor ma przód ściany, a jaki tył? Porównaj z tabelą w sekcji 2.9.
-13. **Brakująca mapa.** Zmień tymczasowo nazwę pliku `floor_stone_normal.png` w katalogu `assets` obok programu i uruchom grę. Ile linii `[error]` jest w logu, co pokazuje lista Models przy podłodze i jak wygląda podłoga pod latarką?
+13. **Brakująca mapa.** Zmień tymczasowo nazwę pliku `wall_stone_normal.png` w katalogu `assets` obok programu i uruchom grę. Ile linii `[error]` jest w logu, co pokazuje lista Models przy ścianie i słupku i jak wyglądają ściany pod latarką? Potem zrób to samo z `ground_normal.png`: teren nie ma wpisu w liście Models, więc gdzie widać skutek i którą teksturę zastępczą bierze `TerrainRenderer` (funkcja `textureOr` w `TerrainRenderer.cpp`)?
 14. **Gęstość tekstury kryształu.** Ścianka kryształu ma po `triangleTangents` styczną o długości 0,5, a ściana labiryntu o długości 2. Ile tekseli mapy 512 x 512 przypada na metr powierzchni w obu przypadkach? Ile centymetrów ma na krysztale relief o głębokości 1 teksela? (Odpowiedź: 1024 i 256 tekseli na metr, około 0,1 cm.)
 15. **Kryształ w widoku normalnych.** Włącz `Normals as colour` i podejdź do kryształu. Dlaczego kolor podstawowy ścianki zmienia się w czasie, a na ścianie labiryntu nie? Która macierz obraca `T`, a która `N` (sekcja 2.10)? (Tego ćwiczenia nikt jeszcze nie wykonał: odpowiedź wynika z kodu `GameplayRenderer::draw`.)
 

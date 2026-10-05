@@ -1,4 +1,5 @@
-// Shader program: a vertex and a fragment shader loaded from files, compiled and linked.
+// Shader program: a vertex and a fragment shader (and optionally a geometry shader) loaded
+// from files, compiled and linked.
 // See docs/modules/gfx/shader-class.md
 #include "gfx/Shader.hpp"
 
@@ -11,8 +12,10 @@
 
 #include <cstddef>
 #include <fstream>
+#include <span>
 #include <sstream>
 #include <utility>
+#include <vector>
 
 namespace gfx {
 
@@ -68,8 +71,8 @@ std::string programInfoLog(GLuint program) {
 }
 
 // Reads one shader file, puts the files it includes into it and compiles the result.
-// type is GL_VERTEX_SHADER or GL_FRAGMENT_SHADER. Returns the id of the shader object,
-// or 0 on failure with the message in error.
+// type is GL_VERTEX_SHADER, GL_GEOMETRY_SHADER or GL_FRAGMENT_SHADER. Returns the id of
+// the shader object, or 0 on failure with the message in error.
 GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string& error) {
     std::string fileText;
     if (!readTextFile(path, fileText)) {
@@ -119,19 +122,21 @@ GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string
     return shader;
 }
 
-// Links two compiled shaders into a new program. Returns the id of the program object,
-// or 0 on failure with the driver's text in infoLog.
-GLuint linkProgram(GLuint vertexShader, GLuint fragmentShader, std::string& infoLog) {
+// Links the compiled shaders (one per stage) into a new program. Returns the id of the
+// program object, or 0 on failure with the driver's text in infoLog.
+GLuint linkProgram(std::span<const GLuint> shaders, std::string& infoLog) {
     GLuint program = 0;
     GL_CHECK(program = glCreateProgram());
-    GL_CHECK(glAttachShader(program, vertexShader));
-    GL_CHECK(glAttachShader(program, fragmentShader));
+    for (const GLuint shader : shaders) {
+        GL_CHECK(glAttachShader(program, shader));
+    }
     GL_CHECK(glLinkProgram(program));
 
     // A linked program keeps its own executable code, so it no longer needs the shader
     // objects. Detaching them lets glDeleteShader really free them.
-    GL_CHECK(glDetachShader(program, vertexShader));
-    GL_CHECK(glDetachShader(program, fragmentShader));
+    for (const GLuint shader : shaders) {
+        GL_CHECK(glDetachShader(program, shader));
+    }
 
     // Like compiling, a failed link sets no OpenGL error flag.
     GLint status = GL_FALSE;
@@ -144,32 +149,62 @@ GLuint linkProgram(GLuint vertexShader, GLuint fragmentShader, std::string& info
     return program;
 }
 
-// Builds a complete program from two files: compile, compile, link. Returns the id of
-// the new program, or 0 on failure with the message in error. Whatever happens, no shader
-// object is left behind.
-GLuint buildProgram(const std::filesystem::path& vertexPath,
-                    const std::filesystem::path& fragmentPath, std::string& error) {
-    const GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexPath, error);
-    if (vertexShader == 0) {
-        return 0;
-    }
+// One stage of a program: what kind of shader it is and the file it is read from.
+struct ShaderStage {
+    GLenum type;
+    const std::filesystem::path* path;
+};
 
-    const GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentPath, error);
-    if (fragmentShader == 0) {
-        GL_CHECK(glDeleteShader(vertexShader));
-        return 0;
+// Deletes every shader object of the list.
+void deleteShaders(std::span<const GLuint> shaders) {
+    for (const GLuint shader : shaders) {
+        GL_CHECK(glDeleteShader(shader));
+    }
+}
+
+// Builds a complete program from its files: compile every stage, then link. An empty
+// geometryPath means a program of two stages. Returns the id of the new program, or 0 on
+// failure with the message in error. Whatever happens, no shader object is left behind.
+GLuint buildProgram(const std::filesystem::path& vertexPath,
+                    const std::filesystem::path& fragmentPath,
+                    const std::filesystem::path& geometryPath, std::string& error) {
+    // The stages in the order the graphics card runs them: every vertex, then (when
+    // there is a geometry shader) every primitive, then every fragment.
+    std::vector<ShaderStage> stages;
+    stages.push_back({.type = GL_VERTEX_SHADER, .path = &vertexPath});
+    if (!geometryPath.empty()) {
+        stages.push_back({.type = GL_GEOMETRY_SHADER, .path = &geometryPath});
+    }
+    stages.push_back({.type = GL_FRAGMENT_SHADER, .path = &fragmentPath});
+
+    // Every stage goes through the same loader: the same #include lines, the same file
+    // names in its compile errors. The names of all files are collected for the message
+    // of a failed link, which belongs to no single file.
+    std::vector<GLuint> shaders;
+    std::string fileNames;
+    for (const ShaderStage& stage : stages) {
+        const GLuint shader = compileShader(stage.type, *stage.path, error);
+        if (shader == 0) {
+            // The stages compiled so far are of no use without this one.
+            deleteShaders(shaders);
+            return 0;
+        }
+        shaders.push_back(shader);
+
+        if (!fileNames.empty()) {
+            fileNames += " + ";
+        }
+        fileNames += core::pathText(*stage.path);
     }
 
     std::string infoLog;
-    const GLuint program = linkProgram(vertexShader, fragmentShader, infoLog);
+    const GLuint program = linkProgram(shaders, infoLog);
 
     // The shader objects were only an intermediate step, linked or not.
-    GL_CHECK(glDeleteShader(vertexShader));
-    GL_CHECK(glDeleteShader(fragmentShader));
+    deleteShaders(shaders);
 
     if (program == 0) {
-        error = "Shader linking failed: " + core::pathText(vertexPath) + " + " +
-                core::pathText(fragmentPath) + "\n" + infoLog;
+        error = "Shader linking failed: " + fileNames + "\n" + infoLog;
     }
     return program;
 }
@@ -205,8 +240,11 @@ void applyBlockBinding(GLuint program, const UniformBlockBinding& binding) {
 
 // The paths arrive by value and are moved into the members, so a caller that passes
 // a temporary (the result of core::assetPath) pays for no copy.
-Shader::Shader(std::filesystem::path vertexPath, std::filesystem::path fragmentPath)
-    : m_vertexPath(std::move(vertexPath)), m_fragmentPath(std::move(fragmentPath)) {
+Shader::Shader(std::filesystem::path vertexPath, std::filesystem::path fragmentPath,
+               std::filesystem::path geometryPath)
+    : m_vertexPath(std::move(vertexPath)),
+      m_fragmentPath(std::move(fragmentPath)),
+      m_geometryPath(std::move(geometryPath)) {
     // The first load is the same work as a reload, starting from "no program".
     reload();
 }
@@ -221,6 +259,7 @@ Shader::~Shader() {
 Shader::Shader(Shader&& other) noexcept
     : m_vertexPath(std::move(other.m_vertexPath)),
       m_fragmentPath(std::move(other.m_fragmentPath)),
+      m_geometryPath(std::move(other.m_geometryPath)),
       m_program(other.m_program),
       m_lastError(std::move(other.m_lastError)),
       m_blockBindings(std::move(other.m_blockBindings)) {
@@ -242,6 +281,7 @@ Shader& Shader::operator=(Shader&& other) noexcept {
 
     m_vertexPath = std::move(other.m_vertexPath);
     m_fragmentPath = std::move(other.m_fragmentPath);
+    m_geometryPath = std::move(other.m_geometryPath);
     m_program = other.m_program;
     m_lastError = std::move(other.m_lastError);
     m_blockBindings = std::move(other.m_blockBindings);
@@ -252,7 +292,7 @@ Shader& Shader::operator=(Shader&& other) noexcept {
 bool Shader::reload() {
     // Build the new program completely before touching the one in use.
     std::string error;
-    const GLuint program = buildProgram(m_vertexPath, m_fragmentPath, error);
+    const GLuint program = buildProgram(m_vertexPath, m_fragmentPath, m_geometryPath, error);
     if (program == 0) {
         // m_program is not changed: the previous program, if there is one, keeps working.
         m_lastError = error;

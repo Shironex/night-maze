@@ -1,17 +1,17 @@
 # Moduł gfx: wierzchołek i siatka (`Vertex`, `Mesh`)
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (doszła styczna, czwarte pole wierzchołka) i w M5 (inni użytkownicy). Temat wykładu: 4 (Wczytywanie OBJ), część po stronie karty graficznej. Korzysta z tematu 2 (bufory, VAO, `glDrawElements`).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszła styczna, czwarte pole wierzchołka) i w M5 (inni użytkownicy). W M6 doszli trzej nowi użytkownicy (niebo, teren, trawa) i trzeci rodzaj prymitywu, `GL_POINTS`. Temat wykładu: 4 (Wczytywanie OBJ), część po stronie karty graficznej. Korzysta z tematu 2 (bufory, VAO, `glDrawElements`).
 Kod: [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp), [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp). Użytkownicy: [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp) (tworzy siatki modeli), [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp) (rysuje je), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp) (dwie siatki z odcinków).
 
-Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość [`buffers-vao.md`](buffers-vao.md) (bufor, VAO, krok i przesunięcie, klasy `Buffer` i `VertexArray`) oraz [`indexed-drawing.md`](indexed-drawing.md) (pomysł indeksów, dane indeksów płytki podłogi, sześcianu i okręgu, wywołania rysujące). Podział jest taki: tam jest idea i dane, tutaj struktura wierzchołka i klasa. Skąd biorą się dane siatki, opisuje [`../assets/obj-loader.md`](../assets/obj-loader.md).
+Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość [`buffers-vao.md`](buffers-vao.md) (bufor, VAO, krok i przesunięcie, klasy `Buffer` i `VertexArray`) oraz [`indexed-drawing.md`](indexed-drawing.md) (pomysł indeksów, dane indeksów prostokąta ściany, kwadratu terenu, sześcianu i okręgu, wywołania rysujące). Podział jest taki: tam jest idea i dane, tutaj struktura wierzchołka i klasa. Skąd biorą się dane siatki, opisuje [`../assets/obj-loader.md`](../assets/obj-loader.md).
 
-**Stan (M5).** Struktura `gfx::Vertex` i klasa `gfx::Mesh` są w bibliotece `engine`. `Mesh` jest dziś **jedyną** drogą, którą geometria trafia na kartę: poza nią nikt w `src/` nie tworzy bufora wierzchołków ani VAO i nikt nie woła `glDrawElements`. Od drugiej części M4 wierzchołek ma cztery pola: doszła **styczna** (tangent), której potrzebują mapy normalnych ([`normal-mapping.md`](normal-mapping.md)). Siatki mają dwóch właścicieli (sekcja 5.7). `assets::AssetCache` tworzy po jednej siatce z trójkątów dla każdego wczytanego modelu, a modeli jest sześć: płytka podłogi, ściana, słupek, dwa kryształy i brama. Rysuje je funkcja `game::drawModel`, częściami, przez `draw(firstIndex, indexCount)`. `game::ColliderLines` ma dwie siatki z odcinków (`GL_LINES`): sześcian z 8 narożników i 24 indeksów, którym rysuje pudełka kolizji, i okrąg z 32 punktów i 64 indeksów, którym rysuje kule. Razem osiem siatek. `Mesh` nadal **nie ma testu jednostkowego**, bo wymaga kontekstu OpenGL. Co wiadomo o jej działaniu, mówi sekcja 5.6.
+**Stan (druga część M6).** Struktura `gfx::Vertex` i klasa `gfx::Mesh` są w bibliotece `engine`. `Mesh` jest dziś **jedyną** drogą, którą geometria trafia na kartę: poza nią nikt w `src/` nie tworzy bufora wierzchołków ani VAO i nikt nie woła `glDrawElements`. Od drugiej części M4 wierzchołek ma cztery pola: doszła **styczna** (tangent), której potrzebują mapy normalnych ([`normal-mapping.md`](normal-mapping.md)). Siatki mają pięciu właścicieli (sekcja 5.7). `assets::AssetCache` tworzy po jednej siatce z trójkątów dla każdego wczytanego modelu, a modeli jest pięć: ściana, słupek, dwa kryształy i brama (szósty, płytkę podłogi, usunęła druga część M6: podłoże rysuje dziś teren). Rysuje je funkcja `game::drawModel`, częściami, przez `draw(firstIndex, indexCount)`. `game::ColliderLines` ma dwie siatki z odcinków (`GL_LINES`): sześcian z 8 narożników i 24 indeksów, którym rysuje pudełka kolizji, i okrąg z 32 punktów i 64 indeksów, którym rysuje kule. `game::Skybox` ma sześcian nieba (od pierwszej części M6). Druga część M6 dodała dwie siatki innego rodzaju niż wszystkie wcześniejsze: `game::TerrainRenderer` trzyma **teren**, jedną dużą siatkę trójkątów zbudowaną w kodzie z mapy wysokości i wymienianą na nową, gdy teren się zmienia, a `game::GrassRenderer` siatkę **punktów** (`GL_POINTS`), po jednym na kępkę trawy, z których shader geometrii robi źdźbła. Razem dziesięć siatek. Komentarze w `Mesh.hpp` wymieniają odtąd trzy prymitywy, a kod klasy się nie zmienił: `GL_POINTS` to po prostu kolejna wartość parametru `primitive`. `Mesh` nadal **nie ma testu jednostkowego**, bo wymaga kontekstu OpenGL. Co wiadomo o jej działaniu, mówi sekcja 5.6.
 
 Dwie rzeczy z wcześniejszych kamieni milowych zniknęły w M5. Kostka z M1, która miała własne VAO i bufory jako pola `NightMazeApp` i nie korzystała z `Mesh`, została usunięta. `game::LightRig` nie ma już siatki znacznika światła (małego sześcianu z trójkątów): źródłem światła punktowego, które widać, jest teraz model kryształu.
 
 ## 1. Po co to jest
 
-Żeby narysować jedną bryłę, trzeba wykonać zawsze te same kroki: utworzyć VAO, wysłać tablicę wierzchołków do bufora, wysłać indeksy do drugiego bufora, opisać każdy atrybut wywołaniem `setFloatAttribute` z krokiem i przesunięciem, a przy rysowaniu związać VAO i zawołać `glDrawElements` ([`buffers-vao.md`](buffers-vao.md), sekcja 3.1). W M1 robiła to ręcznie kostka wpisana w `NightMazeApp`: tablica liczb `float`, stałe kroku i przesunięć, trzy pola i jedno wywołanie rysujące. Dla jednej bryły to dobry sposób, bo widać każdy krok. Model wczytany z pliku wymaga tych samych kroków, tylko dane przychodzą z loadera, a modeli jest kilka (odcinek ściany, słupek, płytka podłogi, kryształy, brama). Powtarzanie tych samych dziesięciu linii dla każdego modelu to dziesięć miejsc na pomyłkę.
+Żeby narysować jedną bryłę, trzeba wykonać zawsze te same kroki: utworzyć VAO, wysłać tablicę wierzchołków do bufora, wysłać indeksy do drugiego bufora, opisać każdy atrybut wywołaniem `setFloatAttribute` z krokiem i przesunięciem, a przy rysowaniu związać VAO i zawołać `glDrawElements` ([`buffers-vao.md`](buffers-vao.md), sekcja 3.1). W M1 robiła to ręcznie kostka wpisana w `NightMazeApp`: tablica liczb `float`, stałe kroku i przesunięć, trzy pola i jedno wywołanie rysujące. Dla jednej bryły to dobry sposób, bo widać każdy krok. Model wczytany z pliku wymaga tych samych kroków, tylko dane przychodzą z loadera, a modeli jest kilka (odcinek ściany, słupek, kryształy, brama, a do M5 także płytka podłogi). Powtarzanie tych samych dziesięciu linii dla każdego modelu to dziesięć miejsc na pomyłkę.
 
 Dlatego dochodzą dwie rzeczy:
 
@@ -134,8 +134,11 @@ Pierwszy parametr `glDrawElements` mówi, jak grupować indeksy:
 |---|---|---|
 | `GL_TRIANGLES` | każde trzy kolejne indeksy to trójkąt | 3 |
 | `GL_LINES` | każde dwa kolejne indeksy to odcinek | 2 |
+| `GL_POINTS` (od drugiej części M6) | każdy indeks to jeden punkt | 1 |
 
 Dane i klasa są te same, zmienia się tylko interpretacja. `Mesh` przyjmuje prymityw w konstruktorze (domyślnie `GL_TRIANGLES`), bo rysowanie pudełek i kul kolizji używa tej samej klasy z `GL_LINES`: 8 wierzchołków sześcianu i 24 indeksy dwunastu krawędzi oraz 32 punkty okręgu i 64 indeksy trzydziestu dwóch odcinków (sekcja 5.7).
+
+**Punkty.** Trzeci prymityw doszedł razem z trawą. Komentarz konstruktora w `Mesh.hpp` mówi o nim: "GL_POINTS (every index is one point: the input of a geometry shader that builds its own triangles)". Siatka punktów sama z siebie dałaby na ekranie pojedyncze piksele. W grze służy jako **wejście shadera geometrii**: każdy punkt to jedna kępka trawy, a `grass.geom` zamienia go na trzy źdźbła z trójkątów ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)). Rodzaj prymitywu podany w `glDrawElements` musi się zgadzać z deklaracją wejścia shadera geometrii (`layout(points) in;`): narysowanie tym programem siatki z `GL_TRIANGLES` kończy się błędem `GL_INVALID_OPERATION`. Przy `GL_POINTS` indeksy niczego nie oszczędzają (żaden punkt nie jest wspólny dla dwóch elementów), ale `Mesh` rysuje zawsze przez `glDrawElements`, więc `GrassRenderer` wypełnia bufor indeksów kolejnymi liczbami 0, 1, 2 i tak dalej. To cena jednej klasy dla wszystkich siatek: 4 bajty na kępkę.
 
 ## 3. Jak to działa w OpenGL
 
@@ -159,7 +162,7 @@ Sygnatura `glDrawElements(mode, count, type, indices)`:
 
 | Parametr | Co podaje `Mesh` |
 |---|---|
-| `mode` | pole `m_primitive`: `GL_TRIANGLES` albo `GL_LINES` |
+| `mode` | pole `m_primitive`: `GL_TRIANGLES`, `GL_LINES` albo `GL_POINTS` |
 | `count` | liczba indeksów do narysowania (nie trójkątów) |
 | `type` | `GL_UNSIGNED_INT`: jeden indeks to 4 bajty bez znaku |
 | `indices` | przesunięcie pierwszego indeksu w buforze indeksów, **w bajtach**, zapisane jako wskaźnik |
@@ -219,7 +222,7 @@ struct Vertex {
 - `{0.0F}` to wartość początkowa pola: konstruktor `glm::vec3` z jedną liczbą wypełnia nią wszystkie składowe. Wierzchołek utworzony przez `Vertex vertex;` ma więc same zera, a nie przypadkowe wartości. Loader z tego korzysta: gdy plik nie podaje normalnej albo współrzędnej tekstury, pole zostaje zerowe. Styczna jest zerowa, dopóki ktoś jej nie policzy: w modelach z plików robi to loader, a w siatkach budowanych w kodzie (sześcian i okrąg w `ColliderLines`) zostaje zerowa, bo program `color` jej nie czyta.
 - Kolejność pól jest kolejnością w pamięci: pozycja, normalna, uv, styczna. Od niej zależą przesunięcia 0, 12, 24 i 32. Styczna doszła na końcu, więc przesunięcia trzech starszych pól się nie zmieniły.
 - **Styczna** (tangent) to kierunek na powierzchni, w którym rośnie `u`. Ma mieć długość 1 i być prostopadła do normalnej: oba warunki zapewnia `assets::computeTangents` ([`normal-mapping.md`](normal-mapping.md), sekcja 2.8). Samo oświetlenie stycznej nie potrzebuje, wystarcza mu normalna. Potrzebuje jej mapowanie normalnych, żeby kierunek odczytany z mapy przenieść z przestrzeni stycznej do przestrzeni świata.
-- Wierzchołek **nie ma znaku skrętności** (handedness), który w wielu programach jest czwartą składową stycznej. Żaden trójkąt sześciu modeli gry nie ma lustrzanej tekstury (dla trzech modeli z M5 policzyłem to z plików OBJ tym samym wzorem, którego używa `assets::countMirroredTriangles`: wynik to zero), więc bitangenta `cross(N, T)` jest wszędzie poprawna ([`normal-mapping.md`](normal-mapping.md), sekcja 2.9, i notatka [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md)).
+- Wierzchołek **nie ma znaku skrętności** (handedness), który w wielu programach jest czwartą składową stycznej. Żaden trójkąt pięciu modeli gry nie ma lustrzanej tekstury (dla trzech modeli z M5 policzyłem to z plików OBJ tym samym wzorem, którego używa `assets::countMirroredTriangles`: wynik to zero), a dla siatki terenu to samo sprawdza test w `tests/TerrainTests.cpp` ("every triangle of the mesh faces up, and its texture is not mirrored"), więc bitangenta `cross(N, T)` jest wszędzie poprawna ([`normal-mapping.md`](normal-mapping.md), sekcja 2.9, i notatka [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md)).
 
 ```cpp
 /// Number of floats in each field, the "size" parameter of glVertexAttribPointer.
@@ -277,7 +280,7 @@ private:
 |---|---|
 | `std::span<const Vertex>` | **widok** na ciągły blok elementów: wskaźnik i liczba elementów, bez posiadania pamięci. Przyjmuje `std::vector<Vertex>`, `std::array` i zwykłą tablicę bez kopiowania. `const` w nawiasach znaczy, że przez widok nie da się zmienić danych |
 | `std::span<const std::uint32_t>` | indeksy. `std::uint32_t` to liczba bez znaku o dokładnie 32 bitach |
-| `GLenum primitive = GL_TRIANGLES` | parametr z wartością domyślną: `Mesh(v, i)` rysuje trójkąty, `Mesh(v, i, GL_LINES)` odcinki (sekcja 2.6) |
+| `GLenum primitive = GL_TRIANGLES` | parametr z wartością domyślną: `Mesh(v, i)` rysuje trójkąty, `Mesh(v, i, GL_LINES)` odcinki, `Mesh(v, i, GL_POINTS)` punkty (sekcja 2.6) |
 | `= delete` przy kopiowaniu | kopia miałaby te same identyfikatory OpenGL i usunęłaby je drugi raz ([`README.md`](README.md), sekcja 2.2). Kompilator i tak nie umiałby jej wygenerować, bo pola nie dają się kopiować. Zapis jawny mówi to czytelnikowi |
 | `noexcept = default` przy przenoszeniu | kompilator generuje przenoszenie **pole po polu**. Każde pole umie się przenieść samo: `VertexArray` i `Buffer` mają własne konstruktory i przypisania przenoszące, które zerują identyfikator w obiekcie źródłowym ([`buffers-vao.md`](buffers-vao.md), sekcja 5.4). `Mesh` nie trzyma żadnego identyfikatora bezpośrednio, więc nie ma czego pisać ręcznie |
 | brak destruktora | z tego samego powodu: destruktory pól zwalniają wszystko. Pola giną w kolejności odwrotnej do deklaracji: bufor indeksów, bufor wierzchołków, VAO |
@@ -380,6 +383,7 @@ Uczciwie: **mało**.
 | `Vertex.hpp` | kompiluje się, oba `static_assert` przechodzą pod MSVC 19.44 (Windows, 2026-10-05), także po dodaniu stycznej (44 bajty). Struktura jest używana przez loader OBJ i jego 20 przypadków testowych ([`../assets/obj-loader.md`](../assets/obj-loader.md), sekcja 5.9) oraz przez 9 przypadków w `tests/TangentTests.cpp` ([`normal-mapping.md`](normal-mapping.md), sekcja 5.10) |
 | `Mesh.hpp`, `Mesh.cpp` | kompilują się bez ostrzeżeń pod MSVC `/W4 /permissive-`, `static_assert` typu indeksu przechodzi |
 | działanie `Mesh` z trójkątami | sprawdzone **na obrazie**, nie testem. W M4 na Windowsie (2026-10-05, NVIDIA GeForce RTX 4070 Ti SUPER) gra rysowała nią ściany, słupki i podłogę labiryntu: na zrzutach ekranu ściany widziane z góry zgadzają się z planem w panelu Maze, tekstury są we właściwej orientacji, a program nie wypisuje żadnej linii `[error]` ani `GL_`, czyli `GL_CHECK` po `glDrawElements` jest czysty. Czwarty atrybut jest sprawdzony tak samo, na obrazie: z mapowaniem normalnych fugi na ścianach wzdłuż X, na ścianach wzdłuż Z, na słupku i na podłodze wyglądają jak rowki ([`normal-mapping.md`](normal-mapping.md), sekcja 5.11), co wymaga poprawnej stycznej w shaderze. Rysowanie zakresem działa na modelach, które mają po jednej części: zakres obejmuje wtedy całą siatkę. Modelu z kilkoma częściami w grze nie ma (także wśród trzech modeli z M5), więc rysowanie zakresu zaczynającego się od indeksu innego niż 0 **nie było sprawdzone** |
+| działanie `Mesh` z punktami (`GL_POINTS`) i wymiana siatki przypisaniem przenoszącym | **zgłoszone**, nie powtórzone przeze mnie: w drugiej części M6 na Windowsie (2026-10-05) trawa i teren są na zrzutach ekranu autora zmiany, czyli siatka punktów przeszła przez shader geometrii, a siatka terenu została narysowana. Zmiana skali wysokości suwakiem (która wymienia siatkę terenu na nową) nie była sprawdzana ręcznie. Na macOS nic z tego nie było uruchamiane |
 | działanie `Mesh` z odcinkami (`GL_LINES`) | sprawdzone na obrazie w M2 + M3: na zrzucie ekranu z widoku z góry żółte pudełka leżą na ścianach i słupkach |
 | M5: siatki kryształów i bramy, siatka okręgu | klasa `Mesh` nie zmieniła się w M5, doszły tylko nowe siatki. Zgłoszone dla Windowsa 2026-10-05: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi (żaden nie dotyka `Mesh`), obraz sprawdzony zrzutami ekranu. Ręcznie nikt jeszcze gry z M5 nie przeszedł |
 | test jednostkowy | nie ma. Klasa wymaga kontekstu OpenGL, którego program testowy nie ma |
@@ -387,12 +391,15 @@ Uczciwie: **mało**.
 
 ### 5.7 Kto używa `Mesh`
 
-Siatki mają dwóch właścicieli i dwóch rysujących:
+Siatki mają pięciu właścicieli. Dwóch pierwszych jest z M2 + M3, trzeci z pierwszej części M6, dwóch ostatnich z drugiej:
 
 | Właściciel | Ile siatek | Prymityw | Kto rysuje |
 |---|---|---|---|
-| `assets::AssetCache` (pole `mesh` struktury `LoadedModel`) | 6: `floor_tile`, `wall_straight`, `wall_pillar`, `crystal_a`, `crystal_b`, `gate` | `GL_TRIANGLES` | `game::drawModel`, wołane przez `game::MazeRenderer` i `game::GameplayRenderer` |
+| `assets::AssetCache` (pole `mesh` struktury `LoadedModel`) | 5: `wall_straight`, `wall_pillar`, `crystal_a`, `crystal_b`, `gate` (do M5 także `floor_tile`, usunięty w drugiej części M6) | `GL_TRIANGLES` | `game::drawModel`, wołane przez `game::MazeRenderer` i `game::GameplayRenderer` |
 | `game::ColliderLines` (pola `m_unitCube` i `m_unitCircle`) | 2: sześcian z krawędzi i okrąg | `GL_LINES` | `ColliderLines::draw` i `ColliderLines::drawSpheres` |
+| `game::Skybox` (pole `m_cube`) | 1: sześcian nieba, 8 narożników i 36 indeksów | `GL_TRIANGLES` | `Skybox::draw` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5) |
+| `game::TerrainRenderer` (pole `m_mesh`) | 1: teren. Dla labiryntu domyślnego 97 x 97 = 9409 wierzchołków i 18432 trójkąty, czyli 55296 indeksów | `GL_TRIANGLES` | `game::drawMesh`, wołane przez `TerrainRenderer::draw` |
+| `game::GrassRenderer` (pole `m_points`) | 1: punkty kępek trawy, 1843 przy domyślnej gęstości w labiryncie domyślnym | `GL_POINTS` | `GrassRenderer::draw` |
 
 **Modele.** `assets::AssetCache::model` tworzy siatkę z wyniku loadera OBJ i chowa ją w strukturze `LoadedModel` ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 5). Linia z [`AssetCache.cpp`](../../../src/assets/AssetCache.cpp):
 
@@ -410,7 +417,7 @@ Rysuje funkcja `game::drawModel` ([`ModelDraw.cpp`](../../../src/game/ModelDraw.
             model->mesh.draw(part.firstIndex, part.indexCount);
 ```
 
-`part` to `assets::ModelPart`: zakres indeksów jednego materiału, przepisany z `ObjPart` loadera (sekcja 2.5). Tekstury i kolor części są ustawiane przed tą linią, a macierz modelu tuż nad nią ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5). Do M4 ta pętla była funkcją składową `MazeRenderer`. W M5 stała się wolną funkcją, bo tym samym kodem rysują teraz dwie klasy: `MazeRenderer::draw` woła ją dla płytek, ścian i słupków, a `GameplayRenderer::draw` dla bramy i każdego niezebranego kryształu ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5). Wszystkie sześć modeli ma po jednej części, więc każde takie wywołanie rysuje całą siatkę.
+`part` to `assets::ModelPart`: zakres indeksów jednego materiału, przepisany z `ObjPart` loadera (sekcja 2.5). Tekstury i kolor części są ustawiane przed tą linią, a macierz modelu tuż nad nią ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5). Do M4 ta pętla była funkcją składową `MazeRenderer`. W M5 stała się wolną funkcją, bo tym samym kodem rysują teraz dwie klasy: `MazeRenderer::draw` woła ją dla płytek, ścian i słupków, a `GameplayRenderer::draw` dla bramy i każdego niezebranego kryształu ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5). Wszystkie pięć modeli ma po jednej części, więc każde takie wywołanie rysuje całą siatkę.
 
 **Linie pudełek i kul kolizji.** `game::ColliderLines` ma dwa pola, `gfx::Mesh m_unitCube` i `gfx::Mesh m_unitCircle`, i tworzy je na liście inicjalizacyjnej konstruktora ([`ColliderLines.cpp`](../../../src/game/ColliderLines.cpp)):
 
@@ -426,15 +433,63 @@ ColliderLines::ColliderLines()
 | `UNIT_CUBE_EDGES` | `std::array` 24 liczb `std::uint32_t`: 12 krawędzi po 2 indeksy |
 | `unitCirclePoints()` | funkcja, która zwraca `std::array` 32 wierzchołków: punkty okręgu o promieniu 1 w płaszczyźnie XY. Zwrócona tablica jest obiektem tymczasowym: żyje do końca inicjalizacji pola, a `Mesh` zdąży skopiować dane na kartę |
 | `unitCircleLines()` | funkcja, która zwraca `std::array` 64 liczb `std::uint32_t`: 32 odcinki po 2 indeksy |
-| `GL_LINES` | każde dwa kolejne indeksy to jeden odcinek. To jedyne dwa miejsca w projekcie, które podają trzeci argument konstruktora |
+| `GL_LINES` | każde dwa kolejne indeksy to jeden odcinek. Do M5 były to jedyne dwa miejsca w projekcie, które podają trzeci argument konstruktora. Od drugiej części M6 podaje go też `GrassRenderer`, z wartością `GL_POINTS` (niżej) |
 
 Same tablice i obie funkcje, liczba po liczbie, omawia [`indexed-drawing.md`](indexed-drawing.md), sekcje 5.3 i 5.4.
 
 Rysowanie pudełek to `m_unitCube.draw();` dla każdego pudełka, po ustawieniu macierzy modelu, która rozciąga sześcian do rozmiarów pudełka i przesuwa go na miejsce. Rysowanie kuli to trzy razy `m_unitCircle.draw();`, z macierzą modelu, która skaluje okrąg do promienia kuli, przesuwa go do jej środka i obraca go kolejno w trzy płaszczyzny ([`../scene/collision.md`](../scene/collision.md), sekcja 5). Dwie siatki na karcie obsługują więc wszystkie pudełka i wszystkie kule.
 
-Oba rodzaje użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiałach: ta sama klasa rysuje modele z teksturą programami `textured`, `lit` i `gouraud`, a gołe odcinki programem `color`.
+Oba rodzaje użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiałach: ta sama klasa rysuje modele z teksturą programami `textured`, `lit` i `gouraud`, a gołe odcinki programem `color`. Od M6 dochodzą sześcian nieba (program `skybox`), teren (te same trzy programy co modele) i punkty trawy (program `grass`).
 
-**Czego już nie ma.** Do M4 trzecim właścicielem siatki było `game::LightRig`: mały sześcian z 8 narożników i 36 indeksów (12 trójkątów), rysowany programem `color` jako znacznik światła punktowego. W M5 został usunięty razem z funkcją, która go rysowała. `LightRig` ma dziś tylko bufor uniformów ([`uniform-buffers.md`](uniform-buffers.md)), a światło punktowe pokazuje model kryształu.
+**Teren: siatka budowana w kodzie i wymieniana.** Wszystkie wcześniejsze siatki powstają raz, przy starcie, i żyją do końca programu. Siatka terenu zależy od rozmiaru labiryntu i od skali wysokości, więc musi dać się zbudować od nowa. `Mesh` nie ma funkcji, która podmienia dane w istniejących buforach. `TerrainRenderer` robi to inaczej ([`TerrainRenderer.cpp`](../../../src/game/TerrainRenderer.cpp)):
+
+```cpp
+TerrainRenderer::TerrainRenderer(assets::AssetCache& assets)
+    // An empty mesh: no vertex and no index. Drawing it draws nothing.
+    : m_mesh(std::span<const gfx::Vertex>{}, std::span<const std::uint32_t>{}),
+```
+
+```cpp
+void TerrainRenderer::upload(const TerrainMeshData& mesh) {
+    // A gfx::Mesh is filled once, when it is created. So a new mesh is made, and the
+    // move assignment deletes the buffers of the old one.
+    m_mesh = gfx::Mesh(mesh.vertices, mesh.indices);
+}
+```
+
+| Fragment | Co robi i dlaczego |
+|---|---|
+| `m_mesh(std::span<const gfx::Vertex>{}, std::span<const std::uint32_t>{})` | `Mesh` nie ma konstruktora domyślnego, a pole musi czymś być, zanim powstanie pierwszy teren. Dwa puste widoki dają siatkę z VAO i dwoma buforami bez danych: `indexCount()` to 0, więc `draw()` woła `glDrawElements` z liczbą 0 i nic nie rysuje |
+| `gfx::Mesh(mesh.vertices, mesh.indices)` | nowy, tymczasowy obiekt: nowe VAO, nowe dwa bufory, dane wysłane na kartę w całości. `std::vector` zamienia się na `std::span` sam |
+| `m_mesh = ...` | **przypisanie przenoszące** (sekcja 5.3: `= default`). Przenosi po kolei pola, czyli `VertexArray` i dwa `Buffer`, a przypisanie przenoszące każdego z nich najpierw usuwa obiekt OpenGL, który dotąd posiadało ([`buffers-vao.md`](buffers-vao.md), sekcja 5). Stara siatka znika więc z karty w tej samej linii, w której przychodzi nowa, bez żadnego ręcznego `glDelete*` |
+
+To pierwsze miejsce w projekcie, w którym przenoszenie `Mesh` jest używane **po** konstrukcji, a nie tylko przy wkładaniu do struktury. `upload` woła `NightMazeApp::uploadGround`: przy starcie, po każdym nowym labiryncie i po każdej zmianie suwaka `Height scale` w panelu Terrain, czyli podczas ciągnięcia suwaka nawet co klatkę. Każde wywołanie tworzy i usuwa trzy obiekty OpenGL i wysyła 9409 wierzchołków po 44 bajty (około 414 kB) oraz 55296 indeksów po 4 bajty (około 221 kB). Podpowiedź `GL_STATIC_DRAW`, z którą `Mesh` tworzy bufory, pasuje tu tylko w przybliżeniu: dane jednego obiektu bufora rzeczywiście nie zmieniają się nigdy, zmienia się sam obiekt. Kosztu tej wymiany nikt nie mierzył. Wierzchołki i indeksy liczy na procesorze `game::buildTerrainMesh`, opisane w [`../renderer/terrain.md`](../renderer/terrain.md).
+
+**Trawa: siatka punktów.** `GrassRenderer` ([`GrassRenderer.cpp`](../../../src/game/GrassRenderer.cpp)) trzyma siatkę tak samo (pusta w konstruktorze, wymieniana w `upload`), ale z trzecim argumentem:
+
+```cpp
+    for (const GrassTuft& tuft : tufts) {
+        // With GL_POINTS every index is one point, so the indices simply count up.
+        indices.push_back(static_cast<std::uint32_t>(vertices.size()));
+        vertices.push_back({.position = tuft.position, .uv = {tuft.random, 0.0F}});
+    }
+
+    // A gfx::Mesh is filled once, when it is created. So a new mesh is made, and the
+    // move assignment deletes the buffers of the old one.
+    m_points = gfx::Mesh(vertices, indices, GL_POINTS);
+```
+
+| Fragment | Co robi i dlaczego |
+|---|---|
+| `indices.push_back(... vertices.size())` | indeks nowego wierzchołka to liczba wierzchołków przed jego dodaniem: 0, 1, 2 i tak dalej. Dlatego ta linia stoi **przed** `vertices.push_back` |
+| `.position = tuft.position` | korzeń kępki, od razu w przestrzeni świata |
+| `.uv = {tuft.random, 0.0F}` | **pole wierzchołka użyte do czegoś innego niż nazwa mówi.** Punkt nie ma tekstury, więc współrzędna `u` niesie liczbę losową kępki (od 0 do 1), z której shader wyprowadza obrót, wysokość i fazę kołysania. Druga składowa jest zerem. Dzięki temu trawa nie potrzebuje własnej struktury wierzchołka ani własnego układu atrybutów: `Mesh` opisuje cztery atrybuty `Vertex` jak zawsze |
+| pola `normal` i `tangent` pominięte | inicjalizacja z nazwami pól zostawia je przy wartościach domyślnych struktury, czyli zerach. `grass.vert` deklaruje tylko atrybuty o numerach 0 (pozycja) i 2 (uv), więc dwóch pozostałych nikt nie czyta. Każdy punkt zajmuje mimo to pełne 44 bajty: 1843 kępki to około 81 kB, z czego używane jest 16 bajtów na punkt |
+| `GL_POINTS` | każdy indeks to jeden punkt. Bez tego argumentu indeksy byłyby czytane trójkami jako trójkąty |
+
+Obie nowe siatki pokazują to samo co modele i odcinki: `Mesh` nie wie, co rysuje. Te same 44 bajty na wierzchołek opisują róg ściany, punkt terenu i kępkę trawy, a znaczenie pól ustala shader, który je czyta.
+
+**Czego już nie ma.** Model płytki podłogi (`floor_tile.obj`, 4 wierzchołki i 6 indeksów, rysowany 100 razy na klatkę w labiryncie domyślnym) został usunięty w drugiej części M6: zastąpiła go siatka terenu. Do M4 kolejnym właścicielem siatki było `game::LightRig`: mały sześcian z 8 narożników i 36 indeksów (12 trójkątów), rysowany programem `color` jako znacznik światła punktowego. W M5 został usunięty razem z funkcją, która go rysowała. `LightRig` ma dziś tylko bufor uniformów ([`uniform-buffers.md`](uniform-buffers.md)), a światło punktowe pokazuje model kryształu.
 
 ## 6. Panel ImGui
 
@@ -453,7 +508,7 @@ Oba rodzaje użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiała
 9. **Rysowanie obiektem, z którego przeniesiono.** Po `Mesh b = std::move(a);` obiekt `a` nie ma VAO. `a.draw()` wiąże VAO numer 0 i woła `glDrawElements`, co w profilu Core kończy się błędem `GL_INVALID_OPERATION`.
 10. **Puste tablice.** `Mesh` z zerową liczbą indeksów jest poprawny: `draw()` woła `glDrawElements` z liczbą 0 i nic nie rysuje.
 11. **Utworzenie siatki zmienia wiązania.** Konstruktor zostawia związany nowy VAO, a z `GL_ARRAY_BUFFER` nowy bufor wierzchołków. Kod, który po utworzeniu własnych buforów liczy na to, że nadal są związane, nie może między tymi krokami tworzyć siatek. Dziś takiego kodu w projekcie nie ma. Do M4 była nim kostka z M1 i dlatego pola `NightMazeApp`, przez które powstają siatki, stały przed jej polami ([`buffers-vao.md`](buffers-vao.md), pułapka 12).
-12. **Prymityw niezgodny z indeksami.** Klasa nie sprawdza, czy liczba indeksów pasuje do prymitywu. Indeksy trójkątów narysowane jako `GL_LINES` dają przypadkowe odcinki, a indeksy odcinków narysowane jako `GL_TRIANGLES` przypadkowe trójkąty (ćwiczenie 5).
+12. **Prymityw niezgodny z indeksami.** Klasa nie sprawdza, czy liczba indeksów pasuje do prymitywu. Indeksy trójkątów narysowane jako `GL_LINES` dają przypadkowe odcinki, a indeksy odcinków narysowane jako `GL_TRIANGLES` przypadkowe trójkąty (ćwiczenie 5). To samo dotyczy `GL_POINTS`: indeksy trójkątów narysowane jako punkty dają po jednym pikselu w każdym rogu.
 13. **Szerokość linii.** `ColliderLines` zostawia domyślną szerokość 1 piksela. Profil Core nie musi obsługiwać szerszych linii przez `glLineWidth`, a komentarz w `ColliderLines.cpp` mówi, że macOS ich nie obsługuje. Tego na Macu nie sprawdzałem.
 
 ## 8. Ćwiczenia
@@ -465,7 +520,7 @@ Oba rodzaje użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiała
 3. **Asercja w działaniu.** Dopisz tymczasowo do `Vertex` pole `float extra = 0.0F;` i zbuduj projekt. Przeczytaj komunikat kompilatora. Potem zamień je na `char flag = 0;`. Ile wynosi teraz `sizeof(Vertex)` i dlaczego nie 45? Wycofaj zmianę.
 4. **Układ standardowy.** Dopisz tymczasowo do `Vertex` funkcję `virtual void f() {}`. Obie asercje zgłaszają błąd: dlaczego zmienił się rozmiar i dlaczego `offsetof` przestaje być bezpieczne?
 5. **Odcinki zamiast trójkątów.** W `AssetCache.cpp` dopisz trzeci argument: `gfx::Mesh(source.vertices, source.indices, GL_LINES)`. Co widać i dlaczego to nie jest siatka krawędzi modelu? (Wskazówka: indeksy są pogrupowane trójkami, a `GL_LINES` czyta je parami.)
-6. **Pół modelu.** W `game::drawModel` (`src/game/ModelDraw.cpp`) zamień `part.indexCount` na `part.indexCount / 2`. Zmiana dotyczy wszystkich sześciu modeli. Których ścian modeli brakuje i co stało się z płytkami podłogi (6 indeksów, czyli po zmianie 3)? Liczba indeksów ściany (90) dzieli się na pół bez reszty z dzielenia przez 3. Co by się stało z ostatnim, niepełnym trójkątem, gdyby się nie dzieliła?
+6. **Pół modelu.** W `game::drawModel` (`src/game/ModelDraw.cpp`) zamień `part.indexCount` na `part.indexCount / 2`. Zmiana dotyczy wszystkich pięciu modeli, ale nie terenu, który rysuje `drawMesh` przez `mesh.draw()` bez zakresu. Których ścian modeli brakuje? Liczba indeksów ściany (90) dzieli się na pół bez reszty z dzielenia przez 3. Co by się stało z ostatnim, niepełnym trójkątem, gdyby się nie dzieliła?
 7. **Trójkąty z krawędzi.** W `ColliderLines.cpp` usuń argument `GL_LINES` z konstruktora `m_unitCube`. Włącz rysowanie w panelu Collision (`Draw collision shapes`). Co widać zamiast krawędzi i ile trójkątów powstaje z 24 indeksów? Zrób to samo dla `m_unitCircle`: 64 indeksy nie dzielą się przez 3. Ile pełnych trójkątów powstaje i co dzieje się z ostatnim indeksem?
 
 ## 9. Pytania kontrolne
@@ -501,13 +556,13 @@ Oba rodzaje użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiała
     Nie rysuje nic. Suma `firstIndex + indexCount` na liczbach 32-bitowych bez znaku mogłaby się przekręcić i dać małą wartość, więc warunek sprawdza osobno początek i to, czy długość mieści się w reszcie bufora.
 
 11. **Po co parametr `primitive`?**
-    Mówi `glDrawElements`, jak grupować indeksy: trójkami (`GL_TRIANGLES`) albo parami (`GL_LINES`). Ta sama klasa rysuje modele (labirynt, bramę, kryształy) i odcinki: krawędzie pudełek oraz okręgi kul kolizji.
+    Mówi `glDrawElements`, jak grupować indeksy: trójkami (`GL_TRIANGLES`), parami (`GL_LINES`) albo pojedynczo (`GL_POINTS`). Ta sama klasa rysuje modele (ściany, słupki, bramę, kryształy), teren i sześcian nieba, odcinki (krawędzie pudełek oraz okręgi kul kolizji) i punkty kępek trawy, z których shader geometrii buduje źdźbła.
 
 12. **Czy `Mesh` jest przetestowany?**
     Nie testem jednostkowym: wymaga kontekstu OpenGL, a program testowy nie tworzy okna. Jest sprawdzony na obrazie na Windowsie: w M4 gra rysowała nim labirynt i pudełka kolizji bez błędów OpenGL, a dla M5 obraz (z bramą i kryształami) został sprawdzony zrzutami ekranu. Rysowanie zakresu, który nie zaczyna się od indeksu 0, nie było sprawdzone, bo modele gry mają po jednej części.
 
 13. **Kto w programie tworzy obiekty `Mesh` i ile ich jest?**
-    `assets::AssetCache` tworzy po jednym dla każdego wczytanego modelu: sześć (płytka podłogi, ściana, słupek, dwa kryształy, brama). `game::ColliderLines` ma dwa: sześcian z krawędzi i okrąg. Razem osiem siatek na karcie, niezależnie od rozmiaru labiryntu i liczby kryształów: każdy obiekt sceny to ta sama siatka z inną macierzą modelu. `game::LightRig` miało do M4 siatkę znacznika światła, w M5 już jej nie ma.
+    `assets::AssetCache` tworzy po jednym dla każdego wczytanego modelu: pięć (ściana, słupek, dwa kryształy, brama). `game::ColliderLines` ma dwa: sześcian z krawędzi i okrąg. `game::Skybox` ma sześcian nieba, `game::TerrainRenderer` teren, a `game::GrassRenderer` punkty trawy. Razem dziesięć siatek na karcie, niezależnie od rozmiaru labiryntu i liczby kryształów: każda ściana i każdy kryształ to ta sama siatka z inną macierzą modelu. Od rozmiaru labiryntu zależy tylko **zawartość** dwóch ostatnich siatek, wymienianych przy każdym nowym labiryncie. `game::LightRig` miało do M4 siatkę znacznika światła, w M5 już jej nie ma.
 
 14. **Dlaczego jedna siatka sześcianu wystarcza do narysowania wszystkich pudełek kolizji?**
     Bo pudełko o krawędziach równoległych do osi to sześcian jednostkowy po skalowaniu i przesunięciu. Rozmiar i miejsce pudełka są w macierzy modelu, a geometria na karcie jest wspólna. Tak samo jedna siatka okręgu wystarcza na wszystkie kule: promień, środek i obrót w jedną z trzech płaszczyzn są w macierzy modelu.
