@@ -539,7 +539,16 @@ Te uruchomienia sprawdzały wyjście tekstowe, a nie obraz w oknie. Obraz sprawd
 
 Dwie dalsze serie prób są opisane przy swoich tematach: test panelu Shaders i przeładowania kliknięciem w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 5.3), a test kostki, trzech macierzy i literówki w nazwie uniformu w [`uniforms.md`](uniforms.md) (sekcja 5.3).
 
-Na Windowsie klasa i panel nie były jeszcze kompilowane ani uruchamiane.
+**Windows (2026-10-05).** `Shader.cpp` i `ShadersPanel.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń (Debug i Release). Program `night_maze` uruchomiony na karcie NVIDIA wypisał dwie linie `[info]`, żadnej linii `[error]` i narysował kostkę, a z usuniętym średnikiem w pliku `basic.frag` wypisał błąd **raz** i działał dalej z samym tłem i panelami:
+
+```text
+[info] GL_VERSION:  4.1.0 NVIDIA 610.74
+[info] GL_RENDERER: NVIDIA GeForce RTX 4070 Ti SUPER/PCIe/SSE2
+[error] Shader compilation failed: <repo>\build\debug\Debug\assets\shaders/basic.frag
+0(15) : error C0000: syntax error, unexpected '}', expecting ',' or ';' at token "}"
+```
+
+Linia sterownika ma inny format niż na Macu ([`shaders.md`](shaders.md), sekcja 2.6), ale wskazuje linię 15, tak jak sterownik Apple w próbie wyżej. Ścieżka ma mieszane ukośniki: wsteczne w części z katalogu programu i zwykły przed nazwą pliku, bo nazwa `shaders/basic.frag` jest w kodzie zapisana z `/` ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Pozostałych prób z tabel wyżej (test klasy z ukrytym oknem, brak pliku, błąd linkowania) na Windowsie nie powtarzałem, a przycisku `Reload shaders` nikt tam jeszcze nie nacisnął ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11).
 
 Gdzie obiekt klasy jest tworzony i używany w klatce, opisuje [`shaders.md`](shaders.md) (sekcja 5.1).
 

@@ -137,8 +137,8 @@ Skutki praktyczne:
   build tworzy je ponownie.
 - Dowiązanie ma ścieżkę bezwzględną. Po przeniesieniu repozytorium w inne miejsce trzeba
   zbudować program od nowa (`make clean`, potem `make debug`).
-- Na Windowsie w tym miejscu jest kopia, a nie dowiązanie, odświeżana przy każdym
-  budowaniu ([`build-windows.md`](build-windows.md), sekcja 7).
+- Na Windowsie w tym miejscu jest kopia, a nie dowiązanie. Odświeża ją target `copy_assets`
+  ([`build-windows.md`](build-windows.md), sekcja 7).
 
 Co robi każda linia kroku CMake: [`project-structure.md`](project-structure.md), sekcja 3.1,
 blok 7.

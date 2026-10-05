@@ -356,7 +356,7 @@ Same klasy `Buffer` i `VertexArray` oraz pierwszy trójkąt sprawdziłem osobno 
 
 **Program `night_maze`.** Uruchomiony na około 3 sekundy z katalogu repozytorium wypisał dwie linie `[info]` i żadnej linii `[error]`, w tym żadnego błędu OpenGL od `GL_CHECK` wokół `glDrawElements`. Samego obrazu w oknie programu to uruchomienie nie sprawdzało.
 
-Na Windowsie kostka nie była jeszcze uruchamiana ([`buffers-vao.md`](buffers-vao.md), sekcja 5.8).
+Na Windowsie (2026-10-05, MSVC 19.44, karta NVIDIA) program też wypisał dwie linie `[info]` i żadnej linii `[error]`, w buildzie Debug i Release. Obraz sprawdziłem tam na zrzucie ekranu: kostka na środku okna, ściana czerwona z przodu, niebieska z lewej, turkusowa u góry, żadna ściana nie prześwituje przez inną ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11).
 
 ## 6. Panel ImGui
 

@@ -81,7 +81,7 @@ glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 ```
 
-Wersja w hintach to **minimum**, a nie wartość dokładna. Na Windowsie sterownik zwykle odda kontekst nowszy (na przykład 4.6), bo jest on zgodny z 4.1 Core. Dlatego panel Renderer może pokazywać na Windowsie wersję wyższą niż 4.1 i to nie jest błąd. Zabezpieczeniem przed przypadkowym użyciem funkcji z 4.2+ jest GLAD wygenerowany dla 4.1 Core: takich funkcji po prostu nie ma w nagłówku i kod się nie skompiluje (zob. [`../../libraries/glad.md`](../../libraries/glad.md)).
+Wersja w hintach to **minimum**, a nie wartość dokładna. Na Windowsie sterownik może oddać kontekst nowszy (na przykład 4.6), bo jest on zgodny z 4.1 Core. Dlatego panel Renderer może pokazywać na Windowsie wersję wyższą niż 4.1 i to nie jest błąd. Nie każdy sterownik tak robi: na moim PC sterownik NVIDII oddał dokładnie wersję, o którą prosi program (`GL_VERSION: 4.1.0 NVIDIA 610.74`). Zabezpieczeniem przed przypadkowym użyciem funkcji z 4.2+ jest GLAD wygenerowany dla 4.1 Core: takich funkcji po prostu nie ma w nagłówku i kod się nie skompiluje (zob. [`../../libraries/glad.md`](../../libraries/glad.md)).
 
 ### 3.2 Jedna klatka
 

@@ -164,8 +164,10 @@ podkatalogu `glm/`. Stąd zapis `#include <glm/glm.hpp>`.
 Sprawdzenie na Macu (clang, Debug i Release): pliki dołączające GLM
 (`src/scene/Transform.cpp`, `src/scene/Camera.cpp`, `src/gfx/Shader.cpp` i przez nagłówki
 `src/game/NightMazeApp.cpp`) kompilują się bez żadnego ostrzeżenia, a clang-tidy z regułami
-projektu niczego w nich nie zgłasza. Na Windowsie
-(MSVC, `/W4`) nie było to jeszcze sprawdzane.
+projektu niczego w nich nie zgłasza. Na Windowsie (MSVC 19.44, `/W4 /permissive-`, Debug i
+Release, 2026-10-05) te same pliki też kompilują się bez żadnego ostrzeżenia, a katalog
+`_deps/glm-src` trafia do kompilatora jako zewnętrzny, przez `/external:I`
+([`../guides/build-windows.md`](../guides/build-windows.md), sekcja 5).
 
 ### Co GLM robi w swoim `CMakeLists.txt` i dlaczego nas to nie dotyczy
 
@@ -597,7 +599,9 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
     `target_compile_definitions(engine PUBLIC ...)`, tak jak `GLFW_INCLUDE_NONE`, a nie przez
     `#define` w jednym pliku. Makro zmienia zachowanie funkcji `inline`, więc różna wartość w
     różnych plikach `.cpp` oznacza dwie różne definicje tej samej funkcji w jednym programie.
-14. **MSVC.** Nic z tej listy nie było jeszcze sprawdzane na Windowsie.
+14. **MSVC.** Zmierzony jest wynik: build Debug i Release w MSVC 19.44 pod
+    `/W4 /permissive-` przechodzi bez żadnego ostrzeżenia. Wyjaśnienia w podpunktach niżej
+    (C4201, `/Za`) pochodzą z lektury źródeł GLM i nie były osobno sprawdzane.
     - Plikami, które MSVC skompiluje razem z GLM, są `src/scene/Transform.cpp`,
       `src/scene/Camera.cpp`, `src/gfx/Shader.cpp` i każdy plik dołączający ich nagłówki.
       Pliki `scene` oprócz samych nagłówków używają stałych
@@ -609,9 +613,10 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
       `type_vec4.hpp`), a dodatkowo całe nagłówki są u nas systemowe.
     - `CMakeLists.txt` GLM dodaje na MSVC flagę `/Za`. Dotyczy ona tylko targetów GLM, a
       przy `GLM_BUILD_LIBRARY OFF` nie ma tam niczego do skompilowania (sekcja 2).
-    - To, czy pod `/W4` nie pojawiają się ostrzeżenia z nagłówków GLM i czy katalog GLM
-      trafia do kompilatora jako zewnętrzny (`/external:I`), jest punktem listy kontrolnej w
-      [`../guides/build-windows.md`](../guides/build-windows.md), sekcja 11.
+    - Zmierzone: pod `/W4` nie pojawia się żadne ostrzeżenie z nagłówków GLM, a katalog
+      `_deps/glm-src` trafia do kompilatora jako zewnętrzny (`/external:I`, z
+      `ExternalWarningLevel` równym `TurnOffAllWarnings`). Punkt listy kontrolnej w
+      [`../guides/build-windows.md`](../guides/build-windows.md), sekcja 11, jest odhaczony.
 
 ## 5. Pytania kontrolne
 

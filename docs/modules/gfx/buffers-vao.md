@@ -553,7 +553,7 @@ Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co naj
 
 Test gotowej kostki, czyli prawdziwego kodu rysującego z `NightMazeApp`, jest w [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.7.
 
-Na Windowsie klasy nie były jeszcze kompilowane ani uruchamiane.
+Na Windowsie (2026-10-05) `Buffer.cpp` i `VertexArray.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń, a program `night_maze` rysuje nimi kostkę bez żadnej linii `[error]` ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11). Testów z ukrytym oknem z tej sekcji na Windowsie nie powtarzałem.
 
 ## 6. Panel ImGui
 

@@ -469,7 +469,7 @@ Obie funkcje liczą macierz od nowa przy każdym wywołaniu. To kilkadziesiąt m
 
 Trzy wiersze tej tabeli, które dotyczą `Transform`, są w [`transforms.md`](transforms.md), sekcja 5.5.
 
-Build Debug i Release (clang, `-Wall -Wextra -Wpedantic`) przechodzi bez ostrzeżeń, a clang-tidy z regułami projektu nie zgłasza niczego w plikach `src/scene/`. Na Windowsie (MSVC) ten kod nie był jeszcze kompilowany.
+Build Debug i Release (clang, `-Wall -Wextra -Wpedantic`) przechodzi bez ostrzeżeń, a clang-tidy z regułami projektu nie zgłasza niczego w plikach `src/scene/`. Na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05) build Debug i Release też przechodzi bez ostrzeżeń.
 
 ### 5.7 Użycie w `NightMazeApp`: trzy macierze w `onRender`
 

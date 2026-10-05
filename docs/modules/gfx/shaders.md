@@ -116,9 +116,9 @@ Kompilator GLSL jest częścią **sterownika karty graficznej**, a nie mojego pr
 | Sterownik | Przykładowa linia błędu |
 |---|---|
 | Apple (macOS) | `ERROR: 0:5: '}' : syntax error: syntax error` |
-| NVIDIA | `0(5) : error C0000: syntax error, unexpected '}'` |
+| NVIDIA (Windows) | `0(15) : error C0000: syntax error, unexpected '}', expecting ',' or ';' at token "}"` |
 
-W formacie Apple `0:5` to numer napisu źródłowego (zawsze 0, bo podaję jeden napis) i numer linii. Pierwsza linia tabeli pochodzi z testu klasy na Macu ([`shader-class.md`](shader-class.md), sekcja 5.10), druga jest przykładem formatu NVIDII. Ponieważ formatów jest wiele, klasa `Shader` nie próbuje tekstu sterownika czytać ani poprawiać: przekazuje go w całości.
+W formacie Apple `0:5` to numer napisu źródłowego (zawsze 0, bo podaję jeden napis) i numer linii. W formacie NVIDII te same dwie liczby stoją jako `0(15)`: numer napisu, a w nawiasie numer linii. Obie linie są zmierzone. Pierwsza pochodzi z testu klasy na Macu ([`shader-class.md`](shader-class.md), sekcja 5.10), druga z programu `night_maze` uruchomionego na Windowsie z usuniętym średnikiem w `basic.frag` (sterownik NVIDIA 610.74, [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11). Numery linii się różnią, bo to dwa różne pliki testowe. Ponieważ formatów jest wiele, klasa `Shader` nie próbuje tekstu sterownika czytać ani poprawiać: przekazuje go w całości.
 
 Zarówno wynik kompilacji, jak i linkowania trzeba **odczytać samemu**: OpenGL nie zgłasza ich przez `glGetError` ([`shader-class.md`](shader-class.md), sekcja 3.3).
 
@@ -349,7 +349,7 @@ Pułapki dotyczące klasy `Shader` i odczytu błędów są w [`shader-class.md`]
 
 ## 8. Ćwiczenia
 
-Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo `.frag` zapisz plik i naciśnij `Reload shaders` w panelu Shaders. Kompilacja C++ nie jest potrzebna. Na macOS przycisk od razu widzi zmianę, bo `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Na Windowsie przed naciśnięciem przycisku trzeba wykonać `cmake --build --preset debug`, które odświeża kopię shaderów obok programu. Ćwiczenia 1 i 4 w [`shader-class.md`](shader-class.md) dotyczą błędu **przy starcie**, więc tam program trzeba uruchomić od nowa. Po każdym ćwiczeniu przywróć plik (`git checkout assets/shaders`) i naciśnij przycisk jeszcze raz.
+Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo `.frag` zapisz plik i naciśnij `Reload shaders` w panelu Shaders. Kompilacja C++ nie jest potrzebna. Na macOS przycisk od razu widzi zmianę, bo `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Na Windowsie przed naciśnięciem przycisku trzeba wykonać `cmake --build --preset debug --target copy_assets`, które odświeża kopię shaderów obok programu ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.5). Ćwiczenia 1 i 4 w [`shader-class.md`](shader-class.md) dotyczą błędu **przy starcie**, więc tam program trzeba uruchomić od nowa. Po każdym ćwiczeniu przywróć plik (`git checkout assets/shaders`) i naciśnij przycisk jeszcze raz.
 
 1. **Potok na kartce.** Narysuj z pamięci diagram z sekcji 2.1. Zaznacz etapy programowalne. Trzy widoczne ściany kostki zakrywają w oknie 1280 x 720 około 73 tysięcy punktów (na ekranie Retina cztery razy więcej pikseli: zmierzone 291 620). Kostka ma 24 wierzchołki i 36 indeksów. Ile razy na klatkę wykonuje się `main` z `basic.vert`? Ile razy co najmniej wykonuje się `main` z `basic.frag` i dlaczego może więcej (pomyśl o ścianach tylnych i teście głębi)?
 2. **Stały kolor.** W `basic.frag` zamień `vec4(vColor, 1.0)` na `vec4(1.0, 0.5, 0.2, 1.0)`. Naciśnij `Reload shaders`. Jak wygląda kostka i dlaczego nie widać już krawędzi między ścianami? Czy shader nadal się linkuje, mimo że `vColor` nie jest już używane?

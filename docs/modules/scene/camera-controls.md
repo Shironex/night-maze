@@ -351,7 +351,7 @@ Zdarzenia myszy w dwóch ostatnich wierszach były podawane wprost do ImGui (`Im
 
 Prawdziwy program uruchomiony na 3 sekundy (Debug) nie wypisuje żadnej linii `[error]`.
 
-**Część ręczna.** Tego, co wymaga człowieka przy myszy i klawiaturze, program testowy nie sprawdził: przechwycenia kursora po kliknięciu, kierunku i płynności obrotu, ruchu klawiszami, zwolnienia kursora klawiszem Escape, zachowania paneli przy przechwyconym kursorze. To jest scenariusz z sekcji 6 i lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na Windowsie (MSVC, surowy ruch myszy) kod nie był jeszcze uruchamiany.
+**Część ręczna.** Tego, co wymaga człowieka przy myszy i klawiaturze, program testowy nie sprawdził: przechwycenia kursora po kliknięciu, kierunku i płynności obrotu, ruchu klawiszami, zwolnienia kursora klawiszem Escape, zachowania paneli przy przechwyconym kursorze. To jest scenariusz z sekcji 6 i lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na Windowsie (2026-10-05) kod kompiluje się w MSVC bez ostrzeżeń, program startuje bez linii `[error]`, a panel Camera pokazuje wartości startowe (`Position` 0, 0, 3, `Yaw` 0, `Pitch` 0, `FOV` 60). Samego sterowania (surowy ruch myszy, klawisze, przechwycenie kursora) nikt tam jeszcze nie sprawdził: cała część ręczna listy kontrolnej jest na Windowsie otwarta.
 
 ## 6. Panel ImGui
 
