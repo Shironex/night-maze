@@ -1,6 +1,6 @@
 // Tests of gfx::srgbToLinear and gfx::linearToSrgb: the conversion between sRGB encoded
 // and linear colours.
-// See docs/modules/renderer/post-process.md
+// See docs/modules/gfx/color-space.md
 #include "gfx/ColorSpace.hpp"
 
 #include <doctest/doctest.h>

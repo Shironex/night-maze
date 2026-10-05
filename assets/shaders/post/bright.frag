@@ -12,7 +12,8 @@ in vec2 vUv;
 
 // The picture of the scene: linear HDR colours (GL_RGBA16F). The target of this pass
 // is half as large in each direction, so one pixel here lies between four pixels of the
-// scene, and the linear filter of the texture returns their average.
+// scene, and the linear filter of the texture returns their average (exactly so when
+// the width and the height of the scene are even numbers).
 uniform sampler2D uScene;
 
 // Brightness (luminance) above which light takes part in the bloom.

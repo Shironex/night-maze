@@ -145,9 +145,10 @@ Texture2D::Texture2D(int width, int height, int channels, const unsigned char* p
 
     // Builds every smaller level from level 0: each one half as wide and half as high as
     // the one before, down to 1 x 1. They are always built, whatever the filter, so that
-    // the filter can be changed later without touching the pixels again. For an sRGB
-    // texture the smaller levels are averaged from the decoded, linear values and
-    // encoded again, so a far wall has the brightness of the same wall up close.
+    // the filter can be changed later without touching the pixels again. OpenGL does
+    // not say how a level is computed. For an sRGB texture the drivers usually average
+    // the decoded, linear values and encode the result again, so a far wall has the
+    // brightness of the same wall up close: that is what they do, not a promise.
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 
     // How the texture is read (filter, wrapping, anisotropy) is kept in a sampler object

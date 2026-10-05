@@ -35,8 +35,9 @@ struct FogSettings {
     float density = 0.1F;
 
     /// Up to this world height (y, in metres) the fog has its full density. The ground
-    /// of the maze lies between 0 and about 0.5 m, so the default keeps the whole floor
-    /// in the thickest fog.
+    /// of the maze lies between 0 and about 0.6 m at height scale 1 (game::MAZE_RELIEF),
+    /// so the default keeps most of the floor in the thickest fog. The number is fixed:
+    /// it does not follow the height scale of the terrain.
     float baseHeight = 0.5F;
 
     /// How fast the fog thins out above baseHeight, per metre: the density is halved
@@ -49,9 +50,10 @@ struct FogSettings {
     /// The colour a surface fades into: a cold blue-grey, between the ambient light and
     /// the light of the moon (game::LightingSettings). An sRGB value, as a colour picker
     /// shows it: game::PostProcess converts it to a linear colour for the shader. It is
-    /// mixed into the HDR picture before exposure and tone mapping, and the tone mapping
-    /// curve presses dark tones down, so on the screen the fog is darker than this
-    /// colour looks in the picker.
+    /// mixed into the HDR picture before exposure and tone mapping. The Reinhard and
+    /// ACES curves press dark tones down, so with them the fog on the screen is darker
+    /// than this colour looks in the picker. With None (clamp) at exposure 1 the two
+    /// match.
     glm::vec3 color{0.14F, 0.18F, 0.26F};
 };
 

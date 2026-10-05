@@ -129,9 +129,10 @@ vec3 toneMapReinhard(vec3 color) {
 }
 
 // ACES: the look of the film industry reference curve, as the short formula Krzysztof
-// Narkowicz fitted to it (2015). A quotient of two quadratic polynomials shaped like an
-// S: dark tones are pressed down a little (more contrast), the middle is almost
-// straight, and bright values bend softly towards 1. The five numbers are the fit.
+// Narkowicz fitted to it (2016). A quotient of two quadratic polynomials shaped like an
+// S: dark tones are pressed down hard (0.01 comes out as about 0.0038, which gives more
+// contrast), the middle is almost straight, and bright values bend softly towards 1.
+// The five numbers are the fit.
 vec3 toneMapAces(vec3 color) {
     const float A = 2.51;
     const float B = 0.03;
@@ -165,7 +166,9 @@ void main() {
     // the far clipping plane in the direction of the pixel. That point is far away, so
     // the distance alone would hide the sky. But looking upwards it is also very high,
     // where the height factor is almost 0: the moon and the stars stay clear, and only
-    // the sky close to the horizon, and below it, turns into fog.
+    // the sky close to the horizon, and below it, turns into fog. The far plane is flat
+    // and turns with the camera, so on that low strip of sky (and only there) the
+    // amount also depends on where on the screen a pixel is.
     if (uFogEnabled == 1) {
         float depth = texture(uDepth, vUv).r;
         vec3 position = worldPositionFromDepth(vUv, depth);

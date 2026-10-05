@@ -36,8 +36,9 @@ public:
     /// colorSpace says what the bytes mean, and the caller has to know it: the class
     /// does not guess from a file name. ColorSpace::Srgb is for colour pictures: the
     /// texture gets an sRGB internal format (GL_SRGB8 or GL_SRGB8_ALPHA8) and the
-    /// graphics card turns every texel into a linear value when a shader reads it,
-    /// before filtering. ColorSpace::Linear is for data that is not a colour, like the
+    /// graphics card turns every texel into a linear value when a shader reads it
+    /// (before filtering on today's cards: OpenGL 4.1 recommends that order and does
+    /// not demand it). ColorSpace::Linear is for data that is not a colour, like the
     /// directions of a normal map: GL_RGB8 or GL_RGBA8, the numbers arrive unchanged.
     /// Alpha is never sRGB encoded, in either case.
     ///

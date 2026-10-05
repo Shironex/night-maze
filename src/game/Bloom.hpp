@@ -58,8 +58,10 @@ struct BloomSettings {
 
     /// How many times the blur runs (horizontal pass, then vertical pass). Repeating
     /// a Gaussian blur gives a wider Gaussian blur: after n iterations the glow is as
-    /// wide as one blur with sigma BLOOM_BLUR_SIGMA * sqrt(n). With the default that is
-    /// about 7 pixels of the bloom target, so about 15 pixels of a scene twice as large.
+    /// wide as one blur with sigma BLOOM_BLUR_SIGMA * sqrt(n). With the default that
+    /// would be about 7.3 pixels of the bloom target. The kernel is cut off after
+    /// BLOOM_BLUR_RADIUS pixels, which makes one blur a little narrower: about 6.7
+    /// pixels of the bloom target, so about 13 pixels of a scene twice as large.
     int blurIterations = 6;
 };
 

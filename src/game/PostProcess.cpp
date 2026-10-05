@@ -20,8 +20,7 @@ namespace {
 // The texture unit the passes read their input from. Every pass binds what it needs.
 constexpr GLuint SOURCE_TEXTURE_UNIT = 0;
 
-// The composite pass reads two pictures: the scene from the unit above and the bloom
-// from this one.
+// The composite pass reads the scene from the unit above and the bloom from this one.
 constexpr GLuint BLOOM_TEXTURE_UNIT = 1;
 
 // The fog of the composite pass reads a third picture, the depth of the scene, from

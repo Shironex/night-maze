@@ -101,7 +101,9 @@ ColliderLines::ColliderLines()
 void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
                          const glm::vec3& color) const {
     // color is an sRGB value, a colour named for the screen. The scene buffer holds
-    // linear colours, so it is converted here, and the composite pass shows it as given.
+    // linear colours, so it is converted here. The composite pass treats the lines like
+    // the rest of the scene (fog, bloom, exposure, tone mapping, vignette), so the screen
+    // shows the colour exactly as given only without those.
     shader.setVec3(COLOR_UNIFORM, gfx::srgbToLinear(color));
 
     // The line width is left at its default of 1 pixel on purpose: an OpenGL Core

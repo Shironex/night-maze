@@ -181,7 +181,8 @@ void drawFogAndVignetteSettings(game::PostProcessSettings& settings) {
     ImGui::SliderFloat("Base height", &fog.baseHeight, MIN_FOG_BASE_HEIGHT, MAX_FOG_BASE_HEIGHT,
                        "%.2f m", ImGuiSliderFlags_AlwaysClamp);
     ImGui::SetItemTooltip("Fog: up to this world height the fog has its full density.\n"
-                          "The ground of the maze lies between 0 and 0.5 m.");
+                          "The ground of the maze reaches about 0.6 m at height\n"
+                          "scale 1. This number does not follow the height scale.");
     ImGui::TableNextColumn();
     ImGui::SliderFloat("Height falloff", &fog.heightFalloff, MIN_FOG_HEIGHT_FALLOFF,
                        MAX_FOG_HEIGHT_FALLOFF, "%.2f /m", ImGuiSliderFlags_AlwaysClamp);
@@ -194,8 +195,9 @@ void drawFogAndVignetteSettings(game::PostProcessSettings& settings) {
     // lie next to each other: the array of three floats ImGui asks for.
     ImGui::ColorEdit3("Fog colour", &fog.color.x);
     ImGui::SetItemTooltip("The colour surfaces fade into, as an sRGB value. It is mixed\n"
-                          "in before exposure and tone mapping, so on the screen the\n"
-                          "fog is darker than this swatch.");
+                          "in before exposure and tone mapping: with Reinhard or ACES\n"
+                          "the fog on the screen is darker than this swatch, with\n"
+                          "None (clamp) at exposure 1 it matches.");
     game::VignetteSettings& vignette = settings.vignette;
     ImGui::TableNextColumn();
     ImGui::Checkbox("Vignette", &vignette.enabled);
