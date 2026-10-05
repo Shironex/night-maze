@@ -3,3 +3,6 @@
 # build/debug/compile_commands.json
 CompileFlags:
   CompilationDatabase: build/debug
+  # The same switch as ExtraArgs in .clang-tidy, explained there: on Windows it lets
+  # clang accept static_assert(offsetof(...) == ...).
+  Add: [-D_CRT_USE_BUILTIN_OFFSETOF]

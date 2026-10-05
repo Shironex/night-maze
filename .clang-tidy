@@ -11,6 +11,13 @@ Checks: >
   readability-identifier-naming
 
 WarningsAsErrors: ''
+# Only matters on Windows, where clang-tidy reads the headers of the Microsoft C library.
+# Their offsetof macro is written with a pointer cast, which MSVC accepts inside
+# static_assert and clang does not. This switch of that library makes offsetof the
+# built-in of the compiler instead. scene/LightBlock.hpp needs it: it checks the layout of
+# the light block with static_assert(offsetof(...) == ...). The macro cannot be set in
+# CMakeLists.txt: MSVC refuses to define it (warning C4117, a reserved name).
+ExtraArgs: ['-D_CRT_USE_BUILTIN_OFFSETOF']
 HeaderFilterRegex: 'src/.*'
 
 CheckOptions:
