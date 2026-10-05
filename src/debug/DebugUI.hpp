@@ -1,4 +1,4 @@
-// Debug user interface: owns the Dear ImGui context and draws the debug panels.
+// Debug user interface: owns the Dear ImGui context and draws the debug panels and the HUD.
 // See docs/modules/debug-ui.md
 #pragma once
 
@@ -12,7 +12,8 @@ namespace debug {
 
 struct DebugContext;
 
-/// Owns Dear ImGui for the lifetime of the object (RAII) and draws all debug panels.
+/// Owns Dear ImGui for the lifetime of the object (RAII) and draws all debug panels and
+/// the HUD of the game.
 ///
 /// The constructor sets ImGui up for the given window, the destructor shuts it down.
 /// It must be destroyed before the window, because shutdown needs the OpenGL context.
@@ -26,7 +27,7 @@ public:
     DebugUI(const DebugUI&) = delete;
     DebugUI& operator=(const DebugUI&) = delete;
 
-    /// Shows or hides all panels.
+    /// Shows or hides all panels. The HUD of the game is not a panel: it stays.
     void toggleVisible() { m_visible = !m_visible; }
 
     /// True while ImGui uses the keyboard itself: a text field is being edited or another
@@ -46,7 +47,8 @@ public:
     /// panels it passes over. Call it before draw, it takes effect in that draw.
     void setMouseEnabled(bool enabled);
 
-    /// Builds and renders the debug UI on top of the current frame.
+    /// Builds and renders the HUD and, while they are visible, the debug panels on top of
+    /// the current frame.
     /// Call it last in the frame, after the scene has been drawn.
     /// The context holds the data the panels show and edit, see DebugContext.hpp.
     void draw(const DebugContext& context);

@@ -56,20 +56,25 @@ inline constexpr float ASSETS_HEIGHT = REFERENCE_HEIGHT - MAZE_HEIGHT - 3.0F * P
 // Together they are as wide as the space between the columns. The scene stays visible
 // above them, with the middle of the window, where the flashlight shines, well clear.
 inline constexpr float BOTTOM_ROW_LEFT = LEFT_COLUMN_WIDTH + 2.0F * PANEL_GAP;
-inline constexpr float BOTTOM_ROW_HEIGHT = 272.0F;
+inline constexpr float BOTTOM_ROW_HEIGHT = 280.0F;
 inline constexpr float COLLISION_WIDTH = 312.0F;
 inline constexpr float SHADERS_LEFT = BOTTOM_ROW_LEFT + COLLISION_WIDTH + PANEL_GAP;
 inline constexpr float SHADERS_WIDTH =
     REFERENCE_WIDTH - SHADERS_LEFT - RIGHT_COLUMN_WIDTH - 2.0F * PANEL_GAP;
 
-// Camera: the seventh panel. Two columns and a bottom row have room for six, so this one
-// starts folded to its title bar, at the top edge next to the left column. Unfolded it
-// reaches down to the bottom row, covers the left part of the scene and no other panel.
-// It is a little shorter than its contents, so it scrolls.
+// Camera and Gameplay: the seventh and the eighth panel. Two columns and a bottom row
+// have room for six, so these two start folded to their title bars, side by side at the
+// top edge between the columns. Unfolded each reaches down to the bottom row and covers
+// its part of the scene and no other panel. Camera is a little shorter than its
+// contents, so it scrolls. Gameplay may start folded because the HUD shows the state of
+// the round all the time: the panel is for changing the rules.
 inline constexpr float CAMERA_WIDTH = 280.0F;
 inline constexpr float CAMERA_HEIGHT = REFERENCE_HEIGHT - BOTTOM_ROW_HEIGHT - 3.0F * PANEL_GAP;
+inline constexpr float GAMEPLAY_LEFT = BOTTOM_ROW_LEFT + CAMERA_WIDTH + PANEL_GAP;
+inline constexpr float GAMEPLAY_WIDTH =
+    REFERENCE_WIDTH - GAMEPLAY_LEFT - RIGHT_COLUMN_WIDTH - 2.0F * PANEL_GAP;
 
-// The seven panels. No two rectangles overlap in a window of the reference size.
+// The eight panels. No two rectangles overlap in a window of the reference size.
 inline constexpr PanelPlacement RENDERER_PLACEMENT{
     .corner = TOP_LEFT,
     .offset = {PANEL_GAP, PANEL_GAP},
@@ -84,6 +89,12 @@ inline constexpr PanelPlacement CAMERA_PLACEMENT{
     .corner = TOP_LEFT,
     .offset = {BOTTOM_ROW_LEFT, PANEL_GAP},
     .size = {CAMERA_WIDTH, CAMERA_HEIGHT},
+    .collapsed = true,
+};
+inline constexpr PanelPlacement GAMEPLAY_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {GAMEPLAY_LEFT, PANEL_GAP},
+    .size = {GAMEPLAY_WIDTH, CAMERA_HEIGHT},
     .collapsed = true,
 };
 inline constexpr PanelPlacement MAZE_PLACEMENT{

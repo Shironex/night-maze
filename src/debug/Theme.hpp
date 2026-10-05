@@ -32,6 +32,26 @@ inline constexpr ImVec4 PLAN_WALL_COLOR = colorFromBytes(176, 190, 216);
 /// The player on the plan of the Maze panel: the warm light of the flashlight.
 inline constexpr ImVec4 PLAN_PLAYER_COLOR = colorFromBytes(255, 184, 84);
 
+/// Crystals on the plan of the Maze panel, and everything about crystals in the HUD: the
+/// cyan the crystals glow in.
+inline constexpr ImVec4 PLAN_CRYSTAL_COLOR = colorFromBytes(86, 214, 202);
+inline constexpr ImVec4 HUD_CRYSTAL_COLOR = PLAN_CRYSTAL_COLOR;
+
+/// A crystal that is already collected, on the plan: only a dim trace of where it was.
+inline constexpr ImVec4 PLAN_COLLECTED_COLOR = colorFromBytes(44, 104, 112);
+
+/// The gate on the plan while it is closed: the brown of its wood, made light enough to
+/// stand out from the walls. An open gate is drawn like a collected crystal.
+inline constexpr ImVec4 PLAN_GATE_COLOR = colorFromBytes(214, 142, 82);
+
+/// The exit zone on the plan: a soft green, the colour of "this way out".
+inline constexpr ImVec4 PLAN_EXIT_COLOR = colorFromBytes(132, 220, 140);
+
+/// The battery bar of the HUD: the warm light of the flashlight while there is charge,
+/// the soft red of an error once it is low.
+inline constexpr ImVec4 HUD_BATTERY_COLOR = PLAN_PLAYER_COLOR;
+inline constexpr ImVec4 HUD_BATTERY_LOW_COLOR = ERROR_TEXT_COLOR;
+
 /// Sets the colours and the metrics (padding, spacing, rounding, font size) of all panels.
 ///
 /// scale is the content scale of the display: 1 at 100 %, 1.5 at 150 % display scaling on

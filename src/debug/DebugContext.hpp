@@ -15,10 +15,12 @@ class Window;
 
 namespace game {
 enum class ViewMode;
+struct GameplaySettings;
 struct LightingSettings;
 struct MazeSettings;
 struct MazeWorld;
 struct Player;
+struct Round;
 } // namespace game
 
 namespace gfx {
@@ -31,7 +33,7 @@ struct Camera;
 
 namespace debug {
 
-/// Everything the debug panels may read or edit this frame.
+/// Everything the debug panels and the HUD may read or edit this frame.
 ///
 /// A plain struct of references into objects owned by the application. main.cpp builds it
 /// every frame and passes it to DebugUI::draw. It owns nothing and must not outlive the
@@ -47,16 +49,15 @@ struct DebugContext {
     const core::Window& window;
     /// Background color (red, green, blue in the range 0 to 1), editable.
     std::array<float, 3>& clearColor;
-    /// Shader program of the marker cube, editable: the Shaders panel reloads it.
-    gfx::Shader& shader;
     /// Camera of the game, editable: angles and projection.
     scene::Camera& camera;
     /// Mouse look sensitivity in degrees per screen coordinate unit, editable.
     float& mouseSensitivity;
-    /// Shader program of the maze (textured models), editable: reloaded like shader.
+    /// Shader program of the scene without lighting (textured models), editable: the
+    /// Shaders panel reloads it.
     gfx::Shader& texturedShader;
-    /// Shader program of the collision box lines and of the light markers, editable:
-    /// reloaded like shader.
+    /// Shader program of the lines of the collision boxes and spheres, editable:
+    /// reloaded like texturedShader.
     gfx::Shader& colorShader;
     /// The player, editable: position, speeds and the noclip mode.
     game::Player& player;
@@ -68,15 +69,22 @@ struct DebugContext {
     assets::AssetCache& assets;
     /// What the textured shader shows (picture, normals or UVs), editable.
     game::ViewMode& viewMode;
-    /// Whether the collision boxes are drawn as lines, editable.
+    /// Whether the collision boxes and spheres are drawn as lines, editable.
     bool& drawColliders;
-    /// Shader program of the lit maze, lighting per fragment, editable: reloaded like shader.
+    /// Shader program of the lit scene, lighting per fragment, editable: reloaded like
+    /// texturedShader.
     gfx::Shader& litShader;
-    /// Shader program of the lit maze, lighting per vertex, editable: reloaded like shader.
+    /// Shader program of the lit scene, lighting per vertex, editable: reloaded like
+    /// texturedShader.
     gfx::Shader& gouraudShader;
     /// The lighting mode, the settings of every light and the normal mapping switch,
     /// editable.
     game::LightingSettings& lighting;
+    /// The numbers of the rules of a round and the request for a restart, editable.
+    game::GameplaySettings& gameplay;
+    /// The round in play: the HUD and the panels show it. Editable for one thing, the
+    /// charge of the battery (the Gameplay panel).
+    game::Round& round;
 };
 
 } // namespace debug

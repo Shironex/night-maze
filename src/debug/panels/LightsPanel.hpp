@@ -4,7 +4,7 @@
 
 namespace game {
 struct LightingSettings;
-struct MazeWorld;
+struct Round;
 } // namespace game
 
 namespace debug {
@@ -13,8 +13,9 @@ namespace debug {
 ///
 /// lighting is editable: the colours, intensities, angles and ranges of all lights and
 /// the two numbers of the highlight. The game builds the lights of the next frame from
-/// it, so every change is seen at once. world (the maze in play) is read only: the
-/// panel shows how many point lights it has.
-void drawLightsPanel(game::LightingSettings& lighting, const game::MazeWorld& world);
+/// it, so every change is seen at once. round (the round in play) is read only: the
+/// panel shows how many crystals still carry a point light, and says so when the
+/// battery of the flashlight is empty.
+void drawLightsPanel(game::LightingSettings& lighting, const game::Round& round);
 
 } // namespace debug

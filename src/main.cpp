@@ -13,7 +13,7 @@
 
 namespace {
 
-/// The game with the debug UI drawn on top of every frame.
+/// The game with the debug UI and the HUD drawn on top of every frame.
 ///
 /// This is the only place where the game meets the debug UI. The panels read game types,
 /// but nothing in game/ includes debug code, so the game never depends on the panels.
@@ -35,7 +35,6 @@ protected:
             .time = time(),
             .window = window(),
             .clearColor = clearColor(),
-            .shader = shader(),
             .camera = camera(),
             .mouseSensitivity = mouseSensitivity(),
             .texturedShader = texturedShader(),
@@ -49,6 +48,8 @@ protected:
             .litShader = litShader(),
             .gouraudShader = gouraudShader(),
             .lighting = lighting(),
+            .gameplay = gameplaySettings(),
+            .round = round(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

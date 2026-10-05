@@ -9,7 +9,10 @@ czcionek, którego używa motyw paneli ([`src/debug/Theme.cpp`](../../src/debug/
 jest w sekcji 3.12. Widżety, które doszły w M4 razem z panelem Lights
 ([`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp)): zwijane
 nagłówki, zakres z dwóch pól, suwak logarytmiczny i okno, które startuje zwinięte, są w
-sekcji 3.13.
+sekcji 3.13. To, co doszło w M5: HUD gry jako okno ImGui, które jest tylko obrazem
+([`src/debug/Hud.cpp`](../../src/debug/Hud.cpp)), ósmy panel Gameplay
+([`src/debug/panels/GameplayPanel.cpp`](../../src/debug/panels/GameplayPanel.cpp)) i nowe
+kształty na planie w panelu Maze, jest w sekcji 3.14.
 
 Architekturę modułu `debug` i instrukcję "jak dodać nowy panel" zawiera
 [`../modules/debug-ui.md`](../modules/debug-ui.md). Tutaj jest sama biblioteka.
@@ -29,8 +32,11 @@ kamieni milowych przełączniki efektów pokazywane na obronie.
   renderera przez OpenGL.
 - Nie przechowuje naszych danych. Wartość koloru tła żyje w `game::NightMazeApp`, ImGui dostaje
   tylko wskaźnik.
-- Nie jest biblioteką do interfejsu samej gry (menu, HUD dla gracza). To narzędzie dla
-  programisty.
+- Nie jest pomyślana jako biblioteka do interfejsu samej gry (menu, HUD dla gracza): to
+  narzędzie dla programisty. Mały HUD z M5 (licznik kryształów, pasek baterii, karta
+  wygranej) rysuję mimo to przez ImGui, bo biblioteka już jest w programie, a kilka linii
+  tekstu i jeden pasek nie uzasadniają własnego renderera tekstu. Jak z okna narzędziowego
+  zrobić okno, które niczego nie przyjmuje i tylko pokazuje, opisuje sekcja 3.14.
 
 ### Model immediate mode a retained mode
 
@@ -66,7 +72,7 @@ Prawdziwy odpowiednik tej drugiej postaci jest w
         }
 ```
 
-`shaders` to lista pięciu programów gry: jeden przycisk przeładowuje wszystkie.
+`shaders` to lista czterech programów gry: jeden przycisk przeładowuje wszystkie.
 
 Skutki praktyczne:
 
@@ -349,18 +355,24 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 5;
+        constexpr int SHADER_COUNT = 4;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.shader, &context.texturedShader, &context.colorShader, &context.litShader,
+            &context.texturedShader, &context.colorShader, &context.litShader,
             &context.gouraudShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
-        drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
-        drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
+        drawGameplayPanel(context.round, context.gameplay);
+        drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
+                      context.camera);
+        drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
         drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
-        drawLightsPanel(context.lighting, context.mazeWorld);
+        drawLightsPanel(context.lighting, context.round);
     }
+
+    // The HUD belongs to the game and not to the tools, so it is drawn whether or not
+    // the panels are visible.
+    drawHud(context.round, context.gameplay);
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
     ImGui::Render();
@@ -370,8 +382,8 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele pokazują i edytują (siedemnaście pól: od `time` i `window` po `gouraudShader` i
-`lighting`). Buduje ją co klatkę `main.cpp`.
+panele i HUD pokazują i edytują (osiemnaście pól: od `time` i `window` po `gameplay` i
+`round`). Buduje ją co klatkę `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
@@ -379,7 +391,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem siedem funkcji paneli. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`). Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem osiem funkcji paneli i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -388,8 +400,10 @@ Ważne szczegóły:
 - **Każdemu `NewFrame` musi odpowiadać `Render`** (albo `EndFrame`). Widżety wolno wołać
   tylko pomiędzy nimi.
 - **Klatka ImGui zaczyna się zawsze, także gdy panele są ukryte.** `if (m_visible)` obejmuje
-  tylko etap 2. Dzięki temu ImGui dalej odbiera zdarzenia wejścia i liczy czas, a po
-  ponownym włączeniu paneli (klawisz `~`) nie ma skoku.
+  tylko panele z etapu 2. Dzięki temu ImGui dalej odbiera zdarzenia wejścia i liczy czas, a po
+  ponownym włączeniu paneli (klawisz `~`) nie ma skoku. Od M5 jest drugi powód: HUD gry
+  (`drawHud`) stoi za blokiem `if` i jest rysowany w każdej klatce, więc klatka ImGui
+  nigdy nie jest pusta.
 - **`draw` jest ostatnim rysowaniem w klatce.** Widać to w `DebugNightMazeApp::onRender` w
   [`src/main.cpp`](../../src/main.cpp):
 
@@ -410,7 +424,6 @@ Ważne szczegóły:
               .time = time(),
               .window = window(),
               .clearColor = clearColor(),
-              .shader = shader(),
               .camera = camera(),
               .mouseSensitivity = mouseSensitivity(),
               .texturedShader = texturedShader(),
@@ -424,6 +437,8 @@ Ważne szczegóły:
               .litShader = litShader(),
               .gouraudShader = gouraudShader(),
               .lighting = lighting(),
+              .gameplay = gameplaySettings(),
+              .round = round(),
           });
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -436,10 +451,11 @@ Ważne szczegóły:
       }
   ```
 
-  Najpierw gra rysuje swoją klatkę (tło, labirynt, przy włączonym oświetleniu znaczniki
-  świateł punktowych, kostkę i na życzenie linie pudełek kolizji: `glViewport`, `glEnable`, `glClearColor`, `glClear` i wywołania `glDrawElements` w
-  [`NightMazeApp::onRender`](../../src/game/NightMazeApp.cpp)), a dopiero potem ImGui rysuje
-  na tym, co już jest w buforze, więc panele są na wierzchu sceny. Zamiana buforów
+  Najpierw gra rysuje swoją klatkę (tło, labirynt, bramę, kryształy i na życzenie linie
+  kolizji: `glViewport`, `glEnable`, `glClearColor`, `glClear` w
+  [`NightMazeApp::onRender`](../../src/game/NightMazeApp.cpp) i wywołania `glDrawElements`
+  w `gfx::Mesh::draw`), a dopiero potem ImGui rysuje
+  na tym, co już jest w buforze, więc panele i HUD są na wierzchu sceny. Zamiana buforów
   (`swapBuffers`) następuje później, w `Application::run`. Dwie ostatnie linie,
   `setKeyboardBlocked` i `setMouseBlocked`, nie rysują niczego: przekazują grze informację z
   ImGui o klawiaturze i o myszy (sekcja 3.8). Linia `setMouseEnabled` przed `draw` działa w
@@ -531,7 +547,7 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   komputera, a nie część projektu.
 - Skasowanie pliku przywraca układ domyślny. To pierwsza rzecz do zrobienia, gdy panel
   "zniknął" albo wyjechał poza okno.
-- Układ domyślny naszych siedmiu paneli ustawiają trójki `SetNextWindowPos`,
+- Układ domyślny naszych ośmiu paneli ustawiają trójki `SetNextWindowPos`,
   `SetNextWindowSize` i `SetNextWindowCollapsed` z warunkiem `ImGuiCond_FirstUseEver`
   (sekcje 3.11 i 3.13). Ten warunek działa tylko dla okna, którego w `imgui.ini` jeszcze
   nie ma. Stary plik zatrzyma panele na starych miejscach i w starych rozmiarach: plik
@@ -674,7 +690,7 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok pozostałych siedmiu funkcji `draw...Panel`, dopisanie plików
+wywołanie w `DebugUI::draw` obok pozostałych ośmiu funkcji `draw...Panel`, dopisanie plików
 do `add_executable` w `CMakeLists.txt`. Przed `Begin` wywołanie `placePanelOnFirstUse` z nową
 stałą dopisaną w `src/debug/PanelLayout.hpp`, żeby panel przy pierwszym uruchomieniu nie
 przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
@@ -686,7 +702,7 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
 Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
 
-**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie siedem paneli woła przed `Begin`
+**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie osiem paneli woła przed `Begin`
 jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Trzy wywołania
 ImGui są w niej ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
 
@@ -718,7 +734,7 @@ adres zmiennej, pokazują jej wartość i zapisują nową, gdy użytkownik coś 
 |---|---|---|---|
 | `SliderInt` | `ImGui::SliderInt("Width", &settings.width, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells", ImGuiSliderFlags_AlwaysClamp);` | `MazePanel.cpp` | suwak liczby całkowitej. Format jak w `printf`. `AlwaysClamp` przycina także wartość wpisaną z klawiatury (Ctrl i kliknięcie) |
 | `InputScalar` | `ImGui::InputScalar("Seed", ImGuiDataType_U32, &settings.seed, &SEED_STEP);` | `MazePanel.cpp` | pole liczbowe dowolnego typu. Typ nazywa drugi argument i **musi** zgadzać się ze zmienną (tu `std::uint32_t`), bo funkcja dostaje `void*` i kompilator tego nie sprawdzi. Czwarty argument to wskaźnik na krok przycisków plus i minus |
-| `Checkbox` | `ImGui::Checkbox("Draw collision boxes", &drawColliders);` | `CollisionPanel.cpp`, a od map normalnych także `AssetsPanel.cpp` (`ImGui::Checkbox("Normal mapping", &normalMapping);`, pole `game::LightingSettings::normalMapping`) | pole wyboru na zmiennej `bool` |
+| `Checkbox` | `ImGui::Checkbox("Draw collision shapes", &drawColliders);` | `CollisionPanel.cpp` (do M4 etykieta brzmiała `Draw collision boxes`: od M5 przełącznik rysuje też kule), od map normalnych także `AssetsPanel.cpp` (`ImGui::Checkbox("Normal mapping", &normalMapping);`, pole `game::LightingSettings::normalMapping`), od M5 `GameplayPanel.cpp` (`ImGui::Checkbox("Battery drains", &settings.batteryDrains);`) | pole wyboru na zmiennej `bool` |
 | `Combo` | `ImGui::Combo("View mode", &viewModeIndex, VIEW_MODE_ITEMS)` | `AssetsPanel.cpp`, od M4 także `RendererPanel.cpp` (`ImGui::Combo("Lighting", &lightingModeIndex, LIGHTING_MODE_ITEMS)`) | lista rozwijana. Pracuje na **numerze** wybranej pozycji (`int`), nie na wyliczeniu, więc kod rzutuje `enum class` na `int` i z powrotem. Zwraca `true` w klatce, w której użytkownik wybrał inną pozycję |
 | `SliderFloat` w bloku `BeginDisabled` | `ImGui::BeginDisabled(!anisotropySupported);` ... `ImGui::EndDisabled();` | `AssetsPanel.cpp` | wszystko między tą parą jest wyszarzone i nie reaguje, gdy argument jest prawdą. `EndDisabled` woła się **zawsze**, tak jak `End` |
 
@@ -761,9 +777,10 @@ Opis linia po linii: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 
 |---|---|---|
 | `SeparatorText("Models")` | `AssetsPanel.cpp` | pozioma kreska z podpisem: nagłówek części panelu |
 | `TextUnformatted(text)` | `AssetsPanel.cpp`, `CollisionPanel.cpp` | tekst bez formatowania. Bezpieczny dla napisów, które mogą zawierać znak `%` (nazwy plików). Panel Shaders osiąga to samo inaczej: tekst sterownika podaje jako argument formatu, `ImGui::TextWrapped("%s", shader.lastError().c_str())`, nigdy jako sam format |
-| `SetItemTooltip("%s", fullPath.c_str())` | `AssetsPanel.cpp`, a w `ShadersPanel.cpp` z dwiema ścieżkami: `ImGui::SetItemTooltip("%s\n%s", vertexFullPath.c_str(), fragmentFullPath.c_str())` | podpowiedź dla **poprzedniego** widżetu, pokazywana po najechaniu kursorem |
-| `SameLine()` | `MazePanel.cpp` | następny widżet staje w tej samej linii (przyciski `Regenerate` i `Random seed` obok siebie) |
-| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | zmiana koloru tekstu dla widżetów między tą parą. Każde `Push` musi mieć swoje `Pop`. Stała jest jedna, w `Theme.hpp` (sekcja 3.12) |
+| `SetItemTooltip("%s", fullPath.c_str())` | `AssetsPanel.cpp`, a w `ShadersPanel.cpp` z dwiema ścieżkami: `ImGui::SetItemTooltip("%s\n%s", vertexFullPath.c_str(), fragmentFullPath.c_str())`. Od M5 także `LightsPanel.cpp`, warunkowo (sekcja 3.14) | podpowiedź dla **poprzedniego** widżetu, pokazywana po najechaniu kursorem |
+| `TextWrapped(...)` | większość paneli, na przykład `ShadersPanel.cpp` i `CollisionPanel.cpp` (od M5 legenda kolorów linii kolizji) | tekst łamany na szerokości panelu, z formatem jak w `printf` |
+| `SameLine()` | `MazePanel.cpp`, od M5 `Hud.cpp` | następny widżet staje w tej samej linii (przyciski `Regenerate` i `Random seed` obok siebie, a w HUD licznik kryształów, czas i procent baterii obok paska) |
+| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | zmiana koloru tekstu dla widżetów między tą parą. Każde `Push` musi mieć swoje `Pop`. Stała jest jedna, w `Theme.hpp` (sekcja 3.12). Od M5 ta sama para zmienia w `Hud.cpp` inną pozycję tabeli kolorów, `ImGuiCol_PlotHistogram` (sekcja 3.14) |
 
 **Obrazek z tekstury OpenGL** ([`AssetsPanel.cpp`](../../src/debug/panels/AssetsPanel.cpp)):
 
@@ -818,9 +835,11 @@ bez żadnej zmiany w kodzie: jako jasnoniebieskie obrazki, bo większość tekse
 | `ImGui::GetContentRegionAvail()` | ile miejsca zostało w panelu od kursora do prawego i dolnego brzegu. Z szerokości liczona jest skala planu |
 | `ImGui::GetCursorScreenPos()` | miejsce, w którym ImGui postawiłoby następny widżet, we współrzędnych ekranu. To lewy górny róg planu |
 | `ImGui::GetWindowDrawList()` | lista rysowania bieżącego okna (`ImDrawList*`). Kształty dodane do niej są rysowane razem z panelem i przycinane do niego |
-| `drawList->AddLine(p1, p2, color)` | odcinek między dwoma punktami ekranu. Tak rysowana jest każda ściana i kreska kierunku patrzenia |
-| `drawList->AddCircleFilled(center, radius, color)` | wypełnione koło: kropka gracza |
-| `IM_COL32(r, g, b, a)` | makro składające kolor z czterech liczb od 0 do 255 w jedną liczbę `ImU32` |
+| `drawList->AddLine(p1, p2, color)` | odcinek między dwoma punktami ekranu. Tak rysowana jest każda ściana i kreska kierunku patrzenia. Czwarty, opcjonalny argument to grubość w pikselach (domyślnie 1): od M5 brama jest odcinkiem o grubości `GATE_LINE_THICKNESS` (3) |
+| `drawList->AddCircleFilled(center, radius, color)` | wypełnione koło: kropka gracza i, od M5, każdy niezebrany kryształ |
+| `drawList->AddCircle(center, radius, color)` | sam okrąg, bez wypełnienia: od M5 ślad po zebranym krysztale |
+| `drawList->AddRect(p_min, p_max, color)` | obrys prostokąta między lewym górnym a prawym dolnym rogiem: od M5 strefa wyjścia |
+| `ImGui::GetColorU32(PLAN_WALL_COLOR)` | zamienia kolor motywu (`ImVec4`, cztery liczby `float`) na jedną liczbę `ImU32`, której chce lista rysowania (sekcja 3.12). Kolory planu to stałe z `Theme.hpp` |
 | `ImGui::Dummy(size)` | niewidzialny widżet o podanym rozmiarze. Lista rysowania nie przesuwa kursora, więc bez `Dummy` panel nie wiedziałby, że plan zajmuje miejsce: następny widżet stanąłby na planie, a przewijanie liczyłoby złą wysokość |
 
 Współrzędne w liście rysowania to współrzędne **ekranu** ImGui (piksele okna programu, y w
@@ -831,7 +850,7 @@ każdego punktu dodaje ten początek. Jak punkt świata zamienia się na punkt p
 Stan sprawdzenia: wygląd planu, podglądów i list jest sprawdzony na zrzutach ekranu z
 Windowsa (2026-10-05). Samych kontrolek (kliknięcia w `Combo`, suwaki, pola wyboru, przyciski)
 nikt jeszcze ręcznie nie sprawdzał, także listy `Lighting` z M4. Na macOS panele nie były
-uruchamiane.
+uruchamiane. Kształty z M5 na planie (strefa wyjścia, brama, kryształy) opisuje sekcja 3.14.
 
 ### 3.12. Styl i czcionki w wersji 1.92
 
@@ -853,7 +872,9 @@ sekcje 5.7 i 5.8. Tutaj jest samo API, w kształcie z pobranej wersji `1.92.9b`.
 | `style.ScaleAllSizes(scale)` | `applyTheme` | mnoży wszystkie odstępy, zaokrąglenia i grubości przez `scale` i obcina do pełnych pikseli. Nie zmienia czcionki. Stratne, więc woła się raz na świeżych wartościach |
 | `style.FontSizeBase` | `applyTheme` | **nowe w 1.92:** wysokość tekstu przed skalowaniem. Wcześniej rozmiar podawało się przy wczytywaniu czcionki |
 | `style.FontScaleDpi` | `applyTheme`, odczyt w `placePanelOnFirstUse` | **nowe w 1.92:** mnożnik tekstu od gęstości ekranu. Ostateczna wysokość to `FontSizeBase * FontScaleMain * FontScaleDpi` |
-| `ImGui::PushStyleColor(ImGuiCol_Text, kolor)` i `ImGui::PopStyleColor()` | panele Shaders i Assets | zmiana jednej pozycji tabeli na czas kilku widżetów. Każde `Push` musi mieć `Pop` |
+| `ImGui::PushStyleColor(ImGuiCol_Text, kolor)` i `ImGui::PopStyleColor()` | panele Shaders i Assets, a w HUD z pozycją `ImGuiCol_PlotHistogram` | zmiana jednej pozycji tabeli na czas kilku widżetów. Każde `Push` musi mieć `Pop` |
+| `ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, wartość)` i `ImGui::PopStyleVar()` | karta wygranej w HUD | to samo dla jednej metryki stylu (tu odstęp treści od brzegu okna, `ImVec2`). Musi stać przed `Begin`, bo `Begin` czyta ten odstęp |
+| `ImGui::PushFont(nullptr, rozmiar)` i `ImGui::PopFont()` | tytuł karty wygranej w HUD | **kształt z 1.92:** drugi argument to rozmiar czcionki przed skalowaniem. `nullptr` jako pierwszy znaczy "ta sama czcionka" (sekcja 3.14) |
 | `ImGui::GetColorU32(const ImVec4&)` | plan w panelu Maze | zamienia kolor z czterech `float` na jedną liczbę 32-bitową dla listy rysowania i uwzględnia przezroczystość ze stylu |
 
 Typy `ImVec2` i `ImVec4` mają konstruktory `constexpr`, więc kolory i odstępy mogą być
@@ -913,7 +934,7 @@ Deklaracje i komentarze przytaczam z `build/debug/_deps/imgui-src/imgui.h` w nas
 | Element | Znaczenie |
 |---|---|
 | deklaracja | `void SetNextWindowCollapsed(bool collapsed, ImGuiCond cond = 0);` z komentarzem "set next window collapsed state. call before Begin()" |
-| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` ma tylko panel Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`) |
+| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` mają dwa panele: Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`) i, od M5, Gameplay (`GAMEPLAY_PLACEMENT`), który stoi obok niego przy górnej krawędzi |
 | `ImGuiCond_FirstUseEver` | ten sam warunek co przy pozycji i rozmiarze: tylko gdy okno nie ma wpisu w `imgui.ini`. Bez warunku panel zwijałby się z powrotem w każdej klatce i nie dałoby się go otworzyć |
 
 Zwinięte okno to zwykły stan okna ImGui, nie osobny widżet. Użytkownik przełącza go
@@ -1029,13 +1050,228 @@ logarytmicznej.
 **Pozostałe widżety panelu** są znane z wcześniejszych paneli: `SliderFloat` z formatem i
 flagą `ImGuiSliderFlags_AlwaysClamp` (dziewięć razy, na przykład `"%.0f deg"` dla kątów
 księżyca i `"%.1f m"` dla zasięgów), `Checkbox("Flashlight on (key F)", &lighting.flashlightOn)`
-na zmiennej `bool` i `Text` z liczbą świateł punktowych.
+na zmiennej `bool` i `Text` z liczbą świateł punktowych. Od M5 ta ostatnia linia to
+`Lit: %d of %d crystals (at most %d)`, grupa nazywa się `Point lights (crystals)` (w M4
+`Point lights (dead ends)`), a pole wyboru latarki ma przy pustej baterii podpowiedź
+(sekcja 3.14).
 
 Stan sprawdzenia: skutki wartości domyślnych oświetlenia (widok startowy, cztery tryby
 oświetlenia, scena z wyłączoną latarką) są obejrzane na zrzutach ekranu z Windowsa
 (2026-10-05). Żadnego z tych widżetów nikt jeszcze nie klikał ani nie przeciągał,
 tak samo jak strzałki rozwijającej panel Camera. Opis zachowania pochodzi z kodu projektu i
 ze źródeł biblioteki. Na macOS kod M4 nie był budowany ani uruchamiany.
+
+### 3.14. HUD gry, panel Gameplay i nowe kształty planu (M5)
+
+Kod: [`src/debug/Hud.cpp`](../../src/debug/Hud.cpp),
+[`src/debug/panels/GameplayPanel.cpp`](../../src/debug/panels/GameplayPanel.cpp),
+[`src/debug/panels/MazePanel.cpp`](../../src/debug/panels/MazePanel.cpp) i
+[`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp). Co HUD i panel
+pokazują i jakie reguły za tym stoją, opisuje
+[`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 6. Tutaj jest samo API.
+Deklaracje przytaczam z `build/debug/_deps/imgui-src/imgui.h` w naszej wersji.
+
+**Drugi rodzaj okna w projekcie.** Do M4 każde okno ImGui w programie było panelem: ma pasek
+tytułu, da się je przesuwać, dokować, zwijać, a jego miejsce trafia do `imgui.ini`. HUD to
+dwa okna innego rodzaju: pasek stanu u góry ekranu (`"Game HUD"`) i karta `"You escaped"` na
+środku, widoczna po wygranej. Oba powstają tym samym `Begin` i `End` co panele. Różnią się
+tylko flagami w trzecim argumencie `Begin` i tym, co stoi przed nim.
+
+```cpp
+constexpr ImGuiWindowFlags PICTURE_WINDOW_FLAGS =
+    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs |
+    ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing |
+    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove;
+```
+
+`ImGuiWindowFlags` to zbiór bitów, a `|` (bitowe "lub") składa kilka flag w jedną liczbę.
+
+| Flaga | Co wyłącza albo włącza | Po co w HUD |
+|---|---|---|
+| `ImGuiWindowFlags_NoDecoration` | skrót czterech flag: bez paska tytułu, bez uchwytu zmiany rozmiaru, bez paska przewijania, bez zwijania | HUD ma wyglądać jak napis na ekranie, nie jak okno |
+| `ImGuiWindowFlags_AlwaysAutoResize` | okno ma w każdej klatce dokładnie rozmiar swojej zawartości | pasek sam się poszerza, gdy dochodzi linia podpowiedzi, i nikt nie ustawia mu rozmiaru |
+| `ImGuiWindowFlags_NoInputs` | skrót trzech flag: bez wejścia z myszy i bez nawigacji klawiaturą. Mysz "przechodzi przez" okno: nie da się go najechać ani kliknąć | kliknięcie w miejscu HUD ma trafić do gry (przechwycenie kursora), a okno nie może ustawić `WantCaptureMouse` (sekcja 3.8) |
+| `ImGuiWindowFlags_NoNav` | nawigacja klawiaturą ImGui omija okno | zawiera się już w `NoInputs`. Zapisane osobno, żeby zamiar był widoczny |
+| `ImGuiWindowFlags_NoFocusOnAppearing` | pojawienie się okna nie zabiera fokusu | karta wygranej pojawia się w środku gry i nie może odebrać fokusu panelowi, w którym ktoś właśnie pracuje |
+| `ImGuiWindowFlags_NoSavedSettings` | nic o oknie nie trafia do `imgui.ini` (sekcja 3.7) | pozycję ustawia kod w każdej klatce, więc nie ma czego pamiętać |
+| `ImGuiWindowFlags_NoDocking` | okna nie da się zadokować w obszarze dokowania (sekcja 3.6) | HUD nie jest panelem |
+| `ImGuiWindowFlags_NoMove` | okna nie da się przesunąć | stoi tam, gdzie postawił je kod |
+
+Pasek stanu ma jedną flagę więcej:
+
+```cpp
+constexpr ImGuiWindowFlags STATUS_WINDOW_FLAGS =
+    PICTURE_WINDOW_FLAGS | ImGuiWindowFlags_NoBringToFrontOnFocus;
+constexpr ImGuiWindowFlags CARD_WINDOW_FLAGS = PICTURE_WINDOW_FLAGS;
+```
+
+`ImGuiWindowFlags_NoBringToFrontOnFocus` (w `imgui.h`: "Disable bringing window to front when
+taking focus") trzyma okno z tyłu kolejności rysowania. Pasek stoi tuż pod paskami tytułu
+zwiniętych paneli Camera i Gameplay (`HUD_TOP_OFFSET = 46`), więc rozwinięty panel go
+przykrywa, i tak ma być: panel, w którym ktoś pracuje, jest ważniejszy niż napis pod nim.
+Karta tej flagi nie ma: ImGui stawia nowe okno przed już istniejącymi, więc karta pojawia się
+na wierzchu paneli, a panel kliknięty później wychodzi przed nią jak przed każde inne okno
+(komentarz w `Hud.cpp`).
+
+**Pozycja liczona co klatkę: `SetNextWindowPos` z pivotem i `ImGuiCond_Always`.**
+
+```cpp
+    const ImVec2 top = windowPoint(TOP_CENTER);
+    ImGui::SetNextWindowPos({top.x, top.y + HUD_TOP_OFFSET * scale}, ImGuiCond_Always, TOP_CENTER);
+    ImGui::SetNextWindowBgAlpha(HUD_OPACITY);
+
+    // The name is never shown (there is no title bar). ImGui tells windows apart by it.
+    if (ImGui::Begin("Game HUD", nullptr, STATUS_WINDOW_FLAGS)) {
+```
+
+| Element | Znaczenie |
+|---|---|
+| `windowPoint(TOP_CENTER)` | nasza funkcja: punkt okna programu podany jako części jego rozmiaru, liczony z `ImGui::GetMainViewport()` (`WorkPos` i `WorkSize`). `TOP_CENTER` to `{0.5, 0}`, środek górnej krawędzi |
+| `ImGuiCond_Always` | pozycja jest ustawiana w **każdej** klatce. Panele używają `ImGuiCond_FirstUseEver` (sekcja 3.11), bo użytkownik ma móc je przesunąć. HUD ma zostać na środku także po zmianie rozmiaru okna programu |
+| trzeci argument, `TOP_CENTER` | pivot: punkt okna ImGui, który ma trafić w podaną pozycję. `{0.5, 0}` to środek jego górnej krawędzi, więc pasek jest wyśrodkowany, choć jego szerokość zmienia się z zawartością (`AlwaysAutoResize`) i nie jest znana przed `Begin`. Karta wygranej używa pivotu `{0.5, 0.5}` i jest wyśrodkowana w obu kierunkach |
+| `ImGui::SetNextWindowBgAlpha(HUD_OPACITY)` | deklaracja: `void SetNextWindowBgAlpha(float alpha);`. Ustawia przezroczystość tła najbliższego okna: 0 to tło niewidoczne, 1 to pełne. Pasek ma 0,72, karta 0,9: przez pasek widać scenę, karta ma być czytelna |
+| `"Game HUD"` | nazwa okna. Nikt jej nie widzi (nie ma paska tytułu), ale ImGui rozróżnia okna po nazwie, więc musi być i musi być inna niż nazwy paneli |
+| `nullptr` | drugi argument `Begin` to wskaźnik na `bool` dla przycisku zamykania. `nullptr` znaczy: bez przycisku |
+
+`scale` to `ImGui::GetStyle().FontScaleDpi` (sekcja 3.12): odległości HUD są podane w
+pikselach przy skali 100% i mnożone przez skalę ekranu, tak jak rozmiary paneli.
+
+**`ProgressBar` i `PushStyleColor`: pasek baterii.**
+
+```cpp
+    const bool low = round.battery < settings.lowBatteryThreshold;
+    // A progress bar is drawn in the colour ImGui calls PlotHistogram. PushStyleColor
+    // changes a colour of the style until the matching PopStyleColor.
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, low ? HUD_BATTERY_LOW_COLOR : HUD_BATTERY_COLOR);
+    // The second argument is the size: a height of 0 means the height of a line of
+    // text. The third is the text written on the bar: none, the label next to it says
+    // the number.
+    ImGui::ProgressBar(round.battery, {BATTERY_BAR_WIDTH * scale, 0.0F}, "");
+    ImGui::PopStyleColor();
+```
+
+| Element | Znaczenie |
+|---|---|
+| deklaracja | `void ProgressBar(float fraction, const ImVec2& size_arg = ImVec2(-FLT_MIN, 0), const char* overlay = NULL);` |
+| `round.battery` | wypełnienie paska jako ułamek od 0 do 1. To dokładnie zakres pola `Round::battery`, więc nie ma przeliczania |
+| `{BATTERY_BAR_WIDTH * scale, 0.0F}` | rozmiar. Szerokość 230 jednostek razy skala ekranu, wysokość 0 znaczy "wysokość linii tekstu z ramką". Ta szerokość wyznacza też szerokość całego paska HUD |
+| `""` | napis rysowany na pasku. Pusty napis to brak napisu. Wartość domyślna `NULL` kazałaby ImGui wypisać na pasku procent, a u nas procent stoi obok (`ImGui::Text("%.0f%%", ...)` po `SameLine`) |
+| `ImGuiCol_PlotHistogram` | pasek postępu nie ma własnej pozycji w tabeli kolorów: wypełnienie bierze kolor wykresu słupkowego. Stąd zmiana właśnie tej pozycji |
+| `PushStyleColor` i `PopStyleColor` | para z sekcji 3.11, tu z inną pozycją tabeli. Zmiana obowiązuje tylko dla widżetów między nimi, więc pozostałe paski i wykresy (gdyby były) zostają w kolorze motywu |
+| `low ? HUD_BATTERY_LOW_COLOR : HUD_BATTERY_COLOR` | bursztynowy, a poniżej progu `lowBatteryThreshold` czerwony. Kolory to stałe `ImVec4` z `Theme.hpp` |
+
+**Tekst w kolorze: `TextColored` i `TextDisabled`.** Deklaracje w `imgui.h` mówią wprost,
+czym są: `TextColored(const ImVec4& col, const char* fmt, ...)` to "shortcut for
+PushStyleColor(ImGuiCol_Text, col); Text(fmt, ...); PopStyleColor();", a `TextDisabled` robi
+to samo z kolorem `ImGuiCol_TextDisabled` ze stylu. HUD używa pierwszej dla słowa `Crystals`
+i obu podpowiedzi, drugiej dla przygaszonych dodatków (`(of %d)` i czas rundy).
+
+**Większa czcionka na chwilę: `PushFont` z rozmiarem.**
+
+```cpp
+        // The same font, larger. The size is given without the display scale: ImGui
+        // multiplies it by FontScaleDpi itself.
+        ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * CARD_TITLE_SCALE);
+        ImGui::TextColored(HUD_CRYSTAL_COLOR, "You escaped");
+        ImGui::PopFont();
+```
+
+| Element | Znaczenie |
+|---|---|
+| deklaracja | `void PushFont(ImFont* font, float font_size_base_unscaled);` z komentarzem "Use NULL as a shortcut to keep current font. Use 0.0f to keep current size." |
+| `nullptr` | ta sama czcionka co w panelach. Projekt wczytuje jedną (sekcja 3.12) |
+| `FontSizeBase * CARD_TITLE_SCALE` | rozmiar **przed** skalowaniem: podstawowa wysokość tekstu razy 1,8. Skali ekranu tu nie ma, bo ImGui samo mnoży ten rozmiar przez `FontScaleDpi`. Pomnożenie ręcznie dałoby na ekranie 150% tytuł powiększony dwa razy |
+| dlaczego to działa bez drugiej czcionki | w 1.92 czcionka nie jest wypalana w jednym rozmiarze przy starcie: backend dorysowuje znaki w potrzebnym rozmiarze na żądanie (flaga `ImGuiBackendFlags_RendererHasTextures`, sekcja 3.12). W starszych wersjach większy tytuł wymagał wczytania drugiej czcionki |
+| `PopFont()` | cofa zmianę. Jak każda para `Push` i `Pop`, musi się zgadzać liczba wywołań |
+
+Karta ma też szersze marginesy niż panele: `ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+{...})` przed `Begin` i `ImGui::PopStyleVar()` po `End`. To odpowiednik `PushStyleColor` dla
+metryk stylu. Stoi przed `Begin`, bo `Begin` czyta odstęp przy otwieraniu okna, i jest
+zdejmowany po `End`, poza blokiem `if`, żeby `Pop` wykonało się zawsze.
+
+**Panel Gameplay: przycisk, który tylko prosi.** Ósmy panel używa widżetów znanych z
+wcześniejszych: `Text`, `TextUnformatted`, `Separator`, `Checkbox` i sześć razy `SliderFloat`
+z flagą `ImGuiSliderFlags_AlwaysClamp`. Dwa miejsca są warte pokazania.
+
+```cpp
+        // Button returns true only in the frame in which it was clicked. The panel only
+        // asks: the game starts the round at the start of its next frame.
+        if (ImGui::Button("Restart round (key R)")) {
+            settings.restart = true;
+        }
+```
+
+To ten sam wzorzec co przyciski `Regenerate` i `Random seed` w panelu Maze: `Button` zwraca
+`true` w jednej klatce, a panel zapisuje wtedy flagę i nic więcej. Rundę zaczyna gra, na
+początku swojej następnej klatki ([`../modules/core/README.md`](../modules/core/README.md),
+sekcja 6.6).
+
+```cpp
+    ImGui::SliderFloat("Battery", &round.battery, MIN_BATTERY, MAX_BATTERY, "%.2f",
+                       ImGuiSliderFlags_AlwaysClamp);
+```
+
+Ten suwak nie edytuje ustawienia, tylko **stan gry**: pole `Round::battery`, które symulacja
+zmienia w każdym kroku. W trybie immediate mode nie ma w tym nic szczególnego: suwak co
+klatkę pokazuje bieżącą wartość spod wskaźnika, więc sam "jedzie" w lewo, gdy bateria ubywa,
+a przeciągnięcie zapisuje nową wartość, od której gra liczy dalej. Żaden kod nie
+synchronizuje widżetu ze zmienną, bo widżet nie ma własnej kopii (sekcja 1). Format ostatniego
+argumentu `SliderFloat` jest tekstem `printf`, więc może nieść jednostkę albo słowa:
+`"%.2f of all"` dla `Crystals needed`, `"%.0f s"` dla `Battery lifetime`, `"%.2f m"` dla
+`Pickup radius`.
+
+**Podpowiedź tylko w jednym stanie: `SetItemTooltip` pod warunkiem** (panel Lights):
+
+```cpp
+    ImGui::Checkbox("Flashlight on (key F)", &lighting.flashlightOn);
+    if (round.battery <= 0.0F) {
+        ImGui::SetItemTooltip("The battery is empty: collect a crystal first.");
+    }
+```
+
+`SetItemTooltip` dotyczy **poprzedniego** widżetu, więc musi stać zaraz po `Checkbox`.
+Wywołanie jest zwykłą instrukcją, więc może stać w `if`: podpowiedź istnieje tylko w
+klatkach, w których bateria jest pusta, i tłumaczy, dlaczego zaznaczone pole samo się
+odznacza (gra wyłącza latarkę w najbliższym kroku symulacji).
+
+**Plan labiryntu: trzy nowe kształty listy rysowania** (panel Maze):
+
+```cpp
+    drawList->AddRect(toScreen(world.exitZone.min), toScreen(world.exitZone.max), exitColor);
+```
+
+```cpp
+        drawList->AddLine(
+            toScreen(world.gate.position - halfLine), toScreen(world.gate.position + halfLine),
+            game::gateBlocks(world, round) ? gateColor : collectedColor, GATE_LINE_THICKNESS);
+```
+
+```cpp
+        if (crystal.collected) {
+            drawList->AddCircle(place, CRYSTAL_DOT_RADIUS, collectedColor);
+        } else {
+            drawList->AddCircleFilled(place, CRYSTAL_DOT_RADIUS, crystalColor);
+        }
+```
+
+| Funkcja | Deklaracja w `imgui.h` | Co rysuje na planie |
+|---|---|---|
+| `AddRect` | `void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, float thickness = 1.0f, ImDrawFlags flags = 0);` | obrys strefy wyjścia. `p_min` to lewy górny róg, `p_max` prawy dolny. Narożniki `min` i `max` pudełka świata pasują wprost, bo na planie x rośnie w prawo, a z w dół |
+| `AddLine` z czwartym argumentem | `void AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f);` | bramę: odcinek grubości 3 pikseli, w kolorze drewna, dopóki blokuje drogę, i przygaszony po otwarciu |
+| `AddCircle` | `void AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments = 0, float thickness = 1.0f);` | pusty okrąg w miejscu zebranego kryształu |
+| `AddCircleFilled` | `void AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments = 0);` | wypełnioną kropkę niezebranego kryształu (i, jak wcześniej, gracza) |
+
+`num_segments = 0` znaczy, że ImGui samo dobiera liczbę odcinków okręgu do jego promienia.
+W naszej wersji kolejność dwóch ostatnich argumentów `AddRect` jest inna niż w starszych
+poradnikach: `imgui.h` oznacza postać z `flags` przed `thickness` jako przestarzałą od
+1.92.8. Projekt podaje tylko trzy pierwsze argumenty, więc go to nie dotyczy.
+
+Stan sprawdzenia (M5, Windows, 2026-10-05): build Debug i Release przechodzi bez ostrzeżeń,
+a obraz gry został sprawdzony na zrzutach ekranu robionych przez tymczasowe haki, które potem
+usunięto. Nikt jeszcze nie sprawdził ręcznie: przycisku `Restart round (key R)`, suwaków
+panelu Gameplay, karty wygranej, HUD przy ukrytych panelach ani tego, czy kliknięcie w
+miejscu HUD naprawdę trafia do sceny. Opis zachowania flag pochodzi z kodu projektu i z
+komentarzy w `imgui.h`. Na macOS kod M5 nie był budowany ani uruchamiany.
 
 ## 4. Pułapki
 
@@ -1095,6 +1331,14 @@ ze źródeł biblioteki. Na macOS kod M4 nie był budowany ani uruchamiany.
 15. **Przykłady czcionek sprzed 1.92.** Rozmiar w pikselach przy wczytywaniu, zakresy znaków
     i `io.FontGlobalScale` to stary sposób. W naszej wersji rozmiar i skala są w stylu, a
     zakresy są zbędne.
+
+19. **Okno, które ma tylko pokazywać, a łapie mysz.** Okno bez `ImGuiWindowFlags_NoInputs`
+    ustawia `WantCaptureMouse`, gdy kursor jest nad nim, nawet jeśli nie ma w nim żadnego
+    widżetu do kliknięcia. HUD na środku ekranu blokowałby wtedy grze kliknięcie, które
+    przechwytuje kursor. Stąd zestaw flag w `Hud.cpp` (sekcja 3.14).
+20. **Skala ekranu policzona dwa razy w `PushFont`.** Drugi argument to rozmiar przed
+    skalowaniem. Pomnożony ręcznie przez `FontScaleDpi` daje na ekranie 150% tekst za duży,
+    a na ekranie 100% wygląda dobrze, więc błąd widać dopiero na drugim komputerze.
 
 ## 5. Pytania kontrolne
 
@@ -1177,6 +1421,25 @@ ze źródeł biblioteki. Na macOS kod M4 nie był budowany ani uruchamiany.
     Dostaje `glm::value_ptr(wektor)`, czyli wskaźnik na pierwszą z trzech liczb `float`
     wektora, i przez niego czyta i zapisuje czerwony, zielony i niebieski. To ten sam
     mechanizm co `clearColor.data()` dla tablicy.
+
+17. **Czym okno HUD różni się od panelu, skoro oba powstają przez `Begin` i `End`?**
+    Flagami i tym, kto ustawia pozycję. HUD ma `NoDecoration` (bez paska tytułu),
+    `AlwaysAutoResize` (rozmiar z zawartości), `NoInputs` i `NoNav` (mysz i klawiatura go
+    omijają), `NoFocusOnAppearing`, `NoSavedSettings` (nic w `imgui.ini`), `NoDocking`
+    i `NoMove`, a pozycję dostaje w każdej klatce (`ImGuiCond_Always`) z pivotem na środku.
+    Panel ma pozycję tylko na pierwsze uruchomienie (`ImGuiCond_FirstUseEver`) i potem
+    należy do użytkownika. Poza tym HUD jest rysowany poza blokiem `if (m_visible)`.
+
+18. **Dlaczego pasek baterii zmienia kolor przez `ImGuiCol_PlotHistogram`?**
+    Bo `ProgressBar` nie ma własnej pozycji w tabeli kolorów i rysuje wypełnienie kolorem
+    wykresu słupkowego. `PushStyleColor` podmienia tę pozycję tylko do najbliższego
+    `PopStyleColor`, więc zmiana dotyczy jednego paska.
+
+19. **Jak panel Gameplay zaczyna rundę od nowa i dlaczego nie robi tego sam?**
+    `Button` zwraca `true` w klatce kliknięcia, a panel ustawia wtedy flagę
+    `GameplaySettings::restart`. Gra czyta ją na początku następnej klatki, między krokami
+    symulacji. Panel rysuje się po scenie, w środku klatki, więc wymiana stanu gry w tym
+    miejscu dałaby klatkę złożoną z dwóch stanów, a warstwa `debug/` decydowałaby o grze.
 
 ## 6. Oficjalna dokumentacja
 

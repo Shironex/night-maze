@@ -4,7 +4,7 @@
 
 #include "debug/PanelLayout.hpp"
 #include "game/Lighting.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/Round.hpp"
 #include "scene/Light.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
@@ -75,13 +75,17 @@ void drawMoon(game::LightingSettings& lighting) {
 }
 
 // The flashlight: a spot light at the eye of the player.
-void drawFlashlight(game::LightingSettings& lighting) {
+void drawFlashlight(game::LightingSettings& lighting, const game::Round& round) {
     // DefaultOpen: the group is open the first time the program runs.
     if (!ImGui::CollapsingHeader("Flashlight (spot)", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
-    // The same switch as the F key.
+    // The same switch as the F key. With an empty battery the game turns it off again
+    // in its next step, so the box cannot stay ticked: the tooltip says why.
     ImGui::Checkbox("Flashlight on (key F)", &lighting.flashlightOn);
+    if (round.battery <= 0.0F) {
+        ImGui::SetItemTooltip("The battery is empty: collect a crystal first.");
+    }
     ImGui::ColorEdit3("Beam colour", glm::value_ptr(lighting.flashlightColor));
     ImGui::SliderFloat("Beam intensity", &lighting.flashlightIntensity, MIN_INTENSITY,
                        MAX_FLASHLIGHT_INTENSITY, "%.2f", ImGuiSliderFlags_AlwaysClamp);
@@ -96,14 +100,17 @@ void drawFlashlight(game::LightingSettings& lighting) {
                        MAX_FLASHLIGHT_RANGE, "%.1f m", ImGuiSliderFlags_AlwaysClamp);
 }
 
-// The point lights of the maze. They are edited as a group: one colour, one intensity
-// and one radius for all of them.
-void drawPointLights(game::LightingSettings& lighting, const game::MazeWorld& world) {
-    if (!ImGui::CollapsingHeader("Point lights (dead ends)", ImGuiTreeNodeFlags_DefaultOpen)) {
+// The point lights of the crystals. They are edited as a group: one colour, one
+// intensity and one radius for all of them. The colour is also the colour the crystals
+// glow in.
+void drawPointLights(game::LightingSettings& lighting, const game::Round& round) {
+    if (!ImGui::CollapsingHeader("Point lights (crystals)", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
-    ImGui::Text("In this maze: %d (at most %d)", static_cast<int>(world.pointLightPositions.size()),
-                scene::MAX_POINT_LIGHTS);
+    // Every crystal that is not collected yet carries one light.
+    const int crystalCount = static_cast<int>(round.crystals.size());
+    ImGui::Text("Lit: %d of %d crystals (at most %d)", crystalCount - round.collectedCount,
+                crystalCount, scene::MAX_POINT_LIGHTS);
     ImGui::ColorEdit3("Point colour", glm::value_ptr(lighting.pointColor));
     ImGui::SliderFloat("Point intensity", &lighting.pointIntensity, MIN_INTENSITY,
                        MAX_POINT_INTENSITY, "%.2f", ImGuiSliderFlags_AlwaysClamp);
@@ -126,15 +133,15 @@ void drawHighlight(game::LightingSettings& lighting) {
 
 } // namespace
 
-void drawLightsPanel(game::LightingSettings& lighting, const game::MazeWorld& world) {
+void drawLightsPanel(game::LightingSettings& lighting, const game::Round& round) {
     // First run only: the left edge of the window, below the Renderer panel (the constant
     // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
     placePanelOnFirstUse(LIGHTS_PLACEMENT);
     if (ImGui::Begin("Lights")) {
         ImGui::ColorEdit3("Ambient", glm::value_ptr(lighting.ambient));
         drawMoon(lighting);
-        drawFlashlight(lighting);
-        drawPointLights(lighting, world);
+        drawFlashlight(lighting, round);
+        drawPointLights(lighting, round);
         drawHighlight(lighting);
     }
     ImGui::End();

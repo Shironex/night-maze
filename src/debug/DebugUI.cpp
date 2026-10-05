@@ -1,13 +1,15 @@
-// Debug user interface: owns the Dear ImGui context and draws the debug panels.
+// Debug user interface: owns the Dear ImGui context and draws the debug panels and the HUD.
 // See docs/modules/debug-ui.md
 #include "debug/DebugUI.hpp"
 
 #include "core/Window.hpp"
 #include "debug/DebugContext.hpp"
+#include "debug/Hud.hpp"
 #include "debug/Theme.hpp"
 #include "debug/panels/AssetsPanel.hpp"
 #include "debug/panels/CameraPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
+#include "debug/panels/GameplayPanel.hpp"
 #include "debug/panels/LightsPanel.hpp"
 #include "debug/panels/MazePanel.hpp"
 #include "debug/panels/RendererPanel.hpp"
@@ -94,18 +96,24 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 5;
+        constexpr int SHADER_COUNT = 4;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.shader, &context.texturedShader, &context.colorShader, &context.litShader,
+            &context.texturedShader, &context.colorShader, &context.litShader,
             &context.gouraudShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
-        drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
-        drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
+        drawGameplayPanel(context.round, context.gameplay);
+        drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
+                      context.camera);
+        drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
         drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
-        drawLightsPanel(context.lighting, context.mazeWorld);
+        drawLightsPanel(context.lighting, context.round);
     }
+
+    // The HUD belongs to the game and not to the tools, so it is drawn whether or not
+    // the panels are visible.
+    drawHud(context.round, context.gameplay);
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
     ImGui::Render();
