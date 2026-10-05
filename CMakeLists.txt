@@ -42,14 +42,16 @@ add_library(engine STATIC
     src/gfx/VertexArray.hpp
     src/scene/Camera.cpp
     src/scene/Camera.hpp
+    src/scene/Collider.cpp
+    src/scene/Collider.hpp
     src/scene/Transform.cpp
     src/scene/Transform.hpp
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
-# scene/Camera.hpp) expose GLM types, so every target that includes them needs the GLM
-# include path too.
+# scene/Camera.hpp, scene/Collider.hpp) expose GLM types, so every target that includes
+# them needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it
@@ -57,7 +59,26 @@ target_compile_definitions(engine PUBLIC
 )
 night_maze_enable_warnings(engine)
 
-# ---- night_maze: the game and its debug UI -------------------------------------------
+# ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
+# The maze, its generator and its layout in the world are plain data and math. They live
+# in a library of their own, and not in the night_maze executable, so that the test
+# program can link them too: a test cannot link code that is inside another executable.
+add_library(game_logic STATIC
+    src/game/Maze.cpp
+    src/game/Maze.hpp
+    src/game/MazeGenerator.cpp
+    src/game/MazeGenerator.hpp
+    src/game/MazeLayout.cpp
+    src/game/MazeLayout.hpp
+)
+# PUBLIC: game/MazeLayout.hpp includes scene/Collider.hpp and GLM, so whoever includes it
+# needs the include paths of engine. The src/ include root comes from engine as well.
+target_link_libraries(game_logic PUBLIC engine)
+night_maze_enable_warnings(game_logic)
+
+# ---- night_maze: the application and its debug UI -------------------------------------
+# NightMazeApp stays in the executable: it needs a window and an OpenGL context, so it is
+# not something a test can run.
 add_executable(night_maze
     src/main.cpp
     src/game/NightMazeApp.cpp
@@ -72,8 +93,28 @@ add_executable(night_maze
     src/debug/panels/ShadersPanel.cpp
     src/debug/panels/ShadersPanel.hpp
 )
-target_link_libraries(night_maze PRIVATE engine imgui)
+target_link_libraries(night_maze PRIVATE engine game_logic imgui)
 night_maze_enable_warnings(night_maze)
+
+# ---- night_maze_tests: unit tests of the code that runs without a window --------------
+# enable_testing() makes CMake write the list of tests into the build directory, where
+# the ctest program finds it. It has to be called in this top-level file.
+enable_testing()
+
+add_executable(night_maze_tests
+    tests/main.cpp
+    tests/ColliderTests.cpp
+    tests/MazeGeneratorTests.cpp
+    tests/MazeLayoutTests.cpp
+    tests/MazeTests.cpp
+)
+# game_logic brings engine with it (scene/Collider is part of engine).
+target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
+night_maze_enable_warnings(night_maze_tests)
+
+# One CTest test: it runs the whole test program and passes when the program exits with
+# code 0. The program is part of the default build, so the tests always compile.
+add_test(NAME night_maze_tests COMMAND night_maze_tests)
 
 # ---- assets: shaders (later models and textures) next to the executable ---------------
 # The program looks for assets/ in the directory of its own executable (core::assetPath).

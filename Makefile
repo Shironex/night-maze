@@ -14,9 +14,10 @@ else
     RELEASE_BIN := build/release/night_maze
 endif
 
-# Our own source files (third-party code in external/ and build/ is never checked).
-SOURCES := $(shell find src -name '*.cpp')
-HEADERS := $(shell find src -name '*.hpp')
+# Our own source files: the program in src/ and its unit tests in tests/ (third-party code
+# in external/ and build/ is never checked).
+SOURCES := $(shell find src tests -name '*.cpp')
+HEADERS := $(shell find src tests -name '*.hpp')
 
 # clang-tidy: use the one on PATH if there is one, otherwise the Homebrew LLVM package,
 # which is not added to PATH on macOS.
@@ -30,7 +31,7 @@ endif
 
 # These names are commands, not files. Without this line a file or folder called
 # "debug" or "clean" would make the target look already up to date.
-.PHONY: help debug release run run-release format format-check tidy check clean
+.PHONY: help debug release run run-release test test-release format format-check tidy check clean
 
 help:
 	@echo "Build and run"
@@ -39,10 +40,13 @@ help:
 	@echo "  make run           build and run the Debug version"
 	@echo "  make run-release   build and run the Release version"
 	@echo "Checks"
-	@echo "  make format        reformat src/ with clang-format"
-	@echo "  make format-check  fail if src/ is not formatted"
-	@echo "  make tidy          run clang-tidy on src/ (needs the Debug build)"
-	@echo "  make check         everything before a commit: format-check, both builds, tidy"
+	@echo "  make test          build the Debug version and run the unit tests"
+	@echo "  make test-release  build the Release version and run the unit tests"
+	@echo "  make format        reformat src/ and tests/ with clang-format"
+	@echo "  make format-check  fail if src/ or tests/ is not formatted"
+	@echo "  make tidy          run clang-tidy on src/ and tests/ (needs the Debug build)"
+	@echo "  make check         everything before a commit: format-check, both builds,"
+	@echo "                     the unit tests of both builds, tidy"
 	@echo "Other"
 	@echo "  make clean         delete the build/ directory"
 
@@ -62,6 +66,15 @@ run: debug
 run-release: release
 	./$(RELEASE_BIN)
 
+# The unit tests: the default build also builds the night_maze_tests program, ctest runs
+# it. -C names the configuration to test. The Visual Studio generator needs it (one build
+# directory holds Debug and Release there), single-configuration generators ignore it.
+test: debug
+	ctest --test-dir build/debug -C Debug --output-on-failure
+
+test-release: release
+	ctest --test-dir build/release -C Release --output-on-failure
+
 format:
 	clang-format -i $(SOURCES) $(HEADERS)
 
@@ -73,7 +86,8 @@ format-check:
 tidy: debug
 	$(CLANG_TIDY) --quiet -p build/debug --warnings-as-errors='*' $(TIDY_EXTRA_ARGS) $(SOURCES)
 
-check: format-check debug release tidy
+# test and test-release build both versions first (their prerequisites debug and release).
+check: format-check test test-release tidy
 	@echo "All checks passed."
 
 clean:
