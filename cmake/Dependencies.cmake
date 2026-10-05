@@ -67,3 +67,23 @@ target_include_directories(imgui SYSTEM PUBLIC
 # The OpenGL3 backend uses the small GL loader bundled with ImGui, so it does not need GLAD.
 # The GLFW backend needs the GLFW headers.
 target_link_libraries(imgui PUBLIC glfw)
+
+# ---- doctest: unit tests ---------------------------------------------------------------
+# doctest is a single header. Its CMake build can also compile a small static library that
+# contains only main(): we write that one line ourselves in tests/main.cpp, so the library
+# is switched off. So are the tests and examples of doctest itself and its install rules.
+set(DOCTEST_WITH_MAIN_IN_STATIC_LIB OFF CACHE BOOL "" FORCE)
+set(DOCTEST_WITH_TESTS OFF CACHE BOOL "" FORCE)
+set(DOCTEST_NO_INSTALL ON CACHE BOOL "" FORCE)
+
+# The doctest target is an interface target that only carries the include path. Unlike
+# GLFW and GLM it needs no extra step here: when doctest is not the main project, its own
+# CMakeLists.txt already declares that path as SYSTEM, so the header cannot produce
+# warnings in our tests.
+FetchContent_Declare(
+    doctest
+    GIT_REPOSITORY https://github.com/doctest/doctest.git
+    GIT_TAG v2.5.3
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(doctest)
