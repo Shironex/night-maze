@@ -1,5 +1,5 @@
 # Generates the textures of the game into assets/textures: the colour pictures
-# wall_stone.png, floor_stone.png, gate_wood.png and crystal.png, and one normal map for
+# wall_stone.png, ground.png, gate_wood.png and crystal.png, and one normal map for
 # each of them (the same name with _normal). All eight are 512 x 512 pixels, 8 bits per
 # channel, RGB.
 # See docs/guides/blender.md
@@ -10,7 +10,8 @@
 # The textures are sampled with GL_REPEAT, so the left edge has to continue the right edge
 # and the bottom edge has to continue the top edge. Every step below keeps that property:
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
-# and the distances between the cells of the crystal are measured across the edges.
+# and the distances between the cells of the crystal and to the stones of the ground are
+# measured across the edges.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
 # same joints, the same noise), so the relief lies exactly where the picture shows it.
@@ -37,13 +38,15 @@ import numpy as np
 import blender_common as common
 
 # Width and height of every texture in pixels. A power of two, and 256 pixels per metre
-# with the texel density of the stone and gate models (one repeat = 2 m).
+# with the texel density of the stone and gate models (one repeat = 2 m). The ground is
+# the exception: the terrain repeats its texture every 4 m, so there it is 128 pixels per
+# metre.
 SIZE = 512
 
 # The same seeds give the same pictures on every run. Change a seed to get another
 # arrangement of light and dark stones.
 WALL_SEED = 11
-FLOOR_SEED = 23
+GROUND_SEED = 67
 GATE_SEED = 37
 CRYSTAL_SEED = 41
 
@@ -543,6 +546,125 @@ def crystal_height(pattern, bevel_width, vein_depth, tilt, bump_depth):
     return profile * (vein_depth + lean + bumps)
 
 
+def ground_pattern(seed, stone_count, min_radius, max_radius):
+    """Returns what the colour picture and the normal map of the ground have in common.
+
+    The ground is packed earth with soft patches of moss and small stones pressed into it.
+
+    stone_count: how many stones lie on one repeat of the texture.
+    min_radius, max_radius: the size range of a stone, in pixels.
+
+    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
+      "stone_depth":       how deep the pixel lies inside a stone, from 0 at its rim to
+                           1 in its middle. Zero and below means outside of every stone
+      "stone_brightness":  the random brightness of the nearest stone
+      "moss":              how much moss covers the pixel, from 0 to 1
+      "patches", "grain":  large soft noise and fine noise, both from 0 to 1
+    """
+    rng = np.random.default_rng(seed)
+
+    # Pixel coordinates. Row 0 is the bottom row of the image.
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+
+    # Random places and sizes of the stones, and a brightness for each.
+    centres_x = rng.uniform(0.0, SIZE, stone_count)
+    centres_y = rng.uniform(0.0, SIZE, stone_count)
+    radii = rng.uniform(min_radius, max_radius, stone_count)
+    brightnesses = rng.uniform(0.75, 1.05, stone_count)
+
+    # Soft noise that pushes the rim of every stone in and out, so that no stone is
+    # a perfect circle.
+    outline = smooth_noise(rng, 5)
+
+    stone_depth = np.full((SIZE, SIZE), -1.0)
+    stone_brightness = np.ones((SIZE, SIZE))
+    for stone in range(stone_count):
+        # Distance to the centre along each axis, the short way round: a stone near the
+        # right edge continues at the left edge, so the texture tiles.
+        offset_x = np.abs(x + 0.5 - centres_x[stone])
+        offset_x = np.minimum(offset_x, SIZE - offset_x)
+        offset_y = np.abs(y + 0.5 - centres_y[stone])
+        offset_y = np.minimum(offset_y, SIZE - offset_y)
+        distance = np.sqrt(offset_x * offset_x + offset_y * offset_y)
+
+        # 1 in the middle of the stone, 0 on its rim, negative outside. The radius
+        # changes with the noise by up to a quarter in each direction.
+        depth = 1.0 - distance / (radii[stone] * (0.75 + 0.5 * outline))
+        # Where two stones overlap, the one the pixel lies deeper in wins.
+        nearer = depth > stone_depth
+        stone_depth[nearer] = depth[nearer]
+        stone_brightness[nearer] = brightnesses[stone]
+
+    # Moss grows in patches: wide soft noise, and only its upper part counts as moss. The
+    # edge of a patch is a smooth ramp, not a line.
+    # The noise is blurred a second time: one blur over a square of pixels leaves patches
+    # with straight edges, the second one rounds them.
+    moss_noise = stretch(blur(smooth_noise(rng, 24), 16))
+    moss = smooth_step(np.clip((moss_noise - 0.50) / 0.20, 0.0, 1.0))
+
+    patches = smooth_noise(rng, 14)
+    grain = smooth_noise(rng, 1)
+
+    return {
+        "stone_depth": stone_depth,
+        "stone_brightness": stone_brightness,
+        "moss": moss,
+        "patches": patches,
+        "grain": grain,
+    }
+
+
+def ground_color(pattern, earth_color, moss_color, stone_color):
+    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: the ground.
+
+    pattern: the result of ground_pattern.
+    earth_color, moss_color, stone_color: (red, green, blue) from 0 to 1.
+    """
+    grain = pattern["grain"]
+    moss = pattern["moss"]
+
+    # The earth, lighter and darker in soft patches, with fine grain on top.
+    brightness = (0.80 + 0.40 * pattern["patches"]) * (0.88 + 0.24 * grain)
+    color = brightness[..., None] * np.array(earth_color)
+
+    # Mix towards the moss colour: moss = 0 keeps the earth, moss = 1 replaces it. The
+    # moss carries the grain too, a little stronger, so it does not look painted on.
+    moss_shade = (0.80 + 0.40 * grain)[..., None] * np.array(moss_color)
+    color = color + moss[..., None] * (moss_shade - color)
+
+    # The stones lie on top of both. A darker rim makes them look rounded without any
+    # lighting, like the rim of the wall stones.
+    stone_depth = pattern["stone_depth"]
+    inside = stone_depth > 0.0
+    rim = np.clip(stone_depth / 0.5, 0.0, 1.0)
+    stone_shade = pattern["stone_brightness"] * (0.72 + 0.28 * rim) * (0.85 + 0.30 * grain)
+    color[inside] = stone_shade[inside][..., None] * np.array(stone_color)
+
+    return np.clip(color, 0.0, 1.0)
+
+
+def ground_height(pattern, stone_rise, moss_rise, bump_depth, grain_depth):
+    """Returns a SIZE x SIZE array: how far every pixel of the ground stands out.
+
+    The unit is the size of one pixel of the texture, like in stone_height.
+
+    pattern: the result of ground_pattern, the same one the colour picture was made from.
+    stone_rise: how far the middle of a stone stands above the earth.
+    moss_rise: how far a cushion of moss stands above the earth.
+    bump_depth: height of the large soft bumps of the earth.
+    grain_depth: height of the fine grain.
+    """
+    # A stone is a dome: its height follows the smoothstep curve from the rim (0) to the
+    # middle (1), so it meets the earth without a sharp crease.
+    dome = smooth_step(np.clip(pattern["stone_depth"], 0.0, 1.0))
+
+    # The two kinds of noise, blurred once more for a smooth slope (see stone_height).
+    bumps = bump_depth * (blur(pattern["patches"], BUMP_BLUR_RADIUS) - 0.5)
+    grain = grain_depth * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
+
+    return stone_rise * dome + moss_rise * pattern["moss"] + bumps + grain
+
+
 def save_png(color, file_name):
     """Saves a SIZE x SIZE x 3 array of colors from 0 to 1 as an 8-bit RGB PNG."""
     # Round to the 256 levels of an 8-bit channel here, so the bytes in the file do not
@@ -598,35 +720,28 @@ def build():
     )
     save_png(normal_map(wall_height), "wall_stone_normal.png")
 
-    # Floor: square slabs of 0.5 m in a straight grid, darker and warmer than the wall, so
-    # the floor and the walls differ in color and in pattern.
-    floor = stone_pattern(
-        seed=FLOOR_SEED,
-        stone_width=128,
-        stone_height=128,
-        running_bond=False,
-        stone_variation=0.20,
+    # Ground: packed earth with patches of moss and small stones, for the terrain. The
+    # game is drawn without gamma correction before M7, so the colours are kept fairly
+    # light: the night comes from the lighting, not from the picture.
+    ground = ground_pattern(seed=GROUND_SEED, stone_count=48, min_radius=4.0, max_radius=11.0)
+    ground_picture = ground_color(
+        ground,
+        earth_color=(0.44, 0.36, 0.27),
+        moss_color=(0.30, 0.42, 0.22),
+        stone_color=(0.50, 0.48, 0.44),
     )
-    floor_color = stone_color(
-        floor,
-        joint_width=8,
-        rim_width=10,
-        stone_color=(0.42, 0.34, 0.26),
-        joint_color=(0.12, 0.10, 0.08),
-    )
-    save_png(floor_color, "floor_stone.png")
+    save_png(ground_picture, "ground.png")
 
-    # The relief of the floor: wider and shallower joints than in the wall.
-    floor_height = stone_height(
-        floor,
-        joint_width=8,
-        bevel_width=6,
-        joint_depth=2.0,
-        tilt=1.5,
-        bump_depth=6.0,
-        grain_depth=0.5,
+    # The relief of the ground: stones as low domes, moss as soft cushions, and the earth
+    # itself gently uneven.
+    ground_relief = ground_height(
+        ground,
+        stone_rise=4.0,
+        moss_rise=1.5,
+        bump_depth=8.0,
+        grain_depth=0.6,
     )
-    save_png(normal_map(floor_height), "floor_stone_normal.png")
+    save_png(normal_map(ground_relief), "ground_normal.png")
 
     # Gate: eight upright planks of 0.25 m in a warm brown, with dark iron bands.
     gate = wood_pattern(
