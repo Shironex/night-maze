@@ -10,10 +10,12 @@ namespace {
 constexpr float HALF_CELL = 0.5F;
 
 // Half extents of the boxes, as scene::Aabb::fromCenter wants them. A wall along Z is
-// the same box with its length and its thickness swapped.
+// the same box with its length and its thickness swapped. The half thickness of a wall is
+// written exactly like the half size of a pillar below (the constant divided by 2), so
+// both give the same float and the faces of the two kinds of boxes meet without a step.
 constexpr glm::vec3 WALL_ALONG_X_HALF_EXTENTS{WALL_LENGTH / 2.0F, WALL_HEIGHT / 2.0F,
-                                              WALL_THICKNESS / 2.0F};
-constexpr glm::vec3 WALL_ALONG_Z_HALF_EXTENTS{WALL_THICKNESS / 2.0F, WALL_HEIGHT / 2.0F,
+                                              WALL_COLLISION_THICKNESS / 2.0F};
+constexpr glm::vec3 WALL_ALONG_Z_HALF_EXTENTS{WALL_COLLISION_THICKNESS / 2.0F, WALL_HEIGHT / 2.0F,
                                               WALL_LENGTH / 2.0F};
 constexpr glm::vec3 PILLAR_HALF_EXTENTS{PILLAR_SIZE / 2.0F, PILLAR_HEIGHT / 2.0F,
                                         PILLAR_SIZE / 2.0F};

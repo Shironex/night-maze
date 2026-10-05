@@ -1,13 +1,13 @@
 # Moduł scene: kolizje, AABB i przesuwanie wzdłuż ścian
 
 Kamień milowy: M2 + M3. Temat wykładu: 14 (Wstęp do kolizji).
-Kod: [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp), [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp), testy w [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp), pierwszy użytkownik: [`src/game/MazeLayout.cpp`](../../../src/game/MazeLayout.cpp) (pudełka ścian i słupków).
+Kod: [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp), [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp), testy w [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp). Rysowanie pudełek: [`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp), shadery [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag), panel w [`src/debug/panels/CollisionPanel.hpp`](../../../src/debug/panels/CollisionPanel.hpp) i [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Użytkownicy: [`src/game/MazeLayout.cpp`](../../../src/game/MazeLayout.cpp) (pudełka ścian i słupków) i [`src/game/Player.cpp`](../../../src/game/Player.cpp) (ruch gracza).
 
-Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, dodawanie i odejmowanie wektorów) i odwołuje się do stałego kroku symulacji z [`../core/main-loop.md`](../core/main-loop.md), sekcje 2.2 i 2.3. Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Skąd biorą się pudełka ścian labiryntu, opisuje [`../game/maze-generator.md`](../game/maze-generator.md), sekcje 2.7 i 5.7.
+Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, dodawanie i odejmowanie wektorów) i odwołuje się do stałego kroku symulacji z [`../core/main-loop.md`](../core/main-loop.md), sekcje 2.2 i 2.3. Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Skąd biorą się pudełka ścian labiryntu, opisuje [`../game/maze-generator.md`](../game/maze-generator.md), sekcje 2.7 i 5.7. Gracza, który z kolizji korzysta, opisuje [`../game/player.md`](../game/player.md).
 
 ## 1. Po co to jest
 
-Kamera z kamienia milowego M1 lata swobodnie: nic jej nie zatrzymuje, więc przelatuje przez kostkę. W labiryncie gracz ma chodzić po korytarzach i zatrzymywać się na ścianach. Potrzebne są do tego dwie rzeczy:
+Kamera z kamienia milowego M1 latała bez przeszkód: nic jej nie zatrzymywało, więc przelatywała przez kostkę. W labiryncie gracz ma chodzić po korytarzach i zatrzymywać się na ścianach. Potrzebne są do tego dwie rzeczy:
 
 1. **wykrywanie kolizji** (collision detection): odpowiedź na pytanie "czy te dwa obiekty na siebie nachodzą",
 2. **reakcja na kolizję** (collision response): decyzja, co zrobić z ruchem, który doprowadziłby do nachodzenia.
@@ -16,7 +16,9 @@ Obie realizuje plik `Collider`: struktura `scene::Aabb` (pudełko o ścianach r�
 
 Tak jak `Transform` i `Camera`, to zwykłe dane i matematyka: żadnego wywołania OpenGL, żadnej klawiatury, żadnego czasu. Dzięki temu cały kod da się sprawdzić testami jednostkowymi bez okna.
 
-**Stan na dziś, uczciwie.** Kod kolizji istnieje i ma testy (12 przypadków testowych w `tests/ColliderTests.cpp` i trzy dalsze, razem z labiryntem, w `tests/MazeLayoutTests.cpp`). Pudełka ścian i słupków labiryntu liczy `game::mazeColliders`. **W programie nikt jeszcze nie woła `moveAndSlide`**: gracza nie ma, `NightMazeApp` nadal rysuje kostkę, a kamera lata bez kolizji. Gracz, panel Collision i rysowanie pudełek kolizji dochodzą w następnym kroku kamienia milowego M2 + M3.
+Do pokazu i do szukania błędów dochodzą dwie rzeczy z programu `night_maze`: klasa `game::ColliderLines`, która rysuje pudełka cienkimi liniami (sekcje 3, 4 i 5.8), i panel Collision (sekcja 6).
+
+**Stan na dziś, uczciwie.** Kod kolizji ma testy: 12 przypadków w `tests/ColliderTests.cpp`, trzy dalsze, razem z labiryntem, w `tests/MazeLayoutTests.cpp` i cztery z graczem w `tests/PlayerTests.cpp`. Pudełka ścian i słupków labiryntu liczy `game::mazeColliders`, a `moveAndSlide` woła gracz w każdym kroku chodzenia (`game::Player::update`). Na Windowsie (2026-10-05, MSVC 19.44) wszystkie testy przechodzą w Debug i Release, a na zrzucie ekranu z widoku z góry żółte linie pudełek leżą na ścianach i słupkach. Chodzenia i ślizgania prawdziwymi klawiszami oraz widżetów panelu Collision **nikt jeszcze nie sprawdził ręcznie**. Na macOS kod nie był budowany ani uruchamiany.
 
 ## 2. Teoria
 
@@ -125,7 +127,7 @@ krok dyskretny                         przemiatanie
 
 Lewa strona rysunku to **tunelowanie** (tunnelling): obiekt przechodzi przez przeszkodę, bo w żadnej sprawdzanej chwili na nią nie nachodzi. W wykrywaniu dyskretnym zdarza się to, gdy krok jest dłuższy niż łączna grubość obiektu i przeszkody: przed krokiem obiekt jest w całości po jednej stronie, po kroku w całości po drugiej.
 
-Liczby dla tego projektu: ściana ma 0,2 m grubości, pudełko gracza około 0,6 m. Krok dyskretny dłuższy niż 0,8 m przeskoczyłby ścianę. Przy prędkości 3 m/s taki krok oznacza czas klatki 0,27 s, a `core::Time` obcina czas klatki do 0,25 s (`MAX_FRAME_TIME`). Byłoby więc na styk, i tylko dzięki obcięciu.
+Liczby dla tego projektu: pudełko ściany ma 0,3 m grubości, pudełko gracza 0,6 m. Krok dyskretny dłuższy niż 0,9 m przeskoczyłby ścianę. Przy chodzie 3 m/s taki krok oznacza czas klatki 0,3 s, a przy sprincie 5,5 m/s już 0,16 s. `core::Time` obcina czas klatki do 0,25 s (`MAX_FRAME_TIME`), więc test dyskretny liczony z czasu klatki chroniłby chód tylko dzięki obcięciu, a sprintu nie chroniłby wcale.
 
 Dwa lekarstwa:
 
@@ -167,7 +169,7 @@ To jest całe ślizganie: nie ma żadnego osobnego kodu "ślizgaj się", jest ty
 
 Druga ważna rzecz: następna oś zaczyna od miejsca, w którym skończyła poprzednia. Po obsłużeniu osi x pudełko jest przesunięte o dozwolone x, i dopiero dla takiego pudełka liczę oś z.
 
-Test na jednej osi jest **przemiataniem** w jednym wymiarze: mierzy odstęp, zamiast sprawdzać pozycję końcową. Dlatego na pojedynczej osi tunelowanie nie występuje, niezależnie od długości kroku (zmierzone: krok 50 m w stronę ściany grubości 0,2 m kończy się na ścianie, sekcja 5.7).
+Test na jednej osi jest **przemiataniem** w jednym wymiarze: mierzy odstęp, zamiast sprawdzać pozycję końcową. Dlatego na pojedynczej osi tunelowanie nie występuje, niezależnie od długości kroku (zmierzone: krok 50 m w stronę ściany testowej o grubości 0,2 m kończy się na ścianie, sekcja 5.7).
 
 ### 2.7 Tolerancja styku: liczby `float` nie są dokładne
 
@@ -180,7 +182,7 @@ Bez zabezpieczenia miałoby to dwa skutki:
 
 Oba skutki są zmierzone: po usunięciu tolerancji z kodu pudełko pchane na ścianę zamkniętej komórki wychodzi z niej na zewnątrz, a trzy przypadki testowe przestają przechodzić (ćwiczenie 7).
 
-Rozwiązaniem jest **tolerancja styku** (stała `CONTACT_TOLERANCE`, 1 mm): w `moveAndSlide` nakładanie płytsze niż 1 mm jest traktowane jak dotyk. Wartość jest dobrana między dwiema skalami: jest kilkaset razy większa od błędu zaokrąglenia (milionowe części metra) i dwieście razy mniejsza od grubości ściany (0,2 m), a milimetra na ekranie nie widać.
+Rozwiązaniem jest **tolerancja styku** (stała `CONTACT_TOLERANCE`, 1 mm): w `moveAndSlide` nakładanie płytsze niż 1 mm jest traktowane jak dotyk. Wartość jest dobrana między dwiema skalami: jest kilkaset razy większa od błędu zaokrąglenia (milionowe części metra) i trzysta razy mniejsza od grubości pudełka ściany (0,3 m), a milimetra na ekranie nie widać.
 
 `overlaps` tolerancji nie ma: odpowiada na pytanie geometryczne dokładnie tak, jak je zadano. Tolerancja należy do ruchu, bo to ruch produkuje błędy zaokrągleń.
 
@@ -209,13 +211,13 @@ Każdy z dwóch odcinków jest sprawdzany dokładnie. Ale słupek z rysunku nie 
 
 Wielkość tego błędu jest taka jak długość kroku. Słupek z rysunku da się "obejść" tylko wtedy, gdy krok na obu osiach naraz jest dłuższy niż pudełko i przeszkoda razem. Dlatego funkcja zakłada **krótkie kroki**:
 
-| Skąd pochodzi przesunięcie | Długość kroku przy 3 m/s | W porównaniu ze ścianą 0,2 m |
+| Skąd pochodzi przesunięcie | Długość kroku przy 3 m/s | W porównaniu z pudełkiem ściany 0,3 m |
 |---|---|---|
-| stały krok `FIXED_DT` = 1/120 s | 2,5 cm | 8 razy krótszy |
-| czas klatki przy 60 FPS | 5 cm | 4 razy krótszy |
-| najdłuższy dopuszczalny czas klatki `MAX_FRAME_TIME` = 0,25 s | 75 cm | prawie 4 razy dłuższy |
+| stały krok `FIXED_DT` = 1/120 s | 2,5 cm | 12 razy krótszy |
+| czas klatki przy 60 FPS | 5 cm | 6 razy krótszy |
+| najdłuższy dopuszczalny czas klatki `MAX_FRAME_TIME` = 0,25 s | 75 cm | 2,5 raza dłuższy |
 
-Przesunięcie dla `moveAndSlide` musi więc powstawać w `onUpdate`, z `fixedDt`, a nie z czasu klatki. To ten sam powód, dla którego ruch kamery jest liczony stałym krokiem ([`../core/main-loop.md`](../core/main-loop.md), sekcja 2.2): symulacja ma dawać ten sam wynik przy każdej liczbie klatek na sekundę.
+Przesunięcie dla `moveAndSlide` musi więc powstawać w `onUpdate`, z `fixedDt`, a nie z czasu klatki. To ten sam powód, dla którego cały ruch gracza jest liczony stałym krokiem ([`../core/main-loop.md`](../core/main-loop.md), sekcja 2.2): symulacja ma dawać ten sam wynik przy każdej liczbie klatek na sekundę.
 
 Oba przypadki z rysunku są zmierzone testem (sekcja 5.7): jeden krok 2 m po przekątnej mija słupek, a ta sama droga w 80 krokach po 2,5 cm na niego trafia i musi go obejść.
 
@@ -242,13 +244,94 @@ Poza zakresem projektu zostają: bryły obrócone (OBB), siatki trójkątów, st
 
 ## 3. Jak to działa w OpenGL
 
-Nie dotyczy: kolizje to czysta matematyka na procesorze. `Collider.hpp` i `Collider.cpp` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`. OpenGL nie wie, że jakieś pudełka istnieją, i niczego nie sprawdza: karta graficzna narysuje dwa obiekty jeden w drugim bez żadnego błędu.
+Same kolizje to czysta matematyka na procesorze. `Collider.hpp` i `Collider.cpp` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`. OpenGL nie wie, że jakieś pudełka istnieją, i niczego nie sprawdza: karta graficzna narysuje dwa obiekty jeden w drugim bez żadnego błędu.
 
-Związek z renderowaniem jest pośredni i dopiero powstanie: wynik `moveAndSlide` zmieni pozycję gracza, z pozycji gracza powstanie pozycja kamery, a z niej macierz widoku ([`camera.md`](camera.md), sekcja 5.5). Kolizja decyduje więc o tym, **skąd** rysowana jest klatka, a nie o tym, jak.
+Związek z renderowaniem jest pośredni: wynik `moveAndSlide` zmienia pozycję gracza, z pozycji gracza powstaje punkt oka, a z niego macierz widoku ([`../game/player.md`](../game/player.md), sekcja 5). Kolizja decyduje więc o tym, **skąd** rysowana jest klatka, a nie o tym, jak.
+
+OpenGL pojawia się dopiero przy **rysowaniu pudełek** jako pomocy diagnostycznej (klasa `game::ColliderLines`, sekcja 5.8). Pudełko jest rysowane jako 12 krawędzi sześcianu, liniami.
+
+**Prymityw `GL_LINES`.** Do tej pory wszystko było rysowane trójkątami (`GL_TRIANGLES`: każde trzy indeksy to jeden trójkąt). Pierwszy parametr `glDrawElements` może też wskazać linie: przy `GL_LINES` **każde dwa indeksy to jeden odcinek**. Sześcian ma 8 narożników i 12 krawędzi, więc wystarcza 8 wierzchołków i 24 indeksy. Ta sama klasa `gfx::Mesh` obsługuje oba przypadki: rodzaj prymitywu jest parametrem jej konstruktora ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5).
+
+| Krok w klatce (gdy rysowanie pudełek jest włączone) | Wywołania OpenGL | Ile razy dla labiryntu 10 na 10 |
+|---|---|---|
+| `m_colorShader.use()` | `glUseProgram` | 1 |
+| `setMat4` dla `uView` i `uProjection` | `glGetUniformLocation`, `glUniformMatrix4fv` | po 1 |
+| `setVec3(COLOR_UNIFORM, color)` | `glGetUniformLocation`, `glUniform3fv` | 2 (żółty dla labiryntu, zielony dla gracza) |
+| `setMat4(MODEL_UNIFORM, ...)` | `glGetUniformLocation`, `glUniformMatrix4fv` | 243 (121 ścian, 121 słupków, 1 gracz) |
+| `m_unitCube.draw()` | `glBindVertexArray`, `glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, ...)` | 243 |
+
+Trzy szczegóły:
+
+- **Jedna siatka dla wszystkich pudełek.** Na karcie leży jeden sześcian o boku 1. Każde pudełko to ten sześcian z inną macierzą modelu: skala równa rozmiarowi pudełka i przesunięcie do jego narożnika `min`. To ta sama zasada co przy ścianach labiryntu ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 2).
+- **Szerokość linii to 1 piksel.** Kod nie woła `glLineWidth`. Profil Core nie musi obsługiwać linii szerszych niż 1, a implementacja OpenGL w macOS jest znana z tego, że ich nie obsługuje (tak mówi też komentarz w kodzie, na Macu tego nie sprawdzałem), więc wartość domyślna jest jedyną przenośną.
+- **Test głębi zostaje włączony.** Linia za ścianą jest przez nią zasłonięta. Dzięki temu widać, gdzie pudełko naprawdę jest, a nie plątaninę wszystkich krawędzi labiryntu naraz.
+
+**Walka o głębię (z-fighting).** Pudełko słupka ma dokładnie szerokość trzonu modelu słupka (0,3 m). Linie narysowane w prawdziwym rozmiarze leżałyby więc **w** powierzchni modelu: dla tych samych pikseli linia i ściana miałyby prawie tę samą głębię, a o tym, co wygra test głębi, decydowałyby błędy zaokrągleń, inne w każdej klatce. Linie migotałyby. Rozwiązanie w projekcie jest najprostsze z możliwych: rysowane pudełko jest większe o 1 cm z każdej strony, więc linie są wyraźnie przed powierzchnią. Kolizje nadal liczą się na prawdziwych pudełkach.
 
 ## 4. Shadery
 
-Kolizje nie mają shadera. Planowane jest rysowanie pudełek kolizji liniami (do pokazu na obronie i do szukania błędów), które będzie potrzebować prostego shadera jednego koloru. Dojdzie razem z graczem i panelem Collision, w tym samym kamieniu milowym.
+Same kolizje nie mają shadera. Linie pudełek rysuje najprostsza para w projekcie: [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag). Wszystko, co nimi narysowane, ma jeden kolor.
+
+### 4.1 `color.vert`
+
+```glsl
+#version 410 core
+// Vertex shader for shapes drawn in one flat colour: the lines of the collision boxes.
+// See docs/modules/scene/collision.md
+
+// Input: only the position. The mesh also carries a normal (location 1) and a texture
+// coordinate (location 2), but a shader may leave attributes it does not need unread.
+layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the shape
+
+// Uniforms: set from C++ (gfx::Shader::setMat4).
+uniform mat4 uModel;      // local space to world space
+uniform mat4 uView;       // world space to view space
+uniform mat4 uProjection; // view space to clip space
+
+void main() {
+    // The same chain as in basic.vert: local, world, view, clip space.
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `#version 410 core` | GLSL 4.10, profil Core: ta sama wersja co kontekst OpenGL projektu |
+| `layout(location = 0) in vec3 aPosition;` | jedyne wejście: pozycja, atrybut numer 0. Numer zgadza się ze stałą `POSITION_ATTRIBUTE` z `src/gfx/Vertex.hpp` |
+| brak `aNormal` i `aUv` | siatka `gfx::Mesh` zawsze opisuje trzy atrybuty (pozycja, normalna, uv). Shader nie musi czytać wszystkich: atrybut włączony w VAO, którego shader nie deklaruje, jest po prostu ignorowany |
+| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `basic.vert` i `textured.vert`, dzięki czemu kod C++ używa dla wszystkich programów tych samych stałych z `ShaderUniforms.hpp` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5) |
+| `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | łańcuch czytany od prawej: przestrzeń lokalna, świat, widok, przycinanie ([`transforms.md`](transforms.md), sekcja 4). `1.0` jako czwarta składowa oznacza punkt, więc przesunięcie z macierzy działa |
+
+Shader nie ma żadnego wyjścia poza `gl_Position`: fragmentom nie trzeba niczego przekazywać, bo kolor jest ten sam dla całego kształtu.
+
+### 4.2 `color.frag`
+
+```glsl
+#version 410 core
+// Fragment shader for shapes drawn in one flat colour: the lines of the collision boxes.
+// See docs/modules/scene/collision.md
+
+// The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3).
+uniform vec3 uColor;
+
+// Output: the color written to the framebuffer (red, green, blue, alpha).
+out vec4 fragColor;
+
+void main() {
+    // Every fragment gets the same colour. Alpha 1 means fully opaque.
+    fragColor = vec4(uColor, 1.0);
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `uniform vec3 uColor;` | kolor całego kształtu. To uniform, a nie atrybut: jest stały dla wszystkich wierzchołków jednego wywołania rysującego, a zmienia się między wywołaniami |
+| `out vec4 fragColor;` | wyjście shadera fragmentów: kolor zapisywany do framebuffera |
+| `fragColor = vec4(uColor, 1.0);` | trzy składowe koloru i alfa 1, czyli pełne krycie |
+
+Różnica wobec `basic.frag`: tam kolor przychodził z wierzchołków i był interpolowany, tutaj przychodzi jako jedna liczba dla wszystkich fragmentów. Różnica wobec `textured.frag`: nie ma tekstury ani żadnego wejścia z shadera wierzchołków.
+
+Kolory ustawia `NightMazeApp` (sekcja 5.8): żółty `(1, 0,85, 0,1)` dla pudełek labiryntu i zielony `(0,2, 1, 0,4)` dla pudełka gracza.
 
 ## 5. Kod w projekcie
 
@@ -259,10 +342,14 @@ Kolizje nie mają shadera. Planowane jest rysowanie pudełek kolizji liniami (do
 | [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp) | stała `CONTACT_TOLERANCE`, struktura `Aabb` z funkcją `fromCenter`, deklaracje `overlaps` i `moveAndSlide` |
 | [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp) | stałe osi, funkcje pomocnicze `sharedLength` i `allowedDistance`, definicje trzech funkcji publicznych |
 | [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp) | 12 przypadków testowych samych kolizji |
-| [`tests/MazeLayoutTests.cpp`](../../../tests/MazeLayoutTests.cpp) | trzy przypadki łączące kolizje z labiryntem (zamknięta komórka, wędrówka po labiryncie, słupek) |
+| [`tests/MazeLayoutTests.cpp`](../../../tests/MazeLayoutTests.cpp) | trzy przypadki łączące kolizje z labiryntem (zamknięta komórka, wędrówka po labiryncie, ślizganie obok słupków) |
 | [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp), [`.cpp`](../../../src/game/MazeLayout.cpp) | pierwszy użytkownik `Aabb`: `wallBox`, `pillarBox`, `mazeColliders` ([`../game/maze-generator.md`](../game/maze-generator.md), sekcja 5.7) |
+| [`src/game/Player.hpp`](../../../src/game/Player.hpp), [`.cpp`](../../../src/game/Player.cpp) | użytkownik `moveAndSlide`: `Player::box` i `Player::update` (sekcja 5.6 i [`../game/player.md`](../game/player.md)) |
+| [`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`.cpp`](../../../src/game/ColliderLines.cpp) | rysowanie pudełek liniami (sekcja 5.8) |
+| [`assets/shaders/color.vert`](../../../assets/shaders/color.vert), [`color.frag`](../../../assets/shaders/color.frag) | shadery jednego koloru (sekcja 4) |
+| [`src/debug/panels/CollisionPanel.hpp`](../../../src/debug/panels/CollisionPanel.hpp), [`.cpp`](../../../src/debug/panels/CollisionPanel.cpp) | panel Collision (sekcja 6) |
 
-Pliki `src/scene/Collider.*` należą do biblioteki `engine`, tak jak reszta `src/scene/`. Nie ma w nich nic specyficznego dla Night Maze: pudełko nie wie, czy jest ścianą, graczem czy skrzynią.
+Pliki `src/scene/Collider.*` należą do biblioteki `engine`, tak jak reszta `src/scene/`. Nie ma w nich nic specyficznego dla Night Maze: pudełko nie wie, czy jest ścianą, graczem czy skrzynią. `ColliderLines.*` i `CollisionPanel.*` należą do programu `night_maze`, bo wymagają kontekstu OpenGL albo ImGui.
 
 Dołączane nagłówki: `<glm/glm.hpp>` i `<span>` w nagłówku, `<algorithm>` (`std::min`, `std::max`), `<array>` i `<cmath>` (`std::abs`) w pliku `.cpp`. Nic z `core/`, `gfx/`, GLAD ani GLFW.
 
@@ -467,26 +554,35 @@ Dlaczego funkcja zwraca przesunięcie, a nie przesuwa obiektu: `Aabb` to tylko b
 
 Dlaczego kolejność x, z, y: ruch w labiryncie jest prawie zawsze poziomy, więc obie osie poziome idą pierwsze, a pionowa na końcu. Dopóki nie ma grawitacji ani skoków, składowa y przesunięcia wynosi zero i trzeci obrót pętli kończy się w pierwszej linii `allowedDistance`.
 
-### 5.6 Jak skorzysta z tego gracz
+### 5.6 Jak korzysta z tego gracz
 
-Tego kodu jeszcze nie ma. To szkic, który pokazuje, jak trzy elementy (pozycja, pudełko, lista przeszkód) spotykają się w jednym kroku symulacji:
+Koniec funkcji `game::Player::update`, czyli krok chodzenia ([`src/game/Player.cpp`](../../../src/game/Player.cpp)):
 
 ```cpp
-// Przykład, nie kod projektu.
-void onUpdate(double fixedDt) {
-    // Chciane przesunięcie w tym kroku: kierunek z klawiszy razy prędkość razy czas kroku.
-    const glm::vec3 wanted = direction * (moveSpeed * static_cast<float>(fixedDt));
+    const float speed = input.sprint ? sprintSpeed : walkSpeed;
+    const glm::vec3 wanted = direction * (speed * stepSeconds);
 
-    // Pudełko gracza w bieżącej pozycji.
-    const scene::Aabb box = scene::Aabb::fromCenter(playerCenter, playerHalfExtents);
-
-    // Przesunięcie, na które pozwalają ściany. obstacles to wynik game::mazeColliders,
-    // policzony raz, po wygenerowaniu labiryntu.
-    playerCenter += scene::moveAndSlide(box, wanted, obstacles);
-}
+    // The walls take away the part of the movement that would go into them and leave the
+    // part along them. The box is built anew from the position in every step.
+    position += scene::moveAndSlide(box(), wanted, obstacles);
 ```
 
-Trzy rzeczy, których ten szkic pilnuje: przesunięcie powstaje z `fixedDt` (sekcja 2.8), pudełko jest budowane od nowa z pozycji w każdym kroku, a lista przeszkód jest liczona raz, nie w każdym kroku. Dokładnie tak, tylko bez klawiszy, robią to testy z pętlą kroków.
+A tak woła ją aplikacja w `NightMazeApp::onUpdate`:
+
+```cpp
+    m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
+                    m_mazeWorld.colliders);
+```
+
+Trzy elementy spotykają się w jednym kroku symulacji:
+
+| Element | Skąd pochodzi | Jak często jest liczony |
+|---|---|---|
+| chciane przesunięcie `wanted` | kierunek z klawiszy razy prędkość razy `stepSeconds`, a `stepSeconds` to zawsze `fixedDt` | co krok |
+| pudełko `box()` | z pozycji stóp gracza: 0,6 x 1,8 x 0,6 m | co krok, od nowa |
+| lista przeszkód `obstacles` | `m_mazeWorld.colliders`, wynik `game::mazeColliders` | raz na labirynt |
+
+Kod pilnuje więc trzech rzeczy, o których mówi teoria: przesunięcie powstaje ze stałego kroku (sekcja 2.8), pudełko jest budowane od nowa z pozycji, a lista przeszkód nie jest liczona w każdym kroku. W trybie noclip gracz w ogóle nie woła `moveAndSlide`. Całą funkcję linia po linii omawia [`../game/player.md`](../game/player.md), sekcja 5.
 
 ### 5.7 Jak to zostało sprawdzone
 
@@ -511,19 +607,268 @@ I trzy przypadki z `tests/MazeLayoutTests.cpp`, w których przeszkodami są praw
 
 | Przypadek testowy | Co sprawdza | Wynik |
 |---|---|---|
-| `the colliders of a closed cell keep a box inside it` | pudełko w zamkniętej komórce pchane na wschód przez 400 kroków | staje przy wewnętrznej ścianie: środek w x = 1,6 |
+| `the colliders of a closed cell keep a box inside it` | pudełko w zamkniętej komórce pchane na wschód przez 400 kroków | staje przy wewnętrznym licu pudełka ściany: środek w x = 1,55 (`2 - 0,15 - 0,3`) |
 | `a box wandering through a generated maze...` | labirynt 8 na 8 (ziarno 3), 400 zmian kierunku po 60 kroków, 16 kierunków, część prawie równoległa do ścian | pudełko pomniejszone z każdej strony o dwie tolerancje (2 mm) ani razu nie nachodzi na żadną przeszkodę, a wędrówka oddala się od startu o ponad dwie komórki |
-| `documented behaviour: a box that hugs a wall is stopped by the next pillar` | pudełko przytulone do ściany korytarza idzie wzdłuż niej, potem to samo 6 cm od ściany | przytulone staje na słupku (środek w z = 1,55), odsunięte przechodzi cały korytarz (pułapka 1) |
+| `a box that hugs a wall slides past the pillars in the middle of it` | korytarz 1 na 3 komórki. Pudełko przytulone do ściany wschodniej idzie prosto na południe (200 kroków), potem to samo ze środka komórki ruchem ukośnym w ścianę (400 kroków) | w obu przypadkach pudełko mija słupki w z = 2 i z = 4 i staje dopiero na ścianie południowej ostatniej komórki: środek w x = 1,55 i z = 5,55 (pułapka 1) |
 
-Wyniki na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05): build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach. Na macOS kod nie był jeszcze kompilowany ani uruchamiany: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md), sekcja 2.
+Ostatni wiersz zastąpił wcześniejszy przypadek, który przypinał zachowanie odwrotne (pudełko stające na słupku). Zmieniło się zachowanie, a nie tylko test: pudełka ścian dostały grubość słupków (pułapka 1).
+
+Cztery dalsze przypadki z prawdziwym graczem są w `tests/PlayerTests.cpp` (`a wall stops the player`, `a player pressing into a wall slides along it and past the pillars`, `a player wandering through a closed maze never leaves it or enters a wall`, `noclip flies through walls`): omawia je [`../game/player.md`](../game/player.md), sekcja 5.
+
+Wyniki na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05): build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach (87 przypadków i 60858 asercji w całym programie testowym). Na macOS kod nie był jeszcze kompilowany ani uruchamiany: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+
+### 5.8 Rysowanie pudełek: `ColliderLines`
+
+Klasa z programu `night_maze` ([`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`.cpp`](../../../src/game/ColliderLines.cpp)). Nie zmienia kolizji w żaden sposób: tylko pokazuje te same pudełka, na których liczy `moveAndSlide`.
+
+```cpp
+class ColliderLines {
+public:
+    /// Uploads the unit cube.
+    ColliderLines();
+
+    /// Draws every box in one colour. shader is the flat colour program (color.vert and
+    /// color.frag): it must be in use, with uView and uProjection already set. The
+    /// function sets uColor, and uModel for every box.
+    void draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
+              const glm::vec3& color) const;
+
+private:
+    gfx::Mesh m_unitCube;
+};
+```
+
+Jedno pole: siatka sześcianu o boku 1. Klasa posiada więc obiekty OpenGL (VAO i dwa bufory wewnątrz `gfx::Mesh`) i musi zostać zniszczona przed oknem. Kopiować się jej nie da, bo `gfx::Mesh` nie da się kopiować.
+
+**Dane sześcianu.**
+
+```cpp
+constexpr std::size_t CORNER_COUNT = 8;
+constexpr std::size_t EDGE_COUNT = 12;
+constexpr std::size_t INDICES_PER_LINE = 2;
+```
+
+```cpp
+constexpr std::array<gfx::Vertex, CORNER_COUNT> UNIT_CUBE_CORNERS = {
+    gfx::Vertex{.position = {0.0F, 0.0F, 0.0F}}, // 0
+    gfx::Vertex{.position = {1.0F, 0.0F, 0.0F}}, // 1
+    gfx::Vertex{.position = {1.0F, 0.0F, 1.0F}}, // 2
+    gfx::Vertex{.position = {0.0F, 0.0F, 1.0F}}, // 3
+    gfx::Vertex{.position = {0.0F, 1.0F, 0.0F}}, // 4
+    gfx::Vertex{.position = {1.0F, 1.0F, 0.0F}}, // 5
+    gfx::Vertex{.position = {1.0F, 1.0F, 1.0F}}, // 6
+    gfx::Vertex{.position = {0.0F, 1.0F, 1.0F}}, // 7
+};
+
+// Every two indices are one line (GL_LINES): the two corners an edge joins.
+constexpr std::array<std::uint32_t, EDGE_COUNT * INDICES_PER_LINE> UNIT_CUBE_EDGES = {
+    0, 1, 1, 2, 2, 3, 3, 0, // bottom face
+    4, 5, 5, 6, 6, 7, 7, 4, // top face
+    0, 4, 1, 5, 2, 6, 3, 7, // the four vertical edges
+};
+```
+
+| Fragment | Znaczenie |
+|---|---|
+| `gfx::Vertex{.position = {...}}` | wypełniona jest tylko pozycja. Normalna i współrzędne tekstury zostają zerami (wartości domyślne struktury): linie ich nie potrzebują, a shader `color.vert` ich nie czyta |
+| narożniki od 0 do 3 | dolna ściana (y = 0), po kolei dookoła |
+| narożniki od 4 do 7 | górna ściana (y = 1), w tej samej kolejności, więc narożnik `n + 4` stoi nad narożnikiem `n` |
+| `0, 1, 1, 2, 2, 3, 3, 0` | cztery krawędzie dolnej ściany: każda para to jeden odcinek |
+| `0, 4, 1, 5, 2, 6, 3, 7` | cztery krawędzie pionowe |
+| `EDGE_COUNT * INDICES_PER_LINE` | 24 indeksy: 12 krawędzi po 2 |
+
+Sześcian sięga od `(0, 0, 0)` do `(1, 1, 1)`, a nie od -0,5 do 0,5 jak kostka z M1. Powód jest w funkcji `draw`: narożnik w początku układu sprawia, że przesunięcie do narożnika `min` pudełka wystarcza, bez liczenia środka.
+
+Tutaj 8 wierzchołków wystarcza, choć kostka z M1 potrzebowała 24. Tam każdy narożnik miał trzy różne kolory (po jednym na ścianę), więc był trzema wierzchołkami. Tu wierzchołek to sama pozycja, więc narożnik wspólny dla trzech krawędzi jest jednym wierzchołkiem.
+
+```cpp
+ColliderLines::ColliderLines() : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES) {}
+```
+
+Trzeci argument konstruktora `gfx::Mesh` to rodzaj prymitywu. Tablice `std::array` same zamieniają się na `std::span`.
+
+**`draw`.**
+
+```cpp
+// The drawn box is this much larger than the real one on every side, in metres (1 cm).
+// The box of a pillar is exactly as wide as the shaft of the pillar model, so lines at
+// the true size would lie in the surface of the model and flicker in and out of it
+// (z-fighting). The margin puts them just in front. Only the drawing is changed: the
+// collisions use the true boxes.
+constexpr float LINE_MARGIN = 0.01F;
+```
+
+```cpp
+void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
+                         const glm::vec3& color) const {
+    shader.setVec3(COLOR_UNIFORM, color);
+
+    // The line width is left at its default of 1 pixel on purpose: an OpenGL Core
+    // profile is not required to support wider lines, and macOS does not.
+    for (const scene::Aabb& box : boxes) {
+        // The unit cube has its corner (0, 0, 0) in the origin, so scaling it by the
+        // size of the box and then moving it to the min corner lands it on the box.
+        scene::Transform transform;
+        transform.position = box.min - glm::vec3{LINE_MARGIN};
+        transform.scale = box.max - box.min + glm::vec3{2.0F * LINE_MARGIN};
+
+        shader.setMat4(MODEL_UNIFORM, transform.matrix());
+        m_unitCube.draw();
+    }
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `shader.setVec3(COLOR_UNIFORM, color);` | jeden kolor dla całej listy pudełek, ustawiany raz przed pętlą |
+| `transform.scale = box.max - box.min + glm::vec3{2.0F * LINE_MARGIN};` | rozmiar pudełka na każdej osi, powiększony o margines z obu stron. Sześcian o boku 1 pomnożony przez rozmiar staje się prostopadłościanem tego rozmiaru |
+| `transform.position = box.min - glm::vec3{LINE_MARGIN};` | narożnik `(0, 0, 0)` sześcianu trafia w narożnik `min` pudełka, cofnięty o margines. `glm::vec3{LINE_MARGIN}` to wektor z tą samą wartością w trzech składowych |
+| `transform.matrix()` | `translate * rotate * scale`: wierzchołek jest najpierw skalowany, potem przesuwany ([`transforms.md`](transforms.md), sekcja 5). Obrotu nie ma, bo AABB się nie obraca |
+| `m_unitCube.draw();` | `glDrawElements(GL_LINES, 24, ...)` |
+
+Przykład na liczbach: pudełko ściany wzdłuż X o środku na linii z = 4 ma `min = (2, 0, 3,85)` i `max = (4, 3, 4,15)`. Skala wychodzi `(2,02, 3,02, 0,32)`, a pozycja `(1,99, -0,01, 3,84)`. Narożnik `(1, 1, 1)` sześcianu ląduje w `(4,01, 3,01, 4,16)`: centymetr poza prawdziwym `max`.
+
+Inaczej niż macierze ścian labiryntu, te macierze **są** liczone w każdej klatce, w pętli rysowania. To świadome uproszczenie: rysowanie pudełek jest narzędziem diagnostycznym, domyślnie wyłączonym, a pudełko gracza i tak zmienia się co klatkę.
+
+**Kto woła `draw`.** `NightMazeApp::onRender`, na końcu klatki i tylko wtedy, gdy przełącznik jest włączony:
+
+```cpp
+    drawMaze(view, projection);
+    drawCube(view, projection);
+    if (m_drawColliders) {
+        drawColliderLines(view, projection);
+    }
+```
+
+```cpp
+// Colours of the collision box lines (red, green, blue): the boxes of the maze in
+// yellow, the box of the player in green.
+constexpr glm::vec3 MAZE_COLLIDER_COLOR{1.0F, 0.85F, 0.1F};
+constexpr glm::vec3 PLAYER_COLLIDER_COLOR{0.2F, 1.0F, 0.4F};
+```
+
+```cpp
+void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const {
+    if (!m_colorShader.isValid()) {
+        return;
+    }
+
+    m_colorShader.use();
+    m_colorShader.setMat4(VIEW_UNIFORM, view);
+    m_colorShader.setMat4(PROJECTION_UNIFORM, projection);
+
+    // The depth test stays on: a line behind a wall is hidden by it, which shows where
+    // each box really is. The box of the player is drawn at the simulation position (the
+    // last fixed step), the camera at a blend of two steps, so while moving the box runs
+    // ahead of the camera by a fraction of one step.
+    m_colliderLines.draw(m_colorShader, m_mazeWorld.colliders, MAZE_COLLIDER_COLOR);
+    // draw takes a list of boxes. A span made of a pointer and a count of 1 is a list
+    // with this one box in it.
+    const scene::Aabb playerBox = m_player.box();
+    m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&playerBox, 1),
+                         PLAYER_COLLIDER_COLOR);
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `if (!m_colorShader.isValid()) { return; }` | bez programu nie ma czym rysować. Błąd wczytania shadera był w logu przy starcie, a reszta klatki rysuje się normalnie |
+| `use()`, potem `uView` i `uProjection` | te same macierze co dla labiryntu i kostki: linie są widziane z tego samego oka |
+| `draw(m_colorShader, m_mazeWorld.colliders, MAZE_COLLIDER_COLOR)` | dokładnie ta lista, którą dostaje `Player::update`. Wektor sam zamienia się na `std::span` |
+| `const scene::Aabb playerBox = m_player.box();` | pudełko gracza w pozycji symulacji |
+| `std::span<const scene::Aabb>(&playerBox, 1)` | widok na jeden element: wskaźnik i liczba 1. Dzięki temu `draw` ma jedną wersję, dla listy |
+
+Linie są rysowane **po** labiryncie i kostce, z włączonym testem głębi. Kolejność nie wpływa na to, co jest zasłonięte (o tym decyduje głębia), ale gwarantuje, że głębie ścian są już w buforze, gdy linie są z nimi porównywane.
+
+Na zrzucie ekranu z Windowsa (widok z góry, tryb noclip) żółte pudełka leżą na ścianach i słupkach. Pudełka gracza na zrzutach nie oceniałem, a przełącznika nikt jeszcze nie kliknął ręcznie.
 
 ## 6. Panel ImGui
 
-Kolizje nie mają jeszcze panelu, bo nie mają jeszcze użytkownika w programie. PRD (sekcja 10) przewiduje panel Collision z rysowaniem pudełek i kul kolizji oraz tryb noclip (latanie przez ściany) w panelu Camera. Oba dojdą razem z graczem. Do tego czasu jedynym pokazem działania są testy: `ctest --test-dir build/debug -C Debug --output-on-failure`.
+Panel **Collision** jest pokazem tematu 14. Kod: [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Jak panel jest podpięty do `DebugUI`, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
+
+PRD (sekcja 10) opisuje panel Collision jako "Debug draw AABB i sfer, wynik ostatniego raycasta", a tryb noclip wymienia przy panelu Camera. W programie jest rysowanie pudełek AABB. Kul i promieni (raycast) jeszcze nie ma, bo nie ma jeszcze kodu, który by ich używał (sekcja 2.9). Przełącznik noclip trafił do tego panelu, bo znaczy "wyłącz kolizje", a panel Camera pokazuje tylko bieżący tryb ([`camera-controls.md`](camera-controls.md), sekcja 6).
+
+### 6.1 Kod panelu
+
+```cpp
+// Where the panel appears and how big it is the first time the program runs (later ImGui
+// remembers it in imgui.ini): the bottom of the right edge of a 1280 x 720 window.
+constexpr ImVec2 FIRST_POSITION{970.0F, 450.0F};
+constexpr ImVec2 FIRST_SIZE{300.0F, 260.0F};
+```
+
+```cpp
+void drawCollisionPanel(const game::MazeWorld& world, game::Player& player, bool& drawColliders) {
+    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Collision")) {
+        // Checkbox reads and writes a bool through the pointer.
+        ImGui::Checkbox("Draw collision boxes", &drawColliders);
+        ImGui::TextWrapped("Yellow: walls and pillars. Green: the player.");
+
+        // The same switch as the N key. In noclip mode the boxes below are ignored.
+        ImGui::Checkbox("Noclip (key N)", &player.noclip);
+
+        ImGui::Separator();
+        // world.colliders holds the box of every wall first and the box of every pillar
+        // after them, so the two counts are the sizes of the lists they were made from.
+        ImGui::Text("Wall boxes: %d", static_cast<int>(world.walls.size()));
+        ImGui::Text("Pillar boxes: %d", static_cast<int>(world.pillars.size()));
+        ImGui::Text("All boxes: %d", static_cast<int>(world.colliders.size()));
+        ImGui::TextWrapped("Wall box: %.2f m thick (the visible wall: %.2f m)",
+                           game::WALL_COLLISION_THICKNESS, game::WALL_VISUAL_THICKNESS);
+
+        ImGui::Separator();
+        // The box is computed from the position of the player in every frame, exactly as
+        // the movement code does it.
+        const scene::Aabb box = player.box();
+        ImGui::TextUnformatted("Player box");
+        ImGui::Text("min: %.2f, %.2f, %.2f", box.min.x, box.min.y, box.min.z);
+        ImGui::Text("max: %.2f, %.2f, %.2f", box.max.x, box.max.y, box.max.z);
+    }
+    ImGui::End();
+}
+```
+
+| Element | Znaczenie |
+|---|---|
+| `const game::MazeWorld& world` | labirynt tylko do odczytu: panel liczy pudełka, niczego w nich nie zmienia |
+| `game::Player& player` | gracz bez `const`: pole wyboru pisze do `player.noclip` |
+| `bool& drawColliders` | referencja do pola `m_drawColliders` aplikacji. Panel tylko ustawia flagę, a rysuje `NightMazeApp::onRender` w następnej klatce |
+| `FIRST_POSITION`, `FIRST_SIZE` z `ImGuiCond_FirstUseEver` | miejsce przy pierwszym uruchomieniu: prawa krawędź okna 1280 x 720, pod panelem Maze. Wpis w `imgui.ini` ma pierwszeństwo |
+| `ImGui::Checkbox("Draw collision boxes", &drawColliders)` | pole wyboru czyta i zapisuje `bool` przez wskaźnik |
+| `ImGui::Checkbox("Noclip (key N)", &player.noclip)` | to samo pole, które przełącza klawisz N. Dwa sposoby zmiany jednej zmiennej, więc nie mogą się rozjechać |
+| `world.walls.size()`, `world.pillars.size()`, `world.colliders.size()` | liczniki. Trzeci jest sumą dwóch pierwszych, bo `mazeColliders` dodaje jedno pudełko na ścianę i jedno na słupek |
+| `static_cast<int>(...)` | `%d` oczekuje `int`, a `size()` zwraca `std::size_t` |
+| `game::WALL_COLLISION_THICKNESS`, `game::WALL_VISUAL_THICKNESS` | 0,30 i 0,20: panel sam mówi, że pudełko ściany jest grubsze niż widoczna ściana (pułapka 1). To jedyne miejsce w kodzie programu, które czyta `WALL_VISUAL_THICKNESS` |
+| `player.box()` | pudełko liczone w każdej klatce z pozycji gracza, tą samą funkcją, której używa ruch |
+
+### 6.2 Kontrolki i czego uczą
+
+| Kontrolka | Co zmienia albo pokazuje | Czego uczy |
+|---|---|---|
+| `Draw collision boxes` | `m_drawColliders` | bryła otaczająca jest prostsza niż model: żółte pudełko ściany to sześć płaszczyzn zamiast 30 trójkątów |
+| `Noclip (key N)` | `player.noclip` | kolizje są osobnym krokiem, który można pominąć: w trybie noclip lista pudełek nie jest czytana |
+| `Wall boxes`, `Pillar boxes`, `All boxes` | odczyt | ile przeszkód sprawdza każdy krok. Dla labiryntu 10 na 10: 121, 121 i 242 |
+| `Wall box: 0.30 m thick (the visible wall: 0.20 m)` | odczyt | bryła kolizji nie musi mieć wymiarów modelu |
+| `Player box`, `min`, `max` | odczyt | pudełko jest liczone z pozycji: na starcie `min: 0.70, 0.00, 0.70` i `max: 1.30, 1.80, 1.30` |
+
+### 6.3 Scenariusz pokazu na obronie
+
+Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z testów, a krok 2 także ze zrzutu ekranu.
+
+1. **Liczby.** Otwieram panel Collision: 121 pudełek ścian, 121 słupków, razem 242. Mówię, że każdy krok chodzenia sprawdza całą listę na dwóch osiach i że przy tej skali nie potrzeba struktury przyspieszającej.
+2. **Pudełka.** Włączam `Draw collision boxes`, naciskam N i wzlatuję nad labirynt. Żółte pudełka leżą na ścianach i słupkach. Pokazuję, że pudełko ściany jest grubsze niż ściana i że lica pudełek ścian i słupków tworzą jedną płaszczyznę.
+3. **Pudełko gracza.** Wracam na podłogę (N) i patrzę w dół: zielone linie wokół mnie. Odczytuję `min` i `max` i pokazuję, że różnią się o 0,6, 1,8 i 0,6.
+4. **Zatrzymanie.** Idę prosto na ścianę. Staję, a w `Player box` współrzędna od strony ściany przestaje się zmieniać.
+5. **Ślizganie.** Idę ukosem w ścianę (W i A albo W i D). Sunę wzdłuż niej i mijam słupki bez zatrzymania. Mówię: osie są obsługiwane po kolei, ściana zabiera tylko składową skierowaną w nią.
+6. **Narożnik.** Wchodzę w róg korytarza. Staję na obu osiach.
+7. **Noclip.** Zaznaczam `Noclip (key N)` i przechodzę przez ścianę. Odznaczam w środku ściany: mogę wyjść w dowolną stronę, bo `moveAndSlide` nie trzyma pudełka, które zaczyna w przeszkodzie.
+8. **Testy.** W terminalu uruchamiam `ctest --test-dir build/debug -C Debug --output-on-failure` i mówię, że to testy, a nie obraz, są dowodem poprawności.
 
 ## 7. Pułapki
 
-1. **Słupek zatrzymuje gracza przytulonego do ściany.** Słupek ma 0,3 m szerokości, ściana 0,2 m grubości, więc słupek wystaje 5 cm przed lico ściany z każdej strony. Słupek stoi na każdym łączeniu segmentów, czyli co 2 m. Pudełko, które ślizga się po ścianie, trafia więc na słupek i staje: musi odsunąć się od ściany o 5 cm. To nie błąd `moveAndSlide`, tylko skutek wymiarów i tego, że `game::mazeColliders` dodaje pudełka słupków. Zachowanie jest zmierzone testem (sekcja 5.7) i wymaga decyzji przy podłączaniu gracza ([`../game/maze-generator.md`](../game/maze-generator.md), pułapka 6).
+1. **Pudełko ściany jest grubsze niż ściana, i to celowo.** Widoczny korpus ściany ma 0,2 m (`WALL_VISUAL_THICKNESS`), słupek 0,3 m (`PILLAR_SIZE`). Gdyby pudełko ściany miało 0,2 m, pudełko słupka wystawałoby 5 cm przed jej lico z każdej strony, a słupek stoi na każdym łączeniu segmentów, czyli co 2 m. Pudełko ślizgające się po ścianie trafiałoby wtedy na słupek i stawało. Tak było w pierwszej wersji kodu i przypinał to test. To nie był błąd `moveAndSlide`, tylko skutek wymiarów. Poprawka jest w danych, nie w algorytmie: pudełko ściany ma grubość słupka (`WALL_COLLISION_THICKNESS = PILLAR_SIZE`), więc lica pudełek ścian i słupków leżą w jednej płaszczyźnie, a pudełko sunące po ścianie tylko **styka się** ze słupkiem, a styk nie zatrzymuje (sekcja 2.3). Cena: gracz staje 5 cm przed widocznym korpusem ściany ([`../game/maze-generator.md`](../game/maze-generator.md), sekcja 5.7).
 2. **Przesunięcie liczone z czasu klatki.** `moveAndSlide` zakłada krótkie kroki (sekcja 2.8). Przesunięcie policzone z `deltaSeconds()` zamiast z `fixedDt` po jednej wolnej klatce może mieć 75 cm i wtedy droga po schodkach wyraźnie różni się od prostej.
 3. **Pudełko z `min` większym od `max`.** Nic tego nie sprawdza. Takie pudełko ma ujemną wspólną długość z każdym innym, więc `overlaps` zawsze zwraca fałsz, a `moveAndSlide` go nie widzi. Typowe źródło: ujemna połowa rozmiaru podana do `fromCenter` albo pomylone narożniki przy ręcznym tworzeniu.
 4. **Start wewnątrz przeszkody.** Funkcja nie wypycha pudełka, które już jest w przeszkodzie: pozwala mu wyjść w dowolną stronę, ale też pozwala iść dalej w głąb. Pozycja startowa gracza musi leżeć w wolnym miejscu (środek komórki, `game::cellCenter`).
@@ -532,22 +877,31 @@ Kolizje nie mają jeszcze panelu, bo nie mają jeszcze użytkownika w programie.
 7. **Kolejność osi ma znaczenie przy narożniku wypukłym.** Pudełko idące ukosem dokładnie na róg przeszkody przejdzie po tej stronie, którą wyznacza oś obsługiwana pierwsza (x). Wynik jest poprawny (bez wchodzenia w przeszkodę), ale nie jest symetryczny.
 8. **`std::span` niczego nie posiada.** To tylko widok. Wywołanie `moveAndSlide(box, step, game::mazeColliders(maze))` jest poprawne, bo tymczasowy wektor żyje do końca instrukcji, ale jest też powolne: buduje całą listę przy każdym kroku. Listę trzeba policzyć raz i trzymać w polu. Zapamiętanie samego `std::span` do wektora, który potem znika, to wiszący wskaźnik.
 9. **AABB nie obraca się z obiektem.** Pudełko obiektu obróconego o kąt inny niż wielokrotność 90 stopni trzeba policzyć od nowa, większe, tak żeby objęło obrócony kształt. W labiryncie problem nie występuje: ściany stoją tylko w dwóch ustawieniach i `game::wallBox` ma dla każdego osobne połowy rozmiarów.
-10. **Nie ma grawitacji.** Oś y jest obsługiwana tak samo jak pozostałe (jest na to test), ale nic nie ciągnie pudełka w dół. Gracz będzie trzymany na wysokości podłogi przez kod gry, nie przez kolizje.
-11. **Rysunek nie jest dowodem.** OpenGL narysuje obiekt w ścianie bez żadnego błędu. Jedynym dowodem poprawności kolizji są testy i, po podłączeniu gracza, rysowanie pudełek w panelu Collision.
+10. **Nie ma grawitacji.** Oś y jest obsługiwana tak samo jak pozostałe (jest na to test), ale nic nie ciągnie pudełka w dół. Gracz jest trzymany na wysokości podłogi przez kod gry (`position.y = FLOOR_Y` w `Player::update`), nie przez kolizje: podłogi nie ma na liście przeszkód.
+11. **Rysunek nie jest dowodem.** OpenGL narysuje obiekt w ścianie bez żadnego błędu. Dowodem poprawności kolizji są testy. Rysowanie pudełek w panelu Collision pomaga zobaczyć, **gdzie** pudełka są, ale nie sprawdza, czy ruch ich przestrzega.
+12. **Rysowane pudełko jest o centymetr większe od prawdziwego.** Margines `LINE_MARGIN` chroni linie przed migotaniem na powierzchni modelu (sekcja 3). Kto mierzy coś na ekranie po żółtych liniach, mierzy z błędem 1 cm z każdej strony.
+13. **Linie w prawdziwym rozmiarze migoczą.** Bez marginesu linie pudełka słupka leżą w powierzchni trzonu modelu i walczą z nim o głębię. Podobnie zachowałaby się każda inna geometria narysowana dokładnie w płaszczyźnie innej.
+14. **`glLineWidth` nie pogrubi linii przenośnie.** Profil Core gwarantuje tylko szerokość 1. Grubsze linie trzeba by rysować jako wąskie prostokąty z trójkątów.
+15. **Zielone pudełko gracza wyprzedza kamerę.** Jest rysowane w pozycji z ostatniego kroku symulacji, a kamera w punkcie między dwoma krokami. W ruchu różnica to ułamek kroku, najwyżej 2,5 cm przy 3 m/s.
+16. **Brak ściany na ekranie nie znaczy braku kolizji.** Pudełka powstają z siatki labiryntu, a nie z modeli. Gdy plik modelu ściany się nie wczyta, ściany znikają z obrazu, ale nadal zatrzymują gracza.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 5 robi się na kartce. Ćwiczenia od 6 do 9 to zmiany w kodzie albo w testach: po każdej zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj zmianę (`git checkout src tests`).
+Ćwiczenia od 1 do 5 robi się na kartce. Ćwiczenia od 6 do 13 to zmiany w kodzie albo w testach: po każdej zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj zmianę (`git checkout src tests`).
 
 1. **Wspólna długość.** Policz wspólną długość przedziałów `[2, 5]` i `[4, 9]`, potem `[2, 5]` i `[5, 9]`, potem `[2, 5]` i `[7, 9]`. Odpowiedzi: 1, 0, -2.
 2. **Nakładanie.** Pudełko A ma `min = (0, 0, 0)` i `max = (2, 3, 2)`, pudełko B ma `min = (1, 1, 2)` i `max = (4, 2, 5)`. Czy nachodzą na siebie? Odpowiedź: nie. Na x wspólna długość to 1, na y to 1, na z to 0: stykają się ścianami.
 3. **Ze środka.** Gracz stoi w `(5, 0,9, 3)`, a jego pudełko ma połowy rozmiarów `(0,3, 0,9, 0,3)`. Podaj `min` i `max`. Odpowiedź: `(4,7, 0, 2,7)` i `(5,3, 1,8, 3,3)`.
 4. **Ślizganie.** Pudełko z ćwiczenia 3 chce się przesunąć o `(0,5, 0, -0,2)`. Jedyną przeszkodą jest ściana od `(5,4, 0, 0)` do `(5,6, 3, 10)`. Podaj wynik `moveAndSlide`. Odpowiedź: `(0,1, 0, -0,2)`: na x odstęp to `5,4 - 5,3 = 0,1`, a na z ściana nie leży w korytarzu ruchu (po kroku x styka się z pudełkiem, wspólna długość na x to zero).
-5. **Tunelowanie.** Gracz ma pudełko szerokości 0,6 m i prędkość 6 m/s (bieg), ściana ma 0,2 m. Przy jakim czasie kroku test dyskretny zacząłby przeskakiwać ścianę? Odpowiedź: gdy krok przekroczy 0,8 m, czyli przy czasie ponad 0,133 s (około 7,5 FPS). Ile wynosi krok przy `FIXED_DT`? Odpowiedź: 5 cm.
+5. **Tunelowanie.** Gracz ma pudełko szerokości 0,6 m i prędkość 5,5 m/s (sprint), pudełko ściany ma 0,3 m. Przy jakim czasie kroku test dyskretny zacząłby przeskakiwać ścianę? Odpowiedź: gdy krok przekroczy 0,9 m, czyli przy czasie ponad 0,164 s (około 6 FPS). Ile wynosi krok przy `FIXED_DT`? Odpowiedź: około 4,6 cm.
 6. **Dotyk jako kolizja.** W `overlaps` zamień trzy razy `> 0.0F` na `>= 0.0F` i uruchom testy. Wynik (zmierzony): nie przechodzi jeden przypadek, `overlaps is true only when the boxes share volume`, w podprzypadku `touching is not overlapping` (trzy sprawdzenia: ściana, krawędź, narożnik). Dlaczego wszystkie testy `moveAndSlide` nadal przechodzą (podpowiedź: czy `moveAndSlide` woła `overlaps`)?
-7. **Bez tolerancji.** W `allowedDistance` zamień oba `<= CONTACT_TOLERANCE` na `<= 0.0F`, a `gap < -CONTACT_TOLERANCE` na `gap < 0.0F`. Wynik (zmierzony): nie przechodzą trzy przypadki. W `the colliders of a closed cell keep a box inside it` pudełko kończy w x = 10,975 zamiast 1,6, czyli przeszło przez ścianę i idzie dalej. W teście wędrówki pudełko trafia do wnętrza przeszkody. W teście słupka pudełko kończy w z = 1,7 zamiast 1,55, czyli weszło w słupek. Wyjaśnij każdy wynik sekcją 2.7: w którym kroku ściana przestała być "przed" pudełkiem?
+7. **Bez tolerancji.** W `allowedDistance` zamień oba `<= CONTACT_TOLERANCE` na `<= 0.0F`, a `gap < -CONTACT_TOLERANCE` na `gap < 0.0F`. Wynik zmierzony na wcześniejszej wersji kodu (pudełka ścian 0,2 m): przestały przechodzić trzy przypadki, między innymi `the colliders of a closed cell keep a box inside it`, w którym pudełko przeszło przez ścianę i szło dalej, oraz test wędrówki, w którym pudełko trafiło do wnętrza przeszkody. Po zmianie grubości pudełek ścian pomiaru nie powtórzyłem, więc dokładne liczby i lista przypadków mogą być dziś inne: sprawdź sam. Wyjaśnij każdy wynik sekcją 2.7: w którym kroku ściana przestała być "przed" pudełkiem?
 8. **Inna kolejność osi.** Zmień `AXIS_ORDER` na `{AXIS_Z, AXIS_X, AXIS_Y}`. Wynik (zmierzony): nie przechodzi jeden przypadek, `documented limit: a step much longer than the boxes can go around an obstacle`, w części z krótkimi krokami: pudełko kończy w z = 2 zamiast poniżej 1,5. Słupek stoi dokładnie na przekątnej, więc o tym, którą stroną pudełko go obejdzie, decyduje oś obsługiwana pierwsza (pułapka 7). Narysuj obie drogi.
 9. **Własny test.** Dopisz w `tests/ColliderTests.cpp` przypadek dla sufitu: pudełko pod płytą, ruch w górę o 2 m przy odstępie 0,4 m. Wzoruj się na teście `moveAndSlide handles the vertical axis too`.
+10. **Cienkie pudełka ścian.** W `src/game/MazeLayout.hpp` zmień `WALL_COLLISION_THICKNESS` na `WALL_VISUAL_THICKNESS` i uruchom testy. Które przypadki przestają przechodzić i dlaczego (pułapka 1)? Wyniku nie mierzyłem po ostatniej zmianie: spodziewam się porażki testów ślizgania obok słupków w `MazeLayoutTests.cpp` i `PlayerTests.cpp` oraz testu stałych.
+11. **Linie bez marginesu.** W `ColliderLines.cpp` ustaw `LINE_MARGIN` na `0.0F`, uruchom program, włącz `Draw collision boxes` i obejrzyj słupek z bliska, poruszając kamerą. Co się dzieje z liniami na trzonie i dlaczego nie na korpusie ściany?
+12. **Sześcian od -0,5 do 0,5.** Zmień narożniki `UNIT_CUBE_CORNERS` tak, żeby sześcian był wyśrodkowany. Co trzeba zmienić w `ColliderLines::draw`, żeby pudełka nadal trafiały na swoje miejsca?
+13. **Linie przez ściany.** W `drawColliderLines` wyłącz test głębi przed rysowaniem linii (`glDisable(GL_DEPTH_TEST)`) i włącz go z powrotem po nim. Co widać i kiedy taki widok jest przydatny?
 
 ## 9. Pytania kontrolne
 
@@ -591,10 +945,28 @@ Kolizje nie mają jeszcze panelu, bo nie mają jeszcze użytkownika w programie.
     Pudełko i dwie funkcje nie wiedzą nic o labiryncie ani o graczu, więc należą do biblioteki `engine` i nadają się do innych programów. Dołączają tylko GLM i bibliotekę standardową: żadnego OpenGL, okna ani wejścia, dzięki czemu testy działają bez okna.
 
 14. **Jak sprawdzić kolizję kuli z AABB?**
-    Przyciąć środek kuli do przedziałów pudełka (osobno x, y, z), co daje najbliższy punkt pudełka, i porównać kwadrat odległości od niego z kwadratem promienia. W projekcie tego testu jeszcze nie ma: jest zaplanowany dla kryształów.
+    Przyciąć środek kuli do przedziałów pudełka (osobno x, y, z), co daje najbliższy punkt pudełka, i porównać kwadrat odległości od niego z kwadratem promienia. W projekcie tego testu jeszcze nie ma: jest zaplanowany dla kryształów (późniejszy kamień milowy).
 
-15. **Dlaczego gracz przytulony do ściany staje co 2 metry?**
-    Bo słupki (0,3 m) są szersze od ścian (0,2 m) i wystają 5 cm przed ich lico, a ich pudełka są na liście przeszkód. To skutek wymiarów, a nie błąd funkcji, potwierdzony testem.
+15. **Dlaczego pudełko kolizji ściany ma 0,3 m, skoro ściana ma 0,2 m?**
+    Żeby lica pudełek ścian i słupków (0,3 m) leżały w jednej płaszczyźnie. Przy pudełku 0,2 m słupki wystawałyby 5 cm przed ścianę i gracz sunący po ścianie stawałby co 2 metry. Teraz pudełko gracza tylko styka się ze słupkiem, a styk nie zatrzymuje ruchu.
+
+16. **Jak gracz używa `moveAndSlide`?**
+    W każdym kroku chodzenia liczy chciane przesunięcie (kierunek razy prędkość razy stały krok), buduje pudełko ze swojej pozycji i woła `moveAndSlide` z listą pudełek labiryntu, policzoną raz przy generowaniu. Wynik dodaje do pozycji. W trybie noclip funkcji nie woła.
+
+17. **Jak rysowane są pudełka kolizji?**
+    Jedną siatką sześcianu o boku 1 (8 wierzchołków, 24 indeksy) rysowaną prymitywem `GL_LINES`: każde dwa indeksy to jedna krawędź. Dla każdego pudełka macierz modelu skaluje sześcian do rozmiaru pudełka i przesuwa go do narożnika `min`. Kolor przychodzi jako uniform `uColor`.
+
+18. **Czym `GL_LINES` różni się od `GL_TRIANGLES` w `glDrawElements`?**
+    Sposobem grupowania indeksów: przy liniach każde dwa indeksy to odcinek, przy trójkątach każde trzy to trójkąt. Bufory i atrybuty są takie same.
+
+19. **Po co margines 1 cm przy rysowaniu pudełek?**
+    Pudełko słupka ma dokładnie szerokość trzonu modelu, więc linie w prawdziwym rozmiarze leżałyby w powierzchni modelu i migotały (walka o głębię). Margines wysuwa je przed powierzchnię. Dotyczy tylko rysowania, kolizje liczą się na prawdziwych pudełkach.
+
+20. **Dlaczego `color.vert` czyta tylko pozycję, skoro siatka ma też normalną i uv?**
+    Shader nie musi deklarować wszystkich atrybutów, które VAO udostępnia. Linie w jednym kolorze nie potrzebują normalnej ani współrzędnych tekstury.
+
+21. **Co robi przełącznik `Noclip (key N)` w panelu Collision?**
+    Zmienia pole `player.noclip`, to samo, które przełącza klawisz N. W trybie noclip gracz lata wzdłuż kierunku patrzenia i nie woła `moveAndSlide`. Po wyłączeniu najbliższy krok stawia go na podłodze.
 
 ## 10. Źródła
 
@@ -603,5 +975,6 @@ Kolizje nie mają jeszcze panelu, bo nie mają jeszcze użytkownika w programie.
 - MDN, "3D collision detection": <https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection> (AABB i kula, krótkie wprowadzenie).
 - Glenn Fiedler, "Fix Your Timestep!": <https://gafferongames.com/post/fix_your_timestep/> (dlaczego symulacja idzie stałym krokiem).
 - cppreference, `std::span`: <https://en.cppreference.com/w/cpp/container/span>, inicjalizatory desygnowane: <https://en.cppreference.com/w/cpp/language/aggregate_initialization>.
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`../game/maze-generator.md`](../game/maze-generator.md) (skąd biorą się pudełka labiryntu), [`../core/main-loop.md`](../core/main-loop.md) (stały krok, `FIXED_DT`, `MAX_FRAME_TIME`), [`../../libraries/doctest.md`](../../libraries/doctest.md) (testy), [`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md) (dlaczego nie silnik fizyki).
+- Dokumentacja OpenGL, `glDrawElements` (prymityw `GL_LINES`): <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElements.xhtml>, `glLineWidth`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glLineWidth.xhtml>.
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`../game/maze-generator.md`](../game/maze-generator.md) (skąd biorą się pudełka labiryntu), [`../game/player.md`](../game/player.md) (gracz jako użytkownik kolizji), [`../game/maze-rendering.md`](../game/maze-rendering.md) (jedna siatka, wiele macierzy), [`../gfx/mesh.md`](../gfx/mesh.md) (rodzaj prymitywu w `Mesh`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (nazwy uniformów), [`../core/main-loop.md`](../core/main-loop.md) (stały krok, `FIXED_DT`, `MAX_FRAME_TIME`), [`../../libraries/doctest.md`](../../libraries/doctest.md) (testy), [`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md) (dlaczego nie silnik fizyki).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 14 i jego pokaz w ImGui), sekcja 6 (zawartość warstwy `scene/`).

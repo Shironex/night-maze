@@ -51,8 +51,10 @@ TEST_CASE("the layout constants are the agreed sizes in metres") {
     CHECK(game::CELL_SIZE == 2.0F);
     CHECK(game::WALL_LENGTH == 2.0F);
     CHECK(game::WALL_HEIGHT == 3.0F);
-    CHECK(game::WALL_THICKNESS == 0.2F);
+    CHECK(game::WALL_VISUAL_THICKNESS == 0.2F);
     CHECK(game::PILLAR_SIZE == 0.3F);
+    // The collision box of a wall is as thick as a pillar, not as the visible wall.
+    CHECK(game::WALL_COLLISION_THICKNESS == game::PILLAR_SIZE);
     CHECK(game::PILLAR_HEIGHT == 3.15F);
 }
 
@@ -146,19 +148,19 @@ TEST_CASE("a generated maze has the expected number of walls and pillars") {
     }
 }
 
-TEST_CASE("wallBox is 2 m long, 3 m high and 0.2 m thick, standing on the floor") {
+TEST_CASE("wallBox is 2 m long, 3 m high and 0.3 m thick, standing on the floor") {
     SUBCASE("a wall along X is long in x and thin in z") {
         const scene::Aabb box =
             game::wallBox({.position = {3.0F, 0.0F, 4.0F}, .axis = game::WallAxis::AlongX});
-        checkVector(box.min, {2.0F, 0.0F, 3.9F});
-        checkVector(box.max, {4.0F, 3.0F, 4.1F});
+        checkVector(box.min, {2.0F, 0.0F, 3.85F});
+        checkVector(box.max, {4.0F, 3.0F, 4.15F});
     }
 
     SUBCASE("a wall along Z is thin in x and long in z") {
         const scene::Aabb box =
             game::wallBox({.position = {4.0F, 0.0F, 3.0F}, .axis = game::WallAxis::AlongZ});
-        checkVector(box.min, {3.9F, 0.0F, 2.0F});
-        checkVector(box.max, {4.1F, 3.0F, 4.0F});
+        checkVector(box.min, {3.85F, 0.0F, 2.0F});
+        checkVector(box.max, {4.15F, 3.0F, 4.0F});
     }
 }
 
@@ -201,9 +203,9 @@ TEST_CASE("the colliders of a closed cell keep a box inside it") {
         position += scene::moveAndSlide(box, step, obstacles);
     }
 
-    // The inner face of the east wall is half a wall thickness before x = 2, and the
+    // The inner face of the east wall box is half of its thickness before x = 2, and the
     // centre of the box stays half a box before that face.
-    const float innerFace = game::CELL_SIZE - game::WALL_THICKNESS / 2.0F;
+    const float innerFace = game::CELL_SIZE - game::WALL_COLLISION_THICKNESS / 2.0F;
     CHECK(position.x == doctest::Approx(innerFace - HALF_EXTENTS.x));
     CHECK(position.z == doctest::Approx(1.0F));
 }
@@ -271,39 +273,46 @@ TEST_CASE("a box wandering through a generated maze never ends up inside a wall"
     CHECK(farthest > 2.0F * game::CELL_SIZE);
 }
 
-TEST_CASE("documented behaviour: a box that hugs a wall is stopped by the next pillar") {
-    // A pillar is 0.3 m wide and a wall 0.2 m thick, so a pillar sticks out 5 cm in front
-    // of the wall faces. A box sliding along a wall with its side on the wall therefore
-    // meets the pillar at the next grid corner. It has to step 5 cm away from the wall to
-    // get past. This test pins that behaviour, so that a change to it is a decision.
+TEST_CASE("a box that hugs a wall slides past the pillars in the middle of it") {
+    // The collision box of a wall is as thick as a pillar (0.3 m), so the faces of the
+    // wall boxes and of the pillar boxes lie in one plane. A box sliding along a wall with
+    // its side on the wall only touches the pillar at the next grid corner, and touching
+    // does not stop movement. With wall boxes as thin as the visible wall (0.2 m) every
+    // pillar stuck out 5 cm and stopped the box.
     //
     // A maze of one column is a straight corridor along Z, whatever the seed: the east
     // wall is three segments in one line, with pillars at z = 0, 2, 4 and 6.
     const std::vector<scene::Aabb> obstacles = game::mazeColliders(game::generateMaze(1, 3, 0U));
     constexpr glm::vec3 HALF_EXTENTS{0.3F, 0.9F, 0.3F};
     constexpr int STEP_COUNT = 200;
-    const glm::vec3 step{0.0F, 0.0F, 0.025F};
 
-    // The east side of the box lies on the inner face of the east wall (x = 1.9).
-    SUBCASE("touching the wall: the pillar at z = 2 stops the box") {
-        glm::vec3 position = game::cellCenter(0, 0) + glm::vec3{0.6F, 0.9F, 0.0F};
+    // Where the centre of the box is when its east side lies on the east wall (x = 1.85),
+    // and when its south side lies on the south wall of the last cell (z = 5.85).
+    const float againstEastWall =
+        game::CELL_SIZE - game::WALL_COLLISION_THICKNESS / 2.0F - HALF_EXTENTS.x;
+    const float againstSouthWall =
+        3.0F * game::CELL_SIZE - game::WALL_COLLISION_THICKNESS / 2.0F - HALF_EXTENTS.z;
+
+    SUBCASE("starting on the wall and walking straight south") {
+        const glm::vec3 step{0.0F, 0.0F, 0.025F};
+        glm::vec3 position{againstEastWall, 0.9F, 1.0F};
         for (int i = 0; i < STEP_COUNT; ++i) {
             const scene::Aabb box = scene::Aabb::fromCenter(position, HALF_EXTENTS);
             position += scene::moveAndSlide(box, step, obstacles);
         }
-        // The near face of the pillar is at z = 2 - 0.15, the centre of the box stays
-        // half a box before it.
-        CHECK(position.z == doctest::Approx(2.0F - game::PILLAR_SIZE / 2.0F - HALF_EXTENTS.z));
+        // Stopped only by the south wall of the last cell, two pillars further.
+        CHECK(position.x == doctest::Approx(againstEastWall));
+        CHECK(position.z == doctest::Approx(againstSouthWall));
     }
 
-    // 6 cm away from the wall the box clears the pillars and walks the whole corridor.
-    SUBCASE("6 cm away from the wall: the box passes every pillar") {
-        glm::vec3 position = game::cellCenter(0, 0) + glm::vec3{0.54F, 0.9F, 0.0F};
-        for (int i = 0; i < STEP_COUNT; ++i) {
+    SUBCASE("pressing into the wall all the way: diagonal movement south-east") {
+        const glm::vec3 step{0.02F, 0.0F, 0.02F};
+        glm::vec3 position = game::cellCenter(0, 0) + glm::vec3{0.0F, 0.9F, 0.0F};
+        for (int i = 0; i < 2 * STEP_COUNT; ++i) {
             const scene::Aabb box = scene::Aabb::fromCenter(position, HALF_EXTENTS);
             position += scene::moveAndSlide(box, step, obstacles);
         }
-        // Stopped only by the south wall of the last cell: inner face at z = 6 - 0.1.
-        CHECK(position.z == doctest::Approx(6.0F - game::WALL_THICKNESS / 2.0F - HALF_EXTENTS.z));
+        CHECK(position.x == doctest::Approx(againstEastWall));
+        CHECK(position.z == doctest::Approx(againstSouthWall));
     }
 }

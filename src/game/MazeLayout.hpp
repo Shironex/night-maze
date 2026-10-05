@@ -22,13 +22,20 @@ constexpr float WALL_LENGTH = CELL_SIZE;
 /// Height of a wall, from the floor (y = 0) up.
 constexpr float WALL_HEIGHT = 3.0F;
 
-/// Thickness of a wall. The wall is centred on the cell edge, so half of the thickness
-/// reaches into each of the two cells.
-constexpr float WALL_THICKNESS = 0.2F;
-
-/// Side of the square footprint of a pillar. A pillar is thicker than a wall, so it
-/// covers the place where walls meet at a grid corner.
+/// Side of the square footprint of a pillar. A pillar is thicker than the visible body
+/// of a wall, so it covers the place where walls meet at a grid corner.
 constexpr float PILLAR_SIZE = 0.3F;
+
+/// Thickness of the visible body of a wall (the model wall_straight). The wall is centred
+/// on the cell edge, so half of the thickness reaches into each of the two cells. It
+/// describes the model only: collisions use WALL_COLLISION_THICKNESS.
+constexpr float WALL_VISUAL_THICKNESS = 0.2F;
+
+/// Thickness of the collision box of a wall: the same as a pillar, on purpose. The faces
+/// of the wall boxes and of the pillar boxes then lie in one plane, and a player who
+/// slides along a wall passes the pillars without getting caught on them. With the
+/// thinner visible body (0.2 m) every pillar would stick out 5 cm in front of the wall.
+constexpr float WALL_COLLISION_THICKNESS = PILLAR_SIZE;
 
 /// Height of a pillar. It stands a little above the walls.
 constexpr float PILLAR_HEIGHT = 3.15F;
@@ -65,7 +72,7 @@ std::vector<WallSegment> wallSegments(const Maze& maze);
 std::vector<glm::vec3> pillarPositions(const Maze& maze);
 
 /// The collision box of a wall segment: WALL_LENGTH long, WALL_HEIGHT high and
-/// WALL_THICKNESS thick, standing on the floor.
+/// WALL_COLLISION_THICKNESS thick, standing on the floor.
 scene::Aabb wallBox(const WallSegment& segment);
 
 /// The collision box of a pillar standing at position (a result of pillarPositions):

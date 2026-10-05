@@ -106,8 +106,8 @@ glm::vec3 moveAndSlide(const Aabb& mover, const glm::vec3& displacement,
     // around a small obstacle that the diagonal would hit, or touch a corner that the
     // diagonal would miss. The error is as large as the step, so the steps must be short
     // compared with the boxes. The game moves in fixed steps of core::Time::FIXED_DT
-    // (1/120 s): at a walking speed of 3 m/s that is 2.5 cm per step, against walls that
-    // are 20 cm thick. A displacement taken from a whole frame time, which can be 0.25 s
+    // (1/120 s): at a walking speed of 3 m/s that is 2.5 cm per step, against wall boxes that
+    // are 30 cm thick. A displacement taken from a whole frame time, which can be 0.25 s
     // long, would not keep that promise.
     Aabb box = mover;
     glm::vec3 allowed{0.0F};
