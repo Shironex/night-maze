@@ -93,13 +93,13 @@ Klasa nie ma własnych shaderów i nie zna ich treści: dostaje dwie ścieżki i
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `setMat4`, `lastError`, `vertexPath`, `fragmentPath`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<glm/glm.hpp>` (typ `glm::mat4`), `<filesystem>` i `<string>` |
+| [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) | klasa `gfx::Shader`: konstruktor, destruktor, zablokowane kopiowanie, przenoszenie, `reload`, `isValid`, `use`, `setMat4`, `setInt`, `setVec3`, `lastError`, `vertexPath`, `fragmentPath`. Dołącza `<glad/gl.h>` (typ `GLuint`), `<glm/glm.hpp>` (typy `glm::mat4` i `glm::vec3`), `<filesystem>` i `<string>` |
 | [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp) | implementacja i sześć funkcji pomocniczych w anonimowej przestrzeni nazw: `readTextFile`, `shaderInfoLog`, `programInfoLog`, `compileShader`, `linkProgram`, `buildProgram` |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), [`basic.frag`](../../../assets/shaders/basic.frag) | jedyna para shaderów projektu ([`shaders.md`](shaders.md), sekcja 4) |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel obiektu: pole `m_shader`, wczytanie w konstruktorze, `isValid()`, `use()` i trzy razy `setMat4()` w `onRender`, chroniony akcesor `shader()` ([`shaders.md`](shaders.md), sekcja 5.1) |
 | [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | funkcja `debug::drawShadersPanel`: panel "Shaders" z przyciskiem "Reload shaders" ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6). Należy do programu `night_maze`, nie do biblioteki `engine` |
 
-Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`, `pathText`), GLAD, GLM (typ macierzy w `setMat4`) i biblioteki standardowej. Nie wie nic o panelu ani o ImGui.
+Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Klasa zależy tylko od `core` (`GL_CHECK`, `logError`, `pathText`), GLAD, GLM (typ macierzy w `setMat4` i wektora w `setVec3`) i biblioteki standardowej. Nie wie nic o panelu ani o ImGui.
 
 ```mermaid
 flowchart TD
@@ -187,7 +187,7 @@ void Shader::use() const {
 
 `use()` nie sprawdza `isValid()`. Dla obiektu bez programu wykona `glUseProgram(0)`, czyli "żaden program", a rysowanie w takim stanie nie daje określonego wyniku. Sprawdzenie należy do wołającego. `use()` jest `const`, bo nie zmienia obiektu C++, zmienia stan kontekstu OpenGL.
 
-Szósta funkcja, `setMat4`, ustawia uniform. Opisuje ją [`uniforms.md`](uniforms.md) (sekcja 5.1). Siódmą, `reload()`, która buduje program z plików, opisuje [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 5.2).
+Szósta funkcja, `setMat4`, ustawia uniform. Opisuje ją [`uniforms.md`](uniforms.md) (sekcja 5.1), razem z dwoma późniejszymi setterami, `setInt` i `setVec3` (sekcja 5.4). Siódmą, `reload()`, która buduje program z plików, opisuje [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 5.2).
 
 ### 5.3 Wczytanie pliku: `readTextFile` i `core::pathText`
 

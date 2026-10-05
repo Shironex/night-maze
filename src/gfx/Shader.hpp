@@ -51,6 +51,20 @@ public:
     /// the compiler removed because the shader never reads it) is ignored without an error.
     void setMat4(const char* name, const glm::mat4& matrix) const;
 
+    /// Sets the uniform variable of type int called name to value (glUniform1i). This is
+    /// also the setter for sampler uniforms (sampler2D): a sampler holds the NUMBER OF A
+    /// TEXTURE UNIT, not a texture id, so setInt("uTexture", 0) together with
+    /// Texture2D::bind(0) connects the sampler to that texture. GLSL 4.20 can write the
+    /// unit in the shader, layout(binding = 0), but GLSL 4.10 (the newest on macOS)
+    /// cannot, so it is set from C++. The rules of setMat4 apply: use() first, and an
+    /// unknown name is ignored.
+    void setInt(const char* name, int value) const;
+
+    /// Sets the uniform variable of type vec3 called name to value (glUniform3fv): a
+    /// color, a position or a direction. The rules of setMat4 apply: use() first, and an
+    /// unknown name is ignored.
+    void setVec3(const char* name, const glm::vec3& value) const;
+
     /// Message of the last failed load: the file name or names and the driver's info log.
     /// Empty after a successful load.
     const std::string& lastError() const { return m_lastError; }

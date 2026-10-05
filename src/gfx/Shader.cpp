@@ -232,4 +232,25 @@ void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
     GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
 }
 
+void Shader::setInt(const char* name, int value) const {
+    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // glUniform1i: one value of type int. A sampler uniform must be set with exactly this
+    // function: the float version (glUniform1f) raises GL_INVALID_OPERATION for a sampler.
+    // OpenGL ignores location -1 without raising an error.
+    GL_CHECK(glUniform1i(location, value));
+}
+
+void Shader::setVec3(const char* name, const glm::vec3& value) const {
+    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // 1: one vector (more only for a uniform that is an array). value_ptr gives the
+    // address of its 3 floats. OpenGL ignores location -1 without raising an error.
+    GL_CHECK(glUniform3fv(location, 1, glm::value_ptr(value)));
+}
+
 } // namespace gfx
