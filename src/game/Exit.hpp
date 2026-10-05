@@ -16,7 +16,7 @@ namespace game {
 /// has no such cell. A maze built by hand (in a test) can have one.
 constexpr int UNREACHABLE = -1;
 
-/// Half of the side of the exit zone on the floor, in metres. The zone is a square of
+/// Half of the side of the exit zone on the ground, in metres. The zone is a square of
 /// 1 x 1 m in the middle of the 2 x 2 m exit cell: the player has to walk well into the
 /// cell, past the gate, and not only brush its edge.
 constexpr float EXIT_ZONE_HALF_SIZE = 0.5F;
@@ -61,7 +61,8 @@ ExitPlacement placeExit(const Maze& maze, MazeCell start);
 
 /// The exit zone of an exit cell: a box in the middle of the cell, EXIT_ZONE_HALF_SIZE
 /// to each side and as high as the walls. The round is won when the player enters it
-/// while the gate is open.
-scene::Aabb exitZone(MazeCell cell);
+/// while the gate is open. groundHeight is the height of the ground at the centre of
+/// the cell (Terrain::heightAt): the box stands on it.
+scene::Aabb exitZone(MazeCell cell, float groundHeight);
 
 } // namespace game

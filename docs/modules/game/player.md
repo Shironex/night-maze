@@ -7,7 +7,7 @@ Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten 
 
 ## 1. Po co to jest
 
-W kamieniu milowym M1 poruszała się sama kamera: latała tam, gdzie patrzy, i przechodziła przez wszystko. Labirynt wymaga czegoś innego. Ktoś ma **chodzić po podłodze** i **zatrzymywać się na ścianach**. Kamera jest punktem i dwoma kątami, więc nie ma czym się o ścianę oprzeć. Potrzebne jest ciało: pudełko o szerokości człowieka.
+W kamieniu milowym M1 poruszała się sama kamera: latała tam, gdzie patrzy, i przechodziła przez wszystko. Labirynt wymaga czegoś innego. Ktoś ma **chodzić po ziemi** i **zatrzymywać się na ścianach**. Kamera jest punktem i dwoma kątami, więc nie ma czym się o ścianę oprzeć. Potrzebne jest ciało: pudełko o szerokości człowieka.
 
 Tym ciałem jest struktura `game::Player`. Ma pozycję stóp, pudełko kolizji liczone z tej pozycji, wysokość oczu i trzy prędkości. Jedna funkcja, `Player::update`, przesuwa gracza o jeden stały krok symulacji. Kamera przestała być sterowana wprost: po każdym kroku staje tam, gdzie gracz ma oczy.
 
@@ -15,7 +15,7 @@ Gracz ma dwa tryby:
 
 | Tryb | Ruch | Kolizje | Do czego służy |
 |---|---|---|---|
-| chodzenie (domyślny) | tylko w poziomie, stopy na podłodze (y = 0) | tak, przez `scene::moveAndSlide` | właściwa gra |
+| chodzenie (domyślny) | klawisze przesuwają tylko w poziomie, a stopy idą za wysokością terenu (`Terrain::heightAt`, od M6) | tak, przez `scene::moveAndSlide` | właściwa gra |
 | noclip (klawisz N) | lot wzdłuż kierunku patrzenia, także w górę i w dół | nie | oglądanie labiryntu z góry, szukanie błędów, pokaz na obronie |
 
 Noclip to dawny lot kamery z M1, tylko przeniesiony do gracza. Nazwa pochodzi z gier: "no clipping", czyli bez przycinania ruchu do geometrii.
@@ -24,7 +24,7 @@ Tak jak `scene::Camera` i `scene::Aabb`, gracz to zwykłe dane i matematyka: ża
 
 Od M5 gracz ma jeszcze **drugi kształt**: kulę zasięgu (`game::playerReach`). Pudełko służy do ruchu i ścian, kula do zbierania kryształów i do wejścia w strefę wyjścia (sekcja 2.7). Sama struktura `Player` się w M5 nie zmieniła: kula jest liczona z pozycji stóp przez funkcję z `Round.hpp`, a reguły rundy opisuje [`gameplay.md`](gameplay.md).
 
-**Stan na dziś, uczciwie.** M5 jest na Windowsie kompletny w kodzie i nie jest zamknięty (bez tagu wersji). Według zgłoszenia autora kodu z 2026-10-05 build Debug i Release przechodzi bez ostrzeżeń, a wszystkie testy gracza przechodzą w obu konfiguracjach (w ramach 215 przypadków i 85098 asercji całego programu testowego). Program startuje z graczem stojącym w labiryncie. Samego chodzenia prawdziwymi klawiszami, ślizgania po ścianie, klawiszy N, F i R, przejścia przez otwartą bramę i obrotu myszą wewnątrz labiryntu **nikt jeszcze nie sprawdził ręcznie**: to otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nic z M5 nie było budowane ani uruchamiane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
+**Stan na dziś, uczciwie.** M5 i M6 są na Windowsie kompletne w kodzie i nie są zamknięte (bez tagu wersji). Od M6 gracz chodzi po terenie z mapy wysokości: stała `FLOOR_Y` zniknęła, `Player::update` dostaje teren i co krok czyta z niego wysokość stóp ([`../renderer/terrain.md`](../renderer/terrain.md)). Testy uruchomiłem 2026-10-05 na gotowych programach Debug i Release: wszystkie testy gracza przechodzą w obu (w ramach 256 przypadków i 101232 asercji całego programu testowego). Build bez ostrzeżeń to zgłoszenie autora kodu z tego samego dnia. Program startuje z graczem stojącym w labiryncie. Samego chodzenia prawdziwymi klawiszami, ślizgania po ścianie, klawiszy N, F i R, przejścia przez otwartą bramę, chodzenia po nierównym gruncie i obrotu myszą wewnątrz labiryntu **nikt jeszcze nie sprawdził ręcznie**: to otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nic z M5 ani z M6 nie było budowane ani uruchamiane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
 ## 2. Teoria
 
@@ -49,8 +49,8 @@ widok z boku (płaszczyzna XY), gracz stoi w x = 1
 
 Dlaczego stopy, a nie środek pudełka albo oczy:
 
-- podłoga ma wysokość 0, więc "gracz stoi na podłodze" to po prostu `position.y == 0`. Przy środku pudełka trzeba by pamiętać o 0,9, przy oczach o 1,7,
-- środek komórki labiryntu (`game::cellCenter`) też leży na wysokości podłogi, więc pozycja startowa jest gotową pozycją stóp,
+- "gracz stoi na gruncie" to po prostu `position.y == heightAt(position.x, position.z)`: wysokość terenu wpisuje się do pozycji bez żadnej poprawki. Przy środku pudełka trzeba by pamiętać o 0,9, przy oczach o 1,7,
+- pozycja startowa (`MazeWorld::startPosition`, środek komórki na wysokości gruntu) jest gotową pozycją stóp,
 - model postaci, gdyby kiedyś doszedł, też ma początek układu u podstawy, tak jak modele ścian i słupków.
 
 Pudełko jest **kwadratowe w rzucie z góry** (0,6 na 0,6 m). AABB nie obraca się razem z obiektem ([`../scene/collision.md`](../scene/collision.md), sekcja 2.1), więc pudełko o różnych wymiarach w x i z byłoby raz szersze, raz węższe w zależności od tego, wzdłuż której osi gracz idzie. Kwadrat zachowuje się tak samo w każdą stronę.
@@ -63,7 +63,7 @@ Wymiary w odniesieniu do labiryntu: komórka ma 2 m, pudełka ścian wchodzą w 
 
 Kierunek "do przodu" kamery to `forward()`: wektor jednostkowy liczony z yaw i pitch ([`../scene/camera.md`](../scene/camera.md), sekcja 2). Gdy patrzę w dół, ma on ujemną składową y. Gdybym przesuwał gracza wzdłuż niego, to:
 
-- patrząc w podłogę, gracz próbowałby wejść pod podłogę,
+- patrząc w ziemię, gracz próbowałby wejść pod grunt,
 - nawet gdyby składową y po prostu odrzucić, zostałby wektor poziomy **krótszy niż 1**. Przy spojrzeniu o 60 stopni w dół jego długość to `cos(60 stopni) = 0,5`, więc gracz szedłby o połowę wolniej. Patrzenie pod nogi spowalniałoby chód.
 
 Są dwa sposoby naprawy. Pierwszy: wyzerować y i znormalizować wektor na nowo. Drugi, użyty w projekcie: policzyć kierunek tak, jakby gracz patrzył **poziomo**, czyli z tym samym yaw i z pitch równym 0. Wtedy `forward()` od razu nie ma składowej pionowej i ma długość 1:
@@ -131,15 +131,34 @@ Trzy rzeczy, których pilnuje ten schemat ([`../scene/collision.md`](../scene/co
 2. **Krótkie kroki.** Przesunięcie powstaje ze stałego kroku 1/120 s, nigdy z czasu klatki. Najdłuższy krok przy prędkościach domyślnych to 5 cm, a pudełko ściany ma 30 cm grubości.
 3. **Pudełko budowane od nowa.** Gracz nie przechowuje pudełka. W każdym kroku liczy je z pozycji, więc pudełko i pozycja nie mogą się rozjechać.
 
-Lista przeszkód nie jest liczona w każdym kroku. Pudełka ścian i słupków powstają **raz**, przy generowaniu labiryntu (`MazeWorld::colliders`, [`maze-rendering.md`](maze-rendering.md), sekcja 5). Od M5 gracz porusza się względem listy `m_obstacles`, którą składa `game::roundObstacles`: to kopia `MazeWorld::colliders` z pudełkiem bramy dopisanym na końcu, dopóki brama jest zamknięta. Aplikacja buduje ją na początku rundy i jeszcze raz w kroku, w którym brama się otworzyła (sekcja 5.6). Zamknięta brama zatrzymuje więc gracza dokładnie tak jak ściana, a otwarta wcale, bez żadnego `if` w kodzie gracza: `Player::update` dostaje po prostu inną listę.
+Lista przeszkód nie jest liczona w każdym kroku. Pudełka ścian i słupków powstają **raz**, przy generowaniu labiryntu (`MazeWorld::colliders`, [`maze-rendering.md`](maze-rendering.md), sekcja 5). Od M5 gracz porusza się względem listy `m_obstacles`, którą składa `game::roundObstacles`: to kopia `MazeWorld::colliders` z pudełkiem bramy dopisanym na końcu, dopóki brama jest zamknięta. Aplikacja buduje ją na początku rundy, jeszcze raz w kroku, w którym brama się otworzyła (sekcja 5.6), a od M6 także po każdej przebudowie terenu (sekcja 5.8). Zamknięta brama zatrzymuje więc gracza dokładnie tak jak ściana, a otwarta wcale, bez żadnego `if` w kodzie gracza: `Player::update` dostaje po prostu inną listę.
 
 ### 2.5 Bez grawitacji i bez skoku
 
-Podłoga labiryntu jest płaska i nie ma w niej dziur, schodów ani ramp. Gracz nie może więc ani spaść, ani się wspiąć. Grawitacja, która co krok ciągnęłaby go w dół, i podłoga jako pudełko kolizji, które co krok by go zatrzymywało, dawałyby razem zawsze ten sam wynik: y = 0. Zamiast tej pary jest jedna linia, która przed każdym krokiem chodzenia ustawia `position.y` na wysokość podłogi.
+Do M5 podłoga była płaska i gracz miał zawsze `y = 0`: przed każdym krokiem chodzenia jedna linia ustawiała `position.y` na stałą `FLOOR_Y`. Od M6 grunt jest nierówny, ale zasada została ta sama, tylko stałą zastąpiło pytanie do terenu:
 
-Ta sama linia załatwia powrót z trybu noclip. Gracz, który wyłączył noclip 5 m nad labiryntem, w najbliższym kroku ma stopy z powrotem na podłodze. To **przeskok**, a nie spadanie: nie ma animacji lotu w dół.
+```text
+position.y = terrain.heightAt(position.x, position.z)
+```
 
-Oś y w `moveAndSlide` nadal działa ([`../scene/collision.md`](../scene/collision.md), sekcja 5.5), tylko przy chodzeniu dostaje przesunięcie zerowe i kończy się na pierwszej linii.
+Wysokość jest **czytana**, a nie wynikiem kolizji. Teren nie jest pudełkiem na liście przeszkód i nic gracza w dół nie ciągnie. W terenie nie ma dziur ani pionowych ścian (to powierzchnia `y = h(x, z)`: nad każdym punktem planu jest dokładnie jedna wysokość), więc gracz nie może ani spaść, ani utknąć na krawędzi. Grawitacja, która co krok ciągnęłaby go w dół, i teren jako przeszkoda, która co krok by go zatrzymywała, dawałyby razem zawsze ten sam wynik: stopy na powierzchni. Skoku nie ma.
+
+`heightAt` zwraca wysokość dokładnie tego trójkąta, który jest w tym miejscu rysowany ([`../renderer/terrain.md`](../renderer/terrain.md)), więc stopy nie unoszą się nad gruntem i w nim nie toną.
+
+Wysokość jest ustawiana w kroku chodzenia **dwa razy**:
+
+| Kiedy | Po co |
+|---|---|
+| przed ruchem, w miejscu, w którym gracz stoi | pudełko gracza musi być na właściwej wysokości, zanim zostanie porównane ze ścianami. Ma to znaczenie w pierwszym kroku po wyłączeniu noclip w powietrzu: komentarz w kodzie mówi "the box must be among the walls before it is tested against them" |
+| po ruchu, w miejscu, w którym krok się skończył | grunt jest nierówny, więc nowe miejsce ma własną wysokość |
+
+**Prędkość po gruncie nie zależy od nachylenia.** Klawisze przesuwają gracza tylko w płaszczyźnie poziomej: kierunek chodzenia nie ma składowej pionowej, a wysokość jest dopisywana osobno. Sekunda marszu to zawsze 3 m w planie, pod górę i z góry. Przypina to test `a walking player keeps the feet on the ground, uphill and downhill`. Fizycznie nie jest to wierne (po stoku gracz pokonuje w rzeczywistości dłuższą drogę w tym samym czasie), ale pod labiryntem grunt jest łagodny i różnicy nie widać.
+
+Ta sama linia załatwia powrót z trybu noclip. Gracz, który wyłączył noclip 5 m nad labiryntem, w najbliższym kroku ma stopy z powrotem na gruncie. To **przeskok**, a nie spadanie: nie ma animacji lotu w dół.
+
+Oś y w `moveAndSlide` nadal działa ([`../scene/collision.md`](../scene/collision.md), sekcja 5.5), tylko przy chodzeniu dostaje przesunięcie zerowe i kończy się na pierwszej linii. Pudełka ścian nadal zatrzymują gracza wyłącznie w poziomie: droga gracza w `x` i `z` jest na nierównym gruncie identyczna jak na płaskim (test `the walls stop the player on uneven ground exactly as on flat ground`).
+
+Ile to jest w labiryncie startowym przy skali wysokości 1: stopy na starcie `(1, 1)` są na 0,124 m, w punkcie `(9, 1)` na 0,278 m, a w `(17, 1)` na 0,352 m. Te trzy liczby zmierzył autor kodu w grze (teleportując gracza), a ja odtworzyłem je skryptem z pliku `heightmap.png` według wzoru terenu. Cały grunt pod tym labiryntem mieści się między 0,085 a 0,461 m.
 
 ### 2.6 Stały krok, kamera i interpolacja
 
@@ -152,6 +171,10 @@ oko   = stopy + (0, EYE_HEIGHT, 0)
 
 Oczy są zawsze o stałą wysokość nad stopami, więc "zmieszaj stopy i dodaj wysokość" daje ten sam punkt co "zmieszaj oczy". Wystarczy pamiętać jedną poprzednią pozycję.
 
+Od M6 mieszane są wszystkie **trzy** współrzędne. Do M5 wysokość przy chodzeniu była zawsze zerem i nie było czego mieszać. Teraz stopy zmieniają wysokość w każdym kroku, a interpolacja `y` robi z tych małych stopni gładką rampę: oczy suną nad gruntem zamiast podskakiwać 120 razy na sekundę. Działa to, bo zmiana wysokości między dwoma krokami jest mała. Test `the height of the feet changes a little in every step, never in a jump` sprawdza to dla sprintu po skosie przy największej skali wysokości: zmiana na krok nie przekracza granicy policzonej z największego nachylenia między sąsiednimi punktami siatki, a sama granica jest poniżej 0,2 m.
+
+Jest jedna zmiana wysokości, której mieszać **nie wolno**: krok tuż po wyłączeniu noclip w powietrzu, który zrzuca stopy na grunt. To przeskok, a nie ruch. Aplikacja pamięta, czy gracz w poprzednim kroku leciał (`m_playerWasFlying`), i tylko w tym jednym kroku wyrównuje poprzednią wysokość do bieżącej (sekcja 5.6).
+
 Kąty kamery (yaw i pitch) nie są interpolowane. Mysz zmienia je raz na klatkę, w tej samej klatce, w której są rysowane ([`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 2).
 
 ```mermaid
@@ -161,7 +184,7 @@ flowchart TD
     C["klawisze do PlayerInput<br>(tylko przy przechwyconym kursorze)"] --> D
     D{"noclip?"}
     D -- tak --> E["pozycja += kierunek * flySpeed * krok"]
-    D -- nie --> F["position.y = 0<br>pozycja += moveAndSlide(pudełko, chciane, m_obstacles)"]
+    D -- nie --> F["position.y = heightAt(x, z)<br>pozycja += moveAndSlide(pudełko, chciane, m_obstacles)<br>position.y = heightAt(x, z) w nowym miejscu"]
     E --> G["kamera.position = oczy gracza"]
     F --> G
     G --> R["updateRound z nową pozycją stóp:<br>kula zasięgu zbiera kryształy i sprawdza strefę wyjścia.<br>Brama właśnie się otworzyła: m_obstacles budowane od nowa"]
@@ -219,7 +242,8 @@ Gracz nie ma shadera. Linie pudełka kolizji i kuli zasięgu rysuje para `color.
 |---|---|
 | [`src/game/Player.hpp`](../../../src/game/Player.hpp) | struktury `PlayerInput` i `Player`: stałe wymiarów i prędkości, pola, deklaracje `box`, `eyePosition`, `update` |
 | [`src/game/Player.cpp`](../../../src/game/Player.cpp) | dwie stałe pomocnicze i definicje trzech funkcji |
-| [`tests/PlayerTests.cpp`](../../../tests/PlayerTests.cpp) | 13 przypadków testowych (sekcja 5.9) |
+| [`tests/PlayerTests.cpp`](../../../tests/PlayerTests.cpp) | 13 przypadków testowych na płaskim gruncie (sekcja 5.9) |
+| [`tests/TerrainTests.cpp`](../../../tests/TerrainTests.cpp) | trzy przypadki o graczu na nierównym gruncie (sekcja 5.9) |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel gracza: pola `m_player` i `m_previousPlayerPosition`, `m_obstacles`, akcesor `player()`, wypełnianie `PlayerInput` w `onUpdate`, klawisze R, N i F oraz interpolacja w `onRender`, ustawienie na starcie w `beginRound` |
 | [`src/game/Round.hpp`](../../../src/game/Round.hpp), [`.cpp`](../../../src/game/Round.cpp) | to, co runda robi z pozycją gracza: `playerReach` ze stałymi `PLAYER_REACH_HEIGHT` i `PLAYER_REACH_RADIUS`, `roundObstacles`, `updateRound`. Opis w [`gameplay.md`](gameplay.md), sekcja 5 |
 
@@ -269,9 +293,6 @@ struct Player {
 
     /// Flight speed in noclip mode, in metres per second.
     static constexpr float FLY_SPEED = 6.0F;
-
-    /// Height of the floor: where the feet are in walking mode.
-    static constexpr float FLOOR_Y = 0.0F;
 ```
 
 | Stała | Wartość | Znaczenie |
@@ -282,7 +303,8 @@ struct Player {
 | `WALK_SPEED` | 3,0 m/s | szybki marsz. Komórka labiryntu (2 m) w dwie trzecie sekundy |
 | `SPRINT_SPEED` | 5,5 m/s | bieg |
 | `FLY_SPEED` | 6,0 m/s | lot w trybie noclip |
-| `FLOOR_Y` | 0 | wysokość podłogi |
+
+Do M5 była tu siódma stała, `FLOOR_Y = 0`: wysokość podłogi, na którą krok chodzenia stawiał stopy. M6 ją usunął, bo wysokość gruntu nie jest już jedną liczbą: daje ją `Terrain::heightAt`.
 
 Stałe są `static constexpr` wewnątrz struktury, więc pisze się je z nazwą typu (`game::Player::EYE_HEIGHT`) i można ich użyć jako wartości początkowych pól poniżej.
 
@@ -347,7 +369,8 @@ Oczy: 1,7 m nad stopami. `NightMazeApp` przypisuje ten punkt do `m_camera.positi
 
 ```cpp
 void Player::update(const PlayerInput& input, float yawDegrees, float pitchDegrees,
-                    float stepSeconds, std::span<const scene::Aabb> obstacles) {
+                    float stepSeconds, std::span<const scene::Aabb> obstacles,
+                    const Terrain& terrain) {
 ```
 
 | Parametr | Znaczenie |
@@ -356,6 +379,7 @@ void Player::update(const PlayerInput& input, float yawDegrees, float pitchDegre
 | `yawDegrees`, `pitchDegrees` | kąty kamery w stopniach. Chodzenie używa tylko yaw |
 | `stepSeconds` | długość kroku w sekundach. Gra podaje zawsze `Time::FIXED_DT` |
 | `obstacles` | pudełka świata. `std::span` to widok na ciąg elementów: przyjmuje `std::vector<Aabb>` bez kopiowania i pustą listę `{}` |
+| `terrain` (od M6) | grunt, z którego krok chodzenia czyta wysokość stóp. Referencja do stałej: gracz terenu nie zmienia. Nagłówek `Player.hpp` ma tylko deklarację wyprzedzającą `class Terrain;`, pełny `game/Terrain.hpp` dołącza dopiero `Player.cpp`. W trybie noclip teren, tak jak lista przeszkód, nie jest czytany |
 
 **Kierunki.**
 
@@ -427,28 +451,35 @@ W trybie noclip krok kończy się tutaj: przesunięcie jest dodawane wprost, lis
 **Chodzenie.**
 
 ```cpp
-    // Walking. The feet belong on the floor: this matters in the first step after noclip
-    // was switched off in mid-air. There is no gravity, because the floor is flat and the
-    // player cannot leave it.
-    position.y = FLOOR_Y;
+    // Walking. The feet belong on the ground: this matters in the first step after noclip
+    // was switched off in mid-air, where the box must be among the walls before it is
+    // tested against them. There is no gravity and no jump: the height is simply read
+    // from the terrain.
+    position.y = terrain.heightAt(position.x, position.z);
 
+    // The keys move the player in the horizontal plane only: direction has no vertical
+    // part here, so the speed over the ground is the same uphill and downhill.
     const float speed = input.sprint ? sprintSpeed : walkSpeed;
     const glm::vec3 wanted = direction * (speed * stepSeconds);
 
     // The walls take away the part of the movement that would go into them and leave the
     // part along them. The box is built anew from the position in every step.
     position += scene::moveAndSlide(box(), wanted, obstacles);
+
+    // The ground is uneven, so the place the step ended at has a height of its own.
+    position.y = terrain.heightAt(position.x, position.z);
 }
 ```
 
 | Linia | Znaczenie |
 |---|---|
-| `position.y = FLOOR_Y;` | stopy na podłogę, **przed** policzeniem pudełka. W zwykłym kroku nic nie zmienia (y już jest zerem). W pierwszym kroku po wyłączeniu noclip w powietrzu ściąga gracza na podłogę (sekcja 2.5). Wykonuje się także wtedy, gdy żaden klawisz nie jest wciśnięty |
+| pierwsze `position.y = terrain.heightAt(position.x, position.z);` | stopy na grunt, **przed** policzeniem pudełka. W zwykłym kroku nic nie zmienia (y jest już wysokością tego miejsca, ustawioną na końcu poprzedniego kroku). W pierwszym kroku po wyłączeniu noclip w powietrzu ściąga gracza na grunt, zanim jego pudełko zostanie porównane ze ścianami (sekcja 2.5). Wykonuje się także wtedy, gdy żaden klawisz nie jest wciśnięty. Do M5 stało tu `position.y = FLOOR_Y;` |
 | `input.sprint ? sprintSpeed : walkSpeed` | wybór prędkości. Sprint nie ma własnego kierunku, zmienia tylko długość kroku |
-| `direction * (speed * stepSeconds)` | chciane przesunięcie w metrach. Składowa y jest zerem, bo `forward` i `right` są poziome, a góra i dół nie zostały dodane |
-| `box()` | pudełko w bieżącej pozycji, już ze stopami na podłodze |
+| `direction * (speed * stepSeconds)` | chciane przesunięcie w metrach. Składowa y jest zerem, bo `forward` i `right` są poziome, a góra i dół nie zostały dodane. Stąd komentarz: prędkość po gruncie jest taka sama pod górę i z góry |
+| `box()` | pudełko w bieżącej pozycji, już ze stopami na gruncie |
 | `scene::moveAndSlide(box(), wanted, obstacles)` | zwraca **dozwolone** przesunięcie, nie nową pozycję ([`../scene/collision.md`](../scene/collision.md), sekcja 5.5) |
-| `position += ...` | gracz przesuwa się o tyle, na ile pozwoliły ściany |
+| `position += ...` | gracz przesuwa się o tyle, na ile pozwoliły ściany. Zmieniają się tylko `x` i `z` |
+| drugie `position.y = terrain.heightAt(position.x, position.z);` (od M6) | wysokość gruntu w miejscu, w którym krok się skończył. Bez tej linii gracz szedłby na wysokości miejsca sprzed kroku: o jeden krok spóźniony względem gruntu |
 
 Funkcja nie zwraca niczego i nie mówi, czy doszło do kolizji. Nikt tej informacji dziś nie potrzebuje. Gdyby była potrzebna (dźwięk uderzenia w ścianę), wystarczy porównać `wanted` z wynikiem `moveAndSlide`.
 
@@ -488,15 +519,15 @@ void NightMazeApp::onUpdate(double fixedDt) {
 Różnica wobec M1: tam `onUpdate` wracał od razu, gdy kursor nie był przechwycony. Teraz krok wykonuje się zawsze, tylko z pustym wejściem:
 
 ```cpp
-    // The step runs also with nothing held: it is what brings the feet back to the floor
-    // after noclip was switched off in a panel.
+    // The step runs also with nothing held: it is what brings the feet back to the
+    // ground after noclip was switched off in a panel.
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
-                    m_obstacles);
+                    m_obstacles, m_mazeWorld.terrain);
 ```
 
-Powód jest w komentarzu: noclip można wyłączyć polem wyboru w panelu, czyli przy **wolnym** kursorze. Gdyby krok był wtedy pomijany, gracz wisiałby w powietrzu do następnego kliknięcia w scenę. `fixedDt` przychodzi jako `double`, gracz liczy na `float`, stąd rzutowanie. `m_obstacles` to `std::vector<scene::Aabb>`, który sam zamienia się na `std::span`.
+Powód jest w komentarzu: noclip można wyłączyć polem wyboru w panelu, czyli przy **wolnym** kursorze. Gdyby krok był wtedy pomijany, gracz wisiałby w powietrzu do następnego kliknięcia w scenę. `fixedDt` przychodzi jako `double`, gracz liczy na `float`, stąd rzutowanie. `m_obstacles` to `std::vector<scene::Aabb>`, który sam zamienia się na `std::span`. Ostatni argument, `m_mazeWorld.terrain`, doszedł w M6: teren jest polem labiryntu w grze, więc gracz zawsze chodzi po tym gruncie, na którym stoją ściany.
 
-Ostatni argument zmienił się w M5. Do M4 gracz dostawał wprost `m_mazeWorld.colliders`. Teraz dostaje pole aplikacji (`NightMazeApp.hpp`):
+Lista przeszkód zmieniła się w M5. Do M4 gracz dostawał wprost `m_mazeWorld.colliders`. Teraz dostaje pole aplikacji (`NightMazeApp.hpp`):
 
 ```cpp
     // What the player cannot walk through in this round: the boxes of the maze, plus the
@@ -505,16 +536,19 @@ Ostatni argument zmienił się w M5. Do M4 gracz dostawał wprost `m_mazeWorld.c
     std::vector<scene::Aabb> m_obstacles;
 ```
 
-`roundObstacles` (`Round.cpp`) kopiuje `world.colliders` i, gdy `gateBlocks(world, round)` jest prawdą, dopisuje na końcu `world.gateBox`. Lista jest **kopią**, a nie widokiem, bo składa się z dwóch źródeł. Kopiowanie kilkuset pudełek w każdym kroku byłoby marnotrawstwem, więc pole jest budowane tylko wtedy, gdy wynik może być inny: w `beginRound` i w chwili otwarcia bramy (koniec tej sekcji).
+`roundObstacles` (`Round.cpp`) kopiuje `world.colliders` i, gdy `gateBlocks(world, round)` jest prawdą, dopisuje na końcu `world.gateBox`. Lista jest **kopią**, a nie widokiem, bo składa się z dwóch źródeł. Kopiowanie kilkuset pudełek w każdym kroku byłoby marnotrawstwem, więc pole jest budowane tylko wtedy, gdy wynik może być inny: w `beginRound`, w chwili otwarcia bramy (koniec tej sekcji) i od M6 w `rebuildTerrain`, gdy pudełka zmieniły wysokość (sekcja 5.8). Komentarz pola wymienia tylko dwa pierwsze miejsca: jest o jedno do tyłu względem kodu.
 
 ```cpp
-    // Walking never changes the height, with one exception: the step right after noclip
-    // was switched off in mid-air, which puts the feet back on the floor. That is a jump
-    // and not a movement, so it must not be blended: without this line one frame would
-    // be drawn from a point part of the way down.
-    if (!m_player.noclip) {
+    // Walking changes the height all the time, because the ground is uneven, and that
+    // change is blended in onRender like the movement itself: the eyes then glide over
+    // the ground instead of moving up and down in steps. One change must not be
+    // blended: the step right after noclip was switched off in mid-air, which drops the
+    // feet to the ground. That is a jump and not a movement. Without these lines one
+    // frame would be drawn from a point part of the way down.
+    if (m_playerWasFlying && !m_player.noclip) {
         m_previousPlayerPosition.y = m_player.position.y;
     }
+    m_playerWasFlying = m_player.noclip;
 
     // The camera stands where the eyes of the player are. onRender does not draw from
     // this position directly (it blends two steps), but the debug UI shows it.
@@ -524,7 +558,8 @@ Ostatni argument zmienił się w M5. Do M4 gracz dostawał wprost `m_mazeWorld.c
 
 | Linia | Znaczenie |
 |---|---|
-| `if (!m_player.noclip) { m_previousPlayerPosition.y = m_player.position.y; }` | przy chodzeniu wysokość nie jest interpolowana: poprzednie y dostaje wartość bieżącego. W zwykłym kroku oba i tak są zerem. W kroku, który ściągnął gracza z powietrza na podłogę, bez tej linii jedna klatka byłaby narysowana z punktu "w części drogi w dół", czyli z wnętrza ściany albo znad niej |
+| `if (m_playerWasFlying && !m_player.noclip) { m_previousPlayerPosition.y = m_player.position.y; }` | tylko w kroku, w którym gracz **przestał lecieć**: poprzednie y dostaje wartość bieżącego, więc zrzut stóp na grunt nie jest mieszany. Bez tej linii jedna klatka byłaby narysowana z punktu "w części drogi w dół", czyli z wnętrza ściany albo znad niej. Do M5 warunek brzmiał `if (!m_player.noclip)` i wyrównywał wysokość w każdym kroku chodzenia: na płaskiej podłodze nic to nie kosztowało. Na nierównym gruncie wyłączyłoby interpolację wysokości i oczy podskakiwałyby co krok, stąd węższy warunek |
+| `m_playerWasFlying = m_player.noclip;` | zapamiętanie trybu na następny krok. Pole `bool m_playerWasFlying = false;` stoi w `NightMazeApp.hpp` pod `m_previousPlayerPosition` |
 | `m_camera.position = m_player.eyePosition();` | kamera staje w oczach gracza. `onRender` z tego pola nie rysuje (liczy oko z interpolacji), ale panel Camera pokazuje je jako `Eye` |
 
 Od M5 `onUpdate` ma jeszcze koniec, w którym pozycja gracza trafia do reguł rundy:
@@ -621,7 +656,7 @@ Te same reguły dotyczą klawisza R: działa przy wolnym kursorze i nie działa,
 | Linia | Znaczenie |
 |---|---|
 | `glm::mix(a, b, t)` | `a * (1 - t) + b * t`: punkt w części `alpha` drogi od pozycji sprzed ostatniego kroku do bieżącej |
-| `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | oko nad zmieszanymi stopami (sekcja 2.6) |
+| `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | oko nad zmieszanymi stopami (sekcja 2.6). Od M6 komentarz nad tym blokiem dodaje, że ruch jest gładki "in all three directions": wysokość stóp idzie za gruntem od kroku do kroku i jest mieszana tak jak x i z |
 | `m_camera.viewMatrix(eye)` | macierz widoku z oka podanego jako parametr. Pole `m_player.position` nie jest zmieniane: rysowanie tylko czyta stan symulacji |
 
 Pole pamiętające poprzednią pozycję (`NightMazeApp.hpp`):
@@ -646,7 +681,9 @@ Przypadki brzegowe interpolacji:
 | klatka bez żadnego kroku | ta sama para co w poprzedniej klatce, `alpha` większe | oko przesuwa się dalej wzdłuż tego samego odcinka |
 | klatka z kilkoma krokami | para opisuje ostatni z nich | wcześniejsze kroki są już "za" tą klatką |
 | gracz oparty o ścianę | `moveAndSlide` zwraca zero na osi ściany, obie pozycje mają tę samą współrzędną | brak drgań przy ścianie |
-| noclip wyłączony w powietrzu | krok ustawia y = 0, a potem także poprzednie y = 0 | natychmiastowy przeskok na podłogę, bez klatki pośredniej w pionie |
+| chodzenie po nierównym gruncie (od M6) | dwie pozycje o różnej wysokości | oko sunie po odcinku między nimi, bez schodków |
+| noclip wyłączony w powietrzu | krok ustawia y na wysokość gruntu, a `onUpdate` także poprzednie y (`m_playerWasFlying`) | natychmiastowy przeskok na grunt, bez klatki pośredniej w pionie |
+| zmiana skali wysokości terenu (od M6) | `rebuildTerrain` ustawia y obu pozycji chodzącego gracza na nowy grunt | gracz stoi na nowym gruncie od następnej klatki, bez klatki pośredniej |
 | nowy labirynt | `beginRound` ustawia obie pozycje naraz | przeskok na start, bez przelotu przez ściany |
 | restart rundy (klawisz R albo przycisk w panelu Gameplay) | to samo `beginRound`, ten sam labirynt | przeskok na start z dowolnego miejsca, bez klatki pośredniej |
 | pozycja zmieniona suwakiem `Player feet` | panel pisze do `m_player.position` po narysowaniu sceny, najbliższy krok kopiuje ją do poprzedniej | przeskok. Gdy trafi się klatka bez kroku, ta jedna klatka jest rysowana z punktu między starą a nową pozycją |
@@ -662,8 +699,8 @@ void NightMazeApp::beginRound() {
     // A round starts with the light on, also after one that ended in the dark.
     m_lighting.flashlightOn = true;
 
-    // The player goes to the start. After a regeneration the old position may be inside
-    // a wall of the new maze, or outside of it.
+    // The player goes to the start, feet on the ground there. After a regeneration the
+    // old position may be inside a wall of the new maze, or outside of it.
     m_player.position = m_mazeWorld.startPosition;
     // Both positions at once: otherwise the next frame would be drawn from a point
     // between the old place and the new one, a visible swoop through the walls.
@@ -682,7 +719,7 @@ void NightMazeApp::beginRound() {
 | `m_round = startRound(m_mazeWorld, m_gameplay);` | świeży stan rundy: wszystkie kryształy na miejscach, pełna bateria, zamknięta brama, zegary na zerze ([`gameplay.md`](gameplay.md), sekcja 5) |
 | `m_obstacles = roundObstacles(m_mazeWorld, m_round);` | lista przeszkód dla gracza na tę rundę: pudełka labiryntu i pudełko zamkniętej bramy. Po restarcie w rundzie, w której brama była już otwarta, brama wraca tu na listę |
 | `m_lighting.flashlightOn = true;` | runda zaczyna się z włączoną latarką, także po takiej, która skończyła się w ciemności |
-| `m_player.position = m_mazeWorld.startPosition;` | stopy na środek komórki startowej |
+| `m_player.position = m_mazeWorld.startPosition;` | stopy na środek komórki startowej. Od M6 `startPosition` ma już wysokość gruntu w tym miejscu (liczy ją `placeOnTerrain`), więc gracz stoi na gruncie od pierwszej klatki, zanim wykona się jakikolwiek krok |
 | `m_previousPlayerPosition = m_player.position;` | **obie pozycje naraz**. Samo pierwsze przypisanie zostawiłoby w poprzedniej pozycji stare miejsce, a `onRender` narysowałby najbliższą klatkę z punktu między starym a nowym: widoczny przelot przez ściany |
 | `m_camera.position = m_player.eyePosition();` | kamera w oczach gracza, zanim wykona się pierwszy krok |
 | `m_camera.yawDegrees = m_mazeWorld.startYawDegrees;` | gracz patrzy w pierwszy otwarty bok komórki startowej, czyli w korytarz, a nie w ścianę ([`maze-rendering.md`](maze-rendering.md), sekcja 5.4) |
@@ -690,9 +727,32 @@ void NightMazeApp::beginRound() {
 
 Od strony gracza funkcja ustawia więc pięć rzeczy: pozycję gracza, poprzednią pozycję, pozycję kamery, yaw i pitch. Restart klawiszem R robi z graczem dokładnie to samo co nowy labirynt: stawia go na starcie twarzą do pierwszego otwartego przejścia.
 
-Dla labiryntu domyślnego (10 na 10 komórek, ziarno 1) daje to: stopy w `(1, 0, 1)`, czyli w środku komórki (0, 0), oko w `(1, 1,7, 1)`, pitch 0 i yaw w stronę pierwszego otwartego boku komórki startowej. Dla ziarna 1 jest to południe (180 stopni): tak podaje autor kodu po uruchomieniu programu, żaden test nie przypina tej wartości dla rozmiaru 10 na 10 (test sprawdza tylko, że yaw wskazuje bok bez ściany).
+Dla labiryntu domyślnego (10 na 10 komórek, ziarno 1) przy skali wysokości 1 daje to: stopy w `(1; 0,124; 1)`, czyli w środku komórki (0, 0) na gruncie, oko 1,7 m wyżej w `(1; 1,824; 1)`, pitch 0 i yaw w stronę pierwszego otwartego boku komórki startowej. Dla ziarna 1 jest to południe (180 stopni): tak podaje autor kodu po uruchomieniu programu, żaden test nie przypina tej wartości dla rozmiaru 10 na 10 (test sprawdza tylko, że yaw wskazuje bok bez ściany).
 
 `beginRound` **nie** dotyka trybu noclip ani prędkości. Kto wygeneruje nowy labirynt albo naciśnie R w trakcie lotu, nadal leci, tylko z punktu startowego.
+
+**Gracz a przebudowa terenu (od M6).** Suwak `Height scale` w panelu Terrain zmienia grunt pod stojącym graczem. Robi to `NightMazeApp::rebuildTerrain`, wołana na początku klatki ([`maze-rendering.md`](maze-rendering.md), sekcja 5.7). Jej część dotycząca gracza:
+
+```cpp
+    // A walking player stands on the new ground at once, in both positions, so the next
+    // frame is not drawn from a point between the old height and the new one. A flying
+    // player is left where it is.
+    if (!m_player.noclip) {
+        m_player.position.y =
+            m_mazeWorld.terrain.heightAt(m_player.position.x, m_player.position.z);
+        m_previousPlayerPosition.y = m_player.position.y;
+        m_camera.position = m_player.eyePosition();
+    }
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `if (!m_player.noclip)` | tylko gracz, który chodzi. Lecący zostaje tam, gdzie jest: nie stoi na gruncie, więc nie ma czego poprawiać |
+| `m_player.position.y = m_mazeWorld.terrain.heightAt(...)` | stopy na nowy grunt w tym samym `x` i `z`. Najbliższy krok zrobiłby to samo, ale dopiero po narysowaniu klatki |
+| `m_previousPlayerPosition.y = m_player.position.y;` | **obie pozycje**, z tego samego powodu co w `beginRound`: inaczej klatka byłaby narysowana z punktu między starą a nową wysokością |
+| `m_camera.position = m_player.eyePosition();` | panel Camera od razu pokazuje nowe oko |
+
+Przed tym blokiem funkcja składa od nowa `m_obstacles`, bo pudełka ścian zmieniły wysokość razem z gruntem.
 
 ### 5.9 Jak to zostało sprawdzone
 
@@ -702,7 +762,7 @@ Testy jednostkowe w bibliotece doctest ([`../../libraries/doctest.md`](../../lib
 |---|---|---|
 | `the player constants are the agreed sizes and speeds` | stałe i wartości startowe pól | 0,6, 1,8, 1,7, 3,0, 5,5. Nowy gracz chodzi (`noclip` fałszywe) i ma prędkości domyślne |
 | `the box stands on the feet and the eyes are 1.7 m above them` | stopy w `(1, 0, 5)` | pudełko od `(0,7, 0, 4,7)` do `(1,3, 1,8, 5,3)`, oczy w `(1, 1,7, 5)` |
-| `walking forward covers 3 metres in one second, along the yaw` | sekunda z W przy yaw 0, przy yaw 90 i przy pitch -60 | `(0, 0, -3)`, `(3, 0, 0)` i znowu `(0, 0, -3)`: patrzenie w podłogę nie spowalnia ani nie zmienia wysokości |
+| `walking forward covers 3 metres in one second, along the yaw` | sekunda z W przy yaw 0, przy yaw 90 i przy pitch -60 | `(0, 0, -3)`, `(3, 0, 0)` i znowu `(0, 0, -3)`: patrzenie w ziemię nie spowalnia ani nie zmienia wysokości (podprzypadek `looking at the ground or at the sky changes nothing`) |
 | `the side keys move at a right angle to the view, and opposite keys cancel` | D, A, S, W razem z S, brak klawiszy | wschód, zachód, południe, zero, zero |
 | `walking diagonally is not faster than walking straight` | W i D przez sekundę | odległość od startu 3 m, po równo na północ i wschód |
 | `sprinting covers 5.5 metres in one second` | W ze sprintem | `(0, 0, -5,5)` |
@@ -711,12 +771,24 @@ Testy jednostkowe w bibliotece doctest ([`../../libraries/doctest.md`](../../lib
 | `a player pressing into a wall slides along it and past the pillars` | korytarz 1 na 3 komórki, W i A przy yaw 180 (ukos w ścianę wschodnią) przez 4 sekundy | x = 1,55, z = 5,55: gracz minął słupki w z = 2 i z = 4 i doszedł do ściany południowej ostatniej komórki |
 | `a player wandering through a closed maze never leaves it or enters a wall` | labirynt 6 na 6 (ziarno 5), 600 losowych zmian klawiszy i yaw po 40 kroków, losowanie z ziarna 17 | pudełko pomniejszone o dwie tolerancje nigdy nie nachodzi na przeszkodę, pozycja nigdy nie wychodzi poza obrys labiryntu, gracz oddala się od startu o ponad dwie komórki i kończy z y = 0 |
 | `noclip flies through walls` | ta sama zamknięta komórka, noclip, sekunda na wschód | `(7, 0, 1)`: 6 m dalej, daleko za ścianą w x = 2 |
-| `noclip moves up and down, and forward follows the pitch` | spacja, Shift, W z pitch 30, W ze sprintem | `(0, 6, 0)`, `(0, -6, 0)` (także pod podłogę), wysokość 3 m przy drodze 6 m, sprint bez wpływu |
-| `switching noclip off brings the feet back to the floor` | gracz w `(1, 5, 1)`, jeden krok bez klawiszy | `(1, 0, 1)` |
+| `noclip moves up and down, and forward follows the pitch` | spacja, Shift, W z pitch 30, W ze sprintem | `(0, 6, 0)`, `(0, -6, 0)` (także pod grunt), wysokość 3 m przy drodze 6 m, sprint bez wpływu |
+| `switching noclip off brings the feet back to the ground` | gracz w `(1, 5, 1)`, jeden krok bez klawiszy | `(1, 0, 1)` |
+
+Wszystkie 13 przypadków chodzi po **płaskim** gruncie: plik ma stałą `const game::Terrain FLAT_GROUND;` (teren z konstruktora domyślnego, `y = 0` wszędzie) i podaje ją jako ostatni argument każdego `player.update`. Stąd zera w kolumnie wyników: to te same liczby co przed M6. Zmieniły się tylko nazwy jednego przypadku i dwóch podprzypadków (`floor` na `ground`).
 
 Liczba 1,55 w dwóch wierszach to `CELL_SIZE - WALL_COLLISION_THICKNESS / 2 - BODY_WIDTH / 2`, czyli `2 - 0,15 - 0,3`: linia siatki, minus połowa pudełka ściany, minus połowa ciała.
 
 Test wędrówki losuje wejście funkcją `game::randomBelow` z generatora `std::mt19937`, czyli tą samą, której używa generator labiryntu ([`maze-generator.md`](maze-generator.md), sekcja 2). Dzięki temu wędrówka jest identyczna przy każdym uruchomieniu i na każdym systemie.
+
+Gracza na **nierównym** gruncie sprawdzają trzy przypadki w `tests/TerrainTests.cpp` (od M6):
+
+| Przypadek testowy | Co sprawdza | Wynik |
+|---|---|---|
+| `a walking player keeps the feet on the ground, uphill and downhill` | teren 12 na 2 komórki, który rośnie w stronę +X, skala `MAX_HEIGHT_SCALE`, bez ścian. Krok bez klawiszy, potem 240 kroków na wschód i 240 z powrotem | pierwszy krok stawia stopy na `heightAt(4, 2)` bez ruchu w bok. Pod górę stopy są na powierzchni po **każdym** kroku, y rośnie, a x wynosi `4 + 2 * WALK_SPEED`: prędkość po gruncie nie zależy od nachylenia. Oczy i pudełko idą w górę ze stopami. Po powrocie x i y są takie jak na początku |
+| `the height of the feet changes a little in every step, never in a jump` | labirynt 6 na 6 (ziarno 5) na nierównej mapie przy `MAX_HEIGHT_SCALE`, 600 kroków sprintu po skosie (W i D, yaw 135) ze ścianami | zmiana wysokości między kolejnymi krokami nigdy nie przekracza `2 * (największa różnica sąsiednich punktów siatki w labiryncie / odstęp siatki) * SPRINT_SPEED * krok`, a ta granica jest mniejsza niż 0,2 m. Na tym opiera się interpolacja wysokości (sekcja 2.6) |
+| `the walls stop the player on uneven ground exactly as on flat ground` | ten sam labirynt 6 na 6 (ziarno 11) raz na płasko i raz na nierównej mapie przy `MAX_HEIGHT_SCALE`, te same 60 losowych zmian klawiszy i yaw po 60 kroków (losowanie z ziarna 5) | `x` i `z` obu graczy są **równe** po każdym z 3600 kroków, a gracz na nierównym gruncie ma po każdym kroku stopy na `heightAt`. Wędrówka oddala się od startu o ponad jedną komórkę |
+
+Trzeci przypadek jest dowodem zdania z sekcji 2.5: teren przesuwa gracza tylko w górę i w dół.
 
 Kula zasięgu i lista przeszkód rundy mają testy w `tests/RoundTests.cpp` (25 przypadków, omawia je [`gameplay.md`](gameplay.md), sekcja 5). Od strony gracza ważne są trzy:
 
@@ -726,9 +798,9 @@ Kula zasięgu i lista przeszkód rundy mają testy w `tests/RoundTests.cpp` (25 
 | `a crystal is collected from the middle of its cell, not from the next cell` | kula zasięgu wobec kuli kryształu | kryształ jest zbierany ze środka swojej komórki i nie jest zbierany z sąsiedniej |
 | `the player cannot reach the exit zone from in front of the closed gate` | gracz dosunięty do pudełka zamkniętej bramy | jego kula nie nachodzi na strefę wyjścia: bez otwarcia bramy nie da się wygrać "przez bramę" |
 
-Wyniki na Windowsie według zgłoszenia autora kodu z 2026-10-05: wszystkie 13 przypadków gracza przechodzi w Debug i Release, w ramach 215 przypadków i 85098 asercji całego programu testowego. Na macOS nic z M5 nie było budowane ani uruchamiane.
+Wyniki na Windowsie z 2026-10-05: wszystkie 13 przypadków gracza i trzy przypadki z `TerrainTests.cpp` przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego (po M5 było to 215 przypadków i 85098 asercji). Na macOS nic z M5 ani z M6 nie było budowane ani uruchamiane.
 
-**Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp`: przypisania klawiszy do pól, reguły przechwyconego kursora, klawiszy N, F i R, `beginRound`, odbudowy `m_obstacles` po otwarciu bramy, interpolacji i linii z `m_previousPlayerPosition.y`. Ten kod wymaga okna. Program uruchomiony na Windowsie startuje bez linii `[error]` i pokazuje widok ze środka labiryntu (sprawdzone na zrzucie ekranu), a widok z góry w trybie noclip zgadza się z planem w panelu Maze (stan osiągnięty tymczasowym kodem, który został usunięty, a nie klawiszem N). Chodzenie i ślizganie prawdziwymi klawiszami są otwartą pozycją listy kontrolnej.
+**Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp`: przypisania klawiszy do pól, reguły przechwyconego kursora, klawiszy N, F i R, `beginRound`, odbudowy `m_obstacles` po otwarciu bramy, interpolacji, linii z `m_previousPlayerPosition.y` i `m_playerWasFlying` ani części `rebuildTerrain` dotyczącej gracza. Ten kod wymaga okna. Gładkość ruchu oczu nad nierównym gruntem jest więc pokryta tylko testem jednostkowym małych zmian wysokości: na ekranie nikt jej jeszcze nie oglądał w ruchu. Program uruchomiony na Windowsie startuje bez linii `[error]` i pokazuje widok ze środka labiryntu (sprawdzone na zrzucie ekranu), a widok z góry w trybie noclip zgadza się z planem w panelu Maze (stan osiągnięty tymczasowym kodem, który został usunięty, a nie klawiszem N). Chodzenie i ślizganie prawdziwymi klawiszami są otwartą pozycją listy kontrolnej.
 
 ## 6. Panel ImGui
 
@@ -737,7 +809,8 @@ Gracz nie ma własnego panelu. Jego pola pokazują i zmieniają panele Camera i 
 | Panel | Widżet (dokładna etykieta) | Co robi |
 |---|---|---|
 | Camera | `Mode: walking` albo `Mode: noclip (free flight)` | tylko do odczytu: bieżący tryb |
-| Camera | `Player feet` | trzy liczby do przeciągania: `player.position`. Przy chodzeniu zmiana y trwa najwyżej jeden krok |
+| Camera | `Player feet` | trzy liczby do przeciągania: `player.position`. Przy chodzeniu zmiana y trwa najwyżej jeden krok: gra trzyma y na gruncie |
+| Terrain (od M6) | `Height scale` | suwak od 0 do 2,5: zmienia grunt pod graczem. Chodzący gracz staje na nowym gruncie od razu (sekcja 5.8) |
 | Camera | `Eye: x, y, z` | tylko do odczytu: `camera.position`, czyli oczy gracza po ostatnim kroku |
 | Camera | `Walk speed`, `Sprint speed`, `Fly speed` | suwaki od 0,5 do 20 m/s: pola `walkSpeed`, `sprintSpeed`, `flySpeed` |
 | Collision | `Noclip (key N)` | pole wyboru: to samo pole `player.noclip`, które przełącza klawisz N |
@@ -755,14 +828,14 @@ Zmiany w panelu Camera względem M1: pole `Player feet` zastąpiło pole pozycji
 
 | Krok | Co robię | Co powinno być widać | Co to pokazuje |
 |---|---|---|---|
-| 1 | uruchamiam program, rozwijam panel Camera (od M4 startuje zwinięty do paska tytułu: klikam strzałkę na pasku) i patrzę na niego | `Mode: walking`, `Player feet` 1, 0, 1, `Eye` 1, 1,70, 1 | oko jest 1,7 m nad stopami |
-| 2 | klikam w scenę, trzymam W | idę korytarzem, `Player feet` zmienia się w x albo z, y zostaje 0 | chodzenie jest poziome |
-| 3 | patrzę w podłogę i dalej trzymam W | prędkość się nie zmienia | pitch nie wpływa na chód (sekcja 2.2) |
+| 1 | uruchamiam program, rozwijam panel Camera (od M4 startuje zwinięty do paska tytułu: klikam strzałkę na pasku) i patrzę na niego | `Mode: walking`, `Player feet` 1, około 0,12, 1, `Eye` 1, około 1,82, 1 | oko jest 1,7 m nad stopami, a stopy na gruncie, nie na zerze |
+| 2 | klikam w scenę, trzymam W | idę korytarzem, `Player feet` zmienia się w x albo z, a y powoli idzie za gruntem (w labiryncie startowym między 0,085 a 0,461 m) | klawisze ruszają w poziomie, wysokość daje teren |
+| 3 | patrzę w ziemię i dalej trzymam W | prędkość się nie zmienia | pitch nie wpływa na chód (sekcja 2.2) |
 | 4 | idę ukosem w ścianę | sunę wzdłuż ściany, mijając słupki | ślizganie oś po osi, równe lica pudełek ścian i słupków |
 | 5 | w panelu Collision włączam `Draw collision shapes` | żółte pudełka na ścianach i słupkach, zielone pudełko i trzy zielone okręgi kuli zasięgu wokół mnie (widać je, gdy spojrzę w dół), cyjanowe kule wokół kryształów | bryły otaczające: pudełko do ruchu, kula do zbierania |
 | 6 | naciskam N, trzymam spację | `Mode: noclip (free flight)`, wznoszę się ponad ściany | noclip: brak kolizji, ruch w pionie |
 | 7 | lecę przez ścianę | przechodzę na wylot | lista przeszkód nie jest czytana |
-| 8 | naciskam N nad labiryntem | w następnej klatce stoję na podłodze pod tym miejscem | linia `position.y = FLOOR_Y` |
+| 8 | naciskam N nad labiryntem | w następnej klatce stoję na gruncie pod tym miejscem | linia `position.y = terrain.heightAt(...)` i `m_playerWasFlying` |
 | 9 | ustawiam `Walk speed` na 20 | chód jest bardzo szybki, ściany nadal zatrzymują | `moveAndSlide` mierzy odstęp, a nie pozycję końcową |
 | 10 | podchodzę do kryształu z włączonymi liniami kolizji | kryształ znika w chwili, gdy zielone okręgi nachodzą na cyjanowe, zanim pudełko gracza go dotknie | zbiera kula, nie pudełko (sekcja 2.7) |
 | 11 | odchodzę od startu i naciskam R | stoję z powrotem na starcie, patrzę w korytarz, kryształy wróciły | `beginRound`: obie pozycje naraz, yaw startowy |
@@ -774,12 +847,12 @@ Uwaga do kroku 8: jeśli pod graczem jest ściana, ląduje on **w ścianie**. `m
 1. **Ruch wzdłuż prawdziwego `forward()` przy chodzeniu.** Gracz zwalnia, gdy patrzy w dół albo w górę, bo pozioma część wektora ma długość `cos(pitch)`. Dlatego kierunek chodzenia jest liczony z pitch równym 0.
 2. **Normalizacja wektora zerowego.** Bez warunku `glm::length(direction) > 0.0F` pierwszy krok bez klawiszy wpisałby do pozycji `NaN` i obraz by zniknął na dobre. Krok bez klawiszy wykonuje się teraz zawsze (także przy wolnym kursorze), więc ten warunek pracuje w każdej chwili, gdy gracz stoi.
 3. **`wasKeyPressed` w `onUpdate`.** Klawisz N czytany w kroku symulacji przełączałby tryb zero, raz albo kilka razy na jedno naciśnięcie, zależnie od liczby kroków w klatce. Zbocza czyta się w `onRender`, stany ciągłe (`isKeyDown`) w `onUpdate`.
-4. **Wyłączenie noclip w ścianie albo poza labiryntem.** Kod ściąga gracza tylko na wysokość podłogi. Nie sprawdza, czy miejsce jest wolne. W ścianie: da się wyjść, bo `moveAndSlide` nie trzyma pudełka, które zaczyna w przeszkodzie. Poza labiryntem: ściany zewnętrzne zatrzymują także od zewnątrz, więc wrócić można tylko ponownie włączając noclip albo generując labirynt od nowa.
+4. **Wyłączenie noclip w ścianie albo poza labiryntem.** Kod ściąga gracza tylko na wysokość gruntu. Nie sprawdza, czy miejsce jest wolne. W ścianie: da się wyjść, bo `moveAndSlide` nie trzyma pudełka, które zaczyna w przeszkodzie. Poza labiryntem: ściany zewnętrzne zatrzymują także od zewnątrz, więc wrócić można tylko ponownie włączając noclip albo generując labirynt od nowa. Od M6 poza labiryntem jest po czym chodzić: teren sięga 14 m za ściany zewnętrzne i przechodzi tam we wzgórza. Za krawędzią siatki terenu gracz też nie spada: `heightAt` zwraca dla punktu poza siatką wysokość najbliższego punktu jej brzegu.
 5. **Sprint w locie i skok przy chodzeniu nie istnieją.** Lewy Shift w trybie noclip to "w dół", a nie "szybciej". Spacja przy chodzeniu nie robi nic. Oba zachowania są przypięte testami, więc ich zmiana wymaga zmiany testu.
 6. **Ślizganie po ścianie jest wolniejsze niż chód.** To nie błąd: ściana zabiera składową ruchu skierowaną w nią. Pod kątem 45 stopni zostaje około 71 procent prędkości.
 7. **Pudełko gracza nie obraca się z kamerą.** Jest kwadratowe i zawsze równoległe do osi świata. W przejściu węższym niż 0,6 m gracz by się nie zmieścił niezależnie od tego, jak się obróci. W labiryncie takich przejść nie ma (korytarz ma 1,7 m).
 8. **Zielone pudełko wyprzedza kamerę.** Linie pudełka gracza są rysowane w pozycji symulacji (ostatni krok), a kamera w punkcie między dwoma krokami. W ruchu pudełko jest więc o ułamek kroku przed kamerą. Przy 3 m/s to najwyżej 2,5 cm.
-9. **Edycja `Player feet` przy chodzeniu.** Współrzędne x i z zostają, y wraca do zera w najbliższym kroku. Wpisanie pozycji wewnątrz ściany jest dozwolone i ma ten sam skutek co pułapka 4.
+9. **Edycja `Player feet` przy chodzeniu.** Współrzędne x i z zostają, y wraca na wysokość gruntu w najbliższym kroku. Wpisanie pozycji wewnątrz ściany jest dozwolone i ma ten sam skutek co pułapka 4.
 10. **Regeneracja i restart nie resetują trybu.** `beginRound` ustawia pozycję i kąty, ale `noclip` i prędkości zostają takie, jakie były. Po nowym labiryncie albo po klawiszu R w trybie noclip gracz stoi na starcie i nadal przechodzi przez ściany.
 11. **Bardzo duże prędkości z suwaka.** Suwak sięga 20 m/s, czyli około 17 cm na krok. `moveAndSlide` nadal nie przepuści gracza przez ścianę (mierzy odstęp na każdej osi), ale droga "po schodkach" różni się wtedy od prostej o więcej niż przy 2,5 cm ([`../scene/collision.md`](../scene/collision.md), sekcja 2.8).
 12. **Kula zasięgu wzięta za kształt kolizji.** Zielone okręgi wokół gracza nie zatrzymują go na niczym: ruch liczy wyłącznie pudełko. Kula ma promień 0,3 m, czyli tyle, ile połowa szerokości pudełka, więc w rzucie z góry jest kołem wpisanym w kwadrat pudełka. Narożniki pudełka wystają poza nią.
@@ -796,18 +869,18 @@ Uwaga do kroku 8: jeśli pod graczem jest ściana, ląduje on **w ścianie**. `m
 2. **Kierunek.** Yaw wynosi 90 stopni, wciśnięte są W i D. Podaj znormalizowany kierunek ruchu przy chodzeniu. Odpowiedź: `forward = (1, 0, 0)`, `right = (0, 0, 1)`, suma `(1, 0, 1)`, po normalizacji około `(0,707, 0, 0,707)`: południowy wschód.
 3. **Droga kroku.** Ile metrów pokonuje gracz w jednym kroku przy sprincie i ile kroków potrzeba na jedną komórkę labiryntu? Odpowiedź: `5,5 / 120`, czyli około 0,046 m. Komórka ma 2 m, więc około 44 kroki (0,36 s).
 4. **Gdzie stanie.** Gracz stoi w środku komórki (0, 0) zamkniętej ze wszystkich stron i idzie na północ. Przy jakiej współrzędnej z się zatrzyma? Odpowiedź: 0,45. Ściana północna stoi na linii z = 0, jej pudełko sięga do 0,15, a środek gracza jest pół ciała (0,3) dalej.
-5. **Chód wzdłuż prawdziwego kierunku.** W `Player::update` zamień `noclip ? pitchDegrees : LEVEL_PITCH_DEGREES` na samo `pitchDegrees`. Spodziewany wynik: przestaje przechodzić podprzypadek `looking at the floor or at the sky changes nothing`, bo przy pitch -60 pozioma część kroku ma długość `cos(60 stopni) = 0,5`, więc gracz pokonuje około 1,5 m zamiast 3. Składowa pionowa kroku nie jest przez nic zatrzymywana (podłoga nie jest przeszkodą na liście), a linia `position.y = FLOOR_Y` cofa ją dopiero na początku następnego kroku: po ostatnim kroku y jest więc lekko ujemne.
+5. **Chód wzdłuż prawdziwego kierunku.** W `Player::update` zamień `noclip ? pitchDegrees : LEVEL_PITCH_DEGREES` na samo `pitchDegrees`. Spodziewany wynik: przestaje przechodzić podprzypadek `looking at the ground or at the sky changes nothing`, bo przy pitch -60 pozioma część kroku ma długość `cos(60 stopni) = 0,5`, więc gracz pokonuje około 1,5 m zamiast 3. Składowa pionowa kroku nie jest przez nic zatrzymywana (grunt nie jest przeszkodą na liście), ale od M6 druga linia `position.y = terrain.heightAt(...)` cofa ją jeszcze w tym samym kroku: y zostaje na gruncie, zmienia się tylko długość drogi w poziomie.
 6. **Bez normalizacji.** Usuń blok z `glm::normalize`. Spodziewany wynik: nie przechodzi `walking diagonally is not faster than walking straight` (odległość około 4,24 zamiast 3).
-7. **Bez linii podłogi.** Usuń `position.y = FLOOR_Y;`. Spodziewany wynik: nie przechodzi `switching noclip off brings the feet back to the floor`. Zastanów się, dlaczego test wędrówki nadal przechodzi.
-8. **Skok.** Dopisz do `PlayerTests.cpp` przypadek, który opisuje, jak miałby działać skok (spacja przy chodzeniu podnosi gracza, a potem gracz wraca na podłogę). Nie implementuj go: wypisz, czego brakuje w strukturze `Player`, żeby test mógł przejść (prędkość pionowa jako stan, grawitacja, podłoga jako przeszkoda albo jako warunek).
+7. **Bez linii gruntu.** Usuń drugą linię `position.y = terrain.heightAt(position.x, position.z);` (tę po `moveAndSlide`). Spodziewany wynik: nie przechodzi `a walking player keeps the feet on the ground, uphill and downhill` (stopy są o krok spóźnione względem gruntu), a przypadki z `PlayerTests.cpp` nadal przechodzą. Zastanów się dlaczego. Potem przywróć ją i usuń pierwszą: czy którykolwiek test to wykrywa i w jakiej sytuacji w grze byłoby to widać?
+8. **Skok.** Dopisz do `PlayerTests.cpp` przypadek, który opisuje, jak miałby działać skok (spacja przy chodzeniu podnosi gracza, a potem gracz wraca na grunt). Nie implementuj go: wypisz, czego brakuje w strukturze `Player`, żeby test mógł przejść (prędkość pionowa jako stan, grawitacja, grunt jako przeszkoda albo jako warunek `y >= heightAt`).
 9. **Sprint w locie.** Zmień kod tak, żeby `sprint` w trybie noclip podwajał `flySpeed`. Który przypadek testowy trzeba zmienić i dlaczego jest to decyzja, a nie poprawka?
-10. **Zasięg po podłodze** (na kartce). Kula gracza ma środek 0,9 m nad podłogą i promień 0,3 m. Kula kryształu ma środek 1,15 m nad podłogą (podstawa kryształu na 0,9 m plus połowa jego wysokości 0,5 m) i promień 0,6 m (`pickupRadius`). Z jakiej największej odległości mierzonej po podłodze gracz zbiera kryształ? Odpowiedź: kule nachodzą na siebie, gdy odległość środków jest mniejsza niż `0,3 + 0,6 = 0,9`. Różnica wysokości to 0,25, więc po podłodze zostaje `sqrt(0,9^2 - 0,25^2)`, czyli około 0,86 m. Tę liczbę podaje komentarz w teście `a crystal is collected from the middle of its cell, not from the next cell`.
+10. **Zasięg po gruncie** (na kartce, dla płaskiego gruntu). Kula gracza ma środek 0,9 m nad gruntem i promień 0,3 m. Kula kryształu ma środek 1,15 m nad gruntem (podstawa kryształu na 0,9 m plus połowa jego wysokości 0,5 m) i promień 0,6 m (`pickupRadius`). Z jakiej największej odległości mierzonej w poziomie gracz zbiera kryształ? Odpowiedź: kule nachodzą na siebie, gdy odległość środków jest mniejsza niż `0,3 + 0,6 = 0,9`. Różnica wysokości to 0,25, więc w poziomie zostaje `sqrt(0,9^2 - 0,25^2)`, czyli około 0,86 m. Na nierównym gruncie różnica wysokości zależy jeszcze od tego, o ile grunt pod graczem jest niżej albo wyżej niż w środku komórki kryształu. Tę liczbę podaje komentarz w teście `a crystal is collected from the middle of its cell, not from the next cell`.
 11. **Stara lista przeszkód.** W `NightMazeApp::onUpdate` podaj do `m_player.update` z powrotem `m_mazeWorld.colliders`. Spodziewany wynik: testy przechodzą (żaden nie uruchamia `NightMazeApp`), a w grze da się wejść do komórki wyjścia przez zamkniętą bramę. Czy to wystarczy, żeby wygrać rundę? Odpowiedź jest w sekcji 2.7.
 
 ## 9. Pytania kontrolne
 
 1. **Dlaczego pozycją gracza są stopy, a nie środek pudełka albo oczy?**
-   Podłoga i środki komórek leżą na wysokości 0, więc stopy na podłodze to `position.y == 0`, a pozycja startowa jest gotowym wynikiem `cellCenter`. Pudełko i oczy są z tej pozycji wyliczane (`box`, `eyePosition`).
+   Wysokość terenu wpisuje się do stóp bez poprawki: stopy na gruncie to `position.y == heightAt(x, z)`, a pozycja startowa (`MazeWorld::startPosition`) jest gotową pozycją stóp. Pudełko i oczy są z tej pozycji wyliczane (`box`, `eyePosition`).
 
 2. **Dlaczego przy chodzeniu kierunek jest liczony z pitch równym 0?**
    Żeby `forward` nie miał składowej pionowej i miał długość 1. Prawdziwy `forward` przy spojrzeniu w dół ma poziomą część długości `cos(pitch)`, więc gracz by zwalniał.
@@ -825,19 +898,19 @@ Uwaga do kroku 8: jeśli pod graczem jest ściana, ląduje on **w ścianie**. `m
    Z `moveAndSlide`: osie są obsługiwane po kolei, więc ściana obcina tylko składową ruchu skierowaną w nią. W kodzie gracza nie ma żadnej linii o ślizganiu.
 
 7. **Dlaczego nie ma grawitacji?**
-   Podłoga jest płaska i bez dziur, więc grawitacja z podłogą zawsze dawałyby y = 0. Zastępuje je jedna linia, `position.y = FLOOR_Y`, wykonywana przed każdym krokiem chodzenia.
+   Teren nie ma dziur ani pionowych ścian, więc grawitacja z gruntem jako przeszkodą zawsze dawałyby stopy na powierzchni. Zastępuje je odczyt `position.y = terrain.heightAt(position.x, position.z)`, wykonywany w każdym kroku chodzenia przed ruchem i po nim.
 
 8. **Co się dzieje po wyłączeniu noclip w powietrzu?**
-   Najbliższy krok ustawia y stóp na 0, a `onUpdate` ustawia na 0 także y poprzedniej pozycji, żeby interpolacja nie narysowała klatki "w połowie drogi w dół". Gracz przeskakuje na podłogę, nie spada.
+   Najbliższy krok ustawia y stóp na wysokość gruntu, a `onUpdate` (warunek `m_playerWasFlying && !m_player.noclip`) ustawia tak samo y poprzedniej pozycji, żeby interpolacja nie narysowała klatki "w połowie drogi w dół". Gracz przeskakuje na grunt, nie spada.
 
 9. **Dlaczego krok gracza wykonuje się także przy wolnym kursorze?**
-   Bo noclip można wyłączyć w panelu, przy wolnym kursorze, i właśnie krok sprowadza wtedy stopy na podłogę. Wejście jest wtedy puste, więc gracz się nie przesuwa.
+   Bo noclip można wyłączyć w panelu, przy wolnym kursorze, i właśnie krok sprowadza wtedy stopy na grunt. Wejście jest wtedy puste, więc gracz się nie przesuwa.
 
 10. **Dlaczego klawisz N jest czytany w `onRender`, a W, A, S, D w `onUpdate`?**
     N to zdarzenie ("został naciśnięty"), prawdziwe przez jedną klatkę, więc trzeba je obsłużyć dokładnie raz na klatkę. W, A, S, D to stan ("jest wciśnięty"), a ich skutek zależy od czasu, który w symulacji płynie stałymi krokami. Tak samo jak N czytane są F (latarka) i R (restart rundy).
 
 11. **Co i dlaczego jest interpolowane przy rysowaniu?**
-    Pozycja stóp, między stanem sprzed ostatniego kroku a stanem bieżącym, w proporcji `alpha`. Do wyniku dodawana jest wysokość oczu. Bez tego obraz szarpie, bo liczba kroków na klatkę nie jest stała. Kąty nie są interpolowane, bo zmieniają się raz na klatkę.
+    Pozycja stóp, między stanem sprzed ostatniego kroku a stanem bieżącym, w proporcji `alpha`: wszystkie trzy współrzędne, od M6 także wysokość, która idzie za gruntem. Do wyniku dodawana jest wysokość oczu. Bez tego obraz szarpie, bo liczba kroków na klatkę nie jest stała. Kąty nie są interpolowane, bo zmieniają się raz na klatkę.
 
 12. **Lewy Shift ustawia naraz `down` i `sprint`. Dlaczego to nie jest błąd?**
     Każde pole działa w innym trybie: `sprint` tylko przy chodzeniu, `down` tylko w locie (`noclip && input.down`). Gracz czyta to, które należy do jego trybu.
@@ -862,7 +935,7 @@ Uwaga do kroku 8: jeśli pod graczem jest ściana, ląduje on **w ścianie**. `m
 
 ## 10. Źródła
 
-- LearnOpenGL, rozdział "Camera": <https://learnopengl.com/Getting-started/Camera> (ruch wzdłuż kierunku patrzenia, normalizacja, kamera FPS trzymana na poziomie podłogi jako ćwiczenie).
+- LearnOpenGL, rozdział "Camera": <https://learnopengl.com/Getting-started/Camera> (ruch wzdłuż kierunku patrzenia, normalizacja, kamera FPS trzymana na poziomie gruntu jako ćwiczenie).
 - LearnOpenGL, rozdział "Collision detection": <https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-detection> (AABB).
 - Glenn Fiedler, "Fix Your Timestep!": <https://gafferongames.com/post/fix_your_timestep/> (stały krok symulacji i interpolacja stanu przy rysowaniu).
 - Christer Ericson, "Real-Time Collision Detection" (Morgan Kaufmann, 2005): rozdział 4.2 (AABB), 5.5 (obiekty w ruchu).

@@ -5,7 +5,9 @@ Kod: [`src/game/Exit.hpp`](../../../src/game/Exit.hpp), [`src/game/Exit.cpp`](..
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument jest **o regułach gry: co to jest runda, gdzie jest wyjście, skąd biorą się kryształy, jak działa bateria i co z tego widać na ekranie**. Stoi na pięciu innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, kierunki, `randomBelow`, układ w świecie), [`maze-rendering.md`](maze-rendering.md) (`MazeWorld`, `MazeRenderer`, rysowanie modelu), [`flashlight.md`](flashlight.md) (latarka i `buildLightSet`), [`../scene/collision.md`](../scene/collision.md) (AABB, kule, `moveAndSlide`) i [`player.md`](player.md) (gracz, stały krok, noclip).
 
-**Stan na dziś (2026-10-05):** kod M5 jest kompletny na Windowsie, a kamień **nie jest zamknięty** i nie ma tagu wersji. Zgłoszone dla Windowsa: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym 50 przypadków z trzech plików tego dokumentu), obraz sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Otwarte:** nic z M5 nie było budowane ani uruchamiane na macOS i **nikt jeszcze nie grał ręcznie**: klawisz R, klawisz F przy pustej baterii, przycisk `Restart round (key R)`, suwaki panelu Gameplay, przejście przez otwartą bramę, zbieranie, karta `You escaped`, migotanie na ekranie i HUD przy schowanych panelach wynikają z kodu i z testów, a nie z oglądania.
+**Stan na dziś (2026-10-05):** kod M5 jest kompletny na Windowsie, a kamień **nie jest zamknięty** i nie ma tagu wersji. Zgłoszone dla Windowsa po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym 50 przypadków z trzech plików tego dokumentu; dziś cały program testowy ma 256 przypadków i 101232 asercje, uruchomione 2026-10-05 w Debug i Release), obraz sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Otwarte:** nic z M5 nie było budowane ani uruchamiane na macOS i **nikt jeszcze nie grał ręcznie**: klawisz R, klawisz F przy pustej baterii, przycisk `Restart round (key R)`, suwaki panelu Gameplay, przejście przez otwartą bramę, zbieranie, karta `You escaped`, migotanie na ekranie i HUD przy schowanych panelach wynikają z kodu i z testów, a nie z oglądania.
+
+**Co zmienił M6 (teren).** Labirynt stoi na terenie z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)), więc rzeczy rundy dostały wysokość: `crystalRestPosition` i `exitZone` biorą wysokość gruntu jako drugi parametr, kryształy unoszą się 0,9 m nad gruntem w środku swojej komórki, strefa wyjścia stoi na gruncie, a brama jest opuszczona na najniższy grunt pod sobą, tak jak ściany. Doszła funkcja `restCrystalsOnGround` (po zmianie skali wysokości terenu). HUD stoi niżej, pod dwoma rzędami zwiniętych pasków paneli. Liczby w przykładach tego dokumentu, w których `y` wynosi 0 albo jest liczone od zera, dotyczą płaskiego gruntu: tak budują świat testy tych trzech plików (przeciążenie `buildMazeWorld` bez mapy wysokości). Kod M6 jest kompletny na Windowsie, a kamień nie jest zamknięty: macOS i testy ręczne są otwarte.
 
 Czego nie ma: **stanu przegranej** (decyzja właściciela, sekcja 2.1), **przeciwnika**, który goni gracza (chcę go później, ale w M5 nie ma ani linii jego kodu: notatka [`../../decisions/enemy-after-m5.md`](../../decisions/enemy-after-m5.md)), dźwięku, menu startowego, minimapy poza planem w panelu Maze, tekstury "cookie" latarki i **cieni** (M7).
 
@@ -232,7 +234,7 @@ gateProgress += krok / 1,5 s          (obcięte do 1)
 obniżenie = gateProgress * GATE_SINK_DEPTH = gateProgress * 3,3 m
 ```
 
-Prędkość to 3,3 / 1,5 = 2,2 m/s. `GATE_SINK_DEPTH` wynosi 3,3 m, czyli więcej niż wysokość modelu (2,75 m) i więcej niż wysokość słupków (3,15 m, do nich odnosi się komentarz przy stałej). Górna krawędź modelu schodzi poniżej podłogi po 2,75 / 3,3 * 1,5 = 1,25 s. Przez ostatnie ćwierć sekundy brama jest jeszcze rysowana, ale cała pod płytami podłogi, które ją zasłaniają dzięki testowi głębi. Zapas głębokości gwarantuje, że przy `gateProgress` równym 1 nic nie wystaje, a wtedy `gateVisible` zwraca fałsz i brama przestaje być rysowana w ogóle.
+Prędkość to 3,3 / 1,5 = 2,2 m/s. `GATE_SINK_DEPTH` wynosi 3,3 m, czyli więcej niż wysokość modelu (2,75 m) i więcej niż wysokość słupków (3,15 m, do nich odnosi się komentarz przy stałej). Od M6 zamknięta brama stoi już na najniższym gruncie pod swoim obrysem (komentarz stałej: "The closed gate already stands on the lowest ground under it"), więc obniżenie liczy się od tego poziomu. Górna krawędź modelu schodzi poniżej tego poziomu po 2,75 / 3,3 * 1,5 = 1,25 s. Przez ostatnie ćwierć sekundy brama jest jeszcze rysowana, ale cała pod powierzchnią terenu, który ją zasłania dzięki testowi głębi (do M5 zasłaniały ją płytki podłogi). Zapas głębokości gwarantuje, że przy `gateProgress` równym 1 nic nie wystaje, a wtedy `gateVisible` zwraca fałsz i brama przestaje być rysowana w ogóle.
 
 Dlaczego przeszkoda znika od razu, a nie po opadnięciu: komentarz w `Round.hpp` mówi, że brama otwiera się, gdy kryształ jest zbierany gdzieś indziej w labiryncie, więc zanim gracz do niej dojdzie, zwykle już opadnie. "Zwykle", bo to **nie jest gwarantowane**: opisuję je jako pułapkę 3 w sekcji 7.
 
@@ -332,16 +334,18 @@ Te dwie komórki i oba warianty przypina test `golden maze: 4 x 4 cells from see
 
 Kryształ ma dwa modele (`crystal_a.obj` i `crystal_b.obj`, `CRYSTAL_VARIANT_COUNT` równe 2). Oba mają 0,5 m wysokości i początek układu w podstawie. Wszystkie ruchy są funkcjami **czasu**, a nie stanem: nie ma pola "aktualna wysokość kryształu", jest wzór, który dla sekundy `t` zwraca wysokość. Dzięki temu ruch nie zależy od liczby klatek i da się go testować jedną linią.
 
-**Miejsce spoczynku.** Podstawa kryształu wisi 0,9 m nad środkiem komórki (`CRYSTAL_FLOAT_HEIGHT`). Dla komórki `(3, 1)`:
+**Miejsce spoczynku.** Podstawa kryształu wisi 0,9 m nad gruntem w środku komórki (`CRYSTAL_FLOAT_HEIGHT`). Wysokość gruntu to od M6 drugi parametr `crystalRestPosition`: runda podaje w nim `groundHeightAt(world, cell)`, czyli `Terrain::heightAt` w środku komórki. Dla komórki `(3, 1)` na gruncie o wysokości 0:
 
 | Punkt | Wzór | Wynik |
 |---|---|---|
-| podstawa (`crystalRestPosition`) | środek komórki + 0,9 m w górę | `(7, 0,9, 3)` |
+| podstawa (`crystalRestPosition`) | środek komórki + wysokość gruntu + 0,9 m w górę | `(7, 0,9, 3)` |
 | środek kryształu (`crystalCenter`) | podstawa + połowa wysokości (0,25 m) | `(7, 1,15, 3)` |
 | czubek | podstawa + 0,5 m | `(7, 1,4, 3)` |
 | światło (`crystalLightPosition`) | podstawa + 0,5 m + 0,15 m | `(7, 1,55, 3)` |
 
-Środek kryształu jest na 1,15 m: trochę powyżej środka ciała gracza (0,9 m) i poniżej oczu (1,7 m), więc kryształ widać bez patrzenia w dół.
+Na gruncie o wysokości 0,25 m wszystkie cztery punkty są o 0,25 m wyżej: podstawa w `(7, 1,15, 3)` (tak sprawdza to test). Kryształ wisi więc zawsze tak samo wysoko **nad gruntem swojej komórki**, a nie nad zerem.
+
+Środek kryształu jest 1,15 m nad gruntem: trochę powyżej środka ciała gracza (0,9 m nad jego stopami) i poniżej oczu (1,7 m), więc kryształ widać bez patrzenia w dół.
 
 **Część cyklu.** Trzy ruchy korzystają z jednej funkcji pomocniczej `cyclePhase(sekundy, długość cyklu, przesunięcie)`. Zwraca ona liczbę od 0 do 1: jaka część cyklu minęła.
 
@@ -427,7 +431,7 @@ PRD wymaga "zbierania po kolizji sferycznej". Kula jest tu naturalna: pytanie br
 | Kula | Środek | Promień |
 |---|---|---|
 | **zasięg gracza** (`playerReach`) | stopy + 0,9 m w górę (`PLAYER_REACH_HEIGHT`): środek ciała o wysokości 1,8 m | 0,3 m (`PLAYER_REACH_RADIUS`): połowa szerokości ciała |
-| **kula zbierania** kryształu | `crystalCenter(restPosition)`: środek kryształu **w spoczynku**, 1,15 m nad podłogą | `GameplaySettings::pickupRadius`, domyślnie 0,6 m |
+| **kula zbierania** kryształu | `crystalCenter(restPosition)`: środek kryształu **w spoczynku**, 1,15 m nad gruntem w środku komórki | `GameplaySettings::pickupRadius`, domyślnie 0,6 m |
 
 **Kula zbierania się nie kołysze.** Kryształ, który widać, chodzi w górę i w dół o 8 cm, ale kula zbierania stoi w miejscu spoczynku. Dzięki temu odległość, na którą trzeba podejść, nie zależy od chwili: gracz nie zbiera kryształu "przypadkiem, bo akurat opadł".
 
@@ -438,7 +442,9 @@ pozioma^2 + 0,25^2 < 0,9^2
 pozioma < pierwiastek(0,81 - 0,0625) = pierwiastek(0,7475) = około 0,865 m
 ```
 
-Gracz zbiera kryształ, gdy jego stopy są bliżej niż około **0,86 m** od środka komórki, licząc po podłodze. To mniej niż suma promieni (0,9 m), właśnie przez różnicę wysokości.
+Gracz zbiera kryształ, gdy jego stopy są bliżej niż około **0,86 m** od środka komórki, licząc w poziomie. To mniej niż suma promieni (0,9 m), właśnie przez różnicę wysokości.
+
+Rachunek zakłada płaski grunt. Od M6 stopy gracza stoją na gruncie tam, gdzie gracz jest, a kryształ nad gruntem w środku komórki, więc do różnicy 0,25 m dochodzi różnica wysokości gruntu między tymi dwoma miejscami. Pod labiryntem grunt jest łagodny (w labiryncie startowym przy skali 1 największe nachylenie między sąsiednimi punktami siatki to około 0,08 m na metr, policzone skryptem z mapy wysokości), więc zasięg zmienia się o pojedyncze centymetry. Ze środka komórki kryształ jest zbierany zawsze: różnica wysokości wynosi tam dokładnie 0,25 m.
 
 Co to znaczy w komórce 2 na 2 m:
 
@@ -453,7 +459,7 @@ Wniosek: kto wszedł do komórki z kryształem i dotknął którejkolwiek jej ś
 
 **Styk to nie nakładanie.** `scene::overlaps` używa ostrej nierówności, tak samo jak dla pudełek: kule, które się tylko stykają, nie nachodzą na siebie.
 
-**Wygrana: kula z pudełkiem.** Strefa wyjścia to pudełko 1 na 1 m w środku komórki wyjścia (`EXIT_ZONE_HALF_SIZE` równe 0,5 m w każdą stronę od środka), wysokie jak ściany (3 m). Dla komórki `(3, 1)`: od `(6,5, 0, 2,5)` do `(7,5, 3, 3,5)`. Runda jest wygrana, gdy brama jest otwarta i kula zasięgu gracza nachodzi na to pudełko. Test kuli z pudełkiem szuka punktu pudełka najbliższego środkowi kuli i pyta, czy jest bliżej niż promień. Środek kuli jest na wysokości 0,9 m, czyli między podłogą a górą strefy, więc liczy się tylko odległość po podłodze: gracz wygrywa, gdy jego stopy są bliżej niż 0,3 m od krawędzi strefy, czyli bliżej niż 0,8 m od środka komórki wzdłuż osi.
+**Wygrana: kula z pudełkiem.** Strefa wyjścia to pudełko 1 na 1 m w środku komórki wyjścia (`EXIT_ZONE_HALF_SIZE` równe 0,5 m w każdą stronę od środka), wysokie jak ściany (3 m). Dla komórki `(3, 1)`: od `(6,5, 0, 2,5)` do `(7,5, 3, 3,5)`. Runda jest wygrana, gdy brama jest otwarta i kula zasięgu gracza nachodzi na to pudełko. Test kuli z pudełkiem szuka punktu pudełka najbliższego środkowi kuli i pyta, czy jest bliżej niż promień. Od M6 strefa stoi na gruncie w środku komórki (drugi parametr `exitZone`): od tej wysokości do 3 m nad nią. Środek kuli jest 0,9 m nad stopami gracza, czyli między dołem a górą strefy także wtedy, gdy grunt pod graczem jest trochę niżej albo wyżej niż w środku komórki, więc liczy się tylko odległość w poziomie: gracz wygrywa, gdy jego stopy są bliżej niż 0,3 m od krawędzi strefy, czyli bliżej niż 0,8 m od środka komórki wzdłuż osi.
 
 Dlaczego strefa jest mniejsza od komórki: gracz ma wejść **do środka**, za bramę, a nie musnąć granicę. Liczby: gracz oparty o zamkniętą bramę od zewnątrz ma stopy 0,45 m przed linią bramy, czyli 1,45 m od środka komórki wyjścia. Do krawędzi strefy brakuje mu 0,95 m, a zasięg to 0,3 m. Nie wygra przez bramę. Test `the player cannot reach the exit zone from in front of the closed gate` to sprawdza, a test `the round is won in the exit zone, but only while the gate is open` dodaje przypadek graniczny: stopy 0,85 m przed środkiem, brakuje 5 cm.
 
@@ -572,7 +578,7 @@ Czego restart **nie** zmienia:
 
 | Co | Dlaczego warto to wiedzieć |
 |---|---|
-| tryb noclip (`m_player.noclip`) | gracz, który wygrał albo oszukiwał w noclipie, zaczyna nową rundę nadal w noclipie. Stopy wracają na podłogę, bo pozycja startowa ma wysokość 0 |
+| tryb noclip (`m_player.noclip`) | gracz, który wygrał albo oszukiwał w noclipie, zaczyna nową rundę nadal w noclipie. Stopy wracają na grunt, bo pozycja startowa leży na gruncie (`MazeWorld::startPosition`) |
 | ustawienia oświetlenia poza przełącznikiem latarki | tryb cieniowania, kolory, zasięgi, mapowanie normalnych zostają |
 | ustawienia rozgrywki (`m_gameplay`) | próg, czas życia baterii, doładowanie, próg migotania, promień zbierania i `batteryDrains` zostają takie, jak ustawił panel. Runda zaczyna się z **aktualnym** progiem |
 | prędkości gracza, czułość myszy, podgląd, rysowanie brył kolizji | to ustawienia narzędzi, nie stan rundy |
@@ -597,7 +603,7 @@ Każde wywołanie jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/g
 
 **Jeden model, jedna macierz.** `drawModel` przyjmuje listę macierzy (`std::span<const glm::mat4>`), bo `MazeRenderer` rysuje nią wszystkie ściany labiryntu jednym wywołaniem funkcji. Kryształ i brama mają po jednej macierzy, więc dostają zakres jednoelementowy: wskaźnik na macierz i liczbę 1. Macierzy kryształów nie da się policzyć raz jak macierzy ścian: zmieniają się w każdej klatce (kołysanie i obrót), więc są liczone w `draw`. Przy 16 kryształach to 16 macierzy na klatkę.
 
-**Opadająca brama i test głębi.** Brama nie jest przycinana ani chowana żadnym specjalnym stanem. Jej macierz modelu ma po prostu coraz mniejsze y, więc dół modelu wchodzi pod podłogę. Płyty podłogi są rysowane wcześniej (`MazeRenderer`), ale kolejność nie ma znaczenia: test głębi (`GL_DEPTH_TEST`, włączany w `onRender`) odrzuca fragmenty bramy, które leżą dalej od kamery niż podłoga. Dopóki kamera jest nad podłogą, część bramy pod płytami jest zasłonięta.
+**Opadająca brama i test głębi.** Brama nie jest przycinana ani chowana żadnym specjalnym stanem. Jej macierz modelu ma po prostu coraz mniejsze y, więc dół modelu wchodzi pod grunt. Teren jest rysowany wcześniej (`TerrainRenderer`, do M5 były to płytki podłogi rysowane przez `MazeRenderer`), ale kolejność nie ma znaczenia: test głębi (`GL_DEPTH_TEST`, włączany w `onRender`) odrzuca fragmenty bramy, które leżą dalej od kamery niż powierzchnia terenu. Dopóki kamera jest nad gruntem, część bramy pod nim jest zasłonięta.
 
 **Brak przezroczystości.** Kryształy są nieprzezroczyste: shadery piszą alfę 1 i mieszanie kolorów (blending) nie jest włączane. "Świecenie" kryształu to jasny kolor z `uEmissive`, a nie poświata wokół niego. Poświata jako efekt obrazu (bloom) jest planowana razem z renderowaniem pozaekranowym w M7.
 
@@ -617,7 +623,7 @@ Po co: model Phonga z wykładu opisuje powierzchnię, która tylko **odbija** ś
 
 ```glsl
 // Light the surface gives off by itself, as a colour that multiplies the colour of the
-// surface. Black (0, 0, 0) for everything that only reflects light: walls, floor,
+// surface. Black (0, 0, 0) for everything that only reflects light: walls, ground,
 // pillars, the gate. The crystals glow with it: the point light of a crystal hangs
 // outside its mesh and lights its faces only from one side, and without a glow of its
 // own the source of the light would be the darkest thing around it.
@@ -635,7 +641,7 @@ uniform vec3 uEmissive;
 | `surface` | kolor powierzchni: teksel razy kolor materiału. Bez zmian względem M4 |
 | `lighting.diffuse + uEmissive` | emisja **dołącza do światła rozproszonego**. Suma jest mnożona przez kolor powierzchni, więc kryształ świeci swoją teksturą: jasne miejsca tekstury świecą mocniej, ciemne słabiej |
 | `+ lighting.specular` | odbłysk bez zmian: emisja go nie dotyka |
-| czerń `(0, 0, 0)` | dodanie zera nic nie zmienia: ściany, podłoga, słupki i brama są liczone dokładnie tym samym wzorem co przed M5 |
+| czerń `(0, 0, 0)` | dodanie zera nic nie zmienia: ściany, podłoże, słupki i brama są liczone dokładnie tym samym wzorem co przed M5 |
 
 Wzór na liczbach. Weźmy fragment kryształu w kącie, do którego nie dochodzi żadne światło poza otoczeniem: `lighting.diffuse` to wtedy mniej więcej światło otoczenia `(0,035, 0,045, 0,075)`. Bez emisji kolor fragmentu to teksel razy te liczby: prawie czerń. Z emisją `(0,17, 0,765, 0,68)` (wartość z sekcji 2.9) suma w nawiasie to `(0,205, 0,81, 0,755)`: fragment ma około 80 procent jasności swojej tekstury w zieleni i 75 procent w niebieskim. Kryształ świeci na turkusowo niezależnie od tego, gdzie stoi.
 
@@ -674,7 +680,8 @@ Dwa ograniczenia tego shadera (oba w sekcji 7):
 
 | Kto | Wartość | Dlaczego |
 |---|---|---|
-| `MazeRenderer::draw` | czerń, przed podłogą, ścianami i słupkami | uniform trzyma wartość między wywołaniami rysującymi **i między klatkami**. Poprzednia klatka skończyła na kryształach, więc bez tej linii ściany następnej klatki świeciłyby na turkusowo |
+| `TerrainRenderer::draw` (od M6) | czerń, przed terenem | ziemia sama nie świeci. Ta funkcja jest wołana pierwsza w klatce, więc to ona zdejmuje blask kryształów zostawiony przez poprzednią klatkę |
+| `MazeRenderer::draw` | czerń, przed ścianami i słupkami | uniform trzyma wartość między wywołaniami rysującymi **i między klatkami**. Poprzednia klatka skończyła na kryształach, więc bez tej linii ściany następnej klatki świeciłyby na turkusowo |
 | `GameplayRenderer::draw`, przed bramą | czerń | drewno nie świeci |
 | `GameplayRenderer::draw`, przed kryształami | `crystalGlow(m_lighting.pointColor, m_round.animationSeconds)`, policzone w `drawLitMaze` albo `drawUnlitMaze` | jedna wartość dla wszystkich kryształów: pulsują razem |
 
@@ -691,7 +698,7 @@ Shadery wierzchołków nie dostały dla rozgrywki żadnej zmiany: kryształ i br
 | Plik | Co zawiera |
 |---|---|
 | [`src/game/Exit.hpp`](../../../src/game/Exit.hpp), [`.cpp`](../../../src/game/Exit.cpp) | stałe `UNREACHABLE` i `EXIT_ZONE_HALF_SIZE`, struktura `ExitPlacement`, funkcje `passageDistances`, `farthestCell`, `placeExit`, `exitZone` |
-| [`src/game/Crystals.hpp`](../../../src/game/Crystals.hpp), [`.cpp`](../../../src/game/Crystals.cpp) | stałe kryształów, struktura `CrystalSpawn`, funkcje `crystalCountFor`, `placeCrystals`, `crystalRestPosition`, `crystalCenter`, `crystalLightPosition`, `crystalBobPosition`, `crystalSpinDegrees`, `crystalPulse`, `crystalGlow` |
+| [`src/game/Crystals.hpp`](../../../src/game/Crystals.hpp), [`.cpp`](../../../src/game/Crystals.cpp) | stałe kryształów, struktura `CrystalSpawn`, funkcje `crystalCountFor`, `placeCrystals`, `crystalRestPosition` (od M6 z wysokością gruntu), `crystalCenter`, `crystalLightPosition`, `crystalBobPosition`, `crystalSpinDegrees`, `crystalPulse`, `crystalGlow` |
 | [`src/game/Round.hpp`](../../../src/game/Round.hpp), [`.cpp`](../../../src/game/Round.cpp) | stałe bramy i zasięgu gracza, struktury `GameplaySettings`, `RoundCrystal`, `Round`, typ `RoundState`, funkcje `requiredCrystalCount`, `startRound`, `playerReach`, `updateRound`, `gateBlocks`, `gateVisible`, `gateSinkDepth`, `roundObstacles`, `flashlightFlicker`, `lightingForFrame`, `crystalLightPositions` |
 | [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp), [`.cpp`](../../../src/game/MazeLayout.cpp) | `wallSegmentOn`: segment na wybranej stronie komórki (nowa funkcja publiczna, używa jej brama) |
 | [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`.cpp`](../../../src/game/MazeWorld.cpp) | pola `exitCell`, `exitPosition`, `hasGate`, `gate`, `gateBox`, `exitZone`, `crystals`, funkcja `wallModelMatrix`, wypełnianie w `buildMazeWorld` |
@@ -842,15 +849,16 @@ ExitPlacement placeExit(const Maze& maze, MazeCell start) {
 Tę samą funkcję woła teraz `wallSegments` dla zwykłych ścian, więc brama i ściany nie mogą się rozjechać o milimetr: liczy je ten sam kod.
 
 ```cpp
-scene::Aabb exitZone(MazeCell cell) {
-    // cellCenter is on the floor, the centre of the box is half of the height above it.
-    const glm::vec3 center = cellCenter(cell.x, cell.z) + glm::vec3{0.0F, WALL_HEIGHT / 2.0F, 0.0F};
+scene::Aabb exitZone(MazeCell cell, float groundHeight) {
+    // The box stands on the ground, its centre is half of its height above that.
+    const glm::vec3 center =
+        cellCenter(cell.x, cell.z) + glm::vec3{0.0F, groundHeight + WALL_HEIGHT / 2.0F, 0.0F};
     return scene::Aabb::fromCenter(center,
                                    {EXIT_ZONE_HALF_SIZE, WALL_HEIGHT / 2.0F, EXIT_ZONE_HALF_SIZE});
 }
 ```
 
-Pudełko ze środka i połówek rozmiarów: środek komórki podniesiony o 1,5 m, połówki `(0,5, 1,5, 0,5)`. Dla komórki `(3, 1)` ze środkiem `(7, 0, 3)` wychodzi od `(6,5, 0, 2,5)` do `(7,5, 3, 3,5)`. Wysokość 3 m sprawia, że kula zasięgu gracza stojącego na podłodze (środek na 0,9 m) jest w pionie zawsze wewnątrz.
+Pudełko ze środka i połówek rozmiarów: środek komórki podniesiony o wysokość gruntu i o 1,5 m, połówki `(0,5, 1,5, 0,5)`. Dla komórki `(3, 1)` ze środkiem `(7, 0, 3)` i gruntu na wysokości 0 wychodzi od `(6,5, 0, 2,5)` do `(7,5, 3, 3,5)`, a na gruncie o wysokości 0,25 m od `(6,5, 0,25, 2,5)` do `(7,5, 3,25, 3,5)`: całe pudełko stoi wyżej (obie pary liczb sprawdza test). `groundHeight` to od M6 drugi parametr: podaje go `placeOnTerrain` jako `world.exitPosition.y`, czyli `Terrain::heightAt` w środku komórki. Funkcja dostaje liczbę, a nie teren, więc `Exit.*` nie zależy od `Terrain`. Wysokość 3 m sprawia, że kula zasięgu gracza stojącego na gruncie obok (środek 0,9 m nad stopami) jest w pionie zawsze wewnątrz.
 
 ### 5.4 Stałe kryształów i `crystalCountFor`
 
@@ -859,7 +867,7 @@ Pudełko ze środka i połówek rozmiarów: środek komórki podniesiony o 1,5 m
 | `CELLS_PER_CRYSTAL` | 8 | jeden kryształ na tyle komórek |
 | `CRYSTAL_VARIANT_COUNT` | 2 | liczba modeli kryształu |
 | `CRYSTAL_HEIGHT` | 0,5 m | wysokość modeli od podstawy do czubka |
-| `CRYSTAL_FLOAT_HEIGHT` | 0,9 m | wysokość podstawy nad podłogą w spoczynku |
+| `CRYSTAL_FLOAT_HEIGHT` | 0,9 m | wysokość podstawy nad gruntem w spoczynku |
 | `CRYSTAL_BOB_AMPLITUDE`, `CRYSTAL_BOB_SECONDS` | 0,08 m, 3 s | kołysanie |
 | `CRYSTAL_SPIN_DEGREES_PER_SECOND` | 40 | obrót: pełny w 9 s |
 | `CRYSTAL_LIGHT_CLEARANCE` | 0,15 m | odstęp światła od czubka |
@@ -1006,38 +1014,63 @@ glm::vec3 crystalGlow(const glm::vec3& lightColor, float seconds) {
 | `crystalPulse` bez `index` | wszystkie kryształy pulsują razem |
 | `crystalGlow` | kolor razy siła razy puls. `glm::vec3` razy `float` mnoży każdą składową |
 
-Trzy krótkie funkcje pozycji (`crystalRestPosition`, `crystalCenter`, `crystalLightPosition`) dodają do punktu przesunięcie w górę o `CRYSTAL_FLOAT_HEIGHT`, o połowę `CRYSTAL_HEIGHT` i o `CRYSTAL_HEIGHT + CRYSTAL_LIGHT_CLEARANCE` (liczby w sekcji 2.9).
+Trzy krótkie funkcje pozycji (`crystalRestPosition`, `crystalCenter`, `crystalLightPosition`) dodają do punktu przesunięcie w górę o `CRYSTAL_FLOAT_HEIGHT`, o połowę `CRYSTAL_HEIGHT` i o `CRYSTAL_HEIGHT + CRYSTAL_LIGHT_CLEARANCE` (liczby w sekcji 2.9). Pierwsza z nich dostała w M6 drugi parametr:
+
+```cpp
+glm::vec3 crystalRestPosition(MazeCell cell, float groundHeight) {
+    return cellCenter(cell.x, cell.z) + glm::vec3{0.0F, groundHeight + CRYSTAL_FLOAT_HEIGHT, 0.0F};
+}
+```
+
+`groundHeight` to wysokość gruntu w środku komórki. Komentarz w nagłówku mówi, dlaczego jest liczbą: "It is passed in, so this function needs no terrain". `Crystals.*` nie dołącza `Terrain.hpp`, a teren zna dopiero ten, kto funkcję woła (`startRound` i `restCrystalsOnGround` w `Round.cpp`). `crystalCenter` i `crystalLightPosition` liczą od podstawy, więc wysokość gruntu dostają razem z nią.
 
 ### 5.7 Co doszło w `MazeWorld`
 
-`MazeWorld` to labirynt ustawiony w świecie, liczony raz ([`maze-rendering.md`](maze-rendering.md)). M5 dopisało do niego wszystko o wyjściu i kryształach, co **nie zmienia się w czasie rundy**:
+`MazeWorld` to labirynt ustawiony w świecie, liczony raz na labirynt, a od M6 jeszcze raz przy każdej zmianie skali wysokości terenu ([`maze-rendering.md`](maze-rendering.md)). M5 dopisało do niego wszystko o wyjściu i kryształach, co **nie zmienia się w czasie rundy**:
 
 | Pole | Typ | Skąd |
 |---|---|---|
 | `exitCell` | `MazeCell` | `placeExit(maze, START_CELL).cell` |
-| `exitPosition` | `glm::vec3` | `cellCenter` komórki wyjścia, na poziomie podłogi |
-| `exitZone` | `scene::Aabb` | `exitZone(exit.cell)` |
+| `exitPosition` | `glm::vec3` | `cellCenter` komórki wyjścia, z `y` równym wysokości gruntu w tym miejscu (`groundHeightAt`) |
+| `exitZone` | `scene::Aabb` | `exitZone(world.exitCell, world.exitPosition.y)`: strefa stojąca na gruncie |
 | `hasGate` | `bool` | fałsz tylko w labiryncie jednej komórki |
-| `gate` | `WallSegment` | segment bramy |
-| `gateBox` | `scene::Aabb` | `wallBox(exit.gate)`: pudełko ściany w tym miejscu |
+| `gate` | `WallSegment` | segment bramy, od M6 opuszczony na najniższy grunt pod swoim obrysem (`lowerToGround`) |
+| `gateBox` | `scene::Aabb` | `wallBox(world.gate)`: pudełko ściany w tym miejscu, liczone po opuszczeniu |
 | `crystals` | `std::vector<CrystalSpawn>` | `placeCrystals(maze, seed, START_CELL, exit.cell)` |
 
+Od M6 te pola powstają w dwóch miejscach. `buildMazeWorld` ustala plan: komórkę wyjścia, to, czy jest brama, jej segment i komórki kryształów:
+
 ```cpp
-    // The exit, its gate and the zone that wins the round.
+    // The exit and its gate.
     const ExitPlacement exit = placeExit(maze, START_CELL);
     world.exitCell = exit.cell;
-    world.exitPosition = cellCenter(exit.cell.x, exit.cell.z);
-    world.exitZone = exitZone(exit.cell);
     world.hasGate = exit.hasGate;
     if (exit.hasGate) {
         world.gate = exit.gate;
-        world.gateBox = wallBox(exit.gate);
     }
 
     // The crystals: never in the start cell (the player would collect one without
     // moving) and never in the exit cell (it is behind the gate).
     world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
 ```
+
+A `placeOnTerrain` nadaje im wysokość, razem ze ścianami i słupkami:
+
+```cpp
+    // The start and the exit stand on the ground at the centre of their cells.
+    world.startPosition = cellCenter(START_CELL.x, START_CELL.z);
+    world.startPosition.y = groundHeightAt(world, START_CELL);
+    world.exitPosition = cellCenter(world.exitCell.x, world.exitCell.z);
+    world.exitPosition.y = groundHeightAt(world, world.exitCell);
+    world.exitZone = exitZone(world.exitCell, world.exitPosition.y);
+
+    if (world.hasGate) {
+        lowerToGround(terrain, world.gate);
+        world.gateBox = wallBox(world.gate);
+    }
+```
+
+Brama jest opuszczana tą samą funkcją `lowerToGround` co każda ściana: na najniższy grunt pod obrysem jej pudełka poszerzonym o `FOOTPRINT_MARGIN`, żeby pod jej deskami nie było szczeliny. Jej pudełko jest liczone po opuszczeniu, więc brama i jej pudełko stoją na tej samej wysokości. Start, środek wyjścia i strefa wyjścia biorą wysokość gruntu w środku komórki. Całość opisuje [`maze-rendering.md`](maze-rendering.md), sekcje 2.8 i 5.5.
 
 Dwie rzeczy są tu ważne.
 
@@ -1125,7 +1158,8 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     round.crystals.reserve(world.crystals.size());
     for (const CrystalSpawn& spawn : world.crystals) {
         round.crystals.push_back(
-            {.restPosition = crystalRestPosition(spawn.cell), .variant = spawn.variant});
+            {.restPosition = crystalRestPosition(spawn.cell, groundHeightAt(world, spawn.cell)),
+             .variant = spawn.variant});
     }
     round.requiredCount =
         requiredCrystalCount(static_cast<int>(round.crystals.size()), settings.requiredFraction);
@@ -1144,9 +1178,30 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
 | Linia | Znaczenie |
 |---|---|
 | `Round round;` | wartości domyślne pól są już świeżą rundą: `Playing`, zero zebranych, pełna bateria, zegary na zerze. Funkcja dopisuje tylko to, co zależy od labiryntu |
-| pętla po `world.crystals` | komórka zamieniona na pozycję w świecie, raz na rundę. `collected` zostaje fałszem |
+| pętla po `world.crystals` | komórka zamieniona na pozycję w świecie, raz na rundę. `collected` zostaje fałszem. Od M6 `crystalRestPosition` dostaje `groundHeightAt(world, spawn.cell)`: wysokość terenu w środku komórki, więc kryształ wisi 0,9 m nad gruntem, a nie nad zerem |
 | `round.gateOpen = round.requiredCount == 0;` | labirynt bez kryształów: nie ma na co czekać, brama jest otwarta od startu (i zaczyna opadać w pierwszym kroku) |
 | `if (!world.hasGate)` | labirynt bez bramy: droga jest otwarta, a `gateProgress` równe 1 mówi "nie ma czego rysować ani opuszczać" |
+
+**`restCrystalsOnGround` (od M6).** Runda trzyma pozycje spoczynkowe kryształów jako **kopie** policzone w `startRound`. Gdy suwak `Height scale` w panelu Terrain zmieni grunt, labirynt dostaje nowe wysokości (`placeOnTerrain`), ale te kopie zostałyby stare. Poprawia je osobna funkcja:
+
+```cpp
+void restCrystalsOnGround(Round& round, const MazeWorld& world) {
+    // The crystals of a round are in the order of MazeWorld::crystals. The smaller of
+    // the two sizes guards against a round that belongs to another world.
+    const std::size_t count = std::min(round.crystals.size(), world.crystals.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        const MazeCell cell = world.crystals[i].cell;
+        round.crystals[i].restPosition = crystalRestPosition(cell, groundHeightAt(world, cell));
+    }
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `std::min(round.crystals.size(), world.crystals.size())` | kryształy rundy leżą w kolejności `MazeWorld::crystals`, więc indeks `i` w obu listach to ten sam kryształ. Mniejszy z dwóch rozmiarów chroni przed czytaniem poza listą, gdyby ktoś podał rundę z innego labiryntu |
+| `round.crystals[i].restPosition = crystalRestPosition(cell, groundHeightAt(world, cell));` | ten sam wzór co w `startRound`, z nowym gruntem. Zmienia się tylko `restPosition` |
+
+Pole `collected`, licznik `collectedCount`, bateria, brama i zegary zostają nietknięte: runda trwa dalej, zmienia się tylko wysokość, na której wiszą kryształy. Funkcję woła `NightMazeApp::rebuildTerrain` zaraz po `placeOnTerrain` i tuż przed złożeniem od nowa listy przeszkód ([`maze-rendering.md`](maze-rendering.md), sekcja 5.7). Dlaczego skala wysokości przebudowuje świat, a nie jest uniformem shadera, wyjaśnia [`../../decisions/height-scale-rebuilds-terrain.md`](../../decisions/height-scale-rebuilds-terrain.md).
 
 ### 5.9 `updateRound` i jej dwie funkcje pomocnicze
 
@@ -1279,7 +1334,7 @@ std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& rou
 | `gateSinkDepth` | od 0 do 3,3 m, liniowo z postępem |
 | `roundObstacles` | **kopia** listy stałych przeszkód, a na jej końcu pudełko bramy, dopóki brama blokuje. Kopia zamiast dopisywania do `world.colliders`: labirynt zostaje nietknięty |
 
-Kopiowanie całej listy (w labiryncie startowym to pudełka wszystkich ścian i słupków) byłoby marnotrawstwem w każdym kroku. Dlatego `NightMazeApp` trzyma wynik w polu `m_obstacles` i buduje go od nowa tylko dwa razy na rundę: na jej początku i w chwili otwarcia bramy (sekcja 5.11).
+Kopiowanie całej listy (w labiryncie startowym to pudełka wszystkich ścian i słupków) byłoby marnotrawstwem w każdym kroku. Dlatego `NightMazeApp` trzyma wynik w polu `m_obstacles` i buduje go od nowa tylko wtedy, gdy się zmienia: na początku rundy, w chwili otwarcia bramy (sekcja 5.11) i, od drugiej części M6, po przebudowie terenu z inną skalą wysokości (`rebuildTerrain`: pudełka przesuwają się wtedy w pionie).
 
 `flashlightFlicker` jest zapisem wzoru z sekcji 2.13 linia w linię: dwa wczesne `return` (pusta bateria daje 0, bateria na progu lub powyżej daje 1), potem `weakness`, `wave`, `dip` i wynik. Stałe `FLICKER_FAST_SPEED` (23), `FLICKER_SLOW_SPEED` (7,3) i `FLICKER_DEPTH` (0,85) są w anonimowej przestrzeni nazw w `Round.cpp`. Kolejność dwóch `return` ma znaczenie: przy progu 0 i pustej baterii pierwszy warunek daje 0 (latarka ciemna), a dopiero dla niepustej drugi daje 1.
 
@@ -1445,7 +1500,7 @@ Klasa **nie posiada niczego**. Jej pola to trzy wskaźniki `const assets::Loaded
 
 | Linia | Znaczenie |
 |---|---|
-| `WallSegment loweredGate = world.gate;` | kopia segmentu: labiryntu nie wolno zmieniać, a brama w labiryncie stoi zawsze na podłodze |
+| `WallSegment loweredGate = world.gate;` | kopia segmentu: labiryntu nie wolno zmieniać, a brama w labiryncie stoi zawsze w pozycji zamkniętej, czyli od M6 na najniższym gruncie pod swoim obrysem |
 | `position.y -= gateSinkDepth(round)` | brama to "segment ściany, który się rusza": ta sama macierz co dla ściany w tym miejscu, tylko z obniżoną pozycją |
 | `wallModelMatrix(loweredGate)` | translacja i ewentualny obrót o 90 stopni wokół Y. Obrót wokół osi pionowej nie przeszkadza przesunięciu w pionie |
 | `std::span<const glm::mat4>(&gateMatrix, 1)` | zakres z jednego elementu: wskaźnik i liczba 1 |
@@ -1510,7 +1565,7 @@ Reguły są w bibliotece `game_logic`, do której program testowy `night_maze_te
 | `the exit of a generated maze is a dead end, not the start, with a gate on its open side` | 25 ziaren labiryntu 9 na 6: wyjście jest zaułkiem różnym od startu, żadna komórka nie jest dalej, brama stoi na otwartej stronie, wynik jest powtarzalny |
 | `a maze of one cell has its exit in the start cell and no gate` | przypadek brzegowy |
 | `wallSegmentOn gives the segment on each of the four sides of a cell` | tabela z sekcji 5.3 |
-| `the exit zone is a 1 m square in the middle of the exit cell, as high as the walls` | narożniki strefy |
+| `the exit zone is a 1 m square in the middle of the exit cell, as high as the walls` | narożniki strefy na gruncie o wysokości 0 i, od M6, na gruncie o wysokości 0,25 m: całe pudełko stoi o tyle wyżej |
 | `a maze world carries the exit, the gate box and the exit zone of its maze` | pola `MazeWorld`, pudełko bramy, brama poza ścianami i stałymi przeszkodami, słupki po obu jej końcach |
 
 **`tests/CrystalTests.cpp`, 14 przypadków.**
@@ -1526,7 +1581,7 @@ Reguły są w bibliotece `game_logic`, do której program testowy `night_maze_te
 | `the same maze and seed always give the same crystals, another seed gives others` | powtarzalność i zależność od ziarna |
 | `a maze with too few free cells gets fewer crystals, down to none` | 1 komórka: zero, 2 komórki: zero, 3 komórki: jeden w środkowej |
 | `a start or an exit outside the maze is an error` | `std::out_of_range` |
-| `a crystal rests above the centre of its cell, its light just above its tip` | punkty z tabeli w sekcji 2.9 |
+| `a crystal rests above the centre of its cell, its light just above its tip` | punkty z tabeli w sekcji 2.9, a od M6 także podstawa na gruncie o wysokości 0,25 m: `(7, 1,15, 3)` |
 | `a crystal bobs straight up and down within its amplitude` | 600 chwil: tylko y, w granicach amplitudy, oba końce osiągane, kryształ 1 w innej fazie niż 0 |
 | `a crystal turns 40 degrees per second and its angle stays below 360` | 40, 180, znów 40 po 10 s, zakres dla 500 chwil |
 | `the pulse of the crystals stays between 70 and 100 percent` | zakres i powtarzalność |
@@ -1546,9 +1601,16 @@ Reguły są w bibliotece `game_logic`, do której program testowy `night_maze_te
 | migotanie | `the flashlight is steady above the low-battery threshold and dark when empty`, `a low battery flickers: the factor stays in 0 to 1, dips, and repeats exactly`, `a threshold of zero means no flicker at all` | zakres, głębsze spadki przy słabszej baterii, światło nigdy nie gaśnie przy niepustej baterii, ponad ćwierć chwil z pełną jasnością, brak losowości |
 | światła klatki | `the lighting of a frame dims the flashlight and the crystals, not the settings`, `every crystal that is left carries a light, a collected one does not`, `a large maze never has more crystal lights than the shader has room for` | kopia zamiast zmiany ustawień, światło znika z zebranym kryształem, labirynt 40 na 40 ma dokładnie 16 świateł |
 
-Wyniki zgłoszone dla Windowsa (2026-10-05): wszystkie 50 przypadków przechodzi w Debug i Release, w ramach 215 przypadków i 85098 asercji całego programu testowego.
+**`tests/TerrainTests.cpp`, część o rundzie (od M6).** Trzy pliki wyżej budują świat na płaskim gruncie. Rzeczy rundy na nierównym gruncie sprawdza osobny plik:
 
-**Czego testy nie sprawdzają.** Wszystkiego, co wymaga okna: `GameplayRenderer`, `ModelDraw`, uniformu `uEmissive`, klawisza R i flagi `restart`, tego, że `m_obstacles` jest odbudowywane w chwili otwarcia bramy, `beginRound`, HUD i panelu Gameplay. Obraz był oglądany na zrzutach ekranu z Windowsa. Gry ręcznej (lista w nagłówku dokumentu) nikt jeszcze nie wykonał: listy kontrolne testów ręcznych prowadzi [`../../guides/build-windows.md`](../../guides/build-windows.md).
+| Przypadek testowy | Co sprawdza |
+|---|---|
+| `the crystals of a round float above the ground of their cells` | labirynt 6 na 6 (ziarno 2) na nierównej mapie przy skali 2: każdy kryształ rundy ma `x` i `z` środka swojej komórki i `y` równe wysokości gruntu w tym punkcie plus `CRYSTAL_FLOAT_HEIGHT`. Podprzypadek `restCrystalsOnGround moves them to new ground and keeps what is collected`: po `placeOnTerrain` ze skalą 0 i `restCrystalsOnGround` wszystkie kryształy wiszą na 0,9 m, a zebrany kryształ i licznik zostają |
+| `on uneven ground the walls, pillars and the gate are sunk until no gap shows` (podprzypadki o bramie i wyjściu) | brama opuszczona jak ściana razem z pudełkiem (`gateBox.min.y` równe `gate.position.y`, wysokość nadal `WALL_HEIGHT`, `x` i `z` bez zmian), a start, `exitPosition` i strefa wyjścia stoją na gruncie w środku komórki |
+
+Wyniki dla Windowsa (2026-10-05): wszystkie 50 przypadków trzech plików i przypadki z `TerrainTests.cpp` przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego (po M5 było to 215 przypadków i 85098 asercji).
+
+**Czego testy nie sprawdzają.** Wszystkiego, co wymaga okna: `GameplayRenderer`, `ModelDraw`, uniformu `uEmissive`, klawisza R i flagi `restart`, tego, że `m_obstacles` jest odbudowywane w chwili otwarcia bramy, `beginRound`, `rebuildTerrain` (czyli tego, że aplikacja naprawdę woła `restCrystalsOnGround`), HUD i panelu Gameplay. Obraz był oglądany na zrzutach ekranu z Windowsa. Gry ręcznej (lista w nagłówku dokumentu) nikt jeszcze nie wykonał: listy kontrolne testów ręcznych prowadzi [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
 ## 6. Panel ImGui
 
@@ -1585,7 +1647,11 @@ Pasek ma jedną flagę więcej: `NoBringToFrontOnFocus`. Zostaje przez nią **za
 
 ```cpp
     const ImVec2 top = windowPoint(TOP_CENTER);
-    ImGui::SetNextWindowPos({top.x, top.y + HUD_TOP_OFFSET * scale}, ImGuiCond_Always, TOP_CENTER);
+    // The rows of title bars are measured with the real height of a bar, which follows
+    // the font (foldedRowsHeight).
+    const float rowsAbove = foldedRowsHeight(FOLDED_ROW_COUNT, scale);
+    ImGui::SetNextWindowPos({top.x, top.y + rowsAbove + HUD_TOP_OFFSET * scale}, ImGuiCond_Always,
+                            TOP_CENTER);
     ImGui::SetNextWindowBgAlpha(HUD_OPACITY);
 
     if (ImGui::Begin("Game HUD", nullptr, STATUS_WINDOW_FLAGS)) {
@@ -1606,7 +1672,8 @@ Pasek ma jedną flagę więcej: `NoBringToFrontOnFocus`. Zostaje przez nią **za
 | Linia | Znaczenie |
 |---|---|
 | `windowPoint(TOP_CENTER)` | punkt okna programu podany jako części jego rozmiaru: `(0,5, 0)` to środek górnej krawędzi. Liczony z `WorkPos` i `WorkSize` głównego obszaru widoku |
-| `HUD_TOP_OFFSET * scale` | 46 pikseli w dół (razy skala ekranu): **pod** paskami tytułu paneli Camera i Gameplay, które startują zwinięte obok siebie przy górnej krawędzi (`CAMERA_PLACEMENT` i `GAMEPLAY_PLACEMENT` w [`src/debug/PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp)) |
+| `foldedRowsHeight(FOLDED_ROW_COUNT, scale)` (od M6) | wysokość rzędów zwiniętych pasków tytułu nad HUD. `FOLDED_ROW_COUNT` to 2 (`PanelLayout.hpp`): w pierwszym rzędzie stoją paski paneli Camera i Gameplay, w drugim, od M6, Terrain i Grass. Funkcja z `PanelLayout.cpp` zwraca `liczba rzędów * (ImGui::GetFrameHeight() + PANEL_GAP * scale)`: wysokość paska nie jest stałą w kodzie, tylko prawdziwą wysokością linii widżetów, która idzie za czcionką |
+| `HUD_TOP_OFFSET * scale` | `HUD_TOP_OFFSET` to `2.0F * PANEL_GAP`, czyli 16 pikseli (razy skala ekranu): wolne miejsce nad pierwszym rzędem pasków plus dodatkowy odstęp między ostatnim rzędem a HUD, dzięki któremu pasek czyta się jako osobna rzecz. Do M5 stała wynosiła 46 pikseli i obejmowała jeden rząd pasków wpisany na sztywno. Według zgłoszenia autora kodu HUD stoi dziś około 30 pikseli niżej niż w M5 przy skali 100%: tyle zajmuje drugi rząd (pasek i odstęp 8 pikseli). Tej liczby nie mierzyłem |
 | trzeci argument `TOP_CENTER` | punkt zaczepienia (pivot): ten punkt **okna HUD** trafia w podaną pozycję. `(0,5, 0)` to środek jego górnej krawędzi, więc pasek jest wyśrodkowany niezależnie od tego, jak szeroki akurat wyszedł |
 | `ImGuiCond_Always` | pozycja ustawiana w każdej klatce: pasek zostaje na środku po zmianie rozmiaru okna |
 | `SetNextWindowBgAlpha(HUD_OPACITY)` | tło przezroczyste w 28 procentach (krycie 0,72): scena prześwituje |
@@ -1692,7 +1759,7 @@ Dlaczego suwak `Battery` edytuje rundę, a nie ustawienia: bateria jest stanem, 
 | Collision | pole `Draw collision shapes` z legendą kolorów (żółty: ściany i słupki, zielony: gracz, pomarańczowy: brama, błękitny: kule zbierania, purpurowy: strefa wyjścia), linie `Boxes: %d walls, %d pillars, %d gate` i `All boxes: %d, pickup spheres: %d`. Liczba przy `gate` zmienia się z 1 na 0 w chwili otwarcia bramy, a liczba kul maleje z każdym kryształem | [`../scene/collision.md`](../scene/collision.md), sekcja 6 |
 | Lights | grupa `Point lights (crystals)` z linią `Lit: %d of %d crystals (at most %d)`. Pole `Flashlight on (key F)` ma przy pustej baterii podpowiedź `The battery is empty: collect a crystal first.` i samo się odznacza w najbliższym kroku | [`../scene/lights.md`](../scene/lights.md), sekcja 6 |
 
-Układ wszystkich ośmiu paneli i motyw kolorów opisuje [`../debug-ui.md`](../debug-ui.md).
+Układ wszystkich dziesięciu paneli (od M6 doszły Terrain i Grass) i motyw kolorów opisuje [`../debug-ui.md`](../debug-ui.md).
 
 ### 6.4 Scenariusz pokazu na obronie
 
@@ -1748,7 +1815,7 @@ Najpierw znane ograniczenia rozgrywki (od 1 do 16): rzeczy, które działają ta
 2. **Remis.** W labiryncie z ćwiczenia 1 zamurowano przejście `(2,1)` do `(2,0)`. Komórka `(2,0)` jest teraz nieosiągalna. Która komórka jest najdalsza? (Odpowiedź: `(0,1)` i `(2,1)` mają po 3. Obie leżą w rzędzie 1, wcześniejsza od zachodu to `(0,1)`.)
 3. **Liczba kryształów i próg.** Policz kryształy i próg bramy (ułamek 0,7) dla labiryntów 6 na 5, 7 na 7 i 15 na 15. (Odpowiedź: 30 komórek daje 4 kryształy i próg 3. 49 komórek daje 6 i próg 5. 225 komórek daje 16 i próg 12.)
 4. **Mieszanie na kartce.** Lista `A B C`, generator zwraca kolejno 0 i 1. Jaka jest lista po mieszaniu Fishera-Yatesa z sekcji 2.8? (Odpowiedź: przy `last` równym 3 zamiana miejsc 2 i 0 daje `C B A`. Przy `last` równym 2 wylosowano 1, miejsce 1 zamienia się samo ze sobą. Wynik `C B A`.)
-5. **Odległość zbierania.** Suwak `Pickup radius` stoi na 1,0 m. Z jakiej odległości po podłodze gracz zbiera kryształ? (Odpowiedź: suma promieni 1,3 m, różnica wysokości 0,25 m, pierwiastek z 1,69 minus 0,0625 to około 1,28 m. Test `a larger pickup radius reaches a crystal from further away` używa odległości 1,2 m.)
+5. **Odległość zbierania.** Suwak `Pickup radius` stoi na 1,0 m. Z jakiej odległości po ziemi gracz zbiera kryształ? (Odpowiedź: suma promieni 1,3 m, różnica wysokości 0,25 m, pierwiastek z 1,69 minus 0,0625 to około 1,28 m. Test `a larger pickup radius reaches a crystal from further away` używa odległości 1,2 m.)
 6. **Bateria.** `Battery lifetime` równe 60 s. Ile baterii ubywa w jednym kroku? Ile zostaje po 30 s świecenia? Gracz zbiera wtedy kryształ, a zaraz potem drugi: ile ma po każdym? (Odpowiedź: 1/7200 na krok. Po 30 s zostaje 0,5. Po pierwszym krysztale 0,75, po drugim 1,0.)
 7. **Migotanie i brama.** Bateria 0,05, próg 0,2, fala równa 0,5. Jaki jest mnożnik jasności i jaki najmniejszy możliwy przy tej baterii? Osobno: jak głęboko jest brama 0,5 s po otwarciu i ile jej wystaje? (Odpowiedź: słabość 0,75, mnożnik 1 minus 0,85 razy 0,75 razy 0,5, czyli około 0,68. Najmniejszy 0,36. Brama: postęp 1/3, obniżenie 1,1 m, nad podłogą zostaje 1,65 m.)
 8. **Remis odwrotnie.** W `farthestCell` zamień `distance > farthestDistance` na `>=`. Który test powinien przestać przechodzić i dlaczego labirynt wzorcowy nie? (Wskazówka: test o remisie oczekuje pierwszej komórki w kolejności wierszy. Labirynt wzorcowy ma jedną komórkę o odległości 14.)

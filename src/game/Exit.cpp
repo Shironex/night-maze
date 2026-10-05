@@ -98,9 +98,10 @@ ExitPlacement placeExit(const Maze& maze, MazeCell start) {
     return placement;
 }
 
-scene::Aabb exitZone(MazeCell cell) {
-    // cellCenter is on the floor, the centre of the box is half of the height above it.
-    const glm::vec3 center = cellCenter(cell.x, cell.z) + glm::vec3{0.0F, WALL_HEIGHT / 2.0F, 0.0F};
+scene::Aabb exitZone(MazeCell cell, float groundHeight) {
+    // The box stands on the ground, its centre is half of its height above that.
+    const glm::vec3 center =
+        cellCenter(cell.x, cell.z) + glm::vec3{0.0F, groundHeight + WALL_HEIGHT / 2.0F, 0.0F};
     return scene::Aabb::fromCenter(center,
                                    {EXIT_ZONE_HALF_SIZE, WALL_HEIGHT / 2.0F, EXIT_ZONE_HALF_SIZE});
 }

@@ -126,7 +126,7 @@ std::vector<glm::vec3> pillarPositions(const Maze& maze) {
 }
 
 scene::Aabb wallBox(const WallSegment& segment) {
-    // The position is on the floor, the centre of the box is half of the height above it.
+    // The position is the base, the centre of the box is half of the height above it.
     const glm::vec3 center = segment.position + glm::vec3{0.0F, WALL_HEIGHT / 2.0F, 0.0F};
     const glm::vec3 halfExtents =
         segment.axis == WallAxis::AlongX ? WALL_ALONG_X_HALF_EXTENTS : WALL_ALONG_Z_HALF_EXTENTS;
@@ -138,15 +138,21 @@ scene::Aabb pillarBox(const glm::vec3& position) {
     return scene::Aabb::fromCenter(center, PILLAR_HALF_EXTENTS);
 }
 
-std::vector<scene::Aabb> mazeColliders(const Maze& maze) {
+std::vector<scene::Aabb> colliderBoxes(std::span<const WallSegment> walls,
+                                       std::span<const glm::vec3> pillars) {
     std::vector<scene::Aabb> boxes;
-    for (const WallSegment& segment : wallSegments(maze)) {
+    boxes.reserve(walls.size() + pillars.size());
+    for (const WallSegment& segment : walls) {
         boxes.push_back(wallBox(segment));
     }
-    for (const glm::vec3& position : pillarPositions(maze)) {
+    for (const glm::vec3& position : pillars) {
         boxes.push_back(pillarBox(position));
     }
     return boxes;
+}
+
+std::vector<scene::Aabb> mazeColliders(const Maze& maze) {
+    return colliderBoxes(wallSegments(maze), pillarPositions(maze));
 }
 
 } // namespace game

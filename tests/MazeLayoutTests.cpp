@@ -58,7 +58,7 @@ TEST_CASE("the layout constants are the agreed sizes in metres") {
     CHECK(game::PILLAR_HEIGHT == 3.15F);
 }
 
-TEST_CASE("cellCenter is the middle of the cell at floor level") {
+TEST_CASE("cellCenter is the middle of the cell at y = 0") {
     checkVector(game::cellCenter(0, 0), {1.0F, 0.0F, 1.0F});
     checkVector(game::cellCenter(3, 2), {7.0F, 0.0F, 5.0F});
 }
@@ -148,7 +148,7 @@ TEST_CASE("a generated maze has the expected number of walls and pillars") {
     }
 }
 
-TEST_CASE("wallBox is 2 m long, 3 m high and 0.3 m thick, standing on the floor") {
+TEST_CASE("wallBox is 2 m long, 3 m high and 0.3 m thick, standing on its position") {
     SUBCASE("a wall along X is long in x and thin in z") {
         const scene::Aabb box =
             game::wallBox({.position = {3.0F, 0.0F, 4.0F}, .axis = game::WallAxis::AlongX});
@@ -164,7 +164,7 @@ TEST_CASE("wallBox is 2 m long, 3 m high and 0.3 m thick, standing on the floor"
     }
 }
 
-TEST_CASE("pillarBox is 0.3 m square and 3.15 m high, standing on the floor") {
+TEST_CASE("pillarBox is 0.3 m square and 3.15 m high, standing on its position") {
     const scene::Aabb box = game::pillarBox({2.0F, 0.0F, 6.0F});
     checkVector(box.min, {1.85F, 0.0F, 5.85F});
     checkVector(box.max, {2.15F, 3.15F, 6.15F});

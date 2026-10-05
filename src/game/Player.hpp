@@ -10,6 +10,8 @@
 
 namespace game {
 
+class Terrain;
+
 /// What the player wants to do in one fixed step. Plain booleans, filled by the
 /// application from the keyboard, so that the player code knows nothing about keys and
 /// a test can "hold a key" by setting a field.
@@ -23,14 +25,14 @@ struct PlayerInput {
     bool sprint = false;   ///< Left Shift, used only in walking mode
 };
 
-/// The player: a box standing on the floor, plus the settings of its movement.
+/// The player: a box standing on the ground, plus the settings of its movement.
 ///
 /// Plain data plus math, like scene::Camera: no OpenGL, no keyboard, no clock. The
 /// application owns one and calls update once per fixed step.
 ///
-/// Two modes. Walking: movement only in the horizontal plane, feet on the floor (y = 0),
-/// stopped by the collision boxes. Noclip: free flight along the view direction, through
-/// everything.
+/// Two modes. Walking: the keys move the player in the horizontal plane, stopped by the
+/// collision boxes, and the feet follow the height of the terrain. Noclip: free flight
+/// along the view direction, through everything.
 struct Player {
     /// Width and depth of the body in metres. The box cannot rotate, so it is square.
     static constexpr float BODY_WIDTH = 0.6F;
@@ -49,9 +51,6 @@ struct Player {
 
     /// Flight speed in noclip mode, in metres per second.
     static constexpr float FLY_SPEED = 6.0F;
-
-    /// Height of the floor: where the feet are in walking mode.
-    static constexpr float FLOOR_Y = 0.0F;
 
     /// Position of the feet: the middle of the bottom face of the body, in world space.
     glm::vec3 position{0.0F};
@@ -78,10 +77,11 @@ struct Player {
     /// Walking uses only the yaw: forward is level, wherever the camera looks. Noclip
     /// uses both: forward is the view direction.
     ///
-    /// obstacles are the collision boxes in the way (game::roundObstacles). They are
+    /// obstacles are the collision boxes in the way (game::roundObstacles), and terrain
+    /// is the ground the feet are put on after the movement (Terrain::heightAt). Both are
     /// ignored in noclip mode.
     void update(const PlayerInput& input, float yawDegrees, float pitchDegrees, float stepSeconds,
-                std::span<const scene::Aabb> obstacles);
+                std::span<const scene::Aabb> obstacles, const Terrain& terrain);
 };
 
 } // namespace game

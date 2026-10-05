@@ -24,8 +24,8 @@ constexpr int CRYSTAL_VARIANT_COUNT = 2;
 /// Height of the crystal models, from their base (the origin of the model) to their tip.
 constexpr float CRYSTAL_HEIGHT = 0.5F;
 
-/// How high above the floor the base of a resting crystal floats: the middle of the
-/// crystal is then at 1.15 m, a little above the middle of the body of the player.
+/// How high above the ground the base of a resting crystal floats: the middle of the
+/// crystal is then 1.15 m above it, a little above the middle of the body of the player.
 constexpr float CRYSTAL_FLOAT_HEIGHT = 0.9F;
 
 /// The crystal moves up and down by this much around its resting height, once in
@@ -82,8 +82,10 @@ int crystalCountFor(int cellCount);
 std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, MazeCell start,
                                         MazeCell exit);
 
-/// Where the base of a crystal rests: CRYSTAL_FLOAT_HEIGHT above the centre of its cell.
-glm::vec3 crystalRestPosition(MazeCell cell);
+/// Where the base of a crystal rests: above the centre of its cell, CRYSTAL_FLOAT_HEIGHT
+/// over the ground. groundHeight is the height of the ground at the centre of the cell
+/// (Terrain::heightAt). It is passed in, so this function needs no terrain.
+glm::vec3 crystalRestPosition(MazeCell cell, float groundHeight);
 
 /// The middle of a crystal whose base is at basePosition: half of its height further up.
 glm::vec3 crystalCenter(const glm::vec3& basePosition);

@@ -192,7 +192,7 @@ Dalej funkcja przekazuje współrzędną tekstury, normalną i styczną: to już
 | Element | Znaczenie |
 |---|---|
 | `uniform mat4 uModel;` | zmienna `uniform`: wartość ustawiana z C++ i taka sama dla wszystkich wierzchołków jednego wywołania rysującego. Atrybut (`in`) ma inną wartość dla każdego wierzchołka, uniform jedną dla całego obiektu |
-| `vec4(aPosition, 1.0)` | pozycja z bufora ma trzy składowe i jest w przestrzeni lokalnej modelu (ściany, płytki, słupka, bramy albo kryształu). Dopisuję `w = 1`, bo to punkt (sekcja 2.2) |
+| `vec4(aPosition, 1.0)` | pozycja z bufora ma trzy składowe i jest w przestrzeni lokalnej modelu (ściany, słupka, bramy albo kryształu; teren z M6 ma wierzchołki od razu w przestrzeni świata i macierz jednostkową). Dopisuję `w = 1`, bo to punkt (sekcja 2.2) |
 | `uModel * ...` | po tym mnożeniu wierzchołek jest w przestrzeni świata |
 | `uView * ...` | po tym w przestrzeni widoku: tak, jak widzi go kamera |
 | `uProjection * ...` | po tym w przestrzeni przycięcia. To trzy pierwsze strzałki diagramu z sekcji 2.1, czytane od prawej |
@@ -213,7 +213,7 @@ Nazwy `uModel`, `uView` i `uProjection` muszą być identyczne z napisami w C++ 
 | [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i deklaracja `matrix()`. Od M4 także deklaracja wolnej funkcji `normalMatrix` (sekcja 5.6) |
 | [`src/scene/Transform.cpp`](../../../src/scene/Transform.cpp) | stałe `AXIS_X`, `AXIS_Y`, `AXIS_Z`, funkcja `Transform::matrix()` i funkcja `normalMatrix` |
 | [`tests/TransformTests.cpp`](../../../tests/TransformTests.cpp) | cztery przypadki testowe funkcji `normalMatrix` (sekcja 5.6) |
-| [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`.cpp`](../../../src/game/MazeWorld.cpp) | użytkownik struktury: macierze modelu płytek podłogi i słupków (`placedAt`) oraz ścian (`wallModelMatrix`, z obrotem o 90 stopni wokół osi Y dla ściany wzdłuż osi Z). Sekcja 5.4, [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5 |
+| [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`.cpp`](../../../src/game/MazeWorld.cpp) | użytkownik struktury: macierze modelu słupków (`placedAt`, do M5 także płytek podłogi) oraz ścian (`wallModelMatrix`, z obrotem o 90 stopni wokół osi Y dla ściany wzdłuż osi Z). Sekcja 5.4, [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5 |
 | [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) | drugi użytkownik (M5): macierz modelu każdego kryształu, liczona co klatkę z pozycji, która się kołysze, i z kąta, który rośnie z czasem, oraz macierz bramy z `wallModelMatrix` (sekcja 5.4, [`../game/gameplay.md`](../game/gameplay.md)) |
 | [`src/game/Crystals.hpp`](../../../src/game/Crystals.hpp), [`.cpp`](../../../src/game/Crystals.cpp) | skąd kryształ bierze pozycję i kąt: `crystalBobPosition`, `crystalSpinDegrees` i ich stałe (sekcja 5.4) |
 | [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp) | trzeci użytkownik: skala i przesunięcie sześcianu jednostkowego na rozmiar i miejsce pudełka kolizji, a od M5 skala, obrót i przesunięcie okręgu jednostkowego na trzy okręgi kuli (sekcja 5.4, [`collision.md`](collision.md), sekcja 5) |
@@ -309,15 +309,15 @@ Kolejność obrotów jest ustalona raz, tutaj, i opisana w komentarzu Doxygen pr
 
 | Użytkownik | `position` | `rotationDegrees` | `scale` | Kiedy liczy macierz |
 |---|---|---|---|---|
-| labirynt (`placedAt` i `wallModelMatrix` w `MazeWorld.cpp`) | środek komórki, środek ściany albo róg siatki | 0, a dla ściany wzdłuż osi Z 90 stopni wokół Y | 1 | raz, przy budowie labiryntu |
-| brama (`GameplayRenderer::draw`, przez `wallModelMatrix`) | środek krawędzi komórki wyjścia, obniżony o to, ile brama już opadła | jak ściana: 0 albo 90 stopni wokół Y | 1 | co klatkę, dopóki brama wystaje nad podłogę |
+| labirynt (`placedAt` i `wallModelMatrix` w `MazeWorld.cpp`) | środek podstawy ściany albo róg siatki, od M6 z `y` opuszczonym na najniższy grunt pod obrysem | 0, a dla ściany wzdłuż osi Z 90 stopni wokół Y | 1 | raz na teren: przy budowie labiryntu i po zmianie skali wysokości (`placeOnTerrain`) |
+| brama (`GameplayRenderer::draw`, przez `wallModelMatrix`) | środek krawędzi komórki wyjścia, obniżony o to, ile brama już opadła | jak ściana: 0 albo 90 stopni wokół Y | 1 | co klatkę, dopóki brama wystaje nad grunt |
 | kryształ (`GameplayRenderer::draw`) | miejsce kryształu plus kołysanie w pionie | wokół Y, kąt rośnie z czasem | 1 | co klatkę, dla każdego niezebranego kryształu |
 | linie pudełek (`ColliderLines::draw`) | narożnik `min` pudełka | 0 | rozmiar pudełka, inny na każdej osi | co klatkę, dla każdego pudełka, gdy rysowanie jest włączone |
 | okręgi kul (`ColliderLines::drawSpheres`, M5) | środek kuli | trzy ustawienia: bez obrotu, 90 stopni wokół X, 90 stopni wokół Y | promień kuli, równy na każdej osi | co klatkę, trzy macierze na kulę, gdy rysowanie jest włączone |
 
 W M1 jedynym użytkownikiem była obrócona kostka, pole `NightMazeApp` ze stałymi kątami (kostka się nie animowała). Została usunięta w M5: `NightMazeApp` nie ma już własnego `Transform`, a tę samą lekcję (obrót wokół własnego początku, a dopiero potem przesunięcie) pokazują dziś kryształy, które dokładają do niej zmianę w czasie.
 
-**Labirynt: sama pozycja.** Płytka podłogi i słupek tylko gdzieś stoją. `MazeWorld.cpp` ma na to funkcję w anonimowej przestrzeni nazw:
+**Labirynt: sama pozycja.** Słupek tylko gdzieś stoi (do M5 tak samo stała każda płytka podłogi: M6 zastąpił je terenem, który macierzy modelu nie potrzebuje, bo jego wierzchołki są już w przestrzeni świata). `MazeWorld.cpp` ma na to funkcję w anonimowej przestrzeni nazw:
 
 ```cpp
 // Model matrix of an object that only stands somewhere: no rotation, no scale.
@@ -367,7 +367,7 @@ W pierwszym wierszu koniec ściany leży na krawędzi labiryntu (x = 0), metr na
         const glm::mat4 gateMatrix = wallModelMatrix(loweredGate);
 ```
 
-Otwieranie bramy to nic innego jak zmiana składowej y przesunięcia: `gateSinkDepth` rośnie od 0 do `GATE_SINK_DEPTH` (3,3 m) i brama opada pod podłogę. Obrót i skala się nie zmieniają. Reguły bramy opisuje [`../game/gameplay.md`](../game/gameplay.md).
+Otwieranie bramy to nic innego jak zmiana składowej y przesunięcia: `gateSinkDepth` rośnie od 0 do `GATE_SINK_DEPTH` (3,3 m) i brama opada pod grunt. Obrót i skala się nie zmieniają. Reguły bramy opisuje [`../game/gameplay.md`](../game/gameplay.md).
 
 **Kryształ: macierz modelu liczona od nowa w każdej klatce.** Kostka z M1 pokazywała obrót, a potem przesunięcie, przy stałych kątach. Kryształ pokazuje to samo i dokłada zmianę w czasie. `GameplayRenderer::draw`, w pętli po kryształach rundy:
 
@@ -501,7 +501,7 @@ glm::mat3 normalMatrix(const glm::mat4& modelMatrix) {
 | `glm::transpose(...)` | zamiana wierszy z kolumnami |
 | zwracany typ `glm::mat3` | 9 liczb. W shaderze `uniform mat3 uNormalMatrix`, wysyłany przez `Shader::setMat3` ([`../gfx/uniforms.md`](../gfx/uniforms.md)) |
 
-**Kto ją woła.** `game::drawModel` ([`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp)), wspólna funkcja rysująca model dla `MazeRenderer` (płytki, ściany, słupki) i `GameplayRenderer` (brama, kryształy). Dla każdego obiektu, tuż po wysłaniu `uModel`:
+**Kto ją woła.** `game::drawModel` ([`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp)), wspólna funkcja rysująca model dla `MazeRenderer` (ściany, słupki) i `GameplayRenderer` (brama, kryształy). Od M6 tak samo robi `game::drawMesh` dla terenu: jego macierz modelu jest jednostkowa, więc macierz normalnych też. Dla każdego obiektu, tuż po wysłaniu `uModel`:
 
 ```cpp
             shader.setMat4(MODEL_UNIFORM, modelMatrix);
@@ -526,7 +526,7 @@ Uczciwie o tym, co ta funkcja dziś zmienia w obrazie: **nic**. Obiekty labirynt
 | `with unequal scale only the normal matrix keeps a normal perpendicular` | skos ze styczną `(1, 1, 0)` i normalną `(-1, 1, 0) / sqrt(2)`, skala `(4, 1, 1)` | styczna po przekształceniu to `(4, 1, 0)`. `mat3(model)` razy normalna ma kierunek `(-4, 1, 0)`, który **nie** jest do niej prostopadły. Macierz normalnych daje kierunek `(-0,25, 1, 0)`, prostopadły: `4 * (-0,25) + 1 * 1 = 0` |
 | `with equal scale the normal matrix changes only the length of a normal` | skala 2 na wszystkich osiach | `(0, 1, 0)` staje się `(0, 0,5, 0)`: kierunek ten sam, długość 1/2. Dlatego shader normalizuje |
 
-Trzeci przypadek jest tym, co pokazuję na obronie przy pytaniu "po co odwrotna transponowana": liczby mieszczą się na kartce. Wyniki na Windowsie (2026-10-05): cztery przypadki przechodzą w Debug i Release, w ramach 215 przypadków i 85098 asercji całego programu testowego (w M4 było ich 163 i 62220). Na macOS kod M5 nie był budowany ani uruchamiany.
+Trzeci przypadek jest tym, co pokazuję na obronie przy pytaniu "po co odwrotna transponowana": liczby mieszczą się na kartce. Wyniki na Windowsie (2026-10-05): cztery przypadki przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego (po M5 było ich 215 i 85098, w M4 163 i 62220). Na macOS kod M5 i M6 nie był budowany ani uruchamiany.
 
 ## 6. Panel ImGui
 

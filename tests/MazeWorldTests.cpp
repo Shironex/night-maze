@@ -39,7 +39,7 @@ TEST_CASE("yawTowards follows the compass of the camera") {
     CHECK(game::yawTowards(game::Direction::West) == 270.0F);
 }
 
-TEST_CASE("a maze world has one matrix per object and one box per wall and pillar") {
+TEST_CASE("a maze world has one matrix and one box per wall and pillar") {
     constexpr int WIDTH = 7;
     constexpr int HEIGHT = 4;
     constexpr std::uint32_t SEED = 9;
@@ -53,7 +53,6 @@ TEST_CASE("a maze world has one matrix per object and one box per wall and pilla
     CHECK(world.walls.size() == game::wallSegments(world.maze).size());
     CHECK(world.pillars.size() == game::pillarPositions(world.maze).size());
 
-    CHECK(world.floorMatrices.size() == static_cast<std::size_t>(WIDTH * HEIGHT));
     CHECK(world.wallMatrices.size() == world.walls.size());
     CHECK(world.pillarMatrices.size() == world.pillars.size());
     CHECK(world.colliders.size() == world.walls.size() + world.pillars.size());
@@ -71,16 +70,8 @@ TEST_CASE("the same size and seed give the same maze world") {
     CHECK(first.startYawDegrees == second.startYawDegrees);
 }
 
-TEST_CASE("floor tiles and pillars are only moved to their place") {
+TEST_CASE("pillars are only moved to their place") {
     const game::MazeWorld world = game::buildMazeWorld(3, 2, 0U);
-
-    // The floor matrices go row after row: index z * width + x. The origin of the tile
-    // model lands in the middle of the cell.
-    checkVector(transformPoint(world.floorMatrices[0], glm::vec3{0.0F}), game::cellCenter(0, 0));
-    checkVector(transformPoint(world.floorMatrices[4], glm::vec3{0.0F}), game::cellCenter(1, 1));
-    // A corner of the tile model (1, 0, 1) lands on the far corner of that cell: the
-    // tile is neither turned nor scaled.
-    checkVector(transformPoint(world.floorMatrices[4], {1.0F, 0.0F, 1.0F}), {4.0F, 0.0F, 4.0F});
 
     REQUIRE(world.pillarMatrices.size() == world.pillars.size());
     for (std::size_t i = 0; i < world.pillars.size(); ++i) {
@@ -154,7 +145,6 @@ TEST_CASE("a maze of one cell has no open side: the player looks north") {
     CHECK(world.exitCell == game::MazeCell{.x = 0, .z = 0});
     CHECK_FALSE(world.hasGate);
     CHECK(world.crystals.empty());
-    CHECK(world.floorMatrices.size() == 1U);
     CHECK(world.wallMatrices.size() == 4U);
     CHECK(world.pillarMatrices.size() == 4U);
 }

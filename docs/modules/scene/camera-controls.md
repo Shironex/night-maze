@@ -20,7 +20,7 @@ W kamieniu milowym M1 kamerą sterowało się wprost: mysz ją obracała, a klaw
 
 Dawny lot kamery nie zniknął: stał się trybem noclip gracza (klawisz N). Sterowanie należy do `game::NightMazeApp` i do `game::Player`, a nie do `scene::Camera`. Drugim sposobem zmiany tych samych liczb jest panel Camera z `debug/`: pokaz tematu 3 na obronie.
 
-Stan na dziś: program startuje z graczem w środku komórki (0, 0) labiryntu, oko w `(1, 1,7, 1)`, pitch 0, yaw w stronę otwartego boku komórki startowej (dla ziarna 1: 180, południe). Tę pozę ustawia `beginRound`, a od M5 wraca do niej także klawisz R, który zaczyna rundę od nowa na tym samym labiryncie (sekcja 5.2). Kliknięcie w scenę przechwytuje kursor, mysz obraca kamerę, klawisze poruszają gracza, Escape oddaje kursor. Od M4 scena jest nocna i oświetlona, a oko i kierunek patrzenia kamery mają drugiego odbiorcę: w tym samym punkcie i w tym samym kierunku świeci latarka gracza (sekcja 5.5). Panel Camera przy pierwszym uruchomieniu jest zwinięty do paska tytułu i od M5 stoi obok zwiniętego panelu Gameplay (sekcja 6). Co z tego jest sprawdzone, mówi sekcja 5.6: build i testy na Windowsie przechodzą, obraz był oglądany na zrzutach ekranu, a obrotu myszą, klawiszy i panelu nikt jeszcze nie sprawdził ręcznie.
+Stan na dziś: program startuje z graczem w środku komórki (0, 0) labiryntu, oko w `(1; 1,824; 1)` (1,7 m nad gruntem, który ma na starcie 0,124 m przy domyślnej skali wysokości terenu), pitch 0, yaw w stronę otwartego boku komórki startowej (dla ziarna 1: 180, południe). Tę pozę ustawia `beginRound`, a od M5 wraca do niej także klawisz R, który zaczyna rundę od nowa na tym samym labiryncie (sekcja 5.2). Kliknięcie w scenę przechwytuje kursor, mysz obraca kamerę, klawisze poruszają gracza, Escape oddaje kursor. Od M4 scena jest nocna i oświetlona, a oko i kierunek patrzenia kamery mają drugiego odbiorcę: w tym samym punkcie i w tym samym kierunku świeci latarka gracza (sekcja 5.5). Panel Camera przy pierwszym uruchomieniu jest zwinięty do paska tytułu i od M5 stoi obok zwiniętego panelu Gameplay (sekcja 6). Co z tego jest sprawdzone, mówi sekcja 5.6: build i testy na Windowsie przechodzą, obraz był oglądany na zrzutach ekranu, a obrotu myszą, klawiszy i panelu nikt jeszcze nie sprawdził ręcznie.
 
 ## 2. Teoria
 
@@ -48,7 +48,7 @@ Kąty kamery wracają jednak do ruchu jako dane wejściowe. Gracz idzie "do przo
 
 | Tryb gracza | Których kątów używa ruch | Skutek |
 |---|---|---|
-| chodzenie | tylko yaw (pitch jest zastąpiony zerem) | W prowadzi poziomo w stronę, w którą patrzę, także gdy patrzę w podłogę albo w niebo |
+| chodzenie | tylko yaw (pitch jest zastąpiony zerem) | W prowadzi poziomo w stronę, w którą patrzę, także gdy patrzę w ziemię albo w niebo |
 | noclip (klawisz N) | yaw i pitch | W prowadzi dokładnie tam, gdzie patrzę: ze wzrokiem podniesionym o 30 stopni połowa prędkości idzie w górę (`sin(30 stopni) = 0,5`) |
 
 Tryb noclip to lot kamery z M1 bez zmian w zachowaniu: W i S wzdłuż `forward()`, A i D wzdłuż `right()`, spacja i lewy Shift wzdłuż `WORLD_UP`.
@@ -345,13 +345,15 @@ Zdarzenia myszy w dwóch ostatnich wierszach były podawane wprost do ImGui (`Im
 
 **Stan po M5.** Zgłoszone dla Windowsa 2026-10-05: kod z rundą, kryształami i bramą buduje się w Debug i Release bez ostrzeżeń, a 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (w tym te same 13 przypadków gracza). Obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowy kod, który potem usunięto. M5 nie jest zamknięty: na macOS nic z niego nie było budowane ani uruchamiane, a ręcznie nikt jeszcze niczego nie sprawdził.
 
+**Stan po drugiej części M6.** Gracz chodzi po terenie z mapy wysokości, więc `Player feet` i `Eye` pokazują `y` gruntu i `y` gruntu plus 1,7, a nie 0 i 1,7. Paneli jest dziesięć: doszły Terrain i Grass, zwinięte w drugim rzędzie pasków pod Camera i Gameplay. Cały program testowy ma 256 przypadków i 101232 asercje (uruchomione 2026-10-05 w Debug i Release). M6 też nie jest zamknięty: macOS i testy ręczne są otwarte.
+
 **Część ręczna.** Tego, co wymaga człowieka przy myszy i klawiaturze, nikt jeszcze nie sprawdził na obecnym kodzie: przechwycenia kursora po kliknięciu, kierunku i płynności obrotu wewnątrz labiryntu, chodzenia, klawisza N, klawisza F (także przy pustej baterii), klawisza R (czy kamera wraca do yaw startowego i poziomego pitch), tego, czy stożek latarki trzyma się środka ekranu w ruchu, rozwinięcia panelu Camera kliknięciem, zwolnienia kursora klawiszem Escape, zachowania paneli przy przechwyconym kursorze. To jest scenariusz z sekcji 6.3 i lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS obecny kod nie był budowany ani uruchamiany ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
 ## 6. Panel ImGui
 
 Panel **Camera** jest pokazem tematu 3 (PRD, sekcja 3: "Pozycja/rotacja kamery, FOV"). Kod: [`src/debug/panels/CameraPanel.cpp`](../../../src/debug/panels/CameraPanel.cpp). Jak panel jest podpięty do `DebugUI` i skąd dostaje dane, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
 
-**Gdzie panel stoi.** Od M5 paneli jest osiem, a dwie kolumny i dolny rząd mieszczą sześć. Miejsce panelu Camera w lewej kolumnie, pod panelem Renderer, zajął w M4 panel Lights. Panele Camera i Gameplay przy pierwszym uruchomieniu są **zwinięte** do samych pasków tytułu i stoją obok siebie przy górnej krawędzi okna, między kolumnami. W oknie 1280 x 720 pasek Camera zaczyna się w x 352, y 8 i ma 280 jednostek szerokości, a pasek Gameplay zaczyna się w x 640 i ma 324. Pod nimi, na środku, stoi pasek HUD (`HUD_TOP_OFFSET` w `src/debug/Hud.cpp`). Kliknięcie strzałki w pasku rozwija panel Camera do prostokąta 280 na 416 jednostek, który sięga w dół do dolnego rzędu paneli, zasłania swoją część sceny i żadnego innego panelu. Jest trochę niższy niż jego zawartość, więc po rozwinięciu ma pasek przewijania (tak mówi komentarz w `PanelLayout.hpp`). Po rozwinięciu ImGui zapamiętuje ten stan w `imgui.ini`. Rozwijania kliknięciem nikt jeszcze nie sprawdził ręcznie: opis wynika z kodu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7).
+**Gdzie panel stoi.** Od M5 paneli było osiem, od M6 jest dziesięć, a dwie kolumny i dolny rząd mieszczą sześć. Miejsce panelu Camera w lewej kolumnie, pod panelem Renderer, zajął w M4 panel Lights. Panele Camera i Gameplay przy pierwszym uruchomieniu są **zwinięte** do samych pasków tytułu i stoją obok siebie przy górnej krawędzi okna, między kolumnami. W oknie 1280 x 720 pasek Camera zaczyna się w x 352, y 8 i ma 280 jednostek szerokości, a pasek Gameplay zaczyna się w x 640 i ma 324. Od M6 tuż pod nimi stoi drugi rząd zwiniętych pasków: Terrain pod Camera i Grass pod Gameplay, każdy tak szeroki jak pasek nad nim (`TERRAIN_PLACEMENT` i `GRASS_PLACEMENT` z `foldedRowsBefore = 1`). Pod oboma rzędami, na środku, stoi pasek HUD (`foldedRowsHeight(FOLDED_ROW_COUNT, scale)` plus `HUD_TOP_OFFSET` w `src/debug/Hud.cpp`). Kliknięcie strzałki w pasku rozwija panel Camera do prostokąta 280 na 416 jednostek, który sięga w dół do dolnego rzędu paneli i zasłania swoją część sceny oraz zwinięty pasek Terrain pod sobą, ale żadnego innego panelu. Jest trochę niższy niż jego zawartość, więc po rozwinięciu ma pasek przewijania (tak mówi komentarz w `PanelLayout.hpp`). Po rozwinięciu ImGui zapamiętuje ten stan w `imgui.ini`. Rozwijania kliknięciem nikt jeszcze nie sprawdził ręcznie: opis wynika z kodu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7).
 
 PRD w sekcji 10 wymienia dla panelu Camera: "Pozycja, FOV, czułość myszy, tryb noclip". Wszystkie cztery są w programie, z jedną różnicą w rozmieszczeniu: panel Camera **pokazuje** tryb (linia `Mode:`), a przełącza go klawisz N albo pole wyboru `Noclip (key N)` w panelu Collision ([`collision.md`](collision.md), sekcja 6), bo noclip znaczy "wyłącz kolizje".
 
@@ -415,8 +417,8 @@ void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSe
         // The camera has no position of its own to edit: after every fixed step the game
         // puts it at the eyes of the player. So the field that can be dragged is the
         // position of the player (the feet), and the eye is only shown. DragFloat3 edits
-        // three floats through the pointer: x, y and z. While walking the game keeps y at
-        // the floor, so a change of y lasts only in noclip mode.
+        // three floats through the pointer: x, y and z. While walking the game keeps y on
+        // the ground, so a change of y lasts only in noclip mode.
         ImGui::DragFloat3("Player feet", glm::value_ptr(player.position), POSITION_DRAG_SPEED);
         ImGui::Text("Eye: %.2f, %.2f, %.2f", camera.position.x, camera.position.y,
                     camera.position.z);
@@ -484,7 +486,7 @@ Panel nie ma zmiennych `static` ani globalnych i nie woła żadnej funkcji `gl*`
 |---|---|---|---|
 | linia pomocy | odczyt | nic | jak wejść w sterowanie, jak z niego wyjść i czym różnią się dwa tryby |
 | `Mode:` | odczyt | nic | czy gracz chodzi, czy lata |
-| `Player feet` | bez granic | `player.position` | kamera podąża za graczem: zmiana stóp przesuwa oko. Podczas chodzenia liczby x i z zmieniają się same, y zostaje 0 |
+| `Player feet` | bez granic | `player.position` | kamera podąża za graczem: zmiana stóp przesuwa oko. Podczas chodzenia liczby x i z zmieniają się same, a y idzie za wysokością gruntu |
 | `Eye:` | odczyt | nic | oko jest dokładnie 1,7 m nad stopami. Macierz widoku przesuwa świat przeciwnie do oka |
 | `Yaw` | od 0 do 360 stopni | `camera.yawDegrees` | kompas: 0 to -Z, 90 to +X. Przy obrocie myszą w prawo wartość rośnie i po 360 wraca do 0 (zawijanie w `rotate`). Kreska na planie w panelu Maze obraca się razem z nią |
 | `Pitch` | od -89 do 89 stopni | `camera.pitchDegrees` | ograniczenie pitch: suwak i mysz zatrzymują się na 89, żeby kierunek patrzenia nie stał się równoległy do pionu ([`camera.md`](camera.md), sekcja 2.2) |
@@ -502,17 +504,17 @@ Odległości, przy których płaszczyzny zaczynają ciąć ściany, zależą od 
 
 Program uruchomiony, panele widoczne. Tego scenariusza nikt jeszcze nie przeszedł ręcznie na obecnym kodzie: opisuje to, co wynika z kodu. Krok zerowy od M4: panel Camera startuje zwinięty, więc najpierw klikam strzałkę w jego pasku tytułu (przy górnej krawędzi, na prawo od panelu Renderer, obok paska panelu Gameplay). Rozwinięty panel zasłania lewą część sceny, więc na czas kroków 2 do 6 można go przeciągnąć albo zadokować tam, gdzie nie przeszkadza.
 
-1. **Stan startowy.** Odczytuję z panelu: `Mode: walking`, `Player feet` to `(1, 0, 1)`, `Eye` to `(1, 1,7, 1)`, `Pitch` 0, `FOV` 60, a `Yaw` wskazuje otwarty bok komórki startowej (180 dla ziarna 1). Mówię: kamera nie ma własnej pozycji, stoi w oczach gracza.
+1. **Stan startowy.** Odczytuję z panelu: `Mode: walking`, `Player feet` to około `(1, 0,12, 1)`, `Eye` to około `(1, 1,82, 1)`, `Pitch` 0, `FOV` 60, a `Yaw` wskazuje otwarty bok komórki startowej (180 dla ziarna 1). Mówię: kamera nie ma własnej pozycji, stoi w oczach gracza.
 2. **Przechwycenie.** Klikam w scenę. Kursor znika. Mówię: tryb `GLFW_CURSOR_DISABLED`, od tej chwili mysz należy do kamery, a panele jej nie widzą.
 3. **Obrót.** Ruszam myszą w prawo: obraz ucieka w lewo, `Yaw` rośnie, kreska na planie w panelu Maze obraca się zgodnie z ruchem wskazówek zegara. Ruszam do góry: `Pitch` rośnie i zatrzymuje się na 89. Wyjaśniam minus przy y i ograniczenie pitch.
-4. **Chód.** Trzymam W: w `Player feet` zmieniają się x albo z, a `Eye` pokazuje te same liczby z y równym 1,7. Patrzę w podłogę i dalej trzymam W: prędkość się nie zmienia (ruch używa tylko yaw).
+4. **Chód.** Trzymam W: w `Player feet` zmieniają się x albo z, a `Eye` pokazuje te same liczby z y większym o 1,7. Samo y obu linii powoli się zmienia, bo grunt jest nierówny. Patrzę w ziemię i dalej trzymam W: prędkość się nie zmienia (ruch używa tylko yaw).
 5. **Lot tam, gdzie patrzę.** Naciskam N (`Mode: noclip (free flight)`), patrzę w górę i trzymam W: wznoszę się. Mówię, że to dawna kamera latająca i że różnica między trybami to jedna linia z pitch.
-6. **Zwolnienie.** Naciskam Escape: kursor wraca, program działa dalej. Mówię, że drugi Escape zamknąłby program. Naciskam N, żeby wrócić na podłogę.
+6. **Zwolnienie.** Naciskam Escape: kursor wraca, program działa dalej. Mówię, że drugi Escape zamknąłby program. Naciskam N, żeby wrócić na grunt.
 7. **FOV jako zoom.** Przeciągam `FOV` od 60 do 20, potem do 120. `Player feet` się nie zmienia, a koniec korytarza przybliża się i oddala.
 8. **Bliska i daleka płaszczyzna.** Przesuwam `Near plane` w górę, aż najbliższa ściana zostanie przecięta, i wracam do 0,1. Przesuwam `Far plane` w dół, aż zniknie koniec korytarza, i wracam do 100.
 9. **Panele a kamera.** Przeciągam dowolny suwak: kamera się nie obraca i kursor nie zostaje przechwycony, bo mysz ma ImGui.
 10. **Czułość i prędkość.** Ustawiam `Mouse sensitivity` na 0,5, klikam w scenę i pokazuję, że ten sam ruch ręki obraca pięć razy mocniej. To samo z `Walk speed`.
-11. **Restart.** Odchodzę kilka komórek od startu, patrzę w górę i naciskam R. Odczytuję z panelu: `Player feet` to znów `(1, 0, 1)`, `Yaw` 180, `Pitch` 0. Mówię: `beginRound` wpisuje pozę startową wprost w pola gracza i kamery, tak samo jak przy starcie programu.
+11. **Restart.** Odchodzę kilka komórek od startu, patrzę w górę i naciskam R. Odczytuję z panelu: `Player feet` to znów około `(1, 0,12, 1)`, `Yaw` 180, `Pitch` 0. Mówię: `beginRound` wpisuje pozę startową wprost w pola gracza i kamery, tak samo jak przy starcie programu.
 
 ## 7. Pułapki
 

@@ -7,7 +7,7 @@ Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten 
 
 **Stan na dziś:** gra ma trzy źródła światła: księżyc, latarkę gracza i światła punktowe nad kryształami, których gracz jeszcze nie zebrał. Latarka jest włączona na początku każdej rundy, klawisz F ją przełącza. Od M5 latarka ma **baterię**: bateria ubywa tylko wtedy, gdy latarka świeci, poniżej progu światło migocze, a pusta bateria gasi latarkę do chwili zebrania kryształu.
 
-M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (w tym 10 przypadków z `tests/LightingTests.cpp` i 25 z `tests/RoundTests.cpp`), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: **nic z M5 nie było budowane ani uruchamiane na macOS** i **nikt jeszcze nie testował ręcznie**: klawisza F przy pustej baterii, migotania widzianego na ekranie, zbierania kryształów, klawisza R, suwaków panelu Gameplay. To, że stożek latarki zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane.
+M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**, tak samo M6. Od drugiej części M6 światła z bufora uniformów czyta trzeci program, `grass` (trawa), a pod światłami leży teren zamiast płytek podłogi: ustawień świateł ani ich budowy to nie zmieniło. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (dziś 256 przypadków i 101232 asercje) (w tym 10 przypadków z `tests/LightingTests.cpp` i 25 z `tests/RoundTests.cpp`), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: **nic z M5 ani z M6 nie było budowane ani uruchamiane na macOS** i **nikt jeszcze nie testował ręcznie**: klawisza F przy pustej baterii, migotania widzianego na ekranie, zbierania kryształów, klawisza R, suwaków panelu Gameplay. To, że stożek latarki zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane.
 
 Z części M4 zostaje w mocy to, co wtedy sprawdzono na zrzutach ekranu z Windowsa: widok startowy z plamą latarki w środku ekranu i scena ze zgaszoną latarką.
 
@@ -49,6 +49,7 @@ flowchart TD
     Upload --> Card["bufor uniformów, punkt wiązania 1"]
     Card --> Lit["program lit"]
     Card --> Gouraud["program gouraud"]
+    Card --> Grass["program grass (od M6)"]
 ```
 
 ## 2. Teoria
@@ -149,7 +150,7 @@ Reguły dzisiejsze:
 | wszystkie światła **pulsują razem** | `crystalPulse` daje mnożnik od 0,7 do 1 raz na 2,4 s, a `lightingForFrame` mnoży przez niego `pointIntensity`. Przy startowej intensywności 2,0 jasność chodzi więc między 1,4 a 2,0 |
 | najwyżej **16** świateł | tyle ma tablica `uPoints` w shaderze (`scene::MAX_POINT_LIGHTS`). Limitu pilnuje liczba kryształów: `crystalCountFor` nigdy nie daje więcej niż 16 |
 
-**Wysokość na liczbach.** Podstawa kryształu spoczywa 0,9 m nad środkiem komórki (`CRYSTAL_FLOAT_HEIGHT`), kryształ ma 0,5 m (`CRYSTAL_HEIGHT`), nad czubkiem jest 0,15 m odstępu. Światło w spoczynku wisi więc na `0,9 + 0,5 + 0,15 = 1,55 m`, a z unoszeniem między 1,47 a 1,63 m: poniżej oczu gracza (1,7 m) i mniej więcej w połowie wysokości ściany (3 m), więc oświetla i podłogę, i ściany.
+**Wysokość na liczbach.** Podstawa kryształu spoczywa 0,9 m nad gruntem w środku komórki (`CRYSTAL_FLOAT_HEIGHT`), kryształ ma 0,5 m (`CRYSTAL_HEIGHT`), nad czubkiem jest 0,15 m odstępu. Światło w spoczynku wisi więc `0,9 + 0,5 + 0,15 = 1,55 m` nad gruntem swojej komórki, a z unoszeniem między 1,47 a 1,63 m: poniżej oczu gracza (1,7 m nad jego stopami) i mniej więcej w połowie wysokości ściany (3 m), więc oświetla i grunt, i ściany. Od M6 wysokości liczą się od terenu, a nie od zera: `crystalRestPosition` dostaje wysokość gruntu w środku komórki ([`gameplay.md`](gameplay.md), sekcja 2.9), więc światło idzie w górę i w dół razem z kryształem.
 
 Labirynt wzorcowy 4 na 4 z ziarna 1 (ten sam, którego używają testy generatora, [`maze-generator.md`](maze-generator.md)) ma dwa kryształy:
 
@@ -182,7 +183,7 @@ Składnik emisyjny **niczego dookoła nie oświetla**: zmienia tylko kolor fragm
 | Funkcja | Wywołania OpenGL (przez klasy `gfx`) | Kiedy |
 |---|---|---|
 | konstruktor `LightRig` | `glGenBuffers`, `glBindBuffer(GL_UNIFORM_BUFFER)`, `glBufferData` (928 bajtów, bez danych: zawartość jest nieokreślona do pierwszego `upload`), `glBindBufferBase(GL_UNIFORM_BUFFER, 1, ...)` | raz, przy starcie |
-| `connect(shader)` | `glGetUniformBlockIndex`, `glUniformBlockBinding`, `glGetActiveUniformBlockiv` | raz na program (`lit`, `gouraud`), a potem po każdym przeładowaniu, już bez udziału `LightRig` |
+| `connect(shader)` | `glGetUniformBlockIndex`, `glUniformBlockBinding`, `glGetActiveUniformBlockiv` | raz na program (`lit`, `gouraud`, od M6 `grass`), a potem po każdym przeładowaniu, już bez udziału `LightRig` |
 | `upload(lights, eye)` | `glBindBuffer(GL_UNIFORM_BUFFER)`, `glBufferSubData` (928 bajtów) | raz na klatkę |
 
 Każde wywołanie jest opakowane w `GL_CHECK`. Co robią wywołania bufora uniformów i dlaczego blok trzeba łączyć z punktem wiązania z C++, omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
@@ -251,7 +252,7 @@ Struktura to **same dane z wartościami startowymi**: nie ma funkcji ani stanu u
 | `moonYawDegrees`, `moonPitchDegrees` | 25 i -50 stopni | kierunek, w którym światło księżyca **leci**, jako dwa kąty w konwencji kamery (`scene::directionFromAngles`). Pitch ujemny: w dół. Yaw celowo nie jest wielokrotnością 45 stopni: ściany patrzą w cztery strony i każda dostaje inną część światła ([`../scene/lights.md`](../scene/lights.md), tabela w sekcji 2.3) |
 | `moonColor`, `moonIntensity` | zimny niebieskawy, 0,3 | księżyc jest słaby: ma dać kształt ścianom, a nie oświetlić labirynt |
 
-Komentarz w pliku mówi wprost: cieni nie ma do M7, więc księżyc oświetla także ściany i podłogę stojące w cieniu innej ściany.
+Komentarz w pliku mówi wprost: cieni nie ma do M7, więc księżyc oświetla także ściany i grunt stojące w cieniu innej ściany.
 
 ```cpp
     /// The flashlight, a spot light at the eye of the player. Key F switches it. An
@@ -294,8 +295,8 @@ Pozycji i kierunku latarki **nie ma** w ustawieniach: nie są ustawieniem, tylko
     float shininess = 32.0F;
 
     /// Normal mapping: the normal of every fragment is read from the normal map of the
-    /// material instead of being taken from the mesh, which gives the flat walls and the
-    /// floor joints and bumps under the lights. See usesNormalMap for where it applies.
+    /// material instead of being taken from the mesh, which gives the flat walls joints
+    /// and the ground stones and bumps under the lights. See usesNormalMap for where it applies.
     bool normalMapping = true;
 };
 ```
@@ -607,8 +608,8 @@ Uczciwie: tego zachowania **nikt nie oglądał na ekranie**. Wynika z kolejnośc
     // camera and from the same eye the view matrix uses: the flashlight then sits
     // exactly where the picture is taken from, and its cone stays in the middle of the
     // screen. From m_camera.position (the last fixed step) it would trail behind while
-    // the player moves. The copy to the graphics card happens once, and both lit
-    // programs read it.
+    // the player moves. The copy to the graphics card happens once, and the two lit
+    // programs and the grass program read it.
     //
     // The round changes two things for this frame only: a low battery dims the
     // flashlight (an empty one switches it off) and the crystal lights pulse. That
@@ -655,13 +656,15 @@ void NightMazeApp::beginRound() {
 **Konstruktor.**
 
 ```cpp
-    // The two lit programs read the lights from the uniform buffer of m_lightRig. Each
-    // program is told once: the shader repeats it by itself after a reload.
+    // The two lit programs and the grass program read the lights from the uniform buffer
+    // of m_lightRig. Each program is told once: the shader repeats it by itself after
+    // a reload.
     m_lightRig.connect(m_litShader);
     m_lightRig.connect(m_gouraudShader);
+    m_lightRig.connect(m_grassShader);
 ```
 
-Programy `textured` i `color` nie mają bloku `LightBlock` i nie są łączone.
+Programy `textured`, `color` i `skybox` nie mają bloku `LightBlock` i nie są łączone. Trzeci połączony program, `grass`, doszedł w M6: `grass.frag` dołącza ten sam plik `common/lighting.glsl` co `lit.frag`, więc trawę oświetlają dokładnie te same światła co ściany, z tego samego bufora. Trawa bierze z wyniku `computeLighting` tylko część rozproszoną, z normalną ustawioną na stałe w górę, i jest liczona na fragment we wszystkich trzech trybach z oświetleniem, także w trybie `Gouraud`. W trybie `Unlit` uniform `uLit` wyłącza jej światło ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md), [`../../decisions/grass-lit-with-up-normal.md`](../../decisions/grass-lit-with-up-normal.md)).
 
 ### 5.7 `LightRig`: strona OpenGL
 
@@ -750,7 +753,7 @@ Bateria i światła klatki mają testy w `tests/RoundTests.cpp` (11 z 25 przypad
 
 Funkcje `crystalLightPosition`, `crystalPulse` i `crystalGlow` mają własne przypadki w `tests/CrystalTests.cpp`, opisane w [`gameplay.md`](gameplay.md).
 
-Wyniki zgłoszone dla Windowsa 2026-10-05: wszystkie te przypadki przechodzą w Debug i Release, w ramach 215 przypadków i 85098 asercji całego programu testowego.
+Wyniki dla Windowsa 2026-10-05: wszystkie te przypadki przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego (po M5 było to 215 i 85098).
 
 **Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp` i `LightRig`: klawisza F, tego, że `buildLightSet` dostaje interpolowane oko i kopię z `lightingForFrame`, kolejności `upload` przed rysowaniem, linii `flashlightOn = true` w `beginRound`. Ten kod wymaga okna. Migotania, pulsu i gasnącego światła zebranego kryształu **nikt jeszcze nie oglądał w działającej grze ręcznie**: to otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 

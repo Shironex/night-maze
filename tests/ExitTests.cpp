@@ -215,10 +215,15 @@ TEST_CASE("wallSegmentOn gives the segment on each of the four sides of a cell")
 }
 
 TEST_CASE("the exit zone is a 1 m square in the middle of the exit cell, as high as the walls") {
-    // Cell (3, 1): its centre is at x = 7 m, z = 3 m.
-    const scene::Aabb zone = game::exitZone({.x = 3, .z = 1});
+    // Cell (3, 1): its centre is at x = 7 m, z = 3 m. On ground at y = 0.
+    const scene::Aabb zone = game::exitZone({.x = 3, .z = 1}, 0.0F);
     checkVector(zone.min, {6.5F, 0.0F, 2.5F});
     checkVector(zone.max, {7.5F, 3.0F, 3.5F});
+
+    // On higher ground the whole box stands higher.
+    const scene::Aabb raised = game::exitZone({.x = 3, .z = 1}, 0.25F);
+    checkVector(raised.min, {6.5F, 0.25F, 2.5F});
+    checkVector(raised.max, {7.5F, 3.25F, 3.5F});
 }
 
 TEST_CASE("a maze world carries the exit, the gate box and the exit zone of its maze") {

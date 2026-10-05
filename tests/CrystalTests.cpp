@@ -222,9 +222,11 @@ TEST_CASE("a crystal rests above the centre of its cell, its light just above it
     CHECK(game::CRYSTAL_HEIGHT == 0.5F);
     CHECK(game::CRYSTAL_FLOAT_HEIGHT == 0.9F);
 
-    // Cell (3, 1): its centre is at x = 7 m, z = 3 m.
-    const glm::vec3 rest = game::crystalRestPosition({.x = 3, .z = 1});
+    // Cell (3, 1): its centre is at x = 7 m, z = 3 m. On ground at y = 0.
+    const glm::vec3 rest = game::crystalRestPosition({.x = 3, .z = 1}, 0.0F);
     checkVector(rest, {7.0F, 0.9F, 3.0F});
+    // On higher ground the crystal floats just as far above it.
+    checkVector(game::crystalRestPosition({.x = 3, .z = 1}, 0.25F), {7.0F, 1.15F, 3.0F});
     checkVector(game::crystalCenter(rest), {7.0F, 1.15F, 3.0F});
     // 0.9 m to the base, 0.5 m of crystal and 0.15 m of free space.
     checkVector(game::crystalLightPosition(rest), {7.0F, 1.55F, 3.0F});

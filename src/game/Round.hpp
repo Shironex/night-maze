@@ -20,7 +20,7 @@ constexpr float GATE_OPEN_SECONDS = 1.5F;
 
 /// How far below its closed position the gate is when it is fully open, in metres: a
 /// little more than the pillars are high (3.15 m), so nothing of it is left above the
-/// floor.
+/// ground. The closed gate already stands on the lowest ground under it.
 constexpr float GATE_SINK_DEPTH = 3.3F;
 
 /// The player reaches for crystals and for the exit with a sphere: its centre is this
@@ -120,6 +120,12 @@ int requiredCrystalCount(int total, float fraction);
 /// a gate has nothing to open: in both cases the round starts with the way out open.
 Round startRound(const MazeWorld& world, const GameplaySettings& settings);
 
+/// Puts every crystal of the round on the ground of the world again: its resting place
+/// is CRYSTAL_FLOAT_HEIGHT above the ground at the centre of its cell. Which crystals are
+/// collected does not change. Call it after the terrain of the world was rebuilt
+/// (game::placeOnTerrain). The round must have been started on this world.
+void restCrystalsOnGround(Round& round, const MazeWorld& world);
+
 /// The sphere the player reaches with, for feet standing at the given position.
 scene::Sphere playerReach(const glm::vec3& feetPosition);
 
@@ -146,7 +152,7 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
 /// somewhere else in the maze, so it has usually sunk before the player gets to it.
 bool gateBlocks(const MazeWorld& world, const Round& round);
 
-/// True while some of the gate is above the floor and has to be drawn: the maze has one
+/// True while some of the gate is above the ground and has to be drawn: the maze has one
 /// and it is not fully sunk yet. That is longer than gateBlocks, by the GATE_OPEN_SECONDS
 /// the sinking takes.
 bool gateVisible(const MazeWorld& world, const Round& round);

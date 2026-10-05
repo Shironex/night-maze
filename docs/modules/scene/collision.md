@@ -22,7 +22,7 @@ Do pokazu i do szukania błędów dochodzą dwie rzeczy z programu `night_maze`:
 
 **Stan na dziś, uczciwie.** Kod kolizji ma testy: 19 przypadków w `tests/ColliderTests.cpp` (12 dla pudełek i ruchu, 7 dla kul), trzy dalsze, razem z labiryntem, w `tests/MazeLayoutTests.cpp`, cztery z graczem w `tests/PlayerTests.cpp`, a użycie kul w regułach rundy sprawdza `tests/RoundTests.cpp`. Pudełka ścian i słupków labiryntu liczy `game::mazeColliders`, `moveAndSlide` woła gracz w każdym kroku chodzenia (`game::Player::update`), a testy kul woła `game::updateRound` w każdym kroku rundy.
 
-Część z M2 + M3 (pudełka, ruch, żółte linie) była zbudowana i uruchomiona na Windowsie, a na zrzucie ekranu z widoku z góry żółte linie pudełek leżały na ścianach i słupkach. Część z M5 (kule, ich linie, brama na liście przeszkód, nowe napisy panelu) jest gotowa w kodzie na Windowsie, ale M5 **nie jest zamknięte**. Według raportu z 2026-10-05 build Debug i Release przechodzi tam bez ostrzeżeń, a 215 przypadków testowych (85098 asercji) przechodzi w obu konfiguracjach. Chodzenia i ślizgania prawdziwymi klawiszami, zbierania kryształów, przejścia przez otwartą bramę, widżetów panelu Collision i linii kul na ekranie **nikt jeszcze nie sprawdził ręcznie**. Na macOS nic z M5 nie było budowane ani uruchamiane.
+Część z M2 + M3 (pudełka, ruch, żółte linie) była zbudowana i uruchomiona na Windowsie, a na zrzucie ekranu z widoku z góry żółte linie pudełek leżały na ścianach i słupkach. Część z M5 (kule, ich linie, brama na liście przeszkód, nowe napisy panelu) jest gotowa w kodzie na Windowsie, ale M5 **nie jest zamknięte**. Według raportu z 2026-10-05 build Debug i Release przechodzi tam bez ostrzeżeń, a po M5 215 przypadków testowych (85098 asercji) przechodziło w obu konfiguracjach. Dziś, po drugiej części M6, jest ich 256 (101232 asercje), uruchomione tego samego dnia w Debug i Release. M6 postawił labirynt na terenie z mapy wysokości: kod w `scene/Collider.*` się nie zmienił, ale pudełka ścian, słupków i bramy zaczynają się teraz na wysokości gruntu, a gracz stoi na gruncie, a nie na `y = 0` (sekcja 2.13). M6 też jest kompletny w kodzie na Windowsie i nie jest zamknięty. Chodzenia i ślizgania prawdziwymi klawiszami, zbierania kryształów, przejścia przez otwartą bramę, widżetów panelu Collision i linii kul na ekranie **nikt jeszcze nie sprawdził ręcznie**. Na macOS nic z M5 ani z M6 nie było budowane ani uruchamiane.
 
 ## 2. Teoria
 
@@ -377,6 +377,43 @@ Kula ma więc ten sam zasięg we wszystkich kierunkach, a pudełko o tym samym r
 
 Poza zakresem projektu zostają: bryły obrócone (OBB), kapsuły, siatki trójkątów, promienie (raycast), struktury przyspieszające (siatka, drzewo BVH) i pełna symulacja fizyki z masą, pędem i odbiciami ([`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md)). Oba testy kul opisuje Ericson (sekcja 10), a wersję 2D rozdział "Collision detection" z LearnOpenGL.
 
+### 2.13 Pudełka na nierównym gruncie: co się zmieniło w M6, a co nie
+
+Do M5 podłoga była płaska i wszystko stało na `y = 0`: pudełko ściany sięgało od 0 do 3 m, pudełko gracza od 0 do 1,8 m, więc na osi y nakładały się zawsze i o wysokości nie trzeba było myśleć. Od M6 podłoże to teren z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)) i obie bryły mają własną wysokość:
+
+| Bryła | Skąd bierze dół | Wysokość |
+|---|---|---|
+| pudełko ściany i bramy | najniższy grunt pod obrysem pudełka poszerzonym o 0,05 m (`Terrain::lowestHeightUnder`, `FOOTPRINT_MARGIN`) | 3 m (`WALL_HEIGHT`), bez zmian |
+| pudełko słupka | to samo dla obrysu słupka | 3,15 m (`PILLAR_HEIGHT`), bez zmian |
+| pudełko gracza | grunt dokładnie pod stopami (`Terrain::heightAt`) | 1,8 m (`Player::BODY_HEIGHT`), bez zmian |
+
+**Co się nie zmieniło: kolizje w poziomie.** `game::placeOnTerrain` zmienia w każdej pozycji tylko `y`. `x` i `z` pudełek są takie same jak na płaskim gruncie, a klawisze przesuwają gracza tylko w poziomie. Ruch w planie jest więc identyczny: test `the walls stop the player on uneven ground exactly as on flat ground` prowadzi tego samego gracza tymi samymi klawiszami przez ten sam labirynt raz na płasko i raz na nierównym gruncie przy największej skali wysokości i sprawdza, że `x` i `z` są **równe** po każdym z 3600 kroków.
+
+**Co trzeba było zagwarantować: wspólny zakres wysokości.** Test nakładania jest trójwymiarowy (sekcja 2.2): ściana zatrzymuje gracza tylko wtedy, gdy ich pudełka mają wspólną długość na **każdej** osi, także na y. Gdyby dół pudełka ściany znalazł się wyżej niż głowa gracza albo jej góra niżej niż jego stopy, `moveAndSlide` uznałby, że ściana nie stoi na drodze, i gracz przeszedłby pod nią albo nad nią, choć na ekranie ściana by tam stała.
+
+Rachunek. Niech `f` to wysokość stóp gracza, a `b` wysokość dołu pudełka ściany. Pudełka mają wspólny zakres na y, gdy:
+
+```text
+f < b + 3        stopy gracza poniżej góry ściany
+f + 1,8 > b      głowa gracza powyżej dołu ściany
+```
+
+Wysokość gruntu to `heightScale * relief * próbka`, gdzie próbka mapy wysokości jest liczbą od 0 do 1, a `relief` wewnątrz labiryntu wynosi `MAZE_RELIEF = 0,6` m. Cały grunt pod labiryntem mieści się więc między 0 a `heightScale * 0,6` m. Suwak skali kończy się na `MAX_HEIGHT_SCALE = 2,5`:
+
+```text
+największa różnica wysokości gruntu w labiryncie = 2,5 * 0,6 = 1,5 m
+```
+
+I `f`, i `b` są wysokościami gruntu w labiryncie, więc różnią się najwyżej o 1,5 m, w dowolną stronę. Obie nierówności są wtedy spełnione z zapasem: `1,5 < 3` i `1,5 < 1,8`. Wspólny zakres ma co najmniej `1,8 - 1,5 = 0,3` m. Tak to opisuje komentarz przy stałej w `Terrain.hpp`: "The limit keeps the ground inside the maze flatter than the player is tall: the collision boxes of the walls then always reach the box of a player who stands next to them".
+
+Dlaczego rachunek idzie od 1,5 m, a nie od tego, co widać w labiryncie startowym. Tam przy skali 1 grunt ma tylko od 0,085 do 0,461 m, bo fragment mapy pod labiryntem 10 na 10 nie sięga od czerni do bieli. Mapa wysokości powtarza się jednak co 48 m w metrach świata, więc większy labirynt obejmuje ją całą i może trafić na pełny zakres próbek od 0 do 1. Gwarancja musi działać dla każdego labiryntu, stąd najgorszy przypadek.
+
+To gwarancja z zapasem, nie opis typowej sytuacji. Ściana stoi na **najniższym** gruncie pod sobą, a gracz tuż obok niej, więc zwykle `b` jest trochę niższe od `f` i różnica to centymetry. Test `on uneven ground the walls, pillars and the gate are sunk until no gap shows` ma podprzypadek `a player next to a wall always overlaps its box in height`: dla każdego pudełka labiryntu 6 na 5 przy największej skali sprawdza w 25 punktach wokół niego, w odległości połowy ciała gracza, że wspólny zakres na y jest większy niż 0,1 m, czyli sto razy większy niż tolerancja styku.
+
+Granica dotyczy gruntu **w labiryncie**. Na zewnątrz rzeźba rośnie do `HILL_RELIEF = 4,5` m, ale tam nie ma ścian poza zewnętrznymi, a tuż przy nich rzeźba jest jeszcze praktycznie taka jak w środku: przejście we wzgórza zaczyna się płasko (krzywa smoothstep).
+
+**Czego nadal nie ma: kolizji z gruntem.** Terenu nie ma na liście przeszkód i `moveAndSlide` nic o nim nie wie. Wysokość gracza jest **czytana** z terenu po każdym kroku (`position.y = terrain.heightAt(...)`), a nie wynikiem zderzenia z nim ([`../game/player.md`](../game/player.md), sekcja 2.5). Skutki: gracz nie może wejść pod grunt ani nad niego wyskoczyć przy chodzeniu, nie zsuwa się ze stoków i nie zwalnia pod górę, a w trybie noclip przelatuje przez grunt tak samo jak przez ściany.
+
 ## 3. Jak to działa w OpenGL
 
 Same kolizje to czysta matematyka na procesorze. `Collider.hpp` i `Collider.cpp` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`. OpenGL nie wie, że jakieś pudełka i kule istnieją, i niczego nie sprawdza: karta graficzna narysuje dwa obiekty jeden w drugim bez żadnego błędu.
@@ -721,22 +758,31 @@ Dlaczego kolejność x, z, y: ruch w labiryncie jest prawie zawsze poziomy, wię
 Koniec funkcji `game::Player::update`, czyli krok chodzenia ([`src/game/Player.cpp`](../../../src/game/Player.cpp)):
 
 ```cpp
+    position.y = terrain.heightAt(position.x, position.z);
+
+    // The keys move the player in the horizontal plane only: direction has no vertical
+    // part here, so the speed over the ground is the same uphill and downhill.
     const float speed = input.sprint ? sprintSpeed : walkSpeed;
     const glm::vec3 wanted = direction * (speed * stepSeconds);
 
     // The walls take away the part of the movement that would go into them and leave the
     // part along them. The box is built anew from the position in every step.
     position += scene::moveAndSlide(box(), wanted, obstacles);
+
+    // The ground is uneven, so the place the step ended at has a height of its own.
+    position.y = terrain.heightAt(position.x, position.z);
 ```
+
+Od M6 wywołanie `moveAndSlide` stoi między dwoma odczytami wysokości z terenu. Pierwszy stawia pudełko gracza na gruncie, zanim zostanie porównane ze ścianami, drugi poprawia wysokość w miejscu, w którym krok się skończył. Samo `moveAndSlide` dostaje przesunięcie bez składowej pionowej i o terenie nie wie nic (sekcja 2.13).
 
 A tak woła ją aplikacja w `NightMazeApp::onUpdate`:
 
 ```cpp
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
-                    m_obstacles);
+                    m_obstacles, m_mazeWorld.terrain);
 ```
 
-Do M4 ostatnim argumentem była lista `m_mazeWorld.colliders`, czyli same ściany i słupki. Od M5 gracz porusza się wśród `m_obstacles`: to pole aplikacji typu `std::vector<scene::Aabb>`, które buduje `game::roundObstacles` ([`src/game/Round.cpp`](../../../src/game/Round.cpp)):
+Do M4 listą przeszkód była `m_mazeWorld.colliders`, czyli same ściany i słupki. Od M5 gracz porusza się wśród `m_obstacles` (a od M6 dostaje jeszcze teren, z którego czyta wysokość stóp): to pole aplikacji typu `std::vector<scene::Aabb>`, które buduje `game::roundObstacles` ([`src/game/Round.cpp`](../../../src/game/Round.cpp)):
 
 ```cpp
 std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& round) {
@@ -752,11 +798,11 @@ std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& rou
 |---|---|
 | `std::vector<scene::Aabb> obstacles = world.colliders;` | kopia listy labiryntu: pudełka wszystkich ścian, potem wszystkich słupków. Ta część nie zmienia się przez cały czas życia labiryntu |
 | `if (gateBlocks(world, round))` | brama blokuje, gdy labirynt ją ma i jeszcze się nie otworzyła (`world.hasGate && !round.gateOpen`) |
-| `obstacles.push_back(world.gateBox);` | pudełko bramy jako ostatnie na liście. `gateBox` to wynik `wallBox` dla segmentu bramy, czyli dokładnie takie pudełko, jakie miałaby ściana w tym miejscu: 2 m długości, 3 m wysokości, 0,3 m grubości |
+| `obstacles.push_back(world.gateBox);` | pudełko bramy jako ostatnie na liście. `gateBox` to wynik `wallBox` dla segmentu bramy, czyli dokładnie takie pudełko, jakie miałaby ściana w tym miejscu: 2 m długości, 3 m wysokości, 0,3 m grubości. Od M6 brama, tak jak ściana, stoi na najniższym gruncie pod swoim obrysem i pudełko jest liczone po jej opuszczeniu |
 
 Brama nie jest w `MazeWorld::colliders`, bo w trakcie rundy przestaje być przeszkodą, a `MazeWorld` opisuje to, co się w labiryncie nie zmienia. Dla `moveAndSlide` brama niczym się nie różni od ściany: to jeszcze jedno `Aabb` na liście.
 
-Lista jest budowana w dwóch miejscach `NightMazeApp`: w `beginRound` (nowa runda, także po nowym labiryncie) i w `onUpdate`, w kroku, w którym brama się otworzyła:
+Lista jest budowana w trzech miejscach `NightMazeApp`: w `beginRound` (nowa runda, także po nowym labiryncie), od M6 w `rebuildTerrain` (zmiana skali wysokości terenu przesuwa wszystkie pudełka w pionie) i w `onUpdate`, w kroku, w którym brama się otworzyła:
 
 ```cpp
     const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);
@@ -794,7 +840,7 @@ Testy jednostkowe w bibliotece doctest, uruchamiane przez `ctest` ([`../../libra
 | `...lets a box slide along a wall` | krok ukośny `(1, 0, 0,5)`, ruch wzdłuż ściany z pozycji styku, odejście od ściany | `(0,7, 0, 0,5)`, pełny ruch wzdłuż, pełne odejście |
 | `...stops a box in a corner on both axes` | dwie ściany, krok `(3, 0, 3)` | `(0,7, 0, 0,7)`, a kolejne pchanie w narożnik daje zero |
 | `...returns zero for a zero displacement` | zerowe przesunięcie, także w styku z dwiema ścianami | zero |
-| `...handles the vertical axis too` | pudełko 1 m nad podłogą spada o 5 m, potem idzie po podłodze | spada dokładnie o 1 m, po podłodze idzie bez przeszkód |
+| `...handles the vertical axis too` | pudełko 1 m nad płytą (w komentarzach testu "a floor slab": to przeszkoda zbudowana w teście, nie podłoże gry) spada o 5 m, potem idzie po płycie | spada dokładnie o 1 m, po płycie idzie bez przeszkód |
 | `...does not hold a box that starts inside an obstacle` | środek pudełka w środku ściany, krok 2 m na zewnątrz | całe przesunięcie |
 | `many small steps along a wall never stick...` | 2000 kroków `(0,0004, 0, 0,0251)` przy ścianie w x = 37,3 (kąt około 1 stopnia, współrzędne dalekie od zera) | ruch wzdłuż ściany ani razu nie został obcięty, zagłębienie nigdy nie przekroczyło `CONTACT_TOLERANCE` |
 | `a box slides across the joint of two wall segments` | dwa segmenty ściany w jednej linii, stykające się końcami, 100 kroków `(0,02, 0, 0,03)` | pudełko nie zatrzymuje się na łączeniu |
@@ -828,7 +874,7 @@ Cztery dalsze przypadki z prawdziwym graczem są w `tests/PlayerTests.cpp` (`a w
 
 Użycie kul w regułach gry sprawdza `tests/RoundTests.cpp`, między innymi przypadki `the reach of the player is a sphere at the middle of the body`, `a crystal is collected from the middle of its cell, not from the next cell`, `a larger pickup radius reaches a crystal from further away`, `the round is won in the exit zone, but only while the gate is open` i `the player cannot reach the exit zone from in front of the closed gate`. Liczby z nich są w sekcji 5.10, a całość omawia [`../game/gameplay.md`](../game/gameplay.md).
 
-Wyniki na Windowsie według raportu z 2026-10-05: build Debug i Release bez ostrzeżeń, cały program testowy (215 przypadków, 85098 asercji, w tym 19 przypadków z `ColliderTests.cpp`) przechodzi w obu konfiguracjach. Na macOS nic z M5 nie było jeszcze kompilowane ani uruchamiane: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+Wyniki na Windowsie z 2026-10-05: cały program testowy (256 przypadków, 101232 asercje, w tym 19 przypadków z `ColliderTests.cpp`) przechodzi w Debug i Release. Po M5 było to 215 przypadków i 85098 asercji. Build bez ostrzeżeń to zgłoszenie autora kodu. Kolizje na nierównym gruncie (sekcja 2.13) sprawdzają przypadki z `tests/TerrainTests.cpp`: `on uneven ground the walls, pillars and the gate are sunk until no gap shows` (pudełka idą za opuszczonymi pozycjami, nic nie rusza się w bok, gracz przy ścianie dzieli z jej pudełkiem ponad 0,1 m wysokości) i `the walls stop the player on uneven ground exactly as on flat ground`. Na macOS nic z M5 ani z M6 nie było jeszcze kompilowane ani uruchamiane: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ### 5.8 Rysowanie pudełek i kul: `ColliderLines`
 
@@ -1279,7 +1325,7 @@ void collectCrystals(Round& round, const GameplaySettings& settings, const scene
 | Linia | Znaczenie |
 |---|---|
 | `if (crystal.collected) { continue; }` | zebrany kryształ nie ma już kuli: nie da się go zebrać drugi raz |
-| `crystalCenter(crystal.restPosition)` | środek kuli zbierania: środek kryształu w miejscu spoczynku, czyli 1,15 m nad podłogą w środku komórki (podstawa na 0,9 m plus połowa wysokości 0,5 m). Kula nie kołysze się razem z modelem, więc droga do przejścia nie zależy od chwili |
+| `crystalCenter(crystal.restPosition)` | środek kuli zbierania: środek kryształu w miejscu spoczynku, czyli 1,15 m nad gruntem w środku komórki (podstawa na 0,9 m plus połowa wysokości 0,5 m). Kula nie kołysze się razem z modelem, więc droga do przejścia nie zależy od chwili |
 | `settings.pickupRadius` | promień kuli zbierania, domyślnie 0,6 m |
 | `scene::overlaps(reach, pickup)` | test kuli z kulą z sekcji 5.9 |
 | trzy linie w środku `if` | skutki dla rundy: flaga zebrania, licznik i ładowanie baterii. To już reguły gry, nie kolizje |
@@ -1399,7 +1445,7 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
 1. **Liczby.** Otwieram panel Collision: 121 ścian, 121 słupków, 1 brama, razem 243 pudełka i 13 kul zbierania. Mówię, że każdy krok chodzenia sprawdza całą listę pudełek na dwóch osiach, a każdy krok rundy wszystkie kule, i że przy tej skali nie potrzeba struktury przyspieszającej.
 2. **Pudełka.** Włączam `Draw collision shapes`, naciskam N i wzlatuję nad labirynt. Żółte pudełka leżą na ścianach i słupkach. Pokazuję, że pudełko ściany jest grubsze niż ściana i że lica pudełek ścian i słupków tworzą jedną płaszczyznę.
 3. **Kule.** Z góry widać cyjanowe kule w komórkach z kryształami: każda to trzy okręgi. Mówię, dlaczego tu jest kula, a nie pudełko (liczy się odległość, bryła niczego nie blokuje), i że kula stoi w miejscu, choć kryształ się kołysze.
-4. **Pudełko i zasięg gracza.** Wracam na podłogę (N) i patrzę w dół: zielone linie pudełka wokół mnie, a w nich zielone okręgi kuli zasięgu. Odczytuję `min` i `max` i pokazuję, że różnią się o 0,6, 1,8 i 0,6.
+4. **Pudełko i zasięg gracza.** Wracam na grunt (N) i patrzę w dół: zielone linie pudełka wokół mnie, a w nich zielone okręgi kuli zasięgu. Odczytuję `min` i `max` i pokazuję, że różnią się o 0,6, 1,8 i 0,6.
 5. **Zatrzymanie.** Idę prosto na ścianę. Staję, a w `Player box` współrzędna od strony ściany przestaje się zmieniać.
 6. **Ślizganie.** Idę ukosem w ścianę (W i A albo W i D). Sunę wzdłuż niej i mijam słupki bez zatrzymania. Mówię: osie są obsługiwane po kolei, ściana zabiera tylko składową skierowaną w nią.
 7. **Zbieranie.** Podchodzę do kryształu. Gdy zielone okręgi wejdą w cyjanowe, kryształ znika razem ze swoją kulą i światłem, a licznik `pickup spheres` spada o 1. Mówię: to test kuli z kulą, kwadrat odległości przeciw kwadratowi sumy promieni, i nic mnie przy tym nie zatrzymało.
@@ -1416,9 +1462,9 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
 5. **Dwie definicje "dotyku".** `overlaps` jest ścisłe: zero to styk, cokolwiek powyżej zera to nakładanie. `moveAndSlide` traktuje jak styk wszystko do 1 mm. Po serii kroków pudełko może być w ścianie o ułamek milimetra i `overlaps` powie wtedy "tak". Do pytania "czy gracz jest w ścianie" po ruchu trzeba więc użyć pudełka pomniejszonego o tolerancję z zapasem: test wędrówki pomniejsza je o `2 * CONTACT_TOLERANCE` z każdej strony.
 6. **Porównywanie pozycji przez `==`.** Po 2000 dodawań `float` suma różni się od iloczynu na czwartym miejscu po przecinku (zmierzone przy pisaniu testu: 30,2004 zamiast 30,2). Testy porównują przez `doctest::Approx` albo sprawdzają pojedynczy krok.
 7. **Kolejność osi ma znaczenie przy narożniku wypukłym.** Pudełko idące ukosem dokładnie na róg przeszkody przejdzie po tej stronie, którą wyznacza oś obsługiwana pierwsza (x). Wynik jest poprawny (bez wchodzenia w przeszkodę), ale nie jest symetryczny.
-8. **`std::span` niczego nie posiada.** To tylko widok. Wywołanie `moveAndSlide(box, step, game::mazeColliders(maze))` jest poprawne, bo tymczasowy wektor żyje do końca instrukcji, ale jest też powolne: buduje całą listę przy każdym kroku. Listę trzeba policzyć raz i trzymać w polu. Tak robi aplikacja: `m_obstacles` jest wektorem, który `roundObstacles` wypełnia na początku rundy i w chwili otwarcia bramy, a nie w każdym kroku. Zapamiętanie samego `std::span` do wektora, który potem znika, to wiszący wskaźnik.
+8. **`std::span` niczego nie posiada.** To tylko widok. Wywołanie `moveAndSlide(box, step, game::mazeColliders(maze))` jest poprawne, bo tymczasowy wektor żyje do końca instrukcji, ale jest też powolne: buduje całą listę przy każdym kroku. Listę trzeba policzyć raz i trzymać w polu. Tak robi aplikacja: `m_obstacles` jest wektorem, który `roundObstacles` wypełnia na początku rundy, w chwili otwarcia bramy i od M6 po przebudowie terenu, a nie w każdym kroku. Zapamiętanie samego `std::span` do wektora, który potem znika, to wiszący wskaźnik.
 9. **AABB nie obraca się z obiektem.** Pudełko obiektu obróconego o kąt inny niż wielokrotność 90 stopni trzeba policzyć od nowa, większe, tak żeby objęło obrócony kształt. W labiryncie problem nie występuje: ściany stoją tylko w dwóch ustawieniach i `game::wallBox` ma dla każdego osobne połowy rozmiarów.
-10. **Nie ma grawitacji.** Oś y jest obsługiwana tak samo jak pozostałe (jest na to test), ale nic nie ciągnie pudełka w dół. Gracz jest trzymany na wysokości podłogi przez kod gry (`position.y = FLOOR_Y` w `Player::update`), nie przez kolizje: podłogi nie ma na liście przeszkód.
+10. **Nie ma grawitacji.** Oś y jest obsługiwana tak samo jak pozostałe (jest na to test), ale nic nie ciągnie pudełka w dół. Gracz jest trzymany na gruncie przez kod gry (`position.y = terrain.heightAt(position.x, position.z)` w `Player::update`, do M5 `position.y = FLOOR_Y`), nie przez kolizje: terenu nie ma na liście przeszkód (sekcja 2.13).
 11. **Rysunek nie jest dowodem.** OpenGL narysuje obiekt w ścianie bez żadnego błędu. Dowodem poprawności kolizji są testy. Rysowanie brył z panelu Collision pomaga zobaczyć, **gdzie** pudełka i kule są, ale nie sprawdza, czy ruch i reguły ich przestrzegają.
 12. **Rysowane pudełko jest o centymetr większe od prawdziwego.** Margines `LINE_MARGIN` chroni linie przed migotaniem na powierzchni modelu (sekcja 3). Kto mierzy coś na ekranie po liniach pudełek, mierzy z błędem 1 cm z każdej strony. Okręgi kul marginesu nie mają.
 13. **Linie w prawdziwym rozmiarze migoczą.** Bez marginesu linie pudełka słupka leżą w powierzchni trzonu modelu i walczą z nim o głębię. Podobnie zachowałaby się każda inna geometria narysowana dokładnie w płaszczyźnie innej.
@@ -1433,6 +1479,12 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
 22. **Cyjanowa kula nie kołysze się razem z kryształem.** Kula zbierania stoi w miejscu spoczynku, a model porusza się w górę i w dół o najwyżej 8 cm. Środek okręgów i środek widocznego kryształu rozjeżdżają się więc o tyle. To nie błąd rysowania: tak liczy test.
 23. **Testy kul są dyskretne.** Sprawdzają pozycję po kroku, a nie drogę (sekcja 2.4). Przy krokach gry (około 4,6 cm przy sprincie) i sumie promieni 0,9 m niczego nie da się przeskoczyć. Przy promieniu rzędu kilku centymetrów i dużej prędkości w noclip już by się dało.
 24. **Strefa wyjścia jest pudełkiem, ale nie przeszkodą.** `MazeWorld::exitZone` ma typ `Aabb`, lecz nie należy ani do `MazeWorld::colliders`, ani do `m_obstacles`. Kto dopisze ją do listy przeszkód, zepsuje wyjście: gracz zatrzyma się na jej ścianie, a jego kula zasięgu ma promień równy połowie szerokości ciała (0,3 m), więc tylko zetknie się ze strefą. O wygranej decydowałyby wtedy błędy zaokrągleń i tolerancja styku.
+
+**Pułapki, które doszły w M6:**
+
+- **Pudełko ściany na `y = 0`, model na gruncie.** `game::mazeColliders(maze)` daje pudełka dla labiryntu stojącego na zerze. W grze pudełka muszą powstać z pozycji już opuszczonych na teren (`colliderBoxes(world.walls, world.pillars)` w `placeOnTerrain`), inaczej żółte linie i prawdziwe przeszkody wiszą nad ścianami albo pod nimi.
+- **Wysokość to też oś testu.** Na płaskiej podłodze łatwo zapomnieć, że `overlaps` i `moveAndSlide` patrzą na trzy osie. Na terenie ściana, której pudełko nie ma wspólnego zakresu wysokości z pudełkiem gracza, przestaje go zatrzymywać bez żadnego błędu. Pilnuje tego granica `MAX_HEIGHT_SCALE` i test z sekcji 2.13. Kto podniesie `MAZE_RELIEF` albo granicę suwaka tak, że ich iloczyn zbliży się do 1,8 m, traci tę gwarancję.
+- **Linie pudełek w ziemi.** Dół pudełka ściany leży na najniższym gruncie pod nią, więc tam, gdzie grunt jest wyższy, dolna ramka żółtych linii chowa się pod powierzchnią terenu. To poprawny obraz, a nie błąd rysowania.
 
 ## 8. Ćwiczenia
 
@@ -1565,6 +1617,15 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
 
 35. **Czy w trybie noclip da się zebrać kryształ albo wygrać rundę?**
     Zebrać tak: noclip wyłącza tylko ruch z kolizjami, a `updateRound` nadal porównuje kule. Wygrać tylko przy otwartej bramie: test strefy jest poprzedzony warunkiem `round.gateOpen`.
+
+36. **Co M6 zmienił w pudełkach kolizji ścian, a czego nie?**
+    Zmienił ich wysokość nad zerem: dół pudełka ściany, słupka i bramy leży na najniższym gruncie pod obrysem. Nie zmienił rozmiarów (3 m, 3,15 m) ani położenia w planie: `x` i `z` są takie same jak na płaskim gruncie, więc kolizje w poziomie działają identycznie.
+
+37. **Co chroni stała `MAX_HEIGHT_SCALE = 2,5`?**
+    Wspólny zakres wysokości pudełka gracza i pudełek ścian. Test nakładania jest trójwymiarowy, więc ściana zatrzymuje tylko wtedy, gdy pudełka nakładają się także na y. Grunt w labiryncie ma najwyżej `2,5 * 0,6 = 1,5` m różnicy wysokości, mniej niż 1,8 m ciała gracza i mniej niż 3 m ściany, więc gracz stojący gdziekolwiek obok ściany zawsze dzieli z jej pudełkiem co najmniej 0,3 m.
+
+38. **Czy gracz zderza się z terenem?**
+    Nie. Terenu nie ma na liście przeszkód. Wysokość stóp jest czytana z `Terrain::heightAt` przed ruchem i po nim, a `moveAndSlide` dostaje przesunięcie tylko w poziomie.
 
 ## 10. Źródła
 

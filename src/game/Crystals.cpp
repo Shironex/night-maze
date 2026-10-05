@@ -112,8 +112,8 @@ std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, Ma
     return crystals;
 }
 
-glm::vec3 crystalRestPosition(MazeCell cell) {
-    return cellCenter(cell.x, cell.z) + glm::vec3{0.0F, CRYSTAL_FLOAT_HEIGHT, 0.0F};
+glm::vec3 crystalRestPosition(MazeCell cell, float groundHeight) {
+    return cellCenter(cell.x, cell.z) + glm::vec3{0.0F, groundHeight + CRYSTAL_FLOAT_HEIGHT, 0.0F};
 }
 
 glm::vec3 crystalCenter(const glm::vec3& basePosition) {

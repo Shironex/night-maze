@@ -26,6 +26,20 @@ glm::mat4 placedAt(const glm::vec3& position) {
     return transform.matrix();
 }
 
+// The lowest ground under a box, looked at from above: its footprint, made wider by
+// FOOTPRINT_MARGIN on every side.
+float lowestGroundUnder(const Terrain& terrain, const scene::Aabb& box) {
+    return terrain.lowestHeightUnder(box.min.x - FOOTPRINT_MARGIN, box.min.z - FOOTPRINT_MARGIN,
+                                     box.max.x + FOOTPRINT_MARGIN, box.max.z + FOOTPRINT_MARGIN);
+}
+
+// Lowers a wall segment (or the gate) to the lowest ground under it. The footprint of
+// its box does not depend on its height, so the box can be asked before the height is
+// known.
+void lowerToGround(const Terrain& terrain, WallSegment& segment) {
+    segment.position.y = lowestGroundUnder(terrain, wallBox(segment));
+}
+
 // Yaw towards the first side of the start cell that has no wall, in the fixed order of
 // ALL_DIRECTIONS. In a generated maze that is East or South: North and West are the
 // border. A maze of one cell has no open side, the player then looks North.
@@ -55,46 +69,73 @@ glm::mat4 wallModelMatrix(const WallSegment& segment) {
     return transform.matrix();
 }
 
+float groundHeightAt(const MazeWorld& world, MazeCell cell) {
+    const glm::vec3 center = cellCenter(cell.x, cell.z);
+    return world.terrain.heightAt(center.x, center.z);
+}
+
+void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightScale) {
+    world.terrain = Terrain(world.maze.width(), world.maze.height(), heightmap, heightScale);
+    const Terrain& terrain = world.terrain;
+
+    // The walls and the pillars: only their height changes. The matrices and the boxes
+    // are made again from the lowered positions, so the models and their collision
+    // boxes stay together.
+    world.wallMatrices.clear();
+    for (WallSegment& segment : world.walls) {
+        lowerToGround(terrain, segment);
+        world.wallMatrices.push_back(wallModelMatrix(segment));
+    }
+    world.pillarMatrices.clear();
+    for (glm::vec3& position : world.pillars) {
+        position.y = lowestGroundUnder(terrain, pillarBox(position));
+        world.pillarMatrices.push_back(placedAt(position));
+    }
+    world.colliders = colliderBoxes(world.walls, world.pillars);
+
+    // The start and the exit stand on the ground at the centre of their cells.
+    world.startPosition = cellCenter(START_CELL.x, START_CELL.z);
+    world.startPosition.y = groundHeightAt(world, START_CELL);
+    world.exitPosition = cellCenter(world.exitCell.x, world.exitCell.z);
+    world.exitPosition.y = groundHeightAt(world, world.exitCell);
+    world.exitZone = exitZone(world.exitCell, world.exitPosition.y);
+
+    if (world.hasGate) {
+        lowerToGround(terrain, world.gate);
+        world.gateBox = wallBox(world.gate);
+    }
+}
+
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
+    // A new heightmap is flat, so the height scale does not matter.
+    return buildMazeWorld(width, height, seed, Heightmap{}, DEFAULT_HEIGHT_SCALE);
+}
+
+MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Heightmap& heightmap,
+                         float heightScale) {
     MazeWorld world(generateMaze(width, height, seed));
     world.seed = seed;
     const Maze& maze = world.maze;
 
+    // The plan of the maze: where things stand, seen from above.
     world.walls = wallSegments(maze);
     world.pillars = pillarPositions(maze);
-    world.colliders = mazeColliders(maze);
-
-    // One floor tile per cell. The tile model is 2 x 2 m with its origin in the middle,
-    // exactly one cell.
-    for (int z = 0; z < maze.height(); ++z) {
-        for (int x = 0; x < maze.width(); ++x) {
-            world.floorMatrices.push_back(placedAt(cellCenter(x, z)));
-        }
-    }
-    for (const WallSegment& segment : world.walls) {
-        world.wallMatrices.push_back(wallModelMatrix(segment));
-    }
-    for (const glm::vec3& position : world.pillars) {
-        world.pillarMatrices.push_back(placedAt(position));
-    }
-
-    world.startPosition = cellCenter(START_CELL.x, START_CELL.z);
     world.startYawDegrees = startYaw(maze);
 
-    // The exit, its gate and the zone that wins the round.
+    // The exit and its gate.
     const ExitPlacement exit = placeExit(maze, START_CELL);
     world.exitCell = exit.cell;
-    world.exitPosition = cellCenter(exit.cell.x, exit.cell.z);
-    world.exitZone = exitZone(exit.cell);
     world.hasGate = exit.hasGate;
     if (exit.hasGate) {
         world.gate = exit.gate;
-        world.gateBox = wallBox(exit.gate);
     }
 
     // The crystals: never in the start cell (the player would collect one without
     // moving) and never in the exit cell (it is behind the gate).
     world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
+
+    // The heights: the terrain, and everything above standing on it.
+    placeOnTerrain(world, heightmap, heightScale);
     return world;
 }
 

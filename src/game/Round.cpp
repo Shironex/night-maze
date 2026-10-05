@@ -80,7 +80,8 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     round.crystals.reserve(world.crystals.size());
     for (const CrystalSpawn& spawn : world.crystals) {
         round.crystals.push_back(
-            {.restPosition = crystalRestPosition(spawn.cell), .variant = spawn.variant});
+            {.restPosition = crystalRestPosition(spawn.cell, groundHeightAt(world, spawn.cell)),
+             .variant = spawn.variant});
     }
     round.requiredCount =
         requiredCrystalCount(static_cast<int>(round.crystals.size()), settings.requiredFraction);
@@ -93,6 +94,16 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
         round.gateProgress = 1.0F;
     }
     return round;
+}
+
+void restCrystalsOnGround(Round& round, const MazeWorld& world) {
+    // The crystals of a round are in the order of MazeWorld::crystals. The smaller of
+    // the two sizes guards against a round that belongs to another world.
+    const std::size_t count = std::min(round.crystals.size(), world.crystals.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        const MazeCell cell = world.crystals[i].cell;
+        round.crystals[i].restPosition = crystalRestPosition(cell, groundHeightAt(world, cell));
+    }
 }
 
 scene::Sphere playerReach(const glm::vec3& feetPosition) {

@@ -15,7 +15,7 @@ Night Maze to gra w labiryncie, który za każdym razem jest inny: PRD (sekcja 2
 
 Żadna z tych rzeczy nie potrzebuje okna ani OpenGL, więc wszystkie mają testy jednostkowe.
 
-**Stan na dziś, uczciwie.** Kod ma 31 przypadków testowych w trzech plikach (8 w `MazeTests.cpp`, 11 w `MazeGeneratorTests.cpp`, 12 w `MazeLayoutTests.cpp`) i jest używany przez program: `game::buildMazeWorld` woła `generateMaze`, `wallSegments`, `pillarPositions` i `mazeColliders`, a z ich wyników powstają rysowany labirynt i lista przeszkód gracza ([`maze-rendering.md`](maze-rendering.md)). Gra startuje w labiryncie 10 na 10 komórek z ziarna 1. Panel Maze (sekcja 6) pozwala zamówić inny rozmiar i ziarno i pokazuje plan labiryntu z góry, od M5 z kryształami, bramą i strefą wyjścia. Od M5 na tym kodzie stoi runda: z siatki `Maze` liczone są wyjście (najdalsza komórka), brama i miejsca kryształów ([`gameplay.md`](gameplay.md)). M5 jest na Windowsie kompletny w kodzie i nie jest zamknięty (bez tagu wersji): według zgłoszenia autora kodu z 2026-10-05 build Debug i Release przechodzi bez ostrzeżeń, a wszystkie testy przechodzą w obu konfiguracjach (215 przypadków i 85098 asercji w całym programie testowym). Z M2 + M3 sprawdzony jest zrzut ekranu, na którym widok z góry zgadza się z planem w panelu. Przycisków panelu nikt jeszcze nie kliknął ręcznie. Na macOS nic z M5 nie było budowane ani uruchamiane.
+**Stan na dziś, uczciwie.** Kod ma 31 przypadków testowych w trzech plikach (8 w `MazeTests.cpp`, 11 w `MazeGeneratorTests.cpp`, 12 w `MazeLayoutTests.cpp`) i jest używany przez program: `game::buildMazeWorld` woła `generateMaze`, `wallSegments` i `pillarPositions`, a `game::placeOnTerrain` funkcję `colliderBoxes`: z ich wyników powstają rysowany labirynt i lista przeszkód gracza ([`maze-rendering.md`](maze-rendering.md)). Od M6 funkcje układu dają plan na `y = 0`, a labirynt w grze stoi na terenie: wysokość każdej ściany i słupka nadaje dopiero `placeOnTerrain` ([`../renderer/terrain.md`](../renderer/terrain.md)). Gra startuje w labiryncie 10 na 10 komórek z ziarna 1. Panel Maze (sekcja 6) pozwala zamówić inny rozmiar i ziarno i pokazuje plan labiryntu z góry, od M5 z kryształami, bramą i strefą wyjścia. Od M5 na tym kodzie stoi runda: z siatki `Maze` liczone są wyjście (najdalsza komórka), brama i miejsca kryształów ([`gameplay.md`](gameplay.md)). M5 jest na Windowsie kompletny w kodzie i nie jest zamknięty (bez tagu wersji): według zgłoszenia autora kodu z 2026-10-05 build Debug i Release przechodzi bez ostrzeżeń, a wszystkie testy przechodzą w obu konfiguracjach (po M5 215 przypadków i 85098 asercji w całym programie testowym, dziś, po drugiej części M6, 256 przypadków i 101232 asercje, uruchomione 2026-10-05). M6 też jest kompletny w kodzie na Windowsie i nie jest zamknięty. Z M2 + M3 sprawdzony jest zrzut ekranu, na którym widok z góry zgadza się z planem w panelu. Przycisków panelu nikt jeszcze nie kliknął ręcznie. Na macOS nic z M5 ani z M6 nie było budowane ani uruchamiane.
 
 ## 2. Teoria
 
@@ -197,13 +197,13 @@ Siatka to liczby całkowite. Żeby coś narysować albo sprawdzić kolizję, trz
 |---|---|---|
 | `CELL_SIZE` | 2,0 m | bok kwadratowej komórki, odległość między środkami sąsiednich komórek |
 | `WALL_LENGTH` | 2,0 m (`CELL_SIZE`) | długość jednego segmentu ściany: dokładnie jedna krawędź komórki |
-| `WALL_HEIGHT` | 3,0 m | wysokość ściany od podłogi |
+| `WALL_HEIGHT` | 3,0 m | wysokość ściany od jej podstawy |
 | `PILLAR_SIZE` | 0,3 m | bok kwadratowej podstawy słupka (trzonu) |
 | `WALL_VISUAL_THICKNESS` | 0,2 m | grubość widocznego korpusu ściany, czyli modelu `wall_straight`. Ściana stoi na środku krawędzi, więc po 0,1 m wchodzi w każdą z dwóch komórek. Opisuje tylko model: kolizje jej nie używają |
 | `WALL_COLLISION_THICKNESS` | 0,3 m (`PILLAR_SIZE`) | grubość **pudełka kolizji** ściany: celowo taka sama jak słupka (wyjaśnienie niżej) |
 | `PILLAR_HEIGHT` | 3,15 m | wysokość słupka, 15 cm ponad ścianę |
 
-**Komórki.** Labirynt zaczyna się w początku układu świata i rozciąga w stronę +X i +Z. Podłoga leży na wysokości `y = 0`.
+**Komórki.** Labirynt zaczyna się w początku układu świata i rozciąga w stronę +X i +Z. Funkcje układu z tego pliku dają wszystkie pozycje na wysokości `y = 0`: opisują **plan** labiryntu widziany z góry. Do M5 była to po prostu wysokość płaskiej podłogi. Od M6 podłoże to nierówny teren i `y` każdej rzeczy poprawia `game::placeOnTerrain`, nie ruszając `x` ani `z` ([`maze-rendering.md`](maze-rendering.md), sekcja 2.8).
 
 ```text
 labirynt 2 na 2, widok z góry, liczby to metry
@@ -224,7 +224,7 @@ z: 0   o---------o---------o        o   narożnik siatki (tu może stać słupek
 
 Labirynt `width` na `height` zajmuje obszar od `x = 0` do `x = width * 2` i od `z = 0` do `z = height * 2`.
 
-**Ściany.** Jeden segment ściany stoi na jednej krawędzi komórki. Opisują go dwie rzeczy: **pozycja** (środek segmentu na poziomie podłogi) i **oś**, wzdłuż której biegnie:
+**Ściany.** Jeden segment ściany stoi na jednej krawędzi komórki. Opisują go dwie rzeczy: **pozycja** (środek podstawy segmentu) i **oś**, wzdłuż której biegnie:
 
 | Bok komórki | Oś segmentu | Pozycja segmentu |
 |---|---|---|
@@ -233,7 +233,7 @@ Labirynt `width` na `height` zajmuje obszar od `x = 0` do `x = width * 2` i od `
 | West | wzdłuż Z (`AlongZ`) | `(x * 2, 0, (z + 0,5) * 2)` |
 | East | wzdłuż Z (`AlongZ`) | `((x + 1) * 2, 0, (z + 0,5) * 2)` |
 
-Ściana północna i południowa oddzielają wiersze, więc biegną w poprzek osi Z, czyli wzdłuż X. Pozycja jest na poziomie podłogi celowo: model ściany ([`../../guides/blender.md`](../../guides/blender.md), sekcja 8) ma początek układu w środku podstawy i jest zbudowany wzdłuż osi X, od `x = -1` do `x = 1`. Segment `AlongX` to model przesunięty w pozycję segmentu. Segment `AlongZ` to ten sam model obrócony o 90 stopni wokół osi Y i przesunięty.
+Ściana północna i południowa oddzielają wiersze, więc biegną w poprzek osi Z, czyli wzdłuż X. Pozycja jest środkiem podstawy celowo: model ściany ([`../../guides/blender.md`](../../guides/blender.md), sekcja 8) ma początek układu w środku podstawy i jest zbudowany wzdłuż osi X, od `x = -1` do `x = 1`. Segment `AlongX` to model przesunięty w pozycję segmentu. Segment `AlongZ` to ten sam model obrócony o 90 stopni wokół osi Y i przesunięty.
 
 **Każda ściana raz.** Ściana między dwiema komórkami należy do obu, ale w świecie stoi jedna. Reguła, która daje każdą ścianę dokładnie raz: każda komórka zgłasza swoją ścianę **północną i zachodnią**, a południową i wschodnią tylko wtedy, gdy leży w ostatnim wierszu albo w ostatniej kolumnie (tam nie ma sąsiada, który zgłosiłby ją jako swoją północną albo zachodnią).
 
@@ -294,13 +294,13 @@ Cena: gracz zatrzymuje się 5 cm przed widocznym korpusem ściany (i 1 cm przed 
 
 Nie dotyczy: labirynt, generator i układ to liczby całkowite, kilka stałych i wektory GLM. Pliki nie dołączają GLAD i nie wołają żadnej funkcji `gl*`.
 
-Związek z renderowaniem jest pośredni. Wynik `wallSegments` to lista miejsc, w których trzeba narysować model ściany: z pozycji i osi segmentu `game::buildMazeWorld` liczy macierz modelu, czyli przesunięcie i, dla `AlongZ`, obrót o 90 stopni wokół Y. Tak samo `pillarPositions` dla modelu słupka i `cellCenter` dla płytki podłogi. Macierze, wywołania OpenGL i koszt rysowania opisuje [`maze-rendering.md`](maze-rendering.md), sekcje 2, 3 i 5.
+Związek z renderowaniem jest pośredni. Wynik `wallSegments` to lista miejsc, w których trzeba narysować model ściany: z pozycji i osi segmentu `game::buildMazeWorld` liczy macierz modelu, czyli przesunięcie i, dla `AlongZ`, obrót o 90 stopni wokół Y. Tak samo `pillarPositions` dla modelu słupka. `cellCenter` służyło do M5 także płytkom podłogi, które usunął M6: dziś daje środek komórki dla startu, wyjścia i kryształów. Macierze, wywołania OpenGL i koszt rysowania opisuje [`maze-rendering.md`](maze-rendering.md), sekcje 2, 3 i 5.
 
 Panel Maze też nie woła OpenGL bezpośrednio: plan labiryntu rysuje listą rysowania biblioteki ImGui (sekcja 6.3), a dopiero backend ImGui zamienia ją na wywołania OpenGL.
 
 ## 4. Shadery
 
-Nie dotyczy: ten kod nie ma shadera. Ściany, słupki i podłogę rysuje jedna z trzech par shaderów (`textured`, `lit` albo `gouraud`, zależnie od trybu cieniowania), a co każda z nich dostaje od rysowania labiryntu, opisuje [`maze-rendering.md`](maze-rendering.md), sekcja 4.
+Nie dotyczy: ten kod nie ma shadera. Ściany, słupki i teren pod nimi rysuje jedna z trzech par shaderów (`textured`, `lit` albo `gouraud`, zależnie od trybu cieniowania), a co każda z nich dostaje od rysowania labiryntu, opisuje [`maze-rendering.md`](maze-rendering.md), sekcja 4.
 
 ## 5. Kod w projekcie
 
@@ -310,7 +310,7 @@ Nie dotyczy: ten kod nie ma shadera. Ściany, słupki i podłogę rysuje jedna z
 |---|---|
 | [`src/game/Maze.hpp`](../../../src/game/Maze.hpp), [`.cpp`](../../../src/game/Maze.cpp) | typ `Direction`, stałe `DIRECTION_COUNT` i `ALL_DIRECTIONS`, funkcje `opposite`, `columnStep`, `rowStep`, struktura `MazeCell` (od M5), klasa `Maze`, funkcja `isDeadEnd` (od M5 w tym pliku) |
 | [`src/game/MazeGenerator.hpp`](../../../src/game/MazeGenerator.hpp), [`.cpp`](../../../src/game/MazeGenerator.cpp) | funkcje `randomBelow` i `generateMaze` |
-| [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp), [`.cpp`](../../../src/game/MazeLayout.cpp) | stałe wymiarów, typy `WallAxis` i `WallSegment`, funkcje `cellCenter`, `wallSegmentOn` (od M5), `wallSegments`, `pillarPositions`, `wallBox`, `pillarBox`, `mazeColliders` |
+| [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp), [`.cpp`](../../../src/game/MazeLayout.cpp) | stałe wymiarów, typy `WallAxis` i `WallSegment`, funkcje `cellCenter`, `wallSegmentOn` (od M5), `wallSegments`, `pillarPositions`, `wallBox`, `pillarBox`, `colliderBoxes` (od M6), `mazeColliders` |
 | [`tests/MazeTests.cpp`](../../../tests/MazeTests.cpp) | 8 przypadków testowych: klasa `Maze`, funkcje kierunków, a od M5 `isDeadEnd` i porównanie `MazeCell` |
 | [`tests/MazeGeneratorTests.cpp`](../../../tests/MazeGeneratorTests.cpp) | 11 przypadków: generator liczb, `randomBelow`, `generateMaze` |
 | [`tests/MazeLayoutTests.cpp`](../../../tests/MazeLayoutTests.cpp) | 12 przypadków: układ w świecie i jego współpraca z kolizjami. Test `wallSegmentOn` jest w [`tests/ExitTests.cpp`](../../../tests/ExitTests.cpp), obok testów bramy, która z tej funkcji korzysta |
@@ -700,7 +700,7 @@ struct WallSegment {
 };
 ```
 
-`WallSegment` to zwykłe dane: gdzie stoi segment (środek, na poziomie podłogi) i wzdłuż której osi biegnie. W pliku nad każdym polem stoi komentarz Doxygen, który opisuje też, jak ustawić model.
+`WallSegment` to zwykłe dane: gdzie stoi segment (środek jego podstawy) i wzdłuż której osi biegnie. W pliku nad każdym polem stoi komentarz Doxygen, który opisuje też, jak ustawić model. Komentarz pola `position` mówi od M6 wprost, kto nadaje wysokość: "The layout functions of this file give y = 0. A maze that stands on a terrain lowers every segment to the ground under it (game::placeOnTerrain)".
 
 Plik `MazeLayout.cpp`, funkcje pomocnicze:
 
@@ -724,7 +724,7 @@ glm::vec3 cellCenter(int x, int z) {
 }
 ```
 
-Środek komórki na poziomie podłogi. Funkcja nie sprawdza, czy komórka należy do jakiegoś labiryntu: to czysty wzór.
+Środek komórki na wysokości `y = 0` (komentarz w nagłówku mówił do M5 "at floor level", dziś "at y = 0"). Wysokość gruntu w tym miejscu daje osobna funkcja `groundHeightAt` z `MazeWorld.hpp`. Funkcja nie sprawdza, czy komórka należy do jakiegoś labiryntu: to czysty wzór.
 
 **`wallSegmentOn` (od M5).** Do M4 wzory na pozycję segmentu stały cztery razy wewnątrz `wallSegments`. W M5 zostały wyjęte do osobnej, publicznej funkcji:
 
@@ -800,7 +800,7 @@ Dwie pętle przechodzą po komórkach wierszami. Każda komórka zgłasza ścian
 
 Kolejność segmentów na liście jest stała (wiersz po wierszu, komórka po komórce, w kolejności czterech warunków), więc ten sam labirynt daje zawsze tę samą listę. Wyjęcie wzorów do `wallSegmentOn` jej nie zmieniło: lista jest co do elementu taka jak w M4, a brama na nią nie trafia (bok, na którym stoi, nie ma ściany).
 
-### 5.7 `pillarPositions`, pudełka i `mazeColliders`
+### 5.7 `pillarPositions`, pudełka, `colliderBoxes` i `mazeColliders`
 
 ```cpp
 bool cellHasWall(const Maze& maze, int x, int z, Direction side) {
@@ -888,7 +888,7 @@ Komentarz zwraca uwagę na szczegół liczb zmiennoprzecinkowych. Połowa grubo�
 
 ```cpp
 scene::Aabb wallBox(const WallSegment& segment) {
-    // The position is on the floor, the centre of the box is half of the height above it.
+    // The position is the base, the centre of the box is half of the height above it.
     const glm::vec3 center = segment.position + glm::vec3{0.0F, WALL_HEIGHT / 2.0F, 0.0F};
     const glm::vec3 halfExtents =
         segment.axis == WallAxis::AlongX ? WALL_ALONG_X_HALF_EXTENTS : WALL_ALONG_Z_HALF_EXTENTS;
@@ -901,22 +901,39 @@ scene::Aabb pillarBox(const glm::vec3& position) {
 }
 ```
 
-Pozycja segmentu i słupka leży na podłodze, a `Aabb::fromCenter` chce środka bryły, stąd przesunięcie o połowę wysokości w górę. Dół pudełka wypada wtedy dokładnie w `y = 0`.
+Pozycja segmentu i słupka to środek podstawy, a `Aabb::fromCenter` chce środka bryły, stąd przesunięcie o połowę wysokości w górę. Dół pudełka wypada wtedy dokładnie na wysokości pozycji: w `y = 0` dla pozycji prosto z funkcji układu, a na opuszczonej wysokości dla ściany postawionej na terenie. Funkcje nie wiedzą, skąd pozycja pochodzi. Komentarze w nagłówku mówią dlatego od M6 "standing on the position of the segment" i "whose base is at position", a nie "standing on the floor".
 
 ```cpp
-std::vector<scene::Aabb> mazeColliders(const Maze& maze) {
+std::vector<scene::Aabb> colliderBoxes(std::span<const WallSegment> walls,
+                                       std::span<const glm::vec3> pillars) {
     std::vector<scene::Aabb> boxes;
-    for (const WallSegment& segment : wallSegments(maze)) {
+    boxes.reserve(walls.size() + pillars.size());
+    for (const WallSegment& segment : walls) {
         boxes.push_back(wallBox(segment));
     }
-    for (const glm::vec3& position : pillarPositions(maze)) {
+    for (const glm::vec3& position : pillars) {
         boxes.push_back(pillarBox(position));
     }
     return boxes;
 }
+
+std::vector<scene::Aabb> mazeColliders(const Maze& maze) {
+    return colliderBoxes(wallSegments(maze), pillarPositions(maze));
+}
 ```
 
-Gotowa lista przeszkód dla `scene::moveAndSlide`: najpierw pudełka wszystkich ścian, potem wszystkich słupków. Podłogi na liście nie ma. Listę liczy się raz, po wygenerowaniu labiryntu, i trzyma do następnej generacji: robi to `game::buildMazeWorld`, a wynik leży w `MazeWorld::colliders` ([`maze-rendering.md`](maze-rendering.md), sekcja 5). Jak korzysta z niej gracz, pokazuje [`../scene/collision.md`](../scene/collision.md), sekcja 5.6.
+Gotowa lista przeszkód dla `scene::moveAndSlide`: najpierw pudełka wszystkich ścian, potem wszystkich słupków. Podłoża na liście nie ma: wysokość gracza jest czytana z terenu, a nie wynikiem kolizji ([`player.md`](player.md), sekcja 2.5).
+
+Do M5 była jedna funkcja, `mazeColliders(maze)`, która sama wołała `wallSegments` i `pillarPositions`. M6 wyjął z niej pętle do `colliderBoxes`, która przyjmuje **gotowe listy**. Powód: labirynt na terenie ma listy ścian i słupków z już opuszczonymi wysokościami (`MazeWorld::walls`, `MazeWorld::pillars`), a pudełka muszą powstać z nich, nie z siatki, bo siatka wysokości nie zna. `mazeColliders` została jako skrót "cały labirynt stojący na `y = 0`": w `src/` nikt jej dziś nie woła, używają jej testy.
+
+| Linia | Znaczenie |
+|---|---|
+| `std::span<const WallSegment> walls`, `std::span<const glm::vec3> pillars` | widoki na ciągi elementów: przyjmują `std::vector` bez kopiowania. Stąd nowe `#include <span>` w nagłówku |
+| `boxes.reserve(walls.size() + pillars.size());` | wynik ma znaną długość, więc wektor rezerwuje pamięć raz, zamiast rosnąć po kawałku |
+| dwie pętle | pudełko każdej ściany (`wallBox`), potem każdego słupka (`pillarBox`), w kolejności list |
+| `return colliderBoxes(wallSegments(maze), pillarPositions(maze));` | dwa tymczasowe wektory zamieniają się na `std::span` na czas wywołania |
+
+Listę liczy się raz na teren i trzyma do następnej generacji albo zmiany skali wysokości: robi to `game::placeOnTerrain`, a wynik leży w `MazeWorld::colliders` ([`maze-rendering.md`](maze-rendering.md), sekcja 5). Jak korzysta z niej gracz, pokazuje [`../scene/collision.md`](../scene/collision.md), sekcja 5.6.
 
 ### 5.8 Jak to zostało sprawdzone
 
@@ -963,7 +980,7 @@ Skąd wiadomo, że to dobry wzorzec, skoro powstał z uruchomienia programu: ten
 
 **Układ** (`tests/MazeLayoutTests.cpp`): wartości stałych, `cellCenter(0, 0)` to `(1, 0, 1)`, a `cellCenter(3, 2)` to `(7, 0, 5)`. Zamknięta komórka 1 na 1 ma 4 segmenty i 4 słupki w oczekiwanych miejscach. Siatka 2 na 1 ma 7 segmentów, a ściana wspólna w `(2, 0, 1)` występuje raz. Po usunięciu ściany wspólnej zostaje 6 segmentów i nadal 6 słupków. Siatka 2 na 2 bez ścian wewnętrznych ma 8 segmentów i 8 słupków (brak środkowego), a z jedną ścianą wewnętrzną środkowy słupek wraca. Labirynty 9 na 6 dla 10 ziaren mają po 70 segmentów i 70 słupków. Stała `WALL_COLLISION_THICKNESS` jest równa `PILLAR_SIZE`. Pudełko ściany wzdłuż X w `(3, 0, 4)` sięga od `(2, 0, 3,85)` do `(4, 3, 4,15)`, pudełko słupka w `(2, 0, 6)` od `(1,85, 0, 5,85)` do `(2,15, 3,15, 6,15)`. Trzy ostatnie przypadki łączą układ z kolizjami i są opisane w [`../scene/collision.md`](../scene/collision.md), sekcja 5.7. Plik ma nadal 12 przypadków: `wallSegmentOn` ma test w `tests/ExitTests.cpp` (`wallSegmentOn gives the segment on each of the four sides of a cell`), a pośrednio sprawdza ją każdy test `wallSegments`, bo lista powstaje teraz przez tę funkcję.
 
-**Wyniki.** Windows, według zgłoszenia autora kodu z 2026-10-05 dla stanu po M5: build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach (215 przypadków i 85098 asercji w całym programie testowym). Że labirynt wzorcowy jest ten sam w Debug i w Release, wynika z tego, że ten sam test przechodzi w obu. **Na macOS ten kod nie był jeszcze kompilowany ani uruchamiany.** Zgodność labiryntu między systemami jest więc na dziś uzasadniona (standard C++, niezależny skrypt), ale nie zmierzona: zmierzy ją pierwsze uruchomienie testów na Macu ([`../../guides/build-macos.md`](../../guides/build-macos.md), sekcja 2).
+**Wyniki.** Windows, 2026-10-05: wszystkie testy przechodzą w Debug i Release (256 przypadków i 101232 asercje w całym programie testowym, po M5 było to 215 i 85098). Build bez ostrzeżeń to zgłoszenie autora kodu. W M6 trzy przypadki `MazeLayoutTests.cpp` zmieniły tylko nazwy, razem z komentarzami w kodzie: `cellCenter is the middle of the cell at y = 0`, `wallBox is 2 m long, 3 m high and 0.3 m thick, standing on its position` i `pillarBox is 0.3 m square and 3.15 m high, standing on its position`. Że labirynt wzorcowy jest ten sam w Debug i w Release, wynika z tego, że ten sam test przechodzi w obu. **Na macOS ten kod nie był jeszcze kompilowany ani uruchamiany.** Zgodność labiryntu między systemami jest więc na dziś uzasadniona (standard C++, niezależny skrypt), ale nie zmierzona: zmierzy ją pierwsze uruchomienie testów na Macu ([`../../guides/build-macos.md`](../../guides/build-macos.md), sekcja 2).
 
 ## 6. Panel ImGui
 
@@ -994,9 +1011,9 @@ Z sygnatury widać najważniejszą własność panelu: **nie może zmienić labi
 Podział danych między `world` i `round` jest ten sam co w całej grze: **gdzie** leżą kryształy i brama, wynika z labiryntu (`MazeWorld`), a **w jakim są stanie**, wie runda (`Round`).
 
 ```cpp
-// Limits of the size sliders, in cells. The game draws every floor tile, wall and pillar
-// with its own draw call, about three per cell, so a much larger maze would make the
-// frame slow. game::Maze itself accepts up to Maze::MAX_SIZE.
+// Limits of the size sliders, in cells. The game draws every wall and pillar with its
+// own draw call, about two per cell, and the terrain has 32 triangles per cell, so a much
+// larger maze would make the frame slow. game::Maze itself accepts up to Maze::MAX_SIZE.
 constexpr int MIN_MAZE_SIZE = 2;
 constexpr int MAX_MAZE_SIZE = 40;
 
@@ -1021,7 +1038,7 @@ constexpr float PLAN_PADDING = 4.0F;
 | Stała | Znaczenie |
 |---|---|
 | `MAZE_PLACEMENT` (z [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), nie z tego pliku) | miejsce i rozmiar przy pierwszym uruchomieniu: prawy górny róg okna. Wpis w `imgui.ini` ma pierwszeństwo ([`../debug-ui.md`](../debug-ui.md), sekcja 5) |
-| `MIN_MAZE_SIZE = 2`, `MAX_MAZE_SIZE = 40` | granice suwaków rozmiaru. Górna jest granicą wygody, nie poprawności: `Maze` przyjmuje do 256, ale gra rysuje każdy obiekt osobnym wywołaniem (około trzech na komórkę), a 40 na 40 to już 4962 wywołania dla samego labiryntu, 4979 z bramą i 16 kryształami ([`maze-rendering.md`](maze-rendering.md), sekcja 2). Dolnej granicy 2 komentarz w kodzie nie uzasadnia. Moje odczytanie: suwak pomija labirynt z jedną komórką i korytarze o szerokości jednej komórki, których używają testy, a które do pokazu się nie nadają |
+| `MIN_MAZE_SIZE = 2`, `MAX_MAZE_SIZE = 40` | granice suwaków rozmiaru. Górna jest granicą wygody, nie poprawności: `Maze` przyjmuje do 256, ale gra rysuje każdą ścianę i każdy słupek osobnym wywołaniem (około dwóch na komórkę), a teren ma 32 trójkąty na komórkę. 40 na 40 to już 3363 wywołania dla labiryntu z terenem, 3380 z bramą i 16 kryształami, i 93312 trójkąty terenu ([`maze-rendering.md`](maze-rendering.md), sekcja 2.5). Do M5 komentarz mówił o trzech wywołaniach na komórkę, bo trzecim była płytka podłogi. Dolnej granicy 2 komentarz w kodzie nie uzasadnia. Moje odczytanie: suwak pomija labirynt z jedną komórką i korytarze o szerokości jednej komórki, których używają testy, a które do pokazu się nie nadają |
 | `SEED_STEP = 1` | o ile zmienia ziarno kliknięcie w przycisk plus albo minus obok pola. Typ musi być taki sam jak typ ziarna |
 | `PLAN_WALL_COLOR`, `PLAN_PLAYER_COLOR` (z [`Theme.hpp`](../../../src/debug/Theme.hpp), nie z tego pliku) | kolory planu jako kolory motywu: ściany w bladym kolorze kamienia w świetle księżyca `colorFromBytes(176, 190, 216)`, gracz w bursztynie latarki `colorFromBytes(255, 184, 84)` ([`../debug-ui.md`](../debug-ui.md), sekcja 5) |
 | `PLAN_CRYSTAL_COLOR`, `PLAN_COLLECTED_COLOR`, `PLAN_GATE_COLOR`, `PLAN_EXIT_COLOR` (od M5, też z `Theme.hpp`) | kolory rzeczy rundy na planie, tabela niżej |
@@ -1265,7 +1282,7 @@ Dla labiryntu startowego strefa to kwadrat od `(12,5, 10,5)` do `(13,5, 11,5)` w
 | Fragment | Znaczenie |
 |---|---|
 | `round.crystals` | pętla idzie po kryształach **rundy**, nie labiryntu: tylko runda wie, które są zebrane |
-| `crystal.restPosition` | miejsce spoczynku kryształu: środek jego komórki, 0,9 m nad podłogą. Wysokość lambda pomija, więc kropka wypada w środku komórki. Kryształ w scenie unosi się i opada wokół tego punktu, kropka na planie stoi |
+| `crystal.restPosition` | miejsce spoczynku kryształu: środek jego komórki, 0,9 m nad gruntem. Wysokość lambda pomija, więc kropka wypada w środku komórki. Kryształ w scenie unosi się i opada wokół tego punktu, kropka na planie stoi |
 | `AddCircleFilled(place, CRYSTAL_DOT_RADIUS, crystalColor)` | kryształ, który jeszcze wisi: wypełniona kropka w kolorze kryształów |
 | `AddCircle(place, CRYSTAL_DOT_RADIUS, collectedColor)` | kryształ zebrany: sam okrąg (pierścień) w ciemnym kolorze. Miejsce zostaje widoczne, więc z planu da się odczytać, gdzie gracz już był |
 
@@ -1326,7 +1343,7 @@ Kroki z klikaniem nie były jeszcze wykonane ręcznie. Opisują to, co wynika z 
 4. **Kopia generatora.** Parametr `std::mt19937 generator` zamiast `std::mt19937& generator` kopiuje stan. Funkcja losuje wtedy z kopii, a oryginał stoi w miejscu i następne wywołanie dostaje te same liczby.
 5. **Północ to -Z i wiersz o numerze mniejszym.** Krok na północ zmniejsza `z`. Na rysunku z góry północ jest u góry, ale w świecie gry to kierunek "do przodu" kamery z yaw 0. Pomylenie znaku w `ROW_STEPS` daje labirynt odbity lustrzanie, który nadal jest poprawnym labiryntem, więc testy własności tego nie złapią. Złapie to test kierunków i labirynt wzorcowy.
 6. **Jedna grubość dla modelu i dla kolizji.** Tak było na początku: 0,2 m dla obu. Pudełko słupka (0,3 m) wystawało wtedy 5 cm przed pudełko ściany i gracz idący przy ścianie stawał na słupku co 2 m. Dziś są dwie stałe: `WALL_VISUAL_THICKNESS` dla modelu i `WALL_COLLISION_THICKNESS`, równa `PILLAR_SIZE`, dla kolizji (sekcja 2.7). Kto zmieni bok słupka, zmienia tym samym grubość pudełek ścian. Kto wpisze przy pudełku ściany własną liczbę zamiast `PILLAR_SIZE`, przywraca zahaczanie o słupki, a wykryją to testy ślizgania w `MazeLayoutTests.cpp` i `PlayerTests.cpp`.
-7. **Pozycja segmentu to nie środek pudełka.** `WallSegment::position` i wyniki `pillarPositions` leżą na podłodze (`y = 0`), bo tam jest początek układu modelu. Środek pudełka kolizji jest o połowę wysokości wyżej i liczą go `wallBox` oraz `pillarBox`. Podanie pozycji segmentu wprost do `Aabb::fromCenter` zakopałoby połowę pudełka pod podłogą.
+7. **Pozycja segmentu to nie środek pudełka.** `WallSegment::position` i wyniki `pillarPositions` to środek podstawy (prosto z funkcji układu na `y = 0`, w grze na opuszczonej wysokości terenu), bo tam jest początek układu modelu. Środek pudełka kolizji jest o połowę wysokości wyżej i liczą go `wallBox` oraz `pillarBox`. Podanie pozycji segmentu wprost do `Aabb::fromCenter` zakopałoby połowę pudełka pod gruntem.
 8. **Obrót ściany `AlongZ`.** Model jest zbudowany wzdłuż X. Dla segmentu `AlongZ` trzeba go obrócić o 90 stopni wokół Y: robi to `wallModelMatrix` w `MazeWorld.cpp` ([`maze-rendering.md`](maze-rendering.md), sekcja 5). Ta sama funkcja ustawia bramę. Kierunek obrotu (90 albo -90) nie ma znaczenia dla pudełka kolizji i, przy modelu symetrycznym względem środka, także dla obrazu.
 9. **`hasWall` rzuca wyjątek dla komórki spoza siatki.** Kod, który zagląda do sąsiadów, musi najpierw zapytać `contains`. Tak robią generator i `cellHasWall`.
 10. **Usunięcie ściany zewnętrznej otwiera labirynt.** `removeWall` na boku brzegowym jest dozwolone przez klasę, ale gra nigdy tego nie robi. Generator nie, bo sąsiad spoza siatki nie jest kandydatem. Wyjście z M5 też nie: jest komórką wewnątrz zamkniętego muru, a nie otworem w nim. Otwór w brzegu prowadziłby donikąd: przeszukiwanie w `passageDistances` nie wychodzi poza siatkę (przypina to test `a cell behind walls is unreachable, and an opening in the border leads nowhere` w `tests/ExitTests.cpp`).
@@ -1390,7 +1407,7 @@ Kroki z klikaniem nie były jeszcze wykonane ręcznie. Opisują to, co wynika z 
    Od rozmiaru, od komórki startowej i od kolejności, w jakiej zbierani są kandydaci (North, East, South, West). Wszystkie trzy są stałe i zapisane w kodzie.
 
 10. **Jak siatka przelicza się na metry?**
-    Komórka ma 2 m. Linia siatki numer `k` leży w `k * 2`, środek komórki `(x, z)` w `((x + 0,5) * 2, 0, (z + 0,5) * 2)`. Labirynt zaczyna się w początku układu i rośnie w stronę +X i +Z, podłoga jest w `y = 0`.
+    Komórka ma 2 m. Linia siatki numer `k` leży w `k * 2`, środek komórki `(x, z)` w `((x + 0,5) * 2, 0, (z + 0,5) * 2)`. Labirynt zaczyna się w początku układu i rośnie w stronę +X i +Z. Funkcje układu dają `y = 0`, a wysokość nad terenem nadaje potem `placeOnTerrain`.
 
 11. **Jak `wallSegments` unika podwójnych ścian?**
     Każda komórka zgłasza swoją ścianę północną i zachodnią. Południową i wschodnią zgłasza tylko w ostatnim wierszu i ostatniej kolumnie, bo wszędzie indziej zgłosi je sąsiad jako swoją północną albo zachodnią.

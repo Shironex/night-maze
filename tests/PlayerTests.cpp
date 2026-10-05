@@ -4,6 +4,7 @@
 
 #include "game/MazeGenerator.hpp"
 #include "game/MazeLayout.hpp"
+#include "game/Terrain.hpp"
 
 #include <doctest/doctest.h>
 
@@ -32,11 +33,15 @@ constexpr float NO_PITCH = 0.0F;
 constexpr float WALL_CONTACT_DISTANCE =
     game::WALL_COLLISION_THICKNESS / 2.0F + game::Player::BODY_WIDTH / 2.0F;
 
+// The ground of the tests in this file: flat, at y = 0. How the player follows uneven
+// ground is tested in TerrainTests.cpp.
+const game::Terrain FLAT_GROUND;
+
 // Runs the same input for a number of fixed steps.
 void runSteps(game::Player& player, const game::PlayerInput& input, float yawDegrees,
               float pitchDegrees, int stepCount, std::span<const scene::Aabb> obstacles) {
     for (int i = 0; i < stepCount; ++i) {
-        player.update(input, yawDegrees, pitchDegrees, STEP_SECONDS, obstacles);
+        player.update(input, yawDegrees, pitchDegrees, STEP_SECONDS, obstacles, FLAT_GROUND);
     }
 }
 
@@ -91,7 +96,7 @@ TEST_CASE("walking forward covers 3 metres in one second, along the yaw") {
         checkVector(player.position, {3.0F, 0.0F, 0.0F});
     }
 
-    SUBCASE("looking at the floor or at the sky changes nothing") {
+    SUBCASE("looking at the ground or at the sky changes nothing") {
         // Walking uses only the yaw: the pitch neither lifts the player nor slows it.
         game::Player player;
         runSteps(player, forward, YAW_NORTH, -60.0F, STEPS_PER_SECOND, NO_OBSTACLES);
@@ -237,7 +242,7 @@ TEST_CASE("a player wandering through a closed maze never leaves it or enters a 
         bool insideObstacle = false;
         bool outsideMaze = false;
         for (int i = 0; i < STEPS_PER_TURN; ++i) {
-            player.update(input, yaw, NO_PITCH, STEP_SECONDS, obstacles);
+            player.update(input, yaw, NO_PITCH, STEP_SECONDS, obstacles, FLAT_GROUND);
 
             const scene::Aabb box = player.box();
             const scene::Aabb inner{.min = box.min + margin, .max = box.max - margin};
@@ -259,7 +264,7 @@ TEST_CASE("a player wandering through a closed maze never leaves it or enters a 
 
     // The player did walk: it got at least two cells away from where it started.
     CHECK(farthest > 2.0F * game::CELL_SIZE);
-    // And it never left the floor.
+    // And it never left the ground.
     CHECK(player.position.y == doctest::Approx(0.0F));
 }
 
@@ -284,7 +289,7 @@ TEST_CASE("noclip moves up and down, and forward follows the pitch") {
         checkVector(player.position, {0.0F, game::Player::FLY_SPEED, 0.0F});
     }
 
-    SUBCASE("the down key sinks straight down, below the floor too") {
+    SUBCASE("the down key sinks straight down, below the ground too") {
         game::Player player;
         player.noclip = true;
         runSteps(player, {.down = true}, YAW_NORTH, NO_PITCH, STEPS_PER_SECOND, NO_OBSTACLES);
@@ -309,13 +314,13 @@ TEST_CASE("noclip moves up and down, and forward follows the pitch") {
     }
 }
 
-TEST_CASE("switching noclip off brings the feet back to the floor") {
+TEST_CASE("switching noclip off brings the feet back to the ground") {
     game::Player player;
     player.position = {1.0F, 5.0F, 1.0F};
     player.noclip = false;
 
     // One step with no key held is enough.
-    player.update({}, YAW_NORTH, NO_PITCH, STEP_SECONDS, NO_OBSTACLES);
+    player.update({}, YAW_NORTH, NO_PITCH, STEP_SECONDS, NO_OBSTACLES, FLAT_GROUND);
 
     checkVector(player.position, {1.0F, 0.0F, 1.0F});
 }

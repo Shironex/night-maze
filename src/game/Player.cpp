@@ -2,6 +2,7 @@
 // See docs/modules/game/player.md
 #include "game/Player.hpp"
 
+#include "game/Terrain.hpp"
 #include "scene/Camera.hpp"
 
 namespace game {
@@ -28,11 +29,12 @@ glm::vec3 Player::eyePosition() const {
 }
 
 void Player::update(const PlayerInput& input, float yawDegrees, float pitchDegrees,
-                    float stepSeconds, std::span<const scene::Aabb> obstacles) {
+                    float stepSeconds, std::span<const scene::Aabb> obstacles,
+                    const Terrain& terrain) {
     // The directions come from the same math as the picture on the screen: a camera with
     // the given angles. It is used only as a calculator here, its position is not read.
     // In walking mode the pitch is replaced by 0, a level look: forward then has no
-    // vertical part and keeps its length of 1, so looking at the floor does not slow the
+    // vertical part and keeps its length of 1, so looking at the ground does not slow the
     // player down. right() is horizontal in both modes.
     scene::Camera view;
     view.yawDegrees = yawDegrees;
@@ -75,17 +77,23 @@ void Player::update(const PlayerInput& input, float yawDegrees, float pitchDegre
         return;
     }
 
-    // Walking. The feet belong on the floor: this matters in the first step after noclip
-    // was switched off in mid-air. There is no gravity, because the floor is flat and the
-    // player cannot leave it.
-    position.y = FLOOR_Y;
+    // Walking. The feet belong on the ground: this matters in the first step after noclip
+    // was switched off in mid-air, where the box must be among the walls before it is
+    // tested against them. There is no gravity and no jump: the height is simply read
+    // from the terrain.
+    position.y = terrain.heightAt(position.x, position.z);
 
+    // The keys move the player in the horizontal plane only: direction has no vertical
+    // part here, so the speed over the ground is the same uphill and downhill.
     const float speed = input.sprint ? sprintSpeed : walkSpeed;
     const glm::vec3 wanted = direction * (speed * stepSeconds);
 
     // The walls take away the part of the movement that would go into them and leave the
     // part along them. The box is built anew from the position in every step.
     position += scene::moveAndSlide(box(), wanted, obstacles);
+
+    // The ground is uneven, so the place the step ended at has a height of its own.
+    position.y = terrain.heightAt(position.x, position.z);
 }
 
 } // namespace game

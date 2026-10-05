@@ -105,8 +105,9 @@ TEST_CASE("a new round has every crystal, a full battery and a closed gate") {
     for (std::size_t i = 0; i < round.crystals.size(); ++i) {
         CHECK_FALSE(round.crystals[i].collected);
         CHECK(round.crystals[i].variant == world.crystals[i].variant);
+        // The golden world is flat: the ground is at y = 0.
         checkVector(round.crystals[i].restPosition,
-                    game::crystalRestPosition(world.crystals[i].cell));
+                    game::crystalRestPosition(world.crystals[i].cell, 0.0F));
     }
     CHECK(round.collectedCount == 0);
     // 70 percent of 2 crystals is 1.4: both are needed.
@@ -150,7 +151,7 @@ TEST_CASE("a crystal is collected from the middle of its cell, not from the next
 
     // 0.9 m to the side is outside too: the two radii add up to 0.3 + 0.6 = 0.9 m, and
     // the crystal hangs 0.25 m above the middle of the body, so the reach along the
-    // floor is a little shorter (about 0.86 m).
+    // ground is a little shorter (about 0.86 m).
     game::updateRound(round, world, settings, under + glm::vec3{0.9F, 0.0F, 0.0F}, flashlightOn,
                       STEP);
     CHECK(round.collectedCount == 0);

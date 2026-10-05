@@ -7,6 +7,7 @@
 
 #include <glm/glm.hpp>
 
+#include <span>
 #include <vector>
 
 namespace game {
@@ -19,7 +20,7 @@ constexpr float CELL_SIZE = 2.0F;
 /// Length of one wall segment. A segment covers exactly one cell edge.
 constexpr float WALL_LENGTH = CELL_SIZE;
 
-/// Height of a wall, from the floor (y = 0) up.
+/// Height of a wall, from its base up.
 constexpr float WALL_HEIGHT = 3.0F;
 
 /// Side of the square footprint of a pillar. A pillar is thicker than the visible body
@@ -48,9 +49,11 @@ enum class WallAxis {
 
 /// One wall segment in the world.
 struct WallSegment {
-    /// The middle of the wall at floor level (y = 0). This is where the origin of the
-    /// wall model goes: the model is built along X, from x = -1 to x = +1, with its
-    /// origin in the centre of its base.
+    /// The middle of the base of the wall. This is where the origin of the wall model
+    /// goes: the model is built along X, from x = -1 to x = +1, with its origin in the
+    /// centre of its base. The layout functions of this file give y = 0. A maze that
+    /// stands on a terrain lowers every segment to the ground under it
+    /// (game::placeOnTerrain).
     glm::vec3 position{0.0F};
 
     /// AlongX: the model is used as it is. AlongZ: the model is turned by 90 degrees
@@ -58,7 +61,7 @@ struct WallSegment {
     WallAxis axis = WallAxis::AlongX;
 };
 
-/// Centre of the cell in column x and row z, at floor level:
+/// Centre of the cell in column x and row z, at y = 0:
 /// ((x + 0.5) * CELL_SIZE, 0, (z + 0.5) * CELL_SIZE). The maze starts in the origin of
 /// the world and covers x from 0 to width * CELL_SIZE and z from 0 to height * CELL_SIZE.
 glm::vec3 cellCenter(int x, int z);
@@ -73,20 +76,25 @@ WallSegment wallSegmentOn(int x, int z, Direction side);
 /// them, but it is one segment here. The order is fixed: row after row, cell after cell.
 std::vector<WallSegment> wallSegments(const Maze& maze);
 
-/// The grid corners at which at least one wall ends, as positions at floor level. Each
-/// of them gets a pillar. The order is fixed: row of corners after row of corners.
+/// The grid corners at which at least one wall ends, as positions at y = 0. Each of
+/// them gets a pillar. The order is fixed: row of corners after row of corners.
 std::vector<glm::vec3> pillarPositions(const Maze& maze);
 
 /// The collision box of a wall segment: WALL_LENGTH long, WALL_HEIGHT high and
-/// WALL_COLLISION_THICKNESS thick, standing on the floor.
+/// WALL_COLLISION_THICKNESS thick, standing on the position of the segment.
 scene::Aabb wallBox(const WallSegment& segment);
 
-/// The collision box of a pillar standing at position (a result of pillarPositions):
-/// PILLAR_SIZE by PILLAR_SIZE on the floor and PILLAR_HEIGHT high.
+/// The collision box of a pillar whose base is at position (a result of
+/// pillarPositions): PILLAR_SIZE by PILLAR_SIZE wide and PILLAR_HEIGHT high.
 scene::Aabb pillarBox(const glm::vec3& position);
 
-/// The collision boxes of the whole maze: the box of every wall segment, then the box of
-/// every pillar. This is the obstacle list for scene::moveAndSlide.
+/// The collision boxes of the given walls and pillars: the box of every wall segment,
+/// then the box of every pillar. This is the obstacle list for scene::moveAndSlide.
+std::vector<scene::Aabb> colliderBoxes(std::span<const WallSegment> walls,
+                                       std::span<const glm::vec3> pillars);
+
+/// The collision boxes of a whole maze that stands at y = 0: colliderBoxes of
+/// wallSegments and pillarPositions.
 std::vector<scene::Aabb> mazeColliders(const Maze& maze);
 
 } // namespace game

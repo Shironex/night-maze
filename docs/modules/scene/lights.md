@@ -20,7 +20,9 @@ Oświetlenie jest rozłożone na sześć dokumentów. Każdy plik kodu jest omaw
 
 Część M4 (rodzaje świateł, wzory, panel) była zmierzona na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): start gry bez linii `[error]` i bez linii `GL_`, a na zrzutach ekranu widok startowy, cztery tryby cieniowania z trzech miejsc, latarka wyłączona, strony ścian oświetlone i nieoświetlone przez księżyc. Światła punktowe wisiały wtedy w ślepych zaułkach.
 
-M5 (światła nad kryształami, puls, składnik emisyjny, bateria latarki) jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach, obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany, a zbierania kryształów i gasnących świateł nikt nie oglądał w działającej grze. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: ani część M4, ani nic z M5.
+M5 (światła nad kryształami, puls, składnik emisyjny, bateria latarki) jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (dziś, po drugiej części M6, 256 przypadków i 101232 asercje), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany, a zbierania kryształów i gasnących świateł nikt nie oglądał w działającej grze. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: ani część M4, ani nic z M5 i M6.
+
+W drugiej części M6 pod światłami zmieniło się podłoże: płytki podłogi zastąpił teren z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)), a plik `common/lighting.glsl` dostał trzeciego użytkownika, shader fragmentów trawy `grass.frag` ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)). Wzory świateł, struktury i panel Lights zostały bez zmian.
 
 Czego w tym kamieniu nie ma: **cieni** (dojdą w M7, do tego czasu światło przechodzi przez ściany), **korekcji gamma i tekstur sRGB** (M7, notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Mapy normalnych, które w pierwszej części M4 były na tej liście, są już w kodzie: normalną, którą dostają wzory z tego dokumentu, opisuje sekcja 2.9.
 
@@ -160,11 +162,13 @@ Przykład na liczbach z gry. Światło księżyca przy ustawieniach startowych l
 
 | Powierzchnia | Normalna `N` | `dot(N, L)` | Wynik |
 |---|---|---|---|
-| podłoga | `(0, 1, 0)` | 0,77 | jasna |
+| poziomy grunt | `(0, 1, 0)` | 0,77 | jasny |
 | lico ściany zwrócone ku `+Z` | `(0, 0, 1)` | 0,58 | średnia |
 | lico ściany zwrócone ku `-X` | `(-1, 0, 0)` | 0,27 | ciemna |
 | lico ściany zwrócone ku `+X` | `(1, 0, 0)` | -0,27, po `max` 0 | tylko światło otoczenia |
 | lico ściany zwrócone ku `-Z` | `(0, 0, -1)` | -0,58, po `max` 0 | tylko światło otoczenia |
+
+Pierwszy wiersz to grunt idealnie poziomy, taki jak płytki podłogi do M5. Teren z M6 jest pod labiryntem łagodnie nierówny, więc jego normalne odchylają się od `(0, 1, 0)` o kilka stopni i liczba 0,77 zmienia się z miejsca na miejsce o kilka setnych: zbocze zwrócone ku księżycowi jest trochę jaśniejsze, odwrócone trochę ciemniejsze. Normalną `(0, 1, 0)` dokładnie ma za to trawa: `grass.frag` oświetla wszystkie źdźbła stałą normalną skierowaną w górę.
 
 Kąt obrotu księżyca (yaw 25 stopni) celowo nie jest wielokrotnością 45: ściany patrzą w cztery strony i dzięki temu każda z dwóch oświetlonych stron dostaje inną jasność. Widać to na zrzucie ekranu z Windowsa (strony oświetlone i nieoświetlone).
 
@@ -316,7 +320,7 @@ Dlaczego na procesorze, a nie `transpose(inverse(mat3(uModel)))` w shaderze: sha
 
 ### 2.8 Czego jeszcze nie ma: cienie i gamma
 
-**Cienie.** Wzory z tej sekcji pytają tylko o kąt i odległość. Nie pytają, czy między światłem a punktem coś stoi. Światło punktowe kryształu rozjaśnia więc także podłogę korytarza **za ścianą**, a księżyc oświetla podłogę u stóp ściany, która powinna ją zasłaniać. To nie błąd shadera, tylko brak osobnej techniki (mapy cieni), która jest tematem 9 i dojdzie w M7. Na obronie mówię to wprost.
+**Cienie.** Wzory z tej sekcji pytają tylko o kąt i odległość. Nie pytają, czy między światłem a punktem coś stoi. Światło punktowe kryształu rozjaśnia więc także grunt korytarza **za ścianą**, a księżyc oświetla grunt u stóp ściany, która powinna go zasłaniać. To nie błąd shadera, tylko brak osobnej techniki (mapy cieni), która jest tematem 9 i dojdzie w M7. Na obronie mówię to wprost.
 
 **Gamma.** Tekstury są czytane tak, jak leżą w pliku, a wynik jest zapisywany bez korekcji. Rachunek światła odbywa się więc na liczbach, które nie są proporcjonalne do jasności. Uzasadnienie i skutki są w notatce [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
 
@@ -350,7 +354,7 @@ OpenGL w profilu Core **nie ma świateł**. Stare funkcje `glLight` i `glMateria
 | styczna wierzchołka (tylko dla mapowania normalnych) | atrybut numer 3 w `gfx::Vertex` | ustawione raz w VAO siatki | 0 |
 | mapa normalnych i jej przełącznik (tylko program `lit`) | tekstura na jednostce 1, uniformy `uNormalMap` i `uNormalMapEnabled` | `glActiveTexture`, `glBindTexture`, `glBindSampler`, `glUniform1i` | raz na część modelu i po 1 ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 3) |
 
-Blok uniformów czytają oba programy oświetlenia (`lit` i `gouraud`) z tego samego bufora na karcie. Dlaczego blok, a nie 60 osobnych uniformów, i jak bajty z C++ trafiają dokładnie tam, gdzie shader ich szuka, omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
+Blok uniformów czytają oba programy oświetlenia (`lit` i `gouraud`), a od M6 także program trawy `grass`, wszystkie z tego samego bufora na karcie. Dlaczego blok, a nie 60 osobnych uniformów, i jak bajty z C++ trafiają dokładnie tam, gdzie shader ich szuka, omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
 
 Wszystkie obliczenia światła są w **przestrzeni świata**: pozycje świateł, pozycja oka, pozycja fragmentu i normalna (także ta z mapy normalnych: `surfaceNormal` przenosi ją z przestrzeni stycznej do świata, zanim trafi do wzorów). Drugą częstą konwencją jest przestrzeń widoku (oko w punkcie zero). Wybrałem świat, bo światła gry są zdefiniowane w świecie (komórki labiryntu) i nie trzeba ich co klatkę mnożyć przez macierz widoku.
 
@@ -905,7 +909,7 @@ void drawMoon(game::LightingSettings& lighting) {
 | `ImGui::CollapsingHeader("Moon (directional)")` | pasek z tytułem, który zwija grupę. Zwraca prawdę, gdy grupa jest otwarta. Bez flagi grupa startuje **zwinięta**. Pozostałe trzy grupy podają `ImGuiTreeNodeFlags_DefaultOpen` i startują otwarte |
 | `if (!...) return;` | zwinięta grupa nie rysuje widżetów |
 | `SliderFloat(..., "%.0f deg", ImGuiSliderFlags_AlwaysClamp)` | suwak z zakresem. `AlwaysClamp` pilnuje zakresu także wtedy, gdy liczbę wpisano z klawiatury (Ctrl i kliknięcie) |
-| zakres `Moon pitch` od -90 do -5 | -90 świeci prosto w dół, blisko 0 światło tylko muska podłogę. Powyżej 0 księżyc świeciłby spod ziemi, więc suwak tam nie sięga |
+| zakres `Moon pitch` od -90 do -5 | -90 świeci prosto w dół, blisko 0 światło tylko muska grunt. Powyżej 0 księżyc świeciłby spod ziemi, więc suwak tam nie sięga |
 
 Dwa miejsca panelu czytają rundę. Pierwsze jest w `drawFlashlight`:
 
@@ -965,7 +969,7 @@ Suwak **logarytmiczny**: połowa jego długości przypada na małe wykładniki, 
 |---|---|---|---|---|
 | (bez grupy) | `Ambient` | kolor | `ambient` | składnik otoczenia: jedyne światło w miejscach, do których nic nie świeci. Czarny daje czarne cienie |
 | `Moon (directional)`, zwinięta | `Moon yaw` | od 0 do 360 stopni | `moonYawDegrees` | światło kierunkowe: obrót zmienia, które strony ścian są jasne (prawo Lamberta), a nic nie zależy od miejsca |
-| | `Moon pitch` | od -90 do -5 stopni | `moonPitchDegrees` | -90: podłoga najjaśniejsza, ściany ciemne. Blisko -5: odwrotnie |
+| | `Moon pitch` | od -90 do -5 stopni | `moonPitchDegrees` | -90: grunt najjaśniejszy, ściany ciemne. Blisko -5: odwrotnie |
 | | `Moon colour`, `Moon intensity` | kolor, od 0 do 2 | `moonColor`, `moonIntensity` | kolor razy intensywność. 0 wyłącza księżyc |
 | `Flashlight (spot)` | `Flashlight on (key F)` | pole wyboru | `flashlightOn` | to samo pole, które przełącza klawisz F. Przy pustej baterii ma podpowiedź `The battery is empty: collect a crystal first.` i samo się odznacza |
 | | `Beam colour`, `Beam intensity` | kolor, od 0 do 10 | `flashlightColor`, `flashlightIntensity` | powyżej pewnej wartości środek plamy się prześwietla: kolor jest obcinany do 1 |
@@ -985,11 +989,11 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 
 **Kroków nikt jeszcze nie wykonał ręcznie.** Opisują to, co wynika z kodu. Na zrzutach ekranu z Windowsa z M4 widać było tylko stan startowy z kroku 1, zgaszoną latarkę i różnicę jasności stron ścian z kroku 3 (przy ustawieniach startowych, bez ruszania suwaków). Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
-1. **Trzy rodzaje świateł naraz.** Start gry. Mówię: ciepła plama na wprost to latarka (reflektor), zimna poświata na podłodze to księżyc (kierunkowe), turkusowe światło w głębi to kryształ (punktowe).
+1. **Trzy rodzaje świateł naraz.** Start gry. Mówię: ciepła plama na wprost to latarka (reflektor), zimna poświata na podłożu to księżyc (kierunkowe), turkusowe światło w głębi to kryształ (punktowe).
 2. **Składnik otoczenia.** Ustawiam `Ambient` na czarny: miejsca bez światła stają się zupełnie czarne. Przywracam.
-3. **Światło kierunkowe i Lambert.** Naciskam F (latarka gaśnie), żeby nie przeszkadzała. Rozwijam `Moon (directional)` i podnoszę `Moon intensity` do 1. Obracam `Moon yaw`: jasne stają się kolejne strony ścian, a po przejściu w inne miejsce nic się nie zmienia, bo kierunek jest wszędzie ten sam. Ustawiam `Moon pitch` na -90: ściany gasną (cosinus 0), podłoga jest najjaśniejsza.
+3. **Światło kierunkowe i Lambert.** Naciskam F (latarka gaśnie), żeby nie przeszkadzała. Rozwijam `Moon (directional)` i podnoszę `Moon intensity` do 1. Obracam `Moon yaw`: jasne stają się kolejne strony ścian, a po przejściu w inne miejsce nic się nie zmienia, bo kierunek jest wszędzie ten sam. Ustawiam `Moon pitch` na -90: ściany gasną (cosinus 0), grunt jest najjaśniejszy.
 4. **Światło punktowe i tłumienie.** Podchodzę do kryształu i zatrzymuję się około metra przed nim, żeby go nie zebrać (gracz zbiera kryształ, gdy stoi bliżej niż około 0,86 m od środka jego komórki: [`../game/gameplay.md`](../game/gameplay.md), sekcja 2). Zmieniam `Point radius` z 3 na 1, potem na 8. Mówię: w odległości równej promieniowi zostaje 5 procent, a krzywa ma zawsze ten sam kształt.
-5. **Brak cieni.** Przy promieniu 8 pokazuję podłogę za ścianą, przy której wisi kryształ: jest rozjaśniona. Mówię, że wzór pyta tylko o kąt i odległość, a cienie to osobna technika z M7.
+5. **Brak cieni.** Przy promieniu 8 pokazuję grunt za ścianą, przy której wisi kryształ: jest rozjaśniony. Mówię, że wzór pyta tylko o kąt i odległość, a cienie to osobna technika z M7.
 6. **Emisja a światło.** Przywracam `Point radius` 3 i przesuwam `Point intensity` do 0: ściany wokół kryształu gasną, a sam kryształ świeci dalej. Zmieniam `Point colour`: zmienia się i kryształ, i (po przywróceniu intensywności) blask na ścianach. Mówię: kryształ świeci składnikiem emisyjnym, a ściany oświetla osobne światło punktowe nad nim. Pokazuję linię `Lit: 13 of 13 crystals (at most 16)`.
 7. **Reflektor.** Włączam latarkę (F). Staję przed ścianą. W `Cone` ustawiam oba kąty na 15: ostra krawędź. Potem 5 i 30: szeroki miękki brzeg. Mówię o porównywaniu cosinusów.
 8. **Zasięg.** Patrzę w długi korytarz i przesuwam `Beam range` od 4 do 40.
@@ -1021,11 +1025,11 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 
 Ćwiczenia od 1 do 5 są na kartce, od 6 do 13 w działającej grze. Po zmianie pliku shadera na Windowsie trzeba odświeżyć kopię katalogu `assets` (`cmake --build --preset debug --target copy_assets`) i nacisnąć `Reload shaders` ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md)). Po ćwiczeniu wycofaj zmianę (`git checkout src assets`).
 
-1. **Lambert na kartce.** Światło kierunkowe leci w kierunku `(0, -1, 0)`. Policz czynnik Lamberta dla podłogi, dla pionowej ściany i dla dachu nachylonego o 30 stopni. (Odpowiedź: 1, 0, około 0,87.)
+1. **Lambert na kartce.** Światło kierunkowe leci w kierunku `(0, -1, 0)`. Policz czynnik Lamberta dla poziomego gruntu, dla pionowej ściany i dla dachu nachylonego o 30 stopni. (Odpowiedź: 1, 0, około 0,87.)
 2. **Tłumienie na kartce.** Światło ma promień 4 m. Policz współczynniki i jasność w odległości 1 m, 2 m i 4 m. (Odpowiedź: `linear = 0,5`, `quadratic = 1,0625`, jasność 39 %, 16 %, 5 %.)
 3. **Stożek na kartce.** Latarka ma kąty 10 i 20 stopni. Punkt leży pod kątem 15 stopni od osi. Policz czynnik stożka. (Wskazówka: `cos 10 = 0,985`, `cos 15 = 0,966`, `cos 20 = 0,940`. Odpowiedź: około 0,58, a nie 0,5, bo przejście jest liniowe w cosinusie.)
 4. **Macierz normalnych na kartce.** Obiekt jest skalowany `(2, 1, 1)` bez obrotu. Normalna powierzchni skośnej to `(1, 1, 0) / sqrt(2)`. Policz normalną po pomnożeniu przez `mat3(model)` i przez macierz normalnych. Która jest prostopadła do stycznej `(-2, 1, 0)`?
-5. **Kierunek księżyca na kartce.** Policz `directionFromAngles(90, -45)`. Które strony ścian będą oświetlone? (Odpowiedź: `(0,71, -0,71, 0)`, ściany zwrócone ku `-X` i podłoga.)
+5. **Kierunek księżyca na kartce.** Policz `directionFromAngles(90, -45)`. Które strony ścian będą oświetlone? (Odpowiedź: `(0,71, -0,71, 0)`, ściany zwrócone ku `-X` i grunt.)
 6. **Samo światło otoczenia.** W panelu ustaw intensywność księżyca, latarki i świateł punktowych na 0. Co widać i dlaczego ściany nie mają żadnego kształtu?
 7. **Bez `max`.** W `diffuseFactor` zamień ciało na `return dot(normal, toLight);`. Przeładuj shadery, wyłącz latarkę. Które ściany pociemniały i dlaczego?
 8. **Ostra krawędź.** W `computeLighting` zamień linię `float cone = clamp(...)` na `float cone = cosAngle > uSpotCone.y ? 1.0 : 0.0;`. Jak wygląda brzeg plamy? Który z dwóch kątów panelu przestał mieć znaczenie?
