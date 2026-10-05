@@ -8,6 +8,8 @@
 // The normal map and the function surfaceNormal, for the view of the normals. The same
 // file is included by lit.frag, so the view shows the very normal the lighting uses.
 #include "common/normal_map.glsl"
+// srgbToLinear, for the two debug views.
+#include "common/color.glsl"
 
 // Inputs from the vertex shader: same names and types as its outputs, already
 // interpolated for this fragment.
@@ -34,7 +36,8 @@ uniform vec3 uEmissive;
 //   2: the texture coordinate as a colour
 uniform int uViewMode;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha), as a LINEAR colour. The composite pass encodes it for the screen.
 out vec4 fragColor;
 
 void main() {
@@ -44,17 +47,25 @@ void main() {
         // has length 1, so each component is between -1 and 1, and a colour needs 0 to
         // 1: half of it plus one half. A surface facing +X comes out reddish, +Y (up)
         // greenish, +Z bluish, and the opposite directions dark in that channel.
+        //
+        // The colour is data, meant to reach the screen as these very numbers. The
+        // composite pass will encode the frame to sRGB, so the opposite conversion is
+        // applied here and the two cancel out.
         vec3 normal = surfaceNormal(vNormal, vTangent, vUv);
-        fragColor = vec4(normal * 0.5 + 0.5, 1.0);
+        fragColor = vec4(srgbToLinear(normal * 0.5 + 0.5), 1.0);
     } else if (uViewMode == 2) {
         // u goes to red and v to green. The coordinates of the models run past 1 (the
         // texture repeats), so only the fractional part is shown: the colour starts
         // again from black wherever the texture starts again.
-        fragColor = vec4(fract(vUv), 0.0, 1.0);
+        // Data again, so converted like the normal above.
+        fragColor = vec4(srgbToLinear(vec3(fract(vUv), 0.0)), 1.0);
     } else {
         // texture() reads the texture at vUv with the filter, the mipmaps and the
         // wrapping set in OpenGL. It returns red, green, blue, alpha. Only the colour is
-        // used: the models are opaque, so alpha is written as 1.
+        // used: the models are opaque, so alpha is written as 1. The colour textures
+        // are sRGB textures (GL_SRGB8), so the value arrives here already decoded to
+        // a linear colour, and the composite pass encodes it again: without lighting
+        // the screen shows the picture as it is in the file.
         //
         // Without lighting the surface is shown at full brightness, as if lit by white
         // light of strength 1. The glow is added to that light, so a crystal stands

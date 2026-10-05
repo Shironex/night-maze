@@ -5,9 +5,11 @@ Kod: klasa [`src/game/Skybox.hpp`](../../../src/game/Skybox.hpp) i [`Skybox.cpp`
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasa nazywa się `game::Skybox` i leży w `src/game/`, wyjaśniają [`README.md`](README.md) i notatka [`../../decisions/skybox-in-game-layer.md`](../../decisions/skybox-in-game-layer.md). Dokument zakłada znajomość tekstur 2D ([`../gfx/textures.md`](../gfx/textures.md): teksele, filtry, zawijanie, jednostki teksturujące, obiekt samplera), macierzy widoku i rzutowania oraz testu głębi ([`../scene/camera.md`](../scene/camera.md)) i loadera obrazów ([`../assets/images.md`](../assets/images.md)). Samą klasę `gfx::Cubemap` linia po linii opisuje [`../gfx/cubemap.md`](../gfx/cubemap.md): tutaj jest teoria tekstury sześciennej i wszystko, co robi z nią gra.
 
-**Stan na dziś:** nad ścianami labiryntu i nad wzgórzami wokół niego widać nocne niebo: ciemnogranatowe tło jaśniejsze przy horyzoncie, gwiazdy, pas Drogi Mlecznej i tarczę księżyca z poświatą. Niebo jest teksturą sześcienną (cube map) z sześciu plików PNG 1024 x 1024, rysowaną przez `game::Skybox` jako ostatnie wywołanie rysujące sceny. Włącza je i wyłącza pole wyboru `Skybox` w panelu Renderer (startuje zaznaczone), jasność zmienia suwak `Sky brightness`. Od tej części programów shaderów było pięć: doszedł `skybox`. Dziś jest ich sześć, bo druga część M6 dodała `grass` (trawa, [`grass-geometry.md`](grass-geometry.md)).
+**Stan na dziś:** nad ścianami labiryntu i nad wzgórzami wokół niego widać nocne niebo: ciemnogranatowe tło jaśniejsze przy horyzoncie, gwiazdy, pas Drogi Mlecznej i tarczę księżyca z poświatą. Niebo jest teksturą sześcienną (cube map) z sześciu plików PNG 1024 x 1024, rysowaną przez `game::Skybox` jako ostatnie wywołanie rysujące sceny. Włącza je i wyłącza pole wyboru `Skybox` w panelu Renderer (startuje zaznaczone), jasność zmienia suwak `Sky brightness`. Od tej części programów shaderów było pięć: doszedł `skybox`. Druga część M6 dodała `grass` (trawa, [`grass-geometry.md`](grass-geometry.md)), a pierwsza część M7 `composite` i `preview`, więc dziś jest ich osiem.
 
-Zgłoszone dla Windowsa (2026-10-05) dla tej części: build Debug i Release bez ostrzeżeń, 221 przypadków testowych i 85175 asercji w obu konfiguracjach (dziś, po terenie i trawie, 256 przypadków i 101232 asercje). Liczby zgadzają się z kodem: po M5 było 215 i 85098, doszło 5 przypadków i 71 asercji w `tests/SkyboxTests.cpp` oraz 1 przypadek i 6 asercji w `tests/ImageLoaderTests.cpp`. Orientacja nieba była sprawdzona na zrzutach ekranu: księżyc w środku obrazu przy kamerze ustawionej na yaw 205 i pitch 50, poziomy horyzont, brak szwów między ścianami sześcianu. Wersji kompilatora, karty i sterownika dla tego pomiaru nie zapisano. **Nikt jeszcze nie kliknął myszą** pola `Skybox`, suwaka `Sky brightness` ani przycisku `Reload shaders` (wtedy przy pięciu programach, dziś przy sześciu). **Na macOS ten kod nie był ani budowany, ani uruchamiany.** M6 jest dziś kompletny w kodzie na Windowsie (niebo, teren, trawa) i nie jest zamknięty: macOS i testy ręczne są otwarte.
+**Co zmieniła pierwsza część M7 (2026-10-05).** Niebo, jak cała scena, jest rysowane do bufora HDR, a nie prosto do okna: po nim idą jeszcze podglądy załączników i przebieg składający ([`post-process.md`](post-process.md)). Tekstura sześcienna jest teraz teksturą sRGB (`gfx::ColorSpace::Srgb`, format `GL_SRGB8`), więc shader dostaje wartości liniowe ([`../gfx/color-space.md`](../gfx/color-space.md)). Domyślna jasność wzrosła z 1,0 do 2,2, a zakres suwaka z 3 do 6. Kolor czyszczenia zmienił się z `(0.01, 0.015, 0.04)` na `(0.022, 0.033, 0.088)` i jest przeliczany na liniowy. Widok diagnostyczny nieba przechodzi przez `srgbToLinear`. Obrazy w `assets/skybox/` i ich liczby w skrypcie się nie zmieniły.
+
+Zgłoszone dla Windowsa (2026-10-05) dla tej części: build Debug i Release bez ostrzeżeń, 221 przypadków testowych i 85175 asercji w obu konfiguracjach (po terenie i trawie 256 przypadków i 101232 asercje, a po pierwszej części M7 zgłoszone 269 przypadków i 102103 asercje). Liczby zgadzają się z kodem: po M5 było 215 i 85098, doszło 5 przypadków i 71 asercji w `tests/SkyboxTests.cpp` oraz 1 przypadek i 6 asercji w `tests/ImageLoaderTests.cpp`. Orientacja nieba była sprawdzona na zrzutach ekranu: księżyc w środku obrazu przy kamerze ustawionej na yaw 205 i pitch 50, poziomy horyzont, brak szwów między ścianami sześcianu. Wersji kompilatora, karty i sterownika dla tego pomiaru nie zapisano. **Nikt jeszcze nie kliknął myszą** pola `Skybox`, suwaka `Sky brightness` ani przycisku `Reload shaders` (wtedy przy pięciu programach, dziś przy ośmiu). **Na macOS ten kod nie był ani budowany, ani uruchamiany.** M6 jest dziś kompletny w kodzie na Windowsie (niebo, teren, trawa) i nie jest zamknięty: macOS i testy ręczne są otwarte.
 
 ## 1. Po co to jest
 
@@ -309,7 +311,7 @@ To robi konstruktor `gfx::Cubemap`. Kod linia po linii: [`../gfx/cubemap.md`](..
 | 1 | `glGenTextures(1, &id)` | rezerwuje identyfikator tekstury |
 | 2 | `glBindTexture(GL_TEXTURE_CUBE_MAP, id)` | wiąże ją z celem `GL_TEXTURE_CUBE_MAP` aktywnej jednostki. Pierwsze związanie ustala rodzaj tekstury na stałe: ta jest odtąd sześcienna |
 | 3 | `glGetIntegerv(GL_UNPACK_ALIGNMENT, ...)`, `glPixelStorei(GL_UNPACK_ALIGNMENT, 1)` | wiersze danych leżą ciasno, jak w `Texture2D` |
-| 4 | `glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB8, size, size, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels)`, sześć razy | wysyła jedną ścianę. Związana jest cała tekstura sześcienna, a pierwszy argument nazywa ścianę do wypełnienia |
+| 4 | `glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_SRGB8, size, size, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels)`, sześć razy | wysyła jedną ścianę. Związana jest cała tekstura sześcienna, a pierwszy argument nazywa ścianę do wypełnienia. Format wewnętrzny `GL_SRGB8` (od M7, przedtem `GL_RGB8`): bajty są te same, ale karta dekoduje je do wartości liniowych przy odczycie |
 | 5 | `glPixelStorei(GL_UNPACK_ALIGNMENT, previous)` | przywraca poprzednie wyrównanie |
 | 6 | `glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, 0)` | mówi, że poziom 0 jest jedynym poziomem mipmap. Tekstura jest wtedy kompletna przy każdym filtrze |
 | 7 | `glGenSamplers(1, &sampler)` | obiekt samplera tej tekstury |
@@ -429,12 +431,16 @@ void main() {
 // interpolated. Its length is not 1, and for reading a cube map it does not have to be.
 in vec3 vDirection;
 
+// srgbToLinear, for the debug views.
+#include "common/color.glsl"
+
 // The six pictures of the sky. A samplerCube, like a sampler2D, holds the NUMBER OF
 // A TEXTURE UNIT, set from C++ with gfx::Shader::setInt (glUniform1i). The cube map
 // bound to that unit (gfx::Cubemap::bind) is the one that is read.
 uniform samplerCube uSkybox;
 
-// The colour of the sky is multiplied by this number: 1 shows the pictures as they are.
+// The (linear) colour of the sky is multiplied by this number: 1 shows the pictures as
+// they are.
 uniform float uBrightness;
 
 // What to show. The numbers are the values of game::ViewMode in C++.
@@ -443,7 +449,8 @@ uniform float uBrightness;
 //      direction the cube map is read with, as a colour
 uniform int uViewMode;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha), as a LINEAR colour.
 out vec4 fragColor;
 
 void main() {
@@ -452,14 +459,17 @@ void main() {
         // It is shown with the colour coding of the normals in textured.frag: each
         // component goes from -1..1 to 0..1. The sky towards +X comes out reddish, +Y
         // (up) greenish, +Z bluish, and the opposite directions dark in that channel.
-        fragColor = vec4(normalize(vDirection) * 0.5 + 0.5, 1.0);
+        // Data shown as a colour: converted so that the encoding of the composite pass
+        // gives back these numbers (see textured.frag).
+        fragColor = vec4(srgbToLinear(normalize(vDirection) * 0.5 + 0.5), 1.0);
     } else {
         // texture() with a samplerCube takes a direction (a vec3) instead of (u, v). The
         // graphics card picks the face the direction points at (the axis with the
         // largest component) and the texel on that face.
         //
-        // No lighting: the sky gives off its own light. Like the other textures, the
-        // pictures are used as they are in the file (no gamma correction before M7).
+        // No lighting: the sky gives off its own light. The cube map is an sRGB
+        // texture like the colour textures of the models, so the value is already
+        // a linear colour here.
         vec3 sky = texture(uSkybox, vDirection).rgb;
         fragColor = vec4(sky * uBrightness, 1.0);
     }
@@ -470,16 +480,17 @@ void main() {
 |---|---|
 | `in vec3 vDirection;` | para do wyjścia `skybox.vert`, już zinterpolowana dla tego fragmentu |
 | `uniform samplerCube uSkybox;` | nowy typ samplera. Jak `sampler2D`, **nie przechowuje identyfikatora tekstury, tylko numer jednostki teksturującej** ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.7). Różnica: czyta wiązanie `GL_TEXTURE_CUBE_MAP` tej jednostki, a nie `GL_TEXTURE_2D` |
-| `uniform float uBrightness;` | mnożnik koloru. 1 pokazuje obrazy takie, jakie są w plikach |
+| `#include "common/color.glsl"` | dyrektywa własnego loadera ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)): wkleja funkcję `srgbToLinear`, potrzebną w widoku diagnostycznym. Stoi po deklaracji `in`, co nie przeszkadza: plik zawiera tylko stałe i funkcje |
+| `uniform float uBrightness;` | mnożnik **liniowego** koloru. 1 zostawia obrazy takie, jakie są w plikach (po zakodowaniu na końcu klatki, przy krzywej `None`) |
 | `uniform int uViewMode;` | ta sama nazwa i te same liczby co w `textured.frag` (a od drugiej części M6 także w `grass.frag`): wartości `game::ViewMode` (`Textured = 0`, `Normals = 1`, `Uvs = 2`) |
 | `if (uViewMode != 0)` | oba widoki diagnostyczne dają ten sam obraz nieba. Niebo nie ma normalnej ani pary `(u, v)`: jego współrzędną tekstury jest kierunek, więc w obu widokach pokazuje właśnie kierunek |
-| `fragColor = vec4(normalize(vDirection) * 0.5 + 0.5, 1.0);` | to samo kodowanie co normalne w `textured.frag`: każda składowa z zakresu od -1 do 1 na zakres od 0 do 1. Tutaj `normalize` **jest** potrzebne, bo kolor ma zależeć tylko od kierunku, a nie od tego, czy fragment leży w środku ściany, czy w narożniku |
-| `vec3 sky = texture(uSkybox, vDirection).rgb;` | **sedno tematu 8.** Ta sama funkcja `texture`, ale z samplerem `samplerCube` jej drugim argumentem jest `vec3`, kierunek. Wybór ściany i teksela z sekcji 2.3 wykonuje karta |
-| `fragColor = vec4(sky * uBrightness, 1.0);` | bez oświetlenia: niebo świeci samo. Alfa 1 |
+| `fragColor = vec4(srgbToLinear(normalize(vDirection) * 0.5 + 0.5), 1.0);` | to samo kodowanie co normalne w `textured.frag`: każda składowa z zakresu od -1 do 1 na zakres od 0 do 1. Tutaj `normalize` **jest** potrzebne, bo kolor ma zależeć tylko od kierunku, a nie od tego, czy fragment leży w środku ściany, czy w narożniku. `srgbToLinear` (od M7): to dane, a nie światło, i mają dotrzeć na ekran jako te same liczby. Przebieg składający zakoduje klatkę do sRGB, więc tutaj stosowana jest zamiana odwrotna i obie się znoszą ([`post-process.md`](post-process.md), sekcja 2.9) |
+| `vec3 sky = texture(uSkybox, vDirection).rgb;` | **sedno tematu 8.** Ta sama funkcja `texture`, ale z samplerem `samplerCube` jej drugim argumentem jest `vec3`, kierunek. Wybór ściany i teksela z sekcji 2.3 wykonuje karta. Tekstura jest sRGB, więc `sky` jest już kolorem liniowym: dekodowanie zrobiła karta |
+| `fragColor = vec4(sky * uBrightness, 1.0);` | bez oświetlenia: niebo świeci samo. Alfa 1. Wynik trafia do bufora HDR sceny i może przekraczać 1 |
 
 Kolory w widoku diagnostycznym, do sprawdzenia w grze:
 
-| Patrzę w stronę | Kierunek | Kolor `kierunek * 0,5 + 0,5` | Wrażenie |
+| Patrzę w stronę | Kierunek | Kolor `kierunek * 0,5 + 0,5` na ekranie | Wrażenie |
 |---|---|---|---|
 | +X (yaw 90) | `(1, 0, 0)` | `(1, 0,5, 0,5)` | różowoczerwony |
 | -X (yaw 270) | `(-1, 0, 0)` | `(0, 0,5, 0,5)` | ciemny turkus |
@@ -487,7 +498,7 @@ Kolory w widoku diagnostycznym, do sprawdzenia w grze:
 | +Z (yaw 180) | `(0, 0, 1)` | `(0,5, 0,5, 1)` | niebieskofioletowy |
 | -Z (yaw 0) | `(0, 0, -1)` | `(0,5, 0,5, 0)` | oliwkowy |
 
-Wynik `sky * uBrightness` nie jest przycinany w shaderze. Wartości powyżej 1 obcina framebuffer okna, który przechowuje liczby od 0 do 1. Do M7 nie ma bufora HDR, więc przy suwaku `Sky brightness` powyżej 1 tarcza księżyca traci szczegóły: kolor tarczy bez plam to `(0.86, 0.89, 0.96)`, więc w najjaśniejszych miejscach tarczy kanał niebieski dochodzi do bieli już przy jasności około 1,04, a czerwony przy około 1,16. Szare plamy odejmują do 22% jasności, więc najciemniejsze z nich bieleją dopiero przy około 1,5.
+Wynik `sky * uBrightness` nie jest przycinany w shaderze i od M7 nie przycina go też bufor: scena jest rysowana do tekstury `GL_RGBA16F`, która przechowuje wartości powyżej 1. O tym, jak trafią na ekran, decyduje krzywa mapowania tonów przebiegu składającego ([`post-process.md`](post-process.md), sekcja 2.6). Liczby dla tarczy księżyca: jej kolor bez plam to w skrypcie `(0.86, 0.89, 0.96)`, liniowo około `(0,71, 0,77, 0,91)`. Przy domyślnej jasności 2,2 daje to w buforze około `(1,56, 1,69, 2,00)`: tarcza jest jaśniejsza od bieli, tak jak chce komentarz przy `SkyboxSettings::brightness`. Krzywa ACES sprowadza to do około `(0,88, 0,90, 0,92)`, więc tarcza jest prawie biała, ale nie płaska. Przy krzywej `None` wszystko powyżej 1 jest obcinane: kanał niebieski tarczy dochodzi do bieli przy jasności około 1,10, a czerwony przy około 1,41. Liczby policzone ze wzorów, nie odczytane z ekranu. Przed M7 obcinało okno, a tekstura nie była dekodowana, więc tarcza przepalała się już od jasności około 1,04.
 
 ### 4.3 Strona C++: kto ustawia uniformy
 
@@ -501,7 +512,7 @@ Wszystkie pięć uniformów programu ustawia jedna funkcja, `Skybox::draw` (sekc
 | `uViewMode` | `VIEW_MODE_UNIFORM` | `setInt` | `static_cast<int>(viewMode)` |
 | `uSkybox` | `SKYBOX_UNIFORM` | `setInt` | `SKYBOX_TEXTURE_UNIT`, czyli 0 |
 
-Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Po tej części nagłówek miał szesnaście nazw zwykłych uniformów pięciu programów. Dziś ma dwadzieścia nazw dla sześciu programów: druga część M6 dodała cztery uniformy trawy (`uTime`, `uBladeHeight`, `uWindStrength`, `uLit`), a `uViewMode` czyta teraz także `grass.frag`.
+Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Po tej części nagłówek miał szesnaście nazw zwykłych uniformów pięciu programów. Druga część M6 dodała cztery uniformy trawy (`uTime`, `uBladeHeight`, `uWindStrength`, `uLit`), a `uViewMode` czyta od niej także `grass.frag`. Pierwsza część M7 dodała osiem nazw dla programów `composite` i `preview` ([`post-process.md`](post-process.md), sekcja 4.5), więc dziś jest dwadzieścia osiem nazw zwykłych uniformów dla ośmiu programów (i osobno nazwa bloku `LightBlock`).
 
 ## 5. Kod w projekcie
 
@@ -515,7 +526,7 @@ Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Po tej cz�
 | [`assets/shaders/skybox.vert`](../../../assets/shaders/skybox.vert), [`skybox.frag`](../../../assets/shaders/skybox.frag) | para shaderów (sekcja 4) |
 | [`assets/skybox/`](../../../assets/skybox/) | `px.png`, `nx.png`, `py.png`, `ny.png`, `pz.png`, `nz.png`: 1024 x 1024, RGB, 8 bitów na kanał (odczytane z nagłówków plików) |
 | [`tools/blender/make_skybox.py`](../../../tools/blender/make_skybox.py) | generator obrazów (sekcje 2.8 i 5.7). Stała `SKYBOX_DIR` jest w [`blender_common.py`](../../../tools/blender/blender_common.py), a wywołanie `make_skybox.build()` na końcu [`make_all.py`](../../../tools/blender/make_all.py) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_skyboxShader`, `m_skybox`, `m_skyboxSettings`, akcesory `skyboxShader()` i `skyboxSettings()`, wywołanie na końcu `onRender` |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_skyboxShader`, `m_skybox`, `m_skyboxSettings`, akcesory `skyboxShader()` i `skyboxSettings()`, wywołanie w `onRender` po reszcie sceny (od M7 przed podglądami i przebiegiem składającym) |
 | [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | `SKYBOX_UNIFORM`, `SKYBOX_BRIGHTNESS_UNIFORM` |
 | [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp) | komentarz o sprzężeniu wartości domyślnych księżyca ze skryptem |
 | [`src/debug/panels/RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp), [`.hpp`](../../../src/debug/panels/RendererPanel.hpp), [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`src/debug/DebugUI.cpp`](../../../src/debug/DebugUI.cpp), [`src/debug/PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), [`src/main.cpp`](../../../src/main.cpp) | kontrolki nieba, dwa nowe pola kontekstu, piąty program na liście panelu Shaders, wyższy panel Renderer (sekcja 6) |
@@ -529,12 +540,16 @@ W [`CMakeLists.txt`](../../../CMakeLists.txt) `Cubemap` należy do biblioteki `e
 struct SkyboxSettings {
     /// Whether the sky is drawn. Without it the background is the clear colour.
     bool enabled = true;
-    /// The colours of the sky pictures are multiplied by this number: 1 shows them as
-    /// they are, 0 is black. The pictures are dark already (a night sky is a backdrop),
-    /// so values above 1 are useful too.
-    float brightness = 1.0F;
+    /// The linear colours of the sky pictures are multiplied by this number: 1 leaves
+    /// them as they are, 0 is black. The pictures are dark (a night sky is a backdrop)
+    /// and the tone mapping curve of the composite pass presses dark tones down further,
+    /// so the default lifts them: the stars and the moon then pass 1 in the HDR buffer
+    /// and stay the brightest things in the sky.
+    float brightness = 2.2F;
 };
 ```
+
+Wartość startowa `brightness` była do M6 równa 1,0. Pierwsza część M7 podniosła ją do 2,2 z powodu podanego w komentarzu: krzywa ACES mocno przyciemnia ciemne tony (wartość liniowa 0,01 wychodzi z niej jako 0,0038, [`post-process.md`](post-process.md), sekcja 2.6), a tło nocnego nieba to właśnie takie wartości. Mnożnik działa teraz na kolorze **liniowym**, więc 2,2 znaczy "2,2 raza więcej światła", a nie "2,2 raza większa liczba w pliku".
 
 Dwa pola i żadnej logiki: to struktura tego samego rodzaju co `LightingSettings` i `GameplaySettings`. Jest polem `NightMazeApp::m_skyboxSettings`, a panel Renderer dostaje do niej referencję i edytuje oba pola.
 
@@ -616,8 +631,10 @@ gfx::Cubemap loadSkyCubemap() {
         pixels[face] = images[face].pixels.data();
     }
     // The graphics card takes its own copy: the six images are freed when this function
-    // returns.
-    return {first.width, first.channels, pixels};
+    // returns. The sky pictures are colours, painted for the screen, so they are sRGB:
+    // the graphics card decodes them to linear values, which is what the HDR buffer
+    // the scene is drawn into expects.
+    return {first.width, first.channels, pixels, gfx::ColorSpace::Srgb};
 }
 
 } // namespace
@@ -633,10 +650,10 @@ Skybox::Skybox() : m_cubemap(loadSkyCubemap()), m_cube(CUBE_CORNERS, CUBE_TRIANG
 | `core::logInfo("Loaded sky face: " + ...)` | sześć linii `[info]` przy starcie gry, po jednej na plik |
 | `image.width != first.width \|\| image.height != first.width \|\| image.channels != first.channels` | trzy warunki naraz: ta sama szerokość co pierwszy obraz, **wysokość równa szerokości** (kwadrat, stąd `first.width` po prawej stronie także drugiego porównania) i ta sama liczba kanałów. Pętla sprawdza też pierwszy obraz z samym sobą, co pilnuje, że i on jest kwadratem |
 | `pixels[face] = images[face].pixels.data();` | `Cubemap` dostaje sześć wskaźników, a nie sześć obrazów: warstwa `gfx` nie zna warstwy `assets` |
-| `return {first.width, first.channels, pixels};` | konstruktor `Cubemap(size, channels, faces)`. Karta kopiuje piksele podczas `glTexImage2D`, więc obrazy mogą zniknąć razem z końcem funkcji. Liczby kanałów 1 i 2 odrzuci dopiero `Cubemap` (przyjmuje 3 albo 4) |
+| `return {first.width, first.channels, pixels, gfx::ColorSpace::Srgb};` | konstruktor `Cubemap(size, channels, faces, colorSpace)`. Karta kopiuje piksele podczas `glTexImage2D`, więc obrazy mogą zniknąć razem z końcem funkcji. Liczby kanałów 1 i 2 odrzuci dopiero `Cubemap` (przyjmuje 3 albo 4). Czwarty argument (od M7) jest obowiązkowy: obrazy nieba są kolorami malowanymi dla ekranu, więc `ColorSpace::Srgb`. Tekstura dostaje format `GL_SRGB8` i karta dekoduje ją przy odczycie ([`../gfx/cubemap.md`](../gfx/cubemap.md), [`../gfx/color-space.md`](../gfx/color-space.md)) |
 | `Skybox::Skybox() : m_cubemap(loadSkyCubemap()), m_cube(CUBE_CORNERS, CUBE_TRIANGLES) {}` | oba pola powstają na liście inicjalizacyjnej. Funkcja zwraca `Cubemap` przez wartość, a pole przejmuje go bez kopii: klasa jest tylko przenoszalna |
 
-`Skybox` jest ostatnim polem z obiektami OpenGL w `NightMazeApp` (`m_skybox`, po `m_lightRig`), a `m_skyboxShader` stoi za `m_gouraudShader` (od drugiej części M6 za nim jest jeszcze `m_grassShader`). Jak wszystkie pola z zasobami OpenGL, powstają po oknie i giną przed nim ([`../core/README.md`](../core/README.md), sekcja 7).
+`Skybox` był do M6 ostatnim polem z obiektami OpenGL w `NightMazeApp` (`m_skybox`, po `m_lightRig`). Od pierwszej części M7 za nim stoi jeszcze `m_postProcess`. `m_skyboxShader` stoi za `m_gouraudShader`, a za nim są `m_grassShader` (druga część M6) oraz `m_compositeShader` i `m_previewShader` (M7). Jak wszystkie pola z zasobami OpenGL, powstają po oknie i giną przed nim ([`../core/README.md`](../core/README.md), sekcja 7).
 
 **Gdy czegoś brakuje, gra działa dalej.** Brak pliku, obraz innej wielkości albo błąd w shaderze nie zatrzymują programu: `draw` nic nie rysuje i tłem zostaje kolor czyszczenia. Błąd jest w konsoli raz, z chwili utworzenia obiektów.
 
@@ -701,7 +718,9 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
 | `m_cube.draw();` | `glBindVertexArray` i `glDrawElements` dla 36 indeksów |
 | `glDepthMask(GL_TRUE)`, `glDepthFunc(GL_LESS)` | powrót do wartości domyślnych OpenGL (sekcja 3.4). Kod nie odczytuje poprzedniego stanu, tylko przywraca wartości, o których wie, że obowiązują w reszcie gry |
 
-### 5.6 Miejsce w klatce: koniec `onRender`
+### 5.6 Miejsce w klatce: koniec sceny w `onRender`
+
+Do M6 niebo było ostatnią rzeczą w `onRender` i funkcja kończyła się zaraz po nim. Od pierwszej części M7 niebo jest ostatnim wywołaniem rysującym **sceny**: po nim `onRender` rysuje jeszcze podglądy załączników (gdy panel Framebuffers jest otwarty) i przebieg składający, który przenosi obraz z bufora HDR do okna. Te kroki opisuje [`post-process.md`](post-process.md), sekcje 2.8 i 5.7. Fragment z niebem:
 
 ```cpp
     drawMaze(view, projection);
@@ -723,7 +742,8 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
     if (m_skyboxSettings.enabled) {
         m_skybox.draw(m_skyboxShader, view, projection, m_skyboxSettings, m_viewMode);
     }
-}
+
+    // ... podglądy załączników i przebieg składający (post-process.md) ...
 ```
 
 | Linia | Znaczenie |
@@ -734,9 +754,9 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
 | `view`, `projection` | te same zmienne, z którymi narysowane zostały teren, labirynt i trawa |
 | `m_viewMode` | tryb podglądu z panelu Assets. Niebo **nie** dostaje trybu oświetlenia: jest takie samo w `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong` |
 
-Panele i HUD są rysowane później, w `main.cpp`, na wierzchu gotowej sceny ([`../debug-ui.md`](../debug-ui.md)).
+Panele i HUD są rysowane później, w `main.cpp`, prosto do okna, na wierzchu obrazu, który przeniósł tam przebieg składający ([`../debug-ui.md`](../debug-ui.md)).
 
-**Kolor czyszczenia.** Pole `m_clearColor` (`{0.01F, 0.015F, 0.04F}`) było do M5 kolorem nieba. Dziś jest kolorem, od którego zaczyna się klatka, i widać go tylko wtedy, gdy niebo jest wyłączone albo jego pliki się nie wczytały. Jest celowo bliski kolorowi zenitu ze skryptu (`ZENITH_COLOR = (0.010, 0.016, 0.045)`), więc wyłączenie nieba nie zmienia nastroju sceny.
+**Kolor czyszczenia.** Pole `m_clearColor` było do M5 kolorem nieba. Dziś jest kolorem, od którego zaczyna się klatka, i widać go tylko wtedy, gdy niebo jest wyłączone albo jego pliki się nie wczytały. Do M6 miało wartość `{0.01F, 0.015F, 0.04F}`, bliską kolorowi zenitu ze skryptu (`ZENITH_COLOR = (0.010, 0.016, 0.045)`). Od pierwszej części M7 ma `{0.022F, 0.033F, 0.088F}`. To liczby sRGB, takie, jakie pokazuje próbnik w panelu, a `onRender` przelicza je przez `gfx::srgbToLinear` przed `glClearColor`, bo bufor sceny przechowuje wartości liniowe. Nowa wartość pasuje do nieba przy nowej jasności: zenit liniowo to około `(0,0008, 0,0012, 0,0035)`, razy 2,2 daje `(0,0017, 0,0027, 0,0077)`, a kolor czyszczenia liniowo to `(0,0017, 0,0026, 0,0083)`. Wyłączenie nieba nadal nie zmienia więc nastroju sceny (policzone, nie obejrzane).
 
 ### 5.7 Skrypt `make_skybox.py`
 
@@ -790,10 +810,11 @@ Czego testy **nie** sprawdzają:
 
 ### 5.9 Jak to zostało sprawdzone
 
-- **Build i testy** (zgłoszone dla Windowsa, 2026-10-05): Debug i Release bez ostrzeżeń, 221 przypadków i 85175 asercji w obu konfiguracjach po tej części. Po drugiej części M6 cały program testowy ma 256 przypadków i 101232 asercje.
+- **Build i testy** (zgłoszone dla Windowsa, 2026-10-05): Debug i Release bez ostrzeżeń, 221 przypadków i 85175 asercji w obu konfiguracjach po tej części. Po drugiej części M6 cały program testowy miał 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 i 102103. Żaden z nowych przypadków nie dotyczy nieba.
+- **Po pierwszej części M7** (zgłoszone dla Windowsa, 2026-10-05): przy porównaniu z poprzednim commitem jasność nieba różni się celowo (nowa wartość startowa). Osobnego sprawdzenia nieba po zmianie na teksturę sRGB i bufor HDR nie zgłoszono.
 - **Obraz** (zgłoszone, zrzuty ekranu z Windowsa): księżyc w środku ekranu przy kamerze na yaw 205 i pitch 50, horyzont poziomy, bez widocznych szwów.
 - **Pliki** (sprawdzone przeze mnie na plikach z repozytorium): sześć nagłówków PNG mówi 1024 x 1024, 8 bitów, RGB bez alfy. Razem 5 278 627 bajtów. Piksel księżyca jest tam, gdzie wskazuje rachunek z sekcji 2.3.
-- **Nie sprawdzone ręcznie:** kliknięcie pola `Skybox`, przeciągnięcie suwaka `Sky brightness`, `Reload shaders` (dziś przy sześciu programach), widoki diagnostyczne nieba, układ paneli po zmianie wysokości. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 15.
+- **Nie sprawdzone ręcznie:** kliknięcie pola `Skybox`, przeciągnięcie suwaka `Sky brightness`, `Reload shaders` (dziś przy ośmiu programach), widoki diagnostyczne nieba, wygląd nieba przy nowej jasności 2,2 i przy każdej z trzech krzywych mapowania tonów, układ paneli po zmianie wysokości. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 15.
 - **Nie zmierzone:** czas klatki z niebem i bez, zysk z rysowania na końcu, czas wczytania sześciu plików przy starcie, powtarzalność skryptu.
 - **macOS:** nic. Kompilator GLSL Apple nie widział jeszcze `skybox.vert` ani `skybox.frag`, a niebo na ekranie Retina nie było oglądane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
@@ -803,7 +824,7 @@ Kontrolki nieba są w panelu **Renderer**, pod listą `Lighting`. PRD (sekcja 3)
 
 ```cpp
 constexpr float MIN_SKY_BRIGHTNESS = 0.0F;
-constexpr float MAX_SKY_BRIGHTNESS = 3.0F;
+constexpr float MAX_SKY_BRIGHTNESS = 6.0F;
 ```
 
 ```cpp
@@ -821,17 +842,18 @@ constexpr float MAX_SKY_BRIGHTNESS = 3.0F;
 |---|---|
 | `ImGui::Checkbox("Skybox", &skybox.enabled);` | pole wyboru pisze przez wskaźnik prosto do `NightMazeApp::m_skyboxSettings.enabled`. Nie ma zdarzenia zmiany: następne `onRender` po prostu przeczyta nową wartość |
 | `ImGui::SetItemTooltip(...)` | podpowiedź pokazywana po najechaniu na **poprzedni** widżet, czyli na pole `Skybox`. Mówi o ograniczeniu z sekcji 2.9 |
-| `ImGui::SliderFloat("Sky brightness", &skybox.brightness, 0, 3)` | suwak od 0 (czarne niebo) do 3. Zakres wychodzi ponad 1, bo obrazy są ciemne |
+| `ImGui::SliderFloat("Sky brightness", &skybox.brightness, 0, 6)` | suwak od 0 (czarne niebo) do 6 (do M6: do 3), startuje na 2,2. Zakres wychodzi daleko ponad 1, bo obrazy są ciemne, a wartości powyżej 1 mieszczą się w buforze HDR |
 
 Kontrolki, które zmieniają niebo:
 
 | Panel | Kontrolka | Co zmienia | Co widać |
 |---|---|---|---|
 | Renderer | pole `Skybox` | `m_skyboxSettings.enabled` | niebo pojawia się i znika. Bez niego tłem jest `Clear color` |
-| Renderer | suwak `Sky brightness` | `uBrightness` | jasność nieba. Powyżej około 1,04 tarcza księżyca zaczyna się przepalać do bieli |
+| Renderer | suwak `Sky brightness` | `uBrightness` | jasność nieba. Co dzieje się z tarczą księżyca powyżej 1, zależy od krzywej w panelu Framebuffers: ACES ściska ją łagodnie, `None` przepala do bieli (liczby pod tabelą kolorów w sekcji 4.2) |
 | Renderer | `Clear color` | `m_clearColor` | **tylko przy odznaczonym `Skybox`**: z niebem żaden piksel nie zostaje w kolorze czyszczenia |
 | Assets | lista `View mode` | `uViewMode` | `Normals as colour` i `UVs as colour` zamieniają niebo w mapę kierunków (tabela kolorów w sekcji 4.2) |
-| Shaders | `Reload shaders` | przeładowanie sześciu programów | piąta linia panelu: `skybox.vert + skybox.frag: OK` (szósta, od drugiej części M6: `grass.vert + grass.geom + grass.frag: OK`) |
+| Shaders | `Reload shaders` | przeładowanie ośmiu programów | piąta linia panelu: `skybox.vert + skybox.frag: OK` (szósta, od drugiej części M6: `grass.vert + grass.geom + grass.frag: OK`, siódma i ósma, od M7: programy `composite` i `preview`) |
+| Framebuffers | `Exposure`, `Tone mapping` | przebieg składający | niebo jest częścią sceny, więc ekspozycja i krzywa zmieniają je tak samo jak ściany ([`post-process.md`](post-process.md), sekcja 6) |
 | Lights | `Moon yaw`, `Moon pitch` | kierunek światła księżyca | światło na ścianach się zmienia, **tarcza na niebie nie** |
 | Camera | `Yaw`, `Pitch` | kierunek patrzenia | yaw 205 i pitch 50 ustawiają księżyc w środku ekranu |
 
@@ -863,8 +885,8 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
 9. **Pełna macierz widoku.** Bez `mat4(mat3(uView))` sześcian stoi w początku układu świata, a gracz jest zwykle daleko poza nim. Widać wtedy małe pudełko z niebem namalowanym na ścianach, rysowane za wszystkim, a reszta tła jest kolorem czyszczenia.
 10. **Niekwadratowe albo różne ściany.** Tekstura sześcienna, której ściany nie są kwadratami jednej wielkości, jest niekompletna: OpenGL nie zgłasza błędu, a `texture()` zwraca czerń. `loadSkyCubemap` sprawdza to przed utworzeniem tekstury i wypisuje błąd.
 11. **Kolejność względem nieba.** Obiekt nieprzezroczysty narysowany po niebie wygląda poprawnie: niebo zostawia głębię 1,0, więc zwykły test głębi przepuszcza wszystko, co bliższe. Kłopot jest z obiektami przezroczystymi rysowanymi **przed** niebem: te, które nie zapisują głębi, niebo zamaluje, a przez te, które ją zapisują, będzie prześwitywał kolor czyszczenia zamiast nieba. Przezroczyste rysuje się po niebie (sekcja 2.7). Komentarz w `onRender` mówi dziś o obu przypadkach: nieprzezroczyste porządkuje test głębi, a po niebie musiałoby przyjść tylko to, co głębi nie zapisuje. Dziś w grze nie ma nic przezroczystego: trawa jest nieprzezroczysta i zapisuje głębię, więc stoi przed niebem.
-12. **Jasność powyżej 1.** Framebuffer okna obcina wartości do 1. Suwak `Sky brightness` powyżej 1 rozjaśnia tło i gwiazdy, ale tarcza księżyca zaczyna się przepalać: najpierw jej najjaśniejsze miejsca (od około 1,04), a przy około 1,5 także ciemne plamy, i wtedy jest już płaską białą plamą. To nie błąd shadera: bufora HDR nie ma do M7.
-13. **Brak gammy.** Kolory skryptu są dobrane na oko dla obrazu wyświetlanego bez korekcji ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Gdy w M7 tekstury koloru przejdą na sRGB, niebo trzeba będzie obejrzeć od nowa.
+12. **Jasność powyżej 1.** Do M6 framebuffer okna obcinał wartości do 1 i tarcza księżyca przepalała się od jasności około 1,04. Od M7 scena trafia do bufora HDR i wartości powyżej 1 są zachowane, a o wyglądzie decyduje krzywa mapowania tonów. Przy `Tone mapping: None` obcięcie wraca: tarcza jest płaską białą plamą już przy domyślnej jasności 2,2. To nie błąd shadera nieba, tylko własność tej krzywej.
+13. **Niebo jako tekstura sRGB.** Do M6 obrazy nieba były używane bez korekcji gamma (decyzja [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)). Od M7 tekstura sześcienna jest sRGB, a klatka jest kodowana na końcu. Liczby w skrypcie zostały te same i nadal są liczbami sRGB, dobranymi na oko dla ekranu. Pomyłka w drugą stronę (`ColorSpace::Linear` dla nieba) dałaby niebo wyblakłe i za jasne: bajty zostałyby zakodowane na końcu klatki bez wcześniejszego zdekodowania. Wyglądu nieba po tej zmianie nikt nie porównał ręcznie z poprzednim.
 14. **Stary `imgui.ini`.** Zapisana wysokość panelu Renderer (230) chowa pole `Skybox` i suwak pod krawędzią panelu. Wygląda to tak, jakby kontrolek nie było.
 15. **Ręczna poprawka w PNG.** Sześć plików jest wynikiem skryptu. Poprawka w edytorze graficznym zniknie przy następnym uruchomieniu `make_skybox.py` i prawie na pewno zrobi szew, bo zmieni jedną stronę krawędzi.
 16. **Zmiana domyślnego kierunku księżyca.** Dwie liczby są w dwóch plikach, w C++ i w Pythonie. Test wykrywa niezgodność dopiero powyżej około 2 stopni (sekcja 2.9).
@@ -963,7 +985,7 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
     Kierunek, którym czytana jest tekstura sześcienna, zakodowany jak normalne: `normalize(kierunek) * 0,5 + 0,5`. Niebo nie ma normalnej ani `(u, v)`, a kierunek jest jego współrzędną tekstury.
 
 25. **Dlaczego klasa nazywa się `game::Skybox`, a nie `renderer::SkyboxPass` jak w PRD?**
-    Warstwy `src/renderer/` jeszcze nie ma: gra rysuje jednym przebiegiem prosto do okna, a klasy rysujące leżą w `src/game/`. Niebo dołączyło do nich. Powody i warunek powrotu do tej decyzji są w notatce `decisions/skybox-in-game-layer.md`.
+    Warstwy `src/renderer/` jeszcze nie ma, a klasy rysujące leżą w `src/game/`. Niebo dołączyło do nich, gdy gra rysowała jednym przebiegiem prosto do okna. Od pierwszej części M7 klatka ma więcej przebiegów (scena idzie do bufora HDR), ale warstwa nadal nie powstała: `game::PostProcess` też leży w `src/game/`. Powody są w notatkach `decisions/skybox-in-game-layer.md` i `decisions/post-process-in-game-layer.md`.
 
 ## 10. Źródła
 
@@ -972,5 +994,6 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
 - Khronos OpenGL Wiki, "Cubemap Texture" (<https://www.khronos.org/opengl/wiki/Cubemap_Texture>): orientacja ścian, filtrowanie bez szwów. "Early Fragment Test" (<https://www.khronos.org/opengl/wiki/Early_Fragment_Test>): kiedy test głębi może wyprzedzić shader fragmentów.
 - docs.gl: `glTexImage2D` (<https://docs.gl/gl4/glTexImage2D>, cele `GL_TEXTURE_CUBE_MAP_POSITIVE_X` i następne), `glDepthFunc`, `glDepthMask`, `glSamplerParameter`, `texture` dla `samplerCube` (<https://docs.gl/sl4/texture>).
 - Dokumenty w tym repozytorium: [`../gfx/cubemap.md`](../gfx/cubemap.md) (klasa `Cubemap` linia po linii), [`../gfx/textures.md`](../gfx/textures.md) (tekstury 2D, jednostki, obiekt samplera), [`../assets/images.md`](../assets/images.md) (`RowOrder`), [`../scene/camera.md`](../scene/camera.md) (macierz widoku, rzutowanie, głębia), [`../scene/lights.md`](../scene/lights.md) (`directionFromAngles`, światło księżyca), [`../game/flashlight.md`](../game/flashlight.md) (`LightingSettings`), [`../debug-ui.md`](../debug-ui.md) (panel Renderer, układ paneli), [`../../guides/blender.md`](../../guides/blender.md) (uruchamianie skryptów), [`README.md`](README.md) (dlaczego ten katalog).
-- Notatki o decyzjach: [`../../decisions/skybox-in-game-layer.md`](../../decisions/skybox-in-game-layer.md), [`../../decisions/painted-moon-fixed-direction.md`](../../decisions/painted-moon-fixed-direction.md), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
+- Notatki o decyzjach: [`../../decisions/skybox-in-game-layer.md`](../../decisions/skybox-in-game-layer.md), [`../../decisions/painted-moon-fixed-direction.md`](../../decisions/painted-moon-fixed-direction.md), [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) (zastąpiła [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
+- Dokumenty pierwszej części M7: [`post-process.md`](post-process.md) (bufor HDR, przebieg składający, krzywe), [`../gfx/color-space.md`](../gfx/color-space.md) (sRGB i wartości liniowe).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdział o teksturach, tekstury sześcienne).

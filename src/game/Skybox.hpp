@@ -19,10 +19,12 @@ enum class ViewMode;
 struct SkyboxSettings {
     /// Whether the sky is drawn. Without it the background is the clear colour.
     bool enabled = true;
-    /// The colours of the sky pictures are multiplied by this number: 1 shows them as
-    /// they are, 0 is black. The pictures are dark already (a night sky is a backdrop),
-    /// so values above 1 are useful too.
-    float brightness = 1.0F;
+    /// The linear colours of the sky pictures are multiplied by this number: 1 leaves
+    /// them as they are, 0 is black. The pictures are dark (a night sky is a backdrop)
+    /// and the tone mapping curve of the composite pass presses dark tones down further,
+    /// so the default lifts them: the stars and the moon then pass 1 in the HDR buffer
+    /// and stay the brightest things in the sky.
+    float brightness = 2.2F;
 };
 
 /// Draws the sky: six pictures (a cube map) on the inside of a cube around the camera.

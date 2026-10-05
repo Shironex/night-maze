@@ -2,6 +2,8 @@
 // See docs/modules/gfx/textures.md
 #pragma once
 
+#include "gfx/ColorSpace.hpp"
+
 #include <glad/gl.h>
 
 namespace gfx {
@@ -31,6 +33,14 @@ public:
     /// width * height * channels bytes, row by row without gaps, BOTTOM row first.
     /// OpenGL takes its own copy, so the bytes may be freed right after the call.
     ///
+    /// colorSpace says what the bytes mean, and the caller has to know it: the class
+    /// does not guess from a file name. ColorSpace::Srgb is for colour pictures: the
+    /// texture gets an sRGB internal format (GL_SRGB8 or GL_SRGB8_ALPHA8) and the
+    /// graphics card turns every texel into a linear value when a shader reads it,
+    /// before filtering. ColorSpace::Linear is for data that is not a colour, like the
+    /// directions of a normal map: GL_RGB8 or GL_RGBA8, the numbers arrive unchanged.
+    /// Alpha is never sRGB encoded, in either case.
+    ///
     /// Sampling starts as trilinear filtering without anisotropy, and coordinates outside
     /// 0..1 repeat the picture (GL_REPEAT).
     ///
@@ -39,7 +49,8 @@ public:
     /// false.
     ///
     /// The texture is left bound to GL_TEXTURE_2D of the texture unit that is active.
-    Texture2D(int width, int height, int channels, const unsigned char* pixels);
+    Texture2D(int width, int height, int channels, const unsigned char* pixels,
+              ColorSpace colorSpace);
     ~Texture2D();
 
     Texture2D(const Texture2D&) = delete;
@@ -91,6 +102,9 @@ public:
     /// Height of the largest mipmap level in pixels.
     int height() const { return m_height; }
 
+    /// What the bytes of the texture mean, as given to the constructor.
+    ColorSpace colorSpace() const { return m_colorSpace; }
+
 private:
     // Name (id) of the OpenGL texture object. 0 is never a real texture: it means "none".
     GLuint m_id = 0;
@@ -99,6 +113,7 @@ private:
     GLuint m_sampler = 0;
     int m_width = 0;
     int m_height = 0;
+    ColorSpace m_colorSpace = ColorSpace::Linear;
     TextureFilter m_filter = TextureFilter::Trilinear;
     float m_anisotropy = 1.0F;
     // Asked from the driver once, in the constructor. 1 means "not supported".

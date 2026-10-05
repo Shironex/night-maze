@@ -29,7 +29,8 @@ uniform vec3 uTint;
 // own the source of the light would be the darkest thing around it.
 uniform vec3 uEmissive;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha), as a LINEAR colour that may be brighter than 1.
 out vec4 fragColor;
 
 void main() {
@@ -45,9 +46,12 @@ void main() {
     // reflects the red part of the light. The highlight is added on top in the colour
     // of the light, as in the Phong model of the lecture.
     //
-    // No gamma correction in this milestone: the texture values are used as they are,
-    // and the result is written as it is. Gamma (sRGB textures and an sRGB framebuffer)
-    // arrives with the HDR pipeline in M7.
+    // Everything here is linear, which is what makes multiplying by a light and adding
+    // lights correct: the texture is an sRGB texture that the graphics card decodes on
+    // reading, the light colours were converted in C++ (game::buildLightSet), and the
+    // result is written as it is into a floating point buffer, also when it is above
+    // 1. Exposure, tone mapping and the sRGB encoding (gamma correction) follow once,
+    // for the whole frame, in post/composite.frag.
     //
     // The glow of the surface itself (uEmissive) joins the diffuse light. It does not
     // depend on any light of the scene, so a crystal glows in the darkest corner too.

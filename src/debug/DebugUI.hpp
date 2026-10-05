@@ -2,6 +2,8 @@
 // See docs/modules/debug-ui.md
 #pragma once
 
+#include "debug/RawTextureSampler.hpp"
+
 #include <vector>
 
 namespace core {
@@ -59,6 +61,10 @@ private:
     // here. The body of the destructor destroys the ImGui context first and the members
     // are destroyed after it, so the bytes outlive every use of the pointer.
     std::vector<unsigned char> m_fontBytes;
+    // The sampler the Assets panel shows sRGB textures with. It is created by the
+    // constructor of this class, so after the OpenGL context exists, and it is destroyed
+    // with the members, while the window is still there (see main.cpp).
+    RawTextureSampler m_rawTextureSampler;
 };
 
 } // namespace debug

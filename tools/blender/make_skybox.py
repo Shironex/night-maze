@@ -24,9 +24,9 @@
 # cube, and the game looks at it from the inside. So next to a screenshot of the game
 # every file looks mirrored left to right. That is how cube maps are defined, not a bug.
 #
-# The textures are used as they are, without gamma correction (none before M7), so the
-# colours below are picked by eye for the final picture and kept dark: the sky is
-# a backdrop behind the lit walls.
+# The colours below are sRGB values, picked by eye for the final picture and kept dark:
+# the sky is a backdrop behind the lit walls. The game loads the faces as an sRGB cube
+# map and encodes the frame to sRGB again at its end, so the screen shows these numbers.
 import math
 import os
 import sys

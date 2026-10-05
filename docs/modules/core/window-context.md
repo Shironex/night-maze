@@ -34,7 +34,7 @@ GLFW podaje dwa różne rozmiary tego samego okna:
 - **rozmiar okna** (window size) we współrzędnych ekranu (screen coordinates), czyli w jednostkach, w których system układa okna i podaje pozycję myszy,
 - **rozmiar framebuffera** (framebuffer size) w pikselach, czyli tyle, ile naprawdę jest do zamalowania.
 
-Na zwykłym monitorze obie liczby są równe. Na ekranie o wysokiej gęstości (Retina) jednej jednostce ekranu odpowiadają dwa piksele w każdym wymiarze, więc okno 1280 x 720 ma framebuffer 2560 x 1440. OpenGL pracuje na pikselach, dlatego wszystko, co trafia do `glViewport`, musi pochodzić z rozmiaru framebuffera. W kodzie rozróżnienie jest w nazwach metod: `Window::framebufferSize()` i `Window::windowSize()`, a obie zwracają strukturę `core::Size` (dwa pola `int`: `width` i `height`).
+Na zwykłym monitorze obie liczby są równe. Na ekranie o wysokiej gęstości (Retina) jednej jednostce ekranu odpowiadają dwa piksele w każdym wymiarze, więc okno 1280 x 720 ma framebuffer 2560 x 1440. OpenGL pracuje na pikselach, dlatego wszystko, co trafia do `glViewport`, musi pochodzić z rozmiaru framebuffera. Od pierwszej części M7 z tej samej liczby powstaje też rozmiar własnego framebuffera sceny (`game::PostProcess::beginScene`), więc na Retinie bufor HDR ma mieć 2560 x 1440, a nie 1280 x 720. W kodzie rozróżnienie jest w nazwach metod: `Window::framebufferSize()` i `Window::windowSize()`, a obie zwracają strukturę `core::Size` (dwa pola `int`: `width` i `height`).
 
 ## 3. Jak to działa w OpenGL
 
@@ -89,20 +89,31 @@ Początek każdej klatki jest w [`NightMazeApp::onRender`](../../../src/game/Nig
 
 ```cpp
 const core::Size framebuffer = window().framebufferSize();
-GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
+
+if (framebuffer.width == 0 || framebuffer.height == 0) {
+    return;
+}
+
+if (!m_postProcess.beginScene(framebuffer)) {
+    return;
+}
 
 GL_CHECK(glEnable(GL_DEPTH_TEST));
 
-GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
+const glm::vec3 clearColor =
+    gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]});
+GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
 GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
 
 | Wywołanie | Rodzaj | Co robi |
 |---|---|---|
-| `glViewport(0, 0, w, h)` | ustawia stan | Określa prostokąt bufora (w pikselach, początek w lewym dolnym rogu), na który mapowane są współrzędne znormalizowane (NDC) z zakresu od -1 do 1 |
+| `if (framebuffer.width == 0 \|\| framebuffer.height == 0) return;` | nic w OpenGL | Zminimalizowane okno może mieć framebuffer 0 x 0. Nie ma wtedy czego rysować ani do czego: tekstury o rozmiarze 0 nie da się podpiąć do framebuffera, a proporcje obrazu wyszłyby 0 / 0. Cała klatka jest pomijana. Do pierwszej części M7 ten warunek stał po czyszczeniu ekranu |
+| `m_postProcess.beginScene(framebuffer)` | ustawia stan | Od pierwszej części M7 scena nie trafia prosto do okna. To wywołanie wiąże framebuffer HDR sceny (`glBindFramebuffer`) i ustawia `glViewport(0, 0, w, h)` na jego rozmiar, równy rozmiarowi framebuffera okna. `glViewport` określa prostokąt bufora (w pikselach, początek w lewym dolnym rogu), na który mapowane są współrzędne znormalizowane (NDC) z zakresu od -1 do 1. Oba wywołania stoją w `gfx::Framebuffer::bind` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)). Gdy framebuffera nie udało się utworzyć, funkcja zwraca fałsz i klatka jest pomijana |
 | `glEnable(GL_DEPTH_TEST)` | ustawia stan | Włącza test głębi: fragment trafia do bufora tylko wtedy, gdy jest bliżej kamery niż to, co już tam jest. Potrzebny od chwili, gdy na ekranie jest bryła ([`../scene/camera.md`](../scene/camera.md), sekcje 3 i 5.7) |
-| `glClearColor(r, g, b, a)` | ustawia stan | Zapamiętuje kolor czyszczenia. Niczego nie rysuje |
-| `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | wykonuje | Wypełnia bufor koloru zapamiętanym kolorem, a bufor głębi wartością 1 ("najdalej"). Argument to maska bitowa, dwie flagi połączone bitowym "lub". Później dojdzie `GL_STENCIL_BUFFER_BIT` |
+| `glClearColor(r, g, b, a)` | ustawia stan | Zapamiętuje kolor czyszczenia. Niczego nie rysuje. Kolor z panelu jest wartością sRGB, a bufor sceny trzyma wartości liniowe, więc linia wyżej przelicza go przez `gfx::srgbToLinear` ([`../gfx/color-space.md`](../gfx/color-space.md)) |
+| `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | wykonuje | Wypełnia bufor koloru zapamiętanym kolorem, a bufor głębi wartością 1 ("najdalej"). Czyszczony jest framebuffer, który jest związany: od M7 dwie tekstury framebuffera sceny, a nie bufory okna. Argument to maska bitowa, dwie flagi połączone bitowym "lub". Później dojdzie `GL_STENCIL_BUFFER_BIT` |
+| `m_postProcess.composite(...)` | wykonuje | Ostatni krok `NightMazeApp::onRender`: wiąże z powrotem framebuffer okna (`Framebuffer::bindDefault`, z `glViewport` na rozmiar framebuffera okna) i jednym trójkątem przenosi do niego obraz sceny z ekspozycją, mapowaniem tonów i kodowaniem sRGB ([`../renderer/post-process.md`](../renderer/post-process.md)) |
 | `m_debugUI.draw(...)` | wykonuje | Wołane już poza grą, w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp), po powrocie z `NightMazeApp::onRender`: rysuje panele ImGui na wierzchu (opis w [`../debug-ui.md`](../debug-ui.md)) |
 | `glfwSwapBuffers(m_handle)` | wykonuje | Wołane w `Application::run` po `onRender`: zamienia bufory, przy vsync czeka na odświeżenie monitora |
 
@@ -136,7 +147,7 @@ Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez p
 | [`src/core/Window.hpp`](../../../src/core/Window.hpp) | struktura `Size`, deklaracja klasy `Window`, deklaracja wyprzedzająca `struct GLFWwindow;` |
 | [`src/core/Window.cpp`](../../../src/core/Window.cpp) | konstruktor (cała inicjalizacja), destruktor, cienkie metody opakowujące GLFW, pomocnicze `onGlfwError` i `glString` |
 | [`src/core/Log.hpp`](../../../src/core/Log.hpp), [`.cpp`](../../../src/core/Log.cpp) | `logInfo`, `logWarn`, `logError` |
-| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użycie `framebufferSize()` w `glViewport` i czyszczenie ekranu na początku `onRender` |
+| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użycie `framebufferSize()` na początku `onRender`: rozmiar trafia do `m_postProcess.beginScene` i `composite`, które ustawiają `glViewport`, potem czyszczenie framebuffera sceny |
 
 ### 5.2 `Window`: trudne miejsca
 
@@ -232,14 +243,14 @@ Panel **Renderer** (kod: [`RendererPanel.cpp`](../../../src/debug/panels/Rendere
 | `Window` | `Window::windowSize()` | Rozmiar we współrzędnych ekranu. Zmiana rozmiaru okna zmienia obie wartości na żywo |
 | `OpenGL` | `Window::glVersion()` | Wersja oddana przez sterownik: na macOS zaczyna się od 4.1, na Windowsie może być wyższa |
 | `GPU` | `Window::glRenderer()` | Która karta rysuje. Na laptopie z dwiema kartami od razu widać, czy nie została wybrana zintegrowana |
-| `Clear color` | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Wartość edytowalna. Startuje jako bardzo ciemny granat (`{0.01F, 0.015F, 0.04F}`), do M5 kolor nieba. Od pierwszej części M6 niebo rysuje skybox, więc skutek zmiany widać dopiero po odznaczeniu pola `Skybox` w tym samym panelu ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 6). Zmiana jest wtedy widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę: dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
+| `Clear color` | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Wartość edytowalna. Startuje jako bardzo ciemny granat (`{0.022F, 0.033F, 0.088F}`, wartość sRGB, do pierwszej części M7 `{0.01F, 0.015F, 0.04F}`), do M5 kolor nieba. Od pierwszej części M6 niebo rysuje skybox, więc skutek zmiany widać dopiero po odznaczeniu pola `Skybox` w tym samym panelu ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 6). Zmiana jest wtedy widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę (od M7 z kolorem przeliczonym na liniowy): dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
 
 Elementy `FPS` i `Frame time` tego samego panelu opisuje [`main-loop.md`](main-loop.md), sekcja 6. Od M4 panel ma jeszcze drugą wartość edytowalną, listę `Lighting` z trybem oświetlenia, która nie dotyczy okna ani kontekstu: opisuje ją [`../debug-ui.md`](../debug-ui.md), sekcja 5.3.
 
 ## 7. Pułapki
 
 1. **Czarny ekran albo crash na pierwszym `gl*`.** Najczęstsze przyczyny: brak `glfwMakeContextCurrent`, wywołanie `gl*` przed `gladLoadGL` (pusty wskaźnik na funkcję), brak `glfwSwapBuffers` (obraz zostaje w tylnym buforze), brak `glClear` (w buforze są śmieci z poprzednich klatek).
-2. **Retina: rozmiar framebuffera to nie rozmiar okna.** Na macOS okno 1280 x 720 ma framebuffer 2560 x 1440. `glViewport` przyjmuje **piksele**, więc musi dostać `framebufferSize()`. Z `windowSize()` obraz zajmie lewą dolną ćwiartkę okna. Pozycja myszy jest z kolei we współrzędnych okna. Na Windowsie obie wartości zwykle są równe, więc błąd wychodzi dopiero na Macu.
+2. **Retina: rozmiar framebuffera to nie rozmiar okna.** Na macOS okno 1280 x 720 ma framebuffer 2560 x 1440. `glViewport` przyjmuje **piksele**, więc musi dostać `framebufferSize()`. Z `windowSize()` obraz zajmie lewą dolną ćwiartkę okna. To samo dotyczy rozmiaru framebuffera sceny i przebiegu składającego: oba dostają `framebufferSize()`. Na macOS pierwsza część M7 nie była jeszcze uruchamiana, więc zachowanie bufora HDR na Retinie jest niesprawdzone. Pozycja myszy jest z kolei we współrzędnych okna. Na Windowsie obie wartości zwykle są równe, więc błąd wychodzi dopiero na Macu.
 3. **Wymagania kontekstu na macOS.** Maksymalnie 4.1, wyłącznie profil Core. Prośba o 4.2+ albo o profil zgodności (compatibility) kończy się `nullptr` z `glfwCreateWindow`. Hint `GLFW_OPENGL_FORWARD_COMPAT` był obowiązkowy w GLFW do wersji 3.3 (bez niego okno się nie tworzyło). GLFW 3.4, którego używam, już go nie sprawdza, ale kontekst na macOS i tak jest forward compatible, więc zostawiam hint: dokumentuje zamiar i sprawia, że Windows zachowuje się tak samo surowo jak Mac.
 4. **Brak debug callbacku.** `glDebugMessageCallback` to OpenGL 4.3. Wiele poradników go używa, na macOS to się nie skompiluje (GLAD 4.1 nie ma tej funkcji). Stąd `GL_CHECK` ([`gl-check.md`](gl-check.md)).
 5. **Vsync nie jest gwarancją.** Sterownik na Windowsie może wymusić włączenie albo wyłączenie vsync w swoim panelu. Kod nie może zakładać 60 klatek, i właśnie dlatego symulacja ma własny stały krok ([`main-loop.md`](main-loop.md)).

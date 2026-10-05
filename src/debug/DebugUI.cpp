@@ -9,6 +9,7 @@
 #include "debug/panels/AssetsPanel.hpp"
 #include "debug/panels/CameraPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
+#include "debug/panels/FramebuffersPanel.hpp"
 #include "debug/panels/GameplayPanel.hpp"
 #include "debug/panels/GrassPanel.hpp"
 #include "debug/panels/LightsPanel.hpp"
@@ -18,6 +19,7 @@
 #include "debug/panels/TerrainPanel.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/PostProcess.hpp"
 #include "game/Skybox.hpp"
 
 #include <imgui.h>
@@ -87,6 +89,11 @@ void DebugUI::draw(const DebugContext& context) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // The preview pictures of the framebuffer attachments are drawn by the game only
+    // while the Framebuffers panel is open. The panel sets the flag again below. With
+    // the panels hidden nobody does, and the game stops drawing the pictures.
+    context.postProcessSettings.previews = false;
+
     if (m_visible) {
         // An invisible dock area that covers the whole window, so panels can be docked to
         // its edges. PassthruCentralNode keeps the middle transparent: the scene shows through.
@@ -101,20 +108,23 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 6;
+        constexpr int SHADER_COUNT = 8;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader, &context.colorShader,  &context.litShader,
-            &context.gouraudShader,  &context.skyboxShader, &context.grassShader};
+            &context.texturedShader,  &context.colorShader,  &context.litShader,
+            &context.gouraudShader,   &context.skyboxShader, &context.grassShader,
+            &context.compositeShader, &context.previewShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawGameplayPanel(context.round, context.gameplay);
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
+        drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                       context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
-        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
+        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping,
+                        m_rawTextureSampler);
         drawLightsPanel(context.lighting, context.round);
     }
 

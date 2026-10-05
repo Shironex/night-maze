@@ -47,11 +47,14 @@ constexpr float CRYSTAL_LIGHT_CLEARANCE = 0.15F;
 constexpr float CRYSTAL_PULSE_DEPTH = 0.3F;
 constexpr float CRYSTAL_PULSE_SECONDS = 2.4F;
 
-/// How strongly a crystal glows by itself, compared with the colour of its light (see
-/// crystalGlow). At 1 the crystal is clearly the brightest thing in its corner, and its
-/// facets can still be told apart: a stronger glow turns the whole crystal into one
-/// flat patch of the brightest colour the screen can show.
-constexpr float CRYSTAL_GLOW_STRENGTH = 1.0F;
+/// How strongly a crystal glows by itself, compared with the (linear) colour of its
+/// light (see crystalGlow). Above 1 on purpose: the scene is drawn into an HDR buffer,
+/// where a colour may be brighter than white, and a glowing crystal is the one thing in
+/// the maze that should be. The tone mapping of the composite pass brings it back into
+/// the range of the screen without turning the crystal into one flat patch, so its
+/// facets can still be told apart. An effect that looks for the pixels above 1 (bloom)
+/// finds the crystals by this.
+constexpr float CRYSTAL_GLOW_STRENGTH = 2.5F;
 
 /// One crystal of a maze: the cell it floats in and which model it is drawn with.
 struct CrystalSpawn {
@@ -109,6 +112,8 @@ float crystalPulse(float seconds);
 /// The light a crystal gives off by itself at a moment in time (the uniform uEmissive
 /// of the shaders): the colour of the crystal lights times CRYSTAL_GLOW_STRENGTH, dimmed
 /// by crystalPulse, so the glow of the mesh and the light around it pulse together.
+/// lightColor is a LINEAR colour (the caller converts the sRGB colour of the settings),
+/// and so is the result, which may be brighter than 1.
 glm::vec3 crystalGlow(const glm::vec3& lightColor, float seconds);
 
 } // namespace game

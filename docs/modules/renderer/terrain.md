@@ -7,9 +7,11 @@ Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasy nazywają się 
 
 **Stan na dziś:** płaskich płytek podłogi już nie ma. Labirynt stoi na jednej dużej siatce trójkątów, której wysokości pochodzą z obrazu w odcieniach szarości (mapy wysokości). Pod labiryntem podłoże jest łagodnie nierówne, a dookoła przechodzi we wzgórza. Ściany, słupki i brama są opuszczone tak, żeby nigdzie nie było pod nimi szpary, kryształy i strefa wyjścia stoją na wysokości podłoża swojej komórki, a stopy gracza idą po powierzchni. Panel **Terrain** ma suwak `Height scale` i pole `Wireframe`: to są dwa pokazy, które PRD podaje dla tematu 13 ("skala wysokości, wireframe").
 
-Co jest sprawdzone (2026-10-05, Windows):
+**Co zmieniła pierwsza część M7 (2026-10-05).** Kształt terenu, jego wysokości i kolizje się nie zmieniły. Zmieniło się to, jak podłoże trafia na ekran: tekstura `ground.png` jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe (sekcja 5.12), programy cieniujące liczą na wartościach liniowych, a teren, jak cała scena, jest rysowany do bufora HDR i dopiero przebieg składający przenosi go do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release. Żaden z nowych przypadków nie dotyczy terenu.
 
-- **Uruchomione przeze mnie na gotowych plikach wykonywalnych** (żaden plik źródłowy nie jest od nich nowszy): 256 przypadków testowych i 101232 asercje w Debug i w Release, wszystkie zaliczone. `tests/TerrainTests.cpp` ma 27 przypadków.
+Co jest sprawdzone (2026-10-05, Windows, stan po drugiej części M6):
+
+- **Uruchomione przeze mnie na gotowych plikach wykonywalnych** (żaden plik źródłowy nie był wtedy od nich nowszy): 256 przypadków testowych i 101232 asercje w Debug i w Release, wszystkie zaliczone. `tests/TerrainTests.cpp` ma 27 przypadków.
 - **Przeliczone przeze mnie niezależnie**, skryptem w Pythonie, który czyta `heightmap.png` i powtarza wzory z `Terrain.cpp`: siatka 97 x 97 punktów, 18432 trójkąty, podłoże wewnątrz labiryntu startowego od 0,085 m do 0,461 m, najniższy punkt całej siatki 0,0 m, najwyższe wzgórze 3,37 m (punkt `x = 33`, `z = -5,5`), stopy gracza na `y = 0,124` w środku komórki startowej `(1, 1)`, `0,278` w `(9, 1)` i `0,352` w `(17, 1)`. Te same liczby zgłosił autor kodu z działającej gry.
 - **Zgłoszone przez autora kodu, nie powtarzane:** build Debug i Release bez ostrzeżeń, clang-format bez uwag, obraz obejrzany na zrzutach ekranu zrobionych tymczasowymi wstawkami, które są usunięte. Liczba klatek w Release przy ustawieniach startowych to około 2000 przed zmianą i po niej: rozrzut między uruchomieniami (od 1438 do 2040) jest większy niż jakakolwiek różnica, więc pomiar mówi tylko tyle, że teren nie jest widocznym kosztem. Ograniczenie do odświeżania ekranu na tej maszynie nie działa.
 - **Nikt nie sprawdził ręcznie:** suwaka, pola `Wireframe`, chodzenia po terenie klawiszami. Płynność wysokości oczu przy chodzeniu jest pokryta tylko testami jednostkowymi. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 16.
@@ -809,11 +811,25 @@ Pierwszy odczyt stawia stopy na ziemi **przed** testem kolizji. Ma to znaczenie 
 ```cpp
 TerrainRenderer::TerrainRenderer(assets::AssetCache& assets)
     : m_mesh(std::span<const gfx::Vertex>{}, std::span<const std::uint32_t>{}),
-      m_texture(textureOr(assets, GROUND_TEXTURE_FILE, assets.whiteTexture())),
-      m_normalMap(textureOr(assets, GROUND_NORMAL_MAP_FILE, assets.flatNormalTexture())) {}
+      // The picture of the earth is a colour (sRGB), its normal map is data (linear).
+      m_texture(
+          textureOr(assets, GROUND_TEXTURE_FILE, gfx::ColorSpace::Srgb, assets.whiteTexture())),
+      m_normalMap(textureOr(assets, GROUND_NORMAL_MAP_FILE, gfx::ColorSpace::Linear,
+                            assets.flatNormalTexture())) {}
 ```
 
+(Komentarz nad `m_mesh` jest tu pominięty.)
+
 Siatka zaczyna pusta (zero wierzchołków, zero indeksów): rysowanie jej nic nie rysuje, dopóki nie zostanie wywołane `upload`. Dwie tekstury pochodzą z pamięci podręcznej assetów. `textureOr` zwraca teksturę z pliku albo, gdy pliku nie udało się wczytać, zastępczą: białą dla koloru i płaską mapę normalnych. Wskaźniki nigdy nie są puste, więc `draw` nie musi niczego sprawdzać.
+
+**Przestrzeń kolorów (od M7).** `textureOr` ma dodatkowy parametr `gfx::ColorSpace colorSpace` i podaje go dalej do `assets.texture(core::assetPath(file), colorSpace)`. Wołający musi powiedzieć, czym są bajty pliku, bo sama tekstura tego nie wie:
+
+| Plik | Argument | Format na karcie | Dlaczego |
+|---|---|---|---|
+| `ground.png` | `gfx::ColorSpace::Srgb` | `GL_SRGB8` | to kolor malowany dla ekranu. Karta dekoduje go do wartości liniowej przy odczycie, a rachunek światła dostaje to, czego potrzebuje |
+| `ground_normal.png` | `gfx::ColorSpace::Linear` | `GL_RGB8` | to kierunki, a nie kolory. Zdekodowane jak sRGB przestałyby być kierunkami: bajt 128, który znaczy 0, wyszedłby jako 0,216 zamiast 0,502 i normalne by się pochyliły |
+
+Obie tekstury zastępcze pasują do tego podziału: biała jest sRGB (biel to 1 w obu przestrzeniach), płaska mapa normalnych jest liniowa. Całość: [`../gfx/color-space.md`](../gfx/color-space.md) i [`../assets/asset-cache.md`](../assets/asset-cache.md).
 
 ```cpp
 void TerrainRenderer::upload(const TerrainMeshData& mesh) {
@@ -983,7 +999,8 @@ Czego testy **nie** sprawdzają:
 
 Lista z początku dokumentu, tutaj z podziałem na źródło:
 
-- **Testy** (uruchomione przeze mnie 2026-10-05 na plikach z `build/debug` i `build/release`): 256 przypadków, 101232 asercje, wszystkie zaliczone w obu konfiguracjach.
+- **Testy** (uruchomione przeze mnie 2026-10-05 na plikach z `build/debug` i `build/release`, po drugiej części M6): 256 przypadków, 101232 asercje, wszystkie zaliczone w obu konfiguracjach. Po pierwszej części M7 zgłoszone 269 i 102103, tych nie uruchamiałem.
+- **Po pierwszej części M7** (zgłoszone dla Windowsa, 2026-10-05): w trybie `Unlit` z `Tone mapping: None` i ekspozycją 1 podłoże i ściany różnią się od poprzedniego commita najwyżej o 22 poziomy na 255 (średnio 1,1), tylko na spoinach cegieł. Obraz nie jest identyczny, bo filtrowanie tekstury działa teraz na wartościach liniowych ([`../gfx/color-space.md`](../gfx/color-space.md)).
 - **Liczby terenu** (przeliczone niezależnie od kodu C++, skryptem czytającym plik PNG): 97 x 97, 18432 trójkąty, od 0,085 do 0,461 m w labiryncie, 3,37 m na wzgórzach, wysokości w trzech komórkach, przykłady z sekcji 2.
 - **Build, format, obraz, liczba klatek** (zgłoszone przez autora kodu): bez ostrzeżeń, clang-format czysty, zrzuty ekranu, około 2000 klatek na sekundę w Release przed i po.
 - **Nie zapisano:** wersji kompilatora, karty i sterownika dla tego pomiaru, wyniku clang-tidy.
@@ -1051,7 +1068,7 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
 11. **Zakopane modele.** Tekstura ściany zaczyna się u jej podstawy, więc w miejscach, gdzie ściana jest zagłębiona, dolny pas cokołu znika pod ziemią. To cena braku szpar, nie błąd.
 12. **Stary `imgui.ini`.** Położenie z `PanelLayout` działa tylko przy pierwszym użyciu panelu, czyli gdy panelu nie ma w pliku. Nowe panele Terrain i Grass staną więc na swoich miejscach, ale stare zostaną tam, gdzie zapisał je plik, a HUD jest od tej części niżej. Przed pokazem najprościej usunąć plik.
 13. **Teren nie ma kolizji.** Wysokość jest odczytywana. Na wzgórzach (do 4,5 m na jedynkę skali) gracz wejdzie na dowolnie strome zbocze z pełną prędkością poziomą. Do wzgórz da się dojść tylko w trybie noclip i po jego wyłączeniu poza labiryntem, bo labirynt jest zamknięty ścianami.
-14. **Brak gammy.** Tekstura `ground.png` jest dobrana na oko dla obrazu bez korekcji ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
+14. **Tekstura podłoża jest sRGB.** Do M6 `ground.png` była dobrana na oko dla obrazu bez korekcji gamma ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)). Od M7 jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe. Zamiana tych dwóch argumentów w `TerrainRenderer` nie zgłasza błędu: podłoże wyszłoby wyblakłe, a jego nierówności oświetlone krzywo. `AssetCache::texture` loguje błąd tylko wtedy, gdy ten sam plik zostanie zamówiony raz jako sRGB, a raz jako liniowy.
 15. **macOS, niesprawdzone.** `glPolygonMode` z `GL_LINE` należy do profilu Core 4.1, ale sterownik Apple jeszcze tego kodu nie widział.
 
 ## 8. Ćwiczenia

@@ -25,7 +25,7 @@ constexpr const char* TEXTURE_UNIFORM = "uTexture";
 constexpr const char* TINT_UNIFORM = "uTint";
 
 /// textured.frag, lit.frag and gouraud.frag: the light a surface gives off by itself,
-/// as a colour. Black for everything except the crystals.
+/// as a linear colour. Black for everything except the crystals.
 constexpr const char* EMISSIVE_UNIFORM = "uEmissive";
 
 /// common/normal_map.glsl, so lit.frag and textured.frag: the sampler of the normal map
@@ -55,8 +55,24 @@ constexpr const char* SHININESS_UNIFORM = "uShininess";
 constexpr const char* LIGHT_BLOCK_NAME = "LightBlock";
 constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
 
-/// color.frag: the one colour of everything drawn.
+/// color.frag: the one colour of everything drawn, a linear colour.
 constexpr const char* COLOR_UNIFORM = "uColor";
+
+/// post/composite.frag: the sampler of the scene picture (it holds the number of
+/// a texture unit), the exposure and the tone mapping curve (a value of
+/// game::ToneMapping).
+constexpr const char* COMPOSITE_SCENE_UNIFORM = "uScene";
+constexpr const char* COMPOSITE_EXPOSURE_UNIFORM = "uExposure";
+constexpr const char* COMPOSITE_TONE_MAPPING_UNIFORM = "uToneMapping";
+
+/// post/preview.frag: the sampler of the attachment to show, what it is (a value of
+/// game::AttachmentPreview), the clipping planes of the camera and the distance in
+/// metres the depth preview shows as white.
+constexpr const char* PREVIEW_SOURCE_UNIFORM = "uSource";
+constexpr const char* PREVIEW_MODE_UNIFORM = "uMode";
+constexpr const char* PREVIEW_NEAR_UNIFORM = "uNear";
+constexpr const char* PREVIEW_FAR_UNIFORM = "uFar";
+constexpr const char* PREVIEW_DEPTH_RANGE_UNIFORM = "uDepthRange";
 
 /// skybox.frag: the sampler of the cube map (it holds the number of a texture unit) and
 /// the number the colour of the sky is multiplied by.

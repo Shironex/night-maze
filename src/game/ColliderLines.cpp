@@ -4,6 +4,7 @@
 #include "game/ColliderLines.hpp"
 
 #include "game/ShaderUniforms.hpp"
+#include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Vertex.hpp"
 #include "scene/Transform.hpp"
@@ -99,7 +100,9 @@ ColliderLines::ColliderLines()
 
 void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
                          const glm::vec3& color) const {
-    shader.setVec3(COLOR_UNIFORM, color);
+    // color is an sRGB value, a colour named for the screen. The scene buffer holds
+    // linear colours, so it is converted here, and the composite pass shows it as given.
+    shader.setVec3(COLOR_UNIFORM, gfx::srgbToLinear(color));
 
     // The line width is left at its default of 1 pixel on purpose: an OpenGL Core
     // profile is not required to support wider lines, and macOS does not.
@@ -117,7 +120,8 @@ void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb>
 
 void ColliderLines::drawSpheres(const gfx::Shader& shader, std::span<const scene::Sphere> spheres,
                                 const glm::vec3& color) const {
-    shader.setVec3(COLOR_UNIFORM, color);
+    // Converted to a linear colour, as in draw.
+    shader.setVec3(COLOR_UNIFORM, gfx::srgbToLinear(color));
 
     for (const scene::Sphere& sphere : spheres) {
         // The unit circle has a radius of 1 around the origin, so scaling it by the

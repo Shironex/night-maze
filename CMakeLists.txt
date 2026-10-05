@@ -44,8 +44,14 @@ add_library(engine STATIC
     src/core/Window.hpp
     src/gfx/Buffer.cpp
     src/gfx/Buffer.hpp
+    src/gfx/ColorSpace.cpp
+    src/gfx/ColorSpace.hpp
     src/gfx/Cubemap.cpp
     src/gfx/Cubemap.hpp
+    src/gfx/Extensions.cpp
+    src/gfx/Extensions.hpp
+    src/gfx/Framebuffer.cpp
+    src/gfx/Framebuffer.hpp
     src/gfx/Mesh.cpp
     src/gfx/Mesh.hpp
     src/gfx/Shader.cpp
@@ -127,7 +133,7 @@ night_maze_enable_warnings(game_logic)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer, TerrainRenderer,
-# GrassRenderer, ColliderLines, LightRig, Skybox, with the shared ModelDraw) stay in the
+# GrassRenderer, ColliderLines, LightRig, Skybox, PostProcess, with the shared ModelDraw) stay in the
 # executable: they need a window and an OpenGL context, so they are not something a test
 # can run.
 add_executable(night_maze
@@ -146,6 +152,8 @@ add_executable(night_maze
     src/game/ModelDraw.hpp
     src/game/NightMazeApp.cpp
     src/game/NightMazeApp.hpp
+    src/game/PostProcess.cpp
+    src/game/PostProcess.hpp
     src/game/ShaderUniforms.hpp
     src/game/Skybox.cpp
     src/game/Skybox.hpp
@@ -158,6 +166,8 @@ add_executable(night_maze
     src/debug/Hud.hpp
     src/debug/PanelLayout.cpp
     src/debug/PanelLayout.hpp
+    src/debug/RawTextureSampler.cpp
+    src/debug/RawTextureSampler.hpp
     src/debug/Theme.cpp
     src/debug/Theme.hpp
     src/debug/panels/AssetsPanel.cpp
@@ -166,6 +176,8 @@ add_executable(night_maze
     src/debug/panels/CameraPanel.hpp
     src/debug/panels/CollisionPanel.cpp
     src/debug/panels/CollisionPanel.hpp
+    src/debug/panels/FramebuffersPanel.cpp
+    src/debug/panels/FramebuffersPanel.hpp
     src/debug/panels/GameplayPanel.cpp
     src/debug/panels/GameplayPanel.hpp
     src/debug/panels/GrassPanel.cpp
@@ -192,8 +204,10 @@ enable_testing()
 add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
+    tests/ColorSpaceTests.cpp
     tests/CrystalTests.cpp
     tests/ExitTests.cpp
+    tests/FramebufferTests.cpp
     tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
     tests/LightTests.cpp

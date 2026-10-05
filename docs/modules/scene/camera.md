@@ -239,22 +239,23 @@ Macierze to zwykła matematyka na procesorze. `Transform` i `Camera` nie wołaj�
 |---|---|---|
 | `glGetUniformLocation(program, "uModel")` | zwraca numer (location) zmiennej `uniform` o podanej nazwie w zlinkowanym programie, albo -1, gdy takiej nie ma | po numerze wskazuję, do której zmiennej shadera trafia macierz |
 | `glUniformMatrix4fv(location, 1, GL_FALSE, wskaźnik)` | kopiuje 16 liczb `float` do zmiennej `uniform mat4` programu, który jest aktualnie w użyciu (`glUseProgram`) | tak macierz z GLM trafia do shadera. `GL_FALSE` znaczy "nie transponuj": GLM trzyma macierz kolumnami, czyli tak, jak chce OpenGL. Wskaźnik daje `glm::value_ptr` ([`../../libraries/glm.md`](../../libraries/glm.md), sekcja 3.9) |
-| `glViewport(x, y, width, height)` | ustala prostokąt bufora ramki, na który trafia kwadrat NDC | z tych samych `width` i `height` trzeba policzyć `aspectRatio` dla `Camera::projectionMatrix` (sekcja 2.4) |
+| `glViewport(x, y, width, height)` | ustala prostokąt bufora ramki, na który trafia kwadrat NDC | z tych samych `width` i `height` trzeba policzyć `aspectRatio` dla `Camera::projectionMatrix` (sekcja 2.4). Od pierwszej części M7 buforem ramki sceny jest własny framebuffer HDR tej samej wielkości co framebuffer okna, a `glViewport` woła `gfx::Framebuffer::bind` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)) |
 | `glEnable(GL_DEPTH_TEST)` | włącza test głębi: fragment jest rysowany tylko wtedy, gdy jest bliżej niż to, co już jest w buforze głębi | bez niego o widoczności decyduje kolejność rysowania trójkątów, a nie odległość. Wartość głębi pochodzi z macierzy rzutowania (sekcja 2.3) |
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | czyści kolor i głębię | przy włączonym teście głębi bufor głębi trzeba czyścić co klatkę, inaczej zostają w nim wartości z poprzedniej |
 | `glDepthRange(0, 1)` | zakres, na który trafia z z NDC | wartość domyślna, nie zmieniam jej |
 
-Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glViewport`, `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, a `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania wysyła raz każda funkcja rysująca do swojego programu, a macierz modelu jest wysyłana raz dla każdego rysowanego obiektu.
+Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, `glViewport` od pierwszej części M7 wewnątrz `m_postProcess.beginScene` (przez `gfx::Framebuffer::bind`) i drugi raz w przebiegu składającym (`Framebuffer::bindDefault`), a `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania wysyła raz każda funkcja rysująca do swojego programu, a macierz modelu jest wysyłana raz dla każdego rysowanego obiektu.
 
 Kolejność w klatce:
 
 ```mermaid
 flowchart TD
-    A["glViewport(0, 0, szerokość, wysokość framebuffera)"] --> B["glEnable(GL_DEPTH_TEST)"]
-    B --> C["glClearColor, glClear(kolor i głębia)"]
-    C --> D{"szerokość albo wysokość framebuffera 0?"}
-    D -- tak --> End["koniec: samo tło"]
-    D -- nie --> E["aspectRatio = szerokość / wysokość (float)"]
+    D{"szerokość albo wysokość framebuffera okna 0?"}
+    D -- tak --> End["koniec: klatka gry pominięta"]
+    D -- nie --> A["m_postProcess.beginScene: framebuffer HDR sceny jako cel,<br/>glViewport(0, 0, szerokość, wysokość framebuffera)"]
+    A --> B["glEnable(GL_DEPTH_TEST)"]
+    B --> C["glClearColor (kolor przeliczony na liniowy), glClear(kolor i głębia)"]
+    C --> E["aspectRatio = szerokość / wysokość (float)"]
     E --> X["feet = glm::mix(poprzednia pozycja gracza, pozycja gracza, alpha)<br/>eye = feet + wysokość oczu"]
     X --> V["view = m_camera.viewMatrix(eye)<br/>projection = m_camera.projectionMatrix(aspectRatio)"]
     V --> LS["frameLighting = lightingForFrame(...), crystalLights = crystalLightPositions(m_round)<br/>lights = buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights)<br/>m_lightRig.upload(lights, eye)"]
@@ -263,12 +264,15 @@ flowchart TD
     M -- nie --> ML["drawLitMaze: m_gouraudShader albo m_litShader, use(), uView, uProjection,<br/>uSpecularModel, uSpecularStrength, uShininess, potem uModel i rysowanie dla każdego obiektu labiryntu, bramy i każdego kryształu"]
     MU --> L["gdy włączone: drawColliderLines: m_colorShader.use(), uView, uProjection,<br/>potem uModel i rysowanie dla każdego pudełka i każdego okręgu kuli"]
     ML --> L
+    L --> P["po scenie (M7): podglądy załączników, gdy panel Framebuffers jest otwarty,<br/>potem m_postProcess.composite: framebuffer okna jako cel, glViewport, trójkąt na cały ekran"]
 ```
+
+(Diagram pomija trawę i niebo, rysowane między labiryntem a przebiegami po scenie: nie zmieniają niczego w macierzach. Pełna kolejność klatki: [`../core/README.md`](../core/README.md), sekcja 6.6, i [`../renderer/post-process.md`](../renderer/post-process.md).)
 
 Trzy zależności w tej kolejności:
 
 1. `use()` stoi przed `setMat4`. Uniform należy do programu, a `glUniform*` pisze do programu aktualnie wybranego.
-2. Proporcje są liczone z tych samych dwóch liczb, które trafiły do `glViewport` (sekcja 2.4).
+2. Proporcje są liczone z tych samych dwóch liczb, które trafiły do `glViewport` (sekcja 2.4): rozmiar framebuffera okna idzie do `beginScene`, a ono tworzy framebuffer sceny w tym rozmiarze i ustawia na niego viewport.
 3. Bufor głębi jest czyszczony razem z kolorem, przed rysowaniem.
 
 **Test głębi** (depth test). Każdy piksel bufora ramki ma oprócz koloru wartość głębi od 0 do 1. `glClear(GL_DEPTH_BUFFER_BIT)` wpisuje wszędzie 1, czyli "najdalej". Przy włączonym teście fragment jest zapisywany tylko wtedy, gdy jego głębia jest **mniejsza** od tej w buforze (domyślna funkcja `GL_LESS`), i wtedy nadpisuje kolor oraz głębię. Dzięki temu bliższa ściana wygrywa niezależnie od kolejności rysowania trójkątów. Bez testu wygrywa ten trójkąt, który został narysowany później. W labiryncie oznacza to, że dalsza ściana narysowana po bliższej zamalowuje ją, a bryła, której tylne ściany są rysowane po przednich, wygląda jak wywrócona na lewą stronę (tak wyglądała bez testu głębi kostka z M1). Ćwiczenie 10 pozwala to zobaczyć.
@@ -490,7 +494,7 @@ Trzy wiersze tej tabeli, które dotyczą `Transform`, są w [`transforms.md`](tr
 
 Stan z M1, gdy te pliki powstały: build Debug i Release (clang, `-Wall -Wextra -Wpedantic`) przechodził bez ostrzeżeń, a clang-tidy z regułami projektu nie zgłaszał niczego w plikach `src/scene/`. Na Windowsie przed M5 (MSVC 19.44, `/W4 /permissive-`, 2026-10-05) build Debug i Release też przechodził bez ostrzeżeń. Dla M5, w którym do `src/scene/` doszły kule kolizji, zgłoszony jest build Debug i Release na Windowsie bez ostrzeżeń (2026-10-05). Na macOS kod M5 nie był budowany, a clang-tidy nie był na nim uruchamiany.
 
-### 5.7 Użycie w `NightMazeApp`: dwie macierze na klatkę, sześć programów
+### 5.7 Użycie w `NightMazeApp`: dwie macierze na klatkę, sześć programów sceny
 
 Właścicielem kamery jest `game::NightMazeApp` ([`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp)). Całą klasę, w tym kolejność w `onRender`, opisuje [`../core/README.md`](../core/README.md), sekcja 6. Tutaj wszystko, co dotyczy macierzy.
 
@@ -527,7 +531,20 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 
 ```cpp
     const core::Size framebuffer = window().framebufferSize();
-    GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
+
+    // (...) So the whole frame is skipped. The scene framebuffer keeps its last size
+    // and is used again when the window is back.
+    if (framebuffer.width == 0 || framebuffer.height == 0) {
+        return;
+    }
+
+    // From here on the draw calls do not land in the window. They land in the HDR
+    // framebuffer of the scene, which is created again here when the size of the window
+    // has changed. The viewport is set to its size by the same call. Without
+    // a framebuffer (the driver refused it, the error is in the log) nothing is drawn.
+    if (!m_postProcess.beginScene(framebuffer)) {
+        return;
+    }
 
     // Depth test: a fragment is kept only if it is nearer to the camera than what is
     // already drawn at that pixel, so the near walls hide the far ones in whatever order
@@ -537,32 +554,30 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
     GL_CHECK(glEnable(GL_DEPTH_TEST));
 
     // The depth buffer has to be cleared together with the color, otherwise the depths of
-    // the previous frame would hide the new one.
-    GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
+    // the previous frame would hide the new one. (...)
+    // Both buffers are the two textures of the scene framebuffer now. The clear colour
+    // is an sRGB value and the buffer holds linear colours, so it is converted first.
+    const glm::vec3 clearColor =
+        gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]});
+    GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
+
+(Stan z pierwszej części M7. Dwa komentarze są tu skrócone, miejsca oznacza `(...)`.)
 
 | Linia | Znaczenie dla przekształceń |
 |---|---|
 | `window().framebufferSize()` | rozmiar obszaru rysowania w pikselach. Z tych samych dwóch liczb powstanie viewport i proporcje |
-| `glViewport(0, 0, framebuffer.width, framebuffer.height)` | kwadrat NDC trafia na cały framebuffer (sekcja 2.4) |
+| strażnik `0 x 0` | od M7 stoi na samym początku, przed wyborem celu i czyszczeniem (opis niżej) |
+| `m_postProcess.beginScene(framebuffer)` | wiąże framebuffer HDR sceny i woła `glViewport(0, 0, szerokość, wysokość)`: kwadrat NDC trafia na cały framebuffer sceny (sekcja 2.4). Do M6 stała tu linia `glViewport` wprost. Macierze niczego o tej zmianie nie wiedzą: liczą się tylko szerokość i wysokość w pikselach ([`../renderer/post-process.md`](../renderer/post-process.md)) |
 | `glEnable(GL_DEPTH_TEST)` | test głębi (sekcja 3). W labiryncie to on sprawia, że bliska ściana zasłania dalsze korytarze, choć ściany są rysowane w kolejności listy, a nie od najdalszej |
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | jedno wywołanie czyści oba bufory. `\|` to bitowe "lub": łączy dwie flagi w jedną maskę |
 
-**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (viewport, test głębi, kolor czyszczenia), a potem każda funkcja rysująca wybiera swój program. Koszt to jedno wywołanie na klatkę.
+**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (cel rysowania z viewportem, test głębi, kolor czyszczenia), a potem każda funkcja rysująca wybiera swój program. Koszt to jedno wywołanie na klatkę. Od pierwszej części M7 jest jeszcze drugi, własny powód: przebieg składający na końcu każdej klatki sam wyłącza test głębi i zostawia go wyłączonego (`PostProcess::composite`), więc wariant "raz w konstruktorze" już by nie działał.
 
 **Reszta: proporcje, oko i dwie macierze.**
 
 ```cpp
-    // A minimized window can have a framebuffer of size 0 x 0. The aspect ratio would
-    // then be 0 / 0, which is NaN (not a number): glm::perspective stops the program with
-    // an assert in a Debug build and returns a matrix with NaN in it in a Release build.
-    // A size of 0 in one direction only gives an aspect ratio of 0 or infinity, and
-    // a matrix that is just as useless. There is nothing to draw in such a frame anyway.
-    if (framebuffer.width == 0 || framebuffer.height == 0) {
-        return;
-    }
-
     // Width divided by height of the same pixels the viewport covers. The casts make it
     // a division of floats: 1280 / 720 as integers would be 1.
     const float aspectRatio =
@@ -596,7 +611,7 @@ Zaraz po nich światła tej klatki i dwa wywołania rysujące:
 
 | Linia | Znaczenie |
 |---|---|
-| `if (framebuffer.width == 0 \|\| framebuffer.height == 0) { return; }` | **Okno zminimalizowane albo ściśnięte do zera.** Framebuffer może mieć wtedy rozmiar 0 x 0. Proporcje to byłoby `0 / 0`, czyli `NaN`: w buildzie Debug `glm::perspective` zatrzymuje program asercją, a w Release zwraca macierz z `NaN`. Sama wysokość 0 daje proporcje równe nieskończoności, a sama szerokość 0 daje proporcje 0, przez które macierz rzutowania dzieli (jej pierwszy wyraz to `f / aspect`). Oba przypadki przechodzą przez asercję GLM i dają bezużyteczną macierz, dlatego sprawdzam obie liczby. Framebuffer o szerokości 0 da się uzyskać naprawdę: w teście z M1 okno o rozmiarze 0 x 300 miało framebuffer 0 x 600 ([`camera-controls.md`](camera-controls.md), sekcja 5). W takiej klatce i tak nie ma ani jednego piksela do narysowania. Sprawdzenie stoi po `glClear`, więc stan i bufory są ustawione jak zawsze |
+| `if (framebuffer.width == 0 \|\| framebuffer.height == 0) { return; }` | **Okno zminimalizowane albo ściśnięte do zera.** Framebuffer może mieć wtedy rozmiar 0 x 0. Proporcje to byłoby `0 / 0`, czyli `NaN`: w buildzie Debug `glm::perspective` zatrzymuje program asercją, a w Release zwraca macierz z `NaN`. Sama wysokość 0 daje proporcje równe nieskończoności, a sama szerokość 0 daje proporcje 0, przez które macierz rzutowania dzieli (jej pierwszy wyraz to `f / aspect`). Oba przypadki przechodzą przez asercję GLM i dają bezużyteczną macierz, dlatego sprawdzam obie liczby. Framebuffer o szerokości 0 da się uzyskać naprawdę: w teście z M1 okno o rozmiarze 0 x 300 miało framebuffer 0 x 600 ([`camera-controls.md`](camera-controls.md), sekcja 5). W takiej klatce i tak nie ma ani jednego piksela do narysowania. Od pierwszej części M7 sprawdzenie stoi na samym początku (listing wyżej), przed `beginScene` i `glClear`: tekstury o rozmiarze 0 nie da się podpiąć do framebuffera, więc nie ma też do czego rysować. Komentarz w kodzie mówi dziś o samym przypadku 0 x 0. Kod sprawdza obie liczby osobno |
 | `static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height)` | **Proporcje.** `width` i `height` są typu `int`, a dzielenie dwóch liczb `int` jest całkowite: 2560 / 1440 dałoby 1. Rzutowanie obu na `float` daje 1,778. Liczone co klatkę, więc zmiana rozmiaru okna od razu zmienia macierz rzutowania |
 | `glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha))` | pozycja stóp gracza między pozycją sprzed ostatniego kroku a pozycją bieżącą ([`../core/main-loop.md`](../core/main-loop.md), sekcje 2.4 i 5.5) |
 | `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | punkt, z którego rysowana jest ta klatka: 1,7 m nad stopami. To nie jest `m_camera.position`, tylko jego wygładzona wersja |

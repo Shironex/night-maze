@@ -58,9 +58,9 @@ const ObjMaterial* findMaterial(const ObjModel& model, const std::string& name) 
 
 AssetCache::AssetCache()
     : m_whiteTexture(FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_CHANNELS,
-                     WHITE_PIXEL.data()),
+                     WHITE_PIXEL.data(), gfx::ColorSpace::Srgb),
       m_flatNormalTexture(FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_CHANNELS,
-                          FLAT_NORMAL_PIXEL.data()) {}
+                          FLAT_NORMAL_PIXEL.data(), gfx::ColorSpace::Linear) {}
 
 const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
     const std::filesystem::path key = cacheKey(path);
@@ -112,8 +112,8 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
         }
         if (!part.texturePath.empty()) {
             // texture() logs a failed load. The part then keeps the white texture and is
-            // drawn in its plain colour.
-            const gfx::Texture2D* texture = this->texture(part.texturePath);
+            // drawn in its plain colour. The picture of map_Kd is a colour: sRGB.
+            const gfx::Texture2D* texture = this->texture(part.texturePath, gfx::ColorSpace::Srgb);
             if (texture != nullptr) {
                 part.texture = texture;
                 part.hasOwnTexture = true;
@@ -122,7 +122,9 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
         if (!part.normalMapPath.empty()) {
             // The same function and the same list as for the colour pictures: a normal
             // map is a texture too. A failed load leaves the flat normal map in place.
-            const gfx::Texture2D* normalMap = this->texture(part.normalMapPath);
+            // Its bytes are directions, not colours: linear, or the normals would bend.
+            const gfx::Texture2D* normalMap =
+                this->texture(part.normalMapPath, gfx::ColorSpace::Linear);
             if (normalMap != nullptr) {
                 part.normalMap = normalMap;
                 part.hasOwnNormalMap = true;
@@ -145,11 +147,18 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
     return &loaded;
 }
 
-const gfx::Texture2D* AssetCache::texture(const std::filesystem::path& path) {
+const gfx::Texture2D* AssetCache::texture(const std::filesystem::path& path,
+                                          gfx::ColorSpace colorSpace) {
     const std::filesystem::path key = cacheKey(path);
 
     for (const LoadedTexture& loaded : m_textures) {
         if (loaded.path == key) {
+            // One file cannot be a colour picture and a normal map at once. The texture
+            // stays as it was loaded: the mistake is in the model or in the caller.
+            if (loaded.texture.colorSpace() != colorSpace) {
+                core::logError("Texture is asked for as sRGB and as linear: " +
+                               core::pathText(key));
+            }
             return &loaded.texture;
         }
     }
@@ -167,7 +176,8 @@ const gfx::Texture2D* AssetCache::texture(const std::filesystem::path& path) {
 
     // The constructor logs an error and leaves the texture not valid when the picture
     // has a channel count it does not accept (grey pictures have 1 or 2 channels).
-    gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data());
+    gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data(),
+                           colorSpace);
     if (!texture.isValid()) {
         core::logError("Texture cannot be used: " + core::pathText(key));
         m_failedPaths.push_back(key);

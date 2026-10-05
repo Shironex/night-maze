@@ -13,6 +13,8 @@ enum class ViewMode;
 
 namespace debug {
 
+class RawTextureSampler;
+
 /// Draws the "Assets" panel. Called by DebugUI::draw, inside the ImGui frame.
 ///
 /// assets is not const: the filter list and the anisotropy slider call setFilter and
@@ -20,6 +22,9 @@ namespace debug {
 /// viewMode is editable: what the textured shader shows (picture, normals or UVs).
 /// normalMapping is editable: whether the lit shader reads its normals from the normal
 /// maps (game::LightingSettings::normalMapping).
-void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping);
+/// rawSampler is what the previews of the sRGB textures are read with, so that they show
+/// the pictures as they are in their files (debug::RawTextureSampler).
+void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping,
+                     const RawTextureSampler& rawSampler);
 
 } // namespace debug

@@ -3,10 +3,12 @@
 // and spheres.
 // See docs/modules/scene/collision.md
 
-// The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3).
+// The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3)
+// as a LINEAR colour: game::ColliderLines converts the colours it is given.
 uniform vec3 uColor;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha). The composite pass encodes it for the screen.
 out vec4 fragColor;
 
 void main() {

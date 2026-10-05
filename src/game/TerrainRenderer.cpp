@@ -32,8 +32,8 @@ constexpr glm::mat4 IDENTITY{1.0F};
 
 // The texture of the cache, or the stand-in when the file could not be loaded.
 const gfx::Texture2D* textureOr(assets::AssetCache& assets, const char* file,
-                                const gfx::Texture2D& fallback) {
-    const gfx::Texture2D* texture = assets.texture(core::assetPath(file));
+                                gfx::ColorSpace colorSpace, const gfx::Texture2D& fallback) {
+    const gfx::Texture2D* texture = assets.texture(core::assetPath(file), colorSpace);
     return texture != nullptr ? texture : &fallback;
 }
 
@@ -42,8 +42,11 @@ const gfx::Texture2D* textureOr(assets::AssetCache& assets, const char* file,
 TerrainRenderer::TerrainRenderer(assets::AssetCache& assets)
     // An empty mesh: no vertex and no index. Drawing it draws nothing.
     : m_mesh(std::span<const gfx::Vertex>{}, std::span<const std::uint32_t>{}),
-      m_texture(textureOr(assets, GROUND_TEXTURE_FILE, assets.whiteTexture())),
-      m_normalMap(textureOr(assets, GROUND_NORMAL_MAP_FILE, assets.flatNormalTexture())) {}
+      // The picture of the earth is a colour (sRGB), its normal map is data (linear).
+      m_texture(
+          textureOr(assets, GROUND_TEXTURE_FILE, gfx::ColorSpace::Srgb, assets.whiteTexture())),
+      m_normalMap(textureOr(assets, GROUND_NORMAL_MAP_FILE, gfx::ColorSpace::Linear,
+                            assets.flatNormalTexture())) {}
 
 void TerrainRenderer::upload(const TerrainMeshData& mesh) {
     // A gfx::Mesh is filled once, when it is created. So a new mesh is made, and the

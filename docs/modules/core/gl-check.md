@@ -61,7 +61,7 @@ Ta część modułu nie ma shaderów. Warto jednak wiedzieć, czego `GL_CHECK` p
 |---|---|
 | [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp) | deklaracja `core::checkGlErrors` i makro `GL_CHECK` w dwóch wersjach (Debug, Release). Dołącza `<glad/gl.h>` |
 | [`src/core/GlCheck.cpp`](../../../src/core/GlCheck.cpp) | `checkGlErrors`, pomocnicza `glErrorName` i stała `MAX_ERRORS_PER_CHECK` |
-| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | cztery użycia w `onRender`: `glViewport`, `glEnable`, `glClearColor`, `glClear`. Piąte, `glDrawElements` kostki z M1, zniknęło w M5 razem z kostką |
+| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | trzy użycia w `onRender`: `glEnable`, `glClearColor`, `glClear`. `glDrawElements` kostki z M1 zniknęło w M5 razem z kostką, a `glViewport` w pierwszej części M7: obszar rysowania ustawia teraz `gfx::Framebuffer::bind` i `bindDefault` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)) |
 
 ### 5.2 Makro
 
@@ -170,15 +170,24 @@ const char* glErrorName(GLenum error) {
 
 ```cpp
 const core::Size framebuffer = window().framebufferSize();
-GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
+
+if (framebuffer.width == 0 || framebuffer.height == 0) {
+    return;
+}
+
+if (!m_postProcess.beginScene(framebuffer)) {
+    return;
+}
 
 GL_CHECK(glEnable(GL_DEPTH_TEST));
 
-GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
+const glm::vec3 clearColor =
+    gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]});
+GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
 GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
 
-To początek każdej klatki (opis samych funkcji: [`window-context.md`](window-context.md), sekcja 3.2). Po nim `onRender` rysuje labirynt, bramę, kryształy i linie kolizji. Od M5 w `NightMazeApp.cpp` nie ma już żadnego wywołania rysującego napisanego wprost (do M4 była nim linia `glDrawElements` kostki z M1): wszystko rysuje `gfx::Mesh::draw`, w którym `glDrawElements` stoi w makrze, a `glUseProgram`, `glGetUniformLocation`, `glUniformMatrix4fv` i `glBindVertexArray` są opakowane w makro wewnątrz klas `gfx` ([`../gfx/README.md`](../gfx/README.md), sekcja 6). W makro opakowane jest też każde wywołanie w `src/gfx/`. Wywołania `glGetString` w konstruktorze `Window` nie są opakowane: stoją przed pierwszą klatką, a ich wynik jest i tak sprawdzany pod kątem `nullptr`. Backend ImGui woła OpenGL własnym loaderem i mojego makra nie używa.
+To początek każdej klatki (komentarze pominięte, opis samych funkcji: [`window-context.md`](window-context.md), sekcja 3.2). Od pierwszej części M7 linii `glViewport` tu nie ma: scena jest rysowana do własnego framebuffera HDR, a wywołanie `glBindFramebuffer` razem z `glViewport` stoi w `gfx::Framebuffer::bind`, wołanym przez `m_postProcess.beginScene` (oba w makrze, [`../gfx/framebuffers.md`](../gfx/framebuffers.md)). Po tym początku `onRender` rysuje labirynt, bramę, kryształy, trawę, linie kolizji i niebo, a na końcu przebieg składający (`m_postProcess.composite`) przenosi obraz do okna ([`../renderer/post-process.md`](../renderer/post-process.md)). Od M5 w `NightMazeApp.cpp` nie ma już żadnego wywołania rysującego napisanego wprost (do M4 była nim linia `glDrawElements` kostki z M1): wszystko rysuje `gfx::Mesh::draw`, w którym `glDrawElements` stoi w makrze, a `glUseProgram`, `glGetUniformLocation`, `glUniformMatrix4fv` i `glBindVertexArray` są opakowane w makro wewnątrz klas `gfx` ([`../gfx/README.md`](../gfx/README.md), sekcja 6). W makro opakowane jest też każde wywołanie w `src/gfx/`. Wywołania `glGetString` w konstruktorze `Window` nie są opakowane: stoją przed pierwszą klatką, a ich wynik jest i tak sprawdzany pod kątem `nullptr`. Backend ImGui woła OpenGL własnym loaderem i mojego makra nie używa.
 
 ## 6. Panel ImGui
 
@@ -186,7 +195,7 @@ To początek każdej klatki (opis samych funkcji: [`window-context.md`](window-c
 
 ## 7. Pułapki
 
-1. **`GL_CHECK` obwinia nie to wywołanie.** Flaga błędu zostaje w kontekście, dopóki ktoś jej nie odczyta. Jeśli błąd spowoduje wywołanie **bez** `GL_CHECK` (także wewnątrz cudzej biblioteki, na przykład backendu ImGui), zgłosi go dopiero najbliższy `GL_CHECK` przy zupełnie innej funkcji (w M0 zwykle `glViewport` w następnej klatce). Wniosek: każde własne `gl*` opakowuję w makro.
+1. **`GL_CHECK` obwinia nie to wywołanie.** Flaga błędu zostaje w kontekście, dopóki ktoś jej nie odczyta. Jeśli błąd spowoduje wywołanie **bez** `GL_CHECK` (także wewnątrz cudzej biblioteki, na przykład backendu ImGui), zgłosi go dopiero najbliższy `GL_CHECK` przy zupełnie innej funkcji (w M0 zwykle `glViewport` w następnej klatce, dziś pierwsze wywołanie w `gfx::Framebuffer::bind`). Wniosek: każde własne `gl*` opakowuję w makro.
 2. **`GL_CHECK` nie działa w Release.** To celowe, ale oznacza, że błąd widoczny tylko w Release trzeba szukać, przełączając się na Debug.
 3. **Brak debug callbacku.** `glDebugMessageCallback` to OpenGL 4.3. Wiele poradników go używa, na macOS to się nie skompiluje (GLAD 4.1 nie ma tej funkcji). Stąd `GL_CHECK`.
 4. **Deklaracja wewnątrz makra.** `GL_CHECK(GLuint id = glCreateShader(...));` kompiluje się, ale `id` istnieje tylko wewnątrz bloku `do { }`. Zmienną deklaruję przed makrem.

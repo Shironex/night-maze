@@ -4,9 +4,9 @@
 
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
+#include "gfx/Extensions.hpp"
 
 #include <algorithm>
-#include <cstring>
 #include <string>
 
 namespace gfx {
@@ -41,26 +41,18 @@ constexpr float NO_ANISOTROPY = 1.0F;
 
 // True when the driver lists the anisotropic filtering extension under either name.
 bool hasAnisotropicFiltering() {
-    // In a Core profile the extensions are not one long string any more: the driver
-    // reports how many there are and hands out their names one by one.
-    GLint extensionCount = 0;
-    GL_CHECK(glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount));
+    return hasExtension(ANISOTROPY_EXTENSION_EXT) || hasExtension(ANISOTROPY_EXTENSION_ARB);
+}
 
-    for (GLint index = 0; index < extensionCount; ++index) {
-        const GLubyte* bytes = nullptr;
-        GL_CHECK(bytes = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(index)));
-        if (bytes == nullptr) {
-            continue;
-        }
-        // OpenGL returns text as unsigned bytes (GLubyte), the C string functions want
-        // char. Both are one byte per character, so the cast only changes the type.
-        const char* name = reinterpret_cast<const char*>(bytes);
-        if (std::strcmp(name, ANISOTROPY_EXTENSION_EXT) == 0 ||
-            std::strcmp(name, ANISOTROPY_EXTENSION_ARB) == 0) {
-            return true;
-        }
+// The internal format: how the graphics card stores the texture and what it does when
+// a shader reads it. All four are 8 bits per channel. The two sRGB formats also decode
+// the red, green and blue of every texel to linear values on reading (alpha is stored
+// as it is). Both are formats every OpenGL 4.1 driver must support for textures.
+GLint internalFormatFor(bool hasAlpha, ColorSpace colorSpace) {
+    if (colorSpace == ColorSpace::Srgb) {
+        return hasAlpha ? GL_SRGB8_ALPHA8 : GL_SRGB8;
     }
-    return false;
+    return hasAlpha ? GL_RGBA8 : GL_RGB8;
 }
 
 // Highest anisotropy level of the driver, or NO_ANISOTROPY when the extension is missing.
@@ -103,7 +95,9 @@ void applyFilter(GLuint sampler, TextureFilter filter) {
 
 } // namespace
 
-Texture2D::Texture2D(int width, int height, int channels, const unsigned char* pixels) {
+Texture2D::Texture2D(int width, int height, int channels, const unsigned char* pixels,
+                     ColorSpace colorSpace)
+    : m_colorSpace(colorSpace) {
     const bool channelsSupported = channels == RGB_CHANNELS || channels == RGBA_CHANNELS;
     if (width < 1 || height < 1 || !channelsSupported || pixels == nullptr) {
         core::logError("Texture2D cannot be created: it needs a size of at least 1 x 1, 3 or 4 "
@@ -117,10 +111,12 @@ Texture2D::Texture2D(int width, int height, int channels, const unsigned char* p
 
     // Two different questions. The data format says what the bytes in pixels are: three or
     // four of them per pixel. The internal format says how the graphics card should store
-    // the texture: 8 bits per channel, with or without alpha. Here both match the data.
+    // the texture: 8 bits per channel, with or without alpha, and whether the colours
+    // are sRGB encoded. The bytes themselves are the same for an sRGB and a linear
+    // texture: only what the graphics card does when it reads them differs.
     const bool hasAlpha = channels == RGBA_CHANNELS;
     const GLenum dataFormat = hasAlpha ? GL_RGBA : GL_RGB;
-    const GLint internalFormat = hasAlpha ? GL_RGBA8 : GL_RGB8;
+    const GLint internalFormat = internalFormatFor(hasAlpha, colorSpace);
 
     // glGenTextures writes new ids into an array. Here the array is the one member.
     GL_CHECK(glGenTextures(1, &m_id));
@@ -149,7 +145,9 @@ Texture2D::Texture2D(int width, int height, int channels, const unsigned char* p
 
     // Builds every smaller level from level 0: each one half as wide and half as high as
     // the one before, down to 1 x 1. They are always built, whatever the filter, so that
-    // the filter can be changed later without touching the pixels again.
+    // the filter can be changed later without touching the pixels again. For an sRGB
+    // texture the smaller levels are averaged from the decoded, linear values and
+    // encoded again, so a far wall has the brightness of the same wall up close.
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 
     // How the texture is read (filter, wrapping, anisotropy) is kept in a sampler object
@@ -182,6 +180,7 @@ Texture2D::Texture2D(Texture2D&& other) noexcept
       m_sampler(other.m_sampler),
       m_width(other.m_width),
       m_height(other.m_height),
+      m_colorSpace(other.m_colorSpace),
       m_filter(other.m_filter),
       m_anisotropy(other.m_anisotropy),
       m_maxAnisotropy(other.m_maxAnisotropy) {
@@ -207,6 +206,7 @@ Texture2D& Texture2D::operator=(Texture2D&& other) noexcept {
     m_sampler = other.m_sampler;
     m_width = other.m_width;
     m_height = other.m_height;
+    m_colorSpace = other.m_colorSpace;
     m_filter = other.m_filter;
     m_anisotropy = other.m_anisotropy;
     m_maxAnisotropy = other.m_maxAnisotropy;

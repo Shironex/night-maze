@@ -24,7 +24,7 @@ constexpr GLint TIGHT_ROW_ALIGNMENT = 1;
 
 } // namespace
 
-Cubemap::Cubemap(int size, int channels, const FacePixels& faces) {
+Cubemap::Cubemap(int size, int channels, const FacePixels& faces, ColorSpace colorSpace) {
     const bool channelsSupported = channels == RGB_CHANNELS || channels == RGBA_CHANNELS;
     // any_of asks the question "is there a face without pixels" of all six entries.
     const bool faceMissing =
@@ -38,12 +38,15 @@ Cubemap::Cubemap(int size, int channels, const FacePixels& faces) {
     m_size = size;
 
     // The data format says what the bytes are, the internal format how the graphics card
-    // stores them (see Texture2D.cpp). GL_RGB8, not an sRGB format: like the other
-    // textures of the game, the sky is used as it is in the file until gamma correction
-    // arrives with M7.
+    // stores them and what it does when a shader reads them (see Texture2D.cpp). With
+    // ColorSpace::Srgb the faces get an sRGB format and are decoded to linear values on
+    // reading, like the colour textures of the models.
     const bool hasAlpha = channels == RGBA_CHANNELS;
     const GLenum dataFormat = hasAlpha ? GL_RGBA : GL_RGB;
-    const GLint internalFormat = hasAlpha ? GL_RGBA8 : GL_RGB8;
+    GLint internalFormat = hasAlpha ? GL_RGBA8 : GL_RGB8;
+    if (colorSpace == ColorSpace::Srgb) {
+        internalFormat = hasAlpha ? GL_SRGB8_ALPHA8 : GL_SRGB8;
+    }
 
     GL_CHECK(glGenTextures(1, &m_id));
     // The first binding decides the kind of the texture: this one is a cube map for good.

@@ -21,7 +21,8 @@ struct LoadedTexture {
     /// Path of the image file, normalized. This is the key of the cache.
     std::filesystem::path path;
 
-    /// The picture on the graphics card.
+    /// The picture on the graphics card. It knows its colour space
+    /// (gfx::Texture2D::colorSpace).
     gfx::Texture2D texture;
 };
 
@@ -82,7 +83,8 @@ struct LoadedModel {
 /// Asking for the same file again returns the object loaded before, so a texture used by
 /// two models (wall_stone.png and its normal map, by the wall and by the pillar) exists
 /// once on the card. A normal map is a texture like any other here: the same loader, the
-/// same list, the same filter. Only the shader reads it differently.
+/// same list, the same filter. It differs in one thing, its colour space: a colour
+/// picture is loaded as sRGB, a normal map as linear data (gfx::ColorSpace).
 ///
 /// The pointers it returns stay valid for the whole life of the cache: loading more
 /// assets never moves the ones already loaded.
@@ -112,18 +114,27 @@ public:
     /// calls return the same object. New textures get the filter and the anisotropy
     /// level chosen with setFilter and setAnisotropy.
     ///
+    /// colorSpace says what the picture holds: gfx::ColorSpace::Srgb for a colour
+    /// picture (the map_Kd of a material, the ground), gfx::ColorSpace::Linear for
+    /// a normal map. The caller decides, because only the caller knows what it will use
+    /// the texture for. A file is one or the other: asking for a file that is already
+    /// loaded with the other colour space logs an error and returns the texture as it
+    /// was loaded first.
+    ///
     /// Returns nullptr when the file cannot be loaded or is not a picture with 3 or 4
     /// channels. The error is logged once, by the first call. It does not throw.
-    const gfx::Texture2D* texture(const std::filesystem::path& path);
+    const gfx::Texture2D* texture(const std::filesystem::path& path, gfx::ColorSpace colorSpace);
 
     /// A 1 x 1 white texture. A shader that multiplies a colour by a texture draws the
-    /// plain colour with it.
+    /// plain colour with it. It stands in for colour pictures, so it is sRGB like them
+    /// (white is 1 in both colour spaces).
     const gfx::Texture2D& whiteTexture() const { return m_whiteTexture; }
 
     /// A 1 x 1 normal map whose one texel is (128, 128, 255): the direction (0, 0, 1) of
     /// tangent space, "straight out of the surface". A shader that reads its normals
     /// from a normal map gets the normal of the mesh with it, so it needs no second code
-    /// path for parts without a normal map.
+    /// path for parts without a normal map. Linear, like every normal map: decoded as
+    /// sRGB, 128 would no longer mean 0.
     const gfx::Texture2D& flatNormalTexture() const { return m_flatNormalTexture; }
 
     /// Changes the filter of every loaded texture, and of the ones loaded later.

@@ -1,15 +1,15 @@
 # Moduł gfx: tekstury
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (doszło oświetlenie, a potem mapy normalnych) i w M5 (kryształy, brama, uniform `uEmissive`). Temat wykładu: 5 (Tekstury).
-Kod: [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp), shadery [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag), settery `setInt` i `setVec3` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), wiązanie tekstur i samplery w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszło oświetlenie, a potem mapy normalnych), w M5 (kryształy, brama, uniform `uEmissive`) i w pierwszej części M7 (przestrzeń kolorów: tekstury sRGB i liniowe). Temat wykładu: 5 (Tekstury).
+Kod: [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp), pytanie o rozszerzenie w [`src/gfx/Extensions.hpp`](../../../src/gfx/Extensions.hpp) i [`src/gfx/Extensions.cpp`](../../../src/gfx/Extensions.cpp), typ `ColorSpace` w [`src/gfx/ColorSpace.hpp`](../../../src/gfx/ColorSpace.hpp), shadery [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag), settery `setInt` i `setVec3` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), wiązanie tekstur i samplery w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument zakłada znajomość shaderów ([`shaders.md`](shaders.md)), uniformów ([`uniforms.md`](uniforms.md)) i atrybutów wierzchołka ([`buffers-vao.md`](buffers-vao.md)). Skąd biorą się bajty obrazu, opisuje [`../assets/images.md`](../assets/images.md), a skąd pliki PNG i współrzędne UV modeli, [`../../guides/blender.md`](../../guides/blender.md), sekcje 6 i 7. Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś:** gra rysuje z teksturami labirynt, a od M5 także kryształy i bramę wyjścia. Od M4 labirynt jest domyślnie **oświetlony** i rysują go programy `lit` albo `gouraud`, które czytają teksturę koloru dokładnie tak samo jak program opisany tutaj (ten sam sampler `uTexture`, ten sam `uTint`, ta sama jednostka 0). Od drugiej części M4 każda część modelu ma też **mapę normalnych** (normal map): drugą teksturę, wiązaną z jednostką 1 i czytaną przez drugi sampler, `uNormalMap`. Cały temat map normalnych ma własny dokument, [`normal-mapping.md`](normal-mapping.md). Tutaj jest tylko to, co dotyczy samych tekstur: dwie jednostki, dwa samplery (sekcje 2.7 i 4.3) i widok normalnych w `textured.frag` (sekcja 4.2). Para `textured.vert` i `textured.frag` (sekcja 4) rysuje teren, ściany, słupki, kryształy i bramę w trybie oświetlenia `Unlit` oraz w obu widokach diagnostycznych (normalne i UV jako kolor), niezależnie od trybu oświetlenia. Tekstury tworzy i przechowuje `assets::AssetCache` ([`../assets/asset-cache.md`](../assets/asset-cache.md)), a wiążą je i ustawiają samplery dwie wolne funkcje, `game::drawModel` i `game::setModelSamplers` z `src/game/ModelDraw.cpp`, wspólne dla `game::MazeRenderer` (labirynt, [`../game/maze-rendering.md`](../game/maze-rendering.md)) i `game::GameplayRenderer` (kryształy i brama, [`../game/gameplay.md`](../game/gameplay.md)). Od drugiej części M6 jest trzecia funkcja, `game::drawMesh`, i trzecia klasa, `game::TerrainRenderer`: teren, który zastąpił płytki podłogi, jest jedną siatką z teksturą `ground.png` i mapą normalnych `ground_normal.png` ([`../renderer/terrain.md`](../renderer/terrain.md)). Do M4 ten kod był funkcją `MazeRenderer::drawInstances`. Tekstur z plików jest dziś osiem: cztery obrazy koloru i cztery mapy normalnych (sekcja 6). Liczba nie zmieniła się w drugiej części M6, zmieniła się jedna para: w miejscu `floor_stone.png` i `floor_stone_normal.png` (usuniętych razem z płytkami podłogi) są `ground.png` i `ground_normal.png`. Mapa wysokości terenu, `heightmap.png`, **nie jest** teksturą: gra czyta ją raz na procesorze i nie wysyła na kartę. Filtr, anizotropię, tryb podglądu i mapowanie normalnych przełącza panel Assets (sekcja 6). Klasa `Texture2D` wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9), a obraz w grze na zrzutach ekranu (sekcja 5.10). Widżetów panelu nikt jeszcze nie klikał ręcznie. **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.** Stan całego projektu z M5, zgłoszony dla Windowsa 2026-10-05: 215 przypadków testowych i 85098 asercji w Debug i Release (żaden nie dotyczy `Texture2D`). M5 jest kompletny w kodzie, ale nie zamknięty: nic z niego nie było budowane na macOS i nikt jeszcze nie grał ręcznie. Stan po drugiej części M6 (Windows, 2026-10-05): 256 przypadków testowych i 101232 asercje w Debug i Release, uruchomione dziś z istniejących buildów (żaden nie dotyczy `Texture2D`). M6 też jest kompletny w kodzie na Windowsie i nie jest zamknięty: macOS i testy ręczne są otwarte.
+**Stan na dziś:** gra rysuje z teksturami labirynt, a od M5 także kryształy i bramę wyjścia. Od M4 labirynt jest domyślnie **oświetlony** i rysują go programy `lit` albo `gouraud`, które czytają teksturę koloru dokładnie tak samo jak program opisany tutaj (ten sam sampler `uTexture`, ten sam `uTint`, ta sama jednostka 0). Od drugiej części M4 każda część modelu ma też **mapę normalnych** (normal map): drugą teksturę, wiązaną z jednostką 1 i czytaną przez drugi sampler, `uNormalMap`. Cały temat map normalnych ma własny dokument, [`normal-mapping.md`](normal-mapping.md). Tutaj jest tylko to, co dotyczy samych tekstur: dwie jednostki, dwa samplery (sekcje 2.7 i 4.3) i widok normalnych w `textured.frag` (sekcja 4.2). Para `textured.vert` i `textured.frag` (sekcja 4) rysuje teren, ściany, słupki, kryształy i bramę w trybie oświetlenia `Unlit` oraz w obu widokach diagnostycznych (normalne i UV jako kolor), niezależnie od trybu oświetlenia. Tekstury tworzy i przechowuje `assets::AssetCache` ([`../assets/asset-cache.md`](../assets/asset-cache.md)), a wiążą je i ustawiają samplery dwie wolne funkcje, `game::drawModel` i `game::setModelSamplers` z `src/game/ModelDraw.cpp`, wspólne dla `game::MazeRenderer` (labirynt, [`../game/maze-rendering.md`](../game/maze-rendering.md)) i `game::GameplayRenderer` (kryształy i brama, [`../game/gameplay.md`](../game/gameplay.md)). Od drugiej części M6 jest trzecia funkcja, `game::drawMesh`, i trzecia klasa, `game::TerrainRenderer`: teren, który zastąpił płytki podłogi, jest jedną siatką z teksturą `ground.png` i mapą normalnych `ground_normal.png` ([`../renderer/terrain.md`](../renderer/terrain.md)). Do M4 ten kod był funkcją `MazeRenderer::drawInstances`. Tekstur z plików jest dziś osiem: cztery obrazy koloru i cztery mapy normalnych (sekcja 6). Liczba nie zmieniła się w drugiej części M6, zmieniła się jedna para: w miejscu `floor_stone.png` i `floor_stone_normal.png` (usuniętych razem z płytkami podłogi) są `ground.png` i `ground_normal.png`. Mapa wysokości terenu, `heightmap.png`, **nie jest** teksturą: gra czyta ją raz na procesorze i nie wysyła na kartę. Filtr, anizotropię, tryb podglądu i mapowanie normalnych przełącza panel Assets (sekcja 6). Klasa `Texture2D` wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9), a obraz w grze na zrzutach ekranu (sekcja 5.10). Widżetów panelu nikt jeszcze nie klikał ręcznie. **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.** Stan całego projektu z M5, zgłoszony dla Windowsa 2026-10-05: 215 przypadków testowych i 85098 asercji w Debug i Release (żaden nie dotyczy `Texture2D`). M5 jest kompletny w kodzie, ale nie zamknięty: nic z niego nie było budowane na macOS i nikt jeszcze nie grał ręcznie. Stan po drugiej części M6 (Windows, 2026-10-05): 256 przypadków testowych i 101232 asercje w Debug i Release, uruchomione dziś z istniejących buildów (żaden nie dotyczy `Texture2D`). M6 też jest kompletny w kodzie na Windowsie i nie jest zamknięty: macOS i testy ręczne są otwarte. **Pierwsza część M7** zmieniła klasę w jednym miejscu: konstruktor ma piąty, obowiązkowy argument `ColorSpace`, od którego zależy format wewnętrzny (sekcje 2.10, 5.2 i 5.6). Tekstury koloru są od niej teksturami sRGB, mapy normalnych zostają liniowe, a scena jest rysowana do bufora zmiennoprzecinkowego i kodowana na sRGB dopiero w ostatnim przebiegu klatki ([`color-space.md`](color-space.md), [`../renderer/post-process.md`](../renderer/post-process.md)). Pętla szukająca rozszerzenia wyszła z `Texture2D.cpp` do osobnej funkcji `gfx::hasExtension` (sekcja 5.4). Zgłoszone dla Windowsa po tej zmianie (2026-10-05, nie powtarzałem tych pomiarów): bramka `make check` przechodzi, 269 przypadków testowych i 102103 asercje w Debug i Release, zero ostrzeżeń (żaden przypadek nie dotyczy `Texture2D`). Tryb `Unlit` z mapowaniem tonów `None` i ekspozycją 1 **nie jest** identyczny co do piksela z obrazem sprzed zmiany: ściany i podłoże różnią się najwyżej o 22 poziomy (średnio 1,1), tylko na fugach cegieł (sekcja 2.10). Na macOS nic z tej części nie było budowane ani uruchamiane.
 
 **Oświetlenie już jest** (M4): światła i wzory opisuje [`../scene/lights.md`](../scene/lights.md), a programy `lit` i `gouraud` [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W programie `textured`, o którym jest ten dokument, światła nadal nie ma: kolor piksela to kolor tekstury pomnożony przez kolor materiału, więc scena w trybie `Unlit` jest równo jasna. Jedyny wyjątek doszedł w M5: uniform `uEmissive`, czyli świecenie własne powierzchni, które rozjaśnia kryształy także tutaj (sekcja 4.2). W programach oświetlających ten sam iloczyn (`texture(uTexture, vUv).rgb * uTint`) jest kolorem powierzchni, mnożonym potem przez światło rozproszone.
 
-**Mapy normalnych już są** (druga część M4): opisuje je [`normal-mapping.md`](normal-mapping.md). Jedna rzecz z tematu 5 jest nadal celowo odłożona: **przestrzeń sRGB i korekcja gamma**, do M7 (sekcja 2.10, uzasadnienie w [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
+**Mapy normalnych już są** (druga część M4): opisuje je [`normal-mapping.md`](normal-mapping.md). **Przestrzeń sRGB i korekcja gamma też już są** (pierwsza część M7): do M6 były celowo odłożone, co zapisuje zastąpiona dziś notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md). Stronę tekstur opisuje sekcja 2.10, a całość osobny dokument, [`color-space.md`](color-space.md).
 
 ## 1. Po co to jest
 
@@ -28,10 +28,10 @@ Klasa `gfx::Texture2D`:
 
 | Funkcja | Co robi |
 |---|---|
-| konstruktor | tworzy teksturę 2D z surowych bajtów (3 albo 4 kanały), buduje mipmapy, tworzy obiekt samplera z filtrowaniem trójliniowym i zawijaniem `GL_REPEAT` |
+| konstruktor | tworzy teksturę 2D z surowych bajtów (3 albo 4 kanały) w formacie sRGB albo liniowym, zależnie od argumentu `ColorSpace` (sekcja 2.10), buduje mipmapy, tworzy obiekt samplera z filtrowaniem trójliniowym i zawijaniem `GL_REPEAT` |
 | `bind(unit)` | wiąże teksturę i jej sampler z jednostką teksturującą o podanym numerze |
 | `setFilter`, `setAnisotropy` | zmieniają sposób próbkowania w działającym programie |
-| `filter`, `anisotropy`, `maxAnisotropy`, `id`, `width`, `height`, `isValid` | odczyt stanu, między innymi dla panelu Assets |
+| `filter`, `anisotropy`, `maxAnisotropy`, `id`, `width`, `height`, `colorSpace`, `isValid` | odczyt stanu, między innymi dla panelu Assets |
 | destruktor | usuwa oba obiekty OpenGL |
 
 Klasa przyjmuje **surowe bajty**, a nie `assets::Image`. Warstwa `gfx` nie zna warstwy `assets`: tekstura może powstać z pliku, ale też z tablicy wyliczonej w kodzie.
@@ -242,9 +242,9 @@ Jeden obiekt samplera mógłby obsłużyć wiele tekstur. Tu każda `Texture2D` 
 | Opis | Parametry | Pytanie, na które odpowiada | U nas |
 |---|---|---|---|
 | **format danych** | `format` i `type` | czym są bajty, które podaję? | `GL_RGB` albo `GL_RGBA`, `GL_UNSIGNED_BYTE` |
-| **format wewnętrzny** (internal format) | `internalformat` | jak karta ma teksturę przechowywać? | `GL_RGB8` albo `GL_RGBA8` |
+| **format wewnętrzny** (internal format) | `internalformat` | jak karta ma teksturę przechowywać i co ma zrobić przy odczycie? | `GL_SRGB8` albo `GL_SRGB8_ALPHA8` dla obrazów koloru, `GL_RGB8` albo `GL_RGBA8` dla danych (sekcja 2.10) |
 
-`GL_RGB` z `GL_UNSIGNED_BYTE` znaczy: trzy kanały po jednym bajcie na piksel, w kolejności czerwony, zielony, niebieski. `GL_RGB8` znaczy: trzy kanały po 8 bitów w pamięci karty. Tu oba opisy mówią to samo, ale nie muszą: można podać dane `GL_RGBA` i kazać je przechowywać jako `GL_RGB8` (alfa przepada) albo jako format skompresowany. Karta sama przelicza jedno na drugie.
+`GL_RGB` z `GL_UNSIGNED_BYTE` znaczy: trzy kanały po jednym bajcie na piksel, w kolejności czerwony, zielony, niebieski. `GL_RGB8` znaczy: trzy kanały po 8 bitów w pamięci karty. `GL_SRGB8` znaczy to samo co do pamięci i dodaje jedną informację: te bajty są zakodowane w sRGB, więc przy odczycie trzeba je zdekodować. Oba opisy mówią o tych samych trzech bajtach, ale nie muszą: można podać dane `GL_RGBA` i kazać je przechowywać jako `GL_RGB8` (alfa przepada) albo jako format skompresowany. Karta sama przelicza jedno na drugie.
 
 **Wyrównanie wierszy** (unpack alignment). OpenGL zakłada domyślnie, że każdy wiersz danych zaczyna się pod adresem podzielnym przez 4, i pomija bajty dopełnienia między wierszami. To ustawienie `GL_UNPACK_ALIGNMENT` o wartości domyślnej 4. Nasze dane nie mają dopełnienia: wiersz obrazu RGB to `szerokość * 3` bajtów.
 
@@ -259,15 +259,33 @@ Przy złym wyrównaniu obraz wychodzi **pochylony** i z przekłamanymi kolorami,
 
 `GL_UNPACK_ALIGNMENT` to stan **całego kontekstu**, a nie tekstury. Dotyczy każdego następnego wysłania pikseli, także cudzego. Konstruktor odczytuje więc poprzednią wartość i przywraca ją po wysłaniu.
 
-### 2.10 Czego jeszcze nie ma: sRGB. Co już jest: mapy normalnych
+### 2.10 Przestrzeń kolorów tekstury: sRGB albo liniowa. Mapy normalnych
 
-**sRGB.** Kolory w pliku PNG są zapisane w przestrzeni sRGB: liczba w pliku nie jest proporcjonalna do jasności światła, tylko dopasowana do tego, jak widzi oko i jak świeci monitor. Dopóki tekstura jest tylko kopiowana na ekran, niczego to nie psuje: bajty z pliku trafiają na monitor bez zmian. Zaczyna mieć znaczenie przy **oświetleniu**, bo mnożenie i dodawanie światła jest poprawne tylko na wartościach liniowych. Poprawne rozwiązanie to format wewnętrzny `GL_SRGB8` (karta przelicza teksel na wartość liniową przy odczycie) i `GL_FRAMEBUFFER_SRGB` przy zapisie. Projekt tego **jeszcze nie robi**: tekstura jest przechowywana jako `GL_RGB8` i shader dostaje wartości z pliku. Od M4 ma to już znaczenie, bo oświetlenie istnieje: programy `lit` i `gouraud` mnożą światło przez wartości nieliniowe i zapisują wynik bez korekcji. Obraz jest spójny, ale nie jest fizycznie poprawny (komentarz w `lit.frag` mówi to wprost). Decyzja zapadła: sRGB i gamma dochodzą w M7 razem z potokiem HDR, a powody są w notatce [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
+(Do M6 ta sekcja nazywała się "Czego jeszcze nie ma: sRGB". Numer został, bo wskazują go inne dokumenty.)
+
+**sRGB.** Kolory w pliku PNG są zapisane w przestrzeni sRGB: liczba w pliku nie jest proporcjonalna do jasności światła, tylko wygięta krzywą dopasowaną do tego, jak widzi oko i jak świeci monitor. Bajt 128, "połowa" skali, niesie około 0,216 światła bieli. Dopóki tekstura jest tylko kopiowana na ekran, niczego to nie psuje. Zaczyna mieć znaczenie przy **oświetleniu**, bo mnożenie przez światło i dodawanie świateł jest poprawne tylko na wartościach **liniowych**, proporcjonalnych do ilości światła. Pełną teorię (wzór krzywej z liczbami, trzy etapy potoku, typowe błędy) ma [`color-space.md`](color-space.md). Tutaj jest tylko to, co dotyczy obiektu tekstury.
+
+Od pierwszej części M7 każda tekstura ma **przestrzeń kolorów**, podaną przez wołającego jako piąty argument konstruktora (`gfx::ColorSpace`, sekcja 5.2). Od niej zależy wyłącznie format wewnętrzny:
+
+| `ColorSpace` | Dla jakich obrazów | 3 kanały | 4 kanały | Co robi karta, gdy shader czyta teksel |
+|---|---|---|---|---|
+| `Srgb` | obrazy koloru: kamień ścian, ziemia, drewno bramy, kryształy, biała tekstura zastępcza | `GL_SRGB8` | `GL_SRGB8_ALPHA8` | zamienia czerwień, zieleń i błękit z sRGB na wartości liniowe. Alfa nigdy nie jest kodowana i zostaje bez zmian |
+| `Linear` | dane, które nie są kolorem: mapy normalnych, płaska mapa zastępcza | `GL_RGB8` | `GL_RGBA8` | nic: liczby docierają do shadera tak, jak są zapisane |
+
+Cztery rzeczy warto zapamiętać:
+
+- **Bajty na karcie są te same.** `glTexImage2D` dostaje te same dane i ten sam format danych (`GL_RGB`, `GL_UNSIGNED_BYTE`) w obu przypadkach. Format sRGB nie zmienia tego, co jest przechowywane, tylko to, co `texture()` zwraca.
+- **Dekoduje karta, nie shader.** W shaderach modeli nie ma żadnego `pow`: `texture(uTexture, vUv)` zwraca już wartość liniową. Wzór, którego karta używa, to dokładna dwuczęściowa funkcja standardu sRGB, ta sama co `gfx::srgbToLinear` w C++ i `srgbToLinear` w `common/color.glsl`.
+- **Filtrowanie na wartościach liniowych.** Karta ma dekodować teksele **przed** zmieszaniem ich przez filtr, więc średnia czarnego i białego teksela to połowa światła, a nie połowa bajtu. Specyfikacja OpenGL opisuje taką kolejność jako zalecaną, a nie jako jedyną dozwoloną, więc piszę o tym, co sterowniki zwykle robią, a nie o gwarancji. To samo dotyczy mipmap: komentarz w `Texture2D.cpp` mówi, że `glGenerateMipmap` uśrednia teksturę sRGB na wartościach liniowych, czego specyfikacja nie nakazuje wprost. Zgłoszony pomiar pasuje do tego opisu: obraz `Unlit` różni się od obrazu sprzed zmiany tylko na fugach cegieł, czyli tam, gdzie filtr miesza jasne teksele z ciemnymi, najwyżej o 22 poziomy z 255 (średnio 1,1). Samego sterownika osobnym programem nie badałem.
+- **Wyboru nie da się pominąć.** Argument nie ma wartości domyślnej, a klasa nie zgaduje z nazwy pliku. O tym, czym jest obraz, wie tylko wołający: `AssetCache::model` podaje `Srgb` dla `map_Kd` i `Linear` dla mapy normalnych ([`../assets/asset-cache.md`](../assets/asset-cache.md)).
+
+Co dzieje się z wartością liniową dalej: shadery liczą na niej światło i zapisują wynik do bufora zmiennoprzecinkowego ([`framebuffers.md`](framebuffers.md)), a ostatni przebieg klatki koduje go z powrotem na sRGB ([`../renderer/post-process.md`](../renderer/post-process.md)). W trybie `Unlit` dekodowanie i kodowanie znoszą się i ekran pokazuje obraz taki, jaki jest w pliku. `GL_FRAMEBUFFER_SRGB` zostaje wyłączone: dlaczego, zapisuje notatka [`../../decisions/srgb-encode-in-shader.md`](../../decisions/srgb-encode-in-shader.md). Całą zmianę uzasadnia [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md).
 
 **Mapy normalnych.** Tekstura może przechowywać nie kolor, tylko kierunek normalnej dla każdego teksela, co daje wrażenie wypukłości bez dodatkowych trójkątów. PRD przypisuje je do tematu 5, ale efekt widać dopiero przy oświetleniu, więc weszły w drugiej części M4. Teorię (przestrzeń styczna, kodowanie, konwencja kanału zielonego, macierz TBN), kod i pomiary opisuje [`normal-mapping.md`](normal-mapping.md). Z punktu widzenia tego dokumentu ważne są cztery rzeczy:
 
-- **Klasa `Texture2D` nie zmieniła się ani o linię.** Mapa normalnych to też obraz RGB 512 x 512 z pliku PNG (wszystkie osiem plików w `assets/textures/` ma ten rozmiar i trzy kanały: odczytane z nagłówków PNG). Wczytuje ją ten sam loader, przechowuje ta sama pamięć podręczna na tej samej liście, ma mipmapy, zawijanie `GL_REPEAT` i własny obiekt samplera jak każda inna tekstura. Inaczej czyta ją dopiero shader ([`normal-mapping.md`](normal-mapping.md), sekcja 4.1).
+- **Klasa `Texture2D` nie ma osobnej ścieżki dla map normalnych.** Gdy weszły (M4), nie zmieniła się ani o linię. Dziś różni je jeden argument konstruktora, `ColorSpace::Linear`. Mapa normalnych to też obraz RGB 512 x 512 z pliku PNG (wszystkie osiem plików w `assets/textures/` ma ten rozmiar i trzy kanały: odczytane z nagłówków PNG). Wczytuje ją ten sam loader, przechowuje ta sama pamięć podręczna na tej samej liście, ma mipmapy, zawijanie `GL_REPEAT` i własny obiekt samplera jak każda inna tekstura. Inaczej czyta ją dopiero shader ([`normal-mapping.md`](normal-mapping.md), sekcja 4.1).
 - **Filtr i anizotropia z panelu Assets dotyczą także map normalnych**, bo `AssetCache::setFilter` i `setAnisotropy` idą po wszystkich teksturach z listy. Filtrowanie i mipmapy uśredniają sąsiednie normalne, a średnia wektorów o długości 1 jest krótsza niż 1, dlatego shader normalizuje wynik ([`normal-mapping.md`](normal-mapping.md), sekcje 4.1 i 7).
-- **Format wewnętrzny `GL_RGB8` jest dla mapy normalnych poprawny, nie tymczasowy.** Bajty mapy są kierunkami, a nie kolorami, więc karta nie może ich przeliczać z sRGB. Gdy w M7 tekstury koloru przejdą na `GL_SRGB8`, mapy normalnych muszą zostać przy `GL_RGB8`. Dziś klasa nie rozróżnia tych dwóch rodzajów obrazu, bo oba dostają ten sam format.
+- **Format wewnętrzny `GL_RGB8` jest dla mapy normalnych poprawny i musi taki zostać.** Bajty mapy są kierunkami, a nie kolorami, więc karta nie może ich przeliczać z sRGB: bajt 128, który znaczy "składowa równa 0", po zdekodowaniu dałby 0,216 zamiast 0,502 i każda normalna odchyliłaby się w tę samą stronę. Dlatego `AssetCache` wczytuje mapy normalnych z `ColorSpace::Linear`, a płaska mapa zastępcza `(128, 128, 255)` też jest liniowa. Panel Assets pokazuje przestrzeń każdej tekstury słowem `sRGB` albo `linear` obok rozmiaru (sekcja 6).
 - **Druga tekstura wymaga drugiej jednostki i drugiego samplera** (sekcje 2.7 i 4.3).
 
 ## 3. Jak to działa w OpenGL
@@ -297,7 +315,7 @@ Parametry `glTexImage2D`:
 |---|---|---|
 | `target` | `GL_TEXTURE_2D` | cel, z którym związana jest tekstura |
 | `level` | 0 | poziom mipmapy, który wypełniam. 0 to pełny rozmiar |
-| `internalformat` | `GL_RGB8` albo `GL_RGBA8` | jak karta ma przechowywać teksturę. Typ parametru to `GLint` |
+| `internalformat` | `GL_SRGB8` albo `GL_SRGB8_ALPHA8` dla `ColorSpace::Srgb`, `GL_RGB8` albo `GL_RGBA8` dla `ColorSpace::Linear` | jak karta ma przechowywać teksturę i czy ma dekodować kolor przy odczycie (sekcja 2.10). Typ parametru to `GLint` |
 | `width`, `height` | rozmiar obrazu | w tekselach |
 | `border` | 0 | pozostałość starego OpenGL. Musi być 0 |
 | `format` | `GL_RGB` albo `GL_RGBA` | jakie kanały są w podanych danych |
@@ -350,7 +368,7 @@ Niekompletna tekstura **nie zgłasza błędu**. Każdy odczyt z niej zwraca czar
 
 ## 4. Shadery
 
-Ta sekcja opisuje parę [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag). To pierwsze shadery projektu, które czytają teksturę. Od M4 rysują labirynt w trybie oświetlenia `Unlit` i w obu widokach diagnostycznych. `textured.frag` dołącza od drugiej części M4 plik `common/normal_map.glsl` (dyrektywa `#include`, [`shader-includes.md`](shader-includes.md)), z którego bierze funkcję `surfaceNormal` dla widoku normalnych. Od M5 tym samym programem, zaraz po labiryncie, rysowane są kryształy i brama. Od drugiej części M6 pierwszy w klatce jest teren, rysowany tym samym programem przed labiryntem. Gra ma dziś sześć programów (piąty, `skybox`, czyta teksturę innego rodzaju, sześcienną: [`cubemap.md`](cubemap.md), a szósty, `grass`, nie czyta żadnej tekstury: kolor źdźbła liczy z dwóch stałych). Para `basic.vert` i `basic.frag`, która w M1 rysowała kostkę kolorem z wierzchołków, została w M5 usunięta razem z kostką, a długi komentarz o łańcuchu przestrzeni przeszedł z `basic.vert` do `textured.vert` (sekcja 4.1). Para `color.vert` i `color.frag` rysuje jednym kolorem linie pudełek i sfer kolizji ([`../scene/collision.md`](../scene/collision.md), sekcja 4). Pary `lit.*` i `gouraud.*` rysują teren, labirynt, kryształy i bramę z oświetleniem ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4): czytają teksturę tą samą linią co `textured.frag`.
+Ta sekcja opisuje parę [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag). To pierwsze shadery projektu, które czytają teksturę. Od M4 rysują labirynt w trybie oświetlenia `Unlit` i w obu widokach diagnostycznych. `textured.frag` dołącza od drugiej części M4 plik `common/normal_map.glsl` (dyrektywa `#include`, [`shader-includes.md`](shader-includes.md)), z którego bierze funkcję `surfaceNormal` dla widoku normalnych. Od M5 tym samym programem, zaraz po labiryncie, rysowane są kryształy i brama. Od drugiej części M6 pierwszy w klatce jest teren, rysowany tym samym programem przed labiryntem. Gra ma dziś osiem programów (piąty, `skybox`, czyta teksturę innego rodzaju, sześcienną: [`cubemap.md`](cubemap.md), szósty, `grass`, nie czyta żadnej tekstury: kolor źdźbła liczy z dwóch stałych, a siódmy i ósmy, `composite` i `preview` z M7, czytają tekstury, które same są wynikiem rysowania: załączniki framebuffera sceny, [`framebuffers.md`](framebuffers.md)). Od M7 `textured.frag` dołącza też `common/color.glsl`. Para `basic.vert` i `basic.frag`, która w M1 rysowała kostkę kolorem z wierzchołków, została w M5 usunięta razem z kostką, a długi komentarz o łańcuchu przestrzeni przeszedł z `basic.vert` do `textured.vert` (sekcja 4.1). Para `color.vert` i `color.frag` rysuje jednym kolorem linie pudełek i sfer kolizji ([`../scene/collision.md`](../scene/collision.md), sekcja 4). Pary `lit.*` i `gouraud.*` rysują teren, labirynt, kryształy i bramę z oświetleniem ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4): czytają teksturę tą samą linią co `textured.frag`.
 
 W tych dwóch shaderach **nie ma oświetlenia**: żadnego wektora światła, żadnego iloczynu skalarnego z normalną. Jest tylko świecenie własne powierzchni (`uEmissive`, sekcja 4.2), które nie zależy od żadnego światła sceny. Normalna i styczna są przekazywane do shadera fragmentów tylko po to, żeby dało się pokazać normalną jako kolor (tryb podglądu 1): bez mapowania normalnych tę z modelu, z mapowaniem tę odczytaną z mapy normalnych. Oświetlenie liczą osobne programy ([`../scene/lights.md`](../scene/lights.md)).
 
@@ -446,6 +464,8 @@ void main() {
 // The normal map and the function surfaceNormal, for the view of the normals. The same
 // file is included by lit.frag, so the view shows the very normal the lighting uses.
 #include "common/normal_map.glsl"
+// srgbToLinear, for the two debug views.
+#include "common/color.glsl"
 
 // Inputs from the vertex shader: same names and types as its outputs, already
 // interpolated for this fragment.
@@ -472,7 +492,8 @@ uniform vec3 uEmissive;
 //   2: the texture coordinate as a colour
 uniform int uViewMode;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha), as a LINEAR colour. The composite pass encodes it for the screen.
 out vec4 fragColor;
 
 void main() {
@@ -482,17 +503,25 @@ void main() {
         // has length 1, so each component is between -1 and 1, and a colour needs 0 to
         // 1: half of it plus one half. A surface facing +X comes out reddish, +Y (up)
         // greenish, +Z bluish, and the opposite directions dark in that channel.
+        //
+        // The colour is data, meant to reach the screen as these very numbers. The
+        // composite pass will encode the frame to sRGB, so the opposite conversion is
+        // applied here and the two cancel out.
         vec3 normal = surfaceNormal(vNormal, vTangent, vUv);
-        fragColor = vec4(normal * 0.5 + 0.5, 1.0);
+        fragColor = vec4(srgbToLinear(normal * 0.5 + 0.5), 1.0);
     } else if (uViewMode == 2) {
         // u goes to red and v to green. The coordinates of the models run past 1 (the
         // texture repeats), so only the fractional part is shown: the colour starts
         // again from black wherever the texture starts again.
-        fragColor = vec4(fract(vUv), 0.0, 1.0);
+        // Data again, so converted like the normal above.
+        fragColor = vec4(srgbToLinear(vec3(fract(vUv), 0.0)), 1.0);
     } else {
         // texture() reads the texture at vUv with the filter, the mipmaps and the
         // wrapping set in OpenGL. It returns red, green, blue, alpha. Only the colour is
-        // used: the models are opaque, so alpha is written as 1.
+        // used: the models are opaque, so alpha is written as 1. The colour textures
+        // are sRGB textures (GL_SRGB8), so the value arrives here already decoded to
+        // a linear colour, and the composite pass encodes it again: without lighting
+        // the screen shows the picture as it is in the file.
         //
         // Without lighting the surface is shown at full brightness, as if lit by white
         // light of strength 1. The glow is added to that light, so a crystal stands
@@ -507,6 +536,7 @@ void main() {
 
 | Linia | Znaczenie |
 |---|---|
+| `#include "common/color.glsl"` | wkleja dwie funkcje przeliczające kolor, `srgbToLinear` i `linearToSrgb`, z pięcioma stałymi standardu sRGB. Ten shader używa tylko pierwszej, w obu widokach diagnostycznych. Plik jest omówiony w [`color-space.md`](color-space.md) |
 | `#include "common/normal_map.glsl"` | wkleja tekst pliku z samplerem `uNormalMap`, przełącznikiem `uNormalMapEnabled` i funkcją `surfaceNormal`. GLSL takiej dyrektywy nie ma: rozwija ją loader shaderów ([`shader-includes.md`](shader-includes.md)). Plik linia po linii: [`normal-mapping.md`](normal-mapping.md), sekcja 4.1 |
 | `in vec2 vUv;`, `in vec3 vNormal;` i `in vec3 vTangent;` | para do wyjść shadera wierzchołków: te same nazwy i typy. Zgodność sprawdza linkowanie programu ([`shaders.md`](shaders.md), sekcja 2.6). Wartości są już zinterpolowane dla tego fragmentu |
 | `uniform sampler2D uTexture;` | sampler tekstury 2D. Jego wartością jest **numer jednostki teksturującej** (sekcja 2.7), ustawiany przez `Shader::setInt`. Samplera nie da się utworzyć ani zmienić w shaderze, można go tylko przekazać do funkcji próbkującej |
@@ -514,13 +544,13 @@ void main() {
 | `uniform vec3 uEmissive;` | światło, które powierzchnia oddaje sama z siebie, jako kolor. Doszło w M5. Czarny `(0, 0, 0)` dla kamienia i drewna, kolor świecenia dla kryształów. Używa go tylko zwykły obraz (widok 0): oba widoki diagnostyczne go nie czytają |
 | `uniform sampler2D uNormalMap;` i `uniform bool uNormalMapEnabled;` | nie ma ich w tym pliku: przychodzą z pliku dołączonego. Sampler mapy normalnych trzyma numer **drugiej** jednostki (1), a przełącznik mówi, czy `surfaceNormal` ma z mapy korzystać |
 | `uniform int uViewMode;` | co pokazać: 0, 1 albo 2. Liczby są wartościami typu `game::ViewMode` z [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp): `Textured = 0`, `Normals = 1`, `Uvs = 2`. Shader nie zna typu wyliczeniowego z C++, więc obie strony muszą pilnować tych samych liczb (pułapka 19) |
-| `out vec4 fragColor;` | kolor zapisywany do framebuffera: czerwony, zielony, niebieski, alfa |
+| `out vec4 fragColor;` | kolor zapisywany do framebuffera: czerwony, zielony, niebieski, alfa. Od M7 tym framebufferem nie jest okno, tylko bufor HDR sceny (`GL_RGBA16F`, [`framebuffers.md`](framebuffers.md)), a zapisywany kolor jest **liniowy** i może przekraczać 1. Na sRGB koduje go przebieg składający |
 
 **Gałąź `else` (`uViewMode` równe 0, zwykły obraz).** Do tej gałęzi trafia też każda wartość inna niż 1 i 2.
 
 | Linia | Znaczenie |
 |---|---|
-| `texture(uTexture, vUv)` | funkcja wbudowana GLSL: odczytuje teksturę w punkcie `vUv`, stosując filtr, mipmapy, anizotropię i zawijanie ustawione w OpenGL (w projekcie: na obiekcie samplera, sekcja 2.8). Zwraca `vec4` (R, G, B, A), każda składowa od 0 do 1 |
+| `texture(uTexture, vUv)` | funkcja wbudowana GLSL: odczytuje teksturę w punkcie `vUv`, stosując filtr, mipmapy, anizotropię i zawijanie ustawione w OpenGL (w projekcie: na obiekcie samplera, sekcja 2.8). Zwraca `vec4` (R, G, B, A), każda składowa od 0 do 1. Tekstura koloru ma format sRGB, więc R, G i B są już **zdekodowane do wartości liniowych** (sekcja 2.10) |
 | `.rgb` | wybór trzech pierwszych składowych ([`shaders.md`](shaders.md), sekcja 2.4). Kanał alfa jest pomijany: wszystkie modele gry są nieprzezroczyste |
 | `vec3 texel = ...;` | kolor teksela po filtrowaniu |
 | `texel * uTint` | mnożenie dwóch `vec3` w GLSL działa **składowa po składowej**: czerwony razy czerwony, zielony razy zielony, niebieski razy niebieski. To nie jest iloczyn skalarny ani wektorowy |
@@ -529,7 +559,7 @@ void main() {
 
 Mnożenie przez `uTint` ma dwa zastosowania. Pierwsze: materiał może przyciemnić albo zabarwić teksturę. Wszystkie materiały gry (`wall_stone`, `crystal`, `gate_wood` w pięciu plikach MTL) mają `Kd 1.000000 1.000000 1.000000`, więc dziś tekstury wychodzą bez zmian. Teren nie ma pliku MTL: `TerrainRenderer` podaje `uTint` wprost, jako biel (stała `NO_TINT`). Drugie: część modelu **bez** tekstury dostaje białą teksturę zastępczą 1 x 1, a wtedy `texel` to `(1, 1, 1)` i wynikiem jest sam kolor materiału. Jeden shader obsługuje więc oba przypadki bez dodatkowej gałęzi ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 2).
 
-**`uEmissive`: świecenie własne.** Dla kamienia i drewna uniform jest czarny, nawias ma wartość `(1, 1, 1)` i wynik jest taki jak przed M5: `texel * uTint`. Dla kryształu `GameplayRenderer::draw` wysyła kolor z `game::crystalGlow` (kolor świateł punktowych pomnożony przez siłę, która pulsuje, [`../game/gameplay.md`](../game/gameplay.md), sekcja 4), więc nawias jest większy od 1 w kanałach tego koloru i kryształ jest jaśniejszy od swojej tekstury. Składowa powyżej 1 jest przy zapisie do framebuffera obcinana do pełnej jasności. Postać wzoru jest celowo taka sama jak w programach oświetlających: `lit.frag` i `gouraud.frag` liczą `surface * (diffuse + uEmissive) + specular`, czyli świecenie dołącza do światła rozproszonego. Tutaj światłem rozproszonym jest stała `vec3(1.0)`, a odblasku nie ma. Komentarz w shaderze mówi po co: żeby kryształ wyróżniał się także w trybie bez oświetlenia. Dłuższe uzasadnienie stoi w `lit.frag`: światło punktowe kryształu wisi poza jego siatką i oświetla ścianki tylko z jednej strony, więc bez własnego świecenia źródło światła byłoby najciemniejszą rzeczą w okolicy. Kto ustawia ten uniform i dlaczego labirynt co klatkę zeruje go z powrotem, jest w sekcji 4.3.
+**`uEmissive`: świecenie własne.** Dla kamienia i drewna uniform jest czarny, nawias ma wartość `(1, 1, 1)` i wynik jest taki jak przed M5: `texel * uTint`. Dla kryształu `GameplayRenderer::draw` wysyła kolor z `game::crystalGlow` (kolor świateł punktowych pomnożony przez siłę, która pulsuje, [`../game/gameplay.md`](../game/gameplay.md), sekcja 4), więc nawias jest większy od 1 w kanałach tego koloru i kryształ jest jaśniejszy od swojej tekstury. Składowa powyżej 1 **nie jest** już obcinana przy zapisie: bufor sceny jest zmiennoprzecinkowy i pamięta, o ile kryształ jest jaśniejszy od bieli. W zakres ekranu sprowadza ją dopiero mapowanie tonów w przebiegu składającym ([`../renderer/post-process.md`](../renderer/post-process.md)). Do M6 kolor trafiał prosto do okna i był obcinany do pełnej jasności. Postać wzoru jest celowo taka sama jak w programach oświetlających: `lit.frag` i `gouraud.frag` liczą `surface * (diffuse + uEmissive) + specular`, czyli świecenie dołącza do światła rozproszonego. Tutaj światłem rozproszonym jest stała `vec3(1.0)`, a odblasku nie ma. Komentarz w shaderze mówi po co: żeby kryształ wyróżniał się także w trybie bez oświetlenia. Dłuższe uzasadnienie stoi w `lit.frag`: światło punktowe kryształu wisi poza jego siatką i oświetla ścianki tylko z jednej strony, więc bez własnego świecenia źródło światła byłoby najciemniejszą rzeczą w okolicy. Kto ustawia ten uniform i dlaczego labirynt co klatkę zeruje go z powrotem, jest w sekcji 4.3.
 
 **Gałąź `uViewMode == 1` (normalne jako kolor):**
 
@@ -537,6 +567,7 @@ Mnożenie przez `uTint` ma dwa zastosowania. Pierwsze: materiał może przyciemn
 |---|---|
 | `vec3 normal = surfaceNormal(vNormal, vTangent, vUv);` | normalna, którą program `lit` cieniowałby ten fragment, w przestrzeni świata, o długości 1. Funkcja pochodzi z `common/normal_map.glsl`. Gdy `uNormalMapEnabled` jest fałszem, zwraca `normalize(vNormal)`, czyli normalną modelu. Gdy jest prawdą, czyta teksel mapy normalnych z jednostki 1 i przenosi go z przestrzeni stycznej do przestrzeni świata macierzą zbudowaną ze stycznej, bitangenty i normalnej ([`normal-mapping.md`](normal-mapping.md), sekcje 2.10 i 4.1). W obu gałęziach wynik jest normalizowany: interpolacja między wierzchołkami i filtrowanie tekstury skracają wektory |
 | `normal * 0.5 + 0.5` | składowa normalnej jest w zakresie od -1 do 1, a składowa koloru od 0 do 1. Połowa wartości plus połowa przenosi jeden zakres w drugi: -1 daje 0, 0 daje 0,5, 1 daje 1. Liczba `0.5` jest dodawana do każdej składowej wektora |
+| `srgbToLinear(...)` | ten kolor to **dane**, a nie światło: ma dotrzeć na ekran dokładnie jako te liczby. Przebieg składający zakoduje całą klatkę na sRGB, więc tutaj stosowane jest przekształcenie odwrotne i oba się znoszą. Bez tej funkcji widok byłby rozjaśniony: 0,5 wyszłoby na ekranie jako 0,735 |
 | `fragColor = vec4(..., 1.0);` | kierunek zapisany jako kolor |
 
 Co wychodzi dla powierzchni labiryntu. To arytmetyka ze wzoru, a kierunki są według konwencji z [`../scene/README.md`](../scene/README.md), sekcja 5:
@@ -548,6 +579,8 @@ Co wychodzi dla powierzchni labiryntu. To arytmetyka ze wzoru, a kierunki są we
 | powierzchnia zwrócona na zachód (-X) | `(-1, 0, 0)` | `(0, 0,5, 0,5)`: ciemny morski |
 | powierzchnia zwrócona na południe (+Z) | `(0, 0, 1)` | `(0,5, 0,5, 1)`: jasnoniebieski |
 | powierzchnia zwrócona na północ (-Z) | `(0, 0, -1)` | `(0,5, 0,5, 0)`: oliwkowy |
+
+Kolory w tabeli to liczby, które widać **na ekranie**: `srgbToLinear` w shaderze i kodowanie w przebiegu składającym znoszą się. Dla obu widoków diagnostycznych `NightMazeApp::onRender` wyłącza przy tym ekspozycję i mapowanie tonów (w kopii ustawień), bo krzywa zmieniłaby te liczby. Zgłoszony pomiar: widoki normalnych i UV różnią się od obrazu sprzed M7 najwyżej o 1 poziom z 255.
 
 Tabela podaje kolory **normalnych modelu**, czyli obraz przy wyłączonym mapowaniu normalnych albo w trybie oświetlenia `Gouraud`. Z mapowaniem normalnych te kolory są tłem: lica kamieni mają je prawie bez zmian, a na fazach przy fugach kolor odchyla się w stronę, w którą faza jest pochylona. Widać wtedy relief mapy narysowany kierunkami w przestrzeni świata.
 
@@ -561,14 +594,15 @@ To jest **podgląd diagnostyczny, a nie oświetlenie**. Służy do sprawdzenia t
 
 | Linia | Znaczenie |
 |---|---|
-| `fract(vUv)` | część ułamkowa każdej składowej: `fract(1.25)` to `0.25`. Współrzędne modeli wychodzą poza 1, bo tekstura się powtarza (sekcja 2.6). Bez `fract` wszystko powyżej 1 zostałoby przy zapisie do framebuffera obcięte do pełnej jasności i nie byłoby widać, gdzie zaczyna się kolejne powtórzenie |
-| `vec4(fract(vUv), 0.0, 1.0)` | konstruktor `vec4` z `vec2` i dwóch liczb: `u` trafia do kanału czerwonego, `v` do zielonego, niebieski to 0, alfa to 1 |
+| `fract(vUv)` | część ułamkowa każdej składowej: `fract(1.25)` to `0.25`. Współrzędne modeli wychodzą poza 1, bo tekstura się powtarza (sekcja 2.6). Bez `fract` wszystko powyżej 1 zostałoby obcięte do pełnej jasności (`srgbToLinear` przycina wejście do zakresu od 0 do 1) i nie byłoby widać, gdzie zaczyna się kolejne powtórzenie |
+| `vec3(fract(vUv), 0.0)` | konstruktor `vec3` z `vec2` i jednej liczby: `u` trafia do kanału czerwonego, `v` do zielonego, niebieski to 0 |
+| `srgbToLinear(...)` i `vec4(..., 1.0)` | dane pokazane jako kolor, więc przeliczone tak samo jak normalna wyżej. Alfa to 1 |
 
 W jednym powtórzeniu tekstury kolor idzie od czarnego w lewym dolnym rogu `(0, 0)`, przez czerwony przy prawym dolnym `(1, 0)` i zielony przy lewym górnym `(0, 1)`, do żółtego przy prawym górnym `(1, 1)`. Na granicy powtórzeń kolor skacze z powrotem do czerni. Ten podgląd pokazuje, czy współrzędne są odwrócone albo odbite lustrzanie: przy odwróconej osi `v` zielony rósłby w dół.
 
 Trzy uwagi do funkcji `texture`:
 
-- Bajt 255 z pliku staje się w shaderze liczbą 1,0, a bajt 0 liczbą 0,0. To zamiana wykonywana przez kartę dla formatów takich jak `GL_RGB8` (formaty znormalizowane).
+- Bajt 255 z pliku staje się w shaderze liczbą 1,0, a bajt 0 liczbą 0,0. To zamiana wykonywana przez kartę dla formatów takich jak `GL_RGB8` (formaty znormalizowane). Dla formatu sRGB dochodzi drugi krok: liczba od 0 do 1 jest dekodowana krzywą sRGB. Bajt 128 to najpierw 0,502, a potem 0,216. Bajty 0 i 255 dają 0 i 1 w obu przypadkach.
 - Tekstura RGB nie ma kanału alfa. `texture()` zwraca wtedy `a = 1,0`.
 - W GLSL 4.10 funkcja nazywa się `texture`. Stare poradniki używają `texture2D`, której w profilu Core już nie ma.
 
@@ -593,9 +627,10 @@ Raz na klatkę, w `NightMazeApp::drawUnlitMaze`. Tę funkcję wybiera `drawMaze`
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do.
-    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round,
-                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
+    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round, crystalEmissive());
 ```
+
+`crystalEmissive()` to mała funkcja `NightMazeApp` z M7: przelicza kolor świateł kryształów z sRGB na liniowy (`gfx::srgbToLinear(m_lighting.pointColor)`) i dopiero ten podaje do `game::crystalGlow`. Uniform `uEmissive` jest więc kolorem liniowym, jak wszystko, co trafia do bufora sceny.
 
 `uNormalMapEnabled` jest w GLSL typu `bool`, a ustawia go `setInt`, czyli `glUniform1i`: 0 to fałsz, każda inna liczba to prawda ([`uniforms.md`](uniforms.md), sekcja 5.4).
 
@@ -687,17 +722,20 @@ Obie liczby łańcucha z sekcji 2.7 pochodzą dla każdej tekstury z jednej sta�
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp) | typ wyliczeniowy `gfx::TextureFilter`, klasa `gfx::Texture2D`. Dołącza tylko `<glad/gl.h>` |
-| [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp) | stałe, trzy funkcje pomocnicze (`hasAnisotropicFiltering`, `queryMaxAnisotropy`, `applyFilter`), implementacja klasy |
+| [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp) | typ wyliczeniowy `gfx::TextureFilter`, klasa `gfx::Texture2D`. Dołącza `gfx/ColorSpace.hpp` i `<glad/gl.h>` |
+| [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp) | stałe, cztery funkcje pomocnicze (`hasAnisotropicFiltering`, `internalFormatFor`, `queryMaxAnisotropy`, `applyFilter`), implementacja klasy |
+| [`src/gfx/Extensions.hpp`](../../../src/gfx/Extensions.hpp), [`.cpp`](../../../src/gfx/Extensions.cpp) | funkcja `gfx::hasExtension`: czy sterownik podaje rozszerzenie o danej nazwie (sekcja 5.4). Od M7 |
+| [`src/gfx/ColorSpace.hpp`](../../../src/gfx/ColorSpace.hpp), [`.cpp`](../../../src/gfx/ColorSpace.cpp) | typ `gfx::ColorSpace` (argument konstruktora) oraz funkcje `srgbToLinear` i `linearToSrgb`. Od M7. Opis w [`color-space.md`](color-space.md) |
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | `setInt` (dla samplerów) i `setVec3`. Opis w [`uniforms.md`](uniforms.md), sekcja 5.4 |
 | [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert), [`textured.frag`](../../../assets/shaders/textured.frag) | shadery modeli z teksturą (sekcja 4) |
 | [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp), [`.cpp`](../../../src/assets/AssetCache.cpp) | użytkownik klasy: tworzy `Texture2D` z każdego pliku obrazu raz, tworzy dwie tekstury zastępcze 1 x 1 (białą i płaską mapę normalnych), ustawia filtr i anizotropię wszystkim teksturom naraz ([`../assets/asset-cache.md`](../assets/asset-cache.md)) |
 | [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | użytkownik klasy: `drawModel` woła `bind` dla obu tekstur części, `setModelSamplers` ustawia oba samplery (sekcja 4.3) |
 | [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) | wołają obie funkcje i ustawiają `uEmissive` (sekcja 4.3) |
 | [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl) | sampler `uNormalMap` i funkcja `surfaceNormal`, dołączane do `textured.frag` i `lit.frag`. Opis w [`normal-mapping.md`](normal-mapping.md), sekcja 4.1 |
-| [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | panel Assets: filtr, anizotropia, tryb podglądu, pole `Normal mapping`, miniatury (sekcja 6) |
+| [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | panel Assets: filtr, anizotropia, tryb podglądu, pole `Normal mapping`, miniatury z przestrzenią kolorów (sekcja 6) |
+| [`assets/shaders/common/color.glsl`](../../../assets/shaders/common/color.glsl) | funkcje `srgbToLinear` i `linearToSrgb` w GLSL, dołączane do `textured.frag` dla widoków diagnostycznych. Opis w [`color-space.md`](color-space.md) |
 
-Oba pliki `Texture2D` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` (jeden komunikat błędu) i biblioteka standardowa (`<algorithm>` dla `std::clamp`, `<cstring>` dla `std::strcmp`, `<string>` dla `std::to_string`). Nic z `assets/`, GLM ani GLFW.
+Oba pliki `Texture2D` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` (jeden komunikat błędu) i biblioteka standardowa (`<algorithm>` dla `std::clamp`, `<string>` dla `std::to_string`). Od M7 dochodzą dwa nagłówki modułu: `gfx/ColorSpace.hpp` (dołączany przez `Texture2D.hpp`, typ argumentu konstruktora) i `gfx/Extensions.hpp` (dołączany przez `Texture2D.cpp`, funkcja `hasExtension`, sekcja 5.4). `<cstring>` przeniósł się razem z pętlą do `Extensions.cpp`. Przez `ColorSpace.hpp` nagłówek klasy dołącza GLM, choć sama klasa z niego nie korzysta. Nic z `assets/` ani GLFW. Pliki `Extensions.*` i `ColorSpace.*` też są na liście źródeł `engine`.
 
 ### 5.2 Nagłówek
 
@@ -719,7 +757,8 @@ enum class TextureFilter {
 Publiczna część klasy:
 
 ```cpp
-    Texture2D(int width, int height, int channels, const unsigned char* pixels);
+    Texture2D(int width, int height, int channels, const unsigned char* pixels,
+              ColorSpace colorSpace);
     ~Texture2D();
 
     Texture2D(const Texture2D&) = delete;
@@ -739,6 +778,7 @@ Publiczna część klasy:
     GLuint id() const { return m_id; }
     int width() const { return m_width; }
     int height() const { return m_height; }
+    ColorSpace colorSpace() const { return m_colorSpace; }
 ```
 
 (komentarze Doxygen pominięte, są w pliku).
@@ -747,11 +787,12 @@ Publiczna część klasy:
 |---|---|
 | `int width, int height, int channels, const unsigned char* pixels` | surowe dane zamiast `assets::Image`, żeby `gfx` nie zależało od `assets`. Typy są takie, jakie daje loader i jakich chce `glTexImage2D` |
 | `channels` równe 3 albo 4 | RGB albo RGBA. Inne wartości są odrzucane (sekcja 5.6) |
+| `ColorSpace colorSpace`, bez wartości domyślnej | co znaczą bajty: `ColorSpace::Srgb` dla obrazu koloru, `ColorSpace::Linear` dla danych, które kolorem nie są (sekcja 2.10). Komentarz w nagłówku mówi wprost, że klasa nie zgaduje z nazwy pliku: wie to tylko wołający. Brak wartości domyślnej jest celowy. Z domyślnym `Linear` zapomniany argument dawałby wyblakły obraz, z domyślnym `Srgb` po cichu psułby mapy normalnych, a tak każde miejsce tworzące teksturę musi się opowiedzieć i błąd pominięcia łapie kompilator |
 | `= delete` i funkcje przenoszące | ta sama zasada co w `Buffer` i `Shader` ([`README.md`](README.md), sekcja 2) |
 | `isValid()` | konstruktor nie rzuca wyjątków. Po złych argumentach obiekt istnieje, ale nie ma tekstury, tak jak `Shader` po błędzie kompilacji |
 | `bind(GLuint unit)` | numer jednostki jako zwykła liczba od 0, ta sama, którą dostaje `Shader::setInt` |
 | `setFilter`, `setAnisotropy` nie są `const` | zmieniają pola obiektu C++ (`m_filter`, `m_anisotropy`). `bind` jest `const`, bo zmienia tylko stan kontekstu |
-| `id()`, `width()`, `height()` | dla panelu Assets, który pokazuje rozmiar i miniaturę każdej tekstury (sekcja 6). `Buffer` i `VertexArray` akcesora identyfikatora nie mają, bo nikt go nie potrzebuje |
+| `id()`, `width()`, `height()`, `colorSpace()` | dla panelu Assets, który pokazuje rozmiar, przestrzeń kolorów i miniaturę każdej tekstury (sekcja 6). `colorSpace()` czyta też `AssetCache::texture`, żeby wykryć prośbę o ten sam plik w dwóch przestrzeniach ([`../assets/asset-cache.md`](../assets/asset-cache.md)). `Buffer` i `VertexArray` akcesora identyfikatora nie mają, bo nikt go nie potrzebuje |
 
 Pola:
 
@@ -763,13 +804,27 @@ Pola:
     GLuint m_sampler = 0;
     int m_width = 0;
     int m_height = 0;
+    ColorSpace m_colorSpace = ColorSpace::Linear;
     TextureFilter m_filter = TextureFilter::Trilinear;
     float m_anisotropy = 1.0F;
     // Asked from the driver once, in the constructor. 1 means "not supported".
     float m_maxAnisotropy = 1.0F;
 ```
 
-Klasa posiada **dwa** obiekty OpenGL: teksturę i sampler. `m_filter` i `m_anisotropy` są kopią stanu, który jest też na karcie: dzięki nim akcesory nie muszą pytać sterownika. Liczby kanałów klasa nie pamięta, bo po utworzeniu nikt o nią nie pyta.
+Klasa posiada **dwa** obiekty OpenGL: teksturę i sampler. `m_filter` i `m_anisotropy` są kopią stanu, który jest też na karcie: dzięki nim akcesory nie muszą pytać sterownika. Liczby kanałów klasa nie pamięta, bo po utworzeniu nikt o nią nie pyta. Przestrzeń kolorów pamięta (`m_colorSpace`): OpenGL też ją zna, jako format wewnętrzny, ale pole oszczędza pytania sterownika. Wartość początkowa `Linear` jest tylko formalnością: jedyny konstruktor nadpisuje ją swoim argumentem na liście inicjalizacyjnej, zanim cokolwiek innego się wykona.
+
+Typ `ColorSpace` nie należy do tej klasy. Stoi w [`src/gfx/ColorSpace.hpp`](../../../src/gfx/ColorSpace.hpp) razem z funkcjami `srgbToLinear` i `linearToSrgb`, bo używają go też `Cubemap`, `AssetCache` i kod gry przeliczający kolory wpisane ręcznie:
+
+```cpp
+enum class ColorSpace {
+    /// sRGB encoded: colour pictures (the albedo of walls, ground, gate and crystals, the
+    /// sky). The graphics card decodes them to linear values when a shader reads them.
+    Srgb,
+    /// Already linear, or not a colour at all: normal maps hold directions. The numbers
+    /// reach the shader exactly as they are stored.
+    Linear,
+};
+```
 
 ### 5.3 Stałe i rozszerzenie
 
@@ -807,10 +862,24 @@ constexpr float NO_ANISOTROPY = 1.0F;
 
 Zdefiniowanie stałej **nie znaczy**, że sterownik ją rozumie. Stała użyta bez rozszerzenia dałaby `GL_INVALID_ENUM`. Dlatego najpierw sprawdzenie.
 
-### 5.4 Wykrywanie rozszerzenia: `hasAnisotropicFiltering` i `queryMaxAnisotropy`
+### 5.4 Wykrywanie rozszerzenia: `gfx::hasExtension`, `hasAnisotropicFiltering` i `queryMaxAnisotropy`
+
+Do M6 pętla po nazwach rozszerzeń stała w `Texture2D.cpp`, wewnątrz `hasAnisotropicFiltering`. W pierwszej części M7 doszedł drugi kod, który musi zapytać o rozszerzenie: `debug::RawTextureSampler` szuka `GL_EXT_texture_sRGB_decode`, żeby panel Assets mógł pokazać teksturę sRGB tak, jak wygląda w pliku ([`../debug-ui.md`](../debug-ui.md)). Pętla wyszła więc do osobnej, publicznej funkcji w [`src/gfx/Extensions.hpp`](../../../src/gfx/Extensions.hpp) i [`src/gfx/Extensions.cpp`](../../../src/gfx/Extensions.cpp). Komentarz `// See docs/...` obu plików wskazuje ten dokument.
+
+Nagłówek ma jedną deklarację:
 
 ```cpp
-bool hasAnisotropicFiltering() {
+/// True when the driver lists the extension called name (for example
+/// "GL_EXT_texture_filter_anisotropic"). An extension is a feature that is not part of
+/// OpenGL 4.1 Core, so its constants may be used only after this returned true.
+/// It needs a current OpenGL context.
+bool hasExtension(const char* name);
+```
+
+Implementacja:
+
+```cpp
+bool hasExtension(const char* name) {
     // In a Core profile the extensions are not one long string any more: the driver
     // reports how many there are and hands out their names one by one.
     GLint extensionCount = 0;
@@ -824,9 +893,8 @@ bool hasAnisotropicFiltering() {
         }
         // OpenGL returns text as unsigned bytes (GLubyte), the C string functions want
         // char. Both are one byte per character, so the cast only changes the type.
-        const char* name = reinterpret_cast<const char*>(bytes);
-        if (std::strcmp(name, ANISOTROPY_EXTENSION_EXT) == 0 ||
-            std::strcmp(name, ANISOTROPY_EXTENSION_ARB) == 0) {
+        const char* listed = reinterpret_cast<const char*>(bytes);
+        if (std::strcmp(listed, name) == 0) {
             return true;
         }
     }
@@ -836,14 +904,34 @@ bool hasAnisotropicFiltering() {
 
 | Linia | Co robi i dlaczego |
 |---|---|
+| `bool hasExtension(const char* name)` | zwykła funkcja w przestrzeni nazw `gfx`, bez klasy: nie ma stanu, który trzeba by przechowywać. Przyjmuje napis C, bo wołający podają stałe `constexpr const char*` |
 | `glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount)` | pyta, ile rozszerzeń oferuje sterownik. Zmierzone na komputerze projektu: 404 |
 | `glGetStringi(GL_EXTENSIONS, index)` | zwraca nazwę rozszerzenia o danym numerze. Litera `i` na końcu to "indexed". Stara postać, `glGetString(GL_EXTENSIONS)` z jedną długą listą, została usunięta z profilu Core |
 | `static_cast<GLuint>(index)` | funkcja chce numeru bez znaku, a licznik pętli ma znak, bo `glGetIntegerv` zapisuje `GLint` |
 | `if (bytes == nullptr) continue;` | zabezpieczenie: `strcmp` z pustym wskaźnikiem zakończyłoby program |
 | `reinterpret_cast<const char*>(bytes)` | OpenGL zwraca tekst jako `const GLubyte*` (bajty bez znaku), a `std::strcmp` chce `const char*`. Rzutowanie zmienia tylko typ wskaźnika. To samo rzutowanie robi `glString` w `Window.cpp` |
-| `std::strcmp(a, b) == 0` | porównuje dwa napisy C znak po znaku. Zwraca 0, gdy są równe. Samo `name == ANISOTROPY_EXTENSION_EXT` porównałoby **adresy**, nie tekst |
+| `std::strcmp(listed, name) == 0` | porównuje dwa napisy C znak po znaku. Zwraca 0, gdy są równe. Samo `listed == name` porównałoby **adresy**, nie tekst |
+| `return false;` po pętli | żadna nazwa nie pasowała: rozszerzenia nie ma |
 
 Sprawdzam całą nazwę, a nie początek: szukanie fragmentu w jednej długiej liście (tak robił stary kod) mogło trafić na inne rozszerzenie o dłuższej nazwie.
+
+Funkcja wymaga bieżącego kontekstu OpenGL, więc nie ma testu jednostkowego. Wołają ją dziś dwa miejsca:
+
+| Kto | O co pyta | Co robi bez rozszerzenia |
+|---|---|---|
+| `hasAnisotropicFiltering` w `Texture2D.cpp` | `GL_EXT_texture_filter_anisotropic` albo `GL_ARB_texture_filter_anisotropic` | największy poziom anizotropii to 1: suwak w panelu Assets nic nie zmienia |
+| konstruktor `debug::RawTextureSampler` | `GL_EXT_texture_sRGB_decode` | obiekt nic nie robi, a miniatury tekstur sRGB w panelu Assets są ciemniejsze niż pliki |
+
+W `Texture2D.cpp` została z dawnej funkcji jedna linia:
+
+```cpp
+// True when the driver lists the anisotropic filtering extension under either name.
+bool hasAnisotropicFiltering() {
+    return hasExtension(ANISOTROPY_EXTENSION_EXT) || hasExtension(ANISOTROPY_EXTENSION_ARB);
+}
+```
+
+Dwa wywołania zamiast jednego przejścia z dwoma porównaniami: gdy pierwsza nazwa jest na liście, operator `||` nie liczy drugiego wywołania. Gdy jej nie ma, lista jest przechodzona drugi raz. Przy kilkuset nazwach i jednym pytaniu na teksturę nie ma to znaczenia.
 
 ```cpp
 float queryMaxAnisotropy() {
@@ -893,6 +981,16 @@ Funkcję wołają dwa miejsca: konstruktor i `setFilter`.
 
 ### 5.6 Konstruktor
 
+**Sygnatura i lista inicjalizacyjna.**
+
+```cpp
+Texture2D::Texture2D(int width, int height, int channels, const unsigned char* pixels,
+                     ColorSpace colorSpace)
+    : m_colorSpace(colorSpace) {
+```
+
+Przestrzeń kolorów jest zapamiętywana, zanim wykona się ciało konstruktora, także wtedy, gdy argumenty okażą się złe i tekstura nie powstanie. Pozostałe pola dostają wartości w ciele, po sprawdzeniu.
+
 **Sprawdzenie argumentów.**
 
 ```cpp
@@ -915,10 +1013,28 @@ Dane przychodzą zwykle z pliku, więc zły obraz (na przykład PNG w odcieniach
 ```cpp
     const bool hasAlpha = channels == RGBA_CHANNELS;
     const GLenum dataFormat = hasAlpha ? GL_RGBA : GL_RGB;
-    const GLint internalFormat = hasAlpha ? GL_RGBA8 : GL_RGB8;
+    const GLint internalFormat = internalFormatFor(hasAlpha, colorSpace);
 ```
 
-Dwa osobne opisy z sekcji 2.9. Mają różne typy (`GLenum` i `GLint`), bo takie są typy parametrów `glTexImage2D`.
+Dwa osobne opisy z sekcji 2.9. Mają różne typy (`GLenum` i `GLint`), bo takie są typy parametrów `glTexImage2D`. Format danych zależy tylko od liczby kanałów. Format wewnętrzny od dwóch rzeczy, więc wybiera go osobna funkcja z anonimowej przestrzeni nazw:
+
+```cpp
+GLint internalFormatFor(bool hasAlpha, ColorSpace colorSpace) {
+    if (colorSpace == ColorSpace::Srgb) {
+        return hasAlpha ? GL_SRGB8_ALPHA8 : GL_SRGB8;
+    }
+    return hasAlpha ? GL_RGBA8 : GL_RGB8;
+}
+```
+
+| Wejście | Wynik | Znaczenie |
+|---|---|---|
+| `Srgb`, bez alfy | `GL_SRGB8` | trzy kanały po 8 bitów, dekodowane przy odczycie |
+| `Srgb`, z alfą | `GL_SRGB8_ALPHA8` | to samo plus alfa, która **nie** jest dekodowana |
+| `Linear`, bez alfy | `GL_RGB8` | trzy kanały po 8 bitów, czytane tak, jak są zapisane |
+| `Linear`, z alfą | `GL_RGBA8` | cztery kanały, czytane tak, jak są zapisane |
+
+Wszystkie cztery mają 8 bitów na kanał. Oba formaty sRGB należą do formatów, które każdy sterownik OpenGL 4.1 musi obsługiwać dla tekstur (komentarz nad funkcją mówi to wprost), więc klasa nie sprawdza żadnego rozszerzenia. Wszystkie osiem plików gry ma trzy kanały, więc w praktyce używane są `GL_SRGB8` (cztery obrazy koloru) i `GL_RGB8` (cztery mapy normalnych). Tekstury zastępcze 1 x 1 z `AssetCache` też mają trzy kanały: biała `GL_SRGB8`, płaska mapa normalnych `GL_RGB8`.
 
 **Utworzenie i związanie.**
 
@@ -954,7 +1070,7 @@ Parametry `glTexImage2D` omawia tabela w sekcji 3.1. OpenGL kopiuje piksele podc
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 ```
 
-Jedno wywołanie buduje wszystkie poziomy od 1 w dół. Mipmapy powstają **zawsze**, także gdy ktoś potem wybierze filtr `Nearest`, który ich nie czyta. Koszt to jedna trzecia pamięci więcej. Zysk: filtr można przełączać w działającym programie i tekstura nigdy nie jest niekompletna (sekcja 3.3).
+Jedno wywołanie buduje wszystkie poziomy od 1 w dół. Komentarz w kodzie dodaje od M7, że dla tekstury sRGB mniejsze poziomy są uśredniane ze zdekodowanych, liniowych wartości i kodowane z powrotem, dzięki czemu daleka ściana ma jasność tej samej ściany z bliska. Tak robią sterowniki, ale specyfikacja tego nie nakazuje, a ja tego osobno nie mierzyłem (sekcja 2.10). Mipmapy powstają **zawsze**, także gdy ktoś potem wybierze filtr `Nearest`, który ich nie czyta. Koszt to jedna trzecia pamięci więcej. Zysk: filtr można przełączać w działającym programie i tekstura nigdy nie jest niekompletna (sekcja 3.3).
 
 **Obiekt samplera.**
 
@@ -985,7 +1101,7 @@ Texture2D::~Texture2D() {
 }
 ```
 
-Przenoszenie działa jak w `Buffer` ([`buffers-vao.md`](buffers-vao.md), sekcja 5.4), z tą różnicą, że identyfikatory są dwa. Konstruktor przenoszący kopiuje wszystkie pola i zeruje **oba** identyfikatory w obiekcie źródłowym:
+Przenoszenie działa jak w `Buffer` ([`buffers-vao.md`](buffers-vao.md), sekcja 5.4), z tą różnicą, że identyfikatory są dwa. Konstruktor przenoszący kopiuje wszystkie pola (od M7 także `m_colorSpace`, w obu funkcjach przenoszących: tekstura przeniesiona do listy `AssetCache` musi nadal wiedzieć, czym jest) i zeruje **oba** identyfikatory w obiekcie źródłowym:
 
 ```cpp
     other.m_id = 0;
@@ -1061,7 +1177,7 @@ Klasa potrzebuje kontekstu OpenGL, więc testy jednostkowe jej nie obejmują ([`
 |---|---|
 | konstruktor | `glGetError` czysty, `isValid()` prawda, rozmiar 512 x 512, filtr `Trilinear`, anizotropia 1, `maxAnisotropy()` 16 |
 | `GL_UNPACK_ALIGNMENT` przed i po konstruktorze | 4 i 4 |
-| rozmiary poziomów (`glGetTexLevelParameteriv`) | poziom 0: 512 x 512, poziom 1: 256 x 256, poziom 8: 2 x 2, poziom 9: 1 x 1, poziom 10: 0 x 0. Format wewnętrzny `GL_RGB8` |
+| rozmiary poziomów (`glGetTexLevelParameteriv`) | poziom 0: 512 x 512, poziom 1: 256 x 256, poziom 8: 2 x 2, poziom 9: 1 x 1, poziom 10: 0 x 0. Format wewnętrzny `GL_RGB8` (pomiar sprzed M7, gdy klasa miała jeden format. Dziś tekstura koloru zgłosiłaby `GL_SRGB8`: tego pomiaru nie powtarzałem) |
 | lista rozszerzeń | 404 nazwy, są obie: `GL_EXT_texture_filter_anisotropic` i `GL_ARB_texture_filter_anisotropic` |
 | `setFilter` dla trzech wartości, potem odczyt z samplera (`glGetSamplerParameteriv`) | `Nearest`: `GL_NEAREST` i `GL_NEAREST`. `Bilinear`: `GL_LINEAR` i `GL_LINEAR`. `Trilinear`: `GL_LINEAR_MIPMAP_LINEAR` i `GL_LINEAR`. Zawijanie zawsze `GL_REPEAT` w obu osiach |
 | `setAnisotropy(8)`, `(1000)`, `(0)`, potem odczyt z samplera | 8, 16, 1. Pole i sterownik zgodne |
@@ -1137,7 +1253,9 @@ Sekcja 5.9 sprawdza klasę osobno. Tu jest to, co wiadomo o teksturach w działa
 
 **Stan z M5 (zgłoszony dla Windowsa 2026-10-05).** Build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach. Obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowe wstawki w kodzie, które potem usunięto. Dla tekstur M5 oznacza cztery nowe pliki (`crystal.png`, `crystal_normal.png`, `gate_wood.png`, `gate_wood_normal.png`), nowy uniform `uEmissive` i przeniesienie kodu wiążącego do `ModelDraw.cpp`. Osobnych pomiarów tych rzeczy nie mam: tabeli wyżej nie powtarzałem dla nowych tekstur, a o zachowaniu `uEmissive` w programie `textured` wiem tyle, ile wynika ze wzoru w sekcji 4.2. M5 nie jest zamknięty: nic z niego nie było budowane ani uruchamiane na macOS i nikt jeszcze nie grał ręcznie.
 
-**Czego nikt jeszcze nie zrobił ręcznie.** Stany z tabeli (inny tryb podglądu, inny filtr, anizotropia 16) były ustawiane tymczasowymi wstawkami w kodzie, które zostały usunięte, a nie kliknięciem w panel. Lista wyboru `View mode`, lista `Filter`, suwak `Anisotropy` i pole wyboru `Normal mapping` nie były więc jeszcze używane myszą. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nie sprawdzono niczego: ani kompilacji shaderów przez sterownik Apple, ani obrazu.
+**Stan po pierwszej części M7 (zgłoszony dla Windowsa 2026-10-05, nie powtarzałem).** Tekstury koloru są teksturami sRGB, a scena przechodzi przez bufor HDR i przebieg składający. Bramka `make check` przechodzi: format, testy Debug i Release (269 przypadków, 102103 asercje w obu), clang-tidy, zero ostrzeżeń. Porównanie z obrazem poprzedniego commita w trybie `Unlit`, z mapowaniem tonów `None` i ekspozycją 1: ściany i podłoże różnią się najwyżej o 22 poziomy z 255 (średnio 1,1) i tylko na fugach cegieł, bo filtrowanie działa teraz na wartościach liniowych (sekcja 2.10). Pomiar zrobiono przed ponownym dobraniem świateł. Jasność nieba i świecenie kryształów różnią się dziś celowo, więc dla nich porównanie nie ma sensu. Widoki normalnych i UV różnią się najwyżej o 1 poziom. Miniatury w panelu Assets są identyczne co do piksela z poprzednimi (dzięki `debug::RawTextureSampler`, sekcja 6). Dlaczego obraz nie jest i nie może być identyczny, tłumaczy [`color-space.md`](color-space.md).
+
+**Czego nikt jeszcze nie zrobił ręcznie.** Stany z tabeli (inny tryb podglądu, inny filtr, anizotropia 16) były ustawiane tymczasowymi wstawkami w kodzie, które zostały usunięte, a nie kliknięciem w panel. Lista wyboru `View mode`, lista `Filter`, suwak `Anisotropy` i pole wyboru `Normal mapping` nie były więc jeszcze używane myszą. To samo dotyczy widżetów z M7. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nie sprawdzono niczego: ani kompilacji shaderów przez sterownik Apple, ani obrazu.
 
 ## 6. Panel ImGui
 
@@ -1149,13 +1267,15 @@ Tekstury mają panel **Assets**. PRD nie ma panelu o takiej nazwie: w sekcji 3 w
 | pole wyboru `Normal mapping` (pod listą `View mode`, z notką pod spodem) | `game::LightingSettings::normalMapping`, z którego `usesNormalMap` wylicza uniform `uNormalMapEnabled` | pod oświetleniem `Phong` i `Blinn-Phong` oraz w widoku `Normals as colour`: ściany, podłoga, kryształy i brama z reliefem albo bez. W trybie `Gouraud` nic się nie zmienia. Opis i scenariusz pokazu: [`normal-mapping.md`](normal-mapping.md), sekcja 6 |
 | lista `Filter`: `Nearest`, `Bilinear`, `Trilinear` | filtr **wszystkich** tekstur naraz, przez `AssetCache::setFilter`, które woła `Texture2D::setFilter` dla każdej | z bliska: kwadratowe teksele albo wygładzenie. Z daleka: migotanie albo spokojny obraz (sekcje 2.3 i 2.4) |
 | suwak `Anisotropy`, od 1 do `maxAnisotropy()` | poziom anizotropii wszystkich tekstur, przez `AssetCache::setAnisotropy` | ostrość podłoża i ścian widzianych pod ostrym kątem (sekcja 2.5). Gdy sterownik nie ma rozszerzenia, suwak jest wyszarzony i pod nim stoi wyjaśnienie |
-| lista pod nagłówkiem `Textures` | nic, tylko pokazuje | nazwa pliku, rozmiar w pikselach i miniatura 128 x 128 każdej wczytanej tekstury. Dziś jest ich osiem, wszystkie 512 x 512: cztery tekstury koloru (`wall_stone.png`, `ground.png`, `crystal.png`, `gate_wood.png`) i cztery mapy normalnych (te same nazwy z końcówką `_normal`). Do M4 były cztery, same kamienne. Do M5 w miejscu pary `ground` była para `floor_stone`. Kolejność na liście zależy od kolejności wczytywania, której nie sprawdzałem. Parę `ground` wczytuje `TerrainRenderer`, a nie plik MTL, ale przez tę samą pamięć podręczną, więc jest na liście. Mapy wysokości `heightmap.png` na liście nie ma: `NightMazeApp` czyta ją wprost przez `assets::loadImage`, poza pamięcią podręczną, i nie tworzy z niej tekstury (według zgłoszenia autora zmiany panel jej nie pokazuje, co zgadza się z kodem). Oba modele kryształów wskazują w swoich plikach MTL tę samą parę `crystal.png` i `crystal_normal.png`, a pamięć podręczna wczytuje każdy plik raz. Miniatura mapy normalnych to obraz tak, jak jest zapisany, w większości jasnoniebieski, bo większość tekseli trzyma kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)` |
+| lista pod nagłówkiem `Textures` | nic, tylko pokazuje | nazwa pliku, rozmiar w pikselach, przestrzeń kolorów (`sRGB` albo `linear`, od M7: na przykład `512 x 512 px, sRGB`) i miniatura 128 x 128 każdej wczytanej tekstury. Dziś jest ich osiem, wszystkie 512 x 512: cztery tekstury koloru (`wall_stone.png`, `ground.png`, `crystal.png`, `gate_wood.png`), wszystkie `sRGB`, i cztery mapy normalnych (te same nazwy z końcówką `_normal`), wszystkie `linear`. Do M4 były cztery, same kamienne. Do M5 w miejscu pary `ground` była para `floor_stone`. Słowo przy rozmiarze to najszybszy sposób, żeby na obronie pokazać, że mapa normalnych nie jest dekodowana jak kolor |
 
 Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal mapping`. Lista `Filter` i suwak `Anisotropy` działają także na mapy normalnych, bo zmieniają wszystkie tekstury pamięci podręcznej.
 
 **Miniatura nie pokazuje filtra.** `ImGui::Image` dostaje sam identyfikator tekstury (`Texture2D::id()`). Backend OpenGL biblioteki ImGui (wersja 1.92.9b, plik `imgui_impl_opengl3.cpp`) na czas rysowania paneli wiąże z jednostką 0 **własny obiekt samplera** z filtrem liniowym i zawijaniem `GL_CLAMP_TO_EDGE`, a po sobie przywraca poprzedni. To odczyt z kodu biblioteki, nie pomiar. Miniatura jest więc zawsze wygładzona liniowo, niezależnie od filtra wybranego w panelu. Skutek zmiany filtra i anizotropii widać na ścianach w scenie, a nie na miniaturze. Panel mówi to wprost tekstem pod suwakiem.
 
 **Orientacja miniatury.** Dane tekstury mają dolny wiersz jako pierwszy, a `ImGui::Image` umieszcza współrzędną `uv0` (domyślnie `(0, 0)`) w **lewym górnym** rogu obrazka i `uv1` (domyślnie `(1, 1)`) w prawym dolnym. Z wartościami domyślnymi miniatura wyszłaby do góry nogami. Panel podaje więc `uv0 = (0, 1)` i `uv1 = (1, 0)`. Na zrzucie ekranu z Windowsa miniatury są we właściwej orientacji (sekcja 5.10).
+
+**Miniatura tekstury sRGB.** ImGui rysuje miniaturę prosto do okna, po przebiegu składającym, i zapisuje to, co przeczyta. Tekstura sRGB czytana zwykłym samplerem oddaje wartości liniowe, których nikt już nie zakoduje, więc miniatura wyszłaby za ciemna (bajt 128 zostałby pokazany jako 0,216, czyli poziom 55). Dlatego dla tekstur `sRGB` panel otacza `ImGui::Image` parą `rawSampler.begin()` i `rawSampler.end()`: na ten jeden obrazek ImGui czyta teksturę przez obiekt samplera z wyłączonym dekodowaniem (`GL_TEXTURE_SRGB_DECODE_EXT` ustawione na `GL_SKIP_DECODE_EXT`), więc na ekran trafiają bajty z pliku. To rozszerzenie `GL_EXT_texture_sRGB_decode`, którego nie ma w rdzeniu 4.1. Gdzie sterownik go nie podaje, obiekt nic nie robi i miniatury tekstur koloru są ciemniejsze niż pliki. Mapy normalnych (`linear`) idą zwykłą drogą. Klasę `debug::RawTextureSampler` opisuje [`../debug-ui.md`](../debug-ui.md). Zgłoszone dla Windowsa: z rozszerzeniem miniatury są identyczne co do piksela z miniaturami sprzed M7. Czy sterownik Apple podaje to rozszerzenie, nie sprawdzono.
 
 **Stan sprawdzenia.** Widżetów nikt jeszcze nie klikał ręcznie (sekcja 5.10). Na macOS panel nie był uruchamiany.
 
@@ -1178,14 +1298,14 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 15. **Tekstura utworzona przed oknem albo zniszczona po nim.** Jak każda klasa `gfx`: konstruktor i destruktor wołają OpenGL i potrzebują bieżącego kontekstu ([`README.md`](README.md), sekcja 5).
 16. **Kopiowanie opakowania.** Jak w `Buffer`: kopia miałaby te same dwa identyfikatory. `= delete` zamienia to w błąd kompilacji.
 17. **Zły wskaźnik albo za krótka tablica.** `glTexImage2D` czyta `szerokość * wysokość * kanały` bajtów spod wskaźnika i nie zna długości tablicy. Zbyt krótka tablica to czytanie cudzej pamięci, bez błędu OpenGL.
-18. **Kolory bez korekcji gamma.** Tekstura jest przechowywana jako `GL_RGB8`, a nie `GL_SRGB8` (sekcja 2.10). W programie `textured` obraz jest poprawny, bo tekstura jest tylko kopiowana na ekran. W programach `lit` i `gouraud` światło jest od M4 liczone na wartościach nieliniowych, więc wynik różni się od tego, co dałoby poprawne przeliczenie. Różnicy nie mierzyłem. To świadomie odłożone do M7 ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Kto wcześniej zmieni sam format na `GL_SRGB8`, bez `GL_FRAMEBUFFER_SRGB` przy zapisie, przyciemni cały obraz.
+18. **Zła przestrzeń kolorów tekstury.** (Do M6 ten punkt nazywał się "Kolory bez korekcji gamma": tekstury były `GL_RGB8`, a światło liczone na wartościach nieliniowych. To już historia, [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).) Dziś błąd wygląda inaczej. Obraz koloru wczytany jako `ColorSpace::Linear` nie jest dekodowany, a przebieg składający i tak koduje klatkę: powierzchnia wychodzi wyblakła i za jasna (podwójne kodowanie). Dane wczytane jako `Srgb` są dekodowane, choć kolorem nie są (pułapka 25). Żaden z tych błędów nie daje komunikatu OpenGL. Jedyną kontrolą w kodzie jest log `Texture is asked for as sRGB and as linear` z `AssetCache::texture`, gdy ten sam plik zostanie poproszony w obu przestrzeniach. Typowe błędy całego potoku zbiera [`color-space.md`](color-space.md).
 19. **Liczby trybu podglądu w trzech miejscach.** `textured.frag` porównuje `uViewMode` z liczbami 1 i 2, a C++ wysyła `static_cast<int>(m_viewMode)`. Zmiana kolejności wartości w `game::ViewMode` bez zmiany shadera (albo odwrotnie) nie daje żadnego błędu: panel pokazuje jedną nazwę, a ekran inny tryb. Trzecim miejscem jest napis `VIEW_MODE_ITEMS` w panelu Assets, którego kolejność też musi zgadzać się z typem wyliczeniowym.
 20. **Nieustawiony `uTint` daje czarny labirynt.** Uniform typu `vec3` ma po linkowaniu wartość `(0, 0, 0)`. Mnożenie tekstury przez zero to czerń, bez żadnego błędu. Literówka w nazwie `"uTint"` wyglądałaby tak samo, bo położenie -1 jest po cichu ignorowane ([`uniforms.md`](uniforms.md), sekcja 2.3). Stąd nazwy w jednym nagłówku `ShaderUniforms.hpp`.
 21. **`mat3(uModel)` przy nierównej skali.** Normalne wychodzą przekrzywione, gdy obiekt jest rozciągnięty tylko w jednej osi (sekcja 4.1). Dotyczy to już tylko `textured.vert`: programy oświetlające `lit` i `gouraud` używają `uNormalMatrix`, czyli poprawnej macierzy policzonej w C++. Dziś żaden rysowany model (labirynt, brama, kryształy) nie ma skali innej niż 1, więc obie drogi dają to samo. Po dodaniu obiektu o nierównej skali oświetlenie będzie poprawne, a **podgląd normalnych pokaże co innego niż to, czego używa światło**, bo rysuje go `textured.vert`. Dotyczy to także widoku z mapowaniem normalnych: `surfaceNormal` dostałaby w obu programach inną normalną na wejściu. Żeby podgląd nie kłamał, trzeba wtedy zmienić `textured.vert` na `uNormalMatrix` (uniform jest do tego programu wysyłany już dziś).
 22. **Podgląd normalnych to nie światło.** Kolory w trybie 1 nie zależą od żadnego źródła światła ani od kamery. Na obronie nie wolno tego nazwać cieniowaniem. Od M4 widać to wprost: włączenie podglądu wyłącza oświetlenie labiryntu w każdym trybie. Od M5 dotyczy to także kryształów i bramy, a świecenie kryształów w podglądzie znika, bo `uEmissive` czyta tylko widok 0. Podgląd zależy od ustawień oświetlenia tylko w jednym: pokazuje normalne z map albo normalne modelu, zależnie od pola `Normal mapping` i od tego, czy tryb to `Gouraud`.
 23. **Ten sam numer atrybutu, inne znaczenie.** Numer atrybutu znaczy tyle, ile ustali shader i VAO. W M1 `location = 1` było kolorem w `basic.vert`, a w `textured.vert` jest normalną: siatka `gfx::Mesh` narysowana tamtym programem pokazałaby normalne jako kolory. Para `basic.*` i kostka zostały w M5 usunięte, ale reguła została. Dzisiejszy przykład: `color.vert` czyta tylko atrybut 0, więc siatki linii kolizji mogą mieć normalną, UV i styczną równe zero, a narysowane programem `lit` dałyby normalną zerową. OpenGL nie zgłasza żadnej z tych pomyłek.
 24. **Oba samplery na tej samej jednostce.** Sampler ma po linkowaniu (i po `reload()`) wartość 0. Gdyby `game::setModelSamplers` nie wysyłała `uNormalMap`, shader czytałby teksturę koloru jako mapę normalnych: szare kamienie dałyby kierunki bliskie `(0,2, 0,2, 0,2)` po przeliczeniu, czyli bezsensowne światło, bez błędu OpenGL. To samo przy pomyleniu stałych `TEXTURE_UNIT` i `NORMAL_MAP_UNIT` w jednym z dwóch miejsc.
-25. **Mapa normalnych jako tekstura sRGB.** Dziś nie grozi, bo wszystko jest `GL_RGB8`. W M7, przy przejściu tekstur koloru na `GL_SRGB8`, mapy normalnych muszą zostać liniowe (sekcja 2.10, i [`normal-mapping.md`](normal-mapping.md), sekcja 7).
+25. **Mapa normalnych jako tekstura sRGB.** Od M7 to realna pomyłka: wystarczy podać `ColorSpace::Srgb` przy wczytaniu mapy. Karta zdekoduje wtedy kierunki jak kolory: bajt 128 (składowa 0) stanie się 0,216 zamiast 0,502, po przeliczeniu `* 2.0 - 1.0` wyjdzie -0,57 zamiast 0 i wszystkie normalne odchylą się w tę samą stronę, a światło na płaskiej ścianie będzie padać jak na pochyloną. `AssetCache::model` podaje dla map normalnych `ColorSpace::Linear`, a płaska mapa zastępcza też jest liniowa (sekcja 2.10 i [`normal-mapping.md`](normal-mapping.md), sekcja 7).
 26. **`uEmissive` zostaje po poprzednim rysowaniu.** Uniform trzyma wartość do następnego ustawienia, także między klatkami. Kryształy są rysowane po labiryncie i zostawiają w programie swój kolor świecenia, więc na początku klatki ktoś musi wysłać czerń (sekcja 4.3). Od drugiej części M6 robią to dwie klasy, każda przed swoim rysowaniem: `TerrainRenderer::draw` i `MazeRenderer::draw`. Bez obu tych linii teren i ściany byłyby od drugiej klatki rozjaśnione kolorem kryształów, bez żadnego błędu. Po `reload()` jest odwrotnie: nowy program ma `uEmissive` równe zero i kryształy nie świeciłyby, gdyby `GameplayRenderer::draw` nie wysyłał wartości w każdej klatce.
 27. **Świecenie to nie światło.** `uEmissive` rozjaśnia tylko powierzchnię, która je ma. Ściany obok kryształu oświetla osobne światło punktowe z bloku `LightBlock` ([`../game/gameplay.md`](../game/gameplay.md)), a w programie `textured` nie oświetla ich nic.
 
@@ -1207,6 +1327,8 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 12. **Podgląd UV bez `fract`.** W gałęzi `uViewMode == 2` zamień `fract(vUv)` na `vUv`, przeładuj shadery i włącz tryb `UVs as colour`. Które części ścian straciły gradient i dlaczego (jaki kolor ma fragment o `u = 1,7`)? Wycofaj zmianę.
 13. **Normalna na kartce.** Ściana biegnąca wzdłuż osi Z powstaje z modelu obróconego o 90 stopni wokół osi Y. Model ma ścianę boczną o normalnej `(0, 0, 1)`. Jaką normalną ma ta ściana w przestrzeni świata i jaki kolor pokaże tryb `Normals as colour` przy odznaczonym polu `Normal mapping` (z zaznaczonym na ten kolor nakłada się rysunek fug z mapy normalnych)? (Wskazówka: macierz obrotu wokół osi Y z [`../scene/transforms.md`](../scene/transforms.md), sekcja 2. Odpowiedź: `(1, 0, 0)`, kolor `(1, 0,5, 0,5)`.)
 14. **Świecenie, które zostaje.** Ustaw tryb oświetlenia `Unlit`. W `TerrainRenderer::draw` i w `MazeRenderer::draw` usuń linię z `setVec3(EMISSIVE_UNIFORM, ...)` (obie: sama druga nic nie zmieni, bo czerń ustawia wcześniej teren), zbuduj i uruchom. Jak powinny wyglądać ściany i podłoże i dlaczego (która funkcja ustawiła `uEmissive` jako ostatnia w poprzedniej klatce)? Czy pierwsza klatka po starcie też jest zmieniona? Policz na kartce kolor fragmentu o `texel = (0,5, 0,5, 0,5)`, `uTint = (1, 1, 1)` i `uEmissive = (0,2, 0,6, 1,0)`. (Tego ćwiczenia nikt jeszcze nie wykonał: odpowiedź wynika z kodu. Kolor: `(0,6, 0,8, 1,0)`: każda składowa to `0,5 * (1 + uEmissive)`.) Wycofaj zmianę.
+15. **sRGB na kartce.** Dwa sąsiednie teksele mają bajty 0 i 255. Filtr dwuliniowy czyta dokładnie w połowie między nimi. Jaką liczbę dostaje shader, gdy tekstura jest `GL_RGB8`, a jaką, gdy jest `GL_SRGB8` i karta dekoduje przed filtrowaniem? Jaki bajt trafi na ekran w trybie `Unlit` w każdym z tych przypadków? (Odpowiedź: 0,5 w obu, bo 0 i 1 dekodują się na 0 i 1. Różnica jest w tym, co te 0,5 znaczy: dla `GL_RGB8` w starym potoku trafiało na ekran jako bajt 128, a dla `GL_SRGB8` jest połową światła, którą przebieg składający koduje na 0,735, czyli bajt 188. Stąd różnice na fugach.)
+16. **Zła przestrzeń na żywo.** W `AssetCache::model` zamień `gfx::ColorSpace::Srgb` przy `map_Kd` na `Linear`, zbuduj i uruchom. Jak zmieniły się ściany i co pokazuje panel Assets przy `wall_stone.png`? Potem przywróć i zamień `Linear` przy mapie normalnych na `Srgb`: co stało się ze światłem na płaskiej ścianie? (Tego ćwiczenia nikt jeszcze nie wykonał: oczekiwany wynik to wyblakłe ściany w pierwszym przypadku i przekrzywione światło w drugim, pułapki 18 i 25.) Wycofaj zmiany.
 
 ## 9. Pytania kontrolne
 
@@ -1241,7 +1363,7 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
     Zapis `layout(binding = N)` istnieje od GLSL 4.20. Projekt używa GLSL 4.10, bo to najnowsza wersja na macOS.
 
 11. **Czym różni się format wewnętrzny od formatu danych w `glTexImage2D`?**
-    Format danych (`format` i `type`, u nas `GL_RGB` i `GL_UNSIGNED_BYTE`) opisuje bajty, które podaję. Format wewnętrzny (`GL_RGB8`) mówi, jak karta ma teksturę przechowywać. Nie muszą być takie same.
+    Format danych (`format` i `type`, u nas `GL_RGB` i `GL_UNSIGNED_BYTE`) opisuje bajty, które podaję. Format wewnętrzny (`GL_SRGB8` dla obrazu koloru, `GL_RGB8` dla danych) mówi, jak karta ma teksturę przechowywać i czy ma dekodować kolor przy odczycie. Nie muszą być takie same.
 
 12. **Po co `glPixelStorei(GL_UNPACK_ALIGNMENT, 1)`?**
     Domyślnie OpenGL zakłada, że każdy wiersz danych zaczyna się pod adresem podzielnym przez 4. Wiersz RGB ma `szerokość * 3` bajtów, co dzieli się przez 4 tylko dla niektórych szerokości. Wyrównanie 1 mówi, że wiersze leżą ciasno, i jest poprawne zawsze.
@@ -1258,8 +1380,8 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 16. **Dlaczego `GL_REPEAT`?**
     UV ścian wychodzą celowo poza zakres od 0 do 1, żeby jedno powtórzenie tekstury zajmowało zawsze 2 m. Z przycinaniem do krawędzi część ściany byłaby rozmazanym ostatnim wierszem.
 
-17. **Czego z tematu tekstur projekt jeszcze nie robi?**
-    Nie ma obsługi sRGB i gammy: to M7, razem z potokiem HDR, więc oświetlenie (które już jest, od M4) liczy na wartościach nieliniowych z pliku. Mapy normalnych już są, od drugiej części M4 ([`normal-mapping.md`](normal-mapping.md)).
+17. **Co to znaczy, że tekstura jest sRGB, i które tekstury gry takie są?**
+    Ma format wewnętrzny `GL_SRGB8` (albo `GL_SRGB8_ALPHA8`), więc karta zamienia jej kolory na wartości liniowe, gdy shader je czyta. Bajty na karcie są te same co w pliku. Takie są cztery obrazy koloru i biała tekstura zastępcza. Cztery mapy normalnych i płaska mapa zastępcza są liniowe (`GL_RGB8`), bo ich bajty to kierunki. Wybiera wołający, argumentem `ColorSpace` konstruktora. (Do M6 to pytanie brzmiało "czego projekt jeszcze nie robi" i odpowiedzią było sRGB.)
 
 18. **Co robi linia `vec3 texel = texture(uTexture, vUv).rgb;`?**
     Odczytuje teksturę z jednostki, której numer jest w samplerze `uTexture`, w punkcie `vUv`, z filtrem, mipmapami i zawijaniem ustawionymi na obiekcie samplera. Z czterech zwróconych składowych bierze trzy pierwsze: kolor bez alfy.
@@ -1280,7 +1402,7 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
     Dwie: numer 0 dla tekstury koloru (sampler `uTexture`) i numer 1 dla mapy normalnych (sampler `uNormalMap`). Shader czyta obie dla tego samego fragmentu, a jedna jednostka ma jedno wiązanie `GL_TEXTURE_2D`, więc muszą leżeć na różnych. Przed każdą częścią modelu `game::drawModel` wiąże najpierw mapę normalnych z jednostką 1, potem teksturę koloru z jednostką 0, żeby aktywna została jednostka 0. Oba samplery dostają swój numer w każdej klatce.
 
 26. **Czym mapa normalnych różni się od tekstury koloru po stronie `Texture2D` i pamięci podręcznej?**
-    Niczym: ten sam loader, ta sama klasa, format `GL_RGB8`, mipmapy, `GL_REPEAT`, ten sam filtr i anizotropia z panelu. Różnica jest w shaderze, który jej bajty czyta jako kierunek (`* 2.0 - 1.0`), a nie jako kolor. Dlatego w M7 nie wolno jej oznaczyć jako sRGB.
+    Jedną rzeczą: przestrzenią kolorów. Mapa normalnych jest wczytywana z `ColorSpace::Linear` (format `GL_RGB8`), tekstura koloru z `ColorSpace::Srgb` (`GL_SRGB8`). Reszta jest wspólna: ten sam loader, ta sama klasa, mipmapy, `GL_REPEAT`, ten sam filtr i anizotropia z panelu. Shader czyta bajty mapy jako kierunek (`* 2.0 - 1.0`), a nie jako kolor, więc karta nie może ich dekodować z sRGB.
 
 25. **Którym programem rysowany jest dziś labirynt i kiedy jest to program `textured`?**
     Domyślnie programem `lit` (tryby `Phong` i `BlinnPhong`) albo `gouraud`. Program `textured` rysuje go w trybie `Unlit` oraz zawsze wtedy, gdy włączony jest podgląd normalnych albo UV. Kryształy i brama idą zawsze tym samym programem co labirynt. Wszystkie trzy czytają teksturę koloru tak samo: sampler `uTexture`, jednostka 0, mnożenie przez `uTint`. Mapę normalnych z jednostki 1 czytają `lit` (do światła) i `textured` (do widoku normalnych), a `gouraud` nie czyta jej wcale.
@@ -1302,7 +1424,8 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 - LearnOpenGL, rozdział "Textures" (<https://learnopengl.com/Getting-started/Textures>): współrzędne tekstury, zawijanie, filtry, mipmapy, jednostki teksturujące, `sampler2D`. Używa `glTexParameteri`: te same stałe co w `glSamplerParameteri` projektu.
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glTexImage2D` (<https://docs.gl/gl4/glTexImage2D>), `glGenerateMipmap`, `glTexParameter` (lista parametrów i wartości domyślnych), `glSamplerParameter` (<https://docs.gl/gl4/glSamplerParameter>), `glBindSampler` (<https://docs.gl/gl4/glBindSampler>), `glGenSamplers`, `glActiveTexture`, `glBindTexture`, `glPixelStore` (<https://docs.gl/gl4/glPixelStore>), `glGetString` (w tym `glGetStringi`), `glUniform`.
 - Specyfikacja rozszerzenia `GL_EXT_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt>): wartości stałych 0x84FE i 0x84FF, zakres poziomu. Wersja z rdzenia 4.6: `GL_ARB_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/ARB/ARB_texture_filter_anisotropic.txt>).
-- Khronos OpenGL Wiki: "Texture" (<https://www.khronos.org/opengl/wiki/Texture>, w tym kompletność tekstury), "Sampler Object" (<https://www.khronos.org/opengl/wiki/Sampler_Object>, pierwszeństwo samplera przed parametrami tekstury), "Sampler (GLSL)" (<https://www.khronos.org/opengl/wiki/Sampler_(GLSL)>), "Pixel Transfer" (<https://www.khronos.org/opengl/wiki/Pixel_Transfer>, wyrównanie wierszy), "Common Mistakes" (<https://www.khronos.org/opengl/wiki/Common_Mistakes>, części o mipmapach i wyrównaniu).
-- Dokumenty w tym repozytorium: [`normal-mapping.md`](normal-mapping.md) (mapy normalnych: druga tekstura, druga jednostka, `surfaceNormal`), [`../scene/lights.md`](../scene/lights.md) (oświetlenie), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (dlaczego bez gammy do M7), [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`, `uNormalMatrix`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy tekstury i panel Assets), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je wiąże przy rysowaniu), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, brama, `uEmissive` i `crystalGlow`), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
+- Specyfikacja rozszerzenia `GL_EXT_texture_sRGB_decode` (<https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_sRGB_decode.txt>): parametr samplera, którym `debug::RawTextureSampler` wyłącza dekodowanie dla miniatur.
+- Khronos OpenGL Wiki: "Image Format", część o formatach sRGB (<https://www.khronos.org/opengl/wiki/Image_Format>), "Texture" (<https://www.khronos.org/opengl/wiki/Texture>, w tym kompletność tekstury), "Sampler Object" (<https://www.khronos.org/opengl/wiki/Sampler_Object>, pierwszeństwo samplera przed parametrami tekstury), "Sampler (GLSL)" (<https://www.khronos.org/opengl/wiki/Sampler_(GLSL)>), "Pixel Transfer" (<https://www.khronos.org/opengl/wiki/Pixel_Transfer>, wyrównanie wierszy), "Common Mistakes" (<https://www.khronos.org/opengl/wiki/Common_Mistakes>, części o mipmapach i wyrównaniu).
+- Dokumenty w tym repozytorium: [`normal-mapping.md`](normal-mapping.md) (mapy normalnych: druga tekstura, druga jednostka, `surfaceNormal`), [`../scene/lights.md`](../scene/lights.md) (oświetlenie), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`), [`color-space.md`](color-space.md) (sRGB i wartości liniowe, trzy etapy potoku), [`framebuffers.md`](framebuffers.md) (bufor, do którego trafia kolor), [`../renderer/post-process.md`](../renderer/post-process.md) (kodowanie na sRGB na końcu klatki), [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) i [`../../decisions/srgb-encode-in-shader.md`](../../decisions/srgb-encode-in-shader.md) (decyzje M7), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (zastąpiona: dlaczego do M6 gammy nie było), [`../debug-ui.md`](../debug-ui.md) (`RawTextureSampler`), [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`, `uNormalMatrix`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy tekstury i panel Assets), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je wiąże przy rysowaniu), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, brama, `uEmissive` i `crystalGlow`), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o teksturach).
 - "OpenGL. Księga eksperta" (rozdziały o teksturowaniu i filtrowaniu).

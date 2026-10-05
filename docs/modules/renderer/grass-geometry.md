@@ -5,17 +5,19 @@ Kod: trzy shadery [`assets/shaders/grass.vert`](../../../assets/shaders/grass.ve
 
 Dokument zakłada znajomość potoku i dwóch podstawowych etapów shaderów ([`../gfx/shaders.md`](../gfx/shaders.md)), klasy `gfx::Shader` ([`../gfx/shader-class.md`](../gfx/shader-class.md)), siatki i rodzaju prymitywu ([`../gfx/mesh.md`](../gfx/mesh.md)), świateł i pliku `common/lighting.glsl` ([`../scene/lights.md`](../scene/lights.md)), bloku uniformów ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) oraz terenu ([`terrain.md`](terrain.md)), na którym trawa stoi. Jak klasa `Shader` kompiluje i linkuje trzeci etap, opisuje linia po linii [`../gfx/shader-class.md`](../gfx/shader-class.md): tutaj jest teoria shadera geometrii i wszystko, co robi z nim gra.
 
-**Stan na dziś:** wzdłuż ścian labiryntu, po obu ich stronach, rosną kępki trawy, a na wzgórzach wokół labiryntu jest ich rzadki rozsiew. Każda kępka to **jeden punkt** w buforze wierzchołków. Trzy źdźbła, z których się składa, buduje na karcie graficznej shader geometrii `grass.geom`, w każdej klatce od nowa, i dlatego trawa kołysze się na wietrze bez wysyłania jakichkolwiek danych. Programów shaderów jest od tej części sześć: doszedł `grass`, pierwszy z trzema plikami. Panel **Grass** ma pole `Enabled` i suwak `Density`: to są dwa pokazy, które PRD podaje dla tematu 9 ("gęstość trawy, toggle"), oraz suwaki `Blade height` i `Wind strength`.
+**Stan na dziś:** wzdłuż ścian labiryntu, po obu ich stronach, rosną kępki trawy, a na wzgórzach wokół labiryntu jest ich rzadki rozsiew. Każda kępka to **jeden punkt** w buforze wierzchołków. Trzy źdźbła, z których się składa, buduje na karcie graficznej shader geometrii `grass.geom`, w każdej klatce od nowa, i dlatego trawa kołysze się na wietrze bez wysyłania jakichkolwiek danych. Programów shaderów było od tej części sześć: doszedł `grass`, pierwszy z trzema plikami. Dziś jest ich osiem (pierwsza część M7 dodała `composite` i `preview`). Panel **Grass** ma pole `Enabled` i suwak `Density`: to są dwa pokazy, które PRD podaje dla tematu 9 ("gęstość trawy, toggle"), oraz suwaki `Blade height` i `Wind strength`.
 
-**Czego nie ma:** PRD wymienia w temacie 9 obok trawy także iskry wokół kryształów. **Iskier nie zbudowano**: nie ma dla nich kodu ani shadera. Nie ma też cieni rzucanych przez trawę ani na trawę (cieni nie ma w grze w ogóle do M7), mgły ani bloomu.
+**Czego nie ma:** PRD wymienia w temacie 9 obok trawy także iskry wokół kryształów. **Iskier nie zbudowano**: nie ma dla nich kodu ani shadera. Nie ma też cieni rzucanych przez trawę ani na trawę (cieni nie ma w grze w ogóle: są planowane w dalszej części M7), mgły ani bloomu.
 
-Co jest sprawdzone (2026-10-05, Windows):
+**Co zmieniła pierwsza część M7 (2026-10-05).** Geometria trawy i shader geometrii się nie zmieniły. W `grass.frag` doszło `#include "common/color.glsl"`: dwa końce gradientu są liczbami sRGB i kolor jest przeliczany na liniowy przed oświetleniem, a oba widoki diagnostyczne przechodzą przez `srgbToLinear` (sekcja 4.3). Wynik trafia do bufora HDR sceny, nie do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release. Wyglądu trawy w nowym potoku nikt nie porównał ręcznie z poprzednim.
+
+Co jest sprawdzone (2026-10-05, Windows, stan po drugiej części M6):
 
 - **Uruchomione przeze mnie na gotowych plikach wykonywalnych:** 256 przypadków testowych i 101232 asercje w Debug i w Release, wszystkie zaliczone. `tests/GrassTests.cpp` ma 9 przypadków.
 - **Przeliczone przeze mnie niezależnie**, skryptem w Pythonie z własnym generatorem Mersenne Twister: przy gęstości startowej 2,5 labirynt startowy dostaje 1210 kępek przy ścianach i 633 na wzgórzach, razem **1843 kępki**, czyli 5529 źdźbeł. Tę samą liczbę zgłosił autor kodu z panelu działającej gry.
 - **Sprawdzone w specyfikacji GLSL 4.10:** `max_vertices` przyjmuje w tej wersji tylko stałą całkowitą zapisaną wprost, a gwarantowane minimum `gl_MaxGeometryOutputVertices` to 256 i `gl_MaxGeometryTotalOutputComponents` to 1024.
 - **Zgłoszone przez autora kodu, nie powtarzane:** build Debug i Release bez ostrzeżeń, obraz obejrzany na zrzutach ekranu z tymczasowych wstawek (usuniętych), około 2000 klatek na sekundę w Release przed dodaniem trawy i po (rozrzut między uruchomieniami od 1438 do 2040 jest większy niż różnica). Zepsuty celowo `grass.geom` daje błąd z nazwą pliku i numerem linii, `grass.geom(84)`, a gra działa dalej. Zgłoszenie nie mówi, czy plik był zepsuty przed startem, czy przed przeładowaniem, więc tego, że trawa rysuje się dalej poprzednim programem, nikt jeszcze nie potwierdził na ekranie.
-- **Nikt nie sprawdził ręcznie:** żadnej kontrolki panelu Grass ani przycisku `Reload shaders` przy sześciu programach. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 16.
+- **Nikt nie sprawdził ręcznie:** żadnej kontrolki panelu Grass ani przycisku `Reload shaders` (wtedy przy sześciu programach, dziś przy ośmiu). Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 16.
 - **macOS:** nic. Kompilator GLSL Apple nie widział jeszcze shadera geometrii z tego projektu ([`../../guides/build-macos.md`](../../guides/build-macos.md), sekcja 2).
 
 M6 jest kompletny w kodzie na Windowsie i nie jest zamknięty.
@@ -250,7 +252,7 @@ Wiatr nie zmienia niczego w buforach. Punkty kępek stoją w miejscu, a zmienia 
 
 ### 2.7 Oświetlenie i dlaczego odrzucanie tylnych ścian jest wyłączone
 
-**Kolor.** Trawa nie ma tekstury: źdźbło jest na ekranie za wąskie, żeby było na nim widać obraz. Kolor to gradient od ciemnej zieleni przy korzeniu do jasnej na czubku, `mix(ROOT_COLOR, TIP_COLOR, gBladeUv.y)`.
+**Kolor.** Trawa nie ma tekstury: źdźbło jest na ekranie za wąskie, żeby było na nim widać obraz. Kolor to gradient od ciemnej zieleni przy korzeniu do jasnej na czubku, `mix(ROOT_COLOR, TIP_COLOR, gBladeUv.y)`. Od M7 wynik mieszania jest przeliczany z sRGB na wartości liniowe, zanim zostanie pomnożony przez światło (sekcja 4.3).
 
 **Światło.** `grass.frag` dołącza ten sam plik `common/lighting.glsl` co `lit.frag` i woła tę samą funkcję `computeLighting`, więc trawę oświetlają dokładnie te światła co ściany: światło otoczenia, księżyc, światła kryształów i latarka, każde z własnym tłumieniem. Dwie różnice:
 
@@ -498,6 +500,7 @@ Pięć wierzchołków paska w kolejności lewy, prawy, lewy, prawy, czubek (sekc
 #version 410 core
 
 #include "common/lighting.glsl"
+#include "common/color.glsl"
 
 in vec3 gWorldPosition;
 in vec2 gBladeUv;
@@ -508,7 +511,8 @@ uniform int uViewMode;
 out vec4 fragColor;
 ```
 
-- **`#include`** rozwija loader shaderów, nie kompilator GLSL ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Dołączony plik wnosi blok `LightBlock`, uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` i funkcję `computeLighting`.
+- **`#include`** rozwija loader shaderów, nie kompilator GLSL ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Pierwszy dołączony plik wnosi blok `LightBlock`, uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` i funkcję `computeLighting`. Drugi (od M7) wnosi `srgbToLinear` dla kolorów zapisanych w tym pliku liczbami ([`../gfx/color-space.md`](../gfx/color-space.md)).
+- **`out vec4 fragColor`**: komentarz w pliku mówi dziś, że wyjście trafia do bufora HDR sceny jako kolor **liniowy**.
 - **Wejścia** mają te same nazwy i typy co wyjścia `grass.geom`. Rasteryzator interpoluje je w obrębie każdego trójkąta źdźbła.
 - **`uniform bool uLit`**: C++ ustawia go przez `setInt` wartością 0 albo 1. Dla uniformu typu `bool` OpenGL traktuje zero jako fałsz, a każdą inną wartość jako prawdę.
 
@@ -518,24 +522,24 @@ const vec3 TIP_COLOR = vec3(0.46, 0.64, 0.26);
 const vec3 GRASS_NORMAL = vec3(0.0, 1.0, 0.0);
 ```
 
-Kolory są dość jasne, bo scena jest rysowana bez korekcji gamma ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)), a noc robi oświetlenie.
+Dwa końce gradientu to **liczby sRGB**: komentarz w pliku mówi, że są dobrane na oko na ekranie, jak piksele tekstury, więc `main` przelicza kolor na liniowy przed oświetleniem. Są dość jasne, bo noc robi oświetlenie, a nie kolor. Liczby się nie zmieniły w M7. Do M6 wchodziły do rachunku wprost, bez przeliczenia ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)).
 
 ```glsl
 void main() {
     if (uViewMode == 1) {
-        fragColor = vec4(GRASS_NORMAL * 0.5 + 0.5, 1.0);
+        fragColor = vec4(srgbToLinear(GRASS_NORMAL * 0.5 + 0.5), 1.0);
         return;
     }
     if (uViewMode == 2) {
-        fragColor = vec4(gBladeUv, 0.0, 1.0);
+        fragColor = vec4(srgbToLinear(vec3(gBladeUv, 0.0)), 1.0);
         return;
     }
 ```
 
-Widoki diagnostyczne, z tymi samymi numerami co w `textured.frag` (wartości `game::ViewMode`). W widoku normalnych trawa ma kolor `(0,5, 1, 0,5)`, jasnozielony: tak koduje się normalną prosto w górę, a teren pod nią ma prawie ten sam kolor. W widoku UV źdźbło pokazuje swoją współrzędną: czerwień rośnie w poprzek, zieleń ku czubkowi.
+Widoki diagnostyczne, z tymi samymi numerami co w `textured.frag` (wartości `game::ViewMode`). Oba pokazują dane jako kolor, więc przechodzą przez `srgbToLinear`: przebieg składający zakoduje klatkę do sRGB i obie zamiany się zniosą, a na ekran trafią te same liczby co przed M7. Dla tych widoków `onRender` wyłącza też ekspozycję i krzywą mapowania tonów ([`post-process.md`](post-process.md), sekcja 2.9). `srgbToLinear` przyjmuje `vec3`, stąd `vec3(gBladeUv, 0.0)` w drugim widoku. W widoku normalnych trawa ma kolor `(0,5, 1, 0,5)`, jasnozielony: tak koduje się normalną prosto w górę, a teren pod nią ma prawie ten sam kolor. W widoku UV źdźbło pokazuje swoją współrzędną: czerwień rośnie w poprzek, zieleń ku czubkowi.
 
 ```glsl
-    vec3 color = mix(ROOT_COLOR, TIP_COLOR, gBladeUv.y);
+    vec3 color = srgbToLinear(mix(ROOT_COLOR, TIP_COLOR, gBladeUv.y));
 
     vec3 light = vec3(1.0);
     if (uLit) {
@@ -545,7 +549,7 @@ Widoki diagnostyczne, z tymi samymi numerami co w `textured.frag` (wartości `ga
 }
 ```
 
-Gradient, światło i wynik. `computeLighting` zwraca strukturę z polami `diffuse` i `specular`. Pole `diffuse` zawiera już światło otoczenia i składnik Lamberta każdego światła z tłumieniem. Dla światła księżyca przy ustawieniach startowych (pitch -50 stopni) i normalnej w górę składnik Lamberta to `sin(50°) = 0,77`, na całej trawie tak samo.
+Gradient, światło i wynik. **Kolejność w pierwszej linii ma znaczenie:** najpierw mieszanie między liczbami sRGB, potem jedno przeliczenie wyniku. Tak gradient wygląda na ekranie tak, jak został dobrany: w połowie wysokości źdźbła mieszanka to `(0.28, 0.42, 0.165)`, liniowo około `(0,064, 0,147, 0,023)`. Odwrotna kolejność (przeliczyć oba końce, potem mieszać) dałaby w tym samym miejscu `(0,094, 0,200, 0,031)`, czyli wyraźnie jaśniejszy środek. Komentarz w pliku porównuje to do odczytu z tekstury sRGB: dokładniej, do tekstury, w której gradient byłby już namalowany teksel po tekselu. Wynik `color * light` jest liniowy i trafia do bufora HDR bez obcinania. `computeLighting` zwraca strukturę z polami `diffuse` i `specular`. Pole `diffuse` zawiera już światło otoczenia i składnik Lamberta każdego światła z tłumieniem. Dla światła księżyca przy ustawieniach startowych (pitch -50 stopni) i normalnej w górę składnik Lamberta to `sin(50°) = 0,77`, na całej trawie tak samo.
 
 ### 4.4 Strona C++: kto ustawia uniformy
 
@@ -843,7 +847,7 @@ Czego testy **nie** sprawdzają:
 
 ## 6. Panel ImGui
 
-Panel **Grass** jest dziesiątym panelem. Startuje zwinięty do paska tytułu, w drugim rzędzie pasków przy górnej krawędzi okna, pod panelem Gameplay ([`../debug-ui.md`](../debug-ui.md)).
+Panel **Grass** jest dziesiątym panelem (od pierwszej części M7 paneli jest jedenaście: doszedł Framebuffers). Startuje zwinięty do paska tytułu, w drugim rzędzie pasków przy górnej krawędzi okna, pod panelem Gameplay. Od M7 pod nim, w trzecim rzędzie, stoi pasek panelu Framebuffers: rozwinięty panel Grass zakrywa swoją część tego paska ([`../debug-ui.md`](../debug-ui.md)).
 
 ```cpp
 void drawGrassPanel(game::GrassSettings& settings, std::size_t tuftCount) {
@@ -913,9 +917,10 @@ Program trawy widać też w panelu **Shaders**: szósta linia stanu, z trzema pl
 13. **Trawa przechodzi przez gracza i ściany.** Kępki nie mają kolizji. Źdźbło pochylone w stronę ściany może wejść w nią czubkiem: pas zaczyna się 21 cm od osi ściany, a czubek odchyla się do 40 procent wysokości plus wiatr. Przy wysokości 0,8 m i wietrze 3 jest to nieuniknione.
 14. **Wiatr nie zna ścian.** Fala idzie przez cały świat w jednym kierunku, także w zamkniętych zaułkach.
 15. **Pełne oświetlenie na każdy fragment.** `computeLighting` przechodzi przez wszystkie światła (do 16 punktowych) dla każdego piksela trawy. Przy dużej gęstości i kamerze tuż przy ziemi to jest najdroższa część trawy.
-16. **Brak cieni.** Jak wszystko w grze do M7, trawa jest oświetlona także za ścianą, która powinna zasłaniać światło.
+16. **Brak cieni.** Cieni w grze nie ma (są planowane w dalszej części M7), więc trawa jest oświetlona także za ścianą, która powinna zasłaniać światło.
 17. **Stary `imgui.ini`.** Jak przy każdym nowym panelu: najprościej usunąć plik przed pokazem.
 18. **macOS, niesprawdzone.** Shadery geometrii należą do OpenGL 4.1 Core, więc sterownik Apple powinien je przyjąć. Nikt tego nie sprawdził dla tych trzech plików, a `#define` wewnątrz `layout` i format błędów dla pliku `.geom` są tym, co warto obejrzeć najpierw.
+19. **Kolory gradientu to liczby sRGB.** Od M7 `main` przelicza je przez `srgbToLinear`. Kolor wpisany do shadera liczbami i użyty bez przeliczenia zostałby na końcu klatki zakodowany, chociaż nigdy nie był zdekodowany: trawa wyszłaby wyblakła i za jasna. Przeliczenie dwa razy dałoby trawę prawie czarną.
 
 ## 8. Ćwiczenia
 

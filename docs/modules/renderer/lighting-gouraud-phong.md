@@ -7,9 +7,11 @@ Dlaczego ten dokument stoi w katalogu `renderer`, chociaż kod leży w `game/` i
 
 **Stan na dziś:** gra ma cztery tryby cieniowania sceny, przełączane listą `Lighting` w panelu Renderer: `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong`. Startuje w trybie `Blinn-Phong`. Od M5 tymi samymi programami co labirynt rysowane są kryształy i brama wyjścia, a wzór końcowy obu programów ma składnik emisyjny: `surface * (diffuse + uEmissive) + specular`.
 
+**Co zmieniła pierwsza część M7 (2026-10-05).** Wzory cieniowania są te same, ale liczą teraz na wartościach **liniowych**: tekstura koloru jest teksturą sRGB dekodowaną przez kartę, kolory świateł i `uEmissive` są przeliczane w C++ przez `gfx::srgbToLinear`, a wynik obu programów trafia do bufora HDR sceny (`GL_RGBA16F`) bez obcinania do 1. Ekspozycja, mapowanie tonów i kodowanie do sRGB (korekcja gamma) są robione raz, dla całej klatki, w przebiegu składającym. Opis: [`post-process.md`](post-process.md) i [`../gfx/color-space.md`](../gfx/color-space.md). Zmieniły się komentarze w `lit.frag` i `gouraud.frag` (sekcje 4.2 i 4.4), a wartość `uEmissive` podaje nowa funkcja `NightMazeApp::crystalEmissive` (sekcja 5). Zrzuty ekranu, na których opiera się ten dokument, pochodzą sprzed tej zmiany: różnic między trybami po M7 nikt nie oglądał osobno.
+
 Część M4 była zmierzona na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): oba programy kompilowały się i linkowały przy starcie bez linii `[error]`, a cztery tryby były sprawdzone na zrzutach ekranu z trzech miejsc w labiryncie. Od drugiej części M4 program `lit` cieniuje normalną z mapy normalnych, a program `gouraud` nie może (sekcje 2.7 i 4.3): to jeszcze jedna widoczna różnica obu trybów, sprawdzona wtedy na zrzutach ekranu (zrzuty trybu `Gouraud` były identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych).
 
-M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (dziś, po drugiej części M6, 256 przypadków i 101232 asercje), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Z tych zrzutów pochodzi jedna obserwacja ważna dla tego tematu: **w trybie `Gouraud` brama jest ciemna** (sekcja 2.2). **Listy `Lighting` nikt jeszcze nie przełączył ręcznie kliknięciem**, suwaków odbłysku ani pola `Normal mapping` też nie. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: kompilator GLSL Apple nie widział jeszcze żadnego z tych czterech plików ani dołączanego `common/normal_map.glsl`.
+M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 i 102103), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Z tych zrzutów pochodzi jedna obserwacja ważna dla tego tematu: **w trybie `Gouraud` brama jest ciemna** (sekcja 2.2). **Listy `Lighting` nikt jeszcze nie przełączył ręcznie kliknięciem**, suwaków odbłysku ani pola `Normal mapping` też nie. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: kompilator GLSL Apple nie widział jeszcze żadnego z tych czterech plików ani dołączanego `common/normal_map.glsl`.
 
 **Co zmieniła druga część M6.** Tymi samymi dwoma programami rysowany jest teraz teren pod labiryntem (`TerrainRenderer`, [`terrain.md`](terrain.md)), który zastąpił płytki podłogi. Teren ma wierzchołki co 0,5 m, więc tryb `Gouraud` zachowuje się na nim inaczej niż na dużych licach ścian (sekcja 2.2). Doszła też trawa z własnym programem `grass`: jest cieniowana na fragment we wszystkich trybach z oświetleniem, także w trybie `Gouraud` (sekcja 5.3, [`grass-geometry.md`](grass-geometry.md)). Shadery `lit` i `gouraud` zmieniły się w M6 o jedno słowo w komentarzu (`floor` na `ground`).
 
@@ -340,7 +342,8 @@ uniform vec3 uTint;
 // own the source of the light would be the darkest thing around it.
 uniform vec3 uEmissive;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha), as a LINEAR colour that may be brighter than 1.
 out vec4 fragColor;
 
 void main() {
@@ -356,9 +359,12 @@ void main() {
     // reflects the red part of the light. The highlight is added on top in the colour
     // of the light, as in the Phong model of the lecture.
     //
-    // No gamma correction in this milestone: the texture values are used as they are,
-    // and the result is written as it is. Gamma (sRGB textures and an sRGB framebuffer)
-    // arrives with the HDR pipeline in M7.
+    // Everything here is linear, which is what makes multiplying by a light and adding
+    // lights correct: the texture is an sRGB texture that the graphics card decodes on
+    // reading, the light colours were converted in C++ (game::buildLightSet), and the
+    // result is written as it is into a floating point buffer, also when it is above
+    // 1. Exposure, tone mapping and the sRGB encoding (gamma correction) follow once,
+    // for the whole frame, in post/composite.frag.
     //
     // The glow of the surface itself (uEmissive) joins the diffuse light. It does not
     // depend on any light of the scene, so a crystal glows in the darkest corner too.
@@ -376,7 +382,8 @@ void main() {
 | `uniform vec3 uEmissive;` | **składnik emisyjny** (M5): światło, które powierzchnia oddaje sama, jako kolor. Czerń `(0, 0, 0)` dla wszystkiego, co tylko odbija światło: ścian, podłoża, słupków i bramy. Niezerowy tylko dla kryształów. Komentarz podaje powód: światło punktowe kryształu wisi poza jego siatką i oświetla jego ścianki tylko z jednej strony, więc bez własnego blasku źródło światła byłoby najciemniejszą rzeczą w okolicy. Teoria: [`../scene/lights.md`](../scene/lights.md), sekcja 2.2 |
 | `vec3 normal = surfaceNormal(vNormal, vTangent, vUv);` | normalna tego fragmentu, w przestrzeni świata, o długości 1. Bez mapowania normalnych funkcja zwraca `normalize(vNormal)`: przywraca długość 1 po interpolacji (sekcja 2.3), dokładnie jak ta linia robiła wcześniej. Z mapowaniem zwraca normalną z mapy normalnych (sekcja 2.7). Komentarz nad linią mówi rzecz najważniejszą: **to jedyne miejsce, w którym mapowanie normalnych wchodzi do oświetlenia**, bo wzory `computeLighting` nie wiedzą, skąd jest ich normalna |
 | `Lighting lighting = computeLighting(vWorldPosition, normal);` | **to jest cieniowanie Phonga**: wzór oświetlenia wykonany dla tego jednego fragmentu, z jego własną pozycją i normalną |
-| `vec3 surface = texture(uTexture, vUv).rgb * uTint;` | kolor powierzchni: tekstura razy kolor materiału, dokładnie jak w `textured.frag` |
+| `out vec4 fragColor;` | od M7 wyjście trafia do bufora HDR sceny, a nie do okna. Komentarz mówi dwie rzeczy: kolor jest **liniowy** i **może być jaśniejszy niż 1** |
+| `vec3 surface = texture(uTexture, vUv).rgb * uTint;` | kolor powierzchni: tekstura razy kolor materiału, dokładnie jak w `textured.frag`. Od M7 tekstura jest sRGB (`GL_SRGB8`), więc `texture()` zwraca wartość już zdekodowaną do liniowej. `uTint` (kolor `Kd` materiału) nie jest przeliczany: wszystkie modele gry mają `Kd` białe, a biel to 1 w obu przestrzeniach |
 | `fragColor = vec4(surface * (lighting.diffuse + uEmissive) + lighting.specular, 1.0);` | **wzór końcowy**. Nawias to całe światło, które powierzchnia ma do odbicia: rozproszone ze wszystkich świateł sceny (z otoczeniem) plus własny blask. Kolor powierzchni mnoży cały nawias, odbłysk jest dodany na wierzch w kolorze światła. Alfa 1: modele są nieprzezroczyste |
 
 **Wzór końcowy rozpisany.** `surface * (lighting.diffuse + uEmissive) + lighting.specular` to trzy wyrazy:
@@ -389,7 +396,7 @@ void main() {
 
 Dla ścian `uEmissive` jest czarny i środkowy wyraz znika: wzór jest wtedy dokładnie wzorem z M4, `surface * lighting.diffuse + lighting.specular`. Emisja jest w nawiasie, a nie dodana na końcu, żeby przeszła przez teksturę i kolor materiału: rysunek tekstury kryształu zostaje widoczny, zamiast utonąć pod jedną stałą dodaną do każdego fragmentu. Emisja **nie jest światłem sceny**: nie ma jej w bloku `LightBlock` i nie zmienia koloru żadnego innego obiektu. Ściany wokół kryształu oświetla osobne światło punktowe ([`../game/flashlight.md`](../game/flashlight.md), sekcja 2.5).
 
-Wynik nie jest przycinany w shaderze. Wartości powyżej 1 obcina framebuffer przy zapisie (format okna przechowuje liczby od 0 do 1).
+**Wartości liniowe i brak obcinania (od M7).** Komentarz w środku `main` mówi, dlaczego rachunek jest poprawny: mnożenie koloru przez światło i sumowanie świateł ma sens tylko na liczbach proporcjonalnych do ilości światła. Trzy źródła liczb są liniowe: tekstura (dekoduje ją karta), kolory świateł w bloku `LightBlock` (przelicza je `game::buildLightSet`) i `uEmissive` (przelicza `NightMazeApp::crystalEmissive`). Wynik nie jest przycinany ani w shaderze, ani przy zapisie: bufor sceny ma format `GL_RGBA16F` i przechowuje także wartości powyżej 1. Przykład: dla kryształu sam składnik emisyjny ma w zielonym kanale 1,97 ([`post-process.md`](post-process.md), sekcja 2.2). Do zakresu ekranu sprowadza obraz dopiero krzywa mapowania tonów przebiegu składającego. Do M6 było inaczej: tekstury wchodziły do rachunku nieliniowe, a wszystko powyżej 1 obcinało okno (decyzja [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)).
 
 ### 4.3 `gouraud.vert`: shader wierzchołków, światło na wierzchołek
 
@@ -476,14 +483,16 @@ uniform vec3 uTint;
 // Black for everything else.
 uniform vec3 uEmissive;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha), as a LINEAR colour that may be brighter than 1.
 out vec4 fragColor;
 
 void main() {
     // The same combination as in lit.frag: the colour of the surface times the diffuse
     // light, plus the highlight. The texture is still read per fragment, only the light
     // is per vertex. The glow of the surface itself joins the diffuse light, as in
-    // lit.frag. No gamma correction here either (see lit.frag).
+    // lit.frag. All values are linear, and the result is encoded for the screen later,
+    // in the composite pass (see lit.frag).
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
     fragColor = vec4(surface * (vDiffuseLight + uEmissive) + vSpecularLight, 1.0);
 }
@@ -607,8 +616,7 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     m_mazeRenderer.draw(shader, m_mazeWorld);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights.
-    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round,
-                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
+    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalEmissive());
 }
 ```
 
@@ -623,8 +631,8 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 | `setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0)` | przełącznik mapowania normalnych programu `lit`. Uniform ma w shaderze typ `bool`, a taki ustawia się przez `glUniform1i`: 0 to fałsz, 1 to prawda. Program `gouraud` tego uniformu nie ma (wywołanie jest ignorowane), a `usesNormalMap` i tak zwraca dla niego fałsz |
 | `m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);` (od M6) | podłoże tym samym programem i w tym samym trybie cieniowania co ściany: funkcja ustawia samplery i `uEmissive` (czerń) i rysuje siatkę terenu przez `game::drawMesh`. Drugi argument to przełącznik `Wireframe` z panelu Terrain ([`terrain.md`](terrain.md)) |
 | `m_mazeRenderer.draw(shader, m_mazeWorld);` | ta sama funkcja, która rysuje programem `textured`: ustawia `uTexture`, `uNormalMap`, `uEmissive` (na czerń), `uTint`, `uModel` i `uNormalMatrix`, podpina obie tekstury i rysuje obiekt po obiekcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
-| `m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalGlow(...))` | kryształy i brama **tym samym programem**, a więc w tym samym trybie cieniowania co ściany: `use()` i uniformy klatki ustawione wyżej nadal obowiązują. Funkcja ustawia `uEmissive` na czerń dla bramy i na podany blask dla kryształów ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
-| `crystalGlow(m_lighting.pointColor, m_round.animationSeconds)` | wartość `uEmissive` kryształów: kolor świateł punktowych razy `CRYSTAL_GLOW_STRENGTH` razy puls tej chwili. Bierze `m_lighting`, czyli ustawienia z panelu, a puls dokłada sama |
+| `m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalEmissive())` | kryształy i brama **tym samym programem**, a więc w tym samym trybie cieniowania co ściany: `use()` i uniformy klatki ustawione wyżej nadal obowiązują. Funkcja ustawia `uEmissive` na czerń dla bramy i na podany blask dla kryształów ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
+| `crystalEmissive()` | wartość `uEmissive` kryształów. Funkcja `NightMazeApp::crystalEmissive` (od M7, wydzielona z dwóch identycznych wywołań w `drawLitMaze` i `drawUnlitMaze`) zwraca `crystalGlow(gfx::srgbToLinear(m_lighting.pointColor), m_round.animationSeconds)`: kolor świateł punktowych z panelu (liczby sRGB) przeliczony na liniowy, razy `CRYSTAL_GLOW_STRENGTH` (dziś 2,5, do M6 1,0) razy puls tej chwili. Przeliczenie jest tym samym, które `buildLightSet` robi dla samych świateł, więc siatka świeci w kolorze światła wokół niej. Wynik może być jaśniejszy niż 1 |
 
 Komentarz nad `setInt(SPECULAR_MODEL_UNIFORM, ...)` mówi o "materiale kamienia" i od M6 dodaje "which the ground shares": ziemia ma tę samą siłę odbłysku i ten sam wykładnik co kamień. Te same trzy liczby dostają też drewniana brama i kryształy: osobnych ustawień materiału dla nich nie ma.
 
@@ -646,11 +654,12 @@ Trawa nie ma wersji "światło na wierzchołek". Powód stoi w komentarzu: kępk
 ### 5.5 Jak to zostało sprawdzone
 
 - **Testy jednostkowe** obejmują tylko stronę C++: liczby typów wyliczeniowych i `specularModelOf` (dwa przypadki w `tests/LightingTests.cpp`), wartość startową trybu (`the lighting starts as a night scene shaded with Blinn-Phong`) oraz regułę `usesNormalMap` (`normal mapping is on by default and applies to every mode except Gouraud`). Shaderów i wyboru programu test nie widzi: wymagają kontekstu OpenGL.
-- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego programu (dziś sześciu) linię zakończoną `OK` (tak wynika z kodu panelu).
+- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego programu (dziś ośmiu) linię zakończoną `OK` (tak wynika z kodu panelu).
 - **Obraz.** Cztery tryby z trzech miejsc w labiryncie są sprawdzone na zrzutach ekranu: widać opisane w sekcji 2 różnice (znikająca i rozmazana plama latarki w `Gouraud`, szersza gorąca plama `Blinn-Phong` na wprost ściany, mała różnica wzdłuż korytarza).
 - **Mapy normalnych a tryb** (zrzuty ekranu, Windows, 2026-10-05): w trybach `Phong` i `Blinn-Phong` fugi czytają się jako rowki, a zrzuty trybów `Gouraud` i `Unlit` są identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych. Szczegóły i liczby: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11.
-- **M5** (zgłoszone dla Windowsa, 2026-10-05): build bez ostrzeżeń i 215 przypadków testowych z 85098 asercjami w Debug i Release (dziś 256 i 101232). Obraz z kryształami i bramą był oglądany na zrzutach ekranu robionych przez tymczasowe zaczepy, których w kodzie już nie ma. Stamtąd pochodzi obserwacja, że brama jest ciemna w trybie `Gouraud`. Przyczyny nie mierzyłem: sekcja 2.2 podaje najbardziej prawdopodobną. Wzór z `uEmissive` nie ma testu jednostkowego (to kod GLSL). Test ma tylko wartość, którą C++ do niego wysyła: przypadek `the glow of a crystal has the colour of its light and pulses with it` w `tests/CrystalTests.cpp`.
-- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem (dziś przy sześciu programach), wygląd kryształów i bramy w każdym z czterech trybów.
+- **M5** (zgłoszone dla Windowsa, 2026-10-05): build bez ostrzeżeń i 215 przypadków testowych z 85098 asercjami w Debug i Release (po drugiej części M6 256 i 101232). Obraz z kryształami i bramą był oglądany na zrzutach ekranu robionych przez tymczasowe zaczepy, których w kodzie już nie ma. Stamtąd pochodzi obserwacja, że brama jest ciemna w trybie `Gouraud`. Przyczyny nie mierzyłem: sekcja 2.2 podaje najbardziej prawdopodobną. Wzór z `uEmissive` nie ma testu jednostkowego (to kod GLSL). Test ma tylko wartość, którą C++ do niego wysyła: przypadek `the glow of a crystal has the colour of its light and pulses with it` w `tests/CrystalTests.cpp`.
+- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem (dziś przy ośmiu programach), wygląd kryształów i bramy w każdym z czterech trybów.
+- **Pierwsza część M7** (zgłoszone dla Windowsa, 2026-10-05): bramka `make check` przechodzi, 269 przypadków testowych i 102103 asercje w Debug i Release, zero ostrzeżeń. Test `buildLightSet converts the colours from sRGB to linear and leaves the rest` w `tests/LightingTests.cpp` sprawdza, że do shaderów trafiają kolory liniowe, a intensywności bez zmian. Czterech trybów cieniowania w nowym potoku (bufor HDR, krzywa ACES, nowe wartości świateł) nikt nie porównał na zrzutach ekranu.
 - **macOS:** nic, także nic z map normalnych. Kompilator Apple jest surowszy od sterownika NVIDII i może odrzucić coś, co tu przechodzi.
 
 ## 6. Panel ImGui
@@ -720,8 +729,8 @@ Kontrolki, które biorą udział w pokazie:
 9. **Odbłysk po ciemnej stronie.** Bez warunku `dot(normal, toLight) <= 0` wzór Blinna-Phonga potrafi dać odbłysk na powierzchni odwróconej od światła. Warunek jest w `specularFactor`.
 10. **Gouraud to nie "gorsza tekstura".** Na pierwszy rzut oka tryb `Gouraud` wygląda jak scena prawie bez latarki. To nie błąd shadera ani tłumienia: wzory są te same, tylko wierzchołki są za rzadko.
 11. **Podgląd z panelu Assets wyłącza oświetlenie.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` pozornie nie działa: labirynt rysuje `textured`. Kryształy i brama też są wtedy rysowane programem `textured`, kryształy bez blasku. Jeden wyjątek od "nie działa": podgląd normalnych pokazuje normalne siatki w trybie `Gouraud`, a normalne z map w pozostałych, więc przełączenie na `Gouraud` i z powrotem zmienia jego obraz.
-12. **Prześwietlenie maskuje różnicę.** Przy dużej intensywności latarki środek plamy jest obcięty do bieli w obu trybach odbłysku i różnica między nimi znika. Pokaz robię przy startowej intensywności.
-13. **Brak gammy zmienia wygląd odbłysku.** Bez korekcji gamma przejścia jasności są inne niż w poprawnym rachunku, więc odbłyski wyglądają na mniejsze i ostrzejsze ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
+12. **Prześwietlenie maskuje różnicę.** Przy dużej intensywności latarki środek plamy dochodzi do bieli w obu trybach odbłysku i różnica między nimi znika. Od M7 bufor sceny przechowuje wartości powyżej 1, ale ekran nadal pokazuje najwyżej biel: krzywa ACES ściska bardzo jasne wartości prawie w jedno, a `Tone mapping: None` obcina je jak dawniej. Pokaz robię przy startowej intensywności (dziś 1,3), a w razie potrzeby zmniejszam `Exposure` w panelu Framebuffers.
+13. **Rachunek na wartościach nieliniowych (stan do M6).** Bez korekcji gamma przejścia jasności były inne niż w poprawnym rachunku, więc odbłyski wyglądały na mniejsze i ostrzejsze. Od pierwszej części M7 rachunek jest liniowy i ta wada zniknęła ([`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Nowa rzecz do pamiętania: odbłysk i plama latarki mogą przekroczyć 1 i wtedy o ich wyglądzie decyduje krzywa mapowania tonów. Przy `Tone mapping: None` są obcinane jak dawniej.
 14. **"Normal mapping nie działa" w trybie `Gouraud`.** Pole wyboru w panelu Assets niczego wtedy nie zmienia. To nie błąd: `usesNormalMap` jest dla tego trybu fałszywe, a `gouraud.vert` nie ma ani samplera mapy, ani stycznej.
 15. **Ciemna brama w trybie `Gouraud`.** Zgłoszona obserwacja z M5, najpewniej ta sama słabość co przy ścianach: model bramy nie ma wierzchołków między lewą a prawą krawędzią (sekcja 2.2). To nie jest błąd tekstury ani materiału: w trybach `Phong` i `Blinn-Phong` ten sam model z tymi samymi uniformami jest oświetlony. Lekarstwem byłaby gęstsza siatka bramy (podział lica w poziomie) w skrypcie `tools/blender/build_gate.py`, a nie zmiana shadera.
 16. **Emisja dodana w złym etapie albo na końcu wzoru.** `uEmissive` stoi w nawiasie obok światła rozproszonego, w shaderze fragmentów obu programów. Dodany poza nawiasem ominąłby teksturę i zrobił z kryształu płaską plamę. Zapomniany w `gouraud.frag` dałby kryształy jasne w `Phong` i wyraźnie ciemniejsze w `Gouraud`.

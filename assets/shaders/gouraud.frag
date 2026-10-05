@@ -18,14 +18,16 @@ uniform vec3 uTint;
 // Black for everything else.
 uniform vec3 uEmissive;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha), as a LINEAR colour that may be brighter than 1.
 out vec4 fragColor;
 
 void main() {
     // The same combination as in lit.frag: the colour of the surface times the diffuse
     // light, plus the highlight. The texture is still read per fragment, only the light
     // is per vertex. The glow of the surface itself joins the diffuse light, as in
-    // lit.frag. No gamma correction here either (see lit.frag).
+    // lit.frag. All values are linear, and the result is encoded for the screen later,
+    // in the composite pass (see lit.frag).
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
     fragColor = vec4(surface * (vDiffuseLight + uEmissive) + vSpecularLight, 1.0);
 }

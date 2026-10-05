@@ -22,7 +22,7 @@ Do pokazu i do szukania błędów dochodzą dwie rzeczy z programu `night_maze`:
 
 **Stan na dziś, uczciwie.** Kod kolizji ma testy: 19 przypadków w `tests/ColliderTests.cpp` (12 dla pudełek i ruchu, 7 dla kul), trzy dalsze, razem z labiryntem, w `tests/MazeLayoutTests.cpp`, cztery z graczem w `tests/PlayerTests.cpp`, a użycie kul w regułach rundy sprawdza `tests/RoundTests.cpp`. Pudełka ścian i słupków labiryntu liczy `game::mazeColliders`, `moveAndSlide` woła gracz w każdym kroku chodzenia (`game::Player::update`), a testy kul woła `game::updateRound` w każdym kroku rundy.
 
-Część z M2 + M3 (pudełka, ruch, żółte linie) była zbudowana i uruchomiona na Windowsie, a na zrzucie ekranu z widoku z góry żółte linie pudełek leżały na ścianach i słupkach. Część z M5 (kule, ich linie, brama na liście przeszkód, nowe napisy panelu) jest gotowa w kodzie na Windowsie, ale M5 **nie jest zamknięte**. Według raportu z 2026-10-05 build Debug i Release przechodzi tam bez ostrzeżeń, a po M5 215 przypadków testowych (85098 asercji) przechodziło w obu konfiguracjach. Dziś, po drugiej części M6, jest ich 256 (101232 asercje), uruchomione tego samego dnia w Debug i Release. M6 postawił labirynt na terenie z mapy wysokości: kod w `scene/Collider.*` się nie zmienił, ale pudełka ścian, słupków i bramy zaczynają się teraz na wysokości gruntu, a gracz stoi na gruncie, a nie na `y = 0` (sekcja 2.13). M6 też jest kompletny w kodzie na Windowsie i nie jest zamknięty. Chodzenia i ślizgania prawdziwymi klawiszami, zbierania kryształów, przejścia przez otwartą bramę, widżetów panelu Collision i linii kul na ekranie **nikt jeszcze nie sprawdził ręcznie**. Na macOS nic z M5 ani z M6 nie było budowane ani uruchamiane.
+Część z M2 + M3 (pudełka, ruch, żółte linie) była zbudowana i uruchomiona na Windowsie, a na zrzucie ekranu z widoku z góry żółte linie pudełek leżały na ścianach i słupkach. Część z M5 (kule, ich linie, brama na liście przeszkód, nowe napisy panelu) jest gotowa w kodzie na Windowsie, ale M5 **nie jest zamknięte**. Według raportu z 2026-10-05 build Debug i Release przechodzi tam bez ostrzeżeń, a po M5 215 przypadków testowych (85098 asercji) przechodziło w obu konfiguracjach. Po drugiej części M6 było ich 256 (101232 asercje), uruchomione tego samego dnia w Debug i Release, a po pierwszej części M7 zgłoszone jest 269 (102103 asercje). Pierwsza część M7 (bufor HDR i gamma) nie zmieniła niczego w `scene/Collider.*`. Zmieniła jedną rzecz w rysowaniu linii: `ColliderLines` przelicza kolor z sRGB na liniowy, bo linie trafiają teraz do bufora HDR sceny (sekcje 4.2 i 5.8). M6 postawił labirynt na terenie z mapy wysokości: kod w `scene/Collider.*` się nie zmienił, ale pudełka ścian, słupków i bramy zaczynają się teraz na wysokości gruntu, a gracz stoi na gruncie, a nie na `y = 0` (sekcja 2.13). M6 też jest kompletny w kodzie na Windowsie i nie jest zamknięty. Chodzenia i ślizgania prawdziwymi klawiszami, zbierania kryształów, przejścia przez otwartą bramę, widżetów panelu Collision i linii kul na ekranie **nikt jeszcze nie sprawdził ręcznie**. Na macOS nic z M5 ani z M6 nie było budowane ani uruchamiane.
 
 ## 2. Teoria
 
@@ -495,10 +495,12 @@ Shader nie ma żadnego wyjścia poza `gl_Position`: fragmentom nie trzeba niczeg
 // and spheres.
 // See docs/modules/scene/collision.md
 
-// The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3).
+// The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3)
+// as a LINEAR colour: game::ColliderLines converts the colours it is given.
 uniform vec3 uColor;
 
-// Output: the color written to the framebuffer (red, green, blue, alpha).
+// Output: the color written to the HDR framebuffer of the scene (red, green, blue,
+// alpha). The composite pass encodes it for the screen.
 out vec4 fragColor;
 
 void main() {
@@ -509,8 +511,8 @@ void main() {
 
 | Linia | Znaczenie |
 |---|---|
-| `uniform vec3 uColor;` | kolor całego kształtu. To uniform, a nie atrybut: jest stały dla wszystkich wierzchołków jednego wywołania rysującego, a zmienia się między wywołaniami |
-| `out vec4 fragColor;` | wyjście shadera fragmentów: kolor zapisywany do framebuffera |
+| `uniform vec3 uColor;` | kolor całego kształtu. To uniform, a nie atrybut: jest stały dla wszystkich wierzchołków jednego wywołania rysującego, a zmienia się między wywołaniami. Od pierwszej części M7 jest to kolor **liniowy**: `ColliderLines` przelicza go z wartości sRGB przed wysłaniem (sekcja 5.8) |
+| `out vec4 fragColor;` | wyjście shadera fragmentów. Od M7 kolor trafia do framebuffera HDR sceny, a nie do okna: na ekran przenosi go dopiero przebieg składający, który koduje go do sRGB ([`../renderer/post-process.md`](../renderer/post-process.md)) |
 | `fragColor = vec4(uColor, 1.0);` | trzy składowe koloru i alfa 1, czyli pełne krycie |
 
 Różnica wobec `textured.frag`: tam shader fragmentów dostaje od shadera wierzchołków współrzędne tekstury, normalną i styczną (zmienne `in`, interpolowane w poprzek trójkąta) i czyta teksturę. Tutaj nie ma żadnego wejścia z shadera wierzchołków: kolor przychodzi jako jedna wartość dla wszystkich fragmentów. Dlatego ta para jest najprostszym przykładem programu shaderów w projekcie.
@@ -524,6 +526,8 @@ Kolory ustawia `NightMazeApp` (sekcja 5.8). Jest ich pięć, a zielony służy d
 | `GATE_COLLIDER_COLOR` | `(1, 0,45, 0,1)` | pomarańczowy | pudełko bramy, dopóki blokuje drogę |
 | `PICKUP_COLLIDER_COLOR` | `(0,2, 0,9, 1)` | cyjan | kule zbierania wokół kryształów, które jeszcze wiszą |
 | `EXIT_ZONE_COLOR` | `(1, 0,3, 0,9)` | magenta | pudełko strefy wyjścia |
+
+**Te liczby są wartościami sRGB.** To kolory "nazwane dla ekranu", dobrane na oko, tak jak kolor w próbniku. Bufor sceny trzyma od M7 wartości liniowe, więc `ColliderLines` przelicza każdy kolor funkcją `gfx::srgbToLinear`, zanim wyśle go do `uColor`. Żółty `(1, 0,85, 0,1)` trafia do shadera jako `(1, 0,692, 0,010)`. Na końcu klatki przebieg składający koduje obraz z powrotem do sRGB. Gdyby robił tylko to (mapowanie tonów `None`, ekspozycja 1), ekran pokazałby dokładnie liczby z tabeli. Przy domyślnych ustawieniach (krzywa ACES) linie przechodzą jednak przez tę samą krzywą co cała scena i wychodzą trochę ciemniejsze w jasnych kanałach: żółty jako około `(0,91, 0,86, 0,05)`, zielony jako około `(0,16, 0,91, 0,47)`. Odcień zostaje rozpoznawalny, ale to nie są już te same liczby. Tylko dwa widoki do szukania błędów (normalne i UV) omijają ekspozycję i krzywą, a przy nich linie są rysowane tak samo. Teoria: [`../gfx/color-space.md`](../gfx/color-space.md).
 
 ## 5. Kod w projekcie
 
@@ -874,7 +878,7 @@ Cztery dalsze przypadki z prawdziwym graczem są w `tests/PlayerTests.cpp` (`a w
 
 Użycie kul w regułach gry sprawdza `tests/RoundTests.cpp`, między innymi przypadki `the reach of the player is a sphere at the middle of the body`, `a crystal is collected from the middle of its cell, not from the next cell`, `a larger pickup radius reaches a crystal from further away`, `the round is won in the exit zone, but only while the gate is open` i `the player cannot reach the exit zone from in front of the closed gate`. Liczby z nich są w sekcji 5.10, a całość omawia [`../game/gameplay.md`](../game/gameplay.md).
 
-Wyniki na Windowsie z 2026-10-05: cały program testowy (256 przypadków, 101232 asercje, w tym 19 przypadków z `ColliderTests.cpp`) przechodzi w Debug i Release. Po M5 było to 215 przypadków i 85098 asercji. Build bez ostrzeżeń to zgłoszenie autora kodu. Kolizje na nierównym gruncie (sekcja 2.13) sprawdzają przypadki z `tests/TerrainTests.cpp`: `on uneven ground the walls, pillars and the gate are sunk until no gap shows` (pudełka idą za opuszczonymi pozycjami, nic nie rusza się w bok, gracz przy ścianie dzieli z jej pudełkiem ponad 0,1 m wysokości) i `the walls stop the player on uneven ground exactly as on flat ground`. Na macOS nic z M5 ani z M6 nie było jeszcze kompilowane ani uruchamiane: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+Wyniki na Windowsie z 2026-10-05: cały program testowy (256 przypadków, 101232 asercje, w tym 19 przypadków z `ColliderTests.cpp`) przechodzi w Debug i Release. Po M5 było to 215 przypadków i 85098 asercji, a po pierwszej części M7 zgłoszone jest 269 przypadków i 102103 asercje (testy kolizji bez zmian). Build bez ostrzeżeń to zgłoszenie autora kodu. Kolizje na nierównym gruncie (sekcja 2.13) sprawdzają przypadki z `tests/TerrainTests.cpp`: `on uneven ground the walls, pillars and the gate are sunk until no gap shows` (pudełka idą za opuszczonymi pozycjami, nic nie rusza się w bok, gracz przy ścianie dzieli z jej pudełkiem ponad 0,1 m wysokości) i `the walls stop the player on uneven ground exactly as on flat ground`. Na macOS nic z M5 ani z M6 nie było jeszcze kompilowane ani uruchamiane: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ### 5.8 Rysowanie pudełek i kul: `ColliderLines`
 
@@ -970,7 +974,9 @@ constexpr float LINE_MARGIN = 0.01F;
 ```cpp
 void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
                          const glm::vec3& color) const {
-    shader.setVec3(COLOR_UNIFORM, color);
+    // color is an sRGB value, a colour named for the screen. The scene buffer holds
+    // linear colours, so it is converted here, and the composite pass shows it as given.
+    shader.setVec3(COLOR_UNIFORM, gfx::srgbToLinear(color));
 
     // The line width is left at its default of 1 pixel on purpose: an OpenGL Core
     // profile is not required to support wider lines, and macOS does not.
@@ -989,7 +995,7 @@ void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb>
 
 | Linia | Znaczenie |
 |---|---|
-| `shader.setVec3(COLOR_UNIFORM, color);` | jeden kolor dla całej listy pudełek, ustawiany raz przed pętlą |
+| `shader.setVec3(COLOR_UNIFORM, gfx::srgbToLinear(color));` | jeden kolor dla całej listy pudełek, ustawiany raz przed pętlą. Od pierwszej części M7 przeliczany z sRGB na liniowy (`gfx/ColorSpace.hpp`): to jedno z miejsc, w których kolor wpisany w kodzie jest zamieniany dokładnie raz. Zdanie komentarza "the composite pass shows it as given" jest ścisłe tylko bez mapowania tonów i przy ekspozycji 1 (sekcja 4.2) |
 | `transform.scale = box.max - box.min + glm::vec3{2.0F * LINE_MARGIN};` | rozmiar pudełka na każdej osi, powiększony o margines z obu stron. Sześcian o boku 1 pomnożony przez rozmiar staje się prostopadłościanem tego rozmiaru |
 | `transform.position = box.min - glm::vec3{LINE_MARGIN};` | narożnik `(0, 0, 0)` sześcianu trafia w narożnik `min` pudełka, cofnięty o margines. `glm::vec3{LINE_MARGIN}` to wektor z tą samą wartością w trzech składowych |
 | `transform.matrix()` | `translate * rotate * scale`: wierzchołek jest najpierw skalowany, potem przesuwany ([`transforms.md`](transforms.md), sekcja 5). Obrotu nie ma, bo AABB się nie obraca |
@@ -1066,7 +1072,8 @@ Trzy zestawy kątów dla pola `rotationDegrees` struktury `Transform` (kąty wok
 ```cpp
 void ColliderLines::drawSpheres(const gfx::Shader& shader, std::span<const scene::Sphere> spheres,
                                 const glm::vec3& color) const {
-    shader.setVec3(COLOR_UNIFORM, color);
+    // Converted to a linear colour, as in draw.
+    shader.setVec3(COLOR_UNIFORM, gfx::srgbToLinear(color));
 
     for (const scene::Sphere& sphere : spheres) {
         // The unit circle has a radius of 1 around the origin, so scaling it by the
@@ -1107,7 +1114,7 @@ Marginesu `LINE_MARGIN` tu nie ma: okręgi są rysowane w prawdziwym rozmiarze (
     }
 ```
 
-`drawMaze` rysuje labirynt, a razem z nim kryształy i bramę. Kostki z M1, którą do M4 rysowało osobne wywołanie między tymi dwiema liniami, w programie już nie ma.
+`drawMaze` rysuje labirynt, a razem z nim kryształy i bramę. Między tymi dwiema liniami stoi dziś jeszcze `drawGrass`. Miejsce linii w klatce od pierwszej części M7: po terenie, labiryncie i trawie, przed niebem, wszystko do framebuffera HDR sceny (`m_postProcess.beginScene` na początku klatki). Linie są więc częścią obrazu, który czyta przebieg składający, i widać je także na podglądzie koloru w panelu Framebuffers. Kostki z M1, którą do M4 rysowało osobne wywołanie między tymi dwiema liniami, w programie już nie ma.
 
 ```cpp
 // Colours of the collision lines (red, green, blue): the boxes of the maze in yellow,

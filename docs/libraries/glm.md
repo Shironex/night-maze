@@ -76,7 +76,11 @@ Kod do M4 włącznie jest zbudowany i przetestowany na Windowsie (2026-10-05). K
 Windowsie zbudowany w Debug i Release bez ostrzeżeń, a testy przechodziły (215 przypadków,
 85098 asercji, stan po M5). Kod M6 (niebo, teren, trawa) jest na Windowsie kompletny: build
 bez ostrzeżeń zgłosił wykonawca, a 256 przypadków testowych i 101232 asercje uruchomiłem
-sam na programach testowych Debug i Release (2026-10-05). Na macOS kod M4, M5 i M6 nie był
+sam na programach testowych Debug i Release (2026-10-05). Po pierwszej części M7 zgłoszone
+jest 269 przypadków i 102103 asercje (Windows, 2026-10-05). Ta część dodała jedno nowe
+miejsce użycia GLM: `gfx::srgbToLinear` i `gfx::linearToSrgb` w `src/gfx/ColorSpace.hpp`
+przyjmują i zwracają `glm::vec3` (kolor przeliczany kanał po kanale,
+[`../modules/gfx/color-space.md`](../modules/gfx/color-space.md)). Na macOS kod M4, M5 i M6 nie był
 budowany.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem

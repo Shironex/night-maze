@@ -35,9 +35,11 @@ void setModelSamplers(const gfx::Shader& shader);
 /// it must be in use, with its samplers set (setModelSamplers).
 ///
 /// The function binds the two textures and sets uTint for every part of the model, and
-/// sets uModel and uNormalMatrix for every object. The textured program has no
-/// uNormalMatrix. A model that is nullptr (it failed to load, the error is in the log)
-/// is not drawn.
+/// sets uModel and uNormalMatrix for every object. uTint is the Kd colour of the
+/// material, used as a plain factor on the (linear) texture colour without any
+/// conversion: every model of the game has a white Kd, which is 1 in any colour space. The textured
+/// program has no uNormalMatrix. A model that is nullptr (it failed to load, the error is in the
+/// log) is not drawn.
 void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
                std::span<const glm::mat4> modelMatrices);
 

@@ -11,7 +11,7 @@ Od OpenGL 3.2 w profilu Core nie da się narysować niczego bez shaderów: stary
 
 Robi to klasa `gfx::Shader`, opisana linia po linii w [`shader-class.md`](shader-class.md). Ten dokument opisuje to, co klasa obsługuje: potok, język GLSL i shadery, na których najłatwiej go zobaczyć.
 
-Stan na dziś: `game::NightMazeApp` ma **sześć** obiektów `gfx::Shader`, czyli sześć programów: `textured`, `color`, `lit`, `gouraud`, `skybox` i `grass`. Piąty, `skybox` (pliki `skybox.vert` i `skybox.frag`), doszedł w pierwszej części M6, rysuje nocne niebo i jest opisany osobno, w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 4. Szósty, `grass` (pliki `grass.vert`, `grass.geom` i `grass.frag`), doszedł w drugiej części M6, rysuje kępki trawy i jako jedyny ma trzy etapy: opisuje go [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md). Ten dokument omawia pozostałe cztery, które rysują scenę i linie:
+Stan na dziś: `game::NightMazeApp` ma **osiem** obiektów `gfx::Shader`, czyli osiem programów: `textured`, `color`, `lit`, `gouraud`, `skybox`, `grass`, `composite` i `preview`. Dwa ostatnie doszły w pierwszej części M7 i nie rysują sceny: rysują jeden trójkąt na cały cel i dzielą shader wierzchołków `post/composite.vert`. `composite` przenosi obraz sceny z bufora HDR do okna (ekspozycja, mapowanie tonów, kodowanie sRGB), a `preview` robi obrazki załączników framebuffera dla panelu Framebuffers. Opisuje je [`../renderer/post-process.md`](../renderer/post-process.md). Piąty, `skybox` (pliki `skybox.vert` i `skybox.frag`), doszedł w pierwszej części M6, rysuje nocne niebo i jest opisany osobno, w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 4. Szósty, `grass` (pliki `grass.vert`, `grass.geom` i `grass.frag`), doszedł w drugiej części M6, rysuje kępki trawy i jako jedyny ma trzy etapy: opisuje go [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md). Ten dokument omawia cztery pierwsze, które rysują scenę i linie:
 
 | Pole | Pliki | Co rysuje | Kiedy | Opis shaderów |
 |---|---|---|---|---|
@@ -22,7 +22,7 @@ Stan na dziś: `game::NightMazeApp` ma **sześć** obiektów `gfx::Shader`, czyl
 
 Scenę rysuje w danej klatce **jeden** z trzech programów (`textured`, `lit` albo `gouraud`), a linie kolizji, gdy są włączone, program `color`. Razem z programem trawy (gdy pole `Enabled` w panelu Grass jest zaznaczone) i programem nieba, który rysuje na końcu klatki, gdy pole `Skybox` jest zaznaczone, w jednej klatce pracują więc najwyżej cztery różne programy, wybierane najwyżej czterema wywołaniami `use()` (sekcja 5.1). "Scena" znaczy od drugiej części M6: teren (jedna siatka z mapy wysokości, która zastąpiła płytki podłogi, [`../renderer/terrain.md`](../renderer/terrain.md)), ściany, słupki, brama i kryształy. Pliki `common/lighting.glsl` i `common/normal_map.glsl` nie są shaderami i nie mają własnych programów: ich treść trafia do shaderów przez linię `#include`, którą wykonuje kod wczytujący, a nie sterownik ([`shader-includes.md`](shader-includes.md)).
 
-Wszystkie sześć programów jest wczytywanych przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma pięć funkcji ustawiających uniformy, `setMat4`, `setInt`, `setVec3`, `setMat3` i `setFloat` ([`uniforms.md`](uniforms.md)), i funkcję `bindUniformBlock`, która podłącza blok uniformów ze światłami ([`uniform-buffers.md`](uniform-buffers.md)).
+Wszystkie osiem programów jest wczytywanych przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma pięć funkcji ustawiających uniformy, `setMat4`, `setInt`, `setVec3`, `setMat3` i `setFloat` ([`uniforms.md`](uniforms.md)), i funkcję `bindUniformBlock`, która podłącza blok uniformów ze światłami ([`uniform-buffers.md`](uniform-buffers.md)).
 
 **Historia.** W M1 projekt miał jedną parę, `basic.vert` i `basic.frag`: pozycja i kolor wierzchołka na wejściu, trzy macierze, kolor interpolowany między wierzchołkami. Rysowała kostkę o sześciu kolorowych ścianach i ten dokument omawiał ją linia po linii. W M5 kostka i para `basic` zostały usunięte. Jej rolę w tym dokumencie przejęły dwie pary, które rysują grę: `color` jako najprostszy komplet (jeden atrybut, trzy macierze, jeden kolor) i `textured` jako przykład wartości, które shader wierzchołków przekazuje dalej. Długi komentarz o łańcuchu przestrzeni, który stał w `basic.vert`, jest dziś w `textured.vert`.
 
@@ -32,7 +32,7 @@ Wszystkie sześć programów jest wczytywanych przy starcie i ponownie po każdy
 
 ### 2.1 Potok renderowania
 
-**Potok renderowania** (rendering pipeline) to stała sekwencja etapów, przez którą przechodzą dane od tablicy liczb w pamięci do kolorów pikseli na ekranie. Dla OpenGL 4.1 i dwóch shaderów, których używa pięć z sześciu programów gry, wygląda tak (wersja z shaderem geometrii jest pod tabelą):
+**Potok renderowania** (rendering pipeline) to stała sekwencja etapów, przez którą przechodzą dane od tablicy liczb w pamięci do kolorów pikseli na ekranie. Dla OpenGL 4.1 i dwóch shaderów, których używa siedem z ośmiu programów gry, wygląda tak (wersja z shaderem geometrii jest pod tabelą):
 
 ```mermaid
 flowchart TD
@@ -370,7 +370,7 @@ Kod, który buduje program z plików, czyli klasa `gfx::Shader`, jest opisany w 
 
 ### 5.1 Użycie w `NightMazeApp`
 
-Właścicielem wszystkich sześciu programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawiają się programy `color` i `textured`. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
+Właścicielem wszystkich ośmiu programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawiają się programy `color` i `textured`. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
 
 **Pola** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
@@ -588,7 +588,7 @@ Zwracają referencję bez `const`, bo wołający ma móc zawołać `reload()`. S
 
 ## 6. Panel ImGui
 
-Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie sześć programów, i dla każdego programu jedną linię z nazwami jego plików i wynikiem ostatniego wczytania (`color.vert + color.frag: OK`, dla trawy `grass.vert + grass.geom + grass.frag: OK`, albo czerwone `... FAILED, ...` z tekstem błędu pod spodem). Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Który program rysuje scenę, przełączają dwa inne panele: lista `Lighting` w panelu Renderer wybiera tryb oświetlenia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)), a lista `View mode` w panelu Assets tryb podglądu shadera `textured.frag`: `Textured`, `Normals as colour` albo `UVs as colour` ([`textures.md`](textures.md), sekcja 6). Program `color` włącza pole `Draw collision shapes` w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
+Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie osiem programów, i dla każdego programu jedną linię z nazwami jego plików i wynikiem ostatniego wczytania (`color.vert + color.frag: OK`, dla trawy `grass.vert + grass.geom + grass.frag: OK`, albo czerwone `... FAILED, ...` z tekstem błędu pod spodem). Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Który program rysuje scenę, przełączają dwa inne panele: lista `Lighting` w panelu Renderer wybiera tryb oświetlenia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)), a lista `View mode` w panelu Assets tryb podglądu shadera `textured.frag`: `Textured`, `Normals as colour` albo `UVs as colour` ([`textures.md`](textures.md), sekcja 6). Program `color` włącza pole `Draw collision shapes` w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
 
 ## 7. Pułapki
 

@@ -350,9 +350,13 @@ constexpr const char* HEIGHTMAP_FILE = "textures/heightmap.png";
       m_grassShader(core::assetPath(GRASS_VERTEX_SHADER_FILE),
                     core::assetPath(GRASS_FRAGMENT_SHADER_FILE),
                     core::assetPath(GRASS_GEOMETRY_SHADER_FILE)),
+      m_compositeShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
+                        core::assetPath(COMPOSITE_FRAGMENT_SHADER_FILE)),
+      m_previewShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
+                      core::assetPath(PREVIEW_FRAGMENT_SHADER_FILE)),
 ```
 
-Trzynaście stałych i trzynaście wywołań `assetPath` dla sześciu programów: pięć par i trzy pliki programu trawy (M6). Ten sam plik woła `assetPath` jeszcze raz, w funkcji `loadHeightmap`, dla mapy wysokości terenu: `core::assetPath(HEIGHTMAP_FILE)` idzie tam wprost do `assets::loadImage`, bez pamięci assetów ([`README.md`](README.md), sekcja 6.3).
+Szesnaście stałych i siedemnaście wywołań `assetPath` dla ośmiu programów: pięć par, trzy pliki programu trawy (M6) i, od pierwszej części M7, dwa programy przebiegów po scenie, które dzielą jeden plik shadera wierzchołków (`shaders/post/composite.vert`, stała `FULLSCREEN_VERTEX_SHADER_FILE`, użyta dwa razy) i mają własne shadery fragmentów w podkatalogu `shaders/post/`. Ten sam plik woła `assetPath` jeszcze raz, w funkcji `loadHeightmap`, dla mapy wysokości terenu: `core::assetPath(HEIGHTMAP_FILE)` idzie tam wprost do `assets::loadImage`, bez pamięci assetów ([`README.md`](README.md), sekcja 6.3).
 
 Drugi użytkownik to [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), który tak samo buduje ścieżki dwóch modeli i podaje je pamięci assetów (do M5 trzech: trzecim była płytka podłogi, usunięta w M6):
 
@@ -393,7 +397,7 @@ constexpr const char* GROUND_NORMAL_MAP_FILE = "textures/ground_normal.png";
 ```
 
 ```cpp
-    const gfx::Texture2D* texture = assets.texture(core::assetPath(file));
+    const gfx::Texture2D* texture = assets.texture(core::assetPath(file), colorSpace);
 ```
 
 Szóstym użytkownikiem jest motyw paneli: `loadFont` w [`src/debug/Theme.cpp`](../../../src/debug/Theme.cpp) woła `core::assetPath(FONT_FILE)`.
@@ -477,7 +481,7 @@ Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komu
 
 ## 6. Panel ImGui
 
-Ścieżki nie mają własnego panelu, ale widać je w dwóch panelach. W panelu **Shaders** ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6) każdy z sześciu programów ma jedną linię z nazwami swoich plików, na przykład `lit.vert + lit.frag: OK` albo, dla programu trawy z shaderem geometrii, `grass.vert + grass.geom + grass.frag: OK`, a podpowiedź (tooltip) po najechaniu kursorem na tę linię pokazuje pełne ścieżki zbudowane przez `core::assetPath`, po jednej w linii. Etykiet `Vertex:` i `Fragment:`, które były w panelu do M2 + M3, już nie ma. Pliku dołączanego (na przykład `common/lighting.glsl`) w linii programu ani w podpowiedzi nie widać: jego nazwa pojawia się w panelu dopiero w tekście błędu, gdy pomyłka jest w nim ([`../gfx/shader-includes.md`](../gfx/shader-includes.md), sekcja 6). W panelu **Assets** ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6) tak samo pokazane są pliki modeli i tekstur, a lista `Failed to load` wymienia te, których nie udało się wczytać. Wszystkie te teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki shadera jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak tej części sceny, którą rysuje dany program (terenu i labiryntu z kryształami i bramą w danym trybie oświetlenia, trawy, linii kolizji albo nieba). Mapy wysokości panel "Assets" nie pokazuje, bo nie przechodzi przez pamięć assetów: skutkiem błędnej ścieżki jest linia błędu loadera obrazów w konsoli i płaski grunt. Błędna nazwa w linii `#include` daje inny komunikat, `Shader include failed: <pełna ścieżka shadera>`, z nazwą brakującego pliku w drugiej linii.
+Ścieżki nie mają własnego panelu, ale widać je w dwóch panelach. W panelu **Shaders** ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6) każdy z ośmiu programów ma jedną linię z nazwami swoich plików, na przykład `lit.vert + lit.frag: OK` albo, dla programu trawy z shaderem geometrii, `grass.vert + grass.geom + grass.frag: OK`, a podpowiedź (tooltip) po najechaniu kursorem na tę linię pokazuje pełne ścieżki zbudowane przez `core::assetPath`, po jednej w linii. Etykiet `Vertex:` i `Fragment:`, które były w panelu do M2 + M3, już nie ma. Pliku dołączanego (na przykład `common/lighting.glsl`) w linii programu ani w podpowiedzi nie widać: jego nazwa pojawia się w panelu dopiero w tekście błędu, gdy pomyłka jest w nim ([`../gfx/shader-includes.md`](../gfx/shader-includes.md), sekcja 6). W panelu **Assets** ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6) tak samo pokazane są pliki modeli i tekstur, a lista `Failed to load` wymienia te, których nie udało się wczytać. Wszystkie te teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki shadera jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak tej części sceny, którą rysuje dany program (terenu i labiryntu z kryształami i bramą w danym trybie oświetlenia, trawy, linii kolizji albo nieba). Mapy wysokości panel "Assets" nie pokazuje, bo nie przechodzi przez pamięć assetów: skutkiem błędnej ścieżki jest linia błędu loadera obrazów w konsoli i płaski grunt. Błędna nazwa w linii `#include` daje inny komunikat, `Shader include failed: <pełna ścieżka shadera>`, z nazwą brakującego pliku w drugiej linii.
 
 ## 7. Pułapki
 

@@ -1,6 +1,6 @@
 # Moduł assets: pamięć podręczna modeli i tekstur, panel Assets
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych części, płaska mapa zastępcza, przełącznik `Normal mapping` w panelu), w M5 (drugi użytkownik, `GameplayRenderer`: sześć modeli i osiem tekstur zamiast trzech i czterech, kod klasy i panelu bez zmian) i w drugiej części M6 (teren zamiast płytek podłogi: pięć modeli, trzeci użytkownik `TerrainRenderer`, który prosi o dwie tekstury wprost przez `texture()`, kod klasy i panelu bez zmian). Tematy wykładu: 4 (Wczytywanie OBJ: "cache meshy", lista załadowanych modeli) i 5 (Tekstury: podgląd tekstur, filtrowanie, przełącznik map normalnych).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych części, płaska mapa zastępcza, przełącznik `Normal mapping` w panelu), w M5 (drugi użytkownik, `GameplayRenderer`: sześć modeli i osiem tekstur zamiast trzech i czterech, kod klasy i panelu bez zmian) i w drugiej części M6 (teren zamiast płytek podłogi: pięć modeli, trzeci użytkownik `TerrainRenderer`, który prosi o dwie tekstury wprost przez `texture()`, kod klasy i panelu bez zmian) oraz w pierwszej części M7 (każda tekstura ma przestrzeń kolorów: `texture()` dostała drugi, obowiązkowy argument `gfx::ColorSpace`, panel pokazuje `sRGB` albo `linear` i czyta miniatury tekstur sRGB bez dekodowania). Tematy wykładu: 4 (Wczytywanie OBJ: "cache meshy", lista załadowanych modeli) i 5 (Tekstury: podgląd tekstur, filtrowanie, przełącznik map normalnych).
 Kod: [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp), [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp), panel w [`src/debug/panels/AssetsPanel.hpp`](../../../src/debug/panels/AssetsPanel.hpp) i [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp), użytkownicy: [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) i [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp), wspólna pętla rysowania w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp).
 
 Część modułu `assets`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument łączy cztery inne: [`obj-loader.md`](obj-loader.md) (plik OBJ i MTL jako dane procesora: `ObjModel`), [`images.md`](images.md) (plik PNG jako piksele: `Image`), [`../gfx/mesh.md`](../gfx/mesh.md) (siatka na karcie: `gfx::Mesh`) i [`../gfx/textures.md`](../gfx/textures.md) (tekstura na karcie: `gfx::Texture2D`, filtry, anizotropia, shadery `textured`). Kto z wczytanych modeli rysuje labirynt, opisuje [`../game/maze-rendering.md`](../game/maze-rendering.md), a kto rysuje kryształy i bramę: [`../game/gameplay.md`](../game/gameplay.md). Czym jest mapa normalnych i co robi z nią shader, opisuje [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md): tutaj jest tylko to, co robi z nią pamięć podręczna i panel.
@@ -26,6 +26,16 @@ Po dodaniu map normalnych (2026-10-05, ten sam komputer) build Debug i Release n
 W M5 (2026-10-05) doszły trzy modele rozgrywki (`crystal_a.obj`, `crystal_b.obj`, `gate.obj`) i ich cztery tekstury. Kod `AssetCache` i kod panelu nie zmieniły się: nowe pliki wczytuje ta sama funkcja `model()`, o którą prosi teraz także `game::GameplayRenderer`. Autor kodu zgłosił dla Windowsa build Debug i Release bez ostrzeżeń, przechodzące testy i obraz sprawdzony zrzutami ekranu. **Nie jest sprawdzone ręcznie** nic z M5, w tym lista sześciu modeli i ośmiu tekstur odczytana z panelu: liczby, które ten dokument dla nich podaje, wynikają z kodu panelu i ze skryptu liczącego wierzchołki z plików `.obj` ([`obj-loader.md`](obj-loader.md), sekcja 5.9).
 
 W drugiej części M6 (2026-10-05) zniknął model `floor_tile.obj` z teksturami `floor_stone.png` i `floor_stone_normal.png`: podłoże jest terenem z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)). Doszedł trzeci użytkownik pamięci podręcznej, `game::TerrainRenderer`, i jest pierwszym, który nie prosi o model: teren nie ma pliku OBJ, więc renderer woła wprost `texture()` dla `ground.png` i `ground_normal.png`, a przy błędzie sięga po `whiteTexture()` i `flatNormalTexture()`. Kod `AssetCache` i kod panelu znowu się nie zmieniły. Liczby po tej zmianie (pięć modeli, osiem tekstur, kolejność list) wynikają z kodu konstruktorów: panelu Assets w tym stanie nikt jeszcze nie odczytał z ekranu. Mapy wysokości `heightmap.png` pamięć podręczna nie wczytuje i panel jej nie pokazuje (sekcja 5.6 w [`images.md`](images.md)).
+
+W pierwszej części M7 (2026-10-05, bufor HDR i gamma) kod klasy zmienił się po raz pierwszy od M4. Tekstury koloru są teraz teksturami sRGB, a mapy normalnych zostają liniowe ([`../gfx/color-space.md`](../gfx/color-space.md), [`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10), więc pamięć podręczna musi wiedzieć, czym jest plik, o który ktoś prosi:
+
+- `texture(path, colorSpace)` ma drugi argument bez wartości domyślnej. Decyduje wołający, bo tylko on wie, do czego użyje tekstury (sekcje 2.5 i 5.6).
+- `model()` podaje `gfx::ColorSpace::Srgb` dla pliku z `map_Kd` i `gfx::ColorSpace::Linear` dla pliku z `map_Bump` (sekcja 5.5). `TerrainRenderer` robi to samo dla pary `ground.png` i `ground_normal.png`.
+- Biała tekstura zastępcza jest `Srgb`, płaska mapa normalnych `Linear` (sekcja 5.4).
+- Prośba o plik, który jest już wczytany w drugiej przestrzeni, wypisuje błąd `Texture is asked for as sRGB and as linear: <plik>` i oddaje teksturę taką, jaka powstała za pierwszym razem (sekcja 5.6).
+- Panel Assets pokazuje przestrzeń przy rozmiarze i rysuje miniatury tekstur sRGB przez `debug::RawTextureSampler` (sekcja 6.4).
+
+Kolor `Kd` materiału (`uTint`) **nie jest** przeliczany z sRGB: trafia do shadera jako zwykły mnożnik liniowego koloru tekstury. Wszystkie materiały gry mają biały `Kd`, a biel to 1 w obu przestrzeniach, więc dziś niczego to nie zmienia (komentarz `drawModel` w `src/game/ModelDraw.hpp` mówi to wprost). Model z kolorowym `Kd` wyszedłby ciemniejszy, niż wskazuje liczba w pliku MTL: to otwarty punkt. Zgłoszone dla Windowsa po tej zmianie (nie powtarzałem): bramka `make check` przechodzi, 269 przypadków testowych i 102103 asercje w Debug i Release, miniatury w panelu identyczne co do piksela z miniaturami sprzed zmiany. Nowych widżetów nikt nie klikał, na macOS nic z tego nie było budowane.
 
 ## 2. Teoria
 
@@ -110,7 +120,7 @@ Kolor, tekstura i mapa normalnych są wyszukiwane **raz, przy wczytaniu**. W pę
 
 Pięć modeli gry ma po jednej części, każdą z kolorem białym, własną teksturą (kamień ściany, kryształ albo drewno bramy) i mapą normalnych tej tekstury. Czwarta para tekstur, podłoże terenu, nie należy do żadnego modelu.
 
-**Mapa normalnych jest dla pamięci podręcznej zwykłą teksturą.** Ten sam loader obrazów, ta sama funkcja `texture()`, ta sama lista, ten sam filtr. Pamięć podręczna nie wie, że bajty tego obrazu są kierunkami, a nie kolorami: o tym wie dopiero shader. Jedyna różnica po jej stronie to, którą teksturę zastępczą dostaje część, gdy pliku nie ma.
+**Mapa normalnych jest dla pamięci podręcznej prawie zwykłą teksturą.** Ten sam loader obrazów, ta sama funkcja `texture()`, ta sama lista, ten sam filtr. Do M6 pamięć podręczna w ogóle nie wiedziała, że bajty tego obrazu są kierunkami, a nie kolorami. Od pierwszej części M7 wie jedną rzecz, i to nie sama z siebie, tylko od wołającego: przestrzeń kolorów. Obraz koloru jest wczytywany jako `gfx::ColorSpace::Srgb`, mapa normalnych jako `gfx::ColorSpace::Linear` (komentarz klasy w nagłówku mówi to wprost). Druga różnica po jej stronie to, którą teksturę zastępczą dostaje część, gdy pliku nie ma.
 
 ### 2.5 Błędy i dwie tekstury zastępcze
 
@@ -125,6 +135,7 @@ Co może pójść źle i co wtedy robi pamięć podręczna:
 | obraz ma 1 albo 2 kanały (odcienie szarości) | `nullptr` dla tekstury, część z białą teksturą | gładki kolor |
 | model jest dobry, ale brakuje pliku jego mapy normalnych | model, część z płaską mapą normalnych | powierzchnia z teksturą, ale bez reliefu: oświetlona normalnymi siatki |
 | materiał nie ma linii `map_Bump` | model, część z płaską mapą normalnych | to samo: tak ma być, materiał nie ma reliefu |
+| ten sam plik obrazu poproszony raz jako `Srgb`, a raz jako `Linear` (od M7) | tekstura wczytana za pierwszym razem, w pierwszej przestrzeni | jedna linia `[error]` przy każdej takiej prośbie. Drugi użytkownik dostaje teksturę w złej przestrzeni: wyblakły kolor albo przekrzywione normalne |
 
 Dlaczego **biała** tekstura, a nie osobny shader "bez tekstury". Shader fragmentów liczy `tekstura * uTint`. Biały teksel to `(1, 1, 1)`, a mnożenie przez jeden niczego nie zmienia: wychodzi sam kolor materiału. Jedna tekstura 1 x 1 pozwala więc rysować części z teksturą i bez niej **tym samym shaderem i tą samą pętlą**, bez instrukcji warunkowej w GLSL i bez drugiego programu.
 
@@ -179,17 +190,17 @@ Anizotropia poprawia właśnie ostatni przypadek: powierzchnię oglądaną pod p
 
 | Kiedy | Kod | Co powstaje na karcie |
 |---|---|---|
-| konstruktor `AssetCache` | `m_whiteTexture(1, 1, 3, ...)`, `m_flatNormalTexture(1, 1, 3, ...)` | dwie tekstury 1 x 1 `GL_RGB8`, każda z jednym poziomem mipmap i własnym obiektem samplera |
-| `model(wall_straight.obj)` | `texture(wall_stone.png)`, `texture(wall_stone_normal.png)`, potem `gfx::Mesh(...)` | dwie tekstury 512 x 512 `GL_RGB8`, każda z dziesięcioma poziomami mipmap i samplerem, potem VAO, bufor wierzchołków i bufor indeksów |
+| konstruktor `AssetCache` | `m_whiteTexture(1, 1, 3, ..., Srgb)`, `m_flatNormalTexture(1, 1, 3, ..., Linear)` | dwie tekstury 1 x 1, biała `GL_SRGB8` i płaska mapa normalnych `GL_RGB8`, każda z jednym poziomem mipmap i własnym obiektem samplera |
+| `model(wall_straight.obj)` | `texture(wall_stone.png, Srgb)`, `texture(wall_stone_normal.png, Linear)`, potem `gfx::Mesh(...)` | dwie tekstury 512 x 512, obraz koloru `GL_SRGB8` i mapa normalnych `GL_RGB8`, każda z dziesięcioma poziomami mipmap i samplerem, potem VAO, bufor wierzchołków i bufor indeksów |
 | `model(wall_pillar.obj)` | oba wywołania `texture(...)` oddają tekstury już wczytane, potem `gfx::Mesh(...)` | tylko druga siatka |
 | `model(crystal_a.obj)` | `texture(crystal.png)`, `texture(crystal_normal.png)`, potem `gfx::Mesh(...)` | następne dwie tekstury 512 x 512 i trzecia siatka |
 | `model(crystal_b.obj)` | oba wywołania `texture(...)` oddają tekstury już wczytane, potem `gfx::Mesh(...)` | tylko czwarta siatka |
 | `model(gate.obj)` | `texture(gate_wood.png)`, `texture(gate_wood_normal.png)`, potem `gfx::Mesh(...)` | następne dwie tekstury 512 x 512 i piąta siatka |
-| `texture(ground.png)`, `texture(ground_normal.png)` | dwa wywołania wprost, bez modelu | ostatnie dwie tekstury 512 x 512. Siatki nie ma: siatkę terenu tworzy i trzyma sam `TerrainRenderer` |
+| `texture(ground.png, Srgb)`, `texture(ground_normal.png, Linear)` | dwa wywołania wprost, bez modelu | ostatnie dwie tekstury 512 x 512. Siatki nie ma: siatkę terenu tworzy i trzyma sam `TerrainRenderer` |
 
 Dwie pierwsze prośby pochodzą z konstruktora `MazeRenderer`, trzy następne z konstruktora `GameplayRenderer`, dwie ostatnie z konstruktora `TerrainRenderer`. Kolejność wynika z kolejności pól w `NightMazeApp` (`m_mazeRenderer`, `m_gameplayRenderer`, `m_terrainRenderer`) i z kolejności wpisów na listach inicjalizacyjnych tych konstruktorów. Do M6 pierwszą prośbą była płytka podłogi `floor_tile.obj` z teksturami `floor_stone`.
 
-Razem w pamięci podręcznej: 10 tekstur (osiem z plików, biała i płaska mapa normalnych), 10 obiektów samplera, 5 VAO i 10 buforów (bufor wierzchołków i bufor indeksów na siatkę). Siatki terenu, trawy, nieba i linii kolizji do niej nie należą. Mapa normalnych jest przechowywana w tym samym formacie `GL_RGB8` co obraz koloru: liniowo, bez żadnego przeliczania, czego kierunki wymagają. Dane po stronie procesora (wektory z loaderów) są zwalniane zaraz po wysłaniu.
+Razem w pamięci podręcznej: 10 tekstur (osiem z plików, biała i płaska mapa normalnych), 10 obiektów samplera, 5 VAO i 10 buforów (bufor wierzchołków i bufor indeksów na siatkę). Siatki terenu, trawy, nieba i linii kolizji do niej nie należą. Pięć z nich to tekstury sRGB (cztery obrazy koloru i biała), pięć liniowe (cztery mapy normalnych i płaska). Mapa normalnych jest przechowywana w formacie `GL_RGB8`: liniowo, bez żadnego przeliczania, czego kierunki wymagają. Obraz koloru ma od M7 format `GL_SRGB8`: te same bajty, ale karta dekoduje je do wartości liniowych, gdy shader je czyta. W pozostałych wierszach tabeli zapis `texture(...)` pomija drugi argument: jest nim zawsze `Srgb` dla pliku koloru i `Linear` dla pliku z końcówką `_normal`. Dane po stronie procesora (wektory z loaderów) są zwalniane zaraz po wysłaniu.
 
 Zmiana filtra i anizotropii to `glSamplerParameteri` i `glSamplerParameterf` na obiekcie samplera każdej tekstury z listy ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5). Tekstur nie trzeba do tego podpinać ani wysyłać ponownie.
 
@@ -227,7 +238,7 @@ Tryb widoku z panelu Assets ustawia uniform `uViewMode`: 0 to tekstura razy kolo
 | [`src/debug/panels/AssetsPanel.hpp`](../../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | funkcja `debug::drawAssetsPanel` (sekcja 6) |
 | [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) | prosi o dwa modele labiryntu: `models/wall_straight.obj`, `models/wall_pillar.obj` ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5). Do M6 prosił też o `models/floor_tile.obj` |
 | [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) | prosi o trzy modele rozgrywki: `models/crystal_a.obj`, `models/crystal_b.obj`, `models/gate.obj` ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5). Poza tymi dwoma konstruktorami nikt o modele nie prosi |
-| [`src/game/TerrainRenderer.cpp`](../../../src/game/TerrainRenderer.cpp) | od M6: prosi wprost o dwie tekstury, `textures/ground.png` i `textures/ground_normal.png`, a gdy `texture()` odda `nullptr`, bierze `whiteTexture()` albo `flatNormalTexture()` (funkcja pomocnicza `textureOr`). Opis w [`../renderer/terrain.md`](../renderer/terrain.md) |
+| [`src/game/TerrainRenderer.cpp`](../../../src/game/TerrainRenderer.cpp) | od M6: prosi wprost o dwie tekstury, `textures/ground.png` i `textures/ground_normal.png`, każdą ze swoją przestrzenią kolorów (`Srgb` i `Linear`), a gdy `texture()` odda `nullptr`, bierze `whiteTexture()` albo `flatNormalTexture()` (funkcja pomocnicza `textureOr`). Opis w [`../renderer/terrain.md`](../renderer/terrain.md) |
 | [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | `game::drawModel` i `game::setModelSamplers`: jedyny kod, który czyta `LoadedModel::parts` przy rysowaniu. Od M6 jest tam też `game::drawMesh` dla siatki spoza pamięci podręcznej (teren), z teksturami podanymi wprost. Do M4 była to funkcja `drawInstances` klasy `MazeRenderer` |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) | właściciel: pole `m_assets`, akcesor `assets()` |
 
@@ -240,12 +251,13 @@ struct LoadedTexture {
     /// Path of the image file, normalized. This is the key of the cache.
     std::filesystem::path path;
 
-    /// The picture on the graphics card.
+    /// The picture on the graphics card. It knows its colour space
+    /// (gfx::Texture2D::colorSpace).
     gfx::Texture2D texture;
 };
 ```
 
-Tekstura razem ze swoim kluczem. `gfx::Texture2D` nie zna pliku, z którego powstała (przyjmuje gołe piksele), więc ścieżkę trzeba trzymać obok.
+Tekstura razem ze swoim kluczem. Przestrzeni kolorów struktura nie przechowuje osobno: pamięta ją sama `Texture2D` (`colorSpace()`), a pamięć podręczna i panel ją stamtąd czytają. `gfx::Texture2D` nie zna pliku, z którego powstała (przyjmuje gołe piksele), więc ścieżkę trzeba trzymać obok.
 
 ```cpp
 struct ModelPart {
@@ -338,9 +350,9 @@ Funkcje publiczne:
 | Funkcja | Co robi |
 |---|---|
 | `const LoadedModel* model(const std::filesystem::path& path)` | model z pliku OBJ. Pierwsze wywołanie wczytuje, następne oddają ten sam obiekt. `nullptr` przy błędzie |
-| `const gfx::Texture2D* texture(const std::filesystem::path& path)` | tekstura z pliku obrazu, na tych samych zasadach |
-| `const gfx::Texture2D& whiteTexture() const` | biała tekstura 1 x 1 |
-| `const gfx::Texture2D& flatNormalTexture() const` | płaska mapa normalnych 1 x 1, teksel `(128, 128, 255)` |
+| `const gfx::Texture2D* texture(const std::filesystem::path& path, gfx::ColorSpace colorSpace)` | tekstura z pliku obrazu, na tych samych zasadach. `colorSpace` mówi, co jest w pliku: `Srgb` dla obrazu koloru, `Linear` dla mapy normalnych. Plik jest jednym albo drugim: prośba o wczytany już plik w drugiej przestrzeni wypisuje błąd i oddaje teksturę wczytaną za pierwszym razem |
+| `const gfx::Texture2D& whiteTexture() const` | biała tekstura 1 x 1, sRGB jak obrazy koloru, które zastępuje (biel to 1 w obu przestrzeniach) |
+| `const gfx::Texture2D& flatNormalTexture() const` | płaska mapa normalnych 1 x 1, teksel `(128, 128, 255)`, liniowa jak każda mapa normalnych |
 | `void setFilter(gfx::TextureFilter filter)` | filtr wszystkich tekstur, wczytanych i przyszłych |
 | `void setAnisotropy(float level)` | poziom anizotropii wszystkich tekstur, przycięty do zakresu od 1 do `maxAnisotropy()` |
 | `filter()`, `anisotropy()`, `maxAnisotropy()` | bieżące ustawienia i granica sterownika |
@@ -388,18 +400,22 @@ Akcesor płaskiej mapy ma w nagłówku komentarz, który jest streszczeniem sekc
     /// A 1 x 1 normal map whose one texel is (128, 128, 255): the direction (0, 0, 1) of
     /// tangent space, "straight out of the surface". A shader that reads its normals
     /// from a normal map gets the normal of the mesh with it, so it needs no second code
-    /// path for parts without a normal map.
+    /// path for parts without a normal map. Linear, like every normal map: decoded as
+    /// sRGB, 128 would no longer mean 0.
     const gfx::Texture2D& flatNormalTexture() const { return m_flatNormalTexture; }
 ```
 
 Części modeli dostają adres pola wprost w `model()` i akcesora nie potrzebują. Jest dla kodu, który rysuje coś własnego programem z mapami normalnych, tak jak `whiteTexture()` jest dla kodu rysującego gładki kolor. Do M6 nikt w grze żadnego z nich nie wołał. Dziś woła oba `game::TerrainRenderer`, jako wartości zastępcze dla tekstur podłoża:
 
 ```cpp
-      m_texture(textureOr(assets, GROUND_TEXTURE_FILE, assets.whiteTexture())),
-      m_normalMap(textureOr(assets, GROUND_NORMAL_MAP_FILE, assets.flatNormalTexture())) {}
+      // The picture of the earth is a colour (sRGB), its normal map is data (linear).
+      m_texture(
+          textureOr(assets, GROUND_TEXTURE_FILE, gfx::ColorSpace::Srgb, assets.whiteTexture())),
+      m_normalMap(textureOr(assets, GROUND_NORMAL_MAP_FILE, gfx::ColorSpace::Linear,
+                            assets.flatNormalTexture())) {}
 ```
 
-`textureOr` woła `assets.texture(core::assetPath(file))` i oddaje wynik albo, gdy jest nim `nullptr`, adres tekstury zastępczej. Model robi to samo w środku `model()`. Teren modelu nie ma, więc robi to jego renderer.
+`textureOr` woła `assets.texture(core::assetPath(file), colorSpace)` i oddaje wynik albo, gdy jest nim `nullptr`, adres tekstury zastępczej. Model robi to samo w środku `model()`. Teren modelu nie ma, więc robi to jego renderer.
 
 ### 5.4 Konstruktor i funkcje pomocnicze
 
@@ -432,12 +448,12 @@ constexpr std::array<unsigned char, FALLBACK_TEXTURE_CHANNELS> FLAT_NORMAL_PIXEL
 ```cpp
 AssetCache::AssetCache()
     : m_whiteTexture(FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_CHANNELS,
-                     WHITE_PIXEL.data()),
+                     WHITE_PIXEL.data(), gfx::ColorSpace::Srgb),
       m_flatNormalTexture(FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_CHANNELS,
-                          FLAT_NORMAL_PIXEL.data()) {}
+                          FLAT_NORMAL_PIXEL.data(), gfx::ColorSpace::Linear) {}
 ```
 
-Dwie tekstury po jednym pikselu. `Texture2D` przyjmuje szerokość, wysokość, liczbę kanałów i wskaźnik na bajty, więc tekstura nie musi pochodzić z pliku. OpenGL kopiuje dane, a stałe `WHITE_PIXEL` i `FLAT_NORMAL_PIXEL` zostają w programie. Kolejność na liście inicjalizacyjnej jest taka sama jak kolejność deklaracji pól, bo to kolejność deklaracji decyduje, co powstaje pierwsze.
+Dwie tekstury po jednym pikselu. `Texture2D` przyjmuje szerokość, wysokość, liczbę kanałów, wskaźnik na bajty i przestrzeń kolorów, więc tekstura nie musi pochodzić z pliku. Piąty argument doszedł w M7 i jest różny dla obu tekstur, z tego samego powodu co dla plików. Biała zastępuje obrazy koloru, więc jest `Srgb` jak one: wartość 255 dekoduje się na 1,0, czyli tyle samo, ile dałaby tekstura liniowa, więc dla bieli wybór nie zmienia wyniku, tylko trzyma porządek. Płaska mapa zastępuje mapy normalnych, więc musi być `Linear`: zdekodowany bajt 128 dałby 0,216 zamiast 0,502 i "płaska" normalna przestałaby być płaska. OpenGL kopiuje dane, a stałe `WHITE_PIXEL` i `FLAT_NORMAL_PIXEL` zostają w programie. Kolejność na liście inicjalizacyjnej jest taka sama jak kolejność deklaracji pól, bo to kolejność deklaracji decyduje, co powstaje pierwsze.
 
 ```cpp
 std::filesystem::path cacheKey(const std::filesystem::path& path) {
@@ -529,8 +545,8 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
         }
         if (!part.texturePath.empty()) {
             // texture() logs a failed load. The part then keeps the white texture and is
-            // drawn in its plain colour.
-            const gfx::Texture2D* texture = this->texture(part.texturePath);
+            // drawn in its plain colour. The picture of map_Kd is a colour: sRGB.
+            const gfx::Texture2D* texture = this->texture(part.texturePath, gfx::ColorSpace::Srgb);
             if (texture != nullptr) {
                 part.texture = texture;
                 part.hasOwnTexture = true;
@@ -539,7 +555,9 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
         if (!part.normalMapPath.empty()) {
             // The same function and the same list as for the colour pictures: a normal
             // map is a texture too. A failed load leaves the flat normal map in place.
-            const gfx::Texture2D* normalMap = this->texture(part.normalMapPath);
+            // Its bytes are directions, not colours: linear, or the normals would bend.
+            const gfx::Texture2D* normalMap =
+                this->texture(part.normalMapPath, gfx::ColorSpace::Linear);
             if (normalMap != nullptr) {
                 part.normalMap = normalMap;
                 part.hasOwnNormalMap = true;
@@ -557,10 +575,10 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
 | `part.color = material->diffuseColor;` | kolor `Kd`, biały, gdy plik MTL go nie podał |
 | `part.texturePath = material->diffuseTexture;` | ścieżka obrazu, już złożona przez loader z katalogu pliku MTL i wpisu `map_Kd` |
 | `part.normalMapPath = material->normalTexture;` | ścieżka mapy normalnych, złożona tak samo z wpisu `map_Bump`. Pusta, gdy materiał takiej linii nie ma |
-| `this->texture(part.texturePath)` | prośba do **tej samej** pamięci podręcznej. Druga część albo drugi model z tą samą teksturą dostanie ten sam wskaźnik. `this->` jest potrzebne, bo zmienna lokalna w tej samej linii też nazywa się `texture` i zasłania funkcję |
+| `this->texture(part.texturePath, gfx::ColorSpace::Srgb)` | prośba do **tej samej** pamięci podręcznej. Drugi argument (od M7): obraz z linii `map_Kd` jest kolorem, więc sRGB. Druga część albo drugi model z tą samą teksturą dostanie ten sam wskaźnik. `this->` jest potrzebne, bo zmienna lokalna w tej samej linii też nazywa się `texture` i zasłania funkcję |
 | `if (texture != nullptr)` | tekstura się wczytała: część dostaje ją i znacznik `hasOwnTexture`. W przeciwnym razie zostaje biała |
 | `if (!part.normalMapPath.empty())` | materiał ma mapę normalnych. Gdy nie ma, część zostaje przy płaskiej i funkcja niczego nie próbuje wczytać, więc nie ma też linii w logu |
-| `this->texture(part.normalMapPath)` | **ta sama funkcja** co dla obrazu koloru. Mapa normalnych trafia na tę samą listę `m_textures`, dostaje ten sam filtr i jest tak samo współdzielona: słupek dostaje wskaźnik do mapy wczytanej dla ściany. Tutaj `this->` nie jest konieczne (zmienna nazywa się `normalMap`), stoi dla symetrii z wywołaniem wyżej |
+| `this->texture(part.normalMapPath, gfx::ColorSpace::Linear)` | **ta sama funkcja** co dla obrazu koloru, z drugą przestrzenią kolorów: bajty mapy są kierunkami, więc muszą dotrzeć do shadera bez dekodowania. Mapa normalnych trafia na tę samą listę `m_textures`, dostaje ten sam filtr i jest tak samo współdzielona: słupek dostaje wskaźnik do mapy wczytanej dla ściany. Tutaj `this->` nie jest konieczne (zmienna nazywa się `normalMap`), stoi dla symetrii z wywołaniem wyżej |
 | `if (normalMap != nullptr)` | mapa się wczytała: część dostaje ją i znacznik `hasOwnNormalMap`. Przy błędzie `texture()` wypisała już linię `[error]` i zapamiętała ścieżkę, a część zostaje przy płaskiej mapie |
 | `parts.push_back(std::move(part));` | przeniesienie, żeby nie kopiować napisu i ścieżek |
 
@@ -595,11 +613,18 @@ Po powrocie z funkcji `source` jest niszczone: wektory wierzchołków i indeksó
 ### 5.6 `texture()` linia po linii
 
 ```cpp
-const gfx::Texture2D* AssetCache::texture(const std::filesystem::path& path) {
+const gfx::Texture2D* AssetCache::texture(const std::filesystem::path& path,
+                                          gfx::ColorSpace colorSpace) {
     const std::filesystem::path key = cacheKey(path);
 
     for (const LoadedTexture& loaded : m_textures) {
         if (loaded.path == key) {
+            // One file cannot be a colour picture and a normal map at once. The texture
+            // stays as it was loaded: the mistake is in the model or in the caller.
+            if (loaded.texture.colorSpace() != colorSpace) {
+                core::logError("Texture is asked for as sRGB and as linear: " +
+                               core::pathText(key));
+            }
             return &loaded.texture;
         }
     }
@@ -616,12 +641,24 @@ const gfx::Texture2D* AssetCache::texture(const std::filesystem::path& path) {
     }
 ```
 
-Ten sam początek co w `model()`: klucz, szukanie wśród wczytanych, sprawdzenie listy porażek, loader. `loadImage` dekoduje plik do pikseli z dolnym wierszem na początku ([`images.md`](images.md), sekcja 5).
+Ten sam początek co w `model()`: klucz, szukanie wśród wczytanych, sprawdzenie listy porażek, loader. Jedna rzecz jest od M7 inna niż w `model()`: trafienie w pamięć podręczną sprawdza przestrzeń kolorów.
+
+| Linia | Znaczenie |
+|---|---|
+| `gfx::ColorSpace colorSpace` | drugi argument, bez wartości domyślnej. Kluczem pamięci podręcznej zostaje **sama ścieżka**: przestrzeń nie jest częścią klucza, więc jeden plik nigdy nie powstanie na karcie dwa razy |
+| `loaded.texture.colorSpace() != colorSpace` | plik jest już wczytany, ale w innej przestrzeni niż ta, o którą ktoś teraz prosi |
+| `core::logError("Texture is asked for as sRGB and as linear: " + ...)` | jedna linia `[error]` z nazwą pliku. Błąd jest w modelu (ten sam plik w `map_Kd` jednego materiału i w `map_Bump` innego) albo w kodzie wołającym, a nie w pamięci podręcznej |
+| `return &loaded.texture;` po błędzie | funkcja oddaje teksturę taką, jaka powstała za pierwszym razem, a nie `nullptr`. Gra rysuje dalej, tyle że jeden z dwóch użytkowników dostaje złą przestrzeń. Komunikat pojawia się przy **każdej** takiej prośbie, nie raz: ścieżka nie trafia na listę porażek |
+
+W grze ta gałąź nie jest wykonywana: żaden plik nie występuje w obu rolach. Nikt jej też nie sprawdził osobną próbą.
+
+ `loadImage` dekoduje plik do pikseli z dolnym wierszem na początku ([`images.md`](images.md), sekcja 5).
 
 ```cpp
     // The constructor logs an error and leaves the texture not valid when the picture
     // has a channel count it does not accept (grey pictures have 1 or 2 channels).
-    gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data());
+    gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data(),
+                           colorSpace);
     if (!texture.isValid()) {
         core::logError("Texture cannot be used: " + core::pathText(key));
         m_failedPaths.push_back(key);
@@ -640,7 +677,7 @@ Ten sam początek co w `model()`: klucz, szukanie wśród wczytanych, sprawdzeni
 
 | Linia | Znaczenie |
 |---|---|
-| `gfx::Texture2D texture(...)` | tworzy teksturę i mipmapy na karcie. Obiekt jest na razie zmienną lokalną |
+| `gfx::Texture2D texture(..., colorSpace)` | tworzy teksturę i mipmapy na karcie, w formacie sRGB albo liniowym, zależnie od argumentu przekazanego dalej bez zmian ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.6). Obiekt jest na razie zmienną lokalną |
 | `if (!texture.isValid())` | loader obrazów zachowuje liczbę kanałów z pliku (od 1 do 4), a tekstura przyjmuje tylko 3 albo 4. Obraz w odcieniach szarości dekoduje się poprawnie, ale tekstury z niego nie będzie. W logu są wtedy dwie linie: jedna z konstruktora tekstury (rozmiar i kanały) i ta, która podaje plik |
 | `texture.setFilter(m_filter);`, `texture.setAnisotropy(m_anisotropy);` | bieżące ustawienie wspólne (sekcja 2.7) |
 | `.texture = std::move(texture)` | przeniesienie do elementu listy: identyfikatory OpenGL przechodzą do nowego obiektu, a zmienna lokalna zostaje z zerami i jej destruktor niczego nie usuwa ([`../gfx/README.md`](../gfx/README.md), sekcja 2) |
@@ -722,6 +759,8 @@ Trzy ostatnie wiersze pochodzą z drugiej części M4. Przełącznik był przy t
 
 Dla M5 powyższych sprawdzeń nie powtarzałem. Autor kodu zgłosił obraz z kryształami i bramą sprawdzony zrzutami ekranu, ale panelu Assets z sześcioma modelami i ośmioma teksturami nikt jeszcze nie odczytał z ekranu ani nie przeszedł ręcznie.
 
+Dla pierwszej części M7 (przestrzeń kolorów tekstur) zgłoszone jest na Windowsie (2026-10-05, nie powtarzałem): bramka `make check` przechodzi, 269 przypadków testowych i 102103 asercje w Debug i Release, zero ostrzeżeń, a miniatury w panelu Assets są identyczne co do piksela z miniaturami sprzed zmiany. Obraz sceny w trybie `Unlit` nie jest identyczny z poprzednim: różni się na fugach cegieł, bo filtrowanie tekstur działa teraz na wartościach liniowych ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10). Gałęzi z błędem dwóch przestrzeni nikt nie wywołał, a napisu `sRGB` albo `linear` w panelu nikt nie odczytał z ekranu ręcznie.
+
 Stany filtra, anizotropii i trybu widoku były ustawiane tymczasowym kodem (usuniętym), a nie kliknięciem w panel. Ręczne przejście przez widżety jest otwartą pozycją listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nic z tego nie było sprawdzane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
 ## 6. Panel ImGui
@@ -748,21 +787,22 @@ constexpr const char* FILTER_ITEMS = "Nearest\0Bilinear\0Trilinear\0";
 Pozostałe stałe pliku: `NO_ANISOTROPY` (`1.0F`), `INDICES_PER_TRIANGLE` (3) i `PREVIEW_SIZE` (`128.0F`, bok podglądu w pikselach). Dwie stałe, których panel używa, nie należą do niego: `ASSETS_PLACEMENT` z [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp) (miejsce i rozmiar przy pierwszym uruchomieniu: prawa krawędź okna, pod panelem Maze, [`../debug-ui.md`](../debug-ui.md), sekcja 5.7) i `ERROR_TEXT_COLOR` z [`Theme.hpp`](../../../src/debug/Theme.hpp) (łagodna czerwień motywu, ta sama co w panelu Shaders, [`../debug-ui.md`](../debug-ui.md), sekcja 5.8).
 
 ```cpp
-void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping) {
+void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping,
+                     const RawTextureSampler& rawSampler) {
     // First run only: the right edge of the window, below the Maze panel (the constant
     // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
     placePanelOnFirstUse(ASSETS_PLACEMENT);
     if (ImGui::Begin("Assets")) {
         drawSettings(assets, viewMode, normalMapping);
         drawModels(assets);
-        drawTextures(assets);
+        drawTextures(assets, rawSampler);
         drawFailures(assets);
     }
     ImGui::End();
 }
 ```
 
-Trzeci parametr, `normalMapping`, to referencja do pola `game::LightingSettings::normalMapping`. `DebugUI::draw` przekazuje ją jako `context.lighting.normalMapping` ([`../debug-ui.md`](../debug-ui.md)). Panel dostaje samą zmienną `bool`, a nie całą strukturę ustawień świateł: resztą tej struktury zajmuje się panel Lights. Pole leży w ustawieniach oświetlenia, bo mapa normalnych zmienia tylko to, jak światło pada na powierzchnię, a przełącznik stoi w panelu Assets, bo jest pokazem tematu 5 (tekstury).
+Trzeci parametr, `normalMapping`, to referencja do pola `game::LightingSettings::normalMapping`. `DebugUI::draw` przekazuje ją jako `context.lighting.normalMapping` ([`../debug-ui.md`](../debug-ui.md)). Panel dostaje samą zmienną `bool`, a nie całą strukturę ustawień świateł: resztą tej struktury zajmuje się panel Lights. Pole leży w ustawieniach oświetlenia, bo mapa normalnych zmienia tylko to, jak światło pada na powierzchnię, a przełącznik stoi w panelu Assets, bo jest pokazem tematu 5 (tekstury). Czwarty parametr, `rawSampler`, doszedł w M7: to obiekt `debug::RawTextureSampler`, pole klasy `DebugUI` (`m_rawTextureSampler`), którym `drawTextures` czyta miniatury tekstur sRGB bez dekodowania (sekcja 6.4). Panel dostaje go przez stałą referencję i tylko przekazuje dalej.
 
 Panel dostaje pamięć podręczną bez `const`, bo dwa widżety wołają `setFilter` i `setAnisotropy`. Trzy z czterech funkcji pomocniczych przyjmują ją już jako `const`: tylko czytają listy. Podział na cztery funkcje odpowiada czterem częściom panelu.
 
@@ -903,21 +943,44 @@ Liczby wierzchołków to nie liczby linii `v` z pliku: loader robi osobny wierzc
 ### 6.4 Podgląd tekstur: `drawTextures` i odwrócone UV
 
 ```cpp
-void drawTextures(const assets::AssetCache& assets) {
+void drawTextures(const assets::AssetCache& assets, const RawTextureSampler& rawSampler) {
     ImGui::SeparatorText("Textures");
     for (const assets::LoadedTexture& loaded : assets.textures()) {
         drawFileName(loaded.path);
-        ImGui::Text("  %d x %d px", loaded.texture.width(), loaded.texture.height());
+        // sRGB: a colour picture, decoded to linear values when a shader reads it.
+        // Linear: data that is read as it is stored (a normal map).
+        const bool isSrgb = loaded.texture.colorSpace() == gfx::ColorSpace::Srgb;
+        ImGui::Text("  %d x %d px, %s", loaded.texture.width(), loaded.texture.height(),
+                    isSrgb ? "sRGB" : "linear");
 
         const auto textureId = static_cast<ImTextureID>(loaded.texture.id());
+        if (isSrgb) {
+            rawSampler.begin();
+        }
         ImGui::Image(textureId, {PREVIEW_SIZE, PREVIEW_SIZE}, {0.0F, 1.0F}, {1.0F, 0.0F});
+        if (isSrgb) {
+            rawSampler.end();
+        }
     }
 }
 ```
 
-W pliku nad dwiema ostatnimi liniami stoi dłuższy komentarz po angielsku: wyjaśnia rzutowanie, odwrócone współrzędne i własny sampler ImGui.
+W pliku nad linią z `textureId` stoi dłuższy komentarz po angielsku: wyjaśnia rzutowanie, odwrócone współrzędne, własny sampler ImGui i, od M7, dlaczego tekstura sRGB jest czytana bez dekodowania.
 
-Kod tej funkcji nie zmienił się ani przy dodaniu map normalnych, ani w M5, a mimo to lista ma teraz **osiem** pozycji (w M2 + M3 dwie, w M4 cztery): `wall_stone.png`, `wall_stone_normal.png`, `crystal.png`, `crystal_normal.png`, `gate_wood.png`, `gate_wood_normal.png`, `ground.png` i `ground_normal.png`, w kolejności wczytania (do M6 listę otwierały `floor_stone.png` i `floor_stone_normal.png`, a tekstur podłoża nie było). Dwie ostatnie trafiły na listę inną drogą niż reszta, przez bezpośrednie `texture()` z `TerrainRenderer`, ale lista tego nie rozróżnia. Pliku `heightmap.png` na niej nie ma. Wszystkie mają 512 x 512 pikseli (odczytane z nagłówków plików PNG). Mapy normalnych są na liście `m_textures` jak każda inna tekstura. Ich podgląd to obraz taki, jaki jest zapisany, bez żadnego przeliczania: w większości jasnoniebieski, bo większość tekseli ma kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)`, a na nim wzór fug w odcieniach różu, zieleni i fioletu (skosy odchylone w różne strony). Ten opis dotyczy dwóch map kamienia (ściany i dawnej podłogi), które widziałem na zrzutach. Podglądów map kryształu, drewna i podłoża nie oglądałem: z kodowania wynika tylko, że płaskie miejsca też są jasnoniebieskie. Tekstur zastępczych na liście nie ma.
+**Co zmieniła pierwsza część M7.** Trzy rzeczy. Linia z rozmiarem pokazuje też przestrzeń kolorów, na przykład `512 x 512 px, sRGB` dla `wall_stone.png` i `512 x 512 px, linear` dla `wall_stone_normal.png`. Funkcja dostała drugi parametr. A wywołanie `ImGui::Image` jest dla tekstur sRGB otoczone parą `begin` i `end`:
+
+| Linia | Znaczenie |
+|---|---|
+| `loaded.texture.colorSpace() == gfx::ColorSpace::Srgb` | pyta teksturę, czym jest. Wynik steruje i napisem, i sposobem odczytu miniatury |
+| `isSrgb ? "sRGB" : "linear"` | napis do formatu `%s` |
+| `rawSampler.begin()` | od tego miejsca obrazki dodawane do bieżącego okna ImGui są czytane przez obiekt samplera z wyłączonym dekodowaniem sRGB |
+| `rawSampler.end()` | powrót do samplera, którym ImGui rysuje wszystko inne |
+
+**Po co to.** ImGui rysuje miniaturę prosto do okna, już po przebiegu składającym, który koduje scenę na sRGB ([`../renderer/post-process.md`](../renderer/post-process.md)). Tekstura sRGB czytana zwykłym samplerem oddaje wartości **liniowe**, a ImGui zapisuje to, co przeczyta, bez kodowania: miniatura byłaby wyraźnie ciemniejsza niż plik (bajt 128 wyszedłby jako poziom 55). `RawTextureSampler` każe karcie pominąć dekodowanie na czas tego jednego obrazka, więc na ekran trafiają bajty z pliku, jak przed M7. Mapy normalnych są liniowe, niczego się przy nich nie dekoduje i idą zwykłą drogą.
+
+Mechanizm używa rozszerzenia `GL_EXT_texture_sRGB_decode`, którego nie ma w rdzeniu OpenGL 4.1. Gdzie sterownik go nie podaje, `begin` i `end` nic nie robią, a miniatury obrazów koloru są ciemniejsze niż pliki: to znane ograniczenie, a nie błąd tekstur (w scenie wyglądają poprawnie). Klasę, jej stałe i sposób, w jaki wpina się w listę poleceń rysowania ImGui, opisuje [`../debug-ui.md`](../debug-ui.md). Zgłoszone dla Windowsa (sterownik z rozszerzeniem): miniatury są identyczne co do piksela z miniaturami sprzed M7. Na macOS dostępności rozszerzenia nie sprawdzono.
+
+Pętla po teksturach nie zmieniła się ani przy dodaniu map normalnych, ani w M5, a mimo to lista ma teraz **osiem** pozycji (w M2 + M3 dwie, w M4 cztery): `wall_stone.png`, `wall_stone_normal.png`, `crystal.png`, `crystal_normal.png`, `gate_wood.png`, `gate_wood_normal.png`, `ground.png` i `ground_normal.png`, w kolejności wczytania (do M6 listę otwierały `floor_stone.png` i `floor_stone_normal.png`, a tekstur podłoża nie było). Dwie ostatnie trafiły na listę inną drogą niż reszta, przez bezpośrednie `texture()` z `TerrainRenderer`, ale lista tego nie rozróżnia. Pliku `heightmap.png` na niej nie ma. Wszystkie mają 512 x 512 pikseli (odczytane z nagłówków plików PNG). Mapy normalnych są na liście `m_textures` jak każda inna tekstura. Ich podgląd to obraz taki, jaki jest zapisany, bez żadnego przeliczania: w większości jasnoniebieski, bo większość tekseli ma kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)`, a na nim wzór fug w odcieniach różu, zieleni i fioletu (skosy odchylone w różne strony). Ten opis dotyczy dwóch map kamienia (ściany i dawnej podłogi), które widziałem na zrzutach. Podglądów map kryształu, drewna i podłoża nie oglądałem: z kodowania wynika tylko, że płaskie miejsca też są jasnoniebieskie. Tekstur zastępczych na liście nie ma.
 
 | Linia | Znaczenie |
 |---|---|
@@ -982,6 +1045,9 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 17. **Zaznaczone pole, a reliefu nie ma.** Pole `Normal mapping` jest zaznaczone, ale tryb oświetlenia to `Gouraud` albo `Unlit`. To nie błąd: tak działa `usesNormalMap` i mówi o tym notka pod polem.
 18. **Ocenianie mapy normalnych po podglądzie.** Podgląd pokazuje bajty mapy jako kolory. Widać na nim, że plik się wczytał i gdzie są fugi, ale nie widać, czy relief jest wgłębieniem, czy grzbietem. To widać dopiero w scenie, pod światłem.
 19. **Filtr `Nearest` a mapy normalnych.** Filtr z panelu dotyczy także map normalnych. Przy `Nearest` relief w oddali jest ziarnisty, co łatwo wziąć za błąd mapy.
+20. **Zła przestrzeń kolorów przy `texture()`.** Od M7 drugi argument decyduje o formacie na karcie. `Linear` dla obrazu koloru daje powierzchnię wyblakłą i za jasną (nikt nie zdekodował, a przebieg składający i tak zakodował), `Srgb` dla mapy normalnych przekrzywia wszystkie normalne. Kompilator pilnuje tylko tego, że argument jest. Panel Assets pokazuje wynik słowem `sRGB` albo `linear` przy każdej teksturze: mapa normalnych z napisem `sRGB` to błąd.
+21. **Kolorowy `Kd` nie jest przeliczany.** `part.color` trafia do `uTint` tak, jak stoi w pliku MTL, i mnoży liniowy kolor tekstury. Liczby w MTL są wybierane na ekranie, czyli w sRGB, więc poprawnie należałoby je zamienić na liniowe, tak jak kolory świateł. Dziś wszystkie materiały mają biały `Kd`, a biel to 1 w obu przestrzeniach, więc błędu nie widać. Pierwszy model z kolorowym `Kd` wyjdzie jaśniejszy, niż wynikałoby z poprawnego przeliczenia: to znany, otwarty punkt.
+22. **Miniatury ciemniejsze niż pliki.** Na sterowniku bez `GL_EXT_texture_sRGB_decode` miniatury tekstur sRGB w panelu są ciemniejsze od plików. To ograniczenie podglądu, a nie błąd wczytania: w scenie te same tekstury wyglądają poprawnie.
 
 ## 8. Ćwiczenia
 
@@ -989,7 +1055,7 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 
 1. **Ile obiektów.** Gra prosi o `wall_straight.obj`, `wall_pillar.obj`, `crystal_a.obj`, `crystal_b.obj` i `gate.obj`, a `TerrainRenderer` wprost o `ground.png` i `ground_normal.png`. Ile razy wołana jest funkcja `texture()` i ile tekstur powstaje na karcie (z zastępczymi)? Odpowiedź: 12 wywołań (po dwa na część pięciu modeli, czyli 10, i dwa z terenu), 8 wczytań (słupek i drugi kryształ trafiają w pamięć podręczną), 10 tekstur (osiem z plików, biała i płaska).
 2. **Klucz.** Co zwraca `lexically_normal` dla `C:/gra/assets/models/../textures/./wall_stone.png`? Odpowiedź: `C:/gra/assets/textures/wall_stone.png` (na Windowsie z odwrotnymi ukośnikami).
-3. **Kolor części.** Materiał ma `Kd 1.0 0.5 0.0` i nie ma `map_Kd`. Jaki kolor ma fragment? Odpowiedź: `(1, 1, 1) * (1, 0,5, 0)`, czyli pomarańczowy `(1, 0,5, 0)`: biały teksel razy `uTint`.
+3. **Kolor części.** Materiał ma `Kd 1.0 0.5 0.0` i nie ma `map_Kd`. Jaki kolor ma fragment? Odpowiedź: `(1, 1, 1) * (1, 0,5, 0)`, czyli pomarańczowy `(1, 0,5, 0)`: biały teksel razy `uTint`. Od M7 to jest wartość **liniowa** zapisana do bufora sceny. Na ekran trafia po przebiegu składającym: w trybie `Unlit` z mapowaniem tonów `None` kanał zielony 0,5 jest kodowany na 0,735, więc piksel ma kolor `(1, 0,735, 0)`, jaśniejszy pomarańczowy, niż sugeruje plik MTL (pułapka 21).
 4. **Brak tekstury.** W katalogu `assets` obok pliku wykonywalnego (na Windowsie `build/debug/Debug/assets`) zmień nazwę `wall_stone.png` i uruchom program. Ile linii `[error]` jest w konsoli, choć tekstury potrzebują dwa modele? Co pokazuje panel Assets? Przywróć nazwę (albo odśwież kopię: `cmake --build --preset debug --target copy_assets`).
 5. **Wektor zamiast kolejki.** Zamień `std::deque<LoadedModel>` na `std::vector<LoadedModel>` (i typ zwracany przez `models()`). Czy program od razu przestaje działać przy pięciu modelach? Od czego to zależy? Dopisz przed pierwszym wczytaniem `m_models.reserve(1)` i sprawdź ponownie. Dlaczego taki błąd jest groźniejszy niż błąd kompilacji?
 6. **Kolorowa tekstura zastępcza.** Zmień `WHITE_PIXEL` na jaskrawy róż `{255, 0, 255}` i powtórz ćwiczenie 4. Co zyskujesz przy szukaniu brakujących tekstur, a co tracisz dla materiałów, które celowo nie mają tekstury?
@@ -999,6 +1065,7 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 10. **Brak mapy normalnych.** Powtórz ćwiczenie 4 dla pliku `wall_stone_normal.png`. Ile linii `[error]` jest w konsoli? Co pokazuje panel przy częściach ściany i słupka i ile pozycji ma lista `Textures`? Jak wyglądają ściany pod latarką w porównaniu z podłożem? (Oczekiwane z kodu: jedna linia, `normal map: none (flat)` przy obu częściach, siedem tekstur na liście, ściany bez reliefu, podłoże z reliefem.)
 11. **Zła tekstura zastępcza.** Zmień tymczasowo w `model()` linię `part.normalMap = &m_flatNormalTexture;` na `part.normalMap = &m_whiteTexture;` i powtórz ćwiczenie 10. Policz na kartce, jaki kierunek shader odczyta z białego teksela i o ile stopni odchyla się on od normalnej. (`(1, 1, 1)`, po normalizacji około 55 stopni od osi z.)
 12. **127 czy 128.** Zmień `HALF_BRIGHTNESS` na 127. Jaki kierunek odczyta teraz shader z płaskiej mapy i czy różnicę da się zobaczyć? Dlaczego żadna z tych dwóch wartości nie daje dokładnie zera? (`127 / 255 * 2 - 1` to około -0,004 zamiast +0,004. Zero wymagałoby bajtu 127,5.)
+13. **Dwie przestrzenie, jeden plik.** W `TerrainRenderer.cpp` zamień `gfx::ColorSpace::Linear` przy `GROUND_NORMAL_MAP_FILE` na `Srgb`, zbuduj i uruchom. Czy w konsoli jest linia `Texture is asked for as sRGB and as linear`? Dlaczego nie (kto jeszcze prosi o `ground_normal.png`)? Co pokazuje panel Assets przy tym pliku i jak wygląda światło na podłożu? Potem pomyśl, jak wywołać ten komunikat naprawdę: który plik musiałby zostać poproszony dwa razy? (Tego ćwiczenia nikt jeszcze nie wykonał: odpowiedzi wynikają z kodu. O `ground_normal.png` prosi tylko teren, więc komunikatu nie ma, panel pokazuje `sRGB`, a normalne podłoża są przekrzywione.) Wycofaj zmianę.
 
 ## 9. Pytania kontrolne
 
@@ -1048,7 +1115,7 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
     Konstruktor tworzy dwie tekstury, a każde wczytanie tworzy siatkę albo teksturę: wszystko to wymaga kontekstu OpenGL. Testy bez okna mają loadery, z których pamięć podręczna korzysta. Samą klasę sprawdza uruchomienie programu.
 
 16. **Czym dla pamięci podręcznej różni się mapa normalnych od zwykłej tekstury?**
-    Niczym poza teksturą zastępczą. Wczytuje ją ta sama funkcja `texture()`, trafia na tę samą listę, dostaje ten sam filtr i anizotropię i jest tak samo współdzielona między modelami. To, że jej bajty są kierunkami, wie dopiero shader.
+    Dwiema rzeczami: teksturą zastępczą i, od M7, przestrzenią kolorów. Wczytuje ją ta sama funkcja `texture()`, ale z argumentem `gfx::ColorSpace::Linear` zamiast `Srgb`, więc na karcie ma format `GL_RGB8`, a nie `GL_SRGB8`. Poza tym trafia na tę samą listę, dostaje ten sam filtr i anizotropię i jest tak samo współdzielona między modelami. To, że jej bajty są kierunkami, wie shader i wołający, który wybrał przestrzeń.
 
 17. **Co to jest płaska mapa normalnych i dlaczego ma teksel `(128, 128, 255)`?**
     Tekstura 1 x 1, która zastępuje brakującą mapę normalnych. Mapa zapisuje składową kierunku jako `bajt = (składowa * 0,5 + 0,5) * 255`, więc kierunek `(0, 0, 1)`, czyli "prosto z powierzchni", to `(127,5, 127,5, 255)`, po zaokrągleniu `(128, 128, 255)`. Shader odczytuje z niej normalną siatki, więc nie potrzebuje osobnej ścieżki dla części bez mapy.
@@ -1058,6 +1125,18 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 
 19. **Co się dzieje, gdy brakuje pliku mapy normalnych?**
     Model się wczytuje. `texture()` wypisuje jedną linię `[error]` i zapamiętuje ścieżkę, a część zostaje przy płaskiej mapie: `hasOwnNormalMap` jest fałszem i panel pokazuje `normal map: none (flat)`. Powierzchnia ma teksturę koloru, ale jest oświetlona normalnymi siatki.
+
+20. **Po co `texture()` ma argument `colorSpace` i kto go wybiera?**
+    Mówi, czym jest obraz: kolorem (`Srgb`, format `GL_SRGB8`, dekodowany przez kartę przy odczycie) czy danymi (`Linear`, format `GL_RGB8`, czytany bez zmian). Wybiera wołający, bo tylko on wie, do czego użyje tekstury: `model()` podaje `Srgb` dla `map_Kd` i `Linear` dla `map_Bump`, `TerrainRenderer` tak samo dla swojej pary plików. Wartości domyślnej nie ma, żeby wyboru nie dało się pominąć.
+
+21. **Co się dzieje, gdy ten sam plik zostanie poproszony w dwóch przestrzeniach?**
+    Kluczem pamięci podręcznej jest sama ścieżka, więc plik powstaje na karcie raz, w przestrzeni z pierwszej prośby. Druga prośba wypisuje błąd `Texture is asked for as sRGB and as linear` i dostaje tę samą teksturę. Funkcja nie zwraca `nullptr` i nie dopisuje ścieżki do listy porażek.
+
+22. **Dlaczego biała tekstura zastępcza jest sRGB, a płaska mapa normalnych liniowa?**
+    Każda ma przestrzeń tego, co zastępuje. Dla bieli wybór nie zmienia wyniku (255 to 1,0 w obu przestrzeniach). Dla płaskiej mapy zmienia: bajt 128 zdekodowany jako sRGB dałby 0,216 zamiast 0,502 i kierunek przestałby być `(0, 0, 1)`.
+
+23. **Dlaczego miniatury tekstur sRGB w panelu są rysowane przez `RawTextureSampler`?**
+    ImGui rysuje prosto do okna i zapisuje to, co przeczyta. Tekstura sRGB oddaje wartości liniowe, których nikt już nie zakoduje, więc miniatura byłaby za ciemna. Sampler z wyłączonym dekodowaniem (`GL_EXT_texture_sRGB_decode`) oddaje bajty z pliku. Bez rozszerzenia miniatury są ciemniejsze.
 
 20. **Co robi pole `Normal mapping` i dlaczego samo nie wystarcza, żeby relief było widać?**
     Ustawia `LightingSettings::normalMapping`. Shader dostaje jednak wynik `usesNormalMap`: pole włączone i tryb oświetlenia inny niż `Gouraud`. W trybie `Gouraud` światło jest liczone w wierzchołkach, więc normalna na teksel nie ma jak wziąć w nim udziału, a w trybie `Unlit` nie ma światła (mapy widać wtedy tylko w widoku `Normals as colour`).
@@ -1075,5 +1154,7 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 - Rozszerzenie `GL_EXT_texture_filter_anisotropic`: <https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt>.
 - Dear ImGui, wiki "Image Loading and Displaying Examples": <https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples> (`ImGui::Image`, `ImTextureID`), oraz plik `backends/imgui_impl_opengl3.cpp` w pobranych źródłach (własne samplery backendu).
 - Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `assets`), [`obj-loader.md`](obj-loader.md), [`images.md`](images.md), [`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/textures.md`](../gfx/textures.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (mapy normalnych: teoria, shader, scenariusz pokazu), [`../game/maze-rendering.md`](../game/maze-rendering.md) i [`../game/gameplay.md`](../game/gameplay.md) (dwaj użytkownicy pamięci podręcznej), [`../debug-ui.md`](../debug-ui.md) (podpięcie panelu), [`../../libraries/imgui.md`](../../libraries/imgui.md).
+- Rozszerzenie `GL_EXT_texture_sRGB_decode`: <https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_sRGB_decode.txt> (odczyt tekstury sRGB bez dekodowania, używany dla miniatur).
+- Dokumenty z M7: [`../gfx/color-space.md`](../gfx/color-space.md) (sRGB i wartości liniowe), [`../debug-ui.md`](../debug-ui.md) (`RawTextureSampler`), notatka [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md).
 - LearnOpenGL, rozdział "Normal Mapping": <https://learnopengl.com/Advanced-Lighting/Normal-Mapping> (kodowanie kierunku w kolorze, skąd niebieski wygląd mapy).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (tematy 4 i 5 i ich pokaz w ImGui, "toggle normal map").

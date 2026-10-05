@@ -13,6 +13,7 @@
 #include "game/MazeRenderer.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
+#include "game/PostProcess.hpp"
 #include "game/Round.hpp"
 #include "game/Skybox.hpp"
 #include "game/Terrain.hpp"
@@ -36,6 +37,10 @@ namespace game {
 /// moon, by the flashlight of the player and by the glowing crystals. Grass grows along
 /// the walls, and above them is the night sky, a skybox.
 ///
+/// The scene is not drawn into the window directly. It is drawn into an HDR framebuffer
+/// (game::PostProcess), and a last pass brings that picture to the window with
+/// exposure, tone mapping and gamma correction.
+///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
 /// Walking through it wins the round. The rules are in game/Round.hpp, this class feeds
@@ -53,8 +58,9 @@ protected:
     void onUpdate(double fixedDt) override;
     void onRender(double alpha) override;
 
-    /// Clear color (red, green, blue), exposed so the debug UI can edit it live. It is
-    /// the background only where the sky is not drawn: with the skybox switched off.
+    /// Clear color (red, green, blue, as sRGB values), exposed so the debug UI can edit
+    /// it live. It is the background only where the sky is not drawn: with the skybox
+    /// switched off.
     std::array<float, 3>& clearColor() { return m_clearColor; }
 
     /// Shader program of the scene without lighting and of its debug views (textured
@@ -78,6 +84,22 @@ protected:
 
     /// Shader program of the grass (with a geometry stage), exposed for the same reason.
     gfx::Shader& grassShader() { return m_grassShader; }
+
+    /// Shader program of the composite pass (the HDR picture to the window), exposed
+    /// for the same reason.
+    gfx::Shader& compositeShader() { return m_compositeShader; }
+
+    /// Shader program of the attachment previews of the debug UI, exposed for the same
+    /// reason.
+    gfx::Shader& previewShader() { return m_previewShader; }
+
+    /// The exposure, the tone mapping and the preview switch of the composite pass,
+    /// exposed so the debug UI can edit them live.
+    PostProcessSettings& postProcessSettings() { return m_postProcessSettings; }
+
+    /// The framebuffers of the frame, read only: the debug UI shows their sizes, their
+    /// formats and pictures of their attachments.
+    const PostProcess& postProcess() const { return m_postProcess; }
 
     /// The height scale and the wireframe switch of the terrain, exposed so the debug UI
     /// can edit them live.
@@ -176,12 +198,17 @@ private:
     void drawGrass(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 
+    /// The light the crystals give off by themselves at this moment, as a linear colour
+    /// for the uniform uEmissive: game::crystalGlow of the colour of the crystal lights.
+    glm::vec3 crystalEmissive() const;
+
     // The colour every frame starts with: a very dark blue, darker than the ambient
     // light on the stone. The sky is drawn over it wherever no wall is, so it shows
     // only when the skybox is switched off or its pictures could not be loaded. It is
     // close to the colour of the sky straight above, so switching the skybox off does
-    // not change the mood of the scene.
-    std::array<float, 3> m_clearColor{0.01F, 0.015F, 0.04F};
+    // not change the mood of the scene. An sRGB value, as the colour picker of the
+    // debug UI shows it: onRender converts it to linear for the HDR buffer.
+    std::array<float, 3> m_clearColor{0.022F, 0.033F, 0.088F};
 
     // OpenGL objects. They are members of a class derived from core::Application, so they
     // are created after the window and its OpenGL context, and destroyed before them.
@@ -195,6 +222,8 @@ private:
     gfx::Shader m_gouraudShader;
     gfx::Shader m_skyboxShader;
     gfx::Shader m_grassShader;
+    gfx::Shader m_compositeShader;
+    gfx::Shader m_previewShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
@@ -203,6 +232,8 @@ private:
     ColliderLines m_colliderLines;
     LightRig m_lightRig;
     Skybox m_skybox;
+    // The HDR framebuffer of the scene and the passes after the scene.
+    PostProcess m_postProcess;
 
     // The request for the next maze (edited by the debug UI).
     MazeSettings m_mazeSettings;
@@ -262,6 +293,9 @@ private:
 
     // Whether the sky is drawn and how bright it is.
     SkyboxSettings m_skyboxSettings;
+
+    // The exposure and the tone mapping of the composite pass.
+    PostProcessSettings m_postProcessSettings;
 
     // How the camera is turned. It belongs to the controls, not to the camera.
     float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;

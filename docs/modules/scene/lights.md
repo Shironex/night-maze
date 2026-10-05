@@ -1,6 +1,6 @@
 # Moduł scene: światła
 
-Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": sekcja 2.9), w M5 doszły światła kryształów i składnik emisyjny (sekcja 2.2). Temat wykładu: 6 (Światło kierunkowe i punktowe).
+Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": sekcja 2.9), w M5 doszły światła kryształów i składnik emisyjny (sekcja 2.2), w pierwszej części M7 rachunek światła przeszedł na wartości liniowe z wynikiem w buforze HDR (sekcja 2.8). Temat wykładu: 6 (Światło kierunkowe i punktowe).
 Kod: [`src/scene/Light.hpp`](../../../src/scene/Light.hpp), [`src/scene/Light.cpp`](../../../src/scene/Light.cpp), plik dołączany do shaderów [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), panel [`src/debug/panels/LightsPanel.hpp`](../../../src/debug/panels/LightsPanel.hpp) i [`LightsPanel.cpp`](../../../src/debug/panels/LightsPanel.cpp), testy [`tests/LightTests.cpp`](../../../tests/LightTests.cpp).
 
 Część modułu `scene`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość przekształceń ([`transforms.md`](transforms.md)), kamery ([`camera.md`](camera.md)), shaderów i uniformów ([`../gfx/shaders.md`](../gfx/shaders.md), [`../gfx/uniforms.md`](../gfx/uniforms.md)) oraz tekstur ([`../gfx/textures.md`](../gfx/textures.md)).
@@ -20,11 +20,13 @@ Oświetlenie jest rozłożone na sześć dokumentów. Każdy plik kodu jest omaw
 
 Część M4 (rodzaje świateł, wzory, panel) była zmierzona na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): start gry bez linii `[error]` i bez linii `GL_`, a na zrzutach ekranu widok startowy, cztery tryby cieniowania z trzech miejsc, latarka wyłączona, strony ścian oświetlone i nieoświetlone przez księżyc. Światła punktowe wisiały wtedy w ślepych zaułkach.
 
-M5 (światła nad kryształami, puls, składnik emisyjny, bateria latarki) jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (dziś, po drugiej części M6, 256 przypadków i 101232 asercje), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany, a zbierania kryształów i gasnących świateł nikt nie oglądał w działającej grze. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: ani część M4, ani nic z M5 i M6.
+M5 (światła nad kryształami, puls, składnik emisyjny, bateria latarki) jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 przypadków i 102103 asercje), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany, a zbierania kryształów i gasnących świateł nikt nie oglądał w działającej grze. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: ani część M4, ani nic z M5, M6 i pierwszej części M7.
 
 W drugiej części M6 pod światłami zmieniło się podłoże: płytki podłogi zastąpił teren z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)), a plik `common/lighting.glsl` dostał trzeciego użytkownika, shader fragmentów trawy `grass.frag` ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)). Wzory świateł, struktury i panel Lights zostały bez zmian.
 
-Czego w tym kamieniu nie ma: **cieni** (dojdą w M7, do tego czasu światło przechodzi przez ściany), **korekcji gamma i tekstur sRGB** (M7, notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Mapy normalnych, które w pierwszej części M4 były na tej liście, są już w kodzie: normalną, którą dostają wzory z tego dokumentu, opisuje sekcja 2.9.
+W pierwszej części M7 (bufor HDR i gamma, zgłoszona jako zbudowana i sprawdzona na Windowsie 2026-10-05, nowych kontrolek nikt nie klikał) wzory świateł, struktury i plik `common/lighting.glsl` zostały bez zmian, ale zmieniło się to, **na jakich liczbach** liczą: kolory świateł trafiają do shadera jako wartości liniowe (przelicza je `game::buildLightSet`), tekstury koloru są dekodowane z sRGB przy odczycie, a wynik idzie do bufora zmiennoprzecinkowego, w którym wartość powyżej 1 nie jest obcinana. Wartości startowe świateł zostały dobrane od nowa (sekcja 2.8).
+
+Czego nadal nie ma: **cieni** (planowane w dalszej części M7, do tego czasu światło przechodzi przez ściany). **Korekcja gamma i tekstury sRGB**, które do M6 stały na tej liście, są już w kodzie ([`../gfx/color-space.md`](../gfx/color-space.md), notatka [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md), która zastąpiła [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Mapy normalnych, które w pierwszej części M4 były na tej liście, są już w kodzie: normalną, którą dostają wzory z tego dokumentu, opisuje sekcja 2.9.
 
 ## 1. Po co to jest
 
@@ -108,7 +110,7 @@ kolor = kolor_powierzchni * (otoczenie + suma po światłach: światło * Lamber
 Dwie decyzje widać w tym wzorze:
 
 - **Kolor powierzchni (tekstura razy kolor materiału) mnoży tylko część rozproszoną i otoczenia.** Czerwona ściana odbija czerwoną część światła. Odbłysk jest dodawany na wierzch **w kolorze światła**: połysk na kamieniu oświetlonym ciepłą latarką jest ciepły, a nie w kolorze kamienia.
-- **Suma po światłach.** Światła się dodają. Wynik może przekroczyć 1: framebuffer obcina wtedy kolor do 1 (prześwietlenie). Panel Lights pozwala to wywołać celowo (sekcja 6).
+- **Suma po światłach.** Światła się dodają. Wynik może przekroczyć 1. Do M6 framebuffer okna obcinał wtedy kolor do 1 (prześwietlenie). Od pierwszej części M7 scena jest rysowana do bufora zmiennoprzecinkowego (`GL_RGBA16F`), który przechowuje także wartości większe niż 1, a w zakres ekranu sprowadza je dopiero mapowanie tonów w ostatnim przebiegu klatki ([`../renderer/post-process.md`](../renderer/post-process.md)). Panel Lights pozwala wywołać duże wartości celowo (sekcja 6).
 
 **Czwarty składnik: emisyjny.** Model Phonga ma trzy składniki. Równanie oświetlenia potoku stałego starego OpenGL dokładało do nich czwarty, najprostszy: **emisję** (emissive term), czyli światło, które powierzchnia **oddaje sama z siebie**. Nie zależy od żadnego światła sceny, od normalnej ani od oka: żarówka, ekran albo świecący kryształ są jasne także w zupełnej ciemności. W potoku stałym był to parametr materiału `GL_EMISSION`, a w plikach MTL jest to linia `Ke` (loader projektu ją pomija: emisja nie pochodzi tu z pliku materiału, tylko z kodu gry).
 
@@ -130,7 +132,7 @@ kolor = kolor_powierzchni * (otoczenie + suma po światłach: światło * Lamber
 
 Skąd w takim razie turkusowy blask na ścianach wokół kryształu? Z osobnego **światła punktowego**, które gra wiesza 0,15 m nad czubkiem każdego niezebranego kryształu ([`../game/flashlight.md`](../game/flashlight.md), sekcja 2.5). Emisja i światło punktowe to dwa mechanizmy, które razem udają jedną rzecz: mają ten sam kolor (`pointColor`) i pulsują tym samym mnożnikiem (`game::crystalPulse`). Prawdziwe źródło światła robi obie rzeczy naraz, w modelu Phonga trzeba je złożyć z dwóch części.
 
-Po co emisja jest potrzebna, skoro kryształ ma własne światło: to światło wisi **nad** kryształem i poza jego siatką (światło w środku zamkniętej siatki pada na jej ścianki od tyłu i nie oświetla żadnej). Ścianki boczne i dolne dostają z niego mało albo nic, więc bez emisji źródło światła byłoby najciemniejszą rzeczą w swoim kącie. Siłę blasku ustawia stała `CRYSTAL_GLOW_STRENGTH` w `game/Crystals.hpp`: komentarz przy niej mówi, że przy wartości 1 kryształ jest wyraźnie najjaśniejszą rzeczą w swoim kącie, a jego ścianki da się jeszcze odróżnić, bo mocniejszy blask zamienia cały kryształ w jedną płaską plamę najjaśniejszego koloru, jaki ekran umie pokazać. Shadery z `uEmissive` linia po linii: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcje 4.2 i 4.4. Kto i kiedy ustawia `uEmissive`: [`../game/gameplay.md`](../game/gameplay.md), sekcja 4. Rysowanie kryształów: tamże, sekcja 5.
+Po co emisja jest potrzebna, skoro kryształ ma własne światło: to światło wisi **nad** kryształem i poza jego siatką (światło w środku zamkniętej siatki pada na jej ścianki od tyłu i nie oświetla żadnej). Ścianki boczne i dolne dostają z niego mało albo nic, więc bez emisji źródło światła byłoby najciemniejszą rzeczą w swoim kącie. Siłę blasku ustawia stała `CRYSTAL_GLOW_STRENGTH` w `game/Crystals.hpp`. Do M6 wynosiła 1: mocniejszy blask zamieniał wtedy cały kryształ w jedną płaską plamę najjaśniejszego koloru, jaki ekran umie pokazać, bo wszystko powyżej 1 było obcinane. Od pierwszej części M7 wynosi 2,5, celowo powyżej 1: scena jest rysowana do bufora HDR, w którym kolor może być jaśniejszy niż biel, a świecący kryształ jest jedyną rzeczą w labiryncie, która taka ma być. Mapowanie tonów sprowadza go potem w zakres ekranu bez zlewania ścianek w płaską plamę (liczby: [`../game/gameplay.md`](../game/gameplay.md)). Shadery z `uEmissive` linia po linii: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcje 4.2 i 4.4. Kto i kiedy ustawia `uEmissive`: [`../game/gameplay.md`](../game/gameplay.md), sekcja 4. Rysowanie kryształów: tamże, sekcja 5.
 
 Odbłysk ma dwa warianty wzoru, Phonga i Blinna-Phonga. Różnicę, geometrię i to, jak ją pokazać, omawia dokument tematu 7: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Tu wystarczy wiedzieć, że oba dają liczbę od 0 do 1, największą tam, gdzie odbicie światła trafia prosto w oko.
 
@@ -318,11 +320,33 @@ Co z tego wynika:
 
 Dlaczego na procesorze, a nie `transpose(inverse(mat3(uModel)))` w shaderze: shader wierzchołków liczyłby odwrotność od nowa dla każdego wierzchołka, a wynik jest ten sam dla całego obiektu.
 
-### 2.8 Czego jeszcze nie ma: cienie i gamma
+### 2.8 Czego jeszcze nie ma: cienie. Co już jest: gamma i HDR
 
-**Cienie.** Wzory z tej sekcji pytają tylko o kąt i odległość. Nie pytają, czy między światłem a punktem coś stoi. Światło punktowe kryształu rozjaśnia więc także grunt korytarza **za ścianą**, a księżyc oświetla grunt u stóp ściany, która powinna go zasłaniać. To nie błąd shadera, tylko brak osobnej techniki (mapy cieni), która jest tematem 9 i dojdzie w M7. Na obronie mówię to wprost.
+**Cienie.** Wzory z tej sekcji pytają tylko o kąt i odległość. Nie pytają, czy między światłem a punktem coś stoi. Światło punktowe kryształu rozjaśnia więc także grunt korytarza **za ścianą**, a księżyc oświetla grunt u stóp ściany, która powinna go zasłaniać. To nie błąd shadera, tylko brak osobnej techniki (mapy cieni), która jest tematem 11 wykładu i jest planowana w dalszej części M7. Na obronie mówię to wprost.
 
-**Gamma.** Tekstury są czytane tak, jak leżą w pliku, a wynik jest zapisywany bez korekcji. Rachunek światła odbywa się więc na liczbach, które nie są proporcjonalne do jasności. Uzasadnienie i skutki są w notatce [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
+**Gamma: stan do M6.** Tekstury były czytane tak, jak leżą w pliku, a wynik był zapisywany bez korekcji. Rachunek światła odbywał się więc na liczbach, które nie są proporcjonalne do jasności. Dlaczego tak było, zapisuje notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona.
+
+**Gamma: stan od pierwszej części M7.** Mnożenie koloru przez światło i dodawanie świateł jest poprawne tylko na wartościach **liniowych**, czyli proporcjonalnych do ilości światła. Dlatego wszystko, co wchodzi do wzorów z tej sekcji, jest dziś liniowe:
+
+| Co wchodzi do wzoru | Skąd jest liniowe |
+|---|---|
+| kolor powierzchni z tekstury | tekstura koloru ma format sRGB (`GL_SRGB8`), więc karta dekoduje ją przy odczycie |
+| kolory świateł i światła otoczenia w bloku `LightBlock` | w ustawieniach (`game::LightingSettings`) są wartościami sRGB, takimi, jakie pokazuje próbnik koloru. `game::buildLightSet` przelicza każdy z czterech kolorów raz, funkcją `gfx::srgbToLinear` ([`../game/flashlight.md`](../game/flashlight.md)) |
+| intensywności | to zwykłe mnożniki, nie kolory: nie są przeliczane |
+| blask kryształu `uEmissive` | liczony z liniowego koloru świateł punktowych (`NightMazeApp::crystalEmissive`, [`../game/gameplay.md`](../game/gameplay.md)) |
+
+Wynik wzoru jest zapisywany bez żadnego przeliczenia do bufora HDR sceny. Kodowanie do sRGB (korekcja gamma) dzieje się raz, na końcu klatki, w przebiegu składającym, po ekspozycji i mapowaniu tonów. Pełna teoria, funkcja sRGB z liczbami i lista miejsc, w których kolory są przeliczane: [`../gfx/color-space.md`](../gfx/color-space.md). Przebieg składający: [`../renderer/post-process.md`](../renderer/post-process.md). Decyzja: [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md).
+
+**Wartości startowe świateł po tej zmianie.** Stare liczby były dobrane do obrazu bez gammy, więc dobrano je od nowa:
+
+| Pole `LightingSettings` | Do M6 | Od pierwszej części M7 | Co naprawdę trafia do shadera (liniowe) |
+|---|---|---|---|
+| `ambient` | `(0,035, 0,045, 0,075)` | `(0,105, 0,135, 0,225)` | `(0,0108, 0,0163, 0,0414)` |
+| `moonColor`, `moonIntensity` | `(0,55, 0,65, 1,0)` i 0,3 | ten sam kolor i 0,12 | kolor `(0,263, 0,380, 1,0)` razy 0,12 |
+| `flashlightColor`, `flashlightIntensity` | `(1,0, 0,9, 0,72)` i 1,6 | ten sam kolor i 1,3 | kolor `(1,0, 0,787, 0,477)` razy 1,3 |
+| `pointColor`, `pointIntensity` | `(0,2, 0,9, 0,8)` i 2,0 | ten sam kolor i 0,9 | kolor `(0,033, 0,787, 0,604)` razy 0,9 |
+
+Dwie rzeczy widać w tej tabeli. Po pierwsze liczba sRGB wygląda na dużo większą niż światło, które oznacza: 0,105 to po przeliczeniu 0,0108, czyli około jednej setnej bieli. Po drugie latarka w osi stożka i blisko ściany daje w czerwonym kanale 1,3, czyli więcej niż biel. Do M6 byłoby to obcięte do 1. Dziś zostaje w buforze jako 1,3, a krzywa mapowania tonów decyduje, jak to pokazać.
 
 ### 2.9 Która normalna trafia do wzorów: siatka albo mapa normalnych
 
@@ -967,12 +991,12 @@ Suwak **logarytmiczny**: połowa jego długości przypada na małe wykładniki, 
 
 | Grupa | Kontrolka | Zakres | Pole w `LightingSettings` | Czego uczy |
 |---|---|---|---|---|
-| (bez grupy) | `Ambient` | kolor | `ambient` | składnik otoczenia: jedyne światło w miejscach, do których nic nie świeci. Czarny daje czarne cienie |
+| (bez grupy) | `Ambient` | kolor | `ambient` | składnik otoczenia: jedyne światło w miejscach, do których nic nie świeci. Czarny daje czarne cienie. Jak wszystkie cztery kolory panelu, jest to wartość sRGB (to, co pokazuje próbnik), przeliczana na liniową w `buildLightSet` |
 | `Moon (directional)`, zwinięta | `Moon yaw` | od 0 do 360 stopni | `moonYawDegrees` | światło kierunkowe: obrót zmienia, które strony ścian są jasne (prawo Lamberta), a nic nie zależy od miejsca |
 | | `Moon pitch` | od -90 do -5 stopni | `moonPitchDegrees` | -90: grunt najjaśniejszy, ściany ciemne. Blisko -5: odwrotnie |
 | | `Moon colour`, `Moon intensity` | kolor, od 0 do 2 | `moonColor`, `moonIntensity` | kolor razy intensywność. 0 wyłącza księżyc |
 | `Flashlight (spot)` | `Flashlight on (key F)` | pole wyboru | `flashlightOn` | to samo pole, które przełącza klawisz F. Przy pustej baterii ma podpowiedź `The battery is empty: collect a crystal first.` i samo się odznacza |
-| | `Beam colour`, `Beam intensity` | kolor, od 0 do 10 | `flashlightColor`, `flashlightIntensity` | powyżej pewnej wartości środek plamy się prześwietla: kolor jest obcinany do 1 |
+| | `Beam colour`, `Beam intensity` | kolor, od 0 do 10 | `flashlightColor`, `flashlightIntensity` | powyżej pewnej wartości środek plamy się prześwietla. Od M7 wartości powyżej 1 zostają w buforze HDR, a o tym, kiedy plama robi się płasko biała, decyduje krzywa mapowania tonów z panelu Framebuffers: przy `None (clamp)` obcięcie następuje przy 1 jak dawniej, przy domyślnej `ACES (fitted)` krzywa dochodzi do bieli dopiero w okolicy 7 |
 | | `Cone` | dwa kąty od 1 do 60 stopni | `flashlightInnerDegrees`, `flashlightOuterDegrees` | stożek wewnętrzny i zewnętrzny. Równe wartości dają ostrą krawędź, duża różnica szeroki miękki brzeg |
 | | `Beam range` | od 2 do 60 m | `flashlightRange` | tłumienie z promienia: jak daleko w korytarz sięga światło |
 | `Point lights (crystals)` | tekst `Lit: 13 of 13 crystals (at most 16)` | odczyt | `round.crystals.size()`, `round.collectedCount` | liczba świateł to liczba niezebranych kryształów, z limitem tablicy w shaderze. 13 dla labiryntu startowego na początku rundy |
@@ -981,7 +1005,7 @@ Suwak **logarytmiczny**: połowa jego długości przypada na małe wykładniki, 
 | `Highlight (specular)` | `Strength` | od 0 do 2 | `specularStrength` | siła odbłysku. 0 zostawia sam składnik rozproszony |
 | | `Shininess` | od 1 do 256, logarytmiczny | `shininess` | wykładnik: mały daje szeroką plamę, duży małą i ostrą |
 
-Dolne granice zasięgów (2 m i 0,5 m) trzymają promień z dala od zera, przez które `attenuationForRadius` nie może dzielić. Górne granice intensywności są celowo dużo powyżej wartości startowych: da się prześwietlić scenę i zobaczyć obcinanie kolorów.
+Dolne granice zasięgów (2 m i 0,5 m) trzymają promień z dala od zera, przez które `attenuationForRadius` nie może dzielić. Górne granice intensywności są celowo dużo powyżej wartości startowych: da się prześwietlić scenę. Najlepiej robić to z otwartym panelem Framebuffers i przełączać `Tone mapping` między `None (clamp)` a `ACES (fitted)`: ta sama scena raz gubi szczegóły w białej plamie, raz je zachowuje.
 
 Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lighting` w panelu **Renderer**, nie tutaj: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 6.
 
@@ -993,7 +1017,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 2. **Składnik otoczenia.** Ustawiam `Ambient` na czarny: miejsca bez światła stają się zupełnie czarne. Przywracam.
 3. **Światło kierunkowe i Lambert.** Naciskam F (latarka gaśnie), żeby nie przeszkadzała. Rozwijam `Moon (directional)` i podnoszę `Moon intensity` do 1. Obracam `Moon yaw`: jasne stają się kolejne strony ścian, a po przejściu w inne miejsce nic się nie zmienia, bo kierunek jest wszędzie ten sam. Ustawiam `Moon pitch` na -90: ściany gasną (cosinus 0), grunt jest najjaśniejszy.
 4. **Światło punktowe i tłumienie.** Podchodzę do kryształu i zatrzymuję się około metra przed nim, żeby go nie zebrać (gracz zbiera kryształ, gdy stoi bliżej niż około 0,86 m od środka jego komórki: [`../game/gameplay.md`](../game/gameplay.md), sekcja 2). Zmieniam `Point radius` z 3 na 1, potem na 8. Mówię: w odległości równej promieniowi zostaje 5 procent, a krzywa ma zawsze ten sam kształt.
-5. **Brak cieni.** Przy promieniu 8 pokazuję grunt za ścianą, przy której wisi kryształ: jest rozjaśniony. Mówię, że wzór pyta tylko o kąt i odległość, a cienie to osobna technika z M7.
+5. **Brak cieni.** Przy promieniu 8 pokazuję grunt za ścianą, przy której wisi kryształ: jest rozjaśniony. Mówię, że wzór pyta tylko o kąt i odległość, a cienie to osobna technika, planowana w dalszej części M7.
 6. **Emisja a światło.** Przywracam `Point radius` 3 i przesuwam `Point intensity` do 0: ściany wokół kryształu gasną, a sam kryształ świeci dalej. Zmieniam `Point colour`: zmienia się i kryształ, i (po przywróceniu intensywności) blask na ścianach. Mówię: kryształ świeci składnikiem emisyjnym, a ściany oświetla osobne światło punktowe nad nim. Pokazuję linię `Lit: 13 of 13 crystals (at most 16)`.
 7. **Reflektor.** Włączam latarkę (F). Staję przed ścianą. W `Cone` ustawiam oba kąty na 15: ostra krawędź. Potem 5 i 30: szeroki miękki brzeg. Mówię o porównywaniu cosinusów.
 8. **Zasięg.** Patrzę w długi korytarz i przesuwam `Beam range` od 4 do 40.
@@ -1011,12 +1035,12 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 7. **Dzielenie przez odległość równą zero.** `offset / lightDistance` daje `NaN`, gdy punkt powierzchni leży dokładnie w pozycji światła. W grze to się nie zdarza: latarka jest w oku, a bliska płaszczyzna obcinania nie dopuszcza powierzchni do oka, światła punktowe wiszą nad kryształami, około 1,55 m nad środkiem komórki, z dala od ścian i 0,15 m nad czubkiem samego kryształu. Światło wstawione **w** powierzchnię dałoby czarny albo migający piksel.
 8. **Kierunek o długości zero.** `normalize` wektora zerowego to `NaN`, a jedno `NaN` w bloku robi czarny każdy oświetlony piksel. `packLightBlock` zamienia taki kierunek na `(0, -1, 0)`.
 9. **Światło przechodzi przez ściany.** To brak cieni, a nie błąd (sekcja 2.8). Duży `Point radius` pokazuje to najwyraźniej.
-10. **Prześwietlenie.** Światła się sumują, a framebuffer obcina do 1. Przy dużych intensywnościach środek plamy latarki robi się płaską białą plamą i znika w niej tekstura. Rozwiązaniem jest HDR z mapowaniem tonów (M7).
+10. **Prześwietlenie.** Światła się sumują. Do M6 framebuffer obcinał wynik do 1: przy dużych intensywnościach środek plamy latarki robił się płaską białą plamą i znikała w niej tekstura. Od pierwszej części M7 rozwiązaniem jest bufor HDR z mapowaniem tonów ([`../renderer/post-process.md`](../renderer/post-process.md)). Stary obraz da się przywołać: `Tone mapping` ustawione na `None (clamp)` w panelu Framebuffers obcina jak dawniej.
 11. **Dwie kopie wzorów.** Tłumienie i stożek są zapisane w C++ (testowane) i w GLSL (nietestowane). Zmiana w jednym miejscu nie zmienia drugiego i żaden test tego nie wykryje.
 12. **Uniformy materiału ustawione w złym programie.** `uSpecularModel`, `uSpecularStrength` i `uShininess` to zwykłe uniformy: należą do programu. `lit` i `gouraud` mają własne kopie. Ustawia je `drawLitMaze` po `use()` programu, którym zaraz rysuje.
 13. **Odbłysk bez pozycji oka.** `uCameraPosition` musi być okiem, z którego rysowana jest klatka (interpolowanym), a nie pozycją z ostatniego kroku symulacji. Inaczej odbłysk drga przy ruchu.
 14. **Światło liczone w złej przestrzeni.** Wszystko jest w przestrzeni świata. Normalna pomnożona przez macierz widoku albo pozycja fragmentu w przestrzeni widoku dałyby światło, które obraca się razem z kamerą.
-15. **Brak korekcji gamma.** Suma świateł na wartościach sRGB jest ciemniejsza w półcieniach, niż byłaby poprawnie ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Wartości startowe świateł są dobrane do tego stanu i po wprowadzeniu gammy trzeba je będzie dobrać od nowa.
+15. **Kolor światła wysłany bez przeliczenia.** Do M6 korekcji gamma nie było wcale i suma świateł na wartościach sRGB była ciemniejsza w półcieniach, niż byłaby poprawnie. Od pierwszej części M7 rachunek jest liniowy, a pułapka zmieniła postać: kolor z próbnika jest wartością sRGB i musi być przeliczony **dokładnie raz**. Wysłany do shadera bez `gfx::srgbToLinear` da światło za jasne i wyblakłe, przeliczony dwa razy za ciemne i zbyt nasycone. W grze jedynym miejscem przeliczenia kolorów świateł jest `buildLightSet`, a pilnuje tego test `buildLightSet converts the colours from sRGB to linear and leaves the rest` ([`../gfx/color-space.md`](../gfx/color-space.md)).
 16. **Emisja wzięta za światło.** `uEmissive` rozjaśnia tylko obiekt, który jest z nim rysowany. Kto ustawi duży blask i oczekuje jaśniejszych ścian, nie zobaczy żadnej zmiany: do tego służy światło punktowe. I odwrotnie: uniform trzyma wartość między wywołaniami rysowania, więc gdyby `MazeRenderer::draw` nie ustawiał go na czerń, ściany narysowane po kryształach poprzedniej klatki świeciłyby na turkusowo.
 17. **Emisja pomnożona przez kolor powierzchni.** We wzorze projektu emisja przechodzi przez teksturę i `uTint`. Czarny teksel nie świeci, a biała emisja na czerwonej teksturze jest czerwona. Kto przenosi wzór z podręcznika (emisja dodana na końcu), dostanie inny obraz.
 18. **macOS, niesprawdzone.** Kompilator GLSL Apple może inaczej potraktować plik dołączany, pętlę z `break` albo blok `std140`. Nic z tego nie było uruchamiane na Macu: lista jest w [`../../guides/build-macos.md`](../../guides/build-macos.md).
@@ -1102,7 +1126,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
     Dodaje do wyniku część rozproszoną i odbłysk jednego światła. Rodzaje świateł różnią się tylko tym, jak powstaje wektor do światła i ile światła dociera (`radiance`). Dalej wzory są wspólne.
 
 21. **Dlaczego światło kryształu widać za ścianą?**
-    Bo nie ma cieni. Wzory nie sprawdzają, czy między światłem a punktem coś stoi. Mapy cieni to M7.
+    Bo nie ma cieni. Wzory nie sprawdzają, czy między światłem a punktem coś stoi. Mapy cieni są planowane w dalszej części M7.
 
 22. **Co oznacza `inout` w `addLight`?**
     Parametr jest kopiowany do funkcji przy wejściu i z powrotem przy wyjściu. GLSL nie ma referencji, a funkcja musi dopisać do struktury wołającego.
@@ -1125,6 +1149,15 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 28. **Dlaczego emisja jest mnożona przez kolor powierzchni?**
     Żeby tekstura kryształu została widoczna: emisja dodana na wierzch dałaby każdemu fragmentowi tę samą wartość i zatarła jej rysunek.
 
+29. **W jakiej przestrzeni kolorów są kolory świateł w panelu, a w jakiej w shaderze?**
+    W panelu i w `LightingSettings` są wartościami sRGB, takimi, jakie pokazuje próbnik koloru. `game::buildLightSet` przelicza cztery kolory (otoczenie, księżyc, latarka, światła punktowe) funkcją `gfx::srgbToLinear`, więc do bloku `LightBlock` trafiają wartości liniowe. Intensywności są mnożnikami i nie są przeliczane.
+
+30. **Dlaczego światło trzeba liczyć na wartościach liniowych?**
+    Bo mnożenie przez światło i dodawanie świateł opisują ilość światła, a liczby sRGB nie są do niej proporcjonalne: 0,5 w sRGB to tylko około 0,214 światła bieli. Suma liczona na wartościach sRGB daje za ciemne półcienie i za ostre przejścia.
+
+31. **Co się dzieje, gdy suma świateł przekroczy 1?**
+    Od pierwszej części M7 nic nie ginie: bufor sceny jest zmiennoprzecinkowy (`GL_RGBA16F`) i przechowuje wartość taką, jaka wyszła. W zakres od 0 do 1 sprowadza ją krzywa mapowania tonów w przebiegu składającym. Do M6 framebuffer okna obcinał ją do 1.
+
 ## 10. Źródła
 
 - LearnOpenGL, "Basic Lighting" (<https://learnopengl.com/Lighting/Basic-Lighting>): składniki otoczenia, rozproszony i zwierciadlany, normalne, macierz normalnych.
@@ -1134,5 +1167,5 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 - docs.gl (<https://docs.gl>), strony funkcji GLSL 4: `reflect` (<https://docs.gl/sl4/reflect>), `dot`, `normalize`, `pow`, `clamp`, `length`.
 - Specyfikacja GLSL 4.10 (<https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.10.pdf>): kwalifikator `inout`, struktury, funkcje wbudowane, niezdefiniowany wynik `pow` dla ujemnej podstawy.
 - Bui Tuong Phong, "Illumination for Computer Generated Pictures" (1975): model odbicia. Johann Heinrich Lambert, "Photometria" (1760): prawo cosinusów.
-- Dokumenty w tym repozytorium: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../game/flashlight.md`](../game/flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (normalna z mapy normalnych), [`transforms.md`](transforms.md) (`normalMatrix`), [`camera.md`](camera.md) (yaw, pitch, `forward`), [`../debug-ui.md`](../debug-ui.md) (panele), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, `crystalGlow`, `GameplayRenderer`), notatki [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) i [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md) (ile kryształów, a więc ile świateł punktowych). Notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md) opisuje rozwiązanie z M4 (światła w ślepych zaułkach), które M5 zastąpił.
+- Dokumenty w tym repozytorium: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../game/flashlight.md`](../game/flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (normalna z mapy normalnych), [`transforms.md`](transforms.md) (`normalMatrix`), [`camera.md`](camera.md) (yaw, pitch, `forward`), [`../debug-ui.md`](../debug-ui.md) (panele), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, `crystalGlow`, `GameplayRenderer`), [`../gfx/color-space.md`](../gfx/color-space.md) (sRGB i wartości liniowe, gdzie kolory są przeliczane), [`../renderer/post-process.md`](../renderer/post-process.md) (bufor HDR, ekspozycja, mapowanie tonów), notatki [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) (obowiązuje od pierwszej części M7), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (zastąpiona, historia) i [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md) (ile kryształów, a więc ile świateł punktowych). Notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md) opisuje rozwiązanie z M4 (światła w ślepych zaułkach), które M5 zastąpił.
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o oświetleniu).

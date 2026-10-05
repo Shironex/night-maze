@@ -6,6 +6,7 @@
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
 #include "debug/PanelLayout.hpp"
+#include "debug/RawTextureSampler.hpp"
 #include "debug/Theme.hpp"
 #include "game/MazeRenderer.hpp"
 #include "gfx/Texture2D.hpp"
@@ -112,15 +113,19 @@ void drawModels(const assets::AssetCache& assets) {
     }
 }
 
-// The list of loaded textures: file, size and a small picture. The normal maps are in
-// the same list: for the cache they are textures like the others. Their preview is the
-// picture as it is stored, mostly light blue, because most texels hold a direction close
-// to (0, 0, 1), which is the colour (128, 128, 255).
-void drawTextures(const assets::AssetCache& assets) {
+// The list of loaded textures: file, size, colour space and a small picture. The normal
+// maps are in the same list: for the cache they are textures like the others. Their
+// preview is the picture as it is stored, mostly light blue, because most texels hold
+// a direction close to (0, 0, 1), which is the colour (128, 128, 255).
+void drawTextures(const assets::AssetCache& assets, const RawTextureSampler& rawSampler) {
     ImGui::SeparatorText("Textures");
     for (const assets::LoadedTexture& loaded : assets.textures()) {
         drawFileName(loaded.path);
-        ImGui::Text("  %d x %d px", loaded.texture.width(), loaded.texture.height());
+        // sRGB: a colour picture, decoded to linear values when a shader reads it.
+        // Linear: data that is read as it is stored (a normal map).
+        const bool isSrgb = loaded.texture.colorSpace() == gfx::ColorSpace::Srgb;
+        ImGui::Text("  %d x %d px, %s", loaded.texture.width(), loaded.texture.height(),
+                    isSrgb ? "sRGB" : "linear");
 
         // ImGui identifies a texture by a number it hands to its renderer: for the OpenGL
         // backend that is the id of the texture object. The cast only widens the number
@@ -133,8 +138,19 @@ void drawTextures(const assets::AssetCache& assets) {
         //
         // The preview is drawn by ImGui with its own sampler, always with a linear
         // filter, so it does not react to the filter chosen above.
+        //
+        // An sRGB texture read by ImGui would give linear values, and ImGui writes what
+        // it reads straight into the window: the picture would be too dark. Between
+        // begin and end it is read without the decoding, so the preview shows the
+        // bytes of the file.
         const auto textureId = static_cast<ImTextureID>(loaded.texture.id());
+        if (isSrgb) {
+            rawSampler.begin();
+        }
         ImGui::Image(textureId, {PREVIEW_SIZE, PREVIEW_SIZE}, {0.0F, 1.0F}, {1.0F, 0.0F});
+        if (isSrgb) {
+            rawSampler.end();
+        }
     }
 }
 
@@ -155,14 +171,15 @@ void drawFailures(const assets::AssetCache& assets) {
 
 } // namespace
 
-void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping) {
+void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping,
+                     const RawTextureSampler& rawSampler) {
     // First run only: the right edge of the window, below the Maze panel (the constant
     // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
     placePanelOnFirstUse(ASSETS_PLACEMENT);
     if (ImGui::Begin("Assets")) {
         drawSettings(assets, viewMode, normalMapping);
         drawModels(assets);
-        drawTextures(assets);
+        drawTextures(assets, rawSampler);
         drawFailures(assets);
     }
     ImGui::End();

@@ -99,8 +99,10 @@ gfx::Cubemap loadSkyCubemap() {
         pixels[face] = images[face].pixels.data();
     }
     // The graphics card takes its own copy: the six images are freed when this function
-    // returns.
-    return {first.width, first.channels, pixels};
+    // returns. The sky pictures are colours, painted for the screen, so they are sRGB:
+    // the graphics card decodes them to linear values, which is what the HDR buffer
+    // the scene is drawn into expects.
+    return {first.width, first.channels, pixels, gfx::ColorSpace::Srgb};
 }
 
 } // namespace

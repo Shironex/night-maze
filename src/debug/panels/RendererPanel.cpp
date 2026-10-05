@@ -20,10 +20,10 @@ namespace {
 // ended by a zero character.
 constexpr const char* LIGHTING_MODE_ITEMS = "Unlit\0Gouraud\0Phong\0Blinn-Phong\0";
 
-// Range of the slider of the sky brightness. 1 shows the sky pictures as they are, 0 is
+// Range of the slider of the sky brightness. 1 leaves the sky pictures as they are, 0 is
 // a black sky. The pictures are dark, so the range goes well above 1.
 constexpr float MIN_SKY_BRIGHTNESS = 0.0F;
-constexpr float MAX_SKY_BRIGHTNESS = 3.0F;
+constexpr float MAX_SKY_BRIGHTNESS = 6.0F;
 
 } // namespace
 

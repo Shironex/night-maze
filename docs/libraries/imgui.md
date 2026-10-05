@@ -77,7 +77,8 @@ Prawdziwy odpowiednik tej drugiej postaci jest w
         }
 ```
 
-`shaders` to lista sześciu programów gry: jeden przycisk przeładowuje wszystkie.
+`shaders` to lista ośmiu programów gry (sześć do M6, od pierwszej części M7 także
+`composite` i `preview`): jeden przycisk przeładowuje wszystkie.
 
 Skutki praktyczne:
 
@@ -361,20 +362,23 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 6;
+        constexpr int SHADER_COUNT = 8;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader, &context.colorShader,  &context.litShader,
-            &context.gouraudShader,  &context.skyboxShader, &context.grassShader};
+            &context.texturedShader,  &context.colorShader,  &context.litShader,
+            &context.gouraudShader,   &context.skyboxShader, &context.grassShader,
+            &context.compositeShader, &context.previewShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawGameplayPanel(context.round, context.gameplay);
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
+        drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                       context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
-        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
+        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping,
+                        m_rawTextureSampler);
         drawLightsPanel(context.lighting, context.round);
     }
 
@@ -390,8 +394,10 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele i HUD pokazują i edytują (dwadzieścia cztery pola: od `time` i `window` po `grass`
-i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją). Buduje ją co klatkę
+panele i HUD pokazują i edytują (dwadzieścia osiem pól: od `time` i `window` po `grass`
+i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją, oraz cztery pola z
+pierwszej części M7: `compositeShader`, `previewShader`, `postProcessSettings` i
+`postProcess`). Buduje ją co klatkę
 `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
@@ -400,7 +406,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem dziesięć funkcji paneli i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem jedenaście funkcji paneli (jedenasta, `drawFramebuffersPanel`, od pierwszej części M7: sekcja 3.16) i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -562,7 +568,7 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   komputera, a nie część projektu.
 - Skasowanie pliku przywraca układ domyślny. To pierwsza rzecz do zrobienia, gdy panel
   "zniknął" albo wyjechał poza okno.
-- Układ domyślny naszych dziesięciu paneli ustawiają trójki `SetNextWindowPos`,
+- Układ domyślny naszych jedenastu paneli ustawiają trójki `SetNextWindowPos`,
   `SetNextWindowSize` i `SetNextWindowCollapsed` z warunkiem `ImGuiCond_FirstUseEver`
   (sekcje 3.11 i 3.13). Ten warunek działa tylko dla okna, którego w `imgui.ini` jeszcze
   nie ma. Stary plik zatrzyma panele na starych miejscach i w starych rozmiarach: plik
@@ -705,7 +711,7 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok pozostałych dziesięciu funkcji `draw...Panel`, dopisanie plików
+wywołanie w `DebugUI::draw` obok pozostałych jedenastu funkcji `draw...Panel`, dopisanie plików
 do `add_executable` w `CMakeLists.txt`. Przed `Begin` wywołanie `placePanelOnFirstUse` z nową
 stałą dopisaną w `src/debug/PanelLayout.hpp`, żeby panel przy pierwszym uruchomieniu nie
 przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
@@ -717,7 +723,7 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
 Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
 
-**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie dziesięć paneli woła przed `Begin`
+**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie jedenaście paneli woła przed `Begin`
 jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Trzy wywołania
 ImGui są w niej ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
 
@@ -836,6 +842,14 @@ liniowym, bez mipmap, z zawijaniem `GL_CLAMP_TO_EDGE`. Podgląd w panelu Assets 
 na filtr i anizotropię wybrane w tym samym panelu: ich skutek widać w scenie. Po narysowaniu
 backend przywraca sampler, który był związany wcześniej, tak jak resztę stanu.
 
+Od pierwszej części M7 dochodzi drugi skutek tego, że ImGui czyta teksturę sam i zapisuje
+wynik prosto do okna. Tekstury koloru są teraz teksturami sRGB (`GL_SRGB8`), więc odczyt
+oddaje wartości **liniowe**, których po ImGui nikt już nie zakoduje: podgląd byłby za ciemny.
+Dlatego w pliku linia `ImGui::Image` jest dla tekstur sRGB otoczona parą
+`rawSampler.begin()` i `rawSampler.end()`, która na czas tego jednego obrazka podmienia
+sampler na taki, który nie dekoduje (sekcja 3.16). Fragment kodu wyżej pokazuje samą linię
+`Image`, wspólną dla obu rodzajów tekstur.
+
 Od map normalnych lista `Textures` ma cztery pozycje zamiast dwóch. Mapy normalnych są dla
 pamięci podręcznej teksturami jak każde inne, więc ta sama linia `ImGui::Image` pokazuje je
 bez żadnej zmiany w kodzie: jako jasnoniebieskie obrazki, bo większość tekseli to kolor
@@ -949,7 +963,7 @@ Deklaracje i komentarze przytaczam z `build/debug/_deps/imgui-src/imgui.h` w nas
 | Element | Znaczenie |
 |---|---|
 | deklaracja | `void SetNextWindowCollapsed(bool collapsed, ImGuiCond cond = 0);` z komentarzem "set next window collapsed state. call before Begin()" |
-| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` mają cztery panele: Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`), od M5 Gameplay (`GAMEPLAY_PLACEMENT`), który stoi obok niego przy górnej krawędzi, i od M6 Terrain i Grass (`TERRAIN_PLACEMENT`, `GRASS_PLACEMENT`), które stoją rząd niżej, pod tymi dwoma (sekcja 3.15) |
+| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` ma pięć paneli: Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`), od M5 Gameplay (`GAMEPLAY_PLACEMENT`), który stoi obok niego przy górnej krawędzi, od M6 Terrain i Grass (`TERRAIN_PLACEMENT`, `GRASS_PLACEMENT`), które stoją rząd niżej, pod tymi dwoma (sekcja 3.15), i od pierwszej części M7 Framebuffers (`FRAMEBUFFERS_PLACEMENT`), jeden szeroki pasek w trzecim rzędzie (sekcja 3.16) |
 | `ImGuiCond_FirstUseEver` | ten sam warunek co przy pozycji i rozmiarze: tylko gdy okno nie ma wpisu w `imgui.ini`. Bez warunku panel zwijałby się z powrotem w każdej klatce i nie dałoby się go otworzyć |
 
 Zwinięte okno to zwykły stan okna ImGui, nie osobny widżet. Użytkownik przełącza go
@@ -1123,8 +1137,8 @@ constexpr ImGuiWindowFlags CARD_WINDOW_FLAGS = PICTURE_WINDOW_FLAGS;
 `ImGuiWindowFlags_NoBringToFrontOnFocus` (w `imgui.h`: "Disable bringing window to front when
 taking focus") trzyma okno z tyłu kolejności rysowania. Pasek stoi tuż pod paskami tytułu
 zwiniętych paneli: do M5 pod jednym rzędem (Camera i Gameplay, stała `HUD_TOP_OFFSET = 46`),
-od M6 pod dwoma (pod nimi Terrain i Grass), a odległość jest liczona z prawdziwej wysokości
-paska (sekcja 3.15). Rozwinięty panel go
+od M6 pod dwoma (pod nimi Terrain i Grass), od pierwszej części M7 pod trzema (trzeci rząd to
+pasek Framebuffers), a odległość jest liczona z prawdziwej wysokości paska (sekcja 3.15). Rozwinięty panel go
 przykrywa, i tak ma być: panel, w którym ktoś pracuje, jest ważniejszy niż napis pod nim.
 Karta tej flagi nie ma: ImGui stawia nowe okno przed już istniejącymi, więc karta pojawia się
 na wierzchu paneli, a panel kliknięty później wychodzi przed nią jak przed każde inne okno
@@ -1338,8 +1352,8 @@ float foldedRowsHeight(int count, float gapScale) {
 
 | Kto woła `foldedRowsHeight` | Z czym | Po co |
 |---|---|---|
-| `placePanelOnFirstUse` | `placement.foldedRowsBefore` (0 albo 1) i `layoutScale` | panele Terrain i Grass stają o jeden rząd pasków niżej niż Camera i Gameplay |
-| `drawStatus` w `Hud.cpp` | `FOLDED_ROW_COUNT` (2) i skala ekranu | HUD staje pod oboma rzędami pasków |
+| `placePanelOnFirstUse` | `placement.foldedRowsBefore` (0, 1 albo, od M7, 2) i `layoutScale` | panele Terrain i Grass stają o jeden rząd pasków niżej niż Camera i Gameplay, a panel Framebuffers o dwa |
+| `drawStatus` w `Hud.cpp` | `FOLDED_ROW_COUNT` (2 w M6, 3 od pierwszej części M7) i skala ekranu | HUD staje pod wszystkimi rzędami pasków |
 
 Dlaczego pytać ImGui, a nie wpisać 22: wysokość paska idzie za czcionką, a czcionka za skalą
 ekranu (`FontScaleDpi`, sekcja 3.12). Przy skali 150% pasek ma 33 jednostki. Stała wpisana w
@@ -1353,6 +1367,106 @@ haki, które potem usunięto. Zgłoszone jest, że HUD stoi około 30 pikseli ni
 skali 100%, co zgadza się z rachunkiem (jeden rząd: 22 + 8). Nikt jeszcze nie rozwinął
 ręcznie paneli Terrain i Grass ani nie ruszył żadnego ich suwaka. Skali 150% z dwoma rzędami
 pasków nikt nie oglądał. Na macOS kod M6 nie był budowany ani uruchamiany.
+
+### 3.16. Panel Framebuffers, tekstura framebuffera w `Image` i własne polecenie na liście rysowania (M7)
+
+Pierwsza część M7 (bufor HDR i gamma) dodała jedenasty panel, `Framebuffers`
+([`FramebuffersPanel.cpp`](../../src/debug/panels/FramebuffersPanel.cpp)), i klasę
+`debug::RawTextureSampler` ([`RawTextureSampler.cpp`](../../src/debug/RawTextureSampler.cpp)).
+Co panel pokazuje i czego uczy, opisuje
+[`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), a klasę
+[`../modules/debug-ui.md`](../modules/debug-ui.md). Tutaj jest tylko to, co w nich nowe po
+stronie ImGui.
+
+**Trzeci rząd pasków.** Panel startuje zwinięty (`FRAMEBUFFERS_PLACEMENT`, `collapsed = true`,
+`foldedRowsBefore = 2`) jako jeden pasek pod paskami Terrain i Grass, szeroki jak oba razem.
+Zwiniętych paneli jest więc pięć, rzędy pasków są trzy, stała `FOLDED_ROW_COUNT` w
+`PanelLayout.hpp` ma wartość 3, a HUD staje o jeden pasek tytułu niżej niż w M6 (rachunek
+z sekcji 3.15: jeszcze raz wysokość paska plus odstęp, czyli 22 + 8 przy skali 100%).
+
+**`Begin` jako czujnik.** Panel zapamiętuje wynik `Begin`:
+
+```cpp
+    const bool open = ImGui::Begin("Framebuffers");
+    settings.previews = open;
+```
+
+`Begin` zwraca fałsz, gdy okno jest zwinięte (sekcja 3.5). Gra rysuje dwa obrazki podglądu
+tylko wtedy, gdy `previews` jest prawdą, czyli gdy ktoś na nie patrzy. `DebugUI::draw` zeruje
+tę flagę na początku każdej klatki, jeszcze przed `if (m_visible)`, więc przy ukrytych panelach
+(gdy `Begin` w ogóle nie jest wołane) obrazki też przestają być rysowane. Skutek uboczny:
+obrazek powstaje w klatce **następnej** po otwarciu panelu, więc przez jedną klatkę panel
+pisze `(no picture yet)`.
+
+**Widżety.** Wszystkie są znane z wcześniejszych paneli:
+
+| Wywołanie | Uwagi |
+|---|---|
+| `SliderFloat("Exposure", ..., "%.2f", ImGuiSliderFlags_AlwaysClamp \| ImGuiSliderFlags_Logarithmic)` | suwak logarytmiczny jak przy wykładniku odblasku (sekcja 3.13): zakres od 0,1 do 8, a podwojenie i połowienie światła to odcinki tej samej długości |
+| `Combo("Tone mapping", &toneMappingIndex, TONE_MAPPING_ITEMS)` | lista z pozycjami w jednym napisie (`"None (clamp)\0Reinhard\0ACES (fitted)\0"`), w kolejności wyliczenia `game::ToneMapping` |
+| `SliderFloat("Depth range", ..., "%.0f m", ImGuiSliderFlags_AlwaysClamp)` | jednostka w napisie formatu |
+| `SetItemTooltip(...)` | podpowiedź pod każdym z trzech widżetów |
+| `Text(...)` z `%d` i `%s` | linia z rozmiarem i formatami framebuffera sceny |
+| `BeginGroup()` i `EndGroup()` | **nowe w projekcie**: podpis i obrazek pod nim tworzą jedną grupę, którą ImGui traktuje przy układaniu jak jeden widżet. Dzięki temu `SameLine()` między dwiema grupami stawia cały drugi podgląd obok pierwszego, a nie sam podpis |
+| `GetContentRegionAvail().x` i `GetStyle().ItemSpacing.x` | szerokość jednego obrazka: wolne miejsce minus odstęp między widżetami, podzielone przez 2 |
+
+**Tekstura framebuffera w `Image`.**
+
+```cpp
+        const auto textureId = static_cast<ImTextureID>(preview.colorTextureId());
+        ImGui::Image(textureId, {width, height}, {0.0F, 1.0F}, {1.0F, 0.0F});
+```
+
+To samo wywołanie co w panelu Assets (sekcja 3.11), tylko identyfikator pochodzi z
+`gfx::Framebuffer::colorTextureId()`: załącznik koloru framebuffera jest zwykłą teksturą 2D.
+Narożniki UV są odwrócone z tego samego powodu: wszystko, co OpenGL narysował do tekstury,
+ma wiersz `v = 0` na dole. Backend czyta ją własnym samplerem (filtr liniowy, przycinanie do
+krawędzi), a nie parametrami tekstury.
+
+**Kolory ImGui a sRGB.** ImGui rysuje prosto do okna, po przebiegu składającym, który sam
+koduje scenę na sRGB w shaderze. Przełącznik `GL_FRAMEBUFFER_SRGB` zostaje wyłączony, więc
+OpenGL niczego nie przelicza przy zapisie i kolory motywu trafiają na ekran dokładnie takie,
+jakie są w tabeli stylu (decyzja:
+[`../decisions/srgb-encode-in-shader.md`](../decisions/srgb-encode-in-shader.md)). Z tego samego
+powodu obrazek pokazywany przez `Image` musi być **już zakodowany**: ImGui zapisuje to, co
+przeczyta. Podglądy framebuffera koduje shader `post/preview.frag`. Tekstury sRGB z panelu
+Assets wymagają czegoś innego.
+
+**Własne polecenie na liście rysowania: `AddCallback`.** ImGui nie rysuje w chwili wywołania
+widżetu: zbiera polecenia na listach rysowania (`ImDrawList`) i wykonuje je w
+`ImGui_ImplOpenGL3_RenderDrawData` (sekcja 3.4). Żeby zmienić stan OpenGL dla **jednego**
+obrazka, trzeba więc wstawić własne polecenie na listę, w odpowiednim miejscu kolejki:
+
+```cpp
+    GLuint sampler = m_sampler;
+    ImGui::GetWindowDrawList()->AddCallback(bindSampler, &sampler, sizeof(sampler));
+```
+
+| Element | Znaczenie |
+|---|---|
+| `ImGui::GetWindowDrawList()` | lista rysowania bieżącego okna, ta sama, do której trafi zaraz `Image` |
+| `AddCallback(funkcja, dane, rozmiar)` | dopisuje polecenie "wywołaj tę funkcję", które backend wykona w kolejności, między rysowaniem poprzedniego i następnego widżetu |
+| trzeci argument, `sizeof(sampler)` | gdy rozmiar jest większy od zera, ImGui **kopiuje** tyle bajtów spod wskaźnika do własnego bufora. Funkcja dostaje potem wskaźnik do kopii (`ImDrawCmd::UserCallbackData`), więc zmienna lokalna `sampler` może zniknąć przed rysowaniem |
+| `void bindSampler(const ImDrawList*, const ImDrawCmd* command)` | sygnatura, której wymaga typ `ImDrawCallback`. Nasza funkcja odczytuje identyfikator z `command->UserCallbackData` i woła `glBindSampler(0, sampler)`: jednostka 0 to ta, na której backend rysuje obrazki |
+
+Powrót do zwykłego stanu to drugie polecenie, tym razem gotowe:
+
+```cpp
+    ImGui::GetWindowDrawList()->AddCallback(ImGui::GetPlatformIO().DrawCallback_SetSamplerLinear,
+                                            nullptr);
+```
+
+`DrawCallback_SetSamplerLinear` to wskaźnik do funkcji, który backend renderera wpisuje do
+`ImGuiPlatformIO` przy inicjalizacji. W backendzie OpenGL3 naszej wersji (1.92.9b, plik
+`imgui_impl_opengl3.cpp` w pobranych źródłach, odczyt z kodu, nie pomiar) funkcja ta wiąże
+z jednostką 0 własny liniowy sampler backendu. Panel Assets otacza tą parą poleceń `Image`
+każdej tekstury sRGB (sekcja 3.11 pokazuje samą linię `Image`, bez tej pary).
+
+Stan sprawdzenia: zgłoszone dla Windowsa (2026-10-05), że gra działa w buildzie Debug bez
+błędów OpenGL z otwartym panelem Framebuffers i że miniatury w panelu Assets są identyczne co
+do piksela z miniaturami sprzed M7. Żadnego z nowych widżetów nikt nie kliknął ręcznie, a
+trzeciego rzędu pasków i HUD pod nim nikt nie oglądał przy skali innej niż 100%. Na macOS kod
+M7 nie był budowany ani uruchamiany.
 
 ## 4. Pułapki
 

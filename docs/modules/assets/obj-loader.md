@@ -288,7 +288,7 @@ flowchart LR
 | `parts[i].firstIndex`, `parts[i].indexCount` | argumenty `glDrawElements`: liczba indeksów i przesunięcie (`firstIndex * 4` bajtów) |
 | `materials[i].diffuseTexture` | ścieżka pliku, z którego powstaje tekstura `gfx::Texture2D`, wiązana z jednostką 0 przed narysowaniem części |
 | `materials[i].normalTexture` | ścieżka pliku, z którego powstaje druga tekstura `gfx::Texture2D`: mapa normalnych, wiązana z jednostką 1 przed narysowaniem części |
-| `materials[i].diffuseColor` | wartość uniformu `uTint` w `textured.frag` i `lit.frag` |
+| `materials[i].diffuseColor` | wartość uniformu `uTint` w `textured.frag` i `lit.frag`. Liczby z linii `Kd` idą do shadera bez przeliczenia z sRGB, jako zwykły mnożnik liniowego koloru tekstury (od M7 tekstury koloru są dekodowane do wartości liniowych, [`../gfx/color-space.md`](../gfx/color-space.md)). Wszystkie materiały gry mają biały `Kd`, a biel to 1 w obu przestrzeniach, więc dziś nie ma to skutku. Dla kolorowego `Kd` byłoby to niedokładne: otwarty punkt, opisany w [`asset-cache.md`](asset-cache.md), pułapka 21 |
 | `mirroredTriangleCount` | nie trafia do OpenGL: `loadObj` wypisuje z niego ostrzeżenie (sekcja 5.7) |
 
 Całe to połączenie jest w jednej funkcji, `assets::AssetCache::model` ([`asset-cache.md`](asset-cache.md), sekcja 5). Loader jest tam wołany tak:
@@ -1089,7 +1089,7 @@ Pozostałe dwa przypadki:
 
 Testy błędów `loadObj` celowo wywołują logowanie, więc w wyjściu programu testowego pojawiają się linie `[error] ...`. To nie są niepowodzenia testów.
 
-**Wyniki.** Windows 11, MSVC 19.44, `/W4 /permissive-`, 2026-10-05, stan po M5: build Debug i Release bez ostrzeżeń, 20 przypadków i 1576 asercji tego pliku przechodzi (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Stan dzisiejszy, po usunięciu płytki podłogi w M6 (2026-10-05, Debug): 19 przypadków i 1492 asercje tego pliku, a cały program testowy ma 256 przypadków i 101232 asercje w Debug i w Release. **Na macOS kod nie był kompilowany ani uruchamiany.** Otwarte punkty (czytanie liczb przez strumień w libc++, ścieżki z `std::u8string`, ostrzeżenia clang) są na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+**Wyniki.** Windows 11, MSVC 19.44, `/W4 /permissive-`, 2026-10-05, stan po M5: build Debug i Release bez ostrzeżeń, 20 przypadków i 1576 asercji tego pliku przechodzi (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Stan dzisiejszy, po usunięciu płytki podłogi w M6 (2026-10-05, Debug): 19 przypadków i 1492 asercje tego pliku, a cały program testowy miał wtedy 256 przypadków i 101232 asercje w Debug i w Release (po pierwszej części M7 zgłoszone jest 269 przypadków i 102103 asercje, w tym pliku bez zmian). **Na macOS kod nie był kompilowany ani uruchamiany.** Otwarte punkty (czytanie liczb przez strumień w libc++, ścieżki z `std::u8string`, ostrzeżenia clang) są na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 **Czego testy nie obejmują:** działania przy globalnym locale innym niż "C" (uzasadnienie w sekcji 5.4 opiera się na dokumentacji `imbue`, a nie na teście z polskim locale), bardzo dużych plików i szybkości. Ostrzeżenia o odbitych trójkątach, które wypisuje `loadObj`, żaden test nie wywołuje: testy sprawdzają sam licznik.
 

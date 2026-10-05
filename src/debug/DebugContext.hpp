@@ -22,6 +22,8 @@ struct LightingSettings;
 struct MazeSettings;
 struct MazeWorld;
 struct Player;
+class PostProcess;
+struct PostProcessSettings;
 struct Round;
 struct SkyboxSettings;
 struct TerrainSettings;
@@ -103,6 +105,16 @@ struct DebugContext {
     /// How many tufts of grass are drawn. A plain number, copied when the context is
     /// built: the panels only show it.
     std::size_t grassTuftCount;
+    /// Shader program of the composite pass, editable: reloaded like texturedShader.
+    gfx::Shader& compositeShader;
+    /// Shader program of the attachment previews, editable: reloaded like texturedShader.
+    gfx::Shader& previewShader;
+    /// The exposure and the tone mapping of the composite pass, the preview switch and
+    /// the range of the depth preview, editable.
+    game::PostProcessSettings& postProcessSettings;
+    /// The framebuffers of the frame, read only: sizes, formats and the previews of
+    /// the attachments of the scene framebuffer.
+    const game::PostProcess& postProcess;
 };
 
 } // namespace debug

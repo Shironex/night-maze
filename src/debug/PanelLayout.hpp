@@ -71,9 +71,9 @@ inline constexpr float SHADERS_WIDTH =
 // Camera and Gameplay: the seventh and the eighth panel. Two columns and a bottom row
 // have room for six, so these two start folded to their title bars, side by side at the
 // top edge between the columns. Unfolded each reaches down to the bottom row and covers
-// its part of the scene and the folded bar under it (Terrain or Grass, see below), but no
-// other panel. Camera is a little shorter than its
-// contents, so it scrolls. Gameplay may start folded because the HUD shows the state of
+// its part of the scene and the folded bars under it (Terrain or Grass, and its part of
+// the Framebuffers bar, see below), but no open panel. Camera is a little shorter than
+// its contents, so it scrolls. Gameplay may start folded because the HUD shows the state of
 // the round all the time: the panel is for changing the rules.
 inline constexpr float CAMERA_WIDTH = 280.0F;
 inline constexpr float CAMERA_HEIGHT = REFERENCE_HEIGHT - BOTTOM_ROW_HEIGHT - 3.0F * PANEL_GAP;
@@ -84,17 +84,26 @@ inline constexpr float GAMEPLAY_WIDTH =
 // Terrain and Grass: the ninth and the tenth panel. They start folded too, in a second
 // row of title bars right under Camera and Gameplay, each as wide as the bar above it
 // (PanelPlacement::foldedRowsBefore is 1). Both panels are short: unfolded they cover
-// a strip of the scene below their bar and no other panel. An unfolded Camera or
-// Gameplay panel does cover the bar under it.
+// a strip of the scene below their bar and their part of the Framebuffers bar in the
+// third row, but no open panel. An unfolded Camera or Gameplay panel does cover the
+// bars under it.
 inline constexpr float TERRAIN_HEIGHT = 170.0F;
 inline constexpr float GRASS_HEIGHT = 190.0F;
 
+// Framebuffers: the eleventh panel. It starts folded in a third row of title bars, one
+// bar as wide as the two bars above it together (PanelPlacement::foldedRowsBefore is
+// 2). It is that wide because it shows two pictures side by side. Unfolded it reaches
+// down to just above the bottom row and covers the scene between the columns, but no
+// other panel. The height is what its contents need at that width.
+inline constexpr float FRAMEBUFFERS_WIDTH = CAMERA_WIDTH + PANEL_GAP + GAMEPLAY_WIDTH;
+inline constexpr float FRAMEBUFFERS_HEIGHT = 344.0F;
+
 // The number of rows of folded title bars at the top edge. The HUD starts below them
 // (Hud.cpp).
-inline constexpr int FOLDED_ROW_COUNT = 2;
+inline constexpr int FOLDED_ROW_COUNT = 3;
 
-// The ten panels. No two rectangles overlap in a window of the reference size, with the
-// four folded panels counted as their title bars.
+// The eleven panels. No two rectangles overlap in a window of the reference size, with
+// the five folded panels counted as their title bars.
 inline constexpr PanelPlacement RENDERER_PLACEMENT{
     .corner = TOP_LEFT,
     .offset = {PANEL_GAP, PANEL_GAP},
@@ -130,6 +139,13 @@ inline constexpr PanelPlacement GRASS_PLACEMENT{
     .size = {GAMEPLAY_WIDTH, GRASS_HEIGHT},
     .collapsed = true,
     .foldedRowsBefore = 1,
+};
+inline constexpr PanelPlacement FRAMEBUFFERS_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {BOTTOM_ROW_LEFT, PANEL_GAP},
+    .size = {FRAMEBUFFERS_WIDTH, FRAMEBUFFERS_HEIGHT},
+    .collapsed = true,
+    .foldedRowsBefore = 2,
 };
 inline constexpr PanelPlacement MAZE_PLACEMENT{
     .corner = TOP_RIGHT,

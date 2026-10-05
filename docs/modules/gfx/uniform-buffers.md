@@ -58,7 +58,7 @@ W projekcie obowiązuje prosta reguła podziału:
 | Rodzaj danych | Jak często się zmienia | Kto czyta | Mechanizm |
 |---|---|---|---|
 | światła sceny i pozycja kamery | raz na klatkę | wszystkie trzy programy z oświetleniem: `lit`, `gouraud`, `grass` | blok `LightBlock` w buforze |
-| macierze `uView`, `uProjection` | raz na klatkę | każdy z sześciu programów | zwykłe uniformy, ustawiane w każdym programie osobno |
+| macierze `uView`, `uProjection` | raz na klatkę | każdy z sześciu programów sceny (dwa programy przebiegów końcowych z M7, `composite` i `preview`, macierzy nie mają) | zwykłe uniformy, ustawiane w każdym programie osobno |
 | `uModel`, `uNormalMatrix`, `uTint` | dla każdego obiektu albo części modelu | program, który akurat rysuje | zwykłe uniformy |
 | materiał (`uSpecularModel`, `uSpecularStrength`, `uShininess`) | raz na klatkę | program, który akurat rysuje labirynt | zwykłe uniformy |
 

@@ -5,7 +5,7 @@ Kod: [`src/gfx/Cubemap.hpp`](../../../src/gfx/Cubemap.hpp), [`src/gfx/Cubemap.cp
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument jest krótszy od [`textures.md`](textures.md), bo na nim stoi: zakłada znajomość tekstur 2D (teksele, filtry, zawijanie, jednostki teksturujące, obiekt samplera, format danych a format wewnętrzny, wyrównanie wierszy) i opisuje tylko to, czym tekstura sześcienna różni się od zwykłej. Teorię samej tekstury sześciennej (jak kierunek wybiera ścianę i teksel, dlaczego wiersze nie są odwracane, szwy na krawędziach) i wszystko, co robi z nią gra, opisuje [`../renderer/skybox.md`](../renderer/skybox.md). Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś:** klasa jest napisana i używana przez `game::Skybox`, które tworzy z niej jedną teksturę: nocne niebo z sześciu obrazów 1024 x 1024. Klasa wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Nie była też sprawdzana osobnym programem pomiarowym, tak jak `Texture2D`: jedynym sprawdzeniem jest gra, w której niebo było oglądane na zrzutach ekranu z Windowsa (zgłoszone 2026-10-05: księżyc na swoim miejscu, poziomy horyzont, brak szwów). Zgłoszone dla Windowsa po pierwszej części M6: build Debug i Release bez ostrzeżeń, 221 przypadków testowych i 85175 asercji (żaden nie dotyczy tej klasy). Druga część M6 (teren i trawa) klasy nie zmieniła. Dzisiejsze liczby całego programu testowego to 256 przypadków i 101232 asercje w Debug i w Release (uruchomione 2026-10-05 z istniejących buildów), nadal bez przypadku dla tej klasy. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Komentarz `// See docs/...` na górze obu plików klasy wskazuje ten dokument (`docs/modules/gfx/cubemap.md`). Do drugiej części M6 wskazywał [`../renderer/skybox.md`](../renderer/skybox.md), gdzie jest teoria tekstury sześciennej i użycie klasy w grze.
+**Stan na dziś:** klasa jest napisana i używana przez `game::Skybox`, które tworzy z niej jedną teksturę: nocne niebo z sześciu obrazów 1024 x 1024. Klasa wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Nie była też sprawdzana osobnym programem pomiarowym, tak jak `Texture2D`: jedynym sprawdzeniem jest gra, w której niebo było oglądane na zrzutach ekranu z Windowsa (zgłoszone 2026-10-05: księżyc na swoim miejscu, poziomy horyzont, brak szwów). Zgłoszone dla Windowsa po pierwszej części M6: build Debug i Release bez ostrzeżeń, 221 przypadków testowych i 85175 asercji (żaden nie dotyczy tej klasy). Druga część M6 (teren i trawa) klasy nie zmieniła. Po drugiej części M6 program testowy miał 256 przypadków i 101232 asercje w Debug i w Release (uruchomione 2026-10-05 z istniejących buildów). Pierwsza część M7 (bufor HDR i gamma) dodała konstruktorowi czwarty argument, `ColorSpace`: niebo jest od niej teksturą sRGB (`GL_SRGB8`), dekodowaną przez kartę do wartości liniowych przy odczycie ([`color-space.md`](color-space.md)). Zgłoszone dla Windowsa po tej zmianie (2026-10-05): bramka `make check` przechodzi, 269 przypadków testowych i 102103 asercje w Debug i w Release, nadal bez przypadku dla tej klasy. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Komentarz `// See docs/...` na górze obu plików klasy wskazuje ten dokument (`docs/modules/gfx/cubemap.md`). Do drugiej części M6 wskazywał [`../renderer/skybox.md`](../renderer/skybox.md), gdzie jest teoria tekstury sześciennej i użycie klasy w grze.
 
 ## 1. Po co to jest
 
@@ -14,7 +14,7 @@ Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów Ope
 | Funkcja | Co robi |
 |---|---|
 | konstruktor domyślny | obiekt bez tekstury: `isValid()` zwraca fałsz. Dla kodu, który nie zdołał wczytać obrazów, a musi coś zwrócić |
-| konstruktor `Cubemap(size, channels, faces)` | tworzy teksturę sześcienną z sześciu tablic surowych bajtów (3 albo 4 kanały), tworzy obiekt samplera z filtrem liniowym bez mipmap i przycinaniem do krawędzi na trzech osiach |
+| konstruktor `Cubemap(size, channels, faces, colorSpace)` | tworzy teksturę sześcienną z sześciu tablic surowych bajtów (3 albo 4 kanały) w formacie sRGB albo liniowym, tworzy obiekt samplera z filtrem liniowym bez mipmap i przycinaniem do krawędzi na trzech osiach |
 | `bind(unit)` | wiąże teksturę i jej sampler z jednostką teksturującą o podanym numerze |
 | `isValid`, `id`, `size` | odczyt stanu |
 | destruktor | usuwa oba obiekty OpenGL |
@@ -31,6 +31,7 @@ Czym różni się od `Texture2D`:
 | mipmapy | tak, `glGenerateMipmap` | nie, jeden poziom |
 | filtr | trójliniowy na start, do zmiany (`setFilter`, `setAnisotropy`) | liniowy, stały |
 | zawijanie | `GL_REPEAT` na S i T | `GL_CLAMP_TO_EDGE` na S, T i R |
+| przestrzeń kolorów | argument `ColorSpace` konstruktora, zapamiętany (`colorSpace()`) | argument `ColorSpace` konstruktora, niezapamiętany |
 | typ samplera w GLSL | `sampler2D` | `samplerCube` |
 | współrzędna w `texture()` | `vec2` | `vec3`, kierunek |
 
@@ -88,9 +89,16 @@ Drugi wiersz jest zabezpieczeniem. To, które poziomy istnieją, jest własnośc
 ### 2.5 Kolejność wierszy i format
 
 - **Górny wiersz pierwszy.** `Texture2D` chce dolnego wiersza jako pierwszego, `Cubemap` górnego. Powód: na ścianie tekstury sześciennej współrzędna `t = 0` to góra obrazu ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 2.4). Klasa sama niczego nie odwraca i nie ma jak sprawdzić, co dostała: to umowa z wołającym, zapisana w komentarzu konstruktora. Po stronie loadera spełnia ją `assets::RowOrder::TopFirst` ([`../assets/images.md`](../assets/images.md), sekcja 2.7).
-- **Format.** Jak w `Texture2D`: dane `GL_RGB` albo `GL_RGBA` z `GL_UNSIGNED_BYTE`, format wewnętrzny `GL_RGB8` albo `GL_RGBA8`. Nie format sRGB: niebo, jak pozostałe tekstury gry, jest używane tak, jak zapisano je w pliku, do czasu korekcji gamma w M7 ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
+- **Format i przestrzeń kolorów.** Jak w `Texture2D`: dane `GL_RGB` albo `GL_RGBA` z `GL_UNSIGNED_BYTE`. Format wewnętrzny wybiera czwarty argument konstruktora ([`textures.md`](textures.md), sekcja 2.10):
+
+  | `colorSpace` | 3 kanały | 4 kanały | Co robi karta przy odczycie |
+  |---|---|---|---|
+  | `ColorSpace::Srgb` | `GL_SRGB8` | `GL_SRGB8_ALPHA8` | dekoduje czerwień, zieleń i błękit z sRGB na wartości liniowe. Alfa zostaje bez zmian |
+  | `ColorSpace::Linear` | `GL_RGB8` | `GL_RGBA8` | nic: liczby docierają do shadera tak, jak są zapisane |
+
+  Niebo gry jest obrazem koloru namalowanym pod ekran, więc `loadSkyCubemap` podaje `ColorSpace::Srgb`. Bajty w pamięci karty są te same w obu przypadkach: różni się tylko to, co karta robi, gdy shader je czyta. Do M6 niebo miało format `GL_RGB8` i było używane tak, jak zapisano je w pliku. Tamten stan opisuje zastąpiona notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), a dzisiejszy [`color-space.md`](color-space.md) i [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md).
 - **Wyrównanie wierszy.** `GL_UNPACK_ALIGNMENT` ustawione na 1 na czas wysyłania i przywrócone po nim, dokładnie jak w `Texture2D` ([`textures.md`](textures.md), sekcja 2.9).
-- **Pamięć.** Niebo gry to `6 * 1024 * 1024 * 3 = 18 874 368` bajtów pikseli, czyli 18 MiB. Ile zajmuje naprawdę na karcie, zależy od tego, jak sterownik przechowuje `GL_RGB8`: tego nie mierzyłem.
+- **Pamięć.** Niebo gry to `6 * 1024 * 1024 * 3 = 18 874 368` bajtów pikseli, czyli 18 MiB. Ile zajmuje naprawdę na karcie, zależy od tego, jak sterownik przechowuje `GL_SRGB8`: tego nie mierzyłem.
 
 ## 3. Jak to działa w OpenGL
 
@@ -151,11 +159,11 @@ Obie linie pochodzą z [`assets/shaders/skybox.frag`](../../../assets/shaders/sk
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/gfx/Cubemap.hpp`](../../../src/gfx/Cubemap.hpp) | klasa `gfx::Cubemap`, stała `FACE_COUNT`, typ `FacePixels`. Dołącza `<glad/gl.h>`, `<array>` i `<cstddef>` |
+| [`src/gfx/Cubemap.hpp`](../../../src/gfx/Cubemap.hpp) | klasa `gfx::Cubemap`, stała `FACE_COUNT`, typ `FacePixels`. Dołącza `gfx/ColorSpace.hpp` (typ czwartego argumentu konstruktora), `<glad/gl.h>`, `<array>` i `<cstddef>` |
 | [`src/gfx/Cubemap.cpp`](../../../src/gfx/Cubemap.cpp) | trzy stałe i implementacja klasy |
 | [`src/game/Skybox.hpp`](../../../src/game/Skybox.hpp), [`.cpp`](../../../src/game/Skybox.cpp) | jedyny użytkownik: pole `m_cubemap`, funkcja `loadSkyCubemap`, wywołanie `bind` w `Skybox::draw` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcje 5.4 i 5.5) |
 
-Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` (jeden komunikat błędu) i biblioteka standardowa (`<algorithm>` dla `std::ranges::any_of`, `<string>` dla `std::to_string`). Nic z `assets/`, GLM ani GLFW.
+Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` (jeden komunikat błędu) i biblioteka standardowa (`<algorithm>` dla `std::ranges::any_of`, `<string>` dla `std::to_string`). Przez `gfx/ColorSpace.hpp` nagłówek dołącza też GLM (funkcje przeliczające kolor przyjmują `glm::vec3`), ale klasa z niego nie korzysta. Nic z `assets/` ani GLFW.
 
 ### 5.2 Nagłówek
 
@@ -174,7 +182,7 @@ public:
     /// not load its pictures and still has to return a Cubemap.
     Cubemap() = default;
 
-    Cubemap(int size, int channels, const FacePixels& faces);
+    Cubemap(int size, int channels, const FacePixels& faces, ColorSpace colorSpace);
     ~Cubemap();
 
     Cubemap(const Cubemap&) = delete;
@@ -214,8 +222,9 @@ private:
 | `using FacePixels = std::array<const unsigned char*, FACE_COUNT>;` | sześć wskaźników w ustalonej kolejności. `std::array` zamiast sześciu parametrów: kompilator pilnuje liczby ścian, a kolejność jest opisana w jednym miejscu |
 | `Cubemap() = default;` | `Texture2D` takiego konstruktora nie ma. Tu jest potrzebny, bo `loadSkyCubemap` zwraca `Cubemap` także wtedy, gdy plików nie dało się wczytać (`return {};`). Wszystkie trzy pola mają wartości początkowe 0, więc obiekt domyślny jest poprawnym "brakiem tekstury" |
 | jeden parametr `size` | ściany są kwadratami tej samej wielkości, więc szerokość i wysokość to jedna liczba dla wszystkich sześciu |
+| `ColorSpace colorSpace` bez wartości domyślnej | wołający **musi** powiedzieć, czym są bajty: kolorem (sRGB) czy danymi (liniowe). Klasa nie zgaduje i nie ma wyboru "na wszelki wypadek", który po cichu dawałby zły obraz |
 | `= delete` dla kopiowania, ręcznie napisane przenoszenie | reguła wspólna dla klas `gfx` ([`README.md`](README.md), sekcja 2) |
-| `m_id`, `m_sampler`, `m_size` | dwa identyfikatory i rozmiar. Klasa nie pamięta liczby kanałów: po utworzeniu nikt o nią nie pyta |
+| `m_id`, `m_sampler`, `m_size` | dwa identyfikatory i rozmiar. Klasa nie pamięta liczby kanałów ani przestrzeni kolorów: po utworzeniu nikt o nie nie pyta (`Texture2D` przestrzeń pamięta, bo pokazuje ją panel Assets) |
 
 ### 5.3 Stałe
 
@@ -238,7 +247,7 @@ Stoją w anonimowej przestrzeni nazw pliku `.cpp`, więc są widoczne tylko w ni
 **Krok 1: sprawdzenie argumentów.**
 
 ```cpp
-Cubemap::Cubemap(int size, int channels, const FacePixels& faces) {
+Cubemap::Cubemap(int size, int channels, const FacePixels& faces, ColorSpace colorSpace) {
     const bool channelsSupported = channels == RGB_CHANNELS || channels == RGBA_CHANNELS;
     // any_of asks the question "is there a face without pixels" of all six entries.
     const bool faceMissing =
@@ -265,7 +274,10 @@ Czego konstruktor **nie** może sprawdzić: ile bajtów naprawdę jest pod każd
 ```cpp
     const bool hasAlpha = channels == RGBA_CHANNELS;
     const GLenum dataFormat = hasAlpha ? GL_RGBA : GL_RGB;
-    const GLint internalFormat = hasAlpha ? GL_RGBA8 : GL_RGB8;
+    GLint internalFormat = hasAlpha ? GL_RGBA8 : GL_RGB8;
+    if (colorSpace == ColorSpace::Srgb) {
+        internalFormat = hasAlpha ? GL_SRGB8_ALPHA8 : GL_SRGB8;
+    }
 
     GL_CHECK(glGenTextures(1, &m_id));
     // The first binding decides the kind of the texture: this one is a cube map for good.
@@ -273,7 +285,7 @@ Czego konstruktor **nie** może sprawdzić: ile bajtów naprawdę jest pod każd
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, m_id));
 ```
 
-Format danych mówi, czym są bajty, format wewnętrzny, jak karta ma je przechowywać ([`textures.md`](textures.md), sekcja 2.9). `GLenum` dla pierwszego i `GLint` dla drugiego, bo takie typy mają parametry `glTexImage2D`. Wiązanie działa na jednostce, która akurat jest aktywna: konstruktor nie woła `glActiveTexture`, a tekstura zostaje związana po jego zakończeniu (komentarz w nagłówku mówi to wprost).
+Format danych mówi, czym są bajty, format wewnętrzny, jak karta ma je przechowywać i co ma zrobić, gdy shader je czyta ([`textures.md`](textures.md), sekcje 2.9 i 2.10). `internalFormat` nie jest `const`: zaczyna jako format liniowy i jest podmieniany na format sRGB, gdy wołający podał `ColorSpace::Srgb` (tabela w sekcji 2.5). `Texture2D` robi ten sam wybór w osobnej funkcji `internalFormatFor`. `GLenum` dla pierwszego i `GLint` dla drugiego, bo takie typy mają parametry `glTexImage2D`. Wiązanie działa na jednostce, która akurat jest aktywna: konstruktor nie woła `glActiveTexture`, a tekstura zostaje związana po jego zakończeniu (komentarz w nagłówku mówi to wprost).
 
 **Krok 3: sześć ścian.**
 
@@ -394,6 +406,7 @@ Klasa nie ma własnego panelu ani stanu do zmieniania: filtr i zawijanie są sta
 8. **Kopiowanie.** Jak każda klasa `gfx`: kopia powieliłaby dwa identyfikatory i dwa destruktory usuwałyby te same obiekty. Kopiowanie jest `= delete`.
 9. **Czas życia.** Obiekt musi zginąć przed oknem. `Skybox` jest polem `NightMazeApp`, więc warunek jest spełniony ([`README.md`](README.md), sekcja 5).
 10. **Tekstura zostaje związana po konstruktorze.** Konstruktor wiąże teksturę z celem sześciennym jednostki, która akurat była aktywna, i tak ją zostawia. Kod, który zakłada, że po utworzeniu obiektu wiązania są nietknięte, pomyli się.
+11. **Zła przestrzeń kolorów.** Niebo wczytane jako `ColorSpace::Linear` nie jest dekodowane przy odczycie, a przebieg składający i tak koduje klatkę na sRGB: niebo wychodzi wyblakłe i za jasne (podwójne kodowanie, [`color-space.md`](color-space.md)). Odwrotnie, tekstura sześcienna z danymi, które nie są kolorem, wczytana jako `Srgb`, dostałaby przekłamane liczby. Kompilator pilnuje tylko tego, że argument został podany, a nie tego, czy jest właściwy.
 
 ## 8. Ćwiczenia
 
@@ -438,10 +451,13 @@ Zmiany w `Cubemap.cpp` sprawdza się w działającej grze, patrząc w niebo. Po 
 10. **Po co konstruktor domyślny?**
     Żeby kod, który nie wczytał obrazów, mógł zwrócić obiekt bez tekstury. `isValid()` zwraca wtedy fałsz, a destruktor nic nie usuwa.
 
-11. **Co robi konstruktor przy złych argumentach?**
+11. **Co zmienia argument `ColorSpace` konstruktora?**
+    Tylko format wewnętrzny: `GL_SRGB8` albo `GL_SRGB8_ALPHA8` dla `Srgb`, `GL_RGB8` albo `GL_RGBA8` dla `Linear`. Bajty wysyłane na kartę są te same. Przy formacie sRGB karta dekoduje kolor do wartości liniowych, gdy shader go czyta. Niebo gry jest wczytywane jako `Srgb`.
+
+12. **Co robi konstruktor przy złych argumentach?**
     Wypisuje jeden błąd przez `core::logError`, niczego nie tworzy i zostawia obiekt nieważny. Nie rzuca wyjątku.
 
-12. **Czym `Cubemap::bind` różni się od `Texture2D::bind`?**
+13. **Czym `Cubemap::bind` różni się od `Texture2D::bind`?**
     Tylko celem w `glBindTexture`: `GL_TEXTURE_CUBE_MAP` zamiast `GL_TEXTURE_2D`. Pozostałe dwa wywołania (`glActiveTexture`, `glBindSampler`) są takie same.
 
 ## 10. Źródła
@@ -450,4 +466,4 @@ Zmiany w `Cubemap.cpp` sprawdza się w działającej grze, patrząc w niebo. Po 
 - Khronos OpenGL Wiki, "Cubemap Texture" (<https://www.khronos.org/opengl/wiki/Cubemap_Texture>): cele, kompletność, orientacja ścian. "Sampler Object" (<https://www.khronos.org/opengl/wiki/Sampler_Object>): sampler związany z jednostką zastępuje parametry tekstury.
 - docs.gl: `glTexImage2D` (<https://docs.gl/gl4/glTexImage2D>), `glBindTexture`, `glTexParameter` (`GL_TEXTURE_MAX_LEVEL`), `glSamplerParameter`, `glBindSampler`.
 - Specyfikacja OpenGL 4.1 Core (<https://registry.khronos.org/OpenGL/specs/gl/glspec41.core.pdf>): tekstury sześcienne i kompletność tekstur.
-- Dokumenty w tym repozytorium: [`../renderer/skybox.md`](../renderer/skybox.md) (teoria tekstury sześciennej, użycie w grze, shadery, testy plików), [`textures.md`](textures.md) (tekstury 2D, na których ten dokument stoi), [`README.md`](README.md) (RAII i przenoszenie), [`../assets/images.md`](../assets/images.md) (`RowOrder`), [`../core/gl-check.md`](../core/gl-check.md).
+- Dokumenty w tym repozytorium: [`../renderer/skybox.md`](../renderer/skybox.md) (teoria tekstury sześciennej, użycie w grze, shadery, testy plików), [`textures.md`](textures.md) (tekstury 2D, na których ten dokument stoi), [`color-space.md`](color-space.md) (sRGB i wartości liniowe, dlaczego niebo jest teksturą sRGB), [`README.md`](README.md) (RAII i przenoszenie), [`../assets/images.md`](../assets/images.md) (`RowOrder`), [`../core/gl-check.md`](../core/gl-check.md).

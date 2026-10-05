@@ -8,6 +8,7 @@
 #include "core/Paths.hpp"
 #include "game/Crystals.hpp"
 #include "game/ShaderUniforms.hpp"
+#include "gfx/ColorSpace.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -28,7 +29,10 @@ constexpr int INITIAL_HEIGHT = 720;
 // with the first pair, the lines of the collision boxes and spheres with the second, the
 // scene with lighting per fragment with the third, with lighting per vertex with the
 // fourth and the sky with the fifth. The grass has three files: between its vertex and
-// its fragment shader runs a geometry shader.
+// its fragment shader runs a geometry shader. The last two programs do not draw the
+// scene: they draw one triangle over the whole target and share its vertex shader. The
+// composite program brings the HDR picture of the scene to the window, the preview
+// program makes the pictures of the framebuffer attachments for the debug UI.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -42,6 +46,9 @@ constexpr const char* SKYBOX_FRAGMENT_SHADER_FILE = "shaders/skybox.frag";
 constexpr const char* GRASS_VERTEX_SHADER_FILE = "shaders/grass.vert";
 constexpr const char* GRASS_GEOMETRY_SHADER_FILE = "shaders/grass.geom";
 constexpr const char* GRASS_FRAGMENT_SHADER_FILE = "shaders/grass.frag";
+constexpr const char* FULLSCREEN_VERTEX_SHADER_FILE = "shaders/post/composite.vert";
+constexpr const char* COMPOSITE_FRAGMENT_SHADER_FILE = "shaders/post/composite.frag";
+constexpr const char* PREVIEW_FRAGMENT_SHADER_FILE = "shaders/post/preview.frag";
 
 // The heightmap of the terrain, relative to the assets directory: a grey picture made
 // by tools/blender/make_heightmap.py.
@@ -73,6 +80,9 @@ constexpr float LEVEL_PITCH_DEGREES = 0.0F;
 
 // The smallest height scale of the terrain: a flat world.
 constexpr float MIN_HEIGHT_SCALE = 0.0F;
+
+// An exposure that changes nothing: the composite pass multiplies the colours by it.
+constexpr float NEUTRAL_EXPOSURE = 1.0F;
 
 // Reads the heightmap picture. When it cannot be loaded the ground is flat: the error is
 // in the log and the game is still playable.
@@ -109,6 +119,10 @@ NightMazeApp::NightMazeApp()
       m_grassShader(core::assetPath(GRASS_VERTEX_SHADER_FILE),
                     core::assetPath(GRASS_FRAGMENT_SHADER_FILE),
                     core::assetPath(GRASS_GEOMETRY_SHADER_FILE)),
+      m_compositeShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
+                        core::assetPath(COMPOSITE_FRAGMENT_SHADER_FILE)),
+      m_previewShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
+                      core::assetPath(PREVIEW_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
       m_terrainRenderer(m_assets),
@@ -320,11 +334,28 @@ void NightMazeApp::onRender(double alpha) {
         m_camera.rotate(yawDelta, pitchDelta);
     }
 
-    // The viewport is set in pixels, so it must come from the framebuffer size, which
-    // differs from the window size on Retina displays. Querying it every frame also
-    // handles window resizing.
+    // Everything is measured in pixels of the framebuffer of the window, which differs
+    // from the window size on Retina displays. Querying it every frame also handles
+    // window resizing.
     const core::Size framebuffer = window().framebufferSize();
-    GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
+
+    // A minimized window can have a framebuffer of size 0 x 0. There is nothing to draw
+    // then, and nothing to draw into: a texture of size 0 cannot be attached to
+    // a framebuffer. The aspect ratio would be 0 / 0, which is NaN (not a number):
+    // glm::perspective stops the program with an assert in a Debug build and returns
+    // a matrix with NaN in it in a Release build. So the whole frame is skipped. The
+    // scene framebuffer keeps its last size and is used again when the window is back.
+    if (framebuffer.width == 0 || framebuffer.height == 0) {
+        return;
+    }
+
+    // From here on the draw calls do not land in the window. They land in the HDR
+    // framebuffer of the scene, which is created again here when the size of the window
+    // has changed. The viewport is set to its size by the same call. Without
+    // a framebuffer (the driver refused it, the error is in the log) nothing is drawn.
+    if (!m_postProcess.beginScene(framebuffer)) {
+        return;
+    }
 
     // Depth test: a fragment is kept only if it is nearer to the camera than what is
     // already drawn at that pixel, so the near walls hide the far ones in whatever order
@@ -336,17 +367,12 @@ void NightMazeApp::onRender(double alpha) {
     // The depth buffer has to be cleared together with the color, otherwise the depths of
     // the previous frame would hide the new one. The clear colour is what stays on the
     // pixels nothing is drawn on: with the skybox on there are none, the sky fills them.
-    GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
+    // Both buffers are the two textures of the scene framebuffer now. The clear colour
+    // is an sRGB value and the buffer holds linear colours, so it is converted first.
+    const glm::vec3 clearColor =
+        gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]});
+    GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-
-    // A minimized window can have a framebuffer of size 0 x 0. The aspect ratio would
-    // then be 0 / 0, which is NaN (not a number): glm::perspective stops the program with
-    // an assert in a Debug build and returns a matrix with NaN in it in a Release build.
-    // A size of 0 in one direction only gives an aspect ratio of 0 or infinity, and
-    // a matrix that is just as useless. There is nothing to draw in such a frame anyway.
-    if (framebuffer.width == 0 || framebuffer.height == 0) {
-        return;
-    }
 
     // Width divided by height of the same pixels the viewport covers. The casts make it
     // a division of floats: 1280 / 720 as integers would be 1.
@@ -405,6 +431,38 @@ void NightMazeApp::onRender(double alpha) {
     if (m_skyboxSettings.enabled) {
         m_skybox.draw(m_skyboxShader, view, projection, m_skyboxSettings, m_viewMode);
     }
+
+    // The scene is complete: its colours and its depth are in the two textures of the
+    // scene framebuffer. What follows reads those textures. Passes that are added
+    // later (effects computed from the finished scene) belong here, before the
+    // composite pass.
+
+    // The pictures of the attachments, only while the debug UI shows them.
+    if (m_postProcessSettings.previews) {
+        m_postProcess.drawPreviews(m_previewShader, m_postProcessSettings, m_camera.nearPlane,
+                                   m_camera.farPlane);
+    }
+
+    // The two debug views show data as colours (a normal, a texture coordinate), not
+    // light. An exposure or a tone mapping curve would change those numbers, so both
+    // are switched off for them, in a copy: the settings the debug UI shows stay.
+    PostProcessSettings compositeSettings = m_postProcessSettings;
+    if (m_viewMode != ViewMode::Textured) {
+        compositeSettings.exposure = NEUTRAL_EXPOSURE;
+        compositeSettings.toneMapping = ToneMapping::None;
+    }
+
+    // The last pass: back to the window, and the HDR picture goes into it with
+    // exposure, tone mapping and the sRGB encoding. The debug UI is drawn after this
+    // function returns (main.cpp), straight into the window.
+    m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer);
+}
+
+glm::vec3 NightMazeApp::crystalEmissive() const {
+    // The colour of the crystal lights is an sRGB value, like every colour of the
+    // lighting settings. It is converted here the way buildLightSet converts it for
+    // the lights, so the mesh glows in the colour of the light around it.
+    return crystalGlow(gfx::srgbToLinear(m_lighting.pointColor), m_round.animationSeconds);
 }
 
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
@@ -442,8 +500,7 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do.
-    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round,
-                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
+    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round, crystalEmissive());
 }
 
 void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const {
@@ -473,8 +530,7 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     m_mazeRenderer.draw(shader, m_mazeWorld);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights.
-    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round,
-                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
+    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalEmissive());
 }
 
 void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection) const {

@@ -2,6 +2,8 @@
 // See docs/modules/game/flashlight.md
 #include "game/Lighting.hpp"
 
+#include "gfx/ColorSpace.hpp"
+
 #include <algorithm>
 #include <cstddef>
 
@@ -18,12 +20,16 @@ bool usesNormalMap(const LightingSettings& settings) {
 scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3& eye,
                               const glm::vec3& viewDirection,
                               std::span<const glm::vec3> pointPositions) {
+    // The colours of the settings are sRGB values: they are picked on the screen. The
+    // shaders compute with linear light, so this function is the one place where the
+    // four colours are converted. The intensities are plain factors and stay as they
+    // are.
     scene::LightSet lights;
-    lights.ambient = settings.ambient;
+    lights.ambient = gfx::srgbToLinear(settings.ambient);
 
     lights.directional = {
         .direction = scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees),
-        .color = settings.moonColor,
+        .color = gfx::srgbToLinear(settings.moonColor),
         .intensity = settings.moonIntensity,
     };
 
@@ -31,7 +37,7 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3&
     lights.spot = {
         .position = eye,
         .direction = viewDirection,
-        .color = settings.flashlightColor,
+        .color = gfx::srgbToLinear(settings.flashlightColor),
         .intensity = settings.flashlightIntensity,
         .attenuation = scene::attenuationForRadius(settings.flashlightRange),
         // A cone cannot be wider inside than outside. The panel keeps the two angles in
@@ -45,12 +51,13 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3&
     // All point lights share one colour, one intensity and one radius. Only the place
     // differs.
     const scene::Attenuation pointAttenuation = scene::attenuationForRadius(settings.pointRadius);
+    const glm::vec3 pointColor = gfx::srgbToLinear(settings.pointColor);
     const std::size_t pointCount =
         std::min(pointPositions.size(), static_cast<std::size_t>(scene::MAX_POINT_LIGHTS));
     for (std::size_t i = 0; i < pointCount; ++i) {
         lights.points[i] = {
             .position = pointPositions[i],
-            .color = settings.pointColor,
+            .color = pointColor,
             .intensity = settings.pointIntensity,
             .attenuation = pointAttenuation,
         };

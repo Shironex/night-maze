@@ -2,6 +2,8 @@
 // See docs/modules/gfx/cubemap.md
 #pragma once
 
+#include "gfx/ColorSpace.hpp"
+
 #include <glad/gl.h>
 
 #include <array>
@@ -42,6 +44,10 @@ public:
     /// (see assets::RowOrder). OpenGL takes its own copy, so the bytes may be freed right
     /// after the call.
     ///
+    /// colorSpace says what the bytes mean, as for Texture2D: ColorSpace::Srgb for
+    /// colour pictures like a sky (GL_SRGB8 or GL_SRGB8_ALPHA8, decoded to linear values
+    /// on reading), ColorSpace::Linear for data that must arrive unchanged.
+    ///
     /// Sampling is linear without mipmaps, and coordinates are clamped to the edge on
     /// all three axes (GL_CLAMP_TO_EDGE).
     ///
@@ -51,7 +57,7 @@ public:
     ///
     /// The texture is left bound to GL_TEXTURE_CUBE_MAP of the texture unit that is
     /// active.
-    Cubemap(int size, int channels, const FacePixels& faces);
+    Cubemap(int size, int channels, const FacePixels& faces, ColorSpace colorSpace);
     ~Cubemap();
 
     Cubemap(const Cubemap&) = delete;

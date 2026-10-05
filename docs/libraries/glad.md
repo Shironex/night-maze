@@ -258,7 +258,8 @@ Kod z bardzo starych poradników nie skompiluje się, co też jest pożądane: k
 programowalnego potoku.
 
 **Bez rozszerzeń.** Rozszerzenia (extensions) to dodatki producentów spoza rdzenia
-specyfikacji. Nie używamy żadnego, więc ich nie generujemy. README wyjaśnia skutek uboczny
+specyfikacji. Gdy powstawał loader, nie używaliśmy żadnego, więc ich nie generowaliśmy.
+Dziś kod używa dwóch, w obu przypadkach bez zmiany w GLAD (akapit pod spodem). README wyjaśnia skutek uboczny
 pominięcia tej opcji: bez `--extensions ""` GLAD dodaje wszystkie znane rozszerzenia (ponad
 600), przez co nagłówek jest około pięć razy większy bez żadnej korzyści. Nasz `gl.h` ma
 2654 linie.
@@ -322,9 +323,26 @@ Na Windowsie pliki wykonywalne są w `.glad-venv\Scripts\` zamiast `.glad-venv/b
 Alternatywą jest generator w przeglądarce pod adresem <https://gen.glad.sh/> z tymi samymi
 ustawieniami: język C, API gl w wersji 4.1, profil Core, zero rozszerzeń.
 
-Kiedy generować ponownie? W praktyce nigdy, dopóki celem jest OpenGL 4.1. Jeżeli kiedyś
-potrzebne będzie jedno konkretne rozszerzenie (na przykład filtrowanie anizotropowe),
-dopisujemy jego nazwę do `--extensions` i aktualizujemy README.
+Kiedy generować ponownie? W praktyce nigdy, dopóki celem jest OpenGL 4.1. Gdyby rozszerzenie
+dodawało nowe **funkcje**, trzeba by dopisać jego nazwę do `--extensions` i zaktualizować
+README, bo wskaźniki funkcji ładuje GLAD.
+
+**Rozszerzenia, które dodają same stałe, obywają się bez tego.** Projekt używa dziś dwóch
+takich rozszerzeń i w obu przypadkach definiuje stałe sam, jako zwykłe liczby ze specyfikacji
+rozszerzenia, a przekazuje je do funkcji z rdzenia 4.1, które GLAD już ma:
+
+| Rozszerzenie | Stałe zdefiniowane w kodzie | Funkcja rdzenia, do której trafiają | Gdzie | Dokument |
+|---|---|---|---|---|
+| `GL_EXT_texture_filter_anisotropic` (albo `GL_ARB_...`) | `TEXTURE_MAX_ANISOTROPY` (0x84FE), `MAX_TEXTURE_MAX_ANISOTROPY` (0x84FF) | `glSamplerParameterf`, `glGetFloatv` | [`src/gfx/Texture2D.cpp`](../../src/gfx/Texture2D.cpp) | [`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 5.3 |
+| `GL_EXT_texture_sRGB_decode` (od pierwszej części M7) | `TEXTURE_SRGB_DECODE` (0x8A48), `SKIP_DECODE` (0x8A4A) | `glSamplerParameteri` | [`src/debug/RawTextureSampler.cpp`](../../src/debug/RawTextureSampler.cpp) | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
+
+Nazwy bez przedrostka `GL_` są celowe: to stałe projektu, a przedrostek należy do nagłówka
+OpenGL. Zdefiniowanie stałej nie znaczy, że sterownik ją rozumie, więc przed użyciem kod pyta
+sterownik o listę rozszerzeń funkcją `gfx::hasExtension`
+([`src/gfx/Extensions.cpp`](../../src/gfx/Extensions.cpp): `glGetIntegerv(GL_NUM_EXTENSIONS)`
+i `glGetStringi(GL_EXTENSIONS, i)`, obie z rdzenia). Bez rozszerzenia stała nie jest używana
+wcale: anizotropia zostaje na poziomie 1, a miniatury tekstur sRGB w panelu Assets są
+ciemniejsze niż pliki.
 
 ## 6. Pułapki
 

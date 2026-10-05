@@ -2,6 +2,8 @@
 // See docs/modules/game/flashlight.md
 #include "game/Lighting.hpp"
 
+#include "gfx/ColorSpace.hpp"
+
 #include <doctest/doctest.h>
 
 #include <cstddef>
@@ -82,10 +84,11 @@ TEST_CASE("buildLightSet takes the ambient light and the moon from the settings"
 
     const scene::LightSet lights = game::buildLightSet(settings, glm::vec3{0.0F}, LOOK_NORTH, {});
 
-    checkVector(lights.ambient, {0.1F, 0.2F, 0.3F});
+    // The colours of the settings are sRGB values, the lights carry linear colours.
+    checkVector(lights.ambient, gfx::srgbToLinear(glm::vec3{0.1F, 0.2F, 0.3F}));
     // Pitch -90: the light travels straight down.
     checkVector(lights.directional.direction, {0.0F, -1.0F, 0.0F});
-    checkVector(lights.directional.color, {0.4F, 0.5F, 0.6F});
+    checkVector(lights.directional.color, gfx::srgbToLinear(glm::vec3{0.4F, 0.5F, 0.6F}));
     CHECK(lights.directional.intensity == 0.7F);
     CHECK(lights.pointCount == 0);
 }
@@ -101,7 +104,7 @@ TEST_CASE("the flashlight sits at the eye and points where the camera looks") {
     CHECK(lights.spotEnabled);
     checkVector(lights.spot.position, eye);
     checkVector(lights.spot.direction, viewDirection);
-    checkVector(lights.spot.color, settings.flashlightColor);
+    checkVector(lights.spot.color, gfx::srgbToLinear(settings.flashlightColor));
     CHECK(lights.spot.intensity == settings.flashlightIntensity);
     CHECK(lights.spot.innerConeDegrees == settings.flashlightInnerDegrees);
     CHECK(lights.spot.outerConeDegrees == settings.flashlightOuterDegrees);
@@ -144,7 +147,7 @@ TEST_CASE("every point light gets the shared colour, intensity and radius") {
     REQUIRE(lights.pointCount == 2);
     for (std::size_t i = 0; i < positions.size(); ++i) {
         checkVector(lights.points[i].position, positions[i]);
-        checkVector(lights.points[i].color, settings.pointColor);
+        checkVector(lights.points[i].color, gfx::srgbToLinear(settings.pointColor));
         CHECK(lights.points[i].intensity == 1.5F);
         CHECK(scene::attenuationFactor(lights.points[i].attenuation, 4.0F) ==
               doctest::Approx(scene::BRIGHTNESS_AT_RADIUS));
@@ -160,4 +163,27 @@ TEST_CASE("buildLightSet ignores positions past the largest number of point ligh
         game::buildLightSet(settings, glm::vec3{0.0F}, LOOK_NORTH, positions);
 
     CHECK(lights.pointCount == scene::MAX_POINT_LIGHTS);
+}
+
+TEST_CASE("buildLightSet converts the colours from sRGB to linear and leaves the rest") {
+    game::LightingSettings settings;
+    // Middle grey as a colour picker shows it: about a fifth of the light of white.
+    settings.ambient = glm::vec3{0.5F};
+    settings.moonColor = glm::vec3{0.5F};
+    settings.moonIntensity = 0.5F;
+    // White and black are the same numbers in both colour spaces.
+    settings.flashlightColor = glm::vec3{1.0F};
+    settings.pointColor = glm::vec3{0.0F};
+    const std::vector<glm::vec3> positions = {{1.0F, 1.4F, 7.0F}};
+
+    const scene::LightSet lights =
+        game::buildLightSet(settings, glm::vec3{0.0F}, LOOK_NORTH, positions);
+
+    checkVector(lights.ambient, glm::vec3{0.21404F});
+    checkVector(lights.directional.color, glm::vec3{0.21404F});
+    // An intensity is a factor, not a colour: it is not converted.
+    CHECK(lights.directional.intensity == 0.5F);
+    checkVector(lights.spot.color, glm::vec3{1.0F});
+    REQUIRE(lights.pointCount == 1);
+    checkVector(lights.points[0].color, glm::vec3{0.0F});
 }

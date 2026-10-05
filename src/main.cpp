@@ -56,6 +56,10 @@ protected:
             .terrain = terrainSettings(),
             .grass = grassSettings(),
             .grassTuftCount = grassTuftCount(),
+            .compositeShader = compositeShader(),
+            .previewShader = previewShader(),
+            .postProcessSettings = postProcessSettings(),
+            .postProcess = postProcess(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

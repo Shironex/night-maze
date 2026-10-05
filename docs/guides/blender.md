@@ -1189,9 +1189,17 @@ inaczej niż kamień ściany i kryształ).
    ziarno. Ciemny brzeg udaje zaokrąglenie bez światła, tak jak brzeg kamieni ściany.
 
 Parametry w `build()`: ziemia `(0.44, 0.36, 0.27)`, mech `(0.30, 0.42, 0.22)`, kamień
-`(0.50, 0.48, 0.44)`. Kolory są dość jasne celowo: gra rysuje do M7 bez korekcji gamma, więc
-noc ma wychodzić ze światła, a nie z ciemnego obrazu
-([`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md)).
+`(0.50, 0.48, 0.44)`. To wartości sRGB: od pierwszej części M7 gra wczytuje ten obraz jako
+teksturę sRGB (`GL_SRGB8`), karta dekoduje go do wartości liniowych przy odczycie, a ostatni
+przebieg klatki koduje wynik z powrotem, więc bez oświetlenia ekran pokazuje dokładnie te
+liczby. Kolory są dość jasne celowo: noc ma wychodzić ze światła, a nie z ciemnego obrazu.
+Tak mówi dziś komentarz w `build()`. Do M6 gra rysowała bez korekcji gamma i ten sam
+komentarz tłumaczył jasne kolory właśnie tym
+([`../modules/gfx/color-space.md`](../modules/gfx/color-space.md), notatka
+[`../decisions/gamma-linear-pipeline.md`](../decisions/gamma-linear-pipeline.md), która
+zastąpiła [`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md)).
+Samych obrazów pierwsza część M7 nie zmieniła: w skryptach `make_textures.py` i
+`make_skybox.py` zmieniły się tylko komentarze.
 
 **Wysokość: `ground_height`.** Jednostką jest piksel tekstury, na terenie 1 / 128 m.
 
@@ -1710,7 +1718,7 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
 | Ściany w jednej płaszczyźnie (z-fighting) | dwie ściany na tej samej głębi migoczą, bo test głębi raz wybiera jedną, raz drugą | wysokości słupa są inne niż wysokości ściany (sekcja 8) |
 | Końce linii | pliki mają LF. Git na Windowsie z włączonym `core.autocrlf=true` zamieniłby je przy pobraniu na CRLF | parser powinien odcinać znak `\r` z końca linii |
 | Inna wersja Blendera | zmienia komentarz w pierwszej linii plików, a może też formatowanie liczb | generuję tą samą wersją (5.2.1) na obu komputerach |
-| Przestrzeń barw | kolory w PNG obrazów koloru są zapisane w sRGB, a gra traktuje je jak liniowe | odłożone do M7 ([`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md)). Map normalnych to nie dotyczy: zawierają kierunki i mają być czytane bez przeliczania, tak jak czyta je gra |
+| Przestrzeń kolorów | kolory w PNG obrazów koloru i w obrazach nieba są zapisane w sRGB. Do M6 gra traktowała je jak liniowe | rozwiązane w pierwszej części M7: obrazy koloru i niebo są wczytywane jako tekstury sRGB (`gfx::ColorSpace::Srgb`), a mapy normalnych jako dane liniowe (`gfx::ColorSpace::Linear`), bo zawierają kierunki i mają być czytane bez przeliczania. Skrypty nie musiały się zmienić: wybór należy do kodu, który wczytuje plik ([`../modules/gfx/color-space.md`](../modules/gfx/color-space.md)). Komentarz w `make_skybox.py` mówi dziś, że kolory nieba są wartościami sRGB dobranymi na oko dla gotowego obrazu i że gra wczytuje ściany jako teksturę sześcienną sRGB |
 | Ściana nieba poprawiona ręcznie albo wygenerowana osobno | krawędź sześcianu przestaje pasować i na niebie widać szew | wszystkie sześć ścian powstaje w jednym uruchomieniu `make_skybox.py`, z tego samego ziarna. Test granic w `tests/SkyboxTests.cpp` pilnuje wyniku |
 | Kierunek księżyca w dwóch plikach | tarcza na niebie stoi gdzie indziej niż źródło światła na ścianach | `MOON_LIGHT_YAW_DEGREES` i `MOON_LIGHT_PITCH_DEGREES` w `make_skybox.py` zmieniam razem z wartościami domyślnymi w `src/game/Lighting.hpp` |
 | Ściana nieba wczytana jak tekstura 2D | odwrócenie wierszy stawia każdą ścianę do góry nogami | gra wczytuje te pliki z `assets::RowOrder::TopFirst`, a skrypt pisze je górnym wierszem pierwszym |

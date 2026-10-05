@@ -37,13 +37,21 @@ SpecularModel specularModelOf(LightingMode mode);
 /// Everything about the lighting that can be changed while the game runs. The debug UI
 /// edits these fields, and the game builds the lights of a frame from them
 /// (buildLightSet). The values here are the defaults of the night scene.
+///
+/// COLOUR SPACE: the four colours are sRGB values, the numbers a colour picker shows
+/// and the screen displays. buildLightSet converts them to linear colours for the
+/// shaders. The intensities multiply the linear colour and may make it brighter than 1:
+/// the scene is drawn into an HDR buffer, and the composite pass (game::PostProcess)
+/// brings the result back into the range of the screen. The defaults are tuned for that
+/// pipeline together with PostProcessSettings::exposure and its tone mapping.
 struct LightingSettings {
     /// How the maze is shaded.
     LightingMode mode = LightingMode::BlinnPhong;
 
     /// Light that reaches every surface: low, so that corners no light shines into are
-    /// dark but not black. A cold blue, like the night sky.
-    glm::vec3 ambient{0.035F, 0.045F, 0.075F};
+    /// dark but not black. A cold blue, like the night sky. As an sRGB value it looks
+    /// like a lot, but only about a hundredth of it is left as linear light.
+    glm::vec3 ambient{0.105F, 0.135F, 0.225F};
 
     /// The moon, a directional light. The two angles say which way its light TRAVELS,
     /// with the conventions of scene::directionFromAngles: yaw like a compass (0 towards
@@ -67,14 +75,14 @@ struct LightingSettings {
     float moonPitchDegrees = -50.0F;
     /// A cool, dim blue-white.
     glm::vec3 moonColor{0.55F, 0.65F, 1.0F};
-    float moonIntensity = 0.3F;
+    float moonIntensity = 0.12F;
 
     /// The flashlight, a spot light at the eye of the player. Key F switches it. An
     /// empty battery switches it off and keeps it off (game::updateRound).
     bool flashlightOn = true;
     /// A warm white.
     glm::vec3 flashlightColor{1.0F, 0.9F, 0.72F};
-    float flashlightIntensity = 1.6F;
+    float flashlightIntensity = 1.3F;
     /// Half angles of the cone in degrees, see scene::SpotLight.
     float flashlightInnerDegrees = 13.0F;
     float flashlightOuterDegrees = 21.0F;
@@ -85,7 +93,7 @@ struct LightingSettings {
     /// been collected yet. They all share these settings. A cyan-teal: the colour the
     /// crystals glow in (their emissive colour is derived from it).
     glm::vec3 pointColor{0.2F, 0.9F, 0.8F};
-    float pointIntensity = 2.0F;
+    float pointIntensity = 0.9F;
     /// How far one of them reaches, in metres: one and a half cells.
     float pointRadius = 3.0F;
 
@@ -111,7 +119,7 @@ struct LightingSettings {
 /// normals of the maps in it, so the answer is true there.
 bool usesNormalMap(const LightingSettings& settings);
 
-/// The lights of one frame.
+/// The lights of one frame, with their colours converted from sRGB to linear.
 ///
 /// eye and viewDirection are where the camera stands and where it looks in this frame:
 /// the flashlight is put exactly there, so its cone stays in the middle of the picture.

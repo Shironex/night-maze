@@ -721,8 +721,8 @@ def build():
     save_png(normal_map(wall_height), "wall_stone_normal.png")
 
     # Ground: packed earth with patches of moss and small stones, for the terrain. The
-    # game is drawn without gamma correction before M7, so the colours are kept fairly
-    # light: the night comes from the lighting, not from the picture.
+    # colours are sRGB values (the game loads the picture as an sRGB texture) and are
+    # kept fairly light: the night comes from the lighting, not from the picture.
     ground = ground_pattern(seed=GROUND_SEED, stone_count=48, min_radius=4.0, max_radius=11.0)
     ground_picture = ground_color(
         ground,

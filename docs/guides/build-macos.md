@@ -10,12 +10,15 @@ Powstały na Windowsie 2026-10-05 i na macOS nikt ich nie zbudował. To samo dot
 (rozgrywka: kryształy, bateria latarki, brama, wyjście, HUD, panel Gameplay), też z
 2026-10-05, i obu części M6 z tego samego dnia: pierwszej (skybox: tekstura sześcienna,
 niebo, piąty program shaderów) i drugiej (teren z mapy wysokości w miejscu płytek podłogi,
-trawa z shadera geometrii, szósty program, panele Terrain i Grass). Wszystko, co ten
+trawa z shadera geometrii, szósty program, panele Terrain i Grass), oraz pierwszej części
+M7, też z 2026-10-05 (scena rysowana do bufora HDR, przebieg składający z mapowaniem tonów,
+korekcja gamma, siódmy i ósmy program, panel Framebuffers). Wszystko, co ten
 dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
 (oświetlenie) na macOS", "M4 (mapy normalnych) na macOS", "M5 (rozgrywka) na macOS",
-"M6, część 1 (skybox) na macOS" i "M6, część 2 (teren i trawa) na macOS".
+"M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS" i "M7, część 1
+(bufor HDR i gamma) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -110,7 +113,8 @@ kryształami, które unoszą się w komórkach, obracają się i same świecą (
 startowym). Przy komórce wyjścia stoi drewniana brama. Nad ścianami jest nocne niebo
 z gwiazdami i księżycem (skybox), a wokół labiryntu wzgórza. Cieni nie ma. U góry okna,
 na środku, jest pasek HUD:
-`Crystals`, `0 / 10`, `(of 13)`, czas rundy i pasek baterii. Paneli jest dziesięć: "Renderer"
+`Crystals`, `0 / 10`, `(of 13)`, czas rundy i pasek baterii. Paneli jest jedenaście
+(jedenasty, "Framebuffers", stoi zwinięty w trzecim rzędzie pasków tytułu): "Renderer"
 nad "Lights" w
 lewej kolumnie, "Maze" nad "Assets" w prawej, "Collision" i "Shaders" na dole między
 kolumnami, a "Camera" i "Gameplay" u góry, między kolumnami, zwinięte do pasków tytułu,
@@ -233,7 +237,10 @@ przypadków, `CrystalTests.cpp` 14, `ExitTests.cpp` 11, `GrassTests.cpp` 9,
 Przed oświetleniem (2026-10-05) program miał osiem plików z testami, przed mapami
 normalnych dwanaście, po M4 trzynaście (163 przypadki i 62220 asercji), po M5 szesnaście
 (215 i 85098), a po pierwszej części M6 siedemnaście (221 i 85175), i odpowiednio
-mniej przypadków.
+mniej przypadków. Blok wyżej to stan po drugiej części M6 (dziewiętnaście plików). Dziś,
+po pierwszej części M7, plików jest dwadzieścia jeden: doszły `ColorSpaceTests.cpp` (9
+przypadków) i `FramebufferTests.cpp` (3), a `LightingTests.cpp` ma 11. Zgłoszone dla
+Windowsa liczby tego stanu to 269 przypadków i 102103 asercje.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -407,8 +414,8 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 - [ ] **Retina a układ paneli**: panel Renderer pokazuje `Framebuffer` dwa razy większy niż
       `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Miejsca startowe paneli
       (`src/debug/PanelLayout.hpp`) są w jednostkach okna i ułożone dla 1280 x 720, więc po
-      usunięciu `imgui.ini` dziesięć paneli powinno stać tak samo jak na Windowsie i nie
-      zasłaniać się (panele Camera i Gameplay, a pod nimi Terrain i Grass, zwinięte do pasków tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
+      usunięciu `imgui.ini` jedenaście paneli powinno stać tak samo jak na Windowsie i nie
+      zasłaniać się (panele Camera i Gameplay, pod nimi Terrain i Grass, a pod nimi Framebuffers, zwinięte do pasków tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
       poprawny rozmiar i ostrość
 - [ ] **budowanie motywu pod clang**: `src/debug/Theme.cpp` i `src/debug/PanelLayout.cpp`
       kompilują się z `-Wall -Wextra -Wpedantic` bez ostrzeżeń. Na Windowsie są zbudowane w
@@ -478,7 +485,7 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       uruchomić `./build/debug/night_maze`
 - [ ] start: widok z wnętrza labiryntu, tekstury stoją prosto i nie są odbite lustrzanie,
       w terminalu nie ma linii `[error]`
-- [ ] okno 1280 x 720: dziesięć paneli nie zasłania się nawzajem (Renderer nad Lights po
+- [ ] okno 1280 x 720: jedenaście paneli nie zasłania się nawzajem (Renderer nad Lights po
       lewej, Maze nad Assets po prawej, Collision i Shaders na dole między kolumnami,
       Camera i Gameplay zwinięte u góry, Terrain i Grass zwinięte w drugim rzędzie pod nimi). Zapisać, czy panele Renderer, Lights, Maze, Collision i
       Shaders pokazują całą zawartość bez przewijania: nazwa karty Apple w panelu Renderer
@@ -545,8 +552,9 @@ shaderach, panel Lights, układ siedmiu paneli) powstała na Windowsie 2026-10-0
 zbudowana i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcja 13).
 Lista powstała dla stanu M4, w którym światła punktowe wisiały w ślepych zaułkach i były
 oznaczone kostkami. M5 przeniósł je nad kryształy i usunął kostki, więc punkty poniżej
-są przepisane na dzisiejszy program: paneli jest dziesięć, programów shaderów sześć,
-źródłem światła punktowego jest kryształ, a podłogą jest teren (M6).
+są przepisane na dzisiejszy program: paneli jest jedenaście, programów shaderów osiem,
+źródłem światła punktowego jest kryształ, podłogą jest teren (M6), a scena jest rysowana
+do bufora HDR z nowymi wartościami świateł (M7).
 **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
 odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 [`../modules/scene/lights.md`](../modules/scene/lights.md),
@@ -916,7 +924,7 @@ kryształów).
 - [ ] **tytuł karty wygranej**: napis `You escaped` jest rysowany tą samą czcionką w
       rozmiarze 1,8 raza większym (`ImGui::PushFont` z rozmiarem). Zapisać, czy na Retinie
       jest ostry, a nie rozciągnięty z mniejszej tekstury
-- [ ] **Retina a układ paneli** (w M5 ośmiu, dziś dziesięciu): po usunięciu `imgui.ini`
+- [ ] **Retina a układ paneli** (w M5 ośmiu, dziś jedenastu): po usunięciu `imgui.ini`
       Renderer stoi nad Lights w
       lewej kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole, a Camera i
       Gameplay są zwinięte u góry, między kolumnami, z paskami Terrain i Grass pod sobą. Nic się nie zasłania
@@ -1007,7 +1015,7 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
       pętla po liście w klamrach w teście (`for (const float firstSign : {-1.0F, 1.0F})`)
       i lambda w `std::ranges::any_of` w `Cubemap.cpp`
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
-      przechodzą (po pierwszej części M6 było ich 221, dziś jest 256). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
+      przechodzą (po pierwszej części M6 było ich 221, po drugiej 256, dziś zgłoszone 269). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
       powinny przejść bez zmian, bo to te same bajty z repozytorium
 
 **Shadery i OpenGL**
@@ -1041,7 +1049,7 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
 
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 15.2: przełącznik,
       jasność, szwy, księżyc przy yaw 205 i pitch 50, suwak `Moon yaw` bez wpływu na
-      tarczę, widoki diagnostyczne, `Reload shaders` (dziś przy sześciu programach, na macOS bez
+      tarczę, widoki diagnostyczne, `Reload shaders` (dziś przy ośmiu programach, na macOS bez
       kroku kopiowania assetów), brak pliku
 
 **Skrypt Blendera**
@@ -1088,8 +1096,9 @@ i przez testy ręczne.
       stała `constexpr glm::mat4 IDENTITY{1.0F}` w `TerrainRenderer.cpp`, `std::lround`
       w `Grass.cpp` i przypisanie wewnątrz makra
       (`GL_CHECK(cullingWasOn = glIsEnabled(GL_CULL_FACE))`)
-- [ ] `ctest --test-dir build/debug --output-on-failure`: 256 przypadków, wszystkie
-      przechodzą (na Windowsie 101232 asercje)
+- [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki przechodzą.
+      Po tej części było ich 256 (na Windowsie 101232 asercje), dziś, po pierwszej części
+      M7, zgłoszone 269 i 102103
 - [ ] **te same wysokości co na Windowsie.** Teren jest liczony na liczbach `float`
       z pliku `heightmap.png`, bez funkcji, których wynik zależy od biblioteki. Po starcie
       panel Camera powinien pokazać `Player feet` z y równym 0.124, a panel Terrain linie
@@ -1166,7 +1175,7 @@ i przez testy ręczne.
       po podłożu, szczeliny pod ścianami, `Height scale` z 0 i 2.50, `Wireframe`, wzgórza
       w trybie noclip, panel Grass (`Enabled`, `Density`, `Blade height`,
       `Wind strength`), trawa pod latarką i przy krysztale, cztery tryby `Lighting`,
-      widoki diagnostyczne, `Reload shaders` przy sześciu programach (na macOS bez kroku
+      widoki diagnostyczne, `Reload shaders` przy ośmiu programach (na macOS bez kroku
       kopiowania assetów), nowe labirynty innych rozmiarów, kryształy i brama na podłożu,
       liczba klatek
 - [ ] liczba klatek na sekundę w Release z trawą i bez niej oraz przy `Density` 8.0: na
@@ -1181,6 +1190,128 @@ i przez testy ręczne.
       `sin` czy `exp`, więc plik `heightmap.png` powinien wyjść bajt w bajt taki sam.
       Zapisać, czy tak jest, a jeśli nie, to czy testy nadal przechodzą i jaką wysokość
       pokazuje `Player feet` na starcie. Po próbie przywrócić plik z repozytorium
+
+### M7, część 1 (bufor HDR i gamma) na macOS: lista w całości otwarta
+
+Pierwsza część kamienia milowego M7 (scena rysowana do własnego framebuffera
+`gfx::Framebuffer` z teksturą koloru `GL_RGBA16F` i teksturą głębi, klasa
+`game::PostProcess` z przebiegiem składającym: ekspozycja, mapowanie tonów, kodowanie sRGB,
+korekcja gamma w całym potoku przez `gfx::ColorSpace` i tekstury `GL_SRGB8`, siódmy i ósmy
+program shaderów `composite` i `preview`, klasa `debug::RawTextureSampler`, panel
+Framebuffers w trzecim rzędzie pasków tytułu, nowe wartości startowe świateł) powstała na
+Windowsie 2026-10-05 i tam jest zgłoszona jako zbudowana i przetestowana
+([`build-windows.md`](build-windows.md), sekcja 17). **Na macOS nikt jej nie zbudował ani
+nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania wynikają z kodu,
+z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
+[`../modules/gfx/color-space.md`](../modules/gfx/color-space.md),
+[`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md),
+[`../modules/renderer/post-process.md`](../modules/renderer/post-process.md). M7 jest
+rozpoczęty, nie kompletny: bloomu, mgły, winiety, minimapy i cieni nie ma na żadnym
+systemie.
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/gfx/ColorSpace.*`, `src/gfx/Extensions.*`, `src/gfx/Framebuffer.*`,
+      `src/game/PostProcess.*`, `src/debug/RawTextureSampler.*`,
+      `src/debug/panels/FramebuffersPanel.*`, `tests/ColorSpaceTests.cpp`,
+      `tests/FramebufferTests.cpp`. Zmienione między innymi: `src/gfx/Texture2D.*`,
+      `src/gfx/Cubemap.*`, `src/assets/AssetCache.*`, `src/game/NightMazeApp.*`,
+      `Lighting.*`, `ColliderLines.cpp`, `Skybox.*`, `TerrainRenderer.cpp`,
+      `src/debug/DebugUI.*`, `DebugContext.hpp`, `PanelLayout.hpp`, `src/main.cpp`.
+      Miejsca warte uwagi: inicjalizatory desygnowane przekazane wprost do konstruktora
+      (`gfx::Framebuffer({.width = ..., .height = ..., .color = ..., .depth = ...})`
+      w `PostProcess.cpp`) i do zwracanej struktury (`colorTextureFormat` w
+      `Framebuffer.cpp`), przypisanie wewnątrz makra
+      (`GL_CHECK(status = glCheckFramebufferStatus(GL_FRAMEBUFFER))`), `std::lround`
+      w `PostProcess.cpp`, rzutowanie `static_cast<ImTextureID>` z `GLuint`
+      w `FramebuffersPanel.cpp` oraz stałe rozszerzenia wpisane liczbami w
+      `RawTextureSampler.cpp` (`0x8A48`, `0x8A4A`), których nagłówek GLAD nie deklaruje
+- [ ] `ctest --test-dir build/debug --output-on-failure`: 269 przypadków, wszystkie
+      przechodzą (zgłoszone dla Windowsa 102103 asercje). Testy `ColorSpaceTests.cpp`
+      porównują wyniki `std::pow` z liczbami do czterech albo pięciu miejsc: zapisać, czy
+      któryś nie przechodzi na libc++ i Apple Silicon przez ostatnią cyfrę
+- [ ] gra startuje bez linii `[error]`, w szczególności bez linii zaczynającej się od
+      `Framebuffer of`
+
+**Cel `GL_RGBA16F` na sterowniku Apple**
+
+- [ ] bufor sceny jest kompletny. Specyfikacja OpenGL 4.1 wymaga, żeby `GL_RGBA16F` dało
+      się użyć jako celu rysowania, ale na macOS OpenGL działa jako warstwa nad Metalem
+      i tego zestawu (tekstura `GL_RGBA16F` z teksturą głębi `GL_DEPTH_COMPONENT24`) nikt
+      tam jeszcze nie utworzył. Błąd wyglądałby tak:
+      `[error] Framebuffer of ... (GL_RGBA16F, GL_DEPTH_COMPONENT24) is not complete: ...`
+      i czarna scena przy działających panelach. Zapisać cały komunikat
+- [ ] podglądy w panelu Framebuffers (dwa małe framebuffery `GL_RGBA8` bez głębi) też
+      powstają bez błędu
+- [ ] odczyt tekstury głębi przez `sampler2D` działa: podgląd `Depth (as distance)` pokazuje
+      scenę w odcieniach szarości, a nie jednolitą biel albo czerń
+- [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy otwartym panelu
+      Framebuffers, po zmianie rozmiaru okna i po minimalizacji
+
+**Ekran Retina: rozmiar framebuffera**
+
+- [ ] linia `Scene framebuffer` w panelu Framebuffers pokazuje **rozmiar w pikselach**,
+      czyli dla okna 1280 x 720 oczekiwane `2560 x 1440 px`, ten sam co linia `Framebuffer`
+      w panelu Renderer, a nie rozmiar z linii `Window`. `onRender` bierze rozmiar
+      z `window().framebufferSize()` i ten sam rozmiar dostają `beginScene` i `composite`
+- [ ] obraz wypełnia całe okno i jest ostry. Gdyby do bufora albo do viewportu trafił
+      rozmiar okna zamiast rozmiaru framebuffera, scena zajmowałaby lewą dolną ćwiartkę
+      okna albo byłaby rozmyta
+- [ ] przeciągnąć okno między ekranem Retina a zewnętrznym monitorem o skali 1 (jeśli
+      jest): rozmiar w linii `Scene framebuffer` zmienia się, obraz zostaje pełny, bez
+      linii `[error]`
+- [ ] pamięć: przy 2560 x 1440 tekstura koloru bufora sceny ma około 28 MiB (8 bajtów na
+      piksel). Zapisać liczbę klatek na sekundę w Release przy ustawieniach startowych:
+      PRD wymaga stabilnych 60 klatek w 1440p na MacBooku, a na Windowsie koszt tej części
+      zgłoszono jako spadek z około 2020 do około 1960 klatek w tym rozmiarze
+- [ ] zmiana rozmiaru okna przeciąganiem krawędzi, minimalizacja do Docka i przywrócenie,
+      tryb pełnoekranowy (zielony przycisk): po każdej z tych rzeczy obraz jest pełny
+      i nie ma linii `[error]`. Zapisać, czy zminimalizowane okno zgłasza na macOS rozmiar
+      framebuffera 0 x 0 (na Windowsie tak, i klatka jest wtedy pomijana)
+
+**Rozszerzenie `GL_EXT_texture_sRGB_decode`**
+
+- [ ] czy sterownik Apple je ma. Program tego nie wypisuje, więc sprawdza się skutek:
+      w panelu Assets podglądy tekstur z napisem `sRGB` (`wall_stone.png`, `gate_wood.png`,
+      `crystal.png`, `ground.png`) powinny wyglądać jak pliki otwarte w Podglądzie. Jeśli są
+      wyraźnie ciemniejsze, rozszerzenia nie ma: `debug::RawTextureSampler` wtedy nic nie
+      robi. Zapisać wynik. To dotyczy tylko podglądów w panelu, scena jest od tego
+      niezależna
+- [ ] podglądy map normalnych (napis `linear`) są jasnoniebieskie w obu przypadkach
+- [ ] rozszerzenie filtrowania anizotropowego jest wykrywane tak jak przedtem (suwak
+      `Anisotropy` w panelu Assets): od M7 pyta o nie wspólna funkcja `gfx::hasExtension`
+
+**Wygląd**
+
+- [ ] scena startowa obok zrzutu ekranu z Windowsa: ta sama jasność i ten sam charakter
+      nocy. Wartości świateł, ekspozycja 1,0 i krzywa ACES były dobierane na jednym
+      monitorze na Windowsie. Zapisać, czy na ekranie MacBooka noc jest czytelna, czy
+      najciemniejsze kąty nie zlewają się w czerń i czy kryształy nie są przepalone
+- [ ] **podwójne kodowanie.** Program koduje klatkę na sRGB w shaderze i trzyma
+      `GL_FRAMEBUFFER_SRGB` wyłączone, więc wynik nie powinien zależeć od tego, jaki
+      framebuffer macOS dał oknu. Gdyby scena była wyraźnie wyblakła i za jasna, a panele
+      ImGui wyglądały normalnie, zapisać to: oznaczałoby drugie kodowanie po stronie
+      systemu ([`../decisions/srgb-encode-in-shader.md`](../decisions/srgb-encode-in-shader.md))
+- [ ] kolory paneli i paska HUD są takie same jak przed M7 (porównać ze zrzutem z M1 albo
+      z Windowsem)
+- [ ] tryb `Unlit` z `Tone mapping` na `None (clamp)` i `Exposure` 1.00: ściana wygląda jak
+      plik `wall_stone.png`
+
+**Panel i przełączniki**
+
+- [ ] po usunięciu `imgui.ini`: trzy rzędy pasków tytułu u góry (Camera i Gameplay,
+      Terrain i Grass, Framebuffers na szerokość obu), pasek HUD pod trzecim rzędem, nic
+      na siebie nie nachodzi przy skali ekranu Maca
+- [ ] rozwinięty panel Framebuffers mieści suwak, listę, linię z rozmiarem i dwa podglądy
+      bez przewijania. Podglądy są we właściwą stronę (niebo u góry) i ostre na Retinie
+      (mają 180 pikseli wysokości i są rozciągane przez ImGui, więc mogą być miękkie:
+      zapisać)
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 17.2: wygląd
+      sceny, `Exposure`, trzy pozycje `Tone mapping`, podglądy i `Depth range`, oba widoki
+      debugowania, panel Assets, zmiana rozmiaru, minimalizacja, `Reload shaders` przy
+      ośmiu programach (na macOS bez kroku kopiowania assetów)
 
 ### Skróty: `make`
 
