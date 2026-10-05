@@ -45,8 +45,15 @@
 > Debug przy podglądach załączników, po zmianie rozmiaru okna i po minimalizacji, porównanie
 > obrazu z poprzednim commitem i liczba klatek na sekundę (sekcja 17.1). Żadnego z tych
 > pomiarów nie powtarzałem. Wersji kompilatora, karty graficznej i sterownika dla tej
-> części nie zapisano. M7 jest rozpoczęty, nie kompletny: bloomu, mgły, winiety, minimapy
-> i cieni nie ma.
+> części nie zapisano.
+>
+> **Zgłoszone 2026-10-05 (M7, część 2: bloom):** bramka `make check` przechodzi, zero
+> ostrzeżeń w Debug i w Release, 276 przypadków testowych i 102139 asercji w obu
+> konfiguracjach, z wyłączonym bloomem obraz identyczny co do piksela z pierwszą częścią
+> (zmierzone przed zmianą świecenia kryształów), poświata kryształów i księżyca na zrzutach
+> ekranu i liczba klatek na sekundę z bloomem i bez (sekcja 18.1). Żadnego z tych pomiarów
+> nie powtarzałem. Wersji kompilatora, karty graficznej i sterownika dla tej części nie
+> zapisano. M7 jest rozpoczęty, nie kompletny: mgły, winiety, minimapy i cieni nie ma.
 >
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
@@ -155,9 +162,10 @@ Słowo "zmierzone" w tytule dotyczy stanu do M4. To, co lista mówi o M5 (kryszt
 brama, pasek HUD i jego napisy, panel Gameplay, liczby modeli i tekstur
 w liniach `[info]`), wynika z kodu, a nie z pomiaru: dla M5 zmierzone są build, testy
 jednostkowe i obraz na zrzutach, których listy nie zapisano (sekcja 14.1). Tak samo jest
-z tym, co lista mówi o M6 (niebo, nierówne podłoże, trawa) i o pierwszej części M7 (jedenaście
-paneli, osiem programów, nowe wartości startowe świateł i koloru tła): wynika z kodu
-i ze zgłoszonych pomiarów (sekcje 15.1, 16.1 i 17.1).
+z tym, co lista mówi o M6 (niebo, nierówne podłoże, trawa) i o M7 (jedenaście
+paneli, osiem programów po pierwszej części i dziesięć po drugiej, nowe wartości startowe
+świateł i koloru tła, poświata kryształów): wynika z kodu i ze zgłoszonych pomiarów
+(sekcje 15.1, 16.1, 17.1 i 18.1).
 
 - `cmake --preset debug` kończy się bez błędów. Wypisuje jedno ostrzeżenie o nieużytej
   zmiennej `CMAKE_BUILD_TYPE`. Jest ono oczekiwane (sekcja 3).
@@ -289,10 +297,12 @@ razem 256 (liczby na plik policzone z makr `TEST_CASE` w kodzie testów). Po
 kroku łączącym M2 + M3 program miał osiem plików z testami, po M4 trzynaście (163
 przypadki i 62220 asercji, sekcja 13), po M5 szesnaście (215 i 85098, sekcja 14), po
 pierwszej części M6 siedemnaście (221 i 85175, sekcja 15), po drugiej dziewiętnaście (256
-i 101232, sekcja 16: lista wyżej). Dziś, po pierwszej części M7, ma dwadzieścia jeden:
+i 101232, sekcja 16: lista wyżej). Po pierwszej części M7 miał dwadzieścia jeden:
 doszły `ColorSpaceTests.cpp` (9 przypadków) i `FramebufferTests.cpp` (3),
-a `LightingTests.cpp` ma 11. Zgłoszone liczby dla tego stanu to **269 przypadków i 102103
-asercje** w Debug i w Release (sekcja 17.1). Blok wyjścia programu wyżej jest zapisem
+a `LightingTests.cpp` ma 11 (269 przypadków i 102103 asercje, sekcja 17.1). Dziś, po
+drugiej części M7, ma dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypadków). Zgłoszone
+liczby dla tego stanu to **276 przypadków i 102139 asercji** w Debug i w Release
+(sekcja 18.1). Blok wyjścia programu wyżej jest zapisem
 z drugiej części M6: nowego wyjścia nie przepisywałem, bo sam go nie uruchamiałem.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
@@ -1306,8 +1316,9 @@ asercji, siedem paneli, pięć programów, mapy normalnych) opisuje sekcja 13, s
 (215 i 85098, osiem paneli, cztery programy, runda z kryształami) sekcja 14, stan po
 pierwszej części M6 (221 i 85175, pięć programów, niebo) sekcja 15, stan po drugiej (256
 i 101232, dziesięć paneli, sześć programów, teren w miejscu płytek podłogi i trawa)
-sekcja 16, a dzisiejszy (zgłoszone 269 i 102103, jedenaście paneli, osiem programów, scena
-rysowana do bufora HDR, gamma i nowe wartości świateł) sekcja 17. Punkty otwarte `[ ]` w sekcji
+sekcja 16, stan po pierwszej części M7 (zgłoszone 269 i 102103, jedenaście paneli, osiem
+programów, scena rysowana do bufora HDR, gamma i nowe wartości świateł) sekcja 17,
+a dzisiejszy (zgłoszone 276 i 102139, dziesięć programów, bloom) sekcja 18. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie. Punkty `[x]`
 mówią o podłodze z płytek (`floor_tile.obj`, `floor_stone.png`), którą druga część M6
 usunęła.
@@ -2830,8 +2841,9 @@ Notatka [`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md)
 zastąpiona.
 
 Kamień milowy M7 jest **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest w toku:
-są bufor HDR, przebieg składający i podglądy załączników. **Nie są zbudowane:** bloom,
-mgła, winieta, minimapa i cienie (temat 11). Część ręczna poniżej (17.2) jest otwarta
+po tej części były bufor HDR, przebieg składający i podglądy załączników, a bloom doszedł
+w części drugiej (sekcja 18). **Nie są zbudowane:** mgła, winieta, minimapa i cienie
+(temat 11). Część ręczna poniżej (17.2) jest otwarta
 w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i nie ma
 tagu.
 
@@ -2919,6 +2931,22 @@ Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić,
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze zgłoszonych pomiarów,
 nie z klikania. Nazwy widżetów są zapisane tak jak w
 `src/debug/panels/FramebuffersPanel.cpp`, `RendererPanel.cpp` i `AssetsPanel.cpp`.
+
+**Uwaga po drugiej części M7.** Ta lista powstała dla programu z pierwszej części i nie
+została wykonana, zanim doszedł bloom. Wykonując ją w dzisiejszym programie, trzeba
+pamiętać o pięciu różnicach:
+
+- panel Framebuffers wygląda inaczej: kontrolki stoją w dwóch kolumnach, `Depth range`
+  jest w tabeli nad kreską, pod linią `Scene framebuffer` jest linia `Bloom targets`,
+  a obrazów jest cztery. Układ dzisiejszy opisuje sekcja 18.2
+- podpisy obrazów brzmią dziś `HDR colour` i `Depth`, a nie `Colour (HDR, cut off at 1)`
+  i `Depth (as distance)`. Dawne dopiski są w podpowiedziach po najechaniu kursorem
+- kroki o wyglądzie kryształu, ekspozycji i krzywych najlepiej wykonać z **odznaczonym**
+  polem `Bloom`, bo opisują obraz bez poświaty. Kryształy są przy tym jaśniejsze i bledsze
+  niż w pierwszej części: `CRYSTAL_GLOW_STRENGTH` ma dziś 4,0, a nie 2,5 z tabeli wyżej
+- lista w panelu Shaders ma dziesięć linii, nie osiem, a zepsuty `composite.vert` daje
+  cztery czerwone linie, nie dwie
+- podglądy kosztują przy rozwiniętym panelu cztery małe przebiegi, nie dwa
 
 Przygotowanie:
 
@@ -3085,7 +3113,304 @@ Na koniec:
 - [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
       zostały zapisane
 
-## 18. Powiązane dokumenty
+## 18. Lista kontrolna M7, część 2: bloom
+
+Druga część kamienia milowego M7 dodaje pierwszy efekt liczony z gotowej sceny: poświatę
+wokół jasnych miejsc (bloom). Po scenie, a przed przebiegiem składającym, gra rysuje trzy
+kroki w trzech celach `GL_RGBA16F` o połowie szerokości i połowie wysokości bufora sceny:
+przebieg jasności (zostaje światło jaśniejsze od progu), rozmycie Gaussa (rozdzielne,
+poziomo i pionowo, startowo sześć powtórzeń) i dodanie wyniku do sceny przed ekspozycją
+i mapowaniem tonów. Doszły: pliki `src/game/Bloom.hpp` i `Bloom.cpp` (ustawienia
+`BloomSettings`, funkcje `bloomTargetExtent` i `bloomBlurWeights`, w bibliotece
+`game_logic`), dziewiąty i dziesiąty program shaderów (`post/composite.vert`
+z `post/bright.frag` i z `post/blur.frag`) oraz plik testów `tests/BloomTests.cpp`.
+Zmieniły się: klasa `game::PostProcess` (funkcja `drawBloom`, trzy cele bloomu, dwa
+kolejne podglądy), `post/composite.frag` (uniformy `uBloom`, `uBloomEnabled`,
+`uBloomIntensity`), `common/color.glsl` (funkcja `luminance`), klasa `gfx::Shader` (setter
+tablicy `setFloatArray`), `NightMazeApp` (dwa programy i wywołanie `drawBloom`
+w `onRender`), `ShaderUniforms.hpp` (osiem nazw), panel Framebuffers, `DebugContext` (dwa
+pola, razem trzydzieści), `DebugUI::draw` (`SHADER_COUNT` równe 10) oraz jedna stała gry:
+`CRYSTAL_GLOW_STRENGTH` wynosi 4,0 zamiast 2,5.
+Opis kodu: [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md)
+(sekcje 2.11 do 2.15: dlaczego bloom potrzebuje HDR, luminancja, wzór przebiegu jasności,
+wagi Gaussa, rozmycie rozdzielne, ping-pong, połowa rozdzielczości, dodanie przed
+mapowaniem tonów. Sekcje 4.6 do 4.8, 5.10 i 5.11: shadery i kod linia po linii),
+[`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md) (sekcja 5.8: `setFloatArray`),
+[`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md) (sekcja 5.14: cele bloomu
+jako użytkownicy klasy), [`../modules/debug-ui.md`](../modules/debug-ui.md) (panel
+Framebuffers w nowym układzie). Decyzje:
+[`../decisions/bloom-half-resolution-three-targets.md`](../decisions/bloom-half-resolution-three-targets.md),
+[`../decisions/bright-pass-keeps-hue.md`](../decisions/bright-pass-keeps-hue.md),
+[`../decisions/blur-weights-computed-on-cpu.md`](../decisions/blur-weights-computed-on-cpu.md)
+i [`../decisions/crystal-glow-raised-for-bloom.md`](../decisions/crystal-glow-raised-for-bloom.md).
+
+Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest
+w toku: są bufor HDR, przebieg składający, podglądy załączników i bloom. **Nie są
+zbudowane:** mgła, winieta, minimapa i cienie (temat 11). Część ręczna poniżej (18.2) jest
+otwarta w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i nie
+ma tagu.
+
+### 18.1. Zgłoszone (2026-10-05)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
+nie zapisano, więc ich tu nie podaję (środowisko wcześniejszych pomiarów jest w sekcji 1).
+**Żadnego z poniższych punktów nie powtarzałem przy pisaniu tej sekcji**: wszystkie są
+zgłoszone z dnia, w którym powstał kod. Sam policzyłem tylko liczbę makr `TEST_CASE`
+w plikach testów (276) i asercje w `BloomTests.cpp` (36), a liczby w tabelach wartości
+startowych przepisałem z kodu.
+
+Bramka i testy:
+
+- [x] `make check` przechodzi: formatowanie (clang-format), buildy Debug i Release, testy
+      w obu, clang-tidy
+- [x] build Debug i Release: zero ostrzeżeń
+- [x] `night_maze_tests.exe` w Debug i w Release: 276 przypadków testowych i 102139
+      asercji, wszystkie przechodzą. Względem pierwszej części M7 (269 przypadków
+      i 102103 asercje) doszedł plik `BloomTests.cpp`: 7 przypadków i 36 asercji,
+      `269 + 7 = 276` i `102103 + 36 = 102139`
+
+Porównanie obrazu z pierwszą częścią M7:
+
+- [x] z odznaczonym polem `Bloom` obraz jest identyczny co do piksela z obrazem pierwszej
+      części, w sześciu widokach. Pomiar zrobiono **przed** podniesieniem
+      `CRYSTAL_GLOW_STRENGTH`, więc dotyczy samego dodania bloomu do potoku
+- [x] dziś kryształy różnią się od pierwszej części **z założenia**, także przy
+      wyłączonym bloomie: `CRYSTAL_GLOW_STRENGTH` ma 4,0 zamiast 2,5 i kryształy są bledsze
+
+Zrzuty ekranu (robione bez myszy):
+
+- [x] poświata kryształu w najciemniejszej chwili pulsu i w najjaśniejszej, w trybach
+      `Unlit`, `Gouraud` i `Blinn-Phong`, ze ściankami kryształu nadal widocznymi
+- [x] poświata wokół tarczy księżyca
+- [x] gwiazdy zostają punktami, bez poświaty
+- [x] próg 0,3 i próg 2,0
+- [x] panel Framebuffers z czterema podglądami
+- [x] okno zmienione na 1000 x 600: cele bloomu mają 500 x 300
+- [x] widok normalnych: w miejscu dwóch obrazów bloomu stoi `(not drawn)`
+
+Koszt, Release, panele ukryte. Pomiar jest niespokojny, dlatego zakresy:
+
+- [x] 1280 x 720: od 1900 do 2450 klatek na sekundę z wyłączonym bloomem, od 1500 do 2150
+      z włączonym
+- [x] 2560 x 1440: od 1370 do 1480 z wyłączonym bloomem, od 880 do 925 z włączonym
+
+W czasie klatki to w większym oknie około 0,7 ms bez bloomu i około 1,1 ms z nim, czyli
+bloom kosztuje tam około 0,4 ms. W mniejszym oknie zakresy na siebie zachodzą. Tych liczb
+nie da się zestawić z sekcją 17.1 (około 2500 i około 1960): to inna sesja pomiarowa,
+a sama wartość bez bloomu w 2560 x 1440 jest tu o jedną czwartą niższa niż tam, czego
+żadna zmiana w kodzie nie tłumaczy.
+
+Wartości startowe (nowe albo zmienione w tej części):
+
+| Ustawienie | Wartość |
+|---|---|
+| `Bloom` (panel Framebuffers, nowe) | zaznaczone |
+| `Threshold` (nowe) | 0,80, suwak od 0 do 4 |
+| `Intensity` (nowe) | 1,00, suwak od 0 do 2 |
+| `Blur iterations` (nowe) | 6, suwak od 1 do 10 |
+| `CRYSTAL_GLOW_STRENGTH` (stała, bez kontrolki) | 4,0 (było 2,5) |
+| `BLOOM_DOWNSCALE` (stała) | 2: cele bloomu mają połowę szerokości i wysokości sceny |
+| `BLOOM_BLUR_RADIUS`, `BLOOM_BLUR_SIGMA` (stałe) | 6 i 3,0: 13 odczytów tekstury na przebieg rozmycia |
+| `SHADER_COUNT` (stała panelu Shaders) | 10 (było 8) |
+
+Otwarte obserwacje, zgłoszone razem z kodem:
+
+- plama latarki na ścianie **nie daje poświaty**, nawet z odległości metra. Ściana
+  w świetle latarki zostaje pod progiem 0,8. Czy tak ma zostać, nikt jeszcze nie
+  zdecydował
+- poświata jest mierzona w tekselach celu o połowie rozdzielczości, więc w 2560 x 1440
+  jest względem ekranu o połowę cieńsza niż w 1280 x 720. W większym oknie sprawdzono
+  tylko wycinek obrazu
+
+Czego dla tej części nie zapisano i czego dlatego tu nie twierdzę: wersji kompilatora,
+karty i sterownika, pamięci karty zajętej przez trzy cele (liczby w dokumencie modułu są
+policzone z rozmiaru), kosztu przy innej liczbie iteracji niż 6 ani tego, czy siedem
+kontrolek i cztery obrazy mieszczą się w panelu bez paska przewijania przy skali innej
+niż 100%.
+
+Żadnej kontrolki bloomu nikt nie kliknął myszą i nikt nie użył przycisku `Reload shaders`
+przy dziesięciu programach. Na macOS nic z tej części nie było budowane ani uruchamiane.
+
+### 18.2. Otwarte: test ręczny na około piętnaście minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
+być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze zgłoszonych zrzutów,
+nie z klikania. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/FramebuffersPanel.cpp`.
+
+Przygotowanie:
+
+- [ ] uruchomić grę z terminala. Oczekiwane w konsoli: żadnej linii `[error]`,
+      w szczególności żadnej zaczynającej się od `Framebuffer of` ani
+      `Framebuffer cannot be created` (cele bloomu powstają w pierwszej klatce)
+- [ ] otworzyć panele klawiszem akcentu i rozwinąć panel Framebuffers
+
+Panel Framebuffers w nowym układzie:
+
+- [ ] kontrolki stoją w dwóch kolumnach, wierszami: `Exposure` i `Tone mapping`, `Bloom`
+      i `Blur iterations`, `Threshold` i `Intensity`, `Depth range` i puste miejsce.
+      Wartości startowe: `1.00`, `ACES (fitted)`, zaznaczone, `6`, `0.80`, `1.00`, `15 m`
+- [ ] pod kreską dwie linie: `Scene framebuffer: 1280 x 720 px, GL_RGBA16F +
+      GL_DEPTH_COMPONENT24` i `Bloom targets (3): 640 x 360 px, GL_RGBA16F`
+- [ ] pod nimi cztery obrazy obok siebie z podpisami `HDR colour`, `Depth`, `Bright pass`
+      i `Bloom`. Wszystkie we właściwą stronę (niebo u góry) i w kształcie okna
+- [ ] zapisać, czy cała zawartość mieści się w panelu bez paska przewijania
+- [ ] najechać kursorem na każdą z siedmiu kontrolek i na każdy z czterech obrazów:
+      przy każdym pojawia się podpowiedź. Przy obrazach: `The colour attachment of the
+      scene, cut off at 1.`, `The depth attachment of the scene, as a distance.`, `What
+      the scene has above the bloom threshold.`, `The bright pass after the blur, before
+      the intensity.`
+
+Włącznik:
+
+- [ ] stanąć kilka metrów od kryształu, tak żeby było go widać razem z otoczeniem.
+      Odznaczyć `Bloom`: poświata wokół kryształu znika, sam kryształ zostaje. Reszta
+      sceny się nie zmienia
+- [ ] przy odznaczonym polu druga linia brzmi `Bloom targets: not drawn (bloom off or
+      a debug view)`, a w miejscu obrazów `Bright pass` i `Bloom` stoi `(not drawn)`.
+      Obrazy `HDR colour` i `Depth` działają dalej
+- [ ] zaznaczyć z powrotem: poświata i oba obrazy wracają od razu
+
+Próg:
+
+- [ ] przesunąć `Threshold` w lewo do `0.00`: świeci cały obraz, scena robi się mleczna
+      i jaśniejsza, a obraz `Bright pass` wygląda jak obraz `HDR colour` (przy progu 0 przebieg
+      jasności przepuszcza cały kolor)
+- [ ] ustawić około `0.30`: w obrazie `Bright pass` widać niebo i ściany w świetle
+      latarki, a w oknie mają one poświatę
+- [ ] wrócić na `0.80`: w obrazie `Bright pass` zostają kryształy i tarcza księżyca, na
+      czarnym tle, z **ostrymi** krawędziami
+- [ ] przesuwać powoli od `0.80` do `2.00`: plamy w obrazie `Bright pass` ciemnieją
+      i kurczą się **płynnie**, nic nie znika skokiem. Przy `2.00` zostaje sam środek
+      kryształu
+- [ ] przesunąć do `4.00`: obraz `Bright pass` jest czarny albo prawie czarny. Zapisać,
+      czy cokolwiek w scenie jeszcze przechodzi przez próg
+- [ ] wpisać wartość spoza zakresu (Ctrl i kliknięcie, potem `9`): zostaje przycięta do
+      `4.00`. Ustawić z powrotem `0.80`
+
+Intensywność:
+
+- [ ] `Intensity` na `0.00`: poświata znika z okna, ale obrazy `Bright pass` i `Bloom`
+      w panelu **się nie zmieniają** (pokazują cele przed mnożeniem)
+- [ ] `Intensity` na `2.00`: poświata jest wyraźnie mocniejsza, środek kryształu bieleje
+- [ ] ustawić z powrotem `1.00`
+
+Iteracje:
+
+- [ ] `Blur iterations` na `1`: poświata jest wąską obwódką tuż przy krysztale, obraz
+      `Bloom` jest tylko lekko rozmyty
+- [ ] `Blur iterations` na `10`: poświata jest szeroka i miękka. Jest **okrągła**, nie
+      kwadratowa i nie w kształcie krzyża
+- [ ] przy każdej wartości zapisać liczbę klatek z panelu Renderer (z odznaczoną
+      synchronizacją pionową, jeśli się da): każda iteracja to dwa przebiegi więcej
+- [ ] obraz `Bright pass` **nie zmienia się** przy ruchu tego suwaka: rozmycie go nie
+      dotyka
+- [ ] ustawić z powrotem `6`
+
+Podglądy:
+
+- [ ] obraz `Bloom` to te same plamy co w `Bright pass`, rozlane w miękkie koła
+- [ ] obraz `HDR colour` **nie ma** poświaty: bloom nie jest zapisywany do bufora sceny
+- [ ] obrócić kamerę: wszystkie cztery obrazy podążają za sceną bez opóźnienia widocznego
+      gołym okiem
+- [ ] zwinąć panel i zapisać liczbę klatek, rozwinąć i zapisać jeszcze raz: przy
+      rozwiniętym panelu dochodzą cztery małe przebiegi (w pierwszej części M7 dwa)
+
+Kryształ z bliska i z daleka:
+
+- [ ] podejść do kryształu na krok: ścianki są widoczne (kryształ nie jest płaską białą
+      plamą), a poświata wychodzi poza jego obrys
+- [ ] patrzeć na niego przez kilka pełnych pulsów (jeden trwa 2,4 sekundy): poświata
+      słabnie i rośnie **płynnie** i w żadnej chwili nie znika całkiem. To jest powód,
+      dla którego siła świecenia wzrosła do 4,0
+- [ ] odejść na koniec długiego korytarza: kryształ jest mały, ale poświata nadal jest
+      widoczna i nie migocze przy ruchu kamery. Zapisać, czy przy powolnym obrocie widać
+      drganie jasności
+- [ ] stanąć tak, żeby kryształ był zasłonięty ścianą do połowy: poświata widocznej
+      połowy wychodzi także na ścianę, która go zasłania (bloom jest liczony z obrazu,
+      nie z geometrii). Zapisać, czy to nie razi
+- [ ] zebrać kryształ: jego poświata znika razem z nim
+- [ ] przełączyć listę `Lighting` w panelu Renderer na `Unlit`, `Gouraud`, `Phong`
+      i `Blinn-Phong`: kryształ ma poświatę w każdym trybie
+
+Księżyc i gwiazdy:
+
+- [ ] spojrzeć na księżyc: tarcza ma miękką poświatę
+- [ ] gwiazdy zostają ostrymi punktami, bez poświaty. Zapisać, czy najjaśniejsze mają
+      choć ślad
+- [ ] przesunąć `Sky brightness` w panelu Renderer do 6: poświata księżyca rośnie.
+      Zapisać, czy gwiazdy zaczynają świecić. Wrócić na 2,2
+- [ ] odznaczyć pole `Skybox`: poświata księżyca znika razem z niebem
+
+Latarka (otwarta obserwacja z sekcji 18.1):
+
+- [ ] podejść do ściany na metr ze światłem latarki na wprost: zapisać, czy plama latarki
+      ma poświatę. Zgłoszone: nie ma
+- [ ] przy tej samej ścianie obniżać `Threshold`, aż plama zacznie świecić: zapisać
+      wartość. To jest liczba potrzebna do decyzji, czy próg albo latarkę zmienić
+
+Ekspozycja i mapowanie tonów razem z bloomem:
+
+- [ ] `Exposure` na `0.25`: poświata ciemnieje razem ze sceną, a obrazy `Bright pass`
+      i `Bloom` w panelu się nie zmieniają (próg działa przed ekspozycją). Wrócić na `1.00`
+- [ ] `Tone mapping` na `None (clamp)`: środek kryształu z poświatą jest płaską białą
+      plamą. Na `Reinhard`: zapisać, jak wygląda poświata. Zostawić `ACES (fitted)`
+
+Oba widoki diagnostyczne (panel Assets, lista `View mode`):
+
+- [ ] `Normals as colour`: obraz jest taki jak przed tą częścią, bez żadnej poświaty.
+      Pole `Bloom` w panelu Framebuffers jest **nadal zaznaczone**, druga linia brzmi
+      `Bloom targets: not drawn (bloom off or a debug view)`, a w miejscu dwóch obrazów
+      bloomu stoi `(not drawn)`
+- [ ] `UVs as colour`: to samo. Jasne żółte rogi płytek tekstury nie mają poświaty
+- [ ] w obu widokach ruch suwaków `Threshold`, `Intensity` i `Blur iterations` nie
+      zmienia obrazu
+- [ ] wrócić do `Textured`: poświata wraca, a ustawienia bloomu są takie, jakie zostawiłem
+
+Zmiana rozmiaru okna:
+
+- [ ] przeciągnąć krawędź okna i puścić: linia `Bloom targets (3)` pokazuje połowę liczb
+      z linii `Scene framebuffer` (dla nieparzystych zaokrągloną w dół), a poświata jest
+      na swoim miejscu, nieprzesunięta względem kryształu
+- [ ] zrobić okno bardzo wąskie i bardzo niskie: gra działa, w konsoli nie ma linii
+      `[error]`
+- [ ] zmaksymalizować okno: poświata jest względem ekranu cieńsza niż w oknie
+      1280 x 720. Zapisać, czy to przeszkadza, i przy jakiej wartości `Blur iterations`
+      wygląda jak w małym oknie
+- [ ] zminimalizować okno na kilka sekund i przywrócić: obraz z poświatą wraca od razu,
+      bez linii `[error]`, także w buildzie Debug bez linii `GL_`
+
+Przeładowanie shaderów (panel Shaders):
+
+- [ ] lista ma dziesięć linii. Cztery ostatnie to `composite.vert + composite.frag: OK`,
+      `composite.vert + preview.frag: OK`, `composite.vert + bright.frag: OK`
+      i `composite.vert + blur.frag: OK`
+- [ ] nacisnąć `Reload shaders`: wszystkie dziesięć linii zostają `OK`, a poświata
+      wygląda tak samo jak przed kliknięciem (wagi rozmycia są wysyłane w każdej klatce)
+- [ ] w pliku `assets/shaders/post/bright.frag` zamienić linię z `share` na
+      `float share = brightness > uThreshold ? 1.0 : 0.0;`, skopiować assety
+      (`cmake --build --preset debug --target copy_assets`) i przeładować: poświata jest
+      mocniejsza, a brzeg plam w obrazie `Bright pass` jest ostry jak wycięty nożem.
+      Przywrócić linię i przeładować
+- [ ] zepsuć `assets/shaders/post/blur.frag` (na przykład usunąć średnik) i przeładować:
+      linia `blur` jest czerwona z nazwą pliku w komunikacie, a gra działa dalej ze starym
+      programem. Naprawić i przeładować
+- [ ] zepsuć `assets/shaders/post/composite.vert` i przeładować: **cztery** ostatnie linie
+      są czerwone (w pierwszej części M7 były to dwie), obraz zostaje. Naprawić
+      i przeładować
+
+Na koniec:
+
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi
+      celowo
+- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z panelu Renderer,
+      z bloomem i bez, w oknie 1280 x 720 i po zmaksymalizowaniu: zapisać cztery wartości.
+      Zgłoszone zakresy są w sekcji 18.1, zmierzone przy ukrytych panelach. Jeśli liczba
+      stoi na częstotliwości odświeżania monitora, zapisać to
+- [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
+      zostały zapisane
+
+## 19. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)

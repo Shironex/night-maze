@@ -94,12 +94,14 @@ night_maze_enable_warnings(engine)
 
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
 # The maze, its generator, its layout in the world, the terrain it stands on, the places
-# of the grass, the player, the settings of the lighting and the rules of a round (exit,
-# crystals, battery) are plain data and math.
+# of the grass, the player, the settings of the lighting and of the bloom and the rules
+# of a round (exit, crystals, battery) are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
 add_library(game_logic STATIC
+    src/game/Bloom.cpp
+    src/game/Bloom.hpp
     src/game/Crystals.cpp
     src/game/Crystals.hpp
     src/game/Exit.cpp
@@ -203,6 +205,7 @@ enable_testing()
 
 add_executable(night_maze_tests
     tests/main.cpp
+    tests/BloomTests.cpp
     tests/ColliderTests.cpp
     tests/ColorSpaceTests.cpp
     tests/CrystalTests.cpp

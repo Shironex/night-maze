@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -104,6 +105,13 @@ public:
     /// Sets the uniform variable of type float called name to value (glUniform1f). The
     /// rules of setMat4 apply: use() first, and an unknown name is ignored.
     void setFloat(const char* name, float value) const;
+
+    /// Sets the uniform array of floats called name, declared in the shader as
+    /// "uniform float name[N]", to values (glUniform1fv): the first value goes to
+    /// element 0. Pass as many values as the array has elements: with fewer the rest
+    /// of the array keeps its old values, and OpenGL ignores the ones past its end.
+    /// The rules of setMat4 apply: use() first, and an unknown name is ignored.
+    void setFloatArray(const char* name, std::span<const float> values) const;
 
     /// Connects the uniform block called blockName to the uniform buffer binding point
     /// number bindingPoint (glGetUniformBlockIndex and glUniformBlockBinding). From then

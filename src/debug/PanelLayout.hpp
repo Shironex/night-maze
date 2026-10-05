@@ -92,9 +92,10 @@ inline constexpr float GRASS_HEIGHT = 190.0F;
 
 // Framebuffers: the eleventh panel. It starts folded in a third row of title bars, one
 // bar as wide as the two bars above it together (PanelPlacement::foldedRowsBefore is
-// 2). It is that wide because it shows two pictures side by side. Unfolded it reaches
-// down to just above the bottom row and covers the scene between the columns, but no
-// other panel. The height is what its contents need at that width.
+// 2). It is that wide because it shows four pictures side by side, under widgets that
+// stand in two columns. Unfolded it reaches down to just above the bottom row and
+// covers the scene between the columns, but no other panel. Its contents need a little
+// less than that height at that width.
 inline constexpr float FRAMEBUFFERS_WIDTH = CAMERA_WIDTH + PANEL_GAP + GAMEPLAY_WIDTH;
 inline constexpr float FRAMEBUFFERS_HEIGHT = 344.0F;
 

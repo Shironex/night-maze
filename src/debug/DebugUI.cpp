@@ -108,11 +108,12 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 8;
+        constexpr int SHADER_COUNT = 10;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader,  &context.colorShader,  &context.litShader,
-            &context.gouraudShader,   &context.skyboxShader, &context.grassShader,
-            &context.compositeShader, &context.previewShader};
+            &context.texturedShader,  &context.colorShader,   &context.litShader,
+            &context.gouraudShader,   &context.skyboxShader,  &context.grassShader,
+            &context.compositeShader, &context.previewShader, &context.brightPassShader,
+            &context.blurShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);

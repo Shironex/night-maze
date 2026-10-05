@@ -7,7 +7,7 @@ Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasy nazywają się 
 
 **Stan na dziś:** płaskich płytek podłogi już nie ma. Labirynt stoi na jednej dużej siatce trójkątów, której wysokości pochodzą z obrazu w odcieniach szarości (mapy wysokości). Pod labiryntem podłoże jest łagodnie nierówne, a dookoła przechodzi we wzgórza. Ściany, słupki i brama są opuszczone tak, żeby nigdzie nie było pod nimi szpary, kryształy i strefa wyjścia stoją na wysokości podłoża swojej komórki, a stopy gracza idą po powierzchni. Panel **Terrain** ma suwak `Height scale` i pole `Wireframe`: to są dwa pokazy, które PRD podaje dla tematu 13 ("skala wysokości, wireframe").
 
-**Co zmieniła pierwsza część M7 (2026-10-05).** Kształt terenu, jego wysokości i kolizje się nie zmieniły. Zmieniło się to, jak podłoże trafia na ekran: tekstura `ground.png` jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe (sekcja 5.12), programy cieniujące liczą na wartościach liniowych, a teren, jak cała scena, jest rysowany do bufora HDR i dopiero przebieg składający przenosi go do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release. Żaden z nowych przypadków nie dotyczy terenu.
+**Co zmieniła pierwsza część M7 (2026-10-05).** Kształt terenu, jego wysokości i kolizje się nie zmieniły. Zmieniło się to, jak podłoże trafia na ekran: tekstura `ground.png` jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe (sekcja 5.12), programy cieniujące liczą na wartościach liniowych, a teren, jak cała scena, jest rysowany do bufora HDR i dopiero przebieg składający przenosi go do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139. Żaden z nowych przypadków nie dotyczy terenu.
 
 Co jest sprawdzone (2026-10-05, Windows, stan po drugiej części M6):
 
@@ -999,7 +999,7 @@ Czego testy **nie** sprawdzają:
 
 Lista z początku dokumentu, tutaj z podziałem na źródło:
 
-- **Testy** (uruchomione przeze mnie 2026-10-05 na plikach z `build/debug` i `build/release`, po drugiej części M6): 256 przypadków, 101232 asercje, wszystkie zaliczone w obu konfiguracjach. Po pierwszej części M7 zgłoszone 269 i 102103, tych nie uruchamiałem.
+- **Testy** (uruchomione przeze mnie 2026-10-05 na plikach z `build/debug` i `build/release`, po drugiej części M6): 256 przypadków, 101232 asercje, wszystkie zaliczone w obu konfiguracjach. Po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, tych nie uruchamiałem.
 - **Po pierwszej części M7** (zgłoszone dla Windowsa, 2026-10-05): w trybie `Unlit` z `Tone mapping: None` i ekspozycją 1 podłoże i ściany różnią się od poprzedniego commita najwyżej o 22 poziomy na 255 (średnio 1,1), tylko na spoinach cegieł. Obraz nie jest identyczny, bo filtrowanie tekstury działa teraz na wartościach liniowych ([`../gfx/color-space.md`](../gfx/color-space.md)).
 - **Liczby terenu** (przeliczone niezależnie od kodu C++, skryptem czytającym plik PNG): 97 x 97, 18432 trójkąty, od 0,085 do 0,461 m w labiryncie, 3,37 m na wzgórzach, wysokości w trzech komórkach, przykłady z sekcji 2.
 - **Build, format, obraz, liczba klatek** (zgłoszone przez autora kodu): bez ostrzeżeń, clang-format czysty, zrzuty ekranu, około 2000 klatek na sekundę w Release przed i po.

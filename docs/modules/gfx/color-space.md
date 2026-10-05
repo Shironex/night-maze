@@ -5,7 +5,7 @@ Kod: [`src/gfx/ColorSpace.hpp`](../../../src/gfx/ColorSpace.hpp), [`src/gfx/Colo
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument odpowiada na jedno pytanie: **co znaczą liczby koloru w każdym miejscu programu i gdzie zmieniają znaczenie**. Tekstury jako obiekty OpenGL opisuje [`textures.md`](textures.md), bufor, do którego trafia scena, [`framebuffers.md`](framebuffers.md), a ostatni przebieg klatki (ekspozycja, mapowanie tonów, kodowanie) [`../renderer/post-process.md`](../renderer/post-process.md). Decyzje zapisują notatki [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) i [`../../decisions/srgb-encode-in-shader.md`](../../decisions/srgb-encode-in-shader.md). Wcześniejsza notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) jest od dziś zastąpiona: ten dokument opisuje to, co ona odkładała.
 
-**Stan na dziś:** kod jest w całości napisany i używany przez grę. Dwie funkcje przeliczające mają dziewięć przypadków testowych (`tests/ColorSpaceTests.cpp`), a przeliczanie kolorów świateł jeden nowy przypadek w `tests/LightingTests.cpp`. Zgłoszone dla Windowsa (2026-10-05, nie uruchamiałem tego sam): bramka `make check` przechodzi (formatowanie, testy w Debug i Release, clang-tidy), zero ostrzeżeń, 269 przypadków testowych i 102103 asercje w obu konfiguracjach. Zgłoszone porównanie obrazu ze starym potokiem jest w sekcji 5.9. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
+**Stan na dziś:** kod jest w całości napisany i używany przez grę. Dwie funkcje przeliczające mają dziewięć przypadków testowych (`tests/ColorSpaceTests.cpp`), a przeliczanie kolorów świateł jeden nowy przypadek w `tests/LightingTests.cpp`. Zgłoszone dla Windowsa (2026-10-05, nie uruchamiałem tego sam): bramka `make check` przechodzi (formatowanie, testy w Debug i Release, clang-tidy), zero ostrzeżeń, 269 przypadków testowych i 102103 asercje w obu konfiguracjach, a po drugiej części M7 276 i 102139. Zgłoszone porównanie obrazu ze starym potokiem jest w sekcji 5.9. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
 
 Uwaga o komentarzach w kodzie: `// See docs/...` na górze `ColorSpace.hpp`, `ColorSpace.cpp`, `common/color.glsl` i `ColorSpaceTests.cpp` wskazuje `docs/modules/renderer/post-process.md`. Tamten dokument ma krótką sekcję, która odsyła tutaj. Teoria gammy jest w tym pliku, bo dotyczy tekstur i kolorów w całym programie, a nie tylko ostatniego przebiegu.
 
@@ -156,7 +156,7 @@ Reguła: **sRGB jest obraz, który ktoś oglądał na ekranie i dobierał na oko
 | płaska mapa normalnych zastępcza 1 x 1 | `Linear` | `GL_RGB8` | konstruktor `AssetCache` | teksel `(128, 128, 255)` ma znaczyć kierunek `(0, 0, 1)` |
 | `heightmap.png` | nie dotyczy | nie jest teksturą OpenGL | `loadHeightmap` w `NightMazeApp.cpp` | bajty są **wysokościami**. Obraz jest czytany na procesorze (`assets::loadImage`, potem `heightmapFromImage`) i nigdy nie trafia na kartę, więc nikt go nie dekoduje |
 | tekstura koloru bufora sceny | nie dotyczy | `GL_RGBA16F` | `PostProcess::beginScene` | trzyma wynik rachunku, liniowy. Nie jest formatem sRGB, więc przy odczycie nic się nie dzieje |
-| tekstury podglądów załączników | nie dotyczy | `GL_RGBA8` | `fitPreview` w `PostProcess.cpp` | `preview.frag` zapisuje do nich liczby już zakodowane, a ImGui pokazuje je bez przeliczenia |
+| tekstury podglądów załączników i, od drugiej części M7, podglądów bloomu | nie dotyczy | `GL_RGBA8` | `fitTarget` w `PostProcess.cpp` (w pierwszej części M7: `fitPreview`) | `preview.frag` zapisuje do nich liczby już zakodowane, a ImGui pokazuje je bez przeliczenia |
 
 **Co by się stało z mapą normalnych jako sRGB.** Mapa zapisuje składową kierunku od -1 do 1 jako bajt od 0 do 255, a shader odwraca to wzorem `bajt / 255 * 2 - 1` ([`normal-mapping.md`](normal-mapping.md)). Bajt 128 ma znaczyć 0, czyli "brak wychylenia". Zdekodowany jako sRGB dałby 0,216 zamiast 0,502, a po rozkodowaniu na kierunek `0.216 * 2 - 1 = -0.568`. Każda płaska powierzchnia dostałaby normalną mocno wychyloną w ujemne X i Y, a oświetlenie byłoby błędne wszędzie i w ten sam sposób. Ten sam argument dotyczy mapy wysokości: bajt 128 ma być połową wysokości, a nie jedną piątą.
 
@@ -242,7 +242,7 @@ Jest jeszcze czwarte miejsce, poza rdzeniem: rozszerzenie `GL_EXT_texture_sRGB_d
 
 ## 4. Shadery
 
-Plik [`assets/shaders/common/color.glsl`](../../../assets/shaders/common/color.glsl) nie jest samodzielnym shaderem: nie ma linii `#version`, a loader wkleja jego tekst w miejsce linii `#include` ([`shader-includes.md`](shader-includes.md)). Zawiera pięć stałych i dwie funkcje.
+Plik [`assets/shaders/common/color.glsl`](../../../assets/shaders/common/color.glsl) nie jest samodzielnym shaderem: nie ma linii `#version`, a loader wkleja jego tekst w miejsce linii `#include` ([`shader-includes.md`](shader-includes.md)). Do pierwszej części M7 zawierał pięć stałych i dwie funkcje, opisane niżej. Druga część M7 dopisała na końcu szóstą stałą i trzecią funkcję, które nie dotyczą kodowania: `REC709_LUMINANCE_WEIGHTS` i `luminance`, czyli jasność liniowego koloru jedną liczbą (sekcja 4.1).
 
 ```glsl
 const float SRGB_LINEAR_SEGMENT_SLOPE = 12.92; // slope of the straight line
@@ -297,8 +297,25 @@ Kto dołącza ten plik:
 | [`textured.frag`](../../../assets/shaders/textured.frag) | `#include "common/color.glsl"` | `srgbToLinear` | widoki normalnych i UV |
 | [`grass.frag`](../../../assets/shaders/grass.frag) | `#include "common/color.glsl"` | `srgbToLinear` | gradient źdźbła i dwa widoki diagnostyczne |
 | [`skybox.frag`](../../../assets/shaders/skybox.frag) | `#include "common/color.glsl"` | `srgbToLinear` | widok kierunku |
+| [`post/bright.frag`](../../../assets/shaders/post/bright.frag) (druga część M7) | `#include "../common/color.glsl"` | `luminance` | jasność piksela w przebiegu jasności bloomu |
 
-Ścieżka w `#include` jest liczona względem pliku, który ją zawiera, dlatego shadery z katalogu `post/` piszą `../common/`. `lit.frag`, `gouraud.frag` i `color.frag` pliku nie dołączają: dostają wszystko już liniowe (teksturę zdekodowaną przez kartę, kolory świateł i `uColor` przeliczone w C++).
+Ścieżka w `#include` jest liczona względem pliku, który ją zawiera, dlatego shadery z katalogu `post/` piszą `../common/`. `lit.frag`, `gouraud.frag` i `color.frag` pliku nie dołączają: dostają wszystko już liniowe (teksturę zdekodowaną przez kartę, kolory świateł i `uColor` przeliczone w C++). `post/blur.frag` też nie: rozmycie tylko mnoży i dodaje wartości liniowe.
+
+### 4.1 `luminance`: jasność koloru liniowego (druga część M7)
+
+```glsl
+const vec3 REC709_LUMINANCE_WEIGHTS = vec3(0.2126, 0.7152, 0.0722);
+
+float luminance(vec3 linear) {
+    return dot(linear, REC709_LUMINANCE_WEIGHTS);
+}
+```
+
+Funkcja zamienia kolor na jedną liczbę: `0,2126 * R + 0,7152 * G + 0,0722 * B`. Wagi pochodzą z normy Rec. 709, która ma te same barwy podstawowe co sRGB, i sumują się do 1, więc biel (1, 1, 1) ma jasność 1. Zielony liczy się najbardziej, bo oko jest na niego najczulsze.
+
+Funkcja stoi w tym pliku, bo dotyczy tej samej granicy co reszta: **wolno ją wołać tylko dla wartości liniowych**. Komentarz przy stałej mówi to wielkimi literami ("They are for LINEAR colours"), a parametr nazywa się `linear`. Jasność policzona z liczb zakodowanych w sRGB byłaby inną liczbą: szarość zakodowana jako 0,8 ma liniowo 0,604, a liniowe 0,8 to w sRGB 0,906. To dokładnie ten sam rodzaj błędu co mnożenie światła przez kolor nieliniowy (sekcja 2.5).
+
+Używa jej `post/bright.frag`, żeby porównać piksel sceny z progiem bloomu. Wzór, przeliczone przykłady i powód, dla którego próg jest jasnością, a nie wartością kanału, są w [`../renderer/post-process.md`](../renderer/post-process.md), sekcje 2.12 i 4.8. Odpowiednika w C++ funkcja nie ma i żaden test jej nie sprawdza.
 
 ## 5. Kod w projekcie
 
@@ -308,7 +325,7 @@ Kto dołącza ten plik:
 |---|---|
 | [`src/gfx/ColorSpace.hpp`](../../../src/gfx/ColorSpace.hpp) | typ `gfx::ColorSpace`, deklaracje czterech funkcji. Dołącza tylko `<glm/glm.hpp>` |
 | [`src/gfx/ColorSpace.cpp`](../../../src/gfx/ColorSpace.cpp) | pięć stałych normy i implementacja funkcji |
-| [`assets/shaders/common/color.glsl`](../../../assets/shaders/common/color.glsl) | te same dwie funkcje w GLSL (sekcja 4) |
+| [`assets/shaders/common/color.glsl`](../../../assets/shaders/common/color.glsl) | te same dwie funkcje w GLSL (sekcja 4) i, od drugiej części M7, `luminance` (sekcja 4.1) |
 | [`tests/ColorSpaceTests.cpp`](../../../tests/ColorSpaceTests.cpp) | dziewięć przypadków testowych (sekcja 5.8) |
 | [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Cubemap.hpp`](../../../src/gfx/Cubemap.hpp), [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp) | trzy miejsca, które przyjmują `ColorSpace` jako obowiązkowy argument |
 
@@ -451,7 +468,7 @@ glm::vec3 NightMazeApp::crystalEmissive() const {
 }
 ```
 
-`crystalGlow` dostaje kolor liniowy i zwraca liniowy, który może być jaśniejszy niż 1 (`CRYSTAL_GLOW_STRENGTH` wynosi 2,5). Funkcja jest wołana z dwóch miejsc (`drawUnlitMaze` i `drawLitMaze`), więc przeliczenie stoi w jednej pomocniczej metodzie zamiast dwa razy. Liczby: `pointColor` sRGB `(0.2, 0.9, 0.8)` to liniowo `(0.033, 0.787, 0.604)`, a razy 2,5 daje `(0.083, 1.969, 1.510)`: zielony i niebieski są ponad bielą. Reguły kryształów opisuje [`../game/gameplay.md`](../game/gameplay.md).
+`crystalGlow` dostaje kolor liniowy i zwraca liniowy, który może być jaśniejszy niż 1 (`CRYSTAL_GLOW_STRENGTH` wynosi dziś 4,0, w pierwszej części M7 wynosiło 2,5). Funkcja jest wołana z dwóch miejsc (`drawUnlitMaze` i `drawLitMaze`), więc przeliczenie stoi w jednej pomocniczej metodzie zamiast dwa razy. Liczby: `pointColor` sRGB `(0.2, 0.9, 0.8)` to liniowo `(0.033, 0.787, 0.604)`, a razy 4,0 daje `(0.132, 3.150, 2.415)` (razy 2,5 było to `(0.083, 1.969, 1.510)`): zielony i niebieski są wyraźnie ponad bielą. Reguły kryształów opisuje [`../game/gameplay.md`](../game/gameplay.md).
 
 ### 5.8 Testy
 
@@ -487,7 +504,7 @@ Zgłoszony wynik takiego porównania z poprzednim commitem (Windows, 2026-10-05,
 
 Obraz **nie jest** więc identyczny i nie powinien być. W środku jednolitej powierzchni droga "dekoduj, koduj" oddaje ten sam bajt (test `encoding undoes decoding for every byte of a picture`). Różnica pojawia się tylko tam, gdzie między dekodowaniem a kodowaniem stoi uśrednianie różnych tekseli, a tam nowy wynik jest tym poprawnym. Skrajny przypadek z sekcji 2.10 (czerń obok bieli) dałby 60 poziomów różnicy. Zmierzone 22 poziomy to mniejszy kontrast cegły i spoiny.
 
-Dwie rzeczy różnią się dziś dodatkowo **z założenia**, już po tamtym pomiarze: niebo (domyślna jasność 2,2 zamiast 1,0) i kryształy (`CRYSTAL_GLOW_STRENGTH` 2,5 zamiast 1,0), bo oba mają teraz przekraczać 1 w buforze HDR.
+Dwie rzeczy różnią się dziś dodatkowo **z założenia**, już po tamtym pomiarze: niebo (domyślna jasność 2,2 zamiast 1,0) i kryształy (`CRYSTAL_GLOW_STRENGTH` 2,5 zamiast 1,0, a od drugiej części M7 4,0), bo oba mają teraz przekraczać 1 w buforze HDR.
 
 ### 5.10 Nowe wartości domyślne
 
@@ -499,7 +516,7 @@ Wprowadzenie gammy zmienia jasność całej sceny, więc wartości startowe trze
 | `moonIntensity` (kolor `(0.55, 0.65, 1.0)` bez zmiany) | 0,3 | 0,12 | kolor `(0.263, 0.380, 1.0)` razy 0,12 |
 | `flashlightIntensity` (kolor `(1.0, 0.9, 0.72)` bez zmiany) | 1,6 | 1,3 | kolor `(1.0, 0.787, 0.477)` razy 1,3 |
 | `pointIntensity` (kolor `(0.2, 0.9, 0.8)` bez zmiany) | 2,0 | 0,9 | kolor `(0.033, 0.787, 0.604)` razy 0,9 |
-| `CRYSTAL_GLOW_STRENGTH` | 1,0 | 2,5 | mnożnik koloru liniowego |
+| `CRYSTAL_GLOW_STRENGTH` | 1,0 | 2,5 (od drugiej części M7: 4,0, razem z bloomem, [`../../decisions/crystal-glow-raised-for-bloom.md`](../../decisions/crystal-glow-raised-for-bloom.md)) | mnożnik koloru liniowego |
 | `SkyboxSettings::brightness` (górna granica suwaka) | 1,0 (3) | 2,2 (6) | mnożnik koloru liniowego |
 | kolor tła `m_clearColor` | `(0.01, 0.015, 0.04)` | `(0.022, 0.033, 0.088)` | `(0.0017, 0.0026, 0.0083)` |
 
@@ -516,7 +533,7 @@ Moduł nie ma własnego panelu. Jego skutki widać w czterech:
 | **Assets** | lista `Textures` | przy każdej teksturze stoi `sRGB` albo `linear`: wartość `Texture2D::colorSpace()`. Cztery obrazy koloru mają `sRGB`, cztery mapy normalnych `linear`. Podgląd tekstury sRGB jest czytany bez dekodowania, żeby wyglądał jak plik ([`../debug-ui.md`](../debug-ui.md)) |
 | **Lights** | selektory koloru i suwaki intensywności | selektor pokazuje i zapisuje liczby sRGB. `buildLightSet` przelicza je co klatkę. Suwaki intensywności są mnożnikami wartości liniowej |
 | **Renderer** | `Clear color`, `Sky brightness` | kolor tła jest liczbą sRGB, przeliczaną w `onRender`. Jasność nieba mnoży liniowy kolor z tekstury sześciennej |
-| **Framebuffers** | `Tone mapping`, `Exposure`, podgląd `Colour (HDR, cut off at 1)` | tryb `None (clamp)` z ekspozycją 1 pokazuje samo kodowanie, bez krzywej. Podgląd koloru to zawartość bufora liniowego po samym `linearToSrgb` ([`../renderer/post-process.md`](../renderer/post-process.md)) |
+| **Framebuffers** | `Tone mapping`, `Exposure`, podgląd `HDR colour` (w pierwszej części M7 podpisany `Colour (HDR, cut off at 1)`) | tryb `None (clamp)` z ekspozycją 1 pokazuje samo kodowanie, bez krzywej. Podgląd koloru to zawartość bufora liniowego po samym `linearToSrgb` ([`../renderer/post-process.md`](../renderer/post-process.md)) |
 
 Czego uczy obserwacja:
 

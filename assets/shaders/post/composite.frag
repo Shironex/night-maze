@@ -14,8 +14,16 @@ in vec2 vUv;
 // holds the number of a texture unit, set from C++ with glUniform1i.
 uniform sampler2D uScene;
 
-// The colours are multiplied by this number first, like a longer or a shorter exposure
-// of a camera: 1 changes nothing, 2 doubles the light.
+// The bloom: the bright parts of the scene, blurred (linear HDR colours, half the size
+// of the scene). uBloomEnabled is 1 when it is added to the scene and 0 when the frame
+// is drawn without it: the texture is not read then. The glow is multiplied by
+// uBloomIntensity first.
+uniform sampler2D uBloom;
+uniform int uBloomEnabled;
+uniform float uBloomIntensity;
+
+// The colours are multiplied by this number, like a longer or a shorter exposure of
+// a camera: 1 changes nothing, 2 doubles the light.
 uniform float uExposure;
 
 // How the range of the scene is brought into 0..1. The numbers are the values of
@@ -53,13 +61,22 @@ void main() {
     // before. Later effects have their place in it:
     //
     //   1. the scene, in linear HDR colours
-    //      (effects that work on light itself, like fog and bloom, are added here,
-    //      before the exposure: they need linear values that are not cut off)
-    //   2. exposure
-    //   3. tone mapping: from 0..infinity to 0..1
+    //      (effects that work on light itself, like fog, are added here, before the
+    //      exposure: they need linear values that are not cut off)
+    //   2. bloom, such an effect: the glow of the bright parts is added
+    //   3. exposure
+    //   4. tone mapping: from 0..infinity to 0..1
     //      (effects that work on the finished picture, like a vignette, come here)
-    //   4. encoding to sRGB, always last
+    //   5. encoding to sRGB, always last
     vec3 color = texture(uScene, vUv).rgb;
+
+    // Bloom: the glow is light, so it is ADDED to the light of the scene, and it is
+    // added before the exposure and the tone mapping, which then treat it like the
+    // rest of the picture. The bloom texture is half as large as the screen: the linear
+    // filter stretches it, and the blur has left nothing sharp in it to look blocky.
+    if (uBloomEnabled == 1) {
+        color += texture(uBloom, vUv).rgb * uBloomIntensity;
+    }
 
     color *= uExposure;
 

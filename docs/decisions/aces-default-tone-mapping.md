@@ -43,7 +43,7 @@ Liczby w tabeli to wynik krzywej dla wartości liniowej na wejściu, policzony z
 
 ## 5. Kiedy wrócić do tej decyzji
 
-- Przy bloomie (kolejna część M7): poświata dodaje światło przed krzywą i może wymagać innej ekspozycji albo innych wartości świecenia.
+- Przy bloomie (kolejna część M7): poświata dodaje światło przed krzywą i może wymagać innej ekspozycji albo innych wartości świecenia. Stało się: druga część M7 podniosła `CRYSTAL_GLOW_STRENGTH` z 2,5 do 4,0, krzywa i ekspozycja zostały. Liczby kryształu w tej notatce opisują stan z siłą 2,5, a nowe są w [`crystal-glow-raised-for-bloom.md`](crystal-glow-raised-for-bloom.md).
 - Przy mgle: mgła rozjaśnia ciemne tony, czyli dokładnie ten zakres, który ACES ściska najmocniej.
 - Gdyby na ekranie MacBooka noc okazała się nieczytelna: pierwszym krokiem jest ekspozycja, drugim światło otoczenia, dopiero trzecim zmiana krzywej.
 - Gdyby utrata nasycenia jasnych kolorów zaczęła przeszkadzać (na przykład przy kolorowych światłach z M8): wtedy warto rozważyć mapowanie jasności zamiast kanałów.

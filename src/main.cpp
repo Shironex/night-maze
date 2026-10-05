@@ -60,6 +60,8 @@ protected:
             .previewShader = previewShader(),
             .postProcessSettings = postProcessSettings(),
             .postProcess = postProcess(),
+            .brightPassShader = brightPassShader(),
+            .blurShader = blurShader(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

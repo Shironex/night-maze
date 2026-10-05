@@ -1,11 +1,11 @@
 # Moduł gfx: framebuffer, klasa `Framebuffer`
 
 Kamień milowy: M7, część pierwsza (bufor HDR, przebieg składający, gamma). Temat wykładu: 10 (Rendering pozaekranowy), strona obiektu OpenGL.
-Kod: [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), [`src/gfx/Framebuffer.cpp`](../../../src/gfx/Framebuffer.cpp), testy w [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp). Jedyny użytkownik, który tworzy obiekty tej klasy: [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp). Czyta je także panel [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp).
+Kod: [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), [`src/gfx/Framebuffer.cpp`](../../../src/gfx/Framebuffer.cpp), testy w [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp). Jedyny użytkownik, który tworzy obiekty tej klasy: [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) (od drugiej części M7 osiem obiektów: scena, trzy cele bloomu i cztery podglądy). Czyta je także panel [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument stoi na [`textures.md`](textures.md): zakłada znajomość tekstur 2D (teksele, filtry, zawijanie, jednostki teksturujące, obiekt samplera, format danych a format wewnętrzny, kompletność tekstury) i opisuje to, co dochodzi, gdy do tekstury się **rysuje**, zamiast ją tylko czytać. Co gra robi z framebufferem (kolejność przebiegów klatki, trójkąt na cały ekran, mapowanie tonów, podglądy załączników), opisuje [`../renderer/post-process.md`](../renderer/post-process.md). Dlaczego bufor sceny trzyma kolory liniowe i gdzie są kodowane na sRGB, opisuje [`color-space.md`](color-space.md). Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś:** klasa jest napisana i używana przez `game::PostProcess`, które tworzy z niej trzy obiekty: framebuffer sceny (`GL_RGBA16F` i `GL_DEPTH_COMPONENT24`, wielkości framebuffera okna) oraz dwa małe framebuffery podglądów (`GL_RGBA8`, bez głębi, 180 pikseli wysokości). Klasa wymaga kontekstu OpenGL, więc testy jednostkowe dotyczą tylko jej trzech funkcji bez OpenGL: nazw formatów i tekstu dla stanu kompletności (trzy przypadki w `tests/FramebufferTests.cpp`). Tworzenie, wiązanie i zmiana rozmiaru są sprawdzone tylko działającą grą. Zgłoszone dla Windowsa (2026-10-05, nie powtarzałem tych pomiarów przy pisaniu dokumentu): bramka `make check` przechodzi (format, testy Debug i Release, clang-tidy), zero ostrzeżeń, 269 przypadków testowych i 102103 asercje w obu konfiguracjach. W buildzie Debug nie było błędów OpenGL przy włączonych podglądach, przy zmianie rozmiaru okna na 1400 x 800 oraz przy zminimalizowaniu okna (framebuffer 0 x 0) i przywróceniu go. **Czego nikt nie sprawdził:** ścieżki bez tekstury koloru (`ColorFormat::None`, sekcja 3.3) nie wykonał dotąd żaden kod, zmiana rozmiaru przez przeciąganie krawędzi okna myszą nie była sprawdzana ręcznie, a **na macOS ten kod nie był ani budowany, ani uruchamiany** (w tym na ekranie Retina, gdzie framebuffer okna jest większy od okna).
+**Stan na dziś:** klasa jest napisana i używana przez `game::PostProcess`. W pierwszej części M7 tworzyło ono z niej trzy obiekty: framebuffer sceny (`GL_RGBA16F` i `GL_DEPTH_COMPONENT24`, wielkości framebuffera okna) oraz dwa małe framebuffery podglądów (`GL_RGBA8`, bez głębi, 180 pikseli wysokości). Druga część M7 (bloom) dodała pięć kolejnych, bez żadnej zmiany w samej klasie: trzy cele bloomu (`GL_RGBA16F`, bez głębi, połowa szerokości i połowa wysokości sceny) i dwa podglądy bloomu (`GL_RGBA8`). Razem osiem. Cele bloomu są pierwszymi framebufferami gry z kolorem HDR i **bez** głębi oraz pierwszymi o rozmiarze innym niż okno i innym niż stały podgląd (sekcja 5.14). Klasa wymaga kontekstu OpenGL, więc testy jednostkowe dotyczą tylko jej trzech funkcji bez OpenGL: nazw formatów i tekstu dla stanu kompletności (trzy przypadki w `tests/FramebufferTests.cpp`). Tworzenie, wiązanie i zmiana rozmiaru są sprawdzone tylko działającą grą. Zgłoszone dla Windowsa (2026-10-05, nie powtarzałem tych pomiarów przy pisaniu dokumentu): bramka `make check` przechodzi (format, testy Debug i Release, clang-tidy), zero ostrzeżeń, wtedy 269 przypadków testowych i 102103 asercje w obu konfiguracjach (po drugiej części M7 zgłoszone 276 i 102139, w testach tej klasy bez zmian). W buildzie Debug nie było błędów OpenGL przy włączonych podglądach, przy zmianie rozmiaru okna na 1400 x 800 oraz przy zminimalizowaniu okna (framebuffer 0 x 0) i przywróceniu go. **Czego nikt nie sprawdził:** ścieżki bez tekstury koloru (`ColorFormat::None`, sekcja 3.3) nie wykonał dotąd żaden kod, zmiana rozmiaru przez przeciąganie krawędzi okna myszą nie była sprawdzana ręcznie, a **na macOS ten kod nie był ani budowany, ani uruchamiany** (w tym na ekranie Retina, gdzie framebuffer okna jest większy od okna).
 
 ## 1. Po co to jest
 
@@ -103,13 +103,13 @@ Format wewnętrzny mówi, jak karta przechowuje jeden piksel ([`textures.md`](te
 
 | Format | Bity na kanał | Zakres wartości | Bajtów na piksel | Kto go używa w grze |
 |---|---|---|---|---|
-| `GL_RGBA8` | 8, liczba całkowita bez znaku czytana jako ułamek | od 0 do 1, 256 poziomów. Wszystko powyżej 1 jest obcinane do 1 przy zapisie | 4 | dwa framebuffery podglądów (obraz gotowy do pokazania) |
-| `GL_RGBA16F` | 16, liczba zmiennoprzecinkowa połówkowej precyzji | około od -65504 do 65504, bez obcinania do 1 | 8 | framebuffer sceny |
+| `GL_RGBA8` | 8, liczba całkowita bez znaku czytana jako ułamek | od 0 do 1, 256 poziomów. Wszystko powyżej 1 jest obcinane do 1 przy zapisie | 4 | cztery framebuffery podglądów: dwa sceny i, od drugiej części M7, dwa bloomu (obraz gotowy do pokazania) |
+| `GL_RGBA16F` | 16, liczba zmiennoprzecinkowa połówkowej precyzji | około od -65504 do 65504, bez obcinania do 1 | 8 | framebuffer sceny i, od drugiej części M7, trzy cele bloomu |
 | `GL_DEPTH_COMPONENT24` | 24, jedna liczba | od 0 (płaszczyzna bliska) do 1 (płaszczyzna daleka) | zależy od sterownika (zwykle 4, nie mierzyłem) | głębia framebuffera sceny |
 
 **Liczba połówkowej precyzji (half float)** ma 1 bit znaku, 5 bitów wykładnika i 10 bitów mantysy. Dwie własności mają tu znaczenie:
 
-1. **Nie ma sufitu w jedynce.** Kryształ, którego kolor wyszedł z rachunku jako 1,97, zostaje w buforze jako 1,97, a nie jako 1. Informacja "o ile jaśniej niż biel" przetrwa do przebiegu składającego, który dopiero decyduje, jak ją pokazać. To jest znaczenie skrótu **HDR** (high dynamic range, szeroki zakres jasności). Dlaczego to ważne i co dalej dzieje się z tymi wartościami, opisuje [`../renderer/post-process.md`](../renderer/post-process.md).
+1. **Nie ma sufitu w jedynce.** Kryształ, którego kolor wyszedł z rachunku jako 3,15 (do pierwszej części M7 było to 1,97), zostaje w buforze jako 3,15, a nie jako 1. Informacja "o ile jaśniej niż biel" przetrwa do przebiegu składającego, który dopiero decyduje, jak ją pokazać. To jest znaczenie skrótu **HDR** (high dynamic range, szeroki zakres jasności). Dlaczego to ważne i co dalej dzieje się z tymi wartościami, opisuje [`../renderer/post-process.md`](../renderer/post-process.md).
 2. **Ciemne tony mają dużo więcej stopni.** Liczba zmiennoprzecinkowa ma stałą liczbę cyfr znaczących (tu około trzech dziesiętnych), więc im mniejsza wartość, tym drobniejszy krok. Bajt ma 256 równych kroków na cały zakres. W scenie nocnej większość liniowych wartości leży blisko zera (światło otoczenia po przeliczeniu na liniowe to około 0,01, patrz [`color-space.md`](color-space.md)), więc w `GL_RGBA8` zmieściłyby się w kilku najniższych poziomach i dały widoczne pasy.
 
 **Pamięć.** Tekstura koloru sceny zajmuje `szerokość * wysokość * 8` bajtów:
@@ -206,14 +206,20 @@ Jest jeden czytelnik, który tych parametrów nie używa: ImGui. Backend OpenGL 
 
 Tekstura może być **naraz** załącznikiem związanego framebuffera i teksturą związaną z jednostką, którą czyta shader. Wynik takiego rysowania jest **niezdefiniowany** (feedback loop): shader czytałby piksele, które w tym samym wywołaniu nadpisuje. OpenGL nie zgłasza przy tym błędu.
 
-Reguła: przebieg czyta tekstury jednego framebuffera, a rysuje do **innego**. W grze tak jest w obu miejscach, w których tekstura sceny jest czytana:
+Reguła: przebieg czyta tekstury jednego framebuffera, a rysuje do **innego**. W grze tak jest we wszystkich przebiegach po scenie:
 
 | Przebieg | Czyta | Rysuje do |
 |---|---|---|
 | podglądy (`PostProcess::drawPreviews`) | teksturę koloru, potem teksturę głębi sceny | framebuffera podglądu koloru, potem framebuffera podglądu głębi |
-| przebieg składający (`PostProcess::composite`) | teksturę koloru sceny | domyślnego framebuffera (okna) |
+| przebieg jasności bloomu (`PostProcess::drawBloom`, druga część M7) | teksturę koloru sceny | celu `m_brightPass` |
+| rozmycie bloomu, przebieg poziomy | `m_brightPass` w pierwszej iteracji, potem `m_bloom` | celu `m_blurHorizontal` |
+| rozmycie bloomu, przebieg pionowy | `m_blurHorizontal` | celu `m_bloom` |
+| podglądy bloomu | `m_brightPass`, potem `m_bloom` | dwóch framebufferów podglądu |
+| przebieg składający (`PostProcess::composite`) | teksturę koloru sceny i, od drugiej części M7, teksturę `m_bloom` | domyślnego framebuffera (okna) |
 
-Tekstury sceny zostają związane z jednostką 0 także wtedy, gdy w następnej klatce framebuffer sceny jest znów celem. To samo związanie nie jest jeszcze pętlą: liczy się to, czy shader, który akurat rysuje, **czyta** tę jednostkę jako tę teksturę. Przy rysowaniu sceny każdy model wiąże własne tekstury (`Texture2D::bind`), a niebo swoją teksturę sześcienną.
+Rozmycie jest przypadkiem, w którym ta reguła **wymusza** kształt kodu: jeden cel nie wystarczy, bo wynik przebiegu trzeba gdzieś zapisać, zanim następny go przeczyta. Dwa cele zamieniają się rolami (ping-pong, [`../renderer/post-process.md`](../renderer/post-process.md), sekcja 2.14).
+
+Tekstury sceny zostają związane z jednostką 0 także wtedy, gdy w następnej klatce framebuffer sceny jest znów celem. To samo związanie nie jest jeszcze pętlą: liczy się to, czy shader, który akurat rysuje, **czyta** tę jednostkę jako tę teksturę. Przy rysowaniu sceny każdy model wiąże własne tekstury (`Texture2D::bind`), a niebo swoją teksturę sześcienną. Od drugiej części M7 to samo dotyczy jednostki 1: po przebiegu składającym zostaje na niej tekstura `m_bloom`, do której następne `drawBloom` rysuje. Programy bloomu czytają tylko jednostkę 0, więc to też nie jest pętla.
 
 ### 2.9 Zmiana rozmiaru i rozmiar 0 x 0
 
@@ -297,7 +303,7 @@ GL_CHECK(glReadBuffer(GL_NONE));
 
 Bez tych dwóch linii część sterowników zgłasza framebuffer jako niekompletny (`GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER` albo `..._READ_BUFFER`). Oba ustawienia są stanem obiektu framebuffera, a nie kontekstu, więc wystarczy ustawić je raz przy tworzeniu.
 
-**Uczciwie:** ta gałąź kodu istnieje, ale **nie została dotąd wykonana ani razu**. Żaden kod nie tworzy framebuffera z `ColorFormat::None`: scena ma oba załączniki, podglądy mają sam kolor. Gałąź jest przygotowana pod mapy cieni z dalszej części M7 i dopiero wtedy okaże się, czy działa na obu systemach.
+**Uczciwie:** ta gałąź kodu istnieje, ale **nie została dotąd wykonana ani razu**. Żaden kod nie tworzy framebuffera z `ColorFormat::None`: scena ma oba załączniki, podglądy i cele bloomu mają sam kolor. Gałąź jest przygotowana pod mapy cieni z dalszej części M7 i dopiero wtedy okaże się, czy działa na obu systemach.
 
 ### 3.4 Stan, który klasa zostawia po sobie
 
@@ -309,7 +315,7 @@ Bez tych dwóch linii część sterowników zgłasza framebuffer jako niekomplet
 | `bindColorTexture`, `bindDepthTexture` | aktywna jednostka, wiązanie `GL_TEXTURE_2D` tej jednostki, brak samplera na tej jednostce |
 | destruktor, `release` | usunięcie związanego framebuffera przywraca wiązanie 0. Usunięta tekstura znika z wiązań jednostek |
 
-Pierwszy wiersz jest pułapką, jeśli ktoś tworzy framebuffer w środku przebiegu: po konstruktorze celem jest okno. W grze `beginScene` woła `m_scene.bind()` zaraz po utworzeniu, a `drawPreviews` wiąże framebuffer podglądu dopiero po obu wywołaniach `fitPreview`.
+Pierwszy wiersz jest pułapką, jeśli ktoś tworzy framebuffer w środku przebiegu: po konstruktorze celem jest okno. W grze `beginScene` woła `m_scene.bind()` zaraz po utworzeniu, a `drawPreviews` wiąże framebuffer podglądu dopiero po obu wywołaniach `fitTarget` (w pierwszej części M7: `fitPreview`). `drawBloom` robi tak samo: najpierw trzy wywołania `fitTarget` dla trzech celów, potem pierwsze `bind()`.
 
 ## 4. Shadery
 
@@ -337,7 +343,7 @@ Odczytana wartość ma taki zakres, jaki pozwala format: z `GL_RGBA16F` może by
 | [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp) | wyliczenia `ColorFormat` i `DepthFormat`, struktura `FramebufferSpec`, deklaracje `colorFormatName`, `depthFormatName`, `framebufferStatusText`, klasa `gfx::Framebuffer`. Dołącza tylko `<glad/gl.h>` |
 | [`src/gfx/Framebuffer.cpp`](../../../src/gfx/Framebuffer.cpp) | trzy stałe, struktura `TextureFormat`, funkcje pomocnicze `colorTextureFormat` i `createAttachmentTexture`, implementacja |
 | [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp) | trzy przypadki testowe dla części bez OpenGL |
-| [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp), [`.cpp`](../../../src/game/PostProcess.cpp) | użytkownik: pola `m_scene`, `m_colorPreview`, `m_depthPreview` ([`../renderer/post-process.md`](../renderer/post-process.md)) |
+| [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp), [`.cpp`](../../../src/game/PostProcess.cpp) | użytkownik: pola `m_scene`, `m_colorPreview`, `m_depthPreview` i, od drugiej części M7, `m_brightPass`, `m_blurHorizontal`, `m_bloom`, `m_brightPassPreview`, `m_bloomPreview` ([`../renderer/post-process.md`](../renderer/post-process.md)) |
 | [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp) | czyta `width`, `height`, `colorFormat`, `depthFormat` i `colorTextureId` |
 
 Oba pliki klasy są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt), a plik testów na liście `night_maze_tests`. Zależności: GLAD, `core/GlCheck.hpp`, `core/Log.hpp` i `<string>` (dla `std::to_string`). Nic z `assets/`, GLM ani GLFW: klasa nie zna okna, więc rozmiar dostaje z zewnątrz.
@@ -439,7 +445,7 @@ private:
 
 | Element | Dlaczego tak |
 |---|---|
-| `Framebuffer() = default;` | `PostProcess` ma trzy pola tego typu, a rozmiar okna jest znany dopiero w pierwszej klatce. Obiekt domyślny ma trzy zera i pustą specyfikację: jest poprawnym "brakiem framebuffera" |
+| `Framebuffer() = default;` | `PostProcess` ma osiem pól tego typu (w pierwszej części M7 trzy), a rozmiar okna jest znany dopiero w pierwszej klatce. Obiekt domyślny ma trzy zera i pustą specyfikację: jest poprawnym "brakiem framebuffera" |
 | `explicit` przy konstruktorze ze specyfikacji | bez tego `FramebufferSpec` zamieniałby się na `Framebuffer` po cichu, na przykład przy przekazaniu do funkcji, i tworzył obiekty OpenGL tam, gdzie nikt się ich nie spodziewa |
 | `= delete` dla kopiowania, ręcznie napisane przenoszenie | reguła wspólna dla klas `gfx` ([`README.md`](README.md), sekcja 2). Kopia trzymałaby te same trzy identyfikatory i usunęła je drugi raz |
 | `isValid()` patrzy na `m_id` | po nieudanym utworzeniu `release` zeruje wszystkie trzy identyfikatory, więc jeden wystarcza |
@@ -700,12 +706,12 @@ void Framebuffer::resize(int width, int height) {
 | Warunek wyjścia | Dlaczego |
 |---|---|
 | `!isValid()` | obiekt bez framebuffera nie ma formatów, z których dałoby się go odbudować |
-| `sameSize` | wołane co klatkę (`fitPreview`) nie może niczego odbudowywać, gdy rozmiar się nie zmienił |
+| `sameSize` | wołane co klatkę (`fitTarget`, w pierwszej części M7 `fitPreview`) nie może niczego odbudowywać, gdy rozmiar się nie zmienił |
 | `width < 1 \|\| height < 1` | okno zminimalizowane: stary framebuffer zostaje (sekcja 2.9) |
 
 Potem cztery kroki: nowa specyfikacja ze starymi formatami, zwolnienie, zapamiętanie, utworzenie. Jeśli nowy framebuffer okaże się niekompletny, `create` zostawia obiekt nieważny: starego już nie ma.
 
-Gra używa `resize` tylko dla podglądów (`fitPreview` w `PostProcess.cpp`). Framebuffer sceny jest przy zmianie rozmiaru tworzony jako **nowy obiekt**, bo ta sama linia obsługuje wtedy także pierwszą klatkę i framebuffer, którego nie udało się utworzyć w poprzednim rozmiarze (dla nieważnego obiektu `resize` nic nie robi). Opis jest w [`../renderer/post-process.md`](../renderer/post-process.md).
+Gra używa `resize` dla podglądów i, od drugiej części M7, dla trzech celów bloomu (funkcja `fitTarget` w `PostProcess.cpp`, w pierwszej części M7 nazywała się `fitPreview`). Framebuffer sceny jest przy zmianie rozmiaru tworzony jako **nowy obiekt**, bo ta sama linia obsługuje wtedy także pierwszą klatkę i framebuffer, którego nie udało się utworzyć w poprzednim rozmiarze (dla nieważnego obiektu `resize` nic nie robi). Opis jest w [`../renderer/post-process.md`](../renderer/post-process.md).
 
 ### 5.11 `bindColorTexture` i `bindDepthTexture`
 
@@ -719,7 +725,7 @@ void Framebuffer::bindColorTexture(GLuint unit) const {
 
 `bindDepthTexture` różni się jednym identyfikatorem: `m_depthTexture`. Trzy kroki jak w `Texture2D::bind` ([`textures.md`](textures.md), sekcja 5.8), z jedną różnicą w trzecim: zamiast własnego samplera wiąże **zero** (sekcja 2.7). Dwie funkcje obok siebie przyjmują numer jednostki w dwóch postaciach: `glActiveTexture` jako stałą `GL_TEXTURE0 + unit`, `glBindSampler` jako zwykłą liczbę.
 
-Po stronie shadera musi stać `sampler2D` ustawiony na ten sam numer (`shader.setInt(..., unit)`). W grze oba przebiegi używają jednostki 0 (`SOURCE_TEXTURE_UNIT` w `PostProcess.cpp`).
+Po stronie shadera musi stać `sampler2D` ustawiony na ten sam numer (`shader.setInt(..., unit)`). W grze wszystkie przebiegi po scenie czytają swoje źródło z jednostki 0 (`SOURCE_TEXTURE_UNIT` w `PostProcess.cpp`). Jeden przebieg czyta dwie tekstury naraz: przebieg składający wiąże od drugiej części M7 poświatę na jednostce 1 (`BLOOM_TEXTURE_UNIT`), `m_bloom.bindColorTexture(1)`, a potem scenę na jednostce 0.
 
 ### 5.12 Testy
 
@@ -735,13 +741,52 @@ Czego testy **nie** obejmują, bo wymaga to okna i kontekstu: tworzenia obiektó
 
 ### 5.13 Jak to zostało sprawdzone
 
-- **Testy jednostkowe:** trzy przypadki z sekcji 5.12. Zgłoszone dla całego programu testowego na Windowsie (2026-10-05): 269 przypadków i 102103 asercje w Debug i w Release.
+- **Testy jednostkowe:** trzy przypadki z sekcji 5.12. Zgłoszone dla całego programu testowego na Windowsie (2026-10-05): po pierwszej części M7 269 przypadków i 102103 asercje w Debug i w Release, po drugiej 276 i 102139.
 - **Gra w buildzie Debug** (zgłoszone, Windows): żadnego błędu OpenGL z `GL_CHECK` przy otwartym panelu Framebuffers (podglądy działają, więc działają też dwa framebuffery `GL_RGBA8` bez głębi), po zmianie rozmiaru okna na 1400 x 800 i po zminimalizowaniu i przywróceniu okna.
 - **Wydajność** (zgłoszone, Windows, Release, bez synchronizacji pionowej, panele ukryte): około 2700 klatek na sekundę przed zmianą i 2500 po niej w 1280 x 720, około 2020 i 1960 w 2560 x 1440. To koszt całego nowego końca klatki, nie samej klasy.
 - **Osobnego programu pomiarowego nie było.** Nie są zmierzone: stan kontekstu po konstruktorze, zachowanie przy każdej z ośmiu niekompletności, zawartość nowej tekstury przed pierwszym czyszczeniem.
+- **Druga część M7** (zgłoszone, Windows): cele bloomu, czyli `GL_RGBA16F` bez głębi w połowie rozmiaru sceny, działają: poświata jest na zrzutach ekranu, a po zmianie okna na 1000 x 600 cele mają 500 x 300. Wydajność z bloomem i bez jest w [`../renderer/post-process.md`](../renderer/post-process.md), sekcja 5.9.
 - **Niewykonane:** gałąź `ColorFormat::None` (sekcja 3.3).
 - **Niesprawdzone ręcznie:** zmiana rozmiaru przez przeciąganie krawędzi okna. Lista dla właściciela projektu jest w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 - **macOS:** nic. Otwarte punkty (rozmiar framebuffera na Retinie, `GL_RGBA16F` jako cel rysowania) są w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+
+### 5.14 Cele bloomu: pięć nowych obiektów bez zmiany w klasie (druga część M7)
+
+Bloom ([`../renderer/post-process.md`](../renderer/post-process.md), sekcje 2.11 do 2.15) jest drugim użytkownikiem tej klasy w tym samym pliku, `PostProcess.cpp`, i nie wymagał w niej ani jednej nowej linii. Wszystkie nowe obiekty tworzy jedna funkcja pomocnicza:
+
+```cpp
+void fitTarget(gfx::Framebuffer& target, int width, int height, gfx::ColorFormat format) {
+    if (!target.isValid()) {
+        // Colour only: one flat triangle needs no depth test.
+        target = gfx::Framebuffer(
+            {.width = width, .height = height, .color = format, .depth = gfx::DepthFormat::None});
+    } else {
+        target.resize(width, height);
+    }
+}
+```
+
+| Obiekt | Format koloru | Głębia | Rozmiar | Kto do niego rysuje | Kto go czyta |
+|---|---|---|---|---|---|
+| `m_brightPass` | `Rgba16F` | brak | połowa sceny w każdym kierunku | przebieg jasności | pierwszy przebieg poziomy rozmycia, podgląd |
+| `m_blurHorizontal` | `Rgba16F` | brak | jak wyżej | każdy przebieg poziomy | każdy przebieg pionowy |
+| `m_bloom` | `Rgba16F` | brak | jak wyżej | każdy przebieg pionowy | następny przebieg poziomy, przebieg składający (jednostka 1), podgląd |
+| `m_brightPassPreview`, `m_bloomPreview` | `Rgba8` | brak | 180 pikseli wysokości, jak podglądy sceny | `drawBloom`, przy otwartym panelu | panel Framebuffers |
+
+Co ta część pokazuje o klasie:
+
+| Własność klasy | Jak korzysta z niej bloom |
+|---|---|
+| format koloru i głębia są niezależne (`FramebufferSpec`) | pierwsza kombinacja "kolor HDR, bez głębi". W pierwszej części M7 `Rgba16F` szło zawsze w parze z `Depth24` |
+| `bind()` ustawia viewport na rozmiar framebuffera (sekcja 5.9) | to jest cały mechanizm zmniejszania: cel ma 640 x 360, viewport też, a trójkąt "na cały ekran" pokrywa viewport. Bez viewportu w `bind()` przebieg jasności narysowałby lewy dolny róg sceny (pułapka z sekcji 2.5) |
+| tekstura koloru ma filtr `GL_LINEAR` i `GL_CLAMP_TO_EDGE` (sekcja 2.6) | filtr liniowy uśrednia cztery piksele sceny przy zmniejszaniu i wygładza poświatę przy rozciąganiu na ekran. Przycinanie do krawędzi sprawia, że rozmycie przy brzegu ekranu powtarza piksel brzegowy, zamiast zawijać obraz z przeciwnej strony |
+| `bindColorTexture(unit)` przyjmuje numer jednostki (sekcja 5.11) | przebieg składający czyta dwa framebuffery naraz: scenę z jednostki 0 i `m_bloom` z jednostki 1 |
+| `resize()` nic nie robi przy tym samym rozmiarze (sekcja 5.10) | `fitTarget` jest wołane co klatkę dla każdego celu, a tekstury powstają od nowa tylko po zmianie rozmiaru okna |
+| przypisanie przenoszące (sekcja 5.8) | `target = gfx::Framebuffer({...})` przy pierwszym użyciu |
+
+Rozmiar celu liczy `game::bloomTargetExtent` (dzielenie całkowite przez 2, nie mniej niż 1), więc nawet okno o szerokości jednego piksela nie prosi tej klasy o framebuffer 0 x 0, który konstruktor by odrzucił.
+
+Jedna różnica wobec bufora sceny: `fitTarget` nie pamięta nieudanej próby. Gdyby sterownik odmówił celu `Rgba16F`, obiekt zostałby nieważny, a następna klatka spróbowałaby znowu i znowu wypisała błąd w logu. Bufor sceny ma na to pole `m_requestedSize` ([`../renderer/post-process.md`](../renderer/post-process.md), sekcja 5.4). Nikt takiej odmowy nie zgłosił.
 
 ## 6. Panel ImGui
 
@@ -750,12 +795,14 @@ Klasa nie ma własnego panelu ani stanu do zmieniania. Jej stan pokazuje panel *
 | Element panelu | Skąd bierze dane | Czego uczy |
 |---|---|---|
 | linia `Scene framebuffer: 1280 x 720 px, GL_RGBA16F + GL_DEPTH_COMPONENT24` | `width()`, `height()`, `colorFormatName(colorFormat())`, `depthFormatName(depthFormat())` framebuffera sceny | rozmiar zmienia się razem z oknem: przeciągnij krawędź okna i patrz na liczby. Na ekranie Retina powinny być dwa razy większe od rozmiaru okna |
-| obraz `Colour (HDR, cut off at 1)` | `colorTextureId()` framebuffera podglądu koloru | załącznik koloru jest zwykłą teksturą, którą da się pokazać |
-| obraz `Depth (as distance)` | `colorTextureId()` framebuffera podglądu głębi | załącznik głębi też jest teksturą, którą shader umie przeczytać |
+| linia `Bloom targets (3): 640 x 360 px, GL_RGBA16F` (druga część M7) | `width()`, `height()` i `colorFormatName(colorFormat())` celu `m_bloom`, przez `PostProcess::bloomTarget()` | framebuffer nie musi mieć rozmiaru okna ani głębi. Liczby są zawsze połową liczb z linii wyżej (dla nieparzystych zaokrągloną w dół) |
+| obraz `HDR colour` (w pierwszej części M7 podpis brzmiał `Colour (HDR, cut off at 1)`) | `colorTextureId()` framebuffera podglądu koloru | załącznik koloru jest zwykłą teksturą, którą da się pokazać |
+| obraz `Depth` (w pierwszej części: `Depth (as distance)`) | `colorTextureId()` framebuffera podglądu głębi | załącznik głębi też jest teksturą, którą shader umie przeczytać |
+| obrazy `Bright pass` i `Bloom` (druga część M7) | `colorTextureId()` framebufferów `brightPassPreview()` i `bloomPreview()` | wynik jednego przebiegu jest wejściem następnego: łańcuch framebufferów widać jako łańcuch obrazów |
 
-Oba obrazy są rysowane z narożnikami UV `(0, 1)` i `(1, 0)`: tekstura framebuffera ma wiersz `v = 0` na **dole**, jak wszystko, co rysuje OpenGL, a ImGui uważa pierwszy narożnik za lewy górny. Z wartościami domyślnymi obraz byłby do góry nogami (pułapka 5).
+Wszystkie cztery obrazy są rysowane z narożnikami UV `(0, 1)` i `(1, 0)`: tekstura framebuffera ma wiersz `v = 0` na **dole**, jak wszystko, co rysuje OpenGL, a ImGui uważa pierwszy narożnik za lewy górny. Z wartościami domyślnymi obraz byłby do góry nogami (pułapka 5).
 
-Gdy podglądu jeszcze nie ma (pierwsza klatka po otwarciu panelu), `isValid()` framebuffera podglądu zwraca fałsz i panel pisze `(no picture yet)`.
+Gdy podglądu jeszcze nie ma (pierwsza klatka po otwarciu panelu), `isValid()` framebuffera podglądu zwraca fałsz i panel pisze `(no picture yet)`. Dla obrazów bloomu jest drugi napis, `(not drawn)`: gdy bloom jest wyłączony albo włączony jest widok diagnostyczny, `PostProcess::bloomDrawn()` zwraca fałsz i panel nie pokazuje starego obrazu, chociaż framebuffer podglądu jest ważny i nadal go trzyma.
 
 ## 7. Pułapki
 

@@ -237,10 +237,12 @@ przypadków, `CrystalTests.cpp` 14, `ExitTests.cpp` 11, `GrassTests.cpp` 9,
 Przed oświetleniem (2026-10-05) program miał osiem plików z testami, przed mapami
 normalnych dwanaście, po M4 trzynaście (163 przypadki i 62220 asercji), po M5 szesnaście
 (215 i 85098), a po pierwszej części M6 siedemnaście (221 i 85175), i odpowiednio
-mniej przypadków. Blok wyżej to stan po drugiej części M6 (dziewiętnaście plików). Dziś,
-po pierwszej części M7, plików jest dwadzieścia jeden: doszły `ColorSpaceTests.cpp` (9
-przypadków) i `FramebufferTests.cpp` (3), a `LightingTests.cpp` ma 11. Zgłoszone dla
-Windowsa liczby tego stanu to 269 przypadków i 102103 asercje.
+mniej przypadków. Blok wyżej to stan po drugiej części M6 (dziewiętnaście plików). Po
+pierwszej części M7 plików było dwadzieścia jeden: doszły `ColorSpaceTests.cpp` (9
+przypadków) i `FramebufferTests.cpp` (3), a `LightingTests.cpp` ma 11 (zgłoszone dla
+Windowsa 269 przypadków i 102103 asercje). Dziś, po drugiej części M7, plików jest
+dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypadków). Zgłoszone dla Windowsa liczby
+tego stanu to 276 przypadków i 102139 asercji.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -1049,7 +1051,7 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
 
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 15.2: przełącznik,
       jasność, szwy, księżyc przy yaw 205 i pitch 50, suwak `Moon yaw` bez wpływu na
-      tarczę, widoki diagnostyczne, `Reload shaders` (dziś przy ośmiu programach, na macOS bez
+      tarczę, widoki diagnostyczne, `Reload shaders` (dziś przy dziesięciu programach, na macOS bez
       kroku kopiowania assetów), brak pliku
 
 **Skrypt Blendera**
@@ -1097,8 +1099,8 @@ i przez testy ręczne.
       w `Grass.cpp` i przypisanie wewnątrz makra
       (`GL_CHECK(cullingWasOn = glIsEnabled(GL_CULL_FACE))`)
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki przechodzą.
-      Po tej części było ich 256 (na Windowsie 101232 asercje), dziś, po pierwszej części
-      M7, zgłoszone 269 i 102103
+      Po tej części było ich 256 (na Windowsie 101232 asercje), po pierwszej części
+      M7 zgłoszone 269 i 102103, a dziś, po drugiej, 276 i 102139
 - [ ] **te same wysokości co na Windowsie.** Teren jest liczony na liczbach `float`
       z pliku `heightmap.png`, bez funkcji, których wynik zależy od biblioteki. Po starcie
       panel Camera powinien pokazać `Player feet` z y równym 0.124, a panel Terrain linie
@@ -1175,7 +1177,7 @@ i przez testy ręczne.
       po podłożu, szczeliny pod ścianami, `Height scale` z 0 i 2.50, `Wireframe`, wzgórza
       w trybie noclip, panel Grass (`Enabled`, `Density`, `Blade height`,
       `Wind strength`), trawa pod latarką i przy krysztale, cztery tryby `Lighting`,
-      widoki diagnostyczne, `Reload shaders` przy ośmiu programach (na macOS bez kroku
+      widoki diagnostyczne, `Reload shaders` (dziś przy dziesięciu programach, na macOS bez kroku
       kopiowania assetów), nowe labirynty innych rozmiarów, kryształy i brama na podłożu,
       liczba klatek
 - [ ] liczba klatek na sekundę w Release z trawą i bez niej oraz przy `Density` 8.0: na
@@ -1206,8 +1208,14 @@ z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
 [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md),
 [`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md),
 [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md). M7 jest
-rozpoczęty, nie kompletny: bloomu, mgły, winiety, minimapy i cieni nie ma na żadnym
-systemie.
+rozpoczęty, nie kompletny: mgły, winiety, minimapy i cieni nie ma na żadnym
+systemie. Bloom doszedł w drugiej części i ma osobną listę niżej.
+
+Lista powstała dla programu z pierwszej części. W dzisiejszym programie panel
+Framebuffers ma inny układ i cztery obrazy, podpisy obrazów brzmią `HDR colour` i `Depth`
+(a nie `Colour (HDR, cut off at 1)` i `Depth (as distance)`), programów jest dziesięć,
+a przypadków testowych 276: różnice są wypisane na początku sekcji 17.2
+w [`build-windows.md`](build-windows.md).
 
 **Build i testy**
 
@@ -1245,7 +1253,7 @@ systemie.
       i czarna scena przy działających panelach. Zapisać cały komunikat
 - [ ] podglądy w panelu Framebuffers (dwa małe framebuffery `GL_RGBA8` bez głębi) też
       powstają bez błędu
-- [ ] odczyt tekstury głębi przez `sampler2D` działa: podgląd `Depth (as distance)` pokazuje
+- [ ] odczyt tekstury głębi przez `sampler2D` działa: podgląd `Depth` pokazuje
       scenę w odcieniach szarości, a nie jednolitą biel albo czerń
 - [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy otwartym panelu
       Framebuffers, po zmianie rozmiaru okna i po minimalizacji
@@ -1304,14 +1312,121 @@ systemie.
 - [ ] po usunięciu `imgui.ini`: trzy rzędy pasków tytułu u góry (Camera i Gameplay,
       Terrain i Grass, Framebuffers na szerokość obu), pasek HUD pod trzecim rzędem, nic
       na siebie nie nachodzi przy skali ekranu Maca
-- [ ] rozwinięty panel Framebuffers mieści suwak, listę, linię z rozmiarem i dwa podglądy
-      bez przewijania. Podglądy są we właściwą stronę (niebo u góry) i ostre na Retinie
+- [ ] rozwinięty panel Framebuffers mieści kontrolki, linie z rozmiarami i podglądy (dziś
+      cztery) bez przewijania. Podglądy są we właściwą stronę (niebo u góry) i ostre na Retinie
       (mają 180 pikseli wysokości i są rozciągane przez ImGui, więc mogą być miękkie:
       zapisać)
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 17.2: wygląd
       sceny, `Exposure`, trzy pozycje `Tone mapping`, podglądy i `Depth range`, oba widoki
-      debugowania, panel Assets, zmiana rozmiaru, minimalizacja, `Reload shaders` przy
-      ośmiu programach (na macOS bez kroku kopiowania assetów)
+      debugowania, panel Assets, zmiana rozmiaru, minimalizacja, `Reload shaders` (dziś przy
+      dziesięciu programach, na macOS bez kroku kopiowania assetów)
+
+### M7, część 2 (bloom) na macOS: lista w całości otwarta
+
+Druga część kamienia milowego M7 (bloom: przebieg jasności i rozdzielne rozmycie Gaussa
+w trzech celach `GL_RGBA16F` o połowie rozmiaru bufora sceny, dodanie poświaty
+w przebiegu składającym, pliki `src/game/Bloom.*`, shadery `post/bright.frag`
+i `post/blur.frag`, setter `Shader::setFloatArray`, kontrolki i dwa kolejne podglądy
+w panelu Framebuffers, `CRYSTAL_GLOW_STRENGTH` równe 4,0) powstała na Windowsie 2026-10-05
+i tam jest zgłoszona jako zbudowana i przetestowana ([`build-windows.md`](build-windows.md),
+sekcja 18). **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej
+nie jest odhaczony.** Oczekiwania wynikają z kodu, z testów i z tego, co zgłoszono na
+Windowsie. Opis kodu:
+[`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 2.11
+do 2.15, 4.6 do 4.8, 5.10 i 5.11.
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/game/Bloom.hpp`, `src/game/Bloom.cpp`, `tests/BloomTests.cpp`. Zmienione:
+      `src/game/PostProcess.*`, `src/game/NightMazeApp.*`, `src/game/ShaderUniforms.hpp`,
+      `src/game/Crystals.hpp`, `src/gfx/Shader.*`, `src/debug/panels/FramebuffersPanel.*`,
+      `src/debug/DebugContext.hpp`, `src/debug/DebugUI.cpp`, `src/debug/PanelLayout.hpp`,
+      `src/main.cpp`. Miejsca warte uwagi: nagłówek `<span>` i parametr
+      `std::span<const float>` w `Shader.hpp` (pierwszy setter uniformu, który bierze
+      `std::span`), przekazanie `std::array<float, 7>` tam, gdzie funkcja chce `std::span`,
+      rzutowanie `static_cast<GLsizei>(values.size())`, `std::clamp` na trzech wartościach
+      `int` w `PostProcess.cpp` i wskaźnik `const gfx::Framebuffer*` przestawiany w pętli
+- [ ] `ctest --test-dir build/debug --output-on-failure`: 276 przypadków, wszystkie
+      przechodzą (zgłoszone dla Windowsa 102139 asercji). `BloomTests.cpp` porównuje
+      wyniki `std::exp` na liczbach `float` z wartościami do czterech miejsc
+      (`0.1370` z tolerancją 0,001 i `0.0185` z tolerancją 0,01) i sumę wag z jedynką
+      z tolerancją 0,00001: zapisać, czy któryś przypadek nie przechodzi na libc++
+      i Apple Silicon przez ostatnią cyfrę
+- [ ] gra startuje bez linii `[error]`. Trzy cele bloomu powstają w pierwszej klatce: błąd
+      wyglądałby tak: `[error] Framebuffer of ... is not complete: ...`, i wracałby
+      w **każdej** klatce, bo cele bloomu nie pamiętają nieudanej próby
+      ([`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md), sekcja 5.14)
+
+**Shadery bloomu na sterowniku Apple**
+
+- [ ] panel Shaders: dziesięć linii, wszystkie `OK`. Dwie nowe to
+      `composite.vert + bright.frag: OK` i `composite.vert + blur.frag: OK`
+- [ ] `blur.frag` kompiluje się: tablica uniformów o rozmiarze z wyrażenia stałego
+      (`uniform float uWeights[BLUR_RADIUS + 1]`), pętla `for` o stałej liczbie obrotów
+      z indeksowaniem tej tablicy i funkcja `textureSize`. Wszystko to jest w GLSL 4.10,
+      ale kompilator shaderów Apple tych plików jeszcze nie widział. Zapisać cały
+      komunikat, jeśli linia jest czerwona
+- [ ] `glUniform1fv` z nazwą tablicy bez indeksu (`"uWeights"`) ustawia wszystkie siedem
+      elementów: poświata jest widoczna i ma normalną jasność. Poświata czarna albo
+      ledwo widoczna przy poprawnym obrazie `Bright pass` znaczyłaby, że wagi nie dotarły
+- [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy włączonym bloomie, przy
+      otwartym panelu Framebuffers, po zmianie rozmiaru okna i po minimalizacji
+
+**Cele `GL_RGBA16F` bez głębi i połowa rozdzielczości na ekranie Retina**
+
+- [ ] trzy cele bloomu są kompletne. To pierwsze framebuffery gry z kolorem `GL_RGBA16F`
+      i **bez** załącznika głębi: tej kombinacji nikt na macOS jeszcze nie utworzył
+- [ ] linia `Bloom targets (3)` w panelu Framebuffers pokazuje połowę liczb z linii
+      `Scene framebuffer`. Na ekranie Retina dla okna 1280 x 720 oczekiwane
+      `Scene framebuffer: 2560 x 1440 px` i `Bloom targets (3): 1280 x 720 px`: cele
+      bloomu mają wtedy rozmiar **okna w punktach**, a nie jego połowę
+- [ ] poświata leży dokładnie na kryształach i na księżycu, nie jest przesunięta ani
+      przeskalowana względem sceny. Przesunięcie oznaczałoby pomylenie rozmiaru okna
+      z rozmiarem framebuffera w którymś viewporcie
+- [ ] **szerokość poświaty.** Jądro rozmycia ma stały promień w pikselach celu, więc na
+      Retinie poświata jest względem ekranu o połowę cieńsza niż w tym samym oknie na
+      monitorze o skali 1 (na Windowsie zgłoszone to samo dla 2560 x 1440, sprawdzone
+      tylko na wycinku obrazu). Zapisać, jak wygląda poświata kryształu z kilku metrów
+      na ekranie MacBooka i przy jakiej wartości `Blur iterations` wygląda jak na zrzucie
+      z Windowsa w oknie 1280 x 720
+- [ ] przeciągnąć okno między ekranem Retina a zewnętrznym monitorem o skali 1 (jeśli
+      jest): liczby w obu liniach zmieniają się razem, poświata zostaje na miejscu, bez
+      linii `[error]`
+- [ ] pamięć: przy buforze sceny 2560 x 1440 trzy cele bloomu mają razem około 21 MiB
+      (policzone z rozmiaru, 8 bajtów na piksel), obok około 28 MiB samej tekstury koloru
+      sceny
+
+**Liczba klatek z bloomem**
+
+- [ ] Release, ustawienia startowe, panele ukryte, okno 1280 x 720 na ekranie Retina
+      (bufor sceny 2560 x 1440): zapisać liczbę klatek na sekundę z zaznaczonym
+      i z odznaczonym polem `Bloom`. PRD wymaga stabilnych 60 klatek w 1440p na MacBooku.
+      Na Windowsie zgłoszono w tym rozmiarze od 1370 do 1480 klatek bez bloomu i od 880
+      do 925 z bloomem, czyli około 0,4 ms na klatkę, ale na innej karcie: dla MacBooka
+      nic z tego nie wynika
+- [ ] to samo przy `Blur iterations` równym 10 (dwadzieścia przebiegów rozmycia):
+      zapisać, czy liczba klatek zostaje powyżej 60
+- [ ] jeśli z bloomem liczba klatek spada poniżej 60: zapisać, przy ilu iteracjach wraca,
+      i czy pomaga zwinięcie panelu Framebuffers (cztery podglądy mniej)
+- [ ] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
+      ekranu: zapisać, czy tak jest, bo wtedy liczba z panelu Renderer nie mówi nic
+      o zapasie
+
+**Wygląd i panel**
+
+- [ ] poświata kryształu obok zrzutu ekranu z Windowsa: podobna jasność i barwa. Próg
+      0,8, intensywność 1,0 i siła świecenia 4,0 były dobierane na jednym monitorze na
+      Windowsie
+- [ ] kryształ z odznaczonym polem `Bloom`: zapisać, czy przy sile 4,0 nie jest na
+      ekranie MacBooka za blady
+- [ ] rozwinięty panel Framebuffers mieści siedem kontrolek w dwóch kolumnach, dwie linie
+      informacyjne i cztery obrazy bez przewijania przy skali ekranu Maca
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 18.2: włącznik,
+      próg, intensywność, iteracje, podglądy, kryształ z bliska i z daleka, księżyc
+      i gwiazdy, latarka, oba widoki debugowania, zmiana rozmiaru, `Reload shaders` przy
+      dziesięciu programach (na macOS bez kroku kopiowania assetów)
 
 ### Skróty: `make`
 

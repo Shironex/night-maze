@@ -32,7 +32,8 @@ constexpr int INITIAL_HEIGHT = 720;
 // its fragment shader runs a geometry shader. The last two programs do not draw the
 // scene: they draw one triangle over the whole target and share its vertex shader. The
 // composite program brings the HDR picture of the scene to the window, the preview
-// program makes the pictures of the framebuffer attachments for the debug UI.
+// program makes the pictures of the framebuffer attachments for the debug UI, and the
+// bright pass and blur programs are the two steps of the bloom.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -49,6 +50,8 @@ constexpr const char* GRASS_FRAGMENT_SHADER_FILE = "shaders/grass.frag";
 constexpr const char* FULLSCREEN_VERTEX_SHADER_FILE = "shaders/post/composite.vert";
 constexpr const char* COMPOSITE_FRAGMENT_SHADER_FILE = "shaders/post/composite.frag";
 constexpr const char* PREVIEW_FRAGMENT_SHADER_FILE = "shaders/post/preview.frag";
+constexpr const char* BRIGHT_PASS_FRAGMENT_SHADER_FILE = "shaders/post/bright.frag";
+constexpr const char* BLUR_FRAGMENT_SHADER_FILE = "shaders/post/blur.frag";
 
 // The heightmap of the terrain, relative to the assets directory: a grey picture made
 // by tools/blender/make_heightmap.py.
@@ -123,6 +126,10 @@ NightMazeApp::NightMazeApp()
                         core::assetPath(COMPOSITE_FRAGMENT_SHADER_FILE)),
       m_previewShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
                       core::assetPath(PREVIEW_FRAGMENT_SHADER_FILE)),
+      m_brightPassShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
+                         core::assetPath(BRIGHT_PASS_FRAGMENT_SHADER_FILE)),
+      m_blurShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
+                   core::assetPath(BLUR_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
       m_terrainRenderer(m_assets),
@@ -444,17 +451,24 @@ void NightMazeApp::onRender(double alpha) {
     }
 
     // The two debug views show data as colours (a normal, a texture coordinate), not
-    // light. An exposure or a tone mapping curve would change those numbers, so both
-    // are switched off for them, in a copy: the settings the debug UI shows stay.
+    // light. An exposure or a tone mapping curve would change those numbers, and
+    // a bloom would make the bright ones glow, so all three are switched off for them,
+    // in a copy: the settings the debug UI shows stay.
     PostProcessSettings compositeSettings = m_postProcessSettings;
     if (m_viewMode != ViewMode::Textured) {
         compositeSettings.exposure = NEUTRAL_EXPOSURE;
         compositeSettings.toneMapping = ToneMapping::None;
+        compositeSettings.bloom.enabled = false;
     }
 
-    // The last pass: back to the window, and the HDR picture goes into it with
-    // exposure, tone mapping and the sRGB encoding. The debug UI is drawn after this
-    // function returns (main.cpp), straight into the window.
+    // The bloom: the bright parts of the finished scene, blurred in targets of half the
+    // size. It is called in every frame, also with the bloom switched off: it then
+    // draws nothing and tells the composite pass so.
+    m_postProcess.drawBloom(m_brightPassShader, m_blurShader, m_previewShader, compositeSettings);
+
+    // The last pass: back to the window, and the HDR picture goes into it with the
+    // bloom, exposure, tone mapping and the sRGB encoding. The debug UI is drawn after
+    // this function returns (main.cpp), straight into the window.
     m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer);
 }
 

@@ -6,12 +6,12 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`tests/`](../../tests/).
 
 **Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z dwudziestu
-dwóch plików: `tests/main.cpp` (punkt wejścia) i dwudziestu jeden plików z testami
+trzech plików: `tests/main.cpp` (punkt wejścia) i dwudziestu dwóch plików z testami
 (siedemnasty, `SkyboxTests.cpp`, doszedł w pierwszej części M6, `TerrainTests.cpp` i
-`GrassTests.cpp` w drugiej, a dwa ostatnie, `ColorSpaceTests.cpp` i `FramebufferTests.cpp`,
-w pierwszej części M7). Osiem pierwszych
+`GrassTests.cpp` w drugiej, `ColorSpaceTests.cpp` i `FramebufferTests.cpp`
+w pierwszej części M7, a ostatni, `BloomTests.cpp`, w drugiej części M7). Osiem pierwszych
 wierszy tabeli to pliki z M2 + M3, cztery następne doszły z oświetleniem (pierwsza część M4),
-trzynasty z mapami normalnych (druga część M4), trzy następne z rozgrywką (M5), siedemnasty z niebem (pierwsza część M6), dwa następne z terenem i trawą (druga część M6), a dwa ostatnie z buforem HDR i gammą (pierwsza część M7, która dodała też jeden przypadek do `LightingTests.cpp`). M5 zmieniło
+trzynasty z mapami normalnych (druga część M4), trzy następne z rozgrywką (M5), siedemnasty z niebem (pierwsza część M6), dwa następne z terenem i trawą (druga część M6), dwa kolejne z buforem HDR i gammą (pierwsza część M7, która dodała też jeden przypadek do `LightingTests.cpp`), a ostatni z bloomem (druga część M7). M5 zmieniło
 też liczby w trzech starszych plikach: `ColliderTests.cpp` dostał siedem przypadków o kulach,
 `MazeTests.cpp` dwa (w tym przeniesiony test `isDeadEnd`), a z `LightingTests.cpp` ubyło
 siedem, bo światła w ślepych zaułkach zostały usunięte z gry. Druga część M6 zabrała jeden
@@ -43,13 +43,16 @@ tekstury gruntu (`ground.png`, `ground_normal.png`) zamiast tekstur podłogi:
 | `GrassTests.cpp` | 9 | od M6: miejsca kępek trawy (`placeGrass`). Stałe i ustawienia domyślne, gęstość 0, powtarzalność z ziarna, liczba kępek na ścianę i na stronę, pas przy ścianie, żadna kępka w ścianie, słupku ani bramie, kępki na gruncie, rzadki rozsiew na wzgórzach z dala od labiryntu | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md) |
 | `ColorSpaceTests.cpp` | 9 | od M7: `gfx::srgbToLinear` i `gfx::linearToSrgb`. Czerń i biel, znane wartości standardu (bajt 128 to 0,21586, 0,5 to 0,21404, a liniowe 0,5 to 0,73536), prosty odcinek dla najciemniejszych wartości i ciągłość na progu, różnica od potęgi 2,2, powrót każdego z 256 bajtów po zdekodowaniu i zakodowaniu, zachowanie kolejności jasności, przycinanie poza zakresem od 0 do 1, kolor kanał po kanale | [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md) |
 | `FramebufferTests.cpp` | 3 | od M7: części `gfx::Framebuffer` bez OpenGL. Nazwy formatów, pusta `FramebufferSpec`, osobny tekst dla każdego stanu kompletności | [`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md) |
+| `BloomTests.cpp` | 7 | od drugiej części M7: części bloomu bez OpenGL (`game/Bloom.*`). Rozmiar celu (`bloomTargetExtent`: połowa sceny, reszta z dzielenia przepada, nie mniej niż 1 piksel), wagi rozmycia Gaussa (`bloomBlurWeights`: suma całego jądra równa 1, wagi maleją i są dodatnie, stosunki zgodne z `exp(-d * d / (2 * sigma * sigma))`, dwie liczby policzone ręcznie), wartości startowe `BloomSettings` w zakresach. Przykład `REQUIRE` przed pętlą, która indeksuje tablicę | [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcja 5.8 |
 
-Razem 269 przypadków testowych: tyle daje policzenie makr `TEST_CASE` w plikach, w kolejności
+Razem 276 przypadków testowych: tyle daje policzenie makr `TEST_CASE` w plikach, w kolejności
 tabeli (policzyłem je sam w wersji przygotowanej do commita):
-19 + 8 + 11 + 12 + 8 + 13 + 19 + 10 + 22 + 20 + 11 + 4 + 9 + 11 + 14 + 25 + 5 + 27 + 9 + 9 + 3.
-Zgłoszone dla Windowsa po pierwszej części M7 (2026-10-05, tych uruchomień nie powtarzałem):
-269 przypadków i 102103 asercje w Debug i w Release, wszystkie zaliczone, bramka `make check`
-przechodzi. Po drugiej części M6 było 256 przypadków i 101232 asercje (oba programy uruchomiłem
+19 + 8 + 11 + 12 + 8 + 13 + 19 + 10 + 22 + 20 + 11 + 4 + 9 + 11 + 14 + 25 + 5 + 27 + 9 + 9 + 3 + 7.
+Zgłoszone dla Windowsa po drugiej części M7 (2026-10-05, tych uruchomień nie powtarzałem):
+276 przypadków i 102139 asercji w Debug i w Release, wszystkie zaliczone, bramka `make check`
+przechodzi. Przyrost wobec pierwszej części M7 (269 przypadków i 102103 asercje) to 7
+przypadków i 36 asercji, czyli dokładnie plik `BloomTests.cpp`: w jego siedmiu przypadkach
+wykonuje się 3, 3, 3, 1, 13, 8 i 5 asercji. Po drugiej części M6 było 256 przypadków i 101232 asercje (oba programy uruchomiłem
 wtedy sam, 2026-10-05): dziewiętnaście plików z testami, `LightingTests.cpp` z 10 przypadkami.
 Po pierwszej części M6 było 221 przypadków i 85175 asercji (siedemnaście plików z testami,
 `ObjLoaderTests.cpp` z 20 przypadkami). Po M5 było 215 przypadków i 85098 asercji (szesnaście plików, `ImageLoaderTests.cpp` z 9
@@ -546,7 +549,7 @@ Wynik zmierzony na Windowsie (Debug, 2026-10-05, przed dodaniem testów oświetl
 "1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwał
 wtedy około 0,1 s. Dla programu po M5 z 215 przypadkami (2026-10-05) znane są liczby
 z raportu doctest niżej. Program po drugiej części M6 kończył raport liniami
-`test cases: 256 | 256 passed` i `assertions: 101232 | 101232 passed`. Dla dzisiejszego (po pierwszej części M7) zgłoszone są liczby 269 i 102103. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
+`test cases: 256 | 256 passed` i `assertions: 101232 | 101232 passed`. Po pierwszej części M7 zgłoszone były liczby 269 i 102103, a dla dzisiejszego stanu (po drugiej części M7) 276 i 102139. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
 datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas.
 
 W pliku [`Makefile`](../../Makefile) są do tego skróty: `make test` (build Debug i testy),

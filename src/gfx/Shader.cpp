@@ -370,6 +370,17 @@ void Shader::setFloat(const char* name, float value) const {
     GL_CHECK(glUniform1f(location, value));
 }
 
+void Shader::setFloatArray(const char* name, std::span<const float> values) const {
+    // Same lookup as in setMat4. The name of an array without an index gives the
+    // location of its element 0.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // glUniform1fv: count values of type float, read from the pointer and written to
+    // the elements of the array, starting with the one at location.
+    GL_CHECK(glUniform1fv(location, static_cast<GLsizei>(values.size()), values.data()));
+}
+
 void Shader::bindUniformBlock(std::string blockName, GLuint bindingPoint, std::size_t sizeInBytes) {
     m_blockBindings.push_back({.blockName = std::move(blockName),
                                .bindingPoint = bindingPoint,

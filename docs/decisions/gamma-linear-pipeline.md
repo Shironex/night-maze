@@ -72,4 +72,4 @@ Mniejsze rozstrzygnięcia:
 - Gdy kolory ustawień zaczną być zapisywane do pliku albo wymieniane z innym programem: trzeba wtedy zapisać w formacie, w której przestrzeni są.
 - Gdy dojdzie tekstura, która jest kolorem **i** danymi naraz (na przykład kolor z połyskiem w kanale alfa): alfa nie jest dekodowana, więc taki układ działa, ale dane w kanałach RGB już nie.
 - Gdyby macOS pokazał inny obraz niż Windows: pierwszym podejrzanym jest framebuffer okna (notatka [`srgb-encode-in-shader.md`](srgb-encode-in-shader.md)).
-- Przy bloomie i mgle (kolejne części M7): oba efekty mają działać na wartościach liniowych, przed ekspozycją. Jeśli któryś zostanie dobrany na oko po kodowaniu, ta decyzja została złamana.
+- Przy bloomie i mgle (kolejne części M7): oba efekty mają działać na wartościach liniowych, przed ekspozycją. Bloom z drugiej części M7 tak działa ([`bloom-half-resolution-three-targets.md`](bloom-half-resolution-three-targets.md), [`bright-pass-keeps-hue.md`](bright-pass-keeps-hue.md)). Jeśli któryś zostanie dobrany na oko po kodowaniu, ta decyzja została złamana.

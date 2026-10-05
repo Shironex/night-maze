@@ -52,9 +52,11 @@ constexpr float CRYSTAL_PULSE_SECONDS = 2.4F;
 /// where a colour may be brighter than white, and a glowing crystal is the one thing in
 /// the maze that should be. The tone mapping of the composite pass brings it back into
 /// the range of the screen without turning the crystal into one flat patch, so its
-/// facets can still be told apart. An effect that looks for the pixels above 1 (bloom)
-/// finds the crystals by this.
-constexpr float CRYSTAL_GLOW_STRENGTH = 2.5F;
+/// facets can still be told apart. The bloom finds the crystals by this: the glow is
+/// multiplied by the texture of the crystal, which takes away more than half of it, and
+/// what is left has to stay above the bloom threshold (BloomSettings::threshold) also
+/// at the dim end of the pulse, or the halo would blink instead of breathe.
+constexpr float CRYSTAL_GLOW_STRENGTH = 4.0F;
 
 /// One crystal of a maze: the cell it floats in and which model it is drawn with.
 struct CrystalSpawn {

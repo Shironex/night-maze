@@ -38,8 +38,9 @@ namespace game {
 /// the walls, and above them is the night sky, a skybox.
 ///
 /// The scene is not drawn into the window directly. It is drawn into an HDR framebuffer
-/// (game::PostProcess), and a last pass brings that picture to the window with
-/// exposure, tone mapping and gamma correction.
+/// (game::PostProcess). Its bright parts are blurred into a glow (bloom), and a last
+/// pass brings the picture to the window with that glow, exposure, tone mapping and
+/// gamma correction.
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
@@ -93,8 +94,14 @@ protected:
     /// reason.
     gfx::Shader& previewShader() { return m_previewShader; }
 
-    /// The exposure, the tone mapping and the preview switch of the composite pass,
-    /// exposed so the debug UI can edit them live.
+    /// Shader program of the bright pass of the bloom, exposed for the same reason.
+    gfx::Shader& brightPassShader() { return m_brightPassShader; }
+
+    /// Shader program of the blur passes of the bloom, exposed for the same reason.
+    gfx::Shader& blurShader() { return m_blurShader; }
+
+    /// The exposure, the tone mapping and the preview switch of the composite pass and
+    /// the settings of the bloom, exposed so the debug UI can edit them live.
     PostProcessSettings& postProcessSettings() { return m_postProcessSettings; }
 
     /// The framebuffers of the frame, read only: the debug UI shows their sizes, their
@@ -224,6 +231,8 @@ private:
     gfx::Shader m_grassShader;
     gfx::Shader m_compositeShader;
     gfx::Shader m_previewShader;
+    gfx::Shader m_brightPassShader;
+    gfx::Shader m_blurShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
@@ -294,7 +303,8 @@ private:
     // Whether the sky is drawn and how bright it is.
     SkyboxSettings m_skyboxSettings;
 
-    // The exposure and the tone mapping of the composite pass.
+    // The exposure and the tone mapping of the composite pass and the settings of the
+    // bloom.
     PostProcessSettings m_postProcessSettings;
 
     // How the camera is turned. It belongs to the controls, not to the camera.

@@ -65,6 +65,25 @@ constexpr const char* COMPOSITE_SCENE_UNIFORM = "uScene";
 constexpr const char* COMPOSITE_EXPOSURE_UNIFORM = "uExposure";
 constexpr const char* COMPOSITE_TONE_MAPPING_UNIFORM = "uToneMapping";
 
+/// post/composite.frag: the sampler of the blurred bloom picture (the number of a second
+/// texture unit), whether it is added to the scene (1) or not read at all (0), and the
+/// number it is multiplied by.
+constexpr const char* COMPOSITE_BLOOM_UNIFORM = "uBloom";
+constexpr const char* COMPOSITE_BLOOM_ENABLED_UNIFORM = "uBloomEnabled";
+constexpr const char* COMPOSITE_BLOOM_INTENSITY_UNIFORM = "uBloomIntensity";
+
+/// post/bright.frag: the sampler of the scene picture and the brightness above which
+/// light takes part in the bloom.
+constexpr const char* BRIGHT_SCENE_UNIFORM = "uScene";
+constexpr const char* BRIGHT_THRESHOLD_UNIFORM = "uThreshold";
+
+/// post/blur.frag: the sampler of the picture to blur, the direction of the pass
+/// (1 horizontal, 0 vertical) and the array of the kernel weights
+/// (game::bloomBlurWeights).
+constexpr const char* BLUR_SOURCE_UNIFORM = "uSource";
+constexpr const char* BLUR_HORIZONTAL_UNIFORM = "uHorizontal";
+constexpr const char* BLUR_WEIGHTS_UNIFORM = "uWeights";
+
 /// post/preview.frag: the sampler of the attachment to show, what it is (a value of
 /// game::AttachmentPreview), the clipping planes of the camera and the distance in
 /// metres the depth preview shows as white.

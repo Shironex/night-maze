@@ -5,13 +5,15 @@ Kod: [`src/game/Exit.hpp`](../../../src/game/Exit.hpp), [`src/game/Exit.cpp`](..
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument jest **o regułach gry: co to jest runda, gdzie jest wyjście, skąd biorą się kryształy, jak działa bateria i co z tego widać na ekranie**. Stoi na pięciu innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, kierunki, `randomBelow`, układ w świecie), [`maze-rendering.md`](maze-rendering.md) (`MazeWorld`, `MazeRenderer`, rysowanie modelu), [`flashlight.md`](flashlight.md) (latarka i `buildLightSet`), [`../scene/collision.md`](../scene/collision.md) (AABB, kule, `moveAndSlide`) i [`player.md`](player.md) (gracz, stały krok, noclip).
 
-**Stan na dziś (2026-10-05):** kod M5 jest kompletny na Windowsie, a kamień **nie jest zamknięty** i nie ma tagu wersji. Zgłoszone dla Windowsa po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym 50 przypadków z trzech plików tego dokumentu; po drugiej części M6 cały program testowy miał 256 przypadków i 101232 asercje, uruchomione 2026-10-05 w Debug i Release, a po pierwszej części M7 zgłoszone jest 269 przypadków i 102103 asercje), obraz sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Otwarte:** nic z M5 nie było budowane ani uruchamiane na macOS i **nikt jeszcze nie grał ręcznie**: klawisz R, klawisz F przy pustej baterii, przycisk `Restart round (key R)`, suwaki panelu Gameplay, przejście przez otwartą bramę, zbieranie, karta `You escaped`, migotanie na ekranie i HUD przy schowanych panelach wynikają z kodu i z testów, a nie z oglądania.
+**Stan na dziś (2026-10-05):** kod M5 jest kompletny na Windowsie, a kamień **nie jest zamknięty** i nie ma tagu wersji. Zgłoszone dla Windowsa po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym 50 przypadków z trzech plików tego dokumentu; po drugiej części M6 cały program testowy miał 256 przypadków i 101232 asercje, uruchomione 2026-10-05 w Debug i Release, a po pierwszej części M7 zgłoszone jest 269 przypadków i 102103, po drugiej 276 i 102139 asercje, po drugiej 276 i 102139), obraz sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Otwarte:** nic z M5 nie było budowane ani uruchamiane na macOS i **nikt jeszcze nie grał ręcznie**: klawisz R, klawisz F przy pustej baterii, przycisk `Restart round (key R)`, suwaki panelu Gameplay, przejście przez otwartą bramę, zbieranie, karta `You escaped`, migotanie na ekranie i HUD przy schowanych panelach wynikają z kodu i z testów, a nie z oglądania.
 
 **Co zmienił M6 (teren).** Labirynt stoi na terenie z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)), więc rzeczy rundy dostały wysokość: `crystalRestPosition` i `exitZone` biorą wysokość gruntu jako drugi parametr, kryształy unoszą się 0,9 m nad gruntem w środku swojej komórki, strefa wyjścia stoi na gruncie, a brama jest opuszczona na najniższy grunt pod sobą, tak jak ściany. Doszła funkcja `restCrystalsOnGround` (po zmianie skali wysokości terenu). HUD stoi niżej, pod rzędami zwiniętych pasków paneli (w M6 dwoma, od pierwszej części M7 trzema). Liczby w przykładach tego dokumentu, w których `y` wynosi 0 albo jest liczone od zera, dotyczą płaskiego gruntu: tak budują świat testy tych trzech plików (przeciążenie `buildMazeWorld` bez mapy wysokości). Kod M6 jest kompletny na Windowsie, a kamień nie jest zamknięty: macOS i testy ręczne są otwarte.
 
 Czego nie ma: **stanu przegranej** (decyzja właściciela, sekcja 2.1), **przeciwnika**, który goni gracza (chcę go później, ale w M5 nie ma ani linii jego kodu: notatka [`../../decisions/enemy-after-m5.md`](../../decisions/enemy-after-m5.md)), dźwięku, menu startowego, minimapy poza planem w panelu Maze, tekstury "cookie" latarki i **cieni** (planowane w dalszej części M7).
 
-**Pierwsza część M7 (bufor HDR i gamma, 2026-10-05)** zmieniła w tym module blask kryształów: `CRYSTAL_GLOW_STRENGTH` wzrosło z 1 do 2,5, `crystalGlow` dostaje kolor liniowy, a przelicza go nowa funkcja `NightMazeApp::crystalEmissive()` (sekcje 2.9, 4.3, 4.4 i 5). Reguły rundy, kryształy, brama i bateria zostały bez zmian. HUD stoi o jeden pasek tytułu niżej, bo doszedł trzeci rząd zwiniętych pasków paneli (panel Framebuffers, `FOLDED_ROW_COUNT` równe 3). Poświaty wokół kryształów (bloom) nadal nie ma: jest planowana jako kolejna część M7.
+**Pierwsza część M7 (bufor HDR i gamma, 2026-10-05)** zmieniła w tym module blask kryształów: `CRYSTAL_GLOW_STRENGTH` wzrosło z 1 do 2,5, `crystalGlow` dostaje kolor liniowy, a przelicza go nowa funkcja `NightMazeApp::crystalEmissive()` (sekcje 2.9, 4.3, 4.4 i 5). Reguły rundy, kryształy, brama i bateria zostały bez zmian. HUD stoi o jeden pasek tytułu niżej, bo doszedł trzeci rząd zwiniętych pasków paneli (panel Framebuffers, `FOLDED_ROW_COUNT` równe 3). Poświaty wokół kryształów (bloom) w tamtej części jeszcze nie było.
+
+**Druga część M7 (bloom, 2026-10-05)** dodała tę poświatę i zmieniła w tym module jedną liczbę: `CRYSTAL_GLOW_STRENGTH` wzrosło z 2,5 do 4,0, żeby blask pomnożony przez teksturę kryształu zostawał powyżej progu bloomu także w najciemniejszej chwili pulsu (sekcje 2.9 i 5, decyzja [`../../decisions/crystal-glow-raised-for-bloom.md`](../../decisions/crystal-glow-raised-for-bloom.md)). Sam efekt (przebieg jasności, rozmycie, dodanie do sceny) nie należy do tego modułu: opisuje go [`../renderer/post-process.md`](../renderer/post-process.md). Reguły rundy i testy kryształów zostały bez zmian. Zgłoszone dla Windowsa: 276 przypadków testowych i 102139 asercji w Debug i Release, poświata kryształu na zrzutach ekranu w obu skrajnych chwilach pulsu. Skutek uboczny: kryształy są bledsze także przy wyłączonym bloomie.
 
 ## 1. Po co to jest
 
@@ -391,17 +393,19 @@ Sinus biegnie od -1 do 1. Połowa sinusa plus pół biegnie od 0 do 1. Pomnożon
 blask = kolor świateł punktowych * CRYSTAL_GLOW_STRENGTH * puls(t)
 ```
 
-`CRYSTAL_GLOW_STRENGTH` wynosi od pierwszej części M7 2,5 (do M6 wynosiło 1), a "kolor świateł punktowych" jest we wzorze kolorem **liniowym**. Rachunek krok po kroku dla domyślnego koloru:
+`CRYSTAL_GLOW_STRENGTH` wynosi od drugiej części M7 4,0 (w pierwszej części 2,5, do M6 1), a "kolor świateł punktowych" jest we wzorze kolorem **liniowym**. Rachunek krok po kroku dla domyślnego koloru:
 
 | Krok | Wartość |
 |---|---|
 | `pointColor` w ustawieniach, wartość sRGB | `(0,2, 0,9, 0,8)` |
 | po `gfx::srgbToLinear` | `(0,033, 0,787, 0,604)` |
-| razy `CRYSTAL_GLOW_STRENGTH` (2,5), puls 1 | `(0,083, 1,969, 1,510)` |
-| przy pulsie 0,85 | `(0,070, 1,673, 1,283)` |
-| przy najsłabszym pulsie 0,7 (`1 - CRYSTAL_PULSE_DEPTH`) | `(0,058, 1,378, 1,057)` |
+| razy `CRYSTAL_GLOW_STRENGTH` (4,0), puls 1 | `(0,132, 3,150, 2,415)` |
+| przy pulsie 0,85 | `(0,113, 2,677, 2,053)` |
+| przy najsłabszym pulsie 0,7 (`1 - CRYSTAL_PULSE_DEPTH`) | `(0,093, 2,205, 1,691)` |
 
-W zieleni i błękicie blask jest więc **zawsze powyżej 1**, czyli jaśniejszy niż biel. To zamierzone, a komentarz przy stałej mówi dlaczego: scena jest rysowana do bufora HDR, w którym kolor może być jaśniejszy niż biel, a świecący kryształ jest jedyną rzeczą w labiryncie, która taka ma być. Mapowanie tonów w przebiegu składającym sprowadza go w zakres ekranu bez zamieniania kryształu w płaską plamę, więc ścianki dalej da się rozróżnić. Ten sam komentarz mówi, po czym kryształy znajdzie efekt szukający pikseli powyżej 1 (bloom): tego efektu jeszcze nie ma, jest planowany. Do M6, bez HDR, wartość powyżej 1 była obcinana, dlatego stała wynosiła 1. Blask trafia do shaderów jako uniform `uEmissive` (sekcja 4) i jest dodawany do światła rozproszonego, więc nie zależy od żadnego światła sceny: kryształ jest widoczny także w najciemniejszym kącie i przy zgaszonej latarce. Blask pulsuje tym samym pulsem co światło, więc siatka i poświata wokół niej jaśnieją razem.
+Dla porównania, przy sile 2,5 z pierwszej części M7 te trzy wiersze brzmiały `(0,083, 1,969, 1,510)`, `(0,070, 1,673, 1,283)` i `(0,058, 1,378, 1,057)`.
+
+W zieleni i błękicie blask jest więc **zawsze powyżej 1**, czyli jaśniejszy niż biel. To zamierzone, a komentarz przy stałej mówi dlaczego: scena jest rysowana do bufora HDR, w którym kolor może być jaśniejszy niż biel, a świecący kryształ jest jedyną rzeczą w labiryncie, która taka ma być. Mapowanie tonów w przebiegu składającym sprowadza go w zakres ekranu bez zamieniania kryształu w płaską plamę, więc ścianki dalej da się rozróżnić. Ten sam komentarz mówi, po czym kryształy znajduje bloom, czyli efekt, który od drugiej części M7 dodaje poświatę wokół tego, co w buforze jest jaśniejsze od progu (startowo 0,8). Stąd wartość 4,0: blask jest w shaderze mnożony przez teksturę kryształu, która według komentarza zabiera ponad połowę, a to, co zostaje, ma być powyżej progu także przy pulsie 0,7. Jasność (luminancja) blasku z ostatniego wiersza tabeli to 1,72, więc tekstura może zabrać do 53 procent, zanim piksel spadnie pod próg. Przy sile 2,5 było to 1,07 i 26 procent: poświata znikała w rytm pulsu ([`../renderer/post-process.md`](../renderer/post-process.md), sekcja 2.15). Do M6, bez HDR, wartość powyżej 1 była obcinana, dlatego stała wynosiła 1. Blask trafia do shaderów jako uniform `uEmissive` (sekcja 4) i jest dodawany do światła rozproszonego, więc nie zależy od żadnego światła sceny: kryształ jest widoczny także w najciemniejszym kącie i przy zgaszonej latarce. Blask pulsuje tym samym pulsem co światło, więc siatka i poświata wokół niej jaśnieją razem.
 
 ### 2.10 Próg bramy
 
@@ -617,7 +621,7 @@ Każde wywołanie jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/g
 
 **Opadająca brama i test głębi.** Brama nie jest przycinana ani chowana żadnym specjalnym stanem. Jej macierz modelu ma po prostu coraz mniejsze y, więc dół modelu wchodzi pod grunt. Teren jest rysowany wcześniej (`TerrainRenderer`, do M5 były to płytki podłogi rysowane przez `MazeRenderer`), ale kolejność nie ma znaczenia: test głębi (`GL_DEPTH_TEST`, włączany w `onRender`) odrzuca fragmenty bramy, które leżą dalej od kamery niż powierzchnia terenu. Dopóki kamera jest nad gruntem, część bramy pod nim jest zasłonięta.
 
-**Brak przezroczystości.** Kryształy są nieprzezroczyste: shadery piszą alfę 1 i mieszanie kolorów (blending) nie jest włączane. "Świecenie" kryształu to jasny kolor z `uEmissive`, a nie poświata wokół niego. Poświata jako efekt obrazu (bloom) jest planowana jako kolejna część M7. Pierwsza część (bufor HDR sceny) już jest i przygotowuje pod nią grunt: blask kryształu ma w buforze wartości powyżej 1 (sekcja 2.9).
+**Brak przezroczystości.** Kryształy są nieprzezroczyste: shadery piszą alfę 1 i mieszanie kolorów (blending) nie jest włączane. "Świecenie" kryształu to jasny kolor z `uEmissive`, a nie poświata wokół niego. Poświatę jako efekt obrazu (bloom) dodaje od drugiej części M7 osobny przebieg po scenie: bierze z bufora HDR to, co jaśniejsze od progu, rozmywa i dodaje z powrotem ([`../renderer/post-process.md`](../renderer/post-process.md)). Kryształ nadal jest nieprzezroczystą siatką, a poświata nie należy do jego geometrii: jest policzona z gotowego obrazu. Skutek: gdy ściana zasłania kryształ do połowy, poświata widocznej połowy rozlewa się także na tę ścianę, a kryształ zasłonięty w całości nie ma poświaty wcale.
 
 **Światła kryształów** nie mają tu własnych wywołań: `crystalLightPositions` zwraca listę pozycji, `buildLightSet` robi z niej światła punktowe, a `LightRig::upload` wysyła cały zestaw jednym `glBufferSubData` do bufora uniformów, tak jak w M4 ([`flashlight.md`](flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 
@@ -884,7 +888,7 @@ Pudełko ze środka i połówek rozmiarów: środek komórki podniesiony o wysok
 | `CRYSTAL_SPIN_DEGREES_PER_SECOND` | 40 | obrót: pełny w 9 s |
 | `CRYSTAL_LIGHT_CLEARANCE` | 0,15 m | odstęp światła od czubka |
 | `CRYSTAL_PULSE_DEPTH`, `CRYSTAL_PULSE_SECONDS` | 0,3, 2,4 s | puls światła |
-| `CRYSTAL_GLOW_STRENGTH` | 2,5 (do M6: 1) | siła własnego blasku względem liniowego koloru światła |
+| `CRYSTAL_GLOW_STRENGTH` | 4,0 (w pierwszej części M7: 2,5, do M6: 1) | siła własnego blasku względem liniowego koloru światła |
 | `CRYSTAL_SEED_OFFSET` (w `.cpp`) | 1000003 | przesunięcie ziarna generatora kryształów |
 | `PHASE_STEP` (w `.cpp`) | 0,382 | przesunięcie fazy między kolejnymi kryształami |
 
@@ -896,12 +900,14 @@ Komentarz przy `CRYSTAL_GLOW_STRENGTH` w dzisiejszym brzmieniu:
 /// where a colour may be brighter than white, and a glowing crystal is the one thing in
 /// the maze that should be. The tone mapping of the composite pass brings it back into
 /// the range of the screen without turning the crystal into one flat patch, so its
-/// facets can still be told apart. An effect that looks for the pixels above 1 (bloom)
-/// finds the crystals by this.
-constexpr float CRYSTAL_GLOW_STRENGTH = 2.5F;
+/// facets can still be told apart. The bloom finds the crystals by this: the glow is
+/// multiplied by the texture of the crystal, which takes away more than half of it, and
+/// what is left has to stay above the bloom threshold (BloomSettings::threshold) also
+/// at the dim end of the pulse, or the halo would blink instead of breathe.
+constexpr float CRYSTAL_GLOW_STRENGTH = 4.0F;
 ```
 
-Do M6 stała wynosiła 1, a komentarz tłumaczył to obcinaniem: mocniejszy blask zamieniał cały kryształ w jedną płaską plamę najjaśniejszego koloru, jaki ekran umie pokazać. Bufor HDR zniósł to ograniczenie (rachunek w sekcji 2.9). Ostatnie zdanie komentarza mówi o przyszłości: bloom nie jest jeszcze zbudowany.
+Do M6 stała wynosiła 1, a komentarz tłumaczył to obcinaniem: mocniejszy blask zamieniał cały kryształ w jedną płaską plamę najjaśniejszego koloru, jaki ekran umie pokazać. Bufor HDR zniósł to ograniczenie (rachunek w sekcji 2.9). Ostatnie zdanie komentarza zmieniło się w drugiej części M7 razem z liczbą: w pierwszej części mówiło o bloomie jako o przyszłym efekcie i stała wynosiła 2,5. Dziś bloom jest zbudowany, a zdanie tłumaczy, skąd 4,0: poświata ma "oddychać, a nie mrugać". Zdania o teksturze, która zabiera ponad połowę blasku, nie sprawdzałem pomiarem.
 
 ```cpp
 int crystalCountFor(int cellCount) {
@@ -1650,7 +1656,7 @@ Reguły są w bibliotece `game_logic`, do której program testowy `night_maze_te
 | `the crystals of a round float above the ground of their cells` | labirynt 6 na 6 (ziarno 2) na nierównej mapie przy skali 2: każdy kryształ rundy ma `x` i `z` środka swojej komórki i `y` równe wysokości gruntu w tym punkcie plus `CRYSTAL_FLOAT_HEIGHT`. Podprzypadek `restCrystalsOnGround moves them to new ground and keeps what is collected`: po `placeOnTerrain` ze skalą 0 i `restCrystalsOnGround` wszystkie kryształy wiszą na 0,9 m, a zebrany kryształ i licznik zostają |
 | `on uneven ground the walls, pillars and the gate are sunk until no gap shows` (podprzypadki o bramie i wyjściu) | brama opuszczona jak ściana razem z pudełkiem (`gateBox.min.y` równe `gate.position.y`, wysokość nadal `WALL_HEIGHT`, `x` i `z` bez zmian), a start, `exitPosition` i strefa wyjścia stoją na gruncie w środku komórki |
 
-Wyniki dla Windowsa (2026-10-05): wszystkie 50 przypadków trzech plików i przypadki z `TerrainTests.cpp` przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego z drugiej części M6 (po M5 było to 215 przypadków i 85098 asercji, po pierwszej części M7 zgłoszone jest 269 przypadków i 102103 asercje).
+Wyniki dla Windowsa (2026-10-05): wszystkie 50 przypadków trzech plików i przypadki z `TerrainTests.cpp` przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego z drugiej części M6 (po M5 było to 215 przypadków i 85098 asercji, po pierwszej części M7 zgłoszone jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139).
 
 **Czego testy nie sprawdzają.** Wszystkiego, co wymaga okna: `GameplayRenderer`, `ModelDraw`, uniformu `uEmissive`, klawisza R i flagi `restart`, tego, że `m_obstacles` jest odbudowywane w chwili otwarcia bramy, `beginRound`, `rebuildTerrain` (czyli tego, że aplikacja naprawdę woła `restCrystalsOnGround`), HUD i panelu Gameplay. Obraz był oglądany na zrzutach ekranu z Windowsa. Gry ręcznej (lista w nagłówku dokumentu) nikt jeszcze nie wykonał: listy kontrolne testów ręcznych prowadzi [`../../guides/build-windows.md`](../../guides/build-windows.md).
 

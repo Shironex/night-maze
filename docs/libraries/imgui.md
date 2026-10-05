@@ -77,8 +77,8 @@ Prawdziwy odpowiednik tej drugiej postaci jest w
         }
 ```
 
-`shaders` to lista ośmiu programów gry (sześć do M6, od pierwszej części M7 także
-`composite` i `preview`): jeden przycisk przeładowuje wszystkie.
+`shaders` to lista dziesięciu programów gry (sześć do M6, od pierwszej części M7 także
+`composite` i `preview`, od drugiej `bright` i `blur`): jeden przycisk przeładowuje wszystkie.
 
 Skutki praktyczne:
 
@@ -362,11 +362,12 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 8;
+        constexpr int SHADER_COUNT = 10;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader,  &context.colorShader,  &context.litShader,
-            &context.gouraudShader,   &context.skyboxShader, &context.grassShader,
-            &context.compositeShader, &context.previewShader};
+            &context.texturedShader,  &context.colorShader,   &context.litShader,
+            &context.gouraudShader,   &context.skyboxShader,  &context.grassShader,
+            &context.compositeShader, &context.previewShader, &context.brightPassShader,
+            &context.blurShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
@@ -394,10 +395,10 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele i HUD pokazują i edytują (dwadzieścia osiem pól: od `time` i `window` po `grass`
-i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją, oraz cztery pola z
+panele i HUD pokazują i edytują (trzydzieści pól: od `time` i `window` po `grass`
+i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją, cztery pola z
 pierwszej części M7: `compositeShader`, `previewShader`, `postProcessSettings` i
-`postProcess`). Buduje ją co klatkę
+`postProcess`, oraz dwa z drugiej: `brightPassShader` i `blurShader`). Buduje ją co klatkę
 `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
@@ -406,7 +407,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem jedenaście funkcji paneli (jedenasta, `drawFramebuffersPanel`, od pierwszej części M7: sekcja 3.16) i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem jedenaście funkcji paneli (jedenasta, `drawFramebuffersPanel`, od pierwszej części M7, w drugiej rozbudowana o `BeginTable`, `TableNextColumn`, `Checkbox` i `SliderInt`: sekcja 3.16) i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -1391,24 +1392,56 @@ z sekcji 3.15: jeszcze raz wysokość paska plus odstęp, czyli 22 + 8 przy skal
     settings.previews = open;
 ```
 
-`Begin` zwraca fałsz, gdy okno jest zwinięte (sekcja 3.5). Gra rysuje dwa obrazki podglądu
-tylko wtedy, gdy `previews` jest prawdą, czyli gdy ktoś na nie patrzy. `DebugUI::draw` zeruje
+`Begin` zwraca fałsz, gdy okno jest zwinięte (sekcja 3.5). Gra rysuje obrazki podglądu
+(dwa sceny i, od drugiej części M7, dwa bloomu) tylko wtedy, gdy `previews` jest prawdą, czyli gdy ktoś na nie patrzy. `DebugUI::draw` zeruje
 tę flagę na początku każdej klatki, jeszcze przed `if (m_visible)`, więc przy ukrytych panelach
 (gdy `Begin` w ogóle nie jest wołane) obrazki też przestają być rysowane. Skutek uboczny:
 obrazek powstaje w klatce **następnej** po otwarciu panelu, więc przez jedną klatkę panel
 pisze `(no picture yet)`.
 
-**Widżety.** Wszystkie są znane z wcześniejszych paneli:
+**Druga część M7 (bloom)** nie dodała panelu, tylko rozbudowała ten: cztery kontrolki
+bloomu, druga linia informacyjna i dwa kolejne obrazki. Dwie rzeczy są przy tym nowe po
+stronie ImGui: tabela jako sposób układania kontrolek i podpowiedź dla całej grupy. Tabela
+niżej opisuje stan dzisiejszy.
+
+**Tabela: `BeginTable`, `TableNextColumn`, `EndTable`.** Pierwsze użycie w projekcie.
+Siedem kontrolek panelu stoi w dwóch kolumnach, żeby cztery obrazki zmieściły się pod nimi
+bez przewijania:
+
+```cpp
+    if (!ImGui::BeginTable("settings", SETTING_COLUMNS)) {
+        return;
+    }
+
+    ImGui::TableNextColumn();
+    ImGui::SliderFloat("Exposure", ...);
+    ImGui::TableNextColumn();
+    ...
+    ImGui::EndTable();
+```
+
+`BeginTable` dostaje identyfikator i liczbę kolumn. Zwraca fałsz, gdy żadnej części tabeli
+nie widać, i wtedy **nie wolno** wołać `EndTable`: to ta sama reguła co dla `BeginCombo`
+i `BeginMenu`, a odwrotna niż dla `Begin` i `End` okna (sekcja 3.5). `TableNextColumn`
+przechodzi do następnej komórki, a z ostatniej komórki wiersza do pierwszej komórki nowego
+wiersza, więc nie trzeba osobno zaczynać wierszy. Kolumny dzielą szerokość po równo, bo
+tabela nie ma żadnych flag ani `TableSetupColumn`.
+
+**Widżety.** Poza tabelą wszystkie są znane z wcześniejszych paneli:
 
 | Wywołanie | Uwagi |
 |---|---|
 | `SliderFloat("Exposure", ..., "%.2f", ImGuiSliderFlags_AlwaysClamp \| ImGuiSliderFlags_Logarithmic)` | suwak logarytmiczny jak przy wykładniku odblasku (sekcja 3.13): zakres od 0,1 do 8, a podwojenie i połowienie światła to odcinki tej samej długości |
 | `Combo("Tone mapping", &toneMappingIndex, TONE_MAPPING_ITEMS)` | lista z pozycjami w jednym napisie (`"None (clamp)\0Reinhard\0ACES (fitted)\0"`), w kolejności wyliczenia `game::ToneMapping` |
 | `SliderFloat("Depth range", ..., "%.0f m", ImGuiSliderFlags_AlwaysClamp)` | jednostka w napisie formatu |
-| `SetItemTooltip(...)` | podpowiedź pod każdym z trzech widżetów |
-| `Text(...)` z `%d` i `%s` | linia z rozmiarem i formatami framebuffera sceny |
+| `Checkbox("Bloom", &bloom.enabled)` (druga część M7) | pole wyboru pisze przez wskaźnik do `bool` w strukturze `game::BloomSettings` |
+| `SliderInt("Blur iterations", ..., "%d", ImGuiSliderFlags_AlwaysClamp)` (druga część M7) | suwak liczby całkowitej jak w panelu Maze (sekcja 3.11). Granice to stałe z `game/Bloom.hpp` |
+| `SliderFloat("Threshold", ...)`, `SliderFloat("Intensity", ...)` (druga część M7) | zwykłe suwaki liniowe z formatem `"%.2f"` |
+| `SetItemTooltip(...)` | podpowiedź pod każdą z siedmiu kontrolek (w pierwszej części M7 były trzy) i, od drugiej części, pod każdym z czterech obrazków. Tam stoi **po** `EndGroup()`, więc dotyczy całej grupy, i ma postać `SetItemTooltip("%s", tooltip)`: funkcja przyjmuje napis formatujący, więc tekst ze zmiennej podaje się przez `"%s"`, a nie wprost jako format |
+| `Text(...)` z `%d` i `%s` | linia z rozmiarem i formatami framebuffera sceny i, od drugiej części, linia `Bloom targets (3): ...` |
+| `TextUnformatted(...)` | napisy bez formatowania: podpis obrazka, `(no picture yet)`, `(not drawn)` i linia `Bloom targets: not drawn (bloom off or a debug view)` |
 | `BeginGroup()` i `EndGroup()` | **nowe w projekcie**: podpis i obrazek pod nim tworzą jedną grupę, którą ImGui traktuje przy układaniu jak jeden widżet. Dzięki temu `SameLine()` między dwiema grupami stawia cały drugi podgląd obok pierwszego, a nie sam podpis |
-| `GetContentRegionAvail().x` i `GetStyle().ItemSpacing.x` | szerokość jednego obrazka: wolne miejsce minus odstęp między widżetami, podzielone przez 2 |
+| `GetContentRegionAvail().x` i `GetStyle().ItemSpacing.x` | szerokość jednego obrazka: wolne miejsce minus trzy odstępy między widżetami, podzielone przez 4 (w pierwszej części M7: minus jeden odstęp, przez 2) |
 
 **Tekstura framebuffera w `Image`.**
 

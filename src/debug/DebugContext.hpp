@@ -109,12 +109,18 @@ struct DebugContext {
     gfx::Shader& compositeShader;
     /// Shader program of the attachment previews, editable: reloaded like texturedShader.
     gfx::Shader& previewShader;
-    /// The exposure and the tone mapping of the composite pass, the preview switch and
-    /// the range of the depth preview, editable.
+    /// The exposure and the tone mapping of the composite pass, the preview switch, the
+    /// range of the depth preview and the settings of the bloom, editable.
     game::PostProcessSettings& postProcessSettings;
     /// The framebuffers of the frame, read only: sizes, formats and the previews of
-    /// the attachments of the scene framebuffer.
+    /// the attachments of the scene framebuffer and of the bloom.
     const game::PostProcess& postProcess;
+    /// Shader program of the bright pass of the bloom, editable: reloaded like
+    /// texturedShader.
+    gfx::Shader& brightPassShader;
+    /// Shader program of the blur passes of the bloom, editable: reloaded like
+    /// texturedShader.
+    gfx::Shader& blurShader;
 };
 
 } // namespace debug

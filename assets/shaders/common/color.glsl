@@ -41,3 +41,15 @@ vec3 linearToSrgb(vec3 linear) {
                  SRGB_CURVE_OFFSET;
     return mix(line, curve, step(SRGB_LINEAR_THRESHOLD, value));
 }
+
+// How much each colour channel adds to the brightness the eye sees (luminance): the
+// weights of the Rec. 709 standard, the one sRGB takes its red, green and blue from.
+// They add up to 1. Green counts most and blue least: the eye is most sensitive to
+// green light. They are for LINEAR colours.
+const vec3 REC709_LUMINANCE_WEIGHTS = vec3(0.2126, 0.7152, 0.0722);
+
+// The brightness of a linear colour as one number: 0 for black, 1 for the white of the
+// screen, more than 1 for HDR colours brighter than that.
+float luminance(vec3 linear) {
+    return dot(linear, REC709_LUMINANCE_WEIGHTS);
+}
