@@ -1,7 +1,30 @@
 # Gamma: bez korekcji gamma i bez tekstur sRGB do M7
 
-Data: 2026-10-05. Stan: obowiązuje.
-Kod: [`assets/shaders/lit.frag`](../../assets/shaders/lit.frag), [`assets/shaders/gouraud.frag`](../../assets/shaders/gouraud.frag), [`src/gfx/Texture2D.cpp`](../../src/gfx/Texture2D.cpp), ustawienia świateł w [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp). Dokumenty modułów: [`../modules/scene/lights.md`](../modules/scene/lights.md), sekcja 2.8, [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md), sekcja 4.2, [`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 2.10.
+Data: 2026-10-05. Stan: zastąpiona 2026-10-05 przez [`gamma-linear-pipeline.md`](gamma-linear-pipeline.md). Stan dzisiejszy opisują [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md) i [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md).
+Kod, którego dotyczyła: [`assets/shaders/lit.frag`](../../assets/shaders/lit.frag), [`assets/shaders/gouraud.frag`](../../assets/shaders/gouraud.frag), [`src/gfx/Texture2D.cpp`](../../src/gfx/Texture2D.cpp), ustawienia świateł w [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp). Dokumenty modułów: [`../modules/scene/lights.md`](../modules/scene/lights.md), sekcja 2.8, [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md), sekcja 4.2, [`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 2.10.
+
+## Co zastąpiło tę decyzję (M7, część pierwsza)
+
+Ta notatka opisywała stan przejściowy z M4 do M6 i sama zapowiadała swój koniec: "korekcja gamma dojdzie w M7, razem z rysowaniem do framebuffera HDR i mapowaniem tonów, jako jedna zmiana całego końca potoku". Pierwsza część M7 zrobiła dokładnie to.
+
+**Co jest dziś.**
+
+- Tekstury koloru (ściany, brama, kryształy, ziemia, sześć ścian nieba) mają format `GL_SRGB8` i karta dekoduje je przy odczycie. Mapy normalnych zostają w `GL_RGB8`. O formacie decyduje obowiązkowy argument `gfx::ColorSpace` konstruktorów `Texture2D` i `Cubemap` oraz funkcji `AssetCache::texture`.
+- Shadery sceny liczą na wartościach liniowych i zapisują wynik do bufora `GL_RGBA16F` (`game::PostProcess`, `gfx::Framebuffer`), także wtedy, gdy przekracza 1.
+- Ostatni przebieg klatki (`post/composite.frag`) mnoży przez ekspozycję, stosuje mapowanie tonów (domyślnie ACES) i koduje wynik funkcją `linearToSrgb`. `GL_FRAMEBUFFER_SRGB` zostaje wyłączony.
+- Kolory wpisane liczbami (światła, tło, linie kolizji, gradient trawy) są liczbami sRGB i są przeliczane raz, każdy w jednym miejscu.
+- Wartości startowe świateł, świecenia kryształów, jasności nieba i koloru tła zostały dobrane od nowa, tak jak przewidywała sekcja 4 tej notatki.
+
+**Co z rozumowania tej notatki nadal obowiązuje.**
+
+- **"Dlaczego nie połowa"** (sekcja 4): samo kodowanie na końcu bez dekodowania tekstur daje obraz wyprany. To dziś jedna z pułapek w dokumencie modułu i powód, dla którego dekodowanie i kodowanie weszły w jednej zmianie.
+- **Mapy normalnych nigdy nie są sRGB** (sekcja 5, trzeci punkt): format jest wybierany dla każdej tekstury osobno, dokładnie tak, jak notatka wymagała.
+- **Obawa o ImGui** (tabela w sekcji 3, wiersz o `GL_FRAMEBUFFER_SRGB`): kolory paneli rysowanych do tego samego okna zostałyby rozjaśnione. To jest dziś uzasadnienie notatki [`srgb-encode-in-shader.md`](srgb-encode-in-shader.md).
+- **"Co zostaje poprawne"** (sekcja 4): geometria światła i różnice między trybami cieniowania nie zależały od gammy i nie zmieniły się.
+
+**Co przestało być prawdą.** Wszystko, co sekcje 1 i 2 mówią o stanie kodu w czasie teraźniejszym: tekstury koloru nie mają już formatu `GL_RGB8`, `lit.frag` nie zapisuje wyniku na ekran, a jego komentarz mówi dziś co innego. Lista strat z sekcji 4 ("Co przez to tracę") opisuje stan sprzed M7. Zdanie "nie porównywałem obrazu z gammą i bez niej" ma dziś odpowiedź: zgłoszone porównanie jest w [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md), w części o porównaniu ze starym potokiem.
+
+Nowe decyzje: [`gamma-linear-pipeline.md`](gamma-linear-pipeline.md) (potok jako całość), [`srgb-encode-in-shader.md`](srgb-encode-in-shader.md) (gdzie stoi kodowanie), [`aces-default-tone-mapping.md`](aces-default-tone-mapping.md) (krzywa mapowania tonów). Reszta tej notatki zostaje bez zmian, jako historia.
 
 ## 1. Kontekst
 
