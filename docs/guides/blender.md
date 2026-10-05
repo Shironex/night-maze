@@ -13,18 +13,26 @@ końcu zapisuje plik OBJ. Polecenia dla Windowsa z sekcji 3 zostały uruchomione
 
 Polecenia dla macOS (sekcja 3) **nie były jeszcze uruchomione na Macu**.
 
-Stan: skrypty, sześć modeli i osiem tekstur są w repozytorium. Trzy modele kamienne (ściana,
-słup, podłoga) i ich cztery tekstury pochodzą z M2 + M3 i M4: dwa obrazy koloru i, od drugiej
-części M4, dwie **mapy normalnych** (normal maps), po jednej do każdego obrazu koloru. M5
+Stan: skrypty, pięć modeli, osiem tekstur i mapa wysokości terenu są w repozytorium. Dwa
+modele kamienne (ściana i słup) i tekstury kamienia ściany pochodzą z M2 + M3 i M4: obraz
+koloru i, od drugiej części M4, **mapa normalnych** (normal map). M5
 (rozgrywka) dołożyło trzy modele, dwa kryształy i bramę, oraz cztery tekstury: obraz koloru
 i mapę normalnych kryształu i to samo dla drewna bramy. Pierwsza część M6 (skybox) dołożyła
 skrypt `make_skybox.py` i sześć obrazów nieba w osobnym katalogu `assets/skybox/`: to nie są
-tekstury modeli, tylko ściany tekstury sześciennej (sekcja 7.7).
+tekstury modeli, tylko ściany tekstury sześciennej (sekcja 7.7). Druga część M6 (teren)
+**usunęła płytkę podłogi**: model `floor_tile`, jego skrypt `build_floor_tile.py` i obie
+tekstury `floor_stone`. Podłoże jest dziś terenem liczonym w kodzie gry z **mapy wysokości**
+(heightmap), którą pisze nowy skrypt `make_heightmap.py` (sekcja 7.9), a jego teksturę
+i mapę normalnych (`ground.png`, `ground_normal.png`) generuje `make_textures.py` (sekcja
+7.8). Teren opisuje [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md),
+a powody zmiany notatki [`../decisions/gentle-terrain-under-maze.md`](../decisions/gentle-terrain-under-maze.md)
+i [`../decisions/floor-tiles-retired.md`](../decisions/floor-tiles-retired.md).
 Istnieje też kod C++, który wczytuje pliki OBJ i MTL: własny parser `assets::loadObj`
 ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)). Jego testy wczytują
-trzy modele kamienne i sprawdzają ich liczby i wymiary z sekcji 8. Modeli z M5 testy loadera
-nie wczytują. Gra rysuje wszystkie te pliki: przy starcie wczytuje sześć modeli i osiem
-tekstur, z kamiennych buduje labirynt, a z pozostałych kryształy i bramę przy wyjściu
+dwa modele kamienne i sprawdzają ich liczby i wymiary z sekcji 8. Modeli z M5 testy loadera
+nie wczytują. Gra używa wszystkich tych plików: przy starcie wczytuje pięć modeli, osiem
+tekstur i mapę wysokości, z kamiennych modeli buduje labirynt, z pozostałych kryształy i bramę
+przy wyjściu, a z mapy wysokości teren pod nimi
 ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md),
 [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md),
 [`../modules/game/gameplay.md`](../modules/game/gameplay.md)). Sekcja 5 opisuje
@@ -43,7 +51,12 @@ flowchart LR
     B --> O["assets/models/nazwa.obj"]
     B --> M["assets/models/nazwa.mtl"]
     M -.->|"ścieżki względne w map_Kd i map_Bump"| P
+    H["make_heightmap.py"] --> HP["assets/textures/heightmap.png"]
+    T --> G["assets/textures/ground.png<br/>ground_normal.png"]
 ```
+
+Dwie strzałki na dole są nowe w M6 i nie prowadzą do żadnego modelu: mapę wysokości i teksturę
+podłoża gra wczytuje sama, po nazwach plików, bez pliku `.obj` i `.mtl` (sekcje 7.8 i 7.9).
 
 W katalogu [`tools/blender/`](../../tools/blender/) leżą **źródła (source)**: skrypty. W
 katalogach [`assets/models/`](../../assets/models/) i [`assets/textures/`](../../assets/textures/)
@@ -79,14 +92,14 @@ Pliki skryptów:
 | Plik | Co robi |
 |---|---|
 | [`blender_common.py`](../../tools/blender/blender_common.py) | wspólne funkcje: czyszczenie sceny, budowanie prostopadłościanu, UV (rzut pudełkowy `box_project_uvs` i, od M5, rzut na płaszczyznę ściany `face_project_uvs`), materiał z teksturą i mapą normalnych, eksport, rendery kontrolne |
-| [`make_textures.py`](../../tools/blender/make_textures.py) | generuje cztery obrazy koloru (`wall_stone.png`, `floor_stone.png`, `gate_wood.png`, `crystal.png`) i do każdego mapę normalnych o tej samej nazwie z końcówką `_normal` |
+| [`make_textures.py`](../../tools/blender/make_textures.py) | generuje cztery obrazy koloru (`wall_stone.png`, `ground.png`, `gate_wood.png`, `crystal.png`) i do każdego mapę normalnych o tej samej nazwie z końcówką `_normal`. Do M6 drugim obrazem był `floor_stone.png` |
 | [`build_wall_straight.py`](../../tools/blender/build_wall_straight.py) | model odcinka ściany |
 | [`build_wall_pillar.py`](../../tools/blender/build_wall_pillar.py) | model słupa |
-| [`build_floor_tile.py`](../../tools/blender/build_floor_tile.py) | model płyty podłogi |
 | [`build_crystal.py`](../../tools/blender/build_crystal.py) | dwa modele kryształów w jednym skrypcie: `crystal_a` i `crystal_b` (sekcja 8.1) |
 | [`build_gate.py`](../../tools/blender/build_gate.py) | model bramy przy wyjściu (sekcja 8.2) |
 | [`make_skybox.py`](../../tools/blender/make_skybox.py) | od M6: generuje sześć ścian nieba, `px.png`, `nx.png`, `py.png`, `ny.png`, `pz.png` i `nz.png`, do `assets/skybox/` (sekcja 7.7) |
-| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele w kolejności ściana, słup, podłoga, kryształy, brama, na końcu niebo |
+| [`make_heightmap.py`](../../tools/blender/make_heightmap.py) | od M6: generuje mapę wysokości terenu, `heightmap.png`, do `assets/textures/` (sekcja 7.9) |
+| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele w kolejności ściana, słup, kryształy, brama, potem niebo, na końcu mapę wysokości |
 | [`.gitignore`](../../tools/blender/.gitignore) | pomija katalog `__pycache__`, który Python tworzy przy imporcie modułów |
 
 ## 2. Konwencje
@@ -97,12 +110,12 @@ Konwencje pochodzą z PRD, sekcja 9. Każda ma powód:
 |---|---|---|
 | Układ współrzędnych gry | prawoskrętny, Y w górę, -Z do przodu | taki sam jak w kamerze i macierzach gry ([`../modules/scene/README.md`](../modules/scene/README.md)). Model wczytany z pliku nie wymaga wtedy żadnego dodatkowego obrotu |
 | Jednostka | 1 jednostka = 1 metr | prędkość kamery i rozmiary labiryntu są w metrach, więc model ma od razu właściwą wielkość |
-| Komórka labiryntu | 2 x 2 m, ściany 3 m | z tych liczb wynikają wymiary trzech modeli kamiennych i długość bramy |
-| Początek układu modelu (origin) | środek podstawy, podłoga to y = 0 | model stawiam przesunięciem o (x, 0, z), bez liczenia połowy wysokości. Jedno odstępstwo, `crystal_b`, opisuję pod tabelą |
+| Komórka labiryntu | 2 x 2 m, ściany 3 m | z tych liczb wynikają wymiary dwóch modeli kamiennych i długość bramy |
+| Początek układu modelu (origin) | środek podstawy, spód modelu to y = 0 | model stawiam samym przesunięciem o (x, y, z), bez liczenia połowy wysokości. Od M6 `y` to wysokość podłoża pod modelem, a nie zero ([`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)). Jedno odstępstwo, `crystal_b`, opisuję pod tabelą |
 | Trójkąty | wszystkie ściany modelu są trójkątami | OpenGL w profilu Core rysuje trójkąty. Parser nie musi dzielić wielokątów |
 | Normalne | jedna na ścianę, cieniowanie płaskie (flat shading) | twarde krawędzie pasują do stylu low-poly. Od M4 liczy się z nich oświetlenie |
 | Mapy normalnych | przestrzeń styczna, konwencja OpenGL: zielony kanał to +Y, czyli "w górę obrazu" | zgadza się z UV, w których `v` rośnie w górę, i z loaderem obrazów, który oddaje dolny wiersz jako pierwszy. Mapa w konwencji DirectX (zielony to -Y) pokazałaby poziome fugi jako grzbiety (sekcja 7.2) |
-| UV | 1 jednostka UV = 2 m na każdej ścianie modeli kamiennych i bramy | stała gęstość tekseli (texel density): kamień ma wszędzie tę samą wielkość. Kryształy mają własną gęstość (sekcja 6) |
+| UV | 1 jednostka UV = 2 m na każdej ścianie modeli kamiennych i bramy | stała gęstość tekseli (texel density): kamień ma wszędzie tę samą wielkość. Kryształy mają własną gęstość (sekcja 6). UV terenu nie pochodzi ze skryptu: liczy je gra, 1 jednostka UV = 4 m |
 | Przekształcenia i modyfikatory | zapisane w wierzchołkach | plik nie niesie macierzy, więc pozycje w pliku są pozycjami modelu |
 | Nazwy | `snake_case` | jeden styl dla plików, obiektów i materiałów. Nazwa pliku, nazwa po `o` i nazwa skryptu są takie same |
 | Tekstury | PNG, rozmiar będący potęgą dwójki, 8 bitów na kanał, RGB | PNG nie traci jakości, a rozmiar 512 dzieli się na połowy aż do 1 piksela, co jest potrzebne mipmapom |
@@ -149,6 +162,7 @@ Jeden skrypt (same tekstury albo jeden model):
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/make_textures.py
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/build_wall_straight.py -- --shots
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/make_skybox.py
+& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/make_heightmap.py
 ```
 
 ### macOS (jeszcze nie uruchomione na Macu)
@@ -252,41 +266,55 @@ dodawaniu map normalnych, a pliki `.obj` wyszły identyczne co do bajta z poprze
 
 ### 5.1 Plik `.obj`
 
-Cały plik [`assets/models/floor_tile.obj`](../../assets/models/floor_tile.obj):
+Początek i koniec pliku [`assets/models/wall_pillar.obj`](../../assets/models/wall_pillar.obj),
+najprostszego modelu kamiennego. Cały plik ma 82 linie (24 linie `v`, 6 linii `vn`, 16 linii
+`vt`, 30 linii `f`). Wielokropek oznacza pominięte linie tego samego rodzaju, w pliku go nie
+ma. Do M6 przykładem była tu płytka podłogi `floor_tile.obj`, cała w siedemnastu liniach:
+usunął ją teren.
 
 ```text
 # Blender 5.2.1 LTS
 # www.blender.org
-mtllib floor_tile.mtl
-o floor_tile
-v -1.000000 0.000000 1.000000
-v 1.000000 0.000000 1.000000
-v 1.000000 0.000000 -1.000000
-v -1.000000 0.000000 -1.000000
+mtllib wall_pillar.mtl
+o wall_pillar
+v -0.200000 0.000000 0.200000
+v 0.200000 0.000000 0.200000
+v -0.200000 0.000000 -0.200000
+v 0.200000 0.000000 -0.200000
+v -0.200000 0.350000 0.200000
+...
+vn -1.0000 -0.0000 -0.0000
+vn 1.0000 -0.0000 -0.0000
+vn -0.0000 -0.0000 1.0000
+vn -0.0000 -0.0000 -1.0000
 vn -0.0000 1.0000 -0.0000
-vt 0.500000 -0.500000
-vt -0.500000 0.500000
-vt -0.500000 -0.500000
-vt 0.500000 0.500000
+vn -0.0000 -1.0000 -0.0000
+vt 0.100000 0.175000
+vt -0.100000 0.000000
+vt 0.100000 0.000000
+...
 s 0
-usemtl floor_stone
-f 2/1/1 4/2/1 1/3/1
-f 2/1/1 3/4/1 4/2/1
+usemtl wall_stone
+f 5/1/1 3/2/1 1/3/1
+f 4/3/2 6/4/2 2/2/2
+...
+f 22/5/5 24/16/5 23/6/5
 ```
 
 | Linia | Znaczenie |
 |---|---|
 | `# ...` | komentarz. Dwie pierwsze linie pliku podają wersję Blendera |
-| `mtllib floor_tile.mtl` | nazwa pliku z materiałami, względem katalogu pliku `.obj` |
-| `o floor_tile` | początek obiektu o tej nazwie. W każdym pliku jest jeden obiekt |
+| `mtllib wall_pillar.mtl` | nazwa pliku z materiałami, względem katalogu pliku `.obj` |
+| `o wall_pillar` | początek obiektu o tej nazwie. W każdym pliku jest jeden obiekt |
 | `v x y z` | pozycja wierzchołka w metrach, sześć miejsc po przecinku |
 | `vn x y z` | normalna, cztery miejsca po przecinku. Jedna na każdy kierunek ściany, a nie na wierzchołek |
 | `vt u v` | współrzędne tekstury. Mogą być ujemne i większe od 1 |
 | `s 0` | grupy wygładzania wyłączone. Występuje raz, zawsze jako `s 0` (nie `s off`) |
-| `usemtl floor_stone` | materiał dla wszystkich następnych linii `f` |
+| `usemtl wall_stone` | materiał dla wszystkich następnych linii `f` |
 | `f a/b/c a/b/c a/b/c` | trójkąt: trzy narożniki, każdy jako trzy indeksy `pozycja/uv/normalna` |
 
-Fakty ważne dla parsera, sprawdzone na trzech plikach modeli kamiennych:
+Fakty ważne dla parsera, sprawdzone na plikach modeli kamiennych (w M2 + M3 na trzech, razem
+z płytką podłogi. Dla ściany i słupa obowiązują bez zmian, ich pliki się nie zmieniły):
 
 - Występują tylko linie `#`, `mtllib`, `o`, `v`, `vn`, `vt`, `s`, `usemtl` i `f`. Linii `g` nie
   ma. Kolejność jest zawsze taka jak wyżej: komentarze, `mtllib`, `o`, wszystkie `v`,
@@ -322,21 +350,26 @@ Parserowi to nie przeszkadza: bierze normalną o tym indeksie, który stoi w lin
 
 ### 5.2 Jak Z w górę stało się Y w górę
 
-W skrypcie [`build_floor_tile.py`](../../tools/blender/build_floor_tile.py) narożniki płyty są
-zapisane w układzie Blendera. Eksporter zamienia punkt (x, y, z) na (x, z, -y):
+W skrypcie [`build_wall_pillar.py`](../../tools/blender/build_wall_pillar.py) podstawa słupa
+to prostopadłościan od `(-0.2, -0.2, 0.0)` do `(0.2, 0.2, 0.35)`, zapisany w układzie
+Blendera (`TRIM_HALF_WIDTH = 0.2`, `BASE_HEIGHT = 0.35`). Funkcja `add_box` dopisuje jego
+osiem rogów w stałej kolejności, a eksporter zamienia punkt (x, y, z) na (x, z, -y). Cztery
+dolne rogi:
 
 | Narożnik w skrypcie (Blender) | Linia w pliku (gra) |
 |---|---|
-| `(-1, -1, 0)` | `v -1.000000 0.000000 1.000000` |
-| `(1, -1, 0)` | `v 1.000000 0.000000 1.000000` |
-| `(1, 1, 0)` | `v 1.000000 0.000000 -1.000000` |
-| `(-1, 1, 0)` | `v -1.000000 0.000000 -1.000000` |
+| `(-0.2, -0.2, 0)` | `v -0.200000 0.000000 0.200000` |
+| `(0.2, -0.2, 0)` | `v 0.200000 0.000000 0.200000` |
+| `(-0.2, 0.2, 0)` | `v -0.200000 0.000000 -0.200000` |
+| `(0.2, 0.2, 0)` | `v 0.200000 0.000000 -0.200000` |
 
-Wysokość (trzecia liczba w Blenderze) trafiła na drugie miejsce. Oś Y Blendera stała się osią
+Cztery górne rogi podstawy mają w skrypcie trzecią liczbę 0.35, a w pliku drugą: piąta linia
+`v` to `-0.200000 0.350000 0.200000`. Wysokość (trzecia liczba w Blenderze) trafiła na drugie
+miejsce. Oś Y Blendera stała się osią
 Z gry z przeciwnym znakiem. Znak musi się zmienić, bo oba układy są prawoskrętne: sama zamiana
 dwóch osi miejscami dałaby układ lewoskrętny, czyli lustrzane odbicie modelu. Ta sama zamiana
-dotyczy normalnych: w Blenderze płyta patrzy w +Z, w pliku jest `vn -0.0000 1.0000 -0.0000`,
-czyli +Y.
+dotyczy normalnych: wierzch podstawy patrzy w Blenderze w +Z, a w pliku jego normalna to piąta
+linia `vn`, `-0.0000 1.0000 -0.0000`, czyli +Y.
 
 To samo widać w ścianie. Linie z [`assets/models/wall_straight.obj`](../../assets/models/wall_straight.obj):
 
@@ -424,14 +457,21 @@ powierzchni. Na modelach kamiennych i na bramie jest stała: jedno powtórzenie 
 Gdyby ściana i słup miały różną gęstość, te same kamienie byłyby na słupie większe albo
 mniejsze niż na ścianie obok.
 
+Teren ma własną gęstość, ustaloną w kodzie gry, a nie w skrypcie: jedno powtórzenie tekstury
+podłoża zajmuje **4 m** (stała `game::GROUND_TEXTURE_SPAN` w `src/game/Terrain.hpp`), więc
+obraz 512 x 512 daje tam 128 pikseli na metr, połowę tego co na ścianach. Teren nie ma pliku
+`.obj`, więc żadna z funkcji UV z tej sekcji go nie dotyczy: współrzędne tekstury liczy
+`game::buildTerrainMesh` z pozycji wierzchołka
+([`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)).
+
 Kryształy tej liczby nie trzymają: na nich jedno powtórzenie tekstury zajmuje **0.5 m**, a nie
 2 m (stała `METRES_PER_UV_UNIT = 0.5` w `build_crystal.py`, osobna od stałej o tej samej nazwie
 i wartości `2.0` w `blender_common.py`). Wychodzi 1024 piksele na metr, cztery razy gęściej.
 Powód stoi w komentarzu skryptu: kryształ ma 0.5 m wysokości, a jego ścianka około 0.1 m
 szerokości, więc przy 2 m na powtórzenie ścianka pokazałaby tylko kilka rozmytych pikseli
 obrazu. Kryształ nie styka się z kamieniem tą samą teksturą, więc różna gęstość nie daje
-szwu. Skutki są dwa: reguła "1 jednostka UV = 2 m" z sekcji 2 dotyczy czterech z sześciu
-modeli, a jednostka wysokości w mapie normalnych kryształu to 1 / 1024 m, a nie 1 / 256 m
+szwu. Skutki są dwa: reguła "1 jednostka UV = 2 m" z sekcji 2 dotyczy trzech z pięciu
+modeli (ściany, słupa i bramy), a jednostka wysokości w mapie normalnych kryształu to 1 / 1024 m, a nie 1 / 256 m
 (sekcja 7.6).
 
 ### 6.1 Rzut pudełkowy: `box_project_uvs`
@@ -454,7 +494,7 @@ wychodzi:
 Co z tego wynika:
 
 - Na ścianach pionowych `v` to wysokość podzielona przez 2, więc tekstura stoi prosto, a
-  podłoga (y = 0) to `v = 0`. Ściana o wysokości 3 m ma `v` od 0 do 1.5: tekstura powtarza
+  spód modelu (y = 0) to `v = 0`. Ściana o wysokości 3 m ma `v` od 0 do 1.5: tekstura powtarza
   się półtora raza.
 - Ściana o długości 2 m ma `u` od -0.5 do 0.5, czyli dokładnie jedno powtórzenie. Ujemne
   wartości są poprawne: przy `GL_REPEAT` liczy się tylko część ułamkowa.
@@ -463,7 +503,7 @@ Co z tego wynika:
   Na samym obrazie kamienia tego nie widać, ale napis albo strzałka wyszłyby odwrócone. Od
   kiedy są mapy normalnych, ma to skutek widoczny także na kamieniu: na ścianie z teksturą
   w odbiciu lustrzanym mapa normalnych pokazałaby pionowe fugi jako grzbiety. Dzięki tej
-  zamianie znaku żaden trójkąt trzech modeli kamiennych nie ma odbitej tekstury, co
+  zamianie znaku żaden trójkąt dwóch modeli kamiennych nie ma odbitej tekstury, co
   sprawdzają testy loadera (`mirroredTriangleCount == 0`), i wierzchołek nie musi
   przechowywać znaku skrętności stycznej
   ([`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 2.9).
@@ -474,7 +514,8 @@ Co z tego wynika:
   postawione obok siebie (przesunięte o 2 m, czyli o całe powtórzenie) mają więc wzór, który
   przechodzi z jednego w drugi bez szwu.
 - Nic nie jest rozciągnięte. Sprawdziłem liczbowo: dla każdej krawędzi każdego trójkąta
-  trzech modeli kamiennych długość w metrach podzielona przez długość w UV daje dokładnie 2.
+  modeli kamiennych (pomiar z M2 + M3, wtedy trzech, razem z płytką podłogi) długość w metrach
+  podzielona przez długość w UV daje dokładnie 2.
 
 **Brama jest wyjątkiem od "dokładnie 2".** Jej okucia mają skośne krawędzie (sekcja 8.2),
 a rzut pudełkowy patrzy na skośną ściankę wzdłuż osi, nie prostopadle do niej, więc widzi ją
@@ -542,16 +583,19 @@ kryształu należy do sześciu ścianek i na każdej ma inne.
 ## 7. Tekstury
 
 Tekstury generuje [`make_textures.py`](../../tools/blender/make_textures.py) samym numpy, bez
-malowania. Wszystkie osiem ma 512 x 512 pikseli, 8 bitów na kanał, RGB bez kanału alfa. Cztery
-tekstury kamienia opisują tabela niżej i sekcje 7.1 do 7.4, drewno bramy sekcja 7.5, kryształ
-sekcja 7.6.
+malowania. Wszystkie osiem ma 512 x 512 pikseli, 8 bitów na kanał, RGB bez kanału alfa. Dwie
+tekstury kamienia ściany opisują tabela niżej i sekcje 7.1 do 7.4, drewno bramy sekcja 7.5,
+kryształ sekcja 7.6, a podłoże terenu sekcja 7.8. Dziewiąty plik w `assets/textures/`,
+`heightmap.png`, nie jest teksturą i powstaje z innego skryptu (sekcja 7.9).
 
 | Plik | Co zawiera | Wzór | Kamień | Fuga (joint) | Ziarno losowe (seed) |
 |---|---|---|---|---|---|
 | `wall_stone.png` | kolor | szare bloki w wiązaniu wozówkowym (running bond): co drugi rząd przesunięty o pół bloku | 128 x 64 px, czyli 0.5 x 0.25 m | 6 px | 11 |
 | `wall_stone_normal.png` | mapa normalnych | ten sam wzór co `wall_stone.png` | jak wyżej | jak wyżej | 11 |
-| `floor_stone.png` | kolor | kwadratowe płyty w prostej siatce, ciemniejsze i cieplejsze od ściany | 128 x 128 px, czyli 0.5 x 0.5 m | 8 px | 23 |
-| `floor_stone_normal.png` | mapa normalnych | ten sam wzór co `floor_stone.png` | jak wyżej | jak wyżej | 23 |
+
+Do M6 tabela miała jeszcze dwa wiersze: `floor_stone.png` i `floor_stone_normal.png`,
+kwadratowe płyty 0.5 x 0.5 m z ziarnem 23 (`FLOOR_SEED`), robione tymi samymi funkcjami co
+ściana. Plików i stałej już nie ma: podłoże ma dziś własny wzór (sekcja 7.8).
 
 Rząd bloków ma 0.25 m, tyle samo co cokół ściany, więc cokół to dokładnie jeden rząd, a w 3 m
 ściany mieści się równo dwanaście rzędów.
@@ -564,6 +608,13 @@ Cztery tekstury z M5:
 | `gate_wood_normal.png` | mapa normalnych | ten sam wzór co `gate_wood.png` | jak wyżej | 37 |
 | `crystal.png` | kolor | 28 nieregularnych jasnoturkusowych komórek z jaśniejszymi żyłkami na granicach | komórka wokół losowego punktu | 41 (`CRYSTAL_SEED`) |
 | `crystal_normal.png` | mapa normalnych | ten sam wzór co `crystal.png` | jak wyżej | 41 |
+
+Dwie tekstury z drugiej części M6 (sekcja 7.8):
+
+| Plik | Co zawiera | Wzór | Element | Ziarno losowe (seed) |
+|---|---|---|---|---|
+| `ground.png` | kolor | ubita ziemia w ciepłym brązie, miękkie plamy mchu i 48 małych szarych kamieni | kamień o promieniu od 4 do 11 px. Na terenie piksel to 1 / 128 m, więc od około 3 do 9 cm | 67 (`GROUND_SEED`) |
+| `ground_normal.png` | mapa normalnych | ten sam wzór co `ground.png` | jak wyżej | 67 |
 
 Obraz koloru i jego mapa normalnych powstają z **jednego wzoru**: tych samych kamieni, tych
 samych fug i tego samego szumu. Dlatego relief leży dokładnie tam, gdzie obraz go pokazuje.
@@ -587,7 +638,7 @@ flowchart LR
 | `stone_height(pattern, joint_width, bevel_width, joint_depth, tilt, bump_depth, grain_depth)` | wzór i głębokości | tablica 512 x 512 wysokości (sekcja 7.2) |
 | `normal_map(height)` | wysokości | tablica 512 x 512 x 3 kolorów od 0 do 1: mapa normalnych |
 | `save_png(color, file_name)` | kolory od 0 do 1 | plik PNG w `assets/textures` |
-| `build()` | nic | woła powyższe dla ściany i dla podłogi, potem funkcje drewna i kryształu, i zapisuje osiem plików |
+| `build()` | nic | woła powyższe dla ściany, potem funkcje podłoża, drewna i kryształu, i zapisuje osiem plików |
 
 Funkcje dodane w M5 (opis w sekcjach 7.5 i 7.6):
 
@@ -602,6 +653,14 @@ Funkcje dodane w M5 (opis w sekcjach 7.5 i 7.6):
 | `crystal_pattern(seed, cell_count)` | ziarno i liczba komórek | słownik z tym, co wspólne dla obu obrazów kryształu |
 | `crystal_color(pattern, vein_width, crystal_color, vein_color)` | wzór i kolory | tablica 512 x 512 x 3 kolorów od 0 do 1 |
 | `crystal_height(pattern, bevel_width, vein_depth, tilt, bump_depth)` | wzór i głębokości | tablica 512 x 512 wysokości |
+
+Funkcje dodane w drugiej części M6 (opis w sekcji 7.8):
+
+| Funkcja | Wejście | Wynik |
+|---|---|---|
+| `ground_pattern(seed, stone_count, min_radius, max_radius)` | ziarno, liczba kamieni i zakres ich promieni w pikselach | słownik z tym, co wspólne dla obu obrazów podłoża |
+| `ground_color(pattern, earth_color, moss_color, stone_color)` | wzór i kolory | tablica 512 x 512 x 3 kolorów od 0 do 1 |
+| `ground_height(pattern, stone_rise, moss_rise, bump_depth, grain_depth)` | wzór i wysokości | tablica 512 x 512 wysokości |
 
 Podział jest ten sam co dla kamienia: jedna funkcja wzoru, z niej obraz koloru i pole
 wysokości, a z pola wysokości mapa normalnych przez tę samą funkcję `normal_map`. Kod kamienia
@@ -639,8 +698,9 @@ z której wydzieliłem `stone_pattern`. Z tego wynika znane ograniczenie: przy w
 normalnych fugi są przyciemnione **dwa razy**, raz farbą w obrazie koloru i raz światłem,
 które na skosach fugi pada pod innym kątem. Efekt jest niewielki, ale jest
 ([`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 2.12).
-Podłoga różni się od ściany kolorem (ciepły brąz zamiast szarości), jasnością i wzorem
-(kwadraty w prostej siatce zamiast podłużnych bloków z przesunięciem).
+Do M6 tymi samymi trzema funkcjami powstawała druga tekstura kamienia, płyty podłogi
+(kwadraty w prostej siatce, ciepły brąz). Dziś `stone_pattern`, `stone_color` i `stone_height`
+są wołane tylko dla ściany, a podłoże ma własną trójkę funkcji (sekcja 7.8).
 
 ### 7.2 Pole wysokości i mapa normalnych
 
@@ -741,11 +801,11 @@ pomyłki opisuje
 | Tekstura | `joint_width` | `bevel_width` | `joint_depth` | `tilt` | `bump_depth` | `grain_depth` |
 |---|---|---|---|---|---|---|
 | ściana | 6 | 5 | 2.5 | 1.5 | 6.0 | 0.5 |
-| podłoga | 8 | 6 | 2.0 | 1.5 | 6.0 | 0.5 |
 
 `joint_width` jest tą samą liczbą co dla obrazu koloru, żeby fuga reliefu pokrywała się z fugą
-namalowaną. Głębokość fugi ściany, 2.5 piksela po 1 / 256 m, to około 1 cm. Podłoga ma fugi
-szersze i płytsze (około 0.8 cm). Na ścianie każda strona bloku ma więc 3 piksele fugi
+namalowaną. Głębokość fugi ściany, 2.5 piksela po 1 / 256 m, to około 1 cm. (Usunięta w M6
+tekstura podłogi miała fugi szersze i płytsze: `joint_width=8`, `joint_depth=2.0`.) Na ścianie
+każda strona bloku ma więc 3 piksele fugi
 i 5 pikseli skosu wznoszącego się do lica: na tych liczbach opiera się test konwencji.
 
 ### 7.3 Materiał w Blenderze i linia `map_Bump`
@@ -753,7 +813,7 @@ i 5 pikseli skosu wznoszącego się do lica: na tych liczbach opiera się test k
 Samo istnienie pliku PNG nie wystarcza, żeby trafił do pliku `.mtl`: eksporter pisze tylko to,
 co jest podłączone w materiale. Robi to funkcja `assign_textured_material(model,
 material_name, texture_file, normal_map_file)` w
-[`blender_common.py`](../../tools/blender/blender_common.py). Każdy z pięciu skryptów modeli
+[`blender_common.py`](../../tools/blender/blender_common.py). Każdy z czterech skryptów modeli
 woła ją z dwiema nazwami plików (`build_crystal.py` dwa razy, raz na model), na przykład:
 
 ```python
@@ -830,8 +890,8 @@ górnego:
 
 Dla obrazów koloru sprawdziłem to, składając z każdej tekstury obraz 2 x 2 i oglądając go:
 szwów nie widać. Dla map normalnych sprawdzeniem są zrzuty ekranu z gry (2026-10-05), na
-których relief przechodzi między sąsiednimi odcinkami ściany i między płytami podłogi bez
-widocznego szwu.
+których relief przechodzi między sąsiednimi odcinkami ściany (i, wtedy jeszcze, między płytami
+podłogi) bez widocznego szwu.
 
 Tekstury z M5 kafelkują się z tych samych powodów, z dwiema różnicami:
 
@@ -843,7 +903,8 @@ Tekstury z M5 kafelkują się z tych samych powodów, z dwiema różnicami:
   blisko pikseli przy lewym i jego komórka przechodzi przez brzeg bez szwu.
 
 Dla tych czterech tekstur nie składałem obrazu 2 x 2: kafelkowanie wynika tu z kodu, a nie
-z oglądania.
+z oglądania. To samo dotyczy obu tekstur podłoża z M6 (sekcja 7.8) i mapy wysokości (sekcja
+7.9).
 
 Dlaczego wynik jest powtarzalny: jedyne źródło losowości to `np.random.default_rng(seed)` ze
 stałym ziarnem. Zmiana ziarna daje inny układ jasnych i ciemnych kamieni i inne pochylenia.
@@ -1076,6 +1137,235 @@ i nie porównał plików, chociaż budowa skryptu (jeden generator z ziarnem `SK
 w stałej kolejności) powinna ją dawać. Czasu działania skryptu nie zapisano. Na Macu
 skrypt nie był uruchamiany.
 
+### 7.8 Podłoże terenu: `ground_pattern`, `ground_color`, `ground_height`
+
+Druga część M6 zastąpiła płyty podłogi terenem i razem z nimi teksturę: zamiast kamiennych
+płyt jest **ubita ziemia z plamami mchu i małymi kamieniami wciśniętymi w grunt**. Pliki
+`ground.png` i `ground_normal.png` powstają w tej samej funkcji `build()` co reszta tekstur,
+w miejscu, w którym dawniej powstawała podłoga, i tą samą drogą: jeden wzór, z niego obraz
+koloru i pole wysokości, a z pola wysokości mapa normalnych przez `normal_map` (sekcja 7.2).
+Ani jeden z tych plików nie trafia do pliku `.mtl`: gra wczytuje je po nazwach w klasie
+`game::TerrainRenderer` ([`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)).
+
+**Gęstość.** Teren powtarza teksturę co 4 m, więc piksel ma tam 1 / 128 m, a nie 1 / 256 m jak
+na ścianach (sekcja 6). Wszystkie rozmiary w pikselach z tej sekcji trzeba więc dzielić przez
+128, żeby dostać metry.
+
+**Wzór: `ground_pattern(seed, stone_count, min_radius, max_radius)`**, wołany z `seed=67`,
+`stone_count=48`, `min_radius=4.0`, `max_radius=11.0`:
+
+1. Losuje dla każdego z 48 kamieni środek (`centres_x`, `centres_y`, gdziekolwiek na obrazie),
+   promień (od 4 do 11 pikseli) i jasność (od 0.75 do 1.05).
+2. Losuje miękki szum `outline` (`smooth_noise` o promieniu 5), który wpycha i wypycha brzeg
+   każdego kamienia, żeby żaden nie był idealnym kołem.
+3. Przechodzi po kamieniach i dla każdego piksela liczy odległość od środka kamienia
+   **krótszą drogą przez brzeg** (`np.minimum(offset, SIZE - offset)` na każdej osi), a z niej
+   głębokość w kamieniu: `depth = 1.0 - distance / (radius * (0.75 + 0.5 * outline))`.
+   Wychodzi 1 w środku kamienia, 0 na jego brzegu i liczba ujemna poza nim. Promień zmienia
+   się z szumem od 0.75 do 1.25 swojej wartości. Tam, gdzie dwa kamienie na siebie nachodzą,
+   wygrywa ten, w którym piksel leży głębiej (`nearer = depth > stone_depth`), i od niego piksel
+   bierze jasność.
+4. Mech rośnie plamami: szeroki szum (`smooth_noise` o promieniu 24) jest rozmyty drugi raz
+   (`blur(..., 16)`) i rozciągnięty do zakresu od 0 do 1 (`stretch`), a mchem jest tylko jego
+   górna część: `smooth_step(clip((moss_noise - 0.50) / 0.20, 0, 1))`. Poniżej 0.5 mchu nie
+   ma, powyżej 0.7 jest pełny, a między nimi brzeg plamy jest gładką rampą, a nie kreską.
+   Drugie rozmycie ma tu inny powód niż w sekcji 7.2: jedno rozmycie po kwadracie pikseli
+   zostawia plamy o prostych krawędziach, drugie je zaokrągla (tak mówi komentarz w kodzie).
+5. Losuje dwa szumy jak w kamieniu: `patches` (promień 14) i `grain` (promień 1).
+
+Wynik to słownik z pięcioma tablicami: `stone_depth`, `stone_brightness`, `moss`, `patches`
+i `grain`. Generatora w nim nie ma: `ground_height` niczego już nie losuje (tak jak drewno,
+inaczej niż kamień ściany i kryształ).
+
+**Kolor: `ground_color`.**
+
+1. Ziemia: kolor `earth_color` razy jasność z obu szumów,
+   `(0.80 + 0.40 * patches) * (0.88 + 0.24 * grain)`.
+2. Mech: kolor `moss_color` z własnym, trochę mocniejszym ziarnem (`0.80 + 0.40 * grain`).
+   Piksel jest mieszany od ziemi w stronę mchu: `color + moss * (moss_shade - color)`. Przy
+   `moss = 0` zostaje ziemia, przy `moss = 1` sam mech.
+3. Kamienie leżą na wierzchu obu (`stone_depth > 0`): jasność kamienia razy ciemniejszy brzeg
+   (`0.72 + 0.28 * rim`, gdzie `rim` rośnie od 0 na brzegu do 1 w połowie głębokości) razy
+   ziarno. Ciemny brzeg udaje zaokrąglenie bez światła, tak jak brzeg kamieni ściany.
+
+Parametry w `build()`: ziemia `(0.44, 0.36, 0.27)`, mech `(0.30, 0.42, 0.22)`, kamień
+`(0.50, 0.48, 0.44)`. Kolory są dość jasne celowo: gra rysuje do M7 bez korekcji gamma, więc
+noc ma wychodzić ze światła, a nie z ciemnego obrazu
+([`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md)).
+
+**Wysokość: `ground_height`.** Jednostką jest piksel tekstury, na terenie 1 / 128 m.
+
+| Składnik | Jak powstaje | Parametr w `build()` |
+|---|---|---|
+| kamień | kopułka: `smooth_step` z głębokości w kamieniu, od 0 na brzegu do 1 w środku, więc kamień styka się z ziemią bez ostrego załamania | `stone_rise=4.0`: środek kamienia wystaje o 4 piksele, około 3 cm |
+| mech | poduszka: sama tablica `moss`, od 0 do 1 | `moss_rise=1.5`: około 1.2 cm |
+| duże miękkie nierówności ziemi | `patches` rozmyte drugi raz (`BUMP_BLUR_RADIUS`), wyśrodkowane na zerze | `bump_depth=8.0` |
+| drobne ziarno | `grain` rozmyte drugi raz (`GRAIN_BLUR_RADIUS`), wyśrodkowane na zerze | `grain_depth=0.6` |
+
+```python
+    return stone_rise * dome + moss_rise * pattern["moss"] + bumps + grain
+```
+
+Inaczej niż w kamieniu ściany nic tu nie jest mnożone przez profil: podłoże nie ma fug,
+w których wszystko musiałoby zanikać, więc cztery składniki są po prostu dodane. Drugie
+rozmycie szumów ma ten sam powód co w sekcji 7.2: mapa normalnych pokazuje nachylenie, a szum
+rozmyty raz ma nachylenie poszarpane.
+
+**Dlaczego się kafelkuje.** Odległości od kamieni są liczone przez brzeg (punkt 3), a wszystkie
+szumy i oba rozmycia używają `np.roll` (sekcja 7.4). Nic w tym wzorze nie zależy od siatki,
+która musiałaby dzielić 512 bez reszty.
+
+**Relief w dwóch skalach.** Ta mapa normalnych opisuje nierówności o wielkości centymetrów na
+powierzchni trójkątów terenu. Pagórki o wielkości metrów to osobna rzecz: prawdziwa geometria
+z mapy wysokości (sekcja 7.9). W shaderze normalna z `ground_normal.png` jest składana
+z normalną i styczną wierzchołka terenu tak samo jak na ścianie
+([`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md)).
+
+**Stan sprawdzenia.** Oba pliki mają 512 x 512 pikseli, RGB, 8 bitów (odczytane z nagłówków
+PNG, 359 005 i 345 156 bajtów). Testy loadera obrazów wczytują oba i sprawdzają rozmiar,
+liczbę kanałów oraz to, że większość tekseli mapy normalnych jest płaska
+([`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7). Powtarzalności
+(dwa uruchomienia, te same skróty) i kafelkowania przez złożenie obrazu 2 x 2 nie mierzyłem.
+Na Macu skrypt nie był uruchamiany.
+
+### 7.9 Mapa wysokości terenu: `make_heightmap.py`
+
+**Mapa wysokości (heightmap)** to obraz czytany jako liczby: jasność piksela jest wysokością
+podłoża w tym miejscu. Czarny (0) to najniższy grunt, biały (255) najwyższy. Ile to metrów,
+decyduje gra (`game::Terrain` mnoży wartość przez wysokość w metrach), więc sam obraz nic
+o metrach nie wie. Skrypt [`make_heightmap.py`](../../tools/blender/make_heightmap.py) pisze
+jeden plik, `assets/textures/heightmap.png`: 256 x 256 pikseli, 8 bitów na kanał, szary obraz
+zapisany jako RGB z trzema równymi kanałami (32 137 bajtów). Cała matematyka terenu, czyli
+co gra robi z tymi liczbami, jest w
+[`../modules/renderer/terrain.md`](../modules/renderer/terrain.md). Tu jest sam skrypt.
+
+Uruchomienie samej mapy wysokości (Windows, potem macOS):
+
+```powershell
+& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/make_heightmap.py
+```
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python tools/blender/make_heightmap.py
+```
+
+`make_all.py` woła `make_heightmap.build()` jako ostatni krok, po niebie: tak jak niebo, mapa
+wysokości nie zależy od niczego wcześniej. Argument `--shots` jej nie dotyczy.
+
+**Orientacja obrazu.** Obraz to ląd widziany z góry: lewa strona to zachód (-X), prawa wschód
+(+X), **górny wiersz to północ (-Z)**, dolny południe (+Z). Gra kładzie ten obraz na podłożu
+raz za razem, jak teksturę z powtarzaniem (jedno powtórzenie to `game::HEIGHTMAP_SPAN`, 48 m),
+więc lewy brzeg musi przechodzić w prawy, a górny w dolny
+([`../decisions/heightmap-tiled-in-world-metres.md`](../decisions/heightmap-tiled-in-world-metres.md)).
+
+**Stałe.**
+
+| Stała | Wartość | Co zmienia |
+|---|---|---|
+| `SIZE` | `256` | bok obrazu w pikselach |
+| `HEIGHTMAP_SEED` | `53` | ziarno generatora: inne daje inne pagórki |
+| `BASE_CELLS` | `4` | liczba komórek siatki pierwszej oktawy w poprzek obrazu. 4 komórki dają pagórki szerokie na ćwierć obrazu, czyli 12 m, gdy obraz pokrywa 48 m |
+| `OCTAVE_COUNT` | `3` | ile oktaw jest sumowanych |
+| `OCTAVE_GAIN` | `0.45` | każda następna oktawa ma tyle razy mniejszą wysokość |
+| `FILE_NAME` | `"heightmap.png"` | nazwa pliku w `assets/textures/` |
+
+**Szum wartości (value noise): `value_noise(rng, cells)`.** Pomysł: losowe liczby na rzadkiej
+siatce, gładko zmieszane między jej punktami. Jedna taka warstwa to kilka szerokich wzniesień.
+
+```python
+    lattice = rng.random((cells, cells))
+
+    # Where the middle of every pixel lies on the grid: from 0 to cells.
+    position = (np.arange(SIZE) + 0.5) / SIZE * cells
+    cell = np.floor(position).astype(np.int64)
+    inside = smooth_step(position - cell)
+
+    low = cell % cells
+    high = (cell + 1) % cells
+```
+
+| Linia | Co robi |
+|---|---|
+| `lattice = rng.random((cells, cells))` | jedna losowa liczba od 0 do 1 na każdy punkt siatki `cells` x `cells` |
+| `position = (np.arange(SIZE) + 0.5) / SIZE * cells` | gdzie na siatce leży **środek** każdego piksela: liczba od 0 do `cells`. Ta sama tablica służy dla kolumn i dla wierszy, bo obraz jest kwadratowy |
+| `cell = np.floor(position)` | numer komórki siatki, w której leży piksel |
+| `inside = smooth_step(position - cell)` | położenie piksela w komórce, od 0 do 1, przepuszczone przez krzywą `3t^2 - 2t^3`. Krzywa zaczyna się i kończy płasko, więc na granicy komórek wysokość nie ma załamania |
+| `low = cell % cells`, `high = (cell + 1) % cells` | numery dwóch punktów siatki po obu stronach piksela. Reszta z dzielenia sprawia, że **po ostatnim punkcie siatki następuje znowu pierwszy**: stąd kafelkowanie |
+
+Dalej funkcja wybiera dla każdego piksela cztery liczby z rogów jego komórki (`np.ix_` łączy
+każdy indeks wiersza z każdym indeksem kolumny, co daje tablicę 256 x 256) i miesza je:
+najpierw wzdłuż x w dwóch wierszach (`top`, `bottom`), potem wzdłuż y między wierszami. To
+mieszanie dwuliniowe (bilinear), tyle że wagi idą po krzywej smoothstep zamiast po prostej.
+
+**Oktawy: `height_field()`.**
+
+```python
+    rng = np.random.default_rng(HEIGHTMAP_SEED)
+
+    heights = np.zeros((SIZE, SIZE))
+    cells = BASE_CELLS
+    gain = 1.0
+    for _ in range(OCTAVE_COUNT):
+        heights += gain * value_noise(rng, cells)
+        cells *= 2
+        gain *= OCTAVE_GAIN
+
+    return (heights - heights.min()) / (heights.max() - heights.min())
+```
+
+Oktawa to ta sama rzecz z dwa razy gęstszą siatką i mniejszą wysokością: mniejsze garby na
+wierzchu większych. Trzy oktawy mają 4, 8 i 16 komórek w poprzek obrazu i wagi 1, 0.45
+i 0.2025 (`0.45 * 0.45`). Każda liczba komórek jest całkowita, więc każda oktawa kafelkuje się
+osobno i ich suma też. Jeden generator obsługuje wszystkie oktawy w stałej kolejności, więc to
+samo ziarno daje ten sam obraz przy każdym uruchomieniu. Ostatnia linia rozciąga wynik do
+pełnego zakresu: najniższy piksel staje się 0, najwyższy 1. Dzięki temu wysokości w metrach,
+przez które gra mnoży, są naprawdę osiągane. W gotowym pliku wartości pikseli idą od 0 do 255
+(sprawdzone skryptem, który dekoduje PNG).
+
+**Zapis: `save_png(heights, file_name)`.**
+
+| Krok | Co robi i dlaczego |
+|---|---|
+| `levels = np.round(heights * 255.0) / 255.0` | zaokrąglenie do 256 poziomów robi skrypt, żeby bajty w pliku nie zależały od sposobu zaokrąglania w Blenderze (jak w sekcji 7.4) |
+| `rgba[..., :3] = levels[::-1, :, np.newaxis]` | `[::-1]` odwraca kolejność wierszy: Blender trzyma obraz od dolnego wiersza, a wiersz 0 tablicy ma być **górnym** wierszem obrazu. `np.newaxis` wpisuje tę samą wartość do czerwonego, zielonego i niebieskiego |
+| `bpy.data.images.new(file_name, SIZE, SIZE, alpha=False)` | obraz bez kanału alfa. Czwarta wartość tablicy zostaje 1 i nie trafia do pliku |
+| `image.filepath_raw = os.path.join(common.TEXTURES_DIR, file_name)` | plik ląduje w `assets/textures/`, obok tekstur, choć teksturą nie jest |
+
+Blender służy tu tylko do zapisania pliku PNG, tak jak w `make_skybox.py`.
+
+**Jak gra czyta ten plik.** Funkcja `loadHeightmap` w `src/game/NightMazeApp.cpp` woła
+`assets::loadImage` z `assets::RowOrder::TopFirst`, czyli **bez odwracania wierszy**: górny
+wiersz obrazu, północ, ma być pierwszy. Potem `game::heightmapFromImage` bierze z każdego
+piksela pierwszy kanał (czerwony, w szarym obrazie równy jasności) i dzieli go przez 255.
+Tekstury modeli idą inną drogą (z odwróceniem wierszy, przez `assets::AssetCache`). Mapa
+wysokości pamięci podręcznej nie dotyka i nie staje się teksturą na karcie: zostaje tablicą
+liczb w pamięci procesora, z której gra liczy wysokości wierzchołków terenu. Gdy pliku nie da
+się wczytać, podłoże jest płaskie, a błąd trafia do logu.
+
+| | `make_textures.py` | `make_skybox.py` | `make_heightmap.py` |
+|---|---|---|---|
+| rozmiar | 512 x 512 | 1024 x 1024 | 256 x 256 |
+| co znaczy piksel | kolor albo kierunek normalnej | kolor nieba w danym kierunku | wysokość podłoża |
+| czy obraz się kafelkuje | tak | nie, pasują do siebie krawędzie sześciu ścian | tak |
+| który wiersz tablicy jest pierwszy | dolny wiersz obrazu | górny | górny (po odwróceniu w `save_png`) |
+| jak gra wczytuje plik | z odwróceniem wierszy, przez `AssetCache` | bez odwracania, w `game::Skybox` | bez odwracania, w `loadHeightmap` |
+| czy trafia na kartę graficzną | tak, jako tekstura 2D | tak, jako tekstura sześcienna | nie: zostaje tablicą liczb |
+
+Po wygenerowaniu nowego pliku:
+
+1. `git status`: zmienić się powinien tylko `assets/textures/heightmap.png`.
+2. Testy (`ctest`): przypadek `the heightmap of the game loads and gives gentle ground inside
+   the default maze` z `tests/TerrainTests.cpp` czyta ten plik i pilnuje, żeby pod domyślnym
+   labiryntem różnica między najniższym a najwyższym gruntem została między 0.3 a 0.5 m. Inne
+   ziarno może ten test złamać: wtedy trzeba wybrać inne ziarno albo świadomie zmienić granice.
+3. Na Windowsie skopiować assety obok programu
+   (`cmake --build --preset debug --target copy_assets`) i przejść się po labiryncie.
+
+Stan sprawdzenia: plik w repozytorium powstał tym skryptem na Windowsie. Rozmiar, liczbę
+kanałów i zakres wartości odczytałem z samego pliku. **Powtarzalności nie zmierzono** (nikt
+nie porównał skrótów z dwóch uruchomień) i nikt nie złożył obrazu 2 x 2, żeby obejrzeć szew:
+kafelkowanie wynika z kodu. Na Macu skrypt nie był uruchamiany.
+
 ## 8. Lista assetów
 
 Wymiary są w układzie gry i zostały odczytane z linii `v` gotowych plików.
@@ -1084,7 +1374,6 @@ Wymiary są w układzie gry i zostały odczytane z linii `v` gotowych plików.
 |---|---|---|---|---|---|---|---|
 | `wall_straight` | `build_wall_straight.py` | od -1 do 1 | od 0 do 3 | od -0.14 do 0.14 | 30 | `wall_stone.png` | `wall_stone_normal.png` |
 | `wall_pillar` | `build_wall_pillar.py` | od -0.2 do 0.2 | od 0 do 3.15 | od -0.2 do 0.2 | 30 | `wall_stone.png` | `wall_stone_normal.png` |
-| `floor_tile` | `build_floor_tile.py` | od -1 do 1 | 0 | od -1 do 1 | 2 | `floor_stone.png` | `floor_stone_normal.png` |
 | `crystal_a` | `build_crystal.py` | od -0.105 do 0.105 | od 0 do 0.5 | od -0.091 do 0.091 | 24 | `crystal.png` | `crystal_normal.png` |
 | `crystal_b` | `build_crystal.py` | od -0.179 do 0.217 | od 0 do 0.5 | od -0.151 do 0.119 | 66 | `crystal.png` | `crystal_normal.png` |
 | `gate` | `build_gate.py` | od -1 do 1 | od 0 do 2.75 | od -0.06 do 0.06 | 70 | `gate_wood.png` | `gate_wood_normal.png` |
@@ -1095,11 +1384,23 @@ Liczba linii `v` (pozycji) w plikach z M5: `crystal_a.obj` 14, `crystal_b.obj` 3
 ścianach z różnymi normalnymi
 ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)).
 
-Razem w repozytorium jest dwadzieścia plików wynikowych: sześć `.obj`, sześć `.mtl` i osiem
+Po M5 w repozytorium było dwadzieścia plików wynikowych: sześć `.obj`, sześć `.mtl` i osiem
 `.png` (cztery obrazy koloru i cztery mapy normalnych, każdy 512 x 512, RGB). Dziesięć z nich
 istniało po M4. Mapy normalnych nie zmieniły wtedy geometrii: liczby trójkątów i wymiary
 modeli kamiennych zostały te same co przedtem, a ich pliki `.obj` identyczne co do bajta. M5
 nie zmieniło żadnego z tych dziesięciu plików, dołożyło dziesięć nowych.
+
+Druga część M6 usunęła cztery z tych plików (`floor_tile.obj`, `floor_tile.mtl`,
+`floor_stone.png`, `floor_stone_normal.png`) i dołożyła trzy (`ground.png`,
+`ground_normal.png`, `heightmap.png`). Dziś jest więc dziewiętnaście plików: pięć `.obj`, pięć
+`.mtl`, osiem tekstur 512 x 512 i mapa wysokości 256 x 256. Tekstur podłoża i mapy wysokości
+nie ma w tabeli wyżej, bo nie należą do żadnego modelu:
+
+| Plik | Skrypt | Rozmiar | Kto go czyta w grze |
+|---|---|---|---|
+| `ground.png` | `make_textures.py` | 512 x 512, RGB | `game::TerrainRenderer`, przez `assets::AssetCache` |
+| `ground_normal.png` | `make_textures.py` | 512 x 512, RGB | `game::TerrainRenderer`, przez `assets::AssetCache` |
+| `heightmap.png` | `make_heightmap.py` | 256 x 256, RGB z trzema równymi kanałami | `loadHeightmap` w `src/game/NightMazeApp.cpp`, poza pamięcią podręczną |
 
 Pierwsza część M6 dołożyła sześć plików innego rodzaju: obrazy nieba w `assets/skybox/`
 (1024 x 1024, RGB, razem 5 278 627 bajtów). Nie należą do żadnego modelu i nie ma ich w
@@ -1132,8 +1433,14 @@ się w słupie. Słup jest o 0.15 m wyższy od ściany, a jego poziome ściany (
 leżą na innych wysokościach niż poziome ściany odcinka (0.25, 2.85 i 3.0). Żadne dwie nie
 leżą w jednej płaszczyźnie, więc nie migoczą (sekcja 10).
 
-**`floor_tile`**: płaski kwadrat 2 x 2 m na wysokości y = 0, zwrócony w górę (normalna +Y),
-dwa trójkąty. Jedna płyta na komórkę labiryntu.
+**`floor_tile`** (usunięty w drugiej części M6): był płaskim kwadratem 2 x 2 m na wysokości
+y = 0, z dwóch trójkątów, jedna płyta na komórkę labiryntu. Zastąpił go teren: jedna siatka
+pod całym labiryntem i wokół niego, liczona w kodzie z mapy wysokości
+([`../modules/renderer/terrain.md`](../modules/renderer/terrain.md),
+[`../decisions/floor-tiles-retired.md`](../decisions/floor-tiles-retired.md)). Ściana, słup
+i brama stoją dziś na nierównym gruncie: gra obniża każdy model do najniższego punktu podłoża
+pod jego podstawą, więc spód cokołu i podstawy słupa nadal nie jest widoczny i pominięte
+ściany modeli pozostają pominięte słusznie.
 
 ### 8.1 Kryształy: `build_crystal.py`
 
@@ -1154,7 +1461,7 @@ poziomego sześciokąta wokół punktu `centre`:
 ```
 
 Narożnik numer `corner` leży pod kątem `turn + corner * 60` stopni, w odległości `radius` od
-środka: `cos` daje składową x, `sin` składową y (w układzie Blendera to płaszczyzna podłogi).
+środka: `cos` daje składową x, `sin` składową y (w układzie Blendera to płaszczyzna pozioma).
 Rosnący kąt znaczy kolejność przeciwną do ruchu wskazówek zegara, patrząc z góry. `turn`
 obraca cały pierścień, żeby dwa odłamki nie stały ściankami w tę samą stronę.
 
@@ -1227,7 +1534,7 @@ układu leży na dole. Tę samą liczbę ma stała `CRYSTAL_HEIGHT = 0.5F` w
 [`src/game/Crystals.hpp`](../../src/game/Crystals.hpp): gra liczy z niej środek kryształu
 (`CRYSTAL_HEIGHT / 2`) i miejsce światła punktowego nad czubkiem. Stała nie jest czytana
 z pliku modelu, więc zmiana wysokości w skrypcie wymaga zmiany tej stałej. Gra losuje dla
-każdego kryształu jeden z dwóch modeli (`CRYSTAL_VARIANT_COUNT = 2`), zawiesza go nad podłogą
+każdego kryształu jeden z dwóch modeli (`CRYSTAL_VARIANT_COUNT = 2`), zawiesza go nad podłożem
 i obraca wokół osi Y ([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 5).
 
 ### 8.2 Brama: `build_gate.py`
@@ -1308,7 +1615,7 @@ Na przodzie bramy `u` idzie od -0.5 do 0.5 (jedno powtórzenie, osiem desek), a 
 1.375.
 
 **Na czym polega gra.** Brama jest cieńsza (0.12 m) niż trzon słupa (0.3 m), więc jej końce
-chowają się w słupach tak jak końce ściany. Gdy brama się otwiera, gra obniża ją pod podłogę,
+chowają się w słupach tak jak końce ściany. Gdy brama się otwiera, gra obniża ją pod powierzchnię terenu,
 odejmując od wysokości odcinka aż do `GATE_SINK_DEPTH = 3.3` m, więcej niż 2.75 m wysokości
 modelu ([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcje 2 i 5).
 
@@ -1407,6 +1714,10 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
 | Ściana nieba poprawiona ręcznie albo wygenerowana osobno | krawędź sześcianu przestaje pasować i na niebie widać szew | wszystkie sześć ścian powstaje w jednym uruchomieniu `make_skybox.py`, z tego samego ziarna. Test granic w `tests/SkyboxTests.cpp` pilnuje wyniku |
 | Kierunek księżyca w dwóch plikach | tarcza na niebie stoi gdzie indziej niż źródło światła na ścianach | `MOON_LIGHT_YAW_DEGREES` i `MOON_LIGHT_PITCH_DEGREES` w `make_skybox.py` zmieniam razem z wartościami domyślnymi w `src/game/Lighting.hpp` |
 | Ściana nieba wczytana jak tekstura 2D | odwrócenie wierszy stawia każdą ścianę do góry nogami | gra wczytuje te pliki z `assets::RowOrder::TopFirst`, a skrypt pisze je górnym wierszem pierwszym |
+| Mapa wysokości wczytana jak tekstura 2D | odwrócenie wierszy zamienia północ z południem: pagórki stoją gdzie indziej, niż pokazuje obraz | gra wczytuje `heightmap.png` z `assets::RowOrder::TopFirst`, a skrypt pisze górny wiersz jako pierwszy (sekcja 7.9) |
+| Mapa wysokości, która się nie kafelkuje | gra powtarza obraz co 48 m, więc na granicy powtórzeń powstałby uskok terenu | punkt siatki szumu po ostatnim jest znowu pierwszym (`% cells`), a liczba komórek każdej oktawy jest całkowita |
+| Inne ziarno mapy wysokości | grunt pod labiryntem może wyjść bardziej albo mniej stromy | test w `tests/TerrainTests.cpp` pilnuje różnicy wysokości pod domyślnym labiryntem (od 0.3 do 0.5 m) |
+| Gęstość tekstury podłoża | `ground.png` ma na terenie 128 pikseli na metr, nie 256: rozmiary w pikselach znaczą dwa razy więcej centymetrów niż na ścianie | liczba metrów na powtórzenie jest w grze (`GROUND_TEXTURE_SPAN = 4`), a komentarz przy `SIZE` w `make_textures.py` o tym przypomina |
 | Rendery w repozytorium | obrazy kontrolne zaśmiecałyby historię | zapis tylko do katalogu tymczasowego |
 
 ## 11. Jak dodać nowy model
@@ -1414,10 +1725,10 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
 1. Skopiuj [`build_wall_pillar.py`](../../tools/blender/build_wall_pillar.py) jako
    `build_<nazwa>.py`. Nazwa w `snake_case`.
 2. Zmień stałą `NAME`, komentarz na górze pliku i stałe z wymiarami. Wymiary w metrach, w
-   układzie Blendera: Z to wysokość, podłoga to z = 0, środek podstawy w punkcie (0, 0, 0).
+   układzie Blendera: Z to wysokość, spód modelu to z = 0, środek podstawy w punkcie (0, 0, 0).
 3. Zbuduj geometrię. Prostopadłościany dodaje `common.add_box`. Ściany, których nigdy nie
    widać, wypisz w `skip`. Inny kształt to własna lista wierzchołków i ścian, tak jak w
-   [`build_floor_tile.py`](../../tools/blender/build_floor_tile.py): narożniki każdej ściany
+   [`build_crystal.py`](../../tools/blender/build_crystal.py): narożniki każdej ściany
    przeciwnie do ruchu wskazówek zegara, patrząc z zewnątrz.
 4. Zostaw kolejność wywołań: `create_mesh_object`, `box_project_uvs`,
    `assign_textured_material`, `export_obj`, a na końcu opcjonalnie `render_review_shots`.
@@ -1429,7 +1740,7 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
    `stone_color` i `save_png` dla obrazu koloru oraz `stone_height`, `normal_map` i `save_png`
    dla mapy normalnych, z tym samym wzorem i tą samą `joint_width`. Rozmiary kamieni muszą
    dzielić 512 bez reszty. Tekstura, która nie jest kamieniem, potrzebuje własnej trójki
-   funkcji wzoru, koloru i wysokości, tak jak drewno i kryształ (sekcje 7.5 i 7.6). Obie
+   funkcji wzoru, koloru i wysokości, tak jak drewno, kryształ i podłoże (sekcje 7.5, 7.6 i 7.8). Obie
    nazwy plików podaj potem w `assign_textured_material`.
 6. Dopisz `import` i wywołanie `build(shots)` w
    [`make_all.py`](../../tools/blender/make_all.py).
@@ -1442,7 +1753,9 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
 10. Dopisz model do tabeli w sekcji 8 tego dokumentu.
 
 Tą drogą doszły w M5 kryształy i brama. Kroku 9 nikt dla nich jeszcze nie wykonał
-(sekcja 7.4).
+(sekcja 7.4). Usunięcie modelu to te same kroki w drugą stronę, co pokazała płytka podłogi
+w M6: zniknęły skrypt, `import` i wywołanie w `make_all.py`, pliki `.obj`, `.mtl` i `.png`,
+wywołania w `build()` skryptu tekstur, przypadek testowy loadera i wiersz tabeli w sekcji 8.
 
 ## 12. Powiązane dokumenty
 
@@ -1454,7 +1767,9 @@ Tą drogą doszły w M5 kryształy i brama. Kroku 9 nikt dla nich jeszcze nie wy
   [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md)
 - Niebo w grze (tekstura sześcienna, matematyka obrazu, testy plików nieba):
   [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md)
-- Testy obu map normalnych na prawdziwych plikach:
+- Teren w grze (mapa wysokości, wzór wysokości, siatka, tekstura podłoża):
+  [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)
+- Testy map normalnych na prawdziwych plikach:
   [`../modules/assets/images.md`](../modules/assets/images.md)
 - Struktura repozytorium: [`project-structure.md`](project-structure.md)
 - Skąd program bierze katalog `assets`: [`../modules/core/paths.md`](../modules/core/paths.md)

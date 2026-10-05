@@ -23,7 +23,7 @@ uniform sampler2D uTexture;
 uniform vec3 uTint;
 
 // Light the surface gives off by itself, as a colour that multiplies the colour of the
-// surface. Black (0, 0, 0) for everything that only reflects light: walls, floor,
+// surface. Black (0, 0, 0) for everything that only reflects light: walls, ground,
 // pillars, the gate. The crystals glow with it: the point light of a crystal hangs
 // outside its mesh and lights its faces only from one side, and without a glow of its
 // own the source of the light would be the darkest thing around it.

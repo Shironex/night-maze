@@ -859,35 +859,6 @@ TEST_CASE("loadObj: wall_pillar.obj") {
     checkVec3(bounds.max, {0.2F, 3.15F, 0.2F});
 }
 
-TEST_CASE("loadObj: floor_tile.obj") {
-    const assets::ObjModel model =
-        loadGameModel("floor_tile.obj", "floor_stone", "floor_stone.png", "floor_stone_normal.png");
-
-    // 2 triangles that share two corners.
-    CHECK(model.indices.size() == 6U);
-    CHECK(model.vertices.size() == 4U);
-
-    const Bounds bounds = boundsOf(model);
-    checkVec3(bounds.min, {-1.0F, 0.0F, -1.0F});
-    checkVec3(bounds.max, {1.0F, 0.0F, 1.0F});
-
-    // A floor faces up, and both triangles are counter clockwise seen from above: the
-    // cross product of two edges points the same way as the normal.
-    for (const gfx::Vertex& vertex : model.vertices) {
-        checkVec3(vertex.normal, {0.0F, 1.0F, 0.0F});
-        // On the floor u grows along +X and v along -Z (Blender +Y), so the tangent is
-        // +X and the bitangent cross(N, T) is -Z.
-        checkVec3(vertex.tangent, {1.0F, 0.0F, 0.0F});
-        checkVec3(glm::cross(vertex.normal, vertex.tangent), {0.0F, 0.0F, -1.0F});
-    }
-    for (std::size_t i = 0; i < model.indices.size(); i += 3) {
-        const glm::vec3& a = model.vertices[model.indices[i]].position;
-        const glm::vec3& b = model.vertices[model.indices[i + 1]].position;
-        const glm::vec3& c = model.vertices[model.indices[i + 2]].position;
-        CHECK(glm::cross(b - a, c - a).y > 0.0F);
-    }
-}
-
 TEST_CASE("loadObj: material libraries and texture paths of files written by the test") {
     // A scratch directory of its own, removed again at the end of the test case.
     const std::filesystem::path directory =

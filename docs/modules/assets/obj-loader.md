@@ -1,11 +1,11 @@
 # Moduł assets: wczytywanie modeli OBJ
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych: linia `map_Bump` w pliku MTL i styczne liczone po wczytaniu) i w M5 (trzy nowe modele rozgrywki, kod loadera bez zmian). Temat wykładu: 4 (Wczytywanie OBJ).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych: linia `map_Bump` w pliku MTL i styczne liczone po wczytaniu) i w M5 (trzy nowe modele rozgrywki, kod loadera bez zmian). M6 usunął płytkę podłogi `floor_tile.obj` razem z jej testem (podłoże to dziś teren z mapy wysokości, budowany w kodzie), więc przykładem w tym dokumencie jest słupek `wall_pillar.obj`. Temat wykładu: 4 (Wczytywanie OBJ).
 Kod: [`src/assets/ObjLoader.hpp`](../../../src/assets/ObjLoader.hpp), [`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp), testy w [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp), pliki wejściowe w [`assets/models/`](../../../assets/models/). Styczne liczy osobny plik, [`src/assets/Tangents.cpp`](../../../src/assets/Tangents.cpp), omówiony linia po linii w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (sekcje od 5.5 do 5.7).
 
 Część modułu `assets`. Wstęp do modułu jest w [`README.md`](README.md). Skąd biorą się pliki `.obj` i `.mtl` i jakie mają konwencje, opisuje [`../../guides/blender.md`](../../guides/blender.md). Dokąd trafia wynik, opisują [`../gfx/mesh.md`](../gfx/mesh.md) (siatka na karcie) i [`asset-cache.md`](asset-cache.md) (kto woła loader i co robi z materiałami).
 
-**Stan.** Loader jest częścią biblioteki `engine` i ma 20 przypadków testowych, w tym wczytanie trzech prawdziwych modeli gry. Program go woła: `assets::AssetCache::model` wczytuje nim przy starcie sześć modeli, tworzy z wyniku siatki `gfx::Mesh`, tekstury i mapy normalnych. O trzy modele labiryntu (płytkę podłogi, ścianę i słupek) prosi `game::MazeRenderer`, a o trzy modele rozgrywki z M5 (kryształy `crystal_a.obj` i `crystal_b.obj` oraz bramę `gate.obj`) prosi `game::GameplayRenderer`. Oba rysują je tą samą funkcją `game::drawModel`, programem `textured` albo jednym z dwóch programów oświetlających (sekcje 3 i 4). Testy czytają tylko trzy modele kamienne: nowe modele wczytuje ten sam kod, ale własnych przypadków testowych nie mają (sekcja 5.9). Od drugiej części M4 loader czyta z pliku MTL także linię mapy normalnych (`map_Bump`) i na końcu `parseObj` liczy dla każdego wierzchołka **styczną** (tangent), której w pliku OBJ nie ma. Wczytane modele pokazuje panel Assets (sekcja 6). Parser jest napisany ręcznie, bez biblioteki Assimp ani żadnej innej: zrozumienie formatu jest celem tego tematu.
+**Stan.** Loader jest częścią biblioteki `engine` i ma 19 przypadków testowych, w tym wczytanie dwóch prawdziwych modeli gry (do M6 było ich 20 i trzy modele: przypadek płytki podłogi zniknął razem z jej plikiem). Program go woła: `assets::AssetCache::model` wczytuje nim przy starcie pięć modeli, tworzy z wyniku siatki `gfx::Mesh`, tekstury i mapy normalnych. O dwa modele labiryntu (ścianę i słupek) prosi `game::MazeRenderer`, a o trzy modele rozgrywki z M5 (kryształy `crystal_a.obj` i `crystal_b.obj` oraz bramę `gate.obj`) prosi `game::GameplayRenderer`. Oba rysują je tą samą funkcją `game::drawModel`, programem `textured` albo jednym z dwóch programów oświetlających (sekcje 3 i 4). Podłoża loader nie dotyczy: teren jest siatką liczoną w kodzie z mapy wysokości (`game::buildTerrainMesh`, [`../renderer/terrain.md`](../renderer/terrain.md)), a nie plikiem OBJ. Testy czytają tylko dwa modele kamienne: modele z M5 wczytuje ten sam kod, ale własnych przypadków testowych nie mają (sekcja 5.9). Od drugiej części M4 loader czyta z pliku MTL także linię mapy normalnych (`map_Bump`) i na końcu `parseObj` liczy dla każdego wierzchołka **styczną** (tangent), której w pliku OBJ nie ma. Wczytane modele pokazuje panel Assets (sekcja 6). Parser jest napisany ręcznie, bez biblioteki Assimp ani żadnej innej: zrozumienie formatu jest celem tego tematu.
 
 ## 1. Po co to jest
 
@@ -38,45 +38,63 @@ Formatów jest wiele (OBJ, glTF, FBX, PLY). **Wavefront OBJ** jest z nich najpro
 
 ### 2.2 Format OBJ linia po linii
 
-Cały plik [`assets/models/floor_tile.obj`](../../../assets/models/floor_tile.obj), płyta podłogi z dwóch trójkątów:
+Plik [`assets/models/wall_pillar.obj`](../../../assets/models/wall_pillar.obj), słupek z trzech prostopadłościanów (podstawa, trzon, głowica). To najprostszy model, który gra dziś wczytuje i który ma własny test. Cały plik ma 82 linie: 24 linie `v`, 6 linii `vn`, 16 linii `vt` i 30 linii `f`. Niżej są prawdziwe linie w kolejności z pliku, a miejsca, w których pominąłem linie tego samego rodzaju, oznacza wielokropek (w pliku go nie ma):
 
 ```text
 # Blender 5.2.1 LTS
 # www.blender.org
-mtllib floor_tile.mtl
-o floor_tile
-v -1.000000 0.000000 1.000000
-v 1.000000 0.000000 1.000000
-v 1.000000 0.000000 -1.000000
-v -1.000000 0.000000 -1.000000
+mtllib wall_pillar.mtl
+o wall_pillar
+v -0.200000 0.000000 0.200000
+v 0.200000 0.000000 0.200000
+v -0.200000 0.000000 -0.200000
+v 0.200000 0.000000 -0.200000
+v -0.200000 0.350000 0.200000
+v 0.200000 0.350000 0.200000
+v -0.200000 0.350000 -0.200000
+v 0.200000 0.350000 -0.200000
+...
+vn -1.0000 -0.0000 -0.0000
+vn 1.0000 -0.0000 -0.0000
+vn -0.0000 -0.0000 1.0000
+vn -0.0000 -0.0000 -1.0000
 vn -0.0000 1.0000 -0.0000
-vt 0.500000 -0.500000
-vt -0.500000 0.500000
-vt -0.500000 -0.500000
-vt 0.500000 0.500000
+vn -0.0000 -1.0000 -0.0000
+vt 0.100000 0.175000
+vt -0.100000 0.000000
+vt 0.100000 0.000000
+vt -0.100000 0.175000
+...
 s 0
-usemtl floor_stone
-f 2/1/1 4/2/1 1/3/1
-f 2/1/1 3/4/1 4/2/1
+usemtl wall_stone
+f 5/1/1 3/2/1 1/3/1
+f 4/3/2 6/4/2 2/2/2
+f 2/3/3 5/4/3 1/2/3
+...
+f 5/1/1 7/4/1 3/2/1
+f 4/3/2 8/1/2 6/4/2
+...
 ```
+
+Pierwszych osiem linii `v` to osiem rogów podstawy: kwadrat 0,4 na 0,4 m, od `y = 0` do `y = 0,35`. Sześć linii `vn` to sześć kierunków osi: `-X`, `+X`, `+Z`, `-Z`, `+Y`, `-Y` (zapis `-0.0000` to zero ze znakiem, tak je pisze eksporter). Pierwsza linia `f` stoi w linii 53 pliku, a druga połowa tego samego prostokąta, `f 5/1/1 7/4/1 3/2/1`, w linii 68: Blender zapisuje najpierw po jednym trójkącie z każdego prostokąta, a potem drugie trójkąty w tej samej kolejności.
 
 Każda linia zaczyna się **słowem kluczowym** (keyword), po którym idą pola oddzielone spacjami.
 
 | Linia | Znaczenie | Co robi z nią parser |
 |---|---|---|
 | `# ...` | komentarz, do końca linii | pomija |
-| `mtllib floor_tile.mtl` | nazwa pliku z materiałami, względem katalogu pliku OBJ | zapamiętuje nazwę. Plik otwiera dopiero `loadObj` |
-| `o floor_tile` | początek obiektu o tej nazwie | pomija: cały plik staje się jedną siatką |
+| `mtllib wall_pillar.mtl` | nazwa pliku z materiałami, względem katalogu pliku OBJ | zapamiętuje nazwę. Plik otwiera dopiero `loadObj` |
+| `o wall_pillar` | początek obiektu o tej nazwie | pomija: cały plik staje się jedną siatką |
 | `v x y z` | pozycja (vertex), trzy liczby | dopisuje do listy pozycji |
 | `vn x y z` | normalna (vertex normal) | dopisuje do listy normalnych |
 | `vt u v` | współrzędna tekstury (vertex texture) | dopisuje do listy uv |
 | `s 0` | grupa wygładzania (smoothing group) wyłączona | pomija: normalne biorę z linii `vn` takie, jakie są |
-| `usemtl floor_stone` | materiał dla wszystkich następnych linii `f` | zapamiętuje jako bieżący materiał |
+| `usemtl wall_stone` | materiał dla wszystkich następnych linii `f` | zapamiętuje jako bieżący materiał |
 | `f a/b/c a/b/c a/b/c` | ściana (face): narożniki, każdy jako indeksy `pozycja/uv/normalna` | buduje wierzchołki i trójkąty (sekcje 2.4 i 2.6) |
 
 Trzy rzeczy, które trzeba zapamiętać o liniach `f`:
 
-- **Indeksy liczą się od 1.** `2/1/1` to druga pozycja, pierwsza para uv, pierwsza normalna. W C++ tablice liczą się od 0, więc parser odejmuje 1.
+- **Indeksy liczą się od 1.** `5/1/1` to piąta pozycja, pierwsza para uv, pierwsza normalna. W C++ tablice liczą się od 0, więc parser odejmuje 1.
 - **Kolejność w narożniku to pozycja, uv, normalna**, choć w tym pliku linie `vn` stoją przed liniami `vt`. Kolejność linii w pliku nie ma związku z kolejnością pól w narożniku.
 - **Narożnik może mieć mniej pól.** Format dopuszcza cztery postacie:
 
@@ -156,26 +174,26 @@ OpenGL ma **jeden indeks na wierzchołek**. Indeks w buforze indeksów wybiera c
 
 Parser musi więc **przepakować** dane: dla każdej różnej trójki `(pozycja, uv, normalna)` użytej w pliku utworzyć jeden wierzchołek wyjściowy, złożony z trzech list. Dwa narożniki o tej samej trójce dostają ten sam wierzchołek, a narożniki różniące się choćby jednym indeksem dostają różne.
 
-Żeby wiedzieć, czy trójka już była, parser prowadzi **mapę**: klucz to trójka indeksów, wartość to numer wierzchołka wyjściowego. Przykład na płycie podłogi (dwie linie `f`, sześć narożników):
+Żeby wiedzieć, czy trójka już była, parser prowadzi **mapę**: klucz to trójka indeksów, wartość to numer wierzchołka wyjściowego. Przykład na słupku: pierwsza linia `f` pliku (linia 53) i szesnasta (linia 68). Razem są zachodnią ścianą podstawy, prostokątem z dwóch trójkątów. Między nimi stoi czternaście linii `f` innych prostokątów. Każdy ich narożnik jest nową trójką, więc zajmują wierzchołki od 3 do 44:
 
 | Narożnik w pliku | Trójka (pozycja, uv, normalna) | Czy jest w mapie | Wierzchołek wyjściowy | Mapa po tym kroku |
 |---|---|---|---|---|
-| `2/1/1` | (2, 1, 1) | nie | nowy: **0** | (2,1,1) → 0 |
-| `4/2/1` | (4, 2, 1) | nie | nowy: **1** | + (4,2,1) → 1 |
+| `5/1/1` | (5, 1, 1) | nie | nowy: **0** | (5,1,1) → 0 |
+| `3/2/1` | (3, 2, 1) | nie | nowy: **1** | + (3,2,1) → 1 |
 | `1/3/1` | (1, 3, 1) | nie | nowy: **2** | + (1,3,1) → 2 |
-| `2/1/1` | (2, 1, 1) | **tak** | istniejący: **0** | bez zmian |
-| `3/4/1` | (3, 4, 1) | nie | nowy: **3** | + (3,4,1) → 3 |
-| `4/2/1` | (4, 2, 1) | **tak** | istniejący: **1** | bez zmian |
+| czternaście linii `f` | 42 różne trójki | nie | nowe: od **3** do **44** | + 42 wpisy |
+| `5/1/1` | (5, 1, 1) | **tak** | istniejący: **0** | bez zmian |
+| `7/4/1` | (7, 4, 1) | nie | nowy: **45** | + (7,4,1) → 45 |
+| `3/2/1` | (3, 2, 1) | **tak** | istniejący: **1** | bez zmian |
 
-Wynik: 4 wierzchołki i indeksy `0, 1, 2, 0, 3, 1`. Sześć narożników, cztery różne trójki. Wierzchołek 0 to pozycja `(1, 0, 1)` (druga linia `v`), uv `(0.5, -0.5)` (pierwsza linia `vt`) i normalna `(0, 1, 0)`.
+Wynik dla tego prostokąta: 4 wierzchołki (0, 1, 2 i 45) i indeksy `0, 1, 2` oraz `0, 45, 1`. Sześć narożników, cztery różne trójki. Wierzchołek 0 to pozycja `(-0.2, 0.35, 0.2)` (piąta linia `v`), uv `(0.1, 0.175)` (pierwsza linia `vt`) i normalna `(-1, 0, 0)`. Tak samo jest z każdym z piętnastu prostokątów słupka: pierwszy trójkąt daje trzy wierzchołki, drugi jeden nowy. Stąd `15 * 4 = 60` wierzchołków i `30 * 3 = 90` indeksów całego modelu, co sprawdza test (sekcja 5.9).
 
 (W tabeli indeksy są zapisane tak jak w pliku, od 1. W kodzie kluczem mapy są indeksy już przeliczone na liczone od 0: sekcja 5.5.)
 
-Liczby dla sześciu modeli gry, policzone osobnym skryptem z samych linii `f`. Dla trzech modeli kamiennych potwierdzają je testy. Dla trzech modeli z M5 skrypt jest jedynym źródłem: powtarza regułę loadera (jeden wierzchołek na każdą różną trójkę `pozycja/uv/normalna`), ale testu, który by te liczby sprawdzał, nie ma:
+Liczby dla pięciu modeli gry, policzone osobnym skryptem z samych linii `f`. Dla dwóch modeli kamiennych potwierdzają je testy. Dla trzech modeli z M5 skrypt jest jedynym źródłem: powtarza regułę loadera (jeden wierzchołek na każdą różną trójkę `pozycja/uv/normalna`), ale testu, który by te liczby sprawdzał, nie ma:
 
 | Model | Linie `v` | Linie `vt` | Linie `vn` | Narożniki (3 na trójkąt) | Różne trójki, czyli wierzchołki wyjściowe |
 |---|---|---|---|---|---|
-| `floor_tile.obj` | 4 | 4 | 1 | 6 | 4 |
 | `wall_straight.obj` | 24 | 24 | 6 | 90 | 60 |
 | `wall_pillar.obj` | 24 | 16 | 6 | 90 | 60 |
 | `crystal_a.obj` | 14 | 20 | 18 | 72 | 60 |
@@ -225,7 +243,7 @@ Moje modele są eksportowane już jako trójkąty (opcja `export_triangulated_me
 
 Plik OBJ podaje narożniki ściany w kolejności **przeciwnej do ruchu wskazówek zegara**, gdy patrzę na ścianę z zewnątrz. To ta sama konwencja co domyślny "przód" w OpenGL ([`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), sekcja 2.2), więc parser zapisuje indeksy w kolejności z pliku i niczego nie odwraca.
 
-Normalna jest w pliku osobną informacją i **nie wynika z kolejności narożników**: plik może podać dowolną. W poprawnym modelu zgadza się z nimi: iloczyn wektorowy dwóch krawędzi trójkąta wskazuje w tę samą stronę. Test płyty podłogi sprawdza dokładnie to (sekcja 5.9).
+Normalna jest w pliku osobną informacją i **nie wynika z kolejności narożników**: plik może podać dowolną. W poprawnym modelu zgadza się z nimi: iloczyn wektorowy dwóch krawędzi trójkąta wskazuje w tę samą stronę. Dla pierwszego trójkąta słupka (pozycje `5`, `3`, `1`) krawędzie to `(0, -0.35, -0.4)` i `(0, -0.35, 0)`, a ich iloczyn wektorowy to `(-0.14, 0, 0)`: kierunek `-X`, taki jak normalna numer 1. Do M6 sprawdzał to test płytki podłogi. Dziś żaden test nie sprawdza nawinięcia modeli OBJ, a tę samą własność dla siatki terenu sprawdza przypadek `every triangle of the mesh faces up, and its texture is not mirrored` w [`tests/TerrainTests.cpp`](../../../tests/TerrainTests.cpp).
 
 Moje modele mają **cieniowanie płaskie** (flat shading): wszystkie trzy narożniki trójkąta mają ten sam indeks normalnej. Przy cieniowaniu gładkim (smooth shading) każdy narożnik miałby własną, uśrednioną normalną. Dla parsera to bez różnicy: bierze z listy to, co wskazuje indeks. Nie liczy normalnych sam, nie uśrednia ich, nie normalizuje i nie przetwarza grup wygładzania z linii `s`. Gdy plik nie ma linii `vn`, wierzchołki mają normalną zerową.
 
@@ -238,7 +256,7 @@ Format OBJ nie mówi, która oś jest górą ani jaka jest jednostka. To umowa m
 | góra | +Y | opcja eksportu `up_axis='Y'` |
 | przód | -Z | opcja eksportu `forward_axis='NEGATIVE_Z'` |
 | jednostka | 1 to 1 metr | `global_scale=1.0` |
-| początek układu modelu | środek podstawy, podłoga w y = 0 | skrypt modelu |
+| początek układu modelu | środek podstawy, spód modelu w y = 0 | skrypt modelu |
 | `v = 0` w teksturze | **dolny** wiersz obrazu | konwencja OBJ, taka sama jak w OpenGL |
 
 Ostatni wiersz ma konsekwencję poza loaderem modeli. Pliki PNG zapisują obraz od **górnego** wiersza, a współrzędna `v` rośnie od dołu. Odwrócenie trzeba zrobić w jednym miejscu, przy wczytywaniu obrazu, a nie w loaderze OBJ: to sprawa loadera obrazów ([`images.md`](images.md)). Loader OBJ zostawia `v` takie, jakie jest w pliku.
@@ -315,7 +333,7 @@ Druga część M4 dołożyła **mapy normalnych** i tym razem loader się zmieni
 |---|---|
 | [`src/assets/ObjLoader.hpp`](../../../src/assets/ObjLoader.hpp) | struktury `ObjPart`, `ObjMaterial`, `ObjModel`, deklaracje `parseObj`, `parseMtl`, `loadObj` |
 | [`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp) | stałe, funkcje pomocnicze do cięcia tekstu i czytania liczb, struktura `ObjParser`, definicje trzech funkcji publicznych |
-| [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp) | 20 przypadków testowych |
+| [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp) | 19 przypadków testowych |
 | [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp) | struktura wierzchołka, którą loader wypełnia ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5.2) |
 | [`src/assets/Tangents.hpp`](../../../src/assets/Tangents.hpp), [`Tangents.cpp`](../../../src/assets/Tangents.cpp) | `computeTangents` i `countMirroredTriangles`, które `parseObj` woła na końcu. Omówione w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcje od 5.5 do 5.7 |
 
@@ -381,7 +399,7 @@ struct ObjModel {
 | `materialLibraries` | `parseObj` | nazwy z linii `mtllib`, tak jak w pliku |
 | `materials` | `loadObj` | materiały ze wszystkich bibliotek. Po samym `parseObj` lista jest pusta, bo ta funkcja nie otwiera plików |
 | `unknownLineCount` | `parseObj` | liczba linii o nieznanym słowie kluczowym |
-| `mirroredTriangleCount` | `parseObj` | liczba trójkątów, na których tekstura leży w odbiciu lustrzanym (`countMirroredTriangles`). Na takich trójkątach mapa normalnych pokazałaby relief do góry nogami. Dla trzech modeli kamiennych: 0, co sprawdzają testy. Dla kryształów i bramy też 0, ale policzone tylko skryptem (sekcja 5.9) |
+| `mirroredTriangleCount` | `parseObj` | liczba trójkątów, na których tekstura leży w odbiciu lustrzanym (`countMirroredTriangles`). Na takich trójkątach mapa normalnych pokazałaby relief do góry nogami. Dla dwóch modeli kamiennych: 0, co sprawdzają testy. Dla kryształów i bramy też 0, ale policzone tylko skryptem (sekcja 5.9) |
 
 Wszystkie trzy struktury to zwykłe dane z publicznymi polami, jak struktury warstwy `scene`: kopiują się, nie mają związku z OpenGL.
 
@@ -820,7 +838,7 @@ Po ostatniej linii, już za pętlą, dochodzą styczne:
 
 **Dlaczego dopiero na końcu.** Styczna wierzchołka zależy od **wszystkich** trójkątów, które go używają, a w trakcie czytania pliku nie wiadomo, czy następna linia `f` nie użyje go jeszcze raz. Po ostatniej linii lista trójkątów jest zamknięta. **Dlaczego w `parseObj`, a nie w `loadObj`.** Żeby wynik parsera był kompletny także w testach, które podają tekst wpisany w kod i plików nie czytają. **Dlaczego w ogóle na procesorze przy wczytaniu.** Format OBJ nie ma linii dla stycznych, więc ktoś musi je policzyć, a liczy się je raz na model, nie co klatkę. Uzasadnienie i rozważane możliwości są w notatce [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md).
 
-Styczne **nie dodają wierzchołków**: powstają dla wierzchołków, które już istnieją, więc liczby z sekcji 2.4 są liczbami po całym `parseObj` (ściana i słupek 60 wierzchołków i 90 indeksów, płytka 4 i 6). Model bez linii `vt` też dostaje styczne o długości 1, tyle że o przypadkowym kierunku w płaszczyźnie powierzchni: nie ma wtedy żadnego "kierunku rosnącego `u`". Wzór, przykład liczbowy na ścianie i obie funkcje linia po linii są w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (sekcje 2.7 do 2.9 i 5.5 do 5.7).
+Styczne **nie dodają wierzchołków**: powstają dla wierzchołków, które już istnieją, więc liczby z sekcji 2.4 są liczbami po całym `parseObj` (ściana i słupek po 60 wierzchołków i 90 indeksów). Model bez linii `vt` też dostaje styczne o długości 1, tyle że o przypadkowym kierunku w płaszczyźnie powierzchni: nie ma wtedy żadnego "kierunku rosnącego `u`". Wzór, przykład liczbowy na ścianie i obie funkcje linia po linii są w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (sekcje 2.7 do 2.9 i 5.5 do 5.7).
 
 **`parseMtl`** ma tę samą pętlę, ale tylko cztery rodzaje linii:
 
@@ -954,7 +972,7 @@ Jedno miejsce z `core::logError` na cały moduł: każdy błąd pojawia się w k
 }
 ```
 
-Drugie ostrzeżenie dotyczy map normalnych. Wierzchołek przechowuje samą styczną, bez **znaku skrętności** (handedness), a shader buduje trzeci wektor bazy jako `cross(N, T)`. To daje dobry wynik tylko tam, gdzie tekstura nie jest odbita lustrzanie. Model z odbitymi trójkątami **wczytuje się** (to nie jest błąd pliku), ale mapa normalnych pokazałaby na nich wgłębienia jako wypukłości, więc loader mówi o tym w logu. Żaden z trzech modeli kamiennych nie ma takich trójkątów, co sprawdzają testy (sekcja 5.9). Dla kryształów i bramy wynika to z przeliczenia skryptem (ta sama sekcja), a nie z testu. W grze ta linia nie powinna się więc pojawiać. Dlaczego odbicie psuje relief i dlaczego modele go nie mają, tłumaczy [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 2.9.
+Drugie ostrzeżenie dotyczy map normalnych. Wierzchołek przechowuje samą styczną, bez **znaku skrętności** (handedness), a shader buduje trzeci wektor bazy jako `cross(N, T)`. To daje dobry wynik tylko tam, gdzie tekstura nie jest odbita lustrzanie. Model z odbitymi trójkątami **wczytuje się** (to nie jest błąd pliku), ale mapa normalnych pokazałaby na nich wgłębienia jako wypukłości, więc loader mówi o tym w logu. Żaden z dwóch modeli kamiennych nie ma takich trójkątów, co sprawdzają testy (sekcja 5.9). Dla kryształów i bramy wynika to z przeliczenia skryptem (ta sama sekcja), a nie z testu. W grze ta linia nie powinna się więc pojawiać. Dlaczego odbicie psuje relief i dlaczego modele go nie mają, tłumaczy [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 2.9.
 
 Kroki `loadObjFiles`:
 
@@ -1001,7 +1019,7 @@ Szczegóły:
 
 ### 5.9 Jak to zostało sprawdzone
 
-Testy jednostkowe w doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)), plik [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp): 20 przypadków testowych, 1576 asercji (przed mapami normalnych: 18 i 804). Same funkcje liczące styczne mają osobny plik testów, [`tests/TangentTests.cpp`](../../../tests/TangentTests.cpp) (9 przypadków, 177 asercji), opisany w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.10.
+Testy jednostkowe w doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)), plik [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp): 19 przypadków testowych, 1492 asercje (przed mapami normalnych: 18 i 804, od map normalnych do M6: 20 i 1576, z przypadkiem płytki podłogi, który M6 usunął razem z plikiem `floor_tile.obj`). Same funkcje liczące styczne mają osobny plik testów, [`tests/TangentTests.cpp`](../../../tests/TangentTests.cpp) (9 przypadków, 177 asercji), opisany w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.10.
 
 Uruchomienie samych testów loadera (Windows, build w `build/debug`):
 
@@ -1029,26 +1047,26 @@ Testy parserów podają tekst wpisany w kod:
 | `parseMtl: the normal map line` | nowy. Linia w postaci z Blendera (`map_Bump -bm 1.000000 ...`, ścieżka zachowana tak, jak stoi w pliku), bez opcji, trzy pozostałe pisownie (`map_bump`, `bump -bm 0.5`, `norm`), CRLF z tabulatorem i ścieżką ze spacjami, materiał z mapą normalnych i bez `map_Kd`, linia przed pierwszym `newmtl`, brak nazwy pliku (także po `-bm 1.0`), `-bm` bez liczby. Każdy błąd z dokładnym tekstem komunikatu |
 | `parseMtl: a bad line is reported with its line number` | `Kd` i `map_Kd` przed `newmtl`, zła liczba, za mało liczb, brak nazwy, nic nie jest dopisane po błędzie |
 
-Testy `loadObj` czytają pliki. Trzy pierwsze wczytują **prawdziwe modele gry** z katalogu `assets/models` repozytorium: trzy modele kamienne z M2 + M3. Modeli z M5 (`crystal_a.obj`, `crystal_b.obj`, `gate.obj`) żaden przypadek nie wczytuje, o czym niżej. Ścieżkę do katalogu `assets` program testowy dostaje od CMake jako definicję kompilacji `NIGHT_MAZE_ASSETS_DIR`, więc test nie zależy od katalogu, z którego jest uruchamiany.
+Testy `loadObj` czytają pliki. Dwa pierwsze wczytują **prawdziwe modele gry** z katalogu `assets/models` repozytorium: dwa modele kamienne z M2 + M3 (trzeci, płytkę podłogi, usunął M6). Modeli z M5 (`crystal_a.obj`, `crystal_b.obj`, `gate.obj`) żaden przypadek nie wczytuje, o czym niżej. Ścieżkę do katalogu `assets` program testowy dostaje od CMake jako definicję kompilacji `NIGHT_MAZE_ASSETS_DIR`, więc test nie zależy od katalogu, z którego jest uruchamiany.
 
 | Model | Wierzchołki | Indeksy | Trójkąty | Pudełko otaczające (min, max) | Materiał | Tekstura | Mapa normalnych |
 |---|---|---|---|---|---|---|---|
 | `wall_straight.obj` | 60 | 90 | 30 | `(-1, 0, -0.14)`, `(1, 3, 0.14)` | `wall_stone` | `assets/textures/wall_stone.png` | `assets/textures/wall_stone_normal.png` |
 | `wall_pillar.obj` | 60 | 90 | 30 | `(-0.2, 0, -0.2)`, `(0.2, 3.15, 0.2)` | `wall_stone` | `assets/textures/wall_stone.png` | `assets/textures/wall_stone_normal.png` |
-| `floor_tile.obj` | 4 | 6 | 2 | `(-1, 0, -1)`, `(1, 0, 1)` | `floor_stone` | `assets/textures/floor_stone.png` | `assets/textures/floor_stone_normal.png` |
 
-To są wartości zmierzone przez testy na Windowsie. Liczby wierzchołków i indeksów są takie same jak przed mapami normalnych: styczne nie dodają wierzchołków. Liczby wierzchołków zgadzają się z liczbą różnych trójek policzoną niezależnie, skryptem czytającym same linie `f` (sekcja 2.4). Dla każdego modelu test sprawdza też: każdy indeks jest mniejszy od liczby wierzchołków, każda normalna ma długość 1 (loader ich nie normalizuje, więc to pomiar pliku), jest dokładnie jedna część obejmująca wszystkie indeksy, `Kd` jest białe, `unknownLineCount` wynosi 0, a ścieżka tekstury jest równa `assets/textures/<nazwa>.png` i **plik istnieje**. Dla płyty podłogi dodatkowo: wszystkie normalne to `(0, 1, 0)`, a iloczyn wektorowy krawędzi obu trójkątów wskazuje w górę, czyli nawinięcie jest przeciwne do ruchu wskazówek zegara, patrząc z góry.
+To są wartości zmierzone przez testy na Windowsie. Liczby wierzchołków i indeksów są takie same jak przed mapami normalnych: styczne nie dodają wierzchołków. Liczby wierzchołków zgadzają się z liczbą różnych trójek policzoną niezależnie, skryptem czytającym same linie `f` (sekcja 2.4). Dla każdego modelu test sprawdza też: każdy indeks jest mniejszy od liczby wierzchołków, każda normalna ma długość 1 (loader ich nie normalizuje, więc to pomiar pliku), jest dokładnie jedna część obejmująca wszystkie indeksy, `Kd` jest białe, `unknownLineCount` wynosi 0, a ścieżka tekstury jest równa `assets/textures/<nazwa>.png` i **plik istnieje**. Przypadek płytki podłogi sprawdzał dodatkowo normalne `(0, 1, 0)` i nawinięcie przeciwne do ruchu wskazówek zegara przy patrzeniu z góry. Tego testu już nie ma: nawinięcie i kierunek tekstury sprawdza dla siatki terenu plik [`tests/TerrainTests.cpp`](../../../tests/TerrainTests.cpp) ([`../renderer/terrain.md`](../renderer/terrain.md)).
 
-Co doszło do tych trzech przypadków razem z mapami normalnych (wspólna funkcja `loadGameModel` w pliku testów dostała czwarty parametr, nazwę pliku mapy normalnych):
+Co doszło do tych przypadków razem z mapami normalnych (wspólna funkcja `loadGameModel` w pliku testów dostała czwarty parametr, nazwę pliku mapy normalnych):
 
 | Sprawdzenie | Dla których modeli | Po co |
 |---|---|---|
-| `normalTexture` jest równe `assets/textures/<nazwa>_normal.png` i plik istnieje | wszystkie trzy | linia `map_Bump` jest czytana i ścieżka liczona jak dla `map_Kd` |
-| każda styczna ma długość 1 i iloczyn skalarny z normalną równy 0 | wszystkie trzy | wynik `computeTangents` jest czystą parą wektorów dla shadera |
-| na każdej ścianie pionowej (`abs(normal.y) < 0.5`) `cross(normal, tangent)` jest równe `(0, 1, 0)` | wszystkie trzy (płytka nie ma ścian pionowych) | wektor, który shader zbuduje jako trzeci, wskazuje w górę, tam gdzie rośnie `v`. Styczna w złą stronę dałaby "w dół" i zamieniła fugi mapy normalnych w grzbiety |
-| `mirroredTriangleCount == 0`, policzone przez loader i drugi raz wprost w teście (`assets::countMirroredTriangles`) | wszystkie trzy | żadna ściana nie ma tekstury w odbiciu lustrzanym, więc wierzchołek nie potrzebuje znaku skrętności |
+| `normalTexture` jest równe `assets/textures/<nazwa>_normal.png` i plik istnieje | oba | linia `map_Bump` jest czytana i ścieżka liczona jak dla `map_Kd` |
+| każda styczna ma długość 1 i iloczyn skalarny z normalną równy 0 | oba | wynik `computeTangents` jest czystą parą wektorów dla shadera |
+| na każdej ścianie pionowej (`abs(normal.y) < 0.5`) `cross(normal, tangent)` jest równe `(0, 1, 0)` | oba | wektor, który shader zbuduje jako trzeci, wskazuje w górę, tam gdzie rośnie `v`. Styczna w złą stronę dałaby "w dół" i zamieniła fugi mapy normalnych w grzbiety |
+| `mirroredTriangleCount == 0`, policzone przez loader i drugi raz wprost w teście (`assets::countMirroredTriangles`) | oba | żadna ściana nie ma tekstury w odbiciu lustrzanym, więc wierzchołek nie potrzebuje znaku skrętności |
 | styczna to `+X` na ścianie przedniej (normalna `+Z`), `-X` na tylnej, `-Z` na końcu zwróconym w `+X` i `+Z` na końcu zwróconym w `-X` | `wall_straight.obj` | styczna wskazuje zawsze "w prawo" dla kogoś, kto patrzy na ścianę z zewnątrz |
-| styczna to `(1, 0, 0)`, a `cross(normal, tangent)` to `(0, 0, -1)` | `floor_tile.obj` | na podłodze `u` rośnie wzdłuż `+X`, a `v` wzdłuż `-Z` (w Blenderze `+Y`) |
+
+Do M6 tabela miała jeszcze wiersz płytki podłogi: styczna `(1, 0, 0)` i `cross(normal, tangent)` równe `(0, 0, -1)`, bo na podłodze `u` rośnie wzdłuż `+X`, a `v` wzdłuż `-Z`. Teren ma tę samą konwencję UV i własne testy ([`../renderer/terrain.md`](../renderer/terrain.md)).
 
 Trzeci i czwarty wiersz wyglądają na sprzeczne z tym, co robi `box_project_uvs` w skrypcie Blendera: ta funkcja odwraca `u` na przeciwległych ścianach bryły ([`../../guides/blender.md`](../../guides/blender.md), sekcja 6). To odwrócenie nie jest odbiciem lustrzanym tekstury. Jest dokładnie tym, co sprawia, że tekstura czyta się poprawnie z zewnątrz po obu stronach ściany, i dlatego licznik odbitych trójkątów wynosi 0.
 
@@ -1071,7 +1089,7 @@ Pozostałe dwa przypadki:
 
 Testy błędów `loadObj` celowo wywołują logowanie, więc w wyjściu programu testowego pojawiają się linie `[error] ...`. To nie są niepowodzenia testów.
 
-**Wyniki.** Windows 11, MSVC 19.44, `/W4 /permissive-`, 2026-10-05: build Debug i Release bez ostrzeżeń, 20 przypadków i 1576 asercji tego pliku przechodzi (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). **Na macOS kod nie był kompilowany ani uruchamiany.** Otwarte punkty (czytanie liczb przez strumień w libc++, ścieżki z `std::u8string`, ostrzeżenia clang) są na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+**Wyniki.** Windows 11, MSVC 19.44, `/W4 /permissive-`, 2026-10-05, stan po M5: build Debug i Release bez ostrzeżeń, 20 przypadków i 1576 asercji tego pliku przechodzi (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Stan dzisiejszy, po usunięciu płytki podłogi w M6 (2026-10-05, Debug): 19 przypadków i 1492 asercje tego pliku, a cały program testowy ma 256 przypadków i 101232 asercje w Debug i w Release. **Na macOS kod nie był kompilowany ani uruchamiany.** Otwarte punkty (czytanie liczb przez strumień w libc++, ścieżki z `std::u8string`, ostrzeżenia clang) są na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 **Czego testy nie obejmują:** działania przy globalnym locale innym niż "C" (uzasadnienie w sekcji 5.4 opiera się na dokumentacji `imbue`, a nie na teście z polskim locale), bardzo dużych plików i szybkości. Ostrzeżenia o odbitych trójkątach, które wypisuje `loadObj`, żaden test nie wywołuje: testy sprawdzają sam licznik.
 
@@ -1081,10 +1099,10 @@ Wynik loadera pokazuje panel **Assets** (kod: [`src/debug/panels/AssetsPanel.cpp
 
 | Element panelu | Skąd pochodzi | Co pokazuje dla modeli gry |
 |---|---|---|
-| nazwa pliku modelu, pełna ścieżka w podpowiedzi | `LoadedModel::path` | `floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`, `crystal_a.obj`, `crystal_b.obj`, `gate.obj`, w kolejności wczytania (najpierw trzy prośby `MazeRenderer`, potem trzy `GameplayRenderer`) |
-| `... vertices, ... triangles` | liczba elementów `ObjModel::vertices` i jedna trzecia liczby `ObjModel::indices`, zapamiętane przy wczytaniu | 4 i 2 dla płytki, 60 i 30 dla ściany, 60 i 30 dla słupka, 60 i 24 dla `crystal_a`, 144 i 66 dla `crystal_b`, 148 i 70 dla bramy: te same liczby co w tabelach z sekcji 5.9. Liczby trzech ostatnich modeli wynikają ze skryptu i z kodu panelu, nikt ich jeszcze nie odczytał z ekranu |
-| `part '...': ... triangles, ...` | `ObjPart::material`, `ObjPart::indexCount` podzielone przez 3, nazwa pliku z `ObjMaterial::diffuseTexture` | jedna część na model, materiał `floor_stone`, `wall_stone`, `crystal` albo `gate_wood` i plik tekstury. Część bez własnej tekstury ma napis `no texture (white)` |
-| `normal map: ...` pod każdą częścią | nazwa pliku z `ObjMaterial::normalTexture` | `floor_stone_normal.png`, `wall_stone_normal.png`, `crystal_normal.png` albo `gate_wood_normal.png`. Część bez własnej mapy normalnych ma napis `none (flat)` |
+| nazwa pliku modelu, pełna ścieżka w podpowiedzi | `LoadedModel::path` | `wall_straight.obj`, `wall_pillar.obj`, `crystal_a.obj`, `crystal_b.obj`, `gate.obj`, w kolejności wczytania (najpierw dwie prośby `MazeRenderer`, potem trzy `GameplayRenderer`). Terenu na tej liście nie ma: nie jest modelem z pliku |
+| `... vertices, ... triangles` | liczba elementów `ObjModel::vertices` i jedna trzecia liczby `ObjModel::indices`, zapamiętane przy wczytaniu | 60 i 30 dla ściany, 60 i 30 dla słupka, 60 i 24 dla `crystal_a`, 144 i 66 dla `crystal_b`, 148 i 70 dla bramy: te same liczby co w tabelach z sekcji 5.9. Liczby trzech ostatnich modeli wynikają ze skryptu i z kodu panelu, nikt ich jeszcze nie odczytał z ekranu |
+| `part '...': ... triangles, ...` | `ObjPart::material`, `ObjPart::indexCount` podzielone przez 3, nazwa pliku z `ObjMaterial::diffuseTexture` | jedna część na model, materiał `wall_stone`, `crystal` albo `gate_wood` i plik tekstury. Część bez własnej tekstury ma napis `no texture (white)` |
+| `normal map: ...` pod każdą częścią | nazwa pliku z `ObjMaterial::normalTexture` | `wall_stone_normal.png`, `crystal_normal.png` albo `gate_wood_normal.png`. Część bez własnej mapy normalnych ma napis `none (flat)` |
 | lista `View mode` | uniform `uViewMode` shadera | normalne albo współrzędne z linii `vt` jako kolor. Normalne są tymi z linii `vn` tylko przy wyłączonym polu `Normal mapping` albo w trybie oświetlenia `Gouraud`: inaczej widok pokazuje normalne z mapy |
 | pole wyboru `Normal mapping` | `game::LightingSettings::normalMapping` | włącza i wyłącza użycie map normalnych. Opis w [`asset-cache.md`](asset-cache.md), sekcja 6, scenariusz pokazu w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6 |
 | lista pod nagłówkiem `Failed to load` | ścieżki, dla których `loadObj` albo `loadImage` zwróciło `false` | pusta, gdy wszystko się wczytało. Nagłówek pojawia się tylko wtedy, gdy jest co pokazać |
@@ -1135,15 +1153,15 @@ Testy uruchamia `ctest --test-dir build/debug -C Debug --output-on-failure`. Po 
 
    Odpowiedź: 5 wierzchołków, indeksy `0, 1, 2, 0, 3, 4`. Narożnik `3//2` ma tę samą pozycję co `3//1`, ale inną normalną.
 2. **Bez mapy.** Zakomentuj w `readCorner` pięć linii, które szukają klucza w mapie (od `const auto found` do zamykającej klamry instrukcji `if`). Uruchom testy. Które przypadki przestają przechodzić i ile wierzchołków ma teraz `wall_straight.obj`? Czy model narysowałby się poprawnie? (Tak: 90 wierzchołków zamiast 60, tylko więcej pamięci.)
-3. **Bez `- 1`.** Zmień w `resolveIndex` wyrażenie `written - 1` na `written`. Które testy zgłaszają błąd i jaki komunikat dostaje `floor_tile.obj`?
+3. **Bez `- 1`.** Zmień w `resolveIndex` wyrażenie `written - 1` na `written`. Które testy zgłaszają błąd i jaki komunikat dostaje `wall_pillar.obj`?
 4. **CRLF.** Usuń `\r` ze stałej `BLANKS`. Który podprzypadek przestaje przechodzić i jaki jest komunikat błędu? Dlaczego błąd dotyczy liczby, a nie nazwy materiału?
-5. **Zepsuj model.** W kopii `floor_tile.obj` zmień `f 2/1/1 4/2/1 1/3/1` na `f 2/1/1 4/2/1 5/3/1`. Jaki komunikat wypisze `loadObj`? Z której linii pliku?
-6. **Czworokąt.** Zamień dwie linie `f` w kopii `floor_tile.obj` na jedną z czterema narożnikami, tak żeby wynik miał nadal 4 wierzchołki i normalną w górę. W jakiej kolejności muszą iść narożniki? (Przeciwnie do ruchu wskazówek zegara, patrząc z góry: `f 1/3/1 2/1/1 3/4/1 4/2/1`.)
-7. **Dwa materiały.** Dopisz do kopii `wall_straight.obj` linię `usemtl floor_stone` przed ostatnimi dziesięcioma liniami `f` i do pliku MTL materiał `floor_stone`. Ile części ma model i jakie są ich `firstIndex` i `indexCount`? (Dwie: `(0, 60)` i `(60, 30)`.)
+5. **Zepsuj model.** W kopii `wall_pillar.obj` zmień pierwszą linię `f`, `f 5/1/1 3/2/1 1/3/1`, na `f 5/1/1 3/2/1 25/3/1`. Jaki komunikat wypisze `loadObj`? Z której linii pliku?
+6. **Czworokąt.** W kopii `wall_pillar.obj` zamień dwie linie `f` zachodniej ściany podstawy (`f 5/1/1 3/2/1 1/3/1` i `f 5/1/1 7/4/1 3/2/1`) na jedną z czterema narożnikami, tak żeby model miał nadal 60 wierzchołków i 90 indeksów. W jakiej kolejności muszą iść narożniki? (Dookoła prostokąta, przeciwnie do ruchu wskazówek zegara dla kogoś, kto patrzy na ścianę z zewnątrz: `f 5/1/1 7/4/1 3/2/1 1/3/1`. Wachlarz daje z niej trójkąty `5, 7, 3` i `5, 3, 1`.)
+7. **Dwa materiały.** Dopisz do kopii `wall_straight.obj` linię `usemtl gate_wood` przed ostatnimi dziesięcioma liniami `f` i do pliku MTL materiał `gate_wood`. Ile części ma model i jakie są ich `firstIndex` i `indexCount`? (Dwie: `(0, 60)` i `(60, 30)`.)
 8. **Locale.** Napisz mały test, który przed `parseObj` woła `std::setlocale(LC_ALL, "pl_PL.UTF-8")` (na Windowsie `"Polish"`) i sprawdza, że `v 0.5 0 0` daje `x == 0.5`. Potem zamień tymczasowo `parseFloat` na wersję z `std::strtof` i porównaj. Przywróć locale `"C"` na końcu testu.
 9. **Nowe słowo kluczowe.** Dodaj do `parseMtl` obsługę `Ks` (kolor odbłysku) jako pola `specularColor` w `ObjMaterial` i test. Które istniejące testy trzeba poprawić? (Żadnego: dotąd linia była pomijana.)
 10. **Linia mapy normalnych bez `readNormalMap`.** Zmień tymczasowo gałąź mapy normalnych w `parseMtl` tak, żeby brała całą resztę linii jako ścieżkę (jak gałąź `map_Kd`). Które podprzypadki `parseMtl: the normal map line` przestają przechodzić i jaką ścieżkę dostaje materiał ściany? Co pokazałby wtedy panel Assets? (Ścieżkę zaczynającą się od `-bm 1.000000`: plik nie istnieje, część dostaje płaską mapę zastępczą, a w logu jest linia `[error]`.)
-11. **Odbita tekstura.** W kopii `floor_tile.obj` zamień w liniach `vt` znak przy każdym `u` (pierwsza liczba). Wczytaj model przez `loadObj` w małym teście. Ile wynosi `mirroredTriangleCount` i jaka linia pojawia się w logu? (2 i ostrzeżenie `... 2 triangle(s) have a mirrored texture, a normal map is upside down there`.)
+11. **Odbita tekstura.** W kopii `wall_pillar.obj` zamień w liniach `vt` znak przy każdym `u` (pierwsza liczba). Wczytaj model przez `loadObj` w małym teście. Ile wynosi `mirroredTriangleCount` i jaka linia pojawia się w logu? (Oczekiwane: 30, czyli wszystkie trójkąty, i ostrzeżenie `... 30 triangle(s) have a mirrored texture, a normal map is upside down there`. Po zmianie przykładu z płytki na słupek nie uruchamiałem tego ćwiczenia.)
 12. **Siła mapy.** Zmień w `wall_straight.mtl` liczbę po `-bm` na `0.250000` i uruchom testy oraz grę. Co się zmieniło? (Nic: liczba jest sprawdzana i pomijana.) Potem zamień ją na `abc`. Jaki komunikat wypisze `loadObj` i co się stanie ze ścianami? (`...wall_straight.mtl: line 14: map_Bump -bm needs a number`, model się nie wczytuje, ściany nie są rysowane.)
 
 ## 9. Pytania kontrolne
@@ -1221,7 +1239,7 @@ Testy uruchamia `ctest --test-dir build/debug -C Debug --output-on-failure`. Po 
     Liczy je `assets::computeTangents` z pozycji i współrzędnych uv każdego trójkąta: styczna to kierunek na powierzchni, w którym rośnie `u`. Wynik dla wierzchołka jest sumą po wszystkich trójkątach, które go używają, zrobioną prostopadłą do normalnej i sprowadzoną do długości 1. Dlatego liczenie musi poczekać, aż znane są wszystkie trójkąty, czyli do końca pliku. Nowych wierzchołków przy tym nie przybywa.
 
 25. **Co to jest `mirroredTriangleCount` i co loader robi, gdy jest większe od zera?**
-    Liczba trójkątów, na których tekstura leży w odbiciu lustrzanym. Na takich trójkątach wektor `cross(N, T)`, który shader bierze za kierunek rosnącego `v`, wskazuje w przeciwną stronę i mapa normalnych pokazuje relief odwrócony. Loader wczytuje model i wypisuje jedno ostrzeżenie. Dla trzech modeli kamiennych licznik wynosi 0, co sprawdzają testy, a dla kryształów i bramy 0 wychodzi z przeliczenia skryptem (sekcja 5.9), więc wierzchołek nie przechowuje znaku skrętności.
+    Liczba trójkątów, na których tekstura leży w odbiciu lustrzanym. Na takich trójkątach wektor `cross(N, T)`, który shader bierze za kierunek rosnącego `v`, wskazuje w przeciwną stronę i mapa normalnych pokazuje relief odwrócony. Loader wczytuje model i wypisuje jedno ostrzeżenie. Dla dwóch modeli kamiennych licznik wynosi 0, co sprawdzają testy, a dla kryształów i bramy 0 wychodzi z przeliczenia skryptem (sekcja 5.9), więc wierzchołek nie przechowuje znaku skrętności.
 
 ## 10. Źródła
 

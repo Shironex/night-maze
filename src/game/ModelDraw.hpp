@@ -1,4 +1,4 @@
-// ModelDraw: draws a loaded model with its textures, shared by the classes that draw models.
+// ModelDraw: draws a mesh with its textures, shared by the classes that draw models.
 // See docs/modules/game/maze-rendering.md
 #pragma once
 
@@ -11,14 +11,17 @@ struct LoadedModel;
 } // namespace assets
 
 namespace gfx {
+class Mesh;
 class Shader;
+class Texture2D;
 } // namespace gfx
 
 namespace game {
 
 // The maze (MazeRenderer) and the things of a round (GameplayRenderer) are drawn the
-// same way: a model from the asset cache, once per model matrix. The two functions here
-// are that common part, so both classes agree on the texture units and the uniforms.
+// same way: a model from the asset cache, once per model matrix. The terrain
+// (TerrainRenderer) is one mesh of its own with two textures. The functions here are the
+// common part, so all three classes agree on the texture units and the uniforms.
 
 /// Tells the two samplers of a program (uTexture and uNormalMap) which texture units to
 /// read. shader must be in use. Call it in every frame before drawModel and not once at
@@ -37,5 +40,12 @@ void setModelSamplers(const gfx::Shader& shader);
 /// is not drawn.
 void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
                std::span<const glm::mat4> modelMatrices);
+
+/// Draws a whole mesh once, with the given colour texture and normal map. For a mesh
+/// that does not come from a model file, like the terrain. shader is prepared as for
+/// drawModel. The function binds the two textures and sets uTint, uModel and
+/// uNormalMatrix.
+void drawMesh(const gfx::Shader& shader, const gfx::Mesh& mesh, const gfx::Texture2D& texture,
+              const gfx::Texture2D& normalMap, const glm::vec3& tint, const glm::mat4& modelMatrix);
 
 } // namespace game

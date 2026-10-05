@@ -68,10 +68,10 @@ double channelAverage(const assets::Image& image, int channel, int firstColumn, 
 
 } // namespace
 
-TEST_CASE("the stone textures of the game load with the size and channels they were made with") {
+TEST_CASE("the tiling textures of the game load with the size and channels they were made with") {
     // The loop variable is a std::string and not a const char*, so that CAPTURE prints the
     // file name itself when a check fails.
-    for (const std::string fileName : {"wall_stone.png", "floor_stone.png"}) {
+    for (const std::string fileName : {"wall_stone.png", "ground.png"}) {
         CAPTURE(fileName);
         assets::Image image;
         std::string error;
@@ -87,7 +87,7 @@ TEST_CASE("the stone textures of the game load with the size and channels they w
 }
 
 TEST_CASE("the normal maps of the game load, and most of their texels are flat") {
-    for (const std::string fileName : {"wall_stone_normal.png", "floor_stone_normal.png"}) {
+    for (const std::string fileName : {"wall_stone_normal.png", "ground_normal.png"}) {
         CAPTURE(fileName);
         assets::Image image;
         std::string error;

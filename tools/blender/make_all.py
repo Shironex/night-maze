@@ -1,5 +1,5 @@
 # Regenerates every generated asset of the game in one Blender process: the textures first,
-# then the models, then the sky.
+# then the models, then the sky and the heightmap of the terrain.
 # See docs/guides/blender.md
 #
 # Run from the repository root:
@@ -13,10 +13,10 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import build_crystal
-import build_floor_tile
 import build_gate
 import build_wall_pillar
 import build_wall_straight
+import make_heightmap
 import make_skybox
 import make_textures
 
@@ -28,9 +28,11 @@ make_textures.build()
 
 build_wall_straight.build(shots)
 build_wall_pillar.build(shots)
-build_floor_tile.build(shots)
 build_crystal.build(shots)
 build_gate.build(shots)
 
 # The six faces of the sky. They depend on nothing above: no model uses them.
 make_skybox.build()
+
+# The heights of the terrain. Like the sky, it depends on nothing above.
+make_heightmap.build()

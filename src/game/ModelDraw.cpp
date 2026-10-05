@@ -1,10 +1,12 @@
-// ModelDraw: draws a loaded model with its textures, shared by the classes that draw models.
+// ModelDraw: draws a mesh with its textures, shared by the classes that draw models.
 // See docs/modules/game/maze-rendering.md
 #include "game/ModelDraw.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "game/ShaderUniforms.hpp"
+#include "gfx/Mesh.hpp"
 #include "gfx/Shader.hpp"
+#include "gfx/Texture2D.hpp"
 #include "scene/Transform.hpp"
 
 namespace game {
@@ -50,6 +52,19 @@ void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
             model->mesh.draw(part.firstIndex, part.indexCount);
         }
     }
+}
+
+void drawMesh(const gfx::Shader& shader, const gfx::Mesh& mesh, const gfx::Texture2D& texture,
+              const gfx::Texture2D& normalMap, const glm::vec3& tint,
+              const glm::mat4& modelMatrix) {
+    // The same steps as for one part of a model and one object: the two textures on
+    // their units (the colour picture last, see drawModel), the tint, the two matrices.
+    normalMap.bind(NORMAL_MAP_UNIT);
+    texture.bind(TEXTURE_UNIT);
+    shader.setVec3(TINT_UNIFORM, tint);
+    shader.setMat4(MODEL_UNIFORM, modelMatrix);
+    shader.setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix));
+    mesh.draw();
 }
 
 } // namespace game

@@ -1,17 +1,19 @@
 # Moduł assets: wczytywanie obrazów
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (doszły dwa pliki map normalnych i dwa testy na nich), w M5 (cztery nowe pliki PNG kryształu i bramy, kod loadera bez zmian) i w pierwszej części M6 (typ `RowOrder` i czwarty parametr `loadImage` dla ścian nieba, jeden nowy test). Temat wykładu: 5 (Tekstury), część po stronie procesora, a od M6 także 8 (Tekstura sześcienna).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszły dwa pliki map normalnych i dwa testy na nich), w M5 (cztery nowe pliki PNG kryształu i bramy, kod loadera bez zmian) w pierwszej części M6 (typ `RowOrder` i czwarty parametr `loadImage` dla ścian nieba, jeden nowy test) i w drugiej części M6 (tekstury podłoża `ground.png` i `ground_normal.png` zamiast `floor_stone`, trzeci wołający: mapa wysokości terenu, kod loadera bez zmian). Temat wykładu: 5 (Tekstury), część po stronie procesora, a od M6 także 8 (Tekstura sześcienna).
 Kod: [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp), testy w [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), biblioteka dekodująca w [`external/stb/stb_image.c`](../../../external/stb/stb_image.c).
 
 Część modułu `assets`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument opisuje drogę od pliku PNG na dysku do tablicy bajtów w pamięci programu. Co dzieje się z tą tablicą dalej, czyli jak powstaje z niej tekstura na karcie graficznej, opisuje [`../gfx/textures.md`](../gfx/textures.md). Bibliotekę, która dekoduje plik, opisuje [`../../libraries/stb_image.md`](../../libraries/stb_image.md). Skąd biorą się same pliki PNG, opisuje [`../../guides/blender.md`](../../guides/blender.md), sekcja 7.
 
-**Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go woła w dwóch miejscach: `assets::AssetCache::texture` wczytuje nim każdy plik tekstury raz i tworzy z wyniku `gfx::Texture2D`, a od pierwszej części M6 `game::Skybox` wczytuje nim sześć ścian nieba (sekcja 5.6). Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń, testy przechodzą, a tekstury w grze mają na zrzutach ekranu właściwą orientację. **Na macOS ten kod nie był jeszcze budowany.**
+**Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go woła w trzech miejscach: `assets::AssetCache::texture` wczytuje nim każdy plik tekstury raz i tworzy z wyniku `gfx::Texture2D`, od pierwszej części M6 `game::Skybox` wczytuje nim sześć ścian nieba, a od drugiej części M6 funkcja `loadHeightmap` w `src/game/NightMazeApp.cpp` wczytuje nim mapę wysokości terenu (sekcja 5.6). Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń, testy przechodzą, a tekstury w grze mają na zrzutach ekranu właściwą orientację. **Na macOS ten kod nie był jeszcze budowany.**
 
-Od drugiej części M4 ten sam loader, bez żadnej zmiany w kodzie, wczytuje też **mapy normalnych** (normal maps): `wall_stone_normal.png` i `floor_stone_normal.png`. Dla loadera to zwykłe obrazy RGB 512 x 512. Zmieniły się tylko testy: doszły dwa przypadki, które czytają te pliki i sprawdzają ich zawartość (sekcja 5.7). Kolejność wierszy z sekcji 2.3 ma dla map normalnych dodatkowe znaczenie, opisane w sekcji 2.6.
+Od drugiej części M4 ten sam loader, bez żadnej zmiany w kodzie, wczytuje też **mapy normalnych** (normal maps): `wall_stone_normal.png` i, wtedy, `floor_stone_normal.png` (od drugiej części M6 na jej miejscu jest `ground_normal.png`). Dla loadera to zwykłe obrazy RGB 512 x 512. Zmieniły się tylko testy: doszły dwa przypadki, które czytają te pliki i sprawdzają ich zawartość (sekcja 5.7). Kolejność wierszy z sekcji 2.3 ma dla map normalnych dodatkowe znaczenie, opisane w sekcji 2.6.
 
 W M5 doszły cztery pliki: `crystal.png`, `crystal_normal.png`, `gate_wood.png` i `gate_wood_normal.png`, też RGB 512 x 512 (odczytane z nagłówków plików). Gra wczytuje więc osiem obrazów. Kod loadera się nie zmienił, a testy nadal czytają tylko cztery pliki kamienia: nowe pliki nie mają własnych przypadków testowych.
 
-W pierwszej części M6 (skybox) kod loadera zmienił się pierwszy raz od M2 + M3. Doszedł typ `assets::RowOrder` i czwarty parametr `loadImage`, który pozwala **nie odwracać** wierszy: tak wczytywane są ściany tekstury sześciennej (sekcja 2.7). Wartość domyślna zostawia dotychczasowe zachowanie, więc tekstury 2D wczytują się jak przedtem. Doszło też sześć plików `assets/skybox/*.png` (RGB, 1024 x 1024) i jeden przypadek testowy. Zgłoszone dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 221 przypadków i 85175 asercji w całym programie testowym.
+W pierwszej części M6 (skybox) kod loadera zmienił się pierwszy raz od M2 + M3. Doszedł typ `assets::RowOrder` i czwarty parametr `loadImage`, który pozwala **nie odwracać** wierszy: tak wczytywane są ściany tekstury sześciennej (sekcja 2.7). Wartość domyślna zostawia dotychczasowe zachowanie, więc tekstury 2D wczytują się jak przedtem. Doszło też sześć plików `assets/skybox/*.png` (RGB, 1024 x 1024) i jeden przypadek testowy. Zgłoszone dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 221 przypadków i 85175 asercji w całym programie testowym (stan po pierwszej części M6).
+
+W drugiej części M6 (teren) kod loadera się nie zmienił, zmieniły się pliki i wołający. Zniknęły `floor_stone.png` i `floor_stone_normal.png` (płytki podłogi zastąpił teren), doszły `ground.png` i `ground_normal.png`, też RGB 512 x 512, więc gra nadal wczytuje osiem tekstur. Dwa przypadki testowe, które czytały pliki podłogi, czytają teraz pliki podłoża (sekcja 5.7). Dziewiąty plik w `assets/textures/`, `heightmap.png` (RGB, 256 x 256), nie jest teksturą: `loadHeightmap` wczytuje go z `RowOrder::TopFirst` i zamienia na tablicę wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)). Stan po tej zmianie (2026-10-05, Windows, Debug i Release): 256 przypadków i 101232 asercje w całym programie testowym.
 
 ## 1. Po co to jest
 
@@ -177,7 +179,7 @@ Loader dostał więc czwarty parametr, typ wyliczeniowy `assets::RowOrder`. Dwie
 
 Wartością domyślną jest `BottomFirst`, więc żadne z dotychczasowych wywołań loadera się nie zmieniło: `AssetCache::texture` nadal pisze `loadImage(key, image, error)`.
 
-Skutek dla każdego, kto czyta `Image::pixels`: struktura `Image` **nie pamięta**, w jakiej kolejności ją wypełniono. To, czy wiersz 0 jest dołem, czy górą, wie tylko ten, kto wołał loader. W grze jest jeden wołający z `TopFirst` (`loadSkyCubemap` w `src/game/Skybox.cpp`) i od razu oddaje bajty klasie `gfx::Cubemap`, która właśnie takiej kolejności wymaga ([`../gfx/cubemap.md`](../gfx/cubemap.md), sekcja 2.5).
+Skutek dla każdego, kto czyta `Image::pixels`: struktura `Image` **nie pamięta**, w jakiej kolejności ją wypełniono. To, czy wiersz 0 jest dołem, czy górą, wie tylko ten, kto wołał loader. W grze jest dwóch wołających z `TopFirst`. `loadSkyCubemap` w `src/game/Skybox.cpp` od razu oddaje bajty klasie `gfx::Cubemap`, która właśnie takiej kolejności wymaga ([`../gfx/cubemap.md`](../gfx/cubemap.md), sekcja 2.5). `loadHeightmap` w `src/game/NightMazeApp.cpp` od razu oddaje obraz funkcji `game::heightmapFromImage`, dla której górny wiersz obrazu to północny brzeg lądu ([`../renderer/terrain.md`](../renderer/terrain.md)).
 
 ## 3. Jak to działa w OpenGL
 
@@ -439,7 +441,7 @@ Między `stbi_load_from_memory` a `stbi_image_free` nie ma żadnego `return`, wi
 
 ### 5.6 Jak wołać loader
 
-W grze `loadImage` wołają dwa miejsca. Pierwsze, dla wszystkich tekstur 2D, to `assets::AssetCache::texture` w [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp). Fragment od wczytania pliku do utworzenia tekstury:
+W grze `loadImage` wołają trzy miejsca. Pierwsze, dla wszystkich tekstur 2D, to `assets::AssetCache::texture` w [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp). Fragment od wczytania pliku do utworzenia tekstury:
 
 ```cpp
     // loadImage logs its own error.
@@ -481,7 +483,34 @@ Drugie miejsce doszło w pierwszej części M6: funkcja `loadSkyCubemap` w [`src
         }
 ```
 
-To jedyne wywołanie z czwartym argumentem w całym programie. Cała funkcja jest omówiona w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.4.
+Cała funkcja jest omówiona w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.4.
+
+Trzecie miejsce doszło w drugiej części M6: funkcja `loadHeightmap` w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) wczytuje mapę wysokości terenu, też z pominięciem pamięci podręcznej (mapa wysokości nie staje się teksturą na karcie, zostaje tablicą liczb):
+
+```cpp
+Heightmap loadHeightmap() {
+    const std::filesystem::path path = core::assetPath(HEIGHTMAP_FILE);
+    assets::Image image;
+    std::string error;
+    // RowOrder::TopFirst: no row flip. The top row of the picture is the north edge of
+    // the land (game::Heightmap), so it has to come first.
+    if (!assets::loadImage(path, image, error, assets::RowOrder::TopFirst)) {
+        // loadImage has logged which file failed and why.
+        return {};
+    }
+    core::logInfo("Loaded heightmap: " + core::pathText(path));
+    return heightmapFromImage(image);
+}
+```
+
+| Fragment | Co robi |
+|---|---|
+| `core::assetPath(HEIGHTMAP_FILE)` | ścieżka do `assets/textures/heightmap.png` obok programu |
+| `assets::RowOrder::TopFirst` | bez odwracania: wiersz 0 wyniku to górny wiersz obrazu, a `game::Heightmap` umawia się, że wiersz 0 to północ (-Z) |
+| `return {};` po błędzie | pusta `Heightmap`, czyli jedna wartość 0: płaskie podłoże. Błąd jest w logu, gra działa dalej |
+| `heightmapFromImage(image)` | bierze pierwszy bajt każdego piksela (czerwony, w szarym obrazie równy jasności) i dzieli przez 255. Obraz `Image` ginie po wyjściu z funkcji, zostaje tablica `float` |
+
+To są dwa jedyne wywołania z czwartym argumentem w całym programie: ściany nieba i mapa wysokości. Skutek uboczny pominięcia pamięci podręcznej: panel Assets nie pokazuje `heightmap.png` ani na liście `Textures`, ani na liście `Failed to load`, bo obie listy należą do `AssetCache`.
 
 ### 5.7 Testy
 
@@ -489,8 +518,8 @@ To jedyne wywołanie z czwartym argumentem w całym programie. Cała funkcja jes
 
 | Przypadek testowy | Co sprawdza |
 |---|---|
-| `the stone textures of the game load with the size and channels they were made with` | prawdziwe pliki `wall_stone.png` i `floor_stone.png`: 512 x 512, 3 kanały, 786432 bajty, pusty tekst błędu |
-| `the normal maps of the game load, and most of their texels are flat` | nowy. Prawdziwe pliki `wall_stone_normal.png` i `floor_stone_normal.png`: 512 x 512, 3 kanały, pusty tekst błędu. Średnia całego obrazu: czerwony i zielony w granicach 2% od 128, niebieski powyżej 245 |
+| `the tiling textures of the game load with the size and channels they were made with` | prawdziwe pliki `wall_stone.png` i `ground.png`: 512 x 512, 3 kanały, 786432 bajty, pusty tekst błędu. Do M6 przypadek nazywał się `the stone textures of the game load...` i czytał `floor_stone.png` zamiast `ground.png` |
+| `the normal maps of the game load, and most of their texels are flat` | nowy. Prawdziwe pliki `wall_stone_normal.png` i `ground_normal.png` (do M6 `floor_stone_normal.png`): 512 x 512, 3 kanały, pusty tekst błędu. Średnia całego obrazu: czerwony i zielony w granicach 2% od 128, niebieski powyżej 245 |
 | `the wall normal map follows the OpenGL convention: a joint is a groove` | nowy. Na `wall_stone_normal.png`: zielony kanał na skosie pod poziomą fugą jest powyżej 150, a nad fugą poniżej 106. Czerwony kanał na skosie po lewej stronie pionowej fugi jest powyżej 150, a po prawej poniżej 106. Najmniejszy niebieski bajt całego obrazu jest większy od 128 |
 | `the rows are flipped: the first row in memory is the bottom row of the file` | obrazek 2 x 3 zapisany przez sam test: wynik ma dokładnie te same piksele z wierszami w odwrotnej kolejności |
 | `with RowOrder::TopFirst the rows are not flipped: they stay as in the file` | nowy w M6. Ten sam obrazek 2 x 3 wczytany z czwartym argumentem `assets::RowOrder::TopFirst`: wynik ma dokładnie te bajty, które test zapisał do pliku, górny wiersz pierwszy. Razem z poprzednim przypadkiem przypina oba zachowania parametru |
@@ -571,13 +600,13 @@ Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą
 
 **Linie `[error]` w wyjściu testów.** Trzy przypadki celowo wywołują błąd, a loader wypisuje go przez `core::logError`. W wyjściu programu testowego widać więc trzy linie `[error] Image file ...`. To nie są nieudane testy: wynik podaje ostatnia linia raportu doctest.
 
-**Wynik.** Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie 9 przypadków i 57 asercji tego pliku przechodziło po M5 (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Po pierwszej części M6 plik ma 10 przypadków i 63 asercje, a dla całego programu zgłoszono 221 przypadków i 85175 asercji w obu konfiguracjach. Sześć plików nieba czyta osobny plik testów, `tests/SkyboxTests.cpp` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.8). Na macOS testy nie były jeszcze uruchamiane. Oba nowe testy czytają pliki PNG zapisane na Windowsie: jeśli skrypt tekstur uruchomiony na Macu da inne bajty, testy nadal powinny przechodzić (progi mają duży zapas), ale tego nikt nie sprawdził.
+**Wynik.** Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie 9 przypadków i 57 asercji tego pliku przechodziło po M5 (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Po pierwszej części M6 plik ma 10 przypadków i 63 asercje, a dla całego programu zgłoszono 221 przypadków i 85175 asercji w obu konfiguracjach. Po drugiej części M6 plik ma nadal 10 przypadków i 63 asercje (dwa przypadki czytają pliki podłoża zamiast plików podłogi), a cały program 256 przypadków i 101232 asercje. Plik `heightmap.png` czyta przypadek `the heightmap of the game loads and gives gentle ground inside the default maze` z `tests/TerrainTests.cpp`. Sześć plików nieba czyta osobny plik testów, `tests/SkyboxTests.cpp` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.8). Na macOS testy nie były jeszcze uruchamiane. Oba nowe testy czytają pliki PNG zapisane na Windowsie: jeśli skrypt tekstur uruchomiony na Macu da inne bajty, testy nadal powinny przechodzić (progi mają duży zapas), ale tego nikt nie sprawdził.
 
-Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcje 5.9 i 5.10): na zrzutach ekranu z gry na Windowsie tekstury ścian i podłogi nie są odwrócone ani odbite.
+Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcje 5.9 i 5.10): na zrzutach ekranu z gry na Windowsie (z M2 + M3) tekstury ścian i ówczesnej podłogi nie są odwrócone ani odbite. Na teksturze podłoża z M6 odwrócenia nie dałoby się zobaczyć: ziemia, mech i kamienie nie mają góry ani dołu.
 
 ## 6. Panel ImGui
 
-Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Od M5 lista ma osiem pozycji: cztery obrazy koloru (kamień ściany, kamień podłogi, kryształ, drewno bramy) i cztery mapy normalnych. Miniatury map kamienia są jasnoniebieskie (większość tekseli jest bliska `(128, 128, 255)`, co dla tych dwóch plików sprawdza test). Map kryształu i drewna żaden test nie czyta. Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
+Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Od M5 lista ma osiem pozycji: cztery obrazy koloru (kamień ściany, podłoże terenu, które w M6 zastąpiło kamień podłogi, kryształ, drewno bramy) i cztery mapy normalnych. Mapy wysokości `heightmap.png` na liście nie ma: nie przechodzi przez pamięć podręczną (sekcja 5.6). Miniatury map ściany i podłoża są jasnoniebieskie (większość tekseli jest bliska `(128, 128, 255)`, co dla tych dwóch plików sprawdza test). Map kryształu i drewna żaden test nie czyta. Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
 
 ## 7. Pułapki
 
@@ -587,7 +616,7 @@ Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, 
 4. **Ścieżka jako `std::string`.** `path.string()` na Windowsie zamienia nazwę na lokalną stronę kodową i rzuca wyjątek, gdy znaku tam nie ma. Loader nigdzie nie zamienia ścieżki na tekst przed otwarciem pliku, a do komunikatów używa `core::pathText`.
 5. **Liczba kanałów inna niż 3 albo 4.** Loader zostawia kanały pliku. PNG zapisany w programie graficznym jako "grayscale" ma 1 kanał. `gfx::Texture2D` takiego obrazu nie przyjmie: wypisze błąd i tekstura nie powstanie. Tekstury gry trzeba zapisywać jako RGB albo RGBA.
 6. **Zakładanie, że kanałów jest zawsze 3.** Kod, który liczy pozycję piksela jako `(y * width + x) * 3`, przestanie działać dla pierwszego pliku z kanałem alfa. Zawsze `* image.channels`.
-7. **Wiersz 0 to dół.** Kto czyta `Image::pixels` we własnym kodzie (na przykład ktoś, kto dopisałby mapę wysokości terenu), musi pamiętać, że `y = 0` to dolny wiersz obrazu, a nie górny, jak w programie graficznym. Test konwencji mapy normalnych jest pierwszym takim kodem w projekcie: jego numery wierszy liczą się od dołu.
+7. **Wiersz 0 to dół.** Kto czyta `Image::pixels` we własnym kodzie, musi pamiętać, że przy domyślnym `RowOrder::BottomFirst` wiersz 0 to dolny wiersz obrazu, a nie górny, jak w programie graficznym. Mapa wysokości terenu jest takim kodem i dlatego `loadHeightmap` w `NightMazeApp.cpp` wczytuje ją z `RowOrder::TopFirst`: górny wiersz ma być północą. Test konwencji mapy normalnych jest pierwszym takim kodem w projekcie: jego numery wierszy liczą się od dołu.
 8. **Użycie `image` po nieudanym wczytaniu.** Funkcja nie zmienia `image` przy błędzie. Jeśli obiekt był pusty, zostaje pusty: szerokość 0 i `pixels.data()` bez danych. Wynik `loadImage` trzeba sprawdzić przed utworzeniem tekstury.
 9. **Kolory w sRGB.** Bajty w pliku PNG są zapisane w przestrzeni sRGB. Loader oddaje je bez zmian i tak samo trafiają na kartę. Poprawna obsługa gammy nie jest jeszcze zrobiona ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10). Dla map normalnych "bez zmian" jest dokładnie tym, czego trzeba: ich bajty to kierunki, nie kolory, i żadne przeliczenie z sRGB nie może ich dotknąć. Kiedy w M7 obrazy koloru zaczną być wczytywane jako sRGB, mapy normalnych muszą zostać przy formacie liniowym.
 10. **Brak kopii `assets` na Windowsie.** Program czyta `assets` obok pliku `.exe`, a tam leży kopia robiona podczas budowania ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Nowa tekstura dodana do repozytorium nie istnieje dla programu, dopóki kopia nie zostanie odświeżona. Testów to nie dotyczy: czytają katalog z repozytorium.
@@ -654,10 +683,10 @@ Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --
     Czyta prawdziwy plik `wall_stone_normal.png` i porównuje zielony kanał na dwóch skosach przy poziomej fudze: skos pod fugą (górna krawędź bloku) jest zwrócony w górę i ma zielony powyżej 128, skos nad fugą jest zwrócony w dół i ma zielony poniżej 128. To samo dla czerwonego kanału przy fudze pionowej. Mapa w konwencji DirectX albo grzbiet zamiast wgłębienia dałyby wynik odwrotny.
 
 15. **Do czego służy `RowOrder` i kto używa wartości `TopFirst`?**
-    Mówi loaderowi, który wiersz obrazu ma być pierwszy w `Image::pixels`. Domyślne `BottomFirst` odwraca wiersze dla tekstur 2D. `TopFirst` zostawia kolejność pliku i używa go tylko `game::Skybox` dla sześciu ścian tekstury sześciennej, na których `t = 0` to góra obrazu.
+    Mówi loaderowi, który wiersz obrazu ma być pierwszy w `Image::pixels`. Domyślne `BottomFirst` odwraca wiersze dla tekstur 2D. `TopFirst` zostawia kolejność pliku. Używają go dwa miejsca: `game::Skybox` dla sześciu ścian tekstury sześciennej, na których `t = 0` to góra obrazu, i `loadHeightmap` dla mapy wysokości terenu, w której górny wiersz to północ.
 
 16. **Skąd wiadomo, w jakiej kolejności są wiersze w danym obiekcie `Image`?**
-    Z samej struktury nie wiadomo: nie ma w niej pola na kolejność. Wie to wołający, który wybrał `RowOrder`. Dlatego obraz wczytany z `TopFirst` jest od razu oddawany klasie `gfx::Cubemap` i nigdzie dalej nie wędruje.
+    Z samej struktury nie wiadomo: nie ma w niej pola na kolejność. Wie to wołający, który wybrał `RowOrder`. Dlatego obraz wczytany z `TopFirst` jest od razu oddawany temu, kto takiej kolejności wymaga (klasie `gfx::Cubemap` albo funkcji `game::heightmapFromImage`), i nigdzie dalej nie wędruje.
 
 ## 10. Źródła
 

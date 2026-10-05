@@ -36,9 +36,9 @@ void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, c
                             const glm::vec3& crystalGlow) const {
     setModelSamplers(shader);
 
-    // The gate, as long as some of it is above the floor. It is a wall segment that
+    // The gate, as long as some of it is above the ground. It is a wall segment that
     // moves: the same matrix as a wall there, with the position lowered by how far the
-    // gate has sunk. The floor tiles hide the part that is below them.
+    // gate has sunk. The terrain hides the part that is below it.
     if (gateVisible(world, round)) {
         WallSegment loweredGate = world.gate;
         loweredGate.position.y -= gateSinkDepth(round);
