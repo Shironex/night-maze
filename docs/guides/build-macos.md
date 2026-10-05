@@ -1,7 +1,11 @@
 # Budowanie na macOS (Apple Silicon)
 
-Przewodnik dla kamienia milowego M0. Wszystkie polecenia z tego dokumentu zostały uruchomione
-na Macu w konfiguracji:
+Przewodnik dla kamienia milowego M0. Polecenia budowania i uruchamiania z tego dokumentu
+zostały uruchomione na Macu na kodzie M0 i M1, w konfiguracji z tabeli niżej. **Kod M2 + M3
+(testy, labirynt, gracz, modele, tekstury, nowe panele) nie był na macOS ani budowany, ani
+uruchamiany.** Wszystko, co ten dokument mówi o nim dla Maca, jest oczekiwaniem wynikającym
+z kodu i z pomiarów na Windowsie, a punkty do sprawdzenia są zebrane w sekcji 2 jako listy
+otwarte.
 
 | Element | Wersja |
 |---|---|
@@ -79,13 +83,20 @@ Po poprawnym starcie w terminalu pojawiają się dwie linie z `core::Window`:
 [info] GL_RENDERER: Apple M3
 ```
 
-W oknie widać ciemnogranatowe tło, na środku kostkę obróconą tak, że widać trzy jej ściany
-(czerwoną z przodu, niebieską z lewej i turkusową u góry, każda w jednolitym kolorze), a na
-wierzchu panele "Renderer", "Shaders" i "Camera". Kostka zachowuje proporcje przy zmianie
-rozmiaru okna. Po kliknięciu w scenę kursor znika i kamerą można latać wokół kostki
-(tabela niżej). Linia `[error] Shader ...` w terminalu oznacza, że shader się nie
-wczytał: wtedy okno pokazuje samo tło ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md),
-sekcja 5.1).
+**Co było widać na Macu w stanie M1 (zmierzone):** ciemnogranatowe tło, na środku kostka
+obrócona tak, że widać trzy jej ściany (czerwoną z przodu, niebieską z lewej i turkusową u
+góry, każda w jednolitym kolorze), a na wierzchu panele "Renderer", "Shaders" i "Camera".
+Po kliknięciu w scenę kursor znikał i kamerą można było latać wokół kostki.
+
+**Co powinno być widać po M2 + M3 (na macOS niesprawdzone, na Windowsie zmierzone
+2026-10-05):** widok z wnętrza labiryntu 10 na 10 z teksturą kamienia na podłodze, ścianach
+i słupkach, równo jasny (oświetlenie dochodzi w M4), sześć paneli (doszły "Maze",
+"Collision" i "Assets"), a kostka z M1 wisi nad komórką w rogu przeciwległym do startu. Po
+dwóch liniach z `core::Window` pamięć podręczna assetów wypisuje linie
+`[info] Loaded texture: ...` i `[info] Loaded model: ...`. Po kliknięciu w scenę kursor
+znika i gracz chodzi po labiryncie (tabela niżej). Linia `[error] Shader ...` w terminalu
+oznacza, że shader się nie wczytał: to, co rysuje ten program shaderów, znika, a reszta
+klatki jest rysowana dalej ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
 
 `4.1` potwierdza, że dostaliśmy kontekst, o który prosiliśmy. `Metal` oznacza, że OpenGL na
 Apple Silicon jest warstwą zbudowaną nad Metalem. Druga linia zależy od procesora w danym
@@ -95,10 +106,12 @@ Macu.
 
 | Klawisz albo mysz | Działanie | Gdzie w kodzie |
 |---|---|---|
-| lewy przycisk myszy w scenie | przechwytuje kursor (kursor znika) i włącza sterowanie kamerą | `NightMazeApp::onRender` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
+| lewy przycisk myszy w scenie | przechwytuje kursor (kursor znika) i włącza sterowanie | `NightMazeApp::onRender` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
 | ruch myszy przy przechwyconym kursorze | obraca kamerę | tamże |
-| W, S, A, D przy przechwyconym kursorze | lot do przodu, do tyłu, w lewo, w prawo | `NightMazeApp::onUpdate`, tamże |
-| spacja, lewy Shift przy przechwyconym kursorze | lot w górę, w dół | tamże |
+| W, S, A, D przy przechwyconym kursorze | chodzenie: do przodu, do tyłu, w lewo, w prawo, zawsze poziomo, z kolizjami | `NightMazeApp::onUpdate` zbiera klawisze, ruch liczy `Player::update` w [`src/game/Player.cpp`](../../src/game/Player.cpp) |
+| lewy Shift przy przechwyconym kursorze | chodzenie: sprint. W trybie noclip: w dół | tamże |
+| spacja przy przechwyconym kursorze | tylko w trybie noclip: w górę | tamże |
+| N | przełącza chodzenie i noclip (lot wzdłuż kierunku patrzenia, bez kolizji). Działa także przy wolnym kursorze | `NightMazeApp::onRender` |
 | Esc | przy przechwyconym kursorze oddaje kursor, przy wolnym zamyka program | `Application::run` w [`src/core/Application.cpp`](../../src/core/Application.cpp) |
 | `~` (na lewo od `1`, `GLFW_KEY_GRAVE_ACCENT`) | pokazuje lub ukrywa interfejs debugowy | `DebugNightMazeApp::onRender` w [`src/main.cpp`](../../src/main.cpp) |
 
@@ -106,9 +119,11 @@ Klawisze są ignorowane, dopóki aktywny jest widżet panelu ImGui (na przykład
 wpisywanie wartości): klawiatura należy wtedy do panelu. Opis w
 [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6. Kliknięcie w panel nie
 przechwytuje kursora, a przy przechwyconym kursorze panele nie reagują na mysz: żeby
-przesunąć suwak, trzeba najpierw nacisnąć Esc. Sterowanie kamerą opisuje
+przesunąć suwak, trzeba najpierw nacisnąć Esc. Obrót kamery opisuje
 [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcje 5
-i 6. Na macOS GLFW 3.4 nie ma surowego ruchu myszy, więc obrót korzysta z ruchu kursora po
+i 6, a ruch gracza [`../modules/game/player.md`](../modules/game/player.md). Obrót myszą i
+lot były na Macu sprawdzone ręcznie w stanie M1. Chodzenia z kolizjami, sprintu i klawisza N
+nikt na Macu nie sprawdzał. Na macOS GLFW 3.4 nie ma surowego ruchu myszy, więc obrót korzysta z ruchu kursora po
 przyspieszeniu systemowym ([`../modules/core/input.md`](../modules/core/input.md), sekcja
 2.7).
 
@@ -117,7 +132,7 @@ nazwę karty oraz edytor koloru tła. Panel można przeciągnąć do krawędzi o
 
 ### Katalog `assets` i praca z shaderami
 
-Program wczytuje shadery z katalogu `assets` leżącego **obok pliku wykonywalnego**, czyli z
+Program wczytuje shadery, modele i tekstury z katalogu `assets` leżącego **obok pliku wykonywalnego**, czyli z
 `build/debug/assets` ([`../modules/core/paths.md`](../modules/core/paths.md)). Na macOS ten
 katalog jest dowiązaniem symbolicznym, które build tworzy po zlinkowaniu programu:
 
@@ -129,8 +144,9 @@ ls -l build/debug/assets
 Skutki praktyczne:
 
 - Plik shadera edytuję w `assets/shaders/` w repozytorium. Program widzi zmianę przy
-  następnym wczytaniu, **bez budowania**. Dziś shader jest wczytywany tylko przy starcie, więc
-  wystarczy ponownie uruchomić `./build/debug/night_maze`.
+  następnym wczytaniu, **bez budowania**: po kliknięciu "Reload shaders" w panelu Shaders
+  albo po ponownym uruchomieniu `./build/debug/night_maze`. Modele i tekstury są wczytywane
+  tylko raz, przy starcie.
 - Program działa uruchomiony z dowolnego katalogu roboczego, bo ścieżka do shaderów nie
   zależy od katalogu roboczego.
 - `make clean` (albo `rm -rf build`) usuwa dowiązanie, a nie pliki w `assets/`. Następny
@@ -145,8 +161,8 @@ blok 7.
 
 ### Testy jednostkowe
 
-> **Na macOS jeszcze nie uruchomione.** Kod kolizji i labiryntu oraz jego testy powstały na
-> Windowsie (2026-10-05) i tam są zmierzone: [`build-windows.md`](build-windows.md),
+> **Na macOS jeszcze nie uruchomione.** Kod kolizji, labiryntu, gracza i loaderów oraz jego
+> testy powstały na Windowsie (2026-10-05) i tam są zmierzone: [`build-windows.md`](build-windows.md),
 > sekcja 2. Wszystko w tym podrozdziale jest dla Maca oczekiwaniem, nie pomiarem.
 
 Zwykły build (`cmake --build --preset debug`) buduje też program testowy
@@ -165,20 +181,19 @@ też uruchomić wprost, wtedy widać raport biblioteki doctest:
 ./build/debug/night_maze_tests
 ```
 
-Oczekiwany koniec wyjścia, taki jak zmierzony na Windowsie w konfiguracji Debug
-(2026-10-05, sześć plików z testami: `ColliderTests.cpp`, `MazeTests.cpp`,
-`MazeGeneratorTests.cpp`, `MazeLayoutTests.cpp`, `ObjLoaderTests.cpp` i
-`ImageLoaderTests.cpp`):
+Oczekiwany koniec wyjścia, taki jak zmierzony na Windowsie w konfiguracjach Debug i Release
+(2026-10-05, osiem plików z testami: `ColliderTests.cpp` 12 przypadków,
+`ImageLoaderTests.cpp` 7, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12,
+`MazeTests.cpp` 6, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 18 i `PlayerTests.cpp` 13):
 
 ```text
-[doctest] test cases:    66 |    66 passed | 0 failed | 0 skipped
-[doctest] assertions: 58953 | 58953 passed | 0 failed |
+[doctest] test cases:    87 |    87 passed | 0 failed | 0 skipped
+[doctest] assertions: 60858 | 60858 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
-podają loaderom zły plik, i nie oznaczają nieudanego testu. Same testy kolizji i labiryntu
-(cztery pierwsze pliki) to 41 przypadków i 58114 asercji.
+podają loaderom zły plik, i nie oznaczają nieudanego testu.
 
 Opis biblioteki, makr i opcji programu: [`../libraries/doctest.md`](../libraries/doctest.md).
 
@@ -197,8 +212,8 @@ nie wykonał):
 - [ ] nagłówek doctest trafia do kompilatora przez `-isystem` i nie daje ostrzeżeń w plikach
       testów
 - [ ] `ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release:
-      zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 66 i 58953,
-      z czego testy kolizji i labiryntu to 41 i 58114)
+      zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 87 przypadków i
+      60858 asercji, tak jak na Windowsie)
 - [ ] **najważniejszy punkt**: przechodzą testy `golden maze: 4 x 4 cells from seed 1 has
       exactly these walls` i `randomBelow gives the same numbers on every system`. To jest
       pomiar, że macOS i Windows generują ten sam labirynt
@@ -210,8 +225,8 @@ nie wykonał):
       w tej postaci nie był jeszcze uruchamiany)
 - [ ] `make tidy` nie zgłasza niczego w `src/scene/Collider.cpp`, `src/game/Maze*.cpp` ani w
       `tests/*.cpp` (na Windowsie LLVM 19.1.5 nie zgłasza niczego w tych plikach)
-- [ ] program `./build/debug/night_maze` buduje się i działa jak wcześniej (nowy kod nie
-      jest jeszcze wołany przez grę)
+- [ ] program `./build/debug/night_maze` buduje się i startuje w labiryncie (lista "M2 + M3
+      na macOS" niżej)
 
 **Loader OBJ i siatka (temat 4): do zrobienia przy pierwszym buildzie tego kodu na Macu.**
 Kod powstał na Windowsie (2026-10-05) i tam jest zmierzony: 18 przypadków testowych i 804
@@ -268,17 +283,163 @@ jeszcze nie kompilował:
       nazwie z polskimi literami i znakiem japońskim
 - [ ] klasa `gfx::Texture2D` na sterowniku Apple: czy na liście rozszerzeń jest
       `GL_EXT_texture_filter_anisotropic`, jaką wartość ma `maxAnisotropy()` i czy
-      konstruktor nie zostawia błędu w `glGetError`. Do sprawdzenia programem z ukrytym
-      oknem albo dopiero po wpięciu tekstur w grę, w panelu Textures
+      konstruktor nie zostawia błędu w `glGetError`. Do sprawdzenia w grze: suwak
+      `Anisotropy` w panelu Assets pokazuje maksimum sterownika albo jest wyszarzony (lista
+      "M2 + M3 na macOS" niżej)
 - [ ] powtórzyć pomiar pasów z [`../modules/gfx/textures.md`](../modules/gfx/textures.md),
       sekcja 5.9: czy poziom anizotropii ustawiony na obiekcie samplera zmienia obraz (na
       Windowsie: szary przy 1, czarne i białe pasy przy 16) i czy ustawiony przez
       `glTexParameterf` na samej teksturze też działa (na Windowsie nie działał)
-- [ ] po wpięciu tekstur w grę: tekstura na ścianie nie jest do góry nogami ani pochylona,
-      a `texture()` w shaderze `#version 410 core` kompiluje się na sterowniku Apple
+- [ ] tekstura na ścianie nie jest do góry nogami ani pochylona, a `texture()` w shaderze
+      `#version 410 core` kompiluje się na sterowniku Apple (tekstury są już wpięte w grę,
+      lista niżej)
 
 Po wykonaniu punkty trzeba odhaczyć i dopisać wynik, tak jak na liście w
 [`build-windows.md`](build-windows.md), sekcja 11.
+
+### M2 + M3 na macOS: lista w całości otwarta
+
+Krok, który łączy kolizje, labirynt, loadery, siatkę i tekstury w działającą grę, powstał na
+Windowsie i tam jest zbudowany i częściowo sprawdzony
+([`build-windows.md`](build-windows.md), sekcja 12). **Na macOS nikt go nie zbudował ani nie
+uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania wynikają z kodu i z
+pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game/player.md),
+[`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md),
+[`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md),
+[`../modules/scene/collision.md`](../modules/scene/collision.md),
+[`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) (panel Maze),
+[`../modules/gfx/textures.md`](../modules/gfx/textures.md) (shadery `textured`).
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/assets/AssetCache.*`, `src/game/Player.*`, `MazeWorld.*`, `MazeRenderer.*`,
+      `ColliderLines.*`, `ShaderUniforms.hpp`, `src/debug/panels/MazePanel.*`,
+      `CollisionPanel.*`, `AssetsPanel.*`, `tests/PlayerTests.cpp`,
+      `tests/MazeWorldTests.cpp`. Miejsca warte uwagi: inicjalizatory desygnowane, które
+      wypełniają tylko część pól (`gfx::Vertex{.position = ...}` w `ColliderLines.cpp`,
+      `PlayerInput{.forward = true}` w testach, `LoadedModel{...}` w `AssetCache.cpp`),
+      `constexpr glm::vec3` i `constexpr std::array<gfx::Vertex, ...>`,
+      `std::ranges::find` w `AssetCache.cpp`, `constexpr std::span<const scene::Aabb>` w
+      `PlayerTests.cpp`, `static_cast<ImTextureID>` z `GLuint` w `AssetsPanel.cpp`. Zapisać
+      każde ostrzeżenie
+- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 87 przypadków testowych i
+      60858 asercji, `Status: SUCCESS!` (liczby z Windowsa)
+- [ ] przechodzą nowe przypadki zależne od zaokrągleń `float`: `a player wandering through a
+      closed maze never leaves it or enters a wall` i `a player pressing into a wall slides
+      along it and past the pillars` z `tests/PlayerTests.cpp` oraz `a box that hugs a wall
+      slides past the pillars in the middle of it` z `tests/MazeLayoutTests.cpp`. To pierwsze
+      uruchomienie na ARM
+- [ ] `make check` (format, oba buildy z testami, clang-tidy) przechodzi
+
+**Ryzyka specyficzne dla macOS**
+
+- [ ] **ścisły kompilator GLSL Apple** przyjmuje cztery nowe pliki: `textured.vert`,
+      `textured.frag`, `color.vert`, `color.frag`. Po starcie w terminalu nie ma linii
+      `[error] Shader ...`, a panel Shaders pokazuje trzy bloki z `Program: valid` i
+      `Last load: OK`. Sterownik NVIDII na Windowsie przyjmuje je bez uwag, ale jest
+      łagodniejszy. Miejsca, na które sterownik Apple mógłby zareagować: `mat3(uModel)`,
+      `fract(vUv)` jako argument konstruktora `vec4`, porównania `uViewMode == 1` dla
+      uniformu `int`, wejście `vNormal` używane tylko w jednej gałęzi `if`
+- [ ] **obiekty samplera** (`glGenSamplers`, `glSamplerParameteri`, `glBindSampler`, rdzeń
+      OpenGL od 3.3): tekstury na ścianach powtarzają się (zawijanie `GL_REPEAT` ustawione
+      na samplerze) i reagują na listę `Filter`. Backend ImGui wiąże na czas rysowania
+      paneli własny sampler: po klatce z otwartym panelem Assets tekstury w scenie nadal
+      mają wybrany filtr
+- [ ] **wyszukanie rozszerzenia anizotropii**: `gfx::Texture2D` szuka nazwy
+      `GL_EXT_texture_filter_anisotropic` (albo `GL_ARB_texture_filter_anisotropic`) na
+      liście z `glGetStringi`. Zapisać, co pokazuje suwak `Anisotropy` w panelu Assets:
+      zakres od 1x do maksimum sterownika, albo suwak wyszarzony z napisem `Anisotropic
+      filtering is not offered by this graphics driver.` Oba wyniki są poprawne. Błędem
+      byłaby linia `[error]` z `GL_INVALID_ENUM`
+- [ ] **Retina a układ paneli**: panel Renderer pokazuje `Framebuffer` dwa razy większy niż
+      `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Pozycje startowe paneli są w
+      jednostkach okna i ułożone dla 1280 x 720, więc po usunięciu `imgui.ini` sześć paneli
+      powinno stać tak samo jak na Windowsie i nie zasłaniać się. Zapisać, czy plan w panelu
+      Maze i podglądy tekstur w panelu Assets mają poprawny rozmiar i ostrość
+- [ ] **linie pudełek kolizji mają 1 piksel framebuffera**: szerokość linii zostaje domyślna,
+      bo profil Core na macOS nie obsługuje grubszych. Na ekranie Retina to połowa punktu.
+      Zapisać, czy żółte i zielone linie są czytelne
+- [ ] **ten sam labirynt co na Windowsie, widziany w grze**: w panelu Maze ustawić `Width` 4,
+      `Height` 4, `Seed` 1 i kliknąć `Regenerate`. Plan musi mieć ściany tak jak rysunek w
+      teście `golden maze: 4 x 4 cells from seed 1 has exactly these walls` w
+      [`tests/MazeGeneratorTests.cpp`](../../tests/MazeGeneratorTests.cpp):
+
+      ```text
+      +--+--+--+--+
+      |  |        |
+      +  +  +--+  +
+      |  |     |  |
+      +  +--+  +--+
+      |     |     |
+      +--+  +--+  +
+      |           |
+      +--+--+--+--+
+      ```
+
+      Linie `Walls: 25, pillars: 25`, kropka gracza w lewej górnej komórce, kreska w dół
+      (z rysunku: komórka startowa ma ścianę od wschodu i przejście na południe, więc `Yaw`
+      wynosi 180). Sam test jednostkowy mierzy to samo bez okna, ten punkt sprawdza całą
+      drogę od ziarna do ekranu
+- [ ] labirynt startowy (10 na 10, ziarno 1): zapisać `Yaw` z panelu Camera i porównać z
+      Windowsem (tam 180 według autora kodu)
+
+**Test ręczny (ta sama lista co w [`build-windows.md`](build-windows.md), sekcja 12.2)**
+
+Na macOS katalog `assets` obok programu jest dowiązaniem, więc tam, gdzie lista dla Windowsa
+każe odświeżyć kopię (`--target copy_assets`), na Macu nie trzeba robić nic.
+
+- [ ] przygotowanie: usunąć `imgui.ini` z katalogu, z którego startuje program, zbudować,
+      uruchomić `./build/debug/night_maze`
+- [ ] start: widok z wnętrza labiryntu, tekstury stoją prosto i nie są odbite lustrzanie,
+      w terminalu nie ma linii `[error]`
+- [ ] okno 1280 x 720: sześć paneli nie zasłania się nawzajem (Renderer, Camera i Shaders
+      po lewej, Maze i Collision po prawej, Assets na dole obok lewej kolumny)
+- [ ] panel Camera: `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
+      `Pitch` 0, `Walk speed` 3.0, `Sprint speed` 5.5, `Fly speed` 6.0
+- [ ] panele Maze i Collision: `In play: 10 x 10 cells, seed 1`, `Walls: 121, pillars: 121`,
+      `Wall boxes: 121`, `Pillar boxes: 121`, `All boxes: 242`
+- [ ] chodzenie: po kliknięciu w scenę W, A, S, D chodzą poziomo, także ze wzrokiem w
+      podłodze, lewy Shift przyspiesza
+- [ ] ściana zatrzymuje gracza, a ruch ukosem w ścianę zamienia się w ślizganie wzdłuż niej
+- [ ] gracz przytulony do długiej ściany nie zahacza o słupki stojące co 2 m
+- [ ] narożnik wewnętrzny zatrzymuje, narożnik zewnętrzny daje się obejść bez zacięcia
+- [ ] nie da się wyjść poza labirynt
+- [ ] klawisz N: `Mode: noclip (free flight)`, pole `Noclip (key N)` w panelu Collision jest
+      zaznaczone, spacja wznosi, lewy Shift opuszcza, W leci wzdłuż kierunku patrzenia przez
+      ściany
+- [ ] widok z góry w trybie noclip zgadza się z planem w panelu Maze, nad rogiem
+      przeciwległym do startu wisi kostka
+- [ ] drugi raz N w powietrzu: gracz od razu stoi na podłodze
+- [ ] `Draw collision boxes`: żółte linie na ścianach i słupkach, zielone pudełko gracza
+      widoczne pod nogami i nad głową, linie nie migoczą
+- [ ] `Regenerate` z innym rozmiarem i ziarnem: nowy plan, gracz na starcie (`Player feet`
+      1, 0, 1, `Pitch` 0), a tryb noclip, prędkości, tryb widoku i rysowanie pudełek zostają
+      bez zmian
+- [ ] `Random seed`: nowa liczba w polu `Seed` i od razu nowy labirynt
+- [ ] panel Assets, `View mode`: `Normals as colour` (podłoga jasnozielona, ściany w
+      kolorach zależnych od kierunku), `UVs as colour` (czerwono-zielone powtarzające się
+      przejścia), `Textured` przywraca obraz
+- [ ] panel Assets, `Filter`: `Nearest` (kwadratowe teksele z bliska, migotanie w oddali),
+      `Bilinear` (gładko z bliska, migotanie w oddali), `Trilinear` (spokojnie w oddali)
+- [ ] panel Assets, `Anisotropy` (jeśli dostępna): większa wartość wyostrza podłogę widzianą
+      pod płaskim kątem
+- [ ] podglądy tekstur w panelu Assets stoją prosto i nie reagują na filtr
+- [ ] `Reload shaders` po zmianie w `assets/shaders/textured.frag` (na przykład
+      `fragColor = vec4(texel * uTint * vec3(1.0, 0.5, 0.5), 1.0);`): labirynt robi się
+      czerwonawy, trzy bloki panelu pokazują `Last load: OK`. Z błędem składni: blok
+      `textured` pokazuje `Last load: failed` i `Program: valid`, labirynt rysuje się
+      poprzednią wersją. Przywrócić plik
+- [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
+      `assets/textures/floor_stone.png` (na Macu to plik w repozytorium, bo `assets` obok
+      programu jest dowiązaniem), uruchomić. Oczekiwane: biała podłoga, jedna linia
+      `[error]`, w panelu Assets `no texture (white)` i sekcja `Failed to load`. **Przywrócić
+      nazwę pliku** i sprawdzić `git status`
+- [ ] zmiana rozmiaru okna, tryb pełnoekranowy macOS i powrót: obraz wypełnia okno, płytki
+      podłogi zostają kwadratowe, bez linii `[error]`
+- [ ] okno powiększone na cały ekran po usunięciu `imgui.ini`: zapisać, gdzie stoją panele
+      (układ startowy jest liczony dla 1280 x 720)
 
 ### Skróty: `make`
 
@@ -642,6 +803,7 @@ pokazuje część tych samych diagnostyk w edytorze, bo czyta ten sam plik `.cla
 | Ostrzeżenia `'gl...' is deprecated: first deprecated in macOS 10.14` | plik kompilowany bez `GL_SILENCE_DEPRECATION` | definicja jest `PUBLIC` na targecie `engine`. Sprawdź, czy nowy target linkuje `engine` |
 | `[error] Shader file cannot be opened: .../build/debug/assets/shaders/basic.vert`, w oknie samo tło | obok programu nie ma katalogu `assets`: program skopiowany ręcznie w inne miejsce albo repozytorium przeniesione po zbudowaniu (dowiązanie wskazuje starą ścieżkę) | `ls -l build/debug/assets`. Odtwórz dowiązanie pełnym buildem: `make clean`, potem `make debug` |
 | `[error] Shader compilation failed: ...` z linią `ERROR: 0:N: ...`, w oknie samo tło | błąd w pliku shadera, `N` to numer linii według sterownika | popraw plik w `assets/shaders/` i naciśnij "Reload shaders" w panelu Shaders (albo uruchom program ponownie). Opis w [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), sekcje 3.3 i 7, oraz w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7 |
+| Podłoga albo ściany są białe, w terminalu linia `[error]` o pliku obrazu | brakuje pliku w `assets/textures/` albo nie da się go zdekodować: część modelu dostaje białą teksturę zastępczą (na macOS niesprawdzone) | przywróć plik (`git status`, `git checkout assets/textures`) i uruchom program ponownie |
 | Okno otwiera się, ale panel "Renderer" jest niewidoczny | panele ukryte klawiszem `~` albo zapisany układ poza oknem | naciśnij `~` (na lewo od `1`). Jeśli nie pomaga, usuń `imgui.ini` z katalogu, z którego uruchamiasz program |
 | Esc nie zamyka programu, `~` nie chowa paneli | aktywny jest widżet ImGui (wpisywanie albo przeciąganie wartości), więc klawiatura gry jest zablokowana | zakończ edycję (Enter, Esc albo kliknięcie poza polem). Opis w [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6 |
 | Układ paneli nie zapamiętuje się między uruchomieniami | program startuje z różnych katalogów roboczych (terminal i IDE) | `imgui.ini` powstaje w katalogu roboczym. Ustaw ten sam katalog w IDE |

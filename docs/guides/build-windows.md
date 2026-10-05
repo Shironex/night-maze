@@ -6,16 +6,18 @@
 > Build Tools 2022", bez środowiska Visual Studio (IDE).
 >
 > **Zmierzone:** konfiguracja i build Debug oraz Release (zero ostrzeżeń pod `/W4`),
-> uruchomienie programu (okno, kostka, dwie linie `[info]`, panele), kopia katalogu `assets`,
-> błąd kompilacji shadera przy starcie, generator Ninja. Kod z M2 + M3 (kolizje, labirynt,
-> testy) powstał na tym PC: build Debug i Release bez ostrzeżeń i testy jednostkowe w obu
-> konfiguracjach (sekcja 2, "Testy jednostkowe").
+> uruchomienie programu, kopia katalogu `assets`, błąd kompilacji shadera przy starcie,
+> generator Ninja. Kod z M2 + M3 (kolizje, labirynt, gracz, modele, tekstury, sześć paneli)
+> powstał na tym PC: build Debug, Release i Ninja bez ostrzeżeń, 87 przypadków testowych w
+> obu konfiguracjach, start gry w oteksturowanym labiryncie bez linii `[error]` i zrzuty
+> ekranu kilku stanów (sekcja 12).
 >
-> **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (sterowanie,
-> kamera, zmiana rozmiaru okna, docking, przycisk "Reload shaders"), praca w Visual Studio
-> (Open Folder, F5, Build Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są
-> nadal przewidywaniem i są tak oznaczone. Lista kontrolna w sekcji 11 rozróżnia punkty
-> zmierzone (`[x]`, z wynikiem) od otwartych (`[ ]`).
+> **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
+> i ślizganie po ścianach, klawisz N, obrót myszą, przyciski i listy paneli, zmiana rozmiaru
+> okna, docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
+> Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
+> są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1) i 12 (M2 + M3)
+> rozróżniają punkty zmierzone (`[x]`, z wynikiem) od otwartych (`[ ]`).
 
 ## 1. Wymagania
 
@@ -99,9 +101,10 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 - `cmake --build --preset debug` i `cmake --build --preset release` kończą się kodem 0, bez
   ostrzeżeń i bez błędów. W wyjściu buildu jest linia `Copying assets next to the
   executable` (sekcja 7).
-- Program otwiera okno z ciemnogranatowym tłem i kostką na środku: ściana czerwona z przodu,
-  niebieska z lewej, turkusowa u góry. W terminalu są dokładnie dwie linie i żadnej linii
-  `[error]`:
+- Program otwiera okno z widokiem z wnętrza labiryntu: kamienna podłoga, ściany i słupki z
+  teksturą, równo jasne (oświetlenia nie ma do M4), nad ścianami ciemnogranatowe tło.
+  Kolorowa kostka z M1 wisi nad komórką w przeciwległym rogu labiryntu, więc ze startu
+  zwykle jej nie widać. W terminalu pierwsze dwie linie to:
 
   ```text
   [info] GL_VERSION:  4.1.0 NVIDIA 610.74
@@ -110,18 +113,24 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 
   Napisy zależą od karty i sterownika. Sterownik NVIDII oddał kontekst dokładnie w wersji
   4.1, o którą prosi program. Komputer ma też zintegrowaną kartę AMD Radeon: system sam
-  wybrał kartę NVIDIA.
-- Widoczne są trzy panele: Renderer, Shaders i Camera. Przy pierwszym uruchomieniu (gdy nie
-  ma jeszcze pliku `imgui.ini`) otwierają się jeden na drugim, w tym samym miejscu, więc
-  trzeba je raz rozsunąć myszą. To nie jest cecha Windowsa.
+  wybrał kartę NVIDIA. Po nich pamięć podręczna assetów wypisuje po jednej linii `[info]`
+  na każdy wczytany plik (`Loaded texture: ...` dla dwóch tekstur i `Loaded model: ...` dla
+  trzech modeli, co wynika z kodu `assets::AssetCache`). Zmierzone jest to, że na starcie
+  nie ma żadnej linii `[error]`, w tym żadnej z nazwą błędu OpenGL (`GL_INVALID_...`).
+  Dokładnej liczby linii `[info]` przy tym pomiarze nie zapisałem.
+- Widocznych jest sześć paneli: Renderer, Camera i Shaders przy lewej krawędzi, Maze i
+  Collision przy prawej, Assets na dole obok lewej kolumny. Każdy ma w kodzie pozycję i
+  rozmiar startowy, ułożone dla okna 1280 x 720. Działają one tylko wtedy, gdy w katalogu
+  roboczym nie ma pliku `imgui.ini` z wpisem danego panelu (sekcja 7). To nie jest cecha
+  Windowsa.
 
 Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest w
 [`build-macos.md`](build-macos.md), sekcja 3. Plik jest wspólny dla obu systemów.
 
 ### Testy jednostkowe
 
-Zwykły build buduje też program testowy `night_maze_tests.exe` (kolizje i labirynt, kod bez
-okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
+Zwykły build buduje też program testowy `night_maze_tests.exe` (kolizje, labirynt, gracz,
+loadery: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
 deweloperskim:
 
 ```bat
@@ -155,16 +164,16 @@ build\debug\Debug\night_maze_tests.exe
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:    41 |    41 passed | 0 failed | 0 skipped
-[doctest] assertions: 58114 | 58114 passed | 0 failed |
+[doctest] test cases:    87 |    87 passed | 0 failed | 0 skipped
+[doctest] assertions: 60858 | 60858 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
-Te same liczby dawało `build\release\Release\night_maze_tests.exe`. To wyjście zostało
-zmierzone przed dodaniem testów loadera OBJ i loadera obrazów. Z nimi program w konfiguracji
-Debug pokazuje 66 przypadków testowych i 58953 asercje (2026-10-05, sekcja 11), a
-konfiguracja Release nie była jeszcze z nimi uruchamiana. Program testowy nie
-otwiera okna. Opis biblioteki, makr i opcji programu:
+Te same liczby daje `build\release\Release\night_maze_tests.exe` (oba pomiary 2026-10-05,
+po kroku łączącym M2 + M3). Przypadki w plikach: `ColliderTests.cpp` 12,
+`ImageLoaderTests.cpp` 7, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12,
+`MazeTests.cpp` 6, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 18, `PlayerTests.cpp` 13.
+Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
 
 Plik [`Makefile`](../../Makefile) ze skrótami (`make run`, `make check`) na Windowsie nie był
@@ -422,20 +431,28 @@ directory)** procesu, a nie obok pliku `.exe`.
 
 Ta tabela jest na Windowsie nadal przewidywaniem. Przy pomiarach program był za każdym razem
 zatrzymywany przez zabicie procesu, więc plik `imgui.ini` nigdy nie został zapisany i nie
-wiem z pomiaru, gdzie powstaje. Bez tego pliku trzy panele otwierają się jeden na drugim
-(sekcja 2).
+wiem z pomiaru, gdzie powstaje.
+
+Bez tego pliku sześć paneli otwiera się w układzie zapisanym w kodzie (stałe
+`FIRST_POSITION` i `FIRST_SIZE` w `src/debug/panels/*.cpp`, warunek
+`ImGuiCond_FirstUseEver`). Gdy plik istnieje i ma wpis panelu, wygrywa wpis. W katalogu
+repozytorium na moim PC leży `imgui.ini` z wcześniejszych uruchomień, z wpisami paneli
+Renderer, Shaders i Camera: z takim plikiem te trzy panele zostają na starych miejscach, a
+nowy układ dostają tylko Maze, Collision i Assets. Żeby obejrzeć układ domyślny, trzeba
+plik usunąć przed uruchomieniem (sekcja 12).
 
 Plik jest w `.gitignore`, więc nigdzie nie przeszkadza w repozytorium. Skutkiem różnych
 katalogów jest tylko to, że układ paneli ustawiony przy uruchomieniu z terminala nie jest
 widoczny przy uruchomieniu z IDE i odwrotnie.
 
-Dla plików z `assets/` (dziś shadery, później modele i tekstury) katalog roboczy **nie ma
+Dla plików z `assets/` (shadery, modele i tekstury) katalog roboczy **nie ma
 znaczenia**: program szuka ich względem pliku `.exe`, przez `core::assetPath`
 ([`../modules/core/paths.md`](../modules/core/paths.md)). Na Windowsie położenie programu
-podaje `GetModuleFileNameW`. Zmierzone: program startuje bez linii `[error]` i pokazuje
-kostkę uruchomiony z katalogu repozytorium, z katalogu roboczego `C:\` oraz z kopii katalogu
-`build\debug\Debug` umieszczonej w katalogu z polskimi literami w nazwie
-(`...\Temp\nm-Żółw\`). PRD wymaga budowania ścieżek wyłącznie przez `std::filesystem`.
+podaje `GetModuleFileNameW`. Zmierzone w stanie M1 (gdy program wczytywał same shadery i
+rysował kostkę): program startuje bez linii `[error]` uruchomiony z katalogu repozytorium,
+z katalogu roboczego `C:\` oraz z kopii katalogu `build\debug\Debug` umieszczonej w katalogu
+z polskimi literami w nazwie (`...\Temp\nm-Żółw\`). Dla modeli i tekstur tych trzech prób
+nie powtórzyłem (punkt otwarty w sekcji 12). PRD wymaga budowania ścieżek wyłącznie przez `std::filesystem`.
 
 ### Katalog `assets` na Windowsie: kopia, nie dowiązanie
 
@@ -531,9 +548,11 @@ Typowe użycie: w RenderDoc, w zakładce Launch Application, wskazujemy
 `build\debug\Debug\night_maze.exe`, ustawiamy Working Directory na katalog repozytorium,
 uruchamiamy program i przechwytujemy klatkę klawiszem F12 lub PrintScreen.
 
-Dziś w przechwyconej klatce jest czyszczenie ekranu, jedno wywołanie `glDrawElements` z
-kostką (można obejrzeć bufor wierzchołków, bufor indeksów, trzy macierze w uniformach, bufor
-głębi oraz wejścia i wyjścia shaderów `basic`) i rysowanie ImGui. Narzędzie stanie się naprawdę użyteczne przy cieniach i efektach pozaekranowych.
+Dziś w przechwyconej klatce powinny być: czyszczenie ekranu, po jednym wywołaniu
+`glDrawElements` na każdą płytkę podłogi, ścianę i słupek labiryntu (dla labiryntu startowego
+100 + 121 + 121), jedno z kostką i rysowanie ImGui. Można w niej obejrzeć bufory
+wierzchołków i indeksów, macierze w uniformach, związaną teksturę i sampler, bufor głębi
+oraz wejścia i wyjścia shaderów `textured` i `basic`. Narzędzie stanie się naprawdę użyteczne przy cieniach i efektach pozaekranowych.
 
 Przechwycenia klatki z programu `night_maze` jeszcze nie sprawdzałem (punkt na liście
 kontrolnej w sekcji 11).
@@ -576,7 +595,9 @@ dokumentacji narzędzi (przewidywane).
 | `'cmake' is not recognized` albo podobny komunikat powłoki | CMake z Visual Studio nie jest w `PATH` zwykłego terminala | wejdź w środowisko deweloperskie (sekcja 2) albo zainstaluj CMake osobno | zmierzone |
 | Ostrzeżenie `Manually-specified variables were not used by the project: CMAKE_BUILD_TYPE` przy konfiguracji | generator Visual Studio ignoruje `CMAKE_BUILD_TYPE` | nic, to oczekiwane (sekcja 3) | zmierzone |
 | `LINK : fatal error LNK1168` przy `cmake --build --preset debug` | program `night_maze.exe` działa, a Windows blokuje jego plik | zamknij program i zbuduj ponownie. Do odświeżenia samych shaderów użyj `cmake --build --preset debug --target copy_assets` (sekcja 7) | zmierzone |
-| Trzy panele leżą jeden na drugim | pierwsze uruchomienie, nie ma jeszcze `imgui.ini` z układem | rozsuń panele myszą za paski tytułu | zmierzone |
+| Panele leżą jeden na drugim albo w dziwnych miejscach | w katalogu roboczym jest `imgui.ini` zapisany przez starszą wersję programu albo przy innym rozmiarze okna: jego wpisy wygrywają z układem startowym z kodu | usuń `imgui.ini` z katalogu, z którego startuje program (sekcja 7), albo rozsuń panele myszą za paski tytułu | przewidywane (w stanie M1, bez pozycji startowych w kodzie, trzy panele leżały jeden na drugim: zmierzone) |
+| Podłoga albo ściany są białe, w konsoli linia `[error]` o pliku obrazu | obok `night_maze.exe` brakuje pliku z `assets\textures\` albo nie da się go zdekodować. Część modelu dostaje wtedy białą teksturę zastępczą | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (pamięć podręczna nie ponawia nieudanego wczytania) | zmierzone (zrzut ekranu z celowo usuniętą teksturą, sekcja 12) |
+| Brakuje podłogi, ścian albo słupków, w konsoli `[error]` z nazwą pliku `.obj` albo `.mtl` | brakuje pliku modelu albo jego pliku `.mtl`. Model, którego nie udało się wczytać, nie jest rysowany, reszta labiryntu tak | jak wyżej | przewidywane |
 | Zmiana w pliku shadera nie jest widoczna po ponownym uruchomieniu | program czyta kopię obok `.exe`, a po zmianie pliku nie było kopiowania albo zbudowano tylko target `night_maze` (możliwe przy F5 w Visual Studio) | `cmake --build --preset debug --target copy_assets` albo pełny build przy zamkniętym programie, sekcja 7 | zmierzone dla `--target night_maze`, F5 przewidywane |
 | `[error] Shader compilation failed: ...\assets\shaders/basic.frag` i linia sterownika, w oknie samo tło i panele | błąd składni w pliku shadera. Mieszane ukośniki w ścieżce są poprawne (sekcja 11, klasa `gfx::Shader`) | popraw plik, odśwież kopię (sekcja 7) | zmierzone |
 | Konfiguracja pada przy pobieraniu GLFW, GLM lub ImGui | brak `git` w `PATH` albo brak sieci | zainstaluj git, otwórz nowy terminal, sprawdź `git --version` | przewidywane |
@@ -593,6 +614,14 @@ dokumentacji narzędzi (przewidywane).
 ## 11. Lista kontrolna pierwszego buildu na Windowsie
 
 Do przejścia na PC przed uznaniem M1 za zamknięty na obu systemach i przed tagiem wersji.
+
+**Ta lista powstała dla stanu M1**, w którym program rysował samą kostkę na środku okna, a
+kamera latała swobodnie. Punkty `[x]` są zapisem pomiarów z tamtego stanu i zostają bez
+zmian w treści: mówią o kostce na środku, dwóch liniach `[info]` i trzech panelach, bo tak
+wtedy było. Po M2 + M3 program startuje w labiryncie (sekcja 2), kostka wisi nad komórką w
+przeciwległym rogu, a kamera idzie za graczem. Punkty otwarte `[ ]`, które mówiły o kostce
+albo o locie, są przepisane tak, żeby dało się je wykonać w obecnym programie. Sprawdzenia
+samego labiryntu, gracza i nowych paneli są w sekcji 12.
 
 Punkty `[x]` są zmierzone 2026-10-05 w środowisku z sekcji 1, a wynik jest zapisany przy
 punkcie. Punkty `[ ]` są otwarte: nikt ich jeszcze nie wykonał. Punkt, z którego zmierzona
@@ -650,15 +679,16 @@ clangd w edytorze i `make`.
 - [x] na środku okna widać kostkę z trzema ścianami w jednolitych kolorach: czerwoną z
       przodu, niebieską z lewej, turkusową u góry. Żadna ściana nie "prześwituje" przez
       inną (test głębi działa). Sprawdzone na zrzucie ekranu
-- [ ] zmiana rozmiaru okna myszą (szersze, węższe, wyższe niż szersze): kostka zachowuje
-      proporcje, nie rozciąga się, zostaje na środku
+- [ ] zmiana rozmiaru okna myszą (szersze, węższe, wyższe niż szersze): płytki podłogi
+      zostają kwadratowe, obraz się nie rozciąga
 - [ ] minimalizacja okna i przywrócenie: program nie kończy pracy, w konsoli nie ma linii
-      `[error]` ani komunikatu o asercji, kostka wraca. Zapisać, jaki rozmiar framebuffera
+      `[error]` ani komunikatu o asercji, obraz wraca. Zapisać, jaki rozmiar framebuffera
       pokazuje panel Renderer zaraz po przywróceniu (na Windowsie zminimalizowane okno ma
       framebuffer 0 x 0, a `NightMazeApp::onRender` pomija wtedy rysowanie: sprawdza
       szerokość i wysokość)
 - [x] przy uruchomieniu z terminala są w nim dokładnie dwie linie `[info]`
-- [ ] przy uruchomieniu dwuklikiem otwiera się osobne okno konsoli z tymi dwiema liniami
+- [ ] przy uruchomieniu dwuklikiem otwiera się osobne okno konsoli z liniami `[info]`
+      (dwie o sterowniku i linie `Loaded ...` pamięci podręcznej assetów)
 - [x] dokładny napis `GL_VERSION` i `GL_RENDERER`: `4.1.0 NVIDIA 610.74` oraz
       `NVIDIA GeForce RTX 4070 Ti SUPER/PCIe/SSE2`. Komputer ma też zintegrowaną kartę AMD
       Radeon, system sam wybrał NVIDIA
@@ -778,7 +808,8 @@ nikt tam jeszcze nie nacisnął.
 - [ ] przeładowanie udane: przy działającym programie zmiana koloru w
       `assets\shaders\basic.frag`, `cmake --build --preset debug --target copy_assets` w
       drugim terminalu, potem "Reload shaders". Zapisać, czy kostka zmienia kolor
-      (oczekiwane: tak). Samo polecenie przy działającym programie jest już zmierzone (kod
+      (oczekiwane: tak; kostkę widać z góry w trybie noclip, sekcja 12). Przycisk przeładowuje
+      teraz wszystkie trzy programy naraz. Samo polecenie przy działającym programie jest już zmierzone (kod
       wyjścia 0, kopia odświeżona), otwarte zostaje naciśnięcie przycisku
 - [ ] to samo bez kopiowania: "Reload shaders" zaraz po zapisaniu pliku. Oczekiwane:
       `Last load: OK` i obraz bez zmian (program czyta kopię)
@@ -800,7 +831,8 @@ nikt tam jeszcze nie nacisnął.
 **Kamera: sterowanie i panel Camera**
 
 Opis: [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md),
-sekcje 5 i 6, [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.6. Na Windowsie
+sekcje 5 i 6, [`../modules/game/player.md`](../modules/game/player.md) (ruch gracza),
+[`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5. Na Windowsie
 kod jest skompilowany, a panel pokazuje wartości startowe. Sterowanie nie było tam jeszcze
 sprawdzane. Windows jest jedyną z dwóch platform, na której GLFW włącza surowy ruch myszy
 (`GLFW_RAW_MOUSE_MOTION`), więc obrót myszą działa tu inną ścieżką niż na Macu.
@@ -808,25 +840,27 @@ sprawdzane. Windows jest jedyną z dwóch platform, na której GLFW włącza sur
 - [x] `src/game/NightMazeApp.cpp`, `src/debug/panels/CameraPanel.cpp`,
       `src/debug/DebugUI.cpp` i `src/main.cpp` kompilują się w MSVC z `/W4 /permissive-` bez
       ostrzeżeń (w szczególności `static_cast<float>` z `double` przy `mouseDeltaX`, `fixedDt`
-      i `alpha`, `glm::mix` z trzecim argumentem `float`, domyślny inicjalizator pola
-      `m_previousCameraPosition = m_camera.position`, `io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse`
-      i trzy pola `DebugContext` w kolejności deklaracji): zero ostrzeżeń
-- [x] panel "Camera" jest widoczny i pokazuje `Position` 0, 0, 3, `Yaw` 0, `Pitch` 0,
-      `FOV` 60
+      i `alpha`, `glm::mix` z trzecim argumentem `float`, domyślny inicjalizator pola z
+      pozycją sprzed ostatniego kroku, `io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse`
+      i pola `DebugContext` w kolejności deklaracji): zero ostrzeżeń. Po M2 + M3 to pole
+      nazywa się `m_previousPlayerPosition`, a build nadal nie daje ostrzeżeń (sekcja 12)
+- [x] stan M1: panel "Camera" był widoczny i pokazywał pozycję kamery 0, 0, 3, `Yaw` 0,
+      `Pitch` 0, `FOV` 60. Wartości startowe po M2 + M3 są w sekcji 12
 - [ ] panel "Camera" daje się zadokować
 - [ ] kliknięcie lewym przyciskiem w scenę chowa kursor, a kursor nie wyjeżdża poza okno
       (także na drugi monitor)
 - [ ] pierwsza klatka po kliknięciu: obraz nie szarpie (kamera nie odskakuje)
-- [ ] ruch myszy w prawo obraca kamerę w prawo (kostka ucieka w lewo), ruch do góry podnosi
+- [ ] ruch myszy w prawo obraca kamerę w prawo (ściany uciekają w lewo), ruch do góry podnosi
       wzrok. `Pitch` zatrzymuje się na 89 i na -89
 - [ ] obrót jest płynny i ten sam ruch ręki daje ten sam obrót niezależnie od szybkości ruchu
       (surowy ruch myszy, bez przyspieszenia systemowego). Zapisać, czy czułość domyślna
       0,1 jest wygodna, czy wymaga innej wartości niż na Macu
 - [ ] długi obrót w jedną stronę (kilka pełnych obrotów): kamera kręci się bez zatrzymania,
       `Yaw` zawija się przez 360
-- [ ] W, S, A, D, spacja i lewy Shift przesuwają kamerę zgodnie z opisem, ruch po skosie
-      (W i D) nie jest szybszy, klawisze przeciwne (W i S) się znoszą
-- [ ] przy widocznym kursorze klawisze ruchu nie przesuwają kamery
+- [ ] W, S, A, D przesuwają gracza zgodnie z opisem (chodzenie w poziomie, lewy Shift to
+      sprint, w trybie noclip spacja i lewy Shift to góra i dół), ruch po skosie (W i D) nie
+      jest szybszy, klawisze przeciwne (W i S) się znoszą. Szczegółowe kroki: sekcja 12
+- [ ] przy widocznym kursorze klawisze ruchu nie przesuwają gracza
 - [ ] pierwszy Esc przy przechwyconym kursorze oddaje kursor (pojawia się w miejscu, w którym
       zniknął) i nie zamyka programu, drugi Esc zamyka program
 - [ ] po Esc, **bez ruszania myszą**, kliknięcie w scenę znowu przechwytuje kursor i żaden
@@ -842,12 +876,13 @@ sprawdzane. Windows jest jedyną z dwóch platform, na której GLFW włącza sur
       widżetów i nie zmienia żadnej wartości, także przy klikaniu i przy trzymaniu przycisku
 - [ ] Alt+Tab przy przechwyconym kursorze: kursor jest widoczny w innym programie. Po
       powrocie do okna zapisać, czy kursor jest znowu schowany i czy kamera nie odskoczyła
-- [ ] ruch jest płynny na monitorze o odświeżaniu innym niż 60 Hz (na przykład 144 Hz): lot
-      bokiem (D) obok kostki przy `Move speed` 20 nie szarpie. Zapisać FPS z panelu Renderer
-- [ ] to samo przy wyłączonym vsync w panelu sterownika (kilkaset FPS, większość klatek bez
-      kroku symulacji): ruch nadal płynny, prędkość lotu i czułość myszy takie same
-- [ ] `Near plane` powyżej około 2,2 odsłania wnętrze kostki, powyżej 3,9 kostka znika,
-      `Far plane` poniżej około 2,1 też ją chowa (kamera w pozycji startowej)
+- [ ] ruch jest płynny na monitorze o odświeżaniu innym niż 60 Hz (na przykład 144 Hz): chód
+      bokiem (D) wzdłuż ściany przy `Walk speed` 20 nie szarpie. Zapisać FPS z panelu Renderer
+- [ ] to samo przy wyłączonym vsync w panelu sterownika (kilkaset FPS i więcej, większość
+      klatek bez kroku symulacji): ruch nadal płynny, prędkość chodu i czułość myszy takie
+      same
+- [ ] `Near plane` przesuwany w górę wycina najbliższe ściany, `Far plane` przesuwany w dół
+      obcina koniec korytarza. Zapisać wartości, przy których to widać z pozycji startowej
 - [ ] minimalizacja okna przy przechwyconym kursorze i przywrócenie: bez linii `[error]` i
       bez asercji
 - [ ] w konsoli przez cały test ręczny nie ma linii `[error]`
@@ -894,8 +929,9 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
 - [x] `ctest --test-dir build/debug -C Debug --output-on-failure`: `100% tests passed, 0 tests
       failed out of 1`, kod wyjścia 0. To samo dla `build/release` i `-C Release`
 - [x] `ctest` bez `-C`: test nie jest uruchamiany (`***Not Run`, kod wyjścia 8)
-- [x] program testowy uruchomiony wprost, Debug i Release: 41 przypadków testowych, 58114
-      asercji, `Status: SUCCESS!`
+- [x] program testowy uruchomiony wprost, Debug i Release: wszystkie przypadki testowe tego
+      etapu (kolizje i labirynt) przechodzą, `Status: SUCCESS!`. Liczby dla całego programu
+      testowego po M2 + M3 są w sekcji 12
 - [x] labirynt wzorcowy (4 na 4, ziarno 1) jest ten sam w Debug i w Release i zgadza się z
       niezależnym skryptem w Pythonie
 - [x] program `night_maze.exe` nadal się buduje w obu konfiguracjach (nie uruchamiałem go po
@@ -906,7 +942,8 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       różnic
 - [x] clang-tidy 19.1.5 z bazy poleceń `build\ninja-debug`: żadnej diagnostyki w nowych
       plikach i w testach. Jedna w starszym pliku: `modernize-return-braced-init-list` w
-      `src/core/Paths.cpp` (gałąź Windows, linia `return std::filesystem::path(buffer);`)
+      `src/core/Paths.cpp` (gałąź Windows, linia `return std::filesystem::path(buffer);`).
+      Poprawiona w kroku łączącym M2 + M3: linia brzmi teraz `return {buffer};`
 - [x] diagnostyki kompilatora clang dla nowych plików i testów, jako zastępstwo za build na
       Macu: `clang-tidy --checks=-*,clang-diagnostic-*,readability-identifier-naming
       --extra-arg=/clang:-Wpedantic -p build\ninja-debug` na czterech nowych plikach `.cpp` z
@@ -921,9 +958,10 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       ostrzeżeń pod `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem
       Visual Studio (osobne katalogi buildu). `night_maze_tests.exe
       --source-file=*ObjLoaderTests*`: 18 przypadków testowych, 804 asercje, `Status:
-      SUCCESS!`. Konfiguracji Release dla tych plików nie budowałem. `gfx::Mesh` jest tylko
-      skompilowany: nie ma testu ani użytkownika
-      ([`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcja 5.6)
+      SUCCESS!`. Konfiguracji Release dla tych plików wtedy nie budowałem (po M2 + M3 jest
+      zbudowana i przetestowana, sekcja 12). `gfx::Mesh` był wtedy tylko skompilowany, bez
+      użytkownika. Dziś tworzą go `assets::AssetCache` i `game::ColliderLines`, testu
+      jednostkowego nadal nie ma ([`../modules/gfx/mesh.md`](../modules/gfx/mesh.md))
 - [x] clang-tidy 19.1.5 z bazy poleceń buildu Ninja na `src/gfx/Mesh.cpp`,
       `src/assets/ObjLoader.cpp` i `tests/ObjLoaderTests.cpp`: żadnej diagnostyki z regułami
       projektu (`.clang-tidy`) i żadnej z samymi diagnostykami kompilatora clang
@@ -946,8 +984,8 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem Visual
       Studio (osobne katalogi buildu). `night_maze_tests.exe
       --source-file=*ImageLoaderTests*`: 7 przypadków testowych, 35 asercji, `Status:
-      SUCCESS!`. Cały program testowy razem z testami loadera OBJ: 66 przypadków, 58953
-      asercje. Konfiguracji Release dla tych plików nie budowałem. Test nazwy pliku ze
+      SUCCESS!`. Cały program testowy razem z testami loadera OBJ też przechodził (liczby po
+      M2 + M3: sekcja 12). Konfiguracji Release dla tych plików wtedy nie budowałem. Test nazwy pliku ze
       znakami spoza ASCII (polskie litery i znak japoński) przechodzi przy stronie kodowej
       systemu 1250 ([`../modules/assets/images.md`](../modules/assets/images.md),
       sekcja 5.7)
@@ -969,12 +1007,13 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       `Texture2D` trzyma filtr, zawijanie i anizotropię w obiekcie samplera. Przyczyny nie
       ustaliłem ([`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcje 2.8 i
       5.9)
-- [ ] tekstury w oknie gry: `Texture2D` nie ma jeszcze użytkownika, więc program
-      `night_maze.exe` po tym kroku wygląda tak samo jak przed nim. Ręczne sprawdzenie
-      filtrów i anizotropii na ścianach labiryntu będzie możliwe po wpięciu tekstur w
-      klatkę i dodaniu panelu Textures
-- [ ] poprawić albo świadomie wyciszyć tę diagnostykę w `Paths.cpp` (na Macu gałąź nie jest
-      kompilowana, więc `make tidy` jej tam nie widzi)
+- [x] tekstury w oknie gry: po kroku łączącym M2 + M3 `Texture2D` ma użytkownika
+      (`assets::AssetCache`), a labirynt jest oteksturowany. Filtry i anizotropia na ścianach
+      są sprawdzone na zrzutach ekranu, ręczne klikanie widżetów panelu Assets jest otwarte
+      (sekcja 12). Pokaz tematu 5 z PRD (podgląd tekstur) niesie panel "Assets". Przełącznika
+      map normalnych z PRD nie ma: mapy normalnych są przeniesione do M4
+- [x] diagnostyka w `Paths.cpp` poprawiona (`return {buffer};`), clang-tidy na zmienionych
+      plikach nie zgłasza niczego (sekcja 12). Na Macu ta gałąź nie jest kompilowana
 - [ ] te same testy na macOS: dopiero to porównanie mierzy, że oba systemy generują ten sam
       labirynt (lista w [`build-macos.md`](build-macos.md), sekcja 2, "Testy jednostkowe")
 
@@ -999,7 +1038,190 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
 - [ ] `Makefile` w Git Bash albo innej powłoce z `make` (na moim PC nie ma `make`, plik nie
       był uruchamiany)
 
-## 12. Powiązane dokumenty
+## 12. Lista kontrolna M2 + M3: labirynt, gracz, tekstury, panele
+
+Krok, który łączy kolizje, labirynt, loadery, siatkę i tekstury w działającą grę. Opis kodu:
+[`../modules/game/player.md`](../modules/game/player.md),
+[`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md),
+[`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md),
+[`../modules/scene/collision.md`](../modules/scene/collision.md) (linie pudełek i panel
+Collision), [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) (panel
+Maze), [`../modules/gfx/textures.md`](../modules/gfx/textures.md) (shadery `textured`).
+
+Kamień milowy **nie jest zamknięty**: część ręczna poniżej jest otwarta, na macOS kod nie
+był budowany ([`build-macos.md`](build-macos.md)) i nie ma tagu.
+
+### 12.1. Zmierzone (2026-10-05)
+
+Środowisko: MSVC 19.44, karta NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74.
+
+- [x] build Debug i Release generatorem Visual Studio oraz build generatorem Ninja: kod
+      wyjścia 0, zero ostrzeżeń pod `/W4 /permissive-`
+- [x] `night_maze_tests.exe` w Debug i w Release: 87 przypadków testowych, 60858 asercji,
+      wszystkie przechodzą, `Status: SUCCESS!`. `ctest` dla obu konfiguracji: `100% tests
+      passed, 0 tests failed out of 1`
+- [x] clang-tidy na plikach zmienionych w tym kroku: żadnej diagnostyki
+- [x] gra startuje bez linii `[error]`, w tym bez żadnej linii z nazwą błędu OpenGL
+      (`GL_INVALID_...`), w buildzie Debug, w którym `GL_CHECK` jest aktywne
+- [x] zrzut ekranu ze startu: widok z wnętrza labiryntu, tekstury kamienia na podłodze,
+      ścianach i słupkach stoją prosto i nie są odbite lustrzanie
+- [x] zrzut ekranu z góry w trybie noclip: układ ścian zgadza się z planem w panelu Maze, a
+      żółte linie pudełek kolizji leżą na ścianach i słupkach
+- [x] zrzuty ekranu obu widoków debug shadera `textured`: normalne jako kolor i współrzędne
+      UV jako kolor
+- [x] zrzuty ekranu porównania filtrów na ścianie widzianej pod płaskim kątem: najbliższy
+      sąsiad, dwuliniowy, trójliniowy i trójliniowy z anizotropią 16x
+- [x] podglądy tekstur w panelu Assets stoją prosto (nie do góry nogami)
+- [x] brak pliku tekstury: powierzchnia rysuje się z białą teksturą zastępczą (w kolorze `Kd`
+      materiału), w konsoli jest jedna linia `[error]`
+
+Stany z czterech ostatnich punktów i widok z góry zostały osiągnięte tymczasowymi wstawkami
+w kodzie, które są już usunięte, a nie kliknięciami w panelach. Dlatego te same widżety są
+jeszcze raz na liście otwartej.
+
+Obserwacja, nie pomiar wydajności: na starcie panel Renderer pokazywał około 1500 FPS w
+buildzie Debug, z synchronizacją pionową taką, jaką ustawił sterownik. Nie wyciągam z tej
+liczby żadnych wniosków: nie wiem, czy vsync był aktywny, a pomiar był jeden.
+
+### 12.2. Otwarte: test ręczny na około dziesięć minut
+
+Tych kroków nikt jeszcze nie wykonał ręką: chodzenia i ślizgania prawdziwymi klawiszami,
+klawisza N, obrotu myszą w labiryncie, przycisków `Regenerate` i `Random seed`, przycisku
+`Reload shaders` z trzema programami oraz klikania list i suwaka w panelu Assets. Przy
+każdym kroku jest to, co powinno być widać. Oczekiwania wynikają z kodu i z testów
+jednostkowych, nie z obserwacji.
+
+Przygotowanie:
+
+- [ ] zamknąć program, usunąć `imgui.ini` z katalogu, z którego program będzie uruchamiany
+      (przy starcie z katalogu repozytorium: z katalogu głównego repozytorium), zbudować
+      (`cmake --build --preset debug`) i uruchomić `build\debug\Debug\night_maze.exe`
+
+Start i układ paneli:
+
+- [ ] okno 1280 x 720: sześć paneli nie zasłania się nawzajem. Renderer, Camera i Shaders
+      stoją w kolumnie przy lewej krawędzi, Maze i Collision przy prawej, Assets na dole,
+      na prawo od lewej kolumny. Środek okna jest wolny. Zapisać, czy trzy bloki panelu
+      Shaders mieszczą się w nim bez przewijania
+- [ ] panel Camera: `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
+      `Yaw` 180 (labirynt startowy: 10 na 10, ziarno 1), `Pitch` 0, `Walk speed` 3.0,
+      `Sprint speed` 5.5, `Fly speed` 6.0. Kąt 180 dla ziarna 1 podał autor kodu z
+      uruchomienia, żaden test go nie przypina: testy sprawdzają tylko, że kamera patrzy w
+      stronę bez ściany
+- [ ] panel Maze: `Width` 10, `Height` 10, `Seed` 1, linie `In play: 10 x 10 cells, seed 1` i
+      `Walls: 121, pillars: 121`, pod nimi plan z zieloną kropką w lewym górnym rogu i
+      kreską skierowaną w dół planu (południe)
+- [ ] panel Collision: `Wall boxes: 121`, `Pillar boxes: 121`, `All boxes: 242`,
+      `Wall box: 0.30 m thick (the visible wall: 0.20 m)`, pudełko gracza `min: 0.70, 0.00,
+      0.70` i `max: 1.30, 1.80, 1.30`
+- [ ] panel Assets: trzy modele (`floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`),
+      każdy z jedną częścią i nazwą pliku tekstury, dwie tekstury z podglądem
+      (`floor_stone.png`, `wall_stone.png`), brak sekcji `Failed to load`
+
+Chodzenie i kolizje (kliknąć w scenę, kursor znika):
+
+- [ ] W idzie tam, gdzie patrzy kamera, ale zawsze poziomo: z wzrokiem wbitym w podłogę
+      prędkość jest ta sama, a `Eye` ma stale y równe 1.70. Lewy Shift przyspiesza
+- [ ] dojście do ściany na wprost: gracz staje, obraz nie drży, ściana nie jest przycięta
+      przez bliską płaszczyznę
+- [ ] ślizganie: ustawić się ukosem do ściany i trzymać W. Gracz sunie wzdłuż ściany,
+      zamiast stanąć
+- [ ] ślizganie wzdłuż ściany obok słupków: iść przytulonym do długiej prostej ściany przez
+      kilka komórek. Gracz **nie może** zahaczać o słupki stojące co 2 m (pudełko ściany ma
+      grubość słupka, 0,3 m)
+- [ ] róg: wejść ukosem w narożnik wewnętrzny (gracz staje w rogu) i obejść narożnik
+      zewnętrzny (gracz zsuwa się po nim bez zacięcia)
+- [ ] nie da się wyjść poza labirynt: obejść kawałek ściany zewnętrznej, pchając w nią
+- [ ] kropka na planie w panelu Maze porusza się razem z graczem, a jej kreska obraca się
+      razem z kamerą
+- [ ] Esc oddaje kursor, klawisze ruchu przestają działać, gracz staje w miejscu
+
+Noclip:
+
+- [ ] klawisz N (działa także przy widocznym kursorze): `Mode: noclip (free flight)`, w
+      panelu Collision pole `Noclip (key N)` jest zaznaczone
+- [ ] w trybie noclip (kursor przechwycony) spacja wznosi, lewy Shift opuszcza, W leci tam,
+      gdzie patrzy kamera, także w górę i w dół, przez ściany
+- [ ] wzlecieć spacją ponad ściany i spojrzeć w dół: układ ścian zgadza się z planem w panelu
+      Maze (północ, czyli -Z, jest na górze planu). Nad komórką w rogu przeciwległym do
+      startu wisi kolorowa kostka
+- [ ] drugi raz N w powietrzu: gracz od razu stoi na podłodze (y stóp równe 0), bez
+      widocznego zjazdu w dół. Jeśli wylądował w ścianie, może z niej wyjść
+- [ ] to samo polem wyboru `Noclip (key N)` w panelu Collision zamiast klawisza
+
+Pudełka kolizji:
+
+- [ ] `Draw collision boxes`: żółte linie obrysowują każdą ścianę i każdy słupek, linie nie
+      migoczą (pudełka są rysowane o 1 cm większe). Pudełka ścian są wyraźnie grubsze od
+      korpusu ściany i równe ze słupkami. Linie za ścianą są zasłonięte
+- [ ] zielone pudełko gracza: kamera stoi w jego środku, więc widać je po spojrzeniu pod
+      nogi albo nad głowę, a w całości z boku nie widać go nigdy. Zapisać, jak to wygląda
+
+Regeneracja:
+
+- [ ] zmienić `Width` i `Height` (suwaki od 2 do 40) oraz `Seed`: nic się nie dzieje, linia
+      `In play` pokazuje stary labirynt. Dopiero `Regenerate` buduje nowy: zmienia się plan,
+      linia `In play` i liczby ścian, gracz stoi znowu w `Player feet` 1, 0, 1 z `Pitch` 0 i
+      patrzy w otwarty korytarz, kostka wisi nad nowym rogiem
+- [ ] `Regenerate` nie zmienia trybu noclip, prędkości, trybu widoku ani pola `Draw collision
+      boxes`: ustawić je przed kliknięciem i sprawdzić po nim
+- [ ] ten sam rozmiar i to samo ziarno dwa razy dają ten sam plan
+- [ ] `Random seed`: w polu `Seed` pojawia się nowa liczba i od razu powstaje nowy labirynt.
+      Wpisanie tej liczby później i `Regenerate` odtwarza go
+- [ ] labirynt 40 na 40: zapisać FPS z panelu Renderer (każdy obiekt to osobne wywołanie
+      rysujące)
+
+Panel Assets (stanąć tak, żeby widzieć długi korytarz i podłogę pod płaskim kątem):
+
+- [ ] `View mode`, `Normals as colour`: podłoga jasnozielona (normalna +Y), powierzchnie zwrócone
+      na +X czerwonawe, na +Z niebieskawe, a zwrócone w przeciwne strony ciemne w tym
+      kanale, więc dwie strony tej samej ściany mają różne kolory. `UVs as colour`: czerwono-zielone przejścia, które zaczynają się od nowa tam,
+      gdzie tekstura się powtarza. `Textured` przywraca obraz. Kostka i linie pudełek nie
+      zmieniają wyglądu
+- [ ] `Filter`, `Nearest`: z bliska widać kwadratowe teksele, w oddali obraz ziarni się i
+      migocze przy ruchu. `Bilinear`: z bliska gładko, w oddali nadal migocze. `Trilinear`
+      (ustawienie startowe): w oddali spokojnie, ale rozmyte
+- [ ] `Anisotropy`: suwak od 1x do maksimum sterownika (na tym PC 16x). Przy `Trilinear`
+      przesunięcie w prawo wyostrza podłogę i ściany widziane pod płaskim kątem w oddali
+- [ ] podglądy tekstur w panelu nie reagują na filtr ani na anizotropię (rysuje je ImGui
+      własnym samplerem) i stoją prosto
+- [ ] najechanie myszą na nazwę pliku pokazuje pełną ścieżkę
+
+Shadery i brakujący plik:
+
+- [ ] `Reload shaders` po zmianie w `textured.frag`: przy działającym programie zmienić w
+      `assets\shaders\textured.frag` linię `fragColor = vec4(texel * uTint, 1.0);` na
+      `fragColor = vec4(texel * uTint * vec3(1.0, 0.5, 0.5), 1.0);`, w drugim terminalu
+      `cmake --build --preset debug --target copy_assets`, potem kliknąć `Reload shaders`.
+      Oczekiwane: labirynt robi się czerwonawy, wszystkie trzy bloki panelu pokazują
+      `Program: valid` i `Last load: OK`
+- [ ] błąd w jednym programie: usunąć średnik w `textured.frag`, `copy_assets`, `Reload
+      shaders`. Oczekiwane: blok `textured` pokazuje `Last load: failed` z czerwonym tekstem
+      sterownika i nadal `Program: valid`, labirynt rysuje się poprzednią wersją, dwa
+      pozostałe bloki mają `Last load: OK`. Przywrócić plik (`git checkout
+      assets/shaders/textured.frag`), `copy_assets`, `Reload shaders`
+- [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
+      `build\debug\Debug\assets\textures\floor_stone.png` (kopii, nie pliku w repozytorium),
+      uruchomić. Oczekiwane: podłoga jest biała (`Kd` materiału to biel), ściany bez zmian,
+      w konsoli jedna linia `[error]`, w panelu Assets przy części `floor_stone` napis
+      `no texture (white)` i sekcja `Failed to load` z nazwą pliku na czerwono. Przywrócić
+      nazwę pliku
+- [ ] start z innego katalogu roboczego (`C:\`) i z katalogu ze znakami spoza ASCII w
+      ścieżce: modele i tekstury wczytują się tak samo (w stanie M1 sprawdzone tylko dla
+      shaderów)
+
+Okno:
+
+- [ ] zmiana rozmiaru okna myszą: obraz wypełnia okno, płytki podłogi zostają kwadratowe.
+      Zapisać, co dzieje się z panelami przy prawej krawędzi, gdy okno robi się węższe
+- [ ] okno zmaksymalizowane, po usunięciu `imgui.ini` i ponownym starcie: układ startowy
+      jest liczony dla 1280 x 720, więc panele powinny stać w lewej górnej części okna, w
+      tych samych miejscach co w małym oknie, i nie zasłaniać się. Zapisać, jak to wygląda
+- [ ] minimalizacja i przywrócenie w trakcie chodzenia: bez linii `[error]` i bez asercji
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tymi wywołanymi
+      celowo
+
+## 13. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)

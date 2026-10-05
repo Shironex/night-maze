@@ -5,20 +5,25 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`CMakeLists.txt`](../../CMakeLists.txt) oraz tę część API, której używają testy w katalogu
 [`tests/`](../../tests/).
 
-**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z siedmiu
-plików: `tests/main.cpp` (punkt wejścia) i sześciu plików z testami: `ColliderTests.cpp`
-(kolizje, [`../modules/scene/collision.md`](../modules/scene/collision.md)), `MazeTests.cpp`,
-`MazeGeneratorTests.cpp` i `MazeLayoutTests.cpp` (labirynt,
-[`../modules/game/maze-generator.md`](../modules/game/maze-generator.md)),
-`ObjLoaderTests.cpp` (loader OBJ,
-[`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)) i
-`ImageLoaderTests.cpp` (loader obrazów,
-[`../modules/assets/images.md`](../modules/assets/images.md)). Razem 66 przypadków testowych
-i 58953 asercje: tyle pokazał program na Windowsie w konfiguracji Debug (MSVC 19.44,
-2026-10-05). Wyjścia programu przytoczone w sekcji 4 (41 przypadków, 58114 asercji) pochodzą
-sprzed dodania testów obu loaderów: tamten zestaw przechodził w konfiguracji Debug i Release.
-Z testami loaderów konfiguracja Release nie była jeszcze uruchamiana. **Na macOS testy nie
-były jeszcze budowane ani uruchamiane.**
+**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z dziewięciu
+plików: `tests/main.cpp` (punkt wejścia) i ośmiu plików z testami:
+
+| Plik | Przypadków | Co sprawdza | Dokument |
+|---|---|---|---|
+| `ColliderTests.cpp` | 12 | kolizje: `Aabb`, `overlaps`, `moveAndSlide` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
+| `MazeTests.cpp` | 6 | klasa `Maze` i kierunki | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) |
+| `MazeGeneratorTests.cpp` | 11 | `randomBelow`, `generateMaze`, labirynt wzorcowy | tamże |
+| `MazeLayoutTests.cpp` | 12 | układ w świecie i pudełka kolizji labiryntu | tamże |
+| `MazeWorldTests.cpp` | 8 | `buildMazeWorld`: macierze modelu, pudełka, start | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `PlayerTests.cpp` | 13 | gracz: chodzenie, sprint, ślizganie, noclip | [`../modules/game/player.md`](../modules/game/player.md) |
+| `ObjLoaderTests.cpp` | 18 | loader OBJ i MTL | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
+| `ImageLoaderTests.cpp` | 7 | loader obrazów | [`../modules/assets/images.md`](../modules/assets/images.md) |
+
+Razem 87 przypadków testowych i 60858 asercji: tyle pokazał program na Windowsie w
+konfiguracjach Debug i Release (MSVC 19.44, 2026-10-05). **Na macOS testy nie były jeszcze
+budowane ani uruchamiane.** Kod, który wymaga kontekstu OpenGL (`gfx::Mesh`,
+`gfx::Texture2D`, `assets::AssetCache`, klasy rysujące i panele), testów jednostkowych nie
+ma.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -159,8 +164,9 @@ add_library(game_logic STATIC
     src/game/MazeLayout.cpp
     src/game/MazeLayout.hpp
 )
-# PUBLIC: game/MazeLayout.hpp includes scene/Collider.hpp and GLM, so whoever includes it
-# needs the include paths of engine. The src/ include root comes from engine as well.
+# PUBLIC: the headers of this library (MazeLayout.hpp, MazeWorld.hpp, Player.hpp) include
+# scene/Collider.hpp and GLM, so whoever includes them needs the include paths of engine.
+# The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 ```
@@ -184,14 +190,16 @@ add_executable(night_maze_tests
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
+    tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
+    tests/PlayerTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
 night_maze_enable_warnings(night_maze_tests)
-# The loader tests read the real models and textures. A test must not depend on the
-# directory it is started from, so the absolute path of assets/ in the repository is
-# compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
+# The loader tests (of images and of OBJ models) read the real files of the game. A test
+# must not depend on the directory it is started from, so the absolute path of assets/ in
+# the repository is compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
 target_compile_definitions(night_maze_tests PRIVATE
     NIGHT_MAZE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
 )
@@ -204,7 +212,7 @@ add_test(NAME night_maze_tests COMMAND night_maze_tests)
 | Linia | Znaczenie |
 |---|---|
 | `enable_testing()` | włącza obsługę testów w CMake: podczas generowania powstaje w katalogu buildu plik z listą testów, który czyta `ctest`. Musi stać w głównym `CMakeLists.txt`, bo `ctest` szuka listy w korzeniu katalogu buildu |
-| `add_executable(night_maze_tests ...)` | zwykły program z siedmiu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
+| `add_executable(night_maze_tests ...)` | zwykły program z dziewięciu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
 | `target_link_libraries(... PRIVATE game_logic doctest::doctest)` | kod testowany i biblioteka testów. "Linkowanie" targetu `INTERFACE` `doctest::doctest` oznacza tylko dodanie ścieżek nagłówków |
 | `night_maze_enable_warnings(night_maze_tests)` | testy kompilują się z tymi samymi ścisłymi ostrzeżeniami co reszta naszego kodu (`/W4 /permissive-` albo `-Wall -Wextra -Wpedantic`) |
 | `target_compile_definitions(night_maze_tests PRIVATE NIGHT_MAZE_ASSETS_DIR="...")` | makro preprocesora z bezwzględną ścieżką katalogu `assets` w repozytorium. Testy loaderów czytają nim prawdziwe modele i tekstury niezależnie od katalogu, z którego uruchomiono program ([`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7) |
@@ -469,10 +477,13 @@ Wynik zmierzony na Windowsie (taki sam w Debug i w Release):
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:    41 |    41 passed | 0 failed | 0 skipped
-[doctest] assertions: 58114 | 58114 passed | 0 failed |
+[doctest] test cases:    87 |    87 passed | 0 failed | 0 skipped
+[doctest] assertions: 60858 | 60858 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
+
+Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
+podają loaderom zły plik, i nie oznaczają nieudanego testu.
 
 Asercji jest dużo więcej niż przypadków, bo wiele z nich stoi w pętlach: własności labiryntu
 są sprawdzane dla 200 labiryntów, komórka po komórce.
@@ -482,14 +493,15 @@ Przydatne opcje programu (pełna lista: `--help`):
 | Opcja | Co robi |
 |---|---|
 | `-ltc` albo `--list-test-cases` | wypisuje nazwy wszystkich przypadków, niczego nie uruchamia |
-| `-tc="golden*"` albo `--test-case="golden*"` | uruchamia tylko przypadki o pasującej nazwie. `*` zastępuje dowolny tekst. Zmierzone: `-tc="golden*"` uruchamia 1 przypadek i pomija 40 |
+| `-tc="golden*"` albo `--test-case="golden*"` | uruchamia tylko przypadki o pasującej nazwie. `*` zastępuje dowolny tekst. Zmierzone, gdy program miał mniej przypadków: `-tc="golden*"` uruchamia 1 przypadek i pomija wszystkie pozostałe |
 | `-sf="*Collider*"` albo `--source-file=...` | filtruje po nazwie pliku źródłowego z testami |
 | `-s` albo `--success` | wypisuje także asercje, które przeszły |
 | `-d` albo `--duration` | wypisuje czas każdego przypadku |
 
 ### Kiedy uruchamiać
 
-Po każdej zmianie w `src/scene/Collider.*` i `src/game/Maze*`, przed każdym commitem (na
+Po każdej zmianie w `src/scene/Collider.*`, `src/game/Maze*`, `src/game/Player.*` i w
+loaderach z `src/assets/`, przed każdym commitem (na
 Macu robi to `make check`) i po przejściu na drugi system. To ostatnie ma tu szczególne
 znaczenie: test labiryntu wzorcowego istnieje po to, żeby wykryć różnicę między macOS a
 Windowsem ([`../modules/game/maze-generator.md`](../modules/game/maze-generator.md),

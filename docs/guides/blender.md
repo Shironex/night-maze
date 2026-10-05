@@ -16,9 +16,11 @@ Polecenia dla macOS (sekcja 3) **nie były jeszcze uruchomione na Macu**.
 Stan: skrypty, trzy modele i dwie tekstury są w repozytorium. Istnieje też kod C++, który
 wczytuje pliki OBJ i MTL: własny parser `assets::loadObj`
 ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)). Jego testy wczytują
-wszystkie trzy modele i sprawdzają liczby i wymiary z sekcji 8. Gra tych plików jeszcze nie
-rysuje: program nie woła jeszcze loadera. Sekcja 5 opisuje dokładnie, co jest w plikach, i
-była podstawą do napisania parsera.
+wszystkie trzy modele i sprawdzają liczby i wymiary z sekcji 8. Gra te pliki rysuje: przy
+starcie wczytuje trzy modele i dwie tekstury i buduje z nich labirynt
+([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md),
+[`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md)). Sekcja 5 opisuje
+dokładnie, co jest w plikach, i była podstawą do napisania parsera.
 
 ## 1. Skrypt jest źródłem, plik OBJ jest wynikiem
 
