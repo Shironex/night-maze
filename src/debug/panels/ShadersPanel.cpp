@@ -58,9 +58,9 @@ void drawShadersPanel(std::span<gfx::Shader* const> shaders) {
         // reloads every program: after editing a file there is no need to know which
         // program it belongs to, and a file that several programs include
         // (common/lighting.glsl) is read again by each of them. The results of reload()
-        // are not needed here: the lines
-        // below read them from lastError(). A program whose reload fails keeps working
-        // with its previous version, and the others are reloaded all the same.
+        // are not needed here: the lines below read them from lastError(). A program
+        // whose reload fails keeps working with its previous version, and the others are
+        // reloaded all the same.
         if (ImGui::Button("Reload shaders")) {
             for (gfx::Shader* shader : shaders) {
                 shader->reload();

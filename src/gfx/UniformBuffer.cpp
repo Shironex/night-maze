@@ -21,7 +21,8 @@ UniformBuffer::UniformBuffer(std::size_t sizeInBytes, GLuint bindingPoint)
     // GL_UNIFORM_BUFFER has two kinds of binding. glBindBuffer above set the general
     // one, which only says which buffer the next glBufferData call works on.
     // glBindBufferBase puts the whole buffer into one of the numbered binding points,
-    // and those are what the shader programs read their uniform blocks from.
+    // and those are what the shader programs read their uniform blocks from. It sets
+    // the general binding to the same buffer as well.
     GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, m_bindingPoint, m_id));
 }
 

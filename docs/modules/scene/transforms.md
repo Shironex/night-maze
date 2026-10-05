@@ -442,7 +442,7 @@ Uczciwie o tym, co ta funkcja dziś zmienia w obrazie: **nic**. Obiekty labirynt
 | `with unequal scale only the normal matrix keeps a normal perpendicular` | skos ze styczną `(1, 1, 0)` i normalną `(-1, 1, 0) / sqrt(2)`, skala `(4, 1, 1)` | styczna po przekształceniu to `(4, 1, 0)`. `mat3(model)` razy normalna ma kierunek `(-4, 1, 0)`, który **nie** jest do niej prostopadły. Macierz normalnych daje kierunek `(-0,25, 1, 0)`, prostopadły: `4 * (-0,25) + 1 * 1 = 0` |
 | `with equal scale the normal matrix changes only the length of a normal` | skala 2 na wszystkich osiach | `(0, 1, 0)` staje się `(0, 0,5, 0)`: kierunek ten sam, długość 1/2. Dlatego shader normalizuje |
 
-Trzeci przypadek jest tym, co pokazuję na obronie przy pytaniu "po co odwrotna transponowana": liczby mieszczą się na kartce. Wyniki na Windowsie (MSVC 19.44, 2026-10-05): cztery przypadki przechodzą w Debug i Release, w ramach 149 przypadków i 61240 asercji całego programu testowego. Na macOS nie były uruchamiane.
+Trzeci przypadek jest tym, co pokazuję na obronie przy pytaniu "po co odwrotna transponowana": liczby mieszczą się na kartce. Wyniki na Windowsie (MSVC 19.44, 2026-10-05): cztery przypadki przechodzą w Debug i Release, w ramach 163 przypadków i 62220 asercji całego programu testowego. Na macOS nie były uruchamiane.
 
 ## 6. Panel ImGui
 

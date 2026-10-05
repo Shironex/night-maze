@@ -4,6 +4,7 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <filesystem>
@@ -47,6 +48,24 @@ void writeTestPicture(const std::filesystem::path& path) {
     }
 }
 
+// The average value (0 to 255) of one channel over a rectangle of an image: columnCount
+// columns starting at firstColumn, rowCount rows starting at firstRow. Row 0 is the first
+// row in memory, which is the bottom row of the picture.
+double channelAverage(const assets::Image& image, int channel, int firstColumn, int firstRow,
+                      int columnCount, int rowCount) {
+    double sum = 0.0;
+    for (int row = firstRow; row < firstRow + rowCount; ++row) {
+        for (int column = firstColumn; column < firstColumn + columnCount; ++column) {
+            const std::size_t pixel =
+                static_cast<std::size_t>(row) * static_cast<std::size_t>(image.width) +
+                static_cast<std::size_t>(column);
+            sum += image.pixels[pixel * static_cast<std::size_t>(image.channels) +
+                                static_cast<std::size_t>(channel)];
+        }
+    }
+    return sum / (static_cast<double>(columnCount) * static_cast<double>(rowCount));
+}
+
 } // namespace
 
 TEST_CASE("the stone textures of the game load with the size and channels they were made with") {
@@ -65,6 +84,82 @@ TEST_CASE("the stone textures of the game load with the size and channels they w
         // 512 * 512 pixels with 3 bytes each.
         CHECK(image.pixels.size() == 786432U);
     }
+}
+
+TEST_CASE("the normal maps of the game load, and most of their texels are flat") {
+    for (const std::string fileName : {"wall_stone_normal.png", "floor_stone_normal.png"}) {
+        CAPTURE(fileName);
+        assets::Image image;
+        std::string error;
+
+        REQUIRE(assets::loadImage(assetsDirectory() / "textures" / fileName, image, error));
+        CHECK(error.empty());
+        CHECK(image.width == 512);
+        CHECK(image.height == 512);
+        CHECK(image.channels == 3);
+
+        // A flat texel is the direction (0, 0, 1), stored as (128, 128, 255). The faces
+        // of the stones are nearly flat and the two slopes of every joint lean in
+        // opposite directions, so the average of the whole picture is close to that
+        // colour. An average far from it would tilt the light on every wall.
+        const std::array<double, 3> average = {
+            channelAverage(image, 0, 0, 0, image.width, image.height),
+            channelAverage(image, 1, 0, 0, image.width, image.height),
+            channelAverage(image, 2, 0, 0, image.width, image.height),
+        };
+        CHECK(average[0] == doctest::Approx(128.0).epsilon(0.02));
+        CHECK(average[1] == doctest::Approx(128.0).epsilon(0.02));
+        CHECK(average[2] > 245.0);
+    }
+}
+
+TEST_CASE("the wall normal map follows the OpenGL convention: a joint is a groove") {
+    assets::Image image;
+    std::string error;
+    REQUIRE(
+        assets::loadImage(assetsDirectory() / "textures" / "wall_stone_normal.png", image, error));
+
+    // The loader returns the bottom row first, so row 0 is v = 0 and rows count upwards,
+    // like v. The bottom row of blocks covers the rows 0 to 63 and its first block the
+    // columns 0 to 127. Each side of a block has 3 pixels of joint and then 5 pixels of
+    // bevel that rise to the face (tools/blender/make_textures.py).
+    //
+    // In a groove the bevel BELOW the joint is the top edge of a block: it faces up, so
+    // its normal has a positive y, a green above 128. The bevel ABOVE the joint is the
+    // bottom edge of the next block: it faces down, green below 128. A map in the
+    // DirectX convention, or a ridge instead of a groove, would have the two swapped.
+    constexpr int BLOCK_MIDDLE_FIRST_COLUMN = 24;
+    constexpr int BLOCK_MIDDLE_COLUMN_COUNT = 80;
+    constexpr int TOP_BEVEL_ROW = 58;   // below the joint between the rows 63 and 64
+    constexpr int BOTTOM_BEVEL_ROW = 5; // above the joint at the bottom of the picture
+    const double greenBelowJoint = channelAverage(image, 1, BLOCK_MIDDLE_FIRST_COLUMN,
+                                                  TOP_BEVEL_ROW, BLOCK_MIDDLE_COLUMN_COUNT, 1);
+    const double greenAboveJoint = channelAverage(image, 1, BLOCK_MIDDLE_FIRST_COLUMN,
+                                                  BOTTOM_BEVEL_ROW, BLOCK_MIDDLE_COLUMN_COUNT, 1);
+    CHECK(greenBelowJoint > 150.0);
+    CHECK(greenAboveJoint < 106.0);
+
+    // The same along x, in the red channel: the bevel left of a vertical joint is the
+    // right edge of a block and faces right (red above 128), the bevel right of the
+    // joint faces left (red below 128).
+    constexpr int BLOCK_MIDDLE_FIRST_ROW = 16;
+    constexpr int BLOCK_MIDDLE_ROW_COUNT = 32;
+    constexpr int RIGHT_BEVEL_COLUMN = 122; // left of the joint between the columns 127 and 128
+    constexpr int LEFT_BEVEL_COLUMN = 5;    // right of the joint at the left edge of the picture
+    const double redLeftOfJoint = channelAverage(image, 0, RIGHT_BEVEL_COLUMN,
+                                                 BLOCK_MIDDLE_FIRST_ROW, 1, BLOCK_MIDDLE_ROW_COUNT);
+    const double redRightOfJoint = channelAverage(
+        image, 0, LEFT_BEVEL_COLUMN, BLOCK_MIDDLE_FIRST_ROW, 1, BLOCK_MIDDLE_ROW_COUNT);
+    CHECK(redLeftOfJoint > 150.0);
+    CHECK(redRightOfJoint < 106.0);
+
+    // Every texel points out of the surface: its z is positive, a blue above 128. The
+    // blue byte is the third of every pixel.
+    unsigned char lowestBlue = 255;
+    for (std::size_t i = 2; i < image.pixels.size(); i += 3) {
+        lowestBlue = std::min(lowestBlue, image.pixels[i]);
+    }
+    CHECK(lowestBlue > 128);
 }
 
 TEST_CASE("the rows are flipped: the first row in memory is the bottom row of the file") {

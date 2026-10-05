@@ -4,10 +4,15 @@
 // texture coordinate as a colour instead. There is no lighting here.
 // See docs/modules/gfx/textures.md
 
+// The normal map and the function surfaceNormal, for the view of the normals. The same
+// file is included by lit.frag, so the view shows the very normal the lighting uses.
+#include "common/normal_map.glsl"
+
 // Inputs from the vertex shader: same names and types as its outputs, already
 // interpolated for this fragment.
-in vec2 vUv;     // texture coordinate
-in vec3 vNormal; // normal in world space, no longer exactly of length 1
+in vec2 vUv;      // texture coordinate
+in vec3 vNormal;  // normal in world space, no longer exactly of length 1
+in vec3 vTangent; // tangent in world space, no longer exactly of length 1
 
 // The texture to read. A sampler does not hold a texture: it holds the NUMBER OF A
 // TEXTURE UNIT, set from C++ with gfx::Shader::setInt. The texture bound to that unit
@@ -20,7 +25,7 @@ uniform vec3 uTint;
 
 // What to show. The numbers are the values of game::ViewMode in C++.
 //   0: the texture multiplied by the tint (the normal picture)
-//   1: the normal as a colour
+//   1: the normal as a colour (with normal mapping: the normal from the normal map)
 //   2: the texture coordinate as a colour
 uniform int uViewMode;
 
@@ -29,11 +34,12 @@ out vec4 fragColor;
 
 void main() {
     if (uViewMode == 1) {
-        // Interpolation between vertices can shorten a normal, so its length is brought
-        // back to 1. Each component is then between -1 and 1, and a colour needs 0 to 1:
-        // half of it plus one half. A surface facing +X comes out reddish, +Y (up)
+        // The normal the lit program would shade this fragment with: the one of the
+        // model, or with normal mapping the one from the normal map (surfaceNormal). It
+        // has length 1, so each component is between -1 and 1, and a colour needs 0 to
+        // 1: half of it plus one half. A surface facing +X comes out reddish, +Y (up)
         // greenish, +Z bluish, and the opposite directions dark in that channel.
-        vec3 normal = normalize(vNormal);
+        vec3 normal = surfaceNormal(vNormal, vTangent, vUv);
         fragColor = vec4(normal * 0.5 + 0.5, 1.0);
     } else if (uViewMode == 2) {
         // u goes to red and v to green. The coordinates of the models run past 1 (the

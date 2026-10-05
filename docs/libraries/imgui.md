@@ -358,7 +358,7 @@ void DebugUI::draw(const DebugContext& context) {
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
         drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
-        drawAssetsPanel(context.assets, context.viewMode);
+        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
         drawLightsPanel(context.lighting, context.mazeWorld);
     }
 
@@ -379,7 +379,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem siedem funkcji paneli. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`), `drawAssetsPanel` (`Combo`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`). Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem siedem funkcji paneli. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`). Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -718,7 +718,7 @@ adres zmiennej, pokazują jej wartość i zapisują nową, gdy użytkownik coś 
 |---|---|---|---|
 | `SliderInt` | `ImGui::SliderInt("Width", &settings.width, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells", ImGuiSliderFlags_AlwaysClamp);` | `MazePanel.cpp` | suwak liczby całkowitej. Format jak w `printf`. `AlwaysClamp` przycina także wartość wpisaną z klawiatury (Ctrl i kliknięcie) |
 | `InputScalar` | `ImGui::InputScalar("Seed", ImGuiDataType_U32, &settings.seed, &SEED_STEP);` | `MazePanel.cpp` | pole liczbowe dowolnego typu. Typ nazywa drugi argument i **musi** zgadzać się ze zmienną (tu `std::uint32_t`), bo funkcja dostaje `void*` i kompilator tego nie sprawdzi. Czwarty argument to wskaźnik na krok przycisków plus i minus |
-| `Checkbox` | `ImGui::Checkbox("Draw collision boxes", &drawColliders);` | `CollisionPanel.cpp` | pole wyboru na zmiennej `bool` |
+| `Checkbox` | `ImGui::Checkbox("Draw collision boxes", &drawColliders);` | `CollisionPanel.cpp`, a od map normalnych także `AssetsPanel.cpp` (`ImGui::Checkbox("Normal mapping", &normalMapping);`, pole `game::LightingSettings::normalMapping`) | pole wyboru na zmiennej `bool` |
 | `Combo` | `ImGui::Combo("View mode", &viewModeIndex, VIEW_MODE_ITEMS)` | `AssetsPanel.cpp`, od M4 także `RendererPanel.cpp` (`ImGui::Combo("Lighting", &lightingModeIndex, LIGHTING_MODE_ITEMS)`) | lista rozwijana. Pracuje na **numerze** wybranej pozycji (`int`), nie na wyliczeniu, więc kod rzutuje `enum class` na `int` i z powrotem. Zwraca `true` w klatce, w której użytkownik wybrał inną pozycję |
 | `SliderFloat` w bloku `BeginDisabled` | `ImGui::BeginDisabled(!anisotropySupported);` ... `ImGui::EndDisabled();` | `AssetsPanel.cpp` | wszystko między tą parą jest wyszarzone i nie reaguje, gdy argument jest prawdą. `EndDisabled` woła się **zawsze**, tak jak `End` |
 
@@ -803,6 +803,12 @@ wszystko, co rysuje ImGui, także nasze tekstury w `ImGui::Image`, jest czytane 
 liniowym, bez mipmap, z zawijaniem `GL_CLAMP_TO_EDGE`. Podgląd w panelu Assets **nie reaguje**
 na filtr i anizotropię wybrane w tym samym panelu: ich skutek widać w scenie. Po narysowaniu
 backend przywraca sampler, który był związany wcześniej, tak jak resztę stanu.
+
+Od map normalnych lista `Textures` ma cztery pozycje zamiast dwóch. Mapy normalnych są dla
+pamięci podręcznej teksturami jak każde inne, więc ta sama linia `ImGui::Image` pokazuje je
+bez żadnej zmiany w kodzie: jako jasnoniebieskie obrazki, bo większość tekseli to kolor
+`(128, 128, 255)`, czyli kierunek "prosto z powierzchni"
+([`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 2.4).
 
 **Rysowanie własnych kształtów: lista rysowania**
 ([`MazePanel.cpp`](../../src/debug/panels/MazePanel.cpp), plan labiryntu):

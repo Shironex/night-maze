@@ -22,6 +22,11 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 constexpr const char* TEXTURE_UNIFORM = "uTexture";
 constexpr const char* TINT_UNIFORM = "uTint";
 
+/// common/normal_map.glsl, so lit.frag and textured.frag: the sampler of the normal map
+/// (the number of a second texture unit) and the switch of normal mapping (1 on, 0 off).
+constexpr const char* NORMAL_MAP_UNIFORM = "uNormalMap";
+constexpr const char* NORMAL_MAP_ENABLED_UNIFORM = "uNormalMapEnabled";
+
 /// textured.frag only: what to show (a value of game::ViewMode).
 constexpr const char* VIEW_MODE_UNIFORM = "uViewMode";
 
@@ -38,8 +43,9 @@ constexpr const char* SHININESS_UNIFORM = "uShininess";
 /// common/lighting.glsl: the name of the uniform block with the lights, and the uniform
 /// buffer binding point it is connected to. Every uniform block of a new program starts
 /// at binding point 0. The lights use 1 on purpose: a program whose block was never
-/// connected then reads no lights at all, which is noticed at once, instead of working
-/// by accident.
+/// connected then reads from binding point 0, where no buffer is attached. The OpenGL
+/// 4.1 specification leaves the values it gets undefined, so the mistake shows as wrong
+/// lighting instead of the program working by accident.
 constexpr const char* LIGHT_BLOCK_NAME = "LightBlock";
 constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
 

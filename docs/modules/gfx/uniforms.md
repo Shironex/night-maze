@@ -9,7 +9,7 @@ Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md
 
 Shader wierzchołków dostaje pozycję wierzchołka z bufora, ale żeby postawić obiekt w scenie, potrzebuje jeszcze trzech macierzy: modelu, widoku i rzutowania. Te macierze nie są danymi wierzchołka: są takie same dla całej kostki i zmieniają się najwyżej raz na klatkę. Do przekazywania takich wartości z C++ do shadera służą **uniformy**.
 
-W M1 uniformy to były trzy linie `uniform mat4` w `basic.vert` i jedna funkcja klasy `gfx::Shader`, `setMat4`, wołana trzy razy w każdej klatce. W kamieniu milowym M2 + M3 doszły dwa programy shaderów i settery `setInt` oraz `setVec3` (sekcja 5.4). Od M4 gra ma **pięć programów** i **jedenaście nazw zwykłych uniformów** (sekcja 4), a klasa ma pięć setterów: doszły `setMat3` i `setFloat` (sekcja 5.7). Wszystkie nazwy są zebrane w jednym nagłówku, `ShaderUniforms.hpp` (sekcja 5.5). Kodu jest mało, ale miejsc na pomyłkę, której OpenGL nie zgłosi, jest kilka:
+W M1 uniformy to były trzy linie `uniform mat4` w `basic.vert` i jedna funkcja klasy `gfx::Shader`, `setMat4`, wołana trzy razy w każdej klatce. W kamieniu milowym M2 + M3 doszły dwa programy shaderów i settery `setInt` oraz `setVec3` (sekcja 5.4). Od M4 gra ma **pięć programów** i **trzynaście nazw zwykłych uniformów** (sekcja 4; dwie ostatnie, `uNormalMap` i `uNormalMapEnabled`, doszły z mapami normalnych), a klasa ma pięć setterów: doszły `setMat3` i `setFloat` (sekcja 5.7). Wszystkie nazwy są zebrane w jednym nagłówku, `ShaderUniforms.hpp` (sekcja 5.5). Kodu jest mało, ale miejsc na pomyłkę, której OpenGL nie zgłosi, jest kilka:
 
 | Pomyłka | Skutek |
 |---|---|
@@ -83,14 +83,16 @@ Gra ma pięć programów i każdy ma własny zestaw zwykłych uniformów. W kom�
 | `uNormalMatrix` | `mat3` | | | | `lit.vert` | `gouraud.vert` | `setMat3` |
 | `uTexture` | `sampler2D` | | `textured.frag` | | `lit.frag` | `gouraud.frag` | `setInt` |
 | `uTint` | `vec3` | | `textured.frag` | | `lit.frag` | `gouraud.frag` | `setVec3` |
+| `uNormalMap` | `sampler2D` | | `textured.frag` (przez `#include`) | | `lit.frag` (przez `#include`) | | `setInt` |
+| `uNormalMapEnabled` | `bool` | | `textured.frag` (przez `#include`) | | `lit.frag` (przez `#include`) | | `setInt` |
 | `uViewMode` | `int` | | `textured.frag` | | | | `setInt` |
 | `uSpecularModel` | `int` | | | | `lit.frag` (przez `#include`) | `gouraud.vert` (przez `#include`) | `setInt` |
 | `uSpecularStrength` | `float` | | | | `lit.frag` (przez `#include`) | `gouraud.vert` (przez `#include`) | `setFloat` |
 | `uShininess` | `float` | | | | `lit.frag` (przez `#include`) | `gouraud.vert` (przez `#include`) | `setFloat` |
 | `uColor` | `vec3` | | | `color.frag` | | | `setVec3` |
-| razem zwykłych uniformów | | 3 | 6 | 4 | 9 | 9 | |
+| razem zwykłych uniformów | | 3 | 8 | 4 | 11 | 9 | |
 
-Jedenaście nazw, pięć programów, 31 uniformów. Trzy uniformy odblasku są zadeklarowane w pliku [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), który nie jest samodzielnym shaderem: jego tekst trafia do `lit.frag` i do `gouraud.vert` przez linię `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md)). Dlatego w programie `lit` należą do shadera fragmentów, a w programie `gouraud` do shadera wierzchołków. Dla C++ nie ma to znaczenia: uniform należy do programu jako całości i ustawia się go tak samo. Ten sam plik deklaruje blok `LightBlock`, którego pola (na przykład `uAmbient`) **nie są** zwykłymi uniformami i w tej tabeli ich nie ma (sekcja 2.4).
+Trzynaście nazw, pięć programów, 35 uniformów. Dwa uniformy map normalnych są zadeklarowane w pliku [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl), dołączanym do `lit.frag` i do `textured.frag` ([`normal-mapping.md`](normal-mapping.md), sekcja 4.1). Program `gouraud` ich nie ma: liczy światło w wierzchołkach i z mapy normalnych nie korzysta. Trzy uniformy odblasku są zadeklarowane w pliku [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), który nie jest samodzielnym shaderem: jego tekst trafia do `lit.frag` i do `gouraud.vert` przez linię `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md)). Dlatego w programie `lit` należą do shadera fragmentów, a w programie `gouraud` do shadera wierzchołków. Dla C++ nie ma to znaczenia: uniform należy do programu jako całości i ustawia się go tak samo. Ten sam plik deklaruje blok `LightBlock`, którego pola (na przykład `uAmbient`) **nie są** zwykłymi uniformami i w tej tabeli ich nie ma (sekcja 2.4).
 
 Trzy macierze mają we wszystkich pięciu shaderach wierzchołków te same nazwy. W `basic.vert`, `textured.vert` i `color.vert` stoją w jednym wyrażeniu: `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);`. W `lit.vert` i `gouraud.vert` ten sam łańcuch jest rozbity na dwa kroki, bo oświetlenie potrzebuje pozycji w przestrzeni świata: `vec4 worldPosition = uModel * vec4(aPosition, 1.0);`, a potem `gl_Position = uProjection * uView * worldPosition;`. Plik `basic.vert` z opisem każdej linii jest w [`shaders.md`](shaders.md) (sekcja 4.1), para `textured.*` w [`textures.md`](textures.md) (sekcja 4), para `color.*` w [`../scene/collision.md`](../scene/collision.md) (sekcja 4), pary `lit.*` i `gouraud.*` w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (sekcja 4), a plik `common/lighting.glsl` w [`../scene/lights.md`](../scene/lights.md) (sekcja 4). Shader fragmentów `basic.frag` nie ma uniformów.
 
@@ -180,6 +182,9 @@ Klatkę rysują cztery kroki `NightMazeApp::onRender`: `drawMaze`, `drawLightMar
     m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
     // The enum values are the numbers textured.frag compares uViewMode with.
     m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    // Only the view of the normals reads it: that view shows the normals the lighting
+    // would use, so with normal mapping the ones from the normal maps.
+    m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
 ```
@@ -202,16 +207,23 @@ Klatkę rysują cztery kroki `NightMazeApp::onRender`: `drawMaze`, `drawLightMar
     shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
     shader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+    // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
+    // has no such uniform, and usesNormalMap is false for it anyway.
+    shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(shader, m_mazeWorld);
 ```
 
-Ten sam kod obsługuje dwa programy: `shader` jest referencją do `m_gouraudShader` albo do `m_litShader`. Oba mają te same nazwy uniformów, więc reszta funkcji nie musi wiedzieć, który wybrano. Świateł tu nie ma: są w buforze uniformów, wypełnionym wcześniej w `onRender` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 5.10).
+Ten sam kod obsługuje dwa programy: `shader` jest referencją do `m_gouraudShader` albo do `m_litShader`. Oba mają te same nazwy uniformów oświetlenia, więc reszta funkcji nie musi wiedzieć, który wybrano. Wyjątkiem jest `uNormalMapEnabled`: ma go tylko program `lit`. W programie `gouraud` to ustawienie trafia w położenie -1 i jest ignorowane (sekcja 2.3), a wysyłana wartość i tak byłaby zerem, bo `game::usesNormalMap` zwraca fałsz dla trybu `Gouraud` ([`../game/flashlight.md`](../game/flashlight.md)). Uniform jest w GLSL typu `bool`, a ustawia go `setInt`: tak ustawia się `bool` w OpenGL (sekcja 5.4). Świateł tu nie ma: są w buforze uniformów, wypełnionym wcześniej w `onRender` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 5.10).
 
-`uModel` nie ma w żadnej z dwóch funkcji labiryntu: labirynt to wiele obiektów i każdy ma własną macierz modelu. Ustawia ją `MazeRenderer`, razem z samplerem, kolorem materiału i macierzą normalnych. `MazeRenderer::draw` nie woła `use()`: dostaje shader jako parametr i zakłada, że wołający już go wybrał. To ta sama zasada co w `setMat4` (sekcja 5.1). Pętla w `MazeRenderer::drawInstances`:
+`uModel` nie ma w żadnej z dwóch funkcji labiryntu: labirynt to wiele obiektów i każdy ma własną macierz modelu. Ustawia ją `MazeRenderer`, razem z dwoma samplerami, kolorem materiału i macierzą normalnych. `MazeRenderer::draw` nie woła `use()`: dostaje shader jako parametr i zakłada, że wołający już go wybrał. To ta sama zasada co w `setMat4` (sekcja 5.1). Pętla w `MazeRenderer::drawInstances`:
 
 ```cpp
     for (const assets::ModelPart& part : model->parts) {
+        // The normal map first: bind() makes its unit the active one, and binding the
+        // colour picture last leaves unit 0 active, as the rest of the program expects.
+        // Never null: a part without a normal map has the flat one of the cache.
+        part.normalMap->bind(NORMAL_MAP_UNIT);
         part.texture->bind(TEXTURE_UNIT);
         shader.setVec3(TINT_UNIFORM, part.color);
 
@@ -258,8 +270,10 @@ Kto ustawia który uniform i jak często:
 | `uModel` | `basic` | `NightMazeApp::drawCube` | raz na klatkę |
 | `uView`, `uProjection` | każdy używany w klatce | `drawCube`, `drawUnlitMaze` albo `drawLitMaze`, `drawLightMarkers`, `drawColliderLines` | raz na funkcję rysującą (program `color` dostaje je dwa razy, gdy rysowane są i znaczniki, i linie) |
 | `uViewMode` | `textured` | `NightMazeApp::drawUnlitMaze` | raz na klatkę |
+| `uNormalMapEnabled` | `textured` albo `lit` (w `gouraud` bez skutku) | `drawUnlitMaze` albo `drawLitMaze` | raz na klatkę |
 | `uSpecularModel`, `uSpecularStrength`, `uShininess` | `lit` albo `gouraud` | `NightMazeApp::drawLitMaze` | raz na klatkę |
 | `uTexture` | program labiryntu (`textured`, `lit` albo `gouraud`) | `MazeRenderer::draw` | raz na klatkę |
+| `uNormalMap` | program labiryntu (w `gouraud` bez skutku) | `MazeRenderer::draw` | raz na klatkę |
 | `uTint` | program labiryntu | `MazeRenderer::drawInstances` | raz na część modelu |
 | `uModel` | program labiryntu | `MazeRenderer::drawInstances` | raz na rysowany obiekt |
 | `uNormalMatrix` | program labiryntu (w `textured` bez skutku) | `MazeRenderer::drawInstances` | raz na rysowany obiekt |
@@ -271,12 +285,14 @@ Kto ustawia który uniform i jak często:
 Wszystko jest wysyłane **co klatkę**, także wartości, które się nie zmieniają (macierz kostki, numer jednostki teksturującej, parametry odblasku). Powody są trzy. Macierz rzutowania zależy od rozmiaru okna, który może się zmienić w każdej chwili. Kamera się rusza, więc macierz widoku jest inna w każdej klatce ruchu. A po `reload()` nowy program ma wszystkie uniformy wyzerowane (sekcja 2.1), więc wartości wysłane raz przy starcie przepadłyby po pierwszym naciśnięciu `Reload shaders`. Ten trzeci powód jest zapisany wprost w `MazeRenderer::draw`:
 
 ```cpp
-    // The sampler reads the unit the textures are bound to below. It is set in every
-    // frame and not once at start-up: after a shader reload all uniforms are back at 0.
+    // The samplers read the units the textures are bound to below. They are set in every
+    // frame and not once at start-up: after a shader reload all uniforms are back at 0,
+    // and both samplers would read unit 0.
     shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
+    shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
 ```
 
-Dla samplera wyzerowanie akurat nie byłoby widoczne, bo jednostka ma numer 0. Dla `uTint` byłoby: wektor zerowy daje czarny labirynt. Dla `uNormalMatrix` też: macierz zerowa daje normalną zerową i oświetlenie bez sensu.
+Dla samplera `uTexture` wyzerowanie akurat nie byłoby widoczne, bo jego jednostka ma numer 0. Dla `uNormalMap` byłoby: jego jednostka ma numer 1, więc z wartością 0 shader czytałby teksturę koloru jako mapę normalnych. Dla `uTint` też: wektor zerowy daje czarny labirynt. Dla `uNormalMatrix` też: macierz zerowa daje normalną zerową i oświetlenie bez sensu.
 
 Wiązanie bloku uniformów jest jedynym stanem programu, którego gra **nie** wysyła co klatkę: klasa `Shader` zapamiętuje je i sama powtarza po przeładowaniu ([`uniform-buffers.md`](uniform-buffers.md), sekcja 5.9).
 
@@ -299,22 +315,28 @@ Program `night_maze` uruchomiony wtedy na około 3 sekundy z katalogu repozytori
 
 **Pięć programów (M4).** Na Windowsie (2026-10-05, MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74) gra z pięcioma programami buduje się w Debug i Release bez ostrzeżeń i startuje bez linii `[error]` i bez linii `GL_`. Wniosek z tego jest węższy, niż wygląda. Makro `GL_CHECK` sprawdza błędy tylko w buildzie Debug (w Release jest samym wywołaniem), a sam start rysuje w trybie domyślnym, czyli programami `lit`, `color` i `basic`. Dla tych trzech programów w buildzie Debug wiadomo więc, że żadne wywołanie `glUniform*` nie trafia w uniform innego typu: taki błąd `GL_CHECK` by wypisało. Dla programów `gouraud` i `textured` tego wniosku nie ma: wiem o nich tyle, ile widać na zrzutach. Na zrzutach ekranu sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia, czyli obraz programów `textured`, `gouraud` i `lit` z ich uniformami, oraz znaczniki świateł rysowane programem `color`. Prób z literówką nie powtarzałem dla nowych nazw. Przełączania trybów listą `Lighting` nikt jeszcze nie robił myszą. **Na macOS nie sprawdzono niczego.**
 
+**Dwa uniformy map normalnych (druga część M4).** Na tym samym sprzęcie i tego samego dnia: build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu, start bez linii `[error]` i bez linii `GL_`. Start rysuje programem `lit`, więc w buildzie Debug wiadomo, że `setInt` na `uNormalMap` (sampler) i na `uNormalMapEnabled` (`bool`) nie zgłasza błędu typu. Na zrzutach ekranu relief jest widoczny pod `Phong` i `Blinn-Phong`, a zrzuty w trybach `Gouraud` i `Unlit` są identyczne piksel w piksel przy mapowaniu włączonym i wyłączonym: ustawienia, które w programie `gouraud` trafiają w położenie -1, nie mają skutku ([`normal-mapping.md`](normal-mapping.md), sekcja 5.11). Pola wyboru `Normal mapping` nikt jeszcze nie kliknął myszą: stany były ustawiane w kodzie. Na macOS niczego nie sprawdzono.
+
 Wcześniejsze próby samej klasy `Shader` (kompilacja, linkowanie, przenoszenie) są w [`shader-class.md`](shader-class.md) (sekcja 5.10).
 
 ### 5.4 `setInt` i `setVec3`
 
-Dwa settery dodane w kamieniu milowym M2 + M3 razem z klasą `gfx::Texture2D` ([`textures.md`](textures.md)). Gra woła je w sześciu miejscach:
+Dwa settery dodane w kamieniu milowym M2 + M3 razem z klasą `gfx::Texture2D` ([`textures.md`](textures.md)). Gra woła je w dziewięciu miejscach:
 
 | Wywołanie | Gdzie | Uniform |
 |---|---|---|
 | `setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode))` | `NightMazeApp::drawUnlitMaze` | `int uViewMode` w `textured.frag`: 0, 1 albo 2 |
 | `setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)))` | `NightMazeApp::drawLitMaze` | `int uSpecularModel` z `common/lighting.glsl`: 0 (Phong) albo 1 (Blinn-Phong) |
 | `setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT))` | `MazeRenderer::draw` | `sampler2D uTexture` w `textured.frag`, `lit.frag` albo `gouraud.frag`: numer jednostki teksturującej |
+| `setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT))` | `MazeRenderer::draw` | `sampler2D uNormalMap` z `common/normal_map.glsl` (w `lit.frag` i `textured.frag`): numer drugiej jednostki, 1 |
+| `setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0)` | `NightMazeApp::drawUnlitMaze` i `NightMazeApp::drawLitMaze` (dwa miejsca) | `bool uNormalMapEnabled` z tego samego pliku: 1 włącza mapowanie normalnych, 0 wyłącza |
 | `setVec3(TINT_UNIFORM, part.color)` | `MazeRenderer::drawInstances` | `vec3 uTint` w tych samych trzech plikach: kolor materiału |
 | `setVec3(COLOR_UNIFORM, color)` | `ColliderLines::draw` | `vec3 uColor` w `color.frag`: kolor linii |
 | `setVec3(COLOR_UNIFORM, color)` | `LightRig::drawMarkers` | `vec3 uColor` w `color.frag`: kolor znaczników świateł |
 
-Wszystkie trzy rzutowania `static_cast<int>` mają ten sam powód: `setInt` przyjmuje `int`, a źródłem jest inny typ. `m_viewMode` to typ wyliczeniowy `game::ViewMode`, a `specularModelOf` zwraca `game::SpecularModel` (`enum class` nie zamienia się na liczbę sam). `TEXTURE_UNIT` ma typ `GLuint`, bo taki przyjmuje `Texture2D::bind`.
+Wszystkie rzutowania `static_cast<int>` mają ten sam powód: `setInt` przyjmuje `int`, a źródłem jest inny typ. `m_viewMode` to typ wyliczeniowy `game::ViewMode`, a `specularModelOf` zwraca `game::SpecularModel` (`enum class` nie zamienia się na liczbę sam). `TEXTURE_UNIT` i `NORMAL_MAP_UNIT` mają typ `GLuint`, bo taki przyjmuje `Texture2D::bind`.
+
+**`bool` w GLSL a `setInt`.** OpenGL nie ma osobnej funkcji `glUniform` dla typu `bool`: uniform tego typu ustawia się funkcją dla liczb całkowitych albo zmiennoprzecinkowych, zero znaczy fałsz, każda inna wartość prawdę. Klasa `Shader` nie ma więc `setBool`, a kod pisze zamianę wprost: `usesNormalMap(m_lighting) ? 1 : 0`. Uniform, którego nikt nie ustawił, ma po linkowaniu wartość 0, czyli fałsz: świeżo zbudowany program zaczyna bez mapowania normalnych, co mówi też komentarz w `common/normal_map.glsl`.
 
 Deklaracje w [`Shader.hpp`](../../../src/gfx/Shader.hpp):
 
@@ -411,6 +433,11 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 constexpr const char* TEXTURE_UNIFORM = "uTexture";
 constexpr const char* TINT_UNIFORM = "uTint";
 
+/// common/normal_map.glsl, so lit.frag and textured.frag: the sampler of the normal map
+/// (the number of a second texture unit) and the switch of normal mapping (1 on, 0 off).
+constexpr const char* NORMAL_MAP_UNIFORM = "uNormalMap";
+constexpr const char* NORMAL_MAP_ENABLED_UNIFORM = "uNormalMapEnabled";
+
 /// textured.frag only: what to show (a value of game::ViewMode).
 constexpr const char* VIEW_MODE_UNIFORM = "uViewMode";
 
@@ -427,8 +454,9 @@ constexpr const char* SHININESS_UNIFORM = "uShininess";
 /// common/lighting.glsl: the name of the uniform block with the lights, and the uniform
 /// buffer binding point it is connected to. Every uniform block of a new program starts
 /// at binding point 0. The lights use 1 on purpose: a program whose block was never
-/// connected then reads no lights at all, which is noticed at once, instead of working
-/// by accident.
+/// connected then reads from binding point 0, where no buffer is attached. The OpenGL
+/// 4.1 specification leaves the values it gets undefined, so the mistake shows as wrong
+/// lighting instead of the program working by accident.
 constexpr const char* LIGHT_BLOCK_NAME = "LightBlock";
 constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
 
@@ -438,7 +466,7 @@ constexpr const char* COLOR_UNIFORM = "uColor";
 } // namespace game
 ```
 
-Plik ma **trzynaście stałych**: jedenaście nazw zwykłych uniformów oraz dwie stałe bloku uniformów, `LIGHT_BLOCK_NAME` i `LIGHT_BLOCK_BINDING_POINT`.
+Plik ma **piętnaście stałych**: trzynaście nazw zwykłych uniformów oraz dwie stałe bloku uniformów, `LIGHT_BLOCK_NAME` i `LIGHT_BLOCK_BINDING_POINT`.
 
 | Stała | Wartość | Który plik shadera to deklaruje | Kto jej używa |
 |---|---|---|---|
@@ -447,6 +475,8 @@ Plik ma **trzynaście stałych**: jedenaście nazw zwykłych uniformów oraz dwi
 | `PROJECTION_UNIFORM` | `"uProjection"` | te same pięć | te same pięć funkcji |
 | `TEXTURE_UNIFORM` | `"uTexture"` | `textured.frag`, `lit.frag`, `gouraud.frag` | `MazeRenderer::draw` |
 | `TINT_UNIFORM` | `"uTint"` | te same trzy | `MazeRenderer::drawInstances` |
+| `NORMAL_MAP_UNIFORM` | `"uNormalMap"` | `common/normal_map.glsl` (czyli `lit.frag` i `textured.frag`) | `MazeRenderer::draw` |
+| `NORMAL_MAP_ENABLED_UNIFORM` | `"uNormalMapEnabled"` | `common/normal_map.glsl` | `NightMazeApp::drawUnlitMaze`, `NightMazeApp::drawLitMaze` |
 | `VIEW_MODE_UNIFORM` | `"uViewMode"` | `textured.frag` | `NightMazeApp::drawUnlitMaze` |
 | `NORMAL_MATRIX_UNIFORM` | `"uNormalMatrix"` | `lit.vert`, `gouraud.vert` | `MazeRenderer::drawInstances` |
 | `SPECULAR_MODEL_UNIFORM` | `"uSpecularModel"` | `common/lighting.glsl` (czyli `lit.frag` i `gouraud.vert`) | `NightMazeApp::drawLitMaze` |
@@ -463,13 +493,13 @@ Plik ma **trzynaście stałych**: jedenaście nazw zwykłych uniformów oraz dwi
 | `namespace game` | plik leży w `src/game/`, bo nazwy należą do shaderów tej gry, a nie do klasy `gfx::Shader`, która przyjmuje dowolny napis. Należy do programu `night_maze` (lista źródeł w [`CMakeLists.txt`](../../../CMakeLists.txt)), nie do biblioteki `engine` |
 | `constexpr const char*` | stała znana w czasie kompilacji, wskazująca na literał napisu. To dokładnie typ parametru `name` setterów. `constexpr` w przestrzeni nazw daje stałej wiązanie wewnętrzne, więc definicja w nagłówku dołączanym wiele razy nie powoduje błędu linkowania |
 | `constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;` | jedyna stała, która nie jest napisem: numer punktu wiązania bufora uniformów. Typ `GLuint`, bo taki przyjmują `glBindBufferBase` i `glUniformBlockBinding` |
-| sam nagłówek, bez pliku `.cpp` | plik nie zawiera kodu, tylko trzynaście stałych |
+| sam nagłówek, bez pliku `.cpp` | plik nie zawiera kodu, tylko piętnaście stałych |
 
-**Uwaga do komentarza nad `LIGHT_BLOCK_NAME`.** Komentarz mówi, że program z niepodpiętym blokiem "reads no lights at all". Specyfikacja OpenGL 4.1 mówi co innego: wynik jest wtedy nieokreślony. Wybór punktu 1 ma mimo to sens, tylko z innego powodu, niż podaje komentarz ([`uniform-buffers.md`](uniform-buffers.md), sekcja 7, pułapka 3).
+**Komentarz nad `LIGHT_BLOCK_NAME`.** Program, którego bloku nikt nie podłączył, czyta z punktu wiązania 0, a tam żaden bufor nie jest podpięty. Specyfikacja OpenGL 4.1 zostawia wartości, które wtedy dostaje shader, nieokreślone: nie ma gwarancji ani zer, ani "braku świateł". Wybór punktu 1 sprawia, że taka pomyłka pokazuje się jako błędne oświetlenie, zamiast działać przypadkiem ([`uniform-buffers.md`](uniform-buffers.md), sekcja 7, pułapka 3). Wcześniejsza wersja komentarza mówiła "reads no lights at all", co było nieścisłe, i została poprawiona.
 
 **Dlaczego jeden nagłówek.** Napis z nazwą jest jedynym łącznikiem między C++ a linią `uniform ...` w shaderze. Kompilator C++ nie wie nic o shaderze, a OpenGL ignoruje nieznaną nazwę po cichu (pułapka 1). Gdyby każda klasa rysująca miała własne literały, literówka w jednej z nich dałaby pusty ekran dla jednego rodzaju obiektów, bez żadnego komunikatu. Jeden nagłówek nie chroni przed literówką w samej stałej ani przed zmianą nazwy tylko w pliku shadera. Sprawia tylko, że pomyłkę robi się i poprawia w jednym miejscu.
 
-Czego w nagłówku nie ma: numeru jednostki teksturującej (`TEXTURE_UNIT` to prywatna stała `MazeRenderer.cpp`), wartości trybu podglądu (typ `game::ViewMode` jest w `MazeRenderer.hpp`), wartości wzoru odblasku (typ `game::SpecularModel` jest w `Lighting.hpp`) ani nazw pól bloku `LightBlock`. Tych ostatnich C++ w ogóle nie zna z nazwy: zna tylko ich miejsce w bajtach bufora.
+Czego w nagłówku nie ma: numerów jednostek teksturujących (`TEXTURE_UNIT` i `NORMAL_MAP_UNIT` to prywatne stałe `MazeRenderer.cpp`), wartości trybu podglądu (typ `game::ViewMode` jest w `MazeRenderer.hpp`), wartości wzoru odblasku (typ `game::SpecularModel` jest w `Lighting.hpp`) ani nazw pól bloku `LightBlock`. Tych ostatnich C++ w ogóle nie zna z nazwy: zna tylko ich miejsce w bajtach bufora.
 
 ### 5.6 Ile wyszukiwań na klatkę
 
@@ -482,21 +512,21 @@ Tryb domyślny (`BlinnPhong`, program `lit`):
 | `uModel` labiryntu | 100 + 121 + 121 = **342** |
 | `uNormalMatrix` labiryntu | **342** |
 | `uTint` labiryntu | 3 (trzy modele, każdy ma jedną część) |
-| `uView`, `uProjection`, `uSpecularModel`, `uSpecularStrength`, `uShininess`, `uTexture` w programie labiryntu | 6 |
+| `uView`, `uProjection`, `uSpecularModel`, `uSpecularStrength`, `uShininess`, `uNormalMapEnabled`, `uTexture`, `uNormalMap` w programie labiryntu | 8 |
 | znaczniki świateł: `uView`, `uProjection`, `uColor`, `uModel` dla 11 znaczników | 14 |
 | kostka: `uModel`, `uView`, `uProjection` | 3 |
-| razem bez linii pudełek | **710** |
+| razem bez linii pudełek | **712** |
 | linie pudełek, gdy są włączone: `uView`, `uProjection`, dwa razy `uColor`, `uModel` dla 242 pudełek labiryntu i 1 pudełka gracza | 247 |
 
 Pozostałe tryby:
 
 | Tryb | Program labiryntu | Razem bez linii pudełek | Skąd różnica |
 |---|---|---|---|
-| `Gouraud`, `Phong`, `BlinnPhong` | `gouraud` albo `lit` | 710 | te same uniformy pod tymi samymi nazwami |
-| `Unlit` | `textured` | 694 | zamiast trzech uniformów odblasku jest `uViewMode` (691 w programie labiryntu), nie ma znaczników, kostka 3 |
-| widok diagnostyczny (`Normals` albo `UVs`) w trybie z oświetleniem | `textured` | 708 | jak `Unlit`, ale znaczniki są rysowane (14) |
+| `Gouraud`, `Phong`, `BlinnPhong` | `gouraud` albo `lit` | 712 | te same wywołania setterów pod tymi samymi nazwami. W programie `gouraud` dwa z nich (`uNormalMap`, `uNormalMapEnabled`) trafiają w położenie -1 |
+| `Unlit` | `textured` | 696 | zamiast trzech uniformów odblasku jest `uViewMode` (693 w programie labiryntu), nie ma znaczników, kostka 3 |
+| widok diagnostyczny (`Normals` albo `UVs`) w trybie z oświetleniem | `textured` | 710 | jak `Unlit`, ale znaczniki są rysowane (14) |
 
-Dwie rzeczy, które z tych tabel wynikają. Po pierwsze, M4 **podwoiło** liczbę ustawień: macierz normalnych idzie w parze z macierzą modelu. Po drugie, w programie `textured` 342 z tych ustawień trafia w położenie -1 i nie ma żadnego skutku, a mimo to kosztuje wyszukanie po nazwie i policzenie macierzy odwrotnej na procesorze (sekcja 5.2).
+Dwie rzeczy, które z tych tabel wynikają. Po pierwsze, M4 **podwoiło** liczbę ustawień: macierz normalnych idzie w parze z macierzą modelu. Mapy normalnych dołożyły do tego tylko dwa ustawienia na klatkę (sampler i przełącznik) oraz jedno dodatkowe wiązanie tekstury na część modelu. Po drugie, w programie `textured` 342 z tych ustawień trafia w położenie -1 i nie ma żadnego skutku, a mimo to kosztuje wyszukanie po nazwie i policzenie macierzy odwrotnej na procesorze (sekcja 5.2).
 
 Każde ustawienie to dwa wywołania sterownika: wyszukanie po nazwie (porównywanie napisów) i samo `glUniform*`. **Czasu tego nie mierzyłem** i nie podaję żadnej liczby milisekund. Komentarz w `Shader::setMat4` ("a few hundred lookups per frame ... are still cheap") jest oceną, a nie wynikiem pomiaru, i powstał, gdy ustawień było o połowę mniej. Gdyby pomiar pokazał, że wyszukiwanie ma znaczenie, są trzy wyjścia: zapamiętać położenia `uModel` i `uNormalMatrix` raz na klatkę poza pętlą obiektów, dodać do klasy mapę położeń czyszczoną w `reload()` albo policzyć macierze normalnych raz, razem z macierzami modelu, zamiast w każdej klatce. Większy zysk dałoby zmniejszenie samej liczby wywołań rysujących ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5).
 
@@ -576,7 +606,7 @@ void Shader::setFloat(const char* name, float value) const {
 
 ## 6. Panel ImGui
 
-Uniformy nie mają własnego panelu: żaden panel nie pokazuje ich położeń ani wartości. Pośrednio widać je w dwóch miejscach. Panel "Camera" ([`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6) zmienia pola kamery, z których co klatkę powstają macierze dla `uView` i `uProjection`. Przycisk "Reload shaders" w panelu "Shaders" ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6) tworzy nowe programy z wyzerowanymi uniformami, a obraz nie znika tylko dlatego, że wszystkie uniformy są wysyłane co klatkę (sekcja 5.2). Trzecie miejsce to lista `View mode` w panelu "Assets" ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6): wybrana pozycja trafia co klatkę do uniformu `uViewMode`. Czwarte to lista `Lighting` w panelu "Renderer": od wybranego trybu zależy, który program rysuje labirynt, a więc które uniformy są w ogóle ustawiane, oraz wartość `uSpecularModel`. Piąte to grupa `Highlight (specular)` w panelu "Lights": jej dwa pola trafiają co klatkę do `uSpecularStrength` i `uShininess`. Pozostałe widżety panelu "Lights" nie zmieniają zwykłych uniformów, tylko bajty bloku `LightBlock` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 6). Oba panele opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 6, i [`../debug-ui.md`](../debug-ui.md).
+Uniformy nie mają własnego panelu: żaden panel nie pokazuje ich położeń ani wartości. Pośrednio widać je w dwóch miejscach. Panel "Camera" ([`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6) zmienia pola kamery, z których co klatkę powstają macierze dla `uView` i `uProjection`. Przycisk "Reload shaders" w panelu "Shaders" ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6) tworzy nowe programy z wyzerowanymi uniformami, a obraz nie znika tylko dlatego, że wszystkie uniformy są wysyłane co klatkę (sekcja 5.2). Trzecie miejsce to lista `View mode` w panelu "Assets" ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6): wybrana pozycja trafia co klatkę do uniformu `uViewMode`, a pole wyboru `Normal mapping` pod nią decyduje (razem z trybem oświetlenia) o wartości `uNormalMapEnabled`. Czwarte to lista `Lighting` w panelu "Renderer": od wybranego trybu zależy, który program rysuje labirynt, a więc które uniformy są w ogóle ustawiane, oraz wartość `uSpecularModel`. Piąte to grupa `Highlight (specular)` w panelu "Lights": jej dwa pola trafiają co klatkę do `uSpecularStrength` i `uShininess`. Pozostałe widżety panelu "Lights" nie zmieniają zwykłych uniformów, tylko bajty bloku `LightBlock` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 6). Oba panele opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 6, i [`../debug-ui.md`](../debug-ui.md).
 
 ## 7. Pułapki
 
@@ -595,6 +625,7 @@ Uniformy nie mają własnego panelu: żaden panel nie pokazuje ich położeń an
 13. **Pole bloku ustawiane setterem.** `setVec3("uAmbient", ...)` nic nie robi i nie zgłasza błędu: `uAmbient` jest polem bloku `LightBlock`, a pola bloku nie mają położenia (sekcja 2.4). Wygląda to dokładnie jak literówka z pułapki 1.
 14. **`uNormalMatrix` wysyłany do programu, który go nie ma.** W programie `textured` to działa tylko dlatego, że położenie -1 jest ignorowane. Kto doda do `textured.vert` uniform o tej nazwie, ale innego typu, dostanie `GL_INVALID_OPERATION` w każdym wywołaniu rysującym labirynt.
 15. **Nieustawiony `uNormalMatrix`.** Macierz zerowa po linkowaniu daje normalną `(0, 0, 0)`. W `lit.frag` normalizacja wektora zerowego daje wartości nieokreślone, więc nie da się przewidzieć obrazu. Błędu OpenGL nie ma. Tego przypadku nie mierzyłem.
+16. **Dwa samplery, jedna wartość domyślna.** Każdy sampler ma po linkowaniu wartość 0. Program z dwoma samplerami, w którym ustawiono tylko jeden albo żadnego, czyta obie tekstury z jednostki 0 i nie zgłasza błędu. Stąd `setInt` dla `uNormalMap` w każdej klatce, obok `uTexture` (sekcja 5.2).
 
 Pułapki dotyczące języka GLSL są w [`shaders.md`](shaders.md) (sekcja 7), a samej klasy `Shader` w [`shader-class.md`](shader-class.md) (sekcja 7).
 
@@ -610,7 +641,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8). Po zmia
 6. **Uniform `vec3`.** Dopisz do `basic.frag` uniform `uniform vec3 uTint;` i pomnóż przez niego kolor. W `NightMazeApp::drawCube`, po `m_shader.use()`, wyślij wartość funkcją `setVec3` (sekcja 5.4) pod nazwą `TINT_UNIFORM`, na przykład `glm::vec3(1.0F, 0.5F, 0.5F)`. Zbuduj i uruchom. Potem usuń wywołanie `setVec3` i zostaw uniform w shaderze: co widać i dlaczego? Wycofaj zmiany.
 7. **Rodzina `glUniform` na kartce.** Zapisz deklarację i implementację funkcji `setVec4` w stylu `setVec3`. Którą funkcję OpenGL zawoła? Którą zawołałaby funkcja `setVec2`, a którą funkcja wysyłająca tablicę pięciu wektorów `vec3`? (Odpowiedź: `glUniform4fv(location, 1, wskaźnik)`, `glUniform2fv(location, 1, wskaźnik)`, `glUniform3fv(location, 5, wskaźnik na 15 liczb)`.)
 8. **Liczenie wyszukiwań.** Labirynt ma 16 x 16 komórek. Labirynt doskonały o wymiarach `w` na `h` ma `(w + 1) * (h + 1)` ścian i tyle samo słupków. Ile razy na klatkę `MazeRenderer` ustawi `uModel`, a ile razy wszystkie uniformy zależne od obiektu? (Odpowiedź: 256 + 289 + 289 = 834 razy `uModel` i tyle samo razy `uNormalMatrix`, razem 1668.)
-9. **Sampler bez `setInt`.** W `MazeRenderer::draw` usuń linię z `setInt(TEXTURE_UNIFORM, ...)`, zbuduj i uruchom. Obraz się nie zmienia. Wyjaśnij dlaczego (jaką wartość ma uniform po linkowaniu i jaki numer ma `TEXTURE_UNIT`) i co by się stało przy `TEXTURE_UNIT = 1`. Wycofaj zmianę.
+9. **Sampler bez `setInt`.** W `MazeRenderer::draw` usuń linię z `setInt(TEXTURE_UNIFORM, ...)`, zbuduj i uruchom. Obraz się nie zmienia. Wyjaśnij dlaczego (jaką wartość ma uniform po linkowaniu i jaki numer ma `TEXTURE_UNIT`). Przywróć linię i usuń sąsiednią, z `setInt(NORMAL_MAP_UNIFORM, ...)`. Teraz obraz pod `Phong` powinien się zmienić: z której jednostki shader czyta mapę normalnych i co na niej leży? (Tego wariantu nie uruchamiałem: odpowiedź wynika z kodu.) Wycofaj zmianę.
 10. **Zły setter.** W `NightMazeApp::drawLitMaze` zamień `setFloat(SHININESS_UNIFORM, ...)` na `setInt(SHININESS_UNIFORM, 32)`. Zbuduj i uruchom w trybie `Phong`. Co wypisuje konsola i jak często? Jaką wartość ma `uShininess` w shaderze i jak wygląda odblask (wskazówka: `pow(x, 0.0)`)? Wycofaj zmianę.
 11. **Bez macierzy normalnych.** W `MazeRenderer::drawInstances` usuń linię z `setMat3`. Zbuduj i porównaj tryby `Unlit` i `Phong`. Dlaczego pierwszy się nie zmienił? Wycofaj zmianę.
 12. **Uniform czy pole bloku.** Dopisz w `drawLitMaze` linię `shader.setFloat("uPointCount", 0.0F);`. Czy znikają światła punktowe? Czy jest błąd? Wyjaśnij jednym zdaniem z sekcji 2.4. Wycofaj zmianę.
@@ -636,7 +667,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8). Po zmia
    Dla nauki: każdą da się podmienić osobno i zobaczyć skutek, a wyrażenie `uProjection * uView * uModel * vec4(aPosition, 1.0)` pokazuje wprost drogę wierzchołka przez przestrzenie. Prawdziwy renderer często wysyła jeden gotowy iloczyn. Macierz modelu osobno przyda się też przy oświetleniu.
 
 7. **Dlaczego uniformy są wysyłane co klatkę, także te, które się nie zmieniają?**
-   Macierz rzutowania zależy od proporcji okna, które mogą się zmienić. Po `reload()` nowy program ma uniformy wyzerowane, więc wartości wysłane raz by przepadły: dlatego nawet numer jednostki dla samplera `uTexture` jest ustawiany w każdej klatce. A ruchoma kamera i tak zmienia macierz widoku w każdej klatce.
+   Macierz rzutowania zależy od proporcji okna, które mogą się zmienić. Po `reload()` nowy program ma uniformy wyzerowane, więc wartości wysłane raz by przepadły: dlatego nawet numery jednostek dla samplerów `uTexture` i `uNormalMap` są ustawiane w każdej klatce. A ruchoma kamera i tak zmienia macierz widoku w każdej klatce.
 
 8. **Do czego służy `setInt` i dlaczego powstało razem z teksturami?**
    Ustawia uniform typu `int` przez `glUniform1i`. Tą samą funkcją ustawia się uniformy typu sampler: sampler przechowuje numer jednostki teksturującej, a nie identyfikator tekstury. GLSL 4.10 nie ma zapisu `layout(binding = N)`, więc numer trzeba wysłać z C++.
@@ -648,16 +679,16 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8). Po zmia
     OpenGL zgłosi `GL_INVALID_OPERATION` i wartości nie zmieni. Typ uniformu i funkcja muszą do siebie pasować, a dla samplerów jedyną dozwoloną funkcją jest `glUniform1i`.
 
 11. **Po co jest `ShaderUniforms.hpp` i przed czym nie chroni?**
-    Zbiera jedenaście nazw zwykłych uniformów oraz nazwę i punkt wiązania bloku `LightBlock` w jednym miejscu, żeby cztery pliki rysujące (`NightMazeApp.cpp`, `MazeRenderer.cpp`, `ColliderLines.cpp`, `LightRig.cpp`) nie mogły się co do nich różnić. Nie chroni przed literówką w samej stałej ani przed zmianą nazwy tylko w pliku shadera: wtedy położenie to -1 i nie ma żadnego błędu.
+    Zbiera trzynaście nazw zwykłych uniformów oraz nazwę i punkt wiązania bloku `LightBlock` w jednym miejscu, żeby cztery pliki rysujące (`NightMazeApp.cpp`, `MazeRenderer.cpp`, `ColliderLines.cpp`, `LightRig.cpp`) nie mogły się co do nich różnić. Nie chroni przed literówką w samej stałej ani przed zmianą nazwy tylko w pliku shadera: wtedy położenie to -1 i nie ma żadnego błędu.
 
 12. **Pięć programów ma uniform `uView`. Ile razy trzeba go ustawić w klatce?**
     Raz w każdym programie, który w tej klatce rysuje, po jego `use()`: najwyżej w trzech, bo labirynt rysuje jeden z trójki `textured`, `lit`, `gouraud`, a do tego dochodzą `basic` i `color`. Kod wysyła go najwyżej cztery razy, bo program `color` dostaje go osobno dla znaczników świateł i osobno dla linii pudełek. Uniform należy do programu, więc ta sama nazwa w pięciu programach to pięć osobnych wartości.
 
 13. **Które uniformy ustawia się funkcją `setInt`, a które `setVec3`?**
-    `setInt`: sampler `uTexture` (numer jednostki teksturującej), `uViewMode` (tryb podglądu, wartość typu `game::ViewMode` zrzutowana na `int`) i `uSpecularModel` (wzór odblasku, wartość typu `game::SpecularModel`). `setVec3`: `uTint` (kolor materiału w trzech shaderach fragmentów labiryntu) i `uColor` (kolor linii i znaczników w `color.frag`). Do tego `setMat3` dla `uNormalMatrix` i `setFloat` dla `uSpecularStrength` i `uShininess`.
+    `setInt`: samplery `uTexture` i `uNormalMap` (numery jednostek teksturujących 0 i 1), `uViewMode` (tryb podglądu, wartość typu `game::ViewMode` zrzutowana na `int`), `uSpecularModel` (wzór odblasku, wartość typu `game::SpecularModel`) i `uNormalMapEnabled` (typ `bool` w GLSL, 1 albo 0). `setVec3`: `uTint` (kolor materiału w trzech shaderach fragmentów labiryntu) i `uColor` (kolor linii i znaczników w `color.frag`). Do tego `setMat3` dla `uNormalMatrix` i `setFloat` dla `uSpecularStrength` i `uShininess`.
 
 14. **Ile razy na klatkę jest ustawiany `uModel` dla labiryntu domyślnego i co z tego wynika?**
-    342 razy: 100 płytek, 121 ścian i 121 słupków, każdy obiekt ma własne wywołanie rysujące. Tyle samo razy ustawiany jest `uNormalMatrix`, więc cała klatka w trybie domyślnym to 710 ustawień. Każde wyszukuje położenie po nazwie, bo klasa nie ma pamięci podręcznej. Kosztu nie zmierzyłem. To cena prostego kodu, do poprawienia dopiero wtedy, gdy pomiar pokaże problem.
+    342 razy: 100 płytek, 121 ścian i 121 słupków, każdy obiekt ma własne wywołanie rysujące. Tyle samo razy ustawiany jest `uNormalMatrix`, więc cała klatka w trybie domyślnym to 712 ustawień. Każde wyszukuje położenie po nazwie, bo klasa nie ma pamięci podręcznej. Kosztu nie zmierzyłem. To cena prostego kodu, do poprawienia dopiero wtedy, gdy pomiar pokaże problem.
 
 15. **Co robi `setMat3` i do czego służy w grze?**
     Wyszukuje położenie i woła `glUniformMatrix3fv`: jedna macierz 3 x 3, dziewięć liczb `float`, bez transpozycji. Gra wysyła nim `uNormalMatrix`, macierz dla normalnych policzoną przez `scene::normalMatrix` dla każdego obiektu.

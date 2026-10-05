@@ -1,6 +1,6 @@
 # Moduł game: labirynt w świecie i jego rysowanie
 
-Kamień milowy: M2 + M3, w M4 doszły oświetlenie labiryntu (wybór programu, macierz normalnych na obiekt) i pozycje świateł punktowych w `MazeWorld`. Tematy wykładu: 3 (Przekształcenia przestrzeni: macierz modelu), 4 (Wczytywanie OBJ: rysowanie modelu) i 5 (Tekstury: użycie w klatce), a od M4 także 6 i 7 w użyciu.
+Kamień milowy: M2 + M3, w M4 doszły oświetlenie labiryntu (wybór programu, macierz normalnych na obiekt), pozycje świateł punktowych w `MazeWorld` i mapy normalnych (druga tekstura na jednostce 1, uniformy `uNormalMap` i `uNormalMapEnabled`). Tematy wykładu: 3 (Przekształcenia przestrzeni: macierz modelu), 4 (Wczytywanie OBJ: rysowanie modelu) i 5 (Tekstury: użycie w klatce), a od M4 także 6 i 7 w użyciu.
 Kod: [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp), [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp), [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), testy w [`tests/MazeWorldTests.cpp`](../../../tests/MazeWorldTests.cpp), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument stoi na czterech innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, generator, funkcje układu `wallSegments`, `pillarPositions`, `mazeColliders`), [`../scene/transforms.md`](../scene/transforms.md) (macierz modelu i struktura `Transform`), [`../assets/asset-cache.md`](../assets/asset-cache.md) (skąd biorą się modele i tekstury) oraz [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured.vert` i `textured.frag`). Gracza, który po tym labiryncie chodzi, opisuje [`player.md`](player.md).
@@ -20,7 +20,7 @@ Do tego dochodzi mała struktura `game::MazeSettings`: prośba o nowy labirynt, 
 
 Podział jest taki sam jak w całym projekcie: dane i matematyka bez okna po jednej stronie (da się je przetestować), kod wymagający kontekstu OpenGL po drugiej.
 
-**Stan na dziś, uczciwie.** Program startuje nocą wewnątrz oteksturowanego i oświetlonego labiryntu 10 na 10 komórek z ziarna 1. Labirynt rysuje jeden z trzech programów, zależnie od trybu cieniowania: `lit` (tryby `Phong` i `Blinn-Phong`, startowy), `gouraud` albo `textured` (tryb `Unlit` i oba podglądy diagnostyczne). Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74) build Debug i Release przechodzi bez ostrzeżeń, 8 przypadków testowych `MazeWorldTests.cpp` przechodzi w obu konfiguracjach (w ramach 149 przypadków i 61240 asercji), program startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są: widok startowy, cztery tryby cieniowania z trzech miejsc, a z M2 + M3 (2026-10-05) tekstury ustawione poprawnie (nie do góry nogami i nie w lustrze) oraz widok z góry, na którym ściany zgadzają się z planem w panelu Maze. Przycisków `Regenerate` i `Random seed` ani listy `Lighting` nikt jeszcze nie kliknął ręcznie. Cieni nie ma (M7), map normalnych też jeszcze nie (następna część M4). Na macOS kod nie był budowany ani uruchamiany.
+**Stan na dziś, uczciwie.** Program startuje nocą wewnątrz oteksturowanego i oświetlonego labiryntu 10 na 10 komórek z ziarna 1. Labirynt rysuje jeden z trzech programów, zależnie od trybu cieniowania: `lit` (tryby `Phong` i `Blinn-Phong`, startowy), `gouraud` albo `textured` (tryb `Unlit` i oba podglądy diagnostyczne). Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74) build Debug i Release przechodzi bez ostrzeżeń, 8 przypadków testowych `MazeWorldTests.cpp` przechodzi w obu konfiguracjach (w ramach 163 przypadków i 62220 asercji), program startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są: widok startowy, cztery tryby cieniowania z trzech miejsc, a z M2 + M3 (2026-10-05) tekstury ustawione poprawnie (nie do góry nogami i nie w lustrze) oraz widok z góry, na którym ściany zgadzają się z planem w panelu Maze. Przycisków `Regenerate` i `Random seed` ani listy `Lighting` nikt jeszcze nie kliknął ręcznie. Mapy normalnych są w kodzie: `MazeRenderer` podpina mapę normalnych każdej części do jednostki 1, a o tym, czy shader z niej korzysta, decyduje `usesNormalMap` (sekcje 5.6 i 5.7, cała technika w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)). Na zrzutach ekranu z 2026-10-05 fugi czytają się jako rowki na ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze. Pola wyboru `Normal mapping` nikt jeszcze nie kliknął ręcznie. Cieni nie ma (M7). Na macOS kod nie był budowany ani uruchamiany.
 
 ## 2. Teoria
 
@@ -160,21 +160,23 @@ Po wymianie trzeba jeszcze "wejść" do nowego labiryntu: przenieść kostkę na
 |---|---|---|---|
 | 1 | `m_texturedShader.use()` | `glUseProgram` | 1 |
 | 2 | `setMat4(VIEW_UNIFORM, ...)`, `setMat4(PROJECTION_UNIFORM, ...)` | `glGetUniformLocation`, `glUniformMatrix4fv` | po 1 |
-| 3 | `setInt(VIEW_MODE_UNIFORM, ...)`, `setInt(TEXTURE_UNIFORM, 0)` | `glGetUniformLocation`, `glUniform1i` | po 1 |
-| 4 | `part.texture->bind(TEXTURE_UNIT)` | `glActiveTexture`, `glBindTexture`, `glBindSampler` | 3 (raz na model: każdy ma jedną część) |
+| 3 | `setInt(VIEW_MODE_UNIFORM, ...)`, `setInt(NORMAL_MAP_ENABLED_UNIFORM, ...)`, `setInt(TEXTURE_UNIFORM, 0)`, `setInt(NORMAL_MAP_UNIFORM, 1)` | `glGetUniformLocation`, `glUniform1i` | po 1 |
+| 4a | `part.normalMap->bind(NORMAL_MAP_UNIT)` | `glActiveTexture(GL_TEXTURE1)`, `glBindTexture`, `glBindSampler` | 3 (raz na model: każdy ma jedną część) |
+| 4b | `part.texture->bind(TEXTURE_UNIT)` | `glActiveTexture(GL_TEXTURE0)`, `glBindTexture`, `glBindSampler` | 3 |
 | 5 | `setVec3(TINT_UNIFORM, part.color)` | `glGetUniformLocation`, `glUniform3fv` | 3 |
 | 6 | `setMat4(MODEL_UNIFORM, modelMatrix)` | `glGetUniformLocation`, `glUniformMatrix4fv` | 342 |
 | 6a | `setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix))` (od M4) | `glGetUniformLocation`, `glUniformMatrix3fv` | 342 |
 | 7 | `model->mesh.draw(part.firstIndex, part.indexCount)` | `glBindVertexArray`, `glDrawElements` | 342 |
 
-**Tryby z oświetleniem.** W trybach `Gouraud`, `Phong` i `Blinn-Phong` krok 1 wybiera program `gouraud` albo `lit`, a w kroku 3 zamiast `uViewMode` ustawiane są `uSpecularModel` (`glUniform1i`), `uSpecularStrength` i `uShininess` (`glUniform1f`). Kroki od 4 do 7 są identyczne: to ta sama funkcja `MazeRenderer::draw`. Pełna tabela dla tych trybów jest w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 3.
+**Tryby z oświetleniem.** W trybach `Gouraud`, `Phong` i `Blinn-Phong` krok 1 wybiera program `gouraud` albo `lit`, a w kroku 3 zamiast `uViewMode` ustawiane są `uSpecularModel` (`glUniform1i`), `uSpecularStrength` i `uShininess` (`glUniform1f`). `uNormalMapEnabled` ustawiają obie funkcje. Kroki od 4a do 7 są identyczne: to ta sama funkcja `MazeRenderer::draw`. Program `gouraud` nie ma ani `uNormalMap`, ani `uNormalMapEnabled`: oba ustawienia są dla niego ignorowane tak samo jak krok 6a dla `textured`, a mapa normalnych podpięta do jednostki 1 w kroku 4a po prostu nie jest przez nikogo czytana. Pełna tabela dla tych trybów jest w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 3.
 
 **Krok 6a w programie `textured`.** Ten program nie ma uniformu `uNormalMatrix`. `glGetUniformLocation` zwraca wtedy -1, a `glUniformMatrix3fv` z położeniem -1 jest po cichu ignorowane ([`../gfx/uniforms.md`](../gfx/uniforms.md)). `MazeRenderer` nie musi więc wiedzieć, którym programem rysuje. Ceną są 342 zbędne pary wywołań na klatkę w trybie `Unlit`.
 
 Uwagi:
 
 - Uniformy należą do programu, który jest w użyciu, więc `use()` stoi przed wszystkimi setterami ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 2).
-- `uTexture` to sampler: przechowuje **numer jednostki teksturującej**, a nie teksturę. Wszystkie tekstury labiryntu są podpinane do jednostki 0 i sampler dostaje 0 ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2).
+- `uTexture` i `uNormalMap` to samplery: przechowują **numer jednostki teksturującej**, a nie teksturę. Obrazy kolorów labiryntu są podpinane do jednostki 0 i `uTexture` dostaje 0, mapy normalnych do jednostki 1 i `uNormalMap` dostaje 1 ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2). Shader może przeczytać obie tekstury dla tego samego fragmentu tylko dlatego, że leżą na różnych jednostkach.
+- Mapa normalnych jest podpinana **pierwsza**, a obraz koloru drugi. `Texture2D::bind` zaczyna od `glActiveTexture`, więc po kroku 4b aktywna zostaje jednostka 0 (sekcja 5.6).
 - `glDrawElements` dostaje zakres indeksów części (pierwszy indeks i liczbę), a nie całą siatkę. Dla trzech modeli labiryntu część jest jedna i obejmuje całość ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5).
 - Test głębi jest włączony przez `onRender` przed rysowaniem, więc kolejność rysowania obiektów nie wpływa na obraz: bliższe ściany zasłaniają dalsze niezależnie od tego, która była pierwsza ([`../scene/camera.md`](../scene/camera.md), sekcja 3).
 - Odrzucanie ścian tylnych (face culling) nie jest włączone: każdy trójkąt jest rysowany z obu stron.
@@ -189,7 +191,7 @@ Labirynt rysują trzy pary shaderów. Która, zależy od trybu cieniowania z pan
 | [`lit.vert`](../../../assets/shaders/lit.vert), [`lit.frag`](../../../assets/shaders/lit.frag) | tryby `Phong` i `Blinn-Phong` (startowy) przy zwykłym widoku | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4 |
 | [`gouraud.vert`](../../../assets/shaders/gouraud.vert), [`gouraud.frag`](../../../assets/shaders/gouraud.frag) | tryb `Gouraud` przy zwykłym widoku | ten sam dokument |
 
-Wszystkie trzy mają te same atrybuty wierzchołka (pozycja, normalna, uv) i te same nazwy uniformów dla tego, co ustawia `MazeRenderer`, więc jedna funkcja `draw` obsługuje każdy z nich. Tutaj jest tylko to, co `MazeRenderer` i `NightMazeApp` im podają:
+Wszystkie trzy czytają tę samą siatkę `gfx::Mesh` z czterema atrybutami wierzchołka (pozycja, normalna, uv, styczna; `gouraud.vert` stycznej nie deklaruje) i mają te same nazwy uniformów dla tego, co ustawia `MazeRenderer`, więc jedna funkcja `draw` obsługuje każdy z nich. Tutaj jest tylko to, co `MazeRenderer` i `NightMazeApp` im podają:
 
 | Uniform | Stała w `ShaderUniforms.hpp` | Kto ustawia | Jak często | Wartość | W których programach istnieje |
 |---|---|---|---|---|---|
@@ -197,7 +199,9 @@ Wszystkie trzy mają te same atrybuty wierzchołka (pozycja, normalna, uv) i te 
 | `uProjection` | `PROJECTION_UNIFORM` | `drawUnlitMaze` albo `drawLitMaze` | raz na klatkę | macierz rzutowania | we wszystkich trzech |
 | `uViewMode` | `VIEW_MODE_UNIFORM` | `drawUnlitMaze` | raz na klatkę | wartość `game::ViewMode`: 0, 1 albo 2 | tylko `textured` |
 | `uSpecularModel`, `uSpecularStrength`, `uShininess` | `SPECULAR_MODEL_UNIFORM`, `SPECULAR_STRENGTH_UNIFORM`, `SHININESS_UNIFORM` | `drawLitMaze` | raz na klatkę | wzór odbłysku (0 albo 1), jego siła i wykładnik | `lit`, `gouraud` |
-| `uTexture` | `TEXTURE_UNIFORM` | `MazeRenderer::draw` | raz na klatkę | 0: numer jednostki teksturującej | we wszystkich trzech |
+| `uNormalMapEnabled` | `NORMAL_MAP_ENABLED_UNIFORM` | `drawUnlitMaze` i `drawLitMaze` | raz na klatkę | 1 albo 0: wynik `usesNormalMap(m_lighting)` | `lit`, `textured` (tam czyta go tylko podgląd normalnych). W `gouraud` nie istnieje |
+| `uTexture` | `TEXTURE_UNIFORM` | `MazeRenderer::draw` | raz na klatkę | 0: numer jednostki teksturującej obrazu koloru | we wszystkich trzech |
+| `uNormalMap` | `NORMAL_MAP_UNIFORM` | `MazeRenderer::draw` | raz na klatkę | 1: numer jednostki teksturującej mapy normalnych | `lit`, `textured`. W `gouraud` nie istnieje i ustawienie jest ignorowane |
 | `uTint` | `TINT_UNIFORM` | `MazeRenderer::drawInstances` | raz na część modelu | kolor rozproszenia materiału (`Kd`) | we wszystkich trzech |
 | `uModel` | `MODEL_UNIFORM` | `MazeRenderer::drawInstances` | raz na obiekt | macierz modelu z `MazeWorld` | we wszystkich trzech |
 | `uNormalMatrix` | `NORMAL_MATRIX_UNIFORM` | `MazeRenderer::drawInstances` | raz na obiekt | `scene::normalMatrix(modelMatrix)` | `lit`, `gouraud`. W `textured` nie istnieje i ustawienie jest ignorowane |
@@ -209,14 +213,16 @@ Tryb widoku to wyliczenie z `MazeRenderer.hpp`:
 ```cpp
 enum class ViewMode {
     Textured = 0, ///< the texture multiplied by the colour of the material
-    Normals = 1,  ///< the normal of the surface as a colour (a debug view, not lighting)
+    Normals = 1,  ///< the normal used for shading as a colour (a debug view, not lighting)
     Uvs = 2,      ///< the texture coordinate as a colour (a debug view)
 };
 ```
 
 Liczby są jawne, bo shader porównuje `uViewMode` z tymi samymi liczbami (`if (uViewMode == 1)`). Wyliczenie i shader muszą się zgadzać, a nic tego nie sprawdza automatycznie: to umowa zapisana w komentarzach po obu stronach. Przełącznik trybu jest w panelu Assets ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6).
 
-W programie `textured` nie ma oświetlenia: kolor fragmentu to tekstura razy kolor materiału, a normalne służą tylko widokowi diagnostycznemu. W programach `lit` i `gouraud` te same normalne, przeniesione do przestrzeni świata macierzą normalnych, są podstawą rachunku światła ([`../scene/lights.md`](../scene/lights.md)). Mapy normalnych dochodzą w następnej części M4.
+Komentarz przy `Normals` mówi "the normal used for shading": podgląd pokazuje normalną, którą cieniowałby wybrany tryb. Przy włączonym mapowaniu normalnych i trybie innym niż `Gouraud` jest to normalna z mapy normalnych, w pozostałych przypadkach normalna siatki.
+
+W programie `textured` nie ma oświetlenia: kolor fragmentu to tekstura razy kolor materiału, a normalne służą tylko widokowi diagnostycznemu. W programach `lit` i `gouraud` normalne siatki, przeniesione do przestrzeni świata macierzą normalnych, są podstawą rachunku światła ([`../scene/lights.md`](../scene/lights.md)). W programie `lit` normalną fragmentu może zastąpić ta z mapy normalnych: funkcja `surfaceNormal` z pliku `common/normal_map.glsl`, który dołączają `lit.frag` i `textured.frag` ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.1). Program `gouraud` liczy światło w wierzchołkach i map normalnych nie używa (tamże, sekcja 2.11).
 
 ## 5. Kod w projekcie
 
@@ -438,10 +444,11 @@ public:
 
     /// Draws the whole maze. shader is the textured program or one of the two lit
     /// programs (lit, gouraud): it must be in use, with uView, uProjection and its own
-    /// uniforms (uViewMode, or the ones of the lighting) already set. The function sets
-    /// uTexture, uTint for every part, and uModel and uNormalMatrix for every object.
-    /// The textured program has no uNormalMatrix: a uniform a program does not have is
-    /// ignored.
+    /// uniforms (uViewMode, uNormalMapEnabled, or the ones of the lighting) already set.
+    /// The function sets uTexture and uNormalMap, binds the two textures and sets uTint
+    /// for every part, and sets uModel and uNormalMatrix for every object. The textured
+    /// program has no uNormalMatrix and the gouraud program no uNormalMap: a uniform
+    /// a program does not have is ignored.
     void draw(const gfx::Shader& shader, const MazeWorld& world) const;
 
 private:
@@ -468,10 +475,14 @@ constexpr const char* FLOOR_TILE_MODEL_FILE = "models/floor_tile.obj";
 constexpr const char* WALL_MODEL_FILE = "models/wall_straight.obj";
 constexpr const char* PILLAR_MODEL_FILE = "models/wall_pillar.obj";
 
-// The texture unit all textures of the maze are bound to. The sampler uniform gets the
-// same number.
+// The texture units of the maze: the colour pictures are bound to the first one, the
+// normal maps to the second. Each sampler uniform gets the number of its unit. A shader
+// can read both textures for the same fragment only because they are on different units.
 constexpr GLuint TEXTURE_UNIT = 0;
+constexpr GLuint NORMAL_MAP_UNIT = 1;
 ```
+
+Dwie stałe to dwie **jednostki teksturujące** ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.7). Jedna jednostka ma jedno wiązanie `GL_TEXTURE_2D`, więc dwie tekstury czytane w tym samym fragmencie (kolor i normalna) muszą leżeć na dwóch różnych.
 
 ```cpp
 MazeRenderer::MazeRenderer(assets::AssetCache& assets)
@@ -486,9 +497,11 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
 
 ```cpp
 void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world) const {
-    // The sampler reads the unit the textures are bound to below. It is set in every
-    // frame and not once at start-up: after a shader reload all uniforms are back at 0.
+    // The samplers read the units the textures are bound to below. They are set in every
+    // frame and not once at start-up: after a shader reload all uniforms are back at 0,
+    // and both samplers would read unit 0.
     shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
+    shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
 
     drawInstances(shader, m_floorTile, world.floorMatrices);
     drawInstances(shader, m_wall, world.wallMatrices);
@@ -498,10 +511,11 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world) const
 
 | Linia | Znaczenie |
 |---|---|
-| `shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));` | sampler `uTexture` dostaje numer jednostki. Ustawiany w każdej klatce, a nie raz przy starcie: po przeładowaniu shaderów powstaje nowy program, w którym wszystkie uniformy mają wartość 0. Tutaj 0 jest akurat wartością poprawną, ale kod nie polega na tym zbiegu okoliczności |
+| `shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));` | sampler `uTexture` dostaje numer jednostki obrazu koloru, czyli 0. Ustawiany w każdej klatce, a nie raz przy starcie: po przeładowaniu shaderów powstaje nowy program, w którym wszystkie uniformy mają wartość 0. Dla tego samplera 0 jest akurat wartością poprawną, ale kod nie polega na tym zbiegu okoliczności |
+| `shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));` | sampler `uNormalMap` dostaje 1. Tu ustawianie co klatkę jest już konieczne: po przeładowaniu oba samplery miałyby wartość 0 i `uNormalMap` czytałby **obraz koloru** jako mapę normalnych. Szary kamień `(0,6, 0,6, 0,6)` po przeliczeniu `* 2 - 1` to kierunek pochylony w stronę stycznej i bitangenty, więc całe oświetlenie ścian byłoby przekrzywione, bez żadnego błędu OpenGL. Program `gouraud` tego uniformu nie ma: `glGetUniformLocation` zwraca -1 i wywołanie jest ignorowane |
 | trzy wywołania `drawInstances` | podłoga, ściany, słupki. Wektor macierzy sam zamienia się na `std::span<const glm::mat4>` |
 
-Funkcja zakłada, że program jest już w użyciu i ma ustawione `uView`, `uProjection` i własne uniformy: `uViewMode` w programie `textured` albo uniformy odbłysku w programach `lit` i `gouraud`. Robią to `NightMazeApp::drawUnlitMaze` i `drawLitMaze` (sekcja 5.7). Podział jest celowy: to, co dotyczy całej klatki, ustawia aplikacja, a to, co dotyczy labiryntu, renderer. Parametr `shader` to referencja do **dowolnego** z trzech programów: renderer nie wie, którym rysuje.
+Funkcja zakłada, że program jest już w użyciu i ma ustawione `uView`, `uProjection` i własne uniformy: `uViewMode` w programie `textured`, uniformy odbłysku w programach `lit` i `gouraud`, a w `textured` i `lit` także przełącznik `uNormalMapEnabled`. Robią to `NightMazeApp::drawUnlitMaze` i `drawLitMaze` (sekcja 5.7). Podział jest celowy: to, co dotyczy całej klatki, ustawia aplikacja, a to, co dotyczy labiryntu, renderer. Parametr `shader` to referencja do **dowolnego** z trzech programów: renderer nie wie, którym rysuje.
 
 **`drawInstances`.**
 
@@ -513,9 +527,13 @@ void MazeRenderer::drawInstances(const gfx::Shader& shader, const assets::Loaded
         return;
     }
 
-    // The parts are the outer loop: the texture and the tint are set once per part, and
+    // The parts are the outer loop: the textures and the tint are set once per part, and
     // only the model matrix changes from one object to the next.
     for (const assets::ModelPart& part : model->parts) {
+        // The normal map first: bind() makes its unit the active one, and binding the
+        // colour picture last leaves unit 0 active, as the rest of the program expects.
+        // Never null: a part without a normal map has the flat one of the cache.
+        part.normalMap->bind(NORMAL_MAP_UNIT);
         part.texture->bind(TEXTURE_UNIT);
         shader.setVec3(TINT_UNIFORM, part.color);
 
@@ -535,14 +553,17 @@ void MazeRenderer::drawInstances(const gfx::Shader& shader, const assets::Loaded
 |---|---|
 | `if (model == nullptr) { return; }` | model się nie wczytał: błąd jest w logu, a reszta labiryntu rysuje się normalnie. Brak pliku ściany nie zatrzymuje programu |
 | `for (const assets::ModelPart& part : model->parts)` | **części są pętlą zewnętrzną**. Część to zakres indeksów siatki z jednym materiałem |
-| `part.texture->bind(TEXTURE_UNIT);` | tekstura części i jej obiekt samplera na jednostkę 0. Wskaźnik nigdy nie jest pusty: część bez własnej tekstury pokazuje na białą teksturę zastępczą |
+| `part.normalMap->bind(NORMAL_MAP_UNIT);` | mapa normalnych części i jej obiekt samplera na jednostkę 1. Wskaźnik nigdy nie jest pusty: część bez własnej mapy (materiał bez linii `map_Bump` albo plik, którego nie dało się wczytać) pokazuje na **płaską mapę normalnych** pamięci podręcznej, teksturę 1 x 1 o tekselu `(128, 128, 255)`, z którą shader dostaje po prostu normalną siatki ([`../assets/asset-cache.md`](../assets/asset-cache.md)). Dzięki temu ani renderer, ani shader nie mają osobnej ścieżki "bez mapy". Wiązanie jest wykonywane także wtedy, gdy rysuje program `gouraud` albo mapowanie normalnych jest wyłączone: tekstura na jednostce, której żaden sampler nie czyta, nic nie psuje |
+| `part.texture->bind(TEXTURE_UNIT);` | obraz koloru części i jego obiekt samplera na jednostkę 0. Wskaźnik nigdy nie jest pusty: część bez własnej tekstury pokazuje na białą teksturę zastępczą. **Kolejność dwóch wiązań jest celowa** (wyjaśnienie pod tabelą) |
 | `shader.setVec3(TINT_UNIFORM, part.color);` | kolor rozproszenia materiału. Dla trzech modeli labiryntu to biel `(1, 1, 1)`, która tekstury nie zmienia |
 | `for (const glm::mat4& modelMatrix : modelMatrices)` | pętla wewnętrzna: wszystkie obiekty używające tego modelu |
 | `shader.setMat4(MODEL_UNIFORM, modelMatrix);` | macierz modelu obiektu |
 | `shader.setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix));` (od M4) | macierz normalnych tego obiektu: odwrotność części 3 x 3 macierzy modelu, transponowana ([`../scene/transforms.md`](../scene/transforms.md), sekcja 5.6, teoria w [`../scene/lights.md`](../scene/lights.md), sekcja 2.7). Liczona na procesorze **w każdej klatce dla każdego obiektu**, inaczej niż macierze modelu, które są policzone raz. W programie `textured` uniform nie istnieje i wywołanie jest ignorowane. Razem z `uModel` to dwie rzeczy, które zmieniają się między obiektami |
 | `model->mesh.draw(part.firstIndex, part.indexCount);` | podpina VAO i woła `glDrawElements` dla zakresu indeksów części |
 
-Dlaczego części na zewnątrz, a obiekty wewnątrz. Odwrotna kolejność też dałaby poprawny obraz, ale podpinałaby teksturę i ustawiała kolor przy każdym obiekcie: 342 razy zamiast 3. Zmiana tekstury jest droższa niż zmiana jednej macierzy, więc rysuje się "wszystko z tą teksturą, potem wszystko z następną". Funkcja jest `static`, bo nie czyta żadnego pola obiektu: dostaje model jako parametr.
+**Dlaczego mapa normalnych pierwsza.** `Texture2D::bind(unit)` woła `glActiveTexture(GL_TEXTURE0 + unit)`, a dopiero potem `glBindTexture` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5). Jednostka aktywna jest stanem całego kontekstu i zostaje taka, jaką ustawiło ostatnie wywołanie. Gdyby mapa normalnych była podpinana druga, po narysowaniu labiryntu aktywna zostałaby jednostka 1. Komentarz mówi "as the rest of the program expects". Konkretnie w kodzie projektu zależy od tego jedno miejsce: konstruktor `gfx::Texture2D`, który woła `glBindTexture` na jednostce **aktywnej**, bez własnego `glActiveTexture`. Tekstura tworzona później (dziś wszystkie powstają przy starcie, przed pierwszą klatką) zastąpiłaby wtedy wiązanie mapy normalnych na jednostce 1 zamiast wiązania na jednostce 0. Reszta kodu rysującego woła `bind(unit)` z jawnym numerem i od jednostki aktywnej nie zależy. Zostawienie jednostki 0 jako aktywnej jest więc porządkiem, a nie warunkiem poprawności dzisiejszej klatki.
+
+Dlaczego części na zewnątrz, a obiekty wewnątrz. Odwrotna kolejność też dałaby poprawny obraz, ale podpinałaby obie tekstury i ustawiała kolor przy każdym obiekcie: 342 razy zamiast 3. Zmiana tekstury jest droższa niż zmiana jednej macierzy, więc rysuje się "wszystko z tą teksturą, potem wszystko z następną". Funkcja jest `static`, bo nie czyta żadnego pola obiektu: dostaje model jako parametr.
 
 Nazwa `drawInstances` nie oznacza rysowania instancjami w sensie OpenGL (`glDrawElementsInstanced`, sekcja 2.5). To zwykła pętla: jedno `glDrawElements` na macierz.
 
@@ -638,7 +659,8 @@ Co regeneracja zmienia, a czego nie:
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
     // The two debug views (normals and texture coordinates as colours) only exist in the
     // textured program, and they show data, not light. So they are drawn without
-    // lighting whatever the lighting mode is.
+    // lighting whatever the lighting mode is. The view of the normals still follows the
+    // lighting in one thing: it shows the normals the chosen mode shades with.
     if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
         drawUnlitMaze(view, projection);
     } else {
@@ -659,6 +681,9 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
     // The enum values are the numbers textured.frag compares uViewMode with.
     m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    // Only the view of the normals reads it: that view shows the normals the lighting
+    // would use, so with normal mapping the ones from the normal maps.
+    m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
 }
@@ -673,7 +698,15 @@ Od M4 `drawMaze` tylko **wybiera**, a rysują dwie funkcje:
 | `Gouraud` | `Textured` | `drawLitMaze` | `gouraud` |
 | `Phong`, `Blinn-Phong` | `Textured` | `drawLitMaze` | `lit` |
 
-`drawUnlitMaze` to dawna treść `drawMaze` z M2 + M3, bez zmian. `drawLitMaze` wybiera `m_gouraudShader` albo `m_litShader`, ustawia te same dwie macierze i trzy uniformy odbłysku i woła to samo `m_mazeRenderer.draw`: omawia ją linia po linii [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 5.4.
+`drawUnlitMaze` to dawna treść `drawMaze` z M2 + M3 z jedną dodaną linią:
+
+| Linia | Znaczenie |
+|---|---|
+| `m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);` | przełącznik mapowania normalnych dla programu `textured`. W shaderze to `uniform bool uNormalMapEnabled`, a uniform typu `bool` ustawia się przez `glUniform1i`: 0 to fałsz, każda inna wartość to prawda. Czyta go tylko gałąź podglądu normalnych (`uViewMode == 1`). `usesNormalMap` ([`flashlight.md`](flashlight.md), sekcja 5.2) jest fałszywe w trybie `Gouraud`, więc podgląd `Normals as colour` pokazuje wtedy gładkie normalne siatki, a w trybach `Unlit`, `Phong` i `Blinn-Phong` (przy włączonym polu `Normal mapping`) normalne z map, z widocznymi fugami. To właśnie znaczy zdanie z komentarza `drawMaze`: podgląd idzie za trybem cieniowania w jednej rzeczy |
+
+Podgląd pokazuje "tę samą normalną, której używa światło" pod jednym warunkiem: `textured.vert` przenosi normalną przez `mat3(uModel)`, a `lit.vert` przez `uNormalMatrix`. Dla macierzy modelu labiryntu (przesunięcie i obrót o 90 stopni, skala 1) oba wyniki są równe. Przy nierównej skali podgląd i oświetlenie by się rozjechały ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4.1).
+
+`drawLitMaze` wybiera `m_gouraudShader` albo `m_litShader`, ustawia te same dwie macierze, trzy uniformy odbłysku i ten sam przełącznik `uNormalMapEnabled` (program `gouraud` go nie ma i ustawienie jest ignorowane, a `usesNormalMap` i tak jest dla niego fałszywe) i woła to samo `m_mazeRenderer.draw`: omawia ją linia po linii [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 5.4.
 
 `onRender` buduje i wysyła światła klatki, a potem woła po kolei `drawMaze`, `drawLightMarkers` (gdy tryb jest inny niż `Unlit`: kostki w miejscach świateł punktowych, [`flashlight.md`](flashlight.md)), `drawCube` i, gdy włączone, `drawColliderLines`, każdą z tymi samymi macierzami widoku i rzutowania. Każda z tych funkcji wybiera własny program i ustawia mu uniformy od zera, więc żadna nie zależy od tego, co zostawiła poprzednia.
 
@@ -707,9 +740,9 @@ Testy jednostkowe `tests/MazeWorldTests.cpp`:
 
 Funkcja pomocnicza testów `transformPoint` mnoży macierz przez punkt w postaci `vec4` z `w = 1`. Jedynka sprawia, że przesunięcie zapisane w macierzy działa: tak samo liczy shader wierzchołków (`vec4(aPosition, 1.0)`).
 
-Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie przypadki przechodzą w Debug i Release, w ramach 149 przypadków i 61240 asercji całego programu testowego. Pole `pointLightPositions` sprawdzają dwa przypadki z `tests/LightingTests.cpp` (`a maze world carries the light positions of its maze` i `the default maze has this many point lights`): omawia je [`flashlight.md`](flashlight.md), sekcja 5.8.
+Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie przypadki przechodzą w Debug i Release, w ramach 163 przypadków i 62220 asercji całego programu testowego. Pole `pointLightPositions` sprawdzają dwa przypadki z `tests/LightingTests.cpp` (`a maze world carries the light positions of its maze` i `the default maze has this many point lights`): omawia je [`flashlight.md`](flashlight.md), sekcja 5.8.
 
-**Czego testy nie sprawdzają.** `MazeRenderer` i funkcji rysujących `NightMazeApp`: wymagają kontekstu OpenGL. Wybór programu według trybu jest sprawdzony na zrzutach ekranu z czterema trybami cieniowania (Windows, 2026-10-05), a nie kliknięciem listy. Sprawdzone na zrzutach ekranu z Windowsa: widok startowy ze środka labiryntu z poprawnie ustawionymi teksturami, widok z góry (tryb noclip) zgodny z planem w panelu Maze, żółte linie pudełek leżące na ścianach i słupkach, oba widoki diagnostyczne. Nie sprawdzone ręcznie: regeneracja przyciskami `Regenerate` i `Random seed`. Żaden test nie przypina yaw startowego labiryntu 10 na 10 z ziarna 1 (autor kodu podaje 180, południe, na podstawie uruchomienia).
+**Czego testy nie sprawdzają.** `MazeRenderer` i funkcji rysujących `NightMazeApp`: wymagają kontekstu OpenGL. Wybór programu według trybu jest sprawdzony na zrzutach ekranu z czterema trybami cieniowania (Windows, 2026-10-05), a nie kliknięciem listy. Sprawdzone na zrzutach ekranu z Windowsa: widok startowy ze środka labiryntu z poprawnie ustawionymi teksturami, widok z góry (tryb noclip) zgodny z planem w panelu Maze, żółte linie pudełek leżące na ścianach i słupkach, oba widoki diagnostyczne. Mapy normalnych są sprawdzone na zrzutach ekranu z 2026-10-05 (fugi jako rowki na ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze, zrzuty trybów `Gouraud` i `Unlit` identyczne co do piksela przy włączonym i wyłączonym mapowaniu: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11). Nie sprawdzone ręcznie: regeneracja przyciskami `Regenerate` i `Random seed` oraz pole wyboru `Normal mapping`. Żaden test nie przypina yaw startowego labiryntu 10 na 10 z ziarna 1 (autor kodu podaje 180, południe, na podstawie uruchomienia).
 
 ## 6. Panel ImGui
 
@@ -733,14 +766,14 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 3. Pokazuję kostkę nad przeciwległym rogiem: `exitPosition` plus 4,5 m w górę. To ta sama kostka i ten sam shader co w M1.
 4. Zmieniam `Width` na 4, `Height` na 4 i klikam `Regenerate`. Labirynt się zmienia, staję na starcie, kostka przenosi się nad nowy róg. Linia `In play` pokazuje nowy rozmiar, a liczniki `(4 + 1) * (4 + 1) = 25` ścian i 25 słupków.
 5. Wpisuję poprzednie ziarno i rozmiar: wraca dokładnie ten sam labirynt (determinizm).
-6. W panelu Assets przełączam `View mode` na `Normals as colour`: ściany wzdłuż X i wzdłuż Z mają różne kolory, czyli normalne obróciły się razem z modelem.
+6. W panelu Assets przełączam `View mode` na `Normals as colour`: ściany wzdłuż X i wzdłuż Z mają różne kolory, czyli normalne obróciły się razem z modelem. Przy włączonym polu `Normal mapping` na kolorze ściany widać rysunek fug (to normalne z mapy normalnych). Żeby zobaczyć czyste normalne siatki, odznaczam `Normal mapping` albo wybieram tryb `Gouraud`.
 
 ## 7. Pułapki
 
 1. **Obrót i przesunięcie w złej kolejności.** Macierz `R * T` (najpierw przesunięcie, potem obrót) zatoczyłaby ścianą łuk wokół początku układu świata i wszystkie ściany wzdłuż Z stanęłyby w złych miejscach. `Transform::matrix()` składa `T * R * S`, więc obrót działa wokół środka modelu.
 2. **Macierze liczone w pętli rysowania.** Działa, ale powtarza w każdej klatce pracę, której wynik się nie zmienia. Przeniesienie liczenia do `buildMazeWorld` zmienia też typ błędu: zła macierz jest widoczna w teście bez okna.
-3. **Pętle w odwrotnej kolejności.** Obiekty na zewnątrz i części wewnątrz dają ten sam obraz, ale podpinają teksturę przy każdym obiekcie.
-4. **`uTexture` ustawiony tylko raz przy starcie.** Po `Reload shaders` powstaje nowy program i jego uniformy wracają do wartości początkowych. Kod ustawia `uTexture`, `uTint`, `uViewMode`, `uNormalMatrix` i uniformy odbłysku w każdej klatce, więc przeładowanie niczego nie psuje. Połączenie bloku świateł z punktem wiązania też ginie przy przeładowaniu, ale `gfx::Shader` odtwarza je sam ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
+3. **Pętle w odwrotnej kolejności.** Obiekty na zewnątrz i części wewnątrz dają ten sam obraz, ale podpinają obie tekstury przy każdym obiekcie.
+4. **`uTexture` ustawiony tylko raz przy starcie.** Po `Reload shaders` powstaje nowy program i jego uniformy wracają do wartości początkowych. Kod ustawia `uTexture`, `uNormalMap`, `uNormalMapEnabled`, `uTint`, `uViewMode`, `uNormalMatrix` i uniformy odbłysku w każdej klatce, więc przeładowanie niczego nie psuje. Dla `uNormalMap` to konieczność, a nie ostrożność: wartość początkowa 0 kazałaby mu czytać obraz koloru z jednostki 0 jako mapę normalnych. Połączenie bloku świateł z punktem wiązania też ginie przy przeładowaniu, ale `gfx::Shader` odtwarza je sam ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 5. **Zmiana labiryntu w środku klatki.** Panel dostaje bieżący labirynt jako `const MazeWorld&`, więc nie może go podmienić, i to jest zamierzone. Gdyby mógł, wymiana następowałaby po narysowaniu sceny, a przed końcem klatki: scena na ekranie pochodziłaby ze starego labiryntu, plan w panelu z nowego, a gracz stałby jeszcze w starej pozycji. Flaga w `MazeSettings` przenosi wymianę na początek następnej klatki, w jedno miejsce.
 6. **Przeniesienie gracza bez poprzedniej pozycji.** `enterMaze` ustawia `m_player.position` i `m_previousPlayerPosition` razem. Samo pierwsze przypisanie dałoby jedną klatkę narysowaną z punktu między starym a nowym miejscem: widoczny przelot przez ściany.
 7. **Renderer przeżywający pamięć podręczną.** `MazeRenderer` trzyma gołe wskaźniki. Odwrócenie kolejności pól `m_assets` i `m_mazeRenderer` w klasie dałoby wskaźniki do obiektu, który jeszcze nie istnieje (przy budowie) i już nie istnieje (przy niszczeniu).
@@ -750,8 +783,10 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 11. **Pudełko kolizji to nie model.** Żółte linie są grubsze niż korpus ściany (0,3 wobec 0,2 m) i węższe niż podstawa słupka (0,3 wobec 0,4 m). To zamierzone (sekcja 5.8).
 12. **Rozmiar spoza zakresu.** `buildMazeWorld` rzuca wyjątek dla rozmiaru 0 albo większego niż 256. `regenerateMaze` przycina rozmiar wcześniej. Konstruktor aplikacji nie przycina, bo podaje stałe domyślne.
 13. **Macierz normalnych policzona, ale niewysłana (albo odwrotnie).** Program `lit` z niewysłanym `uNormalMatrix` ma w nim po zlinkowaniu same zera: każda normalna wychodzi zerowa, `normalize` wektora zerowego daje wynik niezdefiniowany i labirynt jest czarny albo miga. Literówka w nazwie `"uNormalMatrix"` wyglądałaby tak samo, bez żadnego błędu. Stąd stała `NORMAL_MATRIX_UNIFORM` w `ShaderUniforms.hpp`.
-14. **Przełącznik trybu nie działa w podglądach.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` nie zmienia obrazu labiryntu: `drawMaze` wybiera wtedy `textured` niezależnie od trybu. To zamierzone.
-15. **Światła przenoszą się z labiryntem, ale nie z kodu rysującego.** Pozycje świateł są polem `MazeWorld`. Kto doda do gry drugi sposób zmiany labiryntu z pominięciem `buildMazeWorld`, zostawi światła w starych zaułkach.
+14. **Przełącznik trybu prawie nie działa w podglądach.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` nie zmienia programu: `drawMaze` wybiera wtedy `textured` niezależnie od trybu. To zamierzone. Jeden wyjątek od "nie zmienia obrazu": podgląd normalnych pokazuje normalne, których używa wybrany tryb, więc po przełączeniu na `Gouraud` znika z niego rysunek fug z map normalnych (`usesNormalMap` zwraca wtedy `false`), a po powrocie na `Unlit`, `Phong` albo `Blinn-Phong` wraca. Podgląd UV nie zależy od trybu wcale.
+15. **Obie tekstury na tej samej jednostce.** `part.normalMap->bind(TEXTURE_UNIT)` zamiast `NORMAL_MAP_UNIT` kompiluje się i nie zgłasza błędu: drugie wiązanie zastępuje pierwsze, oba samplery czytają to, co zostało podpięte jako ostatnie, a na jednostce 1 zostaje tekstura z poprzedniej części albo żadna.
+16. **Podgląd normalnych "zepsuty" w trybie `Gouraud`.** `Normals as colour` pokazuje w tym trybie gładkie normalne siatki, bez fug, mimo zaznaczonego `Normal mapping`. To zamierzone: `usesNormalMap` jest dla `Gouraud` fałszywe, a podgląd pokazuje normalne, którymi cieniuje wybrany tryb.
+17. **Światła przenoszą się z labiryntem, ale nie z kodu rysującego.** Pozycje świateł są polem `MazeWorld`. Kto doda do gry drugi sposób zmiany labiryntu z pominięciem `buildMazeWorld`, zostawi światła w starych zaułkach.
 
 ## 8. Ćwiczenia
 
@@ -791,7 +826,7 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
    Pracę procesora w sterowniku przy każdym wywołaniu, niezależnie od liczby trójkątów. Liczbę wywołań zmniejsza rysowanie instancjami (jedno wywołanie, macierze jako atrybut na instancję) albo sklejenie nieruchomej geometrii w jedną siatkę. Projekt zostaje przy jednym wywołaniu na obiekt, bo przy setkach obiektów to wystarcza i jest najprostsze do wytłumaczenia.
 
 8. **Dlaczego w `drawInstances` części modelu są pętlą zewnętrzną?**
-   Żeby teksturę i kolor materiału ustawiać raz na część, a nie raz na obiekt. Między obiektami zmienia się tylko `uModel`.
+   Żeby obie tekstury (obraz koloru i mapę normalnych) oraz kolor materiału ustawiać raz na część, a nie raz na obiekt. Między obiektami zmieniają się tylko `uModel` i `uNormalMatrix`.
 
 9. **Co posiada `MazeRenderer`?**
    Nic. Ma trzy wskaźniki do modeli należących do pamięci podręcznej assetów i dostaje `MazeWorld` jako parametr. Pamięć podręczna musi żyć dłużej niż renderer.
@@ -818,13 +853,22 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
     Zależy od dwóch przełączników. Tryb `Unlit` albo podgląd normalnych lub UV: `textured`. Tryb `Gouraud` przy zwykłym widoku: `gouraud`. Tryby `Phong` i `Blinn-Phong`: `lit`. Wybiera `NightMazeApp::drawMaze`, a `MazeRenderer::draw` jest dla wszystkich trzech ta sama.
 
 17. **Dlaczego `MazeRenderer` może rysować trzema różnymi programami bez żadnego `if`?**
-    Wszystkie trzy mają te same atrybuty wierzchołka i te same nazwy uniformów `uTexture`, `uTint`, `uModel`. `uNormalMatrix` istnieje tylko w dwóch, ale ustawienie uniformu, którego program nie ma, jest ignorowane.
+    Wszystkie trzy czytają tę samą siatkę (numery atrybutów są wspólne, a shader może nie deklarować atrybutu, którego nie potrzebuje) i mają te same nazwy uniformów `uTexture`, `uTint`, `uModel`. `uNormalMatrix` i `uNormalMap` istnieją tylko w dwóch z trzech (pierwszego nie ma `textured`, drugiego `gouraud`), ale ustawienie uniformu, którego program nie ma, jest ignorowane.
 
 18. **Co od M4 jest liczone raz na obiekt w każdej klatce i dlaczego nie raz na labirynt?**
     Macierz normalnych: `scene::normalMatrix(modelMatrix)`. Mogłaby być zapamiętana obok macierzy modelu. Kod liczy ją w pętli rysowania: to 342 odwrotności macierzy 3 x 3 na klatkę, czego nie mierzyłem jako kosztu.
 
 19. **Skąd `MazeWorld` ma pozycje świateł i kiedy się zmieniają?**
     Z `deadEndLightPositions`, wołanej raz w `buildMazeWorld`: ślepe zaułki poza komórką startową, najwyżej 16. Zmieniają się tylko razem z całym labiryntem.
+
+20. **Dlaczego w `drawInstances` mapa normalnych jest podpinana przed obrazem koloru?**
+    `Texture2D::bind` ustawia jednostkę aktywną. Po podpięciu obrazu koloru jako drugiego aktywna zostaje jednostka 0. Zależy od tego konstruktor `Texture2D`, który wiąże nową teksturę na jednostce aktywnej: przy odwrotnej kolejności tekstura utworzona później zastąpiłaby mapę normalnych na jednostce 1.
+
+21. **Co by się stało, gdyby `uNormalMap` nie był ustawiany w każdej klatce?**
+    Po `Reload shaders` nowy program ma wszystkie uniformy równe 0, więc `uNormalMap` czytałby jednostkę 0, czyli obraz koloru, jako mapę normalnych. Oświetlenie ścian byłoby błędne, bez żadnego komunikatu.
+
+22. **Co widzi program `gouraud` z mapy normalnych?**
+    Nic. Mapa jest podpinana do jednostki 1 i `setInt` dla `uNormalMap` jest wołane także dla niego, ale program nie ma tego uniformu ani samplera, więc oba wywołania nie mają skutku. `usesNormalMap` jest dla trybu `Gouraud` fałszywe.
 
 ## 10. Źródła
 
@@ -833,5 +877,5 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 - LearnOpenGL, rozdział "Model": <https://learnopengl.com/Model-Loading/Model> (model jako siatki i materiały).
 - Dokumentacja OpenGL, `glDrawElements`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElements.xhtml>, `glDrawElementsInstanced`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElementsInstanced.xhtml>.
 - Jamis Buck, "Mazes for Programmers" (Pragmatic Bookshelf, 2015): labirynt doskonały jako drzewo rozpinające siatki (stąd liczba ścian).
-- Dokumenty w tym repozytorium: [`maze-generator.md`](maze-generator.md) (siatka, generator, układ, panel Maze), [`player.md`](player.md) (gracz i `enterMaze`), [`flashlight.md`](flashlight.md) (światła gry, pozycje świateł w zaułkach), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`, `drawLitMaze`), [`../scene/lights.md`](../scene/lights.md) (wzory oświetlenia), [`../scene/transforms.md`](../scene/transforms.md) (`Transform`), [`../scene/collision.md`](../scene/collision.md) (pudełka i ich rysowanie), [`../assets/asset-cache.md`](../assets/asset-cache.md) (modele, tekstury, panel Assets), [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured`), [`../gfx/mesh.md`](../gfx/mesh.md) (`Mesh::draw`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (nazwy uniformów), [`../core/README.md`](../core/README.md) (`NightMazeApp` jako całość), [`../../guides/blender.md`](../../guides/blender.md) (wymiary modeli).
+- Dokumenty w tym repozytorium: [`maze-generator.md`](maze-generator.md) (siatka, generator, układ, panel Maze), [`player.md`](player.md) (gracz i `enterMaze`), [`flashlight.md`](flashlight.md) (światła gry, pozycje świateł w zaułkach), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`, `drawLitMaze`), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (mapy normalnych: przestrzeń styczna, `common/normal_map.glsl`, dwie jednostki teksturujące), [`../scene/lights.md`](../scene/lights.md) (wzory oświetlenia), [`../scene/transforms.md`](../scene/transforms.md) (`Transform`), [`../scene/collision.md`](../scene/collision.md) (pudełka i ich rysowanie), [`../assets/asset-cache.md`](../assets/asset-cache.md) (modele, tekstury, panel Assets), [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured`), [`../gfx/mesh.md`](../gfx/mesh.md) (`Mesh::draw`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (nazwy uniformów), [`../core/README.md`](../core/README.md) (`NightMazeApp` jako całość), [`../../guides/blender.md`](../../guides/blender.md) (wymiary modeli).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (tematy 3, 4 i 5), sekcja 10 (panel Maze).

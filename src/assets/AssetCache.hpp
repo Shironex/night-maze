@@ -49,6 +49,17 @@ struct ModelPart {
 
     /// False when texture is the white fallback and not the picture of texturePath.
     bool hasOwnTexture = false;
+
+    /// Normal map to bind for this part. Never null: when the material names no normal
+    /// map, or the file could not be loaded, it points at the flat normal map of the
+    /// cache, and the part is shaded with the normals of its mesh.
+    const gfx::Texture2D* normalMap = nullptr;
+
+    /// Path of the normal map from the map_Bump line. Empty when the material has none.
+    std::filesystem::path normalMapPath;
+
+    /// False when normalMap is the flat fallback and not the picture of normalMapPath.
+    bool hasOwnNormalMap = false;
 };
 
 /// A model on the graphics card: one mesh, split into parts by material.
@@ -69,7 +80,9 @@ struct LoadedModel {
 
 /// Loads models and textures on first request and keeps them until it is destroyed.
 /// Asking for the same file again returns the object loaded before, so a texture used by
-/// two models (wall_stone.png by the wall and by the pillar) exists once on the card.
+/// two models (wall_stone.png and its normal map, by the wall and by the pillar) exists
+/// once on the card. A normal map is a texture like any other here: the same loader, the
+/// same list, the same filter. Only the shader reads it differently.
 ///
 /// The pointers it returns stay valid for the whole life of the cache: loading more
 /// assets never moves the ones already loaded.
@@ -79,7 +92,8 @@ struct LoadedModel {
 /// of its models point at its textures.
 class AssetCache {
 public:
-    /// Creates the 1 x 1 white texture that stands in for a missing one.
+    /// Creates the two 1 x 1 textures that stand in for missing ones: the white texture
+    /// and the flat normal map.
     AssetCache();
 
     AssetCache(const AssetCache&) = delete;
@@ -90,7 +104,8 @@ public:
     ///
     /// Returns nullptr when the file cannot be loaded. The error is logged once, by the
     /// first call: the path is remembered as failed and not tried again. A model whose
-    /// texture is missing still loads: that part gets the white texture. It does not throw.
+    /// texture or normal map is missing still loads: that part gets the white texture or
+    /// the flat normal map. It does not throw.
     const LoadedModel* model(const std::filesystem::path& path);
 
     /// The texture read from an image file. The first call for a path loads it, later
@@ -104,6 +119,12 @@ public:
     /// A 1 x 1 white texture. A shader that multiplies a colour by a texture draws the
     /// plain colour with it.
     const gfx::Texture2D& whiteTexture() const { return m_whiteTexture; }
+
+    /// A 1 x 1 normal map whose one texel is (128, 128, 255): the direction (0, 0, 1) of
+    /// tangent space, "straight out of the surface". A shader that reads its normals
+    /// from a normal map gets the normal of the mesh with it, so it needs no second code
+    /// path for parts without a normal map.
+    const gfx::Texture2D& flatNormalTexture() const { return m_flatNormalTexture; }
 
     /// Changes the filter of every loaded texture, and of the ones loaded later.
     void setFilter(gfx::TextureFilter filter);
@@ -133,9 +154,10 @@ private:
     /// True when the path is in m_failedPaths.
     bool hasFailed(const std::filesystem::path& path) const;
 
-    // The stand-in for a missing texture. Declared first, because the parts of the models
-    // below may point at it.
+    // The stand-ins for a missing texture and a missing normal map. Declared first,
+    // because the parts of the models below may point at them.
     gfx::Texture2D m_whiteTexture;
+    gfx::Texture2D m_flatNormalTexture;
 
     // std::deque and not std::vector: adding an element at the end of a deque never moves
     // the elements that are already in it, so the pointers handed out stay valid. A vector

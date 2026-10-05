@@ -183,7 +183,8 @@ void applyColors(ImGuiStyle& style) {
     colors[ImGuiCol_ButtonHovered] = EMBER;
     colors[ImGuiCol_ButtonActive] = EMBER_BRIGHT;
 
-    // Header colours are used by the entries of an opened list (Combo).
+    // Header colours are used by the entries of an opened list (Combo) and by the title
+    // bars of foldable groups (CollapsingHeader).
     colors[ImGuiCol_Header] = SLATE_LIGHT;
     colors[ImGuiCol_HeaderHovered] = EMBER;
     colors[ImGuiCol_HeaderActive] = EMBER_BRIGHT;

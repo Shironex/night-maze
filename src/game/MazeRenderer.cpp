@@ -18,9 +18,11 @@ constexpr const char* FLOOR_TILE_MODEL_FILE = "models/floor_tile.obj";
 constexpr const char* WALL_MODEL_FILE = "models/wall_straight.obj";
 constexpr const char* PILLAR_MODEL_FILE = "models/wall_pillar.obj";
 
-// The texture unit all textures of the maze are bound to. The sampler uniform gets the
-// same number.
+// The texture units of the maze: the colour pictures are bound to the first one, the
+// normal maps to the second. Each sampler uniform gets the number of its unit. A shader
+// can read both textures for the same fragment only because they are on different units.
 constexpr GLuint TEXTURE_UNIT = 0;
+constexpr GLuint NORMAL_MAP_UNIT = 1;
 
 } // namespace
 
@@ -30,9 +32,11 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
       m_pillar(assets.model(core::assetPath(PILLAR_MODEL_FILE))) {}
 
 void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world) const {
-    // The sampler reads the unit the textures are bound to below. It is set in every
-    // frame and not once at start-up: after a shader reload all uniforms are back at 0.
+    // The samplers read the units the textures are bound to below. They are set in every
+    // frame and not once at start-up: after a shader reload all uniforms are back at 0,
+    // and both samplers would read unit 0.
     shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
+    shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
 
     drawInstances(shader, m_floorTile, world.floorMatrices);
     drawInstances(shader, m_wall, world.wallMatrices);
@@ -46,9 +50,13 @@ void MazeRenderer::drawInstances(const gfx::Shader& shader, const assets::Loaded
         return;
     }
 
-    // The parts are the outer loop: the texture and the tint are set once per part, and
+    // The parts are the outer loop: the textures and the tint are set once per part, and
     // only the model matrix changes from one object to the next.
     for (const assets::ModelPart& part : model->parts) {
+        // The normal map first: bind() makes its unit the active one, and binding the
+        // colour picture last leaves unit 0 active, as the rest of the program expects.
+        // Never null: a part without a normal map has the flat one of the cache.
+        part.normalMap->bind(NORMAL_MAP_UNIT);
         part.texture->bind(TEXTURE_UNIT);
         shader.setVec3(TINT_UNIFORM, part.color);
 

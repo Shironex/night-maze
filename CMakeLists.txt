@@ -26,6 +26,8 @@ add_library(engine STATIC
     src/assets/ImageLoader.hpp
     src/assets/ObjLoader.cpp
     src/assets/ObjLoader.hpp
+    src/assets/Tangents.cpp
+    src/assets/Tangents.hpp
     src/core/Application.cpp
     src/core/Application.hpp
     src/core/GlCheck.cpp
@@ -68,9 +70,10 @@ add_library(engine STATIC
 )
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-# GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
-# scene/Camera.hpp, scene/Collider.hpp) expose GLM types, so every target that includes
-# them needs the GLM include path too.
+# GLM is PUBLIC because headers of engine (gfx/Shader.hpp, gfx/Vertex.hpp,
+# scene/Transform.hpp, scene/Camera.hpp, scene/Collider.hpp, scene/Light.hpp,
+# scene/LightBlock.hpp and others) expose GLM types, so every target that includes them
+# needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 # stb_image is PRIVATE: only assets/ImageLoader.cpp includes its header, no header of
 # engine does, so the targets that use engine do not need its include path.
@@ -101,8 +104,9 @@ add_library(game_logic STATIC
     src/game/Player.cpp
     src/game/Player.hpp
 )
-# PUBLIC: the headers of this library (MazeLayout.hpp, MazeWorld.hpp, Player.hpp) include
-# scene/Collider.hpp and GLM, so whoever includes them needs the include paths of engine.
+# PUBLIC: the headers of this library (Lighting.hpp, MazeLayout.hpp, MazeWorld.hpp,
+# Player.hpp) include headers of engine (scene/Collider.hpp, scene/Light.hpp) and GLM,
+# so whoever includes them needs the include paths of engine.
 # The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
@@ -165,6 +169,7 @@ add_executable(night_maze_tests
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
     tests/ShaderSourceTests.cpp
+    tests/TangentTests.cpp
     tests/TransformTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).

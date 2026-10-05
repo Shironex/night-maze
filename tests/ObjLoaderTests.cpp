@@ -2,8 +2,11 @@
 // See docs/modules/assets/obj-loader.md
 #include "assets/ObjLoader.hpp"
 
+#include "assets/Tangents.hpp"
+
 #include <doctest/doctest.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -103,9 +106,10 @@ Bounds boundsOf(const assets::ObjModel& model) {
 }
 
 // Loads one of the real models of the game and checks what all three have in common:
-// one part with one material, unit normals, valid indices and a texture file that exists.
+// one part with one material, unit normals, valid indices, a texture file and a normal
+// map file that exist, and tangents that fit the normals and the texture coordinates.
 assets::ObjModel loadGameModel(const char* fileName, const char* materialName,
-                               const char* textureFileName) {
+                               const char* textureFileName, const char* normalMapFileName) {
     assets::ObjModel model;
     std::string error;
     const bool ok = assets::loadObj(modelsDirectory() / fileName, model, error);
@@ -139,6 +143,32 @@ assets::ObjModel loadGameModel(const char* fileName, const char* materialName,
     CHECK(material.diffuseTexture ==
           (assetsDirectory() / "textures" / textureFileName).lexically_normal());
     CHECK(std::filesystem::exists(material.diffuseTexture));
+    // The normal map is named by the map_Bump line and resolved the same way.
+    CHECK(material.normalTexture ==
+          (assetsDirectory() / "textures" / normalMapFileName).lexically_normal());
+    CHECK(std::filesystem::exists(material.normalTexture));
+
+    // The tangents are computed by the loader: length 1 and perpendicular to the normal.
+    for (const gfx::Vertex& vertex : model.vertices) {
+        CHECK(glm::length(vertex.tangent) == doctest::Approx(1.0F));
+        CHECK(glm::dot(vertex.tangent, vertex.normal) == doctest::Approx(0.0F));
+
+        // The models are boxes, so every face is either vertical or horizontal. On
+        // a vertical face the texture stands upright: the bitangent the shader builds,
+        // cross(N, T), must point up, where v grows. A tangent the wrong way round would
+        // give "down" here and turn the joints of the normal map into ridges.
+        const bool vertical = std::abs(vertex.normal.y) < 0.5F;
+        if (vertical) {
+            checkVec3(glm::cross(vertex.normal, vertex.tangent), {0.0F, 1.0F, 0.0F});
+        }
+    }
+
+    // No face has a mirrored texture, although box_project_uvs flips u on opposite sides:
+    // the flip is exactly what keeps the texture readable from outside on every side.
+    // This is why a vertex needs no handedness sign. Counted by the loader and again
+    // here, directly.
+    CHECK(model.mirroredTriangleCount == 0U);
+    CHECK(assets::countMirroredTriangles(model.vertices, model.indices) == 0U);
     return model;
 }
 
@@ -289,6 +319,40 @@ TEST_CASE("parseObj: a polygon is split into a fan of triangles") {
                                                   "f 1 2 3 4 5\n");
         CHECK(model.vertices.size() == 5U);
         CHECK(model.indices == std::vector<std::uint32_t>{0, 1, 2, 0, 2, 3, 0, 3, 4});
+    }
+}
+
+TEST_CASE("parseObj: the tangents are computed from the positions and the uvs") {
+    SUBCASE("a square with an upright texture") {
+        const assets::ObjModel model = parseValid(SQUARE);
+
+        // u grows along +X on the square, and its normal is +Z.
+        for (const gfx::Vertex& vertex : model.vertices) {
+            checkVec3(vertex.tangent, {1.0F, 0.0F, 0.0F});
+        }
+        CHECK(model.mirroredTriangleCount == 0U);
+    }
+
+    SUBCASE("a model without uvs still gets tangents of length 1") {
+        const assets::ObjModel model =
+            parseValid("v 0 0 0\nv 1 0 0\nv 0 1 0\nvn 0 0 1\nf 1//1 2//1 3//1\n");
+
+        for (const gfx::Vertex& vertex : model.vertices) {
+            CHECK(glm::length(vertex.tangent) == doctest::Approx(1.0F));
+            CHECK(glm::dot(vertex.tangent, vertex.normal) == doctest::Approx(0.0F));
+        }
+        CHECK(model.mirroredTriangleCount == 0U);
+    }
+
+    SUBCASE("a mirrored texture is counted") {
+        // The square with the u of every corner flipped (1 - u).
+        const assets::ObjModel model = parseValid("v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\n"
+                                                  "vn 0 0 1\n"
+                                                  "vt 1 0\nvt 0 0\nvt 0 1\nvt 1 1\n"
+                                                  "f 1/1/1 2/2/1 3/3/1\n"
+                                                  "f 1/1/1 3/3/1 4/4/1\n");
+
+        CHECK(model.mirroredTriangleCount == 2U);
     }
 }
 
@@ -605,6 +669,8 @@ TEST_CASE("parseMtl: newmtl, Kd and map_Kd") {
         checkVec3(materials[0].diffuseColor, {0.8F, 0.4F, 0.2F});
         // parseMtl keeps the path as written: resolving it is the job of loadObj.
         CHECK(materials[0].diffuseTexture == std::filesystem::path("../textures/wall_stone.png"));
+        // No normal map line, so no normal map.
+        CHECK(materials[0].normalTexture.empty());
     }
 
     SUBCASE("several materials, CRLF, no final line break") {
@@ -645,6 +711,71 @@ TEST_CASE("parseMtl: newmtl, Kd and map_Kd") {
     SUBCASE("an empty text has no materials") {
         CHECK(assets::parseMtl("", materials, error));
         CHECK(materials.empty());
+    }
+}
+
+TEST_CASE("parseMtl: the normal map line") {
+    std::vector<assets::ObjMaterial> materials;
+    std::string error;
+
+    SUBCASE("as Blender writes it: map_Bump with the option -bm") {
+        REQUIRE(assets::parseMtl("newmtl wall_stone\n"
+                                 "Kd 1.000000 1.000000 1.000000\n"
+                                 "map_Kd ../textures/wall_stone.png\n"
+                                 "map_Bump -bm 1.000000 ../textures/wall_stone_normal.png\n",
+                                 materials, error));
+        REQUIRE(materials.size() == 1U);
+        CHECK(materials[0].diffuseTexture == std::filesystem::path("../textures/wall_stone.png"));
+        // The path is kept as written, like the one of map_Kd.
+        CHECK(materials[0].normalTexture ==
+              std::filesystem::path("../textures/wall_stone_normal.png"));
+    }
+
+    SUBCASE("without the option") {
+        REQUIRE(assets::parseMtl("newmtl m\nmap_Bump stone_normal.png\n", materials, error));
+        CHECK(materials[0].normalTexture == std::filesystem::path("stone_normal.png"));
+    }
+
+    SUBCASE("the other spellings of the keyword: map_bump, bump and norm") {
+        REQUIRE(assets::parseMtl("newmtl a\nmap_bump a.png\n"
+                                 "newmtl b\nbump -bm 0.5 b.png\n"
+                                 "newmtl c\nnorm c.png\n",
+                                 materials, error));
+        REQUIRE(materials.size() == 3U);
+        CHECK(materials[0].normalTexture == std::filesystem::path("a.png"));
+        CHECK(materials[1].normalTexture == std::filesystem::path("b.png"));
+        CHECK(materials[2].normalTexture == std::filesystem::path("c.png"));
+    }
+
+    SUBCASE("CRLF, tabs and a path with spaces") {
+        REQUIRE(assets::parseMtl("newmtl m\r\nmap_Bump\t-bm  2  my maps/old stone n.png  \r\n",
+                                 materials, error));
+        CHECK(materials[0].normalTexture == std::filesystem::path("my maps/old stone n.png"));
+    }
+
+    SUBCASE("a material with a normal map and no colour picture") {
+        REQUIRE(assets::parseMtl("newmtl m\nmap_Bump n.png\n", materials, error));
+        CHECK(materials[0].diffuseTexture.empty());
+        CHECK(materials[0].normalTexture == std::filesystem::path("n.png"));
+    }
+
+    SUBCASE("before the first newmtl") {
+        CHECK_FALSE(assets::parseMtl("map_Bump -bm 1.0 n.png\n", materials, error));
+        CHECK(error == "line 1: map_Bump before the first newmtl");
+    }
+
+    SUBCASE("without a file name") {
+        CHECK_FALSE(assets::parseMtl("newmtl m\nmap_Bump\n", materials, error));
+        CHECK(error == "line 2: map_Bump needs a file name");
+        CHECK_FALSE(assets::parseMtl("newmtl m\nnorm -bm 1.0\n", materials, error));
+        CHECK(error == "line 2: norm needs a file name");
+    }
+
+    SUBCASE("-bm without a number") {
+        CHECK_FALSE(assets::parseMtl("newmtl m\nmap_Bump -bm n.png\n", materials, error));
+        CHECK(error == "line 2: map_Bump -bm needs a number");
+        CHECK_FALSE(assets::parseMtl("newmtl m\nbump -bm\n", materials, error));
+        CHECK(error == "line 2: bump -bm needs a number");
     }
 }
 
@@ -689,20 +820,36 @@ TEST_CASE("parseMtl: a bad line is reported with its line number") {
 
 TEST_CASE("loadObj: wall_straight.obj") {
     const assets::ObjModel model =
-        loadGameModel("wall_straight.obj", "wall_stone", "wall_stone.png");
+        loadGameModel("wall_straight.obj", "wall_stone", "wall_stone.png", "wall_stone_normal.png");
 
     // 30 triangles. The file has 24 positions, 24 texture coordinates and 6 normals, and
-    // its 90 corners use 60 different triples.
+    // its 90 corners use 60 different triples. Tangents add no vertices: they are
+    // computed after the vertices exist.
     CHECK(model.indices.size() == 90U);
     CHECK(model.vertices.size() == 60U);
 
     const Bounds bounds = boundsOf(model);
     checkVec3(bounds.min, {-1.0F, 0.0F, -0.14F});
     checkVec3(bounds.max, {1.0F, 3.0F, 0.14F});
+
+    // The tangent points to the right for someone who looks at a face from outside: +X
+    // on the front (facing +Z), -X on the back, and on the two ends along the Z axis.
+    for (const gfx::Vertex& vertex : model.vertices) {
+        if (vertex.normal.z > 0.5F) {
+            checkVec3(vertex.tangent, {1.0F, 0.0F, 0.0F});
+        } else if (vertex.normal.z < -0.5F) {
+            checkVec3(vertex.tangent, {-1.0F, 0.0F, 0.0F});
+        } else if (vertex.normal.x > 0.5F) {
+            checkVec3(vertex.tangent, {0.0F, 0.0F, -1.0F});
+        } else if (vertex.normal.x < -0.5F) {
+            checkVec3(vertex.tangent, {0.0F, 0.0F, 1.0F});
+        }
+    }
 }
 
 TEST_CASE("loadObj: wall_pillar.obj") {
-    const assets::ObjModel model = loadGameModel("wall_pillar.obj", "wall_stone", "wall_stone.png");
+    const assets::ObjModel model =
+        loadGameModel("wall_pillar.obj", "wall_stone", "wall_stone.png", "wall_stone_normal.png");
 
     CHECK(model.indices.size() == 90U);
     CHECK(model.vertices.size() == 60U);
@@ -714,7 +861,7 @@ TEST_CASE("loadObj: wall_pillar.obj") {
 
 TEST_CASE("loadObj: floor_tile.obj") {
     const assets::ObjModel model =
-        loadGameModel("floor_tile.obj", "floor_stone", "floor_stone.png");
+        loadGameModel("floor_tile.obj", "floor_stone", "floor_stone.png", "floor_stone_normal.png");
 
     // 2 triangles that share two corners.
     CHECK(model.indices.size() == 6U);
@@ -728,6 +875,10 @@ TEST_CASE("loadObj: floor_tile.obj") {
     // cross product of two edges points the same way as the normal.
     for (const gfx::Vertex& vertex : model.vertices) {
         checkVec3(vertex.normal, {0.0F, 1.0F, 0.0F});
+        // On the floor u grows along +X and v along -Z (Blender +Y), so the tangent is
+        // +X and the bitangent cross(N, T) is -Z.
+        checkVec3(vertex.tangent, {1.0F, 0.0F, 0.0F});
+        checkVec3(glm::cross(vertex.normal, vertex.tangent), {0.0F, 0.0F, -1.0F});
     }
     for (std::size_t i = 0; i < model.indices.size(); i += 3) {
         const glm::vec3& a = model.vertices[model.indices[i]].position;
@@ -757,7 +908,8 @@ TEST_CASE("loadObj: material libraries and texture paths of files written by the
                                "usemtl plain\n"
                                "f 1 3 2\n");
         writeFile(directory / "models" / "materials" / "first.mtl",
-                  "newmtl painted\nKd 0.5 0.25 1\nmap_Kd ../../textures/paint.png\n");
+                  "newmtl painted\nKd 0.5 0.25 1\nmap_Kd ../../textures/paint.png\n"
+                  "map_Bump -bm 1.000000 ../../textures/paint_normal.png\n");
         writeFile(directory / "models" / "second.mtl", "newmtl plain\nKd 0 1 0\n");
 
         REQUIRE(assets::loadObj(objPath, model, error));
@@ -771,10 +923,14 @@ TEST_CASE("loadObj: material libraries and texture paths of files written by the
         // file does not exist: loadObj does not check that.
         CHECK(model.materials[0].diffuseTexture ==
               (directory / "textures" / "paint.png").lexically_normal());
+        // The normal map path goes the same way.
+        CHECK(model.materials[0].normalTexture ==
+              (directory / "textures" / "paint_normal.png").lexically_normal());
 
         CHECK(model.materials[1].name == "plain");
         checkVec3(model.materials[1].diffuseColor, {0.0F, 1.0F, 0.0F});
         CHECK(model.materials[1].diffuseTexture.empty());
+        CHECK(model.materials[1].normalTexture.empty());
     }
 
     SUBCASE("a model without mtllib and without usemtl loads with no materials") {

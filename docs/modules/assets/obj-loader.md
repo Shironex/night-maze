@@ -1,11 +1,11 @@
 # Moduł assets: wczytywanie modeli OBJ
 
-Kamień milowy: M2 + M3. Temat wykładu: 4 (Wczytywanie OBJ).
-Kod: [`src/assets/ObjLoader.hpp`](../../../src/assets/ObjLoader.hpp), [`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp), testy w [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp), pliki wejściowe w [`assets/models/`](../../../assets/models/).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych: linia `map_Bump` w pliku MTL i styczne liczone po wczytaniu). Temat wykładu: 4 (Wczytywanie OBJ).
+Kod: [`src/assets/ObjLoader.hpp`](../../../src/assets/ObjLoader.hpp), [`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp), testy w [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp), pliki wejściowe w [`assets/models/`](../../../assets/models/). Styczne liczy osobny plik, [`src/assets/Tangents.cpp`](../../../src/assets/Tangents.cpp), omówiony linia po linii w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (sekcje od 5.5 do 5.7).
 
 Część modułu `assets`. Wstęp do modułu jest w [`README.md`](README.md). Skąd biorą się pliki `.obj` i `.mtl` i jakie mają konwencje, opisuje [`../../guides/blender.md`](../../guides/blender.md). Dokąd trafia wynik, opisują [`../gfx/mesh.md`](../gfx/mesh.md) (siatka na karcie) i [`asset-cache.md`](asset-cache.md) (kto woła loader i co robi z materiałami).
 
-**Stan.** Loader jest częścią biblioteki `engine` i ma 18 przypadków testowych, w tym wczytanie trzech prawdziwych modeli gry. Program go woła: `assets::AssetCache::model` wczytuje nim przy starcie trzy modele labiryntu (płytkę podłogi, ścianę i słupek), tworzy z wyniku siatki `gfx::Mesh` i tekstury, a `game::MazeRenderer` rysuje je shaderami `textured.vert` i `textured.frag` (sekcje 3 i 4). Wczytane modele pokazuje panel Assets (sekcja 6). Parser jest napisany ręcznie, bez biblioteki Assimp ani żadnej innej: zrozumienie formatu jest celem tego tematu.
+**Stan.** Loader jest częścią biblioteki `engine` i ma 20 przypadków testowych, w tym wczytanie trzech prawdziwych modeli gry. Program go woła: `assets::AssetCache::model` wczytuje nim przy starcie trzy modele labiryntu (płytkę podłogi, ścianę i słupek), tworzy z wyniku siatki `gfx::Mesh`, tekstury i mapy normalnych, a `game::MazeRenderer` rysuje je programem `textured` albo jednym z dwóch programów oświetlających (sekcje 3 i 4). Od drugiej części M4 loader czyta z pliku MTL także linię mapy normalnych (`map_Bump`) i na końcu `parseObj` liczy dla każdego wierzchołka **styczną** (tangent), której w pliku OBJ nie ma. Wczytane modele pokazuje panel Assets (sekcja 6). Parser jest napisany ręcznie, bez biblioteki Assimp ani żadnej innej: zrozumienie formatu jest celem tego tematu.
 
 ## 1. Po co to jest
 
@@ -13,10 +13,10 @@ Kostka z tematu 2 ma 24 wierzchołki wpisane ręcznie w kod. Dla ściany z coko�
 
 Loader robi jedną rzecz: zamienia tekst pliku OBJ (i towarzyszącego pliku MTL) na dane w pamięci procesora:
 
-- tablicę wierzchołków `gfx::Vertex` (pozycja, normalna, współrzędna tekstury),
+- tablicę wierzchołków `gfx::Vertex` (pozycja, normalna i współrzędna tekstury z pliku oraz styczna policzona z nich po wczytaniu),
 - tablicę indeksów, po trzy na trójkąt,
 - listę części: który zakres indeksów ma który materiał,
-- listę materiałów: nazwa, kolor, ścieżka do pliku tekstury.
+- listę materiałów: nazwa, kolor, ścieżka do pliku tekstury i ścieżka do pliku mapy normalnych.
 
 Nie tworzy żadnego obiektu OpenGL i nie wczytuje obrazów. Dzięki temu działa bez okna i da się go sprawdzić testami jednostkowymi.
 
@@ -109,6 +109,7 @@ d 1.000000
 illum 2
 Kd 1.000000 1.000000 1.000000
 map_Kd ../textures/wall_stone.png
+map_Bump -bm 1.000000 ../textures/wall_stone_normal.png
 ```
 
 | Linia | Znaczenie | Parser |
@@ -116,18 +117,34 @@ map_Kd ../textures/wall_stone.png
 | `newmtl wall_stone` | początek materiału o tej nazwie. Następne linie go opisują, aż do kolejnego `newmtl` | tworzy nowy materiał |
 | `Kd r g b` | kolor rozproszony (diffuse), trzy liczby od 0 do 1 | zapisuje w `diffuseColor` |
 | `map_Kd ścieżka` | tekstura koloru rozproszonego, ścieżka względem katalogu pliku MTL | zapisuje w `diffuseTexture` |
+| `map_Bump -bm 1.000000 ścieżka` | mapa normalnych (normal map), ścieżka względem katalogu pliku MTL. `-bm` to mnożnik wypukłości (bump multiplier), czyli siła mapy | zapisuje ścieżkę w `normalTexture`. Liczbę po `-bm` sprawdza i pomija |
 | `Ns`, `Ka`, `Ks`, `Ke`, `Ni`, `d`, `illum` | połysk, kolor otoczenia, odbłysk, emisja, załamanie, przezroczystość, model oświetlenia | pomija. Oświetlenie z M4 ich nie potrzebuje: jasność i wykładnik odblasku są wspólne dla całego labiryntu i pochodzą z ustawień `game::LightingSettings` (panel Lights), a nie z pliku MTL |
 
 Powiązanie między plikami jest przez **nazwę**: linia `usemtl wall_stone` w pliku OBJ wskazuje materiał `newmtl wall_stone` w pliku MTL.
 
-Dwie ścieżki, dwa punkty odniesienia:
+**Linia mapy normalnych.** Format MTL powstał, zanim mapy normalnych weszły do użycia. Ma za to linię dla **mapy wypukłości** (bump map): szarego obrazu wysokości, z którego program renderujący sam liczy nachylenie powierzchni. Eksportery używają tej samej linii dla map normalnych, bo obie służą do tego samego: zmieniają normalną bez zmiany kształtu. Specyfikacja zapisuje ją słowem `bump`, a w plikach spotyka się cztery pisownie. Parser przyjmuje wszystkie:
+
+| Słowo kluczowe | Kto tak pisze |
+|---|---|
+| `map_Bump` | Blender 5.2.1 (moje pliki) i wiele innych eksporterów |
+| `map_bump` | to samo małymi literami |
+| `bump` | postać ze specyfikacji Wavefront |
+| `norm` | rozszerzenie formatu dla materiałów PBR, w którym `norm` oznacza wprost mapę normalnych |
+
+Przed nazwą pliku może stać opcja `-bm liczba`. W specyfikacji to mnożnik wartości mapy wypukłości. Blender wpisuje tam pole `Strength` węzła `Normal Map` materiału, domyślnie 1, z sześcioma cyframi po kropce ([`../../guides/blender.md`](../../guides/blender.md), sekcja 5). Parser sprawdza, że po `-bm` stoi liczba, i **nie używa jej**: gra nie ma ustawienia siły mapy i zawsze stosuje mapę normalnych w pełnej sile. Co mapa normalnych zawiera i jak shader jej używa, opisuje [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md).
+
+Trzy ścieżki, dwa punkty odniesienia:
 
 ```text
-assets/models/wall_straight.obj     mtllib wall_straight.mtl          -> assets/models/wall_straight.mtl
-assets/models/wall_straight.mtl     map_Kd ../textures/wall_stone.png -> assets/textures/wall_stone.png
+assets/models/wall_straight.obj     mtllib wall_straight.mtl
+                                    -> assets/models/wall_straight.mtl
+assets/models/wall_straight.mtl     map_Kd ../textures/wall_stone.png
+                                    -> assets/textures/wall_stone.png
+assets/models/wall_straight.mtl     map_Bump -bm 1.000000 ../textures/wall_stone_normal.png
+                                    -> assets/textures/wall_stone_normal.png
 ```
 
-Nazwa z `mtllib` jest liczona od katalogu pliku OBJ, a ścieżka z `map_Kd` od katalogu pliku MTL. Nigdy od katalogu roboczego programu.
+Nazwa z `mtllib` jest liczona od katalogu pliku OBJ, a ścieżki z `map_Kd` i `map_Bump` od katalogu pliku MTL. Nigdy od katalogu roboczego programu.
 
 ### 2.4 Trzy listy indeksów a jeden indeks OpenGL
 
@@ -237,7 +254,7 @@ Loader nie woła żadnej funkcji `gl*`. `ObjLoader.hpp` i `ObjLoader.cpp` nie do
 flowchart LR
     F["wall_straight.obj<br/>wall_straight.mtl"] -->|"assets::loadObj"| M["assets::ObjModel<br/>vertices, indices,<br/>parts, materials"]
     M -->|"vertices, indices"| G["gfx::Mesh<br/>VAO, VBO, EBO"]
-    M -->|"materials[i].diffuseTexture"| T["assets::loadImage,<br/>potem gfx::Texture2D"]
+    M -->|"materials[i].diffuseTexture,<br/>materials[i].normalTexture"| T["assets::loadImage,<br/>potem gfx::Texture2D"]
     M -->|"parts[i].firstIndex,<br/>parts[i].indexCount"| D["Mesh::draw(first, count)"]
     G --> D
     T --> D
@@ -245,11 +262,13 @@ flowchart LR
 
 | Pole `ObjModel` | Dokąd trafia w OpenGL |
 |---|---|
-| `vertices` (`std::vector<gfx::Vertex>`) | bufor wierzchołków: `glBufferData(GL_ARRAY_BUFFER, ...)`, 32 bajty na wierzchołek |
+| `vertices` (`std::vector<gfx::Vertex>`) | bufor wierzchołków: `glBufferData(GL_ARRAY_BUFFER, ...)`, 44 bajty na wierzchołek (11 liczb `float`: pozycja, normalna, uv, styczna) |
 | `indices` (`std::vector<std::uint32_t>`) | bufor indeksów: `glBufferData(GL_ELEMENT_ARRAY_BUFFER, ...)`, rysowany jako `GL_UNSIGNED_INT` |
 | `parts[i].firstIndex`, `parts[i].indexCount` | argumenty `glDrawElements`: liczba indeksów i przesunięcie (`firstIndex * 4` bajtów) |
 | `materials[i].diffuseTexture` | ścieżka pliku, z którego powstaje tekstura `gfx::Texture2D`, wiązana z jednostką 0 przed narysowaniem części |
-| `materials[i].diffuseColor` | wartość uniformu `uTint` w `textured.frag` |
+| `materials[i].normalTexture` | ścieżka pliku, z którego powstaje druga tekstura `gfx::Texture2D`: mapa normalnych, wiązana z jednostką 1 przed narysowaniem części |
+| `materials[i].diffuseColor` | wartość uniformu `uTint` w `textured.frag` i `lit.frag` |
+| `mirroredTriangleCount` | nie trafia do OpenGL: `loadObj` wypisuje z niego ostrzeżenie (sekcja 5.7) |
 
 Całe to połączenie jest w jednej funkcji, `assets::AssetCache::model` ([`asset-cache.md`](asset-cache.md), sekcja 5). Loader jest tam wołany tak:
 
@@ -263,23 +282,27 @@ Całe to połączenie jest w jednej funkcji, `assets::AssetCache::model` ([`asse
     }
 ```
 
-Dwa pierwsze wiersze tabeli to jedno wywołanie konstruktora, `gfx::Mesh(source.vertices, source.indices)` ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5.7): `std::vector` zamienia się na `std::span` sam. Części z `source.parts` są przepisywane do struktur `assets::ModelPart`, każda z kolorem i teksturą swojego materiału, a `ObjModel` ginie na końcu funkcji: karta ma już własną kopię danych. Trzy rzeczy, które pamięć podręczna dokłada do wyniku loadera: model bez żadnej ściany jest odrzucany z własnym komunikatem, część bez tekstury albo z teksturą, której nie dało się wczytać, dostaje białą teksturę zastępczą, a plik, który raz się nie wczytał, nie jest czytany ponownie.
+Dwa pierwsze wiersze tabeli to jedno wywołanie konstruktora, `gfx::Mesh(source.vertices, source.indices)` ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5.7): `std::vector` zamienia się na `std::span` sam. Części z `source.parts` są przepisywane do struktur `assets::ModelPart`, każda z kolorem, teksturą i mapą normalnych swojego materiału, a `ObjModel` ginie na końcu funkcji: karta ma już własną kopię danych. Cztery rzeczy, które pamięć podręczna dokłada do wyniku loadera: model bez żadnej ściany jest odrzucany z własnym komunikatem, część bez tekstury albo z teksturą, której nie dało się wczytać, dostaje białą teksturę zastępczą, część bez mapy normalnych (albo z mapą, której nie dało się wczytać) dostaje płaską mapę zastępczą, a plik, który raz się nie wczytał, nie jest czytany ponownie.
 
 ## 4. Shadery
 
-Loader nie ma własnego shadera, ale wczytane modele rysuje para [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`textured.frag`](../../../assets/shaders/textured.frag), opisana linia po linii w [`../gfx/textures.md`](../gfx/textures.md) (sekcja 4). Każde pole wyniku loadera ma w niej swoje miejsce:
+Loader nie ma własnego shadera, ale wczytane modele rysuje para [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`textured.frag`](../../../assets/shaders/textured.frag), opisana linia po linii w [`../gfx/textures.md`](../gfx/textures.md) (sekcja 4), a przy włączonym oświetleniu pary `lit.*` i `gouraud.*`. Każde pole wyniku loadera ma w shaderach swoje miejsce:
 
 | Dane z pliku | Pole wyniku loadera | Gdzie w shaderze |
 |---|---|---|
 | linie `v` | `Vertex::position` | `layout(location = 0) in vec3 aPosition;` |
 | linie `vn` | `Vertex::normal` | `layout(location = 1) in vec3 aNormal;` |
 | linie `vt` | `Vertex::uv` | `layout(location = 2) in vec2 aUv;` |
+| brak linii: policzone z pozycji i uv trójkątów | `Vertex::tangent` | `layout(location = 3) in vec3 aTangent;` (w `textured.vert` i `lit.vert`, `gouraud.vert` jej nie czyta) |
 | `Kd` z pliku MTL | `ObjMaterial::diffuseColor` | `uniform vec3 uTint;` |
 | `map_Kd` z pliku MTL | `ObjMaterial::diffuseTexture` | `uniform sampler2D uTexture;` (tekstura związana z jednostką, której numer jest w samplerze) |
+| `map_Bump` z pliku MTL | `ObjMaterial::normalTexture` | `uniform sampler2D uNormalMap;` w pliku dołączanym `common/normal_map.glsl` (druga jednostka teksturująca) |
 
-Numery atrybutów są ustalone w `gfx/Vertex.hpp`: pozycja 0, normalna 1, uv 2 ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 2.4). Pierwsza para shaderów projektu, `basic.vert` i `basic.frag`, do modeli się nie nadaje: czyta pozycję i **kolor**, a nie pozycję, normalną i uv.
+Numery atrybutów są ustalone w `gfx/Vertex.hpp`: pozycja 0, normalna 1, uv 2, styczna 3 ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 2.4). Pierwsza para shaderów projektu, `basic.vert` i `basic.frag`, do modeli się nie nadaje: czyta pozycję i **kolor**, a nie pozycję, normalną i uv.
 
-Od M4 normalne z pliku **służą do oświetlenia**. Programy `lit` i `gouraud` deklarują te same trzy atrybuty co `textured.vert` i liczą z normalnej, ile światła pada na powierzchnię ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), wzory w [`../scene/lights.md`](../scene/lights.md)). Loader nie zmienił się przy tym ani o linię: normalne z linii `vn` były w wierzchołkach od początku. Z tego wynika nowe wymaganie wobec modeli, którego wcześniej nie było widać: normalna musi wskazywać na zewnątrz bryły, bo ściana z odwróconą normalną jest oświetlona od złej strony (długość poprawia sam shader, który normalizuje normalną). Program `textured` nadal umie normalne tylko pokazać jako kolor, w trybie podglądu `Normals as colour`. Drugi tryb, `UVs as colour`, pokazuje tak samo współrzędne z linii `vt`. Oba są sposobem na obejrzenie na ekranie tego, co loader wczytał.
+Od M4 normalne z pliku **służą do oświetlenia**. Programy `lit` i `gouraud` deklarują atrybuty z tymi samymi numerami co `textured.vert` i liczą z normalnej, ile światła pada na powierzchnię ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), wzory w [`../scene/lights.md`](../scene/lights.md)). Loader nie zmienił się przy tym ani o linię: normalne z linii `vn` były w wierzchołkach od początku. Z tego wynika nowe wymaganie wobec modeli, którego wcześniej nie było widać: normalna musi wskazywać na zewnątrz bryły, bo ściana z odwróconą normalną jest oświetlona od złej strony (długość poprawia sam shader, który normalizuje normalną). Program `textured` nadal umie normalne tylko pokazać jako kolor, w trybie podglądu `Normals as colour`. Same normalne z pliku widać w nim przy odznaczonym polu `Normal mapping` albo w trybie `Gouraud`: w pozostałych przypadkach podgląd pokazuje je z dołożonym reliefem z mapy normalnych ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.9). Drugi tryb, `UVs as colour`, pokazuje tak samo współrzędne z linii `vt`. Oba są sposobem na obejrzenie na ekranie tego, co loader wczytał.
+
+Druga część M4 dołożyła **mapy normalnych** i tym razem loader się zmienił, w dwóch miejscach. Czyta linię `map_Bump` (sekcje 2.3 i 5.7), a po ostatniej linii pliku OBJ liczy styczne (sekcja 5.7). Styczna jest potrzebna, bo mapa normalnych zapisuje kierunki względem powierzchni, a shader musi wiedzieć, jak ta powierzchnia leży w świecie: normalna mówi, gdzie jest "na zewnątrz", a styczna, w którą stronę na powierzchni rośnie współrzędna `u` ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcje 2.3 i 2.10). Przy włączonym przełączniku `Normal mapping` i trybie oświetlenia innym niż `Gouraud` widok `Normals as colour` pokazuje normalne odczytane z mapy, a nie te z linii `vn`: żeby obejrzeć same dane z pliku, trzeba przełącznik wyłączyć.
 
 ## 5. Kod w projekcie
 
@@ -289,10 +312,11 @@ Od M4 normalne z pliku **służą do oświetlenia**. Programy `lit` i `gouraud` 
 |---|---|
 | [`src/assets/ObjLoader.hpp`](../../../src/assets/ObjLoader.hpp) | struktury `ObjPart`, `ObjMaterial`, `ObjModel`, deklaracje `parseObj`, `parseMtl`, `loadObj` |
 | [`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp) | stałe, funkcje pomocnicze do cięcia tekstu i czytania liczb, struktura `ObjParser`, definicje trzech funkcji publicznych |
-| [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp) | 18 przypadków testowych |
+| [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp) | 20 przypadków testowych |
 | [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp) | struktura wierzchołka, którą loader wypełnia ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5.2) |
+| [`src/assets/Tangents.hpp`](../../../src/assets/Tangents.hpp), [`Tangents.cpp`](../../../src/assets/Tangents.cpp) | `computeTangents` i `countMirroredTriangles`, które `parseObj` woła na końcu. Omówione w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcje od 5.5 do 5.7 |
 
-Pliki `src/assets/ObjLoader.*` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Dołączane nagłówki projektu: `gfx/Vertex.hpp` w nagłówku, `core/Log.hpp` i `core/Paths.hpp` w pliku `.cpp`. Nic z GLAD ani GLFW.
+Pliki `src/assets/ObjLoader.*` i `src/assets/Tangents.*` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Dołączane nagłówki projektu: `gfx/Vertex.hpp` w nagłówku, `assets/Tangents.hpp`, `core/Log.hpp` i `core/Paths.hpp` w pliku `.cpp`. Nic z GLAD ani GLFW.
 
 Podział na trzy funkcje ma jeden powód: **testowalność**.
 
@@ -322,6 +346,7 @@ struct ObjMaterial {
     std::string name;
     glm::vec3 diffuseColor{1.0F};
     std::filesystem::path diffuseTexture;
+    std::filesystem::path normalTexture;
 };
 ```
 
@@ -329,6 +354,7 @@ struct ObjMaterial {
 
 - `diffuseColor` ma domyślnie wartość białą `(1, 1, 1)`. Blender pomija linię `Kd`, gdy kolor pochodzi z tekstury ([`../../guides/blender.md`](../../guides/blender.md), sekcja 4). Biały kolor pomnożony przez teksturę zostawia teksturę bez zmian, więc materiał bez `Kd` wygląda rozsądnie.
 - `diffuseTexture` jest pusta, gdy materiał nie ma linii `map_Kd`. Sprawdza się to przez `diffuseTexture.empty()`. Po `parseMtl` zawiera ścieżkę tak, jak stoi w pliku (`../textures/wall_stone.png`). Po `loadObj` zawiera ścieżkę do pliku obrazu, liczoną od katalogu pliku MTL i uporządkowaną (sekcja 5.7).
+- `normalTexture` to mapa normalnych z linii `map_Bump` (albo jednej z trzech pozostałych pisowni, sekcja 2.3). Zachowuje się dokładnie jak `diffuseTexture`: pusta, gdy materiał takiej linii nie ma, po `parseMtl` ścieżka tak, jak stoi w pliku (`../textures/wall_stone_normal.png`), po `loadObj` ścieżka do pliku obrazu. Liczby z opcji `-bm` w strukturze nie ma: parser jej nie przechowuje.
 
 ```cpp
 struct ObjModel {
@@ -338,6 +364,7 @@ struct ObjModel {
     std::vector<std::string> materialLibraries;
     std::vector<ObjMaterial> materials;
     std::size_t unknownLineCount = 0;
+    std::size_t mirroredTriangleCount = 0;
 };
 ```
 
@@ -345,12 +372,13 @@ struct ObjModel {
 
 | Pole | Kto wypełnia | Zawartość |
 |---|---|---|
-| `vertices` | `parseObj` | jeden wierzchołek na każdą różną trójkę indeksów, w kolejności pierwszego wystąpienia |
+| `vertices` | `parseObj` | jeden wierzchołek na każdą różną trójkę indeksów, w kolejności pierwszego wystąpienia. Pole `tangent` każdego wierzchołka jest wypełniane na samym końcu, przez `computeTangents` |
 | `indices` | `parseObj` | trzy indeksy na trójkąt, w kolejności z pliku |
 | `parts` | `parseObj` | zakresy indeksów według materiału, w kolejności z pliku. Razem pokrywają wszystkie indeksy |
 | `materialLibraries` | `parseObj` | nazwy z linii `mtllib`, tak jak w pliku |
 | `materials` | `loadObj` | materiały ze wszystkich bibliotek. Po samym `parseObj` lista jest pusta, bo ta funkcja nie otwiera plików |
 | `unknownLineCount` | `parseObj` | liczba linii o nieznanym słowie kluczowym |
+| `mirroredTriangleCount` | `parseObj` | liczba trójkątów, na których tekstura leży w odbiciu lustrzanym (`countMirroredTriangles`). Na takich trójkątach mapa normalnych pokazałaby relief do góry nogami. Dla trzech modeli gry: 0 |
 
 Wszystkie trzy struktury to zwykłe dane z publicznymi polami, jak struktury warstwy `scene`: kopiują się, nie mają związku z OpenGL.
 
@@ -390,10 +418,13 @@ constexpr char INDEX_SEPARATOR = '/';
 constexpr std::size_t MAX_CORNER_FIELDS = 3;
 constexpr std::size_t COLOR_COMPONENTS = 3;
 constexpr std::size_t MIN_FACE_CORNERS = 3;
+constexpr std::string_view BUMP_MULTIPLIER_OPTION = "-bm";
 constexpr std::uint32_t NO_INDEX = std::numeric_limits<std::uint32_t>::max();
 ```
 
 (Komentarze z pliku są tu pominięte.)
+
+`BUMP_MULTIPLIER_OPTION` to opcja linii mapy normalnych w pliku MTL (sekcja 2.3). Jest stałą, a nie napisem wpisanym w środek funkcji, żeby miała nazwę i jedno miejsce.
 
 `BLANKS` to znaki rozdzielające pola: spacja, tabulator i `\r`. Znak `\r` (carriage return) jest tu z powodu końców linii Windowsa: plik zapisany w tym systemie kończy każdą linię parą `\r\n`. Po cięciu na `\n` na końcu linii zostaje `\r`, który trzeba potraktować jak spację. Bez tego nazwa materiału brzmiałaby `stone\r` i nie pasowała do żadnego `newmtl`. Moje pliki mają same `\n`, ale Git na Windowsie z ustawieniem `core.autocrlf=true` potrafi je zamienić przy pobraniu.
 
@@ -759,18 +790,127 @@ Po `takeToken(line)` zmienna `line` zawiera już tylko pola po słowie kluczowym
 | `mtllib` | reszta linii po `trim` jest dopisywana do `materialLibraries`. Pusta nazwa to błąd. Cała reszta linii to **jedna** nazwa pliku, więc może zawierać spacje |
 | cokolwiek innego | pomijane, ale licznik `unknownLineCount` rośnie o 1 |
 
-Po każdej linii: gdy `ok` jest fałszem, funkcja zapisuje `lineError(lineNumber, message)` do `error` i wraca z `false`. Po ostatniej linii przenosi `parser.model` do parametru `model`.
+Po każdej linii: gdy `ok` jest fałszem, funkcja zapisuje `lineError(lineNumber, message)` do `error` i wraca z `false`.
 
 Porównanie `keyword == "v"` porównuje **całe** słowo, więc `vt` i `vn` nie są mylone z `v`.
 
-**`parseMtl`** ma tę samą pętlę, ale tylko trzy słowa kluczowe:
+Po ostatniej linii, już za pętlą, dochodzą styczne:
+
+```cpp
+    // An OBJ file has no tangents, so they are computed now that all triangles are known.
+    // The count of mirrored triangles tells the caller whether the tangents are enough
+    // for a normal map (see ObjModel::mirroredTriangleCount).
+    computeTangents(parser.model.vertices, parser.model.indices);
+    parser.model.mirroredTriangleCount =
+        countMirroredTriangles(parser.model.vertices, parser.model.indices);
+
+    model = std::move(parser.model);
+    return true;
+}
+```
+
+| Linia | Co robi |
+|---|---|
+| `computeTangents(parser.model.vertices, parser.model.indices);` | wypełnia pole `tangent` każdego wierzchołka. Dla każdego trójkąta liczy z jego krawędzi i z różnic współrzędnych uv kierunek, w którym na powierzchni rośnie `u`, dodaje go do trzech wierzchołków trójkąta, a na końcu każdą sumę robi prostopadłą do normalnej wierzchołka i sprowadza do długości 1. `std::vector` zamienia się na `std::span` sam, tak jak przy `gfx::Mesh` |
+| `parser.model.mirroredTriangleCount = countMirroredTriangles(...)` | liczy trójkąty z teksturą w odbiciu lustrzanym i zapisuje wynik w modelu. Niczego nie poprawia: to pomiar, z którego `loadObj` robi ostrzeżenie |
+| `model = std::move(parser.model);` | dopiero teraz wynik trafia do parametru wołającego (sekcja 5.3) |
+
+**Dlaczego dopiero na końcu.** Styczna wierzchołka zależy od **wszystkich** trójkątów, które go używają, a w trakcie czytania pliku nie wiadomo, czy następna linia `f` nie użyje go jeszcze raz. Po ostatniej linii lista trójkątów jest zamknięta. **Dlaczego w `parseObj`, a nie w `loadObj`.** Żeby wynik parsera był kompletny także w testach, które podają tekst wpisany w kod i plików nie czytają. **Dlaczego w ogóle na procesorze przy wczytaniu.** Format OBJ nie ma linii dla stycznych, więc ktoś musi je policzyć, a liczy się je raz na model, nie co klatkę. Uzasadnienie i rozważane możliwości są w notatce [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md).
+
+Styczne **nie dodają wierzchołków**: powstają dla wierzchołków, które już istnieją, więc liczby z sekcji 2.4 się nie zmieniły (ściana i słupek 60 wierzchołków i 90 indeksów, płytka 4 i 6). Model bez linii `vt` też dostaje styczne o długości 1, tyle że o przypadkowym kierunku w płaszczyźnie powierzchni: nie ma wtedy żadnego "kierunku rosnącego `u`". Wzór, przykład liczbowy na ścianie i obie funkcje linia po linii są w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (sekcje 2.7 do 2.9 i 5.5 do 5.7).
+
+**`parseMtl`** ma tę samą pętlę, ale tylko cztery rodzaje linii:
 
 | Słowo | Co się dzieje |
 |---|---|
 | `newmtl` | nowy materiał o nazwie z reszty linii. Pusta nazwa to błąd |
 | `Kd` | trzy liczby do `diffuseColor` ostatniego materiału. Przed pierwszym `newmtl` to błąd |
 | `map_Kd` | reszta linii jako ścieżka do `diffuseTexture` ostatniego materiału. Przed pierwszym `newmtl` albo bez nazwy to błąd |
+| `map_Bump`, `map_bump`, `bump`, `norm` | linia mapy normalnych: opcjonalne `-bm liczba`, potem reszta linii jako ścieżka do `normalTexture` ostatniego materiału. Przed pierwszym `newmtl`, bez nazwy pliku albo z `-bm` bez liczby to błąd |
 | wszystko inne | pomijane bez liczenia |
+
+Rozdzielnia:
+
+```cpp
+        } else if (keyword == "Kd" || keyword == "map_Kd" || isNormalMapKeyword(keyword)) {
+            if (parsed.empty()) {
+                error = lineError(lineNumber, std::string(keyword) + " before the first newmtl");
+                return false;
+            }
+            ObjMaterial& material = parsed.back();
+            if (isNormalMapKeyword(keyword)) {
+                std::string message;
+                if (!readNormalMap(line, material.normalTexture, message)) {
+                    error = lineError(lineNumber, std::string(keyword) + " " + message);
+                    return false;
+                }
+            } else if (keyword == "Kd") {
+```
+
+Wszystkie trzy rodzaje linii opisują **ostatni** materiał, więc mają wspólny warunek: jakiś materiał musi już istnieć (`parsed.empty()` znaczy, że nie było jeszcze żadnego `newmtl`). Komunikat błędu zaczyna się od słowa kluczowego **tak, jak stoi w pliku**: dla linii `norm` bez nazwy pliku brzmi `line 2: norm needs a file name`, a nie `map_Bump ...`. Dzięki temu da się go znaleźć w pliku przez zwykłe wyszukiwanie.
+
+**`isNormalMapKeyword`** rozpoznaje cztery pisownie:
+
+```cpp
+bool isNormalMapKeyword(std::string_view keyword) {
+    return keyword == "map_Bump" || keyword == "map_bump" || keyword == "bump" || keyword == "norm";
+}
+```
+
+Porównanie rozróżnia wielkość liter i obejmuje całe słowo, więc `map_Bump` i `map_bump` są wymienione osobno, a `MAP_BUMP` albo `bumpy` nie pasują i takie linie są pomijane jak każde nieznane słowo pliku MTL.
+
+**`readNormalMap`** czyta pola po słowie kluczowym:
+
+```cpp
+bool readNormalMap(std::string_view rest, std::filesystem::path& path, std::string& message) {
+    // Look at the first field without losing rest: only "-bm" is taken away from it.
+    std::string_view afterFirstField = rest;
+    if (takeToken(afterFirstField) == BUMP_MULTIPLIER_OPTION) {
+        float multiplier = 0.0F;
+        if (!parseFloat(takeToken(afterFirstField), multiplier)) {
+            message = "-bm needs a number";
+            return false;
+        }
+        // The number is not used: the game has no setting for the strength of a map.
+        rest = afterFirstField;
+    }
+
+    // The path is the rest of the line, so it may contain spaces. Other options in front
+    // of the file name are not supported, as for map_Kd.
+    const std::string_view fileName = trim(rest);
+    if (fileName.empty()) {
+        message = "needs a file name";
+        return false;
+    }
+    path = pathFromText(fileName);
+    return true;
+}
+```
+
+| Linia | Co robi |
+|---|---|
+| `std::string_view afterFirstField = rest;` | kopia widoku (wskaźnik i długość, nie tekst). `takeToken` zmienia widok, który dostaje, więc pierwsze pole jest odcinane od kopii, a `rest` zostaje całe |
+| `if (takeToken(afterFirstField) == BUMP_MULTIPLIER_OPTION)` | czy pierwszym polem jest `-bm`. Gdy nie jest, `rest` nadal zawiera to pole: jest początkiem nazwy pliku i nie może przepaść |
+| `parseFloat(takeToken(afterFirstField), multiplier)` | następne pole musi być liczbą. Brak pola (pusty widok) i tekst niebędący liczbą dają ten sam błąd: `-bm needs a number`. Ta sama funkcja czyta współrzędne w pliku OBJ, więc i tu nie zależy od locale (sekcja 5.4) |
+| `rest = afterFirstField;` | dopiero po udanym odczycie liczby `rest` przeskakuje za opcję. Zmienna `multiplier` nie jest potem używana |
+| `const std::string_view fileName = trim(rest);` | reszta linii bez spacji na końcach to nazwa pliku, razem ze spacjami w środku |
+| `if (fileName.empty())` | linia `map_Bump` bez niczego albo `map_Bump -bm 1.0` bez nazwy: błąd `needs a file name` |
+| `path = pathFromText(fileName);` | ścieżka z tekstu UTF-8 (niżej) |
+
+Przykłady:
+
+| Linia w pliku | Wynik |
+|---|---|
+| `map_Bump -bm 1.000000 ../textures/wall_stone_normal.png` | `normalTexture` równe `../textures/wall_stone_normal.png` |
+| `map_Bump stone_normal.png` | `stone_normal.png`: opcja jest nieobowiązkowa |
+| `bump -bm 0.5 b.png` | `b.png`: liczba 0,5 jest sprawdzona i pominięta |
+| tabulator i dwie spacje: `map_Bump<TAB>-bm  2  my maps/old stone n.png` | `my maps/old stone n.png` |
+| `map_Bump` | błąd `line N: map_Bump needs a file name` |
+| `norm -bm 1.0` | błąd `line N: norm needs a file name` |
+| `map_Bump -bm n.png` | błąd `line N: map_Bump -bm needs a number`: po `-bm` stoi `n.png`, które nie jest liczbą |
+| `map_Bump -bm 1.0 n.png` przed pierwszym `newmtl` | błąd `line N: map_Bump before the first newmtl` |
+
+Inne opcje specyfikacji przed nazwą pliku (na przykład `-s`, `-o`, `-imfchan`) nie są obsługiwane, tak jak przy `map_Kd`: trafiłyby do nazwy pliku.
 
 Materiały zbiera w lokalnym wektorze `parsed` i dopiero na końcu **dopisuje** je do parametru `materials`. Dopisuje, a nie zastępuje, bo model może mieć kilka linii `mtllib` i wszystkie materiały trafiają do jednej listy.
 
@@ -796,7 +936,22 @@ bool loadObj(const std::filesystem::path& path, ObjModel& model, std::string& er
     }
 ```
 
-Jedno miejsce z `core::logError` na cały moduł: każdy błąd pojawia się w konsoli dokładnie raz. Po udanym wczytaniu funkcja wypisuje jeszcze ostrzeżenie (`core::logWarn`), jeśli `unknownLineCount` jest większe od zera.
+Jedno miejsce z `core::logError` na cały moduł: każdy błąd pojawia się w konsoli dokładnie raz. Po udanym wczytaniu funkcja wypisuje jeszcze do dwóch ostrzeżeń (`core::logWarn`):
+
+```cpp
+    if (model.unknownLineCount > 0) {
+        core::logWarn(core::pathText(path) + ": skipped " + std::to_string(model.unknownLineCount) +
+                      " line(s) with an unknown keyword");
+    }
+    if (model.mirroredTriangleCount > 0) {
+        core::logWarn(core::pathText(path) + ": " + std::to_string(model.mirroredTriangleCount) +
+                      " triangle(s) have a mirrored texture, a normal map is upside down there");
+    }
+    return true;
+}
+```
+
+Drugie ostrzeżenie dotyczy map normalnych. Wierzchołek przechowuje samą styczną, bez **znaku skrętności** (handedness), a shader buduje trzeci wektor bazy jako `cross(N, T)`. To daje dobry wynik tylko tam, gdzie tekstura nie jest odbita lustrzanie. Model z odbitymi trójkątami **wczytuje się** (to nie jest błąd pliku), ale mapa normalnych pokazałaby na nich wgłębienia jako wypukłości, więc loader mówi o tym w logu. Żaden z trzech modeli gry nie ma takich trójkątów, co sprawdzają testy (sekcja 5.9), więc w grze ta linia się nie pojawia. Dlaczego odbicie psuje relief i dlaczego modele go nie mają, tłumaczy [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 2.9.
 
 Kroki `loadObjFiles`:
 
@@ -805,7 +960,7 @@ Kroki `loadObjFiles`:
 | 1 | `readFile(path, objText)`: cały plik do napisu | `OBJ file cannot be opened: <ścieżka>` |
 | 2 | `parseObj(objText, loaded, parseError)` | `<ścieżka>: line N: ...` |
 | 3 | dla każdej nazwy z `materialLibraries`: `mtlPath = objDirectory / nazwa`, wczytanie i `parseMtl` | `MTL file cannot be opened: <ścieżka> (named by <plik OBJ>)` albo `<plik MTL>: line N: ...` |
-| 4 | dla każdego materiału z teksturą: `(mtlDirectory / diffuseTexture).lexically_normal()` | brak |
+| 4 | dla każdego materiału z teksturą: `(mtlDirectory / diffuseTexture).lexically_normal()`, i to samo osobno dla `normalTexture`, gdy materiał ma mapę normalnych | brak |
 | 5 | każda część z niepustą nazwą materiału musi mieć materiał na liście | `<ścieżka>: material 'x' is used but not defined in any material library` |
 | 6 | `model = std::move(loaded)` | |
 
@@ -813,8 +968,8 @@ Szczegóły:
 
 - **`readFile`** otwiera plik w trybie binarnym (`std::ios::binary`): bajty przychodzą takie, jakie są w pliku, na każdym systemie. W trybie tekstowym Windows sam zamieniałby `\r\n` na `\n`, a macOS nie. Wolę jedno zachowanie i obsługę `\r` w parserze.
 - **`path.parent_path()`** to katalog pliku. Operator `/` klasy `path` łączy katalog z nazwą względną.
-- **`lexically_normal()`** porządkuje ścieżkę "na papierze", bez pytania systemu plików: usuwa kroki `..` razem z poprzedzającym katalogiem. `assets/models/../textures/wall_stone.png` staje się `assets/textures/wall_stone.png`. Dwa modele wskazujące tę samą teksturę dostają dzięki temu **identyczną** ścieżkę, co pozwoli przyszłej pamięci podręcznej assetów wczytać obraz raz. Ścieżka jest bezwzględna tylko wtedy, gdy bezwzględna była ścieżka podana do `loadObj`.
-- **Istnienie pliku tekstury nie jest sprawdzane.** Zgłosi to kod, który będzie otwierał obraz, tak jak `core::assetPath` nie sprawdza istnienia pliku.
+- **`lexically_normal()`** porządkuje ścieżkę "na papierze", bez pytania systemu plików: usuwa kroki `..` razem z poprzedzającym katalogiem. `assets/models/../textures/wall_stone.png` staje się `assets/textures/wall_stone.png`. Dwa modele wskazujące tę samą teksturę dostają dzięki temu **identyczną** ścieżkę, co pozwala pamięci podręcznej assetów wczytać obraz raz ([`asset-cache.md`](asset-cache.md), sekcja 2). Dotyczy to obu ścieżek materiału: `wall_stone.png` i `wall_stone_normal.png` są wspólne dla ściany i słupka. Ścieżka jest bezwzględna tylko wtedy, gdy bezwzględna była ścieżka podana do `loadObj`.
+- **Istnienie pliku tekstury ani pliku mapy normalnych nie jest sprawdzane.** Zgłasza to kod, który otwiera obraz, tak jak `core::assetPath` nie sprawdza istnienia pliku.
 - **Krok 5** dotyczy tylko części z nazwą. Model bez `mtllib` i bez `usemtl` wczytuje się poprawnie, z pustą listą materiałów i jedną częścią o pustej nazwie.
 - **Brakujący plik MTL jest błędem**, a nie ostrzeżeniem. Model bez materiałów narysowałby się bez tekstury i wyglądałby na błąd shadera. Wolę jasny komunikat przy wczytaniu.
 
@@ -824,22 +979,26 @@ Szczegóły:
 |---|---|
 | `#`, linie puste, `o`, `g`, `s` | pomijane celowo, nieliczone |
 | inne słowa kluczowe OBJ (`l`, `p`, `vp`, `curv`, ...) | pomijane, liczone w `unknownLineCount`, jedno ostrzeżenie w logu |
-| inne słowa kluczowe MTL (`Ns`, `Ka`, `Ks`, `map_Bump`, ...) | pomijane, nieliczone |
+| inne słowa kluczowe MTL (`Ns`, `Ka`, `Ks`, `map_Ks`, ...) | pomijane, nieliczone |
 | czwarta liczba w `v` (`w`, kolory), trzecia w `vt` | ignorowana |
 | linia `vt` z jedną liczbą | **błąd** (specyfikacja dopuszcza samo `u`, ja wymagam dwóch) |
 | opcje przed nazwą pliku w `map_Kd` (`-s 2 2 1 plik.png`) | **nieobsługiwane**: cała reszta linii jest brana jako nazwa pliku |
+| opcja `-bm liczba` w linii mapy normalnych | rozpoznawana: liczba jest sprawdzana i **pomijana**, gra stosuje mapę zawsze w pełnej sile |
+| inne opcje przed nazwą pliku w linii mapy normalnych, `-bm` po innej opcji | **nieobsługiwane**: trafiają do nazwy pliku |
+| słowo kluczowe mapy normalnych pisane inaczej niż `map_Bump`, `map_bump`, `bump`, `norm` (na przykład `MAP_BUMP`, `map_Kn`) | pomijane jak nieznana linia MTL: materiał nie ma wtedy mapy normalnych |
 | kilka plików w jednej linii `mtllib` | **nieobsługiwane**: reszta linii to jedna nazwa |
 | znak `#` w nazwie pliku albo materiału | obcina nazwę, bo `#` zawsze zaczyna komentarz |
 | kontynuacja linii znakiem `\` na końcu | **nieobsługiwana** |
 | wielokąty wklęsłe | dzielone wachlarzem, wynik może być błędny (sekcja 2.6) |
 | grupy wygładzania, liczenie normalnych | brak: normalne tylko z linii `vn` |
-| styczne (tangents) | brak: mapy normalnych są odłożone do następnej części M4 |
+| styczne (tangents) | nie ma ich w pliku: loader liczy je sam na końcu `parseObj` (sekcja 5.7) |
+| znak skrętności stycznej (czwarta składowa) | brak: trójkąty z odbitą teksturą są tylko liczone (`mirroredTriangleCount`) i zgłaszane ostrzeżeniem |
 | kilka obiektów (`o`) w pliku | wszystkie trafiają do jednej siatki |
 | znacznik BOM na początku pliku | nieobsługiwany: pierwsza linia miałaby nieznane słowo kluczowe |
 
 ### 5.9 Jak to zostało sprawdzone
 
-Testy jednostkowe w doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)), plik [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp): 18 przypadków testowych, 804 asercje.
+Testy jednostkowe w doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)), plik [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp): 20 przypadków testowych, 1576 asercji (przed mapami normalnych: 18 i 804). Same funkcje liczące styczne mają osobny plik testów, [`tests/TangentTests.cpp`](../../../tests/TangentTests.cpp) (9 przypadków, 177 asercji), opisany w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.10.
 
 Uruchomienie samych testów loadera (Windows, build w `build/debug`):
 
@@ -856,37 +1015,52 @@ Testy parserów podają tekst wpisany w kod:
 | `...the four forms of a face corner` | `v/vt/vn`, `v//vn`, `v/vt`, `v`: brakujące pola są zerami. Narożnik bez uv i z uv to różne wierzchołki |
 | `...negative indices count back from the end of the list so far` | `-1` to ostatni element. Indeks ujemny i dodatni tego samego elementu dają jeden wierzchołek. Druga ściana po dopisaniu pozycji wskazuje nowe pozycje |
 | `...a polygon is split into a fan of triangles` | czworokąt: `0, 1, 2, 0, 2, 3`. Pięciokąt: trzy trójkąty |
+| `...the tangents are computed from the positions and the uvs` | nowy. Kwadrat z teksturą leżącą prosto: styczna każdego wierzchołka to `(1, 0, 0)`, zero odbitych trójkątów. Model bez linii `vt`: styczne mają długość 1 i są prostopadłe do normalnej. Kwadrat z odwróconym `u` (`1 - u`): `mirroredTriangleCount == 2` |
 | `...line endings, blanks and comments` | CRLF (i brak `\r` w nazwie materiału), tabulatory i powtórzone spacje, brak końca ostatniej linii, komentarze także po danych, pusty tekst |
 | `...numbers` | znak, ułamek, `-0.0000`, wykładnik `1e-3` i `2.5E2`, nadmiarowe liczby |
 | `...every run of faces after usemtl is one part` | dwa materiały i ich zakresy `(0, 6)` i `(6, 3)`, czworokąt w zakresie, ściany przed `usemtl`, `usemtl` bez ścian, powtórzony materiał, powrót materiału, nazwa ze spacją |
 | `...mtllib names are collected, other keywords are skipped` | dwie nazwy `mtllib` (jedna ze spacją), `o`, `g`, `s` nieliczone, `l` i `curv` policzone: 2 |
 | `...a bad line is reported with its line number` | indeks poza listą, indeks 0, indeks ujemny za daleko, zły indeks uv i normalnej, odwołanie do pozycji zdefiniowanej niżej, indeks niebędący liczbą całkowitą (`x`, `3.5`, `3a`, liczba 20-cyfrowa), brak pozycji, cztery pola, mniej niż trzy narożniki, zła liczba (`abc`, `1.5x`, `--1`, `0,5`), za mało liczb, `usemtl` i `mtllib` bez nazwy, numer linii przy CRLF i liniach pustych |
 | `...a failed parse leaves the model of the caller unchanged` | model wypełniony wcześniej nie zmienia się po nieudanym wywołaniu |
-| `parseMtl: newmtl, Kd and map_Kd` | materiał w postaci z Blendera, kilka materiałów z CRLF i bez końca linii, domyślny biały kolor, ścieżka ze spacjami, dopisywanie do listy, pusty tekst |
+| `parseMtl: newmtl, Kd and map_Kd` | materiał w postaci z Blendera, kilka materiałów z CRLF i bez końca linii, domyślny biały kolor, ścieżka ze spacjami, dopisywanie do listy, pusty tekst. Doszło: materiał bez linii mapy normalnych ma puste `normalTexture` |
+| `parseMtl: the normal map line` | nowy. Linia w postaci z Blendera (`map_Bump -bm 1.000000 ...`, ścieżka zachowana tak, jak stoi w pliku), bez opcji, trzy pozostałe pisownie (`map_bump`, `bump -bm 0.5`, `norm`), CRLF z tabulatorem i ścieżką ze spacjami, materiał z mapą normalnych i bez `map_Kd`, linia przed pierwszym `newmtl`, brak nazwy pliku (także po `-bm 1.0`), `-bm` bez liczby. Każdy błąd z dokładnym tekstem komunikatu |
 | `parseMtl: a bad line is reported with its line number` | `Kd` i `map_Kd` przed `newmtl`, zła liczba, za mało liczb, brak nazwy, nic nie jest dopisane po błędzie |
 
 Testy `loadObj` czytają pliki. Trzy pierwsze wczytują **prawdziwe modele gry** z katalogu `assets/models` repozytorium. Ścieżkę do katalogu `assets` program testowy dostaje od CMake jako definicję kompilacji `NIGHT_MAZE_ASSETS_DIR`, więc test nie zależy od katalogu, z którego jest uruchamiany.
 
-| Model | Wierzchołki | Indeksy | Trójkąty | Pudełko otaczające (min, max) | Materiał | Tekstura |
-|---|---|---|---|---|---|---|
-| `wall_straight.obj` | 60 | 90 | 30 | `(-1, 0, -0.14)`, `(1, 3, 0.14)` | `wall_stone` | `assets/textures/wall_stone.png` |
-| `wall_pillar.obj` | 60 | 90 | 30 | `(-0.2, 0, -0.2)`, `(0.2, 3.15, 0.2)` | `wall_stone` | `assets/textures/wall_stone.png` |
-| `floor_tile.obj` | 4 | 6 | 2 | `(-1, 0, -1)`, `(1, 0, 1)` | `floor_stone` | `assets/textures/floor_stone.png` |
+| Model | Wierzchołki | Indeksy | Trójkąty | Pudełko otaczające (min, max) | Materiał | Tekstura | Mapa normalnych |
+|---|---|---|---|---|---|---|---|
+| `wall_straight.obj` | 60 | 90 | 30 | `(-1, 0, -0.14)`, `(1, 3, 0.14)` | `wall_stone` | `assets/textures/wall_stone.png` | `assets/textures/wall_stone_normal.png` |
+| `wall_pillar.obj` | 60 | 90 | 30 | `(-0.2, 0, -0.2)`, `(0.2, 3.15, 0.2)` | `wall_stone` | `assets/textures/wall_stone.png` | `assets/textures/wall_stone_normal.png` |
+| `floor_tile.obj` | 4 | 6 | 2 | `(-1, 0, -1)`, `(1, 0, 1)` | `floor_stone` | `assets/textures/floor_stone.png` | `assets/textures/floor_stone_normal.png` |
 
-To są wartości zmierzone przez testy na Windowsie. Liczby wierzchołków zgadzają się z liczbą różnych trójek policzoną niezależnie, skryptem czytającym same linie `f` (sekcja 2.4). Dla każdego modelu test sprawdza też: każdy indeks jest mniejszy od liczby wierzchołków, każda normalna ma długość 1 (loader ich nie normalizuje, więc to pomiar pliku), jest dokładnie jedna część obejmująca wszystkie indeksy, `Kd` jest białe, `unknownLineCount` wynosi 0, a ścieżka tekstury jest równa `assets/textures/<nazwa>.png` i **plik istnieje**. Dla płyty podłogi dodatkowo: wszystkie normalne to `(0, 1, 0)`, a iloczyn wektorowy krawędzi obu trójkątów wskazuje w górę, czyli nawinięcie jest przeciwne do ruchu wskazówek zegara, patrząc z góry.
+To są wartości zmierzone przez testy na Windowsie. Liczby wierzchołków i indeksów są takie same jak przed mapami normalnych: styczne nie dodają wierzchołków. Liczby wierzchołków zgadzają się z liczbą różnych trójek policzoną niezależnie, skryptem czytającym same linie `f` (sekcja 2.4). Dla każdego modelu test sprawdza też: każdy indeks jest mniejszy od liczby wierzchołków, każda normalna ma długość 1 (loader ich nie normalizuje, więc to pomiar pliku), jest dokładnie jedna część obejmująca wszystkie indeksy, `Kd` jest białe, `unknownLineCount` wynosi 0, a ścieżka tekstury jest równa `assets/textures/<nazwa>.png` i **plik istnieje**. Dla płyty podłogi dodatkowo: wszystkie normalne to `(0, 1, 0)`, a iloczyn wektorowy krawędzi obu trójkątów wskazuje w górę, czyli nawinięcie jest przeciwne do ruchu wskazówek zegara, patrząc z góry.
+
+Co doszło do tych trzech przypadków razem z mapami normalnych (wspólna funkcja `loadGameModel` w pliku testów dostała czwarty parametr, nazwę pliku mapy normalnych):
+
+| Sprawdzenie | Dla których modeli | Po co |
+|---|---|---|
+| `normalTexture` jest równe `assets/textures/<nazwa>_normal.png` i plik istnieje | wszystkie trzy | linia `map_Bump` jest czytana i ścieżka liczona jak dla `map_Kd` |
+| każda styczna ma długość 1 i iloczyn skalarny z normalną równy 0 | wszystkie trzy | wynik `computeTangents` jest czystą parą wektorów dla shadera |
+| na każdej ścianie pionowej (`abs(normal.y) < 0.5`) `cross(normal, tangent)` jest równe `(0, 1, 0)` | wszystkie trzy (płytka nie ma ścian pionowych) | wektor, który shader zbuduje jako trzeci, wskazuje w górę, tam gdzie rośnie `v`. Styczna w złą stronę dałaby "w dół" i zamieniła fugi mapy normalnych w grzbiety |
+| `mirroredTriangleCount == 0`, policzone przez loader i drugi raz wprost w teście (`assets::countMirroredTriangles`) | wszystkie trzy | żadna ściana nie ma tekstury w odbiciu lustrzanym, więc wierzchołek nie potrzebuje znaku skrętności |
+| styczna to `+X` na ścianie przedniej (normalna `+Z`), `-X` na tylnej, `-Z` na końcu zwróconym w `+X` i `+Z` na końcu zwróconym w `-X` | `wall_straight.obj` | styczna wskazuje zawsze "w prawo" dla kogoś, kto patrzy na ścianę z zewnątrz |
+| styczna to `(1, 0, 0)`, a `cross(normal, tangent)` to `(0, 0, -1)` | `floor_tile.obj` | na podłodze `u` rośnie wzdłuż `+X`, a `v` wzdłuż `-Z` (w Blenderze `+Y`) |
+
+Trzeci i czwarty wiersz wyglądają na sprzeczne z tym, co robi `box_project_uvs` w skrypcie Blendera: ta funkcja odwraca `u` na przeciwległych ścianach bryły ([`../../guides/blender.md`](../../guides/blender.md), sekcja 6). To odwrócenie nie jest odbiciem lustrzanym tekstury. Jest dokładnie tym, co sprawia, że tekstura czyta się poprawnie z zewnątrz po obu stronach ściany, i dlatego licznik odbitych trójkątów wynosi 0.
 
 Pozostałe dwa przypadki:
 
 | Przypadek testowy | Co sprawdza |
 |---|---|
-| `loadObj: material libraries and texture paths of files written by the test` | pliki zapisane przez test w katalogu tymczasowym systemu: dwa `mtllib` (jeden w podkatalogu), `map_Kd` z `../../` rozwiązane względem katalogu pliku MTL, model bez materiałów, brakujący plik MTL, niezdefiniowany materiał, zła linia w OBJ i w MTL zgłoszona z nazwą pliku i numerem linii |
+| `loadObj: material libraries and texture paths of files written by the test` | pliki zapisane przez test w katalogu tymczasowym systemu: dwa `mtllib` (jeden w podkatalogu), `map_Kd` i `map_Bump` z `../../` rozwiązane względem katalogu pliku MTL, materiał bez mapy normalnych z pustym `normalTexture`, model bez materiałów, brakujący plik MTL, niezdefiniowany materiał, zła linia w OBJ i w MTL zgłoszona z nazwą pliku i numerem linii |
 | `loadObj: a file that does not exist is reported, not thrown` | brak pliku: `false`, komunikat z nazwą, model pusty |
 
 Testy błędów `loadObj` celowo wywołują logowanie, więc w wyjściu programu testowego pojawiają się linie `[error] ...`. To nie są niepowodzenia testów.
 
-**Wyniki.** Windows 11, MSVC 19.44, `/W4 /permissive-`, 2026-10-05: build Debug bez ostrzeżeń generatorem Ninja i generatorem Visual Studio, 18 przypadków i 804 asercje przechodzą. **Na macOS kod nie był kompilowany ani uruchamiany.** Otwarte punkty (czytanie liczb przez strumień w libc++, ścieżki z `std::u8string`, ostrzeżenia clang) są na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+**Wyniki.** Windows 11, MSVC 19.44, `/W4 /permissive-`, 2026-10-05: build Debug i Release bez ostrzeżeń, 20 przypadków i 1576 asercji tego pliku przechodzi (cały program testowy: 163 przypadki i 62220 asercji w Debug i w Release). **Na macOS kod nie był kompilowany ani uruchamiany.** Otwarte punkty (czytanie liczb przez strumień w libc++, ścieżki z `std::u8string`, ostrzeżenia clang) są na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
-**Czego testy nie obejmują:** działania przy globalnym locale innym niż "C" (uzasadnienie w sekcji 5.4 opiera się na dokumentacji `imbue`, a nie na teście z polskim locale), bardzo dużych plików i szybkości.
+**Czego testy nie obejmują:** działania przy globalnym locale innym niż "C" (uzasadnienie w sekcji 5.4 opiera się na dokumentacji `imbue`, a nie na teście z polskim locale), bardzo dużych plików i szybkości. Ostrzeżenia o odbitych trójkątach, które wypisuje `loadObj`, żaden test nie wywołuje: testy sprawdzają sam licznik.
 
 ## 6. Panel ImGui
 
@@ -897,10 +1071,12 @@ Wynik loadera pokazuje panel **Assets** (kod: [`src/debug/panels/AssetsPanel.cpp
 | nazwa pliku modelu, pełna ścieżka w podpowiedzi | `LoadedModel::path` | `floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`, w kolejności wczytania |
 | `... vertices, ... triangles` | liczba elementów `ObjModel::vertices` i jedna trzecia liczby `ObjModel::indices`, zapamiętane przy wczytaniu | 4 i 2 dla płytki, 60 i 30 dla ściany, 60 i 30 dla słupka: te same liczby co w tabeli z sekcji 5.9 |
 | `part '...': ... triangles, ...` | `ObjPart::material`, `ObjPart::indexCount` podzielone przez 3, nazwa pliku z `ObjMaterial::diffuseTexture` | jedna część na model, materiał `floor_stone` albo `wall_stone` i plik tekstury. Część bez własnej tekstury ma napis `no texture (white)` |
-| lista `View mode` | uniform `uViewMode` shadera | normalne z linii `vn` albo współrzędne z linii `vt` jako kolor |
+| `normal map: ...` pod każdą częścią | nazwa pliku z `ObjMaterial::normalTexture` | `floor_stone_normal.png` albo `wall_stone_normal.png`. Część bez własnej mapy normalnych ma napis `none (flat)` |
+| lista `View mode` | uniform `uViewMode` shadera | normalne albo współrzędne z linii `vt` jako kolor. Normalne są tymi z linii `vn` tylko przy wyłączonym polu `Normal mapping` albo w trybie oświetlenia `Gouraud`: inaczej widok pokazuje normalne z mapy |
+| pole wyboru `Normal mapping` | `game::LightingSettings::normalMapping` | włącza i wyłącza użycie map normalnych. Opis w [`asset-cache.md`](asset-cache.md), sekcja 6, scenariusz pokazu w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6 |
 | lista pod nagłówkiem `Failed to load` | ścieżki, dla których `loadObj` albo `loadImage` zwróciło `false` | pusta, gdy wszystko się wczytało. Nagłówek pojawia się tylko wtedy, gdy jest co pokazać |
 
-Liczby z drugiego i trzeciego wiersza to wniosek z kodu panelu i z wyników testów loadera. Samych wartości w panelu nikt jeszcze nie odczytał z ekranu. Na Windowsie (2026-10-05) sprawdzone jest na zrzutach ekranu, że modele rysują się z teksturami we właściwej orientacji, że oba tryby podglądu działają i że brak pliku tekstury daje białą teksturę zastępczą i jedną linię `[error]`. Widżetów panelu nikt jeszcze nie klikał ręcznie, a na macOS nie sprawdzono niczego.
+Liczby z drugiego i trzeciego wiersza to wniosek z kodu panelu i z wyników testów loadera. Samych wartości w panelu nikt jeszcze nie odczytał z ekranu. Na Windowsie (2026-10-05) sprawdzone jest na zrzutach ekranu, że modele rysują się z teksturami we właściwej orientacji, że oba tryby podglądu działają, że brak pliku tekstury daje białą teksturę zastępczą i jedną linię `[error]`, a po dodaniu map normalnych także to, że fugi czytają się jako wgłębienia na ścianach wzdłuż X, na ścianach wzdłuż Z, na słupku i na podłodze (czyli styczne i kierunek `cross(N, T)` są dobre na każdej ścianie modeli). Widżetów panelu, w tym pola `Normal mapping`, nikt jeszcze nie klikał ręcznie. Braku pliku mapy normalnych nikt jeszcze nie wywołał: to punkt otwarty listy w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nie sprawdzono niczego.
 
 ## 7. Pułapki
 
@@ -920,7 +1096,12 @@ Liczby z drugiego i trzeciego wiersza to wniosek z kodu panelu i z wyników test
 14. **`-0.0000` w normalnych.** To zwykłe zero ze znakiem minus. Czyta się poprawnie i w porównaniach jest równe `0.0`.
 15. **Spacje w nazwach.** Nazwa materiału i nazwa pliku to reszta linii, nie jedno pole. `map_Kd old stone.png` cięte na pola dałoby plik `old`.
 16. **Poprawny plik, którego nie da się narysować.** Plik OBJ bez ani jednej linii `f` jest dla `loadObj` poprawny: funkcja zwraca `true` i pusty model. Loader nie ocenia, czy wynik się do czegoś nadaje. Odrzuca go dopiero `AssetCache::model`, z komunikatem `Model has no faces: ...`.
-17. **Loader nie sprawdza, czy plik tekstury istnieje.** `ObjMaterial::diffuseTexture` to tylko ścieżka zbudowana z tekstu. Model z literówką w `map_Kd` wczytuje się bez błędu, a brak pliku wychodzi dopiero przy wczytywaniu obrazu: w grze część jest wtedy rysowana białą teksturą i w konsoli jest jedna linia `[error]` (zmierzone na Windowsie).
+17. **Loader nie sprawdza, czy plik tekstury istnieje.** `ObjMaterial::diffuseTexture` to tylko ścieżka zbudowana z tekstu. Model z literówką w `map_Kd` wczytuje się bez błędu, a brak pliku wychodzi dopiero przy wczytywaniu obrazu: w grze część jest wtedy rysowana białą teksturą i w konsoli jest jedna linia `[error]` (zmierzone na Windowsie). To samo dotyczy `normalTexture`: literówka w `map_Bump` kończy się płaską mapą zastępczą, czyli ścianą bez reliefu (wniosek z kodu `AssetCache::model`, jeszcze niesprawdzony na ekranie).
+18. **`-bm` wzięte za nazwę pliku.** Blender pisze `map_Bump -bm 1.000000 ../textures/wall_stone_normal.png`. Parser, który bierze "resztę linii" jako ścieżkę, tak jak dla `map_Kd`, szukałby pliku o nazwie `-bm 1.000000 ../textures/wall_stone_normal.png`. Dlatego linia mapy normalnych ma własną funkcję `readNormalMap`, która najpierw zdejmuje opcję.
+19. **Siła mapy z pliku jest ignorowana.** Zmiana pola `Strength` węzła `Normal Map` w Blenderze zmienia liczbę po `-bm` w pliku MTL i nic poza tym: gra nie czyta tej liczby. Relief zmienia się tylko przez nowe wygenerowanie tekstur ([`../../guides/blender.md`](../../guides/blender.md)).
+20. **Styczne liczone przed końcem pliku.** Styczna wierzchołka jest sumą po wszystkich jego trójkątach. Policzona po pierwszej linii `f` byłaby styczną jednego trójkąta. Dlatego `computeTangents` stoi za pętlą po liniach.
+21. **Odbita tekstura a styczna bez znaku.** Model, którego UV są na części ścian odbiciem lustrzanym (częste przy modelach symetrycznych, gdzie połowa jest kopią drugiej), wczyta się, ale mapa normalnych pokaże tam relief odwrócony. Loader tego nie naprawia, tylko liczy takie trójkąty i ostrzega. Naprawą byłaby czwarta składowa stycznej ze znakiem ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 2.9).
+22. **Inna pisownia słowa kluczowego.** `map_Bump` i `map_bump` to dla parsera dwa różne napisy i oba są na liście. Pisownia spoza listy czterech (sekcja 2.3) nie daje błędu: linia jest pomijana i materiał po cichu nie ma mapy normalnych. Widać to w panelu Assets jako `normal map: none (flat)`.
 
 ## 8. Ćwiczenia
 
@@ -948,11 +1129,14 @@ Testy uruchamia `ctest --test-dir build/debug -C Debug --output-on-failure`. Po 
 7. **Dwa materiały.** Dopisz do kopii `wall_straight.obj` linię `usemtl floor_stone` przed ostatnimi dziesięcioma liniami `f` i do pliku MTL materiał `floor_stone`. Ile części ma model i jakie są ich `firstIndex` i `indexCount`? (Dwie: `(0, 60)` i `(60, 30)`.)
 8. **Locale.** Napisz mały test, który przed `parseObj` woła `std::setlocale(LC_ALL, "pl_PL.UTF-8")` (na Windowsie `"Polish"`) i sprawdza, że `v 0.5 0 0` daje `x == 0.5`. Potem zamień tymczasowo `parseFloat` na wersję z `std::strtof` i porównaj. Przywróć locale `"C"` na końcu testu.
 9. **Nowe słowo kluczowe.** Dodaj do `parseMtl` obsługę `Ks` (kolor odbłysku) jako pola `specularColor` w `ObjMaterial` i test. Które istniejące testy trzeba poprawić? (Żadnego: dotąd linia była pomijana.)
+10. **Linia mapy normalnych bez `readNormalMap`.** Zmień tymczasowo gałąź mapy normalnych w `parseMtl` tak, żeby brała całą resztę linii jako ścieżkę (jak gałąź `map_Kd`). Które podprzypadki `parseMtl: the normal map line` przestają przechodzić i jaką ścieżkę dostaje materiał ściany? Co pokazałby wtedy panel Assets? (Ścieżkę zaczynającą się od `-bm 1.000000`: plik nie istnieje, część dostaje płaską mapę zastępczą, a w logu jest linia `[error]`.)
+11. **Odbita tekstura.** W kopii `floor_tile.obj` zamień w liniach `vt` znak przy każdym `u` (pierwsza liczba). Wczytaj model przez `loadObj` w małym teście. Ile wynosi `mirroredTriangleCount` i jaka linia pojawia się w logu? (2 i ostrzeżenie `... 2 triangle(s) have a mirrored texture, a normal map is upside down there`.)
+12. **Siła mapy.** Zmień w `wall_straight.mtl` liczbę po `-bm` na `0.250000` i uruchom testy oraz grę. Co się zmieniło? (Nic: liczba jest sprawdzana i pomijana.) Potem zamień ją na `abc`. Jaki komunikat wypisze `loadObj` i co się stanie ze ścianami? (`...wall_straight.mtl: line 14: map_Bump -bm needs a number`, model się nie wczytuje, ściany nie są rysowane.)
 
 ## 9. Pytania kontrolne
 
 1. **Co zwraca loader OBJ i czego nie robi?**
-   Strukturę `ObjModel`: tablicę wierzchołków `gfx::Vertex`, tablicę indeksów, listę części (materiał, pierwszy indeks, liczba indeksów) i listę materiałów (nazwa, kolor `Kd`, ścieżka tekstury z `map_Kd`). Nie tworzy obiektów OpenGL, nie wczytuje obrazów i nie sprawdza, czy plik tekstury istnieje.
+   Strukturę `ObjModel`: tablicę wierzchołków `gfx::Vertex` (ze stycznymi policzonymi po wczytaniu), tablicę indeksów, listę części (materiał, pierwszy indeks, liczba indeksów), listę materiałów (nazwa, kolor `Kd`, ścieżka tekstury z `map_Kd`, ścieżka mapy normalnych z `map_Bump`) i dwa liczniki: nieznanych linii i trójkątów z odbitą teksturą. Nie tworzy obiektów OpenGL, nie wczytuje obrazów i nie sprawdza, czy pliki tekstur istnieją.
 
 2. **Co oznaczają linie `v`, `vt`, `vn` i `f`?**
    Pozycję (trzy liczby), współrzędną tekstury (dwie), normalną (trzy) i ścianę. Narożnik ściany to do trzech indeksów oddzielonych ukośnikami: pozycja, uv, normalna. Indeksy liczą się od 1.
@@ -981,8 +1165,8 @@ Testy uruchamia `ctest --test-dir build/debug -C Debug --output-on-failure`. Po 
 10. **Co to jest część (`ObjPart`) i kiedy powstaje nowa?**
     Zakres indeksów o jednym materiale: `firstIndex` i `indexCount`, czyli argumenty rysowania zakresu. Nowa część powstaje przy pierwszej ścianie po zmianie materiału, a nie przy samej linii `usemtl`, więc `usemtl` bez ścian nie tworzy niczego.
 
-11. **Względem czego liczone są ścieżki z `mtllib` i `map_Kd`?**
-    `mtllib` względem katalogu pliku OBJ, `map_Kd` względem katalogu pliku MTL. `loadObj` łączy je operatorem `/` i porządkuje przez `lexically_normal()`, które usuwa kroki `..`.
+11. **Względem czego liczone są ścieżki z `mtllib`, `map_Kd` i `map_Bump`?**
+    `mtllib` względem katalogu pliku OBJ, `map_Kd` i `map_Bump` względem katalogu pliku MTL. `loadObj` łączy je operatorem `/` i porządkuje przez `lexically_normal()`, które usuwa kroki `..`.
 
 12. **Jak parser czyta liczby i dlaczego nie przez `atof` albo `std::stof`?**
     Liczby zmiennoprzecinkowe czyta `std::istringstream` z ustawionym klasycznym locale (`imbue(std::locale::classic())`), a całkowite `std::from_chars`. `atof` i `std::stof` zależą od globalnego locale programu: przy polskim oczekują przecinka i `0.14` czytają jako `0`. Oba sposoby sprawdzają też, czy całe pole zostało zużyte.
@@ -994,31 +1178,43 @@ Testy uruchamia `ctest --test-dir build/debug -C Debug --output-on-failure`. Po 
     Zwraca `false`, wpisuje powód do parametru `error` (dla parserów z numerem linii: `line 6: ...`) i zostawia model wołającego bez zmian. Nie rzuca wyjątków. `loadObj` dodatkowo wypisuje błąd raz przez `core::logError` i poprzedza go ścieżką pliku.
 
 15. **Co parser robi z linią, której nie zna?**
-    Pomija ją. Linie `o`, `g`, `s`, komentarze i linie puste pomija celowo. Inne nieznane słowa kluczowe liczy w `unknownLineCount`, a `loadObj` wypisuje jedno ostrzeżenie z tą liczbą. W pliku MTL wszystko poza `newmtl`, `Kd` i `map_Kd` jest pomijane bez liczenia.
+    Pomija ją. Linie `o`, `g`, `s`, komentarze i linie puste pomija celowo. Inne nieznane słowa kluczowe liczy w `unknownLineCount`, a `loadObj` wypisuje jedno ostrzeżenie z tą liczbą. W pliku MTL wszystko poza `newmtl`, `Kd`, `map_Kd` i linią mapy normalnych jest pomijane bez liczenia.
 
 16. **Po co obsługa `\r`, skoro moje pliki mają same `\n`?**
     Bo Git na Windowsie może zamienić końce linii na `\r\n` przy pobraniu, a pliki z innych narzędzi bywają tak zapisane. Bez tego nazwa materiału i ostatnia liczba każdej linii miałyby na końcu niewidoczny znak.
 
 17. **Czym mój loader różni się od Assimp?**
-    Assimp to biblioteka czytająca kilkadziesiąt formatów do wspólnej struktury sceny (węzły, siatki, materiały, animacje) i umiejąca je przetwarzać: triangulować, liczyć normalne i styczne, łączyć wierzchołki. Mój loader czyta jeden format i sześć słów kluczowych, w kilkuset liniach, które umiem wytłumaczyć. Nie obsługuje animacji, hierarchii ani wielokątów wklęsłych.
+    Assimp to biblioteka czytająca kilkadziesiąt formatów do wspólnej struktury sceny (węzły, siatki, materiały, animacje) i umiejąca je przetwarzać: triangulować, liczyć normalne i styczne, łączyć wierzchołki. Mój loader czyta jeden format i sześć słów kluczowych pliku OBJ, w kilkuset liniach, które umiem wytłumaczyć. Z przetwarzania robi tylko dwie rzeczy: dzieli wielokąty wachlarzem i liczy styczne. Nie liczy normalnych, nie obsługuje animacji, hierarchii ani wielokątów wklęsłych.
 
 18. **Dlaczego parsowanie jest oddzielone od czytania plików?**
     Żeby dało się je testować bez plików i bez okna: `parseObj` i `parseMtl` dostają tekst i zwracają dane, więc test podaje napis wpisany w kod. Pliki, katalogi i logowanie są tylko w `loadObj`.
 
 19. **Kto w programie woła `loadObj` i co dzieje się z wynikiem?**
-    `assets::AssetCache::model`, raz dla każdego pliku. Z `vertices` i `indices` powstaje `gfx::Mesh`, części są przepisywane do `ModelPart` z kolorem `Kd` i teksturą swojego materiału, a sam `ObjModel` ginie na końcu funkcji. Rysuje `MazeRenderer` shaderami `textured.*`.
+    `assets::AssetCache::model`, raz dla każdego pliku. Z `vertices` i `indices` powstaje `gfx::Mesh`, części są przepisywane do `ModelPart` z kolorem `Kd`, teksturą i mapą normalnych swojego materiału, a sam `ObjModel` ginie na końcu funkcji. Rysuje `MazeRenderer`, programem `textured`, `lit` albo `gouraud`, zależnie od trybu oświetlenia i podglądu.
 
 20. **Dlaczego orientację tekstury poprawia loader obrazów, a nie `1 - v` w loaderze OBJ albo w shaderze?**
     Wynik na ekranie byłby ten sam, także dla UV spoza zakresu od 0 do 1: przy `GL_REPEAT` liczy się część ułamkowa, a `1 - v` to odbicie i przesunięcie o całe powtórzenia. Powody są organizacyjne: odwrócenie wierszy robi się raz przy wczytaniu, każdy odbiorca tekstury ma tę samą konwencję (`v = 0` na dole, jak w OBJ i w OpenGL), a współrzędne z pliku modelu zostają nietknięte.
 
-21. **Gdzie w shaderze lądują linie `v`, `vn`, `vt`, `Kd` i `map_Kd`?**
-    `v`, `vn` i `vt` to atrybuty wierzchołka numer 0, 1 i 2 (`aPosition`, `aNormal`, `aUv` w `textured.vert`). `Kd` to uniform `uTint`, przez który mnożony jest kolor tekstury. `map_Kd` to plik tekstury wiązanej z jednostką, której numer ma sampler `uTexture`.
+21. **Gdzie w shaderze lądują linie `v`, `vn`, `vt`, `Kd`, `map_Kd` i `map_Bump`?**
+    `v`, `vn` i `vt` to atrybuty wierzchołka numer 0, 1 i 2 (`aPosition`, `aNormal`, `aUv` w `textured.vert`). `Kd` to uniform `uTint`, przez który mnożony jest kolor tekstury. `map_Kd` to plik tekstury wiązanej z jednostką, której numer ma sampler `uTexture`. `map_Bump` to plik mapy normalnych wiązanej z drugą jednostką, której numer ma sampler `uNormalMap`. Atrybut numer 3, `aTangent`, nie ma swojej linii w pliku: loader liczy go sam.
+
+22. **Jak wygląda linia mapy normalnych w pliku MTL i co parser robi z każdą jej częścią?**
+    `map_Bump -bm 1.000000 ../textures/wall_stone_normal.png`. Słowo kluczowe może być też zapisane jako `map_bump`, `bump` albo `norm`. Opcja `-bm` z liczbą (siła mapy) jest nieobowiązkowa: gdy jest, liczba musi być liczbą, ale jej wartość jest pomijana. Reszta linii to ścieżka względem katalogu pliku MTL, zapisywana w `ObjMaterial::normalTexture`.
+
+23. **Dlaczego linia nazywa się `map_Bump`, skoro wskazuje mapę normalnych?**
+    Bo format MTL zna tylko mapy wypukłości, czyli szare obrazy wysokości, a nie ma osobnej linii dla map normalnych. Eksportery, w tym Blender, używają tej samej linii dla obu. Parser nie zagląda do obrazu i zawsze traktuje wskazany plik jako mapę normalnych.
+
+24. **Skąd biorą się styczne, skoro w pliku OBJ ich nie ma, i dlaczego są liczone na końcu `parseObj`?**
+    Liczy je `assets::computeTangents` z pozycji i współrzędnych uv każdego trójkąta: styczna to kierunek na powierzchni, w którym rośnie `u`. Wynik dla wierzchołka jest sumą po wszystkich trójkątach, które go używają, zrobioną prostopadłą do normalnej i sprowadzoną do długości 1. Dlatego liczenie musi poczekać, aż znane są wszystkie trójkąty, czyli do końca pliku. Nowych wierzchołków przy tym nie przybywa.
+
+25. **Co to jest `mirroredTriangleCount` i co loader robi, gdy jest większe od zera?**
+    Liczba trójkątów, na których tekstura leży w odbiciu lustrzanym. Na takich trójkątach wektor `cross(N, T)`, który shader bierze za kierunek rosnącego `v`, wskazuje w przeciwną stronę i mapa normalnych pokazuje relief odwrócony. Loader wczytuje model i wypisuje jedno ostrzeżenie. Dla trzech modeli gry licznik wynosi 0, co sprawdzają testy, więc wierzchołek nie przechowuje znaku skrętności.
 
 ## 10. Źródła
 
 - Specyfikacja formatu OBJ firmy Wavefront (dodatek B1 dokumentacji Advanced Visualizer), kopia archiwalna: <https://paulbourke.net/dataformats/obj/>. Indeksy od 1, indeksy ujemne, postacie narożnika.
-- Specyfikacja formatu MTL firmy Wavefront, kopia archiwalna: <https://paulbourke.net/dataformats/mtl/>. `newmtl`, `Kd`, `map_Kd` i jego opcje.
+- Specyfikacja formatu MTL firmy Wavefront, kopia archiwalna: <https://paulbourke.net/dataformats/mtl/>. `newmtl`, `Kd`, `map_Kd` i jego opcje, linia `bump` z opcją `-bm` (mnożnik mapy wypukłości). Pisownie `map_Bump` i `norm` nie pochodzą ze specyfikacji, tylko z praktyki eksporterów.
 - LearnOpenGL, rozdziały "Assimp" i "Model" (<https://learnopengl.com/Model-Loading/Assimp>, <https://learnopengl.com/Model-Loading/Model>): to samo zadanie rozwiązane gotową biblioteką, dla porównania.
 - Tabela stanu C++17 biblioteki libc++, wiersz P0067R5 (<https://libcxx.llvm.org/Status/Cxx17.html>): `std::from_chars` dla liczb całkowitych od wersji 7, dla `float` i `double` od wersji 20.
 - cppreference: `std::from_chars` (<https://en.cppreference.com/w/cpp/utility/from_chars>), `std::locale::classic` (<https://en.cppreference.com/w/cpp/locale/locale/classic>), `std::basic_ios::imbue` (<https://en.cppreference.com/w/cpp/io/basic_ios/imbue>), `std::string_view` (<https://en.cppreference.com/w/cpp/string/basic_string_view>), `std::filesystem::path::lexically_normal` (<https://en.cppreference.com/w/cpp/filesystem/path/lexically_normal>).
-- Dokumenty w tym repozytorium: [`README.md`](README.md), [`../../guides/blender.md`](../../guides/blender.md) (skąd są pliki, sekcja 5: co w nich jest), [`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), [`../core/paths.md`](../core/paths.md), [`../../libraries/doctest.md`](../../libraries/doctest.md).
+- Dokumenty w tym repozytorium: [`README.md`](README.md), [`../../guides/blender.md`](../../guides/blender.md) (skąd są pliki, sekcja 5: co w nich jest), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (mapy normalnych i styczne), [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md), [`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md), [`../core/paths.md`](../core/paths.md), [`../../libraries/doctest.md`](../../libraries/doctest.md).

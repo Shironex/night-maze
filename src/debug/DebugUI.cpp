@@ -103,7 +103,7 @@ void DebugUI::draw(const DebugContext& context) {
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
         drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
-        drawAssetsPanel(context.assets, context.viewMode);
+        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
         drawLightsPanel(context.lighting, context.mazeWorld);
     }
 

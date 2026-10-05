@@ -23,7 +23,7 @@ struct MazeWorld;
 /// in textured.frag, so the values here and the comparisons there must stay in step.
 enum class ViewMode {
     Textured = 0, ///< the texture multiplied by the colour of the material
-    Normals = 1,  ///< the normal of the surface as a colour (a debug view, not lighting)
+    Normals = 1,  ///< the normal used for shading as a colour (a debug view, not lighting)
     Uvs = 2,      ///< the texture coordinate as a colour (a debug view)
 };
 
@@ -40,10 +40,11 @@ public:
 
     /// Draws the whole maze. shader is the textured program or one of the two lit
     /// programs (lit, gouraud): it must be in use, with uView, uProjection and its own
-    /// uniforms (uViewMode, or the ones of the lighting) already set. The function sets
-    /// uTexture, uTint for every part, and uModel and uNormalMatrix for every object.
-    /// The textured program has no uNormalMatrix: a uniform a program does not have is
-    /// ignored.
+    /// uniforms (uViewMode, uNormalMapEnabled, or the ones of the lighting) already set.
+    /// The function sets uTexture and uNormalMap, binds the two textures and sets uTint
+    /// for every part, and sets uModel and uNormalMatrix for every object. The textured
+    /// program has no uNormalMatrix and the gouraud program no uNormalMap: a uniform
+    /// a program does not have is ignored.
     void draw(const gfx::Shader& shader, const MazeWorld& world) const;
 
 private:

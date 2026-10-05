@@ -55,7 +55,8 @@ struct DebugContext {
     float& mouseSensitivity;
     /// Shader program of the maze (textured models), editable: reloaded like shader.
     gfx::Shader& texturedShader;
-    /// Shader program of the collision box lines, editable: reloaded like shader.
+    /// Shader program of the collision box lines and of the light markers, editable:
+    /// reloaded like shader.
     gfx::Shader& colorShader;
     /// The player, editable: position, speeds and the noclip mode.
     game::Player& player;
@@ -73,7 +74,8 @@ struct DebugContext {
     gfx::Shader& litShader;
     /// Shader program of the lit maze, lighting per vertex, editable: reloaded like shader.
     gfx::Shader& gouraudShader;
-    /// The lighting mode and the settings of every light, editable.
+    /// The lighting mode, the settings of every light and the normal mapping switch,
+    /// editable.
     game::LightingSettings& lighting;
 };
 

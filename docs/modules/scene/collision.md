@@ -270,17 +270,19 @@ Trzy szczegóły:
 
 ## 4. Shadery
 
-Same kolizje nie mają shadera. Linie pudełek rysuje najprostsza para w projekcie: [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag). Wszystko, co nimi narysowane, ma jeden kolor. Od M4 ta sama para rysuje jeszcze jedną rzecz: małe kostki w miejscach świateł punktowych (`game::LightRig::drawMarkers`, [`../game/flashlight.md`](../game/flashlight.md), sekcja 5.7). Shadery się przy tym nie zmieniły.
+Same kolizje nie mają shadera. Linie pudełek rysuje najprostsza para w projekcie: [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag). Wszystko, co nimi narysowane, ma jeden kolor. Od M4 ta sama para rysuje jeszcze jedną rzecz: małe kostki w miejscach świateł punktowych (`game::LightRig::drawMarkers`, [`../game/flashlight.md`](../game/flashlight.md), sekcja 5.7). Kod shaderów się przy tym nie zmienił, a ich komentarze nagłówkowe wymieniają dziś obu użytkowników: linie pudełek i znaczniki świateł.
 
 ### 4.1 `color.vert`
 
 ```glsl
 #version 410 core
-// Vertex shader for shapes drawn in one flat colour: the lines of the collision boxes.
+// Vertex shader for shapes drawn in one flat colour: the lines of the collision boxes
+// and the markers of the point lights.
 // See docs/modules/scene/collision.md
 
-// Input: only the position. The mesh also carries a normal (location 1) and a texture
-// coordinate (location 2), but a shader may leave attributes it does not need unread.
+// Input: only the position. The mesh also carries a normal (location 1), a texture
+// coordinate (location 2) and a tangent (location 3), but a shader may leave attributes
+// it does not need unread.
 layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the shape
 
 // Uniforms: set from C++ (gfx::Shader::setMat4).
@@ -298,7 +300,7 @@ void main() {
 |---|---|
 | `#version 410 core` | GLSL 4.10, profil Core: ta sama wersja co kontekst OpenGL projektu |
 | `layout(location = 0) in vec3 aPosition;` | jedyne wejście: pozycja, atrybut numer 0. Numer zgadza się ze stałą `POSITION_ATTRIBUTE` z `src/gfx/Vertex.hpp` |
-| brak `aNormal` i `aUv` | siatka `gfx::Mesh` zawsze opisuje trzy atrybuty (pozycja, normalna, uv). Shader nie musi czytać wszystkich: atrybut włączony w VAO, którego shader nie deklaruje, jest po prostu ignorowany |
+| brak `aNormal`, `aUv` i `aTangent` | siatka `gfx::Mesh` zawsze opisuje cztery atrybuty (pozycja, normalna, uv, styczna: [`../gfx/mesh.md`](../gfx/mesh.md)). Styczna doszła razem z mapami normalnych ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)), a linie i znaczniki jej nie potrzebują. Shader nie musi czytać wszystkich: atrybut włączony w VAO, którego shader nie deklaruje, jest po prostu ignorowany |
 | `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `basic.vert` i `textured.vert`, dzięki czemu kod C++ używa dla wszystkich programów tych samych stałych z `ShaderUniforms.hpp` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5) |
 | `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | łańcuch czytany od prawej: przestrzeń lokalna, świat, widok, przycinanie ([`transforms.md`](transforms.md), sekcja 4). `1.0` jako czwarta składowa oznacza punkt, więc przesunięcie z macierzy działa |
 
@@ -308,7 +310,8 @@ Shader nie ma żadnego wyjścia poza `gl_Position`: fragmentom nie trzeba niczeg
 
 ```glsl
 #version 410 core
-// Fragment shader for shapes drawn in one flat colour: the lines of the collision boxes.
+// Fragment shader for shapes drawn in one flat colour: the lines of the collision boxes
+// and the markers of the point lights.
 // See docs/modules/scene/collision.md
 
 // The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3).
@@ -615,7 +618,7 @@ Ostatni wiersz zastąpił wcześniejszy przypadek, który przypinał zachowanie 
 
 Cztery dalsze przypadki z prawdziwym graczem są w `tests/PlayerTests.cpp` (`a wall stops the player`, `a player pressing into a wall slides along it and past the pillars`, `a player wandering through a closed maze never leaves it or enters a wall`, `noclip flies through walls`): omawia je [`../game/player.md`](../game/player.md), sekcja 5.
 
-Wyniki na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05): build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach. Stan całego programu testowego po M4 (2026-10-05): 149 przypadków i 61240 asercji, w tym te same przypadki kolizji. Na macOS kod nie był jeszcze kompilowany ani uruchamiany: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+Wyniki na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05): build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach. Stan całego programu testowego po M4 (2026-10-05): 163 przypadki i 62220 asercji, w tym te same przypadki kolizji. Na macOS kod nie był jeszcze kompilowany ani uruchamiany: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ### 5.8 Rysowanie pudełek: `ColliderLines`
 
@@ -670,7 +673,7 @@ constexpr std::array<std::uint32_t, EDGE_COUNT * INDICES_PER_LINE> UNIT_CUBE_EDG
 
 | Fragment | Znaczenie |
 |---|---|
-| `gfx::Vertex{.position = {...}}` | wypełniona jest tylko pozycja. Normalna i współrzędne tekstury zostają zerami (wartości domyślne struktury): linie ich nie potrzebują, a shader `color.vert` ich nie czyta |
+| `gfx::Vertex{.position = {...}}` | wypełniona jest tylko pozycja. Normalna, współrzędne tekstury i styczna zostają zerami (wartości domyślne struktury): linie ich nie potrzebują, a shader `color.vert` ich nie czyta |
 | narożniki od 0 do 3 | dolna ściana (y = 0), po kolei dookoła |
 | narożniki od 4 do 7 | górna ściana (y = 1), w tej samej kolejności, więc narożnik `n + 4` stoi nad narożnikiem `n` |
 | `0, 1, 1, 2, 2, 3, 3, 0` | cztery krawędzie dolnej ściany: każda para to jeden odcinek |

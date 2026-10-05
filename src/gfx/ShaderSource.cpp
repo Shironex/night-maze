@@ -187,7 +187,8 @@ bool appendFile(Expansion& expansion, std::size_t fileNumber, const std::string&
 // Replaces the source string number at the start of one line of an info log by the name
 // of the file, when the line has one of the two known formats.
 void nameSourceFile(std::string& line, std::span<const std::string> files) {
-    // Where the number starts: at the start of the line, or after "ERROR: ".
+    // Where the number starts: at the start of the line (NVIDIA, Mesa, Intel), or after
+    // "ERROR: " or "WARNING: " (Apple).
     std::size_t start = 0;
     if (line.starts_with(ERROR_PREFIX)) {
         start = ERROR_PREFIX.size();
@@ -205,7 +206,7 @@ void nameSourceFile(std::string& line, std::span<const std::string> files) {
         return;
     }
 
-    // What follows the number tells the format: "(15)" on NVIDIA, ":15:" elsewhere. Only
+    // What follows the number tells the format: "(15)" on NVIDIA, ":15" elsewhere. Only
     // a number that is followed by a line number is taken for a source string number.
     const bool lineNumberFollows = isDigit(line[end + 1]);
     const bool nvidiaFormat = start == 0 && line[end] == '(' && lineNumberFollows;

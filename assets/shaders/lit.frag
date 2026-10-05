@@ -7,10 +7,14 @@
 // The light block and the function computeLighting. The same file is included by
 // gouraud.vert.
 #include "common/lighting.glsl"
+// The normal map and the function surfaceNormal. The same file is included by
+// textured.frag, for its debug view of the normals.
+#include "common/normal_map.glsl"
 
 // Inputs from the vertex shader, already blended for this fragment.
 in vec2 vUv;            // texture coordinate
 in vec3 vNormal;        // normal in world space, no longer exactly of length 1
+in vec3 vTangent;       // tangent in world space, no longer exactly of length 1
 in vec3 vWorldPosition; // position in world space
 
 // The texture (the number of a texture unit) and the colour of the material, as in
@@ -22,8 +26,12 @@ uniform vec3 uTint;
 out vec4 fragColor;
 
 void main() {
-    // Blending between the vertices shortens a normal, so it is brought back to length 1.
-    vec3 normal = normalize(vNormal);
+    // The normal of this fragment: the one of the model, or with normal mapping the one
+    // read from the normal map. This is the only place where normal mapping enters the
+    // lighting: the formulas of computeLighting do not know where their normal comes
+    // from. It needs a normal per fragment, which is why the Gouraud program (light per
+    // vertex) has no normal mapping.
+    vec3 normal = surfaceNormal(vNormal, vTangent, vUv);
     Lighting lighting = computeLighting(vWorldPosition, normal);
 
     // The colour of the surface takes part in the diffuse light only: a red wall

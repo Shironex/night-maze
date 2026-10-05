@@ -25,9 +25,9 @@ namespace gfx {
 /// program and sets its uniforms, then calls draw().
 class Mesh {
 public:
-    /// Copies the vertices and the indices to the graphics card and describes the three
-    /// attributes of gfx::Vertex (position, normal, uv). OpenGL takes its own copy, so
-    /// both arrays may be freed right after the call.
+    /// Copies the vertices and the indices to the graphics card and describes the four
+    /// attributes of gfx::Vertex (position, normal, uv, tangent). OpenGL takes its own
+    /// copy, so both arrays may be freed right after the call.
     ///
     /// Every index must be smaller than vertices.size(): OpenGL does not check that.
     /// primitive says how the indices are grouped: GL_TRIANGLES (every 3 indices are one

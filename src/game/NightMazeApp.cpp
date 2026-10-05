@@ -349,7 +349,8 @@ void NightMazeApp::onRender(double alpha) {
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
     // The two debug views (normals and texture coordinates as colours) only exist in the
     // textured program, and they show data, not light. So they are drawn without
-    // lighting whatever the lighting mode is.
+    // lighting whatever the lighting mode is. The view of the normals still follows the
+    // lighting in one thing: it shows the normals the chosen mode shades with.
     if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
         drawUnlitMaze(view, projection);
     } else {
@@ -370,6 +371,9 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
     // The enum values are the numbers textured.frag compares uViewMode with.
     m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    // Only the view of the normals reads it: that view shows the normals the lighting
+    // would use, so with normal mapping the ones from the normal maps.
+    m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
 }
@@ -392,6 +396,9 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
     shader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+    // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
+    // has no such uniform, and usesNormalMap is false for it anyway.
+    shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(shader, m_mazeWorld);
 }

@@ -1,11 +1,11 @@
 # Moduł debug: panele ImGui
 
-Kamień milowy: M0 (nakładka i panel Renderer), M1 (panele Shaders i Camera, `DebugContext`, mysz), M2 + M3 (panele Maze, Collision i Assets, czternaście pól `DebugContext`, układ domyślny paneli). Po M2 + M3 doszedł motyw paneli: własne kolory i odstępy, czcionka z pliku z polskimi literami, skala ekranu i układ domyślny w jednym pliku (sekcje 5.7 i 5.8). M4 (oświetlenie): siódmy panel Lights, lista `Lighting` w panelu Renderer, pięć programów w panelu Shaders, siedemnaście pól `DebugContext` i nowy układ, w którym panel Camera startuje zwinięty. Kod: [`src/debug/`](../../src/debug/) oraz [`src/main.cpp`](../../src/main.cpp), gdzie nakładka jest podpinana do gry.
+Kamień milowy: M0 (nakładka i panel Renderer), M1 (panele Shaders i Camera, `DebugContext`, mysz), M2 + M3 (panele Maze, Collision i Assets, czternaście pól `DebugContext`, układ domyślny paneli). Po M2 + M3 doszedł motyw paneli: własne kolory i odstępy, czcionka z pliku z polskimi literami, skala ekranu i układ domyślny w jednym pliku (sekcje 5.7 i 5.8). M4 (oświetlenie): siódmy panel Lights, lista `Lighting` w panelu Renderer, pięć programów w panelu Shaders, siedemnaście pól `DebugContext` i nowy układ, w którym panel Camera startuje zwinięty. M4 (mapy normalnych): pole wyboru `Normal mapping` i linie `normal map:` w panelu Assets, trzeci parametr `drawAssetsPanel`. Kod: [`src/debug/`](../../src/debug/) oraz [`src/main.cpp`](../../src/main.cpp), gdzie nakładka jest podpinana do gry.
 Teoria samej biblioteki (tryb natychmiastowy, backendy, docking) jest w [`../libraries/imgui.md`](../libraries/imgui.md). Ten dokument opisuje, jak ImGui jest wpięte w **mój** projekt i jak dodać nowy panel.
 
 ## 1. Po co to jest
 
-Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FPS, rozmiar framebuffera, wersję sterownika) i zmieniać parametry w działającym programie, bez przebudowywania. Moduł `debug` daje do tego nakładkę z panelami Dear ImGui rysowaną na wierzchu sceny. Nie realizuje osobnego tematu wykładu, ale obsługuje wszystkie piętnaście: każdy temat dostaje w panelu przełącznik, którym na obronie pokażę efekt "przed i po" (PRD, sekcje 3 i 10). Dziś istnieje siedem paneli: **Renderer**, pokazujący dane z tematu 1 (FPS, czas klatki) i przełącznik tematu 7 (lista `Lighting`: bez oświetlenia, Gouraud, Phong, Blinn-Phong), **Shaders**, pokaz tematu 2 (przycisk "Reload shaders" dla pięciu programów), **Camera**, pokaz tematu 3 (pozycja gracza, kąty, FOV, płaszczyzny przycinania, czułość myszy, trzy prędkości gracza), **Maze** (rozmiar i ziarno labiryntu, przyciski "Regenerate" i "Random seed", plan z góry), **Collision**, pokaz tematu 14 (rysowanie pudełek kolizji, tryb noclip), **Assets**, pokaz tematów 4 i 5 (tryb widoku, filtr tekstur, anizotropia, lista modeli i tekstur), i **Lights**, pokaz tematu 6 (światło otoczenia, księżyc, latarka, światła punktowe w ślepych zaułkach, połysk). PRD nie ma panelu o nazwie Assets: w sekcji 3 wymienia dla tematu 4 pokaz "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Panel Assets niesie oba pokazy (przełącznika map normalnych jeszcze nie ma: mapy normalnych to następna część M4).
+Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FPS, rozmiar framebuffera, wersję sterownika) i zmieniać parametry w działającym programie, bez przebudowywania. Moduł `debug` daje do tego nakładkę z panelami Dear ImGui rysowaną na wierzchu sceny. Nie realizuje osobnego tematu wykładu, ale obsługuje wszystkie piętnaście: każdy temat dostaje w panelu przełącznik, którym na obronie pokażę efekt "przed i po" (PRD, sekcje 3 i 10). Dziś istnieje siedem paneli: **Renderer**, pokazujący dane z tematu 1 (FPS, czas klatki) i przełącznik tematu 7 (lista `Lighting`: bez oświetlenia, Gouraud, Phong, Blinn-Phong), **Shaders**, pokaz tematu 2 (przycisk "Reload shaders" dla pięciu programów), **Camera**, pokaz tematu 3 (pozycja gracza, kąty, FOV, płaszczyzny przycinania, czułość myszy, trzy prędkości gracza), **Maze** (rozmiar i ziarno labiryntu, przyciski "Regenerate" i "Random seed", plan z góry), **Collision**, pokaz tematu 14 (rysowanie pudełek kolizji, tryb noclip), **Assets**, pokaz tematów 4 i 5 (tryb widoku, pole wyboru `Normal mapping`, filtr tekstur, anizotropia, lista modeli i tekstur), i **Lights**, pokaz tematu 6 (światło otoczenia, księżyc, latarka, światła punktowe w ślepych zaułkach, połysk). PRD nie ma panelu o nazwie Assets: w sekcji 3 wymienia dla tematu 4 pokaz "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Panel Assets niesie oba pokazy, razem z przełącznikiem map normalnych: polem wyboru `Normal mapping` pod listą `View mode` ([`gfx/normal-mapping.md`](gfx/normal-mapping.md), sekcja 6).
 
 ## 2. Teoria
 
@@ -107,7 +107,7 @@ if (m_visible) {
     drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
     drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
     drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
-    drawAssetsPanel(context.assets, context.viewMode);
+    drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
     drawLightsPanel(context.lighting, context.mazeWorld);
 }
 
@@ -181,7 +181,7 @@ Backend ma też własne obiekty samplerów. W wersji z katalogu budowania (1.92.
 | [`src/debug/panels/CameraPanel.hpp`](../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../src/debug/panels/CameraPanel.cpp) | Funkcja `drawCameraPanel`: panel "Camera" (tryb, pozycja stóp gracza, oko, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, trzy prędkości gracza). Opis linia po linii: [`scene/camera-controls.md`](scene/camera-controls.md), sekcja 6 |
 | [`src/debug/panels/MazePanel.hpp`](../../src/debug/panels/MazePanel.hpp), [`.cpp`](../../src/debug/panels/MazePanel.cpp) | Funkcja `drawMazePanel`: panel "Maze" (rozmiar, ziarno, "Regenerate", "Random seed", plan labiryntu z góry z graczem). Opis linia po linii: [`game/maze-generator.md`](game/maze-generator.md), sekcja 6 |
 | [`src/debug/panels/CollisionPanel.hpp`](../../src/debug/panels/CollisionPanel.hpp), [`.cpp`](../../src/debug/panels/CollisionPanel.cpp) | Funkcja `drawCollisionPanel`: panel "Collision" (rysowanie pudełek, noclip, liczby pudełek, pudełko gracza). Opis linia po linii: [`scene/collision.md`](scene/collision.md), sekcja 6 |
-| [`src/debug/panels/AssetsPanel.hpp`](../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../src/debug/panels/AssetsPanel.cpp) | Funkcja `drawAssetsPanel`: panel "Assets" (tryb widoku, filtr, anizotropia, modele, tekstury z podglądem, lista nieudanych wczytań). Opis linia po linii: [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6 |
+| [`src/debug/panels/AssetsPanel.hpp`](../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../src/debug/panels/AssetsPanel.cpp) | Funkcja `drawAssetsPanel`: panel "Assets" (tryb widoku, przełącznik mapowania normalnych, filtr, anizotropia, modele z teksturą i mapą normalnych każdej części, tekstury z podglądem, lista nieudanych wczytań). Opis linia po linii: [`assets/asset-cache.md`](assets/asset-cache.md), sekcja 6 |
 | [`src/main.cpp`](../../src/main.cpp) | Klasa `DebugNightMazeApp`: posiada `DebugUI`, obsługuje klawisz `~`, wyłącza mysz w ImGui na czas przechwycenia kursora, co klatkę buduje `DebugContext` i woła `draw` po narysowaniu gry, przekazuje do `core::Input` blokadę klawiatury i myszy |
 | [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) | Pobranie ImGui i definicja celu `imgui` (ImGui nie ma własnego CMake) |
 | [`CMakeLists.txt`](../../CMakeLists.txt) | Pliki `src/debug/*` są częścią programu `night_maze`, nie biblioteki `engine` |
@@ -198,7 +198,7 @@ flowchart LR
     UI --> CP["drawCameraPanel<br/>camera, player, mouseSensitivity"]
     UI --> MP["drawMazePanel<br/>mazeSettings, mazeWorld, player, camera"]
     UI --> CO["drawCollisionPanel<br/>mazeWorld, player, drawColliders"]
-    UI --> AP["drawAssetsPanel<br/>assets, viewMode"]
+    UI --> AP["drawAssetsPanel<br/>assets, viewMode, lighting.normalMapping"]
     UI --> LP["drawLightsPanel<br/>lighting, mazeWorld"]
     RP -->|"czyta czas i okno, zapisuje m_clearColor i m_lighting.mode"| Game
     SP -->|"woła reload() na pięciu programach"| Game
@@ -278,7 +278,7 @@ Trzy decyzje, które trzeba umieć uzasadnić:
    | `drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity)` | nic | kąty i rzutowanie kamery, pozycja i prędkości gracza, czułość |
    | `drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world, const game::Player& player, const scene::Camera& camera)` | labirynt w grze, gracz i kamera (rysowane na planie) | prośba o następny labirynt |
    | `drawCollisionPanel(const game::MazeWorld& world, game::Player& player, bool& drawColliders)` | labirynt (liczenie pudełek) | `player.noclip` i przełącznik rysowania |
-   | `drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode)` | nic | filtr i anizotropia wszystkich tekstur, tryb widoku |
+   | `drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping)` | nic | filtr i anizotropia wszystkich tekstur, tryb widoku, przełącznik mapowania normalnych (pole `normalMapping` struktury `LightingSettings`: panel dostaje referencję do jednego `bool`, a nie całą strukturę) |
    | `drawLightsPanel(game::LightingSettings& lighting, const game::MazeWorld& world)` | labirynt (liczba świateł punktowych) | kolory, natężenia, kąty i zasięgi wszystkich świateł, dwie liczby połysku |
 
    Ta sama umowa obowiązuje w polach `DebugContext` (niżej).
@@ -307,7 +307,8 @@ struct DebugContext {
     float& mouseSensitivity;
     /// Shader program of the maze (textured models), editable: reloaded like shader.
     gfx::Shader& texturedShader;
-    /// Shader program of the collision box lines, editable: reloaded like shader.
+    /// Shader program of the collision box lines and of the light markers, editable:
+    /// reloaded like shader.
     gfx::Shader& colorShader;
     /// The player, editable: position, speeds and the noclip mode.
     game::Player& player;
@@ -325,7 +326,8 @@ struct DebugContext {
     gfx::Shader& litShader;
     /// Shader program of the lit maze, lighting per vertex, editable: reloaded like shader.
     gfx::Shader& gouraudShader;
-    /// The lighting mode and the settings of every light, editable.
+    /// The lighting mode, the settings of every light and the normal mapping switch,
+    /// editable.
     game::LightingSettings& lighting;
 };
 ```
@@ -350,9 +352,9 @@ Siedemnaście pól w kolejności deklaracji i ich właściciele:
 | 14 | `drawColliders` | `bool&` | `drawColliders()`, `m_drawColliders` | Collision (edycja) |
 | 15 | `litShader` | `gfx::Shader&` | `litShader()`, `m_litShader` (labirynt z oświetleniem liczonym dla fragmentu) | Shaders (`reload()`) |
 | 16 | `gouraudShader` | `gfx::Shader&` | `gouraudShader()`, `m_gouraudShader` (labirynt z oświetleniem liczonym dla wierzchołka) | Shaders (`reload()`) |
-| 17 | `lighting` | `game::LightingSettings&` | `lighting()`, `m_lighting` | Lights (edycja wszystkich pól poza `mode`), Renderer (edycja pola `mode`) |
+| 17 | `lighting` | `game::LightingSettings&` | `lighting()`, `m_lighting` | Lights (edycja wszystkich pól poza `mode` i `normalMapping`), Renderer (edycja pola `mode`), Assets (edycja pola `normalMapping`) |
 
-Kolejność pól to historia: pierwsze sześć pochodzi z M0 i M1, osiem następnych doszło w M2 + M3, a trzy ostatnie w M4, i wszystkie były dopisywane **na końcu**. Dlatego shadery są rozrzucone po strukturze (pola 4, 7, 8, 15 i 16) i nie stoją obok siebie. Komentarz przy polu `colorShader` w nagłówku mówi tylko o liniach pudełek kolizji: od M4 ten sam program rysuje też znaczniki świateł punktowych ([`game/flashlight.md`](game/flashlight.md)). Ma to skutek w `main.cpp`: inicjalizatory desygnowane muszą iść w kolejności deklaracji pól, więc linia `.texturedShader = texturedShader(),` stoi po `.mouseSensitivity = mouseSensitivity(),`, a nie po `.shader = shader(),` (pułapka 15). Pole `moveSpeed` z M1 zniknęło: prędkości są dziś trzy i należą do gracza (`player.walkSpeed`, `player.sprintSpeed`, `player.flySpeed`), więc przychodzą razem z polem `player`.
+Kolejność pól to historia: pierwsze sześć pochodzi z M0 i M1, osiem następnych doszło w M2 + M3, a trzy ostatnie w M4, i wszystkie były dopisywane **na końcu**. Dlatego shadery są rozrzucone po strukturze (pola 4, 7, 8, 15 i 16) i nie stoją obok siebie. Komentarz przy polu `colorShader` wymienia obu użytkowników tego programu: linie pudełek kolizji i, od M4, znaczniki świateł punktowych ([`game/flashlight.md`](game/flashlight.md)). Pole `lighting` obsługuje dziś trzy panele: z mapami normalnych nie doszło nowe pole kontekstu, tylko nowe pole struktury `LightingSettings`, które `DebugUI::draw` podaje panelowi Assets jako `context.lighting.normalMapping`. Ma to skutek w `main.cpp`: inicjalizatory desygnowane muszą iść w kolejności deklaracji pól, więc linia `.texturedShader = texturedShader(),` stoi po `.mouseSensitivity = mouseSensitivity(),`, a nie po `.shader = shader(),` (pułapka 15). Pole `moveSpeed` z M1 zniknęło: prędkości są dziś trzy i należą do gracza (`player.walkSpeed`, `player.sprintSpeed`, `player.flySpeed`), więc przychodzą razem z polem `player`.
 
 Powód jest praktyczny. Gdyby `draw` brało każdą wartość osobno (`draw(time, window, clearColor, shader)`), każdy nowy panel z nowymi danymi wydłużałby listę parametrów w trzech miejscach naraz: w deklaracji w `DebugUI.hpp`, w definicji w `DebugUI.cpp` i w wywołaniu w `main.cpp`. Ze strukturą sygnatura `draw` się nie zmienia: dochodzi jedno pole w `DebugContext` i jedna linia w `main.cpp`. Tak właśnie doszedł panel Shaders: pole `shader` i linia `.shader = shader(),`, bez zmiany w `DebugUI.hpp`. Trzy panele z M2 + M3 dołożyły osiem pól i osiem linii, oświetlenie z M4 trzy pola i trzy linie, a `DebugUI.hpp` nadal jest ten sam. Rzeczy, które trzeba umieć wyjaśnić:
 
@@ -555,7 +557,7 @@ void drawTimingPanel(const core::Time& time) {
 **Krok 5. Wywołanie.** W [`DebugUI.cpp`](../../src/debug/DebugUI.cpp) dodaj `#include "debug/panels/TimingPanel.hpp"` i wywołanie wewnątrz `if (m_visible)`, po `DockSpaceOverViewport`:
 
 ```cpp
-drawAssetsPanel(context.assets, context.viewMode);
+drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping);
 drawLightsPanel(context.lighting, context.mazeWorld);
 drawTimingPanel(context.time);
 ```
@@ -887,7 +889,7 @@ Między panelami i przy krawędziach okna jest 8 jednostek odstępu (`PANEL_GAP`
 | Lights | "exactly as tall as their contents (the Lights panel with its Moon group folded)" | grupa `Moon (directional)` startuje zwinięta właśnie po to. Po jej rozwinięciu panel się przewija (komentarz w `LightsPanel.cpp`) |
 | Camera | "It is a little shorter than its contents, so it scrolls" | rozwinięty panel ma pasek przewijania. Stary pomiar (452 przy szerokości 336) jest większy od nowej wysokości 424 |
 | Maze, Collision | stałe bez zmian (300 na 480 i 312 na 272) | treść tych paneli się nie zmieniła, więc stare pomiary (478 i 271) nadal obowiązują |
-| Assets | "that panel always scrolls" | bez zmian: długie listy z podglądami tekstur, trzy przełączniki widoczne bez przewijania |
+| Assets | "that panel always scrolls" | stała bez zmian (300 na 216), treść dłuższa niż przy pomiarze 714: doszło pole wyboru `Normal mapping` z zawijaną notatką, po jednej linii `normal map:` na część modelu i dwie tekstury z podglądami (razem cztery). Przełączników jest teraz cztery (`View mode`, `Normal mapping`, `Filter`, `Anisotropy`). Które z nich widać bez przewijania przy wysokości 216, nie było sprawdzane: tego układu nikt jeszcze nie obejrzał ręcznie |
 | Shaders | "Collision and Shaders side by side, equally tall" | pięć linii zamiast dwunastu (wcześniej cztery linie na każdy z trzech programów). Bez błędów treść jest dużo niższa niż 272. Tekst błędu wydłuża panel i wtedy może pojawić się przewijanie |
 
 **Funkcja, która z tego korzysta** ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
@@ -1176,7 +1178,8 @@ void applyColors(ImGuiStyle& style) {
     colors[ImGuiCol_ButtonHovered] = EMBER;
     colors[ImGuiCol_ButtonActive] = EMBER_BRIGHT;
 
-    // Header colours are used by the entries of an opened list (Combo).
+    // Header colours are used by the entries of an opened list (Combo) and by the title
+    // bars of foldable groups (CollapsingHeader).
     colors[ImGuiCol_Header] = SLATE_LIGHT;
     colors[ImGuiCol_HeaderHovered] = EMBER;
     colors[ImGuiCol_HeaderActive] = EMBER_BRIGHT;
@@ -1184,9 +1187,11 @@ void applyColors(ImGuiStyle& style) {
 
 `style.Colors` to zwykła tablica, więc `ImVec4* colors = style.Colors;` daje wskaźnik na jej pierwszy element, a `colors[ImGuiCol_Text]` to element o numerze równym wartości wyliczenia. Dalej funkcja ustawia w ten sam sposób pozostałe grupy: paski przewijania, linie, róg zmiany rozmiaru, zakładki, dokowanie, wykresy, tabele, przeciąganie i nawigację klawiaturą. Ustawia **wszystkie** pozycje, także te, których panele dziś nie używają: inaczej po dodaniu pierwszej tabeli albo wykresu wyskoczyłby standardowy niebieski.
 
+Trzy kolory `Header` mają dwóch użytkowników, i komentarz wymienia obu: pozycje otwartej listy (`Combo`) oraz paski tytułów zwijanych grup (`CollapsingHeader`), których używa panel Lights. Zwinięta grupa ma więc w spoczynku ten sam kolor `SLATE_LIGHT` co przycisk.
+
 Reguła stanów, którą warto umieć powiedzieć jednym zdaniem: **łupek (slate) w spoczynku, żar (ember) pod kursorem, jaśniejszy żar przy użyciu, kryształ dla fokusu i zaznaczenia.**
 
-| Stan widżetu | Przycisk | Suwak, pole | Pole wyboru | Pozycja listy |
+| Stan widżetu | Przycisk | Suwak, pole | Pole wyboru | Pozycja listy, pasek zwijanej grupy |
 |---|---|---|---|---|
 | spoczynek | `SLATE_LIGHT` | `SLATE`, uchwyt `SLATE_BRIGHT` | `SLATE` (puste), `CRYSTAL_DEEP` z ptaszkiem `AMBER` (zaznaczone) | `SLATE_LIGHT`, gdy wybrana |
 | pod kursorem | `EMBER` | `EMBER` | `EMBER` | `EMBER` |
@@ -1504,11 +1509,12 @@ Szósty to **Assets**, pokaz tematów 4 i 5. Kod linia po linii i scenariusz pok
 
 | Element | Rodzaj | Czego uczy |
 |---|---|---|
-| `View mode` | lista (`Textured`, `Normals as colour`, `UVs as colour`) | Co wpisuje shader fragmentów: obraz, normalne albo współrzędne tekstury |
+| `View mode` | lista (`Textured`, `Normals as colour`, `UVs as colour`) | Co wpisuje shader fragmentów: obraz, normalne albo współrzędne tekstury. Widok normalnych pokazuje normalną faktycznie użytą do cieniowania: z map normalnych albo z siatki |
+| `Normal mapping` | pole wyboru (przy starcie zaznaczone) z notatką pod spodem | Mapowanie normalnych: te same ściany z reliefem i bez. Działa w trybach `Phong` i `Blinn-Phong` (panel Renderer) i w widoku `Normals as colour`. Tryb `Gouraud` liczy światło w wierzchołkach i z mapy normalnych nie skorzysta |
 | `Filter` | lista (`Nearest`, `Bilinear`, `Trilinear`) | Filtrowanie wszystkich tekstur naraz |
 | `Anisotropy` | suwak (wyszarzony, gdy sterownik nie ma rozszerzenia) | Filtrowanie anizotropowe na powierzchniach widzianych pod płaskim kątem |
-| `Models` | odczyt | Wczytane modele: plik, liczba wierzchołków i trójkątów, części z materiałami |
-| `Textures` | odczyt z podglądem | Wczytane tekstury: plik, rozmiar, obrazek 128 x 128 |
+| `Models` | odczyt | Wczytane modele: plik, liczba wierzchołków i trójkątów, części z materiałami. Pod każdą częścią linia `normal map:` z nazwą pliku mapy normalnych albo `none (flat)`, gdy część korzysta z płaskiej mapy zastępczej |
+| `Textures` | odczyt z podglądem | Wczytane tekstury: plik, rozmiar, obrazek 128 x 128. W grze są cztery: dwa obrazy koloru i dwie mapy normalnych (`wall_stone_normal.png`, `floor_stone_normal.png`), których podgląd jest jasnoniebieski, bo większość tekseli to kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)` |
 | `Failed to load` | odczyt (tylko gdy coś się nie wczytało) | Pliki, których nie udało się wczytać, na czerwono (ta sama stała `ERROR_TEXT_COLOR` co w panelu Shaders) |
 
 Siódmy to **Lights**, pokaz tematu 6. Kod linia po linii, znaczenie każdej kontrolki i scenariusz pokazu na obronie są w [`scene/lights.md`](scene/lights.md), sekcja 6. Wszystkie kontrolki piszą do pól jednej struktury, `game::LightingSettings` ([`game/flashlight.md`](game/flashlight.md)), a gra buduje z niej światła następnej klatki, więc każdą zmianę widać od razu:
@@ -1534,13 +1540,15 @@ Panel dostaje też `const game::MazeWorld&`, ale czyta z niego tylko rozmiar lis
 
 PRD (sekcja 10) wymienia tryb noclip przy panelu Camera. W kodzie przełącznik jest w panelu Collision (bo wyłącza kolizje) i pod klawiszem N, a panel Camera pokazuje tylko bieżący tryb.
 
-Stan sprawdzenia paneli ma dwie części.
+Stan sprawdzenia paneli ma trzy części.
 
 **Sprzed M4 (Windows, 2026-10-05).** Na zrzutach ekranu sprawdzone są plan w panelu Maze (zgodny z widokiem z góry), podglądy tekstur w panelu Assets (nieodwrócone) oraz skutki obu trybów widoku, czterech ustawień filtrowania i brakującej tekstury. Te stany zostały ustawione tymczasowym kodem, którego już nie ma. Po zmianie motywu sprawdzone są na zrzutach: ówczesny układ paneli (bez Lights) przy pierwszym uruchomieniu, kolory i czcionka, polskie litery, tekst błędu w panelach Shaders i Assets w ich ówczesnej postaci oraz czcionka zastępcza (sekcja 5.8.6).
 
-**M4 (Windows, 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74).** Build Debug i Release przechodzi bez ostrzeżeń, 149 przypadków testowych i 61240 asercji przechodzi w obu, clang-format i clang-tidy niczego nie zgłaszają, a gra startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są: widok startowy, cztery tryby oświetlenia z trzech punktów widzenia, scena z wyłączoną latarką, ślepy zaułek ze swoim światłem, strony ścian oświetlone i nieoświetlone przez księżyc oraz błąd wewnątrz `common/lighting.glsl` pokazany z nazwą pliku, podczas gdy poprzedni program rysował dalej.
+**M4 (Windows, 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74).** Build Debug i Release przechodzi bez ostrzeżeń, 163 przypadki testowe i 62220 asercji przechodzą w obu (stan po dodaniu map normalnych), clang-format i clang-tidy niczego nie zgłaszają, a gra startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są: widok startowy, cztery tryby oświetlenia z trzech punktów widzenia, scena z wyłączoną latarką, ślepy zaułek ze swoim światłem, strony ścian oświetlone i nieoświetlone przez księżyc oraz błąd wewnątrz `common/lighting.glsl` pokazany z nazwą pliku, podczas gdy poprzedni program rysował dalej.
 
-**Samych kontrolek nikt jeszcze nie klikał.** Dotyczy to starych paneli (przyciski `Regenerate` i `Random seed`, listy `View mode` i `Filter`, suwak `Anisotropy`, pola wyboru panelu Collision, klawisz N) i wszystkiego, co doszło w M4: listy `Lighting`, każdego widżetu panelu Lights, klawisza F, rozwinięcia panelu Camera i przycisku `Reload shaders` z pięcioma programami. Lista do ręcznego przejścia jest w [`../guides/build-windows.md`](../guides/build-windows.md). Na macOS nic z kodu M4 nie było ani budowane, ani uruchamiane.
+**Mapy normalnych (Windows, 2026-10-05, ten sam sprzęt).** Skutek przełącznika jest sprawdzony na zrzutach ekranu (stanu pola nie ustawiało kliknięcie w panelu): fugi jako rowki przy włączonym mapowaniu, zrzuty trybów `Gouraud` i `Unlit` identyczne co do piksela przy włączonym i wyłączonym ([`gfx/normal-mapping.md`](gfx/normal-mapping.md), sekcja 5.11). **Pola wyboru `Normal mapping` nikt nie kliknął ręcznie i nikt nie obejrzał ręcznie ostatecznego układu domyślnego panelu Assets z tym polem i notatką na miejscu.** Rozmiar panelu w `PanelLayout.hpp` się nie zmienił (300 x 216), a treści przybyło, więc więcej jej leży poniżej dolnej krawędzi i wymaga przewinięcia.
+
+**Samych kontrolek nikt jeszcze nie klikał.** Dotyczy to starych paneli (przyciski `Regenerate` i `Random seed`, listy `View mode` i `Filter`, suwak `Anisotropy`, pola wyboru panelu Collision, klawisz N) i wszystkiego, co doszło w M4: listy `Lighting`, każdego widżetu panelu Lights, klawisza F, rozwinięcia panelu Camera, przycisku `Reload shaders` z pięcioma programami i pola wyboru `Normal mapping`. Lista do ręcznego przejścia jest w [`../guides/build-windows.md`](../guides/build-windows.md). Na macOS nic z kodu M4 nie było ani budowane, ani uruchamiane.
 
 Zachowanie całej nakładki:
 
@@ -1588,7 +1596,8 @@ Zachowanie całej nakładki:
 30. **Lista `Combo` w innej kolejności niż wyliczenie.** Napis `LIGHTING_MODE_ITEMS` i `enum class game::LightingMode` to dwa miejsca, które muszą mieć tę samą kolejność, bo numer pozycji jest rzutowany wprost na wartość wyliczenia (sekcja 5.3). Nowy tryb dopisany tylko w jednym z nich przesuwa wszystkie następne: panel pokazuje `Phong`, a gra rysuje czymś innym. Kompilator tego nie widzi. Brak ostatniego `\0` w napisie też się skompiluje: ImGui szuka końca listy po dwóch zerach z rzędu, więc po ostatniej pozycji czytałoby wtedy bajty spoza napisu.
 31. **"Panel Camera zniknął" albo "Lights leży na Camera".** Pierwsze to zwinięty panel: jego pasek tytułu stoi przy górnej krawędzi, na prawo od panelu Renderer. Drugie to stary `imgui.ini` z wpisem panelu Camera w lewej kolumnie (sekcja 5.7). W obu wypadkach kod działa poprawnie.
 32. **Panel Lights "zapomina", że grupa była rozwinięta.** Stan nagłówków `CollapsingHeader` żyje tylko w pamięci ImGui do końca działania programu. Flaga `ImGuiTreeNodeFlags_DefaultOpen` (albo jej brak) ustala stan przy każdym starcie od nowa.
-33. **Zmiana na liście `Lighting` "nic nie robi".** Przy widoku `Normals as colour` albo `UVs as colour` z panelu Assets labirynt jest zawsze rysowany programem `textured`, bez oświetlenia. Trzeba wrócić do widoku `Textured`.
+33. **Zmiana na liście `Lighting` "nic nie robi".** Przy widoku `Normals as colour` albo `UVs as colour` z panelu Assets labirynt jest zawsze rysowany programem `textured`, bez oświetlenia. Trzeba wrócić do widoku `Textured`. Wyjątek: widok normalnych pokazuje normalne siatki w trybie `Gouraud`, a normalne z map w pozostałych trybach (przy zaznaczonym `Normal mapping`).
+34. **Pole `Normal mapping` "nic nie robi".** W trybie `Gouraud` i w trybie `Unlit` przy widoku `Textured` obraz się nie zmienia: pierwszy liczy światło w wierzchołkach, drugi nie ma światła wcale. Efekt widać w trybach `Phong` i `Blinn-Phong` oraz w widoku `Normals as colour`. Mówi to notatka pod polem.
 
 ## 8. Ćwiczenia
 

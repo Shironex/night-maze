@@ -121,8 +121,9 @@ Lighting computeLighting(vec3 position, vec3 normal) {
     addLight(lighting, normal, -uDirectionalDirection.xyz, toEye,
              uDirectionalColor.rgb * uDirectionalColor.a);
 
-    // The point lights. The loop has a constant upper limit and leaves early, because
-    // some GLSL compilers only accept loops whose length is known when compiling.
+    // The point lights. The loop has a constant upper limit and leaves early. GLSL 4.10
+    // does not require that (the rule comes from GLSL ES 1.00), but a constant limit
+    // with an early exit is the form every compiler accepts.
     for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
         if (i >= uPointCount) {
             break;

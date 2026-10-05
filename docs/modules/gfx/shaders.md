@@ -3,7 +3,7 @@
 Kamień milowy: M1 (dwie kolejne pary shaderów doszły w M2 + M3, dwie następne i plik dołączany w M4). Temat wykładu: 2 (Programowalny potok).
 Kod: shadery [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) i [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), klasa w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp).
 
-Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Shadery są opisane w pięciu dokumentach. Ten opisuje programowalny potok, język GLSL, pierwszą parę shaderów projektu (`basic.vert` i `basic.frag`) i miejsce, w którym program jest używany w klatce. Cztery pozostałe pary mają opis w dokumentach swoich tematów: `textured.*` w [`textures.md`](textures.md) (sekcja 4), `color.*` w [`../scene/collision.md`](../scene/collision.md) (sekcja 4), a `lit.*` i `gouraud.*` w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Wspólny plik oświetlenia `common/lighting.glsl` opisuje [`../scene/lights.md`](../scene/lights.md). [`shader-class.md`](shader-class.md) opisuje klasę `gfx::Shader`: wywołania OpenGL, kompilację, linkowanie i odczyt błędów w kodzie. [`uniforms.md`](uniforms.md) opisuje uniformy i funkcję `Shader::setMat4`, [`shader-includes.md`](shader-includes.md) dyrektywę `#include`, której GLSL nie ma, i nazwy plików w błędach, a [`shader-hot-reload.md`](shader-hot-reload.md) wczytywanie na żywo, funkcję `Shader::reload` i panel "Shaders". Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md).
+Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Shadery są opisane w pięciu dokumentach. Ten opisuje programowalny potok, język GLSL, pierwszą parę shaderów projektu (`basic.vert` i `basic.frag`) i miejsce, w którym program jest używany w klatce. Cztery pozostałe pary mają opis w dokumentach swoich tematów: `textured.*` w [`textures.md`](textures.md) (sekcja 4), `color.*` w [`../scene/collision.md`](../scene/collision.md) (sekcja 4), a `lit.*` i `gouraud.*` w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Wspólny plik oświetlenia `common/lighting.glsl` opisuje [`../scene/lights.md`](../scene/lights.md), a drugi plik dołączany, `common/normal_map.glsl` (mapy normalnych), [`normal-mapping.md`](normal-mapping.md). [`shader-class.md`](shader-class.md) opisuje klasę `gfx::Shader`: wywołania OpenGL, kompilację, linkowanie i odczyt błędów w kodzie. [`uniforms.md`](uniforms.md) opisuje uniformy i funkcję `Shader::setMat4`, [`shader-includes.md`](shader-includes.md) dyrektywę `#include`, której GLSL nie ma, i nazwy plików w błędach, a [`shader-hot-reload.md`](shader-hot-reload.md) wczytywanie na żywo, funkcję `Shader::reload` i panel "Shaders". Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md).
 
 ## 1. Po co to jest
 
@@ -16,9 +16,9 @@ Stan na dziś: `game::NightMazeApp` ma **pięć** obiektów `gfx::Shader`, czyli
 | Pole | Pliki | Co rysuje | Kiedy | Opis shaderów |
 |---|---|---|---|---|
 | `m_shader` | `basic.vert`, `basic.frag` | kostkę o sześciu kolorowych ścianach, która unosi się nad narożną komórką labiryntu (miejscem przyszłego wyjścia) | zawsze | ten dokument, sekcja 4 |
-| `m_texturedShader` | `textured.vert`, `textured.frag` | labirynt bez oświetlenia: ściany, słupki i płytki podłogi z samymi teksturami, oraz oba widoki diagnostyczne (normalne i UV jako kolor) | tryb oświetlenia `Unlit` albo widok inny niż `Textured` | [`textures.md`](textures.md), sekcja 4 |
+| `m_texturedShader` | `textured.vert`, `textured.frag` (dołącza `common/normal_map.glsl`) | labirynt bez oświetlenia: ściany, słupki i płytki podłogi z samymi teksturami, oraz oba widoki diagnostyczne (normalne i UV jako kolor) | tryb oświetlenia `Unlit` albo widok inny niż `Textured` | [`textures.md`](textures.md), sekcja 4 |
 | `m_colorShader` | `color.vert`, `color.frag` | linie pudełek kolizji i znaczniki świateł punktowych (małe kostki), jednym kolorem | znaczniki: tryb inny niż `Unlit`. Linie: gdy włączy je panel Collision | [`../scene/collision.md`](../scene/collision.md), sekcja 4 |
-| `m_litShader` | `lit.vert`, `lit.frag` (dołącza `common/lighting.glsl`) | labirynt z oświetleniem liczonym dla każdego fragmentu | tryby Phong i Blinn-Phong przy widoku `Textured`. **Tak startuje gra** (Blinn-Phong) | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
+| `m_litShader` | `lit.vert`, `lit.frag` (dołącza `common/lighting.glsl` i `common/normal_map.glsl`) | labirynt z oświetleniem liczonym dla każdego fragmentu | tryby Phong i Blinn-Phong przy widoku `Textured`. **Tak startuje gra** (Blinn-Phong) | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 | `m_gouraudShader` | `gouraud.vert` (dołącza `common/lighting.glsl`), `gouraud.frag` | labirynt z oświetleniem liczonym dla każdego wierzchołka | tryb Gouraud przy widoku `Textured` | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 
 Labirynt rysuje w danej klatce **jeden** z trzech programów (`textured`, `lit` albo `gouraud`), więc w jednej klatce pracują najwyżej trzy różne programy, wybierane najwyżej czterema wywołaniami `use()` (sekcja 5.1). Plik `common/lighting.glsl` nie jest shaderem i nie ma własnego programu: jego treść trafia do `lit.frag` i do `gouraud.vert` przez linię `#include`, którą wykonuje kod wczytujący, a nie sterownik ([`shader-includes.md`](shader-includes.md)). Co jest w tym pliku, opisuje [`../scene/lights.md`](../scene/lights.md).
@@ -161,7 +161,7 @@ Pełna tabela wywołań z parametrami, diagram obiektów i odczyt błędów komp
 
 ## 4. Shadery
 
-Projekt ma pięć par shaderów w katalogu [`assets/shaders/`](../../../assets/shaders/) i jeden plik dołączany w podkatalogu `common/`. Ta sekcja opisuje pierwszą parę, `basic`. Nazwa jest celowo neutralna: to najprostsza para, która umie postawić obiekt w scenie (trzy macierze) i pokolorować go kolorem z wierzchołków. Cztery nowsze pary stawiają wierzchołek tymi samymi trzema macierzami: `textured` dodaje normalną, współrzędne tekstury i odczyt tekstury ([`textures.md`](textures.md), sekcja 4), `color` zostawia samą pozycję i jeden kolor z uniformu ([`../scene/collision.md`](../scene/collision.md), sekcja 4), a `lit` i `gouraud` dokładają do tekstury oświetlenie, pierwsza w shaderze fragmentów, druga w shaderze wierzchołków ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Kod oświetlenia obu tych par jest wspólny i leży w `common/lighting.glsl` ([`../scene/lights.md`](../scene/lights.md)), dołączanym linią `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md), sekcja 4).
+Projekt ma pięć par shaderów w katalogu [`assets/shaders/`](../../../assets/shaders/) i dwa pliki dołączane w podkatalogu `common/` (`lighting.glsl` i, od map normalnych, `normal_map.glsl`). Ta sekcja opisuje pierwszą parę, `basic`. Nazwa jest celowo neutralna: to najprostsza para, która umie postawić obiekt w scenie (trzy macierze) i pokolorować go kolorem z wierzchołków. Cztery nowsze pary stawiają wierzchołek tymi samymi trzema macierzami: `textured` dodaje normalną, współrzędne tekstury i odczyt tekstury ([`textures.md`](textures.md), sekcja 4), `color` zostawia samą pozycję i jeden kolor z uniformu ([`../scene/collision.md`](../scene/collision.md), sekcja 4), a `lit` i `gouraud` dokładają do tekstury oświetlenie, pierwsza w shaderze fragmentów, druga w shaderze wierzchołków ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Kod oświetlenia obu tych par jest wspólny i leży w `common/lighting.glsl` ([`../scene/lights.md`](../scene/lights.md)), dołączanym linią `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md), sekcja 4).
 
 ### 4.1 `basic.vert`: shader wierzchołków
 
@@ -346,7 +346,8 @@ Wybór programu labiryntu:
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
     // The two debug views (normals and texture coordinates as colours) only exist in the
     // textured program, and they show data, not light. So they are drawn without
-    // lighting whatever the lighting mode is.
+    // lighting whatever the lighting mode is. The view of the normals still follows the
+    // lighting in one thing: it shows the normals the chosen mode shades with.
     if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
         drawUnlitMaze(view, projection);
     } else {
@@ -360,6 +361,8 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
 | tryb `Unlit` **albo** widok inny niż `Textured` | `drawUnlitMaze` | `textured` ([`textures.md`](textures.md), sekcja 4.3) |
 | pozostałe przypadki, tryb Gouraud | `drawLitMaze` | `gouraud` |
 | pozostałe przypadki, tryb Phong albo Blinn-Phong | `drawLitMaze` | `lit`. Oba tryby różnią się tylko wartością uniformu `uSpecularModel` |
+
+Ostatnie zdanie komentarza dotyczy map normalnych: widok normalnych nie ma oświetlenia, ale pokazuje normalne, którymi cieniowałby wybrany tryb. Pod `Phong`, `Blinn-Phong` i `Unlit` są to (przy zaznaczonym polu `Normal mapping`) normalne z map, pod `Gouraud` normalne modelu ([`textures.md`](textures.md), sekcja 4.2, i [`normal-mapping.md`](normal-mapping.md), sekcja 5.9).
 
 `drawLitMaze` i przełącznik trybu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W jednej klatce `use()` jest więc wołane najwyżej cztery razy (labirynt, znaczniki, kostka, linie), a różnych programów jest najwyżej trzy, bo znaczniki i linie dzielą program `color`.
 
@@ -409,7 +412,8 @@ Dlaczego macierze są wysyłane co klatkę, choć kostka się nie rusza, wyjaśn
     /// Shader program of the cube, exposed so the debug UI can reload it live.
     gfx::Shader& shader() { return m_shader; }
 
-    /// Shader program of the maze (textured models), exposed for the same reason.
+    /// Shader program of the maze without lighting and of its debug views (textured
+    /// models), exposed for the same reason.
     gfx::Shader& texturedShader() { return m_texturedShader; }
 
     /// Shader program of the collision box lines and of the light markers, exposed for

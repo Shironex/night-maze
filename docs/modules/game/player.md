@@ -582,7 +582,7 @@ Liczba 1,55 w dwóch wierszach to `CELL_SIZE - WALL_COLLISION_THICKNESS / 2 - BO
 
 Test wędrówki losuje wejście funkcją `game::randomBelow` z generatora `std::mt19937`, czyli tą samą, której używa generator labiryntu ([`maze-generator.md`](maze-generator.md), sekcja 2). Dzięki temu wędrówka jest identyczna przy każdym uruchomieniu i na każdym systemie.
 
-Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie 13 przypadków przechodzi w Debug i Release, w ramach 149 przypadków i 61240 asercji całego programu testowego. Na macOS testy nie były jeszcze budowane ani uruchamiane.
+Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie 13 przypadków przechodzi w Debug i Release, w ramach 163 przypadków i 62220 asercji całego programu testowego. Na macOS testy nie były jeszcze budowane ani uruchamiane.
 
 **Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp`: przypisania klawiszy do pól, reguły przechwyconego kursora, klawisza N, interpolacji i linii z `m_previousPlayerPosition.y`. Ten kod wymaga okna. Program uruchomiony na Windowsie startuje bez linii `[error]` i pokazuje widok ze środka labiryntu (sprawdzone na zrzucie ekranu), a widok z góry w trybie noclip zgadza się z planem w panelu Maze (stan osiągnięty tymczasowym kodem, który został usunięty, a nie klawiszem N). Chodzenie i ślizganie prawdziwymi klawiszami są otwartą pozycją listy kontrolnej.
 

@@ -54,10 +54,12 @@ bool expandIncludes(const std::string& rootName, const std::string& rootText,
                     const IncludeReader& readInclude, ShaderSource& source, std::string& error);
 
 /// Puts file names into the info log of a failed compilation. A driver starts an error
-/// line with the source string number and the line number. Two formats are known:
+/// line with the source string number and the line number. Two formats are known, the
+/// second one with and without a prefix:
 ///
 ///     1(15) : error C1503: ...     NVIDIA: number(line)
-///     ERROR: 1:15: ...             Apple, Intel, Mesa: number:line
+///     ERROR: 1:15: ...             Apple: number:line after "ERROR: " or "WARNING: "
+///     1:15(3): error: ...          Mesa, Intel: number:line without a prefix
 ///
 /// In such lines the number is replaced by files[number], for example
 /// "common/lighting.glsl(15) : error C1503: ...". A line in another format, or with a

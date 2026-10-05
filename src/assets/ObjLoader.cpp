@@ -2,6 +2,7 @@
 // See docs/modules/assets/obj-loader.md
 #include "assets/ObjLoader.hpp"
 
+#include "assets/Tangents.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 
@@ -39,6 +40,10 @@ constexpr std::size_t COLOR_COMPONENTS = 3;
 
 // A face needs at least three corners to have an area.
 constexpr std::size_t MIN_FACE_CORNERS = 3;
+
+// Option of a normal map line in an MTL file: "-bm 1.0" is the bump multiplier, the
+// strength of the map. Blender writes it in front of the file name.
+constexpr std::string_view BUMP_MULTIPLIER_OPTION = "-bm";
 
 // Stands for "this corner has no uv" or "no normal" in a triple of indices. It is the
 // largest value an index can hold. A real index could only be equal to it in a file
@@ -356,6 +361,39 @@ std::filesystem::path pathFromText(std::string_view text) {
     return {utf8};
 }
 
+// True when keyword starts the normal map line of a material. The MTL format was written
+// for bump maps (grey height pictures), and exporters reuse the same line for normal maps.
+// Blender writes map_Bump. The other three spellings are in use too.
+bool isNormalMapKeyword(std::string_view keyword) {
+    return keyword == "map_Bump" || keyword == "map_bump" || keyword == "bump" || keyword == "norm";
+}
+
+// Reads the fields of a normal map line (the keyword is already cut off): an optional
+// "-bm number" and then the file name. Returns false with the reason in message.
+bool readNormalMap(std::string_view rest, std::filesystem::path& path, std::string& message) {
+    // Look at the first field without losing rest: only "-bm" is taken away from it.
+    std::string_view afterFirstField = rest;
+    if (takeToken(afterFirstField) == BUMP_MULTIPLIER_OPTION) {
+        float multiplier = 0.0F;
+        if (!parseFloat(takeToken(afterFirstField), multiplier)) {
+            message = "-bm needs a number";
+            return false;
+        }
+        // The number is not used: the game has no setting for the strength of a map.
+        rest = afterFirstField;
+    }
+
+    // The path is the rest of the line, so it may contain spaces. Other options in front
+    // of the file name are not supported, as for map_Kd.
+    const std::string_view fileName = trim(rest);
+    if (fileName.empty()) {
+        message = "needs a file name";
+        return false;
+    }
+    path = pathFromText(fileName);
+    return true;
+}
+
 // True when materials has a material with this name.
 bool hasMaterial(const std::vector<ObjMaterial>& materials, std::string_view name) {
     for (const ObjMaterial& material : materials) {
@@ -398,7 +436,7 @@ bool loadObjFiles(const std::filesystem::path& path, ObjModel& model, std::strin
             return false;
         }
 
-        // map_Kd paths are relative to the directory of the MTL file. lexically_normal
+        // Texture paths are relative to the directory of the MTL file. lexically_normal
         // removes the ".." steps on paper, without asking the file system:
         // assets/models/../textures/wall_stone.png becomes assets/textures/wall_stone.png.
         const std::filesystem::path mtlDirectory = mtlPath.parent_path();
@@ -406,6 +444,9 @@ bool loadObjFiles(const std::filesystem::path& path, ObjModel& model, std::strin
             if (!material.diffuseTexture.empty()) {
                 material.diffuseTexture =
                     (mtlDirectory / material.diffuseTexture).lexically_normal();
+            }
+            if (!material.normalTexture.empty()) {
+                material.normalTexture = (mtlDirectory / material.normalTexture).lexically_normal();
             }
             loaded.materials.push_back(std::move(material));
         }
@@ -480,6 +521,13 @@ bool parseObj(std::string_view text, ObjModel& model, std::string& error) {
         }
     }
 
+    // An OBJ file has no tangents, so they are computed now that all triangles are known.
+    // The count of mirrored triangles tells the caller whether the tangents are enough
+    // for a normal map (see ObjModel::mirroredTriangleCount).
+    computeTangents(parser.model.vertices, parser.model.indices);
+    parser.model.mirroredTriangleCount =
+        countMirroredTriangles(parser.model.vertices, parser.model.indices);
+
     model = std::move(parser.model);
     return true;
 }
@@ -504,13 +552,19 @@ bool parseMtl(std::string_view text, std::vector<ObjMaterial>& materials, std::s
                 return false;
             }
             parsed.push_back(std::move(material));
-        } else if (keyword == "Kd" || keyword == "map_Kd") {
+        } else if (keyword == "Kd" || keyword == "map_Kd" || isNormalMapKeyword(keyword)) {
             if (parsed.empty()) {
                 error = lineError(lineNumber, std::string(keyword) + " before the first newmtl");
                 return false;
             }
             ObjMaterial& material = parsed.back();
-            if (keyword == "Kd") {
+            if (isNormalMapKeyword(keyword)) {
+                std::string message;
+                if (!readNormalMap(line, material.normalTexture, message)) {
+                    error = lineError(lineNumber, std::string(keyword) + " " + message);
+                    return false;
+                }
+            } else if (keyword == "Kd") {
                 // Three numbers from 0 to 1: red, green, blue.
                 std::array<float, COLOR_COMPONENTS> values{};
                 if (!takeFloats(line, values)) {
@@ -548,6 +602,10 @@ bool loadObj(const std::filesystem::path& path, ObjModel& model, std::string& er
     if (model.unknownLineCount > 0) {
         core::logWarn(core::pathText(path) + ": skipped " + std::to_string(model.unknownLineCount) +
                       " line(s) with an unknown keyword");
+    }
+    if (model.mirroredTriangleCount > 0) {
+        core::logWarn(core::pathText(path) + ": " + std::to_string(model.mirroredTriangleCount) +
+                      " triangle(s) have a mirrored texture, a normal map is upside down there");
     }
     return true;
 }

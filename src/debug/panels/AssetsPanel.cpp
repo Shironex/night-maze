@@ -1,4 +1,5 @@
-// "Assets" debug panel: loaded models and textures, texture filtering and the view mode.
+// "Assets" debug panel: loaded models and textures, texture filtering, the view mode and
+// the normal mapping switch.
 // See docs/modules/assets/asset-cache.md
 #include "debug/panels/AssetsPanel.hpp"
 
@@ -44,14 +45,23 @@ void drawFileName(const std::filesystem::path& path) {
     ImGui::SetItemTooltip("%s", fullPath.c_str());
 }
 
-// The view mode, the filter and the anisotropy level: the switches of the panel.
-void drawSettings(assets::AssetCache& assets, game::ViewMode& viewMode) {
+// The view mode, normal mapping, the filter and the anisotropy level: the switches of the
+// panel.
+void drawSettings(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping) {
     // Combo works on the number of the chosen entry. It returns true in the frame in
     // which the user picked another entry.
     int viewModeIndex = static_cast<int>(viewMode);
     if (ImGui::Combo("View mode", &viewModeIndex, VIEW_MODE_ITEMS)) {
         viewMode = static_cast<game::ViewMode>(viewModeIndex);
     }
+
+    // Checkbox flips the bool through the pointer. The game reads it in every frame, so
+    // the scene changes at once: the same walls with and without their relief. It stands
+    // next to the view mode, because the two together decide which normals are shown.
+    ImGui::Checkbox("Normal mapping", &normalMapping);
+    ImGui::TextWrapped("Shows under Phong and Blinn-Phong lighting (Renderer panel) and in "
+                       "the view \"Normals as colour\". Gouraud lights per vertex and cannot "
+                       "use a normal map.");
 
     int filterIndex = static_cast<int>(assets.filter());
     if (ImGui::Combo("Filter", &filterIndex, FILTER_ITEMS)) {
@@ -76,7 +86,8 @@ void drawSettings(assets::AssetCache& assets, game::ViewMode& viewMode) {
                        "shows in the scene, not in the previews below.");
 }
 
-// The list of loaded models: file, sizes and the parts with their materials.
+// The list of loaded models: file, sizes and the parts with their materials, textures
+// and normal maps.
 void drawModels(const assets::AssetCache& assets) {
     ImGui::SeparatorText("Models");
     for (const assets::LoadedModel& model : assets.models()) {
@@ -91,11 +102,20 @@ void drawModels(const assets::AssetCache& assets) {
             ImGui::Text("  part '%s': %d triangles, %s", part.material.c_str(),
                         static_cast<int>(part.indexCount / INDICES_PER_TRIANGLE),
                         textureName.c_str());
+            // A part without its own normal map is shaded with the flat one: with the
+            // normals of its mesh.
+            const std::string normalMapName = part.hasOwnNormalMap
+                                                  ? core::pathText(part.normalMapPath.filename())
+                                                  : std::string("none (flat)");
+            ImGui::Text("    normal map: %s", normalMapName.c_str());
         }
     }
 }
 
-// The list of loaded textures: file, size and a small picture.
+// The list of loaded textures: file, size and a small picture. The normal maps are in
+// the same list: for the cache they are textures like the others. Their preview is the
+// picture as it is stored, mostly light blue, because most texels hold a direction close
+// to (0, 0, 1), which is the colour (128, 128, 255).
 void drawTextures(const assets::AssetCache& assets) {
     ImGui::SeparatorText("Textures");
     for (const assets::LoadedTexture& loaded : assets.textures()) {
@@ -135,12 +155,12 @@ void drawFailures(const assets::AssetCache& assets) {
 
 } // namespace
 
-void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode) {
+void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode, bool& normalMapping) {
     // First run only: the right edge of the window, below the Maze panel (the constant
     // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
     placePanelOnFirstUse(ASSETS_PLACEMENT);
     if (ImGui::Begin("Assets")) {
-        drawSettings(assets, viewMode);
+        drawSettings(assets, viewMode, normalMapping);
         drawModels(assets);
         drawTextures(assets);
         drawFailures(assets);

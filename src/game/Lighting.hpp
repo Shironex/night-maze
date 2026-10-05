@@ -83,7 +83,21 @@ struct LightingSettings {
     /// Shininess: the exponent of the highlight formula. A larger number makes the
     /// highlight smaller and sharper. 32 is a common middle value.
     float shininess = 32.0F;
+
+    /// Normal mapping: the normal of every fragment is read from the normal map of the
+    /// material instead of being taken from the mesh, which gives the flat walls and the
+    /// floor joints and bumps under the lights. See usesNormalMap for where it applies.
+    bool normalMapping = true;
 };
+
+/// True when the normals come from the normal maps with these settings: normal mapping
+/// is switched on and the lighting mode is not Gouraud.
+///
+/// A normal map holds a normal per texel, so it needs lighting per fragment (Phong and
+/// Blinn-Phong). Gouraud computes the light at the vertices only and cannot use it. The
+/// mode Unlit has no lighting at all, but the debug view "Normals as colour" shows the
+/// normals of the maps in it, so the answer is true there.
+bool usesNormalMap(const LightingSettings& settings);
 
 /// How high above the floor a point light of the maze hangs, in metres.
 constexpr float POINT_LIGHT_HEIGHT = 1.4F;

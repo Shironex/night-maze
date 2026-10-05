@@ -47,7 +47,8 @@ protected:
     /// Shader program of the cube, exposed so the debug UI can reload it live.
     gfx::Shader& shader() { return m_shader; }
 
-    /// Shader program of the maze (textured models), exposed for the same reason.
+    /// Shader program of the maze without lighting and of its debug views (textured
+    /// models), exposed for the same reason.
     gfx::Shader& texturedShader() { return m_texturedShader; }
 
     /// Shader program of the collision box lines and of the light markers, exposed for
@@ -62,8 +63,8 @@ protected:
     /// the same reason.
     gfx::Shader& gouraudShader() { return m_gouraudShader; }
 
-    /// The settings of the lighting (mode, moon, flashlight, point lights, highlight),
-    /// exposed so the debug UI can edit them live.
+    /// The settings of the lighting (mode, moon, flashlight, point lights, highlight,
+    /// normal mapping), exposed so the debug UI can edit them live.
     LightingSettings& lighting() { return m_lighting; }
 
     /// The camera, exposed so the debug UI can show and edit its angles and projection

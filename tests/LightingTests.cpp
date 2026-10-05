@@ -166,6 +166,32 @@ TEST_CASE("Gouraud and Phong use the Phong highlight, Blinn-Phong its own") {
     CHECK(static_cast<int>(game::SpecularModel::BlinnPhong) == 1);
 }
 
+TEST_CASE("normal mapping is on by default and applies to every mode except Gouraud") {
+    game::LightingSettings settings;
+    CHECK(settings.normalMapping);
+
+    // Phong and Blinn-Phong light per fragment: they can read a normal per texel.
+    settings.mode = game::LightingMode::Phong;
+    CHECK(game::usesNormalMap(settings));
+    settings.mode = game::LightingMode::BlinnPhong;
+    CHECK(game::usesNormalMap(settings));
+    // Unlit has no lighting, but its view of the normals shows the normal maps.
+    settings.mode = game::LightingMode::Unlit;
+    CHECK(game::usesNormalMap(settings));
+    // Gouraud lights per vertex: a normal map cannot take part.
+    settings.mode = game::LightingMode::Gouraud;
+    CHECK_FALSE(game::usesNormalMap(settings));
+
+    // Switched off, it applies nowhere.
+    settings.normalMapping = false;
+    for (const game::LightingMode mode :
+         {game::LightingMode::Unlit, game::LightingMode::Gouraud, game::LightingMode::Phong,
+          game::LightingMode::BlinnPhong}) {
+        settings.mode = mode;
+        CHECK_FALSE(game::usesNormalMap(settings));
+    }
+}
+
 TEST_CASE("buildLightSet takes the ambient light and the moon from the settings") {
     game::LightingSettings settings;
     settings.ambient = {0.1F, 0.2F, 0.3F};

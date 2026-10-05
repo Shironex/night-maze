@@ -7,7 +7,11 @@
 // includes. Only the place where the function is called differs.
 #include "common/lighting.glsl"
 
-// Inputs: the three attributes of gfx::Vertex, as in textured.vert.
+// Inputs: three of the four attributes of gfx::Vertex. The tangent (location 3) is not
+// read: it is only needed for normal mapping, and there is none here. A normal map holds
+// one normal per texel, so it can only change light that is computed per fragment. This
+// program computes the light at the vertices, 4 per wall face, and a texel between them
+// has no way to take part. That is one more thing Gouraud shading cannot show.
 layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the model
 layout(location = 1) in vec3 aNormal;   // direction the surface faces, length 1
 layout(location = 2) in vec2 aUv;       // texture coordinate (u, v)

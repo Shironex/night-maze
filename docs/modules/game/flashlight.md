@@ -5,7 +5,7 @@ Kod: [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), [`src/game/Light
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument jest **o tym, jakie światła ma gra i jak co klatkę trafiają na kartę**. Teoria świateł i wzory są w [`../scene/lights.md`](../scene/lights.md), cieniowanie Gourauda i Phonga w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), a układ bajtów bloku uniformów w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md). Przydają się też [`player.md`](player.md) (oko gracza, stały krok i interpolacja) i [`maze-generator.md`](maze-generator.md) (siatka komórek i ściany).
 
-**Stan na dziś:** gra ma trzy źródła światła: księżyc, latarkę gracza i światła punktowe w ślepych zaułkach labiryntu. Latarka jest włączona od startu, klawisz F ją przełącza. Zmierzone na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, 149 przypadków testowych i 61240 asercji w obu konfiguracjach (w tym 16 przypadków tego dokumentu), start gry bez linii `[error]` i `GL_`. Na zrzutach ekranu sprawdzone: widok startowy z plamą latarki w środku ekranu, latarka wyłączona, ślepy zaułek ze swoim światłem i kostką. **Klawisza F nikt jeszcze nie nacisnął ręcznie.** To, że stożek zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
+**Stan na dziś:** gra ma trzy źródła światła: księżyc, latarkę gracza i światła punktowe w ślepych zaułkach labiryntu. Latarka jest włączona od startu, klawisz F ją przełącza. Zmierzone na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu konfiguracjach (w tym 17 przypadków tego dokumentu), start gry bez linii `[error]` i `GL_`. Na zrzutach ekranu sprawdzone: widok startowy z plamą latarki w środku ekranu, latarka wyłączona, ślepy zaułek ze swoim światłem i kostką. **Klawisza F nikt jeszcze nie nacisnął ręcznie.** To, że stożek zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
 
 Czego nie ma: **baterii** latarki (PRD ją przewiduje, dojdzie w M5 razem z rozgrywką), **kryształów** (ich miejsce zajmują dziś światła w zaułkach: notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md)), tekstury "cookie" latarki z PRD i **cieni** (M7).
 
@@ -26,7 +26,7 @@ Kod jest podzielony tak samo jak reszta modułu `game` ([`README.md`](README.md)
 
 | Plik | Biblioteka | Potrzebuje OpenGL | Testy |
 |---|---|---|---|
-| `Lighting.hpp`, `Lighting.cpp` | `game_logic` | nie: same dane i matematyka | 16 przypadków |
+| `Lighting.hpp`, `Lighting.cpp` | `game_logic` | nie: same dane i matematyka | 17 przypadków |
 | `LightRig.hpp`, `LightRig.cpp` | program `night_maze` | tak: bufor uniformów i siatka | brak |
 
 ```mermaid
@@ -147,13 +147,13 @@ Ten moduł nie ma własnych shaderów. Dotyka dwóch istniejących:
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp) | typy `LightingMode` i `SpecularModel`, struktura `LightingSettings`, stała `POINT_LIGHT_HEIGHT`, deklaracje `specularModelOf`, `isDeadEnd`, `deadEndLightPositions`, `buildLightSet` |
-| [`src/game/Lighting.cpp`](../../../src/game/Lighting.cpp) | definicje tych czterech funkcji |
+| [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp) | typy `LightingMode` i `SpecularModel`, struktura `LightingSettings`, stała `POINT_LIGHT_HEIGHT`, deklaracje `specularModelOf`, `usesNormalMap`, `isDeadEnd`, `deadEndLightPositions`, `buildLightSet` |
+| [`src/game/Lighting.cpp`](../../../src/game/Lighting.cpp) | definicje tych pięciu funkcji |
 | [`src/game/LightRig.hpp`](../../../src/game/LightRig.hpp), [`.cpp`](../../../src/game/LightRig.cpp) | klasa `LightRig`: bufor uniformów świateł i kostka znacznika |
 | [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`.cpp`](../../../src/game/MazeWorld.cpp) | pole `pointLightPositions`, wypełniane w `buildMazeWorld` |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_lighting` i `m_lightRig`, klawisz F, budowanie i wysyłanie świateł co klatkę, `drawLightMarkers` |
 | [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | `LIGHT_BLOCK_NAME`, `LIGHT_BLOCK_BINDING_POINT`, `COLOR_UNIFORM`, `MODEL_UNIFORM` |
-| [`tests/LightingTests.cpp`](../../../tests/LightingTests.cpp) | 16 przypadków testowych (sekcja 5.8) |
+| [`tests/LightingTests.cpp`](../../../tests/LightingTests.cpp) | 17 przypadków testowych (sekcja 5.8) |
 
 ### 5.2 `LightingSettings`: wszystko, co da się zmienić w biegu
 
@@ -222,6 +222,11 @@ Pozycji i kierunku latarki **nie ma** w ustawieniach: nie są ustawieniem, tylko
 
     float specularStrength = 0.25F;
     float shininess = 32.0F;
+
+    /// Normal mapping: the normal of every fragment is read from the normal map of the
+    /// material instead of being taken from the mesh, which gives the flat walls and the
+    /// floor joints and bumps under the lights. See usesNormalMap for where it applies.
+    bool normalMapping = true;
 };
 ```
 
@@ -230,8 +235,39 @@ Pozycji i kierunku latarki **nie ma** w ustawieniach: nie są ustawieniem, tylko
 | `pointColor`, `pointIntensity`, `pointRadius` | turkus, 2,0, 3 m | **wspólne dla wszystkich** świateł punktowych. Różni je tylko miejsce. Promień 3 m to półtorej komórki |
 | `specularStrength` | 0,25 | siła odbłysku. Kamień jest szorstki, więc odbłysk jest słaby |
 | `shininess` | 32 | wykładnik odbłysku |
+| `normalMapping` | `true` | mapowanie normalnych (normal mapping): normalna każdego fragmentu pochodzi z mapy normalnych materiału, a nie z siatki. Przełącza je pole wyboru `Normal mapping` w panelu **Assets** |
 
-Dwa ostatnie pola nie trafiają do `LightSet`: opisują materiał, a nie światło. `NightMazeApp::drawLitMaze` wysyła je jako zwykłe uniformy.
+Trzy ostatnie pola nie trafiają do `LightSet`: opisują materiał i sposób cieniowania, a nie światło. `NightMazeApp::drawLitMaze` wysyła je jako zwykłe uniformy (`normalMapping` nie wprost, tylko przez funkcję `usesNormalMap`, niżej).
+
+**`usesNormalMap`: gdzie mapowanie normalnych naprawdę działa.** Samo pole nie wystarcza, bo jeden z czterech trybów cieniowania nie umie z mapy skorzystać. Deklaracja z komentarzem z `Lighting.hpp`:
+
+```cpp
+/// True when the normals come from the normal maps with these settings: normal mapping
+/// is switched on and the lighting mode is not Gouraud.
+///
+/// A normal map holds a normal per texel, so it needs lighting per fragment (Phong and
+/// Blinn-Phong). Gouraud computes the light at the vertices only and cannot use it. The
+/// mode Unlit has no lighting at all, but the debug view "Normals as colour" shows the
+/// normals of the maps in it, so the answer is true there.
+bool usesNormalMap(const LightingSettings& settings);
+```
+
+Definicja z `Lighting.cpp`:
+
+```cpp
+bool usesNormalMap(const LightingSettings& settings) {
+    return settings.normalMapping && settings.mode != LightingMode::Gouraud;
+}
+```
+
+| `normalMapping` | Tryb | `usesNormalMap` | Dlaczego |
+|---|---|---|---|
+| `true` | `Phong`, `Blinn-Phong` | prawda | światło liczone na fragment: każdy fragment może dostać własną normalną z tekstury |
+| `true` | `Gouraud` | fałsz | światło liczone w wierzchołkach, 4 na ścianę muru: teksel między nimi nie ma jak wziąć udziału ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 2.11) |
+| `true` | `Unlit` | prawda | światła nie ma, ale podgląd `Normals as colour` pokazuje w tym trybie normalne z map |
+| `false` | dowolny | fałsz | wyłączone wszędzie |
+
+Wynik trafia do shaderów jako uniform `uNormalMapEnabled` (1 albo 0): ustawiają go `drawLitMaze` i `drawUnlitMaze` ([`maze-rendering.md`](maze-rendering.md), sekcja 5.7). Funkcja jest w bibliotece `game_logic`, a nie w `NightMazeApp`, żeby tę regułę dało się sprawdzić testem bez okna (sekcja 5.8).
 
 ### 5.3 `isDeadEnd`
 
@@ -592,7 +628,7 @@ Kostka przechodzi test głębi jak każda inna geometria: ściana przed nią ją
 
 ### 5.8 Jak to zostało sprawdzone
 
-Testy jednostkowe w `tests/LightingTests.cpp`, 16 przypadków:
+Testy jednostkowe w `tests/LightingTests.cpp`, 17 przypadków:
 
 | Przypadek testowy | Co sprawdza | Wynik |
 |---|---|---|
@@ -606,6 +642,7 @@ Testy jednostkowe w `tests/LightingTests.cpp`, 16 przypadków:
 | `the lighting starts as a night scene shaded with Blinn-Phong` | domyślne `LightingSettings` | tryb `BlinnPhong`, latarka włączona, kąt wewnętrzny mniejszy od zewnętrznego, promień 3, księżyc świeci w dół |
 | `the numbers of the lighting modes are the entries of the list in the panel` | wartości `LightingMode` | 0, 1, 2, 3 |
 | `Gouraud and Phong use the Phong highlight, Blinn-Phong its own` | `specularModelOf` i wartości `SpecularModel` | Phong, Phong, BlinnPhong. Liczby 0 i 1 |
+| `normal mapping is on by default and applies to every mode except Gouraud` | domyślne `LightingSettings`, potem `usesNormalMap` dla czterech trybów przy włączonym i wyłączonym polu | pole startuje jako `true`. Włączone: prawda dla `Phong`, `BlinnPhong` i `Unlit`, fałsz dla `Gouraud`. Wyłączone: fałsz dla wszystkich czterech |
 | `buildLightSet takes the ambient light and the moon from the settings` | yaw 90, pitch -90 | kierunek `(0, -1, 0)`, kolor i intensywność przepisane, zero świateł punktowych |
 | `the flashlight sits at the eye and points where the camera looks` | oko `(3, 1,7, 5)`, kierunek `(1, 0, 0)`, zasięg 10 | pozycja i kierunek reflektora równe podanym, 5 procent jasności w 10 m |
 | `switching the flashlight off keeps its settings` | `flashlightOn = false` | `spotEnabled` fałszywe, intensywność bez zmian |
@@ -613,7 +650,7 @@ Testy jednostkowe w `tests/LightingTests.cpp`, 16 przypadków:
 | `every point light gets the shared colour, intensity and radius` | dwie pozycje, promień 4 | oba światła mają wspólny kolor i intensywność, 5 procent jasności w 4 m |
 | `buildLightSet ignores positions past the largest number of point lights` | 20 pozycji | `pointCount` równe 16 |
 
-Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie 16 przypadków przechodzi w Debug i Release, w ramach 149 przypadków i 61240 asercji całego programu testowego.
+Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie 17 przypadków przechodzi w Debug i Release, w ramach 163 przypadków i 62220 asercji całego programu testowego.
 
 **Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp` i `LightRig`: klawisza F, tego, że `buildLightSet` dostaje interpolowane oko, kolejności `upload` przed rysowaniem, kostek znaczników. Ten kod wymaga okna. Obraz jest sprawdzony na zrzutach ekranu z Windowsa (lista w nagłówku dokumentu), a klawisz F i ruch z latarką są otwartymi pozycjami listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
@@ -632,6 +669,7 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 | Maze | `Regenerate`, `Seed`, `Width`, `Height` | `MazeSettings` | nowy labirynt ma inne zaułki: światła i kostki się przenoszą, liczba w panelu Lights się zmienia |
 | Maze | plan z góry | odczyt | zaułki na planie to komórki z trzema ścianami: da się je policzyć i porównać z liczbą świateł (bez komórki startowej) |
 | Renderer | lista `Lighting` | `mode` | w trybie `Unlit` kostki znikają |
+| Assets | pole wyboru `Normal mapping` | `normalMapping` | fugi i nierówności ścian pod latarką pojawiają się i znikają (tryby `Phong` i `Blinn-Phong`). W trybie `Gouraud` nic się nie zmienia: `usesNormalMap` jest tam fałszywe. Pola nikt jeszcze nie kliknął ręcznie, opis panelu jest w [`../assets/asset-cache.md`](../assets/asset-cache.md), a scenariusz pokazu w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6 |
 | Camera | `Yaw`, `Pitch` | kamera | latarka idzie za kamerą także wtedy, gdy kąty zmienia suwak, a nie mysz |
 
 ### 6.1 Scenariusz pokazu na obronie

@@ -20,6 +20,10 @@ SpecularModel specularModelOf(LightingMode mode) {
     return mode == LightingMode::BlinnPhong ? SpecularModel::BlinnPhong : SpecularModel::Phong;
 }
 
+bool usesNormalMap(const LightingSettings& settings) {
+    return settings.normalMapping && settings.mode != LightingMode::Gouraud;
+}
+
 bool isDeadEnd(const Maze& maze, int x, int z) {
     int wallCount = 0;
     for (const Direction side : ALL_DIRECTIONS) {

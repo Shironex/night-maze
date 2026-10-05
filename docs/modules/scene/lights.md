@@ -1,11 +1,11 @@
 # Moduł scene: światła
 
-Kamień milowy: M4 (część "oświetlenie"). Temat wykładu: 6 (Światło kierunkowe i punktowe).
+Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": sekcja 2.9). Temat wykładu: 6 (Światło kierunkowe i punktowe).
 Kod: [`src/scene/Light.hpp`](../../../src/scene/Light.hpp), [`src/scene/Light.cpp`](../../../src/scene/Light.cpp), plik dołączany do shaderów [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), panel [`src/debug/panels/LightsPanel.hpp`](../../../src/debug/panels/LightsPanel.hpp) i [`LightsPanel.cpp`](../../../src/debug/panels/LightsPanel.cpp), testy [`tests/LightTests.cpp`](../../../tests/LightTests.cpp).
 
 Część modułu `scene`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość przekształceń ([`transforms.md`](transforms.md)), kamery ([`camera.md`](camera.md)), shaderów i uniformów ([`../gfx/shaders.md`](../gfx/shaders.md), [`../gfx/uniforms.md`](../gfx/uniforms.md)) oraz tekstur ([`../gfx/textures.md`](../gfx/textures.md)).
 
-Oświetlenie jest rozłożone na pięć dokumentów. Każdy plik kodu jest omawiany linia po linii w jednym z nich:
+Oświetlenie jest rozłożone na sześć dokumentów. Każdy plik kodu jest omawiany linia po linii w jednym z nich:
 
 | Dokument | Co omawia |
 |---|---|
@@ -14,10 +14,11 @@ Oświetlenie jest rozłożone na pięć dokumentów. Każdy plik kodu jest omawi
 | [`../game/flashlight.md`](../game/flashlight.md) | światła gry: `LightingSettings`, latarka i klawisz F, światła w ślepych zaułkach, `buildLightSet`, `LightRig` |
 | [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) | jak światła trafiają do shadera: blok uniformów `LightBlock`, układ `std140`, `scene::LightBlockData`, `gfx::UniformBuffer` |
 | [`../gfx/shader-includes.md`](../gfx/shader-includes.md) | jak działa linia `#include "common/lighting.glsl"` |
+| [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) | skąd program `lit` bierze normalną fragmentu: mapy normalnych, przestrzeń styczna, macierz TBN, plik `common/normal_map.glsl` |
 
-**Stan na dziś:** gra startuje jako scena nocna. Labirynt oświetlają trzy rodzaje świateł: księżyc (światło kierunkowe), latarka gracza (reflektor) i światła punktowe w ślepych zaułkach. Zmierzone na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, 149 przypadków testowych i 61240 asercji w obu konfiguracjach, start gry bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone: widok startowy, cztery tryby cieniowania z trzech miejsc, latarka wyłączona, ślepy zaułek ze swoim światłem, strony ścian oświetlone i nieoświetlone przez księżyc. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
+**Stan na dziś:** gra startuje jako scena nocna. Labirynt oświetlają trzy rodzaje świateł: księżyc (światło kierunkowe), latarka gracza (reflektor) i światła punktowe w ślepych zaułkach. Zmierzone na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu konfiguracjach, start gry bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone: widok startowy, cztery tryby cieniowania z trzech miejsc, latarka wyłączona, ślepy zaułek ze swoim światłem, strony ścian oświetlone i nieoświetlone przez księżyc. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
 
-Czego w tym kamieniu nie ma: **cieni** (dojdą w M7, do tego czasu światło przechodzi przez ściany), **korekcji gamma i tekstur sRGB** (M7, notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)) oraz **map normalnych** (następna część M4).
+Czego w tym kamieniu nie ma: **cieni** (dojdą w M7, do tego czasu światło przechodzi przez ściany), **korekcji gamma i tekstur sRGB** (M7, notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)) Mapy normalnych, które w pierwszej części M4 były na tej liście, są już w kodzie: normalną, którą dostają wzory z tego dokumentu, opisuje sekcja 2.9.
 
 ## 1. Po co to jest
 
@@ -293,6 +294,22 @@ Dlaczego na procesorze, a nie `transpose(inverse(mat3(uModel)))` w shaderze: sha
 
 **Gamma.** Tekstury są czytane tak, jak leżą w pliku, a wynik jest zapisywany bez korekcji. Rachunek światła odbywa się więc na liczbach, które nie są proporcjonalne do jasności. Uzasadnienie i skutki są w notatce [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
 
+### 2.9 Która normalna trafia do wzorów: siatka albo mapa normalnych
+
+Wszystkie wzory tej sekcji biorą normalną `N` jako daną. Funkcja `computeLighting(vec3 position, vec3 normal)` nie wie, skąd wołający ją wziął, i to jest celowe: źródło normalnej można wymienić bez dotykania wzorów. W projekcie są trzy przypadki:
+
+| Program | Skąd normalna | Ile różnych normalnych na licu ściany |
+|---|---|---|
+| `gouraud` | atrybut `aNormal` razy macierz normalnych, znormalizowany w shaderze wierzchołków | jedna (cztery wierzchołki lica mają tę samą) |
+| `lit`, mapowanie normalnych wyłączone | ta sama normalna, interpolowana i znormalizowana w shaderze fragmentów | jedna |
+| `lit`, mapowanie normalnych włączone (stan startowy) | **mapa normalnych** (normal map): tekstura, której każdy teksel przechowuje kierunek normalnej w przestrzeni stycznej. Shader przenosi go do przestrzeni świata macierzą TBN | inna dla każdego teksela |
+
+W `lit.frag` jest to jedna linia: `vec3 normal = surfaceNormal(vNormal, vTangent, vUv);`. Funkcja `surfaceNormal` leży w osobnym pliku dołączanym `common/normal_map.glsl` i zwraca normalną w przestrzeni świata, o długości 1, czyli dokładnie to, czego `computeLighting` wymaga. Dzięki mapie płaskie lico ściany dostaje pod światłem fugi i nierówności: geometria się nie zmienia, zmienia się tylko `dot(N, L)` w każdym fragmencie. Całą technikę (kodowanie, przestrzeń styczna, wyliczanie stycznych, macierz TBN linia po linii) omawia [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md).
+
+**Gouraud nie ma mapowania normalnych.** Mapa normalnych przechowuje jedną normalną na teksel, a `gouraud.vert` liczy światło w wierzchołkach, 4 na lico ściany: teksel leżący między nimi nie ma jak wziąć udziału w obliczeniach. Komentarz w `gouraud.vert` mówi to wprost ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcje 2.7 i 4.3). Regułę "włączone i tryb inny niż `Gouraud`" zapisuje funkcja `game::usesNormalMap` ([`../game/flashlight.md`](../game/flashlight.md), sekcja 5.2).
+
+**Podgląd `Normals as colour`** z panelu Assets pokazuje normalną faktycznie użytą: z map normalnych w trybach `Unlit`, `Phong` i `Blinn-Phong` przy zaznaczonym polu `Normal mapping`, a normalną siatki w trybie `Gouraud` albo przy polu odznaczonym.
+
 ## 3. Jak to działa w OpenGL
 
 OpenGL w profilu Core **nie ma świateł**. Stare funkcje `glLight` i `glMaterial` należały do potoku stałego i w profilu Core nie istnieją. Światło to dziś zwykłe dane, które program sam wysyła do własnych shaderów, i zwykła arytmetyka w GLSL.
@@ -303,10 +320,12 @@ OpenGL w profilu Core **nie ma świateł**. Stare funkcje `glLight` i `glMateria
 | model odbłysku, siła, połysk | zwykłe uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` | `glUniform1i`, `glUniform1f` | po 1, w programie, który rysuje labirynt |
 | macierz normalnych | zwykły uniform `uNormalMatrix` | `glUniformMatrix3fv` | raz na obiekt |
 | normalna wierzchołka | atrybut numer 1 w `gfx::Vertex` | ustawione raz w VAO siatki | 0 |
+| styczna wierzchołka (tylko dla mapowania normalnych) | atrybut numer 3 w `gfx::Vertex` | ustawione raz w VAO siatki | 0 |
+| mapa normalnych i jej przełącznik (tylko program `lit`) | tekstura na jednostce 1, uniformy `uNormalMap` i `uNormalMapEnabled` | `glActiveTexture`, `glBindTexture`, `glBindSampler`, `glUniform1i` | raz na część modelu i po 1 ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 3) |
 
 Blok uniformów czytają oba programy oświetlenia (`lit` i `gouraud`) z tego samego bufora na karcie. Dlaczego blok, a nie 60 osobnych uniformów, i jak bajty z C++ trafiają dokładnie tam, gdzie shader ich szuka, omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
 
-Wszystkie obliczenia światła są w **przestrzeni świata**: pozycje świateł, pozycja oka, pozycja fragmentu i normalna. Drugą częstą konwencją jest przestrzeń widoku (oko w punkcie zero). Wybrałem świat, bo światła gry są zdefiniowane w świecie (komórki labiryntu) i nie trzeba ich co klatkę mnożyć przez macierz widoku.
+Wszystkie obliczenia światła są w **przestrzeni świata**: pozycje świateł, pozycja oka, pozycja fragmentu i normalna (także ta z mapy normalnych: `surfaceNormal` przenosi ją z przestrzeni stycznej do świata, zanim trafi do wzorów). Drugą częstą konwencją jest przestrzeń widoku (oko w punkcie zero). Wybrałem świat, bo światła gry są zdefiniowane w świecie (komórki labiryntu) i nie trzeba ich co klatkę mnożyć przez macierz widoku.
 
 ## 4. Shadery
 
@@ -475,7 +494,7 @@ Lighting computeLighting(vec3 position, vec3 normal) {
     lighting.specular = vec3(0.0);
 ```
 
-`position` i `normal` są w przestrzeni świata, `normal` ma długość 1 (dba o to wołający). `toEye` to wektor `V`: od punktu do oka. Suma zaczyna od światła otoczenia i zerowego odbłysku.
+`position` i `normal` są w przestrzeni świata, `normal` ma długość 1 (dba o to wołający: `gouraud.vert` przez `normalize`, `lit.frag` przez funkcję `surfaceNormal`, która zwraca normalną siatki albo normalną z mapy normalnych, sekcja 2.9). `toEye` to wektor `V`: od punktu do oka. Suma zaczyna od światła otoczenia i zerowego odbłysku.
 
 ```glsl
     addLight(lighting, normal, -uDirectionalDirection.xyz, toEye,
@@ -501,7 +520,7 @@ Lighting computeLighting(vec3 position, vec3 normal) {
 
 | Linia | Znaczenie |
 |---|---|
-| `for (int i = 0; i < MAX_POINT_LIGHTS; ++i)` i `if (i >= uPointCount) break;` | pętla ma stałą górną granicę i wychodzi wcześniej. Komentarz w pliku mówi, że niektóre kompilatory GLSL przyjmują tylko pętle o długości znanej przy kompilacji. Trzeba to rozumieć dokładnie: **GLSL 4.10 tego nie wymaga** i `i < uPointCount` byłoby tu poprawne. Takie ograniczenie ma GLSL ES 1.00 (stare urządzenia mobilne i WebGL 1). Forma ze stałą granicą jest ostrożna i ma jeszcze jedną zaletę: pętla nigdy nie wyjdzie poza tablicę, nawet gdyby w `uPointCount` znalazły się śmieci |
+| `for (int i = 0; i < MAX_POINT_LIGHTS; ++i)` i `if (i >= uPointCount) break;` | pętla ma stałą górną granicę i wychodzi wcześniej. Komentarz w pliku mówi dokładnie, skąd ta forma: **GLSL 4.10 tego nie wymaga** ("GLSL 4.10 does not require that (the rule comes from GLSL ES 1.00), but a constant limit with an early exit is the form every compiler accepts") i `i < uPointCount` byłoby tu poprawne. Wymóg pętli o długości znanej przy kompilacji ma GLSL ES 1.00 (stare urządzenia mobilne i WebGL 1). Forma ze stałą granicą i wcześniejszym wyjściem jest tą, którą przyjmie każdy kompilator, i ma jeszcze jedną zaletę: pętla nigdy nie wyjdzie poza tablicę, nawet gdyby w `uPointCount` znalazły się śmieci |
 | `offset = pozycja światła - position` | wektor od punktu do światła, jeszcze nie znormalizowany |
 | `lightDistance = length(offset)` | jego długość: odległość do światła w metrach |
 | `radiance = kolor * intensywność * tłumienie` | światło, które dociera na tę odległość |
@@ -900,7 +919,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 ## 7. Pułapki
 
 1. **Kierunek światła a kierunek do światła.** `DirectionalLight::direction` i `uDirectionalDirection` mówią, dokąd światło **leci**. Wzory chcą kierunku **do** światła. Shader ma minus w jednym miejscu (`-uDirectionalDirection.xyz`). Minus dopisany drugi raz albo usunięty oświetla strony ścian odwrócone od księżyca, bez żadnego błędu.
-2. **Wektory bez normalizacji.** `dot(N, L)` jest cosinusem tylko dla wektorów o długości 1. Normalna po interpolacji między wierzchołkami jest krótsza, a po macierzy normalnych ze skalą ma dowolną długość. Stąd `normalize` w `lit.frag` i `gouraud.vert`. Bez niego światło jest za ciemne i nierówne.
+2. **Wektory bez normalizacji.** `dot(N, L)` jest cosinusem tylko dla wektorów o długości 1. Normalna po interpolacji między wierzchołkami jest krótsza, a po macierzy normalnych ze skalą ma dowolną długość. Stąd `normalize` w `gouraud.vert` i w funkcji `surfaceNormal`, którą woła `lit.frag` (dwa razy: raz dla interpolowanej normalnej siatki, drugi raz dla normalnej z mapy, bo filtr tekstury i mipmapy też skracają wektory). Bez niego światło jest za ciemne i nierówne.
 3. **Brak `max(..., 0)`.** Ujemny cosinus odejmuje światło. Ściana odwrócona od księżyca byłaby ciemniejsza, niż pozwala na to światło otoczenia.
 4. **`pow` z ujemną podstawą.** W GLSL wynik `pow(x, y)` dla `x < 0` jest niezdefiniowany: na jednym sterowniku czerń, na innym `NaN` i migające piksele. `max` stoi przed `pow`.
 5. **Stożek: większy kąt to mniejszy cosinus.** Warunek "wewnątrz stożka" to `cosAngle > próg`, nie `<`. Zamiana `uSpotCone.x` z `.y` daje ujemny mianownik i latarkę, która świeci wszędzie poza stożkiem.
@@ -983,7 +1002,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
     Na procesorze, w `scene::normalMatrix`, raz na obiekt, i wysyła jako `uNormalMatrix`. W shaderze odwrotność byłaby liczona od nowa dla każdego wierzchołka, a wynik jest ten sam dla całego obiektu.
 
 17. **W jakiej przestrzeni liczone jest światło?**
-    W przestrzeni świata: pozycje świateł, oko, pozycja punktu i normalna.
+    W przestrzeni świata: pozycje świateł, oko, pozycja punktu i normalna. Normalna z mapy normalnych jest zapisana w przestrzeni stycznej, więc `surfaceNormal` przenosi ją do świata przed wzorami.
 
 18. **Co to jest `LightSet` i jak trafia do shadera?**
     Struktura ze wszystkimi światłami jednej klatki: otoczenie, jedno kierunkowe, do 16 punktowych z licznikiem, jeden reflektor z przełącznikiem. `packLightBlock` zamienia ją na 928 bajtów w układzie `std140`, a `UniformBuffer::update` kopiuje je na kartę raz na klatkę.
@@ -1015,5 +1034,5 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 - docs.gl (<https://docs.gl>), strony funkcji GLSL 4: `reflect` (<https://docs.gl/sl4/reflect>), `dot`, `normalize`, `pow`, `clamp`, `length`.
 - Specyfikacja GLSL 4.10 (<https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.10.pdf>): kwalifikator `inout`, struktury, funkcje wbudowane, niezdefiniowany wynik `pow` dla ujemnej podstawy.
 - Bui Tuong Phong, "Illumination for Computer Generated Pictures" (1975): model odbicia. Johann Heinrich Lambert, "Photometria" (1760): prawo cosinusów.
-- Dokumenty w tym repozytorium: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../game/flashlight.md`](../game/flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`transforms.md`](transforms.md) (`normalMatrix`), [`camera.md`](camera.md) (yaw, pitch, `forward`), [`../debug-ui.md`](../debug-ui.md) (panele), notatki [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) i [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md).
+- Dokumenty w tym repozytorium: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../game/flashlight.md`](../game/flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (normalna z mapy normalnych), [`transforms.md`](transforms.md) (`normalMatrix`), [`camera.md`](camera.md) (yaw, pitch, `forward`), [`../debug-ui.md`](../debug-ui.md) (panele), notatki [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) i [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o oświetleniu).

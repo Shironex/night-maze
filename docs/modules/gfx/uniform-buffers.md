@@ -7,7 +7,7 @@ Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów Ope
 
 **Stan na dziś.** Gra ma jeden blok uniformów, `LightBlock`, o rozmiarze 928 bajtów. Czytają go dwa programy: `lit` (blok jest w `lit.frag`) i `gouraud` (blok jest w `gouraud.vert`). Dane wysyła raz na klatkę `game::LightRig::upload`, przez jeden obiekt `gfx::UniformBuffer` przypięty do punktu wiązania numer 1.
 
-Co jest zmierzone na Windowsie (2026-10-05, MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74): build Debug i Release bez ostrzeżeń, 149 przypadków testowych i 61240 asercji w obu, clang-format i clang-tidy bez uwag, start gry bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia, latarka wyłączona, ślepy zaułek ze swoim światłem i ściany oświetlone przez księżyc obok nieoświetlonych. Z tego wynikają dwa wnioski o kodzie z tego dokumentu (to wnioski z kodu i pomiaru, a nie osobny pomiar): sterownik NVIDIA podał dla bloku w obu programach rozmiar 928 bajtów, bo inaczej `applyBlockBinding` wypisałoby linię `[error]` (sekcja 5.9), a dane ze struktury C++ trafiają tam, gdzie shader ich szuka, bo obraz jest oświetlony zgodnie z ustawieniami.
+Co jest zmierzone na Windowsie (2026-10-05, MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74): build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu, clang-format i clang-tidy bez uwag, start gry bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia, latarka wyłączona, ślepy zaułek ze swoim światłem i ściany oświetlone przez księżyc obok nieoświetlonych. Z tego wynikają dwa wnioski o kodzie z tego dokumentu (to wnioski z kodu i pomiaru, a nie osobny pomiar): sterownik NVIDIA podał dla bloku w obu programach rozmiar 928 bajtów, bo inaczej `applyBlockBinding` wypisałoby linię `[error]` (sekcja 5.9), a dane ze struktury C++ trafiają tam, gdzie shader ich szuka, bo obraz jest oświetlony zgodnie z ustawieniami.
 
 Czego nikt nie sprawdził: `gfx::UniformBuffer` i `Shader::bindUniformBlock` wymagają kontekstu OpenGL, więc **nie mają testów jednostkowych**. Nikt nie nacisnął ręcznie `Reload shaders` przy pięciu programach, więc ponowne podpięcie bloku po **udanym** przeładowaniu wynika z kodu, a nie z obserwacji. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: każde zdanie o macOS w tym dokumencie jest niesprawdzone.
 
@@ -611,10 +611,12 @@ Publiczna część klasy (komentarz nad klasą i komentarze Doxygen są w pliku)
 ```cpp
 class UniformBuffer {
 public:
-    /// Creates a buffer of sizeInBytes bytes, all zero, and attaches it to the uniform
-    /// buffer binding point number bindingPoint (glBindBufferBase). Binding points are
-    /// numbered slots of the OpenGL context, like texture units: the buffer is put into
-    /// a slot here, and a shader program is told to read its block from that slot.
+    /// Creates a buffer of sizeInBytes bytes and attaches it to the uniform buffer
+    /// binding point number bindingPoint (glBindBufferBase). The contents are undefined
+    /// until the first update(): glBufferData without data only reserves the memory.
+    /// Binding points are numbered slots of the OpenGL context, like texture units: the
+    /// buffer is put into a slot here, and a shader program is told to read its block
+    /// from that slot.
     UniformBuffer(std::size_t sizeInBytes, GLuint bindingPoint);
     ~UniformBuffer();
 
@@ -676,7 +678,8 @@ UniformBuffer::UniformBuffer(std::size_t sizeInBytes, GLuint bindingPoint)
     // GL_UNIFORM_BUFFER has two kinds of binding. glBindBuffer above set the general
     // one, which only says which buffer the next glBufferData call works on.
     // glBindBufferBase puts the whole buffer into one of the numbered binding points,
-    // and those are what the shader programs read their uniform blocks from.
+    // and those are what the shader programs read their uniform blocks from. It sets
+    // the general binding to the same buffer as well.
     GL_CHECK(glBindBufferBase(GL_UNIFORM_BUFFER, m_bindingPoint, m_id));
 }
 ```
@@ -689,10 +692,10 @@ UniformBuffer::UniformBuffer(std::size_t sizeInBytes, GLuint bindingPoint)
 | 4 | `glBufferData(GL_UNIFORM_BUFFER, rozmiar, nullptr, GL_DYNAMIC_DRAW)` | przydziela pamięć. `static_cast<GLsizeiptr>`: funkcja chce rozmiaru jako liczby ze znakiem o szerokości wskaźnika, a `std::size_t` jest bez znaku. `nullptr`: nie ma jeszcze czego kopiować. `GL_DYNAMIC_DRAW`: podpowiedź użycia (usage hint) "dane zmieniają się często i służą do rysowania". Bufor wierzchołków ma `GL_STATIC_DRAW` ([`buffers-vao.md`](buffers-vao.md), sekcja 2.6). To podpowiedź dla sterownika, a nie zakaz |
 | 5 | `glBindBufferBase(GL_UNIFORM_BUFFER, m_bindingPoint, m_id)` | wkłada bufor do punktu wiązania. Musi stać **po** kroku 4: obejmuje bufor w rozmiarze, jaki ten ma (sekcja 2.4) |
 
-Trzy uwagi do komentarzy w kodzie:
+Trzy uwagi:
 
-- Komentarz w nagłówku mówi, że bufor powstaje "all zero". Specyfikacja 4.1 (sekcja 2.9.2) mówi co innego: gdy `data` jest puste, **zawartość bufora jest nieokreślona**. W grze nie ma to skutków, bo `LightRig::upload` wysyła pełne 928 bajtów na początku każdej klatki, przed pierwszym rysowaniem. Kto użyje klasy inaczej, nie może liczyć na zera.
-- Komentarz przy `glBindBufferBase` opisuje tylko wiązanie indeksowane. Według specyfikacji to wywołanie ustawia także wiązanie ogólne (sekcja 2.4). Komentarz jest niepełny, nie błędny.
+- **Zawartość nowego bufora jest nieokreślona.** Mówi to komentarz w nagłówku ("The contents are undefined until the first update()") i specyfikacja 4.1 (sekcja 2.9.2): gdy `data` jest puste, `glBufferData` tylko rezerwuje pamięć. W grze nie ma to skutków, bo `LightRig::upload` wysyła pełne 928 bajtów na początku każdej klatki, przed pierwszym rysowaniem. Kto użyje klasy inaczej, nie może liczyć na zera.
+- **`glBindBufferBase` ustawia oba wiązania.** Komentarz przy tym wywołaniu mówi to wprost: oprócz numerowanego punktu ustawia także wiązanie ogólne na ten sam bufor (sekcja 2.4).
 - Konstruktor zostawia bufor związany z wiązaniem ogólnym `GL_UNIFORM_BUFFER`. Nikomu to nie przeszkadza: to inny cel niż `GL_ARRAY_BUFFER`, więc nie zabiera wiązania kostce ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5.5), a VAO tego celu nie zapamiętuje.
 
 **Destruktor i przenoszenie.**
@@ -1009,7 +1012,7 @@ Uwaga do ostatniego przypadku. Komentarz w teście mówi, że rozmiar bloku `std
 |---|---|---|
 | układ struktury C++ | `static_assert` w czasie kompilacji, MSVC 19.44, Debug i Release | build przechodzi bez ostrzeżeń |
 | ten sam kod pod clangiem z nagłówkami Microsoftu | clang-tidy z `-D_CRT_USE_BUILTIN_OFFSETOF` | bez uwag |
-| `packLightBlock` | siedem przypadków testowych z sekcji 5.12, w ramach 149 przypadków i 61240 asercji, Debug i Release | przechodzą |
+| `packLightBlock` | siedem przypadków testowych z sekcji 5.12, w ramach 163 przypadków i 62220 asercji, Debug i Release | przechodzą |
 | rozmiar bloku według sterownika | brak linii `[error] Uniform block LightBlock is ...` przy starcie gry (sterownik NVIDIA 610.74) | wniosek: sterownik podał 928 dla obu programów |
 | dane docierają do shadera | zrzuty ekranu czterech trybów oświetlenia, latarki wyłączonej, światła w ślepym zaułku, ścian oświetlonych i nieoświetlonych przez księżyc | obraz zgodny z ustawieniami świateł |
 | stary program po nieudanym przeładowaniu zachowuje wiązanie | zrzut ekranu z błędem wstawionym do `common/lighting.glsl` | komunikat z nazwą pliku, a poprzedni program rysuje dalej |
@@ -1031,7 +1034,7 @@ Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zm
 
 1. **`vec3` w bloku `std140`.** `vec3` zajmuje 12 bajtów, ale ma wyrównanie 16. Pole po nim zaczyna się od następnej wielokrotności swojego wyrównania: następny `vec3` albo `vec4` w 16, a nie w 12. `glm::vec3` w strukturze C++ ma wyrównanie 4, więc następny wektor stoi w 12. Dwa `vec3` pod rząd, `float` przed `vec3` i tablica `vec3` rozjeżdżają się bez żadnego błędu (tabela w sekcji 2.5). Projekt nie ma w bloku ani jednego `vec3`.
 2. **`bool` w bloku.** `bool` w `std140` to 4 bajty czytane jako `uint`. `bool` w C++ to w MSVC i clang 1 bajt. Pole `bool` w strukturze lustrzanej przesuwa wszystko po sobie albo zostawia trzy bajty śmieci, które shader odczyta jako "prawda". Projekt wysyła przełącznik jako `float` w wolnej składowej `vec4` (sekcja 5.5).
-3. **Blok nigdy niepodpięty.** Każdy blok nowego programu czyta z punktu wiązania 0. Program, dla którego nikt nie zawołał `bindUniformBlock` (albo zawołał z literówką w nazwie), szuka świateł w punkcie 0, a tam nie ma bufora. Specyfikacja OpenGL 4.1 (sekcja 2.11.7) mówi, że wynik jest wtedy **nieokreślony i może skończyć się przerwaniem albo zakończeniem pracy OpenGL**. Nie ma gwarancji ani błędu, ani zer, ani czarnego ekranu. Komentarz w `ShaderUniforms.hpp` (linie od 39 do 42) twierdzi, że taki program "reads no lights at all" i że to od razu widać: to opis tego, co sterownik zwykle robi, a nie tego, co gwarantuje specyfikacja, i nikt tego w projekcie nie zmierzył. Co wybór punktu 1 zamiast 0 daje naprawdę: niepodpięty program **na pewno nie trafi przypadkiem** w prawdziwy bufor świateł. Gdyby bufor siedział w punkcie 0, zapomniane `connect` działałoby przez przypadek, a błąd wyszedłby dopiero przy drugim bloku.
+3. **Blok nigdy niepodpięty.** Każdy blok nowego programu czyta z punktu wiązania 0. Program, dla którego nikt nie zawołał `bindUniformBlock` (albo zawołał z literówką w nazwie), szuka świateł w punkcie 0, a tam nie ma bufora. Specyfikacja OpenGL 4.1 (sekcja 2.11.7) mówi, że wynik jest wtedy **nieokreślony i może skończyć się przerwaniem albo zakończeniem pracy OpenGL**. Nie ma gwarancji ani błędu, ani zer, ani czarnego ekranu. Komentarz nad `LIGHT_BLOCK_NAME` w `ShaderUniforms.hpp` mówi to samo: taki program czyta z punktu 0, gdzie nie ma bufora, wartości są nieokreślone, a pomyłka pokazuje się jako błędne oświetlenie. Jak to wygląda na sterowniku projektu, nikt nie zmierzył. Co wybór punktu 1 zamiast 0 daje naprawdę: niepodpięty program **na pewno nie trafi przypadkiem** w prawdziwy bufor świateł. Gdyby bufor siedział w punkcie 0, zapomniane `connect` działałoby przez przypadek, a błąd wyszedłby dopiero przy drugim bloku.
 4. **Wiązanie znika po przeładowaniu.** `reload()` tworzy nowy obiekt programu, a każdy blok nowego programu jest znów w punkcie 0 (sekcja 3.2). Kod, który woła `glUniformBlockBinding` raz przy starcie na "gołym" identyfikatorze, traci światła po pierwszym `Reload shaders` i ląduje w pułapce 3. W projekcie chroni przed tym lista `m_blockBindings` i pętla w `reload` (sekcja 5.9). Kto doda nowy sposób budowania programu z pominięciem `reload`, musi tę pętlę powtórzyć.
 5. **Literówka w nazwie bloku jest cicha.** `glGetUniformBlockIndex` zwraca `GL_INVALID_INDEX`, `applyBlockBinding` wraca bez komunikatu i bez sprawdzenia rozmiaru. Skutek to pułapka 3. Nazwa jest dlatego jedną stałą, `LIGHT_BLOCK_NAME`.
 6. **`MAX_POINT_LIGHTS` zmienione tylko w jednym miejscu.** Liczba 16 stoi w trzech miejscach, które muszą się zgadzać: `scene::MAX_POINT_LIGHTS` w [`src/scene/Light.hpp`](../../../src/scene/Light.hpp), `const int MAX_POINT_LIGHTS` w [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) i asercje w `LightBlock.hpp` (`sizeof(LightBlockData) == 928`). Zmiana tylko w C++ zatrzymuje kompilację na asercji z liczbą 928: to celowy bezpiecznik. Zmiana tylko w GLSL kompiluje się wszędzie i wychodzi dopiero w działającym programie jako linia `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code`, po czym program rysuje dalej z za małym buforem (czyli pułapka 3). Czwartym miejscem są testy: `tests/LightTests.cpp` ma wpisane 16 i 928.

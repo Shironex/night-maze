@@ -1,6 +1,6 @@
 # Moduł core: fundament programu
 
-Kamień milowy: M0, uzupełniany w M1 (mysz, ścieżki do assetów, pierwszy użytkownik stałego kroku i myszy: kamera) w M2 + M3 (klasa `NightMazeApp` rysuje labirynt i prowadzi gracza) i w M4 (klasa `NightMazeApp` buduje co klatkę światła, wybiera program labiryntu według trybu oświetlenia i rysuje znaczniki świateł). Temat wykładu: 1 (Pierwszy program OpenGL).
+Kamień milowy: M0, uzupełniany w M1 (mysz, ścieżki do assetów, pierwszy użytkownik stałego kroku i myszy: kamera) w M2 + M3 (klasa `NightMazeApp` rysuje labirynt i prowadzi gracza) i w M4 (klasa `NightMazeApp` buduje co klatkę światła, wybiera program labiryntu według trybu oświetlenia, rysuje znaczniki świateł i ustawia przełącznik mapowania normalnych `uNormalMapEnabled`). Temat wykładu: 1 (Pierwszy program OpenGL).
 Kod: [`src/core/`](../../../src/core/), [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), [`src/main.cpp`](../../../src/main.cpp).
 
 Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, kontekst OpenGL (context) związany z tym oknem oraz pętlę, która co klatkę odbiera zdarzenia, przesuwa symulację i rysuje obraz. Moduł `core` dostarcza dokładnie to i nic więcej: klasę `Window` (okno GLFW z kontekstem OpenGL 4.1 Core i funkcjami załadowanymi przez GLAD), klasę `Application` (pętla główna ze stałym krokiem symulacji), `Input` (stan klawiatury i myszy), `Time` (zegar klatki), `Log` (komunikaty na konsolę), makro `GL_CHECK` (wykrywanie błędów OpenGL w buildzie Debug) i funkcje `executableDir`, `assetPath` oraz `pathText` z `Paths` (ścieżki do plików z `assets/`, liczone od położenia programu, i zamiana ścieżki na tekst). To jest realizacja tematu 1 wykładu, "Pierwszy program OpenGL": po M0 program otwiera okno, czyści je kolorem nocnego nieba i pokazuje FPS. Wszystkie późniejsze moduły (`gfx`, `renderer`, `scene`, `game`) stoją na tej warstwie, a ona sama nie wie o żadnym z nich.
@@ -545,7 +545,8 @@ Wszystkie są `const`: rysowanie nie zmienia stanu gry. Każda z pięciu rysują
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
     // The two debug views (normals and texture coordinates as colours) only exist in the
     // textured program, and they show data, not light. So they are drawn without
-    // lighting whatever the lighting mode is.
+    // lighting whatever the lighting mode is. The view of the normals still follows the
+    // lighting in one thing: it shows the normals the chosen mode shades with.
     if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
         drawUnlitMaze(view, projection);
     } else {
@@ -563,7 +564,7 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
 
 Operator `||` czyta się "albo jedno, albo drugie": wystarczy jeden z dwóch warunków, żeby labirynt poszedł bez oświetlenia. Widoki normalnych i współrzędnych tekstury istnieją tylko w programie `textured` (uniform `uViewMode`) i pokazują dane, a nie światło, więc mają pierwszeństwo przed trybem oświetlenia. Ten podział i same shadery opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md).
 
-**Bez oświetlenia: `drawUnlitMaze`.** To dawne ciało `drawMaze` z M2 + M3, przeniesione bez zmian do własnej funkcji:
+**Bez oświetlenia: `drawUnlitMaze`.** To dawne ciało `drawMaze` z M2 + M3, przeniesione do własnej funkcji. Razem z mapami normalnych doszła w nim jedna linia, ustawienie `uNormalMapEnabled`:
 
 ```cpp
 void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const {
@@ -579,12 +580,15 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
     // The enum values are the numbers textured.frag compares uViewMode with.
     m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    // Only the view of the normals reads it: that view shows the normals the lighting
+    // would use, so with normal mapping the ones from the normal maps.
+    m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
 }
 ```
 
-`drawUnlitMaze` ustawia to, co jest wspólne dla całego labiryntu: dwie macierze i tryb widoku (0 obraz, 1 normalne jako kolor, 2 współrzędne tekstury jako kolor). Resztę, czyli `uTexture` oraz `uModel` i `uTint` dla każdego obiektu, ustawia `MazeRenderer::draw` ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5). Shader `textured.frag` jest opisany w [`../gfx/textures.md`](../gfx/textures.md), sekcja 4.
+`drawUnlitMaze` ustawia to, co jest wspólne dla całego labiryntu: dwie macierze, tryb widoku (0 obraz, 1 normalne jako kolor, 2 współrzędne tekstury jako kolor) i przełącznik mapowania normalnych. Ten ostatni to `usesNormalMap(m_lighting) ? 1 : 0`: uniform typu `bool` ustawia się liczbą całkowitą, a w programie `textured` czyta go tylko widok normalnych, który dzięki temu pokazuje normalne, jakimi cieniowałby wybrany tryb oświetlenia (z map normalnych albo z siatki, [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.3). Resztę, czyli `uTexture` i `uNormalMap`, obie tekstury i `uTint` dla każdej części oraz `uModel` dla każdego obiektu, ustawia `MazeRenderer::draw` ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5). Shader `textured.frag` jest opisany w [`../gfx/textures.md`](../gfx/textures.md), sekcja 4.
 
 **Z oświetleniem: `drawLitMaze`.**
 
@@ -607,6 +611,9 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
     shader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+    // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
+    // has no such uniform, and usesNormalMap is false for it anyway.
+    shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(shader, m_mazeWorld);
 }
@@ -619,10 +626,11 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 | `shader.setMat4(VIEW_UNIFORM, view)`, `shader.setMat4(PROJECTION_UNIFORM, projection)` | te same dwie macierze co w pozostałych funkcjach |
 | `shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)))` | który wzór na połysk: 0 dla Phonga, 1 dla Blinna-Phonga. `specularModelOf` tłumaczy tryb oświetlenia na `game::SpecularModel` (dla trybu `Gouraud` zwraca wzór Phonga) |
 | `shader.setFloat(SPECULAR_STRENGTH_UNIFORM, ...)`, `shader.setFloat(SHININESS_UNIFORM, ...)` | dwie liczby materiału kamienia z ustawień, edytowane w grupie `Highlight (specular)` panelu "Lights" |
+| `shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0)` | przełącznik mapowania normalnych programu `lit`: 1, gdy pole `Normal mapping` z panelu "Assets" jest zaznaczone i tryb jest inny niż `Gouraud` (`game::usesNormalMap`, [`../game/flashlight.md`](../game/flashlight.md), sekcja 5.2). Program `gouraud` tego uniformu nie ma: ustawienie jest po cichu ignorowane |
 | czego tu nie ma | żadnego światła. Światła są w buforze uniformów, który `onRender` wypełnił przed tym wywołaniem. Ta funkcja ustawia tylko zwykłe uniformy programu |
 | `m_mazeRenderer.draw(shader, m_mazeWorld)` | ta sama klasa i ta sama pętla po obiektach co bez oświetlenia. `MazeRenderer` dostaje program w argumencie i nie wie, który to |
 
-Wzory, shadery `lit.*` i `gouraud.*` oraz różnicę między liczeniem światła dla wierzchołka i dla fragmentu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), a rodzaje świateł i plik `common/lighting.glsl` [`../scene/lights.md`](../scene/lights.md).
+Wzory, shadery `lit.*` i `gouraud.*` oraz różnicę między liczeniem światła dla wierzchołka i dla fragmentu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), rodzaje świateł i plik `common/lighting.glsl` [`../scene/lights.md`](../scene/lights.md), a mapy normalnych i plik `common/normal_map.glsl` [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md).
 
 **Znaczniki świateł: `drawLightMarkers`.**
 
@@ -694,9 +702,9 @@ Test głębi zostaje włączony, więc linia za ścianą jest przez nią zasłon
 
 **Co jest sprawdzone.** Sprzed M4 (Windows, 2026-10-05, MSVC 19.44, build Debug): na zrzutach ekranu sprawdzone zostały widok startowy z teksturami, widok z góry w trybie noclip z żółtymi pudełkami na ścianach i słupkach oraz oba tryby widoku do szukania błędów. Tamte zrzuty pokazują scenę bez oświetlenia.
 
-Po dodaniu oświetlenia (Windows, 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74): build Debug i Release przechodzi bez ostrzeżeń, 149 przypadków testowych i 61240 asercji przechodzi w obu, clang-format i clang-tidy niczego nie zgłaszają, a gra startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone zostały: widok startowy, cztery tryby oświetlenia z trzech punktów widzenia, scena z wyłączoną latarką, ślepy zaułek ze swoim światłem, strony ścian oświetlone i nieoświetlone przez księżyc oraz błąd wewnątrz `common/lighting.glsl` pokazany z nazwą pliku, podczas gdy poprzedni program rysował dalej.
+Po dodaniu oświetlenia (Windows, 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74): build Debug i Release przechodzi bez ostrzeżeń, 163 przypadki testowe i 62220 asercji przechodzą w obu (stan po dodaniu map normalnych), clang-format i clang-tidy niczego nie zgłaszają, a gra startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone zostały: widok startowy, cztery tryby oświetlenia z trzech punktów widzenia, scena z wyłączoną latarką, ślepy zaułek ze swoim światłem, strony ścian oświetlone i nieoświetlone przez księżyc oraz błąd wewnątrz `common/lighting.glsl` pokazany z nazwą pliku, podczas gdy poprzedni program rysował dalej. Po dodaniu map normalnych (ten sam dzień i sprzęt) na zrzutach ekranu fugi czytają się jako rowki na ścianach, słupku i podłodze ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11).
 
-Nikt jeszcze nie sprawdził ręcznie: chodzenia prawdziwymi klawiszami, klawisza N, klawisza F, obrotu myszą w labiryncie, tego, czy stożek latarki trzyma się środka ekranu w ruchu, listy `Lighting`, widżetów panelu "Lights" i przycisków wymiany labiryntu. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS ten kod nie był ani budowany, ani uruchamiany.
+Nikt jeszcze nie sprawdził ręcznie: chodzenia prawdziwymi klawiszami, klawisza N, klawisza F, obrotu myszą w labiryncie, tego, czy stożek latarki trzyma się środka ekranu w ruchu, listy `Lighting`, widżetów panelu "Lights", pola wyboru `Normal mapping` w panelu "Assets" i przycisków wymiany labiryntu. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS ten kod nie był ani budowany, ani uruchamiany.
 
 ### 6.8 Trzy poziomy dziedziczenia
 

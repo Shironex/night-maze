@@ -1,11 +1,11 @@
 # Moduł renderer: cieniowanie Gourauda i Phonga, odbłysk Phonga i Blinna-Phonga
 
-Kamień milowy: M4 (część "oświetlenie"). Temat wykładu: 7 (Gouraud vs Phong).
+Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": normalna fragmentu w `lit.frag` pochodzi z funkcji `surfaceNormal`). Temat wykładu: 7 (Gouraud vs Phong).
 Kod: shadery [`assets/shaders/lit.vert`](../../../assets/shaders/lit.vert), [`lit.frag`](../../../assets/shaders/lit.frag), [`gouraud.vert`](../../../assets/shaders/gouraud.vert), [`gouraud.frag`](../../../assets/shaders/gouraud.frag), wybór programu w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`drawMaze`, `drawLitMaze`), typ `game::LightingMode` w [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), lista `Lighting` w [`src/debug/panels/RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp).
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż kod leży w `game/` i `assets/shaders/`, wyjaśnia [`README.md`](README.md). Dokument zakłada znajomość świateł i wzorów oświetlenia: [`../scene/lights.md`](../scene/lights.md). Tam jest omówiony linia po linii plik `common/lighting.glsl`, który oba programy z tego dokumentu dołączają. Przydają się też [`../gfx/shaders.md`](../gfx/shaders.md) (potok, interpolacja wyjść shadera wierzchołków) i [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured`, na których wzorowane są `lit` i `gouraud`).
 
-**Stan na dziś:** gra ma cztery tryby cieniowania labiryntu, przełączane listą `Lighting` w panelu Renderer: `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong`. Startuje w trybie `Blinn-Phong`. Zmierzone na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): oba nowe programy kompilują się i linkują przy starcie bez linii `[error]`, a cztery tryby są sprawdzone na zrzutach ekranu z trzech miejsc w labiryncie. **Listy `Lighting` nikt jeszcze nie przełączył ręcznie kliknięciem**, suwaków odbłysku też nie. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: kompilator GLSL Apple nie widział jeszcze żadnego z tych czterech plików.
+**Stan na dziś:** gra ma cztery tryby cieniowania labiryntu, przełączane listą `Lighting` w panelu Renderer: `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong`. Startuje w trybie `Blinn-Phong`. Zmierzone na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): oba nowe programy kompilują się i linkują przy starcie bez linii `[error]`, a cztery tryby są sprawdzone na zrzutach ekranu z trzech miejsc w labiryncie. Od drugiej części M4 program `lit` cieniuje normalną z mapy normalnych, a program `gouraud` nie może (sekcje 2.7 i 4.3): to jeszcze jedna widoczna różnica obu trybów, sprawdzona na zrzutach ekranu z 2026-10-05 (zrzuty trybu `Gouraud` są identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych). **Listy `Lighting` nikt jeszcze nie przełączył ręcznie kliknięciem**, suwaków odbłysku ani pola `Normal mapping` też nie. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: kompilator GLSL Apple nie widział jeszcze żadnego z tych czterech plików ani dołączanego `common/normal_map.glsl`.
 
 ## 1. Po co to jest
 
@@ -180,7 +180,20 @@ Dla **światła punktowego i księżyca** `L` i `V` są różne i pojawia się t
 
 ### 2.7 Która normalna
 
-Oba programy biorą normalną z atrybutu wierzchołka i przenoszą ją do przestrzeni świata macierzą normalnych `uNormalMatrix` (teoria: [`../scene/lights.md`](../scene/lights.md), sekcja 2.7, kod: [`../scene/transforms.md`](../scene/transforms.md)). Normalne modeli labiryntu są **płaskie**: wszystkie wierzchołki jednej ściany modelu mają tę samą normalną, a wierzchołek na krawędzi jest powielony dla każdej ściany, do której należy ([`../assets/obj-loader.md`](../assets/obj-loader.md)). Krawędzie słupków i ścian są więc ostre w każdym trybie. Mapy normalnych, które zmieniają normalną w każdym tekselu, to następna część M4 i będą działać tylko w programie `lit`: w Gouraudzie normalna między wierzchołkami w ogóle nie bierze udziału w obliczeniach.
+Oba programy biorą normalną z atrybutu wierzchołka i przenoszą ją do przestrzeni świata macierzą normalnych `uNormalMatrix` (teoria: [`../scene/lights.md`](../scene/lights.md), sekcja 2.7, kod: [`../scene/transforms.md`](../scene/transforms.md)). Normalne modeli labiryntu są **płaskie**: wszystkie wierzchołki jednej ściany modelu mają tę samą normalną, a wierzchołek na krawędzi jest powielony dla każdej ściany, do której należy ([`../assets/obj-loader.md`](../assets/obj-loader.md)). Krawędzie słupków i ścian są więc ostre w każdym trybie.
+
+Na tym podobieństwo się kończy. **Program `lit` nie musi cieniować normalną siatki.** W `lit.frag` normalną fragmentu zwraca funkcja `surfaceNormal(vNormal, vTangent, vUv)` z pliku `common/normal_map.glsl`: przy wyłączonym mapowaniu normalnych jest to znormalizowana normalna siatki, a przy włączonym normalna odczytana z **mapy normalnych** (normal map) i przeniesiona z przestrzeni stycznej do przestrzeni świata. Wzory `computeLighting` nie wiedzą, skąd pochodzi ich normalna: dostają wektor i liczą. Cała technika (przestrzeń styczna, macierz TBN, plik linia po linii) jest w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md).
+
+**Program `gouraud` map normalnych nie ma i mieć nie może.** Mapa normalnych przechowuje jedną normalną na teksel, więc może zmienić tylko światło liczone na fragment. Gouraud liczy światło w wierzchołkach, 4 na lico ściany, i teksel leżący między nimi nie ma jak wziąć udziału w obliczeniach. To ten sam powód, dla którego Gouraud gubi plamę latarki (sekcja 2.2), tylko zastosowany do normalnych zamiast do stożka. Regułę zapisuje w C++ funkcja `game::usesNormalMap`: prawda, gdy mapowanie jest włączone i tryb jest inny niż `Gouraud` ([`../game/flashlight.md`](../game/flashlight.md), sekcja 5.2).
+
+| Tryb | Normalna użyta do światła | Fugi kamieni pod latarką |
+|---|---|---|
+| `Unlit` | żadna (światła nie ma) | tylko namalowane w obrazie koloru |
+| `Gouraud` | normalna siatki w wierzchołku | tylko namalowane |
+| `Phong`, `Blinn-Phong`, `Normal mapping` zaznaczone (stan startowy) | normalna z mapy normalnych, na fragment | rowki, których jasne i ciemne skosy zależą od kierunku światła |
+| `Phong`, `Blinn-Phong`, `Normal mapping` odznaczone | interpolowana normalna siatki, na fragment | tylko namalowane |
+
+Podgląd `Normals as colour` z panelu Assets pokazuje **normalną faktycznie użytą**: przy trybach `Unlit`, `Phong` i `Blinn-Phong` z zaznaczonym `Normal mapping` normalne z map (na kolorze ściany widać rysunek fug), a przy trybie `Gouraud` albo odznaczonym polu gładkie normalne siatki.
 
 ## 3. Jak to działa w OpenGL
 
@@ -195,6 +208,9 @@ Wywołania w jednej klatce dla trybu z oświetleniem (labirynt 10 na 10: 100 pł
 | `uView`, `uProjection` | `glGetUniformLocation`, `glUniformMatrix4fv` | po 1 |
 | `uSpecularModel` | `glGetUniformLocation`, `glUniform1i` | 1 |
 | `uSpecularStrength`, `uShininess` | `glGetUniformLocation`, `glUniform1f` | po 1 |
+| `uNormalMapEnabled` (istnieje tylko w `lit`) | `glGetUniformLocation`, `glUniform1i` | 1 |
+| `MazeRenderer::draw`: `uTexture` i `uNormalMap` (drugi tylko w `lit`) | `glGetUniformLocation`, `glUniform1i` | po 1 |
+| `MazeRenderer::draw`: mapa normalnych na jednostkę 1, obraz koloru na jednostkę 0 | `glActiveTexture`, `glBindTexture`, `glBindSampler` | po 3 (raz na część modelu) |
 | `MazeRenderer::draw`: `uModel` i `uNormalMatrix` | `glUniformMatrix4fv`, `glUniformMatrix3fv` | po 342 (raz na obiekt: każdy z trzech modeli ma jedną część) |
 | rysowanie | `glDrawElements` | 342 |
 
@@ -204,14 +220,14 @@ Przełączenie trybu nie tworzy ani nie usuwa żadnego obiektu OpenGL. Wszystkie
 
 ## 4. Shadery
 
-Cztery pliki, dwa programy. Oba dołączają [`common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) (omówiony w [`../scene/lights.md`](../scene/lights.md), sekcja 4) linią `#include`, której GLSL sam nie zna: obsługuje ją loader ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)).
+Cztery pliki, dwa programy. Oba dołączają [`common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) (omówiony w [`../scene/lights.md`](../scene/lights.md), sekcja 4) linią `#include`, której GLSL sam nie zna: obsługuje ją loader ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). `lit.frag` dołącza jeszcze drugi plik, [`common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl) z funkcją `surfaceNormal`, omówiony linia po linii w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.1.
 
-| Plik | Dołącza `lighting.glsl` | Woła `computeLighting` |
-|---|---|---|
-| `lit.vert` | nie | nie |
-| `lit.frag` | **tak** | **tak**, dla fragmentu |
-| `gouraud.vert` | **tak** | **tak**, dla wierzchołka |
-| `gouraud.frag` | nie | nie |
+| Plik | Dołącza `lighting.glsl` | Woła `computeLighting` | Dołącza `normal_map.glsl` |
+|---|---|---|---|
+| `lit.vert` | nie | nie | nie (tylko przekazuje styczną) |
+| `lit.frag` | **tak** | **tak**, dla fragmentu | **tak**, woła `surfaceNormal` |
+| `gouraud.vert` | **tak** | **tak**, dla wierzchołka | nie |
+| `gouraud.frag` | nie | nie | nie |
 
 ### 4.1 `lit.vert`: shader wierzchołków, światło na fragment
 
@@ -221,10 +237,11 @@ Cztery pliki, dwa programy. Oba dołączają [`common/lighting.glsl`](../../../a
 // on the screen and passes what the fragment shader needs to compute the light.
 // See docs/modules/renderer/lighting-gouraud-phong.md
 
-// Inputs: the three attributes of gfx::Vertex, as in textured.vert.
+// Inputs: the four attributes of gfx::Vertex, as in textured.vert.
 layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the model
 layout(location = 1) in vec3 aNormal;   // direction the surface faces, length 1
 layout(location = 2) in vec2 aUv;       // texture coordinate (u, v)
+layout(location = 3) in vec3 aTangent;  // direction on the surface in which u grows, length 1
 
 // Uniforms: set from C++. uModel and uNormalMatrix change with every object, uView and
 // uProjection are the same for the whole frame.
@@ -239,6 +256,7 @@ uniform mat3 uNormalMatrix;
 // Outputs to the fragment shader, blended across the triangle by the rasterizer.
 out vec2 vUv;            // texture coordinate
 out vec3 vNormal;        // normal in world space
+out vec3 vTangent;       // tangent in world space
 out vec3 vWorldPosition; // position in world space
 
 void main() {
@@ -247,6 +265,11 @@ void main() {
     vec4 worldPosition = uModel * vec4(aPosition, 1.0);
     vWorldPosition = worldPosition.xyz;
     vNormal = uNormalMatrix * aNormal;
+    // The tangent lies IN the surface, like an edge of a triangle, so it turns and
+    // stretches with the model: mat3(uModel), the model matrix without its translation.
+    // The normal matrix is for directions that must stay perpendicular to the surface.
+    // With these two matrices the pair stays perpendicular under any model matrix.
+    vTangent = mat3(uModel) * aTangent;
     vUv = aUv;
 
     // World space, view space, clip space.
@@ -256,12 +279,14 @@ void main() {
 
 | Linia | Znaczenie |
 |---|---|
-| trzy linie `layout(location = ...) in` | te same trzy atrybuty co w `textured.vert`: pola struktury `gfx::Vertex` ([`../gfx/mesh.md`](../gfx/mesh.md)). Ten sam model da się więc narysować każdym z trzech programów labiryntu bez zmiany siatki |
+| cztery linie `layout(location = ...) in` | te same cztery atrybuty co w `textured.vert`: pola struktury `gfx::Vertex` ([`../gfx/mesh.md`](../gfx/mesh.md)). Ten sam model da się więc narysować każdym z trzech programów labiryntu bez zmiany siatki |
+| `layout(location = 3) in vec3 aTangent;` | **styczna** (tangent): kierunek na powierzchni, w którym rośnie współrzędna tekstury `u`, o długości 1. W pliku OBJ jej nie ma: liczy ją `assets::computeTangents` przy wczytaniu modelu ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcje 2.7 i 2.8) |
 | `uniform mat3 uNormalMatrix;` | macierz normalnych, jedyny uniform, którego `textured.vert` nie ma. Typ `mat3`: stąd nowy setter `Shader::setMat3` ([`../gfx/uniforms.md`](../gfx/uniforms.md)) |
-| `out vec3 vNormal;`, `out vec3 vWorldPosition;` | to, co rasteryzator ma interpolować: argumenty wzoru oświetlenia, a nie jego wynik |
+| `out vec3 vNormal;`, `out vec3 vTangent;`, `out vec3 vWorldPosition;` | to, co rasteryzator ma interpolować: argumenty wzoru oświetlenia, a nie jego wynik. Styczna jest potrzebna shaderowi fragmentów do zbudowania macierzy TBN |
 | `vec4 worldPosition = uModel * vec4(aPosition, 1.0);` | pozycja w przestrzeni świata. Czwarta współrzędna 1: to punkt, więc przesunięcie działa. Wynik jest zapamiętany w zmiennej, bo jest potrzebny dwa razy |
 | `vWorldPosition = worldPosition.xyz;` | pozycja dla shadera fragmentów. Z niej powstaną kierunki do świateł i do oka |
 | `vNormal = uNormalMatrix * aNormal;` | normalna w przestrzeni świata. **Bez `normalize`**: i tak trzeba będzie normalizować po interpolacji, więc tutaj byłoby to zmarnowane |
+| `vTangent = mat3(uModel) * aTangent;` | styczna w przestrzeni świata, **inną macierzą niż normalna**. Styczna leży **w** powierzchni, jak krawędź trójkąta, więc obraca się i rozciąga razem z modelem: `mat3(uModel)`, macierz modelu bez przesunięcia. Macierz normalnych jest dla kierunków, które mają zostać prostopadłe do powierzchni. Z tymi dwiema macierzami para zostaje prostopadła przy dowolnej macierzy modelu ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.2) |
 | `gl_Position = uProjection * uView * worldPosition;` | dalsza droga wierzchołka: świat, widok, przycięcie. To samo co `uProjection * uView * uModel * vec4(aPosition, 1.0)`, tylko iloczyn `uModel * ...` jest użyty ponownie |
 
 ### 4.2 `lit.frag`: shader fragmentów, światło na fragment
@@ -276,10 +301,14 @@ void main() {
 // The light block and the function computeLighting. The same file is included by
 // gouraud.vert.
 #include "common/lighting.glsl"
+// The normal map and the function surfaceNormal. The same file is included by
+// textured.frag, for its debug view of the normals.
+#include "common/normal_map.glsl"
 
 // Inputs from the vertex shader, already blended for this fragment.
 in vec2 vUv;            // texture coordinate
 in vec3 vNormal;        // normal in world space, no longer exactly of length 1
+in vec3 vTangent;       // tangent in world space, no longer exactly of length 1
 in vec3 vWorldPosition; // position in world space
 
 // The texture (the number of a texture unit) and the colour of the material, as in
@@ -291,8 +320,12 @@ uniform vec3 uTint;
 out vec4 fragColor;
 
 void main() {
-    // Blending between the vertices shortens a normal, so it is brought back to length 1.
-    vec3 normal = normalize(vNormal);
+    // The normal of this fragment: the one of the model, or with normal mapping the one
+    // read from the normal map. This is the only place where normal mapping enters the
+    // lighting: the formulas of computeLighting do not know where their normal comes
+    // from. It needs a normal per fragment, which is why the Gouraud program (light per
+    // vertex) has no normal mapping.
+    vec3 normal = surfaceNormal(vNormal, vTangent, vUv);
     Lighting lighting = computeLighting(vWorldPosition, normal);
 
     // The colour of the surface takes part in the diffuse light only: a red wall
@@ -310,9 +343,10 @@ void main() {
 | Linia | Znaczenie |
 |---|---|
 | `#include "common/lighting.glsl"` | w tym miejscu loader wstawia blok `LightBlock`, uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` i funkcje oświetlenia. Linia stoi po `#version`, bo `#version` musi być pierwszą dyrektywą shadera |
-| `in vec3 vNormal;`, `in vec3 vWorldPosition;` | para do wyjść `lit.vert`. Wartości są już zinterpolowane dla tego fragmentu |
+| `#include "common/normal_map.glsl"` | drugi plik dołączany: sampler `uNormalMap`, przełącznik `uNormalMapEnabled` i funkcja `surfaceNormal`. Ten sam plik dołącza `textured.frag` dla podglądu normalnych, więc podgląd i oświetlenie liczą normalną tym samym kodem |
+| `in vec3 vNormal;`, `in vec3 vTangent;`, `in vec3 vWorldPosition;` | para do wyjść `lit.vert`. Wartości są już zinterpolowane dla tego fragmentu |
 | `uniform sampler2D uTexture;`, `uniform vec3 uTint;` | te same dwa uniformy co w `textured.frag` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4.2), ustawiane przez `MazeRenderer::draw`. Uniformu `uViewMode` tu nie ma: podglądy normalnych i UV rysuje program `textured` |
-| `vec3 normal = normalize(vNormal);` | przywraca długość 1 po interpolacji (sekcja 2.3) |
+| `vec3 normal = surfaceNormal(vNormal, vTangent, vUv);` | normalna tego fragmentu, w przestrzeni świata, o długości 1. Bez mapowania normalnych funkcja zwraca `normalize(vNormal)`: przywraca długość 1 po interpolacji (sekcja 2.3), dokładnie jak ta linia robiła wcześniej. Z mapowaniem zwraca normalną z mapy normalnych (sekcja 2.7). Komentarz nad linią mówi rzecz najważniejszą: **to jedyne miejsce, w którym mapowanie normalnych wchodzi do oświetlenia**, bo wzory `computeLighting` nie wiedzą, skąd jest ich normalna |
 | `Lighting lighting = computeLighting(vWorldPosition, normal);` | **to jest cieniowanie Phonga**: wzór oświetlenia wykonany dla tego jednego fragmentu, z jego własną pozycją i normalną |
 | `vec3 surface = texture(uTexture, vUv).rgb * uTint;` | kolor powierzchni: tekstura razy kolor materiału, dokładnie jak w `textured.frag` |
 | `fragColor = vec4(surface * lighting.diffuse + lighting.specular, 1.0);` | kolor powierzchni mnoży światło rozproszone (z otoczeniem), odbłysk jest dodany w kolorze światła. Alfa 1: modele są nieprzezroczyste |
@@ -331,7 +365,11 @@ Wynik nie jest przycinany w shaderze. Wartości powyżej 1 obcina framebuffer pr
 // includes. Only the place where the function is called differs.
 #include "common/lighting.glsl"
 
-// Inputs: the three attributes of gfx::Vertex, as in textured.vert.
+// Inputs: three of the four attributes of gfx::Vertex. The tangent (location 3) is not
+// read: it is only needed for normal mapping, and there is none here. A normal map holds
+// one normal per texel, so it can only change light that is computed per fragment. This
+// program computes the light at the vertices, 4 per wall face, and a texel between them
+// has no way to take part. That is one more thing Gouraud shading cannot show.
 layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the model
 layout(location = 1) in vec3 aNormal;   // direction the surface faces, length 1
 layout(location = 2) in vec2 aUv;       // texture coordinate (u, v)
@@ -369,12 +407,13 @@ void main() {
 | Linia | Znaczenie |
 |---|---|
 | `#include "common/lighting.glsl"` | ten sam plik co w `lit.frag`, tym razem w shaderze **wierzchołków**. Blok uniformów i zwykłe uniformy wolno czytać w każdym etapie potoku |
+| trzy linie `layout(location = ...) in` i komentarz nad nimi | **trzy z czterech** atrybutów `gfx::Vertex`. Stycznej (numer 3) shader nie deklaruje: służy tylko mapowaniu normalnych, a tego tu nie ma. Komentarz podaje powód: mapa normalnych ma jedną normalną na teksel, ten program liczy światło w wierzchołkach, 4 na lico ściany, i teksel między nimi nie ma jak wziąć udziału. Atrybut włączony w VAO, którego shader nie czyta, jest ignorowany |
 | `out vec3 vDiffuseLight;`, `out vec3 vSpecularLight;` | to, co rasteryzator ma interpolować: **gotowe światło**, w dwóch częściach. Dwie, bo shader fragmentów mnoży przez teksturę tylko pierwszą |
 | `vec3 normal = normalize(uNormalMatrix * aNormal);` | tutaj `normalize` jest potrzebne od razu: normalna idzie prosto do wzoru. Atrybut ma długość 1, ale macierz normalnych przy skali ją zmienia |
 | `Lighting lighting = computeLighting(worldPosition.xyz, normal);` | **to jest cieniowanie Gourauda**: ten sam wzór, wykonany dla wierzchołka |
 | `vDiffuseLight = ...`, `vSpecularLight = ...` | wynik idzie do rasteryzatora |
 
-Porównanie z `lit.vert`: wejścia i uniformy macierzy są identyczne. Różnią się wyjścia (normalna i pozycja albo gotowe światło) i jedno wywołanie funkcji.
+Porównanie z `lit.vert`: uniformy macierzy są identyczne, wejścia różnią się o styczną, której `gouraud.vert` nie czyta. Różnią się wyjścia (normalna, styczna i pozycja albo gotowe światło) i jedno wywołanie funkcji.
 
 ### 4.4 `gouraud.frag`: shader fragmentów, światło na wierzchołek
 
@@ -466,7 +505,8 @@ Liczby obu typów są umową z dwiema innymi stronami: kolejność `LightingMode
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
     // The two debug views (normals and texture coordinates as colours) only exist in the
     // textured program, and they show data, not light. So they are drawn without
-    // lighting whatever the lighting mode is.
+    // lighting whatever the lighting mode is. The view of the normals still follows the
+    // lighting in one thing: it shows the normals the chosen mode shades with.
     if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
         drawUnlitMaze(view, projection);
     } else {
@@ -504,6 +544,9 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
     shader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+    // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
+    // has no such uniform, and usesNormalMap is false for it anyway.
+    shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(shader, m_mazeWorld);
 }
@@ -517,7 +560,8 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 | `setMat4(VIEW_UNIFORM, ...)`, `setMat4(PROJECTION_UNIFORM, ...)` | te same dwie macierze co dla reszty klatki |
 | `setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)))` | **cały przełącznik Phong a Blinn-Phong**: liczba 0 albo 1 w jednym uniformie. Shader wybiera wzór instrukcją `if` w `specularFactor` |
 | `setFloat(SPECULAR_STRENGTH_UNIFORM, ...)`, `setFloat(SHININESS_UNIFORM, ...)` | dwa suwaki z grupy `Highlight (specular)` panelu Lights. `setFloat` to nowy setter (`glUniform1f`) |
-| `m_mazeRenderer.draw(shader, m_mazeWorld);` | ta sama funkcja, która rysuje programem `textured`: ustawia `uTexture`, `uTint`, `uModel` i `uNormalMatrix` i rysuje obiekt po obiekcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
+| `setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0)` | przełącznik mapowania normalnych programu `lit`. Uniform ma w shaderze typ `bool`, a taki ustawia się przez `glUniform1i`: 0 to fałsz, 1 to prawda. Program `gouraud` tego uniformu nie ma (wywołanie jest ignorowane), a `usesNormalMap` i tak zwraca dla niego fałsz |
+| `m_mazeRenderer.draw(shader, m_mazeWorld);` | ta sama funkcja, która rysuje programem `textured`: ustawia `uTexture`, `uNormalMap`, `uTint`, `uModel` i `uNormalMatrix`, podpina obie tekstury i rysuje obiekt po obiekcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
 
 Świateł tu nie ma: są w buforze uniformów, który `onRender` wypełnił przed wywołaniem `drawMaze` ([`../game/flashlight.md`](../game/flashlight.md)). Dzięki temu przełączenie programu nie wymaga wysłania świateł drugi raz.
 
@@ -525,11 +569,12 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 
 ### 5.5 Jak to zostało sprawdzone
 
-- **Testy jednostkowe** obejmują tylko stronę C++: liczby typów wyliczeniowych i `specularModelOf` (dwa przypadki w `tests/LightingTests.cpp`) oraz wartość startową trybu (`the lighting starts as a night scene shaded with Blinn-Phong`). Shaderów i wyboru programu test nie widzi: wymagają kontekstu OpenGL.
+- **Testy jednostkowe** obejmują tylko stronę C++: liczby typów wyliczeniowych i `specularModelOf` (dwa przypadki w `tests/LightingTests.cpp`), wartość startową trybu (`the lighting starts as a night scene shaded with Blinn-Phong`) oraz regułę `usesNormalMap` (`normal mapping is on by default and applies to every mode except Gouraud`). Shaderów i wyboru programu test nie widzi: wymagają kontekstu OpenGL.
 - **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego z pięciu programów linię zakończoną `OK` (tak wynika z kodu panelu).
 - **Obraz.** Cztery tryby z trzech miejsc w labiryncie są sprawdzone na zrzutach ekranu: widać opisane w sekcji 2 różnice (znikająca i rozmazana plama latarki w `Gouraud`, szersza gorąca plama `Blinn-Phong` na wprost ściany, mała różnica wzdłuż korytarza).
-- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, przeładowanie shaderów przyciskiem przy pięciu programach.
-- **macOS:** nic. Kompilator Apple jest surowszy od sterownika NVIDII i może odrzucić coś, co tu przechodzi.
+- **Mapy normalnych a tryb** (zrzuty ekranu, Windows, 2026-10-05): w trybach `Phong` i `Blinn-Phong` fugi czytają się jako rowki, a zrzuty trybów `Gouraud` i `Unlit` są identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych. Szczegóły i liczby: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11.
+- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem przy pięciu programach.
+- **macOS:** nic, także nic z map normalnych. Kompilator Apple jest surowszy od sterownika NVIDII i może odrzucić coś, co tu przechodzi.
 
 ## 6. Panel ImGui
 
@@ -563,7 +608,8 @@ Kontrolki, które biorą udział w pokazie:
 | Lights | `Strength` | `uSpecularStrength` | jasność odbłysku. Startowe 0,25 jest za słabe na pokaz |
 | Lights | `Shininess` | `uShininess` | rozmiar odbłysku |
 | Lights | `Flashlight on (key F)`, klawisz F | latarka | bez latarki widać odbłyski księżyca i świateł punktowych |
-| Assets | lista `View mode` | podgląd | `Normals as colour` pokazuje normalne, z których liczone jest światło (rysowane programem `textured`) |
+| Assets | pole wyboru `Normal mapping` | `m_lighting.normalMapping` | w trybach `Phong` i `Blinn-Phong` fugi i nierówności kamienia pojawiają się i znikają. W trybie `Gouraud` nie zmienia się nic |
+| Assets | lista `View mode` | podgląd | `Normals as colour` pokazuje normalne, z których liczone jest światło w wybranym trybie (rysowane programem `textured`): z map normalnych przy `Unlit`, `Phong` i `Blinn-Phong` z zaznaczonym `Normal mapping`, normalne siatki przy `Gouraud` albo odznaczonym polu |
 | Shaders | `Reload shaders` | przeładowanie pięciu programów | zmiana w `lit.frag` albo `common/lighting.glsl` bez restartu |
 
 ### 6.1 Scenariusz pokazu na obronie
@@ -579,12 +625,13 @@ Kontrolki, które biorą udział w pokazie:
 7. **Phong a Blinn-Phong na wprost.** Staję twarzą do ściany, `Lighting`: `Phong`, potem `Blinn-Phong`. Gorąca plama w środku jest w Blinnie-Phongu szersza i jaśniejsza. Mówię: latarka jest w oku, więc Phong liczy `cos(2t)`, a Blinn-Phong `cos(t)`. Przesuwam `Shininess` w trybie `Blinn-Phong` z 16 na 64: plama ma rozmiar plamy Phonga przy 16 (reguła "cztery razy").
 8. **Wzdłuż korytarza.** Patrzę w głąb korytarza i przełączam oba tryby: różnicy prawie nie ma. Mówię dlaczego (sekcja 2.6).
 9. **Światło z boku.** Naciskam F, żeby zgasić latarkę. Staję tak, żeby mieć światło punktowe zaułka przed sobą, i patrzę płasko na podłogę między mną a światłem. Przełączam `Phong` i `Blinn-Phong`: w Blinnie-Phongu odbłysk rozciąga się w smugę w moją stronę, w Phongu jest krótszy i kończy się ostrzej.
-10. **Jedna linia kodu.** Pokazuję `drawLitMaze`: wybór programu to jedna linia, wybór wzoru odbłysku to jeden uniform.
+10. **Mapy normalnych: czego Gouraud nie pokaże.** `Lighting`: `Phong`, staję blisko ściany i świecę na nią pod płaskim kątem: fugi są rowkami, skosy kamieni od strony światła są jasne. Przełączam na `Gouraud`: relief znika, zostają fugi namalowane w teksturze. Odznaczam i zaznaczam `Normal mapping` w panelu Assets w trybie `Gouraud`: obraz się nie zmienia. Mówię: mapa ma normalną na teksel, a ten program liczy światło w czterech wierzchołkach lica. Potem `View mode`: `Normals as colour` w trybie `Phong` (widać rysunek fug) i w trybie `Gouraud` (gładki kolor): podgląd pokazuje normalną, którą tryb naprawdę cieniuje. Pełny scenariusz map normalnych: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6.
+11. **Jedna linia kodu.** Pokazuję `drawLitMaze`: wybór programu to jedna linia, wybór wzoru odbłysku to jeden uniform.
 
 ## 7. Pułapki
 
 1. **Trzy znaczenia słowa "Phong".** Model odbicia, sposób cieniowania i wariant odbłysku (sekcja 1). Tryb `Gouraud` w grze używa modelu odbicia Phonga i odbłysku Phonga, a nie używa cieniowania Phonga.
-2. **Brak `normalize` w shaderze fragmentów.** Interpolowana normalna jest krótsza niż 1. Na płaskich ścianach labiryntu tego nie widać (wszystkie wierzchołki lica mają tę samą normalną), więc błąd przeszedłby niezauważony do pierwszego modelu z gładkimi normalnymi.
+2. **Brak `normalize` w shaderze fragmentów.** Interpolowana normalna jest krótsza niż 1. Dziś normalizuje ją pierwsza linia funkcji `surfaceNormal` w `common/normal_map.glsl`, a nie sam `lit.frag`. Na płaskich ścianach labiryntu przy wyłączonym mapowaniu normalnych braku nie byłoby widać (wszystkie wierzchołki lica mają tę samą normalną), więc błąd przeszedłby niezauważony do pierwszego modelu z gładkimi normalnymi. Przy włączonym mapowaniu druga normalizacja, na końcu funkcji, jest potrzebna zawsze: filtr tekstury i mipmapy mieszają sąsiednie teksele, a mieszanka wektorów jednostkowych jest krótsza niż 1.
 3. **`normalize` w złym miejscu w Gouraudzie.** W `gouraud.vert` normalna idzie prosto do wzoru, więc musi być znormalizowana **w shaderze wierzchołków**. Przeniesienie wzorca z `lit.vert` (bez `normalize`) dałoby złe światło przy każdej skali innej niż 1.
 4. **Wspólny plik, dwa etapy.** Błąd składni w `common/lighting.glsl` psuje **oba** programy naraz: `lit` (shader fragmentów) i `gouraud` (shader wierzchołków). Po przeładowaniu oba zostają przy poprzedniej wersji i panel Shaders pokazuje dwie czerwone linie. Funkcja, której wolno użyć tylko w shaderze fragmentów (na przykład `dFdx` albo `discard`), wstawiona do tego pliku zepsułaby tylko `gouraud`.
 5. **Liczby trybu w trzech miejscach.** Kolejność `game::LightingMode`, napis `LIGHTING_MODE_ITEMS` w panelu i porównanie `uSpecularModel == 0` w shaderze. Test pilnuje tylko liczb w C++. Zamiana kolejności napisów w panelu nie daje żadnego błędu: lista pokazuje jedną nazwę, a ekran inny tryb.
@@ -593,10 +640,11 @@ Kontrolki, które biorą udział w pokazie:
 8. **Porównywanie trybów z różnym wykładnikiem.** Ten sam wykładnik daje w Blinnie-Phongu szerszy odbłysk. Kto chce pokazać, że "wzory dają to samo", musi w Blinnie-Phongu dać wykładnik około cztery razy większy.
 9. **Odbłysk po ciemnej stronie.** Bez warunku `dot(normal, toLight) <= 0` wzór Blinna-Phonga potrafi dać odbłysk na powierzchni odwróconej od światła. Warunek jest w `specularFactor`.
 10. **Gouraud to nie "gorsza tekstura".** Na pierwszy rzut oka tryb `Gouraud` wygląda jak scena prawie bez latarki. To nie błąd shadera ani tłumienia: wzory są te same, tylko wierzchołki są za rzadko.
-11. **Podgląd z panelu Assets wyłącza oświetlenie.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` pozornie nie działa: labirynt rysuje `textured`. Kostki świateł zostają.
+11. **Podgląd z panelu Assets wyłącza oświetlenie.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` pozornie nie działa: labirynt rysuje `textured`. Kostki świateł zostają. Jeden wyjątek od "nie działa": podgląd normalnych pokazuje normalne siatki w trybie `Gouraud`, a normalne z map w pozostałych, więc przełączenie na `Gouraud` i z powrotem zmienia jego obraz.
 12. **Prześwietlenie maskuje różnicę.** Przy dużej intensywności latarki środek plamy jest obcięty do bieli w obu trybach odbłysku i różnica między nimi znika. Pokaz robię przy startowej intensywności.
 13. **Brak gammy zmienia wygląd odbłysku.** Bez korekcji gamma przejścia jasności są inne niż w poprawnym rachunku, więc odbłyski wyglądają na mniejsze i ostrzejsze ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
-14. **macOS, niesprawdzone.** Żaden z czterech plików nie był kompilowany przez kompilator GLSL Apple. Ryzyka są wypisane w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+14. **"Normal mapping nie działa" w trybie `Gouraud`.** Pole wyboru w panelu Assets niczego wtedy nie zmienia. To nie błąd: `usesNormalMap` jest dla tego trybu fałszywe, a `gouraud.vert` nie ma ani samplera mapy, ani stycznej.
+15. **macOS, niesprawdzone.** Żaden z czterech plików ani `common/normal_map.glsl` nie był kompilowany przez kompilator GLSL Apple. Ryzyka są wypisane w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ## 8. Ćwiczenia
 
@@ -608,7 +656,7 @@ Kontrolki, które biorą udział w pokazie:
 4. **Wykładnik.** Dla kąta `t` = 10 stopni i światła w oku policz odbłysk Phonga z wykładnikiem 8 i Blinna-Phonga z wykładnikiem 32. Co pokazuje wynik? (Odpowiedź: `cos(20)^8 = 0,61` i `cos(10)^32 = 0,61`: reguła "cztery razy".)
 5. **Cztery tryby.** Stań przed ścianą i przejdź listę `Lighting` od góry do dołu. Zapisz dla każdego trybu: czy widać plamę latarki, czy widać odbłysk, czy widać kostki świateł.
 6. **Gouraud z gęstą siatką w głowie.** W trybie `Gouraud` znajdź miejsce, gdzie plama latarki jest widoczna. Które wierzchołki ją "trzymają"? Sprawdź, wchodząc do panelu Collision i włączając rysowanie pudełek, gdzie kończą się odcinki ścian.
-7. **Normalizacja.** W `lit.frag` zamień `normalize(vNormal)` na `vNormal`. Czy coś się zmieniło? Dlaczego nie, i jaki model by to zmienił?
+7. **Normalizacja.** Odznacz `Normal mapping` w panelu Assets. W `common/normal_map.glsl` zamień `vec3 n = normalize(normal);` na `vec3 n = normal;`. Czy coś się zmieniło? Dlaczego nie, i jaki model by to zmienił?
 8. **Blinn-Phong bez warunku.** W `specularFactor` usuń cały pierwszy `if`. Ustaw `Strength` 1, `Shininess` 4, tryb `Blinn-Phong`, zgaś latarkę. Poszukaj odbłysku księżyca na stronach ścian, których księżyc nie oświetla.
 9. **Odbłysk jako jedyne światło.** W `lit.frag` zamień ostatnią linię na `fragColor = vec4(lighting.specular, 1.0);`. Przełączaj `Phong` i `Blinn-Phong`, chodząc po labiryncie. To najczystszy pokaz różnicy obu wzorów.
 10. **Światło na wierzchołek jako obraz.** W `gouraud.frag` zamień ostatnią linię na `fragColor = vec4(vDiffuseLight, 1.0);`. Widać samo interpolowane światło, bez tekstury: policz trójkąty na licu ściany.
@@ -628,8 +676,8 @@ Kontrolki, które biorą udział w pokazie:
 4. **Co w trybie `Gouraud` jest nadal liczone dla fragmentu?**
    Odczyt tekstury i połączenie jej ze światłem. Dlatego rysunek kamienia jest ostry.
 
-5. **Dlaczego w `lit.frag` jest `normalize(vNormal)`?**
-   Interpolacja liniowa między wektorami jednostkowymi daje wektor krótszy niż 1, a iloczyn skalarny jest cosinusem tylko dla wektorów o długości 1.
+5. **Dlaczego interpolowana normalna jest normalizowana w shaderze fragmentów i gdzie to się dzieje?**
+   Interpolacja liniowa między wektorami jednostkowymi daje wektor krótszy niż 1, a iloczyn skalarny jest cosinusem tylko dla wektorów o długości 1. Robi to pierwsza linia funkcji `surfaceNormal` (`vec3 n = normalize(normal);`), którą `lit.frag` woła zamiast dawnego `normalize(vNormal)`.
 
 6. **Dlaczego w `lit.vert` nie ma `normalize`, a w `gouraud.vert` jest?**
    W `lit` normalna jest tylko przekazywana dalej i normalizowana po interpolacji. W `gouraud` idzie od razu do wzoru oświetlenia.
@@ -674,7 +722,16 @@ Kontrolki, które biorą udział w pokazie:
     Gouraud: wzór wykonuje się raz na wierzchołek zamiast raz na fragment. Różnicy czasu klatki nie mierzyłem.
 
 20. **Czy mapy normalnych zadziałają w trybie `Gouraud`?**
-    Nie. Mapa normalnych zmienia normalną w każdym tekselu, a w Gouraudzie światło jest już policzone w wierzchołkach. Mapy normalnych (następna część M4) wymagają światła na fragment.
+    Nie. Mapa normalnych zmienia normalną w każdym tekselu, a w Gouraudzie światło jest już policzone w wierzchołkach, 4 na lico ściany. Mapy normalnych wymagają światła na fragment, więc w projekcie działają w programie `lit` (tryby `Phong` i `Blinn-Phong`), a `gouraud.vert` nie czyta nawet stycznej. Funkcja `game::usesNormalMap` zwraca dla trybu `Gouraud` fałsz.
+
+21. **Skąd `lit.frag` bierze normalną do wzoru oświetlenia?**
+    Z funkcji `surfaceNormal(vNormal, vTangent, vUv)` z pliku `common/normal_map.glsl`. Bez mapowania normalnych to znormalizowana normalna siatki, z mapowaniem normalna odczytana z mapy normalnych i przeniesiona macierzą TBN do przestrzeni świata. `computeLighting` nie wie, która to z nich.
+
+22. **Dlaczego `lit.vert` przenosi normalną przez `uNormalMatrix`, a styczną przez `mat3(uModel)`?**
+    Normalna ma zostać prostopadła do powierzchni, a styczna leży w powierzchni i zachowuje się jak krawędź trójkąta. Przy nierównej skali to dwa różne przekształcenia: odwrotna transponowana dla normalnej, zwykła macierz modelu bez przesunięcia dla stycznej. Dla labiryntu (skala 1) obie macierze są równe.
+
+23. **Co pokazuje podgląd `Normals as colour` w trybie `Gouraud`, a co w trybie `Phong`?**
+    W `Gouraud` gładkie normalne siatki, w `Phong` (przy zaznaczonym `Normal mapping`) normalne z map normalnych, z rysunkiem fug. Podgląd pokazuje normalną, którą wybrany tryb naprawdę cieniuje: decyduje `usesNormalMap`.
 
 ## 10. Źródła
 

@@ -25,10 +25,12 @@ namespace gfx {
 /// before the window.
 class UniformBuffer {
 public:
-    /// Creates a buffer of sizeInBytes bytes, all zero, and attaches it to the uniform
-    /// buffer binding point number bindingPoint (glBindBufferBase). Binding points are
-    /// numbered slots of the OpenGL context, like texture units: the buffer is put into
-    /// a slot here, and a shader program is told to read its block from that slot.
+    /// Creates a buffer of sizeInBytes bytes and attaches it to the uniform buffer
+    /// binding point number bindingPoint (glBindBufferBase). The contents are undefined
+    /// until the first update(): glBufferData without data only reserves the memory.
+    /// Binding points are numbered slots of the OpenGL context, like texture units: the
+    /// buffer is put into a slot here, and a shader program is told to read its block
+    /// from that slot.
     UniformBuffer(std::size_t sizeInBytes, GLuint bindingPoint);
     ~UniformBuffer();
 

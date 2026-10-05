@@ -1,7 +1,7 @@
 # Moduł gfx: wczytywanie shaderów na żywo
 
 Kamień milowy: M1, panel rozszerzony do trzech programów w M2 + M3 i do pięciu w M4. Temat wykładu: 2 (Programowalny potok).
-Kod: funkcja `reload` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), panel w [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp) i [`src/debug/panels/ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp), shadery w [`assets/shaders/`](../../../assets/shaders/) (pięć par: `basic`, `textured`, `color`, `lit`, `gouraud`, i jeden plik dołączany, `common/lighting.glsl`), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/main.cpp`](../../../src/main.cpp).
+Kod: funkcja `reload` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), panel w [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp) i [`src/debug/panels/ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp), shadery w [`assets/shaders/`](../../../assets/shaders/) (pięć par: `basic`, `textured`, `color`, `lit`, `gouraud`, i dwa pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/main.cpp`](../../../src/main.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument jest dalszym ciągiem [`shaders.md`](shaders.md) (potok, GLSL, shadery `basic.*`) i [`shader-class.md`](shader-class.md) (kompilacja, linkowanie i reszta klasy `gfx::Shader`). Tutaj jest podmiana programu w działającej aplikacji i panel "Shaders". Trzecia część tematu, uniformy, jest w [`uniforms.md`](uniforms.md). Dołączanie plików dyrektywą `#include` i nazwy plików w błędach opisuje [`shader-includes.md`](shader-includes.md), a bloki uniformów, których wiązanie `reload` odtwarza, [`uniform-buffers.md`](uniform-buffers.md). Jak nakładka z panelami jest wpięta w program, opisuje [`../debug-ui.md`](../debug-ui.md), a skąd program bierze pliki z `assets/`, [`../core/paths.md`](../core/paths.md).
 
@@ -56,12 +56,12 @@ Ten temat nie ma własnych shaderów. Przeładowywane jest wszystkie pięć par 
 | Para | Co rysuje | Pole w `NightMazeApp` | Dokument |
 |---|---|---|---|
 | `basic.vert`, `basic.frag` | kostkę nad narożną komórką labiryntu | `m_shader` | [`shaders.md`](shaders.md), sekcja 4 |
-| `textured.vert`, `textured.frag` | labirynt bez oświetlenia: w trybie `Unlit` i w obu widokach diagnostycznych (normalne, UV) | `m_texturedShader` | [`textures.md`](textures.md), sekcja 4 |
+| `textured.vert`, `textured.frag` | labirynt bez oświetlenia: w trybie `Unlit` i w obu widokach diagnostycznych (normalne, UV). Dołącza `common/normal_map.glsl` | `m_texturedShader` | [`textures.md`](textures.md), sekcja 4 |
 | `color.vert`, `color.frag` | linie pudełek kolizji i znaczniki świateł punktowych | `m_colorShader` | [`../scene/collision.md`](../scene/collision.md), sekcja 4 |
 | `lit.vert`, `lit.frag` | labirynt z oświetleniem liczonym dla każdego fragmentu (tryby Phong i Blinn-Phong) | `m_litShader` | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 | `gouraud.vert`, `gouraud.frag` | labirynt z oświetleniem liczonym dla każdego wierzchołka (tryb Gouraud) | `m_gouraudShader` | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 
-Jedenastym plikiem jest [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). Nie jest shaderem i nie ma własnego programu: dołączają go `lit.frag` i `gouraud.vert` ([`shader-includes.md`](shader-includes.md), sekcja 4). Przy przeładowaniu jest czytany od nowa przez oba programy (sekcja 5.2).
+Oprócz dziesięciu plików shaderów są dwa pliki dołączane. Żaden nie jest shaderem i nie ma własnego programu. [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) dołączają `lit.frag` i `gouraud.vert`, a [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl) (od drugiej części M4) dołączają `lit.frag` i `textured.frag` ([`shader-includes.md`](shader-includes.md), sekcje 1 i 4). Przy przeładowaniu każdy z nich jest czytany od nowa przez oba swoje programy (sekcja 5.2).
 
 Gra startuje w trybie Blinn-Phong, więc labirynt rysuje program `lit`. Dlatego pokaz na obronie (sekcja 6.4) zmienia jedną linię w `lit.frag`: labirynt wypełnia cały ekran, kostkę widać dopiero z góry, a zmiana w `textured.frag` nie byłaby w tym trybie widoczna wcale (pułapka 10).
 
@@ -121,7 +121,7 @@ bool Shader::reload() {
 
 **Wiązanie bloku uniformów po przeładowaniu.** Programy `lit` i `gouraud` czytają światła z bloku uniformów `LightBlock`, podłączonego do punktu wiązania 1 wywołaniem `Shader::bindUniformBlock`. To połączenie jest zapisane w obiekcie programu, a `reload()` tworzy **nowy** obiekt programu, w którym każdy blok jest z powrotem na punkcie 0. Gdyby na tym poprzestać, po pierwszym naciśnięciu `Reload shaders` oba programy czytałyby światła z punktu, do którego nie jest podłączony żaden bufor, bez żadnego błędu w konsoli. Dlatego `Shader` zapamiętuje każdą prośbę w wektorze `m_blockBindings` i powtarza ją w pętli na nowym programie, a kod gry woła `LightRig::connect` tylko raz, w konstruktorze `NightMazeApp`. To inna sytuacja niż ze zwykłymi uniformami, które też wracają do zera, ale są wysyłane co klatkę ([`uniforms.md`](uniforms.md), sekcja 5.2): punktu wiązania nikt co klatkę nie ustawia. Czym jest blok, punkt wiązania i co dokładnie robi `applyBlockBinding`, opisuje [`uniform-buffers.md`](uniform-buffers.md), a zmianę w klasie linia po linii [`shader-class.md`](shader-class.md) (sekcja 5.8).
 
-**Pliki dołączane są czytane przy każdym przeładowaniu.** `buildProgram` woła `compileShader` dla obu plików, a ta funkcja przy każdym wywołaniu czyta plik shadera i każdy plik wskazany linią `#include` od nowa: nic nie jest zapamiętywane między wczytaniami ([`shader-includes.md`](shader-includes.md), sekcja 5.8). `common/lighting.glsl` dołączają dwa programy, więc jedno naciśnięcie przycisku czyta ten plik dwa razy: raz przy kompilacji `lit.frag`, raz przy kompilacji `gouraud.vert`. Zmiana w nim trafia do obu programów jednym kliknięciem, a błąd w nim zatrzymuje oba naraz (sekcja 6.4, krok 7).
+**Pliki dołączane są czytane przy każdym przeładowaniu.** `buildProgram` woła `compileShader` dla obu plików, a ta funkcja przy każdym wywołaniu czyta plik shadera i każdy plik wskazany linią `#include` od nowa: nic nie jest zapamiętywane między wczytaniami ([`shader-includes.md`](shader-includes.md), sekcja 5.8). `common/lighting.glsl` dołączają dwa programy, więc jedno naciśnięcie przycisku czyta ten plik dwa razy: raz przy kompilacji `lit.frag`, raz przy kompilacji `gouraud.vert`. Zmiana w nim trafia do obu programów jednym kliknięciem, a błąd w nim zatrzymuje oba naraz (sekcja 6.4, krok 7). To samo dotyczy `common/normal_map.glsl`, tylko para jest inna: `lit.frag` i `textured.frag`. Błąd w tym pliku zatrzymałby więc programy `lit` i `textured`, a `gouraud` wczytałby się normalnie (wniosek z kodu: takiego błędu nikt jeszcze nie wstawiał).
 
 Możliwe stany obiektu:
 
@@ -160,7 +160,7 @@ Test nie obejmuje `DebugUI::draw` ani `main.cpp` (te sprawdza kompilacja i uruch
 
 **Panel z trzema programami (M2 + M3).** Na Windowsie (MSVC 19.44, 2026-10-05) ówczesny kod panelu kompilował się bez ostrzeżeń w konfiguracjach Debug i Release, a gra startowała bez linii `[error]`, czyli wszystkie trzy programy wczytywały się przy starcie. Przycisku `Reload shaders` w tej wersji nikt nie nacisnął, ani na Windowsie, ani na macOS.
 
-**Panel z pięcioma programami (M4).** Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74) dzisiejszy kod panelu i klasy buduje się w Debug i w Release bez ostrzeżeń, clang-format i clang-tidy nie mają uwag, a gra startuje bez linii `[error]` i bez linii `GL_`: pięć programów wczytuje się przy starcie, a dwa z nich z dołączonym plikiem. Część bez okna ma testy jednostkowe: 22 przypadki dla rozwijania dołączeń i nazw plików w błędach ([`shader-includes.md`](shader-includes.md), sekcja 5.11), w programie testowym, który ma dziś 149 przypadków i 61240 asercji i przechodzi w obu konfiguracjach. Sprawdzone na zrzutach ekranu: błąd wewnątrz `common/lighting.glsl` jest pokazany w panelu z nazwą tego pliku, a labirynt rysuje w tym czasie poprzedni program. Zmierzona linia sterownika po zamianie numeru na nazwę:
+**Panel z pięcioma programami (M4).** Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74) dzisiejszy kod panelu i klasy buduje się w Debug i w Release bez ostrzeżeń, clang-format i clang-tidy nie mają uwag, a gra startuje bez linii `[error]` i bez linii `GL_`: pięć programów wczytuje się przy starcie, a trzy z nich z dołączonymi plikami (`lit` z dwoma, `gouraud` i `textured` z jednym). Część bez okna ma testy jednostkowe: 22 przypadki dla rozwijania dołączeń i nazw plików w błędach ([`shader-includes.md`](shader-includes.md), sekcja 5.11), w programie testowym, który ma dziś 163 przypadki i 62220 asercji i przechodzi w obu konfiguracjach. Sprawdzone na zrzutach ekranu: błąd wewnątrz `common/lighting.glsl` jest pokazany w panelu z nazwą tego pliku, a labirynt rysuje w tym czasie poprzedni program. Zmierzona linia sterownika po zamianie numeru na nazwę:
 
 ```text
 common/lighting.glsl(63) : error C0000: syntax error, unexpected ';', expecting "::" at token ";"
@@ -241,9 +241,9 @@ void drawShadersPanel(std::span<gfx::Shader* const> shaders) {
         // reloads every program: after editing a file there is no need to know which
         // program it belongs to, and a file that several programs include
         // (common/lighting.glsl) is read again by each of them. The results of reload()
-        // are not needed here: the lines
-        // below read them from lastError(). A program whose reload fails keeps working
-        // with its previous version, and the others are reloaded all the same.
+        // are not needed here: the lines below read them from lastError(). A program
+        // whose reload fails keeps working with its previous version, and the others are
+        // reloaded all the same.
         if (ImGui::Button("Reload shaders")) {
             for (gfx::Shader* shader : shaders) {
                 shader->reload();
@@ -317,7 +317,8 @@ Akcesory w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
     /// Shader program of the cube, exposed so the debug UI can reload it live.
     gfx::Shader& shader() { return m_shader; }
 
-    /// Shader program of the maze (textured models), exposed for the same reason.
+    /// Shader program of the maze without lighting and of its debug views (textured
+    /// models), exposed for the same reason.
     gfx::Shader& texturedShader() { return m_texturedShader; }
 
     /// Shader program of the collision box lines and of the light markers, exposed for
@@ -343,7 +344,8 @@ Pola w [`DebugContext.hpp`](../../../src/debug/DebugContext.hpp). Nie stoją obo
 ```cpp
     /// Shader program of the maze (textured models), editable: reloaded like shader.
     gfx::Shader& texturedShader;
-    /// Shader program of the collision box lines, editable: reloaded like shader.
+    /// Shader program of the collision box lines and of the light markers, editable:
+    /// reloaded like shader.
     gfx::Shader& colorShader;
 ```
 
@@ -488,7 +490,7 @@ Stan na Windowsie (2026-10-05): panel jest skompilowany przez MSVC 19.44 bez ost
 8. **Pusty wskaźnik na liście programów.** `drawShadersPanel` woła `shader->reload()` i `*shader` bez sprawdzenia. Komentarz w nagłówku mówi, że żaden wskaźnik nie może być pusty, i `DebugUI::draw` buduje listę z adresów pięciu referencji, które puste być nie mogą. Kto doda program do listy inaczej, musi tego pilnować sam.
 9. **Jedno kliknięcie przeładowuje wszystko.** Nie da się przeładować jednego programu. Po kliknięciu wszystkie pięć dostaje nowe identyfikatory, także te, których pliki się nie zmieniły. To celowe uproszczenie: nie muszę wiedzieć, do którego programu należy plik, który właśnie edytowałem. Przy pliku dołączanym ma to dodatkowy sens: `common/lighting.glsl` należy do dwóch programów naraz.
 10. **Edycja shadera, którego akurat nie widać.** Labirynt rysuje w danej chwili **jeden** z trzech programów. `textured` tylko w trybie oświetlenia `Unlit` albo w widoku diagnostycznym (normalne, UV), `gouraud` tylko w trybie Gouraud, a `lit` w trybach Phong i Blinn-Phong, przy zwykłym widoku. Po starcie jest to `lit`, więc zmiana w `textured.frag` albo w `gouraud.frag` nie zmieni obrazu, dopóki nie przełączę trybu w panelu Renderer. Zmiana w `color.frag` jest widoczna na znacznikach świateł (poza trybem `Unlit`) i na liniach pudełek kolizji, gdy są włączone, a zmiany w `basic.frag` nie widać z wnętrza labiryntu, bo kostka jest nad ścianami w przeciwległym narożniku. `OK` przy braku zmiany na ekranie nie zawsze oznacza nieodświeżoną kopię (pułapka 6).
-11. **Jeden błąd, dwie czerwone linie.** Błąd w `common/lighting.glsl` psuje wczytanie i programu `lit`, i programu `gouraud`, bo oba dołączają ten plik. Dwa komunikaty w panelu nie oznaczają dwóch pomyłek: trzeba przeczytać linię sterownika, która w obu wskazuje ten sam plik i tę samą linię ([`shader-includes.md`](shader-includes.md), sekcja 6). W konsoli są wtedy dwie linie `[error]` na jedno kliknięcie.
+11. **Jeden błąd, dwie czerwone linie.** Błąd w `common/lighting.glsl` psuje wczytanie i programu `lit`, i programu `gouraud`, bo oba dołączają ten plik. Błąd w `common/normal_map.glsl` zrobiłby to samo z parą `lit` i `textured`. Dwa komunikaty w panelu nie oznaczają dwóch pomyłek: trzeba przeczytać linię sterownika, która w obu wskazuje ten sam plik i tę samą linię ([`shader-includes.md`](shader-includes.md), sekcja 6). W konsoli są wtedy dwie linie `[error]` na jedno kliknięcie.
 12. **Punkt wiązania bloku uniformów ustawiony obok klasy.** Kto zawołałby `glUniformBlockBinding` sam, na identyfikatorze programu, straciłby to ustawienie przy pierwszym udanym `reload()`: nowy program zaczyna od punktu 0, a `Shader` powtarza tylko te prośby, które przeszły przez `bindUniformBlock` i leżą w `m_blockBindings` (sekcja 5.2). Objawem byłby labirynt, który po przeładowaniu jest oświetlony danymi z punktu bez bufora (wynik takiego odczytu jest nieokreślony, w praktyce spodziewam się ciemnej sceny), bez żadnej linii `[error]`. Tego nie próbowałem.
 
 Pułapki dotyczące kompilacji, linkowania i samej klasy `Shader` są w [`shader-class.md`](shader-class.md) (sekcja 7), dotyczące uniformów po przeładowaniu w [`uniforms.md`](uniforms.md) (sekcja 7), a dotyczące dołączania plików w [`shader-includes.md`](shader-includes.md) (sekcja 7).
@@ -539,7 +541,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8): program
     Program czyta tam kopię katalogu `assets` obok pliku `.exe`, a nie pliki z repozytorium. Po zapisaniu pliku trzeba więc wykonać `cmake --build --preset debug --target copy_assets`, które odświeża kopię, i dopiero wtedy nacisnąć `Reload shaders`. Pełnego buildu przy działającym programie użyć się nie da: Windows blokuje plik `.exe`, a generator Visual Studio próbuje go zlinkować i kończy błędem `LNK1168`. Target `copy_assets` nie zależy od programu, więc go nie dotyka. Na macOS obok programu jest dowiązanie do katalogu w repozytorium, więc wystarcza sam przycisk.
 
 11. **Zmieniłem `common/lighting.glsl`. Które programy to zobaczą po kliknięciu i dlaczego?**
-    `lit` i `gouraud`, bo `lit.frag` i `gouraud.vert` dołączają ten plik. `compileShader` czyta pliki dołączane przy każdym wywołaniu, niczego nie zapamiętuje, więc plik jest czytany dwa razy na jedno kliknięcie, raz dla każdego programu. Błąd w nim zatrzymuje wczytanie obu, a oba zostają przy poprzednich wersjach.
+    `lit` i `gouraud`, bo `lit.frag` i `gouraud.vert` dołączają ten plik (drugi plik wspólny, `common/normal_map.glsl`, dołączają `lit.frag` i `textured.frag`). `compileShader` czyta pliki dołączane przy każdym wywołaniu, niczego nie zapamiętuje, więc plik jest czytany dwa razy na jedno kliknięcie, raz dla każdego programu. Błąd w nim zatrzymuje wczytanie obu, a oba zostają przy poprzednich wersjach.
 
 12. **Dlaczego `reload()` ustawia wiązania bloków uniformów, skoro zwykłych uniformów nie ustawia?**
     Oba rodzaje stanu należą do obiektu programu i w nowym programie wracają do wartości początkowych. Zwykłe uniformy gra wysyła co klatkę, więc nowy program dostaje je przed pierwszym rysowaniem. Punkt wiązania bloku jest ustawiany raz, przy starcie, przez `bindUniformBlock`. Dlatego `Shader` zapamiętuje te prośby w `m_blockBindings` i powtarza je na nowym programie przed podmianą.

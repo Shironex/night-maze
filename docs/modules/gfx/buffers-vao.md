@@ -37,6 +37,7 @@ Stan na dziś: `game::NightMazeApp` ma jeden `gfx::VertexArray` i dwa obiekty `g
 | kolor | `vec3` | 3 |
 | normalna (od tematu 6) | `vec3` | 3 |
 | współrzędne tekstury (od tematu 5) | `vec2` | 2 |
+| styczna (od map normalnych, druga część M4) | `vec3` | 3 |
 
 Po stronie C++ dane wierzchołków to zwykła, płaska tablica liczb `float`. OpenGL nie wie, że pierwsze trzy to pozycja, a następne trzy to kolor: trzeba mu to opisać.
 
@@ -588,7 +589,7 @@ Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każd
 3. **Krok w złych jednostkach.** Ustaw `VERTEX_STRIDE` na 6 (liczba `float`, a nie bajtów). Opisz wynik. To jedna z najczęstszych pomyłek.
 4. **Rozmiar w elementach.** W konstruktorze podaj jako rozmiar bufora wierzchołków samo `VERTICES.size()` (144 zamiast 576 bajtów). Ile pełnych wierzchołków trafiło na kartę? Co widać i dlaczego wynik może być inny przy każdym uruchomieniu?
 5. **Wyłączony atrybut.** Usuń drugie wywołanie `setFloatAttribute` (kolor). Jaki kolor ma kostka i skąd ta wartość (sekcja 7, pułapka 5)?
-6. **Krok i przesunięcie na kartce.** Wierzchołek ma pozycję (`vec3`), normalną (`vec3`) i współrzędne tekstury (`vec2`), w tej kolejności, w układzie przeplatanym. Podaj krok oraz przesunięcie każdego atrybutu w bajtach i zapisz stałe w stylu `COLOR_OFFSET`. W którym bajcie bufora zaczynają się współrzędne tekstury wierzchołka numer 2?
+6. **Krok i przesunięcie na kartce.** Wierzchołek ma pozycję (`vec3`), normalną (`vec3`) i współrzędne tekstury (`vec2`), w tej kolejności, w układzie przeplatanym. Podaj krok oraz przesunięcie każdego atrybutu w bajtach i zapisz stałe w stylu `COLOR_OFFSET`. W którym bajcie bufora zaczynają się współrzędne tekstury wierzchołka numer 2? Potem dopisz na końcu styczną (`vec3`): co się zmienia? (Tak wygląda dziś `gfx::Vertex`: krok 44, przesunięcia 0, 12, 24 i 32, [`mesh.md`](mesh.md), sekcja 2.2.)
 7. **Przeniesienie na kartce.** Dla `gfx::Buffer a(GL_ARRAY_BUFFER, data, size); gfx::Buffer b = std::move(a);` zapisz `m_id` i `m_target` obu obiektów po każdej linii (przyjmij identyfikator 1). Ile razy i z jaką wartością zostanie zawołane `glDeleteBuffers`? Czy VAO, który zapisał bufor 1 przed przeniesieniem, trzeba konfigurować ponownie?
 8. **Przesunięcie jako wskaźnik.** Jaką wartość ma `offsetAsPointer` w drugim wywołaniu `setFloatAttribute` z konstruktora? Co by się stało, gdyby OpenGL naprawdę odczytał pamięć pod tym adresem, i dlaczego tego nie robi? Jaką wartość ma ostatni argument `glDrawElements` i co ona znaczy?
 

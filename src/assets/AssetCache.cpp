@@ -15,12 +15,21 @@ namespace assets {
 
 namespace {
 
-// The white stand-in texture: one pixel of 3 bytes (red, green, blue), all at the maximum.
-constexpr int WHITE_TEXTURE_SIZE = 1;
-constexpr int WHITE_TEXTURE_CHANNELS = 3;
+// The two stand-in textures are one pixel of 3 bytes (red, green, blue) each.
+constexpr int FALLBACK_TEXTURE_SIZE = 1;
+constexpr int FALLBACK_TEXTURE_CHANNELS = 3;
+
+// The white one: all three bytes at the maximum.
 constexpr unsigned char FULL_BRIGHTNESS = 255;
-constexpr std::array<unsigned char, WHITE_TEXTURE_CHANNELS> WHITE_PIXEL = {
+constexpr std::array<unsigned char, FALLBACK_TEXTURE_CHANNELS> WHITE_PIXEL = {
     FULL_BRIGHTNESS, FULL_BRIGHTNESS, FULL_BRIGHTNESS};
+
+// The flat normal map: the direction (0, 0, 1) of tangent space, written the way
+// a normal map stores a direction, byte = (component * 0.5 + 0.5) * 255. 0 becomes 127.5,
+// which is rounded to 128, and 1 becomes 255.
+constexpr unsigned char HALF_BRIGHTNESS = 128;
+constexpr std::array<unsigned char, FALLBACK_TEXTURE_CHANNELS> FLAT_NORMAL_PIXEL = {
+    HALF_BRIGHTNESS, HALF_BRIGHTNESS, FULL_BRIGHTNESS};
 
 // Anisotropy level 1 means "one sample": no anisotropic filtering.
 constexpr float NO_ANISOTROPY = 1.0F;
@@ -48,8 +57,10 @@ const ObjMaterial* findMaterial(const ObjModel& model, const std::string& name) 
 } // namespace
 
 AssetCache::AssetCache()
-    : m_whiteTexture(WHITE_TEXTURE_SIZE, WHITE_TEXTURE_SIZE, WHITE_TEXTURE_CHANNELS,
-                     WHITE_PIXEL.data()) {}
+    : m_whiteTexture(FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_CHANNELS,
+                     WHITE_PIXEL.data()),
+      m_flatNormalTexture(FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_SIZE, FALLBACK_TEXTURE_CHANNELS,
+                          FLAT_NORMAL_PIXEL.data()) {}
 
 const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
     const std::filesystem::path key = cacheKey(path);
@@ -80,8 +91,8 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
         return nullptr;
     }
 
-    // Each part of the file becomes a part of the model, with the colour and the texture
-    // of its material looked up now, once, instead of in every frame.
+    // Each part of the file becomes a part of the model, with the colour, the texture and
+    // the normal map of its material looked up now, once, instead of in every frame.
     std::vector<ModelPart> parts;
     for (const ObjPart& sourcePart : source.parts) {
         ModelPart part;
@@ -89,13 +100,15 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
         part.firstIndex = sourcePart.firstIndex;
         part.indexCount = sourcePart.indexCount;
         part.texture = &m_whiteTexture;
+        part.normalMap = &m_flatNormalTexture;
 
         // loadObj has checked that every named material exists. Faces without a material
-        // (an empty name) keep the defaults: white colour, white texture.
+        // (an empty name) keep the defaults: white colour, white texture, flat normal map.
         const ObjMaterial* material = findMaterial(source, sourcePart.material);
         if (material != nullptr) {
             part.color = material->diffuseColor;
             part.texturePath = material->diffuseTexture;
+            part.normalMapPath = material->normalTexture;
         }
         if (!part.texturePath.empty()) {
             // texture() logs a failed load. The part then keeps the white texture and is
@@ -104,6 +117,15 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
             if (texture != nullptr) {
                 part.texture = texture;
                 part.hasOwnTexture = true;
+            }
+        }
+        if (!part.normalMapPath.empty()) {
+            // The same function and the same list as for the colour pictures: a normal
+            // map is a texture too. A failed load leaves the flat normal map in place.
+            const gfx::Texture2D* normalMap = this->texture(part.normalMapPath);
+            if (normalMap != nullptr) {
+                part.normalMap = normalMap;
+                part.hasOwnNormalMap = true;
             }
         }
         parts.push_back(std::move(part));

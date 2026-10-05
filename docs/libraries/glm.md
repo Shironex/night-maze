@@ -20,7 +20,8 @@ narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, se
 labiryntu (`src/game/MazeLayout.*`: pozycje ścian i słupków) i gracz
 ([`src/game/Player.cpp`](../../src/game/Player.cpp): `length` i `normalize` dla kierunku
 ruchu). `src/game/MazeWorld.*` trzyma gotowe macierze modelu jako `std::vector<glm::mat4>`,
-a wierzchołek siatki (`gfx::Vertex`) to dwa `glm::vec3` i jeden `glm::vec2`.
+a wierzchołek siatki (`gfx::Vertex`) to trzy `glm::vec3` (pozycja, normalna, styczna)
+i jeden `glm::vec2` (współrzędne tekstury).
 
 Oświetlenie (M4) dołożyło kilka nowych użyć, wszystkie opisane niżej:
 
@@ -32,6 +33,13 @@ Oświetlenie (M4) dołożyło kilka nowych użyć, wszystkie opisane niżej:
 | `glm::radians` dla kątów stożka i kątów księżyca | `coneCosines` i `directionFromAngles` w [`src/scene/Light.cpp`](../../src/scene/Light.cpp) | 3.7 |
 | `glm::value_ptr` z `glUniformMatrix3fv` | `Shader::setMat3` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) | 3.9 |
 | `glm::value_ptr` dla edytora koloru ImGui | `ImGui::ColorEdit3` w [`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp) | 3.9 |
+
+Druga część M4, mapy normalnych, dołożyła jeden plik pełen GLM:
+[`src/assets/Tangents.cpp`](../../src/assets/Tangents.cpp) liczy styczne wierzchołków
+funkcjami `glm::dot`, `glm::cross`, `glm::length`, `glm::normalize` i `glm::abs` (wartość
+bezwzględna każdej składowej wektoru, użyta do wyboru osi najmniej zgodnej z normalną).
+Sam rachunek omawia [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md),
+sekcje 2.7 i 2.8.
 
 Ten kod jest zbudowany i przetestowany na Windowsie (2026-10-05). Na macOS nie był budowany.
 
@@ -140,9 +148,10 @@ opcje w chwili dołączenia.
 W głównym [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
-# GLM is PUBLIC because headers of engine (gfx/Shader.hpp, scene/Transform.hpp,
-# scene/Camera.hpp, scene/Collider.hpp) expose GLM types, so every target that includes
-# them needs the GLM include path too.
+# GLM is PUBLIC because headers of engine (gfx/Shader.hpp, gfx/Vertex.hpp,
+# scene/Transform.hpp, scene/Camera.hpp, scene/Collider.hpp, scene/Light.hpp,
+# scene/LightBlock.hpp and others) expose GLM types, so every target that includes them
+# needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 ```
 
@@ -151,7 +160,10 @@ target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 
 Dlaczego `PUBLIC`: nagłówki warstw `scene` i `gfx` pokazują typy GLM w swoim API (pozycja
 kamery jako `glm::vec3`, macierz widoku jako `glm::mat4`, parametr `const glm::mat4&` w
-`Shader::setMat4`). Każdy plik, który dołączy taki nagłówek,
+`Shader::setMat4`). Komentarz wymienia siedem takich nagłówków z dopiskiem "and others":
+`gfx/Shader.hpp`, `gfx/Vertex.hpp` (pola wierzchołka, od map normalnych także styczna
+`glm::vec3 tangent`), `scene/Transform.hpp`, `scene/Camera.hpp`, `scene/Collider.hpp`,
+`scene/Light.hpp` i `scene/LightBlock.hpp`. Każdy plik, który dołączy taki nagłówek,
 także w `night_maze`, musi znaleźć `<glm/glm.hpp>`. Przy `PRIVATE` ścieżkę znałby tylko
 `engine` i kod gry by się nie kompilował.
 

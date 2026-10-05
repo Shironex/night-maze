@@ -357,7 +357,7 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
 **Tekstury: ścieżka z pliku, nie z kodu.** W kodzie nie ma nazwy żadnej tekstury. Plik `wall_straight.mtl` zawiera linię `map_Kd ../textures/wall_stone.png`, a loader liczy tę ścieżkę względem katalogu pliku `.mtl` ([`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp)):
 
 ```cpp
-        // map_Kd paths are relative to the directory of the MTL file. lexically_normal
+        // Texture paths are relative to the directory of the MTL file. lexically_normal
         // removes the ".." steps on paper, without asking the file system:
         // assets/models/../textures/wall_stone.png becomes assets/textures/wall_stone.png.
         const std::filesystem::path mtlDirectory = mtlPath.parent_path();
@@ -366,11 +366,16 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
                 material.diffuseTexture =
                     (mtlDirectory / material.diffuseTexture).lexically_normal();
             }
+            if (!material.normalTexture.empty()) {
+                material.normalTexture = (mtlDirectory / material.normalTexture).lexically_normal();
+            }
 ```
+
+Druga instrukcja `if` robi to samo dla mapy normalnych z linii `map_Bump -bm 1.000000 ../textures/wall_stone_normal.png` tego samego pliku `.mtl` ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.3): obie ścieżki mają ten sam punkt odniesienia.
 
 To inna zasada niż w `assetPath`, ale ten sam cel: ścieżka nie zależy od katalogu roboczego. Model został znaleziony przez `assetPath`, więc jego ścieżka jest bezwzględna, a wszystko, co model wskazuje, jest liczone od niej. `lexically_normal` usuwa kroki `..` na samym tekście ścieżki, bez pytania systemu plików (inaczej niż `canonical` z sekcji 5.5, które wymaga istniejącego pliku). Dzięki temu ściana i słupek, które wskazują tę samą teksturę, dostają identyczny tekst ścieżki, a pamięć assetów wczytuje ją raz ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 5, [`../assets/obj-loader.md`](../assets/obj-loader.md), sekcja 5).
 
-**Pliki dołączane do shaderów: ścieżka z linii `#include`.** Trzeci przypadek tej samej zasady doszedł w M4. W kodzie C++ nie ma nazwy pliku `common/lighting.glsl`: wymieniają ją linie `#include "common/lighting.glsl"` w `lit.frag` i `gouraud.vert`. Kod wczytujący shader liczy tę nazwę względem katalogu pliku shadera ([`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), funkcja `compileShader`):
+**Pliki dołączane do shaderów: ścieżka z linii `#include`.** Trzeci przypadek tej samej zasady doszedł w M4. W kodzie C++ nie ma nazwy pliku `common/lighting.glsl`: wymieniają ją linie `#include "common/lighting.glsl"` w `lit.frag` i `gouraud.vert`. Tak samo jest z drugim plikiem dołączanym, `common/normal_map.glsl` (linie `#include` w `lit.frag` i `textured.frag`). Kod wczytujący shader liczy tę nazwę względem katalogu pliku shadera ([`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), funkcja `compileShader`):
 
 ```cpp
     const std::filesystem::path includeDirectory = path.parent_path();
