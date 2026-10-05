@@ -1,24 +1,28 @@
-# Moduł scene: kolizje, AABB i przesuwanie wzdłuż ścian
+# Moduł scene: kolizje, AABB, kule i przesuwanie wzdłuż ścian
 
-Kamień milowy: M2 + M3. Temat wykładu: 14 (Wstęp do kolizji).
-Kod: [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp), [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp), testy w [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp). Rysowanie pudełek: [`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp), shadery [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag), panel w [`src/debug/panels/CollisionPanel.hpp`](../../../src/debug/panels/CollisionPanel.hpp) i [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Użytkownicy: [`src/game/MazeLayout.cpp`](../../../src/game/MazeLayout.cpp) (pudełka ścian i słupków) i [`src/game/Player.cpp`](../../../src/game/Player.cpp) (ruch gracza).
+Kamień milowy: M2 + M3 (pudełka i ruch), M5 (kule). Temat wykładu: 14 (Wstęp do kolizji).
+Kod: [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp), [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp), testy w [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp). Rysowanie pudełek i kul: [`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp), shadery [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag), panel w [`src/debug/panels/CollisionPanel.hpp`](../../../src/debug/panels/CollisionPanel.hpp) i [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Użytkownicy: [`src/game/MazeLayout.cpp`](../../../src/game/MazeLayout.cpp) (pudełka ścian i słupków), [`src/game/Player.cpp`](../../../src/game/Player.cpp) (ruch gracza) i [`src/game/Round.cpp`](../../../src/game/Round.cpp) (kule: zbieranie kryształów i strefa wyjścia).
 
-Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, dodawanie i odejmowanie wektorów) i odwołuje się do stałego kroku symulacji z [`../core/main-loop.md`](../core/main-loop.md), sekcje 2.2 i 2.3. Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Skąd biorą się pudełka ścian labiryntu, opisuje [`../game/maze-generator.md`](../game/maze-generator.md), sekcje 2.7 i 5.7. Gracza, który z kolizji korzysta, opisuje [`../game/player.md`](../game/player.md).
+Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, dodawanie i odejmowanie wektorów) i odwołuje się do stałego kroku symulacji z [`../core/main-loop.md`](../core/main-loop.md), sekcje 2.2 i 2.3. Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Skąd biorą się pudełka ścian labiryntu, opisuje [`../game/maze-generator.md`](../game/maze-generator.md), sekcje 2.7 i 5.7. Gracza, który z kolizji korzysta, opisuje [`../game/player.md`](../game/player.md), a reguły rundy, które korzystają z kul, [`../game/gameplay.md`](../game/gameplay.md).
 
 ## 1. Po co to jest
 
-Kamera z kamienia milowego M1 latała bez przeszkód: nic jej nie zatrzymywało, więc przelatywała przez kostkę. W labiryncie gracz ma chodzić po korytarzach i zatrzymywać się na ścianach. Potrzebne są do tego dwie rzeczy:
+Kamera z kamienia milowego M1 latała bez przeszkód: nic jej nie zatrzymywało, więc przelatywała przez kostkę, która wtedy stała na scenie. W labiryncie gracz ma chodzić po korytarzach i zatrzymywać się na ścianach. Potrzebne są do tego dwie rzeczy:
 
 1. **wykrywanie kolizji** (collision detection): odpowiedź na pytanie "czy te dwa obiekty na siebie nachodzą",
 2. **reakcja na kolizję** (collision response): decyzja, co zrobić z ruchem, który doprowadziłby do nachodzenia.
 
 Obie realizuje plik `Collider`: struktura `scene::Aabb` (pudełko o ścianach równoległych do osi), funkcja `scene::overlaps` (wykrywanie) i funkcja `scene::moveAndSlide` (reakcja: ruch, który zatrzymuje się na przeszkodzie, ale ślizga się wzdłuż niej).
 
+Od M5 w tym samym pliku jest druga bryła: `scene::Sphere` (kula), z testami `overlaps` dla dwóch kul i dla kuli z pudełkiem oraz z funkcją `closestPoint`. Kula służy do rzeczy, które się zbiera albo w które się wchodzi i które nigdy nie blokują drogi: kryształów i strefy wyjścia. Dla kul jest **samo wykrywanie**, bez reakcji: `moveAndSlide` nadal przesuwa pudełko wśród pudełek i nic nie ślizga się po kuli.
+
 Tak jak `Transform` i `Camera`, to zwykłe dane i matematyka: żadnego wywołania OpenGL, żadnej klawiatury, żadnego czasu. Dzięki temu cały kod da się sprawdzić testami jednostkowymi bez okna.
 
-Do pokazu i do szukania błędów dochodzą dwie rzeczy z programu `night_maze`: klasa `game::ColliderLines`, która rysuje pudełka cienkimi liniami (sekcje 3, 4 i 5.8), i panel Collision (sekcja 6).
+Do pokazu i do szukania błędów dochodzą dwie rzeczy z programu `night_maze`: klasa `game::ColliderLines`, która rysuje pudełka i kule cienkimi liniami (sekcje 3, 4 i 5.8), i panel Collision (sekcja 6).
 
-**Stan na dziś, uczciwie.** Kod kolizji ma testy: 12 przypadków w `tests/ColliderTests.cpp`, trzy dalsze, razem z labiryntem, w `tests/MazeLayoutTests.cpp` i cztery z graczem w `tests/PlayerTests.cpp`. Pudełka ścian i słupków labiryntu liczy `game::mazeColliders`, a `moveAndSlide` woła gracz w każdym kroku chodzenia (`game::Player::update`). Na Windowsie (2026-10-05, MSVC 19.44) wszystkie testy przechodzą w Debug i Release, a na zrzucie ekranu z widoku z góry żółte linie pudełek leżą na ścianach i słupkach. Chodzenia i ślizgania prawdziwymi klawiszami oraz widżetów panelu Collision **nikt jeszcze nie sprawdził ręcznie**. Na macOS kod nie był budowany ani uruchamiany.
+**Stan na dziś, uczciwie.** Kod kolizji ma testy: 19 przypadków w `tests/ColliderTests.cpp` (12 dla pudełek i ruchu, 7 dla kul), trzy dalsze, razem z labiryntem, w `tests/MazeLayoutTests.cpp`, cztery z graczem w `tests/PlayerTests.cpp`, a użycie kul w regułach rundy sprawdza `tests/RoundTests.cpp`. Pudełka ścian i słupków labiryntu liczy `game::mazeColliders`, `moveAndSlide` woła gracz w każdym kroku chodzenia (`game::Player::update`), a testy kul woła `game::updateRound` w każdym kroku rundy.
+
+Część z M2 + M3 (pudełka, ruch, żółte linie) była zbudowana i uruchomiona na Windowsie, a na zrzucie ekranu z widoku z góry żółte linie pudełek leżały na ścianach i słupkach. Część z M5 (kule, ich linie, brama na liście przeszkód, nowe napisy panelu) jest gotowa w kodzie na Windowsie, ale M5 **nie jest zamknięte**. Według raportu z 2026-10-05 build Debug i Release przechodzi tam bez ostrzeżeń, a 215 przypadków testowych (85098 asercji) przechodzi w obu konfiguracjach. Chodzenia i ślizgania prawdziwymi klawiszami, zbierania kryształów, przejścia przez otwartą bramę, widżetów panelu Collision i linii kul na ekranie **nikt jeszcze nie sprawdził ręcznie**. Na macOS nic z M5 nie było budowane ani uruchamiane.
 
 ## 2. Teoria
 
@@ -30,7 +34,7 @@ Najprostsze bryły:
 
 | Bryła | Opis | Test z taką samą bryłą | Wada |
 |---|---|---|---|
-| kula (sphere) | środek i promień | jedna odległość | źle pasuje do długich i płaskich obiektów, na przykład do ściany |
+| kula (sphere) | środek i promień | jedna odległość | źle pasuje do długich i płaskich obiektów, na przykład do ściany. W projekcie od M5 (sekcje od 2.9 do 2.12) |
 | AABB (axis-aligned bounding box) | pudełko o krawędziach równoległych do osi X, Y i Z świata | trzy porównania przedziałów | nie obraca się razem z obiektem |
 | OBB (oriented bounding box) | pudełko dowolnie obrócone | do 15 osi rozdzielających | dużo trudniejszy test |
 
@@ -221,63 +225,203 @@ Przesunięcie dla `moveAndSlide` musi więc powstawać w `onUpdate`, z `fixedDt`
 
 Oba przypadki z rysunku są zmierzone testem (sekcja 5.7): jeden krok 2 m po przekątnej mija słupek, a ta sama droga w 80 krokach po 2,5 cm na niego trafia i musi go obejść.
 
-### 2.9 Co dalej: kula dla kryształów
+### 2.9 Kula: druga bryła, do zbierania i do wchodzenia
 
-Do ścian AABB wystarcza. Kryształy, które gracz ma zbierać (M5), są małe i mniej więcej okrągłe, a pytanie brzmi "czy gracz jest dość blisko". Do tego lepiej pasuje **kula**. Tych testów w kodzie jeszcze nie ma, to zapowiedź:
+Do ścian AABB wystarcza. Kryształy, które gracz zbiera (M5), są małe i mniej więcej okrągłe, a pytanie brzmi inaczej niż przy ścianie: nie "jak daleko wolno iść", tylko "czy gracz jest dość blisko". Do tego lepiej pasuje **kula** (sphere): wszystkie punkty nie dalsze od **środka** niż **promień**. Cały opis to cztery liczby: trzy współrzędne środka i promień.
 
-**Kula z kulą.** Dwie kule nachodzą na siebie, gdy odległość ich środków jest mniejsza od sumy promieni. Żeby nie liczyć pierwiastka, porównuje się kwadraty:
+Kiedy kula jest lepszym kształtem niż pudełko:
+
+- **gdy liczy się sama odległość.** "Dość blisko" znaczy to samo z każdej strony. Kula wygląda tak samo z każdego kierunku, więc zasięg nie zależy od tego, czy gracz podchodzi wzdłuż osi, czy po skosie. Pudełko sięga w narożniku dalej niż na środku ściany: dla sześcianu o połowie boku 0,6 m to 0,6 m na wprost i około 0,85 m po przekątnej w poziomie,
+- **gdy bryła niczego nie blokuje.** Bryła do zbierania (pickup) albo strefa, w którą się wchodzi (trigger), nie zatrzymuje ruchu. Wystarcza wtedy sam test "tak albo nie", a ten jest dla kuli najprostszy z możliwych,
+- **gdy obiekt się obraca.** Kryształ kręci się wokół osi pionowej. Kula po obrocie jest tą samą kulą, więc nie trzeba niczego przeliczać (AABB trzeba by: pułapka 9).
+
+Kiedy kula jest gorsza: dla ściany. Kula obejmująca segment długi na 2 m i wysoki na 3 m musiałaby mieć promień około 1,8 m i wystawałaby daleko w korytarz. Dlatego projekt ma **obie** bryły i każdej używa do czego innego:
+
+| Bryła | Do czego w grze | Co liczy kod |
+|---|---|---|
+| `Aabb` | ściany, słupki, zamknięta brama, gracz jako ciało | test nakładania i ruch ze ślizganiem |
+| `Sphere` | zasięg gracza, kryształ do zebrania | tylko test nakładania |
+| `Aabb` jako strefa | strefa wyjścia za bramą | tylko test nakładania z kulą zasięgu gracza |
+
+### 2.10 Kula z kulą
+
+Dwie kule nachodzą na siebie, gdy ich środki są **bliżej niż suma promieni**.
 
 ```text
-dot(c1 - c2, c1 - c2) < (r1 + r2) * (r1 + r2)
+widok z boku: dwie kule o promieniach r1 i r2, d to odległość środków
+
+   nachodzą na siebie                 rozłączne
+
+      ,---.,---.                     ,---.        ,---.
+     /   ,-\-.  \                   /     \      /     \
+    |  c1  | c2  |                 |  c1   |    |  c2   |
+     \   `-/-'  /                   \     /      \     /
+      `---'`---'                     `---'        `---'
+
+     d < r1 + r2                     d > r1 + r2
 ```
 
-**Kula z AABB.** Najpierw znajduje się punkt pudełka najbliższy środkowi kuli: każdą współrzędną środka przycina się osobno do przedziału pudełka. Potem sprawdza się, czy ten punkt leży wewnątrz kuli:
+Odległość `d` między punktami `c1` i `c2` to długość wektora `c2 - c1`, czyli pierwiastek z sumy kwadratów jego składowych (twierdzenie Pitagorasa w trzech wymiarach). Pierwiastek jest najdroższym działaniem w tym wzorze, a do samego porównania nie jest potrzebny. Porównuje się **kwadraty**:
+
+```text
+dot(c2 - c1, c2 - c1) < (r1 + r2) * (r1 + r2)
+```
+
+Dwie rzeczy do wyjaśnienia:
+
+- **`dot(v, v)` to kwadrat długości.** Iloczyn skalarny wektora z samym sobą to `v.x * v.x + v.y * v.y + v.z * v.z`, czyli dokładnie to, co stoi pod pierwiastkiem we wzorze na długość.
+- **Dlaczego wolno porównywać kwadraty.** Dla liczb **nieujemnych** podnoszenie do kwadratu zachowuje kolejność (funkcja jest rosnąca): jeśli `a < b`, to `a * a < b * b`, i odwrotnie. Odległość nigdy nie jest ujemna, a suma promieni też nie, dopóki promienie są nieujemne. Dla liczb ujemnych to nie działa: `-3 < 2`, ale `9 > 4`. Stąd wymaganie w komentarzu przy polu `radius`, że promień nie może być ujemny (pułapka 18).
+
+Częsty błąd: po prawej stronie ma stać **kwadrat sumy**, a nie suma kwadratów. Dla promieni 0,5 i 0,5 kwadrat sumy to 1, a suma kwadratów tylko 0,5 (ćwiczenie 14).
+
+Przykłady na liczbach (oba są w testach, sekcja 5.7). Pierwsza kula ma środek `(0, 1, 0)` i promień 0,5:
+
+| Druga kula | `c2 - c1` | Kwadrat odległości | Kwadrat sumy promieni | Wynik |
+|---|---|---|---|---|
+| środek `(0,8, 1, 0)`, promień 0,5 | `(0,8, 0, 0)` | 0,64 | 1 | nachodzą (0,64 < 1) |
+| środek `(1,5, 1, 0)`, promień 0,5 | `(1,5, 0, 0)` | 2,25 | 1 | rozłączne |
+
+Odległość liczy się we wszystkich trzech kierunkach naraz. Dwie kule o promieniu 1, druga przesunięta o 1,2 m na **każdej** osi: kwadrat odległości to `3 * 1,44 = 4,32`, więcej niż `2 * 2 = 4`, więc są rozłączne (w linii prostej dzieli je około 2,08 m). Przy 1,1 m na każdej osi wychodzi `3 * 1,21 = 3,63`, mniej niż 4: nachodzą.
+
+### 2.11 Najbliższy punkt pudełka i kula z pudełkiem
+
+Kula i pudełko nachodzą na siebie, gdy kula sięga do pudełka. Wystarczy sprawdzić jeden punkt pudełka: ten, który leży **najbliżej środka kuli**. Jeśli kula do niego nie sięga, nie sięga do żadnego innego.
+
+**Najbliższy punkt pudełka.** Znajduje się go osobno na każdej osi. Współrzędna punktu leżąca między `min` a `max` zostaje bez zmian. Współrzędna poza przedziałem jest przesuwana do bliższego z dwóch końców. To działanie nazywa się **przycinaniem** (clamp):
+
+```text
+clamp(p, min, max):   p < min          ->  min
+                      min <= p <= max  ->  p
+                      p > max          ->  max
+```
+
+```text
+widok z góry (płaszczyzna XZ): pudełko od (0, 0) do (2, 4) i trzy punkty
+
+      z
+      ^
+    9 |                         C (9, 9)
+      |
+    4 +---------c               c = (2, 4): narożnik, najbliższy dla C
+      |         |                   (przycięte x i z)
+      |    A    |
+    1 |  (1, 1) b      B (5, 1) b = (2, 1): najbliższy dla B (przycięte tylko x)
+      +---------+-------------> x
+      0         2               A jest w środku: sam jest swoim najbliższym punktem
+```
+
+Przykład na liczbach, w trzech wymiarach. Pudełko ma `min = (0, 0, 0)` i `max = (2, 3, 4)`:
+
+| Punkt | Gdzie leży | Przycinanie oś po osi | Najbliższy punkt pudełka |
+|---|---|---|---|
+| `(1, 1, 1)` | w środku pudełka | żadna współrzędna się nie zmienia | `(1, 1, 1)` |
+| `(5, 1, 1)` | przed ścianą x = 2 | x: 5 na 2 | `(2, 1, 1)` |
+| `(-1, 5, 1)` | za krawędzią | x: -1 na 0, y: 5 na 3 | `(0, 3, 1)` |
+| `(9, 9, 9)` | za narożnikiem | x: 9 na 2, y: 9 na 3, z: 9 na 4 | `(2, 3, 4)`, sam narożnik |
+
+Dlaczego wolno przycinać każdą oś osobno: kwadrat odległości to suma trzech kwadratów, po jednym na oś, a każdy z nich zależy tylko od jednej współrzędnej. Suma jest najmniejsza, gdy każdy składnik z osobna jest najmniejszy.
+
+**Kula z pudełkiem.** Dalej tak samo jak dla dwóch kul, tylko druga "kula" jest punktem:
 
 ```text
 najbliższy = clamp(środek, box.min, box.max)        (osobno dla x, y i z)
-kolizja, gdy dot(środek - najbliższy, środek - najbliższy) < r * r
+kolizja, gdy dot(najbliższy - środek, najbliższy - środek) < r * r
 ```
 
-Jeśli środek kuli jest w pudełku, przycinanie go nie zmienia, odległość wychodzi 0 i test daje kolizję. Oba testy opisuje Ericson (sekcja 10), a wersję 2D rozdział "Collision detection" z LearnOpenGL.
+Przykłady dla pudełka od `(0, 0, 0)` do `(2, 2, 2)` i kuli o środku `(2,5, 1, 1)`, czyli 0,5 m przed ścianą x = 2. Najbliższy punkt to `(2, 1, 1)`, kwadrat odległości 0,25:
 
-Poza zakresem projektu zostają: bryły obrócone (OBB), siatki trójkątów, struktury przyspieszające (siatka, drzewo BVH) i pełna symulacja fizyki z masą, pędem i odbiciami ([`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md)).
+| Promień | `r * r` | Wynik |
+|---|---|---|
+| 0,75 | 0,5625 | nachodzą (0,25 < 0,5625) |
+| 0,5 | 0,25 | styk: 0,25 nie jest mniejsze od 0,25, więc nie nachodzą |
+| 0,25 | 0,0625 | rozłączne |
+
+Jeśli środek kuli jest **w** pudełku, przycinanie go nie zmienia, odległość wychodzi 0 i każdy promień większy od zera daje kolizję.
+
+### 2.12 Styk, narożnik i to, czego kule nie robią
+
+**Styk nie jest nakładaniem, tak jak dla pudełek.** Oba testy kul używają ostrej nierówności `<`. Kule o promieniach 0,5 i 0,5 ze środkami oddalonymi dokładnie o 1 m nie nachodzą na siebie. To ta sama umowa co w sekcji 2.3: bryły, które mają wspólny tylko brzeg, nie są w kolizji. Dla zbierania nie ma to praktycznego znaczenia (gracz i tak wchodzi głębiej), ale jedna reguła dla wszystkich brył jest łatwiejsza do zapamiętania i do przetestowania.
+
+Testy styku używają liczb, które typ `float` przechowuje dokładnie (0,5, 1, 2, 2,5): tylko wtedy "dokładnie styk" jest naprawdę dokładny (sekcja 2.7).
+
+**Przy narożniku kula jest "okrąglejsza" niż pudełko.** To widać na liczbach z przypadku testowego `near a corner of a box the sphere test is rounder than a box test would be`. Pudełko sięga od `(0, 0, 0)` do `(2, 2, 2)`. Środek kuli to `(2,5, 1, 2,5)`: 0,5 m za pionową krawędzią pudełka na osi x **i** 0,5 m na osi z.
+
+```text
+widok z góry: krawędź pudełka w N = (2, 2), środek kuli S = (2,5, 2,5)
+
+      z
+      ^
+  3,1 |        . . . . . . . .
+      |        .             .       kropki: pudełko o połowie boku 0,6 wokół S,
+  2,5 |        .      S      .               sięga od 1,9 do 3,1 na obu osiach
+      |        .             .
+    2 +---------N            .       N: najbliższy punkt dużego pudełka
+  1,9 |        .|. . . . . . .       odległość od S do N: około 0,71 m
+      | pudełko |                    kula o promieniu 0,6 wokół S do N nie sięga
+      +---------+--------------> x
+      0   1,9   2    2,5    3,1
+```
+
+- Najbliższy punkt pudełka to `(2, 1, 2)`. Różnica to `(-0,5, 0, -0,5)`, kwadrat odległości `0,25 + 0,25 = 0,5`, odległość około 0,71 m.
+- Kula o promieniu 0,6: `0,6 * 0,6 = 0,36`, a 0,5 nie jest mniejsze od 0,36. **Nie nachodzi.**
+- Kula o promieniu 0,75: `0,5625`, a 0,5 jest mniejsze. **Nachodzi.**
+- Pudełko o połowie boku 0,6 wokół tego samego środka sięgałoby na osiach x i z od 1,9 do 3,1, czyli nachodziłoby na narożnik o 0,1 m na obu osiach. Test pudełek powiedziałby "kolizja" tam, gdzie kula o tym samym "promieniu" mówi "nie".
+
+Kula ma więc ten sam zasięg we wszystkich kierunkach, a pudełko o tym samym rozmiarze sięga po przekątnej dalej.
+
+**Czego kule w tym projekcie nie robią.**
+
+- **Nie zatrzymują ruchu.** `moveAndSlide` przyjmuje pudełko i listę pudełek. Nie ma funkcji, która liczyłaby, o ile wolno przesunąć kulę albo jak ślizgać się po kuli. Testy kul to wykrywanie dyskretne (sekcja 2.4): jedno pytanie na krok symulacji, o pozycję po ruchu.
+- **Nie przemiatają drogi.** W teorii bryłę do zebrania dałoby się przeskoczyć (sekcja 2.5). W grze nie: krok symulacji przy sprincie to około 4,6 cm, a suma promieni zasięgu gracza i kryształu to 0,9 m.
+- **Nie mają tolerancji styku.** Tolerancja należy do ruchu (sekcja 2.7), a kule niczego nie przesuwają.
+
+Poza zakresem projektu zostają: bryły obrócone (OBB), kapsuły, siatki trójkątów, promienie (raycast), struktury przyspieszające (siatka, drzewo BVH) i pełna symulacja fizyki z masą, pędem i odbiciami ([`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md)). Oba testy kul opisuje Ericson (sekcja 10), a wersję 2D rozdział "Collision detection" z LearnOpenGL.
 
 ## 3. Jak to działa w OpenGL
 
-Same kolizje to czysta matematyka na procesorze. `Collider.hpp` i `Collider.cpp` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`. OpenGL nie wie, że jakieś pudełka istnieją, i niczego nie sprawdza: karta graficzna narysuje dwa obiekty jeden w drugim bez żadnego błędu.
+Same kolizje to czysta matematyka na procesorze. `Collider.hpp` i `Collider.cpp` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`. OpenGL nie wie, że jakieś pudełka i kule istnieją, i niczego nie sprawdza: karta graficzna narysuje dwa obiekty jeden w drugim bez żadnego błędu.
 
-Związek z renderowaniem jest pośredni: wynik `moveAndSlide` zmienia pozycję gracza, z pozycji gracza powstaje punkt oka, a z niego macierz widoku ([`../game/player.md`](../game/player.md), sekcja 5). Kolizja decyduje więc o tym, **skąd** rysowana jest klatka, a nie o tym, jak.
+Związek z renderowaniem jest pośredni: wynik `moveAndSlide` zmienia pozycję gracza, z pozycji gracza powstaje punkt oka, a z niego macierz widoku ([`../game/player.md`](../game/player.md), sekcja 5). Kolizja decyduje więc o tym, **skąd** rysowana jest klatka, a nie o tym, jak. Testy kul decydują o tym, **co** jest rysowane: zebrany kryształ znika razem ze swoim światłem ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5).
 
-OpenGL pojawia się dopiero przy **rysowaniu pudełek** jako pomocy diagnostycznej (klasa `game::ColliderLines`, sekcja 5.8). Pudełko jest rysowane jako 12 krawędzi sześcianu, liniami.
+OpenGL pojawia się dopiero przy **rysowaniu brył** jako pomocy diagnostycznej (klasa `game::ColliderLines`, sekcja 5.8). Pudełko jest rysowane jako 12 krawędzi sześcianu, kula jako trzy okręgi. Jedno i drugie liniami.
 
-**Prymityw `GL_LINES`.** Do tej pory wszystko było rysowane trójkątami (`GL_TRIANGLES`: każde trzy indeksy to jeden trójkąt). Pierwszy parametr `glDrawElements` może też wskazać linie: przy `GL_LINES` **każde dwa indeksy to jeden odcinek**. Sześcian ma 8 narożników i 12 krawędzi, więc wystarcza 8 wierzchołków i 24 indeksy. Ta sama klasa `gfx::Mesh` obsługuje oba przypadki: rodzaj prymitywu jest parametrem jej konstruktora ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5).
+**Prymityw `GL_LINES`.** Modele labiryntu są rysowane trójkątami (`GL_TRIANGLES`: każde trzy indeksy to jeden trójkąt). Pierwszy parametr `glDrawElements` może też wskazać linie: przy `GL_LINES` **każde dwa indeksy to jeden odcinek**. Sześcian ma 8 narożników i 12 krawędzi, więc wystarcza 8 wierzchołków i 24 indeksy. Okrąg jest łamaną zamkniętą z 32 odcinków: 32 wierzchołki i 64 indeksy. Ta sama klasa `gfx::Mesh` obsługuje wszystkie przypadki: rodzaj prymitywu jest parametrem jej konstruktora ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5).
 
-| Krok w klatce (gdy rysowanie pudełek jest włączone) | Wywołania OpenGL | Ile razy dla labiryntu 10 na 10 |
+Liczby w tabeli są wyliczone z kodu dla labiryntu startowego (10 na 10, ziarno 1) na początku rundy: brama zamknięta, 13 kryształów na miejscu. Nie są zmierzone w działającym programie.
+
+| Krok w klatce (gdy rysowanie brył jest włączone) | Wywołania OpenGL | Ile razy |
 |---|---|---|
 | `m_colorShader.use()` | `glUseProgram` | 1 |
 | `setMat4` dla `uView` i `uProjection` | `glGetUniformLocation`, `glUniformMatrix4fv` | po 1 |
-| `setVec3(COLOR_UNIFORM, color)` | `glGetUniformLocation`, `glUniform3fv` | 2 (żółty dla labiryntu, zielony dla gracza) |
-| `setMat4(MODEL_UNIFORM, ...)` | `glGetUniformLocation`, `glUniformMatrix4fv` | 243 (121 ścian, 121 słupków, 1 gracz) |
-| `m_unitCube.draw()` | `glBindVertexArray`, `glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, ...)` | 243 |
+| `setVec3(COLOR_UNIFORM, color)` | `glGetUniformLocation`, `glUniform3fv` | 6: po jednym na listę (labirynt, pudełko gracza, brama, strefa wyjścia, zasięg gracza, kule kryształów) |
+| `setMat4(MODEL_UNIFORM, ...)` | `glGetUniformLocation`, `glUniformMatrix4fv` | 287: 245 dla pudełek i 42 dla okręgów |
+| `m_unitCube.draw()` | `glBindVertexArray`, `glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, ...)` | 245: 121 ścian, 121 słupków, gracz, brama, strefa wyjścia |
+| `m_unitCircle.draw()` | `glBindVertexArray`, `glDrawElements(GL_LINES, 64, GL_UNSIGNED_INT, ...)` | 42: 14 kul (zasięg gracza i 13 kryształów) po 3 okręgi |
 
-Trzy szczegóły:
+Liczby zmieniają się w trakcie rundy: każdy zebrany kryształ to 3 okręgi mniej, a po otwarciu bramy znika jej pudełko razem z jednym ustawieniem koloru.
+
+Pięć szczegółów:
 
 - **Jedna siatka dla wszystkich pudełek.** Na karcie leży jeden sześcian o boku 1. Każde pudełko to ten sześcian z inną macierzą modelu: skala równa rozmiarowi pudełka i przesunięcie do jego narożnika `min`. To ta sama zasada co przy ścianach labiryntu ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 2).
+- **Jedna siatka dla wszystkich kul.** Na karcie leży jeden okrąg o promieniu 1 w płaszczyźnie XY. Kula to ten okrąg narysowany trzy razy, z trzema obrotami: bez obrotu (stoi w płaszczyźnie XY), obrócony o 90 stopni wokół osi X (leży płasko, w płaszczyźnie XZ) i obrócony o 90 stopni wokół osi Y (stoi w płaszczyźnie YZ). Do tego skala równa promieniowi i przesunięcie do środka kuli.
+- **Dlaczego trzy okręgi wystarczą.** Pełna siatka kuli z południków i równoleżników zasłaniałaby kryształ plątaniną linii. Trzy okręgi, po jednym wokół każdej osi, pokazują dokładnie to, co trzeba odczytać: gdzie jest środek (tam się przecinają ich płaszczyzny) i jak daleko sięga promień w każdym z trzech kierunków. Patrząc wzdłuż dowolnej osi, widać jeden okrąg w pełnym kształcie i dwa jako odcinki, więc rysunek jest czytelny z każdej strony.
 - **Szerokość linii to 1 piksel.** Kod nie woła `glLineWidth`. Profil Core nie musi obsługiwać linii szerszych niż 1, a implementacja OpenGL w macOS jest znana z tego, że ich nie obsługuje (tak mówi też komentarz w kodzie, na Macu tego nie sprawdzałem), więc wartość domyślna jest jedyną przenośną.
-- **Test głębi zostaje włączony.** Linia za ścianą jest przez nią zasłonięta. Dzięki temu widać, gdzie pudełko naprawdę jest, a nie plątaninę wszystkich krawędzi labiryntu naraz.
+- **Test głębi zostaje włączony.** Linia za ścianą jest przez nią zasłonięta. Dzięki temu widać, gdzie bryła naprawdę jest, a nie plątaninę wszystkich krawędzi labiryntu naraz.
 
-**Walka o głębię (z-fighting).** Pudełko słupka ma dokładnie szerokość trzonu modelu słupka (0,3 m). Linie narysowane w prawdziwym rozmiarze leżałyby więc **w** powierzchni modelu: dla tych samych pikseli linia i ściana miałyby prawie tę samą głębię, a o tym, co wygra test głębi, decydowałyby błędy zaokrągleń, inne w każdej klatce. Linie migotałyby. Rozwiązanie w projekcie jest najprostsze z możliwych: rysowane pudełko jest większe o 1 cm z każdej strony, więc linie są wyraźnie przed powierzchnią. Kolizje nadal liczą się na prawdziwych pudełkach.
+**Okrąg z 32 odcinków nie jest okręgiem.** To wielokąt wpisany w okrąg: jego wierzchołki leżą na okręgu, a środki boków odrobinę bliżej środka. Dla 32 boków różnica wynosi `1 - cos(180 / 32 stopni)`, czyli około 0,5 procent promienia: dla kuli kryształu o promieniu 0,6 m to około 3 mm. Na ekranie tego nie widać, a liczba 32 jest stałą `CIRCLE_SEGMENTS`.
+
+**Walka o głębię (z-fighting).** Pudełko słupka ma dokładnie szerokość trzonu modelu słupka (0,3 m). Linie narysowane w prawdziwym rozmiarze leżałyby więc **w** powierzchni modelu: dla tych samych pikseli linia i ściana miałyby prawie tę samą głębię, a o tym, co wygra test głębi, decydowałyby błędy zaokrągleń, inne w każdej klatce. Linie migotałyby. Rozwiązanie w projekcie jest najprostsze z możliwych: rysowane pudełko jest większe o 1 cm z każdej strony, więc linie są wyraźnie przed powierzchnią. Kolizje nadal liczą się na prawdziwych pudełkach. Okręgi kul marginesu nie mają i go nie potrzebują: kule wiszą w powietrzu, w środku komórki albo wokół gracza, i z żadną powierzchnią modelu się nie pokrywają.
 
 ## 4. Shadery
 
-Same kolizje nie mają shadera. Linie pudełek rysuje najprostsza para w projekcie: [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag). Wszystko, co nimi narysowane, ma jeden kolor. Od M4 ta sama para rysuje jeszcze jedną rzecz: małe kostki w miejscach świateł punktowych (`game::LightRig::drawMarkers`, [`../game/flashlight.md`](../game/flashlight.md), sekcja 5.7). Kod shaderów się przy tym nie zmienił, a ich komentarze nagłówkowe wymieniają dziś obu użytkowników: linie pudełek i znaczniki świateł.
+Same kolizje nie mają shadera. Linie pudełek i kul rysuje najprostsza para w projekcie: [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag). Wszystko, co nimi narysowane, ma jeden kolor. Linie kolizji są dziś jedynym użytkownikiem tej pary. W M4 rysowała jeszcze małe kostki w miejscach świateł punktowych. W M5 ten kod zniknął: źródłem światła jest widoczny kryształ ([`../game/gameplay.md`](../game/gameplay.md), sekcja 4), a komentarze nagłówkowe obu shaderów wymieniają już tylko linie pudełek i kul.
 
 ### 4.1 `color.vert`
 
 ```glsl
 #version 410 core
 // Vertex shader for shapes drawn in one flat colour: the lines of the collision boxes
-// and the markers of the point lights.
+// and spheres.
 // See docs/modules/scene/collision.md
 
 // Input: only the position. The mesh also carries a normal (location 1), a texture
@@ -291,7 +435,7 @@ uniform mat4 uView;       // world space to view space
 uniform mat4 uProjection; // view space to clip space
 
 void main() {
-    // The same chain as in basic.vert: local, world, view, clip space.
+    // The same chain as in textured.vert: local, world, view, clip space.
     gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 }
 ```
@@ -300,9 +444,9 @@ void main() {
 |---|---|
 | `#version 410 core` | GLSL 4.10, profil Core: ta sama wersja co kontekst OpenGL projektu |
 | `layout(location = 0) in vec3 aPosition;` | jedyne wejście: pozycja, atrybut numer 0. Numer zgadza się ze stałą `POSITION_ATTRIBUTE` z `src/gfx/Vertex.hpp` |
-| brak `aNormal`, `aUv` i `aTangent` | siatka `gfx::Mesh` zawsze opisuje cztery atrybuty (pozycja, normalna, uv, styczna: [`../gfx/mesh.md`](../gfx/mesh.md)). Styczna doszła razem z mapami normalnych ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)), a linie i znaczniki jej nie potrzebują. Shader nie musi czytać wszystkich: atrybut włączony w VAO, którego shader nie deklaruje, jest po prostu ignorowany |
-| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `basic.vert` i `textured.vert`, dzięki czemu kod C++ używa dla wszystkich programów tych samych stałych z `ShaderUniforms.hpp` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5) |
-| `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | łańcuch czytany od prawej: przestrzeń lokalna, świat, widok, przycinanie ([`transforms.md`](transforms.md), sekcja 4). `1.0` jako czwarta składowa oznacza punkt, więc przesunięcie z macierzy działa |
+| brak `aNormal`, `aUv` i `aTangent` | siatka `gfx::Mesh` zawsze opisuje cztery atrybuty (pozycja, normalna, uv, styczna: [`../gfx/mesh.md`](../gfx/mesh.md)). Styczna doszła razem z mapami normalnych ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)), a linie jej nie potrzebują. Shader nie musi czytać wszystkich: atrybut włączony w VAO, którego shader nie deklaruje, jest po prostu ignorowany |
+| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `textured.vert`, `lit.vert` i `gouraud.vert`, dzięki czemu kod C++ używa dla wszystkich czterech programów tych samych stałych z `ShaderUniforms.hpp` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5) |
+| `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | łańcuch czytany od prawej: przestrzeń lokalna, świat, widok, przycinanie ([`transforms.md`](transforms.md), sekcja 4). `1.0` jako czwarta składowa oznacza punkt, więc przesunięcie z macierzy działa. Komentarz odsyła do `textured.vert`, bo tam łańcuch jest opisany w całości |
 
 Shader nie ma żadnego wyjścia poza `gl_Position`: fragmentom nie trzeba niczego przekazywać, bo kolor jest ten sam dla całego kształtu.
 
@@ -311,7 +455,7 @@ Shader nie ma żadnego wyjścia poza `gl_Position`: fragmentom nie trzeba niczeg
 ```glsl
 #version 410 core
 // Fragment shader for shapes drawn in one flat colour: the lines of the collision boxes
-// and the markers of the point lights.
+// and spheres.
 // See docs/modules/scene/collision.md
 
 // The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3).
@@ -332,9 +476,17 @@ void main() {
 | `out vec4 fragColor;` | wyjście shadera fragmentów: kolor zapisywany do framebuffera |
 | `fragColor = vec4(uColor, 1.0);` | trzy składowe koloru i alfa 1, czyli pełne krycie |
 
-Różnica wobec `basic.frag`: tam kolor przychodził z wierzchołków i był interpolowany, tutaj przychodzi jako jedna liczba dla wszystkich fragmentów. Różnica wobec `textured.frag`: nie ma tekstury ani żadnego wejścia z shadera wierzchołków.
+Różnica wobec `textured.frag`: tam shader fragmentów dostaje od shadera wierzchołków współrzędne tekstury, normalną i styczną (zmienne `in`, interpolowane w poprzek trójkąta) i czyta teksturę. Tutaj nie ma żadnego wejścia z shadera wierzchołków: kolor przychodzi jako jedna wartość dla wszystkich fragmentów. Dlatego ta para jest najprostszym przykładem programu shaderów w projekcie.
 
-Kolory ustawia `NightMazeApp` (sekcja 5.8): żółty `(1, 0,85, 0,1)` dla pudełek labiryntu i zielony `(0,2, 1, 0,4)` dla pudełka gracza.
+Kolory ustawia `NightMazeApp` (sekcja 5.8). Jest ich pięć, a zielony służy dwóm bryłom gracza:
+
+| Stała w `NightMazeApp.cpp` | Wartość (R, G, B) | Kolor | Co nim rysuję |
+|---|---|---|---|
+| `MAZE_COLLIDER_COLOR` | `(1, 0,85, 0,1)` | żółty | pudełka ścian i słupków |
+| `PLAYER_COLLIDER_COLOR` | `(0,2, 1, 0,4)` | zielony | pudełko gracza i kula jego zasięgu |
+| `GATE_COLLIDER_COLOR` | `(1, 0,45, 0,1)` | pomarańczowy | pudełko bramy, dopóki blokuje drogę |
+| `PICKUP_COLLIDER_COLOR` | `(0,2, 0,9, 1)` | cyjan | kule zbierania wokół kryształów, które jeszcze wiszą |
+| `EXIT_ZONE_COLOR` | `(1, 0,3, 0,9)` | magenta | pudełko strefy wyjścia |
 
 ## 5. Kod w projekcie
 
@@ -342,19 +494,22 @@ Kolory ustawia `NightMazeApp` (sekcja 5.8): żółty `(1, 0,85, 0,1)` dla pudeł
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp) | stała `CONTACT_TOLERANCE`, struktura `Aabb` z funkcją `fromCenter`, deklaracje `overlaps` i `moveAndSlide` |
-| [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp) | stałe osi, funkcje pomocnicze `sharedLength` i `allowedDistance`, definicje trzech funkcji publicznych |
-| [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp) | 12 przypadków testowych samych kolizji |
+| [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp) | stała `CONTACT_TOLERANCE`, struktura `Aabb` z funkcją `fromCenter`, struktura `Sphere`, deklaracje trzech przeciążeń `overlaps`, funkcji `closestPoint` i `moveAndSlide` |
+| [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp) | stałe osi, funkcje pomocnicze `sharedLength` i `allowedDistance`, definicje sześciu funkcji publicznych: `Aabb::fromCenter`, trzy `overlaps`, `closestPoint`, `moveAndSlide` |
+| [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp) | 19 przypadków testowych samych kolizji: 12 dla pudełek i ruchu, 7 dla kul (sekcja 5.7) |
 | [`tests/MazeLayoutTests.cpp`](../../../tests/MazeLayoutTests.cpp) | trzy przypadki łączące kolizje z labiryntem (zamknięta komórka, wędrówka po labiryncie, ślizganie obok słupków) |
 | [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp), [`.cpp`](../../../src/game/MazeLayout.cpp) | pierwszy użytkownik `Aabb`: `wallBox`, `pillarBox`, `mazeColliders` ([`../game/maze-generator.md`](../game/maze-generator.md), sekcja 5.7) |
 | [`src/game/Player.hpp`](../../../src/game/Player.hpp), [`.cpp`](../../../src/game/Player.cpp) | użytkownik `moveAndSlide`: `Player::box` i `Player::update` (sekcja 5.6 i [`../game/player.md`](../game/player.md)) |
-| [`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`.cpp`](../../../src/game/ColliderLines.cpp) | rysowanie pudełek liniami (sekcja 5.8) |
+| [`src/game/Round.hpp`](../../../src/game/Round.hpp), [`.cpp`](../../../src/game/Round.cpp) | użytkownik kul: `playerReach`, zbieranie kryształów i test strefy wyjścia w `updateRound`. Do tego `roundObstacles`, czyli lista przeszkód gracza z bramą (sekcje 5.6 i 5.10, [`../game/gameplay.md`](../game/gameplay.md)) |
+| [`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`.cpp`](../../../src/game/ColliderLines.cpp) | rysowanie pudełek i kul liniami (sekcja 5.8) |
 | [`assets/shaders/color.vert`](../../../assets/shaders/color.vert), [`color.frag`](../../../assets/shaders/color.frag) | shadery jednego koloru (sekcja 4) |
 | [`src/debug/panels/CollisionPanel.hpp`](../../../src/debug/panels/CollisionPanel.hpp), [`.cpp`](../../../src/debug/panels/CollisionPanel.cpp) | panel Collision (sekcja 6) |
 
-Pliki `src/scene/Collider.*` należą do biblioteki `engine`, tak jak reszta `src/scene/`. Nie ma w nich nic specyficznego dla Night Maze: pudełko nie wie, czy jest ścianą, graczem czy skrzynią. `ColliderLines.*` i `CollisionPanel.*` należą do programu `night_maze`, bo wymagają kontekstu OpenGL albo ImGui.
+Pliki `src/scene/Collider.*` należą do biblioteki `engine`, tak jak reszta `src/scene/`. Nie ma w nich nic specyficznego dla Night Maze: pudełko nie wie, czy jest ścianą, graczem czy skrzynią, a kula nie wie, czy jest kryształem. `ColliderLines.*` i `CollisionPanel.*` należą do programu `night_maze`, bo wymagają kontekstu OpenGL albo ImGui.
 
-Dołączane nagłówki: `<glm/glm.hpp>` i `<span>` w nagłówku, `<algorithm>` (`std::min`, `std::max`), `<array>` i `<cmath>` (`std::abs`) w pliku `.cpp`. Nic z `core/`, `gfx/`, GLAD ani GLFW.
+Dołączane nagłówki: `<glm/glm.hpp>` i `<span>` w nagłówku, `<algorithm>` (`std::min`, `std::max`), `<array>` i `<cmath>` (`std::abs`) w pliku `.cpp`. Funkcje `glm::dot` i `glm::clamp`, których używają testy kul, przychodzą z `<glm/glm.hpp>`. Nic z `core/`, `gfx/`, GLAD ani GLFW.
+
+Kolejność podsekcji idzie za historią kodu: od 5.2 do 5.8 pudełka i ruch (M2 + M3), a kule z M5 są w 5.9 (kod) i 5.10 (kto ich używa). Rysowanie obu brył jest razem w 5.8, a wszystkie testy razem w 5.7.
 
 ### 5.2 `CONTACT_TOLERANCE` i struktura `Aabb`
 
@@ -389,7 +544,7 @@ Trzy decyzje:
 
 - **Struktura z publicznymi polami, bez konstruktora.** `Aabb` to dwie trójki liczb bez żadnego zasobu, tak jak `Transform` i `Camera` ([`README.md`](README.md), sekcja 3). Dzięki temu jest agregatem i można ją tworzyć inicjalizatorami desygnowanymi z C++20: `scene::Aabb{.min = {1.0F, 0.0F, -5.0F}, .max = {1.2F, 3.0F, 5.0F}}`. Nazwy pól w takim zapisie chronią przed zamianą narożników miejscami.
 - **`fromCenter` jako funkcja statyczna, a nie konstruktor.** Konstruktor z dwoma `glm::vec3` wyglądałby tak samo jak "min i max" i łatwo byłoby je pomylić. Nazwa mówi, które dwie trójki podaję. Zwykły konstruktor odebrałby też strukturze status agregatu.
-- **Warunek `min <= max` nie jest sprawdzany.** Pudełko z `min` większym od `max` ma ujemną "wspólną długość" z każdym innym i po cichu z niczym nie koliduje (pułapka 3). Sprawdzanie przy każdym teście kosztowałoby więcej niż sam test. Kolejność narożników jest więc obowiązkiem tego, kto tworzy pudełko: wynik `fromCenter` jest poprawny, dopóki połowy rozmiarów są nieujemne (funkcja tego nie sprawdza), a przy inicjalizatorze z polami `.min` i `.max` trzeba samemu podać mniejszy narożnik jako `min`. Kod gry tworzy pudełka tylko przez `fromCenter` ze stałych dodatnich połów rozmiarów (`game::wallBox`, `game::pillarBox`).
+- **Warunek `min <= max` nie jest sprawdzany.** Pudełko z `min` większym od `max` ma ujemną "wspólną długość" z każdym innym i po cichu z niczym nie koliduje (pułapka 3). Sprawdzanie przy każdym teście kosztowałoby więcej niż sam test. Kolejność narożników jest więc obowiązkiem tego, kto tworzy pudełko: wynik `fromCenter` jest poprawny, dopóki połowy rozmiarów są nieujemne (funkcja tego nie sprawdza), a przy inicjalizatorze z polami `.min` i `.max` trzeba samemu podać mniejszy narożnik jako `min`. Kod gry tworzy pudełka tylko przez `fromCenter` ze stałych dodatnich połów rozmiarów (`game::wallBox`, `game::pillarBox`, `Player::box`, a od M5 także `game::exitZone`).
 
 ```cpp
 Aabb Aabb::fromCenter(const glm::vec3& center, const glm::vec3& halfExtents) {
@@ -438,6 +593,8 @@ bool overlaps(const Aabb& a, const Aabb& b) {
 | `&&` | wszystkie trzy warunki naraz. Operator `&&` przerywa na pierwszym fałszu, więc dla pudełek odległych na osi x pozostałe osie nie są nawet liczone |
 
 Funkcja jest symetryczna: `overlaps(a, b)` i `overlaps(b, a)` dają to samo, bo `std::min` i `std::max` nie zależą od kolejności argumentów.
+
+To jedno z trzech przeciążeń `overlaps`: kompilator wybiera właściwe po typach argumentów. Dwa pozostałe, dla dwóch kul i dla kuli z pudełkiem, są w sekcji 5.9.
 
 ### 5.4 `allowedDistance`: jedna oś
 
@@ -519,7 +676,7 @@ float allowedDistance(const Aabb& box, float distance, int axis, std::span<const
 | `allowed = std::min(allowed, ...)` | najbliższa przeszkoda wygrywa: zostaje najmniejsza z dotychczasowej wartości i odstępu do tej przeszkody. Zaczynam od chcianej długości, więc wynik nigdy jej nie przekroczy |
 | `return movesForward ? allowed : -allowed;` | długość z powrotem dostaje znak kierunku |
 
-Funkcja sprawdza wszystkie przeszkody z listy, bez żadnego wstępnego odsiewania. Labirynt 16 na 16 komórek ma 578 pudełek (289 ścian i 289 słupków). Przy ruchu poziomym listę przechodzą dwie osie (trzecia kończy się na pierwszej linii, bo przesunięcie w pionie jest zerem), czyli 1156 przeszkód na krok i około 139 tysięcy na sekundę przy 120 krokach. Dla każdej to kilka porównań liczb. Struktury przyspieszającej (na przykład siatki komórek) nie ma, bo przy takiej skali nie jest potrzebna. Czasu tego kodu nie mierzyłem w działającej grze: liczby wynikają z rozmiaru listy.
+Funkcja sprawdza wszystkie przeszkody z listy, bez żadnego wstępnego odsiewania. Labirynt 16 na 16 komórek ma 578 pudełek (289 ścian i 289 słupków), a od M5 o jedno więcej, dopóki brama jest zamknięta: liczby niżej są dla samych ścian i słupków. Przy ruchu poziomym listę przechodzą dwie osie (trzecia kończy się na pierwszej linii, bo przesunięcie w pionie jest zerem), czyli 1156 przeszkód na krok i około 139 tysięcy na sekundę przy 120 krokach. Dla każdej to kilka porównań liczb. Struktury przyspieszającej (na przykład siatki komórek) nie ma, bo przy takiej skali nie jest potrzebna. Czasu tego kodu nie mierzyłem w działającej grze: liczby wynikają z rozmiaru listy.
 
 ### 5.5 `moveAndSlide`
 
@@ -553,6 +710,8 @@ W pliku na miejscu linii z nawiasem stoi dłuższy komentarz po angielsku: wyja�
 | `box.min[axis] += allowed[axis];` i to samo dla `max` | przesunięcie roboczej kopii. Oba narożniki dostają to samo, więc rozmiar pudełka się nie zmienia |
 | `return allowed;` | funkcja zwraca **przesunięcie**, nie nową pozycję. Wołający sam dodaje je do pozycji obiektu |
 
+Funkcja przyjmuje **tylko pudełka**: i to, co się rusza, i przeszkody mają typ `Aabb`. Wersji dla kul nie ma (sekcja 2.12).
+
 Dlaczego funkcja zwraca przesunięcie, a nie przesuwa obiektu: `Aabb` to tylko bryła kolizji. Obiekt gry ma swoją pozycję (gracz: punkt, wokół którego buduje się pudełko i z którego liczy się pozycję kamery), a pudełko jest z niej wyliczane. Funkcja, która zwraca "o ile wolno", nie musi wiedzieć, czym jest przesuwany obiekt.
 
 Dlaczego kolejność x, z, y: ruch w labiryncie jest prawie zawsze poziomy, więc obie osie poziome idą pierwsze, a pionowa na końcu. Dopóki nie ma grawitacji ani skoków, składowa y przesunięcia wynosi zero i trzeci obrót pętli kończy się w pierwszej linii `allowedDistance`.
@@ -574,8 +733,43 @@ A tak woła ją aplikacja w `NightMazeApp::onUpdate`:
 
 ```cpp
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
-                    m_mazeWorld.colliders);
+                    m_obstacles);
 ```
+
+Do M4 ostatnim argumentem była lista `m_mazeWorld.colliders`, czyli same ściany i słupki. Od M5 gracz porusza się wśród `m_obstacles`: to pole aplikacji typu `std::vector<scene::Aabb>`, które buduje `game::roundObstacles` ([`src/game/Round.cpp`](../../../src/game/Round.cpp)):
+
+```cpp
+std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& round) {
+    std::vector<scene::Aabb> obstacles = world.colliders;
+    if (gateBlocks(world, round)) {
+        obstacles.push_back(world.gateBox);
+    }
+    return obstacles;
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `std::vector<scene::Aabb> obstacles = world.colliders;` | kopia listy labiryntu: pudełka wszystkich ścian, potem wszystkich słupków. Ta część nie zmienia się przez cały czas życia labiryntu |
+| `if (gateBlocks(world, round))` | brama blokuje, gdy labirynt ją ma i jeszcze się nie otworzyła (`world.hasGate && !round.gateOpen`) |
+| `obstacles.push_back(world.gateBox);` | pudełko bramy jako ostatnie na liście. `gateBox` to wynik `wallBox` dla segmentu bramy, czyli dokładnie takie pudełko, jakie miałaby ściana w tym miejscu: 2 m długości, 3 m wysokości, 0,3 m grubości |
+
+Brama nie jest w `MazeWorld::colliders`, bo w trakcie rundy przestaje być przeszkodą, a `MazeWorld` opisuje to, co się w labiryncie nie zmienia. Dla `moveAndSlide` brama niczym się nie różni od ściany: to jeszcze jedno `Aabb` na liście.
+
+Lista jest budowana w dwóch miejscach `NightMazeApp`: w `beginRound` (nowa runda, także po nowym labiryncie) i w `onUpdate`, w kroku, w którym brama się otworzyła:
+
+```cpp
+    const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);
+    updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,
+                static_cast<float>(fixedDt));
+    // The gate has just opened (the only change a step can make here): its box leaves
+    // the obstacle list, and the way into the exit cell is free.
+    if (gateBlocks(m_mazeWorld, m_round) != gateBlockedBefore) {
+        m_obstacles = roundObstacles(m_mazeWorld, m_round);
+    }
+```
+
+Kod pyta o stan bramy przed krokiem reguł i po nim, a listę kopiuje tylko wtedy, gdy odpowiedź się zmieniła. W zwykłym kroku nie powstaje więc żadna nowa lista (pułapka 8). Kolejność w kroku jest taka: najpierw ruch gracza ze starą listą, potem reguły rundy z pozycją po ruchu. Brama otwarta w tym kroku przestaje blokować od następnego.
 
 Trzy elementy spotykają się w jednym kroku symulacji:
 
@@ -583,9 +777,9 @@ Trzy elementy spotykają się w jednym kroku symulacji:
 |---|---|---|
 | chciane przesunięcie `wanted` | kierunek z klawiszy razy prędkość razy `stepSeconds`, a `stepSeconds` to zawsze `fixedDt` | co krok |
 | pudełko `box()` | z pozycji stóp gracza: 0,6 x 1,8 x 0,6 m | co krok, od nowa |
-| lista przeszkód `obstacles` | `m_mazeWorld.colliders`, wynik `game::mazeColliders` | raz na labirynt |
+| lista przeszkód `obstacles` | `m_obstacles`, wynik `game::roundObstacles`: pudełka labiryntu i pudełko bramy, dopóki brama jest zamknięta | na początku rundy i w chwili otwarcia bramy |
 
-Kod pilnuje więc trzech rzeczy, o których mówi teoria: przesunięcie powstaje ze stałego kroku (sekcja 2.8), pudełko jest budowane od nowa z pozycji, a lista przeszkód nie jest liczona w każdym kroku. W trybie noclip gracz w ogóle nie woła `moveAndSlide`. Całą funkcję linia po linii omawia [`../game/player.md`](../game/player.md), sekcja 5.
+Kod pilnuje więc trzech rzeczy, o których mówi teoria: przesunięcie powstaje ze stałego kroku (sekcja 2.8), pudełko jest budowane od nowa z pozycji, a lista przeszkód nie jest liczona w każdym kroku. W trybie noclip gracz w ogóle nie woła `moveAndSlide`. Testy kul z `updateRound` działają jednak także w noclip (sekcja 5.10). Całą funkcję linia po linii omawia [`../game/player.md`](../game/player.md), sekcja 5.
 
 ### 5.7 Jak to zostało sprawdzone
 
@@ -606,6 +800,20 @@ Testy jednostkowe w bibliotece doctest, uruchamiane przez `ctest` ([`../../libra
 | `a box slides across the joint of two wall segments` | dwa segmenty ściany w jednej linii, stykające się końcami, 100 kroków `(0,02, 0, 0,03)` | pudełko nie zatrzymuje się na łączeniu |
 | `documented limit: a step much longer than the boxes...` | słupek na przekątnej: jeden krok `(2, 0, 2)` i ta sama droga w 80 krokach | długi krok mija słupek (sekcja 2.8), krótkie kroki na niego trafiają i muszą go obejść |
 
+Siedem przypadków dla kul, dopisanych w M5 w tym samym pliku (razem jest ich w nim 19):
+
+| Przypadek testowy | Co sprawdza | Wynik |
+|---|---|---|
+| `two spheres overlap when their centres are closer than the sum of the radii` | kula o promieniu 0,5 z samą sobą, z kulą 0,8 m dalej, z kulą 1,5 m dalej i z kulą o promieniu 0,45 odległą o 0,9 m, w obu kolejnościach argumentów | tak, tak, nie, tak w obie strony |
+| `the distance between two spheres is measured in all three directions` | dwie kule o promieniu 1: druga przesunięta o 1,2 m na każdej osi, o 1,1 m na każdej osi, o 1,9 m i o 2,1 m prosto w górę | nie (około 2,08 m), tak (około 1,91 m), tak, nie |
+| `spheres that only touch do not overlap` | środki odległe dokładnie o 1 m przy promieniach 0,5 i 0,5. Potem kula o promieniu 0, czyli punkt: wewnątrz innej kuli i z samym sobą | styk to nie nakładanie. Punkt wewnątrz kuli nachodzi na nią, punkt na punkt nie |
+| `closestPoint keeps a point inside the box and moves a point outside to its surface` | pudełko od `(0, 0, 0)` do `(2, 3, 4)` i cztery punkty: w środku, przed ścianą, za krawędzią, za narożnikiem | cztery wiersze tabeli z sekcji 2.11 |
+| `a sphere overlaps a box when it reaches the closest point of the box` | pudełko od `(0, 0, 0)` do `(2, 2, 2)`: środek kuli w pudełku, 0,5 m przed ścianą x = 2 z promieniem 0,75 i 0,25, nad górną ścianą w odległości 0,5 m i 1 m z promieniem 0,75 | tak, tak, nie, tak, nie |
+| `near a corner of a box the sphere test is rounder than a box test would be` | środek `(2,5, 1, 2,5)`, promień 0,6 i 0,75 (sekcja 2.12) | nie, tak |
+| `a sphere that only touches a box does not overlap it` | kula `(2,5, 1, 1)` o promieniu 0,5 dotyka ściany x = 2. Potem kula o promieniu 0: na ścianie i w środku pudełka | trzy razy nie |
+
+Dwa ostatnie wiersze z promieniem 0 pokazują drobną niesymetrię, którą warto znać (pułapka 19): punkt wewnątrz **kuli** nachodzi na nią, a punkt wewnątrz **pudełka** nie.
+
 I trzy przypadki z `tests/MazeLayoutTests.cpp`, w których przeszkodami są prawdziwe pudełka labiryntu:
 
 | Przypadek testowy | Co sprawdza | Wynik |
@@ -618,16 +826,18 @@ Ostatni wiersz zastąpił wcześniejszy przypadek, który przypinał zachowanie 
 
 Cztery dalsze przypadki z prawdziwym graczem są w `tests/PlayerTests.cpp` (`a wall stops the player`, `a player pressing into a wall slides along it and past the pillars`, `a player wandering through a closed maze never leaves it or enters a wall`, `noclip flies through walls`): omawia je [`../game/player.md`](../game/player.md), sekcja 5.
 
-Wyniki na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05): build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach. Stan całego programu testowego po M4 (2026-10-05): 163 przypadki i 62220 asercji, w tym te same przypadki kolizji. Na macOS kod nie był jeszcze kompilowany ani uruchamiany: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+Użycie kul w regułach gry sprawdza `tests/RoundTests.cpp`, między innymi przypadki `the reach of the player is a sphere at the middle of the body`, `a crystal is collected from the middle of its cell, not from the next cell`, `a larger pickup radius reaches a crystal from further away`, `the round is won in the exit zone, but only while the gate is open` i `the player cannot reach the exit zone from in front of the closed gate`. Liczby z nich są w sekcji 5.10, a całość omawia [`../game/gameplay.md`](../game/gameplay.md).
 
-### 5.8 Rysowanie pudełek: `ColliderLines`
+Wyniki na Windowsie według raportu z 2026-10-05: build Debug i Release bez ostrzeżeń, cały program testowy (215 przypadków, 85098 asercji, w tym 19 przypadków z `ColliderTests.cpp`) przechodzi w obu konfiguracjach. Na macOS nic z M5 nie było jeszcze kompilowane ani uruchamiane: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
-Klasa z programu `night_maze` ([`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`.cpp`](../../../src/game/ColliderLines.cpp)). Nie zmienia kolizji w żaden sposób: tylko pokazuje te same pudełka, na których liczy `moveAndSlide`.
+### 5.8 Rysowanie pudełek i kul: `ColliderLines`
+
+Klasa z programu `night_maze` ([`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`.cpp`](../../../src/game/ColliderLines.cpp)). Nie zmienia kolizji w żaden sposób: tylko pokazuje te same pudełka, na których liczy `moveAndSlide`, i te same kule, które porównuje `updateRound`.
 
 ```cpp
 class ColliderLines {
 public:
-    /// Uploads the unit cube.
+    /// Uploads the unit cube and the unit circle.
     ColliderLines();
 
     /// Draws every box in one colour. shader is the flat colour program (color.vert and
@@ -636,12 +846,20 @@ public:
     void draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
               const glm::vec3& color) const;
 
+    /// Draws every sphere in one colour, as three circles around its centre: one lying
+    /// flat (in the XZ plane) and two standing upright (in the XY and the YZ plane).
+    /// Three circles are enough to read the size and the place of a sphere, and they
+    /// are the same picture from every side. shader is prepared as for draw.
+    void drawSpheres(const gfx::Shader& shader, std::span<const scene::Sphere> spheres,
+                     const glm::vec3& color) const;
+
 private:
     gfx::Mesh m_unitCube;
+    gfx::Mesh m_unitCircle;
 };
 ```
 
-Jedno pole: siatka sześcianu o boku 1. Klasa posiada więc obiekty OpenGL (VAO i dwa bufory wewnątrz `gfx::Mesh`) i musi zostać zniszczona przed oknem. Kopiować się jej nie da, bo `gfx::Mesh` nie da się kopiować.
+Dwa pola: siatka sześcianu o boku 1 i siatka okręgu o promieniu 1. Klasa posiada więc obiekty OpenGL (VAO i dwa bufory wewnątrz każdej `gfx::Mesh`) i musi zostać zniszczona przed oknem. Kopiować się jej nie da, bo `gfx::Mesh` nie da się kopiować.
 
 **Dane sześcianu.**
 
@@ -680,15 +898,17 @@ constexpr std::array<std::uint32_t, EDGE_COUNT * INDICES_PER_LINE> UNIT_CUBE_EDG
 | `0, 4, 1, 5, 2, 6, 3, 7` | cztery krawędzie pionowe |
 | `EDGE_COUNT * INDICES_PER_LINE` | 24 indeksy: 12 krawędzi po 2 |
 
-Sześcian sięga od `(0, 0, 0)` do `(1, 1, 1)`, a nie od -0,5 do 0,5 jak kostka z M1. Powód jest w funkcji `draw`: narożnik w początku układu sprawia, że przesunięcie do narożnika `min` pudełka wystarcza, bez liczenia środka.
+Sześcian sięga od `(0, 0, 0)` do `(1, 1, 1)`, a nie od -0,5 do 0,5, jak sięgała kostka z M1 (usunięta z programu w M5). Powód jest w funkcji `draw`: narożnik w początku układu sprawia, że przesunięcie do narożnika `min` pudełka wystarcza, bez liczenia środka.
 
-Tutaj 8 wierzchołków wystarcza, choć kostka z M1 potrzebowała 24. Tam każdy narożnik miał trzy różne kolory (po jednym na ścianę), więc był trzema wierzchołkami. Tu wierzchołek to sama pozycja, więc narożnik wspólny dla trzech krawędzi jest jednym wierzchołkiem.
+Tutaj 8 wierzchołków wystarcza, choć kostka z M1 potrzebowała 24. Tam każdy narożnik miał trzy różne kolory (po jednym na ścianę), więc był trzema wierzchołkami. Z tego samego powodu modele ścian mają osobne wierzchołki dla każdej ściany bryły: różnią się normalną. Tu wierzchołek to sama pozycja, więc narożnik wspólny dla trzech krawędzi jest jednym wierzchołkiem.
 
 ```cpp
-ColliderLines::ColliderLines() : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES) {}
+ColliderLines::ColliderLines()
+    : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES),
+      m_unitCircle(unitCirclePoints(), unitCircleLines(), GL_LINES) {}
 ```
 
-Trzeci argument konstruktora `gfx::Mesh` to rodzaj prymitywu. Tablice `std::array` same zamieniają się na `std::span`.
+Trzeci argument konstruktora `gfx::Mesh` to rodzaj prymitywu. Tablice `std::array` same zamieniają się na `std::span`. Dane okręgu (funkcje `unitCirclePoints` i `unitCircleLines`) są omówione niżej, przy `drawSpheres`.
 
 **`draw`.**
 
@@ -731,23 +951,127 @@ void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb>
 
 Przykład na liczbach: pudełko ściany wzdłuż X o środku na linii z = 4 ma `min = (2, 0, 3,85)` i `max = (4, 3, 4,15)`. Skala wychodzi `(2,02, 3,02, 0,32)`, a pozycja `(1,99, -0,01, 3,84)`. Narożnik `(1, 1, 1)` sześcianu ląduje w `(4,01, 3,01, 4,16)`: centymetr poza prawdziwym `max`.
 
-Inaczej niż macierze ścian labiryntu, te macierze **są** liczone w każdej klatce, w pętli rysowania. To świadome uproszczenie: rysowanie pudełek jest narzędziem diagnostycznym, domyślnie wyłączonym, a pudełko gracza i tak zmienia się co klatkę.
+Inaczej niż macierze ścian labiryntu, te macierze **są** liczone w każdej klatce, w pętli rysowania. To świadome uproszczenie: rysowanie brył jest narzędziem diagnostycznym, domyślnie wyłączonym, a pudełko gracza i tak zmienia się co klatkę.
 
-**Kto woła `draw`.** `NightMazeApp::onRender`, na końcu klatki i tylko wtedy, gdy przełącznik jest włączony:
+**Dane okręgu.**
+
+```cpp
+// A circle is drawn as this many straight pieces. 32 look round at the size of a pickup
+// sphere on the screen.
+constexpr std::size_t CIRCLE_SEGMENTS = 32;
+```
+
+```cpp
+std::array<gfx::Vertex, CIRCLE_SEGMENTS> unitCirclePoints() {
+    std::array<gfx::Vertex, CIRCLE_SEGMENTS> points{};
+    for (std::size_t i = 0; i < CIRCLE_SEGMENTS; ++i) {
+        const float angle =
+            glm::two_pi<float>() * static_cast<float>(i) / static_cast<float>(CIRCLE_SEGMENTS);
+        points[i].position = {std::cos(angle), std::sin(angle), 0.0F};
+    }
+    return points;
+}
+
+// Every two indices are one line (GL_LINES): each point is joined to the next one, and
+// the last point back to the first (that is what the remainder does).
+std::array<std::uint32_t, CIRCLE_SEGMENTS * INDICES_PER_LINE> unitCircleLines() {
+    std::array<std::uint32_t, CIRCLE_SEGMENTS * INDICES_PER_LINE> indices{};
+    for (std::size_t i = 0; i < CIRCLE_SEGMENTS; ++i) {
+        indices[i * INDICES_PER_LINE] = static_cast<std::uint32_t>(i);
+        indices[i * INDICES_PER_LINE + 1] = static_cast<std::uint32_t>((i + 1) % CIRCLE_SEGMENTS);
+    }
+    return indices;
+}
+```
+
+| Fragment | Znaczenie |
+|---|---|
+| `CIRCLE_SEGMENTS = 32` | okrąg jest łamaną z 32 prostych odcinków (sekcja 3) |
+| `glm::two_pi<float>()` razy `i`, dzielone przez `CIRCLE_SEGMENTS` | kąt punktu numer `i` w radianach: pełny obrót (2 pi) podzielony na 32 równe części. Punkt 0 ma kąt 0, punkt 8 ma 90 stopni, punkt 16 ma 180 |
+| `{std::cos(angle), std::sin(angle), 0.0F}` | punkt na okręgu o promieniu 1 wokół początku układu, w płaszczyźnie XY (z = 0). Punkt 0 to `(1, 0, 0)`, punkt 8 to `(0, 1, 0)` |
+| `points{}` i brak normalnej, uv, stycznej | tak jak przy sześcianie: wypełniona jest tylko pozycja, reszta zostaje zerami |
+| pierwsza linia w pętli `unitCircleLines` | początek odcinka numer `i`: punkt `i` |
+| `(i + 1) % CIRCLE_SEGMENTS` | jego koniec: następny punkt. Reszta z dzielenia zawija ostatni odcinek do punktu 0 (`32 % 32 = 0`), więc łamana się zamyka |
+| `CIRCLE_SEGMENTS * INDICES_PER_LINE` | 64 indeksy: 32 odcinki po 2 |
+
+Okrąg jest liczony funkcją, a sześcian stoi w kodzie jako tablica stałych. Powód podaje komentarz nad `unitCirclePoints` w pliku (tutaj pominięty): 32 sinusy i cosinusy łatwiej policzyć, niż wpisać. Funkcje są wołane raz, w konstruktorze `ColliderLines`.
+
+```cpp
+// The unit circle lies in the XY plane. Turned by a quarter around the X axis it lies
+// flat in the XZ plane, turned by a quarter around the Y axis it stands in the YZ plane.
+constexpr float QUARTER_TURN_DEGREES = 90.0F;
+constexpr std::array<glm::vec3, 3> CIRCLE_ROTATIONS = {
+    glm::vec3{0.0F, 0.0F, 0.0F},
+    glm::vec3{QUARTER_TURN_DEGREES, 0.0F, 0.0F},
+    glm::vec3{0.0F, QUARTER_TURN_DEGREES, 0.0F},
+};
+```
+
+Trzy zestawy kątów dla pola `rotationDegrees` struktury `Transform` (kąty wokół osi X, Y i Z, w stopniach):
+
+| Element `CIRCLE_ROTATIONS` | Obrót | Gdzie leży okrąg |
+|---|---|---|
+| `(0, 0, 0)` | żaden | stoi w płaszczyźnie XY |
+| `(90, 0, 0)` | ćwierć obrotu wokół osi X: oś Y ląduje na osi Z | leży płasko, w płaszczyźnie XZ (równolegle do podłogi) |
+| `(0, 90, 0)` | ćwierć obrotu wokół osi Y: oś X ląduje na osi Z | stoi w płaszczyźnie YZ |
+
+**`drawSpheres`.**
+
+```cpp
+void ColliderLines::drawSpheres(const gfx::Shader& shader, std::span<const scene::Sphere> spheres,
+                                const glm::vec3& color) const {
+    shader.setVec3(COLOR_UNIFORM, color);
+
+    for (const scene::Sphere& sphere : spheres) {
+        // The unit circle has a radius of 1 around the origin, so scaling it by the
+        // radius and moving it to the centre lands it on the sphere.
+        scene::Transform transform;
+        transform.position = sphere.center;
+        transform.scale = glm::vec3{sphere.radius};
+
+        for (const glm::vec3& rotation : CIRCLE_ROTATIONS) {
+            transform.rotationDegrees = rotation;
+            shader.setMat4(MODEL_UNIFORM, transform.matrix());
+            m_unitCircle.draw();
+        }
+    }
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `shader.setVec3(COLOR_UNIFORM, color);` | jeden kolor dla całej listy kul, tak jak w `draw` |
+| `transform.position = sphere.center;` | okrąg jednostkowy ma środek w początku układu, więc samo przesunięcie do środka kuli stawia go na miejscu. Sześcian miał w początku układu narożnik i dlatego jechał do `min` |
+| `transform.scale = glm::vec3{sphere.radius};` | ta sama skala na trzech osiach: okrąg o promieniu 1 staje się okręgiem o promieniu kuli. Skala jednorodna nie zmienia kształtu, więc okrąg zostaje okręgiem także po obrocie |
+| `for (const glm::vec3& rotation : CIRCLE_ROTATIONS)` | trzy obroty pętli na kulę: trzy okręgi z jednej siatki |
+| `transform.rotationDegrees = rotation;` | zmienia się tylko obrót. Pozycja i skala zostają z linii wyżej |
+| `transform.matrix()` | `translate * rotate * scale`: punkt okręgu jest najpierw skalowany do promienia, potem obracany do swojej płaszczyzny, na końcu przesuwany do środka kuli ([`transforms.md`](transforms.md), sekcja 5) |
+| `m_unitCircle.draw();` | `glDrawElements(GL_LINES, 64, ...)` |
+
+Przykład na liczbach: kula zasięgu gracza stojącego na starcie, w środku komórki `(0, 0)`, ma środek `(1, 0,9, 1)` i promień 0,3. W okręgu bez obrotu punkt 0, czyli `(1, 0, 0)`, po skali to `(0,3, 0, 0)`, a po przesunięciu `(1,3, 0,9, 1)`. Punkt 8, czyli `(0, 1, 0)`, ląduje w `(1, 1,2, 1)`: 0,3 m nad środkiem.
+
+Marginesu `LINE_MARGIN` tu nie ma: okręgi są rysowane w prawdziwym rozmiarze (sekcja 3). Pusta lista kul jest poprawna: funkcja ustawia kolor i nic nie rysuje.
+
+**Kto woła `draw` i `drawSpheres`.** `NightMazeApp::onRender`, na końcu klatki i tylko wtedy, gdy przełącznik jest włączony:
 
 ```cpp
     drawMaze(view, projection);
-    drawCube(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
     }
 ```
 
+`drawMaze` rysuje labirynt, a razem z nim kryształy i bramę. Kostki z M1, którą do M4 rysowało osobne wywołanie między tymi dwiema liniami, w programie już nie ma.
+
 ```cpp
-// Colours of the collision box lines (red, green, blue): the boxes of the maze in
-// yellow, the box of the player in green.
+// Colours of the collision lines (red, green, blue): the boxes of the maze in yellow,
+// the box and the reach of the player in green, the box of the gate in orange, the
+// pickup spheres of the crystals in cyan and the exit zone in magenta.
 constexpr glm::vec3 MAZE_COLLIDER_COLOR{1.0F, 0.85F, 0.1F};
 constexpr glm::vec3 PLAYER_COLLIDER_COLOR{0.2F, 1.0F, 0.4F};
+constexpr glm::vec3 GATE_COLLIDER_COLOR{1.0F, 0.45F, 0.1F};
+constexpr glm::vec3 PICKUP_COLLIDER_COLOR{0.2F, 0.9F, 1.0F};
+constexpr glm::vec3 EXIT_ZONE_COLOR{1.0F, 0.3F, 0.9F};
 ```
 
 ```cpp
@@ -770,38 +1094,240 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
     const scene::Aabb playerBox = m_player.box();
     m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&playerBox, 1),
                          PLAYER_COLLIDER_COLOR);
+
+    // The gate, while it is an obstacle, and the zone behind it that wins the round.
+    if (gateBlocks(m_mazeWorld, m_round)) {
+        m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&m_mazeWorld.gateBox, 1),
+                             GATE_COLLIDER_COLOR);
+    }
+    m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&m_mazeWorld.exitZone, 1),
+                         EXIT_ZONE_COLOR);
+
+    // The spheres of the pickup test: the reach of the player and, around every crystal
+    // that is still there, the sphere the reach has to overlap. They stay on the
+    // resting place of the crystal while the crystal itself bobs.
+    const scene::Sphere reach = playerReach(m_player.position);
+    m_colliderLines.drawSpheres(m_colorShader, std::span<const scene::Sphere>(&reach, 1),
+                                PLAYER_COLLIDER_COLOR);
+    std::vector<scene::Sphere> pickupSpheres;
+    for (const RoundCrystal& crystal : m_round.crystals) {
+        if (!crystal.collected) {
+            pickupSpheres.push_back(
+                {.center = crystalCenter(crystal.restPosition), .radius = m_gameplay.pickupRadius});
+        }
+    }
+    m_colliderLines.drawSpheres(m_colorShader, pickupSpheres, PICKUP_COLLIDER_COLOR);
 }
 ```
 
 | Linia | Znaczenie |
 |---|---|
 | `if (!m_colorShader.isValid()) { return; }` | bez programu nie ma czym rysować. Błąd wczytania shadera był w logu przy starcie, a reszta klatki rysuje się normalnie |
-| `use()`, potem `uView` i `uProjection` | te same macierze co dla labiryntu i kostki: linie są widziane z tego samego oka |
-| `draw(m_colorShader, m_mazeWorld.colliders, MAZE_COLLIDER_COLOR)` | dokładnie ta lista, którą dostaje `Player::update`. Wektor sam zamienia się na `std::span` |
-| `const scene::Aabb playerBox = m_player.box();` | pudełko gracza w pozycji symulacji |
+| `use()`, potem `uView` i `uProjection` | te same macierze co dla labiryntu: linie są widziane z tego samego oka |
+| `draw(m_colorShader, m_mazeWorld.colliders, MAZE_COLLIDER_COLOR)` | żółte: ściany i słupki, czyli stała część listy przeszkód. Wektor sam zamienia się na `std::span` |
+| `const scene::Aabb playerBox = m_player.box();` | pudełko gracza w pozycji symulacji, na zielono |
 | `std::span<const scene::Aabb>(&playerBox, 1)` | widok na jeden element: wskaźnik i liczba 1. Dzięki temu `draw` ma jedną wersję, dla listy |
+| `if (gateBlocks(m_mazeWorld, m_round))` | pomarańczowe pudełko bramy jest rysowane tylko wtedy, gdy brama jest na liście przeszkód. Ten sam warunek stoi w `roundObstacles`, więc **żółte i pomarańczowe linie razem to dokładnie lista `m_obstacles`**, którą dostaje `Player::update` |
+| ostatnie wywołanie `draw`, z `m_mazeWorld.exitZone` i `EXIT_ZONE_COLOR` | strefa wyjścia na magentę, zawsze. To pudełko **nie** jest przeszkodą: gracz w nie wchodzi, a test kuli z pudełkiem kończy rundę (sekcja 5.10) |
+| `const scene::Sphere reach = playerReach(m_player.position);` | kula zasięgu gracza, tą samą funkcją, której używa `updateRound`. Zielona jak pudełko gracza: obie bryły należą do gracza |
+| `if (!crystal.collected)` | kula zbierania tylko dla kryształów, które jeszcze wiszą |
+| `crystalCenter(crystal.restPosition)` | środek kuli to środek kryształu **w miejscu spoczynku**. Rysowany model kołysze się w górę i w dół o najwyżej 8 cm (`CRYSTAL_BOB_AMPLITUDE`), a kula stoi: tak samo liczy ją test w `collectCrystals` |
+| `m_gameplay.pickupRadius` | promień z ustawień rozgrywki (domyślnie 0,6 m). Suwak `Pickup radius` w panelu Gameplay zmienia naraz test i rysunek |
+| `drawSpheres(m_colorShader, pickupSpheres, PICKUP_COLLIDER_COLOR)` | wszystkie kule kryształów jednym wywołaniem, w kolorze cyjan |
 
-Linie są rysowane **po** labiryncie i kostce, z włączonym testem głębi. Kolejność nie wpływa na to, co jest zasłonięte (o tym decyduje głębia), ale gwarantuje, że głębie ścian są już w buforze, gdy linie są z nimi porównywane.
+Lista `pickupSpheres` powstaje od nowa w każdej klatce, w której rysowanie jest włączone. Kule nie są nigdzie przechowywane: i reguły, i rysunek liczą je za każdym razem z pozycji spoczynku kryształu i z promienia w ustawieniach, więc nie mogą się rozjechać.
 
-Na zrzucie ekranu z Windowsa (widok z góry, tryb noclip) żółte pudełka leżą na ścianach i słupkach. Pudełka gracza na zrzutach nie oceniałem, a przełącznika nikt jeszcze nie kliknął ręcznie.
+Linie są rysowane **po** labiryncie, kryształach i bramie, z włączonym testem głębi. Kolejność nie wpływa na to, co jest zasłonięte (o tym decyduje głębia), ale gwarantuje, że głębie ścian są już w buforze, gdy linie są z nimi porównywane.
+
+Na zrzucie ekranu z Windowsa z M3 (widok z góry, tryb noclip) żółte pudełka leżały na ścianach i słupkach. Linii z M5 (pomarańczowych, cyjanowych, magentowych i zielonej kuli) nie oceniałem na żadnym zrzucie, a przełącznika nikt jeszcze nie kliknął ręcznie.
+
+### 5.9 Kule: `Sphere`, dwa `overlaps` i `closestPoint`
+
+Kod z M5, w tych samych dwóch plikach co pudełka. W nagłówku:
+
+```cpp
+/// A sphere: every point within radius of center. The second kind of collision shape,
+/// used for things that are picked up or entered and never block the way: walking close
+/// enough is all that counts, from whatever side.
+///
+/// Plain data, like Aabb.
+struct Sphere {
+    /// The middle of the sphere, in world space.
+    glm::vec3 center{0.0F};
+
+    /// Distance from the middle to the surface, in metres. Must not be negative.
+    float radius = 0.0F;
+};
+```
+
+| Element | Znaczenie |
+|---|---|
+| `glm::vec3 center{0.0F};` | środek kuli we współrzędnych świata. `{0.0F}` zeruje trzy składowe, tak jak w `Aabb` |
+| `float radius = 0.0F;` | promień w metrach. Wartość domyślna 0 daje punkt |
+| "Must not be negative" | warunek, którego kod **nie sprawdza**, tak jak nie sprawdza `min <= max` w pudełku (pułapka 18) |
+| brak konstruktora i funkcji | struktura jest agregatem: tworzy się ją inicjalizatorem desygnowanym, `scene::Sphere{.center = {0.0F, 1.0F, 0.0F}, .radius = 0.5F}`. Nazwy pól chronią przed pomyleniem kolejności |
+
+Kula nie ma odpowiednika `fromCenter`, bo środek i promień to już jej naturalny opis.
+
+**Kula z kulą.**
+
+```cpp
+bool overlaps(const Sphere& a, const Sphere& b) {
+    // The squares are compared instead of the distances themselves: the square root that
+    // a distance needs is the expensive part, and for numbers that are not negative
+    // "smaller" means the same before and after squaring. dot(v, v) is the squared
+    // length of v.
+    const glm::vec3 offset = b.center - a.center;
+    const float reach = a.radius + b.radius;
+    return glm::dot(offset, offset) < reach * reach;
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `const glm::vec3 offset = b.center - a.center;` | wektor od środka pierwszej kuli do środka drugiej. Odejmowanie działa składowa po składowej |
+| `const float reach = a.radius + b.radius;` | suma promieni: tak daleko od siebie mogą być środki, żeby kule się jeszcze stykały |
+| `glm::dot(offset, offset)` | kwadrat odległości środków: `x * x + y * y + z * z` (sekcja 2.10) |
+| `reach * reach` | kwadrat sumy promieni. Mnożenie zamiast funkcji potęgi: jest tańsze i dokładne |
+| `<` | ostra nierówność: przy równości kule tylko się stykają i wynik to fałsz (sekcja 2.12) |
+
+Funkcja nie woła `std::sqrt` ani `glm::length`. Jest symetryczna: zamiana `a` z `b` zmienia tylko znak `offset`, a kwadrat długości znaku nie widzi.
+
+**Najbliższy punkt pudełka.**
+
+```cpp
+glm::vec3 closestPoint(const Aabb& box, const glm::vec3& point) {
+    // Axis by axis: a coordinate between min and max stays, one outside is moved to the
+    // nearer of the two. glm::clamp does that for all three components at once.
+    return glm::clamp(point, box.min, box.max);
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `glm::clamp(point, box.min, box.max)` | wersja `clamp` dla wektorów: przycina `point.x` do przedziału od `box.min.x` do `box.max.x` i tak samo y i z. Wynik to nowy wektor ([`../../libraries/glm.md`](../../libraries/glm.md)) |
+| wynik dla punktu w pudełku | ten sam punkt: żadna współrzędna nie wychodzi poza swój przedział |
+| wynik dla punktu poza pudełkiem | punkt na ścianie, krawędzi albo w narożniku pudełka, zależnie od tego, ile współrzędnych zostało przyciętych (jedna, dwie albo trzy) |
+
+Funkcja jest publiczna, choć w programie woła ją tylko test kuli z pudełkiem. Dzięki temu ma własny przypadek testowy na liczbach, a test kuli z pudełkiem sprawdza już tylko porównanie.
+
+**Kula z pudełkiem.**
+
+```cpp
+bool overlaps(const Sphere& sphere, const Aabb& box) {
+    // The sphere reaches the box exactly when it reaches the point of the box nearest to
+    // its centre. A centre inside the box is its own nearest point: the distance is 0,
+    // and any radius above 0 overlaps.
+    const glm::vec3 offset = closestPoint(box, sphere.center) - sphere.center;
+    return glm::dot(offset, offset) < sphere.radius * sphere.radius;
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `closestPoint(box, sphere.center)` | punkt pudełka najbliższy środkowi kuli |
+| `- sphere.center` | wektor od środka kuli do tego punktu. Dla środka w pudełku to wektor zerowy |
+| `glm::dot(offset, offset) < sphere.radius * sphere.radius` | kwadrat odległości przeciw kwadratowi promienia, znów bez pierwiastka i znów z ostrą nierównością |
+
+Kolejność argumentów jest jedna: najpierw kula, potem pudełko. Przeciążenia `overlaps(box, sphere)` nie ma, więc wywołanie w odwrotnej kolejności się nie skompiluje.
+
+Trzy rzeczy, które trzeba umieć powiedzieć o tym kodzie:
+
+- **To samo wykrywanie, inne bryły.** Wszystkie trzy `overlaps` odpowiadają `bool` i wszystkie traktują styk jako brak nakładania.
+- **Żadnej reakcji.** Żadna z funkcji dla kul nie zwraca przesunięcia ani kierunku wypchnięcia. `moveAndSlide` ich nie woła i nie przyjmuje kul.
+- **Żadnej tolerancji.** `CONTACT_TOLERANCE` nie występuje w tych funkcjach (sekcja 2.7).
+
+### 5.10 Kto używa kul: zbieranie kryształów i strefa wyjścia
+
+Oba zastosowania są w [`src/game/Round.cpp`](../../../src/game/Round.cpp), w funkcji `updateRound`, wołanej raz na krok symulacji z pozycją gracza **po** ruchu. Reguły rundy w całości (bateria, brama, wygrana) opisuje [`../game/gameplay.md`](../game/gameplay.md), sekcje 2 i 5. Tutaj tylko to, co dotyczy brył.
+
+**Kula zasięgu gracza.**
+
+```cpp
+constexpr float PLAYER_REACH_HEIGHT = 0.9F;
+constexpr float PLAYER_REACH_RADIUS = 0.3F;
+```
+
+```cpp
+scene::Sphere playerReach(const glm::vec3& feetPosition) {
+    return {.center = feetPosition + glm::vec3{0.0F, PLAYER_REACH_HEIGHT, 0.0F},
+            .radius = PLAYER_REACH_RADIUS};
+}
+```
+
+Gracz ma więc dwie bryły. Pudełko `Player::box()` (0,6 na 1,8 na 0,6 m) służy do ruchu wśród ścian. Kula zasięgu ma środek 0,9 m nad stopami, czyli w połowie wysokości ciała, i promień 0,3 m, czyli połowę jego szerokości. Służy do pytań "czy gracz czegoś dosięga".
+
+**Zbieranie: kula z kulą.**
+
+```cpp
+void collectCrystals(Round& round, const GameplaySettings& settings, const scene::Sphere& reach) {
+    for (RoundCrystal& crystal : round.crystals) {
+        if (crystal.collected) {
+            continue;
+        }
+        const scene::Sphere pickup{.center = crystalCenter(crystal.restPosition),
+                                   .radius = settings.pickupRadius};
+        if (scene::overlaps(reach, pickup)) {
+            crystal.collected = true;
+            ++round.collectedCount;
+            round.battery = std::min(round.battery + settings.batteryPerCrystal, 1.0F);
+        }
+    }
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `if (crystal.collected) { continue; }` | zebrany kryształ nie ma już kuli: nie da się go zebrać drugi raz |
+| `crystalCenter(crystal.restPosition)` | środek kuli zbierania: środek kryształu w miejscu spoczynku, czyli 1,15 m nad podłogą w środku komórki (podstawa na 0,9 m plus połowa wysokości 0,5 m). Kula nie kołysze się razem z modelem, więc droga do przejścia nie zależy od chwili |
+| `settings.pickupRadius` | promień kuli zbierania, domyślnie 0,6 m |
+| `scene::overlaps(reach, pickup)` | test kuli z kulą z sekcji 5.9 |
+| trzy linie w środku `if` | skutki dla rundy: flaga zebrania, licznik i ładowanie baterii. To już reguły gry, nie kolizje |
+
+Liczby dla ustawień domyślnych. Suma promieni to `0,3 + 0,6 = 0,9` m, kwadrat 0,81. Środek kuli kryształu wisi `1,15 - 0,9 = 0,25` m nad środkiem kuli gracza, co zabiera z kwadratu `0,0625`. W poziomie zostaje pierwiastek z `0,7475`, czyli około 0,86 m: z takiej odległości od środka komórki gracz zbiera kryształ. Dwa wnioski, oba przypięte testem `a crystal is collected from the middle of its cell, not from the next cell`:
+
+- gracz przytulony do ściany w rogu komórki jest najwyżej 0,55 m od jej środka na każdej osi (1 m do linii ściany minus 0,15 m połowy pudełka ściany i 0,3 m połowy ciała), czyli około 0,78 m po przekątnej. Wzdłuż ścian komórki i w jej rogach kryształ zbiera się więc zawsze. Od strony otwartego boku ściany nie ma: gracz wchodzący do komórki zbiera kryształ dopiero wtedy, gdy jego środek jest bliżej niż około 0,86 m od środka komórki, czyli około 14 cm za jej granicą,
+- granica komórki jest 1 m od jej środka, a gracz stojący za ścianą ma środek co najmniej 1,45 m dalej. Kryształu nie da się zebrać, stojąc środkiem ciała w sąsiedniej komórce, ani przez ścianę. Test kul nie wie nic o ścianach: wynika to wyłącznie z odległości.
+
+**Wyjście: kula z pudełkiem.**
+
+```cpp
+        if (round.gateOpen && scene::overlaps(reach, world.exitZone)) {
+            round.state = RoundState::Won;
+        }
+```
+
+`world.exitZone` to `Aabb` z funkcji `game::exitZone`: pudełko 1 na 1 m w środku komórki wyjścia (2 na 2 m), wysokie jak ściany (3 m). To pudełko nigdy nie trafia na listę przeszkód. Jest **strefą** (trigger volume): wejście w nią coś uruchamia, ale niczego nie zatrzymuje.
+
+Liczby. Strefa zaczyna się 0,5 m od środka komórki, a zasięg gracza ma 0,3 m, więc przy podejściu prosto od bramy rundę wygrywa gracz, którego środek jest bliżej niż 0,8 m od środka komórki. Test `the round is won in the exit zone, but only while the gate is open` sprawdza punkt 0,85 m od środka: brakuje 5 cm i runda trwa. Przed zamkniętą bramą gracz staje 1,45 m od środka komórki (1 m do linii bramy, 0,15 m połowy pudełka bramy, 0,3 m połowy ciała): do strefy zostaje 0,95 m, ponad trzy razy więcej niż zasięg. Sprawdza to test `the player cannot reach the exit zone from in front of the closed gate`.
+
+Warunek `round.gateOpen` stoi przed testem brył z powodu trybu noclip. Z kolizjami gracz nie dostanie się do strefy, dopóki brama jest zamknięta, ale w noclip przelatuje przez nią, a to nie może wygrywać rundy. Kolizje pilnują więc drogi, a reguła pilnuje wyniku.
+
+**Co z tego wynika.**
+
+- Testy kul działają także w trybie noclip. `updateRound` dostaje pozycję gracza niezależnie od tego, jak się poruszył, więc przelatując przez kryształ, gracz go zbiera (pułapka 20).
+- Brama jest pudełkiem na liście przeszkód (sekcja 5.6), a strefa za nią pudełkiem do testu z kulą. To dwie różne role tej samej struktury `Aabb`.
+- Te same dwie kule i to samo pudełko strefy rysuje `drawColliderLines` (sekcja 5.8), z tych samych funkcji i z tych samych liczb.
 
 ## 6. Panel ImGui
 
 Panel **Collision** jest pokazem tematu 14. Kod: [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Jak panel jest podpięty do `DebugUI`, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
 
-PRD (sekcja 10) opisuje panel Collision jako "Debug draw AABB i sfer, wynik ostatniego raycasta", a tryb noclip wymienia przy panelu Camera. W programie jest rysowanie pudełek AABB. Kul i promieni (raycast) jeszcze nie ma, bo nie ma jeszcze kodu, który by ich używał (sekcja 2.9). Przełącznik noclip trafił do tego panelu, bo znaczy "wyłącz kolizje", a panel Camera pokazuje tylko bieżący tryb ([`camera-controls.md`](camera-controls.md), sekcja 6).
+PRD (sekcja 10) opisuje panel Collision jako "Debug draw AABB i sfer, wynik ostatniego raycasta", a tryb noclip wymienia przy panelu Camera. W programie jest rysowanie pudełek AABB i, od M5, kul. Promieni (raycast) nie ma: w kodzie nie ma nic, co by ich używało. Przełącznik noclip trafił do tego panelu, bo znaczy "wyłącz kolizje", a panel Camera pokazuje tylko bieżący tryb ([`camera-controls.md`](camera-controls.md), sekcja 6).
 
 ### 6.1 Kod panelu
 
 ```cpp
-void drawCollisionPanel(const game::MazeWorld& world, game::Player& player, bool& drawColliders) {
+void drawCollisionPanel(const game::MazeWorld& world, const game::Round& round,
+                        game::Player& player, bool& drawColliders) {
     // First run only: the bottom edge of the window, right of the left column (the
     // constant is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
     placePanelOnFirstUse(COLLISION_PLACEMENT);
     if (ImGui::Begin("Collision")) {
         // Checkbox reads and writes a bool through the pointer.
-        ImGui::Checkbox("Draw collision boxes", &drawColliders);
-        ImGui::TextWrapped("Yellow: walls and pillars. Green: the player.");
+        ImGui::Checkbox("Draw collision shapes", &drawColliders);
+        ImGui::TextWrapped("Yellow: walls, pillars. Green: player. Orange: gate. "
+                           "Cyan: crystal pickup. Magenta: exit zone.");
 
         // The same switch as the N key. In noclip mode the boxes below are ignored.
         ImGui::Checkbox("Noclip (key N)", &player.noclip);
@@ -809,9 +1335,14 @@ void drawCollisionPanel(const game::MazeWorld& world, game::Player& player, bool
         ImGui::Separator();
         // world.colliders holds the box of every wall first and the box of every pillar
         // after them, so the two counts are the sizes of the lists they were made from.
-        ImGui::Text("Wall boxes: %d", static_cast<int>(world.walls.size()));
-        ImGui::Text("Pillar boxes: %d", static_cast<int>(world.pillars.size()));
-        ImGui::Text("All boxes: %d", static_cast<int>(world.colliders.size()));
+        // The gate is one more box while it is closed (game::roundObstacles).
+        const int gateBoxes = game::gateBlocks(world, round) ? 1 : 0;
+        ImGui::Text("Boxes: %d walls, %d pillars, %d gate", static_cast<int>(world.walls.size()),
+                    static_cast<int>(world.pillars.size()), gateBoxes);
+        // One pickup sphere around every crystal that is not collected yet.
+        ImGui::Text("All boxes: %d, pickup spheres: %d",
+                    static_cast<int>(world.colliders.size()) + gateBoxes,
+                    static_cast<int>(round.crystals.size()) - round.collectedCount);
         ImGui::TextWrapped("Wall box: %.2f m thick (the visible wall: %.2f m)",
                            game::WALL_COLLISION_THICKNESS, game::WALL_VISUAL_THICKNESS);
 
@@ -830,38 +1361,51 @@ void drawCollisionPanel(const game::MazeWorld& world, game::Player& player, bool
 | Element | Znaczenie |
 |---|---|
 | `const game::MazeWorld& world` | labirynt tylko do odczytu: panel liczy pudełka, niczego w nich nie zmienia |
+| `const game::Round& round` | stan rundy tylko do odczytu, nowy parametr w M5: z niego panel wie, czy brama jeszcze blokuje i ile kryształów zostało |
 | `game::Player& player` | gracz bez `const`: pole wyboru pisze do `player.noclip` |
 | `bool& drawColliders` | referencja do pola `m_drawColliders` aplikacji. Panel tylko ustawia flagę, a rysuje `NightMazeApp::onRender` w następnej klatce |
-| `placePanelOnFirstUse(COLLISION_PLACEMENT)` | miejsce i rozmiar przy pierwszym uruchomieniu: dolna krawędź okna, na prawo od lewej kolumny paneli. Stała leży w [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), a funkcja ustawia pozycję i rozmiar z warunkiem `ImGuiCond_FirstUseEver`. Wpis w `imgui.ini` ma pierwszeństwo ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7). Plik panelu nie ma już własnych stałych, więc nie ma w nim anonimowej przestrzeni nazw |
-| `ImGui::Checkbox("Draw collision boxes", &drawColliders)` | pole wyboru czyta i zapisuje `bool` przez wskaźnik |
+| `placePanelOnFirstUse(COLLISION_PLACEMENT)` | miejsce i rozmiar przy pierwszym uruchomieniu: dolna krawędź okna, na prawo od lewej kolumny paneli. Stała leży w [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), a funkcja ustawia pozycję i rozmiar z warunkiem `ImGuiCond_FirstUseEver`. Wpis w `imgui.ini` ma pierwszeństwo ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7). Plik panelu nie ma własnych stałych, więc nie ma w nim anonimowej przestrzeni nazw |
+| `ImGui::Checkbox("Draw collision shapes", &drawColliders)` | pole wyboru czyta i zapisuje `bool` przez wskaźnik. Do M4 napis brzmiał "Draw collision boxes": zmienił się, bo przełącznik włącza teraz także kule |
+| `ImGui::TextWrapped("Yellow: ... Magenta: exit zone.")` | legenda pięciu kolorów (sekcja 4.2). Dwa sąsiednie literały napisów kompilator skleja w jeden |
 | `ImGui::Checkbox("Noclip (key N)", &player.noclip)` | to samo pole, które przełącza klawisz N. Dwa sposoby zmiany jednej zmiennej, więc nie mogą się rozjechać |
-| `world.walls.size()`, `world.pillars.size()`, `world.colliders.size()` | liczniki. Trzeci jest sumą dwóch pierwszych, bo `mazeColliders` dodaje jedno pudełko na ścianę i jedno na słupek |
+| `game::gateBlocks(world, round) ? 1 : 0` | 1, dopóki brama jest przeszkodą, potem 0. To ten sam warunek, którego używają `roundObstacles` i rysowanie pomarańczowego pudełka |
+| `world.walls.size()`, `world.pillars.size()` | liczby ścian i słupków. `mazeColliders` dodaje jedno pudełko na ścianę i jedno na słupek |
+| `world.colliders.size() + gateBoxes` | `All boxes`: tyle pudełek ma lista `m_obstacles`, którą sprawdza każdy krok chodzenia. Panel nie czyta samej listy, tylko liczy ją tak samo, jak powstaje |
+| `round.crystals.size() - round.collectedCount` | liczba kul zbierania: jedna na każdy kryształ, który jeszcze wisi |
 | `static_cast<int>(...)` | `%d` oczekuje `int`, a `size()` zwraca `std::size_t` |
-| `game::WALL_COLLISION_THICKNESS`, `game::WALL_VISUAL_THICKNESS` | 0,30 i 0,20: panel sam mówi, że pudełko ściany jest grubsze niż widoczna ściana (pułapka 1). To jedyne miejsce w kodzie programu, które czyta `WALL_VISUAL_THICKNESS` |
+| `game::WALL_COLLISION_THICKNESS`, `game::WALL_VISUAL_THICKNESS` | 0,30 i 0,20: panel sam mówi, że pudełko ściany jest grubsze niż widoczna ściana (pułapka 1) |
 | `player.box()` | pudełko liczone w każdej klatce z pozycji gracza, tą samą funkcją, której używa ruch |
+
+Czego panel **nie** liczy: strefy wyjścia (to pudełko, ale nie przeszkoda, więc nie należy do `All boxes`) i kuli zasięgu gracza (zawsze jedna). Obie są tylko rysowane.
 
 ### 6.2 Kontrolki i czego uczą
 
 | Kontrolka | Co zmienia albo pokazuje | Czego uczy |
 |---|---|---|
-| `Draw collision boxes` | `m_drawColliders` | bryła otaczająca jest prostsza niż model: żółte pudełko ściany to sześć płaszczyzn zamiast 30 trójkątów |
-| `Noclip (key N)` | `player.noclip` | kolizje są osobnym krokiem, który można pominąć: w trybie noclip lista pudełek nie jest czytana |
-| `Wall boxes`, `Pillar boxes`, `All boxes` | odczyt | ile przeszkód sprawdza każdy krok. Dla labiryntu 10 na 10: 121, 121 i 242 |
+| `Draw collision shapes` | `m_drawColliders` | bryła otaczająca jest prostsza niż model: żółte pudełko ściany to sześć płaszczyzn zamiast 30 trójkątów, a kula kryształu to środek i promień |
+| legenda kolorów | odczyt | każda bryła ma swoją rolę: przeszkoda stała (żółty), przeszkoda do czasu (pomarańczowy), gracz (zielony), coś do zebrania (cyjan), strefa (magenta) |
+| `Noclip (key N)` | `player.noclip` | kolizje ruchu są osobnym krokiem, który można pominąć: w trybie noclip lista pudełek nie jest czytana. Testy kul działają dalej |
+| `Boxes: ... walls, ... pillars, ... gate` | odczyt | z czego składa się lista przeszkód. Dla labiryntu startowego na początku rundy: `Boxes: 121 walls, 121 pillars, 1 gate` |
+| `All boxes: ..., pickup spheres: ...` | odczyt | ile przeszkód sprawdza każdy krok i ile kul sprawdza każdy krok rundy. Na początku: `All boxes: 243, pickup spheres: 13`. Po otwarciu bramy pierwsza liczba spada do 242, a druga maleje z każdym kryształem |
 | `Wall box: 0.30 m thick (the visible wall: 0.20 m)` | odczyt | bryła kolizji nie musi mieć wymiarów modelu |
 | `Player box`, `min`, `max` | odczyt | pudełko jest liczone z pozycji: na starcie `min: 0.70, 0.00, 0.70` i `max: 1.30, 1.80, 1.30` |
 
+Promień kul zbierania zmienia suwak `Pickup radius` w panelu Gameplay ([`../game/gameplay.md`](../game/gameplay.md), sekcja 6): cyjanowe okręgi rosną i maleją razem z nim.
+
 ### 6.3 Scenariusz pokazu na obronie
 
-Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z testów, a krok 2 także ze zrzutu ekranu.
+Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z testów, a krok 2 w części o żółtych pudełkach także ze zrzutu ekranu z M3.
 
-1. **Liczby.** Otwieram panel Collision: 121 pudełek ścian, 121 słupków, razem 242. Mówię, że każdy krok chodzenia sprawdza całą listę na dwóch osiach i że przy tej skali nie potrzeba struktury przyspieszającej.
-2. **Pudełka.** Włączam `Draw collision boxes`, naciskam N i wzlatuję nad labirynt. Żółte pudełka leżą na ścianach i słupkach. Pokazuję, że pudełko ściany jest grubsze niż ściana i że lica pudełek ścian i słupków tworzą jedną płaszczyznę.
-3. **Pudełko gracza.** Wracam na podłogę (N) i patrzę w dół: zielone linie wokół mnie. Odczytuję `min` i `max` i pokazuję, że różnią się o 0,6, 1,8 i 0,6.
-4. **Zatrzymanie.** Idę prosto na ścianę. Staję, a w `Player box` współrzędna od strony ściany przestaje się zmieniać.
-5. **Ślizganie.** Idę ukosem w ścianę (W i A albo W i D). Sunę wzdłuż niej i mijam słupki bez zatrzymania. Mówię: osie są obsługiwane po kolei, ściana zabiera tylko składową skierowaną w nią.
-6. **Narożnik.** Wchodzę w róg korytarza. Staję na obu osiach.
-7. **Noclip.** Zaznaczam `Noclip (key N)` i przechodzę przez ścianę. Odznaczam w środku ściany: mogę wyjść w dowolną stronę, bo `moveAndSlide` nie trzyma pudełka, które zaczyna w przeszkodzie.
-8. **Testy.** W terminalu uruchamiam `ctest --test-dir build/debug -C Debug --output-on-failure` i mówię, że to testy, a nie obraz, są dowodem poprawności.
+1. **Liczby.** Otwieram panel Collision: 121 ścian, 121 słupków, 1 brama, razem 243 pudełka i 13 kul zbierania. Mówię, że każdy krok chodzenia sprawdza całą listę pudełek na dwóch osiach, a każdy krok rundy wszystkie kule, i że przy tej skali nie potrzeba struktury przyspieszającej.
+2. **Pudełka.** Włączam `Draw collision shapes`, naciskam N i wzlatuję nad labirynt. Żółte pudełka leżą na ścianach i słupkach. Pokazuję, że pudełko ściany jest grubsze niż ściana i że lica pudełek ścian i słupków tworzą jedną płaszczyznę.
+3. **Kule.** Z góry widać cyjanowe kule w komórkach z kryształami: każda to trzy okręgi. Mówię, dlaczego tu jest kula, a nie pudełko (liczy się odległość, bryła niczego nie blokuje), i że kula stoi w miejscu, choć kryształ się kołysze.
+4. **Pudełko i zasięg gracza.** Wracam na podłogę (N) i patrzę w dół: zielone linie pudełka wokół mnie, a w nich zielone okręgi kuli zasięgu. Odczytuję `min` i `max` i pokazuję, że różnią się o 0,6, 1,8 i 0,6.
+5. **Zatrzymanie.** Idę prosto na ścianę. Staję, a w `Player box` współrzędna od strony ściany przestaje się zmieniać.
+6. **Ślizganie.** Idę ukosem w ścianę (W i A albo W i D). Sunę wzdłuż niej i mijam słupki bez zatrzymania. Mówię: osie są obsługiwane po kolei, ściana zabiera tylko składową skierowaną w nią.
+7. **Zbieranie.** Podchodzę do kryształu. Gdy zielone okręgi wejdą w cyjanowe, kryształ znika razem ze swoją kulą i światłem, a licznik `pickup spheres` spada o 1. Mówię: to test kuli z kulą, kwadrat odległości przeciw kwadratowi sumy promieni, i nic mnie przy tym nie zatrzymało.
+8. **Brama i strefa.** Przy wyjściu pokazuję pomarańczowe pudełko bramy i magentowe pudełko strefy za nim. Brama zatrzymuje mnie jak ściana. Po zebraniu wymaganej liczby kryształów pomarańczowe linie znikają, a w panelu jest `0 gate` i `All boxes: 242`. Wchodzę w strefę: karta `You escaped`. Mówię: brama była przeszkodą dla `moveAndSlide`, strefa jest tylko testem kuli z pudełkiem.
+9. **Noclip.** Zaznaczam `Noclip (key N)` i przechodzę przez ścianę. Odznaczam w środku ściany: mogę wyjść w dowolną stronę, bo `moveAndSlide` nie trzyma pudełka, które zaczyna w przeszkodzie.
+10. **Testy.** W terminalu uruchamiam `ctest --test-dir build/debug -C Debug --output-on-failure` i mówię, że to testy, a nie obraz, są dowodem poprawności.
 
 ## 7. Pułapki
 
@@ -872,19 +1416,27 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
 5. **Dwie definicje "dotyku".** `overlaps` jest ścisłe: zero to styk, cokolwiek powyżej zera to nakładanie. `moveAndSlide` traktuje jak styk wszystko do 1 mm. Po serii kroków pudełko może być w ścianie o ułamek milimetra i `overlaps` powie wtedy "tak". Do pytania "czy gracz jest w ścianie" po ruchu trzeba więc użyć pudełka pomniejszonego o tolerancję z zapasem: test wędrówki pomniejsza je o `2 * CONTACT_TOLERANCE` z każdej strony.
 6. **Porównywanie pozycji przez `==`.** Po 2000 dodawań `float` suma różni się od iloczynu na czwartym miejscu po przecinku (zmierzone przy pisaniu testu: 30,2004 zamiast 30,2). Testy porównują przez `doctest::Approx` albo sprawdzają pojedynczy krok.
 7. **Kolejność osi ma znaczenie przy narożniku wypukłym.** Pudełko idące ukosem dokładnie na róg przeszkody przejdzie po tej stronie, którą wyznacza oś obsługiwana pierwsza (x). Wynik jest poprawny (bez wchodzenia w przeszkodę), ale nie jest symetryczny.
-8. **`std::span` niczego nie posiada.** To tylko widok. Wywołanie `moveAndSlide(box, step, game::mazeColliders(maze))` jest poprawne, bo tymczasowy wektor żyje do końca instrukcji, ale jest też powolne: buduje całą listę przy każdym kroku. Listę trzeba policzyć raz i trzymać w polu. Zapamiętanie samego `std::span` do wektora, który potem znika, to wiszący wskaźnik.
+8. **`std::span` niczego nie posiada.** To tylko widok. Wywołanie `moveAndSlide(box, step, game::mazeColliders(maze))` jest poprawne, bo tymczasowy wektor żyje do końca instrukcji, ale jest też powolne: buduje całą listę przy każdym kroku. Listę trzeba policzyć raz i trzymać w polu. Tak robi aplikacja: `m_obstacles` jest wektorem, który `roundObstacles` wypełnia na początku rundy i w chwili otwarcia bramy, a nie w każdym kroku. Zapamiętanie samego `std::span` do wektora, który potem znika, to wiszący wskaźnik.
 9. **AABB nie obraca się z obiektem.** Pudełko obiektu obróconego o kąt inny niż wielokrotność 90 stopni trzeba policzyć od nowa, większe, tak żeby objęło obrócony kształt. W labiryncie problem nie występuje: ściany stoją tylko w dwóch ustawieniach i `game::wallBox` ma dla każdego osobne połowy rozmiarów.
 10. **Nie ma grawitacji.** Oś y jest obsługiwana tak samo jak pozostałe (jest na to test), ale nic nie ciągnie pudełka w dół. Gracz jest trzymany na wysokości podłogi przez kod gry (`position.y = FLOOR_Y` w `Player::update`), nie przez kolizje: podłogi nie ma na liście przeszkód.
-11. **Rysunek nie jest dowodem.** OpenGL narysuje obiekt w ścianie bez żadnego błędu. Dowodem poprawności kolizji są testy. Rysowanie pudełek w panelu Collision pomaga zobaczyć, **gdzie** pudełka są, ale nie sprawdza, czy ruch ich przestrzega.
-12. **Rysowane pudełko jest o centymetr większe od prawdziwego.** Margines `LINE_MARGIN` chroni linie przed migotaniem na powierzchni modelu (sekcja 3). Kto mierzy coś na ekranie po żółtych liniach, mierzy z błędem 1 cm z każdej strony.
+11. **Rysunek nie jest dowodem.** OpenGL narysuje obiekt w ścianie bez żadnego błędu. Dowodem poprawności kolizji są testy. Rysowanie brył z panelu Collision pomaga zobaczyć, **gdzie** pudełka i kule są, ale nie sprawdza, czy ruch i reguły ich przestrzegają.
+12. **Rysowane pudełko jest o centymetr większe od prawdziwego.** Margines `LINE_MARGIN` chroni linie przed migotaniem na powierzchni modelu (sekcja 3). Kto mierzy coś na ekranie po liniach pudełek, mierzy z błędem 1 cm z każdej strony. Okręgi kul marginesu nie mają.
 13. **Linie w prawdziwym rozmiarze migoczą.** Bez marginesu linie pudełka słupka leżą w powierzchni trzonu modelu i walczą z nim o głębię. Podobnie zachowałaby się każda inna geometria narysowana dokładnie w płaszczyźnie innej.
 14. **`glLineWidth` nie pogrubi linii przenośnie.** Profil Core gwarantuje tylko szerokość 1. Grubsze linie trzeba by rysować jako wąskie prostokąty z trójkątów.
-15. **Zielone pudełko gracza wyprzedza kamerę.** Jest rysowane w pozycji z ostatniego kroku symulacji, a kamera w punkcie między dwoma krokami. W ruchu różnica to ułamek kroku, najwyżej 2,5 cm przy 3 m/s.
-16. **Brak ściany na ekranie nie znaczy braku kolizji.** Pudełka powstają z siatki labiryntu, a nie z modeli. Gdy plik modelu ściany się nie wczyta, ściany znikają z obrazu, ale nadal zatrzymują gracza.
+15. **Zielone pudełko gracza wyprzedza kamerę.** Razem z zieloną kulą zasięgu jest rysowane w pozycji z ostatniego kroku symulacji, a kamera w punkcie między dwoma krokami. W ruchu różnica to ułamek kroku, najwyżej 2,5 cm przy 3 m/s.
+16. **Brak ściany na ekranie nie znaczy braku kolizji.** Pudełka powstają z siatki labiryntu, a nie z modeli. Gdy plik modelu ściany się nie wczyta, ściany znikają z obrazu, ale nadal zatrzymują gracza. To samo dotyczy bramy i kryształów: pudełko bramy i kule zbierania wynikają z danych rundy, a nie z plików modeli.
+17. **Kule niczego nie zatrzymują.** `moveAndSlide` przyjmuje tylko pudełka. Kula dodana "jako przeszkoda" nie ma jak trafić na listę, a testy `overlaps` dla kul mówią tylko "tak albo nie", bez przesunięcia i bez kierunku. Kryształ nie jest więc przeszkodą: gracz przez niego przechodzi i przy okazji go zbiera.
+18. **Ujemny promień.** Nic go nie sprawdza, tak jak nic nie sprawdza `min <= max` w pudełku, a podnoszenie do kwadratu gubi znak. W teście kuli z pudełkiem promień -0,5 działa dokładnie jak 0,5. W teście dwóch kul ujemna jest dopiero suma: promienie -1 i 0 dają sumę -1, jej kwadrat to 1, więc środki odległe o 0,5 m "nachodzą na siebie". Suwak `Pickup radius` ma dolną granicę 0,1, więc z panelu ujemnego promienia nie da się ustawić.
+19. **Kula o promieniu 0 zachowuje się inaczej wobec kuli i wobec pudełka.** Punkt leżący wewnątrz kuli nachodzi na nią (odległość mniejsza od jej promienia). Punkt leżący wewnątrz pudełka **nie** nachodzi na nie: odległość do najbliższego punktu to 0, promień to 0, a `0 < 0` jest fałszem. Oba wyniki są przypięte testami. Komentarze w nagłówku mówią w obu przypadkach o "wspólnej objętości", co dla punktu w kuli nie jest ścisłe. W grze promienie są dodatnie, więc różnica nie ma skutków.
+20. **Noclip zbiera kryształy, ale nie wygrywa przez zamkniętą bramę.** Tryb noclip wyłącza `moveAndSlide`, a nie reguły rundy: `updateRound` dostaje pozycję gracza tak czy inaczej. Kula zasięgu sięga wtedy kryształów także w locie i przez ściany. Strefa wyjścia liczy się dopiero przy otwartej bramie (`round.gateOpen`), więc przelot przez zamkniętą bramę rundy nie kończy.
+21. **Brama przestaje blokować od razu, a model tonie jeszcze półtorej sekundy.** `gateBlocks` zwraca fałsz od chwili otwarcia, a `gateVisible` dopiero po `GATE_OPEN_SECONDS` (1,5 s). W tym czasie przez tonący model da się przejść, a pomarańczowego pudełka już nie ma. Zwykle nikt tego nie widzi, bo brama otwiera się, gdy gracz zbiera kryształ gdzie indziej. Zobaczy to ktoś, kto stoi przy bramie i przesuwa suwak `Crystals needed` w dół, albo ktoś, komu ostatni potrzebny kryształ wisiał w korytarzu przed bramą. Komentarz przy `gateBlocks` w `Round.hpp` mówi, że brama "has usually sunk before the player gets to it": to opis typowego przypadku, nie gwarancja.
+22. **Cyjanowa kula nie kołysze się razem z kryształem.** Kula zbierania stoi w miejscu spoczynku, a model porusza się w górę i w dół o najwyżej 8 cm. Środek okręgów i środek widocznego kryształu rozjeżdżają się więc o tyle. To nie błąd rysowania: tak liczy test.
+23. **Testy kul są dyskretne.** Sprawdzają pozycję po kroku, a nie drogę (sekcja 2.4). Przy krokach gry (około 4,6 cm przy sprincie) i sumie promieni 0,9 m niczego nie da się przeskoczyć. Przy promieniu rzędu kilku centymetrów i dużej prędkości w noclip już by się dało.
+24. **Strefa wyjścia jest pudełkiem, ale nie przeszkodą.** `MazeWorld::exitZone` ma typ `Aabb`, lecz nie należy ani do `MazeWorld::colliders`, ani do `m_obstacles`. Kto dopisze ją do listy przeszkód, zepsuje wyjście: gracz zatrzyma się na jej ścianie, a jego kula zasięgu ma promień równy połowie szerokości ciała (0,3 m), więc tylko zetknie się ze strefą. O wygranej decydowałyby wtedy błędy zaokrągleń i tolerancja styku.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 5 robi się na kartce. Ćwiczenia od 6 do 13 to zmiany w kodzie albo w testach: po każdej zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj zmianę (`git checkout src tests`).
+Ćwiczenia od 1 do 5 i od 14 do 16 robi się na kartce. Ćwiczenia od 6 do 13 i od 17 do 20 to zmiany w kodzie, w testach albo w ustawieniach działającego programu: po każdej zmianie w kodzie zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj swoją zmianę. Polecenie `git checkout src tests` cofa **wszystkie** niezatwierdzone zmiany w tych katalogach, więc używaj go tylko wtedy, gdy przed ćwiczeniem nie było w nich nic do zachowania.
 
 1. **Wspólna długość.** Policz wspólną długość przedziałów `[2, 5]` i `[4, 9]`, potem `[2, 5]` i `[5, 9]`, potem `[2, 5]` i `[7, 9]`. Odpowiedzi: 1, 0, -2.
 2. **Nakładanie.** Pudełko A ma `min = (0, 0, 0)` i `max = (2, 3, 2)`, pudełko B ma `min = (1, 1, 2)` i `max = (4, 2, 5)`. Czy nachodzą na siebie? Odpowiedź: nie. Na x wspólna długość to 1, na y to 1, na z to 0: stykają się ścianami.
@@ -896,9 +1448,16 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
 8. **Inna kolejność osi.** Zmień `AXIS_ORDER` na `{AXIS_Z, AXIS_X, AXIS_Y}`. Wynik (zmierzony): nie przechodzi jeden przypadek, `documented limit: a step much longer than the boxes can go around an obstacle`, w części z krótkimi krokami: pudełko kończy w z = 2 zamiast poniżej 1,5. Słupek stoi dokładnie na przekątnej, więc o tym, którą stroną pudełko go obejdzie, decyduje oś obsługiwana pierwsza (pułapka 7). Narysuj obie drogi.
 9. **Własny test.** Dopisz w `tests/ColliderTests.cpp` przypadek dla sufitu: pudełko pod płytą, ruch w górę o 2 m przy odstępie 0,4 m. Wzoruj się na teście `moveAndSlide handles the vertical axis too`.
 10. **Cienkie pudełka ścian.** W `src/game/MazeLayout.hpp` zmień `WALL_COLLISION_THICKNESS` na `WALL_VISUAL_THICKNESS` i uruchom testy. Które przypadki przestają przechodzić i dlaczego (pułapka 1)? Wyniku nie mierzyłem po ostatniej zmianie: spodziewam się porażki testów ślizgania obok słupków w `MazeLayoutTests.cpp` i `PlayerTests.cpp` oraz testu stałych.
-11. **Linie bez marginesu.** W `ColliderLines.cpp` ustaw `LINE_MARGIN` na `0.0F`, uruchom program, włącz `Draw collision boxes` i obejrzyj słupek z bliska, poruszając kamerą. Co się dzieje z liniami na trzonie i dlaczego nie na korpusie ściany?
+11. **Linie bez marginesu.** W `ColliderLines.cpp` ustaw `LINE_MARGIN` na `0.0F`, uruchom program, włącz `Draw collision shapes` i obejrzyj słupek z bliska, poruszając kamerą. Co się dzieje z liniami na trzonie i dlaczego nie na korpusie ściany?
 12. **Sześcian od -0,5 do 0,5.** Zmień narożniki `UNIT_CUBE_CORNERS` tak, żeby sześcian był wyśrodkowany. Co trzeba zmienić w `ColliderLines::draw`, żeby pudełka nadal trafiały na swoje miejsca?
 13. **Linie przez ściany.** W `drawColliderLines` wyłącz test głębi przed rysowaniem linii (`glDisable(GL_DEPTH_TEST)`) i włącz go z powrotem po nim. Co widać i kiedy taki widok jest przydatny?
+14. **Kula z kulą.** Kula A ma środek `(0, 0, 0)` i promień 0,5, kula B środek `(0,6, 0, 0,8)` i promień 0,4. Czy nachodzą na siebie? Odpowiedź: nie. Kwadrat odległości to `0,36 + 0,64 = 1`, kwadrat sumy promieni to `0,9 * 0,9 = 0,81`. A gdy B ma promień 0,6? Odpowiedź: tak, bo `1,1 * 1,1 = 1,21`. Co powiedziałby błędny wzór z sumą kwadratów promieni? Odpowiedź: `0,25 + 0,36 = 0,61`, czyli "nie", choć kule wyraźnie na siebie nachodzą.
+15. **Najbliższy punkt i kula z pudełkiem.** Pudełko ma `min = (0, 0, 0)` i `max = (2, 3, 4)`. Podaj najbliższy punkt pudełka dla `(3, -1, 2)`. Odpowiedź: `(2, 0, 2)`. Czy kula o tym środku i promieniu 1,5 nachodzi na pudełko? Odpowiedź: tak, kwadrat odległości to `1 + 1 = 2`, a `1,5 * 1,5 = 2,25`. A o promieniu 1,4? Odpowiedź: nie, `1,96` jest mniejsze od 2.
+16. **Zasięg zbierania.** Dla `pickupRadius` równego 1,0 policz, z jakiej odległości w poziomie gracz zbiera kryształ. Odpowiedź: suma promieni to 1,3, kwadrat 1,69, minus `0,0625` za różnicę wysokości 0,25 m, pierwiastek z `1,6275` to około 1,28 m. Zgadza się to z testem `a larger pickup radius reaches a crystal from further away`, w którym gracz stoi 1,2 m od kryształu.
+17. **Styk kul jako kolizja.** W obu przeciążeniach `overlaps` dla kul zamień `<` na `<=` i uruchom testy. Przewidywanie (nie pomiar): przestają przechodzić dwa przypadki, `spheres that only touch do not overlap` i `a sphere that only touches a box does not overlap it`. Sprawdź, czy tylko te, i wyjaśnij, dlaczego testy zbierania w `RoundTests.cpp` nie powinny tego zauważyć.
+18. **Suma kwadratów zamiast kwadratu sumy.** W `overlaps` dla dwóch kul zamień `reach * reach` na sumę kwadratów obu promieni. Przewidywanie (nie pomiar): zawodzą sprawdzenia z kulami, które naprawdę na siebie nachodzą, na przykład odległość 0,8 m przy promieniach 0,5 i 0,5 (`0,64 < 0,5` jest fałszem), a przypadek o samym styku przechodzi dalej. Dlaczego akurat test styku nie wykrywa tego błędu?
+19. **Promień z suwaka.** Uruchom program, włącz `Draw collision shapes` i w panelu Gameplay ustaw `Pickup radius` na 2,0. Co dzieje się z cyjanowymi okręgami i z jakiej komórki da się teraz zebrać kryształ? Przewidywanie z liczb: suma promieni 2,3 m to więcej niż 2 m między środkami sąsiednich komórek, więc kryształ da się zebrać zza ściany. Testy kul nie wiedzą nic o ścianach.
+20. **Odwrotna kolejność argumentów.** Dopisz przeciążenie `overlaps(const Aabb&, const Sphere&)`, które woła istniejące, i przypadek testowy, który sprawdza, że obie kolejności dają to samo.
 
 ## 9. Pytania kontrolne
 
@@ -939,16 +1498,16 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
     Przeszkoda go nie trzyma: odstęp jest wyraźnie ujemny, więc `allowedDistance` ją pomija i pudełko może wyjść. Funkcja nie wypycha go sama.
 
 13. **Dlaczego kolizje są w `scene/`, a nie w `game/`, i czego nie dołączają?**
-    Pudełko i dwie funkcje nie wiedzą nic o labiryncie ani o graczu, więc należą do biblioteki `engine` i nadają się do innych programów. Dołączają tylko GLM i bibliotekę standardową: żadnego OpenGL, okna ani wejścia, dzięki czemu testy działają bez okna.
+    Pudełko, kula i ich funkcje nie wiedzą nic o labiryncie, o graczu ani o kryształach, więc należą do biblioteki `engine` i nadają się do innych programów. Dołączają tylko GLM i bibliotekę standardową: żadnego OpenGL, okna ani wejścia, dzięki czemu testy działają bez okna.
 
 14. **Jak sprawdzić kolizję kuli z AABB?**
-    Przyciąć środek kuli do przedziałów pudełka (osobno x, y, z), co daje najbliższy punkt pudełka, i porównać kwadrat odległości od niego z kwadratem promienia. W projekcie tego testu jeszcze nie ma: jest zaplanowany dla kryształów (późniejszy kamień milowy).
+    Przyciąć środek kuli do przedziałów pudełka (osobno x, y, z), co daje najbliższy punkt pudełka (`closestPoint`), i porównać kwadrat odległości od niego z kwadratem promienia. Od M5 robi to `overlaps(const Sphere&, const Aabb&)`, a gra używa go do strefy wyjścia: kula zasięgu gracza przeciw pudełku strefy.
 
 15. **Dlaczego pudełko kolizji ściany ma 0,3 m, skoro ściana ma 0,2 m?**
     Żeby lica pudełek ścian i słupków (0,3 m) leżały w jednej płaszczyźnie. Przy pudełku 0,2 m słupki wystawałyby 5 cm przed ścianę i gracz sunący po ścianie stawałby co 2 metry. Teraz pudełko gracza tylko styka się ze słupkiem, a styk nie zatrzymuje ruchu.
 
 16. **Jak gracz używa `moveAndSlide`?**
-    W każdym kroku chodzenia liczy chciane przesunięcie (kierunek razy prędkość razy stały krok), buduje pudełko ze swojej pozycji i woła `moveAndSlide` z listą pudełek labiryntu, policzoną raz przy generowaniu. Wynik dodaje do pozycji. W trybie noclip funkcji nie woła.
+    W każdym kroku chodzenia liczy chciane przesunięcie (kierunek razy prędkość razy stały krok), buduje pudełko ze swojej pozycji i woła `moveAndSlide` z listą przeszkód rundy (`m_obstacles`): pudełkami labiryntu, policzonymi raz przy generowaniu, i pudełkiem bramy, dopóki jest zamknięta. Wynik dodaje do pozycji. W trybie noclip funkcji nie woła.
 
 17. **Jak rysowane są pudełka kolizji?**
     Jedną siatką sześcianu o boku 1 (8 wierzchołków, 24 indeksy) rysowaną prymitywem `GL_LINES`: każde dwa indeksy to jedna krawędź. Dla każdego pudełka macierz modelu skaluje sześcian do rozmiaru pudełka i przesuwa go do narożnika `min`. Kolor przychodzi jako uniform `uColor`.
@@ -959,19 +1518,61 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
 19. **Po co margines 1 cm przy rysowaniu pudełek?**
     Pudełko słupka ma dokładnie szerokość trzonu modelu, więc linie w prawdziwym rozmiarze leżałyby w powierzchni modelu i migotały (walka o głębię). Margines wysuwa je przed powierzchnię. Dotyczy tylko rysowania, kolizje liczą się na prawdziwych pudełkach.
 
-20. **Dlaczego `color.vert` czyta tylko pozycję, skoro siatka ma też normalną i uv?**
-    Shader nie musi deklarować wszystkich atrybutów, które VAO udostępnia. Linie w jednym kolorze nie potrzebują normalnej ani współrzędnych tekstury.
+20. **Dlaczego `color.vert` czyta tylko pozycję, skoro siatka ma też normalną, uv i styczną?**
+    Shader nie musi deklarować wszystkich atrybutów, które VAO udostępnia. Linie w jednym kolorze nie potrzebują normalnej, współrzędnych tekstury ani stycznej.
 
 21. **Co robi przełącznik `Noclip (key N)` w panelu Collision?**
     Zmienia pole `player.noclip`, to samo, które przełącza klawisz N. W trybie noclip gracz lata wzdłuż kierunku patrzenia i nie woła `moveAndSlide`. Po wyłączeniu najbliższy krok stawia go na podłodze.
 
+22. **Kiedy kula jest lepszą bryłą niż AABB?**
+    Gdy liczy się sama odległość ("czy gracz jest dość blisko") i bryła niczego nie blokuje: przy zbieraniu i przy strefach. Kula sięga tak samo daleko w każdym kierunku i nie zmienia się przy obrocie obiektu. Dla ścian jest gorsza, bo długi i płaski kształt wypełnia źle.
+
+23. **Jak sprawdzić, czy dwie kule na siebie nachodzą, i dlaczego porównuje się kwadraty?**
+    Odległość środków ma być mniejsza od sumy promieni. Kod porównuje `dot(offset, offset)`, czyli kwadrat odległości, z kwadratem sumy promieni. Dzięki temu nie liczy pierwiastka, a wynik jest ten sam, bo dla liczb nieujemnych podnoszenie do kwadratu zachowuje kolejność.
+
+24. **Co to jest `dot(v, v)`?**
+    Iloczyn skalarny wektora z samym sobą: `x * x + y * y + z * z`, czyli kwadrat jego długości.
+
+25. **Jak znaleźć punkt pudełka najbliższy danemu punktowi?**
+    Przyciąć każdą współrzędną punktu osobno do przedziału od `min` do `max` pudełka (`glm::clamp`). Punkt leżący w pudełku jest swoim własnym najbliższym punktem. Dla pudełka od `(0, 0, 0)` do `(2, 3, 4)` i punktu `(5, 1, 1)` wychodzi `(2, 1, 1)`.
+
+26. **Czy stykające się kule są w kolizji? A kula dotykająca pudełka?**
+    Nie. Oba testy używają ostrej nierówności `<`, tak jak test dwóch pudełek: bryły, które mają wspólny tylko brzeg, nie nachodzą na siebie.
+
+27. **Dlaczego mówi się, że kula przy narożniku pudełka jest "okrąglejsza" niż pudełko?**
+    Kula ma ten sam zasięg we wszystkich kierunkach, a pudełko sięga po przekątnej dalej. W teście: środek `(2,5, 1, 2,5)` przy pudełku od `(0, 0, 0)` do `(2, 2, 2)` jest około 0,71 m od jego krawędzi (kwadrat odległości 0,5). Kula o promieniu 0,6 nie nachodzi (`0,36`), kula o promieniu 0,75 nachodzi (`0,5625`), a pudełko o połowie boku 0,6 nachodziłoby o 0,1 m na obu osiach.
+
+28. **Czy kula może zatrzymać gracza albo czy gracz może się po niej ślizgać?**
+    Nie. Dla kul jest tylko test nakładania. `moveAndSlide` przesuwa pudełko wśród pudełek i kul nie przyjmuje.
+
+29. **Do czego gra używa kul?**
+    Do dwóch pytań w `updateRound`. Zbieranie: kula zasięgu gracza (środek 0,9 m nad stopami, promień 0,3 m) przeciw kuli kryształu (środek kryształu w miejscu spoczynku, promień `pickupRadius`, domyślnie 0,6 m). Wygrana: ta sama kula zasięgu przeciw pudełku strefy wyjścia, i tylko przy otwartej bramie.
+
+30. **Z jakiej odległości gracz zbiera kryształ przy ustawieniach domyślnych?**
+    Suma promieni to 0,9 m. Kryształ wisi 0,25 m nad środkiem kuli gracza, więc w poziomie zostaje około 0,86 m od środka komórki. To wystarcza wzdłuż ścian i w rogach komórki kryształu (tam gracz jest najwyżej 0,55 m od środka na każdej osi) i nie wystarcza z sąsiedniej komórki ani zza ściany. Wchodząc przez otwarty bok, gracz zbiera kryształ około 14 cm za granicą komórki.
+
+31. **Co się zmieniło w liście przeszkód gracza w M5?**
+    Do M4 była to lista `MazeWorld::colliders`: ściany i słupki. Teraz to `m_obstacles` z funkcji `roundObstacles`: ta sama lista plus pudełko bramy, dopóki brama jest zamknięta. Lista jest budowana na początku rundy i ponownie w kroku, w którym brama się otworzyła.
+
+32. **Czym różnią się brama i strefa wyjścia, skoro obie są `Aabb`?**
+    Rolą. Pudełko bramy jest na liście przeszkód i zatrzymuje ruch w `moveAndSlide`. Pudełko strefy nie jest na żadnej liście przeszkód: służy tylko do testu z kulą zasięgu gracza, a wejście w nie kończy rundę.
+
+33. **Jak rysowana jest kula i dlaczego trzema okręgami?**
+    Jedną siatką okręgu o promieniu 1 (32 wierzchołki, 64 indeksy, `GL_LINES`), rysowaną trzy razy: bez obrotu, po ćwierć obrotu wokół osi X i po ćwierć obrotu wokół osi Y (`CIRCLE_ROTATIONS`). Macierz modelu skaluje okrąg do promienia kuli i przesuwa do jej środka. Trzy okręgi pokazują środek i zasięg w każdym z trzech kierunków i nie zasłaniają tego, co jest w środku.
+
+34. **Co znaczą kolory linii kolizji?**
+    Żółty: ściany i słupki. Zielony: pudełko gracza i kula jego zasięgu. Pomarańczowy: brama, dopóki blokuje. Cyjan: kule zbierania wokół kryształów, które jeszcze wiszą (w miejscu spoczynku, bez kołysania). Magenta: strefa wyjścia.
+
+35. **Czy w trybie noclip da się zebrać kryształ albo wygrać rundę?**
+    Zebrać tak: noclip wyłącza tylko ruch z kolizjami, a `updateRound` nadal porównuje kule. Wygrać tylko przy otwartej bramie: test strefy jest poprzedzony warunkiem `round.gateOpen`.
+
 ## 10. Źródła
 
 - LearnOpenGL, rozdział "Collision detection": <https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-detection> (AABB z AABB, AABB z kołem przez przycinanie do najbliższego punktu) i "Collision resolution": <https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-resolution>.
-- Christer Ericson, "Real-Time Collision Detection" (Morgan Kaufmann, 2005): rozdział 4.2 (AABB i ich reprezentacje), 5.2.5 (test kuli z AABB), 5.5 (testy obiektów w ruchu), 7.1 (siatki jako struktury przyspieszające).
+- Christer Ericson, "Real-Time Collision Detection" (Morgan Kaufmann, 2005): rozdział 4.2 (AABB i ich reprezentacje), 4.3 (kule i test kuli z kulą), 5.1.3 (punkt AABB najbliższy danemu punktowi), 5.2.5 (test kuli z AABB), 5.5 (testy obiektów w ruchu), 7.1 (siatki jako struktury przyspieszające).
 - MDN, "3D collision detection": <https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection> (AABB i kula, krótkie wprowadzenie).
 - Glenn Fiedler, "Fix Your Timestep!": <https://gafferongames.com/post/fix_your_timestep/> (dlaczego symulacja idzie stałym krokiem).
 - cppreference, `std::span`: <https://en.cppreference.com/w/cpp/container/span>, inicjalizatory desygnowane: <https://en.cppreference.com/w/cpp/language/aggregate_initialization>.
 - Dokumentacja OpenGL, `glDrawElements` (prymityw `GL_LINES`): <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElements.xhtml>, `glLineWidth`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glLineWidth.xhtml>.
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`../game/maze-generator.md`](../game/maze-generator.md) (skąd biorą się pudełka labiryntu), [`../game/player.md`](../game/player.md) (gracz jako użytkownik kolizji), [`../game/maze-rendering.md`](../game/maze-rendering.md) (jedna siatka, wiele macierzy), [`../gfx/mesh.md`](../gfx/mesh.md) (rodzaj prymitywu w `Mesh`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (nazwy uniformów), [`../core/main-loop.md`](../core/main-loop.md) (stały krok, `FIXED_DT`, `MAX_FRAME_TIME`), [`../../libraries/doctest.md`](../../libraries/doctest.md) (testy), [`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md) (dlaczego nie silnik fizyki).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`../game/maze-generator.md`](../game/maze-generator.md) (skąd biorą się pudełka labiryntu), [`../game/player.md`](../game/player.md) (gracz jako użytkownik kolizji), [`../game/gameplay.md`](../game/gameplay.md) (reguły rundy: zbieranie kryształów, brama, strefa wyjścia), [`../game/maze-rendering.md`](../game/maze-rendering.md) (jedna siatka, wiele macierzy), [`../gfx/mesh.md`](../gfx/mesh.md) (rodzaj prymitywu w `Mesh`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (nazwy uniformów), [`../core/main-loop.md`](../core/main-loop.md) (stały krok, `FIXED_DT`, `MAX_FRAME_TIME`), [`../../libraries/doctest.md`](../../libraries/doctest.md) (testy), [`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md) (dlaczego nie silnik fizyki), [`../../decisions/exit-farthest-cell.md`](../../decisions/exit-farthest-cell.md) (dlaczego jedna brama zamyka wyjście).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 14 i jego pokaz w ImGui), sekcja 6 (zawartość warstwy `scene/`).

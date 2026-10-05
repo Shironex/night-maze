@@ -1,4 +1,5 @@
-// Collider: axis-aligned boxes, an overlap test and movement that slides along obstacles.
+// Collider: axis-aligned boxes and spheres, overlap tests and movement that slides along
+// obstacles.
 // See docs/modules/scene/collision.md
 #include "scene/Collider.hpp"
 
@@ -90,6 +91,30 @@ bool overlaps(const Aabb& a, const Aabb& b) {
     // perpendicular to that axis fits between them.
     return sharedLength(a, b, AXIS_X) > 0.0F && sharedLength(a, b, AXIS_Y) > 0.0F &&
            sharedLength(a, b, AXIS_Z) > 0.0F;
+}
+
+bool overlaps(const Sphere& a, const Sphere& b) {
+    // The squares are compared instead of the distances themselves: the square root that
+    // a distance needs is the expensive part, and for numbers that are not negative
+    // "smaller" means the same before and after squaring. dot(v, v) is the squared
+    // length of v.
+    const glm::vec3 offset = b.center - a.center;
+    const float reach = a.radius + b.radius;
+    return glm::dot(offset, offset) < reach * reach;
+}
+
+glm::vec3 closestPoint(const Aabb& box, const glm::vec3& point) {
+    // Axis by axis: a coordinate between min and max stays, one outside is moved to the
+    // nearer of the two. glm::clamp does that for all three components at once.
+    return glm::clamp(point, box.min, box.max);
+}
+
+bool overlaps(const Sphere& sphere, const Aabb& box) {
+    // The sphere reaches the box exactly when it reaches the point of the box nearest to
+    // its centre. A centre inside the box is its own nearest point: the distance is 0,
+    // and any radius above 0 overlaps.
+    const glm::vec3 offset = closestPoint(box, sphere.center) - sphere.center;
+    return glm::dot(offset, offset) < sphere.radius * sphere.radius;
 }
 
 glm::vec3 moveAndSlide(const Aabb& mover, const glm::vec3& displacement,

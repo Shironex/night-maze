@@ -1,4 +1,4 @@
-// Tests of scene::Aabb, scene::overlaps and scene::moveAndSlide.
+// Tests of scene::Aabb, scene::Sphere, scene::overlaps and scene::moveAndSlide.
 // See docs/modules/scene/collision.md
 #include "scene/Collider.hpp"
 
@@ -255,4 +255,96 @@ TEST_CASE("documented limit: a step much longer than the boxes can go around an 
     CHECK_FALSE(
         scene::overlaps(scene::Aabb::fromCenter(position, MOVER_HALF_EXTENTS), obstacles.front()));
     CHECK(position.z < 1.5F);
+}
+
+TEST_CASE("two spheres overlap when their centres are closer than the sum of the radii") {
+    const scene::Sphere sphere{.center = {0.0F, 1.0F, 0.0F}, .radius = 0.5F};
+
+    // The same place.
+    CHECK(scene::overlaps(sphere, sphere));
+    // 0.8 m apart with radii 0.5 + 0.5: 0.2 m inside each other.
+    CHECK(scene::overlaps(sphere, scene::Sphere{.center = {0.8F, 1.0F, 0.0F}, .radius = 0.5F}));
+    // 1.5 m apart: a gap of half a metre.
+    CHECK_FALSE(
+        scene::overlaps(sphere, scene::Sphere{.center = {1.5F, 1.0F, 0.0F}, .radius = 0.5F}));
+    // The order of the two spheres does not matter.
+    const scene::Sphere other{.center = {0.0F, 1.0F, 0.9F}, .radius = 0.45F};
+    CHECK(scene::overlaps(sphere, other));
+    CHECK(scene::overlaps(other, sphere));
+}
+
+TEST_CASE("the distance between two spheres is measured in all three directions") {
+    const scene::Sphere sphere{.center = {0.0F, 0.0F, 0.0F}, .radius = 1.0F};
+
+    // 1.2 m away along each axis is about 2.08 m in a straight line: more than 1 + 1.
+    CHECK_FALSE(
+        scene::overlaps(sphere, scene::Sphere{.center = {1.2F, 1.2F, 1.2F}, .radius = 1.0F}));
+    // 1.1 m along each axis is about 1.91 m: less than 2.
+    CHECK(scene::overlaps(sphere, scene::Sphere{.center = {1.1F, 1.1F, 1.1F}, .radius = 1.0F}));
+    // A sphere straight above is judged by the height alone.
+    CHECK(scene::overlaps(sphere, scene::Sphere{.center = {0.0F, 1.9F, 0.0F}, .radius = 1.0F}));
+    CHECK_FALSE(
+        scene::overlaps(sphere, scene::Sphere{.center = {0.0F, 2.1F, 0.0F}, .radius = 1.0F}));
+}
+
+TEST_CASE("spheres that only touch do not overlap") {
+    // The numbers are powers of two, which a float holds exactly, so "exactly touching"
+    // really is exact here.
+    const scene::Sphere left{.center = {0.0F, 0.0F, 0.0F}, .radius = 0.5F};
+    const scene::Sphere right{.center = {1.0F, 0.0F, 0.0F}, .radius = 0.5F};
+    CHECK_FALSE(scene::overlaps(left, right));
+
+    // A sphere of radius 0 is a point: it overlaps a sphere it lies inside of, and it
+    // never overlaps another point.
+    const scene::Sphere point{.center = {0.25F, 0.0F, 0.0F}, .radius = 0.0F};
+    CHECK(scene::overlaps(left, point));
+    CHECK_FALSE(scene::overlaps(point, point));
+}
+
+TEST_CASE("closestPoint keeps a point inside the box and moves a point outside to its surface") {
+    const scene::Aabb box{.min = {0.0F, 0.0F, 0.0F}, .max = {2.0F, 3.0F, 4.0F}};
+
+    // Inside: unchanged.
+    checkVector(scene::closestPoint(box, {1.0F, 1.0F, 1.0F}), {1.0F, 1.0F, 1.0F});
+    // In front of a face: only the coordinate across that face changes.
+    checkVector(scene::closestPoint(box, {5.0F, 1.0F, 1.0F}), {2.0F, 1.0F, 1.0F});
+    // Past an edge: two coordinates change.
+    checkVector(scene::closestPoint(box, {-1.0F, 5.0F, 1.0F}), {0.0F, 3.0F, 1.0F});
+    // Past a corner: the corner itself.
+    checkVector(scene::closestPoint(box, {9.0F, 9.0F, 9.0F}), {2.0F, 3.0F, 4.0F});
+}
+
+TEST_CASE("a sphere overlaps a box when it reaches the closest point of the box") {
+    const scene::Aabb box{.min = {0.0F, 0.0F, 0.0F}, .max = {2.0F, 2.0F, 2.0F}};
+
+    // The centre is inside the box.
+    CHECK(scene::overlaps(scene::Sphere{.center = {1.0F, 1.0F, 1.0F}, .radius = 0.1F}, box));
+    // In front of the face x = 2: 0.5 m away, first with a radius that reaches it, then
+    // with one that does not.
+    CHECK(scene::overlaps(scene::Sphere{.center = {2.5F, 1.0F, 1.0F}, .radius = 0.75F}, box));
+    CHECK_FALSE(scene::overlaps(scene::Sphere{.center = {2.5F, 1.0F, 1.0F}, .radius = 0.25F}, box));
+    // Above the top face.
+    CHECK(scene::overlaps(scene::Sphere{.center = {1.0F, 2.5F, 1.0F}, .radius = 0.75F}, box));
+    CHECK_FALSE(scene::overlaps(scene::Sphere{.center = {1.0F, 3.0F, 1.0F}, .radius = 0.75F}, box));
+}
+
+TEST_CASE("near a corner of a box the sphere test is rounder than a box test would be") {
+    const scene::Aabb box{.min = {0.0F, 0.0F, 0.0F}, .max = {2.0F, 2.0F, 2.0F}};
+
+    // The centre is 0.5 m past the corner (2, y, 2) on both x and z: about 0.71 m from
+    // the corner edge. A box of half size 0.6 around the same centre would overlap the
+    // corner, the sphere of radius 0.6 does not.
+    CHECK_FALSE(scene::overlaps(scene::Sphere{.center = {2.5F, 1.0F, 2.5F}, .radius = 0.6F}, box));
+    CHECK(scene::overlaps(scene::Sphere{.center = {2.5F, 1.0F, 2.5F}, .radius = 0.75F}, box));
+}
+
+TEST_CASE("a sphere that only touches a box does not overlap it") {
+    const scene::Aabb box{.min = {0.0F, 0.0F, 0.0F}, .max = {2.0F, 2.0F, 2.0F}};
+
+    // Exactly touching the face x = 2 (powers of two, exact in a float).
+    CHECK_FALSE(scene::overlaps(scene::Sphere{.center = {2.5F, 1.0F, 1.0F}, .radius = 0.5F}, box));
+    // A point on the face has distance 0 and radius 0: no shared volume.
+    CHECK_FALSE(scene::overlaps(scene::Sphere{.center = {2.0F, 1.0F, 1.0F}, .radius = 0.0F}, box));
+    // A point inside has no volume either.
+    CHECK_FALSE(scene::overlaps(scene::Sphere{.center = {1.0F, 1.0F, 1.0F}, .radius = 0.0F}, box));
 }
