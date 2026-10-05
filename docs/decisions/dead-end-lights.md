@@ -1,7 +1,30 @@
 # Światła punktowe: w ślepych zaułkach labiryntu, zanim powstaną kryształy
 
-Data: 2026-10-05. Stan: obowiązuje (do zastąpienia w M5, gdy powstaną kryształy).
-Kod: [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp), [`Lighting.cpp`](../../src/game/Lighting.cpp) (`isDeadEnd`, `deadEndLightPositions`), [`src/game/MazeWorld.cpp`](../../src/game/MazeWorld.cpp) (`buildMazeWorld`), [`src/game/LightRig.cpp`](../../src/game/LightRig.cpp) (`drawMarkers`). Dokument modułu: [`../modules/game/flashlight.md`](../modules/game/flashlight.md), sekcje 2.3, 2.4 i 5.4.
+Data: 2026-10-05. Stan: zastąpiona 2026-10-05 przez [`crystal-count-and-gate-threshold.md`](crystal-count-and-gate-threshold.md). Stan dzisiejszy opisuje [`../modules/game/gameplay.md`](../modules/game/gameplay.md).
+Kod, którego dotyczyła: [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp), [`Lighting.cpp`](../../src/game/Lighting.cpp), [`src/game/MazeWorld.cpp`](../../src/game/MazeWorld.cpp), [`src/game/LightRig.cpp`](../../src/game/LightRig.cpp). Dokument modułu świateł: [`../modules/game/flashlight.md`](../modules/game/flashlight.md).
+
+## Co zastąpiło tę decyzję (M5)
+
+Ta notatka opisywała rozwiązanie przejściowe z M4 i sama zapowiadała swój koniec. W M5 powstały kryształy i stało się to, co przewidywała sekcja 5.
+
+**Co jest dziś.**
+
+- Światła punktowe wiszą nad kryształami, których gracz jeszcze nie zebrał (`game::crystalLightPositions`), 0,15 m nad czubkiem kryształu, a nie 1,4 m nad podłogą zaułka. Zebrany kryształ traci światło.
+- Kryształy są rozmieszczane z ziarna (`game::placeCrystals`), a ich liczba wynika z rozmiaru labiryntu, nie z liczby zaułków ([`crystal-count-and-gate-threshold.md`](crystal-count-and-gate-threshold.md)).
+- Światła pulsują: `game::lightingForFrame` mnoży intensywność przez `crystalPulse`.
+- Kostek znaczników nie ma. Widocznym źródłem światła jest sam kryształ, który świeci własnym kolorem (składnik emisyjny, uniform `uEmissive`).
+
+**Co zostało z tej decyzji.**
+
+- Funkcja `isDeadEnd`, przeniesiona z `game/Lighting.*` do [`game/Maze.*`](../../src/game/Maze.hpp).
+- Pierwszeństwo zaułków: `placeCrystals` wypełnia najpierw ślepe zaułki, dopiero potem inne komórki. Komórka startowa nadal jest pominięta, a doszła do niej komórka wyjścia.
+- Limit 16 świateł (`scene::MAX_POINT_LIGHTS`). Dziś ogranicza liczbę kryształów, więc nie ma już zaułków ponad limit bez światła.
+- Jeden wspólny kolor, intensywność i promień dla wszystkich świateł punktowych (`pointColor`, `pointIntensity`, `pointRadius` w `LightingSettings`).
+- Wszystko, co sekcja 4 wymienia jako "co zostaje po zmianie w M5": wymieniona została funkcja dostarczająca pozycje.
+
+**Co zniknęło z kodu.** `deadEndLightPositions`, `POINT_LIGHT_HEIGHT`, pole `MazeWorld::pointLightPositions`, `LightRig::drawMarkers` z siatką kostki i ich testy. Te nazwy występują niżej tylko jako historia.
+
+Tekst poniżej to notatka w brzmieniu z M4, zostawiona bez zmian. Czas teraźniejszy w niej oznacza stan z M4.
 
 ## 1. Kontekst
 
