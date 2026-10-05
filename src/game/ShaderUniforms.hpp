@@ -12,7 +12,8 @@ namespace game {
 // once, means that the classes that draw cannot disagree about them.
 
 /// The three matrices. Every vertex shader (textured, color, lit, gouraud) declares
-/// them under the same names.
+/// them under the same names. skybox.vert has the view and the projection only: the sky
+/// is not placed anywhere in the world.
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
@@ -31,7 +32,7 @@ constexpr const char* EMISSIVE_UNIFORM = "uEmissive";
 constexpr const char* NORMAL_MAP_UNIFORM = "uNormalMap";
 constexpr const char* NORMAL_MAP_ENABLED_UNIFORM = "uNormalMapEnabled";
 
-/// textured.frag only: what to show (a value of game::ViewMode).
+/// textured.frag and skybox.frag: what to show (a value of game::ViewMode).
 constexpr const char* VIEW_MODE_UNIFORM = "uViewMode";
 
 /// lit.vert and gouraud.vert: the matrix that takes normals to world space
@@ -55,5 +56,10 @@ constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
 
 /// color.frag: the one colour of everything drawn.
 constexpr const char* COLOR_UNIFORM = "uColor";
+
+/// skybox.frag: the sampler of the cube map (it holds the number of a texture unit) and
+/// the number the colour of the sky is multiplied by.
+constexpr const char* SKYBOX_UNIFORM = "uSkybox";
+constexpr const char* SKYBOX_BRIGHTNESS_UNIFORM = "uBrightness";
 
 } // namespace game

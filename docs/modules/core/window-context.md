@@ -232,7 +232,7 @@ Panel **Renderer** (kod: [`RendererPanel.cpp`](../../../src/debug/panels/Rendere
 | `Window` | `Window::windowSize()` | Rozmiar we współrzędnych ekranu. Zmiana rozmiaru okna zmienia obie wartości na żywo |
 | `OpenGL` | `Window::glVersion()` | Wersja oddana przez sterownik: na macOS zaczyna się od 4.1, na Windowsie może być wyższa |
 | `GPU` | `Window::glRenderer()` | Która karta rysuje. Na laptopie z dwiema kartami od razu widać, czy nie została wybrana zintegrowana |
-| `Clear color` | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Wartość edytowalna. Startuje jako bardzo ciemny granat nocnego nieba (`{0.01F, 0.015F, 0.04F}`). Zmiana jest widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę: dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
+| `Clear color` | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Wartość edytowalna. Startuje jako bardzo ciemny granat (`{0.01F, 0.015F, 0.04F}`), do M5 kolor nieba. Od pierwszej części M6 niebo rysuje skybox, więc skutek zmiany widać dopiero po odznaczeniu pola `Skybox` w tym samym panelu ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 6). Zmiana jest wtedy widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę: dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
 
 Elementy `FPS` i `Frame time` tego samego panelu opisuje [`main-loop.md`](main-loop.md), sekcja 6. Od M4 panel ma jeszcze drugą wartość edytowalną, listę `Lighting` z trybem oświetlenia, która nie dotyczy okna ani kontekstu: opisuje ją [`../debug-ui.md`](../debug-ui.md), sekcja 5.3.
 

@@ -1,15 +1,17 @@
 # Moduł assets: wczytywanie obrazów
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (doszły dwa pliki map normalnych i dwa testy na nich) i w M5 (cztery nowe pliki PNG kryształu i bramy, kod loadera bez zmian). Temat wykładu: 5 (Tekstury), część po stronie procesora.
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszły dwa pliki map normalnych i dwa testy na nich), w M5 (cztery nowe pliki PNG kryształu i bramy, kod loadera bez zmian) i w pierwszej części M6 (typ `RowOrder` i czwarty parametr `loadImage` dla ścian nieba, jeden nowy test). Temat wykładu: 5 (Tekstury), część po stronie procesora, a od M6 także 8 (Tekstura sześcienna).
 Kod: [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp), testy w [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), biblioteka dekodująca w [`external/stb/stb_image.c`](../../../external/stb/stb_image.c).
 
 Część modułu `assets`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument opisuje drogę od pliku PNG na dysku do tablicy bajtów w pamięci programu. Co dzieje się z tą tablicą dalej, czyli jak powstaje z niej tekstura na karcie graficznej, opisuje [`../gfx/textures.md`](../gfx/textures.md). Bibliotekę, która dekoduje plik, opisuje [`../../libraries/stb_image.md`](../../libraries/stb_image.md). Skąd biorą się same pliki PNG, opisuje [`../../guides/blender.md`](../../guides/blender.md), sekcja 7.
 
-**Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go woła: `assets::AssetCache::texture` wczytuje nim każdy plik tekstury raz i tworzy z wyniku `gfx::Texture2D` (sekcja 5.6). Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń, testy przechodzą, a tekstury w grze mają na zrzutach ekranu właściwą orientację. **Na macOS ten kod nie był jeszcze budowany.**
+**Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go woła w dwóch miejscach: `assets::AssetCache::texture` wczytuje nim każdy plik tekstury raz i tworzy z wyniku `gfx::Texture2D`, a od pierwszej części M6 `game::Skybox` wczytuje nim sześć ścian nieba (sekcja 5.6). Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń, testy przechodzą, a tekstury w grze mają na zrzutach ekranu właściwą orientację. **Na macOS ten kod nie był jeszcze budowany.**
 
 Od drugiej części M4 ten sam loader, bez żadnej zmiany w kodzie, wczytuje też **mapy normalnych** (normal maps): `wall_stone_normal.png` i `floor_stone_normal.png`. Dla loadera to zwykłe obrazy RGB 512 x 512. Zmieniły się tylko testy: doszły dwa przypadki, które czytają te pliki i sprawdzają ich zawartość (sekcja 5.7). Kolejność wierszy z sekcji 2.3 ma dla map normalnych dodatkowe znaczenie, opisane w sekcji 2.6.
 
 W M5 doszły cztery pliki: `crystal.png`, `crystal_normal.png`, `gate_wood.png` i `gate_wood_normal.png`, też RGB 512 x 512 (odczytane z nagłówków plików). Gra wczytuje więc osiem obrazów. Kod loadera się nie zmienił, a testy nadal czytają tylko cztery pliki kamienia: nowe pliki nie mają własnych przypadków testowych.
+
+W pierwszej części M6 (skybox) kod loadera zmienił się pierwszy raz od M2 + M3. Doszedł typ `assets::RowOrder` i czwarty parametr `loadImage`, który pozwala **nie odwracać** wierszy: tak wczytywane są ściany tekstury sześciennej (sekcja 2.7). Wartość domyślna zostawia dotychczasowe zachowanie, więc tekstury 2D wczytują się jak przedtem. Doszło też sześć plików `assets/skybox/*.png` (RGB, 1024 x 1024) i jeden przypadek testowy. Zgłoszone dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 221 przypadków i 85175 asercji w całym programie testowym.
 
 ## 1. Po co to jest
 
@@ -17,12 +19,13 @@ Tekstura to obraz naklejony na trójkąty. Zanim trafi na kartę graficzną, obr
 
 | Wejście | Wyjście |
 |---|---|
-| ścieżka do pliku, na przykład `assets/textures/wall_stone.png` | struktura `assets::Image`: szerokość, wysokość, liczba kanałów i bajty pikseli, **dolny wiersz pierwszy** |
+| ścieżka do pliku, na przykład `assets/textures/wall_stone.png` | struktura `assets::Image`: szerokość, wysokość, liczba kanałów i bajty pikseli, **dolny wiersz pierwszy** (albo górny, gdy wołający o to poprosi: sekcja 2.7) |
 
-Całość to jedna struktura i jedna funkcja:
+Całość to jedna struktura, jeden typ wyliczeniowy i jedna funkcja:
 
 ```cpp
-bool loadImage(const std::filesystem::path& path, Image& image, std::string& error);
+bool loadImage(const std::filesystem::path& path, Image& image, std::string& error,
+               RowOrder rowOrder = RowOrder::BottomFirst);
 ```
 
 W tym pliku nie ma ani jednego wywołania OpenGL. To celowy podział: wczytanie pliku nie wymaga okna ani karty graficznej, więc da się je sprawdzić testem jednostkowym. Klasa `gfx::Texture2D` z kolei nie wie nic o plikach: dostaje gotowe bajty. Oba kawałki spotkają się dopiero w kodzie gry.
@@ -156,6 +159,26 @@ Loader przestawia **wiersze**, a bajtów w pikselach nie dotyka. Obraz na ścian
 
 Pomyłka w tym łańcuchu nie daje żadnego błędu, tylko odwrócony relief: fugi, które powinny być wgłębieniami, wyglądałyby jak grzbiety. Na zwykłej teksturze kamienia odwrócenie wierszy prawie nie rzuca się w oczy (pułapka 1), na mapie normalnych widać je pod każdym światłem. Dlatego konwencję sprawdza osobny test na prawdziwym pliku (sekcja 5.7).
 
+### 2.7 Kiedy wierszy nie odwracać: `RowOrder` i ściany tekstury sześciennej
+
+Odwracanie wierszy z sekcji 2.3 jest dobre dla każdej tekstury 2D. Od pierwszej części M6 gra ma też obrazy, dla których jest błędem: sześć ścian nieba, czyli tekstury sześciennej (cube map). Teoria jest w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 2.4. Tutaj wystarczy jedno zdanie: OpenGL nadal bierze pierwszy wiersz danych jako współrzędną 0, ale na ścianie tekstury sześciennej współrzędna `t = 0` oznacza **górę** obrazu, a nie dół. Plik PNG zaczyna się od górnego wiersza, więc ściany trzeba podać karcie tak, jak leżą w pliku.
+
+| | Tekstura 2D | Ściana tekstury sześciennej |
+|---|---|---|
+| pierwszy wiersz danych to | `v = 0`, dół obrazu | `t = 0`, **góra** obrazu |
+| pierwszy wiersz pliku | góra obrazu | góra obrazu |
+| co robi loader | odwraca wiersze | kopiuje wiersze bez zmiany kolejności |
+| wartość `RowOrder` | `BottomFirst` (domyślna) | `TopFirst` |
+
+Loader dostał więc czwarty parametr, typ wyliczeniowy `assets::RowOrder`. Dwie inne drogi byłyby gorsze:
+
+- **Osobna funkcja dla ścian nieba.** Powtórzyłaby cały `loadImage` (otwarcie pliku, trzy sprawdzenia, dekodowanie, zwolnienie bloku) dla różnicy jednego wyrażenia.
+- **Odwrócenie z powrotem u wołającego.** `game::Skybox` mogłoby wczytać obraz domyślnie i odwrócić wiersze jeszcze raz. To dwa przejścia po 3 MB na ścianę i dwa miejsca, które muszą o sobie wiedzieć.
+
+Wartością domyślną jest `BottomFirst`, więc żadne z dotychczasowych wywołań loadera się nie zmieniło: `AssetCache::texture` nadal pisze `loadImage(key, image, error)`.
+
+Skutek dla każdego, kto czyta `Image::pixels`: struktura `Image` **nie pamięta**, w jakiej kolejności ją wypełniono. To, czy wiersz 0 jest dołem, czy górą, wie tylko ten, kto wołał loader. W grze jest jeden wołający z `TopFirst` (`loadSkyCubemap` w `src/game/Skybox.cpp`) i od razu oddaje bajty klasie `gfx::Cubemap`, która właśnie takiej kolejności wymaga ([`../gfx/cubemap.md`](../gfx/cubemap.md), sekcja 2.5).
+
 ## 3. Jak to działa w OpenGL
 
 Ta sekcja nie ma zastosowania: loader obrazów nie woła OpenGL. Plik `ImageLoader.cpp` nie dołącza `<glad/gl.h>` ani niczego z `gfx/`. Wywołania OpenGL, które przyjmują wynik loadera (`glTexImage2D` i reszta), są w [`../gfx/textures.md`](../gfx/textures.md), sekcja 3.
@@ -172,14 +195,14 @@ Ta sekcja nie ma zastosowania: loader nie ma shaderów i żaden shader nie widzi
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp) | struktura `assets::Image`, deklaracja `assets::loadImage`. Dołącza tylko `<filesystem>`, `<string>` i `<vector>` |
+| [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp) | struktura `assets::Image`, typ wyliczeniowy `assets::RowOrder` (od M6), deklaracja `assets::loadImage`. Dołącza tylko `<filesystem>`, `<string>` i `<vector>` |
 | [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp) | stała `KEEP_FILE_CHANNELS`, funkcje pomocnicze `readBinaryFile` i `fail`, implementacja `loadImage`. Jedyny plik projektu, który dołącza `<stb_image.h>` |
 | [`external/stb/stb_image.c`](../../../external/stb/stb_image.c) | dwie linie, które kompilują implementację stb_image do biblioteki `stb_image` ([`../../libraries/stb_image.md`](../../libraries/stb_image.md), sekcja 2) |
-| [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 9 przypadków testowych (sekcja 5.7) |
+| [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 10 przypadków testowych (sekcja 5.7) |
 
 Oba pliki z `src/assets/` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: `core/Log.hpp` (wypisanie błędu), `core/Paths.hpp` (`core::pathText`, czyli ścieżka jako tekst UTF-8 do komunikatu), stb_image i biblioteka standardowa. Nic z GLAD, GLFW, GLM, `gfx/`, `scene/` ani `game/`.
 
-### 5.2 Nagłówek: struktura `Image` i funkcja `loadImage`
+### 5.2 Nagłówek: struktura `Image`, typ `RowOrder` i funkcja `loadImage`
 
 ```cpp
 struct Image {
@@ -190,7 +213,8 @@ struct Image {
     /// Bytes per pixel, as stored in the file: 1 (grey), 2 (grey and alpha), 3 (RGB) or
     /// 4 (RGBA).
     int channels = 0;
-    /// width * height * channels bytes, bottom row first.
+    /// width * height * channels bytes, bottom row first (or top row first when the
+    /// picture was loaded with RowOrder::TopFirst).
     std::vector<unsigned char> pixels;
 };
 ```
@@ -203,13 +227,41 @@ struct Image {
 | `std::vector<unsigned char> pixels` | wektor sam zwalnia pamięć i zna swój rozmiar. `unsigned char` to jeden bajt o wartościach od 0 do 255. Zwykły `char` mógłby mieć znak, a wtedy 255 byłoby liczbą ujemną |
 
 ```cpp
+/// Which row of the picture comes first in Image::pixels.
+enum class RowOrder {
+    /// The bottom row first: the rows of the file in reverse order. For 2D textures,
+    /// where OpenGL takes the first row it is given as texture coordinate v = 0, the
+    /// bottom edge.
+    BottomFirst,
+    /// The top row first: the rows as they are in the file, no flip. For the faces of
+    /// a cube map. A cube map is not read with (u, v) but with a direction, and its
+    /// rules say that on each face the coordinate t = 0 is the TOP of the picture (the
+    /// convention comes from RenderMan, where the origin of a picture is its top left
+    /// corner). OpenGL still takes the first row it is given as t = 0, so for a face
+    /// that row has to be the top one. A face loaded bottom row first would be shown
+    /// upside down, and it would not fit its neighbours.
+    TopFirst,
+};
+```
+
+| Wartość | Znaczenie |
+|---|---|
+| `BottomFirst` | dolny wiersz pierwszy: wiersze pliku w odwrotnej kolejności. Dla tekstur 2D (sekcja 2.3). Stoi jako pierwsza, ale to nie jej numer czyni ją domyślną, tylko wartość domyślna parametru niżej |
+| `TopFirst` | górny wiersz pierwszy: wiersze tak, jak w pliku. Dla ścian tekstury sześciennej (sekcja 2.7) |
+
+`enum class`, a nie parametr `bool flipRows`: wywołanie `loadImage(path, image, error, RowOrder::TopFirst)` mówi w miejscu użycia, co dostanie wołający, a `loadImage(path, image, error, false)` wymagałoby zajrzenia do nagłówka.
+
+```cpp
 /// Reads an image file and decodes it into pixels. The channel count of the file is kept.
-/// The path may contain any characters, also non ASCII ones on Windows.
+/// The path may contain any characters, also non ASCII ones on Windows. rowOrder says
+/// which row of the picture comes first in the result: the bottom one unless asked
+/// otherwise, which is right for every 2D texture.
 ///
 /// Returns true and fills image on success. On failure (the file cannot be opened, it is
 /// empty, it is not an image the decoder knows) it logs the error once, puts the same text
 /// into error, leaves image unchanged and returns false. It does not throw.
-bool loadImage(const std::filesystem::path& path, Image& image, std::string& error);
+bool loadImage(const std::filesystem::path& path, Image& image, std::string& error,
+               RowOrder rowOrder = RowOrder::BottomFirst);
 ```
 
 | Parametr | Znaczenie |
@@ -217,6 +269,7 @@ bool loadImage(const std::filesystem::path& path, Image& image, std::string& err
 | `const std::filesystem::path& path` | plik do wczytania. Typ `path`, a nie `std::string`, żeby nazwa nie przechodziła przez stronę kodową (sekcja 2.4) |
 | `Image& image` | tu trafia wynik. Referencja niestała: funkcja wypełnia obiekt wołającego. Przy błędzie zostaje nietknięty |
 | `std::string& error` | tu trafia tekst błędu. Po udanym wczytaniu jest czyszczony |
+| `RowOrder rowOrder = RowOrder::BottomFirst` | który wiersz obrazu ma być pierwszy w wyniku. Parametr z **wartością domyślną**: wywołanie z trzema argumentami kompiluje się jak przed M6 i dostaje odwracanie. Wartość domyślna stoi tylko w deklaracji w nagłówku, w definicji w pliku `.cpp` już jej nie ma |
 | wynik `bool` | `true` to sukces. Wołający pisze `if (!assets::loadImage(...))` |
 
 Ten sam kształt (wynik `bool`, dane i błąd przez referencje) ma `assets::loadObj`. W module `assets` obie funkcje wczytujące zachowują się jednakowo.
@@ -334,27 +387,28 @@ Od tej chwili w pamięci są **dwie** tablice: `fileBytes` (skompresowany plik) 
 
 Wynik powstaje w zmiennej **lokalnej**, a nie od razu w parametrze `image`. Parametr zostanie zmieniony dopiero w ostatnim kroku, jednym przypisaniem. `resize` przydziela wektorowi dokładnie tyle bajtów, ile ma obraz.
 
-**Krok 5: kopiowanie z odwróceniem wierszy.**
+**Krok 5: kopiowanie z odwróceniem wierszy (albo bez).**
 
 ```cpp
     for (std::size_t row = 0; row < rowCount; ++row) {
-        const stbi_uc* source = decoded + (rowCount - 1 - row) * rowSize;
+        const std::size_t sourceRow = rowOrder == RowOrder::BottomFirst ? rowCount - 1 - row : row;
+        const stbi_uc* source = decoded + sourceRow * rowSize;
         std::copy_n(source, rowSize,
                     loaded.pixels.begin() + static_cast<std::ptrdiff_t>(row * rowSize));
     }
 ```
 
-To jest sedno pliku. Piksele i tak trzeba skopiować z bloku biblioteki do wektora, więc kopiuję je wiersz po wierszu **w odwrotnej kolejności** i odwrócenie nie kosztuje osobnego przejścia.
+To jest sedno pliku. Piksele i tak trzeba skopiować z bloku biblioteki do wektora, więc kopiuję je wiersz po wierszu **w odwrotnej kolejności** i odwrócenie nie kosztuje osobnego przejścia. Od M6 kolejność zależy od parametru `rowOrder`: jedna linia wybiera numer wiersza źródła, reszta pętli jest wspólna.
 
 | Element | Znaczenie |
 |---|---|
-| `row` | numer wiersza w **wyniku**, od 0 (dół obrazu) |
-| `rowCount - 1 - row` | numer odpowiadającego wiersza w **źródle**. Dla `row = 0` to ostatni wiersz pliku, dla ostatniego `row` to wiersz 0 |
-| `decoded + (...) * rowSize` | wskaźnik na pierwszy bajt tego wiersza źródła: początek bloku plus tyle bajtów, ile zajmują wiersze przed nim |
+| `row` | numer wiersza w **wyniku**, od 0 (dół obrazu przy `BottomFirst`, góra przy `TopFirst`) |
+| `rowOrder == RowOrder::BottomFirst ? rowCount - 1 - row : row` | numer odpowiadającego wiersza w **źródle**, wybrany operatorem warunkowym. Przy `BottomFirst` to `rowCount - 1 - row`: dla `row = 0` ostatni wiersz pliku, dla ostatniego `row` wiersz 0. Przy `TopFirst` to po prostu `row`: wiersze idą w kolejności pliku |
+| `decoded + sourceRow * rowSize` | wskaźnik na pierwszy bajt tego wiersza źródła: początek bloku plus tyle bajtów, ile zajmują wiersze przed nim |
 | `std::copy_n(źródło, ile, cel)` | kopiuje `ile` elementów. Tu: cały wiersz, `rowSize` bajtów, w niezmienionej kolejności |
 | `loaded.pixels.begin() + ...` | iterator na pierwszy bajt wiersza `row` w wyniku. Do iteratora dodaje się liczbę ze znakiem (`std::ptrdiff_t`), stąd rzutowanie |
 
-Przykład dla obrazka testowego 2 x 3 RGB (`rowSize` = 6, `rowCount` = 3):
+Przykład dla obrazka testowego 2 x 3 RGB (`rowSize` = 6, `rowCount` = 3) przy domyślnym `BottomFirst`:
 
 | `row` (wynik) | wiersz źródła | bajty źródła | bajty wyniku |
 |---|---|---|---|
@@ -362,7 +416,7 @@ Przykład dla obrazka testowego 2 x 3 RGB (`rowSize` = 6, `rowCount` = 3):
 | 1 | 1 | od 6 do 11 | od 6 do 11 |
 | 2 | 0 | od 0 do 5 | od 12 do 17 |
 
-Środkowy wiersz obrazu o nieparzystej wysokości zostaje na swoim miejscu, co widać w tabeli.
+Środkowy wiersz obrazu o nieparzystej wysokości zostaje na swoim miejscu, co widać w tabeli. Przy `TopFirst` tabela jest trywialna: wiersz źródła równa się `row`, a bajty wyniku są kopią bajtów źródła.
 
 **Krok 6: sprzątanie i oddanie wyniku.**
 
@@ -385,7 +439,7 @@ Między `stbi_load_from_memory` a `stbi_image_free` nie ma żadnego `return`, wi
 
 ### 5.6 Jak wołać loader
 
-W grze `loadImage` woła jedno miejsce: `assets::AssetCache::texture` w [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp). Fragment od wczytania pliku do utworzenia tekstury:
+W grze `loadImage` wołają dwa miejsca. Pierwsze, dla wszystkich tekstur 2D, to `assets::AssetCache::texture` w [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp). Fragment od wczytania pliku do utworzenia tekstury:
 
 ```cpp
     // loadImage logs its own error.
@@ -414,11 +468,24 @@ W grze `loadImage` woła jedno miejsce: `assets::AssetCache::texture` w [`src/as
 | `gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data());` | cztery pola `Image` to dokładnie cztery argumenty konstruktora tekstury. `pixels.data()` to wskaźnik na pierwszy bajt, czyli na dolny wiersz obrazu, tak jak chce OpenGL (sekcja 2) |
 | `if (!texture.isValid())` | loader oddaje obraz o dowolnej liczbie kanałów, a `Texture2D` przyjmuje tylko 3 albo 4. Obraz w skali szarości (1 albo 2 kanały) wczytuje się więc poprawnie, a odrzuca go dopiero tekstura |
 
-Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopię pikseli ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.6), więc bajty w pamięci procesora nie są dalej potrzebne. Loader nie jest wołany nigdzie indziej: ani `NightMazeApp`, ani `MazeRenderer`, ani `GameplayRenderer` nie czytają plików obrazów same.
+Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopię pikseli ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.6), więc bajty w pamięci procesora nie są dalej potrzebne. `NightMazeApp`, `MazeRenderer` ani `GameplayRenderer` nie czytają plików obrazów same.
+
+Drugie miejsce doszło w pierwszej części M6: funkcja `loadSkyCubemap` w [`src/game/Skybox.cpp`](../../../src/game/Skybox.cpp) wczytuje sześć ścian nieba, z pominięciem pamięci podręcznej (ta robi z obrazów obiekty `Texture2D`, a niebo potrzebuje samych bajtów dla `gfx::Cubemap`):
+
+```cpp
+        // RowOrder::TopFirst: no row flip. A face of a cube map has its top row first,
+        // unlike a 2D texture (the reason is at assets::RowOrder).
+        if (!assets::loadImage(path, images[face], error, assets::RowOrder::TopFirst)) {
+            // loadImage has logged which file failed and why.
+            return {};
+        }
+```
+
+To jedyne wywołanie z czwartym argumentem w całym programie. Cała funkcja jest omówiona w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.4.
 
 ### 5.7 Testy
 
-[`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), 9 przypadków, 57 asercji (przed mapami normalnych: 7 i 35). Jak czytać i uruchamiać testy: [`../../libraries/doctest.md`](../../libraries/doctest.md).
+[`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), 10 przypadków, 63 asercje (przed mapami normalnych: 7 i 35, przed `RowOrder`: 9 i 57). Jak czytać i uruchamiać testy: [`../../libraries/doctest.md`](../../libraries/doctest.md).
 
 | Przypadek testowy | Co sprawdza |
 |---|---|
@@ -426,6 +493,7 @@ Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopi�
 | `the normal maps of the game load, and most of their texels are flat` | nowy. Prawdziwe pliki `wall_stone_normal.png` i `floor_stone_normal.png`: 512 x 512, 3 kanały, pusty tekst błędu. Średnia całego obrazu: czerwony i zielony w granicach 2% od 128, niebieski powyżej 245 |
 | `the wall normal map follows the OpenGL convention: a joint is a groove` | nowy. Na `wall_stone_normal.png`: zielony kanał na skosie pod poziomą fugą jest powyżej 150, a nad fugą poniżej 106. Czerwony kanał na skosie po lewej stronie pionowej fugi jest powyżej 150, a po prawej poniżej 106. Najmniejszy niebieski bajt całego obrazu jest większy od 128 |
 | `the rows are flipped: the first row in memory is the bottom row of the file` | obrazek 2 x 3 zapisany przez sam test: wynik ma dokładnie te same piksele z wierszami w odwrotnej kolejności |
+| `with RowOrder::TopFirst the rows are not flipped: they stay as in the file` | nowy w M6. Ten sam obrazek 2 x 3 wczytany z czwartym argumentem `assets::RowOrder::TopFirst`: wynik ma dokładnie te bajty, które test zapisał do pliku, górny wiersz pierwszy. Razem z poprzednim przypadkiem przypina oba zachowania parametru |
 | `a path with letters outside ASCII can be loaded` | ten sam obrazek pod nazwą z polskimi literami i jednym znakiem japońskim |
 | `a missing file is reported and leaves the image unchanged` | wynik `false`, w tekście błędu `cannot be opened` i nazwa pliku, obiekt `Image` z wcześniejszą zawartością nietknięty |
 | `a file that is not an image is reported` | plik `assets/shaders/color.vert` podany jako obraz: `false`, w tekście błędu `cannot be decoded` i nazwa `color.vert`. Do M4 test podawał tu `basic.vert`, plik usunięty w M5 razem z kostką: zmieniła się tylko nazwa pliku, liczba asercji została ta sama |
@@ -503,7 +571,7 @@ Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą
 
 **Linie `[error]` w wyjściu testów.** Trzy przypadki celowo wywołują błąd, a loader wypisuje go przez `core::logError`. W wyjściu programu testowego widać więc trzy linie `[error] Image file ...`. To nie są nieudane testy: wynik podaje ostatnia linia raportu doctest.
 
-**Wynik.** Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie 9 przypadków i 57 asercji tego pliku przechodzi (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Na macOS testy nie były jeszcze uruchamiane. Oba nowe testy czytają pliki PNG zapisane na Windowsie: jeśli skrypt tekstur uruchomiony na Macu da inne bajty, testy nadal powinny przechodzić (progi mają duży zapas), ale tego nikt nie sprawdził.
+**Wynik.** Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie 9 przypadków i 57 asercji tego pliku przechodziło po M5 (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Po pierwszej części M6 plik ma 10 przypadków i 63 asercje, a dla całego programu zgłoszono 221 przypadków i 85175 asercji w obu konfiguracjach. Sześć plików nieba czyta osobny plik testów, `tests/SkyboxTests.cpp` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.8). Na macOS testy nie były jeszcze uruchamiane. Oba nowe testy czytają pliki PNG zapisane na Windowsie: jeśli skrypt tekstur uruchomiony na Macu da inne bajty, testy nadal powinny przechodzić (progi mają duży zapas), ale tego nikt nie sprawdził.
 
 Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcje 5.9 i 5.10): na zrzutach ekranu z gry na Windowsie tekstury ścian i podłogi nie są odwrócone ani odbite.
 
@@ -524,19 +592,21 @@ Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, 
 9. **Kolory w sRGB.** Bajty w pliku PNG są zapisane w przestrzeni sRGB. Loader oddaje je bez zmian i tak samo trafiają na kartę. Poprawna obsługa gammy nie jest jeszcze zrobiona ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10). Dla map normalnych "bez zmian" jest dokładnie tym, czego trzeba: ich bajty to kierunki, nie kolory, i żadne przeliczenie z sRGB nie może ich dotknąć. Kiedy w M7 obrazy koloru zaczną być wczytywane jako sRGB, mapy normalnych muszą zostać przy formacie liniowym.
 10. **Brak kopii `assets` na Windowsie.** Program czyta `assets` obok pliku `.exe`, a tam leży kopia robiona podczas budowania ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Nowa tekstura dodana do repozytorium nie istnieje dla programu, dopóki kopia nie zostanie odświeżona. Testów to nie dotyczy: czytają katalog z repozytorium.
 11. **Mapa normalnych z innego programu.** Mapa wypalona w programie trzymającym się konwencji DirectX ma w zielonym kanale -Y. Loader wczyta ją bez błędu, a relief w grze wyjdzie odwrócony w pionie. Loader nie ma jak tego wykryć: to tylko bajty. Poprawką byłoby odwrócenie zielonego kanału w pliku (`255 - g`), nie w loaderze.
+12. **Zła wartość `RowOrder`.** Tekstura 2D wczytana z `TopFirst` jest do góry nogami, ściana tekstury sześciennej wczytana z domyślnym `BottomFirst` też. Żadna z pomyłek nie daje błędu ani ostrzeżenia. Dla tekstur 2D chroni wartość domyślna parametru, dla nieba jedna linia w `src/game/Skybox.cpp`, której żaden test nie widzi (testy plików nieba wczytują je same).
+13. **`Image` nie pamięta kolejności wierszy.** Funkcja, która dostaje `Image` i zakłada "wiersz 0 to dół", pomyli się dla obrazu wczytanego z `TopFirst`. Pułapka 7 dotyczy więc obrazów wczytanych domyślnie.
 
 ## 8. Ćwiczenia
 
 Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --test-dir build/debug -C Debug --output-on-failure`. Po każdym ćwiczeniu wycofaj zmianę (`git checkout src/assets`).
 
-1. **Bez odwracania.** W pętli kopiującej zamień `(rowCount - 1 - row)` na `row`. Który test przestaje przechodzić? Dlaczego test na prawdziwych teksturach przechodzi dalej?
+1. **Bez odwracania.** W pętli kopiującej, w linii z `sourceRow`, zamień `rowCount - 1 - row` na `row`. Który test przestaje przechodzić? Dlaczego test na prawdziwych teksturach przechodzi dalej?
 2. **Odwrócenie w złą stronę.** Zamiast kolejności wierszy odwróć kolejność bajtów całego obrazu (na przykład `std::reverse` na całym wektorze). Zapisz na kartce, jak wyglądałby wtedy obrazek testowy: gdzie trafia piksel lewy górny i co stało się z kolejnością R, G, B?
 3. **Tryb tekstowy.** Usuń `std::ios::binary`. Uruchom testy na Windowsie. Co się zmieniło i w którym kroku loadera wychodzi błąd? (Na macOS nie zmieni się nic. Dlaczego?)
 4. **Rozmiary na kartce.** Obraz ma 300 x 200 pikseli i 4 kanały. Ile bajtów ma wiersz, a ile cały obraz? W którym bajcie `Image::pixels` zaczyna się piksel z lewego **górnego** rogu obrazu?
 5. **Wymuszone kanały.** Zmień `KEEP_FILE_CHANNELS` na 4 i przypisz `loaded.channels = 4`. Który test przestaje przechodzić i jaką wartość ma teraz czwarty bajt każdego piksela tekstury ściany? Co by się zepsuło, gdybyś zmienił tylko stałą, a `loaded.channels` zostawił?
 6. **Wyciek.** Usuń linię `stbi_image_free(decoded);`. Testy nadal przechodzą. Ile bajtów wycieka przy każdym wywołaniu dla tekstury ściany i dlaczego żaden test tego nie widzi?
 7. **Własny komunikat.** Dopisz test, który podaje jako ścieżkę katalog `assets/textures` zamiast pliku. Zanim go uruchomisz, przewidź, która gałąź błędu się wykona na Windowsie.
-8. **Bez odwracania, a mapa normalnych.** Powtórz ćwiczenie 1 (zamień `(rowCount - 1 - row)` na `row`) i uruchom testy. Oprócz testu odwracania przestaje przechodzić test konwencji mapy normalnych. Która z jego nierówności zawodzi i dlaczego test "większość tekseli jest płaska" przechodzi dalej? (Średnia całego obrazu nie zależy od kolejności wierszy.)
+8. **Bez odwracania, a mapa normalnych.** Powtórz ćwiczenie 1 (zamień `rowCount - 1 - row` na `row`) i uruchom testy. Oprócz testu odwracania przestaje przechodzić test konwencji mapy normalnych. Która z jego nierówności zawodzi i dlaczego test "większość tekseli jest płaska" przechodzi dalej? (Średnia całego obrazu nie zależy od kolejności wierszy.)
 9. **Piksel na kartce.** Policz ręcznie, pod którym indeksem w `Image::pixels` leży zielony bajt piksela z kolumny 24 i wiersza 58 mapy `wall_stone_normal.png`. (`(58 * 512 + 24) * 3 + 1 = 89161`.)
 
 ## 9. Pytania kontrolne
@@ -548,7 +618,7 @@ Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --
    Pliki obrazów zapisują górny wiersz jako pierwszy, a OpenGL traktuje pierwszy wiersz jako dolny (`v = 0`). Format OBJ ma tę samą konwencję co OpenGL, więc UV modeli są dobre i jedyną rzeczą do poprawienia jest obraz. Odwrócenie w shaderze (`1 - v`) dałoby ten sam obraz, ale trzeba by je powtarzać w każdym shaderze, a tekstury wypełniane przez sam OpenGL mają wiersz 0 na dole, więc shader musiałby rozróżniać, skąd jest tekstura. Poprawka w jednym miejscu, przy wczytaniu, daje wszystkim teksturom jedną konwencję.
 
 3. **Jak pętla odwraca wiersze?**
-   Dla wiersza `row` wyniku bierze wiersz `rowCount - 1 - row` źródła i kopiuje go w całości (`std::copy_n`, `rowSize` bajtów). Kolejność pikseli w wierszu się nie zmienia.
+   Dla wiersza `row` wyniku bierze wiersz `rowCount - 1 - row` źródła i kopiuje go w całości (`std::copy_n`, `rowSize` bajtów). Kolejność pikseli w wierszu się nie zmienia. Numer wiersza źródła stoi w zmiennej `sourceRow`: przy `RowOrder::TopFirst` jest nim samo `row` i wiersze nie są odwracane.
 
 4. **Dlaczego nie użyto przełącznika `stbi_set_flip_vertically_on_load`?**
    To ukryty stan globalny biblioteki: zmienia wynik wszystkich następnych wywołań w programie. Jawna pętla jest w tym samym pliku, widać ją i ma własny test.
@@ -582,6 +652,12 @@ Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --
 
 14. **Jak test sprawdza, że fuga mapy normalnych jest wgłębieniem, a nie grzbietem?**
     Czyta prawdziwy plik `wall_stone_normal.png` i porównuje zielony kanał na dwóch skosach przy poziomej fudze: skos pod fugą (górna krawędź bloku) jest zwrócony w górę i ma zielony powyżej 128, skos nad fugą jest zwrócony w dół i ma zielony poniżej 128. To samo dla czerwonego kanału przy fudze pionowej. Mapa w konwencji DirectX albo grzbiet zamiast wgłębienia dałyby wynik odwrotny.
+
+15. **Do czego służy `RowOrder` i kto używa wartości `TopFirst`?**
+    Mówi loaderowi, który wiersz obrazu ma być pierwszy w `Image::pixels`. Domyślne `BottomFirst` odwraca wiersze dla tekstur 2D. `TopFirst` zostawia kolejność pliku i używa go tylko `game::Skybox` dla sześciu ścian tekstury sześciennej, na których `t = 0` to góra obrazu.
+
+16. **Skąd wiadomo, w jakiej kolejności są wiersze w danym obiekcie `Image`?**
+    Z samej struktury nie wiadomo: nie ma w niej pola na kolejność. Wie to wołający, który wybrał `RowOrder`. Dlatego obraz wczytany z `TopFirst` jest od razu oddawany klasie `gfx::Cubemap` i nigdzie dalej nie wędruje.
 
 ## 10. Źródła
 

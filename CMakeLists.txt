@@ -44,6 +44,8 @@ add_library(engine STATIC
     src/core/Window.hpp
     src/gfx/Buffer.cpp
     src/gfx/Buffer.hpp
+    src/gfx/Cubemap.cpp
+    src/gfx/Cubemap.hpp
     src/gfx/Mesh.cpp
     src/gfx/Mesh.hpp
     src/gfx/Shader.cpp
@@ -120,8 +122,8 @@ night_maze_enable_warnings(game_logic)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer, ColliderLines,
-# LightRig, with the shared ModelDraw) stay in the executable: they need a window and an
-# OpenGL context, so they are not something a test can run.
+# LightRig, Skybox, with the shared ModelDraw) stay in the executable: they need a window
+# and an OpenGL context, so they are not something a test can run.
 add_executable(night_maze
     src/main.cpp
     src/game/ColliderLines.cpp
@@ -137,6 +139,8 @@ add_executable(night_maze
     src/game/NightMazeApp.cpp
     src/game/NightMazeApp.hpp
     src/game/ShaderUniforms.hpp
+    src/game/Skybox.cpp
+    src/game/Skybox.hpp
     src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
@@ -187,6 +191,7 @@ add_executable(night_maze_tests
     tests/PlayerTests.cpp
     tests/RoundTests.cpp
     tests/ShaderSourceTests.cpp
+    tests/SkyboxTests.cpp
     tests/TangentTests.cpp
     tests/TransformTests.cpp
 )

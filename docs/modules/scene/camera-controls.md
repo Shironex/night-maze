@@ -109,7 +109,7 @@ Sterowanie kamerą (sekcje 2 i 5) nie dokłada do listy wywołań OpenGL niczego
 
 ## 4. Shadery
 
-Sterowanie i panel nie mają shaderów. Pola kamery, które zmieniają, trafiają do shaderów jako macierz widoku i macierz rzutowania. Obie są liczone raz na klatkę i podawane każdemu programowi, którym ta klatka rysuje, pod tymi samymi nazwami `uView` i `uProjection` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Programów jest od M5 cztery (`textured`, `color`, `lit`, `gouraud`), a w jednej klatce pracują najwyżej dwa z nich: jeden z trójki `textured`, `lit`, `gouraud` dla labiryntu, bramy i kryształów oraz `color` dla linii kształtów kolizji ([`camera.md`](camera.md), sekcja 5.7). Mnożenie w shaderze wierzchołków omawia [`transforms.md`](transforms.md), sekcja 4.
+Sterowanie i panel nie mają shaderów. Pola kamery, które zmieniają, trafiają do shaderów jako macierz widoku i macierz rzutowania. Obie są liczone raz na klatkę i podawane każdemu programowi, którym ta klatka rysuje, pod tymi samymi nazwami `uView` i `uProjection` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Programów jest od pierwszej części M6 pięć (`textured`, `color`, `lit`, `gouraud`, `skybox`), a w jednej klatce pracują najwyżej trzy z nich: jeden z trójki `textured`, `lit`, `gouraud` dla labiryntu, bramy i kryształów, `color` dla linii kształtów kolizji i `skybox` dla nieba ([`camera.md`](camera.md), sekcja 5.7). Mnożenie w shaderze wierzchołków omawia [`transforms.md`](transforms.md), sekcja 4.
 
 ## 5. Kod w projekcie
 

@@ -5,10 +5,11 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`CMakeLists.txt`](../../CMakeLists.txt) oraz tę część API, której używają testy w katalogu
 [`tests/`](../../tests/).
 
-**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z siedemnastu
-plików: `tests/main.cpp` (punkt wejścia) i szesnastu plików z testami. Osiem pierwszych
+**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z osiemnastu
+plików: `tests/main.cpp` (punkt wejścia) i siedemnastu plików z testami (siedemnasty,
+`SkyboxTests.cpp`, doszedł w pierwszej części M6). Osiem pierwszych
 wierszy tabeli to pliki z M2 + M3, cztery następne doszły z oświetleniem (pierwsza część M4),
-trzynasty z mapami normalnych (druga część M4), a trzy ostatnie z rozgrywką (M5). M5 zmieniło
+trzynasty z mapami normalnych (druga część M4), trzy następne z rozgrywką (M5), a ostatni z niebem (pierwsza część M6). M5 zmieniło
 też liczby w trzech starszych plikach: `ColliderTests.cpp` dostał siedem przypadków o kulach,
 `MazeTests.cpp` dwa (w tym przeniesiony test `isDeadEnd`), a z `LightingTests.cpp` ubyło
 siedem, bo światła w ślepych zaułkach zostały usunięte z gry:
@@ -22,7 +23,7 @@ siedem, bo światła w ślepych zaułkach zostały usunięte z gry:
 | `MazeWorldTests.cpp` | 8 | `buildMazeWorld`: macierze modelu, pudełka, start, od M5 także wyjście, brama i kryształy świata | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
 | `PlayerTests.cpp` | 13 | gracz: chodzenie, sprint, ślizganie, noclip | [`../modules/game/player.md`](../modules/game/player.md) |
 | `ObjLoaderTests.cpp` | 20 | loader OBJ i MTL, od M4 także linia mapy normalnych `map_Bump` i styczne modeli gry | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
-| `ImageLoaderTests.cpp` | 9 | loader obrazów, od M4 także zawartość map normalnych (średnia, konwencja kanału zielonego) | [`../modules/assets/images.md`](../modules/assets/images.md) |
+| `ImageLoaderTests.cpp` | 10 | loader obrazów, od M4 także zawartość map normalnych (średnia, konwencja kanału zielonego), od M6 wczytanie bez odwracania wierszy (`RowOrder::TopFirst`) | [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `ShaderSourceTests.cpp` | 22 | tekst shadera: `expandIncludes` (dyrektywa `#include`, linie `#line`, błędy) i `nameSourceFiles` (nazwy plików w komunikatach sterownika) | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `LightTests.cpp` | 20 | matematyka świateł: zanik z odległością, stożek reflektora, `directionFromAngles`, bajty bloku świateł (`packLightBlock`) | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
 | `LightingTests.cpp` | 10 | ustawienia oświetlenia gry: wartości domyślne, `usesNormalMap`, `buildLightSet`. Testy świateł w ślepych zaułkach z M4 zniknęły razem z tym kodem | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
@@ -31,11 +32,14 @@ siedem, bo światła w ślepych zaułkach zostały usunięte z gry:
 | `ExitTests.cpp` | 11 | wyjście: odległości liczone w przejściach (`passageDistances`), najdalsza komórka (`farthestCell`), brama (`placeExit`, `wallSegmentOn`), strefa wyjścia (`exitZone`) | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | `CrystalTests.cpp` | 14 | kryształy: ile ich jest (`crystalCountFor`), gdzie stoją (`placeCrystals`), kołysanie, obrót, pulsowanie i świecenie | tamże |
 | `RoundTests.cpp` | 25 | cała runda bez okna: `startRound`, `updateRound` (zbieranie, bateria, brama, wygrana), `flashlightFlicker`, `lightingForFrame`, `crystalLightPositions` | tamże |
+| `SkyboxTests.cpp` | 5 | od M6: sześć plików nieba jako ściany tekstury sześciennej (rozmiary, reguła wyboru ściany, miejsce księżyca, gradient tła, zgodność na dwunastu krawędziach sześcianu) | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md) |
 
-Razem 215 przypadków testowych i 85098 asercji: tyle pokazał program na Windowsie w
-konfiguracjach Debug i Release (2026-10-05). Liczbę 215 potwierdza też policzenie makr
-`TEST_CASE` w plikach, w kolejności tabeli:
-19 + 8 + 11 + 12 + 8 + 13 + 20 + 9 + 22 + 20 + 10 + 4 + 9 + 11 + 14 + 25.
+Razem 221 przypadków testowych i 85175 asercji: tyle zgłoszono dla Windowsa w
+konfiguracjach Debug i Release po pierwszej części M6 (2026-10-05). Liczbę 221 potwierdza
+też policzenie makr `TEST_CASE` w plikach, w kolejności tabeli:
+19 + 8 + 11 + 12 + 8 + 13 + 20 + 10 + 22 + 20 + 10 + 4 + 9 + 11 + 14 + 25 + 5.
+Po M5 było 215 przypadków i 85098 asercji (szesnaście plików, `ImageLoaderTests.cpp` z 9
+przypadkami): przykłady wyjścia programu niżej w tym dokumencie pochodzą z tamtego stanu.
 Poprzednie stany: po M4 trzynaście plików z testami, 163 przypadki i 62220 asercji, po
 pierwszej części M4 dwanaście plików, a po M2 + M3 osiem (wszystkie 2026-10-05). **Na macOS
 testy nie były jeszcze budowane ani uruchamiane.** Kod, który wymaga kontekstu OpenGL
@@ -521,7 +525,7 @@ Wynik zmierzony na Windowsie (Debug, 2026-10-05, przed dodaniem testów oświetl
 ```
 
 "1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwał
-wtedy około 0,1 s. Dla dzisiejszego programu z 215 przypadkami (2026-10-05) znane są liczby
+wtedy około 0,1 s. Dla programu po M5 z 215 przypadkami (2026-10-05) znane są liczby
 z raportu doctest niżej. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
 datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas.
 

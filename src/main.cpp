@@ -50,6 +50,8 @@ protected:
             .lighting = lighting(),
             .gameplay = gameplaySettings(),
             .round = round(),
+            .skyboxShader = skyboxShader(),
+            .skybox = skyboxSettings(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

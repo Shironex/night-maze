@@ -40,10 +40,11 @@ inline constexpr float REFERENCE_HEIGHT = 720.0F;
 // Free space between a panel and the edge of the window, and between two panels.
 inline constexpr float PANEL_GAP = 8.0F;
 
-// Left column: Renderer above Lights. Together they fill the height of the window. Both
-// are exactly as tall as their contents (the Lights panel with its Moon group folded).
+// Left column: Renderer above Lights. Together they fill the height of the window. The
+// Renderer panel is exactly as tall as its contents. The Lights panel gets what is left,
+// which is a little less than its contents (with its Moon group folded), so it scrolls.
 inline constexpr float LEFT_COLUMN_WIDTH = 336.0F;
-inline constexpr float RENDERER_HEIGHT = 230.0F;
+inline constexpr float RENDERER_HEIGHT = 284.0F;
 inline constexpr float LIGHTS_HEIGHT = REFERENCE_HEIGHT - RENDERER_HEIGHT - 3.0F * PANEL_GAP;
 
 // Right column: Maze above Assets. Together they fill the height of the window. The

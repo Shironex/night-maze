@@ -1,4 +1,5 @@
-// "Renderer" debug panel: frame statistics, OpenGL driver info, clear color, lighting mode.
+// "Renderer" debug panel: frame statistics, OpenGL driver info, clear color, lighting mode,
+// skybox.
 // See docs/modules/debug-ui.md
 #include "debug/panels/RendererPanel.hpp"
 
@@ -6,6 +7,7 @@
 #include "core/Window.hpp"
 #include "debug/PanelLayout.hpp"
 #include "game/Lighting.hpp"
+#include "game/Skybox.hpp"
 
 #include <imgui.h>
 
@@ -18,10 +20,16 @@ namespace {
 // ended by a zero character.
 constexpr const char* LIGHTING_MODE_ITEMS = "Unlit\0Gouraud\0Phong\0Blinn-Phong\0";
 
+// Range of the slider of the sky brightness. 1 shows the sky pictures as they are, 0 is
+// a black sky. The pictures are dark, so the range goes well above 1.
+constexpr float MIN_SKY_BRIGHTNESS = 0.0F;
+constexpr float MAX_SKY_BRIGHTNESS = 3.0F;
+
 } // namespace
 
 void drawRendererPanel(const core::Time& time, const core::Window& window,
-                       std::array<float, 3>& clearColor, game::LightingMode& lightingMode) {
+                       std::array<float, 3>& clearColor, game::LightingMode& lightingMode,
+                       game::SkyboxSettings& skybox) {
     // The place and the size of the panel the first time the program runs: the top left
     // corner of the window (the constant is in PanelLayout.hpp). The call counts only when
     // imgui.ini has no entry for this panel yet. After that the user decides where the
@@ -53,6 +61,15 @@ void drawRendererPanel(const core::Time& time, const core::Window& window,
         if (ImGui::Combo("Lighting", &lightingModeIndex, LIGHTING_MODE_ITEMS)) {
             lightingMode = static_cast<game::LightingMode>(lightingModeIndex);
         }
+
+        // The sky. Switched off, the clear colour above is the background again.
+        // Checkbox and SliderFloat write through the pointers they are given.
+        ImGui::Checkbox("Skybox", &skybox.enabled);
+        ImGui::SetItemTooltip("The night sky (a cube map). The painted moon stands where the\n"
+                              "default moon light comes from and does not follow the Moon\n"
+                              "sliders of the Lights panel.");
+        ImGui::SliderFloat("Sky brightness", &skybox.brightness, MIN_SKY_BRIGHTNESS,
+                           MAX_SKY_BRIGHTNESS);
     }
     ImGui::End();
 }

@@ -12,6 +12,7 @@
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
+#include "game/Skybox.hpp"
 #include "gfx/Shader.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
@@ -26,7 +27,8 @@ namespace game {
 /// The game itself: a generated maze of textured walls, pillars and floor tiles at
 /// night, and a player who walks through it in first person without passing through the
 /// walls. The mouse turns the camera, the keyboard moves the player. The maze is lit by
-/// the moon, by the flashlight of the player and by the glowing crystals.
+/// the moon, by the flashlight of the player and by the glowing crystals. Above the
+/// walls is the night sky, a skybox.
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
@@ -45,7 +47,8 @@ protected:
     void onUpdate(double fixedDt) override;
     void onRender(double alpha) override;
 
-    /// Background color (red, green, blue), exposed so the debug UI can edit it live.
+    /// Clear color (red, green, blue), exposed so the debug UI can edit it live. It is
+    /// the background only where the sky is not drawn: with the skybox switched off.
     std::array<float, 3>& clearColor() { return m_clearColor; }
 
     /// Shader program of the scene without lighting and of its debug views (textured
@@ -63,6 +66,13 @@ protected:
     /// Shader program of the lit scene with lighting per vertex (Gouraud), exposed for
     /// the same reason.
     gfx::Shader& gouraudShader() { return m_gouraudShader; }
+
+    /// Shader program of the sky, exposed for the same reason.
+    gfx::Shader& skyboxShader() { return m_skyboxShader; }
+
+    /// The switch and the brightness of the sky, exposed so the debug UI can edit them
+    /// live.
+    SkyboxSettings& skyboxSettings() { return m_skyboxSettings; }
 
     /// The settings of the lighting (mode, moon, flashlight, point lights, highlight,
     /// normal mapping), exposed so the debug UI can edit them live.
@@ -129,8 +139,11 @@ private:
     void drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 
-    // The night sky: a very dark blue, darker than the ambient light on the stone, so
-    // the walls stand out against it.
+    // The colour every frame starts with: a very dark blue, darker than the ambient
+    // light on the stone. The sky is drawn over it wherever no wall is, so it shows
+    // only when the skybox is switched off or its pictures could not be loaded. It is
+    // close to the colour of the sky straight above, so switching the skybox off does
+    // not change the mood of the scene.
     std::array<float, 3> m_clearColor{0.01F, 0.015F, 0.04F};
 
     // OpenGL objects. They are members of a class derived from core::Application, so they
@@ -142,11 +155,13 @@ private:
     gfx::Shader m_colorShader;
     gfx::Shader m_litShader;
     gfx::Shader m_gouraudShader;
+    gfx::Shader m_skyboxShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
     ColliderLines m_colliderLines;
     LightRig m_lightRig;
+    Skybox m_skybox;
 
     // The request for the next maze (edited by the debug UI) and the maze in play.
     MazeSettings m_mazeSettings;
@@ -186,6 +201,9 @@ private:
     ViewMode m_viewMode = ViewMode::Textured;
     // Whether the collision boxes and spheres are drawn as lines on top of the scene.
     bool m_drawColliders = false;
+
+    // Whether the sky is drawn and how bright it is.
+    SkyboxSettings m_skyboxSettings;
 
     // How the camera is turned. It belongs to the controls, not to the camera.
     float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;

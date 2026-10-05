@@ -1,5 +1,5 @@
 # Regenerates every generated asset of the game in one Blender process: the textures first,
-# then the models.
+# then the models, then the sky.
 # See docs/guides/blender.md
 #
 # Run from the repository root:
@@ -17,6 +17,7 @@ import build_floor_tile
 import build_gate
 import build_wall_pillar
 import build_wall_straight
+import make_skybox
 import make_textures
 
 shots = "--shots" in sys.argv
@@ -30,3 +31,6 @@ build_wall_pillar.build(shots)
 build_floor_tile.build(shots)
 build_crystal.build(shots)
 build_gate.build(shots)
+
+# The six faces of the sky. They depend on nothing above: no model uses them.
+make_skybox.build()

@@ -17,7 +17,9 @@ Stan: skrypty, sześć modeli i osiem tekstur są w repozytorium. Trzy modele ka
 słup, podłoga) i ich cztery tekstury pochodzą z M2 + M3 i M4: dwa obrazy koloru i, od drugiej
 części M4, dwie **mapy normalnych** (normal maps), po jednej do każdego obrazu koloru. M5
 (rozgrywka) dołożyło trzy modele, dwa kryształy i bramę, oraz cztery tekstury: obraz koloru
-i mapę normalnych kryształu i to samo dla drewna bramy.
+i mapę normalnych kryształu i to samo dla drewna bramy. Pierwsza część M6 (skybox) dołożyła
+skrypt `make_skybox.py` i sześć obrazów nieba w osobnym katalogu `assets/skybox/`: to nie są
+tekstury modeli, tylko ściany tekstury sześciennej (sekcja 7.7).
 Istnieje też kod C++, który wczytuje pliki OBJ i MTL: własny parser `assets::loadObj`
 ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)). Jego testy wczytują
 trzy modele kamienne i sprawdzają ich liczby i wymiary z sekcji 8. Modeli z M5 testy loadera
@@ -45,7 +47,8 @@ flowchart LR
 
 W katalogu [`tools/blender/`](../../tools/blender/) leżą **źródła (source)**: skrypty. W
 katalogach [`assets/models/`](../../assets/models/) i [`assets/textures/`](../../assets/textures/)
-leży **wynik (output)**: pliki `.obj`, `.mtl` i `.png`. Zasada jest taka sama jak przy kodzie
+leży **wynik (output)**: pliki `.obj`, `.mtl` i `.png`. Od pierwszej części M6 jest trzeci
+katalog wyników, [`assets/skybox/`](../../assets/skybox/), z sześcioma obrazami nieba. Zasada jest taka sama jak przy kodzie
 C++ i pliku wykonywalnym: zmieniam źródło i generuję wynik od nowa. **Plików wynikowych nie
 poprawiam ręcznie**, bo następne uruchomienie skryptu nadpisze poprawkę.
 
@@ -82,7 +85,8 @@ Pliki skryptów:
 | [`build_floor_tile.py`](../../tools/blender/build_floor_tile.py) | model płyty podłogi |
 | [`build_crystal.py`](../../tools/blender/build_crystal.py) | dwa modele kryształów w jednym skrypcie: `crystal_a` i `crystal_b` (sekcja 8.1) |
 | [`build_gate.py`](../../tools/blender/build_gate.py) | model bramy przy wyjściu (sekcja 8.2) |
-| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele w kolejności ściana, słup, podłoga, kryształy, brama |
+| [`make_skybox.py`](../../tools/blender/make_skybox.py) | od M6: generuje sześć ścian nieba, `px.png`, `nx.png`, `py.png`, `ny.png`, `pz.png` i `nz.png`, do `assets/skybox/` (sekcja 7.7) |
+| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele w kolejności ściana, słup, podłoga, kryształy, brama, na końcu niebo |
 | [`.gitignore`](../../tools/blender/.gitignore) | pomija katalog `__pycache__`, który Python tworzy przy imporcie modułów |
 
 ## 2. Konwencje
@@ -144,6 +148,7 @@ Jeden skrypt (same tekstury albo jeden model):
 ```powershell
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/make_textures.py
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/build_wall_straight.py -- --shots
+& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/make_skybox.py
 ```
 
 ### macOS (jeszcze nie uruchomione na Macu)
@@ -988,6 +993,89 @@ Znana usterka, zostawiona jako kosmetyczna: w `crystal_normal.png` jest kilka za
 (creases) o szerokości jednego piksela, czyli cienkich kresek, na których kierunek normalnej
 skacze. Przyczyny nie ustalałem i pliku nie poprawiałem.
 
+### 7.7 Niebo: `make_skybox.py`
+
+Od pierwszej części M6 jest jeszcze jeden skrypt, który pisze obrazy, ale nie tekstury
+modeli: [`make_skybox.py`](../../tools/blender/make_skybox.py) generuje sześć ścian
+**tekstury sześciennej** (cube map) z nocnym niebem do katalogu
+[`assets/skybox/`](../../assets/skybox/). Co to jest tekstura sześcienna, jak gra ją czyta
+i cała matematyka obrazu (kierunek dla każdego piksela, tło, Droga Mleczna, gwiazdy,
+księżyc, szum, dithering) są w
+[`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcje 2.8, 2.9 i 5.7. Tu
+jest tylko to, co trzeba wiedzieć, żeby skrypt uruchomić i zmienić.
+
+| Plik | Ściana | Rozmiar |
+|---|---|---|
+| `px.png`, `nx.png` | +X i -X (prawa i lewa dla kamery patrzącej wzdłuż -Z) | 1024 x 1024, RGB, 8 bitów na kanał |
+| `py.png`, `ny.png` | +Y i -Y (góra i dół) | jak wyżej |
+| `pz.png`, `nz.png` | +Z i -Z (tył i przód) | jak wyżej |
+
+Uruchomienie samego nieba (Windows, potem macOS):
+
+```powershell
+& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python tools/blender/make_skybox.py
+```
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python tools/blender/make_skybox.py
+```
+
+`make_all.py` woła `make_skybox.build()` na samym końcu, po teksturach i modelach: niebo
+nie zależy od żadnego z nich i żaden model go nie używa. Argument `--shots` nieba nie
+dotyczy: funkcja `build()` tego skryptu nie przyjmuje parametru i nie robi renderów.
+
+Czym ten skrypt różni się od `make_textures.py`:
+
+| | `make_textures.py` | `make_skybox.py` |
+|---|---|---|
+| katalog wyniku | `assets/textures/` (`TEXTURES_DIR`) | `assets/skybox/` (`SKYBOX_DIR`, nowa stała w `blender_common.py`) |
+| rozmiar | 512 x 512 | 1024 x 1024 (`SIZE`) |
+| współrzędna, z której liczony jest piksel | położenie na obrazie | **kierunek** w układzie gry, w którym piksel jest widziany |
+| czy obraz się kafelkuje | tak, lewy brzeg pasuje do prawego | nie. Zamiast tego sześć obrazów pasuje do siebie na krawędziach sześcianu |
+| który wiersz tablicy jest pierwszy | dolny wiersz obrazu | **górny** wiersz obrazu |
+| jak gra wczytuje plik | z odwróceniem wierszy | bez odwracania (`assets::RowOrder::TopFirst`) |
+| układ współrzędnych Blendera | nie występuje | nie występuje: skrypt liczy od razu w układzie gry (Y w górę, -Z do przodu) |
+
+Blender służy tu tylko do zapisania plików PNG. Jedna linia funkcji `save_face` wymaga
+wyjaśnienia: `rgba = rgba[::-1]` odwraca wiersze tablicy przed oddaniem jej Blenderowi.
+Blender trzyma obraz w pamięci od dolnego wiersza, a tablice skryptu mają górny wiersz jako
+pierwszy, więc bez tego odwrócenia pliki wyszłyby do góry nogami. W pliku PNG górny wiersz
+tablicy jest górnym wierszem obrazu.
+
+Stałe, które zmienia się najczęściej:
+
+| Stała | Wartość | Co zmienia |
+|---|---|---|
+| `SIZE` | `1024` | bok ściany w pikselach. Dwa razy większy to cztery razy większe pliki i cztery razy dłuższe liczenie |
+| `SKY_SEED` | `53` | ziarno generatora: inne daje inne gwiazdy, inne chmury Drogi Mlecznej i inne plamy na księżycu |
+| `MOON_LIGHT_YAW_DEGREES`, `MOON_LIGHT_PITCH_DEGREES` | `25.0`, `-50.0` | kierunek światła księżyca. Tarcza jest malowana w kierunku przeciwnym |
+| `MOON_RADIUS_DEGREES` | `2.2` | promień tarczy |
+| `STAR_COUNT`, `MILKY_WAY_STAR_COUNT` | `2600`, `1900` | liczba gwiazd na całym niebie i dodatkowych wzdłuż pasa |
+| `ZENITH_COLOR`, `HORIZON_COLOR` | `(0.010, 0.016, 0.045)`, `(0.034, 0.050, 0.098)` | kolor tła prosto w górę i przy horyzoncie |
+
+**Dwie liczby w dwóch plikach.** `MOON_LIGHT_YAW_DEGREES` i `MOON_LIGHT_PITCH_DEGREES` są
+kopią wartości domyślnych `moonYawDegrees` i `moonPitchDegrees` struktury
+`game::LightingSettings` z `src/game/Lighting.hpp`. Kto zmienia jedną parę, zmienia drugą,
+uruchamia ten skrypt i potem testy. Test `the moon is painted where the default moon light
+comes from` z `tests/SkyboxTests.cpp` łapie niezgodność, ale dopiero wtedy, gdy kierunek
+przesunie się o więcej niż promień tarczy, czyli o około 2 stopnie
+([`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcja 2.9).
+
+Po wygenerowaniu nowych plików:
+
+1. `git status`: zmienić się powinno tylko sześć plików w `assets/skybox/`.
+2. Testy (`ctest`): pięć przypadków `SkyboxTests.cpp` czyta te pliki i sprawdza rozmiar,
+   miejsce księżyca, gradient tła i zgodność ścian na dwunastu krawędziach sześcianu.
+3. Na Windowsie skopiować assety obok programu
+   (`cmake --build --preset debug --target copy_assets`) i obejrzeć niebo w grze.
+
+Stan sprawdzenia: sześć plików w repozytorium powstało tym skryptem na Windowsie. Ich
+rozmiar i format odczytałem z nagłówków PNG (1024 x 1024, RGB, 8 bitów), razem zajmują
+5 278 627 bajtów. **Powtarzalności nie zmierzono**: nikt nie uruchomił skryptu dwa razy
+i nie porównał plików, chociaż budowa skryptu (jeden generator z ziarnem `SKY_SEED`, używany
+w stałej kolejności) powinna ją dawać. Czasu działania skryptu nie zapisano. Na Macu
+skrypt nie był uruchamiany.
+
 ## 8. Lista assetów
 
 Wymiary są w układzie gry i zostały odczytane z linii `v` gotowych plików.
@@ -1012,6 +1100,10 @@ Razem w repozytorium jest dwadzieścia plików wynikowych: sześć `.obj`, sześ
 istniało po M4. Mapy normalnych nie zmieniły wtedy geometrii: liczby trójkątów i wymiary
 modeli kamiennych zostały te same co przedtem, a ich pliki `.obj` identyczne co do bajta. M5
 nie zmieniło żadnego z tych dziesięciu plików, dołożyło dziesięć nowych.
+
+Pierwsza część M6 dołożyła sześć plików innego rodzaju: obrazy nieba w `assets/skybox/`
+(1024 x 1024, RGB, razem 5 278 627 bajtów). Nie należą do żadnego modelu i nie ma ich w
+żadnym pliku `.mtl`: gra wczytuje je wprost, po nazwach (sekcja 7.7).
 
 **`wall_straight`**: odcinek ściany wzdłuż osi X. Trzy prostopadłościany jeden na drugim:
 
@@ -1312,6 +1404,9 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
 | Końce linii | pliki mają LF. Git na Windowsie z włączonym `core.autocrlf=true` zamieniłby je przy pobraniu na CRLF | parser powinien odcinać znak `\r` z końca linii |
 | Inna wersja Blendera | zmienia komentarz w pierwszej linii plików, a może też formatowanie liczb | generuję tą samą wersją (5.2.1) na obu komputerach |
 | Przestrzeń barw | kolory w PNG obrazów koloru są zapisane w sRGB, a gra traktuje je jak liniowe | odłożone do M7 ([`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md)). Map normalnych to nie dotyczy: zawierają kierunki i mają być czytane bez przeliczania, tak jak czyta je gra |
+| Ściana nieba poprawiona ręcznie albo wygenerowana osobno | krawędź sześcianu przestaje pasować i na niebie widać szew | wszystkie sześć ścian powstaje w jednym uruchomieniu `make_skybox.py`, z tego samego ziarna. Test granic w `tests/SkyboxTests.cpp` pilnuje wyniku |
+| Kierunek księżyca w dwóch plikach | tarcza na niebie stoi gdzie indziej niż źródło światła na ścianach | `MOON_LIGHT_YAW_DEGREES` i `MOON_LIGHT_PITCH_DEGREES` w `make_skybox.py` zmieniam razem z wartościami domyślnymi w `src/game/Lighting.hpp` |
+| Ściana nieba wczytana jak tekstura 2D | odwrócenie wierszy stawia każdą ścianę do góry nogami | gra wczytuje te pliki z `assets::RowOrder::TopFirst`, a skrypt pisze je górnym wierszem pierwszym |
 | Rendery w repozytorium | obrazy kontrolne zaśmiecałyby historię | zapis tylko do katalogu tymczasowego |
 
 ## 11. Jak dodać nowy model
@@ -1357,6 +1452,8 @@ Tą drogą doszły w M5 kryształy i brama. Kroku 9 nikt dla nich jeszcze nie wy
 - Parser plików OBJ i MTL: [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)
 - Mapy normalnych w grze (przestrzeń styczna, styczne, shader):
   [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md)
+- Niebo w grze (tekstura sześcienna, matematyka obrazu, testy plików nieba):
+  [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md)
 - Testy obu map normalnych na prawdziwych plikach:
   [`../modules/assets/images.md`](../modules/assets/images.md)
 - Struktura repozytorium: [`project-structure.md`](project-structure.md)

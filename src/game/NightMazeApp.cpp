@@ -21,8 +21,8 @@ constexpr int INITIAL_HEIGHT = 720;
 
 // Shader files, relative to the assets directory. The scene without lighting is drawn
 // with the first pair, the lines of the collision boxes and spheres with the second, the
-// scene with lighting per fragment with the third and with lighting per vertex with the
-// fourth.
+// scene with lighting per fragment with the third, with lighting per vertex with the
+// fourth and the sky with the fifth.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -31,6 +31,8 @@ constexpr const char* LIT_VERTEX_SHADER_FILE = "shaders/lit.vert";
 constexpr const char* LIT_FRAGMENT_SHADER_FILE = "shaders/lit.frag";
 constexpr const char* GOURAUD_VERTEX_SHADER_FILE = "shaders/gouraud.vert";
 constexpr const char* GOURAUD_FRAGMENT_SHADER_FILE = "shaders/gouraud.frag";
+constexpr const char* SKYBOX_VERTEX_SHADER_FILE = "shaders/skybox.vert";
+constexpr const char* SKYBOX_FRAGMENT_SHADER_FILE = "shaders/skybox.frag";
 
 // The names of the uniforms (MODEL_UNIFORM, VIEW_UNIFORM, PROJECTION_UNIFORM and the
 // others) are in game/ShaderUniforms.hpp, shared with the classes that draw the maze.
@@ -68,6 +70,8 @@ NightMazeApp::NightMazeApp()
                   core::assetPath(LIT_FRAGMENT_SHADER_FILE)),
       m_gouraudShader(core::assetPath(GOURAUD_VERTEX_SHADER_FILE),
                       core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
+      m_skyboxShader(core::assetPath(SKYBOX_VERTEX_SHADER_FILE),
+                     core::assetPath(SKYBOX_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
       m_mazeWorld(
@@ -227,7 +231,8 @@ void NightMazeApp::onRender(double alpha) {
     GL_CHECK(glEnable(GL_DEPTH_TEST));
 
     // The depth buffer has to be cleared together with the color, otherwise the depths of
-    // the previous frame would hide the new one.
+    // the previous frame would hide the new one. The clear colour is what stays on the
+    // pixels nothing is drawn on: with the skybox on there are none, the sky fills them.
     GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
@@ -279,6 +284,17 @@ void NightMazeApp::onRender(double alpha) {
     drawMaze(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
+    }
+
+    // The sky comes LAST, after everything that writes depth. It is drawn at the largest
+    // depth and passes the depth test only where nothing else was drawn, so the pixels
+    // hidden behind walls cost no fragment shader work (drawn first, the whole screen
+    // would be shaded and then mostly painted over). It does not depend on the lighting
+    // mode: the sky is not lit, it is the same picture in all four. The debug views
+    // change it, see Skybox::draw. Whatever is added to the frame later and should lie
+    // in front of the sky has to be drawn above this line.
+    if (m_skyboxSettings.enabled) {
+        m_skybox.draw(m_skyboxShader, view, projection, m_skyboxSettings, m_viewMode);
     }
 }
 

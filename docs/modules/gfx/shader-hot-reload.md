@@ -1,6 +1,6 @@
 # Moduł gfx: wczytywanie shaderów na żywo
 
-Kamień milowy: M1, panel rozszerzony do trzech programów w M2 + M3 i do pięciu w M4. Od M5 programów jest cztery. Temat wykładu: 2 (Programowalny potok).
+Kamień milowy: M1, panel rozszerzony do trzech programów w M2 + M3 i do pięciu w M4. Od M5 programów było cztery, od pierwszej części M6 jest ich znów pięć (doszedł `skybox`). Temat wykładu: 2 (Programowalny potok).
 Kod: funkcja `reload` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), panel w [`src/debug/panels/ShadersPanel.hpp`](../../../src/debug/panels/ShadersPanel.hpp) i [`src/debug/panels/ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp), shadery w [`assets/shaders/`](../../../assets/shaders/) (cztery pary: `textured`, `color`, `lit`, `gouraud`, i dwa pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/main.cpp`](../../../src/main.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument jest dalszym ciągiem [`shaders.md`](shaders.md) (potok, GLSL) i [`shader-class.md`](shader-class.md) (kompilacja, linkowanie i reszta klasy `gfx::Shader`). Tutaj jest podmiana programu w działającej aplikacji i panel "Shaders". Trzecia część tematu, uniformy, jest w [`uniforms.md`](uniforms.md). Dołączanie plików dyrektywą `#include` i nazwy plików w błędach opisuje [`shader-includes.md`](shader-includes.md), a bloki uniformów, których wiązanie `reload` odtwarza, [`uniform-buffers.md`](uniform-buffers.md). Jak nakładka z panelami jest wpięta w program, opisuje [`../debug-ui.md`](../debug-ui.md), a skąd program bierze pliki z `assets/`, [`../core/paths.md`](../core/paths.md).
@@ -16,7 +16,7 @@ Odpowiadają za to dwa elementy:
 | Element | Co daje |
 |---|---|
 | `Shader::reload()` | buduje nowy program z tych samych dwóch plików (i z plików, które one dołączają) i podmienia stary tylko przy sukcesie. Literówka w shaderze nie zamienia obrazu w czarny ekran, bo stary program działa dalej |
-| panel **Shaders** z przyciskiem "Reload shaders" | woła `reload()` na żądanie dla **wszystkich czterech** programów gry i pokazuje wynik każdego w jednej linii: nazwy obu plików i `OK` albo, na czerwono, `FAILED` z tekstem błędu pod spodem |
+| panel **Shaders** z przyciskiem "Reload shaders" | woła `reload()` na żądanie dla **wszystkich pięciu** programów gry i pokazuje wynik każdego w jednej linii: nazwy obu plików i `OK` albo, na czerwono, `FAILED` z tekstem błędu pod spodem |
 
 Program nie obserwuje dysku: przeładowanie następuje wtedy, gdy nacisnę przycisk. To jest też pokaz tematu 2 na obronie (sekcja 6.4).
 
@@ -167,7 +167,9 @@ Test nie obejmuje `DebugUI::draw` ani `main.cpp` (te sprawdza kompilacja i uruch
 common/lighting.glsl(63) : error C0000: syntax error, unexpected ';', expecting "::" at token ";"
 ```
 
-**Panel z czterema programami (M5).** Kod panelu się nie zmienił: lista, którą dostaje, jest o jeden element krótsza (sekcja 6.2). Zgłoszone dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym te same 22 przypadki preprocesora), obraz gry sprawdzony na zrzutach ekranu. Żadnej próby z tej sekcji nie powtarzano w M5.
+**Panel z pięcioma programami (M6, część pierwsza).** Kod panelu znów się nie zmienił: lista, którą dostaje, ma piąty element, program nieba `skybox`, i panel pokazuje piątą linię, `skybox.vert + skybox.frag`. Zgłoszone dla Windowsa (2026-10-05): build bez ostrzeżeń, 221 przypadków testowych i 85175 asercji. Przycisku przy pięciu programach nikt nie nacisnął ręcznie.
+
+**Panel z czterema programami (M5).** Kod panelu się nie zmienił: lista, którą dostawał, była o jeden element krótsza niż w M4 (sekcja 6.2). Zgłoszone dla Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym te same 22 przypadki preprocesora), obraz gry sprawdzony na zrzutach ekranu. Żadnej próby z tej sekcji nie powtarzano w M5.
 
 **Czego nikt nie zrobił:** przycisku `Reload shaders` nikt nie nacisnął ręcznie, ani z pięcioma programami, ani z czterema, więc kroki z sekcji 6.4 (zmiana koloru, literówka, naprawa, podpowiedź ze ścieżkami) są otwartą pozycją listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). To, że wiązanie bloku `LightBlock` wraca po przeładowaniu, wynika z kodu `reload()` i nie zostało sprawdzone kliknięciem. Na macOS wersje z M4 i z M5 nie były kompilowane ani uruchamiane.
 
@@ -185,7 +187,7 @@ Panel **Shaders** (kod: [`ShadersPanel.cpp`](../../../src/debug/panels/ShadersPa
 
 Linia programu odpowiada na dwa różne pytania naraz (tabela stanów w sekcji 5.2): słowo `OK` albo `FAILED` mówi, czy ostatnie wczytanie się udało, a dopisek po `FAILED` mówi, czy jest czym rysować. `FAILED` przy obrazie, który wygląda normalnie, to nie sprzeczność: nowe pliki się nie kompilują, a obraz rysuje poprzedni program.
 
-Do M2 + M3 każdy program miał w panelu blok czterech linii (osobno oba pliki, stan programu i wynik ostatniego wczytania). W M4 blok został zwinięty do jednej linii, a osobne etykiety zniknęły: pięć bloków po cztery linie byłoby dwudziestoma liniami w panelu, który miał wtedy 272 jednostki wysokości (dziś ma 280, a programów jest cztery).
+Do M2 + M3 każdy program miał w panelu blok czterech linii (osobno oba pliki, stan programu i wynik ostatniego wczytania). W M4 blok został zwinięty do jednej linii, a osobne etykiety zniknęły: pięć bloków po cztery linie byłoby dwudziestoma liniami w panelu, który miał wtedy 272 jednostki wysokości (dziś ma 280, a programów jest pięć).
 
 ### 6.1 Kod panelu
 
@@ -374,17 +376,17 @@ I wywołanie w `DebugUI::draw` w [`DebugUI.cpp`](../../../src/debug/DebugUI.cpp)
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 4;
+        constexpr int SHADER_COUNT = 5;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
             &context.texturedShader, &context.colorShader, &context.litShader,
-            &context.gouraudShader};
+            &context.gouraudShader, &context.skyboxShader};
         drawShadersPanel(shaders);
 ```
 
 | Fragment | Co robi i dlaczego |
 |---|---|
-| `constexpr int SHADER_COUNT = 4;` | rozmiar tablicy jako nazwana stała. `std::array` potrzebuje rozmiaru znanego w czasie kompilacji |
-| `const std::array<gfx::Shader*, SHADER_COUNT> shaders` | tablica na stosie, tworzona co klatkę. Cztery wskaźniki to 32 bajty, więc koszt jest pomijalny. `const` przy tablicy sprawia, że jej elementy są stałymi wskaźnikami: stąd typ `gfx::Shader* const` w sygnaturze panelu |
+| `constexpr int SHADER_COUNT = 5;` | rozmiar tablicy jako nazwana stała (4 po M5, 5 od pierwszej części M6, gdy doszedł program nieba). `std::array` potrzebuje rozmiaru znanego w czasie kompilacji |
+| `const std::array<gfx::Shader*, SHADER_COUNT> shaders` | tablica na stosie, tworzona co klatkę. Pięć wskaźników to 40 bajtów, więc koszt jest pomijalny. `const` przy tablicy sprawia, że jej elementy są stałymi wskaźnikami: stąd typ `gfx::Shader* const` w sygnaturze panelu |
 | `&context.texturedShader` | adres obiektu, do którego odnosi się referencja. Operator `&` zastosowany do referencji daje adres oryginału, czyli pola `m_texturedShader` w `NightMazeApp` |
 | `drawShadersPanel(shaders);` | `std::array` zamienia się na `std::span` sama: widok dostaje wskaźnik na pierwszy element i liczbę 4. Tablica żyje do końca bloku, w którym powstała, czyli dłużej niż wywołanie panelu |
 
@@ -415,7 +417,7 @@ sequenceDiagram
     Game->>GL: glUseProgram(nowy), uniformy, glDrawElements
 ```
 
-Diagram pokazuje jeden program: ten, który był bieżący w chwili kliknięcia. Gra wybiera w klatce po kolei: program sceny (`textured`, `lit` albo `gouraud`, zależnie od trybu oświetlenia i widoku), którym rysuje labirynt, kryształy i bramę, a potem, tylko gdy rysowanie kształtów kolizji jest włączone, program `color`. To najwyżej dwa wywołania `use()` i najwyżej dwa różne programy w jednej klatce. Bieżący zostaje ostatni z nich: `color` przy włączonych liniach kolizji, a bez nich program sceny. Trzy pozostałe programy nie są w chwili kliknięcia bieżące (co najmniej dwa z nich w tej klatce w ogóle nie były używane), więc ich `glDeleteProgram` usuwa je od razu, bez etapu "oznaczony do usunięcia". To wniosek z kolejności wywołań w `NightMazeApp::onRender` i z własności `glDeleteProgram` (sekcja 3), nie pomiar.
+Diagram pokazuje jeden program: ten, który był bieżący w chwili kliknięcia. Gra wybiera w klatce po kolei: program sceny (`textured`, `lit` albo `gouraud`, zależnie od trybu oświetlenia i widoku), którym rysuje labirynt, kryształy i bramę, a potem, tylko gdy rysowanie kształtów kolizji jest włączone, program `color`. Od pierwszej części M6 na końcu dochodzi, gdy niebo jest włączone (a domyślnie jest), program `skybox`. To najwyżej trzy wywołania `use()` i najwyżej trzy różne programy w jednej klatce. Bieżący zostaje ostatni z nich: `skybox` przy włączonym niebie, bez niego `color` przy włączonych liniach kolizji, a bez obu program sceny. Trzy pozostałe programy nie są w chwili kliknięcia bieżące (co najmniej dwa z nich w tej klatce w ogóle nie były używane), więc ich `glDeleteProgram` usuwa je od razu, bez etapu "oznaczony do usunięcia". To wniosek z kolejności wywołań w `NightMazeApp::onRender` i z własności `glDeleteProgram` (sekcja 3), nie pomiar.
 
 1. **Między `NewFrame` a `Render` ImGui nie woła OpenGL.** Widżety tylko dopisują geometrię do list w pamięci. `ImGui_ImplOpenGL3_NewFrame()` wykonało się wcześniej, a rysowanie następuje dopiero w `RenderDrawData`. `reload()` nie trafia więc w środek żadnej operacji backendu.
 2. **`reload()` nie zmienia stanu, na którym polega backend.** Tworzy obiekty shaderów i program, kompiluje, linkuje i usuwa ([`shader-class.md`](shader-class.md), sekcja 3.1). Nie woła `glUseProgram`, nie wiąże buforów, tekstur ani VAO. Wywołania z `applyBlockBinding` (`glGetUniformBlockIndex`, `glUniformBlockBinding`, `glGetActiveUniformBlockiv`) dostają identyfikator programu jako argument i zmieniają albo czytają stan tego programu, a nie wiązania kontekstu. Cztery wywołania `reload()` pod rząd niczego tu nie zmieniają.
@@ -433,11 +435,11 @@ Diagram pokazuje jeden program: ten, który był bieżący w chwili kliknięcia.
 
 Przy nieudanym przeładowaniu nic z tego nie zachodzi: `m_program` się nie zmienia, żaden używany program nie jest usuwany, a backend przywraca ten sam program co zwykle.
 
-Punkty 4 i 5 potwierdził test z sekcji 5.3, dla jednego programu: po kliknięciu `glIsProgram` dla starego identyfikatora zwraca fałsz, a `glGetError` po żadnej klatce nie zgłasza błędu. Dla trzech, pięciu ani dzisiejszych czterech programów przeładowywanych jednym kliknięciem tego testu nie powtórzyłem.
+Punkty 4 i 5 potwierdził test z sekcji 5.3, dla jednego programu: po kliknięciu `glIsProgram` dla starego identyfikatora zwraca fałsz, a `glGetError` po żadnej klatce nie zgłasza błędu. Dla trzech, czterech ani dzisiejszych pięciu programów przeładowywanych jednym kliknięciem tego testu nie powtórzyłem.
 
 ### 6.4 Pokaz na obronie krok po kroku
 
-Wersja dla macOS, gdzie `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Różnica na Windowsie jest w sekcji 6.5. **Tego scenariusza w wersji z czterema programami (ani wcześniej z pięcioma) nikt nie wykonał ręcznie**, ani na macOS, ani na Windowsie: opisane skutki wynikają z kodu panelu, z `Shader::reload`, z `compileShader` i z shadera `lit.frag`. Jeden stan jest potwierdzony zrzutem ekranu z Windowsa (2026-10-05, M4): błąd w `common/lighting.glsl` pokazany z nazwą pliku przy labiryncie rysowanym nadal poprzednim programem (krok 7). Wersję z M1 (jeden program, zmiana w nieistniejącym już `basic.frag`) sprawdził test z sekcji 5.3.
+Wersja dla macOS, gdzie `build/debug/assets` jest dowiązaniem do katalogu w repozytorium. Różnica na Windowsie jest w sekcji 6.5. **Tego scenariusza w dzisiejszej wersji z pięcioma programami (ani wcześniej z czterema) nikt nie wykonał ręcznie**, ani na macOS, ani na Windowsie: opisane skutki wynikają z kodu panelu, z `Shader::reload`, z `compileShader` i z shadera `lit.frag`. Jeden stan jest potwierdzony zrzutem ekranu z Windowsa (2026-10-05, M4): błąd w `common/lighting.glsl` pokazany z nazwą pliku przy labiryncie rysowanym nadal poprzednim programem (krok 7). Wersję z M1 (jeden program, zmiana w nieistniejącym już `basic.frag`) sprawdził test z sekcji 5.3.
 
 Pokaz zakłada stan po starcie: tryb oświetlenia Blinn-Phong, czyli scenę rysuje program `lit`. W trybie `Unlit` i w widokach diagnostycznych rysuje go `textured`, a w trybie Gouraud program `gouraud`, i zmiana w `lit.frag` nie byłaby wtedy widoczna (pułapka 10).
 
@@ -476,7 +478,7 @@ Stan na Windowsie (2026-10-05): panel jest skompilowany przez MSVC 19.44 bez ost
 
 ## 7. Pułapki
 
-1. **Usunięcie programu, który jest w użyciu.** `glDeleteProgram` dla bieżącego programu nie usuwa go od razu, tylko oznacza do usunięcia. Program znika, gdy przestanie być bieżący. Po udanym `reload()` stary program jest więc jeszcze "bieżący" do najbliższego `glUseProgram` z innym programem. W programie `night_maze` jest nim rysowanie paneli przez backend ImGui jeszcze w tej samej klatce, a w następnej `use()` ustawia nowy program (sekcja 6.3). Z czterech programów gry dotyczy to tylko tego, który był wybrany jako ostatni. W pętli gry `use()` jest wołane co klatkę, więc niczego nie trzeba robić. Błędem byłoby zapamiętać identyfikator programu poza klasą i używać go po `reload()`.
+1. **Usunięcie programu, który jest w użyciu.** `glDeleteProgram` dla bieżącego programu nie usuwa go od razu, tylko oznacza do usunięcia. Program znika, gdy przestanie być bieżący. Po udanym `reload()` stary program jest więc jeszcze "bieżący" do najbliższego `glUseProgram` z innym programem. W programie `night_maze` jest nim rysowanie paneli przez backend ImGui jeszcze w tej samej klatce, a w następnej `use()` ustawia nowy program (sekcja 6.3). Z pięciu programów gry dotyczy to tylko tego, który był wybrany jako ostatni. W pętli gry `use()` jest wołane co klatkę, więc niczego nie trzeba robić. Błędem byłoby zapamiętać identyfikator programu poza klasą i używać go po `reload()`.
 2. **Stary obraz po zmianie pliku.** Zapisanie pliku shadera samo niczego nie zmienia w działającym programie: `Shader` nie obserwuje dysku. Trzeba zawołać `reload()`, czyli nacisnąć `Reload shaders` w panelu Shaders (albo uruchomić program ponownie).
 3. **Windows: program czyta kopię shaderów.** Na macOS katalog `assets` obok programu jest dowiązaniem do katalogu w repozytorium, więc program widzi plik zaraz po zapisaniu. Na Windowsie jest to **kopia**, robiona przez target `copy_assets`: po zmianie pliku w `assets\shaders\` (także pliku dołączanego w `assets\shaders\common\`) trzeba najpierw ją odświeżyć (`cmake --build --preset debug --target copy_assets`), a dopiero potem nacisnąć `Reload shaders` ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Pełne `cmake --build --preset debug` przy działającym programie kończy się tam błędem linkera `LNK1168` (sekcja 6.5). Objaw pominięcia kopiowania: panel pokazuje `OK` w każdej linii, a obraz się nie zmienia.
 4. **Tekst sterownika jako napis formatujący.** `ImGui::TextWrapped(shader.lastError().c_str())` traktuje komunikat jak format `printf`: znak `%` w tekście sterownika kazałby funkcji czytać nieistniejące argumenty. Poprawnie: `ImGui::TextWrapped("%s", shader.lastError().c_str())` albo `ImGui::TextUnformatted` (sekcja 6.1).
@@ -514,7 +516,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8): program
    Przy starcie, w konstruktorze `NightMazeApp` (konstruktor każdego z czterech obiektów `Shader` woła `reload()`), i po każdym naciśnięciu `Reload shaders` w panelu Shaders. Po zmianie pliku zapisuję go i naciskam przycisk. Kompilacja C++ nie jest potrzebna, bo shader jest plikiem czytanym w czasie działania. Na Windowsie przed naciśnięciem trzeba odświeżyć kopię katalogu `assets` poleceniem `cmake --build --preset debug --target copy_assets`.
 
 3. **Co pokazuje panel Shaders i skąd bierze każdą wartość?**
-   Na górze jeden przycisk, który woła `reload()` dla każdego programu z listy. Pod nim kreska i jedna linia na każdy z czterech programów: nazwy obu plików (`vertexPath()`, `fragmentPath()`, zamienione na tekst przez `core::pathText`) i `OK`, gdy `lastError()` jest pusty. Gdy nie jest pusty, linia jest czerwona i kończy się `FAILED` z dopiskiem zależnym od `isValid()` (`the previous program stays in use` albo `there is no program to draw with`), a pod nią stoi tekst `lastError()`. Podpowiedź przy linii pokazuje obie pełne ścieżki. Panel nie ma własnego stanu: wszystko czyta co klatkę z obiektów `Shader`.
+   Na górze jeden przycisk, który woła `reload()` dla każdego programu z listy. Pod nim kreska i jedna linia na każdy z pięciu programów: nazwy obu plików (`vertexPath()`, `fragmentPath()`, zamienione na tekst przez `core::pathText`) i `OK`, gdy `lastError()` jest pusty. Gdy nie jest pusty, linia jest czerwona i kończy się `FAILED` z dopiskiem zależnym od `isValid()` (`the previous program stays in use` albo `there is no program to draw with`), a pod nią stoi tekst `lastError()`. Podpowiedź przy linii pokazuje obie pełne ścieżki. Panel nie ma własnego stanu: wszystko czyta co klatkę z obiektów `Shader`.
 
 4. **Jak panel z `debug/` dostaje shadery, które są prywatnymi polami gry?**
    `NightMazeApp` udostępnia chronione akcesory `texturedShader()`, `colorShader()`, `litShader()` i `gouraudShader()`. `DebugNightMazeApp` w `main.cpp` wpisuje ich wyniki do pól struktury `DebugContext`, a `DebugUI::draw` składa z adresów tych pól tablicę czterech wskaźników i przekazuje ją do `drawShadersPanel` jako `std::span`. `ShadersPanel` nie dołącza niczego z `game/`.
@@ -528,7 +530,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8): program
 7. **Dlaczego panel przyjmuje `std::span<gfx::Shader* const>`, a nie cztery referencje?**
    Żeby liczba programów nie była zapisana w panelu: kolejny program to jeden element więcej w tablicy budowanej w `DebugUI::draw`, a usunięty (jak `basic` w M5) to jeden element mniej, bez zmiany w panelu. Elementami są wskaźniki, bo referencja nie może być elementem tablicy. `const` po gwiazdce oznacza, że panel nie zmieni samych wskaźników. Obiekty `Shader` nie są stałe, bo `reload()` je zmienia.
 
-8. **Jeden z czterech programów nie kompiluje się po zmianie. Co dzieje się z pozostałymi?**
+8. **Jeden z pięciu programów nie kompiluje się po zmianie. Co dzieje się z pozostałymi?**
    Są przeładowywane normalnie. Pętla woła `reload()` dla każdego programu niezależnie od wyniku poprzedniego, a program z błędem zostaje przy poprzedniej wersji. Każda linia panelu pokazuje własny wynik.
 
 9. **Dlaczego tekst błędu jest przekazywany jako argument `"%s"`?**

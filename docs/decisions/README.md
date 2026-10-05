@@ -27,7 +27,7 @@ Na górze notatki stoi data i stan: `obowiązuje` albo `zastąpiona` (z odnośni
 
 ## Lista notatek
 
-Dziewięć notatek. Pierwszych pięć powstało do M4, cztery ostatnie zapisują decyzje z M5 (2026-10-05).
+Jedenaście notatek. Pierwszych pięć powstało do M4, cztery następne zapisują decyzje z M5, a dwie ostatnie decyzje z pierwszej części M6, skyboxa (wszystkie 2026-10-05).
 
 | Notatka | Stan | Decyzja | Kod, którego dotyczy | Dokument modułu |
 |---|---|---|---|---|
@@ -40,6 +40,8 @@ Dziewięć notatek. Pierwszych pięć powstało do M4, cztery ostatnie zapisują
 | [`exit-farthest-cell.md`](exit-farthest-cell.md) | obowiązuje | wyjściem jest komórka najdalsza od startu w liczbie przejść (BFS), a nie przeciwległy narożnik. W labiryncie doskonałym to zawsze ślepy zaułek, więc zamyka ją jedna brama | [`src/game/Exit.*`](../../src/game/), [`src/game/MazeWorld.cpp`](../../src/game/MazeWorld.cpp) | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | [`battery-darkness-no-loss.md`](battery-darkness-no-loss.md) | obowiązuje | pusta bateria tylko gasi latarkę: runda trwa dalej, stanu przegranej nie ma | [`src/game/Round.*`](../../src/game/) | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | [`enemy-after-m5.md`](enemy-after-m5.md) | obowiązuje | przeciwnik, który goni gracza, jest w planie, ale po M5. Nie ma dla niego kodu ani projektu | brak | brak |
+| [`skybox-in-game-layer.md`](skybox-in-game-layer.md) | obowiązuje | niebo rysuje klasa `game::Skybox` w `src/game/`, obok pozostałych klas rysujących, z programem jako polem `NightMazeApp`. Warstwy `src/renderer/` i klasy `SkyboxPass` z PRD nie ma, dopóki klatka jest jednym przebiegiem | [`src/game/Skybox.*`](../../src/game/), [`src/gfx/Cubemap.*`](../../src/gfx/), [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), [`../modules/renderer/README.md`](../modules/renderer/README.md) |
+| [`painted-moon-fixed-direction.md`](painted-moon-fixed-direction.md) | obowiązuje | tarcza księżyca jest częścią obrazu nieba i stoi w kierunku przeciwnym do domyślnego światła księżyca. Dwa kąty są zapisane drugi raz w skrypcie, zgodności pilnuje test, a suwaki panelu Lights tarczy nie ruszają | [`tools/blender/make_skybox.py`](../../tools/blender/make_skybox.py), [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp), [`tests/SkyboxTests.cpp`](../../tests/SkyboxTests.cpp) | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md) |
 
 ## Jak dodać notatkę
 

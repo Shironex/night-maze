@@ -445,7 +445,7 @@ void main() {
 | `#version 410 core` | GLSL 4.10, profil Core: ta sama wersja co kontekst OpenGL projektu |
 | `layout(location = 0) in vec3 aPosition;` | jedyne wejście: pozycja, atrybut numer 0. Numer zgadza się ze stałą `POSITION_ATTRIBUTE` z `src/gfx/Vertex.hpp` |
 | brak `aNormal`, `aUv` i `aTangent` | siatka `gfx::Mesh` zawsze opisuje cztery atrybuty (pozycja, normalna, uv, styczna: [`../gfx/mesh.md`](../gfx/mesh.md)). Styczna doszła razem z mapami normalnych ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)), a linie jej nie potrzebują. Shader nie musi czytać wszystkich: atrybut włączony w VAO, którego shader nie deklaruje, jest po prostu ignorowany |
-| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `textured.vert`, `lit.vert` i `gouraud.vert`, dzięki czemu kod C++ używa dla wszystkich czterech programów tych samych stałych z `ShaderUniforms.hpp` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5) |
+| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `textured.vert`, `lit.vert` i `gouraud.vert`, dzięki czemu kod C++ używa dla wszystkich programów tych samych stałych z `ShaderUniforms.hpp` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5) |
 | `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | łańcuch czytany od prawej: przestrzeń lokalna, świat, widok, przycinanie ([`transforms.md`](transforms.md), sekcja 4). `1.0` jako czwarta składowa oznacza punkt, więc przesunięcie z macierzy działa. Komentarz odsyła do `textured.vert`, bo tam łańcuch jest opisany w całości |
 
 Shader nie ma żadnego wyjścia poza `gl_Position`: fragmentom nie trzeba niczego przekazywać, bo kolor jest ten sam dla całego kształtu.

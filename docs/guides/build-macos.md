@@ -8,10 +8,12 @@ tryby cieniowania, blok uniformów, `#include` w shaderach, panel Lights) i map 
 (styczne, czwarty atrybut wierzchołka, `common/normal_map.glsl`, pole `Normal mapping`).
 Powstały na Windowsie 2026-10-05 i na macOS nikt ich nie zbudował. To samo dotyczy M5
 (rozgrywka: kryształy, bateria latarki, brama, wyjście, HUD, panel Gameplay), też z
-2026-10-05. Wszystko, co ten dokument mówi o tym
+2026-10-05, i pierwszej części M6 (skybox: tekstura sześcienna, niebo, piąty program
+shaderów) z tego samego dnia. Wszystko, co ten dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
-(oświetlenie) na macOS", "M4 (mapy normalnych) na macOS" i "M5 (rozgrywka) na macOS".
+(oświetlenie) na macOS", "M4 (mapy normalnych) na macOS", "M5 (rozgrywka) na macOS" i
+"M6, część 1 (skybox) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -530,7 +532,7 @@ shaderach, panel Lights, układ siedmiu paneli) powstała na Windowsie 2026-10-0
 zbudowana i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcja 13).
 Lista powstała dla stanu M4, w którym światła punktowe wisiały w ślepych zaułkach i były
 oznaczone kostkami. M5 przeniósł je nad kryształy i usunął kostki, więc punkty poniżej
-są przepisane na dzisiejszy program: paneli jest osiem, programów shaderów cztery, a
+są przepisane na dzisiejszy program: paneli jest osiem, programów shaderów pięć, a
 źródłem światła punktowego jest kryształ.
 **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
 odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
@@ -956,6 +958,81 @@ jej grupy, każda do odhaczenia po przejściu wszystkich punktów grupy z Window
       `crystal.png`, `gate_wood.png` i ich mapy normalnych). Dla tych nowych plików próby
       "dwa uruchomienia dają te same bajty" nie zapisano nawet na Windowsie. Zapisać, które
       pliki się różnią, a po próbie przywrócić pliki z repozytorium (`git checkout assets`)
+
+### M6, część 1 (skybox) na macOS: lista w całości otwarta
+
+Pierwsza część kamienia milowego M6 (tekstura sześcienna `gfx::Cubemap`, niebo
+`game::Skybox`, piąty program shaderów `skybox`, `assets::RowOrder` w loaderze obrazów,
+sześć plików w `assets/skybox/`, pole `Skybox` i suwak `Sky brightness` w panelu Renderer)
+powstała na Windowsie 2026-10-05 i tam jest zbudowana i przetestowana testami
+jednostkowymi ([`build-windows.md`](build-windows.md), sekcja 15). **Na macOS nikt jej nie
+zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania
+wynikają z kodu, z testów i z tego, co zmierzono na Windowsie. Opis kodu:
+[`../modules/renderer/skybox.md`](../modules/renderer/skybox.md),
+[`../modules/gfx/cubemap.md`](../modules/gfx/cubemap.md). Teren i trawa, czyli reszta M6,
+dostaną własną listę.
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/gfx/Cubemap.*`, `src/game/Skybox.*`, `tests/SkyboxTests.cpp`. Zmienione:
+      `src/assets/ImageLoader.*`, `src/game/NightMazeApp.*`, `Lighting.hpp`,
+      `ShaderUniforms.hpp`, `src/main.cpp`, `src/debug/DebugContext.hpp`, `DebugUI.cpp`,
+      `PanelLayout.hpp`, `src/debug/panels/RendererPanel.*`, `tests/ImageLoaderTests.cpp`.
+      Miejsca warte uwagi: inicjalizatory desygnowane w stałej tablicy
+      `constexpr std::array<gfx::Vertex, CORNER_COUNT>` (`gfx::Vertex{.position = {...}}`,
+      C++20), zwrot obiektu tylko przenoszalnego listą w klamrach
+      (`return {first.width, first.channels, pixels};` i `return {};` w `loadSkyCubemap`),
+      pętla po liście w klamrach w teście (`for (const float firstSign : {-1.0F, 1.0F})`)
+      i lambda w `std::any_of` w `Cubemap.cpp`
+- [ ] `ctest --test-dir build/debug --output-on-failure`: 221 przypadków, wszystkie
+      przechodzą. Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
+      powinny przejść bez zmian, bo to te same bajty z repozytorium
+
+**Shadery i OpenGL**
+
+- [ ] start gry bez linii `[error]`: kompilator GLSL Apple nie widział jeszcze
+      `skybox.vert` ani `skybox.frag`. Miejsca warte uwagi: `position.xyww`,
+      `mat4(mat3(uView))`, uniform `samplerCube`, gałąź `if (uViewMode != 0)`
+- [ ] sześć linii `[info] Loaded sky face: ...` w terminalu. Na macOS katalog `assets` obok
+      programu jest dowiązaniem, więc nowy podkatalog `skybox` jest widoczny bez kopiowania
+- [ ] niebo jest widoczne nad ścianami i **nie migocze**. Shader daje niebu głębię równą
+      dokładnie 1,0 i polega na teście `GL_LEQUAL` z wartością po `glClear`. Na
+      sterowniku NVIDII to działa. Jeśli sterownik Apple policzy głębię o włos większą,
+      niebo zniknie w całości albo w pasach: zapisać, co widać
+- [ ] brak szwów na krawędziach sześcianu: `GL_TEXTURE_CUBE_MAP_SEAMLESS` jest w rdzeniu od
+      3.2, więc kontekst 4.1 Core powinien go mieć. Sprawdzić narożniki (yaw 45, 135, 225,
+      315 przy pitch około 35)
+- [ ] przez cały test w terminalu nie pojawia się żadna linia z nazwą błędu OpenGL
+      (`GL_...`)
+
+**Ekran Retina**
+
+- [ ] ostrość nieba: ściana tekstury ma 1024 piksele na 90 stopni, a framebuffer na
+      ekranie Retina ma dwa razy więcej pikseli niż okno. Jeden teksel nieba zajmuje wtedy
+      około 2,7 piksela ekranu zamiast około 1,3. Zapisać, czy gwiazdy są akceptowalnie
+      ostre, czy ściany trzeba wygenerować w rozmiarze 2048 (stała `SIZE` w
+      `make_skybox.py`)
+- [ ] panel Renderer mieści pole `Skybox` i suwak `Sky brightness` bez paska przewijania
+      przy skali ekranu Maca, a panel Lights pod nim się przewija
+
+**Panel i przełączniki**
+
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 15.2: przełącznik,
+      jasność, szwy, księżyc przy yaw 205 i pitch 50, suwak `Moon yaw` bez wpływu na
+      tarczę, widoki diagnostyczne, `Reload shaders` przy pięciu programach (na macOS bez
+      kroku kopiowania assetów), brak pliku
+
+**Skrypt Blendera**
+
+- [ ] uruchomić na Macu `blender --background --factory-startup --python
+      tools/blender/make_skybox.py`, potem `git status`. Generator liczb losowych numpy
+      daje na obu systemach te same liczby dla tego samego ziarna, ale funkcje
+      zmiennoprzecinkowe (`exp`, `sin`, `arccos`) mogą różnić się w ostatnim bicie, a po
+      ditheringu i zaokrągleniu to wystarczy, żeby zmienić pojedyncze bajty. Zapisać, czy
+      pliki się różnią i czy testy nadal przechodzą, a po próbie przywrócić pliki z
+      repozytorium (`git checkout assets`)
 
 ### Skróty: `make`
 

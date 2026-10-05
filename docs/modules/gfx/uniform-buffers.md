@@ -11,7 +11,7 @@ Co zostało zmierzone na Windowsie w M4 (2026-10-05, MSVC 19.44, NVIDIA GeForce 
 
 Co zmieniło M5 (kod kompletny na Windowsie, kamień niezamknięty). Klasy `gfx::UniformBuffer`, funkcji `Shader::bindUniformBlock`, struktury `LightBlockData` i deklaracji bloku w `common/lighting.glsl` M5 nie dotknęło: blok ma nadal 928 bajtów i te same pola. Zmieniło się to, co do bloku trafia i kto go wysyła. Światła punktowe wiszą teraz nad kryształami, których gracz jeszcze nie zebrał (`game::crystalLightPositions`), i pulsują, a słaba bateria przyciemnia latarkę: obie zmiany robi `game::lightingForFrame` na kopii ustawień, zanim powstaną bajty (sekcja 5.10). Klasa `LightRig` straciła znaczniki świateł i ma już tylko bufor oraz funkcje `connect` i `upload`. Programów jest cztery zamiast pięciu, blok czytają nadal dwa. Według raportu z Windowsa (2026-10-05) build Debug i Release jest bez ostrzeżeń, a 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach. Obraz M5 był oglądany na zrzutach ekranu, ale osobnych wniosków o bloku z nich nie wyciągam.
 
-Czego nikt nie sprawdził: `gfx::UniformBuffer` i `Shader::bindUniformBlock` wymagają kontekstu OpenGL, więc **nie mają testów jednostkowych**. Nikt nie nacisnął ręcznie `Reload shaders`, ani przy pięciu programach w M4, ani przy czterech dziś, więc ponowne podpięcie bloku po **udanym** przeładowaniu wynika z kodu, a nie z obserwacji. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: każde zdanie o macOS w tym dokumencie jest niesprawdzone.
+Czego nikt nie sprawdził: `gfx::UniformBuffer` i `Shader::bindUniformBlock` wymagają kontekstu OpenGL, więc **nie mają testów jednostkowych**. Nikt nie nacisnął ręcznie `Reload shaders`, ani przy pięciu programach w M4, ani przy czterech w M5, ani przy pięciu dziś, więc ponowne podpięcie bloku po **udanym** przeładowaniu wynika z kodu, a nie z obserwacji. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: każde zdanie o macOS w tym dokumencie jest niesprawdzone.
 
 ## 1. Po co to jest
 
@@ -58,7 +58,7 @@ W projekcie obowiązuje prosta reguła podziału:
 | Rodzaj danych | Jak często się zmienia | Kto czyta | Mechanizm |
 |---|---|---|---|
 | światła sceny i pozycja kamery | raz na klatkę | oba programy oświetlające | blok `LightBlock` w buforze |
-| macierze `uView`, `uProjection` | raz na klatkę | każdy z czterech programów | zwykłe uniformy, ustawiane w każdym programie osobno |
+| macierze `uView`, `uProjection` | raz na klatkę | każdy z pięciu programów | zwykłe uniformy, ustawiane w każdym programie osobno |
 | `uModel`, `uNormalMatrix`, `uTint` | dla każdego obiektu albo części modelu | program, który akurat rysuje | zwykłe uniformy |
 | materiał (`uSpecularModel`, `uSpecularStrength`, `uShininess`) | raz na klatkę | program, który akurat rysuje labirynt | zwykłe uniformy |
 

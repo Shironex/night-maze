@@ -25,21 +25,30 @@
 > Wersji kompilatora, karty graficznej i sterownika, wyniku clang-format i clang-tidy ani
 > listy zrzutów dla M5 nie zapisano, więc ich tu nie podaję.
 >
+> **Zmierzone 2026-10-05 (M6, część 1: skybox):** build Debug i Release bez ostrzeżeń, 221
+> przypadków testowych i 85175 asercji w obu konfiguracjach, orientacja nieba sprawdzona na
+> zrzucie ekranu (sekcja 15.1). Wersji kompilatora, karty graficznej i sterownika ani wyniku
+> clang-format i clang-tidy dla tej części nie zapisano. M6 jest w toku: terenu i trawy ta
+> sekcja nie obejmuje.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
 > bateria, przejście przez otwartą bramę, karta wygranej, HUD przy ukrytych panelach,
-> rozwijanie paneli Camera i Gameplay, zmiana rozmiaru okna,
+> rozwijanie paneli Camera i Gameplay, pole `Skybox` i suwak `Sky brightness`, zmiana
+> rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
 > są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
-> 13 (oświetlenie i mapy normalnych, M4) i 14 (rozgrywka, M5) rozróżniają punkty zmierzone
+> 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5) i 15 (skybox, pierwsza część
+> M6) rozróżniają punkty zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
 > Sekcje 11, 12 i 13 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach
 > `[x]` opisują program z dnia pomiaru (z kostką z M1, a w sekcji 13 także z kostkami
 > znaczników świateł, światłami w ślepych zaułkach i pięcioma programami shaderów: M5 to
 > wszystko usunął albo zastąpił). Punkty otwarte `[ ]` tych sekcji mają teksty dzisiejszego
-> programu. To, co program pokazuje dziś, opisują sekcje 2 i 14.
+> programu. Sekcja 14 opisuje program sprzed nieba: liczby testów i liczba programów w jej
+> punktach `[x]` to stan po M5. To, co program pokazuje dziś, opisują sekcje 2, 14 i 15.
 
 ## 1. Wymagania
 
@@ -559,9 +568,10 @@ uruchomienie. Na macOS krok 2 nie jest potrzebny. Pominięcie go na Windowsie ni
 panel dalej pokazuje przy każdym programie `: OK`, a obraz się nie zmienia, bo program
 wczytał poprawnie starą kopię pliku.
 
-Panel Shaders ma dziś jedną linię na program, a programów jest cztery (`textured`,
-`color`, `lit`, `gouraud`). Do M4 było ich pięć: piąty, `basic`, rysował kostkę z M1 i
-został usunięty w M5 razem z plikami `basic.vert` i `basic.frag`. Po udanym wczytaniu
+Panel Shaders ma dziś jedną linię na program, a programów jest pięć (`textured`,
+`color`, `lit`, `gouraud` i, od pierwszej części M6, `skybox`). W M4 też było ich pięć:
+piąty, `basic`, rysował kostkę z M1 i został usunięty w M5 razem z plikami `basic.vert`
+i `basic.frag`. Po udanym wczytaniu
 linia ma postać:
 
 ```text
@@ -942,7 +952,7 @@ sekcji 13.2.
       zero ostrzeżeń
 - [x] panel "Shaders" jest widoczny i pokazuje oba pliki programu `basic` oraz poprawne
       wczytanie (stan M1, 2026-10-05, z jednym programem i ówczesnymi napisami. Dziś
-      programu `basic` nie ma, a panel pokazuje cztery linie postaci
+      programu `basic` nie ma, a panel pokazuje pięć linii postaci
       `textured.vert + textured.frag: OK`, sekcje 7 i 14.2)
 - [ ] panel "Shaders" daje się zadokować
 - [ ] podpowiedź nad linią `textured.vert + textured.frag: OK` pokazuje w dwóch wierszach
@@ -958,7 +968,7 @@ sekcji 13.2.
       `cmake --build --preset debug --target copy_assets`, potem "Reload shaders". Zapisać,
       czy linie zmieniają kolor (oczekiwane: tak, żółte linie ścian robią się niebieskawe,
       bo czerwony i niebieski kanał zamieniają się miejscami). Przycisk przeładowuje
-      wszystkie cztery programy naraz. Samo polecenie przy działającym programie jest już
+      wszystkie programy naraz (dziś pięć). Samo polecenie przy działającym programie jest już
       zmierzone (kod wyjścia 0, kopia odświeżona), otwarte zostaje naciśnięcie przycisku.
       Ten sam krok dla programu `textured` jest w sekcji 12.2
 - [ ] to samo bez kopiowania: "Reload shaders" zaraz po zapisaniu pliku. Oczekiwane:
@@ -1220,8 +1230,9 @@ był budowany ([`build-macos.md`](build-macos.md)) i nie ma tagu.
 panel mniej (bez Lights), o dwa programy shaderów mniej (bez `lit` i `gouraud`), panel
 Shaders z kilkoma liniami na program, równo jasny labirynt i mniej testów. Punkty `[x]`
 są pomiarami z tamtego dnia i opisują tamten stan. Stan po M4 (163 przypadki i 62220
-asercji, siedem paneli, pięć programów, mapy normalnych) opisuje sekcja 13, a dzisiejszy
-(215 i 85098, osiem paneli, cztery programy, runda z kryształami) sekcja 14. Punkty otwarte `[ ]` w sekcji
+asercji, siedem paneli, pięć programów, mapy normalnych) opisuje sekcja 13, stan po M5
+(215 i 85098, osiem paneli, cztery programy, runda z kryształami) sekcja 14, a dzisiejszy
+(221 i 85175, pięć programów, niebo) sekcja 15. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie.
 
 ### 12.1. Zmierzone (2026-10-05)
@@ -1298,7 +1309,7 @@ liczby żadnych wniosków: nie wiem, czy vsync był aktywny, a pomiar był jeden
 
 Tych kroków nikt jeszcze nie wykonał ręką: chodzenia i ślizgania prawdziwymi klawiszami,
 klawisza N, obrotu myszą w labiryncie, przycisków `Regenerate` i `Random seed`, przycisku
-`Reload shaders` (dziś z czterema programami) oraz klikania list i suwaka w panelu Assets.
+`Reload shaders` (dziś z pięcioma programami) oraz klikania list i suwaka w panelu Assets.
 Przy każdym kroku jest to, co powinno być widać. Oczekiwania wynikają z kodu i z testów
 jednostkowych, nie z obserwacji.
 
@@ -2158,7 +2169,180 @@ Na koniec:
       `src/game/Exit.*`, `Crystals.*`, `Round.*`, `GameplayRenderer.*`, `ModelDraw.*`,
       `src/debug/Hud.*`, `src/debug/panels/GameplayPanel.*` i trzech nowych plików testów
 
-## 15. Powiązane dokumenty
+## 15. Lista kontrolna M6, część 1: skybox
+
+Pierwsza część kamienia milowego M6 daje labiryntowi niebo: teksturę sześcienną (cube map)
+z sześciu obrazów 1024 x 1024, rysowaną jako ostatnie wywołanie rysujące sceny. Doszły:
+klasa `gfx::Cubemap`, klasa `game::Skybox`, piąty program shaderów (`skybox.vert` i
+`skybox.frag`), typ `assets::RowOrder` w loaderze obrazów (ściany nieba nie są odwracane),
+skrypt `tools/blender/make_skybox.py` i katalog `assets/skybox/`, pole wyboru `Skybox`
+i suwak `Sky brightness` w panelu Renderer oraz plik testów `tests/SkyboxTests.cpp`. Opis
+kodu: [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md) (teoria, przebieg
+rysujący, shadery, skrypt, testy), [`../modules/gfx/cubemap.md`](../modules/gfx/cubemap.md)
+(klasa `Cubemap`), [`../modules/assets/images.md`](../modules/assets/images.md) (`RowOrder`),
+[`../modules/debug-ui.md`](../modules/debug-ui.md) (panel Renderer i układ paneli),
+[`blender.md`](blender.md) (skrypt nieba). Decyzje:
+[`../decisions/skybox-in-game-layer.md`](../decisions/skybox-in-game-layer.md) i
+[`../decisions/painted-moon-fixed-direction.md`](../decisions/painted-moon-fixed-direction.md).
+
+Ta sekcja dotyczy **tylko skyboxa**. Pozostałe dwie części M6, teren z mapy wysokości
+i trawa z shadera geometrii, dostaną własne sekcje po tej. Kamień milowy M6 jest w toku
+i **nie jest zamknięty**: część ręczna poniżej (15.2) jest otwarta w całości, na macOS kod
+nie był budowany ([`build-macos.md`](build-macos.md)) i nie ma tagu.
+
+### 15.1. Zmierzone (2026-10-05)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
+nie zapisano, więc ich tu nie podaję (środowisko wcześniejszych pomiarów jest w sekcji 1).
+
+- [x] build Debug i Release: zero ostrzeżeń
+- [x] `night_maze_tests.exe` w Debug i w Release: 221 przypadków testowych i 85175 asercji,
+      wszystkie przechodzą. Względem M5 (215 przypadków, 85098 asercji) doszedł plik
+      `SkyboxTests.cpp` (5 przypadków, 71 asercji) i jeden przypadek w
+      `ImageLoaderTests.cpp` (dziś 10 przypadków, o 6 asercji więcej): `215 + 5 + 1 = 221`
+      i `85098 + 71 + 6 = 85175`. Liczby na plik policzyłem z makr w kodzie testów, sumy
+      są zgłoszonym wynikiem programu
+- [x] orientacja nieba na zrzucie ekranu: przy kamerze ustawionej na yaw 205 i pitch 50
+      tarcza księżyca jest w środku obrazu, horyzont jest poziomy, a na krawędziach
+      sześcianu nie widać szwów
+- [x] pliki nieba (odczytane z nagłówków PNG i z rozmiarów plików w repozytorium): sześć
+      plików 1024 x 1024, 8 bitów na kanał, RGB bez alfy, razem 5 278 627 bajtów (od
+      860 524 do 904 707 każdy). Piksel w kolumnie 330 i wierszu 901 od góry pliku
+      `py.png`, czyli tam, gdzie reguła tekstury sześciennej umieszcza kierunek do
+      księżyca, ma kolor `(200, 207, 224)`
+
+Czego dla tej części nie zapisano i czego dlatego tu nie twierdzę: wyniku clang-format
+i clang-tidy, tego, czy gra startuje bez linii `[error]`, czasu klatki z niebem i bez niego,
+czasu wczytania sześciu plików przy starcie ani tego, czy dwa uruchomienia skryptu
+`make_skybox.py` dają te same bajty. Te punkty są na liście otwartej niżej.
+
+Żadnej kontrolki nikt nie dotknął myszą: pola `Skybox`, suwaka `Sky brightness` ani
+przycisku `Reload shaders` przy pięciu programach.
+
+### 15.2. Otwarte: test ręczny na około dziesięć minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
+być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i z jednego zrzutu ekranu,
+nie z klikania. Nazwy widżetów są zapisane tak jak w `src/debug/panels/RendererPanel.cpp`.
+
+Przygotowanie:
+
+- [ ] **usunąć plik `imgui.ini`** z katalogu, z którego uruchamiam program (sekcja 7). Stary
+      plik pamięta wysokość panelu Renderer sprzed tej zmiany (230), a nowe kontrolki są
+      wtedy pod jego dolną krawędzią i wygląda to tak, jakby ich nie było
+- [ ] uruchomić grę z terminala. Oczekiwane w konsoli: sześć linii
+      `[info] Loaded sky face: ...` z nazwami `px.png`, `nx.png`, `py.png`, `ny.png`,
+      `pz.png`, `nz.png`, w tej kolejności, i żadnej linii `[error]`
+
+Panele:
+
+- [ ] panel Renderer: pod listą `Lighting` jest pole wyboru `Skybox` (zaznaczone) i suwak
+      `Sky brightness` (wartość 1.000). Panel nie ma paska przewijania w oknie 1280 x 720
+- [ ] panel Lights pod nim zaczyna się niżej niż dotąd i ma pasek przewijania (tak jest
+      zamierzone: komentarz w `PanelLayout.hpp`). Wszystkie cztery grupy da się przewinąć
+- [ ] panel Shaders: pięć linii programów, ostatnia to `skybox.vert + skybox.frag: OK`
+- [ ] najechać kursorem na pole `Skybox`: podpowiedź zaczyna się od
+      `The night sky (a cube map).` i mówi, że namalowany księżyc nie podąża za suwakami
+      `Moon` panelu Lights
+
+Przełącznik:
+
+- [ ] spojrzeć w górę nad ściany: widać gwiazdy, a przy obrocie jaśniejszy pas Drogi
+      Mlecznej
+- [ ] odznaczyć `Skybox`: nad ścianami jest płaski, bardzo ciemny granat. Zmienić
+      `Clear color` na jaskrawy: tło zmienia kolor. Przywrócić kolor i zaznaczyć `Skybox`:
+      niebo wraca, a `Clear color` nie ma już żadnego widocznego skutku
+- [ ] przełączyć listę `Lighting` przez wszystkie cztery tryby: niebo jest w każdym takie
+      samo
+
+Jasność:
+
+- [ ] `Sky brightness` na 0: niebo jest czarne, gwiazd nie ma. Ściany i kryształy bez zmian
+- [ ] `Sky brightness` na 3: tło wyraźnie granatowe, gwiazd widać więcej
+- [ ] patrząc na księżyc, przesuwać suwak od 1 w górę: tuż powyżej 1 najjaśniejsze miejsca
+      tarczy zaczynają się przepalać, a około 1,5 znikają także szare plamy i tarcza jest
+      płaską białą plamą (framebuffer obcina wartości do 1, bufora HDR nie ma do M7).
+      Zapisać, przy jakich wartościach to widać
+- [ ] wrócić do 1 (kliknięcie suwaka z wciśniętym Ctrl i wpisanie `1`)
+
+Szwy i horyzont. Najwygodniej w trybie noclip (klawisz N) nad ścianami, gdzie widać cały
+horyzont:
+
+- [ ] obrócić się powoli o pełne koło, patrząc poziomo: jaśniejszy pas przy horyzoncie jest
+      poziomy i ciągły, bez pionowych linii co 90 stopni (krawędzie między ścianami
+      bocznymi są przy yaw 45, 135, 225 i 315)
+- [ ] spojrzeć w cztery górne narożniki sześcianu: yaw 45, 135, 225, 315 przy pitch około
+      35. W narożniku spotykają się trzy ściany. Nie widać linii, załamania jasności ani
+      gwiazdy przeciętej na pół
+- [ ] spojrzeć na krawędzie ściany górnej: pitch 45 przy yaw 0, 90, 180 i 270. Droga
+      Mleczna i poświata księżyca przechodzą przez krawędź bez przerwy
+- [ ] spojrzeć prosto w górę (pitch 89) i obrócić się: niebo obraca się wokół środka
+      ekranu, bez skoków
+- [ ] iść albo lecieć w jedną stronę, patrząc w niebo: gwiazdy nie przesuwają się wcale.
+      Ściany pod nimi przesuwają się normalnie
+
+Księżyc a światło księżyca:
+
+- [ ] w panelu Camera ustawić `Yaw` na 205 i `Pitch` na 50: tarcza księżyca jest w środku
+      ekranu, z jasną poświatą wokół
+- [ ] wyłączyć latarkę (klawisz F) i obejrzeć ściany: jaśniejsze są te, które są zwrócone
+      w stronę księżyca (lica zwrócone w stronę +Z i, słabiej, -X), ciemniejsze te
+      odwrócone od niego
+- [ ] w panelu Lights rozwinąć grupę `Moon (directional)` i przesunąć `Moon yaw`: światło
+      na ścianach wędruje, **tarcza na niebie zostaje w miejscu**. To znane ograniczenie,
+      nie błąd. Przywrócić 25
+
+Widoki diagnostyczne:
+
+- [ ] panel Assets, `View mode`: `Normals as colour`. Niebo jest gładkim gradientem bez
+      gwiazd: różowoczerwone w stronę +X (yaw 90), jasnozielone prosto w górę,
+      niebieskofioletowe w stronę +Z (yaw 180), oliwkowe w stronę -Z (yaw 0)
+- [ ] `View mode`: `UVs as colour`. Ściany zmieniają kolory, niebo wygląda tak samo jak
+      w poprzednim widoku
+- [ ] w którymś z tych widoków odznaczyć `Skybox`: tło jest kolorem `Clear color`. Zaznaczyć
+      z powrotem i wrócić do `Textured`
+
+Kolejność rysowania:
+
+- [ ] panel Collision, `Draw collision shapes`: linie pudełek widziane na tle nieba są
+      w całości widoczne, niebo ich nie zamalowuje
+- [ ] kryształ widziany na tle nieba (z góry, w trybie noclip) ma ostre krawędzie, bez
+      obwódki w kolorze `Clear color`
+- [ ] zmienić rozmiar okna myszą: niebo wypełnia całe tło przy każdych proporcjach
+
+Przeładowanie shaderów:
+
+- [ ] w `assets/shaders/skybox.frag` zamienić `sky * uBrightness` na `sky.bgr * uBrightness`,
+      skopiować assety (`cmake --build --preset debug --target copy_assets`) i kliknąć
+      `Reload shaders`: niebo zmienia odcień z granatowego na brunatny, pięć linii nadal
+      kończy się `OK`
+- [ ] wpisać w tym samym pliku błąd składni, skopiować assety, `Reload shaders`: linia
+      programu `skybox` jest czerwona (`FAILED, the previous program stays in use`) z nazwą
+      pliku i numerem linii, **niebo nadal się rysuje** poprzednią wersją, pozostałe cztery
+      linie kończą się `OK`
+- [ ] cofnąć obie zmiany (`git checkout assets`), skopiować assety, `Reload shaders`: pięć
+      razy `OK`, niebo jak na początku
+
+Brak pliku:
+
+- [ ] w kopii katalogu `assets` obok programu (sekcja 7) zmienić nazwę `skybox/px.png` i
+      uruchomić grę. Oczekiwane: jedna linia `[error] Image file cannot be opened: ...` z
+      nazwą pliku, gra działa, tłem jest `Clear color`, pole `Skybox` jest zaznaczone i nic
+      nie zmienia. Przywrócić plik (`cmake --build --preset debug --target copy_assets`)
+
+Na koniec:
+
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tą jedną
+      wywołaną celowo
+- [ ] clang-format (`--dry-run --Werror`) i clang-tidy na plikach z `src/` i `tests/`:
+      wyniku dla tej części nie zapisano. Uruchomić i zapisać, w szczególności dla
+      `src/gfx/Cubemap.*`, `src/game/Skybox.*` i `tests/SkyboxTests.cpp`
+- [ ] (wymaga Blendera) uruchomić dwa razy
+      `tools/blender/make_skybox.py` ([`blender.md`](blender.md), sekcja 7.7) i po każdym
+      razie `git status`: oczekiwane brak zmian w `assets/skybox/`. Jeśli pliki się
+      różnią, uruchomić testy i zapisać wynik
+
+## 16. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)

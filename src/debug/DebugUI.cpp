@@ -15,6 +15,7 @@
 #include "debug/panels/RendererPanel.hpp"
 #include "debug/panels/ShadersPanel.hpp"
 #include "game/Lighting.hpp"
+#include "game/Skybox.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -91,15 +92,16 @@ void DebugUI::draw(const DebugContext& context) {
 
         // Each panel gets exactly the members it needs, so its signature still shows
         // what it reads and what it edits.
-        drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode);
+        drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode,
+                          context.skybox);
 
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 4;
+        constexpr int SHADER_COUNT = 5;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
             &context.texturedShader, &context.colorShader, &context.litShader,
-            &context.gouraudShader};
+            &context.gouraudShader, &context.skyboxShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);

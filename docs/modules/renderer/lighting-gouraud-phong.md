@@ -229,7 +229,7 @@ Liczby 13 i 356 maleją w trakcie rundy: zebrany kryształ nie jest rysowany, a 
 
 Blok `LightBlock` nie pojawia się w tabeli między krokami drugim a ostatnim: program czyta go z punktu wiązania 1 bez żadnego wywołania w klatce. Połączenie programu z punktem wiązania jest robione raz, po zlinkowaniu ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 
-Przełączenie trybu nie tworzy ani nie usuwa żadnego obiektu OpenGL. Wszystkie cztery programy gry (`textured`, `color`, `lit`, `gouraud`) powstają przy starcie, a tryb wybiera, który z nich dostanie `glUseProgram`. Rysowanie obiekt po obiekcie omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), a kryształy i bramę [`../game/gameplay.md`](../game/gameplay.md).
+Przełączenie trybu nie tworzy ani nie usuwa żadnego obiektu OpenGL. Wszystkie programy gry powstają przy starcie (cztery, o których mowa w tym dokumencie: `textured`, `color`, `lit`, `gouraud`, a od pierwszej części M6 także piąty, `skybox`, który rysuje niebo i nie zależy od trybu), a tryb wybiera, który z trójki `textured`, `lit`, `gouraud` dostanie `glUseProgram` dla sceny. Rysowanie obiekt po obiekcie omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), a kryształy i bramę [`../game/gameplay.md`](../game/gameplay.md).
 
 ## 4. Shadery
 
@@ -628,11 +628,11 @@ Komentarz nad `setInt(SPECULAR_MODEL_UNIFORM, ...)` mówi o "materiale kamienia"
 ### 5.5 Jak to zostało sprawdzone
 
 - **Testy jednostkowe** obejmują tylko stronę C++: liczby typów wyliczeniowych i `specularModelOf` (dwa przypadki w `tests/LightingTests.cpp`), wartość startową trybu (`the lighting starts as a night scene shaded with Blinn-Phong`) oraz regułę `usesNormalMap` (`normal mapping is on by default and applies to every mode except Gouraud`). Shaderów i wyboru programu test nie widzi: wymagają kontekstu OpenGL.
-- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego z czterech programów linię zakończoną `OK` (tak wynika z kodu panelu).
+- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego programu (dziś pięciu) linię zakończoną `OK` (tak wynika z kodu panelu).
 - **Obraz.** Cztery tryby z trzech miejsc w labiryncie są sprawdzone na zrzutach ekranu: widać opisane w sekcji 2 różnice (znikająca i rozmazana plama latarki w `Gouraud`, szersza gorąca plama `Blinn-Phong` na wprost ściany, mała różnica wzdłuż korytarza).
 - **Mapy normalnych a tryb** (zrzuty ekranu, Windows, 2026-10-05): w trybach `Phong` i `Blinn-Phong` fugi czytają się jako rowki, a zrzuty trybów `Gouraud` i `Unlit` są identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych. Szczegóły i liczby: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11.
 - **M5** (zgłoszone dla Windowsa, 2026-10-05): build bez ostrzeżeń i 215 przypadków testowych z 85098 asercjami w Debug i Release. Obraz z kryształami i bramą był oglądany na zrzutach ekranu robionych przez tymczasowe zaczepy, których w kodzie już nie ma. Stamtąd pochodzi obserwacja, że brama jest ciemna w trybie `Gouraud`. Przyczyny nie mierzyłem: sekcja 2.2 podaje najbardziej prawdopodobną. Wzór z `uEmissive` nie ma testu jednostkowego (to kod GLSL). Test ma tylko wartość, którą C++ do niego wysyła: przypadek `the glow of a crystal has the colour of its light and pulses with it` w `tests/CrystalTests.cpp`.
-- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem przy czterech programach, wygląd kryształów i bramy w każdym z czterech trybów.
+- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem (dziś przy pięciu programach), wygląd kryształów i bramy w każdym z czterech trybów.
 - **macOS:** nic, także nic z map normalnych. Kompilator Apple jest surowszy od sterownika NVIDII i może odrzucić coś, co tu przechodzi.
 
 ## 6. Panel ImGui
@@ -669,7 +669,7 @@ Kontrolki, które biorą udział w pokazie:
 | Lights | `Flashlight on (key F)`, klawisz F | latarka | bez latarki widać odbłyski księżyca i świateł punktowych |
 | Assets | pole wyboru `Normal mapping` | `m_lighting.normalMapping` | w trybach `Phong` i `Blinn-Phong` fugi i nierówności kamienia pojawiają się i znikają. W trybie `Gouraud` nie zmienia się nic |
 | Assets | lista `View mode` | podgląd | `Normals as colour` pokazuje normalne, z których liczone jest światło w wybranym trybie (rysowane programem `textured`): z map normalnych przy `Unlit`, `Phong` i `Blinn-Phong` z zaznaczonym `Normal mapping`, normalne siatki przy `Gouraud` albo odznaczonym polu |
-| Shaders | `Reload shaders` | przeładowanie czterech programów | zmiana w `lit.frag` albo `common/lighting.glsl` bez restartu |
+| Shaders | `Reload shaders` | przeładowanie wszystkich programów (dziś pięciu) | zmiana w `lit.frag` albo `common/lighting.glsl` bez restartu |
 | Lights | `Point colour` | `m_lighting.pointColor` | kolor świateł kryształów i jednocześnie ich własny blask (`uEmissive`), w każdym trybie |
 
 ### 6.1 Scenariusz pokazu na obronie

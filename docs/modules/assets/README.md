@@ -37,13 +37,13 @@ Proponowana kolejność czytania: [`../../guides/blender.md`](../../guides/blend
 |---|---|---|
 | [`src/assets/ObjLoader.hpp`](../../../src/assets/ObjLoader.hpp), [`.cpp`](../../../src/assets/ObjLoader.cpp) | struktury `ObjPart`, `ObjMaterial`, `ObjModel`, funkcje `parseObj` (tekst OBJ), `parseMtl` (tekst MTL) i `loadObj` (plik OBJ razem z plikami MTL, rozwiązanie ścieżek) | [`obj-loader.md`](obj-loader.md), sekcja 5 |
 | [`src/assets/Tangents.hpp`](../../../src/assets/Tangents.hpp), [`.cpp`](../../../src/assets/Tangents.cpp) | funkcje `triangleTangents`, `computeTangents` i `countMirroredTriangles`: styczna każdego wierzchołka z pozycji i współrzędnych uv trójkątów. Sama matematyka, bez OpenGL. Woła je `parseObj` | [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcje od 5.5 do 5.7 |
-| [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`.cpp`](../../../src/assets/ImageLoader.cpp) | struktura `Image` i funkcja `loadImage` | [`images.md`](images.md) |
+| [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`.cpp`](../../../src/assets/ImageLoader.cpp) | struktura `Image`, typ `RowOrder` (od M6: który wiersz obrazu jest pierwszy) i funkcja `loadImage` | [`images.md`](images.md) |
 | [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp), [`.cpp`](../../../src/assets/AssetCache.cpp) | struktury `LoadedTexture`, `ModelPart`, `LoadedModel` i klasa `AssetCache`: `model`, `texture`, `whiteTexture`, `flatNormalTexture`, `setFilter`, `setAnisotropy` | [`asset-cache.md`](asset-cache.md), sekcja 5 |
 | [`src/debug/panels/AssetsPanel.hpp`](../../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | `debug::drawAssetsPanel`: panel "Assets". Należy do programu `night_maze`, nie do `engine` | [`asset-cache.md`](asset-cache.md), sekcja 6 |
 | [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp) | struktura `gfx::Vertex`, którą loader OBJ wypełnia. Należy do `gfx/`, ale jest wspólnym formatem obu modułów | [`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5.2 |
 | [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp) | 20 przypadków testowych loadera OBJ | [`obj-loader.md`](obj-loader.md), sekcja 5.9 |
 | [`tests/TangentTests.cpp`](../../../tests/TangentTests.cpp) | 9 przypadków testowych funkcji z `Tangents` | [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.10 |
-| [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 9 przypadków testowych loadera obrazów, w tym dwa na plikach map normalnych | [`images.md`](images.md), sekcja 5.7 |
+| [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 10 przypadków testowych loadera obrazów, w tym dwa na plikach map normalnych i, od M6, jeden na `RowOrder::TopFirst` | [`images.md`](images.md), sekcja 5.7 |
 | [`assets/models/`](../../../assets/models/), [`assets/textures/`](../../../assets/textures/) | pliki wejściowe: sześć modeli z materiałami (`floor_tile`, `wall_straight`, `wall_pillar`, `crystal_a`, `crystal_b`, `gate`) i osiem tekstur (`wall_stone.png`, `floor_stone.png`, `crystal.png`, `gate_wood.png` i mapa normalnych każdej z nich, z końcówką `_normal`) | [`../../guides/blender.md`](../../guides/blender.md), sekcje 5, 7 i 8 |
 
 ## 3. Wspólna zasada loaderów: wynik to dane procesora, bez OpenGL
@@ -76,7 +76,7 @@ Oba loadery plików mają ten sam kształt, więc wystarczy nauczyć się go raz
 | Funkcja | Wynik | Błąd |
 |---|---|---|
 | `bool loadObj(path, ObjModel& model, std::string& error)` | `true` i wypełniony `model` | `false`, powód w `error`, `model` bez zmian |
-| `bool loadImage(path, Image& image, std::string& error)` | `true` i wypełniony `image` | `false`, powód w `error`, `image` bez zmian |
+| `bool loadImage(path, Image& image, std::string& error, RowOrder rowOrder = RowOrder::BottomFirst)` | `true` i wypełniony `image` | `false`, powód w `error`, `image` bez zmian |
 
 ## 4. Miejsce w warstwach
 

@@ -72,7 +72,7 @@ Prawdziwy odpowiednik tej drugiej postaci jest w
         }
 ```
 
-`shaders` to lista czterech programów gry: jeden przycisk przeładowuje wszystkie.
+`shaders` to lista pięciu programów gry: jeden przycisk przeładowuje wszystkie.
 
 Skutki praktyczne:
 
@@ -350,15 +350,16 @@ void DebugUI::draw(const DebugContext& context) {
 
         // Each panel gets exactly the members it needs, so its signature still shows
         // what it reads and what it edits.
-        drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode);
+        drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode,
+                          context.skybox);
 
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 4;
+        constexpr int SHADER_COUNT = 5;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
             &context.texturedShader, &context.colorShader, &context.litShader,
-            &context.gouraudShader};
+            &context.gouraudShader, &context.skyboxShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
@@ -382,8 +383,8 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele i HUD pokazują i edytują (osiemnaście pól: od `time` i `window` po `gameplay` i
-`round`). Buduje ją co klatkę `main.cpp`.
+panele i HUD pokazują i edytują (dwadzieścia pól: od `time` i `window` po `skyboxShader`
+i `skybox`). Buduje ją co klatkę `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
@@ -391,7 +392,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem osiem funkcji paneli i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem osiem funkcji paneli i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 

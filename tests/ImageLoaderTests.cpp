@@ -187,6 +187,29 @@ TEST_CASE("the rows are flipped: the first row in memory is the bottom row of th
     CHECK(image.pixels == bottomRowFirst);
 }
 
+TEST_CASE("with RowOrder::TopFirst the rows are not flipped: they stay as in the file") {
+    const std::filesystem::path path =
+        std::filesystem::temp_directory_path() / "night_maze_no_flip_test.ppm";
+    writeTestPicture(path);
+
+    assets::Image image;
+    std::string error;
+    const bool loaded = assets::loadImage(path, image, error, assets::RowOrder::TopFirst);
+    std::filesystem::remove(path);
+
+    CHECK(loaded);
+    CHECK(error.empty());
+    CHECK(image.width == PICTURE_WIDTH);
+    CHECK(image.height == PICTURE_HEIGHT);
+    CHECK(image.channels == PICTURE_CHANNELS);
+
+    // Exactly the bytes that were written to the file: the top row first. This is the
+    // order the faces of a cube map are loaded in.
+    const std::vector<unsigned char> topRowFirst(PICTURE_TOP_ROW_FIRST.begin(),
+                                                 PICTURE_TOP_ROW_FIRST.end());
+    CHECK(image.pixels == topRowFirst);
+}
+
 TEST_CASE("a path with letters outside ASCII can be loaded") {
     // The Polish letters are written as universal character names (a backslash, the letter
     // u and the code of the character) in a UTF-8 literal, so the test does not depend on

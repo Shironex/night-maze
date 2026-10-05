@@ -3,7 +3,7 @@
 Kamień milowy: M0, uzupełniany w M1 (mysz, ścieżki do assetów, pierwszy użytkownik stałego kroku i myszy: kamera) w M2 + M3 (klasa `NightMazeApp` rysuje labirynt i prowadzi gracza) w M4 (klasa `NightMazeApp` buduje co klatkę światła, wybiera program labiryntu według trybu oświetlenia i ustawia przełącznik mapowania normalnych `uNormalMapEnabled`) i w M5 (klasa `NightMazeApp` prowadzi rundę: w stałym kroku woła `updateRound`, co klatkę obsługuje klawisz R, rysuje kryształy i bramę, a kostka z M1 i znaczniki świateł z M4 zniknęły). Temat wykładu: 1 (Pierwszy program OpenGL).
 Kod: [`src/core/`](../../../src/core/), [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), [`src/main.cpp`](../../../src/main.cpp).
 
-Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, kontekst OpenGL (context) związany z tym oknem oraz pętlę, która co klatkę odbiera zdarzenia, przesuwa symulację i rysuje obraz. Moduł `core` dostarcza dokładnie to i nic więcej: klasę `Window` (okno GLFW z kontekstem OpenGL 4.1 Core i funkcjami załadowanymi przez GLAD), klasę `Application` (pętla główna ze stałym krokiem symulacji), `Input` (stan klawiatury i myszy), `Time` (zegar klatki), `Log` (komunikaty na konsolę), makro `GL_CHECK` (wykrywanie błędów OpenGL w buildzie Debug) i funkcje `executableDir`, `assetPath` oraz `pathText` z `Paths` (ścieżki do plików z `assets/`, liczone od położenia programu, i zamiana ścieżki na tekst). To jest realizacja tematu 1 wykładu, "Pierwszy program OpenGL": po M0 program otwiera okno, czyści je kolorem nocnego nieba i pokazuje FPS. Wszystkie późniejsze moduły (`gfx`, `renderer`, `scene`, `game`) stoją na tej warstwie, a ona sama nie wie o żadnym z nich.
+Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, kontekst OpenGL (context) związany z tym oknem oraz pętlę, która co klatkę odbiera zdarzenia, przesuwa symulację i rysuje obraz. Moduł `core` dostarcza dokładnie to i nic więcej: klasę `Window` (okno GLFW z kontekstem OpenGL 4.1 Core i funkcjami załadowanymi przez GLAD), klasę `Application` (pętla główna ze stałym krokiem symulacji), `Input` (stan klawiatury i myszy), `Time` (zegar klatki), `Log` (komunikaty na konsolę), makro `GL_CHECK` (wykrywanie błędów OpenGL w buildzie Debug) i funkcje `executableDir`, `assetPath` oraz `pathText` z `Paths` (ścieżki do plików z `assets/`, liczone od położenia programu, i zamiana ścieżki na tekst). To jest realizacja tematu 1 wykładu, "Pierwszy program OpenGL": po M0 program otwiera okno, czyści je ciemnym granatem i pokazuje FPS. Wszystkie późniejsze moduły (`gfx`, `renderer`, `scene`, `game`) stoją na tej warstwie, a ona sama nie wie o żadnym z nich.
 
 Moduł jest opisany w pięciu dokumentach tematycznych. Ten plik jest ich wspólnym wstępem: pokazuje, jak części pasują do siebie, opisuje klatkę jako całość i to, jak program dziedziczy po `core::Application`. Jest też dokumentem klasy `game::NightMazeApp` (na niego wskazuje komentarz na górze `NightMazeApp.hpp` i `NightMazeApp.cpp`): sekcja 6 przechodzi przez tę klasę linia po linii, a sekcja 7 tłumaczy kolejność jej pól.
 
@@ -32,7 +32,7 @@ Proponowana kolejność czytania: ten plik, potem `window-context.md`, `main-loo
 | [`src/core/Input.hpp`](../../../src/core/Input.hpp), [`.cpp`](../../../src/core/Input.cpp) | migawka stanu klawiatury i myszy: `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`, `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setMouseBlocked`, `setCursorCaptured` | [`input.md`](input.md) |
 | [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp), [`.cpp`](../../../src/core/GlCheck.cpp) | makro `GL_CHECK` i funkcja `checkGlErrors` | [`gl-check.md`](gl-check.md) |
 | [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`.cpp`](../../../src/core/Paths.cpp) | `executableDir` i `assetPath`: ścieżki do plików z `assets/` względem pliku wykonywalnego. Jedyny kod w `src/` z gałęziami `#if` dla macOS i Windows. Woła je konstruktor `NightMazeApp` przy wczytywaniu ośmiu plików shaderów (cztery pary), konstruktor `game::MazeRenderer` przy wczytywaniu trzech modeli labiryntu i konstruktor `game::GameplayRenderer` przy wczytywaniu trzech modeli rundy (dwa kryształy i brama). `pathText`: ścieżka jako tekst UTF-8, dla `gfx::Shader`, `assets::AssetCache` i paneli "Shaders" oraz "Assets" | [`paths.md`](paths.md) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`. Posiada cztery programy shaderów, pamięć assetów (`assets::AssetCache`), `MazeRenderer`, `GameplayRenderer`, `ColliderLines`, `LightRig`, labirynt (`MazeSettings`, `MazeWorld`), liczby reguł i stan rundy (`GameplaySettings`, `Round`), listę przeszkód rundy, gracza (`Player`), kamerę (`scene::Camera`) i ustawienia oświetlenia (`LightingSettings`). W stałym kroku przesuwa gracza i woła reguły rundy (`updateRound`), co klatkę obsługuje prośbę o nowy labirynt, prośbę o nową rundę i klawisz R, klawisze N i F oraz mysz, ustawia viewport, włącza test głębi, czyści ekran, buduje i wysyła światła i rysuje labirynt razem z kryształami i bramą (z oświetleniem albo bez) oraz, na życzenie, linie pudełek i kul kolizji | ten plik (sekcje 6 i 7), reguły rundy, kryształy, brama i HUD w [`../game/gameplay.md`](../game/gameplay.md), ruch gracza w [`../game/player.md`](../game/player.md), labirynt w świecie i jego rysowanie w [`../game/maze-rendering.md`](../game/maze-rendering.md), obrót myszą w [`../scene/camera-controls.md`](../scene/camera-controls.md), linie pudełek w [`../scene/collision.md`](../scene/collision.md), czyszczenie w [`window-context.md`](window-context.md), sekcja 3.2, macierze w [`../scene/camera.md`](../scene/camera.md), sekcja 5.7, latarka, klawisz F i zestaw świateł w [`../game/flashlight.md`](../game/flashlight.md), rodzaje świateł w [`../scene/lights.md`](../scene/lights.md), cztery tryby oświetlenia w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), bufor świateł w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`. Posiada pięć programów shaderów, pamięć assetów (`assets::AssetCache`), `MazeRenderer`, `GameplayRenderer`, `ColliderLines`, `LightRig`, od M6 niebo (`Skybox` z ustawieniami `SkyboxSettings`), labirynt (`MazeSettings`, `MazeWorld`), liczby reguł i stan rundy (`GameplaySettings`, `Round`), listę przeszkód rundy, gracza (`Player`), kamerę (`scene::Camera`) i ustawienia oświetlenia (`LightingSettings`). W stałym kroku przesuwa gracza i woła reguły rundy (`updateRound`), co klatkę obsługuje prośbę o nowy labirynt, prośbę o nową rundę i klawisz R, klawisze N i F oraz mysz, ustawia viewport, włącza test głębi, czyści ekran, buduje i wysyła światła i rysuje labirynt razem z kryształami i bramą (z oświetleniem albo bez), na życzenie linie pudełek i kul kolizji, a na końcu niebo ([`../renderer/skybox.md`](../renderer/skybox.md)) | ten plik (sekcje 6 i 7), reguły rundy, kryształy, brama i HUD w [`../game/gameplay.md`](../game/gameplay.md), ruch gracza w [`../game/player.md`](../game/player.md), labirynt w świecie i jego rysowanie w [`../game/maze-rendering.md`](../game/maze-rendering.md), obrót myszą w [`../scene/camera-controls.md`](../scene/camera-controls.md), linie pudełek w [`../scene/collision.md`](../scene/collision.md), czyszczenie w [`window-context.md`](window-context.md), sekcja 3.2, macierze w [`../scene/camera.md`](../scene/camera.md), sekcja 5.7, latarka, klawisz F i zestaw świateł w [`../game/flashlight.md`](../game/flashlight.md), rodzaje świateł w [`../scene/lights.md`](../scene/lights.md), cztery tryby oświetlenia w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), bufor świateł w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) |
 | [`src/main.cpp`](../../../src/main.cpp) | klasa `DebugNightMazeApp` (gra plus nakładka debug i HUD) i `main`: tworzy aplikację, woła `run()`, łapie wyjątki | ten plik (sekcje 5 i 6), nakładka w [`../debug-ui.md`](../debug-ui.md) |
 
 W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/core/*` tworzą, razem z `src/assets/*`, `src/gfx/*` i `src/scene/*`, bibliotekę statyczną `engine`. Część `game/`, która nie potrzebuje okna (`Crystals`, `Exit`, `Lighting`, `Maze`, `MazeGenerator`, `MazeLayout`, `MazeWorld`, `Player`, `Round`), tworzy bibliotekę `game_logic`, żeby mogły ją linkować także testy. Program `night_maze` to `main.cpp`, `debug/` i reszta `game/` (`NightMazeApp`, `MazeRenderer`, `GameplayRenderer`, `ModelDraw`, `ColliderLines`, `LightRig`, `ShaderUniforms.hpp`): linkuje obie biblioteki i ImGui. `engine` ma publiczne definicje `GLFW_INCLUDE_NONE` (GLFW nie dołącza systemowego nagłówka OpenGL, robi to GLAD) i `GL_SILENCE_DEPRECATION` (macOS oznacza cały OpenGL jako przestarzały i bez tej definicji zasypuje build ostrzeżeniami).
@@ -305,6 +305,8 @@ NightMazeApp::NightMazeApp()
                   core::assetPath(LIT_FRAGMENT_SHADER_FILE)),
       m_gouraudShader(core::assetPath(GOURAUD_VERTEX_SHADER_FILE),
                       core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
+      m_skyboxShader(core::assetPath(SKYBOX_VERTEX_SHADER_FILE),
+                     core::assetPath(SKYBOX_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
       m_mazeWorld(
@@ -323,11 +325,11 @@ NightMazeApp::NightMazeApp()
 | Element listy | Znaczenie |
 |---|---|
 | `core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze")` | klasa bazowa tworzy okno 1280 x 720 i kontekst OpenGL. `INITIAL_WIDTH` i `INITIAL_HEIGHT` to stałe `constexpr` w anonimowej przestrzeni nazw pliku `.cpp`: mają nazwy (żadnych magicznych liczb) i są niewidoczne poza tym plikiem |
-| `m_texturedShader(...)`, `m_colorShader(...)`, `m_litShader(...)`, `m_gouraudShader(...)` | cztery programy, każdy z pary plików z `assets/shaders/` (`textured`, `color`, `lit`, `gouraud`). Nazwy plików to osiem stałych `constexpr const char*` na górze pliku `.cpp`. `core::assetPath` zamienia nazwę względną na ścieżkę obok pliku wykonywalnego ([`paths.md`](paths.md)). Dwa ostatnie dołączają wspólny plik `common/lighting.glsl`, którego konstruktor tu nie wymienia: znajduje go sam loader shaderów ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Nieudane wczytanie nie rzuca wyjątku: program jest wtedy niepoprawny, a jego część klatki nie jest rysowana (sekcja 6.7) |
+| `m_texturedShader(...)`, `m_colorShader(...)`, `m_litShader(...)`, `m_gouraudShader(...)`, `m_skyboxShader(...)` | pięć programów, każdy z pary plików z `assets/shaders/` (`textured`, `color`, `lit`, `gouraud`, a od M6 `skybox`). Nazwy plików to dziesięć stałych `constexpr const char*` na górze pliku `.cpp`. `core::assetPath` zamienia nazwę względną na ścieżkę obok pliku wykonywalnego ([`paths.md`](paths.md)). Programy `lit` i `gouraud` dołączają wspólny plik `common/lighting.glsl`, którego konstruktor tu nie wymienia: znajduje go sam loader shaderów ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Nieudane wczytanie nie rzuca wyjątku: program jest wtedy niepoprawny, a jego część klatki nie jest rysowana (sekcja 6.7) |
 | (brak `m_assets`) | pola `m_assets` nie ma na liście, więc działa jego konstruktor domyślny: tworzy białą teksturę 1 x 1. Powstaje mimo to w swojej kolejności, między `m_gouraudShader` a `m_mazeRenderer`, bo o kolejności decydują deklaracje (sekcja 7) |
 | `m_mazeRenderer(m_assets)` | prosi pamięć assetów o trzy modele labiryntu. `m_assets` już istnieje, bo jest zadeklarowane wyżej ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
 | `m_gameplayRenderer(m_assets)` | prosi tę samą pamięć assetów o trzy modele rundy: `models/crystal_a.obj`, `models/crystal_b.obj` i `models/gate.obj`. Model, którego nie udało się wczytać, daje pusty wskaźnik i po prostu nie jest rysowany ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
-| (brak `m_colliderLines` i `m_lightRig`) | konstruktory domyślne: `ColliderLines` wysyła na kartę dwie małe siatki linii (krawędzie sześcianu o boku 1 i okrąg o promieniu 1), `LightRig` tworzy bufor uniformów na światła (rozmiar struktury `scene::LightBlockData`, punkt wiązania `LIGHT_BLOCK_BINDING_POINT`, czyli 1). Od M5 `LightRig` nie ma już żadnej siatki |
+| (brak `m_colliderLines`, `m_lightRig` i `m_skybox`) | konstruktory domyślne (`Skybox` wczytuje w swoim sześć obrazów nieba i tworzy teksturę sześcienną oraz siatkę sześcianu, [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.4): `ColliderLines` wysyła na kartę dwie małe siatki linii (krawędzie sześcianu o boku 1 i okrąg o promieniu 1), `LightRig` tworzy bufor uniformów na światła (rozmiar struktury `scene::LightBlockData`, punkt wiązania `LIGHT_BLOCK_BINDING_POINT`, czyli 1). Od M5 `LightRig` nie ma już żadnej siatki |
 | `m_mazeWorld(buildMazeWorld(...))` | pierwszy labirynt: rozmiar i ziarno z `m_mazeSettings`, którego wartości domyślne to 10 x 10 komórek i ziarno 1 (`DEFAULT_MAZE_WIDTH`, `DEFAULT_MAZE_HEIGHT`, `DEFAULT_MAZE_SEED`). `m_mazeSettings` jest zadeklarowane tuż nad `m_mazeWorld`, więc w tej chwili ma już swoje wartości. Od M5 `buildMazeWorld` wybiera też komórkę wyjścia, stawia bramę i rozmieszcza kryształy (pola `exitCell`, `gate`, `gateBox`, `exitZone`, `crystals`), więc każdy nowy labirynt przychodzi od razu z tym, czego potrzebuje runda. W M4 były tu pozycje świateł w ślepych zaułkach: dziś światła wiszą nad kryształami, a ich pozycje liczy co klatkę `crystalLightPositions` z rundy (sekcja 6.6) |
 | (brak `m_gameplay`, `m_round`, `m_obstacles` i pozostałych) | wartości z deklaracji: `m_gameplay` ma domyślne liczby reguł, `m_round` i `m_obstacles` są puste do `beginRound()` |
 
@@ -590,8 +592,15 @@ Zminimalizowane okno może mieć framebuffer 0 x 0. Proporcje wyszłyby wtedy `0
     if (m_drawColliders) {
         drawColliderLines(view, projection);
     }
+
+    // The sky comes LAST, after everything that writes depth. (...)
+    if (m_skyboxSettings.enabled) {
+        m_skybox.draw(m_skyboxShader, view, projection, m_skyboxSettings, m_viewMode);
+    }
 }
 ```
+
+(Komentarz nad ostatnim blokiem jest tu skrócony. W całości, z omówieniem, jest w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.6.)
 
 | Linia | Znaczenie |
 |---|---|
@@ -606,7 +615,8 @@ Zminimalizowane okno może mieć framebuffer 0 x 0. Proporcje wyszłyby wtedy `0
 | `m_lightRig.upload(lights, eye)` | pakuje światła i pozycję oka do struktury o układzie bajtów zgodnym z blokiem `LightBlock` w shaderze i kopiuje ją do bufora uniformów. Jedno kopiowanie na klatkę, a czytają je oba programy z oświetleniem ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) |
 | brak warunku przy liniach wyżej | światła są budowane i wysyłane w **każdej** klatce, także w trybie `Unlit`, w którym żaden program ich nie czyta. Kod jest dzięki temu prosty, a koszt to jedno małe kopiowanie |
 | `drawMaze(view, projection)` | cała scena: labirynt, brama i kryształy, z oświetleniem albo bez (sekcja 6.7) |
-| `drawColliderLines` | kolejność całości: scena, na końcu linie. O tym, co zasłania co, decyduje test głębi, a nie kolejność rysowania. Linie są nakładką do szukania błędów, więc idą na końcu |
+| `drawColliderLines` | kolejność: scena, potem linie. O tym, co zasłania co, decyduje test głębi, a nie kolejność rysowania. Linie są nakładką do szukania błędów, więc idą po scenie |
+| `if (m_skyboxSettings.enabled) { m_skybox.draw(...); }` | od pierwszej części M6 ostatnie wywołanie rysujące sceny: niebo. Rysowane na największej głębi z testem `GL_LEQUAL`, więc wypełnia tylko piksele, na których nic nie narysowano. Tu kolejność **ma** znaczenie, ale dla kosztu, a nie dla obrazu: narysowane na końcu, niebo nie jest cieniowane tam, gdzie zasłaniają je ściany ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 2.7) |
 | `if (m_drawColliders)` | pole przełącza pole wyboru `Draw collision shapes` w panelu "Collision". Domyślnie `false` |
 | czego już nie ma | do M4 między tymi dwoma wywołaniami stały `drawLightMarkers` (małe sześciany w miejscach świateł punktowych) i `drawCube` (kostka z M1). Widocznym źródłem światła punktowego jest teraz sam kryształ, który świeci własnym kolorem przez uniform `uEmissive` ([`../game/gameplay.md`](../game/gameplay.md), sekcja 4) |
 
@@ -826,11 +836,13 @@ classDiagram
         -Shader m_colorShader
         -Shader m_litShader
         -Shader m_gouraudShader
+        -Shader m_skyboxShader
         -AssetCache m_assets
         -MazeRenderer m_mazeRenderer
         -GameplayRenderer m_gameplayRenderer
         -ColliderLines m_colliderLines
         -LightRig m_lightRig
+        -Skybox m_skybox
         -MazeSettings m_mazeSettings
         -MazeWorld m_mazeWorld
         -GameplaySettings m_gameplay
@@ -842,6 +854,7 @@ classDiagram
         -LightingSettings m_lighting
         -ViewMode m_viewMode
         -bool m_drawColliders
+        -SkyboxSettings m_skyboxSettings
         -float m_mouseSensitivity
         -regenerateMaze()
         -beginRound()
@@ -928,8 +941,8 @@ Szczegóły tej klasy, o które można zostać zapytanym:
 - `final` zabrania dalszego dziedziczenia po tej klasie. Anonimowa przestrzeń nazw sprawia, że klasa jest widoczna tylko w `main.cpp`.
 - Klasa nie ma własnego konstruktora. Kompilator generuje domyślny: buduje część bazową (`NightMazeApp`), a potem pole `m_debugUI` z inicjalizatora przy deklaracji, `{window()}`.
 - `clearColor()` to chroniony akcesor w `NightMazeApp` zwracający referencję do prywatnego `m_clearColor`. Tak samo działa pozostałych piętnaście (tabela w sekcji 6.2). Gra udostępnia swój stan klasie pochodnej, nie wiedząc, kto i po co go użyje.
-- Osiemnaście pól `DebugContext` to dwa akcesory klasy bazowej (`time()`, `window()`) i szesnaście akcesorów gry. Inicjalizatory desygnowane muszą stać w kolejności deklaracji pól w strukturze, dlatego `.texturedShader` jest dopiero po `.mouseSensitivity`, trzy linie z M4 (`.litShader`, `.gouraudShader`, `.lighting`) stoją po `.drawColliders`, choć w nagłówku gry ich akcesory są zaraz po `colorShader()`, a dwie linie z M5 (`.gameplay`, `.round`) na samym końcu. Linia `.shader = shader()` zniknęła razem z programem kostki ([`../debug-ui.md`](../debug-ui.md), sekcja 5).
-- `texturedShader()`, `colorShader()`, `litShader()` i `gouraudShader()` zwracają `gfx::Shader&`, przez które panel "Shaders" woła `reload()` na wszystkich czterech programach (`SHADER_COUNT = 4` w `DebugUI.cpp`) ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6).
+- Dwadzieścia pól `DebugContext` to dwa akcesory klasy bazowej (`time()`, `window()`) i osiemnaście akcesorów gry (dwa ostatnie, `skyboxShader()` i `skyboxSettings()`, doszły w pierwszej części M6 i stoją na końcu listy). Inicjalizatory desygnowane muszą stać w kolejności deklaracji pól w strukturze, dlatego `.texturedShader` jest dopiero po `.mouseSensitivity`, trzy linie z M4 (`.litShader`, `.gouraudShader`, `.lighting`) stoją po `.drawColliders`, choć w nagłówku gry ich akcesory są zaraz po `colorShader()`, a dwie linie z M5 (`.gameplay`, `.round`) na samym końcu. Linia `.shader = shader()` zniknęła razem z programem kostki ([`../debug-ui.md`](../debug-ui.md), sekcja 5).
+- `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()` i `skyboxShader()` zwracają `gfx::Shader&`, przez które panel "Shaders" woła `reload()` na wszystkich pięciu programach (`SHADER_COUNT = 5` w `DebugUI.cpp`) ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6).
 - `lighting()` zwraca `LightingSettings&`. `DebugUI::draw` daje całą strukturę panelowi "Lights", panelowi "Renderer" tylko jej pole `mode`, a panelowi "Assets" pole `normalMapping` ([`../debug-ui.md`](../debug-ui.md), sekcja 5.2).
 
 Dwie rzeczy warte uwagi w samej klasie bazowej:
@@ -972,22 +985,22 @@ Tu działa druga część tej samej reguły: najpierw konstruowana jest **częś
 | Konstrukcja (z góry na dół) | Niszczenie (z góry na dół) |
 |---|---|
 | `Application::m_window` (GLFW, okno, kontekst, GLAD) | `DebugNightMazeApp::m_debugUI` (zamknięcie ImGui, okno i kontekst jeszcze żyją) |
-| `Application::m_input` | `NightMazeApp::m_mouseSensitivity`, `m_drawColliders`, `m_viewMode`, `m_lighting`, `m_camera`, `m_previousPlayerPosition`, `m_player` (zwykłe dane, nic do zwolnienia) |
+| `Application::m_input` | `NightMazeApp::m_mouseSensitivity`, `m_skyboxSettings`, `m_drawColliders`, `m_viewMode`, `m_lighting`, `m_camera`, `m_previousPlayerPosition`, `m_player` (zwykłe dane, nic do zwolnienia) |
 | `Application::m_time` | `NightMazeApp::m_obstacles`, `m_round`, `m_gameplay`, `m_mazeWorld`, `m_mazeSettings` (wektory i liczby, bez OpenGL) |
-| `NightMazeApp::m_clearColor` | `NightMazeApp::m_lightRig` (bufor uniformów: `glDeleteBuffers`) |
-| `NightMazeApp::m_texturedShader`, `m_colorShader`, `m_litShader`, `m_gouraudShader` (kompilacja i linkowanie, potrzebują kontekstu) | `NightMazeApp::m_colliderLines` (dwie siatki linii, każda to VAO i dwa bufory) |
+| `NightMazeApp::m_clearColor` | `NightMazeApp::m_skybox` (tekstura sześcienna nieba z samplerem i siatka sześcianu), potem `m_lightRig` (bufor uniformów: `glDeleteBuffers`) |
+| `NightMazeApp::m_texturedShader`, `m_colorShader`, `m_litShader`, `m_gouraudShader`, `m_skyboxShader` (kompilacja i linkowanie, potrzebują kontekstu) | `NightMazeApp::m_colliderLines` (dwie siatki linii, każda to VAO i dwa bufory) |
 | `NightMazeApp::m_assets` (biała tekstura 1 x 1 i jej sampler) | `NightMazeApp::m_gameplayRenderer` (nic nie posiada: trzy wskaźniki do modeli z pamięci assetów) |
 | `NightMazeApp::m_mazeRenderer` (wczytuje przez `m_assets` trzy modele labiryntu i ich tekstury: siatki i tekstury powstają na karcie) | `NightMazeApp::m_mazeRenderer` (nic nie posiada: trzy wskaźniki do modeli z pamięci assetów) |
 | `NightMazeApp::m_gameplayRenderer` (wczytuje przez `m_assets` dwa modele kryształów i model bramy z ich teksturami) | `NightMazeApp::m_assets` (siatki modeli, potem tekstury, na końcu biała tekstura) |
-| `NightMazeApp::m_colliderLines` (siatka krawędzi sześcianu: 8 wierzchołków i 24 indeksy, siatka okręgu: 32 wierzchołki i 64 indeksy) | `NightMazeApp::m_gouraudShader`, `m_litShader`, `m_colorShader`, `m_texturedShader` (`glDeleteProgram`) |
-| `NightMazeApp::m_lightRig` (bufor uniformów na światła: `glGenBuffers`, `glBufferData`, `glBindBufferBase`) | `NightMazeApp::m_clearColor` |
-| `NightMazeApp::m_mazeSettings`, `m_mazeWorld` (generowanie labiryntu, wyjścia i kryształów, bez OpenGL), `m_gameplay`, `m_round` i `m_obstacles` (oba jeszcze puste), `m_player`, `m_previousPlayerPosition` (kopia pozycji gracza, dlatego po nim), `m_camera`, `m_lighting`, `m_viewMode`, `m_drawColliders`, `m_mouseSensitivity` | `Application::m_time` |
+| `NightMazeApp::m_colliderLines` (siatka krawędzi sześcianu: 8 wierzchołków i 24 indeksy, siatka okręgu: 32 wierzchołki i 64 indeksy) | `NightMazeApp::m_skyboxShader`, `m_gouraudShader`, `m_litShader`, `m_colorShader`, `m_texturedShader` (`glDeleteProgram`) |
+| `NightMazeApp::m_lightRig` (bufor uniformów na światła: `glGenBuffers`, `glBufferData`, `glBindBufferBase`), potem `m_skybox` (sześć obrazów nieba z dysku, tekstura sześcienna, siatka sześcianu) | `NightMazeApp::m_clearColor` |
+| `NightMazeApp::m_mazeSettings`, `m_mazeWorld` (generowanie labiryntu, wyjścia i kryształów, bez OpenGL), `m_gameplay`, `m_round` i `m_obstacles` (oba jeszcze puste), `m_player`, `m_previousPlayerPosition` (kopia pozycji gracza, dlatego po nim), `m_camera`, `m_lighting`, `m_viewMode`, `m_drawColliders`, `m_skyboxSettings`, `m_mouseSensitivity` | `Application::m_time` |
 | ciało konstruktora `NightMazeApp` (dwa razy `m_lightRig.connect(...)`, potem `beginRound()`, które wypełnia `m_round` i `m_obstacles`) | `Application::m_input` |
 | `DebugNightMazeApp::m_debugUI` (potrzebuje okna i kontekstu) | `Application::m_window` (okno, kontekst, `glfwTerminate`) |
 
 Obie kolumny czyta się osobno, z góry na dół: wiersz nie łączy pola z lewej z polem z prawej.
 
-Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i okno, już istnieje), a destruktor `DebugUI`, który zwalnia obiekty OpenGL backendu ImGui, ma jeszcze żywy kontekst. Ta sama zasada dotyczy pól `NightMazeApp` posiadających zasoby OpenGL: czterech programów shaderów, `m_assets` (siatki modeli i tekstury), `m_colliderLines` (dwie siatki linii) i `m_lightRig` (bufor uniformów). Jako pola klasy pochodnej od `Application` powstają po oknie i są niszczone przed nim, więc każde `glGen*`, `glCreate*` i `glDelete*` ma żywy kontekst. `m_mazeRenderer` i `m_gameplayRenderer` zasobów nie posiadają: trzymają wskaźniki do modeli, których właścicielem jest `m_assets`, i dlatego muszą być zadeklarowane po nim (giną wcześniej, więc nigdy nie wskazują na usunięty model).
+Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i okno, już istnieje), a destruktor `DebugUI`, który zwalnia obiekty OpenGL backendu ImGui, ma jeszcze żywy kontekst. Ta sama zasada dotyczy pól `NightMazeApp` posiadających zasoby OpenGL: pięciu programów shaderów, `m_assets` (siatki modeli i tekstury), `m_colliderLines` (dwie siatki linii), `m_lightRig` (bufor uniformów) i `m_skybox` (tekstura sześcienna i siatka sześcianu). Jako pola klasy pochodnej od `Application` powstają po oknie i są niszczone przed nim, więc każde `glGen*`, `glCreate*` i `glDelete*` ma żywy kontekst. `m_mazeRenderer` i `m_gameplayRenderer` zasobów nie posiadają: trzymają wskaźniki do modeli, których właścicielem jest `m_assets`, i dlatego muszą być zadeklarowane po nim (giną wcześniej, więc nigdy nie wskazują na usunięty model).
 
 **`NightMazeApp` (w `NightMazeApp.hpp`):**
 
@@ -1001,22 +1014,25 @@ Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i 
     gfx::Shader m_colorShader;
     gfx::Shader m_litShader;
     gfx::Shader m_gouraudShader;
+    gfx::Shader m_skyboxShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
     ColliderLines m_colliderLines;
     LightRig m_lightRig;
+    Skybox m_skybox;
 ```
 
 Komentarz wymienia dziś jedną zależność, i to ona jest w tej grupie jedyną, od której zależy poprawność:
 
 | Pole | Co robi jego konstruktor | Od czego zależy jego miejsce |
 |---|---|---|
-| cztery programy shaderów | kompiluje i linkuje program z pary plików | od niczego w tej klasie: potrzebuje tylko kontekstu, a ten daje klasa bazowa |
+| pięć programów shaderów | kompiluje i linkuje program z pary plików | od niczego w tej klasie: potrzebuje tylko kontekstu, a ten daje klasa bazowa |
 | `m_assets` | tworzy białą teksturę 1 x 1 | musi stać **przed** oboma rendererami |
 | `m_mazeRenderer`, `m_gameplayRenderer` | dostają `m_assets` przez referencję i od razu proszą o modele (każdy o trzy) | **po** `m_assets`. Pole zadeklarowane wyżej dostałoby referencję do obiektu, który jeszcze nie powstał. Działa to też w drugą stronę: giną przed `m_assets`, więc ich wskaźniki nigdy nie wskazują na usunięty model |
 | `m_colliderLines` | wysyła na kartę siatkę krawędzi sześcianu i siatkę okręgu | od niczego: siatki są jego własne |
 | `m_lightRig` | tworzy bufor uniformów i przypina go do punktu wiązania 1 (cel `GL_UNIFORM_BUFFER`) | od niczego. Programy, które z niego czytają, są łączone z nim dopiero w ciele konstruktora, a ciało wykonuje się po wszystkich polach |
+| `m_skybox` (M6) | wczytuje sześć obrazów nieba loaderem obrazów, tworzy z nich teksturę sześcienną i siatkę sześcianu | od niczego: nie korzysta z `m_assets` (czyta pliki sam) ani z programu `skybox`, który dostaje dopiero w argumencie `draw` |
 
 **Czego ta lista już nie wymaga.** Do M4 pod tymi polami stały trzy pola kostki z M1: `gfx::VertexArray` i dwa `gfx::Buffer`. Kostka była zbudowana "na raty": VAO i bufory powstawały na liście inicjalizacyjnej, a opis atrybutów dopiero w ciele konstruktora, i ten opis polegał na tym, że VAO kostki i jej bufor wierzchołków były nadal związane. Wiązanie (binding) to stan globalny kontekstu: w każdej chwili jest jeden związany VAO i jeden bufor w celu `GL_ARRAY_BUFFER`, a każde nowe wiązanie zastępuje poprzednie. Każde pole tworzące siatkę, dopisane pod polami kostki, zabrałoby jej to wiązanie, a kompilator ani OpenGL nie zgłosiłyby błędu. Komentarz w nagłówku miał wtedy pięć punktów o kolejności. Po usunięciu kostki w M5 ta pułapka zniknęła z klasy: wszystkie siatki projektu to dziś `gfx::Mesh`, który opisuje atrybuty we własnym konstruktorze, od razu po utworzeniu swoich buforów ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5), więc nie zostawia niczego "na później" i nie zależy od tego, co powstanie po nim. Sama reguła wiązań obowiązuje dalej, tylko nie ma już w `NightMazeApp` kodu, który by na niej polegał.
 
@@ -1039,7 +1055,7 @@ Pola rundy (`m_gameplay`, `m_round`, `m_obstacles`) stoją pod `m_mazeWorld`, bo
 
 Miejsce `m_lighting` (między `m_camera` a `m_viewMode`) nie ma takiego znaczenia: struktura nie czyta żadnego innego pola i nie dotyka OpenGL. Liczy się tylko to, że `m_lightRig`, `m_litShader` i `m_gouraudShader` istnieją, zanim ciało konstruktora zawoła `connect`, a to jest prawdą dla każdej kolejności pól, bo ciało wykonuje się po wszystkich.
 
-**Pułapka do tej sekcji.** Obiekt z zasobami OpenGL żyjący dłużej niż `Window` woła funkcje `gl*` bez kontekstu. Podobnie zmiana kolejności pól w `Application` psuje konstrukcję `Input`. Dotyczy to dziś wprost siedmiu pól `NightMazeApp` z zasobami OpenGL (cztery programy, `m_assets`, `m_colliderLines` i `m_lightRig`). Trzecia odmiana tej samej pułapki: renderer zadeklarowany nad `m_assets` dostaje w konstruktorze referencję do pamięci assetów, która jeszcze nie istnieje (wyżej).
+**Pułapka do tej sekcji.** Obiekt z zasobami OpenGL żyjący dłużej niż `Window` woła funkcje `gl*` bez kontekstu. Podobnie zmiana kolejności pól w `Application` psuje konstrukcję `Input`. Dotyczy to dziś wprost dziewięciu pól `NightMazeApp` z zasobami OpenGL (pięć programów, `m_assets`, `m_colliderLines`, `m_lightRig` i `m_skybox`). Trzecia odmiana tej samej pułapki: renderer zadeklarowany nad `m_assets` dostaje w konstruktorze referencję do pamięci assetów, która jeszcze nie istnieje (wyżej).
 
 ## 8. Różnice między systemami w jednym miejscu
 
@@ -1089,7 +1105,7 @@ Pytania dotyczące treści tego pliku:
    R, N i F to zbocza (`wasKeyPressed`): są prawdą przez jedną klatkę, a `onUpdate` wykonuje się od zera do wielu razy na klatkę, więc naciśnięcie mogłoby przepaść albo zadziałać kilka razy. Klawisze ruchu to stan ciągły (`isKeyDown`), a ruch zależy od czasu, który płynie stałymi krokami. R woła `beginRound()`, N przełącza `m_player.noclip`, F przełącza `m_lighting.flashlightOn`. Wszystkie trzy działają też przy wolnym kursorze, a nie działają, gdy klawiaturę ma ImGui.
 
 8. **Dlaczego macierze `view` i `projection` są liczone raz, a ustawiane kilka razy?**
-   Liczone raz, bo kamera jest jedna dla całej klatki. Ustawiane w każdej funkcji rysującej, bo uniformy należą do programu, a każdy program ma własne `uView` i `uProjection`. Programów jest cztery, w jednej klatce pracują najwyżej dwa różne (jeden program sceny i, przy włączonych liniach kolizji, `color`), więc macierze są ustawiane najwyżej dwa razy: raz w `drawUnlitMaze` albo `drawLitMaze` i raz w `drawColliderLines`. `MazeRenderer` i `GameplayRenderer` dostają program już z macierzami i ustawiają tylko `uModel` i uniformy materiału.
+   Liczone raz, bo kamera jest jedna dla całej klatki. Ustawiane w każdej funkcji rysującej, bo uniformy należą do programu, a każdy program ma własne `uView` i `uProjection`. Programów jest pięć, w jednej klatce pracują najwyżej trzy różne (jeden program sceny, przy włączonych liniach kolizji `color` i, przy włączonym niebie, `skybox`), więc macierze są ustawiane najwyżej trzy razy: raz w `drawUnlitMaze` albo `drawLitMaze`, raz w `drawColliderLines` i raz w `Skybox::draw`. `MazeRenderer` i `GameplayRenderer` dostają program już z macierzami i ustawiają tylko `uModel` i uniformy materiału.
 
 9. **Jakie pola i funkcje doszły w `NightMazeApp` z oświetleniem (M4) i w jakiej kolejności stoją?**
    Programy `m_litShader` i `m_gouraudShader` zaraz po dwóch wcześniejszych, `m_lightRig` po `m_colliderLines` (posiada bufor uniformów), `m_lighting` po `m_camera` (zwykłe dane). Konstruktor woła dwa razy `m_lightRig.connect(...)`, po razie dla każdego programu z oświetleniem. `onRender` czyta klawisz F, buduje `buildLightSet(...)` z interpolowanego oka i `m_camera.forward()`, woła `m_lightRig.upload(lights, eye)`, a `drawMaze` wybiera `drawUnlitMaze` albo `drawLitMaze`. Doszły trzy akcesory: `litShader()`, `gouraudShader()`, `lighting()`. Funkcja `drawLightMarkers` z M4 została usunięta w M5, a `buildLightSet` dostaje dziś kopię ustawień z `lightingForFrame` i pozycje z `crystalLightPositions`.

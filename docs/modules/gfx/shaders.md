@@ -11,7 +11,7 @@ Od OpenGL 3.2 w profilu Core nie da się narysować niczego bez shaderów: stary
 
 Robi to klasa `gfx::Shader`, opisana linia po linii w [`shader-class.md`](shader-class.md). Ten dokument opisuje to, co klasa obsługuje: potok, język GLSL i shadery, na których najłatwiej go zobaczyć.
 
-Stan na dziś (M5): `game::NightMazeApp` ma **cztery** obiekty `gfx::Shader`, czyli cztery programy:
+Stan na dziś: `game::NightMazeApp` ma **pięć** obiektów `gfx::Shader`, czyli pięć programów. Piąty, `skybox` (pliki `skybox.vert` i `skybox.frag`), doszedł w pierwszej części M6, rysuje nocne niebo i jest opisany osobno, w [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 4. Ten dokument omawia pozostałe cztery, które rysują scenę i linie:
 
 | Pole | Pliki | Co rysuje | Kiedy | Opis shaderów |
 |---|---|---|---|---|
@@ -20,9 +20,9 @@ Stan na dziś (M5): `game::NightMazeApp` ma **cztery** obiekty `gfx::Shader`, cz
 | `m_litShader` | `lit.vert`, `lit.frag` (dołącza `common/lighting.glsl` i `common/normal_map.glsl`) | scenę z oświetleniem liczonym dla każdego fragmentu | tryby Phong i Blinn-Phong przy widoku `Textured`. **Tak startuje gra** (Blinn-Phong) | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 | `m_gouraudShader` | `gouraud.vert` (dołącza `common/lighting.glsl`), `gouraud.frag` | scenę z oświetleniem liczonym dla każdego wierzchołka | tryb Gouraud przy widoku `Textured` | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 
-Scenę rysuje w danej klatce **jeden** z trzech programów (`textured`, `lit` albo `gouraud`), a linie kolizji, gdy są włączone, program `color`. W jednej klatce pracują więc najwyżej dwa różne programy, wybierane najwyżej dwoma wywołaniami `use()` (sekcja 5.1). Pliki `common/lighting.glsl` i `common/normal_map.glsl` nie są shaderami i nie mają własnych programów: ich treść trafia do shaderów przez linię `#include`, którą wykonuje kod wczytujący, a nie sterownik ([`shader-includes.md`](shader-includes.md)).
+Scenę rysuje w danej klatce **jeden** z trzech programów (`textured`, `lit` albo `gouraud`), a linie kolizji, gdy są włączone, program `color`. Razem z programem nieba, który rysuje na końcu klatki, gdy pole `Skybox` jest zaznaczone, w jednej klatce pracują więc najwyżej trzy różne programy, wybierane najwyżej trzema wywołaniami `use()` (sekcja 5.1). Pliki `common/lighting.glsl` i `common/normal_map.glsl` nie są shaderami i nie mają własnych programów: ich treść trafia do shaderów przez linię `#include`, którą wykonuje kod wczytujący, a nie sterownik ([`shader-includes.md`](shader-includes.md)).
 
-Wszystkie cztery programy są wczytywane przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma pięć funkcji ustawiających uniformy, `setMat4`, `setInt`, `setVec3`, `setMat3` i `setFloat` ([`uniforms.md`](uniforms.md)), i funkcję `bindUniformBlock`, która podłącza blok uniformów ze światłami ([`uniform-buffers.md`](uniform-buffers.md)).
+Wszystkie pięć programów jest wczytywanych przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma pięć funkcji ustawiających uniformy, `setMat4`, `setInt`, `setVec3`, `setMat3` i `setFloat` ([`uniforms.md`](uniforms.md)), i funkcję `bindUniformBlock`, która podłącza blok uniformów ze światłami ([`uniform-buffers.md`](uniform-buffers.md)).
 
 **Historia.** W M1 projekt miał jedną parę, `basic.vert` i `basic.frag`: pozycja i kolor wierzchołka na wejściu, trzy macierze, kolor interpolowany między wierzchołkami. Rysowała kostkę o sześciu kolorowych ścianach i ten dokument omawiał ją linia po linii. W M5 kostka i para `basic` zostały usunięte. Jej rolę w tym dokumencie przejęły dwie pary, które rysują grę: `color` jako najprostszy komplet (jeden atrybut, trzy macierze, jeden kolor) i `textured` jako przykład wartości, które shader wierzchołków przekazuje dalej. Długi komentarz o łańcuchu przestrzeni, który stał w `basic.vert`, jest dziś w `textured.vert`.
 
@@ -349,7 +349,7 @@ Kod, który buduje program z plików, czyli klasa `gfx::Shader`, jest opisany w 
 
 ### 5.1 Użycie w `NightMazeApp`
 
-Właścicielem wszystkich czterech programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawiają się programy `color` i `textured`. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
+Właścicielem wszystkich pięciu programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawiają się programy `color` i `textured`. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
 
 **Pola** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
@@ -360,7 +360,7 @@ Właścicielem wszystkich czterech programów jest `game::NightMazeApp`. Poniże
     gfx::Shader m_gouraudShader;
 ```
 
-Jako pola klasy pochodnej od `core::Application` obiekty powstają po oknie i kontekście OpenGL, a giną przed nimi ([`../core/README.md`](../core/README.md)). Cztery programy stoją na początku listy pól posiadających obiekty OpenGL. Ich miejsce względem pozostałych pól nie ma znaczenia: utworzenie programu nie wiąże żadnego bufora ani VAO. Komentarz nad polami wymienia jedyną zależność kolejności, która została po M5: oba renderery proszą `m_assets` o modele w swoich konstruktorach, więc stoją po nim.
+Jako pola klasy pochodnej od `core::Application` obiekty powstają po oknie i kontekście OpenGL, a giną przed nimi ([`../core/README.md`](../core/README.md)). Pięć programów stoi na początku listy pól posiadających obiekty OpenGL. Ich miejsce względem pozostałych pól nie ma znaczenia: utworzenie programu nie wiąże żadnego bufora ani VAO. Komentarz nad polami wymienia jedyną zależność kolejności, która została po M5: oba renderery proszą `m_assets` o modele w swoich konstruktorach, więc stoją po nim.
 
 **Nazwy plików** w anonimowej przestrzeni nazw [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp):
 
@@ -443,7 +443,7 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
 
 Ostatnie zdanie komentarza dotyczy map normalnych: widok normalnych nie ma oświetlenia, ale pokazuje normalne, którymi cieniowałby wybrany tryb. Pod `Phong`, `Blinn-Phong` i `Unlit` są to (przy zaznaczonym polu `Normal mapping`) normalne z map, pod `Gouraud` normalne modelu ([`textures.md`](textures.md), sekcja 4, i [`normal-mapping.md`](normal-mapping.md)).
 
-`drawLitMaze` i przełącznik trybu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W jednej klatce `use()` jest więc wołane najwyżej dwa razy: raz dla sceny i raz dla linii.
+`drawLitMaze` i przełącznik trybu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W jednej klatce `use()` jest więc wołane najwyżej trzy razy: raz dla sceny, raz dla linii i, od pierwszej części M6, raz dla nieba (w `Skybox::draw`).
 
 Kolejność rysowania nie wpływa na to, co zasłania co: rozstrzyga o tym test głębi, włączany wcześniej w `onRender` ([`../scene/camera.md`](../scene/camera.md), sekcja 5). Linie są rysowane na końcu, ale też z testem głębi, więc linia za ścianą jest przez nią zasłonięta.
 
@@ -550,7 +550,7 @@ Zwracają referencję bez `const`, bo wołający ma móc zawołać `reload()`. S
 
 ## 6. Panel ImGui
 
-Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie cztery programy, i dla każdego programu jedną linię z nazwami obu plików i wynikiem ostatniego wczytania (`color.vert + color.frag: OK` albo czerwone `... FAILED, ...` z tekstem błędu pod spodem). Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Który program rysuje scenę, przełączają dwa inne panele: lista `Lighting` w panelu Renderer wybiera tryb oświetlenia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)), a lista `View mode` w panelu Assets tryb podglądu shadera `textured.frag`: `Textured`, `Normals as colour` albo `UVs as colour` ([`textures.md`](textures.md), sekcja 6). Program `color` włącza pole `Draw collision shapes` w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
+Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie pięć programów, i dla każdego programu jedną linię z nazwami obu plików i wynikiem ostatniego wczytania (`color.vert + color.frag: OK` albo czerwone `... FAILED, ...` z tekstem błędu pod spodem). Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Który program rysuje scenę, przełączają dwa inne panele: lista `Lighting` w panelu Renderer wybiera tryb oświetlenia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)), a lista `View mode` w panelu Assets tryb podglądu shadera `textured.frag`: `Textured`, `Normals as colour` albo `UVs as colour` ([`textures.md`](textures.md), sekcja 6). Program `color` włącza pole `Draw collision shapes` w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
 
 ## 7. Pułapki
 

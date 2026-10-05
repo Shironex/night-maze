@@ -50,7 +50,8 @@ bool fail(std::string& error, const std::string& message) {
 
 } // namespace
 
-bool loadImage(const std::filesystem::path& path, Image& image, std::string& error) {
+bool loadImage(const std::filesystem::path& path, Image& image, std::string& error,
+               RowOrder rowOrder) {
     std::vector<unsigned char> fileBytes;
     if (!readBinaryFile(path, fileBytes)) {
         return fail(error, "Image file cannot be opened: " + core::pathText(path));
@@ -93,11 +94,14 @@ bool loadImage(const std::filesystem::path& path, Image& image, std::string& err
     loaded.pixels.resize(rowSize * rowCount);
 
     // stb_image returns the rows the way image files store them: top row first. OpenGL
-    // (and the OBJ format) put texture coordinate v = 0 at the bottom, so the rows are
-    // copied in reverse order: the last row of the file becomes the first row here. The
-    // pixels inside a row keep their order, otherwise the picture would be mirrored.
+    // (and the OBJ format) put texture coordinate v = 0 of a 2D texture at the bottom,
+    // so for RowOrder::BottomFirst the rows are copied in reverse order: the last row of
+    // the file becomes the first row here. The pixels inside a row keep their order,
+    // otherwise the picture would be mirrored. For RowOrder::TopFirst (the faces of
+    // a cube map) the rows are copied as they are.
     for (std::size_t row = 0; row < rowCount; ++row) {
-        const stbi_uc* source = decoded + (rowCount - 1 - row) * rowSize;
+        const std::size_t sourceRow = rowOrder == RowOrder::BottomFirst ? rowCount - 1 - row : row;
+        const stbi_uc* source = decoded + sourceRow * rowSize;
         std::copy_n(source, rowSize,
                     loaded.pixels.begin() + static_cast<std::ptrdiff_t>(row * rowSize));
     }

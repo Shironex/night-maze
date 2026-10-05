@@ -8,7 +8,11 @@ loader obrazów w [`src/assets/ImageLoader.cpp`](../../src/assets/ImageLoader.cp
 **Stan na dziś: stb_image woła jeden plik projektu, `src/assets/ImageLoader.cpp`.** Funkcja
 `assets::loadImage` zamienia nim plik PNG na tablicę bajtów
 ([`../modules/assets/images.md`](../modules/assets/images.md)). Wołają ją testy jednostkowe
-(`tests/ImageLoaderTests.cpp`) i gra: `assets::AssetCache::texture` wczytuje nią tekstury
+(`tests/ImageLoaderTests.cpp`, od M6 także `tests/SkyboxTests.cpp`) i gra, w dwóch miejscach.
+Od pierwszej części M6 `game::Skybox` wczytuje nią sześć obrazów nieba z `assets/skybox/`
+(1024 x 1024, bez odwracania wierszy,
+[`../modules/renderer/skybox.md`](../modules/renderer/skybox.md)), a
+`assets::AssetCache::texture` wczytuje nią tekstury
 modeli labiryntu, a od M5 także kryształów i bramy: razem osiem plików PNG w
 `assets/textures/`, cztery tekstury koloru i cztery mapy normalnych, każdy 512 x 512 pikseli
 w trzech kanałach ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md)).

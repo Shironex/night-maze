@@ -12,8 +12,8 @@ używa.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera, a `Shader::setVec3` tak samo wysyła wektor.
 Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz widoku i macierz
-rzutowania, wysyła je do programów shaderów (jest ich cztery, w jednej klatce pracują
-najwyżej dwa) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+rzutowania, wysyła je do programów shaderów (jest ich pięć, w jednej klatce pracują
+najwyżej trzy) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
 mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
 kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
 narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ

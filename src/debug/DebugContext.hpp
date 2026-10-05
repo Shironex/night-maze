@@ -21,6 +21,7 @@ struct MazeSettings;
 struct MazeWorld;
 struct Player;
 struct Round;
+struct SkyboxSettings;
 } // namespace game
 
 namespace gfx {
@@ -47,7 +48,8 @@ struct DebugContext {
     const core::Time& time;
     /// Window, read only: sizes and OpenGL driver info.
     const core::Window& window;
-    /// Background color (red, green, blue in the range 0 to 1), editable.
+    /// Clear color (red, green, blue in the range 0 to 1), editable: the background
+    /// where the sky is not drawn.
     std::array<float, 3>& clearColor;
     /// Camera of the game, editable: angles and projection.
     scene::Camera& camera;
@@ -85,6 +87,10 @@ struct DebugContext {
     /// The round in play: the HUD and the panels show it. Editable for one thing, the
     /// charge of the battery (the Gameplay panel).
     game::Round& round;
+    /// Shader program of the sky, editable: reloaded like texturedShader.
+    gfx::Shader& skyboxShader;
+    /// The switch and the brightness of the sky, editable.
+    game::SkyboxSettings& skybox;
 };
 
 } // namespace debug

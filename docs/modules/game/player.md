@@ -205,7 +205,7 @@ Matematykę obu testów opisuje [`../scene/collision.md`](../scene/collision.md)
 
 Nie dotyczy: `Player.hpp` i `Player.cpp` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`. Gracz nie jest rysowany (kamera jest w jego oczach, więc własnego ciała nie widać).
 
-Związek z renderowaniem jest pośredni: z interpolowanej pozycji stóp powstaje punkt oka, a z niego macierz widoku (`m_camera.viewMatrix(eye)`), którą dostają wszystkie programy shaderów rysujące w tej klatce (najwyżej dwa z czterech: program labiryntu i program linii), a od M4 także latarka jako swoją pozycję. Jedyne, co OpenGL rysuje "o graczu", to zielone linie jego pudełka kolizji i od M5 trzy zielone okręgi jego kuli zasięgu, gdy włączone jest rysowanie kształtów kolizji ([`../scene/collision.md`](../scene/collision.md), sekcje 5 i 6).
+Związek z renderowaniem jest pośredni: z interpolowanej pozycji stóp powstaje punkt oka, a z niego macierz widoku (`m_camera.viewMatrix(eye)`), którą dostają wszystkie programy shaderów rysujące w tej klatce (najwyżej trzy z pięciu: program labiryntu, program linii i, od M6, program nieba, który z tej macierzy bierze sam obrót), a od M4 także latarka jako swoją pozycję. Jedyne, co OpenGL rysuje "o graczu", to zielone linie jego pudełka kolizji i od M5 trzy zielone okręgi jego kuli zasięgu, gdy włączone jest rysowanie kształtów kolizji ([`../scene/collision.md`](../scene/collision.md), sekcje 5 i 6).
 
 ## 4. Shadery
 
