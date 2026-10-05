@@ -76,7 +76,7 @@ std::filesystem::path executableFile() {
     // Cut the string down to the characters that were written. The path is built from the
     // wide string directly, without converting it to narrow characters.
     buffer.resize(length);
-    return std::filesystem::path(buffer);
+    return {buffer};
 }
 
 #endif
