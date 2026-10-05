@@ -1,13 +1,13 @@
 # Moduł scene: co jest w scenie i skąd na nią patrzę
 
-Kamień milowy: M1. Temat wykładu: 3 (Przekształcenia przestrzeni).
+Kamień milowy: M1, a od M2 + M3 także kolizje. Temat wykładu: 3 (Przekształcenia przestrzeni) i 14 (Wstęp do kolizji).
 Kod: [`src/scene/`](../../../src/scene/), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
-Moduł `gfx` umie narysować to, co dostanie: bufor wierzchołków, program shaderów. Nie wie, **gdzie** w świecie coś stoi ani **skąd** jest oglądane. Na te dwa pytania odpowiada moduł `scene`: opisuje położenie obiektów i kamerę, a z tego opisu liczy macierze, które shader wierzchołków mnoży przez każdy wierzchołek. Docelowo (PRD, sekcja 6) warstwa `scene/` ma zawierać encje, transformy, kamerę, światła, kolizje i selekcję. Na dziś ma dwie struktury: `scene::Transform` i `scene::Camera`.
+Moduł `gfx` umie narysować to, co dostanie: bufor wierzchołków, program shaderów. Nie wie, **gdzie** w świecie coś stoi ani **skąd** jest oglądane. Na te dwa pytania odpowiada moduł `scene`: opisuje położenie obiektów i kamerę, a z tego opisu liczy macierze, które shader wierzchołków mnoży przez każdy wierzchołek. Docelowo (PRD, sekcja 6) warstwa `scene/` ma zawierać encje, transformy, kamerę, światła, kolizje i selekcję. Na dziś ma trzy struktury: `scene::Transform`, `scene::Camera` i, od kamienia milowego M2 + M3, `scene::Aabb` z funkcjami kolizji.
 
-Używa ich `game::NightMazeApp`: ma jeden `Transform` (obrócona kostka) i jedną `Camera`, którą steruje z klawiatury i myszy (lot wokół kostki). Co klatkę liczy z nich macierze modelu, widoku i rzutowania i wysyła je do shadera przez `gfx::Shader::setMat4`. Pola kamery edytuje też panel Camera z `debug/`.
+Używa ich `game::NightMazeApp`: ma jeden `Transform` (obrócona kostka) i jedną `Camera`, którą steruje z klawiatury i myszy (lot wokół kostki). Co klatkę liczy z nich macierze modelu, widoku i rzutowania i wysyła je do shadera przez `gfx::Shader::setMat4`. Pola kamery edytuje też panel Camera z `debug/`. Kolizji aplikacja jeszcze nie używa: pudełka `scene::Aabb` tworzy na razie tylko układ labiryntu w `game/MazeLayout`, a funkcję `scene::moveAndSlide` wołają tylko testy jednostkowe.
 
-Moduł jest opisany w trzech dokumentach tematycznych. Ten plik jest ich wspólnym wstępem: indeks dokumentów i plików kodu, wspólna zasada obu struktur, miejsce modułu w warstwach i konwencja układu współrzędnych.
+Moduł jest opisany w czterech dokumentach tematycznych. Ten plik jest ich wspólnym wstępem: indeks dokumentów i plików kodu, wspólna zasada obu struktur, miejsce modułu w warstwach i konwencja układu współrzędnych.
 
 ## 1. Dokumenty modułu
 
@@ -16,10 +16,11 @@ Moduł jest opisany w trzech dokumentach tematycznych. Ten plik jest ich wspóln
 | [`transforms.md`](transforms.md) | przestrzenie współrzędnych (lokalna, świata, widoku, przycięcia, NDC, okna), współrzędne jednorodne, macierze przesunięcia, obrotu i skali, znaczenie kolejności, kąty Eulera i blokada przegubu, macierz modelu, trzy macierze w shaderze `basic.vert`, obrót kostki | `Transform`, `basic.vert` |
 | [`camera.md`](camera.md) | macierz widoku i `lookAt`, kamera FPS (yaw, pitch, wektor kierunku), rzutowanie perspektywiczne, nieliniowa głębia, z NDC do pikseli, konwencja układu projektu, trzy macierze w `NightMazeApp::onRender`, test głębi, proporcje i okno o rozmiarze zero, droga jednego wierzchołka na liczbach | `Camera`, `NightMazeApp` |
 | [`camera-controls.md`](camera-controls.md) | sterowanie kamerą: obrót myszą, ruch klawiszami stałym krokiem, normalizacja kierunku, interpolacja pozycji z `alpha`, panel Camera i scenariusz pokazu, panel a przechwycony kursor | `NightMazeApp`, `drawCameraPanel` |
+| [`collision.md`](collision.md) | temat 14: bryły otaczające i AABB, test nakładania przedziałów na osiach, wykrywanie dyskretne a przemiatanie, tunelowanie, ruch oś po osi i ślizganie po ścianach, tolerancja styku, droga po schodkach a stały krok, kula jako następny krok, testy jednostkowe | `Aabb`, `overlaps`, `moveAndSlide` |
 
-Każdy z trzech dokumentów jest samodzielną jednostką nauki i ma te same dziesięć sekcji co dokumenty modułów `core` i `gfx`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
+Każdy z czterech dokumentów jest samodzielną jednostką nauki i ma te same dziesięć sekcji co dokumenty modułów `core` i `gfx`: Po co to jest, Teoria, Jak to działa w OpenGL, Shadery, Kod w projekcie, Panel ImGui, Pułapki, Ćwiczenia, Pytania kontrolne, Źródła.
 
-Proponowana kolejność czytania: [`../../libraries/glm.md`](../../libraries/glm.md) (typy i funkcje biblioteki), ten plik, potem [`transforms.md`](transforms.md), [`camera.md`](camera.md), [`camera-controls.md`](camera-controls.md). Wcześniej warto znać [`../gfx/shaders.md`](../gfx/shaders.md), sekcja 2.2: opis tego, co shader wierzchołków musi zapisać do `gl_Position`. Przed `camera-controls.md` przydają się [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`) i [`../core/input.md`](../core/input.md) (mysz i przechwycenie kursora).
+Proponowana kolejność czytania: [`../../libraries/glm.md`](../../libraries/glm.md) (typy i funkcje biblioteki), ten plik, potem [`transforms.md`](transforms.md), [`camera.md`](camera.md), [`camera-controls.md`](camera-controls.md), na końcu [`collision.md`](collision.md), który nie wymaga trzech poprzednich. Wcześniej warto znać [`../gfx/shaders.md`](../gfx/shaders.md), sekcja 2.2: opis tego, co shader wierzchołków musi zapisać do `gl_Position`. Przed `camera-controls.md` przydają się [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`) i [`../core/input.md`](../core/input.md) (mysz i przechwycenie kursora).
 
 ## 2. Indeks: plik kodu, dokument
 
@@ -27,7 +28,8 @@ Proponowana kolejność czytania: [`../../libraries/glm.md`](../../libraries/glm
 |---|---|---|
 | [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp), [`.cpp`](../../../src/scene/Transform.cpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i funkcja `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Użycie: pole `m_cubeTransform` w `NightMazeApp` | [`transforms.md`](transforms.md), sekcje 5.2 i 5.3 |
 | [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp), [`.cpp`](../../../src/scene/Camera.cpp) | struktura `Camera`: pola `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałe `WORLD_UP` i `MAX_PITCH_DEGREES`, funkcje `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Użycie: pole `m_camera` w `NightMazeApp` | [`camera.md`](camera.md), sekcje od 5.2 do 5.5 |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik obu struktur: obrót kostki, proporcje z rozmiaru framebuffera, wysłanie trzech macierzy co klatkę, sterowanie kamerą (obrót myszą, ruch klawiszami, interpolacja pozycji) | obrót kostki w [`transforms.md`](transforms.md), sekcja 5.4, trzy macierze i proporcje w [`camera.md`](camera.md), sekcje 5.7 i 5.8, sterowanie kamerą w [`camera-controls.md`](camera-controls.md), sekcje od 5.2 do 5.5 |
+| [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp), [`.cpp`](../../../src/scene/Collider.cpp) | struktura `Aabb`: pola `min` i `max`, funkcja statyczna `fromCenter`. Stała `CONTACT_TOLERANCE`, funkcje `overlaps` i `moveAndSlide`. Użycie: `game::wallBox`, `game::pillarBox` i `game::mazeColliders` w `src/game/MazeLayout.cpp` oraz testy w `tests/ColliderTests.cpp` | [`collision.md`](collision.md), sekcje od 5.2 do 5.5 |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik struktur `Transform` i `Camera`: obrót kostki, proporcje z rozmiaru framebuffera, wysłanie trzech macierzy co klatkę, sterowanie kamerą (obrót myszą, ruch klawiszami, interpolacja pozycji) | obrót kostki w [`transforms.md`](transforms.md), sekcja 5.4, trzy macierze i proporcje w [`camera.md`](camera.md), sekcje 5.7 i 5.8, sterowanie kamerą w [`camera-controls.md`](camera-controls.md), sekcje od 5.2 do 5.5 |
 | [`src/debug/panels/CameraPanel.hpp`](../../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../../src/debug/panels/CameraPanel.cpp) | `debug::drawCameraPanel`: panel "Camera". Nie należy do `scene/` ani do biblioteki `engine`, ale jest pokazem struktury `Camera` | [`camera-controls.md`](camera-controls.md), sekcja 6 |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) | uniformy `uModel`, `uView`, `uProjection` i mnożenie przez nie pozycji wierzchołka | [`transforms.md`](transforms.md), sekcja 4 |
 
@@ -47,7 +49,7 @@ Klasy `gfx` opakowują obiekty żyjące na karcie graficznej, więc mają konstr
 Z tego wynikają trzy rzeczy:
 
 1. **Macierze liczy procesor.** `Transform::matrix()`, `Camera::viewMatrix()` i `Camera::projectionMatrix()` to zwykłe funkcje C++ zwracające `glm::mat4`. OpenGL dowiaduje się o macierzy dopiero wtedy, gdy kod rysujący wyśle ją do shadera: w projekcie robi to `NightMazeApp::onRender` przez `gfx::Shader::setMat4`.
-2. **Kod da się sprawdzić bez okna.** Wystarczy program konsolowy, który woła funkcje i wypisuje wyniki. Tak została sprawdzona matematyka obu struktur, zanim dostały użytkownika ([`camera.md`](camera.md), sekcja 5.6, i [`transforms.md`](transforms.md), sekcja 5.5).
+2. **Kod da się sprawdzić bez okna.** Wystarczy program konsolowy, który woła funkcje i wypisuje wyniki. Tak została sprawdzona matematyka struktur `Transform` i `Camera`, zanim dostały użytkownika ([`camera.md`](camera.md), sekcja 5.6, i [`transforms.md`](transforms.md), sekcja 5.5). Kolizje mają już stałe testy jednostkowe, uruchamiane przez `ctest` ([`collision.md`](collision.md), sekcja 5.7).
 3. **Struktury nie znają wejścia ani czasu.** `Camera` nie czyta klawiatury ani myszy i nie ma prędkości ruchu. Ma pola i funkcję `rotate`, a o tym, kiedy i o ile je zmienić, decyduje właściciel kamery (dziś `game::NightMazeApp`: mysz obraca, klawisze przesuwają). Dzięki temu ta sama kamera nadaje się do gry, do zadania laboratoryjnego i do sterowania z panelu.
 
 Kąty są wszędzie trzymane w stopniach, z jednostką w nazwie pola (`rotationDegrees`, `yawDegrees`, `fovDegrees`), a zamiana na radiany odbywa się w miejscu użycia.
@@ -66,21 +68,21 @@ flowchart TD
     Game --> Scene
     Gfx["gfx/<br/>Shader, Buffer, VertexArray"] --> Core
     Gfx --> Glm
-    Scene["scene/<br/>Transform, Camera"] --> Glm["GLM"]
+    Scene["scene/<br/>Transform, Camera, Collider"] --> Glm["GLM"]
     Gfx --> Glad["GLAD"]
     Core --> Glad
     Core --> Glfw["GLFW"]
     Debug --> ImGui["Dear ImGui"]
 ```
 
-Strzałka znaczy "zna i dołącza nagłówki". Diagram pokazuje stan faktyczny: `scene/` dołączają `game/` (`NightMazeApp.hpp` dołącza `scene/Camera.hpp` i `scene/Transform.hpp`) i `debug/` (`CameraPanel.cpp` dołącza `scene/Camera.hpp`), a samo `scene/` dołącza tylko GLM. `gfx/` też dołącza GLM, od kiedy `Shader::setMat4` przyjmuje `glm::mat4`.
+Strzałka znaczy "zna i dołącza nagłówki". Diagram pokazuje stan faktyczny: `scene/` dołączają `game/` (`NightMazeApp.hpp` dołącza `scene/Camera.hpp` i `scene/Transform.hpp`) i `debug/` (`CameraPanel.cpp` dołącza `scene/Camera.hpp`), a samo `scene/` dołącza tylko GLM. `gfx/` też dołącza GLM, od kiedy `Shader::setMat4` przyjmuje `glm::mat4`. Diagram pomija dwie rzeczy z kamienia milowego M2 + M3, żeby pozostał czytelny: pliki logiki labiryntu w `game/` (`MazeLayout.hpp` dołącza `scene/Collider.hpp`) i program testowy w `tests/`. Pokazuje je diagram w [`../game/README.md`](../game/README.md), sekcja 3.
 
 Pełny łańcuch warstw z PRD to `core <- gfx <- renderer <- scene <- game`. Warstwy `renderer/` w M1 nie ma, więc dziś łańcuch to `core <- gfx <- scene <- game`. Zasady dla `scene`:
 
-1. `scene/` **może** zależeć od `core/`, `gfx/` i GLM. Dziś korzysta tylko z GLM: `Transform` i `Camera` nie potrzebują ani okna, ani obiektów OpenGL.
+1. `scene/` **może** zależeć od `core/`, `gfx/` i GLM. Dziś korzysta tylko z GLM: `Transform`, `Camera` i `Collider` nie potrzebują ani okna, ani obiektów OpenGL.
 2. `scene/` nie zna `game/`, `debug/`, ImGui ani wejścia. Nie dołącza GLFW: o klawiszach i myszy wie tylko ten, kto steruje kamerą.
 3. `core/` i `gfx/` nie znają `scene/`. Zależność idzie w jedną stronę.
-4. Użytkownikami są `game/` i `debug/`. `game/` posiada kamerę i transform kostki, steruje kamerą i wysyła macierze do shadera. `debug/` ma panel Camera, który edytuje pola kamery przez referencję. Oba kierunki są dozwolone.
+4. Użytkownikami są `game/`, `debug/` i `tests/`. `game/` posiada kamerę i transform kostki, steruje kamerą i wysyła macierze do shadera, a w plikach labiryntu buduje pudełka kolizji. `debug/` ma panel Camera, który edytuje pola kamery przez referencję. `tests/` woła funkcje kolizji i sprawdza wyniki. Wszystkie trzy kierunki są dozwolone.
 
 W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/scene/*` należą do tej samej biblioteki statycznej `engine` co `src/core/*` i `src/gfx/*`. Nic w nich nie jest specyficzne dla Night Maze, więc warstwa nadaje się do zadań laboratoryjnych. GLM jest linkowane do `engine` jako `PUBLIC`, bo nagłówki `scene/` (i `gfx/Shader.hpp`) pokazują typy `glm::vec3` i `glm::mat4` w swoim API: każdy, kto je dołączy, musi znaleźć `<glm/glm.hpp>` ([`../../libraries/glm.md`](../../libraries/glm.md), sekcja 2).
 
@@ -107,6 +109,7 @@ Pytania z odpowiedziami do matematyki i kodu są w sekcji 9 każdego dokumentu t
 | [`transforms.md`](transforms.md), sekcja 9 | łańcuch przestrzeni, macierze 4 x 4, `w = 1` a `w = 0`, kolejność w `Transform::matrix()`, stopnie i radiany, struktury z publicznymi polami, obrót kostki |
 | [`camera.md`](camera.md), sekcja 9 | macierz widoku i `lookAt`, wzór na `forward()`, wektor w prawo, ograniczenie pitch, zawijanie yaw, parametr `eye`, rzutowanie i dzielenie przez `w`, nieliniowa głębia, proporcje, konwencja układu, droga wierzchołka, test głębi, framebuffer o rozmiarze zero |
 | [`camera-controls.md`](camera-controls.md), sekcja 9 | ruch myszy a obrót, minus przy `mouseDeltaY`, obrót w `onRender` a ruch w `onUpdate`, normalizacja kierunku, lot a chodzenie, interpolacja z `alpha`, ruch tylko przy przechwyconym kursorze, panel Camera |
+| [`collision.md`](collision.md), sekcja 9 | AABB i test nakładania, dotyk a nakładanie, wykrywanie dyskretne a przemiatanie, tunelowanie, ślizganie przy obsłudze osi po kolei, droga po schodkach a stały krok, tolerancja styku, kula z AABB |
 | ten plik, niżej | różnica między `scene` a `gfx`, zależności warstwy, dlaczego kamera nie zna wejścia |
 
 Trzy pytania dotyczące treści tego pliku:
@@ -122,7 +125,7 @@ Trzy pytania dotyczące treści tego pliku:
 
 ## 7. Źródła
 
-- LearnOpenGL, rozdziały "Transformations", "Coordinate Systems" i "Camera": <https://learnopengl.com/Getting-started/Transformations>, <https://learnopengl.com/Getting-started/Coordinate-Systems>, <https://learnopengl.com/Getting-started/Camera>.
+- LearnOpenGL, rozdziały "Transformations", "Coordinate Systems" i "Camera": <https://learnopengl.com/Getting-started/Transformations>, <https://learnopengl.com/Getting-started/Coordinate-Systems>, <https://learnopengl.com/Getting-started/Camera>, oraz "Collision detection": <https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-detection>.
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 6 (podział na warstwy, zawartość `scene/`), sekcja 9 (konwencja osi).
 - Dokument biblioteki: [`../../libraries/glm.md`](../../libraries/glm.md).
 - Szczegółowe źródła do każdego zagadnienia są w sekcji 10 dokumentów tematycznych.
