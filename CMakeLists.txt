@@ -18,8 +18,12 @@ function(night_maze_enable_warnings target)
     endif()
 endfunction()
 
-# ---- engine: reusable layers (core, gfx and scene now; assets and renderer later) -----
+# ---- engine: reusable layers (assets, core, gfx and scene now; renderer later) --------
 add_library(engine STATIC
+    src/assets/ImageLoader.cpp
+    src/assets/ImageLoader.hpp
+    src/assets/ObjLoader.cpp
+    src/assets/ObjLoader.hpp
     src/core/Application.cpp
     src/core/Application.hpp
     src/core/GlCheck.cpp
@@ -36,8 +40,13 @@ add_library(engine STATIC
     src/core/Window.hpp
     src/gfx/Buffer.cpp
     src/gfx/Buffer.hpp
+    src/gfx/Mesh.cpp
+    src/gfx/Mesh.hpp
     src/gfx/Shader.cpp
     src/gfx/Shader.hpp
+    src/gfx/Texture2D.cpp
+    src/gfx/Texture2D.hpp
+    src/gfx/Vertex.hpp
     src/gfx/VertexArray.cpp
     src/gfx/VertexArray.hpp
     src/scene/Camera.cpp
@@ -53,6 +62,9 @@ target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # scene/Camera.hpp, scene/Collider.hpp) expose GLM types, so every target that includes
 # them needs the GLM include path too.
 target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
+# stb_image is PRIVATE: only assets/ImageLoader.cpp includes its header, no header of
+# engine does, so the targets that use engine do not need its include path.
+target_link_libraries(engine PRIVATE stb_image)
 target_compile_definitions(engine PUBLIC
     GLFW_INCLUDE_NONE      # GLFW must not include an OpenGL header, GLAD provides it
     GL_SILENCE_DEPRECATION # macOS marks all of OpenGL as deprecated
@@ -104,13 +116,21 @@ enable_testing()
 add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
+    tests/ImageLoaderTests.cpp
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
+    tests/ObjLoaderTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
 night_maze_enable_warnings(night_maze_tests)
+# The loader tests read the real models and textures. A test must not depend on the
+# directory it is started from, so the absolute path of assets/ in the repository is
+# compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
+target_compile_definitions(night_maze_tests PRIVATE
+    NIGHT_MAZE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+)
 
 # One CTest test: it runs the whole test program and passes when the program exits with
 # code 0. The program is part of the default build, so the tests always compile.
