@@ -1,9 +1,9 @@
 # Moduł game: labirynt w świecie i jego rysowanie
 
-Kamień milowy: M2 + M3, w M4 doszły oświetlenie labiryntu (wybór programu, macierz normalnych na obiekt), pozycje świateł punktowych w `MazeWorld` i mapy normalnych (druga tekstura na jednostce 1, uniformy `uNormalMap` i `uNormalMapEnabled`). Tematy wykładu: 3 (Przekształcenia przestrzeni: macierz modelu), 4 (Wczytywanie OBJ: rysowanie modelu) i 5 (Tekstury: użycie w klatce), a od M4 także 6 i 7 w użyciu.
-Kod: [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp), [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp), [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), testy w [`tests/MazeWorldTests.cpp`](../../../tests/MazeWorldTests.cpp), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
+Kamień milowy: M2 + M3, w M4 doszły oświetlenie labiryntu (wybór programu, macierz normalnych na obiekt) i mapy normalnych (druga tekstura na jednostce 1, uniformy `uNormalMap` i `uNormalMapEnabled`), a w M5 wyjście, brama i kryształy jako pola `MazeWorld`, wspólne funkcje rysowania modelu w `ModelDraw` i uniform `uEmissive`. Tematy wykładu: 3 (Przekształcenia przestrzeni: macierz modelu), 4 (Wczytywanie OBJ: rysowanie modelu) i 5 (Tekstury: użycie w klatce), a od M4 także 6 i 7 w użyciu.
+Kod: [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp), [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp), [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp), testy w [`tests/MazeWorldTests.cpp`](../../../tests/MazeWorldTests.cpp), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
-Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument stoi na czterech innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, generator, funkcje układu `wallSegments`, `pillarPositions`, `mazeColliders`), [`../scene/transforms.md`](../scene/transforms.md) (macierz modelu i struktura `Transform`), [`../assets/asset-cache.md`](../assets/asset-cache.md) (skąd biorą się modele i tekstury) oraz [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured.vert` i `textured.frag`). Gracza, który po tym labiryncie chodzi, opisuje [`player.md`](player.md).
+Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument stoi na czterech innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, generator, funkcje układu `wallSegments`, `pillarPositions`, `mazeColliders`), [`../scene/transforms.md`](../scene/transforms.md) (macierz modelu i struktura `Transform`), [`../assets/asset-cache.md`](../assets/asset-cache.md) (skąd biorą się modele i tekstury) oraz [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured.vert` i `textured.frag`). Gracza, który po tym labiryncie chodzi, opisuje [`player.md`](player.md), a rundę, która się w nim toczy (kryształy, bateria, brama, wyjście), [`gameplay.md`](gameplay.md).
 
 ## 1. Po co to jest
 
@@ -13,14 +13,15 @@ Tym ogniwem są dwa elementy:
 
 | Element | Co robi | OpenGL | Biblioteka |
 |---|---|---|---|
-| `game::MazeWorld` i `buildMazeWorld` | z rozmiaru i ziarna liczy **wszystko, czego gra potrzebuje od labiryntu**: siatkę, listy ścian i słupków, macierze modelu każdego obiektu, pudełka kolizji, pozycję startu i wyjścia | nie | `game_logic` (testowalna) |
+| `game::MazeWorld` i `buildMazeWorld` | z rozmiaru i ziarna liczy **wszystko, czego gra potrzebuje od labiryntu**: siatkę, listy ścian i słupków, macierze modelu każdego obiektu, pudełka kolizji, pozycję startu, a od M5 komórkę wyjścia, bramę, strefę wyjścia i komórki kryształów | nie | `game_logic` (testowalna) |
 | `game::MazeRenderer` | rysuje `MazeWorld`: jedno wywołanie rysujące na obiekt, z modelem i teksturą z pamięci podręcznej assetów | tak | program `night_maze` |
+| `game::setModelSamplers` i `game::drawModel` (`ModelDraw.*`, od M5) | wspólna część rysowania modelu: numery jednostek teksturujących dla samplerów i pętla "część modelu, potem obiekty". Korzystają z niej `MazeRenderer` i `GameplayRenderer` (brama i kryształy) | tak | program `night_maze` |
 
 Do tego dochodzi mała struktura `game::MazeSettings`: prośba o nowy labirynt, którą wypełnia panel Maze, a wykonuje aplikacja.
 
 Podział jest taki sam jak w całym projekcie: dane i matematyka bez okna po jednej stronie (da się je przetestować), kod wymagający kontekstu OpenGL po drugiej.
 
-**Stan na dziś, uczciwie.** Program startuje nocą wewnątrz oteksturowanego i oświetlonego labiryntu 10 na 10 komórek z ziarna 1. Labirynt rysuje jeden z trzech programów, zależnie od trybu cieniowania: `lit` (tryby `Phong` i `Blinn-Phong`, startowy), `gouraud` albo `textured` (tryb `Unlit` i oba podglądy diagnostyczne). Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74) build Debug i Release przechodzi bez ostrzeżeń, 8 przypadków testowych `MazeWorldTests.cpp` przechodzi w obu konfiguracjach (w ramach 163 przypadków i 62220 asercji), program startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są: widok startowy, cztery tryby cieniowania z trzech miejsc, a z M2 + M3 (2026-10-05) tekstury ustawione poprawnie (nie do góry nogami i nie w lustrze) oraz widok z góry, na którym ściany zgadzają się z planem w panelu Maze. Przycisków `Regenerate` i `Random seed` ani listy `Lighting` nikt jeszcze nie kliknął ręcznie. Mapy normalnych są w kodzie: `MazeRenderer` podpina mapę normalnych każdej części do jednostki 1, a o tym, czy shader z niej korzysta, decyduje `usesNormalMap` (sekcje 5.6 i 5.7, cała technika w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)). Na zrzutach ekranu z 2026-10-05 fugi czytają się jako rowki na ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze. Pola wyboru `Normal mapping` nikt jeszcze nie kliknął ręcznie. Cieni nie ma (M7). Na macOS kod nie był budowany ani uruchamiany.
+**Stan na dziś, uczciwie.** Program startuje nocą wewnątrz oteksturowanego i oświetlonego labiryntu 10 na 10 komórek z ziarna 1, w którym od M5 toczy się runda: w labiryncie wisi 13 kryształów, a wyjście w komórce (6, 5) zamyka brama ([`gameplay.md`](gameplay.md)). Labirynt, bramę i kryształy rysuje jeden z trzech programów, zależnie od trybu cieniowania: `lit` (tryby `Phong` i `Blinn-Phong`, startowy), `gouraud` albo `textured` (tryb `Unlit` i oba podglądy diagnostyczne). M5 jest na Windowsie kompletny w kodzie i **nie jest zamknięty** (bez tagu wersji). Według zgłoszenia autora kodu z 2026-10-05: build Debug i Release przechodzi bez ostrzeżeń, 8 przypadków testowych `MazeWorldTests.cpp` przechodzi w obu konfiguracjach (w ramach 215 przypadków i 85098 asercji całego programu testowego), a obraz był sprawdzony na zrzutach ekranu zrobionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: nic z M5 nie było budowane ani uruchamiane na macOS i nikt jeszcze nie testował ręcznie (przycisków `Regenerate` i `Random seed`, listy `Lighting`, pola wyboru `Normal mapping`, przejścia przez otwartą bramę). Z wcześniejszych kamieni milowych zostają sprawdzone na zrzutach ekranu z Windowsa (2026-10-05): widok startowy, cztery tryby cieniowania z trzech miejsc, tekstury ustawione poprawnie (nie do góry nogami i nie w lustrze), widok z góry, na którym ściany zgadzają się z planem w panelu Maze, oraz mapy normalnych (fugi czytają się jako rowki na ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze). Mapy normalnych: `drawModel` podpina mapę normalnych każdej części do jednostki 1, a o tym, czy shader z niej korzysta, decyduje `usesNormalMap` (sekcje 5.6 i 5.7, cała technika w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)). Cieni nie ma (M7).
 
 ## 2. Teoria
 
@@ -33,14 +34,15 @@ flowchart LR
     C --> D["macierze modelu<br>jedna na obiekt"]
     C --> E["mazeColliders<br>pudełka kolizji"]
     D --> F["MazeRenderer::draw<br>uModel, potem rysowanie"]
-    E --> G["Player::update<br>moveAndSlide"]
+    E --> R["roundObstacles<br>plus pudełko bramy,<br>dopóki jest zamknięta"]
+    R --> G["Player::update<br>moveAndSlide"]
 ```
 
 1. **Siatka** (`Maze`) odpowiada na pytanie logiczne: czy komórka (x, z) ma ścianę po danej stronie. Nie ma w niej metrów.
 2. **Rozmieszczenie** (placement) zamienia to na świat: segment ściany to pozycja środka jego podstawy i oś, wzdłuż której biegnie, a słupek to pozycja. Jedna komórka ma 2 na 2 m, labirynt zaczyna się w początku układu i rozciąga w stronę +X i +Z ([`maze-generator.md`](maze-generator.md), sekcja 2.7).
 3. **Macierz modelu** zamienia rozmieszczenie na coś, co rozumie shader: macierz 4 x 4, która przenosi wierzchołki modelu z jego przestrzeni lokalnej do świata ([`../scene/transforms.md`](../scene/transforms.md), sekcja 2).
 
-Z tego samego rozmieszczenia powstają też pudełka kolizji. To ważne: obraz i kolizje mają **jedno źródło**, więc ściana, którą widać, jest tą samą ścianą, która zatrzymuje gracza.
+Z tego samego rozmieszczenia powstają też pudełka kolizji. To ważne: obraz i kolizje mają **jedno źródło**, więc ściana, którą widać, jest tą samą ścianą, która zatrzymuje gracza. Od M5 gracz nie dostaje listy `mazeColliders` wprost: `game::roundObstacles` dokłada do niej pudełko bramy, dopóki brama jest zamknięta ([`player.md`](player.md), sekcja 2, i [`gameplay.md`](gameplay.md), sekcja 5).
 
 ### 2.2 Jeden model, wiele macierzy
 
@@ -60,6 +62,8 @@ słupki  = (w + 1)(h + 1)          każdy węzeł siatki ma słupek
 ```
 
 Każdy węzeł ma słupek, bo węzeł wewnętrzny bez żadnej ściany oznaczałby cztery komórki połączone w kółko, a labirynt doskonały nie ma cykli. Dla 10 na 10 obie liczby to `11 * 11 = 121`.
+
+Od M5 tak samo rysowane są rzeczy rundy: brama (`models/gate.obj`, jedna sztuka) i kryształy (`models/crystal_a.obj` i `models/crystal_b.obj`, w labiryncie startowym 13 sztuk). To też "jeden model, osobna macierz na obiekt", z jedną różnicą: te obiekty się ruszają, więc ich macierze liczy co klatkę `GameplayRenderer::draw`, a nie raz `buildMazeWorld` (sekcja 2.4 i [`gameplay.md`](gameplay.md), sekcja 5).
 
 ### 2.3 Macierz modelu ściany: przesunięcie i obrót o 90 stopni
 
@@ -85,9 +89,9 @@ Normalne obracają się razem ze ścianą: shader wierzchołków mnoży je przez
 
 Labirynt się nie rusza. Macierz modelu ściany jest taka sama w każdej klatce, aż do wygenerowania nowego labiryntu. Liczenie jej w każdej klatce to 342 razy na klatkę: budowa macierzy jednostkowej, przesunięcie, trzy obroty (każdy z sinusem i kosinusem) i skala. Dlatego `buildMazeWorld` liczy wszystkie macierze **raz** i zapisuje je w trzech wektorach, a pętla rysowania tylko je czyta.
 
-Zasada ogólna: to, co zależy tylko od poziomu, liczy się przy wczytaniu poziomu. To, co zależy od klatki (macierz widoku, pozycja gracza), liczy się w klatce.
+Zasada ogólna: to, co zależy tylko od poziomu, liczy się przy wczytaniu poziomu. To, co zależy od klatki (macierz widoku, pozycja gracza), liczy się w klatce. Ta sama zasada działa w drugą stronę dla bramy i kryształów: brama zapada się w ziemię po otwarciu, a kryształy unoszą się i obracają, więc ich macierze zależą od czasu rundy i są liczone w klatce, w `GameplayRenderer::draw`. Macierz bramy liczy przy tym ta sama funkcja `wallModelMatrix`, która raz policzyła macierze ścian (sekcja 5.5).
 
-To samo dotyczy pudełek kolizji: `mazeColliders` jest wołane raz, a gracz dostaje gotową listę 120 razy na sekundę.
+To samo dotyczy pudełek kolizji: `mazeColliders` jest wołane raz, a gracz dostaje gotową listę 120 razy na sekundę. Lista gracza (`m_obstacles`) jest budowana od nowa najwyżej dwa razy na rundę: na jej początku i w chwili otwarcia bramy.
 
 ### 2.5 Jedno wywołanie rysujące na obiekt i ile to kosztuje
 
@@ -100,11 +104,20 @@ Labirynt domyślny:
 | płytki podłogi | 100 | 2 | 200 |
 | ściany | 121 | 30 | 3630 |
 | słupki | 121 | 30 | 3630 |
-| razem | 342 wywołania | | 7460 |
+| razem (sam labirynt) | 342 wywołania | | 7460 |
 
-Każde z 342 wywołań to cztery funkcje OpenGL: wyszukanie położenia uniformu `uModel`, wysłanie macierzy, podpięcie VAO i samo rysowanie (sekcja 3). W buildzie Debug każdą z nich sprawdza jeszcze `glGetError` w makrze `GL_CHECK`.
+Od M5 dochodzą rzeczy rundy, rysowane przez `GameplayRenderer` tą samą funkcją `drawModel`:
 
-Koszt wywołania rysującego nie leży w trójkątach, tylko w przejściu przez sterownik: każde wywołanie to praca procesora przed tym, zanim karta cokolwiek narysuje. Dla setek wywołań jest to niezauważalne. Dla dziesiątek tysięcy staje się wąskim gardłem. Suwaki w panelu Maze kończą się na 40 na 40 komórek, co daje `1600 + 1681 + 1681 = 4962` wywołania.
+| Co | Obiekty | Trójkąty na obiekt | Kiedy |
+|---|---|---|---|
+| brama | 1 | 70 | dopóki choć część wystaje nad podłogę (`gateVisible`): przez całą rundę przed otwarciem i jeszcze 1,5 s po nim |
+| kryształy | 13 w labiryncie startowym, najwyżej 16 w dowolnym | 24 (`crystal_a`) albo 66 (`crystal_b`) | dopóki kryształ nie jest zebrany |
+
+Na początku rundy w labiryncie startowym daje to `342 + 1 + 13 = 356` wywołań, a z każdym zebranym kryształem o jedno mniej. Liczby trójkątów pochodzą z plików OBJ (linie `f`, wszystkie ściany są trójkątami). Sumy trójkątów kryształów nie podaję, bo zależy od tego, który z dwóch modeli wylosował każdy kryształ.
+
+Każde wywołanie rysujące to sześć funkcji OpenGL: dwa wyszukania położenia uniformu (`uModel` i `uNormalMatrix`), dwa wysłania macierzy, podpięcie VAO i samo rysowanie (sekcja 3). W buildzie Debug każdą z nich sprawdza jeszcze `glGetError` w makrze `GL_CHECK`.
+
+Koszt wywołania rysującego nie leży w trójkątach, tylko w przejściu przez sterownik: każde wywołanie to praca procesora przed tym, zanim karta cokolwiek narysuje. Dla setek wywołań jest to niezauważalne. Dla dziesiątek tysięcy staje się wąskim gardłem. Suwaki w panelu Maze kończą się na 40 na 40 komórek, co daje `1600 + 1681 + 1681 = 4962` wywołania dla labiryntu, a z bramą i 16 kryształami (więcej `crystalCountFor` nie daje) 4979.
 
 Dwie techniki, które zmniejszają liczbę wywołań, i dlaczego ich tu nie ma:
 
@@ -115,15 +128,19 @@ Dwie techniki, które zmniejszają liczbę wywołań, i dlaczego ich tu nie ma:
 
 Wersja "jeden obiekt, jedna macierz, jedno wywołanie" jest najprostsza do wytłumaczenia linia po linii i przy tej skali wystarcza. Czasu samych wywołań nie mierzyłem. Jedyna obserwacja: na Windowsie program w konfiguracji Debug pokazywał na starcie około 1500 FPS (z synchronizacją pionową ustawioną tak, jak zostawił ją sterownik). To pojedynczy odczyt, a nie pomiar, i nie buduję na nim żadnych wniosków.
 
-Kolejność pętli ma znaczenie także przy tej prostej wersji: tekstura i kolor materiału są ustawiane raz na model, a wewnątrz zmienia się tylko macierz (sekcja 5.6).
+Kolejność pętli ma znaczenie także przy tej prostej wersji: tekstura i kolor materiału są ustawiane raz na model, a wewnątrz zmienia się tylko macierz (sekcja 5.6). Dla podłogi, ścian i słupków to trzy ustawienia na klatkę. Brama i każdy kryształ to osobne wywołanie `drawModel` z jedną macierzą, więc tam tekstury i kolor są ustawiane raz na obiekt: na początku rundy w labiryncie startowym razem `3 + 1 + 13 = 17` razy na klatkę.
 
-### 2.6 Start, wyjście i znacznik
+### 2.6 Start, wyjście i brama
 
-- **Start**: środek komórki (0, 0), czyli północno-zachodni róg labiryntu, na wysokości podłogi: `(1, 0, 1)`.
+- **Start**: środek komórki (0, 0), czyli północno-zachodni róg labiryntu, na wysokości podłogi: `(1, 0, 1)`. W kodzie to stała `START_CELL` w `MazeWorld.cpp`.
 - **Kierunek na starcie**: gracz ma patrzeć w korytarz, a nie w ścianę. Yaw wskazuje pierwszy bok komórki startowej, który nie ma ściany, sprawdzany w stałej kolejności północ, wschód, południe, zachód. Yaw kamery rośnie zgodnie z ruchem wskazówek zegara co 90 stopni (0 północ, 90 wschód, 180 południe, 270 zachód), tak samo jak kolejność kierunków w wyliczeniu `Direction`, więc kąt to numer kierunku razy 90.
-- **Wyjście**: środek komórki w przeciwległym rogu, `(width - 1, height - 1)`. Dla 10 na 10 to `(19, 0, 19)`. Samego wyjścia jeszcze nie ma (to późniejszy kamień milowy). Jego miejsce oznacza kolorowa kostka z M1, która unosi się 4,5 m nad podłogą tej komórki, ponad ścianami (3 m) i słupkami (3,15 m).
+- **Wyjście**: komórka **najdalsza od startu, licząc w przejściach**, a nie w linii prostej i nie przeciwległy róg. Wybiera ją `game::placeExit` przeszukiwaniem wszerz (BFS) po przejściach labiryntu. Dla labiryntu startowego to komórka (6, 5), czyli środek w `(13, 0, 11)`. Algorytm, remisy i uzasadnienie są w [`gameplay.md`](gameplay.md), sekcja 2, a sama decyzja w [`../../decisions/exit-farthest-cell.md`](../../decisions/exit-farthest-cell.md). Do M4 wyjściem był przeciwległy róg `(width - 1, height - 1)`, a jego miejsce oznaczała kostka z M1 unosząca się nad labiryntem. Kostki już nie ma.
+- **Brama**: stoi na otwartym boku komórki wyjścia, dokładnie tam, gdzie stałby segment ściany, gdyby ten bok był zamknięty. Komórka wyjścia w labiryncie wygenerowanym jest ślepym zaułkiem, więc ma jeden otwarty bok i brama zamyka ją całkowicie. W labiryncie startowym brama stoi na wschodnim boku komórki (6, 5): pozycja `(14, 0, 11)`, oś `AlongZ`. Brama jest opisana tym samym typem `WallSegment` co ściany, więc macierz modelu i pudełko kolizji liczą dla niej te same funkcje (`wallModelMatrix`, `wallBox`).
+- **Strefa wyjścia**: pudełko 1 na 1 m w środku komórki wyjścia, wysokie jak ściany. Wejście w nie przy otwartej bramie kończy rundę wygraną ([`gameplay.md`](gameplay.md), sekcja 2).
 
 W labiryncie wygenerowanym komórka (0, 0) ma od północy i zachodu ścianę zewnętrzną, więc otwarty bok to wschód albo południe. Wschód jest sprawdzany wcześniej, więc gdy otwarte są oba, gracz patrzy na wschód.
+
+Labirynt z jedną komórką jest przypadkiem brzegowym: start i wyjście to ta sama komórka, nie ma ona otwartego boku, więc nie ma też bramy (`hasGate` jest fałszem), a kryształów jest zero.
 
 ### 2.7 Regeneracja: prośba i wykonanie
 
@@ -142,48 +159,52 @@ sequenceDiagram
     A->>A: kroki symulacji (jeszcze stary labirynt)
     A->>S: onRender, pierwsza linia: regenerate?
     S-->>A: tak, flaga wraca na false
-    A->>A: regenerateMaze: przycięcie rozmiaru, buildMazeWorld, enterMaze
+    A->>A: regenerateMaze: przycięcie rozmiaru, buildMazeWorld, beginRound
     A->>A: rysuje nowy labirynt
 ```
 
 Prośba to cztery pola: szerokość, wysokość, ziarno i flaga `regenerate`. Suwaki zmieniają tylko trzy liczby: dopóki nikt nie kliknie przycisku, labirynt w grze zostaje ten sam, a panel pokazuje obok siebie "zamówiony" i "w grze".
 
-Wymiana labiryntu to jedno przypisanie całej struktury `MazeWorld`: siatka, macierze i pudełka zmieniają się razem. Żaden krok symulacji nie widzi stanu pośredniego, bo kroki klatki już się skończyły, gdy `onRender` się zaczyna.
+Wymiana labiryntu to jedno przypisanie całej struktury `MazeWorld`: siatka, macierze, pudełka, wyjście z bramą i kryształy zmieniają się razem. Żaden krok symulacji nie widzi stanu pośredniego, bo kroki klatki już się skończyły, gdy `onRender` się zaczyna.
 
-Po wymianie trzeba jeszcze "wejść" do nowego labiryntu: przenieść kostkę nad nowe wyjście i postawić gracza na starcie. Stara pozycja gracza mogłaby wypaść w ścianie nowego labiryntu albo poza nim.
+Nowy labirynt to nowa runda. Po wymianie aplikacja woła `beginRound`: wszystkie kryształy wracają na miejsca, bateria jest pełna, brama zamknięta, latarka włączona, a gracz staje na starcie. Stara pozycja gracza mogłaby wypaść w ścianie nowego labiryntu albo poza nim, a stary stan rundy (zebrane kryształy) w ogóle nie pasowałby do nowych kryształów. Ta sama funkcja zaczyna rundę od nowa na tym samym labiryncie (klawisz R): opisuje ją [`gameplay.md`](gameplay.md), sekcja 5, a jej część dotyczącą gracza [`player.md`](player.md), sekcja 5.8.
 
 ## 3. Jak to działa w OpenGL
 
-`MazeWorld` nie woła OpenGL wcale. `MazeRenderer` nie woła go bezpośrednio: korzysta z klas `gfx::Shader`, `gfx::Texture2D` i `gfx::Mesh`. Poniżej jest to, co te klasy robią w jednej klatce dla labiryntu, w kolejności. Tabela pokazuje tryb `Unlit` (program `textured`). Różnice dla programów oświetlenia są pod nią:
+`MazeWorld` nie woła OpenGL wcale. `MazeRenderer` i funkcje z `ModelDraw` nie wołają go bezpośrednio: korzystają z klas `gfx::Shader`, `gfx::Texture2D` i `gfx::Mesh`. Poniżej jest to, co te klasy robią w jednej klatce dla labiryntu (podłoga, ściany, słupki), w kolejności. Tabela pokazuje tryb `Unlit` (program `textured`). Różnice dla programów oświetlenia i dla rzeczy rundy są pod nią:
 
-| Krok | Kod projektu | Wywołania OpenGL | Ile razy na klatkę (10 na 10) |
-|---|---|---|---|
-| 1 | `m_texturedShader.use()` | `glUseProgram` | 1 |
-| 2 | `setMat4(VIEW_UNIFORM, ...)`, `setMat4(PROJECTION_UNIFORM, ...)` | `glGetUniformLocation`, `glUniformMatrix4fv` | po 1 |
-| 3 | `setInt(VIEW_MODE_UNIFORM, ...)`, `setInt(NORMAL_MAP_ENABLED_UNIFORM, ...)`, `setInt(TEXTURE_UNIFORM, 0)`, `setInt(NORMAL_MAP_UNIFORM, 1)` | `glGetUniformLocation`, `glUniform1i` | po 1 |
-| 4a | `part.normalMap->bind(NORMAL_MAP_UNIT)` | `glActiveTexture(GL_TEXTURE1)`, `glBindTexture`, `glBindSampler` | 3 (raz na model: każdy ma jedną część) |
-| 4b | `part.texture->bind(TEXTURE_UNIT)` | `glActiveTexture(GL_TEXTURE0)`, `glBindTexture`, `glBindSampler` | 3 |
-| 5 | `setVec3(TINT_UNIFORM, part.color)` | `glGetUniformLocation`, `glUniform3fv` | 3 |
-| 6 | `setMat4(MODEL_UNIFORM, modelMatrix)` | `glGetUniformLocation`, `glUniformMatrix4fv` | 342 |
-| 6a | `setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix))` (od M4) | `glGetUniformLocation`, `glUniformMatrix3fv` | 342 |
-| 7 | `model->mesh.draw(part.firstIndex, part.indexCount)` | `glBindVertexArray`, `glDrawElements` | 342 |
+| Krok | Kod projektu | Gdzie w kodzie | Wywołania OpenGL | Ile razy na klatkę (10 na 10) |
+|---|---|---|---|---|
+| 1 | `m_texturedShader.use()` | `drawUnlitMaze` | `glUseProgram` | 1 |
+| 2 | `setMat4(VIEW_UNIFORM, ...)`, `setMat4(PROJECTION_UNIFORM, ...)` | `drawUnlitMaze` | `glGetUniformLocation`, `glUniformMatrix4fv` | po 1 |
+| 3 | `setInt(VIEW_MODE_UNIFORM, ...)`, `setInt(NORMAL_MAP_ENABLED_UNIFORM, ...)` | `drawUnlitMaze` | `glGetUniformLocation`, `glUniform1i` | po 1 |
+| 3a | `setInt(TEXTURE_UNIFORM, 0)`, `setInt(NORMAL_MAP_UNIFORM, 1)` | `setModelSamplers` | `glGetUniformLocation`, `glUniform1i` | po 1 |
+| 3b | `setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F})` (od M5) | `MazeRenderer::draw` | `glGetUniformLocation`, `glUniform3fv` | 1 |
+| 4a | `part.normalMap->bind(NORMAL_MAP_UNIT)` | `drawModel` | `glActiveTexture(GL_TEXTURE1)`, `glBindTexture`, `glBindSampler` | 3 (raz na model: każdy ma jedną część) |
+| 4b | `part.texture->bind(TEXTURE_UNIT)` | `drawModel` | `glActiveTexture(GL_TEXTURE0)`, `glBindTexture`, `glBindSampler` | 3 |
+| 5 | `setVec3(TINT_UNIFORM, part.color)` | `drawModel` | `glGetUniformLocation`, `glUniform3fv` | 3 |
+| 6 | `setMat4(MODEL_UNIFORM, modelMatrix)` | `drawModel` | `glGetUniformLocation`, `glUniformMatrix4fv` | 342 |
+| 6a | `setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix))` (od M4) | `drawModel` | `glGetUniformLocation`, `glUniformMatrix3fv` | 342 |
+| 7 | `model->mesh.draw(part.firstIndex, part.indexCount)` | `drawModel` | `glBindVertexArray`, `glDrawElements` | 342 |
 
-**Tryby z oświetleniem.** W trybach `Gouraud`, `Phong` i `Blinn-Phong` krok 1 wybiera program `gouraud` albo `lit`, a w kroku 3 zamiast `uViewMode` ustawiane są `uSpecularModel` (`glUniform1i`), `uSpecularStrength` i `uShininess` (`glUniform1f`). `uNormalMapEnabled` ustawiają obie funkcje. Kroki od 4a do 7 są identyczne: to ta sama funkcja `MazeRenderer::draw`. Program `gouraud` nie ma ani `uNormalMap`, ani `uNormalMapEnabled`: oba ustawienia są dla niego ignorowane tak samo jak krok 6a dla `textured`, a mapa normalnych podpięta do jednostki 1 w kroku 4a po prostu nie jest przez nikogo czytana. Pełna tabela dla tych trybów jest w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 3.
+**Rzeczy rundy (od M5).** Zaraz po labiryncie, tym samym programem, rysuje `GameplayRenderer::draw` ([`gameplay.md`](gameplay.md), sekcja 5). Powtarza krok 3a (drugie `setModelSamplers` w klatce), ustawia `uEmissive` (czerń przed bramą, o ile brama jest widoczna, potem blask kryształów, czyli dwa albo trzy ustawienia tego uniformu na klatkę razem z krokiem 3b) i dla bramy oraz dla każdego niezebranego kryształu woła `drawModel` z jedną macierzą. Każde takie wywołanie to kroki od 4a do 7 wykonane po jednym razie. Na początku rundy w labiryncie startowym kroki 4a, 4b i 5 wykonują się więc `3 + 1 + 13 = 17` razy na klatkę, a kroki 6, 6a i 7 `342 + 1 + 13 = 356` razy.
 
-**Krok 6a w programie `textured`.** Ten program nie ma uniformu `uNormalMatrix`. `glGetUniformLocation` zwraca wtedy -1, a `glUniformMatrix3fv` z położeniem -1 jest po cichu ignorowane ([`../gfx/uniforms.md`](../gfx/uniforms.md)). `MazeRenderer` nie musi więc wiedzieć, którym programem rysuje. Ceną są 342 zbędne pary wywołań na klatkę w trybie `Unlit`.
+**Tryby z oświetleniem.** W trybach `Gouraud`, `Phong` i `Blinn-Phong` krok 1 wybiera program `gouraud` albo `lit`, a w kroku 3 zamiast `uViewMode` ustawiane są `uSpecularModel` (`glUniform1i`), `uSpecularStrength` i `uShininess` (`glUniform1f`). `uNormalMapEnabled` ustawiają obie funkcje. Kroki od 3a do 7 są identyczne: to te same funkcje `MazeRenderer::draw` i `drawModel`. Program `gouraud` nie ma ani `uNormalMap`, ani `uNormalMapEnabled`: oba ustawienia są dla niego ignorowane tak samo jak krok 6a dla `textured`, a mapa normalnych podpięta do jednostki 1 w kroku 4a po prostu nie jest przez nikogo czytana. Tabelę dla tych trybów ma [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 3.
+
+**Krok 6a w programie `textured`.** Ten program nie ma uniformu `uNormalMatrix`. `glGetUniformLocation` zwraca wtedy -1, a `glUniformMatrix3fv` z położeniem -1 jest po cichu ignorowane ([`../gfx/uniforms.md`](../gfx/uniforms.md)). `drawModel` nie musi więc wiedzieć, którym programem rysuje. Ceną jest jedna zbędna para wywołań na obiekt w każdej klatce w trybie `Unlit` (342 dla samego labiryntu).
 
 Uwagi:
 
 - Uniformy należą do programu, który jest w użyciu, więc `use()` stoi przed wszystkimi setterami ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 2).
 - `uTexture` i `uNormalMap` to samplery: przechowują **numer jednostki teksturującej**, a nie teksturę. Obrazy kolorów labiryntu są podpinane do jednostki 0 i `uTexture` dostaje 0, mapy normalnych do jednostki 1 i `uNormalMap` dostaje 1 ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2). Shader może przeczytać obie tekstury dla tego samego fragmentu tylko dlatego, że leżą na różnych jednostkach.
 - Mapa normalnych jest podpinana **pierwsza**, a obraz koloru drugi. `Texture2D::bind` zaczyna od `glActiveTexture`, więc po kroku 4b aktywna zostaje jednostka 0 (sekcja 5.6).
-- `glDrawElements` dostaje zakres indeksów części (pierwszy indeks i liczbę), a nie całą siatkę. Dla trzech modeli labiryntu część jest jedna i obejmuje całość ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5).
+- `glDrawElements` dostaje zakres indeksów części (pierwszy indeks i liczbę), a nie całą siatkę. Dla trzech modeli labiryntu, dla bramy i dla obu kryształów część jest jedna i obejmuje całość: każdy z sześciu plików OBJ ma jedną linię `usemtl` ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 5).
 - Test głębi jest włączony przez `onRender` przed rysowaniem, więc kolejność rysowania obiektów nie wpływa na obraz: bliższe ściany zasłaniają dalsze niezależnie od tego, która była pierwsza ([`../scene/camera.md`](../scene/camera.md), sekcja 3).
 - Odrzucanie ścian tylnych (face culling) nie jest włączone: każdy trójkąt jest rysowany z obu stron.
 
 ## 4. Shadery
 
-Labirynt rysują trzy pary shaderów. Która, zależy od trybu cieniowania z panelu Renderer i od trybu widoku z panelu Assets (sekcja 5.7):
+Labirynt, a od M5 razem z nim bramę i kryształy, rysują trzy pary shaderów. Która, zależy od trybu cieniowania z panelu Renderer i od trybu widoku z panelu Assets (sekcja 5.7):
 
 | Para | Kiedy rysuje labirynt | Dokument |
 |---|---|---|
@@ -191,7 +212,7 @@ Labirynt rysują trzy pary shaderów. Która, zależy od trybu cieniowania z pan
 | [`lit.vert`](../../../assets/shaders/lit.vert), [`lit.frag`](../../../assets/shaders/lit.frag) | tryby `Phong` i `Blinn-Phong` (startowy) przy zwykłym widoku | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4 |
 | [`gouraud.vert`](../../../assets/shaders/gouraud.vert), [`gouraud.frag`](../../../assets/shaders/gouraud.frag) | tryb `Gouraud` przy zwykłym widoku | ten sam dokument |
 
-Wszystkie trzy czytają tę samą siatkę `gfx::Mesh` z czterema atrybutami wierzchołka (pozycja, normalna, uv, styczna; `gouraud.vert` stycznej nie deklaruje) i mają te same nazwy uniformów dla tego, co ustawia `MazeRenderer`, więc jedna funkcja `draw` obsługuje każdy z nich. Tutaj jest tylko to, co `MazeRenderer` i `NightMazeApp` im podają:
+Wszystkie trzy czytają tę samą siatkę `gfx::Mesh` z czterema atrybutami wierzchołka (pozycja, normalna, uv, styczna; `gouraud.vert` stycznej nie deklaruje) i mają te same nazwy uniformów dla tego, co ustawiają `MazeRenderer` i `drawModel`, więc jedna funkcja `draw` obsługuje każdy z nich. Tutaj jest tylko to, co `MazeRenderer`, funkcje z `ModelDraw` i `NightMazeApp` im podają:
 
 | Uniform | Stała w `ShaderUniforms.hpp` | Kto ustawia | Jak często | Wartość | W których programach istnieje |
 |---|---|---|---|---|---|
@@ -200,11 +221,14 @@ Wszystkie trzy czytają tę samą siatkę `gfx::Mesh` z czterema atrybutami wier
 | `uViewMode` | `VIEW_MODE_UNIFORM` | `drawUnlitMaze` | raz na klatkę | wartość `game::ViewMode`: 0, 1 albo 2 | tylko `textured` |
 | `uSpecularModel`, `uSpecularStrength`, `uShininess` | `SPECULAR_MODEL_UNIFORM`, `SPECULAR_STRENGTH_UNIFORM`, `SHININESS_UNIFORM` | `drawLitMaze` | raz na klatkę | wzór odbłysku (0 albo 1), jego siła i wykładnik | `lit`, `gouraud` |
 | `uNormalMapEnabled` | `NORMAL_MAP_ENABLED_UNIFORM` | `drawUnlitMaze` i `drawLitMaze` | raz na klatkę | 1 albo 0: wynik `usesNormalMap(m_lighting)` | `lit`, `textured` (tam czyta go tylko podgląd normalnych). W `gouraud` nie istnieje |
-| `uTexture` | `TEXTURE_UNIFORM` | `MazeRenderer::draw` | raz na klatkę | 0: numer jednostki teksturującej obrazu koloru | we wszystkich trzech |
-| `uNormalMap` | `NORMAL_MAP_UNIFORM` | `MazeRenderer::draw` | raz na klatkę | 1: numer jednostki teksturującej mapy normalnych | `lit`, `textured`. W `gouraud` nie istnieje i ustawienie jest ignorowane |
-| `uTint` | `TINT_UNIFORM` | `MazeRenderer::drawInstances` | raz na część modelu | kolor rozproszenia materiału (`Kd`) | we wszystkich trzech |
-| `uModel` | `MODEL_UNIFORM` | `MazeRenderer::drawInstances` | raz na obiekt | macierz modelu z `MazeWorld` | we wszystkich trzech |
-| `uNormalMatrix` | `NORMAL_MATRIX_UNIFORM` | `MazeRenderer::drawInstances` | raz na obiekt | `scene::normalMatrix(modelMatrix)` | `lit`, `gouraud`. W `textured` nie istnieje i ustawienie jest ignorowane |
+| `uTexture` | `TEXTURE_UNIFORM` | `setModelSamplers`, wołana z `MazeRenderer::draw` i z `GameplayRenderer::draw` | dwa razy na klatkę (po razie w każdej z nich) | 0: numer jednostki teksturującej obrazu koloru | we wszystkich trzech |
+| `uNormalMap` | `NORMAL_MAP_UNIFORM` | `setModelSamplers` | dwa razy na klatkę | 1: numer jednostki teksturującej mapy normalnych | `lit`, `textured`. W `gouraud` nie istnieje i ustawienie jest ignorowane |
+| `uEmissive` (od M5) | `EMISSIVE_UNIFORM` | `MazeRenderer::draw`, potem `GameplayRenderer::draw` | raz dla labiryntu, raz dla bramy (gdy jest widoczna), raz dla wszystkich kryształów | światło, które powierzchnia oddaje sama: czerń `(0, 0, 0)` dla kamienia i dla drewna bramy, `crystalGlow(...)` dla kryształów | we wszystkich trzech (w `textured` czyta go tylko zwykły widok, `uViewMode == 0`) |
+| `uTint` | `TINT_UNIFORM` | `drawModel` | raz na część modelu w każdym wywołaniu `drawModel` | kolor rozproszenia materiału (`Kd`) | we wszystkich trzech |
+| `uModel` | `MODEL_UNIFORM` | `drawModel` | raz na obiekt | macierz modelu: z `MazeWorld` dla labiryntu, liczona w klatce dla bramy i kryształów | we wszystkich trzech |
+| `uNormalMatrix` | `NORMAL_MATRIX_UNIFORM` | `drawModel` | raz na obiekt | `scene::normalMatrix(modelMatrix)` | `lit`, `gouraud`. W `textured` nie istnieje i ustawienie jest ignorowane |
+
+**`uEmissive` w shaderach.** W `lit.frag` i `gouraud.frag` blask dołącza do światła rozproszonego: `surface * (diffuse + uEmissive) + specular` (w `gouraud.frag` światło rozproszone i odbłysk przychodzą z shadera wierzchołków jako `vDiffuseLight` i `vSpecularLight`). Nie zależy od żadnego światła sceny, więc kryształ świeci także w najciemniejszym kącie. W `textured.frag` zwykły widok to `texel * uTint * (vec3(1.0) + uEmissive)`: bez oświetlenia powierzchnia jest pokazana tak, jakby padało na nią białe światło o sile 1, i blask jest do tego światła dodawany. Dla kamienia `uEmissive` jest czernią, więc wszystkie trzy wzory dają dokładnie to, co przed M5. Skąd bierze się wartość dla kryształów i jak pulsuje, opisuje [`gameplay.md`](gameplay.md), sekcja 4.
 
 Światła nie są w tej tabeli: programy `lit` i `gouraud` czytają je z bloku uniformów `LightBlock`, który `NightMazeApp::onRender` wypełnia raz na klatkę przed rysowaniem ([`flashlight.md`](flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 
@@ -222,7 +246,7 @@ Liczby są jawne, bo shader porównuje `uViewMode` z tymi samymi liczbami (`if (
 
 Komentarz przy `Normals` mówi "the normal used for shading": podgląd pokazuje normalną, którą cieniowałby wybrany tryb. Przy włączonym mapowaniu normalnych i trybie innym niż `Gouraud` jest to normalna z mapy normalnych, w pozostałych przypadkach normalna siatki.
 
-W programie `textured` nie ma oświetlenia: kolor fragmentu to tekstura razy kolor materiału, a normalne służą tylko widokowi diagnostycznemu. W programach `lit` i `gouraud` normalne siatki, przeniesione do przestrzeni świata macierzą normalnych, są podstawą rachunku światła ([`../scene/lights.md`](../scene/lights.md)). W programie `lit` normalną fragmentu może zastąpić ta z mapy normalnych: funkcja `surfaceNormal` z pliku `common/normal_map.glsl`, który dołączają `lit.frag` i `textured.frag` ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.1). Program `gouraud` liczy światło w wierzchołkach i map normalnych nie używa (tamże, sekcja 2.11).
+W programie `textured` nie ma oświetlenia: kolor fragmentu to tekstura razy kolor materiału (dla kryształów jeszcze razy `1 + uEmissive`), a normalne służą tylko widokowi diagnostycznemu. W programach `lit` i `gouraud` normalne siatki, przeniesione do przestrzeni świata macierzą normalnych, są podstawą rachunku światła ([`../scene/lights.md`](../scene/lights.md)). W programie `lit` normalną fragmentu może zastąpić ta z mapy normalnych: funkcja `surfaceNormal` z pliku `common/normal_map.glsl`, który dołączają `lit.frag` i `textured.frag` ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.1). Program `gouraud` liczy światło w wierzchołkach i map normalnych nie używa (tamże, sekcja 2.11).
 
 ## 5. Kod w projekcie
 
@@ -230,14 +254,16 @@ W programie `textured` nie ma oświetlenia: kolor fragmentu to tekstura razy kol
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp) | stałe labiryntu domyślnego, struktury `MazeSettings` i `MazeWorld`, deklaracje `yawTowards` i `buildMazeWorld` |
-| [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) | funkcje pomocnicze `placedAt`, `wallMatrix`, `startYaw` i definicje dwóch funkcji publicznych |
+| [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp) | stałe labiryntu domyślnego, struktury `MazeSettings` i `MazeWorld`, deklaracje `yawTowards`, `wallModelMatrix` i `buildMazeWorld` |
+| [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) | stała `START_CELL`, funkcje pomocnicze `placedAt` i `startYaw` oraz definicje trzech funkcji publicznych |
 | [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp), [`.cpp`](../../../src/game/MazeRenderer.cpp) | wyliczenie `ViewMode`, klasa `MazeRenderer` |
+| [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | funkcje `setModelSamplers` i `drawModel`, stałe `TEXTURE_UNIT` i `NORMAL_MAP_UNIT` (sekcja 5.6) |
+| [`src/game/GameplayRenderer.hpp`](../../../src/game/GameplayRenderer.hpp), [`.cpp`](../../../src/game/GameplayRenderer.cpp) | rysowanie bramy i kryształów tymi samymi funkcjami. Opis w [`gameplay.md`](gameplay.md), sekcja 5 |
 | [`tests/MazeWorldTests.cpp`](../../../tests/MazeWorldTests.cpp) | 8 przypadków testowych (sekcja 5.9) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel: pola `m_mazeSettings`, `m_mazeWorld`, `m_mazeRenderer`, funkcje `regenerateMaze`, `enterMaze`, `drawMaze`, `drawUnlitMaze`, `drawLitMaze` |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | właściciel: pola `m_mazeSettings`, `m_mazeWorld`, `m_mazeRenderer`, `m_gameplayRenderer`, funkcje `regenerateMaze`, `beginRound`, `drawMaze`, `drawUnlitMaze`, `drawLitMaze` |
 | [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | nazwy uniformów ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5) |
 
-`MazeWorld.*` należą do biblioteki `game_logic`: nie dołączają niczego z `gfx/` ani GLAD. `MazeRenderer.*` należą do programu `night_maze`, razem z `NightMazeApp`, bo wymagają kontekstu OpenGL i nie da się ich uruchomić w teście.
+`MazeWorld.*` należą do biblioteki `game_logic`: nie dołączają niczego z `gfx/` ani GLAD. Od M5 nagłówek dołącza `game/Crystals.hpp` (typ `CrystalSpawn`), a plik `.cpp` także `game/Exit.hpp` (funkcje `placeExit` i `exitZone`): oba też są w `game_logic`. `MazeRenderer.*`, `ModelDraw.*` i `GameplayRenderer.*` należą do programu `night_maze`, razem z `NightMazeApp`, bo wymagają kontekstu OpenGL i nie da się ich uruchomić w teście.
 
 ### 5.2 `MazeSettings` i stałe labiryntu domyślnego
 
@@ -295,12 +321,10 @@ struct MazeWorld {
     std::vector<glm::mat4> wallMatrices;
     std::vector<glm::mat4> pillarMatrices;
 
-    /// The obstacle list for the player: the box of every wall, then of every pillar.
+    /// The obstacles that never change: the box of every wall, then of every pillar. The
+    /// gate is not in this list, because it stops being an obstacle when it opens: the
+    /// obstacle list of a round is built by game::roundObstacles.
     std::vector<scene::Aabb> colliders;
-
-    /// Where the point lights of the maze hang: in its dead ends, at most
-    /// scene::MAX_POINT_LIGHTS of them (see deadEndLightPositions in game/Lighting.hpp).
-    std::vector<glm::vec3> pointLightPositions;
 
     /// Where the player starts: the centre of cell (0, 0), feet on the floor.
     glm::vec3 startPosition{0.0F};
@@ -308,9 +332,25 @@ struct MazeWorld {
     /// Camera yaw at the start, in degrees: towards the first open side of the start cell.
     float startYawDegrees = 0.0F;
 
-    /// The centre of the far corner cell (width - 1, height - 1) at floor level: the
-    /// place of the future exit.
+    /// The exit cell: the cell farthest from the start, counted in passages walked
+    /// (game::farthestCell), and its centre at floor level.
+    MazeCell exitCell;
     glm::vec3 exitPosition{0.0F};
+
+    /// The gate across the open side of the exit cell. hasGate is false only in a maze
+    /// of one cell, whose exit cell has no open side: gate and gateBox mean nothing then.
+    bool hasGate = false;
+    WallSegment gate;
+    /// The collision box of the closed gate: the same box a wall segment there would have.
+    scene::Aabb gateBox;
+
+    /// The box in the middle of the exit cell that wins the round when the player enters
+    /// it while the gate is open (game::exitZone).
+    scene::Aabb exitZone;
+
+    /// The crystals of the maze, chosen from its seed (game::placeCrystals). Which of
+    /// them are already collected is not stored here: that is the state of a round.
+    std::vector<CrystalSpawn> crystals;
 };
 ```
 
@@ -320,14 +360,24 @@ struct MazeWorld {
 | `seed` | panel Maze (linia `In play`) |
 | `walls`, `pillars` | panel Maze (plan z góry, liczniki), panel Collision (liczniki) |
 | `floorMatrices`, `wallMatrices`, `pillarMatrices` | `MazeRenderer::draw` |
-| `colliders` | `Player::update` przez `NightMazeApp::onUpdate`, rysowanie linii pudełek |
-| `pointLightPositions` (od M4) | `buildLightSet` i `LightRig::drawMarkers` przez `NightMazeApp::onRender`, panel Lights (licznik). Pozycje świateł punktowych w ślepych zaułkach: 11 w labiryncie startowym, najwyżej 16 ([`flashlight.md`](flashlight.md), sekcje 2.3 i 5.4) |
-| `startPosition`, `startYawDegrees`, `exitPosition` | `NightMazeApp::enterMaze` |
+| `colliders` | `game::roundObstacles` (z niej powstaje lista przeszkód gracza) i rysowanie żółtych linii pudełek w `NightMazeApp::drawColliderLines` |
+| `startPosition`, `startYawDegrees` | `NightMazeApp::beginRound` |
+| `exitCell` (od M5) | panel Maze (linia `Crystals: ..., exit in cell (..., ...)`) |
+| `exitPosition` (od M5 środek komórki `exitCell`) | dziś tylko testy (`ExitTests.cpp`, `MazeWorldTests.cpp`, `RoundTests.cpp`): w `src/` nikt go nie czyta, gra używa `exitZone` |
+| `hasGate`, `gate` (od M5) | `gateBlocks` i `gateVisible` (reguły rundy), `GameplayRenderer::draw` (macierz bramy), panel Maze (gruba linia na planie) |
+| `gateBox` (od M5) | `roundObstacles` (przeszkoda, dopóki brama jest zamknięta), pomarańczowe linie w `drawColliderLines` |
+| `exitZone` (od M5) | `updateRound` (wygrana), panel Maze (prostokąt na planie), linie w kolorze magenta w `drawColliderLines` |
+| `crystals` (od M5) | `startRound` (z nich powstają kryształy rundy), panel Maze (licznik) |
 
-Trzy rzeczy warte uwagi:
+Co znaczą nowe pola i jak powstają (BFS, wybór boku bramy, liczba i miejsca kryształów), opisuje [`gameplay.md`](gameplay.md), sekcje 2 i 5. Tutaj ważne jest jedno rozróżnienie: `MazeWorld` trzyma to, co wynika z labiryntu i **nie zmienia się w czasie rundy** (gdzie stoi brama, w których komórkach są kryształy). To, co się zmienia (czy brama jest otwarta, które kryształy są zebrane), jest w strukturze `game::Round`.
+
+W M4 struktura miała jeszcze pole `pointLightPositions` z pozycjami świateł w ślepych zaułkach. W M5 zniknęło: światła punktowe wiszą teraz nad niezebranymi kryształami i ich pozycje liczy co klatkę `crystalLightPositions` z rundy ([`gameplay.md`](gameplay.md)).
+
+Cztery rzeczy warte uwagi:
 
 - **Konstruktor z `explicit` i `std::move`.** `Maze` nie ma konstruktora domyślnego, bo labirynt bez rozmiaru nie ma sensu. Struktura z takim polem też nie może powstać "pusta": musi dostać gotową siatkę. Parametr jest przyjmowany przez wartość i przenoszony do pola, więc wektor ścian wewnątrz `Maze` nie jest kopiowany. `explicit` zabrania cichej zamiany `Maze` na `MazeWorld`.
 - **Kolejność w listach się zgadza.** `wallMatrices[i]` jest macierzą segmentu `walls[i]`, a `pillarMatrices[i]` słupka `pillars[i]`. W `colliders` najpierw idą pudełka wszystkich ścian, potem wszystkich słupków.
+- **`colliders` to przeszkody, które nigdy się nie zmieniają.** Bramy na tej liście nie ma i nie ma jej też w `walls` ani w `wallMatrices`: brama przestaje być przeszkodą w chwili otwarcia, a ściany nie. Jej pudełko leży osobno w `gateBox`, a listę przeszkód rundy składa `roundObstacles`.
 - **Po zbudowaniu tylko do odczytu.** Aplikacja udostępnia strukturę panelom przez akcesor zwracający `const MazeWorld&`. Nowy labirynt to nowa struktura, a nie poprawianie starej.
 
 ### 5.4 `yawTowards` i `startYaw`
@@ -345,7 +395,7 @@ float yawTowards(Direction direction) {
 ```cpp
 float startYaw(const Maze& maze) {
     for (const Direction direction : ALL_DIRECTIONS) {
-        if (!maze.hasWall(START_COLUMN, START_ROW, direction)) {
+        if (!maze.hasWall(START_CELL.x, START_CELL.z, direction)) {
             return yawTowards(direction);
         }
     }
@@ -353,7 +403,14 @@ float startYaw(const Maze& maze) {
 }
 ```
 
-`ALL_DIRECTIONS` to tablica czterech kierunków w stałej kolejności (północ, wschód, południe, zachód). Pętla zwraca yaw pierwszego boku bez ściany. Ostatnia linia obsługuje labirynt z jedną komórką: nie ma otwartego boku, więc gracz patrzy na północ. `START_COLUMN` i `START_ROW` to zera.
+`ALL_DIRECTIONS` to tablica czterech kierunków w stałej kolejności (północ, wschód, południe, zachód). Pętla zwraca yaw pierwszego boku bez ściany. Ostatnia linia obsługuje labirynt z jedną komórką: nie ma otwartego boku, więc gracz patrzy na północ.
+
+```cpp
+// The start cell: the north-west corner of the maze.
+constexpr MazeCell START_CELL{.x = 0, .z = 0};
+```
+
+`START_CELL` zastąpiła w M5 dwie osobne stałe z numerem kolumny i wiersza. `MazeCell` to para `{x, z}` z `Maze.hpp` ([`maze-generator.md`](maze-generator.md), sekcja 5.2). Jedna wartość zamiast dwóch liczb jest potrzebna, bo komórkę startową dostają teraz jako parametr `placeExit` (od niej liczone są odległości) i `placeCrystals` (w niej nie może stać kryształ).
 
 ### 5.5 Macierze i `buildMazeWorld`
 
@@ -368,8 +425,7 @@ glm::mat4 placedAt(const glm::vec3& position) {
     return transform.matrix();
 }
 
-// Model matrix of one wall segment.
-glm::mat4 wallMatrix(const WallSegment& segment) {
+glm::mat4 wallModelMatrix(const WallSegment& segment) {
     scene::Transform transform;
     transform.position = segment.position;
     if (segment.axis == WallAxis::AlongZ) {
@@ -379,6 +435,17 @@ glm::mat4 wallMatrix(const WallSegment& segment) {
 }
 ```
 
+`placedAt` stoi w anonimowej przestrzeni nazw pliku `.cpp`. `wallModelMatrix` jest od M5 funkcją **publiczną**, zadeklarowaną w `MazeWorld.hpp` (wcześniej była funkcją pomocniczą pliku). Powód stoi w komentarzu nagłówka:
+
+```cpp
+/// Model matrix of a wall segment: the wall model moved to the position of the segment
+/// and, for a segment along Z, turned a quarter around the vertical axis. The gate uses
+/// it too: its model follows the same convention as the wall model.
+glm::mat4 wallModelMatrix(const WallSegment& segment);
+```
+
+Model bramy (`gate.obj`) jest zbudowany tak jak model ściany: wzdłuż osi X, od x = -1 do x = +1, z początkiem układu w środku podstawy. `GameplayRenderer::draw` bierze segment bramy z `MazeWorld`, obniża jego pozycję o głębokość zapadnięcia i podaje go tej samej funkcji. Dzięki temu reguła "ściana wzdłuż Z dostaje ćwierć obrotu" jest zapisana w jednym miejscu.
+
 | Linia | Znaczenie |
 |---|---|
 | `scene::Transform transform;` | pozycja zero, obrót zero, skala 1: macierz jednostkowa, dopóki nic nie zmienię |
@@ -386,7 +453,7 @@ glm::mat4 wallMatrix(const WallSegment& segment) {
 | `WALL_ALONG_Z_ROTATION{0.0F, QUARTER_TURN_DEGREES, 0.0F}` | kąty Eulera w stopniach wokół osi x, y, z: tylko y jest niezerowe |
 | `if (segment.axis == WallAxis::AlongZ)` | ściany wzdłuż X zostają bez obrotu, ściany wzdłuż Z dostają ćwierć obrotu (sekcja 2.3) |
 
-Macierze powstają przez tę samą strukturę `Transform`, której używa kostka: nie ma tu ręcznie wpisanych sinusów ani osobnego wzoru na obrót.
+Macierze powstają przez tę samą strukturę `Transform`, której używają kryształy w `GameplayRenderer::draw` (tam z pozycją i kątem zależnymi od czasu): nie ma tu ręcznie wpisanych sinusów ani osobnego wzoru na obrót.
 
 ```cpp
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
@@ -397,8 +464,6 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
     world.walls = wallSegments(maze);
     world.pillars = pillarPositions(maze);
     world.colliders = mazeColliders(maze);
-    // The start cell gets no light of its own: the player stands there with a flashlight.
-    world.pointLightPositions = deadEndLightPositions(maze, START_COLUMN, START_ROW);
 
     // One floor tile per cell. The tile model is 2 x 2 m with its origin in the middle,
     // exactly one cell.
@@ -408,15 +473,29 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
         }
     }
     for (const WallSegment& segment : world.walls) {
-        world.wallMatrices.push_back(wallMatrix(segment));
+        world.wallMatrices.push_back(wallModelMatrix(segment));
     }
     for (const glm::vec3& position : world.pillars) {
         world.pillarMatrices.push_back(placedAt(position));
     }
 
-    world.startPosition = cellCenter(START_COLUMN, START_ROW);
+    world.startPosition = cellCenter(START_CELL.x, START_CELL.z);
     world.startYawDegrees = startYaw(maze);
-    world.exitPosition = cellCenter(maze.width() - 1, maze.height() - 1);
+
+    // The exit, its gate and the zone that wins the round.
+    const ExitPlacement exit = placeExit(maze, START_CELL);
+    world.exitCell = exit.cell;
+    world.exitPosition = cellCenter(exit.cell.x, exit.cell.z);
+    world.exitZone = exitZone(exit.cell);
+    world.hasGate = exit.hasGate;
+    if (exit.hasGate) {
+        world.gate = exit.gate;
+        world.gateBox = wallBox(exit.gate);
+    }
+
+    // The crystals: never in the start cell (the player would collect one without
+    // moving) and never in the exit cell (it is behind the gate).
+    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
     return world;
 }
 ```
@@ -426,14 +505,21 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
 | `MazeWorld world(generateMaze(width, height, seed));` | generuje siatkę i od razu oddaje ją strukturze. `generateMaze` rzuca `std::invalid_argument` dla rozmiaru poza zakresem od 1 do `Maze::MAX_SIZE`, więc `buildMazeWorld` też |
 | `const Maze& maze = world.maze;` | krótsza nazwa dla siatki, która już należy do struktury |
 | `wallSegments`, `pillarPositions`, `mazeColliders` | trzy funkcje układu z `MazeLayout` ([`maze-generator.md`](maze-generator.md), sekcje 5.6 i 5.7). `mazeColliders` liczy segmenty i słupki jeszcze raz we własnym zakresie: to drobne powtórzenie pracy, wykonywane raz na labirynt |
-| `world.pointLightPositions = deadEndLightPositions(maze, START_COLUMN, START_ROW);` (od M4) | pozycje świateł punktowych: 1,4 m nad środkiem każdego ślepego zaułka poza komórką startową, najwyżej 16. Funkcja jest w `game/Lighting.cpp` i omawia ją [`flashlight.md`](flashlight.md), sekcja 5.4. Liczone raz na labirynt, tak jak macierze i pudełka |
 | podwójna pętla po `z` i `x` | płytki wiersz po wierszu: płytka komórki (x, z) ma indeks `z * width + x`. `cellCenter` daje środek komórki na wysokości podłogi, a model płytki ma początek układu w środku, więc pokrywa dokładnie jedną komórkę |
 | pętla po `world.walls` | macierz dla każdego segmentu, w tej samej kolejności |
 | pętla po `world.pillars` | słupek tylko stoi w swoim węźle |
-| `world.exitPosition = cellCenter(maze.width() - 1, maze.height() - 1);` | przeciwległy róg. Dla labiryntu 1 na 1 to ta sama komórka co start |
+| `const ExitPlacement exit = placeExit(maze, START_CELL);` (od M5) | wybór wyjścia: komórka najdalsza od startu w przejściach i brama na jej pierwszym otwartym boku (`Exit.cpp`, [`gameplay.md`](gameplay.md), sekcje 2 i 5). Wynik to mała struktura: komórka, flaga `hasGate` i segment bramy |
+| `world.exitCell = exit.cell;` i `world.exitPosition = cellCenter(...)` | komórka wyjścia jako para liczb i jej środek w metrach. Dla labiryntu 1 na 1 to ta sama komórka co start |
+| `world.exitZone = exitZone(exit.cell);` | pudełko 1 na 1 m w środku tej komórki, od podłogi do wysokości ścian: wejście w nie przy otwartej bramie wygrywa rundę |
+| `if (exit.hasGate) { ... }` | segment bramy i jego pudełko kolizji. Pudełko liczy `wallBox`, czyli ta sama funkcja co dla ścian: zamknięta brama zatrzymuje gracza dokładnie tak jak ściana w tym miejscu (2 na 3 na 0,3 m). Bez bramy (labirynt z jedną komórką) oba pola zostają takie, jakie powstały, i nikt ich nie czyta |
+| `world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);` (od M5) | komórki kryształów i numer modelu każdego z nich, wylosowane z tego samego ziarna co labirynt. Komentarz podaje, dlaczego nigdy nie w komórce startowej (gracz zebrałby kryształ, nie ruszając się) ani w komórce wyjścia (jest za bramą). Funkcję omawia [`gameplay.md`](gameplay.md), sekcja 5 |
 | `return world;` | zwrot przez wartość. Kompilator przenosi strukturę (albo buduje ją od razu w miejscu docelowym), więc wektory nie są kopiowane |
 
-### 5.6 `MazeRenderer`
+Wszystko to jest liczone raz na labirynt, tak jak macierze i pudełka. Kolejność ma znaczenie w jednym miejscu: `placeCrystals` potrzebuje komórki wyjścia, więc stoi po `placeExit`.
+
+### 5.6 `MazeRenderer` i `ModelDraw`
+
+Do M4 całe rysowanie modelu było w klasie `MazeRenderer`, w jej prywatnej funkcji statycznej. W M5 doszła druga klasa rysująca modele, `GameplayRenderer` (brama i kryształy), więc wspólna część została wyjęta do dwóch wolnych funkcji w `ModelDraw.hpp` i `ModelDraw.cpp`: `setModelSamplers` i `drawModel`. Obie klasy zgadzają się dzięki temu co do numerów jednostek teksturujących i nazw uniformów, bo jest jedno miejsce, które je zna.
 
 ```cpp
 class MazeRenderer {
@@ -445,17 +531,12 @@ public:
     /// Draws the whole maze. shader is the textured program or one of the two lit
     /// programs (lit, gouraud): it must be in use, with uView, uProjection and its own
     /// uniforms (uViewMode, uNormalMapEnabled, or the ones of the lighting) already set.
-    /// The function sets uTexture and uNormalMap, binds the two textures and sets uTint
-    /// for every part, and sets uModel and uNormalMatrix for every object. The textured
-    /// program has no uNormalMatrix and the gouraud program no uNormalMap: a uniform
-    /// a program does not have is ignored.
+    /// The function sets the samplers and uEmissive (black: stone does not glow), and
+    /// draws every object with game::drawModel, which sets the textures, uTint, uModel
+    /// and uNormalMatrix.
     void draw(const gfx::Shader& shader, const MazeWorld& world) const;
 
 private:
-    /// Draws one model once for every matrix in modelMatrices.
-    static void drawInstances(const gfx::Shader& shader, const assets::LoadedModel* model,
-                              std::span<const glm::mat4> modelMatrices);
-
     // Not owned. nullptr when the model could not be loaded.
     const assets::LoadedModel* m_floorTile;
     const assets::LoadedModel* m_wall;
@@ -474,15 +555,7 @@ Nagłówek nie dołącza `AssetCache.hpp`, `Shader.hpp` ani `MazeWorld.hpp`. Wys
 constexpr const char* FLOOR_TILE_MODEL_FILE = "models/floor_tile.obj";
 constexpr const char* WALL_MODEL_FILE = "models/wall_straight.obj";
 constexpr const char* PILLAR_MODEL_FILE = "models/wall_pillar.obj";
-
-// The texture units of the maze: the colour pictures are bound to the first one, the
-// normal maps to the second. Each sampler uniform gets the number of its unit. A shader
-// can read both textures for the same fragment only because they are on different units.
-constexpr GLuint TEXTURE_UNIT = 0;
-constexpr GLuint NORMAL_MAP_UNIT = 1;
 ```
-
-Dwie stałe to dwie **jednostki teksturujące** ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.7). Jedna jednostka ma jedno wiązanie `GL_TEXTURE_2D`, więc dwie tekstury czytane w tym samym fragmencie (kolor i normalna) muszą leżeć na dwóch różnych.
 
 ```cpp
 MazeRenderer::MazeRenderer(assets::AssetCache& assets)
@@ -497,32 +570,59 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
 
 ```cpp
 void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world) const {
-    // The samplers read the units the textures are bound to below. They are set in every
-    // frame and not once at start-up: after a shader reload all uniforms are back at 0,
-    // and both samplers would read unit 0.
-    shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
-    shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
+    setModelSamplers(shader);
+    // Stone gives off no light of its own. A uniform keeps its value from one draw call
+    // to the next, and the crystals set this one, so it is set back in every frame.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 
-    drawInstances(shader, m_floorTile, world.floorMatrices);
-    drawInstances(shader, m_wall, world.wallMatrices);
-    drawInstances(shader, m_pillar, world.pillarMatrices);
+    drawModel(shader, m_floorTile, world.floorMatrices);
+    drawModel(shader, m_wall, world.wallMatrices);
+    drawModel(shader, m_pillar, world.pillarMatrices);
 }
 ```
 
 | Linia | Znaczenie |
 |---|---|
-| `shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));` | sampler `uTexture` dostaje numer jednostki obrazu koloru, czyli 0. Ustawiany w każdej klatce, a nie raz przy starcie: po przeładowaniu shaderów powstaje nowy program, w którym wszystkie uniformy mają wartość 0. Dla tego samplera 0 jest akurat wartością poprawną, ale kod nie polega na tym zbiegu okoliczności |
-| `shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));` | sampler `uNormalMap` dostaje 1. Tu ustawianie co klatkę jest już konieczne: po przeładowaniu oba samplery miałyby wartość 0 i `uNormalMap` czytałby **obraz koloru** jako mapę normalnych. Szary kamień `(0,6, 0,6, 0,6)` po przeliczeniu `* 2 - 1` to kierunek pochylony w stronę stycznej i bitangenty, więc całe oświetlenie ścian byłoby przekrzywione, bez żadnego błędu OpenGL. Program `gouraud` tego uniformu nie ma: `glGetUniformLocation` zwraca -1 i wywołanie jest ignorowane |
-| trzy wywołania `drawInstances` | podłoga, ściany, słupki. Wektor macierzy sam zamienia się na `std::span<const glm::mat4>` |
+| `setModelSamplers(shader);` | oba samplery programu dostają numery swoich jednostek teksturujących (funkcja niżej) |
+| `shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});` (od M5) | `uEmissive` na czerń: kamień sam nie świeci. `glm::vec3{0.0F}` to wektor `(0, 0, 0)`. Dlaczego trzeba to robić w każdej klatce, wyjaśnia akapit pod tabelą |
+| trzy wywołania `drawModel` | podłoga, ściany, słupki. Wektor macierzy sam zamienia się na `std::span<const glm::mat4>` |
+
+**Dlaczego `uEmissive` trzeba zerować w każdej klatce.** Uniform nie jest parametrem jednego wywołania rysującego. To zmienna **obiektu programu** na karcie graficznej: raz ustawiona, trzyma wartość, aż ktoś ustawi inną, także przez granicę klatki. W jednej klatce kolejność jest taka: `MazeRenderer::draw` rysuje kamień, potem `GameplayRenderer::draw` tym samym programem ustawia `uEmissive` na blask kryształów i rysuje kryształy. Po tej klatce w programie zostaje więc blask kryształów. Następna klatka zaczyna od kamienia: gdyby `MazeRenderer::draw` nie ustawił czerni, podłoga, ściany i słupki dostałyby `surface * (diffuse + blask)` i cały labirynt świeciłby kolorem kryształów. Nie byłoby żadnego błędu OpenGL, tylko zły obraz. Zmiana trybu cieniowania też by nie pomogła: każdy z trzech programów pamięta własną wartość, więc "zarażony" byłby każdy program, którym choć raz narysowano kryształy. Odwrotny przypadek to nowy program po `Reload shaders`: jego uniformy zaczynają od zera, czyli akurat od czerni, ale kod na tym nie polega.
 
 Funkcja zakłada, że program jest już w użyciu i ma ustawione `uView`, `uProjection` i własne uniformy: `uViewMode` w programie `textured`, uniformy odbłysku w programach `lit` i `gouraud`, a w `textured` i `lit` także przełącznik `uNormalMapEnabled`. Robią to `NightMazeApp::drawUnlitMaze` i `drawLitMaze` (sekcja 5.7). Podział jest celowy: to, co dotyczy całej klatki, ustawia aplikacja, a to, co dotyczy labiryntu, renderer. Parametr `shader` to referencja do **dowolnego** z trzech programów: renderer nie wie, którym rysuje.
 
-**`drawInstances`.**
+**`setModelSamplers`** (`ModelDraw.cpp`).
 
 ```cpp
-void MazeRenderer::drawInstances(const gfx::Shader& shader, const assets::LoadedModel* model,
-                                 std::span<const glm::mat4> modelMatrices) {
-    // The load error is in the log. The rest of the maze is still drawn.
+// The texture units of the models: the colour pictures are bound to the first one, the
+// normal maps to the second. Each sampler uniform gets the number of its unit. A shader
+// can read both textures for the same fragment only because they are on different units.
+constexpr GLuint TEXTURE_UNIT = 0;
+constexpr GLuint NORMAL_MAP_UNIT = 1;
+```
+
+Dwie stałe to dwie **jednostki teksturujące** ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.7). Jedna jednostka ma jedno wiązanie `GL_TEXTURE_2D`, więc dwie tekstury czytane w tym samym fragmencie (kolor i normalna) muszą leżeć na dwóch różnych. Stałe stoją w anonimowej przestrzeni nazw `ModelDraw.cpp` (do M4 były w `MazeRenderer.cpp`): poza tym plikiem nikt nie zna numerów jednostek.
+
+```cpp
+void setModelSamplers(const gfx::Shader& shader) {
+    shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
+    shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));` | sampler `uTexture` dostaje numer jednostki obrazu koloru, czyli 0. `static_cast<int>` jest potrzebny, bo stała ma typ `GLuint` (bez znaku), a sampler ustawia się przez `glUniform1i`. Ustawiany w każdej klatce, a nie raz przy starcie: po przeładowaniu shaderów powstaje nowy program, w którym wszystkie uniformy mają wartość 0. Dla tego samplera 0 jest akurat wartością poprawną, ale kod nie polega na tym zbiegu okoliczności |
+| `shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));` | sampler `uNormalMap` dostaje 1. Tu ustawianie co klatkę jest już konieczne: po przeładowaniu oba samplery miałyby wartość 0 i `uNormalMap` czytałby **obraz koloru** jako mapę normalnych. Szary kamień `(0,6, 0,6, 0,6)` po przeliczeniu `* 2 - 1` to kierunek pochylony w stronę stycznej i bitangenty, więc całe oświetlenie ścian byłoby przekrzywione, bez żadnego błędu OpenGL. Program `gouraud` tego uniformu nie ma: `glGetUniformLocation` zwraca -1 i wywołanie jest ignorowane |
+
+Komentarz w nagłówku mówi "shader must be in use" i "Call it in every frame before drawModel and not once at start-up". Funkcję wołają `MazeRenderer::draw` i `GameplayRenderer::draw`, każda na swoim początku, więc w klatce wykonuje się dwa razy dla tego samego programu. Drugie wywołanie niczego nie zmienia (te same dwie liczby), ale dzięki niemu `GameplayRenderer::draw` nie zależy od tego, że ktoś przed nim narysował labirynt.
+
+**`drawModel`** (`ModelDraw.cpp`).
+
+```cpp
+void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
+               std::span<const glm::mat4> modelMatrices) {
+    // The load error is in the log. The rest of the scene is still drawn.
     if (model == nullptr) {
         return;
     }
@@ -551,48 +651,48 @@ void MazeRenderer::drawInstances(const gfx::Shader& shader, const assets::Loaded
 
 | Linia | Znaczenie |
 |---|---|
-| `if (model == nullptr) { return; }` | model się nie wczytał: błąd jest w logu, a reszta labiryntu rysuje się normalnie. Brak pliku ściany nie zatrzymuje programu |
+| `std::span<const glm::mat4> modelMatrices` | widok na ciąg macierzy: przyjmuje cały `std::vector<glm::mat4>` (labirynt) albo jedną macierz podaną jako wskaźnik i liczba 1 (brama, kryształ), bez kopiowania |
+| `if (model == nullptr) { return; }` | model się nie wczytał: błąd jest w logu, a reszta sceny rysuje się normalnie. Brak pliku ściany nie zatrzymuje programu |
 | `for (const assets::ModelPart& part : model->parts)` | **części są pętlą zewnętrzną**. Część to zakres indeksów siatki z jednym materiałem |
 | `part.normalMap->bind(NORMAL_MAP_UNIT);` | mapa normalnych części i jej obiekt samplera na jednostkę 1. Wskaźnik nigdy nie jest pusty: część bez własnej mapy (materiał bez linii `map_Bump` albo plik, którego nie dało się wczytać) pokazuje na **płaską mapę normalnych** pamięci podręcznej, teksturę 1 x 1 o tekselu `(128, 128, 255)`, z którą shader dostaje po prostu normalną siatki ([`../assets/asset-cache.md`](../assets/asset-cache.md)). Dzięki temu ani renderer, ani shader nie mają osobnej ścieżki "bez mapy". Wiązanie jest wykonywane także wtedy, gdy rysuje program `gouraud` albo mapowanie normalnych jest wyłączone: tekstura na jednostce, której żaden sampler nie czyta, nic nie psuje |
 | `part.texture->bind(TEXTURE_UNIT);` | obraz koloru części i jego obiekt samplera na jednostkę 0. Wskaźnik nigdy nie jest pusty: część bez własnej tekstury pokazuje na białą teksturę zastępczą. **Kolejność dwóch wiązań jest celowa** (wyjaśnienie pod tabelą) |
-| `shader.setVec3(TINT_UNIFORM, part.color);` | kolor rozproszenia materiału. Dla trzech modeli labiryntu to biel `(1, 1, 1)`, która tekstury nie zmienia |
+| `shader.setVec3(TINT_UNIFORM, part.color);` | kolor rozproszenia materiału (`Kd` z pliku MTL). Dla trzech modeli labiryntu to biel `(1, 1, 1)`, która tekstury nie zmienia |
 | `for (const glm::mat4& modelMatrix : modelMatrices)` | pętla wewnętrzna: wszystkie obiekty używające tego modelu |
 | `shader.setMat4(MODEL_UNIFORM, modelMatrix);` | macierz modelu obiektu |
 | `shader.setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix));` (od M4) | macierz normalnych tego obiektu: odwrotność części 3 x 3 macierzy modelu, transponowana ([`../scene/transforms.md`](../scene/transforms.md), sekcja 5.6, teoria w [`../scene/lights.md`](../scene/lights.md), sekcja 2.7). Liczona na procesorze **w każdej klatce dla każdego obiektu**, inaczej niż macierze modelu, które są policzone raz. W programie `textured` uniform nie istnieje i wywołanie jest ignorowane. Razem z `uModel` to dwie rzeczy, które zmieniają się między obiektami |
 | `model->mesh.draw(part.firstIndex, part.indexCount);` | podpina VAO i woła `glDrawElements` dla zakresu indeksów części |
 
-**Dlaczego mapa normalnych pierwsza.** `Texture2D::bind(unit)` woła `glActiveTexture(GL_TEXTURE0 + unit)`, a dopiero potem `glBindTexture` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5). Jednostka aktywna jest stanem całego kontekstu i zostaje taka, jaką ustawiło ostatnie wywołanie. Gdyby mapa normalnych była podpinana druga, po narysowaniu labiryntu aktywna zostałaby jednostka 1. Komentarz mówi "as the rest of the program expects". Konkretnie w kodzie projektu zależy od tego jedno miejsce: konstruktor `gfx::Texture2D`, który woła `glBindTexture` na jednostce **aktywnej**, bez własnego `glActiveTexture`. Tekstura tworzona później (dziś wszystkie powstają przy starcie, przed pierwszą klatką) zastąpiłaby wtedy wiązanie mapy normalnych na jednostce 1 zamiast wiązania na jednostce 0. Reszta kodu rysującego woła `bind(unit)` z jawnym numerem i od jednostki aktywnej nie zależy. Zostawienie jednostki 0 jako aktywnej jest więc porządkiem, a nie warunkiem poprawności dzisiejszej klatki.
+**Dlaczego mapa normalnych pierwsza.** `Texture2D::bind(unit)` woła `glActiveTexture(GL_TEXTURE0 + unit)`, a dopiero potem `glBindTexture` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5). Jednostka aktywna jest stanem całego kontekstu i zostaje taka, jaką ustawiło ostatnie wywołanie. Gdyby mapa normalnych była podpinana druga, po narysowaniu modelu aktywna zostałaby jednostka 1. Komentarz mówi "as the rest of the program expects". Konkretnie w kodzie projektu zależy od tego jedno miejsce: konstruktor `gfx::Texture2D`, który woła `glBindTexture` na jednostce **aktywnej**, bez własnego `glActiveTexture`. Tekstura tworzona później (dziś wszystkie powstają przy starcie, przed pierwszą klatką) zastąpiłaby wtedy wiązanie mapy normalnych na jednostce 1 zamiast wiązania na jednostce 0. Reszta kodu rysującego woła `bind(unit)` z jawnym numerem i od jednostki aktywnej nie zależy. Zostawienie jednostki 0 jako aktywnej jest więc porządkiem, a nie warunkiem poprawności dzisiejszej klatki.
 
-Dlaczego części na zewnątrz, a obiekty wewnątrz. Odwrotna kolejność też dałaby poprawny obraz, ale podpinałaby obie tekstury i ustawiała kolor przy każdym obiekcie: 342 razy zamiast 3. Zmiana tekstury jest droższa niż zmiana jednej macierzy, więc rysuje się "wszystko z tą teksturą, potem wszystko z następną". Funkcja jest `static`, bo nie czyta żadnego pola obiektu: dostaje model jako parametr.
+Dlaczego części na zewnątrz, a obiekty wewnątrz. Odwrotna kolejność też dałaby poprawny obraz, ale podpinałaby obie tekstury i ustawiała kolor przy każdym obiekcie: dla labiryntu 342 razy zamiast 3. Zmiana tekstury jest droższa niż zmiana jednej macierzy, więc rysuje się "wszystko z tą teksturą, potem wszystko z następną". Dla bramy i kryształów ta oszczędność nie działa: `GameplayRenderer::draw` woła `drawModel` osobno dla każdego obiektu, z jedną macierzą, więc tekstury są podpinane przy każdym z nich. Przy kilkunastu obiektach nie ma to znaczenia, a kod zostaje prosty.
 
-Nazwa `drawInstances` nie oznacza rysowania instancjami w sensie OpenGL (`glDrawElementsInstanced`, sekcja 2.5). To zwykła pętla: jedno `glDrawElements` na macierz.
+`drawModel` jest wolną funkcją w przestrzeni nazw `game`, a nie metodą klasy: nie czyta żadnego stanu poza parametrami, a korzystają z niej dwie klasy, z których żadna nie jest "właścicielem" rysowania modelu. Funkcja nie ustawia `uEmissive`: to, czy model świeci, wie ten, kto ją woła.
+
+Funkcja nie rysuje instancjami w sensie OpenGL (`glDrawElementsInstanced`, sekcja 2.5). To zwykła pętla: jedno `glDrawElements` na macierz i na część modelu.
 
 ### 5.7 Użycie w `NightMazeApp`
 
-**Pola i ich kolejność** (fragment, całość omawia [`../core/README.md`](../core/README.md), sekcja 5):
+**Pola i ich kolejność** (fragment, całość omawia [`../core/README.md`](../core/README.md)):
 
 ```cpp
-    gfx::Shader m_shader;
+    // Order: members are constructed top to bottom. The two renderers ask m_assets for
+    // their models in their constructors, so they come after it.
     gfx::Shader m_texturedShader;
     gfx::Shader m_colorShader;
+    gfx::Shader m_litShader;
+    gfx::Shader m_gouraudShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
+    GameplayRenderer m_gameplayRenderer;
     ColliderLines m_colliderLines;
-    gfx::VertexArray m_vertexArray;
-    gfx::Buffer m_vertexBuffer;
-    gfx::Buffer m_indexBuffer;
-```
+    LightRig m_lightRig;
 
-```cpp
     // The request for the next maze (edited by the debug UI) and the maze in play.
     MazeSettings m_mazeSettings;
     MazeWorld m_mazeWorld;
 ```
 
-Dwie zależności kolejności, obie opisane w komentarzu nagłówka:
-
-1. `m_assets` przed `m_mazeRenderer`: renderer w konstruktorze prosi pamięć podręczną o modele, więc musi ona już istnieć.
-2. `m_assets`, `m_mazeRenderer` i `m_colliderLines` **przed** VAO i buforami kostki. Utworzenie siatki podpina jej własne VAO i bufory. Kostka z M1 polega na tym, że jej bufor wierzchołków jest nadal podpięty, gdy zaczyna się ciało konstruktora (tam opisuje atrybuty). Siatka utworzona po buforach kostki zabrałaby to podpięcie i atrybuty kostki zostałyby opisane na cudzym buforze.
+Zależność kolejności jest jedna i opisuje ją komentarz: `m_assets` stoi przed `m_mazeRenderer` i `m_gameplayRenderer`, bo oba renderery w konstruktorach proszą pamięć podręczną o modele, więc musi ona już istnieć. Do M4 była jeszcze druga zależność, związana z buforami kostki z M1. Kostka została w M5 usunięta razem ze swoim VAO, buforami i shaderem, więc ta zależność zniknęła.
 
 `m_mazeWorld` stoi po `m_mazeSettings` i jest inicjalizowane w liście inicjalizacyjnej konstruktora, bo nie da się go utworzyć pustego:
 
@@ -600,6 +700,8 @@ Dwie zależności kolejności, obie opisane w komentarzu nagłówka:
       m_mazeWorld(
           buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed)) {
 ```
+
+Ciało konstruktora kończy się wywołaniem `beginRound()`: pierwszy labirynt powstał w liście inicjalizacyjnej, a reszta (runda, gracz na starcie) jest taka sama jak po każdej późniejszej regeneracji.
 
 **Regeneracja.** Początek `onRender`:
 
@@ -612,7 +714,7 @@ Dwie zależności kolejności, obie opisane w komentarzu nagłówka:
     }
 ```
 
-Flaga jest zerowana od razu, więc jedno kliknięcie to dokładnie jedna budowa. Blok stoi przed wszystkim innym w `onRender`: przed klawiszem N, przed obrotem myszą i przed rysowaniem.
+Flaga jest zerowana od razu, więc jedno kliknięcie to dokładnie jedna budowa. Blok stoi przed wszystkim innym w `onRender`: przed restartem rundy (klawisz R), przed klawiszami N i F, przed obrotem myszą i przed rysowaniem.
 
 ```cpp
 void NightMazeApp::regenerateMaze() {
@@ -622,36 +724,35 @@ void NightMazeApp::regenerateMaze() {
     m_mazeSettings.width = std::clamp(m_mazeSettings.width, 1, Maze::MAX_SIZE);
     m_mazeSettings.height = std::clamp(m_mazeSettings.height, 1, Maze::MAX_SIZE);
 
-    // Replaces the maze, the model matrices and the collision boxes in one assignment.
+    // Replaces the maze, the model matrices, the collision boxes, the exit and the
+    // crystals in one assignment. A new maze is a new round.
     m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed);
-    enterMaze();
+    beginRound();
 }
 ```
 
 | Linia | Znaczenie |
 |---|---|
 | `std::clamp(m_mazeSettings.width, 1, Maze::MAX_SIZE)` | przycięcie do zakresu, który `Maze` przyjmuje (od 1 do 256). Panel ma własne, ciaśniejsze granice suwaków (od 2 do 40), ale aplikacja nie polega na panelu: ktokolwiek wypełni `MazeSettings`, nie doprowadzi do wyjątku. Przycięta wartość wraca do struktury, więc panel pokaże, co naprawdę zostało zbudowane |
-| `m_mazeWorld = buildMazeWorld(...)` | przypisanie przenoszące: stare wektory są zwalniane, nowe przejmowane. Siatka, macierze i pudełka zmieniają się razem |
-| `enterMaze();` | reszta pracy, wspólna ze startem programu |
+| `m_mazeWorld = buildMazeWorld(...)` | przypisanie przenoszące: stare wektory są zwalniane, nowe przejmowane. Siatka, macierze, pudełka, wyjście z bramą i kryształy zmieniają się razem |
+| `beginRound();` | reszta pracy, wspólna ze startem programu i z restartem rundy: nowy labirynt zawsze zaczyna nową rundę |
 
-```cpp
-void NightMazeApp::enterMaze() {
-    // The marker cube floats above the far corner cell, the place of the future exit.
-    m_cubeTransform.position =
-        m_mazeWorld.exitPosition + glm::vec3{0.0F, CUBE_HEIGHT_ABOVE_FLOOR, 0.0F};
-```
-
-`CUBE_HEIGHT_ABOVE_FLOOR` to `4.5F`. Kostka zachowuje swój obrót (25 stopni wokół osi x i 35 wokół y, ustawiony raz w konstruktorze), zmienia się tylko jej pozycja. Dalsza część `enterMaze` stawia gracza na starcie i ustawia kąty kamery: omawia ją [`player.md`](player.md), sekcja 5.8.
+`beginRound` zastąpiła w M5 funkcję, która do M4 tylko przenosiła kostkę nad wyjście i stawiała gracza na starcie. Dziś robi trzy rzeczy: buduje stan rundy (`m_round = startRound(m_mazeWorld, m_gameplay)`), składa listę przeszkód (`m_obstacles = roundObstacles(m_mazeWorld, m_round)`) i włącza latarkę, a potem stawia gracza na starcie i ustawia kąty kamery. Część o rundzie omawia [`gameplay.md`](gameplay.md), sekcja 5, część o graczu [`player.md`](player.md), sekcja 5.8.
 
 Co regeneracja zmienia, a czego nie:
 
 | Zmienia | Zostawia |
 |---|---|
 | siatkę, listy ścian i słupków, macierze, pudełka kolizji | wczytane modele i tekstury (pamięć podręczna) |
-| pozycję kostki | obrót kostki |
+| komórkę wyjścia, bramę, strefę wyjścia, komórki kryształów | liczby reguł rundy (`GameplaySettings`: ile kryształów otwiera bramę, czas baterii i pozostałe) |
+| stan rundy: wszystkie kryształy na miejscach, pełna bateria, zamknięta brama, zegary na zerze | |
+| listę przeszkód gracza (`m_obstacles`) | |
+| latarkę: jest włączana | pozostałe ustawienia świateł (`LightingSettings`) |
 | pozycję gracza i poprzednią pozycję | tryb noclip i trzy prędkości gracza |
 | yaw i pitch kamery | FOV, płaszczyzny, czułość myszy |
-| | tryb widoku, filtr tekstur, rysowanie pudełek kolizji |
+| | tryb widoku, filtr tekstur, rysowanie kształtów kolizji |
+
+Restart rundy (klawisz R albo przycisk `Restart round (key R)` w panelu Gameplay) woła samo `beginRound`, bez `buildMazeWorld`: zmienia więc wszystko z lewej kolumny poza dwoma pierwszymi wierszami.
 
 **Rysowanie.**
 
@@ -686,10 +787,14 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
+    // The crystals and the gate, with the same program: they show up in the debug
+    // views like the walls do.
+    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round,
+                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
 }
 ```
 
-Od M4 `drawMaze` tylko **wybiera**, a rysują dwie funkcje:
+Od M4 `drawMaze` tylko **wybiera**, a rysują dwie funkcje. Od M5 każda z nich kończy się tak samo: po `m_mazeRenderer.draw` woła `m_gameplayRenderer.draw` z **tym samym programem**. Brama i kryształy dostają dzięki temu ten sam tryb cieniowania i te same podglądy diagnostyczne co ściany, bez żadnego dodatkowego wyboru:
 
 | Tryb `Lighting` (panel Renderer) | Tryb `View mode` (panel Assets) | Funkcja | Program |
 |---|---|---|---|
@@ -698,17 +803,20 @@ Od M4 `drawMaze` tylko **wybiera**, a rysują dwie funkcje:
 | `Gouraud` | `Textured` | `drawLitMaze` | `gouraud` |
 | `Phong`, `Blinn-Phong` | `Textured` | `drawLitMaze` | `lit` |
 
-`drawUnlitMaze` to dawna treść `drawMaze` z M2 + M3 z jedną dodaną linią:
+`drawUnlitMaze` to dawna treść `drawMaze` z M2 + M3 z dwiema dodanymi rzeczami: przełącznikiem mapowania normalnych (M4) i rysowaniem rzeczy rundy (M5):
 
 | Linia | Znaczenie |
 |---|---|
-| `m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);` | przełącznik mapowania normalnych dla programu `textured`. W shaderze to `uniform bool uNormalMapEnabled`, a uniform typu `bool` ustawia się przez `glUniform1i`: 0 to fałsz, każda inna wartość to prawda. Czyta go tylko gałąź podglądu normalnych (`uViewMode == 1`). `usesNormalMap` ([`flashlight.md`](flashlight.md), sekcja 5.2) jest fałszywe w trybie `Gouraud`, więc podgląd `Normals as colour` pokazuje wtedy gładkie normalne siatki, a w trybach `Unlit`, `Phong` i `Blinn-Phong` (przy włączonym polu `Normal mapping`) normalne z map, z widocznymi fugami. To właśnie znaczy zdanie z komentarza `drawMaze`: podgląd idzie za trybem cieniowania w jednej rzeczy |
+| `m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round, crystalGlow(...))` (od M5) | brama i kryształy tym samym programem. Ostatni argument to blask kryształów na tę klatkę: kolor świateł punktowych z ustawień (`m_lighting.pointColor`) razy siła blasku, przygaszony pulsem liczonym z zegara animacji rundy. Funkcja ustawi go jako `uEmissive` przed kryształami. Samą klasę i `crystalGlow` omawia [`gameplay.md`](gameplay.md), sekcje 4 i 5 |
+| `m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);` | przełącznik mapowania normalnych dla programu `textured`. W shaderze to `uniform bool uNormalMapEnabled`, a uniform typu `bool` ustawia się przez `glUniform1i`: 0 to fałsz, każda inna wartość to prawda. Czyta go tylko gałąź podglądu normalnych (`uViewMode == 1`). `usesNormalMap` ([`flashlight.md`](flashlight.md), sekcja 5) jest fałszywe w trybie `Gouraud`, więc podgląd `Normals as colour` pokazuje wtedy gładkie normalne siatki, a w trybach `Unlit`, `Phong` i `Blinn-Phong` (przy włączonym polu `Normal mapping`) normalne z map, z widocznymi fugami. To właśnie znaczy zdanie z komentarza `drawMaze`: podgląd idzie za trybem cieniowania w jednej rzeczy |
 
 Podgląd pokazuje "tę samą normalną, której używa światło" pod jednym warunkiem: `textured.vert` przenosi normalną przez `mat3(uModel)`, a `lit.vert` przez `uNormalMatrix`. Dla macierzy modelu labiryntu (przesunięcie i obrót o 90 stopni, skala 1) oba wyniki są równe. Przy nierównej skali podgląd i oświetlenie by się rozjechały ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4.1).
 
-`drawLitMaze` wybiera `m_gouraudShader` albo `m_litShader`, ustawia te same dwie macierze, trzy uniformy odbłysku i ten sam przełącznik `uNormalMapEnabled` (program `gouraud` go nie ma i ustawienie jest ignorowane, a `usesNormalMap` i tak jest dla niego fałszywe) i woła to samo `m_mazeRenderer.draw`: omawia ją linia po linii [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 5.4.
+`drawLitMaze` wybiera `m_gouraudShader` albo `m_litShader`, ustawia te same dwie macierze, trzy uniformy odbłysku i ten sam przełącznik `uNormalMapEnabled` (program `gouraud` go nie ma i ustawienie jest ignorowane, a `usesNormalMap` i tak jest dla niego fałszywe) i woła to samo `m_mazeRenderer.draw`, a po nim to samo `m_gameplayRenderer.draw` z tym samym argumentem `crystalGlow(...)`: omawia ją [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 5.
 
-`onRender` buduje i wysyła światła klatki, a potem woła po kolei `drawMaze`, `drawLightMarkers` (gdy tryb jest inny niż `Unlit`: kostki w miejscach świateł punktowych, [`flashlight.md`](flashlight.md)), `drawCube` i, gdy włączone, `drawColliderLines`, każdą z tymi samymi macierzami widoku i rzutowania. Każda z tych funkcji wybiera własny program i ustawia mu uniformy od zera, więc żadna nie zależy od tego, co zostawiła poprzednia.
+`onRender` buduje i wysyła światła klatki, a potem woła `drawMaze` i, gdy włączone, `drawColliderLines`, obie z tymi samymi macierzami widoku i rzutowania. Każda z tych funkcji wybiera własny program i ustawia mu uniformy od zera, więc żadna nie zależy od tego, co zostawiła poprzednia. Do M4 między nimi stały jeszcze dwa kroki: kostki oznaczające światła punktowe i kostka z M1 nad wyjściem. Oba zostały w M5 usunięte: światła punktowe widać teraz po kryształach, nad którymi wiszą, a wyjście po bramie.
+
+W obrębie `drawMaze` zależność od poprzednika jest jedna i celowa: `GameplayRenderer::draw` liczy na to, że program jest już w użyciu i ma ustawione uniformy klatki, bo dostaje go od funkcji, która właśnie narysowała nim labirynt. Samplery i `uEmissive` ustawia sobie sam.
 
 ### 5.8 Wymiary modeli a pudełka kolizji
 
@@ -720,8 +828,9 @@ Obraz i kolizje mają wspólne pozycje, ale nie wszystkie wymiary są identyczne
 | cokół i nakrywa ściany | 0,28 m | 0,3 m |
 | trzon słupka | 0,3 m | 0,3 m (`PILLAR_SIZE`) |
 | podstawa i głowica słupka | 0,4 m | 0,3 m |
+| brama (od M5) | 0,12 m, przy wysokości 2,75 m (wymiary odczytane z pliku `gate.obj`) | 0,3 m, przy wysokości 3 m (`gateBox` to wynik `wallBox`) |
 
-Pudełko ściany jest celowo tak grube jak słupek: lica pudełek ścian i słupków leżą wtedy w jednej płaszczyźnie i gracz sunący po ścianie nie zahacza o słupki ([`maze-generator.md`](maze-generator.md), sekcja 5.7, i [`../scene/collision.md`](../scene/collision.md), sekcja 7). Skutek uboczny: gracz zatrzymuje się 5 cm przed korpusem ściany, a podstawa słupka wystaje 5 cm poza jego pudełko.
+Pudełko ściany jest celowo tak grube jak słupek: lica pudełek ścian i słupków leżą wtedy w jednej płaszczyźnie i gracz sunący po ścianie nie zahacza o słupki ([`maze-generator.md`](maze-generator.md), sekcja 5.7, i [`../scene/collision.md`](../scene/collision.md), sekcja 7). Skutek uboczny: gracz zatrzymuje się 5 cm przed korpusem ściany, a podstawa słupka wystaje 5 cm poza jego pudełko. Brama jest cieńsza i niższa od ściany, a pudełko ma takie samo jak ściana, więc gracz zatrzymuje się 9 cm przed jej deskami.
 
 ### 5.9 Jak to zostało sprawdzone
 
@@ -735,18 +844,25 @@ Testy jednostkowe `tests/MazeWorldTests.cpp`:
 | `the same size and seed give the same maze world` | dwa razy 8 na 8, ziarno 42 | te same segmenty w tej samej kolejności, ten sam yaw startowy |
 | `floor tiles and pillars are only moved to their place` | labirynt 3 na 2 | początek układu płytki ląduje w środku komórki (indeks 4 to komórka (1, 1)), narożnik `(1, 0, 1)` płytki w `(4, 0, 4)`, początek układu każdego słupka w jego pozycji |
 | `a wall along X keeps the model as it is, a wall along Z turns it a quarter` | labirynt 4 na 4, ziarno 3, każdy segment | początek układu modelu w pozycji segmentu, góra zostaje górą, koniec modelu `(1, 0, 0)` ląduje metr dalej wzdłuż X albo metr wzdłuż Z (w dowolną stronę) |
-| `the player starts in the first cell and looks down an open passage` | 20 ziaren, labirynt 6 na 5 | start w środku komórki (0, 0), wyjście w środku (5, 4), yaw to 90 albo 180 i wskazuje bok bez ściany |
-| `a maze of one cell has no open side: the player looks north` | labirynt 1 na 1 | yaw 0, start i wyjście w tej samej komórce, 1 płytka, 4 ściany, 4 słupki |
+| `the player starts in the first cell and looks down an open passage` | 20 ziaren, labirynt 6 na 5 | start w środku komórki (0, 0), yaw to 90 albo 180 i wskazuje bok bez ściany. Do M4 przypadek sprawdzał też wyjście w rogu (5, 4): ta asercja została w M5 usunięta, bo wyjście nie jest już rogiem |
+| `a maze of one cell has no open side: the player looks north` | labirynt 1 na 1 | yaw 0, start i wyjście w tej samej komórce (`exitCell` to (0, 0)), `hasGate` fałszywe, lista `crystals` pusta, 1 płytka, 4 ściany, 4 słupki |
 
 Funkcja pomocnicza testów `transformPoint` mnoży macierz przez punkt w postaci `vec4` z `w = 1`. Jedynka sprawia, że przesunięcie zapisane w macierzy działa: tak samo liczy shader wierzchołków (`vec4(aPosition, 1.0)`).
 
-Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie przypadki przechodzą w Debug i Release, w ramach 163 przypadków i 62220 asercji całego programu testowego. Pole `pointLightPositions` sprawdzają dwa przypadki z `tests/LightingTests.cpp` (`a maze world carries the light positions of its maze` i `the default maze has this many point lights`): omawia je [`flashlight.md`](flashlight.md), sekcja 5.8.
+Nowe pola `MazeWorld` sprawdzają przypadki z dwóch innych plików, omówione w [`gameplay.md`](gameplay.md), sekcja 5:
 
-**Czego testy nie sprawdzają.** `MazeRenderer` i funkcji rysujących `NightMazeApp`: wymagają kontekstu OpenGL. Wybór programu według trybu jest sprawdzony na zrzutach ekranu z czterema trybami cieniowania (Windows, 2026-10-05), a nie kliknięciem listy. Sprawdzone na zrzutach ekranu z Windowsa: widok startowy ze środka labiryntu z poprawnie ustawionymi teksturami, widok z góry (tryb noclip) zgodny z planem w panelu Maze, żółte linie pudełek leżące na ścianach i słupkach, oba widoki diagnostyczne. Mapy normalnych są sprawdzone na zrzutach ekranu z 2026-10-05 (fugi jako rowki na ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze, zrzuty trybów `Gouraud` i `Unlit` identyczne co do piksela przy włączonym i wyłączonym mapowaniu: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11). Nie sprawdzone ręcznie: regeneracja przyciskami `Regenerate` i `Random seed` oraz pole wyboru `Normal mapping`. Żaden test nie przypina yaw startowego labiryntu 10 na 10 z ziarna 1 (autor kodu podaje 180, południe, na podstawie uruchomienia).
+| Plik i przypadek | Co sprawdza |
+|---|---|
+| `tests/ExitTests.cpp`, `a maze world carries the exit, the gate box and the exit zone of its maze` | labirynt wzorcowy 4 na 4 z ziarna 1: `exitCell` to (3, 1), `exitPosition` to `(7, 0, 3)`, strefa wyjścia od `(6,5, 0, 2,5)` do `(7,5, 3, 3,5)`, brama w `(7, 0, 2)` z pudełkiem od `(6, 0, 1,85)` do `(8, 3, 2,15)`, a segmentu bramy nie ma wśród ścian |
+| `tests/CrystalTests.cpp`, `the default maze has 13 crystals and its exit in the cell (6, 5)` | labirynt startowy: 13 kryształów, wyjście w komórce (6, 5), brama w `(14, 0, 11)` o osi `AlongZ` |
+
+Wyniki na Windowsie według zgłoszenia autora kodu z 2026-10-05: wszystkie przypadki przechodzą w Debug i Release, w ramach 215 przypadków i 85098 asercji całego programu testowego. Na macOS nic z M5 nie było budowane ani uruchamiane.
+
+**Czego testy nie sprawdzają.** `MazeRenderer`, funkcji z `ModelDraw` i funkcji rysujących `NightMazeApp`: wymagają kontekstu OpenGL. Obraz M5 (kryształy, brama) autor kodu sprawdził na zrzutach ekranu zrobionych przez tymczasowe zaczepy, które potem usunął. Z M2 + M3 i M4 sprawdzone są na zrzutach ekranu z Windowsa (2026-10-05): wybór programu według trybu (cztery tryby cieniowania, bez klikania listy), widok startowy ze środka labiryntu z poprawnie ustawionymi teksturami, widok z góry (tryb noclip) zgodny z planem w panelu Maze, żółte linie pudełek leżące na ścianach i słupkach, oba widoki diagnostyczne oraz mapy normalnych (fugi jako rowki na ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze, zrzuty trybów `Gouraud` i `Unlit` identyczne co do piksela przy włączonym i wyłączonym mapowaniu: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5). Nikt jeszcze nie sprawdził ręcznie: regeneracji przyciskami `Regenerate` i `Random seed`, pola wyboru `Normal mapping`, restartu rundy i przejścia przez otwartą bramę. Zerowania `uEmissive` (sekcja 5.6) nie pilnuje żaden test: błąd byłby widoczny tylko na ekranie. Żaden test nie przypina yaw startowego labiryntu 10 na 10 z ziarna 1 (autor kodu podaje 180, południe, na podstawie uruchomienia).
 
 ## 6. Panel ImGui
 
-Labirynt ma panel **Maze**: suwaki `Width` i `Height`, pole `Seed`, przyciski `Regenerate` i `Random seed`, linie `In play: ...` i `Walls: ..., pillars: ...` oraz plan labiryntu widziany z góry z kropką gracza. Kod panelu linia po linii, razem z rysowaniem planu, jest w [`maze-generator.md`](maze-generator.md), sekcja 6 (tam wskazuje nagłówek pliku `MazePanel.cpp`). PRD (sekcja 10) wymienia dla tego panelu jeszcze liczbę kryształów: kryształów w grze jeszcze nie ma, więc tego pola też nie.
+Labirynt ma panel **Maze**: suwaki `Width` i `Height`, pole `Seed`, przyciski `Regenerate` i `Random seed`, linie `In play: ...`, `Walls: ..., pillars: ...` i od M5 `Crystals: ..., exit in cell (..., ...)` oraz plan labiryntu widziany z góry z kropką gracza, a od M5 także ze strefą wyjścia, bramą i kryształami. Kod panelu linia po linii, razem z rysowaniem planu, jest w [`maze-generator.md`](maze-generator.md), sekcja 6 (tam wskazuje nagłówek pliku `MazePanel.cpp`). PRD (sekcja 10) wymienia dla tego panelu liczbę kryształów: od M5 pokazuje ją trzecia linia. Na starcie to `Crystals: 13, exit in cell (6, 5)`.
 
 Od strony tego dokumentu panel jest jedynym miejscem, które pisze do `MazeSettings`:
 
@@ -754,17 +870,17 @@ Od strony tego dokumentu panel jest jedynym miejscem, które pisze do `MazeSetti
 |---|---|---|
 | `Width`, `Height` (od 2 do 40 komórek) | `settings.width`, `settings.height` | nic, dopóki nie padnie kliknięcie |
 | `Seed` | `settings.seed` | nic, dopóki nie padnie kliknięcie |
-| `Regenerate` | `settings.regenerate = true` | na początku następnej klatki |
-| `Random seed` | losowe `settings.seed` i `settings.regenerate = true` | na początku następnej klatki |
+| `Regenerate` | `settings.regenerate = true` | na początku następnej klatki: nowy labirynt i nowa runda |
+| `Random seed` | losowe `settings.seed` i `settings.regenerate = true` | na początku następnej klatki: nowy labirynt i nowa runda |
 
-Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filtr tekstur i anizotropię w panelu Assets ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6), a linie pudełek kolizji w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
+Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filtr tekstur i anizotropię w panelu Assets ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6), a linie kształtów kolizji w panelu Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6). Reguły rundy i jej restart są w panelu Gameplay ([`gameplay.md`](gameplay.md), sekcja 6).
 
 **Co pokazać na obronie** (tematy 3 i 4 od strony rysowania). Kroki z klikaniem nie były jeszcze wykonane ręcznie:
 
-1. Program startuje w labiryncie. Mówię: 342 obiekty, trzy modele, każda ściana to ta sama siatka z inną macierzą modelu.
+1. Program startuje w labiryncie. Mówię: 342 obiekty labiryntu z trzech modeli, każda ściana to ta sama siatka z inną macierzą modelu. Do tego brama i 13 kryształów, rysowane tą samą funkcją `drawModel`.
 2. Naciskam N i lecę w górę (spacja). Z góry widać, że ściany biegną w dwóch kierunkach: połowa ma w macierzy obrót o 90 stopni wokół Y. Porównuję z planem w panelu Maze.
-3. Pokazuję kostkę nad przeciwległym rogiem: `exitPosition` plus 4,5 m w górę. To ta sama kostka i ten sam shader co w M1.
-4. Zmieniam `Width` na 4, `Height` na 4 i klikam `Regenerate`. Labirynt się zmienia, staję na starcie, kostka przenosi się nad nowy róg. Linia `In play` pokazuje nowy rozmiar, a liczniki `(4 + 1) * (4 + 1) = 25` ścian i 25 słupków.
+3. Pokazuję bramę: na planie w panelu Maze to gruba linia przy komórce (6, 5), w scenie model stojący na wschodnim boku tej komórki. Mówię: to ten sam typ `WallSegment` i ta sama funkcja `wallModelMatrix` co dla ścian, tylko model inny. Do M4 w roli znacznika wyjścia unosiła się tu kostka z M1.
+4. Zmieniam `Width` na 4, `Height` na 4 i klikam `Regenerate`. Labirynt się zmienia, staję na starcie, zaczyna się nowa runda z nowymi kryształami i bramą w nowym miejscu. Linia `In play` pokazuje nowy rozmiar, a liczniki `(4 + 1) * (4 + 1) = 25` ścian i 25 słupków. Dla ziarna 1 trzecia linia powinna pokazać `Crystals: 2, exit in cell (3, 1)` (tak przypinają to testy labiryntu wzorcowego).
 5. Wpisuję poprzednie ziarno i rozmiar: wraca dokładnie ten sam labirynt (determinizm).
 6. W panelu Assets przełączam `View mode` na `Normals as colour`: ściany wzdłuż X i wzdłuż Z mają różne kolory, czyli normalne obróciły się razem z modelem. Przy włączonym polu `Normal mapping` na kolorze ściany widać rysunek fug (to normalne z mapy normalnych). Żeby zobaczyć czyste normalne siatki, odznaczam `Normal mapping` albo wybieram tryb `Gouraud`.
 
@@ -773,11 +889,11 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 1. **Obrót i przesunięcie w złej kolejności.** Macierz `R * T` (najpierw przesunięcie, potem obrót) zatoczyłaby ścianą łuk wokół początku układu świata i wszystkie ściany wzdłuż Z stanęłyby w złych miejscach. `Transform::matrix()` składa `T * R * S`, więc obrót działa wokół środka modelu.
 2. **Macierze liczone w pętli rysowania.** Działa, ale powtarza w każdej klatce pracę, której wynik się nie zmienia. Przeniesienie liczenia do `buildMazeWorld` zmienia też typ błędu: zła macierz jest widoczna w teście bez okna.
 3. **Pętle w odwrotnej kolejności.** Obiekty na zewnątrz i części wewnątrz dają ten sam obraz, ale podpinają obie tekstury przy każdym obiekcie.
-4. **`uTexture` ustawiony tylko raz przy starcie.** Po `Reload shaders` powstaje nowy program i jego uniformy wracają do wartości początkowych. Kod ustawia `uTexture`, `uNormalMap`, `uNormalMapEnabled`, `uTint`, `uViewMode`, `uNormalMatrix` i uniformy odbłysku w każdej klatce, więc przeładowanie niczego nie psuje. Dla `uNormalMap` to konieczność, a nie ostrożność: wartość początkowa 0 kazałaby mu czytać obraz koloru z jednostki 0 jako mapę normalnych. Połączenie bloku świateł z punktem wiązania też ginie przy przeładowaniu, ale `gfx::Shader` odtwarza je sam ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
+4. **`uTexture` ustawiony tylko raz przy starcie.** Po `Reload shaders` powstaje nowy program i jego uniformy wracają do wartości początkowych. Kod ustawia `uTexture`, `uNormalMap`, `uNormalMapEnabled`, `uEmissive`, `uTint`, `uViewMode`, `uNormalMatrix` i uniformy odbłysku w każdej klatce, więc przeładowanie niczego nie psuje. Dla `uNormalMap` to konieczność, a nie ostrożność: wartość początkowa 0 kazałaby mu czytać obraz koloru z jednostki 0 jako mapę normalnych. Połączenie bloku świateł z punktem wiązania też ginie przy przeładowaniu, ale `gfx::Shader` odtwarza je sam ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 5. **Zmiana labiryntu w środku klatki.** Panel dostaje bieżący labirynt jako `const MazeWorld&`, więc nie może go podmienić, i to jest zamierzone. Gdyby mógł, wymiana następowałaby po narysowaniu sceny, a przed końcem klatki: scena na ekranie pochodziłaby ze starego labiryntu, plan w panelu z nowego, a gracz stałby jeszcze w starej pozycji. Flaga w `MazeSettings` przenosi wymianę na początek następnej klatki, w jedno miejsce.
-6. **Przeniesienie gracza bez poprzedniej pozycji.** `enterMaze` ustawia `m_player.position` i `m_previousPlayerPosition` razem. Samo pierwsze przypisanie dałoby jedną klatkę narysowaną z punktu między starym a nowym miejscem: widoczny przelot przez ściany.
-7. **Renderer przeżywający pamięć podręczną.** `MazeRenderer` trzyma gołe wskaźniki. Odwrócenie kolejności pól `m_assets` i `m_mazeRenderer` w klasie dałoby wskaźniki do obiektu, który jeszcze nie istnieje (przy budowie) i już nie istnieje (przy niszczeniu).
-8. **Siatka utworzona po buforach kostki.** Każda nowa `gfx::Mesh` podpina własne VAO. Pole tworzące siatki, dopisane pod `m_indexBuffer`, zepsułoby opis atrybutów kostki, bez żadnego błędu kompilacji ani OpenGL: kostka po prostu by zniknęła albo wyglądała źle.
+6. **Przeniesienie gracza bez poprzedniej pozycji.** `beginRound` ustawia `m_player.position` i `m_previousPlayerPosition` razem. Samo pierwsze przypisanie dałoby jedną klatkę narysowaną z punktu między starym a nowym miejscem: widoczny przelot przez ściany.
+7. **Renderer przeżywający pamięć podręczną.** `MazeRenderer` i `GameplayRenderer` trzymają gołe wskaźniki. Odwrócenie kolejności pól `m_assets` i `m_mazeRenderer` w klasie dałoby wskaźniki do obiektu, który jeszcze nie istnieje (przy budowie) i już nie istnieje (przy niszczeniu).
+8. **`uEmissive` niewyzerowany przed kamieniem.** Uniform trzyma wartość między wywołaniami rysującymi i między klatkami. Bez linii `shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F})` w `MazeRenderer::draw` labirynt od drugiej klatki świeciłby blaskiem kryształów, który zostawiła w programie poprzednia klatka (sekcja 5.6). Żaden test tego nie złapie i OpenGL nie zgłosi błędu.
 9. **`ViewMode` i `textured.frag` rozjechane.** Dodanie czwartego trybu w wyliczeniu bez gałęzi w shaderze daje zwykły obraz z teksturą (gałąź `else`). Zmiana kolejności wartości w wyliczeniu zamienia tryby miejscami. Liczby są jawne po obu stronach właśnie po to, żeby było to widać.
 10. **Model, który się nie wczytał, znika po cichu.** Brak `wall_straight.obj` nie zatrzymuje programu: labirynt jest wtedy bez ścian na ekranie, ale **z** kolizjami, bo pudełka nie zależą od modelu. Jedynym śladem jest linia `[error]` w logu i wpis w panelu Assets.
 11. **Pudełko kolizji to nie model.** Żółte linie są grubsze niż korpus ściany (0,3 wobec 0,2 m) i węższe niż podstawa słupka (0,3 wobec 0,4 m). To zamierzone (sekcja 5.8).
@@ -786,7 +902,9 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 14. **Przełącznik trybu prawie nie działa w podglądach.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` nie zmienia programu: `drawMaze` wybiera wtedy `textured` niezależnie od trybu. To zamierzone. Jeden wyjątek od "nie zmienia obrazu": podgląd normalnych pokazuje normalne, których używa wybrany tryb, więc po przełączeniu na `Gouraud` znika z niego rysunek fug z map normalnych (`usesNormalMap` zwraca wtedy `false`), a po powrocie na `Unlit`, `Phong` albo `Blinn-Phong` wraca. Podgląd UV nie zależy od trybu wcale.
 15. **Obie tekstury na tej samej jednostce.** `part.normalMap->bind(TEXTURE_UNIT)` zamiast `NORMAL_MAP_UNIT` kompiluje się i nie zgłasza błędu: drugie wiązanie zastępuje pierwsze, oba samplery czytają to, co zostało podpięte jako ostatnie, a na jednostce 1 zostaje tekstura z poprzedniej części albo żadna.
 16. **Podgląd normalnych "zepsuty" w trybie `Gouraud`.** `Normals as colour` pokazuje w tym trybie gładkie normalne siatki, bez fug, mimo zaznaczonego `Normal mapping`. To zamierzone: `usesNormalMap` jest dla `Gouraud` fałszywe, a podgląd pokazuje normalne, którymi cieniuje wybrany tryb.
-17. **Światła przenoszą się z labiryntem, ale nie z kodu rysującego.** Pozycje świateł są polem `MazeWorld`. Kto doda do gry drugi sposób zmiany labiryntu z pominięciem `buildMazeWorld`, zostawi światła w starych zaułkach.
+17. **Nowy labirynt bez nowej rundy.** Kryształy rundy (`Round::crystals`) są kopią listy `MazeWorld::crystals` zrobioną w `startRound`, a lista przeszkód gracza (`m_obstacles`) kopią `MazeWorld::colliders` z pudełkiem bramy. Kto przypisze nowy `m_mazeWorld` i nie zawoła `beginRound`, zostawi kryształy, światła nad nimi i niewidzialne ściany starego labiryntu w nowym. Dlatego `regenerateMaze` kończy się wywołaniem `beginRound`.
+18. **Brama dopisana do `colliders`.** Wygląda na uproszczenie, ale `colliders` to lista, która nie zmienia się przez całe życie labiryntu. Brama po otwarciu musi z listy przeszkód zniknąć, więc jej pudełko leży osobno (`gateBox`), a dokłada je `roundObstacles` tylko wtedy, gdy `gateBlocks` jest prawdą.
+19. **Wyjście szukane w przeciwległym rogu.** Do M4 tak było. Dziś `exitCell` to komórka najdalsza w przejściach i może leżeć gdziekolwiek: w labiryncie startowym to (6, 5), prawie środek planu.
 
 ## 8. Ćwiczenia
 
@@ -795,12 +913,12 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 1. **Liczba obiektów.** Ile ścian, słupków i płytek ma labirynt 6 na 5? Ile wywołań rysujących? Odpowiedź: `7 * 6 = 42` ściany, 42 słupki, 30 płytek, razem 114.
 2. **Macierz ściany.** Segment ma pozycję `(4, 0, 3)` i oś `AlongZ`. Gdzie w świecie lądują punkty modelu `(1, 0, 0)`, `(-1, 0, 0)` i `(0, 3, 0)`? Odpowiedź: `(4, 0, 2)`, `(4, 0, 4)` i `(4, 3, 3)`.
 3. **Indeks płytki.** Który indeks w `floorMatrices` ma płytka komórki (3, 2) w labiryncie 10 na 10 i gdzie stoi jej środek? Odpowiedź: `2 * 10 + 3 = 23`, środek w `(7, 0, 5)`.
-4. **Bez obrotu.** W `wallMatrix` usuń blok `if`. Który przypadek testowy przestaje przechodzić? Uruchom program i obejrzyj labirynt z góry.
-5. **Zła kolejność.** W `wallMatrix` policz macierz ręcznie jako obrót razy przesunięcie (`glm::rotate(glm::mat4(1.0F), ...)`, potem `glm::translate` na wyniku) i porównaj wynik testu `a wall along X keeps the model as it is...` z oryginałem.
-6. **Wyższa kostka.** Zmień `CUBE_HEIGHT_ABOVE_FLOOR` na `1.5F`. Skąd w labiryncie widać teraz kostkę, a skąd nie?
+4. **Bez obrotu.** W `wallModelMatrix` usuń blok `if`. Który przypadek testowy przestaje przechodzić? Uruchom program i obejrzyj labirynt z góry. Co stanie się z bramą w labiryncie startowym (jej oś to `AlongZ`) i dlaczego jej pudełko kolizji zostanie na miejscu?
+5. **Zła kolejność.** W `wallModelMatrix` policz macierz ręcznie jako obrót razy przesunięcie (`glm::rotate(glm::mat4(1.0F), ...)`, potem `glm::translate` na wyniku) i porównaj wynik testu `a wall along X keeps the model as it is...` z oryginałem.
+6. **Świecący kamień.** Usuń z `MazeRenderer::draw` linię z `EMISSIVE_UNIFORM`. Jak powinna wyglądać pierwsza klatka, a jak druga i następne? Dlaczego po `Reload shaders` obraz na jedną klatkę wróciłby do normy? Odpowiedź jest w sekcji 5.6.
 7. **Start patrzący w ścianę.** Zamień w `buildMazeWorld` wywołanie `startYaw(maze)` na `yawTowards(Direction::North)`. Który test to wykrywa i dlaczego pojedyncze ziarno by nie wystarczyło?
-8. **Licznik wywołań.** Dodaj w `MazeRenderer::drawInstances` tymczasowy licznik zwiększany przy każdym `mesh.draw` i wypisz go raz przez `core::logInfo`. Sprawdź, czy dla labiryntu domyślnego wychodzi 342 i jak zmienia się po regeneracji do 40 na 40.
-9. **Kolor zamiast tekstury.** W `drawInstances` zamień `part.texture->bind(TEXTURE_UNIT)` na podpięcie białej tekstury i ustaw `uTint` na `(0,5, 0,5, 1)`. Potrzebujesz do tego dostępu do pamięci podręcznej: co trzeba by zmienić w klasie i dlaczego obecna wersja go nie przechowuje?
+8. **Licznik wywołań.** Dodaj w `drawModel` tymczasowy licznik zwiększany przy każdym `mesh.draw` i wypisuj go raz na jakiś czas przez `core::logInfo`. Sprawdź, czy na początku rundy w labiryncie domyślnym wychodzi 356 na klatkę (342 labiryntu, brama, 13 kryształów), o ile spada po zebraniu kryształu i jak zmienia się po regeneracji do 40 na 40.
+9. **Kolor zamiast tekstury.** W `drawModel` zamień `part.texture->bind(TEXTURE_UNIT)` na podpięcie białej tekstury i ustaw `uTint` na `(0,5, 0,5, 1)`. Potrzebujesz do tego dostępu do pamięci podręcznej: co trzeba by zmienić w sygnaturze funkcji i dlaczego obecna wersja go nie dostaje?
 
 ## 9. Pytania kontrolne
 
@@ -820,19 +938,19 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
    Labirynt się nie rusza, więc macierze zależą tylko od poziomu. Liczone raz, nie obciążają klatki, a do tego da się je sprawdzić testem bez okna.
 
 6. **Ile wywołań rysujących ma labirynt domyślny i z czego wynika ta liczba?**
-   342: 100 płytek, 121 ścian i 121 słupków. Ścian i słupków w labiryncie doskonałym jest po `(w + 1)(h + 1)`.
+   Sam labirynt 342: 100 płytek, 121 ścian i 121 słupków. Ścian i słupków w labiryncie doskonałym jest po `(w + 1)(h + 1)`. Od M5 dochodzi brama (jedno wywołanie, dopóki jest widoczna) i po jednym na każdy niezebrany kryształ: na początku rundy razem `342 + 1 + 13 = 356`.
 
 7. **Co kosztuje wywołanie rysujące i jak można zmniejszyć ich liczbę?**
    Pracę procesora w sterowniku przy każdym wywołaniu, niezależnie od liczby trójkątów. Liczbę wywołań zmniejsza rysowanie instancjami (jedno wywołanie, macierze jako atrybut na instancję) albo sklejenie nieruchomej geometrii w jedną siatkę. Projekt zostaje przy jednym wywołaniu na obiekt, bo przy setkach obiektów to wystarcza i jest najprostsze do wytłumaczenia.
 
-8. **Dlaczego w `drawInstances` części modelu są pętlą zewnętrzną?**
+8. **Dlaczego w `drawModel` części modelu są pętlą zewnętrzną?**
    Żeby obie tekstury (obraz koloru i mapę normalnych) oraz kolor materiału ustawiać raz na część, a nie raz na obiekt. Między obiektami zmieniają się tylko `uModel` i `uNormalMatrix`.
 
 9. **Co posiada `MazeRenderer`?**
    Nic. Ma trzy wskaźniki do modeli należących do pamięci podręcznej assetów i dostaje `MazeWorld` jako parametr. Pamięć podręczna musi żyć dłużej niż renderer.
 
 10. **Jak przebiega regeneracja labiryntu od kliknięcia do obrazu?**
-    Panel ustawia w `MazeSettings` rozmiar, ziarno i flagę. Na początku następnego `onRender` aplikacja zeruje flagę, przycina rozmiar, przypisuje do `m_mazeWorld` wynik `buildMazeWorld` i woła `enterMaze`, które przenosi kostkę i gracza. Potem klatka rysuje już nowy labirynt.
+    Panel ustawia w `MazeSettings` rozmiar, ziarno i flagę. Na początku następnego `onRender` aplikacja zeruje flagę, przycina rozmiar, przypisuje do `m_mazeWorld` wynik `buildMazeWorld` i woła `beginRound`, które zaczyna nową rundę (kryształy, bateria, brama, lista przeszkód) i stawia gracza na starcie. Potem klatka rysuje już nowy labirynt.
 
 11. **Dlaczego panel nie buduje labiryntu sam?**
     Jest rysowany w środku klatki i ma do bieżącego labiryntu referencję tylko do odczytu. Wymiana w tym miejscu podmieniłaby dane używane w tej samej klatce. Flaga przenosi wymianę w jedno bezpieczne miejsce, poza kroki symulacji.
@@ -840,28 +958,28 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 12. **Dokąd patrzy gracz na starcie?**
     W stronę pierwszego boku komórki (0, 0) bez ściany, w kolejności północ, wschód, południe, zachód. W labiryncie wygenerowanym to wschód (90) albo południe (180). Kąt to numer kierunku razy 90.
 
-13. **Gdzie jest kostka z M1 i po co?**
-    Unosi się 4,5 m nad środkiem komórki w przeciwległym rogu, jako znacznik przyszłego wyjścia. Jej dane, bufory i shader `basic` są takie same jak w M1, zmieniła się tylko pozycja.
+13. **Gdzie jest wyjście i co przy nim stoi?**
+    W komórce najdalszej od startu, licząc w przejściach (BFS, `placeExit`): w labiryncie startowym to (6, 5). Na jej otwartym boku stoi brama, opisana jako `WallSegment` i ustawiana tą samą funkcją `wallModelMatrix` co ściany. Do M4 wyjściem był przeciwległy róg, a oznaczała go kostka z M1. Kostka została w M5 usunięta razem ze swoimi buforami i shaderem.
 
 14. **Dlaczego `MazeWorld` jest w bibliotece `game_logic`, a `MazeRenderer` w programie?**
     `MazeWorld` to dane i matematyka bez OpenGL, więc da się go zbudować w teście. `MazeRenderer` woła klasy `gfx`, które wymagają kontekstu OpenGL.
 
 15. **Co się stanie, gdy plik modelu ściany zniknie?**
-    Pamięć podręczna zapisze błąd w logu i odda `nullptr`, a `drawInstances` pominie ten model. Podłoga i słupki będą widoczne, ścian nie będzie na ekranie, ale ich pudełka kolizji nadal będą zatrzymywać gracza.
+    Pamięć podręczna zapisze błąd w logu i odda `nullptr`, a `drawModel` pominie ten model. Podłoga i słupki będą widoczne, ścian nie będzie na ekranie, ale ich pudełka kolizji nadal będą zatrzymywać gracza.
 
 16. **Którym programem rysowany jest labirynt?**
-    Zależy od dwóch przełączników. Tryb `Unlit` albo podgląd normalnych lub UV: `textured`. Tryb `Gouraud` przy zwykłym widoku: `gouraud`. Tryby `Phong` i `Blinn-Phong`: `lit`. Wybiera `NightMazeApp::drawMaze`, a `MazeRenderer::draw` jest dla wszystkich trzech ta sama.
+    Zależy od dwóch przełączników. Tryb `Unlit` albo podgląd normalnych lub UV: `textured`. Tryb `Gouraud` przy zwykłym widoku: `gouraud`. Tryby `Phong` i `Blinn-Phong`: `lit`. Wybiera `NightMazeApp::drawMaze`, a `MazeRenderer::draw` jest dla wszystkich trzech ta sama. Tym samym programem zaraz potem rysowane są brama i kryształy.
 
 17. **Dlaczego `MazeRenderer` może rysować trzema różnymi programami bez żadnego `if`?**
-    Wszystkie trzy czytają tę samą siatkę (numery atrybutów są wspólne, a shader może nie deklarować atrybutu, którego nie potrzebuje) i mają te same nazwy uniformów `uTexture`, `uTint`, `uModel`. `uNormalMatrix` i `uNormalMap` istnieją tylko w dwóch z trzech (pierwszego nie ma `textured`, drugiego `gouraud`), ale ustawienie uniformu, którego program nie ma, jest ignorowane.
+    Wszystkie trzy czytają tę samą siatkę (numery atrybutów są wspólne, a shader może nie deklarować atrybutu, którego nie potrzebuje) i mają te same nazwy uniformów `uTexture`, `uTint`, `uModel`, `uEmissive`. `uNormalMatrix` i `uNormalMap` istnieją tylko w dwóch z trzech (pierwszego nie ma `textured`, drugiego `gouraud`), ale ustawienie uniformu, którego program nie ma, jest ignorowane.
 
 18. **Co od M4 jest liczone raz na obiekt w każdej klatce i dlaczego nie raz na labirynt?**
-    Macierz normalnych: `scene::normalMatrix(modelMatrix)`. Mogłaby być zapamiętana obok macierzy modelu. Kod liczy ją w pętli rysowania: to 342 odwrotności macierzy 3 x 3 na klatkę, czego nie mierzyłem jako kosztu.
+    Macierz normalnych: `scene::normalMatrix(modelMatrix)`. Dla labiryntu mogłaby być zapamiętana obok macierzy modelu. Kod liczy ją w pętli rysowania: to 342 odwrotności macierzy 3 x 3 na klatkę (plus po jednej na bramę i kryształ), czego nie mierzyłem jako kosztu.
 
-19. **Skąd `MazeWorld` ma pozycje świateł i kiedy się zmieniają?**
-    Z `deadEndLightPositions`, wołanej raz w `buildMazeWorld`: ślepe zaułki poza komórką startową, najwyżej 16. Zmieniają się tylko razem z całym labiryntem.
+19. **Co z labiryntu trzyma `MazeWorld`, a co `Round`, i dlaczego brama nie jest na liście `colliders`?**
+    `MazeWorld` trzyma to, co wynika z siatki i ziarna i nie zmienia się w czasie gry: gdzie jest wyjście, gdzie stoi brama i jakie ma pudełko, w których komórkach są kryształy. `Round` trzyma to, co się zmienia: które kryształy są zebrane i czy brama jest otwarta. `colliders` to przeszkody stałe. Brama przestaje być przeszkodą po otwarciu, więc jej pudełko (`gateBox`) dokłada do listy gracza `roundObstacles`, tylko dopóki brama jest zamknięta.
 
-20. **Dlaczego w `drawInstances` mapa normalnych jest podpinana przed obrazem koloru?**
+20. **Dlaczego w `drawModel` mapa normalnych jest podpinana przed obrazem koloru?**
     `Texture2D::bind` ustawia jednostkę aktywną. Po podpięciu obrazu koloru jako drugiego aktywna zostaje jednostka 0. Zależy od tego konstruktor `Texture2D`, który wiąże nową teksturę na jednostce aktywnej: przy odwrotnej kolejności tekstura utworzona później zastąpiłaby mapę normalnych na jednostce 1.
 
 21. **Co by się stało, gdyby `uNormalMap` nie był ustawiany w każdej klatce?**
@@ -870,6 +988,12 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 22. **Co widzi program `gouraud` z mapy normalnych?**
     Nic. Mapa jest podpinana do jednostki 1 i `setInt` dla `uNormalMap` jest wołane także dla niego, ale program nie ma tego uniformu ani samplera, więc oba wywołania nie mają skutku. `usesNormalMap` jest dla trybu `Gouraud` fałszywe.
 
+23. **Dlaczego `MazeRenderer::draw` ustawia `uEmissive` na czerń w każdej klatce, skoro kamień nigdy nie świeci?**
+    Bo uniform jest zmienną programu i trzyma wartość, dopóki ktoś nie ustawi innej. W tej samej klatce, tym samym programem, `GameplayRenderer::draw` ustawia go na blask kryształów. Bez zerowania następna klatka narysowałaby kamień z tym blaskiem.
+
+24. **Po co wolne funkcje `setModelSamplers` i `drawModel`, skoro `MazeRenderer` miał to samo w sobie?**
+    Od M5 modele rysują dwie klasy: `MazeRenderer` (podłoga, ściany, słupki) i `GameplayRenderer` (brama, kryształy). Wspólna funkcja oznacza jedno miejsce, które zna numery jednostek teksturujących, kolejność wiązania tekstur i nazwy uniformów na obiekt.
+
 ## 10. Źródła
 
 - LearnOpenGL, rozdział "Transformations": <https://learnopengl.com/Getting-started/Transformations> (kolejność przesunięcia i obrotu) i "Coordinate Systems": <https://learnopengl.com/Getting-started/Coordinate-Systems> (wiele obiektów z jednej siatki, każdy z własną macierzą modelu).
@@ -877,5 +1001,5 @@ Rysowanie labiryntu przełącza się w dwóch innych panelach: tryb widoku, filt
 - LearnOpenGL, rozdział "Model": <https://learnopengl.com/Model-Loading/Model> (model jako siatki i materiały).
 - Dokumentacja OpenGL, `glDrawElements`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElements.xhtml>, `glDrawElementsInstanced`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawElementsInstanced.xhtml>.
 - Jamis Buck, "Mazes for Programmers" (Pragmatic Bookshelf, 2015): labirynt doskonały jako drzewo rozpinające siatki (stąd liczba ścian).
-- Dokumenty w tym repozytorium: [`maze-generator.md`](maze-generator.md) (siatka, generator, układ, panel Maze), [`player.md`](player.md) (gracz i `enterMaze`), [`flashlight.md`](flashlight.md) (światła gry, pozycje świateł w zaułkach), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`, `drawLitMaze`), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (mapy normalnych: przestrzeń styczna, `common/normal_map.glsl`, dwie jednostki teksturujące), [`../scene/lights.md`](../scene/lights.md) (wzory oświetlenia), [`../scene/transforms.md`](../scene/transforms.md) (`Transform`), [`../scene/collision.md`](../scene/collision.md) (pudełka i ich rysowanie), [`../assets/asset-cache.md`](../assets/asset-cache.md) (modele, tekstury, panel Assets), [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured`), [`../gfx/mesh.md`](../gfx/mesh.md) (`Mesh::draw`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (nazwy uniformów), [`../core/README.md`](../core/README.md) (`NightMazeApp` jako całość), [`../../guides/blender.md`](../../guides/blender.md) (wymiary modeli).
+- Dokumenty w tym repozytorium: [`maze-generator.md`](maze-generator.md) (siatka, generator, układ, panel Maze), [`player.md`](player.md) (gracz i `beginRound` od strony gracza), [`gameplay.md`](gameplay.md) (runda: wyjście i BFS, brama, kryształy, `GameplayRenderer`, `uEmissive` w shaderach), [`../../decisions/exit-farthest-cell.md`](../../decisions/exit-farthest-cell.md) (dlaczego wyjście to najdalsza komórka), [`flashlight.md`](flashlight.md) (światła gry), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`, `drawLitMaze`), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (mapy normalnych: przestrzeń styczna, `common/normal_map.glsl`, dwie jednostki teksturujące), [`../scene/lights.md`](../scene/lights.md) (wzory oświetlenia), [`../scene/transforms.md`](../scene/transforms.md) (`Transform`), [`../scene/collision.md`](../scene/collision.md) (pudełka i ich rysowanie), [`../assets/asset-cache.md`](../assets/asset-cache.md) (modele, tekstury, panel Assets), [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured`), [`../gfx/mesh.md`](../gfx/mesh.md) (`Mesh::draw`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (nazwy uniformów), [`../core/README.md`](../core/README.md) (`NightMazeApp` jako całość), [`../../guides/blender.md`](../../guides/blender.md) (wymiary modeli).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (tematy 3, 4 i 5), sekcja 10 (panel Maze).

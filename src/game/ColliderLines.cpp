@@ -1,4 +1,5 @@
-// ColliderLines: draws collision boxes as thin lines, a debug view of the collisions.
+// ColliderLines: draws collision boxes and spheres as thin lines, a debug view of the
+// collisions.
 // See docs/modules/scene/collision.md
 #include "game/ColliderLines.hpp"
 
@@ -7,7 +8,10 @@
 #include "gfx/Vertex.hpp"
 #include "scene/Transform.hpp"
 
+#include <glm/gtc/constants.hpp>
+
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 
@@ -49,9 +53,49 @@ constexpr std::array<std::uint32_t, EDGE_COUNT * INDICES_PER_LINE> UNIT_CUBE_EDG
 // collisions use the true boxes.
 constexpr float LINE_MARGIN = 0.01F;
 
+// A circle is drawn as this many straight pieces. 32 look round at the size of a pickup
+// sphere on the screen.
+constexpr std::size_t CIRCLE_SEGMENTS = 32;
+
+// The points of a circle with a radius of 1 around the origin, lying in the XY plane
+// (z = 0). Point number i is at the angle i / CIRCLE_SEGMENTS of a full turn. It is
+// a function and not a constant table like the cube: 32 sines and cosines are easier to
+// compute than to type.
+std::array<gfx::Vertex, CIRCLE_SEGMENTS> unitCirclePoints() {
+    std::array<gfx::Vertex, CIRCLE_SEGMENTS> points{};
+    for (std::size_t i = 0; i < CIRCLE_SEGMENTS; ++i) {
+        const float angle =
+            glm::two_pi<float>() * static_cast<float>(i) / static_cast<float>(CIRCLE_SEGMENTS);
+        points[i].position = {std::cos(angle), std::sin(angle), 0.0F};
+    }
+    return points;
+}
+
+// Every two indices are one line (GL_LINES): each point is joined to the next one, and
+// the last point back to the first (that is what the remainder does).
+std::array<std::uint32_t, CIRCLE_SEGMENTS * INDICES_PER_LINE> unitCircleLines() {
+    std::array<std::uint32_t, CIRCLE_SEGMENTS * INDICES_PER_LINE> indices{};
+    for (std::size_t i = 0; i < CIRCLE_SEGMENTS; ++i) {
+        indices[i * INDICES_PER_LINE] = static_cast<std::uint32_t>(i);
+        indices[i * INDICES_PER_LINE + 1] = static_cast<std::uint32_t>((i + 1) % CIRCLE_SEGMENTS);
+    }
+    return indices;
+}
+
+// The unit circle lies in the XY plane. Turned by a quarter around the X axis it lies
+// flat in the XZ plane, turned by a quarter around the Y axis it stands in the YZ plane.
+constexpr float QUARTER_TURN_DEGREES = 90.0F;
+constexpr std::array<glm::vec3, 3> CIRCLE_ROTATIONS = {
+    glm::vec3{0.0F, 0.0F, 0.0F},
+    glm::vec3{QUARTER_TURN_DEGREES, 0.0F, 0.0F},
+    glm::vec3{0.0F, QUARTER_TURN_DEGREES, 0.0F},
+};
+
 } // namespace
 
-ColliderLines::ColliderLines() : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES) {}
+ColliderLines::ColliderLines()
+    : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES),
+      m_unitCircle(unitCirclePoints(), unitCircleLines(), GL_LINES) {}
 
 void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
                          const glm::vec3& color) const {
@@ -68,6 +112,25 @@ void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb>
 
         shader.setMat4(MODEL_UNIFORM, transform.matrix());
         m_unitCube.draw();
+    }
+}
+
+void ColliderLines::drawSpheres(const gfx::Shader& shader, std::span<const scene::Sphere> spheres,
+                                const glm::vec3& color) const {
+    shader.setVec3(COLOR_UNIFORM, color);
+
+    for (const scene::Sphere& sphere : spheres) {
+        // The unit circle has a radius of 1 around the origin, so scaling it by the
+        // radius and moving it to the centre lands it on the sphere.
+        scene::Transform transform;
+        transform.position = sphere.center;
+        transform.scale = glm::vec3{sphere.radius};
+
+        for (const glm::vec3& rotation : CIRCLE_ROTATIONS) {
+            transform.rotationDegrees = rotation;
+            shader.setMat4(MODEL_UNIFORM, transform.matrix());
+            m_unitCircle.draw();
+        }
     }
 }
 

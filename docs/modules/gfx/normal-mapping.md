@@ -1,6 +1,6 @@
 # Moduł gfx: mapy normalnych
 
-Kamień milowy: M4 (część "mapy normalnych", która domyka kod M4). Temat wykładu: 5 (Tekstury), z efektem widocznym dopiero przy oświetleniu z tematów 6 i 7.
+Kamień milowy: M4 (część "mapy normalnych", która domyka kod M4), zaktualizowany w M5 (mapy normalnych kryształów i bramy, kod wiążący w `ModelDraw.cpp`). Temat wykładu: 5 (Tekstury), z efektem widocznym dopiero przy oświetleniu z tematów 6 i 7.
 Kod: plik dołączany do shaderów [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl), shadery [`lit.vert`](../../../assets/shaders/lit.vert), [`lit.frag`](../../../assets/shaders/lit.frag), [`textured.vert`](../../../assets/shaders/textured.vert), [`textured.frag`](../../../assets/shaders/textured.frag), styczne w [`src/assets/Tangents.hpp`](../../../src/assets/Tangents.hpp) i [`src/assets/Tangents.cpp`](../../../src/assets/Tangents.cpp), wierzchołek w [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp), skrypt tekstur [`tools/blender/make_textures.py`](../../../tools/blender/make_textures.py), testy [`tests/TangentTests.cpp`](../../../tests/TangentTests.cpp).
 
 Część modułu `gfx`, chociaż technika przechodzi przez kilka warstw: skrypt Blendera, loader OBJ, pamięć podręczną assetów, układ wierzchołka, shadery i panel. Ten dokument jest jej **jednym miejscem**: tłumaczy teorię, plik `common/normal_map.glsl` i pliki `Tangents.*` linia po linii, a przy pozostałych plikach mówi, co się zmieniło, i odsyła do dokumentu, który omawia je w całości. Zakłada znajomość tekstur ([`textures.md`](textures.md)), wierzchołka i siatki ([`mesh.md`](mesh.md)), świateł ([`../scene/lights.md`](../scene/lights.md)) i różnicy między światłem na wierzchołek a na fragment ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)).
@@ -12,10 +12,11 @@ Część modułu `gfx`, chociaż technika przechodzi przez kilka warstw: skrypt 
 | [`../assets/obj-loader.md`](../assets/obj-loader.md) | linia `map_Bump` i parser MTL linia po linii, wywołanie `computeTangents` na końcu `parseObj` |
 | [`mesh.md`](mesh.md) | struktura `Vertex` z czwartym polem, cztery atrybuty w `Mesh` |
 | [`../assets/asset-cache.md`](../assets/asset-cache.md) | `ModelPart::normalMap`, płaska tekstura zastępcza, panel Assets |
-| [`../game/maze-rendering.md`](../game/maze-rendering.md) | wiązanie dwóch tekstur w `MazeRenderer` |
+| [`../game/maze-rendering.md`](../game/maze-rendering.md) | wiązanie dwóch tekstur w `game::drawModel` (do M4: `MazeRenderer::drawInstances`) |
+| [`../game/gameplay.md`](../game/gameplay.md) | kryształy i brama, które od M5 też mają mapy normalnych |
 | [`../game/flashlight.md`](../game/flashlight.md) | `LightingSettings::normalMapping` i `usesNormalMap` |
 
-**Stan na dziś (2026-10-05).** Kod jest kompletny i zmierzony na Windowsie (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu konfiguracjach, start gry bez linii `[error]` i `GL_`, a obraz sprawdzony na zrzutach ekranu (sekcja 5.11). **Nikt jeszcze nie kliknął ręcznie** pola `Normal mapping` w panelu Assets i nikt nie obejrzał ręcznie domyślnego układu paneli z tym polem. **Na macOS nic z tego nie było budowane ani uruchamiane**: lista i ryzyka są w [`../../guides/build-macos.md`](../../guides/build-macos.md). Shadery, `gfx::Mesh` i `assets::AssetCache` wymagają kontekstu OpenGL i nie mają testów jednostkowych. Testy mają: matematyka stycznych, parser MTL, zawartość plików map normalnych i funkcja `usesNormalMap`.
+**Stan na dziś (2026-10-05).** Kod z M4 jest kompletny i był zmierzony na Windowsie (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): build Debug i Release bez ostrzeżeń, wtedy 163 przypadki testowe i 62220 asercji w obu konfiguracjach, start gry bez linii `[error]` i `GL_`, a obraz sprawdzony na zrzutach ekranu (sekcja 5.11). M5 nie zmienił ani shaderów tej techniki, ani plików `Tangents.*`, ani loadera. Zmienił trzy rzeczy wokół: kod, który wiąże obie tekstury, przeszedł z `MazeRenderer::drawInstances` do wolnej funkcji `game::drawModel` w `src/game/ModelDraw.cpp`, doszły trzy modele z mapami normalnych (dwa kryształy i brama, sekcja 5.3) i zniknęły kostki świateł. Stan z M5 zgłoszony dla Windowsa tego samego dnia: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach. M5 jest kompletny w kodzie, ale nie zamknięty. **Nikt jeszcze nie kliknął ręcznie** pola `Normal mapping` w panelu Assets i nikt nie obejrzał ręcznie domyślnego układu paneli z tym polem. **Na macOS nic z tego nie było budowane ani uruchamiane**: lista i ryzyka są w [`../../guides/build-macos.md`](../../guides/build-macos.md). Shadery, `gfx::Mesh` i `assets::AssetCache` wymagają kontekstu OpenGL i nie mają testów jednostkowych. Testy mają: matematyka stycznych, parser MTL, zawartość plików map normalnych i funkcja `usesNormalMap`.
 
 ## 1. Po co to jest
 
@@ -27,10 +28,10 @@ Co do tego potrzeba i gdzie to jest w projekcie:
 
 | Rzecz | Gdzie |
 |---|---|
-| obraz z normalnymi, zgodny co do teksela z obrazem koloru | `assets/textures/wall_stone_normal.png`, `floor_stone_normal.png`, generowane przez `make_textures.py` |
+| obraz z normalnymi, zgodny co do teksela z obrazem koloru | `assets/textures/wall_stone_normal.png`, `floor_stone_normal.png`, a od M5 także `crystal_normal.png` i `gate_wood_normal.png`, generowane przez `make_textures.py` |
 | informacja w materiale, która tekstura jest mapą normalnych | linia `map_Bump` w plikach `.mtl`, pole `ObjMaterial::normalTexture` |
 | kierunek "w prawo na teksturze" w każdym wierzchołku, czyli **styczna** (tangent) | pole `Vertex::tangent`, liczone przez `assets::computeTangents` |
-| druga tekstura związana z drugą jednostką teksturującą | `MazeRenderer::drawInstances`, sampler `uNormalMap` |
+| druga tekstura związana z drugą jednostką teksturującą | `game::drawModel` w `src/game/ModelDraw.cpp`, sampler `uNormalMap` |
 | przeliczenie normalnej z tekstury na przestrzeń świata | funkcja `surfaceNormal` w `common/normal_map.glsl` |
 | przełącznik, żeby efekt dało się pokazać | pole `Normal mapping` w panelu Assets, `LightingSettings::normalMapping` |
 
@@ -215,7 +216,7 @@ T = (0 * E1 - 1,3 * E2) / 1,3 = (2,6, 0, 0) / 1,3 = (2, 0, 0)
 B = ((-1) * E2 - (-1) * E1) / 1,3 = ((2, 0, 0) + (-2, 2,6, 0)) / 1,3 = (0, 2, 0)
 ```
 
-`T = (2, 0, 0)`: `u` rośnie wzdłuż `+X`, a jedna jednostka `u` to 2 m ściany. To się zgadza z gęstością tekstury modeli (jedno powtórzenie na 2 m). `B = (0, 2, 0)`: `v` rośnie w górę. Po normalizacji `T = (1, 0, 0)`, a `cross(N, T) = (0, 0, 1) x (1, 0, 0) = (0, 1, 0)`, czyli dokładnie kierunek `B`. Tę wartość sprawdza test `loadObj: wall_straight.obj`: styczna `+X` na stronie zwróconej ku `+Z`.
+`T = (2, 0, 0)`: `u` rośnie wzdłuż `+X`, a jedna jednostka `u` to 2 m ściany. To się zgadza z gęstością tekstury modeli kamiennych (jedno powtórzenie na 2 m). `B = (0, 2, 0)`: `v` rośnie w górę. Po normalizacji `T = (1, 0, 0)`, a `cross(N, T) = (0, 0, 1) x (1, 0, 0) = (0, 1, 0)`, czyli dokładnie kierunek `B`. Tę wartość sprawdza test `loadObj: wall_straight.obj`: styczna `+X` na stronie zwróconej ku `+Z`.
 
 ### 2.8 Uśrednianie na wierzchołkach i Gram-Schmidt
 
@@ -236,7 +237,7 @@ długość = 0,8,  T' = (0,8, 0, -0,6)
 dot(N, T') = 0,48 - 0,48 = 0
 ```
 
-**Dlaczego na procesorze, raz, przy wczytaniu.** Wiele samouczków robi ten krok w shaderze wierzchołków, dla każdego wierzchołka w każdej klatce. Wynik zależy tylko od danych modelu, więc projekt liczy go raz, w `computeTangents`. Shader dostaje gotową parę: `T` o długości 1, prostopadłą do `N`. Koszt tej decyzji jest uczciwie opisany w notatce [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md): shader **nie poprawia** prostopadłości po interpolacji między wierzchołkami. W modelach gry to nic nie zmienia, bo każda ściana ma własne wierzchołki z tą samą normalną i tą samą styczną (cieniowanie płaskie, `s 0` w pliku OBJ), więc interpolacja miesza identyczne wektory. Na modelu gładko cieniowanym interpolowane `T` i `N` odchylałyby się od kąta prostego o ułamek stopnia i krok Grama-Schmidta należałoby powtórzyć w shaderze fragmentów.
+**Dlaczego na procesorze, raz, przy wczytaniu.** Wiele samouczków robi ten krok w shaderze wierzchołków, dla każdego wierzchołka w każdej klatce. Wynik zależy tylko od danych modelu, więc projekt liczy go raz, w `computeTangents`. Shader dostaje gotową parę: `T` o długości 1, prostopadłą do `N`. Koszt tej decyzji jest uczciwie opisany w notatce [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md): shader **nie poprawia** prostopadłości po interpolacji między wierzchołkami. W modelach gry to nic nie zmienia, bo każda ściana ma własne wierzchołki z tą samą normalną i tą samą styczną (cieniowanie płaskie, `s 0` w pliku OBJ), więc interpolacja miesza identyczne wektory. Linię `s 0` mają wszystkie sześć plików OBJ, także kryształy i brama z M5: ścianki kryształu są skośne, ale każda jest płaska. Na modelu gładko cieniowanym interpolowane `T` i `N` odchylałyby się od kąta prostego o ułamek stopnia i krok Grama-Schmidta należałoby powtórzyć w shaderze fragmentów.
 
 ### 2.9 Skrętność i lustrzane UV
 
@@ -244,7 +245,7 @@ dot(N, T') = 0,48 - 0,48 = 0
 
 Modele często mają **lustrzane UV** (mirrored UVs): lewa połowa twarzy używa tego samego kawałka tekstury co prawa, tylko odbitego. Na takim trójkącie `u` rośnie w przeciwną stronę, prawdziwe `B` wskazuje przeciwnie do `cross(N, T)`, a baza jest **lewoskrętna**. Shader, który liczy `B` iloczynem wektorowym, pokaże tam relief **do góry nogami**: rowki staną się wałkami. Standardowe rozwiązanie to znak skrętności (handedness) na wierzchołek, zwykle czwarta składowa stycznej `w` równa `+1` albo `-1`, i `B = cross(N, T) * w`.
 
-**Dlaczego w tym projekcie znaku nie ma.** Żaden trójkąt trzech modeli gry nie ma lustrzanej bazy. Wynika to z tego, jak skrypt nakłada UV (`box_project_uvs`): na przeciwległych stronach ściany `u` ma przeciwny znak. To wygląda jak odbicie, ale jest jego przeciwieństwem. Tylna strona jest oglądana z przeciwnej strony, więc gdyby `u` biegło tam w tym samym kierunku świata co z przodu, to dla patrzącego biegłoby w lewo i tekstura byłaby lustrzanym odbiciem. Zmiana znaku to naprawia: na każdej stronie `u` rośnie w prawo **dla kogoś, kto patrzy na tę stronę z zewnątrz**.
+**Dlaczego w tym projekcie znaku nie ma.** Żaden trójkąt modeli gry nie ma lustrzanej bazy. Dla trzech modeli kamiennych i dla bramy wynika to z tego, jak skrypt nakłada UV (`box_project_uvs`): na przeciwległych stronach ściany `u` ma przeciwny znak. To wygląda jak odbicie, ale jest jego przeciwieństwem. Tylna strona jest oglądana z przeciwnej strony, więc gdyby `u` biegło tam w tym samym kierunku świata co z przodu, to dla patrzącego biegłoby w lewo i tekstura byłaby lustrzanym odbiciem. Zmiana znaku to naprawia: na każdej stronie `u` rośnie w prawo **dla kogoś, kto patrzy na tę stronę z zewnątrz**.
 
 | Strona ściany | `N` | `T` (gdzie rośnie `u`) | `cross(N, T)` |
 |---|---|---|---|
@@ -254,7 +255,9 @@ Modele często mają **lustrzane UV** (mirrored UVs): lewa połowa twarzy używa
 | koniec `-X` | `(-1, 0, 0)` | `(0, 0, 1)` | `(0, 1, 0)`: w górę |
 | podłoga | `(0, 1, 0)` | `(1, 0, 0)` | `(0, 0, -1)`: tam, gdzie rośnie `v` podłogi |
 
-Projekt tego nie zakłada, tylko **liczy i sprawdza**. `countMirroredTriangles` zlicza trójkąty, na których `cross(N, T)` wskazuje przeciwnie do `B` z sekcji 2.7. Wynik trafia do `ObjModel::mirroredTriangleCount`, `loadObj` wypisuje ostrzeżenie, gdy jest większy od zera, a testy trzech modeli wymagają zera. Model z lustrzanymi UV wczyta się więc, ale z linią ostrzeżenia w logu, i będzie to sygnał, że trzeba dodać znak do wierzchołka.
+Kryształy z M5 mają skośne ścianki, do których rzut pudełkowy nie pasuje, więc dostają UV inną funkcją, `face_project_uvs` z `tools/blender/blender_common.py`. Każda ścianka jest rzutowana na własną płaszczyznę: `up` to kierunek wysokości na tyle, na ile ścianka pozwala, a `right` to prawa strona dla kogoś, kto patrzy na ściankę z zewnątrz. `right`, `up` i normalna tworzą układ prawoskrętny, więc tekstura z założenia nie jest odbiciem.
+
+Projekt tego nie zakłada, tylko **liczy i sprawdza**. `countMirroredTriangles` zlicza trójkąty, na których `cross(N, T)` wskazuje przeciwnie do `B` z sekcji 2.7. Wynik trafia do `ObjModel::mirroredTriangleCount`, `loadObj` wypisuje ostrzeżenie, gdy jest większy od zera, a testy trzech modeli kamiennych wymagają zera. Dla trzech modeli z M5 (`crystal_a.obj`, `crystal_b.obj`, `gate.obj`) takiego testu nie ma: `tests/ObjLoaderTests.cpp` wczytuje tylko modele kamienne. Policzyłem je więc osobno, tym samym wzorem na plikach OBJ (krótki skrypt poza repozytorium, 2026-10-05): 24, 66 i 70 trójkątów, w każdym z trzech plików 0 lustrzanych i 0 ze zdegenerowanymi UV. To liczenie z plików, a nie wynik testu ani logu gry. Model z lustrzanymi UV wczyta się więc, ale z linią ostrzeżenia w logu, i będzie to sygnał, że trzeba dodać znak do wierzchołka.
 
 ### 2.10 Macierz TBN
 
@@ -284,11 +287,11 @@ Druga możliwość to przeliczenie w odwrotną stronę: światła i oko do przes
 | normalna `N` | `uNormalMatrix`, czyli odwrotna transponowana części 3 na 3 macierzy modelu | normalna ma zostać **prostopadła** do powierzchni także przy nierównej skali ([`../scene/lights.md`](../scene/lights.md), sekcja 2.7) |
 | styczna `T` | `mat3(uModel)`, czyli część 3 na 3 macierzy modelu | styczna **leży w** powierzchni, jak krawędź trójkąta, więc obraca się i rozciąga razem z modelem, tak jak pozycje |
 
-Z tymi dwiema macierzami para zostaje prostopadła przy dowolnej macierzy modelu `M`: `(M T) . (M^-T N) = T^T M^T M^-T N = T . N = 0`. W labiryncie każda macierz modelu to przesunięcie i najwyżej obrót o 90 stopni wokół osi Y, a dla samego obrotu obie macierze są równe.
+Z tymi dwiema macierzami para zostaje prostopadła przy dowolnej macierzy modelu `M`: `(M T) . (M^-T N) = T^T M^T M^-T N = T . N = 0`. W labiryncie każda macierz modelu to przesunięcie i najwyżej obrót o 90 stopni wokół osi Y, a dla samego obrotu obie macierze są równe. Kryształ z M5 obraca się wokół osi Y o kąt rosnący z czasem (`GameplayRenderer::draw`), nadal bez skali: `T` i `N` obracają się razem, więc relief obraca się z kryształem, a światło na nim zmienia się z klatki na klatkę.
 
 ### 2.11 Dlaczego Gouraud nie może użyć mapy normalnych
 
-Cieniowanie Gourauda liczy światło w shaderze **wierzchołków** i interpoluje gotowy kolor ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Mapa normalnych przechowuje jedną normalną na **teksel**. Przednia strona ściany ma 4 wierzchołki, a mapa ma 262144 teksele na każdy kwadrat 2 m na 2 m. Światło policzone w 4 punktach nie ma jak uwzględnić tego, co jest między nimi: teksel leżący w środku ściany nie bierze udziału w żadnym obliczeniu.
+Cieniowanie Gourauda liczy światło w shaderze **wierzchołków** i interpoluje gotowy kolor ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Mapa normalnych przechowuje jedną normalną na **teksel**. Przednia strona ściany ma 4 wierzchołki, a mapa ściany ma 262144 teksele na każdy kwadrat 2 m na 2 m. Światło policzone w 4 punktach nie ma jak uwzględnić tego, co jest między nimi: teksel leżący w środku ściany nie bierze udziału w żadnym obliczeniu.
 
 Można by odczytać mapę w shaderze wierzchołków, ale dałoby to normalną z jednego teksela na róg ściany, czyli przypadkowe odchylenie całej ściany, a nie relief. Dlatego program `gouraud` nie ma ani samplera `uNormalMap`, ani wejścia `aTangent`, a funkcja `usesNormalMap` zwraca dla trybu Gouraud `false`. To kolejna rzecz na liście tego, czego światło na wierzchołek nie pokaże, obok ostrego odbłysku i stożka latarki na dużym trójkącie.
 
@@ -303,6 +306,7 @@ Rzeczy, które wiem o obecnym stanie i których nie ukrywam:
 5. **Brak znaku skrętności.** Model z lustrzanymi UV dostanie ostrzeżenie w logu i odwrócony relief na odbitych trójkątach (sekcja 2.9).
 6. **Brak ponownej ortogonalizacji w shaderze** (sekcja 2.8): bez znaczenia dla modeli z płaskim cieniowaniem, do poprawienia przy pierwszym modelu gładkim.
 7. **Sylwetka zostaje płaska** i fugi nie rzucają cieni (sekcja 2.1). Cieni w grze nie ma w ogóle do M7.
+8. **Mapy z M5 mają inną gęstość i drobne wady.** Kryształy używają jednego powtórzenia tekstury na 0,5 m zamiast 2 m (`METRES_PER_UV_UNIT` w `build_crystal.py`: przy 2 m ścianka szeroka na 0,1 m pokazałaby kilka rozmytych pikseli), skośne krawędzie żelaznych okuć bramy mają teksturę rozciągniętą w pionie około 1,2 raza (z UV w `gate.obj` wychodzi do 2,4 m na jednostkę `v` zamiast 2), a `crystal_normal.png` ma według autora modeli kilka załamań szerokości jednego piksela, zostawionych jako wada kosmetyczna. Testy zawartości map (średnia, konwencja zielonego kanału, sekcja 2.5) obejmują tylko dwie mapy kamienne.
 
 ## 3. Jak to działa w OpenGL
 
@@ -317,7 +321,7 @@ Technika nie używa żadnej nowej funkcji OpenGL. Używa trzech znanych mechaniz
 | UV | 2 | 2 | 24 | `uv` |
 | **styczna** | **3** | **3** | **32** | `tangent` |
 
-Wierzchołek ma 11 liczb `float`, czyli 44 bajty, i to jest krok (stride) wszystkich czterech atrybutów. Shader, który stycznej nie czyta (`gouraud.vert`, `color.vert`, `basic.vert`), po prostu nie deklaruje wejścia o numerze 3.
+Wierzchołek ma 11 liczb `float`, czyli 44 bajty, i to jest krok (stride) wszystkich czterech atrybutów. Shader, który stycznej nie czyta (`gouraud.vert`, `color.vert`), po prostu nie deklaruje wejścia o numerze 3.
 
 **Dwie jednostki teksturujące, dwa samplery.** Shader fragmentów czyta dla jednego fragmentu dwie tekstury naraz, więc muszą być związane z **różnymi** jednostkami ([`textures.md`](textures.md), sekcja 2.7):
 
@@ -326,16 +330,16 @@ Wierzchołek ma 11 liczb `float`, czyli 44 bajty, i to jest krok (stride) wszyst
 | 0 | obraz koloru części modelu | `uniform sampler2D uTexture;` | 0 |
 | 1 | mapa normalnych części modelu | `uniform sampler2D uNormalMap;` | 1 |
 
-Wywołania dla jednej części modelu, w kolejności z `MazeRenderer::drawInstances`:
+Wywołania dla jednej części modelu, w kolejności z `game::setModelSamplers` (krok 1) i `game::drawModel` (kroki od 2 do 4) w `src/game/ModelDraw.cpp`:
 
 | # | Wywołanie | Co robi |
 |---|---|---|
-| 1 | `glUniform1i(location(uTexture), 0)` i `glUniform1i(location(uNormalMap), 1)` | raz na klatkę i program: każdy sampler dostaje numer swojej jednostki |
+| 1 | `glUniform1i(location(uTexture), 0)` i `glUniform1i(location(uNormalMap), 1)` | w każdej klatce, na początku `MazeRenderer::draw` i `GameplayRenderer::draw`: każdy sampler dostaje numer swojej jednostki |
 | 2 | `glActiveTexture(GL_TEXTURE1)`, `glBindTexture(GL_TEXTURE_2D, mapa)`, `glBindSampler(1, ...)` | mapa normalnych na jednostkę 1 (`Texture2D::bind(1)`) |
 | 3 | `glActiveTexture(GL_TEXTURE0)`, `glBindTexture(GL_TEXTURE_2D, kolor)`, `glBindSampler(0, ...)` | obraz koloru na jednostkę 0 (`Texture2D::bind(0)`). Po tym kroku aktywna jest jednostka 0 |
 | 4 | `glDrawElements(...)` dla każdego obiektu | shader czyta obie tekstury |
 
-Kolejność kroków 2 i 3 jest celowa. `glBindTexture` działa na jednostce **aktywnej**, a `bind` ją zmienia. Wiązanie obrazu koloru na końcu zostawia aktywną jednostkę 0. Na aktywnej jednostce działa też kod, który wiąże teksturę bez wybierania jednostki: konstruktor `Texture2D` przy tworzeniu nowej tekstury (jedyne takie miejsce w `src/`). Gdyby aktywna została jednostka 1, tekstura utworzona później wyparłaby mapę normalnych z jednostki 1 do następnego `bind`. **Dziś nic od tego nie zależy**: wszystkie tekstury powstają przed pierwszą klatką, a `drawInstances` i tak wiąże obie tekstury od nowa dla każdej części modelu. Kolejność jest więc porządkiem w stanie kontekstu (aktywna zostaje jednostka 0, jak przed tą zmianą), a nie warunkiem poprawności. Komentarz w kodzie mówi o tym ogólnie: "as the rest of the program expects".
+Kolejność kroków 2 i 3 jest celowa. `glBindTexture` działa na jednostce **aktywnej**, a `bind` ją zmienia. Wiązanie obrazu koloru na końcu zostawia aktywną jednostkę 0. Na aktywnej jednostce działa też kod, który wiąże teksturę bez wybierania jednostki: konstruktor `Texture2D` przy tworzeniu nowej tekstury (jedyne takie miejsce w `src/`). Gdyby aktywna została jednostka 1, tekstura utworzona później wyparłaby mapę normalnych z jednostki 1 do następnego `bind`. **Dziś nic od tego nie zależy**: wszystkie tekstury powstają przed pierwszą klatką, a `drawModel` i tak wiąże obie tekstury od nowa dla każdej części modelu. Kolejność jest więc porządkiem w stanie kontekstu (aktywna zostaje jednostka 0, jak przed tą zmianą), a nie warunkiem poprawności. Komentarz w kodzie mówi o tym ogólnie: "as the rest of the program expects".
 
 **Format i filtr mapy normalnych.** Mapa jest dla `assets::AssetCache` zwykłą teksturą: ten sam loader, format `GL_RGB8`, mipmapy, ten sam obiekt samplera z filtrem i anizotropią ustawianymi w panelu Assets. Dwie konsekwencje:
 
@@ -376,7 +380,7 @@ uniform bool uNormalMapEnabled;
 
 | Linia | Znaczenie |
 |---|---|
-| `uniform sampler2D uNormalMap;` | drugi sampler programu. Przechowuje numer jednostki teksturującej, tak jak `uTexture`, tylko inny: 1. Ustawia go `MazeRenderer::draw` przez `Shader::setInt` |
+| `uniform sampler2D uNormalMap;` | drugi sampler programu. Przechowuje numer jednostki teksturującej, tak jak `uTexture`, tylko inny: 1. Ustawia go `game::setModelSamplers` przez `Shader::setInt` |
 | `uniform bool uNormalMapEnabled;` | przełącznik. Typ `bool` w GLSL ustawia się z C++ tą samą funkcją co `int`: `glUniform1i`, 0 to `false`, każda inna wartość to `true`. Robi to `setInt(NORMAL_MAP_ENABLED_UNIFORM, ...)` w `NightMazeApp` |
 
 Uniform, którego nikt nie ustawił, ma po linkowaniu wartość 0. Dla `uNormalMapEnabled` to `false`, więc świeżo przeładowany program startuje bez map normalnych, dopóki C++ nie wyśle wartości (wysyła ją w każdej klatce). Dla `uNormalMap` wartość 0 znaczyłaby "jednostka 0", czyli obraz koloru czytany jako mapa normalnych: dlatego także numer jednostki jest wysyłany w każdej klatce.
@@ -436,7 +440,7 @@ Konstruktor `mat3` z trzech wektorów układa je jako **kolumny** (GLSL przechow
 
 | Linia | Znaczenie |
 |---|---|
-| `texture(uNormalMap, uv).rgb` | ten sam odczyt co dla koloru, z tymi samymi `uv`: relief leży dokładnie tam, gdzie obraz koloru pokazuje fugę. Filtr, mipmapy i zawijanie pochodzą z obiektu samplera tej tekstury |
+| `texture(uNormalMap, uv).rgb` | ten sam odczyt co dla koloru, z tymi samymi `uv`: relief leży dokładnie tam, gdzie obraz koloru pokazuje fugę (na kryształach żyłkę, na bramie szparę między deskami). Filtr, mipmapy i zawijanie pochodzą z obiektu samplera tej tekstury |
 | `* 2.0 - 1.0` | odkodowanie z sekcji 2.4: z zakresu 0..1 do -1..1, dla wszystkich trzech składowych naraz |
 | `tangentToWorld * mapped` | zmiana bazy: `x * T + y * B + z * N` |
 | `normalize(...)` | filtr i mipmapy skróciły wektor z tekstury, a ośmiobitowy zapis dodał drobny błąd. Bez tej linii światło na skosach i w oddali byłoby ciemniejsze (pułapka 4) |
@@ -472,7 +476,7 @@ Numer 3 w `layout(location = 3)` to stała `TANGENT_ATTRIBUTE` z `src/gfx/Vertex
     vTangent = mat3(uModel) * aTangent;
 ```
 
-Program `textured` używa stycznej tylko w widoku diagnostycznym normalnych. Jego normalna (`mat3(uModel) * aNormal`) jest równa normalnej programu `lit` (`uNormalMatrix * aNormal`) tak długo, jak macierze modelu są obrotami bez skali, co w labiryncie jest prawdą. Widok pokazuje więc tę samą normalną, której używa oświetlenie, **pod tym warunkiem**. Przy obiekcie z nierówną skalą oba programy rozeszłyby się w normalnej modelu ([`textures.md`](textures.md), sekcja 4.1).
+Program `textured` używa stycznej tylko w widoku diagnostycznym normalnych. Jego normalna (`mat3(uModel) * aNormal`) jest równa normalnej programu `lit` (`uNormalMatrix * aNormal`) tak długo, jak macierze modelu są obrotami bez skali, co jest prawdą w labiryncie, dla bramy i dla kryształów. Widok pokazuje więc tę samą normalną, której używa oświetlenie, **pod tym warunkiem**. Przy obiekcie z nierówną skalą oba programy rozeszłyby się w normalnej modelu ([`textures.md`](textures.md), sekcja 4.1).
 
 ### 4.3 `lit.frag` i `textured.frag`: jedno wywołanie
 
@@ -500,7 +504,7 @@ Cała zmiana w `main` to jedna linia: zamiast `normalize(vNormal)` wywołanie `s
     Lighting lighting = computeLighting(vWorldPosition, normal);
 ```
 
-To najważniejsze zdanie o architekturze tej techniki: **mapy normalnych wchodzą do oświetlenia w jednym miejscu**. Plik `common/lighting.glsl` nie zmienił żadnej linii wzorów. Lambert, odbłysk Phonga i Blinna-Phonga, tłumienie i stożek dostają normalną jako argument i nie wiedzą, skąd pochodzi. Dlatego relief działa od razu ze wszystkimi światłami: księżycem, latarką i światłami punktowymi, w rozproszeniu i w odbłysku.
+To najważniejsze zdanie o architekturze tej techniki: **mapy normalnych wchodzą do oświetlenia w jednym miejscu**. Plik `common/lighting.glsl` nie zmienił żadnej linii wzorów. Lambert, odbłysk Phonga i Blinna-Phonga, tłumienie i stożek dostają normalną jako argument i nie wiedzą, skąd pochodzi. Dlatego relief działa od razu ze wszystkimi światłami: księżycem, latarką i światłami punktowymi, w rozproszeniu i w odbłysku. Uniform `uEmissive` z M5 (świecenie własne kryształów) tej zasady nie narusza: `lit.frag` dodaje go do światła rozproszonego już po `computeLighting`, więc od normalnej nie zależy. Na krysztale relief widać w świetle, które na niego pada, a świecenie rozjaśnia go równo.
 
 `textured.frag` woła tę samą funkcję w gałęzi widoku normalnych (`uViewMode == 1`):
 
@@ -523,7 +527,7 @@ Program `gouraud` nie dostał żadnej linii kodu, tylko komentarz, który mówi 
 // has no way to take part. That is one more thing Gouraud shading cannot show.
 ```
 
-`MazeRenderer::draw` wysyła `uNormalMap` i wiąże mapę z jednostką 1 także wtedy, gdy rysuje programem `gouraud`. Program nie ma takiego uniformu, więc wywołanie jest po cichu ignorowane (położenie -1, [`uniforms.md`](uniforms.md)), a tekstura na jednostce 1 nie jest przez nikogo czytana. Kod rysujący nie musi wiedzieć, którym programem rysuje.
+`game::setModelSamplers` wysyła `uNormalMap`, a `game::drawModel` wiąże mapę z jednostką 1 także wtedy, gdy rysuje program `gouraud`. Komentarz w `ModelDraw.hpp` mówi to wprost: "The gouraud program has no uNormalMap: a uniform a program does not have is ignored." Program nie ma takiego uniformu, więc wywołanie jest po cichu ignorowane (położenie -1, [`uniforms.md`](uniforms.md)), a tekstura na jednostce 1 nie jest przez nikogo czytana. Kod rysujący nie musi wiedzieć, którym programem rysuje.
 
 ## 5. Kod w projekcie
 
@@ -531,14 +535,14 @@ Program `gouraud` nie dostał żadnej linii kodu, tylko komentarz, który mówi 
 
 ```mermaid
 flowchart LR
-    Script["make_textures.py<br/>wysokość, normal_map()"] --> Png["wall_stone_normal.png<br/>floor_stone_normal.png"]
+    Script["make_textures.py<br/>wysokość, normal_map()"] --> Png["wall_stone_normal.png<br/>floor_stone_normal.png<br/>crystal_normal.png<br/>gate_wood_normal.png"]
     Build["build_*.py<br/>węzeł Normal Map"] --> Mtl["*.mtl<br/>linia map_Bump"]
     Mtl --> Parser["parseMtl<br/>ObjMaterial::normalTexture"]
     Obj["*.obj"] --> ParseObj["parseObj<br/>computeTangents"]
     ParseObj --> Vertex["Vertex::tangent<br/>atrybut 3"]
     Parser --> Cache["AssetCache<br/>ModelPart::normalMap"]
     Png --> Cache
-    Cache --> Renderer["MazeRenderer<br/>jednostka 1"]
+    Cache --> Renderer["drawModel<br/>jednostka 1"]
     Vertex --> Shader["surfaceNormal()<br/>common/normal_map.glsl"]
     Renderer --> Shader
     Toggle["panel Assets<br/>LightingSettings::normalMapping"] --> Shader
@@ -548,7 +552,7 @@ flowchart LR
 |---|---|---|
 | `tools/blender/make_textures.py` | pole wysokości i funkcja `normal_map` | sekcja 5.2, całość w [`../../guides/blender.md`](../../guides/blender.md) |
 | `tools/blender/blender_common.py` | materiał z węzłem Normal Map | [`../../guides/blender.md`](../../guides/blender.md) |
-| `assets/textures/*_normal.png` | dwie mapy normalnych 512 x 512, RGB | sekcja 5.2 |
+| `assets/textures/*_normal.png` | cztery mapy normalnych 512 x 512, RGB: dwie kamienne z M4 oraz `crystal_normal.png` i `gate_wood_normal.png` z M5 | sekcja 5.2 |
 | `assets/models/*.mtl` | linia `map_Bump` | sekcja 5.3 |
 | `src/assets/ObjLoader.*` | parser linii, `normalTexture`, wywołanie `computeTangents` | [`../assets/obj-loader.md`](../assets/obj-loader.md) |
 | `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` | pole `tangent`, czwarty atrybut | [`mesh.md`](mesh.md) |
@@ -556,7 +560,7 @@ flowchart LR
 | `src/assets/AssetCache.*` | `ModelPart::normalMap`, `flatNormalTexture()` | [`../assets/asset-cache.md`](../assets/asset-cache.md) |
 | `assets/shaders/common/normal_map.glsl` | `surfaceNormal` | **tutaj**, sekcja 4.1 |
 | `assets/shaders/lit.*`, `textured.*`, `gouraud.vert` | styczna, wywołanie funkcji, komentarz | sekcje 4.2 do 4.4 |
-| `src/game/MazeRenderer.*`, `NightMazeApp.cpp`, `ShaderUniforms.hpp` | jednostka 1, dwa uniformy | sekcja 5.9, [`../game/maze-rendering.md`](../game/maze-rendering.md) |
+| `src/game/ModelDraw.*`, `NightMazeApp.cpp`, `ShaderUniforms.hpp` | jednostka 1, dwa uniformy. `ModelDraw.*` wołają `MazeRenderer` i `GameplayRenderer` | sekcja 5.9, [`../game/maze-rendering.md`](../game/maze-rendering.md) |
 | `src/game/Lighting.*` | `normalMapping`, `usesNormalMap` | sekcja 5.9, [`../game/flashlight.md`](../game/flashlight.md) |
 | `src/debug/panels/AssetsPanel.*` | pole wyboru i lista | sekcja 6 |
 | `tests/TangentTests.cpp` i dopisane przypadki w trzech innych plikach | sekcja 5.10 | |
@@ -630,11 +634,13 @@ def normal_map(height):
 | `normal / np.linalg.norm(...)` | normalizacja każdego wektora osobno |
 | `normal * 0.5 + 0.5` | kodowanie z sekcji 2.4 |
 
-Wynik: dwa pliki 512 x 512, RGB, 8 bitów na kanał. Zmierzone na Windowsie 2026-10-05: dwa kolejne uruchomienia skryptu tekstur i skryptów modeli dały identyczne skróty wszystkich dziesięciu plików wyjściowych (4 PNG, 3 OBJ, 3 MTL), a obrazy koloru i pliki `.obj` są bajt w bajt takie same jak przed tą częścią. Na macOS skrypt nie był uruchamiany.
+Wynik w M4: dwa pliki 512 x 512, RGB, 8 bitów na kanał. Zmierzone wtedy na Windowsie (2026-10-05, przed M5): dwa kolejne uruchomienia skryptu tekstur i skryptów modeli dały identyczne skróty wszystkich dziesięciu plików wyjściowych, które wtedy istniały (4 PNG, 3 OBJ, 3 MTL), a obrazy koloru i pliki `.obj` były bajt w bajt takie same jak przed tamtą częścią. Na macOS skrypt nie był uruchamiany.
+
+**Mapy z M5.** Ta sama funkcja `normal_map` robi dziś cztery mapy: skrypt woła ją jeszcze dla wysokości bramy (`wood_height`: szpary między deskami, płytkie rowki wzdłuż słojów, okucia i nity) i kryształu (`crystal_height`). Zasada jest ta sama co dla kamienia: jeden wzór (`wood_pattern`, `crystal_pattern`) daje i kolor, i wysokość, więc relief leży tam, gdzie rysunek. Wysokość kryształu składa ostatnia linia `crystal_height`, `return profile * (vein_depth + lean + bumps)`: komórki podobne do faset, każda lekko pochylona inaczej, gasnące ku żyłkom (`vein_depth=1.0`, `tilt=0.06`, `bump_depth=4.0`, `bevel_width=6`). Obie nowe mapy też mają 512 x 512 i trzy kanały (odczytane z nagłówków PNG). Powtarzalności skryptów po M5 nie mierzyłem i nie mam o niej zgłoszenia. Skrypt w całości omawia [`../../guides/blender.md`](../../guides/blender.md).
 
 ### 5.3 Linia MTL i parser
 
-Każdy z trzech plików `.mtl` dostał jedną linię, dokładnie w postaci, w jakiej zapisuje ją Blender 5.2.1. Z [`assets/models/wall_straight.mtl`](../../../assets/models/wall_straight.mtl):
+Każdy z trzech plików `.mtl` z M4 dostał jedną linię, dokładnie w postaci, w jakiej zapisuje ją Blender 5.2.1. Trzy pliki z M5 mają ją w tej samej postaci: `crystal_a.mtl` i `crystal_b.mtl` wskazują `../textures/crystal_normal.png` (oba modele dzielą jedną parę tekstur), a `gate.mtl` wskazuje `../textures/gate_wood_normal.png`. Z [`assets/models/wall_straight.mtl`](../../../assets/models/wall_straight.mtl):
 
 ```text
 map_Kd ../textures/wall_stone.png
@@ -663,7 +669,7 @@ Wynik trafia do pola `ObjMaterial::normalTexture`. Kod parsera (`readNormalMap`)
     glm::vec3 tangent{0.0F};
 ```
 
-`gfx::Vertex` ma teraz 11 liczb `float` i 44 bajty (było 8 i 32). Pole stoi na końcu struktury, więc przesunięcia trzech wcześniejszych pól się nie zmieniły. Siatki, których nikt nie przepuszcza przez `computeTangents` (linie pudełek kolizji, kostki świateł), mają styczną zerową i rysują je programy, które atrybutu 3 nie czytają. Strukturę, asercje rozmiaru i klasę `Mesh` omawia [`mesh.md`](mesh.md).
+`gfx::Vertex` ma teraz 11 liczb `float` i 44 bajty (było 8 i 32). Pole stoi na końcu struktury, więc przesunięcia trzech wcześniejszych pól się nie zmieniły. Siatki, których nikt nie przepuszcza przez `computeTangents` (sześcian i okrąg linii kolizji w `ColliderLines`, a do M4 także kostki świateł, usunięte w M5), mają styczną zerową i rysuje je program `color`, który atrybutu 3 nie czyta. Strukturę, asercje rozmiaru i klasę `Mesh` omawia [`mesh.md`](mesh.md).
 
 Styczne są liczone na końcu `parseObj`, gdy znane są już wszystkie trójkąty:
 
@@ -676,7 +682,7 @@ Styczne są liczone na końcu `parseObj`, gdy znane są już wszystkie trójkąt
         countMirroredTriangles(parser.model.vertices, parser.model.indices);
 ```
 
-Styczne nie dodają wierzchołków: są liczone po tym, jak wierzchołki już istnieją. Odcinek ściany i słupek mają nadal po 60 wierzchołków i 90 indeksów, płytka podłogi 4 i 6.
+Styczne nie dodają wierzchołków: są liczone po tym, jak wierzchołki już istnieją. Odcinek ściany i słupek mają nadal po 60 wierzchołków i 90 indeksów, płytka podłogi 4 i 6. Kryształy i brama idą przez to samo `parseObj`, więc dostają styczne tym samym kodem, bez żadnej linii napisanej specjalnie dla nich.
 
 ### 5.5 `triangleTangents`: styczna jednego trójkąta
 
@@ -708,8 +714,8 @@ bool triangleTangents(const glm::vec3& position0, const glm::vec3& position1,
 | `edge1`, `edge2` | `E1` i `E2` z sekcji 2.7 |
 | `deltaUv1`, `deltaUv2` | `(du1, dv1)` i `(du2, dv2)`: składowa `x` wektora to różnica `u`, składowa `y` to różnica `v` |
 | `determinant` | `det = du1 * dv2 - du2 * dv1` |
-| `if (std::abs(determinant) < MIN_UV_DETERMINANT) return false;` | zdegenerowane UV. `MIN_UV_DETERMINANT` to `1.0e-12F`. Najmniejsze trójkąty modeli mają wyznacznik około 0,01 (wąski pasek na górze ściany: `0,14 * 0,075`), daleko powyżej progu. Wyjścia zostają nietknięte, co sprawdza test |
-| `tangent = ...`, `bitangent = ...` | dokładnie wzory z sekcji 2.7. Żadnej normalizacji: długość niesie informację o gęstości tekstury |
+| `if (std::abs(determinant) < MIN_UV_DETERMINANT) return false;` | zdegenerowane UV. `MIN_UV_DETERMINANT` to `1.0e-12F`. Najmniejsze trójkąty modeli kamiennych mają wyznacznik około 0,01 (wąski pasek na górze ściany: `0,14 * 0,075`), daleko powyżej progu. Policzone tym samym wzorem z plików OBJ modeli z M5: najmniejszy wyznacznik to około 0,0087 w `crystal_b.obj` i około 0,00048 w `gate.obj` (wąskie skosy okuć), nadal wiele rzędów wielkości nad progiem. Wyjścia zostają nietknięte, co sprawdza test |
+| `tangent = ...`, `bitangent = ...` | dokładnie wzory z sekcji 2.7. Żadnej normalizacji: długość niesie informację o gęstości tekstury (2 dla modeli kamiennych, 0,5 dla kryształów) |
 
 Funkcja zwraca też bitangentę, chociaż shader jej nie dostaje. Potrzebuje jej `countMirroredTriangles` do porównania z `cross(N, T)`.
 
@@ -788,7 +794,7 @@ glm::vec3 orthonormalTangent(const glm::vec3& normal, const glm::vec3& tangent) 
 | `leastAlignedAxis(unitNormal)` | oś współrzędnych, wzdłuż której normalna ma **najmniejszą** składową. Taka oś na pewno nie jest równoległa do normalnej, więc po odjęciu części wzdłuż normalnej zostaje wektor niezerowy |
 | `glm::normalize(inSurface)` | długość 1. Bezpieczne: obie gałęzie gwarantują długość wyraźnie większą od zera |
 
-Wynik **nigdy nie zawiera `NaN`**. To jest celowe: jedno `NaN` w atrybucie daje czarne albo migające piksele na całym trójkącie. Wierzchołek z wartością zastępczą jest nadal oświetlany przez mapę normalnych, tylko z reliefem obróconym o nieznany kąt. W modelach gry żaden wierzchołek tej gałęzi nie potrzebuje. Testy sprawdzają ją na danych zdegenerowanych: te same UV w każdym rogu, normalna równoległa do stycznej, trójkąt bez pola, wierzchołek bez normalnej i bez trójkąta.
+Wynik **nigdy nie zawiera `NaN`**. To jest celowe: jedno `NaN` w atrybucie daje czarne albo migające piksele na całym trójkącie. Wierzchołek z wartością zastępczą jest nadal oświetlany przez mapę normalnych, tylko z reliefem obróconym o nieznany kąt. W modelach gry żaden wierzchołek tej gałęzi nie potrzebuje: wszystkie trójkąty sześciu plików OBJ mają niezdegenerowane UV (dla trzech modeli z M5 policzone z plików, sekcja 2.9). Testy sprawdzają ją na danych zdegenerowanych: te same UV w każdym rogu, normalna równoległa do stycznej, trójkąt bez pola, wierzchołek bez normalnej i bez trójkąta.
 
 ### 5.7 `countMirroredTriangles`: sprawdzenie skrętności
 
@@ -814,7 +820,7 @@ Wynik zapisuje `parseObj`, a `loadObj` zamienia go na ostrzeżenie:
     }
 ```
 
-Model z lustrzanymi UV wczytuje się mimo to. Dla trzech modeli gry licznik wynosi 0, co sprawdzają testy `loadObj`.
+Model z lustrzanymi UV wczytuje się mimo to. Dla trzech modeli kamiennych licznik wynosi 0, co sprawdzają testy `loadObj`. Dla kryształów i bramy testu nie ma: zero wychodzi z liczenia na plikach (sekcja 2.9).
 
 ### 5.8 Płaska tekstura zastępcza
 
@@ -829,22 +835,26 @@ constexpr std::array<unsigned char, FALLBACK_TEXTURE_CHANNELS> FLAT_NORMAL_PIXEL
     HALF_BRIGHTNESS, HALF_BRIGHTNESS, FULL_BRIGHTNESS};
 ```
 
-Teksel `(128, 128, 255)` to kierunek `(0, 0, 1)` przestrzeni stycznej, a macierz TBN zamienia go na normalną modelu. Część bez własnej mapy jest więc cieniowana normalnymi siatki, **tym samym kodem shadera**, bez drugiej ścieżki. To ten sam pomysł co biała tekstura zastępcza dla koloru (mnożenie przez 1 nic nie zmienia). `ModelPart::normalMap` nigdy nie jest pusty, więc `MazeRenderer` wiąże go bez sprawdzania. Brakujący plik mapy daje według kodu jedną linię `[error]` w logu (z loadera obrazów, ścieżka jest potem zapamiętana jako nieudana) i płaską część. Tego przypadku nikt nie wywołał ręcznie: jest na liście otwartych punktów. Szczegóły w [`../assets/asset-cache.md`](../assets/asset-cache.md).
+Teksel `(128, 128, 255)` to kierunek `(0, 0, 1)` przestrzeni stycznej, a macierz TBN zamienia go na normalną modelu. Część bez własnej mapy jest więc cieniowana normalnymi siatki, **tym samym kodem shadera**, bez drugiej ścieżki. To ten sam pomysł co biała tekstura zastępcza dla koloru (mnożenie przez 1 nic nie zmienia). `ModelPart::normalMap` nigdy nie jest pusty, więc `game::drawModel` wiąże go bez sprawdzania. Brakujący plik mapy daje według kodu jedną linię `[error]` w logu (z loadera obrazów, ścieżka jest potem zapamiętana jako nieudana) i płaską część. Tego przypadku nikt nie wywołał ręcznie: jest na liście otwartych punktów. Szczegóły w [`../assets/asset-cache.md`](../assets/asset-cache.md).
 
 ### 5.9 Renderer i przełącznik
 
-Dwie jednostki w `src/game/MazeRenderer.cpp`:
+Do M4 ten kod był w `MazeRenderer` (funkcje `draw` i `drawInstances`). W M5 doszła druga klasa rysująca modele, `GameplayRenderer` (kryształy i brama), więc wspólna część przeszła do dwóch wolnych funkcji w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp): `game::setModelSamplers` i `game::drawModel`. Obie klasy zgadzają się dzięki temu co do jednostek i uniformów.
+
+Dwie jednostki w `src/game/ModelDraw.cpp`:
 
 ```cpp
 constexpr GLuint TEXTURE_UNIT = 0;
 constexpr GLuint NORMAL_MAP_UNIT = 1;
 ```
 
-Samplery są ustawiane w każdej klatce, a tekstury wiązane raz na część modelu:
+Samplery są ustawiane w każdej klatce (`setModelSamplers`, wołana na początku `MazeRenderer::draw` i `GameplayRenderer::draw`), a tekstury wiązane raz na część modelu (`drawModel`):
 
 ```cpp
+void setModelSamplers(const gfx::Shader& shader) {
     shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
     shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
+}
 ```
 
 ```cpp
@@ -855,7 +865,7 @@ Samplery są ustawiane w każdej klatce, a tekstury wiązane raz na część mod
         part.texture->bind(TEXTURE_UNIT);
 ```
 
-Kolejność wiązań tłumaczy sekcja 3. Po przeładowaniu shaderów wszystkie uniformy wracają do zera i oba samplery czytałyby jednostkę 0, dlatego numery są wysyłane co klatkę, a nie raz przy starcie.
+Kolejność wiązań tłumaczy sekcja 3. Po przeładowaniu shaderów wszystkie uniformy wracają do zera i oba samplery czytałyby jednostkę 0, dlatego numery są wysyłane co klatkę, a nie raz przy starcie. Kryształy i brama są rysowane tym samym programem co labirynt, zaraz po nim (`m_gameplayRenderer.draw` w `drawUnlitMaze` i `drawLitMaze`), więc przełącznik `uNormalMapEnabled` ustawiony dla labiryntu obowiązuje także dla nich.
 
 Przełącznik to jedno pole i jedna funkcja w `src/game/Lighting.*`:
 
@@ -896,27 +906,29 @@ Skutek, o którym trzeba pamiętać na pokazie: **widok "Normals as colour" przy
 
 | Plik | Przypadki | Co sprawdzają |
 |---|---|---|
-| `tests/TangentTests.cpp` (nowy) | 9 | `triangleTangents`: tekstura prosto, obrócona o ćwierć obrotu, powtórzona dwa razy na metr (styczna dwa razy krótsza), trójkąt w dowolnym miejscu przestrzeni, kolejność rogów bez znaczenia, zdegenerowane UV odrzucone z nietkniętymi wyjściami. `computeTangents`: kwadrat z teksturą prosto, długość 1 niezależnie od gęstości tekstury, Gram-Schmidt na liczbach, średnia na wspólnym wierzchołku, brak `NaN` na danych zdegenerowanych, złe indeksy pominięte. `countMirroredTriangles`: tekstura prosto i obrócona nie są lustrzane, `u` odwrócone i normalne odwrócone są, zdegenerowane UV nie są liczone |
-| `tests/ObjLoaderTests.cpp` | 2 nowe i rozszerzone istniejące | linia `map_Bump` we wszystkich postaciach i z każdym błędem. Styczne po `parseObj`. Na trzech modelach gry: plik mapy istnieje, styczne mają długość 1 i są prostopadłe do normalnych, `cross(N, T)` wskazuje w górę na każdej pionowej ścianie, żaden trójkąt nie jest lustrzany, styczna `+X` z przodu ściany i `-X` z tyłu |
-| `tests/ImageLoaderTests.cpp` | 2 nowe | mapy mają 512 x 512 i 3 kanały, średnia jest blisko `(128, 128, 255)`, konwencja OpenGL (sekcja 2.5), niebieski zawsze powyżej 128 |
+| `tests/TangentTests.cpp` (nowy w M4) | 9 | `triangleTangents`: tekstura prosto, obrócona o ćwierć obrotu, powtórzona dwa razy na metr (styczna dwa razy krótsza), trójkąt w dowolnym miejscu przestrzeni, kolejność rogów bez znaczenia, zdegenerowane UV odrzucone z nietkniętymi wyjściami. `computeTangents`: kwadrat z teksturą prosto, długość 1 niezależnie od gęstości tekstury, Gram-Schmidt na liczbach, średnia na wspólnym wierzchołku, brak `NaN` na danych zdegenerowanych, złe indeksy pominięte. `countMirroredTriangles`: tekstura prosto i obrócona nie są lustrzane, `u` odwrócone i normalne odwrócone są, zdegenerowane UV nie są liczone |
+| `tests/ObjLoaderTests.cpp` | 2 nowe i rozszerzone istniejące | linia `map_Bump` we wszystkich postaciach i z każdym błędem. Styczne po `parseObj`. Na trzech modelach kamiennych (`wall_straight.obj`, `wall_pillar.obj`, `floor_tile.obj`): plik mapy istnieje, styczne mają długość 1 i są prostopadłe do normalnych, `cross(N, T)` wskazuje w górę na każdej pionowej ścianie, żaden trójkąt nie jest lustrzany, styczna `+X` z przodu ściany i `-X` z tyłu |
+| `tests/ImageLoaderTests.cpp` | 2 nowe | dwie mapy kamienne mają 512 x 512 i 3 kanały, średnia jest blisko `(128, 128, 255)`, konwencja OpenGL (sekcja 2.5), niebieski zawsze powyżej 128 |
 | `tests/LightingTests.cpp` | 1 nowy | `normalMapping` domyślnie włączone, `usesNormalMap` dla czterech trybów w obu stanach pola |
 
-Razem doszło 14 przypadków i jest ich 163 (tyle samo co linii `TEST_CASE` w katalogu `tests/`), a asercji jest 62220. Z plików osobno (opcja `--source-file`, Debug, Windows, 2026-10-05): `TangentTests.cpp` 9 przypadków i 177 asercji, `ObjLoaderTests.cpp` 20 i 1576, `ImageLoaderTests.cpp` 9 i 57, `LightingTests.cpp` 17 i 133. Kod GLSL, wiązanie tekstur i panel **nie mają testów**: sprawdza je tylko obraz.
+Kolumna "Przypadki" opisuje to, co doszło w M4. Razem doszło wtedy 14 przypadków i było ich 163, a asercji 62220. Z plików osobno (opcja `--source-file`, Debug, Windows, 2026-10-05, stan M4): `TangentTests.cpp` 9 przypadków i 177 asercji, `ObjLoaderTests.cpp` 20 i 1576, `ImageLoaderTests.cpp` 9 i 57, `LightingTests.cpp` 17 i 133. Kod GLSL, wiązanie tekstur i panel **nie mają testów**: sprawdza je tylko obraz.
+
+**Po M5.** Cały projekt ma 215 przypadków i 85098 asercji. W plikach tej techniki liczba przypadków się nie zmieniła: `TangentTests.cpp` 9, `ObjLoaderTests.cpp` 20, `ImageLoaderTests.cpp` 9. `LightingTests.cpp` ma ich teraz 10, bo testy świateł w ślepych zaułkach odeszły razem z tym kodem, a test `usesNormalMap` został. M5 zmienił w tych plikach trzy linie: komentarz w `TangentTests.cpp` ("The corners of the collision lines are like this.", bez kostek świateł) i nazwę pliku w teście "a file that is not an image is reported" w `ImageLoaderTests.cpp`, który podaje loaderowi obrazów plik `color.vert` zamiast usuniętego `basic.vert`. **Żaden test nie obejmuje nowych modeli ani nowych map**: `ObjLoaderTests.cpp` wczytuje trzy modele kamienne, a `ImageLoaderTests.cpp` dwie mapy kamienne. Liczby asercji na plik po M5 nie znam.
 
 ### 5.11 Co zostało zmierzone na Windowsie
 
-Wszystko poniżej: 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74.
+Wszystko w dwóch tabelach poniżej to stan M4, przed M5: 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74.
 
 | Co | Wynik |
 |---|---|
 | build Debug i Release | bez ostrzeżeń |
-| testy | 163 przypadki i 62220 asercji, w Debug i w Release |
+| testy (stan M4) | 163 przypadki i 62220 asercji, w Debug i w Release |
 | clang-format, clang-tidy | bez uwag |
 | start gry | bez linii `[error]` i bez linii `GL_` |
 | kierunek reliefu | fugi czytają się jako rowki na ścianach wzdłuż X, na ścianach wzdłuż Z, na słupku i na podłodze |
 | reakcja na kierunek światła | przesunięcie światła z lewej na prawą zamienia, które skosy są jasne |
 | tryby `Gouraud` i `Unlit` | zrzuty ekranu identyczne co do piksela z polem włączonym i wyłączonym |
-| powtarzalność skryptów | dwa uruchomienia, identyczne skróty wszystkich dziesięciu plików |
+| powtarzalność skryptów | dwa uruchomienia, identyczne skróty wszystkich dziesięciu plików, które wtedy istniały |
 | liczba wierzchołków i indeksów | bez zmian: ściana i słupek 60 i 90, podłoga 4 i 6 |
 
 Średnia jasność zrzutu ekranu z mapami normalnych i bez nich (skala od 0 do 255):
@@ -930,7 +942,9 @@ Wszystko poniżej: 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 6
 
 Różnice poniżej 2 procent mówią, że mapa **przesuwa** światło między skosami, a nie przyciemnia ani nie rozjaśnia sceny jako całości. Tego należy oczekiwać od mapy, której średnia normalna jest płaska.
 
-**Czego nikt nie sprawdził.** Pola `Normal mapping` nikt nie kliknął ręcznie. Domyślnego układu paneli z tym polem nikt nie obejrzał ręcznie. Migotanie w oddali oceniono tylko na nieruchomych klatkach. Na macOS nic nie było budowane ani uruchamiane. Listy do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md) i [`../../guides/build-macos.md`](../../guides/build-macos.md).
+**Stan z M5 (zgłoszony dla Windowsa 2026-10-05).** Build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach, obraz sprawdzany na zrzutach ekranu robionych przez tymczasowe wstawki w kodzie, potem usunięte. O mapach normalnych kryształów i bramy nie mam osobnego pomiaru: ani kierunku reliefu na nich, ani tabeli jasności. To, co o nich wiem, pochodzi z plików (linie `map_Bump`, rozmiary PNG, liczenie lustrzanych trójkątów z sekcji 2.9) i z kodu (ten sam loader, ten sam shader, ta sama funkcja `drawModel`). Tabel wyżej po M5 nie powtarzałem.
+
+**Czego nikt nie sprawdził.** Pola `Normal mapping` nikt nie kliknął ręcznie. Nikt jeszcze nie grał ręcznie w M5. Domyślnego układu paneli z tym polem nikt nie obejrzał ręcznie. Migotanie w oddali oceniono tylko na nieruchomych klatkach. Na macOS nic nie było budowane ani uruchamiane. Listy do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md) i [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ## 6. Panel ImGui
 
@@ -952,15 +966,15 @@ Przełącznik jest w panelu **Assets**, zaraz pod listą `View mode`, bo te dwie
 
 ### 6.2 Listy modeli i tekstur
 
-- W liście **Models** każda część modelu ma pod sobą linię `normal map: wall_stone_normal.png` albo `normal map: none (flat)`, gdy używa płaskiej tekstury zastępczej.
-- W liście **Textures** są teraz cztery tekstury z podglądem: dwa obrazy koloru i dwie mapy normalnych. Mapy są w tej samej liście, bo dla pamięci podręcznej to tekstury jak inne. Ich podgląd jest jasnoniebieski, z kolorowymi kreskami na skosach fug (sekcja 2.4).
+- W liście **Models** każda część modelu ma pod sobą linię `normal map: wall_stone_normal.png` albo `normal map: none (flat)`, gdy używa płaskiej tekstury zastępczej. Modeli jest dziś sześć i każdy ma jedną część z własną mapą.
+- W liście **Textures** jest dziś osiem tekstur z podglądem: cztery obrazy koloru i cztery mapy normalnych (kamień ściany, kamień podłogi, kryształ, drewno bramy). Do M4 były cztery. Mapy są w tej samej liście, bo dla pamięci podręcznej to tekstury jak inne. Ich podgląd jest jasnoniebieski, z kolorowymi kreskami na skosach (sekcja 2.4).
 - Lista `Filter` i suwak anizotropii działają także na mapy normalnych: to te same obiekty samplera.
 
 Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 
 ### 6.3 Scenariusz pokazu na obronie
 
-**Kroków nikt jeszcze nie wykonał ręcznie.** Opisują to, co wynika z kodu. Na zrzutach ekranu z Windowsa widać stany z kroków 1, 2, 3 i 6 (bez klikania: pola nikt nie przełączał myszą).
+**Kroków nikt jeszcze nie wykonał ręcznie.** Opisują to, co wynika z kodu. Na zrzutach ekranu z Windowsa z M4 widać stany z kroków 1, 2, 3 i 6 (bez klikania: pola nikt nie przełączał myszą). Scenariusz pokazuje technikę na ścianach, bo tylko dla nich mam pomiary. Od M5 latarka ma baterię ([`../game/gameplay.md`](../game/gameplay.md)): na dłuższy pokaz odznaczam `Battery drains` w panelu Gameplay, żeby światło nie zgasło w połowie.
 
 1. **Stan startowy.** Start gry, tryb `Blinn-Phong`, mapy włączone. Podchodzę do ściany i świecę latarką. Mówię: fugi są rowkami, krawędzie bloków łapią światło.
 2. **Przełącznik.** W panelu Assets odznaczam `Normal mapping`. Ta sama ściana staje się płaska: plama latarki przesuwa się po rysunku kamieni jak po tapecie. Zaznaczam z powrotem. Mówię: geometria się nie zmieniła, zmieniła się tylko normalna we wzorze na światło.
@@ -969,7 +983,7 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 5. **Ta sama mapa, różne orientacje.** W widoku normalnych pokazuję ścianę wzdłuż X, ścianę wzdłuż Z i podłogę. Kolor podstawowy jest inny (inna normalna modelu), rysunek fug ten sam. Mówię o przestrzeni stycznej i macierzy TBN.
 6. **Gouraud dla kontrastu.** Wracam do `Textured`. W panelu Renderer przełączam `Lighting` na `Gouraud`: relief znika, niezależnie od pola `Normal mapping`. Mówię: światło jest liczone w 4 wierzchołkach ściany, a mapa ma normalną na teksel. Wracam na `Phong`.
 7. **Widok normalnych w trybie Gouraud.** Przy `Gouraud` wybieram jeszcze `Normals as colour`: ściany są jednolite, mimo zaznaczonego pola. Mówię: widok pokazuje normalne, których użyłby wybrany tryb.
-8. **Tekstury.** Przewijam panel Assets do listy Textures: cztery pozycje, dwie niebieskie. Mówię o kodowaniu `n * 0,5 + 0,5` i o tym, dlaczego mapa jest niebieska. W liście Models pokazuję linię `normal map:` pod częścią modelu.
+8. **Tekstury.** Przewijam panel Assets do listy Textures: osiem pozycji, cztery niebieskie. Mówię o kodowaniu `n * 0,5 + 0,5` i o tym, dlaczego mapa jest niebieska. W liście Models pokazuję linię `normal map:` pod częścią modelu.
 9. **Testy.** `ctest --test-dir build/debug -C Debug --output-on-failure`: styczne, parser linii `map_Bump` i konwencja zielonego kanału są sprawdzone liczbami.
 
 ## 7. Pułapki
@@ -985,15 +999,16 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 9. **Kolejność wiązania i aktywna jednostka.** `Texture2D::bind` zmienia aktywną jednostkę. Kod, który potem woła `glBindTexture` bez `glActiveTexture`, trafia w jednostkę związaną jako ostatnia. Stąd kolejność: mapa normalnych najpierw, obraz koloru na końcu (sekcja 3). W dzisiejszym programie żaden kod na tym nie polega, więc zamiana kolejności niczego by nie zepsuła: pułapka dotyczy kodu, który dopiero dojdzie.
 10. **Styczna przez macierz normalnych.** `uNormalMatrix * aTangent` wygląda symetrycznie i przy samych obrotach działa. Przy nierównej skali jest błędne: macierz normalnych jest dla wektorów prostopadłych do powierzchni, a styczna w niej leży (sekcja 2.10).
 11. **Zdegenerowane UV i `NaN`.** Trójkąt z trzema takimi samymi UV ma wyznacznik zero. Dzielenie daje `NaN`, a jedno `NaN` w atrybucie psuje cały trójkąt. `triangleTangents` taki trójkąt odrzuca, a `computeTangents` wstawia wartość zastępczą.
-12. **Styczna zerowa w siatce, której nikt nie policzył.** Siatka zbudowana w kodzie (kostka świateł, linie kolizji) ma `tangent = (0, 0, 0)`. Gdyby rysował ją program `lit` z włączonymi mapami, shader normalizowałby wektor zerowy, a wynik tego jest niezdefiniowany (zwykle `NaN`). Dziś te siatki rysuje program `color`, który stycznej nie czyta.
+12. **Styczna zerowa w siatce, której nikt nie policzył.** Siatka zbudowana w kodzie (sześcian i okrąg linii kolizji w `ColliderLines`) ma `tangent = (0, 0, 0)`. Gdyby rysował ją program `lit` z włączonymi mapami, shader normalizowałby wektor zerowy, a wynik tego jest niezdefiniowany (zwykle `NaN`). Dziś te siatki rysuje program `color`, który stycznej nie czyta. Test `computeTangents` z danymi zdegenerowanymi ma podprzypadek dokładnie dla takiego wierzchołka ("a vertex without a normal and without a triangle").
 13. **Zmiana układu `Vertex` bez zmiany `Mesh`.** Nowe pole to nowy atrybut: `static_assert` rozmiaru wymusza poprawienie sumy składowych, ale czwarte `setFloatAttribute` trzeba dopisać samemu. Bez niego `aTangent` czytałby domyślną wartość atrybutu `(0, 0, 0)`.
 14. **Oczekiwanie reliefu w trybie Gouraud albo zwykłym Unlit.** To nie błąd: w pierwszym światło jest na wierzchołek, w drugim nie ma światła. Zrzuty ekranu obu trybów są identyczne z polem włączonym i wyłączonym.
 15. **Podwójnie ciemne fugi.** Obraz koloru ma wmalowane cienie i mapa normalnych dokłada swoje (sekcja 2.12). To nie błąd shadera.
 16. **macOS, niesprawdzone.** Kompilator GLSL Apple może inaczej potraktować drugi plik dołączany, uniform typu `bool` ustawiany przez `glUniform1i` albo sampler, którego w danym trybie nikt nie czyta. Skrypt Blendera uruchomiony na Macu może dać pliki różniące się o pojedyncze bajty. Nic z tego nie było uruchamiane: lista jest w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+17. **Jedna gęstość tekstury to założenie, nie reguła.** Długość stycznej przed normalizacją to 2 dla modeli kamiennych i 0,5 dla kryształów. `computeTangents` normalizuje styczną, więc shader różnicy nie widzi, ale relief tej samej głębokości w tekselach jest na krysztale cztery razy drobniejszy w metrach. Kto nałoży mapę ściany na kryształ, dostanie cały dwumetrowy rysunek muru ściśnięty na pół metra.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 6 są na kartce, od 7 do 13 w działającej grze. Po zmianie pliku shadera na Windowsie trzeba odświeżyć kopię katalogu `assets` (`cmake --build --preset debug --target copy_assets`) i nacisnąć `Reload shaders` ([`shader-hot-reload.md`](shader-hot-reload.md)). Po ćwiczeniu wycofaj zmianę (`git checkout src assets`).
+Ćwiczenia od 1 do 6 i 14 są na kartce, od 7 do 13 i 15 w działającej grze. Po zmianie pliku shadera na Windowsie trzeba odświeżyć kopię katalogu `assets` (`cmake --build --preset debug --target copy_assets`) i nacisnąć `Reload shaders` ([`shader-hot-reload.md`](shader-hot-reload.md)). Po ćwiczeniu wycofaj zmianę (`git checkout src assets`).
 
 1. **Kodowanie na kartce.** Teksel ma bajty `(51, 128, 230)`. Jaki to kierunek w przestrzeni stycznej i w którą stronę odchylona jest powierzchnia? (Odpowiedź: około `(-0,6, 0, 0,8)`, w lewo.)
 2. **Z wysokości do normalnej.** Trzy sąsiednie teksele w wierszu mają wysokości 0, 1 i 3. Policz nachylenie w środkowym różnicą centralną i normalną przed normalizacją. (Odpowiedź: nachylenie 1,5, normalna `(-1,5, 0, 1)`.)
@@ -1005,9 +1020,11 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 8. **Konwencja DirectX.** Zamiast ćwiczenia 7 dopisz po linii z `mapped` linię `mapped.y = -mapped.y;`. Porównaj obraz z ćwiczeniem 7. Dlaczego jest taki sam?
 9. **Bez odkodowania.** Usuń `* 2.0 - 1.0`. Jak wygląda ściana i w którą stronę "przechyliło się" światło?
 10. **Bez `normalize`.** Zamień ostatnią linię funkcji na `return tangentToWorld * mapped;`. Obejrzyj daleką ścianę i podłogę przy filtrze `Trilinear`, potem `Nearest`. Gdzie różnica jest największa?
-11. **Obie tekstury na jednostce 0.** W `MazeRenderer.cpp` zmień `NORMAL_MAP_UNIT` na 0. Co shader czyta jako normalne i jak to wygląda?
+11. **Obie tekstury na jednostce 0.** W `ModelDraw.cpp` zmień `NORMAL_MAP_UNIT` na 0. Co shader czyta jako normalne i jak to wygląda?
 12. **Styczna jako kolor.** W `textured.frag`, w gałęzi widoku normalnych, pokaż `normalize(vTangent) * 0.5 + 0.5` zamiast normalnej. Jaki kolor ma przód ściany, a jaki tył? Porównaj z tabelą w sekcji 2.9.
 13. **Brakująca mapa.** Zmień tymczasowo nazwę pliku `floor_stone_normal.png` w katalogu `assets` obok programu i uruchom grę. Ile linii `[error]` jest w logu, co pokazuje lista Models przy podłodze i jak wygląda podłoga pod latarką?
+14. **Gęstość tekstury kryształu.** Ścianka kryształu ma po `triangleTangents` styczną o długości 0,5, a ściana labiryntu o długości 2. Ile tekseli mapy 512 x 512 przypada na metr powierzchni w obu przypadkach? Ile centymetrów ma na krysztale relief o głębokości 1 teksela? (Odpowiedź: 1024 i 256 tekseli na metr, około 0,1 cm.)
+15. **Kryształ w widoku normalnych.** Włącz `Normals as colour` i podejdź do kryształu. Dlaczego kolor podstawowy ścianki zmienia się w czasie, a na ścianie labiryntu nie? Która macierz obraca `T`, a która `N` (sekcja 2.10)? (Tego ćwiczenia nikt jeszcze nie wykonał: odpowiedź wynika z kodu `GameplayRenderer::draw`.)
 
 ## 9. Pytania kontrolne
 
@@ -1054,7 +1071,7 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
     Trzy punkty UV leżą na jednej prostej albo w jednym punkcie. Kierunek rosnącego `u` nie istnieje, a dzielenie dałoby `NaN`. Taki trójkąt jest pomijany.
 
 15. **Co mówi długość stycznej przed normalizacją?**
-    Ile metrów powierzchni przypada na jednostkę `u`. Dla ścian gry to 2.
+    Ile metrów powierzchni przypada na jednostkę `u`. Dla ścian gry to 2, dla kryształów 0,5.
 
 16. **Po co ortogonalizacja Grama-Schmidta?**
     Uśredniona styczna nie musi być prostopadła do normalnej wierzchołka. Odjęcie części równoległej do normalnej, `T - N * dot(N, T)`, i normalizacja dają czystą parę.
@@ -1069,7 +1086,7 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
     Na trójkącie z lustrzanymi UV. Wtedy potrzebny jest znak skrętności na wierzchołek.
 
 20. **Dlaczego modele gry nie potrzebują znaku skrętności?**
-    Skrypt odwraca `u` na przeciwległych stronach tak, że tekstura jest czytelna z zewnątrz na każdej stronie. Żaden trójkąt nie jest lustrzany, co liczy `countMirroredTriangles` i sprawdzają testy.
+    Skrypt odwraca `u` na przeciwległych stronach tak, że tekstura jest czytelna z zewnątrz na każdej stronie, a ścianki kryształów rzutuje każdą na własną płaszczyznę w układzie prawoskrętnym. Żaden trójkąt nie jest lustrzany, co liczy `countMirroredTriangles`. Testy sprawdzają to dla trzech modeli kamiennych. Dla kryształów i bramy zero policzyłem z plików OBJ, a w grze sygnałem byłoby ostrzeżenie w logu.
 
 21. **Co to jest macierz TBN i co robi?**
     Macierz 3 na 3 z kolumnami `T`, `B`, `N` w przestrzeni świata. Mnożenie przez nią przelicza kierunek z przestrzeni stycznej do przestrzeni świata: `x * T + y * B + z * N`.
@@ -1084,7 +1101,7 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
     Shader czyta dla jednego fragmentu obraz koloru i mapę normalnych. Każdy sampler wskazuje jedną jednostkę, a jednostka jedną teksturę 2D.
 
 25. **Dlaczego mapa normalnych jest wiązana przed obrazem koloru?**
-    `bind` zmienia aktywną jednostkę. Wiązanie obrazu koloru na końcu zostawia aktywną jednostkę 0, na której działa kod wiążący teksturę bez wybierania jednostki (konstruktor `Texture2D`). To porządek w stanie kontekstu, a nie warunek poprawności: dziś wszystkie tekstury powstają przed pierwszą klatką.
+    `bind` zmienia aktywną jednostkę. Wiązanie obrazu koloru na końcu (w `game::drawModel`) zostawia aktywną jednostkę 0, na której działa kod wiążący teksturę bez wybierania jednostki (konstruktor `Texture2D`). To porządek w stanie kontekstu, a nie warunek poprawności: dziś wszystkie tekstury powstają przed pierwszą klatką.
 
 26. **Dlaczego tryb Gouraud nie używa map normalnych?**
     Liczy światło w wierzchołkach, 4 na stronę ściany, a mapa ma normalną na teksel. Teksel między wierzchołkami nie ma jak wziąć udziału w obliczeniu.
@@ -1105,7 +1122,13 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
     Sprawdza, czy stoi po niej liczba, i ją ignoruje. Gra używa mapy zawsze z pełną siłą.
 
 32. **Co w tym kodzie jest sprawdzone testami, a co nie?**
-    Testami: styczne, zliczanie lustrzanych trójkątów, parser linii `map_Bump`, zawartość i konwencja plików map, funkcja `usesNormalMap`. Nie: kod GLSL, wiązanie tekstur i panel. Obraz jest sprawdzony na zrzutach ekranu z Windowsa, pola wyboru nikt nie klikał, a na macOS nic nie było uruchamiane.
+    Testami: styczne, zliczanie lustrzanych trójkątów, parser linii `map_Bump`, zawartość i konwencja plików dwóch map kamiennych, funkcja `usesNormalMap`. Nie: kod GLSL, wiązanie tekstur, panel oraz modele i mapy z M5 (kryształy, brama). Obraz ścian jest sprawdzony na zrzutach ekranu z Windowsa z M4, pola wyboru nikt nie klikał, a na macOS nic nie było uruchamiane.
+
+33. **Czy kryształy i brama mają mapy normalnych i styczne, i skąd?**
+    Tak. Ich pliki MTL mają linię `map_Bump` (`crystal_normal.png`, `gate_wood_normal.png`), mapy robi ta sama funkcja `normal_map` skryptu, a styczne liczy to samo `computeTangents` na końcu `parseObj`. Rysuje je ta sama funkcja `game::drawModel` tymi samymi programami, więc w kodzie C++ i GLSL nie ma dla nich żadnej osobnej ścieżki. Różni je gęstość tekstury kryształów: 0,5 m na powtórzenie zamiast 2 m.
+
+34. **Gdzie jest dziś kod, który wiąże mapę normalnych z jednostką 1?**
+    W `game::drawModel` w `src/game/ModelDraw.cpp`: `part.normalMap->bind(NORMAL_MAP_UNIT)`, a zaraz potem `part.texture->bind(TEXTURE_UNIT)`. Numer jednostki dostaje sampler w `game::setModelSamplers`. Obie funkcje wołają `MazeRenderer::draw` i `GameplayRenderer::draw`. Do M4 był to kod klasy `MazeRenderer`.
 
 ## 10. Źródła
 
@@ -1115,5 +1138,5 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 - Specyfikacja GLSL 4.10 (<https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.10.pdf>): konstruktor `mat3` z trzech wektorów jako kolumn, typ `bool` w uniformach, wartości początkowe uniformów.
 - Opis formatu Wavefront MTL (kopia Paula Bourke'a: <http://paulbourke.net/dataformats/mtl/>): linia `bump` z opcją `-bm mult`. Pisownia `map_Bump` pochodzi od eksporterów (tak zapisuje ją Blender), a `norm` z nieoficjalnego rozszerzenia formatu o materiały PBR.
 - Dokumentacja Blendera, węzeł Normal Map (<https://docs.blender.org/manual/en/latest/render/shader_nodes/vector/normal_map.html>): przestrzeń styczna, ustawienie Non-Color dla obrazu.
-- Dokumenty w tym repozytorium: [`textures.md`](textures.md), [`mesh.md`](mesh.md), [`uniforms.md`](uniforms.md), [`shader-includes.md`](shader-includes.md), [`../scene/lights.md`](../scene/lights.md), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../assets/obj-loader.md`](../assets/obj-loader.md), [`../assets/asset-cache.md`](../assets/asset-cache.md), [`../assets/images.md`](../assets/images.md), [`../game/maze-rendering.md`](../game/maze-rendering.md), [`../game/flashlight.md`](../game/flashlight.md), [`../../guides/blender.md`](../../guides/blender.md), notatki [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md) i [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
+- Dokumenty w tym repozytorium: [`textures.md`](textures.md), [`mesh.md`](mesh.md), [`uniforms.md`](uniforms.md), [`shader-includes.md`](shader-includes.md), [`../scene/lights.md`](../scene/lights.md), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../assets/obj-loader.md`](../assets/obj-loader.md), [`../assets/asset-cache.md`](../assets/asset-cache.md), [`../assets/images.md`](../assets/images.md), [`../game/maze-rendering.md`](../game/maze-rendering.md), [`../game/gameplay.md`](../game/gameplay.md), [`../game/flashlight.md`](../game/flashlight.md), [`../../guides/blender.md`](../../guides/blender.md), notatki [`../../decisions/tangents-on-load.md`](../../decisions/tangents-on-load.md) i [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o teksturowaniu i oświetleniu).

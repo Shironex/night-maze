@@ -230,9 +230,9 @@ TEST_CASE("a file that is not an image is reported") {
     assets::Image image;
     std::string error;
 
-    CHECK_FALSE(assets::loadImage(assetsDirectory() / "shaders" / "basic.vert", image, error));
+    CHECK_FALSE(assets::loadImage(assetsDirectory() / "shaders" / "color.vert", image, error));
     CHECK(error.find("cannot be decoded") != std::string::npos);
-    CHECK(error.find("basic.vert") != std::string::npos);
+    CHECK(error.find("color.vert") != std::string::npos);
     CHECK(image.pixels.empty());
 }
 

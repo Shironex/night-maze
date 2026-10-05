@@ -86,8 +86,8 @@ Sama pętla nie woła żadnej funkcji `gl*`. Jej związek z OpenGL to kolejnoś�
 | Miejsce w pętli | Co dzieje się po stronie OpenGL i okna |
 |---|---|
 | `m_window.pollEvents()` | nic w OpenGL. GLFW odbiera zdarzenia systemu (klawisze, zmiana rozmiaru, krzyżyk) |
-| `onUpdate(Time::FIXED_DT)` | nic w OpenGL. Symulacja nie rysuje. Dziś: krok gracza z kolizjami |
-| `onRender(m_time.alpha())` | jedyne miejsce w pętli, w którym wolno wołać `gl*`. Dziś: `glViewport`, `glEnable(GL_DEPTH_TEST)`, `glClearColor`, `glClear`, a potem rysowanie labiryntu, kostki i (na życzenie) linii pudełek kolizji w `NightMazeApp::onRender` ([`README.md`](README.md), sekcja 6), a po nich backend ImGui ([`window-context.md`](window-context.md), sekcja 3.2) |
+| `onUpdate(Time::FIXED_DT)` | nic w OpenGL. Symulacja nie rysuje. Dziś: krok gracza z kolizjami i krok reguł rundy (`updateRound`) |
+| `onRender(m_time.alpha())` | jedyne miejsce w pętli, w którym wolno wołać `gl*`. Dziś: `glViewport`, `glEnable(GL_DEPTH_TEST)`, `glClearColor`, `glClear`, a potem rysowanie labiryntu z bramą i kryształami oraz (na życzenie) linii kolizji w `NightMazeApp::onRender` ([`README.md`](README.md), sekcja 6), a po nich backend ImGui ([`window-context.md`](window-context.md), sekcja 3.2) |
 | `m_window.swapBuffers()` | `glfwSwapBuffers`: tylny bufor trafia na ekran. Przy vsync to wywołanie **czeka** na odświeżenie monitora |
 
 Ostatni wiersz tłumaczy, skąd bierze się czas klatki mierzony przez `Time`. Przy włączonym vsync (`glfwSwapInterval(1)`) większość czasu klatki to czekanie wewnątrz `glfwSwapBuffers`, dlatego FPS trzyma się częstotliwości monitora. Pętla nie ma własnego ogranicznika ani usypiania: bez vsync kręci się tak szybko, jak pozwala procesor i karta.
@@ -150,7 +150,7 @@ void Application::run() {
 | `if (m_input.isCursorCaptured()) { m_input.setCursorCaptured(false); }` | Jeśli kursor jest przechwycony, Escape tylko go zwalnia i program działa dalej. Kursor przechwytuje kamera po kliknięciu w scenę ([`input.md`](input.md), sekcje 5.7 i 5.9). Zwolnienie stoi przed pętlą kroków i przed `onRender`, więc w klatce z Escape gracz nie dostaje już klawiszy, a kamera się nie obraca |
 | `else { m_window.requestClose(); }` | Kursor nie jest przechwycony, więc Escape zamyka program. Tylko ustawia flagę. Bieżąca klatka wykona się do końca, a pętla zakończy się przy następnym sprawdzeniu warunku |
 | `m_time.beginFrame();` | Pomiar czasu od poprzedniej klatki i dopisanie go do akumulatora |
-| `while (m_time.consumeFixedStep()) { onUpdate(Time::FIXED_DT); }` | Od zera do 30 kroków symulacji. Argumentem jest zawsze ta sama stała, nigdy czas zmierzony. Dziś każdy krok to jeden krok gracza (sekcja 5.5) |
+| `while (m_time.consumeFixedStep()) { onUpdate(Time::FIXED_DT); }` | Od zera do 30 kroków symulacji. Argumentem jest zawsze ta sama stała, nigdy czas zmierzony. Dziś każdy krok to jeden krok gracza i jeden krok rundy (sekcja 5.5) |
 | `onRender(m_time.alpha());` | Jedno rysowanie na klatkę, z informacją, jak daleko jesteśmy między krokami. `NightMazeApp::onRender` używa jej do wyznaczenia pozycji oka (sekcja 5.5) |
 | `m_window.swapBuffers();` | Pokazanie klatki. Stoi w klasie bazowej, żeby żadna klasa pochodna nie mogła o nim zapomnieć |
 
@@ -253,7 +253,7 @@ void Time::reset() {
 }
 ```
 
-Konstruktor `Time` ustawia `m_lastFrameStart` jeszcze w trakcie budowania `Application`, czyli **przed** resztą programu: po nim powstają pola klas pochodnych (shadery, modele i tekstury labiryntu, sam labirynt, ImGui). Gdyby pierwszy `beginFrame` liczył czas od konstruktora, cały czas ładowania zostałby zmierzony jako jedna długa klatka. Skutki byłyby dwa: symulacja wykonałaby na starcie do 30 kroków nadrabiających (`MAX_FRAME_TIME` ogranicza ten czas do 0,25 s, ale go nie usuwa), a pierwsza średnia FPS byłaby zaniżona, bo `realDelta` nie jest ograniczane.
+Konstruktor `Time` ustawia `m_lastFrameStart` jeszcze w trakcie budowania `Application`, czyli **przed** resztą programu: po nim powstają pola klas pochodnych (shadery, modele i tekstury labiryntu, kryształów i bramy, sam labirynt, ImGui). Gdyby pierwszy `beginFrame` liczył czas od konstruktora, cały czas ładowania zostałby zmierzony jako jedna długa klatka. Skutki byłyby dwa: symulacja wykonałaby na starcie do 30 kroków nadrabiających (`MAX_FRAME_TIME` ogranicza ten czas do 0,25 s, ale go nie usuwa), a pierwsza średnia FPS byłaby zaniżona, bo `realDelta` nie jest ograniczane.
 
 Dlatego `Application::run` zaczyna się od `m_time.reset();`. `reset()` ustawia `m_lastFrameStart` na bieżącą chwilę, więc pierwszy `beginFrame` mierzy tylko czas od wejścia do `run()` (czyli pierwsze `pollEvents` i `m_input.update()`). `reset()` nie rusza akumulatora ani liczników FPS: przed pętlą są one jeszcze zerami z inicjalizatorów w klasie. Konstruktor nadal inicjalizuje `m_lastFrameStart`, żeby pole nigdy nie było niezainicjalizowane, nawet gdyby ktoś użył `Time` bez `reset()`.
 
@@ -273,7 +273,7 @@ Początek, środek i koniec `NightMazeApp::onUpdate`:
 
 ```cpp
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
-                    m_mazeWorld.colliders);
+                    m_obstacles);
 ```
 
 ```cpp
@@ -298,7 +298,7 @@ Oraz w `NightMazeApp::onRender`:
 | `glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha))` | wzór z sekcji 2.4: `poprzednia * (1 - alpha) + bieżąca * alpha`, dla pozycji **stóp** |
 | `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | oko jest stałe 1,7 m nad stopami. Mieszanie jest liniowe, więc zmieszanie stóp i dodanie wysokości daje ten sam punkt co zmieszanie dwóch pozycji oczu |
 
-Ogólna zasada, którą widać w wyjątku z trzeciego wiersza: interpolować wolno tylko **ruch**, czyli zmianę, która naprawdę trwała jeden krok. Przeskok (teleport) trzeba wpisać w obie pozycje naraz. Tak samo robi `enterMaze` po wymianie labiryntu: ustawia `m_player.position` i od razu `m_previousPlayerPosition` ([`README.md`](README.md), sekcja 6.4).
+Ogólna zasada, którą widać w wyjątku z trzeciego wiersza: interpolować wolno tylko **ruch**, czyli zmianę, która naprawdę trwała jeden krok. Przeskok (teleport) trzeba wpisać w obie pozycje naraz. Tak samo robi `beginRound` na początku każdej rundy (po wymianie labiryntu i po klawiszu R): ustawia `m_player.position` i od razu `m_previousPlayerPosition` ([`README.md`](README.md), sekcja 6.4).
 
 Jak ten kod zachowuje się w trzech rodzajach klatek z sekcji 2.2:
 
@@ -309,6 +309,22 @@ Jak ten kod zachowuje się w trzech rodzajach klatek z sekcji 2.2:
 | kilka kroków | każdy nadpisuje poprzednią pozycję | punkt na odcinku **ostatniego** kroku |
 
 Obrót kamery myszą nie jest w `onUpdate`, tylko na początku `onRender`: przesunięcie myszy to dane jednej klatki, tak samo jak zbocze klawisza ([`input.md`](input.md), sekcje 2.8 i 5.5).
+
+**Drugi użytkownik stałego kroku: runda (M5).** Na końcu `NightMazeApp::onUpdate`, po ruchu gracza, stoi krok reguł gry:
+
+```cpp
+    updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,
+                static_cast<float>(fixedDt));
+```
+
+| Co liczy `updateRound` z czasu kroku | Jak | Dlaczego stały krok |
+|---|---|---|
+| bateria latarki | `round.battery -= stepSeconds / lifetime`, tylko przy włączonej latarce. Przy domyślnych 180 s i kroku 1/120 s to 1/21600 ładunku na krok | pełna bateria wystarcza na 21600 kroków, czyli na 180 s świecenia, przy każdym FPS. Z czasem zmierzonym klatki wynik zależałby od tego, jak długie były klatki |
+| czas rundy i zegar animacji | `elapsedSeconds += stepSeconds`, `animationSeconds += stepSeconds` | czas pokazany w HUD to liczba kroków razy `FIXED_DT`, nie odczyt zegara systemowego |
+| opadanie otwartej bramy | `gateProgress += stepSeconds / GATE_OPEN_SECONDS` | brama opada zawsze przez 1,5 s czasu symulacji |
+| zbieranie kryształów i wejście do wyjścia | testy kul i pudełek z pozycji gracza **po** ruchu tego kroku | pozycja zmienia się tylko w krokach, więc sprawdzanie częściej niczego by nie dało |
+
+Runda nie korzysta z `alpha`: jej stan nie jest interpolowany. Kołysanie kryształów, pulsowanie ich świateł i migotanie słabej baterii `onRender` liczy z `m_round.animationSeconds`, czyli z czasu ostatniego kroku, więc przy 144 Hz część klatek pokazuje tę samą fazę animacji dwa razy. Przy kroku 1/120 s i tak powolnych zmianach (kryształ kołysze się raz na 3 s) nie powinno być tego widać, ale nikt tego jeszcze nie oceniał na ekranie. Ograniczenie 0,25 s (sekcja 2.3) dotyczy rundy tak samo jak gracza: po długim przycięciu czas rundy posuwa się, a bateria ubywa najwyżej o 30 kroków, a nie o cały czas przerwy. Reguły opisuje [`../game/gameplay.md`](../game/gameplay.md), sekcja 2, a miejsce wywołania [`README.md`](README.md), sekcja 6.5.
 
 ## 6. Panel ImGui
 
@@ -333,7 +349,7 @@ Pozostałe elementy panelu opisuje [`window-context.md`](window-context.md), sek
 8. **Czas startu policzony jako klatka.** Zegar, który bierze pierwszy znacznik czasu w konstruktorze i nigdy go nie odświeża, wlicza całe ładowanie programu do pierwszej klatki: symulacja robi na starcie serię kroków nadrabiających, a pierwszy odczyt FPS jest zaniżony. Stąd `m_time.reset();` na początku `Application::run`. Kto dopisuje długą operację **wewnątrz** pętli (na przykład doczytanie zasobu w `onRender`), nadal dostanie długą klatkę, bo `reset()` jest wołane tylko raz.
 
 9. **Interpolacja bez zapamiętanego stanu poprzedniego.** `alpha` ma sens tylko dla pary stanów "przed ostatnim krokiem" i "po nim". Stan poprzedni trzeba zapisywać na początku **każdego** kroku, także wtedy, gdy nic się nie rusza. Zapisywany tylko przy ruchu zostawia po zatrzymaniu starą wartość i obraz drga w rytmie `alpha`.
-10. **Stan zmieniony poza krokiem.** Wartość interpolowana zmieniona z innego miejsca niż `onUpdate` (na przykład pozycja gracza przeciągnięta w polu `Player feet` panelu Camera) do najbliższego kroku ma starą wartość "poprzednią". W klatce bez kroku rysowany jest wtedy punkt pośredni. Trwa to najwyżej jeden krok, bo najbliższy krok kopiuje nową pozycję do poprzedniej. Kod gry, który sam przenosi gracza (`enterMaze`), ustawia obie pozycje naraz i tego efektu nie ma.
+10. **Stan zmieniony poza krokiem.** Wartość interpolowana zmieniona z innego miejsca niż `onUpdate` (na przykład pozycja gracza przeciągnięta w polu `Player feet` panelu Camera) do najbliższego kroku ma starą wartość "poprzednią". W klatce bez kroku rysowany jest wtedy punkt pośredni. Trwa to najwyżej jeden krok, bo najbliższy krok kopiuje nową pozycję do poprzedniej. Kod gry, który sam przenosi gracza (`beginRound`), ustawia obie pozycje naraz i tego efektu nie ma.
 11. **Dane jednej klatki w `onUpdate`.** Przesunięcie myszy, tak jak `wasKeyPressed`, opisuje jedną klatkę. Obrót kamery liczony w `onUpdate` zależałby od FPS ([`input.md`](input.md), sekcja 2.8).
 
 ## 8. Ćwiczenia
@@ -379,8 +395,8 @@ Pozostałe elementy panelu opisuje [`window-context.md`](window-context.md), sek
 11. **Co się dzieje z ruchem gracza w klatce, w której nie zmieścił się żaden krok?**
     `onUpdate` nie jest wołane, więc pozycja poprzednia i bieżąca zostają te same co w poprzedniej klatce. Rośnie tylko `alpha`, więc oko przesuwa się dalej wzdłuż tego samego odcinka. Dzięki temu ruch jest płynny także przy FPS wyższym niż 120.
 
-12. **Dlaczego ruch gracza jest w `onUpdate`, a obrót myszą i klawisze N i F w `onRender`?**
-    Ruch zależy od czasu trzymania klawisza, a czas symulacji płynie stałymi krokami: stan klawisza (`isKeyDown`) jest taki sam w każdym kroku klatki. Przesunięcie myszy i zbocze klawisza N albo F (`wasKeyPressed`; F przełącza od M4 latarkę) opisują jedną klatkę i muszą zostać zastosowane dokładnie raz, a `onUpdate` wykonuje się od zera do wielu razy na klatkę.
+12. **Dlaczego ruch gracza jest w `onUpdate`, a obrót myszą i klawisze R, N i F w `onRender`?**
+    Ruch zależy od czasu trzymania klawisza, a czas symulacji płynie stałymi krokami: stan klawisza (`isKeyDown`) jest taki sam w każdym kroku klatki. Przesunięcie myszy i zbocze klawisza R, N albo F (`wasKeyPressed`; F przełącza od M4 latarkę, R zaczyna od M5 rundę od nowa) opisują jedną klatkę i muszą zostać zastosowane dokładnie raz, a `onUpdate` wykonuje się od zera do wielu razy na klatkę.
 
 ## 10. Źródła
 

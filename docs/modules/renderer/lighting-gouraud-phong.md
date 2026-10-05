@@ -1,11 +1,15 @@
 # Moduł renderer: cieniowanie Gourauda i Phonga, odbłysk Phonga i Blinna-Phonga
 
-Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": normalna fragmentu w `lit.frag` pochodzi z funkcji `surfaceNormal`). Temat wykładu: 7 (Gouraud vs Phong).
+Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": normalna fragmentu w `lit.frag` pochodzi z funkcji `surfaceNormal`), w M5 oba programy dostały składnik emisyjny `uEmissive` i rysują także kryształy i bramę. Temat wykładu: 7 (Gouraud vs Phong).
 Kod: shadery [`assets/shaders/lit.vert`](../../../assets/shaders/lit.vert), [`lit.frag`](../../../assets/shaders/lit.frag), [`gouraud.vert`](../../../assets/shaders/gouraud.vert), [`gouraud.frag`](../../../assets/shaders/gouraud.frag), wybór programu w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`drawMaze`, `drawLitMaze`), typ `game::LightingMode` w [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), lista `Lighting` w [`src/debug/panels/RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp).
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż kod leży w `game/` i `assets/shaders/`, wyjaśnia [`README.md`](README.md). Dokument zakłada znajomość świateł i wzorów oświetlenia: [`../scene/lights.md`](../scene/lights.md). Tam jest omówiony linia po linii plik `common/lighting.glsl`, który oba programy z tego dokumentu dołączają. Przydają się też [`../gfx/shaders.md`](../gfx/shaders.md) (potok, interpolacja wyjść shadera wierzchołków) i [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured`, na których wzorowane są `lit` i `gouraud`).
 
-**Stan na dziś:** gra ma cztery tryby cieniowania labiryntu, przełączane listą `Lighting` w panelu Renderer: `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong`. Startuje w trybie `Blinn-Phong`. Zmierzone na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): oba nowe programy kompilują się i linkują przy starcie bez linii `[error]`, a cztery tryby są sprawdzone na zrzutach ekranu z trzech miejsc w labiryncie. Od drugiej części M4 program `lit` cieniuje normalną z mapy normalnych, a program `gouraud` nie może (sekcje 2.7 i 4.3): to jeszcze jedna widoczna różnica obu trybów, sprawdzona na zrzutach ekranu z 2026-10-05 (zrzuty trybu `Gouraud` są identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych). **Listy `Lighting` nikt jeszcze nie przełączył ręcznie kliknięciem**, suwaków odbłysku ani pola `Normal mapping` też nie. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: kompilator GLSL Apple nie widział jeszcze żadnego z tych czterech plików ani dołączanego `common/normal_map.glsl`.
+**Stan na dziś:** gra ma cztery tryby cieniowania sceny, przełączane listą `Lighting` w panelu Renderer: `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong`. Startuje w trybie `Blinn-Phong`. Od M5 tymi samymi programami co labirynt rysowane są kryształy i brama wyjścia, a wzór końcowy obu programów ma składnik emisyjny: `surface * (diffuse + uEmissive) + specular`.
+
+Część M4 była zmierzona na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): oba programy kompilowały się i linkowały przy starcie bez linii `[error]`, a cztery tryby były sprawdzone na zrzutach ekranu z trzech miejsc w labiryncie. Od drugiej części M4 program `lit` cieniuje normalną z mapy normalnych, a program `gouraud` nie może (sekcje 2.7 i 4.3): to jeszcze jedna widoczna różnica obu trybów, sprawdzona wtedy na zrzutach ekranu (zrzuty trybu `Gouraud` były identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych).
+
+M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach, obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Z tych zrzutów pochodzi jedna obserwacja ważna dla tego tematu: **w trybie `Gouraud` brama jest ciemna** (sekcja 2.2). **Listy `Lighting` nikt jeszcze nie przełączył ręcznie kliknięciem**, suwaków odbłysku ani pola `Normal mapping` też nie. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: kompilator GLSL Apple nie widział jeszcze żadnego z tych czterech plików ani dołączanego `common/normal_map.glsl`.
 
 ## 1. Po co to jest
 
@@ -80,6 +84,12 @@ Skutek: **światło, którego nie ma w żadnym wierzchołku, nie istnieje**. Trz
 **Liczby z gry.** Model odcinka ściany ([`../../guides/blender.md`](../../guides/blender.md), sekcja o wymiarach modeli) to trzy prostopadłościany. Największa płaszczyzna, lico korpusu, ma 2 m szerokości i 2,6 m wysokości (od 0,25 do 2,85 m) i składa się z **dwóch trójkątów z wierzchołkami tylko w czterech narożnikach**. Płytka podłogi to 2 na 2 m, też dwa trójkąty. Plama latarki w odległości `d` ma promień `0,23 * d` (pełna jasność) i `0,38 * d` (cała plama, [`../scene/lights.md`](../scene/lights.md), sekcja 2.6). Gdy stoję 2 m przed ścianą i świecę w jej środek, cała plama ma promień 0,77 m, a najbliższy wierzchołek jest ponad metr od jej środka. Żaden wierzchołek nie jest w stożku: w trybie `Gouraud` latarka nie zostawia na tej ścianie nic. Gdy skieruję ją w narożnik lica, jeden wierzchołek wpada w stożek i jego jasność rozlewa się po trójkącie.
 
 To zgadza się z tym, co widać na zrzutach ekranu z Windowsa: **w trybie `Gouraud` plama latarki na dużych trójkątach ścian znika albo rozmazuje się wzdłuż krawędzi trójkątów**, a w trybach `Phong` i `Blinn-Phong` jest kołem z miękkim brzegiem.
+
+**Brama w trybie `Gouraud` (M5).** Zgłoszona obserwacja ze zrzutów ekranu z Windowsa: w trybie `Gouraud` brama wyjścia jest ciemna. Nie mierzyłem tego i nie oglądałem ręcznie, więc to, co niżej, jest **prawdopodobną przyczyną, a nie wynikiem pomiaru**. Mechanizm jest ten sam co przy licu ściany i widać go w pliku modelu. [`assets/models/gate.obj`](../../../assets/models/gate.obj) ma 56 pozycji wierzchołków i 70 trójkątów na płycie o szerokości 2 m i wysokości 2,75 m. **Wszystkie 56 pozycji leży na dwóch pionowych krawędziach bramy**, przy `x = -1` i `x = +1`. W pionie model jest gęsty (trzy poprzeczne listwy, każda z wierzchołkami na czterech wysokościach, do tego dół i góra: 14 wysokości), ale w poziomie między krawędziami nie ma ani jednego wierzchołka. Każdy trójkąt lica rozciąga się więc na pełne 2 m szerokości i ma wierzchołki tylko na swoich końcach.
+
+Latarka skierowana w środek bramy z odległości `d` daje plamę o promieniu `0,38 * d`. Krawędzie bramy są metr od jej środka, więc dopóki stoję bliżej niż około 2,6 m (`1 / 0,38`), w stożku nie ma żadnego wierzchołka: interpolowane jest zero z zerem i z latarki na bramie nie zostaje nic. Z większej odległości w wierzchołki trafia najpierw tylko słaby brzeg stożka (pełna jasność sięga krawędzi dopiero z około 4,3 m, `1 / 0,23`), a tam światło jest już osłabione tłumieniem. Zostają księżyc i światło otoczenia, które dla płaskiego lica są w obu trybach takie same, oraz światła kryształów, jeśli któryś wisi w pobliżu (w samej komórce wyjścia kryształu nigdy nie ma). Ściana obok bramy ma tę samą wadę. Przypuszczam, że brama rzuca się w oczy bardziej, bo to do niej gracz podchodzi na wprost i świeci w sam środek. Jak to sprawdzić samemu, mówi ćwiczenie 12.
+
+**Kryształy są widoczne w każdym trybie.** Ich jasność nie zależy od tego, czy jakieś światło trafiło w wierzchołek: świecą składnikiem emisyjnym `uEmissive`, który oba programy dodają w shaderze **fragmentów** (sekcje 4.2 i 4.4). W trybie `Gouraud` kryształ jest więc tak samo jasny jak w trybie `Phong`, a różni się tylko to, co pada na niego z zewnątrz.
 
 Co w Gouraudzie zostaje dobre: **tekstura**. Jest nadal czytana dla każdego fragmentu (`gouraud.frag`), więc rysunek kamienia jest ostry. Na wierzchołek przypada tylko światło. Dobre zostaje też światło kierunkowe na płaskiej ścianie: wszystkie cztery wierzchołki lica mają tę samą normalną i ten sam kierunek do księżyca, więc część rozproszona jest w nich identyczna i interpolacja niczego nie psuje.
 
@@ -199,7 +209,7 @@ Podgląd `Normals as colour` z panelu Assets pokazuje **normalną faktycznie uż
 
 Z punktu widzenia OpenGL oba sposoby to zwykłe programy shaderów. Nie ma przełącznika "cieniowanie Gourauda": stare `glShadeModel(GL_SMOOTH)` należało do potoku stałego i w profilu Core nie istnieje. Różnica jest tylko w tym, do którego shadera wpisałem wywołanie `computeLighting`.
 
-Wywołania w jednej klatce dla trybu z oświetleniem (labirynt 10 na 10: 100 płytek podłogi, 121 odcinków ścian, 121 słupków):
+Wywołania w jednej klatce dla trybu z oświetleniem (labirynt startowy 10 na 10 na początku rundy: 100 płytek podłogi, 121 odcinków ścian, 121 słupków, do tego brama i 13 kryształów):
 
 | Krok | Wywołania OpenGL | Ile razy |
 |---|---|---|
@@ -209,14 +219,17 @@ Wywołania w jednej klatce dla trybu z oświetleniem (labirynt 10 na 10: 100 pł
 | `uSpecularModel` | `glGetUniformLocation`, `glUniform1i` | 1 |
 | `uSpecularStrength`, `uShininess` | `glGetUniformLocation`, `glUniform1f` | po 1 |
 | `uNormalMapEnabled` (istnieje tylko w `lit`) | `glGetUniformLocation`, `glUniform1i` | 1 |
-| `MazeRenderer::draw`: `uTexture` i `uNormalMap` (drugi tylko w `lit`) | `glGetUniformLocation`, `glUniform1i` | po 1 |
-| `MazeRenderer::draw`: mapa normalnych na jednostkę 1, obraz koloru na jednostkę 0 | `glActiveTexture`, `glBindTexture`, `glBindSampler` | po 3 (raz na część modelu) |
-| `MazeRenderer::draw`: `uModel` i `uNormalMatrix` | `glUniformMatrix4fv`, `glUniformMatrix3fv` | po 342 (raz na obiekt: każdy z trzech modeli ma jedną część) |
-| rysowanie | `glDrawElements` | 342 |
+| `game::setModelSamplers`: `uTexture` i `uNormalMap` (drugi tylko w `lit`) | `glGetUniformLocation`, `glUniform1i` | po 2: raz w `MazeRenderer::draw`, raz w `GameplayRenderer::draw` |
+| `uEmissive` | `glGetUniformLocation`, `glUniform3fv` | 3: czerń przed labiryntem, czerń przed bramą, blask przed kryształami |
+| `game::drawModel`: mapa normalnych na jednostkę 1, obraz koloru na jednostkę 0 | `glActiveTexture`, `glBindTexture`, `glBindSampler` | raz na część modelu w każdym wywołaniu `drawModel`: 3 razy dla labiryntu, 1 raz dla bramy, 13 razy dla kryształów (każdy kryształ to osobne wywołanie) |
+| `game::drawModel`: `uModel` i `uNormalMatrix` | `glUniformMatrix4fv`, `glUniformMatrix3fv` | po 356: raz na obiekt (342 obiekty labiryntu, brama, 13 kryształów). Każdy z sześciu modeli ma jedną część |
+| rysowanie | `glDrawElements` | 356 |
+
+Liczby 13 i 356 maleją w trakcie rundy: zebrany kryształ nie jest rysowany, a brama znika z listy, gdy po otwarciu schowa się cała pod podłogę.
 
 Blok `LightBlock` nie pojawia się w tabeli między krokami drugim a ostatnim: program czyta go z punktu wiązania 1 bez żadnego wywołania w klatce. Połączenie programu z punktem wiązania jest robione raz, po zlinkowaniu ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 
-Przełączenie trybu nie tworzy ani nie usuwa żadnego obiektu OpenGL. Wszystkie pięć programów gry powstaje przy starcie, a tryb wybiera, który z nich dostanie `glUseProgram`. Rysowanie obiekt po obiekcie omawia [`../game/maze-rendering.md`](../game/maze-rendering.md).
+Przełączenie trybu nie tworzy ani nie usuwa żadnego obiektu OpenGL. Wszystkie cztery programy gry (`textured`, `color`, `lit`, `gouraud`) powstają przy starcie, a tryb wybiera, który z nich dostanie `glUseProgram`. Rysowanie obiekt po obiekcie omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), a kryształy i bramę [`../game/gameplay.md`](../game/gameplay.md).
 
 ## 4. Shadery
 
@@ -316,6 +329,13 @@ in vec3 vWorldPosition; // position in world space
 uniform sampler2D uTexture;
 uniform vec3 uTint;
 
+// Light the surface gives off by itself, as a colour that multiplies the colour of the
+// surface. Black (0, 0, 0) for everything that only reflects light: walls, floor,
+// pillars, the gate. The crystals glow with it: the point light of a crystal hangs
+// outside its mesh and lights its faces only from one side, and without a glow of its
+// own the source of the light would be the darkest thing around it.
+uniform vec3 uEmissive;
+
 // Output: the color written to the framebuffer (red, green, blue, alpha).
 out vec4 fragColor;
 
@@ -335,8 +355,11 @@ void main() {
     // No gamma correction in this milestone: the texture values are used as they are,
     // and the result is written as it is. Gamma (sRGB textures and an sRGB framebuffer)
     // arrives with the HDR pipeline in M7.
+    //
+    // The glow of the surface itself (uEmissive) joins the diffuse light. It does not
+    // depend on any light of the scene, so a crystal glows in the darkest corner too.
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
-    fragColor = vec4(surface * lighting.diffuse + lighting.specular, 1.0);
+    fragColor = vec4(surface * (lighting.diffuse + uEmissive) + lighting.specular, 1.0);
 }
 ```
 
@@ -345,11 +368,22 @@ void main() {
 | `#include "common/lighting.glsl"` | w tym miejscu loader wstawia blok `LightBlock`, uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` i funkcje oświetlenia. Linia stoi po `#version`, bo `#version` musi być pierwszą dyrektywą shadera |
 | `#include "common/normal_map.glsl"` | drugi plik dołączany: sampler `uNormalMap`, przełącznik `uNormalMapEnabled` i funkcja `surfaceNormal`. Ten sam plik dołącza `textured.frag` dla podglądu normalnych, więc podgląd i oświetlenie liczą normalną tym samym kodem |
 | `in vec3 vNormal;`, `in vec3 vTangent;`, `in vec3 vWorldPosition;` | para do wyjść `lit.vert`. Wartości są już zinterpolowane dla tego fragmentu |
-| `uniform sampler2D uTexture;`, `uniform vec3 uTint;` | te same dwa uniformy co w `textured.frag` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4.2), ustawiane przez `MazeRenderer::draw`. Uniformu `uViewMode` tu nie ma: podglądy normalnych i UV rysuje program `textured` |
+| `uniform sampler2D uTexture;`, `uniform vec3 uTint;` | te same dwa uniformy co w `textured.frag` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4.2), ustawiane przy rysowaniu modeli (`game::setModelSamplers` i `game::drawModel`). Uniformu `uViewMode` tu nie ma: podglądy normalnych i UV rysuje program `textured` |
+| `uniform vec3 uEmissive;` | **składnik emisyjny** (M5): światło, które powierzchnia oddaje sama, jako kolor. Czerń `(0, 0, 0)` dla wszystkiego, co tylko odbija światło: ścian, podłogi, słupków i bramy. Niezerowy tylko dla kryształów. Komentarz podaje powód: światło punktowe kryształu wisi poza jego siatką i oświetla jego ścianki tylko z jednej strony, więc bez własnego blasku źródło światła byłoby najciemniejszą rzeczą w okolicy. Teoria: [`../scene/lights.md`](../scene/lights.md), sekcja 2.2 |
 | `vec3 normal = surfaceNormal(vNormal, vTangent, vUv);` | normalna tego fragmentu, w przestrzeni świata, o długości 1. Bez mapowania normalnych funkcja zwraca `normalize(vNormal)`: przywraca długość 1 po interpolacji (sekcja 2.3), dokładnie jak ta linia robiła wcześniej. Z mapowaniem zwraca normalną z mapy normalnych (sekcja 2.7). Komentarz nad linią mówi rzecz najważniejszą: **to jedyne miejsce, w którym mapowanie normalnych wchodzi do oświetlenia**, bo wzory `computeLighting` nie wiedzą, skąd jest ich normalna |
 | `Lighting lighting = computeLighting(vWorldPosition, normal);` | **to jest cieniowanie Phonga**: wzór oświetlenia wykonany dla tego jednego fragmentu, z jego własną pozycją i normalną |
 | `vec3 surface = texture(uTexture, vUv).rgb * uTint;` | kolor powierzchni: tekstura razy kolor materiału, dokładnie jak w `textured.frag` |
-| `fragColor = vec4(surface * lighting.diffuse + lighting.specular, 1.0);` | kolor powierzchni mnoży światło rozproszone (z otoczeniem), odbłysk jest dodany w kolorze światła. Alfa 1: modele są nieprzezroczyste |
+| `fragColor = vec4(surface * (lighting.diffuse + uEmissive) + lighting.specular, 1.0);` | **wzór końcowy**. Nawias to całe światło, które powierzchnia ma do odbicia: rozproszone ze wszystkich świateł sceny (z otoczeniem) plus własny blask. Kolor powierzchni mnoży cały nawias, odbłysk jest dodany na wierzch w kolorze światła. Alfa 1: modele są nieprzezroczyste |
+
+**Wzór końcowy rozpisany.** `surface * (lighting.diffuse + uEmissive) + lighting.specular` to trzy wyrazy:
+
+| Wyraz | Skąd | Od czego zależy |
+|---|---|---|
+| `surface * lighting.diffuse` | `computeLighting`: otoczenie plus Lambert każdego światła | od świateł, normalnej i odległości |
+| `surface * uEmissive` | uniform ustawiany przez klasę rysującą | od niczego w scenie: ten sam w najciemniejszym kącie i pod latarką |
+| `lighting.specular` | `computeLighting`: odbłysk każdego światła | od świateł, normalnej i oka. Nie przechodzi przez kolor powierzchni |
+
+Dla ścian `uEmissive` jest czarny i środkowy wyraz znika: wzór jest wtedy dokładnie wzorem z M4, `surface * lighting.diffuse + lighting.specular`. Emisja jest w nawiasie, a nie dodana na końcu, żeby przeszła przez teksturę i kolor materiału: rysunek tekstury kryształu zostaje widoczny, zamiast utonąć pod jedną stałą dodaną do każdego fragmentu. Emisja **nie jest światłem sceny**: nie ma jej w bloku `LightBlock` i nie zmienia koloru żadnego innego obiektu. Ściany wokół kryształu oświetla osobne światło punktowe ([`../game/flashlight.md`](../game/flashlight.md), sekcja 2.5).
 
 Wynik nie jest przycinany w shaderze. Wartości powyżej 1 obcina framebuffer przy zapisie (format okna przechowuje liczby od 0 do 1).
 
@@ -434,19 +468,33 @@ in vec3 vSpecularLight; // highlight
 uniform sampler2D uTexture;
 uniform vec3 uTint;
 
+// Light the surface gives off by itself (the glow of the crystals), as in lit.frag.
+// Black for everything else.
+uniform vec3 uEmissive;
+
 // Output: the color written to the framebuffer (red, green, blue, alpha).
 out vec4 fragColor;
 
 void main() {
     // The same combination as in lit.frag: the colour of the surface times the diffuse
     // light, plus the highlight. The texture is still read per fragment, only the light
-    // is per vertex. No gamma correction here either (see lit.frag).
+    // is per vertex. The glow of the surface itself joins the diffuse light, as in
+    // lit.frag. No gamma correction here either (see lit.frag).
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
-    fragColor = vec4(surface * vDiffuseLight + vSpecularLight, 1.0);
+    fragColor = vec4(surface * (vDiffuseLight + uEmissive) + vSpecularLight, 1.0);
 }
 ```
 
-Shader nie dołącza `lighting.glsl` i nie zna żadnego światła. Dostaje dwie zinterpolowane liczby koloru i łączy je z teksturą **tym samym wzorem** co `lit.frag`. Tekstura jest czytana dla fragmentu, więc jej rysunek jest ostry w obu programach. Skoro shader nie dołącza pliku, program `gouraud` ma uniformy materiału i blok świateł tylko w shaderze wierzchołków.
+| Linia | Znaczenie |
+|---|---|
+| `in vec3 vDiffuseLight;`, `in vec3 vSpecularLight;` | światło policzone w trzech wierzchołkach trójkąta, zinterpolowane dla tego fragmentu |
+| `uniform vec3 uEmissive;` | ten sam składnik emisyjny co w `lit.frag`: blask kryształów, czerń dla reszty |
+| `vec3 surface = texture(uTexture, vUv).rgb * uTint;` | kolor powierzchni, czytany dla fragmentu |
+| `fragColor = vec4(surface * (vDiffuseLight + uEmissive) + vSpecularLight, 1.0);` | **ten sam wzór końcowy** co w `lit.frag`, tylko światło pochodzi z interpolacji, a nie z obliczenia w tym miejscu |
+
+Shader nie dołącza `lighting.glsl` i nie zna żadnego światła. Dostaje dwa zinterpolowane kolory światła i łączy je z teksturą **tym samym wzorem** co `lit.frag`. Tekstura jest czytana dla fragmentu, więc jej rysunek jest ostry w obu programach. Skoro shader nie dołącza pliku, program `gouraud` ma uniformy materiału i blok świateł tylko w shaderze wierzchołków.
+
+**Dlaczego słabość Gourauda nie dotyczy emisji.** Gouraud gubi to, co zmienia się **między** wierzchołkami: plamę stożka, odbłysk, krzywą tłumienia. Emisja nie zmienia się wcale: to jedna liczba dla całego rysowanego obiektu, niezależna od pozycji, normalnej i świateł. Stałej nie da się zgubić interpolacją, więc **kryształy są w trybie `Gouraud` tak samo jasne jak w trybie `Phong`**. Miejsce dodania nie ma tu znaczenia: `uEmissive` dopisany do `vDiffuseLight` w `gouraud.vert` dałby ten sam obraz, bo interpolacja stałej zwraca tę samą stałą. Stoi w shaderze fragmentów, bo tam spotyka się z tekselem i dzięki temu linia końcowa jest taka sama jak w `lit.frag`. Brama nie ma tego ratunku: jej `uEmissive` jest czarny, więc w trybie `Gouraud` dostaje tylko światło, które trafiło w jej wierzchołki.
 
 ### 4.5 Zestawienie: co gdzie jest liczone
 
@@ -458,6 +506,7 @@ Shader nie dołącza `lighting.glsl` i nie zna żadnego światła. Dostaje dwie 
 | tłumienie, stożek, Lambert, odbłysk | brak | wierzchołek | fragment |
 | odczyt tekstury | fragment | fragment | fragment |
 | połączenie światła z teksturą | brak | fragment | fragment |
+| składnik emisyjny `uEmissive` | fragment, tylko w zwykłym obrazie: `texel * uTint * (vec3(1.0) + uEmissive)` | fragment | fragment |
 
 ## 5. Kod w projekcie
 
@@ -470,7 +519,8 @@ Shader nie dołącza `lighting.glsl` i nie zna żadnego światła. Dostaje dwie 
 | [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) | wspólne wzory, w tym wybór wzoru odbłysku: [`../scene/lights.md`](../scene/lights.md), sekcja 4 |
 | [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), [`.cpp`](../../../src/game/Lighting.cpp) | `LightingMode`, `SpecularModel`, `specularModelOf`. Cały plik omawia [`../game/flashlight.md`](../game/flashlight.md) |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_litShader`, `m_gouraudShader`, `m_lighting`, funkcje `drawMaze`, `drawUnlitMaze`, `drawLitMaze` |
-| [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | nazwy `uNormalMatrix`, `uSpecularModel`, `uSpecularStrength`, `uShininess` |
+| [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | nazwy `uNormalMatrix`, `uSpecularModel`, `uSpecularStrength`, `uShininess`, `uEmissive` (`EMISSIVE_UNIFORM`) |
+| [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) | rysowanie labiryntu oraz kryształów i bramy programem wybranym w `drawLitMaze`, ustawianie `uEmissive`. Omawiają je [`../game/maze-rendering.md`](../game/maze-rendering.md) i [`../game/gameplay.md`](../game/gameplay.md) |
 | [`src/debug/panels/RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp) | lista `Lighting` (sekcja 6) |
 
 ### 5.2 Tryb jako typ wyliczeniowy
@@ -521,7 +571,7 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
 | podgląd `Normals as colour` albo `UVs as colour` z panelu Assets, przy dowolnym trybie | `drawUnlitMaze` | gałęzie podglądu istnieją tylko w `textured.frag`. Pokazują dane, a nie światło, więc oświetlenie by je tylko zafałszowało |
 | pozostałe przypadki | `drawLitMaze` | `gouraud` albo `lit` |
 
-Uwaga do drugiego wiersza: kostki oznaczające światła punktowe są rysowane zawsze, gdy tryb jest inny niż `Unlit`, **także w podglądach** (`onRender` pyta tylko o tryb, nie o podgląd). Podgląd normalnych przy trybie `Phong` pokazuje więc labirynt bez światła i turkusowe kostki.
+Obie funkcje rysują **całą scenę**: labirynt przez `MazeRenderer`, a zaraz po nim kryształy i bramę przez `GameplayRenderer`, tym samym programem. Kryształy i brama są więc widoczne także w trybie `Unlit` i w obu podglądach. W zwykłym obrazie programu `textured` kryształ jest jaśniejszy od ścian o swój blask (`texel * uTint * (vec3(1.0) + uEmissive)`), w podglądach normalnych i UV blasku nie ma: `textured.frag` używa `uEmissive` tylko w widoku 0.
 
 ### 5.4 Rysowanie z oświetleniem: `drawLitMaze`
 
@@ -549,6 +599,10 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(shader, m_mazeWorld);
+    // The crystals and the gate, with the same program and so the same lighting mode.
+    // The crystals glow in the colour of their lights.
+    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round,
+                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
 }
 ```
 
@@ -561,7 +615,11 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 | `setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)))` | **cały przełącznik Phong a Blinn-Phong**: liczba 0 albo 1 w jednym uniformie. Shader wybiera wzór instrukcją `if` w `specularFactor` |
 | `setFloat(SPECULAR_STRENGTH_UNIFORM, ...)`, `setFloat(SHININESS_UNIFORM, ...)` | dwa suwaki z grupy `Highlight (specular)` panelu Lights. `setFloat` to nowy setter (`glUniform1f`) |
 | `setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0)` | przełącznik mapowania normalnych programu `lit`. Uniform ma w shaderze typ `bool`, a taki ustawia się przez `glUniform1i`: 0 to fałsz, 1 to prawda. Program `gouraud` tego uniformu nie ma (wywołanie jest ignorowane), a `usesNormalMap` i tak zwraca dla niego fałsz |
-| `m_mazeRenderer.draw(shader, m_mazeWorld);` | ta sama funkcja, która rysuje programem `textured`: ustawia `uTexture`, `uNormalMap`, `uTint`, `uModel` i `uNormalMatrix`, podpina obie tekstury i rysuje obiekt po obiekcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
+| `m_mazeRenderer.draw(shader, m_mazeWorld);` | ta sama funkcja, która rysuje programem `textured`: ustawia `uTexture`, `uNormalMap`, `uEmissive` (na czerń), `uTint`, `uModel` i `uNormalMatrix`, podpina obie tekstury i rysuje obiekt po obiekcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
+| `m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalGlow(...))` | kryształy i brama **tym samym programem**, a więc w tym samym trybie cieniowania co ściany: `use()` i uniformy klatki ustawione wyżej nadal obowiązują. Funkcja ustawia `uEmissive` na czerń dla bramy i na podany blask dla kryształów ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
+| `crystalGlow(m_lighting.pointColor, m_round.animationSeconds)` | wartość `uEmissive` kryształów: kolor świateł punktowych razy `CRYSTAL_GLOW_STRENGTH` razy puls tej chwili. Bierze `m_lighting`, czyli ustawienia z panelu, a puls dokłada sama |
+
+Komentarz nad `setInt(SPECULAR_MODEL_UNIFORM, ...)` mówi o "materiale kamienia", ale te same trzy liczby odbłysku dostają też drewniana brama i kryształy: osobnych ustawień materiału dla nich nie ma.
 
 Świateł tu nie ma: są w buforze uniformów, który `onRender` wypełnił przed wywołaniem `drawMaze` ([`../game/flashlight.md`](../game/flashlight.md)). Dzięki temu przełączenie programu nie wymaga wysłania świateł drugi raz.
 
@@ -570,10 +628,11 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 ### 5.5 Jak to zostało sprawdzone
 
 - **Testy jednostkowe** obejmują tylko stronę C++: liczby typów wyliczeniowych i `specularModelOf` (dwa przypadki w `tests/LightingTests.cpp`), wartość startową trybu (`the lighting starts as a night scene shaded with Blinn-Phong`) oraz regułę `usesNormalMap` (`normal mapping is on by default and applies to every mode except Gouraud`). Shaderów i wyboru programu test nie widzi: wymagają kontekstu OpenGL.
-- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego z pięciu programów linię zakończoną `OK` (tak wynika z kodu panelu).
+- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego z czterech programów linię zakończoną `OK` (tak wynika z kodu panelu).
 - **Obraz.** Cztery tryby z trzech miejsc w labiryncie są sprawdzone na zrzutach ekranu: widać opisane w sekcji 2 różnice (znikająca i rozmazana plama latarki w `Gouraud`, szersza gorąca plama `Blinn-Phong` na wprost ściany, mała różnica wzdłuż korytarza).
 - **Mapy normalnych a tryb** (zrzuty ekranu, Windows, 2026-10-05): w trybach `Phong` i `Blinn-Phong` fugi czytają się jako rowki, a zrzuty trybów `Gouraud` i `Unlit` są identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych. Szczegóły i liczby: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11.
-- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem przy pięciu programach.
+- **M5** (zgłoszone dla Windowsa, 2026-10-05): build bez ostrzeżeń i 215 przypadków testowych z 85098 asercjami w Debug i Release. Obraz z kryształami i bramą był oglądany na zrzutach ekranu robionych przez tymczasowe zaczepy, których w kodzie już nie ma. Stamtąd pochodzi obserwacja, że brama jest ciemna w trybie `Gouraud`. Przyczyny nie mierzyłem: sekcja 2.2 podaje najbardziej prawdopodobną. Wzór z `uEmissive` nie ma testu jednostkowego (to kod GLSL). Test ma tylko wartość, którą C++ do niego wysyła: przypadek `the glow of a crystal has the colour of its light and pulses with it` w `tests/CrystalTests.cpp`.
+- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem przy czterech programach, wygląd kryształów i bramy w każdym z czterech trybów.
 - **macOS:** nic, także nic z map normalnych. Kompilator Apple jest surowszy od sterownika NVIDII i może odrzucić coś, co tu przechodzi.
 
 ## 6. Panel ImGui
@@ -610,23 +669,25 @@ Kontrolki, które biorą udział w pokazie:
 | Lights | `Flashlight on (key F)`, klawisz F | latarka | bez latarki widać odbłyski księżyca i świateł punktowych |
 | Assets | pole wyboru `Normal mapping` | `m_lighting.normalMapping` | w trybach `Phong` i `Blinn-Phong` fugi i nierówności kamienia pojawiają się i znikają. W trybie `Gouraud` nie zmienia się nic |
 | Assets | lista `View mode` | podgląd | `Normals as colour` pokazuje normalne, z których liczone jest światło w wybranym trybie (rysowane programem `textured`): z map normalnych przy `Unlit`, `Phong` i `Blinn-Phong` z zaznaczonym `Normal mapping`, normalne siatki przy `Gouraud` albo odznaczonym polu |
-| Shaders | `Reload shaders` | przeładowanie pięciu programów | zmiana w `lit.frag` albo `common/lighting.glsl` bez restartu |
+| Shaders | `Reload shaders` | przeładowanie czterech programów | zmiana w `lit.frag` albo `common/lighting.glsl` bez restartu |
+| Lights | `Point colour` | `m_lighting.pointColor` | kolor świateł kryształów i jednocześnie ich własny blask (`uEmissive`), w każdym trybie |
 
 ### 6.1 Scenariusz pokazu na obronie
 
-**Kroków nikt jeszcze nie wykonał ręcznie.** Opisane różnice widać na zrzutach ekranu z Windowsa, zrobionych dla czterech trybów z trzech miejsc. Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md).
+**Kroków nikt jeszcze nie wykonał ręcznie.** Różnice z kroków od 2 do 10 było widać na zrzutach ekranu z Windowsa, zrobionych w M4 dla czterech trybów z trzech miejsc. Krok 11 opisuje obserwację zgłoszoną w M5. Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
 1. **Punkt wyjścia.** W panelu Lights ustawiam `Strength` na 1,0 i `Shininess` na 16. Z wartościami startowymi (0,25 i 32) odbłysk na kamieniu jest ledwo widoczny.
-2. **Bez światła.** `Lighting`: `Unlit`. Scena jest równo jasna, kostki świateł znikają. Mówię: to program `textured` z M3.
+2. **Bez światła.** `Lighting`: `Unlit`. Scena jest równo jasna, kryształy zostają i są jaśniejsze od ścian o swój blask. Mówię: to program `textured` z M3, z jednym dodatkiem z M5, składnikiem emisyjnym.
 3. **Gouraud a Phong na ścianie.** Staję 2 m przed ścianą, twarzą do niej, i świecę w środek. Przełączam `Gouraud` i `Phong` na zmianę. W `Phong` na ścianie jest okrągła plama z miękkim brzegiem. W `Gouraud` plamy nie ma. Mówię: lico ściany to dwa trójkąty z wierzchołkami w narożnikach, plama ma promień 0,77 m i nie obejmuje żadnego z nich.
 4. **Rozmazany narożnik.** W `Gouraud` przesuwam środek ekranu na narożnik lica ściany. Jasność jednego wierzchołka rozlewa się po trójkącie i widać jego przekątną. Mówię: rasteryzator interpoluje liniowo gotowy kolor.
 5. **Gęstsza siatka.** W `Gouraud` świecę na podstawę słupka. Słupek ma podstawę o wysokości 0,35 m, więc jego wierzchołki leżą gęściej niż na ścianie i światło łapie się w nich częściej. Mówię: jakość Gourauda zależy od gęstości siatki. (Ten krok wynika z wymiarów modelu, na zrzutach go nie sprawdzałem.)
 6. **Tekstura zostaje ostra.** W `Gouraud` podchodzę blisko do ściany: rysunek kamienia jest tak samo ostry jak w `Phong`. Mówię: tekstura jest czytana dla fragmentu w obu programach, na wierzchołek liczone jest tylko światło.
 7. **Phong a Blinn-Phong na wprost.** Staję twarzą do ściany, `Lighting`: `Phong`, potem `Blinn-Phong`. Gorąca plama w środku jest w Blinnie-Phongu szersza i jaśniejsza. Mówię: latarka jest w oku, więc Phong liczy `cos(2t)`, a Blinn-Phong `cos(t)`. Przesuwam `Shininess` w trybie `Blinn-Phong` z 16 na 64: plama ma rozmiar plamy Phonga przy 16 (reguła "cztery razy").
 8. **Wzdłuż korytarza.** Patrzę w głąb korytarza i przełączam oba tryby: różnicy prawie nie ma. Mówię dlaczego (sekcja 2.6).
-9. **Światło z boku.** Naciskam F, żeby zgasić latarkę. Staję tak, żeby mieć światło punktowe zaułka przed sobą, i patrzę płasko na podłogę między mną a światłem. Przełączam `Phong` i `Blinn-Phong`: w Blinnie-Phongu odbłysk rozciąga się w smugę w moją stronę, w Phongu jest krótszy i kończy się ostrzej.
+9. **Światło z boku.** Naciskam F, żeby zgasić latarkę. Staję tak, żeby mieć światło kryształu przed sobą, i patrzę płasko na podłogę między mną a światłem. Przełączam `Phong` i `Blinn-Phong`: w Blinnie-Phongu odbłysk rozciąga się w smugę w moją stronę, w Phongu jest krótszy i kończy się ostrzej.
 10. **Mapy normalnych: czego Gouraud nie pokaże.** `Lighting`: `Phong`, staję blisko ściany i świecę na nią pod płaskim kątem: fugi są rowkami, skosy kamieni od strony światła są jasne. Przełączam na `Gouraud`: relief znika, zostają fugi namalowane w teksturze. Odznaczam i zaznaczam `Normal mapping` w panelu Assets w trybie `Gouraud`: obraz się nie zmienia. Mówię: mapa ma normalną na teksel, a ten program liczy światło w czterech wierzchołkach lica. Potem `View mode`: `Normals as colour` w trybie `Phong` (widać rysunek fug) i w trybie `Gouraud` (gładki kolor): podgląd pokazuje normalną, którą tryb naprawdę cieniuje. Pełny scenariusz map normalnych: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6.
-11. **Jedna linia kodu.** Pokazuję `drawLitMaze`: wybór programu to jedna linia, wybór wzoru odbłysku to jeden uniform.
+11. **Brama i kryształy.** Brama musi być jeszcze zamknięta: otwarta chowa się pod podłogę w 1,5 s i nie ma czego oglądać. Nie zbieram więc wymaganej liczby kryształów (albo podnoszę suwak `Crystals needed` w panelu Gameplay do końca), lecę do wyjścia w trybie noclip (klawisz N), wyłączam noclip i staję 2 m przed bramą, twarzą do niej, z latarką w jej środek. Przełączam `Phong` i `Gouraud`. Zgłoszona obserwacja: w `Gouraud` brama jest ciemna. Mówię: model ma wierzchołki tylko na dwóch pionowych krawędziach, metr od środka, a plama ma tu promień 0,77 m. Pokazuję kryształ w tym samym trybie: świeci tak samo jak w `Phong`, bo jego blask jest dodawany w shaderze fragmentów. (Przyczyny ciemnej bramy nie mierzyłem: to wniosek z pliku modelu.)
+12. **Jedna linia kodu.** Pokazuję `drawLitMaze`: wybór programu to jedna linia, wybór wzoru odbłysku to jeden uniform, a kryształy i brama idą tym samym programem co ściany.
 
 ## 7. Pułapki
 
@@ -640,11 +701,14 @@ Kontrolki, które biorą udział w pokazie:
 8. **Porównywanie trybów z różnym wykładnikiem.** Ten sam wykładnik daje w Blinnie-Phongu szerszy odbłysk. Kto chce pokazać, że "wzory dają to samo", musi w Blinnie-Phongu dać wykładnik około cztery razy większy.
 9. **Odbłysk po ciemnej stronie.** Bez warunku `dot(normal, toLight) <= 0` wzór Blinna-Phonga potrafi dać odbłysk na powierzchni odwróconej od światła. Warunek jest w `specularFactor`.
 10. **Gouraud to nie "gorsza tekstura".** Na pierwszy rzut oka tryb `Gouraud` wygląda jak scena prawie bez latarki. To nie błąd shadera ani tłumienia: wzory są te same, tylko wierzchołki są za rzadko.
-11. **Podgląd z panelu Assets wyłącza oświetlenie.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` pozornie nie działa: labirynt rysuje `textured`. Kostki świateł zostają. Jeden wyjątek od "nie działa": podgląd normalnych pokazuje normalne siatki w trybie `Gouraud`, a normalne z map w pozostałych, więc przełączenie na `Gouraud` i z powrotem zmienia jego obraz.
+11. **Podgląd z panelu Assets wyłącza oświetlenie.** Przy `Normals as colour` albo `UVs as colour` lista `Lighting` pozornie nie działa: labirynt rysuje `textured`. Kryształy i brama też są wtedy rysowane programem `textured`, kryształy bez blasku. Jeden wyjątek od "nie działa": podgląd normalnych pokazuje normalne siatki w trybie `Gouraud`, a normalne z map w pozostałych, więc przełączenie na `Gouraud` i z powrotem zmienia jego obraz.
 12. **Prześwietlenie maskuje różnicę.** Przy dużej intensywności latarki środek plamy jest obcięty do bieli w obu trybach odbłysku i różnica między nimi znika. Pokaz robię przy startowej intensywności.
 13. **Brak gammy zmienia wygląd odbłysku.** Bez korekcji gamma przejścia jasności są inne niż w poprawnym rachunku, więc odbłyski wyglądają na mniejsze i ostrzejsze ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
 14. **"Normal mapping nie działa" w trybie `Gouraud`.** Pole wyboru w panelu Assets niczego wtedy nie zmienia. To nie błąd: `usesNormalMap` jest dla tego trybu fałszywe, a `gouraud.vert` nie ma ani samplera mapy, ani stycznej.
-15. **macOS, niesprawdzone.** Żaden z czterech plików ani `common/normal_map.glsl` nie był kompilowany przez kompilator GLSL Apple. Ryzyka są wypisane w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+15. **Ciemna brama w trybie `Gouraud`.** Zgłoszona obserwacja z M5, najpewniej ta sama słabość co przy ścianach: model bramy nie ma wierzchołków między lewą a prawą krawędzią (sekcja 2.2). To nie jest błąd tekstury ani materiału: w trybach `Phong` i `Blinn-Phong` ten sam model z tymi samymi uniformami jest oświetlony. Lekarstwem byłaby gęstsza siatka bramy (podział lica w poziomie) w skrypcie `tools/blender/build_gate.py`, a nie zmiana shadera.
+16. **Emisja dodana w złym etapie albo na końcu wzoru.** `uEmissive` stoi w nawiasie obok światła rozproszonego, w shaderze fragmentów obu programów. Dodany poza nawiasem ominąłby teksturę i zrobił z kryształu płaską plamę. Zapomniany w `gouraud.frag` dałby kryształy jasne w `Phong` i wyraźnie ciemniejsze w `Gouraud`.
+17. **`uEmissive` nieustawiony przed rysowaniem.** Uniform pamięta ostatnią wartość w programie. `MazeRenderer::draw` ustawia czerń w każdej klatce właśnie dlatego, że kryształy rysowane później zostawiają w nim swój blask: bez tej linii od drugiej klatki świeciłyby ściany.
+18. **macOS, niesprawdzone.** Żaden z czterech plików ani `common/normal_map.glsl` nie był kompilowany przez kompilator GLSL Apple. Ryzyka są wypisane w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ## 8. Ćwiczenia
 
@@ -654,13 +718,15 @@ Kontrolki, które biorą udział w pokazie:
 2. **Plama a siatka.** Stoję 3 m przed licem ściany (2 na 2,6 m) i świecę w jego środek. Jaki promień ma cała plama latarki przy kącie zewnętrznym 21 stopni? Czy obejmuje jakiś wierzchołek? Przy jakim kącie zewnętrznym by objęła? (Odpowiedź: 1,15 m. Nie: narożniki są 1,64 m od środka. Przy około 29 stopniach.)
 3. **Dwa kąty.** Światło pada pod kątem 30 stopni do normalnej, a oko patrzy wzdłuż normalnej. Policz kąt Phonga (między `R` i `V`) i kąt Blinna-Phonga (między `N` i `H`). (Odpowiedź: 30 i 15 stopni.)
 4. **Wykładnik.** Dla kąta `t` = 10 stopni i światła w oku policz odbłysk Phonga z wykładnikiem 8 i Blinna-Phonga z wykładnikiem 32. Co pokazuje wynik? (Odpowiedź: `cos(20)^8 = 0,61` i `cos(10)^32 = 0,61`: reguła "cztery razy".)
-5. **Cztery tryby.** Stań przed ścianą i przejdź listę `Lighting` od góry do dołu. Zapisz dla każdego trybu: czy widać plamę latarki, czy widać odbłysk, czy widać kostki świateł.
-6. **Gouraud z gęstą siatką w głowie.** W trybie `Gouraud` znajdź miejsce, gdzie plama latarki jest widoczna. Które wierzchołki ją "trzymają"? Sprawdź, wchodząc do panelu Collision i włączając rysowanie pudełek, gdzie kończą się odcinki ścian.
+5. **Cztery tryby.** Stań przed ścianą i przejdź listę `Lighting` od góry do dołu. Zapisz dla każdego trybu: czy widać plamę latarki, czy widać odbłysk, czy widać kryształy i jak jasne są w porównaniu ze ścianą.
+6. **Gouraud z gęstą siatką w głowie.** W trybie `Gouraud` znajdź miejsce, gdzie plama latarki jest widoczna. Które wierzchołki ją "trzymają"? Sprawdź, zaznaczając w panelu Collision pole `Draw collision shapes`, gdzie kończą się odcinki ścian.
 7. **Normalizacja.** Odznacz `Normal mapping` w panelu Assets. W `common/normal_map.glsl` zamień `vec3 n = normalize(normal);` na `vec3 n = normal;`. Czy coś się zmieniło? Dlaczego nie, i jaki model by to zmienił?
 8. **Blinn-Phong bez warunku.** W `specularFactor` usuń cały pierwszy `if`. Ustaw `Strength` 1, `Shininess` 4, tryb `Blinn-Phong`, zgaś latarkę. Poszukaj odbłysku księżyca na stronach ścian, których księżyc nie oświetla.
 9. **Odbłysk jako jedyne światło.** W `lit.frag` zamień ostatnią linię na `fragColor = vec4(lighting.specular, 1.0);`. Przełączaj `Phong` i `Blinn-Phong`, chodząc po labiryncie. To najczystszy pokaz różnicy obu wzorów.
 10. **Światło na wierzchołek jako obraz.** W `gouraud.frag` zamień ostatnią linię na `fragColor = vec4(vDiffuseLight, 1.0);`. Widać samo interpolowane światło, bez tekstury: policz trójkąty na licu ściany.
 11. **Trzeci wzór.** Dopisz w `specularFactor` gałąź `uSpecularModel == 2`, która zwraca `0.0`, i w C++ wartość `SpecularModel::None`. Ile miejsc trzeba zmienić, żeby pojawiła się nowa pozycja listy? (Wskazówka: typ, `specularModelOf`, napis w panelu, test.)
+12. **Brama a siatka.** Otwórz `assets/models/gate.obj` i wypisz wszystkie różne wartości `x` w liniach `v`. Ile ich jest? Stań w grze 2 m przed bramą w trybie `Gouraud` i świeć kolejno w jej środek, w lewą krawędź i w narożnik. Gdzie latarka zostawia ślad? Z jakiej odległości plama skierowana w środek zaczyna obejmować krawędzie? (Odpowiedź do części na kartce: dwie wartości, -1 i 1. Około 2,6 m.)
+13. **Kryształ bez emisji.** W `gouraud.frag` zamień ostatnią linię na `fragColor = vec4(surface * vDiffuseLight + vSpecularLight, 1.0);`. Przeładuj shadery i porównaj kryształ w trybach `Gouraud` i `Phong`. Dlaczego bez emisji kryształ jest ciemniejszy, chociaż tuż nad nim wisi jego własne światło?
 
 ## 9. Pytania kontrolne
 
@@ -733,6 +799,18 @@ Kontrolki, które biorą udział w pokazie:
 23. **Co pokazuje podgląd `Normals as colour` w trybie `Gouraud`, a co w trybie `Phong`?**
     W `Gouraud` gładkie normalne siatki, w `Phong` (przy zaznaczonym `Normal mapping`) normalne z map normalnych, z rysunkiem fug. Podgląd pokazuje normalną, którą wybrany tryb naprawdę cieniuje: decyduje `usesNormalMap`.
 
+24. **Jak wygląda wzór końcowy obu programów od M5?**
+    `surface * (diffuse + uEmissive) + specular`. Kolor powierzchni mnoży światło rozproszone razem z własnym blaskiem powierzchni, odbłysk jest dodany na wierzch. Dla ścian, podłogi, słupków i bramy `uEmissive` jest czarny i zostaje wzór z M4.
+
+25. **Dlaczego kryształy są widoczne w trybie `Gouraud`, skoro ten tryb gubi światło między wierzchołkami?**
+    Bo ich jasność nie pochodzi ze świateł sceny. `uEmissive` jest dodawany w shaderze fragmentów (`gouraud.frag`), poza obliczeniem światła na wierzchołek.
+
+26. **Dlaczego brama jest ciemna w trybie `Gouraud`?**
+    To obserwacja ze zrzutów ekranu, a przyczyna jest wnioskiem z pliku modelu, nie pomiarem: wszystkie 56 pozycji wierzchołków bramy leży na jej dwóch pionowych krawędziach, 2 m od siebie. Plama latarki skierowana w środek z bliska nie obejmuje żadnego wierzchołka, więc interpolowane światło jest zerem. To ten sam mechanizm co przy licu ściany.
+
+27. **Którym programem rysowane są kryształy i brama?**
+    Tym samym co labirynt w danej klatce: `drawLitMaze` i `drawUnlitMaze` wołają `GameplayRenderer::draw` zaraz po `MazeRenderer::draw` z tym samym obiektem `Shader`. Kryształy i brama zmieniają więc tryb cieniowania razem ze ścianami.
+
 ## 10. Źródła
 
 - LearnOpenGL, "Basic Lighting" (<https://learnopengl.com/Lighting/Basic-Lighting>): model Phonga w shaderze fragmentów i ćwiczenie z wersją Gourauda w shaderze wierzchołków.
@@ -741,5 +819,5 @@ Kontrolki, które biorą udział w pokazie:
 - docs.gl: `reflect` (<https://docs.gl/sl4/reflect>), `normalize`, `pow`, `glUniform` (w tym `glUniform1f` i `glUniformMatrix3fv`).
 - Specyfikacja GLSL 4.10 (<https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.10.pdf>): interpolacja wyjść shadera wierzchołków, kwalifikatory `in` i `out`.
 - Henri Gouraud, "Continuous Shading of Curved Surfaces" (1971). Bui Tuong Phong, "Illumination for Computer Generated Pictures" (1975). James F. Blinn, "Models of Light Reflection for Computer Synthesized Pictures" (1977).
-- Dokumenty w tym repozytorium: [`../scene/lights.md`](../scene/lights.md) (wzory i `common/lighting.glsl`), [`../game/flashlight.md`](../game/flashlight.md) (ustawienia świateł, latarka), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (blok `LightBlock`), [`../gfx/shader-includes.md`](../gfx/shader-includes.md) (`#include`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (`setMat3`, `setFloat`), [`../game/maze-rendering.md`](../game/maze-rendering.md) (rysowanie obiekt po obiekcie), [`../scene/transforms.md`](../scene/transforms.md) (`normalMatrix`), [`../debug-ui.md`](../debug-ui.md) (panel Renderer), [`../../guides/blender.md`](../../guides/blender.md) (wymiary i trójkąty modeli).
+- Dokumenty w tym repozytorium: [`../scene/lights.md`](../scene/lights.md) (wzory i `common/lighting.glsl`), [`../game/flashlight.md`](../game/flashlight.md) (ustawienia świateł, latarka), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (blok `LightBlock`), [`../gfx/shader-includes.md`](../gfx/shader-includes.md) (`#include`), [`../gfx/uniforms.md`](../gfx/uniforms.md) (`setMat3`, `setFloat`), [`../game/maze-rendering.md`](../game/maze-rendering.md) (rysowanie obiekt po obiekcie), [`../scene/transforms.md`](../scene/transforms.md) (`normalMatrix`), [`../debug-ui.md`](../debug-ui.md) (panel Renderer), [`../../guides/blender.md`](../../guides/blender.md) (wymiary i trójkąty modeli), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, brama, `GameplayRenderer`, `crystalGlow`).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o oświetleniu i cieniowaniu).

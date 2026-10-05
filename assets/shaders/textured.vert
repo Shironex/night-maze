@@ -24,8 +24,15 @@ out vec3 vNormal;  // normal in world space
 out vec3 vTangent; // tangent in world space
 
 void main() {
-    // The same chain as in basic.vert, read from right to left: local space, world
-    // space, view space, clip space.
+    // gl_Position is the built-in output every vertex shader must write: the position in
+    // clip space. The expression is read from right to left, the matrix nearest to the
+    // vector is applied first:
+    //   vec4(aPosition, 1.0)  the vertex in local space, w = 1 because it is a point
+    //   uModel * ...          the vertex in world space
+    //   uView * ...           the vertex in view space, as seen from the camera
+    //   uProjection * ...     the vertex in clip space
+    // After this shader the graphics card divides x, y and z by w (the distance from the
+    // camera), which is what makes distant things small.
     gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 
     // The texture coordinate goes through unchanged: it belongs to the surface, not to

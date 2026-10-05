@@ -7,18 +7,18 @@ Część modułu `core`. Wstęp do całego modułu jest w [`README.md`](README.m
 
 ## 1. Po co to jest
 
-Program wczytuje pliki z dysku: shadery, modele i tekstury. Wszystkie mają leżeć w katalogu `assets/`. Pytanie brzmi: jak program ma ten katalog znaleźć. Najprostsza odpowiedź, czyli ścieżka względna (relative path) `"assets/shaders/basic.vert"`, działa tylko wtedy, gdy program został uruchomiony z "właściwego" miejsca. Ten sam plik `.exe` uruchomiony z terminala, z IDE i dwuklikiem dostaje trzy różne katalogi robocze (working directory), a ścieżka względna jest liczona właśnie od katalogu roboczego. To ta sama historia co z plikiem `imgui.ini`, który raz powstaje w katalogu repozytorium, a raz obok programu ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Dla `imgui.ini` skutkiem jest tylko inny układ paneli. Dla shaderów, modeli i tekstur skutkiem byłby program, który niczego nie rysuje.
+Program wczytuje pliki z dysku: shadery, modele i tekstury. Wszystkie mają leżeć w katalogu `assets/`. Pytanie brzmi: jak program ma ten katalog znaleźć. Najprostsza odpowiedź, czyli ścieżka względna (relative path) `"assets/shaders/lit.vert"`, działa tylko wtedy, gdy program został uruchomiony z "właściwego" miejsca. Ten sam plik `.exe` uruchomiony z terminala, z IDE i dwuklikiem dostaje trzy różne katalogi robocze (working directory), a ścieżka względna jest liczona właśnie od katalogu roboczego. To ta sama historia co z plikiem `imgui.ini`, który raz powstaje w katalogu repozytorium, a raz obok programu ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Dla `imgui.ini` skutkiem jest tylko inny układ paneli. Dla shaderów, modeli i tekstur skutkiem byłby program, który niczego nie rysuje.
 
 Dlatego szukam assetów **względem pliku wykonywalnego**, a nie względem katalogu roboczego. Dwie funkcje w `core`:
 
 - `core::executableDir()` zwraca bezwzględną ścieżkę katalogu, w którym leży uruchomiony program,
-- `core::assetPath("shaders/basic.vert")` zwraca `executableDir() / "assets" / "shaders/basic.vert"`.
+- `core::assetPath("shaders/lit.vert")` zwraca `executableDir() / "assets" / "shaders/lit.vert"`.
 
 Trzecia funkcja, `core::pathText(path)`, nie szuka niczego: zamienia ścieżkę na tekst w UTF-8, żeby dało się ją wypisać w logu i pokazać w panelu debug (sekcja 5.7).
 
 PRD (sekcja 6) wymienia "ścieżki do assetów" jako jedną z odpowiedzialności warstwy `core`.
 
-Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z czterema podkatalogami: `fonts/` (czcionka paneli z licencją), `shaders/` (dziesięć plików shaderów: `basic`, `textured`, `color`, `lit` i `gouraud`, każdy jako `.vert` i `.frag`, oraz plik dołączany `common/lighting.glsl`), `models/` (trzy modele `.obj` z plikami `.mtl`) i `textures/` (dwa pliki `.png`). `core::assetPath` ma trzech użytkowników: konstruktor `game::NightMazeApp` buduje tak ścieżki dziesięciu plików shaderów, konstruktor `game::MazeRenderer` ścieżki trzech modeli, a motyw paneli w `src/debug/Theme.cpp` ścieżkę pliku czcionki. Ścieżek tekstur nikt nie buduje przez `assetPath`: wynikają z linii `map_Kd` w pliku `.mtl` i są liczone względem katalogu tego pliku (sekcja 5.8). Tak samo jest z plikiem `common/lighting.glsl`: jego nazwę podaje linia `#include` w shaderze, a ścieżka jest liczona względem katalogu pliku shadera (sekcja 5.8). `core::pathText` wołają `gfx::Shader`, loadery i `assets::AssetCache` (komunikaty w konsoli) oraz panele "Shaders" i "Assets" (nazwy plików). Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię, którą robi i odświeża target `copy_assets` (sekcja 5.8).
+Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z czterema podkatalogami: `fonts/` (czcionka paneli z licencją), `shaders/` (osiem plików shaderów: `textured`, `color`, `lit` i `gouraud`, każdy jako `.vert` i `.frag`, oraz dwa pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`), `models/` (sześć modeli `.obj` z plikami `.mtl`: trzy części labiryntu, dwa kryształy i brama) i `textures/` (osiem plików `.png`: cztery tekstury koloru i cztery mapy normalnych). Para `basic.vert` i `basic.frag`, od której ten moduł zaczynał w M1, została usunięta w M5 razem z kostką. `core::assetPath` ma czterech użytkowników: konstruktor `game::NightMazeApp` buduje tak ścieżki ośmiu plików shaderów, konstruktor `game::MazeRenderer` ścieżki trzech modeli labiryntu, konstruktor `game::GameplayRenderer` ścieżki trzech modeli rundy, a motyw paneli w `src/debug/Theme.cpp` ścieżkę pliku czcionki. Ścieżek tekstur nikt nie buduje przez `assetPath`: wynikają z linii `map_Kd` i `map_Bump` w pliku `.mtl` i są liczone względem katalogu tego pliku (sekcja 5.8). Tak samo jest z plikami z `common/`: nazwę podaje linia `#include` w shaderze, a ścieżka jest liczona względem katalogu pliku shadera (sekcja 5.8). `core::pathText` wołają `gfx::Shader`, loadery i `assets::AssetCache` (komunikaty w konsoli) oraz panele "Shaders" i "Assets" (nazwy plików). Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię, którą robi i odświeża target `copy_assets` (sekcja 5.8).
 
 ## 2. Teoria
 
@@ -96,7 +96,7 @@ Ta część modułu nie ma związku z OpenGL: nie woła żadnej funkcji `gl*` an
 
 ## 4. Shadery
 
-Ta część modułu nie ma shaderów, ale to przez nią program je znajduje: dziesięć plików leży w `assets/shaders/`, a `game::NightMazeApp` pyta o ich położenie przez `core::assetPath` (sekcja 5.8). Jedenasty plik, `assets/shaders/common/lighting.glsl`, jest znajdowany inaczej: względem pliku shadera, który go dołącza (sekcja 5.8). Same shadery opisuje [`../gfx/shaders.md`](../gfx/shaders.md).
+Ta część modułu nie ma shaderów, ale to przez nią program je znajduje: osiem plików leży w `assets/shaders/`, a `game::NightMazeApp` pyta o ich położenie przez `core::assetPath` (sekcja 5.8). Dwa pliki dołączane, `assets/shaders/common/lighting.glsl` i `assets/shaders/common/normal_map.glsl`, są znajdowane inaczej: względem pliku shadera, który je dołącza (sekcja 5.8). Same shadery opisuje [`../gfx/shaders.md`](../gfx/shaders.md).
 
 ## 5. Kod w projekcie
 
@@ -130,7 +130,7 @@ flowchart TD
 std::filesystem::path executableDir();
 
 /// Path of a file in the assets directory that lies next to the executable, for example
-/// assetPath("shaders/basic.vert"). It does not check that the file exists: the code
+/// assetPath("shaders/lit.vert"). It does not check that the file exists: the code
 /// that opens the file reports that.
 std::filesystem::path assetPath(const std::filesystem::path& relativePath);
 
@@ -140,7 +140,7 @@ std::string pathText(const std::filesystem::path& path);
 ```
 
 - `executableDir` i `assetPath` zwracają `std::filesystem::path` przez wartość. Wołający dostaje własny obiekt i może go od razu przekazać dalej, na przykład do `std::ifstream`.
-- `assetPath` przyjmuje `const std::filesystem::path&`. Literał `"shaders/basic.vert"` zamienia się na `path` niejawnie, więc wywołanie `assetPath("shaders/basic.vert")` działa bez dodatkowego zapisu.
+- `assetPath` przyjmuje `const std::filesystem::path&`. Literał `"shaders/lit.vert"` zamienia się na `path` niejawnie, więc wywołanie `assetPath("shaders/lit.vert")` działa bez dodatkowego zapisu.
 - `pathText` idzie w drugą stronę: dostaje `path`, zwraca `std::string`. Stąd `<string>` w nagłówku.
 - Nagłówek nie dołącza ani `<windows.h>`, ani `<mach-o/dyld.h>`. Nagłówki systemowe są tylko w pliku `.cpp`, więc nie "wyciekają" do plików, które dołączają `core/Paths.hpp` (sekcja 7, pułapka 5).
 - `std::filesystem::filesystem_error`, który może rzucić `canonical`, dziedziczy po `std::runtime_error` (przez `std::system_error`), więc zdanie "Throws std::runtime_error" jest prawdziwe także dla niego. Wyjątek doleci do `catch (const std::exception&)` w `main`.
@@ -303,19 +303,17 @@ std::string pathText(const std::filesystem::path& path) {
 - `u8string()` zwraca UTF-8, w którym da się zapisać każdą ścieżkę. W C++20 jego typem jest `std::u8string` (napis ze znaków `char8_t`), a nie `std::string`, stąd druga linia: konstruktor `std::string` z parą iteratorów (początek i koniec napisu `utf8`) kopiuje znaki jeden po drugim, zamieniając każdy `char8_t` na `char` o tej samej wartości bajtu.
 - Drugi zysk: ImGui oczekuje tekstu w UTF-8, więc wynik da się pokazać w panelu bez dalszych zamian.
 - Funkcja jest w `core`, a nie w `gfx`, bo potrzebuje jej kilka warstw: `gfx::Shader` składa z niej komunikaty błędów ([`../gfx/shader-class.md`](../gfx/shader-class.md), sekcja 5.5), loadery i `assets::AssetCache` wypisują nią ścieżki modeli i tekstur (`"Loaded model: "`, `"Loaded texture: "`), a panele "Shaders" i "Assets" z `debug/` pokazują nazwy plików ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6, [`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6). Jedna funkcja w najniższej warstwie zastępuje kilka kopii tych samych trzech linii.
-- Wołający może podać część ścieżki: `core::pathText(path.filename())` daje samą nazwę pliku, na przykład `basic.vert`.
+- Wołający może podać część ścieżki: `core::pathText(path.filename())` daje samą nazwę pliku, na przykład `lit.vert`.
 
 ### 5.8 Użytkownicy i katalog `assets` obok programu
 
 **Wywołanie.** W [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) nazwy plików są stałymi w anonimowej przestrzeni nazw, a ścieżki powstają na liście inicjalizacyjnej konstruktora:
 
 ```cpp
-// Shader files, relative to the assets directory. The cube is drawn with the first pair,
-// the maze without lighting with the second, the lines of the collision boxes and the
-// light markers with the third, the maze with lighting per fragment with the fourth and
-// with lighting per vertex with the fifth.
-constexpr const char* VERTEX_SHADER_FILE = "shaders/basic.vert";
-constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
+// Shader files, relative to the assets directory. The scene without lighting is drawn
+// with the first pair, the lines of the collision boxes and spheres with the second, the
+// scene with lighting per fragment with the third and with lighting per vertex with the
+// fourth.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -327,7 +325,6 @@ constexpr const char* GOURAUD_FRAGMENT_SHADER_FILE = "shaders/gouraud.frag";
 ```
 
 ```cpp
-      m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FILE)),
       m_texturedShader(core::assetPath(TEXTURED_VERTEX_SHADER_FILE),
                        core::assetPath(TEXTURED_FRAGMENT_SHADER_FILE)),
       m_colorShader(core::assetPath(COLOR_VERTEX_SHADER_FILE),
@@ -354,7 +351,24 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
       m_pillar(assets.model(core::assetPath(PILLAR_MODEL_FILE))) {}
 ```
 
-**Tekstury: ścieżka z pliku, nie z kodu.** W kodzie nie ma nazwy żadnej tekstury. Plik `wall_straight.mtl` zawiera linię `map_Kd ../textures/wall_stone.png`, a loader liczy tę ścieżkę względem katalogu pliku `.mtl` ([`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp)):
+Trzeci użytkownik doszedł w M5. [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) robi to samo dla trzech modeli rundy:
+
+```cpp
+constexpr const char* CRYSTAL_A_MODEL_FILE = "models/crystal_a.obj";
+constexpr const char* CRYSTAL_B_MODEL_FILE = "models/crystal_b.obj";
+constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
+```
+
+```cpp
+GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
+    : m_crystals{assets.model(core::assetPath(CRYSTAL_A_MODEL_FILE)),
+                 assets.model(core::assetPath(CRYSTAL_B_MODEL_FILE))},
+      m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))) {}
+```
+
+Oba renderery dostają tę samą pamięć assetów, więc wszystkie sześć modeli i ich tekstury żyją w jednym miejscu. Czwartym użytkownikiem jest motyw paneli: `loadFont` w [`src/debug/Theme.cpp`](../../../src/debug/Theme.cpp) woła `core::assetPath(FONT_FILE)`.
+
+**Tekstury: ścieżka z pliku, nie z kodu.** W kodzie nie ma nazwy żadnej tekstury, także tekstur kryształów i bramy. Plik `wall_straight.mtl` zawiera linię `map_Kd ../textures/wall_stone.png`, a loader liczy tę ścieżkę względem katalogu pliku `.mtl` ([`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp)):
 
 ```cpp
         // Texture paths are relative to the directory of the MTL file. lexically_normal
@@ -373,7 +387,7 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
 
 Druga instrukcja `if` robi to samo dla mapy normalnych z linii `map_Bump -bm 1.000000 ../textures/wall_stone_normal.png` tego samego pliku `.mtl` ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.3): obie ścieżki mają ten sam punkt odniesienia.
 
-To inna zasada niż w `assetPath`, ale ten sam cel: ścieżka nie zależy od katalogu roboczego. Model został znaleziony przez `assetPath`, więc jego ścieżka jest bezwzględna, a wszystko, co model wskazuje, jest liczone od niej. `lexically_normal` usuwa kroki `..` na samym tekście ścieżki, bez pytania systemu plików (inaczej niż `canonical` z sekcji 5.5, które wymaga istniejącego pliku). Dzięki temu ściana i słupek, które wskazują tę samą teksturę, dostają identyczny tekst ścieżki, a pamięć assetów wczytuje ją raz ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 5, [`../assets/obj-loader.md`](../assets/obj-loader.md), sekcja 5).
+To inna zasada niż w `assetPath`, ale ten sam cel: ścieżka nie zależy od katalogu roboczego. Model został znaleziony przez `assetPath`, więc jego ścieżka jest bezwzględna, a wszystko, co model wskazuje, jest liczone od niej. `lexically_normal` usuwa kroki `..` na samym tekście ścieżki, bez pytania systemu plików (inaczej niż `canonical` z sekcji 5.5, które wymaga istniejącego pliku). Dzięki temu ściana i słupek, które wskazują tę samą teksturę, dostają identyczny tekst ścieżki, a pamięć assetów wczytuje ją raz. To samo dotyczy dwóch modeli kryształów: `crystal_a.mtl` i `crystal_b.mtl` wskazują `../textures/crystal.png` ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 5, [`../assets/obj-loader.md`](../assets/obj-loader.md), sekcja 5).
 
 **Pliki dołączane do shaderów: ścieżka z linii `#include`.** Trzeci przypadek tej samej zasady doszedł w M4. W kodzie C++ nie ma nazwy pliku `common/lighting.glsl`: wymieniają ją linie `#include "common/lighting.glsl"` w `lit.frag` i `gouraud.vert`. Tak samo jest z drugim plikiem dołączanym, `common/normal_map.glsl` (linie `#include` w `lit.frag` i `textured.frag`). Kod wczytujący shader liczy tę nazwę względem katalogu pliku shadera ([`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), funkcja `compileShader`):
 
@@ -387,9 +401,9 @@ To inna zasada niż w `assetPath`, ale ten sam cel: ścieżka nie zależy od kat
 
 `path` to ścieżka shadera zbudowana przez `assetPath`, więc jest bezwzględna, a `parent_path()` i `operator/` (sekcja 2.5) dają bezwzględną ścieżkę pliku dołączanego: `<katalog programu>/assets/shaders/common/lighting.glsl`. Tu nie ma `lexically_normal`, bo nazwa nie zawiera kroków `..`. Katalogiem odniesienia jest zawsze katalog pliku shadera, także dla linii `#include` wewnątrz pliku dołączanego. Resztę opisuje [`../gfx/shader-includes.md`](../gfx/shader-includes.md) (sekcja 5.8).
 
-Nazwy są względne i zapisane z ukośnikiem `/`, który `std::filesystem::path` rozumie na obu systemach. Dla programu w `<repo>/build/debug/night_maze` wynikiem jest `<repo>/build/debug/assets/shaders/basic.vert`. Na Windowsie wynikiem jest `<repo>\build\debug\Debug\assets\shaders/basic.vert`, z jednym zwykłym ukośnikiem w środku (sekcja 2.5).
+Nazwy są względne i zapisane z ukośnikiem `/`, który `std::filesystem::path` rozumie na obu systemach. Dla programu w `<repo>/build/debug/night_maze` wynikiem jest `<repo>/build/debug/assets/shaders/lit.vert`. Na Windowsie wynikiem jest `<repo>\build\debug\Debug\assets\shaders/lit.vert`, z jednym zwykłym ukośnikiem w środku (sekcja 2.5).
 
-**Wyjątek.** `executableDir` może rzucić `std::runtime_error`. Dzieje się to wtedy w trakcie konstruowania pola `m_shader`, czyli wewnątrz konstruktora aplikacji wołanego w bloku `try` funkcji `main`. Część bazowa (`core::Application` z oknem) jest już zbudowana, więc C++ niszczy ją poprawnie, a `catch (const std::exception&)` w `main` wypisuje `[error] Fatal: ...` i zwraca kod błędu. Brak samego pliku shadera wyjątkiem **nie** jest: zgłasza go `gfx::Shader` linią `[error]` i program działa dalej ([`../gfx/shader-class.md`](../gfx/shader-class.md), sekcja 5.8).
+**Wyjątek.** `executableDir` może rzucić `std::runtime_error`. Dzieje się to wtedy w trakcie konstruowania pola `m_texturedShader` (pierwszego, które woła `assetPath`), czyli wewnątrz konstruktora aplikacji wołanego w bloku `try` funkcji `main`. Część bazowa (`core::Application` z oknem) jest już zbudowana, więc C++ niszczy ją poprawnie, a `catch (const std::exception&)` w `main` wypisuje `[error] Fatal: ...` i zwraca kod błędu. Brak samego pliku shadera wyjątkiem **nie** jest: zgłasza go `gfx::Shader` linią `[error]` i program działa dalej ([`../gfx/shader-class.md`](../gfx/shader-class.md), sekcja 5.8).
 
 **Skąd `assets` obok programu.** `assetPath` szuka katalogu `assets` w katalogu pliku wykonywalnego, czyli w `build/debug`, a pliki leżą w repozytorium, w `<repo>/assets`. Łączy je blok w [`CMakeLists.txt`](../../../CMakeLists.txt), inny dla każdego systemu:
 
@@ -410,28 +424,30 @@ Na macOS gałąź sprawdziłem najpierw małym programem testowym poza repozytor
 
 Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalogu repozytorium i z katalogu `/tmp` wczytał shadery bez żadnej linii `[error]`. Sprawdziłem też krok budowania: dowiązanie `build/debug/assets` i `build/release/assets` wskazuje ścieżkę bezwzględną `<repo>/assets`, ponowne wykonanie kroku przy istniejącym dowiązaniu kończy się powodzeniem, a `make clean` usuwa dowiązanie razem z katalogiem `build/`, nie ruszając plików w `<repo>/assets`.
 
-`pathText` sprawdziłem na macOS małym programem poza repozytorium: dla ścieżki `katalog/zażółć/basic.vert` zwraca 29 bajtów (polskie litery zajmują w UTF-8 po dwa bajty), a dla `filename()` tej ścieżki napis `basic.vert`.
+`pathText` sprawdziłem na macOS małym programem poza repozytorium: dla ścieżki `katalog/zażółć/basic.vert` zwraca 29 bajtów (polskie litery zajmują w UTF-8 po dwa bajty), a dla `filename()` tej ścieżki napis `basic.vert`. Pomiar jest z M1, stąd nazwa pliku, którego dziś w repozytorium już nie ma: funkcja pliku nie otwiera, więc nazwa nie ma znaczenia dla wyniku.
 
-Na Windowsie (2026-10-05, MSVC 19.44) sprawdziłem program `night_maze`, bez osobnego programu testowego:
+Na Windowsie (2026-10-05, MSVC 19.44) sprawdziłem program `night_maze`, bez osobnego programu testowego. Tabela jest z M1, gdy program rysował samą kostkę programem `basic` (usuniętym w M5), dlatego wymienia tamte pliki:
 
 | Próba | Wynik |
 |---|---|
 | kompilacja `Paths.cpp` pod `/W4 /permissive-` (gałąź `_WIN32`) | zero ostrzeżeń |
-| start z katalogu repozytorium (pomiar z M1, gdy program rysował samą kostkę) | kostka, żadnej linii `[error]` |
+| start z katalogu repozytorium | kostka na ekranie, żadnej linii `[error]` |
 | start z katalogu roboczego `C:\` | to samo |
 | start z kopii `build\debug\Debug` w katalogu z polskimi literami (`...\Temp\nm-Żółw\`) | to samo: `GetModuleFileNameW` i `path` ze znaków szerokich działają dla ścieżki spoza ASCII |
-| kopia `assets` po buildzie Debug i Release | `assets\shaders\basic.vert` i `basic.frag` obok każdego z programów |
-| `pathText` w komunikacie błędu shadera | `<repo>\build\debug\Debug\assets\shaders/basic.frag` |
+| kopia `assets` po buildzie Debug i Release | ówczesne `assets\shaders\basic.vert` i `basic.frag` obok każdego z programów |
+| `pathText` w komunikacie błędu shadera | ówczesne `<repo>\build\debug\Debug\assets\shaders/basic.frag` |
 
 Po dodaniu labiryntu (M2 + M3, 2026-10-05) program uruchomiony z katalogu repozytorium startował bez linii `[error]`: znajdował ówczesne sześć plików shaderów, trzy modele i dwie tekstury. Uruchomienia z innego katalogu roboczego i z katalogu z polskimi literami nie powtarzałem dla modeli i tekstur.
 
-Po dodaniu oświetlenia (M4, 2026-10-05, MSVC 19.44, sterownik NVIDIA 610.74) program startuje bez linii `[error]` i bez linii `GL_`: znajduje dziesięć plików shaderów i plik `common/lighting.glsl`, dołączany przez dwa z nich. Uruchomienia z innego katalogu roboczego i z katalogu z polskimi literami nie powtarzałem także dla tej wersji.
+Po dodaniu oświetlenia (M4, 2026-10-05, MSVC 19.44, sterownik NVIDIA 610.74) program startował bez linii `[error]` i bez linii `GL_`: znajdował ówczesne dziesięć plików shaderów i plik `common/lighting.glsl`, dołączany przez dwa z nich. Uruchomienia z innego katalogu roboczego i z katalogu z polskimi literami nie powtarzałem także dla tej wersji.
+
+Po dodaniu rozgrywki (M5, Windows, 2026-10-05) build Debug i Release przechodzi bez ostrzeżeń, a obraz z kryształami i bramą został sprawdzony na zrzutach ekranu: bez znalezionych shaderów, modeli i tekstur tego obrazu by nie było. Osobnej próby ścieżek dla M5 nie robiłem. Uruchomienia z innego katalogu roboczego i z katalogu z polskimi literami nie powtarzałem także dla M5, a na macOS M5 nie było ani budowane, ani uruchamiane.
 
 Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komunikacie błędu i w panelu), uruchomienie dwuklikiem i z IDE oraz ćwiczenie 1 z sekcji 8. To otwarte punkty listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11.
 
 ## 6. Panel ImGui
 
-Ścieżki nie mają własnego panelu, ale widać je w dwóch panelach. W panelu **Shaders** ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6) każdy z pięciu programów ma jedną linię z nazwami obu swoich plików, na przykład `lit.vert + lit.frag: OK`, a podpowiedź (tooltip) po najechaniu kursorem na tę linię pokazuje obie pełne ścieżki zbudowane przez `core::assetPath`, jedną pod drugą. Etykiet `Vertex:` i `Fragment:`, które były w panelu do M2 + M3, już nie ma. Pliku dołączanego (`common/lighting.glsl`) w linii programu ani w podpowiedzi nie widać: jego nazwa pojawia się w panelu dopiero w tekście błędu, gdy pomyłka jest w nim ([`../gfx/shader-includes.md`](../gfx/shader-includes.md), sekcja 6). W panelu **Assets** ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6) tak samo pokazane są pliki modeli i tekstur, a lista `Failed to load` wymienia te, których nie udało się wczytać. Wszystkie te teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki shadera jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak tej części sceny, którą rysuje dany program (labiryntu w danym trybie oświetlenia, kostki, znaczników świateł albo linii pudełek). Błędna nazwa w linii `#include` daje inny komunikat, `Shader include failed: <pełna ścieżka shadera>`, z nazwą brakującego pliku w drugiej linii.
+Ścieżki nie mają własnego panelu, ale widać je w dwóch panelach. W panelu **Shaders** ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6) każdy z czterech programów ma jedną linię z nazwami obu swoich plików, na przykład `lit.vert + lit.frag: OK`, a podpowiedź (tooltip) po najechaniu kursorem na tę linię pokazuje obie pełne ścieżki zbudowane przez `core::assetPath`, jedną pod drugą. Etykiet `Vertex:` i `Fragment:`, które były w panelu do M2 + M3, już nie ma. Pliku dołączanego (na przykład `common/lighting.glsl`) w linii programu ani w podpowiedzi nie widać: jego nazwa pojawia się w panelu dopiero w tekście błędu, gdy pomyłka jest w nim ([`../gfx/shader-includes.md`](../gfx/shader-includes.md), sekcja 6). W panelu **Assets** ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6) tak samo pokazane są pliki modeli i tekstur, a lista `Failed to load` wymienia te, których nie udało się wczytać. Wszystkie te teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki shadera jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak tej części sceny, którą rysuje dany program (labiryntu z kryształami i bramą w danym trybie oświetlenia albo linii kolizji). Błędna nazwa w linii `#include` daje inny komunikat, `Shader include failed: <pełna ścieżka shadera>`, z nazwą brakującego pliku w drugiej linii.
 
 ## 7. Pułapki
 
@@ -453,9 +469,9 @@ Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komu
 
 1. **Katalog programu a katalog roboczy.** W `src/main.cpp` dołącz tymczasowo `"core/Paths.hpp"` i `<filesystem>`, a na początku bloku `try` w `main` dopisz `core::logInfo("exe: " + core::executableDir().string());` oraz `core::logInfo("cwd: " + std::filesystem::current_path().string());`. Zbuduj i uruchom program dwa razy: z katalogu repozytorium (`./build/debug/night_maze`) i z katalogu `build/debug` (`./night_maze`). Która linia się zmienia, a która nie? Wycofaj zmiany.
 2. **Dowiązanie.** Z kodem z ćwiczenia 1 utwórz w katalogu domowym dowiązanie symboliczne do programu (`ln -s "$PWD/build/debug/night_maze" ~/nm`) i uruchom `~/nm`. Jaki katalog wypisuje `exe`? Zakomentuj tymczasowo `canonical` (zwracając `std::filesystem::path(buffer.c_str())`), zbuduj i powtórz. Wyjaśnij różnicę, przywróć kod i usuń dowiązanie.
-3. **`assetPath` bez pliku.** Z kodem z ćwiczenia 1 dopisz `core::logInfo(core::assetPath("shaders/nie_ma.vert").string());`. Program wypisuje ścieżkę, choć takiego pliku nie ma. Wskaż w kodzie, dlaczego nie ma błędu. Potem w `NightMazeApp.cpp` zmień tymczasowo `VERTEX_SHADER_FILE` na tę nazwę i zobacz, kto i jaką linią zgłasza brak pliku. Wycofaj zmiany.
+3. **`assetPath` bez pliku.** Z kodem z ćwiczenia 1 dopisz `core::logInfo(core::assetPath("shaders/nie_ma.vert").string());`. Program wypisuje ścieżkę, choć takiego pliku nie ma. Wskaż w kodzie, dlaczego nie ma błędu. Potem w `NightMazeApp.cpp` zmień tymczasowo `LIT_VERTEX_SHADER_FILE` na tę nazwę i zobacz, kto i jaką linią zgłasza brak pliku. Wycofaj zmiany.
 4. **Argument bezwzględny.** W tym samym miejscu wypisz `core::assetPath("/tmp/x").string()`. Wyjaśnij wynik regułą `operator/` z sekcji 7. Wycofaj zmiany.
-5. **Dowiązanie `assets`.** Wykonaj `ls -l build/debug/assets` i `ls build/debug/assets/shaders`. Dokąd prowadzi dowiązanie i czy ścieżka jest bezwzględna? Zmień kolor w `assets/shaders/basic.frag` i uruchom program bez budowania. Dlaczego zmiana jest widoczna? Wycofaj zmianę.
+5. **Dowiązanie `assets`.** Wykonaj `ls -l build/debug/assets` i `ls build/debug/assets/shaders`. Dokąd prowadzi dowiązanie i czy ścieżka jest bezwzględna? W `assets/shaders/color.frag` zamień tymczasowo `vec4(uColor, 1.0)` na `vec4(1.0, 0.0, 0.0, 1.0)`, uruchom program bez budowania i włącz `Draw collision shapes` w panelu "Collision". Dlaczego zmiana jest widoczna? Wycofaj zmianę.
 6. **Na kartce.** Dla programu w `/Users/a/night-maze/build/debug/night_maze` zapisz wynik `executableFile()`, `executableDir()` i `assetPath("models/gate.obj")`.
 
 ## 9. Pytania kontrolne
@@ -497,7 +513,7 @@ Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komu
     Nagłówek wprowadza ogromną liczbę nazw i makr. W pliku `.hpp` trafiłby do każdego pliku, który ten nagłówek dołącza. `WIN32_LEAN_AND_MEAN` pomija rzadko używane części, `NOMINMAX` zabrania definiowania makr `min` i `max`, które kolidują z `std::min` i `std::max`.
 
 13. **Kto dziś woła `executableDir` i `assetPath`?**
-    Trzy miejsca. Trzecim jest motyw paneli (`src/debug/Theme.cpp`), który buduje tak ścieżkę pliku czcionki. Konstruktor `game::NightMazeApp` buduje przez `assetPath` ścieżki dziesięciu plików shaderów i przekazuje je do pięciu obiektów `gfx::Shader`. Plik dołączany `common/lighting.glsl` nie przechodzi przez `assetPath`: `gfx::Shader` liczy jego ścieżkę względem katalogu pliku shadera. Konstruktor `game::MazeRenderer` buduje tak ścieżki trzech modeli i przekazuje je do `assets::AssetCache`. Ścieżki tekstur nie przechodzą przez `assetPath`: loader liczy je względem katalogu pliku `.mtl`. `executableDir` jest wołane tylko pośrednio, z `assetPath`.
+    Cztery miejsca. Konstruktor `game::NightMazeApp` buduje przez `assetPath` ścieżki ośmiu plików shaderów i przekazuje je do czterech obiektów `gfx::Shader`. Pliki dołączane z `common/` nie przechodzą przez `assetPath`: `gfx::Shader` liczy ich ścieżki względem katalogu pliku shadera. Konstruktor `game::MazeRenderer` buduje tak ścieżki trzech modeli labiryntu, a konstruktor `game::GameplayRenderer` ścieżki dwóch modeli kryształów i modelu bramy: oba przekazują je do `assets::AssetCache`. Czwartym miejscem jest motyw paneli (`src/debug/Theme.cpp`), który buduje tak ścieżkę pliku czcionki. Ścieżki tekstur nie przechodzą przez `assetPath`: loader liczy je względem katalogu pliku `.mtl`. `executableDir` jest wołane tylko pośrednio, z `assetPath`.
 
 14. **Skąd katalog `assets` bierze się obok programu i czym różnią się systemy?**
     Z bloku w `CMakeLists.txt`. Na macOS polecenie `POST_BUILD` po zlinkowaniu `night_maze` tworzy dowiązanie symboliczne do `<repo>/assets`, więc program widzi zmiany w plikach od razu. Na Windowsie katalog kopiuje target `copy_assets` (dowiązania wymagają tam trybu dewelopera albo uprawnień administratora), więc program czyta kopię i po zmianie shadera trzeba ją najpierw odświeżyć: `cmake --build --preset debug --target copy_assets`. Target nie zależy od programu, więc działa także wtedy, gdy program jest uruchomiony, a pełny build skończyłby się błędem `LNK1168`.

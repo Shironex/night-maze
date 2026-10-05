@@ -11,7 +11,7 @@ Gra potrzebuje odpowiedzi na dwa różne pytania o klawisz: "czy jest teraz trzy
 
 Z myszą jest tak samo, tylko pytań jest więcej. Przyciski myszy mają te same dwa pytania co klawisze (`isMouseButtonDown`, `wasMouseButtonPressed`). Dochodzi trzecie: "o ile kursor przesunął się od poprzedniej klatki" (`mouseDeltaX`, `mouseDeltaY`), bo właśnie z przesunięcia, a nie z pozycji, liczy się obrót kamery. `Input` potrafi też przechwycić kursor (`setCursorCaptured`): schować go i zdjąć z niego ograniczenie krawędziami ekranu. Mysz ma własną flagę blokady, `setMouseBlocked`, ustawianą przez `main.cpp`, gdy kursor jest nad panelem ImGui.
 
-Stan na dziś: użytkownikiem myszy i klawiszy jest `game::NightMazeApp`. Kliknięcie lewym przyciskiem w scenę przechwytuje kursor (`wasMouseButtonPressed`, `setCursorCaptured(true)`), przesunięcie myszy obraca kamerę (`mouseDeltaX`, `mouseDeltaY`), klawisze W, A, S, D, spacja i lewy Shift przesuwają gracza (`isKeyDown`, wpisywane do struktury `PlayerInput`), klawisz N przełącza tryb noclip, klawisz F latarkę (oba `wasKeyPressed`), a Escape oddaje kursor. Obrót myszą opisuje [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5, ruch gracza [`../game/player.md`](../game/player.md), sekcja 5, a całe `onUpdate` i `onRender` [`README.md`](README.md), sekcje 6.5 i 6.6. Ten dokument opisuje narzędzia, z których on korzysta.
+Stan na dziś: użytkownikiem myszy i klawiszy jest `game::NightMazeApp`. Kliknięcie lewym przyciskiem w scenę przechwytuje kursor (`wasMouseButtonPressed`, `setCursorCaptured(true)`), przesunięcie myszy obraca kamerę (`mouseDeltaX`, `mouseDeltaY`), klawisze W, A, S, D, spacja i lewy Shift przesuwają gracza (`isKeyDown`, wpisywane do struktury `PlayerInput`), klawisz R zaczyna rundę od nowa, klawisz N przełącza tryb noclip, klawisz F latarkę (wszystkie trzy `wasKeyPressed`), a Escape oddaje kursor. HUD z M5 (licznik kryształów, bateria, karta wygranej) nie jest użytkownikiem wejścia: niczego nie czyta ani z `Input`, ani z ImGui. Obrót myszą opisuje [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5, ruch gracza [`../game/player.md`](../game/player.md), sekcja 5, a całe `onUpdate` i `onRender` [`README.md`](README.md), sekcje 6.5 i 6.6. Ten dokument opisuje narzędzia, z których on korzysta.
 
 ## 2. Teoria
 
@@ -103,7 +103,7 @@ Ta część modułu nie ma shaderów i nie ma z nimi żadnego związku.
 | [`src/core/Input.cpp`](../../../src/core/Input.cpp) | implementacja i dwa `static_assert` pilnujące `KEY_COUNT` i `MOUSE_BUTTON_COUNT` |
 | [`src/core/Application.cpp`](../../../src/core/Application.cpp) | `m_input.update()` raz na klatkę i obsługa Escape (zwolnienie kursora albo zamknięcie programu) |
 | [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik: klawisze N i F, kliknięcie, przechwycenie kursora i przesunięcie myszy w `onRender`, klawisze ruchu w `onUpdate` ([`README.md`](README.md), sekcje 6.5 i 6.6, [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5, [`../game/player.md`](../game/player.md), sekcja 5) |
-| [`src/main.cpp`](../../../src/main.cpp) | przełącznik paneli (`GLFW_KEY_GRAVE_ACCENT`), ustawianie blokady klawiatury i myszy, wyłączanie myszy w ImGui na czas przechwycenia kursora |
+| [`src/main.cpp`](../../../src/main.cpp) | przełącznik paneli (`GLFW_KEY_GRAVE_ACCENT`, chowa panele, ale nie HUD), ustawianie blokady klawiatury i myszy, wyłączanie myszy w ImGui na czas przechwycenia kursora |
 
 ### 5.2 `update`: migawka klawiatury i myszy
 
@@ -169,7 +169,7 @@ bool Input::isValidKey(int key) const {
 ```
 
 - `isKeyDown`: stan ciągły, "klawisz jest teraz wciśnięty". Do ruchu (trzymam W, idę).
-- `wasKeyPressed`: **zbocze** (edge), "w tej klatce jest wciśnięty, a w poprzedniej nie był". Do akcji jednorazowych (klawisz `~` przełącza panele, Escape zwalnia kursor albo zamyka program).
+- `wasKeyPressed`: **zbocze** (edge), "w tej klatce jest wciśnięty, a w poprzedniej nie był". Do akcji jednorazowych (klawisz na lewo od `1` przełącza panele, R zaczyna rundę od nowa, Escape zwalnia kursor albo zamyka program).
 
 Operator `&&` wylicza warunki od lewej i przerywa na pierwszym fałszywym (short circuit). Kolejność ma więc znaczenie:
 
@@ -215,7 +215,7 @@ Zbocze istnieje między dwoma kolejnymi wywołaniami `Input::update()`, a to jes
 | 1 | Działa, ale tylko przypadkiem |
 | 2 lub więcej | Każdy krok widzi to samo `true`, więc akcja wykona się kilka razy. Przełącznik włączony i wyłączony w tej samej klatce wygląda jak "klawisz nie działa" |
 
-Dlatego obsługa przełącznika paneli stoi w `DebugNightMazeApp::onRender` w `main.cpp` (`if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) { m_debugUI.toggleVisible(); }`), a Escape w `Application::run` przed pętlą kroków: oba miejsca wykonują się dokładnie raz na klatkę. W `onUpdate` wolno używać `isKeyDown`, bo stan ciągły jest taki sam w każdym kroku danej klatki: tak czytane są klawisze ruchu gracza (sekcja 5.7). Jednorazowa akcja, która ma wpłynąć na symulację, musi zostać odczytana raz na klatkę i przekazana do symulacji jako zapamiętany stan. Tak działa klawisz N: `NightMazeApp::onRender` czyta zbocze przez `wasKeyPressed` i przestawia pole `m_player.noclip`, a kroki symulacji czytają już tylko to pole. Tą samą drogą idzie od M4 klawisz F: zbocze czytane w `onRender` przestawia pole `m_lighting.flashlightOn`, z którego niżej w tej samej funkcji, czyli w tej samej klatce, budowane są światła ([`../game/flashlight.md`](../game/flashlight.md)). Gdyby w późniejszych kamieniach milowych doszedł na przykład skok, pójdzie tą samą drogą.
+Dlatego obsługa przełącznika paneli stoi w `DebugNightMazeApp::onRender` w `main.cpp` (`if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) { m_debugUI.toggleVisible(); }`), a Escape w `Application::run` przed pętlą kroków: oba miejsca wykonują się dokładnie raz na klatkę. W `onUpdate` wolno używać `isKeyDown`, bo stan ciągły jest taki sam w każdym kroku danej klatki: tak czytane są klawisze ruchu gracza (sekcja 5.7). Jednorazowa akcja, która ma wpłynąć na symulację, musi zostać odczytana raz na klatkę i przekazana do symulacji jako zapamiętany stan. Tak działa klawisz N: `NightMazeApp::onRender` czyta zbocze przez `wasKeyPressed` i przestawia pole `m_player.noclip`, a kroki symulacji czytają już tylko to pole. Tą samą drogą idzie od M4 klawisz F: zbocze czytane w `onRender` przestawia pole `m_lighting.flashlightOn`, z którego niżej w tej samej funkcji, czyli w tej samej klatce, budowane są światła ([`../game/flashlight.md`](../game/flashlight.md)). Od M5 tak samo działa klawisz R: zbocze czytane w `onRender` woła `beginRound()`, czyli wymienia stan rundy między dwoma krokami symulacji, a kroki widzą już tylko nową rundę ([`README.md`](README.md), sekcja 6.6). Gdyby w późniejszych kamieniach milowych doszedł na przykład skok, pójdzie tą samą drogą.
 
 Ta sama tabela opisuje `wasMouseButtonPressed`, `mouseDeltaX` i `mouseDeltaY` (sekcja 2.8): to też dane jednej klatki.
 
@@ -290,7 +290,7 @@ Ostatnia z tych linii to blokada myszy, opisana w sekcji 5.10. Pierwsza (`setMou
 
 **Dlaczego blokada jest spóźniona i dlaczego to nie szkodzi.** Opóźnienie ma dwa źródła:
 
-1. `setKeyboardBlocked` stoi na końcu `onRender`. Pytania o klawisze w tej klatce (Escape w `Application::run`, klawisze ruchu w `onUpdate`, `~` na początku `onRender`) już padły, więc nowa wartość flagi działa **od następnej klatki**.
+1. `setKeyboardBlocked` stoi na końcu `onRender`. Pytania o klawisze w tej klatce (Escape w `Application::run`, klawisze ruchu w `onUpdate`, R, N i F na początku `onRender`, przełącznik paneli tuż przed `draw`) już padły, więc nowa wartość flagi działa **od następnej klatki**.
 2. ImGui wylicza `WantCaptureKeyboard` w `ImGui::NewFrame()`, czyli na początku `DebugUI::draw`, na podstawie tego, który widżet był aktywny po poprzedniej klatce. Widżet kliknięty w bieżącej klatce zostanie więc uwzględniony dopiero w następnym `NewFrame`.
 
 | Klatka | Co się dzieje |
@@ -318,14 +318,15 @@ Dzięki odświeżaniu klawisz wciśnięty w czasie blokady jest po jej zdjęciu 
 | Klawisz | Stała | Pytanie | Gdzie | Co robi |
 |---|---|---|---|---|
 | Escape | `GLFW_KEY_ESCAPE` | `wasKeyPressed` | `Application::run` w [`Application.cpp`](../../../src/core/Application.cpp) | zwalnia przechwycony kursor, a gdy kursor nie jest przechwycony, zamyka program (`m_window.requestClose()`) |
-| `~` (na lewo od `1`) | `GLFW_KEY_GRAVE_ACCENT` | `wasKeyPressed` | `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp) | chowa i pokazuje panele debug |
-| N | `GLFW_KEY_N` (stała `NOCLIP_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender` w [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | przełącza `m_player.noclip`: chodzenie z kolizjami albo lot bez kolizji. Działa także przy wolnym kursorze |
-| F | `GLFW_KEY_F` (stała `FLASHLIGHT_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender`, tuż pod klawiszem N | przełącza `m_lighting.flashlightOn`: latarka gracza świeci albo nie. Działa także przy wolnym kursorze ([`../game/flashlight.md`](../game/flashlight.md)) |
+| klawisz na lewo od `1` (na klawiaturze US `` ` `` i `~`) | `GLFW_KEY_GRAVE_ACCENT` | `wasKeyPressed` | `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp) | chowa i pokazuje panele debug. HUD gry zostaje na ekranie: `DebugUI::draw` rysuje go niezależnie od tego przełącznika |
+| R | `GLFW_KEY_R` (stała `RESTART_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender` w [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), zaraz po prośbie o nowy labirynt | zaczyna rundę od nowa na tym samym labiryncie (`beginRound()`). Ten sam skutek ma flaga `GameplaySettings::restart`, którą ustawia przycisk `Restart round (key R)` panelu Gameplay: oba warunki stoją w jednym `if`. Działa także przy wolnym kursorze i po wygranej ([`../game/gameplay.md`](../game/gameplay.md)) |
+| N | `GLFW_KEY_N` (stała `NOCLIP_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender`, pod klawiszem R | przełącza `m_player.noclip`: chodzenie z kolizjami albo lot bez kolizji. Działa także przy wolnym kursorze |
+| F | `GLFW_KEY_F` (stała `FLASHLIGHT_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender`, tuż pod klawiszem N | przełącza `m_lighting.flashlightOn`: latarka gracza świeci albo nie. Działa także przy wolnym kursorze ([`../game/flashlight.md`](../game/flashlight.md)). Przy pustej baterii klawisz nadal ustawia pole, ale najbliższy stały krok (`updateRound`) je gasi, a klatka i tak jest rysowana bez latarki (`lightingForFrame`) |
 | W, S, A, D | `GLFW_KEY_W`, `GLFW_KEY_S`, `GLFW_KEY_A`, `GLFW_KEY_D` | `isKeyDown` | `NightMazeApp::onUpdate`, tamże | pola `forward`, `backward`, `left`, `right` struktury `PlayerInput`, tylko przy przechwyconym kursorze |
 | spacja | `GLFW_KEY_SPACE` | `isKeyDown` | `NightMazeApp::onUpdate` | pole `up`: w górę, używane tylko w trybie noclip |
 | lewy Shift | `GLFW_KEY_LEFT_SHIFT` | `isKeyDown`, dwa razy | `NightMazeApp::onUpdate` | pola `down` (noclip: w dół) i `sprint` (chodzenie: bieg). Gracz czyta to pole, które należy do jego trybu |
 
-Wszystkie pytania przechodzą przez `Input`, więc wszystkie podlegają blokadzie. Cztery pierwsze to zbocza i stoją w kodzie wykonywanym raz na klatkę. Klawisze ruchu to stan ciągły, czytany w każdym kroku symulacji.
+Wszystkie pytania przechodzą przez `Input`, więc wszystkie podlegają blokadzie. Pięć pierwszych to zbocza i stoi w kodzie wykonywanym raz na klatkę. Klawisze ruchu to stan ciągły, czytany w każdym kroku symulacji.
 
 Klawisze ruchu nie trafiają do gracza wprost. `onUpdate` wpisuje je do struktury `game::PlayerInput` (siedem pól `bool`) i dopiero ją przekazuje do `Player::update`:
 
@@ -349,10 +350,15 @@ Dwie różne bramki decydują o tym, czy klawisz zadziała:
 | Klawisze | Warunek w grze | Blokada klawiatury przez ImGui |
 |---|---|---|
 | W, S, A, D, spacja, lewy Shift | tylko przy przechwyconym kursorze (`if (input().isCursorCaptured())`). Bez przechwycenia `PlayerInput` zostaje pusty, ale krok gracza i tak się wykonuje | działa (`isKeyDown` zwraca `false`), choć przy przechwyconym kursorze ImGui nie ma myszy, więc nie ma jak uaktywnić widżetu |
+| R | żadnego: działa także przy wolnym kursorze i w każdym stanie rundy | działa: podczas edycji pola albo przeciągania suwaka R nie zaczyna rundy od nowa |
 | N | żadnego: działa także przy wolnym kursorze | działa: podczas edycji pola w panelu (na przykład ziarna w panelu Maze) N nie przełącza trybu |
 | F | żadnego: działa także przy wolnym kursorze | działa tak samo: podczas edycji pola F nie przełącza latarki |
 
-Dlaczego N nie wymaga przechwyconego kursora: tryb noclip ma też pole wyboru w panelu Collision, którego używa się przy wolnym kursorze, więc oba przełączniki mają działać w tym samym stanie programu. Z klawiszem F jest tak samo: jego odpowiednikiem jest pole wyboru `Flashlight on (key F)` w panelu Lights. Klawisza N, klawisza F i ruchu prawdziwymi klawiszami nikt jeszcze ręcznie nie sprawdził (lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md)). Logikę gracza sprawdzają testy jednostkowe, które ustawiają pola `PlayerInput` bez klawiatury ([`../game/player.md`](../game/player.md), sekcja 5).
+Dlaczego N nie wymaga przechwyconego kursora: tryb noclip ma też pole wyboru w panelu Collision, którego używa się przy wolnym kursorze, więc oba przełączniki mają działać w tym samym stanie programu. Z klawiszem F jest tak samo: jego odpowiednikiem jest pole wyboru `Flashlight on (key F)` w panelu Lights. Klawisz R ma odpowiednik w przycisku `Restart round (key R)` panelu Gameplay, a po wygranej gracz zwykle ma już wolny kursor albo dopiero co skończył biec, więc R ma działać w obu stanach.
+
+**HUD nie bierze wejścia.** Pasek na górze ekranu i karta `You escaped` to okna ImGui, ale z flagą `ImGuiWindowFlags_NoInputs` (i `NoNav`, `NoFocusOnAppearing`): mysz przechodzi przez nie do sceny, nie da się ich kliknąć ani uaktywnić, więc same nie ustawiają ani `WantCaptureMouse`, ani `WantCaptureKeyboard`. Napis `R: play again` na karcie jest tylko podpowiedzią. Naciśnięcie R czyta gra, drogą z tabeli wyżej. Kliknięcie w kartę przy wolnym kursorze powinno więc trafić w scenę i przechwycić kursor: tak wynika z flag, ręcznie nikt tego jeszcze nie sprawdził ([`../../libraries/imgui.md`](../../libraries/imgui.md)).
+
+Klawisza R, klawisza N, klawisza F i ruchu prawdziwymi klawiszami nikt jeszcze ręcznie nie sprawdził (lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md)). Logikę gracza sprawdzają testy jednostkowe, które ustawiają pola `PlayerInput` bez klawiatury ([`../game/player.md`](../game/player.md), sekcja 5).
 
 Obsługa Escape w `Application::run`:
 
@@ -579,13 +585,13 @@ Co dokładnie robi flaga, w której klatce zaczyna działać i dlaczego `wantsMo
 
 | Co zrobić | Co obserwować |
 |---|---|
-| Nacisnąć `~`, gdy żaden widżet nie jest aktywny | Panele znikają i wracają: `wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)` działa |
+| Nacisnąć `~`, gdy żaden widżet nie jest aktywny | Panele znikają i wracają, HUD gry zostaje na ekranie: `wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)` działa |
 | Kliknąć z wciśniętym Ctrl w jedną ze składowych `Clear color` (pole przechodzi w tryb wpisywania) i nacisnąć Escape | ImGui anuluje edycję, program **nie** zamyka się |
 | W tym samym trybie wpisywania nacisnąć `~` | Panele nie znikają |
 | Przytrzymać mysz na składowej `Clear color` (przeciąganie wartości) i nacisnąć Escape | Program nie zamyka się: aktywny jest widżet, choć to nie pole tekstowe |
 | Nacisnąć Escape, gdy żaden widżet nie jest aktywny | Program zamyka się |
 
-Mysz sprawdza się na kamerze, z otwartym panelem Camera ([`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6). Od M4 ten panel startuje zwinięty do paska tytułu przy górnej krawędzi okna, więc przed próbą trzeba go rozwinąć strzałką w pasku:
+Mysz sprawdza się na kamerze, z otwartym panelem Camera ([`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6). Od M4 ten panel startuje zwinięty do paska tytułu przy górnej krawędzi okna (od M5 obok tak samo zwiniętego panelu Gameplay), więc przed próbą trzeba go rozwinąć strzałką w pasku:
 
 | Co zrobić | Co obserwować |
 |---|---|
@@ -594,6 +600,7 @@ Mysz sprawdza się na kamerze, z otwartym panelem Camera ([`../scene/camera-cont
 | Kręcić myszą długo w jedną stronę | `Yaw` rośnie bez końca (zawijając się przez 360): pozycja wirtualna nie zatrzymuje się na krawędzi ekranu |
 | Przytrzymać W przy przechwyconym kursorze | `Player feet` i `Eye` w panelu się zmieniają, aż gracz dojdzie do ściany: `isKeyDown` |
 | Nacisnąć N (kursor przechwycony albo wolny) | Linia `Mode` w panelu Camera zmienia się między `walking` a `noclip (free flight)`: `wasKeyPressed` w `onRender` |
+| Nacisnąć R (kursor przechwycony albo wolny) | Gracz wraca na start, licznik kryształów i czas w HUD wracają do zera, bateria do 100%, linia `Round` w panelu Gameplay pokazuje stan po restarcie: `wasKeyPressed` w `onRender` |
 | Nacisnąć F (kursor przechwycony albo wolny) | Plama światła latarki w środku ekranu gaśnie albo wraca, a pole `Flashlight on (key F)` w panelu Lights zmienia stan: `wasKeyPressed` w `onRender` |
 | Nacisnąć Escape | Kursor wraca w miejsce, w którym zniknął, program działa dalej. Kamera nie szarpie (`m_skipNextMouseDelta`) |
 | Nacisnąć Escape drugi raz | Program się zamyka |
@@ -611,7 +618,7 @@ Surowe wartości można podejrzeć kodem z ćwiczenia 4.
 4. **Przesunięcie myszy w `onUpdate`.** `mouseDeltaX` i `mouseDeltaY` opisują jedną klatkę. Użyte w `onUpdate` przepadają w klatce bez kroku i liczą się kilka razy w klatce z kilkoma krokami, więc czułość myszy zależałaby od FPS (sekcja 2.8). Czytam je tylko w `onRender`.
 5. **"Escape nie działa".** Jeśli Escape albo `~` nie reaguje, najpewniej aktywny jest widżet ImGui (trwa edycja albo przeciąganie). To zamierzone zachowanie blokady, nie błąd. Wystarczy zakończyć edycję (Enter, Escape albo kliknięcie poza polem).
 6. **Jedna flaga, jeden właściciel.** `setKeyboardBlocked` i `setMouseBlocked` nadpisują poprzednią wartość. Gdy pojawi się drugi powód blokady, wołający musi sam połączyć oba warunki w jedną wartość, inaczej ostatnie wywołanie w klatce wygra.
-7. **Blokada zatrzymuje też ruch.** Przy zablokowanej klawiaturze `isKeyDown` zwraca `false`, więc gracz idący na W zatrzymałby się na czas edycji pola. Tak ma być. W praktyce nie da się tego dziś wywołać dla klawiszy ruchu: edycja pola wymaga widocznego kursora, a ruch gracza przechwyconego. Da się to natomiast zobaczyć na klawiszu N, który działa przy wolnym kursorze: podczas wpisywania liczby w panelu N nie przełącza noclip.
+7. **Blokada zatrzymuje też ruch.** Przy zablokowanej klawiaturze `isKeyDown` zwraca `false`, więc gracz idący na W zatrzymałby się na czas edycji pola. Tak ma być. W praktyce nie da się tego dziś wywołać dla klawiszy ruchu: edycja pola wymaga widocznego kursora, a ruch gracza przechwyconego. Da się to natomiast zobaczyć na klawiszach N, F i R, które działają przy wolnym kursorze: podczas wpisywania liczby w panelu N nie przełącza noclip, a R nie zaczyna rundy od nowa (inaczej wpisanie litery w pole tekstowe kasowałoby postęp).
 8. **Pytanie o klawisz albo mysz z pominięciem `Input`.** Bezpośrednie `glfwGetKey`, `glfwGetMouseButton` albo `glfwGetCursorPos` w kodzie gry omija blokadę. Wszystkie pytania gry o wejście mają iść przez `input()`.
 9. **Zamiana kolejności `pollEvents` i `update`.** `glfwGetKey`, `glfwGetMouseButton` i `glfwGetCursorPos` oddają stan z ostatniego `glfwPollEvents`, więc `update` przed `pollEvents` widziałby wejście z opóźnieniem jednej klatki.
 10. **Skok kursora przy zmianie trybu.** Po `glfwSetInputMode(..., GLFW_CURSOR, ...)` pozycja kursora może odskoczyć. Bez `m_skipNextMouseDelta` pierwsza klatka po przechwyceniu albo zwolnieniu dałaby jedno ogromne przesunięcie. To samo przy pierwszym `update` po starcie.

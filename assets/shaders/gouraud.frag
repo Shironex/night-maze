@@ -14,13 +14,18 @@ in vec3 vSpecularLight; // highlight
 uniform sampler2D uTexture;
 uniform vec3 uTint;
 
+// Light the surface gives off by itself (the glow of the crystals), as in lit.frag.
+// Black for everything else.
+uniform vec3 uEmissive;
+
 // Output: the color written to the framebuffer (red, green, blue, alpha).
 out vec4 fragColor;
 
 void main() {
     // The same combination as in lit.frag: the colour of the surface times the diffuse
     // light, plus the highlight. The texture is still read per fragment, only the light
-    // is per vertex. No gamma correction here either (see lit.frag).
+    // is per vertex. The glow of the surface itself joins the diffuse light, as in
+    // lit.frag. No gamma correction here either (see lit.frag).
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
-    fragColor = vec4(surface * vDiffuseLight + vSpecularLight, 1.0);
+    fragColor = vec4(surface * (vDiffuseLight + uEmissive) + vSpecularLight, 1.0);
 }

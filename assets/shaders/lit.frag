@@ -22,6 +22,13 @@ in vec3 vWorldPosition; // position in world space
 uniform sampler2D uTexture;
 uniform vec3 uTint;
 
+// Light the surface gives off by itself, as a colour that multiplies the colour of the
+// surface. Black (0, 0, 0) for everything that only reflects light: walls, floor,
+// pillars, the gate. The crystals glow with it: the point light of a crystal hangs
+// outside its mesh and lights its faces only from one side, and without a glow of its
+// own the source of the light would be the darkest thing around it.
+uniform vec3 uEmissive;
+
 // Output: the color written to the framebuffer (red, green, blue, alpha).
 out vec4 fragColor;
 
@@ -41,6 +48,9 @@ void main() {
     // No gamma correction in this milestone: the texture values are used as they are,
     // and the result is written as it is. Gamma (sRGB textures and an sRGB framebuffer)
     // arrives with the HDR pipeline in M7.
+    //
+    // The glow of the surface itself (uEmissive) joins the diffuse light. It does not
+    // depend on any light of the scene, so a crystal glows in the darkest corner too.
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
-    fragColor = vec4(surface * lighting.diffuse + lighting.specular, 1.0);
+    fragColor = vec4(surface * (lighting.diffuse + uEmissive) + lighting.specular, 1.0);
 }

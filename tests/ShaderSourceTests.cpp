@@ -282,8 +282,8 @@ TEST_CASE("nameSourceFiles leaves lines it does not recognise alone") {
 }
 
 TEST_CASE("nameSourceFiles adds no list of files for a shader without includes") {
-    const std::vector<std::string> files = {"basic.frag"};
+    const std::vector<std::string> files = {"color.frag"};
 
     CHECK(gfx::nameSourceFiles("0(4) : error C0000: x\n", files) ==
-          "basic.frag(4) : error C0000: x\n");
+          "color.frag(4) : error C0000: x\n");
 }

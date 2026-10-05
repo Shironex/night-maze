@@ -232,7 +232,7 @@ TEST_CASE("computeTangents: degenerate input gives no NaN but some tangent in th
     }
 
     SUBCASE("a vertex without a normal and without a triangle") {
-        // The corners of the collision lines and of the light markers are like this.
+        // The corners of the collision lines are like this.
         std::array<gfx::Vertex, 1> vertices{};
 
         assets::computeTangents(vertices, {});

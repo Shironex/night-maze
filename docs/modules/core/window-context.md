@@ -106,7 +106,7 @@ GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 | `m_debugUI.draw(...)` | wykonuje | Wołane już poza grą, w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp), po powrocie z `NightMazeApp::onRender`: rysuje panele ImGui na wierzchu (opis w [`../debug-ui.md`](../debug-ui.md)) |
 | `glfwSwapBuffers(m_handle)` | wykonuje | Wołane w `Application::run` po `onRender`: zamienia bufory, przy vsync czeka na odświeżenie monitora |
 
-Po tych czterech wywołaniach `onRender` wysyła do bufora uniformów światła klatki, a potem rysuje scenę w częściach: labirynt (z oświetleniem albo bez), przy włączonym oświetleniu znaczniki świateł punktowych, kostkę nad komórką wyjścia i, na życzenie, linie pudełek kolizji. Każda część to `glUseProgram`, macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Kolejność i kod tej części klatki opisuje [`README.md`](README.md), sekcje 6.6 i 6.7, a drogę od danych do pikseli [`../gfx/README.md`](../gfx/README.md), sekcja 6.
+Po tych czterech wywołaniach `onRender` wysyła do bufora uniformów światła klatki, a potem rysuje scenę w częściach: labirynt z bramą i kryształami (z oświetleniem albo bez) i, na życzenie, linie pudełek i kul kolizji. Do M4 były jeszcze dwie części, znaczniki świateł punktowych i kostka z M1 nad komórką wyjścia: obie usunięto w M5. Każda część to `glUseProgram`, macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Kolejność i kod tej części klatki opisuje [`README.md`](README.md), sekcje 6.6 i 6.7, a drogę od danych do pikseli [`../gfx/README.md`](../gfx/README.md), sekcja 6.
 
 Viewport ustawiam w każdej klatce, a nie raz przy starcie, i biorę go z `glfwGetFramebufferSize`. Dzięki temu bez żadnego callbacku obsługuję zmianę rozmiaru okna oraz ekrany Retina (sekcja 7). Makro `GL_CHECK` wokół każdego wywołania opisuje [`gl-check.md`](gl-check.md).
 
@@ -125,7 +125,7 @@ Moduł `core` nie tworzy żadnych obiektów OpenGL (żadnych `glGen*`, żadnych 
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (pięć par plików w `assets/shaders/`: `basic`, `textured`, `color`, `lit` i `gouraud`, wszystkie `#version 410 core`, oraz wspólny plik `common/lighting.glsl` dołączany przez dwie ostatnie pary) rysują po wyczyszczeniu ekranu kostkę, labirynt bez oświetlenia, linie pudełek kolizji i znaczniki świateł oraz labirynt z oświetleniem ([`../gfx/shaders.md`](../gfx/shaders.md), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
+Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (cztery pary plików w `assets/shaders/`: `textured`, `color`, `lit` i `gouraud`, wszystkie `#version 410 core`, oraz dwa wspólne pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`) rysują po wyczyszczeniu ekranu scenę bez oświetlenia, linie pudełek i kul kolizji oraz scenę z oświetleniem ([`../gfx/shaders.md`](../gfx/shaders.md), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
 
 ## 5. Kod w projekcie
 
@@ -224,7 +224,7 @@ Kto z niego korzysta w M0: `Window` (wersja OpenGL, nazwa karty, błędy GLFW), 
 
 ## 6. Panel ImGui
 
-Panel **Renderer** (kod: [`RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp)) pokazuje dane z klasy `Window`. Klawisz **`~`** (na lewo od `1`) chowa i pokazuje panele. Sam moduł `core` ani gra nie wiedzą o panelu: dane dostaje on z `main.cpp` ([`README.md`](README.md), sekcja 6).
+Panel **Renderer** (kod: [`RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp)) pokazuje dane z klasy `Window`. Klawisz **`~`** (na lewo od `1`) chowa i pokazuje panele (HUD gry z M5 zostaje na ekranie). Sam moduł `core` ani gra nie wiedzą o panelu: dane dostaje on z `main.cpp` ([`README.md`](README.md), sekcja 6).
 
 | Element | Źródło | Czego uczy obserwacja |
 |---|---|---|

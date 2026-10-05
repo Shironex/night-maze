@@ -1,19 +1,19 @@
 # Moduł gfx: tekstury
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (doszło oświetlenie, a potem mapy normalnych). Temat wykładu: 5 (Tekstury).
-Kod: [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp), shadery [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag), settery `setInt` i `setVec3` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszło oświetlenie, a potem mapy normalnych) i w M5 (kryształy, brama, uniform `uEmissive`). Temat wykładu: 5 (Tekstury).
+Kod: [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp), shadery [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag), settery `setInt` i `setVec3` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), wiązanie tekstur i samplery w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument zakłada znajomość shaderów ([`shaders.md`](shaders.md)), uniformów ([`uniforms.md`](uniforms.md)) i atrybutów wierzchołka ([`buffers-vao.md`](buffers-vao.md)). Skąd biorą się bajty obrazu, opisuje [`../assets/images.md`](../assets/images.md), a skąd pliki PNG i współrzędne UV modeli, [`../../guides/blender.md`](../../guides/blender.md), sekcje 6 i 7. Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś:** gra rysuje labirynt z teksturami. Od M4 labirynt jest domyślnie **oświetlony** i rysują go programy `lit` albo `gouraud`, które czytają teksturę koloru dokładnie tak samo jak program opisany tutaj (ten sam sampler `uTexture`, ten sam `uTint`, ta sama jednostka 0). Od drugiej części M4 każda część modelu ma też **mapę normalnych** (normal map): drugą teksturę, wiązaną z jednostką 1 i czytaną przez drugi sampler, `uNormalMap`. Cały temat map normalnych ma własny dokument, [`normal-mapping.md`](normal-mapping.md). Tutaj jest tylko to, co dotyczy samych tekstur: dwie jednostki, dwa samplery (sekcje 2.7 i 4.3) i widok normalnych w `textured.frag` (sekcja 4.2). Para `textured.vert` i `textured.frag` (sekcja 4) rysuje ściany, słupki i płytki podłogi w trybie oświetlenia `Unlit` oraz w obu widokach diagnostycznych (normalne i UV jako kolor), niezależnie od trybu oświetlenia. Tekstury tworzy i przechowuje `assets::AssetCache` ([`../assets/asset-cache.md`](../assets/asset-cache.md)), a wiąże je i ustawia sampler `game::MazeRenderer` ([`../game/maze-rendering.md`](../game/maze-rendering.md)). Filtr, anizotropię, tryb podglądu i mapowanie normalnych przełącza panel Assets (sekcja 6). Klasa `Texture2D` wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9), a obraz w grze na zrzutach ekranu (sekcja 5.10). Widżetów panelu nikt jeszcze nie klikał ręcznie. **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.** Stan całego projektu po M4, zmierzony na Windowsie 2026-10-05: 163 przypadki testowe i 62220 asercji w Debug i Release (żaden nie dotyczy `Texture2D`).
+**Stan na dziś:** gra rysuje z teksturami labirynt, a od M5 także kryształy i bramę wyjścia. Od M4 labirynt jest domyślnie **oświetlony** i rysują go programy `lit` albo `gouraud`, które czytają teksturę koloru dokładnie tak samo jak program opisany tutaj (ten sam sampler `uTexture`, ten sam `uTint`, ta sama jednostka 0). Od drugiej części M4 każda część modelu ma też **mapę normalnych** (normal map): drugą teksturę, wiązaną z jednostką 1 i czytaną przez drugi sampler, `uNormalMap`. Cały temat map normalnych ma własny dokument, [`normal-mapping.md`](normal-mapping.md). Tutaj jest tylko to, co dotyczy samych tekstur: dwie jednostki, dwa samplery (sekcje 2.7 i 4.3) i widok normalnych w `textured.frag` (sekcja 4.2). Para `textured.vert` i `textured.frag` (sekcja 4) rysuje ściany, słupki, płytki podłogi, kryształy i bramę w trybie oświetlenia `Unlit` oraz w obu widokach diagnostycznych (normalne i UV jako kolor), niezależnie od trybu oświetlenia. Tekstury tworzy i przechowuje `assets::AssetCache` ([`../assets/asset-cache.md`](../assets/asset-cache.md)), a wiążą je i ustawiają samplery dwie wolne funkcje, `game::drawModel` i `game::setModelSamplers` z `src/game/ModelDraw.cpp`, wspólne dla `game::MazeRenderer` (labirynt, [`../game/maze-rendering.md`](../game/maze-rendering.md)) i `game::GameplayRenderer` (kryształy i brama, [`../game/gameplay.md`](../game/gameplay.md)). Do M4 ten kod był funkcją `MazeRenderer::drawInstances`. Tekstur z plików jest dziś osiem: cztery obrazy koloru i cztery mapy normalnych (sekcja 6). Filtr, anizotropię, tryb podglądu i mapowanie normalnych przełącza panel Assets (sekcja 6). Klasa `Texture2D` wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9), a obraz w grze na zrzutach ekranu (sekcja 5.10). Widżetów panelu nikt jeszcze nie klikał ręcznie. **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.** Stan całego projektu z M5, zgłoszony dla Windowsa 2026-10-05: 215 przypadków testowych i 85098 asercji w Debug i Release (żaden nie dotyczy `Texture2D`). M5 jest kompletny w kodzie, ale nie zamknięty: nic z niego nie było budowane na macOS i nikt jeszcze nie grał ręcznie.
 
-**Oświetlenie już jest** (M4): światła i wzory opisuje [`../scene/lights.md`](../scene/lights.md), a programy `lit` i `gouraud` [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W programie `textured`, o którym jest ten dokument, światła nadal nie ma: kolor piksela to kolor tekstury pomnożony przez kolor materiału, więc scena w trybie `Unlit` jest równo jasna. W programach oświetlających ten sam iloczyn (`texture(uTexture, vUv).rgb * uTint`) jest kolorem powierzchni, mnożonym potem przez światło rozproszone.
+**Oświetlenie już jest** (M4): światła i wzory opisuje [`../scene/lights.md`](../scene/lights.md), a programy `lit` i `gouraud` [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W programie `textured`, o którym jest ten dokument, światła nadal nie ma: kolor piksela to kolor tekstury pomnożony przez kolor materiału, więc scena w trybie `Unlit` jest równo jasna. Jedyny wyjątek doszedł w M5: uniform `uEmissive`, czyli świecenie własne powierzchni, które rozjaśnia kryształy także tutaj (sekcja 4.2). W programach oświetlających ten sam iloczyn (`texture(uTexture, vUv).rgb * uTint`) jest kolorem powierzchni, mnożonym potem przez światło rozproszone.
 
 **Mapy normalnych już są** (druga część M4): opisuje je [`normal-mapping.md`](normal-mapping.md). Jedna rzecz z tematu 5 jest nadal celowo odłożona: **przestrzeń sRGB i korekcja gamma**, do M7 (sekcja 2.10, uzasadnienie w [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
 
 ## 1. Po co to jest
 
-Kostka z M1 ma kolor zapisany w wierzchołkach: sześć ścian, sześć kolorów. Ściana z kamienia tak się nie da zrobić: wzór fug i kamieni to tysiące szczegółów, a ściana ma kilka trójkątów. **Tekstura** (texture) to obraz przechowywany na karcie graficznej, z którego shader fragmentów odczytuje kolor osobno dla każdego piksela ekranu. Geometria zostaje prosta, a szczegół pochodzi z obrazu.
+Kostka z M1 (usunięta w M5) miała kolor zapisany w wierzchołkach: sześć ścian, sześć kolorów. Ściany z kamienia tak się nie da zrobić: wzór fug i kamieni to tysiące szczegółów, a ściana ma kilka trójkątów. **Tekstura** (texture) to obraz przechowywany na karcie graficznej, z którego shader fragmentów odczytuje kolor osobno dla każdego piksela ekranu. Geometria zostaje prosta, a szczegół pochodzi z obrazu.
 
 Żeby to zadziałało, potrzebne są cztery rzeczy:
 
@@ -22,7 +22,7 @@ Kostka z M1 ma kolor zapisany w wierzchołkach: sześć ścian, sześć kolorów
 | obraz na karcie graficznej i sposób jego odczytu | klasa `gfx::Texture2D` | jest |
 | współrzędne tekstury w wierzchołkach | atrybut `uv` w `gfx::Vertex`, pliki OBJ ([`mesh.md`](mesh.md), [`../assets/obj-loader.md`](../assets/obj-loader.md)) | osobny dokument |
 | uniform typu `sampler2D` i funkcja `texture()` w shaderze | `assets/shaders/textured.frag` | jest (sekcja 4) |
-| numer jednostki teksturującej wysłany do samplera | `Shader::setInt`, wołany w `MazeRenderer::draw` | jest (sekcja 4.3) |
+| numer jednostki teksturującej wysłany do samplera | `Shader::setInt`, wołany w `game::setModelSamplers` | jest (sekcja 4.3) |
 
 Klasa `gfx::Texture2D`:
 
@@ -169,7 +169,7 @@ Współrzędne tekstury nie muszą mieścić się między 0 a 1. Co karta zwraca
 | `GL_CLAMP_TO_EDGE` | współrzędna jest przycinana do zakresu: poza nim powtarza się skrajny teksel | pojedyncze obrazy, interfejs, skybox |
 | `GL_CLAMP_TO_BORDER` | poza zakresem zwracany jest ustalony kolor obramowania | mapy cieni |
 
-Projekt używa `GL_REPEAT` i jest to wymaganie modeli, a nie przypadek. Współrzędne UV ścian celowo wychodzą poza zakres: odcinek ściany ma `u` od -0,5 do 0,5 i `v` od 0 do 1,5, bo jedno powtórzenie tekstury ma zajmować 2 m niezależnie od wielkości ściany ([`../../guides/blender.md`](../../guides/blender.md), sekcja 6). Z `GL_CLAMP_TO_EDGE` część ściany powyżej 2 m byłaby rozsmarowanym ostatnim wierszem tekstury. Tekstury są też przygotowane tak, żeby lewy brzeg pasował do prawego, a dolny do górnego.
+Projekt używa `GL_REPEAT` i jest to wymaganie modeli, a nie przypadek. Współrzędne UV ścian celowo wychodzą poza zakres: odcinek ściany ma `u` od -0,5 do 0,5 i `v` od 0 do 1,5, bo jedno powtórzenie tekstury ma zajmować 2 m niezależnie od wielkości ściany ([`../../guides/blender.md`](../../guides/blender.md), sekcja 6). Kryształy z M5 mają inną gęstość: jedno powtórzenie na 0,5 m (stała `METRES_PER_UV_UNIT` w `tools/blender/build_crystal.py`), bo przy 2 m ścianka szeroka na 0,1 m pokazałaby kilka rozmytych pikseli obrazu. Z `GL_CLAMP_TO_EDGE` część ściany powyżej 2 m byłaby rozsmarowanym ostatnim wierszem tekstury. Tekstury są też przygotowane tak, żeby lewy brzeg pasował do prawego, a dolny do górnego.
 
 ### 2.7 Jednostki teksturujące i sampler w GLSL
 
@@ -197,7 +197,7 @@ Liczba musi być ta sama w obu miejscach. Identyfikator tekstury (tu 7) nie poja
 
 Gra używa **dwóch jednostek** i każda ma własny sampler w shaderze:
 
-| Sampler w GLSL | Jednostka | Stała w `MazeRenderer.cpp` | Co jest na niej związane |
+| Sampler w GLSL | Jednostka | Stała w `ModelDraw.cpp` | Co jest na niej związane |
 |---|---|---|---|
 | `uniform sampler2D uTexture;` | 0 | `TEXTURE_UNIT` | tekstura koloru części modelu (`part.texture`) |
 | `uniform sampler2D uNormalMap;` | 1 | `NORMAL_MAP_UNIT` | mapa normalnych części modelu (`part.normalMap`) |
@@ -206,7 +206,7 @@ Shader może odczytać obie tekstury dla tego samego fragmentu właśnie dlatego
 
 `glBindTexture` nie przyjmuje numeru jednostki. Działa na jednostce **aktywnej**, którą wybiera `glActiveTexture`. To ten sam model "wybierz, potem działaj" co przy buforach ([`buffers-vao.md`](buffers-vao.md), sekcja 2.2), tylko o jeden poziom głębszy: najpierw jednostka, potem cel.
 
-**Dlaczego numer ustawiam z C++.** GLSL od wersji 4.20 pozwala wpisać jednostkę wprost w shaderze: `layout(binding = 0) uniform sampler2D uTexture;`. Projekt używa `#version 410 core`, bo to najnowsza wersja na macOS, a tam ten zapis nie istnieje. Zostaje `glUniform1i`. Sampler ma po linkowaniu wartość 0, jak każdy uniform, więc program z jedną teksturą na jednostce 0 działa nawet bez `setInt`. Mimo to wysyłam numer jawnie, i od dodania map normalnych widać, dlaczego: sampler `uNormalMap` też ma po linkowaniu wartość 0, więc bez `setInt` oba samplery czytałyby jednostkę 0, czyli mapa normalnych byłaby teksturą koloru, bez żadnego błędu. W grze oba numery wysyła `MazeRenderer::draw` w każdej klatce (sekcja 4.3).
+**Dlaczego numer ustawiam z C++.** GLSL od wersji 4.20 pozwala wpisać jednostkę wprost w shaderze: `layout(binding = 0) uniform sampler2D uTexture;`. Projekt używa `#version 410 core`, bo to najnowsza wersja na macOS, a tam ten zapis nie istnieje. Zostaje `glUniform1i`. Sampler ma po linkowaniu wartość 0, jak każdy uniform, więc program z jedną teksturą na jednostce 0 działa nawet bez `setInt`. Mimo to wysyłam numer jawnie, i od dodania map normalnych widać, dlaczego: sampler `uNormalMap` też ma po linkowaniu wartość 0, więc bez `setInt` oba samplery czytałyby jednostkę 0, czyli mapa normalnych byłaby teksturą koloru, bez żadnego błędu. W grze oba numery wysyła `game::setModelSamplers`, wołana w każdej klatce przez `MazeRenderer::draw` i `GameplayRenderer::draw` (sekcja 4.3).
 
 ### 2.8 Parametry tekstury a obiekt samplera
 
@@ -265,7 +265,7 @@ Przy złym wyrównaniu obraz wychodzi **pochylony** i z przekłamanymi kolorami,
 
 **Mapy normalnych.** Tekstura może przechowywać nie kolor, tylko kierunek normalnej dla każdego teksela, co daje wrażenie wypukłości bez dodatkowych trójkątów. PRD przypisuje je do tematu 5, ale efekt widać dopiero przy oświetleniu, więc weszły w drugiej części M4. Teorię (przestrzeń styczna, kodowanie, konwencja kanału zielonego, macierz TBN), kod i pomiary opisuje [`normal-mapping.md`](normal-mapping.md). Z punktu widzenia tego dokumentu ważne są cztery rzeczy:
 
-- **Klasa `Texture2D` nie zmieniła się ani o linię.** Mapa normalnych to też obraz RGB 512 x 512 z pliku PNG. Wczytuje ją ten sam loader, przechowuje ta sama pamięć podręczna na tej samej liście, ma mipmapy, zawijanie `GL_REPEAT` i własny obiekt samplera jak każda inna tekstura. Inaczej czyta ją dopiero shader ([`normal-mapping.md`](normal-mapping.md), sekcja 4.1).
+- **Klasa `Texture2D` nie zmieniła się ani o linię.** Mapa normalnych to też obraz RGB 512 x 512 z pliku PNG (wszystkie osiem plików w `assets/textures/` ma ten rozmiar i trzy kanały: odczytane z nagłówków PNG). Wczytuje ją ten sam loader, przechowuje ta sama pamięć podręczna na tej samej liście, ma mipmapy, zawijanie `GL_REPEAT` i własny obiekt samplera jak każda inna tekstura. Inaczej czyta ją dopiero shader ([`normal-mapping.md`](normal-mapping.md), sekcja 4.1).
 - **Filtr i anizotropia z panelu Assets dotyczą także map normalnych**, bo `AssetCache::setFilter` i `setAnisotropy` idą po wszystkich teksturach z listy. Filtrowanie i mipmapy uśredniają sąsiednie normalne, a średnia wektorów o długości 1 jest krótsza niż 1, dlatego shader normalizuje wynik ([`normal-mapping.md`](normal-mapping.md), sekcje 4.1 i 7).
 - **Format wewnętrzny `GL_RGB8` jest dla mapy normalnych poprawny, nie tymczasowy.** Bajty mapy są kierunkami, a nie kolorami, więc karta nie może ich przeliczać z sRGB. Gdy w M7 tekstury koloru przejdą na `GL_SRGB8`, mapy normalnych muszą zostać przy `GL_RGB8`. Dziś klasa nie rozróżnia tych dwóch rodzajów obrazu, bo oba dostają ten sam format.
 - **Druga tekstura wymaga drugiej jednostki i drugiego samplera** (sekcje 2.7 i 4.3).
@@ -350,9 +350,9 @@ Niekompletna tekstura **nie zgłasza błędu**. Każdy odczyt z niej zwraca czar
 
 ## 4. Shadery
 
-Ta sekcja opisuje parę [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag). To pierwsze shadery projektu, które czytają teksturę. Od M4 rysują labirynt w trybie oświetlenia `Unlit` i w obu widokach diagnostycznych. `textured.frag` dołącza od drugiej części M4 plik `common/normal_map.glsl` (dyrektywa `#include`, [`shader-includes.md`](shader-includes.md)), z którego bierze funkcję `surfaceNormal` dla widoku normalnych. Gra ma dziś pięć programów. Para `basic.vert` i `basic.frag` ([`shaders.md`](shaders.md), sekcja 4) została bez zmian i nadal rysuje kostkę kolorem z wierzchołków. Para `color.vert` i `color.frag` rysuje jednym kolorem linie pudełek kolizji i znaczniki świateł ([`../scene/collision.md`](../scene/collision.md), sekcja 4). Pary `lit.*` i `gouraud.*` rysują labirynt z oświetleniem ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4): czytają teksturę tą samą linią co `textured.frag`.
+Ta sekcja opisuje parę [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag). To pierwsze shadery projektu, które czytają teksturę. Od M4 rysują labirynt w trybie oświetlenia `Unlit` i w obu widokach diagnostycznych. `textured.frag` dołącza od drugiej części M4 plik `common/normal_map.glsl` (dyrektywa `#include`, [`shader-includes.md`](shader-includes.md)), z którego bierze funkcję `surfaceNormal` dla widoku normalnych. Od M5 tym samym programem, zaraz po labiryncie, rysowane są kryształy i brama. Gra ma dziś cztery programy. Para `basic.vert` i `basic.frag`, która w M1 rysowała kostkę kolorem z wierzchołków, została w M5 usunięta razem z kostką, a długi komentarz o łańcuchu przestrzeni przeszedł z `basic.vert` do `textured.vert` (sekcja 4.1). Para `color.vert` i `color.frag` rysuje jednym kolorem linie pudełek i sfer kolizji ([`../scene/collision.md`](../scene/collision.md), sekcja 4). Pary `lit.*` i `gouraud.*` rysują labirynt, kryształy i bramę z oświetleniem ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4): czytają teksturę tą samą linią co `textured.frag`.
 
-W tych dwóch shaderach **nie ma oświetlenia**: żadnego wektora światła, żadnego iloczynu skalarnego z normalną. Normalna i styczna są przekazywane do shadera fragmentów tylko po to, żeby dało się pokazać normalną jako kolor (tryb podglądu 1): bez mapowania normalnych tę z modelu, z mapowaniem tę odczytaną z mapy normalnych. Oświetlenie liczą osobne programy ([`../scene/lights.md`](../scene/lights.md)).
+W tych dwóch shaderach **nie ma oświetlenia**: żadnego wektora światła, żadnego iloczynu skalarnego z normalną. Jest tylko świecenie własne powierzchni (`uEmissive`, sekcja 4.2), które nie zależy od żadnego światła sceny. Normalna i styczna są przekazywane do shadera fragmentów tylko po to, żeby dało się pokazać normalną jako kolor (tryb podglądu 1): bez mapowania normalnych tę z modelu, z mapowaniem tę odczytaną z mapy normalnych. Oświetlenie liczą osobne programy ([`../scene/lights.md`](../scene/lights.md)).
 
 ### 4.1 `textured.vert`: shader wierzchołków
 
@@ -383,8 +383,15 @@ out vec3 vNormal;  // normal in world space
 out vec3 vTangent; // tangent in world space
 
 void main() {
-    // The same chain as in basic.vert, read from right to left: local space, world
-    // space, view space, clip space.
+    // gl_Position is the built-in output every vertex shader must write: the position in
+    // clip space. The expression is read from right to left, the matrix nearest to the
+    // vector is applied first:
+    //   vec4(aPosition, 1.0)  the vertex in local space, w = 1 because it is a point
+    //   uModel * ...          the vertex in world space
+    //   uView * ...           the vertex in view space, as seen from the camera
+    //   uProjection * ...     the vertex in clip space
+    // After this shader the graphics card divides x, y and z by w (the distance from the
+    // camera), which is what makes distant things small.
     gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 
     // The texture coordinate goes through unchanged: it belongs to the surface, not to
@@ -408,23 +415,23 @@ void main() {
 |---|---|
 | `#version 410 core` | GLSL 4.10, profil Core: najnowsza wersja dostępna na macOS ([`shaders.md`](shaders.md), sekcja 2.4) |
 | `layout(location = 0) in vec3 aPosition;` | atrybut numer 0: pozycja w przestrzeni lokalnej modelu. Numer to stała `POSITION_ATTRIBUTE` z [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp) |
-| `layout(location = 1) in vec3 aNormal;` | atrybut numer 1 (`NORMAL_ATTRIBUTE`): normalna wierzchołka. Uwaga: w `basic.vert` numer 1 to **kolor**. Numery są umową między konkretnym shaderem a konkretnym VAO ([`mesh.md`](mesh.md), sekcja 2.4), a nie własnością numeru |
+| `layout(location = 1) in vec3 aNormal;` | atrybut numer 1 (`NORMAL_ATTRIBUTE`): normalna wierzchołka. Uwaga: w usuniętym `basic.vert` z M1 numer 1 był **kolorem**. Numery są umową między konkretnym shaderem a konkretnym VAO ([`mesh.md`](mesh.md), sekcja 2.4), a nie własnością numeru |
 | `layout(location = 2) in vec2 aUv;` | atrybut numer 2 (`UV_ATTRIBUTE`): współrzędne tekstury, dwie liczby. `v = 0` to dół obrazu (sekcja 2.1) |
 | `layout(location = 3) in vec3 aTangent;` | atrybut numer 3 (`TANGENT_ATTRIBUTE`): styczna, czyli kierunek na powierzchni, w którym rośnie `u`. Nie pochodzi z pliku modelu: liczy ją loader ([`mesh.md`](mesh.md), sekcja 2.1, i [`normal-mapping.md`](normal-mapping.md), sekcja 2.7) |
-| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w `basic.vert` ([`../scene/transforms.md`](../scene/transforms.md), sekcja 4). `uModel` zmienia się dla każdego obiektu, dwie pozostałe są ustawiane raz na klatkę |
+| `uniform mat4 uModel;`, `uView`, `uProjection` | te same trzy macierze i te same nazwy co w pozostałych trzech shaderach wierzchołków, `color.vert`, `lit.vert` i `gouraud.vert` ([`../scene/transforms.md`](../scene/transforms.md), sekcja 4). `uModel` zmienia się dla każdego obiektu, dwie pozostałe są ustawiane raz na klatkę |
 | `out vec2 vUv;` | wyjście do shadera fragmentów. Rasteryzator interpoluje je między trzema wierzchołkami trójkąta, więc każdy fragment dostaje własne `(u, v)` |
 | `out vec3 vNormal;` | normalna w przestrzeni świata, też interpolowana |
 | `out vec3 vTangent;` | styczna w przestrzeni świata, też interpolowana |
-| `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | ten sam łańcuch co w `basic.vert`, czytany od prawej: przestrzeń lokalna, świata, widoku, przycinania. `1.0` w czwartej składowej oznacza punkt, więc przesunięcie z macierzy działa |
+| `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` | łańcuch przestrzeni, czytany od prawej, bo macierz najbliżej wektora działa pierwsza: przestrzeń lokalna, świata, widoku, przycinania. `1.0` w czwartej składowej oznacza punkt, więc przesunięcie z macierzy działa. `gl_Position` to wbudowane wyjście, które każdy shader wierzchołków musi zapisać. Po shaderze karta dzieli `x`, `y` i `z` przez `w` (odległość od kamery) i to dzielenie zmniejsza odległe rzeczy. Komentarz nad tą linią jest od M5 miejscem, w którym projekt opisuje cały łańcuch: `color.vert` odsyła do niego słowami "The same chain as in textured.vert" |
 | `vUv = aUv;` | współrzędne tekstury przechodzą bez zmian. Należą do powierzchni modelu, a nie do miejsca, w którym model stoi: przestawiona ściana ma ten sam wzór |
 | `vNormal = mat3(uModel) * aNormal;` | normalna obrócona razem z obiektem, ale nieprzesunięta (wyjaśnienie niżej) |
 | `vTangent = mat3(uModel) * aTangent;` | styczna obrócona razem z obiektem. Dla stycznej `mat3(uModel)` jest poprawną macierzą przy **każdej** skali, bo styczna leży w powierzchni jak krawędź trójkąta i rozciąga się razem z modelem. Macierz normalnych jest dla kierunków, które mają zostać prostopadłe do powierzchni ([`normal-mapping.md`](normal-mapping.md), sekcja 4.2) |
 
 **Dlaczego `mat3(uModel)`, a nie całe `uModel`.** Normalna jest **kierunkiem**, nie punktem. Kierunek ma się obracać razem z obiektem, ale przesunięcie obiektu nie może go zmieniać: ściana przestawiona o 10 m dalej jest zwrócona w tę samą stronę. `mat3(uModel)` wycina z macierzy 4 x 4 lewy górny blok 3 x 3, czyli obrót i skalę, a gubi czwartą kolumnę z przesunięciem. To samo dałoby `(uModel * vec4(aNormal, 0.0)).xyz`: zero w czwartej składowej też wyłącza przesunięcie ([`../scene/transforms.md`](../scene/transforms.md), sekcja 2).
 
-**Kiedy to jest poprawne.** Tylko wtedy, gdy skala jest taka sama na wszystkich trzech osiach. Skala nierówna (na przykład obiekt rozciągnięty dwa razy w osi x) przekrzywia normalne: przestają być prostopadłe do powierzchni. Poprawna macierz dla normalnych to wtedy odwrócona i transponowana macierz 3 x 3: `transpose(inverse(mat3(uModel)))`. W labiryncie każda macierz modelu to samo przesunięcie albo przesunięcie z obrotem o 90 stopni wokół osi Y, ze skalą 1 ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), więc prostsza postać wystarcza. Sam obrót nie zmienia długości wektora, więc normalna wychodzi z shadera wierzchołków z długością 1.
+**Kiedy to jest poprawne.** Tylko wtedy, gdy skala jest taka sama na wszystkich trzech osiach. Skala nierówna (na przykład obiekt rozciągnięty dwa razy w osi x) przekrzywia normalne: przestają być prostopadłe do powierzchni. Poprawna macierz dla normalnych to wtedy odwrócona i transponowana macierz 3 x 3: `transpose(inverse(mat3(uModel)))`. W labiryncie każda macierz modelu to samo przesunięcie albo przesunięcie z obrotem o 90 stopni wokół osi Y, ze skalą 1 ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), więc prostsza postać wystarcza. To samo dotyczy obiektów z M5: macierz bramy liczy ta sama funkcja co macierz ściany (`game::wallModelMatrix`), a macierz kryształu to przesunięcie i obrót wokół osi Y z `scene::Transform`, którego skali `GameplayRenderer::draw` nie zmienia. Sam obrót nie zmienia długości wektora, więc normalna wychodzi z shadera wierzchołków z długością 1.
 
-**Programy oświetlające robią to już poprawnie.** `lit.vert` i `gouraud.vert` nie używają `mat3(uModel)`: dostają osobny uniform `uniform mat3 uNormalMatrix;`, czyli właśnie odwróconą i transponowaną macierz 3 x 3, policzoną na procesorze przez `scene::normalMatrix` ([`uniforms.md`](uniforms.md), sekcje 4 i 5.7). `textured.vert` został przy `mat3(uModel)`, bo jego normalna służy tylko do podglądu. Styczną oba shadery wierzchołków (`textured.vert` i `lit.vert`) przekształcają tak samo, przez `mat3(uModel)`. `MazeRenderer` wysyła `uNormalMatrix` także do programu `textured`, który takiego uniformu nie ma: wywołanie jest po cichu ignorowane.
+**Programy oświetlające robią to już poprawnie.** `lit.vert` i `gouraud.vert` nie używają `mat3(uModel)`: dostają osobny uniform `uniform mat3 uNormalMatrix;`, czyli właśnie odwróconą i transponowaną macierz 3 x 3, policzoną na procesorze przez `scene::normalMatrix` ([`uniforms.md`](uniforms.md), sekcje 4 i 5.7). `textured.vert` został przy `mat3(uModel)`, bo jego normalna służy tylko do podglądu. Styczną oba shadery wierzchołków (`textured.vert` i `lit.vert`) przekształcają tak samo, przez `mat3(uModel)`. `game::drawModel` wysyła `uNormalMatrix` także do programu `textured`, który takiego uniformu nie ma: wywołanie jest po cichu ignorowane.
 
 ### 4.2 `textured.frag`: shader fragmentów
 
@@ -432,7 +439,8 @@ void main() {
 #version 410 core
 // Fragment shader of textured models: the colour of a fragment is the texture at its
 // texture coordinate, multiplied by a tint. Two debug views show the normal or the
-// texture coordinate as a colour instead. There is no lighting here.
+// texture coordinate as a colour instead. There is no lighting here, only the glow of
+// surfaces that give off light themselves.
 // See docs/modules/gfx/textures.md
 
 // The normal map and the function surfaceNormal, for the view of the normals. The same
@@ -453,6 +461,10 @@ uniform sampler2D uTexture;
 // Colour the texture is multiplied by: the diffuse colour of the material. White
 // (1, 1, 1) leaves the texture unchanged.
 uniform vec3 uTint;
+
+// Light the surface gives off by itself (the glow of the crystals), as in lit.frag.
+// Black for everything else. Only the normal picture (view 0) uses it.
+uniform vec3 uEmissive;
 
 // What to show. The numbers are the values of game::ViewMode in C++.
 //   0: the texture multiplied by the tint (the normal picture)
@@ -481,8 +493,12 @@ void main() {
         // texture() reads the texture at vUv with the filter, the mipmaps and the
         // wrapping set in OpenGL. It returns red, green, blue, alpha. Only the colour is
         // used: the models are opaque, so alpha is written as 1.
+        //
+        // Without lighting the surface is shown at full brightness, as if lit by white
+        // light of strength 1. The glow is added to that light, so a crystal stands
+        // out here too.
         vec3 texel = texture(uTexture, vUv).rgb;
-        fragColor = vec4(texel * uTint, 1.0);
+        fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);
     }
 }
 ```
@@ -495,6 +511,7 @@ void main() {
 | `in vec2 vUv;`, `in vec3 vNormal;` i `in vec3 vTangent;` | para do wyjść shadera wierzchołków: te same nazwy i typy. Zgodność sprawdza linkowanie programu ([`shaders.md`](shaders.md), sekcja 2.6). Wartości są już zinterpolowane dla tego fragmentu |
 | `uniform sampler2D uTexture;` | sampler tekstury 2D. Jego wartością jest **numer jednostki teksturującej** (sekcja 2.7), ustawiany przez `Shader::setInt`. Samplera nie da się utworzyć ani zmienić w shaderze, można go tylko przekazać do funkcji próbkującej |
 | `uniform vec3 uTint;` | kolor, przez który mnożona jest tekstura: kolor rozproszony materiału (linia `Kd` pliku MTL, [`../assets/obj-loader.md`](../assets/obj-loader.md), sekcja 2.3). Biały `(1, 1, 1)` nie zmienia tekstury |
+| `uniform vec3 uEmissive;` | światło, które powierzchnia oddaje sama z siebie, jako kolor. Doszło w M5. Czarny `(0, 0, 0)` dla kamienia i drewna, kolor świecenia dla kryształów. Używa go tylko zwykły obraz (widok 0): oba widoki diagnostyczne go nie czytają |
 | `uniform sampler2D uNormalMap;` i `uniform bool uNormalMapEnabled;` | nie ma ich w tym pliku: przychodzą z pliku dołączonego. Sampler mapy normalnych trzyma numer **drugiej** jednostki (1), a przełącznik mówi, czy `surfaceNormal` ma z mapy korzystać |
 | `uniform int uViewMode;` | co pokazać: 0, 1 albo 2. Liczby są wartościami typu `game::ViewMode` z [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp): `Textured = 0`, `Normals = 1`, `Uvs = 2`. Shader nie zna typu wyliczeniowego z C++, więc obie strony muszą pilnować tych samych liczb (pułapka 19) |
 | `out vec4 fragColor;` | kolor zapisywany do framebuffera: czerwony, zielony, niebieski, alfa |
@@ -504,12 +521,15 @@ void main() {
 | Linia | Znaczenie |
 |---|---|
 | `texture(uTexture, vUv)` | funkcja wbudowana GLSL: odczytuje teksturę w punkcie `vUv`, stosując filtr, mipmapy, anizotropię i zawijanie ustawione w OpenGL (w projekcie: na obiekcie samplera, sekcja 2.8). Zwraca `vec4` (R, G, B, A), każda składowa od 0 do 1 |
-| `.rgb` | wybór trzech pierwszych składowych ([`shaders.md`](shaders.md), sekcja 2.4). Kanał alfa jest pomijany: modele labiryntu są nieprzezroczyste |
+| `.rgb` | wybór trzech pierwszych składowych ([`shaders.md`](shaders.md), sekcja 2.4). Kanał alfa jest pomijany: wszystkie modele gry są nieprzezroczyste |
 | `vec3 texel = ...;` | kolor teksela po filtrowaniu |
 | `texel * uTint` | mnożenie dwóch `vec3` w GLSL działa **składowa po składowej**: czerwony razy czerwony, zielony razy zielony, niebieski razy niebieski. To nie jest iloczyn skalarny ani wektorowy |
-| `fragColor = vec4(texel * uTint, 1.0);` | alfa równa 1: piksel w pełni kryjący |
+| `vec3(1.0) + uEmissive` | "światło" tego programu. `vec3(1.0)` to białe światło o sile 1: bez oświetlenia powierzchnia jest pokazywana z pełną jasnością. Świecenie własne jest do tego światła **dodawane**, też składowa po składowej |
+| `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);` | kolor powierzchni razy światło. Alfa równa 1: piksel w pełni kryjący |
 
-Mnożenie przez `uTint` ma dwa zastosowania. Pierwsze: materiał może przyciemnić albo zabarwić teksturę. Wszystkie trzy materiały gry mają `Kd 1.000000 1.000000 1.000000`, więc dziś tekstury wychodzą bez zmian. Drugie: część modelu **bez** tekstury dostaje białą teksturę zastępczą 1 x 1, a wtedy `texel` to `(1, 1, 1)` i wynikiem jest sam kolor materiału. Jeden shader obsługuje więc oba przypadki bez dodatkowej gałęzi ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 2).
+Mnożenie przez `uTint` ma dwa zastosowania. Pierwsze: materiał może przyciemnić albo zabarwić teksturę. Wszystkie materiały gry (`wall_stone`, `floor_stone`, `crystal`, `gate_wood` w sześciu plikach MTL) mają `Kd 1.000000 1.000000 1.000000`, więc dziś tekstury wychodzą bez zmian. Drugie: część modelu **bez** tekstury dostaje białą teksturę zastępczą 1 x 1, a wtedy `texel` to `(1, 1, 1)` i wynikiem jest sam kolor materiału. Jeden shader obsługuje więc oba przypadki bez dodatkowej gałęzi ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 2).
+
+**`uEmissive`: świecenie własne.** Dla kamienia i drewna uniform jest czarny, nawias ma wartość `(1, 1, 1)` i wynik jest taki jak przed M5: `texel * uTint`. Dla kryształu `GameplayRenderer::draw` wysyła kolor z `game::crystalGlow` (kolor świateł punktowych pomnożony przez siłę, która pulsuje, [`../game/gameplay.md`](../game/gameplay.md), sekcja 4), więc nawias jest większy od 1 w kanałach tego koloru i kryształ jest jaśniejszy od swojej tekstury. Składowa powyżej 1 jest przy zapisie do framebuffera obcinana do pełnej jasności. Postać wzoru jest celowo taka sama jak w programach oświetlających: `lit.frag` i `gouraud.frag` liczą `surface * (diffuse + uEmissive) + specular`, czyli świecenie dołącza do światła rozproszonego. Tutaj światłem rozproszonym jest stała `vec3(1.0)`, a odblasku nie ma. Komentarz w shaderze mówi po co: żeby kryształ wyróżniał się także w trybie bez oświetlenia. Dłuższe uzasadnienie stoi w `lit.frag`: światło punktowe kryształu wisi poza jego siatką i oświetla ścianki tylko z jednej strony, więc bez własnego świecenia źródło światła byłoby najciemniejszą rzeczą w okolicy. Kto ustawia ten uniform i dlaczego labirynt co klatkę zeruje go z powrotem, jest w sekcji 4.3.
 
 **Gałąź `uViewMode == 1` (normalne jako kolor):**
 
@@ -533,7 +553,7 @@ Tabela podaje kolory **normalnych modelu**, czyli obraz przy wyłączonym mapowa
 
 O tym, czy widok pokazuje normalne z map, decyduje `uNormalMapEnabled`, który `drawUnlitMaze` ustawia z `usesNormalMap(m_lighting)` (sekcja 4.3): pole wyboru `Normal mapping` jest zaznaczone **i** tryb oświetlenia nie jest `Gouraud`. W trybie `Gouraud` widok pokazuje więc normalne modelu nawet przy zaznaczonym polu, bo takich normalnych używa wtedy światło ([`normal-mapping.md`](normal-mapping.md), sekcja 2.11).
 
-**Czy to naprawdę ta sama normalna co w oświetleniu.** Komentarz w pliku mówi "the very normal the lighting uses". To prawda pod jednym warunkiem. Funkcja `surfaceNormal` jest ta sama (jeden plik dołączony do obu programów), ale jej wejście `vNormal` powstaje różnie: `lit.vert` mnoży normalną przez `uNormalMatrix`, a `textured.vert` przez `mat3(uModel)`. Te dwie macierze są równe, gdy macierz modelu to obrót ze skalą 1, a tak jest dla każdego obiektu labiryntu. Przy nierównej skali widok i światło by się rozeszły (pułapka 21).
+**Czy to naprawdę ta sama normalna co w oświetleniu.** Komentarz w pliku mówi "the very normal the lighting uses". To prawda pod jednym warunkiem. Funkcja `surfaceNormal` jest ta sama (jeden plik dołączony do obu programów), ale jej wejście `vNormal` powstaje różnie: `lit.vert` mnoży normalną przez `uNormalMatrix`, a `textured.vert` przez `mat3(uModel)`. Te dwie macierze są równe, gdy macierz modelu to obrót ze skalą 1, a tak jest dla każdego obiektu labiryntu, dla bramy i dla kryształów. Przy nierównej skali widok i światło by się rozeszły (pułapka 21).
 
 To jest **podgląd diagnostyczny, a nie oświetlenie**. Służy do sprawdzenia trzech rzeczy: że loader wczytał normalne, że `mat3(uModel)` obraca je razem ze ścianami biegnącymi wzdłuż osi Z, i (z mapowaniem normalnych) że relief mapy leży tam, gdzie fugi na teksturze koloru. Gdyby normalne się nie obracały, duże powierzchnie wszystkich ścian miałyby tylko dwa kolory (te dla +Z i -Z) zamiast czterech.
 
@@ -556,7 +576,7 @@ Trzy uwagi do funkcji `texture`:
 
 ### 4.3 Strona C++: kto ustawia uniformy
 
-Uniformy ustawiają trzy miejsca. Nazwy są stałymi z [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`uniforms.md`](uniforms.md), sekcja 5.5).
+Uniformy ustawia pięć miejsc: `NightMazeApp::drawUnlitMaze`, `MazeRenderer::draw`, `GameplayRenderer::draw` i dwie funkcje wspólne z [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp), `game::setModelSamplers` i `game::drawModel`. Do M4 te dwie ostatnie były częścią klasy `MazeRenderer` (druga pod nazwą `drawInstances`). Wydzieliłem je w M5, gdy doszła druga klasa rysująca modele: obie zgadzają się dzięki temu co do jednostek teksturujących i uniformów. Nazwy są stałymi z [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`uniforms.md`](uniforms.md), sekcja 5.5).
 
 Raz na klatkę, w `NightMazeApp::drawUnlitMaze`. Tę funkcję wybiera `drawMaze`, gdy tryb oświetlenia to `Unlit` albo gdy włączony jest widok diagnostyczny:
 
@@ -569,31 +589,56 @@ Raz na klatkę, w `NightMazeApp::drawUnlitMaze`. Tę funkcję wybiera `drawMaze`
     // Only the view of the normals reads it: that view shows the normals the lighting
     // would use, so with normal mapping the ones from the normal maps.
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+
+    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
+    // The crystals and the gate, with the same program: they show up in the debug
+    // views like the walls do.
+    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round,
+                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
 ```
 
 `uNormalMapEnabled` jest w GLSL typu `bool`, a ustawia go `setInt`, czyli `glUniform1i`: 0 to fałsz, każda inna liczba to prawda ([`uniforms.md`](uniforms.md), sekcja 5.4).
 
-Stałe jednostek w `MazeRenderer.cpp`:
+Stałe jednostek w `ModelDraw.cpp` (w anonimowej przestrzeni nazw):
 
 ```cpp
-// The texture units of the maze: the colour pictures are bound to the first one, the
+// The texture units of the models: the colour pictures are bound to the first one, the
 // normal maps to the second. Each sampler uniform gets the number of its unit. A shader
 // can read both textures for the same fragment only because they are on different units.
 constexpr GLuint TEXTURE_UNIT = 0;
 constexpr GLuint NORMAL_MAP_UNIT = 1;
 ```
 
-Raz na klatkę, na początku `MazeRenderer::draw`:
+Samplery ustawia `game::setModelSamplers`. Jej komentarz stoi w nagłówku `ModelDraw.hpp`:
 
 ```cpp
-    // The samplers read the units the textures are bound to below. They are set in every
-    // frame and not once at start-up: after a shader reload all uniforms are back at 0,
-    // and both samplers would read unit 0.
-    shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
-    shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
+/// Tells the two samplers of a program (uTexture and uNormalMap) which texture units to
+/// read. shader must be in use. Call it in every frame before drawModel and not once at
+/// start-up: after a shader reload all uniforms are back at 0, and both samplers would
+/// read unit 0. The gouraud program has no uNormalMap: a uniform a program does not
+/// have is ignored.
+void setModelSamplers(const gfx::Shader& shader);
 ```
 
-Dla każdej części modelu i każdego obiektu, w `MazeRenderer::drawInstances`:
+```cpp
+void setModelSamplers(const gfx::Shader& shader) {
+    shader.setInt(TEXTURE_UNIFORM, static_cast<int>(TEXTURE_UNIT));
+    shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
+}
+```
+
+Woła ją każda z dwóch klas rysujących na początku swojego `draw`, czyli w klatce dwa razy dla tego samego programu. Początek `MazeRenderer::draw`:
+
+```cpp
+    setModelSamplers(shader);
+    // Stone gives off no light of its own. A uniform keeps its value from one draw call
+    // to the next, and the crystals set this one, so it is set back in every frame.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+```
+
+Druga linia to `uEmissive` z sekcji 4.2 i dobry przykład tego, że uniform jest trwały ([`uniforms.md`](uniforms.md), sekcja 2.1). `GameplayRenderer::draw` działa w klatce po labiryncie i na końcu zostawia w programie kolor świecenia kryształów. Bez zerowania kamień w następnej klatce świeciłby tym kolorem. `GameplayRenderer::draw` robi to samo dla bramy (`// Wood gives off no light.`), a potem raz, przed pętlą kryształów, wysyła `crystalGlow`: jedna wartość dla wszystkich, więc kryształy pulsują razem.
+
+Dla każdej części modelu i każdego obiektu, w `game::drawModel`:
 
 ```cpp
     for (const assets::ModelPart& part : model->parts) {
@@ -615,9 +660,9 @@ Dla każdej części modelu i każdego obiektu, w `MazeRenderer::drawInstances`:
     }
 ```
 
-`MazeRenderer` rysuje tym samym kodem trzema programami (`textured`, `lit`, `gouraud`): dostaje shader jako parametr. Sampler koloru, kolor materiału i macierz modelu mają we wszystkich trzech te same nazwy. Linia z `setMat3` dotyczy tylko programów oświetlających: w programie `textured` nie ma uniformu `uNormalMatrix`, więc tam nic nie robi. Podobnie jest z mapą normalnych w programie `gouraud`: nie ma on samplera `uNormalMap` (ani `uNormalMapEnabled`), więc `setInt` trafia w położenie -1 i jest ignorowane, a mapa związana z jednostką 1 po prostu nie jest czytana.
+`drawModel` rysuje tym samym kodem trzema programami (`textured`, `lit`, `gouraud`): dostaje shader jako parametr, razem z modelem i listą macierzy modelu (`std::span<const glm::mat4>`). Labirynt podaje listy z `MazeWorld`, a `GameplayRenderer` listę z jedną macierzą dla bramy i dla każdego kryształu. Sampler koloru, kolor materiału i macierz modelu mają we wszystkich trzech te same nazwy. Linia z `setMat3` dotyczy tylko programów oświetlających: w programie `textured` nie ma uniformu `uNormalMatrix`, więc tam nic nie robi. Podobnie jest z mapą normalnych w programie `gouraud`: nie ma on samplera `uNormalMap` (ani `uNormalMapEnabled`), więc `setInt` trafia w położenie -1 i jest ignorowane, a mapa związana z jednostką 1 po prostu nie jest czytana.
 
-**Kolejność dwóch `bind`.** `Texture2D::bind(unit)` woła `glActiveTexture(GL_TEXTURE0 + unit)`, więc po nim aktywna zostaje ta jednostka. Mapa normalnych jest wiązana pierwsza, a tekstura koloru druga, żeby po pętli aktywna była jednostka 0, tak jak przed dodaniem map normalnych. Komentarz mówi "as the rest of the program expects". Szukałem w kodzie miejsca, które by się zepsuło przy aktywnej jednostce 1, i nie znalazłem takiego, które psułoby obraz: jedyny kod, który wiąże teksturę bez wyboru jednostki, to konstruktor `Texture2D` (sekcja 5.6), a w dzisiejszym programie wszystkie tekstury powstają przed pierwszą klatką. To jest więc porządek w stanie kontekstu (stan po rysowaniu taki sam jak przed zmianą), a nie warunek poprawności dzisiejszego obrazu.
+**Kolejność dwóch `bind`.** `Texture2D::bind(unit)` woła `glActiveTexture(GL_TEXTURE0 + unit)`, więc po nim aktywna zostaje ta jednostka. Mapa normalnych jest wiązana pierwsza, a tekstura koloru druga, żeby po pętli aktywna była jednostka 0, tak jak przed dodaniem map normalnych. Komentarz mówi "as the rest of the program expects". Szukałem w kodzie miejsca, które by się zepsuło przy aktywnej jednostce 1, i nie znalazłem takiego, które psułoby obraz: jedyny kod, który wiąże teksturę bez wyboru jednostki, to konstruktor `Texture2D` (sekcja 5.6), a w dzisiejszym programie wszystkie tekstury powstają przed pierwszą klatką (oba renderery proszą pamięć podręczną o swoje modele w konstruktorach). To jest więc porządek w stanie kontekstu (stan po rysowaniu taki sam jak przed zmianą), a nie warunek poprawności dzisiejszego obrazu.
 
 **`part.normalMap` nigdy nie jest pusty.** Część modelu bez własnej mapy normalnych dostaje od `AssetCache` płaską mapę zastępczą 1 x 1 o tekselu `(128, 128, 255)`, czyli kierunek "prosto z powierzchni". Shader nie musi pytać, czy mapa istnieje: z płaską mapą wychodzi normalna modelu ([`../assets/asset-cache.md`](../assets/asset-cache.md) i [`normal-mapping.md`](normal-mapping.md), sekcja 5.8). To ten sam pomysł co biała tekstura zastępcza dla koloru.
 
@@ -626,12 +671,14 @@ Dla każdej części modelu i każdego obiektu, w `MazeRenderer::drawInstances`:
 | `uView`, `uProjection` | `NightMazeApp::drawUnlitMaze` | raz na klatkę | macierze kamery ([`../scene/camera.md`](../scene/camera.md), sekcja 5) |
 | `uViewMode` | `NightMazeApp::drawUnlitMaze` | raz na klatkę | `static_cast<int>(m_viewMode)`: 0, 1 albo 2 |
 | `uNormalMapEnabled` | `NightMazeApp::drawUnlitMaze` | raz na klatkę | 1 albo 0, z `usesNormalMap(m_lighting)` |
-| `uTexture` | `MazeRenderer::draw` | raz na klatkę | `TEXTURE_UNIT`, czyli 0 |
-| `uNormalMap` | `MazeRenderer::draw` | raz na klatkę | `NORMAL_MAP_UNIT`, czyli 1 |
-| `uTint` | `MazeRenderer::drawInstances` | raz na część modelu | `part.color` (kolor `Kd`) |
-| `uModel` | `MazeRenderer::drawInstances` | raz na obiekt | macierz modelu obiektu |
+| `uTexture` | `game::setModelSamplers` | dwa razy na klatkę (z `MazeRenderer::draw` i z `GameplayRenderer::draw`) | `TEXTURE_UNIT`, czyli 0 |
+| `uNormalMap` | `game::setModelSamplers` | dwa razy na klatkę | `NORMAL_MAP_UNIT`, czyli 1 |
+| `uEmissive` | `MazeRenderer::draw` | raz na klatkę | czarny `(0, 0, 0)` |
+| `uEmissive` | `GameplayRenderer::draw` | raz dla bramy, gdy jest widoczna, i raz przed pętlą kryształów | czarny dla bramy, `crystalGlow(...)` dla kryształów |
+| `uTint` | `game::drawModel` | raz na część modelu | `part.color` (kolor `Kd`) |
+| `uModel` | `game::drawModel` | raz na obiekt | macierz modelu obiektu |
 
-Obie liczby łańcucha z sekcji 2.7 pochodzą dla każdej tekstury z jednej stałej w `MazeRenderer.cpp`: `TEXTURE_UNIT = 0` trafia do samplera `uTexture` przez `setInt` i do `Texture2D::bind` tekstury koloru, a `NORMAL_MAP_UNIT = 1` tak samo do `uNormalMap` i do `bind` mapy normalnych. **Wszystkie tekstury koloru idą przez jednostkę 0, a wszystkie mapy normalnych przez jednostkę 1**: przed rysowaniem kolejnej części wiązane są tam jej dwie tekstury, a poprzednie przestają być widoczne dla shadera. Jednostka 2 i dalsze nie są używane. Samo oświetlenie nie dodało żadnej tekstury, drugą dodały dopiero mapy normalnych. Pętle `drawInstances` omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5.
+Obie liczby łańcucha z sekcji 2.7 pochodzą dla każdej tekstury z jednej stałej w `ModelDraw.cpp`: `TEXTURE_UNIT = 0` trafia do samplera `uTexture` przez `setInt` i do `Texture2D::bind` tekstury koloru, a `NORMAL_MAP_UNIT = 1` tak samo do `uNormalMap` i do `bind` mapy normalnych. **Wszystkie tekstury koloru idą przez jednostkę 0, a wszystkie mapy normalnych przez jednostkę 1**: przed rysowaniem kolejnej części wiązane są tam jej dwie tekstury, a poprzednie przestają być widoczne dla shadera. Jednostka 2 i dalsze nie są używane. Samo oświetlenie nie dodało żadnej tekstury, drugą dodały dopiero mapy normalnych. Pętle `drawModel` omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5.
 
 ## 5. Kod w projekcie
 
@@ -644,7 +691,8 @@ Obie liczby łańcucha z sekcji 2.7 pochodzą dla każdej tekstury z jednej sta�
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | `setInt` (dla samplerów) i `setVec3`. Opis w [`uniforms.md`](uniforms.md), sekcja 5.4 |
 | [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert), [`textured.frag`](../../../assets/shaders/textured.frag) | shadery modeli z teksturą (sekcja 4) |
 | [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp), [`.cpp`](../../../src/assets/AssetCache.cpp) | użytkownik klasy: tworzy `Texture2D` z każdego pliku obrazu raz, tworzy dwie tekstury zastępcze 1 x 1 (białą i płaską mapę normalnych), ustawia filtr i anizotropię wszystkim teksturom naraz ([`../assets/asset-cache.md`](../assets/asset-cache.md)) |
-| [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) | użytkownik klasy: woła `bind` dla obu tekstur części i ustawia oba samplery (sekcja 4.3) |
+| [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | użytkownik klasy: `drawModel` woła `bind` dla obu tekstur części, `setModelSamplers` ustawia oba samplery (sekcja 4.3) |
+| [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) | wołają obie funkcje i ustawiają `uEmissive` (sekcja 4.3) |
 | [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl) | sampler `uNormalMap` i funkcja `surfaceNormal`, dołączane do `textured.frag` i `lit.frag`. Opis w [`normal-mapping.md`](normal-mapping.md), sekcja 4.1 |
 | [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | panel Assets: filtr, anizotropia, tryb podglądu, pole `Normal mapping`, miniatury (sekcja 6) |
 
@@ -702,7 +750,7 @@ Publiczna część klasy:
 | `isValid()` | konstruktor nie rzuca wyjątków. Po złych argumentach obiekt istnieje, ale nie ma tekstury, tak jak `Shader` po błędzie kompilacji |
 | `bind(GLuint unit)` | numer jednostki jako zwykła liczba od 0, ta sama, którą dostaje `Shader::setInt` |
 | `setFilter`, `setAnisotropy` nie są `const` | zmieniają pola obiektu C++ (`m_filter`, `m_anisotropy`). `bind` jest `const`, bo zmienia tylko stan kontekstu |
-| `id()`, `width()`, `height()` | dla przyszłego panelu z podglądem tekstury. `Buffer` i `VertexArray` akcesora identyfikatora nie mają, bo nikt go nie potrzebuje |
+| `id()`, `width()`, `height()` | dla panelu Assets, który pokazuje rozmiar i miniaturę każdej tekstury (sekcja 6). `Buffer` i `VertexArray` akcesora identyfikatora nie mają, bo nikt go nie potrzebuje |
 
 Pola:
 
@@ -1080,9 +1128,11 @@ Sekcja 5.9 sprawdza klasę osobno. Tu jest to, co wiadomo o teksturach w działa
 | miniatury tekstur w panelu Assets | we właściwej orientacji |
 | brak pliku tekstury | część modelu jest rysowana białą teksturą zastępczą, w konsoli jest jedna linia `[error]` |
 
-**Stan po M4 (2026-10-05, ten sam sprzęt).** Build Debug i Release bez ostrzeżeń, start bez linii `[error]` i bez linii `GL_` z pięcioma programami. Na zrzutach ekranu sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia: we wszystkich tekstury ścian, słupków i podłogi są we właściwej orientacji, czyli programy `lit` i `gouraud` czytają teksturę tak samo jak `textured`. Tabeli wyżej (tryby podglądu, filtry, miniatury) po M4 nie powtarzałem.
+**Stan po M4 (2026-10-05, ten sam sprzęt).** Build Debug i Release bez ostrzeżeń, start bez linii `[error]` i bez linii `GL_` z pięcioma programami, które gra wtedy miała. Na zrzutach ekranu sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia: we wszystkich tekstury ścian, słupków i podłogi są we właściwej orientacji, czyli programy `lit` i `gouraud` czytają teksturę tak samo jak `textured`. Tabeli wyżej (tryby podglądu, filtry, miniatury) po M4 nie powtarzałem.
 
-**Stan po dodaniu map normalnych (2026-10-05, ten sam sprzęt).** Build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu, clang-format i clang-tidy bez uwag, start bez linii `[error]` i bez linii `GL_`. Dwie tekstury na dwóch jednostkach działają: na zrzutach ekranu fugi wyglądają jak rowki na ścianach wzdłuż X, na ścianach wzdłuż Z, na słupku i na podłodze, a tekstura koloru jest ta sama co przedtem. Zrzuty w trybach `Gouraud` i `Unlit` są identyczne piksel w piksel z zaznaczonym i odznaczonym mapowaniem normalnych, czyli druga jednostka nie zakłóca programów, które jej nie czytają. Pełna lista pomiarów i znane ograniczenia: [`normal-mapping.md`](normal-mapping.md), sekcje 5.11 i 2.12. Wpływu filtra i anizotropii na mapy normalnych osobno nie mierzyłem: wynika z kodu (ta sama lista tekstur), a migotanie reliefu z daleka oceniałem tylko na nieruchomych klatkach.
+**Stan po dodaniu map normalnych (druga część M4, 2026-10-05, ten sam sprzęt).** Build Debug i Release bez ostrzeżeń, wtedy 163 przypadki testowe i 62220 asercji w obu, clang-format i clang-tidy bez uwag, start bez linii `[error]` i bez linii `GL_`. Dwie tekstury na dwóch jednostkach działają: na zrzutach ekranu fugi wyglądają jak rowki na ścianach wzdłuż X, na ścianach wzdłuż Z, na słupku i na podłodze, a tekstura koloru jest ta sama co przedtem. Zrzuty w trybach `Gouraud` i `Unlit` są identyczne piksel w piksel z zaznaczonym i odznaczonym mapowaniem normalnych, czyli druga jednostka nie zakłóca programów, które jej nie czytają. Pełna lista pomiarów i znane ograniczenia: [`normal-mapping.md`](normal-mapping.md), sekcje 5.11 i 2.12. Wpływu filtra i anizotropii na mapy normalnych osobno nie mierzyłem: wynika z kodu (ta sama lista tekstur), a migotanie reliefu z daleka oceniałem tylko na nieruchomych klatkach.
+
+**Stan z M5 (zgłoszony dla Windowsa 2026-10-05).** Build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach. Obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowe wstawki w kodzie, które potem usunięto. Dla tekstur M5 oznacza cztery nowe pliki (`crystal.png`, `crystal_normal.png`, `gate_wood.png`, `gate_wood_normal.png`), nowy uniform `uEmissive` i przeniesienie kodu wiążącego do `ModelDraw.cpp`. Osobnych pomiarów tych rzeczy nie mam: tabeli wyżej nie powtarzałem dla nowych tekstur, a o zachowaniu `uEmissive` w programie `textured` wiem tyle, ile wynika ze wzoru w sekcji 4.2. M5 nie jest zamknięty: nic z niego nie było budowane ani uruchamiane na macOS i nikt jeszcze nie grał ręcznie.
 
 **Czego nikt jeszcze nie zrobił ręcznie.** Stany z tabeli (inny tryb podglądu, inny filtr, anizotropia 16) były ustawiane tymczasowymi wstawkami w kodzie, które zostały usunięte, a nie kliknięciem w panel. Lista wyboru `View mode`, lista `Filter`, suwak `Anisotropy` i pole wyboru `Normal mapping` nie były więc jeszcze używane myszą. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nie sprawdzono niczego: ani kompilacji shaderów przez sterownik Apple, ani obrazu.
 
@@ -1092,11 +1142,11 @@ Tekstury mają panel **Assets**. PRD nie ma panelu o takiej nazwie: w sekcji 3 w
 
 | Widżet (etykieta w panelu) | Co zmienia | Co widać |
 |---|---|---|
-| lista `View mode`: `Textured`, `Normals as colour`, `UVs as colour` | uniform `uViewMode` shadera `textured.frag` (sekcja 4.2), a od M4 także wybór programu: dwie ostatnie pozycje zawsze rysują programem `textured`, niezależnie od trybu oświetlenia | `Textured`: zwykły obraz, oświetlony albo nie, zależnie od listy `Lighting` w panelu Renderer. Pozostałe: normalne jako kolor albo współrzędne tekstury jako kolor, bez światła. Widok normalnych pokazuje normalną używaną do cieniowania: z mapowaniem normalnych tę z mapy |
-| pole wyboru `Normal mapping` (pod listą `View mode`, z notką pod spodem) | `game::LightingSettings::normalMapping`, z którego `usesNormalMap` wylicza uniform `uNormalMapEnabled` | pod oświetleniem `Phong` i `Blinn-Phong` oraz w widoku `Normals as colour`: ściany i podłoga z reliefem albo bez. W trybie `Gouraud` nic się nie zmienia. Opis i scenariusz pokazu: [`normal-mapping.md`](normal-mapping.md), sekcja 6 |
+| lista `View mode`: `Textured`, `Normals as colour`, `UVs as colour` | uniform `uViewMode` shadera `textured.frag` (sekcja 4.2), a od M4 także wybór programu: dwie ostatnie pozycje zawsze rysują programem `textured`, niezależnie od trybu oświetlenia | `Textured`: zwykły obraz, oświetlony albo nie, zależnie od listy `Lighting` w panelu Renderer. Kryształy świecą w nim także bez oświetlenia (`uEmissive`). Pozostałe: normalne jako kolor albo współrzędne tekstury jako kolor, bez światła. Widok normalnych pokazuje normalną używaną do cieniowania: z mapowaniem normalnych tę z mapy |
+| pole wyboru `Normal mapping` (pod listą `View mode`, z notką pod spodem) | `game::LightingSettings::normalMapping`, z którego `usesNormalMap` wylicza uniform `uNormalMapEnabled` | pod oświetleniem `Phong` i `Blinn-Phong` oraz w widoku `Normals as colour`: ściany, podłoga, kryształy i brama z reliefem albo bez. W trybie `Gouraud` nic się nie zmienia. Opis i scenariusz pokazu: [`normal-mapping.md`](normal-mapping.md), sekcja 6 |
 | lista `Filter`: `Nearest`, `Bilinear`, `Trilinear` | filtr **wszystkich** tekstur naraz, przez `AssetCache::setFilter`, które woła `Texture2D::setFilter` dla każdej | z bliska: kwadratowe teksele albo wygładzenie. Z daleka: migotanie albo spokojny obraz (sekcje 2.3 i 2.4) |
 | suwak `Anisotropy`, od 1 do `maxAnisotropy()` | poziom anizotropii wszystkich tekstur, przez `AssetCache::setAnisotropy` | ostrość podłogi i ścian widzianych pod ostrym kątem (sekcja 2.5). Gdy sterownik nie ma rozszerzenia, suwak jest wyszarzony i pod nim stoi wyjaśnienie |
-| lista pod nagłówkiem `Textures` | nic, tylko pokazuje | nazwa pliku, rozmiar w pikselach i miniatura 128 x 128 każdej wczytanej tekstury. Dziś są cztery: dwie tekstury koloru i dwie mapy normalnych. Miniatura mapy normalnych to obraz tak, jak jest zapisany, w większości jasnoniebieski, bo większość tekseli trzyma kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)` |
+| lista pod nagłówkiem `Textures` | nic, tylko pokazuje | nazwa pliku, rozmiar w pikselach i miniatura 128 x 128 każdej wczytanej tekstury. Dziś jest ich osiem, wszystkie 512 x 512: cztery tekstury koloru (`wall_stone.png`, `floor_stone.png`, `crystal.png`, `gate_wood.png`) i cztery mapy normalnych (te same nazwy z końcówką `_normal`). Do M4 były cztery, same kamienne. Oba modele kryształów wskazują w swoich plikach MTL tę samą parę `crystal.png` i `crystal_normal.png`, a pamięć podręczna wczytuje każdy plik raz. Miniatura mapy normalnych to obraz tak, jak jest zapisany, w większości jasnoniebieski, bo większość tekseli trzyma kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)` |
 
 Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal mapping`. Lista `Filter` i suwak `Anisotropy` działają także na mapy normalnych, bo zmieniają wszystkie tekstury pamięci podręcznej.
 
@@ -1112,7 +1162,7 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 2. **Obraz do góry nogami.** OpenGL uznaje pierwszy wiersz danych za dolny, pliki obrazów zaczynają od górnego. Klasa wymaga dolnego wiersza jako pierwszego i sama niczego nie odwraca: robi to `assets::loadImage`. Kto poda dane z innego źródła, musi zadbać o kolejność sam.
 3. **Pochylony obraz: wyrównanie wierszy.** Dane RGB o szerokości, dla której `szerokość * 3` nie dzieli się przez 4, wysłane przy domyślnym `GL_UNPACK_ALIGNMENT` równym 4, wychodzą skośnie i z przekłamanymi kolorami (zmierzone na 2 x 3). Tekstury 512 x 512 tego nie pokazują, bo 1536 dzieli się przez 4. Klasa ustawia wyrównanie 1.
 4. **Sampler w shaderze dostaje identyfikator tekstury zamiast numeru jednostki.** `setInt("uTexture", texture.id())` to najczęstsza pomyłka. Przy pierwszej teksturze identyfikator to często 1, a jednostka 0, więc obraz jest czarny (zmierzone: sampler na jednostce bez tekstury daje czerń bez błędu). Do samplera idzie ta sama liczba, którą dostało `bind`.
-5. **`setInt` przed `use()`.** Jak każdy uniform, sampler jest zapisywany w programie bieżącym ([`uniforms.md`](uniforms.md), pułapka 2). Po `reload()` shadera wraca do wartości 0. Dlatego `MazeRenderer::draw` ustawia `uTexture` w każdej klatce, a nie raz przy starcie (sekcja 4.3).
+5. **`setInt` przed `use()`.** Jak każdy uniform, sampler jest zapisywany w programie bieżącym ([`uniforms.md`](uniforms.md), pułapka 2). Po `reload()` shadera wraca do wartości 0. Dlatego `game::setModelSamplers` ustawia `uTexture` w każdej klatce, a nie raz przy starcie (sekcja 4.3).
 6. **Sampler ustawiony przez `glUniform1f`.** Zmierzone: `GL_INVALID_OPERATION`. Uniform typu sampler przyjmuje tylko `glUniform1i`. Dlatego klasa `Shader` ma osobne `setInt`.
 7. **Obiekt samplera zostaje na jednostce.** Po `bind(2)` sampler tej tekstury jest związany z jednostką 2, dopóki inna `Texture2D` nie zrobi tam własnego `bind`. Tekstura związana z tą jednostką ręcznie (`glBindTexture` po identyfikatorze) będzie czytana z **cudzym** filtrem i zawijaniem, a jej własne parametry będą zignorowane (zmierzone). W projekcie wszystkie tekstury gry idą przez `Texture2D::bind`. Jedynym kodem, który wiąże teksturę gry po samym identyfikatorze, jest ImGui przy rysowaniu miniatur, i ono wiąże własny sampler (sekcja 6).
 8. **`glBindSampler(GL_TEXTURE0 + unit, ...)`.** `glActiveTexture` chce stałej `GL_TEXTURE0 + unit`, a `glBindSampler` zwykłego numeru. Pomylenie daje `GL_INVALID_VALUE` (zmierzone).
@@ -1128,15 +1178,17 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 18. **Kolory bez korekcji gamma.** Tekstura jest przechowywana jako `GL_RGB8`, a nie `GL_SRGB8` (sekcja 2.10). W programie `textured` obraz jest poprawny, bo tekstura jest tylko kopiowana na ekran. W programach `lit` i `gouraud` światło jest od M4 liczone na wartościach nieliniowych, więc wynik różni się od tego, co dałoby poprawne przeliczenie. Różnicy nie mierzyłem. To świadomie odłożone do M7 ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Kto wcześniej zmieni sam format na `GL_SRGB8`, bez `GL_FRAMEBUFFER_SRGB` przy zapisie, przyciemni cały obraz.
 19. **Liczby trybu podglądu w trzech miejscach.** `textured.frag` porównuje `uViewMode` z liczbami 1 i 2, a C++ wysyła `static_cast<int>(m_viewMode)`. Zmiana kolejności wartości w `game::ViewMode` bez zmiany shadera (albo odwrotnie) nie daje żadnego błędu: panel pokazuje jedną nazwę, a ekran inny tryb. Trzecim miejscem jest napis `VIEW_MODE_ITEMS` w panelu Assets, którego kolejność też musi zgadzać się z typem wyliczeniowym.
 20. **Nieustawiony `uTint` daje czarny labirynt.** Uniform typu `vec3` ma po linkowaniu wartość `(0, 0, 0)`. Mnożenie tekstury przez zero to czerń, bez żadnego błędu. Literówka w nazwie `"uTint"` wyglądałaby tak samo, bo położenie -1 jest po cichu ignorowane ([`uniforms.md`](uniforms.md), sekcja 2.3). Stąd nazwy w jednym nagłówku `ShaderUniforms.hpp`.
-21. **`mat3(uModel)` przy nierównej skali.** Normalne wychodzą przekrzywione, gdy obiekt jest rozciągnięty tylko w jednej osi (sekcja 4.1). Dotyczy to już tylko `textured.vert`: programy oświetlające `lit` i `gouraud` używają `uNormalMatrix`, czyli poprawnej macierzy policzonej w C++. Dziś żaden obiekt labiryntu nie ma skali innej niż 1, więc obie drogi dają to samo. Po dodaniu obiektu o nierównej skali oświetlenie będzie poprawne, a **podgląd normalnych pokaże co innego niż to, czego używa światło**, bo rysuje go `textured.vert`. Dotyczy to także widoku z mapowaniem normalnych: `surfaceNormal` dostałaby w obu programach inną normalną na wejściu. Żeby podgląd nie kłamał, trzeba wtedy zmienić `textured.vert` na `uNormalMatrix` (uniform jest do tego programu wysyłany już dziś).
-22. **Podgląd normalnych to nie światło.** Kolory w trybie 1 nie zależą od żadnego źródła światła ani od kamery. Na obronie nie wolno tego nazwać cieniowaniem. Od M4 widać to wprost: włączenie podglądu wyłącza oświetlenie labiryntu w każdym trybie, a znaczniki świateł zostają na ekranie. Podgląd zależy od ustawień oświetlenia tylko w jednym: pokazuje normalne z map albo normalne modelu, zależnie od pola `Normal mapping` i od tego, czy tryb to `Gouraud`.
-23. **Ten sam numer atrybutu, inne znaczenie.** `location = 1` to kolor w `basic.vert` i normalna w `textured.vert`. Siatka `gfx::Mesh` narysowana programem `basic` pokazałaby normalne jako kolory, a VAO kostki nie ma w ogóle atrybutu numer 2, którego oczekuje `textured.vert`. OpenGL nie zgłasza żadnej z tych pomyłek.
-24. **Oba samplery na tej samej jednostce.** Sampler ma po linkowaniu (i po `reload()`) wartość 0. Gdyby `MazeRenderer::draw` nie wysyłał `uNormalMap`, shader czytałby teksturę koloru jako mapę normalnych: szare kamienie dałyby kierunki bliskie `(0,2, 0,2, 0,2)` po przeliczeniu, czyli bezsensowne światło, bez błędu OpenGL. To samo przy pomyleniu stałych `TEXTURE_UNIT` i `NORMAL_MAP_UNIT` w jednym z dwóch miejsc.
+21. **`mat3(uModel)` przy nierównej skali.** Normalne wychodzą przekrzywione, gdy obiekt jest rozciągnięty tylko w jednej osi (sekcja 4.1). Dotyczy to już tylko `textured.vert`: programy oświetlające `lit` i `gouraud` używają `uNormalMatrix`, czyli poprawnej macierzy policzonej w C++. Dziś żaden rysowany model (labirynt, brama, kryształy) nie ma skali innej niż 1, więc obie drogi dają to samo. Po dodaniu obiektu o nierównej skali oświetlenie będzie poprawne, a **podgląd normalnych pokaże co innego niż to, czego używa światło**, bo rysuje go `textured.vert`. Dotyczy to także widoku z mapowaniem normalnych: `surfaceNormal` dostałaby w obu programach inną normalną na wejściu. Żeby podgląd nie kłamał, trzeba wtedy zmienić `textured.vert` na `uNormalMatrix` (uniform jest do tego programu wysyłany już dziś).
+22. **Podgląd normalnych to nie światło.** Kolory w trybie 1 nie zależą od żadnego źródła światła ani od kamery. Na obronie nie wolno tego nazwać cieniowaniem. Od M4 widać to wprost: włączenie podglądu wyłącza oświetlenie labiryntu w każdym trybie. Od M5 dotyczy to także kryształów i bramy, a świecenie kryształów w podglądzie znika, bo `uEmissive` czyta tylko widok 0. Podgląd zależy od ustawień oświetlenia tylko w jednym: pokazuje normalne z map albo normalne modelu, zależnie od pola `Normal mapping` i od tego, czy tryb to `Gouraud`.
+23. **Ten sam numer atrybutu, inne znaczenie.** Numer atrybutu znaczy tyle, ile ustali shader i VAO. W M1 `location = 1` było kolorem w `basic.vert`, a w `textured.vert` jest normalną: siatka `gfx::Mesh` narysowana tamtym programem pokazałaby normalne jako kolory. Para `basic.*` i kostka zostały w M5 usunięte, ale reguła została. Dzisiejszy przykład: `color.vert` czyta tylko atrybut 0, więc siatki linii kolizji mogą mieć normalną, UV i styczną równe zero, a narysowane programem `lit` dałyby normalną zerową. OpenGL nie zgłasza żadnej z tych pomyłek.
+24. **Oba samplery na tej samej jednostce.** Sampler ma po linkowaniu (i po `reload()`) wartość 0. Gdyby `game::setModelSamplers` nie wysyłała `uNormalMap`, shader czytałby teksturę koloru jako mapę normalnych: szare kamienie dałyby kierunki bliskie `(0,2, 0,2, 0,2)` po przeliczeniu, czyli bezsensowne światło, bez błędu OpenGL. To samo przy pomyleniu stałych `TEXTURE_UNIT` i `NORMAL_MAP_UNIT` w jednym z dwóch miejsc.
 25. **Mapa normalnych jako tekstura sRGB.** Dziś nie grozi, bo wszystko jest `GL_RGB8`. W M7, przy przejściu tekstur koloru na `GL_SRGB8`, mapy normalnych muszą zostać liniowe (sekcja 2.10, i [`normal-mapping.md`](normal-mapping.md), sekcja 7).
+26. **`uEmissive` zostaje po poprzednim rysowaniu.** Uniform trzyma wartość do następnego ustawienia, także między klatkami. Kryształy są rysowane po labiryncie i zostawiają w programie swój kolor świecenia, więc `MazeRenderer::draw` musi co klatkę wysłać czerń (sekcja 4.3). Bez tej linii ściany i podłoga byłyby od drugiej klatki rozjaśnione kolorem kryształów, bez żadnego błędu. Po `reload()` jest odwrotnie: nowy program ma `uEmissive` równe zero i kryształy nie świeciłyby, gdyby `GameplayRenderer::draw` nie wysyłał wartości w każdej klatce.
+27. **Świecenie to nie światło.** `uEmissive` rozjaśnia tylko powierzchnię, która je ma. Ściany obok kryształu oświetla osobne światło punktowe z bloku `LightBlock` ([`../game/gameplay.md`](../game/gameplay.md)), a w programie `textured` nie oświetla ich nic.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 6 są na kartce albo na samym kodzie klasy. Ćwiczenia od 7 do 12 robi się w działającej grze: filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Filtry i anizotropię najłatwiej ocenić w trybie oświetlenia `Unlit` (lista `Lighting` w panelu Renderer), bo scena jest wtedy równo jasna. Ćwiczenie 13 jest znowu na kartce. Po ćwiczeniu, które zmienia kod albo shader, wycofaj zmianę (`git checkout src assets`). Na Windowsie po zmianie pliku shadera trzeba odświeżyć kopię katalogu `assets` obok programu: `cmake --build --preset debug --target copy_assets` ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.5).
+Ćwiczenia od 1 do 6 są na kartce albo na samym kodzie klasy. Ćwiczenia od 7 do 12 robi się w działającej grze: filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Filtry i anizotropię najłatwiej ocenić w trybie oświetlenia `Unlit` (lista `Lighting` w panelu Renderer), bo scena jest wtedy równo jasna. Ćwiczenie 13 jest znowu na kartce. Ćwiczenie 14 zmienia jedną linię C++. Po ćwiczeniu, które zmienia kod albo shader, wycofaj zmianę (`git checkout src assets`). Na Windowsie po zmianie pliku shadera trzeba odświeżyć kopię katalogu `assets` obok programu: `cmake --build --preset debug --target copy_assets` ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.5).
 
 1. **Poziomy na kartce.** Tekstura ma 1024 x 256 tekseli. Wypisz rozmiary wszystkich poziomów mipmap. Ile ich jest? (Wskazówka: wymiar, który doszedł do 1, zostaje 1.)
 2. **Pamięć na kartce.** Tekstura 2048 x 2048 RGBA, 8 bitów na kanał. Ile bajtów zajmuje poziom 0, a ile cały łańcuch mipmap w przybliżeniu?
@@ -1151,6 +1203,7 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 11. **Odcień w shaderze.** Ustaw w panelu Renderer tryb oświetlenia `Unlit` (w pozostałych trybach labirynt rysuje inny program i zmiany nie widać). W `textured.frag` zamień `texel * uTint` na `texel * vec3(1.0, 0.5, 0.5)` i przeładuj shadery przyciskiem `Reload shaders`. Co się stało z kolorem ścian i dlaczego mnożenie, a nie dodawanie, zostawia ciemne miejsca tekstury ciemnymi? Wycofaj zmianę.
 12. **Podgląd UV bez `fract`.** W gałęzi `uViewMode == 2` zamień `fract(vUv)` na `vUv`, przeładuj shadery i włącz tryb `UVs as colour`. Które części ścian straciły gradient i dlaczego (jaki kolor ma fragment o `u = 1,7`)? Wycofaj zmianę.
 13. **Normalna na kartce.** Ściana biegnąca wzdłuż osi Z powstaje z modelu obróconego o 90 stopni wokół osi Y. Model ma ścianę boczną o normalnej `(0, 0, 1)`. Jaką normalną ma ta ściana w przestrzeni świata i jaki kolor pokaże tryb `Normals as colour` przy odznaczonym polu `Normal mapping` (z zaznaczonym na ten kolor nakłada się rysunek fug z mapy normalnych)? (Wskazówka: macierz obrotu wokół osi Y z [`../scene/transforms.md`](../scene/transforms.md), sekcja 2. Odpowiedź: `(1, 0, 0)`, kolor `(1, 0,5, 0,5)`.)
+14. **Świecenie, które zostaje.** Ustaw tryb oświetlenia `Unlit`. W `MazeRenderer::draw` usuń linię z `setVec3(EMISSIVE_UNIFORM, ...)`, zbuduj i uruchom. Jak powinny wyglądać ściany i podłoga i dlaczego (która funkcja ustawiła `uEmissive` jako ostatnia w poprzedniej klatce)? Czy pierwsza klatka po starcie też jest zmieniona? Policz na kartce kolor fragmentu o `texel = (0,5, 0,5, 0,5)`, `uTint = (1, 1, 1)` i `uEmissive = (0,2, 0,6, 1,0)`. (Tego ćwiczenia nikt jeszcze nie wykonał: odpowiedź wynika z kodu. Kolor: `(0,6, 0,8, 1,0)`.) Wycofaj zmianę.
 
 ## 9. Pytania kontrolne
 
@@ -1221,16 +1274,25 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
     Z uniformu `int uViewMode`, ustawianego raz na klatkę przez `setInt` wartością `static_cast<int>(m_viewMode)`. Liczby są wartościami typu `game::ViewMode`. Zgodności nikt nie sprawdza automatycznie: to umowa zapisana w komentarzach po obu stronach.
 
 23. **Ile jednostek teksturujących używa gra i dlaczego nie jedną?**
-    Dwie: numer 0 dla tekstury koloru (sampler `uTexture`) i numer 1 dla mapy normalnych (sampler `uNormalMap`). Shader czyta obie dla tego samego fragmentu, a jedna jednostka ma jedno wiązanie `GL_TEXTURE_2D`, więc muszą leżeć na różnych. Przed każdą częścią modelu `MazeRenderer` wiąże najpierw mapę normalnych z jednostką 1, potem teksturę koloru z jednostką 0, żeby aktywna została jednostka 0. Oba samplery dostają swój numer w każdej klatce.
+    Dwie: numer 0 dla tekstury koloru (sampler `uTexture`) i numer 1 dla mapy normalnych (sampler `uNormalMap`). Shader czyta obie dla tego samego fragmentu, a jedna jednostka ma jedno wiązanie `GL_TEXTURE_2D`, więc muszą leżeć na różnych. Przed każdą częścią modelu `game::drawModel` wiąże najpierw mapę normalnych z jednostką 1, potem teksturę koloru z jednostką 0, żeby aktywna została jednostka 0. Oba samplery dostają swój numer w każdej klatce.
 
 26. **Czym mapa normalnych różni się od tekstury koloru po stronie `Texture2D` i pamięci podręcznej?**
     Niczym: ten sam loader, ta sama klasa, format `GL_RGB8`, mipmapy, `GL_REPEAT`, ten sam filtr i anizotropia z panelu. Różnica jest w shaderze, który jej bajty czyta jako kierunek (`* 2.0 - 1.0`), a nie jako kolor. Dlatego w M7 nie wolno jej oznaczyć jako sRGB.
 
 25. **Którym programem rysowany jest dziś labirynt i kiedy jest to program `textured`?**
-    Domyślnie programem `lit` (tryby `Phong` i `BlinnPhong`) albo `gouraud`. Program `textured` rysuje go w trybie `Unlit` oraz zawsze wtedy, gdy włączony jest podgląd normalnych albo UV. Wszystkie trzy czytają teksturę koloru tak samo: sampler `uTexture`, jednostka 0, mnożenie przez `uTint`. Mapę normalnych z jednostki 1 czytają `lit` (do światła) i `textured` (do widoku normalnych), a `gouraud` nie czyta jej wcale.
+    Domyślnie programem `lit` (tryby `Phong` i `BlinnPhong`) albo `gouraud`. Program `textured` rysuje go w trybie `Unlit` oraz zawsze wtedy, gdy włączony jest podgląd normalnych albo UV. Kryształy i brama idą zawsze tym samym programem co labirynt. Wszystkie trzy czytają teksturę koloru tak samo: sampler `uTexture`, jednostka 0, mnożenie przez `uTint`. Mapę normalnych z jednostki 1 czytają `lit` (do światła) i `textured` (do widoku normalnych), a `gouraud` nie czyta jej wcale.
 
 24. **Dlaczego miniatura w panelu Assets nie zmienia się po zmianie filtra?**
     Bo rysuje ją ImGui, które wiąże z jednostką własny obiekt samplera (liniowy, `GL_CLAMP_TO_EDGE`), a obiekt samplera związany z jednostką decyduje o sposobie odczytu. Filtr wybrany w panelu jest zapisany w samplerze tekstury, który trafia na jednostkę tylko przez `Texture2D::bind`.
+
+27. **Co robi `uEmissive` w `textured.frag` i dlaczego wzór ma postać `texel * uTint * (vec3(1.0) + uEmissive)`?**
+    To świecenie własne powierzchni: czarne dla kamienia i drewna, kolor z `game::crystalGlow` dla kryształów. Bez oświetlenia powierzchnia jest pokazywana tak, jakby padało na nią białe światło o sile 1, a świecenie jest do tego światła dodawane, tak jak w `lit.frag` dołącza do światła rozproszonego. Dla czerni nawias to `(1, 1, 1)` i wynik jest taki jak przed M5. Czyta go tylko widok 0.
+
+28. **Dlaczego `MazeRenderer::draw` ustawia `uEmissive` na czerń w każdej klatce, skoro kamień nigdy nie świeci?**
+    Bo uniform trzyma wartość do następnego ustawienia, a ten sam program rysuje potem kryształy, dla których `GameplayRenderer::draw` wpisuje kolor świecenia. Ta wartość zostałaby w programie do następnej klatki i rozjaśniła labirynt.
+
+29. **Gdzie jest dziś kod, który wiąże tekstury i ustawia samplery, i kto go woła?**
+    W `src/game/ModelDraw.cpp`: `game::setModelSamplers` wysyła numery jednostek 0 i 1 do `uTexture` i `uNormalMap`, a `game::drawModel` wiąże dla każdej części modelu mapę normalnych i teksturę koloru, ustawia `uTint`, a dla każdego obiektu `uModel` i `uNormalMatrix`. Wołają je `MazeRenderer::draw` (podłoga, ściany, słupki) i `GameplayRenderer::draw` (brama, kryształy). Do M4 była to funkcja `MazeRenderer::drawInstances`.
 
 ## 10. Źródła
 
@@ -1238,6 +1300,6 @@ Przełącznik map normalnych z PRD ("toggle normal map") to pole wyboru `Normal 
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glTexImage2D` (<https://docs.gl/gl4/glTexImage2D>), `glGenerateMipmap`, `glTexParameter` (lista parametrów i wartości domyślnych), `glSamplerParameter` (<https://docs.gl/gl4/glSamplerParameter>), `glBindSampler` (<https://docs.gl/gl4/glBindSampler>), `glGenSamplers`, `glActiveTexture`, `glBindTexture`, `glPixelStore` (<https://docs.gl/gl4/glPixelStore>), `glGetString` (w tym `glGetStringi`), `glUniform`.
 - Specyfikacja rozszerzenia `GL_EXT_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt>): wartości stałych 0x84FE i 0x84FF, zakres poziomu. Wersja z rdzenia 4.6: `GL_ARB_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/ARB/ARB_texture_filter_anisotropic.txt>).
 - Khronos OpenGL Wiki: "Texture" (<https://www.khronos.org/opengl/wiki/Texture>, w tym kompletność tekstury), "Sampler Object" (<https://www.khronos.org/opengl/wiki/Sampler_Object>, pierwszeństwo samplera przed parametrami tekstury), "Sampler (GLSL)" (<https://www.khronos.org/opengl/wiki/Sampler_(GLSL)>), "Pixel Transfer" (<https://www.khronos.org/opengl/wiki/Pixel_Transfer>, wyrównanie wierszy), "Common Mistakes" (<https://www.khronos.org/opengl/wiki/Common_Mistakes>, części o mipmapach i wyrównaniu).
-- Dokumenty w tym repozytorium: [`normal-mapping.md`](normal-mapping.md) (mapy normalnych: druga tekstura, druga jednostka, `surfaceNormal`), [`../scene/lights.md`](../scene/lights.md) (oświetlenie), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (dlaczego bez gammy do M7), [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`, `uNormalMatrix`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy tekstury i panel Assets), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je wiąże przy rysowaniu), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
+- Dokumenty w tym repozytorium: [`normal-mapping.md`](normal-mapping.md) (mapy normalnych: druga tekstura, druga jednostka, `surfaceNormal`), [`../scene/lights.md`](../scene/lights.md) (oświetlenie), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (dlaczego bez gammy do M7), [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`, `uNormalMatrix`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy tekstury i panel Assets), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je wiąże przy rysowaniu), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, brama, `uEmissive` i `crystalGlow`), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o teksturach).
 - "OpenGL. Księga eksperta" (rozdziały o teksturowaniu i filtrowaniu).

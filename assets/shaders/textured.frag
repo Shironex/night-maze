@@ -1,7 +1,8 @@
 #version 410 core
 // Fragment shader of textured models: the colour of a fragment is the texture at its
 // texture coordinate, multiplied by a tint. Two debug views show the normal or the
-// texture coordinate as a colour instead. There is no lighting here.
+// texture coordinate as a colour instead. There is no lighting here, only the glow of
+// surfaces that give off light themselves.
 // See docs/modules/gfx/textures.md
 
 // The normal map and the function surfaceNormal, for the view of the normals. The same
@@ -22,6 +23,10 @@ uniform sampler2D uTexture;
 // Colour the texture is multiplied by: the diffuse colour of the material. White
 // (1, 1, 1) leaves the texture unchanged.
 uniform vec3 uTint;
+
+// Light the surface gives off by itself (the glow of the crystals), as in lit.frag.
+// Black for everything else. Only the normal picture (view 0) uses it.
+uniform vec3 uEmissive;
 
 // What to show. The numbers are the values of game::ViewMode in C++.
 //   0: the texture multiplied by the tint (the normal picture)
@@ -50,7 +55,11 @@ void main() {
         // texture() reads the texture at vUv with the filter, the mipmaps and the
         // wrapping set in OpenGL. It returns red, green, blue, alpha. Only the colour is
         // used: the models are opaque, so alpha is written as 1.
+        //
+        // Without lighting the surface is shown at full brightness, as if lit by white
+        // light of strength 1. The glow is added to that light, so a crystal stands
+        // out here too.
         vec3 texel = texture(uTexture, vUv).rgb;
-        fragColor = vec4(texel * uTint, 1.0);
+        fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);
     }
 }

@@ -5,7 +5,7 @@ Kod: [`src/gfx/ShaderSource.hpp`](../../../src/gfx/ShaderSource.hpp), [`src/gfx/
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość [`shaders.md`](shaders.md) (GLSL, kompilacja a linkowanie) i [`shader-class.md`](shader-class.md) (klasa `gfx::Shader`, funkcja `compileShader`, odczyt dziennika sterownika). Przeładowanie na żywo i panel Shaders opisuje [`shader-hot-reload.md`](shader-hot-reload.md). Co jest w dołączanym pliku, czyli blok świateł i funkcja `computeLighting`, opisuje [`../scene/lights.md`](../scene/lights.md), a dwa programy, które z niego korzystają, [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Drugi plik dołączany, `common/normal_map.glsl` (sampler mapy normalnych i funkcja `surfaceNormal`), opisuje [`normal-mapping.md`](normal-mapping.md), sekcja 4.1.
 
-**Stan na dziś.** Kod jest kompletny i ma testy jednostkowe: 22 przypadki w `tests/ShaderSourceTests.cpp` (sekcja 5.11). Co jest zmierzone na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74): build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu konfiguracjach, clang-format i clang-tidy bez uwag, start gry bez linii `[error]` i bez linii `GL_`, czyli `lit.frag` (z dwoma dołączonymi plikami), `gouraud.vert` i `textured.frag` (z jednym) kompilują się na sterowniku NVIDIA. Zmierzony jest też jeden błąd: po zepsuciu `common/lighting.glsl` surowa linia sterownika `1(63) : error C0000: ...` zamienia się w `common/lighting.glsl(63) : error C0000: ...`, a na zrzucie ekranu panel Shaders pokazuje błąd z nazwą pliku, podczas gdy labirynt rysuje nadal poprzedni program. Shader bez dołączeń pokazuje `basic.frag(4)` zamiast `0(4)`. **Czego nikt nie zrobił:** przycisku `Reload shaders` z pięcioma programami nikt nie nacisnął ręcznie. Format dwukropkowy (`ERROR: 1:15:`, sterownik Apple) jest obsłużony w kodzie i sprawdzony tylko testami jednostkowymi. **Na macOS nic z tego nie było budowane ani uruchamiane**: zachowanie dyrektywy `#line` i kompilatora Apple jest tam niezweryfikowane.
+**Stan na dziś.** Kod jest kompletny i ma testy jednostkowe: 22 przypadki w `tests/ShaderSourceTests.cpp` (sekcja 5.11). Co zostało zmierzone na Windowsie w M4 (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74): build Debug i Release bez ostrzeżeń, wszystkie ówczesne testy zielone w obu konfiguracjach, clang-format i clang-tidy bez uwag, start gry bez linii `[error]` i bez linii `GL_`, czyli `lit.frag` (z dwoma dołączonymi plikami), `gouraud.vert` i `textured.frag` (z jednym) kompilują się na sterowniku NVIDIA. Zmierzony jest też jeden błąd: po zepsuciu `common/lighting.glsl` surowa linia sterownika `1(63) : error C0000: ...` zamienia się w `common/lighting.glsl(63) : error C0000: ...`, a na zrzucie ekranu panel Shaders pokazuje błąd z nazwą pliku, podczas gdy labirynt rysuje nadal poprzedni program. Shader bez dołączeń pokazywał wtedy `basic.frag(4)` zamiast `0(4)`: plik `basic.frag` został usunięty w M5, a ta sama zamiana dotyczy dziś każdego pliku bez dołączeń, na przykład `color.frag` (test 22). **Stan po M5 (kod kompletny na Windowsie, kamień niezamknięty):** kod preprocesora się nie zmienił, programów jest cztery zamiast pięciu, a `lit.frag` i `textured.frag` urosły o uniform `uEmissive` za liniami `#include`. Według raportu z Windowsa (2026-10-05) build Debug i Release jest bez ostrzeżeń, a 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach. Pomiaru błędu sterownika z dzisiejszymi plikami nie powtarzałem. **Czego nikt nie zrobił:** przycisku `Reload shaders` nikt nie nacisnął ręcznie, ani z pięcioma programami w M4, ani z czterema dziś. Format dwukropkowy (`ERROR: 1:15:`, sterownik Apple) jest obsłużony w kodzie i sprawdzony tylko testami jednostkowymi. **Na macOS nic z tego nie było budowane ani uruchamiane**: zachowanie dyrektywy `#line` i kompilatora Apple jest tam niezweryfikowane.
 
 ## 1. Po co to jest
 
@@ -27,7 +27,7 @@ Pierwszy wspólny plik to [`assets/shaders/common/lighting.glsl`](../../../asset
 | `gouraud.vert` | `common/lighting.glsl` | 0 = `gouraud.vert`, 1 = `common/lighting.glsl` |
 | `textured.frag` | `common/normal_map.glsl` | 0 = `textured.frag`, 1 = `common/normal_map.glsl` |
 
-Numery w trzeciej kolumnie wynikają z kodu (`files[1]` to pierwszy dołączony plik, sekcja 5.2): ten sam plik `normal_map.glsl` ma numer 2 w jednym programie i 1 w drugim. `lit.frag` jest pierwszym shaderem projektu z dwoma dołączeniami. Pozostałe siedem plików shaderów niczego nie dołącza, ale przechodzi przez ten sam kod: dla nich `expandIncludes` oddaje tekst bez zmian, a `nameSourceFiles` wstawia do błędu nazwę jedynego pliku.
+Numery w trzeciej kolumnie wynikają z kodu (`files[1]` to pierwszy dołączony plik, sekcja 5.2): ten sam plik `normal_map.glsl` ma numer 2 w jednym programie i 1 w drugim. `lit.frag` jest pierwszym shaderem projektu z dwoma dołączeniami. Pozostałe pięć plików shaderów (`lit.vert`, `gouraud.frag`, `textured.vert`, `color.vert`, `color.frag`) niczego nie dołącza, ale przechodzi przez ten sam kod: dla nich `expandIncludes` oddaje tekst bez zmian, a `nameSourceFiles` wstawia do błędu nazwę jedynego pliku.
 
 ## 2. Teoria
 
@@ -41,7 +41,7 @@ Zostaje rozwiązanie po stronie programu: wczytać plik, znaleźć w nim linie `
 
 ### 2.2 Problem numerów linii
 
-Samo wklejenie ma skutek uboczny. `lit.frag` ma 46 linii, `common/lighting.glsl` 158, a `common/normal_map.glsl` 53. Po wklejeniu sterownik widzi jeden tekst i liczy linie po swojemu: błąd w linii 63 pliku `lighting.glsl` zgłosiłby jako błąd w linii 71 (8 linii `lit.frag` przed dołączeniem plus 63), a błąd w linii 15 pliku `lit.frag` jako błąd w linii 224 (8 linii, 158 linii pierwszego pliku, 2 linie komentarza, 53 linie drugiego pliku i 3 linie do piętnastej). Żaden z tych numerów nie istnieje w żadnym pliku, który mam otwarty w edytorze.
+Samo wklejenie ma skutek uboczny. `lit.frag` ma 56 linii, `common/lighting.glsl` 158, a `common/normal_map.glsl` 53. Po wklejeniu sterownik widzi jeden tekst i liczy linie po swojemu: błąd w linii 63 pliku `lighting.glsl` zgłosiłby jako błąd w linii 71 (8 linii `lit.frag` przed dołączeniem plus 63), a błąd w linii 15 pliku `lit.frag` jako błąd w linii 224 (8 linii, 158 linii pierwszego pliku, 2 linie komentarza, 53 linie drugiego pliku i 3 linie do piętnastej). Żaden z tych numerów nie istnieje w żadnym pliku, który mam otwarty w edytorze.
 
 ### 2.3 Numer napisu źródłowego i dyrektywa `#line`
 
@@ -170,7 +170,7 @@ const int MAX_POINT_LIGHTS = 16;
 | `lighting.glsl` nie ma funkcji `main` | to nie jest shader, tylko fragment tekstu. Rozszerzenie `.glsl` (a nie `.vert` albo `.frag`) mówi czytelnikowi, że pliku nie da się skompilować samodzielnie. Dla programu rozszerzenie nie ma znaczenia |
 | ten sam plik w shaderze wierzchołków i w shaderze fragmentów | treść musi być poprawna w obu etapach: deklaruje blok uniformów, zwykłe uniformy, struktury i funkcje, a nie używa niczego, co istnieje tylko w jednym etapie (na przykład `gl_FragCoord`) |
 
-`lit.vert` i `gouraud.frag` niczego nie dołączają: światło liczy tylko jeden etap każdego programu. Trzecim plikiem z dołączeniem jest `textured.frag`: linia `#include "common/normal_map.glsl"` stoi w nim w linii 9 ([`textures.md`](textures.md), sekcja 4.2). Plik `common/normal_map.glsl` ma tę samą budowę co `lighting.glsl` (bez `#version`, bez `main`, komentarz z nazwą dokumentu) i jest dołączany tylko do shaderów fragmentów, bo używa samplera i liczy normalną dla fragmentu ([`normal-mapping.md`](normal-mapping.md), sekcja 4.1).
+`lit.vert` i `gouraud.frag` niczego nie dołączają: światło liczy tylko jeden etap każdego programu. Trzecim plikiem z dołączeniem jest `textured.frag`: linia `#include "common/normal_map.glsl"` stoi w nim w linii 10 ([`textures.md`](textures.md), sekcja 4.2). Plik `common/normal_map.glsl` ma tę samą budowę co `lighting.glsl` (bez `#version`, bez `main`, komentarz z nazwą dokumentu) i jest dołączany tylko do shaderów fragmentów, bo używa samplera i liczy normalną dla fragmentu ([`normal-mapping.md`](normal-mapping.md), sekcja 4.1).
 
 ## 5. Kod w projekcie
 
@@ -765,7 +765,7 @@ Legenda jest zabezpieczeniem na nieznany format: gdyby sterownik napisał numer 
 
 ### 5.10 Przykład: `lit.frag` po rozwinięciu
 
-Liczby pochodzą z plików w repozytorium: `lit.frag` ma 46 linii, a linie `#include` stoją w liniach 9 i 12. `common/lighting.glsl` ma 158 linii, `common/normal_map.glsl` 53. `ShaderSource::files` po rozwinięciu to `{"lit.frag", "common/lighting.glsl", "common/normal_map.glsl"}`. Tekst, który dostaje `glShaderSource` (środki plików skrócone wielokropkiem, numery po lewej to **fizyczne** linie sklejonego tekstu i nie należą do niego). Tabela jest policzona z kodu `appendFile` i z plików, nie odczytana z działającego programu:
+Liczby pochodzą z plików w repozytorium: `lit.frag` ma 56 linii, a linie `#include` stoją w liniach 9 i 12. `common/lighting.glsl` ma 158 linii, `common/normal_map.glsl` 53. `ShaderSource::files` po rozwinięciu to `{"lit.frag", "common/lighting.glsl", "common/normal_map.glsl"}`. Tekst, który dostaje `glShaderSource` (środki plików skrócone wielokropkiem, numery po lewej to **fizyczne** linie sklejonego tekstu i nie należą do niego). Tabela jest policzona z kodu `appendFile` i z plików, nie odczytana z działającego programu:
 
 ```text
   1  #version 410 core
@@ -793,7 +793,7 @@ Liczby pochodzą z plików w repozytorium: `lit.frag` ma 46 linii, a linie `#inc
 227  // Inputs from the vertex shader, already blended for this fragment.
 228  in vec2 vUv;            // texture coordinate
 ...
-259  }
+269  }
 ```
 
 | Fizyczna linia | Co to jest | Jak liczy ją sterownik po dyrektywach |
@@ -807,11 +807,11 @@ Liczby pochodzą z plików w repozytorium: `lit.frag` ma 46 linii, a linie `#inc
 | 171 | `#line 1 2`, w miejscu drugiej linii `#include` | dyrektywa |
 | od 172 do 224 | 53 linie pliku `normal_map.glsl` | napis 2, linie od 1 do 53 |
 | 225 | `#line 13 0` | dyrektywa |
-| od 226 do 259 | linie od 13 do 46 pliku `lit.frag` (34 linie) | napis 0, linie od 13 do 46 |
+| od 226 do 269 | linie od 13 do 56 pliku `lit.frag` (44 linie) | napis 0, linie od 13 do 56 |
 
-Razem 259 linii: 46 linii `lit.frag` bez dwóch linii `#include`, plus 158, plus 53, plus cztery dyrektywy. Fizyczne numery różnią się od numerów z sekcji 2.2 (71 i 224), bo tam liczone było samo wklejenie, a tutaj w tekście stoją jeszcze cztery dyrektywy: linia 63 pliku `lighting.glsl` jest fizyczną linią 72, a linia 15 pliku `lit.frag` (`in vec2 vUv;`) fizyczną linią 228. Żadnej z tych liczb sterownik nie wypisuje: dzięki dyrektywom podaje 63 i 15.
+Razem 269 linii: 56 linii `lit.frag` bez dwóch linii `#include`, plus 158, plus 53, plus cztery dyrektywy. Fizyczne numery różnią się od numerów z sekcji 2.2 (71 i 224), bo tam liczone było samo wklejenie, a tutaj w tekście stoją jeszcze cztery dyrektywy: linia 63 pliku `lighting.glsl` jest fizyczną linią 72, a linia 15 pliku `lit.frag` (`in vec2 vUv;`) fizyczną linią 228. Żadnej z tych liczb sterownik nie wypisuje: dzięki dyrektywom podaje 63 i 15.
 
-W `gouraud.vert` (46 linii) `#include` stoi w linii 8, więc dyrektywy to `#line 1 1` i `#line 9 0`, a lista plików to `{"gouraud.vert", "common/lighting.glsl"}`. W `textured.frag` (56 linii) `#include` stoi w linii 9: dyrektywy to `#line 1 1` i `#line 10 0`, a lista plików to `{"textured.frag", "common/normal_map.glsl"}`. Numery są nadawane osobno dla każdego shadera: `lighting.glsl` ma w obu swoich shaderach numer 1, bo w obu jest pierwszym dołączonym, a `normal_map.glsl` ma numer 2 w `lit.frag` i numer 1 w `textured.frag`.
+W `gouraud.vert` (46 linii) `#include` stoi w linii 8, więc dyrektywy to `#line 1 1` i `#line 9 0`, a lista plików to `{"gouraud.vert", "common/lighting.glsl"}`. W `textured.frag` (65 linii) `#include` stoi w linii 10: dyrektywy to `#line 1 1` i `#line 11 0`, a lista plików to `{"textured.frag", "common/normal_map.glsl"}`. Numery są nadawane osobno dla każdego shadera: `lighting.glsl` ma w obu swoich shaderach numer 1, bo w obu jest pierwszym dołączonym, a `normal_map.glsl` ma numer 2 w `lit.frag` i numer 1 w `textured.frag`.
 
 **Zmierzony błąd.** Na Windowsie (2026-10-05, sterownik NVIDIA 610.74) w pliku `common/lighting.glsl` został celowo wprowadzony błąd składni. Surowa linia sterownika i linia po `nameSourceFiles`:
 
@@ -831,15 +831,15 @@ common/lighting.glsl(63) : error C0000: syntax error, unexpected ';', expecting 
 Source files: 0 = lit.frag, 1 = common/lighting.glsl
 ```
 
-Pomiar pochodzi z pierwszej części M4, gdy `lit.frag` dołączał jeden plik. Dzisiejszy `lit.frag` dołącza dwa, więc jego legenda ma według kodu trzy pozycje: `Source files: 0 = lit.frag, 1 = common/lighting.glsl, 2 = common/normal_map.glsl`. Numer 1 i linia 63 się nie zmieniają, bo `lighting.glsl` jest nadal pierwszym dołączeniem. Tego błędu z dzisiejszymi plikami nie powtarzałem, a błędu wstawionego do `common/normal_map.glsl` nikt jeszcze nie oglądał: komunikat zaczynałby się od `common/normal_map.glsl(...)` w programie `lit` (numer 2) i w programie `textured` (numer 1).
+Pomiar pochodzi z pierwszej części M4, gdy `lit.frag` dołączał jeden plik. Plik `common/lighting.glsl` nie zmienił się od tamtej pory, także w M5. Dzisiejszy `lit.frag` dołącza dwa, więc jego legenda ma według kodu trzy pozycje: `Source files: 0 = lit.frag, 1 = common/lighting.glsl, 2 = common/normal_map.glsl`. Numer 1 i linia 63 się nie zmieniają, bo `lighting.glsl` jest nadal pierwszym dołączeniem. Tego błędu z dzisiejszymi plikami nie powtarzałem, a błędu wstawionego do `common/normal_map.glsl` nikt jeszcze nie oglądał: komunikat zaczynałby się od `common/normal_map.glsl(...)` w programie `lit` (numer 2) i w programie `textured` (numer 1).
 
 Ten sam zepsuty plik dołącza `gouraud.vert`, więc program `gouraud` dostaje własny komunikat z pierwszą linią `Shader compilation failed: ...gouraud.vert` i legendą `Source files: 0 = gouraud.vert, 1 = common/lighting.glsl`. To wniosek z kodu.
 
-Shader bez dołączeń też zyskał: błąd w `basic.frag` zaczyna się teraz od `basic.frag(4)` zamiast `0(4)` (zmierzone), a legendy nie ma, bo plik jest jeden.
+Shader bez dołączeń też zyskał: nazwa jedynego pliku zastępuje numer 0, a legendy nie ma, bo plik jest jeden. W M4 zmierzyłem to na pliku `basic.frag`, którego błąd zaczynał się od `basic.frag(4)` zamiast `0(4)`. Ten plik został usunięty w M5 razem z kostką. Dla dzisiejszych plików bez dołączeń (na przykład `color.frag`) to samo wynika z kodu i z testu 22, bez nowego pomiaru na sterowniku.
 
 ### 5.11 Testy
 
-Plik [`tests/ShaderSourceTests.cpp`](../../../tests/ShaderSourceTests.cpp) ma 22 przypadki testowe. Należy do programu `night_maze_tests` ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Na Windowsie (2026-10-05) cały program testowy, 163 przypadki i 62220 asercji, przechodzi w Debug i w Release.
+Plik [`tests/ShaderSourceTests.cpp`](../../../tests/ShaderSourceTests.cpp) ma 22 przypadki testowe. Należy do programu `night_maze_tests` ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Według raportu z Windowsa (2026-10-05) cały program testowy, 215 przypadków i 85098 asercji po M5, przechodzi w Debug i w Release. W M5 zmienił się w tym pliku tylko przypadek 22: nazwa pliku w teście to teraz `color.frag` zamiast usuniętego `basic.frag`.
 
 Testy nie dotykają dysku. "Pliki" to mapa w pamięci, a czytnik szuka w niej nazwy:
 
@@ -903,7 +903,7 @@ Przypadki od 1 do 17 sprawdzają `expandIncludes`, od 18 do 22 `nameSourceFiles`
 | 19 | `nameSourceFiles puts the file name into an Apple error line` | `ERROR: 1:15: ...`, `WARNING: 0:3: unused` i postać bez przedrostka `1:15(3): error: syntax error` | `ERROR: common/lighting.glsl:15: ...` z legendą, `WARNING: lit.frag:3: unused`, `common/lighting.glsl:15(3): error: syntax error` |
 | 20 | `nameSourceFiles handles every line of a log` | dziennik z dwiema liniami: `1(15)` i `0(22)` | obie zamienione, każda na swój plik, jedna legenda na końcu |
 | 21 | `nameSourceFiles leaves lines it does not recognise alone` | siedem wejść: nieznany format `error at <1, 15>`, numer spoza listy `7(15)`, liczba bez numeru linii `1 error generated`, `1(a) : odd`, zwykły tekst z pustą linią, samo `1` bez końca linii, pusty dziennik | każda linia bez zmian, po niej legenda. `1` dostaje `\n`. Pusty dziennik daje samą legendę |
-| 22 | `nameSourceFiles adds no list of files for a shader without includes` | `0(4) : error C0000: x`, jeden plik `basic.frag` | `basic.frag(4) : error C0000: x\n`, **bez** legendy |
+| 22 | `nameSourceFiles adds no list of files for a shader without includes` | `0(4) : error C0000: x`, jeden plik `color.frag` | `color.frag(4) : error C0000: x\n`, **bez** legendy |
 
 Czego testy nie obejmują: lambdy z `compileShader` (prawdziwe pliki, katalog `includeDirectory`), sklejania komunikatu z przedrostkiem `Shader include failed:` ani tego, co sterownik robi z dyrektywami `#line`. Pierwsze dwa wymagają kontekstu OpenGL albo plików na dysku, trzecie sterownika. Dla sterownika NVIDIA zastępuje je pomiar z sekcji 5.10 i start gry bez linii `[error]`.
 
@@ -942,7 +942,7 @@ Source files: 0 = lit.frag, 1 = common/lighting.glsl
 
 Trzy pierwsze linie odpowiadają na trzy różne pytania i mogą wskazywać trzy różne pliki. Nazwa w linii pierwszej i drugiej mówi, **kto dołączał**, a dopiero trzecia, **gdzie jest pomyłka**. Poprawiać trzeba plik z trzeciej linii.
 
-Stan sprawdzenia: taki stan panelu (błąd z nazwą `common/lighting.glsl`, labirynt nadal rysowany poprzednim programem) widziałem na zrzucie ekranu z Windowsa (2026-10-05). Przycisku `Reload shaders` z pięcioma programami nikt nie nacisnął ręcznie, więc cały scenariusz pokazu ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.4) jest otwartą pozycją listy kontrolnej M4 w [`../../guides/build-windows.md`](../../guides/build-windows.md).
+Stan sprawdzenia: taki stan panelu (błąd z nazwą `common/lighting.glsl`, labirynt nadal rysowany poprzednim programem) widziałem na zrzucie ekranu z Windowsa (2026-10-05). Zrzut pochodzi z M4. Przycisku `Reload shaders` nikt nie nacisnął ręcznie, ani wtedy, ani po M5 z czterema programami, więc cały scenariusz pokazu ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.4) jest otwartą pozycją listy kontrolnej M4 w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
 ## 7. Pułapki
 
@@ -963,7 +963,7 @@ Stan sprawdzenia: taki stan panelu (błąd z nazwą `common/lighting.glsl`, labi
 
 Ćwiczenia od 1 do 4 robi się na kartce i w testach, bez uruchamiania gry. Testy uruchamia się tak, jak opisuje [`../../libraries/doctest.md`](../../libraries/doctest.md) (sekcja 4). Po każdym ćwiczeniu wycofaj zmiany (`git checkout assets/shaders tests`).
 
-1. **Rozwinięcie na kartce.** Dla `gouraud.vert` wypisz: listę `files`, obie dyrektywy `#line` z liczbami, liczbę linii sklejonego tekstu i fizyczny numer linii, w której stoi `void main() {` (w pliku to linia 30). Jaki numer podałby sterownik dla błędu w tej linii z dyrektywami, a jaki bez nich?
+1. **Rozwinięcie na kartce.** Dla `gouraud.vert` wypisz: listę `files`, obie dyrektywy `#line` z liczbami, liczbę linii sklejonego tekstu i fizyczny numer linii, w której stoi `void main() {` (w pliku to linia 34). Jaki numer podałby sterownik dla błędu w tej linii z dyrektywami, a jaki bez nich?
 2. **Zagnieżdżenie na kartce.** `main.frag` ma 6 linii i w linii 4 dołącza `a.glsl`. `a.glsl` ma 5 linii i w linii 2 dołącza `b.glsl`, które ma 3 linie. Wypisz wszystkie dyrektywy `#line` w kolejności, w jakiej stoją w wyniku, i stan stosu `openFiles` w chwili wypisywania każdej z nich. Sprawdź się na teście 5.
 3. **Nowy test.** Dopisz przypadek testowy dla pułapki 3: `a.glsl` o treści `#include "./a.glsl"`, w mapie plików pod oboma kluczami `a.glsl` i `./a.glsl`. Zanim uruchomisz, zapisz na kartce oczekiwany tekst błędu. Czy się zgadza?
 4. **Komentarz blokowy.** Dopisz test: plik shadera z liniami `#version 410 core`, `/*`, `#include "a.glsl"`, `*/`, `float b;` i plik `a.glsl` z jedną linią. Jaki tekst wychodzi? Jaki numer linii dostałby błąd w `float b;` od sterownika i jaki jest prawdziwy?
@@ -1007,7 +1007,7 @@ Stan sprawdzenia: taki stan panelu (błąd z nazwą `common/lighting.glsl`, labi
     Objaśnia numery na wypadek, gdyby sterownik napisał je w formacie, którego kod nie rozpoznaje. Nie ma jej, gdy shader składa się z jednego pliku: wtedy każdy numer to 0 i oznacza ten plik.
 
 12. **Co jest zmierzone, a co tylko przetestowane jednostkowo?**
-    Zmierzone na sterowniku NVIDIA 610.74: kompilacja `lit.frag` (dwa dołączone pliki), `gouraud.vert` i `textured.frag` (po jednym), zamiana `1(63)` na `common/lighting.glsl(63)` i `0(4)` na `basic.frag(4)`. Tylko w testach jednostkowych: format z dwukropkiem (Apple, Mesa, Intel), wszystkie błędy preprocesora, dołączenia zagnieżdżone. Na macOS kod nie był uruchamiany.
+    Zmierzone na sterowniku NVIDIA 610.74: kompilacja `lit.frag` (dwa dołączone pliki), `gouraud.vert` i `textured.frag` (po jednym), zamiana `1(63)` na `common/lighting.glsl(63)` i `0(4)` na `basic.frag(4)` (pomiary z M4. Plik `basic.frag` usunięto w M5, a z dzisiejszymi plikami pomiarów nie powtarzałem). Tylko w testach jednostkowych: format z dwukropkiem (Apple, Mesa, Intel), wszystkie błędy preprocesora, dołączenia zagnieżdżone. Na macOS kod nie był uruchamiany.
 
 13. **Dlaczego błąd linkowania nie ma nazw plików zamiast numerów?**
     `buildProgram` bierze dziennik programu bez `nameSourceFiles`. Każdy z dwóch shaderów ma własną listę plików, więc numer z dziennika linkowania nie wskazywałby jednoznacznie pliku.

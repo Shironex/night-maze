@@ -1,15 +1,15 @@
 # Moduł gfx: bufory i tablica wierzchołków
 
-Kamień milowy: M1. Temat wykładu: 2 (Programowalny potok).
-Kod: [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp), [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
+Kamień milowy: M1. W M5 przykłady zostały przeniesione na kod, który istnieje dziś. Temat wykładu: 2 (Programowalny potok).
+Kod: [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp), [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp), użycie w [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp) i [`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp).
 
-Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Druga część tematu 2, czyli shadery i sam potok, jest w [`shaders.md`](shaders.md): ten dokument zakłada jej znajomość. Ciąg dalszy tego dokumentu to [`indexed-drawing.md`](indexed-drawing.md): indeksy, dane kostki w `NightMazeApp` i rysowanie przez `glDrawElements`. Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
+Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Druga część tematu 2, czyli shadery i sam potok, jest w [`shaders.md`](shaders.md): ten dokument zakłada jej znajomość. Ciąg dalszy tego dokumentu to [`indexed-drawing.md`](indexed-drawing.md): indeksy, dane brył, które da się przeczytać w repozytorium, i rysowanie przez `glDrawElements`. Klasę, która dziś jako jedyna używa obu opisanych tu klas, omawia [`mesh.md`](mesh.md). Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
 ## 1. Po co to jest
 
 Shader wierzchołków ([`shaders.md`](shaders.md), sekcja 2.2) dostaje na wejściu atrybuty jednego wierzchołka. Skądś muszą się one wziąć. Odpowiedzią są dwa rodzaje obiektów OpenGL:
 
-- **bufor** (buffer object) to blok pamięci na karcie graficznej, do którego kopiuję tablicę liczb z programu: pozycje, kolory, później normalne i współrzędne tekstur,
+- **bufor** (buffer object) to blok pamięci na karcie graficznej, do którego kopiuję tablicę liczb z programu: pozycje, normalne, współrzędne tekstur, styczne,
 - **tablica wierzchołków** (vertex array object, VAO) to opis, jak te liczby czytać: który atrybut ma ile składowych, w którym buforze leży, od którego bajtu się zaczyna i co ile bajtów się powtarza.
 
 Bufor to dane bez znaczenia, VAO to znaczenie bez danych. Dopiero razem z programem shaderów dają komplet potrzebny do wywołania rysującego.
@@ -23,7 +23,9 @@ Dwie klasy opakowują te obiekty:
 
 Obie są cienkimi opakowaniami typu RAII, których nie da się kopiować, a da się przenosić, tak jak `gfx::Shader`. Celowo nie ma tu żadnej abstrakcji "układu wierzchołka": atrybuty opisuję pojedynczymi wywołaniami z jawnym krokiem i przesunięciem w bajtach, bo właśnie te liczby trzeba umieć wytłumaczyć.
 
-Stan na dziś: `game::NightMazeApp` ma jeden `gfx::VertexArray` i dwa obiekty `gfx::Buffer`: bufor wierzchołków z danymi 24 wierzchołków kostki i bufor indeksów z 36 indeksami. Co klatkę rysuje nimi kostkę przez `glDrawElements` ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5). Gdzie kostka stoi i skąd jest oglądana, ustalają macierze opisane w [`../scene/transforms.md`](../scene/transforms.md) (macierz modelu) i [`../scene/camera.md`](../scene/camera.md) (macierze widoku i rzutowania).
+Stan na dziś (M5): obie klasy mają w programie **jednego** użytkownika, klasę `gfx::Mesh`. Każda siatka ma jeden `gfx::VertexArray` i dwa obiekty `gfx::Buffer`: bufor wierzchołków i bufor indeksów ([`mesh.md`](mesh.md), sekcja 5.3). Poza `Mesh.hpp` i `Mesh.cpp` żaden plik w `src/` nie tworzy `Buffer` ani `VertexArray` i żaden nie dołącza ich nagłówków. Siatek jest osiem: sześć modeli z plików OBJ w `assets::AssetCache` i dwie siatki z odcinków w `game::ColliderLines`. Każda jest rysowana przez `glDrawElements` ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5). Gdzie obiekt stoi i skąd jest oglądany, ustalają macierze opisane w [`../scene/transforms.md`](../scene/transforms.md) (macierz modelu) i [`../scene/camera.md`](../scene/camera.md) (macierze widoku i rzutowania).
+
+W M1 obie klasy miały innego użytkownika: kostkę o sześciu kolorowych ścianach, której VAO i dwa bufory były polami `game::NightMazeApp`, z wierzchołkiem z pozycji i koloru (6 liczb `float`, krok 24). W M5 kostka została usunięta. Pomiary z tamtego czasu zostają w sekcji 5.8 jako historia.
 
 ## 2. Teoria
 
@@ -34,12 +36,13 @@ Stan na dziś: `game::NightMazeApp` ma jeden `gfx::VertexArray` i dwa obiekty `g
 | Atrybut | Typ w GLSL | Liczb `float` |
 |---|---|---|
 | pozycja | `vec3` | 3 |
-| kolor | `vec3` | 3 |
-| normalna (od tematu 6) | `vec3` | 3 |
-| współrzędne tekstury (od tematu 5) | `vec2` | 2 |
-| styczna (od map normalnych, druga część M4) | `vec3` | 3 |
+| normalna (czyta ją oświetlenie, tematy 6 i 7) | `vec3` | 3 |
+| współrzędne tekstury (temat 5) | `vec2` | 2 |
+| styczna (mapy normalnych, druga część M4) | `vec3` | 3 |
 
-Po stronie C++ dane wierzchołków to zwykła, płaska tablica liczb `float`. OpenGL nie wie, że pierwsze trzy to pozycja, a następne trzy to kolor: trzeba mu to opisać.
+To cztery atrybuty wierzchołka projektu, `gfx::Vertex`. Atrybutem może być cokolwiek, co ma własną wartość w każdym wierzchołku. Częsty przykład z poradników to kolor (`vec3`): taki atrybut miała kostka z M1, dziś żadna siatka gry go nie ma.
+
+Po stronie C++ dane wierzchołków to zwykła, płaska tablica liczb `float`. OpenGL nie wie, że pierwsze trzy to pozycja, a następne trzy to normalna: trzeba mu to opisać.
 
 Atrybuty mają **numery** (indeksy, od 0). Numer jest jedynym łącznikiem między danymi a shaderem: opis w C++ mówi "atrybut 0 to trzy liczby od bajtu 0", a shader mówi `layout(location = 0) in vec3 aPosition;` (sekcja 4).
 
@@ -60,36 +63,38 @@ OpenGL 4.1 działa w modelu **zwiąż, potem edytuj** (bind to edit): funkcje ni
 
 Gdy wierzchołek ma kilka atrybutów, można je ułożyć w buforze na dwa sposoby: każdy atrybut w osobnym buforze albo wszystkie atrybuty jednego wierzchołka obok siebie, wierzchołek po wierzchołku. Drugi sposób to **układ przeplatany** (interleaved) i jest najczęstszy: dane jednego wierzchołka leżą razem w pamięci.
 
-Bajty jednego wierzchołka z pozycją i kolorem (6 liczb `float`, każda po 4 bajty):
+Bajty jednego wierzchołka projektu, `gfx::Vertex`: pozycja, normalna, współrzędna tekstury i styczna, razem 11 liczb `float`, każda po 4 bajty, czyli 44 bajty:
 
 ```mermaid
 flowchart LR
-    subgraph V0["wierzchołek 0: bajty od 0 do 23"]
+    subgraph V0["wierzchołek 0: bajty od 0 do 43"]
         direction LR
-        P0["pozycja x y z<br/>bajty od 0 do 11"] --- C0["kolor r g b<br/>bajty od 12 do 23"]
+        P0["pozycja x y z<br/>bajty od 0 do 11"] --- N0["normalna x y z<br/>bajty od 12 do 23"] --- U0["uv u v<br/>bajty od 24 do 31"] --- T0["styczna x y z<br/>bajty od 32 do 43"]
     end
-    subgraph V1["wierzchołek 1: bajty od 24 do 47"]
+    subgraph V1["wierzchołek 1: bajty od 44 do 87"]
         direction LR
-        P1["pozycja x y z<br/>bajty od 24 do 35"] --- C1["kolor r g b<br/>bajty od 36 do 47"]
+        P1["pozycja<br/>bajty od 44 do 55"] --- N1["normalna<br/>bajty od 56 do 67"] --- U1["uv<br/>bajty od 68 do 75"] --- T1["styczna<br/>bajty od 76 do 87"]
     end
     V0 --- V1
 ```
 
 Dwie liczby opisują położenie atrybutu w takim buforze:
 
-- **krok** (stride): odległość w bajtach między początkiem jednego wierzchołka a początkiem następnego. Jest **taki sam dla wszystkich atrybutów** tego bufora, bo opisuje rozmiar całego wierzchołka. Tu: 6 liczb po 4 bajty, czyli 24.
-- **przesunięcie** (offset): od którego bajtu wewnątrz wierzchołka zaczyna się dany atrybut. Pozycja: 0. Kolor: 12, bo przed nim leżą trzy liczby pozycji.
+- **krok** (stride): odległość w bajtach między początkiem jednego wierzchołka a początkiem następnego. Jest **taki sam dla wszystkich atrybutów** tego bufora, bo opisuje rozmiar całego wierzchołka. Tu: 11 liczb po 4 bajty, czyli 44.
+- **przesunięcie** (offset): od którego bajtu wewnątrz wierzchołka zaczyna się dany atrybut. Pozycja: 0. Normalna: 12, bo przed nią leżą trzy liczby pozycji. Współrzędna tekstury: 24, bo przed nią leży sześć liczb. Styczna: 32, bo przed nią leży osiem liczb.
 
 | Atrybut | Numer | Składowych | Krok | Przesunięcie |
 |---|---|---|---|---|
-| pozycja | 0 | 3 | 24 | 0 |
-| kolor | 1 | 3 | 24 | 12 |
+| pozycja | 0 | 3 | 44 | 0 |
+| normalna | 1 | 3 | 44 | 12 |
+| współrzędna tekstury | 2 | 2 | 44 | 24 |
+| styczna | 3 | 3 | 44 | 32 |
 
-Karta wylicza adres atrybutu dla wierzchołka numer `i` jako `przesunięcie + i * krok`. Kolor wierzchołka 1 zaczyna się więc w bajcie 12 + 1 * 24 = 36, zgodnie z diagramem.
+Karta wylicza adres atrybutu dla wierzchołka numer `i` jako `przesunięcie + i * krok`. Współrzędna tekstury wierzchołka 1 zaczyna się więc w bajcie 24 + 1 * 44 = 68, zgodnie z diagramem.
 
-Gdy wierzchołek ma tylko pozycję, krok to 12, a przesunięcie 0.
+Gdy wierzchołek ma tylko pozycję, krok to 12, a przesunięcie 0. Gdy ma pozycję i kolor po trzy liczby (tak wyglądał wierzchołek kostki z M1 i tak wygląda przykład w większości poradników), krok to 24, a przesunięcia 0 i 12.
 
-Układ z tej sekcji (pozycja i kolor, krok 24, przesunięcia 0 i 12) to dokładnie układ wierzchołka w projekcie. Stałe, które go opisują w kodzie, są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.2.
+W kodzie tych liczb nie wpisuję ręcznie: krok to `sizeof(Vertex)`, a przesunięcia to `offsetof(Vertex, pole)`, więc liczy je kompilator z definicji struktury (sekcja 4, i [`mesh.md`](mesh.md), sekcje 2.2 i 2.3).
 
 ### 2.4 Tablica wierzchołków (VAO): co pamięta, a czego nie
 
@@ -122,13 +127,17 @@ flowchart TD
         Prog["bieżący program"]
     end
     subgraph Vao["VAO"]
-        A0["atrybut 0: włączony, 3 x float, krok 24, przesunięcie 0, bufor nr 1"]
-        A1["atrybut 1: włączony, 3 x float, krok 24, przesunięcie 12, bufor nr 1"]
+        A0["atrybut 0: włączony, 3 x float, krok 44, przesunięcie 0, bufor nr 1"]
+        A1["atrybut 1: włączony, 3 x float, krok 44, przesunięcie 12, bufor nr 1"]
+        A2["atrybut 2: włączony, 2 x float, krok 44, przesunięcie 24, bufor nr 1"]
+        A3["atrybut 3: włączony, 3 x float, krok 44, przesunięcie 32, bufor nr 1"]
         EB["wiązanie GL_ELEMENT_ARRAY_BUFFER: bufor nr 2"]
     end
     CurVao --> Vao
     A0 --> Vbo["bufor nr 1: wierzchołki"]
     A1 --> Vbo
+    A2 --> Vbo
+    A3 --> Vbo
     EB --> Ebo["bufor nr 2: indeksy"]
     AB -. "czytane tylko w chwili glVertexAttribPointer" .-> A0
 ```
@@ -159,7 +168,7 @@ Ostatni parametr `glBufferData` to **podpowiedź** (usage hint) dla sterownika: 
 
 Daje to dziewięć stałych, od `GL_STATIC_DRAW` do `GL_STREAM_COPY`. To tylko podpowiedź: sterownik może na jej podstawie wybrać rodzaj pamięci, ale nie ogranicza ona tego, co wolno z buforem zrobić. `gfx::Buffer` zawsze używa `GL_STATIC_DRAW`, bo bufor jest wypełniany raz, w konstruktorze, i klasa nie ma funkcji zmieniającej dane.
 
-Dwa tematy teorii, które korzystają już z tych pojęć, są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 2: indeksy i bufor indeksów (w tym odpowiedź, dlaczego kostka ma 24 wierzchołki) oraz współrzędne lokalne i kierunek nawijania.
+Dwa tematy teorii, które korzystają już z tych pojęć, są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 2: indeksy i bufor indeksów (w tym odpowiedź, dlaczego ściana ma 60 wierzchołków, choć w pliku modelu są 24 pozycje) oraz współrzędne lokalne i kierunek nawijania.
 
 ## 3. Jak to działa w OpenGL
 
@@ -223,35 +232,58 @@ Dwa wywołania rysujące z kroku 11 porównuje [`indexed-drawing.md`](indexed-dr
 
 Ta część modułu nie ma własnych shaderów, ale jest z nimi ściśle związana: **numer atrybutu** podany w C++ musi być tym samym numerem co `layout(location = N)` w shaderze wierzchołków.
 
-Wejścia shadera wierzchołków projektu, [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) (cały plik omawia [`shaders.md`](shaders.md), sekcja 4.1):
+Wejścia shadera wierzchołków [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) (cały plik omawia [`textures.md`](textures.md), sekcja 4, a o wejściach i wyjściach etapu mówi [`shaders.md`](shaders.md), sekcja 4.2):
 
 ```glsl
-layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the object
-layout(location = 1) in vec3 aColor;    // red, green, blue, each from 0 to 1
+layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the model
+layout(location = 1) in vec3 aNormal;   // direction the surface faces, length 1
+layout(location = 2) in vec2 aUv;       // texture coordinate (u, v), v = 0 is the bottom
+layout(location = 3) in vec3 aTangent;  // direction on the surface in which u grows, length 1
 ```
 
-Odpowiadające im stałe i wywołania w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp):
-
-```cpp
-// Attribute numbers: the same as layout(location = N) in basic.vert.
-constexpr GLuint POSITION_ATTRIBUTE = 0;
-constexpr GLuint COLOR_ATTRIBUTE = 1;
-```
+Odpowiadające im stałe w [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp):
 
 ```cpp
-m_vertexArray.setFloatAttribute(POSITION_ATTRIBUTE, POSITION_COMPONENTS, VERTEX_STRIDE,
-                                POSITION_OFFSET);
-m_vertexArray.setFloatAttribute(COLOR_ATTRIBUTE, COLOR_COMPONENTS, VERTEX_STRIDE, COLOR_OFFSET);
+constexpr int POSITION_COMPONENTS = 3;
+constexpr int NORMAL_COMPONENTS = 3;
+constexpr int UV_COMPONENTS = 2;
+constexpr int TANGENT_COMPONENTS = 3;
 ```
+
+```cpp
+constexpr std::uint32_t POSITION_ATTRIBUTE = 0;
+constexpr std::uint32_t NORMAL_ATTRIBUTE = 1;
+constexpr std::uint32_t UV_ATTRIBUTE = 2;
+constexpr std::uint32_t TANGENT_ATTRIBUTE = 3;
+```
+
+I wywołania w konstruktorze `gfx::Mesh` ([`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp)), jedyne wywołania `setFloatAttribute` w projekcie:
+
+```cpp
+    m_vertexArray.setFloatAttribute(POSITION_ATTRIBUTE, POSITION_COMPONENTS, VERTEX_STRIDE,
+                                    offsetof(Vertex, position));
+    m_vertexArray.setFloatAttribute(NORMAL_ATTRIBUTE, NORMAL_COMPONENTS, VERTEX_STRIDE,
+                                    offsetof(Vertex, normal));
+    m_vertexArray.setFloatAttribute(UV_ATTRIBUTE, UV_COMPONENTS, VERTEX_STRIDE,
+                                    offsetof(Vertex, uv));
+    m_vertexArray.setFloatAttribute(TANGENT_ATTRIBUTE, TANGENT_COMPONENTS, VERTEX_STRIDE,
+                                    offsetof(Vertex, tangent));
+```
+
+`VERTEX_STRIDE` to w `Mesh.cpp` stała równa `sizeof(Vertex)`, czyli 44. `offsetof(Vertex, pole)` to liczba bajtów od początku struktury do pola: 0, 12, 24 i 32. To dokładnie tabela z sekcji 2.3, tylko policzona przez kompilator.
 
 | Po stronie C++ | Po stronie GLSL | Co musi się zgadzać |
 |---|---|---|
 | `POSITION_ATTRIBUTE` równe 0 | `layout(location = 0)` przy `aPosition` | numer |
-| `COLOR_ATTRIBUTE` równe 1 | `layout(location = 1)` przy `aColor` | numer |
-| `POSITION_COMPONENTS` i `COLOR_COMPONENTS` równe 3 | `vec3` | liczba składowych. Gdy bufor daje mniej składowych, niż ma typ w shaderze, brakujące są uzupełniane: `y` i `z` zerem, `w` jedynką |
-| `GL_FLOAT` (wewnątrz `setFloatAttribute`) | `vec3` (typ zmiennoprzecinkowy) | rodzaj typu |
+| `NORMAL_ATTRIBUTE` równe 1 | `layout(location = 1)` przy `aNormal` | numer |
+| `UV_ATTRIBUTE` równe 2 | `layout(location = 2)` przy `aUv` | numer |
+| `TANGENT_ATTRIBUTE` równe 3 | `layout(location = 3)` przy `aTangent` | numer |
+| `POSITION_COMPONENTS`, `NORMAL_COMPONENTS` i `TANGENT_COMPONENTS` równe 3, `UV_COMPONENTS` równe 2 | `vec3` i `vec2` | liczba składowych. Gdy bufor daje mniej składowych, niż ma typ w shaderze, brakujące są uzupełniane: `y` i `z` zerem, `w` jedynką |
+| `GL_FLOAT` (wewnątrz `setFloatAttribute`) | `vec3`, `vec2` (typy zmiennoprzecinkowe) | rodzaj typu |
 
-OpenGL nie sprawdza tej zgodności. Zły numer nie daje błędu kompilacji ani błędu `glGetError`: shader dostaje po prostu dane innego atrybutu albo wartość domyślną. Numery są w dwóch plikach (jednym C++ i jednym GLSL) i nic poza komentarzem ich nie wiąże, dlatego komentarz nad stałymi wskazuje plik shadera.
+Shader nie musi czytać wszystkich atrybutów. `color.vert`, którym rysowane są linie pudełek kolizji, deklaruje tylko `aPosition` pod numerem 0, a `gouraud.vert` nie deklaruje stycznej. Włączony atrybut, którego program nie używa, niczemu nie szkodzi ([`mesh.md`](mesh.md), sekcja 2.4).
+
+OpenGL nie sprawdza tej zgodności. Zły numer nie daje błędu kompilacji ani błędu `glGetError`: shader dostaje po prostu dane innego atrybutu albo wartość domyślną. Numery są po dwóch stronach (w jednym nagłówku C++ i w czterech shaderach wierzchołków) i nic poza komentarzami ich nie wiąże: komentarz nad stałymi w `Vertex.hpp` wymienia numery, których ma się trzymać shader, a komentarz w `textured.vert` wskazuje `src/gfx/Vertex.hpp`.
 
 Gdyby w shaderze nie było `layout(location = ...)`, numery przydzieliłby linker i trzeba by o nie pytać funkcją `glGetAttribLocation` po zlinkowaniu programu. Jawne numery w shaderze są prostsze: VAO można skonfigurować, nie znając programu.
 
@@ -265,8 +297,7 @@ Gdyby w shaderze nie było `layout(location = ...)`, numery przydzieliłby linke
 | [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp) | implementacja |
 | [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp) | klasa `gfx::VertexArray`: konstruktor domyślny, destruktor, zablokowane kopiowanie, przenoszenie, `bind`, `setFloatAttribute` |
 | [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp) | implementacja |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pierwszy użytkownik obu klas, kostka: pola `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer`, dane wierzchołków `VERTICES`, indeksy `INDICES`, stałe układu, konfiguracja w konstruktorze, rysowanie w `drawCube` ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5) |
-| [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`.cpp`](../../../src/gfx/Mesh.cpp) | drugi użytkownik: klasa `gfx::Mesh` ma te same trzy pola w tej samej kolejności i z nich rysuje modele labiryntu oraz linie pudełek kolizji ([`mesh.md`](mesh.md)) |
+| [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`.cpp`](../../../src/gfx/Mesh.cpp) | jedyny użytkownik obu klas: `gfx::Mesh` ma pola `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer`, opisuje nimi cztery atrybuty `gfx::Vertex` i rysuje modele (labirynt, brama, kryształy) oraz linie pudełek i kul kolizji ([`mesh.md`](mesh.md), sekcja 5, i [`indexed-drawing.md`](indexed-drawing.md), sekcja 5) |
 
 Wszystkie cztery pliki są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Obie klasy zależą tylko od `core` (`GL_CHECK`), GLAD i biblioteki standardowej. Żadna nie ma funkcji pomocniczych ani stałych: całość to konstruktor, destruktor, dwie funkcje przenoszące i jedna albo dwie funkcje robocze.
 
@@ -317,7 +348,7 @@ private:
 | `m_id = 0` | 0 to "nie ma bufora", jak `m_program` w `Shader` |
 | brak konstruktora domyślnego | nie da się utworzyć pustego `Buffer`. Bufor bez danych nie ma w tym projekcie zastosowania |
 
-Klasa nie jest szablonem i nie przyjmuje `std::vector` ani `std::array`. Wołający podaje wskaźnik i rozmiar wprost, na przykład `VERTICES.data()` i `VERTICES.size() * sizeof(float)`. To jeden jawny zapis więcej w miejscu użycia, w zamian za klasę bez szablonów.
+Klasa nie jest szablonem i nie przyjmuje `std::vector` ani `std::array`. Wołający podaje wskaźnik i rozmiar wprost. W `Mesh.cpp` są to `vertices.data()` i `vertices.size_bytes()`, gdzie `vertices` jest widokiem `std::span<const Vertex>`, a `size_bytes()` to liczba elementów razy rozmiar jednego elementu. To jeden jawny zapis więcej w miejscu użycia, w zamian za klasę bez szablonów.
 
 ### 5.3 `Buffer`: konstruktor, destruktor, `bind`
 
@@ -437,7 +468,7 @@ void VertexArray::bind() const {
 }
 ```
 
-Konstruktor rezerwuje identyfikator (`glGenVertexArrays`) i **od razu wiąże** nowy VAO (`glBindVertexArray`). Sam VAO tego nie potrzebuje: w odróżnieniu od bufora nie ma danych, którymi trzeba go wypełnić. Wiązanie jest dla obiektu, który powstanie **po nim**. Bufor indeksów zapisuje się w tym VAO, który jest bieżący w chwili tworzenia bufora (sekcja 2.4), a obiekty OpenGL w `NightMazeApp` są polami klasy, konstruowanymi jedno po drugim na liście inicjalizacyjnej. Między konstruktorem jednego pola a konstruktorem następnego nie ma miejsca na wywołanie `m_vertexArray.bind()`: ciało konstruktora klasy wykonuje się dopiero po wszystkich polach. Gdyby konstruktor VAO nie wiązał, bufor indeksów utworzony jako następne pole trafiłby do żadnego albo do cudzego VAO ([`indexed-drawing.md`](indexed-drawing.md), sekcja 7, pułapka 1).
+Konstruktor rezerwuje identyfikator (`glGenVertexArrays`) i **od razu wiąże** nowy VAO (`glBindVertexArray`). Sam VAO tego nie potrzebuje: w odróżnieniu od bufora nie ma danych, którymi trzeba go wypełnić. Wiązanie jest dla obiektu, który powstanie **po nim**. Bufor indeksów zapisuje się w tym VAO, który jest bieżący w chwili tworzenia bufora (sekcja 2.4), a VAO i oba bufory są w `gfx::Mesh` polami klasy, konstruowanymi jedno po drugim, zanim wykona się ciało konstruktora. Między konstruktorem jednego pola a konstruktorem następnego nie ma miejsca na wywołanie `m_vertexArray.bind()`: ciało konstruktora klasy wykonuje się dopiero po wszystkich polach. Gdyby konstruktor VAO nie wiązał, bufor indeksów utworzony jako następne pole trafiłby do żadnego albo do cudzego VAO ([`indexed-drawing.md`](indexed-drawing.md), sekcja 7, pułapka 1).
 
 Zasada wynikająca z tego dla wołającego: **najpierw `VertexArray`, zaraz po nim jego bufory**. `setFloatAttribute` i tak wiąże VAO samo, więc dla atrybutów kolejność tworzenia nie ma znaczenia.
 
@@ -534,7 +565,15 @@ VAO przechowuje odwołanie do bufora, a nie jego kopię. Co się dzieje, gdy `Bu
 | bufor usunięty, gdy używający go VAO **nie jest** bieżący | VAO nadal rysuje poprawnie. OpenGL zwalnia nazwę bufora, ale dane trzyma, dopóki VAO się do nich odwołuje |
 | bufor usunięty, gdy używający go VAO **jest** bieżący | OpenGL odłącza bufor od bieżącego VAO. Następne rysowanie daje `GL_INVALID_OPERATION` i niczego nie rysuje |
 
-Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co najmniej tak długo jak `VertexArray`, który z niego czyta. Najprościej trzymać je jako pola tej samej klasy, tak jak `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` w `NightMazeApp` i w `gfx::Mesh`. Przy zamykaniu programu oba bufory giną tam tuż przed VAO, co jest bez znaczenia, bo po nim nikt już nie rysuje.
+Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co najmniej tak długo jak `VertexArray`, który z niego czyta. Najprościej trzymać je jako pola tej samej klasy. Tak jest w `gfx::Mesh`, jedynym miejscu, które ich używa:
+
+```cpp
+    VertexArray m_vertexArray;
+    Buffer m_vertexBuffer;
+    Buffer m_indexBuffer;
+```
+
+Pola powstają w kolejności deklaracji i giną w odwrotnej: najpierw bufor indeksów, potem bufor wierzchołków, na końcu VAO. Oba bufory giną więc tuż przed VAO, który z nich czytał. Zależnie od tego, który VAO jest wtedy bieżący, trafia się w pierwszy albo w drugi wiersz tabeli, ale jest to bez znaczenia: siatką, której destruktor właśnie trwa, nikt już nie rysuje, a jej VAO ginie w następnym kroku. `Mesh` nie ma własnego destruktora ani ręcznie napisanego przenoszenia, bo wszystko robią te trzy pola ([`mesh.md`](mesh.md), sekcja 5.3). Bufory i VAO żyją więc dokładnie tak długo jak siatka, a siatka tak długo jak jej właściciel: `assets::AssetCache` albo `game::ColliderLines`, oba będące polami `NightMazeApp`.
 
 ### 5.8 Jak to zostało sprawdzone
 
@@ -553,11 +592,11 @@ Nie warto na tych regułach polegać. Zasada dla projektu: `Buffer` żyje co naj
 | usunięcie bufora, gdy jego VAO nie jest bieżący, i gdy jest bieżący | jak w tabeli z sekcji 5.7 |
 | `glGetError` po zniszczeniu wszystkich obiektów | `GL_NO_ERROR` |
 
-**Trójkąt.** Pierwszą geometrią projektu był jeden trójkąt rysowany przez `glDrawArrays`, bez macierzy i bez indeksów. Test z ukrytym oknem potwierdził wtedy układ przeplatany (krok 24, przesunięcia 0 i 12): rogi miały kolory swoich wierzchołków, a środek ciężkości jedną trzecią każdego. Tego kodu już nie ma, zastąpiła go kostka.
+**Trójkąt.** Pierwszą geometrią projektu był jeden trójkąt rysowany przez `glDrawArrays`, bez macierzy i bez indeksów. Test z ukrytym oknem potwierdził wtedy układ przeplatany (krok 24, przesunięcia 0 i 12): rogi miały kolory swoich wierzchołków, a środek ciężkości jedną trzecią każdego. Tego kodu już nie ma: zastąpiła go kostka z indeksami, a ją w M5 siatki `gfx::Mesh`.
 
-Test gotowej kostki, czyli prawdziwego kodu rysującego z `NightMazeApp`, jest w [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.7.
+Test kostki z M1, czyli ówczesnego kodu rysującego z `NightMazeApp`, jest opisany jako historia w [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.7.
 
-Na Windowsie (2026-10-05) `Buffer.cpp` i `VertexArray.cpp` kompilują się w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń, a program `night_maze` rysuje nimi kostkę, a przez `gfx::Mesh` także labirynt, bez żadnej linii `[error]` ([`../../guides/build-windows.md`](../../guides/build-windows.md)). Testów z ukrytym oknem z tej sekcji na Windowsie nie powtarzałem.
+Na Windowsie `Buffer.cpp` i `VertexArray.cpp` kompilowały się w M4 w MSVC 19.44 pod `/W4 /permissive-` bez ostrzeżeń, a program `night_maze` rysował nimi wtedy kostkę, a przez `gfx::Mesh` także labirynt, bez żadnej linii `[error]` ([`../../guides/build-windows.md`](../../guides/build-windows.md)). Żadna z dwóch klas nie zmieniła się w M5: zmienił się tylko ich użytkownik. Dla M5 zgłoszone na Windowsie 2026-10-05: build Debug i Release bez ostrzeżeń i obraz sprawdzony zrzutami ekranu, a wszystko na tym obrazie rysuje `gfx::Mesh`, czyli te dwie klasy. Testów z ukrytym oknem z tej sekcji na Windowsie nie powtarzałem, a na macOS nic z M5 nie było budowane ani uruchamiane.
 
 ## 6. Panel ImGui
 
@@ -566,9 +605,9 @@ Na Windowsie (2026-10-05) `Buffer.cpp` i `VertexArray.cpp` kompilują się w MSV
 ## 7. Pułapki
 
 1. **Zły bufor związany w chwili `setFloatAttribute`.** Atrybut czyta z bufora związanego z `GL_ARRAY_BUFFER` w chwili wywołania. Utworzenie drugiego `Buffer(GL_ARRAY_BUFFER, ...)` między utworzeniem pierwszego a `setFloatAttribute` zmienia to wiązanie i atrybut zostaje przypisany do drugiego bufora. Gdy z `GL_ARRAY_BUFFER` nie jest związane nic, a przesunięcie jest różne od zera, `glVertexAttribPointer` zgłasza `GL_INVALID_OPERATION`.
-2. **Zły krok albo przesunięcie.** Nie dają żadnego błędu OpenGL. Shader dostaje liczby z niewłaściwych miejsc bufora: bryła jest zdeformowana, kolory są pozycjami, a przy zbyt dużym kroku karta czyta poza buforem (wynik nieokreślony). Typowe pomyłki: krok podany w liczbie `float` zamiast w bajtach (6 zamiast 24), krok równy rozmiarowi jednego atrybutu zamiast całego wierzchołka, przesunięcie w liczbie `float` zamiast w bajtach (3 zamiast 12).
-3. **`sizeof` na wskaźniku zamiast na tablicy.** `sizeof(vertices)` daje rozmiar całej tablicy w bajtach tylko wtedy, gdy `vertices` jest tablicą (`float[9]` albo `std::array<float, 9>`). Gdy tablica została przekazana do funkcji jako `const float*`, `sizeof` zwraca rozmiar **wskaźnika** (8 bajtów) i do bufora trafiają dwie liczby `float`. Dla `std::vector` `sizeof` zwraca rozmiar samego obiektu wektora (zwykle 24 bajty), a nie danych: tam trzeba `vertices.size() * sizeof(float)`. Projekt liczy rozmiar zawsze tym drugim sposobem (`VERTICES.size() * sizeof(float)`), bo działa on dla każdego kontenera.
-4. **Liczba elementów zamiast bajtów w konstruktorze `Buffer`.** `Buffer(GL_ARRAY_BUFFER, VERTICES.data(), VERTICES.size())` wysyła 144 bajty zamiast 576, czyli 6 wierzchołków zamiast 24. Parametr nazywa się `sizeInBytes` właśnie po to.
+2. **Zły krok albo przesunięcie.** Nie dają żadnego błędu OpenGL. Shader dostaje liczby z niewłaściwych miejsc bufora: bryła jest zdeformowana, kolory są pozycjami, a przy zbyt dużym kroku karta czyta poza buforem (wynik nieokreślony). Typowe pomyłki: krok podany w liczbie `float` zamiast w bajtach (11 zamiast 44), krok równy rozmiarowi jednego atrybutu zamiast całego wierzchołka, przesunięcie w liczbie `float` zamiast w bajtach (3 zamiast 12). W projekcie obie liczby pochodzą z `sizeof` i `offsetof`, więc są w bajtach z definicji.
+3. **`sizeof` na wskaźniku zamiast na tablicy.** `sizeof(vertices)` daje rozmiar całej tablicy w bajtach tylko wtedy, gdy `vertices` jest tablicą (`float[9]` albo `std::array<float, 9>`). Gdy tablica została przekazana do funkcji jako `const float*`, `sizeof` zwraca rozmiar **wskaźnika** (8 bajtów) i do bufora trafiają dwie liczby `float`. Dla `std::vector` `sizeof` zwraca rozmiar samego obiektu wektora (zwykle 24 bajty), a nie danych: tam trzeba `vertices.size() * sizeof(float)`. Projekt liczy rozmiar zawsze jako liczbę elementów razy rozmiar elementu: w `Mesh.cpp` robi to `size_bytes()` widoku `std::span`, które działa tak samo dla `std::vector`, `std::array` i zwykłej tablicy.
+4. **Liczba elementów zamiast bajtów w konstruktorze `Buffer`.** `Buffer(GL_ARRAY_BUFFER, vertices.data(), vertices.size())` wysyła dla ściany 60 bajtów zamiast 2640, czyli jeden pełny wierzchołek i kawałek drugiego zamiast 60. Parametr nazywa się `sizeInBytes` właśnie po to.
 5. **Niewłączony atrybut.** Samo `glVertexAttribPointer` bez `glEnableVertexAttribArray` nie wystarcza: atrybut pozostaje wyłączony i shader dostaje wartość stałą (domyślnie zera z `w = 1`). `setFloatAttribute` robi oba kroki, więc ta pułapka dotyczy kodu pisanego z pominięciem klasy.
 6. **Numer atrybutu niezgodny z shaderem.** `setFloatAttribute(1, ...)` przy `layout(location = 0)` w shaderze nie daje błędu. Shader czyta atrybut 0, który jest wyłączony, i wszystkie wierzchołki lądują w tym samym punkcie: trójkąty o zerowym polu, czyli nic.
 7. **Usunięcie bufora, którego VAO jeszcze używa.** Skutek zależy od tego, czy VAO jest bieżący (sekcja 5.7). `Buffer` zadeklarowany jako zmienna lokalna w funkcji przygotowującej geometrię ginie na jej końcu, a VAO zostaje bez danych albo z danymi, których nazwa już nie istnieje. Bufor ma żyć tak długo jak VAO.
@@ -576,24 +615,24 @@ Na Windowsie (2026-10-05) `Buffer.cpp` i `VertexArray.cpp` kompilują się w MSV
 9. **Rysowanie bez VAO.** W profilu Core `glDrawArrays` i `glDrawElements` bez związanego VAO daje `GL_INVALID_OPERATION` (sekcja 2.5). Kod z poradnika dla profilu zgodności, który konfiguruje atrybuty bez VAO, na Macu nie narysuje nic.
 10. **`GL_FLOAT` a typ danych w C++.** `setFloatAttribute` zakłada, że w buforze leżą liczby `float` (4 bajty). Tablica `double` wysłana do bufora zostanie odczytana jako dwa razy więcej bezsensownych liczb `float`.
 11. **Kopiowanie opakowania.** Jak w `Shader`: kopia miałaby ten sam identyfikator i dwa destruktory usuwałyby ten sam obiekt. `= delete` zamienia to w błąd kompilacji ([`README.md`](README.md), sekcja 2.2).
-12. **Utworzenie siatki zabiera wiązanie.** Konstruktor `VertexArray` wiąże nowy VAO, a konstruktor `Buffer` wiąże nowy bufor ze swoim celem. Każdy obiekt `gfx::Mesh` robi jedno i drugie, bo ma własny VAO i dwa własne bufory. Kod, który polega na tym, że "mój bufor jest jeszcze związany", przestaje działać, gdy między utworzeniem bufora a `setFloatAttribute` powstanie jakakolwiek siatka. `setFloatAttribute` samo wiąże właściwy VAO, ale bufora nie: atrybuty zostałyby zapisane w dobrym VAO i wskazywały **cudzy bufor wierzchołków**, ten z ostatnio utworzonej siatki (to szczególny przypadek pułapki 1). W `NightMazeApp` tak właśnie jest zbudowana kostka: `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` powstają na liście inicjalizacyjnej, a `setFloatAttribute` jest wołane dopiero w ciele konstruktora. Dlatego pola, przez które powstają siatki (`m_assets`, `m_mazeRenderer`, które wczytuje przez nie modele, `m_colliderLines` i od M4 `m_lightRig`, które ma siatkę znacznika światła), są w nagłówku zadeklarowane **przed** trzema polami kostki, a komentarz nad nimi mówi to wprost: "They stand BEFORE the cube on purpose". Pola są tworzone w kolejności deklaracji, więc siatki powstają wcześniej i nie mają już jak zabrać kostce wiązania. Przestawienie tych deklaracji nie daje błędu kompilacji ani błędu OpenGL, tylko kostkę rysowaną z danych innej siatki. Pięć programów shaderów może stać gdziekolwiek, bo utworzenie programu niczego nie wiąże. Bufor uniformów w `m_lightRig` też nie przeszkadza kostce: wiąże się z celem `GL_UNIFORM_BUFFER`, a nie z `GL_ARRAY_BUFFER`. Przeszkadzałaby siatka znacznika, która powstaje zaraz po nim.
+12. **Utworzenie siatki zabiera wiązanie.** Konstruktor `VertexArray` wiąże nowy VAO, a konstruktor `Buffer` wiąże nowy bufor ze swoim celem. Każdy obiekt `gfx::Mesh` robi jedno i drugie, bo ma własny VAO i dwa własne bufory. Kod, który polega na tym, że "mój bufor jest jeszcze związany", przestaje działać, gdy między utworzeniem bufora a `setFloatAttribute` powstanie jakakolwiek siatka. `setFloatAttribute` samo wiąże właściwy VAO, ale bufora nie: atrybuty zostałyby zapisane w dobrym VAO i wskazywały **cudzy bufor wierzchołków**, ten z ostatnio utworzonej siatki (to szczególny przypadek pułapki 1). Nie daje to błędu kompilacji ani błędu OpenGL, tylko geometrię rysowaną z danych innej siatki. Dziś nic w projekcie tak nie robi: `Mesh` tworzy bufory i opisuje atrybuty w jednym konstruktorze, więc nic nie może wejść pomiędzy. Do M4 tak była zbudowana kostka z M1: jej VAO i bufory powstawały na liście inicjalizacyjnej `NightMazeApp`, a `setFloatAttribute` było wołane dopiero w ciele konstruktora, dlatego pola tworzące siatki musiały być zadeklarowane przed nią. Po usunięciu kostki w M5 ta reguła kolejności pól zniknęła z `NightMazeApp.hpp`. Pułapka wróci, gdy ktoś znowu użyje `Buffer` i `VertexArray` bezpośrednio, obok siatek. Programy shaderów i bufor uniformów w `game::LightRig` nie mają z nią nic wspólnego: utworzenie programu niczego nie wiąże, a bufor uniformów wiąże się z celem `GL_UNIFORM_BUFFER`, a nie z `GL_ARRAY_BUFFER`.
 
-Pułapki dotyczące bufora indeksów, liczby i typu indeksów, kierunku nawijania i kolejności pól w `NightMazeApp` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 7.
+Pułapki dotyczące bufora indeksów, liczby i typu indeksów, kierunku nawijania i kolejności pól w `Mesh` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 7.
 
 ## 8. Ćwiczenia
 
-Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każdym ćwiczeniu wycofaj zmianę (`git checkout src/game`).
+Ćwiczenia od 1 do 5 zmieniają konstruktor `gfx::Mesh` w `src/gfx/Mesh.cpp`, czyli jedyne miejsce, które opisuje atrybuty. Zmiana dotyczy wtedy **wszystkich** siatek naraz: modeli i linii. Po każdej zbuduj i uruchom program, a potem wycofaj zmianę (`git checkout src/gfx`). Tych ćwiczeń na dzisiejszym kodzie nikt jeszcze nie wykonał, więc nie podaję, co widać na ekranie: policz na kartce, co odczyta karta, a potem porównaj z obrazem. Ćwiczenia od 6 do 8 robi się na kartce.
 
-1. **Zły krok.** Zmień `VERTEX_STRIDE` na `POSITION_COMPONENTS * sizeof(float)` (12 zamiast 24). Zanim uruchomisz, policz na kartce, jaką pozycję i jaki kolor odczyta karta dla wierzchołków 0, 1 i 2 (wierzchołek numer `i` zaczyna się w bajcie `przesunięcie + i * 12`). Uruchom i porównaj. Czy w konsoli jest błąd?
-2. **Złe przesunięcie.** Przywróć krok i zmień `COLOR_OFFSET` na 0. Jakie kolory mają teraz rogi i skąd się wzięły? (Ujemna składowa koloru jest przycinana do 0.) Dlaczego ściany przestały być jednolite?
-3. **Krok w złych jednostkach.** Ustaw `VERTEX_STRIDE` na 6 (liczba `float`, a nie bajtów). Opisz wynik. To jedna z najczęstszych pomyłek.
-4. **Rozmiar w elementach.** W konstruktorze podaj jako rozmiar bufora wierzchołków samo `VERTICES.size()` (144 zamiast 576 bajtów). Ile pełnych wierzchołków trafiło na kartę? Co widać i dlaczego wynik może być inny przy każdym uruchomieniu?
-5. **Wyłączony atrybut.** Usuń drugie wywołanie `setFloatAttribute` (kolor). Jaki kolor ma kostka i skąd ta wartość (sekcja 7, pułapka 5)?
-6. **Krok i przesunięcie na kartce.** Wierzchołek ma pozycję (`vec3`), normalną (`vec3`) i współrzędne tekstury (`vec2`), w tej kolejności, w układzie przeplatanym. Podaj krok oraz przesunięcie każdego atrybutu w bajtach i zapisz stałe w stylu `COLOR_OFFSET`. W którym bajcie bufora zaczynają się współrzędne tekstury wierzchołka numer 2? Potem dopisz na końcu styczną (`vec3`): co się zmienia? (Tak wygląda dziś `gfx::Vertex`: krok 44, przesunięcia 0, 12, 24 i 32, [`mesh.md`](mesh.md), sekcja 2.2.)
+1. **Zły krok.** Zmień `VERTEX_STRIDE` na `static_cast<GLsizei>(3 * sizeof(float))` (12 zamiast 44). Zanim uruchomisz, policz dla płytki podłogi (wierzchołki z tabeli w [`indexed-drawing.md`](indexed-drawing.md), sekcja 5.2), jaką pozycję odczyta karta dla wierzchołków 0, 1 i 2: wierzchołek numer `i` zaczyna się teraz w bajcie `i * 12`, więc "pozycją" wierzchołka 1 jest normalna wierzchołka 0. Uruchom i porównaj. Czy w konsoli jest błąd?
+2. **Złe przesunięcie.** Przywróć krok i w wywołaniu dla normalnej podaj `offsetof(Vertex, position)` zamiast `offsetof(Vertex, normal)`. Shader dostaje teraz pozycję jako normalną. Włącz w panelu Assets widok `Normals as colour`, przy wyłączonym polu `Normal mapping`: jaki kolor ma teraz róg płytki o pozycji (1, 0, 1), a jaki róg (-1, 0, -1)? Dlaczego kolor zmienia się płynnie w poprzek płytki ([`shaders.md`](shaders.md), sekcja 4.3)?
+3. **Krok w złych jednostkach.** Ustaw `VERTEX_STRIDE` na 11 (liczba `float`, a nie bajtów). Opisz wynik. To jedna z najczęstszych pomyłek.
+4. **Rozmiar w elementach.** W liście inicjalizacyjnej podaj jako rozmiar bufora wierzchołków `vertices.size()` zamiast `vertices.size_bytes()`. Ile bajtów trafia na kartę dla ściany (60 wierzchołków)? Ile to pełnych wierzchołków? Dlaczego wynik może być inny przy każdym uruchomieniu?
+5. **Wyłączony atrybut.** Usuń wywołanie `setFloatAttribute` dla współrzędnej tekstury. Jaką wartość dostaje `aUv` w shaderze (sekcja 7, pułapka 5)? Który jeden punkt tekstury jest wtedy czytany dla całej ściany i jak wygląda przez to labirynt?
+6. **Krok i przesunięcie na kartce.** Wierzchołek ma pozycję (`vec3`) i kolor (`vec3`), w tej kolejności, w układzie przeplatanym (tak wyglądała kostka z M1). Podaj krok oraz przesunięcie obu atrybutów w bajtach. Potem dopisz normalną (`vec3`) i współrzędne tekstury (`vec2`): co się zmienia? W którym bajcie bufora zaczynają się współrzędne tekstury wierzchołka numer 2? Porównaj z `gfx::Vertex` (krok 44, przesunięcia 0, 12, 24 i 32, [`mesh.md`](mesh.md), sekcja 2.2).
 7. **Przeniesienie na kartce.** Dla `gfx::Buffer a(GL_ARRAY_BUFFER, data, size); gfx::Buffer b = std::move(a);` zapisz `m_id` i `m_target` obu obiektów po każdej linii (przyjmij identyfikator 1). Ile razy i z jaką wartością zostanie zawołane `glDeleteBuffers`? Czy VAO, który zapisał bufor 1 przed przeniesieniem, trzeba konfigurować ponownie?
-8. **Przesunięcie jako wskaźnik.** Jaką wartość ma `offsetAsPointer` w drugim wywołaniu `setFloatAttribute` z konstruktora? Co by się stało, gdyby OpenGL naprawdę odczytał pamięć pod tym adresem, i dlaczego tego nie robi? Jaką wartość ma ostatni argument `glDrawElements` i co ona znaczy?
+8. **Przesunięcie jako wskaźnik.** Jaką wartość ma `offsetAsPointer` w każdym z czterech wywołań `setFloatAttribute` z konstruktora `Mesh`? Co by się stało, gdyby OpenGL naprawdę odczytał pamięć pod tym adresem, i dlaczego tego nie robi? Jaką wartość ma ostatni argument `glDrawElements` w `Mesh::draw()` i co ona znaczy?
 
-Ćwiczenia na danych kostki, indeksach i wywołaniu `glDrawElements` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 8.
+Ćwiczenia na danych indeksów i wywołaniu `glDrawElements` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 8.
 
 ## 9. Pytania kontrolne
 
@@ -603,8 +642,8 @@ Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każd
 2. **Co dokładnie zapisuje VAO, a czego nie?**
    Zapisuje dla każdego atrybutu: włączenie, liczbę składowych, typ, normalizację, krok, przesunięcie i bufor, z którego atrybut czyta. Zapisuje też wiązanie `GL_ELEMENT_ARRAY_BUFFER`. Nie zapisuje wiązania `GL_ARRAY_BUFFER` (to stan globalny, czytany tylko w chwili `glVertexAttribPointer`), danych ani programu shaderów.
 
-3. **Co to jest krok i przesunięcie? Podaj wartości dla pozycji i koloru po trzy `float`.**
-   Krok to odległość w bajtach między początkami kolejnych wierzchołków: 6 * 4 = 24, taki sam dla obu atrybutów. Przesunięcie to początek atrybutu wewnątrz wierzchołka: 0 dla pozycji, 12 dla koloru.
+3. **Co to jest krok i przesunięcie? Podaj wartości dla wierzchołka projektu.**
+   Krok to odległość w bajtach między początkami kolejnych wierzchołków: 11 * 4 = 44, taki sam dla wszystkich czterech atrybutów. Przesunięcie to początek atrybutu wewnątrz wierzchołka: 0 dla pozycji, 12 dla normalnej, 24 dla współrzędnej tekstury, 32 dla stycznej. W kodzie to `sizeof(Vertex)` i `offsetof(Vertex, pole)`. Dla najprostszego przykładu z poradników, pozycji i koloru po trzy `float`, krok to 24, a przesunięcia 0 i 12.
 
 4. **Dlaczego ostatni parametr `glVertexAttribPointer` jest wskaźnikiem i co do niego trafia?**
    Z powodów historycznych: przed buforami był to adres tablicy w pamięci programu. Gdy z `GL_ARRAY_BUFFER` związany jest bufor, wartość jest odczytywana jako przesunięcie w bajtach od początku bufora. Przekazuję więc liczbę zamienioną przez `reinterpret_cast` na `const void*`. Niczego się przez ten wskaźnik nie odczytuje.
@@ -636,10 +675,13 @@ Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każd
 13. **Dlaczego w `VertexArray.cpp` jest komentarz `NOLINTNEXTLINE`?**
     clang-tidy zgłasza zamianę liczby na wskaźnik (`performance-no-int-to-ptr`). Tutaj wymaga jej API OpenGL, więc kontrola jest wyłączona dla tej jednej linii, z komentarzem wyjaśniającym powód. Drugie takie miejsce w `src/` to `Mesh::draw`, z tego samego powodu.
 
-14. **Dlaczego w `NightMazeApp.hpp` pola tworzące siatki stoją przed polami kostki?**
-    Utworzenie siatki wiąże jej własny VAO i bufory. Kostka wiąże swój VAO i bufory na liście inicjalizacyjnej, a atrybuty opisuje dopiero w ciele konstruktora, licząc na to, że jej bufor jest nadal związany. Siatka utworzona pomiędzy zostawiłaby związany własny bufor wierzchołków i atrybuty kostki wskazałyby na niego. Pola powstają w kolejności deklaracji, więc siatki zadeklarowane wcześniej powstają przed kostką.
+14. **Kto w programie tworzy obiekty `Buffer` i `VertexArray`?**
+    Tylko `gfx::Mesh`: każda siatka ma jeden VAO i dwa bufory jako pola, w tej kolejności. Siatek jest osiem (sześć modeli i dwie siatki z odcinków), więc na karcie jest osiem VAO i szesnaście buforów tych klas. Bufor uniformów ze światłami to osobna klasa, `gfx::UniformBuffer`.
 
-Pytania o indeksy, kostkę i `glDrawElements` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 9.
+15. **Dlaczego utworzenie siatki może zepsuć cudzą geometrię i dlaczego dziś tego nie robi?**
+    Utworzenie siatki wiąże jej własny VAO i bufory i zostawia je związane. Kod, który utworzył własny bufor wierzchołków, a atrybuty opisuje dopiero później, zapisałby wtedy w swoim VAO bufor tej siatki. Tak była zbudowana kostka z M1 i dlatego pola tworzące siatki stały w `NightMazeApp.hpp` przed nią. Dziś jedynym użytkownikiem obu klas jest `Mesh`, który tworzy bufory i opisuje atrybuty w jednym konstruktorze.
+
+Pytania o indeksy i `glDrawElements` są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 9.
 
 ## 10. Źródła
 
@@ -647,6 +689,6 @@ Pytania o indeksy, kostkę i `glDrawElements` są w [`indexed-drawing.md`](index
 - LearnOpenGL, rozdział "Shaders" (<https://learnopengl.com/Getting-started/Shaders>), część "More attributes": układ przeplatany z pozycją i kolorem.
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glGenBuffers`, `glBindBuffer`, `glBufferData` (tabela podpowiedzi użycia), `glDeleteBuffers`, `glGenVertexArrays`, `glBindVertexArray`, `glDeleteVertexArrays`, `glEnableVertexAttribArray`, `glVertexAttribPointer`.
 - Khronos OpenGL Wiki: "Vertex Specification" (<https://www.khronos.org/opengl/wiki/Vertex_Specification>, co przechowuje VAO, wiązanie bufora indeksów, przesunięcie jako wskaźnik), "Buffer Object" (<https://www.khronos.org/opengl/wiki/Buffer_Object>), "OpenGL Object" (<https://www.khronos.org/opengl/wiki/OpenGL_Object>, usuwanie obiektu dołączonego do innego obiektu).
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`shaders.md`](shaders.md), [`shader-class.md`](shader-class.md), [`indexed-drawing.md`](indexed-drawing.md) (ciąg dalszy: indeksy i kostka), [`../core/gl-check.md`](../core/gl-check.md), [`../../guides/project-structure.md`](../../guides/project-structure.md) (sekcja 3.6 o clang-tidy).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`shaders.md`](shaders.md), [`shader-class.md`](shader-class.md), [`indexed-drawing.md`](indexed-drawing.md) (ciąg dalszy: indeksy i wywołania rysujące), [`mesh.md`](mesh.md) (jedyny użytkownik obu klas), [`../core/gl-check.md`](../core/gl-check.md), [`../../guides/project-structure.md`](../../guides/project-structure.md) (sekcja 3.6 o clang-tidy).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o tablicach wierzchołków i obiektach buforowych).
 - "OpenGL. Księga eksperta" (rozdziały o buforach wierzchołków i tablicach wierzchołków).

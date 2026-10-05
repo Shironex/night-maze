@@ -12,8 +12,8 @@ używa.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera, a `Shader::setVec3` tak samo wysyła wektor.
 Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz widoku i macierz
-rzutowania, wysyła je do programów shaderów (jest ich pięć, w jednej klatce pracują
-najwyżej trzy) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+rzutowania, wysyła je do programów shaderów (jest ich cztery, w jednej klatce pracują
+najwyżej dwa) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
 mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
 kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
 narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ
@@ -27,7 +27,7 @@ Oświetlenie (M4) dołożyło kilka nowych użyć, wszystkie opisane niżej:
 
 | Co | Gdzie w kodzie | Sekcja |
 |---|---|---|
-| `glm::mat3`, `glm::inverse`, `glm::transpose`: macierz normalnych (normal matrix) | `scene::normalMatrix` w [`src/scene/Transform.cpp`](../../src/scene/Transform.cpp), wołana przez `MazeRenderer::drawInstances` | 3.3 |
+| `glm::mat3`, `glm::inverse`, `glm::transpose`: macierz normalnych (normal matrix) | `scene::normalMatrix` w [`src/scene/Transform.cpp`](../../src/scene/Transform.cpp), wołana przez `game::drawModel` (do M4 przez `MazeRenderer::drawInstances`, funkcję usuniętą w M5) | 3.3 |
 | `glm::vec4{vec3, w}`: wektor czterech liczb zbudowany z trzech i jednej | `scene::packLightBlock` w [`src/scene/LightBlock.cpp`](../../src/scene/LightBlock.cpp) | 3.2 |
 | `glm::length` i `glm::normalize` dla kierunków świateł | funkcja `unitDirection` w tym samym pliku | 3.8 |
 | `glm::radians` dla kątów stożka i kątów księżyca | `coneCosines` i `directionFromAngles` w [`src/scene/Light.cpp`](../../src/scene/Light.cpp) | 3.7 |
@@ -41,7 +41,25 @@ bezwzględna każdej składowej wektoru, użyta do wyboru osi najmniej zgodnej z
 Sam rachunek omawia [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md),
 sekcje 2.7 i 2.8.
 
-Ten kod jest zbudowany i przetestowany na Windowsie (2026-10-05). Na macOS nie był budowany.
+Rozgrywka (M5) dołożyła trzy funkcje GLM, których projekt wcześniej nie wołał, i kilka
+nowych użyć znanych typów:
+
+| Co | Gdzie w kodzie | Sekcja |
+|---|---|---|
+| `glm::dot(v, v)`: kwadrat długości wektora, bez pierwiastka | dwa testy kul `overlaps` w [`src/scene/Collider.cpp`](../../src/scene/Collider.cpp) | 3.8 |
+| `glm::clamp(point, min, max)` na wektorach: najbliższy punkt pudełka | `scene::closestPoint` w tym samym pliku | 3.8 |
+| `glm::two_pi<float>()`: stała 2π z `<glm/gtc/constants.hpp>` | okrąg z 32 punktów w [`src/game/ColliderLines.cpp`](../../src/game/ColliderLines.cpp), faza kołysania i pulsowania kryształów w [`src/game/Crystals.cpp`](../../src/game/Crystals.cpp) | 3.1 i 3.7 |
+| `std::span<const glm::mat4>`: lista macierzy modelu, także jednoelementowa | `game::drawModel` w [`src/game/ModelDraw.cpp`](../../src/game/ModelDraw.cpp), wołana przez `MazeRenderer` i `GameplayRenderer` | 3.3 |
+| `glm::vec3` jako kolor świecenia i jako pozycje świateł | `game::crystalGlow` (kolor razy liczba), `game::crystalLightPositions` (`std::vector<glm::vec3>`) | 3.2 |
+| `scene::Sphere`: `glm::vec3` środka i promień | [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp), `game::playerReach` w `src/game/Round.cpp` | 3.2 |
+
+Z M5 zniknęła za to kostka z M1 (`NightMazeApp::drawCube` i jej `Transform`) oraz znaczniki
+świateł z M4, więc przykłady, które z nich korzystały, są niżej zastąpione kodem ścian,
+bramy i kryształów.
+
+Kod do M4 włącznie jest zbudowany i przetestowany na Windowsie (2026-10-05). Kod M5 jest na
+Windowsie zbudowany w Debug i Release bez ostrzeżeń, a testy przechodzą (215 przypadków,
+85098 asercji). Na macOS kod M4 i M5 nie był budowany.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -221,6 +239,7 @@ skopiowane z `src/scene/` i mają nad sobą nazwę pliku.
 | `<glm/glm.hpp>` | rdzeń zgodny z GLSL: `vec2`, `vec3`, `vec4`, `mat3`, `mat4`, operatory, `radians`, `normalize`, `cross`, `dot`, `mix`, `inverse`, `transpose` |
 | `<glm/gtc/matrix_transform.hpp>` | budowanie macierzy: `translate`, `rotate`, `scale`, `lookAt`, `perspective`, `ortho` |
 | `<glm/gtc/type_ptr.hpp>` | `value_ptr`: wskaźnik na surowe dane wektora albo macierzy, do przekazania OpenGL |
+| `<glm/gtc/constants.hpp>` | stałe matematyczne jako szablony funkcji: `glm::two_pi<float>()` (jedyna, której projekt używa), `glm::pi<float>()`. Typ w nawiasach ostrych wybiera precyzję |
 
 `gtc` to rozszerzenia stabilne (rzeczy spoza specyfikacji GLSL, ale z ustalonym API). Katalog
 `gtx` zawiera rozszerzenia eksperymentalne. Nie używam ich: wymagają makra
@@ -237,6 +256,9 @@ Tak jest w `src/scene/`: `Transform.hpp` i `Camera.hpp` dołączają samo `<glm/
 `scene/Light.hpp` i `scene/LightBlock.hpp` dołączają samo `<glm/glm.hpp>`, a ich pliki `.cpp`
 niczego więcej z GLM nie potrzebują (`radians`, `length` i `normalize` są w rdzeniu). Panel
 Lights (`src/debug/panels/LightsPanel.cpp`) dołącza `<glm/gtc/type_ptr.hpp>` dla `value_ptr`.
+Od M5 dwa pliki dołączają `<glm/gtc/constants.hpp>`: `src/game/ColliderLines.cpp`
+i `src/game/Crystals.cpp`, oba dla `glm::two_pi<float>()`. Testy kul w `scene/Collider.cpp`
+nie dołączają niczego nowego: `dot` i `clamp` są w rdzeniu, który przychodzi z `Collider.hpp`.
 
 ### 3.2. Wektory: `vec2`, `vec3`, `vec4`
 
@@ -365,13 +387,15 @@ Obie funkcje, `inverse` i `transpose`, są w rdzeniu (`<glm/glm.hpp>`), więc `T
 nie dołącza dla nich niczego nowego. Dlaczego odwrotność i transpozycja, a nie samo
 `mat3(model)`: przy skali różnej na osiach normalna pomnożona przez `mat3(model)` przestaje
 być prostopadła do powierzchni. Dla samego obrotu odwrotność transponowana jest tym samym
-obrotem. Dziś żaden obiekt labiryntu nie jest skalowany, więc wynik równa się części
-obrotowej macierzy modelu. Teoria i cztery testy z `tests/TransformTests.cpp`:
+obrotem. Dziś żaden model sceny (ściana, słupek, podłoga, brama, kryształ) nie jest skalowany, więc
+wynik równa się części obrotowej macierzy modelu. Teoria i cztery testy z `tests/TransformTests.cpp`:
 [`../modules/scene/transforms.md`](../modules/scene/transforms.md) (macierz normalnych).
 
-Funkcję woła `MazeRenderer::drawInstances` w
-[`src/game/MazeRenderer.cpp`](../../src/game/MazeRenderer.cpp), dla każdego obiektu w każdej
-klatce, zaraz po wysłaniu macierzy modelu:
+Funkcję woła `game::drawModel` w
+[`src/game/ModelDraw.cpp`](../../src/game/ModelDraw.cpp), dla każdego obiektu w każdej
+klatce, zaraz po wysłaniu macierzy modelu. Do M4 ta pętla była prywatną funkcją
+`MazeRenderer::drawInstances`. W M5 stała się wolną funkcją, bo tak samo rysowane są
+kryształy i brama (`GameplayRenderer`):
 
 ```cpp
             shader.setMat4(MODEL_UNIFORM, modelMatrix);
@@ -382,7 +406,7 @@ klatce, zaraz po wysłaniu macierzy modelu:
 ```
 
 Wynik trafia do uniformu `uNormalMatrix` typu `mat3` w `lit.vert` i `gouraud.vert`. Ta sama
-linia wykonuje się także wtedy, gdy labirynt rysuje program `textured`, który takiego
+linia wykonuje się także wtedy, gdy scenę rysuje program `textured`, który takiego
 uniformu nie ma: `setMat3` dostaje wtedy lokalizację -1 i OpenGL ją ignoruje (sekcja 3.9).
 `textured.vert` nadal liczy normalną przez `mat3(uModel)`: to ten sam konstruktor co w
 kroku 1, tylko w GLSL.
@@ -465,6 +489,39 @@ glm::mat4 Transform::matrix() const {
 Powstaje `T * Ry * Rx * Rz * S`. Osie obrotu to nazwane stałe z tego samego pliku
 (`constexpr glm::vec3 AXIS_Y{0.0F, 1.0F, 0.0F};` i dwie podobne). Omówienie linia po linii:
 [`../modules/scene/transforms.md`](../modules/scene/transforms.md), sekcja 5.3.
+
+Kto dziś woła `Transform::matrix()`. Ściana i brama, `game::wallModelMatrix` w
+[`src/game/MazeWorld.cpp`](../../src/game/MazeWorld.cpp): przesunięcie na miejsce odcinka
+i, dla odcinka wzdłuż osi Z, obrót o ćwierć obrotu wokół osi pionowej.
+
+```cpp
+glm::mat4 wallModelMatrix(const WallSegment& segment) {
+    scene::Transform transform;
+    transform.position = segment.position;
+    if (segment.axis == WallAxis::AlongZ) {
+        transform.rotationDegrees = WALL_ALONG_Z_ROTATION;
+    }
+    return transform.matrix();
+}
+```
+
+Kryształ, `GameplayRenderer::draw` w
+[`src/game/GameplayRenderer.cpp`](../../src/game/GameplayRenderer.cpp): przesunięcie, które
+kołysze się w pionie, i obrót wokół osi Y, który rośnie z czasem. Macierz jest liczona od
+nowa w każdej klatce, dla każdego niezebranego kryształu.
+
+```cpp
+        scene::Transform transform;
+        transform.position =
+            crystalBobPosition(crystal.restPosition, index, round.animationSeconds);
+        transform.rotationDegrees = {0.0F, crystalSpinDegrees(index, round.animationSeconds), 0.0F};
+        const glm::mat4 crystalMatrix = transform.matrix();
+```
+
+Trzeci użytkownik, `ColliderLines`, buduje macierz ze skali i przesunięcia (sześcian o boku 1
+rozciągnięty do rozmiaru pudełka kolizji, okrąg o promieniu 1 do promienia kuli i obrócony
+na trzy sposoby, po jednym okręgu wokół każdej osi). Do M4
+czwartym była kostka z M1 z obrotem wokół dwóch osi: usunięta w M5.
 
 ### 3.6. `glm::lookAt`: macierz widoku
 
@@ -565,6 +622,31 @@ latarki na radiany tuż przed policzeniem cosinusa:
 `std::cos` to funkcja biblioteki standardowej C++, nie GLM, ale też liczy w radianach.
 Opis obu funkcji: [`../modules/scene/lights.md`](../modules/scene/lights.md).
 
+**Pełny obrót jako stała: `glm::two_pi`.** Tam, gdzie kąt nie przychodzi w stopniach z pola,
+tylko jest częścią pełnego obrotu, nie ma czego zamieniać przez `glm::radians`: wystarczy
+pomnożyć ułamek obrotu przez 2π. GLM ma tę stałą w `<glm/gtc/constants.hpp>`. Punkty okręgu
+do rysowania kul kolizji, [`src/game/ColliderLines.cpp`](../../src/game/ColliderLines.cpp):
+
+```cpp
+    for (std::size_t i = 0; i < CIRCLE_SEGMENTS; ++i) {
+        const float angle =
+            glm::two_pi<float>() * static_cast<float>(i) / static_cast<float>(CIRCLE_SEGMENTS);
+        points[i].position = {std::cos(angle), std::sin(angle), 0.0F};
+    }
+```
+
+Punkt numer `i` leży pod kątem `i / 32` pełnego obrotu. `glm::two_pi<float>()` jest
+szablonem funkcji `constexpr`, więc może też inicjalizować stałą, jak w
+[`src/game/Crystals.cpp`](../../src/game/Crystals.cpp):
+
+```cpp
+constexpr float FULL_TURN_RADIANS = glm::two_pi<float>();
+```
+
+Tej stałej używają kołysanie kryształu i pulsowanie jego światła: faza ruchu (ułamek cyklu
+od 0 do 1) razy `FULL_TURN_RADIANS` trafia do `std::sin`
+([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 2).
+
 Teoria rzutowania (bryła widzenia, dzielenie perspektywiczne, nieliniowa głębia):
 [`../modules/scene/camera.md`](../modules/scene/camera.md), sekcja 2.3.
 
@@ -577,6 +659,7 @@ Teoria rzutowania (bryła widzenia, dzielenie perspektywiczne, nieliniowa głęb
 | `glm::cross(a, b)` | wektor prostopadły do obu: iloczyn wektorowy (cross product) | wektor "w prawo" kamery z kierunku patrzenia i góry |
 | `glm::mix(x, y, a)` | `x * (1 - a) + y * a`: interpolacja liniowa | płynne przejście między dwiema wartościami |
 | `glm::length(v)` | długość wektora | odległości |
+| `glm::clamp(x, lo, hi)` | `x` sprowadzone do przedziału od `lo` do `hi`. Dla wektorów działa składowa po składowej | najbliższy punkt pudełka, ograniczanie wartości |
 
 `Camera::right` w [`src/scene/Camera.cpp`](../../src/scene/Camera.cpp):
 
@@ -635,6 +718,48 @@ Shader zakłada, że kierunki w bloku mają długość 1, i sam ich nie normaliz
 dzielenia przez zero. Sprawdza to test `packLightBlock replaces a direction of length zero`
 w `tests/LightTests.cpp`.
 
+**`dot` i `clamp` w testach kul (M5).** Zbieranie kryształów i wejście do wyjścia to testy
+"czy kula nachodzi na kulę" i "czy kula nachodzi na pudełko". Oba są w
+[`src/scene/Collider.cpp`](../../src/scene/Collider.cpp):
+
+```cpp
+bool overlaps(const Sphere& a, const Sphere& b) {
+    // The squares are compared instead of the distances themselves: the square root that
+    // a distance needs is the expensive part, and for numbers that are not negative
+    // "smaller" means the same before and after squaring. dot(v, v) is the squared
+    // length of v.
+    const glm::vec3 offset = b.center - a.center;
+    const float reach = a.radius + b.radius;
+    return glm::dot(offset, offset) < reach * reach;
+}
+
+glm::vec3 closestPoint(const Aabb& box, const glm::vec3& point) {
+    // Axis by axis: a coordinate between min and max stays, one outside is moved to the
+    // nearer of the two. glm::clamp does that for all three components at once.
+    return glm::clamp(point, box.min, box.max);
+}
+
+bool overlaps(const Sphere& sphere, const Aabb& box) {
+    // The sphere reaches the box exactly when it reaches the point of the box nearest to
+    // its centre. A centre inside the box is its own nearest point: the distance is 0,
+    // and any radius above 0 overlaps.
+    const glm::vec3 offset = closestPoint(box, sphere.center) - sphere.center;
+    return glm::dot(offset, offset) < sphere.radius * sphere.radius;
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `b.center - a.center` | odejmowanie wektorów: wektor od środka jednej kuli do środka drugiej |
+| `glm::dot(offset, offset)` | iloczyn skalarny wektora z samym sobą to `x*x + y*y + z*z`, czyli **kwadrat** jego długości. `glm::length` policzyłoby z tego jeszcze pierwiastek |
+| `< reach * reach` | porównuję kwadraty. Dla liczb nieujemnych `a < b` znaczy to samo co `a*a < b*b`, więc pierwiastek nie jest potrzebny. Znak `<`, a nie `<=`: kule, które się tylko stykają, nie nachodzą na siebie |
+| `glm::clamp(point, box.min, box.max)` | trzy argumenty typu `glm::vec3`: każda składowa punktu jest osobno sprowadzana do przedziału tej samej składowej pudełka. Współrzędna wewnątrz pudełka zostaje, współrzędna na zewnątrz ląduje na bliższej ścianie. Wynik to punkt pudełka najbliższy podanemu |
+| `closestPoint(box, sphere.center) - sphere.center` | wektor od środka kuli do najbliższego punktu pudełka. Jeśli jest krótszy niż promień, kula sięga pudełka |
+
+Te funkcje mają siedem przypadków w `tests/ColliderTests.cpp`. Teorię i rysunki ma
+[`../modules/scene/collision.md`](../modules/scene/collision.md), a to, kto ich używa w grze
+(`updateRound`), [`../modules/game/gameplay.md`](../modules/game/gameplay.md).
+
 `mix` przy rysowaniu, `NightMazeApp::onRender` w
 [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp):
 
@@ -671,16 +796,27 @@ void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
 ```
 
 Nagłówek `<glm/gtc/type_ptr.hpp>` jest dołączony na górze tego pliku. Funkcję omawia linia
-po linii [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), sekcja 5. Woła ją
-pięć funkcji rysujących `NightMazeApp` (`drawUnlitMaze`, `drawLitMaze`, `drawLightMarkers`,
-`drawCube`, `drawColliderLines`) oraz `MazeRenderer`, `ColliderLines` i `LightRig` (po razie
-dla każdego rysowanego obiektu). Przykład z `NightMazeApp::drawCube`:
+po linii [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), sekcja 5. Wołają ją
+trzy funkcje rysujące `NightMazeApp` (`drawUnlitMaze`, `drawLitMaze`, `drawColliderLines`)
+dla macierzy widoku i rzutowania oraz `game::drawModel` i `ColliderLines` dla macierzy modelu
+(po razie dla każdego rysowanego obiektu). Przykład z `NightMazeApp::drawLitMaze`:
 
 ```cpp
-    m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
-    m_shader.setMat4(VIEW_UNIFORM, view);
-    m_shader.setMat4(PROJECTION_UNIFORM, projection);
+    shader.use();
+    shader.setMat4(VIEW_UNIFORM, view);
+    shader.setMat4(PROJECTION_UNIFORM, projection);
 ```
+
+Trzecia macierz, modelu, idzie tą samą funkcją z pętli w `game::drawModel`
+([`src/game/ModelDraw.cpp`](../../src/game/ModelDraw.cpp)):
+
+```cpp
+        for (const glm::mat4& modelMatrix : modelMatrices) {
+            shader.setMat4(MODEL_UNIFORM, modelMatrix);
+```
+
+Do M4 wszystkie trzy wywołania stały obok siebie w `NightMazeApp::drawCube`, funkcji
+rysującej kostkę z M1. Kostki już nie ma.
 
 `view` i `projection` to macierze policzone raz na klatkę w `onRender`
 (`m_camera.viewMatrix(eye)` i `m_camera.projectionMatrix(aspectRatio)`), a nazwy uniformów

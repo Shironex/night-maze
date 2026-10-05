@@ -7,9 +7,11 @@ Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów Ope
 
 **Stan na dziś.** Gra ma jeden blok uniformów, `LightBlock`, o rozmiarze 928 bajtów. Czytają go dwa programy: `lit` (blok jest w `lit.frag`) i `gouraud` (blok jest w `gouraud.vert`). Dane wysyła raz na klatkę `game::LightRig::upload`, przez jeden obiekt `gfx::UniformBuffer` przypięty do punktu wiązania numer 1.
 
-Co jest zmierzone na Windowsie (2026-10-05, MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74): build Debug i Release bez ostrzeżeń, 163 przypadki testowe i 62220 asercji w obu, clang-format i clang-tidy bez uwag, start gry bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia, latarka wyłączona, ślepy zaułek ze swoim światłem i ściany oświetlone przez księżyc obok nieoświetlonych. Z tego wynikają dwa wnioski o kodzie z tego dokumentu (to wnioski z kodu i pomiaru, a nie osobny pomiar): sterownik NVIDIA podał dla bloku w obu programach rozmiar 928 bajtów, bo inaczej `applyBlockBinding` wypisałoby linię `[error]` (sekcja 5.9), a dane ze struktury C++ trafiają tam, gdzie shader ich szuka, bo obraz jest oświetlony zgodnie z ustawieniami.
+Co zostało zmierzone na Windowsie w M4 (2026-10-05, MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74): build Debug i Release bez ostrzeżeń, wszystkie ówczesne testy zielone w obu, clang-format i clang-tidy bez uwag, start gry bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu z M4 sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia, latarka wyłączona, ślepy zaułek ze swoim światłem (w M4 światła punktowe wisiały w ślepych zaułkach) i ściany oświetlone przez księżyc obok nieoświetlonych. Z tego wynikają dwa wnioski o kodzie z tego dokumentu (to wnioski z kodu i pomiaru, a nie osobny pomiar): sterownik NVIDIA podał dla bloku w obu programach rozmiar 928 bajtów, bo inaczej `applyBlockBinding` wypisałoby linię `[error]` (sekcja 5.9), a dane ze struktury C++ trafiają tam, gdzie shader ich szuka, bo obraz jest oświetlony zgodnie z ustawieniami.
 
-Czego nikt nie sprawdził: `gfx::UniformBuffer` i `Shader::bindUniformBlock` wymagają kontekstu OpenGL, więc **nie mają testów jednostkowych**. Nikt nie nacisnął ręcznie `Reload shaders` przy pięciu programach, więc ponowne podpięcie bloku po **udanym** przeładowaniu wynika z kodu, a nie z obserwacji. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: każde zdanie o macOS w tym dokumencie jest niesprawdzone.
+Co zmieniło M5 (kod kompletny na Windowsie, kamień niezamknięty). Klasy `gfx::UniformBuffer`, funkcji `Shader::bindUniformBlock`, struktury `LightBlockData` i deklaracji bloku w `common/lighting.glsl` M5 nie dotknęło: blok ma nadal 928 bajtów i te same pola. Zmieniło się to, co do bloku trafia i kto go wysyła. Światła punktowe wiszą teraz nad kryształami, których gracz jeszcze nie zebrał (`game::crystalLightPositions`), i pulsują, a słaba bateria przyciemnia latarkę: obie zmiany robi `game::lightingForFrame` na kopii ustawień, zanim powstaną bajty (sekcja 5.10). Klasa `LightRig` straciła znaczniki świateł i ma już tylko bufor oraz funkcje `connect` i `upload`. Programów jest cztery zamiast pięciu, blok czytają nadal dwa. Według raportu z Windowsa (2026-10-05) build Debug i Release jest bez ostrzeżeń, a 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach. Obraz M5 był oglądany na zrzutach ekranu, ale osobnych wniosków o bloku z nich nie wyciągam.
+
+Czego nikt nie sprawdził: `gfx::UniformBuffer` i `Shader::bindUniformBlock` wymagają kontekstu OpenGL, więc **nie mają testów jednostkowych**. Nikt nie nacisnął ręcznie `Reload shaders`, ani przy pięciu programach w M4, ani przy czterech dziś, więc ponowne podpięcie bloku po **udanym** przeładowaniu wynika z kodu, a nie z obserwacji. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: każde zdanie o macOS w tym dokumencie jest niesprawdzone.
 
 ## 1. Po co to jest
 
@@ -56,7 +58,7 @@ W projekcie obowiązuje prosta reguła podziału:
 | Rodzaj danych | Jak często się zmienia | Kto czyta | Mechanizm |
 |---|---|---|---|
 | światła sceny i pozycja kamery | raz na klatkę | oba programy oświetlające | blok `LightBlock` w buforze |
-| macierze `uView`, `uProjection` | raz na klatkę | każdy z pięciu programów | zwykłe uniformy, ustawiane w każdym programie osobno |
+| macierze `uView`, `uProjection` | raz na klatkę | każdy z czterech programów | zwykłe uniformy, ustawiane w każdym programie osobno |
 | `uModel`, `uNormalMatrix`, `uTint` | dla każdego obiektu albo części modelu | program, który akurat rysuje | zwykłe uniformy |
 | materiał (`uSpecularModel`, `uSpecularStrength`, `uShininess`) | raz na klatkę | program, który akurat rysuje labirynt | zwykłe uniformy |
 
@@ -918,7 +920,7 @@ Pierwsze wczytanie w konstruktorze `Shader` też idzie przez `reload()`, ale lis
 
 ### 5.10 Kto to wszystko woła: `LightRig` i `NightMazeApp`
 
-Klasa `game::LightRig` łączy trzy elementy: strukturę z `scene`, bufor z `gfx` i stałe z `ShaderUniforms.hpp`. Jej pełny opis, razem ze znacznikami świateł, jest w [`../game/flashlight.md`](../game/flashlight.md). Tu są tylko trzy funkcje, które dotyczą bloku.
+Klasa `game::LightRig` łączy trzy elementy: strukturę z `scene`, bufor z `gfx` i stałe z `ShaderUniforms.hpp`. Opisuje ją też [`../game/flashlight.md`](../game/flashlight.md). Od M5 klasa nie ma niczego poza tym, co jest tutaj: znaczniki świateł (małe kostki rysowane w miejscu każdego światła punktowego) zostały usunięte, bo widocznym źródłem każdego światła punktowego jest teraz kryształ, który rysuje `game::GameplayRenderer`. Zostały trzy funkcje i wszystkie dotyczą bloku.
 
 Stałe w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp):
 
@@ -930,9 +932,7 @@ constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
 Konstruktor, `connect` i `upload` w [`src/game/LightRig.cpp`](../../../src/game/LightRig.cpp):
 
 ```cpp
-LightRig::LightRig()
-    : m_lightBuffer(sizeof(scene::LightBlockData), LIGHT_BLOCK_BINDING_POINT),
-      m_markerCube(MARKER_CORNERS, MARKER_INDICES) {}
+LightRig::LightRig() : m_lightBuffer(sizeof(scene::LightBlockData), LIGHT_BLOCK_BINDING_POINT) {}
 
 void LightRig::connect(gfx::Shader& shader) const {
     shader.bindUniformBlock(LIGHT_BLOCK_NAME, m_lightBuffer.bindingPoint(),
@@ -963,15 +963,26 @@ W konstruktorze `NightMazeApp` ([`src/game/NightMazeApp.cpp`](../../../src/game/
     m_lightRig.connect(m_gouraudShader);
 ```
 
-Te dwie linie stoją w **ciele** konstruktora, więc wykonują się po wszystkich polach: programy już są zbudowane, bufor już istnieje. Pozostałe trzy programy (`basic`, `textured`, `color`) nie mają bloku i nie są podpinane. Gdyby były, `applyBlockBinding` wróciłoby na `GL_INVALID_INDEX` bez skutku.
+Te dwie linie stoją w **ciele** konstruktora, więc wykonują się po wszystkich polach: programy już są zbudowane, bufor już istnieje. Pozostałe dwa programy (`textured` i `color`) nie mają bloku i nie są podpinane. Gdyby były, `applyBlockBinding` wróciłoby na `GL_INVALID_INDEX` bez skutku.
 
 W `NightMazeApp::onRender`, po policzeniu macierzy, a przed rysowaniem:
 
 ```cpp
+    const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+    const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
     const scene::LightSet lights =
-        buildLightSet(m_lighting, eye, m_camera.forward(), m_mazeWorld.pointLightPositions);
+        buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights);
     m_lightRig.upload(lights, eye);
 ```
+
+| Linia | Co robi |
+|---|---|
+| `lightingForFrame(m_lighting, m_round, m_gameplay)` | kopia ustawień oświetlenia na tę jedną klatkę. Runda zmienia w niej dwie rzeczy: latarka jest wyłączona przy pustej baterii i przyciemniona (migocze) przy słabej, a natężenie świateł punktowych jest pomnożone przez puls kryształów. Samo `m_lighting`, które edytuje panel Lights, zostaje nietknięte |
+| `crystalLightPositions(m_round)` | pozycje świateł punktowych tej chwili: nad każdym kryształem, którego gracz jeszcze nie zebrał, razem z jego kołysaniem. Zebrany kryształ nie ma światła, więc lista skraca się w trakcie rundy. W M4 była to stała lista pozycji w ślepych zaułkach, liczona raz przy budowie labiryntu |
+| `buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights)` | zestaw świateł klatki (`scene::LightSet`) z kopii ustawień i z listy pozycji |
+| `m_lightRig.upload(lights, eye)` | pakowanie do 928 bajtów i wysyłka |
+
+Dla bloku nic się przez to nie zmieniło: to nadal jedna struktura i jedna wysyłka na klatkę. Inne są tylko wartości. W M4 przy nieruchomej kamerze bajty były co klatkę takie same, a dziś natężenie i pozycje świateł punktowych zmieniają się z klatki na klatkę, a ich lista skraca się z każdym zebranym kryształem. Labirynt startowy (10 x 10, ziarno 1) ma 13 kryształów, więc na początku rundy lista ma 13 pozycji z 16 miejsc tablicy `uPoints` (w M4 było to 11 świateł w ślepych zaułkach). Zasady rundy, puls i baterię opisuje [`../game/gameplay.md`](../game/gameplay.md).
 
 Wysyłka odbywa się **w każdej klatce i w każdym trybie**, także w trybie `Unlit`, w którym żaden program bloku nie czyta. To 928 zbędnych bajtów na klatkę w jednym trybie w zamian za brak warunku i za bufor, który po przełączeniu trybu jest od razu aktualny.
 
@@ -1012,21 +1023,22 @@ Uwaga do ostatniego przypadku. Komentarz w teście mówi, że rozmiar bloku `std
 |---|---|---|
 | układ struktury C++ | `static_assert` w czasie kompilacji, MSVC 19.44, Debug i Release | build przechodzi bez ostrzeżeń |
 | ten sam kod pod clangiem z nagłówkami Microsoftu | clang-tidy z `-D_CRT_USE_BUILTIN_OFFSETOF` | bez uwag |
-| `packLightBlock` | siedem przypadków testowych z sekcji 5.12, w ramach 163 przypadków i 62220 asercji, Debug i Release | przechodzą |
+| `packLightBlock` | siedem przypadków testowych z sekcji 5.12, w ramach całego programu testowego, Debug i Release | przechodziły w M4, a po M5 według raportu z Windowsa przechodzi cały program testowy: 215 przypadków i 85098 asercji |
 | rozmiar bloku według sterownika | brak linii `[error] Uniform block LightBlock is ...` przy starcie gry (sterownik NVIDIA 610.74) | wniosek: sterownik podał 928 dla obu programów |
-| dane docierają do shadera | zrzuty ekranu czterech trybów oświetlenia, latarki wyłączonej, światła w ślepym zaułku, ścian oświetlonych i nieoświetlonych przez księżyc | obraz zgodny z ustawieniami świateł |
+| dane docierają do shadera | zrzuty ekranu z M4: cztery tryby oświetlenia, latarka wyłączona, światło w ślepym zaułku (tam wisiały wtedy światła punktowe), ściany oświetlone i nieoświetlone przez księżyc | obraz zgodny z ustawieniami świateł |
 | stary program po nieudanym przeładowaniu zachowuje wiązanie | zrzut ekranu z błędem wstawionym do `common/lighting.glsl` | komunikat z nazwą pliku, a poprzedni program rysuje dalej |
-| ponowne podpięcie po **udanym** przeładowaniu | | **niesprawdzone**: nikt nie nacisnął `Reload shaders` przy pięciu programach. Wynika z kodu (sekcja 5.9) |
+| ponowne podpięcie po **udanym** przeładowaniu | | **niesprawdzone**: nikt nie nacisnął `Reload shaders`, ani w M4, ani po M5. Wynika z kodu (sekcja 5.9) |
 | reguły `std140`, zachowanie przy braku bufora, wiązanie wracające do zera przy linkowaniu, `glBindBufferBase` | lektura specyfikacji OpenGL 4.1 Core i GLSL 4.10 (pliki PDF z rejestru Khronos) | cytowane w sekcjach 2 i 3 |
+| stan po M5 | raport z Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji, zrzuty ekranu | kod bloku i bufora bez zmian. Pulsu świateł, gasnącego światła zebranego kryształu i migotania latarki nikt jeszcze nie sprawdzał ręcznie w działającej grze |
 | macOS | | **nic**: ani kompilacja asercji pod Apple clang, ani rozmiar bloku podawany przez sterownik Apple, ani obraz |
 
 ## 6. Panel ImGui
 
 Blok uniformów i bufor nie mają własnego panelu: żaden panel nie pokazuje zawartości bufora, numeru punktu wiązania ani rozmiaru bloku. Ich działanie widać pośrednio w dwóch miejscach.
 
-**Panel Lights.** Każdy widżet tego panelu zmienia pole struktury `game::LightingSettings`. W następnej klatce `buildLightSet` robi z niej `LightSet`, `packLightBlock` bajty, a `UniformBuffer::update` wysyła je na kartę. Zmiana koloru księżyca w panelu to zatem zmiana bajtów od 48 do 59 bufora (natężenie leży w bajtach od 60 do 63), a wyłączenie latarki to zmiana bajtów od 136 do 139 (składowa `z` pola `uSpotCone`). Oba programy oświetlające widzą ją w tej samej klatce, bez żadnego wywołania skierowanego do nich. Panel i scenariusz pokazu opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 6. Widżetów tego panelu nikt jeszcze nie klikał ręcznie.
+**Panel Lights.** Każdy widżet tego panelu zmienia pole struktury `game::LightingSettings`. W następnej klatce `lightingForFrame` robi jej kopię z poprawkami rundy (bateria latarki, puls kryształów), `buildLightSet` robi z kopii `LightSet`, `packLightBlock` bajty, a `UniformBuffer::update` wysyła je na kartę. Zmiana koloru księżyca w panelu to zatem zmiana bajtów od 48 do 59 bufora (natężenie leży w bajtach od 60 do 63), a wyłączenie latarki to zmiana bajtów od 136 do 139 (składowa `z` pola `uSpotCone`). Od M5 tak samo działa pusta bateria: `lightingForFrame` wyłącza latarkę w kopii ustawień, bez udziału panelu. Oba programy oświetlające widzą ją w tej samej klatce, bez żadnego wywołania skierowanego do nich. Panel i scenariusz pokazu opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 6. Widżetów tego panelu nikt jeszcze nie klikał ręcznie.
 
-**Panel Shaders, przycisk `Reload shaders`.** Przeładowanie buduje nowe obiekty programów. Jeśli po naciśnięciu labirynt jest nadal oświetlony tak samo, to znaczy, że pętla w `reload` podpięła blok nowego programu do punktu 1 (sekcja 5.9). Gdyby jej nie było, programy `lit` i `gouraud` straciłyby światła po pierwszym naciśnięciu. To jest dobry punkt pokazu na obronie, ale z zastrzeżeniem: **tego naciśnięcia nikt jeszcze nie wykonał** przy pięciu programach, więc opis pochodzi z kodu. Panel opisuje [`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.
+**Panel Shaders, przycisk `Reload shaders`.** Przeładowanie buduje nowe obiekty programów. Jeśli po naciśnięciu labirynt jest nadal oświetlony tak samo, to znaczy, że pętla w `reload` podpięła blok nowego programu do punktu 1 (sekcja 5.9). Gdyby jej nie było, programy `lit` i `gouraud` straciłyby światła po pierwszym naciśnięciu. To jest dobry punkt pokazu na obronie, ale z zastrzeżeniem: **tego naciśnięcia nikt jeszcze nie wykonał**, więc opis pochodzi z kodu. Panel opisuje [`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.
 
 Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zmienia program rysujący labirynt z `gouraud` na `lit`. Światła się przy tym nie zmieniają, bo oba programy czytają ten sam bufor: to pokaz zdania "blok jest wspólny dla programów" ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)).
 
@@ -1142,7 +1154,7 @@ Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zm
     Dwa: `glBindBuffer(GL_UNIFORM_BUFFER)` i `glBufferSubData` z 928 bajtami, raz na klatkę, także w trybie `Unlit`. Punkt wiązania i wiązania bloków są trwałe i nie są ustawiane w klatce.
 
 25. **Co z tego dokumentu jest zmierzone, a co nie?**
-    Zmierzone na Windowsie: kompilacja asercji, testy `packLightBlock`, start bez linii `[error]` (z czego wynika rozmiar 928 według sterownika NVIDIA), oświetlony obraz na zrzutach ekranu. Niesprawdzone: udane przeładowanie przy pięciu programach, cała strona macOS, zachowanie sterownika przy niepodpiętym bloku.
+    Zmierzone na Windowsie: kompilacja asercji, testy `packLightBlock`, start bez linii `[error]` (z czego wynika rozmiar 928 według sterownika NVIDIA), oświetlony obraz na zrzutach ekranu. Niesprawdzone: udane przeładowanie (przycisku nikt nie nacisnął ani w M4, ani po M5), cała strona macOS, zachowanie sterownika przy niepodpiętym bloku.
 
 ## 10. Źródła
 

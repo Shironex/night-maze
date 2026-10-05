@@ -11,8 +11,8 @@ namespace game {
 // name with a typo is not an error: OpenGL silently ignores it. Keeping the names here,
 // once, means that the classes that draw cannot disagree about them.
 
-/// The three matrices. Every vertex shader (basic, textured, color, lit, gouraud)
-/// declares them under the same names.
+/// The three matrices. Every vertex shader (textured, color, lit, gouraud) declares
+/// them under the same names.
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
@@ -21,6 +21,10 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 /// a texture unit) and the colour the texture is multiplied by.
 constexpr const char* TEXTURE_UNIFORM = "uTexture";
 constexpr const char* TINT_UNIFORM = "uTint";
+
+/// textured.frag, lit.frag and gouraud.frag: the light a surface gives off by itself,
+/// as a colour. Black for everything except the crystals.
+constexpr const char* EMISSIVE_UNIFORM = "uEmissive";
 
 /// common/normal_map.glsl, so lit.frag and textured.frag: the sampler of the normal map
 /// (the number of a second texture unit) and the switch of normal mapping (1 on, 0 off).

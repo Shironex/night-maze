@@ -2,10 +2,6 @@
 // See docs/modules/game/maze-rendering.md
 #pragma once
 
-#include <glm/glm.hpp>
-
-#include <span>
-
 namespace assets {
 class AssetCache;
 struct LoadedModel;
@@ -41,17 +37,12 @@ public:
     /// Draws the whole maze. shader is the textured program or one of the two lit
     /// programs (lit, gouraud): it must be in use, with uView, uProjection and its own
     /// uniforms (uViewMode, uNormalMapEnabled, or the ones of the lighting) already set.
-    /// The function sets uTexture and uNormalMap, binds the two textures and sets uTint
-    /// for every part, and sets uModel and uNormalMatrix for every object. The textured
-    /// program has no uNormalMatrix and the gouraud program no uNormalMap: a uniform
-    /// a program does not have is ignored.
+    /// The function sets the samplers and uEmissive (black: stone does not glow), and
+    /// draws every object with game::drawModel, which sets the textures, uTint, uModel
+    /// and uNormalMatrix.
     void draw(const gfx::Shader& shader, const MazeWorld& world) const;
 
 private:
-    /// Draws one model once for every matrix in modelMatrices.
-    static void drawInstances(const gfx::Shader& shader, const assets::LoadedModel* model,
-                              std::span<const glm::mat4> modelMatrices);
-
     // Not owned. nullptr when the model could not be loaded.
     const assets::LoadedModel* m_floorTile;
     const assets::LoadedModel* m_wall;

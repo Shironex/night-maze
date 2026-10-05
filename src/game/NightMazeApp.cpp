@@ -4,12 +4,12 @@
 
 #include "core/GlCheck.hpp"
 #include "core/Paths.hpp"
+#include "game/Crystals.hpp"
 #include "game/ShaderUniforms.hpp"
 
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
-#include <cstddef>
 #include <span>
 
 namespace game {
@@ -19,12 +19,10 @@ namespace {
 constexpr int INITIAL_WIDTH = 1280;
 constexpr int INITIAL_HEIGHT = 720;
 
-// Shader files, relative to the assets directory. The cube is drawn with the first pair,
-// the maze without lighting with the second, the lines of the collision boxes and the
-// light markers with the third, the maze with lighting per fragment with the fourth and
-// with lighting per vertex with the fifth.
-constexpr const char* VERTEX_SHADER_FILE = "shaders/basic.vert";
-constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
+// Shader files, relative to the assets directory. The scene without lighting is drawn
+// with the first pair, the lines of the collision boxes and spheres with the second, the
+// scene with lighting per fragment with the third and with lighting per vertex with the
+// fourth.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -37,10 +35,14 @@ constexpr const char* GOURAUD_FRAGMENT_SHADER_FILE = "shaders/gouraud.frag";
 // The names of the uniforms (MODEL_UNIFORM, VIEW_UNIFORM, PROJECTION_UNIFORM and the
 // others) are in game/ShaderUniforms.hpp, shared with the classes that draw the maze.
 
-// Colours of the collision box lines (red, green, blue): the boxes of the maze in
-// yellow, the box of the player in green.
+// Colours of the collision lines (red, green, blue): the boxes of the maze in yellow,
+// the box and the reach of the player in green, the box of the gate in orange, the
+// pickup spheres of the crystals in cyan and the exit zone in magenta.
 constexpr glm::vec3 MAZE_COLLIDER_COLOR{1.0F, 0.85F, 0.1F};
 constexpr glm::vec3 PLAYER_COLLIDER_COLOR{0.2F, 1.0F, 0.4F};
+constexpr glm::vec3 GATE_COLLIDER_COLOR{1.0F, 0.45F, 0.1F};
+constexpr glm::vec3 PICKUP_COLLIDER_COLOR{0.2F, 0.9F, 1.0F};
+constexpr glm::vec3 EXIT_ZONE_COLOR{1.0F, 0.3F, 0.9F};
 
 // Key that switches between walking and noclip (free flight).
 constexpr int NOCLIP_KEY = GLFW_KEY_N;
@@ -48,100 +50,16 @@ constexpr int NOCLIP_KEY = GLFW_KEY_N;
 // Key that switches the flashlight on and off.
 constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 
+// Key that starts the round again on the same maze.
+constexpr int RESTART_KEY = GLFW_KEY_R;
+
 // Pitch of a level look, in degrees: how the player looks at the start.
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
-
-// How high above the floor the centre of the marker cube floats, in metres: well above
-// the walls (3 m) and the pillars (3.15 m), so it is seen over them from a distance.
-constexpr float CUBE_HEIGHT_ABOVE_FLOOR = 4.5F;
-
-// Attribute numbers: the same as layout(location = N) in basic.vert.
-constexpr GLuint POSITION_ATTRIBUTE = 0;
-constexpr GLuint COLOR_ATTRIBUTE = 1;
-
-// One vertex is a position (x, y, z) followed by a color (red, green, blue), all floats.
-constexpr GLint POSITION_COMPONENTS = 3;
-constexpr GLint COLOR_COMPONENTS = 3;
-constexpr GLint FLOATS_PER_VERTEX = POSITION_COMPONENTS + COLOR_COMPONENTS;
-
-// Stride: bytes from the start of one vertex to the start of the next one.
-constexpr GLsizei VERTEX_STRIDE = static_cast<GLsizei>(FLOATS_PER_VERTEX * sizeof(float));
-// Offsets: where each attribute starts inside one vertex, in bytes.
-constexpr std::size_t POSITION_OFFSET = 0;
-constexpr std::size_t COLOR_OFFSET = POSITION_COMPONENTS * sizeof(float);
-
-// A cube has 6 faces. Each face is a square with its own 4 vertices, drawn as 2 triangles.
-constexpr int FACE_COUNT = 6;
-constexpr int VERTICES_PER_FACE = 4;
-constexpr int INDICES_PER_FACE = 6;
-
-constexpr int VERTEX_COUNT = FACE_COUNT * VERTICES_PER_FACE;
-// Number of floats in the whole vertex data.
-constexpr int VERTEX_FLOAT_COUNT = VERTEX_COUNT * FLOATS_PER_VERTEX;
-constexpr GLsizei INDEX_COUNT = FACE_COUNT * INDICES_PER_FACE;
-
-// A cube with a side of 1 (one metre), centred on the origin of its local space: every
-// coordinate is -0.5 or 0.5. There are no matrices in the data, the positions are local.
-//
-// A cube has only 8 corners, but here it has 24 vertices: 4 for each face. A vertex is
-// a position together with its color, and each face has its own flat color, so a corner
-// shared by three faces is three different vertices. With 8 shared vertices the colors
-// would be shared too and would blend across the faces. Normals and texture coordinates
-// (M2) need vertices per face for the same reason.
-//
-// The 4 vertices of a face are listed counter clockwise as seen from outside the cube,
-// starting at the bottom left corner: bottom left, bottom right, top right, top left.
-constexpr std::array<float, VERTEX_FLOAT_COUNT> VERTICES = {
-    // x, y, z,          red, green, blue
-    -0.5F, -0.5F, 0.5F,  0.9F, 0.2F, 0.2F, // 0: front, z = +0.5, red, bottom left
-    0.5F,  -0.5F, 0.5F,  0.9F, 0.2F, 0.2F, // 1: bottom right
-    0.5F,  0.5F,  0.5F,  0.9F, 0.2F, 0.2F, // 2: top right
-    -0.5F, 0.5F,  0.5F,  0.9F, 0.2F, 0.2F, // 3: top left
-    0.5F,  -0.5F, -0.5F, 0.2F, 0.8F, 0.3F, // 4: back, z = -0.5, green, bottom left
-    -0.5F, -0.5F, -0.5F, 0.2F, 0.8F, 0.3F, // 5: bottom right
-    -0.5F, 0.5F,  -0.5F, 0.2F, 0.8F, 0.3F, // 6: top right
-    0.5F,  0.5F,  -0.5F, 0.2F, 0.8F, 0.3F, // 7: top left
-    -0.5F, -0.5F, -0.5F, 0.2F, 0.4F, 0.9F, // 8: left, x = -0.5, blue, bottom left
-    -0.5F, -0.5F, 0.5F,  0.2F, 0.4F, 0.9F, // 9: bottom right
-    -0.5F, 0.5F,  0.5F,  0.2F, 0.4F, 0.9F, // 10: top right
-    -0.5F, 0.5F,  -0.5F, 0.2F, 0.4F, 0.9F, // 11: top left
-    0.5F,  -0.5F, 0.5F,  0.9F, 0.8F, 0.2F, // 12: right, x = +0.5, yellow, bottom left
-    0.5F,  -0.5F, -0.5F, 0.9F, 0.8F, 0.2F, // 13: bottom right
-    0.5F,  0.5F,  -0.5F, 0.9F, 0.8F, 0.2F, // 14: top right
-    0.5F,  0.5F,  0.5F,  0.9F, 0.8F, 0.2F, // 15: top left
-    -0.5F, 0.5F,  0.5F,  0.2F, 0.8F, 0.8F, // 16: top, y = +0.5, cyan, bottom left
-    0.5F,  0.5F,  0.5F,  0.2F, 0.8F, 0.8F, // 17: bottom right
-    0.5F,  0.5F,  -0.5F, 0.2F, 0.8F, 0.8F, // 18: top right
-    -0.5F, 0.5F,  -0.5F, 0.2F, 0.8F, 0.8F, // 19: top left
-    -0.5F, -0.5F, -0.5F, 0.8F, 0.3F, 0.8F, // 20: bottom, y = -0.5, magenta, bottom left
-    0.5F,  -0.5F, -0.5F, 0.8F, 0.3F, 0.8F, // 21: bottom right
-    0.5F,  -0.5F, 0.5F,  0.8F, 0.3F, 0.8F, // 22: top right
-    -0.5F, -0.5F, 0.5F,  0.8F, 0.3F, 0.8F, // 23: top left
-};
-
-// Indices: which vertices form each triangle. A face with the vertices a, b, c, d (in the
-// order above) is split along the diagonal a-c into the triangles a, b, c and c, d, a.
-// Both keep the counter clockwise order of the face.
-constexpr std::array<GLuint, INDEX_COUNT> INDICES = {
-    0,  1,  2,  2,  3,  0,  // front
-    4,  5,  6,  6,  7,  4,  // back
-    8,  9,  10, 10, 11, 8,  // left
-    12, 13, 14, 14, 15, 12, // right
-    16, 17, 18, 18, 19, 16, // top
-    20, 21, 22, 22, 23, 20, // bottom
-};
-
-// The cube is turned so that three of its faces are seen at once: tilted around the
-// x axis, then turned around the y axis. It no longer stands in front of the camera: it
-// floats above the far corner cell of the maze as a marker (see enterMaze).
-constexpr float CUBE_ROTATION_X_DEGREES = 25.0F;
-constexpr float CUBE_ROTATION_Y_DEGREES = 35.0F;
 
 } // namespace
 
 NightMazeApp::NightMazeApp()
     : core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze"),
-      m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FILE)),
       m_texturedShader(core::assetPath(TEXTURED_VERTEX_SHADER_FILE),
                        core::assetPath(TEXTURED_FRAGMENT_SHADER_FILE)),
       m_colorShader(core::assetPath(COLOR_VERTEX_SHADER_FILE),
@@ -151,19 +69,9 @@ NightMazeApp::NightMazeApp()
       m_gouraudShader(core::assetPath(GOURAUD_VERTEX_SHADER_FILE),
                       core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
-      // The sizes are in bytes: number of elements times the size of one element.
-      m_vertexBuffer(GL_ARRAY_BUFFER, VERTICES.data(), VERTICES.size() * sizeof(float)),
-      m_indexBuffer(GL_ELEMENT_ARRAY_BUFFER, INDICES.data(), INDICES.size() * sizeof(GLuint)),
+      m_gameplayRenderer(m_assets),
       m_mazeWorld(
           buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed)) {
-    // m_vertexBuffer is still bound to GL_ARRAY_BUFFER (m_indexBuffer uses another binding
-    // point). Each call below records that buffer in m_vertexArray for one attribute.
-    m_vertexArray.setFloatAttribute(POSITION_ATTRIBUTE, POSITION_COMPONENTS, VERTEX_STRIDE,
-                                    POSITION_OFFSET);
-    m_vertexArray.setFloatAttribute(COLOR_ATTRIBUTE, COLOR_COMPONENTS, VERTEX_STRIDE, COLOR_OFFSET);
-
-    m_cubeTransform.rotationDegrees = {CUBE_ROTATION_X_DEGREES, CUBE_ROTATION_Y_DEGREES, 0.0F};
-
     // The two lit programs read the lights from the uniform buffer of m_lightRig. Each
     // program is told once: the shader repeats it by itself after a reload.
     m_lightRig.connect(m_litShader);
@@ -171,7 +79,7 @@ NightMazeApp::NightMazeApp()
 
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
-    enterMaze();
+    beginRound();
 }
 
 void NightMazeApp::regenerateMaze() {
@@ -181,15 +89,18 @@ void NightMazeApp::regenerateMaze() {
     m_mazeSettings.width = std::clamp(m_mazeSettings.width, 1, Maze::MAX_SIZE);
     m_mazeSettings.height = std::clamp(m_mazeSettings.height, 1, Maze::MAX_SIZE);
 
-    // Replaces the maze, the model matrices and the collision boxes in one assignment.
+    // Replaces the maze, the model matrices, the collision boxes, the exit and the
+    // crystals in one assignment. A new maze is a new round.
     m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed);
-    enterMaze();
+    beginRound();
 }
 
-void NightMazeApp::enterMaze() {
-    // The marker cube floats above the far corner cell, the place of the future exit.
-    m_cubeTransform.position =
-        m_mazeWorld.exitPosition + glm::vec3{0.0F, CUBE_HEIGHT_ABOVE_FLOOR, 0.0F};
+void NightMazeApp::beginRound() {
+    // The state of the round: every crystal back, a full battery, the gate closed.
+    m_round = startRound(m_mazeWorld, m_gameplay);
+    m_obstacles = roundObstacles(m_mazeWorld, m_round);
+    // A round starts with the light on, also after one that ended in the dark.
+    m_lighting.flashlightOn = true;
 
     // The player goes to the start. After a regeneration the old position may be inside
     // a wall of the new maze, or outside of it.
@@ -227,7 +138,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // The step runs also with nothing held: it is what brings the feet back to the floor
     // after noclip was switched off in a panel.
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
-                    m_mazeWorld.colliders);
+                    m_obstacles);
 
     // Walking never changes the height, with one exception: the step right after noclip
     // was switched off in mid-air, which puts the feet back on the floor. That is a jump
@@ -240,6 +151,18 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // The camera stands where the eyes of the player are. onRender does not draw from
     // this position directly (it blends two steps), but the debug UI shows it.
     m_camera.position = m_player.eyePosition();
+
+    // The rules of the round, with the position the player has after this step: the
+    // battery, the crystals within reach, the gate and the exit. The switch of the
+    // flashlight goes in by reference, because an empty battery turns it off.
+    const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);
+    updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,
+                static_cast<float>(fixedDt));
+    // The gate has just opened (the only change a step can make here): its box leaves
+    // the obstacle list, and the way into the exit cell is free.
+    if (gateBlocks(m_mazeWorld, m_round) != gateBlockedBefore) {
+        m_obstacles = roundObstacles(m_mazeWorld, m_round);
+    }
 }
 
 void NightMazeApp::onRender(double alpha) {
@@ -250,6 +173,14 @@ void NightMazeApp::onRender(double alpha) {
         regenerateMaze();
     }
 
+    // A new round on the same maze, asked for with the restart key or by the debug UI.
+    // It is started here for the same reason: between two fixed steps, never inside one.
+    // wasKeyPressed is true for one frame, so the key is read once per frame.
+    if (m_gameplay.restart || input().wasKeyPressed(RESTART_KEY)) {
+        m_gameplay.restart = false;
+        beginRound();
+    }
+
     // The noclip key. wasKeyPressed is true for one frame, so it is read here, once per
     // frame, and not in onUpdate, which runs zero or more times per frame.
     if (input().wasKeyPressed(NOCLIP_KEY)) {
@@ -257,7 +188,10 @@ void NightMazeApp::onRender(double alpha) {
     }
 
     // The flashlight key, read once per frame for the same reason. Like the noclip key
-    // it works whether or not the cursor is captured.
+    // it works whether or not the cursor is captured. With an empty battery the key
+    // still sets the switch, but the next fixed step turns it off again
+    // (game::updateRound), and no frame is drawn with the light of an empty battery
+    // (game::lightingForFrame).
     if (input().wasKeyPressed(FLASHLIGHT_KEY)) {
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
@@ -331,16 +265,18 @@ void NightMazeApp::onRender(double alpha) {
     // screen. From m_camera.position (the last fixed step) it would trail behind while
     // the player moves. The copy to the graphics card happens once, and both lit
     // programs read it.
+    //
+    // The round changes two things for this frame only: a low battery dims the
+    // flashlight (an empty one switches it off) and the crystal lights pulse. That
+    // happens in a copy, so the settings the debug UI shows stay as they were set. The
+    // point lights hang above the crystals that are still there.
+    const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+    const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
     const scene::LightSet lights =
-        buildLightSet(m_lighting, eye, m_camera.forward(), m_mazeWorld.pointLightPositions);
+        buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights);
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);
-    // Without lighting there are no lights to mark.
-    if (m_lighting.mode != LightingMode::Unlit) {
-        drawLightMarkers(view, projection);
-    }
-    drawCube(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
     }
@@ -376,6 +312,10 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
+    // The crystals and the gate, with the same program: they show up in the debug
+    // views like the walls do.
+    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round,
+                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
 }
 
 void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const {
@@ -401,39 +341,10 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     m_mazeRenderer.draw(shader, m_mazeWorld);
-}
-
-void NightMazeApp::drawLightMarkers(const glm::mat4& view, const glm::mat4& projection) const {
-    if (!m_colorShader.isValid()) {
-        return;
-    }
-
-    m_colorShader.use();
-    m_colorShader.setMat4(VIEW_UNIFORM, view);
-    m_colorShader.setMat4(PROJECTION_UNIFORM, projection);
-
-    // One small cube in the colour of the point lights at the place of each of them.
-    m_lightRig.drawMarkers(m_colorShader, m_mazeWorld.pointLightPositions, m_lighting.pointColor);
-}
-
-void NightMazeApp::drawCube(const glm::mat4& view, const glm::mat4& projection) const {
-    if (!m_shader.isValid()) {
-        return;
-    }
-
-    // The uniforms belong to the program in use, so use() comes before setMat4.
-    m_shader.use();
-    m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
-    m_shader.setMat4(VIEW_UNIFORM, view);
-    m_shader.setMat4(PROJECTION_UNIFORM, projection);
-
-    m_vertexArray.bind();
-    // Draws INDEX_COUNT indices from the element buffer recorded in the vertex array,
-    // every three of them form one triangle. GL_UNSIGNED_INT is the type of one index
-    // (GLuint). The last parameter has the type "pointer" for historical reasons, like in
-    // glVertexAttribPointer: with an element buffer bound it is the byte offset of the
-    // first index inside that buffer, and nullptr means offset 0, the start of the buffer.
-    GL_CHECK(glDrawElements(GL_TRIANGLES, INDEX_COUNT, GL_UNSIGNED_INT, nullptr));
+    // The crystals and the gate, with the same program and so the same lighting mode.
+    // The crystals glow in the colour of their lights.
+    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round,
+                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
 }
 
 void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const {
@@ -455,6 +366,29 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
     const scene::Aabb playerBox = m_player.box();
     m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&playerBox, 1),
                          PLAYER_COLLIDER_COLOR);
+
+    // The gate, while it is an obstacle, and the zone behind it that wins the round.
+    if (gateBlocks(m_mazeWorld, m_round)) {
+        m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&m_mazeWorld.gateBox, 1),
+                             GATE_COLLIDER_COLOR);
+    }
+    m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&m_mazeWorld.exitZone, 1),
+                         EXIT_ZONE_COLOR);
+
+    // The spheres of the pickup test: the reach of the player and, around every crystal
+    // that is still there, the sphere the reach has to overlap. They stay on the
+    // resting place of the crystal while the crystal itself bobs.
+    const scene::Sphere reach = playerReach(m_player.position);
+    m_colliderLines.drawSpheres(m_colorShader, std::span<const scene::Sphere>(&reach, 1),
+                                PLAYER_COLLIDER_COLOR);
+    std::vector<scene::Sphere> pickupSpheres;
+    for (const RoundCrystal& crystal : m_round.crystals) {
+        if (!crystal.collected) {
+            pickupSpheres.push_back(
+                {.center = crystalCenter(crystal.restPosition), .radius = m_gameplay.pickupRadius});
+        }
+    }
+    m_colliderLines.drawSpheres(m_colorShader, pickupSpheres, PICKUP_COLLIDER_COLOR);
 }
 
 } // namespace game
