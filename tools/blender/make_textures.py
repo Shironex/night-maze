@@ -34,7 +34,7 @@ import numpy as np
 
 import blender_common as common
 
-# Width and height of both textures in pixels. A power of two, and 256 pixels per metre
+# Width and height of every texture in pixels. A power of two, and 256 pixels per metre
 # with the texel density of the models (one repeat = 2 m).
 SIZE = 512
 
