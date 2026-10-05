@@ -64,6 +64,10 @@ struct MazeWorld {
     /// The obstacle list for the player: the box of every wall, then of every pillar.
     std::vector<scene::Aabb> colliders;
 
+    /// Where the point lights of the maze hang: in its dead ends, at most
+    /// scene::MAX_POINT_LIGHTS of them (see deadEndLightPositions in game/Lighting.hpp).
+    std::vector<glm::vec3> pointLightPositions;
+
     /// Where the player starts: the centre of cell (0, 0), feet on the floor.
     glm::vec3 startPosition{0.0F};
 

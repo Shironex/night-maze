@@ -15,7 +15,7 @@ Bufor i tablica wierzchołków z [`buffers-vao.md`](buffers-vao.md) to narzędzi
 
 Cały kod tego dokumentu jest w `game::NightMazeApp`. Klasy `gfx` nie wiedzą, co jest rysowane: dostają wskaźnik, rozmiar w bajtach i liczby opisujące układ.
 
-**Stan na dziś (M2 + M3).** Dane kostki, jej bufory, VAO i shadery `basic` nie zmieniły się od M1 i nadal są w `NightMazeApp.cpp`. Zmieniło się otoczenie. Kostka nie stoi już przed kamerą: zachowała pochylenie (25 stopni wokół osi x, 35 wokół osi y), ale unosi się 4,5 m nad środkiem narożnej komórki labiryntu naprzeciw startu, jako znacznik przyszłego wyjścia (`m_mazeWorld.exitPosition + glm::vec3{0.0F, CUBE_HEIGHT_ABOVE_FLOOR, 0.0F}`). Rysuje ją osobna funkcja `NightMazeApp::drawCube` (sekcja 5.6). Labirynt jest rysowany inaczej: modele z plików OBJ trafiają do klasy `gfx::Mesh` ([`mesh.md`](mesh.md)), która w środku ma te same trzy obiekty co kostka (VAO, bufor wierzchołków, bufor indeksów) i to samo `glDrawElements`. Kostka zostaje w kodzie jako najprostszy, ręcznie rozpisany przykład rysowania z indeksami.
+**Stan na dziś (M4).** Dane kostki, jej bufory, VAO i shadery `basic` nie zmieniły się od M1 i nadal są w `NightMazeApp.cpp`. Zmieniło się otoczenie. Kostka nie stoi już przed kamerą: zachowała pochylenie (25 stopni wokół osi x, 35 wokół osi y), ale unosi się 4,5 m nad środkiem narożnej komórki labiryntu naprzeciw startu, jako znacznik przyszłego wyjścia (`m_mazeWorld.exitPosition + glm::vec3{0.0F, CUBE_HEIGHT_ABOVE_FLOOR, 0.0F}`). Rysuje ją osobna funkcja `NightMazeApp::drawCube` (sekcja 5.6). Kostka **nie jest oświetlona**: program `basic` nie czyta świateł, więc w nocnej scenie z M4 świeci własnymi kolorami. Labirynt jest rysowany inaczej: modele z plików OBJ trafiają do klasy `gfx::Mesh` ([`mesh.md`](mesh.md)), która w środku ma te same trzy obiekty co kostka (VAO, bufor wierzchołków, bufor indeksów) i to samo `glDrawElements`. Kostka zostaje w kodzie jako najprostszy, ręcznie rozpisany przykład rysowania z indeksami.
 
 ## 2. Teoria
 
@@ -253,12 +253,13 @@ constexpr std::array<GLuint, INDEX_COUNT> INDICES = {
     //
     // Order: members are constructed top to bottom, and the constructor body runs after
     // all of them.
-    //   1. The three shader programs. They bind no buffer, so their place does not matter.
+    //   1. The five shader programs. They bind no buffer, so their place does not matter.
     //   2. m_assets, m_mazeRenderer (it loads the models through m_assets, so it comes
-    //      after it) and m_colliderLines. The last two create meshes, and creating a mesh
-    //      binds its own vertex array and buffers. They stand BEFORE the cube on purpose:
-    //      the cube relies on its buffer still being bound when the constructor body
-    //      runs, and a mesh created after it would take that binding away.
+    //      after it), m_colliderLines and m_lightRig. The last three create meshes, and
+    //      creating a mesh binds its own vertex array and buffers. They stand BEFORE the
+    //      cube on purpose: the cube relies on its buffer still being bound when the
+    //      constructor body runs, and a mesh created after it would take that binding
+    //      away.
     //   3. m_vertexArray: its constructor binds it, so the two buffers below are created
     //      while it is the bound vertex array.
     //   4. m_vertexBuffer: stays bound to GL_ARRAY_BUFFER, and that is how the attribute
@@ -268,15 +269,18 @@ constexpr std::array<GLuint, INDEX_COUNT> INDICES = {
     gfx::Shader m_shader;
     gfx::Shader m_texturedShader;
     gfx::Shader m_colorShader;
+    gfx::Shader m_litShader;
+    gfx::Shader m_gouraudShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     ColliderLines m_colliderLines;
+    LightRig m_lightRig;
     gfx::VertexArray m_vertexArray;
     gfx::Buffer m_vertexBuffer;
     gfx::Buffer m_indexBuffer;
 ```
 
-Trzy ostatnie pola to kostka. Punkty 3, 4 i 5 komentarza są z M1. Punkty 1 i 2 doszły w M2 + M3 i mówią, dlaczego wszystko nowe stoi **nad** kostką.
+Trzy ostatnie pola to kostka. Punkty 3, 4 i 5 komentarza są z M1. Punkty 1 i 2 doszły w M2 + M3 i mówią, dlaczego wszystko nowe stoi **nad** kostką. W M4 doszły do nich dwa programy (`m_litShader`, `m_gouraudShader`) i pole `m_lightRig`.
 
 **Konstruktor:**
 
@@ -288,6 +292,10 @@ NightMazeApp::NightMazeApp()
                        core::assetPath(TEXTURED_FRAGMENT_SHADER_FILE)),
       m_colorShader(core::assetPath(COLOR_VERTEX_SHADER_FILE),
                     core::assetPath(COLOR_FRAGMENT_SHADER_FILE)),
+      m_litShader(core::assetPath(LIT_VERTEX_SHADER_FILE),
+                  core::assetPath(LIT_FRAGMENT_SHADER_FILE)),
+      m_gouraudShader(core::assetPath(GOURAUD_VERTEX_SHADER_FILE),
+                      core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       // The sizes are in bytes: number of elements times the size of one element.
       m_vertexBuffer(GL_ARRAY_BUFFER, VERTICES.data(), VERTICES.size() * sizeof(float)),
@@ -302,6 +310,11 @@ NightMazeApp::NightMazeApp()
 
     m_cubeTransform.rotationDegrees = {CUBE_ROTATION_X_DEGREES, CUBE_ROTATION_Y_DEGREES, 0.0F};
 
+    // The two lit programs read the lights from the uniform buffer of m_lightRig. Each
+    // program is told once: the shader repeats it by itself after a reload.
+    m_lightRig.connect(m_litShader);
+    m_lightRig.connect(m_gouraudShader);
+
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
     enterMaze();
@@ -314,17 +327,19 @@ Kolejność zdarzeń jest wyznaczona przez kolejność **deklaracji** pól, a ni
 |---|---|---|---|
 | 1 | `core::Application(...)`, część bazowa | brak własnych, powstaje okno i kontekst | można wołać `gl*` |
 | 2 | `m_clearColor` | brak | |
-| 3 | `m_shader`, `m_texturedShader`, `m_colorShader` | kompilacja i linkowanie trzech programów ([`shader-class.md`](shader-class.md), sekcja 5.8) | trzy programy gotowe albo błędy w logu. Żaden bufor ani VAO nie został związany |
+| 3 | `m_shader`, `m_texturedShader`, `m_colorShader`, `m_litShader`, `m_gouraudShader` | kompilacja i linkowanie pięciu programów ([`shader-class.md`](shader-class.md), sekcja 5.8) | pięć programów gotowych albo błędy w logu. Żaden bufor ani VAO nie został związany |
 | 4 | `m_assets`, konstruktor domyślny | tworzy białą teksturę 1 x 1 ([`../assets/asset-cache.md`](../assets/asset-cache.md)) | tekstura związana z aktywną jednostką. Wiązań buforów i VAO to nie dotyczy |
 | 5 | `m_mazeRenderer(m_assets)` | wczytuje trzy modele: dla każdego powstaje `gfx::Mesh` (VAO i dwa bufory) i jego tekstury ([`../game/maze-rendering.md`](../game/maze-rendering.md)) | bieżący jest VAO ostatniego modelu, a z `GL_ARRAY_BUFFER` związany jest jego bufor wierzchołków |
 | 6 | `m_colliderLines`, konstruktor domyślny | tworzy `gfx::Mesh` sześcianu z krawędzi ([`../scene/collision.md`](../scene/collision.md)) | bieżący jest VAO tego sześcianu |
+| 6a | `m_lightRig`, konstruktor domyślny | najpierw bufor uniformów: `glGenBuffers`, `glBindBuffer(GL_UNIFORM_BUFFER, ...)`, `glBufferData` (928 bajtów), `glBindBufferBase(GL_UNIFORM_BUFFER, 1, ...)` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 5.7). Potem `gfx::Mesh` znacznika światła ([`../game/flashlight.md`](../game/flashlight.md)) | bufor świateł siedzi w punkcie wiązania 1. Bieżący jest VAO znacznika, a z `GL_ARRAY_BUFFER` związany jest jego bufor wierzchołków. Cel `GL_UNIFORM_BUFFER` to osobne wiązanie i kostki nie dotyczy |
 | 7 | `m_vertexArray`, konstruktor domyślny (nie ma go na liście, więc wykonuje się sam, w swojej kolejności) | `glGenVertexArrays`, `glBindVertexArray` | VAO kostki istnieje i **jest bieżący**. Od tej chwili żadna siatka już nie powstaje |
 | 8 | `m_vertexBuffer(GL_ARRAY_BUFFER, ...)` | `glGenBuffers`, `glBindBuffer(GL_ARRAY_BUFFER, ...)`, `glBufferData` | 576 bajtów na karcie, bufor związany z `GL_ARRAY_BUFFER`. VAO jeszcze o nim nie wie |
 | 9 | `m_indexBuffer(GL_ELEMENT_ARRAY_BUFFER, ...)` | `glGenBuffers`, `glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ...)`, `glBufferData` | 144 bajty na karcie. Samo związanie **zapisało bufor indeksów w bieżącym VAO** z kroku 7. Wiązanie `GL_ARRAY_BUFFER` z kroku 8 jest nietknięte, bo to inny cel |
-| 10 | `m_cubeTransform`, `m_mazeSettings`, `m_mazeWorld(buildMazeWorld(...))`, `m_player`, `m_previousPlayerPosition`, `m_camera`, `m_viewMode`, `m_drawColliders`, `m_mouseSensitivity` | brak, to zwykłe dane i matematyka | wartości domyślne i wygenerowany labirynt. `MazeWorld` nie tworzy żadnego obiektu OpenGL, więc nie zabiera kostce wiązania ([`../game/maze-rendering.md`](../game/maze-rendering.md), [`../game/player.md`](../game/player.md)) |
+| 10 | `m_cubeTransform`, `m_mazeSettings`, `m_mazeWorld(buildMazeWorld(...))`, `m_player`, `m_previousPlayerPosition`, `m_camera`, `m_lighting`, `m_viewMode`, `m_drawColliders`, `m_mouseSensitivity` | brak, to zwykłe dane i matematyka | wartości domyślne i wygenerowany labirynt. `MazeWorld` nie tworzy żadnego obiektu OpenGL, więc nie zabiera kostce wiązania ([`../game/maze-rendering.md`](../game/maze-rendering.md), [`../game/player.md`](../game/player.md)) |
 | 11 | ciało konstruktora: `setFloatAttribute` dla pozycji | `glBindVertexArray`, `glEnableVertexAttribArray(0)`, `glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 24, 0)` | atrybut 0 czyta z bufora z kroku 8 |
 | 12 | ciało konstruktora: `setFloatAttribute` dla koloru | `glBindVertexArray`, `glEnableVertexAttribArray(1)`, `glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 24, 12)` | atrybut 1 czyta z tego samego bufora |
 | 13 | ciało konstruktora: obrót kostki | brak | `m_cubeTransform.rotationDegrees` to (25, 35, 0) ([`../scene/transforms.md`](../scene/transforms.md), sekcja 5) |
+| 13a | ciało konstruktora: `m_lightRig.connect(m_litShader)` i `m_lightRig.connect(m_gouraudShader)` | dla każdego z dwóch programów `glGetUniformBlockIndex`, `glUniformBlockBinding`, `glGetActiveUniformBlockiv` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 5.8) | blok `LightBlock` obu programów czyta z punktu wiązania 1. Te wywołania przyjmują identyfikator programu i niczego nie wiążą, więc mogą stać po opisie atrybutów kostki |
 | 14 | ciało konstruktora: `enterMaze()` | brak | kostka dostaje pozycję nad narożną komórką, gracz i kamera stają na starcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
 
 Szczegóły, o które można zostać zapytanym:
@@ -333,9 +348,9 @@ Szczegóły, o które można zostać zapytanym:
 - `VERTICES.size() * sizeof(float)` to rozmiar w bajtach: 144 razy 4, czyli 576. `INDICES.size() * sizeof(GLuint)` to 36 razy 4, czyli 144. `size()` zwraca liczbę elementów, nie bajtów ([`buffers-vao.md`](buffers-vao.md), sekcja 7, pułapka 4).
 - **Krok 9 zależy od kroku 7.** Bufor indeksów trafia do VAO, który jest bieżący w chwili `glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ...)`. Dlatego `m_vertexArray` jest zadeklarowany przed oboma buforami, a jego konstruktor wiąże ([`buffers-vao.md`](buffers-vao.md), sekcja 5.5). Zamiana kolejności deklaracji `m_vertexArray` i `m_indexBuffer` kompiluje się, a kostka znika (ćwiczenie 7).
 - **Kroki 11 i 12 zależą od kroku 8**, ale nie od kolejności VAO i bufora wierzchołków. Wiązanie `GL_ARRAY_BUFFER` jest stanem globalnym kontekstu i liczy się tylko to, co jest związane **w chwili** `setFloatAttribute`. Między krokiem 8 a 11 nikt go nie zmienił: krok 9 użył innego celu, a krok 10 nie woła OpenGL.
-- **Dlaczego kroki od 4 do 6 stoją przed krokiem 7.** Każda siatka wiąże własny bufor z `GL_ARRAY_BUFFER`. Gdyby siatka powstała między krokiem 8 a 11, `setFloatAttribute` kostki zapisałoby w jej VAO bufor wierzchołków tej siatki zamiast własnego. Nie byłoby żadnego błędu, tylko kostka rysowana z cudzych danych ([`buffers-vao.md`](buffers-vao.md), pułapka 12, i ćwiczenie 10).
-- `m_assets`, `m_colliderLines` i `m_vertexArray` nie ma na liście inicjalizacyjnej: mają konstruktory domyślne, które wykonują się same, w kolejności deklaracji.
-- Dane wierzchołków i indeksy są wysyłane na kartę raz, przy starcie. W klatce nie ma żadnego `glBufferData`.
+- **Dlaczego kroki od 4 do 6a stoją przed krokiem 7.** Każda siatka wiąże własny bufor z `GL_ARRAY_BUFFER`. Gdyby siatka powstała między krokiem 8 a 11, `setFloatAttribute` kostki zapisałoby w jej VAO bufor wierzchołków tej siatki zamiast własnego. Nie byłoby żadnego błędu, tylko kostka rysowana z cudzych danych ([`buffers-vao.md`](buffers-vao.md), pułapka 12, i ćwiczenie 10).
+- `m_assets`, `m_colliderLines`, `m_lightRig` i `m_vertexArray` nie ma na liście inicjalizacyjnej: mają konstruktory domyślne, które wykonują się same, w kolejności deklaracji.
+- Dane wierzchołków i indeksy są wysyłane na kartę raz, przy starcie. W klatce nie ma żadnego `glBufferData`. Jedynym buforem zmienianym w klatce jest bufor świateł, przez `glBufferSubData` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 5.11).
 
 ### 5.6 Rysowanie: `glDrawElements`
 
@@ -361,11 +376,11 @@ Szczegóły, o które można zostać zapytanym:
 
 **Dlaczego ostatni parametr to `nullptr`.** To ta sama historyczna osobliwość co w `glVertexAttribPointer` ([`buffers-vao.md`](buffers-vao.md), sekcja 5.6). W starym OpenGL ostatni parametr `glDrawElements` był adresem tablicy indeksów w pamięci programu, stąd typ `const void*`. Gdy bieżący VAO ma zapisany bufor indeksów, wartość "wskaźnika" jest odczytywana jako **liczba bajtów od początku tego bufora**, od której zaczyna się pierwszy indeks. `nullptr` to wskaźnik o wartości 0, czyli "zacznij od początku bufora". Żeby narysować tylko ścianę tylną, trzeba by podać 6 indeksów i przesunięcie 24 bajtów (6 indeksów ściany przedniej po 4 bajty). Tutaj rzutowanie nie jest potrzebne, bo `nullptr` jest wskaźnikiem od razu. Rysowanie od przesunięcia innego niż zero robi w projekcie `Mesh::draw(firstIndex, indexCount)`: tak rysowana jest jedna część modelu ([`mesh.md`](mesh.md), sekcja 5.5).
 
-W M1 to wywołanie było jedynym miejscem w klatce, w którym uruchamiał się potok z [`shaders.md`](shaders.md) (sekcja 2.1). Dziś jest jednym z wielu: labirynt domyślny to 342 wywołania `glDrawElements` wykonane wcześniej przez `Mesh::draw`, a kostka to wywołanie 343. Dla kostki potok robi to samo co zawsze: shader wierzchołków dla wierzchołków wskazanych przez indeksy, składanie 12 trójkątów, rasteryzacja, shader fragmentów, test głębi.
+W M1 to wywołanie było jedynym miejscem w klatce, w którym uruchamiał się potok z [`shaders.md`](shaders.md) (sekcja 2.1). Dziś jest jednym z wielu: labirynt domyślny to 342 wywołania `glDrawElements` wykonane wcześniej przez `Mesh::draw`, potem 11 znaczników świateł (gdy tryb oświetlenia jest inny niż `Unlit`), a kostka to wywołanie 354 (w trybie `Unlit` 343). Dla kostki potok robi to samo co zawsze: shader wierzchołków dla wierzchołków wskazanych przez indeksy, składanie 12 trójkątów, rasteryzacja, shader fragmentów, test głębi.
 
-`bind()` jest wołane co klatkę i jest konieczne: tuż przed kostką rysowany jest labirynt, a każde `Mesh::draw` wiąże VAO swojej siatki. Backend ImGui przy rysowaniu paneli też wiąże własny VAO i własny program. Przed rysowaniem ustawiam więc wszystko, czego potrzebuję.
+`bind()` jest wołane co klatkę i jest konieczne: przed kostką rysowany jest labirynt i znaczniki świateł, a każde `Mesh::draw` wiąże VAO swojej siatki. Backend ImGui przy rysowaniu paneli też wiąże własny VAO i własny program. Przed rysowaniem ustawiam więc wszystko, czego potrzebuję.
 
-**Niszczenie.** Pola giną w kolejności odwrotnej do deklaracji. Najpierw zwykłe dane (od `m_mouseSensitivity` do `m_cubeTransform`), potem obiekty z zasobami OpenGL: `m_indexBuffer`, `m_vertexBuffer`, `m_vertexArray` (kostka), `m_colliderLines`, `m_mazeRenderer` (sam niczego nie posiada), `m_assets` (siatki modeli i tekstury), `m_colorShader`, `m_texturedShader`, `m_shader`, a dopiero potem część bazowa z oknem. Wszystkie destruktory wołające OpenGL mają więc żywy kontekst.
+**Niszczenie.** Pola giną w kolejności odwrotnej do deklaracji. Najpierw zwykłe dane (od `m_mouseSensitivity` do `m_cubeTransform`), potem obiekty z zasobami OpenGL: `m_indexBuffer`, `m_vertexBuffer`, `m_vertexArray` (kostka), `m_lightRig` (siatka znacznika i bufor uniformów), `m_colliderLines`, `m_mazeRenderer` (sam niczego nie posiada), `m_assets` (siatki modeli i tekstury), `m_gouraudShader`, `m_litShader`, `m_colorShader`, `m_texturedShader`, `m_shader`, a dopiero potem część bazowa z oknem. Wszystkie destruktory wołające OpenGL mają więc żywy kontekst.
 
 ### 5.7 Jak to zostało sprawdzone
 
@@ -391,7 +406,9 @@ Same klasy `Buffer` i `VertexArray` oraz pierwszy trójkąt sprawdziłem osobno 
 
 Na Windowsie (2026-10-05, MSVC 19.44, karta NVIDIA) program w wersji z M1 też wypisał dwie linie `[info]` i żadnej linii `[error]`, w buildzie Debug i Release. Obraz sprawdziłem tam na zrzucie ekranu: kostka na środku okna, ściana czerwona z przodu, niebieska z lewej, turkusowa u góry, żadna ściana nie prześwituje przez inną ([`../../guides/build-windows.md`](../../guides/build-windows.md)).
 
-**Program `night_maze` w M2 + M3.** Na Windowsie (ten sam dzień i sprzęt) program z labiryntem startuje bez linii `[error]` i bez linii `GL_`, w buildzie Debug i Release, więc `glDrawElements` kostki nadal nie zgłasza błędu. Kostki w nowym miejscu, nad narożną komórką, nikt jeszcze nie obejrzał osobno: nie ma jej na liście rzeczy sprawdzonych na zrzutach ekranu. Na macOS ta wersja programu nie była budowana.
+**Program `night_maze` w M2 + M3.** Na Windowsie (ten sam dzień i sprzęt) program z labiryntem startował bez linii `[error]` i bez linii `GL_`, w buildzie Debug i Release, więc `glDrawElements` kostki nadal nie zgłaszało błędu.
+
+**Program `night_maze` w M4.** Na Windowsie (2026-10-05, MSVC 19.44, NVIDIA GeForce RTX 4070 Ti SUPER, sterownik 610.74) program z pięcioma programami shaderów i polem `m_lightRig` buduje się w Debug i Release bez ostrzeżeń i startuje bez linii `[error]` i bez linii `GL_`. Kostki w jej miejscu nad narożną komórką nikt jeszcze nie obejrzał osobno: nie ma jej na liście rzeczy sprawdzonych na zrzutach ekranu, więc to, że nowe pole `m_lightRig` nie zabrało jej wiązania, wynika z kolejności deklaracji, a nie z obrazu. Na macOS ta wersja programu nie była budowana.
 
 ## 6. Panel ImGui
 
@@ -422,8 +439,8 @@ Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każd
 4. **Jedna ściana.** Podaj w `glDrawElements` liczbę 6. Która ściana została? Jak narysować samą ścianę tylną, nie zmieniając tablic (wskazówka: ostatni parametr to przesunięcie w bajtach, a rzutowanie liczby na wskaźnik pokazuje [`buffers-vao.md`](buffers-vao.md), sekcja 5.6)?
 5. **Inny prymityw.** Zamień `GL_TRIANGLES` na `GL_LINE_LOOP`, potem na `GL_POINTS` (przed rysowaniem dopisz tymczasowo `GL_CHECK(glPointSize(10.0F));`). Dane, indeksy i shadery się nie zmieniły. Co zmienił pierwszy parametr `glDrawElements`? Ile punktów widać i dlaczego mniej niż 36?
 6. **Kierunek nawijania i odrzucanie ścian.** Dopisz tymczasowo w `drawCube` przed rysowaniem `GL_CHECK(glEnable(GL_CULL_FACE));` (stan zostaje włączony także dla labiryntu w następnych klatkach: sprawdź przy okazji, czy modele ścian mają poprawny kierunek nawijania). Kostka wygląda tak samo: dlaczego? Zamień w `INDICES` w wierszu ściany przedniej `0, 1, 2` na `0, 2, 1`. Co zniknęło? Dopisz jeszcze `GL_CHECK(glCullFace(GL_FRONT));` i opisz, które ściany widać teraz.
-7. **Kolejność pól.** Zamień w `NightMazeApp.hpp` kolejność deklaracji `m_vertexArray` i `m_vertexBuffer`. Program nadal działa. Wyjaśnij dlaczego, korzystając z tabeli "VAO nie pamięta" w [`buffers-vao.md`](buffers-vao.md), sekcja 2.4. Potem przenieś deklarację `m_indexBuffer` **nad** `m_vertexArray`. Co widać i co wypisuje konsola? Który krok tabeli z sekcji 5.5 przestał działać? Uwaga: w M1 w tej sytuacji żaden VAO nie był związany. Dziś związany jest VAO ostatniej utworzonej siatki (sześcianu z `ColliderLines`), więc bufor indeksów kostki trafi do niego. Przewidź, co stanie się z liniami pudełek kolizji, i sprawdź.
-10. **Siatka w złym miejscu.** Przenieś w `NightMazeApp.hpp` deklarację `m_colliderLines` **pod** `m_indexBuffer`, nic więcej. Zbuduj i uruchom. Jak wygląda kostka i dlaczego? Z którego bufora czytają teraz jej atrybuty, jaki krok ma tamten bufor, a jaki krok podaje `setFloatAttribute` kostki?
+7. **Kolejność pól.** Zamień w `NightMazeApp.hpp` kolejność deklaracji `m_vertexArray` i `m_vertexBuffer`. Program nadal działa. Wyjaśnij dlaczego, korzystając z tabeli "VAO nie pamięta" w [`buffers-vao.md`](buffers-vao.md), sekcja 2.4. Potem przenieś deklarację `m_indexBuffer` **nad** `m_vertexArray`. Co widać i co wypisuje konsola? Który krok tabeli z sekcji 5.5 przestał działać? Uwaga: w M1 w tej sytuacji żaden VAO nie był związany. Dziś związany jest VAO ostatniej utworzonej siatki (od M4 to sześcian znacznika światła z `LightRig`), więc bufor indeksów kostki trafi do niego. Przewidź, co stanie się ze znacznikami świateł, i sprawdź.
+10. **Siatka w złym miejscu.** Przenieś w `NightMazeApp.hpp` deklarację `m_colliderLines` **pod** `m_indexBuffer`, nic więcej (to samo można zrobić z `m_lightRig`). Zbuduj i uruchom. Jak wygląda kostka i dlaczego? Z którego bufora czytają teraz jej atrybuty, jaki krok ma tamten bufor, a jaki krok podaje `setFloatAttribute` kostki?
 8. **Typ indeksu.** Zamień w `glDrawElements` `GL_UNSIGNED_INT` na `GL_UNSIGNED_SHORT`. Wypisz na kartce pierwsze 12 "indeksów", które odczyta karta (procesor jest little endian: liczba 1 typu `GLuint` to bajty 01 00 00 00). Porównaj z ekranem.
 9. **Bajty kostki na kartce.** W którym bajcie bufora wierzchołków zaczyna się kolor wierzchołka 17? W którym bajcie bufora indeksów zaczyna się pierwszy indeks ściany górnej? Ile bajtów zajęłaby kostka z 8 wierzchołkami i 36 indeksami typu `GLubyte`? Odpowiedzi: 420 (17 razy 24 plus 12), 96 (24 indeksy razy 4), 228 (192 plus 36).
 
@@ -444,7 +461,7 @@ Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każd
    W przestrzeni lokalnej kostki: bok 1, środek w (0, 0, 0), każda współrzędna to -0,5 albo 0,5. Na ekran przenoszą je macierze model, view i projection w shaderze wierzchołków. Każda ściana jest nawinięta przeciwnie do ruchu wskazówek zegara, gdy patrzę na nią z zewnątrz, czyli zgodnie z domyślnym "przodem" w OpenGL.
 
 5. **Prześledź, co dzieje się w konstruktorze `NightMazeApp` po stronie OpenGL.**
-   Po oknie powstają trzy programy shaderów, biała tekstura zastępcza, siatki trzech modeli labiryntu z ich teksturami i siatka sześcianu dla linii kolizji. Dopiero potem kostka. Powstaje jej VAO: `glGenVertexArrays` i `glBindVertexArray`. Potem bufor wierzchołków: `glGenBuffers`, `glBindBuffer(GL_ARRAY_BUFFER)`, `glBufferData` z 576 bajtami. Potem bufor indeksów: `glGenBuffers`, `glBindBuffer(GL_ELEMENT_ARRAY_BUFFER)`, które zapisuje go w bieżącym VAO, i `glBufferData` ze 144 bajtami. W ciele konstruktora dwa razy `setFloatAttribute`: wiąże VAO, włącza atrybut i zapisuje format (3 x `GL_FLOAT`, krok 24, przesunięcie 0 albo 12) razem z buforem, który jest wciąż związany z `GL_ARRAY_BUFFER`.
+   Po oknie powstaje pięć programów shaderów, biała tekstura zastępcza, siatki trzech modeli labiryntu z ich teksturami, siatka sześcianu dla linii kolizji, bufor uniformów ze światłami (przypięty do punktu wiązania 1) i siatka znacznika światła. Dopiero potem kostka. Powstaje jej VAO: `glGenVertexArrays` i `glBindVertexArray`. Potem bufor wierzchołków: `glGenBuffers`, `glBindBuffer(GL_ARRAY_BUFFER)`, `glBufferData` z 576 bajtami. Potem bufor indeksów: `glGenBuffers`, `glBindBuffer(GL_ELEMENT_ARRAY_BUFFER)`, które zapisuje go w bieżącym VAO, i `glBufferData` ze 144 bajtami. W ciele konstruktora dwa razy `setFloatAttribute`: wiąże VAO, włącza atrybut i zapisuje format (3 x `GL_FLOAT`, krok 24, przesunięcie 0 albo 12) razem z buforem, który jest wciąż związany z `GL_ARRAY_BUFFER`. Na końcu blok świateł dwóch programów oświetlających jest podpinany do punktu wiązania 1.
 
 6. **Skąd wartości `VERTEX_STRIDE` i `COLOR_OFFSET`?**
    Wierzchołek to 3 liczby pozycji i 3 liczby koloru, razem 6 liczb `float` po 4 bajty: krok 24. Kolor zaczyna się po trzech liczbach pozycji: przesunięcie 12. W kodzie obie wartości są wyliczone ze stałych `POSITION_COMPONENTS`, `COLOR_COMPONENTS` i `sizeof(float)`.
@@ -467,11 +484,11 @@ Zmiany w `NightMazeApp.cpp` wymagają zbudowania programu (`make run`). Po każd
 12. **Jak podzielona jest ściana na trójkąty i dlaczego oba mają ten sam kierunek?**
     Wierzchołki ściany a, b, c, d dają trójkąty a, b, c oraz c, d, a, ze wspólną przekątną od a do c. Oba obiegają ścianę w tę samą stronę co cała czwórka. Zapis c, d, a to przesunięcie cykliczne a, c, d, a ono nie zmienia kierunku nawijania.
 
-13. **Dlaczego pola `m_assets`, `m_mazeRenderer` i `m_colliderLines` stoją w `NightMazeApp.hpp` przed polami kostki?**
+13. **Dlaczego pola `m_assets`, `m_mazeRenderer`, `m_colliderLines` i `m_lightRig` stoją w `NightMazeApp.hpp` przed polami kostki?**
     Bo przez nie powstają siatki, a utworzenie siatki wiąże jej własny VAO i bufory. Kostka opisuje swoje atrybuty dopiero w ciele konstruktora i liczy na to, że z `GL_ARRAY_BUFFER` nadal związany jest jej bufor wierzchołków. Siatka utworzona po buforach kostki zabrałaby to wiązanie. Pola powstają w kolejności deklaracji, więc siatki zadeklarowane wyżej są już gotowe, zanim powstanie kostka.
 
 14. **Gdzie jest dziś kostka i co ją rysuje?**
-    Unosi się 4,5 m nad środkiem narożnej komórki labiryntu naprzeciw startu, z tym samym pochyleniem co w M1. Pozycję ustawia `enterMaze`, a rysuje ją `NightMazeApp::drawCube` programem `basic`, po labiryncie.
+    Unosi się 4,5 m nad środkiem narożnej komórki labiryntu naprzeciw startu, z tym samym pochyleniem co w M1. Pozycję ustawia `enterMaze`, a rysuje ją `NightMazeApp::drawCube` programem `basic`, po labiryncie i znacznikach świateł. Program `basic` nie ma oświetlenia, więc kostka ma zawsze swoje pełne kolory.
 
 Pytania o bufory, VAO i klasy `Buffer` oraz `VertexArray` są w [`buffers-vao.md`](buffers-vao.md), sekcja 9.
 

@@ -379,8 +379,8 @@ Pozostałe elementy panelu opisuje [`window-context.md`](window-context.md), sek
 11. **Co się dzieje z ruchem gracza w klatce, w której nie zmieścił się żaden krok?**
     `onUpdate` nie jest wołane, więc pozycja poprzednia i bieżąca zostają te same co w poprzedniej klatce. Rośnie tylko `alpha`, więc oko przesuwa się dalej wzdłuż tego samego odcinka. Dzięki temu ruch jest płynny także przy FPS wyższym niż 120.
 
-12. **Dlaczego ruch gracza jest w `onUpdate`, a obrót myszą i klawisz N w `onRender`?**
-    Ruch zależy od czasu trzymania klawisza, a czas symulacji płynie stałymi krokami: stan klawisza (`isKeyDown`) jest taki sam w każdym kroku klatki. Przesunięcie myszy i zbocze klawisza N (`wasKeyPressed`) opisują jedną klatkę i muszą zostać zastosowane dokładnie raz, a `onUpdate` wykonuje się od zera do wielu razy na klatkę.
+12. **Dlaczego ruch gracza jest w `onUpdate`, a obrót myszą i klawisze N i F w `onRender`?**
+    Ruch zależy od czasu trzymania klawisza, a czas symulacji płynie stałymi krokami: stan klawisza (`isKeyDown`) jest taki sam w każdym kroku klatki. Przesunięcie myszy i zbocze klawisza N albo F (`wasKeyPressed`; F przełącza od M4 latarkę) opisują jedną klatkę i muszą zostać zastosowane dokładnie raz, a `onUpdate` wykonuje się od zera do wielu razy na klatkę.
 
 ## 10. Źródła
 

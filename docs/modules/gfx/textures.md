@@ -1,15 +1,15 @@
 # Moduł gfx: tekstury
 
-Kamień milowy: M2 + M3. Temat wykładu: 5 (Tekstury).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszło oświetlenie). Temat wykładu: 5 (Tekstury).
 Kod: [`src/gfx/Texture2D.hpp`](../../../src/gfx/Texture2D.hpp), [`src/gfx/Texture2D.cpp`](../../../src/gfx/Texture2D.cpp), shadery [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag), settery `setInt` i `setVec3` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument zakłada znajomość shaderów ([`shaders.md`](shaders.md)), uniformów ([`uniforms.md`](uniforms.md)) i atrybutów wierzchołka ([`buffers-vao.md`](buffers-vao.md)). Skąd biorą się bajty obrazu, opisuje [`../assets/images.md`](../assets/images.md), a skąd pliki PNG i współrzędne UV modeli, [`../../guides/blender.md`](../../guides/blender.md), sekcje 6 i 7. Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś:** gra rysuje labirynt z teksturami. Ściany, słupki i płytki podłogi są rysowane programem z pary `textured.vert` i `textured.frag` (sekcja 4). Tekstury tworzy i przechowuje `assets::AssetCache` ([`../assets/asset-cache.md`](../assets/asset-cache.md)), a wiąże je i ustawia sampler `game::MazeRenderer` ([`../game/maze-rendering.md`](../game/maze-rendering.md)). Filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Klasa `Texture2D` wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9), a obraz w grze na zrzutach ekranu (sekcja 5.10). Widżetów panelu nikt jeszcze nie klikał ręcznie. **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.**
+**Stan na dziś:** gra rysuje labirynt z teksturami. Od M4 labirynt jest domyślnie **oświetlony** i rysują go programy `lit` albo `gouraud`, które czytają teksturę dokładnie tak samo jak program opisany tutaj (ten sam sampler `uTexture`, ten sam `uTint`, ta sama jednostka 0). Para `textured.vert` i `textured.frag` (sekcja 4) rysuje ściany, słupki i płytki podłogi w trybie oświetlenia `Unlit` oraz w obu widokach diagnostycznych (normalne i UV jako kolor), niezależnie od trybu oświetlenia. Tekstury tworzy i przechowuje `assets::AssetCache` ([`../assets/asset-cache.md`](../assets/asset-cache.md)), a wiąże je i ustawia sampler `game::MazeRenderer` ([`../game/maze-rendering.md`](../game/maze-rendering.md)). Filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Klasa `Texture2D` wymaga kontekstu OpenGL, więc **nie ma testów jednostkowych**. Sprawdziłem ją na Windowsie osobnym programem z ukrytym oknem, poza repozytorium (sekcja 5.9), a obraz w grze na zrzutach ekranu (sekcja 5.10). Widżetów panelu nikt jeszcze nie klikał ręcznie. **Na macOS ten kod nie był jeszcze budowany ani uruchamiany.** Stan całego projektu po M4, zmierzony na Windowsie 2026-10-05: 149 przypadków testowych i 61240 asercji w Debug i Release (żaden nie dotyczy `Texture2D`).
 
-W tym kamieniu milowym **nie ma oświetlenia** (dochodzi w M4), więc scena jest równo jasna: kolor piksela to kolor tekstury pomnożony przez kolor materiału.
+**Oświetlenie już jest** (M4): światła i wzory opisuje [`../scene/lights.md`](../scene/lights.md), a programy `lit` i `gouraud` [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W programie `textured`, o którym jest ten dokument, światła nadal nie ma: kolor piksela to kolor tekstury pomnożony przez kolor materiału, więc scena w trybie `Unlit` jest równo jasna. W programach oświetlających ten sam iloczyn (`texture(uTexture, vUv).rgb * uTint`) jest kolorem powierzchni, mnożonym potem przez światło rozproszone.
 
-Dwie rzeczy z tematu 5 są celowo odłożone: **mapy normalnych** (normal maps) dojdą w M4 razem z oświetleniem, bo bez światła nie mają czego zmieniać, a **przestrzeń sRGB i korekcja gamma** nie są jeszcze obsługiwane (sekcja 2.10).
+Dwie rzeczy z tematu 5 są nadal celowo odłożone: **mapy normalnych** (normal maps) nie weszły do pierwszej części M4 i dojdą w jej **następnej części**, a **przestrzeń sRGB i korekcja gamma** są odłożone do M7 (sekcja 2.10, uzasadnienie w [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
 
 ## 1. Po co to jest
 
@@ -252,9 +252,9 @@ Przy złym wyrównaniu obraz wychodzi **pochylony** i z przekłamanymi kolorami,
 
 ### 2.10 Czego jeszcze nie ma: sRGB i mapy normalnych
 
-**sRGB.** Kolory w pliku PNG są zapisane w przestrzeni sRGB: liczba w pliku nie jest proporcjonalna do jasności światła, tylko dopasowana do tego, jak widzi oko i jak świeci monitor. Dopóki tekstura jest tylko kopiowana na ekran, niczego to nie psuje: bajty z pliku trafiają na monitor bez zmian. Zaczyna mieć znaczenie przy **oświetleniu**, bo mnożenie i dodawanie światła jest poprawne tylko na wartościach liniowych. Poprawne rozwiązanie to format wewnętrzny `GL_SRGB8` (karta przelicza teksel na wartość liniową przy odczycie) i `GL_FRAMEBUFFER_SRGB` przy zapisie. Projekt tego **jeszcze nie robi**: tekstura jest przechowywana jako `GL_RGB8` i shader dostaje wartości z pliku. Decyzja zapadnie razem z oświetleniem (M4).
+**sRGB.** Kolory w pliku PNG są zapisane w przestrzeni sRGB: liczba w pliku nie jest proporcjonalna do jasności światła, tylko dopasowana do tego, jak widzi oko i jak świeci monitor. Dopóki tekstura jest tylko kopiowana na ekran, niczego to nie psuje: bajty z pliku trafiają na monitor bez zmian. Zaczyna mieć znaczenie przy **oświetleniu**, bo mnożenie i dodawanie światła jest poprawne tylko na wartościach liniowych. Poprawne rozwiązanie to format wewnętrzny `GL_SRGB8` (karta przelicza teksel na wartość liniową przy odczycie) i `GL_FRAMEBUFFER_SRGB` przy zapisie. Projekt tego **jeszcze nie robi**: tekstura jest przechowywana jako `GL_RGB8` i shader dostaje wartości z pliku. Od M4 ma to już znaczenie, bo oświetlenie istnieje: programy `lit` i `gouraud` mnożą światło przez wartości nieliniowe i zapisują wynik bez korekcji. Obraz jest spójny, ale nie jest fizycznie poprawny (komentarz w `lit.frag` mówi to wprost). Decyzja zapadła: sRGB i gamma dochodzą w M7 razem z potokiem HDR, a powody są w notatce [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
 
-**Mapy normalnych.** Tekstura może przechowywać nie kolor, tylko kierunek normalnej dla każdego teksela, co daje wrażenie wypukłości bez dodatkowych trójkątów. PRD przypisuje je do tematu 5, ale efekt widać dopiero przy oświetleniu, więc są celowo przeniesione do M4. Klasa `Texture2D` nadaje się do nich bez zmian (to też obraz RGB), a brakuje reszty: wektorów stycznych w wierzchołkach i kodu w shaderze.
+**Mapy normalnych.** Tekstura może przechowywać nie kolor, tylko kierunek normalnej dla każdego teksela, co daje wrażenie wypukłości bez dodatkowych trójkątów. PRD przypisuje je do tematu 5, ale efekt widać dopiero przy oświetleniu. Oświetlenie już jest, map normalnych jeszcze nie: są następną częścią M4. Klasa `Texture2D` nadaje się do nich bez zmian (to też obraz RGB), a brakuje reszty: wektorów stycznych w wierzchołkach i kodu w shaderze.
 
 ## 3. Jak to działa w OpenGL
 
@@ -336,9 +336,9 @@ Niekompletna tekstura **nie zgłasza błędu**. Każdy odczyt z niej zwraca czar
 
 ## 4. Shadery
 
-Labirynt rysuje para [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag). To pierwsze shadery projektu, które czytają teksturę. Para `basic.vert` i `basic.frag` ([`shaders.md`](shaders.md), sekcja 4) została bez zmian i nadal rysuje kostkę kolorem z wierzchołków. Trzecia para, `color.vert` i `color.frag`, rysuje linie pudełek kolizji jednym kolorem i opisuje ją [`../scene/collision.md`](../scene/collision.md), sekcja 4.
+Ta sekcja opisuje parę [`assets/shaders/textured.vert`](../../../assets/shaders/textured.vert) i [`assets/shaders/textured.frag`](../../../assets/shaders/textured.frag). To pierwsze shadery projektu, które czytają teksturę. Od M4 rysują labirynt w trybie oświetlenia `Unlit` i w obu widokach diagnostycznych. Gra ma dziś pięć programów. Para `basic.vert` i `basic.frag` ([`shaders.md`](shaders.md), sekcja 4) została bez zmian i nadal rysuje kostkę kolorem z wierzchołków. Para `color.vert` i `color.frag` rysuje jednym kolorem linie pudełek kolizji i znaczniki świateł ([`../scene/collision.md`](../scene/collision.md), sekcja 4). Pary `lit.*` i `gouraud.*` rysują labirynt z oświetleniem ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4): czytają teksturę tą samą linią co `textured.frag`.
 
-W tych shaderach **nie ma oświetlenia**: żadnego wektora światła, żadnego iloczynu skalarnego z normalną. Normalna jest przekazywana do shadera fragmentów tylko po to, żeby dało się ją pokazać jako kolor (tryb podglądu 1). Oświetlenie i mapy normalnych to M4.
+W tych dwóch shaderach **nie ma oświetlenia**: żadnego wektora światła, żadnego iloczynu skalarnego z normalną. Normalna jest przekazywana do shadera fragmentów tylko po to, żeby dało się ją pokazać jako kolor (tryb podglądu 1). Oświetlenie liczą osobne programy ([`../scene/lights.md`](../scene/lights.md)), a map normalnych jeszcze nie ma.
 
 ### 4.1 `textured.vert`: shader wierzchołków
 
@@ -399,6 +399,8 @@ void main() {
 **Dlaczego `mat3(uModel)`, a nie całe `uModel`.** Normalna jest **kierunkiem**, nie punktem. Kierunek ma się obracać razem z obiektem, ale przesunięcie obiektu nie może go zmieniać: ściana przestawiona o 10 m dalej jest zwrócona w tę samą stronę. `mat3(uModel)` wycina z macierzy 4 x 4 lewy górny blok 3 x 3, czyli obrót i skalę, a gubi czwartą kolumnę z przesunięciem. To samo dałoby `(uModel * vec4(aNormal, 0.0)).xyz`: zero w czwartej składowej też wyłącza przesunięcie ([`../scene/transforms.md`](../scene/transforms.md), sekcja 2).
 
 **Kiedy to jest poprawne.** Tylko wtedy, gdy skala jest taka sama na wszystkich trzech osiach. Skala nierówna (na przykład obiekt rozciągnięty dwa razy w osi x) przekrzywia normalne: przestają być prostopadłe do powierzchni. Poprawna macierz dla normalnych to wtedy odwrócona i transponowana macierz 3 x 3: `transpose(inverse(mat3(uModel)))`. W labiryncie każda macierz modelu to samo przesunięcie albo przesunięcie z obrotem o 90 stopni wokół osi Y, ze skalą 1 ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), więc prostsza postać wystarcza. Sam obrót nie zmienia długości wektora, więc normalna wychodzi z shadera wierzchołków z długością 1.
+
+**Programy oświetlające robią to już poprawnie.** `lit.vert` i `gouraud.vert` nie używają `mat3(uModel)`: dostają osobny uniform `uniform mat3 uNormalMatrix;`, czyli właśnie odwróconą i transponowaną macierz 3 x 3, policzoną na procesorze przez `scene::normalMatrix` ([`uniforms.md`](uniforms.md), sekcje 4 i 5.7). `textured.vert` został przy `mat3(uModel)`, bo jego normalna służy tylko do podglądu. `MazeRenderer` wysyła `uNormalMatrix` także do programu `textured`, który takiego uniformu nie ma: wywołanie jest po cichu ignorowane.
 
 ### 4.2 `textured.frag`: shader fragmentów
 
@@ -518,7 +520,7 @@ Trzy uwagi do funkcji `texture`:
 
 Uniformy ustawiają trzy miejsca. Nazwy są stałymi z [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`uniforms.md`](uniforms.md), sekcja 5.5).
 
-Raz na klatkę, w `NightMazeApp::drawMaze`:
+Raz na klatkę, w `NightMazeApp::drawUnlitMaze`. Tę funkcję wybiera `drawMaze`, gdy tryb oświetlenia to `Unlit` albo gdy włączony jest widok diagnostyczny:
 
 ```cpp
     m_texturedShader.use();
@@ -545,20 +547,26 @@ Dla każdej części modelu i każdego obiektu, w `MazeRenderer::drawInstances`:
 
         for (const glm::mat4& modelMatrix : modelMatrices) {
             shader.setMat4(MODEL_UNIFORM, modelMatrix);
+            // The lit programs turn the normals with a matrix of their own, derived
+            // from the model matrix. It is computed here, on the CPU, once per object:
+            // in the shader the inverse would be computed again for every vertex.
+            shader.setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix));
             model->mesh.draw(part.firstIndex, part.indexCount);
         }
     }
 ```
 
+`MazeRenderer` rysuje tym samym kodem trzema programami (`textured`, `lit`, `gouraud`): dostaje shader jako parametr. Sampler, kolor materiału i macierz modelu mają we wszystkich trzech te same nazwy. Linia z `setMat3` dotyczy tylko programów oświetlających: w programie `textured` nie ma uniformu `uNormalMatrix`, więc tam nic nie robi.
+
 | Uniform shadera | Kto ustawia | Jak często | Wartość |
 |---|---|---|---|
-| `uView`, `uProjection` | `NightMazeApp::drawMaze` | raz na klatkę | macierze kamery ([`../scene/camera.md`](../scene/camera.md), sekcja 5) |
-| `uViewMode` | `NightMazeApp::drawMaze` | raz na klatkę | `static_cast<int>(m_viewMode)`: 0, 1 albo 2 |
+| `uView`, `uProjection` | `NightMazeApp::drawUnlitMaze` | raz na klatkę | macierze kamery ([`../scene/camera.md`](../scene/camera.md), sekcja 5) |
+| `uViewMode` | `NightMazeApp::drawUnlitMaze` | raz na klatkę | `static_cast<int>(m_viewMode)`: 0, 1 albo 2 |
 | `uTexture` | `MazeRenderer::draw` | raz na klatkę | `TEXTURE_UNIT`, czyli 0 |
 | `uTint` | `MazeRenderer::drawInstances` | raz na część modelu | `part.color` (kolor `Kd`) |
 | `uModel` | `MazeRenderer::drawInstances` | raz na obiekt | macierz modelu obiektu |
 
-Obie liczby łańcucha z sekcji 2.7 pochodzą z jednej stałej `TEXTURE_UNIT = 0` w `MazeRenderer.cpp`: trafia do samplera przez `setInt` i do `Texture2D::bind`. **Wszystkie tekstury labiryntu idą przez jednostkę 0**: przed rysowaniem kolejnej części wiązana jest tam jej tekstura, a poprzednia przestaje być widoczna dla shadera. Jednostka 1 i dalsze nie są używane, bo shader czyta jedną teksturę naraz. Pętle `drawInstances` omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5.
+Obie liczby łańcucha z sekcji 2.7 pochodzą z jednej stałej `TEXTURE_UNIT = 0` w `MazeRenderer.cpp`: trafia do samplera przez `setInt` i do `Texture2D::bind`. **Wszystkie tekstury labiryntu idą przez jednostkę 0**: przed rysowaniem kolejnej części wiązana jest tam jej tekstura, a poprzednia przestaje być widoczna dla shadera. Jednostka 1 i dalsze nie są używane, bo shader czyta jedną teksturę naraz. Dotyczy to także programów `lit` i `gouraud`: oświetlenie nie dodało żadnej tekstury. Pętle `drawInstances` omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5.
 
 ## 5. Kod w projekcie
 
@@ -1006,6 +1014,8 @@ Sekcja 5.9 sprawdza klasę osobno. Tu jest to, co wiadomo o teksturach w działa
 | miniatury tekstur w panelu Assets | we właściwej orientacji |
 | brak pliku tekstury | część modelu jest rysowana białą teksturą zastępczą, w konsoli jest jedna linia `[error]` |
 
+**Stan po M4 (2026-10-05, ten sam sprzęt).** Build Debug i Release bez ostrzeżeń, start bez linii `[error]` i bez linii `GL_` z pięcioma programami. Na zrzutach ekranu sprawdzone są cztery tryby oświetlenia z trzech punktów widzenia: we wszystkich tekstury ścian, słupków i podłogi są we właściwej orientacji, czyli programy `lit` i `gouraud` czytają teksturę tak samo jak `textured`. Tabeli wyżej (tryby podglądu, filtry, miniatury) po M4 nie powtarzałem.
+
 **Czego nikt jeszcze nie zrobił ręcznie.** Stany z tabeli (inny tryb podglądu, inny filtr, anizotropia 16) były ustawiane tymczasowymi wstawkami w kodzie, które zostały usunięte, a nie kliknięciem w panel. Lista wyboru `View mode`, lista `Filter` i suwak `Anisotropy` nie były więc jeszcze używane myszą. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nie sprawdzono niczego: ani kompilacji shaderów przez sterownik Apple, ani obrazu.
 
 ## 6. Panel ImGui
@@ -1014,12 +1024,12 @@ Tekstury mają panel **Assets**. PRD nie ma panelu o takiej nazwie: w sekcji 3 w
 
 | Widżet (etykieta w panelu) | Co zmienia | Co widać |
 |---|---|---|
-| lista `View mode`: `Textured`, `Normals as colour`, `UVs as colour` | uniform `uViewMode` shadera `textured.frag` (sekcja 4.2) | zwykły obraz, normalne jako kolor albo współrzędne tekstury jako kolor |
+| lista `View mode`: `Textured`, `Normals as colour`, `UVs as colour` | uniform `uViewMode` shadera `textured.frag` (sekcja 4.2), a od M4 także wybór programu: dwie ostatnie pozycje zawsze rysują programem `textured`, niezależnie od trybu oświetlenia | `Textured`: zwykły obraz, oświetlony albo nie, zależnie od listy `Lighting` w panelu Renderer. Pozostałe: normalne jako kolor albo współrzędne tekstury jako kolor, bez światła |
 | lista `Filter`: `Nearest`, `Bilinear`, `Trilinear` | filtr **wszystkich** tekstur naraz, przez `AssetCache::setFilter`, które woła `Texture2D::setFilter` dla każdej | z bliska: kwadratowe teksele albo wygładzenie. Z daleka: migotanie albo spokojny obraz (sekcje 2.3 i 2.4) |
 | suwak `Anisotropy`, od 1 do `maxAnisotropy()` | poziom anizotropii wszystkich tekstur, przez `AssetCache::setAnisotropy` | ostrość podłogi i ścian widzianych pod ostrym kątem (sekcja 2.5). Gdy sterownik nie ma rozszerzenia, suwak jest wyszarzony i pod nim stoi wyjaśnienie |
 | lista pod nagłówkiem `Textures` | nic, tylko pokazuje | nazwa pliku, rozmiar w pikselach i miniatura 128 x 128 każdej wczytanej tekstury |
 
-Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
+Przełącznika map normalnych z PRD nie ma: map normalnych jeszcze nie ma, dojdą w następnej części M4.
 
 **Miniatura nie pokazuje filtra.** `ImGui::Image` dostaje sam identyfikator tekstury (`Texture2D::id()`). Backend OpenGL biblioteki ImGui (wersja 1.92.9b, plik `imgui_impl_opengl3.cpp`) na czas rysowania paneli wiąże z jednostką 0 **własny obiekt samplera** z filtrem liniowym i zawijaniem `GL_CLAMP_TO_EDGE`, a po sobie przywraca poprzedni. To odczyt z kodu biblioteki, nie pomiar. Miniatura jest więc zawsze wygładzona liniowo, niezależnie od filtra wybranego w panelu. Skutek zmiany filtra i anizotropii widać na ścianach w scenie, a nie na miniaturze. Panel mówi to wprost tekstem pod suwakiem.
 
@@ -1046,16 +1056,16 @@ Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
 15. **Tekstura utworzona przed oknem albo zniszczona po nim.** Jak każda klasa `gfx`: konstruktor i destruktor wołają OpenGL i potrzebują bieżącego kontekstu ([`README.md`](README.md), sekcja 5).
 16. **Kopiowanie opakowania.** Jak w `Buffer`: kopia miałaby te same dwa identyfikatory. `= delete` zamienia to w błąd kompilacji.
 17. **Zły wskaźnik albo za krótka tablica.** `glTexImage2D` czyta `szerokość * wysokość * kanały` bajtów spod wskaźnika i nie zna długości tablicy. Zbyt krótka tablica to czytanie cudzej pamięci, bez błędu OpenGL.
-18. **Kolory bez korekcji gamma.** Tekstura jest przechowywana jako `GL_RGB8`, a nie `GL_SRGB8` (sekcja 2.10). Dopóki nie ma oświetlenia, obraz jest poprawny. Po dodaniu światła trzeba będzie to rozstrzygnąć.
+18. **Kolory bez korekcji gamma.** Tekstura jest przechowywana jako `GL_RGB8`, a nie `GL_SRGB8` (sekcja 2.10). W programie `textured` obraz jest poprawny, bo tekstura jest tylko kopiowana na ekran. W programach `lit` i `gouraud` światło jest od M4 liczone na wartościach nieliniowych, więc wynik różni się od tego, co dałoby poprawne przeliczenie. Różnicy nie mierzyłem. To świadomie odłożone do M7 ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Kto wcześniej zmieni sam format na `GL_SRGB8`, bez `GL_FRAMEBUFFER_SRGB` przy zapisie, przyciemni cały obraz.
 19. **Liczby trybu podglądu w trzech miejscach.** `textured.frag` porównuje `uViewMode` z liczbami 1 i 2, a C++ wysyła `static_cast<int>(m_viewMode)`. Zmiana kolejności wartości w `game::ViewMode` bez zmiany shadera (albo odwrotnie) nie daje żadnego błędu: panel pokazuje jedną nazwę, a ekran inny tryb. Trzecim miejscem jest napis `VIEW_MODE_ITEMS` w panelu Assets, którego kolejność też musi zgadzać się z typem wyliczeniowym.
 20. **Nieustawiony `uTint` daje czarny labirynt.** Uniform typu `vec3` ma po linkowaniu wartość `(0, 0, 0)`. Mnożenie tekstury przez zero to czerń, bez żadnego błędu. Literówka w nazwie `"uTint"` wyglądałaby tak samo, bo położenie -1 jest po cichu ignorowane ([`uniforms.md`](uniforms.md), sekcja 2.3). Stąd nazwy w jednym nagłówku `ShaderUniforms.hpp`.
-21. **`mat3(uModel)` przy nierównej skali.** Normalne wychodzą przekrzywione, gdy obiekt jest rozciągnięty tylko w jednej osi (sekcja 4.1). Dziś żaden obiekt rysowany tym shaderem nie ma skali innej niż 1. Kto doda taki obiekt, musi zmienić shader na `transpose(inverse(mat3(uModel)))`. Dopóki nie ma oświetlenia, błąd byłoby widać tylko w trybie podglądu normalnych.
-22. **Podgląd normalnych to nie światło.** Kolory w trybie 1 nie zależą od żadnego źródła światła ani od kamery. Na obronie nie wolno tego nazwać cieniowaniem.
+21. **`mat3(uModel)` przy nierównej skali.** Normalne wychodzą przekrzywione, gdy obiekt jest rozciągnięty tylko w jednej osi (sekcja 4.1). Dotyczy to już tylko `textured.vert`: programy oświetlające `lit` i `gouraud` używają `uNormalMatrix`, czyli poprawnej macierzy policzonej w C++. Dziś żaden obiekt labiryntu nie ma skali innej niż 1, więc obie drogi dają to samo. Po dodaniu obiektu o nierównej skali oświetlenie będzie poprawne, a **podgląd normalnych pokaże co innego niż to, czego używa światło**, bo rysuje go `textured.vert`. Żeby podgląd nie kłamał, trzeba wtedy zmienić `textured.vert` na `uNormalMatrix` (uniform jest do tego programu wysyłany już dziś).
+22. **Podgląd normalnych to nie światło.** Kolory w trybie 1 nie zależą od żadnego źródła światła ani od kamery. Na obronie nie wolno tego nazwać cieniowaniem. Od M4 widać to wprost: włączenie podglądu wyłącza oświetlenie labiryntu w każdym trybie, a znaczniki świateł zostają na ekranie.
 23. **Ten sam numer atrybutu, inne znaczenie.** `location = 1` to kolor w `basic.vert` i normalna w `textured.vert`. Siatka `gfx::Mesh` narysowana programem `basic` pokazałaby normalne jako kolory, a VAO kostki nie ma w ogóle atrybutu numer 2, którego oczekuje `textured.vert`. OpenGL nie zgłasza żadnej z tych pomyłek.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 6 są na kartce albo na samym kodzie klasy. Ćwiczenia od 7 do 12 robi się w działającej grze: filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Ćwiczenie 13 jest znowu na kartce. Po ćwiczeniu, które zmienia kod albo shader, wycofaj zmianę (`git checkout src assets`). Na Windowsie po zmianie pliku shadera trzeba odświeżyć kopię katalogu `assets` obok programu: `cmake --build --preset debug --target copy_assets` ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.5).
+Ćwiczenia od 1 do 6 są na kartce albo na samym kodzie klasy. Ćwiczenia od 7 do 12 robi się w działającej grze: filtr, anizotropię i tryb podglądu przełącza panel Assets (sekcja 6). Filtry i anizotropię najłatwiej ocenić w trybie oświetlenia `Unlit` (lista `Lighting` w panelu Renderer), bo scena jest wtedy równo jasna. Ćwiczenie 13 jest znowu na kartce. Po ćwiczeniu, które zmienia kod albo shader, wycofaj zmianę (`git checkout src assets`). Na Windowsie po zmianie pliku shadera trzeba odświeżyć kopię katalogu `assets` obok programu: `cmake --build --preset debug --target copy_assets` ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.5).
 
 1. **Poziomy na kartce.** Tekstura ma 1024 x 256 tekseli. Wypisz rozmiary wszystkich poziomów mipmap. Ile ich jest? (Wskazówka: wymiar, który doszedł do 1, zostaje 1.)
 2. **Pamięć na kartce.** Tekstura 2048 x 2048 RGBA, 8 bitów na kanał. Ile bajtów zajmuje poziom 0, a ile cały łańcuch mipmap w przybliżeniu?
@@ -1067,7 +1077,7 @@ Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
 8. **Anizotropia na żywo.** Ustaw `Trilinear`, patrz na podłogę pod ostrym kątem i przesuwaj poziom anizotropii od 1 do maksimum. W której odległości od kamery widać największą zmianę? Dlaczego ściana, na którą patrzysz na wprost, się nie zmienia?
 9. **Bez mipmap.** Usuń linię `glGenerateMipmap` z konstruktora i w `bind` usuń linię `glBindSampler`. Co widać i co pokazuje konsola? Przywróć `glBindSampler`: czy obraz wraca dla wszystkich trzech filtrów? Wycofaj zmiany.
 10. **Zawijanie na żywo.** Zmień w konstruktorze oba `GL_REPEAT` na `GL_CLAMP_TO_EDGE`. Które części ścian się zmieniły i dlaczego akurat te (porównaj z zakresem UV w [`../../guides/blender.md`](../../guides/blender.md), sekcja 6)? Wycofaj zmianę.
-11. **Odcień w shaderze.** W `textured.frag` zamień `texel * uTint` na `texel * vec3(1.0, 0.5, 0.5)` i przeładuj shadery przyciskiem `Reload shaders`. Co się stało z kolorem ścian i dlaczego mnożenie, a nie dodawanie, zostawia ciemne miejsca tekstury ciemnymi? Wycofaj zmianę.
+11. **Odcień w shaderze.** Ustaw w panelu Renderer tryb oświetlenia `Unlit` (w pozostałych trybach labirynt rysuje inny program i zmiany nie widać). W `textured.frag` zamień `texel * uTint` na `texel * vec3(1.0, 0.5, 0.5)` i przeładuj shadery przyciskiem `Reload shaders`. Co się stało z kolorem ścian i dlaczego mnożenie, a nie dodawanie, zostawia ciemne miejsca tekstury ciemnymi? Wycofaj zmianę.
 12. **Podgląd UV bez `fract`.** W gałęzi `uViewMode == 2` zamień `fract(vUv)` na `vUv`, przeładuj shadery i włącz tryb `UVs as colour`. Które części ścian straciły gradient i dlaczego (jaki kolor ma fragment o `u = 1,7`)? Wycofaj zmianę.
 13. **Normalna na kartce.** Ściana biegnąca wzdłuż osi Z powstaje z modelu obróconego o 90 stopni wokół osi Y. Model ma ścianę boczną o normalnej `(0, 0, 1)`. Jaką normalną ma ta ściana w przestrzeni świata i jaki kolor pokaże tryb `Normals as colour`? (Wskazówka: macierz obrotu wokół osi Y z [`../scene/transforms.md`](../scene/transforms.md), sekcja 2. Odpowiedź: `(1, 0, 0)`, kolor `(1, 0,5, 0,5)`.)
 
@@ -1122,7 +1132,7 @@ Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
     UV ścian wychodzą celowo poza zakres od 0 do 1, żeby jedno powtórzenie tekstury zajmowało zawsze 2 m. Z przycinaniem do krawędzi część ściany byłaby rozmazanym ostatnim wierszem.
 
 17. **Czego z tematu tekstur projekt jeszcze nie robi?**
-    Nie ma map normalnych (M4, razem z oświetleniem) ani obsługi sRGB i gammy. Nie ma też oświetlenia, więc scena jest równo jasna.
+    Nie ma map normalnych: są następną częścią M4. Nie ma obsługi sRGB i gammy: to M7, razem z potokiem HDR, więc oświetlenie (które już jest, od M4) liczy na wartościach nieliniowych z pliku.
 
 18. **Co robi linia `vec3 texel = texture(uTexture, vUv).rgb;`?**
     Odczytuje teksturę z jednostki, której numer jest w samplerze `uTexture`, w punkcie `vUv`, z filtrem, mipmapami i zawijaniem ustawionymi na obiekcie samplera. Z czterech zwróconych składowych bierze trzy pierwsze: kolor bez alfy.
@@ -1131,7 +1141,7 @@ Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
     To kolor rozproszenia materiału (`Kd`). Mnożenie składowa po składowej przyciemnia albo zabarwia teksturę, a biały jej nie zmienia. Dzięki niemu część modelu bez tekstury, rysowana białą teksturą 1 x 1, wychodzi w samym kolorze materiału i shader nie potrzebuje osobnej gałęzi.
 
 20. **Dlaczego normalna jest mnożona przez `mat3(uModel)`, a nie przez `uModel`, i kiedy to nie wystarcza?**
-    Normalna jest kierunkiem: ma się obracać z obiektem, ale przesunięcie nie może jej zmieniać. `mat3` wycina obrót i skalę bez przesunięcia. Przy skali różnej na osiach normalne przestają być prostopadłe do powierzchni i trzeba użyć odwróconej i transponowanej macierzy 3 x 3. W labiryncie skala wynosi 1.
+    Normalna jest kierunkiem: ma się obracać z obiektem, ale przesunięcie nie może jej zmieniać. `mat3` wycina obrót i skalę bez przesunięcia. Przy skali różnej na osiach normalne przestają być prostopadłe do powierzchni i trzeba użyć odwróconej i transponowanej macierzy 3 x 3. W labiryncie skala wynosi 1. Programy oświetlające `lit` i `gouraud` dostają tę poprawną macierz jako uniform `uNormalMatrix`, a `textured.vert` został przy `mat3(uModel)`.
 
 21. **Dlaczego w trybie podglądu normalnych jest `normalize` i `* 0.5 + 0.5`?**
     Interpolacja między wierzchołkami może skrócić wektor, więc `normalize` przywraca długość 1. Składowe kierunku są od -1 do 1, a koloru od 0 do 1: połowa plus połowa przenosi jeden zakres w drugi.
@@ -1140,7 +1150,10 @@ Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
     Z uniformu `int uViewMode`, ustawianego raz na klatkę przez `setInt` wartością `static_cast<int>(m_viewMode)`. Liczby są wartościami typu `game::ViewMode`. Zgodności nikt nie sprawdza automatycznie: to umowa zapisana w komentarzach po obu stronach.
 
 23. **Ile jednostek teksturujących używa gra i dlaczego wystarcza jedna?**
-    Jedną, numer 0. Shader czyta jedną teksturę naraz, a przed każdą częścią modelu `MazeRenderer` wiąże z tą jednostką jej teksturę. Sampler `uTexture` ma przez całą klatkę wartość 0.
+    Jedną, numer 0, także po dodaniu oświetlenia. Shader czyta jedną teksturę naraz, a przed każdą częścią modelu `MazeRenderer` wiąże z tą jednostką jej teksturę. Sampler `uTexture` ma przez całą klatkę wartość 0.
+
+25. **Którym programem rysowany jest dziś labirynt i kiedy jest to program `textured`?**
+    Domyślnie programem `lit` (tryby `Phong` i `BlinnPhong`) albo `gouraud`. Program `textured` rysuje go w trybie `Unlit` oraz zawsze wtedy, gdy włączony jest podgląd normalnych albo UV. Wszystkie trzy czytają teksturę tak samo: sampler `uTexture`, jednostka 0, mnożenie przez `uTint`.
 
 24. **Dlaczego miniatura w panelu Assets nie zmienia się po zmianie filtra?**
     Bo rysuje ją ImGui, które wiąże z jednostką własny obiekt samplera (liniowy, `GL_CLAMP_TO_EDGE`), a obiekt samplera związany z jednostką decyduje o sposobie odczytu. Filtr wybrany w panelu jest zapisany w samplerze tekstury, który trafia na jednostkę tylko przez `Texture2D::bind`.
@@ -1151,6 +1164,6 @@ Przełącznika map normalnych z PRD nie ma: mapy normalnych dochodzą w M4.
 - docs.gl (<https://docs.gl>), strony dla OpenGL 4: `glTexImage2D` (<https://docs.gl/gl4/glTexImage2D>), `glGenerateMipmap`, `glTexParameter` (lista parametrów i wartości domyślnych), `glSamplerParameter` (<https://docs.gl/gl4/glSamplerParameter>), `glBindSampler` (<https://docs.gl/gl4/glBindSampler>), `glGenSamplers`, `glActiveTexture`, `glBindTexture`, `glPixelStore` (<https://docs.gl/gl4/glPixelStore>), `glGetString` (w tym `glGetStringi`), `glUniform`.
 - Specyfikacja rozszerzenia `GL_EXT_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt>): wartości stałych 0x84FE i 0x84FF, zakres poziomu. Wersja z rdzenia 4.6: `GL_ARB_texture_filter_anisotropic` (<https://registry.khronos.org/OpenGL/extensions/ARB/ARB_texture_filter_anisotropic.txt>).
 - Khronos OpenGL Wiki: "Texture" (<https://www.khronos.org/opengl/wiki/Texture>, w tym kompletność tekstury), "Sampler Object" (<https://www.khronos.org/opengl/wiki/Sampler_Object>, pierwszeństwo samplera przed parametrami tekstury), "Sampler (GLSL)" (<https://www.khronos.org/opengl/wiki/Sampler_(GLSL)>), "Pixel Transfer" (<https://www.khronos.org/opengl/wiki/Pixel_Transfer>, wyrównanie wierszy), "Common Mistakes" (<https://www.khronos.org/opengl/wiki/Common_Mistakes>, części o mipmapach i wyrównaniu).
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy tekstury i panel Assets), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je wiąże przy rysowaniu), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
+- Dokumenty w tym repozytorium: [`../scene/lights.md`](../scene/lights.md) (oświetlenie), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (programy `lit` i `gouraud`), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (dlaczego bez gammy do M7), [`README.md`](README.md) (RAII i przenoszenie w `gfx`), [`uniforms.md`](uniforms.md) (`setInt`, `setVec3`, `uNormalMatrix`), [`buffers-vao.md`](buffers-vao.md) (atrybuty wierzchołka), [`mesh.md`](mesh.md) (wierzchołek z UV), [`../assets/asset-cache.md`](../assets/asset-cache.md) (kto tworzy tekstury i panel Assets), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto je wiąże przy rysowaniu), [`../assets/images.md`](../assets/images.md) (skąd są piksele i dlaczego dolny wiersz jest pierwszy), [`../../guides/blender.md`](../../guides/blender.md) (tekstury i UV modeli), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego bez rozszerzeń), [`../core/gl-check.md`](../core/gl-check.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o teksturach).
 - "OpenGL. Księga eksperta" (rozdziały o teksturowaniu i filtrowaniu).

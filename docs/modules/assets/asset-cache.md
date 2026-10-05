@@ -602,7 +602,7 @@ Stany filtra, anizotropii i trybu widoku były ustawiane tymczasowym kodem (usun
 
 ## 6. Panel ImGui
 
-Panel **Assets** jest pokazem tematów 4 i 5. PRD (sekcja 3) wymienia dla tematu 4 "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Lista modeli i podgląd tekstur są. Przełącznika map normalnych nie ma, bo map normalnych jeszcze nie ma (M4). Osobnego panelu o tej nazwie PRD nie przewiduje: nazwa Assets pochodzi z kodu.
+Panel **Assets** jest pokazem tematów 4 i 5. PRD (sekcja 3) wymienia dla tematu 4 "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Lista modeli i podgląd tekstur są. Przełącznika map normalnych nie ma, bo map normalnych jeszcze nie ma: oświetlenie weszło w pierwszej części M4, a mapy normalnych dojdą w następnej. Osobnego panelu o tej nazwie PRD nie przewiduje: nazwa Assets pochodzi z kodu.
 
 Kod: [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp). Jak panel jest podpięty do `DebugUI`, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
 

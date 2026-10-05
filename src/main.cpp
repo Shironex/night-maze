@@ -46,6 +46,9 @@ protected:
             .assets = assets(),
             .viewMode = viewMode(),
             .drawColliders = drawColliders(),
+            .litShader = litShader(),
+            .gouraudShader = gouraudShader(),
+            .lighting = lighting(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

@@ -1,9 +1,9 @@
 # Moduł gfx: shadery i programowalny potok
 
-Kamień milowy: M1 (dwie kolejne pary shaderów doszły w M2 + M3). Temat wykładu: 2 (Programowalny potok).
+Kamień milowy: M1 (dwie kolejne pary shaderów doszły w M2 + M3, dwie następne i plik dołączany w M4). Temat wykładu: 2 (Programowalny potok).
 Kod: shadery [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) i [`assets/shaders/basic.frag`](../../../assets/shaders/basic.frag), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), klasa w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp).
 
-Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Shadery są opisane w czterech dokumentach. Ten opisuje programowalny potok, język GLSL, pierwszą parę shaderów projektu (`basic.vert` i `basic.frag`) i miejsce, w którym program jest używany w klatce. Dwie pozostałe pary mają opis w dokumentach swoich tematów: `textured.*` w [`textures.md`](textures.md) (sekcja 4), a `color.*` w [`../scene/collision.md`](../scene/collision.md) (sekcja 4). [`shader-class.md`](shader-class.md) opisuje klasę `gfx::Shader`: wywołania OpenGL, kompilację, linkowanie i odczyt błędów w kodzie. [`uniforms.md`](uniforms.md) opisuje uniformy i funkcję `Shader::setMat4`, a [`shader-hot-reload.md`](shader-hot-reload.md) wczytywanie na żywo, funkcję `Shader::reload` i panel "Shaders". Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md).
+Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Shadery są opisane w pięciu dokumentach. Ten opisuje programowalny potok, język GLSL, pierwszą parę shaderów projektu (`basic.vert` i `basic.frag`) i miejsce, w którym program jest używany w klatce. Cztery pozostałe pary mają opis w dokumentach swoich tematów: `textured.*` w [`textures.md`](textures.md) (sekcja 4), `color.*` w [`../scene/collision.md`](../scene/collision.md) (sekcja 4), a `lit.*` i `gouraud.*` w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). Wspólny plik oświetlenia `common/lighting.glsl` opisuje [`../scene/lights.md`](../scene/lights.md). [`shader-class.md`](shader-class.md) opisuje klasę `gfx::Shader`: wywołania OpenGL, kompilację, linkowanie i odczyt błędów w kodzie. [`uniforms.md`](uniforms.md) opisuje uniformy i funkcję `Shader::setMat4`, [`shader-includes.md`](shader-includes.md) dyrektywę `#include`, której GLSL nie ma, i nazwy plików w błędach, a [`shader-hot-reload.md`](shader-hot-reload.md) wczytywanie na żywo, funkcję `Shader::reload` i panel "Shaders". Druga część tematu 2, czyli skąd shader wierzchołków bierze dane (bufory i tablica wierzchołków), jest w [`buffers-vao.md`](buffers-vao.md).
 
 ## 1. Po co to jest
 
@@ -11,15 +11,21 @@ Od OpenGL 3.2 w profilu Core nie da się narysować niczego bez shaderów: stary
 
 Robi to klasa `gfx::Shader`, opisana linia po linii w [`shader-class.md`](shader-class.md). Ten dokument opisuje to, co klasa obsługuje: potok, język GLSL i dwa shadery pary `basic`.
 
-Stan na dziś: `game::NightMazeApp` ma **trzy** obiekty `gfx::Shader`, czyli trzy programy:
+Stan na dziś: `game::NightMazeApp` ma **pięć** obiektów `gfx::Shader`, czyli pięć programów:
 
-| Pole | Pliki | Co rysuje | Opis shaderów |
-|---|---|---|---|
-| `m_shader` | `basic.vert`, `basic.frag` | kostkę o sześciu kolorowych ścianach, która unosi się nad narożną komórką labiryntu (miejscem przyszłego wyjścia) | ten dokument, sekcja 4 |
-| `m_texturedShader` | `textured.vert`, `textured.frag` | labirynt: ściany, słupki i płytki podłogi z teksturami | [`textures.md`](textures.md), sekcja 4 |
-| `m_colorShader` | `color.vert`, `color.frag` | linie pudełek kolizji, jednym kolorem | [`../scene/collision.md`](../scene/collision.md), sekcja 4 |
+| Pole | Pliki | Co rysuje | Kiedy | Opis shaderów |
+|---|---|---|---|---|
+| `m_shader` | `basic.vert`, `basic.frag` | kostkę o sześciu kolorowych ścianach, która unosi się nad narożną komórką labiryntu (miejscem przyszłego wyjścia) | zawsze | ten dokument, sekcja 4 |
+| `m_texturedShader` | `textured.vert`, `textured.frag` | labirynt bez oświetlenia: ściany, słupki i płytki podłogi z samymi teksturami, oraz oba widoki diagnostyczne (normalne i UV jako kolor) | tryb oświetlenia `Unlit` albo widok inny niż `Textured` | [`textures.md`](textures.md), sekcja 4 |
+| `m_colorShader` | `color.vert`, `color.frag` | linie pudełek kolizji i znaczniki świateł punktowych (małe kostki), jednym kolorem | znaczniki: tryb inny niż `Unlit`. Linie: gdy włączy je panel Collision | [`../scene/collision.md`](../scene/collision.md), sekcja 4 |
+| `m_litShader` | `lit.vert`, `lit.frag` (dołącza `common/lighting.glsl`) | labirynt z oświetleniem liczonym dla każdego fragmentu | tryby Phong i Blinn-Phong przy widoku `Textured`. **Tak startuje gra** (Blinn-Phong) | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
+| `m_gouraudShader` | `gouraud.vert` (dołącza `common/lighting.glsl`), `gouraud.frag` | labirynt z oświetleniem liczonym dla każdego wierzchołka | tryb Gouraud przy widoku `Textured` | [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
 
-Para `basic` nie zmieniła się od M1. Wszystkie trzy programy są wczytywane przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma trzy funkcje ustawiające uniformy, `setMat4`, `setInt` i `setVec3` ([`uniforms.md`](uniforms.md), sekcje 5.1 i 5.4).
+Labirynt rysuje w danej klatce **jeden** z trzech programów (`textured`, `lit` albo `gouraud`), więc w jednej klatce pracują najwyżej trzy różne programy, wybierane najwyżej czterema wywołaniami `use()` (sekcja 5.1). Plik `common/lighting.glsl` nie jest shaderem i nie ma własnego programu: jego treść trafia do `lit.frag` i do `gouraud.vert` przez linię `#include`, którą wykonuje kod wczytujący, a nie sterownik ([`shader-includes.md`](shader-includes.md)). Co jest w tym pliku, opisuje [`../scene/lights.md`](../scene/lights.md).
+
+Para `basic` nie zmieniła się od M1. Wszystkie pięć programów jest wczytywanych przy starcie i ponownie po każdym naciśnięciu przycisku "Reload shaders" w panelu **Shaders** ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6): zmieniam plik `.frag`, naciskam przycisk i widzę efekt bez zamykania okna. Klasa ma pięć funkcji ustawiających uniformy, `setMat4`, `setInt`, `setVec3`, `setMat3` i `setFloat` ([`uniforms.md`](uniforms.md)), i funkcję `bindUniformBlock`, która podłącza blok uniformów ze światłami ([`uniform-buffers.md`](uniform-buffers.md)).
+
+Zmierzone na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74): build Debug i Release bez ostrzeżeń, gra startuje bez linii `[error]` i bez linii `GL_`, czyli wszystkie dziesięć plików shaderów i plik dołączany kompilują się na sterowniku NVIDIA. Na macOS nic z M4 nie było budowane ani uruchamiane.
 
 ## 2. Teoria
 
@@ -121,12 +127,21 @@ Oba rodzaje obiektów są identyfikowane liczbą typu `GLuint`, nazywaną w doku
 
 Kompilator GLSL jest częścią **sterownika karty graficznej**, a nie mojego programu. Dlatego ten sam shader może dać różne komunikaty (a czasem różny wynik) na różnych kartach, a format tekstu błędu zależy od producenta:
 
-| Sterownik | Przykładowa linia błędu |
+| Sterownik | Surowa linia błędu, tak jak pisze ją sterownik |
 |---|---|
 | Apple (macOS) | `ERROR: 0:5: '}' : syntax error: syntax error` |
 | NVIDIA (Windows) | `0(15) : error C0000: syntax error, unexpected '}', expecting ',' or ';' at token "}"` |
 
-W formacie Apple `0:5` to numer napisu źródłowego (zawsze 0, bo podaję jeden napis) i numer linii. W formacie NVIDII te same dwie liczby stoją jako `0(15)`: numer napisu, a w nawiasie numer linii. Obie linie są zmierzone. Pierwsza pochodzi z testu klasy na Macu ([`shader-class.md`](shader-class.md), sekcja 5.10), druga z programu `night_maze` uruchomionego na Windowsie z usuniętym średnikiem w `basic.frag` (sterownik NVIDIA 610.74, [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11). Numery linii się różnią, bo to dwa różne pliki testowe. Ponieważ formatów jest wiele, klasa `Shader` nie próbuje tekstu sterownika czytać ani poprawiać: przekazuje go w całości.
+W formacie Apple `0:5` to numer napisu źródłowego (source string number) i numer linii. W formacie NVIDII te same dwie liczby stoją jako `0(15)`: numer napisu, a w nawiasie numer linii. Obie linie są zmierzone, w M1. Pierwsza pochodzi z testu klasy na Macu ([`shader-class.md`](shader-class.md), sekcja 5.10), druga z programu `night_maze` uruchomionego na Windowsie z usuniętym średnikiem w `basic.frag` (sterownik NVIDIA 610.74, [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11). Numery linii się różnią, bo to dwa różne pliki testowe.
+
+**Co wypisuje dziś mój program.** Numer napisu był w M1 zawsze zerem, bo sterownik dostawał jeden napis bez żadnych dodatków. Od M4 shader może dołączać inne pliki, a każdy plik dostaje własny numer (0 to sam plik shadera, 1 pierwszy dołączony). Sama liczba nic nie mówi czytającemu, więc klasa `Shader` zamienia ją na nazwę pliku, zanim zapisze komunikat. To jedyna zmiana, jaką wprowadza w tekście sterownika: reszta linii, razem z numerem linii i opisem błędu, zostaje nietknięta, a linia w formacie, którego kod nie rozpoznaje, zostaje nietknięta w całości.
+
+| Sytuacja | Surowa linia sterownika NVIDIA | Linia w konsoli i w panelu Shaders |
+|---|---|---|
+| błąd w shaderze bez dołączeń | zaczyna się od `0(4)` | zaczyna się od `basic.frag(4)` |
+| błąd w pliku dołączonym do `lit.frag` | `1(63) : error C0000: syntax error, unexpected ';', expecting "::" at token ";"` | `common/lighting.glsl(63) : error C0000: syntax error, unexpected ';', expecting "::" at token ";"` |
+
+Oba wiersze są zmierzone na Windowsie (2026-10-05, sterownik NVIDIA 610.74). Gdy shader składa się z więcej niż jednego pliku, komunikat kończy się linią-legendą `Source files: 0 = lit.frag, 1 = common/lighting.glsl`. Format Apple (`ERROR: 0:5:` zamieniane na `ERROR: basic.frag:5:`) jest obsłużony w kodzie i sprawdzony tylko testami jednostkowymi: na macOS tej wersji nikt nie uruchomił. Jak działa zamiana i skąd sterownik bierze numer 1, opisuje [`shader-includes.md`](shader-includes.md) (sekcje 2.3 i 5.9).
 
 Zarówno wynik kompilacji, jak i linkowania trzeba **odczytać samemu**: OpenGL nie zgłasza ich przez `glGetError` ([`shader-class.md`](shader-class.md), sekcja 3.3).
 
@@ -146,7 +161,7 @@ Pełna tabela wywołań z parametrami, diagram obiektów i odczyt błędów komp
 
 ## 4. Shadery
 
-Projekt ma trzy pary shaderów w katalogu [`assets/shaders/`](../../../assets/shaders/). Ta sekcja opisuje pierwszą, `basic`. Nazwa jest celowo neutralna: to najprostsza para, która umie postawić obiekt w scenie (trzy macierze) i pokolorować go kolorem z wierzchołków. Dwie nowsze pary zaczynają od tego samego wyrażenia z trzema macierzami: `textured` dodaje normalną, współrzędne tekstury i odczyt tekstury ([`textures.md`](textures.md), sekcja 4), a `color` zostawia samą pozycję i jeden kolor z uniformu ([`../scene/collision.md`](../scene/collision.md), sekcja 4).
+Projekt ma pięć par shaderów w katalogu [`assets/shaders/`](../../../assets/shaders/) i jeden plik dołączany w podkatalogu `common/`. Ta sekcja opisuje pierwszą parę, `basic`. Nazwa jest celowo neutralna: to najprostsza para, która umie postawić obiekt w scenie (trzy macierze) i pokolorować go kolorem z wierzchołków. Cztery nowsze pary stawiają wierzchołek tymi samymi trzema macierzami: `textured` dodaje normalną, współrzędne tekstury i odczyt tekstury ([`textures.md`](textures.md), sekcja 4), `color` zostawia samą pozycję i jeden kolor z uniformu ([`../scene/collision.md`](../scene/collision.md), sekcja 4), a `lit` i `gouraud` dokładają do tekstury oświetlenie, pierwsza w shaderze fragmentów, druga w shaderze wierzchołków ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Kod oświetlenia obu tych par jest wspólny i leży w `common/lighting.glsl` ([`../scene/lights.md`](../scene/lights.md)), dołączanym linią `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md), sekcja 4).
 
 ### 4.1 `basic.vert`: shader wierzchołków
 
@@ -246,7 +261,7 @@ Kod, który buduje program z plików, czyli klasa `gfx::Shader`, jest opisany w 
 
 ### 5.1 Użycie w `NightMazeApp`
 
-Właścicielem wszystkich trzech programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawia się program `basic`, i to, co zmieniło się wokół niego w M2 + M3. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
+Właścicielem wszystkich pięciu programów jest `game::NightMazeApp`. Poniżej są miejsca, w których pojawia się program `basic`, i to, co zmieniło się wokół niego w M2 + M3 i w M4. Nazwy uniformów są w osobnym nagłówku, opisanym w [`uniforms.md`](uniforms.md) (sekcja 5.5). Całą klasę (kolejność pól, konstruktor, klatkę) omawia [`../core/README.md`](../core/README.md).
 
 **Pola** w [`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp):
 
@@ -254,22 +269,32 @@ Właścicielem wszystkich trzech programów jest `game::NightMazeApp`. Poniżej 
     gfx::Shader m_shader;
     gfx::Shader m_texturedShader;
     gfx::Shader m_colorShader;
+    gfx::Shader m_litShader;
+    gfx::Shader m_gouraudShader;
 ```
 
-Jako pola klasy pochodnej od `core::Application` obiekty powstają po oknie i kontekście OpenGL, a giną przed nimi ([`../core/README.md`](../core/README.md)). Trzy programy stoją na początku listy pól posiadających obiekty OpenGL. Komentarz w nagłówku mówi dlaczego ich miejsce nie ma znaczenia: utworzenie programu nie wiąże żadnego bufora ani VAO, więc nie psuje wiązań, na których polega kostka ([`buffers-vao.md`](buffers-vao.md), pułapka 12).
+Jako pola klasy pochodnej od `core::Application` obiekty powstają po oknie i kontekście OpenGL, a giną przed nimi ([`../core/README.md`](../core/README.md)). Pięć programów stoi na początku listy pól posiadających obiekty OpenGL. Komentarz w nagłówku mówi dlaczego ich miejsce nie ma znaczenia: utworzenie programu nie wiąże żadnego bufora ani VAO, więc nie psuje wiązań, na których polega kostka ([`buffers-vao.md`](buffers-vao.md), pułapka 12).
 
 **Nazwy plików** w anonimowej przestrzeni nazw [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp):
 
 ```cpp
 // Shader files, relative to the assets directory. The cube is drawn with the first pair,
-// the maze with the second and the lines of the collision boxes with the third.
+// the maze without lighting with the second, the lines of the collision boxes and the
+// light markers with the third, the maze with lighting per fragment with the fourth and
+// with lighting per vertex with the fifth.
 constexpr const char* VERTEX_SHADER_FILE = "shaders/basic.vert";
 constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
 constexpr const char* COLOR_FRAGMENT_SHADER_FILE = "shaders/color.frag";
+constexpr const char* LIT_VERTEX_SHADER_FILE = "shaders/lit.vert";
+constexpr const char* LIT_FRAGMENT_SHADER_FILE = "shaders/lit.frag";
+constexpr const char* GOURAUD_VERTEX_SHADER_FILE = "shaders/gouraud.vert";
+constexpr const char* GOURAUD_FRAGMENT_SHADER_FILE = "shaders/gouraud.frag";
 ```
+
+Dziesięć nazw, pięć par. Pliku `common/lighting.glsl` na tej liście nie ma: kod C++ nie zna jego nazwy, wymieniają ją tylko linie `#include` w `lit.frag` i `gouraud.vert`.
 
 **Wczytanie** na liście inicjalizacyjnej konstruktora:
 
@@ -279,18 +304,28 @@ constexpr const char* COLOR_FRAGMENT_SHADER_FILE = "shaders/color.frag";
                        core::assetPath(TEXTURED_FRAGMENT_SHADER_FILE)),
       m_colorShader(core::assetPath(COLOR_VERTEX_SHADER_FILE),
                     core::assetPath(COLOR_FRAGMENT_SHADER_FILE)),
+      m_litShader(core::assetPath(LIT_VERTEX_SHADER_FILE),
+                  core::assetPath(LIT_FRAGMENT_SHADER_FILE)),
+      m_gouraudShader(core::assetPath(GOURAUD_VERTEX_SHADER_FILE),
+                      core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
 ```
 
 `core::assetPath` zamienia nazwę względną na pełną ścieżkę w katalogu `assets/` obok pliku wykonywalnego ([`../core/paths.md`](../core/paths.md)), więc shadery znajdują się niezależnie od katalogu roboczego. Wynik `assetPath` jest obiektem tymczasowym, który trafia do parametru konstruktora `Shader` przez przeniesienie ([`shader-class.md`](shader-class.md), sekcja 5.8). Konstruktor `Shader` nie rzuca przy błędzie w shaderze. Wyjątek może natomiast rzucić samo `core::assetPath`, gdy system nie potrafi podać położenia programu: wtedy konstruktor aplikacji zostaje przerwany, a wyjątek łapie `catch` w `main` i program kończy się linią `[error] Fatal: ...`.
 
-**Wspólna część klatki** na końcu `NightMazeApp::onRender`. W M1 cała klatka, razem z rysowaniem kostki, była w `onRender`. Teraz `onRender` liczy to, co wspólne, i woła trzy funkcje rysujące:
+**Wspólna część klatki** na końcu `NightMazeApp::onRender`. W M1 cała klatka, razem z rysowaniem kostki, była w `onRender`. Teraz `onRender` liczy to, co wspólne, i woła funkcje rysujące. Między macierzami a rysowaniem stoi od M4 zbudowanie i wysłanie świateł klatki (`buildLightSet` i `m_lightRig.upload`), opisane w [`../game/flashlight.md`](../game/flashlight.md) i [`uniform-buffers.md`](uniform-buffers.md):
 
 ```cpp
     // The two matrices that are the same for everything drawn in this frame.
     const glm::mat4 view = m_camera.viewMatrix(eye);
     const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
+```
 
+```cpp
     drawMaze(view, projection);
+    // Without lighting there are no lights to mark.
+    if (m_lighting.mode != LightingMode::Unlit) {
+        drawLightMarkers(view, projection);
+    }
     drawCube(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
@@ -300,9 +335,33 @@ constexpr const char* COLOR_FRAGMENT_SHADER_FILE = "shaders/color.frag";
 | Linia | Co robi i dlaczego |
 |---|---|
 | `const glm::mat4 view = ...` i `projection` | macierz widoku i rzutowania są takie same dla wszystkiego, co rysuje ta klatka, więc są liczone raz, a nie w każdej funkcji. Skąd biorą się `eye` i `aspectRatio`: [`../scene/camera.md`](../scene/camera.md), sekcja 5, i [`../game/player.md`](../game/player.md) |
-| `drawMaze(view, projection);` | labirynt programem `textured` ([`textures.md`](textures.md), sekcja 4.3) |
+| `drawMaze(view, projection);` | labirynt **jednym z trzech** programów. Funkcja tylko wybiera (niżej) |
+| `if (m_lighting.mode != LightingMode::Unlit) { drawLightMarkers(view, projection); }` | znaczniki świateł punktowych programem `color`. Bez oświetlenia nie ma czego oznaczać. Warunek patrzy tylko na tryb oświetlenia, więc w widokach diagnostycznych znaczniki są rysowane, choć labirynt rysuje wtedy `textured` |
 | `drawCube(view, projection);` | kostka programem `basic` (niżej) |
 | `if (m_drawColliders) { drawColliderLines(view, projection); }` | linie pudełek kolizji programem `color`, tylko gdy włączy je panel Collision ([`../scene/collision.md`](../scene/collision.md), sekcja 6) |
+
+Wybór programu labiryntu:
+
+```cpp
+void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
+    // The two debug views (normals and texture coordinates as colours) only exist in the
+    // textured program, and they show data, not light. So they are drawn without
+    // lighting whatever the lighting mode is.
+    if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
+        drawUnlitMaze(view, projection);
+    } else {
+        drawLitMaze(view, projection);
+    }
+}
+```
+
+| Warunek | Funkcja | Program |
+|---|---|---|
+| tryb `Unlit` **albo** widok inny niż `Textured` | `drawUnlitMaze` | `textured` ([`textures.md`](textures.md), sekcja 4.3) |
+| pozostałe przypadki, tryb Gouraud | `drawLitMaze` | `gouraud` |
+| pozostałe przypadki, tryb Phong albo Blinn-Phong | `drawLitMaze` | `lit`. Oba tryby różnią się tylko wartością uniformu `uSpecularModel` |
+
+`drawLitMaze` i przełącznik trybu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md). W jednej klatce `use()` jest więc wołane najwyżej cztery razy (labirynt, znaczniki, kostka, linie), a różnych programów jest najwyżej trzy, bo znaczniki i linie dzielą program `color`.
 
 Kolejność rysowania nie wpływa na to, co zasłania co: rozstrzyga o tym test głębi, włączany wcześniej w `onRender` ([`../scene/camera.md`](../scene/camera.md), sekcja 5). Linie są rysowane na końcu, ale też z testem głębi, więc linia za ścianą jest przez nią zasłonięta.
 
@@ -334,12 +393,12 @@ void NightMazeApp::drawCube(const glm::mat4& view, const glm::mat4& projection) 
 |---|---|
 | `const glm::mat4& view, const glm::mat4& projection` | dwie macierze policzone w `onRender`, przekazane przez referencję do stałej: 64 bajty każdej nie są kopiowane |
 | `const` na końcu sygnatury | funkcja nie zmienia pól gry. Zmienia stan OpenGL, ale to nie jest stan obiektu C++ |
-| `if (!m_shader.isValid()) { return; }` | Gdy program `basic` się nie wczytał, pomijana jest **tylko kostka**. Labirynt został już narysowany przez `drawMaze`, które sprawdza własny program, a panele debug rysuje `DebugNightMazeApp::onRender` po powrocie z `NightMazeApp::onRender`. Błąd został wypisany **raz**, przez `reload()` wołane z konstruktora, a nie co klatkę |
-| `m_shader.use();` | `glUseProgram`: wybiera program dla następnych wywołań. Stoi **przed** `setMat4`, bo `glUniform*` pisze do programu bieżącego. Bez tej linii bieżący byłby program `textured`, wybrany chwilę wcześniej przez `drawMaze`. Backend ImGui przy rysowaniu paneli też ustawia własny program ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.3) |
+| `if (!m_shader.isValid()) { return; }` | Gdy program `basic` się nie wczytał, pomijana jest **tylko kostka**. Labirynt został już narysowany przez `drawMaze` (funkcje `drawUnlitMaze` i `drawLitMaze` sprawdzają każda swój program), a panele debug rysuje `DebugNightMazeApp::onRender` po powrocie z `NightMazeApp::onRender`. Błąd został wypisany **raz**, przez `reload()` wołane z konstruktora, a nie co klatkę |
+| `m_shader.use();` | `glUseProgram`: wybiera program dla następnych wywołań. Stoi **przed** `setMat4`, bo `glUniform*` pisze do programu bieżącego. Bez tej linii bieżący byłby program wybrany chwilę wcześniej: `color` po znacznikach świateł, a w trybie `Unlit` program `textured` po labiryncie. Backend ImGui przy rysowaniu paneli też ustawia własny program ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.3) |
 | `m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());` | macierz modelu kostki trafia do `uModel`. Kostka zachowała pochylenie z M1 (25 stopni wokół osi x i 35 wokół osi y), a jej pozycję ustawia `enterMaze`: `m_mazeWorld.exitPosition + glm::vec3{0.0F, CUBE_HEIGHT_ABOVE_FLOOR, 0.0F}`, czyli 4,5 m nad środkiem narożnej komórki ([`../scene/transforms.md`](../scene/transforms.md), sekcja 5) |
-| `m_shader.setMat4(VIEW_UNIFORM, view);` | macierz widoku trafia do `uView` programu `basic`. Program `textured` dostał tę samą macierz osobno |
+| `m_shader.setMat4(VIEW_UNIFORM, view);` | macierz widoku trafia do `uView` programu `basic`. Program labiryntu i program `color` dostały tę samą macierz osobno |
 | `m_shader.setMat4(PROJECTION_UNIFORM, projection);` | macierz rzutowania trafia do `uProjection` |
-| `m_vertexArray.bind();` | Wybiera opis danych wierzchołków i bufor indeksów kostki ([`buffers-vao.md`](buffers-vao.md), sekcja 2.4). Konieczne: `drawMaze` zostawiło związane VAO ostatniej narysowanej siatki |
+| `m_vertexArray.bind();` | Wybiera opis danych wierzchołków i bufor indeksów kostki ([`buffers-vao.md`](buffers-vao.md), sekcja 2.4). Konieczne: poprzednia funkcja rysująca zostawiła związane VAO ostatniej narysowanej siatki (labiryntu albo kostki znacznika) |
 | `glDrawElements(GL_TRIANGLES, INDEX_COUNT, GL_UNSIGNED_INT, nullptr)` | Uruchamia potok z sekcji 2.1 dla 36 indeksów, czyli 12 trójkątów ([`indexed-drawing.md`](indexed-drawing.md), sekcja 5.6) |
 
 Dlaczego macierze są wysyłane co klatkę, choć kostka się nie rusza, wyjaśnia [`uniforms.md`](uniforms.md) (sekcja 5.2).
@@ -353,27 +412,38 @@ Dlaczego macierze są wysyłane co klatkę, choć kostka się nie rusza, wyjaśn
     /// Shader program of the maze (textured models), exposed for the same reason.
     gfx::Shader& texturedShader() { return m_texturedShader; }
 
-    /// Shader program of the collision box lines, exposed for the same reason.
+    /// Shader program of the collision box lines and of the light markers, exposed for
+    /// the same reason.
     gfx::Shader& colorShader() { return m_colorShader; }
+
+    /// Shader program of the lit maze with lighting per fragment (Phong and Blinn-Phong),
+    /// exposed for the same reason.
+    gfx::Shader& litShader() { return m_litShader; }
+
+    /// Shader program of the lit maze with lighting per vertex (Gouraud), exposed for
+    /// the same reason.
+    gfx::Shader& gouraudShader() { return m_gouraudShader; }
 ```
 
 Zwracają referencję bez `const`, bo wołający ma móc zawołać `reload()`. Są chronione (`protected`), więc sięgnie po nie tylko klasa pochodna: `DebugNightMazeApp` w `main.cpp`, które przekazuje referencje do panelu przez `DebugContext` ([`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.2). Gra nie dołącza przy tym niczego z `debug/`.
 
 `reload()` jest więc wołane w dwóch miejscach: w konstruktorze `Shader` (pierwsze wczytanie) i w panelu "Shaders" po naciśnięciu przycisku. Sama gra go nie woła.
 
-**Stan sprawdzenia.** Na Windowsie (MSVC 19.44, 2026-10-05) program z trzema parami shaderów buduje się bez ostrzeżeń i startuje bez linii `[error]` i bez linii `GL_`. Na macOS cztery nowe pliki shaderów nie były jeszcze kompilowane przez sterownik Apple, który jest bardziej rygorystyczny wobec GLSL: to pozycja listy kontrolnej w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+**Stan sprawdzenia.** Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74) program z pięcioma parami shaderów buduje się w Debug i w Release bez ostrzeżeń i startuje bez linii `[error]` i bez linii `GL_`. Na zrzutach ekranu sprawdzone są między innymi widok po starcie i cztery tryby oświetlenia, czyli obraz z programów `textured`, `gouraud` i `lit`. Przełącznika trybu i przycisku `Reload shaders` nikt nie klikał ręcznie. Na macOS osiem plików shaderów dodanych po M1 i plik `common/lighting.glsl` nie były kompilowane przez sterownik Apple, który jest bardziej rygorystyczny wobec GLSL: to pozycja listy kontrolnej w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ## 6. Panel ImGui
 
-Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie trzy programy, i dla każdego programu nazwy obu plików, stan programu i tekst ostatniego błędu sterownika. Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Tryb podglądu shadera `textured.frag` (obraz, normalne albo UV jako kolor) przełącza panel Assets ([`textures.md`](textures.md), sekcja 6).
+Shadery mają własny panel debug, **Shaders**: przycisk "Reload shaders", który przeładowuje wszystkie pięć programów, i dla każdego programu jedną linię z nazwami obu plików i wynikiem ostatniego wczytania (`basic.vert + basic.frag: OK` albo czerwone `... FAILED, ...` z tekstem błędu pod spodem). Panel jest pokazem wczytywania na żywo, więc jego kod i scenariusz pokazu na obronie są w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 6). Który program rysuje labirynt, przełączają dwa inne panele: lista `Lighting` w panelu Renderer wybiera tryb oświetlenia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)), a tryb podglądu shadera `textured.frag` (obraz, normalne albo UV jako kolor) przełącza panel Assets ([`textures.md`](textures.md), sekcja 6).
 
 ## 7. Pułapki
 
 1. **Brak `#version` albo `#version` nie w pierwszej linii.** Bez tej dyrektywy kompilator przyjmuje GLSL 1.10, w którym nie ma `layout`, `in` ani `out` w dzisiejszym znaczeniu. Sterownik Apple zgłasza wprost `#version required and missing`. Przed `#version` mogą stać tylko komentarze i białe znaki, żaden kod.
 2. **Wersja GLSL z poradnika.** LearnOpenGL używa `#version 330 core`: na Macu to się kompiluje (kontekst 4.1 przyjmuje też starsze wersje Core), ale nie ma wtedy funkcji GLSL 4.x, więc w projekcie piszę `#version 410 core`. Poradniki dla Windowsa używają często `#version 420`, `430`, `450` albo `460`: te na macOS **nie kompilują się wcale** (`version '460' is not supported`), bo macOS kończy się na OpenGL 4.1. Na PC z nowszym sterownikiem taki shader zadziała, więc błąd wychodzi dopiero po przeniesieniu kodu na Maca.
 3. **Niezgodne nazwy `out` i `in`.** `out vec3 vColor` w `basic.vert` i `in vec3 vColor` w `basic.frag` są łączone po nazwie. Literówka w jednej z nich nie jest błędem kompilacji żadnego z plików, tylko błędem **linkowania**.
-4. **Program wybrany przez kogoś innego.** W klatce działają po kolei trzy programy. Kod, który ustawia uniform albo rysuje bez własnego `use()`, trafia do programu, który wybrała poprzednia funkcja rysująca. Dlatego `drawMaze`, `drawCube` i `drawColliderLines` zaczynają każda od `use()` swojego programu (sekcja 5.1).
-5. **Jeden zepsuty program nie zatrzymuje pozostałych.** Każda funkcja rysująca sprawdza `isValid()` tylko swojego programu. Gdy `basic.frag` się nie kompiluje, brakuje kostki, a labirynt jest rysowany normalnie. Brak jednego elementu sceny bez żadnej nowej linii w konsoli (błąd był wypisany raz, przy starcie) łatwo przeoczyć.
+4. **Program wybrany przez kogoś innego.** W klatce działa po kolei do trzech programów. Kod, który ustawia uniform albo rysuje bez własnego `use()`, trafia do programu, który wybrała poprzednia funkcja rysująca. Dlatego `drawUnlitMaze`, `drawLitMaze`, `drawLightMarkers`, `drawCube` i `drawColliderLines` zaczynają każda od `use()` swojego programu (sekcja 5.1).
+5. **Jeden zepsuty program nie zatrzymuje pozostałych.** Każda funkcja rysująca sprawdza `isValid()` tylko swojego programu. Gdy `basic.frag` się nie kompiluje, brakuje kostki, a labirynt jest rysowany normalnie. Brak jednego elementu sceny bez żadnej nowej linii w konsoli (błąd był wypisany raz, przy starcie) łatwo przeoczyć. Jeszcze łatwiej przeoczyć zepsuty program, którego akurat nic nie używa: błąd w `textured.frag` albo w `gouraud.frag` przy starcie nie zmienia obrazu wcale, bo po starcie labirynt rysuje `lit`. Brak labiryntu wyjdzie dopiero po przełączeniu trybu oświetlenia.
+6. **`#include` w shaderze to nie jest GLSL.** Linię `#include "common/lighting.glsl"` w `lit.frag` wykonuje kod wczytujący projektu, zanim tekst trafi do sterownika. Ten sam plik wklejony do innego programu albo do narzędzia, które podaje tekst wprost do `glShaderSource`, da błąd kompilacji: specyfikacja GLSL takiej dyrektywy nie zna ([`shader-includes.md`](shader-includes.md), sekcja 2.1).
+7. **Nazwa pliku w błędzie nie pochodzi od sterownika.** Sterownik pisze `1(63)`, a `common/lighting.glsl(63)` wstawia mój kod (sekcja 2.6). Kto szuka komunikatu w sieci albo porównuje go z cudzym, powinien pamiętać, że surowa linia zaczyna się od liczby.
 
 Pułapki dotyczące klasy `Shader` i odczytu błędów są w [`shader-class.md`](shader-class.md) (sekcja 7), uniformów w [`uniforms.md`](uniforms.md) (sekcja 7), a przeładowania i panelu Shaders w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 7).
 
@@ -415,16 +485,22 @@ Program może działać przez cały czas: po każdej zmianie pliku `.vert` albo 
    macOS obsługuje OpenGL najwyżej 4.1, czyli GLSL 4.10. Wyższe wersje sterownik Apple odrzuca już na linii `#version`. Projekt używa `#version 410 core` na obu systemach.
 
 8. **Co się dzieje w klatce, gdy shader się nie wczytał?**
-   Funkcja rysująca, która używa tego programu, sprawdza `isValid()` i wraca (`return`) przed `use()`, ustawieniem uniformów i rysowaniem. Dla `m_shader` jest to `drawCube`: brakuje kostki, a labirynt i panele są rysowane normalnie, bo `drawMaze` sprawdza osobno swój program. Błąd został wypisany raz, przy wczytaniu, a nie co klatkę.
+   Funkcja rysująca, która używa tego programu, sprawdza `isValid()` i wraca (`return`) przed `use()`, ustawieniem uniformów i rysowaniem. Dla `m_shader` jest to `drawCube`: brakuje kostki, a labirynt i panele są rysowane normalnie, bo funkcje rysujące labirynt sprawdzają osobno swoje programy. Błąd został wypisany raz, przy wczytaniu, a nie co klatkę.
 
 9. **Dlaczego każda ściana kostki ma jednolity kolor, skoro rasteryzacja interpoluje `vColor`?**
    Shader wierzchołków zapisuje `vColor` dla trzech wierzchołków trójkąta, a rasteryzacja interpoluje tę wartość dla każdego fragmentu. Wszystkie cztery wierzchołki jednej ściany mają w danych ten sam kolor, więc wartość pośrednia jest tym samym kolorem. Dlatego kostka ma 24 wierzchołki, po 4 na ścianę, a nie 8 wspólnych.
 
 10. **Ile programów shaderów ma gra i dlaczego nie jeden?**
-    Trzy: `basic` (kostka, kolor z wierzchołków), `textured` (labirynt, kolor z tekstury) i `color` (linie pudełek kolizji, kolor z uniformu). Różnią się wejściami: `basic` czyta kolor z atrybutu numer 1, `textured` czyta spod tego numeru normalną i dodatkowo współrzędne tekstury, a `color` czyta samą pozycję. Jeden program musiałby obsłużyć trzy układy wierzchołka i trzy źródła koloru.
+    Pięć: `basic` (kostka, kolor z wierzchołków), `textured` (labirynt bez oświetlenia i widoki diagnostyczne, kolor z tekstury), `color` (linie pudełek kolizji i znaczniki świateł, kolor z uniformu), `lit` (labirynt z oświetleniem liczonym dla każdego fragmentu) i `gouraud` (labirynt z oświetleniem liczonym dla każdego wierzchołka). Różnią się wejściami i miejscem pracy: `basic` czyta kolor z atrybutu numer 1, `textured`, `lit` i `gouraud` czytają spod tego numeru normalną i dodatkowo współrzędne tekstury, `color` czyta samą pozycję, a `lit` i `gouraud` liczą to samo światło w dwóch różnych etapach potoku. Jeden program musiałby obsłużyć trzy układy wierzchołka, trzy źródła koloru i wybór etapu, w którym liczy światło, a tego ostatniego nie da się przełączyć uniformem.
 
 11. **W jakiej kolejności programy są używane w klatce i co je rozdziela?**
-    `drawMaze` (program `textured`), `drawCube` (`basic`), a na końcu, gdy rysowanie pudełek jest włączone, `drawColliderLines` (`color`). Każda funkcja zaczyna od `use()` swojego programu i ustawia mu macierze widoku i rzutowania od nowa, bo uniform należy do programu.
+    `drawMaze` (program `textured`, `lit` albo `gouraud`, zależnie od trybu oświetlenia i widoku), `drawLightMarkers` (`color`, gdy tryb nie jest `Unlit`), `drawCube` (`basic`), a na końcu, gdy rysowanie pudełek jest włączone, `drawColliderLines` (znowu `color`). Każda funkcja zaczyna od `use()` swojego programu i ustawia mu macierze widoku i rzutowania od nowa, bo uniform należy do programu.
+
+12. **Skąd w błędzie shadera bierze się nazwa pliku, skoro sterownik zna tylko numery?**
+    Sterownik wypisuje numer napisu źródłowego i numer linii, na przykład `1(63)`. Kod wczytujący nadaje każdemu plikowi numer dyrektywą `#line` (0 to plik shadera, 1 pierwszy dołączony), zapamiętuje listę plików i po nieudanej kompilacji zamienia numer na początku linii na nazwę: `common/lighting.glsl(63)`. Reszty linii nie zmienia.
+
+13. **Który program rysuje labirynt zaraz po starcie gry?**
+    `lit`, bo domyślny tryb oświetlenia to Blinn-Phong, a domyślny widok to `Textured`. `textured` rysuje labirynt tylko w trybie `Unlit` albo w widoku diagnostycznym, a `gouraud` tylko w trybie Gouraud.
 
 Pytania o klasę `Shader` są w [`shader-class.md`](shader-class.md) (sekcja 9), o uniformy i `setMat4` w [`uniforms.md`](uniforms.md) (sekcja 9), a o `reload()` i panel Shaders w [`shader-hot-reload.md`](shader-hot-reload.md) (sekcja 9).
 
@@ -433,7 +509,7 @@ Pytania o klasę `Shader` są w [`shader-class.md`](shader-class.md) (sekcja 9),
 - LearnOpenGL, rozdział "Hello Triangle" (<https://learnopengl.com/Getting-started/Hello-Triangle>): potok graficzny, shader wierzchołków i fragmentów, kompilacja, linkowanie, odczyt dziennika.
 - LearnOpenGL, rozdział "Shaders" (<https://learnopengl.com/Getting-started/Shaders>): GLSL, typy, `in` i `out`, uniformy, własna klasa shadera wczytująca pliki.
 - Khronos OpenGL Wiki: "Rendering Pipeline Overview" (<https://www.khronos.org/opengl/wiki/Rendering_Pipeline_Overview>).
-- Dokumenty w tym repozytorium: [`README.md`](README.md), [`shader-class.md`](shader-class.md), [`uniforms.md`](uniforms.md), [`shader-hot-reload.md`](shader-hot-reload.md), [`textures.md`](textures.md) (shadery `textured.*`), [`../scene/collision.md`](../scene/collision.md) (shadery `color.*`), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego tylko 4.1), [`../../libraries/glm.md`](../../libraries/glm.md).
+- Dokumenty w tym repozytorium: [`README.md`](README.md), [`shader-class.md`](shader-class.md), [`uniforms.md`](uniforms.md), [`uniform-buffers.md`](uniform-buffers.md) (blok uniformów ze światłami), [`shader-includes.md`](shader-includes.md) (dyrektywa `#include` i nazwy plików w błędach), [`shader-hot-reload.md`](shader-hot-reload.md), [`textures.md`](textures.md) (shadery `textured.*`), [`../scene/collision.md`](../scene/collision.md) (shadery `color.*`), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (shadery `lit.*` i `gouraud.*`), [`../scene/lights.md`](../scene/lights.md) (plik `common/lighting.glsl`), [`../../libraries/glad.md`](../../libraries/glad.md) (dlaczego tylko 4.1), [`../../libraries/glm.md`](../../libraries/glm.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o shaderach i języku GLSL).
 - "OpenGL. Księga eksperta" (rozdziały o potoku programowalnym i shaderach).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): temat 2 w mapowaniu na wykłady oraz zasady "RAII dla obiektów GL" i "Shadery jako pliki".

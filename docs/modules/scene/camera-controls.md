@@ -1,6 +1,6 @@
 # Moduł scene: sterowanie kamerą i panel Camera
 
-Kamień milowy: M1, zmienione w M2 + M3 (kamera podąża za graczem). Temat wykładu: 3 (Przekształcenia przestrzeni).
+Kamień milowy: M1, zmienione w M2 + M3 (kamera podąża za graczem) i w M4 (oko i kierunek patrzenia ustawiają też latarkę, panel Camera startuje zwinięty). Temat wykładu: 3 (Przekształcenia przestrzeni).
 Kod: sterowanie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), panel w [`src/debug/panels/CameraPanel.hpp`](../../../src/debug/panels/CameraPanel.hpp) i [`src/debug/panels/CameraPanel.cpp`](../../../src/debug/panels/CameraPanel.cpp), podpięcie w [`src/main.cpp`](../../../src/main.cpp).
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Pozostałe części: [`transforms.md`](transforms.md) (przestrzenie współrzędnych i macierz modelu) i [`camera.md`](camera.md) (macierz widoku, rzutowanie, struktura `Camera`). Ten dokument zakłada znajomość [`camera.md`](camera.md) (kąty yaw i pitch, `forward()`, `right()`, `rotate()`, `viewMatrix(eye)`) i korzysta z trzech dokumentów modułu `core`: [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora, blokady), [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`) oraz z [`../debug-ui.md`](../debug-ui.md) (jak panel jest podpięty). Ruch gracza, za którym kamera podąża, opisuje [`../game/player.md`](../game/player.md).
@@ -20,7 +20,7 @@ W kamieniu milowym M1 kamerą sterowało się wprost: mysz ją obracała, a klaw
 
 Dawny lot kamery nie zniknął: stał się trybem noclip gracza (klawisz N). Sterowanie należy do `game::NightMazeApp` i do `game::Player`, a nie do `scene::Camera`. Drugim sposobem zmiany tych samych liczb jest panel Camera z `debug/`: pokaz tematu 3 na obronie.
 
-Stan na dziś: program startuje z graczem w środku komórki (0, 0) labiryntu, oko w `(1, 1,7, 1)`, pitch 0, yaw w stronę otwartego boku komórki startowej (dla ziarna 1: 180, południe). Kliknięcie w scenę przechwytuje kursor, mysz obraca kamerę, klawisze poruszają gracza, Escape oddaje kursor. Na Windowsie (2026-10-05) program startuje bez linii `[error]`, a widok startowy jest sprawdzony na zrzucie ekranu. Obrotu myszą wewnątrz labiryntu nikt jeszcze nie sprawdził ręcznie (sekcja 5.6).
+Stan na dziś: program startuje z graczem w środku komórki (0, 0) labiryntu, oko w `(1, 1,7, 1)`, pitch 0, yaw w stronę otwartego boku komórki startowej (dla ziarna 1: 180, południe). Kliknięcie w scenę przechwytuje kursor, mysz obraca kamerę, klawisze poruszają gracza, Escape oddaje kursor. Od M4 scena jest nocna i oświetlona, a oko i kierunek patrzenia kamery mają drugiego odbiorcę: w tym samym punkcie i w tym samym kierunku świeci latarka gracza (sekcja 5.5). Panel Camera przy pierwszym uruchomieniu jest zwinięty do paska tytułu (sekcja 6). Na Windowsie (2026-10-05) program startuje bez linii `[error]`, a widok startowy jest sprawdzony na zrzucie ekranu. Obrotu myszą wewnątrz labiryntu nikt jeszcze nie sprawdził ręcznie (sekcja 5.6).
 
 ## 2. Teoria
 
@@ -65,7 +65,7 @@ Tryb noclip to lot kamery z M1 bez zmian w zachowaniu: W i S wzdłuż `forward()
 
 Przesunięcie myszy to gotowa wielkość: ręka przesunęła mysz o tyle i kamera ma się obrócić o tyle razy czułość, niezależnie od tego, ile trwała klatka. Nie mnożę jej przez czas. Trzeba ją tylko zastosować **dokładnie raz**. `onUpdate` wykonuje się od zera do wielu razy na klatkę ([`../core/main-loop.md`](../core/main-loop.md), sekcja 2.2): w klatce bez kroku ruch myszy by przepadł, a w klatce z trzema krokami zostałby dodany trzy razy, więc czułość zależałaby od FPS ([`../core/input.md`](../core/input.md), sekcja 2.8). Ruch klawiszami zależy od czasu, a czas symulacji płynie właśnie stałymi krokami: 120 kroków po `prędkość / 120` metra daje dokładnie `prędkość` metrów na sekundę przy każdym FPS. Stałego kroku wymagają też kolizje ([`collision.md`](collision.md), sekcja 2.8).
 
-Ta sama reguła dotyczy klawisza N: przełączenie trybu to zdarzenie jednej klatki (`wasKeyPressed`), więc stoi w `onRender`, obok obrotu myszą.
+Ta sama reguła dotyczy klawisza N: przełączenie trybu to zdarzenie jednej klatki (`wasKeyPressed`), więc stoi w `onRender`, obok obrotu myszą. Tuż pod nim, z tego samego powodu, czytany jest klawisz F, który włącza i wyłącza latarkę ([`../game/flashlight.md`](../game/flashlight.md)).
 
 ### 2.4 Interpolacja z `alpha`
 
@@ -109,7 +109,7 @@ Sterowanie kamerą (sekcje 2 i 5) nie dokłada do listy wywołań OpenGL niczego
 
 ## 4. Shadery
 
-Sterowanie i panel nie mają shaderów. Pola kamery, które zmieniają, trafiają do shaderów jako macierz widoku i macierz rzutowania. Obie są liczone raz na klatkę i podawane wszystkim trzem programom (`basic`, `textured`, `color`) pod tymi samymi nazwami `uView` i `uProjection` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Mnożenie w shaderze wierzchołków omawia [`transforms.md`](transforms.md), sekcja 4.
+Sterowanie i panel nie mają shaderów. Pola kamery, które zmieniają, trafiają do shaderów jako macierz widoku i macierz rzutowania. Obie są liczone raz na klatkę i podawane każdemu programowi, którym ta klatka rysuje, pod tymi samymi nazwami `uView` i `uProjection` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Programów jest pięć (`basic`, `textured`, `color`, `lit`, `gouraud`), a w jednej klatce pracują najwyżej trzy z nich: jeden z trójki `textured`, `lit`, `gouraud` dla labiryntu, `color` dla znaczników świateł i linii pudełek oraz `basic` dla kostki ([`camera.md`](camera.md), sekcja 5.7). Mnożenie w shaderze wierzchołków omawia [`transforms.md`](transforms.md), sekcja 4.
 
 ## 5. Kod w projekcie
 
@@ -117,7 +117,7 @@ Sterowanie i panel nie mają shaderów. Pola kamery, które zmieniają, trafiaj�
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | obrót myszą i klawisz N w `onRender`, oko z interpolacji w `onRender`, pola `m_camera` i `m_mouseSensitivity`, akcesory `camera()`, `mouseSensitivity()`, `player()` (sekcje od 5.2 do 5.5) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | obrót myszą oraz klawisze N i F w `onRender`, oko z interpolacji w `onRender` (od M4 także dla latarki), pola `m_camera` i `m_mouseSensitivity`, akcesory `camera()`, `mouseSensitivity()`, `player()` (sekcje od 5.2 do 5.5) |
 | [`src/game/Player.hpp`](../../../src/game/Player.hpp), [`.cpp`](../../../src/game/Player.cpp) | ruch: to, co w M1 było lotem kamery w `onUpdate` ([`../game/player.md`](../game/player.md)) |
 | [`src/debug/panels/CameraPanel.hpp`](../../../src/debug/panels/CameraPanel.hpp), [`.cpp`](../../../src/debug/panels/CameraPanel.cpp) | funkcja `debug::drawCameraPanel`: panel "Camera" (sekcja 6). Należy do programu `night_maze`, nie do biblioteki `engine` |
 | [`src/main.cpp`](../../../src/main.cpp) | klasa `DebugNightMazeApp`: przekazuje kamerę, gracza i czułość do `debug::DebugContext`, wyłącza panelom mysz przy przechwyconym kursorze i blokuje grze mysz, gdy używa jej ImGui ([`../debug-ui.md`](../debug-ui.md), sekcja 5) |
@@ -136,6 +136,7 @@ Sterowanie stoi w `game::NightMazeApp`, a nie w `scene::Camera`: kamera zostaje 
 | W, S, A, D (chodzenie) | gracz idzie poziomo: do przodu, do tyłu, w lewo, w prawo względem yaw |
 | lewy Shift (chodzenie) | sprint |
 | N | przełącza chodzenie i noclip. Działa także przy wolnym kursorze |
+| F | włącza i wyłącza latarkę, która świeci z oka kamery w kierunku patrzenia. Działa także przy wolnym kursorze ([`../game/flashlight.md`](../game/flashlight.md)) |
 | W, S, A, D (noclip) | lot wzdłuż kierunku patrzenia i na boki, przez ściany |
 | spacja, lewy Shift (noclip) | lot pionowo w górę i w dół |
 | Escape | oddaje kursor. Drugi Escape zamyka program ([`../core/input.md`](../core/input.md), sekcja 5.7) |
@@ -189,7 +190,7 @@ Każdy zwraca referencję do jednego pola, więc panel edytuje oryginał, a nie 
 
 ### 5.3 Obrót myszą w `onRender`
 
-`onRender` zaczyna się od dwóch krótkich bloków, które nie dotyczą myszy: zbudowania nowego labiryntu, jeśli panel o to poprosił ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), i klawisza N ([`../game/player.md`](../game/player.md), sekcja 5). Zaraz po nich stoi obrót:
+`onRender` zaczyna się od trzech krótkich bloków, które nie dotyczą myszy: zbudowania nowego labiryntu, jeśli panel o to poprosił ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), klawisza N ([`../game/player.md`](../game/player.md), sekcja 5) i klawisza F, który przełącza latarkę ([`../game/flashlight.md`](../game/flashlight.md)). Zaraz po nich stoi obrót:
 
 ```cpp
     // Mouse look. It runs here, once per frame, and not in onUpdate: a click and a mouse
@@ -272,7 +273,23 @@ Trzy pozycje, które łatwo pomylić:
 | `m_camera.position` | `onUpdate`, co krok: `m_player.eyePosition()` | oczy po ostatnim kroku. Pokazuje ją panel Camera jako `Eye`. Do rysowania **nie** jest używana |
 | `eye` (zmienna lokalna) | `onRender`, co klatkę | punkt, z którego naprawdę rysowana jest klatka: między dwoma krokami |
 
-Macierze widoku i rzutowania są liczone raz na klatkę i przekazywane trzem funkcjom rysującym (`drawMaze`, `drawCube`, `drawColliderLines`), więc labirynt, kostka i linie pudełek są zawsze widziane z tego samego punktu.
+Macierze widoku i rzutowania są liczone raz na klatkę i przekazywane czterem funkcjom rysującym (`drawMaze`, `drawLightMarkers`, `drawCube`, `drawColliderLines`), więc labirynt, znaczniki świateł, kostka i linie pudełek są zawsze widziane z tego samego punktu.
+
+**Drugi odbiorca oka: latarka.** Zaraz po dwóch macierzach, w tym samym `onRender`, stoi:
+
+```cpp
+    const scene::LightSet lights =
+        buildLightSet(m_lighting, eye, m_camera.forward(), m_mazeWorld.pointLightPositions);
+    m_lightRig.upload(lights, eye);
+```
+
+| Wartość z kamery | Dokąd trafia | Po co |
+|---|---|---|
+| `eye` (to samo oko, z którego powstała macierz widoku) | `buildLightSet`: pozycja latarki | reflektor stoi dokładnie w punkcie, z którego robiony jest obraz |
+| `m_camera.forward()` (kierunek z bieżących yaw i pitch) | `buildLightSet`: kierunek latarki | stożek światła celuje tam, gdzie patrzę |
+| `eye` | `m_lightRig.upload`: pozycja kamery w bloku świateł | shader liczy z niej kierunek do oka, potrzebny do połysku |
+
+Kolejność ma znaczenie i jest zapisana w komentarzu nad tym kodem: światła powstają **po** obrocie myszą z tej klatki i z **interpolowanego** oka, a nie z `m_camera.position`. Dzięki temu środek stożka latarki wypada w środku ekranu. Z `m_camera.position` (oczy po ostatnim kroku) latarka zostawałaby w ruchu o ułamek kroku za obrazem. To wynika z kodu: tego, czy plama światła trzyma się środka ekranu podczas chodzenia, nikt jeszcze nie sprawdził ręcznie. Budowę zestawu świateł i samą latarkę opisuje [`../game/flashlight.md`](../game/flashlight.md), a wysyłkę do karty [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
 
 Przypadki brzegowe interpolacji (start, klatka bez kroku, klatka z kilkoma krokami, wyłączenie noclip w powietrzu, nowy labirynt, edycja pozycji z panelu, okno zminimalizowane) są zebrane w tabeli w [`../game/player.md`](../game/player.md), sekcja 5.7.
 
@@ -307,11 +324,15 @@ Zdarzenia myszy w dwóch ostatnich wierszach były podawane wprost do ImGui (`Im
 
 **Część automatyczna z M2 + M3.** Ruch gracza (kierunki względem yaw, niezależność chodzenia od pitch, lot wzdłuż pitch, normalizacja, kolizje) sprawdza 13 przypadków testowych w `tests/PlayerTests.cpp` ([`../game/player.md`](../game/player.md), sekcja 5.9). Na Windowsie (2026-10-05, MSVC 19.44) przechodzą w Debug i Release. Program uruchomiony tam startuje bez linii `[error]` i bez linii `GL_`, a na zrzutach ekranu sprawdzone są: widok startowy ze środka labiryntu i widok z góry w trybie noclip, na którym ściany zgadzają się z planem w panelu Maze. Ten drugi stan został osiągnięty tymczasowym kodem (potem usuniętym), a nie myszą i klawiszami.
 
-**Część ręczna.** Tego, co wymaga człowieka przy myszy i klawiaturze, nikt jeszcze nie sprawdził na obecnym kodzie: przechwycenia kursora po kliknięciu, kierunku i płynności obrotu wewnątrz labiryntu, chodzenia, klawisza N, zwolnienia kursora klawiszem Escape, zachowania paneli przy przechwyconym kursorze. To jest scenariusz z sekcji 6.3 i lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS obecny kod nie był budowany ani uruchamiany ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
+**Stan po M4.** Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDIA 610.74) kod z oświetleniem buduje się w Debug i Release bez ostrzeżeń, 149 przypadków testowych i 61240 asercji przechodzi w obu (w tym te same 13 przypadków gracza), a gra startuje bez linii `[error]` i bez linii `GL_`. Widok startowy i scena z latarką włączoną i wyłączoną są obejrzane na zrzutach ekranu.
+
+**Część ręczna.** Tego, co wymaga człowieka przy myszy i klawiaturze, nikt jeszcze nie sprawdził na obecnym kodzie: przechwycenia kursora po kliknięciu, kierunku i płynności obrotu wewnątrz labiryntu, chodzenia, klawisza N, klawisza F, tego, czy stożek latarki trzyma się środka ekranu w ruchu, rozwinięcia panelu Camera kliknięciem, zwolnienia kursora klawiszem Escape, zachowania paneli przy przechwyconym kursorze. To jest scenariusz z sekcji 6.3 i lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS obecny kod nie był budowany ani uruchamiany ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
 ## 6. Panel ImGui
 
 Panel **Camera** jest pokazem tematu 3 (PRD, sekcja 3: "Pozycja/rotacja kamery, FOV"). Kod: [`src/debug/panels/CameraPanel.cpp`](../../../src/debug/panels/CameraPanel.cpp). Jak panel jest podpięty do `DebugUI` i skąd dostaje dane, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
+
+**Gdzie panel stoi.** Od M4 paneli jest siedem, a dwie kolumny i dolny rząd mieszczą sześć. Miejsce panelu Camera w lewej kolumnie, pod panelem Renderer, zajął panel Lights. Panel Camera przy pierwszym uruchomieniu jest **zwinięty** do samego paska tytułu i stoi przy górnej krawędzi okna, tuż na prawo od lewej kolumny (w oknie 1280 x 720 pasek zaczyna się w x 352, y 8 i ma 280 jednostek szerokości). Kliknięcie strzałki w pasku rozwija go do prostokąta 280 na 424 jednostki, który sięga w dół do dolnego rzędu paneli, zasłania lewą część sceny i żadnego innego panelu. Jest trochę niższy niż jego zawartość, więc po rozwinięciu ma pasek przewijania (tak mówi komentarz w `PanelLayout.hpp`). Po rozwinięciu ImGui zapamiętuje ten stan w `imgui.ini`. Rozwijania kliknięciem nikt jeszcze nie sprawdził ręcznie: opis wynika z kodu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7).
 
 PRD w sekcji 10 wymienia dla panelu Camera: "Pozycja, FOV, czułość myszy, tryb noclip". Wszystkie cztery są w programie, z jedną różnicą w rozmieszczeniu: panel Camera **pokazuje** tryb (linia `Mode:`), a przełącza go klawisz N albo pole wyboru `Noclip (key N)` w panelu Collision ([`collision.md`](collision.md), sekcja 6), bo noclip znaczy "wyłącz kolizje".
 
@@ -360,8 +381,9 @@ Uwaga do ostatniego komentarza: liczby są poprawne (20 m/s razy 1/120 s to oko�
 
 ```cpp
 void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity) {
-    // First run only: the left edge of the window, below the Renderer panel (the constant
-    // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    // First run only: the top edge of the window, right of the left column, folded to its
+    // title bar (the constant is in PanelLayout.hpp). Later ImGui remembers the panel in
+    // imgui.ini.
     placePanelOnFirstUse(CAMERA_PLACEMENT);
     if (ImGui::Begin("Camera")) {
         ImGui::TextWrapped("Click the scene to capture the mouse, Esc releases it. While "
@@ -418,10 +440,11 @@ void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSe
 
 | Element | Znaczenie |
 |---|---|
-| `placePanelOnFirstUse(CAMERA_PLACEMENT)` | miejsce i rozmiar panelu przy pierwszym uruchomieniu: lewa krawędź okna, pod panelem Renderer. Stała `CAMERA_PLACEMENT` leży w [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp) razem z pięcioma pozostałymi. Wysokość panelu (456 jednostek) mieści całą zawartość, która ma 452. Wywołanie liczy się tylko wtedy, gdy plik `imgui.ini` nie ma jeszcze wpisu dla tego panelu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7) |
+| `placePanelOnFirstUse(CAMERA_PLACEMENT)` | miejsce, rozmiar i stan zwinięcia panelu przy pierwszym uruchomieniu: górna krawędź okna, na prawo od lewej kolumny, zwinięty do paska tytułu. Stała `CAMERA_PLACEMENT` leży w [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp) razem z sześcioma pozostałymi i jako jedyna ma `.collapsed = true`. Rozmiar po rozwinięciu to 280 na 424 jednostki. Zawartość przy dawnej szerokości 336 miała zmierzoną wysokość 452 (pomiar z 2026-10-05), więc w 424 się nie mieści i panel się przewija: dla nowej szerokości wysokości nie mierzyłem. Wywołanie liczy się tylko wtedy, gdy plik `imgui.ini` nie ma jeszcze wpisu dla tego panelu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7) |
+| `if (ImGui::Begin("Camera"))` | dla zwiniętego panelu `Begin` zwraca `false`. Dopóki panel jest zwinięty, żaden z widżetów niżej nie jest budowany, a `ImGui::End()` wykonuje się jak zawsze |
 | stałe `MIN_...` i `MAX_...` | granice suwaków, nazwane i opisane w jednym miejscu, w anonimowej przestrzeni nazw pliku. Bez nich w wywołaniach stałyby gołe liczby |
 | `drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity)` | panel dostaje dokładnie to, co edytuje: trzy referencje bez `const`. W M1 trzecim parametrem była prędkość ruchu, teraz prędkości są polami gracza |
-| `ImGui::SetNextWindowPos(..., ImGuiCond_FirstUseEver)` i `SetNextWindowSize` | dotyczą panelu otwieranego przez najbliższe `Begin`. Warunek `FirstUseEver`: tylko gdy ImGui nie zna jeszcze tego panelu |
+| `ImGui::SetNextWindowPos(..., ImGuiCond_FirstUseEver)`, `SetNextWindowSize` i `SetNextWindowCollapsed` (wewnątrz `placePanelOnFirstUse`) | dotyczą panelu otwieranego przez najbliższe `Begin`. Warunek `FirstUseEver`: tylko gdy ImGui nie zna jeszcze tego panelu |
 | `ImGui::TextWrapped(...)` | linia pomocy tylko do odczytu: jak przechwycić kursor i czym się steruje w obu trybach. Sąsiednie napisy w cudzysłowach kompilator skleja w jeden |
 | `ImGui::Text("Mode: %s", player.noclip ? "noclip (free flight)" : "walking")` | bieżący tryb gracza, tylko do odczytu |
 | `ImGui::DragFloat3("Player feet", glm::value_ptr(player.position), POSITION_DRAG_SPEED)` | trzy pola przeciągane myszą: stopy gracza. `glm::value_ptr` daje wskaźnik na pierwszą składową wektora ([`../../libraries/glm.md`](../../libraries/glm.md), sekcja 3.9), a ImGui czyta i zapisuje przez niego x, y i z. Bez granic. Przy chodzeniu gra co krok ustawia y na 0, więc zmiana y trwa tylko w trybie noclip |
@@ -458,7 +481,7 @@ Odległości, przy których płaszczyzny zaczynają ciąć ściany, zależą od 
 
 ### 6.3 Scenariusz pokazu na obronie
 
-Program uruchomiony, panele widoczne. Tego scenariusza nikt jeszcze nie przeszedł ręcznie na obecnym kodzie: opisuje to, co wynika z kodu.
+Program uruchomiony, panele widoczne. Tego scenariusza nikt jeszcze nie przeszedł ręcznie na obecnym kodzie: opisuje to, co wynika z kodu. Krok zerowy od M4: panel Camera startuje zwinięty, więc najpierw klikam strzałkę w jego pasku tytułu (przy górnej krawędzi, na prawo od panelu Renderer). Rozwinięty panel zasłania lewą część sceny, więc na czas kroków 2 do 6 można go przeciągnąć albo zadokować tam, gdzie nie przeszkadza.
 
 1. **Stan startowy.** Odczytuję z panelu: `Mode: walking`, `Player feet` to `(1, 0, 1)`, `Eye` to `(1, 1,7, 1)`, `Pitch` 0, `FOV` 60, a `Yaw` wskazuje otwarty bok komórki startowej (180 dla ziarna 1). Mówię: kamera nie ma własnej pozycji, stoi w oczach gracza.
 2. **Przechwycenie.** Klikam w scenę. Kursor znika. Mówię: tryb `GLFW_CURSOR_DISABLED`, od tej chwili mysz należy do kamery, a panele jej nie widzą.
@@ -473,7 +496,7 @@ Program uruchomiony, panele widoczne. Tego scenariusza nikt jeszcze nie przeszed
 
 ## 7. Pułapki
 
-1. **Przesunięcie myszy użyte w `onUpdate`.** `mouseDeltaX` i `mouseDeltaY` opisują jedną klatkę, a `onUpdate` wykonuje się od zera do wielu razy na klatkę. Obrót liczony w `onUpdate` gubi ruch myszy w klatkach bez kroku i liczy go kilka razy w klatkach z kilkoma krokami: czułość zależy od FPS. To samo dotyczy kliknięcia (`wasMouseButtonPressed`) i klawisza N (`wasKeyPressed`). Wszystkie trzy stoją w `onRender`.
+1. **Przesunięcie myszy użyte w `onUpdate`.** `mouseDeltaX` i `mouseDeltaY` opisują jedną klatkę, a `onUpdate` wykonuje się od zera do wielu razy na klatkę. Obrót liczony w `onUpdate` gubi ruch myszy w klatkach bez kroku i liczy go kilka razy w klatkach z kilkoma krokami: czułość zależy od FPS. To samo dotyczy kliknięcia (`wasMouseButtonPressed`) oraz klawiszy N i F (`wasKeyPressed`). Wszystkie cztery stoją w `onRender`.
 2. **Przesunięcie myszy pomnożone przez czas.** Odruch "wszystko razy `dt`" jest tu błędem. Przesunięcie myszy to droga, a nie prędkość: jest już proporcjonalne do czasu klatki, bo w dłuższej klatce ręka zdążyła przesunąć mysz dalej. Pomnożone przez `dt` dałoby obrót zależny od FPS.
 3. **Edycja `m_camera.position`.** Pole wygląda jak coś, co można ustawić, ale `onUpdate` nadpisuje je po każdym kroku pozycją oczu gracza. Kto chce przenieść kamerę, przenosi gracza (`m_player.position`) i poprzednią pozycję razem, tak jak `enterMaze`.
 4. **Rysowanie z `m_camera.position` zamiast z `eye`.** To oczy po ostatnim kroku, bez interpolacji. Obraz byłby poprawny, ale szarpany (ćwiczenie 6).
@@ -482,8 +505,9 @@ Program uruchomiony, panele widoczne. Tego scenariusza nikt jeszcze nie przeszed
 7. **Obrót myszą, gdy kursor jest nad panelem.** Bez blokady myszy przeciąganie suwaka w panelu obracałoby kamerę, a kliknięcie w panel przechwytywałoby kursor. Gra pyta o mysz wyłącznie przez `input()`, a `main.cpp` blokuje te odpowiedzi, gdy myszy używa ImGui. W drugą stronę działa `DebugUI::setMouseEnabled`: przy przechwyconym kursorze panele nie widzą myszy ([`../debug-ui.md`](../debug-ui.md), sekcja 5).
 8. **Interpolacja kątów "przy okazji".** Yaw zawija się z 359 do 0. Zwykłe `mix(359, 1, 0,5)` daje 180, czyli obrót w przeciwną stronę. W projekcie kąty nie są interpolowane (zmieniają się raz na klatkę), ale kto przeniesie obrót do `onUpdate`, trafi na ten problem.
 9. **Kąty zmienione w tej klatce a ruch.** Obrót jest w `onRender`, czyli po krokach symulacji tej klatki. Gracz idzie więc w kierunku z poprzedniej klatki. Różnica to jedna klatka i nie jest błędem, ale wyjaśnia, dlaczego test ruchu podaje yaw jako parametr, a nie czyta go z kamery.
-10. **Panel nie stoi tam, gdzie mówi kod.** `CAMERA_PLACEMENT` działa tylko przy pierwszym uruchomieniu. Jeśli w katalogu roboczym leży `imgui.ini` z wpisem `[Window][Camera]`, wygrywa wpis. Żeby zobaczyć układ domyślny, trzeba ten plik usunąć.
-11. **`Fly speed` nie zmienia chodu, `Sprint speed` nie zmienia lotu.** Każdy suwak pisze do pola używanego w jednym trybie. Ustawienie `Sprint speed` poniżej `Walk speed` jest dozwolone i sprawia, że Shift spowalnia.
+10. **Panel nie stoi tam, gdzie mówi kod.** `CAMERA_PLACEMENT` działa tylko przy pierwszym uruchomieniu. Jeśli w katalogu roboczym leży `imgui.ini` z wpisem `[Window][Camera]`, wygrywa wpis, razem z zapisanym stanem zwinięcia. Plik sprzed M4 trzyma panel Camera rozwinięty w lewej kolumnie, a nowy panel Lights, który wpisu nie ma, staje na nim. Żeby zobaczyć układ domyślny, trzeba ten plik usunąć.11. **`Fly speed` nie zmienia chodu, `Sprint speed` nie zmienia lotu.** Każdy suwak pisze do pola używanego w jednym trybie. Ustawienie `Sprint speed` poniżej `Walk speed` jest dozwolone i sprawia, że Shift spowalnia.
+12. **"Nie ma panelu Camera".** Jest, tylko zwinięty: sam pasek tytułu przy górnej krawędzi okna, na prawo od panelu Renderer. To stan startowy od M4, a nie błąd.
+13. **Latarka liczona z `m_camera.position`.** Ta sama pomyłka co w pułapce 4, tylko dla światła: reflektor ustawiony w oczach po ostatnim kroku, a obraz rysowany z oka interpolowanego. W ruchu stożek zostawałby za obrazem o ułamek kroku. `onRender` podaje do `buildLightSet` to samo `eye`, z którego liczy macierz widoku (sekcja 5.5).
 
 ## 8. Ćwiczenia
 
@@ -533,12 +557,15 @@ Wszystkie ćwiczenia są zmianami w działającym programie: zmiana w `NightMaze
     Bliska płaszczyzna obcina wszystko, co bliżej kamery: najbliższe ściany zostają przecięte i widać przez nie dalszą część sceny. FOV zmienia współczynnik `1 / tan(fov / 2)`, przez który macierz rzutowania mnoży x i y: mniejszy kąt to większy współczynnik i większy obraz, bez ruchu kamery.
 
 12. **Gdzie są pozycje i rozmiary panelu przy pierwszym uruchomieniu i co je nadpisuje?**
-    W stałej `CAMERA_PLACEMENT` w `src/debug/PanelLayout.hpp` (róg okna, odsunięcie od niego i rozmiar). Panel przekazuje ją do `placePanelOnFirstUse`, a ta funkcja ustawia pozycję i rozmiar z warunkiem `ImGuiCond_FirstUseEver`. Nadpisuje je wpis w pliku `imgui.ini`, w którym ImGui zapamiętuje układ ustawiony przez użytkownika.
+    W stałej `CAMERA_PLACEMENT` w `src/debug/PanelLayout.hpp` (róg okna, odsunięcie od niego, rozmiar i `.collapsed = true`). Panel przekazuje ją do `placePanelOnFirstUse`, a ta funkcja ustawia pozycję, rozmiar i stan zwinięcia z warunkiem `ImGuiCond_FirstUseEver`. Panel startuje więc jako pasek tytułu przy górnej krawędzi, obok lewej kolumny, i rozwija się do 280 na 424 jednostki. Nadpisuje to wpis w pliku `imgui.ini`, w którym ImGui zapamiętuje układ ustawiony przez użytkownika.
+
+13. **Do czego jeszcze, poza macierzą widoku, służą oko i kierunek patrzenia kamery?**
+    Do ustawienia latarki. `onRender` podaje to samo interpolowane `eye` i `m_camera.forward()` do `buildLightSet`, więc reflektor stoi w punkcie, z którego rysowana jest klatka, i świeci tam, gdzie patrzę. `eye` trafia też do `m_lightRig.upload` jako pozycja kamery potrzebna shaderowi do połysku. Latarkę przełącza klawisz F, czytany w `onRender` zaraz po klawiszu N.
 
 ## 10. Źródła
 
 - Glenn Fiedler, "Fix Your Timestep!", Gaffer on Games: <https://gafferongames.com/post/fix_your_timestep/> (stały krok i interpolacja stanu z `alpha`, sekcja 2.4).
 - LearnOpenGL, rozdział "Camera": <https://learnopengl.com/Getting-started/Camera> (część "Walk around" i "Look around": ruch klawiszami, obrót myszą, czułość).
-- Dokumenty w tym repozytorium: [`camera.md`](camera.md) (struktura `Camera`), [`transforms.md`](transforms.md) (przestrzenie i macierz modelu), [`../game/player.md`](../game/player.md) (gracz: ruch, tryby, kolizje, testy), [`collision.md`](collision.md) (panel Collision z przełącznikiem noclip), [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`), [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora, blokady), [`../debug-ui.md`](../debug-ui.md) (podpięcie panelu Camera, `setMouseEnabled`, układ paneli), [`../../libraries/glm.md`](../../libraries/glm.md) (`mix`, `normalize`, `value_ptr`), [`../../libraries/imgui.md`](../../libraries/imgui.md) (biblioteka Dear ImGui).
+- Dokumenty w tym repozytorium: [`camera.md`](camera.md) (struktura `Camera`), [`transforms.md`](transforms.md) (przestrzenie i macierz modelu), [`../game/player.md`](../game/player.md) (gracz: ruch, tryby, kolizje, testy), [`collision.md`](collision.md) (panel Collision z przełącznikiem noclip), [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`), [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora, blokady), [`../debug-ui.md`](../debug-ui.md) (podpięcie panelu Camera, `setMouseEnabled`, układ paneli i panel zwinięty), [`../game/flashlight.md`](../game/flashlight.md) (latarka, klawisz F, `buildLightSet`), [`../../libraries/glm.md`](../../libraries/glm.md) (`mix`, `normalize`, `value_ptr`), [`../../libraries/imgui.md`](../../libraries/imgui.md) (biblioteka Dear ImGui).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)), sekcja 10: lista paneli (panel Camera).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)), sekcja 3: temat 3 i jego pokaz w ImGui.

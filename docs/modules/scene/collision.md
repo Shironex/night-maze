@@ -223,7 +223,7 @@ Oba przypadki z rysunku są zmierzone testem (sekcja 5.7): jeden krok 2 m po prz
 
 ### 2.9 Co dalej: kula dla kryształów
 
-Do ścian AABB wystarcza. Kryształy, które gracz ma zbierać (M4 + M5), są małe i mniej więcej okrągłe, a pytanie brzmi "czy gracz jest dość blisko". Do tego lepiej pasuje **kula**. Tych testów w kodzie jeszcze nie ma, to zapowiedź:
+Do ścian AABB wystarcza. Kryształy, które gracz ma zbierać (M5), są małe i mniej więcej okrągłe, a pytanie brzmi "czy gracz jest dość blisko". Do tego lepiej pasuje **kula**. Tych testów w kodzie jeszcze nie ma, to zapowiedź:
 
 **Kula z kulą.** Dwie kule nachodzą na siebie, gdy odległość ich środków jest mniejsza od sumy promieni. Żeby nie liczyć pierwiastka, porównuje się kwadraty:
 
@@ -270,7 +270,7 @@ Trzy szczegóły:
 
 ## 4. Shadery
 
-Same kolizje nie mają shadera. Linie pudełek rysuje najprostsza para w projekcie: [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag). Wszystko, co nimi narysowane, ma jeden kolor.
+Same kolizje nie mają shadera. Linie pudełek rysuje najprostsza para w projekcie: [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag). Wszystko, co nimi narysowane, ma jeden kolor. Od M4 ta sama para rysuje jeszcze jedną rzecz: małe kostki w miejscach świateł punktowych (`game::LightRig::drawMarkers`, [`../game/flashlight.md`](../game/flashlight.md), sekcja 5.7). Shadery się przy tym nie zmieniły.
 
 ### 4.1 `color.vert`
 
@@ -615,7 +615,7 @@ Ostatni wiersz zastąpił wcześniejszy przypadek, który przypinał zachowanie 
 
 Cztery dalsze przypadki z prawdziwym graczem są w `tests/PlayerTests.cpp` (`a wall stops the player`, `a player pressing into a wall slides along it and past the pillars`, `a player wandering through a closed maze never leaves it or enters a wall`, `noclip flies through walls`): omawia je [`../game/player.md`](../game/player.md), sekcja 5.
 
-Wyniki na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05): build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach (87 przypadków i 60858 asercji w całym programie testowym). Na macOS kod nie był jeszcze kompilowany ani uruchamiany: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+Wyniki na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05): build Debug i Release bez ostrzeżeń, wszystkie testy przechodzą w obu konfiguracjach. Stan całego programu testowego po M4 (2026-10-05): 149 przypadków i 61240 asercji, w tym te same przypadki kolizji. Na macOS kod nie był jeszcze kompilowany ani uruchamiany: to pozycja na liście w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ### 5.8 Rysowanie pudełek: `ColliderLines`
 

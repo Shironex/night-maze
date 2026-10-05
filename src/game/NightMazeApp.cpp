@@ -20,13 +20,19 @@ constexpr int INITIAL_WIDTH = 1280;
 constexpr int INITIAL_HEIGHT = 720;
 
 // Shader files, relative to the assets directory. The cube is drawn with the first pair,
-// the maze with the second and the lines of the collision boxes with the third.
+// the maze without lighting with the second, the lines of the collision boxes and the
+// light markers with the third, the maze with lighting per fragment with the fourth and
+// with lighting per vertex with the fifth.
 constexpr const char* VERTEX_SHADER_FILE = "shaders/basic.vert";
 constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
 constexpr const char* COLOR_FRAGMENT_SHADER_FILE = "shaders/color.frag";
+constexpr const char* LIT_VERTEX_SHADER_FILE = "shaders/lit.vert";
+constexpr const char* LIT_FRAGMENT_SHADER_FILE = "shaders/lit.frag";
+constexpr const char* GOURAUD_VERTEX_SHADER_FILE = "shaders/gouraud.vert";
+constexpr const char* GOURAUD_FRAGMENT_SHADER_FILE = "shaders/gouraud.frag";
 
 // The names of the uniforms (MODEL_UNIFORM, VIEW_UNIFORM, PROJECTION_UNIFORM and the
 // others) are in game/ShaderUniforms.hpp, shared with the classes that draw the maze.
@@ -38,6 +44,9 @@ constexpr glm::vec3 PLAYER_COLLIDER_COLOR{0.2F, 1.0F, 0.4F};
 
 // Key that switches between walking and noclip (free flight).
 constexpr int NOCLIP_KEY = GLFW_KEY_N;
+
+// Key that switches the flashlight on and off.
+constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 
 // Pitch of a level look, in degrees: how the player looks at the start.
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
@@ -137,6 +146,10 @@ NightMazeApp::NightMazeApp()
                        core::assetPath(TEXTURED_FRAGMENT_SHADER_FILE)),
       m_colorShader(core::assetPath(COLOR_VERTEX_SHADER_FILE),
                     core::assetPath(COLOR_FRAGMENT_SHADER_FILE)),
+      m_litShader(core::assetPath(LIT_VERTEX_SHADER_FILE),
+                  core::assetPath(LIT_FRAGMENT_SHADER_FILE)),
+      m_gouraudShader(core::assetPath(GOURAUD_VERTEX_SHADER_FILE),
+                      core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       // The sizes are in bytes: number of elements times the size of one element.
       m_vertexBuffer(GL_ARRAY_BUFFER, VERTICES.data(), VERTICES.size() * sizeof(float)),
@@ -150,6 +163,11 @@ NightMazeApp::NightMazeApp()
     m_vertexArray.setFloatAttribute(COLOR_ATTRIBUTE, COLOR_COMPONENTS, VERTEX_STRIDE, COLOR_OFFSET);
 
     m_cubeTransform.rotationDegrees = {CUBE_ROTATION_X_DEGREES, CUBE_ROTATION_Y_DEGREES, 0.0F};
+
+    // The two lit programs read the lights from the uniform buffer of m_lightRig. Each
+    // program is told once: the shader repeats it by itself after a reload.
+    m_lightRig.connect(m_litShader);
+    m_lightRig.connect(m_gouraudShader);
 
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
@@ -238,6 +256,12 @@ void NightMazeApp::onRender(double alpha) {
         m_player.noclip = !m_player.noclip;
     }
 
+    // The flashlight key, read once per frame for the same reason. Like the noclip key
+    // it works whether or not the cursor is captured.
+    if (input().wasKeyPressed(FLASHLIGHT_KEY)) {
+        m_lighting.flashlightOn = !m_lighting.flashlightOn;
+    }
+
     // Mouse look. It runs here, once per frame, and not in onUpdate: a click and a mouse
     // delta describe one frame, and onUpdate runs zero or more times per frame.
     if (!input().isCursorCaptured()) {
@@ -301,7 +325,21 @@ void NightMazeApp::onRender(double alpha) {
     const glm::mat4 view = m_camera.viewMatrix(eye);
     const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
 
+    // The lights of this frame. They are built here, after the mouse has turned the
+    // camera and from the same eye the view matrix uses: the flashlight then sits
+    // exactly where the picture is taken from, and its cone stays in the middle of the
+    // screen. From m_camera.position (the last fixed step) it would trail behind while
+    // the player moves. The copy to the graphics card happens once, and both lit
+    // programs read it.
+    const scene::LightSet lights =
+        buildLightSet(m_lighting, eye, m_camera.forward(), m_mazeWorld.pointLightPositions);
+    m_lightRig.upload(lights, eye);
+
     drawMaze(view, projection);
+    // Without lighting there are no lights to mark.
+    if (m_lighting.mode != LightingMode::Unlit) {
+        drawLightMarkers(view, projection);
+    }
     drawCube(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
@@ -309,6 +347,17 @@ void NightMazeApp::onRender(double alpha) {
 }
 
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
+    // The two debug views (normals and texture coordinates as colours) only exist in the
+    // textured program, and they show data, not light. So they are drawn without
+    // lighting whatever the lighting mode is.
+    if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
+        drawUnlitMaze(view, projection);
+    } else {
+        drawLitMaze(view, projection);
+    }
+}
+
+void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const {
     // Without a shader program there is nothing to draw with. The load error was logged
     // once, when the shader was created, and the rest of the frame is still drawn.
     if (!m_texturedShader.isValid()) {
@@ -323,6 +372,41 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
     m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
 
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
+}
+
+void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const {
+    // Gouraud has a program of its own (the light is computed in its vertex shader).
+    // Phong and Blinn-Phong share the other one and differ in one uniform.
+    const gfx::Shader& shader =
+        m_lighting.mode == LightingMode::Gouraud ? m_gouraudShader : m_litShader;
+    if (!shader.isValid()) {
+        return;
+    }
+
+    shader.use();
+    shader.setMat4(VIEW_UNIFORM, view);
+    shader.setMat4(PROJECTION_UNIFORM, projection);
+    // The material of the stone. The lights themselves are not set here: they are in
+    // the uniform buffer that onRender filled before this call.
+    // The enum values are the numbers common/lighting.glsl compares uSpecularModel with.
+    shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
+    shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
+    shader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+
+    m_mazeRenderer.draw(shader, m_mazeWorld);
+}
+
+void NightMazeApp::drawLightMarkers(const glm::mat4& view, const glm::mat4& projection) const {
+    if (!m_colorShader.isValid()) {
+        return;
+    }
+
+    m_colorShader.use();
+    m_colorShader.setMat4(VIEW_UNIFORM, view);
+    m_colorShader.setMat4(PROJECTION_UNIFORM, projection);
+
+    // One small cube in the colour of the point lights at the place of each of them.
+    m_lightRig.drawMarkers(m_colorShader, m_mazeWorld.pointLightPositions, m_lighting.pointColor);
 }
 
 void NightMazeApp::drawCube(const glm::mat4& view, const glm::mat4& projection) const {

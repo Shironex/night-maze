@@ -28,4 +28,20 @@ struct Transform {
     glm::mat4 matrix() const;
 };
 
+/// The matrix that takes a normal from the local space of an object to world space: the
+/// inverse of the upper left 3 x 3 part of the model matrix, transposed.
+///
+/// A normal is a direction, so the translation of the model matrix must not move it:
+/// that is why only the 3 x 3 part (rotation and scale) is used. That part itself,
+/// mat3(model), is right as long as the scale is the same on all three axes. With an
+/// unequal scale it is wrong: a normal has to stay perpendicular to its surface, and
+/// stretching the object along one axis tilts the surface one way, while stretching the
+/// normal along the same axis tilts it the other way. The inverse transpose undoes the
+/// stretch for the normal. For a pure rotation it is the rotation itself, so nothing
+/// changes for objects that are only turned and moved.
+///
+/// The result is not of length 1 when the model matrix scales: the shader normalizes.
+/// modelMatrix must be invertible (no scale factor of 0).
+glm::mat3 normalMatrix(const glm::mat4& modelMatrix);
+
 } // namespace scene

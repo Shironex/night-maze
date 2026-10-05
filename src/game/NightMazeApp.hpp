@@ -5,6 +5,8 @@
 #include "assets/AssetCache.hpp"
 #include "core/Application.hpp"
 #include "game/ColliderLines.hpp"
+#include "game/LightRig.hpp"
+#include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
@@ -20,10 +22,11 @@
 
 namespace game {
 
-/// The game itself: a generated maze of textured walls, pillars and floor tiles, and a
-/// player who walks through it in first person without passing through the walls. The
-/// mouse turns the camera, the keyboard moves the player. A coloured cube floats above
-/// the far corner cell as a marker of the future exit.
+/// The game itself: a generated maze of textured walls, pillars and floor tiles at
+/// night, and a player who walks through it in first person without passing through the
+/// walls. The mouse turns the camera, the keyboard moves the player. The maze is lit by
+/// the moon, by the flashlight of the player and by a point light in every dead end.
+/// A coloured cube floats above the far corner cell as a marker of the future exit.
 ///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels on top of the frame.
@@ -47,8 +50,21 @@ protected:
     /// Shader program of the maze (textured models), exposed for the same reason.
     gfx::Shader& texturedShader() { return m_texturedShader; }
 
-    /// Shader program of the collision box lines, exposed for the same reason.
+    /// Shader program of the collision box lines and of the light markers, exposed for
+    /// the same reason.
     gfx::Shader& colorShader() { return m_colorShader; }
+
+    /// Shader program of the lit maze with lighting per fragment (Phong and Blinn-Phong),
+    /// exposed for the same reason.
+    gfx::Shader& litShader() { return m_litShader; }
+
+    /// Shader program of the lit maze with lighting per vertex (Gouraud), exposed for
+    /// the same reason.
+    gfx::Shader& gouraudShader() { return m_gouraudShader; }
+
+    /// The settings of the lighting (mode, moon, flashlight, point lights, highlight),
+    /// exposed so the debug UI can edit them live.
+    LightingSettings& lighting() { return m_lighting; }
 
     /// The camera, exposed so the debug UI can show and edit its angles and projection
     /// live. Its position follows the eyes of the player, see player().
@@ -93,26 +109,32 @@ private:
     /// passage.
     void enterMaze();
 
-    /// The three parts of a frame. Each one selects its own shader program and sets
-    /// its uniforms.
+    /// The parts of a frame. Each one selects its own shader program and sets its
+    /// uniforms. The maze has two: without lighting (the textured program, also used for
+    /// the debug views of the normals and the texture coordinates) and with lighting.
     void drawMaze(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawLightMarkers(const glm::mat4& view, const glm::mat4& projection) const;
     void drawCube(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 
-    // A dark night blue.
-    std::array<float, 3> m_clearColor{0.02F, 0.03F, 0.08F};
+    // The night sky: a very dark blue, darker than the ambient light on the stone, so
+    // the walls stand out against it.
+    std::array<float, 3> m_clearColor{0.01F, 0.015F, 0.04F};
 
     // OpenGL objects. They are members of a class derived from core::Application, so they
     // are created after the window and its OpenGL context, and destroyed before them.
     //
     // Order: members are constructed top to bottom, and the constructor body runs after
     // all of them.
-    //   1. The three shader programs. They bind no buffer, so their place does not matter.
+    //   1. The five shader programs. They bind no buffer, so their place does not matter.
     //   2. m_assets, m_mazeRenderer (it loads the models through m_assets, so it comes
-    //      after it) and m_colliderLines. The last two create meshes, and creating a mesh
-    //      binds its own vertex array and buffers. They stand BEFORE the cube on purpose:
-    //      the cube relies on its buffer still being bound when the constructor body
-    //      runs, and a mesh created after it would take that binding away.
+    //      after it), m_colliderLines and m_lightRig. The last three create meshes, and
+    //      creating a mesh binds its own vertex array and buffers. They stand BEFORE the
+    //      cube on purpose: the cube relies on its buffer still being bound when the
+    //      constructor body runs, and a mesh created after it would take that binding
+    //      away.
     //   3. m_vertexArray: its constructor binds it, so the two buffers below are created
     //      while it is the bound vertex array.
     //   4. m_vertexBuffer: stays bound to GL_ARRAY_BUFFER, and that is how the attribute
@@ -122,9 +144,12 @@ private:
     gfx::Shader m_shader;
     gfx::Shader m_texturedShader;
     gfx::Shader m_colorShader;
+    gfx::Shader m_litShader;
+    gfx::Shader m_gouraudShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     ColliderLines m_colliderLines;
+    LightRig m_lightRig;
     gfx::VertexArray m_vertexArray;
     gfx::Buffer m_vertexBuffer;
     gfx::Buffer m_indexBuffer;
@@ -149,7 +174,13 @@ private:
     // step it is set to the eyes of the player.
     scene::Camera m_camera;
 
-    // What the textured shader shows: the picture, or one of the two debug views.
+    // The lighting: how the maze is shaded and the settings of every light. The lights
+    // of a frame are built from it in onRender.
+    LightingSettings m_lighting;
+
+    // What the textured shader shows: the picture, or one of the two debug views. A debug
+    // view replaces the lighting: it is drawn with the textured program in every
+    // lighting mode.
     ViewMode m_viewMode = ViewMode::Textured;
     // Whether the collision boxes are drawn as lines on top of the scene.
     bool m_drawColliders = false;

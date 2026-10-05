@@ -54,8 +54,9 @@ constexpr float MAX_MOVE_SPEED = 20.0F;
 } // namespace
 
 void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity) {
-    // First run only: the left edge of the window, below the Renderer panel (the constant
-    // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    // First run only: the top edge of the window, right of the left column, folded to its
+    // title bar (the constant is in PanelLayout.hpp). Later ImGui remembers the panel in
+    // imgui.ini.
     placePanelOnFirstUse(CAMERA_PLACEMENT);
     if (ImGui::Begin("Camera")) {
         ImGui::TextWrapped("Click the scene to capture the mouse, Esc releases it. While "

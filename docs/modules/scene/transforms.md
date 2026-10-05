@@ -1,7 +1,7 @@
 # Moduł scene: przekształcenia i macierz modelu
 
-Kamień milowy: M1, nowi użytkownicy `Transform` w M2 + M3 (labirynt, linie pudełek kolizji). Temat wykładu: 3 (Przekształcenia przestrzeni).
-Kod: [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp), [`src/scene/Transform.cpp`](../../../src/scene/Transform.cpp), shader [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
+Kamień milowy: M1, nowi użytkownicy `Transform` w M2 + M3 (labirynt, linie pudełek kolizji), funkcja `normalMatrix` i czwarty użytkownik (kostki świateł) w M4. Temat wykładu: 3 (Przekształcenia przestrzeni).
+Kod: [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp), [`src/scene/Transform.cpp`](../../../src/scene/Transform.cpp), shader [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), testy [`tests/TransformTests.cpp`](../../../tests/TransformTests.cpp).
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Pozostałe części: [`camera.md`](camera.md) (macierz widoku, rzutowanie, struktura `Camera`, trzy macierze w klatce) i [`camera-controls.md`](camera-controls.md) (sterowanie kamerą, panel Camera). Ten dokument korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): typy `vec3` i `mat4`, układ kolumnowy, funkcje budujące macierze) i z pojęć potoku renderowania z [`../gfx/shaders.md`](../gfx/shaders.md) (opis tego, co musi zrobić shader wierzchołków: przestrzeń przycięcia, dzielenie perspektywiczne, NDC).
 
@@ -212,10 +212,13 @@ Nazwy `uModel`, `uView` i `uProjection` muszą być identyczne z napisami w C++ 
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i deklaracja `matrix()` |
-| [`src/scene/Transform.cpp`](../../../src/scene/Transform.cpp) | stałe `AXIS_X`, `AXIS_Y`, `AXIS_Z` i funkcja `Transform::matrix()` |
+| [`src/scene/Transform.hpp`](../../../src/scene/Transform.hpp) | struktura `Transform`: pola `position`, `rotationDegrees`, `scale` i deklaracja `matrix()`. Od M4 także deklaracja wolnej funkcji `normalMatrix` (sekcja 5.6) |
+| [`src/scene/Transform.cpp`](../../../src/scene/Transform.cpp) | stałe `AXIS_X`, `AXIS_Y`, `AXIS_Z`, funkcja `Transform::matrix()` i funkcja `normalMatrix` |
+| [`tests/TransformTests.cpp`](../../../tests/TransformTests.cpp) | cztery przypadki testowe funkcji `normalMatrix` (sekcja 5.6) |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik struktury: pole `m_cubeTransform`, stałe obrotu kostki i jej pozycja nad komórką wyjścia (sekcja 5.4). Wysłanie macierzy modelu do shadera razem z dwiema pozostałymi: [`camera.md`](camera.md), sekcja 5.7 |
 | [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) | drugi użytkownik: macierze modelu płytek podłogi, ścian i słupków, w tym obrót ściany o 90 stopni wokół osi Y (sekcja 5.4, [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| [`src/game/LightRig.cpp`](../../../src/game/LightRig.cpp) | czwarty użytkownik (M4): przesunięcie i równa skala 0,14 sześcianu, który oznacza światło punktowe ([`../game/flashlight.md`](../game/flashlight.md), sekcja 5.7) |
+| [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) | użytkownik `normalMatrix`: liczy ją dla każdego obiektu labiryntu i wysyła jako `uNormalMatrix` ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
 | [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp) | trzeci użytkownik: skala i przesunięcie sześcianu jednostkowego na rozmiar i miejsce pudełka kolizji (sekcja 5.4, [`collision.md`](collision.md), sekcja 5) |
 | [`assets/shaders/basic.vert`](../../../assets/shaders/basic.vert) | uniformy `uModel`, `uView`, `uProjection` i mnożenie pozycji przez macierze (sekcja 4) |
 
@@ -302,15 +305,16 @@ Wynik to `T * Ry * Rx * Rz * S`. Wierzchołek stoi po prawej stronie tego iloczy
 
 Kolejność obrotów jest ustalona raz, tutaj, i opisana w komentarzu Doxygen przy polu `rotationDegrees`. Uzasadnienie jest w sekcji 2.6.
 
-### 5.4 Trzej użytkownicy: kostka, labirynt, linie pudełek
+### 5.4 Czterej użytkownicy: kostka, labirynt, linie pudełek, kostki świateł
 
-`Transform` ma dziś trzech użytkowników i każdy korzysta z innej części struktury:
+`Transform` ma dziś czterech użytkowników i każdy korzysta z innej części struktury:
 
 | Użytkownik | `position` | `rotationDegrees` | `scale` | Kiedy liczy macierz |
 |---|---|---|---|---|
 | kostka (`NightMazeApp::m_cubeTransform`) | nad komórką wyjścia | 25 stopni wokół X, 35 wokół Y | 1 | co klatkę, w `drawCube` |
 | labirynt (`MazeWorld.cpp`) | środek komórki, środek ściany albo róg siatki | 0, a dla ściany wzdłuż osi Z 90 stopni wokół Y | 1 | raz, przy budowie labiryntu |
 | linie pudełek (`ColliderLines.cpp`) | narożnik `min` pudełka | 0 | rozmiar pudełka | co klatkę, dla każdego pudełka, gdy rysowanie jest włączone |
+| kostki świateł (`LightRig.cpp`, M4) | pozycja światła punktowego | 0 | 0,14 na każdej osi | co klatkę, dla każdego światła, gdy tryb cieniowania jest inny niż `Unlit` |
 
 **Kostka.** Pole `m_cubeTransform` w `game::NightMazeApp`. Stałe w anonimowej przestrzeni nazw `NightMazeApp.cpp` i jedna linia w ciele konstruktora:
 
@@ -366,7 +370,7 @@ Macierz to `T * Ry(90)`: najpierw obrót modelu wokół jego własnego początku
         transform.scale = box.max - box.min + glm::vec3{2.0F * LINE_MARGIN};
 ```
 
-To jedyne miejsce w projekcie, które używa pola `scale`, i to ze skalą **niejednorodną** (inną na każdej osi). Macierz to `T * S`: narożnik `(0, 0, 0)` sześcianu zostaje w zerze po skalowaniu i trafia przesunięciem na narożnik `min`, a narożnik `(1, 1, 1)` po skalowaniu ma współrzędne równe rozmiarowi pudełka i po przesunięciu trafia na `max`. Działa to tylko dlatego, że sześcian ma narożnik, a nie środek, w początku swojego układu ([`collision.md`](collision.md), sekcja 5). Skala niejednorodna psuje normalne (pułapka 5), ale linie normalnych nie używają.
+To jedyne miejsce w projekcie, które używa skali **niejednorodnej** (innej na każdej osi). Pola `scale` używają jeszcze kostki świateł w `LightRig::drawMarkers`, ale ze skalą równą na wszystkich osiach ([`../game/flashlight.md`](../game/flashlight.md), sekcja 5.7). Macierz to `T * S`: narożnik `(0, 0, 0)` sześcianu zostaje w zerze po skalowaniu i trafia przesunięciem na narożnik `min`, a narożnik `(1, 1, 1)` po skalowaniu ma współrzędne równe rozmiarowi pudełka i po przesunięciu trafia na `max`. Działa to tylko dlatego, że sześcian ma narożnik, a nie środek, w początku swojego układu ([`collision.md`](collision.md), sekcja 5). Skala niejednorodna psuje normalne (pułapka 5), ale linie normalnych nie używają.
 
 Która ściana jest zwrócona do kamery, widać po jej normalnej (wektorze prostopadłym do ściany, skierowanym na zewnątrz) po obrocie:
 
@@ -387,6 +391,59 @@ Matematykę `Transform` sprawdził ten sam tymczasowy program konsolowy, który 
 | `Transform` z przykładu z sekcji 2.4 razy `(1, 0, 0)` | `(5, 0, -2)`. Iloczyny `R * T * S` i `S * R * T` policzone ręcznie z GLM: `(0, 0, -7)` i `(0, 0, -12)` |
 | `Transform` z kątami x = 90, y = 90 razy `(0, 1, 0)` | `(1, 0, 0)`: obrót wokół X działa przed obrotem wokół Y |
 
+### 5.6 `normalMatrix`: macierz dla normalnych (M4)
+
+Od M4 labirynt jest oświetlony, a światło liczy się z normalnych w przestrzeni świata. Dlaczego normalnej nie wolno mnożyć przez macierz modelu i skąd bierze się odwrotna transponowana, wyprowadza [`lights.md`](lights.md), sekcja 2.7. Tu jest kod.
+
+Deklaracja w `Transform.hpp`, poza strukturą (wolna funkcja w przestrzeni nazw `scene`):
+
+```cpp
+/// The result is not of length 1 when the model matrix scales: the shader normalizes.
+/// modelMatrix must be invertible (no scale factor of 0).
+glm::mat3 normalMatrix(const glm::mat4& modelMatrix);
+```
+
+(Pokazane są dwie ostatnie linie komentarza. Cały komentarz w pliku streszcza to samo uzasadnienie co [`lights.md`](lights.md).)
+
+Definicja w `Transform.cpp`:
+
+```cpp
+glm::mat3 normalMatrix(const glm::mat4& modelMatrix) {
+    // glm::mat3(mat4) keeps the upper left 3 x 3 part: rotation and scale, without the
+    // translation in the fourth column.
+    return glm::transpose(glm::inverse(glm::mat3(modelMatrix)));
+}
+```
+
+| Element | Znaczenie |
+|---|---|
+| wolna funkcja, a nie metoda `Transform` | przyjmuje gotową macierz modelu. Labirynt trzyma macierze policzone raz (`MazeWorld::wallMatrices`), a nie obiekty `Transform`, więc metoda nie miałaby na czym pracować |
+| `glm::mat3(modelMatrix)` | konstruktor GLM, który z macierzy 4 x 4 bierze lewą górną część 3 x 3: obrót i skalę. Czwarta kolumna (przesunięcie) odpada, bo normalna jest kierunkiem |
+| `glm::inverse(...)` | macierz odwrotna. Macierz musi być odwracalna: skala 0 na którejś osi daje w wyniku `inf` albo `NaN` (pułapka 6) |
+| `glm::transpose(...)` | zamiana wierszy z kolumnami |
+| zwracany typ `glm::mat3` | 9 liczb. W shaderze `uniform mat3 uNormalMatrix`, wysyłany przez `Shader::setMat3` ([`../gfx/uniforms.md`](../gfx/uniforms.md)) |
+
+**Kto ją woła.** `MazeRenderer::drawInstances`, dla każdego obiektu labiryntu, tuż po wysłaniu `uModel`:
+
+```cpp
+            shader.setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix));
+```
+
+Macierze modelu labiryntu są liczone raz przy budowie, ale macierz normalnych jest liczona **w każdej klatce dla każdego obiektu** (342 odwrotności 3 x 3 na klatkę w labiryncie startowym). To koszt pomijalny przy tej skali. Dałoby się ją zapamiętać obok macierzy modelu w `MazeWorld`: kod tego nie robi, a czasu tych obliczeń nie mierzyłem.
+
+Uczciwie o tym, co ta funkcja dziś zmienia w obrazie: **nic**. Obiekty labiryntu są tylko przesunięte i obrócone, a dla macierzy obrotu odwrotna transponowana jest tą samą macierzą. Funkcja jest pełna, żeby pierwszy obiekt ze skalą nierówną dostał poprawne światło, a jej poprawność przy takiej skali sprawdza test, a nie obraz.
+
+**Testy.** `tests/TransformTests.cpp`, cztery przypadki ([`../../libraries/doctest.md`](../../libraries/doctest.md)):
+
+| Przypadek testowy | Co sprawdza | Wynik |
+|---|---|---|
+| `the normal matrix of an object that is only moved changes no normal` | `Transform` z samym przesunięciem `(5, -2, 9)` | normalne `(0, 1, 0)` i `(1, 0, 0)` bez zmian: przesunięcie nie działa na kierunek |
+| `the normal matrix of a turned object turns the normal with it` | ściana wzdłuż osi Z: obrót o 90 stopni wokół Y | normalna `(0, 0, 1)` staje się `(1, 0, 0)`. To samo daje `glm::mat3(model)`: bez skali obie macierze są równe |
+| `with unequal scale only the normal matrix keeps a normal perpendicular` | skos ze styczną `(1, 1, 0)` i normalną `(-1, 1, 0) / sqrt(2)`, skala `(4, 1, 1)` | styczna po przekształceniu to `(4, 1, 0)`. `mat3(model)` razy normalna ma kierunek `(-4, 1, 0)`, który **nie** jest do niej prostopadły. Macierz normalnych daje kierunek `(-0,25, 1, 0)`, prostopadły: `4 * (-0,25) + 1 * 1 = 0` |
+| `with equal scale the normal matrix changes only the length of a normal` | skala 2 na wszystkich osiach | `(0, 1, 0)` staje się `(0, 0,5, 0)`: kierunek ten sam, długość 1/2. Dlatego shader normalizuje |
+
+Trzeci przypadek jest tym, co pokazuję na obronie przy pytaniu "po co odwrotna transponowana": liczby mieszczą się na kartce. Wyniki na Windowsie (MSVC 19.44, 2026-10-05): cztery przypadki przechodzą w Debug i Release, w ramach 149 przypadków i 61240 asercji całego programu testowego. Na macOS nie były uruchamiane.
+
 ## 6. Panel ImGui
 
 `Transform` nie ma dziś własnego panelu: obrót kostki ustawiają stałe w `NightMazeApp.cpp` (sekcja 5.4), więc jego zmiana wymaga zbudowania programu. Na żywo da się natomiast zmieniać kolejność mnożenia macierzy w shaderze, przyciskiem `Reload shaders` (ćwiczenie 4). Panel Camera, który edytuje pola kamery, jest opisany w [`camera-controls.md`](camera-controls.md), sekcja 6.
@@ -397,7 +454,9 @@ Matematykę `Transform` sprawdził ten sam tymczasowy program konsolowy, który 
 2. **Kolejność mnożenia.** `model * view * projection` zamiast `projection * view * model` kompiluje się i daje pusty ekran. To samo dotyczy kolejności translate, rotate, scale: zamiana przesunięcia z obrotem sprawia, że obiekt krąży wokół początku układu świata zamiast obracać się w miejscu (sekcja 2.4).
 3. **`glm::mat4 m;` zamiast `glm::mat4 m(1.0F);`.** Konstruktor domyślny GLM 1.0.3 niczego nie ustawia: zmienna lokalna ma przypadkowe wartości, a `glm::mat4 m{};` same zera. Macierz zerowa pomnożona przez cokolwiek daje zera, więc obiekt znika. Macierz jednostkową trzeba zapisać jawnie ([`../../libraries/glm.md`](../../libraries/glm.md), pułapka 2).
 4. **Kolejność kątów Eulera.** Te same trzy liczby w `rotationDegrees` oznaczają inny obrót w programie, który stosuje inną kolejność osi (na przykład w Blenderze, gdzie domyślna kolejność to XYZ). Przy przenoszeniu kątów z innego narzędzia trzeba sprawdzić jego konwencję.
-5. **Skala niejednorodna a normalne.** Pozycje przekształca macierz modelu, ale wektorów normalnych nie wolno przekształcać tą samą macierzą, gdy skala jest różna na różnych osiach: przestają być prostopadłe do powierzchni. Potrzebna jest osobna macierz normalnych (odwrócona i transponowana część 3 x 3 macierzy modelu). Dziś normalne są już w siatkach modeli, a `textured.vert` przekształca je przez `mat3(uModel)`, co jest poprawne, bo wszystkie obiekty labiryntu mają skalę 1 ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4). Oświetlenia jeszcze nie ma (M4), więc normalne widać tylko w trybie widoku `Normals as colour`. Jedyny obiekt ze skalą niejednorodną to linie pudełek kolizji, które normalnych nie używają.
+5. **Skala niejednorodna a normalne.** Pozycje przekształca macierz modelu, ale wektorów normalnych nie wolno przekształcać tą samą macierzą, gdy skala jest różna na różnych osiach: przestają być prostopadłe do powierzchni. Potrzebna jest osobna macierz normalnych (odwrócona i transponowana część 3 x 3 macierzy modelu). Od M4 liczy ją `scene::normalMatrix` (sekcja 5.6), a programy oświetlenia `lit` i `gouraud` dostają ją w uniformie `uNormalMatrix`. Program `textured` (tryb bez oświetlenia i podglądy) nadal przekształca normalne przez `mat3(uModel)`, co jest poprawne, dopóki wszystkie obiekty labiryntu mają skalę 1 ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4). Jedyny obiekt ze skalą niejednorodną to linie pudełek kolizji, które normalnych nie używają. Kostki świateł mają skalę równą i też nie używają normalnych.
+6. **Macierz normalnych z macierzy nieodwracalnej.** Skala 0 na którejś osi (obiekt spłaszczony do płaszczyzny) nie ma odwrotności: wynik `glm::inverse` zawiera wtedy `inf` albo `NaN`, bez żadnego błędu, a oświetlony obiekt robi się czarny albo miga. Funkcja tego nie sprawdza: wymaganie jest w komentarzu przy deklaracji.
+7. **Macierz normalnych nie normalizuje.** Przy skali wynik ma długość inną niż 1. Kto użyje jej wyniku w iloczynie skalarnym bez `normalize`, dostanie światło przeskalowane razem z obiektem.
 
 ## 8. Ćwiczenia
 
@@ -443,12 +502,22 @@ Matematykę `Transform` sprawdził ten sam tymczasowy program konsolowy, który 
 9. **Dlaczego kostka jest obrócona i w jakiej kolejności działają jej dwa obroty?**
    Żeby z domyślnej kamery było widać trzy ściany, a nie jeden kwadrat. Macierz modelu to `Ry(35) * Rx(25)`: wierzchołek jest najpierw obracany wokół osi X (góra pochyla się do kamery), potem wokół osi Y.
 
+10. **Co liczy `scene::normalMatrix` i dlaczego nie jest metodą `Transform`?**
+    Odwrotność lewej górnej części 3 x 3 macierzy modelu, transponowaną: macierz, która przenosi normalne do przestrzeni świata tak, żeby zostały prostopadłe do powierzchni także przy skali nierównej. Jest wolną funkcją, bo przyjmuje gotową macierz modelu, a labirynt przechowuje macierze, nie obiekty `Transform`.
+
+11. **Czym macierz normalnych różni się dziś od `mat3(model)` dla ściany labiryntu?**
+    Niczym: ściana jest tylko przesunięta i obrócona, a odwrotna transponowana macierzy obrotu jest tą samą macierzą. Różnica pojawia się przy skali nierównej, co sprawdza test ze skalą `(4, 1, 1)`.
+
+12. **Dlaczego wynik macierzy normalnych trzeba normalizować?**
+    Przy skali `s` równej na osiach wynik ma długość `1 / s`, a przy nierównej dowolną. Wzory oświetlenia zakładają wektory o długości 1.
+
 ## 10. Źródła
 
 - LearnOpenGL, rozdział "Transformations": <https://learnopengl.com/Getting-started/Transformations> (wektory, macierze przesunięcia, skali i obrotu, kolejność mnożenia, GLM).
 - LearnOpenGL, rozdział "Coordinate Systems": <https://learnopengl.com/Getting-started/Coordinate-Systems> (przestrzenie, macierze model, view i projection, rzutowanie perspektywiczne, bufor głębi).
+- LearnOpenGL, rozdział "Basic Lighting": <https://learnopengl.com/Lighting/Basic-Lighting> (macierz normalnych).
 - songho.ca, "OpenGL Transformation": <https://www.songho.ca/opengl/gl_transform.html> (cały łańcuch przestrzeni z rysunkami).
 - Kod GLM dokładnie w naszej wersji, lokalnie po pierwszej konfiguracji: `build/debug/_deps/glm-src/glm/ext/matrix_transform.inl` (`translate`, `rotate`, `scale`).
-- Dokumenty w tym repozytorium: [`../../libraries/glm.md`](../../libraries/glm.md) (biblioteka), [`../gfx/shaders.md`](../gfx/shaders.md) (potok i shader wierzchołków), [`../gfx/uniforms.md`](../gfx/uniforms.md) (jak macierz trafia do uniformu), [`camera.md`](camera.md) (macierz widoku i rzutowania), [`camera-controls.md`](camera-controls.md) (sterowanie kamerą i panel Camera).
+- Dokumenty w tym repozytorium: [`../../libraries/glm.md`](../../libraries/glm.md) (biblioteka), [`../gfx/shaders.md`](../gfx/shaders.md) (potok i shader wierzchołków), [`../gfx/uniforms.md`](../gfx/uniforms.md) (jak macierz trafia do uniformu), [`camera.md`](camera.md) (macierz widoku i rzutowania), [`camera-controls.md`](camera-controls.md) (sterowanie kamerą i panel Camera), [`lights.md`](lights.md) (dlaczego normalne potrzebują własnej macierzy).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 3: przekształcenia przestrzeni, hierarchia transformów).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o przekształceniach geometrycznych i rzutowaniu).

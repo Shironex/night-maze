@@ -1,11 +1,11 @@
 # Moduł gfx: wierzchołek i siatka (`Vertex`, `Mesh`)
 
 Kamień milowy: M2 + M3. Temat wykładu: 4 (Wczytywanie OBJ), część po stronie karty graficznej. Korzysta z tematu 2 (bufory, VAO, `glDrawElements`).
-Kod: [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp), [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp). Użytkownicy: [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp), [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp).
+Kod: [`src/gfx/Vertex.hpp`](../../../src/gfx/Vertex.hpp), [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp), [`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp). Użytkownicy: [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp), [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp), [`src/game/LightRig.cpp`](../../../src/game/LightRig.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość [`buffers-vao.md`](buffers-vao.md) (bufor, VAO, krok i przesunięcie, klasy `Buffer` i `VertexArray`) oraz [`indexed-drawing.md`](indexed-drawing.md) (indeksy, `glDrawElements`, kolejność pól). Skąd biorą się dane siatki, opisuje [`../assets/obj-loader.md`](../assets/obj-loader.md).
 
-**Stan.** Struktura `gfx::Vertex` i klasa `gfx::Mesh` są w bibliotece `engine` i mają w programie dwóch użytkowników (sekcja 5.7). `assets::AssetCache` tworzy po jednej siatce z trójkątów dla każdego modelu labiryntu, a `game::MazeRenderer` rysuje je częściami, przez `draw(firstIndex, indexCount)`. `game::ColliderLines` ma jedną siatkę z odcinków (`GL_LINES`): sześcian z 8 narożników i 24 indeksów, którym rysuje pudełka kolizji. Kostka z M1 została przy własnych polach `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` w `NightMazeApp`. `Mesh` nadal **nie ma testu jednostkowego**, bo wymaga kontekstu OpenGL. Co wiadomo o jej działaniu, mówi sekcja 5.6.
+**Stan.** Struktura `gfx::Vertex` i klasa `gfx::Mesh` są w bibliotece `engine` i mają w programie trzech użytkowników (sekcja 5.7). `assets::AssetCache` tworzy po jednej siatce z trójkątów dla każdego modelu labiryntu, a `game::MazeRenderer` rysuje je częściami, przez `draw(firstIndex, indexCount)`. `game::ColliderLines` ma jedną siatkę z odcinków (`GL_LINES`): sześcian z 8 narożników i 24 indeksów, którym rysuje pudełka kolizji. Od M4 `game::LightRig` ma jedną siatkę z trójkątów: mały sześcian z 8 narożników i 36 indeksów, znacznik światła punktowego. Kostka z M1 została przy własnych polach `m_vertexArray`, `m_vertexBuffer` i `m_indexBuffer` w `NightMazeApp`. `Mesh` nadal **nie ma testu jednostkowego**, bo wymaga kontekstu OpenGL. Co wiadomo o jej działaniu, mówi sekcja 5.6.
 
 ## 1. Po co to jest
 
@@ -22,12 +22,12 @@ Dlatego dochodzą dwie rzeczy:
 
 ### 2.1 Wierzchołek to nie tylko pozycja
 
-Wierzchołek (vertex) to komplet danych, które shader wierzchołków dostaje dla jednego punktu siatki. W kostce z tematu 2 były to pozycja i kolor. Model z teksturą i (później) oświetleniem potrzebuje trzech rzeczy:
+Wierzchołek (vertex) to komplet danych, które shader wierzchołków dostaje dla jednego punktu siatki. W kostce z tematu 2 były to pozycja i kolor. Model z teksturą i oświetleniem potrzebuje trzech rzeczy:
 
 | Pole | Typ | Liczb `float` | Do czego służy |
 |---|---|---|---|
 | pozycja (`position`) | `glm::vec3` | 3 | punkt w przestrzeni lokalnej modelu, w metrach |
-| normalna (`normal`) | `glm::vec3` | 3 | kierunek, w który zwrócona jest powierzchnia. Potrzebna oświetleniu (tematy 6 i 7), dziś tylko przechowywana |
+| normalna (`normal`) | `glm::vec3` | 3 | kierunek, w który zwrócona jest powierzchnia. Od M4 czyta ją oświetlenie (tematy 6 i 7): programy `lit` i `gouraud` liczą z niej, ile światła pada na powierzchnię ([`../scene/lights.md`](../scene/lights.md)) |
 | współrzędna tekstury (`uv`) | `glm::vec2` | 2 | miejsce na obrazie tekstury, które przypada na ten punkt (temat 5) |
 
 Razem 8 liczb `float`, czyli 32 bajty. Dwa wierzchołki są **tym samym wierzchołkiem** tylko wtedy, gdy mają równe wszystkie trzy pola. Dlatego róg prostopadłościanu, który należy do trzech ścian, jest w buforze trzy razy: pozycja ta sama, normalne różne ([`indexed-drawing.md`](indexed-drawing.md), sekcja 2.1, tłumaczy to na kolorach kostki).
@@ -101,7 +101,7 @@ Atrybut ma numer, ten sam po stronie C++ i po stronie GLSL ([`buffers-vao.md`](b
 | `gfx::NORMAL_ATTRIBUTE` | 1 | `layout(location = 1) in vec3 ...` |
 | `gfx::UV_ATTRIBUTE` | 2 | `layout(location = 2) in vec2 ...` |
 
-Każdy shader, który ma rysować `Mesh`, musi trzymać się tych numerów. Shader, który nie czyta któregoś atrybutu (na przykład normalnej, dopóki nie ma oświetlenia), po prostu go nie deklaruje: włączony atrybut, którego program nie używa, niczemu nie szkodzi.
+Każdy shader, który ma rysować `Mesh`, musi trzymać się tych numerów. Shader, który nie czyta któregoś atrybutu (na przykład `color.vert`, który nie potrzebuje normalnej ani uv), po prostu go nie deklaruje: włączony atrybut, którego program nie używa, niczemu nie szkodzi.
 
 ### 2.5 Rysowanie zakresu indeksów
 
@@ -159,14 +159,16 @@ Sygnatura `glDrawElements(mode, count, type, indices)`:
 
 ## 4. Shadery
 
-`Mesh` nie ma własnego shadera i żadnego nie zna. Układ `Vertex` czytają dwie pary shaderów projektu:
+`Mesh` nie ma własnego shadera i żadnego nie zna. Układ `Vertex` czytają cztery pary shaderów projektu:
 
 | Shader wierzchołków | Które atrybuty deklaruje | Co rysuje |
 |---|---|---|
 | `textured.vert` | wszystkie trzy: `aPosition` (0), `aNormal` (1), `aUv` (2) | modele labiryntu ([`textures.md`](textures.md), sekcja 4.1) |
-| `color.vert` | tylko `aPosition` (0) | linie pudełek kolizji ([`../scene/collision.md`](../scene/collision.md), sekcja 4) |
+| `lit.vert` | wszystkie trzy, pod tymi samymi nazwami i numerami | modele labiryntu z oświetleniem liczonym dla każdego fragmentu ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4) |
+| `gouraud.vert` | wszystkie trzy | modele labiryntu z oświetleniem liczonym dla każdego wierzchołka (ten sam dokument) |
+| `color.vert` | tylko `aPosition` (0) | linie pudełek kolizji ([`../scene/collision.md`](../scene/collision.md), sekcja 4) i znaczniki świateł |
 
-`color.vert` pokazuje zasadę z sekcji 2.4: siatka ma włączone trzy atrybuty, a shader czyta jeden. Dwa pozostałe są po prostu ignorowane. Trzecia para, `basic.vert` i `basic.frag`, **nie nadaje się** do rysowania `Mesh`: deklaruje pozycję pod numerem 0 i **kolor** pod numerem 1, a `Vertex` ma pod numerem 1 normalną. Narysowanie `Mesh` shaderem `basic` pokazałoby normalne jako kolory, bez żadnego błędu.
+`color.vert` pokazuje zasadę z sekcji 2.4: siatka ma włączone trzy atrybuty, a shader czyta jeden. Dwa pozostałe są po prostu ignorowane. Piąta para, `basic.vert` i `basic.frag`, **nie nadaje się** do rysowania `Mesh`: deklaruje pozycję pod numerem 0 i **kolor** pod numerem 1, a `Vertex` ma pod numerem 1 normalną. Narysowanie `Mesh` shaderem `basic` pokazałoby normalne jako kolory, bez żadnego błędu.
 
 ## 5. Kod w projekcie
 
@@ -200,7 +202,7 @@ struct Vertex {
 - `struct` z publicznymi polami bez prefiksu `m_`: to zwykłe dane, tak jak struktury warstwy `scene` ([`../scene/README.md`](../scene/README.md), sekcja 3), a nie obiekt OpenGL. Kopiuje się jak liczby.
 - `{0.0F}` to wartość początkowa pola: konstruktor `glm::vec3` z jedną liczbą wypełnia nią wszystkie składowe. Wierzchołek utworzony przez `Vertex vertex;` ma więc same zera, a nie przypadkowe wartości. Loader z tego korzysta: gdy plik nie podaje normalnej albo współrzędnej tekstury, pole zostaje zerowe.
 - Kolejność pól jest kolejnością w pamięci: pozycja, normalna, uv. Od niej zależą przesunięcia 0, 12 i 24.
-- Struktura **nie ma stycznej** (tangent). Mapy normalnych, które jej potrzebują, są odłożone do kamienia milowego M4 + M5.
+- Struktura **nie ma stycznej** (tangent). Mapy normalnych, które jej potrzebują, nie weszły do pierwszej części M4 (oświetlenie) i dojdą w jej następnej części. Samo oświetlenie stycznej nie potrzebuje: wystarcza mu normalna.
 
 ```cpp
 /// Number of floats in each field, the "size" parameter of glVertexAttribPointer.
@@ -389,7 +391,17 @@ ColliderLines::ColliderLines() : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, 
 
 Rysowanie to `m_unitCube.draw();` dla każdego pudełka, po ustawieniu macierzy modelu, która rozciąga sześcian do rozmiarów pudełka i przesuwa go na miejsce ([`../scene/collision.md`](../scene/collision.md), sekcja 5). Jedna siatka na karcie obsługuje więc wszystkie pudełka.
 
-Oba użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiałach: ta sama klasa rysuje modele z teksturą programem `textured` i gołe odcinki programem `color`.
+**Znaczniki świateł.** `game::LightRig` ma pole `gfx::Mesh m_markerCube` i tworzy je na liście inicjalizacyjnej konstruktora ([`LightRig.cpp`](../../../src/game/LightRig.cpp)):
+
+```cpp
+LightRig::LightRig()
+    : m_lightBuffer(sizeof(scene::LightBlockData), LIGHT_BLOCK_BINDING_POINT),
+      m_markerCube(MARKER_CORNERS, MARKER_INDICES) {}
+```
+
+`MARKER_CORNERS` to `std::array` ośmiu `gfx::Vertex` (narożniki sześcianu o boku 1 ze środkiem w początku układu, wypełniona tylko pozycja), a `MARKER_INDICES` to 36 liczb `std::uint32_t`: 12 trójkątów. Trzeciego argumentu nie ma, więc prymitywem jest `GL_TRIANGLES`. Osiem wspólnych narożników wystarcza, bo znacznik jest rysowany jednym kolorem i nie potrzebuje osobnych normalnych dla każdej ściany. Rysowanie to `m_markerCube.draw();` dla każdego światła punktowego, programem `color`, po ustawieniu macierzy modelu ze skalą 0,14 ([`../game/flashlight.md`](../game/flashlight.md)).
+
+Trzy użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiałach: ta sama klasa rysuje modele z teksturą programami `textured`, `lit` i `gouraud`, a gołe odcinki i jednokolorowe sześciany programem `color`.
 
 ## 6. Panel ImGui
 
@@ -462,7 +474,7 @@ Oba użycia pokazują, po co `Mesh` nie wie nic o shaderach i materiałach: ta s
     Nie testem jednostkowym: wymaga kontekstu OpenGL, a program testowy nie tworzy okna. Jest sprawdzony na obrazie na Windowsie: gra rysuje nim labirynt i pudełka kolizji bez błędów OpenGL. Rysowanie zakresu, który nie zaczyna się od indeksu 0, nie było sprawdzone, bo modele gry mają po jednej części.
 
 13. **Kto w programie tworzy obiekty `Mesh` i ile ich jest?**
-    `assets::AssetCache` tworzy po jednym dla każdego wczytanego modelu: trzy dla labiryntu (płytka podłogi, ściana, słupek). `game::ColliderLines` ma jeden, sześcian z krawędzi. Razem cztery siatki na karcie, niezależnie od rozmiaru labiryntu: każdy obiekt sceny to ta sama siatka z inną macierzą modelu.
+    `assets::AssetCache` tworzy po jednym dla każdego wczytanego modelu: trzy dla labiryntu (płytka podłogi, ściana, słupek). `game::ColliderLines` ma jeden, sześcian z krawędzi. `game::LightRig` ma jeden, mały sześcian z trójkątów jako znacznik światła. Razem pięć siatek na karcie, niezależnie od rozmiaru labiryntu: każdy obiekt sceny to ta sama siatka z inną macierzą modelu.
 
 14. **Dlaczego jedna siatka sześcianu wystarcza do narysowania wszystkich pudełek kolizji?**
     Bo pudełko o krawędziach równoległych do osi to sześcian jednostkowy po skalowaniu i przesunięciu. Rozmiar i miejsce pudełka są w macierzy modelu, a geometria na karcie jest wspólna.

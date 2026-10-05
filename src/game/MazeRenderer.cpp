@@ -7,6 +7,7 @@
 #include "game/MazeWorld.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/Shader.hpp"
+#include "scene/Transform.hpp"
 
 namespace game {
 
@@ -53,6 +54,10 @@ void MazeRenderer::drawInstances(const gfx::Shader& shader, const assets::Loaded
 
         for (const glm::mat4& modelMatrix : modelMatrices) {
             shader.setMat4(MODEL_UNIFORM, modelMatrix);
+            // The lit programs turn the normals with a matrix of their own, derived
+            // from the model matrix. It is computed here, on the CPU, once per object:
+            // in the shader the inverse would be computed again for every vertex.
+            shader.setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix));
             model->mesh.draw(part.firstIndex, part.indexCount);
         }
     }

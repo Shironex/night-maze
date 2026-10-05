@@ -116,7 +116,7 @@ map_Kd ../textures/wall_stone.png
 | `newmtl wall_stone` | początek materiału o tej nazwie. Następne linie go opisują, aż do kolejnego `newmtl` | tworzy nowy materiał |
 | `Kd r g b` | kolor rozproszony (diffuse), trzy liczby od 0 do 1 | zapisuje w `diffuseColor` |
 | `map_Kd ścieżka` | tekstura koloru rozproszonego, ścieżka względem katalogu pliku MTL | zapisuje w `diffuseTexture` |
-| `Ns`, `Ka`, `Ks`, `Ke`, `Ni`, `d`, `illum` | połysk, kolor otoczenia, odbłysk, emisja, załamanie, przezroczystość, model oświetlenia | pomija. `Ns`, `Ka` i `Ks` przydadzą się przy oświetleniu (M4 + M5) |
+| `Ns`, `Ka`, `Ks`, `Ke`, `Ni`, `d`, `illum` | połysk, kolor otoczenia, odbłysk, emisja, załamanie, przezroczystość, model oświetlenia | pomija. Oświetlenie z M4 ich nie potrzebuje: jasność i wykładnik odblasku są wspólne dla całego labiryntu i pochodzą z ustawień `game::LightingSettings` (panel Lights), a nie z pliku MTL |
 
 Powiązanie między plikami jest przez **nazwę**: linia `usemtl wall_stone` w pliku OBJ wskazuje materiał `newmtl wall_stone` w pliku MTL.
 
@@ -279,7 +279,7 @@ Loader nie ma własnego shadera, ale wczytane modele rysuje para [`assets/shader
 
 Numery atrybutów są ustalone w `gfx/Vertex.hpp`: pozycja 0, normalna 1, uv 2 ([`../gfx/mesh.md`](../gfx/mesh.md), sekcja 2.4). Pierwsza para shaderów projektu, `basic.vert` i `basic.frag`, do modeli się nie nadaje: czyta pozycję i **kolor**, a nie pozycję, normalną i uv.
 
-Normalne z pliku nie służą jeszcze do oświetlenia, bo oświetlenia w tym kamieniu milowym nie ma (M4). Shader umie je tylko pokazać jako kolor, w trybie podglądu `Normals as colour`. Drugi tryb, `UVs as colour`, pokazuje tak samo współrzędne z linii `vt`. Oba są sposobem na obejrzenie na ekranie tego, co loader wczytał.
+Od M4 normalne z pliku **służą do oświetlenia**. Programy `lit` i `gouraud` deklarują te same trzy atrybuty co `textured.vert` i liczą z normalnej, ile światła pada na powierzchnię ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), wzory w [`../scene/lights.md`](../scene/lights.md)). Loader nie zmienił się przy tym ani o linię: normalne z linii `vn` były w wierzchołkach od początku. Z tego wynika nowe wymaganie wobec modeli, którego wcześniej nie było widać: normalna musi wskazywać na zewnątrz bryły, bo ściana z odwróconą normalną jest oświetlona od złej strony (długość poprawia sam shader, który normalizuje normalną). Program `textured` nadal umie normalne tylko pokazać jako kolor, w trybie podglądu `Normals as colour`. Drugi tryb, `UVs as colour`, pokazuje tak samo współrzędne z linii `vt`. Oba są sposobem na obejrzenie na ekranie tego, co loader wczytał.
 
 ## 5. Kod w projekcie
 
@@ -833,7 +833,7 @@ Szczegóły:
 | kontynuacja linii znakiem `\` na końcu | **nieobsługiwana** |
 | wielokąty wklęsłe | dzielone wachlarzem, wynik może być błędny (sekcja 2.6) |
 | grupy wygładzania, liczenie normalnych | brak: normalne tylko z linii `vn` |
-| styczne (tangents) | brak: mapy normalnych są odłożone |
+| styczne (tangents) | brak: mapy normalnych są odłożone do następnej części M4 |
 | kilka obiektów (`o`) w pliku | wszystkie trafiają do jednej siatki |
 | znacznik BOM na początku pliku | nieobsługiwany: pierwsza linia miałaby nieznane słowo kluczowe |
 

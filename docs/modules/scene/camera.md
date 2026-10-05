@@ -11,7 +11,7 @@ Macierz modelu z [`transforms.md`](transforms.md) stawia obiekt w świecie. Żeb
 
 Ten dokument opisuje też miejsce, w którym trzy macierze spotykają się w jednej klatce, czyli `NightMazeApp::onRender`: test głębi, proporcje obrazu, zabezpieczenie przed framebufferem o rozmiarze zero i drogę jednego wierzchołka przez cały łańcuch na liczbach.
 
-Stan na dziś: `game::NightMazeApp` ma jedną `Camera`. Co klatkę liczy z niej macierz widoku i macierz rzutowania, raz, i wysyła je do trzech programów shaderów: `textured` (labirynt), `basic` (kostka nad komórką wyjścia) i `color` (linie pudełek kolizji). Macierz modelu każdy rysowany obiekt ma własną (kod: sekcja 5.7). Kamera nie ma już własnego sterowania pozycją: jej kąty obraca mysz ([`camera-controls.md`](camera-controls.md)), a pozycję po każdym kroku symulacji dostaje z oczu gracza ([`../game/player.md`](../game/player.md)). Struktura `Camera` ma też drugiego użytkownika: `Player::update` tworzy tymczasową kamerę i używa jej jak kalkulatora kierunków `forward()` i `right()` (sekcja 5.3).
+Stan na dziś: `game::NightMazeApp` ma jedną `Camera`. Co klatkę liczy z niej macierz widoku i macierz rzutowania, raz, i wysyła je do każdego programu shaderów, którym ta klatka rysuje. Programów jest od M4 pięć, a w jednej klatce pracują najwyżej trzy: jeden program labiryntu wybrany według trybu oświetlenia (`textured` bez oświetlenia, `gouraud` albo `lit`), `color` (znaczniki świateł punktowych i linie pudełek kolizji) oraz `basic` (kostka nad komórką wyjścia). Macierz modelu każdy rysowany obiekt ma własną (kod: sekcja 5.7). To samo oko, z którego powstaje macierz widoku, i ten sam kierunek `forward()` ustawiają też latarkę gracza: trafiają do `buildLightSet`, a oko jeszcze do `LightRig::upload` (sekcja 5.7). Kamera nie ma już własnego sterowania pozycją: jej kąty obraca mysz ([`camera-controls.md`](camera-controls.md)), a pozycję po każdym kroku symulacji dostaje z oczu gracza ([`../game/player.md`](../game/player.md)). Struktura `Camera` ma też drugiego użytkownika: `Player::update` tworzy tymczasową kamerę i używa jej jak kalkulatora kierunków `forward()` i `right()` (sekcja 5.3).
 
 Przykład liczbowy w sekcji 5.8 i część ćwiczeń używają sceny z M1: kamery domyślnej w `(0, 0, 3)` patrzącej na kostkę w początku układu. To nadal poprawna ilustracja rachunku, ale program po starcie wygląda dziś inaczej (kamera w `(1, 1,7, 1)` wewnątrz labiryntu). Mówię o tym wprost w każdym takim miejscu.
 
@@ -244,7 +244,7 @@ Macierze to zwykła matematyka na procesorze. `Transform` i `Camera` nie wołaj�
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | czyści kolor i głębię | przy włączonym teście głębi bufor głębi trzeba czyścić co klatkę, inaczej zostają w nim wartości z poprzedniej |
 | `glDepthRange(0, 1)` | zakres, na który trafia z z NDC | wartość domyślna, nie zmieniam jej |
 
-Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glViewport`, `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, a `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania są wysyłane po razie do każdego używanego programu, a macierz modelu raz dla każdego rysowanego obiektu.
+Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glViewport`, `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, a `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania wysyła raz każda funkcja rysująca do swojego programu, a macierz modelu jest wysyłana raz dla każdego rysowanego obiektu.
 
 Kolejność w klatce:
 
@@ -257,8 +257,13 @@ flowchart TD
     D -- nie --> E["aspectRatio = szerokość / wysokość (float)"]
     E --> X["feet = glm::mix(poprzednia pozycja gracza, pozycja gracza, alpha)<br/>eye = feet + wysokość oczu"]
     X --> V["view = m_camera.viewMatrix(eye)<br/>projection = m_camera.projectionMatrix(aspectRatio)"]
-    V --> M["drawMaze: m_texturedShader.use(), uView, uProjection, uViewMode,<br/>potem uModel i rysowanie dla każdego obiektu"]
-    M --> F["drawCube: m_shader.use(), uModel, uView, uProjection,<br/>m_vertexArray.bind(), glDrawElements"]
+    V --> LS["lights = buildLightSet(m_lighting, eye, m_camera.forward(), ...)<br/>m_lightRig.upload(lights, eye)"]
+    LS --> M{"drawMaze: tryb Unlit<br/>albo widok inny niż Textured?"}
+    M -- tak --> MU["drawUnlitMaze: m_texturedShader.use(), uView, uProjection, uViewMode,<br/>potem uModel i rysowanie dla każdego obiektu"]
+    M -- nie --> ML["drawLitMaze: m_gouraudShader albo m_litShader, use(), uView, uProjection,<br/>uSpecularModel, uSpecularStrength, uShininess, potem uModel i rysowanie dla każdego obiektu"]
+    MU --> K["gdy tryb inny niż Unlit: drawLightMarkers: m_colorShader.use(), uView, uProjection,<br/>potem uColor raz i uModel dla każdego znacznika"]
+    ML --> K
+    K --> F["drawCube: m_shader.use(), uModel, uView, uProjection,<br/>m_vertexArray.bind(), glDrawElements"]
     F --> L["gdy włączone: drawColliderLines: m_colorShader.use(), uView, uProjection,<br/>potem uModel i rysowanie dla każdego pudełka"]
 ```
 
@@ -274,7 +279,7 @@ Okno ma bufor głębi, choć `core::Window` nigdzie o niego nie prosi: wskazówk
 
 ## 4. Shadery
 
-Kamera nie ma własnego shadera. Macierz widoku i macierz rzutowania trafiają do uniformów `uView` i `uProjection` shadera wierzchołków `basic.vert`. Deklaracje uniformów i linię, która mnoży przez nie pozycję wierzchołka, omawia [`transforms.md`](transforms.md), sekcja 4, a sam mechanizm uniformów [`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 2.
+Kamera nie ma własnego shadera. Macierz widoku i macierz rzutowania trafiają do uniformów `uView` i `uProjection`, które pod tymi samymi nazwami deklaruje każdy z pięciu shaderów wierzchołków projektu (`basic.vert`, `textured.vert`, `color.vert`, `lit.vert`, `gouraud.vert`). Przykładem w tym dokumencie jest `basic.vert`. Deklaracje uniformów i linię, która mnoży przez nie pozycję wierzchołka, omawia [`transforms.md`](transforms.md), sekcja 4, a sam mechanizm uniformów [`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 2.
 
 ## 5. Kod w projekcie
 
@@ -284,7 +289,7 @@ Kamera nie ma własnego shadera. Macierz widoku i macierz rzutowania trafiają d
 |---|---|
 | [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp) | struktura `Camera`: stałe `WORLD_UP` i `MAX_PITCH_DEGREES`, pola `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, deklaracje pięciu funkcji |
 | [`src/scene/Camera.cpp`](../../../src/scene/Camera.cpp) | stała `FULL_TURN_DEGREES` i funkcje `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix` |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik kamery: pole `m_camera`, liczenie proporcji, oka i dwóch macierzy w `onRender`, wysłanie ich do trzech programów w `drawMaze`, `drawCube` i `drawColliderLines` (sekcja 5.7) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik kamery: pole `m_camera`, liczenie proporcji, oka i dwóch macierzy w `onRender`, wysłanie ich do programów w `drawUnlitMaze` albo `drawLitMaze` (wybiera `drawMaze`), `drawLightMarkers`, `drawCube` i `drawColliderLines`, a oka i kierunku `forward()` do `buildLightSet` i `LightRig::upload` (sekcja 5.7) |
 | [`src/game/Player.cpp`](../../../src/game/Player.cpp) | drugi użytkownik: `Player::update` liczy kierunki ruchu przez tymczasową `scene::Camera` (sekcja 5.3, [`../game/player.md`](../game/player.md), sekcja 5) |
 
 Miejsce plików `src/scene/` w bibliotece `engine` i powód, dla którego `Camera` jest strukturą z publicznymi polami, opisuje [`transforms.md`](transforms.md), sekcja 5.1. Pliki shadera są wymienione tam, a pliki sterowania kamerą i panelu w [`camera-controls.md`](camera-controls.md), sekcja 5.
@@ -487,7 +492,7 @@ Trzy wiersze tej tabeli, które dotyczą `Transform`, są w [`transforms.md`](tr
 
 Build Debug i Release (clang, `-Wall -Wextra -Wpedantic`) przechodzi bez ostrzeżeń, a clang-tidy z regułami projektu nie zgłasza niczego w plikach `src/scene/`. Na Windowsie (MSVC 19.44, `/W4 /permissive-`, 2026-10-05) build Debug i Release też przechodzi bez ostrzeżeń.
 
-### 5.7 Użycie w `NightMazeApp`: dwie macierze na klatkę, trzy programy
+### 5.7 Użycie w `NightMazeApp`: dwie macierze na klatkę, pięć programów
 
 Właścicielem kamery jest `game::NightMazeApp` ([`NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp)). Całą klasę, w tym kolejność w `onRender`, opisuje [`../core/README.md`](../core/README.md), sekcja 6. Tutaj wszystko, co dotyczy macierzy.
 
@@ -510,17 +515,17 @@ Trzy rodzaje pól kamery mają dziś trzech różnych "kierowców":
 
 Pole `position` ma wartość domyślną `(0, 0, 3)` tylko do chwili, gdy konstruktor zawoła `enterMaze()`. Po starcie kamera stoi w oczach gracza: `(1, 1,7, 1)`.
 
-**Nazwy uniformów** nie są już stałymi w `NightMazeApp.cpp`. Trzy klasy rysujące muszą się co do nich zgadzać, więc stoją w jednym nagłówku, [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5):
+**Nazwy uniformów** nie są już stałymi w `NightMazeApp.cpp`. Klasy rysujące (`NightMazeApp`, `MazeRenderer`, `ColliderLines`, a od M4 także `LightRig`) muszą się co do nich zgadzać, więc stoją w jednym nagłówku, [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5):
 
 ```cpp
-/// The three matrices. basic.vert, textured.vert and color.vert all declare them under
-/// the same names.
+/// The three matrices. Every vertex shader (basic, textured, color, lit, gouraud)
+/// declares them under the same names.
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
 ```
 
-**Początek `onRender`: stan, od którego zależy obraz.** Przed tym fragmentem stoją jeszcze: obsługa prośby o nowy labirynt, klawisz N i obsługa myszy ([`../core/README.md`](../core/README.md), sekcja 6, [`camera-controls.md`](camera-controls.md), sekcja 5).
+**Początek `onRender`: stan, od którego zależy obraz.** Przed tym fragmentem stoją jeszcze: obsługa prośby o nowy labirynt, klawisz N, klawisz F (latarka) i obsługa myszy ([`../core/README.md`](../core/README.md), sekcja 6, [`camera-controls.md`](camera-controls.md), sekcja 5).
 
 ```cpp
     const core::Size framebuffer = window().framebufferSize();
@@ -546,7 +551,7 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 | `glEnable(GL_DEPTH_TEST)` | test głębi (sekcja 3). W labiryncie to on sprawia, że bliska ściana zasłania dalsze korytarze, choć ściany są rysowane w kolejności listy, a nie od najdalszej |
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | jedno wywołanie czyści oba bufory. `\|` to bitowe "lub": łączy dwie flagi w jedną maskę |
 
-**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (viewport, test głębi, kolor czyszczenia), a potem każda z trzech funkcji rysujących wybiera swój program. Koszt to jedno wywołanie na klatkę.
+**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (viewport, test głębi, kolor czyszczenia), a potem każda funkcja rysująca wybiera swój program. Koszt to jedno wywołanie na klatkę.
 
 **Reszta: proporcje, oko i dwie macierze.**
 
@@ -575,7 +580,21 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
     const glm::mat4 view = m_camera.viewMatrix(eye);
     const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
 
+    // The lights of this frame. They are built here, after the mouse has turned the
+    // camera and from the same eye the view matrix uses: the flashlight then sits
+    // exactly where the picture is taken from, and its cone stays in the middle of the
+    // screen. From m_camera.position (the last fixed step) it would trail behind while
+    // the player moves. The copy to the graphics card happens once, and both lit
+    // programs read it.
+    const scene::LightSet lights =
+        buildLightSet(m_lighting, eye, m_camera.forward(), m_mazeWorld.pointLightPositions);
+    m_lightRig.upload(lights, eye);
+
     drawMaze(view, projection);
+    // Without lighting there are no lights to mark.
+    if (m_lighting.mode != LightingMode::Unlit) {
+        drawLightMarkers(view, projection);
+    }
     drawCube(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
@@ -590,17 +609,33 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 | `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | punkt, z którego rysowana jest ta klatka: 1,7 m nad stopami. To nie jest `m_camera.position`, tylko jego wygładzona wersja |
 | `m_camera.viewMatrix(eye)` | macierz widoku dla tego oka. Kierunek patrzenia pochodzi z bieżących kątów kamery |
 | `m_camera.projectionMatrix(aspectRatio)` | macierz rzutowania z proporcjami tej klatki |
-| `const glm::mat4 view`, `const glm::mat4 projection` | obie macierze liczę raz i trzymam w zmiennych lokalnych, bo trafią do trzech programów. W M1 program był jeden i wyniki szły wprost do `setMat4` jako obiekty tymczasowe |
+| `const glm::mat4 view`, `const glm::mat4 projection` | obie macierze liczę raz i trzymam w zmiennych lokalnych, bo trafią do kilku programów (niżej). W M1 program był jeden i wyniki szły wprost do `setMat4` jako obiekty tymczasowe |
+| `buildLightSet(m_lighting, eye, m_camera.forward(), m_mazeWorld.pointLightPositions)` | zestaw świateł tej klatki. Z kamery bierze dwie rzeczy: `eye`, to samo oko co macierz widoku, jako pozycję latarki, i `m_camera.forward()` (sekcja 5.3) jako jej kierunek. Dlatego stoi **po** obrocie myszą i po policzeniu oka: reflektor jest dokładnie w punkcie, z którego robiony jest obraz ([`../game/flashlight.md`](../game/flashlight.md)) |
+| `m_lightRig.upload(lights, eye)` | kopiuje światła i pozycję oka do bufora uniformów, raz na klatkę, także w trybie bez oświetlenia. Oko jest tu pozycją kamery w przestrzeni świata, z której shader liczy kierunek do obserwatora ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) |
+| `if (m_lighting.mode != LightingMode::Unlit) { drawLightMarkers(view, projection); }` | małe sześciany w miejscach świateł punktowych, tylko gdy oświetlenie jest włączone |
 
-**Sprawdzenia programu przeniosły się do funkcji rysujących.** W M1 `onRender` wracało, gdy jedyny program był niepoprawny. Dziś programów jest trzy i każda funkcja sprawdza swój (`if (!m_shader.isValid()) { return; }` w `drawCube`, analogicznie w dwóch pozostałych), więc błąd w jednym pliku shadera wyłącza tylko jego część sceny.
+**Sprawdzenia programu przeniosły się do funkcji rysujących.** W M1 `onRender` wracało, gdy jedyny program był niepoprawny. Dziś programów jest pięć i każda funkcja sprawdza ten, którym rysuje (`if (!m_shader.isValid()) { return; }` w `drawCube`, analogicznie w pozostałych), więc błąd w jednym pliku shadera wyłącza tylko jego część sceny.
 
-**Kto ustawia którą macierz.** Każda z trzech funkcji dostaje `view` i `projection` przez `const glm::mat4&` i ustawia je w swoim programie po `use()`:
+**Kto ustawia którą macierz.** Każda funkcja rysująca dostaje `view` i `projection` przez `const glm::mat4&` i ustawia je w swoim programie po `use()`. Sama `drawMaze` niczego nie ustawia: wybiera jedną z dwóch funkcji.
 
 | Funkcja | Program | `uView`, `uProjection` | `uModel` |
 |---|---|---|---|
-| `drawMaze` | `m_texturedShader` | raz na klatkę | `MazeRenderer` ustawia go dla każdej płytki, ściany i słupka z macierzy policzonych przy budowie labiryntu ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| `drawUnlitMaze` (tryb `Unlit` albo widok do szukania błędów: normalne, UV) | `m_texturedShader` | raz na klatkę | `MazeRenderer` ustawia go dla każdej płytki, ściany i słupka z macierzy policzonych przy budowie labiryntu ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| `drawLitMaze` (pozostałe przypadki) | `m_gouraudShader` w trybie `Gouraud`, `m_litShader` w trybach `Phong` i `BlinnPhong` | raz na klatkę | tak samo, przez `MazeRenderer`. Ta sama pętla wysyła dla każdego obiektu także `uNormalMatrix`, z którego korzystają tylko programy z oświetleniem: `textured` takiego uniformu nie ma i tam to wywołanie nic nie zmienia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`transforms.md`](transforms.md)) |
+| `drawLightMarkers` | `m_colorShader` | raz na klatkę, tylko gdy tryb jest inny niż `Unlit` | `LightRig::drawMarkers` liczy go dla każdego znacznika: przesunięcie do pozycji światła i skala 0,14 ([`../game/flashlight.md`](../game/flashlight.md)) |
 | `drawCube` | `m_shader` | raz na klatkę | `m_cubeTransform.matrix()`, raz ([`transforms.md`](transforms.md), sekcja 5.4) |
 | `drawColliderLines` | `m_colorShader` | raz na klatkę, tylko gdy rysowanie pudełek jest włączone | `ColliderLines` liczy go dla każdego pudełka: skala i przesunięcie sześcianu jednostkowego ([`collision.md`](collision.md), sekcja 5) |
+
+**Ile programów w jednej klatce.** Programów jest pięć, ale jedna klatka używa najwyżej trzech różnych. Labirynt rysuje dokładnie jeden z trójki `textured`, `gouraud`, `lit`. Znaczniki świateł i linie pudełek rysuje ten sam program `color`. Kostkę rysuje `basic`.
+
+| Tryb oświetlenia i przełączniki | Programy użyte w klatce | Ile razy ustawiane są `uView` i `uProjection` |
+|---|---|---|
+| `Unlit`, bez linii pudełek | `textured`, `basic` | 2 |
+| `Unlit`, z liniami pudełek | `textured`, `basic`, `color` | 3 |
+| `Gouraud`, bez linii pudełek | `gouraud`, `color`, `basic` | 3 |
+| `Phong` albo `BlinnPhong`, z liniami pudełek | `lit`, `color`, `basic` | 4: program `color` dostaje je dwa razy, raz w `drawLightMarkers` i raz w `drawColliderLines` |
+
+Drugie ustawienie tych samych macierzy w programie `color` jest zbędne dla wyniku (uniform zachowuje wartość, dopóki program istnieje), ale każda funkcja rysująca jest dzięki niemu samodzielna: nie zakłada, że inna zawołała się wcześniej. Tabela zakłada, że każdy potrzebny program jest poprawny, bo funkcja z niepoprawnym programem wraca od razu.
 
 Fragment `drawCube` z trzema macierzami w jednym miejscu:
 
@@ -725,7 +760,7 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
     Pozycja lokalna `(0,5, 0,5, 0,5)` dostaje `w = 1`. Macierz modelu (obrót kostki) daje pozycję w świecie `(0,79, 0,24, 0,26)`. Macierz widoku (kamera w `(0, 0, 3)`) odejmuje 3 od z: `(0,79, 0,24, -2,74)`. Macierz rzutowania skaluje x i y i wpisuje do `w` odległość 2,74: to jest `gl_Position`. Karta dzieli przez `w` (NDC `(0,28, 0,15, 0,93)`) i przelicza na piksele według `glViewport`: około `(1640, 830)` w framebufferze 2560 x 1440.
 
 12. **Gdzie w kodzie powstają trzy macierze i jak trafiają do shadera?**
-    Macierz widoku i macierz rzutowania powstają w `NightMazeApp::onRender`, raz na klatkę: `m_camera.viewMatrix(eye)` i `m_camera.projectionMatrix(aspectRatio)`. Trafiają do `drawMaze`, `drawCube` i `drawColliderLines`, a każda z tych funkcji po `use()` wysyła je przez `setMat4` pod nazwy `uView` i `uProjection` swojego programu. Macierz modelu jest osobna dla każdego obiektu: dla kostki `m_cubeTransform.matrix()`, dla części labiryntu macierze z `MazeWorld`, dla linii pudełek macierz liczona z pudełka. We wszystkich trzech shaderach wierzchołków mnoży je ta sama linia: `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);`.
+    Macierz widoku i macierz rzutowania powstają w `NightMazeApp::onRender`, raz na klatkę: `m_camera.viewMatrix(eye)` i `m_camera.projectionMatrix(aspectRatio)`. Trafiają do `drawMaze` (która przekazuje je do `drawUnlitMaze` albo `drawLitMaze`), `drawLightMarkers`, `drawCube` i `drawColliderLines`, a każda funkcja rysująca po `use()` wysyła je przez `setMat4` pod nazwy `uView` i `uProjection` swojego programu. Macierz modelu jest osobna dla każdego obiektu: dla kostki `m_cubeTransform.matrix()`, dla części labiryntu macierze z `MazeWorld`, dla linii pudełek macierz liczona z pudełka, dla znacznika światła macierz liczona z jego pozycji. Trzy uniformy mają te same nazwy we wszystkich pięciu shaderach wierzchołków. W `basic.vert` mnoży je linia `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);` ([`transforms.md`](transforms.md), sekcja 4). To samo oko i kierunek `forward()` trafiają też do `buildLightSet`, a oko do `LightRig::upload`.
 
 13. **Co robi test głębi i dlaczego jest włączany co klatkę?**
     Fragment jest zapisywany tylko wtedy, gdy jest bliżej kamery niż to, co już jest w buforze głębi, więc bliższe ściany zasłaniają dalsze niezależnie od kolejności rysowania. Bufor głębi jest czyszczony razem z kolorem. `glEnable(GL_DEPTH_TEST)` stoi w `onRender`, bo klatka ma sama ustawiać stan, od którego zależy: backend ImGui wyłącza test głębi na czas rysowania paneli.

@@ -29,4 +29,10 @@ glm::mat4 Transform::matrix() const {
     return model;
 }
 
+glm::mat3 normalMatrix(const glm::mat4& modelMatrix) {
+    // glm::mat3(mat4) keeps the upper left 3 x 3 part: rotation and scale, without the
+    // translation in the fourth column.
+    return glm::transpose(glm::inverse(glm::mat3(modelMatrix)));
+}
+
 } // namespace scene

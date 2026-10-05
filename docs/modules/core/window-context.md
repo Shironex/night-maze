@@ -106,7 +106,7 @@ GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 | `m_debugUI.draw(...)` | wykonuje | Wołane już poza grą, w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp), po powrocie z `NightMazeApp::onRender`: rysuje panele ImGui na wierzchu (opis w [`../debug-ui.md`](../debug-ui.md)) |
 | `glfwSwapBuffers(m_handle)` | wykonuje | Wołane w `Application::run` po `onRender`: zamienia bufory, przy vsync czeka na odświeżenie monitora |
 
-Po tych czterech wywołaniach `onRender` rysuje scenę w trzech częściach: labirynt, kostkę nad komórką wyjścia i, na życzenie, linie pudełek kolizji. Każda część to `glUseProgram`, macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Kolejność i kod tej części klatki opisuje [`README.md`](README.md), sekcje 6.6 i 6.7, a drogę od danych do pikseli [`../gfx/README.md`](../gfx/README.md), sekcja 6.
+Po tych czterech wywołaniach `onRender` wysyła do bufora uniformów światła klatki, a potem rysuje scenę w częściach: labirynt (z oświetleniem albo bez), przy włączonym oświetleniu znaczniki świateł punktowych, kostkę nad komórką wyjścia i, na życzenie, linie pudełek kolizji. Każda część to `glUseProgram`, macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Kolejność i kod tej części klatki opisuje [`README.md`](README.md), sekcje 6.6 i 6.7, a drogę od danych do pikseli [`../gfx/README.md`](../gfx/README.md), sekcja 6.
 
 Viewport ustawiam w każdej klatce, a nie raz przy starcie, i biorę go z `glfwGetFramebufferSize`. Dzięki temu bez żadnego callbacku obsługuję zmianę rozmiaru okna oraz ekrany Retina (sekcja 7). Makro `GL_CHECK` wokół każdego wywołania opisuje [`gl-check.md`](gl-check.md).
 
@@ -125,7 +125,7 @@ Moduł `core` nie tworzy żadnych obiektów OpenGL (żadnych `glGen*`, żadnych 
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (trzy pary plików w `assets/shaders/`: `basic`, `textured` i `color`, wszystkie `#version 410 core`) rysują kostkę, labirynt i linie pudełek kolizji po wyczyszczeniu ekranu ([`../gfx/shaders.md`](../gfx/shaders.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
+Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (pięć par plików w `assets/shaders/`: `basic`, `textured`, `color`, `lit` i `gouraud`, wszystkie `#version 410 core`, oraz wspólny plik `common/lighting.glsl` dołączany przez dwie ostatnie pary) rysują po wyczyszczeniu ekranu kostkę, labirynt bez oświetlenia, linie pudełek kolizji i znaczniki świateł oraz labirynt z oświetleniem ([`../gfx/shaders.md`](../gfx/shaders.md), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
 
 ## 5. Kod w projekcie
 
@@ -232,9 +232,9 @@ Panel **Renderer** (kod: [`RendererPanel.cpp`](../../../src/debug/panels/Rendere
 | `Window` | `Window::windowSize()` | Rozmiar we współrzędnych ekranu. Zmiana rozmiaru okna zmienia obie wartości na żywo |
 | `OpenGL` | `Window::glVersion()` | Wersja oddana przez sterownik: na macOS zaczyna się od 4.1, na Windowsie może być wyższa |
 | `GPU` | `Window::glRenderer()` | Która karta rysuje. Na laptopie z dwiema kartami od razu widać, czy nie została wybrana zintegrowana |
-| `Clear color` | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Jedyna wartość edytowalna. Zmiana jest widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę: dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
+| `Clear color` | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Wartość edytowalna. Startuje jako bardzo ciemny granat nocnego nieba (`{0.01F, 0.015F, 0.04F}`). Zmiana jest widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę: dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
 
-Elementy `FPS` i `Frame time` tego samego panelu opisuje [`main-loop.md`](main-loop.md), sekcja 6.
+Elementy `FPS` i `Frame time` tego samego panelu opisuje [`main-loop.md`](main-loop.md), sekcja 6. Od M4 panel ma jeszcze drugą wartość edytowalną, listę `Lighting` z trybem oświetlenia, która nie dotyczy okna ani kontekstu: opisuje ją [`../debug-ui.md`](../debug-ui.md), sekcja 5.3.
 
 ## 7. Pułapki
 

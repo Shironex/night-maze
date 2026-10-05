@@ -37,6 +37,8 @@ void placePanelOnFirstUse(const PanelPlacement& placement) {
     ImGui::SetNextWindowPos(panelCorner, ImGuiCond_FirstUseEver, placement.corner);
     ImGui::SetNextWindowSize({placement.size.x * layoutScale, placement.size.y * layoutScale},
                              ImGuiCond_FirstUseEver);
+    // A folded panel shows only its title bar. The size above is the one it opens to.
+    ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver);
 }
 
 } // namespace debug

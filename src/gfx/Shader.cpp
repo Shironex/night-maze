@@ -5,6 +5,7 @@
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
+#include "gfx/ShaderSource.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -66,12 +67,31 @@ std::string programInfoLog(GLuint program) {
     return log;
 }
 
-// Reads one shader file and compiles it. type is GL_VERTEX_SHADER or GL_FRAGMENT_SHADER.
-// Returns the id of the shader object, or 0 on failure with the message in error.
+// Reads one shader file, puts the files it includes into it and compiles the result.
+// type is GL_VERTEX_SHADER or GL_FRAGMENT_SHADER. Returns the id of the shader object,
+// or 0 on failure with the message in error.
 GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string& error) {
-    std::string source;
-    if (!readTextFile(path, source)) {
+    std::string fileText;
+    if (!readTextFile(path, fileText)) {
         error = "Shader file cannot be opened: " + core::pathText(path);
+        return 0;
+    }
+
+    // The name in an #include line is relative to the directory of the shader file:
+    // "common/lighting.glsl" in assets/shaders/lit.frag is the file
+    // assets/shaders/common/lighting.glsl. The lambda is called once for every #include
+    // line, on every load, so a reload reads the included files again too.
+    const std::filesystem::path includeDirectory = path.parent_path();
+    const IncludeReader readInclude = [&includeDirectory](const std::string& name,
+                                                          std::string& text) {
+        return readTextFile(includeDirectory / name, text);
+    };
+
+    ShaderSource source;
+    std::string includeError;
+    if (!expandIncludes(core::pathText(path.filename()), fileText, readInclude, source,
+                        includeError)) {
+        error = "Shader include failed: " + core::pathText(path) + "\n" + includeError;
         return 0;
     }
 
@@ -80,7 +100,7 @@ GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string
 
     // glShaderSource takes an array of C strings. Here the array has one element.
     // nullptr as the array of lengths means that every string ends with a zero.
-    const char* sourceText = source.c_str();
+    const char* sourceText = source.text.c_str();
     GL_CHECK(glShaderSource(shader, 1, &sourceText, nullptr));
     GL_CHECK(glCompileShader(shader));
 
@@ -89,7 +109,10 @@ GLuint compileShader(GLenum type, const std::filesystem::path& path, std::string
     GLint status = GL_FALSE;
     GL_CHECK(glGetShaderiv(shader, GL_COMPILE_STATUS, &status));
     if (status != GL_TRUE) {
-        error = "Shader compilation failed: " + core::pathText(path) + "\n" + shaderInfoLog(shader);
+        // The driver names a file by its number in source.files. nameSourceFiles writes
+        // the name instead, so an error inside an included file is reported against it.
+        error = "Shader compilation failed: " + core::pathText(path) + "\n" +
+                nameSourceFiles(shaderInfoLog(shader), source.files);
         GL_CHECK(glDeleteShader(shader));
         return 0;
     }
@@ -151,6 +174,33 @@ GLuint buildProgram(const std::filesystem::path& vertexPath,
     return program;
 }
 
+// Connects one uniform block of program to its binding point and checks its size.
+void applyBlockBinding(GLuint program, const UniformBlockBinding& binding) {
+    // The index is the number of the block inside this program, like the location of
+    // a plain uniform. GL_INVALID_INDEX means the program has no active block with this
+    // name: nothing to connect. The check is needed, because glUniformBlockBinding
+    // raises GL_INVALID_VALUE for that index.
+    GLuint blockIndex = GL_INVALID_INDEX;
+    GL_CHECK(blockIndex = glGetUniformBlockIndex(program, binding.blockName.c_str()));
+    if (blockIndex == GL_INVALID_INDEX) {
+        return;
+    }
+    GL_CHECK(glUniformBlockBinding(program, blockIndex, binding.bindingPoint));
+
+    // How many bytes the driver laid the block out in. With std140 the layout is fixed
+    // by the standard, so this must be the size of the C++ struct the buffer is filled
+    // from. A difference means the two were changed apart (for example the number of
+    // point lights), and every member after the first difference would be read wrong.
+    GLint driverSize = 0;
+    GL_CHECK(
+        glGetActiveUniformBlockiv(program, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &driverSize));
+    if (static_cast<std::size_t>(driverSize) != binding.sizeInBytes) {
+        core::logError("Uniform block " + binding.blockName + " is " + std::to_string(driverSize) +
+                       " bytes in the shader, but " + std::to_string(binding.sizeInBytes) +
+                       " bytes in the C++ code");
+    }
+}
+
 } // namespace
 
 // The paths arrive by value and are moved into the members, so a caller that passes
@@ -172,7 +222,8 @@ Shader::Shader(Shader&& other) noexcept
     : m_vertexPath(std::move(other.m_vertexPath)),
       m_fragmentPath(std::move(other.m_fragmentPath)),
       m_program(other.m_program),
-      m_lastError(std::move(other.m_lastError)) {
+      m_lastError(std::move(other.m_lastError)),
+      m_blockBindings(std::move(other.m_blockBindings)) {
     // Two objects must never hold the same id. With 0 the destructor of other
     // deletes nothing.
     other.m_program = 0;
@@ -193,6 +244,7 @@ Shader& Shader::operator=(Shader&& other) noexcept {
     m_fragmentPath = std::move(other.m_fragmentPath);
     m_program = other.m_program;
     m_lastError = std::move(other.m_lastError);
+    m_blockBindings = std::move(other.m_blockBindings);
     other.m_program = 0;
     return *this;
 }
@@ -206,6 +258,12 @@ bool Shader::reload() {
         m_lastError = error;
         core::logError(m_lastError);
         return false;
+    }
+
+    // A binding point of a uniform block is stored in the program object, and this one
+    // is new: every block is back at binding point 0. Set them again.
+    for (const UniformBlockBinding& binding : m_blockBindings) {
+        applyBlockBinding(program, binding);
     }
 
     // Only now replace the old program (glDeleteProgram(0) is ignored on the first load).
@@ -252,6 +310,35 @@ void Shader::setVec3(const char* name, const glm::vec3& value) const {
     // 1: one vector (more only for a uniform that is an array). value_ptr gives the
     // address of its 3 floats. OpenGL ignores location -1 without raising an error.
     GL_CHECK(glUniform3fv(location, 1, glm::value_ptr(value)));
+}
+
+void Shader::setMat3(const char* name, const glm::mat3& matrix) const {
+    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // The 3 x 3 version of the call in setMat4: one matrix, not transposed, 9 floats.
+    GL_CHECK(glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
+}
+
+void Shader::setFloat(const char* name, float value) const {
+    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // glUniform1f: one value of type float. OpenGL ignores location -1 without an error.
+    GL_CHECK(glUniform1f(location, value));
+}
+
+void Shader::bindUniformBlock(std::string blockName, GLuint bindingPoint, std::size_t sizeInBytes) {
+    m_blockBindings.push_back({.blockName = std::move(blockName),
+                               .bindingPoint = bindingPoint,
+                               .sizeInBytes = sizeInBytes});
+    // The program that exists now gets the binding at once. Without a program (a failed
+    // first load) the request waits for the next successful reload.
+    if (isValid()) {
+        applyBlockBinding(m_program, m_blockBindings.back());
+    }
 }
 
 } // namespace gfx

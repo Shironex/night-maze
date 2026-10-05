@@ -6,7 +6,10 @@ Dokument biblioteki dla kamienia milowego M0. Opisuje użycie Dear ImGui w
 [`src/debug/panels/ShadersPanel.cpp`](../../src/debug/panels/ShadersPanel.cpp) oraz
 konfigurację z [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake). API stylu i
 czcionek, którego używa motyw paneli ([`src/debug/Theme.cpp`](../../src/debug/Theme.cpp)),
-jest w sekcji 3.12.
+jest w sekcji 3.12. Widżety, które doszły w M4 razem z panelem Lights
+([`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp)): zwijane
+nagłówki, zakres z dwóch pól, suwak logarytmiczny i okno, które startuje zwinięte, są w
+sekcji 3.13.
 
 Architekturę modułu `debug` i instrukcję "jak dodać nowy panel" zawiera
 [`../modules/debug-ui.md`](../modules/debug-ui.md). Tutaj jest sama biblioteka.
@@ -57,9 +60,13 @@ Prawdziwy odpowiednik tej drugiej postaci jest w
 
 ```cpp
         if (ImGui::Button("Reload shaders")) {
-            shader.reload();
+            for (gfx::Shader* shader : shaders) {
+                shader->reload();
+            }
         }
 ```
+
+`shaders` to lista pięciu programów gry: jeden przycisk przeładowuje wszystkie.
 
 Skutki praktyczne:
 
@@ -337,20 +344,22 @@ void DebugUI::draw(const DebugContext& context) {
 
         // Each panel gets exactly the members it needs, so its signature still shows
         // what it reads and what it edits.
-        drawRendererPanel(context.time, context.window, context.clearColor);
+        drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode);
 
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 3;
+        constexpr int SHADER_COUNT = 5;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.shader, &context.texturedShader, &context.colorShader};
+            &context.shader, &context.texturedShader, &context.colorShader, &context.litShader,
+            &context.gouraudShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.player, context.camera);
         drawCollisionPanel(context.mazeWorld, context.player, context.drawColliders);
         drawAssetsPanel(context.assets, context.viewMode);
+        drawLightsPanel(context.lighting, context.mazeWorld);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
@@ -361,8 +370,8 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele pokazują i edytują (czternaście pól: od `time` i `window` po `viewMode` i
-`drawColliders`). Buduje ją co klatkę `main.cpp`.
+panele pokazują i edytują (siedemnaście pól: od `time` i `window` po `gouraudShader` i
+`lighting`). Buduje ją co klatkę `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
@@ -370,7 +379,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem sześć funkcji paneli. Każda woła `SetNextWindowPos`, `SetNextWindowSize`, `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`), `drawAssetsPanel` (`Combo`, `SliderFloat`, `Image`). Widżety nowych paneli: sekcja 3.11 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem siedem funkcji paneli. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`), `drawAssetsPanel` (`Combo`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`). Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -412,6 +421,9 @@ Ważne szczegóły:
               .assets = assets(),
               .viewMode = viewMode(),
               .drawColliders = drawColliders(),
+              .litShader = litShader(),
+              .gouraudShader = gouraudShader(),
+              .lighting = lighting(),
           });
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -424,8 +436,8 @@ Ważne szczegóły:
       }
   ```
 
-  Najpierw gra rysuje swoją klatkę (tło, labirynt, kostkę i na życzenie linie pudełek
-  kolizji: `glViewport`, `glEnable`, `glClearColor`, `glClear` i wywołania `glDrawElements` w
+  Najpierw gra rysuje swoją klatkę (tło, labirynt, przy włączonym oświetleniu znaczniki
+  świateł punktowych, kostkę i na życzenie linie pudełek kolizji: `glViewport`, `glEnable`, `glClearColor`, `glClear` i wywołania `glDrawElements` w
   [`NightMazeApp::onRender`](../../src/game/NightMazeApp.cpp)), a dopiero potem ImGui rysuje
   na tym, co już jest w buforze, więc panele są na wierzchu sceny. Zamiana buforów
   (`swapBuffers`) następuje później, w `Application::run`. Dwie ostatnie linie,
@@ -454,6 +466,7 @@ Panel "Renderer" z [`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cp
         ImGui::Text("Frame time: %.2f ms", time.frameTimeMs());
         ...
         ImGui::ColorEdit3("Clear color", clearColor.data());
+        ...
     }
     ImGui::End();
 ```
@@ -471,7 +484,8 @@ Panel "Renderer" z [`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cp
 
 Pozostałe widżety z panelu: `ImGui::Text` formatuje jak `printf`, `ImGui::TextWrapped` robi
 to samo z zawijaniem długich linii (nazwa karty graficznej), `ImGui::Separator` rysuje
-poziomą kreskę.
+poziomą kreskę. Drugie wielokropki w kodzie wyżej zastępują listę `Lighting`, czyli
+`ImGui::Combo` z trybem oświetlenia (sekcja 3.11).
 
 ### 3.6. Docking: `DockSpaceOverViewport` i `PassthruCentralNode`
 
@@ -517,11 +531,16 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   komputera, a nie część projektu.
 - Skasowanie pliku przywraca układ domyślny. To pierwsza rzecz do zrobienia, gdy panel
   "zniknął" albo wyjechał poza okno.
-- Układ domyślny naszych sześciu paneli ustawiają pary `SetNextWindowPos` i
-  `SetNextWindowSize` z warunkiem `ImGuiCond_FirstUseEver` (sekcja 3.11). Ten warunek działa
-  tylko dla okna, którego w `imgui.ini` jeszcze nie ma. Stary plik zatrzyma panele na starych
-  miejscach i w starych rozmiarach, dobranych dla starej czcionki. Tabela pozycji:
-  [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7.
+- Układ domyślny naszych siedmiu paneli ustawiają trójki `SetNextWindowPos`,
+  `SetNextWindowSize` i `SetNextWindowCollapsed` z warunkiem `ImGuiCond_FirstUseEver`
+  (sekcje 3.11 i 3.13). Ten warunek działa tylko dla okna, którego w `imgui.ini` jeszcze
+  nie ma. Stary plik zatrzyma panele na starych miejscach i w starych rozmiarach: plik
+  sprzed M4 ma panel Camera w lewej kolumnie, tam gdzie dziś staje panel Lights. Tabela
+  pozycji: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7.
+- Dla każdego okna plik trzyma pozycję, rozmiar, stan zwinięcia (linia `Collapsed=`) i
+  dane dokowania. Panel Camera, który startuje zwinięty, po rozwinięciu zostaje więc
+  rozwinięty przy następnych uruchomieniach. Stanu zwijanych nagłówków wewnątrz okna
+  (`CollapsingHeader`) w pliku nie ma.
 - W pliku nie ma wyglądu: kolory, odstępy i czcionkę ustawia kod przy każdym starcie.
 
 ### 3.8. `WantCaptureKeyboard` i `WantCaptureMouse`
@@ -655,7 +674,7 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok pozostałych sześciu funkcji `draw...Panel`, dopisanie plików
+wywołanie w `DebugUI::draw` obok pozostałych siedmiu funkcji `draw...Panel`, dopisanie plików
 do `add_executable` w `CMakeLists.txt`. Przed `Begin` wywołanie `placePanelOnFirstUse` z nową
 stałą dopisaną w `src/debug/PanelLayout.hpp`, żeby panel przy pierwszym uruchomieniu nie
 przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
@@ -667,15 +686,19 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
 Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
 
-**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie sześć paneli woła przed `Begin`
-jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Dwa wywołania
+**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie siedem paneli woła przed `Begin`
+jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Trzy wywołania
 ImGui są w niej ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
 
 ```cpp
     ImGui::SetNextWindowPos(panelCorner, ImGuiCond_FirstUseEver, placement.corner);
     ImGui::SetNextWindowSize({placement.size.x * layoutScale, placement.size.y * layoutScale},
                              ImGuiCond_FirstUseEver);
+    // A folded panel shows only its title bar. The size above is the one it opens to.
+    ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver);
 ```
+
+Trzecie wywołanie doszło w M4 i jest opisane w sekcji 3.13.
 
 Funkcje `SetNextWindow...` dotyczą okna, które otworzy najbliższe `Begin`. Drugi argument to
 warunek: `ImGuiCond_FirstUseEver` stosuje wartość tylko wtedy, gdy ImGui nie ma dla tego okna
@@ -696,7 +719,7 @@ adres zmiennej, pokazują jej wartość i zapisują nową, gdy użytkownik coś 
 | `SliderInt` | `ImGui::SliderInt("Width", &settings.width, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells", ImGuiSliderFlags_AlwaysClamp);` | `MazePanel.cpp` | suwak liczby całkowitej. Format jak w `printf`. `AlwaysClamp` przycina także wartość wpisaną z klawiatury (Ctrl i kliknięcie) |
 | `InputScalar` | `ImGui::InputScalar("Seed", ImGuiDataType_U32, &settings.seed, &SEED_STEP);` | `MazePanel.cpp` | pole liczbowe dowolnego typu. Typ nazywa drugi argument i **musi** zgadzać się ze zmienną (tu `std::uint32_t`), bo funkcja dostaje `void*` i kompilator tego nie sprawdzi. Czwarty argument to wskaźnik na krok przycisków plus i minus |
 | `Checkbox` | `ImGui::Checkbox("Draw collision boxes", &drawColliders);` | `CollisionPanel.cpp` | pole wyboru na zmiennej `bool` |
-| `Combo` | `ImGui::Combo("View mode", &viewModeIndex, VIEW_MODE_ITEMS)` | `AssetsPanel.cpp` | lista rozwijana. Pracuje na **numerze** wybranej pozycji (`int`), nie na wyliczeniu, więc kod rzutuje `enum class` na `int` i z powrotem |
+| `Combo` | `ImGui::Combo("View mode", &viewModeIndex, VIEW_MODE_ITEMS)` | `AssetsPanel.cpp`, od M4 także `RendererPanel.cpp` (`ImGui::Combo("Lighting", &lightingModeIndex, LIGHTING_MODE_ITEMS)`) | lista rozwijana. Pracuje na **numerze** wybranej pozycji (`int`), nie na wyliczeniu, więc kod rzutuje `enum class` na `int` i z powrotem. Zwraca `true` w klatce, w której użytkownik wybrał inną pozycję |
 | `SliderFloat` w bloku `BeginDisabled` | `ImGui::BeginDisabled(!anisotropySupported);` ... `ImGui::EndDisabled();` | `AssetsPanel.cpp` | wszystko między tą parą jest wyszarzone i nie reaguje, gdy argument jest prawdą. `EndDisabled` woła się **zawsze**, tak jak `End` |
 
 Lista pozycji dla `Combo` to jeden napis, w którym każda pozycja kończy się znakiem zerowym:
@@ -711,13 +734,34 @@ zera z rzędu: ostatnie jawne `\0` i zero, które kompilator dopisuje na końcu 
 Kolejność pozycji jest taka jak kolejność wartości wyliczeń `game::ViewMode` i
 `gfx::TextureFilter`, bo numer pozycji staje się wartością wyliczenia.
 
+Tak samo zbudowana jest trzecia lista projektu, `Lighting` w panelu Renderer
+([`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp)):
+
+```cpp
+constexpr const char* LIGHTING_MODE_ITEMS = "Unlit\0Gouraud\0Phong\0Blinn-Phong\0";
+```
+
+```cpp
+        int lightingModeIndex = static_cast<int>(lightingMode);
+        if (ImGui::Combo("Lighting", &lightingModeIndex, LIGHTING_MODE_ITEMS)) {
+            lightingMode = static_cast<game::LightingMode>(lightingModeIndex);
+        }
+```
+
+Deklaracja tej postaci `Combo` w `imgui.h` nazywa parametr wprost
+`items_separated_by_zeros` i mówi w komentarzu to samo: pozycje oddzielone znakiem `\0`,
+lista zakończona `\0\0`. Biblioteka ma jeszcze dwie postaci tej funkcji (z tablicą napisów
+i z funkcją podającą napis o danym numerze), których projekt nie używa. Kolejność pozycji
+odpowiada wyliczeniu `game::LightingMode` (`Unlit = 0`, `Gouraud`, `Phong`, `BlinnPhong`).
+Opis linia po linii: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.3.
+
 **Teksty i układ.**
 
 | Funkcja | Gdzie | Co robi |
 |---|---|---|
 | `SeparatorText("Models")` | `AssetsPanel.cpp` | pozioma kreska z podpisem: nagłówek części panelu |
-| `TextUnformatted(text)` | `AssetsPanel.cpp`, `CollisionPanel.cpp`, `ShadersPanel.cpp` | tekst bez formatowania. Bezpieczny dla napisów, które mogą zawierać znak `%` (nazwy plików, komunikaty sterownika) |
-| `SetItemTooltip("%s", fullPath.c_str())` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | podpowiedź dla **poprzedniego** widżetu, pokazywana po najechaniu kursorem |
+| `TextUnformatted(text)` | `AssetsPanel.cpp`, `CollisionPanel.cpp` | tekst bez formatowania. Bezpieczny dla napisów, które mogą zawierać znak `%` (nazwy plików). Panel Shaders osiąga to samo inaczej: tekst sterownika podaje jako argument formatu, `ImGui::TextWrapped("%s", shader.lastError().c_str())`, nigdy jako sam format |
+| `SetItemTooltip("%s", fullPath.c_str())` | `AssetsPanel.cpp`, a w `ShadersPanel.cpp` z dwiema ścieżkami: `ImGui::SetItemTooltip("%s\n%s", vertexFullPath.c_str(), fragmentFullPath.c_str())` | podpowiedź dla **poprzedniego** widżetu, pokazywana po najechaniu kursorem |
 | `SameLine()` | `MazePanel.cpp` | następny widżet staje w tej samej linii (przyciski `Regenerate` i `Random seed` obok siebie) |
 | `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | zmiana koloru tekstu dla widżetów między tą parą. Każde `Push` musi mieć swoje `Pop`. Stała jest jedna, w `Theme.hpp` (sekcja 3.12) |
 
@@ -780,7 +824,8 @@ każdego punktu dodaje ten początek. Jak punkt świata zamienia się na punkt p
 
 Stan sprawdzenia: wygląd planu, podglądów i list jest sprawdzony na zrzutach ekranu z
 Windowsa (2026-10-05). Samych kontrolek (kliknięcia w `Combo`, suwaki, pola wyboru, przyciski)
-nikt jeszcze ręcznie nie sprawdzał. Na macOS panele nie były uruchamiane.
+nikt jeszcze ręcznie nie sprawdzał, także listy `Lighting` z M4. Na macOS panele nie były
+uruchamiane.
 
 ### 3.12. Styl i czcionki w wersji 1.92
 
@@ -844,6 +889,148 @@ teksturę czcionki w trakcie działania.
 Kolejność ma znaczenie: czcionki dodaje się po `ImGui::CreateContext()` i przed pierwszym
 `ImGui::NewFrame()`. Gdy atlas jest pusty, ImGui samo dodaje czcionkę wbudowaną.
 
+### 3.13. Widżety panelu Lights i okno, które startuje zwinięte
+
+Kod: [`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp) i
+[`src/debug/PanelLayout.cpp`](../../src/debug/PanelLayout.cpp). Co każda kontrolka panelu
+zmienia w oświetleniu, opisuje
+[`../modules/scene/lights.md`](../modules/scene/lights.md), sekcja 6. Tutaj jest samo API.
+Deklaracje i komentarze przytaczam z `build/debug/_deps/imgui-src/imgui.h` w naszej wersji.
+
+**`SetNextWindowCollapsed`: okno zwinięte do paska tytułu.**
+
+```cpp
+    // A folded panel shows only its title bar. The size above is the one it opens to.
+    ImGui::SetNextWindowCollapsed(placement.collapsed, ImGuiCond_FirstUseEver);
+```
+
+| Element | Znaczenie |
+|---|---|
+| deklaracja | `void SetNextWindowCollapsed(bool collapsed, ImGuiCond cond = 0);` z komentarzem "set next window collapsed state. call before Begin()" |
+| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` ma tylko panel Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`) |
+| `ImGuiCond_FirstUseEver` | ten sam warunek co przy pozycji i rozmiarze: tylko gdy okno nie ma wpisu w `imgui.ini`. Bez warunku panel zwijałby się z powrotem w każdej klatce i nie dałoby się go otworzyć |
+
+Zwinięte okno to zwykły stan okna ImGui, nie osobny widżet. Użytkownik przełącza go
+strzałką po lewej stronie paska tytułu. Dla zwiniętego okna `Begin` zwraca `false`, więc
+kod panelu pomija zawartość, a `End` woła jak zawsze (sekcja 3.5). Stan trafia do
+`imgui.ini` jako linia `Collapsed=0` albo `Collapsed=1` we wpisie okna (sekcja 3.7).
+Rozmiar ustawiony przez `SetNextWindowSize` zostaje zapamiętany i jest rozmiarem po
+rozwinięciu. Wysokość samego paska to wysokość czcionki plus dwa razy `FramePadding.y`
+(w `imgui.cpp`: `TitleBarHeight = g.FontSize + g.Style.FramePadding.y * 2.0f`), u nas przy
+skali 100% 16 + 2 * 3 = 22 jednostki.
+
+**`CollapsingHeader`: zwijana grupa wewnątrz okna.** Panel Lights dzieli kontrolki na cztery
+grupy. Początki dwóch z nich:
+
+```cpp
+    if (!ImGui::CollapsingHeader("Moon (directional)")) {
+        return;
+    }
+```
+
+```cpp
+    // DefaultOpen: the group is open the first time the program runs.
+    if (!ImGui::CollapsingHeader("Flashlight (spot)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+```
+
+| Element | Znaczenie |
+|---|---|
+| deklaracja | `bool CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0);` z komentarzem "if returning 'true' the header is open. doesn't indent nor push on ID stack. user doesn't have to call TreePop()" |
+| wartość zwracana | `true`, gdy grupa jest rozwinięta. Kod rysuje wtedy jej widżety. Każda grupa jest u nas osobną funkcją (`drawMoon`, `drawFlashlight`, `drawPointLights`, `drawHighlight`), więc zamiast `if (...) { ... }` stoi odwrócony warunek i wczesne `return` |
+| brak pary `End` | inaczej niż `Begin` i `BeginDisabled`, nagłówek nie ma wywołania zamykającego. Nie ma więc czego zapomnieć przy wczesnym `return` |
+| `ImGuiTreeNodeFlags_DefaultOpen` | grupa jest rozwinięta, dopóki użytkownik jej nie zwinie (w `imgui.h`: "Default node to be open"). Bez flagi (wartość domyślna `0`) grupa startuje zwinięta: tak jest z `Moon (directional)` |
+| kolory | pasek nagłówka bierze kolory `ImGuiCol_Header`, `ImGuiCol_HeaderHovered` i `ImGuiCol_HeaderActive`, te same co pozycje rozwiniętej listy `Combo`. W motywie projektu to `SLATE_LIGHT`, `EMBER` i `EMBER_BRIGHT` ([`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.2) |
+
+Dwie rzeczy wynikają z komentarza przy deklaracji. Po pierwsze, nagłówek nie wcina
+zawartości: widżety grupy stoją w tej samej kolumnie co nagłówek. Po drugie, nagłówek
+**nie dokłada niczego do stosu identyfikatorów** (ID stack). Identyfikator widżetu powstaje
+z jego etykiety i z tego, co jest na stosie, więc dwa widżety o tej samej etykiecie w dwóch
+różnych grupach jednego okna miałyby ten sam identyfikator (pułapka 3). Dlatego etykiety w
+panelu Lights nie powtarzają się między grupami: `Moon colour`, `Beam colour` i
+`Point colour`, a nie trzy razy `Colour`, tak samo `Moon intensity`, `Beam intensity` i
+`Point intensity`.
+
+Stan rozwinięcia nagłówka ImGui trzyma w pamięci okna do końca działania programu. Do
+`imgui.ini` nie trafia (we wpisie okna są tylko pozycja, rozmiar, zwinięcie całego okna i
+dokowanie), więc po każdym starcie obowiązuje to, co mówi flaga w kodzie.
+
+**`ColorEdit3` na wektorze GLM.**
+
+```cpp
+    // ColorEdit3 reads and writes three floats through the pointer. value_ptr gives the
+    // address of the three floats of a glm::vec3.
+    ImGui::ColorEdit3("Moon colour", glm::value_ptr(lighting.moonColor));
+```
+
+To ten sam widżet co `Clear color` w panelu Renderer (sekcja 1). `ColorEdit3` chce wskaźnika
+na trzy kolejne liczby `float`. Tam kolor jest tablicą `std::array<float, 3>` i wskaźnik daje
+`.data()`. Tutaj kolor jest wektorem `glm::vec3`, a wskaźnik na jego pierwszą składową daje
+`glm::value_ptr` z nagłówka `<glm/gtc/type_ptr.hpp>` ([`glm.md`](glm.md), sekcja 3.9).
+Składowe x, y, z wektora ImGui pokazuje jako czerwony, zielony i niebieski. Panel woła ten
+widżet cztery razy: `Ambient`, `Moon colour`, `Beam colour` i `Point colour`.
+
+**`DragFloatRange2`: dwa pola, jeden zakres.**
+
+```cpp
+    ImGui::DragFloatRange2("Cone", &lighting.flashlightInnerDegrees,
+                           &lighting.flashlightOuterDegrees, CONE_DRAG_SPEED, MIN_CONE_DEGREES,
+                           MAX_CONE_DEGREES, "inner %.1f deg", "outer %.1f deg",
+                           ImGuiSliderFlags_AlwaysClamp);
+```
+
+Deklaracja: `bool DragFloatRange2(const char* label, float* v_current_min, float* v_current_max, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const char* format_max = NULL, ImGuiSliderFlags flags = 0);`
+
+| Argument | Wartość w projekcie | Znaczenie |
+|---|---|---|
+| `label` | `"Cone"` | etykieta po prawej stronie obu pól |
+| `v_current_min` | `&lighting.flashlightInnerDegrees` | adres dolnej wartości zakresu: połówkowy kąt wewnętrznego stożka latarki |
+| `v_current_max` | `&lighting.flashlightOuterDegrees` | adres górnej wartości: połówkowy kąt zewnętrznego stożka |
+| `v_speed` | `CONE_DRAG_SPEED` (`0.1F`) | o ile zmienia się wartość na jeden piksel przeciągania: 0,1 stopnia |
+| `v_min`, `v_max` | `MIN_CONE_DEGREES` (`1.0F`), `MAX_CONE_DEGREES` (`60.0F`) | granice całego zakresu |
+| `format`, `format_max` | `"inner %.1f deg"`, `"outer %.1f deg"` | tekst w pierwszym i w drugim polu. Format jak w `printf`, więc słowo przed `%` jest zwykłym tekstem i podpisuje pole |
+| `flags` | `ImGuiSliderFlags_AlwaysClamp` | wartość wpisana z klawiatury też jest przycinana do granic |
+
+To nie suwak, tylko dwa pola przeciągane (drag): wartość zmienia się przez przeciąganie
+myszą w lewo i w prawo po polu, a dwuklik (albo Ctrl i kliknięcie) pozwala wpisać liczbę.
+W źródle (`imgui_widgets.cpp`) widżet to dwa wywołania `DragScalar` w jednej linii, z
+granicami zależnymi od siebie: górną granicą pierwszego pola jest mniejsza z liczb `v_max`
+i bieżącej drugiej wartości, a dolną granicą drugiego pola większa z liczb `v_min` i
+bieżącej pierwszej wartości. Skutek: pierwsza wartość nigdy nie przekroczy drugiej, czyli
+wewnętrzny stożek nie zrobi się szerszy od zewnętrznego. Obie mogą być równe.
+
+**`ImGuiSliderFlags_Logarithmic`: suwak z gęstszym początkiem.**
+
+```cpp
+    // Logarithmic: half of the slider covers the small exponents, where one step changes
+    // the size of the highlight the most.
+    ImGui::SliderFloat("Shininess", &lighting.shininess, MIN_SHININESS, MAX_SHININESS, "%.0f",
+                       ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
+```
+
+Zwykły suwak dzieli zakres liniowo: środek suwaka od 1 do 256 to 128,5. Z flagą
+`Logarithmic` równym odcinkom suwaka odpowiadają równe **ilorazy** wartości, więc środek
+wypada w okolicy pierwiastka z iloczynu końców, czyli 16 (`sqrt(1 * 256)`). Małe wykładniki,
+przy których rozmiar połysku zmienia się najszybciej, dostają połowę długości suwaka. Dwie
+flagi łączy bitowe "lub" (`|`), bo każda jest jednym bitem maski. Tę samą parę flag ma suwak
+`Near plane` w panelu Camera. Komentarz przy fladze w `imgui.h` radzi rozważyć jeszcze
+`ImGuiSliderFlags_NoRoundToFormat`, gdy format ma mało cyfr: u nas format to `"%.0f"`, a tej
+flagi nie ma, więc wartość wykładnika jest zaokrąglana do liczby całkowitej. Dokładnego
+położenia wartości na suwaku nie mierzyłem: liczba 16 to rachunek z definicji skali
+logarytmicznej.
+
+**Pozostałe widżety panelu** są znane z wcześniejszych paneli: `SliderFloat` z formatem i
+flagą `ImGuiSliderFlags_AlwaysClamp` (dziewięć razy, na przykład `"%.0f deg"` dla kątów
+księżyca i `"%.1f m"` dla zasięgów), `Checkbox("Flashlight on (key F)", &lighting.flashlightOn)`
+na zmiennej `bool` i `Text` z liczbą świateł punktowych.
+
+Stan sprawdzenia: skutki wartości domyślnych oświetlenia (widok startowy, cztery tryby
+oświetlenia, scena z wyłączoną latarką) są obejrzane na zrzutach ekranu z Windowsa
+(2026-10-05). Żadnego z tych widżetów nikt jeszcze nie klikał ani nie przeciągał,
+tak samo jak strzałki rozwijającej panel Camera. Opis zachowania pochodzi z kodu projektu i
+ze źródeł biblioteki. Na macOS kod M4 nie był budowany ani uruchamiany.
+
 ## 4. Pułapki
 
 1. **`End()` wewnątrz `if (Begin(...))`.** Po zwinięciu okna `End` nie zostanie wywołane i
@@ -883,7 +1070,19 @@ Kolejność ma znaczenie: czcionki dodaje się po `ImGui::CreateContext()` i prz
     przechwytuje kursor, musi na ten czas ustawić `ImGuiConfigFlags_NoMouse`
     (`DebugUI::setMouseEnabled(false)`, sekcja 3.8). Suwak ImGui ma też drugą drogę wejścia,
     o której łatwo zapomnieć: Ctrl i kliknięcie pozwala wpisać liczbę spoza zakresu, chyba że
-    suwak ma flagę `ImGuiSliderFlags_AlwaysClamp` (tak jak wszystkie suwaki panelu Camera).
+    suwak ma flagę `ImGuiSliderFlags_AlwaysClamp` (tak jak wszystkie suwaki paneli Camera
+    i Lights).
+16. **Ta sama etykieta w dwóch grupach `CollapsingHeader`.** Nagłówek nie dokłada niczego do
+    stosu identyfikatorów, więc `Colour` w grupie księżyca i `Colour` w grupie latarki to
+    dla ImGui ten sam widżet (pułapka 3). Stąd pełne etykiety w panelu Lights (sekcja 3.13).
+17. **`SetNextWindowCollapsed` bez warunku.** Wywołanie z domyślnym `cond = 0` działa w
+    każdej klatce: okno byłoby zwijane od nowa i nie dałoby się go otworzyć. Projekt podaje
+    `ImGuiCond_FirstUseEver`. Druga strona tego warunku: zmiana `.collapsed` w kodzie nie
+    ma skutku, dopóki w `imgui.ini` leży wpis okna.
+18. **Lista `Combo` w innej kolejności niż wyliczenie.** Numer pozycji jest rzutowany na
+    `enum class`, więc napis z pozycjami i wyliczenie muszą mieć tę samą kolejność.
+    Kompilator tego nie sprawdza ([`../modules/debug-ui.md`](../modules/debug-ui.md),
+    pułapka 30).
 14. **Czcionka z pamięci zwolniona dwa razy.** `AddFontFromMemoryTTF` domyślnie przejmuje
     wskaźnik. Dane z `std::vector` wymagają `FontDataOwnedByAtlas = false` i muszą żyć tak
     długo jak kontekst ImGui (sekcja 3.12).
@@ -948,6 +1147,30 @@ Kolejność ma znaczenie: czcionki dodaje się po `ImGui::CreateContext()` i prz
     Od wersji 1.92 backend z flagą `ImGuiBackendFlags_RendererHasTextures` rysuje znak do
     tekstury czcionki przy pierwszym użyciu, więc zakresy są zbędne. Wystarczy, że plik
     czcionki ma te znaki.
+
+13. **Jak sprawić, żeby okno ImGui startowało zwinięte, i gdzie ten stan jest pamiętany?**
+    Przed `Begin` zawołać `ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver)`.
+    U nas robi to `placePanelOnFirstUse` dla panelu Camera. Warunek sprawia, że wartość
+    działa tylko przy braku wpisu okna w `imgui.ini`, a potem stan zapisuje ImGui w linii
+    `Collapsed=`. Dla zwiniętego okna `Begin` zwraca `false`.
+
+14. **Czym `CollapsingHeader` różni się od zwiniętego okna i co robi
+    `ImGuiTreeNodeFlags_DefaultOpen`?**
+    To zwijana grupa widżetów wewnątrz okna: zwraca `true`, gdy jest rozwinięta, nie ma
+    wywołania zamykającego, nie wcina zawartości i nie dokłada niczego do stosu
+    identyfikatorów. `DefaultOpen` sprawia, że grupa startuje rozwinięta. Stan grupy nie
+    jest zapisywany w `imgui.ini`, więc flaga decyduje przy każdym uruchomieniu.
+
+15. **Co gwarantuje `DragFloatRange2` w kontrolce `Cone` panelu Lights?**
+    Że pierwsza wartość (kąt wewnętrznego stożka) nie przekroczy drugiej (kąta
+    zewnętrznego): granice obu pól zależą od bieżącej wartości drugiego pola. Obie są też
+    trzymane między `MIN_CONE_DEGREES` a `MAX_CONE_DEGREES`, także przy wpisywaniu z
+    klawiatury, dzięki `ImGuiSliderFlags_AlwaysClamp`.
+
+16. **Jak `ColorEdit3` edytuje `glm::vec3`?**
+    Dostaje `glm::value_ptr(wektor)`, czyli wskaźnik na pierwszą z trzech liczb `float`
+    wektora, i przez niego czyta i zapisuje czerwony, zielony i niebieski. To ten sam
+    mechanizm co `clearColor.data()` dla tablicy.
 
 ## 6. Oficjalna dokumentacja
 

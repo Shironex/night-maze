@@ -46,8 +46,12 @@ add_library(engine STATIC
     src/gfx/Mesh.hpp
     src/gfx/Shader.cpp
     src/gfx/Shader.hpp
+    src/gfx/ShaderSource.cpp
+    src/gfx/ShaderSource.hpp
     src/gfx/Texture2D.cpp
     src/gfx/Texture2D.hpp
+    src/gfx/UniformBuffer.cpp
+    src/gfx/UniformBuffer.hpp
     src/gfx/Vertex.hpp
     src/gfx/VertexArray.cpp
     src/gfx/VertexArray.hpp
@@ -55,6 +59,10 @@ add_library(engine STATIC
     src/scene/Camera.hpp
     src/scene/Collider.cpp
     src/scene/Collider.hpp
+    src/scene/Light.cpp
+    src/scene/Light.hpp
+    src/scene/LightBlock.cpp
+    src/scene/LightBlock.hpp
     src/scene/Transform.cpp
     src/scene/Transform.hpp
 )
@@ -74,11 +82,14 @@ target_compile_definitions(engine PUBLIC
 night_maze_enable_warnings(engine)
 
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
-# The maze, its generator, its layout in the world and the player are plain data and
-# math. They live in a library of their own, and not in the night_maze executable, so that
+# The maze, its generator, its layout in the world, the player and the settings of the
+# lighting are plain data and math. They live in a library of their own, and not in the
+# night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
 add_library(game_logic STATIC
+    src/game/Lighting.cpp
+    src/game/Lighting.hpp
     src/game/Maze.cpp
     src/game/Maze.hpp
     src/game/MazeGenerator.cpp
@@ -97,13 +108,15 @@ target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
-# NightMazeApp and the two classes that draw (MazeRenderer, ColliderLines) stay in the
-# executable: they need a window and an OpenGL context, so they are not something a test
-# can run.
+# NightMazeApp and the three classes that draw (MazeRenderer, ColliderLines, LightRig) stay
+# in the executable: they need a window and an OpenGL context, so they are not something
+# a test can run.
 add_executable(night_maze
     src/main.cpp
     src/game/ColliderLines.cpp
     src/game/ColliderLines.hpp
+    src/game/LightRig.cpp
+    src/game/LightRig.hpp
     src/game/MazeRenderer.cpp
     src/game/MazeRenderer.hpp
     src/game/NightMazeApp.cpp
@@ -122,6 +135,8 @@ add_executable(night_maze
     src/debug/panels/CameraPanel.hpp
     src/debug/panels/CollisionPanel.cpp
     src/debug/panels/CollisionPanel.hpp
+    src/debug/panels/LightsPanel.cpp
+    src/debug/panels/LightsPanel.hpp
     src/debug/panels/MazePanel.cpp
     src/debug/panels/MazePanel.hpp
     src/debug/panels/RendererPanel.cpp
@@ -141,12 +156,16 @@ add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
     tests/ImageLoaderTests.cpp
+    tests/LightTests.cpp
+    tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
     tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
+    tests/ShaderSourceTests.cpp
+    tests/TransformTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)

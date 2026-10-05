@@ -154,7 +154,7 @@ Kąty kamery (yaw i pitch) nie są interpolowane. Mysz zmienia je raz na klatkę
 
 ```mermaid
 flowchart TD
-    A["onRender, raz na klatkę:<br>klawisz N przełącza noclip,<br>mysz zmienia yaw i pitch"] --> B
+    A["onRender, raz na klatkę:<br>klawisz N przełącza noclip,<br>klawisz F przełącza latarkę,<br>mysz zmienia yaw i pitch"] --> B
     B["onUpdate, stały krok 1/120 s:<br>zapamiętaj poprzednią pozycję"] --> C
     C["klawisze do PlayerInput<br>(tylko przy przechwyconym kursorze)"] --> D
     D{"noclip?"}
@@ -169,7 +169,7 @@ flowchart TD
 
 Nie dotyczy: `Player.hpp` i `Player.cpp` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`. Gracz nie jest rysowany (kamera jest w jego oczach, więc własnego ciała nie widać).
 
-Związek z renderowaniem jest pośredni: z interpolowanej pozycji stóp powstaje punkt oka, a z niego macierz widoku (`m_camera.viewMatrix(eye)`), którą dostają wszystkie trzy programy shaderów w klatce. Jedyne, co OpenGL rysuje "o graczu", to zielone linie jego pudełka kolizji, gdy włączone jest rysowanie pudełek ([`../scene/collision.md`](../scene/collision.md), sekcje 5 i 6).
+Związek z renderowaniem jest pośredni: z interpolowanej pozycji stóp powstaje punkt oka, a z niego macierz widoku (`m_camera.viewMatrix(eye)`), którą dostają wszystkie programy shaderów rysujące w tej klatce (najwyżej trzy z pięciu), a od M4 także latarka jako swoją pozycję. Jedyne, co OpenGL rysuje "o graczu", to zielone linie jego pudełka kolizji, gdy włączone jest rysowanie pudełek ([`../scene/collision.md`](../scene/collision.md), sekcje 5 i 6).
 
 ## 4. Shadery
 
@@ -493,6 +493,8 @@ Powód jest w komentarzu: noclip można wyłączyć polem wyboru w panelu, czyli
 
 Warunek nie pyta o przechwycenie kursora, więc N działa także przy wolnym kursorze. Nie działa tylko wtedy, gdy klawiaturę ma ImGui (edytowane pole tekstowe albo aktywny widżet): `core::Input` odpowiada wtedy fałszem na każde pytanie o klawisz ([`../core/input.md`](../core/input.md), sekcja 5).
 
+**Klawisz F (od M4).** Tuż pod tym blokiem stoi w `onRender` bliźniaczy blok dla `FLASHLIGHT_KEY` (`GLFW_KEY_F`), który przełącza `m_lighting.flashlightOn`, czyli latarkę. Obowiązują te same trzy reguły: `wasKeyPressed` w `onRender`, działanie przy wolnym kursorze, brak działania, gdy klawiaturę ma ImGui. Kod i uzasadnienie: [`flashlight.md`](flashlight.md), sekcja 5.6. Z interpolowanego oka, które `onRender` liczy dla macierzy widoku, powstaje też pozycja latarki: to drugi, obok macierzy widoku, użytkownik tej samej zmiennej `eye`.
+
 ```cpp
     const glm::vec3 feet =
         glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
@@ -580,7 +582,7 @@ Liczba 1,55 w dwóch wierszach to `CELL_SIZE - WALL_COLLISION_THICKNESS / 2 - BO
 
 Test wędrówki losuje wejście funkcją `game::randomBelow` z generatora `std::mt19937`, czyli tą samą, której używa generator labiryntu ([`maze-generator.md`](maze-generator.md), sekcja 2). Dzięki temu wędrówka jest identyczna przy każdym uruchomieniu i na każdym systemie.
 
-Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie 13 przypadków przechodzi w Debug i Release, w ramach 87 przypadków i 60858 asercji całego programu testowego. Na macOS testy nie były jeszcze budowane ani uruchamiane.
+Wyniki na Windowsie (MSVC 19.44, 2026-10-05): wszystkie 13 przypadków przechodzi w Debug i Release, w ramach 149 przypadków i 61240 asercji całego programu testowego. Na macOS testy nie były jeszcze budowane ani uruchamiane.
 
 **Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp`: przypisania klawiszy do pól, reguły przechwyconego kursora, klawisza N, interpolacji i linii z `m_previousPlayerPosition.y`. Ten kod wymaga okna. Program uruchomiony na Windowsie startuje bez linii `[error]` i pokazuje widok ze środka labiryntu (sprawdzone na zrzucie ekranu), a widok z góry w trybie noclip zgadza się z planem w panelu Maze (stan osiągnięty tymczasowym kodem, który został usunięty, a nie klawiszem N). Chodzenie i ślizganie prawdziwymi klawiszami są otwartą pozycją listy kontrolnej.
 
@@ -599,7 +601,7 @@ Gracz nie ma własnego panelu. Jego pola pokazują i zmieniają dwa panele:
 | Collision | `Draw collision boxes` | rysuje pudełko gracza zielonymi liniami (i pudełka labiryntu żółtymi) |
 | Maze | plan z góry | bursztynowa kropka w miejscu gracza i kreska w stronę, w którą patrzy kamera |
 
-Kod panelu Camera linia po linii jest w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6. Panel Collision opisuje [`../scene/collision.md`](../scene/collision.md), sekcja 6, a plan w panelu Maze [`maze-generator.md`](maze-generator.md), sekcja 6.
+Kod panelu Camera linia po linii jest w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6. Panel Collision opisuje [`../scene/collision.md`](../scene/collision.md), sekcja 6, a plan w panelu Maze [`maze-generator.md`](maze-generator.md), sekcja 6. Od M4 panel Camera startuje **zwinięty do paska tytułu** u góry okna, obok lewej kolumny (miejsce w lewej kolumnie zajął panel Lights): żeby zobaczyć jego kontrolki, trzeba kliknąć strzałkę na pasku. Rozwijania nikt jeszcze nie sprawdził ręcznie.
 
 Zmiany w panelu Camera względem M1: pole `Player feet` zastąpiło pole pozycji kamery (kamera nie ma już własnej pozycji do edycji), doszła linia `Eye` i linia `Mode`, a jeden suwak prędkości został zastąpiony trzema.
 
@@ -607,7 +609,7 @@ Zmiany w panelu Camera względem M1: pole `Player feet` zastąpiło pole pozycji
 
 | Krok | Co robię | Co powinno być widać | Co to pokazuje |
 |---|---|---|---|
-| 1 | uruchamiam program, patrzę na panel Camera | `Mode: walking`, `Player feet` 1, 0, 1, `Eye` 1, 1,70, 1 | oko jest 1,7 m nad stopami |
+| 1 | uruchamiam program, rozwijam panel Camera (od M4 startuje zwinięty do paska tytułu: klikam strzałkę na pasku) i patrzę na niego | `Mode: walking`, `Player feet` 1, 0, 1, `Eye` 1, 1,70, 1 | oko jest 1,7 m nad stopami |
 | 2 | klikam w scenę, trzymam W | idę korytarzem, `Player feet` zmienia się w x albo z, y zostaje 0 | chodzenie jest poziome |
 | 3 | patrzę w podłogę i dalej trzymam W | prędkość się nie zmienia | pitch nie wpływa na chód (sekcja 2.2) |
 | 4 | idę ukosem w ścianę | sunę wzdłuż ściany, mijając słupki | ślizganie oś po osi, równe lica pudełek ścian i słupków |

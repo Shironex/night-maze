@@ -15,6 +15,7 @@ class Window;
 
 namespace game {
 enum class ViewMode;
+struct LightingSettings;
 struct MazeSettings;
 struct MazeWorld;
 struct Player;
@@ -68,6 +69,12 @@ struct DebugContext {
     game::ViewMode& viewMode;
     /// Whether the collision boxes are drawn as lines, editable.
     bool& drawColliders;
+    /// Shader program of the lit maze, lighting per fragment, editable: reloaded like shader.
+    gfx::Shader& litShader;
+    /// Shader program of the lit maze, lighting per vertex, editable: reloaded like shader.
+    gfx::Shader& gouraudShader;
+    /// The lighting mode and the settings of every light, editable.
+    game::LightingSettings& lighting;
 };
 
 } // namespace debug

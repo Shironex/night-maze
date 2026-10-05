@@ -2,6 +2,7 @@
 // See docs/modules/game/maze-rendering.md
 #include "game/MazeWorld.hpp"
 
+#include "game/Lighting.hpp"
 #include "game/MazeGenerator.hpp"
 #include "scene/Transform.hpp"
 
@@ -64,6 +65,8 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
     world.walls = wallSegments(maze);
     world.pillars = pillarPositions(maze);
     world.colliders = mazeColliders(maze);
+    // The start cell gets no light of its own: the player stands there with a flashlight.
+    world.pointLightPositions = deadEndLightPositions(maze, START_COLUMN, START_ROW);
 
     // One floor tile per cell. The tile model is 2 x 2 m with its origin in the middle,
     // exactly one cell.

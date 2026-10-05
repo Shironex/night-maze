@@ -38,9 +38,12 @@ public:
     /// logged by the cache and simply not drawn.
     explicit MazeRenderer(assets::AssetCache& assets);
 
-    /// Draws the whole maze. shader is the textured program: it must be in use, with
-    /// uView, uProjection and uViewMode already set. The function sets uTexture, and
-    /// uModel and uTint for every object.
+    /// Draws the whole maze. shader is the textured program or one of the two lit
+    /// programs (lit, gouraud): it must be in use, with uView, uProjection and its own
+    /// uniforms (uViewMode, or the ones of the lighting) already set. The function sets
+    /// uTexture, uTint for every part, and uModel and uNormalMatrix for every object.
+    /// The textured program has no uNormalMatrix: a uniform a program does not have is
+    /// ignored.
     void draw(const gfx::Shader& shader, const MazeWorld& world) const;
 
 private:
