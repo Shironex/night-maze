@@ -1,9 +1,9 @@
-# Struktura projektu (stan M1: kod kompletny na macOS)
+# Struktura projektu (stan M1: kod kompletny, zbudowany na macOS i Windowsie)
 
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny po
-ostatnim kroku kamienia milowego M1 (kod kompletny na macOS, na Windowsie jeszcze
-niesprawdzony, bez tagu): po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
+ostatnim kroku kamienia milowego M1 (kod kompletny, zbudowany i uruchomiony na macOS i na
+Windowsie, ręczne sprawdzenie sterowania na Windowsie jeszcze otwarte, bez tagu): po M0 doszły mysz, ścieżki do assetów, GLM i warstwa `gfx/` z
 klasami `Shader`, `Buffer` i `VertexArray`, katalog `assets/` z pierwszymi shaderami,
 warstwa `scene/` ze strukturami `Transform` i `Camera`, kostka rysowana z macierzami
 modelu, widoku i rzutowania, latająca kamera sterowana myszą i klawiaturą oraz panel
@@ -436,10 +436,11 @@ if(WIN32)
         COMMENT "Copying assets next to the executable"
         VERBATIM
     )
-    # copy_assets is built after night_maze, so the directory of the executable exists
-    # before the copy. The dependency goes one way only: night_maze does not depend on
-    # copy_assets.
-    add_dependencies(copy_assets night_maze)
+    # copy_assets does not depend on night_maze (copy_directory creates the destination
+    # directory itself), so "cmake --build --preset debug --target copy_assets" refreshes
+    # the copy without building the program. That matters while the program is running:
+    # Windows locks a running .exe and the Visual Studio generator then fails to link it,
+    # also when no C++ file changed.
 else()
     # macOS: a symbolic link to the directory in the repository, made each time
     # night_maze has been linked (POST_BUILD). A shader edited in assets/ is seen by the
@@ -483,13 +484,26 @@ Gałąź Windows, **osobny target**:
 |---|---|
 | `add_custom_target(copy_assets ...)` | tworzy nowy target o nazwie `copy_assets`, który niczego nie kompiluje, tylko wykonuje polecenie. Taki target nie ma plików wynikowych, po których CMake mógłby poznać, że jest aktualny, więc jego polecenie wykonuje się **przy każdym budowaniu** tego targetu |
 | `ALL` | dołącza `copy_assets` do targetu domyślnego, czyli do tego, co buduje `cmake --build --preset debug` bez opcji `--target`. Bez `ALL` trzeba by go budować osobno |
-| `copy_directory <skąd> <dokąd>` | kopiuje katalog z całą zawartością. Istniejące pliki nadpisuje. Plików usuniętych w źródle **nie** usuwa z kopii |
-| `add_dependencies(copy_assets night_maze)` | `copy_assets` jest budowany **po** `night_maze`. Katalog pliku wykonywalnego istnieje więc, zanim zacznie się kopiowanie. Zależność idzie w jedną stronę: `night_maze` nie zależy od `copy_assets` (zależność w obie strony byłaby cyklem i błędem konfiguracji) |
+| `copy_directory <skąd> <dokąd>` | kopiuje katalog z całą zawartością. Katalog docelowy tworzy samo, jeśli go nie ma. Istniejące pliki nadpisuje. Plików usuniętych w źródle **nie** usuwa z kopii |
 
-Zależność jest zapisana jawnie przez `add_dependencies`, a nie zostawiona wyrażeniu
-generatora. Dokumentacja CMake (`add_custom_target`) obiecuje automatyczną zależność od
-targetu tylko dla wyrażeń `TARGET_FILE`, `TARGET_LINKER_FILE`, `TARGET_SONAME_FILE` i
-`TARGET_PDB_FILE`. `TARGET_FILE_DIR` na tej liście nie ma.
+**`copy_assets` nie zależy od `night_maze`.** W bloku nie ma linii `add_dependencies`, więc
+między tymi dwoma targetami nie ma żadnej zależności, w żadną stronę. Budowanie samego
+`copy_assets` nie buduje programu, a budowanie samego `night_maze` nie kopiuje katalogu.
+Samo wyrażenie `$<TARGET_FILE_DIR:night_maze>` zależności też nie tworzy: dokumentacja CMake
+(`add_custom_target`) obiecuje automatyczną zależność od targetu tylko dla wyrażeń
+`TARGET_FILE`, `TARGET_LINKER_FILE`, `TARGET_SONAME_FILE` i `TARGET_PDB_FILE`, a
+`TARGET_FILE_DIR` na tej liście nie ma. Zgadza się to z pomiarem na Windowsie:
+`cmake --build --preset debug --target copy_assets` kończy się powodzeniem przy działającym
+programie, czyli nie próbuje go linkować.
+
+Wcześniej blok zawierał linię `add_dependencies(copy_assets night_maze)`, która kazała
+budować `copy_assets` po programie, żeby katalog pliku wykonywalnego istniał przed
+kopiowaniem. Usunąłem ją po pierwszym buildzie na Windowsie z dwóch powodów. Po pierwsze
+jest niepotrzebna: `copy_directory` samo tworzy katalog docelowy (zmierzone: target odtwarza
+usunięty katalog `assets`). Po drugie szkodziła: żeby odświeżyć shadery, trzeba było budować
+także program, a z generatorem Visual Studio build przy działającym programie kończy się
+błędem `LINK : fatal error LNK1168`, także wtedy, gdy żaden plik C++ się nie zmienił
+(Windows blokuje plik `.exe` działającego programu, a MSBuild próbuje go zlinkować od nowa).
 
 **Dlaczego dwie gałęzie.** Dowiązanie jest lepsze: zajmuje zero miejsca i zawsze prowadzi do
 aktualnych plików, więc shader zmieniony w edytorze jest widoczny przy następnym wczytaniu,
@@ -500,24 +514,31 @@ komputerze. Dlatego tam katalog jest kopiowany.
 **Dlaczego na Windowsie target, a nie `POST_BUILD`.** Kopia się starzeje: po zmianie pliku w
 `assets/` trzeba ją zrobić od nowa. Polecenie `POST_BUILD` wykonuje się tylko przy linkowaniu
 programu, a zmiana shadera nie zmienia żadnego pliku C++, więc niczego nie linkuje. Target
-`copy_assets` wykonuje się przy każdym budowaniu, więc na Windowsie obowiązuje prosta
-reguła: **zbuduj, potem wczytaj shadery ponownie**.
+`copy_assets` wykonuje się przy każdym swoim budowaniu, więc na Windowsie obowiązuje prosta
+reguła: **skopiuj (`--target copy_assets`), potem wczytaj shadery ponownie**.
 
-| Polecenie | Czy odświeża kopię |
-|---|---|
-| `cmake --build --preset debug` (także `make debug`, `make run`) | tak, zawsze, także gdy żaden plik C++ się nie zmienił |
-| `cmake --build --preset debug --target copy_assets` | tak (i najpierw buduje `night_maze`, jeśli trzeba) |
-| `cmake --build --preset debug --target night_maze` | **nie**: `night_maze` nie zależy od `copy_assets` |
+| Polecenie | Czy odświeża kopię | Przy działającym programie (generator Visual Studio) |
+|---|---|---|
+| `cmake --build --preset debug --target copy_assets` | tak. Programu nie buduje | działa: kod wyjścia 0, kopia odświeżona |
+| `cmake --build --preset debug` | tak, zawsze, także gdy żaden plik C++ się nie zmienił (`copy_assets` jest w `ALL`) | **błąd** `LNK1168` |
+| `cmake --build --preset debug --target night_maze` | **nie**: `night_maze` nie zależy od `copy_assets` | nie mierzyłem |
+
+Wszystkie wypełnione komórki tej tabeli są zmierzone na Windowsie 2026-10-05
+([`build-windows.md`](build-windows.md), sekcja 7). Tam też jest wynik dla generatora Ninja:
+pełny build przy działającym programie przeszedł, bo wykonał tylko krok kopiowania.
 
 Trzeci wiersz ma znaczenie dla IDE: uruchomienie programu klawiszem F5 w Visual Studio może
-zbudować tylko projekt startowy, czyli sam `night_maze`. Czy tak jest, trzeba sprawdzić na PC
-([`build-windows.md`](build-windows.md), sekcja 11).
+zbudować tylko projekt startowy, czyli sam `night_maze`. Czy tak jest, trzeba jeszcze
+sprawdzić w Visual Studio ([`build-windows.md`](build-windows.md), sekcja 11): na PC, na
+którym mierzyłem, są same Build Tools, bez IDE.
 
-Ten mechanizm sprawdziłem na Macu, wymuszając tymczasowo gałąź Windows (warunek zmieniony na
-`if(TRUE)`): pierwszy build utworzył prawdziwy katalog `build/debug/assets` z kopią plików,
-drugi build po zmianie samego komentarza w shaderze wypisał `Copying assets next to the
-executable` i odświeżył kopię bez linkowania, a budowanie z `--target night_maze` kopii nie
-odświeżyło. Na samym Windowsie blok nie był jeszcze uruchamiany.
+Ten mechanizm sprawdziłem najpierw na Macu, wymuszając tymczasowo gałąź Windows (warunek
+zmieniony na `if(TRUE)`, jeszcze z linią `add_dependencies`): pierwszy build utworzył
+prawdziwy katalog `build/debug/assets` z kopią plików, drugi build po zmianie samego
+komentarza w shaderze wypisał `Copying assets next to the executable` i odświeżył kopię bez
+linkowania, a budowanie z `--target night_maze` kopii nie odświeżyło. Na Windowsie te trzy
+wyniki się powtórzyły (program zatrzymany), a doszedł czwarty, którego Mac nie mógł
+pokazać: błąd `LNK1168` przy działającym programie.
 
 Jeden katalog buildu nigdy nie przechodzi z jednego mechanizmu na drugi (to dwa różne
 systemy operacyjne), więc blok nie zawiera żadnego sprzątania po "tym drugim" wariancie.
@@ -904,7 +925,8 @@ to samo miejsce (sekcja 4.3).
 
 Stan na M0: na Macu sprawdzone zostały `make`, `make check`, `make run` oraz to, że
 `make format-check` kończy się błędem dla źle sformatowanego pliku. Na Windowsie plik nie
-był uruchamiany: wymaga programu `make` (na przykład z Git Bash, MSYS2 albo Chocolatey), a
+był uruchamiany (na PC, na którym budowałem projekt 2026-10-05, nie ma `make`): wymaga
+programu `make` (na przykład z Git Bash, MSYS2 albo Chocolatey), a
 cele `format`, `format-check` i `tidy` korzystają z poleceń `find` i `command -v`, więc
 potrzebują powłoki typu Unix. Bez `make` wszystkie polecenia z tabeli można wpisać ręcznie.
 
@@ -971,15 +993,19 @@ Debug a Release opisuje [`build-macos.md`](build-macos.md), sekcja 5.
 ### 4.2. Windows: podkatalogi `Debug\` i `Release\`
 
 Generator Visual Studio jest wielokonfiguracyjny, więc wyniki każdej konfiguracji trafiają
-do dodatkowego podkatalogu. Oczekiwane położenie programu to
-`build\debug\Debug\night_maze.exe` i `build\release\Release\night_maze.exe`, a biblioteki
-mają rozszerzenie `.lib` zamiast `.a`. W katalogu buildu zamiast `Makefile` jest rozwiązanie
-`.sln` i pliki projektów `.vcxproj`, a `compile_commands.json` nie powstaje. Katalog `assets`
-obok programu (`build\debug\Debug\assets\`) jest tam zwykłym katalogiem z **kopią** plików,
-a nie dowiązaniem. Kopię robi przy każdym budowaniu target `copy_assets` (sekcja 3.1, blok 7).
+do dodatkowego podkatalogu. Program leży w `build\debug\Debug\night_maze.exe` i
+`build\release\Release\night_maze.exe`, a biblioteki mają rozszerzenie `.lib` zamiast `.a`.
+W katalogu buildu zamiast `Makefile` jest rozwiązanie `.sln` i pliki projektów `.vcxproj`, a
+`compile_commands.json` nie powstaje. Katalog `assets` obok programu
+(`build\debug\Debug\assets\`) jest tam zwykłym katalogiem z **kopią** plików, a nie
+dowiązaniem. Kopię robi target `copy_assets` (sekcja 3.1, blok 7).
 
-Ten układ wynika z dokumentacji CMake i nie został jeszcze sprawdzony na PC. Wyjaśnienie i
-lista kontrolna są w [`build-windows.md`](build-windows.md).
+Zmierzone na Windowsie 2026-10-05: oba położenia programu, generator `Visual Studio 17 2022`
+i katalogi `assets\shaders\` z kopią obu shaderów obok każdego z programów. Reszta akapitu
+(rozszerzenie `.lib`, pliki `.sln` i `.vcxproj`) wynika z dokumentacji CMake i nie była
+osobno sprawdzana. Z generatorem Ninja podkatalogu konfiguracji nie ma (zmierzone: program w
+`build\ninja-debug\night_maze.exe`) i powstaje `compile_commands.json`. Wyjaśnienie i lista
+kontrolna są w [`build-windows.md`](build-windows.md).
 
 ### 4.3. `imgui.ini`
 
@@ -1067,8 +1093,9 @@ pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
    przykład `core::assetPath("shaders/basic.vert")`. Wzór: stałe `VERTEX_SHADER_FILE` i
    `FRAGMENT_SHADER_FILE` w `src/game/NightMazeApp.cpp`.
 5. **macOS:** nic więcej, dowiązanie `build/<preset>/assets` widzi nowy plik od razu.
-   **Windows:** kopię obok `night_maze.exe` odświeża każde `cmake --build --preset debug`
-   ([`build-windows.md`](build-windows.md), sekcja 7).
+   **Windows:** kopię obok `night_maze.exe` odświeża
+   `cmake --build --preset debug --target copy_assets`, a także każdy pełny build przy
+   zamkniętym programie ([`build-windows.md`](build-windows.md), sekcja 7).
 6. **Opisz plik** w dokumencie modułu (sekcja 4 szablonu, "Shadery") i w drzewie na początku
    tego dokumentu.
 

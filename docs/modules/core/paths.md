@@ -18,7 +18,7 @@ Trzecia funkcja, `core::pathText(path)`, nie szuka niczego: zamienia ścieżkę 
 
 PRD (sekcja 6) wymienia "ścieżki do assetów" jako jedną z odpowiedzialności warstwy `core`.
 
-Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z podkatalogiem `shaders/` i dwoma plikami (`basic.vert`, `basic.frag`). Pierwszym i na razie jedynym użytkownikiem `core::assetPath` jest konstruktor `game::NightMazeApp`, który buduje tak ścieżki obu plików shaderów. `core::pathText` wołają `gfx::Shader` (komunikaty błędów) i panel "Shaders" (nazwy plików). Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię odświeżaną przy każdym budowaniu (sekcja 5.8).
+Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z podkatalogiem `shaders/` i dwoma plikami (`basic.vert`, `basic.frag`). Pierwszym i na razie jedynym użytkownikiem `core::assetPath` jest konstruktor `game::NightMazeApp`, który buduje tak ścieżki obu plików shaderów. `core::pathText` wołają `gfx::Shader` (komunikaty błędów) i panel "Shaders" (nazwy plików). Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię, którą robi i odświeża target `copy_assets` (sekcja 5.8).
 
 ## 2. Teoria
 
@@ -76,7 +76,7 @@ To jedyne miejsce w `src/`, w którym kod rozgałęzia się na systemy dyrektyw�
 | `std::filesystem::path(napis)` | tworzy ścieżkę z napisu wąskiego (`char`) albo szerokiego (`wchar_t`) | nie |
 | `std::filesystem::canonical(p)` | zwraca ścieżkę bezwzględną do prawdziwego pliku: rozwija dowiązania symboliczne oraz elementy `.` i `..` | tak, plik musi istnieć |
 
-**Dlaczego nigdy nie sklejam ścieżek jako napisów.** Zapis `dir + "/assets/" + name` ma trzy wady. Separatorem na Windowsie jest `\`, a na macOS `/` (Windows zwykle akceptuje też `/`, ale wtedy w jednej ścieżce mieszają się oba). Łatwo o podwójny albo brakujący separator, gdy jedna z części już go ma albo nie ma. I najważniejsze: na Windowsie natywna ścieżka składa się ze znaków szerokich, więc sklejanie przez `std::string` wymusza konwersję, która może zepsuć znaki spoza ASCII (sekcja 2.6). `operator/` załatwia wszystkie trzy sprawy. PRD wymaga budowania ścieżek wyłącznie przez `std::filesystem`.
+**Dlaczego nigdy nie sklejam ścieżek jako napisów.** Zapis `dir + "/assets/" + name` ma trzy wady. Separatorem na Windowsie jest `\`, a na macOS `/` (Windows zwykle akceptuje też `/`, ale wtedy w jednej ścieżce mieszają się oba). Łatwo o podwójny albo brakujący separator, gdy jedna z części już go ma albo nie ma. I najważniejsze: na Windowsie natywna ścieżka składa się ze znaków szerokich, więc sklejanie przez `std::string` wymusza konwersję, która może zepsuć znaki spoza ASCII (sekcja 2.6). `operator/` załatwia wszystkie trzy sprawy, z jednym zastrzeżeniem: wstawia separator systemu tylko **między** sklejanymi częściami, a ukośników wewnątrz części nie zmienia. Nazwa względna `shaders/basic.vert` zachowuje więc swój `/` także na Windowsie i pełna ścieżka wygląda tam tak: `...\build\debug\Debug\assets\shaders/basic.vert` (zmierzone w komunikacie błędu shadera). Windows przyjmuje taką ścieżkę bez zastrzeżeń. PRD wymaga budowania ścieżek wyłącznie przez `std::filesystem`.
 
 ### 2.6 Znaki szerokie na Windowsie
 
@@ -222,7 +222,7 @@ W drugim wierszu bez `canonical` katalogiem programu byłby `<S>/other`, czyli k
 
 ### 5.6 `executableFile` na Windowsie
 
-**Ta gałąź nie została jeszcze skompilowana ani uruchomiona.** Jest napisana według dokumentacji Microsoftu i czeka na pierwszy build na PC ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11).
+Gałąź powstała na Macu według dokumentacji Microsoftu. Na Windowsie została skompilowana i uruchomiona 2026-10-05: MSVC 19.44 pod `/W4 /permissive-` nie zgłasza w `Paths.cpp` żadnego ostrzeżenia, a program znajduje shadery uruchomiony z katalogu repozytorium, z katalogu roboczego `C:\` i z katalogu z polskimi literami w nazwie (sekcja 5.9 i [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11).
 
 ```cpp
 // Longest path Windows can report, in wide characters, including the terminating zero.
@@ -319,7 +319,7 @@ constexpr const char* FRAGMENT_SHADER_FILE = "shaders/basic.frag";
 m_shader(core::assetPath(VERTEX_SHADER_FILE), core::assetPath(FRAGMENT_SHADER_FILE)),
 ```
 
-Nazwy są względne i zapisane z ukośnikiem `/`, który `std::filesystem::path` rozumie na obu systemach. Dla programu w `<repo>/build/debug/night_maze` wynikiem jest `<repo>/build/debug/assets/shaders/basic.vert`.
+Nazwy są względne i zapisane z ukośnikiem `/`, który `std::filesystem::path` rozumie na obu systemach. Dla programu w `<repo>/build/debug/night_maze` wynikiem jest `<repo>/build/debug/assets/shaders/basic.vert`. Na Windowsie wynikiem jest `<repo>\build\debug\Debug\assets\shaders/basic.vert`, z jednym zwykłym ukośnikiem w środku (sekcja 2.5).
 
 **Wyjątek.** `executableDir` może rzucić `std::runtime_error`. Dzieje się to wtedy w trakcie konstruowania pola `m_shader`, czyli wewnątrz konstruktora aplikacji wołanego w bloku `try` funkcji `main`. Część bazowa (`core::Application` z oknem) jest już zbudowana, więc C++ niszczy ją poprawnie, a `catch (const std::exception&)` w `main` wypisuje `[error] Fatal: ...` i zwraca kod błędu. Brak samego pliku shadera wyjątkiem **nie** jest: zgłasza go `gfx::Shader` linią `[error]` i program działa dalej ([`../gfx/shader-class.md`](../gfx/shader-class.md), sekcja 5.8).
 
@@ -328,7 +328,9 @@ Nazwy są względne i zapisane z ukośnikiem `/`, który `std::filesystem::path`
 | System | Mechanizm CMake | Polecenie | Skutek |
 |---|---|---|---|
 | macOS | polecenie `POST_BUILD` targetu `night_maze`, wykonywane po zlinkowaniu programu | `cmake -E create_symlink <repo>/assets <katalog programu>/assets` | `build/debug/assets` jest **dowiązaniem symbolicznym** do katalogu w repozytorium. Program czyta zawsze aktualne pliki, bez budowania |
-| Windows | osobny target `copy_assets`, wykonywany przy każdym budowaniu | `cmake -E copy_directory <repo>/assets <katalog programu>/assets` | obok `night_maze.exe` leży **kopia** katalogu. Program czyta kopię, a kopię odświeża każde `cmake --build --preset debug` |
+| Windows | osobny target `copy_assets`, należący do targetu domyślnego (`ALL`) i niezależny od `night_maze` | `cmake -E copy_directory <repo>/assets <katalog programu>/assets` | obok `night_maze.exe` leży **kopia** katalogu. Program czyta kopię. Kopię odświeża `cmake --build --preset debug --target copy_assets` (także przy działającym programie) oraz każde pełne `cmake --build --preset debug` (tylko przy zamkniętym programie) |
+
+Target `copy_assets` nie zależy od programu: nie ma między nimi linii `add_dependencies`, a katalog docelowy tworzy samo polecenie `copy_directory`. To ma znaczenie przy działającym programie. Windows blokuje plik `.exe` działającego programu, a pełny build z generatorem Visual Studio próbuje go wtedy zlinkować i kończy się błędem `LINK : fatal error LNK1168`, także gdy żaden plik C++ się nie zmienił (zmierzone). Samo `--target copy_assets` programu nie dotyka.
 
 Dlaczego dwie gałęzie, dlaczego różne mechanizmy i co robi każda linia tego bloku, opisuje [`../../guides/project-structure.md`](../../guides/project-structure.md) (sekcja 3.1, blok 7).
 
@@ -340,7 +342,20 @@ Na macOS gałąź sprawdziłem najpierw małym programem testowym poza repozytor
 
 Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalogu repozytorium i z katalogu `/tmp` wczytał shadery bez żadnej linii `[error]`. Sprawdziłem też krok budowania: dowiązanie `build/debug/assets` i `build/release/assets` wskazuje ścieżkę bezwzględną `<repo>/assets`, ponowne wykonanie kroku przy istniejącym dowiązaniu kończy się powodzeniem, a `make clean` usuwa dowiązanie razem z katalogiem `build/`, nie ruszając plików w `<repo>/assets`.
 
-`pathText` sprawdziłem na macOS małym programem poza repozytorium: dla ścieżki `katalog/zażółć/basic.vert` zwraca 29 bajtów (polskie litery zajmują w UTF-8 po dwa bajty), a dla `filename()` tej ścieżki napis `basic.vert`. Na Windowsie funkcja nie była jeszcze uruchamiana.
+`pathText` sprawdziłem na macOS małym programem poza repozytorium: dla ścieżki `katalog/zażółć/basic.vert` zwraca 29 bajtów (polskie litery zajmują w UTF-8 po dwa bajty), a dla `filename()` tej ścieżki napis `basic.vert`.
+
+Na Windowsie (2026-10-05, MSVC 19.44) sprawdziłem program `night_maze`, bez osobnego programu testowego:
+
+| Próba | Wynik |
+|---|---|
+| kompilacja `Paths.cpp` pod `/W4 /permissive-` (gałąź `_WIN32`) | zero ostrzeżeń |
+| start z katalogu repozytorium | kostka, żadnej linii `[error]` |
+| start z katalogu roboczego `C:\` | to samo |
+| start z kopii `build\debug\Debug` w katalogu z polskimi literami (`...\Temp\nm-Żółw\`) | to samo: `GetModuleFileNameW` i `path` ze znaków szerokich działają dla ścieżki spoza ASCII |
+| kopia `assets` po buildzie Debug i Release | `assets\shaders\basic.vert` i `basic.frag` obok każdego z programów |
+| `pathText` w komunikacie błędu shadera | `<repo>\build\debug\Debug\assets\shaders/basic.frag` |
+
+Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komunikacie błędu i w panelu), uruchomienie dwuklikiem i z IDE oraz ćwiczenie 1 z sekcji 8. To otwarte punkty listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 11.
 
 ## 6. Panel ImGui
 
@@ -359,7 +374,7 @@ Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalo
 9. **Dowiązanie symboliczne do programu.** Bez `canonical` katalogiem programu byłby katalog dowiązania (sekcja 5.5). Z `canonical` jest nim katalog prawdziwego pliku i tam musi leżeć `assets/`.
 10. **`canonical` czyta dysk.** W odróżnieniu od `operator/` i `parent_path()` wymaga, żeby plik istniał, i rzuca wyjątek, gdy go nie ma. Dla ścieżki działającego programu plik istnieje, ale tej funkcji nie należy używać "na zapas" dla ścieżek plików, których może nie być.
 11. **Katalog programu to nie katalog repozytorium.** `executableDir()` wskazuje `build/debug` (na Windowsie z generatorem Visual Studio `build\debug\Debug`), a nie korzeń repozytorium. Katalog `assets/` musi więc trafić obok programu podczas budowania. Robi to build (sekcja 5.8). Program skopiowany ręcznie w inne miejsce bez katalogu `assets` nie znajdzie shaderów.
-12. **Kopia na Windowsie się starzeje.** Program czyta tam kopię katalogu `assets`, a nie pliki z repozytorium. Po zmianie shadera trzeba zbudować (`cmake --build --preset debug`), bo dopiero budowanie odświeża kopię. Budowanie samego targetu `night_maze` (możliwe przy F5 w Visual Studio) kopii nie odświeża ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Na macOS problemu nie ma, bo dowiązanie zawsze prowadzi do aktualnych plików.
+12. **Kopia na Windowsie się starzeje.** Program czyta tam kopię katalogu `assets`, a nie pliki z repozytorium. Po zmianie shadera trzeba ją odświeżyć: `cmake --build --preset debug --target copy_assets`. Pełne `cmake --build --preset debug` też to robi, ale przy działającym programie kończy się błędem linkera `LNK1168` (sekcja 5.8). Budowanie samego targetu `night_maze` (możliwe przy F5 w Visual Studio) kopii nie odświeża ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Na macOS problemu nie ma, bo dowiązanie zawsze prowadzi do aktualnych plików.
 13. **Usuwanie przez dowiązanie.** `build/debug/assets` na macOS to dowiązanie do prawdziwego katalogu. Polecenie, które wchodzi w dowiązania (na przykład `rm -rf build/debug/assets/`, z ukośnikiem na końcu), usunęłoby pliki z repozytorium. `make clean` używa `cmake -E rm -rf build`, które usuwa samo dowiązanie.
 
 ## 8. Ćwiczenia
@@ -413,7 +428,7 @@ Po dodaniu shaderów sprawdziłem sam program `night_maze`: uruchomiony z katalo
     Konstruktor `game::NightMazeApp`: buduje przez `assetPath` ścieżki plików `shaders/basic.vert` i `shaders/basic.frag` i przekazuje je do `gfx::Shader`. `executableDir` jest wołane tylko pośrednio, z `assetPath`.
 
 14. **Skąd katalog `assets` bierze się obok programu i czym różnią się systemy?**
-    Z bloku w `CMakeLists.txt`. Na macOS polecenie `POST_BUILD` po zlinkowaniu `night_maze` tworzy dowiązanie symboliczne do `<repo>/assets`, więc program widzi zmiany w plikach od razu. Na Windowsie target `copy_assets` kopiuje katalog przy każdym budowaniu (dowiązania wymagają tam trybu dewelopera albo uprawnień administratora), więc program czyta kopię i po zmianie shadera trzeba najpierw zbudować.
+    Z bloku w `CMakeLists.txt`. Na macOS polecenie `POST_BUILD` po zlinkowaniu `night_maze` tworzy dowiązanie symboliczne do `<repo>/assets`, więc program widzi zmiany w plikach od razu. Na Windowsie katalog kopiuje target `copy_assets` (dowiązania wymagają tam trybu dewelopera albo uprawnień administratora), więc program czyta kopię i po zmianie shadera trzeba ją najpierw odświeżyć: `cmake --build --preset debug --target copy_assets`. Target nie zależy od programu, więc działa także wtedy, gdy program jest uruchomiony, a pełny build skończyłby się błędem `LNK1168`.
 
 15. **Po co jest `pathText` i dlaczego używa `u8string()`, a nie `string()`?**
     Zamienia ścieżkę na tekst do logu i do panelu debug. Na Windowsie `string()` zamienia ścieżkę na lokalną stronę kodową i rzuca wyjątek, gdy znaku nie da się w niej zapisać. `u8string()` daje UTF-8, który mieści każdą ścieżkę i jest tym, czego oczekuje ImGui. Wynik ma typ `std::u8string`, więc kopiuję jego znaki do `std::string`.

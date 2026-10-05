@@ -91,10 +91,11 @@ if(WIN32)
         COMMENT "Copying assets next to the executable"
         VERBATIM
     )
-    # copy_assets is built after night_maze, so the directory of the executable exists
-    # before the copy. The dependency goes one way only: night_maze does not depend on
-    # copy_assets.
-    add_dependencies(copy_assets night_maze)
+    # copy_assets does not depend on night_maze (copy_directory creates the destination
+    # directory itself), so "cmake --build --preset debug --target copy_assets" refreshes
+    # the copy without building the program. That matters while the program is running:
+    # Windows locks a running .exe and the Visual Studio generator then fails to link it,
+    # also when no C++ file changed.
 else()
     # macOS: a symbolic link to the directory in the repository, made each time
     # night_maze has been linked (POST_BUILD). A shader edited in assets/ is seen by the
