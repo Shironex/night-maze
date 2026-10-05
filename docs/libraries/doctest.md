@@ -5,14 +5,19 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`CMakeLists.txt`](../../CMakeLists.txt) oraz tę część API, której używają testy w katalogu
 [`tests/`](../../tests/).
 
-**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z osiemnastu
-plików: `tests/main.cpp` (punkt wejścia) i siedemnastu plików z testami (siedemnasty,
-`SkyboxTests.cpp`, doszedł w pierwszej części M6). Osiem pierwszych
+**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z dwudziestu
+plików: `tests/main.cpp` (punkt wejścia) i dziewiętnastu plików z testami (siedemnasty,
+`SkyboxTests.cpp`, doszedł w pierwszej części M6, a `TerrainTests.cpp` i `GrassTests.cpp` w
+drugiej). Osiem pierwszych
 wierszy tabeli to pliki z M2 + M3, cztery następne doszły z oświetleniem (pierwsza część M4),
-trzynasty z mapami normalnych (druga część M4), trzy następne z rozgrywką (M5), a ostatni z niebem (pierwsza część M6). M5 zmieniło
+trzynasty z mapami normalnych (druga część M4), trzy następne z rozgrywką (M5), siedemnasty z niebem (pierwsza część M6), a dwa ostatnie z terenem i trawą (druga część M6). M5 zmieniło
 też liczby w trzech starszych plikach: `ColliderTests.cpp` dostał siedem przypadków o kulach,
 `MazeTests.cpp` dwa (w tym przeniesiony test `isDeadEnd`), a z `LightingTests.cpp` ubyło
-siedem, bo światła w ślepych zaułkach zostały usunięte z gry:
+siedem, bo światła w ślepych zaułkach zostały usunięte z gry. Druga część M6 zabrała jeden
+przypadek z `ObjLoaderTests.cpp` (test modelu płytki podłogi, usuniętego razem z plikiem) i
+zmieniła treść kilku starszych testów bez zmiany ich liczby: testy gracza, świata, rundy,
+kryształów i wyjścia podają dziś teren albo wysokość gruntu, a `ImageLoaderTests.cpp` czyta
+tekstury gruntu (`ground.png`, `ground_normal.png`) zamiast tekstur podłogi:
 
 | Plik | Przypadków | Co sprawdza | Dokument |
 |---|---|---|---|
@@ -22,7 +27,7 @@ siedem, bo światła w ślepych zaułkach zostały usunięte z gry:
 | `MazeLayoutTests.cpp` | 12 | układ w świecie i pudełka kolizji labiryntu | tamże |
 | `MazeWorldTests.cpp` | 8 | `buildMazeWorld`: macierze modelu, pudełka, start, od M5 także wyjście, brama i kryształy świata | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
 | `PlayerTests.cpp` | 13 | gracz: chodzenie, sprint, ślizganie, noclip | [`../modules/game/player.md`](../modules/game/player.md) |
-| `ObjLoaderTests.cpp` | 20 | loader OBJ i MTL, od M4 także linia mapy normalnych `map_Bump` i styczne modeli gry | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
+| `ObjLoaderTests.cpp` | 19 | loader OBJ i MTL, od M4 także linia mapy normalnych `map_Bump` i styczne modeli gry. Do pierwszej części M6 było 20: dwudziesty sprawdzał model płytki podłogi | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
 | `ImageLoaderTests.cpp` | 10 | loader obrazów, od M4 także zawartość map normalnych (średnia, konwencja kanału zielonego), od M6 wczytanie bez odwracania wierszy (`RowOrder::TopFirst`) | [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `ShaderSourceTests.cpp` | 22 | tekst shadera: `expandIncludes` (dyrektywa `#include`, linie `#line`, błędy) i `nameSourceFiles` (nazwy plików w komunikatach sterownika) | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `LightTests.cpp` | 20 | matematyka świateł: zanik z odległością, stożek reflektora, `directionFromAngles`, bajty bloku świateł (`packLightBlock`) | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
@@ -33,12 +38,16 @@ siedem, bo światła w ślepych zaułkach zostały usunięte z gry:
 | `CrystalTests.cpp` | 14 | kryształy: ile ich jest (`crystalCountFor`), gdzie stoją (`placeCrystals`), kołysanie, obrót, pulsowanie i świecenie | tamże |
 | `RoundTests.cpp` | 25 | cała runda bez okna: `startRound`, `updateRound` (zbieranie, bateria, brama, wygrana), `flashlightFlicker`, `lightingForFrame`, `crystalLightPositions` | tamże |
 | `SkyboxTests.cpp` | 5 | od M6: sześć plików nieba jako ściany tekstury sześciennej (rozmiary, reguła wyboru ściany, miejsce księżyca, gradient tła, zgodność na dwunastu krawędziach sześcianu) | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md) |
+| `TerrainTests.cpp` | 27 | od M6: teren z mapy wysokości. `Heightmap::sample` i `heightmapFromImage`, rzeźba `terrainRelief`, siatka i wzór wysokości, `heightAt` na trójkącie siatki, `lowestHeightUnder`, siatka z `buildTerrainMesh` (wierzchołki, normalne, UV, styczne, kierunek nawijania), prawdziwy plik `heightmap.png`, ściany, słupki i brama zatopione w gruncie, kryształy nad gruntem, stopy gracza na gruncie w górę i w dół zbocza | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) |
+| `GrassTests.cpp` | 9 | od M6: miejsca kępek trawy (`placeGrass`). Stałe i ustawienia domyślne, gęstość 0, powtarzalność z ziarna, liczba kępek na ścianę i na stronę, pas przy ścianie, żadna kępka w ścianie, słupku ani bramie, kępki na gruncie, rzadki rozsiew na wzgórzach z dala od labiryntu | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md) |
 
-Razem 221 przypadków testowych i 85175 asercji: tyle zgłoszono dla Windowsa w
-konfiguracjach Debug i Release po pierwszej części M6 (2026-10-05). Liczbę 221 potwierdza
-też policzenie makr `TEST_CASE` w plikach, w kolejności tabeli:
-19 + 8 + 11 + 12 + 8 + 13 + 20 + 10 + 22 + 20 + 10 + 4 + 9 + 11 + 14 + 25 + 5.
-Po M5 było 215 przypadków i 85098 asercji (szesnaście plików, `ImageLoaderTests.cpp` z 9
+Razem 256 przypadków testowych i 101232 asercje: tyle pokazują programy testowe Debug i
+Release na Windowsie po drugiej części M6 (2026-10-05, uruchomiłem oba sam, wszystkie
+przeszły). Liczbę 256 potwierdza też policzenie makr `TEST_CASE` w plikach, w kolejności
+tabeli:
+19 + 8 + 11 + 12 + 8 + 13 + 19 + 10 + 22 + 20 + 10 + 4 + 9 + 11 + 14 + 25 + 5 + 27 + 9.
+Po pierwszej części M6 było 221 przypadków i 85175 asercji (siedemnaście plików z testami,
+`ObjLoaderTests.cpp` z 20 przypadkami). Po M5 było 215 przypadków i 85098 asercji (szesnaście plików, `ImageLoaderTests.cpp` z 9
 przypadkami): przykłady wyjścia programu niżej w tym dokumencie pochodzą z tamtego stanu.
 Poprzednie stany: po M4 trzynaście plików z testami, 163 przypadki i 62220 asercji, po
 pierwszej części M4 dwanaście plików, a po M2 + M3 osiem (wszystkie 2026-10-05). **Na macOS
@@ -252,6 +261,7 @@ add_executable(night_maze_tests
     tests/ColliderTests.cpp
     tests/CrystalTests.cpp
     tests/ExitTests.cpp
+    tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
@@ -263,7 +273,9 @@ add_executable(night_maze_tests
     tests/PlayerTests.cpp
     tests/RoundTests.cpp
     tests/ShaderSourceTests.cpp
+    tests/SkyboxTests.cpp
     tests/TangentTests.cpp
+    tests/TerrainTests.cpp
     tests/TransformTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
@@ -526,7 +538,8 @@ Wynik zmierzony na Windowsie (Debug, 2026-10-05, przed dodaniem testów oświetl
 
 "1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwał
 wtedy około 0,1 s. Dla programu po M5 z 215 przypadkami (2026-10-05) znane są liczby
-z raportu doctest niżej. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
+z raportu doctest niżej. Dzisiejszy program (po drugiej części M6) kończy raport liniami
+`test cases: 256 | 256 passed` i `assertions: 101232 | 101232 passed`. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
 datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas.
 
 W pliku [`Makefile`](../../Makefile) są do tego skróty: `make test` (build Debug i testy),
@@ -642,7 +655,7 @@ sekcja 5.8).
     bajtach, pilnuje dopiero porównanie rozmiarów w działającej grze
     (`Shader::bindUniformBlock`). Przykład z M5: `tests/RoundTests.cpp` sprawdza, że pusta
     bateria wyłącza latarkę i że brama przestaje blokować po zebraniu dość kryształów, ale
-    tego, czy kryształ naprawdę świeci na ekranie, czy brama opada w podłogę i czy HUD
+    tego, czy kryształ naprawdę świeci na ekranie, czy brama opada w grunt i czy HUD
     pokazuje właściwe liczby, żaden test nie widzi.
 
 ## 6. Pytania kontrolne

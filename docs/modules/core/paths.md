@@ -18,7 +18,7 @@ Trzecia funkcja, `core::pathText(path)`, nie szuka niczego: zamienia ścieżkę 
 
 PRD (sekcja 6) wymienia "ścieżki do assetów" jako jedną z odpowiedzialności warstwy `core`.
 
-Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z czterema podkatalogami: `fonts/` (czcionka paneli z licencją), `shaders/` (osiem plików shaderów: `textured`, `color`, `lit` i `gouraud`, każdy jako `.vert` i `.frag`, oraz dwa pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`), `models/` (sześć modeli `.obj` z plikami `.mtl`: trzy części labiryntu, dwa kryształy i brama) i `textures/` (osiem plików `.png`: cztery tekstury koloru i cztery mapy normalnych). Para `basic.vert` i `basic.frag`, od której ten moduł zaczynał w M1, została usunięta w M5 razem z kostką. `core::assetPath` ma czterech użytkowników: konstruktor `game::NightMazeApp` buduje tak ścieżki ośmiu plików shaderów, konstruktor `game::MazeRenderer` ścieżki trzech modeli labiryntu, konstruktor `game::GameplayRenderer` ścieżki trzech modeli rundy, a motyw paneli w `src/debug/Theme.cpp` ścieżkę pliku czcionki. Ścieżek tekstur nikt nie buduje przez `assetPath`: wynikają z linii `map_Kd` i `map_Bump` w pliku `.mtl` i są liczone względem katalogu tego pliku (sekcja 5.8). Tak samo jest z plikami z `common/`: nazwę podaje linia `#include` w shaderze, a ścieżka jest liczona względem katalogu pliku shadera (sekcja 5.8). `core::pathText` wołają `gfx::Shader`, loadery i `assets::AssetCache` (komunikaty w konsoli) oraz panele "Shaders" i "Assets" (nazwy plików). Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię, którą robi i odświeża target `copy_assets` (sekcja 5.8).
+Stan na dziś: w repozytorium jest katalog [`assets/`](../../../assets/) z pięcioma podkatalogami: `fonts/` (czcionka paneli z licencją), `shaders/` (trzynaście plików shaderów: `textured`, `color`, `lit`, `gouraud` i `skybox`, każdy jako `.vert` i `.frag`, oraz `grass` jako `.vert`, `.geom` i `.frag`, do tego dwa pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`), `models/` (pięć modeli `.obj` z plikami `.mtl`: ściana i słupek labiryntu, dwa kryształy i brama. Szósty, płytkę podłogi, usunął M6, gdy podłogę zastąpił teren), `textures/` (dziewięć plików `.png`: cztery tekstury koloru, cztery mapy normalnych i mapa wysokości terenu `heightmap.png`) i `skybox/` (sześć ścian nieba). Para `basic.vert` i `basic.frag`, od której ten moduł zaczynał w M1, została usunięta w M5 razem z kostką. `core::assetPath` ma sześciu użytkowników: konstruktor `game::NightMazeApp` buduje tak ścieżki trzynastu plików shaderów i, w funkcji `loadHeightmap`, ścieżkę mapy wysokości, konstruktor `game::MazeRenderer` ścieżki dwóch modeli labiryntu, konstruktor `game::GameplayRenderer` ścieżki trzech modeli rundy, konstruktor `game::TerrainRenderer` ścieżki dwóch tekstur gruntu, konstruktor `game::Skybox` ścieżki sześciu obrazów nieba, a motyw paneli w `src/debug/Theme.cpp` ścieżkę pliku czcionki. Ścieżek tekstur **modeli** nikt nie buduje przez `assetPath`: wynikają z linii `map_Kd` i `map_Bump` w pliku `.mtl` i są liczone względem katalogu tego pliku (sekcja 5.8). Tekstury gruntu są pierwszymi, których nazwy stoją w kodzie, bo teren nie jest modelem z pliku i nie ma pliku `.mtl`. Tak samo jest z plikami z `common/`: nazwę podaje linia `#include` w shaderze, a ścieżka jest liczona względem katalogu pliku shadera (sekcja 5.8). `core::pathText` wołają `gfx::Shader`, loadery i `assets::AssetCache` (komunikaty w konsoli) oraz panele "Shaders" i "Assets" (nazwy plików). Build umieszcza `assets` obok pliku wykonywalnego: na macOS jako dowiązanie symboliczne do katalogu w repozytorium, na Windowsie jako kopię, którą robi i odświeża target `copy_assets` (sekcja 5.8).
 
 ## 2. Teoria
 
@@ -96,7 +96,7 @@ Ta część modułu nie ma związku z OpenGL: nie woła żadnej funkcji `gl*` an
 
 ## 4. Shadery
 
-Ta część modułu nie ma shaderów, ale to przez nią program je znajduje: osiem plików leży w `assets/shaders/`, a `game::NightMazeApp` pyta o ich położenie przez `core::assetPath` (sekcja 5.8). Dwa pliki dołączane, `assets/shaders/common/lighting.glsl` i `assets/shaders/common/normal_map.glsl`, są znajdowane inaczej: względem pliku shadera, który je dołącza (sekcja 5.8). Same shadery opisuje [`../gfx/shaders.md`](../gfx/shaders.md).
+Ta część modułu nie ma shaderów, ale to przez nią program je znajduje: trzynaście plików leży w `assets/shaders/`, a `game::NightMazeApp` pyta o ich położenie przez `core::assetPath` (sekcja 5.8). Dwa pliki dołączane, `assets/shaders/common/lighting.glsl` i `assets/shaders/common/normal_map.glsl`, są znajdowane inaczej: względem pliku shadera, który je dołącza (sekcja 5.8). Same shadery opisuje [`../gfx/shaders.md`](../gfx/shaders.md).
 
 ## 5. Kod w projekcie
 
@@ -312,8 +312,9 @@ std::string pathText(const std::filesystem::path& path) {
 ```cpp
 // Shader files, relative to the assets directory. The scene without lighting is drawn
 // with the first pair, the lines of the collision boxes and spheres with the second, the
-// scene with lighting per fragment with the third and with lighting per vertex with the
-// fourth.
+// scene with lighting per fragment with the third, with lighting per vertex with the
+// fourth and the sky with the fifth. The grass has three files: between its vertex and
+// its fragment shader runs a geometry shader.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -322,6 +323,15 @@ constexpr const char* LIT_VERTEX_SHADER_FILE = "shaders/lit.vert";
 constexpr const char* LIT_FRAGMENT_SHADER_FILE = "shaders/lit.frag";
 constexpr const char* GOURAUD_VERTEX_SHADER_FILE = "shaders/gouraud.vert";
 constexpr const char* GOURAUD_FRAGMENT_SHADER_FILE = "shaders/gouraud.frag";
+constexpr const char* SKYBOX_VERTEX_SHADER_FILE = "shaders/skybox.vert";
+constexpr const char* SKYBOX_FRAGMENT_SHADER_FILE = "shaders/skybox.frag";
+constexpr const char* GRASS_VERTEX_SHADER_FILE = "shaders/grass.vert";
+constexpr const char* GRASS_GEOMETRY_SHADER_FILE = "shaders/grass.geom";
+constexpr const char* GRASS_FRAGMENT_SHADER_FILE = "shaders/grass.frag";
+
+// The heightmap of the terrain, relative to the assets directory: a grey picture made
+// by tools/blender/make_heightmap.py.
+constexpr const char* HEIGHTMAP_FILE = "textures/heightmap.png";
 ```
 
 ```cpp
@@ -333,21 +343,28 @@ constexpr const char* GOURAUD_FRAGMENT_SHADER_FILE = "shaders/gouraud.frag";
                   core::assetPath(LIT_FRAGMENT_SHADER_FILE)),
       m_gouraudShader(core::assetPath(GOURAUD_VERTEX_SHADER_FILE),
                       core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
+      m_skyboxShader(core::assetPath(SKYBOX_VERTEX_SHADER_FILE),
+                     core::assetPath(SKYBOX_FRAGMENT_SHADER_FILE)),
+      // The geometry shader is the third argument, although it runs second: it is the
+      // optional one.
+      m_grassShader(core::assetPath(GRASS_VERTEX_SHADER_FILE),
+                    core::assetPath(GRASS_FRAGMENT_SHADER_FILE),
+                    core::assetPath(GRASS_GEOMETRY_SHADER_FILE)),
 ```
 
-Drugi użytkownik to [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), który tak samo buduje ścieżki trzech modeli i podaje je pamięci assetów:
+Trzynaście stałych i trzynaście wywołań `assetPath` dla sześciu programów: pięć par i trzy pliki programu trawy (M6). Ten sam plik woła `assetPath` jeszcze raz, w funkcji `loadHeightmap`, dla mapy wysokości terenu: `core::assetPath(HEIGHTMAP_FILE)` idzie tam wprost do `assets::loadImage`, bez pamięci assetów ([`README.md`](README.md), sekcja 6.3).
+
+Drugi użytkownik to [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), który tak samo buduje ścieżki dwóch modeli i podaje je pamięci assetów (do M5 trzech: trzecim była płytka podłogi, usunięta w M6):
 
 ```cpp
 // Model files, relative to the assets directory.
-constexpr const char* FLOOR_TILE_MODEL_FILE = "models/floor_tile.obj";
 constexpr const char* WALL_MODEL_FILE = "models/wall_straight.obj";
 constexpr const char* PILLAR_MODEL_FILE = "models/wall_pillar.obj";
 ```
 
 ```cpp
 MazeRenderer::MazeRenderer(assets::AssetCache& assets)
-    : m_floorTile(assets.model(core::assetPath(FLOOR_TILE_MODEL_FILE))),
-      m_wall(assets.model(core::assetPath(WALL_MODEL_FILE))),
+    : m_wall(assets.model(core::assetPath(WALL_MODEL_FILE))),
       m_pillar(assets.model(core::assetPath(PILLAR_MODEL_FILE))) {}
 ```
 
@@ -366,9 +383,22 @@ GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
       m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))) {}
 ```
 
-Oba renderery dostają tę samą pamięć assetów, więc wszystkie sześć modeli i ich tekstury żyją w jednym miejscu. Czwartym użytkownikiem jest motyw paneli: `loadFont` w [`src/debug/Theme.cpp`](../../../src/debug/Theme.cpp) woła `core::assetPath(FONT_FILE)`.
+Oba renderery dostają tę samą pamięć assetów, więc wszystkie pięć modeli i ich tekstury żyją w jednym miejscu.
 
-**Tekstury: ścieżka z pliku, nie z kodu.** W kodzie nie ma nazwy żadnej tekstury, także tekstur kryształów i bramy. Plik `wall_straight.mtl` zawiera linię `map_Kd ../textures/wall_stone.png`, a loader liczy tę ścieżkę względem katalogu pliku `.mtl` ([`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp)):
+Dwóch użytkowników doszło w M6. [`src/game/Skybox.cpp`](../../../src/game/Skybox.cpp) buduje w pętli ścieżki sześciu obrazów nieba (`core::assetPath(FACE_FILES[face])`) i czyta je sam, bez pamięci assetów ([`../renderer/skybox.md`](../renderer/skybox.md)). [`src/game/TerrainRenderer.cpp`](../../../src/game/TerrainRenderer.cpp) prosi pamięć assetów o dwie tekstury gruntu:
+
+```cpp
+constexpr const char* GROUND_TEXTURE_FILE = "textures/ground.png";
+constexpr const char* GROUND_NORMAL_MAP_FILE = "textures/ground_normal.png";
+```
+
+```cpp
+    const gfx::Texture2D* texture = assets.texture(core::assetPath(file));
+```
+
+Szóstym użytkownikiem jest motyw paneli: `loadFont` w [`src/debug/Theme.cpp`](../../../src/debug/Theme.cpp) woła `core::assetPath(FONT_FILE)`.
+
+**Tekstury modeli: ścieżka z pliku, nie z kodu.** W kodzie nie ma nazwy żadnej tekstury modelu, także tekstur kryształów i bramy. Wyjątkiem od M6 są dwie tekstury gruntu z bloku wyżej: teren powstaje w kodzie z mapy wysokości, nie ma pliku `.obj` ani `.mtl`, więc nazwy jego tekstur muszą stać w `TerrainRenderer.cpp`. Plik `wall_straight.mtl` zawiera linię `map_Kd ../textures/wall_stone.png`, a loader liczy tę ścieżkę względem katalogu pliku `.mtl` ([`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp)):
 
 ```cpp
         // Texture paths are relative to the directory of the MTL file. lexically_normal
@@ -447,7 +477,7 @@ Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komu
 
 ## 6. Panel ImGui
 
-Ścieżki nie mają własnego panelu, ale widać je w dwóch panelach. W panelu **Shaders** ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6) każdy z pięciu programów ma jedną linię z nazwami obu swoich plików, na przykład `lit.vert + lit.frag: OK`, a podpowiedź (tooltip) po najechaniu kursorem na tę linię pokazuje obie pełne ścieżki zbudowane przez `core::assetPath`, jedną pod drugą. Etykiet `Vertex:` i `Fragment:`, które były w panelu do M2 + M3, już nie ma. Pliku dołączanego (na przykład `common/lighting.glsl`) w linii programu ani w podpowiedzi nie widać: jego nazwa pojawia się w panelu dopiero w tekście błędu, gdy pomyłka jest w nim ([`../gfx/shader-includes.md`](../gfx/shader-includes.md), sekcja 6). W panelu **Assets** ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6) tak samo pokazane są pliki modeli i tekstur, a lista `Failed to load` wymienia te, których nie udało się wczytać. Wszystkie te teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki shadera jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak tej części sceny, którą rysuje dany program (labiryntu z kryształami i bramą w danym trybie oświetlenia albo linii kolizji). Błędna nazwa w linii `#include` daje inny komunikat, `Shader include failed: <pełna ścieżka shadera>`, z nazwą brakującego pliku w drugiej linii.
+Ścieżki nie mają własnego panelu, ale widać je w dwóch panelach. W panelu **Shaders** ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6) każdy z sześciu programów ma jedną linię z nazwami swoich plików, na przykład `lit.vert + lit.frag: OK` albo, dla programu trawy z shaderem geometrii, `grass.vert + grass.geom + grass.frag: OK`, a podpowiedź (tooltip) po najechaniu kursorem na tę linię pokazuje pełne ścieżki zbudowane przez `core::assetPath`, po jednej w linii. Etykiet `Vertex:` i `Fragment:`, które były w panelu do M2 + M3, już nie ma. Pliku dołączanego (na przykład `common/lighting.glsl`) w linii programu ani w podpowiedzi nie widać: jego nazwa pojawia się w panelu dopiero w tekście błędu, gdy pomyłka jest w nim ([`../gfx/shader-includes.md`](../gfx/shader-includes.md), sekcja 6). W panelu **Assets** ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6) tak samo pokazane są pliki modeli i tekstur, a lista `Failed to load` wymienia te, których nie udało się wczytać. Wszystkie te teksty powstają przez `core::pathText`. Skutkiem błędnej ścieżki shadera jest linia `[error] Shader file cannot be opened: <pełna ścieżka>` w konsoli i ten sam tekst w panelu, a w oknie brak tej części sceny, którą rysuje dany program (terenu i labiryntu z kryształami i bramą w danym trybie oświetlenia, trawy, linii kolizji albo nieba). Mapy wysokości panel "Assets" nie pokazuje, bo nie przechodzi przez pamięć assetów: skutkiem błędnej ścieżki jest linia błędu loadera obrazów w konsoli i płaski grunt. Błędna nazwa w linii `#include` daje inny komunikat, `Shader include failed: <pełna ścieżka shadera>`, z nazwą brakującego pliku w drugiej linii.
 
 ## 7. Pułapki
 
@@ -513,7 +543,7 @@ Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komu
     Nagłówek wprowadza ogromną liczbę nazw i makr. W pliku `.hpp` trafiłby do każdego pliku, który ten nagłówek dołącza. `WIN32_LEAN_AND_MEAN` pomija rzadko używane części, `NOMINMAX` zabrania definiowania makr `min` i `max`, które kolidują z `std::min` i `std::max`.
 
 13. **Kto dziś woła `executableDir` i `assetPath`?**
-    Cztery miejsca. Konstruktor `game::NightMazeApp` buduje przez `assetPath` ścieżki ośmiu plików shaderów i przekazuje je do czterech obiektów `gfx::Shader`. Pliki dołączane z `common/` nie przechodzą przez `assetPath`: `gfx::Shader` liczy ich ścieżki względem katalogu pliku shadera. Konstruktor `game::MazeRenderer` buduje tak ścieżki trzech modeli labiryntu, a konstruktor `game::GameplayRenderer` ścieżki dwóch modeli kryształów i modelu bramy: oba przekazują je do `assets::AssetCache`. Czwartym miejscem jest motyw paneli (`src/debug/Theme.cpp`), który buduje tak ścieżkę pliku czcionki. Ścieżki tekstur nie przechodzą przez `assetPath`: loader liczy je względem katalogu pliku `.mtl`. `executableDir` jest wołane tylko pośrednio, z `assetPath`.
+    Sześć miejsc. Konstruktor `game::NightMazeApp` buduje przez `assetPath` ścieżki trzynastu plików shaderów i przekazuje je do sześciu obiektów `gfx::Shader`, a jego funkcja pomocnicza `loadHeightmap` ścieżkę mapy wysokości. Pliki dołączane z `common/` nie przechodzą przez `assetPath`: `gfx::Shader` liczy ich ścieżki względem katalogu pliku shadera. Konstruktor `game::MazeRenderer` buduje tak ścieżki dwóch modeli labiryntu, a konstruktor `game::GameplayRenderer` ścieżki dwóch modeli kryształów i modelu bramy: oba przekazują je do `assets::AssetCache`. Konstruktor `game::TerrainRenderer` buduje ścieżki dwóch tekstur gruntu, też dla pamięci assetów, a konstruktor `game::Skybox` ścieżki sześciu obrazów nieba, które czyta sam. Szóstym miejscem jest motyw paneli (`src/debug/Theme.cpp`), który buduje tak ścieżkę pliku czcionki. Ścieżki tekstur modeli nie przechodzą przez `assetPath`: loader liczy je względem katalogu pliku `.mtl`. `executableDir` jest wołane tylko pośrednio, z `assetPath`.
 
 14. **Skąd katalog `assets` bierze się obok programu i czym różnią się systemy?**
     Z bloku w `CMakeLists.txt`. Na macOS polecenie `POST_BUILD` po zlinkowaniu `night_maze` tworzy dowiązanie symboliczne do `<repo>/assets`, więc program widzi zmiany w plikach od razu. Na Windowsie katalog kopiuje target `copy_assets` (dowiązania wymagają tam trybu dewelopera albo uprawnień administratora), więc program czyta kopię i po zmianie shadera trzeba ją najpierw odświeżyć: `cmake --build --preset debug --target copy_assets`. Target nie zależy od programu, więc działa także wtedy, gdy program jest uruchomiony, a pełny build skończyłby się błędem `LNK1168`.

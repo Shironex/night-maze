@@ -1,9 +1,9 @@
-# Struktura projektu (stan: M1 kompletny, kod M2 + M3, M4 i M5 na Windowsie, M6 w toku: skybox)
+# Struktura projektu (stan: M1 kompletny, kod M2 + M3, M4, M5 i M6 na Windowsie)
 
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny po
-kamieniu milowym M5, który dodał rozgrywkę (2026-10-05). Poprzedni
-stan to druga część M4, która dodała mapy normalnych (2026-10-05).
+drugiej części kamienia milowego M6, która dodała teren z mapy wysokości i trawę z shadera
+geometrii (2026-10-05). Poprzedni stan to pierwsza część M6, skybox (2026-10-05).
 
 Z M1 są: mysz, ścieżki do assetów, GLM, warstwa `gfx/` z klasami `Shader`, `Buffer` i
 `VertexArray`, warstwa `scene/` ze strukturami `Transform` i `Camera` oraz panele Shaders i
@@ -35,14 +35,15 @@ klasie `Shader`, macierz normalnych (`scene::normalMatrix` w `src/scene/Transfor
 ustawienia oświetlenia (`src/game/Lighting.*`), klasa
 wysyłająca światła na kartę (`src/game/LightRig.*`), dwie nowe pary shaderów (`lit`,
 `gouraud`) z jednym wspólnym plikiem dołączanym (`assets/shaders/common/lighting.glsl`),
-panel Lights, lista trybów `Lighting` w panelu Renderer, układ siedmiu paneli (dziś ośmiu) i
+panel Lights, lista trybów `Lighting` w panelu Renderer, układ siedmiu paneli (dziś dziesięciu) i
 cztery nowe pliki testów. Program startuje w nocnej, oświetlonej scenie. W M4 światła
 punktowe wisiały w ślepych zaułkach i były oznaczone kostkami: M5 zastąpił je światłami
 kryształów i usunął ten kod.
 
 Z M4 (druga część: mapy normalnych) są: dwie mapy normalnych w `assets/textures/`
-(`wall_stone_normal.png`, `floor_stone_normal.png`, liczone przez
-`tools/blender/make_textures.py`), linia `map_Bump` w trzech plikach `.mtl` i jej obsługa w
+(mapa ściany `wall_stone_normal.png` i mapa podłogi, którą w M6 zastąpiła mapa gruntu
+`ground_normal.png`, liczone przez
+`tools/blender/make_textures.py`), linia `map_Bump` w plikach `.mtl` (wtedy trzech) i jej obsługa w
 `src/assets/ObjLoader.*`, styczne wierzchołków (`src/assets/Tangents.*`), czwarte pole
 struktury `gfx::Vertex` i czwarty atrybut w `gfx::Mesh`, mapa normalnych każdej części modelu
 i płaska mapa zastępcza w `src/assets/AssetCache.*`, drugi plik dołączany do shaderów
@@ -81,8 +82,28 @@ nowy katalog `assets/skybox/` z sześcioma obrazami nieba i skrypt, który je ge
 i suwak `Sky brightness` w panelu Renderer oraz plik testów `tests/SkyboxTests.cpp`. Całość
 opisuje [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md). Zgłoszone dla
 Windowsa (2026-10-05): Debug i Release bez ostrzeżeń, 221 przypadków testowych i 85175
-asercji ([`build-windows.md`](build-windows.md), sekcja 15). M6 nie jest zamknięty: terenu
-i trawy ten dokument jeszcze nie opisuje, na macOS nic z M6 nie było budowane.
+asercji ([`build-windows.md`](build-windows.md), sekcja 15).
+
+Z drugiej części M6 (teren i trawa) są: teren jako siatka wysokości (`src/game/Terrain.*`,
+w bibliotece `game_logic`) i klasa, która go rysuje (`src/game/TerrainRenderer.*`), miejsca
+kępek trawy (`src/game/Grass.*`, też `game_logic`) i klasa, która je rysuje
+(`src/game/GrassRenderer.*`), szósty program shaderów z trzema plikami
+(`assets/shaders/grass.vert`, `grass.geom` i `grass.frag`) i opcjonalny etap geometrii w
+`src/gfx/Shader.*`, mapa wysokości `assets/textures/heightmap.png` ze skryptem
+`tools/blender/make_heightmap.py`, tekstury gruntu `ground.png` i `ground_normal.png`,
+panele Terrain i Grass (`src/debug/panels/TerrainPanel.*`, `GrassPanel.*`), funkcja
+`game::drawMesh` w `src/game/ModelDraw.*` oraz pliki testów `tests/TerrainTests.cpp` i
+`tests/GrassTests.cpp`. Ściany, słupki, brama, kryształy, wyjście i gracz stoją od tej
+części na terenie. **Zniknęły płytki podłogi:** model `floor_tile.obj` z plikiem `.mtl`,
+skrypt `build_floor_tile.py` i tekstury `floor_stone.png` oraz `floor_stone_normal.png`.
+Całość opisują [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) i
+[`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md). Na
+Windowsie (2026-10-05): build Debug i Release bez ostrzeżeń zgłosił wykonawca, a 256
+przypadków testowych i 101232 asercje uruchomiłem sam na obu programach testowych
+([`build-windows.md`](build-windows.md)). **M6 ma kompletny kod na Windowsie i nie jest
+zamknięty:** na macOS nic z M6 nie było budowane, a testy ręczne są otwarte. Iskier wokół
+kryształów, które PRD wymienia przy temacie 9 obok trawy, w kodzie nie ma. Nie ma też
+cieni, mgły ani poświaty (bloom).
 
 Docelową strukturę (z `renderer/`) opisuje PRD w sekcji 6.
 
@@ -114,11 +135,10 @@ night-maze/
 │   ├── models/                 # modele OBJ z materiałami MTL (budują je skrypty z tools/blender/)
 │   │   ├── crystal_a.obj/.mtl      # kryształ: jeden wysoki odłamek
 │   │   ├── crystal_b.obj/.mtl      # kryształ: grupa trzech odłamków na podstawie
-│   │   ├── floor_tile.obj/.mtl     # płytka podłogi 2 x 2 m
 │   │   ├── gate.obj/.mtl           # drewniana brama wyjścia, w miejscu segmentu ściany
 │   │   ├── wall_pillar.obj/.mtl    # słupek na rogu siatki
 │   │   └── wall_straight.obj/.mtl  # segment ściany wzdłuż osi X
-│   ├── shaders/                # shadery GLSL: pięć par i dwa pliki dołączane
+│   ├── shaders/                # shadery GLSL: pięć par, trójka trawy i dwa pliki dołączane
 │   │   ├── common/
 │   │   │   ├── lighting.glsl       # blok świateł i funkcja computeLighting, dołączany przez #include
 │   │   │   └── normal_map.glsl     # sampler mapy normalnych i funkcja surfaceNormal, dołączany przez #include
@@ -126,6 +146,9 @@ night-maze/
 │   │   ├── color.vert              # linie pudełek i kul kolizji: trzy macierze, sama pozycja
 │   │   ├── gouraud.frag            # scena, światło na wierzchołek: światło z wierzchołków razy tekstura
 │   │   ├── gouraud.vert            # scena, światło na wierzchołek: tu liczone jest światło
+│   │   ├── grass.frag              # trawa: gradient koloru od korzenia do czubka, światło na fragment
+│   │   ├── grass.geom              # trawa: shader geometrii, z punktu kępka trzech źdźbeł, wiatr
+│   │   ├── grass.vert              # trawa: punkt kępki w przestrzeni świata i jej liczba losowa
 │   │   ├── lit.frag                # scena, światło na fragment: tu liczone jest światło (Phong, Blinn-Phong)
 │   │   ├── lit.vert                # scena, światło na fragment: pozycja, normalna i styczna w świecie
 │   │   ├── skybox.frag             # niebo: odczyt tekstury sześciennej kierunkiem, jasność
@@ -139,13 +162,14 @@ night-maze/
 │   │   ├── px.png                  # ściana +X
 │   │   ├── py.png                  # ściana +Y (zenit, tu jest tarcza księżyca)
 │   │   └── pz.png                  # ściana +Z
-│   └── textures/               # tekstury PNG: cztery obrazy koloru i ich mapy normalnych
+│   └── textures/               # tekstury PNG: cztery obrazy koloru, ich mapy normalnych i mapa wysokości
 │       ├── crystal.png
 │       ├── crystal_normal.png
-│       ├── floor_stone.png
-│       ├── floor_stone_normal.png
 │       ├── gate_wood.png
 │       ├── gate_wood_normal.png
+│       ├── ground.png                  # grunt terenu, powtarzany co 4 m
+│       ├── ground_normal.png
+│       ├── heightmap.png               # mapa wysokości terenu 256 x 256 (buduje ją make_heightmap.py)
 │       ├── wall_stone.png
 │       └── wall_stone_normal.png
 ├── cmake/
@@ -187,33 +211,39 @@ night-maze/
 │   │       ├── CameraPanel.hpp/.cpp    # panel "Camera": stopy gracza, kąty, FOV, prędkości
 │   │       ├── CollisionPanel.hpp/.cpp # panel "Collision": rysowanie pudełek i kul, noclip, liczby
 │   │       ├── GameplayPanel.hpp/.cpp  # panel "Gameplay": stan rundy, bateria, liczby reguł, restart
+│   │       ├── GrassPanel.hpp/.cpp     # panel "Grass": włącznik, gęstość, wysokość źdźbeł, wiatr, liczba kępek
 │   │       ├── LightsPanel.hpp/.cpp    # panel "Lights": otoczenie, księżyc, latarka, światła punktowe, połysk
 │   │       ├── MazePanel.hpp/.cpp      # panel "Maze": rozmiar, ziarno, Regenerate, plan z kryształami, bramą i wyjściem
-│   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer": statystyki, kolor tła, lista Lighting
-│   │       └── ShadersPanel.hpp/.cpp   # panel "Shaders": pięć programów, przycisk Reload shaders
+│   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer": statystyki, kolor tła, lista Lighting, niebo
+│   │       ├── ShadersPanel.hpp/.cpp   # panel "Shaders": sześć programów, przycisk Reload shaders
+│   │       └── TerrainPanel.hpp/.cpp   # panel "Terrain": skala wysokości, wireframe, rozmiar siatki
 │   ├── game/                   # gra
 │   │   ├── ColliderLines.hpp/.cpp  # rysowanie pudełek i kul kolizji liniami (GL_LINES)
 │   │   ├── Crystals.hpp/.cpp       # kryształy: ile, w których komórkach, jak się ruszają i świecą
 │   │   ├── Exit.hpp/.cpp           # wyjście: najdalsza komórka, brama, strefa wygranej
 │   │   ├── GameplayRenderer.hpp/.cpp # rysowanie kryształów i bramy ich modelami
+│   │   ├── Grass.hpp/.cpp          # trawa: miejsca kępek z ziarna labiryntu, ustawienia
+│   │   ├── GrassRenderer.hpp/.cpp  # rysowanie trawy: punkty (GL_POINTS) dla shadera geometrii
 │   │   ├── LightRig.hpp/.cpp       # bufor uniformów ze światłami klatki
 │   │   ├── Lighting.hpp/.cpp       # tryby i ustawienia oświetlenia, światła klatki
 │   │   ├── Maze.hpp/.cpp           # labirynt: siatka komórek, ściany na krawędziach, ślepy zaułek
 │   │   ├── MazeGenerator.hpp/.cpp  # generator labiryntu z ziarna, randomBelow
 │   │   ├── MazeLayout.hpp/.cpp     # układ w świecie: ściany, słupki, pudełka kolizji
-│   │   ├── MazeRenderer.hpp/.cpp   # rysowanie podłogi, ścian i słupków modelami
-│   │   ├── MazeWorld.hpp/.cpp      # jeden labirynt w świecie: macierze modelu, pudełka, start, wyjście, kryształy
-│   │   ├── ModelDraw.hpp/.cpp      # rysowanie wczytanego modelu z teksturami, wspólne dla obu rendererów
-│   │   ├── NightMazeApp.hpp/.cpp   # aplikacja Night Maze: labirynt, runda, gracz, kamera, światła
-│   │   ├── Player.hpp/.cpp         # gracz: pudełko, chodzenie z kolizjami, noclip
+│   │   ├── MazeRenderer.hpp/.cpp   # rysowanie ścian i słupków modelami
+│   │   ├── MazeWorld.hpp/.cpp      # jeden labirynt w świecie, na terenie: macierze modelu, pudełka, start, wyjście, kryształy
+│   │   ├── ModelDraw.hpp/.cpp      # rysowanie modelu albo siatki z teksturami, wspólne dla trzech rendererów
+│   │   ├── NightMazeApp.hpp/.cpp   # aplikacja Night Maze: labirynt na terenie, runda, gracz, kamera, światła, trawa, niebo
+│   │   ├── Player.hpp/.cpp         # gracz: pudełko, chodzenie z kolizjami po terenie, noclip
 │   │   ├── Round.hpp/.cpp          # runda: kryształy, brama, bateria, czas i ich reguły
 │   │   ├── ShaderUniforms.hpp      # nazwy uniformów shaderów w jednym miejscu
-│   │   └── Skybox.hpp/.cpp         # niebo: tekstura sześcienna na sześcianie, rysowane na końcu klatki
+│   │   ├── Skybox.hpp/.cpp         # niebo: tekstura sześcienna na sześcianie, rysowane na końcu klatki
+│   │   ├── Terrain.hpp/.cpp        # teren: mapa wysokości, siatka wysokości, heightAt, siatka trójkątów
+│   │   └── TerrainRenderer.hpp/.cpp # rysowanie terenu: jedna siatka, tekstura gruntu, wireframe
 │   ├── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
 │   │   ├── Buffer.hpp/.cpp         # bufor wierzchołków albo indeksów
 │   │   ├── Cubemap.hpp/.cpp        # tekstura sześcienna (sześć ścian) i obiekt samplera
-│   │   ├── Mesh.hpp/.cpp           # siatka: VAO i dwa bufory jednego modelu, draw
-│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload, settery, blok uniformów
+│   │   ├── Mesh.hpp/.cpp           # siatka: VAO i dwa bufory, draw (trójkąty, linie albo punkty)
+│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch albo trzech plików, reload, settery, blok uniformów
 │   │   ├── ShaderSource.hpp/.cpp   # tekst shadera: #include, dyrektywy #line, nazwy plików w błędach
 │   │   ├── Texture2D.hpp/.cpp      # tekstura 2D z mipmapami i obiekt samplera
 │   │   ├── UniformBuffer.hpp/.cpp  # bufor uniformów: pamięć bloku uniformów na karcie
@@ -230,7 +260,8 @@ night-maze/
 │   ├── ColliderTests.cpp           # testy scene::Aabb, scene::Sphere, overlaps i moveAndSlide
 │   ├── CrystalTests.cpp            # testy kryształów: liczba, komórki, ruch i blask
 │   ├── ExitTests.cpp               # testy wyjścia: odległości, najdalsza komórka, brama, strefa
-│   ├── ImageLoaderTests.cpp        # testy loadImage: tekstury i mapy normalnych gry, odwracanie wierszy, błędy
+│   ├── GrassTests.cpp              # testy placeGrass: liczba kępek, pas przy ścianie, rozsiew na wzgórzach
+│   ├── ImageLoaderTests.cpp        # testy loadImage: tekstury i mapy normalnych gry (ściana, grunt), odwracanie wierszy, błędy
 │   ├── LightingTests.cpp           # testy ustawień oświetlenia, usesNormalMap i buildLightSet
 │   ├── LightTests.cpp              # testy zaniku, stożka reflektora i bajtów bloku świateł
 │   ├── MazeGeneratorTests.cpp      # testy randomBelow i generateMaze, labirynt wzorcowy
@@ -243,6 +274,7 @@ night-maze/
 │   ├── ShaderSourceTests.cpp       # testy expandIncludes i nameSourceFiles
 │   ├── SkyboxTests.cpp             # testy plików nieba: rozmiar, księżyc, gradient, granice ścian
 │   ├── TangentTests.cpp            # testy triangleTangents, computeTangents i countMirroredTriangles
+│   ├── TerrainTests.cpp            # testy terenu: mapa wysokości, heightAt, siatka, ściany i gracz na gruncie
 │   └── TransformTests.cpp          # testy macierzy normalnych
 └── docs/
     ├── PRD.pdf                 # dokument wymagań
@@ -257,10 +289,16 @@ night-maze/
     │   ├── deterministic-random.md     # własna randomBelow zamiast rozkładów std
     │   ├── enemy-after-m5.md           # przeciwnik dopiero po M5
     │   ├── exit-farthest-cell.md       # wyjście w komórce najdalszej od startu, nie w rogu
+    │   ├── floor-tiles-retired.md      # płytki podłogi usunięte, podłogą jest teren
+    │   ├── gentle-terrain-under-maze.md # łagodny teren pod labiryntem, wzgórza dookoła
+    │   ├── grass-lit-with-up-normal.md # trawa oświetlana normalną gruntu, jeden program na wszystkie tryby
+    │   ├── height-scale-rebuilds-terrain.md # skala wysokości przebudowuje teren na procesorze, nie jest uniformem
+    │   ├── heightmap-tiled-in-world-metres.md # mapa wysokości powtarzana co 48 m świata
     │   ├── no-gamma-until-m7.md        # bez korekcji gamma i tekstur sRGB do M7
     │   ├── painted-moon-fixed-direction.md # księżyc namalowany na niebie, w domyślnym kierunku światła
     │   ├── skybox-in-game-layer.md     # niebo jako game::Skybox, bez warstwy renderer
-    │   └── tangents-on-load.md         # styczne liczone przy wczytaniu, bez znaku skrętności
+    │   ├── tangents-on-load.md         # styczne liczone przy wczytaniu, bez znaku skrętności
+    │   └── walls-sunk-to-lowest-corner.md # ściany, słupki i brama zatopione do najniższego gruntu pod sobą
     ├── guides/                 # przewodniki
     │   ├── blender.md              # modele i tekstury: skrypty Blendera, eksport OBJ
     │   ├── build-macos.md          # budowanie na macOS
@@ -309,8 +347,10 @@ night-maze/
         │   └── uniforms.md             # uniformy, setMat4, setInt, setVec3
         ├── renderer/               # techniki rysowania: dokumenty tematów, kod jest w game/ i w shaderach
         │   ├── README.md               # wstęp i indeks
+        │   ├── grass-geometry.md       # shader geometrii, trawa z punktów, grass.*, panel Grass
         │   ├── lighting-gouraud-phong.md   # Gouraud a Phong, Phong a Blinn-Phong, lit.* i gouraud.*
-        │   └── skybox.md               # tekstura sześcienna, niebo, skybox.*, make_skybox.py
+        │   ├── skybox.md               # tekstura sześcienna, niebo, skybox.*, make_skybox.py
+        │   └── terrain.md              # teren z mapy wysokości, heightAt, wireframe, panel Terrain
         ├── scene/                  # moduł scene, podzielony na dokumenty tematyczne
         │   ├── README.md               # wstęp, dane bez OpenGL, warstwy, indeks
         │   ├── camera-controls.md      # obrót kamery myszą, panel Camera
@@ -322,7 +362,7 @@ night-maze/
 ```
 
 Drzewo nie pokazuje katalogu `tools/blender/`: to skrypty Pythona dla Blendera, które budują
-modele, tekstury i obrazy nieba z `assets/`. Program ich nie czyta i CMake ich nie uruchamia. Opisuje je
+modele, tekstury, obrazy nieba i mapę wysokości z `assets/`. Program ich nie czyta i CMake ich nie uruchamia. Opisuje je
 [`blender.md`](blender.md). Pliki katalogu, z rolą z komentarza na początku każdego:
 
 | Plik | Rola |
@@ -330,19 +370,22 @@ modele, tekstury i obrazy nieba z `assets/`. Program ich nie czyta i CMake ich n
 | `blender_common.py` | wspólne funkcje skryptów: czyszczenie sceny, budowanie brył, rzutowanie UV, materiał z teksturą i mapą normalnych, eksport OBJ ze stałymi opcjami, rendery do przeglądu |
 | `build_wall_straight.py` | model `wall_straight`: segment ściany, 2 m długości i 3 m wysokości |
 | `build_wall_pillar.py` | model `wall_pillar`: słupek na rogi siatki, który zakrywa końce segmentów |
-| `build_floor_tile.py` | model `floor_tile`: podłoga jednej komórki, płaski kwadrat 2 x 2 m |
 | `build_crystal.py` (M5) | dwa modele kryształów: `crystal_a`, jeden wysoki odłamek ze szpicem na obu końcach, i `crystal_b`, grupa trzech odłamków na płaskiej podstawie |
 | `build_gate.py` (M5) | model `gate`: zamknięta drewniana brama, która wypełnia jeden bok komórki między dwoma słupkami, w miejscu segmentu ściany |
-| `make_textures.py` | osiem tekstur 512 x 512 w `assets/textures`: obrazy koloru `wall_stone.png`, `floor_stone.png`, `gate_wood.png` i `crystal.png` oraz mapa normalnych każdego z nich |
+| `make_textures.py` | osiem tekstur 512 x 512 w `assets/textures`: obrazy koloru `wall_stone.png`, `ground.png`, `gate_wood.png` i `crystal.png` oraz mapa normalnych każdego z nich. Do pierwszej części M6 zamiast gruntu była tekstura podłogi |
 | `make_skybox.py` (M6) | sześć obrazów nieba 1024 x 1024 w `assets/skybox`: ściany tekstury sześciennej liczone z kierunku każdego piksela (tło, Droga Mleczna, gwiazdy, księżyc) |
-| `make_all.py` | wszystko naraz w jednym procesie Blendera: najpierw tekstury, potem modele, na końcu niebo |
+| `make_heightmap.py` (M6) | mapa wysokości terenu `heightmap.png` w `assets/textures`: szary obraz 256 x 256 z gładkiego szumu w trzech oktawach, który powtarza się bez szwu |
+| `make_all.py` | wszystko naraz w jednym procesie Blendera: najpierw tekstury, potem modele, na końcu niebo i mapa wysokości |
+
+Skryptu `build_floor_tile.py`, który budował płytkę podłogi, już nie ma: usunął go M6 razem z modelem.
 
 Zapis
-`floor_tile.obj/.mtl` oznacza parę plików `floor_tile.obj` i `floor_tile.mtl`.
+`wall_pillar.obj/.mtl` oznacza parę plików `wall_pillar.obj` i `wall_pillar.mtl`.
 
 Katalog `docs/modules/renderer/` istnieje, choć katalogu `src/renderer/` jeszcze nie ma:
-dokumenty o cieniowaniu i o niebie są już pod nazwą warstwy z PRD, a kod, który opisują, leży
-dziś w `src/game/` (`NightMazeApp.cpp`, `Skybox.*`) i w `assets/shaders/`.
+dokumenty o cieniowaniu, o niebie, o terenie i o trawie są już pod nazwą warstwy z PRD, a kod,
+który opisują, leży dziś w `src/game/` (`NightMazeApp.cpp`, `Skybox.*`, `Terrain.*`,
+`TerrainRenderer.*`, `Grass.*`, `GrassRenderer.*`) i w `assets/shaders/`.
 
 Zapis `Window.hpp/.cpp` oznacza parę plików `Window.hpp` i `Window.cpp`. Zgodnie z zasadą z
 PRD nagłówek i implementacja leżą obok siebie w `src/`, nie ma osobnego katalogu `include/`. Pliki konfiguracyjne z katalogu głównego są
@@ -371,8 +414,8 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Time.*` | `core::Time`: delta czasu, akumulator stałego kroku (`FIXED_DT`), uśrednione FPS | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
-| `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `core::pathText`: ścieżka jako tekst UTF-8 do logu i do paneli. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Wołają je konstruktor `game::NightMazeApp` (ścieżki shaderów), konstruktory `game::MazeRenderer` i `game::GameplayRenderer` (ścieżki modeli), `assets::AssetCache` (`pathText` w logu) i panele Shaders oraz Assets | [`../modules/core/paths.md`](../modules/core/paths.md) |
-| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `setMat4` (uniform typu `mat4`, przez `glGetUniformLocation` i `glUniformMatrix4fv`), `setInt` (uniform typu `int` albo sampler, `glUniform1i`), `setVec3` (uniform typu `vec3`, `glUniform3fv`), `setMat3` (uniform typu `mat3`, `glUniformMatrix3fv`: macierz normalnych), `setFloat` (uniform typu `float`, `glUniform1f`), `bindUniformBlock` (łączy blok uniformów z punktem wiązania przez `glGetUniformBlockIndex` i `glUniformBlockBinding`, zapamiętuje prośbę w strukturze `gfx::UniformBlockBinding` i powtarza ją po każdym `reload`, porównuje rozmiar bloku według sterownika z rozmiarem z C++), `lastError`, `vertexPath`, `fragmentPath`. Przed kompilacją rozwija dyrektywy `#include` (`gfx::expandIncludes`), a w komunikacie błędu zamienia numer napisu źródłowego na nazwę pliku (`gfx::nameSourceFiles`). RAII, tylko przenoszenie. `NightMazeApp` ma cztery takie obiekty (`textured`, `color`, `lit`, `gouraud`; piąty, `basic`, zniknął w M5 razem z kostką), a panel "Shaders" woła `reload` na każdym. `setInt` ustawia samplery `uTexture` i `uNormalMap`, tryb `uViewMode`, przełącznik `uNormalMapEnabled` i wzór połysku `uSpecularModel`, `setVec3` kolory `uTint`, `uColor` i (od M5) `uEmissive`, `setFloat` uniformy `uSpecularStrength` i `uShininess`, `setMat3` uniform `uNormalMatrix` | [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), settery w [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), `reload` w [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), `bindUniformBlock` w [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md), `#include` w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `core::pathText`: ścieżka jako tekst UTF-8 do logu i do paneli. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Wołają je konstruktor `game::NightMazeApp` (ścieżki shaderów), konstruktory `game::MazeRenderer` i `game::GameplayRenderer` (ścieżki modeli), `assets::AssetCache` (`pathText` w logu) i panele Shaders oraz Assets. Od M6 `assetPath` wołają też `game::Skybox` (sześć obrazów nieba), `game::TerrainRenderer` (dwie tekstury gruntu) i funkcja `loadHeightmap` w `NightMazeApp.cpp` (mapa wysokości) | [`../modules/core/paths.md`](../modules/core/paths.md) |
+| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `setMat4` (uniform typu `mat4`, przez `glGetUniformLocation` i `glUniformMatrix4fv`), `setInt` (uniform typu `int` albo sampler, `glUniform1i`), `setVec3` (uniform typu `vec3`, `glUniform3fv`), `setMat3` (uniform typu `mat3`, `glUniformMatrix3fv`: macierz normalnych), `setFloat` (uniform typu `float`, `glUniform1f`), `bindUniformBlock` (łączy blok uniformów z punktem wiązania przez `glGetUniformBlockIndex` i `glUniformBlockBinding`, zapamiętuje prośbę w strukturze `gfx::UniformBlockBinding` i powtarza ją po każdym `reload`, porównuje rozmiar bloku według sterownika z rozmiarem z C++), `lastError`, `vertexPath`, `fragmentPath`. Przed kompilacją rozwija dyrektywy `#include` (`gfx::expandIncludes`), a w komunikacie błędu zamienia numer napisu źródłowego na nazwę pliku (`gfx::nameSourceFiles`). RAII, tylko przenoszenie. `NightMazeApp` ma cztery takie obiekty (`textured`, `color`, `lit`, `gouraud`; piąty, `basic`, zniknął w M5 razem z kostką), a panel "Shaders" woła `reload` na każdym. `setInt` ustawia samplery `uTexture` i `uNormalMap`, tryb `uViewMode`, przełącznik `uNormalMapEnabled` i wzór połysku `uSpecularModel`, `setVec3` kolory `uTint`, `uColor` i (od M5) `uEmissive`, `setFloat` uniformy `uSpecularStrength` i `uShininess`, `setMat3` uniform `uNormalMatrix`. Od drugiej części M6 program może mieć trzeci, opcjonalny etap między tymi dwoma: shader geometrii. Konstruktor ma trzeci parametr `geometryPath` z pustą ścieżką domyślną, `hasGeometryStage()` i `geometryPath()` mówią, czy i z jakiego pliku etap pochodzi, a `reload` czyta wtedy trzy pliki. Jedynym takim programem jest trawa | [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), settery w [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), `reload` w [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), `bindUniformBlock` w [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md), `#include` w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
 | `src/gfx/ShaderSource.*` | typ `gfx::IncludeReader` (funkcja, która podaje treść dołączanego pliku), struktura `gfx::ShaderSource` (tekst po rozwinięciu i lista plików, z których powstał) oraz funkcje `gfx::expandIncludes` (zastępuje linie `#include "..."` treścią plików, także zagnieżdżone, i dopisuje wokół nich dyrektywy `#line`; zwraca błąd dla brakującego pliku, pliku dołączającego samego siebie, źle zapisanej linii, `#include` przed `#version` i `#version` w pliku dołączanym) i `gfx::nameSourceFiles` (w dzienniku sterownika zamienia numer napisu źródłowego na nazwę pliku, dla formatu NVIDII `1(15)` i formatu `ERROR: 1:15:`, a przy więcej niż jednym pliku dopisuje linię `Source files: ...`). Sama praca na tekście: nie otwiera plików i nie woła OpenGL, nagłówek nie dołącza GLAD, więc ma testy jednostkowe. Woła je `gfx::Shader` | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `src/gfx/UniformBuffer.*` | `gfx::UniformBuffer`: jeden bufor OpenGL używany jako bufor uniformów, czyli pamięć bloku uniformów, który czyta kilka programów. Konstruktor tworzy bufor o podanym rozmiarze (`glGenBuffers`, `glBindBuffer` i `glBufferData` z celem `GL_UNIFORM_BUFFER` i wskazówką `GL_DYNAMIC_DRAW`) i wpina go w punkt wiązania (`glBindBufferBase`). `update` kopiuje bajty na początek bufora (`glBufferSubData`) i loguje błąd, gdy danych jest więcej niż miejsca. Akcesory `bindingPoint` i `sizeInBytes`. RAII, tylko przenoszenie. Klasa przenosi same bajty i nie wie, co znaczą. Posiada ją `game::LightRig`. Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md) |
 | `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Używa jej `gfx::Mesh` (do M4 także kostka w `NightMazeApp`, usunięta w M5) | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
@@ -380,10 +423,10 @@ wypisane na początku drzewa, przed katalogami.
 | `src/gfx/Texture2D.*` | typ `gfx::TextureFilter` (`Nearest`, `Bilinear`, `Trilinear`) i klasa `gfx::Texture2D`: jedna tekstura 2D z pełnym łańcuchem mipmap i jej obiekt samplera. Konstruktor przyjmuje surowe bajty (szerokość, wysokość, 3 albo 4 kanały, wskaźnik, dolny wiersz pierwszy) i woła `glTexImage2D` oraz `glGenerateMipmap`. `bind(unit)` wiąże teksturę i sampler z jednostką teksturującą, `setFilter` i `setAnisotropy` zmieniają próbkowanie w działającym programie, akcesory `filter`, `anisotropy`, `maxAnisotropy`, `id`, `width`, `height`, `isValid`. Filtrowanie anizotropowe jest wykrywane jako rozszerzenie. RAII, tylko przenoszenie. Tworzy ją i trzyma `assets::AssetCache`, wiąże `game::drawModel` (`src/game/ModelDraw.cpp`), a jej `id()` czyta podgląd w panelu Assets. Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/textures.md`](../modules/gfx/textures.md) |
 | `src/gfx/Cubemap.*` | klasa `gfx::Cubemap` (M6): jedna tekstura sześcienna i jej obiekt samplera. Konstruktor przyjmuje bok ściany, liczbę kanałów (3 albo 4) i sześć wskaźników na surowe bajty w kolejności +X, -X, +Y, -Y, +Z, -Z (typ `FacePixels`, górny wiersz pierwszy), woła `glTexImage2D` raz na ścianę, ustawia `GL_TEXTURE_MAX_LEVEL` na 0 (bez mipmap) i daje samplerowi filtr liniowy i `GL_CLAMP_TO_EDGE` na trzech osiach. `bind(unit)` wiąże teksturę i sampler z jednostką, akcesory `isValid`, `id`, `size`, konstruktor domyślny daje obiekt bez tekstury. RAII, tylko przenoszenie. Tworzy ją i trzyma `game::Skybox`. Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/cubemap.md`](../modules/gfx/cubemap.md) |
 | `src/gfx/Vertex.hpp` | `gfx::Vertex`: jeden wierzchołek modelu jako struktura (pola `position`, `normal`, `uv`, `tangent`: 11 liczb `float`, 44 bajty), stałe `POSITION_COMPONENTS`, `NORMAL_COMPONENTS`, `UV_COMPONENTS`, `TANGENT_COMPONENTS` i numery atrybutów `POSITION_ATTRIBUTE` (0), `NORMAL_ATTRIBUTE` (1), `UV_ATTRIBUTE` (2), `TANGENT_ATTRIBUTE` (3), dwa `static_assert` (rozmiar bez dopełnienia, układ standardowy). Sam nagłówek, bez GLAD. Używają jej `gfx::Mesh`, loader OBJ i testy | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcja 5.2 |
-| `src/gfx/Mesh.*` | `gfx::Mesh`: siatka jednego modelu na karcie. Posiada `VertexArray`, bufor wierzchołków i bufor indeksów, w konstruktorze wysyła dane ze `std::span` i opisuje cztery atrybuty przez `sizeof(Vertex)` i `offsetof`. `draw()` rysuje całość, `draw(firstIndex, indexCount)` zakres indeksów (`glDrawElements`), prymityw jest parametrem konstruktora (domyślnie `GL_TRIANGLES`). RAII przez pola, tylko przenoszenie. Tworzą ją `assets::AssetCache` (siatka modelu z trójkątów, rysowana zakresami) i `game::ColliderLines` (dwie siatki z `GL_LINES`: krawędzie sześcianu jednostkowego, 8 wierzchołków i 24 indeksy, oraz okrąg jednostkowy, 32 wierzchołki i 64 indeksy). Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcje od 5.3 do 5.5 |
+| `src/gfx/Mesh.*` | `gfx::Mesh`: siatka jednego modelu na karcie. Posiada `VertexArray`, bufor wierzchołków i bufor indeksów, w konstruktorze wysyła dane ze `std::span` i opisuje cztery atrybuty przez `sizeof(Vertex)` i `offsetof`. `draw()` rysuje całość, `draw(firstIndex, indexCount)` zakres indeksów (`glDrawElements`), prymityw jest parametrem konstruktora (domyślnie `GL_TRIANGLES`). RAII przez pola, tylko przenoszenie. Tworzą ją `assets::AssetCache` (siatka modelu z trójkątów, rysowana zakresami) i `game::ColliderLines` (dwie siatki z `GL_LINES`: krawędzie sześcianu jednostkowego, 8 wierzchołków i 24 indeksy, oraz okrąg jednostkowy, 32 wierzchołki i 64 indeksy). Nie ma testu jednostkowego (wymaga kontekstu OpenGL). Od M6 siatka może być też listą punktów (`GL_POINTS`, jeden indeks na punkt): tak `game::GrassRenderer` trzyma kępki trawy dla shadera geometrii. Siatkę terenu trzyma `game::TerrainRenderer` | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcje od 5.3 do 5.5 |
 | `src/assets/ObjLoader.*` | struktury `assets::ObjPart`, `assets::ObjMaterial`, `assets::ObjModel` i funkcje `assets::parseObj` (tekst OBJ na wierzchołki, indeksy i części), `assets::parseMtl` (tekst MTL na materiały: `newmtl`, `Kd`, `map_Kd` i linia mapy normalnych `map_Bump` z opcją `-bm`) oraz `assets::loadObj` (plik OBJ razem z plikami MTL, ścieżki tekstur względem pliku MTL). `parseObj` na końcu liczy styczne wierzchołków (`assets::computeTangents`) i zapisuje liczbę trójkątów z lustrzaną teksturą w `ObjModel::mirroredTriangleCount`, a `loadObj` ostrzega w logu, gdy jest większa od zera. Ręcznie napisany parser, bez OpenGL i bez wyjątków: wynik `bool` i tekst błędu z numerem linii. `loadObj` woła `assets::AssetCache::model` | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), wstęp do warstwy w [`../modules/assets/README.md`](../modules/assets/README.md) |
 | `src/assets/Tangents.*` | funkcje `assets::triangleTangents` (styczna i bitangenta jednego trójkąta z krawędzi i różnic UV), `assets::computeTangents` (styczna każdego wierzchołka: suma po trójkątach, ortogonalizacja Grama-Schmidta względem normalnej, długość 1, wartość zastępcza zamiast `NaN`) i `assets::countMirroredTriangles` (trójkąty, na których `cross(N, T)` wskazuje przeciwnie do bitangenty). Sama matematyka na GLM, bez OpenGL. Woła je `assets::parseObj` | [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcje od 5.5 do 5.7, notatka [`../decisions/tangents-on-load.md`](../decisions/tangents-on-load.md) |
-| `src/assets/ImageLoader.*` | struktura `assets::Image` (szerokość, wysokość, liczba kanałów, bajty pikseli z dolnym wierszem jako pierwszym), od M6 typ `assets::RowOrder` (`BottomFirst` dla tekstur 2D, domyślny, i `TopFirst` dla ścian tekstury sześciennej, których wierszy się nie odwraca) i funkcja `assets::loadImage`: czyta plik w trybie binarnym, dekoduje go biblioteką stb_image i odwraca kolejność wierszy. Wynik `bool`, tekst błędu przez referencję, jedno logowanie, bez wyjątków. Bez OpenGL. Jedyny plik projektu, który dołącza `<stb_image.h>`. `loadImage` woła `assets::AssetCache::texture` | [`../modules/assets/images.md`](../modules/assets/images.md) |
+| `src/assets/ImageLoader.*` | struktura `assets::Image` (szerokość, wysokość, liczba kanałów, bajty pikseli z dolnym wierszem jako pierwszym), od M6 typ `assets::RowOrder` (`BottomFirst` dla tekstur 2D, domyślny, i `TopFirst` dla ścian tekstury sześciennej, których wierszy się nie odwraca) i funkcja `assets::loadImage`: czyta plik w trybie binarnym, dekoduje go biblioteką stb_image i odwraca kolejność wierszy. Wynik `bool`, tekst błędu przez referencję, jedno logowanie, bez wyjątków. Bez OpenGL. Jedyny plik projektu, który dołącza `<stb_image.h>`. `loadImage` woła `assets::AssetCache::texture`, od M6 także `game::Skybox` (ściany nieba) i funkcja `loadHeightmap` w `NightMazeApp.cpp` (mapa wysokości), obie z `RowOrder::TopFirst` | [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `src/assets/AssetCache.*` | struktury `assets::LoadedTexture`, `assets::ModelPart`, `assets::LoadedModel` i klasa `assets::AssetCache`: wczytuje każdy model (`model`) i każdą teksturę (`texture`) raz, pod kluczem będącym uporządkowaną ścieżką, trzyma je w `std::deque` (wskaźniki pozostają ważne), pamięta ścieżki, których nie udało się wczytać (`failedPaths`), ma dwie tekstury zastępcze 1 x 1 (białą `whiteTexture` i płaską mapę normalnych `flatNormalTexture`) oraz `setFilter` i `setAnisotropy` dla wszystkich tekstur naraz. Każda część modelu (`ModelPart`) ma teksturę koloru i mapę normalnych, nigdy puste. Jedyny plik `src/assets/`, który tworzy obiekty OpenGL (przez `gfx::Mesh` i `gfx::Texture2D`), więc nie ma testu jednostkowego. Posiada ją `NightMazeApp` | [`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md) |
 | `external/stb/stb_image.c` | jedyny plik, w którym kompiluje się implementacja stb_image: makro `STB_IMAGE_IMPLEMENTATION` i dołączenie nagłówka pobranego przez FetchContent. Plik C, poza naszymi ostrzeżeniami, tworzy bibliotekę `stb_image` | [`../libraries/stb_image.md`](../libraries/stb_image.md), sekcja 2 |
 | `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Od M4 także funkcja `scene::normalMatrix`: macierz normalnych, czyli odwrotność lewej górnej części 3 x 3 macierzy modelu po transpozycji (`glm::mat3`). Sama matematyka na GLM, bez OpenGL. Struktury używają `game::buildMazeWorld` (macierze podłogi, ścian i słupków, przez `placedAt` i `wallModelMatrix`), `game::GameplayRenderer` (macierz każdego kryształu: pozycja, która się kołysze, i obrót wokół osi Y) i `game::ColliderLines` (macierz każdego pudełka i każdego okręgu kuli), a `normalMatrix` woła `game::drawModel` dla każdego rysowanego obiektu | [`../modules/scene/transforms.md`](../modules/scene/transforms.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
@@ -393,51 +436,58 @@ wypisane na początku drzewa, przed katalogami.
 | `src/scene/Collider.*` | `scene::Aabb` (pudełko o ścianach równoległych do osi: pola `min` i `max`, funkcja `fromCenter`), stała `CONTACT_TOLERANCE`, funkcje `scene::overlaps` dla dwóch pudełek (czy na siebie nachodzą) i `scene::moveAndSlide` (o ile wolno przesunąć pudełko wśród przeszkód, oś po osi, ze ślizganiem po ścianach). Od M5 także drugi kształt: `scene::Sphere` (pola `center` i `radius`), `overlaps` dla dwóch kul (kwadrat odległości środków mniejszy od kwadratu sumy promieni), `overlaps` dla kuli i pudełka oraz `closestPoint` (punkt pudełka najbliższy danemu punktowi, przez `glm::clamp`). Kule, które się tylko stykają, nie nachodzą na siebie. Sama matematyka na GLM, bez OpenGL i bez wejścia. Pudełka tworzą `game/MazeLayout`, `game::exitZone` i `game::Player::box`, `moveAndSlide` woła `game::Player::update` w każdym kroku chodzenia, a kule tworzą `game::playerReach` i zbieranie kryształów w `game::updateRound` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
 | `src/game/Maze.*` | typ `game::Direction` (North, East, South, West), stałe `DIRECTION_COUNT` i `ALL_DIRECTIONS`, funkcje `opposite`, `columnStep`, `rowStep`, struktura `game::MazeCell` (komórka jako para `x`, `z`, z porównaniem `==`, od M5), klasa `game::Maze`: siatka komórek ze ścianami na krawędziach (`width`, `height`, `contains`, `hasWall`, `removeWall`, stała `MAX_SIZE`) i funkcja `isDeadEnd` (komórka ze ścianami z dokładnie trzech stron, w M5 przeniesiona tu z `Lighting.*`). Bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) |
 | `src/game/MazeGenerator.*` | `game::randomBelow` (losowa liczba poniżej granicy, taka sama na każdym systemie) i `game::generateMaze` (labirynt doskonały z rozmiaru i ziarna, algorytm recursive backtracker z własnym stosem). Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 5.4 i 5.5 |
-| `src/game/MazeLayout.*` | stałe wymiarów w metrach (`CELL_SIZE`, `WALL_LENGTH`, `WALL_HEIGHT`, `PILLAR_SIZE`, `WALL_VISUAL_THICKNESS`, `WALL_COLLISION_THICKNESS`, `PILLAR_HEIGHT`), typy `WallAxis` i `WallSegment`, funkcje `cellCenter`, `wallSegments`, `wallSegmentOn` (segment na wskazanym boku komórki, także otwartym: tak powstaje brama, od M5), `pillarPositions`, `wallBox`, `pillarBox`, `mazeColliders`. Część biblioteki `game_logic`. Woła je `game::buildMazeWorld` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5 |
-| `src/game/MazeWorld.*` | stałe `DEFAULT_MAZE_WIDTH`, `DEFAULT_MAZE_HEIGHT` (10) i `DEFAULT_MAZE_SEED` (1), struktura `game::MazeSettings` (prośba o następny labirynt: rozmiar, ziarno, flaga `regenerate`), struktura `game::MazeWorld` (labirynt, ziarno, segmenty ścian, słupki, macierze modelu podłogi, ścian i słupków, pudełka kolizji ścian i słupków w `colliders`, pozycja startu, yaw startu, a od M5 komórka wyjścia `exitCell` i jej środek `exitPosition`, brama `hasGate`, `gate` i jej pudełko `gateBox`, strefa wyjścia `exitZone` i lista kryształów `crystals`), funkcje `yawTowards`, `wallModelMatrix` (macierz modelu segmentu ściany, używana także dla bramy) i `buildMazeWorld`. Pola z pozycjami świateł punktowych, które było tu w M4, już nie ma. Zwykłe dane bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), wyjście i kryształy w [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
-| `src/game/Exit.*` | stałe `UNREACHABLE` (-1) i `EXIT_ZONE_HALF_SIZE` (0,5 m), funkcje `game::passageDistances` (dla każdej komórki liczba przejść na najkrótszej drodze od startu, przeszukiwanie wszerz), `farthestCell` (komórka najdalsza od startu, przy remisie pierwsza w kolejności wierszy), struktura `ExitPlacement` (`cell`, `hasGate`, `gate`), `placeExit` (wyjście w najdalszej komórce, brama na jej pierwszym otwartym boku w kolejności `ALL_DIRECTIONS`) i `exitZone` (pudełko 1 x 1 m na środku komórki wyjścia, wysokie jak ściany). Bez OpenGL. Część biblioteki `game_logic`. Woła je `game::buildMazeWorld` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), notatka [`../decisions/exit-farthest-cell.md`](../decisions/exit-farthest-cell.md) |
-| `src/game/Crystals.*` | stałe `CELLS_PER_CRYSTAL` (8), `CRYSTAL_VARIANT_COUNT` (2) i stałe ruchu i blasku kryształu (`CRYSTAL_HEIGHT`, `CRYSTAL_FLOAT_HEIGHT`, `CRYSTAL_BOB_AMPLITUDE`, `CRYSTAL_BOB_SECONDS`, `CRYSTAL_SPIN_DEGREES_PER_SECOND`, `CRYSTAL_LIGHT_CLEARANCE`, `CRYSTAL_PULSE_DEPTH`, `CRYSTAL_PULSE_SECONDS`, `CRYSTAL_GLOW_STRENGTH`), struktura `game::CrystalSpawn` (komórka i wariant modelu), funkcje `crystalCountFor` (jeden kryształ na osiem komórek, od 1 do `scene::MAX_POINT_LIGHTS`), `placeCrystals` (komórki kryształów z ziarna: nigdy start ani wyjście, najpierw ślepe zaułki), `crystalRestPosition`, `crystalCenter`, `crystalLightPosition`, `crystalBobPosition`, `crystalSpinDegrees`, `crystalPulse` i `crystalGlow` (wartość uniformu `uEmissive`). Bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), notatka [`../decisions/crystal-count-and-gate-threshold.md`](../decisions/crystal-count-and-gate-threshold.md) |
-| `src/game/Round.*` | stałe `GATE_OPEN_SECONDS` (1,5), `GATE_SINK_DEPTH` (3,3 m), `PLAYER_REACH_HEIGHT` i `PLAYER_REACH_RADIUS`, struktura `game::GameplaySettings` (liczby reguł do zmiany w działającej grze: `requiredFraction`, `batteryLifetimeSeconds`, `batteryPerCrystal`, `lowBatteryThreshold`, `pickupRadius`, `batteryDrains` i prośba `restart`), typ `RoundState` (`Playing`, `Won`: stanu przegranej nie ma), struktury `RoundCrystal` i `Round` (stan jednej rundy: kryształy, liczniki, brama, bateria, dwa zegary), funkcje `requiredCrystalCount`, `startRound`, `playerReach`, `updateRound` (jeden stały krok reguł: zegary, opadanie bramy, bateria, zbieranie, otwarcie bramy, wygrana, wyłączenie latarki przy pustej baterii), `gateBlocks`, `gateVisible`, `gateSinkDepth`, `roundObstacles`, `flashlightFlicker`, `lightingForFrame` i `crystalLightPositions`. Bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), bateria i światła w [`../modules/game/flashlight.md`](../modules/game/flashlight.md), notatka [`../decisions/battery-darkness-no-loss.md`](../decisions/battery-darkness-no-loss.md) |
+| `src/game/MazeLayout.*` | stałe wymiarów w metrach (`CELL_SIZE`, `WALL_LENGTH`, `WALL_HEIGHT`, `PILLAR_SIZE`, `WALL_VISUAL_THICKNESS`, `WALL_COLLISION_THICKNESS`, `PILLAR_HEIGHT`), typy `WallAxis` i `WallSegment`, funkcje `cellCenter`, `wallSegments`, `wallSegmentOn` (segment na wskazanym boku komórki, także otwartym: tak powstaje brama, od M5), `pillarPositions`, `wallBox`, `pillarBox`, `mazeColliders`. Część biblioteki `game_logic`. Woła je `game::buildMazeWorld`. Od M6 funkcje układu dają pozycje na `y = 0`, a na teren stawia je `game::placeOnTerrain`. Doszła funkcja `colliderBoxes` (pudełka z gotowych list ścian i słupków), którą woła `mazeColliders` i `placeOnTerrain` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5 |
+| `src/game/MazeWorld.*` | stałe `DEFAULT_MAZE_WIDTH`, `DEFAULT_MAZE_HEIGHT` (10) i `DEFAULT_MAZE_SEED` (1), struktura `game::MazeSettings` (prośba o następny labirynt: rozmiar, ziarno, flaga `regenerate`), struktura `game::MazeWorld` (labirynt, ziarno, segmenty ścian, słupki, macierze modelu ścian i słupków (macierzy płytek podłogi nie ma od M6), pudełka kolizji ścian i słupków w `colliders`, pozycja startu, yaw startu, a od M5 komórka wyjścia `exitCell` i jej środek `exitPosition`, brama `hasGate`, `gate` i jej pudełko `gateBox`, strefa wyjścia `exitZone` i lista kryształów `crystals`), funkcje `yawTowards`, `wallModelMatrix` (macierz modelu segmentu ściany, używana także dla bramy) i `buildMazeWorld`. Pola z pozycjami świateł punktowych, które było tu w M4, już nie ma. Zwykłe dane bez OpenGL. Część biblioteki `game_logic`. Od drugiej części M6 świat stoi na terenie: pole `terrain` (`game::Terrain`), stała `FOOTPRINT_MARGIN` (0,05 m), funkcje `groundHeightAt` (wysokość gruntu w środku komórki) i `placeOnTerrain` (buduje teren i zatapia ściany, słupki i bramę do najniższego gruntu pod nimi, przelicza macierze, pudełka, start, wyjście i strefę wyjścia) oraz drugie przeciążenie `buildMazeWorld` z mapą wysokości i skalą. Przeciążenie bez mapy daje płaski grunt na `y = 0` | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), wyjście i kryształy w [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
+| `src/game/Exit.*` | stałe `UNREACHABLE` (-1) i `EXIT_ZONE_HALF_SIZE` (0,5 m), funkcje `game::passageDistances` (dla każdej komórki liczba przejść na najkrótszej drodze od startu, przeszukiwanie wszerz), `farthestCell` (komórka najdalsza od startu, przy remisie pierwsza w kolejności wierszy), struktura `ExitPlacement` (`cell`, `hasGate`, `gate`), `placeExit` (wyjście w najdalszej komórce, brama na jej pierwszym otwartym boku w kolejności `ALL_DIRECTIONS`) i `exitZone` (pudełko 1 x 1 m na środku komórki wyjścia, wysokie jak ściany). Bez OpenGL. Część biblioteki `game_logic`. Woła je `game::buildMazeWorld`. Od M6 `exitZone` dostaje drugi argument, wysokość gruntu w środku komórki: strefa stoi na terenie | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), notatka [`../decisions/exit-farthest-cell.md`](../decisions/exit-farthest-cell.md) |
+| `src/game/Crystals.*` | stałe `CELLS_PER_CRYSTAL` (8), `CRYSTAL_VARIANT_COUNT` (2) i stałe ruchu i blasku kryształu (`CRYSTAL_HEIGHT`, `CRYSTAL_FLOAT_HEIGHT`, `CRYSTAL_BOB_AMPLITUDE`, `CRYSTAL_BOB_SECONDS`, `CRYSTAL_SPIN_DEGREES_PER_SECOND`, `CRYSTAL_LIGHT_CLEARANCE`, `CRYSTAL_PULSE_DEPTH`, `CRYSTAL_PULSE_SECONDS`, `CRYSTAL_GLOW_STRENGTH`), struktura `game::CrystalSpawn` (komórka i wariant modelu), funkcje `crystalCountFor` (jeden kryształ na osiem komórek, od 1 do `scene::MAX_POINT_LIGHTS`), `placeCrystals` (komórki kryształów z ziarna: nigdy start ani wyjście, najpierw ślepe zaułki), `crystalRestPosition`, `crystalCenter`, `crystalLightPosition`, `crystalBobPosition`, `crystalSpinDegrees`, `crystalPulse` i `crystalGlow` (wartość uniformu `uEmissive`). Bez OpenGL. Część biblioteki `game_logic`. Od M6 `crystalRestPosition` dostaje drugi argument, wysokość gruntu w środku komórki: kryształ unosi się `CRYSTAL_FLOAT_HEIGHT` nad terenem | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), notatka [`../decisions/crystal-count-and-gate-threshold.md`](../decisions/crystal-count-and-gate-threshold.md) |
+| `src/game/Round.*` | stałe `GATE_OPEN_SECONDS` (1,5), `GATE_SINK_DEPTH` (3,3 m), `PLAYER_REACH_HEIGHT` i `PLAYER_REACH_RADIUS`, struktura `game::GameplaySettings` (liczby reguł do zmiany w działającej grze: `requiredFraction`, `batteryLifetimeSeconds`, `batteryPerCrystal`, `lowBatteryThreshold`, `pickupRadius`, `batteryDrains` i prośba `restart`), typ `RoundState` (`Playing`, `Won`: stanu przegranej nie ma), struktury `RoundCrystal` i `Round` (stan jednej rundy: kryształy, liczniki, brama, bateria, dwa zegary), funkcje `requiredCrystalCount`, `startRound`, `playerReach`, `updateRound` (jeden stały krok reguł: zegary, opadanie bramy, bateria, zbieranie, otwarcie bramy, wygrana, wyłączenie latarki przy pustej baterii), `gateBlocks`, `gateVisible`, `gateSinkDepth`, `roundObstacles`, `flashlightFlicker`, `lightingForFrame` i `crystalLightPositions`. Bez OpenGL. Część biblioteki `game_logic`. Od M6 funkcja `restCrystalsOnGround` przestawia pozycje spoczynku kryształów rundy po przebudowie terenu, bez zmiany tego, które są zebrane | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), bateria i światła w [`../modules/game/flashlight.md`](../modules/game/flashlight.md), notatka [`../decisions/battery-darkness-no-loss.md`](../decisions/battery-darkness-no-loss.md) |
 | `src/game/Lighting.*` | typy `game::LightingMode` (`Unlit`, `Gouraud`, `Phong`, `BlinnPhong`: pozycje listy `Lighting` w panelu Renderer) i `game::SpecularModel` (wartości uniformu `uSpecularModel`), funkcja `specularModelOf`, struktura `game::LightingSettings` (wszystko, co da się zmienić w działającej grze: tryb, światło otoczenia, kąty, kolor i natężenie księżyca, wyłącznik, kolor, natężenie, stożek i zasięg latarki, kolor, natężenie i promień świateł punktowych, siła i wykładnik połysku), pole `normalMapping` (przełącznik map normalnych, startowo włączony) i funkcja `usesNormalMap` (włączone i tryb inny niż `Gouraud`) oraz `buildLightSet` (światła jednej klatki z ustawień, oka, kierunku patrzenia i listy pozycji świateł punktowych, którą od M5 podaje `game::crystalLightPositions`). Kod świateł w ślepych zaułkach z M4 (stała wysokości światła i funkcja wybierająca zaułki) został usunięty w M5, a `isDeadEnd` przeniesiona do `Maze.*`. Zwykłe dane i matematyka bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
-| `src/game/Player.*` | struktura `game::PlayerInput` (siedem pól `bool`: czego gracz chce w jednym kroku) i struktura `game::Player`: stałe ciała i prędkości (`BODY_WIDTH`, `BODY_HEIGHT`, `EYE_HEIGHT`, `WALK_SPEED`, `SPRINT_SPEED`, `FLY_SPEED`, `FLOOR_Y`), pola `position` (stopy), `noclip`, `walkSpeed`, `sprintSpeed`, `flySpeed`, funkcje `box`, `eyePosition` i `update` (jeden stały krok: chodzenie przez `scene::moveAndSlide` albo lot bez kolizji). Bez OpenGL, bez klawiatury i bez zegara. Część biblioteki `game_logic` | [`../modules/game/player.md`](../modules/game/player.md) |
-| `src/game/MazeRenderer.*` | typ `game::ViewMode` (`Textured`, `Normals`, `Uvs`: wartości uniformu `uViewMode`) i klasa `game::MazeRenderer`: prosi pamięć podręczną o trzy modele labiryntu i rysuje `MazeWorld`, jedno wywołanie rysujące na obiekt. Program shaderów dostaje z zewnątrz: `textured` albo jeden z dwóch oświetlonych (`lit`, `gouraud`). Ustawia `uEmissive` na czerń (kamień sam nie świeci) i woła `game::drawModel` dla podłogi, ścian i słupków. Niczego nie posiada. Część programu `night_maze` (potrzebuje kontekstu OpenGL) | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
-| `src/game/ModelDraw.*` | dwie funkcje wspólne dla `MazeRenderer` i `GameplayRenderer`: `game::setModelSamplers` (mówi samplerom `uTexture` i `uNormalMap`, z których jednostek teksturujących czytać: 0 i 1) i `game::drawModel` (rysuje jeden model raz dla każdej macierzy z listy: dla każdej części modelu wiąże mapę normalnych i obraz koloru i wysyła `uTint`, dla każdego obiektu wysyła `uModel` i `uNormalMatrix`, czyli `scene::normalMatrix` liczoną na procesorze w każdej klatce). W M4 ten kod był prywatną funkcją klasy `MazeRenderer`. Część programu `night_maze` | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `src/game/Player.*` | struktura `game::PlayerInput` (siedem pól `bool`: czego gracz chce w jednym kroku) i struktura `game::Player`: stałe ciała i prędkości (`BODY_WIDTH`, `BODY_HEIGHT`, `EYE_HEIGHT`, `WALK_SPEED`, `SPRINT_SPEED`, `FLY_SPEED`; stałą `FLOOR_Y` usunął M6), pola `position` (stopy), `noclip`, `walkSpeed`, `sprintSpeed`, `flySpeed`, funkcje `box`, `eyePosition` i `update` (jeden stały krok: chodzenie przez `scene::moveAndSlide` albo lot bez kolizji. Od M6 dostaje też `const Terrain&` i po ruchu stawia stopy na wysokości `Terrain::heightAt`). Bez OpenGL, bez klawiatury i bez zegara. Część biblioteki `game_logic` | [`../modules/game/player.md`](../modules/game/player.md) |
+| `src/game/MazeRenderer.*` | typ `game::ViewMode` (`Textured`, `Normals`, `Uvs`: wartości uniformu `uViewMode`) i klasa `game::MazeRenderer`: prosi pamięć podręczną o dwa modele labiryntu, ścianę i słupek (do M5 trzy, z płytką podłogi) i rysuje `MazeWorld`, jedno wywołanie rysujące na obiekt. Program shaderów dostaje z zewnątrz: `textured` albo jeden z dwóch oświetlonych (`lit`, `gouraud`). Ustawia `uEmissive` na czerń (kamień sam nie świeci) i woła `game::drawModel` dla ścian i słupków. Grunt pod nimi rysuje od M6 `game::TerrainRenderer`. Niczego nie posiada. Część programu `night_maze` (potrzebuje kontekstu OpenGL) | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `src/game/ModelDraw.*` | funkcje wspólne dla klas rysujących modele i teren. Dwie pierwsze, dla `MazeRenderer` i `GameplayRenderer`: `game::setModelSamplers` (mówi samplerom `uTexture` i `uNormalMap`, z których jednostek teksturujących czytać: 0 i 1) i `game::drawModel` (rysuje jeden model raz dla każdej macierzy z listy: dla każdej części modelu wiąże mapę normalnych i obraz koloru i wysyła `uTint`, dla każdego obiektu wysyła `uModel` i `uNormalMatrix`, czyli `scene::normalMatrix` liczoną na procesorze w każdej klatce). W M4 ten kod był prywatną funkcją klasy `MazeRenderer`. Część programu `night_maze`. Od M6 trzecia funkcja, `game::drawMesh`: rysuje raz całą siatkę, która nie pochodzi z pliku modelu, z podaną teksturą, mapą normalnych, kolorem i macierzą. Woła ją `TerrainRenderer`, a `setModelSamplers` wspólnie wszystkie trzy klasy | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
 | `src/game/GameplayRenderer.*` | klasa `game::GameplayRenderer`: prosi pamięć podręczną o dwa modele kryształów i model bramy i rysuje to, co zmienia się w rundzie. Bramę rysuje macierzą `wallModelMatrix` z pozycją obniżoną o `gateSinkDepth`, dopóki `gateVisible` jest prawdą, z `uEmissive` równym czerni. Każdy niezebrany kryształ rysuje własną macierzą (`crystalBobPosition`, `crystalSpinDegrees`) z `uEmissive` równym `crystalGlow`. Program shaderów jest ten sam, którym narysowano labirynt. Niczego nie posiada. Część programu `night_maze` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | `src/game/LightRig.*` | klasa `game::LightRig`: strona OpenGL oświetlenia. Posiada bufor uniformów (`gfx::UniformBuffer` o rozmiarze `scene::LightBlockData`, punkt wiązania `LIGHT_BLOCK_BINDING_POINT`) i nic więcej. `connect` łączy blok `LightBlock` programu z tym buforem (`Shader::bindUniformBlock`), `upload` pakuje `scene::LightSet` (`scene::packLightBlock`) i kopiuje bajty do bufora raz na klatkę. Siatki kostki znacznika i funkcji, która w M4 rysowała te kostki, już nie ma: widocznym źródłem każdego światła punktowego jest kryształ, rysowany przez `game::GameplayRenderer`. Część programu `night_maze` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
 | `src/game/ColliderLines.*` | klasa `game::ColliderLines`: posiada dwie siatki z `GL_LINES`, 12 krawędzi sześcianu o boku 1 (`UNIT_CUBE_CORNERS`, `UNIT_CUBE_EDGES`) i okrąg o promieniu 1 (`CIRCLE_SEGMENTS` równe 32). `draw` rysuje dowolną listę pudełek `scene::Aabb` w jednym kolorze, każde powiększone o 1 cm. `drawSpheres` (od M5) rysuje każdą kulę `scene::Sphere` jako trzy okręgi: jeden poziomy i dwa pionowe (`CIRCLE_ROTATIONS`). Część programu `night_maze` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
 | `src/game/Skybox.*` | struktura `game::SkyboxSettings` (`enabled`, `brightness`) i klasa `game::Skybox` (M6): niebo. Konstruktor wczytuje sześć plików z `assets/skybox/` loaderem obrazów z `RowOrder::TopFirst`, sprawdza, że są kwadratami jednej wielkości, tworzy z nich `gfx::Cubemap` i siatkę sześcianu (`gfx::Mesh`, 8 wierzchołków, 36 indeksów). `draw` wybiera program `skybox`, ustawia jego pięć uniformów, wiąże teksturę sześcienną z jednostką 0, włącza `GL_TEXTURE_CUBE_MAP_SEAMLESS`, na czas jednego wywołania rysującego ustawia test głębi `GL_LEQUAL` i wyłącza zapis głębi, a potem przywraca `GL_LESS` i zapis. Gdy plików albo programu brakuje, nic nie rysuje. Wymaga kontekstu OpenGL, więc jest w programie, a nie w `game_logic`, i nie ma testu jednostkowego | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md) |
-| `src/game/ShaderUniforms.hpp` | nazwy uniformów jako stałe, szesnaście: `MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM`, `TEXTURE_UNIFORM`, `TINT_UNIFORM`, `EMISSIVE_UNIFORM` (od M5), `NORMAL_MAP_UNIFORM`, `NORMAL_MAP_ENABLED_UNIFORM`, `VIEW_MODE_UNIFORM`, `NORMAL_MATRIX_UNIFORM`, `SPECULAR_MODEL_UNIFORM`, `SPECULAR_STRENGTH_UNIFORM`, `SHININESS_UNIFORM`, `COLOR_UNIFORM`, a od M6 `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Do tego nazwa bloku uniformów `LIGHT_BLOCK_NAME` (`"LightBlock"`) i jego punkt wiązania `LIGHT_BLOCK_BINDING_POINT` (1, typu `GLuint`, stąd `<glad/gl.h>` w nagłówku). Sam nagłówek, wspólny dla `NightMazeApp`, `MazeRenderer`, `GameplayRenderer`, `ModelDraw`, `ColliderLines`, `LightRig` i `Skybox` | [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), blok w [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md) |
-| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor czyszczenia (`{0.01F, 0.015F, 0.04F}`, od M6 tło tylko wtedy, gdy niebo jest wyłączone), pięć programów shaderów (`textured`, `color`, `lit`, `gouraud`, `skybox`), pamięć podręczna assetów, `MazeRenderer`, `GameplayRenderer`, `ColliderLines`, `LightRig`, `Skybox` z ustawieniami `SkyboxSettings`, `MazeSettings` i `MazeWorld`, liczby reguł `GameplaySettings` i stan rundy `Round`, lista przeszkód rundy `m_obstacles`, gracz z pozycją sprzed ostatniego kroku, `scene::Camera`, ustawienia oświetlenia `LightingSettings`, tryb widoku, przełącznik rysowania kształtów kolizji i czułość myszy. Konstruktor wczytuje shadery i modele, łączy oba oświetlone programy z buforem świateł (`m_lightRig.connect`), buduje pierwszy labirynt (10 na 10, ziarno 1) i woła `beginRound`, która zaczyna rundę (`startRound`), buduje listę przeszkód (`roundObstacles`), włącza latarkę i stawia gracza na starcie. `onUpdate` w każdym stałym kroku zbiera klawisze do `PlayerInput` (tylko przy przechwyconym kursorze), woła `Player::update` z listą przeszkód rundy, ustawia kamerę w oczach gracza i woła `updateRound` (bateria, zbieranie kryształów, brama, wyjście). Gdy brama właśnie się otworzyła, buduje listę przeszkód od nowa. `onRender` buduje nowy labirynt, gdy panel o to poprosił (`regenerateMaze`), zaczyna rundę od nowa po klawiszu R albo po prośbie panelu (`beginRound`), obsługuje klawisze N (noclip) i F (latarka), przechwytuje kursor po kliknięciu w scenę i obraca kamerę myszą, ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera i pozycję oka między dwoma krokami symulacji, buduje światła klatki (`lightingForFrame`, `crystalLightPositions`, `buildLightSet`) i wysyła je do bufora uniformów (`m_lightRig.upload`, w każdej klatce, także w trybie `Unlit`), a potem rysuje części klatki: `drawMaze` (bez światła w `drawUnlitMaze` programem `textured`, gdy tryb to `Unlit` albo wybrany jest widok debug, w pozostałych przypadkach `drawLitMaze` programem `gouraud` albo `lit`; obie funkcje rysują labirynt przez `MazeRenderer`, a kryształy i bramę przez `GameplayRenderer`, tym samym programem) i, gdy włączone, `drawColliderLines` (pudełka i kule programem `color`), a na samym końcu, gdy pole `Skybox` jest zaznaczone, `m_skybox.draw` (niebo programem `skybox`). W jednej klatce pracują najwyżej trzy z pięciu programów (jeden program sceny, `color` i `skybox`), w najwyżej trzech wywołaniach `use()`. Chronione akcesory `clearColor()`, `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()`, `skyboxShader()`, `skyboxSettings()`, `lighting()`, `camera()`, `mouseSensitivity()`, `player()`, `mazeSettings()`, `mazeWorld()`, `gameplaySettings()`, `round()`, `assets()`, `viewMode()` i `drawColliders()` udostępniają stan panelom debug i HUD. Kostki z M1 (danych wierzchołków, własnych buforów, funkcji rysującej i akcesora jej programu) ani funkcji rysującej znaczniki świateł już nie ma | [`../modules/core/README.md`](../modules/core/README.md), macierze w [`../modules/scene/camera.md`](../modules/scene/camera.md), obrót kamery myszą w [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), ruch gracza w [`../modules/game/player.md`](../modules/game/player.md), rysowanie labiryntu i regeneracja w [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), runda w [`../modules/game/gameplay.md`](../modules/game/gameplay.md), latarka i światła klatki w [`../modules/game/flashlight.md`](../modules/game/flashlight.md), przełącznik trybu cieniowania w [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
+| `src/game/Terrain.*` | teren jako dane (M6): stałe (`TERRAIN_STEPS_PER_CELL` 4, `TERRAIN_SPACING` 0,5 m, `TERRAIN_MARGIN_CELLS` 7, `TERRAIN_MARGIN` 14 m, `HEIGHTMAP_SPAN` 48 m, `MAZE_RELIEF` 0,6, `HILL_RELIEF` 4,5, `DEFAULT_HEIGHT_SCALE` 1, `MAX_HEIGHT_SCALE` 2,5, `GROUND_TEXTURE_SPAN` 4 m), struktury `game::TerrainSettings` (`heightScale`, `wireframe`, flaga `rebuild`) i `game::Heightmap` (liczby od 0 do 1 z odczytem dwuliniowym `sample`, który się powtarza), funkcje `heightmapFromImage`, `distanceOutsideMaze` i `terrainRelief`, klasa `game::Terrain` (siatka wysokości: `gridPoint`, `gridNormal`, `heightAt` na trójkącie siatki, `lowestHeightUnder`, `minHeight`, `maxHeight`, `triangleCount`), struktura `game::TerrainMeshData` i funkcja `buildTerrainMesh` (wierzchołki z normalnymi, UV i stycznymi oraz indeksy). Bez OpenGL. Część biblioteki `game_logic` | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) |
+| `src/game/TerrainRenderer.*` | klasa `game::TerrainRenderer` (M6): strona OpenGL terenu. Posiada jedną siatkę (`gfx::Mesh`), a dwie tekstury gruntu (`textures/ground.png`, `textures/ground_normal.png`) bierze z pamięci assetów, z białą teksturą i płaską mapą normalnych jako wyjściem awaryjnym. `upload` wymienia siatkę po każdej przebudowie terenu, `draw` rysuje ją programem podanym z zewnątrz (`textured`, `lit` albo `gouraud`) przez `game::drawMesh`, z macierzą jednostkową, a przy `wireframe` przełącza na czas tego wywołania `glPolygonMode` na linie. Część programu `night_maze`, bez testu jednostkowego | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) |
+| `src/game/Grass.*` | trawa jako dane (M6): stałe (`GRASS_END_CLEARANCE`, `GRASS_WALL_GAP`, `GRASS_STRIP_WIDTH`, `GRASS_HILL_TUFTS_PER_SQUARE_METRE`, `GRASS_HILL_CLEARANCE`, `DEFAULT_GRASS_DENSITY` 2,5, `MAX_GRASS_DENSITY` 8), struktury `game::GrassTuft` (pozycja korzenia i liczba losowa od 0 do 1) i `game::GrassSettings` (`enabled`, `density`, `bladeHeight`, `windStrength`, flaga `replant`), funkcja `game::placeGrass`: miejsca kępek wzdłuż obu stron każdej ściany i rzadki rozsiew na wzgórzach, wybierane z ziarna labiryntu przez `std::mt19937` i `randomBelow`. Źdźbeł tu nie ma: buduje je shader geometrii. Bez OpenGL. Część biblioteki `game_logic` | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md) |
+| `src/game/GrassRenderer.*` | klasa `game::GrassRenderer` (M6): strona OpenGL trawy. Posiada siatkę punktów (`gfx::Mesh` z `GL_POINTS`), po jednym wierzchołku na kępkę: pozycja to korzeń kępki w przestrzeni świata, a liczba losowa kępki jedzie we współrzędnej `u`. `upload` wymienia siatkę, `tuftCount` zwraca liczbę kępek, `draw` wybiera program trawy, ustawia jego uniformy (`uView`, `uProjection`, `uTime`, `uBladeHeight`, `uWindStrength`, `uLit`, `uViewMode`, dwie liczby połysku) i rysuje wszystkie punkty jednym wywołaniem, a na czas rysowania wyłącza odrzucanie tylnych ścian, jeśli było włączone. Część programu `night_maze`, bez testu jednostkowego | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md) |
+| `src/game/ShaderUniforms.hpp` | nazwy uniformów jako stałe, dwadzieścia: `MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM`, `TEXTURE_UNIFORM`, `TINT_UNIFORM`, `EMISSIVE_UNIFORM` (od M5), `NORMAL_MAP_UNIFORM`, `NORMAL_MAP_ENABLED_UNIFORM`, `VIEW_MODE_UNIFORM`, `NORMAL_MATRIX_UNIFORM`, `SPECULAR_MODEL_UNIFORM`, `SPECULAR_STRENGTH_UNIFORM`, `SHININESS_UNIFORM`, `COLOR_UNIFORM`, a od M6 `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM` (niebo) oraz `GRASS_TIME_UNIFORM`, `GRASS_BLADE_HEIGHT_UNIFORM`, `GRASS_WIND_STRENGTH_UNIFORM` i `GRASS_LIT_UNIFORM` (trawa: `uTime`, `uBladeHeight`, `uWindStrength`, `uLit`). Do tego nazwa bloku uniformów `LIGHT_BLOCK_NAME` (`"LightBlock"`) i jego punkt wiązania `LIGHT_BLOCK_BINDING_POINT` (1, typu `GLuint`, stąd `<glad/gl.h>` w nagłówku). Sam nagłówek, wspólny dla `NightMazeApp`, `MazeRenderer`, `GameplayRenderer`, `ModelDraw`, `ColliderLines`, `LightRig`, `Skybox`, `TerrainRenderer` i `GrassRenderer` | [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), blok w [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md) |
+| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor czyszczenia (`{0.01F, 0.015F, 0.04F}`, od M6 tło tylko wtedy, gdy niebo jest wyłączone), sześć programów shaderów (`textured`, `color`, `lit`, `gouraud`, `skybox`, `grass`), pamięć podręczna assetów, `MazeRenderer`, `GameplayRenderer`, od M6 `TerrainRenderer` i `GrassRenderer`, `ColliderLines`, `LightRig`, `Skybox` z ustawieniami `SkyboxSettings`, `MazeSettings`, od M6 mapa wysokości `Heightmap` z ustawieniami `TerrainSettings`, `MazeWorld` i ustawienia trawy `GrassSettings`, liczby reguł `GameplaySettings` i stan rundy `Round`, lista przeszkód rundy `m_obstacles`, gracz z pozycją sprzed ostatniego kroku, `scene::Camera`, ustawienia oświetlenia `LightingSettings`, tryb widoku, przełącznik rysowania kształtów kolizji i czułość myszy. Konstruktor wczytuje shadery i modele, łączy oba oświetlone programy i program trawy z buforem świateł (`m_lightRig.connect`), buduje pierwszy labirynt (10 na 10, ziarno 1) i woła `beginRound`, która zaczyna rundę (`startRound`), buduje listę przeszkód (`roundObstacles`), włącza latarkę i stawia gracza na starcie. `onUpdate` w każdym stałym kroku zbiera klawisze do `PlayerInput` (tylko przy przechwyconym kursorze), woła `Player::update` z listą przeszkód rundy, ustawia kamerę w oczach gracza i woła `updateRound` (bateria, zbieranie kryształów, brama, wyjście). Gdy brama właśnie się otworzyła, buduje listę przeszkód od nowa. `onRender` buduje nowy labirynt, gdy panel o to poprosił (`regenerateMaze`), zaczyna rundę od nowa po klawiszu R albo po prośbie panelu (`beginRound`), obsługuje klawisze N (noclip) i F (latarka), przechwytuje kursor po kliknięciu w scenę i obraca kamerę myszą, ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera i pozycję oka między dwoma krokami symulacji, buduje światła klatki (`lightingForFrame`, `crystalLightPositions`, `buildLightSet`) i wysyła je do bufora uniformów (`m_lightRig.upload`, w każdej klatce, także w trybie `Unlit`), a potem rysuje części klatki: `drawMaze` (bez światła w `drawUnlitMaze` programem `textured`, gdy tryb to `Unlit` albo wybrany jest widok debug, w pozostałych przypadkach `drawLitMaze` programem `gouraud` albo `lit`; obie funkcje rysują teren przez `TerrainRenderer`, labirynt przez `MazeRenderer`, a kryształy i bramę przez `GameplayRenderer`, tym samym programem), potem `drawGrass` (trawa programem `grass`, gdy pole `Enabled` jest zaznaczone) i, gdy włączone, `drawColliderLines` (pudełka i kule programem `color`), a na samym końcu, gdy pole `Skybox` jest zaznaczone, `m_skybox.draw` (niebo programem `skybox`). W jednej klatce pracują najwyżej cztery z sześciu programów (jeden program sceny, `grass`, `color` i `skybox`), w najwyżej czterech wywołaniach `use()`. Chronione akcesory `clearColor()`, `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()`, `skyboxShader()`, `grassShader()`, `skyboxSettings()`, `terrainSettings()`, `grassSettings()`, `grassTuftCount()`, `lighting()`, `camera()`, `mouseSensitivity()`, `player()`, `mazeSettings()`, `mazeWorld()`, `gameplaySettings()`, `round()`, `assets()`, `viewMode()` i `drawColliders()` udostępniają stan panelom debug i HUD. Kostki z M1 (danych wierzchołków, własnych buforów, funkcji rysującej i akcesora jej programu) ani funkcji rysującej znaczniki świateł już nie ma. Druga część M6: szósty program `m_grassShader` (trzy pliki), pola `m_terrainRenderer`, `m_grassRenderer`, `m_heightmap`, `m_terrainSettings`, `m_grassSettings` i `m_playerWasFlying`, funkcje `rebuildTerrain`, `uploadGround`, `plantGrass` i `drawGrass`, cztery akcesory (`grassShader`, `terrainSettings`, `grassSettings`, `grassTuftCount`). Konstruktor wczytuje mapę wysokości (`loadHeightmap`) i buduje labirynt od razu na terenie, `onRender` obsługuje flagi `rebuild` i `replant`, obie funkcje rysujące labirynt zaczynają od terenu, a po nich idzie trawa. Opis w [`../modules/core/README.md`](../modules/core/README.md), sekcja 6 | [`../modules/core/README.md`](../modules/core/README.md), macierze w [`../modules/scene/camera.md`](../modules/scene/camera.md), obrót kamery myszą w [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), ruch gracza w [`../modules/game/player.md`](../modules/game/player.md), rysowanie labiryntu i regeneracja w [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), runda w [`../modules/game/gameplay.md`](../modules/game/gameplay.md), latarka i światła klatki w [`../modules/game/flashlight.md`](../modules/game/flashlight.md), przełącznik trybu cieniowania w [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
 | `assets/shaders/textured.vert`, `textured.frag` | para shaderów modeli z teksturą: atrybuty `aPosition` (0), `aNormal` (1), `aUv` (2), `aTangent` (3), czyli pola `gfx::Vertex`, trzy macierze, sampler `uTexture`, kolor `uTint`, blask własny `uEmissive` (od M5: w widoku 0 mnoży kolor przez `vec3(1.0) + uEmissive`) i tryb `uViewMode` (0: tekstura razy `uTint`, 1: normalna jako kolor, 2: współrzędne UV jako kolor). `textured.frag` dołącza `common/normal_map.glsl`, więc widok normalnych pokazuje normalną z mapy normalnych, gdy mapy są włączone. Bez oświetlenia: rysuje scenę w trybie `Unlit` i oba widoki debug w każdym trybie. Normalną liczy nadal przez `mat3(uModel)` i nie ma uniformu `uNormalMatrix`. Od M5 w `textured.vert` jest też długi komentarz o łańcuchu przestrzeni (lokalna, świata, widoku, przycięcia), który wcześniej stał w `basic.vert`. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders". To samo dotyczy pozostałych plików shaderów poniżej | [`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 4, potok i GLSL w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md) |
 | `assets/shaders/color.vert`, `color.frag` | para shaderów jednego koloru dla linii pudełek i kul kolizji: atrybut pozycji, trzy macierze i uniform `uColor`. Najprostsza para w projekcie. Do M4 rysowała też kostki oznaczające światła | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 4, [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md) |
 | `assets/shaders/lit.vert`, `lit.frag` | para shaderów oświetlonego labiryntu ze światłem liczonym dla każdego fragmentu (tryby `Phong` i `Blinn-Phong`). `lit.vert` przekazuje pozycję, normalną (uniform `uNormalMatrix`) i styczną (`mat3(uModel)`) w przestrzeni świata oraz współrzędne tekstury, `lit.frag` dołącza `common/lighting.glsl` i `common/normal_map.glsl`, bierze normalną fragmentu z `surfaceNormal`, woła `computeLighting` i składa kolor: tekstura razy `uTint` razy suma światła rozproszonego i blasku własnego `uEmissive` (od M5, dla kryształów), plus połysk. Wzór połysku wybiera uniform `uSpecularModel` | [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
 | `assets/shaders/gouraud.vert`, `gouraud.frag` | para shaderów oświetlonego labiryntu ze światłem liczonym w wierzchołkach (tryb `Gouraud`). `gouraud.vert` dołącza `common/lighting.glsl` i woła tę samą funkcję `computeLighting` dla wierzchołka, `gouraud.frag` mnoży sumę rozciągniętego po trójkącie światła i blasku własnego `uEmissive` (od M5) przez teksturę i dodaje połysk. Bez map normalnych: stycznej nie czyta, a komentarz w `gouraud.vert` mówi dlaczego | [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
 | `assets/shaders/skybox.vert`, `skybox.frag` | para shaderów nieba (M6). `skybox.vert` czyta tylko atrybut pozycji, usuwa przesunięcie z macierzy widoku (`mat4(mat3(uView))`), przekazuje pozycję narożnika jako kierunek `vDirection` i ustawia głębię na 1,0 (`gl_Position = position.xyww`). `skybox.frag` czyta teksturę sześcienną `uSkybox` (`samplerCube`) kierunkiem i mnoży kolor przez `uBrightness`, a w widokach debug (`uViewMode` różne od 0) pokazuje kierunek jako kolor | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcja 4 |
+| `assets/shaders/grass.vert`, `grass.geom`, `grass.frag` | trójka shaderów trawy (M6), jedyny program z shaderem geometrii. `grass.vert` przepuszcza punkt kępki w przestrzeni świata i jej liczbę losową. `grass.geom` zamienia każdy punkt (`layout(points) in`) na trzy źdźbła, każde jako pasek trójkątów z pięciu wierzchołków (`layout(triangle_strip, max_vertices = 15) out`), z pochyleniem i wiatrem zależnym od `uTime`, i tu mnoży przez `uView` i `uProjection`. `grass.frag` miesza kolor od korzenia do czubka i oświetla go składnikiem rozproszonym z `common/lighting.glsl`, z normalną skierowaną w górę. Przy `uLit` równym 0 pokazuje pełną jasność | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md), etap geometrii w klasie w [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md) |
 | `assets/shaders/common/lighting.glsl` | plik dołączany, nie samodzielny shader (nie ma linii `#version`): stała `MAX_POINT_LIGHTS`, struktura `PointLight`, blok uniformów `layout(std140) uniform LightBlock`, uniformy materiału `uSpecularModel`, `uSpecularStrength`, `uShininess`, struktura `Lighting` i funkcje `diffuseFactor`, `specularFactor`, `attenuationFactor`, `addLight` i `computeLighting`. Treść wstawia w miejsce linii `#include "common/lighting.glsl"` kod `gfx::expandIncludes` | [`../modules/scene/lights.md`](../modules/scene/lights.md), mechanizm dołączania w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `assets/shaders/common/normal_map.glsl` | plik dołączany, nie samodzielny shader (nie ma linii `#version`): sampler `uNormalMap` (jednostka 1), przełącznik `uNormalMapEnabled` i funkcja `surfaceNormal`, która z normalnej i stycznej modelu oraz teksela mapy normalnych składa normalną fragmentu w przestrzeni świata (macierz TBN). Dołączają go `lit.frag` i `textured.frag` | [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 4.1 |
-| `assets/models/*.obj`, `*.mtl`, `assets/textures/*.png` | sześć modeli (`floor_tile`, `wall_straight`, `wall_pillar`, a od M5 `crystal_a`, `crystal_b` i `gate`), każdy z jednym materiałem, cztery tekstury koloru (`floor_stone.png`, `wall_stone.png`, `crystal.png`, `gate_wood.png`; ścianę i słupek pokrywa ta sama, oba kryształy też) i cztery mapy normalnych o tych samych nazwach z końcówką `_normal`, które materiały nazywają linią `map_Bump`. Budują je skrypty z `tools/blender/` | [`blender.md`](blender.md), [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), [`../modules/assets/images.md`](../modules/assets/images.md) |
+| `assets/models/*.obj`, `*.mtl`, `assets/textures/*.png` | pięć modeli (`wall_straight`, `wall_pillar`, a od M5 `crystal_a`, `crystal_b` i `gate`; szósty, płytkę podłogi, usunął M6), każdy z jednym materiałem, cztery tekstury koloru (`ground.png`, `wall_stone.png`, `crystal.png`, `gate_wood.png`; ścianę i słupek pokrywa ta sama, oba kryształy też, a `ground.png` nie należy do żadnego modelu: nakłada ją na teren `game::TerrainRenderer`) i cztery mapy normalnych o tych samych nazwach z końcówką `_normal`, które materiały nazywają linią `map_Bump` (mapę gruntu `ground_normal.png` nazywa kod, nie materiał). Dziewiąty plik w `assets/textures/` to `heightmap.png`: szara mapa wysokości terenu 256 x 256, którą gra czyta jako liczby i z której nie robi tekstury. Budują je skrypty z `tools/blender/` | [`blender.md`](blender.md), [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `assets/skybox/*.png` | sześć ścian nieba (M6): `px`, `nx`, `py`, `ny`, `pz`, `nz`, każda 1024 x 1024, RGB, razem 5 278 627 bajtów. Nie należą do żadnego modelu ani materiału. Wczytuje je `game::Skybox`, bez odwracania wierszy i bez pamięci podręcznej assetów. Buduje je `tools/blender/make_skybox.py`, a ich zawartość sprawdza `tests/SkyboxTests.cpp` | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), [`blender.md`](blender.md), sekcja 7.7 |
-| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele i HUD czytają albo edytują, 20 pól (`time`, `window`, `clearColor`, `camera`, `mouseSensitivity`, `texturedShader`, `colorShader`, `player`, `mazeSettings`, `mazeWorld`, `assets`, `viewMode`, `drawColliders`, `litShader`, `gouraudShader`, `lighting`, od M5 `gameplay` i `round`, a od M6 `skyboxShader` i `skybox`; pole `shader` zniknęło razem z programem `basic`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5 |
-| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, zastosowanie motywu i wczytanie czcionki, bajty czcionki, `draw` (rysuje osiem paneli, gdy są widoczne, a panelowi Shaders podaje tablicę pięciu programów, stała `SHADER_COUNT`; potem zawsze rysuje HUD, `drawHud`), `toggleVisible` (chowa i pokazuje panele, HUD zostaje), `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony) | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
-| `src/debug/Hud.*` | `debug::drawHud`: HUD gry, rysowany przez ImGui w każdej klatce, także przy ukrytych panelach. Pasek u góry okna (napis `Crystals` z liczbą zebranych, potrzebnych i wszystkich kryształów, czas rundy, pasek baterii, który robi się czerwony poniżej progu, podpowiedzi `The gate is open. Find the exit.` i `Battery empty. Find a crystal.`) i karta `You escaped` po wygranej. Nie przyjmuje myszy ani klawiatury. Leży w `src/debug/`, bo tylko tam wolno dołączać ImGui | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 6 |
+| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele i HUD czytają albo edytują, 24 pola (`time`, `window`, `clearColor`, `camera`, `mouseSensitivity`, `texturedShader`, `colorShader`, `player`, `mazeSettings`, `mazeWorld`, `assets`, `viewMode`, `drawColliders`, `litShader`, `gouraudShader`, `lighting`, od M5 `gameplay` i `round`, a od M6 `skyboxShader`, `skybox`, `grassShader`, `terrain`, `grass` i `grassTuftCount`, jedyne pole będące liczbą, a nie referencją; pole `shader` zniknęło razem z programem `basic`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5 |
+| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, zastosowanie motywu i wczytanie czcionki, bajty czcionki, `draw` (rysuje dziesięć paneli, gdy są widoczne, a panelowi Shaders podaje tablicę sześciu programów, stała `SHADER_COUNT`; potem zawsze rysuje HUD, `drawHud`), `toggleVisible` (chowa i pokazuje panele, HUD zostaje), `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony). Od M6 `draw` woła dziesięć funkcji paneli i podaje panelowi Shaders listę sześciu programów | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
+| `src/debug/Hud.*` | `debug::drawHud`: HUD gry, rysowany przez ImGui w każdej klatce, także przy ukrytych panelach. Pasek u góry okna (napis `Crystals` z liczbą zebranych, potrzebnych i wszystkich kryształów, czas rundy, pasek baterii, który robi się czerwony poniżej progu, podpowiedzi `The gate is open. Find the exit.` i `Battery empty. Find a crystal.`) i karta `You escaped` po wygranej. Nie przyjmuje myszy ani klawiatury. Leży w `src/debug/`, bo tylko tam wolno dołączać ImGui. Od M6 pasek stoi pod dwoma rzędami zwiniętych pasków tytułów: jego odległość od góry liczy `debug::foldedRowsHeight`, a `HUD_TOP_OFFSET` to już tylko dwa odstępy `PANEL_GAP` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 6 |
 | `src/debug/Theme.*` | motyw paneli: `debug::colorFromBytes`, stałe `ERROR_TEXT_COLOR`, `PLAN_WALL_COLOR` i `PLAN_PLAYER_COLOR`, a od M5 kolory kryształów, bramy i wyjścia na planie (`PLAN_CRYSTAL_COLOR`, `PLAN_COLLECTED_COLOR`, `PLAN_GATE_COLOR`, `PLAN_EXIT_COLOR`) i kolory HUD (`HUD_CRYSTAL_COLOR`, `HUD_BATTERY_COLOR`, `HUD_BATTERY_LOW_COLOR`), `debug::applyTheme` (tabela kolorów, metryki, skala ekranu) i `debug::loadFont` (czcionka z `assets/fonts`, z czcionką wbudowaną jako wyjściem awaryjnym) | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8 |
-| `src/debug/PanelLayout.*` | układ paneli przy pierwszym uruchomieniu: struktura `debug::PanelPlacement` (róg okna, odsunięcie, rozmiar i pole `collapsed`: czy panel startuje zwinięty do paska tytułu), stałe wymiarów (między innymi `LEFT_COLUMN_WIDTH`, `BOTTOM_ROW_HEIGHT`), osiem stałych `..._PLACEMENT` (od M5 z `GAMEPLAY_PLACEMENT`; ona i `CAMERA_PLACEMENT` mają `collapsed = true`) i `debug::placePanelOnFirstUse`, która ustawia pozycję, rozmiar i stan zwinięcia z warunkiem `ImGuiCond_FirstUseEver` | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7 |
+| `src/debug/PanelLayout.*` | układ paneli przy pierwszym uruchomieniu: struktura `debug::PanelPlacement` (róg okna, odsunięcie, rozmiar i pole `collapsed`: czy panel startuje zwinięty do paska tytułu), stałe wymiarów (między innymi `LEFT_COLUMN_WIDTH`, `BOTTOM_ROW_HEIGHT`), dziesięć stałych `..._PLACEMENT` (od M5 z `GAMEPLAY_PLACEMENT`, od M6 z `TERRAIN_PLACEMENT` i `GRASS_PLACEMENT`; te trzy i `CAMERA_PLACEMENT` mają `collapsed = true`, a dwie ostatnie także `foldedRowsBefore = 1`, czyli stoją w drugim rzędzie pasków), stała `FOLDED_ROW_COUNT` (2), funkcja `debug::foldedRowsHeight` (wysokość rzędów pasków z `ImGui::GetFrameHeight()`) i `debug::placePanelOnFirstUse`, która ustawia pozycję, rozmiar i stan zwinięcia z warunkiem `ImGuiCond_FirstUseEver` | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7 |
 | `assets/fonts/AtkinsonHyperlegible-Regular.ttf`, `OFL.txt`, `README.md` | czcionka paneli debug (Atkinson Hyperlegible 1.006, 54 348 bajtów, plik niezmieniony), jej licencja SIL Open Font License 1.1 i opis źródła z sumą kontrolną. Cudzy materiał: nie jest kodem i nie powstaje ze skryptów projektu | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.5 |
 | `src/debug/panels/CameraPanel.*` | `debug::drawCameraPanel`: panel "Camera", przy pierwszym uruchomieniu zwinięty do paska tytułu (linia trybu, stopy gracza, oko tylko do odczytu, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, prędkość chodu, sprintu i lotu) | [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcja 6 |
 | `src/debug/panels/MazePanel.*` | `debug::drawMazePanel`: panel "Maze" (suwaki rozmiaru, ziarno, przyciski "Regenerate" i "Random seed", liczby ścian i słupków, od M5 linia z liczbą kryształów i komórką wyjścia, plan labiryntu z góry z graczem, kryształami, bramą i strefą wyjścia). Od M5 czyta też `game::Round` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 6 |
 | `src/debug/panels/CollisionPanel.*` | `debug::drawCollisionPanel`: panel "Collision" (pola wyboru "Draw collision shapes" i "Noclip (key N)", legenda kolorów linii, liczby pudełek ścian, słupków i bramy, liczba kul kryształów, pudełko gracza). Od M5 czyta też `game::Round` | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 6 |
 | `src/debug/panels/GameplayPanel.*` | `debug::drawGameplayPanel`: panel "Gameplay", przy pierwszym uruchomieniu zwinięty do paska tytułu (stan rundy, liczniki kryształów, stan bramy, przycisk "Restart round (key R)", suwak "Battery", pole "Battery drains", suwaki "Crystals needed", "Battery lifetime", "Recharge", "Flicker below" i "Pickup radius"). Edytuje `game::GameplaySettings`, a w `game::Round` tylko ładunek baterii | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 6 |
+| `src/debug/panels/TerrainPanel.*` | `debug::drawTerrainPanel` (M6): panel "Terrain" (suwak "Height scale" od 0 do 2,5, pole "Wireframe", linie z rozmiarem siatki, liczbą trójkątów i zakresem wysokości). Edytuje `game::TerrainSettings`, a zmiana skali ustawia flagę `rebuild`. `game::Terrain` tylko czyta. Startuje zwinięty w drugim rzędzie pasków | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md), kod panelu w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.10 |
+| `src/debug/panels/GrassPanel.*` | `debug::drawGrassPanel` (M6): panel "Grass" (pole "Enabled", suwaki "Density", "Blade height" i "Wind strength", linia z liczbą kępek i źdźbeł). Edytuje `game::GrassSettings`, a zmiana gęstości ustawia flagę `replant`. Startuje zwinięty w drugim rzędzie pasków | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md), kod panelu w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.10 |
 | `src/debug/panels/AssetsPanel.*` | `debug::drawAssetsPanel`: panel "Assets" (lista "View mode", pole "Normal mapping", lista "Filter", suwak "Anisotropy", modele z częściami i ich mapami normalnych, tekstury z podglądem, lista nieudanych wczytań) | [`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md), sekcja 6 |
 | `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" (FPS i czas klatki, rozmiar framebuffera i okna, wersja OpenGL i karta, edytor "Clear color", lista "Lighting" z pozycjami `Unlit`, `Gouraud`, `Phong`, `Blinn-Phong`, która zapisuje wybór w `game::LightingMode`, oraz, od M6, pole wyboru "Skybox" i suwak "Sky brightness", które piszą do `game::SkyboxSettings`) | [`../modules/debug-ui.md`](../modules/debug-ui.md), tryby w [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
 | `src/debug/panels/LightsPanel.*` | `debug::drawLightsPanel`: panel "Lights" (edytor koloru "Ambient" i cztery grupy: "Moon (directional)" z kątami, kolorem i natężeniem, "Flashlight (spot)" z polem "Flashlight on (key F)", kolorem, natężeniem, stożkiem "Cone" i zasięgiem "Beam range", "Point lights (crystals)" z liczbą świecących kryształów, kolorem, natężeniem i promieniem "Point radius", "Highlight (specular)" z suwakami "Strength" i "Shininess"). Pole latarki ma podpowiedź, gdy bateria jest pusta. Edytuje `game::LightingSettings`, a `game::Round` tylko czyta | [`../modules/scene/lights.md`](../modules/scene/lights.md), sekcja 6 |
-| `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (jeden przycisk "Reload shaders" dla wszystkich programów, a dla każdego z pięciu jedna linia: nazwy obu plików i `OK` albo, na czerwono, `FAILED` z komunikatem błędu pod spodem. Podpowiedź pokazuje pełne ścieżki) | [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6, komunikaty błędów w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
+| `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (jeden przycisk "Reload shaders" dla wszystkich programów, a dla każdego z sześciu jedna linia: nazwy jego plików (dwóch, a dla programu trawy trzech, z plikiem shadera geometrii w środku) i `OK` albo, na czerwono, `FAILED` z komunikatem błędu pod spodem. Podpowiedź pokazuje pełne ścieżki) | [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6, komunikaty błędów w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `tests/main.cpp` | punkt wejścia programu testowego: makro `DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN` i dołączenie nagłówka doctest, który generuje `main()` | [`../libraries/doctest.md`](../libraries/doctest.md), sekcja 3.1 |
 | `tests/ColliderTests.cpp` | 19 przypadków testowych: 12 dla `scene::Aabb`, `overlaps` pudełek i `moveAndSlide`, a od M5 siedem dla kul (`scene::Sphere`, oba `overlaps` z kulą, `closestPoint`, sam dotyk nie jest nakładaniem) | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 5 |
-| `tests/ImageLoaderTests.cpp` | 10 przypadków testowych loadera obrazów (od M6 także wczytanie bez odwracania wierszy, `RowOrder::TopFirst`): obie tekstury gry (512 x 512, 3 kanały), obie mapy normalnych (rozmiar, średnia blisko `(128, 128, 255)`, konwencja OpenGL kanału zielonego, niebieski zawsze powyżej 128), odwracanie wierszy na obrazku 2 x 3 zapisanym przez test, ścieżka ze znakami spoza ASCII, brak pliku, plik niebędący obrazem, pusty plik | [`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7 |
+| `tests/ImageLoaderTests.cpp` | 10 przypadków testowych loadera obrazów (od M6 także wczytanie bez odwracania wierszy, `RowOrder::TopFirst`): dwie powtarzalne tekstury gry, `wall_stone.png` i od M6 `ground.png` w miejscu tekstury podłogi (512 x 512, 3 kanały), ich mapy normalnych (rozmiar, średnia blisko `(128, 128, 255)`, konwencja OpenGL kanału zielonego, niebieski zawsze powyżej 128), odwracanie wierszy na obrazku 2 x 3 zapisanym przez test, ścieżka ze znakami spoza ASCII, brak pliku, plik niebędący obrazem, pusty plik | [`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7 |
 | `tests/MazeTests.cpp`, `MazeGeneratorTests.cpp`, `MazeLayoutTests.cpp` | 31 przypadków testowych labiryntu (8, 11 i 12): klasa `Maze`, od M5 także `isDeadEnd` i porównanie `MazeCell`, generator (w tym labirynt wzorcowy 4 na 4 z ziarna 1), układ w świecie i jego współpraca z kolizjami | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5 |
-| `tests/MazeWorldTests.cpp` | 8 przypadków testowych `game::buildMazeWorld`: wartości domyślne, `yawTowards`, liczba macierzy i pudełek, powtarzalność, macierze podłogi, słupków i ścian w obu ustawieniach, pozycja i kierunek startu | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), sekcja 5 |
-| `tests/PlayerTests.cpp` | 13 przypadków testowych gracza: stałe, pudełko i oczy, chodzenie wzdłuż yaw, klawisze boczne i przeciwne, ruch po skosie, sprint, zatrzymanie na ścianie, ślizganie wzdłuż ściany obok słupków, wędrówka po zamkniętym labiryncie, noclip, powrót stóp na podłogę | [`../modules/game/player.md`](../modules/game/player.md), sekcja 5 |
-| `tests/ObjLoaderTests.cpp` | 20 przypadków testowych loadera OBJ: reguły formatu na napisach wpisanych w kod (w tym linia mapy normalnych i styczne po `parseObj`), przypadki błędów z numerem linii i trzy prawdziwe modele z `assets/models/` (mapa normalnych, styczne, brak lustrzanych trójkątów) | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), sekcja 5.9 |
+| `tests/MazeWorldTests.cpp` | 8 przypadków testowych `game::buildMazeWorld`: wartości domyślne, `yawTowards`, liczba macierzy i pudełek, powtarzalność, macierze słupków i ścian w obu ustawieniach (test macierzy podłogi zniknął w M6 razem z płytkami), pozycja i kierunek startu | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), sekcja 5 |
+| `tests/PlayerTests.cpp` | 13 przypadków testowych gracza: stałe, pudełko i oczy, chodzenie wzdłuż yaw, klawisze boczne i przeciwne, ruch po skosie, sprint, zatrzymanie na ścianie, ślizganie wzdłuż ściany obok słupków, wędrówka po zamkniętym labiryncie, noclip, powrót stóp na grunt. Od M6 każdy test podaje graczowi teren: płaski, stałą `FLAT_GROUND`, czyli domyślny `game::Terrain` | [`../modules/game/player.md`](../modules/game/player.md), sekcja 5 |
+| `tests/ObjLoaderTests.cpp` | 19 przypadków testowych loadera OBJ (do pierwszej części M6 było 20, z testem płytki podłogi): reguły formatu na napisach wpisanych w kod (w tym linia mapy normalnych i styczne po `parseObj`), przypadki błędów z numerem linii i dwa prawdziwe modele z `assets/models/`, `wall_straight.obj` i `wall_pillar.obj` (mapa normalnych, styczne, brak lustrzanych trójkątów) | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), sekcja 5.9 |
 | `tests/ShaderSourceTests.cpp` | 22 przypadki testowe `gfx::expandIncludes` i `gfx::nameSourceFiles`: shader bez `#include`, wstawienie pliku między dwie dyrektywy `#line`, pliki zagnieżdżone, końce linii Windows, `#include` w komentarzu, błędy (brak pliku, plik dołączający siebie, cykl, źle zapisana linia, `#include` przed `#version`, `#version` w pliku dołączanym) oraz zamiana numeru na nazwę pliku w formacie NVIDII i w formacie Apple. Pliki dołączane są w testach napisami w mapie, nie plikami na dysku | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `tests/LightTests.cpp` | 20 przypadków testowych świateł: `attenuationFactor` i `attenuationForRadius` (5 procent jasności na promieniu), `coneCosines` i `spotFactor`, `directionFromAngles`, pusty `LightSet` oraz `packLightBlock` (kamera, otoczenie, księżyc, reflektor, światła punktowe, kierunek o długości zero, rozmiar i przesunięcia bloku `std140`) | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
 | `tests/TangentTests.cpp` | 9 przypadków testowych stycznych: `triangleTangents` (tekstura prosto, obrócona, powtórzona, zdegenerowane UV), `computeTangents` (długość 1, Gram-Schmidt, średnia na wspólnym wierzchołku, brak `NaN`, złe indeksy) i `countMirroredTriangles` | [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 5.10 |
@@ -446,6 +496,8 @@ wypisane na początku drzewa, przed katalogami.
 | `tests/CrystalTests.cpp` | 14 przypadków testowych kryształów: `crystalCountFor`, labirynt wzorcowy (dokładnie dwa kryształy), labirynt startowy (13 kryształów, wyjście w komórce (6, 5)), różne komórki bez startu i wyjścia, ślepe zaułki najpierw, oba warianty modelu, powtarzalność, za mało wolnych komórek, błędne argumenty, pozycja spoczynku i światła, kołysanie, obrót, pulsowanie i blask | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | `tests/RoundTests.cpp` | 25 przypadków testowych rundy: wartości domyślne reguł, `requiredCrystalCount`, nowa runda, zasięg gracza, zbieranie i promień zbierania, bateria (zużycie tylko przy włączonej latarce, pusta wyłącza latarkę, doładowanie kryształem, kryształ w kroku wyczerpania), brama (otwarcie, opadanie w 1,5 s, zmiana progu w trakcie rundy), wygrana tylko przy otwartej bramie, zegary po wygranej, labirynt bez kryształów i z jednej komórki, migotanie, `lightingForFrame`, `crystalLightPositions`, limit świateł | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | `tests/SkyboxTests.cpp` | 5 przypadków testowych plików nieba (M6): sześć kwadratów jednej wielkości z trzema kanałami, reguła wyboru ściany i teksela przepisana ze specyfikacji OpenGL (`facePointOf`), tarcza księżyca tam, skąd leci domyślne światło księżyca z `game::LightingSettings`, niebo jaśniejsze przy horyzoncie niż w zenicie i zgodność koloru po obu stronach każdej z dwunastu krawędzi sześcianu. Test czyta pliki loaderem, bez OpenGL | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcja 5.8 |
+| `tests/TerrainTests.cpp` | 27 przypadków testowych terenu (M6): stałe, `Heightmap::sample` i `heightmapFromImage`, `terrainRelief`, rozmiar siatki, wzór wysokości i skala (0 daje płaski świat), `heightAt` w punktach siatki, na krawędziach, na przekątnej, poza siatką i w losowych punktach względem trójkąta siatki, `buildTerrainMesh` (liczby, kierunek nawijania, normalne, UV, styczne), `gridNormal`, `lowestHeightUnder`, prawdziwy plik `heightmap.png`, świat bez mapy na płaskim gruncie, ściany, słupki i brama zatopione bez szczelin, kryształy nad gruntem, stopy gracza na gruncie i kolizje takie same jak na płaskim | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) |
+| `tests/GrassTests.cpp` | 9 przypadków testowych trawy (M6): stałe i ustawienia domyślne, gęstość 0, powtarzalność z ziarna i inne ziarno, liczba kępek na ścianę i stronę z pasem, w którym stoją, podwojenie gęstości, żadna kępka w ścianie, słupku ani bramie, kępki na gruncie z liczbą losową od 0 do 1, rozsiew na wzgórzach z dala od labiryntu | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md) |
 | `tests/TransformTests.cpp` | 4 przypadki testowe `scene::normalMatrix`: obiekt tylko przesunięty, obiekt obrócony, skala różna na osiach (tylko macierz normalnych zachowuje prostopadłość) i skala równa | [`../modules/scene/transforms.md`](../modules/scene/transforms.md) |
 
 Każdy plik źródłowy zaczyna się komentarzem z jednym zdaniem opisu i odnośnikiem
@@ -553,8 +605,9 @@ Jak to widać w kodzie:
   `assets/ObjLoader.hpp`, `core/Log.hpp` i `core/Paths.hpp`. Przez `Mesh.hpp` i
   `Texture2D.hpp` przychodzi GLAD: to jedyny plik `assets/`, którego nie da się użyć bez
   okna.
-- Pliki logiki gry bez okna w `src/game/` (`Crystals.*`, `Exit.*`, `Lighting.*`, `Maze.*`,
-  `MazeGenerator.*`, `MazeLayout.*`, `MazeWorld.*`, `Player.*`, `Round.*`) dołączają
+- Pliki logiki gry bez okna w `src/game/` (`Crystals.*`, `Exit.*`, `Grass.*`, `Lighting.*`,
+  `Maze.*`, `MazeGenerator.*`, `MazeLayout.*`, `MazeWorld.*`, `Player.*`, `Round.*`,
+  `Terrain.*`) dołączają
   bibliotekę standardową, GLM (bezpośrednio wszystkie poza `Maze.*`, `MazeGenerator.*` i
   `Exit.*`), nagłówki z `game/` i ze `scene/`: `MazeLayout.hpp`, `Player.hpp`, `Exit.hpp`,
   `MazeWorld.hpp` i `Round.hpp` dołączają `scene/Collider.hpp`, `MazeWorld.hpp` do tego
@@ -563,14 +616,25 @@ Jak to widać w kodzie:
   `scene/Camera.hpp`, `Lighting.hpp` `scene/Light.hpp` (nagłówka `game/Maze.hpp` już nie:
   o labiryncie nic nie wie), `Crystals.cpp` `game/MazeGenerator.hpp`, `game/MazeLayout.hpp`
   i `scene/Light.hpp` (dla stałej `MAX_POINT_LIGHTS`), `Round.hpp` `game/Lighting.hpp` i
-  `game/MazeWorld.hpp`, a `Round.cpp` `game/Crystals.hpp`. Nic z GLAD, GLFW, `core/`,
-  `gfx/`, `assets/` ani `debug/`: dlatego dają się testować bez okna.
+  `game/MazeWorld.hpp`, a `Round.cpp` `game/Crystals.hpp`. Od M6: `MazeWorld.hpp` dołącza
+  też `game/Terrain.hpp`, `Player.cpp` `game/Terrain.hpp` (w nagłówku `Player.hpp` wystarcza
+  deklaracja `class Terrain;`), `Grass.hpp` samo `<glm/glm.hpp>` i `<vector>`, a `Grass.cpp`
+  `game/MazeGenerator.hpp`, `game/MazeLayout.hpp`, `game/MazeWorld.hpp` i `game/Terrain.hpp`.
+  Nic z GLAD, GLFW, `core/` ani `debug/`: dlatego dają się testować bez okna. Do M5 lista
+  zakazów obejmowała też `gfx/` i `assets/`. Od M6 jest jeden wyjątek, `Terrain.*`:
+  `Terrain.hpp` dołącza `gfx/Vertex.hpp` (wierzchołek siatki terenu) i
+  `assets/ImageLoader.hpp` (obraz, z którego powstaje mapa wysokości), a `Terrain.cpp`
+  `assets/Tangents.hpp` (styczne). Wszystkie trzy to nagłówki samych danych i matematyki:
+  żaden nie dołącza GLAD, więc teren dalej nie potrzebuje okna. Kierunek zależności jest
+  dozwolony (`game/` stoi nad `gfx/` i `assets/`), a oba nagłówki wymienia komentarz przy
+  `target_link_libraries(game_logic PUBLIC engine)` w `CMakeLists.txt`.
 - Klasy i funkcje rysujące w `src/game/` należą do programu, nie do `game_logic`.
   `MazeRenderer.hpp` nie dołącza niczego (typy z `assets/` i `gfx/`
   zapowiada deklaracjami), a `MazeRenderer.cpp` `assets/AssetCache.hpp`, `core/Paths.hpp`,
   `game/MazeWorld.hpp`, `game/ModelDraw.hpp`, `game/ShaderUniforms.hpp` i `gfx/Shader.hpp`.
   `ModelDraw.hpp` dołącza tylko `<glm/glm.hpp>` i `<span>`, a `ModelDraw.cpp`
-  `assets/AssetCache.hpp`, `game/ShaderUniforms.hpp`, `gfx/Shader.hpp` i
+  `assets/AssetCache.hpp`, `game/ShaderUniforms.hpp`, `gfx/Shader.hpp`, od M6
+  `gfx/Mesh.hpp` i `gfx/Texture2D.hpp` (dla `drawMesh`) i
   `scene/Transform.hpp` (dla `scene::normalMatrix`). `GameplayRenderer.hpp` dołącza
   `game/Crystals.hpp`, `<glm/glm.hpp>`, `<array>` i `<cstddef>`, a `GameplayRenderer.cpp`
   `assets/AssetCache.hpp`, `core/Paths.hpp`, `game/MazeWorld.hpp`, `game/ModelDraw.hpp`,
@@ -581,37 +645,49 @@ Jak to widać w kodzie:
   (liczba pi dla okręgu). `LightRig.hpp` dołącza
   `gfx/UniformBuffer.hpp` i `<glm/glm.hpp>`, a `LightRig.cpp` do
   tego `game/ShaderUniforms.hpp`, `gfx/Shader.hpp`, `scene/Light.hpp` i
-  `scene/LightBlock.hpp`.
+  `scene/LightBlock.hpp`. Dwie klasy z M6: `TerrainRenderer.hpp` dołącza tylko `gfx/Mesh.hpp`
+  (resztę zapowiada deklaracjami), a `TerrainRenderer.cpp` `assets/AssetCache.hpp`,
+  `core/GlCheck.hpp`, `core/Paths.hpp`, `game/ModelDraw.hpp`, `game/ShaderUniforms.hpp`,
+  `game/Terrain.hpp`, `gfx/Shader.hpp` i `gfx/Texture2D.hpp`. `GrassRenderer.hpp` dołącza
+  `gfx/Mesh.hpp`, `<glm/glm.hpp>`, `<cstddef>` i `<span>`, a `GrassRenderer.cpp`
+  `core/GlCheck.hpp`, `game/Grass.hpp`, `game/MazeRenderer.hpp` (dla typu `ViewMode`),
+  `game/ShaderUniforms.hpp`, `gfx/Shader.hpp` i `gfx/Vertex.hpp`.
 - `src/game/ShaderUniforms.hpp` dołącza `<glad/gl.h>` (typ `GLuint` punktu wiązania), więc
   należy do programu, nie do `game_logic`.
 - Pliki w `tests/` dołączają `<doctest/doctest.h>`, nagłówki testowanego kodu
   (`scene/Collider.hpp`, `game/Maze.hpp`, `game/MazeGenerator.hpp`, `game/MazeLayout.hpp`,
   `game/MazeWorld.hpp`, `game/Player.hpp`, `assets/ObjLoader.hpp`, `assets/ImageLoader.hpp`,
   od M4 `gfx/ShaderSource.hpp`, `scene/Light.hpp`, `scene/LightBlock.hpp`,
-  `scene/Transform.hpp` i `game/Lighting.hpp`, a od M5 `game/Exit.hpp`,
-  `game/Crystals.hpp` i `game/Round.hpp`) i bibliotekę standardową. Żaden plik w `src/` nie dołącza niczego z `tests/` ani nagłówka
+  `scene/Transform.hpp` i `game/Lighting.hpp`, od M5 `game/Exit.hpp`,
+  `game/Crystals.hpp` i `game/Round.hpp`, a od M6 `game/Terrain.hpp`, `game/Grass.hpp` i
+  `assets/Tangents.hpp`) i bibliotekę standardową. Żaden plik w `src/` nie dołącza niczego z `tests/` ani nagłówka
   doctest.
-- `src/game/NightMazeApp.hpp` dołącza `assets/AssetCache.hpp`, `core/Application.hpp`, osiem
-  nagłówków z `game/` (`ColliderLines.hpp`, `GameplayRenderer.hpp`, `LightRig.hpp`,
-  `Lighting.hpp`, `MazeRenderer.hpp`, `MazeWorld.hpp`, `Player.hpp`, `Round.hpp`), jeden z
+- `src/game/NightMazeApp.hpp` dołącza `assets/AssetCache.hpp`, `core/Application.hpp`,
+  trzynaście nagłówków z `game/` (`ColliderLines.hpp`, `GameplayRenderer.hpp`, `Grass.hpp`,
+  `GrassRenderer.hpp`, `LightRig.hpp`, `Lighting.hpp`, `MazeRenderer.hpp`, `MazeWorld.hpp`,
+  `Player.hpp`, `Round.hpp`, `Skybox.hpp`, `Terrain.hpp`, `TerrainRenderer.hpp`), jeden z
   `gfx/` (`Shader.hpp`; `Buffer.hpp` i `VertexArray.hpp` odpadły razem z kostką), dwa ze
-  `scene/` (`Camera.hpp`, `Collider.hpp`), `<glm/glm.hpp>`, `<array>`, `<vector>` i nic z
+  `scene/` (`Camera.hpp`, `Collider.hpp`), `<glm/glm.hpp>`, `<array>`, `<cstddef>`, `<vector>` i nic z
   `debug/`.
   Komentarz w klasie mówi wprost: "It knows nothing about the debug UI". `NightMazeApp.cpp`
   dołącza do tego `core/GlCheck.hpp`, `core/Paths.hpp`, `game/Crystals.hpp`,
-  `game/ShaderUniforms.hpp` i
+  `game/ShaderUniforms.hpp`, od M6 `assets/ImageLoader.hpp` i `core/Log.hpp` (wczytanie mapy
+  wysokości i linia w logu) i
   `<GLFW/glfw3.h>`, ten ostatni tylko dla stałych klawiszy i przycisku myszy (`GLFW_KEY_W`,
   `GLFW_KEY_N`, `GLFW_KEY_F`, `GLFW_KEY_R`, `GLFW_MOUSE_BUTTON_LEFT`): o stan wejścia pyta wyłącznie `core::Input`.
+  Od M6 jest jedno wywołanie funkcji GLFW wprost: `glfwGetTime()` w `drawGrass`, zegar wiatru.
 - `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`,
-  `debug/Hud.hpp`, `debug/Theme.hpp`, nagłówki ośmiu paneli, `game/Lighting.hpp` (panel
+  `debug/Hud.hpp`, `debug/Theme.hpp`, nagłówki dziesięciu paneli, `game/Lighting.hpp` (panel
   Renderer dostaje
-  pole `mode` struktury `LightingSettings`) i nagłówki ImGui.
+  pole `mode` struktury `LightingSettings`), od M6 `game/Skybox.hpp` i `game/MazeWorld.hpp`
+  (panel Terrain dostaje pole `terrain` struktury `MazeWorld`) i nagłówki ImGui.
 - `src/debug/Theme.cpp` dołącza `core/Log.hpp` i `core/Paths.hpp` (błąd wczytania czcionki i
   ścieżka do `assets/fonts`). `Theme.hpp` i `PanelLayout.hpp` dołączają `<imgui.h>`, bo
   pokazują typy `ImVec4` i `ImVec2`: to jedyne nagłówki projektu z nagłówkiem ImGui i
-  dołączają je tylko pliki `.cpp` z `src/debug/`. Każdy z ośmiu plików paneli dołącza
+  dołączają je tylko pliki `.cpp` z `src/debug/`. Każdy z dziesięciu plików paneli dołącza
   `debug/PanelLayout.hpp`, a panele Shaders, Assets i Maze także `debug/Theme.hpp`.
-  `Hud.cpp` dołącza `debug/Theme.hpp` (kolory) i `game/Round.hpp`, a `Hud.hpp` nie dołącza
+  `Hud.cpp` dołącza `debug/Theme.hpp` (kolory), `game/Round.hpp` i od M6
+  `debug/PanelLayout.hpp` (wysokość rzędów pasków, pod którymi stoi HUD), a `Hud.hpp` nie dołącza
   niczego: oba typy gry zapowiada deklaracjami.
 - `src/debug/panels/CameraPanel.cpp` dołącza `game/Player.hpp`, `scene/Camera.hpp` i
   `<glm/gtc/type_ptr.hpp>`. Panele Maze i Collision dołączają `game/MazeLayout.hpp`,
@@ -620,8 +696,9 @@ Jak to widać w kodzie:
   `scene/Collider.hpp`), a panel Assets `assets/AssetCache.hpp`, `core/Paths.hpp`,
   `game/MazeRenderer.hpp` i `gfx/Texture2D.hpp`. Panel Lights dołącza `game/Lighting.hpp`,
   `game/Round.hpp`, `scene/Light.hpp` i `<glm/gtc/type_ptr.hpp>`, panel Gameplay tylko
-  `game/Round.hpp`, a panel Renderer
-  `core/Time.hpp`, `core/Window.hpp` i `game/Lighting.hpp`.
+  `game/Round.hpp`, panel Terrain tylko `game/Terrain.hpp`, panel Grass tylko
+  `game/Grass.hpp`, a panel Renderer
+  `core/Time.hpp`, `core/Window.hpp`, `game/Lighting.hpp` i od M6 `game/Skybox.hpp`.
 - `src/debug/panels/ShadersPanel.cpp` dołącza `core/Paths.hpp` i `gfx/Shader.hpp`: to
   pierwszy plik w `debug/`, który zna `gfx/`. Kierunek jest dozwolony, bo `debug/` może
   zależeć od każdej warstwy.
@@ -643,8 +720,8 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
 | `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
-| `game_logic` | biblioteka statyczna | `src/game/Crystals.*`, `src/game/Exit.*`, `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Player.*`, `src/game/Round.*` | `engine` (`PUBLIC`) |
-| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/GameplayRenderer.*`, `src/game/ModelDraw.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/Skybox.*`, `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, HUD, układ, motyw, osiem paneli) | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
+| `game_logic` | biblioteka statyczna | `src/game/Crystals.*`, `src/game/Exit.*`, `src/game/Grass.*`, `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Player.*`, `src/game/Round.*`, `src/game/Terrain.*` | `engine` (`PUBLIC`) |
+| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/GameplayRenderer.*`, `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*`, `src/game/ModelDraw.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/Skybox.*`, `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, HUD, układ, motyw, dziesięć paneli) | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
 | `night_maze_tests` | program | `tests/*.cpp` | `game_logic`, `doctest::doctest` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
 | `glfw` | biblioteka statyczna | pobrana przez FetchContent | biblioteki systemowe |
@@ -695,6 +772,22 @@ Ta sama linia podziału: `Cubemap` to kod z OpenGL bez wiedzy o grze, więc jest
 w programie. Test nieba nie używa żadnego z nich: czyta pliki PNG loaderem z `engine`
 i bierze domyślny kierunek księżyca z `game_logic`.
 
+Co doszło do targetów z terenem i trawą (M6, część druga):
+
+| Target | Nowe pliki |
+|---|---|
+| `engine` | żadnego nowego pliku: etap geometrii doszedł do istniejącego `src/gfx/Shader.*`, a punkty do `src/gfx/Mesh.hpp` (sam komentarz: klasa rysowała już dowolny prymityw) |
+| `game_logic` | `src/game/Terrain.*`, `src/game/Grass.*` |
+| `night_maze` | `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*`, `src/debug/panels/TerrainPanel.*`, `src/debug/panels/GrassPanel.*` |
+| `night_maze_tests` | `tests/TerrainTests.cpp`, `tests/GrassTests.cpp` |
+
+Linia podziału jest ta sama, i tu widać ją najwyraźniej: teren i trawa są rozcięte na dwie
+pary. Wysokości, trójkąty i miejsca kępek to zwykłe dane i matematyka (`Terrain`, `Grass`),
+więc są w `game_logic` i mają 36 przypadków testowych. Siatki na karcie i wywołania rysujące
+(`TerrainRenderer`, `GrassRenderer`) są w programie. Z repozytorium nie ubył żaden plik
+źródłowy C++: płytki podłogi były tylko modelem, teksturami i skryptem, a w kodzie polem i
+linią w `MazeRenderer` oraz listą macierzy w `MazeWorld`.
+
 **Dlaczego `engine` jest osobną biblioteką.** Warstwy wielokrotnego użytku (teraz `core`,
 `gfx`, `scene` i `assets`, później `renderer`) nie zawierają niczego specyficznego dla Night
 Maze. Jako osobny target da się je bez zmian podłączyć do innego programu, w szczególności
@@ -709,10 +802,10 @@ są w tej samej bibliotece: tu obowiązuje sama dyscyplina dyrektyw `#include`.
 **Dlaczego `game_logic` jest osobną biblioteką.** Program testowy jest drugim, osobnym
 programem i może dolinkować tylko kod z biblioteki: kod skompilowany wprost w programie
 `night_maze` jest dla niego niedostępny. Dlatego ta część gry, która nie potrzebuje okna
-(labirynt, generator, układ w świecie, `MazeWorld`, gracz, ustawienia oświetlenia, a od M5
-wyjście, kryształy i reguły rundy), jest
+(labirynt, generator, układ w świecie, `MazeWorld`, gracz, ustawienia oświetlenia, od M5
+wyjście, kryształy i reguły rundy, a od M6 teren i miejsca kępek trawy), jest
 biblioteką statyczną, którą linkują i gra, i testy. `NightMazeApp` i kod rysujący
-(`MazeRenderer`, `GameplayRenderer`, funkcje z `ModelDraw`, `ColliderLines`, `LightRig`, `Skybox`) zostają w programie, bo potrzebują okna i kontekstu OpenGL, których test
+(`MazeRenderer`, `GameplayRenderer`, `TerrainRenderer`, `GrassRenderer`, funkcje z `ModelDraw`, `ColliderLines`, `LightRig`, `Skybox`) zostają w programie, bo potrzebują okna i kontekstu OpenGL, których test
 nie ma. `game_logic` nie trafia do `engine`, bo `engine` ma nie zawierać niczego
 specyficznego dla Night Maze. Więcej: [`../modules/game/README.md`](../modules/game/README.md),
 sekcja 3.
@@ -913,8 +1006,9 @@ Bloki 5a i 6a doszły w kamieniu milowym M2 + M3. Mają numery z literą, żeby 
 
 ```cmake
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
-# The maze, its generator, its layout in the world, the player, the settings of the
-# lighting and the rules of a round (exit, crystals, battery) are plain data and math.
+# The maze, its generator, its layout in the world, the terrain it stands on, the places
+# of the grass, the player, the settings of the lighting and the rules of a round (exit,
+# crystals, battery) are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -923,6 +1017,8 @@ add_library(game_logic STATIC
     src/game/Crystals.hpp
     src/game/Exit.cpp
     src/game/Exit.hpp
+    src/game/Grass.cpp
+    src/game/Grass.hpp
     src/game/Lighting.cpp
     src/game/Lighting.hpp
     src/game/Maze.cpp
@@ -937,22 +1033,27 @@ add_library(game_logic STATIC
     src/game/Player.hpp
     src/game/Round.cpp
     src/game/Round.hpp
+    src/game/Terrain.cpp
+    src/game/Terrain.hpp
 )
-# PUBLIC: the headers of this library (Exit.hpp, Lighting.hpp, MazeLayout.hpp,
-# MazeWorld.hpp, Player.hpp, Round.hpp) include headers of engine (scene/Collider.hpp, scene/Light.hpp) and GLM,
-# so whoever includes them needs the include paths of engine.
+# PUBLIC: the headers of this library (Crystals.hpp, Exit.hpp, Lighting.hpp,
+# MazeLayout.hpp, MazeWorld.hpp, Player.hpp, Round.hpp, Terrain.hpp) include headers of
+# engine (scene/Collider.hpp, scene/Light.hpp, gfx/Vertex.hpp, assets/ImageLoader.hpp)
+# and GLM, so whoever includes them needs the include paths of engine.
 # The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 ```
 
-- `add_library(game_logic STATIC ...)`: druga nasza biblioteka statyczna, z osiemnastu plików
-  logiki gry bez okna (labirynt, `MazeWorld`, gracz, od M4 `Lighting`, a od M5 `Exit`,
-  `Crystals` i `Round`). Lista jest jawna, tak jak przy
+- `add_library(game_logic STATIC ...)`: druga nasza biblioteka statyczna, z dwudziestu dwóch
+  plików logiki gry bez okna (labirynt, `MazeWorld`, gracz, od M4 `Lighting`, od M5 `Exit`,
+  `Crystals` i `Round`, a od M6 `Terrain` i `Grass`). Lista jest jawna, tak jak przy
   `engine`.
 - `target_link_libraries(game_logic PUBLIC engine)`: `game_logic` używa `scene::Aabb` z
   `engine`. `PUBLIC`, bo nagłówek `game/MazeLayout.hpp` sam dołącza `scene/Collider.hpp` i
-  GLM: każdy, kto go dołączy, potrzebuje ścieżek nagłówków `engine`. Dzięki temu nie ma tu
+  GLM: każdy, kto go dołączy, potrzebuje ścieżek nagłówków `engine`. Komentarz w pliku
+  wymienia od M6 dwa nowe nagłówki `engine`, które dołącza `Terrain.hpp`: `gfx/Vertex.hpp`
+  i `assets/ImageLoader.hpp`. Dzięki temu nie ma tu
   osobnego `target_include_directories`: korzeń `src/` przychodzi z `engine`.
 - `night_maze_enable_warnings(game_logic)`: te same ścisłe ostrzeżenia co dla `engine`.
 
@@ -960,15 +1061,18 @@ night_maze_enable_warnings(game_logic)
 
 ```cmake
 # ---- night_maze: the application and its debug UI -------------------------------------
-# NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer, ColliderLines,
-# LightRig, Skybox, with the shared ModelDraw) stay in the executable: they need a window
-# and an OpenGL context, so they are not something a test can run.
+# NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer, TerrainRenderer,
+# GrassRenderer, ColliderLines, LightRig, Skybox, with the shared ModelDraw) stay in the
+# executable: they need a window and an OpenGL context, so they are not something a test
+# can run.
 add_executable(night_maze
     src/main.cpp
     src/game/ColliderLines.cpp
     src/game/ColliderLines.hpp
     src/game/GameplayRenderer.cpp
     src/game/GameplayRenderer.hpp
+    src/game/GrassRenderer.cpp
+    src/game/GrassRenderer.hpp
     src/game/LightRig.cpp
     src/game/LightRig.hpp
     src/game/MazeRenderer.cpp
@@ -980,6 +1084,8 @@ add_executable(night_maze
     src/game/ShaderUniforms.hpp
     src/game/Skybox.cpp
     src/game/Skybox.hpp
+    src/game/TerrainRenderer.cpp
+    src/game/TerrainRenderer.hpp
     src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
@@ -997,6 +1103,8 @@ add_executable(night_maze
     src/debug/panels/CollisionPanel.hpp
     src/debug/panels/GameplayPanel.cpp
     src/debug/panels/GameplayPanel.hpp
+    src/debug/panels/GrassPanel.cpp
+    src/debug/panels/GrassPanel.hpp
     src/debug/panels/LightsPanel.cpp
     src/debug/panels/LightsPanel.hpp
     src/debug/panels/MazePanel.cpp
@@ -1005,6 +1113,8 @@ add_executable(night_maze
     src/debug/panels/RendererPanel.hpp
     src/debug/panels/ShadersPanel.cpp
     src/debug/panels/ShadersPanel.hpp
+    src/debug/panels/TerrainPanel.cpp
+    src/debug/panels/TerrainPanel.hpp
 )
 target_link_libraries(night_maze PRIVATE engine game_logic imgui)
 night_maze_enable_warnings(night_maze)
@@ -1015,11 +1125,13 @@ night_maze_enable_warnings(night_maze)
 - `PRIVATE engine game_logic imgui`: program niczego dalej nie przekazuje, więc `PRIVATE`
   wystarcza. ImGui linkuje tylko `night_maze`, nigdy `engine` ani `game_logic`.
 - `game_logic` jest potrzebne: `NightMazeApp` buduje labirynt (`buildMazeWorld`) i światła
-  klatki (`buildLightSet`), prowadzi rundę (`startRound`, `updateRound`), ma pola typu
-  `Player`, `LightingSettings`, `GameplaySettings` i `Round`, a panele i HUD czytają
-  `MazeWorld`, `Player`, `LightingSettings` i `Round`.
+  klatki (`buildLightSet`), prowadzi rundę (`startRound`, `updateRound`), od M6 buduje
+  teren i sadzi trawę (`placeOnTerrain`, `buildTerrainMesh`, `placeGrass`), ma pola typu
+  `Player`, `LightingSettings`, `GameplaySettings`, `Round`, `Heightmap`, `TerrainSettings`
+  i `GrassSettings`, a panele i HUD czytają
+  `MazeWorld`, `Player`, `LightingSettings`, `Round`, `Terrain` i `GrassSettings`.
 - Z kodu gry w programie zostają `NightMazeApp`, `MazeRenderer`, `GameplayRenderer`,
-  `ModelDraw`, `ColliderLines`, `LightRig`, `Skybox`,
+  `TerrainRenderer`, `GrassRenderer`, `ModelDraw`, `ColliderLines`, `LightRig`, `Skybox`,
   nagłówek `ShaderUniforms.hpp` i cały katalog `debug/`. Reszta `game/` jest w bibliotece
   `game_logic` (blok 5a).
 
@@ -1036,6 +1148,7 @@ add_executable(night_maze_tests
     tests/ColliderTests.cpp
     tests/CrystalTests.cpp
     tests/ExitTests.cpp
+    tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
@@ -1049,6 +1162,7 @@ add_executable(night_maze_tests
     tests/ShaderSourceTests.cpp
     tests/SkyboxTests.cpp
     tests/TangentTests.cpp
+    tests/TerrainTests.cpp
     tests/TransformTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
@@ -1071,8 +1185,8 @@ Drugi program w projekcie. Każdą linię omawia
 
 - `enable_testing()` włącza zapis listy testów do katalogu buildu, gdzie znajduje ją program
   `ctest`.
-- `add_executable(night_maze_tests ...)` buduje program testowy z siedemnastu plików
-  (`tests/main.cpp` i szesnaście plików z testami) przy każdym zwykłym buildzie (jest częścią
+- `add_executable(night_maze_tests ...)` buduje program testowy z dwudziestu plików
+  (`tests/main.cpp` i dziewiętnaście plików z testami) przy każdym zwykłym buildzie (jest częścią
   targetu domyślnego), więc testy zawsze się kompilują.
 - `target_link_libraries(... PRIVATE game_logic doctest::doctest)`: kod testowany i
   biblioteka testów. `engine` przychodzi przez `game_logic`.
@@ -1567,7 +1681,7 @@ formacie JSON z komentarzami, który oba edytory akceptują.
 | `cmake.configureOnOpen` | `false` | CMake Tools nie uruchamia konfiguracji samo przy otwarciu katalogu. Konfigurację wykonujemy świadomie, poleceniem `cmake --preset debug` |
 | `[cpp]` / `editor.formatOnSave` | `true` | edytor formatuje plik C++ przy każdym zapisie. Ustawienie jest wewnątrz bloku `[cpp]`, więc nie dotyczy innych języków, w szczególności wygenerowanego kodu C w `external/glad` |
 | `[cpp]` / `editor.defaultFormatter` | `"llvm-vs-code-extensions.vscode-clangd"` | dla plików C++ formaterem jest clangd, który stosuje reguły z `.clang-format` (sekcja 3.5) |
-| `files.associations` | `*.vert`, `*.frag`, `*.geom`, `*.glsl` na `glsl` | pliki shaderów są traktowane jako język GLSL (kolorowanie składni). Dziś jest ich dwanaście: pary `textured`, `color`, `lit`, `gouraud` i `skybox` w `assets/shaders/` oraz dwa pliki dołączane w `assets/shaders/common/`, `lighting.glsl` i `normal_map.glsl` (to dla nich jest wzorzec `*.glsl`) |
+| `files.associations` | `*.vert`, `*.frag`, `*.geom`, `*.glsl` na `glsl` | pliki shaderów są traktowane jako język GLSL (kolorowanie składni). Dziś jest ich piętnaście: pary `textured`, `color`, `lit`, `gouraud` i `skybox` w `assets/shaders/`, trójka `grass` (jej plik `grass.geom`, shader geometrii z M6, jest pierwszym plikiem projektu, dla którego potrzebny jest wzorzec `*.geom`) oraz dwa pliki dołączane w `assets/shaders/common/`, `lighting.glsl` i `normal_map.glsl` (to dla nich jest wzorzec `*.glsl`) |
 
 Dlaczego tak:
 
@@ -1789,12 +1903,13 @@ katalogu repozytorium jest to katalog główny repozytorium. Jest w `.gitignore`
 przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../libraries/imgui.md).
 
 Od M2 + M3 każdy panel ma w kodzie miejsce i rozmiar startowy, ułożone dla okna 1280 x 720.
-Dziś paneli jest osiem i jest to osiem stałych `..._PLACEMENT` w jednym pliku,
+Dziś paneli jest dziesięć i jest to dziesięć stałych `..._PLACEMENT` w jednym pliku,
 `src/debug/PanelLayout.hpp`, ustawianych przez `placePanelOnFirstUse` z warunkiem
 `ImGuiCond_FirstUseEver` i liczonych od rogów okna ([`../modules/debug-ui.md`](../modules/debug-ui.md)):
 Renderer nad Lights w lewej kolumnie, Maze nad Assets w prawej, Collision i
 Shaders na dole między kolumnami, a Camera i Gameplay u góry, między kolumnami, obok
-siebie, zwinięte do pasków tytułu (pole `collapsed`). Ten warunek działa tylko wtedy, gdy
+siebie, zwinięte do pasków tytułu (pole `collapsed`). Od M6 pod nimi stoi drugi rząd takich
+pasków: Terrain pod Camera i Grass pod Gameplay (pole `foldedRowsBefore`). Ten warunek działa tylko wtedy, gdy
 `imgui.ini` nie ma jeszcze
 wpisu dla danego panelu. Plik zapisany przez starszą wersję programu trzyma panele na
 starych miejscach i w starych rozmiarach, a plik sprzed M4 nie ma wpisu panelu Lights, więc
@@ -1802,7 +1917,10 @@ ten jeden panel dostaje miejsce z kodu i nachodzi na panele ze starego układu. 
 nie ma wpisu panelu Gameplay: ten panel dostaje miejsce z kodu, u góry obok panelu Camera,
 gdzie w układzie z M4 nic nie stoi. Plik sprzed pierwszej części M6 trzyma panel Renderer w
 wysokości 230, a ten ma dziś dwa wiersze więcej (pole `Skybox` i suwak `Sky brightness`,
-wysokość startowa 284): nowe kontrolki są wtedy pod dolną krawędzią panelu (wszystkie trzy
+wysokość startowa 284): nowe kontrolki są wtedy pod dolną krawędzią panelu. Plik sprzed
+drugiej części M6 nie ma wpisów paneli Terrain i Grass: oba dostają miejsce z kodu, w drugim
+rzędzie pasków, a jeśli stary plik trzyma panel Camera albo Gameplay rozwinięty, ten panel
+zakrywa nowy pasek pod sobą (wszystkie cztery
 opisy to wnioski z kodu, nie obserwacje). Żeby zobaczyć domyślny układ,
 trzeba przed uruchomieniem usunąć `imgui.ini` z katalogu, z którego program startuje.
 Kolorów, odstępów ani czcionki w tym pliku nie ma: ustawia je kod przy każdym starcie. Nie
@@ -1874,7 +1992,11 @@ ma w nim też paska HUD ani karty wygranej: ich okna mają flagę
 7. **Sprawdź regułę warstw**: plik w `core/` nie może dołączać niczego z `gfx/`, `scene/`,
    `game/` ani `debug/`, plik w `gfx/` niczego z `scene/`, `game/` ani `debug/`, plik w
    `scene/` niczego z `game/` ani `debug/`, plik w `game/` niczego z `debug/`. Plik biblioteki
-   `game_logic` dodatkowo niczego z GLAD, GLFW, `core/`, `gfx/` ani `assets/`.
+   `game_logic` dodatkowo niczego z GLAD, GLFW ani `core/`, a z `gfx/` i `assets/` tylko
+   nagłówki samych danych, które nie dołączają GLAD. Dziś korzysta z tego jeden moduł,
+   `Terrain.*` (`gfx/Vertex.hpp`, `assets/ImageLoader.hpp`, `assets/Tangents.hpp`). Klasa
+   `gfx`, która posiada obiekt OpenGL (`Mesh`, `Texture2D`, `Shader`), w `game_logic` się
+   nie zlinkuje w teście bez kontekstu, więc nie ma tam czego szukać.
 
 Nowy panel debugowy ma dodatkowe kroki (wywołanie w `DebugUI::draw`, a dla nowych danych
 pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
@@ -1901,13 +2023,15 @@ pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
 
 1. **Utwórz plik w `assets/`**, shader w `assets/shaders/`. Nazwa pary shaderów jest wspólna,
    różni się rozszerzeniem: `.vert` dla shadera wierzchołków, `.frag` dla shadera
-   fragmentów. Edytor rozpoznaje je jako GLSL (sekcja 3.10).
+   fragmentów. Program z shaderem geometrii ma trzeci plik o tej samej nazwie i rozszerzeniu
+   `.geom` (wzór: `grass.vert`, `grass.geom`, `grass.frag`). Edytor rozpoznaje je jako GLSL
+   (sekcja 3.10).
 2. **Pierwsza linia shadera to `#version 410 core`.** Pod nią komentarz z jednym zdaniem
    opisu i odnośnikiem `See docs/modules/...`, tak jak w plikach C++. Kod wspólny dla kilku
    shaderów idzie do pliku `.glsl` w `assets/shaders/common/`, **bez** linii `#version`, a
    shader dołącza go linią `#include "common/nazwa.glsl"`, która musi stać za linią
    `#version` (nazwa liczy się od katalogu pliku shadera). Wzór: `common/lighting.glsl`,
-   dołączany przez `lit.frag` i `gouraud.vert`
+   dołączany przez `lit.frag`, `gouraud.vert` i, od M6, `grass.frag`
    ([`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md)).
 3. **Niczego nie dopisuj w `CMakeLists.txt`.** Krok z bloku 7 obejmuje cały katalog `assets/`.
 4. **W kodzie buduj ścieżkę przez `core::assetPath`**, z nazwą względną wobec `assets/`, na
@@ -1916,11 +2040,15 @@ pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
    `TEXTURED_FRAGMENT_SHADER_FILE` w `src/game/NightMazeApp.cpp` (nowa para shaderów to tam nowa para
    stałych, nowe pole `gfx::Shader`, akcesor, pole w `debug::DebugContext` i wpis w tablicy
    programów w `DebugUI::draw` razem z większą stałą `SHADER_COUNT`, żeby panel Shaders ją
-   przeładowywał), a dla modeli stałe
-   `FLOOR_TILE_MODEL_FILE`, `WALL_MODEL_FILE` i `PILLAR_MODEL_FILE` w
+   przeładowywał. Program z shaderem geometrii podaje jego ścieżkę jako **trzeci** argument
+   konstruktora `gfx::Shader`, wzór: `m_grassShader`), a dla modeli stałe
+   `WALL_MODEL_FILE` i `PILLAR_MODEL_FILE` w
    `src/game/MazeRenderer.cpp` oraz `CRYSTAL_A_MODEL_FILE`, `CRYSTAL_B_MODEL_FILE` i
    `GATE_MODEL_FILE` w `src/game/GameplayRenderer.cpp`. Model i jego tekstury wczytuje
-   `assets::AssetCache`, a rysuje `game::drawModel`.
+   `assets::AssetCache`, a rysuje `game::drawModel`. Tekstura bez modelu (wzór: grunt terenu,
+   stałe `GROUND_TEXTURE_FILE` i `GROUND_NORMAL_MAP_FILE` w `src/game/TerrainRenderer.cpp`)
+   idzie przez `AssetCache::texture`, a obraz, który nie ma być teksturą (wzór: mapa
+   wysokości, `HEIGHTMAP_FILE` w `NightMazeApp.cpp`), wprost przez `assets::loadImage`.
 5. **macOS:** nic więcej, dowiązanie `build/<preset>/assets` widzi nowy plik od razu.
    **Windows:** kopię obok `night_maze.exe` odświeża
    `cmake --build --preset debug --target copy_assets`, a także każdy pełny build przy
@@ -1955,7 +2083,7 @@ tym samym commicie co kod.
 
 | Co dodajesz | Gdzie trafia dokument |
 |---|---|
-| nowy moduł lub klasa w istniejącym module | `docs/modules/<moduł>.md` (szablon 10 sekcji z PRD, sekcja 7). Duży moduł ma katalog `docs/modules/<moduł>/` z plikiem `README.md` (wstęp i indeks) i dokumentami tematycznymi, z których każdy ma pełne 10 sekcji. Wzór: `docs/modules/core/`, `docs/modules/gfx/`, `docs/modules/scene/` i `docs/modules/game/` |
+| nowy moduł lub klasa w istniejącym module | `docs/modules/<moduł>.md` (szablon 10 sekcji z PRD, sekcja 7). Duży moduł ma katalog `docs/modules/<moduł>/` z plikiem `README.md` (wstęp i indeks) i dokumentami tematycznymi, z których każdy ma pełne 10 sekcji. Wzór: `docs/modules/core/`, `docs/modules/gfx/`, `docs/modules/scene/`, `docs/modules/game/` i `docs/modules/renderer/` |
 | nowa biblioteka | `docs/libraries/<biblioteka>.md` |
 | zmiana w budowaniu, narzędziach lub strukturze | `docs/guides/` (ten plik, `build-macos.md`, `build-windows.md`) |
 | decyzja "dlaczego tak, a nie inaczej" | `docs/decisions/<temat>.md`, według układu z [`../decisions/README.md`](../decisions/README.md), plus wiersz na liście notatek w tym pliku |

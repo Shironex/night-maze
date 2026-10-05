@@ -12,7 +12,12 @@ nagłówki, zakres z dwóch pól, suwak logarytmiczny i okno, które startuje zw
 sekcji 3.13. To, co doszło w M5: HUD gry jako okno ImGui, które jest tylko obrazem
 ([`src/debug/Hud.cpp`](../../src/debug/Hud.cpp)), ósmy panel Gameplay
 ([`src/debug/panels/GameplayPanel.cpp`](../../src/debug/panels/GameplayPanel.cpp)) i nowe
-kształty na planie w panelu Maze, jest w sekcji 3.14.
+kształty na planie w panelu Maze, jest w sekcji 3.14. To, co doszło w drugiej części M6:
+dziewiąty i dziesiąty panel, Terrain i Grass
+([`src/debug/panels/TerrainPanel.cpp`](../../src/debug/panels/TerrainPanel.cpp),
+[`src/debug/panels/GrassPanel.cpp`](../../src/debug/panels/GrassPanel.cpp)), i funkcja
+`ImGui::GetFrameHeight()`, którą układ paneli i HUD mierzą wysokość paska tytułu, jest w
+sekcji 3.15.
 
 Architekturę modułu `debug` i instrukcję "jak dodać nowy panel" zawiera
 [`../modules/debug-ui.md`](../modules/debug-ui.md). Tutaj jest sama biblioteka.
@@ -72,7 +77,7 @@ Prawdziwy odpowiednik tej drugiej postaci jest w
         }
 ```
 
-`shaders` to lista pięciu programów gry: jeden przycisk przeładowuje wszystkie.
+`shaders` to lista sześciu programów gry: jeden przycisk przeładowuje wszystkie.
 
 Skutki praktyczne:
 
@@ -356,14 +361,16 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 5;
+        constexpr int SHADER_COUNT = 6;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader, &context.colorShader, &context.litShader,
-            &context.gouraudShader, &context.skyboxShader};
+            &context.texturedShader, &context.colorShader,  &context.litShader,
+            &context.gouraudShader,  &context.skyboxShader, &context.grassShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawGameplayPanel(context.round, context.gameplay);
+        drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
+        drawGrassPanel(context.grass, context.grassTuftCount);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                       context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
@@ -383,8 +390,9 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele i HUD pokazują i edytują (dwadzieścia pól: od `time` i `window` po `skyboxShader`
-i `skybox`). Buduje ją co klatkę `main.cpp`.
+panele i HUD pokazują i edytują (dwadzieścia cztery pola: od `time` i `window` po `grass`
+i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją). Buduje ją co klatkę
+`main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 
 Cztery etapy, zawsze w tej kolejności:
@@ -392,7 +400,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem osiem funkcji paneli i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem dziesięć funkcji paneli i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -440,6 +448,12 @@ Ważne szczegóły:
               .lighting = lighting(),
               .gameplay = gameplaySettings(),
               .round = round(),
+              .skyboxShader = skyboxShader(),
+              .skybox = skyboxSettings(),
+              .grassShader = grassShader(),
+              .terrain = terrainSettings(),
+              .grass = grassSettings(),
+              .grassTuftCount = grassTuftCount(),
           });
 
           // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -548,7 +562,7 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   komputera, a nie część projektu.
 - Skasowanie pliku przywraca układ domyślny. To pierwsza rzecz do zrobienia, gdy panel
   "zniknął" albo wyjechał poza okno.
-- Układ domyślny naszych ośmiu paneli ustawiają trójki `SetNextWindowPos`,
+- Układ domyślny naszych dziesięciu paneli ustawiają trójki `SetNextWindowPos`,
   `SetNextWindowSize` i `SetNextWindowCollapsed` z warunkiem `ImGuiCond_FirstUseEver`
   (sekcje 3.11 i 3.13). Ten warunek działa tylko dla okna, którego w `imgui.ini` jeszcze
   nie ma. Stary plik zatrzyma panele na starych miejscach i w starych rozmiarach: plik
@@ -691,7 +705,7 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok pozostałych ośmiu funkcji `draw...Panel`, dopisanie plików
+wywołanie w `DebugUI::draw` obok pozostałych dziesięciu funkcji `draw...Panel`, dopisanie plików
 do `add_executable` w `CMakeLists.txt`. Przed `Begin` wywołanie `placePanelOnFirstUse` z nową
 stałą dopisaną w `src/debug/PanelLayout.hpp`, żeby panel przy pierwszym uruchomieniu nie
 przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
@@ -703,7 +717,7 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
 Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
 
-**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie osiem paneli woła przed `Begin`
+**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie dziesięć paneli woła przed `Begin`
 jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Trzy wywołania
 ImGui są w niej ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
 
@@ -935,7 +949,7 @@ Deklaracje i komentarze przytaczam z `build/debug/_deps/imgui-src/imgui.h` w nas
 | Element | Znaczenie |
 |---|---|
 | deklaracja | `void SetNextWindowCollapsed(bool collapsed, ImGuiCond cond = 0);` z komentarzem "set next window collapsed state. call before Begin()" |
-| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` mają dwa panele: Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`) i, od M5, Gameplay (`GAMEPLAY_PLACEMENT`), który stoi obok niego przy górnej krawędzi |
+| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` mają cztery panele: Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`), od M5 Gameplay (`GAMEPLAY_PLACEMENT`), który stoi obok niego przy górnej krawędzi, i od M6 Terrain i Grass (`TERRAIN_PLACEMENT`, `GRASS_PLACEMENT`), które stoją rząd niżej, pod tymi dwoma (sekcja 3.15) |
 | `ImGuiCond_FirstUseEver` | ten sam warunek co przy pozycji i rozmiarze: tylko gdy okno nie ma wpisu w `imgui.ini`. Bez warunku panel zwijałby się z powrotem w każdej klatce i nie dałoby się go otworzyć |
 
 Zwinięte okno to zwykły stan okna ImGui, nie osobny widżet. Użytkownik przełącza go
@@ -1108,7 +1122,9 @@ constexpr ImGuiWindowFlags CARD_WINDOW_FLAGS = PICTURE_WINDOW_FLAGS;
 
 `ImGuiWindowFlags_NoBringToFrontOnFocus` (w `imgui.h`: "Disable bringing window to front when
 taking focus") trzyma okno z tyłu kolejności rysowania. Pasek stoi tuż pod paskami tytułu
-zwiniętych paneli Camera i Gameplay (`HUD_TOP_OFFSET = 46`), więc rozwinięty panel go
+zwiniętych paneli: do M5 pod jednym rzędem (Camera i Gameplay, stała `HUD_TOP_OFFSET = 46`),
+od M6 pod dwoma (pod nimi Terrain i Grass), a odległość jest liczona z prawdziwej wysokości
+paska (sekcja 3.15). Rozwinięty panel go
 przykrywa, i tak ma być: panel, w którym ktoś pracuje, jest ważniejszy niż napis pod nim.
 Karta tej flagi nie ma: ImGui stawia nowe okno przed już istniejącymi, więc karta pojawia się
 na wierzchu paneli, a panel kliknięty później wychodzi przed nią jak przed każde inne okno
@@ -1118,7 +1134,11 @@ na wierzchu paneli, a panel kliknięty później wychodzi przed nią jak przed k
 
 ```cpp
     const ImVec2 top = windowPoint(TOP_CENTER);
-    ImGui::SetNextWindowPos({top.x, top.y + HUD_TOP_OFFSET * scale}, ImGuiCond_Always, TOP_CENTER);
+    // The rows of title bars are measured with the real height of a bar, which follows
+    // the font (foldedRowsHeight).
+    const float rowsAbove = foldedRowsHeight(FOLDED_ROW_COUNT, scale);
+    ImGui::SetNextWindowPos({top.x, top.y + rowsAbove + HUD_TOP_OFFSET * scale}, ImGuiCond_Always,
+                            TOP_CENTER);
     ImGui::SetNextWindowBgAlpha(HUD_OPACITY);
 
     // The name is never shown (there is no title bar). ImGui tells windows apart by it.
@@ -1128,6 +1148,7 @@ na wierzchu paneli, a panel kliknięty później wychodzi przed nią jak przed k
 | Element | Znaczenie |
 |---|---|
 | `windowPoint(TOP_CENTER)` | nasza funkcja: punkt okna programu podany jako części jego rozmiaru, liczony z `ImGui::GetMainViewport()` (`WorkPos` i `WorkSize`). `TOP_CENTER` to `{0.5, 0}`, środek górnej krawędzi |
+| `foldedRowsHeight(FOLDED_ROW_COUNT, scale)` | nasza funkcja z `PanelLayout.cpp` (od M6): wysokość dwóch rzędów zwiniętych pasków tytułów, liczona z `ImGui::GetFrameHeight()` (sekcja 3.15). HUD staje pod nimi |
 | `ImGuiCond_Always` | pozycja jest ustawiana w **każdej** klatce. Panele używają `ImGuiCond_FirstUseEver` (sekcja 3.11), bo użytkownik ma móc je przesunąć. HUD ma zostać na środku także po zmianie rozmiaru okna programu |
 | trzeci argument, `TOP_CENTER` | pivot: punkt okna ImGui, który ma trafić w podaną pozycję. `{0.5, 0}` to środek jego górnej krawędzi, więc pasek jest wyśrodkowany, choć jego szerokość zmienia się z zawartością (`AlwaysAutoResize`) i nie jest znana przed `Begin`. Karta wygranej używa pivotu `{0.5, 0.5}` i jest wyśrodkowana w obu kierunkach |
 | `ImGui::SetNextWindowBgAlpha(HUD_OPACITY)` | deklaracja: `void SetNextWindowBgAlpha(float alpha);`. Ustawia przezroczystość tła najbliższego okna: 0 to tło niewidoczne, 1 to pełne. Pasek ma 0,72, karta 0,9: przez pasek widać scenę, karta ma być czytelna |
@@ -1273,6 +1294,65 @@ usunięto. Nikt jeszcze nie sprawdził ręcznie: przycisku `Restart round (key R
 panelu Gameplay, karty wygranej, HUD przy ukrytych panelach ani tego, czy kliknięcie w
 miejscu HUD naprawdę trafia do sceny. Opis zachowania flag pochodzi z kodu projektu i z
 komentarzy w `imgui.h`. Na macOS kod M5 nie był budowany ani uruchamiany.
+
+### 3.15. Panele Terrain i Grass, `GetFrameHeight` i drugi rząd pasków (M6)
+
+Kod: [`src/debug/panels/TerrainPanel.cpp`](../../src/debug/panels/TerrainPanel.cpp),
+[`src/debug/panels/GrassPanel.cpp`](../../src/debug/panels/GrassPanel.cpp),
+[`src/debug/PanelLayout.cpp`](../../src/debug/PanelLayout.cpp) i
+[`src/debug/Hud.cpp`](../../src/debug/Hud.cpp). Co kontrolki znaczą dla terenu i trawy:
+[`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) i
+[`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md). Kod paneli
+linia po linii: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.10.
+
+**Widżety.** Dziewiąty i dziesiąty panel nie wprowadzają żadnego nowego widżetu. Używają
+tych, które projekt już zna:
+
+| Widżet | Gdzie | Uwaga |
+|---|---|---|
+| `SliderFloat(..., ImGuiSliderFlags_AlwaysClamp)` | `Height scale` w panelu Terrain, `Density`, `Blade height` i `Wind strength` w panelu Grass | cztery suwaki. Dwa z nich (`Height scale`, `Density`) stoją w warunku `if`, bo `SliderFloat` zwraca `true` w każdej klatce, w której wartość się zmieniła, a panel ustawia wtedy flagę prośby (`rebuild`, `replant`). To ten sam wzorzec co `Button` z sekcji 3.14, tylko że suwak "klika" w każdej klatce przeciągania |
+| format z tekstem | `"%.1f per m"`, `"%.2f m"` | napis formatu jest tekstem `printf`, więc niesie jednostkę (sekcja 3.14) |
+| `Checkbox` | `Wireframe`, `Enabled` | czyta i pisze `bool` przez wskaźnik |
+| `SetItemTooltip` | pod `Height scale`, `Wireframe` i `Density` | podpowiedź do poprzedniego widżetu. Tekst ma kilka linii: `\n` łamie linię, a sąsiednie literały napisów kompilator skleja w jeden |
+| `Separator`, `Text` | linie odczytu na dole obu paneli | `Text` z formatem `%d` dostaje `int`, więc `std::size_t` jest rzutowane przez `static_cast<int>` |
+
+**`ImGui::GetFrameHeight()`: wysokość paska tytułu.** Nowa w projekcie jest jedna funkcja
+ImGui. Jej deklaracja w `imgui.h`:
+
+```cpp
+IMGUI_API float GetFrameHeight();   // ~ FontSize + style.FramePadding.y * 2
+```
+
+Zwraca wysokość jednej linii widżetów z ramką: rozmiar czcionki plus odstęp `FramePadding.y`
+nad tekstem i pod nim. Pasek tytułu okna ma dokładnie tę wysokość (w `imgui.cpp`:
+`TitleBarHeight = g.FontSize + g.Style.FramePadding.y * 2.0f`). Przy czcionce 16 i
+`FramePadding.y` równym 3 to 22 jednostki. Projekt woła ją w jednym miejscu:
+
+```cpp
+float foldedRowsHeight(int count, float gapScale) {
+    // GetFrameHeight is the height of one line of widgets: the text plus the frame
+    // padding above and below it. The title bar of a panel is exactly that high.
+    return static_cast<float>(count) * (ImGui::GetFrameHeight() + PANEL_GAP * gapScale);
+}
+```
+
+| Kto woła `foldedRowsHeight` | Z czym | Po co |
+|---|---|---|
+| `placePanelOnFirstUse` | `placement.foldedRowsBefore` (0 albo 1) i `layoutScale` | panele Terrain i Grass stają o jeden rząd pasków niżej niż Camera i Gameplay |
+| `drawStatus` w `Hud.cpp` | `FOLDED_ROW_COUNT` (2) i skala ekranu | HUD staje pod oboma rzędami pasków |
+
+Dlaczego pytać ImGui, a nie wpisać 22: wysokość paska idzie za czcionką, a czcionka za skalą
+ekranu (`FontScaleDpi`, sekcja 3.12). Przy skali 150% pasek ma 33 jednostki. Stała wpisana w
+kod byłaby dobra tylko dla jednej skali, co do M5 było znaną pułapką stałej
+`HUD_TOP_OFFSET = 46`. Funkcja czyta bieżącą czcionkę i styl, więc wolno ją wołać tylko
+wewnątrz klatki ImGui, między `NewFrame` a `Render`: oba miejsca wywołania to spełniają.
+
+Stan sprawdzenia (druga część M6, Windows, 2026-10-05): build Debug i Release bez ostrzeżeń
+zgłosił wykonawca, a obraz był sprawdzany na zrzutach ekranu robionych przez tymczasowe
+haki, które potem usunięto. Zgłoszone jest, że HUD stoi około 30 pikseli niżej niż w M5 przy
+skali 100%, co zgadza się z rachunkiem (jeden rząd: 22 + 8). Nikt jeszcze nie rozwinął
+ręcznie paneli Terrain i Grass ani nie ruszył żadnego ich suwaka. Skali 150% z dwoma rzędami
+pasków nikt nie oglądał. Na macOS kod M6 nie był budowany ani uruchamiany.
 
 ## 4. Pułapki
 

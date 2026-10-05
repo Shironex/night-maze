@@ -28,27 +28,40 @@
 > **Zmierzone 2026-10-05 (M6, część 1: skybox):** build Debug i Release bez ostrzeżeń, 221
 > przypadków testowych i 85175 asercji w obu konfiguracjach, orientacja nieba sprawdzona na
 > zrzucie ekranu (sekcja 15.1). Wersji kompilatora, karty graficznej i sterownika ani wyniku
-> clang-format i clang-tidy dla tej części nie zapisano. M6 jest w toku: terenu i trawy ta
-> sekcja nie obejmuje.
+> clang-format i clang-tidy dla tej części nie zapisano. Terenu i trawy ten pomiar nie
+> obejmuje: mają własny akapit niżej.
+>
+> **Zmierzone 2026-10-05 (M6, część 2: teren i trawa):** 256 przypadków testowych i 101232
+> asercje w Debug i w Release (uruchomione na istniejących programach testowych, żaden plik
+> źródłowy nie jest od nich nowszy), a liczby terenu i trawy przeliczone niezależnie z pliku
+> `heightmap.png` i ze wzorów kodu (sekcja 16.1). Build bez ostrzeżeń, clang-format, liczba
+> klatek na sekundę i zrzuty ekranu są zgłoszonym wynikiem, którego nie powtarzałem. Wersji
+> kompilatora, karty graficznej i sterownika ani wyniku clang-tidy dla tej części nie
+> zapisano.
 >
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
 > bateria, przejście przez otwartą bramę, karta wygranej, HUD przy ukrytych panelach,
-> rozwijanie paneli Camera i Gameplay, pole `Skybox` i suwak `Sky brightness`, zmiana
+> rozwijanie paneli Camera i Gameplay, pole `Skybox` i suwak `Sky brightness`, chodzenie po
+> nierównym podłożu, panele Terrain i Grass z ich suwakami i polami wyboru, zmiana
 > rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
 > są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
-> 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5) i 15 (skybox, pierwsza część
-> M6) rozróżniają punkty zmierzone
+> 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
+> M6) i 16 (teren i trawa, druga część M6) rozróżniają punkty zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
 > Sekcje 11, 12 i 13 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach
 > `[x]` opisują program z dnia pomiaru (z kostką z M1, a w sekcji 13 także z kostkami
 > znaczników świateł, światłami w ślepych zaułkach i pięcioma programami shaderów: M5 to
 > wszystko usunął albo zastąpił). Punkty otwarte `[ ]` tych sekcji mają teksty dzisiejszego
 > programu. Sekcja 14 opisuje program sprzed nieba: liczby testów i liczba programów w jej
-> punktach `[x]` to stan po M5. To, co program pokazuje dziś, opisują sekcje 2, 14 i 15.
+> punktach `[x]` to stan po M5. Sekcje od 11 do 15 powstały, gdy podłogą labiryntu były
+> płaskie płytki (model `floor_tile.obj` z teksturą `floor_stone.png`): druga część M6
+> usunęła je i zastąpiła terenem z mapy wysokości, więc słowo "podłoga" w punktach `[x]`
+> tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
+> pokazuje dziś, opisują sekcje 2, 14, 15 i 16.
 
 ## 1. Wymagania
 
@@ -128,24 +141,31 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 ### Co powinno się pojawić (zmierzone)
 
 Słowo "zmierzone" w tytule dotyczy stanu do M4. To, co lista mówi o M5 (kryształy,
-brama, pasek HUD i jego napisy, osiem paneli z panelem Gameplay, liczby modeli i tekstur
+brama, pasek HUD i jego napisy, panel Gameplay, liczby modeli i tekstur
 w liniach `[info]`), wynika z kodu, a nie z pomiaru: dla M5 zmierzone są build, testy
-jednostkowe i obraz na zrzutach, których listy nie zapisano (sekcja 14.1).
+jednostkowe i obraz na zrzutach, których listy nie zapisano (sekcja 14.1). Tak samo jest
+z tym, co lista mówi o M6 (niebo, nierówne podłoże, trawa, dziesięć paneli): wynika z kodu
+i ze zgłoszonych zrzutów ekranu (sekcje 15.1 i 16.1).
 
 - `cmake --preset debug` kończy się bez błędów. Wypisuje jedno ostrzeżenie o nieużytej
   zmiennej `CMAKE_BUILD_TYPE`. Jest ono oczekiwane (sekcja 3).
 - `cmake --build --preset debug` i `cmake --build --preset release` kończą się kodem 0, bez
   ostrzeżeń i bez błędów. W wyjściu buildu jest linia `Copying assets next to the
   executable` (sekcja 7).
-- Program otwiera okno z nocnym widokiem z wnętrza labiryntu: kamienna podłoga, ściany i
-  słupki z teksturą, oświetlone (tryb startowy to Blinn-Phong). Świecą trzy rodzaje świateł:
+- Program otwiera okno z nocnym widokiem z wnętrza labiryntu: łagodnie nierówne podłoże
+  z teksturą ubitej ziemi z mchem i kamykami (teren z mapy wysokości, od drugiej części
+  M6 w miejscu płaskich płytek podłogi), ściany i słupki z teksturą kamienia, wzdłuż ścian
+  kępki trawy kołysane wiatrem, wszystko oświetlone (tryb startowy to Blinn-Phong). Poza
+  labiryntem podłoże przechodzi we wzgórza. Świecą trzy rodzaje świateł:
   słabe, chłodne światło księżyca (kierunkowe), ciepły stożek latarki gracza na środku
   obrazu (reflektor) i turkusowe światła punktowe nad kryształami. Kryształ to mały model,
   który unosi się na środku komórki, kołysze się, obraca i sam świeci (13 w labiryncie
   startowym). Miejsca, do których żadne światło nie
   dociera, są ciemne, ale nie czarne
   (światło otoczenia). Cieni nie ma: światła świecą przez ściany (cienie są w planie M7).
-  Nad ścianami jest prawie czarne, granatowe tło: kolor czyszczenia to
+  Nad ścianami jest od pierwszej części M6 nocne niebo z gwiazdami i księżycem (skybox,
+  sekcja 15). Prawie czarne, granatowe tło widać tylko po odznaczeniu pola `Skybox`: kolor
+  czyszczenia to
   `{0.01F, 0.015F, 0.04F}`, ciemniejszy niż przed M4 (`{0.02F, 0.03F, 0.08F}`). Kolorowej
   kostki z M1, która do M4 wisiała nad komórką w przeciwległym rogu labiryntu, już nie
   ma: M5 ją usunął. Przy komórce wyjścia stoi drewniana brama. U góry okna, na środku,
@@ -164,18 +184,24 @@ jednostkowe i obraz na zrzutach, których listy nie zapisano (sekcja 14.1).
   4.1, o którą prosi program. Komputer ma też zintegrowaną kartę AMD Radeon: system sam
   wybrał kartę NVIDIA. Po nich pamięć podręczna assetów wypisuje po jednej linii `[info]`
   na każdy wczytany plik (`Loaded texture: ...` dla ośmiu tekstur, czyli czterech obrazów
-  koloru i czterech map normalnych, i `Loaded model: ...` dla sześciu modeli: podłogi,
+  koloru i czterech map normalnych: kamienia ścian, kryształu, drewna bramy i podłoża, oraz
+  `Loaded model: ...` dla pięciu modeli:
   ściany, słupka, dwóch kryształów i bramy, co wynika z
-  kodu `assets::AssetCache` i z plików `.mtl`). Zmierzone jest to, że na starcie
+  kodu `assets::AssetCache` i z plików `.mtl`. Do M5 modeli było sześć, szóstym była płytka
+  podłogi). Od M6 są też linie spoza pamięci podręcznej: sześć linii
+  `Loaded sky face: ...` i jedna `Loaded heightmap: ...` z plikiem `heightmap.png`.
+  Zmierzone jest to, że na starcie
   nie ma żadnej linii `[error]`, w tym żadnej z nazwą błędu OpenGL (`GL_INVALID_...`), także
   po dodaniu oświetlenia (2026-10-05, stan M4). Dla M5 tego wyniku nie zapisano (punkt
   otwarty w sekcji 14.2). Dokładnej liczby linii `[info]` przy tych pomiarach
   nie zapisałem.
-- Widocznych jest osiem paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
+- Widocznych jest dziesięć paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
   kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole między kolumnami, a
   Camera i Gameplay u góry, między kolumnami, obok siebie, zwinięte do samych pasków tytułu
-  (panel rozwija kliknięcie strzałki w jego pasku). Pasek HUD stoi tuż pod tymi dwoma
-  paskami tytułu i nie jest panelem: nie znika razem z panelami i nie reaguje na mysz.
+  (panel rozwija kliknięcie strzałki w jego pasku). Tuż pod nimi jest drugi rząd pasków
+  tytułu: Terrain pod Camera i Grass pod Gameplay, też zwinięte (od drugiej części M6).
+  Pasek HUD stoi pod tymi dwoma rzędami
+  pasków tytułu i nie jest panelem: nie znika razem z panelami i nie reaguje na mysz.
   Każdy panel ma w kodzie miejsce i rozmiar startowy, ułożone
   dla okna 1280 x 720 (`src/debug/PanelLayout.hpp`). Działają one tylko wtedy, gdy w
   katalogu roboczym nie ma pliku `imgui.ini` z wpisem danego panelu (sekcja 7). To nie jest
@@ -193,8 +219,8 @@ Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest
 
 Zwykły build buduje też program testowy `night_maze_tests.exe` (kolizje, labirynt, gracz,
 loadery, od M4 także tekst shaderów z `#include`, matematyka świateł, ustawienia
-oświetlenia, macierz normalnych i styczne wierzchołków, a od M5 kule kolizji, wyjście,
-kryształy i reguły rundy: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
+oświetlenia, macierz normalnych i styczne wierzchołków, od M5 kule kolizji, wyjście,
+kryształy i reguły rundy, a od M6 pliki nieba, teren i miejsca kępek trawy: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
 deweloperskim:
 
 ```bat
@@ -230,22 +256,25 @@ build\debug\Debug\night_maze_tests.exe
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:   215 |   215 passed | 0 failed | 0 skipped
-[doctest] assertions: 85098 | 85098 passed | 0 failed |
+[doctest] test cases:    256 |    256 passed | 0 failed | 0 skipped
+[doctest] assertions: 101232 | 101232 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
 Te same liczby daje `build\release\Release\night_maze_tests.exe` (oba pomiary 2026-10-05,
-po M5. Zmierzone są liczba przypadków, liczba asercji i to, że wszystkie przechodzą:
-układ tych trzech linii i odstępy przed liczbami odtworzyłem z wcześniejszego raportu).
+po drugiej części M6: trzy ostatnie linie są przepisane z wyjścia programu, dwóch
+pierwszych wtedy nie zapisałem i zostały z wcześniejszego raportu).
 Przypadki w plikach:
-`ColliderTests.cpp` 19, `CrystalTests.cpp` 14, `ExitTests.cpp` 11, `ImageLoaderTests.cpp`
-9, `LightingTests.cpp` 10, `LightTests.cpp` 20, `MazeGeneratorTests.cpp` 11,
+`ColliderTests.cpp` 19, `CrystalTests.cpp` 14, `ExitTests.cpp` 11, `GrassTests.cpp` 9,
+`ImageLoaderTests.cpp`
+10, `LightingTests.cpp` 10, `LightTests.cpp` 20, `MazeGeneratorTests.cpp` 11,
 `MazeLayoutTests.cpp` 12, `MazeTests.cpp` 8, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp`
-20, `PlayerTests.cpp` 13, `RoundTests.cpp` 25, `ShaderSourceTests.cpp` 22,
-`TangentTests.cpp` 9, `TransformTests.cpp` 4, razem 215. Po
+19, `PlayerTests.cpp` 13, `RoundTests.cpp` 25, `ShaderSourceTests.cpp` 22,
+`SkyboxTests.cpp` 5, `TangentTests.cpp` 9, `TerrainTests.cpp` 27, `TransformTests.cpp` 4,
+razem 256 (liczby na plik policzone z makr `TEST_CASE` w kodzie testów). Po
 kroku łączącym M2 + M3 program miał osiem plików z testami, po M4 trzynaście (163
-przypadki i 62220 asercji, sekcja 13), dziś ma szesnaście.
+przypadki i 62220 asercji, sekcja 13), po M5 szesnaście (215 i 85098, sekcja 14), po
+pierwszej części M6 siedemnaście (221 i 85175, sekcja 15), dziś ma osiemnaście.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
 
@@ -521,12 +550,13 @@ sekund po zmianie układu, a nie tylko przy zamykaniu. Przy wcześniejszych pomi
 był zabijany wcześniej i plik nie powstawał. Wiersze o dwukliku i o Visual Studio pozostają
 przewidywaniem.
 
-Bez tego pliku osiem paneli otwiera się w układzie zapisanym w kodzie (stałe
+Bez tego pliku dziesięć paneli otwiera się w układzie zapisanym w kodzie (stałe
 `..._PLACEMENT` w `src/debug/PanelLayout.hpp`, funkcja `placePanelOnFirstUse`, warunek
 `ImGuiCond_FirstUseEver`). Ten sam warunek obejmuje trzy rzeczy: pozycję, rozmiar i to, czy
 panel startuje zwinięty do paska tytułu (`ImGui::SetNextWindowCollapsed`). Zwinięte startują
-dwa panele: Camera i Gameplay (pole `collapsed = true` w stałych `CAMERA_PLACEMENT` i
-`GAMEPLAY_PLACEMENT`). Gdy plik istnieje
+cztery panele: Camera i Gameplay (pole `collapsed = true` w stałych `CAMERA_PLACEMENT` i
+`GAMEPLAY_PLACEMENT`), a od drugiej części M6 także Terrain i Grass w drugim rzędzie pod
+nimi (`TERRAIN_PLACEMENT` i `GRASS_PLACEMENT`, z polem `foldedRowsBefore = 1`). Gdy plik istnieje
 i ma wpis panelu, wygrywa wpis: także stan zwinięcia jest potem brany z pliku. Plik
 `imgui.ini` zapisany przez program sprzed M4 ma wpisy sześciu paneli w starym układzie
 (Camera pod Rendererem) i nie ma wpisu panelu Lights. Z takim plikiem sześć paneli zostaje
@@ -679,12 +709,17 @@ Typowe użycie: w RenderDoc, w zakładce Launch Application, wskazujemy
 `build\debug\Debug\night_maze.exe`, ustawiamy Working Directory na katalog repozytorium,
 uruchamiamy program i przechwytujemy klatkę klawiszem F12 lub PrintScreen.
 
-Dziś w przechwyconej klatce powinny być: czyszczenie ekranu, po jednym wywołaniu
-`glDrawElements` na każdą płytkę podłogi, ścianę i słupek labiryntu (dla labiryntu startowego
-100 + 121 + 121, w trybie startowym programem `lit`), tym samym programem jedno na bramę,
-dopóki nie schowała się w podłodze, i po jednym na każdy niezebrany kryształ (13 na
-starcie rundy), a na końcu rysowanie ImGui (panele i HUD). Przy zaznaczonym polu
-`Draw collision shapes` dochodzą linie programem `color`. Kostki z M1 i znaczników
+Dziś w przechwyconej klatce powinny być: czyszczenie ekranu, jedno wywołanie
+`glDrawElements` na cały teren (jedna siatka, 18432 trójkąty w labiryncie startowym), po
+jednym na każdą ścianę i słupek labiryntu (dla labiryntu startowego
+121 + 121, w trybie startowym programem `lit`), tym samym programem jedno na bramę,
+dopóki nie schowała się pod ziemią, i po jednym na każdy niezebrany kryształ (13 na
+starcie rundy), potem jedno wywołanie z prymitywem `GL_POINTS` na całą trawę (program
+`grass`, 1843 punkty przy ustawieniach startowych: trójkąty źdźbeł powstają dopiero
+w shaderze geometrii), niebo programem `skybox`, a na końcu rysowanie ImGui (panele
+i HUD). Do M5 w miejscu terenu było 100 wywołań, po jednym na płytkę podłogi. Przy
+zaznaczonym polu
+`Draw collision shapes` dochodzą linie programem `color` (rysowane przed niebem). Kostki z M1 i znaczników
 świateł, które były w klatce do M4, już nie ma. Można w niej obejrzeć bufory wierzchołków i indeksów, macierze w
 uniformach, bufor uniformów ze światłami (blok `LightBlock`, 928 bajtów, punkt wiązania 1),
 związaną teksturę i sampler, bufor głębi oraz wejścia i wyjścia shaderów. Narzędzie stanie
@@ -732,16 +767,18 @@ dokumentacji narzędzi (przewidywane).
 | Ostrzeżenie `Manually-specified variables were not used by the project: CMAKE_BUILD_TYPE` przy konfiguracji | generator Visual Studio ignoruje `CMAKE_BUILD_TYPE` | nic, to oczekiwane (sekcja 3) | zmierzone |
 | `LINK : fatal error LNK1168` przy `cmake --build --preset debug` | program `night_maze.exe` działa, a Windows blokuje jego plik | zamknij program i zbuduj ponownie. Do odświeżenia samych shaderów użyj `cmake --build --preset debug --target copy_assets` (sekcja 7) | zmierzone |
 | Panele leżą jeden na drugim albo w dziwnych miejscach, na przykład panel Lights zasłania panel Camera | w katalogu roboczym jest `imgui.ini` zapisany przez starszą wersję programu albo przy innym rozmiarze okna: jego wpisy wygrywają z układem startowym z kodu | usuń `imgui.ini` z katalogu, z którego startuje program (sekcja 7), albo rozsuń panele myszą za paski tytułu | przewidywane (w stanie M1, bez pozycji startowych w kodzie, trzy panele leżały jeden na drugim: zmierzone) |
-| Nie widać panelu Camera albo Gameplay, są tylko wąskie paski z napisami "Camera" i "Gameplay" u góry okna | oba panele startują zwinięte do paska tytułu: w oknie 1280 x 720 nie ma miejsca na osiem otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
+| Nie widać panelu Camera, Gameplay, Terrain albo Grass, są tylko wąskie paski z tymi napisami u góry okna, w dwóch rzędach | te cztery panele startują zwinięte do paska tytułu: w oknie 1280 x 720 nie ma miejsca na dziesięć otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
 | Latarka nie daje się włączyć klawiszem F ani polem `Flashlight on (key F)` | bateria jest pusta: na pasku HUD jest `0%` i napis `Battery empty. Find a crystal.`. To reguła gry, nie błąd | zbierz kryształ (daje 25% baterii), potem naciśnij F. Do testów: suwak `Battery` w panelu Gameplay albo klawisz R (nowa runda) | przewidywane (z kodu `game::updateRound`, sekcja 14.2) |
-| Podłoga albo ściany są białe, w konsoli linia `[error]` o pliku obrazu | obok `night_maze.exe` brakuje pliku z `assets\textures\` albo nie da się go zdekodować. Część modelu dostaje wtedy białą teksturę zastępczą | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (pamięć podręczna nie ponawia nieudanego wczytania) | zmierzone (zrzut ekranu z celowo usuniętą teksturą, sekcja 12) |
-| Brakuje podłogi, ścian albo słupków, w konsoli `[error]` z nazwą pliku `.obj` albo `.mtl` | brakuje pliku modelu albo jego pliku `.mtl`. Model, którego nie udało się wczytać, nie jest rysowany, reszta labiryntu tak | jak wyżej | przewidywane |
+| Podłoże albo ściany są białe, w konsoli linia `[error]` o pliku obrazu | obok `night_maze.exe` brakuje pliku z `assets\textures\` albo nie da się go zdekodować. Część modelu (albo teren, gdy chodzi o `ground.png`) dostaje wtedy białą teksturę zastępczą | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (pamięć podręczna nie ponawia nieudanego wczytania) | zmierzone dla modelu (zrzut ekranu z celowo usuniętą teksturą ówczesnej płytki podłogi, sekcja 12), dla terenu przewidywane z kodu `game::TerrainRenderer` |
+| Podłoże jest zupełnie płaskie, a w konsoli jest linia `[error]` o pliku `heightmap.png` | mapy wysokości nie udało się wczytać. Gra używa wtedy płaskiej mapy (wszystkie wysokości 0) i działa dalej | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (mapa jest czytana raz, przy starcie). Płaskie podłoże bez linii `[error]` to suwak `Height scale` w panelu Terrain ustawiony na 0 | przewidywane (z kodu `loadHeightmap` w `src/game/NightMazeApp.cpp`) |
+| Nie ma trawy, w konsoli `[error]` z nazwą `grass.vert`, `grass.geom` albo `grass.frag` | program `grass` nie zbudował się przy starcie, więc trawy nie ma czym rysować. Reszta sceny jest rysowana | popraw plik shadera, odśwież kopię (sekcja 7), "Reload shaders". Trawy nie ma też przy odznaczonym polu `Enabled` i przy suwaku `Density` równym 0 w panelu Grass | przewidywane (z kodu `GrassRenderer::draw`). Zgłoszone dla celowo zepsutego pliku (bez informacji, czy przed startem, czy przed przeładowaniem): linia sterownika zaczyna się od `grass.geom(84)`, a gra działa dalej (sekcja 16.1) |
+| Brakuje ścian albo słupków, w konsoli `[error]` z nazwą pliku `.obj` albo `.mtl` | brakuje pliku modelu albo jego pliku `.mtl`. Model, którego nie udało się wczytać, nie jest rysowany, reszta labiryntu tak | jak wyżej | przewidywane |
 | Zmiana w pliku shadera nie jest widoczna po ponownym uruchomieniu | program czyta kopię obok `.exe`, a po zmianie pliku nie było kopiowania albo zbudowano tylko target `night_maze` (możliwe przy F5 w Visual Studio) | `cmake --build --preset debug --target copy_assets` albo pełny build przy zamkniętym programie, sekcja 7 | zmierzone dla `--target night_maze`, F5 przewidywane |
 | `[error] Shader compilation failed: ...\assets\shaders/color.frag` (albo inny plik shadera) i linia sterownika. Przy błędzie już na starcie znika to, co rysuje ten program (dla `color` linie kształtów kolizji, dla `textured` scena w trybie `Unlit` i w widokach debug), przy błędzie po "Reload shaders" obraz zostaje, bo działa poprzedni program | błąd składni w pliku shadera. Mieszane ukośniki w ścieżce są poprawne (sekcja 11, klasa `gfx::Shader`). Linia sterownika zaczyna się od nazwy pliku i numeru linii, na przykład `color.frag(4)` | popraw plik, odśwież kopię (sekcja 7) | zmierzone w stanie M1 na pliku `basic.frag`, którego od M5 nie ma, gdy program rysował samą kostkę: w oknie zostawało wtedy samo tło i panele, a linia sterownika zaczynała się od `0(15)`. Nazwa pliku w miejscu numeru: zmierzone 2026-10-05 jako `basic.frag(4)` (sekcja 13.1). Dla dzisiejszych plików przewidywane |
 | Komunikat błędu shadera wskazuje `common/lighting.glsl(N)`, choć zmieniany był inny plik, albo czerwone są naraz linie `lit` i `gouraud` w panelu Shaders | błąd jest w pliku dołączanym przez `#include`. Dołączają go oba oświetlone programy, więc oba nie dają się zbudować | popraw `assets\shaders\common\lighting.glsl`, odśwież kopię (sekcja 7), "Reload shaders" | komunikat z nazwą pliku zmierzony na zrzucie ekranu (sekcja 13.1), reszta przewidywana |
 | `[error] Shader include failed: ...` | plik z dyrektywy `#include` nie istnieje w kopii obok programu, dołącza sam siebie albo linia `#include` jest błędnie zapisana. Komunikat podaje plik i linię | popraw dyrektywę albo odśwież kopię (sekcja 7) | przewidywane (tekst z kodu `src/gfx/Shader.cpp`) |
 | `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code` | sterownik ułożył blok uniformów inaczej niż struktura `scene::LightBlockData`, albo blok w `common/lighting.glsl` zmieniono bez zmiany struktury | porównaj blok w shaderze ze strukturą w `src/scene/LightBlock.hpp` ([`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md)) | przewidywane (na karcie NVIDIA linia się nie pojawia: zmierzone) |
-| Nie widać podłogi, ścian, słupków, kryształów ani bramy, są tylko tło, panele i pasek HUD | oświetlony program (`lit`, a w trybie `Gouraud` program `gouraud`) nie wczytał się przy starcie, więc nie ma czym rysować sceny. W konsoli jest `[error]`, a linia programu w panelu Shaders kończy się napisem `FAILED, there is no program to draw with` | popraw plik shadera, odśwież kopię (sekcja 7), "Reload shaders". Do tego czasu tryb `Unlit` w panelu Renderer rysuje scenę programem `textured` | przewidywane (z kodu `NightMazeApp::drawLitMaze`) |
+| Nie widać podłoża, ścian, słupków, kryształów ani bramy, są tylko niebo, trawa, panele i pasek HUD | oświetlony program (`lit`, a w trybie `Gouraud` program `gouraud`) nie wczytał się przy starcie, więc nie ma czym rysować sceny. W konsoli jest `[error]`, a linia programu w panelu Shaders kończy się napisem `FAILED, there is no program to draw with` | popraw plik shadera, odśwież kopię (sekcja 7), "Reload shaders". Do tego czasu tryb `Unlit` w panelu Renderer rysuje scenę programem `textured` | przewidywane (z kodu `NightMazeApp::drawLitMaze`) |
 | Konfiguracja pada przy pobieraniu GLFW, GLM lub ImGui | brak `git` w `PATH` albo brak sieci | zainstaluj git, otwórz nowy terminal, sprawdź `git --version` | przewidywane |
 | Błąd o niezgodności generatora | katalog buildu utworzony innym generatorem (terminal a IDE, Visual Studio a Ninja) | usuń `build\debug` i skonfiguruj ponownie jednym narzędziem, albo użyj osobnego katalogu (`-B`, sekcja 4) | przewidywane |
 | Nie ma pliku `build\debug\Debug\night_maze.exe` | użyto generatora jednokonfiguracyjnego (Ninja) | szukaj bezpośrednio w katalogu buildu, na przykład `build\debug\night_maze.exe`, patrz sekcja 4 | zmierzone (Ninja nie tworzy podkatalogu `Debug`) |
@@ -830,8 +867,8 @@ clangd w edytorze i `make`.
 - [x] na środku okna widać kostkę z trzema ścianami w jednolitych kolorach: czerwoną z
       przodu, niebieską z lewej, turkusową u góry. Żadna ściana nie "prześwituje" przez
       inną (test głębi działa). Sprawdzone na zrzucie ekranu
-- [ ] zmiana rozmiaru okna myszą (szersze, węższe, wyższe niż szersze): płytki podłogi
-      zostają kwadratowe, obraz się nie rozciąga
+- [ ] zmiana rozmiaru okna myszą (szersze, węższe, wyższe niż szersze): ściany i słupki
+      zachowują proporcje, obraz się nie rozciąga
 - [ ] minimalizacja okna i przywrócenie: program nie kończy pracy, w konsoli nie ma linii
       `[error]` ani komunikatu o asercji, obraz wraca. Zapisać, jaki rozmiar framebuffera
       pokazuje panel Renderer zaraz po przywróceniu (na Windowsie zminimalizowane okno ma
@@ -845,8 +882,8 @@ clangd w edytorze i `make`.
       Radeon, system sam wybrał NVIDIA
 - [x] w konsoli nie ma linii `[error]`
 - [x] panele "Renderer", "Shaders" i "Camera" są widoczne. Przy pierwszym uruchomieniu (bez
-      `imgui.ini`) leżą jeden na drugim (stan M1. Dziś paneli jest osiem, mają miejsca
-      startowe i według kodu się nie zasłaniają, sekcja 14.2)
+      `imgui.ini`) leżą jeden na drugim (stan M1. Dziś paneli jest dziesięć, mają miejsca
+      startowe i według kodu się nie zasłaniają, sekcje 14.2 i 16.2)
 - [ ] FPS i czas klatki w panelu "Renderer" się aktualizują
 - [ ] linie "Framebuffer" i "Window" pokazują te same wartości (na Windowsie powinny być równe)
 
@@ -1243,9 +1280,13 @@ panel mniej (bez Lights), o dwa programy shaderów mniej (bez `lit` i `gouraud`)
 Shaders z kilkoma liniami na program, równo jasny labirynt i mniej testów. Punkty `[x]`
 są pomiarami z tamtego dnia i opisują tamten stan. Stan po M4 (163 przypadki i 62220
 asercji, siedem paneli, pięć programów, mapy normalnych) opisuje sekcja 13, stan po M5
-(215 i 85098, osiem paneli, cztery programy, runda z kryształami) sekcja 14, a dzisiejszy
-(221 i 85175, pięć programów, niebo) sekcja 15. Punkty otwarte `[ ]` w sekcji
-12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie.
+(215 i 85098, osiem paneli, cztery programy, runda z kryształami) sekcja 14, stan po
+pierwszej części M6 (221 i 85175, pięć programów, niebo) sekcja 15, a dzisiejszy (256
+i 101232, dziesięć paneli, sześć programów, teren w miejscu płytek podłogi i trawa)
+sekcja 16. Punkty otwarte `[ ]` w sekcji
+12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie. Punkty `[x]`
+mówią o podłodze z płytek (`floor_tile.obj`, `floor_stone.png`), którą druga część M6
+usunęła.
 
 ### 12.1. Zmierzone (2026-10-05)
 
@@ -1295,8 +1336,8 @@ sekcje 5.7 i 5.8):
       prawej, Collision i Shaders przy dolnej, między kolumnami. Panele Renderer, Camera,
       Maze, Collision i Shaders pokazują całą zawartość bez przewijania, panel Assets się
       przewija. Środek górnej części okna jest wolny i widać w nim scenę (układ z
-      2026-10-05. Dziś paneli jest osiem, pod Rendererem stoi Lights, a Camera i Gameplay
-      są zwinięte u góry: sekcja 14.2)
+      2026-10-05. Dziś paneli jest dziesięć, pod Rendererem stoi Lights, a Camera,
+      Gameplay, Terrain i Grass są zwinięte u góry w dwóch rzędach: sekcje 14.2 i 16.2)
 - [x] większe okno w pierwszej klatce (1560 x 860 i 1700 x 940, ustawione tymczasową zmianą
       rozmiaru startowego): prawa kolumna stoi przy prawej krawędzi, dolny rząd przy dolnej
 - [x] polskie litery w czcionce paneli: tymczasowy napis z kompletem liter i tymczasowa
@@ -1347,9 +1388,9 @@ Start i układ paneli:
       między kolumnami. Środek górnej części okna jest wolny. Zawartość ówczesnego panelu Shaders
       mieściła się w nim bez przewijania, dopóki żaden program nie ma błędu (zmierzone na
       zrzucie ekranu 2026-10-05, sekcja 12.1. To układ i panel Shaders z tamtego dnia:
-      dzisiejszy układ ośmiu paneli jest punktem otwartym w sekcji 14.2)
+      dzisiejszy układ dziesięciu paneli jest punktem otwartym w sekcjach 14.2 i 16.2)
 - [ ] po prawdziwym usunięciu `imgui.ini` ręką i starcie z katalogu repozytorium (układ
-      ośmiu paneli z sekcji 14.2): obejrzeć na żywo, czy tekst jest wygodny do czytania z
+      dziesięciu paneli z sekcji 14.2 i 16.2): obejrzeć na żywo, czy tekst jest wygodny do czytania z
       odległości (projektor) i czy najechanie myszą na suwak, przycisk i pole wyboru
       zmienia ich tło na ciepły brąz, a panel z fokusem ma morski pasek tytułu
 - [ ] panel Camera (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
@@ -1365,20 +1406,29 @@ Start i układ paneli:
       na planie są także kryształy, brama i strefa wyjścia (sekcja 14.2)
 - [ ] panel Collision: `Boxes: 121 walls, 121 pillars, 1 gate`,
       `All boxes: 243, pickup spheres: 13`,
-      `Wall box: 0.30 m thick (the visible wall: 0.20 m)`, pudełko gracza `min: 0.70, 0.00,
-      0.70` i `max: 1.30, 1.80, 1.30`. Do M4 w tym miejscu stały linie `Wall boxes: 121`,
+      `Wall box: 0.30 m thick (the visible wall: 0.20 m)`, pudełko gracza `min: 0.70, 0.12,
+      0.70` i `max: 1.30, 1.92, 1.30` (stopy stoją na terenie, który w środku komórki
+      startowej ma wysokość 0,124 m: liczba z przeliczenia w sekcji 16.1, nie z ekranu. Do
+      M5 było tu `0.00` i `1.80`). Do M4 w tym miejscu stały linie `Wall boxes: 121`,
       `Pillar boxes: 121` i `All boxes: 242`: bramy i kul nie było
-- [ ] panel Assets: sześć modeli (`floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`,
+- [ ] panel Assets: pięć modeli (`wall_straight.obj`, `wall_pillar.obj`,
       `crystal_a.obj`, `crystal_b.obj`, `gate.obj`; kolejność według wczytania może być
       inna), każdy z jedną częścią, nazwą pliku tekstury i linią `normal map:` z nazwą mapy
-      normalnych, osiem tekstur z podglądem (`floor_stone.png`, `wall_stone.png`,
-      `crystal.png`, `gate_wood.png` i mapa normalnych każdej z nich, o tej samej nazwie z
-      końcówką `_normal`), brak sekcji `Failed to load`
+      normalnych, osiem tekstur z podglądem (`wall_stone.png`,
+      `crystal.png`, `gate_wood.png`, `ground.png` i mapa normalnych każdej z nich, o tej
+      samej nazwie z końcówką `_normal`), brak sekcji `Failed to load`. Do M5 modeli było
+      sześć, z płytką podłogi `floor_tile.obj`, a w miejscu `ground.png` była tekstura
+      `floor_stone.png`: teren nie jest modelem z pliku, więc na liście `Models` go nie
+      ma, a jego dwie tekstury są na liście `Textures`. Pliku `heightmap.png` na liście
+      nie ma, bo nie przechodzi przez pamięć podręczną (zgłoszone, sekcja 16.1)
 
 Chodzenie i kolizje (kliknąć w scenę, kursor znika):
 
-- [ ] W idzie tam, gdzie patrzy kamera, ale zawsze poziomo: z wzrokiem wbitym w podłogę
-      prędkość jest ta sama, a `Eye` ma stale y równe 1.70. Lewy Shift przyspiesza
+- [ ] W idzie tam, gdzie patrzy kamera, ale zawsze poziomo: z wzrokiem wbitym w ziemię
+      prędkość jest ta sama, a y w linii `Eye` jest stale o 1.70 większe od y w polu
+      `Player feet` (od drugiej części M6 obie liczby zmieniają się w marszu, bo stopy
+      idą po nierównym terenie: do M5 `Eye` miało stale y równe 1.70). Lewy Shift
+      przyspiesza
 - [ ] dojście do ściany na wprost: gracz staje, obraz nie drży, ściana nie jest przycięta
       przez bliską płaszczyznę
 - [ ] ślizganie: ustawić się ukosem do ściany i trzymać W. Gracz sunie wzdłuż ściany,
@@ -1435,11 +1485,11 @@ Regeneracja:
 - [ ] labirynt 40 na 40: zapisać FPS z panelu Renderer (każdy obiekt to osobne wywołanie
       rysujące)
 
-Panel Assets (stanąć tak, żeby widzieć długi korytarz i podłogę pod płaskim kątem. W
+Panel Assets (stanąć tak, żeby widzieć długi korytarz i podłoże pod płaskim kątem. W
 nocnej scenie daleki koniec korytarza jest ciemny, więc do porównania filtrów najpierw
 ustawić `Lighting` w panelu Renderer na `Unlit`):
 
-- [ ] `View mode`, `Normals as colour`: podłoga jasnozielona (normalna +Y), powierzchnie zwrócone
+- [ ] `View mode`, `Normals as colour`: podłoże w odcieniach jasnej zieleni (normalne bliskie +Y, odchylone przez pochyłość terenu i przez mapę normalnych), powierzchnie zwrócone
       na +X czerwonawe, na +Z niebieskawe, a zwrócone w przeciwne strony ciemne w tym
       kanale, więc dwie strony tej samej ściany mają różne kolory. `UVs as colour`: czerwono-zielone przejścia, które zaczynają się od nowa tam,
       gdzie tekstura się powtarza. `Textured` przywraca obraz. Linie kształtów kolizji nie
@@ -1453,7 +1503,7 @@ ustawić `Lighting` w panelu Renderer na `Unlit`):
       migocze przy ruchu. `Bilinear`: z bliska gładko, w oddali nadal migocze. `Trilinear`
       (ustawienie startowe): w oddali spokojnie, ale rozmyte
 - [ ] `Anisotropy`: suwak od 1x do maksimum sterownika (na tym PC 16x). Przy `Trilinear`
-      przesunięcie w prawo wyostrza podłogę i ściany widziane pod płaskim kątem w oddali
+      przesunięcie w prawo wyostrza podłoże i ściany widziane pod płaskim kątem w oddali
 - [ ] podglądy tekstur w panelu nie reagują na filtr ani na anizotropię (rysuje je ImGui
       własnym samplerem) i stoją prosto
 - [ ] najechanie myszą na nazwę pliku pokazuje pełną ścieżkę
@@ -1478,22 +1528,23 @@ Shadery i brakujący plik:
       mają `: OK`. Przywrócić plik (`git checkout assets/shaders/textured.frag`),
       `copy_assets`, `Reload shaders`
 - [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
-      `build\debug\Debug\assets\textures\floor_stone.png` (kopii, nie pliku w repozytorium),
-      uruchomić. Oczekiwane: w trybie `Unlit` podłoga jest biała (`Kd` materiału to biel), w
-      trybach z oświetleniem nie ma rysunku kamienia i ma kolor padającego na nią
-      światła (biała tekstura zastępcza razy światło). Mapa normalnych podłogi wczytała się
-      niezależnie, więc w trybach `Phong` i `Blinn-Phong` na białej podłodze nadal widać
-      relief fug. Ściany bez zmian,
-      w konsoli jedna linia `[error]`, w panelu Assets przy części `floor_stone` napis
+      `build\debug\Debug\assets\textures\wall_stone.png` (kopii, nie pliku w repozytorium),
+      uruchomić. Oczekiwane: w trybie `Unlit` ściany i słupki są białe (`Kd` materiału to
+      biel), w trybach z oświetleniem nie mają rysunku kamienia i mają kolor padającego na
+      nie światła (biała tekstura zastępcza razy światło). Mapa normalnych kamienia wczytała
+      się niezależnie, więc w trybach `Phong` i `Blinn-Phong` na białych ścianach nadal widać
+      relief fug. Podłoże, kryształy i brama bez zmian,
+      w konsoli jedna linia `[error]`, w panelu Assets przy części `wall_stone` napis
       `no texture (white)` i sekcja `Failed to load` z nazwą pliku na czerwono. Przywrócić
-      nazwę pliku
+      nazwę pliku. (Do M5 ten punkt używał tekstury `floor_stone.png` płytki podłogi,
+      a zrzut ekranu z sekcji 12.1 pokazuje tamtą wersję.)
 - [ ] start z innego katalogu roboczego (`C:\`) i z katalogu ze znakami spoza ASCII w
       ścieżce: modele i tekstury wczytują się tak samo (w stanie M1 sprawdzone tylko dla
       shaderów)
 
 Okno:
 
-- [ ] zmiana rozmiaru okna myszą: obraz wypełnia okno, płytki podłogi zostają kwadratowe.
+- [ ] zmiana rozmiaru okna myszą: obraz wypełnia okno, ściany i słupki zachowują proporcje.
       Zapisać, co dzieje się z panelami przy prawej krawędzi, gdy okno robi się węższe
 - [ ] okno zmaksymalizowane **po starcie**: układ startowy jest liczony raz, w pierwszej
       klatce, z rozmiaru okna w tej chwili (1280 x 720), więc po maksymalizacji panele
@@ -1538,7 +1589,9 @@ ich punkty `[x]`. Światła punktowe nie wiszą już w ślepych zaułkach, tylko
 (w labiryncie startowym było 11 świateł, dziś jest 13 kryształów), a notatka
 [`../decisions/dead-end-lights.md`](../decisions/dead-end-lights.md) opisuje rozwiązanie
 zastąpione. Kostek oznaczających światła i kostki z M1 nie ma. Programów shaderów jest
-cztery, bez `basic`. Paneli jest osiem, a dolny rząd jest o 8 pikseli wyższy. Punkty `[x]`
+cztery, bez `basic`. Paneli jest osiem, a dolny rząd jest o 8 pikseli wyższy. M6 zmienił
+kolejne: doszły niebo, trawa i dwa programy (dziś jest ich sześć), paneli jest dziesięć,
+a płytki podłogi, o których mówią punkty `[x]`, zastąpił teren (sekcje 15 i 16). Punkty `[x]`
 zostają z tekstami z dnia pomiaru. Punkty otwarte w sekcjach 13.2 i 13.4 są przepisane
 tak, żeby dało się je wykonać w dzisiejszym programie.
 
@@ -1631,9 +1684,9 @@ Przygotowanie:
       (`cmake --build --preset debug`) i uruchomić `build\debug\Debug\night_maze.exe`
 
 Układ paneli (okno 1280 x 720, bez `imgui.ini`). W M4 paneli było siedem, a dolny rząd
-miał wysokość 272. Dziś jest ich osiem:
+miał wysokość 272. Dziś jest ich dziesięć:
 
-- [ ] układ ośmiu paneli i paska HUD: punkt z wymiarami jest w sekcji 14.2. Tu wystarczy
+- [ ] układ dziesięciu paneli i paska HUD: punkty z wymiarami są w sekcjach 14.2 i 16.2. Tu wystarczy
       sprawdzić, że Lights stoi pod Rendererem w lewej kolumnie, że żaden panel nie
       zasłania innego i że środek okna, w który świeci latarka, jest wolny
 - [ ] panel Renderer: pod edytorem `Clear color` jest lista `Lighting` z wybraną pozycją
@@ -1698,12 +1751,15 @@ Gouraud a Phong:
       nie, nie trafia w żaden wierzchołek. Przesuwać wzrok powoli w stronę narożnika
       ściany: w `Gouraud` jasność pojawia się dopiero wtedy, gdy stożek obejmie
       wierzchołek, i rozchodzi się od niego po trójkątach
-- [ ] u podstawy słupka: skierować latarkę na podłogę przy słupku i przełączać tryby. W
-      `Phong` plama jest okrągła na podłodze i na słupku. W `Gouraud` podłoga rozjaśnia się
-      trójkątnymi klinami od narożnika płytki (płytka podłogi 2 m na 2 m ma cztery
-      wierzchołki, a jej narożniki leżą pod słupkami), za to cokół słupka, który ma
+- [ ] u podstawy słupka: skierować latarkę na podłoże przy słupku i przełączać tryby. W
+      `Phong` plama jest okrągła na podłożu i na słupku. W `Gouraud` krawędź plamy na
+      podłożu jest kanciasta, złożona z trójkątów siatki terenu, ale drobnych: wierzchołki
+      terenu leżą co 0,5 m, więc różnica między trybami jest na podłożu dużo mniejsza niż
+      na ścianie. Cokół słupka, który ma
       wierzchołki blisko siebie, wygląda podobnie w obu trybach. To oczekiwanie z
-      geometrii modeli, nie obserwacja: zapisać, co widać naprawdę
+      geometrii, nie obserwacja: zapisać, co widać naprawdę. (Do M5 podłogą były płytki
+      2 m na 2 m o czterech wierzchołkach i w `Gouraud` rozjaśniały się dużymi
+      trójkątnymi klinami od narożnika: tego obrazu już nie ma, został na ścianach.)
 
 Phong a Blinn-Phong (w panelu Lights ustawić `Strength` 1.0 i `Shininess` 16):
 
@@ -1711,7 +1767,7 @@ Phong a Blinn-Phong (w panelu Lights ustawić `Strength` 1.0 i `Shininess` 16):
       `Blinn-Phong` jasna plama połysku na środku jest szersza i jaśniejsza niż w `Phong`
       przy tym samym wykładniku
 - [ ] pod płaskim kątem do światła punktowego albo do księżyca: stanąć tak, żeby patrzeć
-      wzdłuż ściany albo podłogi, ze światłem daleko z przodu. W `Blinn-Phong` połysk
+      wzdłuż ściany albo podłoża, ze światłem daleko z przodu. W `Blinn-Phong` połysk
       rozciąga się w podłużną smugę, w `Phong` jest mniejszy albo urywa się (wzór Phonga
       daje zero, gdy między promieniem odbitym a kierunkiem do oka jest więcej niż 90
       stopni). Po próbie przywrócić `Strength` 0.25 i `Shininess` 32
@@ -1728,10 +1784,10 @@ przewijać):
       (o 180 więcej niż na starcie) jasne i ciemne strony ścian zamieniają się miejscami.
       Przy 90 światło biegnie w stronę +X: ze stron ścian jasne są tylko te, które patrzą w
       stronę -X
-- [ ] `Moon pitch` (suwak od -90 do -5): przy -90 światło pada prosto w dół, podłoga jest
-      najjaśniejsza, a żadna pionowa strona ściany nie dostaje światła księżyca. Przy -5
-      światło ledwie muska podłogę, a ściany zwrócone do księżyca są najjaśniejsze
-- [ ] `Moon intensity` 0 wyłącza księżyc. Cieni nie ma: księżyc oświetla także podłogę i
+- [ ] `Moon pitch` (suwak od -90 do -5): przy -90 światło pada prosto w dół, podłoże jest
+      najjaśniejsze, a żadna pionowa strona ściany nie dostaje światła księżyca. Przy -5
+      światło ledwie muska podłoże, a ściany zwrócone do księżyca są najjaśniejsze
+- [ ] `Moon intensity` 0 wyłącza księżyc. Cieni nie ma: księżyc oświetla także podłoże i
       ściany, które stoją za inną ścianą
 
 Światła punktowe:
@@ -1740,7 +1796,7 @@ przewijać):
       Świecących turkusowych kryształów jest 13, tyle, ile pokazuje linia
       `Lit: 13 of 13 crystals (at most 16)` i ile kropek ma plan w panelu Maze. Każdy
       unosi się nad środkiem swojej komórki, a jego światło wisi 0,15 m nad jego czubkiem
-      (około 1,55 m nad podłogą). Komórka startowa (lewy górny róg planu) i komórka
+      (około 1,55 m nad podłożem w środku komórki). Komórka startowa (lewy górny róg planu) i komórka
       wyjścia (zielony prostokąt na planie) kryształu nie mają. W M4 źródłami były
       turkusowe kostki w ślepych zaułkach, 11 w tym labiryncie: tych kostek już nie ma
 - [ ] `Point radius` (suwak od 0.5 do 12.0 m): większy promień powiększa kałuże światła.
@@ -1868,15 +1924,16 @@ jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak
       `Anisotropy`. Sprawdzić, czy panel nie zasłania innego i czy do list `Models` i
       `Textures` trzeba przewijać (panel jest niski, przewijanie jest spodziewane)
 - [ ] panel Assets, lista `Models`: pod każdą częścią modelu jest linia
-      `normal map: wall_stone_normal.png` (ściana i słupek),
-      `normal map: floor_stone_normal.png` (podłoga), a od M5 także
+      `normal map: wall_stone_normal.png` (ściana i słupek), a od M5 także
       `normal map: crystal_normal.png` (oba kryształy) i
-      `normal map: gate_wood_normal.png` (brama)
+      `normal map: gate_wood_normal.png` (brama). Linii
+      `normal map: floor_stone_normal.png` płytki podłogi już nie ma: M6 usunął model
 - [ ] panel Assets, lista `Textures`: osiem tekstur z podglądem, każda 512 x 512:
-      `floor_stone.png`, `wall_stone.png`, `crystal.png`, `gate_wood.png` i cztery mapy
+      `wall_stone.png`, `crystal.png`, `gate_wood.png`, `ground.png` (od M6, w miejscu
+      `floor_stone.png`) i cztery mapy
       normalnych o tych samych nazwach z końcówką `_normal`
       (kolejność według wczytania może być inna). Podglądy map normalnych są jasnoniebieskie
-      i stoją prosto, a na mapach kamienia widać kolorowe kreski fug
+      i stoją prosto, a na mapie kamienia widać kolorowe kreski fug
 - [ ] `Lighting` równe `Blinn-Phong`, podejść do ściany z włączoną latarką: fugi są rowkami.
       Odznaczyć `Normal mapping`: ściana staje się płaska, plama latarki przesuwa się po
       rysunku kamieni. Zaznaczyć: relief wraca od razu, bez przeładowania
@@ -1885,7 +1942,7 @@ jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak
       kątem: relief jest najmocniejszy. Zrobić krok tak, żeby światło padało z drugiej
       strony: jasne i ciemne skosy zamieniają się miejscami. Zanotować, czy w ziarnie widać
       regularną siatkę i czy przeszkadza
-- [ ] przejść korytarzem i obserwować dalekie ściany i podłogę: czy relief migocze w ruchu.
+- [ ] przejść korytarzem i obserwować dalekie ściany i podłoże: czy relief migocze w ruchu.
       Powtórzyć z `Filter` równym `Nearest` i `Trilinear` oraz z `Anisotropy` 1 i 16
       (ustawienia działają także na mapy normalnych)
 - [ ] `View mode` równe `Normals as colour` przy `Lighting` równym `Blinn-Phong`: na każdej
@@ -1897,12 +1954,14 @@ jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak
 - [ ] `View mode` równe `Textured`, `Lighting` równe `Gouraud`: przełączanie
       `Normal mapping` niczego nie zmienia. To samo przy `Unlit`
 - [ ] brakująca mapa normalnych: zamknąć program, zmienić nazwę kopii
-      `build\debug\Debug\assets\textures\floor_stone_normal.png` (kopii, nie pliku w
-      repozytorium), uruchomić. Oczekiwane: podłoga ma teksturę koloru, ale pod latarką jest
-      płaska (płaska mapa zastępcza), ściany bez zmian, w konsoli jedna linia `[error]`, w
-      panelu Assets przy części `floor_stone` napis `normal map: none (flat)` i sekcja
-      `Failed to load` z nazwą pliku. Przywrócić nazwę pliku
-- [ ] `Reload shaders` przy włączonych mapach: wszystkie cztery linie kończą się napisem
+      `build\debug\Debug\assets\textures\wall_stone_normal.png` (kopii, nie pliku w
+      repozytorium), uruchomić. Oczekiwane: ściany i słupki mają teksturę koloru, ale pod
+      latarką są płaskie, bez rowków fug (płaska mapa zastępcza), podłoże i brama bez
+      zmian, w konsoli jedna linia `[error]`, w
+      panelu Assets przy części `wall_stone` napis `normal map: none (flat)` i sekcja
+      `Failed to load` z nazwą pliku. Przywrócić nazwę pliku. (Do M5 ten punkt używał
+      mapy `floor_stone_normal.png` płytki podłogi.)
+- [ ] `Reload shaders` przy włączonych mapach: wszystkie linie (dziś sześć) kończą się napisem
       `: OK`, relief nie znika (numery jednostek i przełącznik są wysyłane w każdej klatce)
 - [ ] błąd w drugim pliku dołączanym: dopisać literę w `common/normal_map.glsl` w kopii
       `assets` obok programu, `Reload shaders`. Oczekiwane: programy `lit` i `textured` mają
@@ -1989,18 +2048,25 @@ Przygotowanie:
       (przy starcie z katalogu repozytorium: z katalogu głównego repozytorium), zbudować
       (`cmake --build --preset debug`) i uruchomić `build\debug\Debug\night_maze.exe`
 - [ ] na starcie w konsoli nie ma żadnej linii `[error]`, w tym żadnej z nazwą błędu OpenGL
-      (`GL_...`). Są linie `[info] Loaded model: ...` dla sześciu modeli i
+      (`GL_...`). Są linie `[info] Loaded model: ...` dla pięciu modeli (w M5 było ich
+      sześć, z płytką podłogi) i
       `[info] Loaded texture: ...` dla ośmiu tekstur. Dla M5 tego wyniku nie zapisano
 
-Układ ośmiu paneli i pasek HUD (okno 1280 x 720, bez `imgui.ini`):
+Układ paneli i pasek HUD (okno 1280 x 720, bez `imgui.ini`). W M5 paneli było osiem, dziś
+jest ich dziesięć, a wymiary niżej są dzisiejsze, ze stałych w `src/debug/PanelLayout.hpp`:
 
-- [ ] lewa kolumna: Renderer (336 x 230) nad Lights (336 x 466). Prawa kolumna: Maze
+- [ ] lewa kolumna: Renderer (336 x 284) nad Lights (336 x 412). Prawa kolumna: Maze
       (300 x 480) nad Assets (300 x 216). Dolny rząd między kolumnami: Collision
       (312 x 280) i Shaders (292 x 280). U góry, między kolumnami, dwa paski tytułu obok
-      siebie: Camera, a na prawo od niego Gameplay, oba zwinięte. Żaden panel nie zasłania
-      innego, a środek okna, w który świeci latarka, jest wolny
-- [ ] pasek HUD stoi na środku górnej krawędzi okna, tuż pod paskami tytułu paneli Camera
-      i Gameplay (46 pikseli od góry). Pierwsza linia: turkusowy napis `Crystals`, liczby
+      siebie: Camera, a na prawo od niego Gameplay, oba zwinięte. Pod nimi drugi rząd:
+      Terrain pod Camera i Grass pod Gameplay, też zwinięte (sekcja 16.2). Żaden panel nie
+      zasłania innego, a środek okna, w który świeci latarka, jest wolny. (W M5 Renderer
+      miał 336 x 230, a Lights 336 x 466: Renderer urósł razem z kontrolkami nieba.)
+- [ ] pasek HUD stoi na środku górnej krawędzi okna, pod dwoma rzędami pasków tytułu
+      (Camera i Gameplay, pod nimi Terrain i Grass). Odległość od góry to dwa razy
+      wysokość paska tytułu z odstępem 8 pikseli i jeszcze 16 pikseli (`foldedRowsHeight`
+      i `HUD_TOP_OFFSET`): wysokość paska zależy od czcionki, a zgłoszone przesunięcie
+      względem M5 to około 30 pikseli w dół (wtedy było 46 pikseli od góry). Pierwsza linia: turkusowy napis `Crystals`, liczby
       `0 / 10`, przygaszony napis `(of 13)` i przygaszony czas `0:00`, który rośnie co
       sekundę. Druga
       linia: bursztynowy pasek baterii i napis `100%`, który powoli maleje. Trzeciej linii
@@ -2008,7 +2074,8 @@ Układ ośmiu paneli i pasek HUD (okno 1280 x 720, bez `imgui.ini`):
 - [ ] rozwinięcie panelu Gameplay: kliknąć strzałkę w jego pasku tytułu. Panel otwiera się
       w dół do rozmiaru 324 x 416 i kończy się 8 pikseli nad dolnym rzędem. Zasłania prawą
       część paska HUD (pasek zostaje pod panelami, flaga
-      `ImGuiWindowFlags_NoBringToFrontOnFocus`) i żadnego innego panelu. Zawartość od góry:
+      `ImGuiWindowFlags_NoBringToFrontOnFocus`) i zwinięty pasek tytułu panelu Grass pod
+      sobą, ale żadnego innego panelu. Zawartość od góry:
       `Round: playing, ... s`, `Crystals: 0 collected, 10 needed, 13 in the maze`,
       `Gate: closed`, przycisk `Restart round (key R)`, suwak `Battery` (na starcie 1.00,
       maleje), zaznaczone pole `Battery drains`, suwaki `Crystals needed` (`0.70 of all`),
@@ -2025,15 +2092,16 @@ Układ ośmiu paneli i pasek HUD (okno 1280 x 720, bez `imgui.ini`):
       `All boxes: 243, pickup spheres: 13`
 - [ ] panel Lights: trzecia grupa nazywa się `Point lights (crystals)`, jej pierwsza linia
       to `Lit: 13 of 13 crystals (at most 16)`
-- [ ] panel Shaders: cztery linie zakończone `: OK` (`textured`, `color`, `lit`, `gouraud`)
-- [ ] panel Assets: sześć modeli i osiem tekstur (lista w sekcji 12.2)
+- [ ] panel Shaders: sześć linii zakończonych `: OK` (`textured`, `color`, `lit`, `gouraud`,
+      a od M6 `skybox` i `grass`, ta ostatnia z trzema plikami). W M5 linii było cztery
+- [ ] panel Assets: pięć modeli i osiem tekstur (lista w sekcji 12.2)
 
 Kryształy i brama w obrazie:
 
 - [ ] podejść do najbliższego kryształu. Kryształ unosi się nad środkiem komórki (podstawa
-      około 0,9 m nad podłogą, wysokość 0,5 m), kołysze się w górę i w dół o 8 cm raz na
+      około 0,9 m nad podłożem w środku komórki, wysokość 0,5 m), kołysze się w górę i w dół o 8 cm raz na
       3 sekundy i obraca wokół osi pionowej (pełny obrót w 9 sekund). Świeci na turkusowo
-      także tam, gdzie nie pada na niego żadne światło, a wokół niego na podłodze i
+      także tam, gdzie nie pada na niego żadne światło, a wokół niego na podłożu, trawie i
       ścianach leży turkusowa plama jego światła punktowego. Blask kryształu i plama
       pulsują razem, raz na 2,4 sekundy
 - [ ] obejrzeć kilka kryształów: są dwa kształty (jeden wysoki odłamek, grupa trzech
@@ -2048,7 +2116,7 @@ Kryształy i brama w obrazie:
 HUD przy ukrytych panelach:
 
 - [ ] klawisz na lewo od `1` (akcent słaby, na klawiaturze amerykańskiej znaki `` ` `` i
-      `~`, w kodzie `GLFW_KEY_GRAVE_ACCENT` w `src/main.cpp`): osiem paneli znika, pasek HUD
+      `~`, w kodzie `GLFW_KEY_GRAVE_ACCENT` w `src/main.cpp`): dziesięć paneli znika, pasek HUD
       zostaje, czas rośnie dalej. Drugie naciśnięcie przywraca panele. Klawisz działa przy
       wolnym i przy przechwyconym kursorze
 - [ ] przy ukrytych panelach zebrać kryształ (krok niżej): liczba na pasku HUD rośnie
@@ -2121,7 +2189,7 @@ Brama:
       0.70
 - [ ] opadanie bramy na oczach: stanąć przed zamkniętą bramą (na planie: gruba brązowa
       kreska), zebrać wcześniej jeden kryształ i przesunąć `Crystals needed` na 0.05.
-      Oczekiwane: brama zjeżdża w podłogę i znika pod nią w 1,5 sekundy, panel Gameplay
+      Oczekiwane: brama zjeżdża w ziemię i znika pod nią w 1,5 sekundy, panel Gameplay
       pokazuje w tym czasie `Gate: opening, N%` z rosnącą liczbą, potem `Gate: open`.
       Przejść przez próg da się od pierwszej chwili, zanim brama zjedzie: pudełko bramy
       przestaje być przeszkodą w chwili otwarcia. Nacisnąć R, przywrócić 0.70
@@ -2198,8 +2266,9 @@ rysujący, shadery, skrypt, testy), [`../modules/gfx/cubemap.md`](../modules/gfx
 [`../decisions/painted-moon-fixed-direction.md`](../decisions/painted-moon-fixed-direction.md).
 
 Ta sekcja dotyczy **tylko skyboxa**. Pozostałe dwie części M6, teren z mapy wysokości
-i trawa z shadera geometrii, dostaną własne sekcje po tej. Kamień milowy M6 jest w toku
-i **nie jest zamknięty**: część ręczna poniżej (15.2) jest otwarta w całości, na macOS kod
+i trawę z shadera geometrii, opisuje sekcja 16. Punkty `[x]` niżej są stanem po pierwszej
+części: 221 przypadków testowych, pięć programów, podłoga z płytek. Kamień milowy M6
+**nie jest zamknięty**: część ręczna poniżej (15.2) jest otwarta w całości, na macOS kod
 nie był budowany ([`build-macos.md`](build-macos.md)) i nie ma tagu.
 
 ### 15.1. Zmierzone (2026-10-05)
@@ -2252,7 +2321,8 @@ Panele:
       `Sky brightness` (wartość 1.000). Panel nie ma paska przewijania w oknie 1280 x 720
 - [ ] panel Lights pod nim zaczyna się niżej niż dotąd i ma pasek przewijania (tak jest
       zamierzone: komentarz w `PanelLayout.hpp`). Wszystkie cztery grupy da się przewinąć
-- [ ] panel Shaders: pięć linii programów, ostatnia to `skybox.vert + skybox.frag: OK`
+- [ ] panel Shaders: sześć linii programów, piąta to `skybox.vert + skybox.frag: OK`
+      (szósta, `grass`, doszła w drugiej części M6)
 - [ ] najechać kursorem na pole `Skybox`: podpowiedź zaczyna się od
       `The night sky (a cube map).` i mówi, że namalowany księżyc nie podąża za suwakami
       `Moon` panelu Lights
@@ -2326,13 +2396,13 @@ Przeładowanie shaderów:
 
 - [ ] w `assets/shaders/skybox.frag` zamienić `sky * uBrightness` na `sky.bgr * uBrightness`,
       skopiować assety (`cmake --build --preset debug --target copy_assets`) i kliknąć
-      `Reload shaders`: niebo zmienia odcień z granatowego na brunatny, pięć linii nadal
+      `Reload shaders`: niebo zmienia odcień z granatowego na brunatny, sześć linii nadal
       kończy się `OK`
 - [ ] wpisać w tym samym pliku błąd składni, skopiować assety, `Reload shaders`: linia
       programu `skybox` jest czerwona (`FAILED, the previous program stays in use`) z nazwą
-      pliku i numerem linii, **niebo nadal się rysuje** poprzednią wersją, pozostałe cztery
-      linie kończą się `OK`
-- [ ] cofnąć obie zmiany (`git checkout assets`), skopiować assety, `Reload shaders`: pięć
+      pliku i numerem linii, **niebo nadal się rysuje** poprzednią wersją, pozostałe pięć
+      linii kończy się `OK`
+- [ ] cofnąć obie zmiany (`git checkout assets`), skopiować assety, `Reload shaders`: sześć
       razy `OK`, niebo jak na początku
 
 Brak pliku:
@@ -2354,7 +2424,348 @@ Na koniec:
       razie `git status`: oczekiwane brak zmian w `assets/skybox/`. Jeśli pliki się
       różnią, uruchomić testy i zapisać wynik
 
-## 16. Powiązane dokumenty
+## 16. Lista kontrolna M6, część 2: teren i trawa
+
+Druga część kamienia milowego M6 zamienia płaską podłogę z płytek na teren i sadzi na nim
+trawę. Podłoże jest jedną siatką zbudowaną z mapy wysokości (`assets/textures/heightmap.png`):
+łagodnie nierówne pod labiryntem i przechodzące we wzgórza poza nim. Ściany, słupki
+i brama są opuszczone do najniższego punktu podłoża pod swoim obrysem, więc nie ma pod nimi
+szczelin, kryształy i strefa wyjścia stoją na podłożu, a stopy gracza biorą wysokość
+z terenu. Wzdłuż ścian i rzadko na wzgórzach rosną kępki trawy: w buforze jest jeden punkt
+na kępkę, a źdźbła buduje z niego shader geometrii. Doszły: struktury i funkcje
+`game::Terrain`, `game::Heightmap` i `game::placeOnTerrain`, klasa `game::TerrainRenderer`,
+funkcja `game::placeGrass` i klasa `game::GrassRenderer`, opcjonalny etap geometrii
+w `gfx::Shader`, szósty program shaderów (`grass.vert`, `grass.geom`, `grass.frag`),
+prymityw `GL_POINTS` w `gfx::Mesh`, skrypt `tools/blender/make_heightmap.py`, tekstury
+`ground.png` i `ground_normal.png`, panele Terrain i Grass oraz pliki testów
+`tests/TerrainTests.cpp` i `tests/GrassTests.cpp`. Zniknęły: model `floor_tile.obj` z plikiem
+`.mtl`, skrypt `build_floor_tile.py` i tekstury `floor_stone.png` i `floor_stone_normal.png`.
+Opis kodu: [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) (temat 13:
+mapa wysokości, wzór na wysokość, siatka, `heightAt`, stanie na terenie, wireframe, panel
+Terrain), [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md)
+(temat 9: shader geometrii, trzy shadery trawy, miejsca kępek, panel Grass),
+[`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md) (etap geometrii w klasie
+`Shader`), [`../modules/debug-ui.md`](../modules/debug-ui.md) (dwa nowe panele, drugi rząd
+pasków tytułu, pasek HUD), [`blender.md`](blender.md) (skrypt mapy wysokości i tekstury
+podłoża). Decyzje:
+[`../decisions/gentle-terrain-under-maze.md`](../decisions/gentle-terrain-under-maze.md),
+[`../decisions/walls-sunk-to-lowest-corner.md`](../decisions/walls-sunk-to-lowest-corner.md),
+[`../decisions/heightmap-tiled-in-world-metres.md`](../decisions/heightmap-tiled-in-world-metres.md),
+[`../decisions/floor-tiles-retired.md`](../decisions/floor-tiles-retired.md),
+[`../decisions/height-scale-rebuilds-terrain.md`](../decisions/height-scale-rebuilds-terrain.md)
+i [`../decisions/grass-lit-with-up-normal.md`](../decisions/grass-lit-with-up-normal.md).
+
+Z tą częścią kod M6 jest kompletny na Windowsie (skybox, teren, trawa). Kamień milowy M6
+**nie jest zamknięty**: część ręczna poniżej (16.2) i część ręczna skyboxa (15.2) są
+otwarte w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md))
+i nie ma tagu. **Nie są zbudowane:** iskry wokół kryształów, które PRD wymienia w temacie
+9 obok trawy, oraz cienie, mgła i bloom (plan M7).
+
+### 16.1. Zmierzone (2026-10-05)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
+nie zapisano, więc ich tu nie podaję (środowisko wcześniejszych pomiarów jest w sekcji 1).
+Punkty są w trzech grupach, bo nie wszystkie mają tę samą wagę.
+
+Sprawdzone dziś na gotowych plikach, bez klikania w grze:
+
+- [x] `night_maze_tests.exe` w Debug i w Release: 256 przypadków testowych i 101232
+      asercje, wszystkie przechodzą. Uruchomione na istniejących programach testowych
+      (żaden plik w `src/`, `tests/`, `assets/` ani `tools/` nie jest od nich nowszy).
+      Względem pierwszej części M6 (221 przypadków) doszły `TerrainTests.cpp` (27
+      przypadków) i `GrassTests.cpp` (9), a z `ObjLoaderTests.cpp` zniknął przypadek
+      płytki podłogi (dziś 19): `221 + 27 + 9 - 1 = 256`. Liczby na plik policzyłem z makr
+      w kodzie testów
+- [x] siatka terenu labiryntu startowego (10 x 10 komórek): 97 x 97 punktów co 0,5 m,
+      18432 trójkąty. Z kodu: `(10 + 2 * 7) * 4 + 1 = 97` punktów w rzędzie (7 komórek
+      marginesu z każdej strony, 4 kroki siatki na komórkę) i `96 * 96 * 2 = 18432`
+- [x] wysokości przeliczone niezależnie, skryptem w Pythonie, z pikseli pliku
+      `heightmap.png` (256 x 256, 8 bitów na kanał) i ze wzorów z `src/game/Terrain.cpp`,
+      przy skali wysokości 1: podłoże w obrębie labiryntu ma od 0,085 m do 0,461 m,
+      najniższy punkt całej siatki ma 0,0 m, a najwyższe wzgórze 3,37 m (punkt siatki
+      `x = 33`, `z = -5,5`, czyli 13 m na wschód od labiryntu)
+- [x] wysokość stóp gracza z tego samego przeliczenia: 0,124 m na starcie (środek komórki
+      startowej, `x = 1`, `z = 1`), 0,278 m w punkcie `(9, 1)` i 0,352 m w punkcie
+      `(17, 1)`. Zgadza się z liczbami zgłoszonymi z gry (gracz przestawiany tam
+      teleportem). Wszystkie trzy punkty są punktami siatki, więc nie sprawdzają
+      interpolacji wewnątrz trójkąta: tę sprawdzają tylko testy jednostkowe
+- [x] liczba kępek trawy przy gęstości startowej 2,5: labirynt startowy ma 121 ścian,
+      każda dostaje `round(2,5 * 2 m) = 5` kępek na stronę, czyli 10, razem 1210. Na
+      wzgórzach jest 806 prób (`round(48 m * 48 m * 0,35)`), z których 633 leżą dalej niż
+      0,6 m od labiryntu i zostają. Razem **1843 kępki**, czyli 5529 źdźbeł (3 na kępkę).
+      Liczbę 633 odtworzyłem własną implementacją generatora `mt19937` w Pythonie,
+      a sumę 1843 zgłoszono z panelu Grass
+
+Zgłoszone z dnia, w którym powstał kod, i tu nie powtarzane:
+
+- [x] czysty build Debug i Release: zero ostrzeżeń
+- [x] clang-format bez uwag
+- [x] liczba klatek na sekundę w Release przy ustawieniach startowych: około 2000 przed
+      tą częścią i po niej. Rozrzut między uruchomieniami (od 1438 do 2040) jest większy
+      niż jakakolwiek różnica, więc z tego pomiaru nie da się odczytać kosztu terenu ani
+      trawy. Synchronizacja pionowa (`swap interval 1`) nie ogranicza na tym komputerze
+      liczby klatek
+- [x] zepsuty plik `grass.geom`: komunikat sterownika zaczyna się od `grass.geom(84)`,
+      czyli nazwy pliku shadera geometrii i numeru linii, a gra działa dalej
+- [x] plik `heightmap.png` nie jest na liście panelu Assets: wczytuje go
+      `NightMazeApp` funkcją `assets::loadImage`, poza `assets::AssetCache`
+- [x] obraz sprawdzony na zrzutach ekranu zrobionych tymczasowymi wstawkami w kodzie,
+      które są już usunięte. Listy zrzutów nie zapisano
+
+Czego dla tej części nie zapisano i czego dlatego tu nie twierdzę: wyniku clang-tidy,
+tego, czy gra startuje bez linii `[error]`, czasu budowy terenu przy ruchu suwaka
+`Height scale` ani tego, czy dwa uruchomienia skryptu `make_heightmap.py` dają te same
+bajty.
+
+Żadnej kontrolki nikt nie dotknął myszą i nikt nie przeszedł po terenie ręką: suwaki i pola
+paneli Terrain i Grass, przycisk `Reload shaders` przy sześciu programach i chodzenie
+klawiszami są otwarte. Płynność zmiany wysokości w marszu (bez schodków) sprawdzają tylko
+testy jednostkowe. Na macOS nic z tej części nie było budowane ani uruchamiane.
+
+### 16.2. Otwarte: test ręczny na około piętnaście minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
+być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze zgłoszonych zrzutów
+ekranu, nie z klikania. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/TerrainPanel.cpp` i `src/debug/panels/GrassPanel.cpp`.
+
+Przygotowanie:
+
+- [ ] **usunąć plik `imgui.ini`** z katalogu, z którego uruchamiam program (sekcja 7). Stary
+      plik nie ma wpisów paneli Terrain i Grass, więc te dwa staną w miejscach z kodu, ale
+      pozostałe zostaną tam, gdzie zapisał je plik, i układ może się nie zgadzać
+- [ ] uruchomić grę z terminala. Oczekiwane w konsoli: jedna linia
+      `[info] Loaded heightmap: ...` z plikiem `heightmap.png`, linie
+      `[info] Loaded texture: ...` dla `ground.png` i `ground_normal.png` i żadnej linii
+      `[error]`
+
+Panele i pasek HUD:
+
+- [ ] u góry okna, między kolumnami, są dwa rzędy pasków tytułu: Camera i Gameplay,
+      a tuż pod nimi Terrain (pod Camera, tej samej szerokości) i Grass (pod Gameplay).
+      Wszystkie cztery są zwinięte. Paski nie nachodzą na siebie
+- [ ] pasek HUD stoi pod drugim rzędem pasków, z wyraźnym odstępem, i nie nachodzi na
+      żaden z nich. Zgłoszone przesunięcie względem poprzedniej wersji to około 30
+      pikseli w dół
+- [ ] rozwinąć panel Terrain (strzałka w pasku). Zawartość od góry: suwak `Height scale`
+      (`1.00`), pole wyboru `Wireframe` (odznaczone), kreska, linie
+      `Grid: 97 x 97 points, 0.50 m apart`, `Triangles: 18432` i
+      `Height: 0.00 m to 3.37 m`. Zapisać, czy zawartość mieści się bez przewijania
+- [ ] rozwinąć panel Grass. Zawartość od góry: pole wyboru `Enabled` (zaznaczone), suwaki
+      `Density` (`2.5 per m`), `Blade height` (`0.30 m`) i `Wind strength` (`1.00`),
+      kreska i linia `Tufts: 1843 (5529 blades)`. Zapisać, czy zawartość mieści się bez
+      przewijania
+- [ ] rozwinięty panel Camera zasłania pasek Terrain, a rozwinięty Gameplay pasek Grass
+      (tak jest zamierzone: komentarz w `PanelLayout.hpp`). Rozwinięte panele Terrain
+      i Grass zasłaniają tylko pas sceny pod sobą
+- [ ] panel Shaders: sześć linii programów, ostatnia to
+      `grass.vert + grass.geom + grass.frag: OK`. Podpowiedź po najechaniu kursorem
+      pokazuje trzy pełne ścieżki, po jednej w linii
+- [ ] panel Assets: na liście `Textures` są `ground.png` i `ground_normal.png`, nie ma
+      `heightmap.png`, a na liście `Models` nie ma płytki podłogi (pięć modeli)
+- [ ] panel Camera: `Player feet` ma na starcie y równe 0.124, a `Eye` y równe 1.82
+
+Chodzenie po podłożu (kliknąć w scenę, kursor znika):
+
+- [ ] przejść kilka korytarzy klawiszami W, A, S, D: podłoże łagodnie się wznosi i opada,
+      a obraz płynie, bez schodków i bez drgania w pionie. Lewy Shift przyspiesza i nic
+      się nie zmienia poza prędkością
+- [ ] obserwować w panelu Camera pole `Player feet` w marszu: y zmienia się płynnie
+      w granicach od około 0.08 do 0.46 w obrębie labiryntu, a `Eye` jest zawsze o 1.70
+      wyżej
+- [ ] iść pod górę i z góry tym samym korytarzem: prędkość po ziemi jest ta sama w obie
+      strony (klawisze przesuwają gracza tylko poziomo)
+- [ ] dojść do ściany i iść wzdłuż niej skosem: gracz zatrzymuje się i ślizga tak samo jak
+      na płaskiej podłodze, nie wchodzi w ścianę w żadnym miejscu, także tam, gdzie podłoże
+      jest najwyżej
+- [ ] stanąć w miejscu i nie dotykać klawiszy: obraz stoi, wysokość się nie zmienia
+
+Szczeliny. Obejść powoli kilka ścian i słupków, patrząc na ich podstawy, także od strony,
+z której podłoże opada:
+
+- [ ] pod żadną ścianą, słupkiem ani pod bramą nie widać szczeliny, przez którą
+      prześwituje niebo albo podłoże po drugiej stronie. Podstawy są miejscami zagłębione
+      w ziemi (tak ma być: obiekt stoi na najniższym punkcie podłoża pod swoim obrysem)
+- [ ] słupek i ściany, które się z nim stykają, mogą mieć podstawy na trochę różnych
+      wysokościach (każdy obiekt jest opuszczany osobno). Zapisać, czy widać to z poziomu
+      oczu i czy przeszkadza
+- [ ] górne krawędzie sąsiednich ścian nie są na jednej wysokości: różnią się o kilka do
+      kilkunastu centymetrów. Zapisać, jak to wygląda z góry w trybie noclip
+
+Skala wysokości (panel Terrain, suwak `Height scale`, zakres od 0.00 do 2.50):
+
+- [ ] przesuwać suwak powoli: podłoże zmienia się na bieżąco, a ściany, słupki, brama,
+      kryształy, trawa i gracz podążają za nim w tej samej klatce. Nic nie zostaje w
+      powietrzu ani pod ziemią. Runda trwa dalej: licznik kryształów, czas i bateria się
+      nie zerują
+- [ ] `Height scale` na 0: świat jest płaski, linia w panelu to `Height: 0.00 m to 0.00 m`,
+      `Player feet` ma y równe 0, wzgórz nie ma. Trawa stoi na płaskim
+- [ ] `Height scale` na 2.50 (prawy koniec suwaka): linia `Height: 0.00 m to 8.43 m`,
+      podłoże w labiryncie jest wyraźnie pofałdowane (na starcie stopy na około 0.31),
+      wzgórza są wysokie. Przejść kilka korytarzy: gracz nadal zatrzymuje się na każdej
+      ścianie i nigdzie nie da się przejść pod ścianą ani przez nią. Pod żadną ścianą nie
+      ma szczeliny
+- [ ] kliknąć suwak z wciśniętym Ctrl i wpisać `5`: wartość wraca do 2.50 (suwak ma flagę
+      `ImGuiSliderFlags_AlwaysClamp`). Wpisać `-1`: wartość to 0.00
+- [ ] wrócić do 1.00. Liczba trójkątów i punktów siatki nie zmieniała się przez cały czas
+      (skala zmienia wysokości, nie siatkę)
+- [ ] zapisać, czy przy szybkim przeciąganiu suwaka gra zwalnia (każda zmiana buduje teren,
+      macierze, pudełka kolizji i trawę od nowa)
+
+Wireframe:
+
+- [ ] zaznaczyć `Wireframe`: podłoże zmienia się w siatkę linii w kolorach podłoża, przez
+      którą widać to, co jest pod terenem: dolną część nieba. Widać kwadraty o boku 0,5 m przecięte
+      przekątną, zawsze w tę samą stronę: z północnego zachodu na południowy wschód
+- [ ] **tylko teren** jest liniami: ściany, słupki, brama, kryształy, trawa, niebo, panele
+      i pasek HUD są wypełnione jak zwykle
+- [ ] przełączyć listę `Lighting` w panelu Renderer przez cztery tryby przy włączonym
+      `Wireframe`: siatka zostaje w każdym trybie, zmienia się tylko jej jasność
+- [ ] w trybie noclip wznieść się nad labirynt: widać, że siatka jest równa w całym
+      terenie (97 na 97 punktów), a w obrębie labiryntu na jedną komórkę przypadają
+      cztery kwadraty wzdłuż każdego boku
+- [ ] odznaczyć `Wireframe`: podłoże jest znów wypełnione
+
+Wzgórza i noclip:
+
+- [ ] klawisz N, wznieść się spacją nad ściany i rozejrzeć się: wokół labiryntu
+      podłoże rośnie we wzgórza, płynnie, bez załamania na granicy
+      labiryntu. Teren kończy się 14 m za zewnętrznymi ścianami, równą krawędzią, za
+      którą jest niebo
+- [ ] najwyższe wzgórze jest na wschód od labiryntu (około 13 m za wschodnią ścianą)
+- [ ] na wzgórzach rosną rzadkie kępki trawy, a w pasie tuż przy zewnętrznych ścianach
+      trawa jest tylko ta przyścienna
+- [ ] wylecieć nad wzgórze, zatrzymać się kilka metrów nad nim i wyłączyć noclip (N):
+      stopy spadają na podłoże od razu, w jednej klatce, bez płynnego zjazdu, i gracz
+      stoi na wzgórzu. Da się po nim chodzić (poza labiryntem nie ma ścian), a po
+      wyjściu poza krawędź terenu wysokość zostaje taka jak na krawędzi
+- [ ] klawisz R: gracz wraca na start, na podłoże
+
+Trawa (panel Grass):
+
+- [ ] przy ścianach, po obu stronach każdej, rosną kępki po trzy źdźbła, ciemniejsze u
+      nasady i jaśniejsze na czubku. Stoją w pasie przy ścianie, nie w linii od linijki,
+      i nie wchodzą w ściany ani w słupki. W poprzek otwartej strony komórki wyjścia
+      (przy bramie) trawy nie ma
+- [ ] źdźbła kołyszą się, a kołysanie przechodzi po trawie falą. Nasady stoją w miejscu,
+      ruszają się czubki
+- [ ] odznaczyć `Enabled`: trawa znika cała, linia `Tufts: 1843 (5529 blades)` zostaje.
+      Zaznaczyć z powrotem
+- [ ] `Density` na 0.0: trawy nie ma, linia to `Tufts: 0 (0 blades)`
+- [ ] `Density` na 8.0 (prawy koniec): trawa jest gęsta, przy ścianach 16 kępek na stronę
+      (3872 przy samych ścianach, do tego wzgórza). Zapisać liczbę z linii `Tufts` i to,
+      czy liczba klatek w panelu Renderer wyraźnie spada
+- [ ] wrócić do 2.5: linia znów pokazuje `Tufts: 1843 (5529 blades)`, a kępki stoją w tych
+      samych miejscach co na początku (miejsca zależą tylko od ziarna labiryntu i od
+      gęstości)
+- [ ] `Blade height` od 0.05 do 0.80: źdźbła rosną i maleją na bieżąco, liczba kępek się
+      nie zmienia. Wrócić do 0.30
+- [ ] `Wind strength` na 0.00: trawa stoi nieruchomo. Na 3.00: czubki wychylają się
+      wyraźnie, nasady nadal stoją. Wrócić do 1.00
+- [ ] przejść przez kępkę: trawa nie zatrzymuje gracza i nie reaguje na niego
+
+Trawa a światło:
+
+- [ ] skierować latarkę na trawę przy ścianie: kępki w stożku są jasne, poza nim ciemne,
+      tak jak podłoże pod nimi. Wyłączyć latarkę (F): trawa ciemnieje razem z podłożem
+- [ ] podejść do kryształu: trawa w zasięgu jego światła ma turkusowy odcień i pulsuje
+      razem z plamą światła na podłożu
+- [ ] obejść kępkę dookoła z włączoną latarką: jej jasność nie skacze przy zmianie strony
+      (trawa jest cieniowana normalną podłoża, nie normalną źdźbła) i źdźbła widać z obu
+      stron
+- [ ] lista `Lighting` w panelu Renderer, cztery tryby po kolei. `Blinn-Phong` i `Phong`:
+      trawa oświetlona jak wyżej, bez połysku. `Gouraud`: ściany i podłoże są cieniowane
+      na wierzchołek, a trawa **nadal na fragment**, więc krawędź stożka latarki na trawie
+      jest gładka. `Unlit`: trawa ma pełną jasność, jak reszta sceny
+- [ ] panel Assets, `View mode`: `Normals as colour`. Trawa jest jednolicie jasnozielona
+      (normalna prosto w górę), podłoże w odcieniach jasnej zieleni. `UVs as colour`:
+      źdźbła są ciemne u nasady i zielenieją ku czubkowi, z czerwienią rosnącą w poprzek
+      źdźbła, a podłoże ma czerwono-zielone przejścia powtarzane co 4 m. Wrócić do
+      `Textured`
+
+Przeładowanie shaderów:
+
+- [ ] w `assets/shaders/grass.geom` zmienić `const float LEAN = 0.4;` na `1.2`, skopiować
+      assety (`cmake --build --preset debug --target copy_assets`) i kliknąć
+      `Reload shaders`: źdźbła kładą się mocno na boki, sześć linii nadal kończy się `OK`
+- [ ] wpisać w tym samym pliku błąd składni (na przykład usunąć średnik po
+      `EmitVertex()`), skopiować assety, `Reload shaders`: linia programu `grass` jest
+      czerwona (`FAILED, the previous program stays in use`), komunikat zaczyna się od
+      nazwy `grass.geom` z numerem linii w nawiasie, **trawa nadal się rysuje**
+      poprzednią wersją i nadal się kołysze, pozostałe pięć linii kończy się `OK`
+- [ ] zepsuć w ten sam sposób `grass.frag`: komunikat nazywa `grass.frag`. Zepsuć
+      `common/lighting.glsl`: czerwone są trzy linie naraz (`lit`, `gouraud` i `grass`),
+      a komunikat nazywa plik dołączany
+- [ ] cofnąć zmiany w plikach shaderów, skopiować assety, `Reload shaders`: sześć razy
+      `OK`, trawa jak na początku i nadal oświetlona (połączenie z blokiem świateł jest
+      odtwarzane po przeładowaniu)
+
+Nowy labirynt (panel Maze):
+
+- [ ] `Seed` 2, `Regenerate`: nowy układ ścian, podłoże pod labiryntem jest takie samo
+      jak przedtem (mapa wysokości nie zależy od ziarna), trawa rośnie przy nowych
+      ścianach, a liczba kępek w panelu Grass jest bliska poprzedniej (ścian jest znów
+      121, zmienia się tylko liczba kępek na wzgórzach)
+- [ ] `Seed` 1, `Regenerate`: linia znów pokazuje `Tufts: 1843 (5529 blades)`. Zapamiętać
+      miejsce jednej kępki przy starcie, zmienić ziarno, wrócić do 1: kępka stoi tam, gdzie
+      stała
+- [ ] `Width` 20, `Height` 15, `Regenerate`: panel Terrain pokazuje
+      `Grid: 137 x 117 points, 0.50 m apart` i `Triangles: 31552`, wzgórza zaczynają się
+      za nowymi ścianami zewnętrznymi i mają ten sam rozmiar co przedtem (mapa wysokości
+      powtarza się co 48 m, nie rozciąga). Pod żadną ścianą nie ma szczeliny
+- [ ] `Width` 40, `Height` 40, `Regenerate`: `Grid: 217 x 217 points, 0.50 m apart`,
+      `Triangles: 93312`. Zapisać liczbę kępek, liczbę klatek w Debug i w Release i to,
+      czy w tak dużym labiryncie widać powtarzanie się pagórków
+- [ ] `Width` 2, `Height` 2, `Regenerate`: `Grid: 65 x 65 points, 0.50 m apart`, gra
+      działa, wzgórza stoją blisko
+- [ ] ustawić `Height scale` na 2.50, potem `Regenerate`: nowy labirynt powstaje od razu
+      na wysokim terenie. Wrócić do 10 na 10, ziarna 1 i skali 1.00
+
+Kryształy, brama i wyjście na podłożu:
+
+- [ ] obejrzeć kilka kryształów w różnych miejscach labiryntu: każdy unosi się na tej
+      samej wysokości nad podłożem swojej komórki (podstawa około 0,9 m nad ziemią), żaden
+      nie tkwi w ziemi ani nie wisi wyraźnie wyżej niż inne
+- [ ] zebrać kryształ, wchodząc w niego: zbieranie działa tak samo jak na płaskiej
+      podłodze, także w najwyżej i w najniżej położonej komórce
+- [ ] panel Collision, `Draw collision shapes`: żółte pudełka ścian i słupków zaczynają
+      się na wysokości podstaw modeli (każde na innej), zielone pudełko gracza stoi na
+      podłożu, turkusowe kule kryształów otaczają kryształy, a magentowe pudełko strefy
+      wyjścia stoi na podłożu komórki wyjścia. Żadne pudełko ściany nie kończy się nad
+      stopami gracza, który przy niej stoi
+- [ ] brama: stoi na podłożu bez szczeliny pod spodem. Otworzyć ją (zebrać kryształy albo
+      w panelu Gameplay przesunąć `Crystals needed` na 0.05 po zebraniu jednego):
+      zjeżdża w ziemię w 1,5 sekundy i **znika pod nią w całości**, nic z niej nie wystaje,
+      także po stronie, z której podłoże opada
+- [ ] przejść przez otwartą bramę do komórki wyjścia: karta `You escaped` pojawia się tak
+      jak przedtem
+- [ ] klawisz R w trakcie rundy i po wygranej: kryształy wracają na swoje miejsca nad
+      podłożem, gracz staje na starcie na podłożu, trawa i teren się nie zmieniają
+
+Na koniec:
+
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi
+      celowo
+- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z panelu Renderer:
+      zapisać wartość przy włączonej i wyłączonej trawie (`Enabled`) oraz z `Wireframe`.
+      Zgłoszone około 2000 nie rozróżnia tych stanów. Jeśli liczba stoi na częstotliwości
+      odświeżania monitora, zapisać to: na tym komputerze synchronizacja pionowa nie
+      ograniczała liczby klatek
+- [ ] clang-tidy na plikach z `src/` i `tests/`: wyniku dla tej części nie zapisano.
+      Uruchomić i zapisać, w szczególności dla `src/game/Terrain.*`, `src/game/Grass.*`,
+      `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*` i obu nowych plików testów
+- [ ] (wymaga Blendera) uruchomić dwa razy `tools/blender/make_heightmap.py`
+      ([`blender.md`](blender.md)) i po każdym razie `git status`: oczekiwane brak zmian
+      w `assets/textures/heightmap.png`. Jeśli plik się różni, uruchomić testy i zapisać
+      wynik (jeden z nich sprawdza, że podłoże pod labiryntem startowym ma rozpiętość od
+      0,3 m do 0,5 m)
+- [ ] (wymaga Blendera) zmienić w tym skrypcie `HEIGHTMAP_SEED` na inną liczbę,
+      wygenerować plik, skopiować assety i uruchomić grę: inne pagórki, nadal bez
+      szczelin pod ścianami. Uruchomić testy i zapisać, czy test rozpiętości podłoża
+      przechodzi dla nowego obrazu. Przywrócić ziarno 53 i wygenerować plik jeszcze raz:
+      `git status` nie powinien pokazywać zmiany w obrazie
+
+## 17. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)

@@ -12,8 +12,8 @@ używa.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera, a `Shader::setVec3` tak samo wysyła wektor.
 Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz widoku i macierz
-rzutowania, wysyła je do programów shaderów (jest ich pięć, w jednej klatce pracują
-najwyżej trzy) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+rzutowania, wysyła je do programów shaderów (jest ich sześć, w jednej klatce pracują
+najwyżej cztery) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
 mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
 kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
 narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ
@@ -49,7 +49,7 @@ nowych użyć znanych typów:
 | `glm::dot(v, v)`: kwadrat długości wektora, bez pierwiastka | dwa testy kul `overlaps` w [`src/scene/Collider.cpp`](../../src/scene/Collider.cpp) | 3.8 |
 | `glm::clamp(point, min, max)` na wektorach: najbliższy punkt pudełka | `scene::closestPoint` w tym samym pliku | 3.8 |
 | `glm::two_pi<float>()`: stała 2π z `<glm/gtc/constants.hpp>` | okrąg z 32 punktów w [`src/game/ColliderLines.cpp`](../../src/game/ColliderLines.cpp), faza kołysania i pulsowania kryształów w [`src/game/Crystals.cpp`](../../src/game/Crystals.cpp) | 3.1 i 3.7 |
-| `std::span<const glm::mat4>`: lista macierzy modelu, także jednoelementowa | `game::drawModel` w [`src/game/ModelDraw.cpp`](../../src/game/ModelDraw.cpp), wołana przez `MazeRenderer` i `GameplayRenderer` | 3.3 |
+| `std::span<const glm::mat4>`: lista macierzy modelu, także jednoelementowa | `game::drawModel` w [`src/game/ModelDraw.cpp`](../../src/game/ModelDraw.cpp), wołana przez `MazeRenderer` i `GameplayRenderer`. Od M6 obok niej stoi `game::drawMesh`, która bierze jedną macierz `const glm::mat4&` i rysuje siatkę terenu | 3.3 |
 | `glm::vec3` jako kolor świecenia i jako pozycje świateł | `game::crystalGlow` (kolor razy liczba), `game::crystalLightPositions` (`std::vector<glm::vec3>`) | 3.2 |
 | `scene::Sphere`: `glm::vec3` środka i promień | [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp), `game::playerReach` w `src/game/Round.cpp` | 3.2 |
 
@@ -57,9 +57,27 @@ Z M5 zniknęła za to kostka z M1 (`NightMazeApp::drawCube` i jej `Transform`) o
 świateł z M4, więc przykłady, które z nich korzystały, są niżej zastąpione kodem ścian,
 bramy i kryształów.
 
+Teren i trawa (druga część M6) nie wołają żadnej nowej funkcji GLM, ale używają znanych w
+nowych rolach:
+
+| Co | Gdzie w kodzie | Sekcja |
+|---|---|---|
+| `glm::mix(a, b, t)` na zwykłych liczbach `float`: trzy mieszania dają odczyt dwuliniowy mapy wysokości | `Heightmap::sample` w [`src/game/Terrain.cpp`](../../src/game/Terrain.cpp) | 3.8 |
+| `glm::mix(-REACH, REACH, t)`: liczba losowa od 0 do 1 rozciągnięta na odcinek wzdłuż ściany | `plantAlongWall` w [`src/game/Grass.cpp`](../../src/game/Grass.cpp) | 3.8 |
+| `glm::length(glm::vec2{...})`: odległość punktu od labiryntu, za rogiem liczona po skosie | `distanceOutsideMaze` w `src/game/Terrain.cpp` | 3.8 |
+| `glm::normalize(glm::vec3{-slopeX, 1.0F, -slopeZ})`: normalna powierzchni z dwóch nachyleń | `Terrain::gridNormal` w tym samym pliku | 3.8 |
+| `constexpr glm::mat4 IDENTITY{1.0F}`: macierz jednostkowa jako macierz modelu terenu, którego wierzchołki są już w przestrzeni świata | [`src/game/TerrainRenderer.cpp`](../../src/game/TerrainRenderer.cpp) | 3.3 |
+| `glm::vec3` pozycji z wysokością czytaną z terenu | `GrassTuft::position`, `MazeWorld::startPosition`, pozycje ścian i słupków po `placeOnTerrain` | 3.2 |
+
+Co te wzory znaczą, tłumaczą [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)
+i [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md).
+
 Kod do M4 włącznie jest zbudowany i przetestowany na Windowsie (2026-10-05). Kod M5 jest na
-Windowsie zbudowany w Debug i Release bez ostrzeżeń, a testy przechodzą (215 przypadków,
-85098 asercji). Na macOS kod M4 i M5 nie był budowany.
+Windowsie zbudowany w Debug i Release bez ostrzeżeń, a testy przechodziły (215 przypadków,
+85098 asercji, stan po M5). Kod M6 (niebo, teren, trawa) jest na Windowsie kompletny: build
+bez ostrzeżeń zgłosił wykonawca, a 256 przypadków testowych i 101232 asercje uruchomiłem
+sam na programach testowych Debug i Release (2026-10-05). Na macOS kod M4, M5 i M6 nie był
+budowany.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -387,7 +405,7 @@ Obie funkcje, `inverse` i `transpose`, są w rdzeniu (`<glm/glm.hpp>`), więc `T
 nie dołącza dla nich niczego nowego. Dlaczego odwrotność i transpozycja, a nie samo
 `mat3(model)`: przy skali różnej na osiach normalna pomnożona przez `mat3(model)` przestaje
 być prostopadła do powierzchni. Dla samego obrotu odwrotność transponowana jest tym samym
-obrotem. Dziś żaden model sceny (ściana, słupek, podłoga, brama, kryształ) nie jest skalowany, więc
+obrotem. Dziś nic w scenie (ściana, słupek, teren, brama, kryształ) nie jest skalowane, więc
 wynik równa się części obrotowej macierzy modelu. Teoria i cztery testy z `tests/TransformTests.cpp`:
 [`../modules/scene/transforms.md`](../modules/scene/transforms.md) (macierz normalnych).
 

@@ -578,6 +578,29 @@ Mimo to w `Window.cpp` zachowujemy konwencję "GLAD pierwszy":
 Drugie makro, `GL_SILENCE_DEPRECATION`, nie jest częścią GLFW. Wycisza ostrzeżenia Apple,
 które oznaczyło całe OpenGL jako przestarzałe.
 
+### 3.12. `glfwGetTime`: zegar wiatru (M6)
+
+`src/game/NightMazeApp.cpp`, funkcja `drawGrass`:
+
+```cpp
+    // The clock of the wind: the seconds since GLFW was started. It only has to keep
+    // growing, so it does not stop when the round is won and does not jump when one is
+    // restarted.
+    const auto windSeconds = static_cast<float>(glfwGetTime());
+```
+
+`glfwGetTime()` zwraca `double`: liczbę sekund od wywołania `glfwInit` (o ile nikt nie
+przestawił zegara funkcją `glfwSetTime`, czego projekt nie robi). To jedyne wywołanie tej
+funkcji w `src/` i, poza stałymi klawiszy, jedyne użycie GLFW w `game/`. Zegar klatki i
+stały krok symulacji jej nie używają: `core::Time` mierzy czas przez
+`std::chrono::steady_clock` ([`../modules/core/main-loop.md`](../modules/core/main-loop.md)).
+
+Po co osobny zegar: trawa z shadera geometrii kołysze się według uniformu `uTime`, a ten
+ma tylko stale rosnąć. Zegar rundy (`Round::animationSeconds`) staje po wygranej i wraca do
+zera po restarcie, więc trawa by zamierała albo skakała. Wartość jest rzutowana na `float`,
+bo taki typ ma uniform w GLSL. Opis wiatru:
+[`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md).
+
 ## 4. Pułapki
 
 1. **Hinty po utworzeniu okna.** `glfwWindowHint` po `glfwCreateWindow` nie działa na

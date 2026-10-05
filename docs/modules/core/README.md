@@ -1,6 +1,6 @@
 # Moduł core: fundament programu
 
-Kamień milowy: M0, uzupełniany w M1 (mysz, ścieżki do assetów, pierwszy użytkownik stałego kroku i myszy: kamera) w M2 + M3 (klasa `NightMazeApp` rysuje labirynt i prowadzi gracza) w M4 (klasa `NightMazeApp` buduje co klatkę światła, wybiera program labiryntu według trybu oświetlenia i ustawia przełącznik mapowania normalnych `uNormalMapEnabled`) i w M5 (klasa `NightMazeApp` prowadzi rundę: w stałym kroku woła `updateRound`, co klatkę obsługuje klawisz R, rysuje kryształy i bramę, a kostka z M1 i znaczniki świateł z M4 zniknęły). Temat wykładu: 1 (Pierwszy program OpenGL).
+Kamień milowy: M0, uzupełniany w M1 (mysz, ścieżki do assetów, pierwszy użytkownik stałego kroku i myszy: kamera) w M2 + M3 (klasa `NightMazeApp` rysuje labirynt i prowadzi gracza) w M4 (klasa `NightMazeApp` buduje co klatkę światła, wybiera program labiryntu według trybu oświetlenia i ustawia przełącznik mapowania normalnych `uNormalMapEnabled`) i w M5 (klasa `NightMazeApp` prowadzi rundę: w stałym kroku woła `updateRound`, co klatkę obsługuje klawisz R, rysuje kryształy i bramę, a kostka z M1 i znaczniki świateł z M4 zniknęły) i w M6 (niebo jako ostatnia część klatki, a w drugiej części M6 teren z mapy wysokości i trawa: klasa `NightMazeApp` wczytuje mapę wysokości, buduje labirynt na terenie, obsługuje prośby o nową skalę wysokości i nową gęstość trawy i rysuje teren oraz trawę szóstym programem). Temat wykładu: 1 (Pierwszy program OpenGL).
 Kod: [`src/core/`](../../../src/core/), [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), [`src/main.cpp`](../../../src/main.cpp).
 
 Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, kontekst OpenGL (context) związany z tym oknem oraz pętlę, która co klatkę odbiera zdarzenia, przesuwa symulację i rysuje obraz. Moduł `core` dostarcza dokładnie to i nic więcej: klasę `Window` (okno GLFW z kontekstem OpenGL 4.1 Core i funkcjami załadowanymi przez GLAD), klasę `Application` (pętla główna ze stałym krokiem symulacji), `Input` (stan klawiatury i myszy), `Time` (zegar klatki), `Log` (komunikaty na konsolę), makro `GL_CHECK` (wykrywanie błędów OpenGL w buildzie Debug) i funkcje `executableDir`, `assetPath` oraz `pathText` z `Paths` (ścieżki do plików z `assets/`, liczone od położenia programu, i zamiana ścieżki na tekst). To jest realizacja tematu 1 wykładu, "Pierwszy program OpenGL": po M0 program otwiera okno, czyści je ciemnym granatem i pokazuje FPS. Wszystkie późniejsze moduły (`gfx`, `renderer`, `scene`, `game`) stoją na tej warstwie, a ona sama nie wie o żadnym z nich.
@@ -31,11 +31,11 @@ Proponowana kolejność czytania: ten plik, potem `window-context.md`, `main-loo
 | [`src/core/Time.hpp`](../../../src/core/Time.hpp), [`.cpp`](../../../src/core/Time.cpp) | czas klatki, akumulator stałego kroku, uśredniony FPS | [`main-loop.md`](main-loop.md) |
 | [`src/core/Input.hpp`](../../../src/core/Input.hpp), [`.cpp`](../../../src/core/Input.cpp) | migawka stanu klawiatury i myszy: `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`, `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setMouseBlocked`, `setCursorCaptured` | [`input.md`](input.md) |
 | [`src/core/GlCheck.hpp`](../../../src/core/GlCheck.hpp), [`.cpp`](../../../src/core/GlCheck.cpp) | makro `GL_CHECK` i funkcja `checkGlErrors` | [`gl-check.md`](gl-check.md) |
-| [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`.cpp`](../../../src/core/Paths.cpp) | `executableDir` i `assetPath`: ścieżki do plików z `assets/` względem pliku wykonywalnego. Jedyny kod w `src/` z gałęziami `#if` dla macOS i Windows. Woła je konstruktor `NightMazeApp` przy wczytywaniu ośmiu plików shaderów (cztery pary), konstruktor `game::MazeRenderer` przy wczytywaniu trzech modeli labiryntu i konstruktor `game::GameplayRenderer` przy wczytywaniu trzech modeli rundy (dwa kryształy i brama). `pathText`: ścieżka jako tekst UTF-8, dla `gfx::Shader`, `assets::AssetCache` i paneli "Shaders" oraz "Assets" | [`paths.md`](paths.md) |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`. Posiada pięć programów shaderów, pamięć assetów (`assets::AssetCache`), `MazeRenderer`, `GameplayRenderer`, `ColliderLines`, `LightRig`, od M6 niebo (`Skybox` z ustawieniami `SkyboxSettings`), labirynt (`MazeSettings`, `MazeWorld`), liczby reguł i stan rundy (`GameplaySettings`, `Round`), listę przeszkód rundy, gracza (`Player`), kamerę (`scene::Camera`) i ustawienia oświetlenia (`LightingSettings`). W stałym kroku przesuwa gracza i woła reguły rundy (`updateRound`), co klatkę obsługuje prośbę o nowy labirynt, prośbę o nową rundę i klawisz R, klawisze N i F oraz mysz, ustawia viewport, włącza test głębi, czyści ekran, buduje i wysyła światła i rysuje labirynt razem z kryształami i bramą (z oświetleniem albo bez), na życzenie linie pudełek i kul kolizji, a na końcu niebo ([`../renderer/skybox.md`](../renderer/skybox.md)) | ten plik (sekcje 6 i 7), reguły rundy, kryształy, brama i HUD w [`../game/gameplay.md`](../game/gameplay.md), ruch gracza w [`../game/player.md`](../game/player.md), labirynt w świecie i jego rysowanie w [`../game/maze-rendering.md`](../game/maze-rendering.md), obrót myszą w [`../scene/camera-controls.md`](../scene/camera-controls.md), linie pudełek w [`../scene/collision.md`](../scene/collision.md), czyszczenie w [`window-context.md`](window-context.md), sekcja 3.2, macierze w [`../scene/camera.md`](../scene/camera.md), sekcja 5.7, latarka, klawisz F i zestaw świateł w [`../game/flashlight.md`](../game/flashlight.md), rodzaje świateł w [`../scene/lights.md`](../scene/lights.md), cztery tryby oświetlenia w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), bufor świateł w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) |
+| [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`.cpp`](../../../src/core/Paths.cpp) | `executableDir` i `assetPath`: ścieżki do plików z `assets/` względem pliku wykonywalnego. Jedyny kod w `src/` z gałęziami `#if` dla macOS i Windows. Woła je konstruktor `NightMazeApp` przy wczytywaniu trzynastu plików shaderów (pięć par i trzy pliki programu trawy) i, przez funkcję `loadHeightmap`, mapy wysokości terenu, konstruktor `game::MazeRenderer` przy wczytywaniu dwóch modeli labiryntu (ściana i słupek), konstruktor `game::GameplayRenderer` przy wczytywaniu trzech modeli rundy (dwa kryształy i brama), konstruktor `game::TerrainRenderer` przy wczytywaniu dwóch tekstur gruntu i konstruktor `game::Skybox` przy wczytywaniu sześciu obrazów nieba. `pathText`: ścieżka jako tekst UTF-8, dla `gfx::Shader`, `assets::AssetCache` i paneli "Shaders" oraz "Assets" | [`paths.md`](paths.md) |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | gra: dziedziczy po `core::Application`. Posiada sześć programów shaderów, pamięć assetów (`assets::AssetCache`), `MazeRenderer`, `GameplayRenderer`, od M6 `TerrainRenderer` i `GrassRenderer`, `ColliderLines`, `LightRig`, od M6 niebo (`Skybox` z ustawieniami `SkyboxSettings`), mapę wysokości i ustawienia terenu (`Heightmap`, `TerrainSettings`), ustawienia trawy (`GrassSettings`), labirynt (`MazeSettings`, `MazeWorld`, od M6 razem z terenem, na którym stoi), liczby reguł i stan rundy (`GameplaySettings`, `Round`), listę przeszkód rundy, gracza (`Player`), kamerę (`scene::Camera`) i ustawienia oświetlenia (`LightingSettings`). W stałym kroku przesuwa gracza i woła reguły rundy (`updateRound`), co klatkę obsługuje prośbę o nowy labirynt, prośbę o nową rundę i klawisz R, prośby o nową skalę wysokości terenu i nową gęstość trawy, klawisze N i F oraz mysz, ustawia viewport, włącza test głębi, czyści ekran, buduje i wysyła światła i rysuje teren i labirynt razem z kryształami i bramą (z oświetleniem albo bez), trawę, na życzenie linie pudełek i kul kolizji, a na końcu niebo ([`../renderer/skybox.md`](../renderer/skybox.md)) | ten plik (sekcje 6 i 7), reguły rundy, kryształy, brama i HUD w [`../game/gameplay.md`](../game/gameplay.md), ruch gracza w [`../game/player.md`](../game/player.md), labirynt w świecie i jego rysowanie w [`../game/maze-rendering.md`](../game/maze-rendering.md), obrót myszą w [`../scene/camera-controls.md`](../scene/camera-controls.md), linie pudełek w [`../scene/collision.md`](../scene/collision.md), czyszczenie w [`window-context.md`](window-context.md), sekcja 3.2, macierze w [`../scene/camera.md`](../scene/camera.md), sekcja 5.7, latarka, klawisz F i zestaw świateł w [`../game/flashlight.md`](../game/flashlight.md), rodzaje świateł w [`../scene/lights.md`](../scene/lights.md), cztery tryby oświetlenia w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), bufor świateł w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) |
 | [`src/main.cpp`](../../../src/main.cpp) | klasa `DebugNightMazeApp` (gra plus nakładka debug i HUD) i `main`: tworzy aplikację, woła `run()`, łapie wyjątki | ten plik (sekcje 5 i 6), nakładka w [`../debug-ui.md`](../debug-ui.md) |
 
-W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/core/*` tworzą, razem z `src/assets/*`, `src/gfx/*` i `src/scene/*`, bibliotekę statyczną `engine`. Część `game/`, która nie potrzebuje okna (`Crystals`, `Exit`, `Lighting`, `Maze`, `MazeGenerator`, `MazeLayout`, `MazeWorld`, `Player`, `Round`), tworzy bibliotekę `game_logic`, żeby mogły ją linkować także testy. Program `night_maze` to `main.cpp`, `debug/` i reszta `game/` (`NightMazeApp`, `MazeRenderer`, `GameplayRenderer`, `ModelDraw`, `ColliderLines`, `LightRig`, `ShaderUniforms.hpp`): linkuje obie biblioteki i ImGui. `engine` ma publiczne definicje `GLFW_INCLUDE_NONE` (GLFW nie dołącza systemowego nagłówka OpenGL, robi to GLAD) i `GL_SILENCE_DEPRECATION` (macOS oznacza cały OpenGL jako przestarzały i bez tej definicji zasypuje build ostrzeżeniami).
+W [`CMakeLists.txt`](../../../CMakeLists.txt) pliki `src/core/*` tworzą, razem z `src/assets/*`, `src/gfx/*` i `src/scene/*`, bibliotekę statyczną `engine`. Część `game/`, która nie potrzebuje okna (`Crystals`, `Exit`, `Grass`, `Lighting`, `Maze`, `MazeGenerator`, `MazeLayout`, `MazeWorld`, `Player`, `Round`, `Terrain`), tworzy bibliotekę `game_logic`, żeby mogły ją linkować także testy. Program `night_maze` to `main.cpp`, `debug/` i reszta `game/` (`NightMazeApp`, `MazeRenderer`, `GameplayRenderer`, `TerrainRenderer`, `GrassRenderer`, `ModelDraw`, `ColliderLines`, `LightRig`, `Skybox`, `ShaderUniforms.hpp`): linkuje obie biblioteki i ImGui. `engine` ma publiczne definicje `GLFW_INCLUDE_NONE` (GLFW nie dołącza systemowego nagłówka OpenGL, robi to GLAD) i `GL_SILENCE_DEPRECATION` (macOS oznacza cały OpenGL jako przestarzały i bez tej definicji zasypuje build ostrzeżeniami).
 
 ## 3. Warstwy
 
@@ -43,7 +43,7 @@ Architektura projektu (PRD, sekcja 6) ma warstwy z zależnościami w jedną stro
 
 ```mermaid
 flowchart TD
-    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, DebugContext, Hud, osiem paneli"]
+    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, DebugContext, Hud, dziesięć paneli"]
     Main --> Game["game/<br/>NightMazeApp, Player, MazeWorld, Round, MazeRenderer, GameplayRenderer, ColliderLines, Lighting, LightRig"]
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, GL_CHECK, Paths"]
     Debug --> Game
@@ -109,6 +109,7 @@ sequenceDiagram
     Run->>App: onRender(alpha)
     App->>App: NightMazeApp onRender, na początku prośba o nowy labirynt (m_mazeSettings.regenerate)
     App->>In: m_gameplay.restart albo wasKeyPressed(GLFW_KEY_R), czyli beginRound
+    App->>App: m_terrainSettings.rebuild, czyli rebuildTerrain, i m_grassSettings.replant, czyli plantGrass
     App->>In: wasKeyPressed(GLFW_KEY_N), czyli przełączenie noclip
     App->>In: wasKeyPressed(GLFW_KEY_F), czyli przełączenie latarki
     App->>In: kursor wolny, to wasMouseButtonPressed(lewy) i setCursorCaptured(true)
@@ -116,12 +117,14 @@ sequenceDiagram
     App->>App: glViewport, glEnable(GL_DEPTH_TEST), glClearColor, glClear
     App->>App: gdy jest co rysować, to stopy z glm mix i alpha, oko, macierze view i projection
     App->>App: lightingForFrame, crystalLightPositions, buildLightSet z oka i kierunku kamery, m_lightRig.upload
-    App->>App: drawMaze, czyli drawUnlitMaze albo drawLitMaze według trybu oświetlenia, w obu labirynt, brama i kryształy
+    App->>App: drawMaze, czyli drawUnlitMaze albo drawLitMaze według trybu oświetlenia, w obu teren, labirynt, brama i kryształy
+    App->>App: drawGrass, gdy trawa jest włączona
     App->>App: przy włączonym przełączniku drawColliderLines
+    App->>App: na końcu niebo, gdy jest włączone (m_skybox.draw)
     App->>In: wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)
     App->>In: isCursorCaptured()
     App->>UI: setMouseEnabled(kursor nieprzechwycony)
-    App->>UI: draw(DebugContext z 18 referencjami do stanu gry), czyli panele, gdy są widoczne, i zawsze HUD
+    App->>UI: draw(DebugContext z 24 polami stanu gry), czyli panele, gdy są widoczne, i zawsze HUD
     App->>UI: wantsKeyboard()
     App->>In: setKeyboardBlocked(...)
     App->>UI: wantsMouse()
@@ -135,16 +138,17 @@ sequenceDiagram
 | Zdarzenia systemu | `m_window.pollEvents()` | [`window-context.md`](window-context.md) |
 | Migawka klawiatury i myszy, Escape (zwalnia przechwycony kursor albo zamyka program) | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)`, `isCursorCaptured()` | [`input.md`](input.md), sekcja 5.7 |
 | Pomiar czasu, kroki symulacji | `m_time.beginFrame()`, `consumeFixedStep()`, `onUpdate` | [`main-loop.md`](main-loop.md) |
-| Symulacja: krok gracza | `NightMazeApp::onUpdate`: zapamiętanie poprzedniej pozycji gracza, przy przechwyconym kursorze `isKeyDown` dla sześciu klawiszy wpisane do `PlayerInput`, `m_player.update(...)` z listą `m_obstacles`, potem kamera w oczach gracza | sekcja 6.5, [`../game/player.md`](../game/player.md), sekcja 5 |
+| Symulacja: krok gracza | `NightMazeApp::onUpdate`: zapamiętanie poprzedniej pozycji gracza, przy przechwyconym kursorze `isKeyDown` dla sześciu klawiszy wpisane do `PlayerInput`, `m_player.update(...)` z listą `m_obstacles` i, od M6, z terenem `m_mazeWorld.terrain` (wysokość stóp), potem kamera w oczach gracza | sekcja 6.5, [`../game/player.md`](../game/player.md), sekcja 5 |
 | Symulacja: krok rundy | `NightMazeApp::onUpdate`: `updateRound(...)` z pozycją gracza po ruchu, z przełącznikiem latarki przez referencję i z `fixedDt`, a gdy `gateBlocks` zmieniło wynik, nowa lista `m_obstacles` z `roundObstacles` | sekcja 6.5, [`../game/gameplay.md`](../game/gameplay.md) |
 | Nowy labirynt, jeśli panel o niego poprosił | początek `NightMazeApp::onRender`: `m_mazeSettings.regenerate`, `regenerateMaze()` | sekcje 6.4 i 6.6, [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5 |
 | Nowa runda na tym samym labiryncie | `m_gameplay.restart` (przycisk `Restart round (key R)` panelu "Gameplay") albo `wasKeyPressed(RESTART_KEY)`: `beginRound()` | sekcje 6.4 i 6.6, [`../game/gameplay.md`](../game/gameplay.md) |
+| Nowa skala wysokości terenu albo nowa gęstość trawy, jeśli panel o nie poprosił (M6) | `m_terrainSettings.rebuild`: `rebuildTerrain()`. `m_grassSettings.replant`: `plantGrass()` | sekcje 6.4 i 6.6, [`../renderer/terrain.md`](../renderer/terrain.md), [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md) |
 | Klawisz N | `wasKeyPressed(NOCLIP_KEY)` przełącza `m_player.noclip` | sekcja 6.6, [`../game/player.md`](../game/player.md), sekcja 5 |
 | Klawisz F | `wasKeyPressed(FLASHLIGHT_KEY)` przełącza `m_lighting.flashlightOn` | sekcja 6.6, [`../game/flashlight.md`](../game/flashlight.md) |
 | Mysz kamery | kliknięcie w scenę przechwytuje kursor, przy przechwyconym kursorze przesunięcie myszy obraca kamerę | [`input.md`](input.md), sekcja 5.9, [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5 |
 | Rysowanie gry: stan i tło | `NightMazeApp::onRender`: `glViewport`, `glEnable(GL_DEPTH_TEST)`, `glClearColor`, `glClear` (kolor i głębia) w `GL_CHECK` | [`window-context.md`](window-context.md), [`gl-check.md`](gl-check.md) |
 | Rysowanie gry: oko, macierze, światła | pominięte, gdy framebuffer ma szerokość albo wysokość 0. Inaczej pozycja stóp z `glm::mix` i `alpha`, oko o `Player::EYE_HEIGHT` wyżej, macierze `view` i `projection` liczone raz, potem `lightingForFrame(...)` (kopia ustawień z baterią i pulsowaniem), `crystalLightPositions(m_round)`, `buildLightSet(...)` z tego samego oka i z `m_camera.forward()` oraz `m_lightRig.upload(lights, eye)`: światła klatki trafiają do bufora uniformów, w każdym trybie oświetlenia | sekcja 6.6, [`../scene/camera.md`](../scene/camera.md), sekcja 5.7, [`../game/flashlight.md`](../game/flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) |
-| Rysowanie gry: scena | `drawMaze` (wybiera `drawUnlitMaze` albo `drawLitMaze`, a każda z nich rysuje labirynt przez `m_mazeRenderer` i zaraz po nim bramę i kryształy przez `m_gameplayRenderer`) i, gdy `m_drawColliders` jest prawdą, `drawColliderLines`. Każda funkcja rysująca pomija swoją część, gdy jej program shaderów nie jest poprawny | sekcje 6.6 i 6.7, [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) |
+| Rysowanie gry: scena | `drawMaze` (wybiera `drawUnlitMaze` albo `drawLitMaze`, a każda z nich rysuje teren przez `m_terrainRenderer`, labirynt przez `m_mazeRenderer` i zaraz po nim bramę i kryształy przez `m_gameplayRenderer`), `drawGrass` (trawa, gdy jest włączona), gdy `m_drawColliders` jest prawdą, `drawColliderLines`, a na końcu, gdy niebo jest włączone, `m_skybox.draw`. Każda część jest pomijana, gdy jej program shaderów nie jest poprawny | sekcje 6.6 i 6.7, [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../renderer/terrain.md`](../renderer/terrain.md), [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md), [`../renderer/skybox.md`](../renderer/skybox.md) |
 | Przełącznik paneli, mysz dla ImGui, panele i HUD | `wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)`, `m_debugUI.setMouseEnabled(!input().isCursorCaptured())`, `m_debugUI.draw(...)`: panele tylko wtedy, gdy są widoczne, HUD (`debug::drawHud`) w każdej klatce | [`../debug-ui.md`](../debug-ui.md), sekcja 5.6 |
 | Blokada klawiatury na następną klatkę | `input().setKeyboardBlocked(m_debugUI.wantsKeyboard())` | [`input.md`](input.md), sekcja 5.6 |
 | Blokada myszy na następną klatkę | `input().setMouseBlocked(m_debugUI.wantsMouse())` | [`input.md`](input.md), sekcja 5.10 |
@@ -184,10 +188,12 @@ virtual void onRender(double alpha) = 0;
 ### 6.2 Klasa `NightMazeApp`: co posiada i co udostępnia
 
 ```cpp
-/// The game itself: a generated maze of textured walls, pillars and floor tiles at
-/// night, and a player who walks through it in first person without passing through the
-/// walls. The mouse turns the camera, the keyboard moves the player. The maze is lit by
-/// the moon, by the flashlight of the player and by the glowing crystals.
+/// The game itself: a generated maze of textured walls and pillars at night, standing
+/// on gently uneven ground that rises into hills around it (a heightmap terrain), and
+/// a player who walks through it in first person without passing through the walls.
+/// The mouse turns the camera, the keyboard moves the player. The maze is lit by the
+/// moon, by the flashlight of the player and by the glowing crystals. Grass grows along
+/// the walls, and above them is the night sky, a skybox.
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
@@ -199,11 +205,13 @@ virtual void onRender(double alpha) = 0;
 class NightMazeApp : public core::Application {
 ```
 
+Pierwszy akapit komentarza zmienił się w M6: płytek podłogi już nie ma, labirynt stoi na łagodnie nierównym terenie z mapy wysokości, który wokół niego przechodzi we wzgórza, wzdłuż ścian rośnie trawa, a nad nimi jest niebo.
+
 Klasa jest miejscem, w którym spotykają się wszystkie warstwy: shadery, siatki i bufor uniformów z `gfx/`, modele i tekstury z `assets/`, kamera, kolizje i światła z `scene/`, labirynt, gracz, runda i ustawienia oświetlenia z `game/`. Sama zawiera mało logiki. Jej zadaniem jest **kolejność**: co powstaje po czym (sekcje 6.3 i 7), co dzieje się w stałym kroku (sekcja 6.5), a co raz na klatkę (sekcje 6.6 i 6.7). Drugi akapit komentarza mówi to samo o rundzie: reguły są w `game/Round.hpp` (zwykłe funkcje bez OpenGL, z testami), a ta klasa tylko podaje im pozycję gracza i rysuje ich stan. Same reguły opisuje [`../game/gameplay.md`](../game/gameplay.md), sekcja 2.
 
 Do M4 klasa trzymała też kostkę z M1 (własny VAO, dwa bufory, program `basic`) i rysowała ją nad narożną komórką jako znacznik przyszłego wyjścia. W M5 kostka zniknęła razem z programem `basic`: wyjście ma teraz bramę, a ręcznie pisane dane wierzchołków zostały w projekcie tylko w [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp).
 
-Stan gry jest prywatny. Klasa pochodna (`DebugNightMazeApp` z `main.cpp`) dostaje go przez szesnaście chronionych akcesorów, tu w kolejności z nagłówka. Każdy zwraca referencję do jednego pola, więc panel edytuje oryginał, a nie kopię:
+Stan gry jest prywatny. Klasa pochodna (`DebugNightMazeApp` z `main.cpp`) dostaje go przez dwadzieścia dwa chronione akcesory, tu w kolejności z nagłówka. Każdy poza jednym zwraca referencję do jednego pola, więc panel edytuje oryginał, a nie kopię. Wyjątkiem jest `grassTuftCount()`, który zwraca liczbę:
 
 | Akcesor | Typ wyniku | Pole | Kto z niego korzysta |
 |---|---|---|---|
@@ -212,19 +220,25 @@ Stan gry jest prywatny. Klasa pochodna (`DebugNightMazeApp` z `main.cpp`) dostaj
 | `colorShader()` | `gfx::Shader&` | `m_colorShader` (program linii pudełek i kul kolizji, `color.*`) | panel "Shaders" |
 | `litShader()` | `gfx::Shader&` | `m_litShader` (program sceny z oświetleniem liczonym dla fragmentu: tryby Phong i Blinn-Phong, `lit.*`) | panel "Shaders" |
 | `gouraudShader()` | `gfx::Shader&` | `m_gouraudShader` (program sceny z oświetleniem liczonym dla wierzchołka: tryb Gouraud, `gouraud.*`) | panel "Shaders" |
+| `skyboxShader()` | `gfx::Shader&` | `m_skyboxShader` (program nieba, `skybox.*`) | panel "Shaders" |
+| `grassShader()` | `gfx::Shader&` | `m_grassShader` (program trawy z shaderem geometrii: `grass.vert`, `grass.geom`, `grass.frag`) | panel "Shaders" |
+| `terrainSettings()` | `TerrainSettings&` | `m_terrainSettings` (skala wysokości, przełącznik `wireframe` i flaga `rebuild`) | panel "Terrain" |
+| `grassSettings()` | `GrassSettings&` | `m_grassSettings` (włącznik, gęstość, wysokość źdźbeł, siła wiatru i flaga `replant`) | panel "Grass" |
+| `grassTuftCount()` | `std::size_t` (wartość) | żadne: wynik `m_grassRenderer.tuftCount()` | panel "Grass" (wypisuje liczbę kępek) |
+| `skyboxSettings()` | `SkyboxSettings&` | `m_skyboxSettings` (włącznik i jasność nieba) | panel "Renderer" |
 | `lighting()` | `LightingSettings&` | `m_lighting` (tryb oświetlenia i ustawienia wszystkich świateł) | panele "Lights" i "Renderer" (lista `Lighting` zmienia pole `mode`) |
 | `camera()` | `scene::Camera&` | `m_camera` | panele "Camera" i "Maze" |
 | `mouseSensitivity()` | `float&` | `m_mouseSensitivity` | panel "Camera" |
 | `player()` | `Player&` | `m_player` | panele "Camera", "Maze" i "Collision" |
 | `mazeSettings()` | `MazeSettings&` | `m_mazeSettings` | panel "Maze" |
-| `mazeWorld()` | `const MazeWorld&` | `m_mazeWorld` | panele "Maze" i "Collision" |
+| `mazeWorld()` | `const MazeWorld&` | `m_mazeWorld` | panele "Maze" i "Collision", a od M6 "Terrain" (czyta pole `terrain`) |
 | `gameplaySettings()` | `GameplaySettings&` | `m_gameplay` (liczby reguł rundy i flaga `restart`) | panel "Gameplay" i HUD (czyta próg słabej baterii) |
 | `round()` | `Round&` | `m_round` (stan rundy) | HUD oraz panele "Gameplay", "Maze", "Collision" i "Lights" |
 | `assets()` | `assets::AssetCache&` | `m_assets` | panel "Assets" |
 | `viewMode()` | `ViewMode&` | `m_viewMode` | panel "Assets" |
 | `drawColliders()` | `bool&` | `m_drawColliders` | panel "Collision" |
 
-Jedyny akcesor z `const` to `mazeWorld()`:
+Akcesory z `const` są dwa: `grassTuftCount()`, który i tak zwraca kopię liczby, i `mazeWorld()`:
 
 ```cpp
 /// The maze in play, read only: the debug UI draws its plan and counts its boxes.
@@ -246,6 +260,26 @@ Dwa akcesory z M5:
 ```
 
 `round()` nie ma `const`, choć prawie wszyscy tylko czytają rundę: panel "Gameplay" ma suwak `Battery`, który zapisuje pole `Round::battery`. Pozostałe panele i HUD dostają od `DebugUI::draw` referencję `const`. Nową rundę panel zamawia tak samo jak nowy labirynt, flagą: `GameplaySettings::restart` (sekcja 6.6).
+
+Cztery akcesory z drugiej części M6:
+
+```cpp
+    /// Shader program of the grass (with a geometry stage), exposed for the same reason.
+    gfx::Shader& grassShader() { return m_grassShader; }
+
+    /// The height scale and the wireframe switch of the terrain, exposed so the debug UI
+    /// can edit them live.
+    TerrainSettings& terrainSettings() { return m_terrainSettings; }
+
+    /// The switch, the density, the blade height and the wind of the grass, exposed so
+    /// the debug UI can edit them live.
+    GrassSettings& grassSettings() { return m_grassSettings; }
+
+    /// How many tufts of grass are on the graphics card, for the debug UI.
+    std::size_t grassTuftCount() const { return m_grassRenderer.tuftCount(); }
+```
+
+Trzy pierwsze działają jak wszystkie wcześniejsze. Czwarty jest inny: gra nie ma pola z liczbą kępek (trzyma ją `GrassRenderer`, który wie, ile punktów wysłał na kartę), więc akcesor pyta o nią i zwraca wartość. Samego terenu nowy akcesor nie udostępnia: teren jest polem `MazeWorld::terrain`, więc panel "Terrain" dostaje go przez istniejące `mazeWorld()`. Skalę wysokości i gęstość trawy panele zamawiają flagami `TerrainSettings::rebuild` i `GrassSettings::replant` (sekcja 6.6).
 
 Jak te referencje trafiają do paneli, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
 
@@ -280,7 +314,8 @@ To zwykła struktura z wartościami domyślnymi nocnej sceny (tryb `BlinnPhong`,
 
     // What the player cannot walk through in this round: the boxes of the maze, plus the
     // box of the gate while it is closed (game::roundObstacles). A copy that is rebuilt
-    // only when it changes: at the start of a round and when the gate opens.
+    // only when it changes: at the start of a round, when the gate opens and when the
+    // terrain is built again with another height scale (the boxes move up or down).
     std::vector<scene::Aabb> m_obstacles;
 ```
 
@@ -288,9 +323,40 @@ To zwykła struktura z wartościami domyślnymi nocnej sceny (tryb `BlinnPhong`,
 |---|---|---|
 | `m_gameplay` | liczby reguł, które da się zmieniać w biegu (`requiredFraction`, `batteryLifetimeSeconds`, `batteryPerCrystal`, `lowBatteryThreshold`, `pickupRadius`, `batteryDrains`), i flaga `restart` | panel "Gameplay", a flagę `restart` gasi `onRender` |
 | `m_round` | stan jednej rozgrywki: kryształy i to, które są zebrane, liczniki, brama, bateria, dwa zegary. To stan **symulacji**, tak jak gracz | `beginRound` (cały, przez przypisanie), `updateRound` w każdym stałym kroku, suwak `Battery` panelu "Gameplay" |
-| `m_obstacles` | lista pudełek, przez które gracz nie przejdzie: pudełka labiryntu i, dopóki brama jest zamknięta, pudełko bramy na końcu | `beginRound` i `onUpdate` w kroku, w którym brama się otworzyła |
+| `m_obstacles` | lista pudełek, przez które gracz nie przejdzie: pudełka labiryntu i, dopóki brama jest zamknięta, pudełko bramy na końcu | `beginRound`, `onUpdate` w kroku, w którym brama się otworzyła, i od M6 `rebuildTerrain` (pudełka przesuwają się w górę albo w dół razem z gruntem) |
 
-Wszystkie trzy to zwykłe dane bez OpenGL. `m_round` zaczyna jako pusta struktura (konstruktor domyślny: zero kryształów) i dostaje prawdziwą zawartość dopiero w ciele konstruktora, w `beginRound`. `m_obstacles` jest **kopią**: `MazeWorld::colliders` trzyma tylko przeszkody, które nigdy się nie zmieniają (ściany i słupki), a brama przestaje być przeszkodą w trakcie rundy, więc lista dla gracza musi być osobna. Kopię buduję dwa razy na rundę, a nie w każdym kroku.
+Wszystkie trzy to zwykłe dane bez OpenGL. `m_round` zaczyna jako pusta struktura (konstruktor domyślny: zero kryształów) i dostaje prawdziwą zawartość dopiero w ciele konstruktora, w `beginRound`. `m_obstacles` jest **kopią**: `MazeWorld::colliders` trzyma tylko przeszkody, które nigdy się nie zmieniają (ściany i słupki), a brama przestaje być przeszkodą w trakcie rundy, więc lista dla gracza musi być osobna. Kopię buduję dwa razy na rundę (na jej początku i gdy brama się otwiera), a nie w każdym kroku. Od M6 jest trzeci przypadek, wymieniony w komentarzu: przebudowa terenu z inną skalą wysokości (`rebuildTerrain`, sekcja 6.4), po której pudełka stoją na innej wysokości.
+
+**Pola stanu z drugiej części M6: `m_heightmap`, `m_terrainSettings`, `m_grassSettings`, `m_playerWasFlying`.**
+
+```cpp
+    // The request for the next maze (edited by the debug UI).
+    MazeSettings m_mazeSettings;
+
+    // The heightmap of the terrain, read from its picture once at start-up, and the
+    // settings of the terrain (edited by the debug UI). Both are declared before
+    // m_mazeWorld, because the first maze is built from them in the initializer list.
+    Heightmap m_heightmap;
+    TerrainSettings m_terrainSettings;
+
+    // The maze in play, standing on its terrain.
+    MazeWorld m_mazeWorld;
+
+    // The settings of the grass (edited by the debug UI). The tufts themselves are not
+    // kept: they are placed, copied to the graphics card and forgotten.
+    GrassSettings m_grassSettings;
+```
+
+| Pole | Co to jest | Kto je zmienia |
+|---|---|---|
+| `m_heightmap` | mapa wysokości jako liczby od 0 do 1 (`game::Heightmap`), wczytana raz z `assets/textures/heightmap.png`. Zwykłe dane procesora, bez tekstury na karcie. Gdy pliku nie da się wczytać, jest to płaska mapa z jedną wartością 0 | nikt po konstruktorze: każdy nowy labirynt i każda nowa skala wysokości czytają ją od nowa |
+| `m_terrainSettings` | `heightScale` (start 1), `wireframe` (start `false`) i flaga `rebuild` | panel "Terrain", a flagę `rebuild` gasi `onRender`. `regenerateMaze` i `rebuildTerrain` przycinają `heightScale` do zakresu od 0 do `MAX_HEIGHT_SCALE` |
+| `m_grassSettings` | `enabled`, `density`, `bladeHeight`, `windStrength` i flaga `replant` | panel "Grass", a flagę `replant` gasi `onRender`. `plantGrass` przycina `density` do zakresu od 0 do `MAX_GRASS_DENSITY` |
+| `m_playerWasFlying` | czy gracz był w trybie noclip w poprzednim stałym kroku. Stoi tuż pod `m_previousPlayerPosition` | `onUpdate` (sekcja 6.5) |
+
+**Dlaczego `m_heightmap` i `m_terrainSettings` stoją przed `m_mazeWorld`.** Pola powstają w kolejności deklaracji, a pierwszy labirynt jest budowany na liście inicjalizacyjnej wyrażeniem `buildMazeWorld(..., m_heightmap, m_terrainSettings.heightScale)`. Oba pola muszą więc w tej chwili już istnieć i mieć swoje wartości. Gdyby stały niżej, konstruktor czytałby je przed ich konstrukcją: pusty wektor mapy wysokości, którego jeszcze nie ma, to niezdefiniowane zachowanie, a nie "płaski teren". To ta sama reguła, przez którą `m_mazeSettings` stoi nad `m_mazeWorld` (sekcja 7). `m_grassSettings` może stać niżej, bo trawa jest sadzona dopiero w ciele konstruktora (`uploadGround`), gdy wszystkie pola już istnieją.
+
+Kępek trawy klasa nie przechowuje. `plantGrass` dostaje od `placeGrass` wektor, wysyła go na kartę i wektor znika na końcu funkcji: po stronie procesora nikt ich potem nie czyta (trawa nie ma kolizji), a przy każdej zmianie i tak są wybierane od nowa z ziarna labiryntu.
 
 ### 6.3 Konstruktor
 
@@ -307,17 +373,27 @@ NightMazeApp::NightMazeApp()
                       core::assetPath(GOURAUD_FRAGMENT_SHADER_FILE)),
       m_skyboxShader(core::assetPath(SKYBOX_VERTEX_SHADER_FILE),
                      core::assetPath(SKYBOX_FRAGMENT_SHADER_FILE)),
+      // The geometry shader is the third argument, although it runs second: it is the
+      // optional one.
+      m_grassShader(core::assetPath(GRASS_VERTEX_SHADER_FILE),
+                    core::assetPath(GRASS_FRAGMENT_SHADER_FILE),
+                    core::assetPath(GRASS_GEOMETRY_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
-      m_mazeWorld(
-          buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed)) {
-    // The two lit programs read the lights from the uniform buffer of m_lightRig. Each
-    // program is told once: the shader repeats it by itself after a reload.
+      m_terrainRenderer(m_assets),
+      m_heightmap(loadHeightmap()),
+      m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
+                                 m_heightmap, m_terrainSettings.heightScale)) {
+    // The two lit programs and the grass program read the lights from the uniform buffer
+    // of m_lightRig. Each program is told once: the shader repeats it by itself after
+    // a reload.
     m_lightRig.connect(m_litShader);
     m_lightRig.connect(m_gouraudShader);
+    m_lightRig.connect(m_grassShader);
 
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
+    uploadGround();
     beginRound();
 }
 ```
@@ -325,19 +401,53 @@ NightMazeApp::NightMazeApp()
 | Element listy | Znaczenie |
 |---|---|
 | `core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze")` | klasa bazowa tworzy okno 1280 x 720 i kontekst OpenGL. `INITIAL_WIDTH` i `INITIAL_HEIGHT` to stałe `constexpr` w anonimowej przestrzeni nazw pliku `.cpp`: mają nazwy (żadnych magicznych liczb) i są niewidoczne poza tym plikiem |
-| `m_texturedShader(...)`, `m_colorShader(...)`, `m_litShader(...)`, `m_gouraudShader(...)`, `m_skyboxShader(...)` | pięć programów, każdy z pary plików z `assets/shaders/` (`textured`, `color`, `lit`, `gouraud`, a od M6 `skybox`). Nazwy plików to dziesięć stałych `constexpr const char*` na górze pliku `.cpp`. `core::assetPath` zamienia nazwę względną na ścieżkę obok pliku wykonywalnego ([`paths.md`](paths.md)). Programy `lit` i `gouraud` dołączają wspólny plik `common/lighting.glsl`, którego konstruktor tu nie wymienia: znajduje go sam loader shaderów ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Nieudane wczytanie nie rzuca wyjątku: program jest wtedy niepoprawny, a jego część klatki nie jest rysowana (sekcja 6.7) |
-| (brak `m_assets`) | pola `m_assets` nie ma na liście, więc działa jego konstruktor domyślny: tworzy białą teksturę 1 x 1. Powstaje mimo to w swojej kolejności, między `m_gouraudShader` a `m_mazeRenderer`, bo o kolejności decydują deklaracje (sekcja 7) |
-| `m_mazeRenderer(m_assets)` | prosi pamięć assetów o trzy modele labiryntu. `m_assets` już istnieje, bo jest zadeklarowane wyżej ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| `m_texturedShader(...)`, `m_colorShader(...)`, `m_litShader(...)`, `m_gouraudShader(...)`, `m_skyboxShader(...)` | pięć programów, każdy z pary plików z `assets/shaders/` (`textured`, `color`, `lit`, `gouraud`, a od M6 `skybox`). Nazwy plików to dziesięć z trzynastu stałych `constexpr const char*` na górze pliku `.cpp` (pozostałe trzy należą do trawy, wiersz niżej). `core::assetPath` zamienia nazwę względną na ścieżkę obok pliku wykonywalnego ([`paths.md`](paths.md)). Programy `lit` i `gouraud` dołączają wspólny plik `common/lighting.glsl`, którego konstruktor tu nie wymienia: znajduje go sam loader shaderów ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Nieudane wczytanie nie rzuca wyjątku: program jest wtedy niepoprawny, a jego część klatki nie jest rysowana (sekcja 6.7) |
+| `m_grassShader(vert, frag, geom)` | szósty program, jedyny z trzema plikami: między shaderem wierzchołków a shaderem fragmentów pracuje shader geometrii `grass.geom`. Kolejność argumentów nie jest kolejnością etapów: plik geometrii jest **trzeci**, bo w konstruktorze `gfx::Shader` jest parametrem opcjonalnym (pusta ścieżka domyślna znaczy "bez etapu geometrii"), a parametry z wartością domyślną muszą stać na końcu. Mówi o tym komentarz nad polem. Program dołącza `common/lighting.glsl` tak jak `lit` ([`../gfx/shader-class.md`](../gfx/shader-class.md), [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)) |
+| (brak `m_assets`) | pola `m_assets` nie ma na liście, więc działa jego konstruktor domyślny: tworzy białą teksturę 1 x 1. Powstaje mimo to w swojej kolejności, między `m_grassShader` a `m_mazeRenderer`, bo o kolejności decydują deklaracje (sekcja 7) |
+| `m_mazeRenderer(m_assets)` | prosi pamięć assetów o dwa modele labiryntu, ścianę i słupek (do M5 trzy: trzecim była płytka podłogi, którą w M6 zastąpił teren). `m_assets` już istnieje, bo jest zadeklarowane wyżej ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
 | `m_gameplayRenderer(m_assets)` | prosi tę samą pamięć assetów o trzy modele rundy: `models/crystal_a.obj`, `models/crystal_b.obj` i `models/gate.obj`. Model, którego nie udało się wczytać, daje pusty wskaźnik i po prostu nie jest rysowany ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
+| `m_terrainRenderer(m_assets)` | prosi tę samą pamięć assetów o dwie tekstury gruntu, `textures/ground.png` i `textures/ground_normal.png`. Gdy któraś się nie wczyta, bierze białą teksturę albo płaską mapę normalnych. Siatka terenu jest na razie pusta: dostanie dane w `uploadGround()` w ciele konstruktora ([`../renderer/terrain.md`](../renderer/terrain.md)) |
+| (brak `m_grassRenderer`) | konstruktor domyślny: pusta siatka punktów (`GL_POINTS`), bez kępek. Też wypełnia ją `uploadGround()` |
+| `m_heightmap(loadHeightmap())` | wczytuje mapę wysokości funkcją z anonimowej przestrzeni nazw (niżej). Stoi na liście po klasach rysujących, bo tak są zadeklarowane pola, i przed `m_mazeWorld`, które jej potrzebuje |
 | (brak `m_colliderLines`, `m_lightRig` i `m_skybox`) | konstruktory domyślne (`Skybox` wczytuje w swoim sześć obrazów nieba i tworzy teksturę sześcienną oraz siatkę sześcianu, [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.4): `ColliderLines` wysyła na kartę dwie małe siatki linii (krawędzie sześcianu o boku 1 i okrąg o promieniu 1), `LightRig` tworzy bufor uniformów na światła (rozmiar struktury `scene::LightBlockData`, punkt wiązania `LIGHT_BLOCK_BINDING_POINT`, czyli 1). Od M5 `LightRig` nie ma już żadnej siatki |
-| `m_mazeWorld(buildMazeWorld(...))` | pierwszy labirynt: rozmiar i ziarno z `m_mazeSettings`, którego wartości domyślne to 10 x 10 komórek i ziarno 1 (`DEFAULT_MAZE_WIDTH`, `DEFAULT_MAZE_HEIGHT`, `DEFAULT_MAZE_SEED`). `m_mazeSettings` jest zadeklarowane tuż nad `m_mazeWorld`, więc w tej chwili ma już swoje wartości. Od M5 `buildMazeWorld` wybiera też komórkę wyjścia, stawia bramę i rozmieszcza kryształy (pola `exitCell`, `gate`, `gateBox`, `exitZone`, `crystals`), więc każdy nowy labirynt przychodzi od razu z tym, czego potrzebuje runda. W M4 były tu pozycje świateł w ślepych zaułkach: dziś światła wiszą nad kryształami, a ich pozycje liczy co klatkę `crystalLightPositions` z rundy (sekcja 6.6) |
-| (brak `m_gameplay`, `m_round`, `m_obstacles` i pozostałych) | wartości z deklaracji: `m_gameplay` ma domyślne liczby reguł, `m_round` i `m_obstacles` są puste do `beginRound()` |
+| `m_mazeWorld(buildMazeWorld(..., m_heightmap, m_terrainSettings.heightScale))` | pierwszy labirynt, od M6 od razu na terenie: przeciążenie `buildMazeWorld` z mapą wysokości i skalą buduje `game::Terrain` i stawia na nim ściany, słupki, bramę, start i wyjście (`placeOnTerrain`). Rozmiar i ziarno z `m_mazeSettings`, którego wartości domyślne to 10 x 10 komórek i ziarno 1 (`DEFAULT_MAZE_WIDTH`, `DEFAULT_MAZE_HEIGHT`, `DEFAULT_MAZE_SEED`). `m_mazeSettings`, `m_heightmap` i `m_terrainSettings` są zadeklarowane nad `m_mazeWorld`, więc w tej chwili mają już swoje wartości. Od M5 `buildMazeWorld` wybiera też komórkę wyjścia, stawia bramę i rozmieszcza kryształy (pola `exitCell`, `gate`, `gateBox`, `exitZone`, `crystals`), więc każdy nowy labirynt przychodzi od razu z tym, czego potrzebuje runda. W M4 były tu pozycje świateł w ślepych zaułkach: dziś światła wiszą nad kryształami, a ich pozycje liczy co klatkę `crystalLightPositions` z rundy (sekcja 6.6) |
+| (brak `m_terrainSettings`, `m_grassSettings`, `m_gameplay`, `m_round`, `m_obstacles` i pozostałych) | wartości z deklaracji: `m_terrainSettings` ma skalę wysokości 1, `m_grassSettings` gęstość 2,5, `m_gameplay` ma domyślne liczby reguł, `m_round` i `m_obstacles` są puste do `beginRound()` |
 
-**Dlaczego labirynt powstaje na liście, a nie w ciele konstruktora.** `MazeWorld` ma tylko konstruktor `explicit MazeWorld(Maze generatedMaze)`, a `Maze` nie ma konstruktora domyślnego (labirynt bez rozmiaru nie ma sensu). Pola bez konstruktora domyślnego nie da się "zostawić pustego i wypełnić później": musi dostać wartość na liście inicjalizacyjnej. Dlatego na ciało konstruktora zostaje już tylko `beginRound()`, czyli to samo, co dzieje się po każdej późniejszej wymianie labiryntu.
+**Dlaczego labirynt powstaje na liście, a nie w ciele konstruktora.** `MazeWorld` ma tylko konstruktor `explicit MazeWorld(Maze generatedMaze)`, a `Maze` nie ma konstruktora domyślnego (labirynt bez rozmiaru nie ma sensu). Pola bez konstruktora domyślnego nie da się "zostawić pustego i wypełnić później": musi dostać wartość na liście inicjalizacyjnej. Dlatego na ciało konstruktora zostają już tylko `uploadGround()` i `beginRound()`, czyli to samo, co dzieje się po każdej późniejszej wymianie labiryntu.
 
-Ciało konstruktora robi dwie rzeczy: łączy dwa programy z oświetleniem z buforem świateł i woła `beginRound()`. Do M4 opisywało tu jeszcze atrybuty kostki i ustawiało jej obrót. Po usunięciu kostki w ciele nie ma ani jednego wywołania, które zależałoby od tego, co jest akurat związane w OpenGL.
+**`loadHeightmap`: mapa wysokości poza pamięcią assetów.**
 
-**Dwa wywołania `m_lightRig.connect(...)`.**
+```cpp
+// Reads the heightmap picture. When it cannot be loaded the ground is flat: the error is
+// in the log and the game is still playable.
+Heightmap loadHeightmap() {
+    const std::filesystem::path path = core::assetPath(HEIGHTMAP_FILE);
+    assets::Image image;
+    std::string error;
+    // RowOrder::TopFirst: no row flip. The top row of the picture is the north edge of
+    // the land (game::Heightmap), so it has to come first.
+    if (!assets::loadImage(path, image, error, assets::RowOrder::TopFirst)) {
+        // loadImage has logged which file failed and why.
+        return {};
+    }
+    core::logInfo("Loaded heightmap: " + core::pathText(path));
+    return heightmapFromImage(image);
+}
+```
+
+| Fragment | Znaczenie |
+|---|---|
+| `core::assetPath(HEIGHTMAP_FILE)` | `HEIGHTMAP_FILE` to `"textures/heightmap.png"`, stała na górze pliku obok nazw shaderów |
+| `assets::loadImage(..., assets::RowOrder::TopFirst)` | zwykły loader obrazów, ale **bez** odwracania wierszy: górny wiersz obrazu to północna krawędź terenu, więc ma być pierwszy. Tekstury modeli są wczytywane z odwróceniem ([`../assets/images.md`](../assets/images.md)) |
+| `return {};` | nieudane wczytanie nie rzuca wyjątku i nie kończy programu. Pusta klamra to domyślna `Heightmap`: jedna wartość 0, czyli płaski grunt. Błąd z nazwą pliku zalogował już `loadImage` |
+| `core::logInfo(...)` | jedna linia `[info]` przy udanym wczytaniu. Po to plik dołącza `core/Log.hpp` |
+| `heightmapFromImage(image)` | zamienia pierwszy kanał każdego piksela na liczbę od 0 do 1 (`game/Terrain.hpp`). Obraz `image` znika na końcu funkcji: zostają same liczby |
+
+Mapa wysokości nie przechodzi przez `assets::AssetCache`, bo pamięć assetów robi z obrazów **tekstury na karcie**, a tej mapy karta nigdy nie dostaje: wysokości są czytane na procesorze i zamieniane na wierzchołki. Skutek widoczny w programie: panel "Assets" jej nie pokazuje.
+
+Ciało konstruktora robi trzy rzeczy: łączy trzy programy z buforem świateł, wysyła na kartę teren i trawę (`uploadGround()`, sekcja 6.4) i woła `beginRound()`. Do M4 opisywało tu jeszcze atrybuty kostki i ustawiało jej obrót. Po usunięciu kostki w ciele nie ma ani jednego wywołania, które zależałoby od tego, co jest akurat związane w OpenGL.
+
+**Trzy wywołania `m_lightRig.connect(...)`.**
 
 ```cpp
 void LightRig::connect(gfx::Shader& shader) const {
@@ -349,15 +459,15 @@ void LightRig::connect(gfx::Shader& shader) const {
 | Pytanie | Odpowiedź |
 |---|---|
 | Co robi jedno wywołanie | mówi programowi, że jego blok uniformów `LightBlock` ma czytać dane z punktu wiązania, pod którym `m_lightRig` trzyma swój bufor. Samych świateł jeszcze nie wysyła: to robi `upload` w każdej klatce |
-| Dlaczego dwa razy | powiązanie bloku z punktem wiązania jest stanem **programu**, a programy z oświetleniem są dwa (`lit` i `gouraud`). Bufor jest jeden i oba czytają z niego to samo |
+| Dlaczego trzy razy | powiązanie bloku z punktem wiązania jest stanem **programu**, a programy, które czytają światła, są trzy: `lit`, `gouraud` i, od M6, `grass` (jego shader fragmentów dołącza `common/lighting.glsl`). Bufor jest jeden i wszystkie czytają z niego to samo |
 | Dlaczego tylko raz, w konstruktorze, a nie co klatkę | `gfx::Shader` zapamiętuje tę prośbę i powtarza ją sam na nowym programie po każdym `reload()` (komentarz w kodzie). Bez tego przycisk "Reload shaders" zostawiałby program z oświetleniem bez świateł |
 | Dlaczego parametr to `gfx::Shader&` bez `const` | shader zapisuje u siebie zapamiętaną prośbę, więc się zmienia. `connect` jest przy tym funkcją `const` klasy `LightRig`: sam `LightRig` się nie zmienia |
-| Dlaczego nie ma `connect` dla `textured` i `color` | te programy nie mają bloku `LightBlock`. Komentarz w `LightRig.hpp` mówi, że program bez bloku zostałby pominięty, ale kod nawet nie próbuje |
-| Dlaczego to stoi w ciele, a nie na liście inicjalizacyjnej | to wywołania funkcji na gotowych polach, nie konstrukcja pola. `m_lightRig`, `m_litShader` i `m_gouraudShader` istnieją już wszystkie, gdy ciało się zaczyna |
+| Dlaczego nie ma `connect` dla `textured`, `color` i `skybox` | te programy nie mają bloku `LightBlock`. Komentarz w `LightRig.hpp` mówi, że program bez bloku zostałby pominięty, ale kod nawet nie próbuje |
+| Dlaczego to stoi w ciele, a nie na liście inicjalizacyjnej | to wywołania funkcji na gotowych polach, nie konstrukcja pola. `m_lightRig`, `m_litShader`, `m_gouraudShader` i `m_grassShader` istnieją już wszystkie, gdy ciało się zaczyna |
 
 Mechanizm (blok uniformów, punkt wiązania, `glUniformBlockBinding`, dlaczego nie `layout(binding = N)`) opisuje [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
 
-### 6.4 `regenerateMaze` i `beginRound`
+### 6.4 `regenerateMaze`, `rebuildTerrain`, `uploadGround`, `plantGrass` i `beginRound`
 
 ```cpp
 void NightMazeApp::regenerateMaze() {
@@ -367,9 +477,15 @@ void NightMazeApp::regenerateMaze() {
     m_mazeSettings.width = std::clamp(m_mazeSettings.width, 1, Maze::MAX_SIZE);
     m_mazeSettings.height = std::clamp(m_mazeSettings.height, 1, Maze::MAX_SIZE);
 
-    // Replaces the maze, the model matrices, the collision boxes, the exit and the
-    // crystals in one assignment. A new maze is a new round.
-    m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed);
+    // The height scale can be typed into its slider too.
+    m_terrainSettings.heightScale =
+        std::clamp(m_terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
+
+    // Replaces the maze, its terrain, the model matrices, the collision boxes, the exit
+    // and the crystals in one assignment. A new maze is a new round.
+    m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
+                                 m_heightmap, m_terrainSettings.heightScale);
+    uploadGround();
     beginRound();
 }
 ```
@@ -377,8 +493,67 @@ void NightMazeApp::regenerateMaze() {
 | Linia | Znaczenie |
 |---|---|
 | `std::clamp(m_mazeSettings.width, 1, Maze::MAX_SIZE)` | `generateMaze` rzuca `std::invalid_argument` dla rozmiaru spoza zakresu od 1 do `Maze::MAX_SIZE` (256). Wyjątek w środku klatki zakończyłby program w `main`, więc gra sama sprowadza prośbę do zakresu i zapisuje wynik z powrotem, żeby panel pokazał to, co naprawdę zostało użyte. Suwaki panelu "Maze" mają węższy zakres (od 2 do 40) i same przycinają wpisaną wartość, ale gra nie polega na tym, co robi panel |
-| `m_mazeWorld = buildMazeWorld(...)` | jedno przypisanie wymienia siatkę, listy ścian i słupków, macierze modelu, pudełka kolizji, wyjście z bramą i kryształy. Nie ma chwili, w której część danych jest stara, a część nowa |
+| `std::clamp(m_terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE)` | od M6: skala wysokości też przychodzi z panelu, więc też jest sprowadzana do zakresu, od 0 (`MIN_HEIGHT_SCALE`, stała w tym pliku) do `MAX_HEIGHT_SCALE` (2,5, stała z `Terrain.hpp`). Górna granica chroni kolizje: [`../renderer/terrain.md`](../renderer/terrain.md) |
+| `m_mazeWorld = buildMazeWorld(..., m_heightmap, m_terrainSettings.heightScale)` | jedno przypisanie wymienia siatkę, teren, listy ścian i słupków, macierze modelu, pudełka kolizji, wyjście z bramą i kryształy. Nie ma chwili, w której część danych jest stara, a część nowa |
+| `uploadGround();` | od M6: nowy świat ma nowy teren, więc jego siatka i trawa muszą trafić na kartę (niżej). Stoi przed `beginRound()`, ale kolejność tych dwóch wywołań nie ma znaczenia: pierwsze dotyczy karty graficznej, drugie stanu rundy i gracza |
 | `beginRound();` | nowy labirynt to nowa runda. Reszta pracy jest wspólna z konstruktorem i z klawiszem R. Bez tego wywołania `m_round` trzymałoby kryształy starego labiryntu, a `m_obstacles` jego pudełka |
+
+Trzy funkcje z drugiej części M6 stoją w pliku między `regenerateMaze` a `beginRound`:
+
+```cpp
+void NightMazeApp::rebuildTerrain() {
+    m_terrainSettings.heightScale =
+        std::clamp(m_terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
+
+    // The world: a new terrain, and the walls, the gate, the start and the exit on it.
+    placeOnTerrain(m_mazeWorld, m_heightmap, m_terrainSettings.heightScale);
+
+    // What copied heights out of the world. The crystals keep their state (collected or
+    // not), only their resting places move. The obstacle list is a copy of the boxes.
+    restCrystalsOnGround(m_round, m_mazeWorld);
+    m_obstacles = roundObstacles(m_mazeWorld, m_round);
+
+    // A walking player stands on the new ground at once, in both positions, so the next
+    // frame is not drawn from a point between the old height and the new one. A flying
+    // player is left where it is.
+    if (!m_player.noclip) {
+        m_player.position.y =
+            m_mazeWorld.terrain.heightAt(m_player.position.x, m_player.position.z);
+        m_previousPlayerPosition.y = m_player.position.y;
+        m_camera.position = m_player.eyePosition();
+    }
+
+    uploadGround();
+}
+
+void NightMazeApp::uploadGround() {
+    // The triangles are built on the CPU (plain data, covered by tests) and copied to
+    // the graphics card in one piece.
+    m_terrainRenderer.upload(buildTerrainMesh(m_mazeWorld.terrain));
+    // The grass stands on the terrain, so new ground means new places for it.
+    plantGrass();
+}
+
+void NightMazeApp::plantGrass() {
+    m_grassSettings.density = std::clamp(m_grassSettings.density, 0.0F, MAX_GRASS_DENSITY);
+    const std::vector<GrassTuft> tufts = placeGrass(m_mazeWorld, m_grassSettings.density);
+    m_grassRenderer.upload(tufts);
+}
+```
+
+`rebuildTerrain` to odpowiedź na suwak `Height scale`: ten sam labirynt, ta sama runda, inna skala wysokości. Różni się od `regenerateMaze` tym, że **nie zaczyna nowej rundy**, więc musi sama poprawić wszystko, co skopiowało sobie wysokości ze świata:
+
+| Linia | Znaczenie |
+|---|---|
+| `placeOnTerrain(m_mazeWorld, m_heightmap, heightScale)` | buduje teren świata od nowa i stawia na nim to, co do świata należy: ściany, słupki i bramę (zatopione do najniższego gruntu pod sobą), ich macierze i pudełka, pozycję startu, wyjście i strefę wyjścia. Nic nie przesuwa się w bok: zmienia się tylko `y` |
+| `restCrystalsOnGround(m_round, m_mazeWorld)` | kryształy rundy trzymają własne pozycje spoczynku (`Round::crystals`), skopiowane ze świata przy `startRound`. Tu dostają nową wysokość. To, które są zebrane, się nie zmienia |
+| `m_obstacles = roundObstacles(m_mazeWorld, m_round)` | lista przeszkód jest kopią pudełek świata (sekcja 6.2), więc po zmianie pudełek trzeba ją zbudować od nowa. Bez tej linii gracz zderzałby się z pudełkami na starej wysokości |
+| `if (!m_player.noclip) { ... }` | idący gracz staje od razu na nowym gruncie: `heightAt` w jego miejscu, i to w **obu** pozycjach pary do interpolacji, żeby następna klatka nie była narysowana z punktu między starą a nową wysokością. Kamera idzie za nim. Gracz w locie zostaje tam, gdzie jest |
+| `uploadGround();` | nowy teren na kartę, a z nim trawa |
+
+`uploadGround` łączy dwie rzeczy, które zawsze dzieją się razem: `buildTerrainMesh` buduje wierzchołki i indeksy terenu na procesorze (zwykłe dane, sprawdzane testami), `TerrainRenderer::upload` kopiuje je na kartę, a `plantGrass` sadzi trawę od nowa, bo każda kępka stoi na wysokości terenu. Woła ją konstruktor, `regenerateMaze` i `rebuildTerrain`.
+
+`plantGrass` przycina gęstość do zakresu od 0 do `MAX_GRASS_DENSITY` (8), woła `placeGrass` (miejsca kępek z ziarna labiryntu: ten sam świat i gęstość dają zawsze te same kępki) i wysyła wynik do `GrassRenderer`. Wektor `tufts` jest zmienną lokalną i znika na końcu funkcji. Woła ją `uploadGround` i, osobno, `onRender` po zmianie suwaka `Density` (sekcja 6.6): wtedy teren zostaje, a wymieniane są same punkty trawy.
 
 ```cpp
 void NightMazeApp::beginRound() {
@@ -388,8 +563,8 @@ void NightMazeApp::beginRound() {
     // A round starts with the light on, also after one that ended in the dark.
     m_lighting.flashlightOn = true;
 
-    // The player goes to the start. After a regeneration the old position may be inside
-    // a wall of the new maze, or outside of it.
+    // The player goes to the start, feet on the ground there. After a regeneration the
+    // old position may be inside a wall of the new maze, or outside of it.
     m_player.position = m_mazeWorld.startPosition;
     // Both positions at once: otherwise the next frame would be drawn from a point
     // between the old place and the new one, a visible swoop through the walls.
@@ -406,9 +581,9 @@ void NightMazeApp::beginRound() {
 | `m_round = startRound(m_mazeWorld, m_gameplay);` | nowy stan rundy w jednym przypisaniu: każdy kryształ z `MazeWorld::crystals` z powrotem na miejscu, pełna bateria, brama zamknięta, oba zegary na 0. Liczba kryształów potrzebnych do otwarcia bramy jest liczona tutaj z `m_gameplay.requiredFraction`. Dla labiryntu startowego (10 x 10, ziarno 1) to 13 kryształów, z których 10 otwiera bramę |
 | `m_obstacles = roundObstacles(m_mazeWorld, m_round);` | lista przeszkód tej rundy: kopia `m_mazeWorld.colliders` i pudełko zamkniętej bramy (`MazeWorld::gateBox`) jako ostatnie. Musi stać **po** linii wyżej, bo `roundObstacles` pyta rundę, czy brama blokuje drogę |
 | `m_lighting.flashlightOn = true;` | runda zaczyna się z włączoną latarką, także wtedy, gdy poprzednia skończyła się w ciemności z pustą baterią. To jedyne pole `m_lighting`, które `beginRound` rusza |
-| `m_player.position = m_mazeWorld.startPosition;` | stopy gracza na środku komórki (0, 0), czyli w `(1, 0, 1)` |
+| `m_player.position = m_mazeWorld.startPosition;` | stopy gracza na środku komórki (0, 0), na gruncie. Od M6 `startPosition.y` to wysokość terenu w tym punkcie: dla labiryntu startowego przy skali 1 pozycja to `(1, 0,124, 1)`. Do M5 było `(1, 0, 1)` |
 | `m_previousPlayerPosition = m_player.position;` | obie pozycje pary do interpolacji naraz. Gdyby poprzednia została stara, najbliższa klatka byłaby narysowana z punktu między starym a nowym miejscem |
-| `m_camera.position = m_player.eyePosition();` | oko 1,7 m nad stopami: `(1, 1,7, 1)` |
+| `m_camera.position = m_player.eyePosition();` | oko 1,7 m nad stopami: `(1, 1,824, 1)` |
 | `m_camera.yawDegrees = m_mazeWorld.startYawDegrees;` | gracz patrzy w pierwszy otwarty bok komórki startowej |
 | `m_camera.pitchDegrees = LEVEL_PITCH_DEGREES;` | wzrok poziomo (`0.0F`) |
 
@@ -444,18 +619,21 @@ void NightMazeApp::onUpdate(double fixedDt) {
         wanted.sprint = input().isKeyDown(GLFW_KEY_LEFT_SHIFT);
     }
 
-    // The step runs also with nothing held: it is what brings the feet back to the floor
-    // after noclip was switched off in a panel.
+    // The step runs also with nothing held: it is what brings the feet back to the
+    // ground after noclip was switched off in a panel.
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
-                    m_obstacles);
+                    m_obstacles, m_mazeWorld.terrain);
 
-    // Walking never changes the height, with one exception: the step right after noclip
-    // was switched off in mid-air, which puts the feet back on the floor. That is a jump
-    // and not a movement, so it must not be blended: without this line one frame would
-    // be drawn from a point part of the way down.
-    if (!m_player.noclip) {
+    // Walking changes the height all the time, because the ground is uneven, and that
+    // change is blended in onRender like the movement itself: the eyes then glide over
+    // the ground instead of moving up and down in steps. One change must not be
+    // blended: the step right after noclip was switched off in mid-air, which drops the
+    // feet to the ground. That is a jump and not a movement. Without these lines one
+    // frame would be drawn from a point part of the way down.
+    if (m_playerWasFlying && !m_player.noclip) {
         m_previousPlayerPosition.y = m_player.position.y;
     }
+    m_playerWasFlying = m_player.noclip;
 
     // The camera stands where the eyes of the player are. onRender does not draw from
     // this position directly (it blends two steps), but the debug UI shows it.
@@ -481,8 +659,9 @@ Tutaj jest kolejność części i podział pracy między aplikację, gracza i ru
 |---|---|---|
 | `m_previousPlayerPosition = m_player.position;` | zapamiętuje pozycję sprzed kroku, w każdym kroku, także bez ruchu | para (poprzednia, bieżąca) do interpolacji w `onRender` ([`main-loop.md`](main-loop.md), sekcja 5.5) |
 | `PlayerInput wanted;` i siedem pól | tłumaczy klawisze na pola logiczne. `isKeyDown` to stan ciągły, bezpieczny w `onUpdate` ([`input.md`](input.md), sekcja 5.5). Bez przechwyconego kursora struktura zostaje taka, jak ją stworzono: wszystkie pola fałszywe | gracz nie wie nic o klawiaturze, więc test może "trzymać klawisz", ustawiając pole. Lewy Shift trafia do dwóch pól naraz (`down` i `sprint`), a gracz czyta to, które należy do jego trybu |
-| `m_player.update(...)` | jeden krok gracza: kąty kamery, czas kroku jako `float` i lista pudełek `m_obstacles` (ściany, słupki i zamknięta brama). Krok wykonuje się **zawsze**, także z pustym wejściem | właśnie ten krok stawia stopy z powrotem na podłodze po wyłączeniu noclip, również wtedy, gdy noclip wyłączono w panelu przy wolnym kursorze |
-| `if (!m_player.noclip) { ... }` | wyrównuje wysokość poprzedniej pozycji do bieżącej | chodzenie nie zmienia wysokości, poza jednym krokiem: pierwszym po wyłączeniu noclip w powietrzu. To skok, nie ruch, więc nie może być interpolowany |
+| `m_player.update(...)` | jeden krok gracza: kąty kamery, czas kroku jako `float`, lista pudełek `m_obstacles` (ściany, słupki i zamknięta brama) i, od M6, teren `m_mazeWorld.terrain`, z którego gracz po ruchu odczytuje wysokość stóp (`Terrain::heightAt`). Krok wykonuje się **zawsze**, także z pustym wejściem | właśnie ten krok stawia stopy z powrotem na gruncie po wyłączeniu noclip, również wtedy, gdy noclip wyłączono w panelu przy wolnym kursorze |
+| `if (m_playerWasFlying && !m_player.noclip) { ... }` | wyrównuje wysokość poprzedniej pozycji do bieżącej, ale tylko w jednym kroku: pierwszym kroku chodzenia po locie | do M5 warunek brzmiał `if (!m_player.noclip)` i działał w każdym kroku chodzenia, bo podłoga była płaska i wysokość stóp się nie zmieniała. Od M6 grunt jest nierówny: wysokość zmienia się w każdym kroku i **ma** być interpolowana w `onRender` razem z x i z, inaczej oczy szłyby po gruncie schodkami co stały krok. Jedyna zmiana wysokości, której mieszać nie wolno, to spadek stóp na grunt po wyłączeniu noclip w powietrzu: to skok, nie ruch |
+| `m_playerWasFlying = m_player.noclip;` | zapamiętuje tryb z tego kroku dla następnego | po to jest nowe pole: sam `m_player.noclip` mówi, jak jest teraz, a warunek pyta o zmianę z lotu na chodzenie |
 | `m_camera.position = m_player.eyePosition();` | kamera staje w oczach gracza | `onRender` z tej pozycji nie rysuje (miesza dwa kroki), ale panel "Camera" ją pokazuje |
 | `const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);` | zapamiętuje, czy brama blokowała drogę **przed** krokiem rundy | żeby po kroku dało się poznać zmianę bez zaglądania do środka `updateRound` |
 | `updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn, static_cast<float>(fixedDt))` | jeden krok reguł: zegary, opadanie otwartej bramy, zużycie baterii, zbieranie kryształów w zasięgu, otwarcie bramy, wygrana | stoi **po** ruchu gracza, bo reguły mają widzieć pozycję po tym kroku (komentarz). Dostaje `fixedDt`, więc bateria ubywa o tyle samo na krok przy każdej liczbie klatek na sekundę ([`main-loop.md`](main-loop.md)) |
@@ -497,9 +676,9 @@ Tutaj jest kolejność części i podział pracy między aplikację, gracza i ru
 
 ### 6.6 `onRender`: jedna klatka
 
-Funkcja ma trzy etapy: obsługa zdarzeń, które opisują jedną klatkę, przygotowanie stanu OpenGL i narysowanie sceny. Trzeci etap urósł w M4 (przed rysowaniem buduje i wysyła światła) i zmienił się w M5: światła przechodzą najpierw przez rundę (bateria, pulsowanie, pozycje nad kryształami), a rysowanie ma już tylko dwie części, scenę i linie kolizji.
+Funkcja ma trzy etapy: obsługa zdarzeń, które opisują jedną klatkę, przygotowanie stanu OpenGL i narysowanie sceny. Trzeci etap urósł w M4 (przed rysowaniem buduje i wysyła światła) i zmienił się w M5: światła przechodzą najpierw przez rundę (bateria, pulsowanie, pozycje nad kryształami), a rysowanie miało wtedy tylko dwie części, scenę i linie kolizji. M6 dołożył dwie następne, trawę i niebo, a do etapu pierwszego dwie prośby paneli: o nową skalę wysokości terenu i o nową gęstość trawy.
 
-**Etap 1: prośba o labirynt, prośba o nową rundę i klawisz R, klawisze N i F, mysz.**
+**Etap 1: prośba o labirynt, prośba o nową rundę i klawisz R, prośby o teren i trawę, klawisze N i F, mysz.**
 
 ```cpp
 void NightMazeApp::onRender(double alpha) {
@@ -516,6 +695,19 @@ void NightMazeApp::onRender(double alpha) {
     if (m_gameplay.restart || input().wasKeyPressed(RESTART_KEY)) {
         m_gameplay.restart = false;
         beginRound();
+    }
+
+    // A new height scale of the terrain or a new density of the grass, asked for by the
+    // debug UI. Both are handled here for the same reason as a new maze. A maze that
+    // was regenerated in this frame is already built with the new numbers: doing it
+    // again costs a little time once and changes nothing.
+    if (m_terrainSettings.rebuild) {
+        m_terrainSettings.rebuild = false;
+        rebuildTerrain();
+    }
+    if (m_grassSettings.replant) {
+        m_grassSettings.replant = false;
+        plantGrass();
     }
 
     // The noclip key. wasKeyPressed is true for one frame, so it is read here, once per
@@ -542,6 +734,9 @@ void NightMazeApp::onRender(double alpha) {
 | `m_gameplay.restart = false;` | gaszenie flagi. Linia wykonuje się także wtedy, gdy powodem był klawisz, co nic nie psuje |
 | `beginRound();` | nowa runda na **tym samym** labiryncie (sekcja 6.4). R działa w każdym stanie rundy, także po wygranej (karta `You escaped` podpowiada `R: play again`) i także w środku gry. Tak jak N i F nie wymaga przechwyconego kursora i nie działa, gdy klawiaturę ma ImGui |
 | kolejność dwóch pierwszych bloków | gdy w jednej klatce przyjdą obie prośby, najpierw powstaje nowy labirynt (z własnym `beginRound`), a potem runda zaczyna się jeszcze raz na nim. Wynik jest ten sam co po samej wymianie labiryntu |
+| `if (m_terrainSettings.rebuild)` | od M6: flagę ustawia suwak `Height scale` panelu "Terrain". Działa jak `regenerate`: panel zapisuje ją pod koniec klatki, gra czyta na początku następnej, gasi i woła `rebuildTerrain()` (sekcja 6.4). Miejsce jest to samo z tego samego powodu: przebudowa zmienia pudełka kolizji i wysokość gracza, więc musi się zdarzyć między stałymi krokami, a nie w środku jednego |
+| `if (m_grassSettings.replant)` | od M6: flagę ustawia suwak `Density` panelu "Grass". Gra woła `plantGrass()`: nowe miejsca kępek i nowy bufor punktów. Trawa nie ma kolizji, więc symulacji to nie dotyczy, ale wymiana bufora w środku rysowania paneli byłaby wymianą po narysowaniu tej klatki, czyli i tak widoczną dopiero w następnej |
+| obie flagi po `regenerate` | komentarz mówi wprost, co się dzieje, gdy w jednej klatce przyjdzie też prośba o labirynt: `regenerateMaze` zbudował już świat z nową skalą i posadził trawę z nową gęstością (`uploadGround`), a flagi `rebuild` i `replant` wykonają tę samą pracę drugi raz. Kosztuje to trochę czasu jeden raz i niczego nie zmienia, więc kod nie ma na to osobnego warunku |
 | `input().wasKeyPressed(NOCLIP_KEY)` | `NOCLIP_KEY` to `GLFW_KEY_N`. Zbocze jest prawdą przez jedną klatkę, więc wolno je czytać tylko raz na klatkę ([`input.md`](input.md), sekcja 5.5). Warunku `isCursorCaptured()` tu nie ma: N działa także przy wolnym kursorze. Nie działa tylko wtedy, gdy klawiaturę ma ImGui (blokada z `main.cpp`), na przykład podczas wpisywania ziarna |
 | `m_player.noclip = !m_player.noclip;` | to samo pole przełącza pole wyboru w panelu "Collision" |
 | `input().wasKeyPressed(FLASHLIGHT_KEY)` | `FLASHLIGHT_KEY` to `GLFW_KEY_F`, stała `constexpr int` w anonimowej przestrzeni nazw pliku, tuż pod `NOCLIP_KEY`. To też zbocze, więc stoi w `onRender` z tego samego powodu co N. Tak samo nie ma warunku `isCursorCaptured()`: F działa przy wolnym kursorze, a nie działa tylko wtedy, gdy klawiaturę ma ImGui (`core::Input` odpowiada wtedy `false`) |
@@ -575,8 +770,8 @@ Zminimalizowane okno może mieć framebuffer 0 x 0. Proporcje wyszłyby wtedy `0
     // camera and from the same eye the view matrix uses: the flashlight then sits
     // exactly where the picture is taken from, and its cone stays in the middle of the
     // screen. From m_camera.position (the last fixed step) it would trail behind while
-    // the player moves. The copy to the graphics card happens once, and both lit
-    // programs read it.
+    // the player moves. The copy to the graphics card happens once, and the two lit
+    // programs and the grass program read it.
     //
     // The round changes two things for this frame only: a low battery dims the
     // flashlight (an empty one switches it off) and the crystal lights pulse. That
@@ -589,6 +784,7 @@ Zminimalizowane okno może mieć framebuffer 0 x 0. Proporcje wyszłyby wtedy `0
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);
+    drawGrass(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
     }
@@ -604,7 +800,7 @@ Zminimalizowane okno może mieć framebuffer 0 x 0. Proporcje wyszłyby wtedy `0
 
 | Linia | Znaczenie |
 |---|---|
-| `glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha))` | pozycja stóp między dwoma krokami symulacji ([`main-loop.md`](main-loop.md), sekcje 2.4 i 5.5). `m_player.position` nie jest zmieniane: rysowanie tylko czyta stan symulacji |
+| `glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha))` | pozycja stóp między dwoma krokami symulacji ([`main-loop.md`](main-loop.md), sekcje 2.4 i 5.5). `m_player.position` nie jest zmieniane: rysowanie tylko czyta stan symulacji. Od M6 mieszane są naprawdę wszystkie trzy współrzędne: wysokość stóp idzie za gruntem z kroku na krok i jest mieszana tak samo jak x i z (komentarz w kodzie nad tą linią), więc oczy suną po nierównym gruncie płynnie. Wyjątek, spadek po wyłączeniu noclip, załatwia `onUpdate` (sekcja 6.5) |
 | `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | oko jest stałe 1,7 m nad stopami, więc zmieszanie stóp i pójście w górę daje ten sam punkt co zmieszanie dwóch pozycji oczu |
 | `m_camera.viewMatrix(eye)`, `m_camera.projectionMatrix(aspectRatio)` | obie macierze liczę **raz** i przekazuję do funkcji rysujących. Są takie same dla wszystkiego, co jest rysowane w tej klatce, ale każdy program ma własne uniformy `uView` i `uProjection`, które trzeba ustawić osobno |
 | `lightingForFrame(m_lighting, m_round, m_gameplay)` | zwraca **kopię** ustawień oświetlenia na tę jedną klatkę. W kopii latarka jest wyłączona, gdy bateria jest pusta, jej moc jest pomnożona przez migotanie słabej baterii (`flashlightFlicker`), a moc świateł punktowych przez pulsowanie kryształów (`crystalPulse`). `m_lighting` zostaje nietknięte, więc suwaki panelu "Lights" pokazują to, co ustawił użytkownik, a nie wartość drgającą z klatki na klatkę |
@@ -612,30 +808,33 @@ Zminimalizowane okno może mieć framebuffer 0 x 0. Proporcje wyszłyby wtedy `0
 | `buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights)` | składa z ustawień `scene::LightSet`, czyli światła tej klatki jako zwykłe dane: księżyc, latarkę w punkcie `eye` skierowaną wzdłuż `m_camera.forward()` i światła punktowe w podanych pozycjach. Dostaje kopię z linii wyżej, nie `m_lighting`. Funkcja nie wie, skąd są pozycje: w M4 były to ślepe zaułki policzone przy budowie labiryntu, dziś kryształy rundy. Jest w bibliotece `game_logic`, bez OpenGL, i ma testy ([`../game/flashlight.md`](../game/flashlight.md)) |
 | czas w tych trzech liniach | wszystko, co się samo rusza, czyta `m_round.animationSeconds`, a ten zegar przesuwa `updateRound` w stałych krokach. `onRender` niczego tu nie odlicza i nie używa `alpha`: animacja kryształów i migotanie zmieniają się więc co krok symulacji, nie co klatkę |
 | dlaczego tutaj | komentarz mówi wprost: po obrocie myszą (etap 1) i z tego samego oka co macierz widoku. Latarka stoi wtedy dokładnie w punkcie, z którego robiony jest obraz, i jej stożek zostaje w środku ekranu. Z `m_camera.position`, czyli z oczu po ostatnim stałym kroku, zostawałaby w ruchu za obrazem. To wynika z kodu: zachowania stożka w ruchu nikt jeszcze nie sprawdził ręcznie |
-| `m_lightRig.upload(lights, eye)` | pakuje światła i pozycję oka do struktury o układzie bajtów zgodnym z blokiem `LightBlock` w shaderze i kopiuje ją do bufora uniformów. Jedno kopiowanie na klatkę, a czytają je oba programy z oświetleniem ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) |
+| `m_lightRig.upload(lights, eye)` | pakuje światła i pozycję oka do struktury o układzie bajtów zgodnym z blokiem `LightBlock` w shaderze i kopiuje ją do bufora uniformów. Jedno kopiowanie na klatkę, a czytają je trzy programy: `lit`, `gouraud` i, od M6, `grass` ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) |
 | brak warunku przy liniach wyżej | światła są budowane i wysyłane w **każdej** klatce, także w trybie `Unlit`, w którym żaden program ich nie czyta. Kod jest dzięki temu prosty, a koszt to jedno małe kopiowanie |
-| `drawMaze(view, projection)` | cała scena: labirynt, brama i kryształy, z oświetleniem albo bez (sekcja 6.7) |
-| `drawColliderLines` | kolejność: scena, potem linie. O tym, co zasłania co, decyduje test głębi, a nie kolejność rysowania. Linie są nakładką do szukania błędów, więc idą po scenie |
-| `if (m_skyboxSettings.enabled) { m_skybox.draw(...); }` | od pierwszej części M6 ostatnie wywołanie rysujące sceny: niebo. Rysowane na największej głębi z testem `GL_LEQUAL`, więc wypełnia tylko piksele, na których nic nie narysowano. Tu kolejność **ma** znaczenie, ale dla kosztu, a nie dla obrazu: narysowane na końcu, niebo nie jest cieniowane tam, gdzie zasłaniają je ściany ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 2.7) |
+| `drawMaze(view, projection)` | teren, labirynt, brama i kryształy, z oświetleniem albo bez (sekcja 6.7) |
+| `drawGrass(view, projection)` | od M6: trawa, własnym programem z shaderem geometrii (sekcja 6.7). Stoi po `drawMaze`, ale obraz od tej kolejności nie zależy: trawa pisze głębię jak wszystko inne |
+| `drawColliderLines` | kolejność: scena i trawa, potem linie. O tym, co zasłania co, decyduje test głębi, a nie kolejność rysowania. Linie są nakładką do szukania błędów, więc idą po scenie |
+| `if (m_skyboxSettings.enabled) { m_skybox.draw(...); }` | od pierwszej części M6 ostatnie wywołanie rysujące sceny: niebo. Rysowane na największej głębi z testem `GL_LEQUAL`, więc wypełnia tylko piksele, na których nic nie narysowano. Tu kolejność **ma** znaczenie, ale dla kosztu, a nie dla obrazu: gdy nieprzezroczysta geometria (ściany, teren ze wzgórzami, trawa) jest już w buforze głębi, test głębi odrzuca zasłonięte fragmenty nieba, a tam, gdzie karta robi ten test przed shaderem fragmentów, nie są one w ogóle cieniowane ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 2.7) |
 | `if (m_drawColliders)` | pole przełącza pole wyboru `Draw collision shapes` w panelu "Collision". Domyślnie `false` |
 | czego już nie ma | do M4 między tymi dwoma wywołaniami stały `drawLightMarkers` (małe sześciany w miejscach świateł punktowych) i `drawCube` (kostka z M1). Widocznym źródłem światła punktowego jest teraz sam kryształ, który świeci własnym kolorem przez uniform `uEmissive` ([`../game/gameplay.md`](../game/gameplay.md), sekcja 4) |
 
 ### 6.7 Części sceny
 
-Funkcji rysujących są trzy, a czwarta, `drawMaze`, tylko wybiera jedną z dwóch. W jednej klatce wykonują się najwyżej dwie: jedna z pary `drawUnlitMaze` i `drawLitMaze` oraz, na życzenie, `drawColliderLines`. Deklaracje w nagłówku:
+Funkcji rysujących są cztery, a piąta, `drawMaze`, tylko wybiera jedną z dwóch. W jednej klatce wykonują się najwyżej trzy: jedna z pary `drawUnlitMaze` i `drawLitMaze`, od M6 `drawGrass` (gdy trawa jest włączona) oraz, na życzenie, `drawColliderLines`. Niebo, ostatnia część klatki, nie ma tu własnej funkcji: `onRender` woła wprost `m_skybox.draw` (sekcja 6.6). Deklaracje w nagłówku:
 
 ```cpp
     /// The parts of a frame. Each one selects its own shader program and sets its
-    /// uniforms. drawMaze draws the maze together with the crystals and the gate, and
-    /// has two ways to do it: without lighting (the textured program, also used for the
-    /// debug views of the normals and the texture coordinates) and with lighting.
+    /// uniforms. drawMaze draws the terrain and the maze together with the crystals and
+    /// the gate, and has two ways to do it: without lighting (the textured program, also
+    /// used for the debug views of the normals and the texture coordinates) and with
+    /// lighting. drawGrass draws the grass with its own program.
     void drawMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawGrass(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 ```
 
-Wszystkie są `const`: rysowanie nie zmienia stanu gry. Każda z trzech rysujących ma tę samą budowę: sprawdza, czy jej program jest poprawny, wybiera go (`use()`), ustawia `uView` i `uProjection`, a potem rysuje. Kolejność `use()` przed setterami jest obowiązkowa, bo uniform należy do programu, który jest właśnie używany ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 7). Nazwy uniformów (`VIEW_UNIFORM`, `PROJECTION_UNIFORM` i pozostałe) są w jednym miejscu, w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5).
+Wszystkie są `const`: rysowanie nie zmienia stanu gry. Trzy z czterech rysujących (wszystkie poza `drawGrass`, która oddaje te kroki klasie `GrassRenderer`) mają tę samą budowę: sprawdza, czy jej program jest poprawny, wybiera go (`use()`), ustawia `uView` i `uProjection`, a potem rysuje. Kolejność `use()` przed setterami jest obowiązkowa, bo uniform należy do programu, który jest właśnie używany ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 7). Nazwy uniformów (`VIEW_UNIFORM`, `PROJECTION_UNIFORM` i pozostałe) są w jednym miejscu, w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5).
 
 **Wybór: `drawMaze`.**
 
@@ -660,9 +859,9 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
 | `Gouraud` | `Textured` | `drawLitMaze` | `gouraud` |
 | `Phong` albo `BlinnPhong` | `Textured` | `drawLitMaze` | `lit` |
 
-Operator `||` czyta się "albo jedno, albo drugie": wystarczy jeden z dwóch warunków, żeby scena poszła bez oświetlenia. Nazwa `drawMaze` została z czasów, gdy w scenie był sam labirynt: dziś obie gałęzie rysują też bramę i kryształy. Widoki normalnych i współrzędnych tekstury istnieją tylko w programie `textured` (uniform `uViewMode`) i pokazują dane, a nie światło, więc mają pierwszeństwo przed trybem oświetlenia. Ten podział i same shadery opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md).
+Operator `||` czyta się "albo jedno, albo drugie": wystarczy jeden z dwóch warunków, żeby scena poszła bez oświetlenia. Nazwa `drawMaze` została z czasów, gdy w scenie był sam labirynt: dziś obie gałęzie rysują też teren (od M6, jako pierwszy), bramę i kryształy. Widoki normalnych i współrzędnych tekstury istnieją tylko w programie `textured` (uniform `uViewMode`) i pokazują dane, a nie światło, więc mają pierwszeństwo przed trybem oświetlenia. Ten podział i same shadery opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md).
 
-**Bez oświetlenia: `drawUnlitMaze`.** To dawne ciało `drawMaze` z M2 + M3, przeniesione do własnej funkcji. Razem z mapami normalnych doszła w nim jedna linia, ustawienie `uNormalMapEnabled`, a w M5 ostatnie wywołanie, `m_gameplayRenderer.draw`:
+**Bez oświetlenia: `drawUnlitMaze`.** To dawne ciało `drawMaze` z M2 + M3, przeniesione do własnej funkcji. Razem z mapami normalnych doszła w nim jedna linia, ustawienie `uNormalMapEnabled`, w M5 ostatnie wywołanie, `m_gameplayRenderer.draw`, a w M6 pierwsze wywołanie rysujące, `m_terrainRenderer.draw`:
 
 ```cpp
 void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const {
@@ -682,6 +881,9 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     // would use, so with normal mapping the ones from the normal maps.
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
+    // The ground first, then what stands on it. The order does not change the picture
+    // (the depth test sorts it out), it only follows the way the scene is built.
+    m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do.
@@ -707,8 +909,8 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     shader.use();
     shader.setMat4(VIEW_UNIFORM, view);
     shader.setMat4(PROJECTION_UNIFORM, projection);
-    // The material of the stone. The lights themselves are not set here: they are in
-    // the uniform buffer that onRender filled before this call.
+    // The material of the stone, which the ground shares. The lights themselves are not
+    // set here: they are in the uniform buffer that onRender filled before this call.
     // The enum values are the numbers common/lighting.glsl compares uSpecularModel with.
     shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
@@ -717,6 +919,8 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     // has no such uniform, and usesNormalMap is false for it anyway.
     shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
+    // The ground first, then what stands on it, as in drawUnlitMaze.
+    m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
     m_mazeRenderer.draw(shader, m_mazeWorld);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights.
@@ -731,16 +935,47 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 | `if (!shader.isValid()) { return; }` | ten sam strażnik co wszędzie: bez programu ta część klatki nie jest rysowana, reszta tak |
 | `shader.setMat4(VIEW_UNIFORM, view)`, `shader.setMat4(PROJECTION_UNIFORM, projection)` | te same dwie macierze co w pozostałych funkcjach |
 | `shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)))` | który wzór na połysk: 0 dla Phonga, 1 dla Blinna-Phonga. `specularModelOf` tłumaczy tryb oświetlenia na `game::SpecularModel` (dla trybu `Gouraud` zwraca wzór Phonga) |
-| `shader.setFloat(SPECULAR_STRENGTH_UNIFORM, ...)`, `shader.setFloat(SHININESS_UNIFORM, ...)` | dwie liczby materiału z ustawień, edytowane w grupie `Highlight (specular)` panelu "Lights". Komentarz w kodzie mówi o materiale kamienia, ale te same dwie liczby obowiązują też dla bramy i kryształów, bo są rysowane tym samym programem zaraz potem |
+| `shader.setFloat(SPECULAR_STRENGTH_UNIFORM, ...)`, `shader.setFloat(SHININESS_UNIFORM, ...)` | dwie liczby materiału z ustawień, edytowane w grupie `Highlight (specular)` panelu "Lights". Komentarz w kodzie mówi o materiale kamienia, który dzieli z nim grunt, ale te same dwie liczby obowiązują też dla bramy i kryształów, bo są rysowane tym samym programem zaraz potem |
 | `shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0)` | przełącznik mapowania normalnych programu `lit`: 1, gdy pole `Normal mapping` z panelu "Assets" jest zaznaczone i tryb jest inny niż `Gouraud` (`game::usesNormalMap`, [`../game/flashlight.md`](../game/flashlight.md), sekcja 5.2). Program `gouraud` tego uniformu nie ma: ustawienie jest po cichu ignorowane |
 | czego tu nie ma | żadnego światła. Światła są w buforze uniformów, który `onRender` wypełnił przed tym wywołaniem. Ta funkcja ustawia tylko zwykłe uniformy programu |
+| `m_terrainRenderer.draw(shader, m_terrainSettings.wireframe)` | od M6: teren, jedna duża siatka z teksturą gruntu, tym samym programem co ściany, więc w tym samym trybie oświetlenia i z tymi samymi widokami diagnostycznymi. Drugi argument to pole `Wireframe` panelu "Terrain": przy `true` `TerrainRenderer` przełącza na czas tego jednego wywołania `glPolygonMode` na linie i wraca do wypełniania, więc ściany rysowane zaraz potem zostają pełne. Teren idzie pierwszy, ale komentarz mówi wprost, że kolejność nie zmienia obrazu (rozstrzyga test głębi), tylko idzie za tym, jak scena jest zbudowana ([`../renderer/terrain.md`](../renderer/terrain.md)) |
 | `m_mazeRenderer.draw(shader, m_mazeWorld)` | ta sama klasa i ta sama pętla po obiektach co bez oświetlenia. `MazeRenderer` dostaje program w argumencie i nie wie, który to |
-| `m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalGlow(...))` | brama (dopóki choć trochę wystaje nad podłogę) i każdy niezebrany kryształ, tym samym programem, więc w tym samym trybie oświetlenia co ściany. Pozycje bierze z `m_mazeWorld` i `m_round`, niczego nie posiada |
+| `m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalGlow(...))` | brama (dopóki choć trochę wystaje nad grunt) i każdy niezebrany kryształ, tym samym programem, więc w tym samym trybie oświetlenia co ściany. Pozycje bierze z `m_mazeWorld` i `m_round`, niczego nie posiada |
 | `crystalGlow(m_lighting.pointColor, m_round.animationSeconds)` | kolor, którym kryształ świeci sam z siebie: kolor świateł punktowych razy pulsowanie z zegara animacji. Trafia do uniformu `uEmissive`. Bierze kolor z `m_lighting`, a nie z kopii `frameLighting` z `onRender`, bo pulsowanie dokłada sama funkcja `crystalGlow` |
 
 Wzory, shadery `lit.*` i `gouraud.*` oraz różnicę między liczeniem światła dla wierzchołka i dla fragmentu opisuje [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), rodzaje świateł i plik `common/lighting.glsl` [`../scene/lights.md`](../scene/lights.md), mapy normalnych i plik `common/normal_map.glsl` [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), a `GameplayRenderer`, animację kryształów, opadanie bramy i `uEmissive` [`../game/gameplay.md`](../game/gameplay.md), sekcje 4 i 5.
 
 **Światła nie widać: widać tylko to, co oświetla.** W M4 w miejscu każdego światła punktowego stał mały sześcian w płaskim kolorze, rysowany osobną funkcją programem `color`. W M5 tej funkcji nie ma: źródłem światła, które widać, jest kryształ, a ponieważ ma świecić także tam, gdzie nie pada na niego żadne światło, dostaje własny składnik koloru (`uEmissive`). Kryształ jest więc częścią zwykłej, oświetlonej sceny, a nie osobną nakładką.
+
+**Trawa: `drawGrass` (M6).**
+
+```cpp
+void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection) const {
+    if (!m_grassSettings.enabled) {
+        return;
+    }
+
+    // The grass has one program for every lighting mode. It is lit per fragment in the
+    // three lit modes (with Gouraud too: a tuft has no vertices in any buffer that
+    // light could be computed at), and shown at full brightness in the mode Unlit.
+    const bool lit = m_lighting.mode != LightingMode::Unlit;
+    // The clock of the wind: the seconds since GLFW was started. It only has to keep
+    // growing, so it does not stop when the round is won and does not jump when one is
+    // restarted.
+    const auto windSeconds = static_cast<float>(glfwGetTime());
+    m_grassRenderer.draw(m_grassShader, view, projection, m_grassSettings, windSeconds, lit,
+                         m_viewMode);
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `if (!m_grassSettings.enabled) { return; }` | pole `Enabled` panelu "Grass". Wyłączona trawa to brak jednego wywołania rysującego: punkty zostają na karcie |
+| `const bool lit = m_lighting.mode != LightingMode::Unlit;` | trawa ma **jeden** program dla wszystkich czterech trybów oświetlenia i jeden przełącznik `uLit`. W trybach `Gouraud`, `Phong` i `Blinn-Phong` jest oświetlana dla fragmentu, także w `Gouraud`: źdźbła powstają w shaderze geometrii i nie mają w żadnym buforze wierzchołków, dla których dałoby się policzyć światło wcześniej. W trybie `Unlit` jest rysowana z pełną jasnością, jak reszta sceny |
+| `static_cast<float>(glfwGetTime())` | zegar wiatru: sekundy od startu GLFW. Ma tylko rosnąć, więc nie jest to zegar rundy: nie staje po wygranej i nie skacze po restarcie (komentarz). To jedyne miejsce w `src/`, które woła `glfwGetTime`: zegar klatki `core::Time` mierzy czas przez `std::chrono::steady_clock`, a nie przez GLFW. Inaczej niż animacja kryształów (`m_round.animationSeconds`, co stały krok) wiatr zmienia się więc **co klatkę** |
+| `m_grassRenderer.draw(...)` | resztę robi `GrassRenderer`: sprawdza, czy są kępki i czy program jest poprawny, woła `use()`, ustawia macierze i uniformy trawy i rysuje wszystkie punkty jednym wywołaniem. Tryb widoku `m_viewMode` idzie tam jako argument, bo `grass.frag` ma własne widoki diagnostyczne. Stąd w tej funkcji nie ma ani `isValid()`, ani `use()` ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)) |
+
+Trawa nie zależy od wyboru w `drawMaze`: jest rysowana zawsze swoim programem, niezależnie od tego, czy labirynt poszedł programem `textured`, `gouraud` czy `lit`.
 
 **Linie kolizji: `drawColliderLines`.**
 
@@ -812,6 +1047,8 @@ M4, po dodaniu oświetlenia (Windows, 2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER,
 
 M5 (Windows, 2026-10-05): kod jest kompletny, ale kamień milowy nie jest zamknięty. Build Debug i Release przechodzi bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu. Obraz został sprawdzony na zrzutach ekranu robionych przez tymczasowe haki w kodzie, które potem usunięto.
 
+M6 (Windows, 2026-10-05): kod nieba, terenu i trawy jest kompletny, kamień milowy nie jest zamknięty. Zgłoszone przez wykonawcę: build Debug i Release bez ostrzeżeń, clang-format bez uwag, obraz sprawdzony na zrzutach ekranu robionych przez tymczasowe haki, które potem usunięto. Sam uruchomiłem zbudowane programy testowe: 256 przypadków testowych i 101232 asercje przechodzą w Debug i w Release. Wysokość stóp gracza na starcie (0,124 m) przeliczyłem z pliku mapy wysokości skryptem, który powtarza wzór terenu. Nikt nie sprawdził ręcznie niczego interaktywnego z M6: chodzenia po nierównym gruncie, suwaków paneli "Terrain" i "Grass", pola `Wireframe` ani płynności wysokości oczu w ruchu (interpolację wysokości pokrywają tylko testy jednostkowe gracza i terenu). Na macOS nic z M6 nie było budowane ani uruchamiane.
+
 Nikt jeszcze nie sprawdził ręcznie: chodzenia prawdziwymi klawiszami, klawisza N, klawisza F (także przy pustej baterii), klawisza R i przycisku `Restart round (key R)`, suwaków panelu "Gameplay", przejścia przez otwartą bramę, zbierania kryształów, karty wygranej, migotania latarki na ekranie, HUD przy ukrytych panelach, obrotu myszą w labiryncie, tego, czy stożek latarki trzyma się środka ekranu w ruchu, listy `Lighting`, widżetów panelu "Lights", pola wyboru `Normal mapping` w panelu "Assets" i przycisków wymiany labiryntu. To otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS kod M4 i M5 nie był ani budowany, ani uruchamiany.
 
 ### 6.8 Trzy poziomy dziedziczenia
@@ -837,19 +1074,26 @@ classDiagram
         -Shader m_litShader
         -Shader m_gouraudShader
         -Shader m_skyboxShader
+        -Shader m_grassShader
         -AssetCache m_assets
         -MazeRenderer m_mazeRenderer
         -GameplayRenderer m_gameplayRenderer
+        -TerrainRenderer m_terrainRenderer
+        -GrassRenderer m_grassRenderer
         -ColliderLines m_colliderLines
         -LightRig m_lightRig
         -Skybox m_skybox
         -MazeSettings m_mazeSettings
+        -Heightmap m_heightmap
+        -TerrainSettings m_terrainSettings
         -MazeWorld m_mazeWorld
+        -GrassSettings m_grassSettings
         -GameplaySettings m_gameplay
         -Round m_round
         -vector~Aabb~ m_obstacles
         -Player m_player
         -vec3 m_previousPlayerPosition
+        -bool m_playerWasFlying
         -Camera m_camera
         -LightingSettings m_lighting
         -ViewMode m_viewMode
@@ -857,14 +1101,18 @@ classDiagram
         -SkyboxSettings m_skyboxSettings
         -float m_mouseSensitivity
         -regenerateMaze()
+        -rebuildTerrain()
+        -uploadGround()
+        -plantGrass()
         -beginRound()
         -drawMaze(view, projection)
         -drawUnlitMaze(view, projection)
         -drawLitMaze(view, projection)
+        -drawGrass(view, projection)
         -drawColliderLines(view, projection)
         #onUpdate(fixedDt)
         #onRender(alpha)
-        #szesnaście akcesorów()
+        #dwadzieścia dwa akcesory()
     }
     class DebugNightMazeApp {
         <<main>>
@@ -911,6 +1159,12 @@ protected:
             .lighting = lighting(),
             .gameplay = gameplaySettings(),
             .round = round(),
+            .skyboxShader = skyboxShader(),
+            .skybox = skyboxSettings(),
+            .grassShader = grassShader(),
+            .terrain = terrainSettings(),
+            .grass = grassSettings(),
+            .grassTuftCount = grassTuftCount(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -934,15 +1188,15 @@ private:
 Szczegóły tej klasy, o które można zostać zapytanym:
 
 - `game::NightMazeApp::onRender(alpha);` to wywołanie **z kwalifikacją nazwą klasy**. Wyłącza ono mechanizm wirtualny i woła dokładnie wersję bazową (rysowanie gry). Samo `onRender(alpha)` wywołałoby wirtualnie tę samą funkcję, czyli nieskończoną rekurencję.
-- Kolejność w `onRender`: najpierw gra obsługuje prośbę o nowy labirynt, prośbę o nową rundę, klawisze R, N i F oraz mysz kamery, buduje światła i rysuje scenę, potem `main.cpp` mówi ImGui, czy wolno mu używać myszy (`setMouseEnabled`: nie, gdy kursor jest przechwycony przez kamerę), panele i HUD lądują na wierzchu, a na końcu `main.cpp` przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy.
+- Kolejność w `onRender`: najpierw gra obsługuje prośbę o nowy labirynt, prośbę o nową rundę, prośby o nową skalę wysokości terenu i nową gęstość trawy, klawisze R, N i F oraz mysz kamery, buduje światła i rysuje scenę, potem `main.cpp` mówi ImGui, czy wolno mu używać myszy (`setMouseEnabled`: nie, gdy kursor jest przechwycony przez kamerę), panele i HUD lądują na wierzchu, a na końcu `main.cpp` przekazuje do `core::Input` informację, czy ImGui używa klawiatury i czy używa myszy.
 - Przełącznik paneli to klawisz na lewo od `1` (na klawiaturze US z napisami `` ` `` i `~`, w GLFW `GLFW_KEY_GRAVE_ACCENT`). Sprawdzam go przez `wasKeyPressed` w `onRender`, czyli dokładnie raz na klatkę (dlaczego nie w `onUpdate`: [`input.md`](input.md), sekcja 5.5).
 - Ten klawisz chowa **panele**, nie HUD. `DebugUI::draw` rysuje panele tylko przy `m_visible`, a `drawHud(context.round, context.gameplay)` woła zawsze, zaraz po nich: HUD należy do gry, nie do narzędzi (komentarz w `DebugUI.cpp`). Gra sama HUD narysować nie może, bo `game/` nie dołącza ImGui, więc funkcja `debug::drawHud` leży w `src/debug/`, a dane dostaje przez te same dwa pola kontekstu co panele. Skutek uboczny tego podziału: `game::NightMazeApp` uruchomione bez `DebugNightMazeApp` nie miałoby ani paneli, ani HUD. Co HUD pokazuje: [`../game/gameplay.md`](../game/gameplay.md), sekcja 6.
 - Linia `setMouseEnabled` i dwie ostatnie linie `onRender` to całe powiązanie klawiatury i myszy gry z ImGui. `core/` nie wie, kto i dlaczego blokuje wejście, a `debug/` nie wie, co gra zrobi z tą informacją ani dlaczego ma zignorować mysz. Pełny opis: [`input.md`](input.md), sekcje 5.6, 5.10 i 5.11.
 - `final` zabrania dalszego dziedziczenia po tej klasie. Anonimowa przestrzeń nazw sprawia, że klasa jest widoczna tylko w `main.cpp`.
 - Klasa nie ma własnego konstruktora. Kompilator generuje domyślny: buduje część bazową (`NightMazeApp`), a potem pole `m_debugUI` z inicjalizatora przy deklaracji, `{window()}`.
-- `clearColor()` to chroniony akcesor w `NightMazeApp` zwracający referencję do prywatnego `m_clearColor`. Tak samo działa pozostałych piętnaście (tabela w sekcji 6.2). Gra udostępnia swój stan klasie pochodnej, nie wiedząc, kto i po co go użyje.
-- Dwadzieścia pól `DebugContext` to dwa akcesory klasy bazowej (`time()`, `window()`) i osiemnaście akcesorów gry (dwa ostatnie, `skyboxShader()` i `skyboxSettings()`, doszły w pierwszej części M6 i stoją na końcu listy). Inicjalizatory desygnowane muszą stać w kolejności deklaracji pól w strukturze, dlatego `.texturedShader` jest dopiero po `.mouseSensitivity`, trzy linie z M4 (`.litShader`, `.gouraudShader`, `.lighting`) stoją po `.drawColliders`, choć w nagłówku gry ich akcesory są zaraz po `colorShader()`, a dwie linie z M5 (`.gameplay`, `.round`) na samym końcu. Linia `.shader = shader()` zniknęła razem z programem kostki ([`../debug-ui.md`](../debug-ui.md), sekcja 5).
-- `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()` i `skyboxShader()` zwracają `gfx::Shader&`, przez które panel "Shaders" woła `reload()` na wszystkich pięciu programach (`SHADER_COUNT = 5` w `DebugUI.cpp`) ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6).
+- `clearColor()` to chroniony akcesor w `NightMazeApp` zwracający referencję do prywatnego `m_clearColor`. Tak samo działa dwadzieścia z pozostałych dwudziestu jeden (tabela w sekcji 6.2). Jeden, `grassTuftCount()`, zwraca liczbę przez wartość. Gra udostępnia swój stan klasie pochodnej, nie wiedząc, kto i po co go użyje.
+- Dwadzieścia cztery pola `DebugContext` to dwa akcesory klasy bazowej (`time()`, `window()`) i dwadzieścia dwa akcesory gry. Sześć ostatnich linii doszło w M6: `skyboxShader()` i `skyboxSettings()` w pierwszej części, a `grassShader()`, `terrainSettings()`, `grassSettings()` i `grassTuftCount()` w drugiej. Inicjalizatory desygnowane muszą stać w kolejności deklaracji pól w strukturze, dlatego `.texturedShader` jest dopiero po `.mouseSensitivity`, trzy linie z M4 (`.litShader`, `.gouraudShader`, `.lighting`) stoją po `.drawColliders`, choć w nagłówku gry ich akcesory są zaraz po `colorShader()`, a dwie linie z M5 (`.gameplay`, `.round`) tuż przed sześcioma liniami z M6. Linia `.shader = shader()` zniknęła razem z programem kostki ([`../debug-ui.md`](../debug-ui.md), sekcja 5).
+- `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()`, `skyboxShader()` i `grassShader()` zwracają `gfx::Shader&`, przez które panel "Shaders" woła `reload()` na wszystkich sześciu programach (`SHADER_COUNT = 6` w `DebugUI.cpp`) ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), sekcja 6).
 - `lighting()` zwraca `LightingSettings&`. `DebugUI::draw` daje całą strukturę panelowi "Lights", panelowi "Renderer" tylko jej pole `mode`, a panelowi "Assets" pole `normalMapping` ([`../debug-ui.md`](../debug-ui.md), sekcja 5.2).
 
 Dwie rzeczy warte uwagi w samej klasie bazowej:
@@ -985,22 +1239,22 @@ Tu działa druga część tej samej reguły: najpierw konstruowana jest **częś
 | Konstrukcja (z góry na dół) | Niszczenie (z góry na dół) |
 |---|---|
 | `Application::m_window` (GLFW, okno, kontekst, GLAD) | `DebugNightMazeApp::m_debugUI` (zamknięcie ImGui, okno i kontekst jeszcze żyją) |
-| `Application::m_input` | `NightMazeApp::m_mouseSensitivity`, `m_skyboxSettings`, `m_drawColliders`, `m_viewMode`, `m_lighting`, `m_camera`, `m_previousPlayerPosition`, `m_player` (zwykłe dane, nic do zwolnienia) |
-| `Application::m_time` | `NightMazeApp::m_obstacles`, `m_round`, `m_gameplay`, `m_mazeWorld`, `m_mazeSettings` (wektory i liczby, bez OpenGL) |
+| `Application::m_input` | `NightMazeApp::m_mouseSensitivity`, `m_skyboxSettings`, `m_drawColliders`, `m_viewMode`, `m_lighting`, `m_camera`, `m_playerWasFlying`, `m_previousPlayerPosition`, `m_player` (zwykłe dane, nic do zwolnienia) |
+| `Application::m_time` | `NightMazeApp::m_obstacles`, `m_round`, `m_gameplay`, `m_grassSettings`, `m_mazeWorld` (razem z terenem jako danymi), `m_terrainSettings`, `m_heightmap`, `m_mazeSettings` (wektory i liczby, bez OpenGL) |
 | `NightMazeApp::m_clearColor` | `NightMazeApp::m_skybox` (tekstura sześcienna nieba z samplerem i siatka sześcianu), potem `m_lightRig` (bufor uniformów: `glDeleteBuffers`) |
-| `NightMazeApp::m_texturedShader`, `m_colorShader`, `m_litShader`, `m_gouraudShader`, `m_skyboxShader` (kompilacja i linkowanie, potrzebują kontekstu) | `NightMazeApp::m_colliderLines` (dwie siatki linii, każda to VAO i dwa bufory) |
+| `NightMazeApp::m_texturedShader`, `m_colorShader`, `m_litShader`, `m_gouraudShader`, `m_skyboxShader`, `m_grassShader` (kompilacja i linkowanie, potrzebują kontekstu) | `NightMazeApp::m_colliderLines` (dwie siatki linii, każda to VAO i dwa bufory), potem `m_grassRenderer` (siatka punktów trawy) i `m_terrainRenderer` (siatka terenu. Tekstur gruntu nie zwalnia: należą do `m_assets`) |
 | `NightMazeApp::m_assets` (biała tekstura 1 x 1 i jej sampler) | `NightMazeApp::m_gameplayRenderer` (nic nie posiada: trzy wskaźniki do modeli z pamięci assetów) |
-| `NightMazeApp::m_mazeRenderer` (wczytuje przez `m_assets` trzy modele labiryntu i ich tekstury: siatki i tekstury powstają na karcie) | `NightMazeApp::m_mazeRenderer` (nic nie posiada: trzy wskaźniki do modeli z pamięci assetów) |
+| `NightMazeApp::m_mazeRenderer` (wczytuje przez `m_assets` dwa modele labiryntu i ich tekstury: siatki i tekstury powstają na karcie) | `NightMazeApp::m_mazeRenderer` (nic nie posiada: dwa wskaźniki do modeli z pamięci assetów) |
 | `NightMazeApp::m_gameplayRenderer` (wczytuje przez `m_assets` dwa modele kryształów i model bramy z ich teksturami) | `NightMazeApp::m_assets` (siatki modeli, potem tekstury, na końcu biała tekstura) |
-| `NightMazeApp::m_colliderLines` (siatka krawędzi sześcianu: 8 wierzchołków i 24 indeksy, siatka okręgu: 32 wierzchołki i 64 indeksy) | `NightMazeApp::m_skyboxShader`, `m_gouraudShader`, `m_litShader`, `m_colorShader`, `m_texturedShader` (`glDeleteProgram`) |
+| `NightMazeApp::m_terrainRenderer` (wczytuje przez `m_assets` dwie tekstury gruntu, siatka terenu jeszcze pusta), `m_grassRenderer` (pusta siatka punktów), potem `m_colliderLines` (siatka krawędzi sześcianu: 8 wierzchołków i 24 indeksy, siatka okręgu: 32 wierzchołki i 64 indeksy) | `NightMazeApp::m_grassShader`, `m_skyboxShader`, `m_gouraudShader`, `m_litShader`, `m_colorShader`, `m_texturedShader` (`glDeleteProgram`) |
 | `NightMazeApp::m_lightRig` (bufor uniformów na światła: `glGenBuffers`, `glBufferData`, `glBindBufferBase`), potem `m_skybox` (sześć obrazów nieba z dysku, tekstura sześcienna, siatka sześcianu) | `NightMazeApp::m_clearColor` |
-| `NightMazeApp::m_mazeSettings`, `m_mazeWorld` (generowanie labiryntu, wyjścia i kryształów, bez OpenGL), `m_gameplay`, `m_round` i `m_obstacles` (oba jeszcze puste), `m_player`, `m_previousPlayerPosition` (kopia pozycji gracza, dlatego po nim), `m_camera`, `m_lighting`, `m_viewMode`, `m_drawColliders`, `m_skyboxSettings`, `m_mouseSensitivity` | `Application::m_time` |
-| ciało konstruktora `NightMazeApp` (dwa razy `m_lightRig.connect(...)`, potem `beginRound()`, które wypełnia `m_round` i `m_obstacles`) | `Application::m_input` |
+| `NightMazeApp::m_mazeSettings`, `m_heightmap` (wczytanie `heightmap.png` z dysku, bez OpenGL), `m_terrainSettings`, `m_mazeWorld` (generowanie labiryntu, wyjścia i kryształów, budowa terenu z mapy wysokości i postawienie na nim ścian, bez OpenGL), `m_grassSettings`, `m_gameplay`, `m_round` i `m_obstacles` (oba jeszcze puste), `m_player`, `m_previousPlayerPosition` (kopia pozycji gracza, dlatego po nim), `m_playerWasFlying`, `m_camera`, `m_lighting`, `m_viewMode`, `m_drawColliders`, `m_skyboxSettings`, `m_mouseSensitivity` | `Application::m_time` |
+| ciało konstruktora `NightMazeApp` (trzy razy `m_lightRig.connect(...)`, potem `uploadGround()`, które wysyła na kartę siatkę terenu i punkty trawy, i `beginRound()`, które wypełnia `m_round` i `m_obstacles`) | `Application::m_input` |
 | `DebugNightMazeApp::m_debugUI` (potrzebuje okna i kontekstu) | `Application::m_window` (okno, kontekst, `glfwTerminate`) |
 
 Obie kolumny czyta się osobno, z góry na dół: wiersz nie łączy pola z lewej z polem z prawej.
 
-Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i okno, już istnieje), a destruktor `DebugUI`, który zwalnia obiekty OpenGL backendu ImGui, ma jeszcze żywy kontekst. Ta sama zasada dotyczy pól `NightMazeApp` posiadających zasoby OpenGL: pięciu programów shaderów, `m_assets` (siatki modeli i tekstury), `m_colliderLines` (dwie siatki linii), `m_lightRig` (bufor uniformów) i `m_skybox` (tekstura sześcienna i siatka sześcianu). Jako pola klasy pochodnej od `Application` powstają po oknie i są niszczone przed nim, więc każde `glGen*`, `glCreate*` i `glDelete*` ma żywy kontekst. `m_mazeRenderer` i `m_gameplayRenderer` zasobów nie posiadają: trzymają wskaźniki do modeli, których właścicielem jest `m_assets`, i dlatego muszą być zadeklarowane po nim (giną wcześniej, więc nigdy nie wskazują na usunięty model).
+Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i okno, już istnieje), a destruktor `DebugUI`, który zwalnia obiekty OpenGL backendu ImGui, ma jeszcze żywy kontekst. Ta sama zasada dotyczy pól `NightMazeApp` posiadających zasoby OpenGL: sześciu programów shaderów, `m_assets` (siatki modeli i tekstury), `m_terrainRenderer` (siatka terenu), `m_grassRenderer` (siatka punktów trawy), `m_colliderLines` (dwie siatki linii), `m_lightRig` (bufor uniformów) i `m_skybox` (tekstura sześcienna i siatka sześcianu). Jako pola klasy pochodnej od `Application` powstają po oknie i są niszczone przed nim, więc każde `glGen*`, `glCreate*` i `glDelete*` ma żywy kontekst. `m_mazeRenderer` i `m_gameplayRenderer` zasobów nie posiadają: trzymają wskaźniki do modeli, których właścicielem jest `m_assets`, i dlatego muszą być zadeklarowane po nim (giną wcześniej, więc nigdy nie wskazują na usunięty model). `m_terrainRenderer` jest mieszany: siatkę terenu posiada sam, a dwie tekstury gruntu to wskaźniki do `m_assets`, więc też musi stać po nim.
 
 **`NightMazeApp` (w `NightMazeApp.hpp`):**
 
@@ -1008,16 +1262,20 @@ Dlatego `m_debugUI{window()}` jest bezpieczne (cała część bazowa, a więc i 
     // OpenGL objects. They are members of a class derived from core::Application, so they
     // are created after the window and its OpenGL context, and destroyed before them.
     //
-    // Order: members are constructed top to bottom. The two renderers ask m_assets for
-    // their models in their constructors, so they come after it.
+    // Order: members are constructed top to bottom. The renderers of the maze, the
+    // round and the terrain ask m_assets for their models and textures in their
+    // constructors, so they come after it.
     gfx::Shader m_texturedShader;
     gfx::Shader m_colorShader;
     gfx::Shader m_litShader;
     gfx::Shader m_gouraudShader;
     gfx::Shader m_skyboxShader;
+    gfx::Shader m_grassShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
+    TerrainRenderer m_terrainRenderer;
+    GrassRenderer m_grassRenderer;
     ColliderLines m_colliderLines;
     LightRig m_lightRig;
     Skybox m_skybox;
@@ -1027,9 +1285,10 @@ Komentarz wymienia dziś jedną zależność, i to ona jest w tej grupie jedyną
 
 | Pole | Co robi jego konstruktor | Od czego zależy jego miejsce |
 |---|---|---|
-| pięć programów shaderów | kompiluje i linkuje program z pary plików | od niczego w tej klasie: potrzebuje tylko kontekstu, a ten daje klasa bazowa |
-| `m_assets` | tworzy białą teksturę 1 x 1 | musi stać **przed** oboma rendererami |
-| `m_mazeRenderer`, `m_gameplayRenderer` | dostają `m_assets` przez referencję i od razu proszą o modele (każdy o trzy) | **po** `m_assets`. Pole zadeklarowane wyżej dostałoby referencję do obiektu, który jeszcze nie powstał. Działa to też w drugą stronę: giną przed `m_assets`, więc ich wskaźniki nigdy nie wskazują na usunięty model |
+| sześć programów shaderów | kompiluje i linkuje program z pary plików, a program trawy z trzech | od niczego w tej klasie: potrzebuje tylko kontekstu, a ten daje klasa bazowa |
+| `m_assets` | tworzy białą teksturę 1 x 1 | musi stać **przed** trzema rendererami, które o coś go proszą |
+| `m_mazeRenderer`, `m_gameplayRenderer`, `m_terrainRenderer` | dostają `m_assets` przez referencję i od razu proszą o swoje pliki: pierwszy o dwa modele (ściana i słupek), drugi o trzy (dwa kryształy i brama), trzeci o dwie tekstury gruntu | **po** `m_assets`. Pole zadeklarowane wyżej dostałoby referencję do obiektu, który jeszcze nie powstał. Działa to też w drugą stronę: giną przed `m_assets`, więc ich wskaźniki nigdy nie wskazują na usunięty model |
+| `m_grassRenderer` (M6) | tworzy pustą siatkę punktów | od niczego: nie korzysta z `m_assets` (trawa nie ma tekstury) ani z programu `grass`, który dostaje dopiero w argumencie `draw` |
 | `m_colliderLines` | wysyła na kartę siatkę krawędzi sześcianu i siatkę okręgu | od niczego: siatki są jego własne |
 | `m_lightRig` | tworzy bufor uniformów i przypina go do punktu wiązania 1 (cel `GL_UNIFORM_BUFFER`) | od niczego. Programy, które z niego czytają, są łączone z nim dopiero w ciele konstruktora, a ciało wykonuje się po wszystkich polach |
 | `m_skybox` (M6) | wczytuje sześć obrazów nieba loaderem obrazów, tworzy z nich teksturę sześcienną i siatkę sześcianu | od niczego: nie korzysta z `m_assets` (czyta pliki sam) ani z programu `skybox`, który dostaje dopiero w argumencie `draw` |
@@ -1053,9 +1312,9 @@ Inicjalizator `= m_player.position` czyta pole innego pola, więc `m_player` mus
 
 Pola rundy (`m_gameplay`, `m_round`, `m_obstacles`) stoją pod `m_mazeWorld`, bo opisują rundę na tym labiryncie, ale ich miejsce nie decyduje o poprawności: żadne nie ma inicjalizatora czytającego inne pole. `m_round` i `m_obstacles` zaczynają puste i dostają zawartość w `beginRound()`, czyli w ciele konstruktora, gdy `m_mazeWorld`, `m_gameplay`, `m_player`, `m_camera` i `m_lighting` już istnieją. To jest powód, dla którego `beginRound` jest zwykłą funkcją wołaną w ciele, a nie wyrażeniem na liście inicjalizacyjnej: czyta dwa pola i zapisuje sześć (`m_round`, `m_obstacles`, `m_lighting`, `m_player`, `m_previousPlayerPosition`, `m_camera`).
 
-Miejsce `m_lighting` (między `m_camera` a `m_viewMode`) nie ma takiego znaczenia: struktura nie czyta żadnego innego pola i nie dotyka OpenGL. Liczy się tylko to, że `m_lightRig`, `m_litShader` i `m_gouraudShader` istnieją, zanim ciało konstruktora zawoła `connect`, a to jest prawdą dla każdej kolejności pól, bo ciało wykonuje się po wszystkich.
+Miejsce `m_lighting` (między `m_camera` a `m_viewMode`) nie ma takiego znaczenia: struktura nie czyta żadnego innego pola i nie dotyka OpenGL. Liczy się tylko to, że `m_lightRig`, `m_litShader`, `m_gouraudShader` i `m_grassShader` istnieją, zanim ciało konstruktora zawoła `connect`, a to jest prawdą dla każdej kolejności pól, bo ciało wykonuje się po wszystkich.
 
-**Pułapka do tej sekcji.** Obiekt z zasobami OpenGL żyjący dłużej niż `Window` woła funkcje `gl*` bez kontekstu. Podobnie zmiana kolejności pól w `Application` psuje konstrukcję `Input`. Dotyczy to dziś wprost dziewięciu pól `NightMazeApp` z zasobami OpenGL (pięć programów, `m_assets`, `m_colliderLines`, `m_lightRig` i `m_skybox`). Trzecia odmiana tej samej pułapki: renderer zadeklarowany nad `m_assets` dostaje w konstruktorze referencję do pamięci assetów, która jeszcze nie istnieje (wyżej).
+**Pułapka do tej sekcji.** Obiekt z zasobami OpenGL żyjący dłużej niż `Window` woła funkcje `gl*` bez kontekstu. Podobnie zmiana kolejności pól w `Application` psuje konstrukcję `Input`. Dotyczy to dziś wprost dwunastu pól `NightMazeApp` z zasobami OpenGL (sześć programów, `m_assets`, `m_terrainRenderer`, `m_grassRenderer`, `m_colliderLines`, `m_lightRig` i `m_skybox`). Trzecia odmiana tej samej pułapki: renderer zadeklarowany nad `m_assets` dostaje w konstruktorze referencję do pamięci assetów, która jeszcze nie istnieje (wyżej). Czwarta, z M6: `m_heightmap` albo `m_terrainSettings` zadeklarowane pod `m_mazeWorld` byłyby czytane na liście inicjalizacyjnej przed własną konstrukcją (sekcja 6.2).
 
 ## 8. Różnice między systemami w jednym miejscu
 
@@ -1093,7 +1352,7 @@ Pytania dotyczące treści tego pliku:
    Bo ich konstruktory dostają `m_assets` przez referencję i od razu proszą o modele, a pola powstają w kolejności deklaracji. Przy niszczeniu kolejność jest odwrotna: oba renderery giną przed pamięcią assetów, więc ich wskaźniki do modeli nigdy nie wskazują na usunięty obiekt. Do M4 lista miała jeszcze jedną zależność (pola tworzące siatkę musiały stać przed kostką z M1), która zniknęła razem z kostką.
 
 4. **Dlaczego pierwszy labirynt powstaje na liście inicjalizacyjnej konstruktora?**
-   `MazeWorld` nie ma konstruktora domyślnego, bo zawiera `Maze`, który wymaga rozmiaru. Pole bez konstruktora domyślnego musi dostać wartość na liście. W ciele konstruktora zostają dwa wywołania `m_lightRig.connect(...)` i `beginRound()`.
+   `MazeWorld` nie ma konstruktora domyślnego, bo zawiera `Maze`, który wymaga rozmiaru. Pole bez konstruktora domyślnego musi dostać wartość na liście. W ciele konstruktora zostają trzy wywołania `m_lightRig.connect(...)`, `uploadGround()` i `beginRound()`.
 
 5. **Co dokładnie zmienia `beginRound`, a czego nie?**
    Przypisuje nowy stan rundy (`startRound`: wszystkie kryształy na miejscu, pełna bateria, brama zamknięta, zegary na 0), buduje listę przeszkód (`roundObstacles`), włącza latarkę, ustawia pozycję gracza i pozycję poprzednią na start, pozycję kamery na oczy gracza, yaw na otwarty bok komórki startowej i pitch na 0. Nie zmienia labiryntu, trybu noclip, prędkości, trybu widoku, rysowania kształtów kolizji, czułości myszy, liczb reguł w `m_gameplay` ani pozostałych ustawień oświetlenia. Wołają ją konstruktor, `regenerateMaze` i `onRender` po klawiszu R albo fladze `restart`.
@@ -1105,7 +1364,7 @@ Pytania dotyczące treści tego pliku:
    R, N i F to zbocza (`wasKeyPressed`): są prawdą przez jedną klatkę, a `onUpdate` wykonuje się od zera do wielu razy na klatkę, więc naciśnięcie mogłoby przepaść albo zadziałać kilka razy. Klawisze ruchu to stan ciągły (`isKeyDown`), a ruch zależy od czasu, który płynie stałymi krokami. R woła `beginRound()`, N przełącza `m_player.noclip`, F przełącza `m_lighting.flashlightOn`. Wszystkie trzy działają też przy wolnym kursorze, a nie działają, gdy klawiaturę ma ImGui.
 
 8. **Dlaczego macierze `view` i `projection` są liczone raz, a ustawiane kilka razy?**
-   Liczone raz, bo kamera jest jedna dla całej klatki. Ustawiane w każdej funkcji rysującej, bo uniformy należą do programu, a każdy program ma własne `uView` i `uProjection`. Programów jest pięć, w jednej klatce pracują najwyżej trzy różne (jeden program sceny, przy włączonych liniach kolizji `color` i, przy włączonym niebie, `skybox`), więc macierze są ustawiane najwyżej trzy razy: raz w `drawUnlitMaze` albo `drawLitMaze`, raz w `drawColliderLines` i raz w `Skybox::draw`. `MazeRenderer` i `GameplayRenderer` dostają program już z macierzami i ustawiają tylko `uModel` i uniformy materiału.
+   Liczone raz, bo kamera jest jedna dla całej klatki. Ustawiane w każdej funkcji rysującej, bo uniformy należą do programu, a każdy program ma własne `uView` i `uProjection`. Programów jest sześć, w jednej klatce pracują najwyżej cztery różne (jeden program sceny, przy włączonej trawie `grass`, przy włączonych liniach kolizji `color` i, przy włączonym niebie, `skybox`), więc macierze są ustawiane najwyżej cztery razy: raz w `drawUnlitMaze` albo `drawLitMaze`, raz w `GrassRenderer::draw`, raz w `drawColliderLines` i raz w `Skybox::draw`. `MazeRenderer` i `GameplayRenderer` dostają program już z macierzami i ustawiają tylko `uModel` i uniformy materiału.
 
 9. **Jakie pola i funkcje doszły w `NightMazeApp` z oświetleniem (M4) i w jakiej kolejności stoją?**
    Programy `m_litShader` i `m_gouraudShader` zaraz po dwóch wcześniejszych, `m_lightRig` po `m_colliderLines` (posiada bufor uniformów), `m_lighting` po `m_camera` (zwykłe dane). Konstruktor woła dwa razy `m_lightRig.connect(...)`, po razie dla każdego programu z oświetleniem. `onRender` czyta klawisz F, buduje `buildLightSet(...)` z interpolowanego oka i `m_camera.forward()`, woła `m_lightRig.upload(lights, eye)`, a `drawMaze` wybiera `drawUnlitMaze` albo `drawLitMaze`. Doszły trzy akcesory: `litShader()`, `gouraudShader()`, `lighting()`. Funkcja `drawLightMarkers` z M4 została usunięta w M5, a `buildLightSet` dostaje dziś kopię ustawień z `lightingForFrame` i pozycje z `crystalLightPositions`.
@@ -1124,6 +1383,21 @@ Pytania dotyczące treści tego pliku:
 
 14. **Dlaczego klawisz chowający panele nie chowa HUD?**
     `DebugUI::draw` rysuje panele tylko wtedy, gdy `m_visible` jest prawdą, a `drawHud` woła zawsze. HUD jest częścią gry, a w `src/debug/` leży tylko dlatego, że tam jest ImGui, którego `game/` nie może dołączać.
+
+15. **Co doszło w `NightMazeApp` z terenem i trawą (druga część M6) i gdzie stoi w klatce?**
+    Pola `m_grassShader` (szósty program, z trzema plikami), `m_terrainRenderer` i `m_grassRenderer` (po `m_gameplayRenderer`, pierwszy też czyta `m_assets`), `m_heightmap` i `m_terrainSettings` (przed `m_mazeWorld`), `m_grassSettings` (po nim) i `m_playerWasFlying` (po `m_previousPlayerPosition`). Funkcje `rebuildTerrain`, `uploadGround`, `plantGrass` i `drawGrass` oraz cztery akcesory. Konstruktor wczytuje mapę wysokości (`loadHeightmap`), buduje labirynt od razu na terenie, łączy z buforem świateł trzeci program i woła `uploadGround()`. W stałym kroku gracz dostaje teren i odczytuje z niego wysokość stóp. Raz na klatkę: flagi `rebuild` i `replant` na początku `onRender`, teren jako pierwsze wywołanie w `drawUnlitMaze` i `drawLitMaze`, a `drawGrass` między `drawMaze` a liniami kolizji.
+
+16. **Dlaczego `m_heightmap` i `m_terrainSettings` muszą być zadeklarowane przed `m_mazeWorld`?**
+    Bo pierwszy labirynt powstaje na liście inicjalizacyjnej z wyrażenia `buildMazeWorld(..., m_heightmap, m_terrainSettings.heightScale)`, a pola są konstruowane w kolejności deklaracji, nie w kolejności na liście. Pole zadeklarowane niżej byłoby w tej chwili jeszcze nieskonstruowane, a czytanie go to niezdefiniowane zachowanie. Kompilator ostrzega o tym co najwyżej wtedy, gdy kolejność na liście różni się od kolejności deklaracji.
+
+17. **Czym `rebuildTerrain` różni się od `regenerateMaze` i co musi poprawić sama?**
+    `regenerateMaze` buduje nowy świat i zaczyna nową rundę, więc `beginRound` ustawia wszystko od zera. `rebuildTerrain` zostawia labirynt i rundę: woła `placeOnTerrain` na istniejącym świecie, a potem poprawia to, co skopiowało sobie wysokości: pozycje spoczynku kryształów (`restCrystalsOnGround`), listę przeszkód (`roundObstacles`) i wysokość idącego gracza w obu pozycjach pary do interpolacji. Na końcu `uploadGround()` wysyła nową siatkę i sadzi trawę.
+
+18. **Dlaczego warunek po `m_player.update` zmienił się z `!m_player.noclip` na `m_playerWasFlying && !m_player.noclip`?**
+    Na płaskiej podłodze chodzenie nie zmieniało wysokości, więc wyrównywanie poprzedniej wysokości do bieżącej w każdym kroku niczego nie psuło. Na nierównym gruncie wysokość zmienia się w każdym kroku i ma być interpolowana jak x i z: stary warunek kasowałby tę interpolację i oczy szłyby schodkami. Nowy warunek trafia tylko w pierwszy krok chodzenia po locie, czyli w spadek stóp na grunt, który jest skokiem i mieszany być nie może.
+
+19. **Skąd trawa bierze czas i dlaczego nie z zegara rundy?**
+    Z `glfwGetTime()`, zamienionego na `float` w `drawGrass`. Wiatr ma tylko płynąć: zegar rundy staje po wygranej i wraca do zera po restarcie, więc trawa by zamierała albo skakała. Skutek uboczny: wiatr zmienia się co klatkę, a nie co stały krok.
 
 ## 10. Źródła
 

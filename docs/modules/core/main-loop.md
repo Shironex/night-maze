@@ -273,13 +273,14 @@ Początek, środek i koniec `NightMazeApp::onUpdate`:
 
 ```cpp
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
-                    m_obstacles);
+                    m_obstacles, m_mazeWorld.terrain);
 ```
 
 ```cpp
-    if (!m_player.noclip) {
+    if (m_playerWasFlying && !m_player.noclip) {
         m_previousPlayerPosition.y = m_player.position.y;
     }
+    m_playerWasFlying = m_player.noclip;
 ```
 
 Oraz w `NightMazeApp::onRender`:
@@ -294,7 +295,7 @@ Oraz w `NightMazeApp::onRender`:
 |---|---|
 | `m_previousPlayerPosition = m_player.position;` | pierwsza linia każdego kroku. Po ostatnim kroku klatki para (poprzednia, bieżąca) opisuje dokładnie ten krok, do którego odnosi się `alpha` |
 | `static_cast<float>(fixedDt)` jako czwarty argument `m_player.update` | czas jednego kroku. `fixedDt` to zawsze `Time::FIXED_DT`, nigdy czas zmierzony. Gracz mnoży go przez prędkość, więc 120 kroków daje dokładnie tyle metrów na sekundę, ile wynosi prędkość, przy każdym FPS. Krótki, stały krok jest też założeniem kolizji ([`../scene/collision.md`](../scene/collision.md), sekcja 2) |
-| `m_previousPlayerPosition.y = m_player.position.y;` w trybie chodzenia | wyjątek od interpolacji. Pierwszy krok chodzenia po wyłączeniu noclip w powietrzu stawia stopy na podłodze jednym skokiem. Skoku nie wolno mieszać z `alpha`, bo jedna klatka byłaby narysowana z punktu w połowie drogi w dół. Wyrównanie wysokości sprawia, że w pionie para (poprzednia, bieżąca) jest zawsze taka sama, a interpolowany jest tylko ruch poziomy |
+| `m_previousPlayerPosition.y = m_player.position.y;` w pierwszym kroku chodzenia po locie | wyjątek od interpolacji. Pierwszy krok chodzenia po wyłączeniu noclip w powietrzu stawia stopy na gruncie jednym skokiem. Skoku nie wolno mieszać z `alpha`, bo jedna klatka byłaby narysowana z punktu w połowie drogi w dół. Do M5 to wyrównanie działało w **każdym** kroku chodzenia (warunek `!m_player.noclip`): podłoga była płaska, więc w pionie para (poprzednia, bieżąca) była zawsze taka sama i interpolowany był tylko ruch poziomy. Od M6 gracz chodzi po terenie z mapy wysokości, a wysokość stóp zmienia się w każdym kroku (`Terrain::heightAt`). Ta zmiana jest zwykłym ruchem i **jest** mieszana z `alpha` razem z x i z: bez tego oczy szłyby po nierównym gruncie schodkami, po jednym na stały krok. Wyjątek został zawężony do jednego kroku polem `m_playerWasFlying`, które pamięta tryb z poprzedniego kroku |
 | `glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha))` | wzór z sekcji 2.4: `poprzednia * (1 - alpha) + bieżąca * alpha`, dla pozycji **stóp** |
 | `feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F}` | oko jest stałe 1,7 m nad stopami. Mieszanie jest liniowe, więc zmieszanie stóp i dodanie wysokości daje ten sam punkt co zmieszanie dwóch pozycji oczu |
 

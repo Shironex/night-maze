@@ -8,12 +8,14 @@ tryby cieniowania, blok uniformów, `#include` w shaderach, panel Lights) i map 
 (styczne, czwarty atrybut wierzchołka, `common/normal_map.glsl`, pole `Normal mapping`).
 Powstały na Windowsie 2026-10-05 i na macOS nikt ich nie zbudował. To samo dotyczy M5
 (rozgrywka: kryształy, bateria latarki, brama, wyjście, HUD, panel Gameplay), też z
-2026-10-05, i pierwszej części M6 (skybox: tekstura sześcienna, niebo, piąty program
-shaderów) z tego samego dnia. Wszystko, co ten dokument mówi o tym
+2026-10-05, i obu części M6 z tego samego dnia: pierwszej (skybox: tekstura sześcienna,
+niebo, piąty program shaderów) i drugiej (teren z mapy wysokości w miejscu płytek podłogi,
+trawa z shadera geometrii, szósty program, panele Terrain i Grass). Wszystko, co ten
+dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
-(oświetlenie) na macOS", "M4 (mapy normalnych) na macOS", "M5 (rozgrywka) na macOS" i
-"M6, część 1 (skybox) na macOS".
+(oświetlenie) na macOS", "M4 (mapy normalnych) na macOS", "M5 (rozgrywka) na macOS",
+"M6, część 1 (skybox) na macOS" i "M6, część 2 (teren i trawa) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -96,23 +98,30 @@ obrócona tak, że widać trzy jej ściany (czerwoną z przodu, niebieską z lew
 góry, każda w jednolitym kolorze), a na wierzchu panele "Renderer", "Shaders" i "Camera".
 Po kliknięciu w scenę kursor znikał i kamerą można było latać wokół kostki.
 
-**Co powinno być widać dziś, po M2 + M3, M4 i M5 (na macOS niesprawdzone. Na Windowsie
-widok z M4 jest zmierzony 2026-10-05 na zrzucie ekranu, a obraz po M5 był oglądany na
-zrzutach, których listy nie zapisano):** nocny widok z wnętrza labiryntu 10 na 10 z teksturą
-kamienia na podłodze, ścianach i słupkach, oświetlony w trybie Blinn-Phong: słabe, chłodne
+**Co powinno być widać dziś, po M2 + M3, M4, M5 i obu częściach M6 (na macOS niesprawdzone.
+Na Windowsie widok z M4 jest zmierzony 2026-10-05 na zrzucie ekranu, a obraz po M5 i po M6
+był oglądany na zrzutach, których listy nie zapisano):** nocny widok z wnętrza labiryntu
+10 na 10 z teksturą kamienia na ścianach i słupkach, stojącego na łagodnie nierównym
+podłożu z teksturą ubitej ziemi (teren z mapy wysokości: do M5 podłogą były płaskie płytki
+z teksturą kamienia), z kępkami trawy wzdłuż ścian, oświetlony w trybie Blinn-Phong: słabe,
+chłodne
 światło księżyca, ciepły stożek latarki na środku obrazu i turkusowe światła punktowe nad
 kryształami, które unoszą się w komórkach, obracają się i same świecą (13 w labiryncie
-startowym). Przy komórce wyjścia stoi drewniana brama. Tło jest prawie czarne, granatowe
-(ciemniejsze niż w stanie M1). Cieni nie ma. U góry okna, na środku, jest pasek HUD:
-`Crystals`, `0 / 10`, `(of 13)`, czas rundy i pasek baterii. Paneli jest osiem: "Renderer"
+startowym). Przy komórce wyjścia stoi drewniana brama. Nad ścianami jest nocne niebo
+z gwiazdami i księżycem (skybox), a wokół labiryntu wzgórza. Cieni nie ma. U góry okna,
+na środku, jest pasek HUD:
+`Crystals`, `0 / 10`, `(of 13)`, czas rundy i pasek baterii. Paneli jest dziesięć: "Renderer"
 nad "Lights" w
 lewej kolumnie, "Maze" nad "Assets" w prawej, "Collision" i "Shaders" na dole między
-kolumnami, a "Camera" i "Gameplay" u góry, między kolumnami, zwinięte do pasków tytułu.
+kolumnami, a "Camera" i "Gameplay" u góry, między kolumnami, zwinięte do pasków tytułu,
+z drugim rzędem zwiniętych pasków pod nimi: "Terrain" i "Grass". Pasek HUD stoi pod oboma
+rzędami.
 Kostki z M1, która do M4 wisiała nad komórką w rogu
 przeciwległym do startu, już nie ma, tak samo jak kostek oznaczających światła w ślepych
 zaułkach: M5 je usunął. Po dwóch liniach z `core::Window` pamięć podręczna assetów wypisuje
-linie `[info] Loaded texture: ...` (osiem tekstur) i `[info] Loaded model: ...` (sześć
-modeli). Po kliknięciu w scenę
+linie `[info] Loaded texture: ...` (osiem tekstur) i `[info] Loaded model: ...` (pięć
+modeli: do M5 było ich sześć, z płytką podłogi), a poza nią pojawia się sześć linii
+`Loaded sky face: ...` i jedna `Loaded heightmap: ...`. Po kliknięciu w scenę
 kursor znika i gracz chodzi po labiryncie (tabela niżej). Wejście w kryształ go zbiera. Linia `[error] Shader ...` w
 terminalu oznacza, że shader się nie wczytał: to, co rysuje ten program shaderów, znika, a
 reszta klatki jest rysowana dalej ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
@@ -207,21 +216,23 @@ też uruchomić wprost, wtedy widać raport biblioteki doctest:
 ```
 
 Oczekiwany koniec wyjścia. Liczby z Windowsa, zmierzone tam w konfiguracjach Debug i Release
-2026-10-05, po M5, dla szesnastu plików z testami: `ColliderTests.cpp` 19 przypadków,
-`CrystalTests.cpp` 14, `ExitTests.cpp` 11, `ImageLoaderTests.cpp` 9, `LightingTests.cpp`
+2026-10-05, po drugiej części M6, dla osiemnastu plików z testami: `ColliderTests.cpp` 19
+przypadków, `CrystalTests.cpp` 14, `ExitTests.cpp` 11, `GrassTests.cpp` 9,
+`ImageLoaderTests.cpp` 10, `LightingTests.cpp`
 10, `LightTests.cpp` 20, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12,
-`MazeTests.cpp` 8, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 20, `PlayerTests.cpp` 13,
-`RoundTests.cpp` 25, `ShaderSourceTests.cpp` 22, `TangentTests.cpp` 9 i
-`TransformTests.cpp` 4:
+`MazeTests.cpp` 8, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 19, `PlayerTests.cpp` 13,
+`RoundTests.cpp` 25, `ShaderSourceTests.cpp` 22, `SkyboxTests.cpp` 5, `TangentTests.cpp` 9,
+`TerrainTests.cpp` 27 i `TransformTests.cpp` 4:
 
 ```text
-[doctest] test cases:   215 |   215 passed | 0 failed | 0 skipped
-[doctest] assertions: 85098 | 85098 passed | 0 failed |
+[doctest] test cases:    256 |    256 passed | 0 failed | 0 skipped
+[doctest] assertions: 101232 | 101232 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
 Przed oświetleniem (2026-10-05) program miał osiem plików z testami, przed mapami
-normalnych dwanaście, a po M4 trzynaście (163 przypadki i 62220 asercji), i odpowiednio
+normalnych dwanaście, po M4 trzynaście (163 przypadki i 62220 asercji), po M5 szesnaście
+(215 i 85098), a po pierwszej części M6 siedemnaście (221 i 85175), i odpowiednio
 mniej przypadków.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
@@ -278,8 +289,9 @@ Na Macu nikt go jeszcze nie kompilował:
       `parseObj: a bad line is reported with its line number`. Liczby czyta
       `std::istringstream` z klasycznym locale, a libc++ może traktować teksty graniczne
       (`+2`, `2.5E2`, `1.5x`, `--1`) inaczej niż biblioteka MSVC
-- [ ] przechodzą trzy przypadki `loadObj: wall_straight.obj`, `wall_pillar.obj` i
-      `floor_tile.obj`: ścieżka z `NIGHT_MAZE_ASSETS_DIR` i ścieżki tekstur po
+- [ ] przechodzą dwa przypadki `loadObj: wall_straight.obj` i `wall_pillar.obj`
+      (trzeci, dla płytki podłogi `floor_tile.obj`, zniknął w M6 razem z modelem): ścieżka
+      z `NIGHT_MAZE_ASSETS_DIR` i ścieżki tekstur po
       `lexically_normal()` porównują się poprawnie także z separatorem `/`
 - [ ] przechodzi przypadek `loadObj: material libraries and texture paths of files written by
       the test` (zapis do katalogu tymczasowego systemu i sprzątanie po sobie)
@@ -395,8 +407,8 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 - [ ] **Retina a układ paneli**: panel Renderer pokazuje `Framebuffer` dwa razy większy niż
       `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Miejsca startowe paneli
       (`src/debug/PanelLayout.hpp`) są w jednostkach okna i ułożone dla 1280 x 720, więc po
-      usunięciu `imgui.ini` osiem paneli powinno stać tak samo jak na Windowsie i nie
-      zasłaniać się (panele Camera i Gameplay zwinięte do pasków tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
+      usunięciu `imgui.ini` dziesięć paneli powinno stać tak samo jak na Windowsie i nie
+      zasłaniać się (panele Camera i Gameplay, a pod nimi Terrain i Grass, zwinięte do pasków tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
       poprawny rozmiar i ostrość
 - [ ] **budowanie motywu pod clang**: `src/debug/Theme.cpp` i `src/debug/PanelLayout.cpp`
       kompilują się z `-Wall -Wextra -Wpedantic` bez ostrzeżeń. Na Windowsie są zbudowane w
@@ -466,9 +478,9 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       uruchomić `./build/debug/night_maze`
 - [ ] start: widok z wnętrza labiryntu, tekstury stoją prosto i nie są odbite lustrzanie,
       w terminalu nie ma linii `[error]`
-- [ ] okno 1280 x 720: osiem paneli nie zasłania się nawzajem (Renderer nad Lights po
+- [ ] okno 1280 x 720: dziesięć paneli nie zasłania się nawzajem (Renderer nad Lights po
       lewej, Maze nad Assets po prawej, Collision i Shaders na dole między kolumnami,
-      Camera i Gameplay zwinięte u góry). Zapisać, czy panele Renderer, Lights, Maze, Collision i
+      Camera i Gameplay zwinięte u góry, Terrain i Grass zwinięte w drugim rzędzie pod nimi). Zapisać, czy panele Renderer, Lights, Maze, Collision i
       Shaders pokazują całą zawartość bez przewijania: nazwa karty Apple w panelu Renderer
       ma inną długość niż na Windowsie, a wysokości paneli są dobrane do zawartości
 - [ ] panel Camera (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
@@ -494,13 +506,13 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       1, 0, 1, `Pitch` 0), nowa runda na pasku HUD, a tryb noclip, prędkości, tryb widoku i
       rysowanie kształtów kolizji zostają bez zmian
 - [ ] `Random seed`: nowa liczba w polu `Seed` i od razu nowy labirynt
-- [ ] panel Assets, `View mode`: `Normals as colour` (podłoga jasnozielona, ściany w
+- [ ] panel Assets, `View mode`: `Normals as colour` (podłoże w odcieniach jasnej zieleni, ściany w
       kolorach zależnych od kierunku, a przy zaznaczonym polu `Normal mapping` i trybie
       `Lighting` innym niż `Gouraud` z rysunkiem fug z map normalnych), `UVs as colour` (czerwono-zielone powtarzające się
       przejścia), `Textured` przywraca obraz
 - [ ] panel Assets, `Filter`: `Nearest` (kwadratowe teksele z bliska, migotanie w oddali),
       `Bilinear` (gładko z bliska, migotanie w oddali), `Trilinear` (spokojnie w oddali)
-- [ ] panel Assets, `Anisotropy` (jeśli dostępna): większa wartość wyostrza podłogę widzianą
+- [ ] panel Assets, `Anisotropy` (jeśli dostępna): większa wartość wyostrza podłoże widziane
       pod płaskim kątem
 - [ ] podglądy tekstur w panelu Assets stoją prosto i nie reagują na filtr
 - [ ] `Reload shaders` po zmianie w `assets/shaders/textured.frag` (na przykład
@@ -513,14 +525,15 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       komunikatem sterownika pod nią, labirynt rysuje się poprzednią wersją. Przywrócić
       plik
 - [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
-      `assets/textures/floor_stone.png` (na Macu to plik w repozytorium, bo `assets` obok
-      programu jest dowiązaniem), uruchomić. Oczekiwane: podłoga bez rysunku kamienia
-      (biała w trybie `Unlit`, w kolorze padającego światła w trybach z oświetleniem, przy
+      `assets/textures/wall_stone.png` (na Macu to plik w repozytorium, bo `assets` obok
+      programu jest dowiązaniem), uruchomić. Oczekiwane: ściany i słupki bez rysunku kamienia
+      (białe w trybie `Unlit`, w kolorze padającego światła w trybach z oświetleniem, przy
       `Phong` i `Blinn-Phong` nadal z reliefem fug, bo mapa normalnych wczytuje się osobno), jedna
       linia `[error]`, w panelu Assets `no texture (white)` i sekcja `Failed to load`. **Przywrócić
-      nazwę pliku** i sprawdzić `git status`
-- [ ] zmiana rozmiaru okna, tryb pełnoekranowy macOS i powrót: obraz wypełnia okno, płytki
-      podłogi zostają kwadratowe, bez linii `[error]`
+      nazwę pliku** i sprawdzić `git status`. (Do M5 ten punkt używał tekstury
+      `floor_stone.png` płytki podłogi, której już nie ma.)
+- [ ] zmiana rozmiaru okna, tryb pełnoekranowy macOS i powrót: obraz wypełnia okno, ściany
+      i słupki zachowują proporcje, bez linii `[error]`
 - [ ] okno powiększone na cały ekran po usunięciu `imgui.ini`: zapisać, gdzie stoją panele.
       Układ startowy jest liczony raz, w pierwszej klatce, od rogów okna w tej chwili, więc
       po późniejszym powiększeniu panele zostają na miejscach dla 1280 x 720
@@ -532,8 +545,8 @@ shaderach, panel Lights, układ siedmiu paneli) powstała na Windowsie 2026-10-0
 zbudowana i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcja 13).
 Lista powstała dla stanu M4, w którym światła punktowe wisiały w ślepych zaułkach i były
 oznaczone kostkami. M5 przeniósł je nad kryształy i usunął kostki, więc punkty poniżej
-są przepisane na dzisiejszy program: paneli jest osiem, programów shaderów pięć, a
-źródłem światła punktowego jest kryształ.
+są przepisane na dzisiejszy program: paneli jest dziesięć, programów shaderów sześć,
+źródłem światła punktowego jest kryształ, a podłogą jest teren (M6).
 **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
 odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 [`../modules/scene/lights.md`](../modules/scene/lights.md),
@@ -679,8 +692,9 @@ Nazwy widżetów są zapisane tak jak w kodzie paneli.
 - [ ] Gouraud a Phong na ścianie, twarzą do niej z około 2 m: w `Phong` okrągła plama, w
       `Gouraud` plama znika albo rozmazuje się wzdłuż krawędzi trójkątów (duża ściana ma
       wierzchołki tylko w narożnikach)
-- [ ] Gouraud a Phong u podstawy słupka: zapisać, jak wygląda podłoga wokół słupka w obu
-      trybach
+- [ ] Gouraud a Phong u podstawy słupka: zapisać, jak wygląda podłoże wokół słupka w obu
+      trybach. Od M6 podłoże ma wierzchołki co 0,5 m (siatka terenu), więc różnica jest
+      na nim dużo mniejsza niż na dawnej płytce podłogi o czterech wierzchołkach
 - [ ] Phong a Blinn-Phong przy `Strength` 1.0 i `Shininess` 16, twarzą do ściany: w
       `Blinn-Phong` jasna plama połysku jest szersza i jaśniejsza
 - [ ] Phong a Blinn-Phong pod płaskim kątem do światła punktowego albo księżyca: w
@@ -776,8 +790,9 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 
 **Obraz i panel**
 
-- [ ] start w trybie `Blinn-Phong`: fugi ścian i podłogi są rowkami (nie wałkami) na
-      ścianach wzdłuż X, wzdłuż Z, na słupku i na podłodze
+- [ ] start w trybie `Blinn-Phong`: fugi są rowkami (nie wałkami) na
+      ścianach wzdłuż X, wzdłuż Z i na słupku, a kamyki podłoża są wypukłe (od M6 mapa
+      normalnych podłoża to `ground_normal.png`: ubita ziemia z kamykami, bez fug)
 - [ ] światło z boku: po przejściu latarki na drugą stronę jasne i ciemne skosy zamieniają
       się miejscami
 - [ ] pole `Normal mapping` w panelu Assets: odznaczone daje płaskie ściany, zaznaczone
@@ -785,15 +800,15 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 - [ ] `Lighting` równe `Gouraud` i `Unlit`: pole niczego nie zmienia w obrazie
 - [ ] `View mode` równe `Normals as colour`: rysunek fug widać przy `Unlit`, `Phong` i
       `Blinn-Phong`, nie widać go przy `Gouraud` ani przy odznaczonym polu
-- [ ] lista `Models`: linia `normal map:` pod każdą częścią (sześć modeli). Lista
+- [ ] lista `Models`: linia `normal map:` pod każdą częścią (pięć modeli). Lista
       `Textures`: osiem tekstur, cztery jasnoniebieskie, podglądy stoją prosto
 - [ ] ekran Retina: zapisać, czy relief w oddali migocze w ruchu przy filtrze `Trilinear` i
       czy anizotropia to zmienia (na Windowsie oceniono to tylko na nieruchomych klatkach)
 - [ ] celowo brakująca mapa normalnych: zmienić nazwę
-      `assets/textures/floor_stone_normal.png` (na Macu to plik w repozytorium, bo `assets`
-      obok programu jest dowiązaniem), uruchomić. Oczekiwane: podłoga z teksturą koloru,
-      ale płaska pod latarką, jedna linia `[error]`, w panelu Assets `normal map: none
-      (flat)` i sekcja `Failed to load`. **Przywrócić nazwę pliku** i sprawdzić `git status`
+      `assets/textures/wall_stone_normal.png` (na Macu to plik w repozytorium, bo `assets`
+      obok programu jest dowiązaniem), uruchomić. Oczekiwane: ściany i słupki z teksturą
+      koloru, ale płaskie pod latarką, jedna linia `[error]`, w panelu Assets `normal map: none
+      (flat)` i sekcja `Failed to load`. (Do M5 ten punkt używał mapy płytki podłogi.) **Przywrócić nazwę pliku** i sprawdzić `git status`
 
 **Skrypty Blendera**
 
@@ -901,9 +916,10 @@ kryształów).
 - [ ] **tytuł karty wygranej**: napis `You escaped` jest rysowany tą samą czcionką w
       rozmiarze 1,8 raza większym (`ImGui::PushFont` z rozmiarem). Zapisać, czy na Retinie
       jest ostry, a nie rozciągnięty z mniejszej tekstury
-- [ ] **Retina a układ ośmiu paneli**: po usunięciu `imgui.ini` Renderer stoi nad Lights w
+- [ ] **Retina a układ paneli** (w M5 ośmiu, dziś dziesięciu): po usunięciu `imgui.ini`
+      Renderer stoi nad Lights w
       lewej kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole, a Camera i
-      Gameplay są zwinięte u góry, między kolumnami. Nic się nie zasłania
+      Gameplay są zwinięte u góry, między kolumnami, z paskami Terrain i Grass pod sobą. Nic się nie zasłania
 - [ ] **kule kolizji liniami o grubości 1 piksela framebuffera**: z zaznaczonym
       `Draw collision shapes` zapisać, czy turkusowe okręgi kul kryształów, zielona kula
       gracza, pomarańczowe pudełko bramy i pudełko strefy wyjścia w kolorze magenty są
@@ -925,9 +941,9 @@ z programem `./build/debug/night_maze` uruchomionym po usunięciu `imgui.ini`. P
 jej grupy, każda do odhaczenia po przejściu wszystkich punktów grupy z Windowsa.
 
 - [ ] start: nocna scena z kryształami, w terminalu nie ma linii `[error]`, są linie
-      `[info] Loaded model: ...` dla sześciu modeli i `[info] Loaded texture: ...` dla
-      ośmiu tekstur
-- [ ] układ ośmiu paneli i pasek HUD: `Crystals`, `0 / 10`, `(of 13)`, czas `0:00`, pasek
+      `[info] Loaded model: ...` dla pięciu modeli (w M5 sześciu) i
+      `[info] Loaded texture: ...` dla ośmiu tekstur
+- [ ] układ paneli i pasek HUD: `Crystals`, `0 / 10`, `(of 13)`, czas `0:00`, pasek
       baterii z `100%`. Panel Gameplay po rozwinięciu, linie `Crystals: 13, exit in cell
       (6, 5)` w panelu Maze, `Boxes: 121 walls, 121 pillars, 1 gate` i `All boxes: 243,
       pickup spheres: 13` w panelu Collision, `Lit: 13 of 13 crystals (at most 16)` w
@@ -954,8 +970,11 @@ jej grupy, każda do odhaczenia po przejściu wszystkich punktów grupy z Window
 
 - [ ] uruchomić na Macu `blender --background --factory-startup --python
       tools/blender/make_all.py`, potem `git status` i `git diff --stat`. Skrypt pisze dziś
-      osiem plików PNG, sześć OBJ i sześć MTL (doszły `crystal_a`, `crystal_b`, `gate`,
-      `crystal.png`, `gate_wood.png` i ich mapy normalnych). Dla tych nowych plików próby
+      w `assets/textures/` dziewięć plików PNG (osiem tekstur i `heightmap.png`), w
+      `assets/skybox/` sześć, a do tego pięć plików OBJ i pięć MTL (w M5 doszły `crystal_a`,
+      `crystal_b`, `gate`, `crystal.png`, `gate_wood.png` i ich mapy normalnych, w M6
+      zniknęła płytka podłogi z teksturami `floor_stone`, a doszły `ground.png`,
+      `ground_normal.png`, niebo i mapa wysokości). Dla tych nowych plików próby
       "dwa uruchomienia dają te same bajty" nie zapisano nawet na Windowsie. Zapisać, które
       pliki się różnią, a po próbie przywrócić pliki z repozytorium (`git checkout assets`)
 
@@ -970,7 +989,8 @@ zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** 
 wynikają z kodu, z testów i z tego, co zmierzono na Windowsie. Opis kodu:
 [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md),
 [`../modules/gfx/cubemap.md`](../modules/gfx/cubemap.md). Teren i trawa, czyli reszta M6,
-dostaną własną listę.
+mają własną listę zaraz po tej. Liczby w punktach niżej (221 przypadków, pięć programów)
+to stan po pierwszej części: dzisiejsze są w następnej liście.
 
 **Build i testy**
 
@@ -986,8 +1006,8 @@ dostaną własną listę.
       (`return {first.width, first.channels, pixels};` i `return {};` w `loadSkyCubemap`),
       pętla po liście w klamrach w teście (`for (const float firstSign : {-1.0F, 1.0F})`)
       i lambda w `std::any_of` w `Cubemap.cpp`
-- [ ] `ctest --test-dir build/debug --output-on-failure`: 221 przypadków, wszystkie
-      przechodzą. Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
+- [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
+      przechodzą (po pierwszej części M6 było ich 221, dziś jest 256). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
       powinny przejść bez zmian, bo to te same bajty z repozytorium
 
 **Shadery i OpenGL**
@@ -1021,7 +1041,7 @@ dostaną własną listę.
 
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 15.2: przełącznik,
       jasność, szwy, księżyc przy yaw 205 i pitch 50, suwak `Moon yaw` bez wpływu na
-      tarczę, widoki diagnostyczne, `Reload shaders` przy pięciu programach (na macOS bez
+      tarczę, widoki diagnostyczne, `Reload shaders` (dziś przy sześciu programach, na macOS bez
       kroku kopiowania assetów), brak pliku
 
 **Skrypt Blendera**
@@ -1033,6 +1053,134 @@ dostaną własną listę.
       ditheringu i zaokrągleniu to wystarczy, żeby zmienić pojedyncze bajty. Zapisać, czy
       pliki się różnią i czy testy nadal przechodzą, a po próbie przywrócić pliki z
       repozytorium (`git checkout assets`)
+
+### M6, część 2 (teren i trawa) na macOS: lista w całości otwarta
+
+Druga część kamienia milowego M6 (teren z mapy wysokości `game::Terrain` w miejscu płytek
+podłogi, wszystko w labiryncie postawione na terenie, `game::TerrainRenderer`, trawa
+`game::placeGrass` i `game::GrassRenderer`, etap geometrii w `gfx::Shader`, szósty program
+shaderów `grass` z plikiem `grass.geom`, prymityw `GL_POINTS` w `gfx::Mesh`, panele
+Terrain i Grass w drugim rzędzie pasków tytułu, skrypt `make_heightmap.py`) powstała na
+Windowsie 2026-10-05 i tam jest zbudowana i przetestowana testami jednostkowymi
+([`build-windows.md`](build-windows.md), sekcja 16). **Na macOS nikt jej nie zbudował ani
+nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania wynikają z kodu,
+z testów i z tego, co zmierzono i zgłoszono na Windowsie. Opis kodu:
+[`../modules/renderer/terrain.md`](../modules/renderer/terrain.md),
+[`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md),
+[`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md). Z tą częścią kod M6
+jest kompletny na Windowsie, ale kamień nie jest zamknięty właśnie przez tę listę
+i przez testy ręczne.
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/game/Terrain.*`, `src/game/TerrainRenderer.*`, `src/game/Grass.*`,
+      `src/game/GrassRenderer.*`, `src/debug/panels/TerrainPanel.*`,
+      `src/debug/panels/GrassPanel.*`, `tests/TerrainTests.cpp`, `tests/GrassTests.cpp`.
+      Zmienione między innymi: `src/gfx/Shader.*`, `src/gfx/Mesh.hpp`,
+      `src/game/MazeWorld.*`, `MazeLayout.*`, `Player.*`, `Round.*`, `Crystals.*`,
+      `Exit.*`, `ModelDraw.*`, `NightMazeApp.*`, `src/debug/PanelLayout.*`, `Hud.cpp`.
+      Miejsca warte uwagi: inicjalizatory desygnowane z pominiętymi polami
+      (`{.position = tuft.position, .uv = {tuft.random, 0.0F}}` w `GrassRenderer.cpp`,
+      `{.type = GL_VERTEX_SHADER, .path = &vertexPath}` w `Shader.cpp`), `std::max` z listą
+      w klamrach i wiązanie strukturalne wyniku `std::minmax_element` w `Terrain.cpp`,
+      stała `constexpr glm::mat4 IDENTITY{1.0F}` w `TerrainRenderer.cpp`, `std::lround`
+      w `Grass.cpp` i przypisanie wewnątrz makra
+      (`GL_CHECK(cullingWasOn = glIsEnabled(GL_CULL_FACE))`)
+- [ ] `ctest --test-dir build/debug --output-on-failure`: 256 przypadków, wszystkie
+      przechodzą (na Windowsie 101232 asercje)
+- [ ] **te same wysokości co na Windowsie.** Teren jest liczony na liczbach `float`
+      z pliku `heightmap.png`, bez funkcji, których wynik zależy od biblioteki. Po starcie
+      panel Camera powinien pokazać `Player feet` z y równym 0.124, a panel Terrain linie
+      `Grid: 97 x 97 points, 0.50 m apart`, `Triangles: 18432` i
+      `Height: 0.00 m to 3.37 m`
+- [ ] **ta sama trawa co na Windowsie.** Miejsca kępek losuje `std::mt19937` przez
+      `game::randomBelow`, bez rozkładów z biblioteki standardowej
+      ([`../decisions/deterministic-random.md`](../decisions/deterministic-random.md)),
+      więc dla ziarna 1 i gęstości 2,5 panel Grass powinien pokazać dokładnie
+      `Tufts: 1843 (5529 blades)`. Inna liczba oznacza, że libc++ zaokrągla albo losuje
+      inaczej: zapisać ją. Kandydaci to `std::lround` i porównania liczb `float` na
+      granicy 0,6 m od labiryntu
+
+**Shader geometrii i OpenGL**
+
+- [ ] start gry bez linii `[error]`: kompilator GLSL Apple nie widział jeszcze żadnego
+      z trzech plików trawy, a **shadera geometrii ten projekt nie uruchamiał na macOS
+      nigdy**. Etap geometrii należy do rdzenia OpenGL od wersji 3.2, więc kontekst 4.1
+      Core go ma, ale sprawdzić trzeba sterownik Apple, nie specyfikację. Miejsca warte
+      uwagi w `grass.geom`: `layout(points) in;`, wyjście
+      `layout(triangle_strip, max_vertices = TUFT_MAX_VERTICES) out;` z liczbą 15
+      podstawioną przez `#define` (preprocesor musi rozwinąć nazwę wewnątrz `layout`),
+      tablica wejściowa bez rozmiaru `in float vRandom[];`, `gl_in[0].gl_Position`,
+      `EmitVertex()` i `EndPrimitive()` w pętli
+- [ ] w `grass.frag`: dołączony `common/lighting.glsl` w trzecim programie i uniform
+      `uniform bool uLit`, ustawiany z C++ przez `setInt`
+- [ ] w terminalu nie ma linii
+      `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code`
+      dla programu `grass` (blok świateł jest podłączany do trzech programów)
+- [ ] trawa jest widoczna przy ścianach, kołysze się i jest oświetlona latarką. Jeśli jej
+      nie ma, a błędu w terminalu też nie ma, sprawdzić panel Grass (`Tufts`) i panel
+      Shaders (linia `grass.vert + grass.geom + grass.frag`)
+- [ ] **wireframe**: zaznaczyć `Wireframe` w panelu Terrain. Kod woła
+      `glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)` przed rysowaniem terenu i `GL_FILL` po
+      nim. W profilu Core dozwolone jest tylko `GL_FRONT_AND_BACK`, a linie mają szerokość
+      1. Oczekiwane: teren jako siatka linii, reszta sceny wypełniona, żadnej linii
+      `GL_INVALID_ENUM` ani `GL_INVALID_VALUE`. Na ekranie Retina linia o szerokości
+      jednego piksela framebuffera może być słabo widoczna: zapisać, czy siatkę da się
+      pokazać na obronie
+- [ ] przez cały test w terminalu nie pojawia się żadna linia z nazwą błędu OpenGL
+      (`GL_...`), także przy `GL_POINTS` jako prymitywie wejściowym trawy
+
+**Komunikaty błędów shaderów**
+
+- [ ] zepsuć `assets/shaders/grass.geom` (błąd składni) i kliknąć `Reload shaders`. Na
+      Windowsie zgłoszona linia sterownika zaczyna się od `grass.geom(84)`. Sterownik
+      Apple pisze w postaci z dwukropkami, więc oczekiwane jest
+      `ERROR: grass.geom:N: ...`. Zamiana numeru źródła na nazwę pliku jest sprawdzona
+      tylko testem jednostkowym i na sterowniku NVIDII, a dla pliku `.geom` na macOS
+      wcale: jeśli w linii zostaje `0:N`, zapisać dokładny tekst
+- [ ] po błędzie trawa rysuje się dalej poprzednim programem, linia programu `grass` w
+      panelu Shaders jest czerwona, pozostałe pięć kończy się `OK`. Naprawić plik,
+      `Reload shaders`: sześć razy `OK`
+- [ ] błąd linkowania zamiast kompilacji (na przykład zmienić w `grass.frag` nazwę wejścia
+      `gBladeUv` na inną): komunikat zaczyna się od `Shader linking failed:` i wymienia
+      trzy pliki połączone znakiem ` + `. Zapisać, co o niezgodnym wejściu pisze linker
+      Apple
+
+**Ekran Retina i panele**
+
+- [ ] po usunięciu `imgui.ini`: u góry, między kolumnami, są dwa rzędy pasków tytułu
+      (Camera i Gameplay, pod nimi Terrain i Grass), a pasek HUD stoi pod drugim rzędem
+      i na żaden nie nachodzi. Wysokość paska tytułu jest brana z ImGui
+      (`ImGui::GetFrameHeight`, funkcja `foldedRowsHeight`), a odstępy są mnożone przez
+      skalę układu, więc przy skali ekranu Maca drugi rząd powinien wypaść tuż pod
+      pierwszym. Zapisać, czy tak jest, bo na Windowsie sprawdzono to tylko przy skali 100%
+- [ ] źdźbła mają 4 cm szerokości u nasady: zapisać, czy na Retinie są wyraźne z kilku
+      metrów i czy ich krawędzie nie migoczą w ruchu (wygładzania krawędzi w projekcie nie
+      ma)
+
+**Panel i przełączniki**
+
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 16.2: chodzenie
+      po podłożu, szczeliny pod ścianami, `Height scale` z 0 i 2.50, `Wireframe`, wzgórza
+      w trybie noclip, panel Grass (`Enabled`, `Density`, `Blade height`,
+      `Wind strength`), trawa pod latarką i przy krysztale, cztery tryby `Lighting`,
+      widoki diagnostyczne, `Reload shaders` przy sześciu programach (na macOS bez kroku
+      kopiowania assetów), nowe labirynty innych rozmiarów, kryształy i brama na podłożu,
+      liczba klatek
+- [ ] liczba klatek na sekundę w Release z trawą i bez niej oraz przy `Density` 8.0: na
+      macOS OpenGL działa jako warstwa nad Metalem i koszt shadera geometrii może być
+      inny niż na karcie NVIDII, gdzie różnicy nie dało się zmierzyć. Zapisać liczby
+
+**Skrypt Blendera**
+
+- [ ] uruchomić na Macu `blender --background --factory-startup --python
+      tools/blender/make_heightmap.py`, potem `git status`. Skrypt używa tylko generatora
+      numpy, mnożenia, dodawania i zaokrąglenia do 256 poziomów, bez funkcji takich jak
+      `sin` czy `exp`, więc plik `heightmap.png` powinien wyjść bajt w bajt taki sam.
+      Zapisać, czy tak jest, a jeśli nie, to czy testy nadal przechodzą i jaką wysokość
+      pokazuje `Player feet` na starcie. Po próbie przywrócić plik z repozytorium
 
 ### Skróty: `make`
 
@@ -1402,7 +1550,7 @@ pokazuje część tych samych diagnostyk w edytorze, bo czyta ten sam plik `.cla
 | `[error] Shader file cannot be opened: .../build/debug/assets/shaders/textured.vert` (i takie same linie dla pozostałych programów), w oknie samo tło | obok programu nie ma katalogu `assets`: program skopiowany ręcznie w inne miejsce albo repozytorium przeniesione po zbudowaniu (dowiązanie wskazuje starą ścieżkę) | `ls -l build/debug/assets`. Odtwórz dowiązanie pełnym buildem: `make clean`, potem `make debug` |
 | `[error] Shader compilation failed: ...` z linią sterownika, znika to, co rysuje ten program (w stanie M1, z jednym programem, zostawało samo tło) | błąd w pliku shadera. Sterownik Apple pisze linię w postaci `ERROR: 0:N: ...`, gdzie 0 to numer napisu źródłowego, a `N` numer linii. Od M4 program zamienia ten numer na nazwę pliku, więc oczekiwana postać to `ERROR: color.frag:N: ...`, a dla błędu w pliku dołączanym `ERROR: common/lighting.glsl:N: ...`. Zamiana jest sprawdzona tylko testem jednostkowym, nie na prawdziwym sterowniku Apple: jeśli linia ma inną postać, zostaje taka, jak ją napisał sterownik | popraw plik w `assets/shaders/` i naciśnij "Reload shaders" w panelu Shaders (albo uruchom program ponownie). Opis w [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), sekcje 3.3 i 7, w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7, oraz w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code` | sterownik ułożył blok uniformów ze światłami inaczej niż struktura `scene::LightBlockData` (na macOS niesprawdzone, na karcie NVIDIA linia się nie pojawia) | zapisać liczbę z komunikatu i porównać blok w `assets/shaders/common/lighting.glsl` ze strukturą w `src/scene/LightBlock.hpp` ([`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md)) |
-| Podłoga albo ściany są białe, w terminalu linia `[error]` o pliku obrazu | brakuje pliku w `assets/textures/` albo nie da się go zdekodować: część modelu dostaje białą teksturę zastępczą (na macOS niesprawdzone) | przywróć plik (`git status`, `git checkout assets/textures`) i uruchom program ponownie |
+| Podłoże albo ściany są białe, w terminalu linia `[error]` o pliku obrazu | brakuje pliku w `assets/textures/` albo nie da się go zdekodować: część modelu (albo teren, gdy chodzi o `ground.png`) dostaje białą teksturę zastępczą (na macOS niesprawdzone) | przywróć plik (`git status`, `git checkout assets/textures`) i uruchom program ponownie |
 | Okno otwiera się, ale panel "Renderer" jest niewidoczny, widać tylko pasek HUD u góry | panele ukryte klawiszem `~` albo zapisany układ poza oknem | naciśnij `~` (na lewo od `1`). Jeśli nie pomaga, usuń `imgui.ini` z katalogu, z którego uruchamiasz program |
 | Latarka nie daje się włączyć klawiszem F | bateria jest pusta: pasek HUD pokazuje `0%` i napis `Battery empty. Find a crystal.`. To reguła gry, nie błąd | zbierz kryształ, potem naciśnij F, albo zacznij rundę od nowa klawiszem R |
 | Esc nie zamyka programu, `~` nie chowa paneli | aktywny jest widżet ImGui (wpisywanie albo przeciąganie wartości), więc klawiatura gry jest zablokowana | zakończ edycję (Enter, Esc albo kliknięcie poza polem). Opis w [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6 |

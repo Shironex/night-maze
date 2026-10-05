@@ -8,14 +8,19 @@ loader obrazów w [`src/assets/ImageLoader.cpp`](../../src/assets/ImageLoader.cp
 **Stan na dziś: stb_image woła jeden plik projektu, `src/assets/ImageLoader.cpp`.** Funkcja
 `assets::loadImage` zamienia nim plik PNG na tablicę bajtów
 ([`../modules/assets/images.md`](../modules/assets/images.md)). Wołają ją testy jednostkowe
-(`tests/ImageLoaderTests.cpp`, od M6 także `tests/SkyboxTests.cpp`) i gra, w dwóch miejscach.
+(`tests/ImageLoaderTests.cpp`, od M6 także `tests/SkyboxTests.cpp` i `tests/TerrainTests.cpp`)
+i gra, w trzech miejscach.
 Od pierwszej części M6 `game::Skybox` wczytuje nią sześć obrazów nieba z `assets/skybox/`
 (1024 x 1024, bez odwracania wierszy,
 [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md)), a
 `assets::AssetCache::texture` wczytuje nią tekstury
-modeli labiryntu, a od M5 także kryształów i bramy: razem osiem plików PNG w
+modeli labiryntu, od M5 także kryształów i bramy, a od drugiej części M6 podłoża terenu
+(zamiast usuniętych płytek podłogi): razem osiem plików PNG w
 `assets/textures/`, cztery tekstury koloru i cztery mapy normalnych, każdy 512 x 512 pikseli
 w trzech kanałach ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md)).
+Trzecie miejsce doszło w drugiej części M6: funkcja `loadHeightmap` w
+`src/game/NightMazeApp.cpp` wczytuje nią mapę wysokości terenu, `heightmap.png` (256 x 256,
+bez odwracania wierszy, [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)).
 Na Windowsie (MSVC 19.44,
 2026-10-05) biblioteka kompiluje się bez ostrzeżeń i testy loadera przechodzą. **Na macOS
 ten kod nie był jeszcze budowany.**
