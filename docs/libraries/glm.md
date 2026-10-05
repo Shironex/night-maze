@@ -12,8 +12,8 @@ używa.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera, a `Shader::setVec3` tak samo wysyła wektor.
 Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz widoku i macierz
-rzutowania, wysyła je do trzech programów shaderów i woła `mix` przy liczeniu pozycji oka
-(sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+rzutowania, wysyła je do programów shaderów (jest ich pięć, w jednej klatce pracują
+najwyżej trzy) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
 mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
 kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
 narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ
@@ -21,6 +21,19 @@ labiryntu (`src/game/MazeLayout.*`: pozycje ścian i słupków) i gracz
 ([`src/game/Player.cpp`](../../src/game/Player.cpp): `length` i `normalize` dla kierunku
 ruchu). `src/game/MazeWorld.*` trzyma gotowe macierze modelu jako `std::vector<glm::mat4>`,
 a wierzchołek siatki (`gfx::Vertex`) to dwa `glm::vec3` i jeden `glm::vec2`.
+
+Oświetlenie (M4) dołożyło kilka nowych użyć, wszystkie opisane niżej:
+
+| Co | Gdzie w kodzie | Sekcja |
+|---|---|---|
+| `glm::mat3`, `glm::inverse`, `glm::transpose`: macierz normalnych (normal matrix) | `scene::normalMatrix` w [`src/scene/Transform.cpp`](../../src/scene/Transform.cpp), wołana przez `MazeRenderer::drawInstances` | 3.3 |
+| `glm::vec4{vec3, w}`: wektor czterech liczb zbudowany z trzech i jednej | `scene::packLightBlock` w [`src/scene/LightBlock.cpp`](../../src/scene/LightBlock.cpp) | 3.2 |
+| `glm::length` i `glm::normalize` dla kierunków świateł | funkcja `unitDirection` w tym samym pliku | 3.8 |
+| `glm::radians` dla kątów stożka i kątów księżyca | `coneCosines` i `directionFromAngles` w [`src/scene/Light.cpp`](../../src/scene/Light.cpp) | 3.7 |
+| `glm::value_ptr` z `glUniformMatrix3fv` | `Shader::setMat3` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) | 3.9 |
+| `glm::value_ptr` dla edytora koloru ImGui | `ImGui::ColorEdit3` w [`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp) | 3.9 |
+
+Ten kod jest zbudowany i przetestowany na Windowsie (2026-10-05). Na macOS nie był budowany.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -208,7 +221,10 @@ buduje macierz albo wysyła ją do OpenGL.
 Tak jest w `src/scene/`: `Transform.hpp` i `Camera.hpp` dołączają samo `<glm/glm.hpp>`, a
 `Transform.cpp` i `Camera.cpp` dodatkowo `<glm/gtc/matrix_transform.hpp>`. W `src/gfx/`
 `Shader.hpp` dołącza `<glm/glm.hpp>` (parametr typu `glm::mat4`), a `Shader.cpp`
-`<glm/gtc/type_ptr.hpp>` (funkcja `value_ptr`).
+`<glm/gtc/type_ptr.hpp>` (funkcja `value_ptr`). Pliki świateł trzymają się tej samej zasady:
+`scene/Light.hpp` i `scene/LightBlock.hpp` dołączają samo `<glm/glm.hpp>`, a ich pliki `.cpp`
+niczego więcej z GLM nie potrzebują (`radians`, `length` i `normalize` są w rdzeniu). Panel
+Lights (`src/debug/panels/LightsPanel.cpp`) dołącza `<glm/gtc/type_ptr.hpp>` dla `value_ptr`.
 
 ### 3.2. Wektory: `vec2`, `vec3`, `vec4`
 
@@ -237,11 +253,44 @@ glm::vec3 twice = position * 2.0F;
   jest w [`src/scene/Collider.cpp`](../../src/scene/Collider.cpp), gdzie numer osi jest
   parametrem ([`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 5.3).
 
+**`glm::vec4{vec3, w}` w projekcie.** Konstruktor z przykładu wyżej (`vec3` rozszerzony o
+czwartą liczbę) pakuje światła do bloku uniformów. Fragment `scene::packLightBlock` w
+[`src/scene/LightBlock.cpp`](../../src/scene/LightBlock.cpp):
+
+```cpp
+    // glm::vec4{vec3, w}: the three floats of the vec3 followed by the fourth one.
+    block.cameraPosition = glm::vec4{cameraPosition, 0.0F};
+    block.ambient = glm::vec4{lights.ambient, 0.0F};
+
+    block.directionalDirection = glm::vec4{unitDirection(lights.directional.direction), 0.0F};
+    block.directionalColor = glm::vec4{lights.directional.color, lights.directional.intensity};
+```
+
+| Linia | Co trafia do czterech liczb |
+|---|---|
+| `glm::vec4{cameraPosition, 0.0F}` | x, y, z oka kamery, czwarta liczba nieużywana (zero) |
+| `glm::vec4{lights.ambient, 0.0F}` | czerwony, zielony, niebieski światła otoczenia, czwarta nieużywana |
+| `glm::vec4{unitDirection(...), 0.0F}` | kierunek światła księżyca o długości 1, czwarta nieużywana |
+| `glm::vec4{lights.directional.color, lights.directional.intensity}` | kolor, a w czwartej liczbie natężenie światła |
+
+Czwarta liczba nie jest tu współrzędną `w` punktu ani kierunku. Blok używa `vec4` dla
+wszystkiego poza licznikiem świateł punktowych po to, żeby każdy taki element miał 16 bajtów i zaczynał się na wielokrotności 16
+(`sizeof(glm::vec4) == 16` pilnuje `static_assert` w `src/scene/LightBlock.hpp`), a wolne
+miejsce niesie czasem małą dodatkową wartość. Reguły układu `std140` opisuje
+[`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md).
+
+Prawdziwe użycie `w = 0` jako znacznika kierunku jest w teście
+[`tests/TransformTests.cpp`](../../tests/TransformTests.cpp): funkcja pomocnicza
+`transformDirection` liczy `glm::vec3{matrix * glm::vec4{direction, 0.0F}}`, czyli mnoży
+kierunek przez macierz modelu tak, żeby przesunięcie go nie ruszyło, i z wyniku bierze
+pierwsze trzy liczby (konstruktor `glm::vec3` z `glm::vec4` odcina czwartą).
+
 ### 3.3. Macierze: `mat3`, `mat4` i zapis kolumnowy
 
 `mat4` to macierz 4 x 4 liczb `float` (64 bajty), `mat3` to 3 x 3. Macierz `mat4` opisuje
 dowolne przekształcenie afiniczne (przesunięcie, obrót, skala) oraz rzutowanie. `mat3`
-przyda się później jako macierz normalnych (oświetlenie, M4).
+(9 liczb, 36 bajtów) służy w projekcie jako macierz normalnych (normal matrix): opis na
+końcu tej sekcji.
 
 **Macierz jednostkowa (identity matrix)** to przekształcenie "nic nie rób". Zawsze piszę ją
 jawnie:
@@ -280,6 +329,51 @@ Przesunięcie leży w ostatniej **kolumnie**, czyli w `m[3]`, a `tx` to `m[3][0]
 16 liczb leży kolumnami: najpierw cała `m[0]`, potem `m[1]`, `m[2]`, `m[3]`. Przesunięcie
 zajmuje więc pozycje 12, 13 i 14. Dokładnie takiego układu oczekuje `glUniformMatrix4fv`
 (sekcja 3.9).
+
+**`mat3` w projekcie: macierz normalnych.** Od M4 istnieje jako funkcja `scene::normalMatrix`
+w [`src/scene/Transform.cpp`](../../src/scene/Transform.cpp):
+
+```cpp
+glm::mat3 normalMatrix(const glm::mat4& modelMatrix) {
+    // glm::mat3(mat4) keeps the upper left 3 x 3 part: rotation and scale, without the
+    // translation in the fourth column.
+    return glm::transpose(glm::inverse(glm::mat3(modelMatrix)));
+}
+```
+
+Wyrażenie czyta się od środka:
+
+| Krok | Funkcja GLM | Co robi |
+|---|---|---|
+| 1 | `glm::mat3(modelMatrix)` | konstruktor `mat3` z `mat4`: bierze lewą górną część 3 x 3, czyli obrót i skalę. Czwarta kolumna z przesunięciem odpada, bo normalna jest kierunkiem i przesunięcie nie może jej ruszyć |
+| 2 | `glm::inverse(...)` | macierz odwrotna. Macierz modelu musi być odwracalna, czyli żaden współczynnik skali nie może być zerem |
+| 3 | `glm::transpose(...)` | transpozycja: zamiana wierszy z kolumnami |
+
+Obie funkcje, `inverse` i `transpose`, są w rdzeniu (`<glm/glm.hpp>`), więc `Transform.cpp`
+nie dołącza dla nich niczego nowego. Dlaczego odwrotność i transpozycja, a nie samo
+`mat3(model)`: przy skali różnej na osiach normalna pomnożona przez `mat3(model)` przestaje
+być prostopadła do powierzchni. Dla samego obrotu odwrotność transponowana jest tym samym
+obrotem. Dziś żaden obiekt labiryntu nie jest skalowany, więc wynik równa się części
+obrotowej macierzy modelu. Teoria i cztery testy z `tests/TransformTests.cpp`:
+[`../modules/scene/transforms.md`](../modules/scene/transforms.md) (macierz normalnych).
+
+Funkcję woła `MazeRenderer::drawInstances` w
+[`src/game/MazeRenderer.cpp`](../../src/game/MazeRenderer.cpp), dla każdego obiektu w każdej
+klatce, zaraz po wysłaniu macierzy modelu:
+
+```cpp
+            shader.setMat4(MODEL_UNIFORM, modelMatrix);
+            // The lit programs turn the normals with a matrix of their own, derived
+            // from the model matrix. It is computed here, on the CPU, once per object:
+            // in the shader the inverse would be computed again for every vertex.
+            shader.setMat3(NORMAL_MATRIX_UNIFORM, scene::normalMatrix(modelMatrix));
+```
+
+Wynik trafia do uniformu `uNormalMatrix` typu `mat3` w `lit.vert` i `gouraud.vert`. Ta sama
+linia wykonuje się także wtedy, gdy labirynt rysuje program `textured`, który takiego
+uniformu nie ma: `setMat3` dostaje wtedy lokalizację -1 i OpenGL ją ignoruje (sekcja 3.9).
+`textured.vert` nadal liczy normalną przez `mat3(uModel)`: to ten sam konstruktor co w
+kroku 1, tylko w GLSL.
 
 ### 3.4. Mnożenie macierzy: czytamy od prawej do lewej
 
@@ -445,6 +539,20 @@ pola), a `glm::radians` stoi w miejscu użycia. Tak samo zaczyna się `Camera::f
     const float pitch = glm::radians(pitchDegrees);
 ```
 
+Tę samą zasadę stosują światła. W [`src/scene/Light.cpp`](../../src/scene/Light.cpp)
+`directionFromAngles` zaczyna się od tych samych dwóch linii z `glm::radians` (kierunek
+światła księżyca z kątów `Moon yaw` i `Moon pitch`), a `coneCosines` zamienia kąty stożka
+latarki na radiany tuż przed policzeniem cosinusa:
+
+```cpp
+    // The standard library takes angles in radians.
+    const float outer = std::cos(glm::radians(outerDegrees));
+    const float inner = std::cos(glm::radians(innerDegrees));
+```
+
+`std::cos` to funkcja biblioteki standardowej C++, nie GLM, ale też liczy w radianach.
+Opis obu funkcji: [`../modules/scene/lights.md`](../modules/scene/lights.md).
+
 Teoria rzutowania (bryła widzenia, dzielenie perspektywiczne, nieliniowa głębia):
 [`../modules/scene/camera.md`](../modules/scene/camera.md), sekcja 2.3.
 
@@ -490,6 +598,31 @@ glm::vec3 Camera::right() const {
 (pierwiastek z sumy kwadratów składowych), a `glm::normalize` dzieli wektor przez tę długość.
 Warunek jest konieczny: dla wektora zerowego `normalize` dzieli zero przez zero (pułapka 9).
 
+Ta sama para pilnuje kierunków świateł. Funkcja pomocnicza `unitDirection` w
+[`src/scene/LightBlock.cpp`](../../src/scene/LightBlock.cpp), przez którą `packLightBlock`
+przepuszcza kierunek księżyca i oś stożka latarki:
+
+```cpp
+// direction with length 1.
+glm::vec3 unitDirection(const glm::vec3& direction) {
+    if (glm::length(direction) < MIN_DIRECTION_LENGTH) {
+        return FALLBACK_DIRECTION;
+    }
+    return glm::normalize(direction);
+}
+```
+
+| Linia | Znaczenie |
+|---|---|
+| `glm::length(direction) < MIN_DIRECTION_LENGTH` | kierunek krótszy niż 0,0001 nie da się sprowadzić do długości 1 |
+| `return FALLBACK_DIRECTION;` | zamiast niego wraca stała `(0, -1, 0)`, czyli prosto w dół |
+| `return glm::normalize(direction);` | zwykły przypadek: ten sam kierunek o długości 1 |
+
+Shader zakłada, że kierunki w bloku mają długość 1, i sam ich nie normalizuje. Jedna wartość
+`NaN` w bloku zrobiłaby czarny każdy oświetlony piksel, stąd wyjście awaryjne zamiast
+dzielenia przez zero. Sprawdza to test `packLightBlock replaces a direction of length zero`
+w `tests/LightTests.cpp`.
+
 `mix` przy rysowaniu, `NightMazeApp::onRender` w
 [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp):
 
@@ -526,9 +659,10 @@ void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
 ```
 
 Nagłówek `<glm/gtc/type_ptr.hpp>` jest dołączony na górze tego pliku. Funkcję omawia linia
-po linii [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), sekcja 5. Wołają ją
-trzy funkcje rysujące `NightMazeApp` oraz `MazeRenderer` i `ColliderLines` (po razie dla
-każdego rysowanego obiektu). Przykład z `NightMazeApp::drawCube`:
+po linii [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), sekcja 5. Woła ją
+pięć funkcji rysujących `NightMazeApp` (`drawUnlitMaze`, `drawLitMaze`, `drawLightMarkers`,
+`drawCube`, `drawColliderLines`) oraz `MazeRenderer`, `ColliderLines` i `LightRig` (po razie
+dla każdego rysowanego obiektu). Przykład z `NightMazeApp::drawCube`:
 
 ```cpp
     m_shader.setMat4(MODEL_UNIFORM, m_cubeTransform.matrix());
@@ -559,6 +693,42 @@ wartości tymczasowej i używać go w następnej instrukcji. W `setMat4` macierz
 `glUniformMatrix4fv` wróci.
 
 Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(color))`.
+
+**Macierz 3 x 3: `Shader::setMat3`.** Macierz normalnych (sekcja 3.3) idzie do shadera
+bliźniaczą funkcją z tego samego pliku:
+
+```cpp
+void Shader::setMat3(const char* name, const glm::mat3& matrix) const {
+    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
+    GLint location = -1;
+    GL_CHECK(location = glGetUniformLocation(m_program, name));
+
+    // The 3 x 3 version of the call in setMat4: one matrix, not transposed, 9 floats.
+    GL_CHECK(glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
+}
+```
+
+Różnice względem `setMat4` są dwie: typ parametru (`glm::mat3`) i funkcja OpenGL
+(`glUniformMatrix3fv`). `glm::value_ptr` zwraca tu wskaźnik na 9 liczb `float`, znowu
+kolumna po kolumnie, a `GL_FALSE` znaczy to samo co wyżej: nie transponuj. Słowo
+"transpose" pojawia się więc w dwóch różnych miejscach i nie wolno ich mylić: `glm::transpose`
+w `scene::normalMatrix` jest częścią wzoru, a argument `transpose` funkcji OpenGL dotyczy
+tylko układu liczb w pamięci.
+
+**`value_ptr` poza OpenGL: edytor koloru w panelu.** Wskaźnika na surowe liczby potrzebuje
+też ImGui. Panel Lights w
+[`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp):
+
+```cpp
+    // ColorEdit3 reads and writes three floats through the pointer. value_ptr gives the
+    // address of the three floats of a glm::vec3.
+    ImGui::ColorEdit3("Moon colour", glm::value_ptr(lighting.moonColor));
+```
+
+`ImGui::ColorEdit3` przyjmuje `float*` na trzy liczby i zapisuje przez niego nowy kolor.
+`lighting.moonColor` nie jest tu stałą, więc `value_ptr` zwraca wskaźnik do zapisu (dla
+obiektu `const` zwróciłby `const float*`). Tak samo edytowane są `Ambient`, `Beam colour`
+i `Point colour`. Panel Camera używa `value_ptr` w ten sam sposób dla pozycji gracza.
 
 ## 4. Pułapki
 
@@ -679,6 +849,17 @@ Dla wektorów działa to tak samo: `glUniform3fv(location, 1, glm::value_ptr(col
 10. **Dlaczego nie definiujemy `GLM_FORCE_DEPTH_ZERO_TO_ONE` ani `GLM_FORCE_LEFT_HANDED`?**
     To konwencje innych API (Vulkan, Direct3D). OpenGL 4.1 używa układu prawoskrętnego i
     głębi od -1 do 1, czyli wartości domyślnych GLM.
+
+11. **Jak w GLM powstaje macierz normalnych i jak trafia do shadera?**
+    `glm::transpose(glm::inverse(glm::mat3(modelMatrix)))` w `scene::normalMatrix`:
+    konstruktor `mat3` z `mat4` odcina przesunięcie, potem odwrotność i transpozycja.
+    Wysyła ją `Shader::setMat3` przez `glUniformMatrix3fv` z `glm::value_ptr` (9 liczb,
+    `transpose = GL_FALSE`) do uniformu `uNormalMatrix`.
+
+12. **Co robi zapis `glm::vec4{color, intensity}` w `packLightBlock`?**
+    Buduje wektor czterech liczb z `vec3` i jednej liczby `float`: trzy składowe koloru i
+    natężenie w czwartej. Blok świateł używa `vec4` dla wszystkiego poza licznikiem
+    `uPointCount`, żeby każdy taki element miał 16 bajtów.
 
 ## 6. Oficjalna dokumentacja
 

@@ -1,8 +1,9 @@
-# Struktura projektu (stan: M1 kompletny, kod M2 + M3 kompletny na Windowsie)
+# Struktura projektu (stan: M1 kompletny, kod M2 + M3 i oświetlenie z M4 na Windowsie)
 
 Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego służy każdy plik
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny po
-kroku, który łączy części kamienia milowego M2 + M3 w działającą grę (2026-10-05).
+pierwszej części kamienia milowego M4, czyli po dodaniu oświetlenia (2026-10-05). Poprzedni
+stan to krok, który połączył części M2 + M3 w działającą grę (2026-10-05).
 
 Z M1 są: mysz, ścieżki do assetów, GLM, warstwa `gfx/` z klasami `Shader`, `Buffer` i
 `VertexArray`, warstwa `scene/` ze strukturami `Transform` i `Camera`, kostka rysowana z
@@ -24,6 +25,21 @@ zbudowany, przetestowany i uruchomiony na Windowsie (2026-10-05). Na macOS nie b
 a ręczne sprawdzenie chodzenia i paneli jest otwarte na obu systemach, więc kamień milowy
 nie jest zamknięty i nie ma tagu.
 
+Z M4 (pierwsza część: oświetlenie) są: światła jako dane i ich matematyka
+(`src/scene/Light.*`), bajty bloku uniformów ze światłami (`src/scene/LightBlock.*`), bufor
+uniformów (`src/gfx/UniformBuffer.*`), dyrektywa `#include` w shaderach i nazwy plików w
+komunikatach błędów (`src/gfx/ShaderSource.*`), nowe settery i wiązanie bloku uniformów w
+klasie `Shader`, macierz normalnych (`scene::normalMatrix` w `src/scene/Transform.*`),
+ustawienia oświetlenia i światła w ślepych zaułkach (`src/game/Lighting.*`), klasa
+wysyłająca światła na kartę (`src/game/LightRig.*`), dwie nowe pary shaderów (`lit`,
+`gouraud`) z jednym wspólnym plikiem dołączanym (`assets/shaders/common/lighting.glsl`),
+panel Lights, lista trybów `Lighting` w panelu Renderer, układ siedmiu paneli i cztery nowe
+pliki testów. Program startuje w nocnej, oświetlonej scenie. Ten kod jest zbudowany,
+przetestowany i uruchomiony na Windowsie (2026-10-05, 149 przypadków testowych i 61240
+asercji). Na macOS nie był budowany, a ręczne sprawdzenie klawisza F i widżetów jest otwarte
+([`build-windows.md`](build-windows.md), sekcja 13). Mapy normalnych, czyli druga część M4,
+jeszcze nie istnieją.
+
 Docelową strukturę (z `renderer/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -39,8 +55,8 @@ night-maze/
 ├── CMakePresets.json           # presety debug i release
 ├── Makefile                    # skróty do codziennych poleceń: make run, make test, make check
 ├── .clang-format               # styl formatowania kodu
-├── .clang-tidy                 # reguły analizy statycznej i konwencja nazw
-├── .clangd                     # gdzie clangd ma szukać compile_commands.json
+├── .clang-tidy                 # reguły analizy statycznej, konwencja nazw, jedna dodatkowa flaga
+├── .clangd                     # gdzie clangd ma szukać compile_commands.json, ta sama flaga
 ├── .gitattributes              # normalizacja końców linii
 ├── .gitignore                  # czego nie wersjonujemy
 ├── .vscode/                    # ustawienia obszaru roboczego Cursor i VS Code
@@ -55,13 +71,19 @@ night-maze/
 │   │   ├── floor_tile.obj/.mtl     # płytka podłogi 2 x 2 m
 │   │   ├── wall_pillar.obj/.mtl    # słupek na rogu siatki
 │   │   └── wall_straight.obj/.mtl  # segment ściany wzdłuż osi X
-│   ├── shaders/                # shadery GLSL, trzy pary
+│   ├── shaders/                # shadery GLSL: pięć par i jeden plik dołączany
+│   │   ├── common/
+│   │   │   └── lighting.glsl       # blok świateł i funkcja computeLighting, dołączany przez #include
 │   │   ├── basic.frag              # kostka: kolor z interpolacji
 │   │   ├── basic.vert              # kostka: trzy macierze, pozycja i kolor
-│   │   ├── color.frag              # linie pudełek kolizji: jeden kolor z uniformu uColor
-│   │   ├── color.vert              # linie pudełek kolizji: trzy macierze, sama pozycja
-│   │   ├── textured.frag           # modele: tekstura razy uTint, dwa widoki debug
-│   │   └── textured.vert           # modele: trzy macierze, pozycja, normalna, uv
+│   │   ├── color.frag              # linie pudełek kolizji i znaczniki świateł: jeden kolor z uColor
+│   │   ├── color.vert              # linie pudełek kolizji i znaczniki świateł: trzy macierze, sama pozycja
+│   │   ├── gouraud.frag            # labirynt, światło na wierzchołek: światło z wierzchołków razy tekstura
+│   │   ├── gouraud.vert            # labirynt, światło na wierzchołek: tu liczone jest światło
+│   │   ├── lit.frag                # labirynt, światło na fragment: tu liczone jest światło (Phong, Blinn-Phong)
+│   │   ├── lit.vert                # labirynt, światło na fragment: pozycja i normalna w świecie
+│   │   ├── textured.frag           # modele bez światła: tekstura razy uTint, dwa widoki debug
+│   │   └── textured.vert           # modele bez światła: trzy macierze, pozycja, normalna, uv
 │   └── textures/               # tekstury PNG
 │       ├── floor_stone.png
 │       └── wall_stone.png
@@ -101,40 +123,51 @@ night-maze/
 │   │       ├── AssetsPanel.hpp/.cpp    # panel "Assets": widok, filtr, anizotropia, modele, tekstury
 │   │       ├── CameraPanel.hpp/.cpp    # panel "Camera": stopy gracza, kąty, FOV, prędkości
 │   │       ├── CollisionPanel.hpp/.cpp # panel "Collision": rysowanie pudełek, noclip, liczby
+│   │       ├── LightsPanel.hpp/.cpp    # panel "Lights": otoczenie, księżyc, latarka, światła punktowe, połysk
 │   │       ├── MazePanel.hpp/.cpp      # panel "Maze": rozmiar, ziarno, Regenerate, plan z góry
-│   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer"
-│   │       └── ShadersPanel.hpp/.cpp   # panel "Shaders": trzy programy, przycisk Reload shaders
+│   │       ├── RendererPanel.hpp/.cpp  # panel "Renderer": statystyki, kolor tła, lista Lighting
+│   │       └── ShadersPanel.hpp/.cpp   # panel "Shaders": pięć programów, przycisk Reload shaders
 │   ├── game/                   # gra
 │   │   ├── ColliderLines.hpp/.cpp  # rysowanie pudełek kolizji liniami (GL_LINES)
+│   │   ├── LightRig.hpp/.cpp       # bufor uniformów ze światłami i kostki znaczników świateł
+│   │   ├── Lighting.hpp/.cpp       # tryby i ustawienia oświetlenia, ślepe zaułki, światła klatki
 │   │   ├── Maze.hpp/.cpp           # labirynt: siatka komórek, ściany na krawędziach
 │   │   ├── MazeGenerator.hpp/.cpp  # generator labiryntu z ziarna, randomBelow
 │   │   ├── MazeLayout.hpp/.cpp     # układ w świecie: ściany, słupki, pudełka kolizji
 │   │   ├── MazeRenderer.hpp/.cpp   # rysowanie podłogi, ścian i słupków modelami
 │   │   ├── MazeWorld.hpp/.cpp      # jeden labirynt w świecie: macierze modelu, pudełka, start
-│   │   ├── NightMazeApp.hpp/.cpp   # aplikacja Night Maze: labirynt, gracz, kamera, kostka
+│   │   ├── NightMazeApp.hpp/.cpp   # aplikacja Night Maze: labirynt, gracz, kamera, światła, kostka
 │   │   ├── Player.hpp/.cpp         # gracz: pudełko, chodzenie z kolizjami, noclip
 │   │   └── ShaderUniforms.hpp      # nazwy uniformów shaderów w jednym miejscu
 │   ├── gfx/                    # opakowania obiektów OpenGL (RAII, tylko przenoszenie)
 │   │   ├── Buffer.hpp/.cpp         # bufor wierzchołków albo indeksów
 │   │   ├── Mesh.hpp/.cpp           # siatka: VAO i dwa bufory jednego modelu, draw
-│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload, setMat4, setInt, setVec3
+│   │   ├── Shader.hpp/.cpp         # program shaderów z dwóch plików, reload, settery, blok uniformów
+│   │   ├── ShaderSource.hpp/.cpp   # tekst shadera: #include, dyrektywy #line, nazwy plików w błędach
 │   │   ├── Texture2D.hpp/.cpp      # tekstura 2D z mipmapami i obiekt samplera
+│   │   ├── UniformBuffer.hpp/.cpp  # bufor uniformów: pamięć bloku uniformów na karcie
 │   │   ├── Vertex.hpp              # jeden wierzchołek modelu: pozycja, normalna, uv
 │   │   └── VertexArray.hpp/.cpp    # tablica wierzchołków (VAO), opis atrybutów
 │   └── scene/                  # opis sceny: dane i matematyka na GLM, bez OpenGL
 │       ├── Camera.hpp/.cpp         # kamera: kierunek, macierz widoku i rzutowania
 │       ├── Collider.hpp/.cpp       # pudełka AABB, test nakładania, ruch ze ślizganiem
-│       └── Transform.hpp/.cpp      # pozycja, obrót, skala i macierz modelu
+│       ├── Light.hpp/.cpp          # światła jako dane: kierunkowe, punktowe, reflektor, zanik, stożek
+│       ├── LightBlock.hpp/.cpp     # bajty bloku uniformów LightBlock (std140) i packLightBlock
+│       └── Transform.hpp/.cpp      # pozycja, obrót, skala, macierz modelu i macierz normalnych
 ├── tests/                      # testy jednostkowe (doctest): program night_maze_tests
 │   ├── main.cpp                    # punkt wejścia: main() generuje doctest
 │   ├── ColliderTests.cpp           # testy scene::Aabb, overlaps i moveAndSlide
 │   ├── ImageLoaderTests.cpp        # testy loadImage: tekstury gry, odwracanie wierszy, błędy
+│   ├── LightingTests.cpp           # testy ślepych zaułków, ustawień oświetlenia i buildLightSet
+│   ├── LightTests.cpp              # testy zaniku, stożka reflektora i bajtów bloku świateł
 │   ├── MazeGeneratorTests.cpp      # testy randomBelow i generateMaze, labirynt wzorcowy
 │   ├── MazeLayoutTests.cpp         # testy układu w świecie i kolizji w labiryncie
 │   ├── MazeTests.cpp               # testy klasy Maze i kierunków
 │   ├── MazeWorldTests.cpp          # testy buildMazeWorld: macierze, pudełka, start
 │   ├── ObjLoaderTests.cpp          # testy parseObj, parseMtl i loadObj
-│   └── PlayerTests.cpp             # testy gracza: chodzenie, sprint, ślizganie, noclip
+│   ├── PlayerTests.cpp             # testy gracza: chodzenie, sprint, ślizganie, noclip
+│   ├── ShaderSourceTests.cpp       # testy expandIncludes i nameSourceFiles
+│   └── TransformTests.cpp          # testy macierzy normalnych
 └── docs/
     ├── PRD.pdf                 # dokument wymagań
     ├── README.md               # spis treści dokumentacji i kolejność czytania
@@ -142,7 +175,9 @@ night-maze/
     ├── decisions/              # notatki "dlaczego tak, a nie inaczej"
     │   ├── README.md               # czym jest notatka, układ, lista notatek
     │   ├── collision-aabb-sliding.md   # AABB i ślizganie zamiast silnika fizyki
-    │   └── deterministic-random.md     # własna randomBelow zamiast rozkładów std
+    │   ├── dead-end-lights.md          # światła punktowe w ślepych zaułkach
+    │   ├── deterministic-random.md     # własna randomBelow zamiast rozkładów std
+    │   └── no-gamma-until-m7.md        # bez korekcji gamma i tekstur sRGB do M7
     ├── guides/                 # przewodniki
     │   ├── blender.md              # modele i tekstury: skrypty Blendera, eksport OBJ
     │   ├── build-macos.md          # budowanie na macOS
@@ -170,6 +205,7 @@ night-maze/
         │   └── window-context.md       # okno, kontekst, GLAD, vsync, Log
         ├── game/                   # moduł game
         │   ├── README.md               # wstęp, aplikacja a logika bez okna, indeks
+        │   ├── flashlight.md           # latarka, klawisz F, LightingSettings, ślepe zaułki, LightRig
         │   ├── maze-generator.md       # labirynt, generator, układ w świecie, panel Maze
         │   ├── maze-rendering.md       # MazeWorld, MazeRenderer, macierze modelu, regeneracja
         │   └── player.md               # gracz: chodzenie, noclip, oczy a stopy, testy
@@ -180,21 +216,31 @@ night-maze/
         │   ├── mesh.md                 # Vertex, Mesh, rysowanie zakresu indeksów
         │   ├── shader-class.md         # klasa Shader: kompilacja, linkowanie, błędy
         │   ├── shader-hot-reload.md    # reload, panel Shaders
+        │   ├── shader-includes.md      # #include w shaderach, #line, nazwy plików w błędach
         │   ├── shaders.md              # potok, GLSL, basic.vert i basic.frag
         │   ├── textures.md             # tekstury, filtry, mipmapy, samplery, Texture2D, textured.*
+        │   ├── uniform-buffers.md      # bloki uniformów, std140, UniformBuffer, LightBlock
         │   └── uniforms.md             # uniformy, setMat4, setInt, setVec3
+        ├── renderer/               # cieniowanie: dokumenty tematu, kod jest w game/ i w shaderach
+        │   ├── README.md               # wstęp i indeks
+        │   └── lighting-gouraud-phong.md   # Gouraud a Phong, Phong a Blinn-Phong, lit.* i gouraud.*
         ├── scene/                  # moduł scene, podzielony na dokumenty tematyczne
         │   ├── README.md               # wstęp, dane bez OpenGL, warstwy, indeks
         │   ├── camera-controls.md      # obrót kamery myszą, panel Camera
         │   ├── camera.md               # macierz widoku, rzutowanie, Camera
         │   ├── collision.md            # AABB, ruch ze ślizganiem, linie pudełek, panel Collision
-        │   └── transforms.md           # przestrzenie, macierz modelu, Transform
+        │   ├── lights.md               # rodzaje świateł, model odbicia, lighting.glsl, panel Lights
+        │   └── transforms.md           # przestrzenie, macierz modelu, Transform, macierz normalnych
         └── debug-ui.md             # panele ImGui w projekcie
 ```
 
 Drzewo nie pokazuje katalogu `tools/blender/` (skrypty Pythona, które budują modele ścian,
 słupka i podłogi oraz tekstury). Opisuje go [`blender.md`](blender.md). Zapis
 `floor_tile.obj/.mtl` oznacza parę plików `floor_tile.obj` i `floor_tile.mtl`.
+
+Katalog `docs/modules/renderer/` istnieje, choć katalogu `src/renderer/` jeszcze nie ma:
+dokumenty o cieniowaniu są już pod nazwą warstwy z PRD, a kod, który opisują, leży dziś w
+`src/game/NightMazeApp.cpp` i w `assets/shaders/`.
 
 Zapis `Window.hpp/.cpp` oznacza parę plików `Window.hpp` i `Window.cpp`. Zgodnie z zasadą z
 PRD nagłówek i implementacja leżą obok siebie w `src/`, nie ma osobnego katalogu `include/`. Pliki konfiguracyjne z katalogu głównego są
@@ -206,7 +252,7 @@ wypisane na początku drzewa, przed katalogami.
 |---|---|---|
 | `src/` | cały nasz kod C++ poza testami | my |
 | `tests/` | testy jednostkowe: osobny program `night_maze_tests`, który woła kod z bibliotek `engine` i `game_logic` i sprawdza wyniki ([`../libraries/doctest.md`](../libraries/doctest.md)) | my |
-| `assets/` | pliki, które program wczytuje w czasie działania: shadery GLSL, modele OBJ z materiałami MTL, tekstury PNG i czcionka paneli debug. Nie są kompilowane razem z programem. Krok budowania umieszcza katalog obok pliku wykonywalnego (sekcja 3.1, blok 7) | my, z jednym wyjątkiem: `assets/fonts/` to cudzy materiał. Czcionka Atkinson Hyperlegible (Braille Institute of America) jest na licencji SIL Open Font License 1.1, a plik licencji `OFL.txt` leży obok niej i musi tam zostać |
+| `assets/` | pliki, które program wczytuje w czasie działania: shadery GLSL (z podkatalogiem `shaders/common/` na pliki dołączane), modele OBJ z materiałami MTL, tekstury PNG i czcionka paneli debug. Nie są kompilowane razem z programem. Krok budowania umieszcza katalog obok pliku wykonywalnego (sekcja 3.1, blok 7) | my, z jednym wyjątkiem: `assets/fonts/` to cudzy materiał. Czcionka Atkinson Hyperlegible (Braille Institute of America) jest na licencji SIL Open Font License 1.1, a plik licencji `OFL.txt` leży obok niej i musi tam zostać |
 | `cmake/` | pomocnicze pliki CMake dołączane przez `include(...)` | my |
 | `external/` | cudzy kod trzymany w repozytorium (`glad/`) oraz plik, który kompiluje pobraną bibliotekę stb_image (`stb/`) | `glad/`: generator GLAD, nie edytujemy. `stb/`: dwa małe pliki napisane ręcznie |
 | `docs/` | dokumentacja do nauki | my |
@@ -224,43 +270,53 @@ wypisane na początku drzewa, przed katalogami.
 | `src/core/Log.*` | `logInfo`, `logWarn`, `logError` | [`../modules/core/window-context.md`](../modules/core/window-context.md) |
 | `src/core/GlCheck.*` | makro `GL_CHECK` i funkcja `checkGlErrors` | [`../modules/core/gl-check.md`](../modules/core/gl-check.md) |
 | `src/core/Paths.*` | `core::executableDir` i `core::assetPath`: ścieżki do plików z `assets/` liczone od położenia pliku wykonywalnego. `core::pathText`: ścieżka jako tekst UTF-8 do logu i do paneli. `Paths.cpp` to jedyny plik w `src/` z kodem zależnym od systemu (`#if` dla macOS i Windows). Wołają je konstruktor `game::NightMazeApp` (ścieżki shaderów), konstruktor `game::MazeRenderer` (ścieżki modeli), `assets::AssetCache` (`pathText` w logu) i panele Shaders oraz Assets | [`../modules/core/paths.md`](../modules/core/paths.md) |
-| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `setMat4` (uniform typu `mat4`, przez `glGetUniformLocation` i `glUniformMatrix4fv`), `setInt` (uniform typu `int` albo sampler, `glUniform1i`), `setVec3` (uniform typu `vec3`, `glUniform3fv`), `lastError`, `vertexPath`, `fragmentPath`. RAII, tylko przenoszenie. `NightMazeApp` ma trzy takie obiekty (`basic`, `textured`, `color`), a panel "Shaders" woła `reload` na każdym. `setInt` ustawia sampler `uTexture` i tryb `uViewMode`, `setVec3` kolory `uTint` i `uColor` | [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), `setMat4`, `setInt` i `setVec3` w [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), `reload` w [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/gfx/Shader.*` | `gfx::Shader`: obiekt programu OpenGL zbudowany z pliku shadera wierzchołków i pliku shadera fragmentów. `reload` (przy błędzie zostaje stary program), `isValid`, `use`, `setMat4` (uniform typu `mat4`, przez `glGetUniformLocation` i `glUniformMatrix4fv`), `setInt` (uniform typu `int` albo sampler, `glUniform1i`), `setVec3` (uniform typu `vec3`, `glUniform3fv`), `setMat3` (uniform typu `mat3`, `glUniformMatrix3fv`: macierz normalnych), `setFloat` (uniform typu `float`, `glUniform1f`), `bindUniformBlock` (łączy blok uniformów z punktem wiązania przez `glGetUniformBlockIndex` i `glUniformBlockBinding`, zapamiętuje prośbę w strukturze `gfx::UniformBlockBinding` i powtarza ją po każdym `reload`, porównuje rozmiar bloku według sterownika z rozmiarem z C++), `lastError`, `vertexPath`, `fragmentPath`. Przed kompilacją rozwija dyrektywy `#include` (`gfx::expandIncludes`), a w komunikacie błędu zamienia numer napisu źródłowego na nazwę pliku (`gfx::nameSourceFiles`). RAII, tylko przenoszenie. `NightMazeApp` ma pięć takich obiektów (`basic`, `textured`, `color`, `lit`, `gouraud`), a panel "Shaders" woła `reload` na każdym. `setInt` ustawia sampler `uTexture`, tryb `uViewMode` i wzór połysku `uSpecularModel`, `setVec3` kolory `uTint` i `uColor`, `setFloat` uniformy `uSpecularStrength` i `uShininess`, `setMat3` uniform `uNormalMatrix` | [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), settery w [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), `reload` w [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), `bindUniformBlock` w [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md), `#include` w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md), wstęp do warstwy w [`../modules/gfx/README.md`](../modules/gfx/README.md) |
+| `src/gfx/ShaderSource.*` | typ `gfx::IncludeReader` (funkcja, która podaje treść dołączanego pliku), struktura `gfx::ShaderSource` (tekst po rozwinięciu i lista plików, z których powstał) oraz funkcje `gfx::expandIncludes` (zastępuje linie `#include "..."` treścią plików, także zagnieżdżone, i dopisuje wokół nich dyrektywy `#line`; zwraca błąd dla brakującego pliku, pliku dołączającego samego siebie, źle zapisanej linii, `#include` przed `#version` i `#version` w pliku dołączanym) i `gfx::nameSourceFiles` (w dzienniku sterownika zamienia numer napisu źródłowego na nazwę pliku, dla formatu NVIDII `1(15)` i formatu `ERROR: 1:15:`, a przy więcej niż jednym pliku dopisuje linię `Source files: ...`). Sama praca na tekście: nie otwiera plików i nie woła OpenGL, nagłówek nie dołącza GLAD, więc ma testy jednostkowe. Woła je `gfx::Shader` | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
+| `src/gfx/UniformBuffer.*` | `gfx::UniformBuffer`: jeden bufor OpenGL używany jako bufor uniformów, czyli pamięć bloku uniformów, który czyta kilka programów. Konstruktor tworzy bufor o podanym rozmiarze (`glGenBuffers`, `glBindBuffer` i `glBufferData` z celem `GL_UNIFORM_BUFFER` i wskazówką `GL_DYNAMIC_DRAW`) i wpina go w punkt wiązania (`glBindBufferBase`). `update` kopiuje bajty na początek bufora (`glBufferSubData`) i loguje błąd, gdy danych jest więcej niż miejsca. Akcesory `bindingPoint` i `sizeInBytes`. RAII, tylko przenoszenie. Klasa przenosi same bajty i nie wie, co znaczą. Posiada ją `game::LightRig`. Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md) |
 | `src/gfx/Buffer.*` | `gfx::Buffer`: jeden bufor OpenGL wypełniany raz w konstruktorze (`glGenBuffers`, `glBindBuffer`, `glBufferData` z `GL_STATIC_DRAW`), cel `GL_ARRAY_BUFFER` albo `GL_ELEMENT_ARRAY_BUFFER`, `bind`. RAII, tylko przenoszenie. Używają jej `NightMazeApp` (kostka) i `gfx::Mesh` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
 | `src/gfx/VertexArray.*` | `gfx::VertexArray`: jeden obiekt tablicy wierzchołków (VAO), wiązany już w konstruktorze, `bind`, `setFloatAttribute` (`glEnableVertexAttribArray`, `glVertexAttribPointer`). RAII, tylko przenoszenie. Używają jej `NightMazeApp` (kostka) i `gfx::Mesh` | [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) |
 | `src/gfx/Texture2D.*` | typ `gfx::TextureFilter` (`Nearest`, `Bilinear`, `Trilinear`) i klasa `gfx::Texture2D`: jedna tekstura 2D z pełnym łańcuchem mipmap i jej obiekt samplera. Konstruktor przyjmuje surowe bajty (szerokość, wysokość, 3 albo 4 kanały, wskaźnik, dolny wiersz pierwszy) i woła `glTexImage2D` oraz `glGenerateMipmap`. `bind(unit)` wiąże teksturę i sampler z jednostką teksturującą, `setFilter` i `setAnisotropy` zmieniają próbkowanie w działającym programie, akcesory `filter`, `anisotropy`, `maxAnisotropy`, `id`, `width`, `height`, `isValid`. Filtrowanie anizotropowe jest wykrywane jako rozszerzenie. RAII, tylko przenoszenie. Tworzy ją i trzyma `assets::AssetCache`, wiąże `game::MazeRenderer`, a jej `id()` czyta podgląd w panelu Assets. Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/textures.md`](../modules/gfx/textures.md) |
 | `src/gfx/Vertex.hpp` | `gfx::Vertex`: jeden wierzchołek modelu jako struktura (pola `position`, `normal`, `uv`: 8 liczb `float`, 32 bajty), stałe `POSITION_COMPONENTS`, `NORMAL_COMPONENTS`, `UV_COMPONENTS` i numery atrybutów `POSITION_ATTRIBUTE` (0), `NORMAL_ATTRIBUTE` (1), `UV_ATTRIBUTE` (2), dwa `static_assert` (rozmiar bez dopełnienia, układ standardowy). Sam nagłówek, bez GLAD. Używają jej `gfx::Mesh`, loader OBJ i testy | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcja 5.2 |
-| `src/gfx/Mesh.*` | `gfx::Mesh`: siatka jednego modelu na karcie. Posiada `VertexArray`, bufor wierzchołków i bufor indeksów, w konstruktorze wysyła dane ze `std::span` i opisuje trzy atrybuty przez `sizeof(Vertex)` i `offsetof`. `draw()` rysuje całość, `draw(firstIndex, indexCount)` zakres indeksów (`glDrawElements`), prymityw jest parametrem konstruktora (domyślnie `GL_TRIANGLES`). RAII przez pola, tylko przenoszenie. Tworzą ją `assets::AssetCache` (siatka modelu z trójkątów, rysowana zakresami) i `game::ColliderLines` (sześcian jednostkowy z `GL_LINES`). Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcje od 5.3 do 5.5 |
+| `src/gfx/Mesh.*` | `gfx::Mesh`: siatka jednego modelu na karcie. Posiada `VertexArray`, bufor wierzchołków i bufor indeksów, w konstruktorze wysyła dane ze `std::span` i opisuje trzy atrybuty przez `sizeof(Vertex)` i `offsetof`. `draw()` rysuje całość, `draw(firstIndex, indexCount)` zakres indeksów (`glDrawElements`), prymityw jest parametrem konstruktora (domyślnie `GL_TRIANGLES`). RAII przez pola, tylko przenoszenie. Tworzą ją `assets::AssetCache` (siatka modelu z trójkątów, rysowana zakresami), `game::ColliderLines` (sześcian jednostkowy z `GL_LINES`) i `game::LightRig` (kostka znacznika światła, 8 wierzchołków i 36 indeksów). Nie ma testu jednostkowego (wymaga kontekstu OpenGL) | [`../modules/gfx/mesh.md`](../modules/gfx/mesh.md), sekcje od 5.3 do 5.5 |
 | `src/assets/ObjLoader.*` | struktury `assets::ObjPart`, `assets::ObjMaterial`, `assets::ObjModel` i funkcje `assets::parseObj` (tekst OBJ na wierzchołki, indeksy i części), `assets::parseMtl` (tekst MTL na materiały) oraz `assets::loadObj` (plik OBJ razem z plikami MTL, ścieżki tekstur względem pliku MTL). Ręcznie napisany parser, bez OpenGL i bez wyjątków: wynik `bool` i tekst błędu z numerem linii. `loadObj` woła `assets::AssetCache::model` | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), wstęp do warstwy w [`../modules/assets/README.md`](../modules/assets/README.md) |
 | `src/assets/ImageLoader.*` | struktura `assets::Image` (szerokość, wysokość, liczba kanałów, bajty pikseli z dolnym wierszem jako pierwszym) i funkcja `assets::loadImage`: czyta plik w trybie binarnym, dekoduje go biblioteką stb_image i odwraca kolejność wierszy. Wynik `bool`, tekst błędu przez referencję, jedno logowanie, bez wyjątków. Bez OpenGL. Jedyny plik projektu, który dołącza `<stb_image.h>`. `loadImage` woła `assets::AssetCache::texture` | [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `src/assets/AssetCache.*` | struktury `assets::LoadedTexture`, `assets::ModelPart`, `assets::LoadedModel` i klasa `assets::AssetCache`: wczytuje każdy model (`model`) i każdą teksturę (`texture`) raz, pod kluczem będącym uporządkowaną ścieżką, trzyma je w `std::deque` (wskaźniki pozostają ważne), pamięta ścieżki, których nie udało się wczytać (`failedPaths`), ma białą teksturę zastępczą 1 x 1 (`whiteTexture`) oraz `setFilter` i `setAnisotropy` dla wszystkich tekstur naraz. Jedyny plik `src/assets/`, który tworzy obiekty OpenGL (przez `gfx::Mesh` i `gfx::Texture2D`), więc nie ma testu jednostkowego. Posiada ją `NightMazeApp` | [`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md) |
 | `external/stb/stb_image.c` | jedyny plik, w którym kompiluje się implementacja stb_image: makro `STB_IMAGE_IMPLEMENTATION` i dołączenie nagłówka pobranego przez FetchContent. Plik C, poza naszymi ostrzeżeniami, tworzy bibliotekę `stb_image` | [`../libraries/stb_image.md`](../libraries/stb_image.md), sekcja 2 |
-| `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Sama matematyka na GLM, bez OpenGL. Używają jej `NightMazeApp` (pole `m_cubeTransform`), `game::buildMazeWorld` (macierze podłogi, ścian i słupków) i `game::ColliderLines` (macierz każdego pudełka) | [`../modules/scene/transforms.md`](../modules/scene/transforms.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
+| `src/scene/Transform.*` | `scene::Transform`: struktura z publicznymi polami `position`, `rotationDegrees` (kąty Eulera w stopniach) i `scale` oraz funkcją `matrix()`, która zwraca macierz modelu `T * Ry * Rx * Rz * S`. Od M4 także funkcja `scene::normalMatrix`: macierz normalnych, czyli odwrotność lewej górnej części 3 x 3 macierzy modelu po transpozycji (`glm::mat3`). Sama matematyka na GLM, bez OpenGL. Struktury używają `NightMazeApp` (pole `m_cubeTransform`), `game::buildMazeWorld` (macierze podłogi, ścian i słupków), `game::ColliderLines` (macierz każdego pudełka) i `game::LightRig` (macierz każdego znacznika światła), a `normalMatrix` woła `game::MazeRenderer` dla każdego rysowanego obiektu | [`../modules/scene/transforms.md`](../modules/scene/transforms.md), wstęp do warstwy w [`../modules/scene/README.md`](../modules/scene/README.md) |
+| `src/scene/Light.*` | światła jako zwykłe dane i ich matematyka: stała `MAX_POINT_LIGHTS` (16), struktury `scene::Attenuation` (trzy składniki zaniku z odległością), `DirectionalLight` (księżyc), `PointLight`, `SpotLight` (latarka, dwa kąty stożka), `LightSet` (wszystkie światła jednej klatki: otoczenie, światło kierunkowe, tablica świateł punktowych z licznikiem, reflektor z wyłącznikiem) i `ConeCosines`, stałe `BRIGHTNESS_AT_RADIUS` (0,05) i `MIN_CONE_COSINE_GAP`, funkcje `attenuationForRadius` (składniki 1, 2 / r i 17 / r^2), `attenuationFactor`, `coneCosines`, `spotFactor` i `directionFromAngles`. Bez OpenGL: te same wzory liczy shader, funkcje C++ przygotowują dane i służą testom | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
+| `src/scene/LightBlock.*` | obraz bloku uniformów `LightBlock` w C++: struktury `scene::PointLightData` (3 razy `glm::vec4`, 48 bajtów) i `scene::LightBlockData` (928 bajtów, pola w kolejności deklaracji w GLSL, z jawnym wypełnieniem po liczniku świateł), asercje `static_assert` z `offsetof` i `sizeof`, które pilnują układu `std140` w czasie kompilacji, oraz funkcja `scene::packLightBlock` (wypełnia blok z `LightSet` i pozycji oka: normalizuje kierunki, zamienia kąty stożka na cosinusy, ogranicza liczbę świateł punktowych). Bez OpenGL. Woła ją `game::LightRig::upload` | [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md) |
 | `src/scene/Camera.*` | `scene::Camera`: struktura z publicznymi polami `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałymi `WORLD_UP` i `MAX_PITCH_DEGREES` oraz funkcjami `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Sama matematyka na GLM, bez OpenGL i bez wejścia. Używają jej `NightMazeApp` (pole `m_camera`) i `game::Player::update` (jako kalkulator kierunków `forward` i `right`) | [`../modules/scene/camera.md`](../modules/scene/camera.md) |
 | `src/scene/Collider.*` | `scene::Aabb` (pudełko o ścianach równoległych do osi: pola `min` i `max`, funkcja `fromCenter`), stała `CONTACT_TOLERANCE`, funkcje `scene::overlaps` (czy dwa pudełka na siebie nachodzą) i `scene::moveAndSlide` (o ile wolno przesunąć pudełko wśród przeszkód, oś po osi, ze ślizganiem po ścianach). Sama matematyka na GLM, bez OpenGL i bez wejścia. Pudełka tworzą `game/MazeLayout` i `game::Player::box`, a `moveAndSlide` woła `game::Player::update` w każdym kroku chodzenia | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
 | `src/game/Maze.*` | typ `game::Direction` (North, East, South, West), stałe `DIRECTION_COUNT` i `ALL_DIRECTIONS`, funkcje `opposite`, `columnStep`, `rowStep`, klasa `game::Maze`: siatka komórek ze ścianami na krawędziach (`width`, `height`, `contains`, `hasWall`, `removeWall`, stała `MAX_SIZE`). Bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 5.2 i 5.3 |
 | `src/game/MazeGenerator.*` | `game::randomBelow` (losowa liczba poniżej granicy, taka sama na każdym systemie) i `game::generateMaze` (labirynt doskonały z rozmiaru i ziarna, algorytm recursive backtracker z własnym stosem). Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 5.4 i 5.5 |
 | `src/game/MazeLayout.*` | stałe wymiarów w metrach (`CELL_SIZE`, `WALL_LENGTH`, `WALL_HEIGHT`, `PILLAR_SIZE`, `WALL_VISUAL_THICKNESS`, `WALL_COLLISION_THICKNESS`, `PILLAR_HEIGHT`), typy `WallAxis` i `WallSegment`, funkcje `cellCenter`, `wallSegments`, `pillarPositions`, `wallBox`, `pillarBox`, `mazeColliders`. Część biblioteki `game_logic`. Woła je `game::buildMazeWorld` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5 |
-| `src/game/MazeWorld.*` | stałe `DEFAULT_MAZE_WIDTH`, `DEFAULT_MAZE_HEIGHT` (10) i `DEFAULT_MAZE_SEED` (1), struktura `game::MazeSettings` (prośba o następny labirynt: rozmiar, ziarno, flaga `regenerate`), struktura `game::MazeWorld` (labirynt, ziarno, segmenty ścian, słupki, macierze modelu podłogi, ścian i słupków, pudełka kolizji, pozycja startu, yaw startu, pozycja wyjścia), funkcje `yawTowards` i `buildMazeWorld`. Zwykłe dane bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `src/game/MazeWorld.*` | stałe `DEFAULT_MAZE_WIDTH`, `DEFAULT_MAZE_HEIGHT` (10) i `DEFAULT_MAZE_SEED` (1), struktura `game::MazeSettings` (prośba o następny labirynt: rozmiar, ziarno, flaga `regenerate`), struktura `game::MazeWorld` (labirynt, ziarno, segmenty ścian, słupki, macierze modelu podłogi, ścian i słupków, pudełka kolizji, pozycje świateł punktowych `pointLightPositions`, pozycja startu, yaw startu, pozycja wyjścia), funkcje `yawTowards` i `buildMazeWorld`. Zwykłe dane bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `src/game/Lighting.*` | typy `game::LightingMode` (`Unlit`, `Gouraud`, `Phong`, `BlinnPhong`: pozycje listy `Lighting` w panelu Renderer) i `game::SpecularModel` (wartości uniformu `uSpecularModel`), funkcja `specularModelOf`, struktura `game::LightingSettings` (wszystko, co da się zmienić w działającej grze: tryb, światło otoczenia, kąty, kolor i natężenie księżyca, wyłącznik, kolor, natężenie, stożek i zasięg latarki, kolor, natężenie i promień świateł punktowych, siła i wykładnik połysku), stała `POINT_LIGHT_HEIGHT` (1,4 m), funkcje `isDeadEnd` (komórka ze ścianami z dokładnie trzech stron), `deadEndLightPositions` (pozycje świateł w ślepych zaułkach, bez komórki startowej, najwyżej 16, równo rozłożone) i `buildLightSet` (światła jednej klatki z ustawień, oka i kierunku patrzenia). Zwykłe dane i matematyka bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
 | `src/game/Player.*` | struktura `game::PlayerInput` (siedem pól `bool`: czego gracz chce w jednym kroku) i struktura `game::Player`: stałe ciała i prędkości (`BODY_WIDTH`, `BODY_HEIGHT`, `EYE_HEIGHT`, `WALK_SPEED`, `SPRINT_SPEED`, `FLY_SPEED`, `FLOOR_Y`), pola `position` (stopy), `noclip`, `walkSpeed`, `sprintSpeed`, `flySpeed`, funkcje `box`, `eyePosition` i `update` (jeden stały krok: chodzenie przez `scene::moveAndSlide` albo lot bez kolizji). Bez OpenGL, bez klawiatury i bez zegara. Część biblioteki `game_logic` | [`../modules/game/player.md`](../modules/game/player.md) |
-| `src/game/MazeRenderer.*` | typ `game::ViewMode` (`Textured`, `Normals`, `Uvs`: wartości uniformu `uViewMode`) i klasa `game::MazeRenderer`: prosi pamięć podręczną o trzy modele labiryntu i rysuje `MazeWorld`, jedno wywołanie rysujące na obiekt. Niczego nie posiada. Część programu `night_maze` (potrzebuje kontekstu OpenGL) | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `src/game/MazeRenderer.*` | typ `game::ViewMode` (`Textured`, `Normals`, `Uvs`: wartości uniformu `uViewMode`) i klasa `game::MazeRenderer`: prosi pamięć podręczną o trzy modele labiryntu i rysuje `MazeWorld`, jedno wywołanie rysujące na obiekt. Program shaderów dostaje z zewnątrz: `textured` albo jeden z dwóch oświetlonych (`lit`, `gouraud`). Dla każdego obiektu wysyła `uModel` i `uNormalMatrix` (`scene::normalMatrix`, liczona na procesorze w każdej klatce). Niczego nie posiada. Część programu `night_maze` (potrzebuje kontekstu OpenGL) | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `src/game/LightRig.*` | klasa `game::LightRig`: strona OpenGL oświetlenia. Posiada bufor uniformów (`gfx::UniformBuffer` o rozmiarze `scene::LightBlockData`, punkt wiązania `LIGHT_BLOCK_BINDING_POINT`) i siatkę kostki znacznika. `connect` łączy blok `LightBlock` programu z tym buforem (`Shader::bindUniformBlock`), `upload` pakuje `scene::LightSet` (`scene::packLightBlock`) i kopiuje bajty do bufora raz na klatkę, `drawMarkers` rysuje programem `color` kostkę o boku 0,14 m w każdej podanej pozycji. Część programu `night_maze` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
 | `src/game/ColliderLines.*` | klasa `game::ColliderLines`: posiada jedną siatkę (12 krawędzi sześcianu o boku 1, `GL_LINES`) i rysuje nią dowolną listę pudełek `scene::Aabb` w jednym kolorze, każde powiększone o 1 cm. Część programu `night_maze` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
-| `src/game/ShaderUniforms.hpp` | nazwy uniformów jako stałe: `MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM`, `TEXTURE_UNIFORM`, `TINT_UNIFORM`, `VIEW_MODE_UNIFORM`, `COLOR_UNIFORM`. Sam nagłówek, wspólny dla `NightMazeApp`, `MazeRenderer` i `ColliderLines` | [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md) |
-| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła, trzy programy shaderów (`basic`, `textured`, `color`), pamięć podręczna assetów, `MazeRenderer`, `ColliderLines`, dane kostki (24 wierzchołki ze stałymi układu, 36 indeksów) z tablicą wierzchołków, buforem wierzchołków i buforem indeksów, `scene::Transform` kostki, `MazeSettings` i `MazeWorld`, gracz z pozycją sprzed ostatniego kroku, `scene::Camera`, tryb widoku, przełącznik rysowania pudełek kolizji i czułość myszy. Konstruktor wczytuje shadery i modele, wysyła dane kostki, buduje pierwszy labirynt (10 na 10, ziarno 1) i woła `enterMaze`, która stawia kostkę nad komórką w przeciwległym rogu, a gracza na starcie. `onUpdate` w każdym stałym kroku zbiera klawisze do `PlayerInput` (tylko przy przechwyconym kursorze), woła `Player::update` z pudełkami labiryntu i ustawia kamerę w oczach gracza. `onRender` buduje nowy labirynt, gdy panel o to poprosił (`regenerateMaze`), obsługuje klawisz N (noclip), przechwytuje kursor po kliknięciu w scenę i obraca kamerę myszą, ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera i pozycję oka między dwoma krokami symulacji, a potem rysuje trzy części klatki: `drawMaze`, `drawCube` i, gdy włączone, `drawColliderLines`. Chronione akcesory `clearColor()`, `shader()`, `texturedShader()`, `colorShader()`, `camera()`, `mouseSensitivity()`, `player()`, `mazeSettings()`, `mazeWorld()`, `assets()`, `viewMode()` i `drawColliders()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), dane kostki w [`../modules/gfx/indexed-drawing.md`](../modules/gfx/indexed-drawing.md), macierze w [`../modules/scene/camera.md`](../modules/scene/camera.md), obrót kamery myszą w [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), ruch gracza w [`../modules/game/player.md`](../modules/game/player.md), rysowanie labiryntu i regeneracja w [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
-| `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core` kostki: atrybuty pozycji i koloru, uniformy `uModel`, `uView`, `uProjection` (macierze), kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders". To samo dotyczy dwóch par poniżej | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
-| `assets/shaders/textured.vert`, `textured.frag` | para shaderów modeli z teksturą: atrybuty `aPosition` (0), `aNormal` (1), `aUv` (2), czyli pola `gfx::Vertex`, trzy macierze, sampler `uTexture`, kolor `uTint` i tryb `uViewMode` (0: tekstura razy `uTint`, 1: normalna jako kolor, 2: współrzędne UV jako kolor). Bez oświetlenia (M4) | [`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 4 |
-| `assets/shaders/color.vert`, `color.frag` | para shaderów jednego koloru dla linii pudełek kolizji: atrybut pozycji, trzy macierze i uniform `uColor` | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 4 |
+| `src/game/ShaderUniforms.hpp` | nazwy uniformów jako stałe, jedenaście: `MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM`, `TEXTURE_UNIFORM`, `TINT_UNIFORM`, `VIEW_MODE_UNIFORM`, `NORMAL_MATRIX_UNIFORM`, `SPECULAR_MODEL_UNIFORM`, `SPECULAR_STRENGTH_UNIFORM`, `SHININESS_UNIFORM`, `COLOR_UNIFORM`. Do tego nazwa bloku uniformów `LIGHT_BLOCK_NAME` (`"LightBlock"`) i jego punkt wiązania `LIGHT_BLOCK_BINDING_POINT` (1, typu `GLuint`, stąd `<glad/gl.h>` w nagłówku). Sam nagłówek, wspólny dla `NightMazeApp`, `MazeRenderer`, `ColliderLines` i `LightRig` | [`../modules/gfx/uniforms.md`](../modules/gfx/uniforms.md), blok w [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md) |
+| `src/game/NightMazeApp.*` | `game::NightMazeApp`: kolor tła (nocne niebo, `{0.01F, 0.015F, 0.04F}`), pięć programów shaderów (`basic`, `textured`, `color`, `lit`, `gouraud`), pamięć podręczna assetów, `MazeRenderer`, `ColliderLines`, `LightRig`, ustawienia oświetlenia `LightingSettings`, dane kostki (24 wierzchołki ze stałymi układu, 36 indeksów) z tablicą wierzchołków, buforem wierzchołków i buforem indeksów, `scene::Transform` kostki, `MazeSettings` i `MazeWorld`, gracz z pozycją sprzed ostatniego kroku, `scene::Camera`, tryb widoku, przełącznik rysowania pudełek kolizji i czułość myszy. Konstruktor wczytuje shadery i modele, wysyła dane kostki, łączy oba oświetlone programy z buforem świateł (`m_lightRig.connect`), buduje pierwszy labirynt (10 na 10, ziarno 1) i woła `enterMaze`, która stawia kostkę nad komórką w przeciwległym rogu, a gracza na starcie. `onUpdate` w każdym stałym kroku zbiera klawisze do `PlayerInput` (tylko przy przechwyconym kursorze), woła `Player::update` z pudełkami labiryntu i ustawia kamerę w oczach gracza. `onRender` buduje nowy labirynt, gdy panel o to poprosił (`regenerateMaze`), obsługuje klawisze N (noclip) i F (latarka), przechwytuje kursor po kliknięciu w scenę i obraca kamerę myszą, ustawia viewport, włącza test głębi, czyści kolor i głębię, liczy proporcje z rozmiaru framebuffera i pozycję oka między dwoma krokami symulacji, buduje światła klatki (`buildLightSet`) i wysyła je do bufora uniformów (`m_lightRig.upload`, w każdej klatce, także w trybie `Unlit`), a potem rysuje części klatki: `drawMaze` (bez światła programem `textured`, gdy tryb to `Unlit` albo wybrany jest widok debug, w pozostałych przypadkach `drawLitMaze` programem `gouraud` albo `lit`), `drawLightMarkers` (gdy tryb jest inny niż `Unlit`), `drawCube` i, gdy włączone, `drawColliderLines`. W jednej klatce pracują najwyżej trzy z pięciu programów (jeden z trzech programów labiryntu, `color` i `basic`), w najwyżej czterech wywołaniach `use()`. Chronione akcesory `clearColor()`, `shader()`, `texturedShader()`, `colorShader()`, `litShader()`, `gouraudShader()`, `lighting()`, `camera()`, `mouseSensitivity()`, `player()`, `mazeSettings()`, `mazeWorld()`, `assets()`, `viewMode()` i `drawColliders()` udostępniają stan panelom debug | [`../modules/core/README.md`](../modules/core/README.md), dane kostki w [`../modules/gfx/indexed-drawing.md`](../modules/gfx/indexed-drawing.md), macierze w [`../modules/scene/camera.md`](../modules/scene/camera.md), obrót kamery myszą w [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), ruch gracza w [`../modules/game/player.md`](../modules/game/player.md), rysowanie labiryntu i regeneracja w [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), latarka i światła klatki w [`../modules/game/flashlight.md`](../modules/game/flashlight.md), przełącznik trybu cieniowania w [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
+| `assets/shaders/basic.vert`, `basic.frag` | para shaderów GLSL `#version 410 core` kostki: atrybuty pozycji i koloru, uniformy `uModel`, `uView`, `uProjection` (macierze), kolor interpolowany między wierzchołkami. To nie są pliki C++: nie są na żadnej liście w `CMakeLists.txt`, program czyta je przy starcie i po naciśnięciu "Reload shaders". To samo dotyczy pozostałych plików shaderów poniżej | [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 4 |
+| `assets/shaders/textured.vert`, `textured.frag` | para shaderów modeli z teksturą: atrybuty `aPosition` (0), `aNormal` (1), `aUv` (2), czyli pola `gfx::Vertex`, trzy macierze, sampler `uTexture`, kolor `uTint` i tryb `uViewMode` (0: tekstura razy `uTint`, 1: normalna jako kolor, 2: współrzędne UV jako kolor). Bez oświetlenia: rysuje labirynt w trybie `Unlit` i oba widoki debug w każdym trybie. Normalną liczy nadal przez `mat3(uModel)` i nie ma uniformu `uNormalMatrix` | [`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 4 |
+| `assets/shaders/color.vert`, `color.frag` | para shaderów jednego koloru dla linii pudełek kolizji i dla znaczników świateł punktowych: atrybut pozycji, trzy macierze i uniform `uColor` | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 4 |
+| `assets/shaders/lit.vert`, `lit.frag` | para shaderów oświetlonego labiryntu ze światłem liczonym dla każdego fragmentu (tryby `Phong` i `Blinn-Phong`). `lit.vert` przekazuje pozycję i normalną w przestrzeni świata (uniform `uNormalMatrix`) oraz współrzędne tekstury, `lit.frag` dołącza `common/lighting.glsl`, woła `computeLighting` i składa kolor: tekstura razy `uTint` razy światło rozproszone plus połysk. Wzór połysku wybiera uniform `uSpecularModel` | [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
+| `assets/shaders/gouraud.vert`, `gouraud.frag` | para shaderów oświetlonego labiryntu ze światłem liczonym w wierzchołkach (tryb `Gouraud`). `gouraud.vert` dołącza `common/lighting.glsl` i woła tę samą funkcję `computeLighting` dla wierzchołka, `gouraud.frag` mnoży rozciągnięte po trójkącie światło przez teksturę i dodaje połysk | [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
+| `assets/shaders/common/lighting.glsl` | plik dołączany, nie samodzielny shader (nie ma linii `#version`): stała `MAX_POINT_LIGHTS`, struktura `PointLight`, blok uniformów `layout(std140) uniform LightBlock`, uniformy materiału `uSpecularModel`, `uSpecularStrength`, `uShininess`, struktura `Lighting` i funkcje `diffuseFactor`, `specularFactor`, `attenuationFactor`, `addLight` i `computeLighting`. Treść wstawia w miejsce linii `#include "common/lighting.glsl"` kod `gfx::expandIncludes` | [`../modules/scene/lights.md`](../modules/scene/lights.md), mechanizm dołączania w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `assets/models/*.obj`, `*.mtl`, `assets/textures/*.png` | trzy modele (`floor_tile`, `wall_straight`, `wall_pillar`), każdy z jednym materiałem, i dwie tekstury (`floor_stone.png`, `wall_stone.png`; ścianę i słupek pokrywa ta sama). Budują je skrypty z `tools/blender/` | [`blender.md`](blender.md), [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), [`../modules/assets/images.md`](../modules/assets/images.md) |
-| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują, 14 pól (`time`, `window`, `clearColor`, `shader`, `camera`, `mouseSensitivity`, `texturedShader`, `colorShader`, `player`, `mazeSettings`, `mazeWorld`, `assets`, `viewMode`, `drawColliders`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5 |
-| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, zastosowanie motywu i wczytanie czcionki, bajty czcionki, `draw`, `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony) | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
+| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują, 17 pól (`time`, `window`, `clearColor`, `shader`, `camera`, `mouseSensitivity`, `texturedShader`, `colorShader`, `player`, `mazeSettings`, `mazeWorld`, `assets`, `viewMode`, `drawColliders`, `litShader`, `gouraudShader`, `lighting`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5 |
+| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, zastosowanie motywu i wczytanie czcionki, bajty czcionki, `draw` (rysuje siedem paneli, a panelowi Shaders podaje tablicę pięciu programów, stała `SHADER_COUNT`), `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony) | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `src/debug/Theme.*` | motyw paneli: `debug::colorFromBytes`, stałe `ERROR_TEXT_COLOR`, `PLAN_WALL_COLOR` i `PLAN_PLAYER_COLOR`, `debug::applyTheme` (tabela kolorów, metryki, skala ekranu) i `debug::loadFont` (czcionka z `assets/fonts`, z czcionką wbudowaną jako wyjściem awaryjnym) | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8 |
-| `src/debug/PanelLayout.*` | układ paneli przy pierwszym uruchomieniu: struktura `debug::PanelPlacement`, sześć stałych `..._PLACEMENT` i `debug::placePanelOnFirstUse` | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7 |
+| `src/debug/PanelLayout.*` | układ paneli przy pierwszym uruchomieniu: struktura `debug::PanelPlacement` (róg okna, odsunięcie, rozmiar i pole `collapsed`: czy panel startuje zwinięty do paska tytułu), stałe wymiarów (między innymi `LEFT_COLUMN_WIDTH`, `BOTTOM_ROW_HEIGHT`), siedem stałych `..._PLACEMENT` (nowa `LIGHTS_PLACEMENT`, a `CAMERA_PLACEMENT` z `collapsed = true`) i `debug::placePanelOnFirstUse`, która ustawia pozycję, rozmiar i stan zwinięcia z warunkiem `ImGuiCond_FirstUseEver` | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7 |
 | `assets/fonts/AtkinsonHyperlegible-Regular.ttf`, `OFL.txt`, `README.md` | czcionka paneli debug (Atkinson Hyperlegible 1.006, 54 348 bajtów, plik niezmieniony), jej licencja SIL Open Font License 1.1 i opis źródła z sumą kontrolną. Cudzy materiał: nie jest kodem i nie powstaje ze skryptów projektu | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.5 |
-| `src/debug/panels/CameraPanel.*` | `debug::drawCameraPanel`: panel "Camera" (linia trybu, stopy gracza, oko tylko do odczytu, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, prędkość chodu, sprintu i lotu) | [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcja 6 |
+| `src/debug/panels/CameraPanel.*` | `debug::drawCameraPanel`: panel "Camera", przy pierwszym uruchomieniu zwinięty do paska tytułu (linia trybu, stopy gracza, oko tylko do odczytu, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, prędkość chodu, sprintu i lotu) | [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcja 6 |
 | `src/debug/panels/MazePanel.*` | `debug::drawMazePanel`: panel "Maze" (suwaki rozmiaru, ziarno, przyciski "Regenerate" i "Random seed", liczby ścian i słupków, plan labiryntu z góry z graczem) | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 6 |
 | `src/debug/panels/CollisionPanel.*` | `debug::drawCollisionPanel`: panel "Collision" (pola wyboru "Draw collision boxes" i "Noclip (key N)", liczby pudełek, pudełko gracza) | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 6 |
 | `src/debug/panels/AssetsPanel.*` | `debug::drawAssetsPanel`: panel "Assets" (listy "View mode" i "Filter", suwak "Anisotropy", modele z częściami, tekstury z podglądem, lista nieudanych wczytań) | [`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md), sekcja 6 |
-| `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
-| `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (jeden przycisk "Reload shaders" dla wszystkich programów, a dla każdego z trzech: pliki, stan i ostatni błąd wczytania) | [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6 |
+| `src/debug/panels/RendererPanel.*` | `debug::drawRendererPanel`: panel "Renderer" (FPS i czas klatki, rozmiar framebuffera i okna, wersja OpenGL i karta, edytor "Clear color" oraz lista "Lighting" z pozycjami `Unlit`, `Gouraud`, `Phong`, `Blinn-Phong`, która zapisuje wybór w `game::LightingMode`) | [`../modules/debug-ui.md`](../modules/debug-ui.md), tryby w [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
+| `src/debug/panels/LightsPanel.*` | `debug::drawLightsPanel`: panel "Lights" (edytor koloru "Ambient" i cztery grupy: "Moon (directional)" z kątami, kolorem i natężeniem, "Flashlight (spot)" z polem "Flashlight on (key F)", kolorem, natężeniem, stożkiem "Cone" i zasięgiem "Beam range", "Point lights (dead ends)" z liczbą świateł, kolorem, natężeniem i promieniem "Point radius", "Highlight (specular)" z suwakami "Strength" i "Shininess"). Edytuje `game::LightingSettings`, a `game::MazeWorld` tylko czyta | [`../modules/scene/lights.md`](../modules/scene/lights.md), sekcja 6 |
+| `src/debug/panels/ShadersPanel.*` | `debug::drawShadersPanel`: panel "Shaders" (jeden przycisk "Reload shaders" dla wszystkich programów, a dla każdego z pięciu jedna linia: nazwy obu plików i `OK` albo, na czerwono, `FAILED` z komunikatem błędu pod spodem. Podpowiedź pokazuje pełne ścieżki) | [`../modules/gfx/shader-hot-reload.md`](../modules/gfx/shader-hot-reload.md), sekcja 6, komunikaty błędów w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `tests/main.cpp` | punkt wejścia programu testowego: makro `DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN` i dołączenie nagłówka doctest, który generuje `main()` | [`../libraries/doctest.md`](../libraries/doctest.md), sekcja 3.1 |
 | `tests/ColliderTests.cpp` | 12 przypadków testowych `scene::Aabb`, `overlaps` i `moveAndSlide` | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 5.7 |
 | `tests/ImageLoaderTests.cpp` | 7 przypadków testowych loadera obrazów: obie tekstury gry (512 x 512, 3 kanały), odwracanie wierszy na obrazku 2 x 3 zapisanym przez test, ścieżka ze znakami spoza ASCII, brak pliku, plik niebędący obrazem, pusty plik | [`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7 |
@@ -268,10 +324,15 @@ wypisane na początku drzewa, przed katalogami.
 | `tests/MazeWorldTests.cpp` | 8 przypadków testowych `game::buildMazeWorld`: wartości domyślne, `yawTowards`, liczba macierzy i pudełek, powtarzalność, macierze podłogi, słupków i ścian w obu ustawieniach, pozycja i kierunek startu | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md), sekcja 5 |
 | `tests/PlayerTests.cpp` | 13 przypadków testowych gracza: stałe, pudełko i oczy, chodzenie wzdłuż yaw, klawisze boczne i przeciwne, ruch po skosie, sprint, zatrzymanie na ścianie, ślizganie wzdłuż ściany obok słupków, wędrówka po zamkniętym labiryncie, noclip, powrót stóp na podłogę | [`../modules/game/player.md`](../modules/game/player.md), sekcja 5 |
 | `tests/ObjLoaderTests.cpp` | 18 przypadków testowych loadera OBJ: reguły formatu na napisach wpisanych w kod, przypadki błędów z numerem linii i trzy prawdziwe modele z `assets/models/` | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), sekcja 5.9 |
+| `tests/ShaderSourceTests.cpp` | 22 przypadki testowe `gfx::expandIncludes` i `gfx::nameSourceFiles`: shader bez `#include`, wstawienie pliku między dwie dyrektywy `#line`, pliki zagnieżdżone, końce linii Windows, `#include` w komentarzu, błędy (brak pliku, plik dołączający siebie, cykl, źle zapisana linia, `#include` przed `#version`, `#version` w pliku dołączanym) oraz zamiana numeru na nazwę pliku w formacie NVIDII i w formacie Apple. Pliki dołączane są w testach napisami w mapie, nie plikami na dysku | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
+| `tests/LightTests.cpp` | 20 przypadków testowych świateł: `attenuationFactor` i `attenuationForRadius` (5 procent jasności na promieniu), `coneCosines` i `spotFactor`, `directionFromAngles`, pusty `LightSet` oraz `packLightBlock` (kamera, otoczenie, księżyc, reflektor, światła punktowe, kierunek o długości zero, rozmiar i przesunięcia bloku `std140`) | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
+| `tests/LightingTests.cpp` | 16 przypadków testowych oświetlenia gry: `isDeadEnd`, światła labiryntu wzorcowego 4 na 4 z ziarna 1 (dwa), limit 16 świateł, powtarzalność, `MazeWorld::pointLightPositions`, liczba świateł labiryntu startowego (11), wartości domyślne `LightingSettings`, numery trybów, `specularModelOf` i `buildLightSet` (otoczenie, księżyc, latarka w oku, wyłącznik, stożek, światła punktowe) | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
+| `tests/TransformTests.cpp` | 4 przypadki testowe `scene::normalMatrix`: obiekt tylko przesunięty, obiekt obrócony, skala różna na osiach (tylko macierz normalnych zachowuje prostopadłość) i skala równa | [`../modules/scene/transforms.md`](../modules/scene/transforms.md) |
 
 Każdy plik źródłowy zaczyna się komentarzem z jednym zdaniem opisu i odnośnikiem
 `See docs/modules/...`. To wymaganie z PRD (sekcja 7). Dotyczy też plików shaderów, w
-których komentarz stoi pod linią `#version`, bo ta musi być pierwsza. Odnośnik wskazuje najbardziej
+których komentarz stoi pod linią `#version`, bo ta musi być pierwsza. Wyjątkiem jest plik
+dołączany `common/lighting.glsl`: nie ma linii `#version`, więc zaczyna się od komentarza. Odnośnik wskazuje najbardziej
 szczegółowy dokument, czyli ten z kolumny "Dokument" powyżej, na przykład
 `// See docs/modules/core/input.md` w `Input.hpp`. Pliki testów mają taki sam nagłówek i
 wskazują dokument kodu, który sprawdzają.
@@ -302,8 +363,8 @@ jeszcze nie ma, więc dziś łańcuch to `core <- gfx <- scene <- game`, a `game
 `glDrawElements` (modele i linie rysuje `gfx::Mesh::draw`).
 
 Od kamienia milowego M2 + M3 dochodzą trzy rzeczy, których rysunek nie pokazuje. Katalog
-`game/` ma część bez okna (`Maze`, `MazeGenerator`, `MazeLayout`, `MazeWorld`, `Player`),
-która zależy tylko od `scene/` i GLM. Katalog `tests/` stoi na samej górze, obok `main.cpp`:
+`game/` ma część bez okna (`Maze`, `MazeGenerator`, `MazeLayout`, `MazeWorld`, `Player`, a
+od M4 także `Lighting`), która zależy tylko od `scene/` i GLM. Katalog `tests/` stoi na samej górze, obok `main.cpp`:
 zależy od tej części `game/`, od `scene/` i od loaderów z `assets/`, a od niego nie zależy
 nic.
 
@@ -316,8 +377,9 @@ kontekstu OpenGL. Z `src/` warstwę dołączają `game/NightMazeApp.hpp`,
 [`../modules/assets/README.md`](../modules/assets/README.md), sekcja 4.
 
 Trzecia rzecz: panele w `debug/` czytają teraz dane gry, więc dołączają nagłówki z `game/`
-(`Player.hpp`, `MazeWorld.hpp`, `MazeLayout.hpp`, a panel Assets `MazeRenderer.hpp` dla typu
-`ViewMode`). Kierunek jest dozwolony: `debug/` może zależeć od każdej warstwy, a `game/`
+(`Player.hpp`, `MazeWorld.hpp`, `MazeLayout.hpp`, panel Assets `MazeRenderer.hpp` dla typu
+`ViewMode`, a panele Lights i Renderer `Lighting.hpp` dla `LightingSettings` i
+`LightingMode`). Kierunek jest dozwolony: `debug/` może zależeć od każdej warstwy, a `game/`
 nadal nie dołącza niczego z `debug/`.
 
 Jak to widać w kodzie:
@@ -330,14 +392,24 @@ Jak to widać w kodzie:
   `main.cpp`. W drugą stronę działa to tak samo: `core::Input` wie tylko, czy kursor jest
   przechwycony, a o tym, że ImGui ma wtedy ignorować mysz, decyduje `main.cpp`.
 - Nagłówki w `src/gfx/` dołączają `<glad/gl.h>` i bibliotekę standardową, a pliki `.cpp` do
-  tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp` i `core/Paths.hpp`). `Shader.hpp`
-  dołącza też `<glm/glm.hpp>`, a `Shader.cpp` `<glm/gtc/type_ptr.hpp>`, bo `setMat4`
-  przyjmuje `glm::mat4`. Nic z GLFW, `scene/`, `game/` ani `debug/`.
-- Nagłówki w `src/scene/` dołączają tylko `<glm/glm.hpp>` (a `Collider.hpp` do tego `<span>`
-  z biblioteki standardowej). Pliki `Transform.cpp` i `Camera.cpp` dołączają też
+  tego `core/GlCheck.hpp` (`Shader.cpp` także `core/Log.hpp`, `core/Paths.hpp` i
+  `gfx/ShaderSource.hpp`, a `UniformBuffer.cpp` `core/Log.hpp`). `Shader.hpp` dołącza też
+  `<glm/glm.hpp>`, a `Shader.cpp` `<glm/gtc/type_ptr.hpp>`, bo settery przyjmują typy GLM
+  (`glm::mat4`, `glm::mat3`, `glm::vec3`). Nic z GLFW, `scene/`, `game/` ani `debug/`.
+- `src/gfx/ShaderSource.hpp` **nie dołącza GLAD**, tak jak `Vertex.hpp`: tylko
+  `<functional>`, `<span>`, `<string>` i `<vector>`, a `ShaderSource.cpp` do tego
+  `<algorithm>`, `<cstddef>`, `<sstream>` i `<string_view>`. Niczego z `core/`: plików nie
+  otwiera, funkcję czytającą plik dostaje od `Shader.cpp`. Dlatego da się go testować bez
+  okna.
+- Nagłówki w `src/scene/` dołączają `<glm/glm.hpp>` i najwyżej bibliotekę standardową
+  (`Collider.hpp` do tego `<span>`, `Light.hpp` `<array>`, a `LightBlock.hpp` `<array>`,
+  `<cstddef>`, `<cstdint>`, `<type_traits>` i jeden nagłówek własnej warstwy,
+  `scene/Light.hpp`). Pliki `Transform.cpp` i `Camera.cpp` dołączają też
   `<glm/gtc/matrix_transform.hpp>`. Z biblioteki standardowej: `Camera.cpp` bierze
-  `<algorithm>` i `<cmath>`, a `Collider.cpp` `<algorithm>`, `<array>` i `<cmath>`. Nic z GLAD,
-  GLFW, `core/`, `gfx/`, `game/` ani `debug/`.
+  `<algorithm>` i `<cmath>`, `Collider.cpp` `<algorithm>`, `<array>` i `<cmath>`,
+  `Light.cpp` `<algorithm>` i `<cmath>`, a `LightBlock.cpp` `<algorithm>` i `<cstddef>`. Nic
+  z GLAD, GLFW, `core/`, `gfx/`, `game/` ani `debug/`: blok `LightBlock` jest w `scene/`
+  opisany jako zwykłe bajty, a na kartę wysyła go dopiero `game::LightRig`.
 - Dwa nowe nagłówki `src/gfx/` różnią się od reszty. `Vertex.hpp` **nie dołącza GLAD**: tylko
   `<glm/glm.hpp>`, `<cstdint>` i `<type_traits>`, żeby mogły go używać loader i testy.
   `Mesh.hpp` dołącza `gfx/Buffer.hpp`, `gfx/Vertex.hpp`, `gfx/VertexArray.hpp`,
@@ -356,43 +428,54 @@ Jak to widać w kodzie:
   `assets/ObjLoader.hpp`, `core/Log.hpp` i `core/Paths.hpp`. Przez `Mesh.hpp` i
   `Texture2D.hpp` przychodzi GLAD: to jedyny plik `assets/`, którego nie da się użyć bez
   okna.
-- Pliki logiki gry bez okna w `src/game/` (`Maze.*`, `MazeGenerator.*`, `MazeLayout.*`,
-  `MazeWorld.*`, `Player.*`) dołączają bibliotekę standardową, GLM (poza `Maze.*` i
-  `MazeGenerator.*`), nagłówki z `game/` i ze `scene/`: `MazeLayout.hpp` i `Player.hpp`
-  dołączają `scene/Collider.hpp`, `MazeWorld.cpp` `scene/Transform.hpp`, a `Player.cpp`
-  `scene/Camera.hpp`. Nic z GLAD, GLFW, `core/`, `gfx/`, `assets/` ani `debug/`: dlatego
-  dają się testować bez okna.
-- Dwie klasy rysujące w `src/game/` należą do programu, nie do `game_logic`.
+- Pliki logiki gry bez okna w `src/game/` (`Lighting.*`, `Maze.*`, `MazeGenerator.*`,
+  `MazeLayout.*`, `MazeWorld.*`, `Player.*`) dołączają bibliotekę standardową, GLM (poza
+  `Maze.*` i `MazeGenerator.*`), nagłówki z `game/` i ze `scene/`: `MazeLayout.hpp` i
+  `Player.hpp` dołączają `scene/Collider.hpp`, `MazeWorld.cpp` `scene/Transform.hpp` i
+  `game/Lighting.hpp`, `Player.cpp` `scene/Camera.hpp`, `Lighting.hpp` `game/Maze.hpp` i
+  `scene/Light.hpp`, a `Lighting.cpp` `game/MazeLayout.hpp`. Nic z GLAD, GLFW, `core/`,
+  `gfx/`, `assets/` ani `debug/`: dlatego dają się testować bez okna.
+- Trzy klasy rysujące w `src/game/` należą do programu, nie do `game_logic`.
   `MazeRenderer.hpp` dołącza tylko `<glm/glm.hpp>` i `<span>` (typy z `assets/` i `gfx/`
   zapowiada deklaracjami), a `MazeRenderer.cpp` `assets/AssetCache.hpp`, `core/Paths.hpp`,
-  `game/MazeWorld.hpp`, `game/ShaderUniforms.hpp` i `gfx/Shader.hpp`. `ColliderLines.hpp`
-  dołącza `gfx/Mesh.hpp` i `scene/Collider.hpp`, a `ColliderLines.cpp` do tego
-  `game/ShaderUniforms.hpp`, `gfx/Shader.hpp`, `gfx/Vertex.hpp` i `scene/Transform.hpp`.
+  `game/MazeWorld.hpp`, `game/ShaderUniforms.hpp`, `gfx/Shader.hpp` i `scene/Transform.hpp`
+  (dla `scene::normalMatrix`). `ColliderLines.hpp` dołącza `gfx/Mesh.hpp` i
+  `scene/Collider.hpp`, a `ColliderLines.cpp` do tego `game/ShaderUniforms.hpp`,
+  `gfx/Shader.hpp`, `gfx/Vertex.hpp` i `scene/Transform.hpp`. `LightRig.hpp` dołącza
+  `gfx/Mesh.hpp`, `gfx/UniformBuffer.hpp`, `<glm/glm.hpp>` i `<span>`, a `LightRig.cpp` do
+  tego `game/ShaderUniforms.hpp`, `gfx/Shader.hpp`, `gfx/Vertex.hpp`, `scene/Light.hpp`,
+  `scene/LightBlock.hpp` i `scene/Transform.hpp`.
+- `src/game/ShaderUniforms.hpp` dołącza `<glad/gl.h>` (typ `GLuint` punktu wiązania), więc
+  należy do programu, nie do `game_logic`.
 - Pliki w `tests/` dołączają `<doctest/doctest.h>`, nagłówki testowanego kodu
   (`scene/Collider.hpp`, `game/Maze.hpp`, `game/MazeGenerator.hpp`, `game/MazeLayout.hpp`,
-  `game/MazeWorld.hpp`, `game/Player.hpp`, `assets/ObjLoader.hpp`, `assets/ImageLoader.hpp`) i
-  bibliotekę standardową. Żaden plik w `src/` nie dołącza niczego z `tests/` ani nagłówka
+  `game/MazeWorld.hpp`, `game/Player.hpp`, `assets/ObjLoader.hpp`, `assets/ImageLoader.hpp`,
+  a od M4 `gfx/ShaderSource.hpp`, `scene/Light.hpp`, `scene/LightBlock.hpp`,
+  `scene/Transform.hpp` i `game/Lighting.hpp`) i bibliotekę standardową. Żaden plik w `src/` nie dołącza niczego z `tests/` ani nagłówka
   doctest.
-- `src/game/NightMazeApp.hpp` dołącza `assets/AssetCache.hpp`, `core/Application.hpp`, cztery
-  nagłówki z `game/` (`ColliderLines.hpp`, `MazeRenderer.hpp`, `MazeWorld.hpp`,
-  `Player.hpp`), trzy z `gfx/` (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`), dwa ze
+- `src/game/NightMazeApp.hpp` dołącza `assets/AssetCache.hpp`, `core/Application.hpp`, sześć
+  nagłówków z `game/` (`ColliderLines.hpp`, `LightRig.hpp`, `Lighting.hpp`,
+  `MazeRenderer.hpp`, `MazeWorld.hpp`, `Player.hpp`), trzy z `gfx/` (`Buffer.hpp`, `Shader.hpp`, `VertexArray.hpp`), dwa ze
   `scene/` (`Camera.hpp`, `Transform.hpp`), `<glm/glm.hpp>`, `<array>` i nic z `debug/`.
   Komentarz w klasie mówi wprost: "It knows nothing about the debug UI". `NightMazeApp.cpp`
   dołącza do tego `core/GlCheck.hpp`, `core/Paths.hpp`, `game/ShaderUniforms.hpp` i
   `<GLFW/glfw3.h>`, ten ostatni tylko dla stałych klawiszy i przycisku myszy (`GLFW_KEY_W`,
-  `GLFW_KEY_N`, `GLFW_MOUSE_BUTTON_LEFT`): o stan wejścia pyta wyłącznie `core::Input`.
+  `GLFW_KEY_N`, `GLFW_KEY_F`, `GLFW_MOUSE_BUTTON_LEFT`): o stan wejścia pyta wyłącznie `core::Input`.
 - `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`,
-  `debug/Theme.hpp`, nagłówki sześciu paneli i nagłówki ImGui.
+  `debug/Theme.hpp`, nagłówki siedmiu paneli, `game/Lighting.hpp` (panel Renderer dostaje
+  pole `mode` struktury `LightingSettings`) i nagłówki ImGui.
 - `src/debug/Theme.cpp` dołącza `core/Log.hpp` i `core/Paths.hpp` (błąd wczytania czcionki i
   ścieżka do `assets/fonts`). `Theme.hpp` i `PanelLayout.hpp` dołączają `<imgui.h>`, bo
   pokazują typy `ImVec4` i `ImVec2`: to jedyne nagłówki projektu z nagłówkiem ImGui i
-  dołączają je tylko pliki `.cpp` z `src/debug/`. Każdy z sześciu plików paneli dołącza
+  dołączają je tylko pliki `.cpp` z `src/debug/`. Każdy z siedmiu plików paneli dołącza
   `debug/PanelLayout.hpp`, a panele Shaders, Assets i Maze także `debug/Theme.hpp`.
 - `src/debug/panels/CameraPanel.cpp` dołącza `game/Player.hpp`, `scene/Camera.hpp` i
   `<glm/gtc/type_ptr.hpp>`. Panele Maze i Collision dołączają `game/MazeLayout.hpp`,
   `game/MazeWorld.hpp` i `game/Player.hpp` (Maze także `scene/Camera.hpp`, Collision
   `scene/Collider.hpp`), a panel Assets `assets/AssetCache.hpp`, `core/Paths.hpp`,
-  `game/MazeRenderer.hpp` i `gfx/Texture2D.hpp`.
+  `game/MazeRenderer.hpp` i `gfx/Texture2D.hpp`. Panel Lights dołącza `game/Lighting.hpp`,
+  `game/MazeWorld.hpp`, `scene/Light.hpp` i `<glm/gtc/type_ptr.hpp>`, a panel Renderer
+  `core/Time.hpp`, `core/Window.hpp` i `game/Lighting.hpp`.
 - `src/debug/panels/ShadersPanel.cpp` dołącza `core/Paths.hpp` i `gfx/Shader.hpp`: to
   pierwszy plik w `debug/`, który zna `gfx/`. Kierunek jest dozwolony, bo `debug/` może
   zależeć od każdej warstwy.
@@ -414,8 +497,8 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
 | `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
-| `game_logic` | biblioteka statyczna | `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Player.*` | `engine` (`PUBLIC`) |
-| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/ColliderLines.*`, `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, sześć paneli) | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
+| `game_logic` | biblioteka statyczna | `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Player.*` | `engine` (`PUBLIC`) |
+| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, układ, motyw, siedem paneli) | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
 | `night_maze_tests` | program | `tests/*.cpp` | `game_logic`, `doctest::doctest` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
 | `glfw` | biblioteka statyczna | pobrana przez FetchContent | biblioteki systemowe |
@@ -423,6 +506,20 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 | `imgui` | biblioteka statyczna | pobrana przez FetchContent, lista plików w `Dependencies.cmake` | `glfw` |
 | `doctest` (alias `doctest::doctest`) | target `INTERFACE`: jeden nagłówek, nic się nie kompiluje | pobrany przez FetchContent | nic |
 | `stb_image` | biblioteka statyczna | `external/stb/stb_image.c`, nagłówek pobrany przez FetchContent. Target zdefiniowany w `Dependencies.cmake` | nic |
+
+Co doszło do targetów z oświetleniem (M4), plik po pliku z list w `CMakeLists.txt`:
+
+| Target | Nowe pliki |
+|---|---|
+| `engine` | `src/gfx/ShaderSource.*`, `src/gfx/UniformBuffer.*`, `src/scene/Light.*`, `src/scene/LightBlock.*` |
+| `game_logic` | `src/game/Lighting.*` |
+| `night_maze` | `src/game/LightRig.*`, `src/debug/panels/LightsPanel.*` |
+| `night_maze_tests` | `tests/LightTests.cpp`, `tests/LightingTests.cpp`, `tests/ShaderSourceTests.cpp`, `tests/TransformTests.cpp` |
+
+Podział idzie tą samą linią co wcześniej: kod bez OpenGL, który ma mieć testy, jest w
+bibliotekach (`ShaderSource`, `Light`, `LightBlock`, `Lighting`), kod z OpenGL, ale bez
+wiedzy o grze, też w `engine` (`UniformBuffer`), a kod gry z OpenGL i panel w programie
+(`LightRig`, `LightsPanel`).
 
 **Dlaczego `engine` jest osobną biblioteką.** Warstwy wielokrotnego użytku (teraz `core`,
 `gfx`, `scene` i `assets`, później `renderer`) nie zawierają niczego specyficznego dla Night
@@ -438,9 +535,9 @@ są w tej samej bibliotece: tu obowiązuje sama dyscyplina dyrektyw `#include`.
 **Dlaczego `game_logic` jest osobną biblioteką.** Program testowy jest drugim, osobnym
 programem i może dolinkować tylko kod z biblioteki: kod skompilowany wprost w programie
 `night_maze` jest dla niego niedostępny. Dlatego ta część gry, która nie potrzebuje okna
-(labirynt, generator, układ w świecie, `MazeWorld` i gracz), jest biblioteką statyczną,
-którą linkują i gra, i testy. `NightMazeApp` i dwie klasy rysujące (`MazeRenderer`,
-`ColliderLines`) zostają w programie, bo potrzebują okna i kontekstu OpenGL, których test
+(labirynt, generator, układ w świecie, `MazeWorld`, gracz i ustawienia oświetlenia), jest
+biblioteką statyczną, którą linkują i gra, i testy. `NightMazeApp` i trzy klasy rysujące
+(`MazeRenderer`, `ColliderLines`, `LightRig`) zostają w programie, bo potrzebują okna i kontekstu OpenGL, których test
 nie ma. `game_logic` nie trafia do `engine`, bo `engine` ma nie zawierać niczego
 specyficznego dla Night Maze. Więcej: [`../modules/game/README.md`](../modules/game/README.md),
 sekcja 3.
@@ -547,8 +644,12 @@ add_library(engine STATIC
     src/gfx/Mesh.hpp
     src/gfx/Shader.cpp
     src/gfx/Shader.hpp
+    src/gfx/ShaderSource.cpp
+    src/gfx/ShaderSource.hpp
     src/gfx/Texture2D.cpp
     src/gfx/Texture2D.hpp
+    src/gfx/UniformBuffer.cpp
+    src/gfx/UniformBuffer.hpp
     src/gfx/Vertex.hpp
     src/gfx/VertexArray.cpp
     src/gfx/VertexArray.hpp
@@ -556,6 +657,10 @@ add_library(engine STATIC
     src/scene/Camera.hpp
     src/scene/Collider.cpp
     src/scene/Collider.hpp
+    src/scene/Light.cpp
+    src/scene/Light.hpp
+    src/scene/LightBlock.cpp
+    src/scene/LightBlock.hpp
     src/scene/Transform.cpp
     src/scene/Transform.hpp
 )
@@ -583,8 +688,8 @@ night_maze_enable_warnings(engine)
 - `target_include_directories(engine PUBLIC .../src)`: korzeniem ścieżek `#include` jest
   `src/`. Stąd zapis `#include "core/Window.hpp"` w każdym pliku, niezależnie od katalogu.
 - `target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)`: `engine` używa
-  GLAD, GLFW i GLM. GLM dołączają pliki z `src/scene/` (`Transform`, `Camera` i `Collider`) oraz
-  `src/gfx/Shader.*` (macierz jako parametr `setMat4`). `glm::glm-header-only`
+  GLAD, GLFW i GLM. GLM dołączają pliki z `src/scene/` (`Transform`, `Camera`, `Collider`,
+  `Light` i `LightBlock`) oraz `src/gfx/Shader.*` (macierz jako parametr `setMat4`). `glm::glm-header-only`
   to target `INTERFACE` (same nagłówki), więc "linkowanie" go oznacza tylko dodanie ścieżki
   nagłówków ([`../libraries/glm.md`](../libraries/glm.md), sekcja 2).
 - `target_link_libraries(engine PRIVATE stb_image)`: druga linia linkowania, tym razem
@@ -628,11 +733,14 @@ Bloki 5a i 6a doszły w kamieniu milowym M2 + M3. Mają numery z literą, żeby 
 
 ```cmake
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
-# The maze, its generator, its layout in the world and the player are plain data and
-# math. They live in a library of their own, and not in the night_maze executable, so that
+# The maze, its generator, its layout in the world, the player and the settings of the
+# lighting are plain data and math. They live in a library of their own, and not in the
+# night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
 add_library(game_logic STATIC
+    src/game/Lighting.cpp
+    src/game/Lighting.hpp
     src/game/Maze.cpp
     src/game/Maze.hpp
     src/game/MazeGenerator.cpp
@@ -651,8 +759,8 @@ target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 ```
 
-- `add_library(game_logic STATIC ...)`: druga nasza biblioteka statyczna, z dziesięciu plików
-  logiki gry bez okna (labirynt, `MazeWorld`, gracz). Lista jest jawna, tak jak przy
+- `add_library(game_logic STATIC ...)`: druga nasza biblioteka statyczna, z dwunastu plików
+  logiki gry bez okna (labirynt, `MazeWorld`, gracz, a od M4 `Lighting`). Lista jest jawna, tak jak przy
   `engine`.
 - `target_link_libraries(game_logic PUBLIC engine)`: `game_logic` używa `scene::Aabb` z
   `engine`. `PUBLIC`, bo nagłówek `game/MazeLayout.hpp` sam dołącza `scene/Collider.hpp` i
@@ -664,13 +772,15 @@ night_maze_enable_warnings(game_logic)
 
 ```cmake
 # ---- night_maze: the application and its debug UI -------------------------------------
-# NightMazeApp and the two classes that draw (MazeRenderer, ColliderLines) stay in the
-# executable: they need a window and an OpenGL context, so they are not something a test
-# can run.
+# NightMazeApp and the three classes that draw (MazeRenderer, ColliderLines, LightRig) stay
+# in the executable: they need a window and an OpenGL context, so they are not something
+# a test can run.
 add_executable(night_maze
     src/main.cpp
     src/game/ColliderLines.cpp
     src/game/ColliderLines.hpp
+    src/game/LightRig.cpp
+    src/game/LightRig.hpp
     src/game/MazeRenderer.cpp
     src/game/MazeRenderer.hpp
     src/game/NightMazeApp.cpp
@@ -689,6 +799,8 @@ add_executable(night_maze
     src/debug/panels/CameraPanel.hpp
     src/debug/panels/CollisionPanel.cpp
     src/debug/panels/CollisionPanel.hpp
+    src/debug/panels/LightsPanel.cpp
+    src/debug/panels/LightsPanel.hpp
     src/debug/panels/MazePanel.cpp
     src/debug/panels/MazePanel.hpp
     src/debug/panels/RendererPanel.cpp
@@ -704,10 +816,11 @@ night_maze_enable_warnings(night_maze)
   konsolowa (opis w [`build-windows.md`](build-windows.md)).
 - `PRIVATE engine game_logic imgui`: program niczego dalej nie przekazuje, więc `PRIVATE`
   wystarcza. ImGui linkuje tylko `night_maze`, nigdy `engine` ani `game_logic`.
-- `game_logic` jest potrzebne: `NightMazeApp` buduje labirynt (`buildMazeWorld`) i ma pole
-  typu `Player`, a panele czytają `MazeWorld` i `Player`.
-- Z kodu gry w programie zostają `NightMazeApp`, `MazeRenderer`, `ColliderLines`, nagłówek
-  `ShaderUniforms.hpp` i cały katalog `debug/`. Reszta `game/` jest w bibliotece
+- `game_logic` jest potrzebne: `NightMazeApp` buduje labirynt (`buildMazeWorld`) i światła
+  klatki (`buildLightSet`), ma pola typu `Player` i `LightingSettings`, a panele czytają
+  `MazeWorld`, `Player` i `LightingSettings`.
+- Z kodu gry w programie zostają `NightMazeApp`, `MazeRenderer`, `ColliderLines`, `LightRig`,
+  nagłówek `ShaderUniforms.hpp` i cały katalog `debug/`. Reszta `game/` jest w bibliotece
   `game_logic` (blok 5a).
 
 **Blok 6a: target `night_maze_tests`**
@@ -722,12 +835,16 @@ add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
     tests/ImageLoaderTests.cpp
+    tests/LightTests.cpp
+    tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
     tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
+    tests/ShaderSourceTests.cpp
+    tests/TransformTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
@@ -749,8 +866,9 @@ Drugi program w projekcie. Każdą linię omawia
 
 - `enable_testing()` włącza zapis listy testów do katalogu buildu, gdzie znajduje ją program
   `ctest`.
-- `add_executable(night_maze_tests ...)` buduje program testowy przy każdym zwykłym buildzie
-  (jest częścią targetu domyślnego), więc testy zawsze się kompilują.
+- `add_executable(night_maze_tests ...)` buduje program testowy z trzynastu plików
+  (`tests/main.cpp` i dwanaście plików z testami) przy każdym zwykłym buildzie (jest częścią
+  targetu domyślnego), więc testy zawsze się kompilują.
 - `target_link_libraries(... PRIVATE game_logic doctest::doctest)`: kod testowany i
   biblioteka testów. `engine` przychodzi przez `game_logic`.
 - `target_compile_definitions(night_maze_tests PRIVATE NIGHT_MAZE_ASSETS_DIR="...")`:
@@ -890,7 +1008,9 @@ Jeden katalog buildu nigdy nie przechodzi z jednego mechanizmu na drugi (to dwa 
 systemy operacyjne), więc blok nie zawiera żadnego sprzątania po "tym drugim" wariancie.
 
 Pliki z `assets/` nie są na żadnej liście źródeł: kompilator C++ ich nie widzi. Nowy plik
-shadera nie wymaga więc zmiany w `CMakeLists.txt` (sekcja 5).
+shadera nie wymaga więc zmiany w `CMakeLists.txt` (sekcja 5). Dotyczy to także podkatalogu
+`assets/shaders/common/` z plikiem dołączanym: `copy_directory` kopiuje katalog z
+podkatalogami, a dowiązanie na macOS obejmuje go z natury.
 
 ### 3.2. `CMakePresets.json`
 
@@ -1040,8 +1160,44 @@ Pozostałe pola:
 
 - `WarningsAsErrors: ''`: żadna diagnostyka nie jest traktowana jak błąd. Narzędzie doradza,
   nie blokuje.
+- `ExtraArgs: ['-D_CRT_USE_BUILTIN_OFFSETOF']`: dodatkowy argument kompilatora, dopisywany
+  do flag każdego sprawdzanego pliku (opis niżej). Doszedł w M4.
 - `HeaderFilterRegex: 'src/.*'`: diagnostyki z nagłówków pokazujemy tylko dla plików z
   `src/`. Nagłówki GLFW, GLAD, GLM i ImGui są pomijane.
+
+**`ExtraArgs` i `offsetof`.** Fragment pliku:
+
+```yaml
+# Only matters on Windows, where clang-tidy reads the headers of the Microsoft C library.
+# Their offsetof macro is written with a pointer cast, which MSVC accepts inside
+# static_assert and clang does not. This switch of that library makes offsetof the
+# built-in of the compiler instead. scene/LightBlock.hpp needs it: it checks the layout of
+# the light block with static_assert(offsetof(...) == ...). The macro cannot be set in
+# CMakeLists.txt: MSVC refuses to define it (warning C4117, a reserved name).
+ExtraArgs: ['-D_CRT_USE_BUILTIN_OFFSETOF']
+```
+
+| Element | Znaczenie |
+|---|---|
+| `ExtraArgs` | lista argumentów, które clang-tidy dopisuje do polecenia kompilacji z `compile_commands.json`. Działa jak opcja `--extra-arg` w linii poleceń, tylko zapisana w pliku |
+| `-D_CRT_USE_BUILTIN_OFFSETOF` | `-D` definiuje makro preprocesora. To konkretne makro jest przełącznikiem biblioteki C Microsoftu: z nim jej nagłówki definiują `offsetof` jako funkcję wbudowaną kompilatora |
+
+Po co to jest. [`src/scene/LightBlock.hpp`](../../src/scene/LightBlock.hpp) sprawdza w
+czasie kompilacji, czy struktura C++ ma pola dokładnie tam, gdzie układ `std140` stawia pola
+bloku uniformów, liniami takimi jak `static_assert(offsetof(LightBlockData, points) == 160);`.
+Wyrażenie w `static_assert` musi być stałą czasu kompilacji. Na Windowsie clang-tidy (czyli
+clang) czyta nagłówki biblioteki C Microsoftu, w których `offsetof` jest domyślnie makrem
+zapisanym rzutowaniem wskaźnika. MSVC uznaje taki zapis za stałą, clang nie: bez
+przełącznika clang-tidy nie przyjmuje pliku, który MSVC kompiluje bez uwag.
+Makra nie da się ustawić raz, w `CMakeLists.txt`, dla wszystkich narzędzi: MSVC odmawia
+definiowania tej nazwy (ostrzeżenie C4117, nazwa zastrzeżona). Dlatego stoi w konfiguracji
+narzędzi opartych na clangu: tutaj i w `.clangd` (sekcja 3.9).
+
+Stan: na Windowsie przebieg clang-tidy z tą linią nie zgłasza niczego (2026-10-05,
+[`build-windows.md`](build-windows.md), sekcja 13.1). Na macOS argument trafia do clang-tidy
+tak samo. Nagłówków Microsoftu tam nie ma, więc makro nie powinno mieć żadnego skutku, ale
+nikt tego jeszcze nie uruchomił. Opis bloku i asercji:
+[`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md).
 
 Konwencja nazw z `CheckOptions`:
 
@@ -1155,12 +1311,16 @@ przejście do definicji i błędy na żywo. Cała treść pliku:
 # build/debug/compile_commands.json
 CompileFlags:
   CompilationDatabase: build/debug
+  # The same switch as ExtraArgs in .clang-tidy, explained there: on Windows it lets
+  # clang accept static_assert(offsetof(...) == ...).
+  Add: [-D_CRT_USE_BUILTIN_OFFSETOF]
 ```
 
 | Klucz | Wartość | Znaczenie |
 |---|---|---|
 | `CompileFlags` | sekcja | ustawienia dotyczące flag kompilacji, których clangd używa do analizy plików |
 | `CompilationDatabase` | `build/debug` | katalog, w którym clangd ma szukać `compile_commands.json`. Ścieżka względna liczy się od katalogu, w którym leży plik `.clangd` |
+| `Add` | `[-D_CRT_USE_BUILTIN_OFFSETOF]` | lista flag dopisywanych do polecenia kompilacji każdego pliku. Ten sam przełącznik co `ExtraArgs` w `.clang-tidy` (sekcja 3.6): na Windowsie pozwala clangowi przyjąć `static_assert(offsetof(...) == ...)` w `src/scene/LightBlock.hpp`. Doszedł w M4 |
 
 Po co to jest: clangd musi znać dokładnie te same flagi co kompilator (ścieżki nagłówków
 GLFW, GLAD, GLM i ImGui, `-std=c++20`, makra `GLFW_INCLUDE_NONE` i `GL_SILENCE_DEPRECATION`).
@@ -1176,6 +1336,12 @@ Dwie konsekwencje:
 - Edytor analizuje kod z flagami konfiguracji **Debug** (bez `NDEBUG`), niezależnie od tego,
   który preset akurat budujemy. Dla makra `GL_CHECK` oznacza to, że clangd widzi wersję ze
   sprawdzaniem błędów.
+
+Linia `Add` jest potrzebna z tego samego powodu co `ExtraArgs` w `.clang-tidy`: clangd to
+też clang, więc na Windowsie bez przełącznika pokazywałby w edytorze błąd w
+`LightBlock.hpp`. Czy tak jest i czy przełącznik go usuwa, nie oglądałem: clangd w edytorze
+na Windowsie nie był jeszcze uruchamiany ([`build-windows.md`](build-windows.md), sekcja 4).
+Na macOS flaga trafia do clangd tak samo i nie powinna niczego zmieniać (niesprawdzone).
 
 Wcześniej ten sam cel osiągało dowiązanie symboliczne `compile_commands.json` w katalogu
 głównym. Plik `.clangd` jest lepszy, bo jest wersjonowany i działa od razu po sklonowaniu.
@@ -1196,7 +1362,7 @@ formacie JSON z komentarzami, który oba edytory akceptują.
 | `cmake.configureOnOpen` | `false` | CMake Tools nie uruchamia konfiguracji samo przy otwarciu katalogu. Konfigurację wykonujemy świadomie, poleceniem `cmake --preset debug` |
 | `[cpp]` / `editor.formatOnSave` | `true` | edytor formatuje plik C++ przy każdym zapisie. Ustawienie jest wewnątrz bloku `[cpp]`, więc nie dotyczy innych języków, w szczególności wygenerowanego kodu C w `external/glad` |
 | `[cpp]` / `editor.defaultFormatter` | `"llvm-vs-code-extensions.vscode-clangd"` | dla plików C++ formaterem jest clangd, który stosuje reguły z `.clang-format` (sekcja 3.5) |
-| `files.associations` | `*.vert`, `*.frag`, `*.geom`, `*.glsl` na `glsl` | pliki shaderów są traktowane jako język GLSL (kolorowanie składni). Dziś jest ich sześć: pary `basic`, `textured` i `color` w `assets/shaders/` |
+| `files.associations` | `*.vert`, `*.frag`, `*.geom`, `*.glsl` na `glsl` | pliki shaderów są traktowane jako język GLSL (kolorowanie składni). Dziś jest ich jedenaście: pary `basic`, `textured`, `color`, `lit` i `gouraud` w `assets/shaders/` oraz plik dołączany `assets/shaders/common/lighting.glsl` (to dla niego jest wzorzec `*.glsl`) |
 
 Dlaczego tak:
 
@@ -1404,13 +1570,17 @@ Powstaje w **katalogu roboczym** procesu: przy uruchomieniu `./build/debug/night
 katalogu repozytorium jest to katalog główny repozytorium. Jest w `.gitignore`. Usunięcie go
 przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../libraries/imgui.md).
 
-Od M2 + M3 każdy z sześciu paneli ma w kodzie miejsce i rozmiar startowy, ułożone dla okna
-1280 x 720. Dziś to sześć stałych `..._PLACEMENT` w jednym pliku,
+Od M2 + M3 każdy panel ma w kodzie miejsce i rozmiar startowy, ułożone dla okna 1280 x 720.
+Dziś paneli jest siedem i jest to siedem stałych `..._PLACEMENT` w jednym pliku,
 `src/debug/PanelLayout.hpp`, ustawianych przez `placePanelOnFirstUse` z warunkiem
 `ImGuiCond_FirstUseEver` i liczonych od rogów okna ([`../modules/debug-ui.md`](../modules/debug-ui.md),
-sekcja 5.7). Ten warunek działa tylko wtedy, gdy `imgui.ini` nie ma jeszcze wpisu dla danego
-panelu. Plik zapisany przez starszą wersję programu trzyma panele na starych miejscach i w
-starych rozmiarach, dobranych dla wcześniejszej czcionki. Żeby zobaczyć domyślny układ,
+sekcja 5.7): Renderer nad Lights w lewej kolumnie, Maze nad Assets w prawej, Collision i
+Shaders na dole między kolumnami, a Camera u góry obok lewej kolumny, zwinięty do paska
+tytułu (pole `collapsed`). Ten warunek działa tylko wtedy, gdy `imgui.ini` nie ma jeszcze
+wpisu dla danego panelu. Plik zapisany przez starszą wersję programu trzyma panele na
+starych miejscach i w starych rozmiarach, a plik sprzed M4 nie ma wpisu panelu Lights, więc
+ten jeden panel dostaje miejsce z kodu i nachodzi na panele ze starego układu (wniosek z
+kodu, nie obserwacja). Żeby zobaczyć domyślny układ,
 trzeba przed uruchomieniem usunąć `imgui.ini` z katalogu, z którego program startuje.
 Kolorów, odstępów ani czcionki w tym pliku nie ma: ustawia je kod przy każdym starcie.
 
@@ -1508,11 +1678,18 @@ pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
    różni się rozszerzeniem: `.vert` dla shadera wierzchołków, `.frag` dla shadera
    fragmentów. Edytor rozpoznaje je jako GLSL (sekcja 3.10).
 2. **Pierwsza linia shadera to `#version 410 core`.** Pod nią komentarz z jednym zdaniem
-   opisu i odnośnikiem `See docs/modules/...`, tak jak w plikach C++.
+   opisu i odnośnikiem `See docs/modules/...`, tak jak w plikach C++. Kod wspólny dla kilku
+   shaderów idzie do pliku `.glsl` w `assets/shaders/common/`, **bez** linii `#version`, a
+   shader dołącza go linią `#include "common/nazwa.glsl"`, która musi stać za linią
+   `#version` (nazwa liczy się od katalogu pliku shadera). Wzór: `common/lighting.glsl`,
+   dołączany przez `lit.frag` i `gouraud.vert`
+   ([`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md)).
 3. **Niczego nie dopisuj w `CMakeLists.txt`.** Krok z bloku 7 obejmuje cały katalog `assets/`.
 4. **W kodzie buduj ścieżkę przez `core::assetPath`**, z nazwą względną wobec `assets/`, na
    przykład `core::assetPath("shaders/basic.vert")`. Wzór: stałe `VERTEX_SHADER_FILE` i
-   `FRAGMENT_SHADER_FILE` w `src/game/NightMazeApp.cpp`, a dla modeli stałe
+   `FRAGMENT_SHADER_FILE` w `src/game/NightMazeApp.cpp` (nowa para shaderów to tam nowa para
+   stałych, nowe pole `gfx::Shader`, akcesor, pole w `debug::DebugContext` i wpis w tablicy
+   programów w `DebugUI::draw`, żeby panel Shaders ją przeładowywał), a dla modeli stałe
    `FLOOR_TILE_MODEL_FILE`, `WALL_MODEL_FILE` i `PILLAR_MODEL_FILE` w
    `src/game/MazeRenderer.cpp`. Model i jego tekstury wczytuje `assets::AssetCache`.
 5. **macOS:** nic więcej, dowiązanie `build/<preset>/assets` widzi nowy plik od razu.

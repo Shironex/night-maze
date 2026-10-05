@@ -5,8 +5,9 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`CMakeLists.txt`](../../CMakeLists.txt) oraz tę część API, której używają testy w katalogu
 [`tests/`](../../tests/).
 
-**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z dziewięciu
-plików: `tests/main.cpp` (punkt wejścia) i ośmiu plików z testami:
+**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z trzynastu
+plików: `tests/main.cpp` (punkt wejścia) i dwunastu plików z testami. Osiem pierwszych
+wierszy tabeli to stan po M2 + M3, cztery ostatnie doszły z oświetleniem (M4):
 
 | Plik | Przypadków | Co sprawdza | Dokument |
 |---|---|---|---|
@@ -18,12 +19,18 @@ plików: `tests/main.cpp` (punkt wejścia) i ośmiu plików z testami:
 | `PlayerTests.cpp` | 13 | gracz: chodzenie, sprint, ślizganie, noclip | [`../modules/game/player.md`](../modules/game/player.md) |
 | `ObjLoaderTests.cpp` | 18 | loader OBJ i MTL | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
 | `ImageLoaderTests.cpp` | 7 | loader obrazów | [`../modules/assets/images.md`](../modules/assets/images.md) |
+| `ShaderSourceTests.cpp` | 22 | tekst shadera: `expandIncludes` (dyrektywa `#include`, linie `#line`, błędy) i `nameSourceFiles` (nazwy plików w komunikatach sterownika) | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
+| `LightTests.cpp` | 20 | matematyka świateł: zanik z odległością, stożek reflektora, `directionFromAngles`, bajty bloku świateł (`packLightBlock`) | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
+| `LightingTests.cpp` | 16 | ustawienia oświetlenia gry: ślepe zaułki (`isDeadEnd`, `deadEndLightPositions`), wartości domyślne, `buildLightSet` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
+| `TransformTests.cpp` | 4 | macierz normalnych (`scene::normalMatrix`) | [`../modules/scene/transforms.md`](../modules/scene/transforms.md) |
 
-Razem 87 przypadków testowych i 60858 asercji: tyle pokazał program na Windowsie w
-konfiguracjach Debug i Release (MSVC 19.44, 2026-10-05). **Na macOS testy nie były jeszcze
-budowane ani uruchamiane.** Kod, który wymaga kontekstu OpenGL (`gfx::Mesh`,
-`gfx::Texture2D`, `assets::AssetCache`, klasy rysujące i panele), testów jednostkowych nie
-ma.
+Razem 149 przypadków testowych i 61240 asercji: tyle pokazał program na Windowsie w
+konfiguracjach Debug i Release (MSVC 19.44, 2026-10-05). Liczbę 149 potwierdza też
+policzenie makr `TEST_CASE` w plikach: 12 + 6 + 11 + 12 + 8 + 13 + 18 + 7 + 22 + 20 + 16 + 4.
+Poprzedni stan, po M2 + M3 (2026-10-05), to osiem plików z testami. **Na macOS testy
+nie były jeszcze budowane ani uruchamiane.** Kod, który wymaga kontekstu OpenGL
+(`gfx::Mesh`, `gfx::Texture2D`, `gfx::UniformBuffer`, `gfx::Shader`, `assets::AssetCache`,
+klasy rysujące i panele), testów jednostkowych nie ma.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -58,8 +65,11 @@ zanim ruszy `main`. Nowy test to nowy blok `TEST_CASE` w dowolnym pliku testowym
 - Nie jest programem `ctest`. `ctest` to osobne narzędzie z pakietu CMake, które uruchamia
   programy testowe i patrzy na ich kod wyjścia. O doctest nic nie wie.
 - Nie otwiera okna i nie tworzy kontekstu OpenGL. Dlatego testami objęty jest tylko kod,
-  który ich nie potrzebuje: kolizje, logika labiryntu i dwa loadery plików (OBJ i obrazy).
-  Klas `gfx`, które tworzą obiekty OpenGL, ani `NightMazeApp` w testach nie ma.
+  który ich nie potrzebuje: kolizje, logika labiryntu, gracz, dwa loadery plików (OBJ i
+  obrazy), a od M4 także przetwarzanie tekstu shadera w `gfx` (samo składanie napisów, bez
+  kompilacji GLSL), matematyka świateł i macierz normalnych w `scene` oraz ustawienia
+  oświetlenia w `game`. Klas `gfx`, które tworzą obiekty OpenGL, ani `NightMazeApp` w
+  testach nie ma.
 - Nie mierzy pokrycia kodu testami i niczego nie udowadnia o kodzie, którego żaden test nie
   woła.
 
@@ -156,13 +166,25 @@ wniosek z lektury pliku, nie pomiar.
 Fragmenty z [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
+# ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
+# The maze, its generator, its layout in the world, the player and the settings of the
+# lighting are plain data and math. They live in a library of their own, and not in the
+# night_maze executable, so that
+# the test program can link them too: a test cannot link code that is inside another
+# executable.
 add_library(game_logic STATIC
+    src/game/Lighting.cpp
+    src/game/Lighting.hpp
     src/game/Maze.cpp
     src/game/Maze.hpp
     src/game/MazeGenerator.cpp
     src/game/MazeGenerator.hpp
     src/game/MazeLayout.cpp
     src/game/MazeLayout.hpp
+    src/game/MazeWorld.cpp
+    src/game/MazeWorld.hpp
+    src/game/Player.cpp
+    src/game/Player.hpp
 )
 # PUBLIC: the headers of this library (MazeLayout.hpp, MazeWorld.hpp, Player.hpp) include
 # scene/Collider.hpp and GLM, so whoever includes them needs the include paths of engine.
@@ -177,6 +199,11 @@ logika labiryntu trafiła do osobnej biblioteki statycznej `game_logic`, którą
 i testy ([`../modules/game/README.md`](../modules/game/README.md), sekcja 3). Kolizje są w
 `engine`, które `game_logic` linkuje jako `PUBLIC`, więc testy dostają je razem z nią.
 
+Z oświetleniem (M4) podział jest ten sam. Kod bez okna, który ma mieć testy, trafił do
+bibliotek: `gfx/ShaderSource`, `scene/Light`, `scene/LightBlock` i `scene::normalMatrix`
+(`scene/Transform`) są w `engine`, a `game/Lighting` w `game_logic`. Kod, który woła OpenGL
+(`gfx::UniformBuffer`, `game::LightRig`, panel Lights), testów nie ma.
+
 ```cmake
 # ---- night_maze_tests: unit tests of the code that runs without a window --------------
 # enable_testing() makes CMake write the list of tests into the build directory, where
@@ -187,12 +214,16 @@ add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
     tests/ImageLoaderTests.cpp
+    tests/LightTests.cpp
+    tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
     tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
+    tests/ShaderSourceTests.cpp
+    tests/TransformTests.cpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
@@ -212,7 +243,7 @@ add_test(NAME night_maze_tests COMMAND night_maze_tests)
 | Linia | Znaczenie |
 |---|---|
 | `enable_testing()` | włącza obsługę testów w CMake: podczas generowania powstaje w katalogu buildu plik z listą testów, który czyta `ctest`. Musi stać w głównym `CMakeLists.txt`, bo `ctest` szuka listy w korzeniu katalogu buildu |
-| `add_executable(night_maze_tests ...)` | zwykły program z dziewięciu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
+| `add_executable(night_maze_tests ...)` | zwykły program z trzynastu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
 | `target_link_libraries(... PRIVATE game_logic doctest::doctest)` | kod testowany i biblioteka testów. "Linkowanie" targetu `INTERFACE` `doctest::doctest` oznacza tylko dodanie ścieżek nagłówków |
 | `night_maze_enable_warnings(night_maze_tests)` | testy kompilują się z tymi samymi ścisłymi ostrzeżeniami co reszta naszego kodu (`/W4 /permissive-` albo `-Wall -Wextra -Wpedantic`) |
 | `target_compile_definitions(night_maze_tests PRIVATE NIGHT_MAZE_ASSETS_DIR="...")` | makro preprocesora z bezwzględną ścieżką katalogu `assets` w repozytorium. Testy loaderów czytają nim prawdziwe modele i tekstury niezależnie od katalogu, z którego uruchomiono program ([`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7) |
@@ -354,7 +385,9 @@ Liczby `float` nie przechowują większości ułamków dziesiętnych dokładnie:
 jest równe `0.3F` co do bitu. Porównanie przez `==` zawodziłoby więc w poprawnym kodzie.
 `doctest::Approx(wartość)` tworzy obiekt, dla którego `==` znaczy "równe z dokładnością do
 małego błędu względnego". Domyślna tolerancja pokrywa zwykłe błędy zaokrągleń, a zmienia się
-ją metodą `.epsilon(...)`, której testy nie potrzebują.
+ją metodą `.epsilon(...)`. Używa jej jeden plik, `tests/TransformTests.cpp`, którego własna
+funkcja `checkVector` porównuje składowe przez `doctest::Approx(expected.x).epsilon(0.0001)`.
+Pozostałe testy zostają przy tolerancji domyślnej.
 
 `checkVector` to zwykła funkcja pomocnicza, nie element biblioteki. Makra `CHECK` wolno
 wołać z funkcji pomocniczych. W raporcie błędu jest wtedy linia wewnątrz `checkVector`, a nie
@@ -441,7 +474,7 @@ ctest --test-dir build/release -C Release --output-on-failure
 | `-C Debug` | konfiguracja do przetestowania. **Wymagana z generatorem Visual Studio**, bo jeden katalog buildu mieści tam kilka konfiguracji i `ctest` musi wiedzieć, który program uruchomić. Generatory jednokonfiguracyjne (Unix Makefiles na Macu, Ninja) ten argument ignorują, więc polecenie może być wspólne |
 | `--output-on-failure` | gdy test nie przejdzie, `ctest` wypisuje całe wyjście programu testowego, czyli raport doctest. Bez tego widać tylko słowo `Failed` |
 
-Wynik zmierzony na Windowsie (Debug):
+Wynik zmierzony na Windowsie (Debug, 2026-10-05, przed dodaniem testów oświetlenia):
 
 ```text
     Start 1: night_maze_tests
@@ -450,8 +483,10 @@ Wynik zmierzony na Windowsie (Debug):
 100% tests passed, 0 tests failed out of 1
 ```
 
-"1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwa
-około 0,1 s.
+"1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwał
+wtedy około 0,1 s. Dla programu ze 149 przypadkami (2026-10-05) zmierzone są liczby z
+raportu doctest niżej. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
+datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas.
 
 W pliku [`Makefile`](../../Makefile) są do tego skróty: `make test` (build Debug i testy),
 `make test-release`, a `make check` uruchamia oba razem z resztą kontroli
@@ -471,16 +506,19 @@ build\debug\Debug\night_maze_tests.exe
 ./build/debug/night_maze_tests
 ```
 
-Wynik zmierzony na Windowsie (taki sam w Debug i w Release):
+Wynik zmierzony na Windowsie 2026-10-05 (te same liczby w Debug i w Release):
 
 ```text
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:    87 |    87 passed | 0 failed | 0 skipped
-[doctest] assertions: 60858 | 60858 passed | 0 failed |
+[doctest] test cases:   149 |   149 passed | 0 failed | 0 skipped
+[doctest] assertions: 61240 | 61240 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
+
+Zmierzone są liczby i napis `Status: SUCCESS!`. Odstępy przed liczbami odtworzyłem z raportu
+z 2026-10-05: doctest wyrównuje obie liczby do szerokości dłuższej z nich.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -500,8 +538,9 @@ Przydatne opcje programu (pełna lista: `--help`):
 
 ### Kiedy uruchamiać
 
-Po każdej zmianie w `src/scene/Collider.*`, `src/game/Maze*`, `src/game/Player.*` i w
-loaderach z `src/assets/`, przed każdym commitem (na
+Po każdej zmianie w `src/scene/Collider.*`, `src/game/Maze*`, `src/game/Player.*`, w
+loaderach z `src/assets/`, a od M4 także w `src/gfx/ShaderSource.*`, `src/scene/Light.*`,
+`src/scene/LightBlock.*`, `src/scene/Transform.*` i `src/game/Lighting.*`, przed każdym commitem (na
 Macu robi to `make check`) i po przejściu na drugi system. To ostatnie ma tu szczególne
 znaczenie: test labiryntu wzorcowego istnieje po to, żeby wykryć różnicę między macOS a
 Windowsem ([`../modules/game/maze-generator.md`](../modules/game/maze-generator.md),
@@ -547,8 +586,16 @@ sekcja 5.8).
     nazwa z przecinkiem wymaga poprzedzenia go ukośnikiem wstecznym. Prościej filtrować
     początkiem nazwy z gwiazdką.
 12. **Testy nie obejmują niczego z OpenGL.** Zielony wynik testów mówi o kolizjach,
-    labiryncie i loaderach plików. O shaderach, buforach i rysowaniu nie mówi nic: te rzeczy sprawdza się
-    uruchomieniem programu.
+    labiryncie, graczu, loaderach plików, matematyce świateł i składaniu tekstu shadera. O
+    kompilacji shaderów, buforach i rysowaniu nie mówi nic: te rzeczy sprawdza się
+    uruchomieniem programu. Dwa przykłady z M4. `tests/ShaderSourceTests.cpp` sprawdza, że
+    `#include` jest zastępowany treścią pliku i że numer w komunikacie błędu zamienia się w
+    nazwę pliku, ale żaden test nie podaje tego tekstu kompilatorowi GLSL: format błędów
+    sterownika Apple (`ERROR: 1:15:`) jest w testach wpisanym napisem, a nie wyjściem
+    prawdziwego sterownika. `tests/LightTests.cpp` sprawdza przesunięcia pól struktury
+    `scene::LightBlockData`, ale tego, czy sterownik układa blok `LightBlock` w tylu samych
+    bajtach, pilnuje dopiero porównanie rozmiarów w działającej grze
+    (`Shader::bindUniformBlock`).
 
 ## 6. Pytania kontrolne
 
@@ -597,8 +644,9 @@ sekcja 5.8).
     `/external:I` z wyłączonymi ostrzeżeniami.
 
 11. **Czego testy w tym projekcie nie sprawdzają?**
-    Niczego, co potrzebuje okna albo kontekstu OpenGL: klas `gfx`, shaderów, rysowania,
-    sterowania. Sprawdzają kod, który jest samą matematyką i logiką.
+    Niczego, co potrzebuje okna albo kontekstu OpenGL: klas `gfx` tworzących obiekty
+    OpenGL, kompilacji shaderów, rysowania, sterowania. Sprawdzają kod, który jest samą
+    matematyką, logiką i pracą na tekście (w `gfx` to jeden plik, `ShaderSource`).
 
 ## 7. Oficjalna dokumentacja
 

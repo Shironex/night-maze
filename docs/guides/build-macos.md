@@ -3,9 +3,12 @@
 Przewodnik dla kamienia milowego M0. Polecenia budowania i uruchamiania z tego dokumentu
 zostały uruchomione na Macu na kodzie M0 i M1, w konfiguracji z tabeli niżej. **Kod M2 + M3
 (testy, labirynt, gracz, modele, tekstury, nowe panele) nie był na macOS ani budowany, ani
-uruchamiany.** Wszystko, co ten dokument mówi o nim dla Maca, jest oczekiwaniem wynikającym
-z kodu i z pomiarów na Windowsie, a punkty do sprawdzenia są zebrane w sekcji 2 jako listy
-otwarte.
+uruchamiany.** To samo dotyczy oświetlenia, czyli pierwszej części M4 (światła, cztery
+tryby cieniowania, blok uniformów, `#include` w shaderach, panel Lights): powstało na
+Windowsie 2026-10-05 i na macOS nikt go nie zbudował. Wszystko, co ten dokument mówi o tym
+kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
+do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS" i "M4
+(oświetlenie) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -88,15 +91,19 @@ obrócona tak, że widać trzy jej ściany (czerwoną z przodu, niebieską z lew
 góry, każda w jednolitym kolorze), a na wierzchu panele "Renderer", "Shaders" i "Camera".
 Po kliknięciu w scenę kursor znikał i kamerą można było latać wokół kostki.
 
-**Co powinno być widać po M2 + M3 (na macOS niesprawdzone, na Windowsie zmierzone
-2026-10-05):** widok z wnętrza labiryntu 10 na 10 z teksturą kamienia na podłodze, ścianach
-i słupkach, równo jasny (oświetlenie dochodzi w M4), sześć paneli (doszły "Maze",
-"Collision" i "Assets"), a kostka z M1 wisi nad komórką w rogu przeciwległym do startu. Po
-dwóch liniach z `core::Window` pamięć podręczna assetów wypisuje linie
-`[info] Loaded texture: ...` i `[info] Loaded model: ...`. Po kliknięciu w scenę kursor
-znika i gracz chodzi po labiryncie (tabela niżej). Linia `[error] Shader ...` w terminalu
-oznacza, że shader się nie wczytał: to, co rysuje ten program shaderów, znika, a reszta
-klatki jest rysowana dalej ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
+**Co powinno być widać dziś, po M2 + M3 i oświetleniu z M4 (na macOS niesprawdzone, na
+Windowsie zmierzone 2026-10-05):** nocny widok z wnętrza labiryntu 10 na 10 z teksturą
+kamienia na podłodze, ścianach i słupkach, oświetlony w trybie Blinn-Phong: słabe, chłodne
+światło księżyca, ciepły stożek latarki na środku obrazu i turkusowe światła punktowe w
+ślepych zaułkach, każde oznaczone małą świecącą kostką. Tło jest prawie czarne, granatowe
+(ciemniejsze niż w stanie M1). Cieni nie ma. Paneli jest siedem: "Renderer" nad "Lights" w
+lewej kolumnie, "Maze" nad "Assets" w prawej, "Collision" i "Shaders" na dole między
+kolumnami, a "Camera" u góry, zwinięty do paska tytułu. Kostka z M1 wisi nad komórką w rogu
+przeciwległym do startu. Po dwóch liniach z `core::Window` pamięć podręczna assetów wypisuje
+linie `[info] Loaded texture: ...` i `[info] Loaded model: ...`. Po kliknięciu w scenę
+kursor znika i gracz chodzi po labiryncie (tabela niżej). Linia `[error] Shader ...` w
+terminalu oznacza, że shader się nie wczytał: to, co rysuje ten program shaderów, znika, a
+reszta klatki jest rysowana dalej ([`../modules/gfx/shaders.md`](../modules/gfx/shaders.md)).
 
 `4.1` potwierdza, że dostaliśmy kontekst, o który prosiliśmy. `Metal` oznacza, że OpenGL na
 Apple Silicon jest warstwą zbudowaną nad Metalem. Druga linia zależy od procesora w danym
@@ -112,6 +119,7 @@ Macu.
 | lewy Shift przy przechwyconym kursorze | chodzenie: sprint. W trybie noclip: w dół | tamże |
 | spacja przy przechwyconym kursorze | tylko w trybie noclip: w górę | tamże |
 | N | przełącza chodzenie i noclip (lot wzdłuż kierunku patrzenia, bez kolizji). Działa także przy wolnym kursorze | `NightMazeApp::onRender` |
+| F | włącza i wyłącza latarkę. Działa także przy wolnym kursorze. To samo robi pole `Flashlight on (key F)` w panelu Lights | `NightMazeApp::onRender` |
 | Esc | przy przechwyconym kursorze oddaje kursor, przy wolnym zamyka program | `Application::run` w [`src/core/Application.cpp`](../../src/core/Application.cpp) |
 | `~` (na lewo od `1`, `GLFW_KEY_GRAVE_ACCENT`) | pokazuje lub ukrywa interfejs debugowy | `DebugNightMazeApp::onRender` w [`src/main.cpp`](../../src/main.cpp) |
 
@@ -122,13 +130,15 @@ przechwytuje kursora, a przy przechwyconym kursorze panele nie reagują na mysz:
 przesunąć suwak, trzeba najpierw nacisnąć Esc. Obrót kamery opisuje
 [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcje 5
 i 6, a ruch gracza [`../modules/game/player.md`](../modules/game/player.md). Obrót myszą i
-lot były na Macu sprawdzone ręcznie w stanie M1. Chodzenia z kolizjami, sprintu i klawisza N
-nikt na Macu nie sprawdzał. Na macOS GLFW 3.4 nie ma surowego ruchu myszy, więc obrót korzysta z ruchu kursora po
+lot były na Macu sprawdzone ręcznie w stanie M1. Chodzenia z kolizjami, sprintu oraz klawiszy N
+i F nikt na Macu nie sprawdzał. Na macOS GLFW 3.4 nie ma surowego ruchu myszy, więc obrót korzysta z ruchu kursora po
 przyspieszeniu systemowym ([`../modules/core/input.md`](../modules/core/input.md), sekcja
 2.7).
 
 Panel "Renderer" pokazuje FPS, czas klatki, rozmiar framebuffera i okna, wersję OpenGL,
-nazwę karty oraz edytor koloru tła. Panel można przeciągnąć do krawędzi okna (docking).
+nazwę karty, edytor koloru tła oraz listę `Lighting` z czterema trybami cieniowania
+(`Unlit`, `Gouraud`, `Phong`, `Blinn-Phong`). Panel można przeciągnąć do krawędzi okna
+(docking).
 
 ### Katalog `assets` i praca z shaderami
 
@@ -145,8 +155,9 @@ Skutki praktyczne:
 
 - Plik shadera edytuję w `assets/shaders/` w repozytorium. Program widzi zmianę przy
   następnym wczytaniu, **bez budowania**: po kliknięciu "Reload shaders" w panelu Shaders
-  albo po ponownym uruchomieniu `./build/debug/night_maze`. Modele i tekstury są wczytywane
-  tylko raz, przy starcie.
+  albo po ponownym uruchomieniu `./build/debug/night_maze`. Dotyczy to także pliku
+  dołączanego dyrektywą `#include` (`assets/shaders/common/lighting.glsl`): każde wczytanie
+  shadera czyta go od nowa. Modele i tekstury są wczytywane tylko raz, przy starcie.
 - Program działa uruchomiony z dowolnego katalogu roboczego, bo ścieżka do shaderów nie
   zależy od katalogu roboczego.
 - `make clean` (albo `rm -rf build`) usuwa dowiązanie, a nie pliki w `assets/`. Następny
@@ -162,8 +173,9 @@ blok 7.
 ### Testy jednostkowe
 
 > **Na macOS jeszcze nie uruchomione.** Kod kolizji, labiryntu, gracza i loaderów oraz jego
-> testy powstały na Windowsie (2026-10-05) i tam są zmierzone: [`build-windows.md`](build-windows.md),
-> sekcja 2. Wszystko w tym podrozdziale jest dla Maca oczekiwaniem, nie pomiarem.
+> testy powstały na Windowsie (2026-10-05), a testy oświetlenia dzień później. Tam są
+> zmierzone: [`build-windows.md`](build-windows.md), sekcja 2. Wszystko w tym podrozdziale
+> jest dla Maca oczekiwaniem, nie pomiarem.
 
 Zwykły build (`cmake --build --preset debug`) buduje też program testowy
 `build/debug/night_maze_tests`. Testy uruchamia `ctest`, program z pakietu CMake:
@@ -181,16 +193,21 @@ też uruchomić wprost, wtedy widać raport biblioteki doctest:
 ./build/debug/night_maze_tests
 ```
 
-Oczekiwany koniec wyjścia, taki jak zmierzony na Windowsie w konfiguracjach Debug i Release
-(2026-10-05, osiem plików z testami: `ColliderTests.cpp` 12 przypadków,
-`ImageLoaderTests.cpp` 7, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12,
-`MazeTests.cpp` 6, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 18 i `PlayerTests.cpp` 13):
+Oczekiwany koniec wyjścia. Liczby z Windowsa, zmierzone tam w konfiguracjach Debug i Release
+2026-10-05, dla dwunastu plików z testami: `ColliderTests.cpp` 12 przypadków,
+`ImageLoaderTests.cpp` 7, `LightingTests.cpp` 16, `LightTests.cpp` 20,
+`MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12, `MazeTests.cpp` 6,
+`MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 18, `PlayerTests.cpp` 13,
+`ShaderSourceTests.cpp` 22 i `TransformTests.cpp` 4:
 
 ```text
-[doctest] test cases:    87 |    87 passed | 0 failed | 0 skipped
-[doctest] assertions: 60858 | 60858 passed | 0 failed |
+[doctest] test cases:   149 |   149 passed | 0 failed | 0 skipped
+[doctest] assertions: 61240 | 61240 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
+
+Przed oświetleniem (2026-10-05) program miał osiem plików z testami i odpowiednio mniej
+przypadków.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -212,8 +229,8 @@ nie wykonał):
 - [ ] nagłówek doctest trafia do kompilatora przez `-isystem` i nie daje ostrzeżeń w plikach
       testów
 - [ ] `ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release:
-      zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 87 przypadków i
-      60858 asercji, tak jak na Windowsie)
+      zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 149 przypadków i
+      61240 asercji, liczby z Windowsa z 2026-10-05)
 - [ ] **najważniejszy punkt**: przechodzą testy `golden maze: 4 x 4 cells from seed 1 has
       exactly these walls` i `randomBelow gives the same numbers on every system`. To jest
       pomiar, że macOS i Windows generują ten sam labirynt
@@ -324,8 +341,9 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
       `std::ranges::find` w `AssetCache.cpp`, `constexpr std::span<const scene::Aabb>` w
       `PlayerTests.cpp`, `static_cast<ImTextureID>` z `GLuint` w `AssetsPanel.cpp`. Zapisać
       każde ostrzeżenie
-- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 87 przypadków testowych i
-      60858 asercji, `Status: SUCCESS!` (liczby z Windowsa)
+- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 149 przypadków testowych i
+      61240 asercji, `Status: SUCCESS!` (liczby z Windowsa z 2026-10-05, razem z testami
+      oświetlenia)
 - [ ] przechodzą nowe przypadki zależne od zaokrągleń `float`: `a player wandering through a
       closed maze never leaves it or enters a wall` i `a player pressing into a wall slides
       along it and past the pillars` z `tests/PlayerTests.cpp` oraz `a box that hugs a wall
@@ -335,10 +353,11 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 
 **Ryzyka specyficzne dla macOS**
 
-- [ ] **ścisły kompilator GLSL Apple** przyjmuje cztery nowe pliki: `textured.vert`,
+- [ ] **ścisły kompilator GLSL Apple** przyjmuje cztery pliki z M2 + M3: `textured.vert`,
       `textured.frag`, `color.vert`, `color.frag`. Po starcie w terminalu nie ma linii
-      `[error] Shader ...`, a panel Shaders pokazuje trzy bloki z `Program: valid` i
-      `Last load: OK`. Sterownik NVIDII na Windowsie przyjmuje je bez uwag, ale jest
+      `[error] Shader ...`, a panel Shaders pokazuje linie
+      `textured.vert + textured.frag: OK` i `color.vert + color.frag: OK` (pięć nowych
+      plików oświetlenia jest na liście M4 niżej). Sterownik NVIDII na Windowsie przyjmuje je bez uwag, ale jest
       łagodniejszy. Miejsca, na które sterownik Apple mógłby zareagować: `mat3(uModel)`,
       `fract(vUv)` jako argument konstruktora `vec4`, porównania `uViewMode == 1` dla
       uniformu `int`, wejście `vNormal` używane tylko w jednej gałęzi `if`
@@ -356,8 +375,8 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 - [ ] **Retina a układ paneli**: panel Renderer pokazuje `Framebuffer` dwa razy większy niż
       `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Miejsca startowe paneli
       (`src/debug/PanelLayout.hpp`) są w jednostkach okna i ułożone dla 1280 x 720, więc po
-      usunięciu `imgui.ini` sześć paneli powinno stać tak samo jak na Windowsie i nie
-      zasłaniać się. Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
+      usunięciu `imgui.ini` siedem paneli powinno stać tak samo jak na Windowsie i nie
+      zasłaniać się (panel Camera zwinięty do paska tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
       poprawny rozmiar i ostrość
 - [ ] **budowanie motywu pod clang**: `src/debug/Theme.cpp` i `src/debug/PanelLayout.cpp`
       kompilują się z `-Wall -Wextra -Wpedantic` bez ostrzeżeń. Na Windowsie są zbudowane w
@@ -381,8 +400,9 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
       Macu 1 ([`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.4). Dwa razy
       za duże panele oznaczałyby, że to założenie jest fałszywe
 - [ ] **polskie litery w panelu**: uruchomić program z kopii katalogu `build/debug` w
-      katalogu o nazwie z polskimi literami i najechać myszą na linię `Vertex` w panelu
-      Shaders. Oczekiwane: podpowiedź z pełną ścieżką i poprawnymi polskimi literami. Na
+      katalogu o nazwie z polskimi literami i najechać myszą na linię
+      `basic.vert + basic.frag: OK` w panelu Shaders. Oczekiwane: podpowiedź z dwiema
+      pełnymi ścieżkami i poprawnymi polskimi literami. Na
       Windowsie zmierzone jest tylko to, że czcionka te litery rysuje
 - [ ] **kolory motywu**: tło paneli granatowe i lekko przezroczyste, tekst jasny, tekst
       błędu w panelu Shaders czytelny. Kontrast jest policzony z liczb, ale ekran Maca ma
@@ -417,18 +437,21 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 **Test ręczny (ta sama lista co w [`build-windows.md`](build-windows.md), sekcja 12.2)**
 
 Na macOS katalog `assets` obok programu jest dowiązaniem, więc tam, gdzie lista dla Windowsa
-każe odświeżyć kopię (`--target copy_assets`), na Macu nie trzeba robić nic.
+każe odświeżyć kopię (`--target copy_assets`), na Macu nie trzeba robić nic. Lista powstała
+przed oświetleniem. Dziś scena jest nocna: lista `Lighting` w panelu Renderer ustawiona na
+`Unlit` daje równo jasny labirynt, wygodny do oglądania tekstur, filtrów i kolizji, a panel
+Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
 
 - [ ] przygotowanie: usunąć `imgui.ini` z katalogu, z którego startuje program, zbudować,
       uruchomić `./build/debug/night_maze`
 - [ ] start: widok z wnętrza labiryntu, tekstury stoją prosto i nie są odbite lustrzanie,
       w terminalu nie ma linii `[error]`
-- [ ] okno 1280 x 720: sześć paneli nie zasłania się nawzajem (Renderer i Camera po lewej,
-      Maze i Assets po prawej, Collision i Shaders na dole między kolumnami). Zapisać, czy
-      panele Renderer, Camera, Maze, Collision i Shaders pokazują całą zawartość bez
-      przewijania, tak jak na Windowsie: nazwa karty Apple w panelu Renderer ma inną
-      długość
-- [ ] panel Camera: `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
+- [ ] okno 1280 x 720: siedem paneli nie zasłania się nawzajem (Renderer nad Lights po
+      lewej, Maze nad Assets po prawej, Collision i Shaders na dole między kolumnami,
+      Camera zwinięty u góry). Zapisać, czy panele Renderer, Lights, Maze, Collision i
+      Shaders pokazują całą zawartość bez przewijania: nazwa karty Apple w panelu Renderer
+      ma inną długość niż na Windowsie, a wysokości paneli są dobrane do zawartości
+- [ ] panel Camera (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
       `Pitch` 0, `Walk speed` 3.0, `Sprint speed` 5.5, `Fly speed` 6.0
 - [ ] panele Maze i Collision: `In play: 10 x 10 cells, seed 1`, `Walls: 121, pillars: 121`,
       `Wall boxes: 121`, `Pillar boxes: 121`, `All boxes: 242`
@@ -459,20 +482,200 @@ każe odświeżyć kopię (`--target copy_assets`), na Macu nie trzeba robić ni
       pod płaskim kątem
 - [ ] podglądy tekstur w panelu Assets stoją prosto i nie reagują na filtr
 - [ ] `Reload shaders` po zmianie w `assets/shaders/textured.frag` (na przykład
-      `fragColor = vec4(texel * uTint * vec3(1.0, 0.5, 0.5), 1.0);`): labirynt robi się
-      czerwonawy, trzy bloki panelu pokazują `Last load: OK`. Z błędem składni: blok
-      `textured` pokazuje `Last load: failed` i `Program: valid`, labirynt rysuje się
-      poprzednią wersją. Przywrócić plik
+      `fragColor = vec4(texel * uTint * vec3(1.0, 0.5, 0.5), 1.0);`), przy `Lighting`
+      ustawionym na `Unlit` (w pozostałych trybach labirynt rysują programy `lit` albo
+      `gouraud`): labirynt robi się czerwonawy, wszystkie pięć linii panelu kończy się
+      napisem `: OK`. Z błędem składni: czerwona linia
+      `textured.vert + textured.frag: FAILED, the previous program stays in use` z
+      komunikatem sterownika pod nią, labirynt rysuje się poprzednią wersją. Przywrócić
+      plik
 - [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
       `assets/textures/floor_stone.png` (na Macu to plik w repozytorium, bo `assets` obok
-      programu jest dowiązaniem), uruchomić. Oczekiwane: biała podłoga, jedna linia
-      `[error]`, w panelu Assets `no texture (white)` i sekcja `Failed to load`. **Przywrócić
+      programu jest dowiązaniem), uruchomić. Oczekiwane: podłoga bez rysunku kamienia
+      (biała w trybie `Unlit`, w kolorze padającego światła w trybach z oświetleniem), jedna
+      linia `[error]`, w panelu Assets `no texture (white)` i sekcja `Failed to load`. **Przywrócić
       nazwę pliku** i sprawdzić `git status`
 - [ ] zmiana rozmiaru okna, tryb pełnoekranowy macOS i powrót: obraz wypełnia okno, płytki
       podłogi zostają kwadratowe, bez linii `[error]`
 - [ ] okno powiększone na cały ekran po usunięciu `imgui.ini`: zapisać, gdzie stoją panele.
       Układ startowy jest liczony raz, w pierwszej klatce, od rogów okna w tej chwili, więc
       po późniejszym powiększeniu panele zostają na miejscach dla 1280 x 720
+
+### M4 (oświetlenie) na macOS: lista w całości otwarta
+
+Pierwsza część M4 (światła, cztery tryby cieniowania, blok uniformów, `#include` w
+shaderach, panel Lights, układ siedmiu paneli) powstała na Windowsie 2026-10-05 i tam jest
+zbudowana i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcja 13).
+**Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
+odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
+[`../modules/scene/lights.md`](../modules/scene/lights.md),
+[`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md),
+[`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md),
+[`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md),
+[`../modules/game/flashlight.md`](../modules/game/flashlight.md).
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
+      `src/gfx/ShaderSource.*`, `src/gfx/UniformBuffer.*`, `src/scene/Light.*`,
+      `src/scene/LightBlock.*`, `src/game/Lighting.*`, `src/game/LightRig.*`,
+      `src/debug/panels/LightsPanel.*` i cztery pliki testów. Zmienione:
+      `src/gfx/Shader.*`, `src/scene/Transform.*`, `src/game/MazeWorld.*`,
+      `MazeRenderer.*`, `NightMazeApp.*`, `ShaderUniforms.hpp`, `src/main.cpp`,
+      `src/debug/DebugContext.hpp`, `DebugUI.cpp`, `PanelLayout.*` oraz panele
+      `RendererPanel.*` i `ShadersPanel.cpp`. Miejsca warte uwagi:
+      inicjalizatory desygnowane, które wypełniają tylko część pól
+      (`gfx::Vertex{.position = ...}` w `LightRig.cpp`, stałe `..._PLACEMENT` bez pola
+      `collapsed` w `PanelLayout.hpp`), `std::function` jako typ `gfx::IncludeReader`,
+      `std::span<const std::string>`, tablica `std::array<std::int32_t, 3>` jako
+      wypełnienie w `LightBlockData`. Zapisać każde ostrzeżenie
+- [ ] **`offsetof` wewnątrz `static_assert` pod Apple clang**:
+      [`src/scene/LightBlock.hpp`](../../src/scene/LightBlock.hpp) sprawdza układ bloku
+      świateł piętnastoma liniami postaci `static_assert(offsetof(...) == ...)` (trzy dla
+      `PointLightData`, dwanaście dla `LightBlockData`) i liniami z `sizeof` (16, 48 i 928
+      bajtów). Oczekiwane: plik kompiluje się bez
+      błędu i bez ostrzeżenia, bo `offsetof` z `<cstddef>` jest w clangu wyrażeniem stałym,
+      a obie struktury mają układ standardowy. Kłopot z `offsetof` na Windowsie dotyczył
+      nagłówków biblioteki C Microsoftu czytanych przez clang, których na Macu nie ma.
+      Niesprawdzone
+- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 149 przypadków testowych i
+      61240 asercji, `Status: SUCCESS!` (liczby z Windowsa)
+- [ ] cztery nowe pliki testów osobno, opcją `--source-file`: `'*ShaderSourceTests*'` 22
+      przypadki, `'*LightTests*'` 20, `'*LightingTests*'` 16, `'*TransformTests*'` 4
+      (liczby przypadków z Windowsa). Uwaga: wzorzec `'*LightTests*'` nie pasuje do
+      `LightingTests.cpp`, a `'*Light*'` pasuje do obu plików
+- [ ] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `a light made for a radius
+      has 5 % of its brightness left at that radius`, `directionFromAngles gives a vector
+      of length 1` i cztery przypadki macierzy normalnych z `tests/TransformTests.cpp`
+      (tolerancja 0,0001)
+- [ ] przechodzi przypadek `the default maze has this many point lights` (11 świateł w
+      labiryncie 10 na 10 z ziarna 1): zależy od tego samego generatora co labirynt
+      wzorcowy, więc jest drugim pomiarem, że oba systemy budują ten sam labirynt
+- [ ] `make check` (format, oba buildy z testami, clang-tidy) przechodzi
+
+**Ryzyka specyficzne dla macOS**
+
+- [ ] **kompilator GLSL Apple przyjmuje pięć nowych plików**: `lit.vert`, `lit.frag`,
+      `gouraud.vert`, `gouraud.frag` i dołączany `common/lighting.glsl`. Po starcie w
+      terminalu nie ma linii `[error] Shader ...`, a panel Shaders pokazuje
+      `lit.vert + lit.frag: OK` i `gouraud.vert + gouraud.frag: OK`. Sterownik NVIDII
+      przyjmuje je bez uwag, ale jest łagodniejszy. Miejsca, na które sterownik Apple
+      mógłby zareagować: blok `layout(std140) uniform LightBlock` z tablicą struktur
+      (`PointLight uPoints[MAX_POINT_LIGHTS]`), ten sam blok użyty raz w shaderze
+      fragmentów (`lit.frag`), a raz w shaderze wierzchołków (`gouraud.vert`), parametr
+      `inout Lighting` (struktura) w funkcji `addLight`, stała `const int` jako długość
+      tablicy, uniform `mat3 uNormalMatrix`, wywołania `reflect` i `pow`
+- [ ] **dyrektywy `#line` z numerem napisu źródłowego**: program dopisuje wokół
+      dołączonego pliku linie `#line 1 1` i `#line L 0` (numer linii i numer pliku).
+      Zapisać, czy kompilator Apple je przyjmuje. Jeśli nie, oba oświetlone programy nie
+      wczytają się wcale, a labirynt będzie widoczny tylko w trybie `Unlit`
+- [ ] **numer linii po `#line`: dokładny czy przesunięty o jeden**: zrobić celowy błąd w
+      znanej linii `assets/shaders/common/lighting.glsl` (na przykład usunąć średnik na
+      końcu linii 63, `return max(dot(normal, toLight), 0.0);`), kliknąć `Reload shaders` i
+      porównać numer z komunikatu z numerem linii w edytorze. Na karcie NVIDIA numer
+      zgadzał się z plikiem (zmierzone dla linii 63). Sterowniki różnie liczą linię po
+      dyrektywie `#line`, więc na Macu może wyjść o jeden mniej albo więcej. Zapisać wynik.
+      To samo sprawdzić dla błędu w samym `lit.frag`, w linii za dyrektywą `#include`.
+      Przywrócić pliki (`git checkout assets/shaders`)
+- [ ] **format błędu sterownika Apple**: kod rozpoznaje linię postaci `ERROR: 1:15: ...`
+      i zamienia numer napisu źródłowego na nazwę pliku, co daje
+      `ERROR: common/lighting.glsl:15: ...`. Ten format jest wpisany w kod i sprawdzony
+      tylko testem jednostkowym (`nameSourceFiles puts the file name into an Apple error
+      line`). Zapisać dokładną linię, którą pokazuje panel Shaders przy błędzie z
+      poprzedniego punktu. Jeśli zaczyna się od numeru zamiast od nazwy pliku, sterownik
+      pisze błędy inaczej, niż zakłada kod: wtedy numer objaśnia ostatnia linia komunikatu,
+      `Source files: 0 = lit.frag, 1 = common/lighting.glsl`
+- [ ] **rozmiar bloku uniformów**: po starcie w terminalu nie ma linii `[error] Uniform
+      block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code`. Taka
+      linia znaczyłaby, że sterownik Apple układa blok `std140` inaczej niż struktura
+      `scene::LightBlockData`, a światła byłyby czytane z błędnych miejsc. Program
+      porównuje rozmiar z `GL_UNIFORM_BLOCK_DATA_SIZE` przy każdym podłączeniu bloku, także
+      po `Reload shaders`
+- [ ] **funkcje buforów uniformów w kontekście 4.1**: `glBindBufferBase`,
+      `glBufferSubData`, `glGetUniformBlockIndex`, `glUniformBlockBinding` i
+      `glGetActiveUniformBlockiv` nie zostawiają błędu. W buildzie Debug po starcie i po
+      kilku minutach chodzenia nie ma linii `[error]` z nazwą błędu OpenGL (`GL_...`)
+- [ ] **pętla po `uPoints` z wcześniejszym `break`**: w `common/lighting.glsl` pętla ma
+      stałą górną granicę (`i < MAX_POINT_LIGHTS`) i wychodzi przez `break`, gdy
+      `i >= uPointCount`. Sprawdzić, że świateł punktowych jest dokładnie tyle, ile
+      znaczników (11 w labiryncie startowym), i że po `Regenerate` z `Width` 4, `Height`
+      4, `Seed` 1 świecą tylko dwa: żadne światło z poprzedniego labiryntu nie zostaje
+- [ ] **`-D_CRT_USE_BUILTIN_OFFSETOF` poza Windowsem**: przełącznik stoi w `.clang-tidy`
+      (`ExtraArgs`) i w `.clangd` (`CompileFlags: Add`), więc dostaje go także clang-tidy i
+      clangd na Macu. Oczekiwane: nic się nie zmienia, bo makro czytają tylko nagłówki
+      biblioteki C Microsoftu. Do sprawdzenia: `make tidy` nie zgłasza niczego, a edytor z
+      clangd nie pokazuje nowych błędów w `src/scene/LightBlock.hpp`. Niesprawdzone
+- [ ] **Retina: rozmiar framebuffera a światła**: panel Renderer pokazuje `Framebuffer`
+      dwa razy większy niż `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Tryby
+      `Phong` i `Blinn-Phong` liczą światło dla każdego fragmentu, a fragmentów jest wtedy
+      cztery razy więcej niż na Windowsie przy tym samym oknie. Zapisać FPS z panelu
+      Renderer w czterech trybach listy `Lighting`
+- [ ] **Retina a układ siedmiu paneli**: po usunięciu `imgui.ini` Renderer stoi nad Lights
+      w lewej kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole, Camera
+      zwinięty u góry, nic się nie zasłania. Zapisać, czy panel Lights (przy zwiniętej
+      grupie `Moon (directional)`) pokazuje całą zawartość bez przewijania: jego wysokość
+      jest dobrana do zawartości zmierzonej na Windowsie
+- [ ] **znaczniki świateł na Retinie**: kostki o boku 0,14 m są czytelne z odległości
+      kilku komórek
+
+**Test ręczny (ta sama lista co w [`build-windows.md`](build-windows.md), sekcja 13.2)**
+
+Na macOS po zmianie pliku shadera nie trzeba niczego kopiować: wystarczy `Reload shaders`.
+Nazwy widżetów są zapisane tak jak w kodzie paneli.
+
+- [ ] przygotowanie: usunąć `imgui.ini` z katalogu, z którego startuje program, zbudować,
+      uruchomić `./build/debug/night_maze`
+- [ ] start: nocna scena w trybie Blinn-Phong, w terminalu nie ma linii `[error]`
+- [ ] panel Renderer: lista `Lighting` z wybraną pozycją `Blinn-Phong`
+- [ ] panel Lights: edytor `Ambient`, grupy `Moon (directional)` (zwinięta),
+      `Flashlight (spot)`, `Point lights (dead ends)` i `Highlight (specular)`, linia
+      `In this maze: 11 (at most 16)`
+- [ ] panel Shaders: pięć linii zakończonych `: OK` (`basic`, `textured`, `color`, `lit`,
+      `gouraud`), podpowiedź nad linią z dwiema pełnymi ścieżkami
+- [ ] rozwinięcie panelu Camera strzałką w pasku tytułu: otwiera się w dół, kończy się tuż
+      nad dolnym rzędem paneli i nie zasłania żadnego innego panelu
+- [ ] klawisz F wyłącza i włącza latarkę, także przy wolnym kursorze, a pole
+      `Flashlight on (key F)` w panelu Lights zmienia się razem z nią. Kliknięcie pola robi
+      to samo
+- [ ] stożek latarki zostaje na środku obrazu podczas chodzenia do przodu, bokiem i biegu
+- [ ] `Lighting`, `Unlit`: labirynt równo jasny, bez znaczników świateł
+- [ ] `Lighting`, `Gouraud`: światło liczone w wierzchołkach, łagodne przejścia między
+      narożnikami, znaczniki widoczne
+- [ ] `Lighting`, `Phong` i `Blinn-Phong`: okrągła plama latarki z miękkim brzegiem
+- [ ] Gouraud a Phong na ścianie, twarzą do niej z około 2 m: w `Phong` okrągła plama, w
+      `Gouraud` plama znika albo rozmazuje się wzdłuż krawędzi trójkątów (duża ściana ma
+      wierzchołki tylko w narożnikach)
+- [ ] Gouraud a Phong u podstawy słupka: zapisać, jak wygląda podłoga wokół słupka w obu
+      trybach
+- [ ] Phong a Blinn-Phong przy `Strength` 1.0 i `Shininess` 16, twarzą do ściany: w
+      `Blinn-Phong` jasna plama połysku jest szersza i jaśniejsza
+- [ ] Phong a Blinn-Phong pod płaskim kątem do światła punktowego albo księżyca: w
+      `Blinn-Phong` połysk rozciąga się w smugę, w `Phong` jest mniejszy albo się urywa.
+      Przywrócić `Strength` 0.25 i `Shininess` 32
+- [ ] `Moon yaw` i `Moon pitch` (rozwinąć grupę `Moon (directional)`, wyłączyć latarkę):
+      na starcie (25 i -50) jasne są strony ścian patrzące w stronę -X i +Z, ciemne te
+      patrzące w stronę +X i -Z. `Moon yaw` 205 zamienia je miejscami, `Moon pitch` -90
+      zostawia światło księżyca tylko na podłodze
+- [ ] `Point radius`: większy promień powiększa kałuże światła, także za ścianami (cieni
+      nie ma). Policzyć z góry (klawisz N, spacja) 11 znaczników i porównać ze ślepymi
+      zaułkami na planie w panelu Maze
+- [ ] `Cone`: większe `outer` poszerza plamę, `inner` bliskie `outer` daje ostry brzeg,
+      pola `inner` nie da się przeciągnąć powyżej `outer`. `Beam range`: mała wartość
+      skraca zasięg latarki
+- [ ] `Regenerate` z innym ziarnem: światła i znaczniki stoją w ślepych zaułkach nowego
+      labiryntu, liczba w linii `In this maze: ...` odpowiada nowemu planowi
+- [ ] celowy błąd w `assets/shaders/common/lighting.glsl`, potem `Reload shaders`: linie
+      `lit.vert + lit.frag: FAILED, the previous program stays in use` i
+      `gouraud.vert + gouraud.frag: FAILED, the previous program stays in use` są
+      czerwone, komunikat pod nimi nazywa plik `common/lighting.glsl` i linię, obraz się
+      nie zmienia. Potem `git checkout assets/shaders` i `Reload shaders`: wszystkie pięć
+      linii kończy się napisem `: OK`
+- [ ] panel Assets, `View mode` równy `Normals as colour` i `UVs as colour` przy trybie
+      `Blinn-Phong`: labirynt rysuje program `textured`, bez świateł, a znaczniki świateł
+      nadal są widoczne
+- [ ] przez cały test w terminalu nie pojawia się żadna linia `[error]` poza tymi
+      wywołanymi celowo
 
 ### Skróty: `make`
 
@@ -702,7 +905,7 @@ Repozytorium zawiera gotową konfigurację, niczego nie trzeba ustawiać ręczni
 
 | Plik | Co załatwia |
 |---|---|
-| [`.clangd`](../../.clangd) | wskazuje clangd katalog `build/debug` jako miejsce, w którym leży `compile_commands.json` |
+| [`.clangd`](../../.clangd) | wskazuje clangd katalog `build/debug` jako miejsce, w którym leży `compile_commands.json`, i dopisuje do flag `-D_CRT_USE_BUILTIN_OFFSETOF` (przełącznik potrzebny na Windowsie, na macOS powinien być obojętny: niesprawdzone) |
 | [`.vscode/settings.json`](../../.vscode/settings.json) | clangd jako silnik C++, wyłączony IntelliSense drugiego rozszerzenia C++, presety CMake, formatowanie przy zapisie, skojarzenia plików GLSL |
 | [`.vscode/extensions.json`](../../.vscode/extensions.json) | lista rozszerzeń, które edytor zaproponuje do zainstalowania |
 
@@ -776,7 +979,12 @@ temu `<glad/gl.h>` pozostaje przed `<GLFW/glfw3.h>` w `Window.cpp`, bo są w oso
 ### clang-tidy
 
 Reguły są w [`.clang-tidy`](../../.clang-tidy) (grupy `bugprone`, `performance`, `modernize`
-oraz konwencja nazw, na przykład prefiks `m_` dla pól prywatnych). clang-tidy nie wchodzi w
+oraz konwencja nazw, na przykład prefiks `m_` dla pól prywatnych). Od M4 plik ma też linię
+`ExtraArgs: ['-D_CRT_USE_BUILTIN_OFFSETOF']`: dopisuje ona jedną definicję makra do flag
+każdego sprawdzanego pliku. Makro czytają tylko nagłówki biblioteki C Microsoftu, więc na
+macOS nie powinno niczego zmieniać. Z tą linią clang-tidy na Macu nie był jeszcze
+uruchamiany (punkt na liście "M4 (oświetlenie) na macOS" w sekcji 2, opis w
+[`project-structure.md`](project-structure.md), sekcja 3.6). clang-tidy nie wchodzi w
 skład Command Line Tools ani pakietu `clang-format` z Homebrew. Jest w pakiecie `llvm`:
 
 ```sh
@@ -835,7 +1043,8 @@ pokazuje część tych samych diagnostyk w edytorze, bo czyta ten sam plik `.cla
 | `[error] GLFW error ...` i `Fatal: Failed to create a window with an OpenGL 4.1 Core context` | system nie udostępnił kontekstu 4.1 Core | przeczytaj opis w linii `GLFW error`. Na Macu z Apple Silicon nie powinno wystąpić |
 | Ostrzeżenia `'gl...' is deprecated: first deprecated in macOS 10.14` | plik kompilowany bez `GL_SILENCE_DEPRECATION` | definicja jest `PUBLIC` na targecie `engine`. Sprawdź, czy nowy target linkuje `engine` |
 | `[error] Shader file cannot be opened: .../build/debug/assets/shaders/basic.vert`, w oknie samo tło | obok programu nie ma katalogu `assets`: program skopiowany ręcznie w inne miejsce albo repozytorium przeniesione po zbudowaniu (dowiązanie wskazuje starą ścieżkę) | `ls -l build/debug/assets`. Odtwórz dowiązanie pełnym buildem: `make clean`, potem `make debug` |
-| `[error] Shader compilation failed: ...` z linią `ERROR: 0:N: ...`, w oknie samo tło | błąd w pliku shadera, `N` to numer linii według sterownika | popraw plik w `assets/shaders/` i naciśnij "Reload shaders" w panelu Shaders (albo uruchom program ponownie). Opis w [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), sekcje 3.3 i 7, oraz w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7 |
+| `[error] Shader compilation failed: ...` z linią sterownika, znika to, co rysuje ten program (w stanie M1, z jednym programem, zostawało samo tło) | błąd w pliku shadera. Sterownik Apple pisze linię w postaci `ERROR: 0:N: ...`, gdzie 0 to numer napisu źródłowego, a `N` numer linii. Od M4 program zamienia ten numer na nazwę pliku, więc oczekiwana postać to `ERROR: basic.frag:N: ...`, a dla błędu w pliku dołączanym `ERROR: common/lighting.glsl:N: ...`. Zamiana jest sprawdzona tylko testem jednostkowym, nie na prawdziwym sterowniku Apple: jeśli linia ma inną postać, zostaje taka, jak ją napisał sterownik | popraw plik w `assets/shaders/` i naciśnij "Reload shaders" w panelu Shaders (albo uruchom program ponownie). Opis w [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), sekcje 3.3 i 7, w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7, oraz w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
+| `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code` | sterownik ułożył blok uniformów ze światłami inaczej niż struktura `scene::LightBlockData` (na macOS niesprawdzone, na karcie NVIDIA linia się nie pojawia) | zapisać liczbę z komunikatu i porównać blok w `assets/shaders/common/lighting.glsl` ze strukturą w `src/scene/LightBlock.hpp` ([`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md)) |
 | Podłoga albo ściany są białe, w terminalu linia `[error]` o pliku obrazu | brakuje pliku w `assets/textures/` albo nie da się go zdekodować: część modelu dostaje białą teksturę zastępczą (na macOS niesprawdzone) | przywróć plik (`git status`, `git checkout assets/textures`) i uruchom program ponownie |
 | Okno otwiera się, ale panel "Renderer" jest niewidoczny | panele ukryte klawiszem `~` albo zapisany układ poza oknem | naciśnij `~` (na lewo od `1`). Jeśli nie pomaga, usuń `imgui.ini` z katalogu, z którego uruchamiasz program |
 | Esc nie zamyka programu, `~` nie chowa paneli | aktywny jest widżet ImGui (wpisywanie albo przeciąganie wartości), więc klawiatura gry jest zablokowana | zakończ edycję (Enter, Esc albo kliknięcie poza polem). Opis w [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6 |

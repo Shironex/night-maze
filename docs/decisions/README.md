@@ -31,6 +31,8 @@ Na górze notatki stoi data i stan: `obowiązuje` albo `zastąpiona` (z odnośni
 |---|---|---|---|
 | [`collision-aabb-sliding.md`](collision-aabb-sliding.md) | kolizje to własne pudełka AABB i ruch oś po osi ze ślizganiem, bez silnika fizyki | [`src/scene/Collider.*`](../../src/scene/) | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
 | [`deterministic-random.md`](deterministic-random.md) | losowość z `std::mt19937` i własnej funkcji `randomBelow`, bez rozkładów z biblioteki standardowej | [`src/game/MazeGenerator.*`](../../src/game/) | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) |
+| [`no-gamma-until-m7.md`](no-gamma-until-m7.md) | w M4 nie ma korekcji gamma ani tekstur sRGB: dojdą w M7 razem z framebufferem HDR | [`assets/shaders/lit.frag`](../../assets/shaders/lit.frag), [`gouraud.frag`](../../assets/shaders/gouraud.frag), [`src/gfx/Texture2D.*`](../../src/gfx/) | [`../modules/scene/lights.md`](../modules/scene/lights.md), [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md) |
+| [`dead-end-lights.md`](dead-end-lights.md) | światła punktowe wiszą w ślepych zaułkach labiryntu (bez losowania, najwyżej 16), dopóki w M5 nie powstaną kryształy | [`src/game/Lighting.*`](../../src/game/), [`src/game/MazeWorld.cpp`](../../src/game/MazeWorld.cpp) | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
 
 ## Jak dodać notatkę
 
