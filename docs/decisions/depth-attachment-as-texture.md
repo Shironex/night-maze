@@ -38,7 +38,7 @@ Klasa `gfx::Framebuffer` dołącza głębię **zawsze jako teksturę** `GL_DEPTH
 - Wartość w teksturze nie jest odległością. Jest nieliniowa: przy płaszczyznach 0,1 m i 100 m ściana odległa o 2 m ma już 0,951. Każdy shader, który chce metrów, musi ją przeliczyć funkcją `linearDepth` z `common/depth.glsl`.
 - Nie wolno czytać tej tekstury w przebiegu, który rysuje do framebuffera, do którego jest dołączona (pętla sprzężenia zwrotnego, wynik nieokreślony). Podglądy rysują do własnych framebufferów, więc reguła jest zachowana. Mgła liczona w przebiegu `composite` też ją zachowa, bo celem jest wtedy okno.
 - Rozmiar tekstury głębi idzie za rozmiarem okna: przy zmianie rozmiaru jest usuwana i tworzona od nowa razem z teksturą koloru.
-- Ścieżka "tylko głębia" (`ColorFormat::None`, czyli `glDrawBuffer(GL_NONE)` i `glReadBuffer(GL_NONE)`) jest napisana z myślą o mapach cieni, ale **nigdy nie była wykonana**: żaden kod jej dziś nie woła.
+- Ścieżka "tylko głębia" (`ColorFormat::None`, czyli `glDrawBuffer(GL_NONE)` i `glReadBuffer(GL_NONE)`) jest napisana z myślą o mapach cieni, ale **nigdy nie była wykonana**: żaden kod jej dziś nie woła. **Dopisek z 2026-10-05 (M7, część czwarta):** już jest wykonywana. `game::ShadowMap::beginDepthPass` tworzy tą ścieżką mapę cieni księżyca (2048 x 2048 albo 1024 x 1024), a build Debug na Windowsie nie zgłosił przy tym błędu OpenGL (zgłoszone). Na macOS nikt jej nie uruchomił.
 
 **Czego nie zmierzyłem.** Nie porównywałem szybkości tekstury głębi z renderbufferem. Zgłoszony koszt całej zmiany M7 na Windowsie (z około 2700 do 2500 klatek na sekundę w 1280 x 720) obejmuje wszystko naraz. Na macOS framebuffer z tym zestawem formatów nie był jeszcze tworzony.
 
@@ -46,5 +46,5 @@ Klasa `gfx::Framebuffer` dołącza głębię **zawsze jako teksturę** `GL_DEPTH
 
 - Gdy dojdzie wielopróbkowanie (MSAA): załączniki wielopróbkowe to inny rodzaj tekstury albo renderbuffer, a obraz trzeba potem rozwiązać do zwykłej tekstury.
 - Gdyby profilowanie na MacBooku w 1440p pokazało, że odczytywalna głębia kosztuje wyraźnie więcej niż renderbuffer.
-- Przy mapach cieni: pierwsze wykonanie ścieżki bez koloru. Mapa cieni chce też innych parametrów odczytu (porównanie głębi w samplerze, obramowanie), więc `createAttachmentTexture` może wymagać rozszerzenia.
+- Przy mapach cieni: pierwsze wykonanie ścieżki bez koloru. Mapa cieni chce też innych parametrów odczytu (porównanie głębi w samplerze, obramowanie), więc `createAttachmentTexture` może wymagać rozszerzenia. **Dopisek z 2026-10-05 (M7, część czwarta):** mapa cieni księżyca powstała i `createAttachmentTexture` nie wymagało zmiany. Porównanie głębi i obramowanie trafiły do osobnego obiektu samplera, `gfx::ComparisonSampler`, bo ta sama tekstura głębi jest czytana także bez porównania, przez podgląd ([`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), sekcja 2.7). Uściślenie do zdania z części 4: mapa cieni nie czyta głębi **sceny**, jest własną teksturą głębi w osobnym framebufferze. Korzysta z tej samej decyzji (głębia jako tekstura), a nie z tej samej tekstury.
 - Gdyby potrzebny był bufor szablonu (na przykład do obrysu wybranego obiektu w M8).

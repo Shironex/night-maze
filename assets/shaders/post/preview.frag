@@ -1,6 +1,6 @@
 #version 410 core
-// Fragment shader of the attachment previews: turns the colour texture or the depth
-// texture of the scene framebuffer into a small picture the debug UI can show as it is.
+// Fragment shader of the attachment previews: turns the colour or the depth texture of
+// a framebuffer (the scene, a shadow map) into a small picture the debug UI can show.
 // Used with post/composite.vert.
 // See docs/modules/renderer/post-process.md
 
@@ -12,12 +12,13 @@
 in vec2 vUv;
 
 // The attachment to show (the number of a texture unit): the colour texture in mode 0,
-// the depth texture in mode 1.
+// a depth texture in modes 1 and 2.
 uniform sampler2D uSource;
 
 // What uSource is. The numbers are the values of game::AttachmentPreview in C++.
 //   0: HDR colour
-//   1: depth
+//   1: depth of a perspective view (the scene), shown as a distance
+//   2: depth as it is stored (the shadow map of the moon)
 uniform int uMode;
 
 // For the depth: the clipping planes of the camera and the distance in metres that is
@@ -38,6 +39,12 @@ void main() {
         // written as it is: it is a measure, not light, so it is not encoded.
         float metres = linearDepth(texture(uSource, vUv).r, uNear, uFar);
         fragColor = vec4(vec3(clamp(metres / uDepthRange, 0.0, 1.0)), 1.0);
+    } else if (uMode == 2) {
+        // The shadow map of a directional light is drawn with an orthographic
+        // projection, whose stored depth grows evenly with the distance. It needs no
+        // conversion: black is the near plane of the light, white its far plane (and
+        // every texel nothing was drawn into).
+        fragColor = vec4(vec3(texture(uSource, vUv).r), 1.0);
     } else {
         // The colour attachment holds linear values that may be above 1. The debug UI
         // draws a texture without any conversion, so the picture is encoded here.

@@ -5,11 +5,14 @@
 // See docs/modules/renderer/lighting-gouraud-phong.md
 
 // The light block and the function computeLighting. The same file is included by
-// gouraud.vert.
+// gouraud.vert and grass.frag.
 #include "common/lighting.glsl"
 // The normal map and the function surfaceNormal. The same file is included by
 // textured.frag, for its debug view of the normals.
 #include "common/normal_map.glsl"
+// The shadow map of the moon and the function moonShadow. The same file is included by
+// gouraud.frag and grass.frag.
+#include "common/shadows.glsl"
 
 // Inputs from the vertex shader, already blended for this fragment.
 in vec2 vUv;            // texture coordinate
@@ -42,6 +45,23 @@ void main() {
     vec3 normal = surfaceNormal(vNormal, vTangent, vUv);
     Lighting lighting = computeLighting(vWorldPosition, normal);
 
+    // The shadow of the moon: the share of the moon light that something on the way
+    // from the moon keeps from this fragment, from 0 (none of it) to 1 (all of it).
+    // That share is taken away from the light again, and only the moon light is: the
+    // ambient light, the flashlight and the crystals shine in a moon shadow as they do
+    // outside it. With the shadows switched off the share is 0 and nothing changes.
+    //
+    // The bias of the shadow depends on how the surface is tilted against the moon. It
+    // is asked with the normal of the MODEL, not the one of the normal map: the bias
+    // belongs to the triangle that was drawn into the shadow map, and the bumps of
+    // a normal map are not in that triangle.
+    //
+    // max(): the difference is never below 0 on paper, but two floats that should be
+    // equal can differ in their last digit.
+    float shadow = moonShadow(vWorldPosition, moonFacing(normalize(vNormal)));
+    vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
+    vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow, 0.0);
+
     // The colour of the surface takes part in the diffuse light only: a red wall
     // reflects the red part of the light. The highlight is added on top in the colour
     // of the light, as in the Phong model of the lecture.
@@ -56,5 +76,5 @@ void main() {
     // The glow of the surface itself (uEmissive) joins the diffuse light. It does not
     // depend on any light of the scene, so a crystal glows in the darkest corner too.
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
-    fragColor = vec4(surface * (lighting.diffuse + uEmissive) + lighting.specular, 1.0);
+    fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);
 }

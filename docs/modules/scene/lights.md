@@ -1,11 +1,11 @@
 # Moduł scene: światła
 
-Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": sekcja 2.9), w M5 doszły światła kryształów i składnik emisyjny (sekcja 2.2), w pierwszej części M7 rachunek światła przeszedł na wartości liniowe z wynikiem w buforze HDR (sekcja 2.8). Temat wykładu: 6 (Światło kierunkowe i punktowe).
-Kod: [`src/scene/Light.hpp`](../../../src/scene/Light.hpp), [`src/scene/Light.cpp`](../../../src/scene/Light.cpp), plik dołączany do shaderów [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), panel [`src/debug/panels/LightsPanel.hpp`](../../../src/debug/panels/LightsPanel.hpp) i [`LightsPanel.cpp`](../../../src/debug/panels/LightsPanel.cpp), testy [`tests/LightTests.cpp`](../../../tests/LightTests.cpp).
+Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": sekcja 2.9), w M5 doszły światła kryształów i składnik emisyjny (sekcja 2.2), w pierwszej części M7 rachunek światła przeszedł na wartości liniowe z wynikiem w buforze HDR (sekcja 2.8), w czwartej części M7 (cienie księżyca, 2026-10-05) doszedł udział księżyca w wyniku `computeLighting`, funkcja `moonFacing` i struktura `scene::LightSpace` (sekcje 2.8, 4.3, 4.4, 4.6 i 5.7). Temat wykładu: 6 (Światło kierunkowe i punktowe).
+Kod: [`src/scene/Light.hpp`](../../../src/scene/Light.hpp), [`src/scene/Light.cpp`](../../../src/scene/Light.cpp), plik dołączany do shaderów [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), panel [`src/debug/panels/LightsPanel.hpp`](../../../src/debug/panels/LightsPanel.hpp) i [`LightsPanel.cpp`](../../../src/debug/panels/LightsPanel.cpp), testy [`tests/LightTests.cpp`](../../../tests/LightTests.cpp). Od czwartej części M7 także [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp) i [`src/scene/LightSpace.cpp`](../../../src/scene/LightSpace.cpp) z testami w [`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp).
 
 Część modułu `scene`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość przekształceń ([`transforms.md`](transforms.md)), kamery ([`camera.md`](camera.md)), shaderów i uniformów ([`../gfx/shaders.md`](../gfx/shaders.md), [`../gfx/uniforms.md`](../gfx/uniforms.md)) oraz tekstur ([`../gfx/textures.md`](../gfx/textures.md)).
 
-Oświetlenie jest rozłożone na sześć dokumentów. Każdy plik kodu jest omawiany linia po linii w jednym z nich:
+Oświetlenie jest rozłożone na siedem dokumentów (siódmy, o cieniach, doszedł w czwartej części M7). Każdy plik kodu jest omawiany linia po linii w jednym z nich:
 
 | Dokument | Co omawia |
 |---|---|
@@ -15,18 +15,21 @@ Oświetlenie jest rozłożone na sześć dokumentów. Każdy plik kodu jest omaw
 | [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) | jak światła trafiają do shadera: blok uniformów `LightBlock`, układ `std140`, `scene::LightBlockData`, `gfx::UniformBuffer` |
 | [`../gfx/shader-includes.md`](../gfx/shader-includes.md) | jak działa linia `#include "common/lighting.glsl"` |
 | [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) | skąd program `lit` bierze normalną fragmentu: mapy normalnych, przestrzeń styczna, macierz TBN, plik `common/normal_map.glsl` |
+| [`../renderer/shadows.md`](../renderer/shadows.md) | temat 11: mapa cieni księżyca, przestrzeń światła (`scene::LightSpace`) z pełną matematyką, plik `common/shadows.glsl`, bias, PCF, panel Shadows |
 
 **Stan na dziś:** gra startuje jako scena nocna. Labirynt oświetlają trzy rodzaje świateł: księżyc (światło kierunkowe), latarka gracza (reflektor) i światła punktowe nad kryształami, których gracz jeszcze nie zebrał. Kryształy same też świecą: shadery mają od M5 składnik emisyjny (uniform `uEmissive`).
 
 Część M4 (rodzaje świateł, wzory, panel) była zmierzona na Windowsie 2026-10-05 (MSVC 19.44, RTX 4070 Ti SUPER, sterownik NVIDII 610.74): start gry bez linii `[error]` i bez linii `GL_`, a na zrzutach ekranu widok startowy, cztery tryby cieniowania z trzech miejsc, latarka wyłączona, strony ścian oświetlone i nieoświetlone przez księżyc. Światła punktowe wisiały wtedy w ślepych zaułkach.
 
-M5 (światła nad kryształami, puls, składnik emisyjny, bateria latarki) jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany, a zbierania kryształów i gasnących świateł nikt nie oglądał w działającej grze. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: ani część M4, ani nic z M5, M6 i pierwszej części M7.
+M5 (światła nad kryształami, puls, składnik emisyjny, bateria latarki) jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Żadnego widżetu panelu Lights nikt jeszcze nie kliknął ręcznie**, klawisz F też nie był naciskany, a zbierania kryształów i gasnących świateł nikt nie oglądał w działającej grze. **Na macOS ten kod nie był ani budowany, ani uruchamiany**: ani część M4, ani nic z M5, M6 i pierwszej części M7.
 
 W drugiej części M6 pod światłami zmieniło się podłoże: płytki podłogi zastąpił teren z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)), a plik `common/lighting.glsl` dostał trzeciego użytkownika, shader fragmentów trawy `grass.frag` ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)). Wzory świateł, struktury i panel Lights zostały bez zmian.
 
 W pierwszej części M7 (bufor HDR i gamma, zgłoszona jako zbudowana i sprawdzona na Windowsie 2026-10-05, nowych kontrolek nikt nie klikał) wzory świateł, struktury i plik `common/lighting.glsl` zostały bez zmian, ale zmieniło się to, **na jakich liczbach** liczą: kolory świateł trafiają do shadera jako wartości liniowe (przelicza je `game::buildLightSet`), tekstury koloru są dekodowane z sRGB przy odczycie, a wynik idzie do bufora zmiennoprzecinkowego, w którym wartość powyżej 1 nie jest obcinana. Wartości startowe świateł zostały dobrane od nowa (sekcja 2.8).
 
-Czego nadal nie ma: **cieni** (planowane w dalszej części M7, do tego czasu światło przechodzi przez ściany). **Korekcja gamma i tekstury sRGB**, które do M6 stały na tej liście, są już w kodzie ([`../gfx/color-space.md`](../gfx/color-space.md), notatka [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md), która zastąpiła [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Mapy normalnych, które w pierwszej części M4 były na tej liście, są już w kodzie: normalną, którą dostają wzory z tego dokumentu, opisuje sekcja 2.9.
+W czwartej części M7 (cienie księżyca, 2026-10-05) **księżyc dostał cień**: przed sceną wszystko, co rzuca cień, jest rysowane z kierunku księżyca do tekstury głębi (mapy cieni), a programy oświetlenia sprawdzają w niej każdy fragment. Całą technikę opisuje [`../renderer/shadows.md`](../renderer/shadows.md). W tym dokumencie zmieniło się pięć rzeczy. Struktura `Lighting` w `common/lighting.glsl` ma dwa nowe pola, `moonDiffuse` i `moonSpecular`, czyli udział księżyca trzymany osobno (sekcja 4.3). Gałąź księżyca w `computeLighting` nie woła już `addLight`, tylko sama zapisuje oba wyrazy (sekcja 4.6). Doszła funkcja `moonFacing` (sekcja 4.4). Moduł `scene` ma nowy plik `LightSpace` z widokiem i rzutowaniem światła (sekcja 5.7). Intensywność startowa księżyca wzrosła z 0,12 do 0,2 (sekcja 2.8). Blok `LightBlock`, struktury świateł w `Light.hpp` i panel Lights zostały bez zmian. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi, 310 przypadków testowych i 103751 asercji, build Debug nie zalogował błędów OpenGL przy mapie 2048 i 1024. **Nie sprawdzone:** kontrolki panelu Shadows myszą, przełączanie rozdzielczości mapy w działającej grze, przeładowanie shaderów (dziś jedenaście programów), macOS (nic nie było budowane ani uruchamiane).
+
+Czego nadal nie ma: **cieni latarki i świateł kryształów**. Cień rzuca tylko księżyc, więc światło latarki i światła punktowe nadal przechodzą przez ściany (sekcja 2.8). Cień latarki jest planowany w dalszej części M7. **Korekcja gamma i tekstury sRGB**, które do M6 stały na tej liście, są już w kodzie ([`../gfx/color-space.md`](../gfx/color-space.md), notatka [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md), która zastąpiła [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)). Mapy normalnych, które w pierwszej części M4 były na tej liście, są już w kodzie: normalną, którą dostają wzory z tego dokumentu, opisuje sekcja 2.9.
 
 ## 1. Po co to jest
 
@@ -320,9 +323,19 @@ Co z tego wynika:
 
 Dlaczego na procesorze, a nie `transpose(inverse(mat3(uModel)))` w shaderze: shader wierzchołków liczyłby odwrotność od nowa dla każdego wierzchołka, a wynik jest ten sam dla całego obiektu.
 
-### 2.8 Czego jeszcze nie ma: cienie. Co już jest: gamma i HDR
+### 2.8 Cienie: księżyc je ma, latarka i kryształy nie. Co już jest: gamma i HDR
 
-**Cienie.** Wzory z tej sekcji pytają tylko o kąt i odległość. Nie pytają, czy między światłem a punktem coś stoi. Światło punktowe kryształu rozjaśnia więc także grunt korytarza **za ścianą**, a księżyc oświetla grunt u stóp ściany, która powinna go zasłaniać. To nie błąd shadera, tylko brak osobnej techniki (mapy cieni), która jest tematem 11 wykładu i jest planowana w dalszej części M7. Na obronie mówię to wprost.
+Do trzeciej części M7 ta sekcja nazywała się "Czego jeszcze nie ma: cienie" i mówiła, że żadne światło nie ma cienia. Od czwartej części M7 (cienie księżyca, 2026-10-05) dotyczy to już tylko dwóch z trzech rodzajów świateł.
+
+**Cienie.** Wzory z tej sekcji pytają tylko o kąt i odległość. Nie pytają, czy między światłem a punktem coś stoi. Funkcja `computeLighting` nadal liczy więc każde światło tak, jakby nic nie stało mu na drodze: komentarz w pliku mówi "This function knows nothing about shadows". Pytanie "czy coś zasłania" zadaje osobna technika, mapa cieni (temat 11 wykładu), i dziś ma ją **jedno** światło:
+
+| Światło | Cień | Skutek |
+|---|---|---|
+| księżyc (kierunkowe) | **jest**, od czwartej części M7 | grunt u stóp ściany, która zasłania księżyc, traci jego światło i zostaje mu światło otoczenia (i to, co dochodzi od latarki i kryształów) |
+| latarka (reflektor) | **nie ma**, planowany w dalszej części M7 | plama latarki pada także na to, co stoi za słupkiem albo za rogiem ściany |
+| światła kryształów (punktowe) | **nie ma** | światło kryształu rozjaśnia także grunt korytarza **za ścianą** |
+
+Jak cień księżyca wchodzi do rachunku: `computeLighting` zwraca udział księżyca osobno (pola `moonDiffuse` i `moonSpecular`, sekcja 4.3), a wołający (`lit.frag`, `gouraud.frag`, `grass.frag`) pyta funkcję `moonShadow` z pliku `common/shadows.glsl`, jaka część światła księżyca nie dociera do fragmentu, i odejmuje tylko ją: `max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0)`. Światło otoczenia, latarka, światła kryształów i emisja nigdy nie są przyciemniane. Mapa cieni, bias i filtrowanie: [`../renderer/shadows.md`](../renderer/shadows.md), które światło jest cieniowane i dlaczego tylko ono: sekcja 2.14 tamtego dokumentu i notatka [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md). Brak cienia latarki i kryształów to nie błąd shadera, tylko brak kolejnych map cieni. Na obronie mówię to wprost.
 
 **Gamma: stan do M6.** Tekstury były czytane tak, jak leżą w pliku, a wynik był zapisywany bez korekcji. Rachunek światła odbywał się więc na liczbach, które nie są proporcjonalne do jasności. Dlaczego tak było, zapisuje notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona.
 
@@ -342,11 +355,13 @@ Wynik wzoru jest zapisywany bez żadnego przeliczenia do bufora HDR sceny. Kodow
 | Pole `LightingSettings` | Do M6 | Od pierwszej części M7 | Co naprawdę trafia do shadera (liniowe) |
 |---|---|---|---|
 | `ambient` | `(0,035, 0,045, 0,075)` | `(0,105, 0,135, 0,225)` | `(0,0108, 0,0163, 0,0414)` |
-| `moonColor`, `moonIntensity` | `(0,55, 0,65, 1,0)` i 0,3 | ten sam kolor i 0,12 | kolor `(0,263, 0,380, 1,0)` razy 0,12 |
+| `moonColor`, `moonIntensity` | `(0,55, 0,65, 1,0)` i 0,3 | ten sam kolor i 0,12, a od czwartej części M7 0,2 | kolor `(0,263, 0,380, 1,0)` razy 0,2, czyli około `(0,053, 0,076, 0,2)` (policzone; do trzeciej części M7 razy 0,12) |
 | `flashlightColor`, `flashlightIntensity` | `(1,0, 0,9, 0,72)` i 1,6 | ten sam kolor i 1,3 | kolor `(1,0, 0,787, 0,477)` razy 1,3 |
 | `pointColor`, `pointIntensity` | `(0,2, 0,9, 0,8)` i 2,0 | ten sam kolor i 0,9 | kolor `(0,033, 0,787, 0,604)` razy 0,9 |
 
 Dwie rzeczy widać w tej tabeli. Po pierwsze liczba sRGB wygląda na dużo większą niż światło, które oznacza: 0,105 to po przeliczeniu 0,0108, czyli około jednej setnej bieli. Po drugie latarka w osi stożka i blisko ściany daje w czerwonym kanale 1,3, czyli więcej niż biel. Do M6 byłoby to obcięte do 1. Dziś zostaje w buforze jako 1,3, a krzywa mapowania tonów decyduje, jak to pokazać.
+
+**Księżyc 0,2 zamiast 0,12 (czwarta część M7).** Odkąd księżyc rzuca cień, jego intensywność decyduje o tym, jak wyraźny jest ten cień: w cieniu ściany zostaje samo światło otoczenia, a obok niego jest otoczenie plus księżyc. Komentarz w `src/game/Lighting.hpp` mówi, że intensywność jest niska celowo (to noc), ale na tyle wysoka, żeby powierzchnia w świetle księżyca była wyraźnie jaśniejsza od tej w cieniu ściany: "about five times on level ground". Rachunek dla poziomego gruntu (policzone, wartości liniowe, sam księżyc i otoczenie, bez latarki i kryształów): czynnik Lamberta to `-sin(-50) = 0,766`, więc księżyc daje `(0,263, 0,380, 1,0) * 0,2 * 0,766 = (0,0403, 0,0582, 0,1532)`. Razem z otoczeniem `(0,0108, 0,0163, 0,0414)` to `(0,0511, 0,0745, 0,1946)`, czyli w kolejnych kanałach 4,73, 4,56 i 4,70 razy więcej niż samo otoczenie w cieniu. "Około pięć razy" z komentarza to zaokrąglenie w górę: dokładniej jest od około 4,6 do 4,7 razy. Dla intensywności 0,12 ten sam rachunek daje od około 3,1 do 3,2 razy (policzone dla 0,12).
 
 ### 2.9 Która normalna trafia do wzorów: siatka albo mapa normalnych
 
@@ -377,14 +392,28 @@ OpenGL w profilu Core **nie ma świateł**. Stare funkcje `glLight` i `glMateria
 | normalna wierzchołka | atrybut numer 1 w `gfx::Vertex` | ustawione raz w VAO siatki | 0 |
 | styczna wierzchołka (tylko dla mapowania normalnych) | atrybut numer 3 w `gfx::Vertex` | ustawione raz w VAO siatki | 0 |
 | mapa normalnych i jej przełącznik (tylko program `lit`) | tekstura na jednostce 1, uniformy `uNormalMap` i `uNormalMapEnabled` | `glActiveTexture`, `glBindTexture`, `glBindSampler`, `glUniform1i` | raz na część modelu i po 1 ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 3) |
+| mapa cieni księżyca (od czwartej części M7; programy `lit`, `gouraud` i `grass`) | tekstura głębi z samplerem porównującym na jednostce 3 (`MOON_SHADOW_TEXTURE_UNIT`) i siedem zwykłych uniformów `uMoonShadow...` | wiązanie w `ShadowMap::bindForSampling`, uniformy w `game::setShadowUniforms`: trzy razy `glUniform1i`, raz `glUniformMatrix4fv`, trzy razy `glUniform1f` | wiązanie raz, uniformy raz w `drawLitMaze` i raz w `drawGrass`, gdy trawa jest włączona ([`../renderer/shadows.md`](../renderer/shadows.md), sekcje 3 i 4) |
 
 Blok uniformów czytają oba programy oświetlenia (`lit` i `gouraud`), a od M6 także program trawy `grass`, wszystkie z tego samego bufora na karcie. Dlaczego blok, a nie 60 osobnych uniformów, i jak bajty z C++ trafiają dokładnie tam, gdzie shader ich szuka, omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
+
+**Blok `LightBlock` nie zmienił się w czwartej części M7.** Ma nadal 928 bajtów i te same składowe, chociaż księżyc dostał mapę cieni. Macierz, którą shader przenosi punkt do przestrzeni księżyca (`uMoonShadowMatrix`), i liczby porównania (bias, promień PCF, siła cienia) podróżują jako zwykłe uniformy, ustawiane osobno w każdym programie. Powody są dwa. Sampler nie może być składową bloku uniformów, więc `uMoonShadowMap` i tak musi być zwykłym uniformem. A liczby jednej mapy cieni trzymam obok jej samplera, w jednym pliku (`common/shadows.glsl`) i w jednej funkcji C++ (`game::setShadowUniforms`), zamiast dzielić je między blok a program. Komentarz w `common/shadows.glsl` mówi to tak: "A sampler cannot be a member of a uniform block, so the numbers that belong to the map stay next to it instead of joining the light block". Decyzja: [`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md).
 
 Wszystkie obliczenia światła są w **przestrzeni świata**: pozycje świateł, pozycja oka, pozycja fragmentu i normalna (także ta z mapy normalnych: `surfaceNormal` przenosi ją z przestrzeni stycznej do świata, zanim trafi do wzorów). Drugą częstą konwencją jest przestrzeń widoku (oko w punkcie zero). Wybrałem świat, bo światła gry są zdefiniowane w świecie (komórki labiryntu) i nie trzeba ich co klatkę mnożyć przez macierz widoku.
 
 ## 4. Shadery
 
-Wzory z sekcji 2 są w jednym pliku: [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). **To nie jest samodzielny shader.** Nie ma linii `#version` ani funkcji `main`. Loader shaderów wstawia jego tekst w miejsce linii `#include "common/lighting.glsl"` w dwóch plikach: `lit.frag` (światło liczone dla każdego fragmentu) i `gouraud.vert` (dla każdego wierzchołka). Jeden plik, dwa miejsca użycia: oba tryby liczą dokładnie tymi samymi wzorami, a różni je tylko miejsce wywołania. Mechanizm dołączania: [`../gfx/shader-includes.md`](../gfx/shader-includes.md). Shadery, które ten plik dołączają: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md).
+Wzory z sekcji 2 są w jednym pliku: [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). **To nie jest samodzielny shader.** Nie ma linii `#version` ani funkcji `main`. Loader shaderów wstawia jego tekst w miejsce linii `#include "common/lighting.glsl"` w trzech plikach: `lit.frag` i, od M6, `grass.frag` (światło liczone dla każdego fragmentu) oraz `gouraud.vert` (dla każdego wierzchołka). Jeden plik, trzy miejsca użycia: oba tryby cieniowania ścian liczą dokładnie tymi samymi wzorami, a różni je tylko miejsce wywołania. Pierwsze linie pliku mówią to od czwartej części M7 wprost:
+
+```glsl
+// Lighting shared by lit.frag and grass.frag (per fragment) and gouraud.vert (per
+// vertex): the light block and the functions that turn the lights into the brightness of
+// one surface point.
+// This file is not a shader of its own. It has no #version line: the shader loader puts
+// its text in place of the line  #include "common/lighting.glsl"  (gfx/ShaderSource.hpp).
+// See docs/modules/scene/lights.md
+```
+
+Do trzeciej części M7 ten nagłówek wymieniał tylko `lit.frag` i `gouraud.vert`, choć trawa dołączała plik już od M6. Mechanizm dołączania: [`../gfx/shader-includes.md`](../gfx/shader-includes.md). Shadery, które ten plik dołączają: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md).
 
 ### 4.1 Stała i struktura światła punktowego
 
@@ -455,13 +484,35 @@ Te trzy to **zwykłe uniformy**, poza blokiem: opisują materiał i sposób licz
 ### 4.3 Struktura wyniku
 
 ```glsl
+// The light that reaches one point of a surface, in two parts, because they are used
+// differently: diffuse is multiplied by the colour of the surface (the texture), the
+// highlight is added on top and keeps the colour of the light.
+//
+// The share of the moon is ALSO kept on its own. diffuse and specular already contain
+// it. The moon is the light with a shadow map: where a surface lies in its shadow, the
+// caller takes that share away again (see common/shadows.glsl and the main function of
+// lit.frag). Nothing else is ever taken away, so a shadow of the moon never darkens the
+// ambient light, the flashlight, the crystals or a glowing surface.
 struct Lighting {
-    vec3 diffuse;  // ambient light plus the Lambert term of every light
-    vec3 specular; // the highlight of every light
+    vec3 diffuse;      // ambient light plus the Lambert term of every light
+    vec3 specular;     // the highlight of every light
+    vec3 moonDiffuse;  // the part of diffuse that comes from the moon
+    vec3 moonSpecular; // the part of specular that comes from the moon
 };
 ```
 
 Wynik ma dwie części, bo są używane inaczej (sekcja 2.2): `diffuse` jest mnożone przez kolor powierzchni, `specular` dodawane na wierzch. Gdyby funkcja zwracała jedną sumę, shader nie mógłby już pomnożyć przez teksturę tylko jednej z nich. Światło otoczenia jest wliczone w `diffuse`.
+
+**Dwa pola księżyca (czwarta część M7).** Do trzeciej części M7 struktura miała tylko `diffuse` i `specular`. Dziś ma cztery pola:
+
+| Pole | Co zawiera | Kto go używa |
+|---|---|---|
+| `diffuse` | otoczenie plus część rozproszona **wszystkich** świateł, razem z księżycem | każdy wołający |
+| `specular` | odbłysk **wszystkich** świateł, razem z księżycem | `lit.frag` i `gouraud.vert` (trawa odbłysku nie używa) |
+| `moonDiffuse` | sama część rozproszona księżyca: to, co księżyc dołożył do `diffuse` | wołający, przy odejmowaniu cienia |
+| `moonSpecular` | sam odbłysk księżyca: to, co księżyc dołożył do `specular` | wołający, przy odejmowaniu cienia |
+
+Najważniejsze zdanie komentarza: "diffuse and specular already contain it". Pola księżyca **nie są** trzecim i czwartym składnikiem do dodania, tylko kopią tego, co już jest w sumie. Służą do jednego: tam, gdzie fragment leży w cieniu księżyca, wołający odejmuje z sumy dokładnie tyle, ile księżyc do niej dołożył (pomnożone przez udział cienia od 0 do 1). Dzięki temu cień księżyca nie może przyciemnić niczego poza światłem księżyca. Gdyby cień mnożył całe `diffuse`, w cieniu ściany gasłaby też latarka i światło otoczenia, a kąty labiryntu byłyby czarne. Kod wołających: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 4, funkcja `moonShadow`: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 4.
 
 ### 4.4 `diffuseFactor`, `specularFactor`, `attenuationFactor`
 
@@ -521,6 +572,25 @@ float attenuationFactor(vec4 terms, float lightDistance) {
 
 Wzór z sekcji 2.5. `terms.x`, `.y`, `.z` to `constant`, `linear`, `quadratic`. Ten sam wzór ma w C++ `scene::attenuationFactor` (sekcja 5.3) i to jego sprawdzają testy.
 
+**`moonFacing` (czwarta część M7).** Między `attenuationFactor` a `addLight` stoi od tej części czwarta mała funkcja:
+
+```glsl
+// How much a surface with this normal (length 1) faces the moon: the cosine of the angle
+// between the normal and the direction to the moon. 1 facing it, 0 grazed by its light,
+// below 0 facing away. The shadow bias grows as this number falls (common/shadows.glsl).
+float moonFacing(vec3 normal) {
+    return dot(normal, -uDirectionalDirection.xyz);
+}
+```
+
+| Element | Znaczenie |
+|---|---|
+| `dot(normal, -uDirectionalDirection.xyz)` | ten sam iloczyn skalarny co w prawie Lamberta dla księżyca, ale **bez `max`**: wynik może być ujemny (powierzchnia odwrócona od księżyca). Minus z tego samego powodu co w `computeLighting`: `uDirectionalDirection` to kierunek lotu światła, a potrzebny jest kierunek do światła |
+| wynik 1, 0, poniżej 0 | powierzchnia zwrócona wprost do księżyca, muśnięta jego światłem, odwrócona |
+| po co osobna funkcja | wynik nie trafia do światła, tylko do **biasu cienia**: im bardziej powierzchnia jest pochylona względem księżyca, tym większą poprawkę głębi dostaje przy porównaniu z mapą cieni (`slopeScaledBias` w `common/shadows.glsl`, która sama obcina wartość do zakresu od 0 do 1). Funkcja leży w tym pliku, a nie w `shadows.glsl`, bo czyta składową bloku świateł |
+
+Wołają ją trzy miejsca, każde z inną normalną: `lit.frag` z normalną **modelu** (`moonFacing(normalize(vNormal))`, nie z mapy normalnych), `gouraud.vert` z normalną wierzchołka (wynik idzie do fragmentów jako `vMoonFacing`) i `grass.frag` ze stałą `GRASS_NORMAL`. Teoria biasu: [`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.10 i 2.11.
+
 ### 4.5 `addLight`: jedno światło do wyniku
 
 ```glsl
@@ -536,11 +606,17 @@ void addLight(inout Lighting lighting, vec3 normal, vec3 toLight, vec3 toEye, ve
 | `radiance` | kolor światła **takiego, jakie dociera do punktu**: kolor razy intensywność, już po tłumieniu i po stożku. Dzięki temu `addLight` nie wie, z jakiego rodzaju światła pochodzi |
 | dwie linie | część rozproszona i odbłysk tego samego światła, obie w jego kolorze |
 
-To jest miejsce z diagramu w sekcji 2.1: trzy rodzaje świateł schodzą się do jednej funkcji.
+To jest miejsce z diagramu w sekcji 2.1: rodzaje świateł schodzą się do jednej funkcji. Od czwartej części M7 wołają ją światła punktowe i latarka, a księżyc liczy te same dwa wyrazy sam, żeby je zachować (sekcja 4.6).
 
 ### 4.6 `computeLighting`: wszystkie światła dla jednego punktu
 
 ```glsl
+// The light at one point of a surface. position and normal are in world space, normal
+// has length 1. lit.frag and grass.frag call this per fragment, gouraud.vert per vertex:
+// the same function, and the lit and the gouraud program differ only in where it runs.
+// This function knows nothing about shadows: it computes every light as if nothing stood
+// in its way. The shadow of the moon is applied by the caller, with the two moon fields
+// of the result.
 Lighting computeLighting(vec3 position, vec3 normal) {
     vec3 toEye = normalize(uCameraPosition.xyz - position);
 
@@ -549,14 +625,35 @@ Lighting computeLighting(vec3 position, vec3 normal) {
     lighting.specular = vec3(0.0);
 ```
 
-`position` i `normal` są w przestrzeni świata, `normal` ma długość 1 (dba o to wołający: `gouraud.vert` przez `normalize`, `lit.frag` przez funkcję `surfaceNormal`, która zwraca normalną siatki albo normalną z mapy normalnych, sekcja 2.9). `toEye` to wektor `V`: od punktu do oka. Suma zaczyna od światła otoczenia i zerowego odbłysku.
+`position` i `normal` są w przestrzeni świata, `normal` ma długość 1 (dba o to wołający: `gouraud.vert` przez `normalize`, `lit.frag` przez funkcję `surfaceNormal`, która zwraca normalną siatki albo normalną z mapy normalnych, sekcja 2.9). `toEye` to wektor `V`: od punktu do oka. Suma zaczyna od światła otoczenia i zerowego odbłysku. Pola `moonDiffuse` i `moonSpecular` nie są tu zerowane: dostają wartość w następnym kroku, bezwarunkowo.
+
+Komentarz nad funkcją miał do trzeciej części M7 zdanie "There are no shadows yet: a light also reaches surfaces that stand behind a wall". Dziś mówi co innego: funkcja nadal nic nie wie o cieniach, ale cień księżyca nakłada wołający, z dwóch pól księżyca. Komentarz wymienia wszystkich trzech wołających: `lit.frag` i `grass.frag` na fragment, `gouraud.vert` na wierzchołek.
 
 ```glsl
-    addLight(lighting, normal, -uDirectionalDirection.xyz, toEye,
-             uDirectionalColor.rgb * uDirectionalColor.a);
+    // The moon, a directional light: the same direction everywhere, no attenuation.
+    // uDirectionalDirection is the way the light travels, so the way TO the light is
+    // the opposite. These lines do what addLight does, and keep the two terms.
+    vec3 toMoon = -uDirectionalDirection.xyz;
+    vec3 moonRadiance = uDirectionalColor.rgb * uDirectionalColor.a;
+    lighting.moonDiffuse = moonRadiance * diffuseFactor(normal, toMoon);
+    lighting.moonSpecular = moonRadiance * specularFactor(normal, toMoon, toEye);
+    lighting.diffuse += lighting.moonDiffuse;
+    lighting.specular += lighting.moonSpecular;
 ```
 
-**Księżyc.** `uDirectionalDirection` to kierunek, w którym światło leci, więc kierunek **do** światła jest przeciwny: minus. Nie ma pozycji, nie ma odległości, nie ma tłumienia: `radiance` to kolor razy intensywność. Księżyca nie da się wyłączyć przełącznikiem: wyłącza go intensywność 0.
+**Księżyc.** `uDirectionalDirection` to kierunek, w którym światło leci, więc kierunek **do** światła jest przeciwny: minus. Nie ma pozycji, nie ma odległości, nie ma tłumienia: `moonRadiance` to kolor razy intensywność. Księżyca nie da się wyłączyć przełącznikiem: wyłącza go intensywność 0.
+
+Do trzeciej części M7 były tu dwie linie: `addLight(lighting, normal, -uDirectionalDirection.xyz, toEye, uDirectionalColor.rgb * uDirectionalColor.a);`. Od czwartej części M7 gałąź księżyca **nie woła `addLight`**, tylko robi to samo ręcznie:
+
+| Linia | Znaczenie |
+|---|---|
+| `vec3 toMoon = -uDirectionalDirection.xyz;` | kierunek do księżyca, wektor `L` |
+| `vec3 moonRadiance = uDirectionalColor.rgb * uDirectionalColor.a;` | kolor razy intensywność: przy ustawieniach startowych około `(0,053, 0,076, 0,2)` (policzone) |
+| `lighting.moonDiffuse = moonRadiance * diffuseFactor(normal, toMoon);` | część rozproszona księżyca, zapisana **osobno**. Ten sam wzór co pierwsza linia `addLight` |
+| `lighting.moonSpecular = moonRadiance * specularFactor(normal, toMoon, toEye);` | odbłysk księżyca, zapisany osobno. Ten sam wzór co druga linia `addLight` |
+| `lighting.diffuse += lighting.moonDiffuse;` i `lighting.specular += lighting.moonSpecular;` | oba wyrazy trafiają też do sumy, jak u każdego innego światła |
+
+Powód: `addLight` dopisuje wynik wprost do sumy i nie zostawia po sobie obu wyrazów, a wołający potrzebuje ich osobno, żeby odjąć cień (sekcja 4.3). Wynik w polach `diffuse` i `specular` jest ten sam co przed zmianą: przy wyłączonych cieniach obraz nie różni się od obrazu sprzed tej części (zgłoszone dla Windowsa, 2026-10-05, z księżycem ustawionym z powrotem na 0,12: piksele identyczne poza pasem HUD, w trybie Phong różnica najwyżej 1/255). Światła punktowe i latarka nadal idą przez `addLight`, więc diagram z sekcji 2.1 pozostaje prawdziwy dla wzorów, a w kodzie do wspólnej funkcji schodzą się dziś dwa rodzaje świateł z trzech.
 
 ```glsl
     for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
@@ -616,11 +713,11 @@ Lighting computeLighting(vec3 position, vec3 normal) {
 
 Poza stożkiem `cone` wynosi 0, więc `radiance` jest zerem i `addLight` niczego nie dodaje. Shader nie pomija wtedy obliczeń: liczy i mnoży przez zero.
 
-**Bez cieni.** Funkcja nie sprawdza, czy coś stoi między światłem a punktem (sekcja 2.8).
+**Bez cieni w tej funkcji.** Funkcja nie sprawdza, czy coś stoi między światłem a punktem (sekcja 2.8). Dla latarki i świateł kryształów nikt tego nie sprawdza. Dla księżyca robi to wołający, po powrocie z funkcji.
 
 ### 4.7 Czego w tym pliku nie ma: `uEmissive`
 
-Składnik emisyjny z sekcji 2.2 **nie jest** częścią `common/lighting.glsl`. Struktura `Lighting` ma nadal dwa pola, a `computeLighting` nie wie nic o tym, czy powierzchnia sama świeci. Emisja dochodzi dopiero w shaderze fragmentów, w linii, która łączy światło z kolorem powierzchni:
+Składnik emisyjny z sekcji 2.2 **nie jest** częścią `common/lighting.glsl`. Struktura `Lighting` nie ma dla niej pola (ma cztery: dwa wspólne i dwa księżyca, sekcja 4.3), a `computeLighting` nie wie nic o tym, czy powierzchnia sama świeci. Emisja dochodzi dopiero w shaderze fragmentów, w linii, która łączy światło z kolorem powierzchni:
 
 ```glsl
 uniform vec3 uEmissive;
@@ -628,10 +725,10 @@ uniform vec3 uEmissive;
 
 ```glsl
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
-    fragColor = vec4(surface * (lighting.diffuse + uEmissive) + lighting.specular, 1.0);
+    fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);
 ```
 
-To fragment `lit.frag`. `gouraud.frag` ma tę samą linię z `vDiffuseLight` i `vSpecularLight` zamiast pól struktury. Emisja jest jedną stałą dla całego rysowanego obiektu i nie zależy od żadnego światła, więc kryształ świeci tak samo w trybie `Gouraud` i w trybie `Phong`: nie ma w niej nic, co liczenie światła w wierzchołkach mogłoby zgubić. Oba pliki w całości omawia [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcje 4.2 i 4.4.
+To fragment `lit.frag`. Zmienne `diffuse` i `specular` to od czwartej części M7 światło **po odjęciu cienia księżyca** (`max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0)` i to samo dla odbłysku). Do trzeciej części M7 stały tu wprost `lighting.diffuse` i `lighting.specular`. `gouraud.frag` ma dziś tę samą linię co do znaku, a jego `diffuse` i `specular` powstają z wartości interpolowanych `vDiffuseLight` i `vSpecularLight`. Emisja stoi w nawiasie obok światła już po odjęciu cienia, więc cień księżyca nigdy jej nie przyciemnia. Emisja jest jedną stałą dla całego rysowanego obiektu i nie zależy od żadnego światła, więc kryształ świeci tak samo w trybie `Gouraud` i w trybie `Phong`: nie ma w niej nic, co liczenie światła w wierzchołkach mogłoby zgubić. Oba pliki w całości omawia [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcje 4.2 i 4.4.
 
 Powód, dla którego emisja nie trafiła do bloku `LightBlock`: blok opisuje światła, wspólne dla całej klatki, a emisja jest inna dla każdego rysowanego obiektu (czerń dla ściany, turkus dla kryształu). Taka wartość musi być zwykłym uniformem, ustawianym między wywołaniami rysowania.
 
@@ -646,6 +743,9 @@ Powód, dla którego emisja nie trafiła do bloku `LightBlock`: blok opisuje św
 | [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) | blok świateł i wzory po stronie karty (sekcja 4) |
 | [`src/debug/panels/LightsPanel.hpp`](../../../src/debug/panels/LightsPanel.hpp), [`.cpp`](../../../src/debug/panels/LightsPanel.cpp) | panel Lights (sekcja 6) |
 | [`tests/LightTests.cpp`](../../../tests/LightTests.cpp) | 20 przypadków testowych (sekcja 5.6) |
+| [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp), [`.cpp`](../../../src/scene/LightSpace.cpp) (od czwartej części M7) | struktura `LightSpace`, stałe `LIGHT_BOX_MARGIN` i `VERTICAL_DIRECTION_LIMIT`, funkcje `directionalLightSpace` i `shadowMapCoordinates` (sekcja 5.7, pełna matematyka w [`../renderer/shadows.md`](../renderer/shadows.md)) |
+| [`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp) (od czwartej części M7) | 16 przypadków testowych cieni, z czego osiem pierwszych sprawdza `LightSpace` (sekcja 5.7) |
+| [`assets/shaders/common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl) (od czwartej części M7) | mapa cieni księżyca po stronie karty: `moonShadow`. Omawia [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 4 |
 | [`src/scene/LightBlock.hpp`](../../../src/scene/LightBlock.hpp), [`.cpp`](../../../src/scene/LightBlock.cpp) | zamiana `LightSet` na bajty bloku: omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) |
 | [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), [`.cpp`](../../../src/game/Lighting.cpp) | ustawienia świateł gry i budowanie `LightSet` co klatkę: omawia [`../game/flashlight.md`](../game/flashlight.md) |
 
@@ -662,9 +762,10 @@ flowchart TD
     Ubo["gfx::UniformBuffer::update<br>bajty na kartę"] --> Glsl
     Glsl["common/lighting.glsl<br>computeLighting"] --> Frag["lit.frag: dla każdego fragmentu"]
     Glsl --> Vert["gouraud.vert: dla każdego wierzchołka"]
+    Glsl --> Grass["grass.frag: dla każdego fragmentu trawy"]
 ```
 
-Ten dokument omawia pudełko panelu Lights i pudełko `common/lighting.glsl` oraz struktury, które płyną między nimi. Pudełka z `game::` w nazwie omawia [`../game/flashlight.md`](../game/flashlight.md).
+Ten dokument omawia pudełko panelu Lights i pudełko `common/lighting.glsl` oraz struktury, które płyną między nimi. Pudełka z `game::` w nazwie omawia [`../game/flashlight.md`](../game/flashlight.md). Diagram pokazuje drogę świateł, a nie cienia: mapa cieni księżyca ma własną drogę (kierunek księżyca i pudełko terenu, `scene::directionalLightSpace`, przebieg głębi, `game::setShadowUniforms`), opisaną w [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.18.
 
 ### 5.2 Struktury świateł
 
@@ -843,6 +944,16 @@ z = -0,643 * cos(25) = -0,583
 
 To jest wektor z tabeli w sekcji 2.3. Księżyc "wisi" więc po przeciwnej stronie: nad `-X` i `+Z`.
 
+**Kto woła tę funkcję dla księżyca (czwarta część M7).** Do trzeciej części M7 wołała ją wprost `game::buildLightSet`. Dziś między nimi stoi jedna mała funkcja gry, `game::moonDirection` z `src/game/Lighting.cpp`:
+
+```cpp
+glm::vec3 moonDirection(const LightingSettings& settings) {
+    return scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees);
+}
+```
+
+Bierze z niej kierunek `buildLightSet` (pole `.direction = moonDirection(settings)`, czyli światło, którym shader oświetla) i `NightMazeApp::drawMoonShadowMap` (kierunek, z którego rysowana jest mapa cieni). Komentarz w `Lighting.hpp` podaje powód: "The lights of a frame and the shadow map of the moon both take it from here, so they can never disagree". Gdyby oba miejsca liczyły kierunek osobno i jedno z nich się zmieniło, cienie padałyby w inną stronę niż ta, z której świeci księżyc. Zgodności pilnuje test `the moon direction of the settings is the one the lights are built with` w `tests/ShadowTests.cpp`. Resztę `Lighting.*` omawia [`../game/flashlight.md`](../game/flashlight.md).
+
 ### 5.6 Jak to zostało sprawdzone
 
 Testy jednostkowe w `tests/LightTests.cpp`, 20 przypadków ([`../../libraries/doctest.md`](../../libraries/doctest.md)):
@@ -873,6 +984,98 @@ Testy jednostkowe w `tests/LightTests.cpp`, 20 przypadków ([`../../libraries/do
 Osiem ostatnich dotyczy `packLightBlock` i układu bloku: kod, który sprawdzają, omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
 
 **Czego testy nie sprawdzają.** Kodu GLSL. Funkcje C++ (`attenuationFactor`, `spotFactor`) i ich kopie w `lighting.glsl` to dwa osobne zapisy tego samego wzoru: test przechodzi także wtedy, gdy ktoś zmieni tylko shader. Zgodność obu zapisów sprawdziłem czytając kod, a obraz na zrzutach ekranu z Windowsa. Panel Lights wymaga okna i nie ma testów.
+
+Czwarta część M7 nie zmieniła `tests/LightTests.cpp`: nadal ma 20 przypadków. Nowy plik modułu, `LightSpace`, ma testy w `tests/ShadowTests.cpp` (sekcja 5.7). Nowych pól `moonDiffuse` i `moonSpecular` ani funkcji `moonFacing` żaden test nie sprawdza, bo to kod GLSL.
+
+### 5.7 `LightSpace`: scena widziana ze światła (czwarta część M7, 2026-10-05)
+
+Mapa cieni to obraz sceny zrobiony ze światła: każdy teksel zapisuje, jak daleko od światła jest najbliższa powierzchnia. Żeby taki obraz zrobić, światło potrzebuje tego samego, co kamera: macierzy widoku i macierzy rzutowania. Tę parę nazywa się **przestrzenią światła** (light space) i w projekcie liczy ją nowy plik modułu `scene`: [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp) i [`.cpp`](../../../src/scene/LightSpace.cpp). Jak reszta modułu, to sama matematyka bez OpenGL, więc ma testy jednostkowe. Ta sekcja jest krótka celowo: pokazuje, co jest w pliku. Pełną matematykę (dlaczego rzut ortograficzny, jak pudełko dopasowuje się do terenu, ile metrów ma teksel) ma [`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.2, 2.3 i 2.5.
+
+```cpp
+/// The view and the projection of a light.
+struct LightSpace {
+    /// World space to the space of the light: the light looks along -Z, like a camera.
+    glm::mat4 view{1.0F};
+    /// The space of the light to clip space.
+    glm::mat4 projection{1.0F};
+    /// The size of the orthographic box of a directional light in metres: x and y are
+    /// the width and the height of the area the shadow map covers, z is the distance
+    /// from its near plane to its far plane.
+    glm::vec3 extent{0.0F};
+
+    /// World space to the clip space of the light in one matrix. A vertex shader
+    /// applies the view first and the projection second, so the projection stands on
+    /// the left.
+    glm::mat4 matrix() const { return projection * view; }
+};
+```
+
+| Składowa | Znaczenie | Kto jej używa |
+|---|---|---|
+| `view` | ze świata do przestrzeni światła. Światło patrzy wzdłuż `-Z`, jak kamera ([`camera.md`](camera.md)) | przebieg głębi: uniform `uView` programu `shadow_depth` |
+| `projection` | z przestrzeni światła do przestrzeni przycięcia | przebieg głębi: uniform `uProjection` programu `shadow_depth` |
+| `extent` | rozmiar pudełka ortograficznego w metrach: `x` i `y` to szerokość i wysokość obszaru, który pokrywa mapa, `z` to odległość od bliskiej do dalekiej płaszczyzny | `game::shadowTexelSize` (rozmiar teksela z `x` i `y`), `game::setShadowUniforms` (bias w metrach dzielony przez `extent.z`), panel Shadows |
+| `matrix()` | obie macierze w jednej: `projection * view`. Rzutowanie stoi po lewej, bo wierzchołek mnoży się najpierw przez widok | uniform `uMoonShadowMatrix` w programach oświetlenia, `shadowMapCoordinates` |
+
+Dwie stałe:
+
+```cpp
+constexpr float LIGHT_BOX_MARGIN = 0.5F;
+```
+
+Wolne miejsce wokół pudełka światła po wszystkich sześciu stronach, w metrach. Obiekt leżący dokładnie na ścianie pudełka (najniższy grunt, czubek słupka) jest dzięki temu pewnie w środku i nie obetnie go błąd zaokrąglenia.
+
+```cpp
+constexpr float VERTICAL_DIRECTION_LIMIT = 0.999F;
+```
+
+Powyżej tej wartości `|y|` kierunek światła (o długości 1) liczy się jako pionowy. `acos(0,999)` to około 2,56 stopnia (policzone; komentarz w pliku zaokrągla do "about 2.5 degrees"), więc chodzi o światło odchylone od pionu o mniej niż tyle. Suwak `Moon pitch` sięga do -90, czyli taki kierunek da się ustawić z panelu Lights.
+
+```cpp
+LightSpace directionalLightSpace(const Aabb& bounds, const glm::vec3& lightDirection);
+```
+
+Przestrzeń światła **kierunkowego**, czyli księżyca. Rzut jest ortograficzny, bo promienie takiego światła są równoległe i nic nie maleje z odległością. `bounds` to pudełko `scene::Aabb` ([`collision.md`](collision.md)) obejmujące wszystko, co może rzucić cień. `lightDirection` to kierunek, w którym światło **leci**, o dowolnej długości. Kroki funkcji:
+
+| Krok | Kod | Znaczenie |
+|---|---|---|
+| 1 | `glm::length(lightDirection) < MIN_DIRECTION_LENGTH ? FALLBACK_DIRECTION : glm::normalize(lightDirection)` | kierunek do długości 1. Kierunek o długości zero (krótszy niż 0,0001) jest zastępowany kierunkiem **prosto w dół**, `(0, -1, 0)`: ta sama reguła co w `packLightBlock`, żeby `normalize` nie dało `NaN` |
+| 2 | `std::abs(direction.y) > VERTICAL_DIRECTION_LIMIT ? UP_FOR_VERTICAL_LIGHT : WORLD_UP` | wektor "w górę" dla widoku. Zwykle `+Y`. Dla światła (prawie) pionowego `+Y` byłoby równoległe do kierunku patrzenia i `lookAt` dzieliłoby przez zero, więc wtedy "górą" jest `-Z` |
+| 3 | `glm::lookAt(center - direction, center, up)` | widok: światło patrzy na środek pudełka wzdłuż kierunku swoich promieni. Światło kierunkowe nie ma pozycji, więc oko stoi po prostu jeden krok przed środkiem. Gdzie dokładnie, nie ma znaczenia: płaszczyzny są mierzone od niego w kroku 5 |
+| 4 | pętla po ośmiu narożnikach `bounds`, `glm::min` i `glm::max`, potem `LIGHT_BOX_MARGIN` | osiem narożników trafia do przestrzeni światła, a najmniejsze i największe `x`, `y`, `z` wśród nich to ściany pudełka, powiększone o margines |
+| 5 | `glm::ortho(smallest.x, largest.x, smallest.y, largest.y, -largest.z, -smallest.z)` | rzut ortograficzny dokładnie tego pudełka. Minusy: widok patrzy wzdłuż `-Z`, więc narożnik najbliższy światłu ma **największe** `z`, a `glm::ortho` chce obu płaszczyzn jako odległości przed okiem |
+| 6 | `.extent = largest - smallest` | rozmiar pudełka w metrach |
+
+Wynik zależy tylko od `bounds` i od kierunku, **nie od kamery**. Mapa cieni pokrywa więc ten sam grunt w każdej klatce i cienie nie migoczą, gdy gracz się rusza. Pudełko dopasowane do zawartości nie marnuje tekseli na pustą przestrzeń. W grze `bounds` to `game::shadowCasterBounds(terrain)` (cały teren od najniższego gruntu do wysokości słupka nad najwyższym), a kierunek to `game::moonDirection` (sekcja 5.5). Woła to `NightMazeApp::drawMoonShadowMap` w każdej klatce. Dla labiryntu domyślnego (10 na 10 komórek, ziarno 1, skala wysokości 1, księżyc yaw 25 i pitch -50) pudełko pokrywa 64,8 na 54,1 m i ma 47,0 m głębi (policzone, nie zmierzone w grze). Skąd te liczby i dlaczego pudełko jest dopasowane do terenu, a nie do kamery: [`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.2 i 2.3, i notatka [`../../decisions/shadow-box-fitted-to-terrain.md`](../../decisions/shadow-box-fitted-to-terrain.md).
+
+```cpp
+glm::vec3 shadowMapCoordinates(const glm::mat4& lightSpaceMatrix, const glm::vec3& worldPosition) {
+    const glm::vec4 clip = lightSpaceMatrix * glm::vec4{worldPosition, 1.0F};
+    // The perspective division. For an orthographic projection w is 1 and nothing
+    // changes. It is done all the same, so the function is right for every light.
+    const glm::vec3 ndc = glm::vec3{clip} / clip.w;
+    // Normalised device coordinates run from -1 to 1, texture coordinates and stored
+    // depths from 0 to 1.
+    return ndc * 0.5F + 0.5F;
+}
+```
+
+Gdzie punkt świata ląduje w mapie cieni: `x` i `y` to współrzędna tekstury (od 0 do 1 wewnątrz mapy), `z` to głębia, którą mapa zapisałaby dla powierzchni w tym punkcie (0 na bliskiej płaszczyźnie światła, 1 na dalekiej). Trzy kroki: macierz, dzielenie przez `w`, z zakresu od -1 do 1 do zakresu od 0 do 1. **Gra tej funkcji nie woła przy rysowaniu.** Te same trzy kroki robi shader, funkcja `moonShadow` w `common/shadows.glsl` (`clip.xyz / clip.w * 0.5 + 0.5`). Wersja C++ istnieje po to, żeby drogę punktu do mapy dało się sprawdzić testem, tak jak `attenuationFactor` i `spotFactor` z sekcji 5.3 i 5.4. To znów dwie kopie jednego wzoru (pułapka 11). Teoria: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.5.
+
+**Testy.** Osiem pierwszych przypadków `tests/ShadowTests.cpp` dotyczy tego pliku (pozostałe osiem: pudełko terenu, rozmiar teksela, bias, rozdzielczości, PCF i `moonDirection`, omawia je [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 5.10). Pudełko testowe to `min = (-4, 0, 2)`, `max = (10, 6, 30)`:
+
+| Przypadek testowy | Co sprawdza |
+|---|---|
+| `the box of a directional light holds every corner of its bounds` | każdy z ośmiu narożników ma wszystkie trzy współrzędne mapy ściśle między 0 a 1 |
+| `the box of a directional light fits its bounds: only the margin is left free` | na każdej z sześciu stron któryś narożnik zbliża się do ściany pudełka na `LIGHT_BOX_MARGIN`: nic nie jest marnowane |
+| `a light that shines straight down sees the bounds from above` | kierunek `(0, -1, 0)`: macierz ma same skończone liczby, `extent` to 14, 28 i 6 m plus margines z obu stron, góra pudełka jest bliżej światła niż dół i leży w tym samym tekselu |
+| `a light that shines almost straight down still gets a usable matrix` | pitch -90, -89,9, -89, -87, -85 i -5 przy yaw 25 (cały zakres suwaka): macierz skończona, narożniki w mapie |
+| `a light direction of length zero is replaced by straight down` | kierunek zerowy daje tę samą macierz co `(0, -1, 0)` |
+| `the length of the light direction does not change the box` | kierunek 25 razy dłuższy daje te same współrzędne punktu |
+| `points on one ray of the light share a texel and differ in depth only` | punkt na szczycie ściany i punkt 3 m dalej wzdłuż promienia mają te same `x` i `y`, a głębia różni się o `3 / extent.z`: to jest zasada działania mapy cieni |
+| `a point outside the bounds lands outside the shadow map` | punkt 100 m na wschód ma `x > 1`, punkt 100 m pod pudełkiem ma `z > 1` |
+
+Zgłoszone dla Windowsa, 2026-10-05: wszystkie przechodzą w Debug i Release w ramach `make check` (310 przypadków i 103751 asercji całego programu testowego). Na macOS nic nie było budowane.
 
 ## 6. Panel ImGui
 
@@ -992,9 +1195,9 @@ Suwak **logarytmiczny**: połowa jego długości przypada na małe wykładniki, 
 | Grupa | Kontrolka | Zakres | Pole w `LightingSettings` | Czego uczy |
 |---|---|---|---|---|
 | (bez grupy) | `Ambient` | kolor | `ambient` | składnik otoczenia: jedyne światło w miejscach, do których nic nie świeci. Czarny daje czarne cienie. Jak wszystkie cztery kolory panelu, jest to wartość sRGB (to, co pokazuje próbnik), przeliczana na liniową w `buildLightSet` |
-| `Moon (directional)`, zwinięta | `Moon yaw` | od 0 do 360 stopni | `moonYawDegrees` | światło kierunkowe: obrót zmienia, które strony ścian są jasne (prawo Lamberta), a nic nie zależy od miejsca |
+| `Moon (directional)`, zwinięta | `Moon yaw` | od 0 do 360 stopni | `moonYawDegrees` | światło kierunkowe: obrót zmienia, które strony ścian są jasne (prawo Lamberta), a nic nie zależy od miejsca. Od czwartej części M7 razem ze światłem obracają się cienie ścian, bo mapa cieni bierze kierunek z tych samych dwóch kątów (`game::moonDirection`) |
 | | `Moon pitch` | od -90 do -5 stopni | `moonPitchDegrees` | -90: grunt najjaśniejszy, ściany ciemne. Blisko -5: odwrotnie |
-| | `Moon colour`, `Moon intensity` | kolor, od 0 do 2 | `moonColor`, `moonIntensity` | kolor razy intensywność. 0 wyłącza księżyc |
+| | `Moon colour`, `Moon intensity` | kolor, od 0 do 2 | `moonColor`, `moonIntensity` | kolor razy intensywność. 0 wyłącza księżyc. Wartość startowa intensywności to od czwartej części M7 0,2 (wcześniej 0,12). Od tej części intensywność decyduje też o kontraście cienia księżyca: przy 0 cienia nie widać, bo nie ma czego odejmować |
 | `Flashlight (spot)` | `Flashlight on (key F)` | pole wyboru | `flashlightOn` | to samo pole, które przełącza klawisz F. Przy pustej baterii ma podpowiedź `The battery is empty: collect a crystal first.` i samo się odznacza |
 | | `Beam colour`, `Beam intensity` | kolor, od 0 do 10 | `flashlightColor`, `flashlightIntensity` | powyżej pewnej wartości środek plamy się prześwietla. Od M7 wartości powyżej 1 zostają w buforze HDR, a o tym, kiedy plama robi się płasko biała, decyduje krzywa mapowania tonów z panelu Framebuffers: przy `None (clamp)` obcięcie następuje przy 1 jak dawniej, przy domyślnej `ACES (fitted)` krzywa dochodzi do bieli dopiero w okolicy 7 |
 | | `Cone` | dwa kąty od 1 do 60 stopni | `flashlightInnerDegrees`, `flashlightOuterDegrees` | stożek wewnętrzny i zewnętrzny. Równe wartości dają ostrą krawędź, duża różnica szeroki miękki brzeg |
@@ -1015,9 +1218,9 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 
 1. **Trzy rodzaje świateł naraz.** Start gry. Mówię: ciepła plama na wprost to latarka (reflektor), zimna poświata na podłożu to księżyc (kierunkowe), turkusowe światło w głębi to kryształ (punktowe).
 2. **Składnik otoczenia.** Ustawiam `Ambient` na czarny: miejsca bez światła stają się zupełnie czarne. Przywracam.
-3. **Światło kierunkowe i Lambert.** Naciskam F (latarka gaśnie), żeby nie przeszkadzała. Rozwijam `Moon (directional)` i podnoszę `Moon intensity` do 1. Obracam `Moon yaw`: jasne stają się kolejne strony ścian, a po przejściu w inne miejsce nic się nie zmienia, bo kierunek jest wszędzie ten sam. Ustawiam `Moon pitch` na -90: ściany gasną (cosinus 0), grunt jest najjaśniejszy.
+3. **Światło kierunkowe i Lambert.** Naciskam F (latarka gaśnie), żeby nie przeszkadzała. Rozwijam `Moon (directional)` i podnoszę `Moon intensity` do 1. Obracam `Moon yaw`: jasne stają się kolejne strony ścian, a po przejściu w inne miejsce nic się nie zmienia, bo kierunek jest wszędzie ten sam. Ustawiam `Moon pitch` na -90: ściany gasną (cosinus 0), grunt jest najjaśniejszy. Od czwartej części M7 przy obracaniu `Moon yaw` po gruncie wędrują też cienie ścian, a przy pitch -90 kurczą się pod same ściany (wynika z kodu, nie oglądane ręcznie).
 4. **Światło punktowe i tłumienie.** Podchodzę do kryształu i zatrzymuję się około metra przed nim, żeby go nie zebrać (gracz zbiera kryształ, gdy stoi bliżej niż około 0,86 m od środka jego komórki: [`../game/gameplay.md`](../game/gameplay.md), sekcja 2). Zmieniam `Point radius` z 3 na 1, potem na 8. Mówię: w odległości równej promieniowi zostaje 5 procent, a krzywa ma zawsze ten sam kształt.
-5. **Brak cieni.** Przy promieniu 8 pokazuję grunt za ścianą, przy której wisi kryształ: jest rozjaśniony. Mówię, że wzór pyta tylko o kąt i odległość, a cienie to osobna technika, planowana w dalszej części M7.
+5. **Cień ma tylko księżyc.** Przy promieniu 8 pokazuję grunt za ścianą, przy której wisi kryształ: jest rozjaśniony. Mówię, że wzór pyta tylko o kąt i odległość, a cień to osobna technika (mapa cieni), którą od czwartej części M7 ma księżyc, a światła kryształów i latarka nie. Potem pokazuję cień ściany od księżyca na gruncie i kieruję na niego latarkę: plama latarki jest w cieniu księżyca tak samo jasna jak poza nim, bo cień odejmuje tylko światło księżyca. Pełny pokaz cieni: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 6.
 6. **Emisja a światło.** Przywracam `Point radius` 3 i przesuwam `Point intensity` do 0: ściany wokół kryształu gasną, a sam kryształ świeci dalej. Zmieniam `Point colour`: zmienia się i kryształ, i (po przywróceniu intensywności) blask na ścianach. Mówię: kryształ świeci składnikiem emisyjnym, a ściany oświetla osobne światło punktowe nad nim. Pokazuję linię `Lit: 13 of 13 crystals (at most 16)`.
 7. **Reflektor.** Włączam latarkę (F). Staję przed ścianą. W `Cone` ustawiam oba kąty na 15: ostra krawędź. Potem 5 i 30: szeroki miękki brzeg. Mówię o porównywaniu cosinusów.
 8. **Zasięg.** Patrzę w długi korytarz i przesuwam `Beam range` od 4 do 40.
@@ -1026,7 +1229,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 
 ## 7. Pułapki
 
-1. **Kierunek światła a kierunek do światła.** `DirectionalLight::direction` i `uDirectionalDirection` mówią, dokąd światło **leci**. Wzory chcą kierunku **do** światła. Shader ma minus w jednym miejscu (`-uDirectionalDirection.xyz`). Minus dopisany drugi raz albo usunięty oświetla strony ścian odwrócone od księżyca, bez żadnego błędu.
+1. **Kierunek światła a kierunek do światła.** `DirectionalLight::direction` i `uDirectionalDirection` mówią, dokąd światło **leci**. Wzory chcą kierunku **do** światła. Shader ma ten minus (`-uDirectionalDirection.xyz`) od czwartej części M7 w dwóch miejscach: w `computeLighting` (linia `vec3 toMoon = ...`) i w `moonFacing`. Minus dopisany drugi raz albo usunięty w pierwszym oświetla strony ścian odwrócone od księżyca, bez żadnego błędu. Usunięty w drugim psuje tylko bias cienia: powierzchnie zwrócone do księżyca dostają największą poprawkę zamiast najmniejszej.
 2. **Wektory bez normalizacji.** `dot(N, L)` jest cosinusem tylko dla wektorów o długości 1. Normalna po interpolacji między wierzchołkami jest krótsza, a po macierzy normalnych ze skalą ma dowolną długość. Stąd `normalize` w `gouraud.vert` i w funkcji `surfaceNormal`, którą woła `lit.frag` (dwa razy: raz dla interpolowanej normalnej siatki, drugi raz dla normalnej z mapy, bo filtr tekstury i mipmapy też skracają wektory). Bez niego światło jest za ciemne i nierówne.
 3. **Brak `max(..., 0)`.** Ujemny cosinus odejmuje światło. Ściana odwrócona od księżyca byłaby ciemniejsza, niż pozwala na to światło otoczenia.
 4. **`pow` z ujemną podstawą.** W GLSL wynik `pow(x, y)` dla `x < 0` jest niezdefiniowany: na jednym sterowniku czerń, na innym `NaN` i migające piksele. `max` stoi przed `pow`.
@@ -1034,20 +1237,22 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 6. **`MAX_POINT_LIGHTS` w trzech miejscach.** `scene/Light.hpp`, `common/lighting.glsl` i asercje rozmiaru w `scene/LightBlock.hpp`. Zmiana tylko w shaderze zmienia rozmiar bloku: program loguje wtedy przy starcie `Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code` ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)). Zmiana tylko w C++ zatrzymuje build na `static_assert`.
 7. **Dzielenie przez odległość równą zero.** `offset / lightDistance` daje `NaN`, gdy punkt powierzchni leży dokładnie w pozycji światła. W grze to się nie zdarza: latarka jest w oku, a bliska płaszczyzna obcinania nie dopuszcza powierzchni do oka, światła punktowe wiszą nad kryształami, około 1,55 m nad środkiem komórki, z dala od ścian i 0,15 m nad czubkiem samego kryształu. Światło wstawione **w** powierzchnię dałoby czarny albo migający piksel.
 8. **Kierunek o długości zero.** `normalize` wektora zerowego to `NaN`, a jedno `NaN` w bloku robi czarny każdy oświetlony piksel. `packLightBlock` zamienia taki kierunek na `(0, -1, 0)`.
-9. **Światło przechodzi przez ściany.** To brak cieni, a nie błąd (sekcja 2.8). Duży `Point radius` pokazuje to najwyraźniej.
+9. **Światło przechodzi przez ściany.** Dotyczy latarki i świateł kryształów: nie mają mapy cieni, i to jest brak techniki, a nie błąd (sekcja 2.8). Duży `Point radius` pokazuje to najwyraźniej. Księżyc od czwartej części M7 przez ściany nie przechodzi.
 10. **Prześwietlenie.** Światła się sumują. Do M6 framebuffer obcinał wynik do 1: przy dużych intensywnościach środek plamy latarki robił się płaską białą plamą i znikała w niej tekstura. Od pierwszej części M7 rozwiązaniem jest bufor HDR z mapowaniem tonów ([`../renderer/post-process.md`](../renderer/post-process.md)). Stary obraz da się przywołać: `Tone mapping` ustawione na `None (clamp)` w panelu Framebuffers obcina jak dawniej.
-11. **Dwie kopie wzorów.** Tłumienie i stożek są zapisane w C++ (testowane) i w GLSL (nietestowane). Zmiana w jednym miejscu nie zmienia drugiego i żaden test tego nie wykryje.
+11. **Dwie kopie wzorów.** Tłumienie i stożek są zapisane w C++ (testowane) i w GLSL (nietestowane). Zmiana w jednym miejscu nie zmienia drugiego i żaden test tego nie wykryje. Od czwartej części M7 to samo dotyczy drogi punktu do mapy cieni: `scene::shadowMapCoordinates` w C++ i trzy kroki w `moonShadow` w GLSL (sekcja 5.7).
 12. **Uniformy materiału ustawione w złym programie.** `uSpecularModel`, `uSpecularStrength` i `uShininess` to zwykłe uniformy: należą do programu. `lit` i `gouraud` mają własne kopie. Ustawia je `drawLitMaze` po `use()` programu, którym zaraz rysuje.
 13. **Odbłysk bez pozycji oka.** `uCameraPosition` musi być okiem, z którego rysowana jest klatka (interpolowanym), a nie pozycją z ostatniego kroku symulacji. Inaczej odbłysk drga przy ruchu.
 14. **Światło liczone w złej przestrzeni.** Wszystko jest w przestrzeni świata. Normalna pomnożona przez macierz widoku albo pozycja fragmentu w przestrzeni widoku dałyby światło, które obraca się razem z kamerą.
 15. **Kolor światła wysłany bez przeliczenia.** Do M6 korekcji gamma nie było wcale i suma świateł na wartościach sRGB była ciemniejsza w półcieniach, niż byłaby poprawnie. Od pierwszej części M7 rachunek jest liniowy, a pułapka zmieniła postać: kolor z próbnika jest wartością sRGB i musi być przeliczony **dokładnie raz**. Wysłany do shadera bez `gfx::srgbToLinear` da światło za jasne i wyblakłe, przeliczony dwa razy za ciemne i zbyt nasycone. W grze jedynym miejscem przeliczenia kolorów świateł jest `buildLightSet`, a pilnuje tego test `buildLightSet converts the colours from sRGB to linear and leaves the rest` ([`../gfx/color-space.md`](../gfx/color-space.md)).
 16. **Emisja wzięta za światło.** `uEmissive` rozjaśnia tylko obiekt, który jest z nim rysowany. Kto ustawi duży blask i oczekuje jaśniejszych ścian, nie zobaczy żadnej zmiany: do tego służy światło punktowe. I odwrotnie: uniform trzyma wartość między wywołaniami rysowania, więc gdyby `MazeRenderer::draw` nie ustawiał go na czerń, ściany narysowane po kryształach poprzedniej klatki świeciłyby na turkusowo.
 17. **Emisja pomnożona przez kolor powierzchni.** We wzorze projektu emisja przechodzi przez teksturę i `uTint`. Czarny teksel nie świeci, a biała emisja na czerwonej teksturze jest czerwona. Kto przenosi wzór z podręcznika (emisja dodana na końcu), dostanie inny obraz.
-18. **macOS, niesprawdzone.** Kompilator GLSL Apple może inaczej potraktować plik dołączany, pętlę z `break` albo blok `std140`. Nic z tego nie było uruchamiane na Macu: lista jest w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+18. **Pola księżyca wzięte za dodatkowe światło.** `moonDiffuse` i `moonSpecular` są już wliczone w `diffuse` i `specular` (sekcja 4.3). Kto doda je do wyniku jeszcze raz, dostanie księżyc dwa razy jaśniejszy. Służą wyłącznie do odejmowania cienia.
+19. **Cień pomnożony przez całe światło.** `diffuse * (1.0 - shadow)` zamiast `diffuse - moonDiffuse * shadow` gasi w cieniu księżyca także otoczenie, latarkę i światła kryształów. Obraz wygląda na pierwszy rzut oka wiarygodnie (cienie są ciemniejsze), ale latarka przestaje świecić w cieniu ściany.
+20. **macOS, niesprawdzone.** Kompilator GLSL Apple może inaczej potraktować plik dołączany, pętlę z `break` albo blok `std140`. Nic z tego nie było uruchamiane na Macu: lista jest w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 5 są na kartce, od 6 do 13 w działającej grze. Po zmianie pliku shadera na Windowsie trzeba odświeżyć kopię katalogu `assets` (`cmake --build --preset debug --target copy_assets`) i nacisnąć `Reload shaders` ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md)). Po ćwiczeniu wycofaj zmianę (`git checkout src assets`).
+Ćwiczenia od 1 do 5 i ćwiczenie 15 są na kartce, od 6 do 14 w działającej grze. Po zmianie pliku shadera na Windowsie trzeba odświeżyć kopię katalogu `assets` (`cmake --build --preset debug --target copy_assets`) i nacisnąć `Reload shaders` ([`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md)). Po ćwiczeniu wycofaj zmianę (`git checkout src assets`).
 
 1. **Lambert na kartce.** Światło kierunkowe leci w kierunku `(0, -1, 0)`. Policz czynnik Lamberta dla poziomego gruntu, dla pionowej ściany i dla dachu nachylonego o 30 stopni. (Odpowiedź: 1, 0, około 0,87.)
 2. **Tłumienie na kartce.** Światło ma promień 4 m. Policz współczynniki i jasność w odległości 1 m, 2 m i 4 m. (Odpowiedź: `linear = 0,5`, `quadratic = 1,0625`, jasność 39 %, 16 %, 5 %.)
@@ -1058,10 +1263,12 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 7. **Bez `max`.** W `diffuseFactor` zamień ciało na `return dot(normal, toLight);`. Przeładuj shadery, wyłącz latarkę. Które ściany pociemniały i dlaczego?
 8. **Ostra krawędź.** W `computeLighting` zamień linię `float cone = clamp(...)` na `float cone = cosAngle > uSpotCone.y ? 1.0 : 0.0;`. Jak wygląda brzeg plamy? Który z dwóch kątów panelu przestał mieć znaczenie?
 9. **Samo `1 / d²`.** W `attenuationFactor` zamień wzór na `1.0 / (lightDistance * lightDistance)`. Co widać na ścianie tuż przy krysztale i dlaczego?
-10. **Odwrócony kierunek.** Usuń minus w `-uDirectionalDirection.xyz`. Które strony ścian są teraz jasne? Porównaj z tabelą z sekcji 2.3.
-11. **Odbłysk w kolorze powierzchni.** W `lit.frag` zamień ostatnią linię na `fragColor = vec4(surface * (lighting.diffuse + lighting.specular), 1.0);`. Ustaw `Strength` 1. Jak zmienił się kolor odbłysku na ciemnych fugach tekstury i dlaczego?
-12. **Emisja na wierzch.** W `lit.frag` zamień ostatnią linię na `fragColor = vec4(surface * lighting.diffuse + uEmissive + lighting.specular, 1.0);`. Podejdź do kryształu w trybie `Phong`. Co stało się z rysunkiem jego tekstury i dlaczego w projekcie emisja jest w nawiasie?
+10. **Odwrócony kierunek.** W `computeLighting` usuń minus w linii `vec3 toMoon = -uDirectionalDirection.xyz;`. Które strony ścian są teraz jasne? Porównaj z tabelą z sekcji 2.3. Gdzie leżą cienie ścian względem jasnych stron i dlaczego się nie przesunęły? (Wskazówka: mapa cieni nie czyta tej linii, bierze kierunek z `game::moonDirection`.)
+11. **Odbłysk w kolorze powierzchni.** W `lit.frag` zamień ostatnią linię na `fragColor = vec4(surface * (diffuse + specular), 1.0);`. Ustaw `Strength` 1. Jak zmienił się kolor odbłysku na ciemnych fugach tekstury i dlaczego?
+12. **Emisja na wierzch.** W `lit.frag` zamień ostatnią linię na `fragColor = vec4(surface * diffuse + uEmissive + specular, 1.0);`. Podejdź do kryształu w trybie `Phong`. Co stało się z rysunkiem jego tekstury i dlaczego w projekcie emisja jest w nawiasie?
 13. **Emisja bez zerowania.** W `MazeRenderer::draw` usuń linię `shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});` i zbuduj program. Co świeci od drugiej klatki i dlaczego? (Wskazówka: uniform pamięta ostatnią wartość, a kryształy są rysowane po ścianach.)
+14. **Cień na całe światło.** W `lit.frag` zamień linię `vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);` na `vec3 diffuse = lighting.diffuse * (1.0 - shadow);`. Stań w cieniu ściany od księżyca i poświeć latarką w grunt. Co się stało z plamą latarki i z kolorem samego cienia? (Pułapka 19.)
+15. **Pudełko światła na kartce.** Pudełko `bounds` ma `min = (-4, 0, 2)` i `max = (10, 6, 30)`, światło leci prosto w dół. Podaj `extent` z `directionalLightSpace`. (Odpowiedź: `(15, 29, 7)`: 14, 28 i 6 m plus `LIGHT_BOX_MARGIN` 0,5 m z każdej strony. To liczby z testu `a light that shines straight down sees the bounds from above`.)
 
 ## 9. Pytania kontrolne
 
@@ -1123,10 +1330,10 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
     Bo tak łatwiej myśleć o źródle: "księżyc świeci w dół". Wzory potrzebują kierunku od punktu do światła, czyli przeciwnego.
 
 20. **Co robi `addLight` i dlaczego jest jedną funkcją dla trzech rodzajów świateł?**
-    Dodaje do wyniku część rozproszoną i odbłysk jednego światła. Rodzaje świateł różnią się tylko tym, jak powstaje wektor do światła i ile światła dociera (`radiance`). Dalej wzory są wspólne.
+    Dodaje do wyniku część rozproszoną i odbłysk jednego światła. Rodzaje świateł różnią się tylko tym, jak powstaje wektor do światła i ile światła dociera (`radiance`). Dalej wzory są wspólne. Od czwartej części M7 wołają ją światła punktowe i latarka. Księżyc liczy te same dwa wyrazy tymi samymi funkcjami (`diffuseFactor`, `specularFactor`), ale sam, bo musi je zachować osobno.
 
 21. **Dlaczego światło kryształu widać za ścianą?**
-    Bo nie ma cieni. Wzory nie sprawdzają, czy między światłem a punktem coś stoi. Mapy cieni są planowane w dalszej części M7.
+    Bo światła kryształów nie mają cieni. Wzory nie sprawdzają, czy między światłem a punktem coś stoi. Mapę cieni ma od czwartej części M7 tylko księżyc. Cień latarki jest planowany w dalszej części M7, cienia świateł punktowych w planie nie ma.
 
 22. **Co oznacza `inout` w `addLight`?**
     Parametr jest kopiowany do funkcji przy wejściu i z powrotem przy wyjściu. GLSL nie ma referencji, a funkcja musi dopisać do struktury wołającego.
@@ -1135,7 +1342,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
     To ostrożna forma: GLSL 4.10 jej nie wymaga, wymaga jej GLSL ES 1.00. Zaletą jest to, że pętla nigdy nie wyjdzie poza tablicę 16 elementów, niezależnie od wartości `uPointCount`.
 
 24. **Co w tym kodzie jest sprawdzone testami, a co nie?**
-    Testami: wzory tłumienia i stożka w C++, kierunek z kątów, pakowanie bloku i jego rozmiar. Nie: kod GLSL (druga kopia wzorów) i panel. Obraz jest sprawdzony na zrzutach ekranu z Windowsa, a widżetów nikt nie klikał.
+    Testami: wzory tłumienia i stożka w C++, kierunek z kątów, pakowanie bloku i jego rozmiar, a od czwartej części M7 także `LightSpace` (osiem przypadków w `tests/ShadowTests.cpp`). Nie: kod GLSL (druga kopia wzorów, w tym pola księżyca i `moonFacing`) i panel. Obraz jest sprawdzony na zrzutach ekranu z Windowsa, a widżetów nikt nie klikał.
 
 25. **Skąd gra bierze światła punktowe?**
     Z kryształów rundy: `game::crystalLightPositions` daje pozycję 0,15 m nad czubkiem każdego kryształu, który nie jest zebrany. Zebrany kryształ traci światło. Najwyżej 16, bo tyle kryształów może mieć labirynt i tyle ma tablica w shaderze.
@@ -1158,14 +1365,39 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
 31. **Co się dzieje, gdy suma świateł przekroczy 1?**
     Od pierwszej części M7 nic nie ginie: bufor sceny jest zmiennoprzecinkowy (`GL_RGBA16F`) i przechowuje wartość taką, jaka wyszła. W zakres od 0 do 1 sprowadza ją krzywa mapowania tonów w przebiegu składającym. Do M6 framebuffer okna obcinał ją do 1.
 
+32. **Po co struktura `Lighting` ma pola `moonDiffuse` i `moonSpecular`, skoro księżyc jest już w `diffuse` i `specular`?**
+    Żeby wołający mógł odjąć cień księżyca. W cieniu od sumy odejmuje się dokładnie to, co księżyc do niej dołożył, razy udział cienia. Bez osobnych pól trzeba by przyciemnić całą sumę, czyli także otoczenie, latarkę i światła kryształów.
+
+33. **Które światła gry rzucają cień?**
+    Tylko księżyc (od czwartej części M7). Latarka i światła kryształów nie: ich światło przechodzi przez ściany. Cień latarki jest planowany.
+
+34. **Dlaczego gałąź księżyca w `computeLighting` nie woła `addLight`?**
+    `addLight` dopisuje oba wyrazy wprost do sumy i ich nie zwraca. Księżyc potrzebuje ich osobno, więc liczy je tymi samymi funkcjami, zapisuje w polach `moonDiffuse` i `moonSpecular`, a potem dodaje do sumy.
+
+35. **Co zwraca `moonFacing` i do czego służy?**
+    Cosinus kąta między normalną a kierunkiem do księżyca, bez obcinania do zera. Nie trafia do światła, tylko do biasu cienia: powierzchnia pochylona względem księżyca dostaje większą poprawkę głębi.
+
+36. **Co to jest `scene::LightSpace`?**
+    Widok i rzutowanie światła, czyli to, co dla kamery dają `viewMatrix` i `projectionMatrix`, plus rozmiar pudełka w metrach. Dla księżyca rzut jest ortograficzny, bo promienie są równoległe. Tymi macierzami rysuje się mapę cieni i tymi samymi się ją czyta.
+
+37. **Od czego zależy pudełko światła księżyca, a od czego nie?**
+    Od pudełka, które ma objąć (teren z zapasem na wysokość słupka), i od kierunku księżyca. Nie zależy od kamery, więc mapa pokrywa ten sam grunt w każdej klatce i cienie nie migoczą przy ruchu gracza.
+
+38. **Co robi `directionalLightSpace`, gdy światło świeci prosto w dół albo kierunek ma długość zero?**
+    Przy kierunku prawie pionowym (`|y| > 0,999`, mniej niż około 2,56 stopnia od pionu) bierze jako "górę" widoku `-Z` zamiast `+Y`, bo `lookAt` z górą równoległą do kierunku patrzenia dzieli przez zero. Kierunek o długości zero zastępuje kierunkiem prosto w dół.
+
+39. **Dlaczego macierz cienia nie jest w bloku `LightBlock`?**
+    Sampler mapy cieni nie może być składową bloku uniformów, więc i tak jest zwykłym uniformem. Liczby tej samej mapy (macierz, bias, promień PCF, siła) trzymam obok niego. Blok się nie zmienił: nadal 928 bajtów.
+
 ## 10. Źródła
 
 - LearnOpenGL, "Basic Lighting" (<https://learnopengl.com/Lighting/Basic-Lighting>): składniki otoczenia, rozproszony i zwierciadlany, normalne, macierz normalnych.
 - LearnOpenGL, "Light casters" (<https://learnopengl.com/Lighting/Light-casters>): światło kierunkowe, punktowe z tłumieniem, reflektor z miękkim brzegiem i porównywaniem cosinusów. Rozdział podaje tabelę gotowych współczynników dla wybranych zasięgów. Projekt jej nie używa: liczy współczynniki z promienia własnym wzorem (2 i 17).
 - LearnOpenGL, "Multiple lights" (<https://learnopengl.com/Lighting/Multiple-lights>): jedna funkcja na rodzaj światła i suma wyników.
 - LearnOpenGL, "Advanced Lighting" (<https://learnopengl.com/Advanced-Lighting/Advanced-Lighting>): Blinn-Phong.
+- LearnOpenGL, "Shadow Mapping" (<https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping>): przestrzeń światła, rzut ortograficzny dla światła kierunkowego, droga punktu do mapy cieni (sekcja 5.7).
 - docs.gl (<https://docs.gl>), strony funkcji GLSL 4: `reflect` (<https://docs.gl/sl4/reflect>), `dot`, `normalize`, `pow`, `clamp`, `length`.
 - Specyfikacja GLSL 4.10 (<https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.10.pdf>): kwalifikator `inout`, struktury, funkcje wbudowane, niezdefiniowany wynik `pow` dla ujemnej podstawy.
 - Bui Tuong Phong, "Illumination for Computer Generated Pictures" (1975): model odbicia. Johann Heinrich Lambert, "Photometria" (1760): prawo cosinusów.
-- Dokumenty w tym repozytorium: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../game/flashlight.md`](../game/flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (normalna z mapy normalnych), [`transforms.md`](transforms.md) (`normalMatrix`), [`camera.md`](camera.md) (yaw, pitch, `forward`), [`../debug-ui.md`](../debug-ui.md) (panele), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, `crystalGlow`, `GameplayRenderer`), [`../gfx/color-space.md`](../gfx/color-space.md) (sRGB i wartości liniowe, gdzie kolory są przeliczane), [`../renderer/post-process.md`](../renderer/post-process.md) (bufor HDR, ekspozycja, mapowanie tonów), notatki [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) (obowiązuje od pierwszej części M7), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (zastąpiona, historia) i [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md) (ile kryształów, a więc ile świateł punktowych). Notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md) opisuje rozwiązanie z M4 (światła w ślepych zaułkach), które M5 zastąpił.
+- Dokumenty w tym repozytorium: [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`../game/flashlight.md`](../game/flashlight.md), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (normalna z mapy normalnych), [`transforms.md`](transforms.md) (`normalMatrix`), [`camera.md`](camera.md) (yaw, pitch, `forward`), [`../debug-ui.md`](../debug-ui.md) (panele), [`../game/gameplay.md`](../game/gameplay.md) (kryształy, `crystalGlow`, `GameplayRenderer`), [`../gfx/color-space.md`](../gfx/color-space.md) (sRGB i wartości liniowe, gdzie kolory są przeliczane), [`../renderer/post-process.md`](../renderer/post-process.md) (bufor HDR, ekspozycja, mapowanie tonów), [`../renderer/shadows.md`](../renderer/shadows.md) (mapa cieni księżyca, od czwartej części M7), notatki [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md), [`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md) i [`../../decisions/shadow-box-fitted-to-terrain.md`](../../decisions/shadow-box-fitted-to-terrain.md) (cienie), notatki [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) (obowiązuje od pierwszej części M7), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (zastąpiona, historia) i [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md) (ile kryształów, a więc ile świateł punktowych). Notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md) opisuje rozwiązanie z M4 (światła w ślepych zaułkach), które M5 zastąpił.
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o oświetleniu).

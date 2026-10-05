@@ -17,6 +17,10 @@ bool usesNormalMap(const LightingSettings& settings) {
     return settings.normalMapping && settings.mode != LightingMode::Gouraud;
 }
 
+glm::vec3 moonDirection(const LightingSettings& settings) {
+    return scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees);
+}
+
 scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3& eye,
                               const glm::vec3& viewDirection,
                               std::span<const glm::vec3> pointPositions) {
@@ -28,7 +32,7 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3&
     lights.ambient = gfx::srgbToLinear(settings.ambient);
 
     lights.directional = {
-        .direction = scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees),
+        .direction = moonDirection(settings),
         .color = gfx::srgbToLinear(settings.moonColor),
         .intensity = settings.moonIntensity,
     };

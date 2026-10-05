@@ -11,7 +11,7 @@ Macierz modelu z [`transforms.md`](transforms.md) stawia obiekt w świecie. Żeb
 
 Ten dokument opisuje też miejsce, w którym trzy macierze spotykają się w jednej klatce, czyli `NightMazeApp::onRender`: test głębi, proporcje obrazu, zabezpieczenie przed framebufferem o rozmiarze zero i drogę jednego wierzchołka przez cały łańcuch na liczbach.
 
-Stan na dziś: `game::NightMazeApp` ma jedną `Camera`. Co klatkę liczy z niej macierz widoku i macierz rzutowania, raz, i wysyła je do każdego programu shaderów, którym ta klatka rysuje. Programów jest od M6 sześć, a w jednej klatce pracują najwyżej cztery: jeden program sceny wybrany według trybu oświetlenia (`textured` bez oświetlenia, `gouraud` albo `lit`), którym rysowane są teren, labirynt, brama i kryształy, `grass` (trawa, gdy jest włączona), `color` (linie pudełek i kul kolizji, gdy są włączone) oraz `skybox` (niebo, gdy jest włączone). Macierz modelu każdy rysowany obiekt ma własną (kod: sekcja 5.7). To samo oko, z którego powstaje macierz widoku, i ten sam kierunek `forward()` ustawiają też latarkę gracza: trafiają do `buildLightSet`, a oko jeszcze do `LightRig::upload` (sekcja 5.7). Kamera nie ma już własnego sterowania pozycją: jej kąty obraca mysz ([`camera-controls.md`](camera-controls.md)), a pozycję po każdym kroku symulacji dostaje z oczu gracza ([`../game/player.md`](../game/player.md)). Struktura `Camera` ma też drugiego użytkownika: `Player::update` tworzy tymczasową kamerę i używa jej jak kalkulatora kierunków `forward()` i `right()` (sekcja 5.3).
+Stan na dziś: `game::NightMazeApp` ma jedną `Camera`. Co klatkę liczy z niej macierz widoku i macierz rzutowania, raz, i wysyła je do każdego programu shaderów, którym ta klatka rysuje. Programów jest od M6 sześć, a w jednej klatce pracują najwyżej cztery: jeden program sceny wybrany według trybu oświetlenia (`textured` bez oświetlenia, `gouraud` albo `lit`), którym rysowane są teren, labirynt, brama i kryształy, `grass` (trawa, gdy jest włączona), `color` (linie pudełek i kul kolizji, gdy są włączone) oraz `skybox` (niebo, gdy jest włączone). Od czwartej części M7 (cienie księżyca, 2026-10-05) jest jeszcze siódmy program z uniformami `uView` i `uProjection`, `shadow_depth`, ale on **nie dostaje macierzy kamery**: rysuje scenę z kierunku księżyca i dostaje widok i rzutowanie światła (`scene::LightSpace`, [`lights.md`](lights.md), sekcja 5.7). Macierz modelu każdy rysowany obiekt ma własną (kod: sekcja 5.7). To samo oko, z którego powstaje macierz widoku, i ten sam kierunek `forward()` ustawiają też latarkę gracza: trafiają do `buildLightSet`, a oko jeszcze do `LightRig::upload` (sekcja 5.7). Kamera nie ma już własnego sterowania pozycją: jej kąty obraca mysz ([`camera-controls.md`](camera-controls.md)), a pozycję po każdym kroku symulacji dostaje z oczu gracza ([`../game/player.md`](../game/player.md)). Struktura `Camera` ma też drugiego użytkownika: `Player::update` tworzy tymczasową kamerę i używa jej jak kalkulatora kierunków `forward()` i `right()` (sekcja 5.3).
 
 Przykład liczbowy w sekcji 5.8 używa dzisiejszej sceny: kamery w pozie, z której startuje runda, i wierzchołka ściany labiryntu startowego. Tabele w sekcjach 2.3 i 5.6 oraz ćwiczenie 4 używają kamery z wartościami domyślnymi struktury (pozycja `(0, 0, 3)`, patrzy na początek układu). To poprawna ilustracja rachunku, ale nie poza, z której startuje gra (oko w `(1; 1,824; 1)` wewnątrz labiryntu: 1,7 m nad gruntem, który ma w tym miejscu 0,124 m). Mówię o tym wprost w każdym takim miejscu. W M1 sceną przykładów była kostka w początku układu: została usunięta w M5.
 
@@ -244,7 +244,7 @@ Macierze to zwykła matematyka na procesorze. `Transform` i `Camera` nie wołaj�
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | czyści kolor i głębię | przy włączonym teście głębi bufor głębi trzeba czyścić co klatkę, inaczej zostają w nim wartości z poprzedniej |
 | `glDepthRange(0, 1)` | zakres, na który trafia z z NDC | wartość domyślna, nie zmieniam jej |
 
-Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, `glViewport` od pierwszej części M7 wewnątrz `m_postProcess.beginScene` (przez `gfx::Framebuffer::bind`) i drugi raz w przebiegu składającym (`Framebuffer::bindDefault`), a `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania wysyła raz każda funkcja rysująca do swojego programu, a macierz modelu jest wysyłana raz dla każdego rysowanego obiektu.
+Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, `glViewport` od pierwszej części M7 wewnątrz `m_postProcess.beginScene` (przez `gfx::Framebuffer::bind`) i drugi raz w przebiegu składającym (`Framebuffer::bindDefault`), a od czwartej części M7 jeszcze wcześniej, w przebiegu cieni: `ShadowMap::beginDepthPass` wiąże framebuffer mapy cieni (viewport o rozmiarze mapy, 2048 x 2048 przy ustawieniach startowych), włącza test głębi i czyści głębię, zanim `beginScene` ustawi viewport sceny od nowa. `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania wysyła raz każda funkcja rysująca do swojego programu, a macierz modelu jest wysyłana raz dla każdego rysowanego obiektu.
 
 Kolejność w klatce:
 
@@ -252,7 +252,8 @@ Kolejność w klatce:
 flowchart TD
     D{"szerokość albo wysokość framebuffera okna 0?"}
     D -- tak --> End["koniec: klatka gry pominięta"]
-    D -- nie --> A["m_postProcess.beginScene: framebuffer HDR sceny jako cel,<br/>glViewport(0, 0, szerokość, wysokość framebuffera)"]
+    D -- nie --> SH["drawMoonShadowMap (czwarta część M7): scena z kierunku księżyca do mapy cieni,<br/>własny framebuffer i viewport, macierze światła zamiast macierzy kamery"]
+    SH --> A["m_postProcess.beginScene: framebuffer HDR sceny jako cel,<br/>glViewport(0, 0, szerokość, wysokość framebuffera)"]
     A --> B["glEnable(GL_DEPTH_TEST)"]
     B --> C["glClearColor (kolor przeliczony na liniowy), glClear(kolor i głębia)"]
     C --> E["aspectRatio = szerokość / wysokość (float)"]
@@ -521,7 +522,10 @@ Pole `position` ma wartość domyślną `(0, 0, 3)` tylko do chwili, gdy konstru
 
 ```cpp
 /// The three matrices. Every vertex shader (textured, color, lit, gouraud) declares
-/// them under the same names.
+/// them under the same names. skybox.vert has the view and the projection only: the sky
+/// is not placed anywhere in the world. The grass has the same two, in grass.geom: its
+/// points are already in world space. shadow_depth.vert has all three, and there the
+/// view and the projection are the ones of a light (scene::LightSpace).
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
@@ -537,6 +541,13 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
     if (framebuffer.width == 0 || framebuffer.height == 0) {
         return;
     }
+
+    // The shadow pass comes first: the scene as the moon sees it, depths only, into
+    // the shadow map. The lit programs of the scene pass read that map, so it has to
+    // be complete before they draw. The pass binds a framebuffer and a viewport of its
+    // own (the size of the map), and beginScene below binds the scene framebuffer with
+    // its viewport again.
+    drawMoonShadowMap();
 
     // From here on the draw calls do not land in the window. They land in the HDR
     // framebuffer of the scene, which is created again here when the size of the window
@@ -563,17 +574,18 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
 
-(Stan z pierwszej części M7. Dwa komentarze są tu skrócone, miejsca oznacza `(...)`.)
+(Stan z czwartej części M7: wywołanie `drawMoonShadowMap()` z komentarzem doszło w niej, reszta jest z pierwszej części M7. Dwa komentarze są tu skrócone, miejsca oznacza `(...)`.)
 
 | Linia | Znaczenie dla przekształceń |
 |---|---|
 | `window().framebufferSize()` | rozmiar obszaru rysowania w pikselach. Z tych samych dwóch liczb powstanie viewport i proporcje |
 | strażnik `0 x 0` | od M7 stoi na samym początku, przed wyborem celu i czyszczeniem (opis niżej) |
+| `drawMoonShadowMap()` (od czwartej części M7) | przebieg cieni, pierwszy przebieg klatki. Dla przekształceń ważne są dwie rzeczy. Po pierwsze **nie używa kamery**: liczy własny widok i własne rzutowanie ortograficzne z kierunku księżyca i z pudełka terenu (`scene::directionalLightSpace`), dlatego może stać przed policzeniem `eye`, `view` i `projection`. Po drugie zostawia związany framebuffer mapy cieni (albo jej podglądu) i jego viewport, więc `beginScene` zaraz po nim musi ustawić oba od nowa, i to robi. Macierze światła: [`lights.md`](lights.md), sekcja 5.7, cały przebieg: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.18 |
 | `m_postProcess.beginScene(framebuffer)` | wiąże framebuffer HDR sceny i woła `glViewport(0, 0, szerokość, wysokość)`: kwadrat NDC trafia na cały framebuffer sceny (sekcja 2.4). Do M6 stała tu linia `glViewport` wprost. Macierze niczego o tej zmianie nie wiedzą: liczą się tylko szerokość i wysokość w pikselach ([`../renderer/post-process.md`](../renderer/post-process.md)) |
 | `glEnable(GL_DEPTH_TEST)` | test głębi (sekcja 3). W labiryncie to on sprawia, że bliska ściana zasłania dalsze korytarze, choć ściany są rysowane w kolejności listy, a nie od najdalszej |
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | jedno wywołanie czyści oba bufory. `\|` to bitowe "lub": łączy dwie flagi w jedną maskę |
 
-**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (cel rysowania z viewportem, test głębi, kolor czyszczenia), a potem każda funkcja rysująca wybiera swój program. Koszt to jedno wywołanie na klatkę. Od pierwszej części M7 jest jeszcze drugi, własny powód: przebieg składający na końcu każdej klatki sam wyłącza test głębi i zostawia go wyłączonego (`PostProcess::composite`), więc wariant "raz w konstruktorze" już by nie działał.
+**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (cel rysowania z viewportem, test głębi, kolor czyszczenia), a potem każda funkcja rysująca wybiera swój program. Koszt to jedno wywołanie na klatkę. Od pierwszej części M7 jest jeszcze drugi, własny powód: przebieg składający na końcu każdej klatki sam wyłącza test głębi i zostawia go wyłączonego (`PostProcess::composite`), więc wariant "raz w konstruktorze" już by nie działał. Od czwartej części M7 z tego samego powodu test włącza także `ShadowMap::beginDepthPass`, który działa przed tą linią, a podgląd mapy cieni (`ShadowMap::drawPreview`, tylko przy otwartym panelu Shadows) znów go wyłącza: ta linia `glEnable` w `onRender` pozostaje więc potrzebna.
 
 **Reszta: proporcje, oko i dwie macierze.**
 
@@ -594,7 +606,7 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
     const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
 ```
 
-Zaraz po nich światła tej klatki i dwa wywołania rysujące:
+Zaraz po nich światła tej klatki i trzy wywołania rysujące (listing do czwartej części M7 pomijał linię `drawGrass`, która jest w kodzie od drugiej części M6):
 
 ```cpp
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
@@ -604,6 +616,7 @@ Zaraz po nich światła tej klatki i dwa wywołania rysujące:
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);
+    drawGrass(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
     }
@@ -621,12 +634,13 @@ Zaraz po nich światła tej klatki i dwa wywołania rysujące:
 | `lightingForFrame(m_lighting, m_round, m_gameplay)` i `crystalLightPositions(m_round)` | to, co runda zmienia w świetle tylko na tę klatkę (słaba bateria przygasza latarkę, światła kryształów pulsują), i pozycje świateł punktowych nad niezebranymi kryształami. Z kamery niczego nie biorą ([`../game/gameplay.md`](../game/gameplay.md), [`../game/flashlight.md`](../game/flashlight.md)) |
 | `buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights)` | zestaw świateł tej klatki. Z kamery bierze dwie rzeczy: `eye`, to samo oko co macierz widoku, jako pozycję latarki, i `m_camera.forward()` (sekcja 5.3) jako jej kierunek. Dlatego stoi **po** obrocie myszą i po policzeniu oka: reflektor jest dokładnie w punkcie, z którego robiony jest obraz ([`../game/flashlight.md`](../game/flashlight.md)) |
 | `m_lightRig.upload(lights, eye)` | kopiuje światła i pozycję oka do bufora uniformów, raz na klatkę, także w trybie bez oświetlenia. Oko jest tu pozycją kamery w przestrzeni świata, z której shader liczy kierunek do obserwatora ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) |
-| `drawMaze(view, projection)` | labirynt, brama i kryształy jednym programem. Obie macierze idą dalej przez `const glm::mat4&` |
+| `drawMaze(view, projection)` | teren, labirynt, brama i kryształy jednym programem. Obie macierze idą dalej przez `const glm::mat4&` |
+| `drawGrass(view, projection)` | trawa programem `grass`, gdy jest włączona. Te same dwie macierze (tabela niżej) |
 | `if (m_drawColliders) { drawColliderLines(view, projection); }` | linie pudełek i kul kolizji, tylko gdy są włączone w panelu Collision. Te same dwie macierze, więc linie leżą dokładnie na tym, co opisują |
 
-W M4 między tymi dwoma wywołaniami stały jeszcze dwa: rysowanie małych sześcianów w miejscach świateł punktowych i rysowanie kostki z M1. Oba zostały usunięte w M5.
+W M4 między `drawMaze` a rysowaniem linii stały jeszcze dwa wywołania: rysowanie małych sześcianów w miejscach świateł punktowych i rysowanie kostki z M1. Oba zostały usunięte w M5.
 
-**Sprawdzenia programu przeniosły się do funkcji rysujących.** W M1 `onRender` wracało, gdy jedyny program był niepoprawny. Dziś programów jest sześć i każda funkcja sprawdza ten, którym rysuje (`if (!m_texturedShader.isValid()) { return; }` w `drawUnlitMaze`, analogicznie w pozostałych), więc błąd w jednym pliku shadera wyłącza tylko jego część sceny.
+**Sprawdzenia programu przeniosły się do funkcji rysujących.** W M1 `onRender` wracało, gdy jedyny program był niepoprawny. Dziś programów sceny jest sześć i każda funkcja sprawdza ten, którym rysuje (`if (!m_texturedShader.isValid()) { return; }` w `drawUnlitMaze`, analogicznie w pozostałych), więc błąd w jednym pliku shadera wyłącza tylko jego część sceny.
 
 **Kto ustawia którą macierz.** Każda funkcja rysująca dostaje `view` i `projection` przez `const glm::mat4&` i ustawia je w swoim programie po `use()`. Sama `drawMaze` niczego nie ustawia: wybiera jedną z dwóch funkcji.
 
@@ -635,9 +649,10 @@ W M4 między tymi dwoma wywołaniami stały jeszcze dwa: rysowanie małych sześ
 | `drawUnlitMaze` (tryb `Unlit` albo widok do szukania błędów: normalne, UV) | `m_texturedShader` | raz na klatkę | `game::drawModel` ustawia go dla każdego obiektu. Przed nim `TerrainRenderer` rysuje teren przez `game::drawMesh` z macierzą jednostkową (od M6). `MazeRenderer` podaje mu macierze ścian i słupków policzone przy budowie labiryntu ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), a `GameplayRenderer` macierz bramy i macierze kryształów liczone w tej klatce ([`transforms.md`](transforms.md), sekcja 5.4) |
 | `drawLitMaze` (pozostałe przypadki) | `m_gouraudShader` w trybie `Gouraud`, `m_litShader` w trybach `Phong` i `BlinnPhong` | raz na klatkę | tak samo, przez `game::drawModel`. Ta sama pętla wysyła dla każdego obiektu także `uNormalMatrix`, z którego korzystają tylko programy z oświetleniem: `textured` takiego uniformu nie ma i tam to wywołanie nic nie zmienia ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), [`transforms.md`](transforms.md), sekcja 5.6) |
 | `drawGrass` (od M6, gdy trawa jest włączona) | `m_grassShader` | raz na klatkę, w `GrassRenderer::draw`: ta funkcja sama woła `use()` i ustawia oba uniformy. W programie `grass` czyta je shader **geometrii** (`grass.geom`), a nie shader wierzchołków | nie ma: punkty kępek są już w przestrzeni świata ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)) |
+| `drawShadowCasters` (od czwartej części M7, wołana z `drawMoonShadowMap`, gdy cienie są włączone) | `m_shadowDepthShader` | raz na klatkę, ale **nie z kamery**: `setMat4(VIEW_UNIFORM, lightSpace.view)` i `setMat4(PROJECTION_UNIFORM, lightSpace.projection)`, czyli widok i rzutowanie księżyca | tak samo jak w `drawLitMaze`: te same klasy (`TerrainRenderer`, `MazeRenderer`, `GameplayRenderer`) rysują te same obiekty tymi samymi macierzami modelu, więc w mapie cieni wszystko stoi tam, gdzie w obrazie. `uNormalMatrix` i uniformy tekstur też są wysyłane, a program `shadow_depth` ich nie ma i OpenGL je pomija ([`../renderer/shadows.md`](../renderer/shadows.md)) |
 | `drawColliderLines` | `m_colorShader` | raz na klatkę, tylko gdy rysowanie kształtów kolizji jest włączone | `ColliderLines` liczy go dla każdego pudełka (skala i przesunięcie sześcianu jednostkowego) i trzy razy dla każdej kuli (skala, obrót i przesunięcie okręgu jednostkowego). Sekcja 5.4 w [`transforms.md`](transforms.md), [`collision.md`](collision.md), sekcja 5 |
 
-**Ile programów w jednej klatce.** Programów jest sześć, ale jedna klatka używa najwyżej czterech. Teren, labirynt, bramę i kryształy rysuje dokładnie jeden z trójki `textured`, `gouraud`, `lit`. Trawę, od drugiej części M6, rysuje `grass`: dostaje te same dwie macierze, ale mnoży przez nie dopiero shader geometrii, dla każdego wierzchołka źdźbła, który sam wytworzył. Linie kształtów kolizji rysuje `color`. Niebo, od pierwszej części M6, rysuje `skybox`: dostaje te same dwie macierze, ale jego shader wierzchołków usuwa z macierzy widoku przesunięcie i zostawia sam obrót, więc kamera stoi dla nieba zawsze w środku sześcianu ([`../renderer/skybox.md`](../renderer/skybox.md), sekcje 2.6 i 4.1).
+**Ile programów w jednej klatce.** Programów, które dostają macierze **kamery**, jest sześć, ale jedna klatka używa najwyżej czterech. (Wszystkich programów shaderów gra ma dziś jedenaście: cztery rysują trójkąt na cały cel i macierzy nie mają, a `shadow_depth` z czwartej części M7 dostaje macierze księżyca.) Teren, labirynt, bramę i kryształy rysuje dokładnie jeden z trójki `textured`, `gouraud`, `lit`. Trawę, od drugiej części M6, rysuje `grass`: dostaje te same dwie macierze, ale mnoży przez nie dopiero shader geometrii, dla każdego wierzchołka źdźbła, który sam wytworzył. Linie kształtów kolizji rysuje `color`. Niebo, od pierwszej części M6, rysuje `skybox`: dostaje te same dwie macierze, ale jego shader wierzchołków usuwa z macierzy widoku przesunięcie i zostawia sam obrót, więc kamera stoi dla nieba zawsze w środku sześcianu ([`../renderer/skybox.md`](../renderer/skybox.md), sekcje 2.6 i 4.1).
 
 | Tryb oświetlenia i przełączniki | Programy użyte w klatce | Ile razy ustawiane są `uView` i `uProjection` |
 |---|---|---|
@@ -647,7 +662,7 @@ W M4 między tymi dwoma wywołaniami stały jeszcze dwa: rysowanie małych sześ
 | `Phong` albo `BlinnPhong` (stan startowy), bez linii, trawa i niebo włączone | `lit`, `grass`, `skybox` | 3 |
 | `Phong` albo `BlinnPhong`, z liniami, trawa i niebo włączone | `lit`, `grass`, `color`, `skybox` | 4 |
 
-Tabela zakłada, że każdy potrzebny program jest poprawny, bo funkcja z niepoprawnym programem wraca od razu. Każda funkcja rysująca ustawia obie macierze sama i nie zakłada, że inna zawołała się wcześniej.
+Tabela liczy tylko macierze kamery. Od czwartej części M7 przy włączonych cieniach (stan startowy) w każdym wierszu dochodzi program `shadow_depth` i jedno ustawienie `uView` i `uProjection` macierzami księżyca, także w trybie `Unlit`: mapa cieni jest wtedy rysowana, choć program `textured` jej nie czyta. Tabela zakłada, że każdy potrzebny program jest poprawny, bo funkcja z niepoprawnym programem wraca od razu. Każda funkcja rysująca ustawia obie macierze sama i nie zakłada, że inna zawołała się wcześniej.
 
 Trzy macierze na przykładzie linii pudełek. Dwie wspólne ustawia `drawColliderLines`:
 

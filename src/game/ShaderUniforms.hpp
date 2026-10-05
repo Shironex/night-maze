@@ -14,7 +14,8 @@ namespace game {
 /// The three matrices. Every vertex shader (textured, color, lit, gouraud) declares
 /// them under the same names. skybox.vert has the view and the projection only: the sky
 /// is not placed anywhere in the world. The grass has the same two, in grass.geom: its
-/// points are already in world space.
+/// points are already in world space. shadow_depth.vert has all three, and there the
+/// view and the projection are the ones of a light (scene::LightSpace).
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
@@ -54,6 +55,42 @@ constexpr const char* SHININESS_UNIFORM = "uShininess";
 /// lighting instead of the program working by accident.
 constexpr const char* LIGHT_BLOCK_NAME = "LightBlock";
 constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
+
+/// common/shadows.glsl, so lit.frag, gouraud.frag and grass.frag: the names of the
+/// uniforms of ONE shadow map. Every light that casts shadows has a set of its own in
+/// that file, and a constant of this type here (game::setShadowUniforms takes it).
+struct ShadowUniformNames {
+    /// The sampler2DShadow of the map (it holds the number of a texture unit).
+    const char* map;
+    /// Whether the map is read (1) or nothing is in shadow (0).
+    const char* enabled;
+    /// World space to the clip space of the light (scene::LightSpace::matrix).
+    const char* matrix;
+    /// The two parts of the bias, as differences of stored depths.
+    const char* constantBias;
+    const char* slopeBias;
+    /// The radius of the PCF kernel in texels. 0: one comparison.
+    const char* pcfRadius;
+    /// The share of the light a shadow takes away, 0 to 1.
+    const char* strength;
+};
+
+/// The shadow map of the moon.
+constexpr ShadowUniformNames MOON_SHADOW_UNIFORMS{
+    .map = "uMoonShadowMap",
+    .enabled = "uMoonShadowEnabled",
+    .matrix = "uMoonShadowMatrix",
+    .constantBias = "uMoonShadowConstantBias",
+    .slopeBias = "uMoonShadowSlopeBias",
+    .pcfRadius = "uMoonShadowPcfRadius",
+    .strength = "uMoonShadowStrength",
+};
+
+/// The texture unit of the shadow map of the moon. The models use units 0 (colour
+/// picture) and 1 (normal map) in the lit programs, and the composite pass uses 0 to 2,
+/// so 3 is the first unit nothing else binds: the map is bound once per frame and stays
+/// there while everything lit is drawn. A second shadow map takes the next unit.
+constexpr GLuint MOON_SHADOW_TEXTURE_UNIT = 3;
 
 /// color.frag: the one colour of everything drawn, a linear colour.
 constexpr const char* COLOR_UNIFORM = "uColor";

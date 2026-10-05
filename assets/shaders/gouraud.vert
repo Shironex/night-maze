@@ -31,6 +31,18 @@ out vec2 vUv;            // texture coordinate
 out vec3 vDiffuseLight;  // ambient and diffuse light at this vertex
 out vec3 vSpecularLight; // highlight at this vertex
 
+// Outputs for the shadow of the moon. The LIGHT stays per vertex, but whether a point
+// lies in a shadow is asked per fragment in gouraud.frag: the edge of a shadow runs
+// across a wall face wherever it likes, and a wall face has only four vertices. Asked
+// per vertex, a face would be shaded as a whole or blended from corner to corner, and
+// the shadows would not look like shadows. So this shader hands over the share of the
+// moon in the two light values above, the position the fragment shader looks up in the
+// shadow map, and how much the surface faces the moon (for the bias).
+out vec3 vMoonDiffuseLight;  // the part of vDiffuseLight that comes from the moon
+out vec3 vMoonSpecularLight; // the part of vSpecularLight that comes from the moon
+out vec3 vWorldPosition;     // position in world space
+out float vMoonFacing;       // cosine between the normal and the direction to the moon
+
 void main() {
     vec4 worldPosition = uModel * vec4(aPosition, 1.0);
     // The normal of a vertex comes straight from the model with length 1, but the
@@ -40,6 +52,10 @@ void main() {
     Lighting lighting = computeLighting(worldPosition.xyz, normal);
     vDiffuseLight = lighting.diffuse;
     vSpecularLight = lighting.specular;
+    vMoonDiffuseLight = lighting.moonDiffuse;
+    vMoonSpecularLight = lighting.moonSpecular;
+    vWorldPosition = worldPosition.xyz;
+    vMoonFacing = moonFacing(normal);
     vUv = aUv;
 
     gl_Position = uProjection * uView * worldPosition;

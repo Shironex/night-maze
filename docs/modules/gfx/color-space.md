@@ -5,9 +5,9 @@ Kod: [`src/gfx/ColorSpace.hpp`](../../../src/gfx/ColorSpace.hpp), [`src/gfx/Colo
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument odpowiada na jedno pytanie: **co znaczą liczby koloru w każdym miejscu programu i gdzie zmieniają znaczenie**. Tekstury jako obiekty OpenGL opisuje [`textures.md`](textures.md), bufor, do którego trafia scena, [`framebuffers.md`](framebuffers.md), a ostatni przebieg klatki (ekspozycja, mapowanie tonów, kodowanie) [`../renderer/post-process.md`](../renderer/post-process.md). Decyzje zapisują notatki [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) i [`../../decisions/srgb-encode-in-shader.md`](../../decisions/srgb-encode-in-shader.md). Wcześniejsza notatka [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) jest od dziś zastąpiona: ten dokument opisuje to, co ona odkładała.
 
-**Stan na dziś:** kod jest w całości napisany i używany przez grę. Dwie funkcje przeliczające mają dziewięć przypadków testowych (`tests/ColorSpaceTests.cpp`), a przeliczanie kolorów świateł jeden nowy przypadek w `tests/LightingTests.cpp`. Zgłoszone dla Windowsa (2026-10-05, nie uruchamiałem tego sam): bramka `make check` przechodzi (formatowanie, testy w Debug i Release, clang-tidy), zero ostrzeżeń, 269 przypadków testowych i 102103 asercje w obu konfiguracjach, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412 (w testach tego modułu bez zmian). Zgłoszone porównanie obrazu ze starym potokiem jest w sekcji 5.9. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
+**Stan na dziś:** kod jest w całości napisany i używany przez grę. Dwie funkcje przeliczające mają dziewięć przypadków testowych (`tests/ColorSpaceTests.cpp`), a przeliczanie kolorów świateł jeden nowy przypadek w `tests/LightingTests.cpp`. Zgłoszone dla Windowsa (2026-10-05, nie uruchamiałem tego sam): bramka `make check` przechodzi (formatowanie, testy w Debug i Release, clang-tidy), zero ostrzeżeń, 269 przypadków testowych i 102103 asercje w obu konfiguracjach, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej (cienie księżyca) 310 i 103751 (w testach tego modułu bez zmian). Zgłoszone porównanie obrazu ze starym potokiem jest w sekcji 5.9. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
 
-Uwaga o komentarzach w kodzie: `// See docs/...` na górze `ColorSpace.hpp`, `ColorSpace.cpp`, `common/color.glsl` i `ColorSpaceTests.cpp` wskazuje `docs/modules/renderer/post-process.md`. Tamten dokument ma krótką sekcję, która odsyła tutaj. Teoria gammy jest w tym pliku, bo dotyczy tekstur i kolorów w całym programie, a nie tylko ostatniego przebiegu.
+Uwaga o komentarzach w kodzie: `// See docs/...` na górze `ColorSpace.hpp`, `ColorSpace.cpp`, `common/color.glsl` i `ColorSpaceTests.cpp` wskazuje od czwartej części M7 ten dokument, `docs/modules/gfx/color-space.md`. Do trzeciej części wskazywał `docs/modules/renderer/post-process.md`, który ma krótką sekcję odsyłającą tutaj. Teoria gammy jest w tym pliku, bo dotyczy tekstur i kolorów w całym programie, a nie tylko ostatniego przebiegu.
 
 ## 1. Po co to jest
 
@@ -183,7 +183,7 @@ Uwagi do tabeli:
 
 - **Kolor mgły w liczbach.** Wartość startowa to sRGB (0,14, 0,18, 0,26). `srgbToLinear` robi z niej wartość liniową około (0,017, 0,027, 0,055) i tę przebieg składający miesza z liniowym obrazem sceny (`mix`), przed dodaniem poświaty, ekspozycją i mapowaniem tonów. Po krzywej ACES i kodowaniu sama mgła wychodzi na ekran jako około (0,09, 0,14, 0,25): ciemniejsza niż próbka w próbniku, bo krzywa dociska ciemne tony. Mówi to komentarz pola w `Fog.hpp` i podpowiedź próbnika. Trzecia trójka jest policzona, nie zmierzona na ekranie ([`../renderer/post-process.md`](../renderer/post-process.md), sekcja 2.21).
 - **`pointColor` ma dwa miejsca przeliczenia**, bo ma dwóch odbiorców: światło wokół kryształu (`buildLightSet`) i świecenie samej siatki (`crystalEmissive`). Oba wołają tę samą funkcję na tej samej liczbie, więc kryształ świeci w kolorze światła, które rzuca. Kto zmieni jedno, musi zmienić drugie.
-- **Gradient trawy jest mieszany na liczbach sRGB, a dopiero wynik jest przeliczany.** Tak dobrano go na oko, zanim istniała gamma, i taka kolejność zachowuje jego wygląd. Odwrotna kolejność (przeliczyć oba końce, mieszać liniowo) dałaby jaśniejszy środek źdźbła.
+- **Gradient trawy jest mieszany na liczbach sRGB, a dopiero wynik jest przeliczany.** Tak dobrano go na oko, zanim istniała gamma, i taka kolejność zachowuje jego wygląd. Odwrotna kolejność (przeliczyć oba końce, mieszać liniowo) dałaby jaśniejszy środek źdźbła. Komentarz w `grass.frag` porównuje to od czwartej części M7 ostrożniej niż wcześniej: wynik jest "like one texel of an sRGB texture", czyli jak **jeden teksel** tekstury sRGB. Filtrowana tekstura sRGB miesza teksele już po przeliczeniu, więc jej tony pośrednie wyszłyby trochę inne niż w tym gradiencie.
 - **Widoki diagnostyczne pokazują dane, a nie światło.** Normalna `(0, 1, 0)` ma dotrzeć na ekran jako kolor `(0.5, 1.0, 0.5)`, dokładnie tymi liczbami. Ostatni przebieg zakoduje klatkę, więc shader stosuje przeliczenie odwrotne i oba się znoszą. Dla tych widoków `onRender` wyłącza też ekspozycję i mapowanie tonów ([`../renderer/post-process.md`](../renderer/post-process.md)).
 
 Czego się **nie** przelicza i dlaczego:
@@ -444,13 +444,13 @@ Pełna lista jest w tabeli w sekcji 2.8. Tu trzy miejsca po stronie C++ z kodem.
     lights.ambient = gfx::srgbToLinear(settings.ambient);
 
     lights.directional = {
-        .direction = scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees),
+        .direction = moonDirection(settings),
         .color = gfx::srgbToLinear(settings.moonColor),
         .intensity = settings.moonIntensity,
     };
 ```
 
-Kolor jest przeliczany, intensywność nie. `game::LightingSettings` trzyma liczby sRGB (takie, jakie pokazuje selektor koloru w panelu Lights), a `scene::LightSet`, który idzie do bufora uniformów, trzyma już wartości liniowe. Granica między dwoma znaczeniami jest więc granicą między dwiema strukturami. Resztę funkcji opisuje [`../game/flashlight.md`](../game/flashlight.md).
+Kolor jest przeliczany, intensywność nie. Kierunek księżyca daje od czwartej części M7 funkcja `game::moonDirection` (wcześniej stało tu wprost `scene::directionFromAngles` z dwoma kątami): z tej samej funkcji bierze go mapa cieni, więc światło i cień nie mogą się rozjechać ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.2). `game::LightingSettings` trzyma liczby sRGB (takie, jakie pokazuje selektor koloru w panelu Lights), a `scene::LightSet`, który idzie do bufora uniformów, trzyma już wartości liniowe. Granica między dwoma znaczeniami jest więc granicą między dwiema strukturami. Resztę funkcji opisuje [`../game/flashlight.md`](../game/flashlight.md).
 
 **Kolor tła** ([`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), `onRender`):
 
@@ -515,14 +515,16 @@ Wprowadzenie gammy zmienia jasność całej sceny, więc wartości startowe trze
 | Ustawienie | Przed M7 | Od M7 | Liniowo (to, co widzi shader) |
 |---|---|---|---|
 | `LightingSettings::ambient` | `(0.035, 0.045, 0.075)` | `(0.105, 0.135, 0.225)` | `(0.0108, 0.0163, 0.0414)` |
-| `moonIntensity` (kolor `(0.55, 0.65, 1.0)` bez zmiany) | 0,3 | 0,12 | kolor `(0.263, 0.380, 1.0)` razy 0,12 |
+| `moonIntensity` (kolor `(0.55, 0.65, 1.0)` bez zmiany) | 0,3 | 0,12, a od czwartej części M7 0,2 (razem z cieniami księżyca) | kolor `(0.263, 0.380, 1.0)` razy 0,12, dziś razy 0,2 |
 | `flashlightIntensity` (kolor `(1.0, 0.9, 0.72)` bez zmiany) | 1,6 | 1,3 | kolor `(1.0, 0.787, 0.477)` razy 1,3 |
 | `pointIntensity` (kolor `(0.2, 0.9, 0.8)` bez zmiany) | 2,0 | 0,9 | kolor `(0.033, 0.787, 0.604)` razy 0,9 |
 | `CRYSTAL_GLOW_STRENGTH` | 1,0 | 2,5 (od drugiej części M7: 4,0, razem z bloomem, [`../../decisions/crystal-glow-raised-for-bloom.md`](../../decisions/crystal-glow-raised-for-bloom.md)) | mnożnik koloru liniowego |
 | `SkyboxSettings::brightness` (górna granica suwaka) | 1,0 (3) | 2,2 (6) | mnożnik koloru liniowego |
 | kolor tła `m_clearColor` | `(0.01, 0.015, 0.04)` | `(0.022, 0.033, 0.088)` | `(0.0017, 0.0026, 0.0083)` |
 
-Przed M7 liczby były używane w rachunku wprost, więc kolumny "przed" i "liniowo" nie są tą samą skalą i nie da się ich porównać jedna do jednej. Dobrze to widać na świetle otoczenia: liczba wpisana wzrosła trzy razy, a to, co dostaje shader, jest mniejsze niż dawniej, bo dawne 0,035 wchodziło do rachunku bez dekodowania. Komentarz przy `ambient` w `Lighting.hpp` opisuje tę zależność nieprecyzyjnie ("only about a hundredth of it is left"): po przeliczeniu z 0,105 zostaje 0,0108, czyli około dziesiątej części wpisanej liczby i około setnej części bieli.
+Przed M7 liczby były używane w rachunku wprost, więc kolumny "przed" i "liniowo" nie są tą samą skalą i nie da się ich porównać jedna do jednej. Dobrze to widać na świetle otoczenia: liczba wpisana wzrosła trzy razy, a to, co dostaje shader, jest mniejsze niż dawniej, bo dawne 0,035 wchodziło do rachunku bez dekodowania. Komentarz przy `ambient` w `Lighting.hpp` opisywał tę zależność nieprecyzyjnie ("only about a hundredth of it is left"). Od czwartej części M7 mówi "only a tenth to a fifth of each number is left as linear light", co zgadza się z tabelą: z 0,105 zostaje 0,0108 (około dziesiątej części wpisanej liczby), z 0,135 zostaje 0,0163, a z 0,225 zostaje 0,0414 (prawie piąta część). Setną częścią jest pierwsza z tych liczb dopiero wobec bieli.
+
+Księżyc dostał w czwartej części M7 więcej światła z konkretnego powodu, zapisanego w komentarzu przy `moonIntensity`: odkąd ściany rzucają cień, powierzchnia w świetle księżyca ma być wyraźnie jaśniejsza od powierzchni w cieniu ściany, która ma tylko światło otoczenia. Komentarz podaje "about five times on level ground", a policzone w wartościach liniowych wychodzi około 4,6 do 4,7 raza ([`../renderer/shadows.md`](../renderer/shadows.md)). Zgłoszone porównania obrazu sprzed tej części i po niej robiono z księżycem cofniętym do 0,12.
 
 Wartości są dobrane razem z ekspozycją 1,0 i krzywą ACES ostatniego przebiegu (komentarz przy `LightingSettings`). Zmiana jednej z tych rzeczy zmienia wygląd wszystkich.
 
@@ -635,4 +637,4 @@ Zmiany w shaderach widać po `Reload shaders` w panelu Shaders, bez przebudowy. 
 - Specyfikacja OpenGL 4.1 Core (<https://registry.khronos.org/OpenGL/specs/gl/glspec41.core.pdf>): przeliczanie koloru tekstur sRGB (komentarz w `ColorSpace.hpp` podaje sekcję 3.8.17; numeru nie sprawdzałem w dokumencie).
 - Rozszerzenie `EXT_texture_sRGB_decode` (<https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_sRGB_decode.txt>).
 - Notatki o decyzjach: [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) (potok liniowy, dokładna krzywa, obowiązkowy argument, kolory wpisane jako sRGB), [`../../decisions/srgb-encode-in-shader.md`](../../decisions/srgb-encode-in-shader.md), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md) (zastąpiona, historia).
-- Dokumenty w tym repozytorium: [`../renderer/post-process.md`](../renderer/post-process.md) (ekspozycja, mapowanie tonów, ostatni przebieg), [`framebuffers.md`](framebuffers.md) (bufor `GL_RGBA16F`), [`textures.md`](textures.md) i [`cubemap.md`](cubemap.md) (format wewnętrzny), [`normal-mapping.md`](normal-mapping.md), [`../assets/asset-cache.md`](../assets/asset-cache.md), [`../game/flashlight.md`](../game/flashlight.md) (`buildLightSet`), [`../debug-ui.md`](../debug-ui.md) (`RawTextureSampler`).
+- Dokumenty w tym repozytorium: [`../renderer/post-process.md`](../renderer/post-process.md) (ekspozycja, mapowanie tonów, ostatni przebieg), [`../renderer/shadows.md`](../renderer/shadows.md) (cienie księżyca: dlaczego `moonIntensity` wzrosło do 0,2), [`framebuffers.md`](framebuffers.md) (bufor `GL_RGBA16F`), [`textures.md`](textures.md) i [`cubemap.md`](cubemap.md) (format wewnętrzny), [`normal-mapping.md`](normal-mapping.md), [`../assets/asset-cache.md`](../assets/asset-cache.md), [`../game/flashlight.md`](../game/flashlight.md) (`buildLightSet`), [`../debug-ui.md`](../debug-ui.md) (`RawTextureSampler`).

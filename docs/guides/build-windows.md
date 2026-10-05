@@ -62,8 +62,20 @@
 > częścią, oba widoki diagnostyczne identyczne przy włączonych wartościach startowych
 > i liczba klatek na sekundę z oboma efektami i bez nich (sekcja 19.1). Żadnego z tych
 > pomiarów nie powtarzałem. Wersji kompilatora, karty graficznej i sterownika dla tej
-> części nie zapisano. M7 jest rozpoczęty, nie kompletny: są bufor HDR, bloom, mgła
-> i winieta, minimapy i cieni nie ma.
+> części nie zapisano. Po tej części M7 był rozpoczęty, nie kompletny: były bufor HDR,
+> bloom, mgła i winieta, minimapy i cieni nie było.
+>
+> **Zgłoszone 2026-10-05 (M7, część 4: cienie księżyca):** bramka `make check` przechodzi
+> (formatowanie, buildy i testy w Debug i w Release, clang-tidy), 310 przypadków testowych
+> i 103751 asercji, z odznaczonym polem `Shadows` i suwakiem `Moon intensity` cofniętym do
+> 0,12 obraz identyczny co do piksela z trzecią częścią poza paskiem HUD (w trybie `Phong`
+> różnica najwyżej 1/255), brak błędów OpenGL w buildzie Debug przy mapie cieni 2048
+> i 1024 oraz liczba klatek na sekundę z cieniami i bez (sekcja 20.1). Liczby klatek są
+> zaszumione i nie wolno ich zestawiać z sekcją 19.1. Żadnego z tych pomiarów nie
+> powtarzałem. Wersji kompilatora, karty graficznej i sterownika dla tej części nie
+> zapisano. M7 jest rozpoczęty, nie kompletny: w kodzie są cztery części z sześciu (bufor
+> HDR, bloom, mgła i winieta, cienie księżyca), cieni latarki i minimapy nie ma
+> ([`m7-status.md`](m7-status.md)).
 >
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
@@ -72,13 +84,15 @@
 > rozwijanie paneli Camera i Gameplay, pole `Skybox` i suwak `Sky brightness`, chodzenie po
 > nierównym podłożu, panele Terrain i Grass z ich suwakami i polami wyboru, panel
 > Framebuffers z suwakiem ekspozycji, listą krzywych i podglądami, jego dwie zakładki
-> z kontrolkami bloomu, mgły i winiety, zmiana rozmiaru okna,
+> z kontrolkami bloomu, mgły i winiety, cały panel Shadows z przełączaniem rozdzielczości
+> mapy cieni w działającej grze, zmiana rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
 > są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
 > M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
-> 18 (bloom, druga część M7) i 19 (mgła i winieta, trzecia część M7) rozróżniają punkty
+> 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7) i 20 (cienie księżyca,
+> czwarta część M7) rozróżniają punkty
 > zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
 > Sekcje 11, 12 i 13 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach
@@ -90,8 +104,8 @@
 > płaskie płytki (model `floor_tile.obj` z teksturą `floor_stone.png`): druga część M6
 > usunęła je i zastąpiła terenem z mapy wysokości, więc słowo "podłoga" w punktach `[x]`
 > tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
-> pokazuje dziś, opisują sekcje 2, 14, 15 i 16, a koniec klatki (bufor HDR, bloom, mgłę
-> i winietę) sekcje 17, 18 i 19.
+> pokazuje dziś, opisują sekcje 2, 14, 15 i 16, koniec klatki (bufor HDR, bloom, mgłę
+> i winietę) sekcje 17, 18 i 19, a cienie księżyca sekcja 20.
 
 ## 1. Wymagania
 
@@ -174,10 +188,10 @@ Słowo "zmierzone" w tytule dotyczy stanu do M4. To, co lista mówi o M5 (kryszt
 brama, pasek HUD i jego napisy, panel Gameplay, liczby modeli i tekstur
 w liniach `[info]`), wynika z kodu, a nie z pomiaru: dla M5 zmierzone są build, testy
 jednostkowe i obraz na zrzutach, których listy nie zapisano (sekcja 14.1). Tak samo jest
-z tym, co lista mówi o M6 (niebo, nierówne podłoże, trawa) i o M7 (jedenaście
-paneli, osiem programów po pierwszej części i dziesięć po drugiej, nowe wartości startowe
-świateł i koloru tła, poświata kryształów): wynika z kodu i ze zgłoszonych pomiarów
-(sekcje 15.1, 16.1, 17.1 i 18.1).
+z tym, co lista mówi o M6 (niebo, nierówne podłoże, trawa) i o M7 (dwanaście
+paneli, osiem programów po pierwszej części, dziesięć po drugiej i jedenaście po czwartej,
+nowe wartości startowe świateł i koloru tła, poświata kryształów, cienie księżyca): wynika
+z kodu i ze zgłoszonych pomiarów (sekcje 15.1, 16.1, 17.1, 18.1 i 20.1).
 
 - `cmake --preset debug` kończy się bez błędów. Wypisuje jedno ostrzeżenie o nieużytej
   zmiennej `CMAKE_BUILD_TYPE`. Jest ono oczekiwane (sekcja 3).
@@ -194,7 +208,10 @@ paneli, osiem programów po pierwszej części i dziesięć po drugiej, nowe war
   który unosi się na środku komórki, kołysze się, obraca i sam świeci (13 w labiryncie
   startowym). Miejsca, do których żadne światło nie
   dociera, są ciemne, ale nie czarne
-  (światło otoczenia). Cieni nie ma: światła świecą przez ściany (cienie są w planie M7).
+  (światło otoczenia). Od czwartej części M7 ściany, słupki, brama, kryształy i wzgórza
+  rzucają cień w świetle księżyca (sekcja 20), więc na podłożu i na ścianach widać granice
+  światła i cienia. Latarka i światła kryształów cieni nie rzucają: świecą przez ściany
+  (cienie latarki są w planie piątej części M7).
   Nad ścianami jest od pierwszej części M6 nocne niebo z gwiazdami i księżycem (skybox,
   sekcja 15). Prawie czarne, granatowe tło widać tylko po odznaczeniu pola `Skybox`: kolor
   czyszczenia to od M7
@@ -228,13 +245,15 @@ paneli, osiem programów po pierwszej części i dziesięć po drugiej, nowe war
   po dodaniu oświetlenia (2026-10-05, stan M4). Dla M5 tego wyniku nie zapisano (punkt
   otwarty w sekcji 14.2). Dokładnej liczby linii `[info]` przy tych pomiarach
   nie zapisałem.
-- Widocznych jest jedenaście paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
+- Widocznych jest dwanaście paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
   kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole między kolumnami, a
   Camera i Gameplay u góry, między kolumnami, obok siebie, zwinięte do samych pasków tytułu
   (panel rozwija kliknięcie strzałki w jego pasku). Tuż pod nimi jest drugi rząd pasków
   tytułu: Terrain pod Camera i Grass pod Gameplay, też zwinięte (od drugiej części M6).
   Pod nimi jest trzeci rząd: jeden szeroki pasek Framebuffers, też zwinięty (od pierwszej
-  części M7). Pasek HUD stoi pod tymi trzema rzędami
+  części M7), a pod nim czwarty: pasek Shadows tej samej szerokości, też zwinięty (od
+  czwartej części M7). Zwiniętych paneli jest więc sześć. Pasek HUD stoi pod tymi czterema
+  rzędami
   pasków tytułu i nie jest panelem: nie znika razem z panelami i nie reaguje na mysz.
   Każdy panel ma w kodzie miejsce i rozmiar startowy, ułożone
   dla okna 1280 x 720 (`src/debug/PanelLayout.hpp`). Działają one tylko wtedy, gdy w
@@ -254,8 +273,10 @@ Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest
 Zwykły build buduje też program testowy `night_maze_tests.exe` (kolizje, labirynt, gracz,
 loadery, od M4 także tekst shaderów z `#include`, matematyka świateł, ustawienia
 oświetlenia, macierz normalnych i styczne wierzchołków, od M5 kule kolizji, wyjście,
-kryształy i reguły rundy, od M6 pliki nieba, teren i miejsca kępek trawy, a od M7 funkcje przeliczające sRGB i teksty stanu framebuffera: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
-deweloperskim:
+kryształy i reguły rundy, od M6 pliki nieba, teren i miejsca kępek trawy, a od M7 funkcje
+przeliczające sRGB, teksty stanu framebuffera oraz matematyka bloomu, mgły, winiety i mapy
+cieni: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym
+samym środowisku deweloperskim:
 
 ```bat
 ctest --test-dir build/debug -C Debug --output-on-failure
@@ -313,10 +334,11 @@ i 101232, sekcja 16: lista wyżej). Po pierwszej części M7 miał dwadzieścia 
 doszły `ColorSpaceTests.cpp` (9 przypadków) i `FramebufferTests.cpp` (3),
 a `LightingTests.cpp` ma 11 (269 przypadków i 102103 asercje, sekcja 17.1). Po
 drugiej części M7 miał dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypadków, razem
-276 przypadków i 102139 asercji, sekcja 18.1). Dziś, po trzeciej części M7, ma
-dwadzieścia cztery: doszły `FogTests.cpp` (11 przypadków) i `VignetteTests.cpp` (7).
-Zgłoszone liczby dla tego stanu to **294 przypadki i 102412 asercji** w Debug
-i w Release (sekcja 19.1). Blok wyjścia programu wyżej jest zapisem
+276 przypadków i 102139 asercji, sekcja 18.1). Po trzeciej części M7 miał
+dwadzieścia cztery: doszły `FogTests.cpp` (11 przypadków) i `VignetteTests.cpp` (7, razem
+294 przypadki i 102412 asercji, sekcja 19.1). Dziś, po czwartej części M7, ma dwadzieścia
+pięć: doszedł `ShadowTests.cpp` (16 przypadków). Zgłoszone liczby dla tego stanu to
+**310 przypadków i 103751 asercji** (sekcja 20.1). Blok wyjścia programu wyżej jest zapisem
 z drugiej części M6: nowego wyjścia nie przepisywałem, bo sam go nie uruchamiałem.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
@@ -593,13 +615,16 @@ sekund po zmianie układu, a nie tylko przy zamykaniu. Przy wcześniejszych pomi
 był zabijany wcześniej i plik nie powstawał. Wiersze o dwukliku i o Visual Studio pozostają
 przewidywaniem.
 
-Bez tego pliku jedenaście paneli otwiera się w układzie zapisanym w kodzie (stałe
+Bez tego pliku dwanaście paneli otwiera się w układzie zapisanym w kodzie (stałe
 `..._PLACEMENT` w `src/debug/PanelLayout.hpp`, funkcja `placePanelOnFirstUse`, warunek
 `ImGuiCond_FirstUseEver`). Ten sam warunek obejmuje trzy rzeczy: pozycję, rozmiar i to, czy
 panel startuje zwinięty do paska tytułu (`ImGui::SetNextWindowCollapsed`). Zwinięte startuje
-pięć paneli: Camera i Gameplay (pole `collapsed = true` w stałych `CAMERA_PLACEMENT` i
+sześć paneli: Camera i Gameplay (pole `collapsed = true` w stałych `CAMERA_PLACEMENT` i
 `GAMEPLAY_PLACEMENT`), a od drugiej części M6 także Terrain i Grass w drugim rzędzie pod
-nimi (`TERRAIN_PLACEMENT` i `GRASS_PLACEMENT`, z polem `foldedRowsBefore = 1`), a od pierwszej części M7 Framebuffers w trzecim rzędzie (`FRAMEBUFFERS_PLACEMENT`, `foldedRowsBefore = 2`). Gdy plik istnieje
+nimi (`TERRAIN_PLACEMENT` i `GRASS_PLACEMENT`, z polem `foldedRowsBefore = 1`), od
+pierwszej części M7 Framebuffers w trzecim rzędzie (`FRAMEBUFFERS_PLACEMENT`,
+`foldedRowsBefore = 2`), a od czwartej części M7 Shadows w czwartym (`SHADOWS_PLACEMENT`,
+`foldedRowsBefore = 3`). Gdy plik istnieje
 i ma wpis panelu, wygrywa wpis: także stan zwinięcia jest potem brany z pliku. Plik
 `imgui.ini` zapisany przez program sprzed M4 ma wpisy sześciu paneli w starym układzie
 (Camera pod Rendererem) i nie ma wpisu panelu Lights. Z takim plikiem sześć paneli zostaje
@@ -653,9 +678,10 @@ uruchomienie. Na macOS krok 2 nie jest potrzebny. Pominięcie go na Windowsie ni
 panel dalej pokazuje przy każdym programie `: OK`, a obraz się nie zmienia, bo program
 wczytał poprawnie starą kopię pliku.
 
-Panel Shaders ma dziś jedną linię na program, a programów jest osiem (`textured`,
+Panel Shaders ma dziś jedną linię na program, a programów jest jedenaście (`textured`,
 `color`, `lit`, `gouraud`, od M6 `skybox` i `grass`, od pierwszej części M7 `composite`
-i `preview`). W M4 było ich pięć:
+i `preview`, od drugiej `bright` i `blur`, od czwartej `shadow_depth`, czyli linia
+`shadow_depth.vert + shadow_depth.frag`). W M4 było ich pięć:
 piąty, `basic`, rysował kostkę z M1 i został usunięty w M5 razem z plikami `basic.vert`
 i `basic.frag`. Po udanym wczytaniu
 linia ma postać:
@@ -811,7 +837,7 @@ dokumentacji narzędzi (przewidywane).
 | Ostrzeżenie `Manually-specified variables were not used by the project: CMAKE_BUILD_TYPE` przy konfiguracji | generator Visual Studio ignoruje `CMAKE_BUILD_TYPE` | nic, to oczekiwane (sekcja 3) | zmierzone |
 | `LINK : fatal error LNK1168` przy `cmake --build --preset debug` | program `night_maze.exe` działa, a Windows blokuje jego plik | zamknij program i zbuduj ponownie. Do odświeżenia samych shaderów użyj `cmake --build --preset debug --target copy_assets` (sekcja 7) | zmierzone |
 | Panele leżą jeden na drugim albo w dziwnych miejscach, na przykład panel Lights zasłania panel Camera | w katalogu roboczym jest `imgui.ini` zapisany przez starszą wersję programu albo przy innym rozmiarze okna: jego wpisy wygrywają z układem startowym z kodu | usuń `imgui.ini` z katalogu, z którego startuje program (sekcja 7), albo rozsuń panele myszą za paski tytułu | przewidywane (w stanie M1, bez pozycji startowych w kodzie, trzy panele leżały jeden na drugim: zmierzone) |
-| Nie widać panelu Camera, Gameplay, Terrain, Grass albo Framebuffers, są tylko wąskie paski z tymi napisami u góry okna, w trzech rzędach | te pięć paneli startuje zwinięte do paska tytułu: w oknie 1280 x 720 nie ma miejsca na jedenaście otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
+| Nie widać panelu Camera, Gameplay, Terrain, Grass, Framebuffers albo Shadows, są tylko wąskie paski z tymi napisami u góry okna, w czterech rzędach | te sześć paneli startuje zwinięte do paska tytułu: w oknie 1280 x 720 nie ma miejsca na dwanaście otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
 | Latarka nie daje się włączyć klawiszem F ani polem `Flashlight on (key F)` | bateria jest pusta: na pasku HUD jest `0%` i napis `Battery empty. Find a crystal.`. To reguła gry, nie błąd | zbierz kryształ (daje 25% baterii), potem naciśnij F. Do testów: suwak `Battery` w panelu Gameplay albo klawisz R (nowa runda) | przewidywane (z kodu `game::updateRound`, sekcja 14.2) |
 | Podłoże albo ściany są białe, w konsoli linia `[error]` o pliku obrazu | obok `night_maze.exe` brakuje pliku z `assets\textures\` albo nie da się go zdekodować. Część modelu (albo teren, gdy chodzi o `ground.png`) dostaje wtedy białą teksturę zastępczą | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (pamięć podręczna nie ponawia nieudanego wczytania) | zmierzone dla modelu (zrzut ekranu z celowo usuniętą teksturą ówczesnej płytki podłogi, sekcja 12), dla terenu przewidywane z kodu `game::TerrainRenderer` |
 | Podłoże jest zupełnie płaskie, a w konsoli jest linia `[error]` o pliku `heightmap.png` | mapy wysokości nie udało się wczytać. Gra używa wtedy płaskiej mapy (wszystkie wysokości 0) i działa dalej | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (mapa jest czytana raz, przy starcie). Płaskie podłoże bez linii `[error]` to suwak `Height scale` w panelu Terrain ustawiony na 0 | przewidywane (z kodu `loadHeightmap` w `src/game/NightMazeApp.cpp`) |
@@ -822,7 +848,7 @@ dokumentacji narzędzi (przewidywane).
 | Brakuje ścian albo słupków, w konsoli `[error]` z nazwą pliku `.obj` albo `.mtl` | brakuje pliku modelu albo jego pliku `.mtl`. Model, którego nie udało się wczytać, nie jest rysowany, reszta labiryntu tak | jak wyżej | przewidywane |
 | Zmiana w pliku shadera nie jest widoczna po ponownym uruchomieniu | program czyta kopię obok `.exe`, a po zmianie pliku nie było kopiowania albo zbudowano tylko target `night_maze` (możliwe przy F5 w Visual Studio) | `cmake --build --preset debug --target copy_assets` albo pełny build przy zamkniętym programie, sekcja 7 | zmierzone dla `--target night_maze`, F5 przewidywane |
 | `[error] Shader compilation failed: ...\assets\shaders/color.frag` (albo inny plik shadera) i linia sterownika. Przy błędzie już na starcie znika to, co rysuje ten program (dla `color` linie kształtów kolizji, dla `textured` scena w trybie `Unlit` i w widokach debug), przy błędzie po "Reload shaders" obraz zostaje, bo działa poprzedni program | błąd składni w pliku shadera. Mieszane ukośniki w ścieżce są poprawne (sekcja 11, klasa `gfx::Shader`). Linia sterownika zaczyna się od nazwy pliku i numeru linii, na przykład `color.frag(4)` | popraw plik, odśwież kopię (sekcja 7) | zmierzone w stanie M1 na pliku `basic.frag`, którego od M5 nie ma, gdy program rysował samą kostkę: w oknie zostawało wtedy samo tło i panele, a linia sterownika zaczynała się od `0(15)`. Nazwa pliku w miejscu numeru: zmierzone 2026-10-05 jako `basic.frag(4)` (sekcja 13.1). Dla dzisiejszych plików przewidywane |
-| Komunikat błędu shadera wskazuje `common/lighting.glsl(N)`, choć zmieniany był inny plik, albo czerwone są naraz linie `lit` i `gouraud` w panelu Shaders | błąd jest w pliku dołączanym przez `#include`. Dołączają go oba oświetlone programy, więc oba nie dają się zbudować | popraw `assets\shaders\common\lighting.glsl`, odśwież kopię (sekcja 7), "Reload shaders" | komunikat z nazwą pliku zmierzony na zrzucie ekranu (sekcja 13.1), reszta przewidywana |
+| Komunikat błędu shadera wskazuje `common/lighting.glsl(N)` albo `common/shadows.glsl(N)`, choć zmieniany był inny plik, albo czerwone są naraz linie `lit`, `gouraud` i `grass` w panelu Shaders | błąd jest w pliku dołączanym przez `#include`. Oba pliki dołączają dziś trzy programy (`lit.frag` i `grass.frag` oba, `gouraud.vert` pierwszy, `gouraud.frag` drugi), więc żaden z trzech nie daje się zbudować | popraw `assets\shaders\common\lighting.glsl`, odśwież kopię (sekcja 7), "Reload shaders" | komunikat z nazwą pliku zmierzony na zrzucie ekranu (sekcja 13.1), reszta przewidywana |
 | `[error] Shader include failed: ...` | plik z dyrektywy `#include` nie istnieje w kopii obok programu, dołącza sam siebie albo linia `#include` jest błędnie zapisana. Komunikat podaje plik i linię | popraw dyrektywę albo odśwież kopię (sekcja 7) | przewidywane (tekst z kodu `src/gfx/Shader.cpp`) |
 | `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code` | sterownik ułożył blok uniformów inaczej niż struktura `scene::LightBlockData`, albo blok w `common/lighting.glsl` zmieniono bez zmiany struktury | porównaj blok w shaderze ze strukturą w `src/scene/LightBlock.hpp` ([`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md)) | przewidywane (na karcie NVIDIA linia się nie pojawia: zmierzone) |
 | Nie widać podłoża, ścian, słupków, kryształów ani bramy, są tylko niebo, trawa, panele i pasek HUD | oświetlony program (`lit`, a w trybie `Gouraud` program `gouraud`) nie wczytał się przy starcie, więc nie ma czym rysować sceny. W konsoli jest `[error]`, a linia programu w panelu Shaders kończy się napisem `FAILED, there is no program to draw with` | popraw plik shadera, odśwież kopię (sekcja 7), "Reload shaders". Do tego czasu tryb `Unlit` w panelu Renderer rysuje scenę programem `textured` | przewidywane (z kodu `NightMazeApp::drawLitMaze`) |
@@ -929,8 +955,8 @@ clangd w edytorze i `make`.
       Radeon, system sam wybrał NVIDIA
 - [x] w konsoli nie ma linii `[error]`
 - [x] panele "Renderer", "Shaders" i "Camera" są widoczne. Przy pierwszym uruchomieniu (bez
-      `imgui.ini`) leżą jeden na drugim (stan M1. Dziś paneli jest jedenaście, mają miejsca
-      startowe i według kodu się nie zasłaniają, sekcje 14.2, 16.2 i 17.2)
+      `imgui.ini`) leżą jeden na drugim (stan M1. Dziś paneli jest dwanaście, mają miejsca
+      startowe i według kodu się nie zasłaniają, sekcje 14.2, 16.2, 17.2 i 20.2)
 - [ ] FPS i czas klatki w panelu "Renderer" się aktualizują
 - [ ] linie "Framebuffer" i "Window" pokazują te same wartości (na Windowsie powinny być równe)
 
@@ -1048,7 +1074,7 @@ sekcji 13.2.
       zero ostrzeżeń
 - [x] panel "Shaders" jest widoczny i pokazuje oba pliki programu `basic` oraz poprawne
       wczytanie (stan M1, 2026-10-05, z jednym programem i ówczesnymi napisami. Dziś
-      programu `basic` nie ma, a panel pokazuje pięć linii postaci
+      programu `basic` nie ma, a panel pokazuje jedenaście linii postaci
       `textured.vert + textured.frag: OK`, sekcje 7 i 14.2)
 - [ ] panel "Shaders" daje się zadokować
 - [ ] podpowiedź nad linią `textured.vert + textured.frag: OK` pokazuje w dwóch wierszach
@@ -1064,7 +1090,8 @@ sekcji 13.2.
       `cmake --build --preset debug --target copy_assets`, potem "Reload shaders". Zapisać,
       czy linie zmieniają kolor (oczekiwane: tak, żółte linie ścian robią się niebieskawe,
       bo czerwony i niebieski kanał zamieniają się miejscami). Przycisk przeładowuje
-      wszystkie programy naraz (dziś pięć). Samo polecenie przy działającym programie jest już
+      wszystkie programy naraz (dziś jedenaście). Samo polecenie przy działającym programie
+      jest już
       zmierzone (kod wyjścia 0, kopia odświeżona), otwarte zostaje naciśnięcie przycisku.
       Ten sam krok dla programu `textured` jest w sekcji 12.2
 - [ ] to samo bez kopiowania: "Reload shaders" zaraz po zapisaniu pliku. Oczekiwane:
@@ -1073,7 +1100,8 @@ sekcji 13.2.
       `cmake --build --preset debug --target copy_assets`, "Reload shaders". Oczekiwane:
       czerwona linia `color.vert + color.frag: FAILED, the previous program stays in use`,
       pod nią czerwony tekst ze ścieżką pliku i dziennikiem sterownika, ten sam tekst w
-      konsoli jako `[error]`, trzy pozostałe linie z `: OK`, linie kształtów kolizji bez
+      konsoli jako `[error]`, dziesięć pozostałych linii z `: OK`, linie kształtów kolizji
+      bez
       zmian. Linia sterownika powinna zaczynać się od nazwy pliku i numeru linii,
       `color.frag(N)`
 - [ ] naprawa: przywrócony plik (`git checkout assets/shaders/color.frag`),
@@ -1333,8 +1361,9 @@ i 101232, dziesięć paneli, sześć programów, teren w miejscu płytek podłog
 sekcja 16, stan po pierwszej części M7 (zgłoszone 269 i 102103, jedenaście paneli, osiem
 programów, scena rysowana do bufora HDR, gamma i nowe wartości świateł) sekcja 17,
 stan po drugiej (zgłoszone 276 i 102139, dziesięć programów, bloom) sekcja 18,
-a dzisiejszy (zgłoszone 294 i 102412, nadal dziesięć programów, mgła i winieta)
-sekcja 19. Punkty otwarte `[ ]` w sekcji
+stan po trzeciej (zgłoszone 294 i 102412, nadal dziesięć programów, mgła i winieta)
+sekcja 19, a dzisiejszy (zgłoszone 310 i 103751, dwanaście paneli, jedenaście programów,
+cienie księżyca) sekcja 20. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie. Punkty `[x]`
 mówią o podłodze z płytek (`floor_tile.obj`, `floor_stone.png`), którą druga część M6
 usunęła.
@@ -1347,7 +1376,7 @@ usunęła.
       wyjścia 0, zero ostrzeżeń pod `/W4 /permissive-`
 - [x] `night_maze_tests.exe` w Debug i w Release: wszystkie ówczesne przypadki przechodzą,
       `Status: SUCCESS!` (2026-10-05. Dzisiejsze liczby przypadków i asercji są w sekcji
-      14.1). `ctest` dla obu konfiguracji: `100% tests passed, 0 tests failed out of 1`
+      20.1). `ctest` dla obu konfiguracji: `100% tests passed, 0 tests failed out of 1`
 - [x] clang-tidy na plikach zmienionych w tym kroku: żadnej diagnostyki
 - [x] gra startuje bez linii `[error]`, w tym bez żadnej linii z nazwą błędu OpenGL
       (`GL_INVALID_...`), w buildzie Debug, w którym `GL_CHECK` jest aktywne
@@ -1387,9 +1416,9 @@ sekcje 5.7 i 5.8):
       prawej, Collision i Shaders przy dolnej, między kolumnami. Panele Renderer, Camera,
       Maze, Collision i Shaders pokazują całą zawartość bez przewijania, panel Assets się
       przewija. Środek górnej części okna jest wolny i widać w nim scenę (układ z
-      2026-10-05. Dziś paneli jest jedenaście, pod Rendererem stoi Lights, a Camera,
-      Gameplay, Terrain, Grass i Framebuffers są zwinięte u góry w trzech rzędach: sekcje
-      14.2, 16.2 i 17.2)
+      2026-10-05. Dziś paneli jest dwanaście, pod Rendererem stoi Lights, a Camera,
+      Gameplay, Terrain, Grass, Framebuffers i Shadows są zwinięte u góry w czterech
+      rzędach: sekcje 14.2, 16.2, 17.2 i 20.2)
 - [x] większe okno w pierwszej klatce (1560 x 860 i 1700 x 940, ustawione tymczasową zmianą
       rozmiaru startowego): prawa kolumna stoi przy prawej krawędzi, dolny rząd przy dolnej
 - [x] polskie litery w czcionce paneli: tymczasowy napis z kompletem liter i tymczasowa
@@ -1414,7 +1443,7 @@ liczby żadnych wniosków: nie wiem, czy vsync był aktywny, a pomiar był jeden
 
 Tych kroków nikt jeszcze nie wykonał ręką: chodzenia i ślizgania prawdziwymi klawiszami,
 klawisza N, obrotu myszą w labiryncie, przycisków `Regenerate` i `Random seed`, przycisku
-`Reload shaders` (dziś z pięcioma programami) oraz klikania list i suwaka w panelu Assets.
+`Reload shaders` (dziś z jedenastoma programami) oraz klikania list i suwaka w panelu Assets.
 Przy każdym kroku jest to, co powinno być widać. Oczekiwania wynikają z kodu i z testów
 jednostkowych, nie z obserwacji.
 
@@ -1440,11 +1469,12 @@ Start i układ paneli:
       między kolumnami. Środek górnej części okna jest wolny. Zawartość ówczesnego panelu Shaders
       mieściła się w nim bez przewijania, dopóki żaden program nie ma błędu (zmierzone na
       zrzucie ekranu 2026-10-05, sekcja 12.1. To układ i panel Shaders z tamtego dnia:
-      dzisiejszy układ jedenastu paneli jest punktem otwartym w sekcjach 14.2, 16.2 i 17.2)
+      dzisiejszy układ dwunastu paneli jest punktem otwartym w sekcjach 14.2, 16.2, 17.2
+      i 20.2)
 - [ ] po prawdziwym usunięciu `imgui.ini` ręką i starcie z katalogu repozytorium (układ
-      jedenastu paneli z sekcji 14.2, 16.2 i 17.2): obejrzeć na żywo, czy tekst jest wygodny do czytania z
-      odległości (projektor) i czy najechanie myszą na suwak, przycisk i pole wyboru
-      zmienia ich tło na ciepły brąz, a panel z fokusem ma morski pasek tytułu
+      dwunastu paneli z sekcji 14.2, 16.2, 17.2 i 20.2): obejrzeć na żywo, czy tekst jest
+      wygodny do czytania z odległości (projektor) i czy najechanie myszą na suwak, przycisk
+      i pole wyboru zmienia ich tło na ciepły brąz, a panel z fokusem ma morski pasek tytułu
 - [ ] panel Camera (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
       `Yaw` 180 (labirynt startowy: 10 na 10, ziarno 1), `Pitch` 0, `Walk speed` 3.0,
       `Sprint speed` 5.5, `Fly speed` 6.0. Kąt 180 dla ziarna 1 podał autor kodu z
@@ -1570,14 +1600,14 @@ Shadery i brakujący plik:
       `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive) * vec3(1.0, 0.5, 0.5), 1.0);`,
       w drugim terminalu
       `cmake --build --preset debug --target copy_assets`, potem kliknąć `Reload shaders`.
-      Oczekiwane: labirynt robi się czerwonawy, wszystkie cztery linie panelu kończą się
-      napisem `: OK`
+      Oczekiwane: labirynt robi się czerwonawy, wszystkie jedenaście linii panelu kończy
+      się napisem `: OK`
 - [ ] błąd w jednym programie (nadal w trybie `Unlit`): usunąć średnik w `textured.frag`,
       `copy_assets`, `Reload shaders`. Oczekiwane: czerwona linia
       `textured.vert + textured.frag: FAILED, the previous program stays in use`, pod nią
       czerwony tekst ze ścieżką pliku i linią sterownika zaczynającą się od
-      `textured.frag(N)`, labirynt rysuje się poprzednią wersją, trzy pozostałe linie
-      mają `: OK`. Przywrócić plik (`git checkout assets/shaders/textured.frag`),
+      `textured.frag(N)`, labirynt rysuje się poprzednią wersją, dziesięć pozostałych
+      linii ma `: OK`. Przywrócić plik (`git checkout assets/shaders/textured.frag`),
       `copy_assets`, `Reload shaders`
 - [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
       `build\debug\Debug\assets\textures\wall_stone.png` (kopii, nie pliku w repozytorium),
@@ -1632,8 +1662,9 @@ układ `std140`), [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-in
 
 Kamień milowy **nie jest zamknięty**: kod obu części jest kompletny, ale części ręczne
 poniżej (13.2 i 13.4) są otwarte, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i
-nie ma tagu. Czego w tej części nie ma: cieni (światła świecą przez ściany, cienie są w
-planie M7) oraz korekcji gamma i tekstur sRGB (doszły w pierwszej części M7, sekcja 17).
+nie ma tagu. Czego w tej części nie było: cieni (światła świeciły przez ściany. Cienie
+księżyca doszły w czwartej części M7, sekcja 20, cienie latarki są w planie) oraz korekcji
+gamma i tekstur sRGB (doszły w pierwszej części M7, sekcja 17).
 Baterii latarki w M4 też nie było:
 doszła w M5 (sekcja 14).
 
@@ -1646,7 +1677,9 @@ cztery, bez `basic`. Paneli jest osiem, a dolny rząd jest o 8 pikseli wyższy. 
 kolejne: doszły niebo, trawa i dwa programy (po M6 było ich sześć), paneli było dziesięć,
 a płytki podłogi, o których mówią punkty `[x]`, zastąpił teren (sekcje 15 i 16). Pierwsza
 część M7 dodała bufor HDR, gammę, dwa programy i jedenasty panel oraz zmieniła wartości
-startowe świateł, więc liczby świateł w punktach `[x]` tej sekcji są dawne (sekcja 17). Punkty `[x]`
+startowe świateł, więc liczby świateł w punktach `[x]` tej sekcji są dawne (sekcja 17).
+Druga część dodała dwa programy (sekcja 18), a czwarta cienie księżyca, jedenasty program
+i dwunasty panel oraz podniosła `Moon intensity` do 0,2 (sekcja 20). Punkty `[x]`
 zostają z tekstami z dnia pomiaru. Punkty otwarte w sekcjach 13.2 i 13.4 są przepisane
 tak, żeby dało się je wykonać w dzisiejszym programie.
 
@@ -1739,9 +1772,10 @@ Przygotowanie:
       (`cmake --build --preset debug`) i uruchomić `build\debug\Debug\night_maze.exe`
 
 Układ paneli (okno 1280 x 720, bez `imgui.ini`). W M4 paneli było siedem, a dolny rząd
-miał wysokość 272. Dziś jest ich jedenaście:
+miał wysokość 272. Dziś jest ich dwanaście:
 
-- [ ] układ jedenastu paneli i paska HUD: punkty z wymiarami są w sekcjach 14.2, 16.2 i 17.2. Tu wystarczy
+- [ ] układ dwunastu paneli i paska HUD: punkty z wymiarami są w sekcjach 14.2, 16.2, 17.2
+      i 20.2. Tu wystarczy
       sprawdzić, że Lights stoi pod Rendererem w lewej kolumnie, że żaden panel nie
       zasłania innego i że środek okna, w który świeci latarka, jest wolny
 - [ ] panel Renderer: pod edytorem `Clear color` jest lista `Lighting` z wybraną pozycją
@@ -1756,11 +1790,12 @@ miał wysokość 272. Dziś jest ich jedenaście:
       `Point intensity` 0.90 (do M6 2.00), `Point radius` 3.0 m, `Strength` 0.25, `Shininess` 32. Do M4
       trzecia grupa nazywała się `Point lights (dead ends)` i miała linię
       `In this maze: 11 (at most 16)`
-- [ ] panel Shaders: przycisk `Reload shaders` i cztery linie:
+- [ ] panel Shaders: przycisk `Reload shaders` i jedenaście linii. Cztery pierwsze to
       `textured.vert + textured.frag: OK`,
       `color.vert + color.frag: OK`, `lit.vert + lit.frag: OK`,
-      `gouraud.vert + gouraud.frag: OK`. Najechanie myszą na linię pokazuje w dwóch
-      wierszach pełne ścieżki obu plików
+      `gouraud.vert + gouraud.frag: OK` (po M5 były tylko te cztery, pozostałe siedem
+      doszło w M6 i w M7: sekcje 15.2, 16.2, 17.2, 18.2 i 20.2). Najechanie myszą na linię
+      pokazuje w dwóch wierszach pełne ścieżki obu plików
 - [ ] rozwinięcie panelu Camera: kliknąć strzałkę w jego pasku tytułu. Panel otwiera się w
       dół do rozmiaru 280 x 416 i kończy się 8 pikseli nad dolnym rzędem. Zasłania lewą
       część sceny, lewą część paska HUD i żadnego innego panelu. Jest trochę niższy od
@@ -1830,21 +1865,30 @@ Phong a Blinn-Phong (w panelu Lights ustawić `Strength` 1.0 i `Shininess` 16):
 Księżyc (w panelu Lights rozwinąć grupę `Moon (directional)`, panel zaczyna się wtedy
 przewijać):
 
-- [ ] wartości startowe: `Moon yaw` 25 deg, `Moon pitch` -50 deg, `Moon intensity` 0.12
-      (do M6 0.30).
+- [ ] wartości startowe: `Moon yaw` 25 deg, `Moon pitch` -50 deg, `Moon intensity` 0.20
+      (od pierwszej do trzeciej części M7 0.12, do M6 0.30).
       Wyłączyć latarkę (F), żeby widzieć samo światło księżyca. Strony ścian patrzące w
       stronę -X i +Z są jaśniejsze, strony patrzące w stronę +X i -Z ciemne (tylko światło
       otoczenia). Na planie w panelu Maze północ to -Z, czyli góra planu, a +X to prawa
-      strona
+      strona. Od czwartej części M7 ściany rzucają w tym świetle cień, więc także strona
+      zwrócona do księżyca i podłoże są ciemne tam, gdzie zasłania je inna ściana. Żeby
+      zobaczyć samą zależność od kierunku, bez cieni, odznaczyć pole `Shadows` w panelu
+      Shadows (sekcja 20.2)
 - [ ] `Moon yaw` (suwak od 0 do 360): kąt mówi, w którą stronę światło biegnie. Przy 205
       (o 180 więcej niż na starcie) jasne i ciemne strony ścian zamieniają się miejscami.
       Przy 90 światło biegnie w stronę +X: ze stron ścian jasne są tylko te, które patrzą w
       stronę -X
 - [ ] `Moon pitch` (suwak od -90 do -5): przy -90 światło pada prosto w dół, podłoże jest
       najjaśniejsze, a żadna pionowa strona ściany nie dostaje światła księżyca. Przy -5
-      światło ledwie muska podłoże, a ściany zwrócone do księżyca są najjaśniejsze
-- [ ] `Moon intensity` 0 wyłącza księżyc. Cieni nie ma: księżyc oświetla także podłoże i
-      ściany, które stoją za inną ścianą
+      światło ledwie muska podłoże, a ściany zwrócone do księżyca są najjaśniejsze: tak
+      jest przy odznaczonym polu `Shadows` w panelu Shadows. Przy zaznaczonym cienie są
+      przy -90 schowane pod ścianami, a przy -5 bardzo długie: zakrywają większość podłoża
+      w korytarzach i te ściany zwrócone do księżyca, przed którymi stoi inna ściana.
+      Jasne zostają ściany, których od strony księżyca nic nie zasłania
+- [ ] `Moon intensity` 0 wyłącza księżyc, a razem z nim znikają jego cienie. Przy
+      wartości startowej i zaznaczonym polu `Shadows` podłoże i ściany, które stoją za inną
+      ścianą, światła księżyca nie dostają (do trzeciej części M7 cieni nie było i księżyc
+      oświetlał także je). Po odznaczeniu pola `Shadows` jest jak dawniej
 
 Światła punktowe:
 
@@ -1856,9 +1900,10 @@ przewijać):
       wyjścia (zielony prostokąt na planie) kryształu nie mają. W M4 źródłami były
       turkusowe kostki w ślepych zaułkach, 11 w tym labiryncie: tych kostek już nie ma
 - [ ] `Point radius` (suwak od 0.5 do 12.0 m): większy promień powiększa kałuże światła.
-      Cieni nie ma, więc przy dużym promieniu światło widać także w sąsiednich korytarzach,
-      za ścianą. `Point intensity` 0 gasi światła wokół kryształów, ale same kryształy
-      świecą dalej: ich blask jest liczony z `Point colour`, nie z natężenia
+      Światła punktowe nie rzucają cieni (cień rzuca tylko księżyc), więc przy dużym
+      promieniu światło widać także w sąsiednich korytarzach, za ścianą. `Point intensity` 0
+      gasi światła wokół kryształów, ale same kryształy świecą dalej: ich blask jest liczony
+      z `Point colour`, nie z natężenia
 - [ ] `Point colour` zmienia naraz kolor świateł i kolor, którym świecą kryształy
 
 Stożek i zasięg latarki:
@@ -1897,16 +1942,17 @@ Błąd w dołączanym pliku:
       `assets\shaders\common\lighting.glsl` (na przykład usunąć średnik na końcu linii
       `return max(dot(normal, toLight), 0.0);`), w drugim terminalu
       `cmake --build --preset debug --target copy_assets`, potem kliknąć `Reload shaders`.
-      Oczekiwane: linie `lit.vert + lit.frag: FAILED, the previous program stays in use` i
-      `gouraud.vert + gouraud.frag: FAILED, the previous program stays in use` są
+      Oczekiwane: linie `lit.vert + lit.frag: FAILED, the previous program stays in use`,
+      `gouraud.vert + gouraud.frag: FAILED, the previous program stays in use` i linia
+      programu `grass` (jego `grass.frag` też dołącza ten plik) są
       czerwone, pod każdą jest czerwony komunikat, który nazywa plik `common/lighting.glsl`
       i numer linii w tym pliku (sterownik może wskazać linię następną po usuniętym
-      średniku), dwie pozostałe linie (`textured` i `color`) mają `: OK`, obraz się nie
+      średniku), osiem pozostałych linii ma `: OK`, obraz się nie
       zmienia. Te same
       komunikaty są w konsoli jako `[error]`
 - [ ] naprawa: `git checkout assets/shaders`, znowu
       `cmake --build --preset debug --target copy_assets` i `Reload shaders`. Oczekiwane:
-      wszystkie cztery linie kończą się napisem `: OK`, a `git status` nie pokazuje
+      wszystkie jedenaście linii kończy się napisem `: OK`, a `git status` nie pokazuje
       zmienionych plików w `assets/shaders`
 
 Widoki debug w trybie z oświetleniem:
@@ -2017,12 +2063,14 @@ jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak
       panelu Assets przy części `wall_stone` napis `normal map: none (flat)` i sekcja
       `Failed to load` z nazwą pliku. Przywrócić nazwę pliku. (Do M5 ten punkt używał
       mapy `floor_stone_normal.png` płytki podłogi.)
-- [ ] `Reload shaders` przy włączonych mapach: wszystkie linie (dziś sześć) kończą się napisem
-      `: OK`, relief nie znika (numery jednostek i przełącznik są wysyłane w każdej klatce)
+- [ ] `Reload shaders` przy włączonych mapach: wszystkie linie (dziś jedenaście) kończą
+      się napisem `: OK`, relief nie znika (numery jednostek i przełącznik są wysyłane w
+      każdej klatce)
 - [ ] błąd w drugim pliku dołączanym: dopisać literę w `common/normal_map.glsl` w kopii
       `assets` obok programu, `Reload shaders`. Oczekiwane: programy `lit` i `textured` mają
-      `FAILED` z nazwą `common/normal_map.glsl` i numerem linii w tym pliku, pozostałe dwa
-      (`color` i `gouraud`) mają `: OK`, obraz się nie zmienia. Cofnąć zmianę i przeładować
+      `FAILED` z nazwą `common/normal_map.glsl` i numerem linii w tym pliku, pozostałe
+      dziewięć (w tym `color` i `gouraud`) ma `: OK`, obraz się nie zmienia. Cofnąć zmianę i
+      przeładować
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tymi wywołanymi
       celowo
 
@@ -2050,8 +2098,8 @@ Kamień milowy **nie jest zamknięty**: kod jest kompletny na Windowsie, ale cz�
 poniżej (14.2) jest otwarta w całości, na macOS kod nie był budowany
 ([`build-macos.md`](build-macos.md)) i nie ma tagu. Czego w M5 nie ma: stanu przegranej
 (pusta bateria oznacza tylko ciemność, runda trwa dalej), przeciwnika (jest w planie na
-później, kodu nie ma), cieni (plan M7) i korekcji gamma (doszła w pierwszej części M7,
-sekcja 17).
+później, kodu nie ma), cieni (cienie księżyca doszły w czwartej części M7, sekcja 20,
+cienie latarki są w planie) i korekcji gamma (doszła w pierwszej części M7, sekcja 17).
 
 ### 14.1. Zmierzone (2026-10-05)
 
@@ -2110,21 +2158,27 @@ Przygotowanie:
       `[info] Loaded texture: ...` dla ośmiu tekstur. Dla M5 tego wyniku nie zapisano
 
 Układ paneli i pasek HUD (okno 1280 x 720, bez `imgui.ini`). W M5 paneli było osiem, dziś
-jest ich jedenaście (jedenasty, Framebuffers, opisuje sekcja 17.2), a wymiary niżej są dzisiejsze, ze stałych w `src/debug/PanelLayout.hpp`:
+jest ich dwanaście (jedenasty, Framebuffers, opisuje sekcja 17.2, dwunasty, Shadows,
+sekcja 20.2), a wymiary niżej są dzisiejsze, ze stałych w `src/debug/PanelLayout.hpp`:
 
 - [ ] lewa kolumna: Renderer (336 x 284) nad Lights (336 x 412). Prawa kolumna: Maze
       (300 x 480) nad Assets (300 x 216). Dolny rząd między kolumnami: Collision
       (312 x 280) i Shaders (292 x 280). U góry, między kolumnami, dwa paski tytułu obok
       siebie: Camera, a na prawo od niego Gameplay, oba zwinięte. Pod nimi drugi rząd:
-      Terrain pod Camera i Grass pod Gameplay, też zwinięte (sekcja 16.2). Żaden panel nie
+      Terrain pod Camera i Grass pod Gameplay, też zwinięte (sekcja 16.2). Pod nimi
+      trzeci i czwarty rząd: szerokie paski Framebuffers (sekcja 17.2) i Shadows (sekcja
+      20.2), oba zwinięte. Żaden panel nie
       zasłania innego, a środek okna, w który świeci latarka, jest wolny. (W M5 Renderer
       miał 336 x 230, a Lights 336 x 466: Renderer urósł razem z kontrolkami nieba.)
-- [ ] pasek HUD stoi na środku górnej krawędzi okna, pod trzema rzędami pasków tytułu
-      (Camera i Gameplay, pod nimi Terrain i Grass, pod nimi Framebuffers: od pierwszej
-      części M7 `FOLDED_ROW_COUNT` wynosi 3). Odległość od góry to trzy razy
+- [ ] pasek HUD stoi na środku górnej krawędzi okna, pod czterema rzędami pasków tytułu
+      (Camera i Gameplay, pod nimi Terrain i Grass, pod nimi Framebuffers, a pod nim
+      Shadows: od czwartej części M7 `FOLDED_ROW_COUNT` wynosi 4, od pierwszej do
+      trzeciej było 3). Odległość od góry to cztery razy
       wysokość paska tytułu z odstępem 8 pikseli i jeszcze 16 pikseli (`foldedRowsHeight`
-      i `HUD_TOP_OFFSET`): wysokość paska zależy od czcionki, a zgłoszone przesunięcie
-      względem M5 to około 30 pikseli w dół (wtedy było 46 pikseli od góry). Pierwsza linia: turkusowy napis `Crystals`, liczby
+      i `HUD_TOP_OFFSET`): wysokość paska zależy od czcionki. W M5, z jednym rzędem,
+      było 46 pikseli od góry, a zgłoszone przesunięcie o jeden rząd to około 30 pikseli
+      (sekcja 16.2), więc przy czterech rzędach wychodzi około 136 pikseli: policzone z
+      tych dwóch liczb, nie zmierzone. Pierwsza linia: turkusowy napis `Crystals`, liczby
       `0 / 10`, przygaszony napis `(of 13)` i przygaszony czas `0:00`, który rośnie co
       sekundę. Druga
       linia: bursztynowy pasek baterii i napis `100%`, który powoli maleje. Trzeciej linii
@@ -2150,8 +2204,9 @@ jest ich jedenaście (jedenasty, Framebuffers, opisuje sekcja 17.2), a wymiary n
       `All boxes: 243, pickup spheres: 13`
 - [ ] panel Lights: trzecia grupa nazywa się `Point lights (crystals)`, jej pierwsza linia
       to `Lit: 13 of 13 crystals (at most 16)`
-- [ ] panel Shaders: sześć linii zakończonych `: OK` (`textured`, `color`, `lit`, `gouraud`,
-      a od M6 `skybox` i `grass`, ta ostatnia z trzema plikami). W M5 linii było cztery
+- [ ] panel Shaders: jedenaście linii zakończonych `: OK` (`textured`, `color`, `lit`,
+      `gouraud`, od M6 `skybox` i `grass`, ta ostatnia z trzema plikami, a od M7 pięć
+      kolejnych: sekcje 17.2, 18.2 i 20.2). W M5 linii było cztery
 - [ ] panel Assets: pięć modeli i osiem tekstur (lista w sekcji 12.2)
 
 Kryształy i brama w obrazie:
@@ -2174,7 +2229,7 @@ Kryształy i brama w obrazie:
 HUD przy ukrytych panelach:
 
 - [ ] klawisz na lewo od `1` (akcent słaby, na klawiaturze amerykańskiej znaki `` ` `` i
-      `~`, w kodzie `GLFW_KEY_GRAVE_ACCENT` w `src/main.cpp`): jedenaście paneli znika, pasek HUD
+      `~`, w kodzie `GLFW_KEY_GRAVE_ACCENT` w `src/main.cpp`): dwanaście paneli znika, pasek HUD
       zostaje, czas rośnie dalej. Drugie naciśnięcie przywraca panele. Klawisz działa przy
       wolnym i przy przechwyconym kursorze
 - [ ] przy ukrytych panelach zebrać kryształ (krok niżej): liczba na pasku HUD rośnie
@@ -2379,8 +2434,8 @@ Panele:
       `Sky brightness` (wartość 2.200, do M6 1.000). Panel nie ma paska przewijania w oknie 1280 x 720
 - [ ] panel Lights pod nim zaczyna się niżej niż dotąd i ma pasek przewijania (tak jest
       zamierzone: komentarz w `PanelLayout.hpp`). Wszystkie cztery grupy da się przewinąć
-- [ ] panel Shaders: sześć linii programów, piąta to `skybox.vert + skybox.frag: OK`
-      (szósta, `grass`, doszła w drugiej części M6)
+- [ ] panel Shaders: jedenaście linii programów, piąta to `skybox.vert + skybox.frag: OK`
+      (szósta, `grass`, doszła w drugiej części M6, pięć kolejnych w M7)
 - [ ] najechać kursorem na pole `Skybox`: podpowiedź zaczyna się od
       `The night sky (a cube map).` i mówi, że namalowany księżyc nie podąża za suwakami
       `Moon` panelu Lights
@@ -2455,14 +2510,14 @@ Przeładowanie shaderów:
 
 - [ ] w `assets/shaders/skybox.frag` zamienić `sky * uBrightness` na `sky.bgr * uBrightness`,
       skopiować assety (`cmake --build --preset debug --target copy_assets`) i kliknąć
-      `Reload shaders`: niebo zmienia odcień z granatowego na brunatny, sześć linii nadal
-      kończy się `OK`
+      `Reload shaders`: niebo zmienia odcień z granatowego na brunatny, wszystkie linie
+      (dziś jedenaście) nadal kończą się `OK`
 - [ ] wpisać w tym samym pliku błąd składni, skopiować assety, `Reload shaders`: linia
       programu `skybox` jest czerwona (`FAILED, the previous program stays in use`) z nazwą
-      pliku i numerem linii, **niebo nadal się rysuje** poprzednią wersją, pozostałe pięć
-      linii kończy się `OK`
-- [ ] cofnąć obie zmiany (`git checkout assets`), skopiować assety, `Reload shaders`: sześć
-      razy `OK`, niebo jak na początku
+      pliku i numerem linii, **niebo nadal się rysuje** poprzednią wersją, pozostałe
+      dziesięć linii kończy się `OK`
+- [ ] cofnąć obie zmiany (`git checkout assets`), skopiować assety, `Reload shaders`:
+      jedenaście razy `OK`, niebo jak na początku
 
 Brak pliku:
 
@@ -2518,8 +2573,9 @@ Z tą częścią kod M6 jest kompletny na Windowsie (skybox, teren, trawa). Kami
 **nie jest zamknięty**: część ręczna poniżej (16.2) i część ręczna skyboxa (15.2) są
 otwarte w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md))
 i nie ma tagu. **Nie są zbudowane:** iskry wokół kryształów, które PRD wymienia w temacie
-9 obok trawy, oraz cienie (plan M7). Bloom i mgła, których po tej części też nie było,
-doszły w drugiej i trzeciej części M7 (sekcje 18 i 19).
+9 obok trawy, oraz cienie latarki (plan piątej części M7). Bloom, mgła i cienie księżyca,
+których po tej części też nie było, doszły w drugiej, trzeciej i czwartej części M7
+(sekcje 18, 19 i 20).
 
 ### 16.1. Zmierzone (2026-10-05)
 
@@ -2601,12 +2657,13 @@ Przygotowanie:
 
 Panele i pasek HUD:
 
-- [ ] u góry okna, między kolumnami, są dwa rzędy pasków tytułu: Camera i Gameplay,
-      a tuż pod nimi Terrain (pod Camera, tej samej szerokości) i Grass (pod Gameplay).
-      Wszystkie cztery są zwinięte. Paski nie nachodzą na siebie
-- [ ] pasek HUD stoi pod drugim rzędem pasków, z wyraźnym odstępem, i nie nachodzi na
-      żaden z nich. Zgłoszone przesunięcie względem poprzedniej wersji to około 30
-      pikseli w dół
+- [ ] u góry okna, między kolumnami, są w dwóch pierwszych rzędach pasków tytułu Camera
+      i Gameplay, a tuż pod nimi Terrain (pod Camera, tej samej szerokości) i Grass (pod
+      Gameplay). Wszystkie cztery są zwinięte. Paski nie nachodzą na siebie. Pod nimi są
+      dziś jeszcze dwa rzędy: Framebuffers (sekcja 17.2) i Shadows (sekcja 20.2)
+- [ ] pasek HUD stoi dziś pod czwartym rzędem pasków, z wyraźnym odstępem, i nie nachodzi
+      na żaden z nich (po tej części stał pod drugim, a zgłoszone przesunięcie względem
+      wersji przed nią to około 30 pikseli w dół)
 - [ ] rozwinąć panel Terrain (strzałka w pasku). Zawartość od góry: suwak `Height scale`
       (`1.00`), pole wyboru `Wireframe` (odznaczone), kreska, linie
       `Grid: 97 x 97 points, 0.50 m apart`, `Triangles: 18432` i
@@ -2618,9 +2675,9 @@ Panele i pasek HUD:
 - [ ] rozwinięty panel Camera zasłania pasek Terrain, a rozwinięty Gameplay pasek Grass
       (tak jest zamierzone: komentarz w `PanelLayout.hpp`). Rozwinięte panele Terrain
       i Grass zasłaniają tylko pas sceny pod sobą
-- [ ] panel Shaders: sześć linii programów, ostatnia to
-      `grass.vert + grass.geom + grass.frag: OK`. Podpowiedź po najechaniu kursorem
-      pokazuje trzy pełne ścieżki, po jednej w linii
+- [ ] panel Shaders: jedenaście linii programów, szósta to
+      `grass.vert + grass.geom + grass.frag: OK` (po tej części była ostatnia). Podpowiedź
+      po najechaniu kursorem pokazuje trzy pełne ścieżki, po jednej w linii
 - [ ] panel Assets: na liście `Textures` są `ground.png` i `ground_normal.png`, nie ma
       `heightmap.png`, a na liście `Models` nie ma płytki podłogi (pięć modeli)
 - [ ] panel Camera: `Player feet` ma na starcie y równe 0.124, a `Eye` y równe 1.82
@@ -2747,17 +2804,18 @@ Przeładowanie shaderów:
 
 - [ ] w `assets/shaders/grass.geom` zmienić `const float LEAN = 0.4;` na `1.2`, skopiować
       assety (`cmake --build --preset debug --target copy_assets`) i kliknąć
-      `Reload shaders`: źdźbła kładą się mocno na boki, sześć linii nadal kończy się `OK`
+      `Reload shaders`: źdźbła kładą się mocno na boki, wszystkie linie (dziś jedenaście)
+      nadal kończą się `OK`
 - [ ] wpisać w tym samym pliku błąd składni (na przykład usunąć średnik po
       `EmitVertex()`), skopiować assety, `Reload shaders`: linia programu `grass` jest
       czerwona (`FAILED, the previous program stays in use`), komunikat zaczyna się od
       nazwy `grass.geom` z numerem linii w nawiasie, **trawa nadal się rysuje**
-      poprzednią wersją i nadal się kołysze, pozostałe pięć linii kończy się `OK`
+      poprzednią wersją i nadal się kołysze, pozostałe dziesięć linii kończy się `OK`
 - [ ] zepsuć w ten sam sposób `grass.frag`: komunikat nazywa `grass.frag`. Zepsuć
       `common/lighting.glsl`: czerwone są trzy linie naraz (`lit`, `gouraud` i `grass`),
       a komunikat nazywa plik dołączany
-- [ ] cofnąć zmiany w plikach shaderów, skopiować assety, `Reload shaders`: sześć razy
-      `OK`, trawa jak na początku i nadal oświetlona (połączenie z blokiem świateł jest
+- [ ] cofnąć zmiany w plikach shaderów, skopiować assety, `Reload shaders`: jedenaście
+      razy `OK`, trawa jak na początku i nadal oświetlona (połączenie z blokiem świateł jest
       odtwarzane po przeładowaniu)
 
 Nowy labirynt (panel Maze):
@@ -2859,8 +2917,9 @@ zastąpiona.
 
 Kamień milowy M7 jest **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest w toku:
 po tej części były bufor HDR, przebieg składający i podglądy załączników, a bloom doszedł
-w części drugiej (sekcja 18), a mgła i winieta w trzeciej (sekcja 19). **Nie są
-zbudowane:** minimapa i cienie (temat 11). Część ręczna poniżej (17.2) jest otwarta
+w części drugiej (sekcja 18), a mgła i winieta w trzeciej (sekcja 19). Cienie księżyca
+(temat 11) doszły w części czwartej (sekcja 20). **Nie są zbudowane:** cienie latarki
+i minimapa. Część ręczna poniżej (17.2) jest otwarta
 w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i nie ma
 tagu.
 
@@ -2936,6 +2995,8 @@ Znane ograniczenia tej części, zapisane także w dokumentach modułów:
 - kolor `Kd` materiałów nie jest przeliczany z sRGB (wszystkie modele mają białe `Kd`)
 - ścieżka framebuffera bez tekstury koloru (`glDrawBuffer(GL_NONE)` i
   `glReadBuffer(GL_NONE)`, przygotowana dla map cieni) **nigdy nie była wykonana**
+  (stan z dnia tej części: od czwartej części M7 używa jej mapa cieni księżyca, sekcja
+  20)
 - bufor sceny ma pełną rozdzielczość okna
 
 Żadnej nowej kontrolki nikt nie kliknął myszą, nikt nie zmieniał rozmiaru okna przez
@@ -2951,7 +3012,7 @@ nie z klikania. Nazwy widżetów są zapisane tak jak w
 
 **Uwaga po drugiej części M7.** Ta lista powstała dla programu z pierwszej części i nie
 została wykonana, zanim doszedł bloom. Wykonując ją w dzisiejszym programie, trzeba
-pamiętać o pięciu różnicach:
+pamiętać o sześciu różnicach:
 
 - panel Framebuffers wygląda inaczej: kontrolki stoją w dwóch kolumnach, `Depth range`
   jest w tabeli nad kreską, pod linią `Scene framebuffer` jest linia `Bloom targets`,
@@ -2964,9 +3025,13 @@ pamiętać o pięciu różnicach:
 - kroki o wyglądzie kryształu, ekspozycji i krzywych najlepiej wykonać z **odznaczonym**
   polem `Bloom`, bo opisują obraz bez poświaty. Kryształy są przy tym jaśniejsze i bledsze
   niż w pierwszej części: `CRYSTAL_GLOW_STRENGTH` ma dziś 4,0, a nie 2,5 z tabeli wyżej
-- lista w panelu Shaders ma dziesięć linii, nie osiem, a zepsuty `composite.vert` daje
-  cztery czerwone linie, nie dwie
+- lista w panelu Shaders ma jedenaście linii, nie osiem. Linie `composite.vert +
+  composite.frag` i `composite.vert + preview.frag` są siódmą i ósmą, nie dwiema
+  ostatnimi, a zepsuty `composite.vert` daje cztery czerwone linie, nie dwie
 - podglądy kosztują przy rozwiniętym panelu cztery małe przebiegi, nie dwa
+- od czwartej części M7 w scenie są cienie księżyca, a `Moon intensity` ma 0,2, nie 0,12
+  z tabeli wyżej. Kroki, które porównują obraz z wersją sprzed M7, najlepiej wykonać z
+  odznaczonym polem `Shadows` w panelu Shadows (sekcja 20.2)
 
 Przygotowanie:
 
@@ -2996,14 +3061,15 @@ Wygląd sceny startowej w porównaniu z poprzednią wersją (panele ukryte klawi
 Pasek HUD i panele bez zmian:
 
 - [ ] pasek HUD i karta wygranej mają te same kolory co przed M7 (są rysowane po
-      ostatnim przebiegu, prosto do okna). Pasek stoi o jeden pasek tytułu niżej niż
-      przedtem
+      ostatnim przebiegu, prosto do okna). Pasek stoi dziś o dwa paski tytułu niżej niż
+      przed M7: jeden rząd doszedł w tej części, drugi w czwartej
 - [ ] otworzyć panele klawiszem akcentu: kolory motywu, tła paneli i tekstu są takie jak
       przed M7. Nic nie jest rozjaśnione ani wyblakłe
-- [ ] u góry okna, między kolumnami, są trzy rzędy pasków tytułu: Camera i Gameplay, pod
-      nimi Terrain i Grass, a pod nimi jeden szeroki pasek Framebuffers, szeroki jak dwa
-      paski nad nim razem. Wszystkie pięć są zwinięte i nie nachodzą na siebie ani na
-      pasek HUD
+- [ ] u góry okna, między kolumnami, są cztery rzędy pasków tytułu: Camera i Gameplay,
+      pod nimi Terrain i Grass, pod nimi jeden szeroki pasek Framebuffers, szeroki jak dwa
+      paski nad nim razem, a pod nim pasek Shadows tej samej szerokości (czwarty rząd
+      doszedł w czwartej części M7). Wszystkie sześć są zwinięte i nie nachodzą na siebie
+      ani na pasek HUD
 - [ ] panel Renderer: `Sky brightness` pokazuje 2,2, a suwak dochodzi do 6. `Clear color`
       pokazuje ciemny granat
 
@@ -3116,7 +3182,8 @@ Przeładowanie shaderów (panel Shaders):
       i przeładować
 - [ ] zepsuć `assets/shaders/common/color.glsl` (na przykład usunąć średnik)
       i przeładować: błąd z nazwą pliku `color.glsl` pojawia się przy każdym programie,
-      który ten plik dołącza (`textured`, `skybox`, `grass`, `composite`, `preview`), a gra
+      który ten plik dołącza (`textured`, `skybox`, `grass`, `composite`, `preview`, a od
+      drugiej części M7 także `bright`), a gra
       działa dalej na poprzednich wersjach programów. Naprawić i przeładować
 - [ ] zepsuć `assets/shaders/post/composite.vert` i przeładować: dwie ostatnie linie są
       czerwone, obraz zostaje (stare programy działają dalej). Naprawić i przeładować
@@ -3166,7 +3233,8 @@ i [`../decisions/crystal-glow-raised-for-bloom.md`](../decisions/crystal-glow-ra
 
 Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest
 w toku: są bufor HDR, przebieg składający, podglądy załączników i bloom. Mgła i winieta
-doszły w części trzeciej (sekcja 19). **Nie są zbudowane:** minimapa i cienie (temat 11).
+doszły w części trzeciej (sekcja 19), a cienie księżyca (temat 11) w czwartej (sekcja
+20). **Nie są zbudowane:** cienie latarki i minimapa.
 Część ręczna poniżej (18.2) jest otwarta w całości, na macOS kod nie był budowany
 ([`build-macos.md`](build-macos.md)) i nie ma tagu.
 
@@ -3402,10 +3470,12 @@ Zmiana rozmiaru okna:
 
 Przeładowanie shaderów (panel Shaders):
 
-- [ ] lista ma dziesięć linii. Cztery ostatnie to `composite.vert + composite.frag: OK`,
+- [ ] lista ma jedenaście linii. Linie od siódmej do dziesiątej to
+      `composite.vert + composite.frag: OK`,
       `composite.vert + preview.frag: OK`, `composite.vert + bright.frag: OK`
-      i `composite.vert + blur.frag: OK`
-- [ ] nacisnąć `Reload shaders`: wszystkie dziesięć linii zostają `OK`, a poświata
+      i `composite.vert + blur.frag: OK` (po tej części były ostatnie: jedenasta,
+      `shadow_depth.vert + shadow_depth.frag: OK`, doszła w czwartej części)
+- [ ] nacisnąć `Reload shaders`: wszystkie jedenaście linii zostaje `OK`, a poświata
       wygląda tak samo jak przed kliknięciem (wagi rozmycia są wysyłane w każdej klatce)
 - [ ] w pliku `assets/shaders/post/bright.frag` zamienić linię z `share` na
       `float share = brightness > uThreshold ? 1.0 : 0.0;`, skopiować assety
@@ -3415,8 +3485,9 @@ Przeładowanie shaderów (panel Shaders):
 - [ ] zepsuć `assets/shaders/post/blur.frag` (na przykład usunąć średnik) i przeładować:
       linia `blur` jest czerwona z nazwą pliku w komunikacie, a gra działa dalej ze starym
       programem. Naprawić i przeładować
-- [ ] zepsuć `assets/shaders/post/composite.vert` i przeładować: **cztery** ostatnie linie
-      są czerwone (w pierwszej części M7 były to dwie), obraz zostaje. Naprawić
+- [ ] zepsuć `assets/shaders/post/composite.vert` i przeładować: **cztery** linie, od
+      siódmej do dziesiątej, są czerwone (w pierwszej części M7 były to dwie), linia
+      `shadow_depth` zostaje `OK`, obraz zostaje. Naprawić
       i przeładować
 
 Na koniec:
@@ -3450,9 +3521,10 @@ strukturę `SceneView` z macierzą odwrotną i pozycją oka, a tekstura głębi 
 jednostkę teksturującą 2), `PostProcessSettings` (pola `fog` i `vignette`),
 `ShaderUniforms.hpp` (jedenaście nazw), `NightMazeApp` (budowa `SceneView` w `onRender`,
 a kopia ustawień dla widoków diagnostycznych wyłącza już pięć rzeczy), panel Framebuffers
-(dwie zakładki), `DebugContext.hpp` (sam komentarz, pól jest nadal trzydzieści)
-i `CMakeLists.txt`. **Nie doszedł** żaden program shaderów (jest ich nadal dziesięć),
-żaden framebuffer ani żaden panel (jest ich nadal jedenaście).
+(dwie zakładki), `DebugContext.hpp` (sam komentarz, pól było nadal trzydzieści: dziś,
+po czwartej części, jest ich trzydzieści cztery) i `CMakeLists.txt`. **Nie doszedł**
+żaden program shaderów (było ich nadal dziesięć, dziś jest jedenaście), żaden
+framebuffer ani żaden panel (było ich nadal jedenaście, dziś jest dwanaście).
 Opis kodu: [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md)
 (sekcje 2.17 do 2.22: prawo wykładnicze mgły, odległość od oka zamiast głębi, pozycja
 w świecie z głębi, współczynnik wysokości i to, co psuje branie go w samym pikselu, niebo,
@@ -3467,8 +3539,9 @@ i [`../decisions/vignette-not-aspect-corrected.md`](../decisions/vignette-not-as
 
 Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**. Temat 10 wykładu jest
 w toku: są bufor HDR, przebieg składający, podglądy załączników, bloom, mgła i winieta.
-**Nie są zbudowane:** minimapa i cienie (temat 11). Część ręczna poniżej (19.2) jest
-otwarta w całości, tak samo jak części ręczne 17.2 i 18.2, na macOS kod nie był budowany
+Cienie księżyca (temat 11) doszły w części czwartej (sekcja 20). **Nie są zbudowane:**
+cienie latarki i minimapa. Część ręczna poniżej (19.2) jest
+otwarta w całości, tak samo jak części ręczne 17.2, 18.2 i 20.2, na macOS kod nie był budowany
 ([`build-macos.md`](build-macos.md)) i nie ma tagu.
 
 ### 19.1. Zgłoszone (2026-10-05)
@@ -3821,12 +3894,13 @@ Zmiana rozmiaru okna:
 
 Przeładowanie shaderów (panel Shaders):
 
-- [ ] lista ma nadal dziesięć linii, wszystkie `OK`. Mgła i winieta są w linii
+- [ ] lista ma jedenaście linii (po tej części było ich nadal dziesięć, jedenasta doszła
+      w czwartej), wszystkie `OK`. Mgła i winieta są w linii
       `composite.vert + composite.frag: OK`
 - [ ] ustawić coś innego niż wartości startowe (na przykład `Density` `0.200 /m`
-      i czerwony kolor mgły) i nacisnąć `Reload shaders`: wszystkie dziesięć linii zostają
-      `OK`, a obraz wygląda tak samo jak przed kliknięciem (uniformy są wysyłane w każdej
-      klatce). Przywrócić ustawienia
+      i czerwony kolor mgły) i nacisnąć `Reload shaders`: wszystkie jedenaście linii
+      zostaje `OK`, a obraz wygląda tak samo jak przed kliknięciem (uniformy są wysyłane w
+      każdej klatce). Przywrócić ustawienia
 - [ ] w pliku `assets/shaders/post/composite.frag` w funkcji `fogHeightFactor` zamienić
       linię `return exp(-uFogHeightFalloff * heightAboveBase);` na `return 1.0;`,
       skopiować assety (`cmake --build --preset debug --target copy_assets`)
@@ -3856,12 +3930,333 @@ Na koniec:
 - [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
       zostały zapisane
 
-## 20. Powiązane dokumenty
+## 20. Lista kontrolna M7, część 4: cienie księżyca
+
+Czwarta część kamienia milowego M7 dodaje pierwszy przebieg, który rysuje scenę z innego
+miejsca niż kamera: mapę cieni księżyca. Na początku każdej klatki wszystko, co rzuca cień
+(teren, ściany, słupki, brama, kryształy), jest rysowane z kierunku księżyca do tekstury
+głębi 2048 x 2048, rzutem ortograficznym dopasowanym do całego terenu. Programy `lit`,
+`gouraud` i `grass` porównują potem z tą teksturą głębię każdego fragmentu i odejmują od
+światła **sam udział księżyca**. Doszły: pliki `src/scene/LightSpace.hpp` i `LightSpace.cpp`
+(struktura `LightSpace`, funkcje `directionalLightSpace` i `shadowMapCoordinates`) oraz
+`src/gfx/ComparisonSampler.hpp` i `ComparisonSampler.cpp` w bibliotece `engine`,
+`src/game/Shadows.hpp` i `Shadows.cpp` (ustawienia `ShadowSettings` i matematyka bez OpenGL)
+w bibliotece `game_logic`, `src/game/ShadowMap.hpp` i `ShadowMap.cpp` oraz panel
+`src/debug/panels/ShadowsPanel.hpp` i `ShadowsPanel.cpp` w programie, shadery
+`shadow_depth.vert`, `shadow_depth.frag` i `common/shadows.glsl` oraz plik testów
+`tests/ShadowTests.cpp`. Zmieniły się: `NightMazeApp` (funkcje `drawMoonShadowMap` i
+`drawShadowCasters`, przebieg cieni jako pierwszy w `onRender`), `Lighting.hpp` i
+`Lighting.cpp` (funkcja `moonDirection`, `moonIntensity` 0,2 zamiast 0,12),
+`ShaderUniforms.hpp` (struktura `ShadowUniformNames`, stałe `MOON_SHADOW_UNIFORMS` i
+`MOON_SHADOW_TEXTURE_UNIT`), `PostProcess.hpp` (`AttachmentPreview::RawDepth`),
+`common/lighting.glsl` (pola `moonDiffuse` i `moonSpecular`, funkcja `moonFacing`),
+`lit.frag`, `gouraud.vert`, `gouraud.frag`, `grass.frag`, `post/preview.frag` (tryb 2),
+`DebugContext.hpp` (cztery nowe pola, razem trzydzieści cztery), `DebugUI.cpp`
+(`SHADER_COUNT` 11), `PanelLayout.hpp` (`SHADOWS_PLACEMENT`, `FOLDED_ROW_COUNT` 4 zamiast
+3), `main.cpp` i `CMakeLists.txt`. **Doszły** jeden program shaderów (jest ich jedenaście) i
+jeden panel (jest ich dwanaście, sześć startuje zwiniętych). Blok uniformów `LightBlock` się
+nie zmienił. Opis kodu: [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md)
+(cały temat: dwa przebiegi, pudełko światła, rozdzielczość, porównanie, filtr sprzętowy,
+PCF, acne, bias, peter panning, Gouraud, trawa, podgląd, panel),
+[`../modules/gfx/comparison-sampler.md`](../modules/gfx/comparison-sampler.md),
+[`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md) (ścieżka bez koloru,
+użyta pierwszy raz), [`../modules/debug-ui.md`](../modules/debug-ui.md) (panel Shadows).
+Decyzje:
+[`../decisions/shadow-box-fitted-to-terrain.md`](../decisions/shadow-box-fitted-to-terrain.md),
+[`../decisions/shadow-matrix-as-plain-uniforms.md`](../decisions/shadow-matrix-as-plain-uniforms.md),
+[`../decisions/shadow-bias-in-metres-in-shader.md`](../decisions/shadow-bias-in-metres-in-shader.md),
+[`../decisions/gouraud-shadow-test-per-fragment.md`](../decisions/gouraud-shadow-test-per-fragment.md),
+[`../decisions/grass-casts-no-shadow.md`](../decisions/grass-casts-no-shadow.md) i
+[`../decisions/shadow-takes-only-moon-light.md`](../decisions/shadow-takes-only-moon-light.md).
+
+Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**: w kodzie są cztery części z
+sześciu. Temat 11 wykładu (shadow mapping) jest **w toku**: są cienie księżyca z PCF i
+biasem. **Nie są zbudowane:** cienie latarki (część piąta) i minimapa (część szósta, temat
+10). Część ręczna poniżej (20.2) jest otwarta w całości, tak samo jak części ręczne 17.2,
+18.2 i 19.2, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i nie ma
+tagu. Stan całego M7 w jednym miejscu: [`m7-status.md`](m7-status.md).
+
+### 20.1. Zgłoszone (2026-10-05)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
+nie zapisano, więc ich tu nie podaję (środowisko wcześniejszych pomiarów jest w sekcji 1).
+**Żadnego z poniższych punktów nie powtarzałem przy pisaniu tej sekcji**: wszystkie są
+zgłoszone z dnia, w którym powstał kod. Sam policzyłem makra `TEST_CASE` w plikach testów
+(310 w dwudziestu pięciu plikach, w tym 16 w `ShadowTests.cpp`) i asercje nowego pliku: 129
+nie zależy od labiryntu, a jeden przypadek sprawdza po 5 warunków dla każdego z 242 pudełek
+kolizji labiryntu startowego, razem 1339. Liczby w tabeli wartości startowych i zakresy
+suwaków przepisałem z kodu. Rozmiary pudełka światła i tekseli policzyłem ze wzorów z kodu:
+nie są odczytane z ekranu.
+
+Bramka i testy:
+
+- [x] `make check` przechodzi: formatowanie (clang-format), buildy Debug i Release, testy w
+      obu, clang-tidy
+- [x] `night_maze_tests.exe`: 310 przypadków testowych i 103751 asercji, wszystkie
+      przechodzą. Względem trzeciej części M7 (294 przypadki i 102412 asercji) doszedł jeden
+      plik, `ShadowTests.cpp` (16 przypadków i 1339 asercji): `294 + 16 = 310` i `102412 +
+      1339 = 103751`
+
+Porównanie obrazu z trzecią częścią M7:
+
+- [x] z odznaczonym polem `Shadows` i suwakiem `Moon intensity` cofniętym do 0,12 obraz jest
+      identyczny co do piksela z obrazem trzeciej części **poza paskiem HUD**, który stoi o
+      jeden rząd pasków tytułowych niżej. W trybie `Phong` różnica wynosi najwyżej 1/255 w
+      kanale
+- [x] build Debug nie zapisał żadnej linii z błędem OpenGL (`GL_...`) przy mapie 2048 x 2048
+      i przy 1024 x 1024
+
+Zachowanie biasu, obserwacja w grze:
+
+- [x] acne: z samymi suwakami `Constant bias` i `Slope bias` na 0 obraz wygląda na **ogólnie
+      ciemniejszy**. Wyraźne prążki widać dopiero po odznaczeniu także `PCF` i `Hardware 2 x
+      2 filter`
+- [x] peter panning: przy biasie 0,5 m widać światło przeciekające na ścianach
+
+Koszt, Release, panele ukryte. Pomiar **zaszumiony**: klatka trwa poniżej 1 ms.
+
+| Okno | `Shadows` odznaczone | mapa 2048 | mapa 1024 |
+|---|---|---|---|
+| 1280 x 720 | około 1250 klatek na sekundę | około 1000 | około 1200 |
+| 2560 x 1440 | około 630 | około 560 | około 690 |
+
+Tych liczb **nie wolno zestawiać** z sekcją 19.1 (około 1880 i 1145 klatek na sekundę z mgłą
+i winietą): to inna sesja pomiarowa. Zestawienie pokazałoby spadek o jedną trzecią albo
+więcej przy **wyłączonych** cieniach, a z kodu taki koszt nie wynika: przy wyłączonych
+cieniach dochodzi co klatkę policzenie pudełka światła, siedem uniformów na program i jedna
+gałąź w shaderach. Skąd różnica, **nie jest wyjaśnione**. Sam pomiar też pokazuje swój szum:
+690 klatek z mapą 1024 to więcej niż 630 bez cieni. Potrzebny jest czysty pomiar w jednej
+sesji (ostatni punkt listy 20.2).
+
+Wartości startowe (wszystkie nowe poza księżycem). Kontrolki stoją w nowym panelu Shadows, w
+zakładce `Moon`. W nawiasie jest napis, jaki pokazuje kontrolka:
+
+| Ustawienie | Wartość |
+|---|---|
+| `Shadows` | zaznaczone |
+| `Resolution` | `2048 x 2048`, druga pozycja listy to `1024 x 1024` |
+| `Constant bias` | 0,02 m (`0.020 m`), suwak od 0 do 0,5 |
+| `Slope bias` | 0,12 m (`0.120 m`), suwak od 0 do 1 |
+| `Hardware 2 x 2 filter` | zaznaczone |
+| `PCF` | zaznaczone |
+| `Kernel` | `3 x 3`, dalsze pozycje `5 x 5` i `7 x 7` |
+| `Strength` | 1,0 (`1.00`), suwak od 0 do 1 |
+| `Moon intensity` (panel Lights) | 0,2 (było 0,12) |
+| `MOON_SHADOW_TEXTURE_UNIT` (stała) | 3: jednostka teksturująca mapy cieni w przebiegu sceny |
+| `LIGHT_BOX_MARGIN` (stała) | 0,5 m wolnego miejsca wokół pudełka światła |
+| `FOLDED_ROW_COUNT` (stała) | 4 (było 3) |
+| `SHADER_COUNT` (stała) | 11 (było 10) |
+| `SHADOWS_HEIGHT` (stała) | 324: wysokość rozwiniętego panelu Shadows |
+
+Co te wartości znaczą w liczbach dla labiryntu startowego (policzone ze wzorów, nie
+zmierzone na ekranie): pudełko światła ma 64,8 na 54,1 m i 47,0 m głębi, teksel mapy 2048 ma
+3,2 cm, a mapy 1024 6,3 cm (pierwszą liczbę przypina test). Bias poziomego gruntu to 4,8 cm,
+ściany muskanej przez światło do 14 cm. Poziomy grunt w świetle księżyca jest około 4,6 raza
+jaśniejszy niż w cieniu.
+
+Znane ograniczenia tej części, zapisane także w dokumencie modułu (sekcja 2.19):
+
+- cień rzuca tylko księżyc. Latarka i światła kryształów nadal świecą przez ściany
+- jedna mapa bez kaskad, pudełko stałe względem terenu: około połowy mapy pokrywa wzgórza
+  poza labiryntem
+- bias nie zależy od rozmiaru teksela ani od jądra PCF. Z rachunku wynika, że jądra `5 x 5`
+  i `7 x 7` oraz mapa 1024 mogą lekko przyciemniać oświetlony grunt. Tego nikt nie oglądał:
+  jest punktem listy 20.2
+- trawa przyjmuje cień, ale go nie rzuca
+- namalowana tarcza księżyca nie idzie za suwakami `Moon yaw` i `Moon pitch`, a cienie idą
+
+Czego dla tej części nie zapisano i czego dlatego tu nie twierdzę: wersji kompilatora, karty
+i sterownika, listy zrzutów ekranu, tego, w jakich widokach porównywano obraz z trzecią
+częścią, rozrzutu liczby klatek między uruchomieniami, kosztu samego przebiegu głębi i
+samego odczytu osobno, zużycia pamięci karty ani tego, czy sześć pasków tytułowych i HUD
+mieszczą się bez nakładania w oknie innym niż 1280 x 720.
+
+Żadnej kontrolki panelu Shadows nikt nie kliknął myszą, nikt nie przełączył rozdzielczości w
+działającej grze i nikt nie użył przycisku `Reload shaders` po tej zmianie. Na macOS nic z
+tej części nie było budowane ani uruchamiane.
+
+### 20.2. Otwarte: test ręczny na około dwadzieścia pięć minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
+być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze wzorów, nie z klikania
+ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/ShadowsPanel.cpp`, `LightsPanel.cpp`, `RendererPanel.cpp`,
+`AssetsPanel.cpp` i `TerrainPanel.cpp`. Ustawień cieni program nigdzie nie zapisuje, więc
+ponowne uruchomienie gry zawsze przywraca wartości startowe.
+
+Listy 17.2, 18.2 i 19.2 też są otwarte.
+
+Przygotowanie:
+
+- [ ] usunąć stary plik `imgui.ini` z katalogu programu i uruchomić grę z terminala.
+      Oczekiwane w konsoli: żadnej linii `[error]`, w szczególności żadnej o shaderach
+      `shadow_depth.vert`, `shadow_depth.frag`, `lit.frag`, `gouraud.frag` i `grass.frag`
+      ani o niekompletnym framebufferze
+- [ ] otworzyć panele klawiszem akcentu. U góry między kolumnami są cztery rzędy pasków
+      tytułowych: Camera i Gameplay, Terrain i Grass, Framebuffers, a pod nim nowy pasek
+      Shadows tej samej szerokości. HUD stoi pod czwartym rzędem i nie nachodzi na żaden
+      pasek
+- [ ] rozwinąć panel Shadows: jedna zakładka `Moon`, po lewej osiem kontrolek, kreska i trzy
+      linie faktów, po prawej podpis `Depth seen from the moon` i kwadratowy obraz
+- [ ] linie faktów przy wartościach startowych: `Map: 2048 x 2048, GL_DEPTH_COMPONENT24`,
+      `Covers 64.8 x 54.1 m, 47.0 m deep` i `One texel: 3.2 cm`. Te liczby są policzone, nie
+      odczytane: zapisać, jeśli panel pokazuje co innego
+
+Przełącznik:
+
+- [ ] stanąć w korytarzu, w którym widać granicę światła i cienia na ziemi (latarka zgaszona
+      klawiszem F). Odznaczyć `Shadows`: zacienione miejsca jaśnieją, granica znika. Linia
+      faktów zmienia się na `Map: not drawn`, a w miejscu obrazu stoi `(not drawn)`.
+      Zaznaczyć z powrotem: cienie wracają w tych samych miejscach
+- [ ] idąc i obracając kamerę, patrzeć na krawędź cienia na ziemi: stoi w miejscu i nie
+      migocze
+
+Rozdzielczość:
+
+- [ ] lista `Resolution`, wybrać `1024 x 1024`: krawędzie cieni są grubsze, linie faktów
+      pokazują `Map: 1024 x 1024, ...` i `One texel: 6.3 cm`, linia `Covers` się nie
+      zmienia. W konsoli żadnej linii `[error]`
+- [ ] przełączyć kilka razy między dwiema pozycjami: za każdym razem obraz i fakty zmieniają
+      się od razu, cienie nie znikają na dłużej niż jedną klatkę
+- [ ] wrócić do `2048 x 2048`
+
+Bias:
+
+- [ ] odznaczyć `PCF` i `Hardware 2 x 2 filter`, ustawić `Constant bias` i `Slope bias` na
+      0: na oświetlonych powierzchniach widać prążki (acne). Zapisać, w którą stronę biegną
+      na ziemi względem kierunku księżyca
+- [ ] nadal przy biasie 0 zaznaczyć oba filtry: prążki zamieniają się w równe przyciemnienie
+      oświetlonych powierzchni
+- [ ] przesuwać sam `Constant bias` w górę od 0: przyciemnienie znika. Zapisać, przy jakiej
+      wartości grunt przestaje się zmieniać
+- [ ] ustawić `Constant bias` na 0,02 i przesuwać `Slope bias` od 0 do 0,12: zmiana powinna
+      być widoczna głównie na ścianach, które księżyc oświetla pod ostrym kątem, i na
+      zboczach
+- [ ] `Constant bias` na koniec zakresu (`0.500 m`): przy podstawie ścian po stronie cienia
+      pojawia się światło, cień odkleja się od ściany (peter panning). Zapisać, przy których
+      ścianach to widać: z rachunku wynika, że przy ścianach o normalnej wzdłuż osi Z (droga
+      promienia przez ścianę 0,34 m), a przy ścianach o normalnej wzdłuż X jeszcze nie (0,74
+      m)
+- [ ] `Slope bias` na koniec zakresu (`1.000 m`) przy `Constant bias` 0,02: zapisać, co się
+      zmienia
+- [ ] wpisać w suwak z klawiatury (Ctrl i kliknięcie) wartość spoza zakresu, na przykład 5:
+      zostaje obcięta do końca zakresu
+- [ ] przywrócić `0.020 m` i `0.120 m`
+
+Filtr sprzętowy i PCF:
+
+- [ ] przy wartościach startowych podejść blisko do krawędzi cienia na ziemi: przejście jest
+      miękkie, szerokości kilku centymetrów
+- [ ] odznaczyć `PCF`: krawędź jest wyraźnie węższa
+- [ ] odznaczyć także `Hardware 2 x 2 filter`: krawędź ma schodki wielkości teksela mapy
+- [ ] zaznaczyć `Hardware 2 x 2 filter` przy odznaczonym `PCF`: schodki są wygładzone
+- [ ] zaznaczyć `PCF` i wybrać w liście `Kernel` kolejno `3 x 3`, `5 x 5` i `7 x 7`:
+      przejście jest coraz szersze
+- [ ] **bias a jądro (otwarta obserwacja):** stanąć na otwartym, oświetlonym gruncie. Przy
+      jądrze `7 x 7` odznaczać i zaznaczać `Shadows`: zapisać, czy oświetlony grunt
+      ciemnieje po zaznaczeniu. Powtórzyć przy `Resolution` `1024 x 1024` z jądrem `3 x 3` i
+      z jądrem `7 x 7`. Z rachunku w dokumencie modułu (sekcja 2.11) wynika, że może lekko
+      ciemnieć. Jeśli ciemnieje, zapisać, przy jakim `Constant bias` przestaje
+- [ ] wrócić do `2048 x 2048`, `3 x 3`, oba filtry zaznaczone
+
+Siła:
+
+- [ ] suwak `Strength` na 0: cieni nie widać, obraz jak przy odznaczonym `Shadows`. Na 0,5:
+      cienie o połowę słabsze. Na 1: jak na starcie
+
+Księżyc (panel Lights, grupa `Moon (directional)`), przy rozwiniętym panelu Shadows:
+
+- [ ] przesuwać `Moon yaw` przez cały zakres: cienie obracają się płynnie wokół ścian, obraz
+      mapy w panelu Shadows też się zmienia, linia `Covers` pokazuje inne rozmiary. Tarcza
+      księżyca na niebie zostaje na miejscu (znane ograniczenie)
+- [ ] `Moon pitch` na -90: cienie chowają się pod ściany, obraz mapy to widok prosto z góry,
+      linia `Covers` pokazuje około `49.0 x 49.0 m, 7.5 m deep`. W konsoli żadnej linii
+      `[error]`, cienie nie znikają
+- [ ] przesuwać `Moon pitch` powoli między -90 a -85: w okolicy -87,4 obraz mapy w panelu
+      obraca się skokiem (zmiana wektora "w górę" światła). Cienie w scenie nie powinny przy
+      tym skoczyć
+- [ ] `Moon pitch` na -5: cienie są bardzo długie, linia `Covers` pokazuje około `64.8 x
+      13.1 m, 65.1 m deep`. Zapisać, jak wyglądają krawędzie cieni i czy widać acne
+- [ ] `Moon intensity` na 0,12 i z powrotem na 0,2: przy 0,2 różnica między światłem a
+      cieniem jest wyraźniejsza
+- [ ] przywrócić `Moon yaw` 25 i `Moon pitch` -50
+
+Podgląd:
+
+- [ ] obraz w panelu Shadows: jasne tło, ciemniejsze plamy wzgórz i ciemne linie ścian
+      labiryntu. Jest szary, nie czerwony
+- [ ] zwinąć panel Shadows i rozwinąć: przez pierwszą klatkę w miejscu obrazu może stać `(no
+      picture yet)`, potem obraz wraca
+- [ ] najechać na obraz: podpowiedź zaczyna się od `The shadow map: black is near the moon`
+- [ ] patrząc na obraz, przesunąć w panelu Lights suwak `Moon yaw`: obraz zmienia się na
+      żywo, bo mapa jest rysowana co klatkę
+
+Tryby cieniowania (panel Renderer, lista `Lighting`):
+
+- [ ] `Blinn-Phong` (startowy) i `Phong`: cienie w tych samych miejscach
+- [ ] `Gouraud`: cienie w tych samych miejscach i z **tak samo ostrymi** krawędziami.
+      Światło jest kanciaste jak zawsze w tym trybie
+- [ ] `Unlit`: cieni nie ma, scena jest równo jasna jak dotąd
+- [ ] panel Assets, lista `View mode`: `Normals as colour` i `UVs as colour` nie pokazują
+      cieni. Wrócić do `Textured` i `Blinn-Phong`
+
+Tylko księżyc:
+
+- [ ] stanąć w cieniu ściany i zapalić latarkę (F): plama latarki jest w cieniu tak samo
+      jasna jak poza nim
+- [ ] znaleźć kryształ stojący w cieniu ściany: świeci, ma poświatę i oświetla ziemię wokół
+      siebie
+- [ ] kryształ stojący w świetle księżyca rzuca na ziemię mały cień, a ściany rzucają cień
+      na kryształy
+- [ ] trawa w cieniu ściany jest ciemna jak ziemia pod nią. Kępka na granicy cienia jest
+      częściowo jasna. Trawa na otwartym gruncie nie ma pod sobą cienia
+
+Teren i widok z góry:
+
+- [ ] panel Terrain, pole `Wireframe`: teren jest rysowany liniami, a cienie na nim i cień
+      wzgórz zostają pełne
+- [ ] suwak `Height scale` w górę: wzgórza rosną, ich cienie się wydłużają, linia `Covers`
+      rośnie. Wrócić do 1
+- [ ] klawisz N (noclip), wznieść się nad labirynt i spojrzeć w dół. Odznaczyć `Fog` w
+      panelu Framebuffers, bo z góry mgła zakrywa labirynt (znane ograniczenie z sekcji
+      19.1). Cienie wszystkich ścian padają w tę samą stronę, nie urywają się na brzegu
+      labiryntu ani na brzegu terenu, a na wzgórzach nie ma obcych smug
+- [ ] panel Maze, przycisk `Regenerate` z innym rozmiarem labiryntu: cienie pasują do nowych
+      ścian od pierwszej klatki, linia `Covers` zmienia się razem z terenem
+
+Przeładowanie shaderów (panel Shaders):
+
+- [ ] `Reload shaders` przy wartościach startowych: jedenaście linii, wszystkie `OK`,
+      ostatnia to `shadow_depth.vert + shadow_depth.frag`. Cienie zostają
+- [ ] odznaczyć `Shadows` i kliknąć `Reload shaders`: scena nadal się rysuje (uniformy cieni
+      są ustawiane także przy wyłączonych cieniach). W konsoli builda Debug żadnej linii
+      `GL_INVALID_OPERATION`
+- [ ] zepsuć `assets/shaders/common/shadows.glsl` (na przykład usunąć średnik), skopiować
+      assety i przeładować: linie programów `lit`, `gouraud` i `grass` są czerwone z nazwą
+      pliku w komunikacie, a gra działa dalej ze starymi programami. Naprawić, skopiować
+      assety i przeładować
+
+Na koniec:
+
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi celowo
+- [ ] **czysty pomiar kosztu.** W jednej sesji, w buildzie Release, z ukrytymi panelami, w
+      oknie 1280 x 720 i po zmaksymalizowaniu zapisać liczbę klatek na sekundę dla: commita
+      trzeciej części M7 (`e8e1822`), tej części z odznaczonym `Shadows`, z mapą 2048 i z
+      mapą 1024. Każdą wartość zapisać dwa razy, żeby widzieć rozrzut. Pytanie, na które
+      pomiar ma odpowiedzieć: ile kosztuje ta część przy **wyłączonych** cieniach względem
+      trzeciej części (sekcja 20.1 tego nie rozstrzyga). Jeśli liczba stoi na częstotliwości
+      odświeżania monitora, zapisać to
+- [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
+      zostały zapisane
+
+## 21. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
+- Stan kamienia milowego M7 w jednym miejscu: [`m7-status.md`](m7-status.md)
 - Biblioteki: [`../libraries/glfw.md`](../libraries/glfw.md),
   [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
-- Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md)
+- Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
+  [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapa cieni księżyca)
 - Dokumentacja CMake (generatory, presety): <https://cmake.org/cmake/help/latest/>

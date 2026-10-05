@@ -94,6 +94,8 @@ if (framebuffer.width == 0 || framebuffer.height == 0) {
     return;
 }
 
+drawMoonShadowMap();
+
 if (!m_postProcess.beginScene(framebuffer)) {
     return;
 }
@@ -109,6 +111,7 @@ GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 | Wywołanie | Rodzaj | Co robi |
 |---|---|---|
 | `if (framebuffer.width == 0 \|\| framebuffer.height == 0) return;` | nic w OpenGL | Zminimalizowane okno może mieć framebuffer 0 x 0. Nie ma wtedy czego rysować ani do czego: tekstury o rozmiarze 0 nie da się podpiąć do framebuffera, a proporcje obrazu wyszłyby 0 / 0. Cała klatka jest pomijana. Do pierwszej części M7 ten warunek stał po czyszczeniu ekranu |
+| `drawMoonShadowMap()` | ustawia stan i rysuje | Od czwartej części M7 (cienie księżyca, 2026-10-05): przebieg cieni. Wiąże framebuffer mapy cieni (kwadrat 2048 x 2048 albo 1024 x 1024 tekseli, niezależny od rozmiaru okna), ustawia `glViewport` na ten rozmiar, czyści jego głębię i rysuje scenę z kierunku księżyca. Zostawia związany własny framebuffer i własny viewport, dlatego `beginScene` w następnej linii ustawia oba od nowa ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.18) |
 | `m_postProcess.beginScene(framebuffer)` | ustawia stan | Od pierwszej części M7 scena nie trafia prosto do okna. To wywołanie wiąże framebuffer HDR sceny (`glBindFramebuffer`) i ustawia `glViewport(0, 0, w, h)` na jego rozmiar, równy rozmiarowi framebuffera okna. `glViewport` określa prostokąt bufora (w pikselach, początek w lewym dolnym rogu), na który mapowane są współrzędne znormalizowane (NDC) z zakresu od -1 do 1. Oba wywołania stoją w `gfx::Framebuffer::bind` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)). Gdy framebuffera nie udało się utworzyć, funkcja zwraca fałsz i klatka jest pomijana |
 | `glEnable(GL_DEPTH_TEST)` | ustawia stan | Włącza test głębi: fragment trafia do bufora tylko wtedy, gdy jest bliżej kamery niż to, co już tam jest. Potrzebny od chwili, gdy na ekranie jest bryła ([`../scene/camera.md`](../scene/camera.md), sekcje 3 i 5.7) |
 | `glClearColor(r, g, b, a)` | ustawia stan | Zapamiętuje kolor czyszczenia. Niczego nie rysuje. Kolor z panelu jest wartością sRGB, a bufor sceny trzyma wartości liniowe, więc linia wyżej przelicza go przez `gfx::srgbToLinear` ([`../gfx/color-space.md`](../gfx/color-space.md)) |
@@ -147,7 +150,7 @@ Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez p
 | [`src/core/Window.hpp`](../../../src/core/Window.hpp) | struktura `Size`, deklaracja klasy `Window`, deklaracja wyprzedzająca `struct GLFWwindow;` |
 | [`src/core/Window.cpp`](../../../src/core/Window.cpp) | konstruktor (cała inicjalizacja), destruktor, cienkie metody opakowujące GLFW, pomocnicze `onGlfwError` i `glString` |
 | [`src/core/Log.hpp`](../../../src/core/Log.hpp), [`.cpp`](../../../src/core/Log.cpp) | `logInfo`, `logWarn`, `logError` |
-| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użycie `framebufferSize()` na początku `onRender`: rozmiar trafia do `m_postProcess.beginScene` i `composite`, które ustawiają `glViewport`, potem czyszczenie framebuffera sceny |
+| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użycie `framebufferSize()` na początku `onRender`: rozmiar trafia do `m_postProcess.beginScene` i `composite`, które ustawiają `glViewport`, potem czyszczenie framebuffera sceny. Mapa cieni księżyca (czwarta część M7) rozmiaru okna nie używa: ma własny, stały rozmiar w tekselach |
 
 ### 5.2 `Window`: trudne miejsca
 

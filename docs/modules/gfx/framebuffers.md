@@ -1,11 +1,11 @@
 # Moduł gfx: framebuffer, klasa `Framebuffer`
 
 Kamień milowy: M7, część pierwsza (bufor HDR, przebieg składający, gamma). Temat wykładu: 10 (Rendering pozaekranowy), strona obiektu OpenGL.
-Kod: [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), [`src/gfx/Framebuffer.cpp`](../../../src/gfx/Framebuffer.cpp), testy w [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp). Jedyny użytkownik, który tworzy obiekty tej klasy: [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) (od drugiej części M7 osiem obiektów: scena, trzy cele bloomu i cztery podglądy). Czyta je także panel [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp).
+Kod: [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), [`src/gfx/Framebuffer.cpp`](../../../src/gfx/Framebuffer.cpp), testy w [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp). Obiekty tej klasy tworzą dwa pliki: [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) (od drugiej części M7 osiem obiektów: scena, trzy cele bloomu i cztery podglądy) i, od czwartej części M7, [`src/game/ShadowMap.cpp`](../../../src/game/ShadowMap.cpp) (dwa: mapa cieni księżyca i jej podgląd). Czytają je także panele [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp) i [`src/debug/panels/ShadowsPanel.cpp`](../../../src/debug/panels/ShadowsPanel.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument stoi na [`textures.md`](textures.md): zakłada znajomość tekstur 2D (teksele, filtry, zawijanie, jednostki teksturujące, obiekt samplera, format danych a format wewnętrzny, kompletność tekstury) i opisuje to, co dochodzi, gdy do tekstury się **rysuje**, zamiast ją tylko czytać. Co gra robi z framebufferem (kolejność przebiegów klatki, trójkąt na cały ekran, mapowanie tonów, podglądy załączników), opisuje [`../renderer/post-process.md`](../renderer/post-process.md). Dlaczego bufor sceny trzyma kolory liniowe i gdzie są kodowane na sRGB, opisuje [`color-space.md`](color-space.md). Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
-**Stan na dziś:** klasa jest napisana i używana przez `game::PostProcess`. W pierwszej części M7 tworzyło ono z niej trzy obiekty: framebuffer sceny (`GL_RGBA16F` i `GL_DEPTH_COMPONENT24`, wielkości framebuffera okna) oraz dwa małe framebuffery podglądów (`GL_RGBA8`, bez głębi, 180 pikseli wysokości). Druga część M7 (bloom) dodała pięć kolejnych, bez żadnej zmiany w samej klasie: trzy cele bloomu (`GL_RGBA16F`, bez głębi, połowa szerokości i połowa wysokości sceny) i dwa podglądy bloomu (`GL_RGBA8`). Razem osiem. Cele bloomu są pierwszymi framebufferami gry z kolorem HDR i **bez** głębi oraz pierwszymi o rozmiarze innym niż okno i innym niż stały podgląd (sekcja 5.14). Trzecia część M7 (mgła i winieta) nie dodała ani obiektu, ani linii w klasie: mgła, liczona w przebiegu składającym, jest drugim po podglądzie czytelnikiem tekstury głębi sceny (`bindDepthTexture` na jednostce 2), a winieta nie czyta żadnej tekstury. Klasa wymaga kontekstu OpenGL, więc testy jednostkowe dotyczą tylko jej trzech funkcji bez OpenGL: nazw formatów i tekstu dla stanu kompletności (trzy przypadki w `tests/FramebufferTests.cpp`). Tworzenie, wiązanie i zmiana rozmiaru są sprawdzone tylko działającą grą. Zgłoszone dla Windowsa (2026-10-05, nie powtarzałem tych pomiarów przy pisaniu dokumentu): bramka `make check` przechodzi (format, testy Debug i Release, clang-tidy), zero ostrzeżeń, wtedy 269 przypadków testowych i 102103 asercje w obu konfiguracjach (po drugiej części M7 zgłoszone 276 i 102139, po trzeciej 294 i 102412, w testach tej klasy bez zmian). W buildzie Debug nie było błędów OpenGL przy włączonych podglądach, przy zmianie rozmiaru okna na 1400 x 800 oraz przy zminimalizowaniu okna (framebuffer 0 x 0) i przywróceniu go. **Czego nikt nie sprawdził:** ścieżki bez tekstury koloru (`ColorFormat::None`, sekcja 3.3) nie wykonał dotąd żaden kod, zmiana rozmiaru przez przeciąganie krawędzi okna myszą nie była sprawdzana ręcznie, a **na macOS ten kod nie był ani budowany, ani uruchamiany** (w tym na ekranie Retina, gdzie framebuffer okna jest większy od okna).
+**Stan na dziś:** klasa jest napisana i używana przez `game::PostProcess` i, od czwartej części M7, przez `game::ShadowMap`. W pierwszej części M7 tworzyło ono z niej trzy obiekty: framebuffer sceny (`GL_RGBA16F` i `GL_DEPTH_COMPONENT24`, wielkości framebuffera okna) oraz dwa małe framebuffery podglądów (`GL_RGBA8`, bez głębi, 180 pikseli wysokości). Druga część M7 (bloom) dodała pięć kolejnych, bez żadnej zmiany w samej klasie: trzy cele bloomu (`GL_RGBA16F`, bez głębi, połowa szerokości i połowa wysokości sceny) i dwa podglądy bloomu (`GL_RGBA8`). Razem osiem. Cele bloomu są pierwszymi framebufferami gry z kolorem HDR i **bez** głębi oraz pierwszymi o rozmiarze innym niż okno i innym niż stały podgląd (sekcja 5.14). Trzecia część M7 (mgła i winieta) nie dodała ani obiektu, ani linii w klasie: mgła, liczona w przebiegu składającym, jest drugim po podglądzie czytelnikiem tekstury głębi sceny (`bindDepthTexture` na jednostce 2), a winieta nie czyta żadnej tekstury. Czwarta część M7 (cienie księżyca) też nie zmieniła w klasie ani linii, ale **pierwszy raz wykonała jej gałąź bez koloru**: `game::ShadowMap` tworzy framebuffer z samą głębią (`ColorFormat::None` i `DepthFormat::Depth24`, kwadrat 2048 x 2048 albo 1024 x 1024 tekseli) i, przy otwartym panelu Shadows, mały podgląd z samym kolorem (`GL_RGBA8`, 256 x 256). Gra ma więc dziś do dziesięciu obiektów tej klasy (sekcja 5.15). Klasa wymaga kontekstu OpenGL, więc testy jednostkowe dotyczą tylko jej trzech funkcji bez OpenGL: nazw formatów i tekstu dla stanu kompletności (trzy przypadki w `tests/FramebufferTests.cpp`). Tworzenie, wiązanie i zmiana rozmiaru są sprawdzone tylko działającą grą. Zgłoszone dla Windowsa (2026-10-05, nie powtarzałem tych pomiarów przy pisaniu dokumentu): bramka `make check` przechodzi (format, testy Debug i Release, clang-tidy), zero ostrzeżeń, wtedy 269 przypadków testowych i 102103 asercje w obu konfiguracjach (po drugiej części M7 zgłoszone 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751, w testach tej klasy bez zmian). W buildzie Debug nie było błędów OpenGL przy włączonych podglądach, przy zmianie rozmiaru okna na 1400 x 800 oraz przy zminimalizowaniu okna (framebuffer 0 x 0) i przywróceniu go. Ścieżkę bez tekstury koloru (`ColorFormat::None`, sekcja 3.3), której do trzeciej części M7 nie wykonywał żaden kod, wykonuje od czwartej części mapa cieni: zgłoszone dla Windowsa (2026-10-05), build Debug nie zapisał błędów OpenGL przy mapie 2048 i 1024. **Czego nikt nie sprawdził:** zmiana rozmiaru przez przeciąganie krawędzi okna myszą nie była sprawdzana ręcznie, przełączanie rozdzielczości mapy cieni na żywo w panelu też nie, a **na macOS ten kod nie był ani budowany, ani uruchamiany** (w tym na ekranie Retina, gdzie framebuffer okna jest większy od okna, i w tym framebuffer z samą głębią: czy sterownik firmy Apple uzna go za kompletny, jest otwartym punktem).
 
 ## 1. Po co to jest
 
@@ -86,7 +86,7 @@ Do punktu podpięcia (attachment point) można podpiąć dwa rodzaje obiektów:
 | czy shader może go potem czytać | **tak**, przez sampler | **nie**. Da się go tylko skopiować (`glBlitFramebuffer`) albo odczytać na procesor (`glReadPixels`) |
 | do czego jest | wynik, którego potrzebuje następny przebieg | bufor potrzebny tylko w trakcie rysowania, na przykład głębia, której nikt potem nie czyta |
 
-Typowy przykład z podręczników (LearnOpenGL, rozdział "Framebuffers") podpina kolor jako teksturę, a głębię i szablon jako renderbuffer, bo w tym przykładzie głębi nikt później nie czyta. W tym projekcie **oba załączniki są teksturami**. Powód: głębię czytają shadery następnych przebiegów. Podgląd głębi w panelu Framebuffers czyta ją od pierwszej części M7 (`post/preview.frag`), a od trzeciej części drugim czytelnikiem jest mgła: `post/composite.frag` odtwarza z głębi sceny miejsce w świecie, które pokazuje piksel, przez `Framebuffer::bindDepthTexture` na jednostce 2 ([`../renderer/post-process.md`](../renderer/post-process.md), sekcje 2.19 i 5.6). Mgła nie jest przy tym osobnym przebiegiem, tylko kilkoma liniami przebiegu składającego. Mapy cieni, które też czytałyby głębię shaderem, zostają w planie M7: w kodzie ich nie ma. Renderbuffera nie dałoby się użyć do żadnej z tych rzeczy. Rozważane możliwości zapisuje notatka [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md).
+Typowy przykład z podręczników (LearnOpenGL, rozdział "Framebuffers") podpina kolor jako teksturę, a głębię i szablon jako renderbuffer, bo w tym przykładzie głębi nikt później nie czyta. W tym projekcie **oba załączniki są teksturami**. Powód: głębię czytają shadery następnych przebiegów. Podgląd głębi w panelu Framebuffers czyta ją od pierwszej części M7 (`post/preview.frag`), a od trzeciej części drugim czytelnikiem jest mgła: `post/composite.frag` odtwarza z głębi sceny miejsce w świecie, które pokazuje piksel, przez `Framebuffer::bindDepthTexture` na jednostce 2 ([`../renderer/post-process.md`](../renderer/post-process.md), sekcje 2.19 i 5.6). Mgła nie jest przy tym osobnym przebiegiem, tylko kilkoma liniami przebiegu składającego. Od czwartej części M7 głębię czyta shaderem także mapa cieni księżyca: to osobny framebuffer z samą głębią, którego teksturę programy `lit`, `gouraud` i `grass` czytają przez `sampler2DShadow` ([`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.6 i 2.7, i [`comparison-sampler.md`](comparison-sampler.md)). Renderbuffera nie dałoby się użyć do żadnej z tych rzeczy. Rozważane możliwości zapisuje notatka [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md).
 
 Punkty podpięcia używane przez klasę:
 
@@ -200,13 +200,13 @@ Po narysowaniu sceny tekstura koloru jest zwykłą teksturą 2D i następny prze
 
 Jest jeden czytelnik, który tych parametrów nie używa: ImGui. Backend OpenGL biblioteki przed narysowaniem każdego obrazu wiąże z jednostką 0 własny sampler (filtr liniowy, przycinanie do krawędzi), więc tekstura podglądu pokazana przez `ImGui::Image` jest czytana samplerem ImGui. Dla podglądów nie robi to różnicy: sampler ImGui też nie sięga po mipmapy.
 
-**Głębia czytana jak kolor.** Tekstura głębi czytana przez zwykły `sampler2D` zwraca głębię w kanale czerwonym, jako liczbę od 0 do 1. Warunek: tryb porównania (`GL_TEXTURE_COMPARE_MODE`) jest wyłączony, a to jest wartość domyślna i klasa jej nie zmienia. Tryb porównania i `sampler2DShadow` należą do map cieni (plan M7, jeszcze nie w kodzie).
+**Głębia czytana jak kolor.** Tekstura głębi czytana przez zwykły `sampler2D` zwraca głębię w kanale czerwonym, jako liczbę od 0 do 1. Warunek: tryb porównania (`GL_TEXTURE_COMPARE_MODE`) jest wyłączony, a to jest wartość domyślna i klasa jej nie zmienia. Tryb porównania i `sampler2DShadow` należą do mapy cieni (czwarta część M7). Klasa nadal porównania w teksturze **nie** włącza: robi to osobny obiekt samplera, `gfx::ComparisonSampler`, wiązany z jednostką po teksturze. Dzięki temu ta sama tekstura głębi mapy cieni jest czytana z porównaniem przez programy oświetlenia i bez porównania, jak kolor, przez podgląd mapy ([`comparison-sampler.md`](comparison-sampler.md), sekcja 2.3).
 
 ### 2.8 Pętla zwrotna: nie czytać tego, do czego się rysuje
 
 Tekstura może być **naraz** załącznikiem związanego framebuffera i teksturą związaną z jednostką, którą czyta shader. Wynik takiego rysowania jest **niezdefiniowany** (feedback loop): shader czytałby piksele, które w tym samym wywołaniu nadpisuje. OpenGL nie zgłasza przy tym błędu.
 
-Reguła: przebieg czyta tekstury jednego framebuffera, a rysuje do **innego**. W grze tak jest we wszystkich przebiegach po scenie:
+Reguła: przebieg czyta tekstury jednego framebuffera, a rysuje do **innego**. W grze tak jest we wszystkich przebiegach, które czytają teksturę framebuffera (do trzeciej części M7 były to tylko przebiegi po scenie, od czwartej także sama scena, która czyta mapę cieni):
 
 | Przebieg | Czyta | Rysuje do |
 |---|---|---|
@@ -215,6 +215,8 @@ Reguła: przebieg czyta tekstury jednego framebuffera, a rysuje do **innego**. W
 | rozmycie bloomu, przebieg poziomy | `m_brightPass` w pierwszej iteracji, potem `m_bloom` | celu `m_blurHorizontal` |
 | rozmycie bloomu, przebieg pionowy | `m_blurHorizontal` | celu `m_bloom` |
 | podglądy bloomu | `m_brightPass`, potem `m_bloom` | dwóch framebufferów podglądu |
+| podgląd mapy cieni (`ShadowMap::drawPreview`, czwarta część M7) | teksturę głębi mapy cieni, bez obiektu samplera, z jednostki 0 | framebuffera podglądu mapy (`m_preview`) |
+| przebieg sceny (programy `lit`, `gouraud` i `grass`, czwarta część M7) | teksturę głębi mapy cieni, przez sampler z porównaniem, z jednostki 3 | framebuffera sceny |
 | przebieg składający (`PostProcess::composite`) | teksturę koloru sceny, od drugiej części M7 teksturę `m_bloom`, a od trzeciej (przy włączonej mgle) także teksturę głębi sceny | domyślnego framebuffera (okna) |
 
 Rozmycie jest przypadkiem, w którym ta reguła **wymusza** kształt kodu: jeden cel nie wystarczy, bo wynik przebiegu trzeba gdzieś zapisać, zanim następny go przeczyta. Dwa cele zamieniają się rolami (ping-pong, [`../renderer/post-process.md`](../renderer/post-process.md), sekcja 2.14).
@@ -222,6 +224,8 @@ Rozmycie jest przypadkiem, w którym ta reguła **wymusza** kształt kodu: jeden
 Tekstury sceny zostają związane z jednostką 0 także wtedy, gdy w następnej klatce framebuffer sceny jest znów celem. To samo związanie nie jest jeszcze pętlą: liczy się to, czy shader, który akurat rysuje, **czyta** tę jednostkę jako tę teksturę. Przy rysowaniu sceny każdy model wiąże własne tekstury (`Texture2D::bind`), a niebo swoją teksturę sześcienną. Od drugiej części M7 to samo dotyczy jednostki 1: po przebiegu składającym zostaje na niej tekstura `m_bloom`, do której następne `drawBloom` rysuje. Programy bloomu czytają tylko jednostkę 0, więc to też nie jest pętla.
 
 Od trzeciej części M7 jest trzeci taki przypadek, i najbardziej podejrzany z wyglądu. Po klatce z włączoną mgłą na jednostce 2 (`DEPTH_TEXTURE_UNIT`) zostaje związana tekstura **głębi sceny**, bez obiektu samplera, i nikt jej stamtąd nie zdejmuje: żaden inny kod gry nie wiąże niczego z jednostką 2. W następnej klatce framebuffer sceny jest celem, a test głębi do tej samej tekstury pisze. Pętli nadal nie ma, z tego samego powodu co wyżej: żaden program, który rysuje scenę, nie ma samplera ustawionego na 2. Samplery sceny to `uTexture` i `uNormalMap` (jednostki 0 i 1, `ModelDraw.cpp`) oraz `uSkybox` (jednostka 0, `Skybox.cpp`), a wszystkie trzy dostają swój numer przez `setInt`. Sprawdziłem to w kodzie wyszukaniem stałych `_UNIT` i deklaracji `uniform sampler` w shaderach, nie pomiarem. Jedynym samplerem ustawionym na 2 jest `uDepth` w `post/composite.frag`, a ten program rysuje do okna. Przy wyłączonej mgle `composite` tekstury głębi nie wiąże wcale (`if (fog.enabled)`), ale sampler `uDepth` i tak dostaje numer 2: sampler, którego nikt nie ustawił, czytałby jednostkę 0, czyli obraz sceny (komentarz w `PostProcess::composite`).
+
+Od czwartej części M7 jest czwarty przypadek, na jednostce 3 (`MOON_SHADOW_TEXTURE_UNIT`). `ShadowMap::bindForSampling` wiąże z nią teksturę głębi mapy cieni i sampler z porównaniem, raz na klatkę, i nikt ich stamtąd nie zdejmuje. W następnej klatce pierwszym przebiegiem jest przebieg głębi, który do tej samej tekstury **rysuje** (`ShadowMap::beginDepthPass`). Pętli nie ma: program tego przebiegu (`shadow_depth.vert` i `shadow_depth.frag`) nie ma ani jednego samplera, a jego shader fragmentów jest pusty. Renderery, których ten przebieg używa (teren, labirynt, kryształy i brama), ustawiają przy tym uniformy, których ten program nie ma, a takie ustawienia są ignorowane (komentarz w `NightMazeApp::drawShadowCasters`). To też wynika z kodu, nie z pomiaru. Kolejność w `bindForSampling` (najpierw tekstura, potem sampler) opisuje [`comparison-sampler.md`](comparison-sampler.md), sekcja 2.5.
 
 ### 2.9 Zmiana rozmiaru i rozmiar 0 x 0
 
@@ -305,7 +309,7 @@ GL_CHECK(glReadBuffer(GL_NONE));
 
 Bez tych dwóch linii część sterowników zgłasza framebuffer jako niekompletny (`GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER` albo `..._READ_BUFFER`). Oba ustawienia są stanem obiektu framebuffera, a nie kontekstu, więc wystarczy ustawić je raz przy tworzeniu.
 
-**Uczciwie:** ta gałąź kodu istnieje, ale **nie została dotąd wykonana ani razu**. Żaden kod nie tworzy framebuffera z `ColorFormat::None`: scena ma oba załączniki, podglądy i cele bloomu mają sam kolor. Gałąź jest przygotowana pod mapy cieni z dalszej części M7 i dopiero wtedy okaże się, czy działa na obu systemach.
+**Uczciwie:** do trzeciej części M7 ta gałąź kodu istniała, ale nie była wykonana ani razu: scena ma oba załączniki, a podglądy i cele bloomu sam kolor. Od czwartej części M7 wykonuje ją `game::ShadowMap::beginDepthPass`, które tworzy mapę cieni księżyca z `ColorFormat::None` (sekcja 5.15). Zgłoszone dla Windowsa (2026-10-05): build Debug nie zapisał błędów OpenGL przy mapie 2048 i 1024. Gdyby framebuffer nie był kompletny, konstruktor wypisałby błąd w logu, `beginDepthPass` zwracałoby fałsz i cieni nie byłoby wcale. **Na macOS nikt tego nie uruchomił**: czy framebuffer z samą głębią jest tam kompletny, pozostaje otwartym punktem. Wiadomo więc, że gałąź działa na jednym systemie, nie na obu.
 
 ### 3.4 Stan, który klasa zostawia po sobie
 
@@ -387,7 +391,7 @@ struct FramebufferSpec {
 | Element | Dlaczego tak |
 |---|---|
 | własne wyliczenia zamiast `GLenum` | wołający może podać tylko formaty, które klasa umie utworzyć. `Framebuffer({.color = GL_RGB565})` się nie skompiluje |
-| `None` w obu wyliczeniach | "brak załącznika" jest wartością, a nie osobną flagą. Podglądy mają `DepthFormat::None`, przyszła mapa cieni będzie mieć `ColorFormat::None` |
+| `None` w obu wyliczeniach | "brak załącznika" jest wartością, a nie osobną flagą. Podglądy mają `DepthFormat::None`, a mapa cieni księżyca (od czwartej części M7) ma `ColorFormat::None` |
 | `FramebufferSpec` jako struktura | cztery parametry mają nazwy w miejscu wywołania (inicjalizacja z nazwami pól, C++20): `{.width = ..., .height = ..., .color = ..., .depth = ...}`. Dwóch liczb `int` obok siebie nie da się wtedy zamienić przez pomyłkę |
 | wartości domyślne: 0, 0, `None`, `None` | pusta specyfikacja jest dokładnie tym, co konstruktor odrzuca. Obiekt nieważny ma taką specyfikację, więc `width()` i `height()` zwracają dla niego 0 |
 
@@ -447,7 +451,7 @@ private:
 
 | Element | Dlaczego tak |
 |---|---|
-| `Framebuffer() = default;` | `PostProcess` ma osiem pól tego typu (w pierwszej części M7 trzy), a rozmiar okna jest znany dopiero w pierwszej klatce. Obiekt domyślny ma trzy zera i pustą specyfikację: jest poprawnym "brakiem framebuffera" |
+| `Framebuffer() = default;` | `PostProcess` ma osiem pól tego typu (w pierwszej części M7 trzy), a `ShadowMap` od czwartej części dwa. Rozmiar okna jest znany dopiero w pierwszej klatce. Obiekt domyślny ma trzy zera i pustą specyfikację: jest poprawnym "brakiem framebuffera" |
 | `explicit` przy konstruktorze ze specyfikacji | bez tego `FramebufferSpec` zamieniałby się na `Framebuffer` po cichu, na przykład przy przekazaniu do funkcji, i tworzył obiekty OpenGL tam, gdzie nikt się ich nie spodziewa |
 | `= delete` dla kopiowania, ręcznie napisane przenoszenie | reguła wspólna dla klas `gfx` ([`README.md`](README.md), sekcja 2). Kopia trzymałaby te same trzy identyfikatory i usunęła je drugi raz |
 | `isValid()` patrzy na `m_id` | po nieudanym utworzeniu `release` zeruje wszystkie trzy identyfikatory, więc jeden wystarcza |
@@ -743,15 +747,16 @@ Czego testy **nie** obejmują, bo wymaga to okna i kontekstu: tworzenia obiektó
 
 ### 5.13 Jak to zostało sprawdzone
 
-- **Testy jednostkowe:** trzy przypadki z sekcji 5.12. Zgłoszone dla całego programu testowego na Windowsie (2026-10-05): po pierwszej części M7 269 przypadków i 102103 asercje w Debug i w Release, po drugiej 276 i 102139, po trzeciej 294 i 102412 (nowe przypadki są w `tests/FogTests.cpp` i `tests/VignetteTests.cpp`, w testach tej klasy nic się nie zmieniło).
+- **Testy jednostkowe:** trzy przypadki z sekcji 5.12. Zgłoszone dla całego programu testowego na Windowsie (2026-10-05): po pierwszej części M7 269 przypadków i 102103 asercje w Debug i w Release, po drugiej 276 i 102139, po trzeciej 294 i 102412 (nowe przypadki są w `tests/FogTests.cpp` i `tests/VignetteTests.cpp`), po czwartej 310 i 103751 (szesnaście nowych przypadków w `tests/ShadowTests.cpp`: matematyka cieni bez OpenGL). W testach tej klasy nic się nie zmieniło.
 - **Gra w buildzie Debug** (zgłoszone, Windows): żadnego błędu OpenGL z `GL_CHECK` przy otwartym panelu Framebuffers (podglądy działają, więc działają też dwa framebuffery `GL_RGBA8` bez głębi), po zmianie rozmiaru okna na 1400 x 800 i po zminimalizowaniu i przywróceniu okna.
 - **Wydajność** (zgłoszone, Windows, Release, bez synchronizacji pionowej, panele ukryte): około 2700 klatek na sekundę przed zmianą i 2500 po niej w 1280 x 720, około 2020 i 1960 w 2560 x 1440. To koszt całego nowego końca klatki, nie samej klasy.
 - **Osobnego programu pomiarowego nie było.** Nie są zmierzone: stan kontekstu po konstruktorze, zachowanie przy każdej z ośmiu niekompletności, zawartość nowej tekstury przed pierwszym czyszczeniem.
 - **Druga część M7** (zgłoszone, Windows): cele bloomu, czyli `GL_RGBA16F` bez głębi w połowie rozmiaru sceny, działają: poświata jest na zrzutach ekranu, a po zmianie okna na 1000 x 600 cele mają 500 x 300. Wydajność z bloomem i bez jest w [`../renderer/post-process.md`](../renderer/post-process.md), sekcja 5.9.
 - **Trzecia część M7** (zgłoszone, Windows): z mgłą i winietą wyłączonymi obraz jest identyczny co do piksela z obrazem z drugiej części, co zgadza się z kodem: przy wyłączonej mgle tekstura głębi nie jest ani wiązana z jednostką 2, ani czytana. Osobnego sprawdzenia stanu jednostki 2 nie było: akapit o niej w sekcji 2.8 wynika z kodu. Wydajność z efektami i bez jest w tym samym miejscu, sekcja 5.9.
-- **Niewykonane:** gałąź `ColorFormat::None` (sekcja 3.3).
+- **Czwarta część M7** (zgłoszone, Windows, 2026-10-05): gałąź `ColorFormat::None` (sekcja 3.3) jest pierwszy raz wykonywana, przez mapę cieni księżyca. Build Debug nie zapisał błędów OpenGL przy mapie 2048 i 1024, a bramka `make check` przechodzi. Przy wyłączonych cieniach i jasności księżyca cofniętej do 0,12 obraz jest identyczny co do piksela z obrazem sprzed tej części poza paskiem HUD (w trybie Phong różnica najwyżej 1/255). Sam tego nie powtarzałem.
+- **Niesprawdzone w czwartej części:** przełączanie rozdzielczości mapy myszą w działającej grze (nowy obiekt w miejsce starego, sekcja 5.15).
 - **Niesprawdzone ręcznie:** zmiana rozmiaru przez przeciąganie krawędzi okna. Lista dla właściciela projektu jest w [`../../guides/build-windows.md`](../../guides/build-windows.md).
-- **macOS:** nic. Otwarte punkty (rozmiar framebuffera na Retinie, `GL_RGBA16F` jako cel rysowania) są w [`../../guides/build-macos.md`](../../guides/build-macos.md).
+- **macOS:** nic. Otwarte punkty (rozmiar framebuffera na Retinie, `GL_RGBA16F` jako cel rysowania, od czwartej części M7 także kompletność framebuffera z samą głębią) są w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ### 5.14 Cele bloomu: pięć nowych obiektów bez zmiany w klasie (druga część M7)
 
@@ -803,6 +808,68 @@ Jedna różnica wobec bufora sceny: `fitTarget` nie pamięta nieudanej próby. G
 
 Komentarz mówi to, co sekcja 2.8: czytać załącznik wolno, bo celem jest w tej chwili okno, a nie framebuffer sceny. To jest spełnienie powodu z sekcji 2.2, dla którego głębia jest teksturą, a nie renderbufferem. Winieta jest liczona z samych współrzędnych tekstury piksela i nie czyta niczego. Zgłoszone dla Windowsa: z oboma efektami wyłączonymi obraz jest identyczny co do piksela z obrazem z drugiej części. Sam tego nie powtarzałem.
 
+### 5.15 Mapa cieni: pierwszy framebuffer z samą głębią (czwarta część M7)
+
+Cienie księżyca ([`../renderer/shadows.md`](../renderer/shadows.md)) są trzecim użytkownikiem klasy i pierwszym poza `PostProcess.cpp`. Klasa `game::ShadowMap` ([`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp), [`.cpp`](../../../src/game/ShadowMap.cpp)) ma dwa pola tego typu, `m_target` i `m_preview`, i znów nie wymagała w `gfx::Framebuffer` ani jednej nowej linii. Mapę tworzy `beginDepthPass`:
+
+```cpp
+bool ShadowMap::beginDepthPass(int size) {
+    // A new size: the first frame, or another resolution was chosen.
+    if (size != m_requestedSize) {
+        m_requestedSize = size;
+        // No colour texture: the pass only has to record depths. A new object instead
+        // of resize(): it also covers the first frame and a framebuffer that could not
+        // be created at the size before.
+        m_target = gfx::Framebuffer({.width = size,
+                                     .height = size,
+                                     .color = gfx::ColorFormat::None,
+                                     .depth = gfx::DepthFormat::Depth24});
+    }
+    if (!m_target.isValid()) {
+        return false;
+    }
+
+    // bind() sets the viewport to the size of the map. The viewport belongs to the
+    // context, so the framebuffer that is bound after this pass sets it again.
+    m_target.bind();
+    // The depth test is what makes the map: of everything drawn at a texel the nearest
+    // depth is kept. The last pass of the frame before (the composite pass) has left
+    // the test switched off.
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
+    return true;
+}
+```
+
+Co z klasy jest tu potrzebne:
+
+| Własność klasy | Do czego służy mapie cieni |
+|---|---|
+| `ColorFormat::None` z `DepthFormat::Depth24` (sekcja 3.3) | framebuffer z **samą głębią**: nie powstaje tekstura koloru, `create()` woła `glDrawBuffer(GL_NONE)` i `glReadBuffer(GL_NONE)`, a `colorTextureId()` zwraca 0. Pierwsze wykonanie tej gałęzi w projekcie |
+| rozmiar w specyfikacji | mapa jest kwadratem: 2048 x 2048 tekseli (`SHADOW_MAP_SIZE_HIGH`, domyślnie) albo 1024 x 1024 (`SHADOW_MAP_SIZE_LOW`). Rozmiar nie zależy od okna. Według komentarza w `src/game/Shadows.hpp` większa mapa to około 12 MB, albo 16 MB, jeśli karta trzyma każdą głębię w czterech bajtach: tego nikt nie mierzył |
+| przypisanie przenoszące (sekcja 5.8) zamiast `resize()` | przy zmianie rozdzielczości powstaje **nowy obiekt**, który zastępuje stary. `resize()` nic nie robi dla obiektu nieważnego (sekcja 5.10), więc nie obsłużyłoby pierwszej klatki ani framebuffera, którego nie udało się utworzyć. Jedna linia z konstruktorem obsługuje wszystkie trzy sytuacje |
+| `bind()` ustawia viewport (sekcja 5.9) | viewport ma rozmiar mapy, a nie okna. Framebuffer sceny, wiązany zaraz potem przez `beginScene`, ustawia swój |
+| `isValid()` | gdy sterownik odmówi, `beginDepthPass` zwraca fałsz i klatka nie ma cieni. Pole `m_requestedSize` pamięta, o jaki rozmiar proszono, więc nieudana próba nie jest powtarzana co klatkę (inaczej niż `fitTarget` z sekcji 5.14) |
+| `bindDepthTexture(unit)` (sekcja 5.11) | wiąże teksturę głębi mapy z jednostką 3 i **nie zostawia na niej żadnego samplera** (`glBindSampler(unit, 0)`). `ShadowMap::bindForSampling` woła zaraz potem `ComparisonSampler::bind`, który kładzie tam sampler z porównaniem. Kolejność jest konieczna: w odwrotnej `bindDepthTexture` odpięłaby ten sampler ([`comparison-sampler.md`](comparison-sampler.md), sekcja 2.5) |
+| parametry tekstury głębi: `GL_NEAREST`, `GL_CLAMP_TO_EDGE`, porównanie wyłączone (sekcja 2.7) | obowiązują tylko wtedy, gdy na jednostce nie ma samplera, czyli dla podglądu. Dla programów oświetlenia przykrywa je sampler z porównaniem: filtr liniowy albo najbliższego sąsiada, `GL_CLAMP_TO_BORDER` z ramką 1 |
+
+Przebieg głębi czyści tylko głębię (`glClear(GL_DEPTH_BUFFER_BIT)`): koloru nie ma. Test głębi włącza sam, bo ostatni przebieg poprzedniej klatki, składający, zostawił go wyłączonym.
+
+**Podgląd mapy** to drugi framebuffer, tym razem z samym kolorem, tworzony przy pierwszym `drawPreview` (gra woła je tylko wtedy, gdy panel Shadows jest otwarty):
+
+```cpp
+        m_preview = gfx::Framebuffer({.width = PREVIEW_SIZE,
+                                      .height = PREVIEW_SIZE,
+                                      .color = gfx::ColorFormat::Rgba8,
+                                      .depth = gfx::DepthFormat::None});
+```
+
+`PREVIEW_SIZE` to 256. Ten rodzaj framebuffera (`GL_RGBA8` bez głębi) gra miała już w podglądach panelu Framebuffers, więc nie jest to nowa ścieżka kodu, tylko nowy użytkownik. `drawPreview` wiąże `m_preview` jako cel, a teksturę głębi mapy czyta przez `m_target.bindDepthTexture(PREVIEW_SOURCE_UNIT)` z jednostki 0, bez samplera: shader `post/preview.frag` w trybie 2 dostaje zapisane głębie i pokazuje je jako odcienie szarości. To jest reguła z sekcji 2.8 (czytam jeden framebuffer, rysuję do innego) i przypadek "głębia czytana jak kolor" z sekcji 2.7.
+
+Panel **Shadows** pokazuje stan mapy tymi samymi getterami co panel Framebuffers: linia `Map: 2048 x 2048, GL_DEPTH_COMPONENT24` bierze `width()`, `height()` i `depthFormatName(depthFormat())` z `ShadowMap::target()`, a obraz podglądu `colorTextureId()` z `ShadowMap::preview()`.
+
+Co jest sprawdzone: zgłoszone dla Windowsa (2026-10-05), build Debug bez błędów OpenGL przy obu rozmiarach mapy. Czego nie sprawdzono: przełączania rozdzielczości myszą w działającej grze i całości na macOS (sekcja 5.13).
+
 ## 6. Panel ImGui
 
 Klasa nie ma własnego panelu ani stanu do zmieniania. Jej stan pokazuje panel **Framebuffers** (kod: [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp), opis całości w [`../renderer/post-process.md`](../renderer/post-process.md)):
@@ -814,6 +881,8 @@ Klasa nie ma własnego panelu ani stanu do zmieniania. Jej stan pokazuje panel *
 | obraz `HDR colour` (w pierwszej części M7 podpis brzmiał `Colour (HDR, cut off at 1)`) | `colorTextureId()` framebuffera podglądu koloru | załącznik koloru jest zwykłą teksturą, którą da się pokazać |
 | obraz `Depth` (w pierwszej części: `Depth (as distance)`) | `colorTextureId()` framebuffera podglądu głębi | załącznik głębi też jest teksturą, którą shader umie przeczytać |
 | obrazy `Bright pass` i `Bloom` (druga część M7) | `colorTextureId()` framebufferów `brightPassPreview()` i `bloomPreview()` | wynik jednego przebiegu jest wejściem następnego: łańcuch framebufferów widać jako łańcuch obrazów |
+
+Od czwartej części M7 stan dwóch kolejnych obiektów tej klasy, mapy cieni i jej podglądu, pokazuje osobny panel **Shadows** (sekcja 5.15 i [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 6).
 
 Wszystkie cztery obrazy są rysowane z narożnikami UV `(0, 1)` i `(1, 0)`: tekstura framebuffera ma wiersz `v = 0` na **dole**, jak wszystko, co rysuje OpenGL, a ImGui uważa pierwszy narożnik za lewy górny. Z wartościami domyślnymi obraz byłby do góry nogami (pułapka 5).
 
@@ -832,7 +901,7 @@ Gdy podglądu jeszcze nie ma (pierwsza klatka po otwarciu panelu), `isValid()` f
 9. **`glClear` przed `bind`.** Czyszczenie działa na framebufferze, który jest związany. Wywołane przed `bind()` czyści okno, a tekstury framebuffera zostają z zawartością poprzedniej klatki: w obrazie widać smugi.
 10. **Po konstruktorze i po `resize` związane jest okno.** Kto tworzy framebuffer w środku przebiegu i rysuje dalej, rysuje do okna (sekcja 3.4).
 11. **Jeden załącznik koloru.** Klasa nie umie MRT. Przebieg, który chciałby zapisać naraz kolor i na przykład maskę jasnych pikseli, potrzebuje drugiego obiektu `Framebuffer` i drugiego przebiegu.
-12. **Framebuffer bez koloru bez `glDrawBuffer(GL_NONE)`.** Na części sterowników niekompletny. Klasa to obsługuje, ale ta gałąź nie była dotąd uruchamiana (sekcja 3.3).
+12. **Framebuffer bez koloru bez `glDrawBuffer(GL_NONE)`.** Na części sterowników niekompletny. Klasa to obsługuje. Gałąź wykonuje od czwartej części M7 mapa cieni, dotąd tylko na Windowsie (sekcja 3.3).
 13. **Głębia z filtrem liniowym.** Zmieszane głębie dwóch powierzchni dają na krawędziach obiektów odległość, której nie ma w scenie. Klasa ustawia `GL_NEAREST`.
 14. **`GL_RGBA8` zamiast `GL_RGBA16F` dla sceny.** Program działa i nie zgłasza błędu, ale wszystko powyżej 1 jest obcinane już przy zapisie do tekstury, więc mapowanie tonów nie ma czego mapować, a ciemne tony dostają pasy.
 15. **Kopiowanie i czas życia.** Jak każda klasa `gfx`: kopiowanie jest `= delete`, a obiekt musi zginąć przed oknem. `PostProcess` jest polem `NightMazeApp`, więc warunek jest spełniony ([`README.md`](README.md), sekcja 5).
@@ -861,7 +930,7 @@ Zmiany sprawdza się w działającej grze z otwartym panelem Framebuffers (klawi
    Teksturę może potem czytać shader przez sampler. Renderbuffera nie: nadaje się na bufor potrzebny tylko w trakcie rysowania. W projekcie oba załączniki są teksturami, bo głębię czytają następne przebiegi.
 
 4. **Dlaczego głębia jest teksturą, a nie renderbufferem?**
-   Bo czytają ją shadery: podgląd głębi (`post/preview.frag`) od pierwszej części M7 i mgła w przebiegu składającym (`uDepth` w `post/composite.frag`, jednostka 2) od trzeciej. Mapy cieni z planu M7 też będą ją czytać, ale ich jeszcze nie ma. Renderbuffera nie da się próbkować.
+   Bo czytają ją shadery: podgląd głębi (`post/preview.frag`) od pierwszej części M7 i mgła w przebiegu składającym (`uDepth` w `post/composite.frag`, jednostka 2) od trzeciej. Od czwartej części M7 głębię czyta też mapa cieni księżyca: własny framebuffer z samą głębią, czytany przez `sampler2DShadow`. Renderbuffera nie da się próbkować.
 
 5. **Co daje format `GL_RGBA16F`?**
    Liczbę zmiennoprzecinkową połówkowej precyzji na kanał. Wartości nie są obcinane do 1, więc bufor pamięta, o ile coś jest jaśniejsze od bieli (HDR), a ciemne tony mają dużo więcej stopni niż w bajcie. Kosztuje 8 bajtów na piksel zamiast 4.
@@ -897,7 +966,7 @@ Zmiany sprawdza się w działającej grze z otwartym panelem Framebuffers (klawi
     Czytaniem tekstury, która jest załącznikiem framebuffera związanego jako cel. Wynik jest niezdefiniowany. Przebieg czyta tekstury jednego framebuffera, a rysuje do innego.
 
 16. **Do czego służą `glDrawBuffer(GL_NONE)` i `glReadBuffer(GL_NONE)`?**
-    Mówią framebufferowi bez tekstury koloru, że nie ma koloru do zapisu ani do odczytu. Bez nich część sterowników uznaje go za niekompletny. W projekcie ta gałąź jeszcze nie była wykonana.
+    Mówią framebufferowi bez tekstury koloru, że nie ma koloru do zapisu ani do odczytu. Bez nich część sterowników uznaje go za niekompletny. W projekcie tę gałąź wykonuje mapa cieni księżyca (od czwartej części M7, uruchomione tylko na Windowsie).
 
 17. **Dlaczego podgląd w ImGui ma narożniki UV `(0, 1)` i `(1, 0)`?**
     Tekstura framebuffera ma `v = 0` na dole, a ImGui traktuje pierwszy narożnik jako lewy górny. Bez zamiany obraz jest do góry nogami.
@@ -914,5 +983,5 @@ Zmiany sprawdza się w działającej grze z otwartym panelem Framebuffers (klawi
 - Khronos OpenGL Wiki, "Framebuffer Object" (<https://www.khronos.org/opengl/wiki/Framebuffer_Object>): punkty podpięcia, reguły kompletności, pętla zwrotna. "Default Framebuffer" (<https://www.khronos.org/opengl/wiki/Default_Framebuffer>). "Image Format" (<https://www.khronos.org/opengl/wiki/Image_Format>): formaty wymagane, formaty zmiennoprzecinkowe i formaty głębi.
 - docs.gl: `glGenFramebuffers`, `glBindFramebuffer` (<https://docs.gl/gl4/glBindFramebuffer>), `glFramebufferTexture2D`, `glCheckFramebufferStatus` (<https://docs.gl/gl4/glCheckFramebufferStatus>), `glDrawBuffer`, `glReadBuffer`, `glViewport`, `glTexImage2D`, `glBindSampler`.
 - Specyfikacja OpenGL 4.1 Core (<https://registry.khronos.org/OpenGL/specs/gl/glspec41.core.pdf>): rozdział o obiektach framebufferów (kompletność, wymagane formaty), pętle zwrotne między teksturą a framebufferem.
-- Dokumenty w tym repozytorium: [`../renderer/post-process.md`](../renderer/post-process.md) (użycie klasy w klatce, shadery przebiegów, panel Framebuffers), [`color-space.md`](color-space.md) (kolory liniowe w buforze sceny i kodowanie sRGB), [`textures.md`](textures.md) (tekstury 2D, na których ten dokument stoi), [`cubemap.md`](cubemap.md) (sampler wspólny dla jednostki), [`README.md`](README.md) (RAII i przenoszenie), [`../core/window-context.md`](../core/window-context.md) (rozmiar okna a rozmiar framebuffera), [`../core/gl-check.md`](../core/gl-check.md).
+- Dokumenty w tym repozytorium: [`../renderer/post-process.md`](../renderer/post-process.md) (użycie klasy w klatce, shadery przebiegów, panel Framebuffers), [`../renderer/shadows.md`](../renderer/shadows.md) (mapa cieni księżyca: framebuffer z samą głębią w użyciu), [`comparison-sampler.md`](comparison-sampler.md) (sampler z porównaniem, przez który czytana jest tekstura głębi mapy cieni), [`color-space.md`](color-space.md) (kolory liniowe w buforze sceny i kodowanie sRGB), [`textures.md`](textures.md) (tekstury 2D, na których ten dokument stoi), [`cubemap.md`](cubemap.md) (sampler wspólny dla jednostki), [`README.md`](README.md) (RAII i przenoszenie), [`../core/window-context.md`](../core/window-context.md) (rozmiar okna a rozmiar framebuffera), [`../core/gl-check.md`](../core/gl-check.md).
 - Notatka o decyzji: [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md).

@@ -25,6 +25,8 @@ struct Player;
 class PostProcess;
 struct PostProcessSettings;
 struct Round;
+class ShadowMap;
+struct ShadowSettings;
 struct SkyboxSettings;
 struct TerrainSettings;
 } // namespace game
@@ -35,6 +37,7 @@ class Shader;
 
 namespace scene {
 struct Camera;
+struct LightSpace;
 } // namespace scene
 
 namespace debug {
@@ -122,6 +125,17 @@ struct DebugContext {
     /// Shader program of the blur passes of the bloom, editable: reloaded like
     /// texturedShader.
     gfx::Shader& blurShader;
+    /// Shader program of the depth pass of the shadow maps, editable: reloaded like
+    /// texturedShader.
+    gfx::Shader& shadowDepthShader;
+    /// The settings of the shadows of the moon (switch, resolution, bias, PCF,
+    /// strength) and the preview switch of its shadow map, editable.
+    game::ShadowSettings& moonShadowSettings;
+    /// The shadow map of the moon, read only: its size, its format and its preview.
+    const game::ShadowMap& moonShadowMap;
+    /// The view and the projection of the moon in the last frame, read only: how much
+    /// ground its shadow map covers.
+    const scene::LightSpace& moonLightSpace;
 };
 
 } // namespace debug

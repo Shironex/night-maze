@@ -7,7 +7,9 @@ Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasy nazywają się 
 
 **Stan na dziś:** płaskich płytek podłogi już nie ma. Labirynt stoi na jednej dużej siatce trójkątów, której wysokości pochodzą z obrazu w odcieniach szarości (mapy wysokości). Pod labiryntem podłoże jest łagodnie nierówne, a dookoła przechodzi we wzgórza. Ściany, słupki i brama są opuszczone tak, żeby nigdzie nie było pod nimi szpary, kryształy i strefa wyjścia stoją na wysokości podłoża swojej komórki, a stopy gracza idą po powierzchni. Panel **Terrain** ma suwak `Height scale` i pole `Wireframe`: to są dwa pokazy, które PRD podaje dla tematu 13 ("skala wysokości, wireframe").
 
-**Co zmieniła pierwsza część M7 (2026-10-05).** Kształt terenu, jego wysokości i kolizje się nie zmieniły. Zmieniło się to, jak podłoże trafia na ekran: tekstura `ground.png` jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe (sekcja 5.12), programy cieniujące liczą na wartościach liniowych, a teren, jak cała scena, jest rysowany do bufora HDR i dopiero przebieg składający przenosi go do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412. Żaden z nowych przypadków nie dotyczy terenu.
+**Co zmieniła pierwsza część M7 (2026-10-05).** Kształt terenu, jego wysokości i kolizje się nie zmieniły. Zmieniło się to, jak podłoże trafia na ekran: tekstura `ground.png` jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe (sekcja 5.12), programy cieniujące liczą na wartościach liniowych, a teren, jak cała scena, jest rysowany do bufora HDR i dopiero przebieg składający przenosi go do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751. Żaden z przypadków trzech pierwszych części M7 nie dotyczy terenu. W czwartej jeden czyta `Terrain` (sekcja 5.15).
+
+**Co zmieniła czwarta część M7 (cienie księżyca, 2026-10-05).** Kształt terenu, jego wysokości, kolizje i pliki `Terrain.*` oraz `TerrainRenderer.*` się nie zmieniły. Zmieniły się trzy rzeczy wokół nich. Po pierwsze, teren jest rysowany **dwa razy w klatce**: najpierw do mapy cieni księżyca programem `shadow_depth` (same głębie, widok z kierunku światła), potem jak dotąd do sceny. Wzgórza rzucają więc cień, a grunt przyjmuje cień ścian, słupków, bramy i kryształów (w programach `lit` i `gouraud`, nie w `textured`). Po drugie, do mapy cieni teren idzie **zawsze wypełniony**, także przy zaznaczonym polu `Wireframe` (sekcja 2.12). Po trzecie, granice terenu (`minX()`, `maxX()`, `minZ()`, `maxZ()`, `minHeight()`, `maxHeight()`) mają nowego czytelnika: `game::shadowCasterBounds` buduje z nich pudełko, do którego księżyc dopasowuje swoją mapę cieni (sekcja 5.13). Dla labiryntu domyślnego mapa obejmuje 64,8 x 54,1 m przy głębokości 47,0 m, a jeden teksel ma 3,2 cm przy rozdzielczości 2048 (policzone, wartość 0,0316 m pilnuje test). Cień rzuca tylko księżyc: latarka i światła kryształów nie. Całość opisuje [`shadows.md`](shadows.md), dopasowanie pudełka do terenu sekcja 2.3 i notatka [`../../decisions/shadow-box-fitted-to-terrain.md`](../../decisions/shadow-box-fitted-to-terrain.md).
 
 Co jest sprawdzone (2026-10-05, Windows, stan po drugiej części M6):
 
@@ -362,6 +364,17 @@ Dwie rzeczy do zapamiętania:
 
 Wireframe pokazuje też, że teren nie ma dna: przez linie widać kolor czyszczenia ekranu i niebo pod horyzontem.
 
+**Wireframe a cienie (czwarta część M7).** Pole `Wireframe` dotyczy tylko przebiegu sceny. Do mapy cieni teren jest rysowany zawsze z wypełnionymi trójkątami: `NightMazeApp::drawShadowCasters` nie przekazuje dalej `m_terrainSettings.wireframe`, tylko stałą.
+
+```cpp
+    // The terrain is always drawn filled here: the wireframe switch is a way to look
+    // at the ground, and a ground of lines would cast a shadow of lines.
+    constexpr bool NO_WIREFRAME = false;
+    m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
+```
+
+Powód jest w komentarzu: wireframe to sposób oglądania gruntu, a grunt z samych linii rzucałby cień z samych linii. Skutek: po zaznaczeniu pola cienie wzgórz nie znikają, a linie siatki rysowane w scenie nadal są cieniowane mapą cieni jak wypełniony grunt. To wynika z kodu: obrazu z `Wireframe` i cieniami naraz nikt nie zgłosił.
+
 ## 3. Jak to działa w OpenGL
 
 Teren nie wprowadza żadnego nowego rodzaju obiektu OpenGL. Jest jedną `gfx::Mesh` ([`../gfx/mesh.md`](../gfx/mesh.md)) rysowaną jednym wywołaniem.
@@ -387,22 +400,23 @@ Dla labiryntu startowego to 9409 wierzchołków po 44 bajty (413 996 bajtów) i 
 | 4 | `drawMesh(...)`: wiąże `ground_normal.png` na jednostce 1 i `ground.png` na jednostce 0, ustawia `uTint`, `uModel`, `uNormalMatrix`, woła `mesh.draw()` | `glActiveTexture`, `glBindTexture`, `glBindSampler`, `glUniform*`, `glBindVertexArray`, `glDrawElements(GL_TRIANGLES, 55296, GL_UNSIGNED_INT, ...)` |
 | 5 | `glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)`, tylko gdy `wireframe` | stan wraca do wypełniania |
 
-Jedno wywołanie rysujące na cały teren. Dla porównania: płytki podłogi kosztowały jedno wywołanie na komórkę, czyli 100 w labiryncie startowym.
+Jedno wywołanie rysujące na cały teren w przebiegu sceny. Od czwartej części M7 dochodzi drugie, takie samo, w przebiegu cieni: teren jest rysowany do mapy cieni programem `shadow_depth` tą samą funkcją `TerrainRenderer::draw`, więc przy włączonych cieniach kosztuje dwa `glDrawElements` na klatkę (kroki 3 i 5 w przebiegu cieni nie występują, bo `wireframe` jest tam zawsze `false`). Dla porównania: płytki podłogi kosztowały jedno wywołanie na komórkę, czyli 100 w labiryncie startowym.
 
 ### 3.3 Miejsce w klatce
 
-Teren jest rysowany jako pierwsza rzecz sceny, w `drawUnlitMaze` albo `drawLitMaze`, tym samym programem co ściany. Kolejność w `onRender`:
+Teren jest rysowany jako pierwsza rzecz sceny, w `drawUnlitMaze` albo `drawLitMaze`, tym samym programem co ściany. Od czwartej części M7 jest też pierwszą rzeczą przebiegu cieni, który stoi przed sceną. Kolejność w `onRender`:
 
-1. teren, ściany i słupki, kryształy i brama (`drawMaze`),
-2. trawa (`drawGrass`),
-3. linie pudełek kolizji, jeśli włączone,
-4. niebo.
+1. przebieg cieni księżyca do mapy cieni (`drawMoonShadowMap`, przy włączonych cieniach): teren, ściany i słupki, brama i kryształy, bez trawy,
+2. teren, ściany i słupki, kryształy i brama (`drawMaze`),
+3. trawa (`drawGrass`),
+4. linie pudełek kolizji, jeśli włączone,
+5. niebo.
 
 Kolejność terenu względem ścian nie zmienia obrazu, bo o tym, co jest z przodu, decyduje test głębi. Komentarz w kodzie mówi to wprost: "ziemia najpierw, potem to, co na niej stoi" to tylko porządek zgodny z budową sceny.
 
 ## 4. Shadery
 
-Teren **nie ma własnych shaderów**. Jest rysowany jak model: programem `textured` w trybie `Unlit` i w widokach diagnostycznych, programem `lit` w trybach `Phong` i `Blinn-Phong`, programem `gouraud` w trybie `Gouraud`. Dostaje więc za darmo wszystko, co mają ściany: cztery tryby cieniowania, mapę normalnych, widoki `Normals as colour` i `UVs as colour`. Shadery opisują [`../gfx/textures.md`](../gfx/textures.md) (`textured`), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md) (`lit`, `gouraud`) i [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md).
+Teren **nie ma własnych shaderów**. Jest rysowany jak model: programem `textured` w trybie `Unlit` i w widokach diagnostycznych, programem `lit` w trybach `Phong` i `Blinn-Phong`, programem `gouraud` w trybie `Gouraud`. Dostaje więc za darmo wszystko, co mają ściany: cztery tryby cieniowania, mapę normalnych, widoki `Normals as colour` i `UVs as colour`, a od czwartej części M7 także cień księżyca w programach `lit` i `gouraud` (program `textured` mapy cieni nie czyta, więc w trybie `Unlit` i w widokach diagnostycznych cieni nie ma). Od tej samej części jest rysowany jeszcze czwartym programem, `shadow_depth`, do mapy cieni ([`shadows.md`](shadows.md), sekcje 2.14 i 4). Shadery opisują [`../gfx/textures.md`](../gfx/textures.md) (`textured`), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md) (`lit`, `gouraud`) i [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md).
 
 Uniformy, które `TerrainRenderer::draw` ustawia dla terenu:
 
@@ -414,9 +428,11 @@ Uniformy, które `TerrainRenderer::draw` ustawia dla terenu:
 | `uEmissive` | `(0, 0, 0)` | ziemia nie świeci. Uniform zachowuje wartość między wywołaniami, a kryształy go ustawiają, więc trzeba go zerować w każdej klatce |
 | `uTexture`, `uNormalMap` | 0 i 1 | numery jednostek teksturujących |
 
-Materiał (siła i wykładnik odbłysku, `uSpecularStrength` i `uShininess`) jest ustawiany raz na program w `drawLitMaze`, więc podłoże dzieli go z kamieniem ścian.
+Materiał (siła i wykładnik odbłysku, `uSpecularStrength` i `uShininess`) jest ustawiany raz na program w `drawLitMaze`, więc podłoże dzieli go z kamieniem ścian. Tak samo siedem uniformów mapy cieni księżyca (`setShadowUniforms`, od czwartej części M7): raz na program, przed terenem.
 
-**Teren a tryb Gouraud.** Gouraud liczy światło w wierzchołkach. Płytka podłogi miała cztery wierzchołki na 2 x 2 m, więc stożek latarki gubił się na niej prawie w całości. Teren ma wierzchołek co 0,5 m, czyli szesnaście razy więcej punktów na tej samej powierzchni, więc światło liczone w wierzchołkach ma na nim znacznie gęstsze próbki. Jak wygląda na nim stożek latarki w trybie Gouraud, nikt jeszcze nie oglądał na żywo. Mapy normalnych w trybie Gouraud nie ma, jak na ścianach.
+W przebiegu cieni ta sama funkcja ustawia te same uniformy w programie `shadow_depth`. Ten program ma z nich tylko `uModel` (i dwie macierze światła, ustawione wcześniej w `drawShadowCasters`). Pozostałych nie ma, więc `glUniform*` dostaje lokalizację -1 i OpenGL takie wywołanie po cichu pomija. Tekstury gruntu są mimo to wiązane w jednostkach 0 i 1, choć program głębi ich nie czyta: to cena użycia klasy rysującej bez zmian.
+
+**Teren a tryb Gouraud.** Gouraud liczy światło w wierzchołkach. Płytka podłogi miała cztery wierzchołki na 2 x 2 m, więc stożek latarki gubił się na niej prawie w całości. Teren ma wierzchołek co 0,5 m, czyli szesnaście razy więcej punktów na tej samej powierzchni, więc światło liczone w wierzchołkach ma na nim znacznie gęstsze próbki. Jak wygląda na nim stożek latarki w trybie Gouraud, nikt jeszcze nie oglądał na żywo. Mapy normalnych w trybie Gouraud nie ma, jak na ścianach. Cień księżyca jest w tym trybie jedyną rzeczą liczoną na fragment (czwarta część M7), więc krawędź cienia ściany na gruncie nie zależy od gęstości siatki terenu i wypada tam, gdzie w trybie Phong ([`lighting-gouraud-phong.md`](lighting-gouraud-phong.md), [`shadows.md`](shadows.md), sekcja 2.15).
 
 Jedyna zmiana w plikach shaderów związana z terenem to słowo w komentarzu `lit.frag` (`floor` na `ground`).
 
@@ -575,7 +591,7 @@ Wzór z sekcji 2.3, linia w linię. Wysokości lądują w jednym wektorze, wiers
 }
 ```
 
-`std::ranges::minmax_element` (wersja algorytmu, która bierze cały kontener zamiast pary `begin()` i `end()`) zwraca dwa iteratory, a `auto [a, b]` (structured binding) rozpakowuje ją na dwie nazwy. Najniższą i najwyższą wysokość pokazuje panel.
+`std::ranges::minmax_element` (wersja algorytmu, która bierze cały kontener zamiast pary `begin()` i `end()`) zwraca dwa iteratory, a `auto [a, b]` (structured binding) rozpakowuje ją na dwie nazwy. Najniższą i najwyższą wysokość pokazuje panel. Od czwartej części M7 czyta je też `game::shadowCasterBounds`, razem z `minX()`, `maxX()`, `minZ()` i `maxZ()`: z tych sześciu liczb powstaje pudełko, do którego księżyc dopasowuje mapę cieni (sekcja 5.13).
 
 Konstruktor domyślny `Terrain()` robi płaski teren z jednego kwadratu 1 x 1 m na `y = 0`. Jego rozmiar nie ma znaczenia: punkt poza siatką dostaje wysokość brzegu, a cały brzeg jest na zerze.
 
@@ -942,6 +958,35 @@ Trawa stoi na terenie, więc nowy grunt oznacza nowe miejsca kępek.
 
 Jeśli w tej samej klatce powstał nowy labirynt, jest on już zbudowany z nową skalą, a `rebuildTerrain` robi to drugi raz. Komentarz mówi wprost: kosztuje to raz trochę czasu i niczego nie zmienia.
 
+**Teren a mapa cieni (czwarta część M7, cienie księżyca, 2026-10-05).** Żadna z trzech dróg opisanych wyżej (start, nowy labirynt, zmiana skali) nie dostała kodu dla cieni. Nie musiała: `NightMazeApp::drawMoonShadowMap` liczy pudełko światła od nowa w **każdej klatce**, z terenu, który akurat jest w `m_mazeWorld`:
+
+```cpp
+    m_moonLightSpace = scene::directionalLightSpace(shadowCasterBounds(m_mazeWorld.terrain),
+                                                    moonDirection(m_lighting));
+```
+
+Komentarz nad tą linią nazywa powód: to kilkadziesiąt mnożeń i nic, o czym dałoby się zapomnieć po zbudowaniu nowego labiryntu, zmianie skali wysokości albo przesunięciu księżyca w panelu Lights. Pudełko, z którego to powstaje, jest w `src/game/Shadows.cpp`:
+
+```cpp
+scene::Aabb shadowCasterBounds(const Terrain& terrain) {
+    // The pillars are the tallest things that stand on the ground. One of them on the
+    // highest point of the land is higher than anything really is: the maze lies in
+    // the low middle. That costs a little depth range and keeps the rule simple.
+    return {
+        .min = {terrain.minX(), terrain.minHeight(), terrain.minZ()},
+        .max = {terrain.maxX(), terrain.maxHeight() + PILLAR_HEIGHT, terrain.maxZ()},
+    };
+}
+```
+
+| Element | Znaczenie |
+|---|---|
+| `terrain.minX()`, `maxX()`, `minZ()`, `maxZ()` | cały teren w planie, razem z marginesem wzgórz wokół labiryntu. Dla labiryntu startowego to 48 x 48 m (97 punktów co 0,5 m) |
+| `terrain.minHeight()` | najniższy grunt: nic, co rzuca cień, nie leży niżej |
+| `terrain.maxHeight() + PILLAR_HEIGHT` | najwyższy grunt plus wysokość słupka (`PILLAR_HEIGHT = 3.15F` w `MazeLayout.hpp`), najwyższej rzeczy stojącej na gruncie. To celowo za dużo: słupki stoją w niskim środku, a nie na szczycie wzgórza. Dla labiryntu startowego przy skali 1 góra pudełka wypada na `3,37 + 3,15 = 6,52 m` (policzone z liczb z początku dokumentu) |
+
+Większa skala wysokości podnosi `maxHeight()`, więc pudełko rośnie w pionie, a z nim zakres głębi mapy. Bias cieni jest podawany w metrach i dzielony przez ten zakres dopiero przy wysyłaniu do shadera, więc suwak `Height scale` nie rozstraja cieni. Resztę (obrót pudełka w stronę światła, margines 0,5 m, teksele na metr) opisuje [`shadows.md`](shadows.md), sekcje 2.2 do 2.4, i [`../scene/lights.md`](../scene/lights.md).
+
 ### 5.14 Skrypt `make_heightmap.py`
 
 Obraz jest wynikiem skryptu, jak wszystkie assety gry ([`../../guides/blender.md`](../../guides/blender.md)). Uruchomienie z katalogu repozytorium:
@@ -995,12 +1040,15 @@ Czego testy **nie** sprawdzają:
 - `rebuildTerrain` w `NightMazeApp`: tego, że kryształy, przeszkody i gracz są poprawiane po zmianie skali w działającej grze. Sprawdzone są klocki (`placeOnTerrain`, `restCrystalsOnGround`), nie ich złożenie,
 - płynności obrazu przy chodzeniu.
 
+**Przypadek spoza tego pliku (czwarta część M7).** `tests/ShadowTests.cpp` ma przypadek `the caster bounds of the moon hold the land and everything that stands on it`. Buduje labirynt domyślny przeciążeniem `buildMazeWorld` bez mapy wysokości (teren płaski), woła `shadowCasterBounds(world.terrain)` i sprawdza sześć granic pudełka wprost z akcesorów `Terrain` (`minX`, `maxX`, `minZ`, `maxZ`, `minHeight`, `maxHeight() + PILLAR_HEIGHT`), a potem to, że każde pudełko kolizji labiryntu mieści się w nim w planie i nie wystaje górą. Teren z prawdziwej mapy wysokości nie jest w tym przypadku sprawdzany. `tests/TerrainTests.cpp` się nie zmienił.
+
 ### 5.16 Jak to zostało sprawdzone
 
 Lista z początku dokumentu, tutaj z podziałem na źródło:
 
-- **Testy** (uruchomione przeze mnie 2026-10-05 na plikach z `build/debug` i `build/release`, po drugiej części M6): 256 przypadków, 101232 asercje, wszystkie zaliczone w obu konfiguracjach. Po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, tych nie uruchamiałem.
-- **Po pierwszej części M7** (zgłoszone dla Windowsa, 2026-10-05): w trybie `Unlit` z `Tone mapping: None` i ekspozycją 1 podłoże i ściany różnią się od poprzedniego commita najwyżej o 22 poziomy na 255 (średnio 1,1), tylko na spoinach cegieł. Obraz nie jest identyczny, bo filtrowanie tekstury działa teraz na wartościach liniowych ([`../gfx/color-space.md`](../gfx/color-space.md)).
+- **Testy** (uruchomione przeze mnie 2026-10-05 na plikach z `build/debug` i `build/release`, po drugiej części M6): 256 przypadków, 101232 asercje, wszystkie zaliczone w obu konfiguracjach. Po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751, tych nie uruchamiałem.
+- **Po czwartej części M7** (cienie księżyca, zgłoszone dla Windowsa, 2026-10-05): bramka `make check` przechodzi, a build Debug nie zalogował błędów OpenGL przy mapie cieni 2048 i 1024. Z wyłączonymi cieniami i intensywnością księżyca ustawioną z powrotem na 0,12 obraz jest poza paskiem HUD identyczny co do piksela z obrazem sprzed tej części, więc drugi przebieg terenu niczego w scenie nie psuje. Nikt nie zgłosił osobno: terenu z `Wireframe` przy włączonych cieniach ani zmiany `Height scale` przy włączonych cieniach (to, że pudełko światła idzie za terenem, wynika z kodu).
+- **Po pierwszej części M7** (zgłoszone dla Windowsa, 2026-10-05): w trybie `Unlit` z `Tone mapping: None` i ekspozycją 1 podłoże i ściany różnią się od poprzedniego commita najwyżej o 22 poziomy na 255 (średnio 1,1), tylko na spoinach cegieł. Obraz nie jest identyczny, bo filtrowanie tekstury działa teraz na wartościach liniowych: tak robią dzisiejsze karty, a OpenGL 4.1 tę kolejność (najpierw dekodowanie, potem filtr) zaleca, ale jej nie wymaga ([`../gfx/color-space.md`](../gfx/color-space.md)).
 - **Liczby terenu** (przeliczone niezależnie od kodu C++, skryptem czytającym plik PNG): 97 x 97, 18432 trójkąty, od 0,085 do 0,461 m w labiryncie, 3,37 m na wzgórzach, wysokości w trzech komórkach, przykłady z sekcji 2.
 - **Build, format, obraz, liczba klatek** (zgłoszone przez autora kodu): bez ostrzeżeń, clang-format czysty, zrzuty ekranu, około 2000 klatek na sekundę w Release przed i po.
 - **Nie zapisano:** wersji kompilatora, karty i sterownika dla tego pomiaru, wyniku clang-tidy.
@@ -1034,7 +1082,7 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
 | Kontrolka | Zakres | Co robi |
 |---|---|---|
 | suwak `Height scale` | od 0 do 2,5, startuje na 1 | mnoży każdą wysokość terenu. `SliderFloat` zwraca `true` w każdej klatce, w której wartość się zmieniła, więc teren idzie za suwakiem podczas przeciągania. Panel tylko ustawia `rebuild`: przebudowę robi gra na początku następnej klatki |
-| pole `Wireframe` | wyłączone | rysuje krawędzie trójkątów terenu zamiast ich wnętrz. Reszta sceny zostaje wypełniona |
+| pole `Wireframe` | wyłączone | rysuje krawędzie trójkątów terenu zamiast ich wnętrz. Reszta sceny zostaje wypełniona. Mapy cieni to pole nie dotyczy: tam teren jest zawsze wypełniony (sekcja 2.12) |
 | `Grid: ...` | tylko odczyt | liczba punktów siatki i odstęp. Dla labiryntu startowego `97 x 97 points, 0.50 m apart` |
 | `Triangles: ...` | tylko odczyt | 18432 dla labiryntu startowego |
 | `Height: ... m to ... m` | tylko odczyt | najniższy i najwyższy punkt **całej** siatki, razem ze wzgórzami: `0.00 m to 3.37 m` przy ustawieniach startowych. To nie jest zakres wewnątrz labiryntu |
@@ -1070,6 +1118,8 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
 13. **Teren nie ma kolizji.** Wysokość jest odczytywana. Na wzgórzach (do 4,5 m na jedynkę skali) gracz wejdzie na dowolnie strome zbocze z pełną prędkością poziomą. Do wzgórz da się dojść tylko w trybie noclip i po jego wyłączeniu poza labiryntem, bo labirynt jest zamknięty ścianami.
 14. **Tekstura podłoża jest sRGB.** Do M6 `ground.png` była dobrana na oko dla obrazu bez korekcji gamma ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)). Od M7 jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe. Zamiana tych dwóch argumentów w `TerrainRenderer` nie zgłasza błędu: podłoże wyszłoby wyblakłe, a jego nierówności oświetlone krzywo. `AssetCache::texture` loguje błąd tylko wtedy, gdy ten sam plik zostanie zamówiony raz jako sRGB, a raz jako liniowy.
 15. **macOS, niesprawdzone.** `glPolygonMode` z `GL_LINE` należy do profilu Core 4.1, ale sterownik Apple jeszcze tego kodu nie widział.
+16. **"Wireframe wyłącza cienie terenu".** Nie wyłącza. Do mapy cieni teren idzie zawsze wypełniony (sekcja 2.12), więc wzgórza rzucają cień także wtedy, gdy w scenie widać z nich same linie.
+17. **"Teren kosztuje jedno wywołanie rysujące".** Od czwartej części M7 dwa na klatkę przy włączonych cieniach: jedno do mapy cieni, jedno do sceny (sekcja 3.2).
 
 ## 8. Ćwiczenia
 
@@ -1167,7 +1217,10 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
     Loader wypisuje błąd, `loadHeightmap` zwraca pustą `Heightmap` (jedna wartość 0) i świat jest płaski. Gra działa.
 
 26. **Ile wywołań rysujących kosztuje teren i ile kosztowały płytki?**
-    Jedno, niezależnie od rozmiaru labiryntu. Płytki kosztowały jedno na komórkę, czyli 100 w labiryncie startowym.
+    Jedno w przebiegu sceny, niezależnie od rozmiaru labiryntu. Od czwartej części M7 drugie w przebiegu cieni, gdy cienie są włączone. Płytki kosztowały jedno na komórkę, czyli 100 w labiryncie startowym.
+
+27. **Co teren ma wspólnego z mapą cieni księżyca?**
+    Trzy rzeczy. Jest rysowany do mapy cieni, zawsze wypełniony, więc wzgórza rzucają cień. Przyjmuje cień jak ściany, bo rysują go te same programy `lit` i `gouraud`. I wyznacza obszar mapy: `shadowCasterBounds` bierze z niego sześć granic (`minX`, `maxX`, `minZ`, `maxZ`, `minHeight`, `maxHeight` plus wysokość słupka), a `directionalLightSpace` dopasowuje do tego pudełka rzut ortograficzny księżyca. Liczone w każdej klatce, więc nowy labirynt i nowa skala wysokości nie wymagają osobnego kodu.
 
 ## 10. Źródła
 

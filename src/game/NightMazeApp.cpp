@@ -29,11 +29,12 @@ constexpr int INITIAL_HEIGHT = 720;
 // with the first pair, the lines of the collision boxes and spheres with the second, the
 // scene with lighting per fragment with the third, with lighting per vertex with the
 // fourth and the sky with the fifth. The grass has three files: between its vertex and
-// its fragment shader runs a geometry shader. The last two programs do not draw the
-// scene: they draw one triangle over the whole target and share its vertex shader. The
+// its fragment shader runs a geometry shader. The four programs after it do not draw
+// the scene: they draw one triangle over the whole target and share its vertex shader. The
 // composite program brings the HDR picture of the scene to the window, the preview
 // program makes the pictures of the framebuffer attachments for the debug UI, and the
-// bright pass and blur programs are the two steps of the bloom.
+// bright pass and blur programs are the two steps of the bloom. The shadow depth
+// program draws the scene from a light into a shadow map: positions only, no colours.
 constexpr const char* TEXTURED_VERTEX_SHADER_FILE = "shaders/textured.vert";
 constexpr const char* TEXTURED_FRAGMENT_SHADER_FILE = "shaders/textured.frag";
 constexpr const char* COLOR_VERTEX_SHADER_FILE = "shaders/color.vert";
@@ -52,6 +53,8 @@ constexpr const char* COMPOSITE_FRAGMENT_SHADER_FILE = "shaders/post/composite.f
 constexpr const char* PREVIEW_FRAGMENT_SHADER_FILE = "shaders/post/preview.frag";
 constexpr const char* BRIGHT_PASS_FRAGMENT_SHADER_FILE = "shaders/post/bright.frag";
 constexpr const char* BLUR_FRAGMENT_SHADER_FILE = "shaders/post/blur.frag";
+constexpr const char* SHADOW_DEPTH_VERTEX_SHADER_FILE = "shaders/shadow_depth.vert";
+constexpr const char* SHADOW_DEPTH_FRAGMENT_SHADER_FILE = "shaders/shadow_depth.frag";
 
 // The heightmap of the terrain, relative to the assets directory: a grey picture made
 // by tools/blender/make_heightmap.py.
@@ -130,6 +133,8 @@ NightMazeApp::NightMazeApp()
                          core::assetPath(BRIGHT_PASS_FRAGMENT_SHADER_FILE)),
       m_blurShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
                    core::assetPath(BLUR_FRAGMENT_SHADER_FILE)),
+      m_shadowDepthShader(core::assetPath(SHADOW_DEPTH_VERTEX_SHADER_FILE),
+                          core::assetPath(SHADOW_DEPTH_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
       m_terrainRenderer(m_assets),
@@ -356,11 +361,21 @@ void NightMazeApp::onRender(double alpha) {
         return;
     }
 
+    // The shadow pass comes first: the scene as the moon sees it, depths only, into
+    // the shadow map. The lit programs of the scene pass read that map, so it has to
+    // be complete before they draw. The pass binds a framebuffer and a viewport of its
+    // own (the size of the map), and beginScene below binds the scene framebuffer with
+    // its viewport again.
+    drawMoonShadowMap();
+
     // From here on the draw calls do not land in the window. They land in the HDR
     // framebuffer of the scene, which is created again here when the size of the window
     // has changed. The viewport is set to its size by the same call. Without
     // a framebuffer (the driver refused it, the error is in the log) nothing is drawn.
+    // The shadow pass above may have left its own framebuffer bound, so the window is
+    // bound again first: the debug UI is drawn after this function and must land there.
     if (!m_postProcess.beginScene(framebuffer)) {
+        gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
         return;
     }
 
@@ -481,6 +496,60 @@ void NightMazeApp::onRender(double alpha) {
     m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer, sceneView);
 }
 
+void NightMazeApp::drawMoonShadowMap() {
+    // Where the moon looks: an orthographic box around the whole land, seen from the
+    // direction of its light. It is computed again in every frame, from the terrain
+    // and the two angles of the moon alone: a few dozen multiplications, and nothing
+    // that could be forgotten when a new maze is built, the height scale changes or
+    // the Lights panel moves the moon. The camera is not part of it, so the map covers
+    // the same ground in every frame and the shadows stand still when the player
+    // moves.
+    m_moonLightSpace = scene::directionalLightSpace(shadowCasterBounds(m_mazeWorld.terrain),
+                                                    moonDirection(m_lighting));
+
+    // Until the pass below has run, this frame has no shadows.
+    m_moonShadowDrawn = false;
+    if (!m_moonShadow.enabled || !m_shadowDepthShader.isValid()) {
+        return;
+    }
+    if (!m_moonShadowMap.beginDepthPass(shadowMapSize(m_moonShadow.resolution))) {
+        return;
+    }
+    drawShadowCasters(m_moonLightSpace);
+    m_moonShadowDrawn = true;
+
+    // The map goes to its texture unit once, and stays there while the scene is drawn.
+    m_moonShadowMap.bindForSampling(MOON_SHADOW_TEXTURE_UNIT, m_moonShadow.hardwareFilter);
+
+    // The picture of the map, only while the debug UI shows it.
+    if (m_moonShadow.preview) {
+        m_moonShadowMap.drawPreview(m_previewShader);
+    }
+}
+
+void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const {
+    // The classes that draw the scene are used as they are, with another program and
+    // the matrices of the light in place of the ones of the camera. So everything
+    // stands in the shadow map exactly where it stands in the picture: the gate as far
+    // as it has sunk, every crystal where it floats at this moment. The depth program
+    // has no samplers, no tint and no glow: those uniforms are set all the same and
+    // ignored, as every uniform a program does not have.
+    m_shadowDepthShader.use();
+    m_shadowDepthShader.setMat4(VIEW_UNIFORM, lightSpace.view);
+    m_shadowDepthShader.setMat4(PROJECTION_UNIFORM, lightSpace.projection);
+
+    // The terrain is always drawn filled here: the wireframe switch is a way to look
+    // at the ground, and a ground of lines would cast a shadow of lines.
+    constexpr bool NO_WIREFRAME = false;
+    m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
+    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld);
+    m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
+    // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
+    // a texel of the map is about 3 cm, so its shadow would be a flicker of single
+    // texels that moves with the wind, on ground the tuft itself hides. The grass still
+    // RECEIVES shadows.
+}
+
 glm::vec3 NightMazeApp::crystalEmissive() const {
     // The colour of the crystal lights is an sRGB value, like every colour of the
     // lighting settings. It is converted here the way buildLightSet converts it for
@@ -547,6 +616,10 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
     // has no such uniform, and usesNormalMap is false for it anyway.
     shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    // The shadow map of the moon: where it is bound, the matrix it was drawn with and
+    // the numbers of the comparison. Set in every frame, also with the shadows off.
+    setShadowUniforms(shader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT, m_moonShadowDrawn,
+                      m_moonShadow, m_moonLightSpace);
 
     // The ground first, then what stands on it, as in drawUnlitMaze.
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
@@ -569,6 +642,15 @@ void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection)
     // growing, so it does not stop when the round is won and does not jump when one is
     // restarted.
     const auto windSeconds = static_cast<float>(glfwGetTime());
+
+    // The grass lies in the shadows of the moon like the ground, so its program gets
+    // the uniforms of the shadow map too. A uniform is written into the program in
+    // use, hence use() here: GrassRenderer::draw calls it again, which changes nothing.
+    if (m_grassShader.isValid()) {
+        m_grassShader.use();
+        setShadowUniforms(m_grassShader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT,
+                          m_moonShadowDrawn, m_moonShadow, m_moonLightSpace);
+    }
     m_grassRenderer.draw(m_grassShader, view, projection, m_grassSettings, windSeconds, lit,
                          m_viewMode);
 }

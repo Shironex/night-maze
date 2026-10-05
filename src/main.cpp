@@ -62,6 +62,10 @@ protected:
             .postProcess = postProcess(),
             .brightPassShader = brightPassShader(),
             .blurShader = blurShader(),
+            .shadowDepthShader = shadowDepthShader(),
+            .moonShadowSettings = moonShadowSettings(),
+            .moonShadowMap = moonShadowMap(),
+            .moonLightSpace = moonLightSpace(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

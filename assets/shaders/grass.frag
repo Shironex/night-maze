@@ -8,6 +8,9 @@
 #include "common/lighting.glsl"
 // srgbToLinear, for the colours written in this file.
 #include "common/color.glsl"
+// The shadow map of the moon and the function moonShadow: the same file lit.frag
+// includes, so the grass lies in the shadows of the walls like the ground it grows on.
+#include "common/shadows.glsl"
 
 // Inputs from the geometry shader, already blended for this fragment.
 in vec3 gWorldPosition; // position in world space
@@ -55,15 +58,22 @@ void main() {
     }
 
     // The gradient is blended between the sRGB numbers, the way it was chosen, and the
-    // result is converted once: the same as reading it from an sRGB texture.
+    // result is converted once, like one texel of an sRGB texture. (A filtered sRGB
+    // texture blends after the conversion, so its in-between tones differ a little.)
     vec3 color = srgbToLinear(mix(ROOT_COLOR, TIP_COLOR, gBladeUv.y));
 
     // Only the diffuse part of the lighting is used: ambient light plus the moon, the
     // crystals and the flashlight, each weaker with distance. Grass is not shiny, so the
     // highlight is left out.
+    //
+    // The grass receives the shadow of the moon like every lit surface (see lit.frag):
+    // the share of the moon light that does not arrive is taken away again. It casts
+    // none itself: a blade is about as wide as one texel of the shadow map.
     vec3 light = vec3(1.0);
     if (uLit) {
-        light = computeLighting(gWorldPosition, GRASS_NORMAL).diffuse;
+        Lighting lighting = computeLighting(gWorldPosition, GRASS_NORMAL);
+        float shadow = moonShadow(gWorldPosition, moonFacing(GRASS_NORMAL));
+        light = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
     }
     fragColor = vec4(color * light, 1.0);
 }

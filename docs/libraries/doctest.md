@@ -6,13 +6,14 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`tests/`](../../tests/).
 
 **Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z dwudziestu
-pięciu plików: `tests/main.cpp` (punkt wejścia) i dwudziestu czterech plików z testami
+sześciu plików: `tests/main.cpp` (punkt wejścia) i dwudziestu pięciu plików z testami
 (siedemnasty, `SkyboxTests.cpp`, doszedł w pierwszej części M6, `TerrainTests.cpp` i
 `GrassTests.cpp` w drugiej, `ColorSpaceTests.cpp` i `FramebufferTests.cpp`
-w pierwszej części M7, `BloomTests.cpp` w drugiej części M7, a dwa ostatnie, `FogTests.cpp`
-i `VignetteTests.cpp`, w trzeciej części M7). Osiem pierwszych
+w pierwszej części M7, `BloomTests.cpp` w drugiej części M7, `FogTests.cpp`
+i `VignetteTests.cpp` w trzeciej części M7, a ostatni, `ShadowTests.cpp`, w czwartej
+(cienie księżyca, 2026-10-05)). Osiem pierwszych
 wierszy tabeli to pliki z M2 + M3, cztery następne doszły z oświetleniem (pierwsza część M4),
-trzynasty z mapami normalnych (druga część M4), trzy następne z rozgrywką (M5), siedemnasty z niebem (pierwsza część M6), dwa następne z terenem i trawą (druga część M6), dwa kolejne z buforem HDR i gammą (pierwsza część M7, która dodała też jeden przypadek do `LightingTests.cpp`), następny z bloomem (druga część M7), a dwa ostatnie z mgłą i winietą (trzecia część M7). M5 zmieniło
+trzynasty z mapami normalnych (druga część M4), trzy następne z rozgrywką (M5), siedemnasty z niebem (pierwsza część M6), dwa następne z terenem i trawą (druga część M6), dwa kolejne z buforem HDR i gammą (pierwsza część M7, która dodała też jeden przypadek do `LightingTests.cpp`), następny z bloomem (druga część M7), dwa następne z mgłą i winietą (trzecia część M7), a ostatni z cieniami księżyca (czwarta część M7). M5 zmieniło
 też liczby w trzech starszych plikach: `ColliderTests.cpp` dostał siedem przypadków o kulach,
 `MazeTests.cpp` dwa (w tym przeniesiony test `isDeadEnd`), a z `LightingTests.cpp` ubyło
 siedem, bo światła w ślepych zaułkach zostały usunięte z gry. Druga część M6 zabrała jeden
@@ -47,10 +48,16 @@ tekstury gruntu (`ground.png`, `ground_normal.png`) zamiast tekstur podłogi:
 | `BloomTests.cpp` | 7 | od drugiej części M7: części bloomu bez OpenGL (`game/Bloom.*`). Rozmiar celu (`bloomTargetExtent`: połowa sceny, reszta z dzielenia przepada, nie mniej niż 1 piksel), wagi rozmycia Gaussa (`bloomBlurWeights`: suma całego jądra równa 1, wagi maleją i są dodatnie, stosunki zgodne z `exp(-d * d / (2 * sigma * sigma))`, dwie liczby policzone ręcznie), wartości startowe `BloomSettings` w zakresach. Przykład `REQUIRE` przed pętlą, która indeksuje tablicę | [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcja 5.8 |
 | `FogTests.cpp` | 11 | od trzeciej części M7: mgła bez OpenGL (`game/Fog.*`). Współczynnik wysokości (`fogHeightFactor`: 1 na wysokości bazowej i pod nią, połowa co `ln(2) / heightFalloff` metrów nad nią, zanik 0 daje to samo na każdej wysokości), ilość mgły (`fogAmount`: zero przy odległości 0, gęstości 0 i współczynniku 0, rośnie z każdym metrem do 100 m i nie przekracza 1, prawo wykładnicze z liczbą policzoną ręcznie 0,5507 i z odcinkami 10 m i 5 m, które razem dają to samo co 15 m), `fogAmountAt` (odległość od oka i wysokość samego punktu), `worldPositionFromDepth` (punkt świata odzyskany z miejsca na ekranie i głębi, środek ekranu przy głębi 0 i 1 na płaszczyznach przycinania), wartości startowe `FogSettings` (księżyc czysty, niebo pod horyzontem zakryte, podłoże 8 m dalej widoczne) | [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 5.8 i 5.12 |
 | `VignetteTests.cpp` | 7 | od trzeciej części M7: winieta bez OpenGL (`game/Vignette.*`). Stała `VIGNETTE_CORNER_DISTANCE` równa pierwiastkowi z 0,5, środek ekranu bez zmiany, siła 0 nie zmienia niczego, cztery narożniki tracą dokładnie udział `strength`, współczynnik maleje od promienia do narożnika (i w połowie drogi wynosi `1 - strength / 2`), środek prawej i środek górnej krawędzi dają ten sam wynik (brak korekty proporcji okna), wartości startowe `VignetteSettings` | [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 5.8 i 5.13 |
+| `ShadowTests.cpp` | 16 | od czwartej części M7: cienie bez OpenGL (`scene/LightSpace.*`, `game/Shadows.*`). Pudełko światła kierunkowego (`directionalLightSpace`: mieści wszystkie narożniki, jest dopasowane z samym marginesem, światło prosto w dół, prawie prosto w dół i kierunek o długości zero, długość kierunku bez znaczenia), współrzędne w mapie cieni (punkty na jednym promieniu trafiają w ten sam teksel i różnią się tylko głębią, punkt poza pudełkiem wypada poza mapę), pudełko rzucających cień (`shadowCasterBounds`) sprawdzane na każdym pudełku kolizji labiryntu startowego, rozmiar teksela (`shadowTexelSize`), bias (`shadowBias`, `biasInDepthUnits`), rozmiary mapy, jądro PCF i zgodność `moonDirection` ze światłami klatki | [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) |
 
-Razem 294 przypadki testowe: tyle daje policzenie makr `TEST_CASE` w plikach, w kolejności
+Razem 310 przypadków testowych: tyle daje policzenie makr `TEST_CASE` w plikach, w kolejności
 tabeli (policzyłem je sam w wersji przygotowanej do commita):
-19 + 8 + 11 + 12 + 8 + 13 + 19 + 10 + 22 + 20 + 11 + 4 + 9 + 11 + 14 + 25 + 5 + 27 + 9 + 9 + 3 + 7 + 11 + 7.
+19 + 8 + 11 + 12 + 8 + 13 + 19 + 10 + 22 + 20 + 11 + 4 + 9 + 11 + 14 + 25 + 5 + 27 + 9 + 9 + 3 + 7 + 11 + 7 + 16.
+Zgłoszone dla Windowsa po czwartej części M7 (2026-10-05, tych uruchomień nie powtarzałem):
+310 przypadków i 103751 asercji, wszystkie zaliczone, bramka `make check` przechodzi. Przyrost
+wobec trzeciej części M7 (294 przypadki i 102412 asercji) to 16 przypadków i 1339 asercji,
+czyli dokładnie jeden nowy plik, `ShadowTests.cpp`: 129 asercji, które nie zależą od
+labiryntu, i po 5 na każde z 242 pudełek kolizji labiryntu startowego (`129 + 5 * 242 = 1339`).
 Zgłoszone dla Windowsa po trzeciej części M7 (2026-10-05, tych uruchomień nie powtarzałem):
 294 przypadki i 102412 asercji w Debug i w Release, wszystkie zaliczone, bramka `make check`
 przechodzi. Przyrost wobec drugiej części M7 (276 przypadków i 102139 asercji) to 18
@@ -315,7 +322,7 @@ add_test(NAME night_maze_tests COMMAND night_maze_tests)
 | Linia | Znaczenie |
 |---|---|
 | `enable_testing()` | włącza obsługę testów w CMake: podczas generowania powstaje w katalogu buildu plik z listą testów, który czyta `ctest`. Musi stać w głównym `CMakeLists.txt`, bo `ctest` szuka listy w korzeniu katalogu buildu |
-| `add_executable(night_maze_tests ...)` | zwykły program z dwudziestu pięciu plików (`tests/main.cpp` i dwadzieścia cztery pliki z testami). Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
+| `add_executable(night_maze_tests ...)` | zwykły program z dwudziestu sześciu plików (`tests/main.cpp` i dwadzieścia pięć plików z testami). Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
 | `target_link_libraries(... PRIVATE game_logic doctest::doctest)` | kod testowany i biblioteka testów. "Linkowanie" targetu `INTERFACE` `doctest::doctest` oznacza tylko dodanie ścieżek nagłówków |
 | `night_maze_enable_warnings(night_maze_tests)` | testy kompilują się z tymi samymi ścisłymi ostrzeżeniami co reszta naszego kodu (`/W4 /permissive-` albo `-Wall -Wextra -Wpedantic`) |
 | `target_compile_definitions(night_maze_tests PRIVATE NIGHT_MAZE_ASSETS_DIR="...")` | makro preprocesora z bezwzględną ścieżką katalogu `assets` w repozytorium. Testy loaderów czytają nim prawdziwe modele i tekstury niezależnie od katalogu, z którego uruchomiono program ([`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7) |
@@ -558,7 +565,7 @@ Wynik zmierzony na Windowsie (Debug, 2026-10-05, przed dodaniem testów oświetl
 "1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwał
 wtedy około 0,1 s. Dla programu po M5 z 215 przypadkami (2026-10-05) znane są liczby
 z raportu doctest niżej. Program po drugiej części M6 kończył raport liniami
-`test cases: 256 | 256 passed` i `assertions: 101232 | 101232 passed`. Po pierwszej części M7 zgłoszone były liczby 269 i 102103, po drugiej 276 i 102139, a dla dzisiejszego stanu (po trzeciej części M7) 294 i 102412. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
+`test cases: 256 | 256 passed` i `assertions: 101232 | 101232 passed`. Po pierwszej części M7 zgłoszone były liczby 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, a dla dzisiejszego stanu (po czwartej części M7) 310 i 103751. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
 datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas.
 
 W pliku [`Makefile`](../../Makefile) są do tego skróty: `make test` (build Debug i testy),

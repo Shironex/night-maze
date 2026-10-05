@@ -46,6 +46,8 @@ add_library(engine STATIC
     src/gfx/Buffer.hpp
     src/gfx/ColorSpace.cpp
     src/gfx/ColorSpace.hpp
+    src/gfx/ComparisonSampler.cpp
+    src/gfx/ComparisonSampler.hpp
     src/gfx/Cubemap.cpp
     src/gfx/Cubemap.hpp
     src/gfx/Extensions.cpp
@@ -73,6 +75,8 @@ add_library(engine STATIC
     src/scene/Light.hpp
     src/scene/LightBlock.cpp
     src/scene/LightBlock.hpp
+    src/scene/LightSpace.cpp
+    src/scene/LightSpace.hpp
     src/scene/Transform.cpp
     src/scene/Transform.hpp
 )
@@ -94,8 +98,9 @@ night_maze_enable_warnings(engine)
 
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
 # The maze, its generator, its layout in the world, the terrain it stands on, the places
-# of the grass, the player, the settings of the lighting, of the bloom, of the fog and of
-# the vignette and the rules of a round (exit, crystals, battery) are plain data and math.
+# of the grass, the player, the settings of the lighting, of the bloom, of the fog, of
+# the vignette and of the shadows and the rules of a round (exit, crystals, battery) are
+# plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -124,14 +129,16 @@ add_library(game_logic STATIC
     src/game/Player.hpp
     src/game/Round.cpp
     src/game/Round.hpp
+    src/game/Shadows.cpp
+    src/game/Shadows.hpp
     src/game/Terrain.cpp
     src/game/Terrain.hpp
     src/game/Vignette.cpp
     src/game/Vignette.hpp
 )
 # PUBLIC: the headers of this library (Crystals.hpp, Exit.hpp, Lighting.hpp,
-# MazeLayout.hpp, MazeWorld.hpp, Player.hpp, Round.hpp, Terrain.hpp) include headers of
-# engine (scene/Collider.hpp, scene/Light.hpp, gfx/Vertex.hpp, assets/ImageLoader.hpp)
+# MazeLayout.hpp, MazeWorld.hpp, Player.hpp, Round.hpp, Shadows.hpp, Terrain.hpp) include
+# headers of engine (scene/Collider.hpp, scene/Light.hpp, gfx/Vertex.hpp, assets/ImageLoader.hpp)
 # and GLM, so whoever includes them needs the include paths of engine.
 # The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
@@ -139,9 +146,9 @@ night_maze_enable_warnings(game_logic)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer, TerrainRenderer,
-# GrassRenderer, ColliderLines, LightRig, Skybox, PostProcess, with the shared ModelDraw) stay in the
-# executable: they need a window and an OpenGL context, so they are not something a test
-# can run.
+# GrassRenderer, ColliderLines, LightRig, Skybox, PostProcess, ShadowMap, with the shared
+# ModelDraw) stay in the executable: they need a window and an OpenGL context, so they
+# are not something a test can run.
 add_executable(night_maze
     src/main.cpp
     src/game/ColliderLines.cpp
@@ -161,6 +168,8 @@ add_executable(night_maze
     src/game/PostProcess.cpp
     src/game/PostProcess.hpp
     src/game/ShaderUniforms.hpp
+    src/game/ShadowMap.cpp
+    src/game/ShadowMap.hpp
     src/game/Skybox.cpp
     src/game/Skybox.hpp
     src/game/TerrainRenderer.cpp
@@ -196,6 +205,8 @@ add_executable(night_maze
     src/debug/panels/RendererPanel.hpp
     src/debug/panels/ShadersPanel.cpp
     src/debug/panels/ShadersPanel.hpp
+    src/debug/panels/ShadowsPanel.cpp
+    src/debug/panels/ShadowsPanel.hpp
     src/debug/panels/TerrainPanel.cpp
     src/debug/panels/TerrainPanel.hpp
 )
@@ -228,6 +239,7 @@ add_executable(night_maze_tests
     tests/PlayerTests.cpp
     tests/RoundTests.cpp
     tests/ShaderSourceTests.cpp
+    tests/ShadowTests.cpp
     tests/SkyboxTests.cpp
     tests/TangentTests.cpp
     tests/TerrainTests.cpp

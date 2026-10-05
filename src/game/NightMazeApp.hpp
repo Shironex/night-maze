@@ -15,12 +15,15 @@
 #include "game/Player.hpp"
 #include "game/PostProcess.hpp"
 #include "game/Round.hpp"
+#include "game/ShadowMap.hpp"
+#include "game/Shadows.hpp"
 #include "game/Skybox.hpp"
 #include "game/Terrain.hpp"
 #include "game/TerrainRenderer.hpp"
 #include "gfx/Shader.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
+#include "scene/LightSpace.hpp"
 
 #include <glm/glm.hpp>
 
@@ -36,6 +39,10 @@ namespace game {
 /// The mouse turns the camera, the keyboard moves the player. The maze is lit by the
 /// moon, by the flashlight of the player and by the glowing crystals. Grass grows along
 /// the walls, and above them is the night sky, a skybox.
+///
+/// The moon casts shadows. Before the scene, everything that casts one is drawn from
+/// the direction of the moon into a depth texture (game::ShadowMap), and the lit
+/// programs look every fragment up in it.
 ///
 /// The scene is not drawn into the window directly. It is drawn into an HDR framebuffer
 /// (game::PostProcess). Its bright parts are blurred into a glow (bloom), and a last
@@ -99,6 +106,21 @@ protected:
 
     /// Shader program of the blur passes of the bloom, exposed for the same reason.
     gfx::Shader& blurShader() { return m_blurShader; }
+
+    /// Shader program of the depth pass of the shadow maps, exposed for the same reason.
+    gfx::Shader& shadowDepthShader() { return m_shadowDepthShader; }
+
+    /// The settings of the shadows of the moon (switch, resolution, bias, PCF,
+    /// strength), exposed so the debug UI can edit them live.
+    ShadowSettings& moonShadowSettings() { return m_moonShadow; }
+
+    /// The shadow map of the moon, read only: the debug UI shows its size, its format
+    /// and its preview picture.
+    const ShadowMap& moonShadowMap() const { return m_moonShadowMap; }
+
+    /// The view and the projection the shadow map of the moon was drawn with in the
+    /// last frame, read only: the debug UI shows how much ground the map covers.
+    const scene::LightSpace& moonLightSpace() const { return m_moonLightSpace; }
 
     /// The exposure, the tone mapping and the preview switch of the composite pass and
     /// the settings of the bloom, the fog and the vignette, exposed so the debug UI can
@@ -195,6 +217,20 @@ private:
     /// regeneration and when the round is restarted (key R or the debug UI).
     void beginRound();
 
+    /// The shadow pass of the moon, the first pass of a frame. It fits the box of the
+    /// moon to the land (m_moonLightSpace), draws the shadow casters into the shadow
+    /// map (drawShadowCasters), binds the map for the lit programs and, while the
+    /// debug UI asks for it, draws its preview picture. With the shadows switched off
+    /// it only computes the box. It leaves a framebuffer of the shadow map bound, so
+    /// the scene framebuffer has to be bound after it.
+    void drawMoonShadowMap();
+
+    /// Draws everything that casts a shadow with the depth program, as the light with
+    /// the given view and projection sees it: the terrain, the walls and the pillars,
+    /// the gate (as far as it has sunk) and the crystals. The grass casts no shadow.
+    /// The target (a shadow map) must be bound already.
+    void drawShadowCasters(const scene::LightSpace& lightSpace) const;
+
     /// The parts of a frame. Each one selects its own shader program and sets its
     /// uniforms. drawMaze draws the terrain and the maze together with the crystals and
     /// the gate, and has two ways to do it: without lighting (the textured program, also
@@ -234,6 +270,8 @@ private:
     gfx::Shader m_previewShader;
     gfx::Shader m_brightPassShader;
     gfx::Shader m_blurShader;
+    // Draws depth only, from the view of a light: the program of the shadow pass.
+    gfx::Shader m_shadowDepthShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
@@ -244,6 +282,8 @@ private:
     Skybox m_skybox;
     // The HDR framebuffer of the scene and the passes after the scene.
     PostProcess m_postProcess;
+    // The depth texture the scene is drawn into from the direction of the moon.
+    ShadowMap m_moonShadowMap;
 
     // The request for the next maze (edited by the debug UI).
     MazeSettings m_mazeSettings;
@@ -293,6 +333,13 @@ private:
     // The lighting: how the scene is shaded and the settings of every light. The lights
     // of a frame are built from it in onRender.
     LightingSettings m_lighting;
+
+    // The shadows of the moon: their settings (edited by the debug UI), the view and
+    // the projection of the moon in this frame, and whether the shadow pass has filled
+    // the map in this frame. The last two are set by drawMoonShadowMap in every frame.
+    ShadowSettings m_moonShadow;
+    scene::LightSpace m_moonLightSpace;
+    bool m_moonShadowDrawn = false;
 
     // What the textured shader shows: the picture, or one of the two debug views. A debug
     // view replaces the lighting: it is drawn with the textured program in every

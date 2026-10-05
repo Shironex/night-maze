@@ -16,10 +16,12 @@
 #include "debug/panels/MazePanel.hpp"
 #include "debug/panels/RendererPanel.hpp"
 #include "debug/panels/ShadersPanel.hpp"
+#include "debug/panels/ShadowsPanel.hpp"
 #include "debug/panels/TerrainPanel.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/PostProcess.hpp"
+#include "game/Shadows.hpp"
 #include "game/Skybox.hpp"
 
 #include <imgui.h>
@@ -93,6 +95,8 @@ void DebugUI::draw(const DebugContext& context) {
     // while the Framebuffers panel is open. The panel sets the flag again below. With
     // the panels hidden nobody does, and the game stops drawing the pictures.
     context.postProcessSettings.previews = false;
+    // The same for the preview picture of the shadow map and the Shadows panel.
+    context.moonShadowSettings.preview = false;
 
     if (m_visible) {
         // An invisible dock area that covers the whole window, so panels can be docked to
@@ -108,12 +112,12 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 10;
+        constexpr int SHADER_COUNT = 11;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader,  &context.colorShader,   &context.litShader,
-            &context.gouraudShader,   &context.skyboxShader,  &context.grassShader,
-            &context.compositeShader, &context.previewShader, &context.brightPassShader,
-            &context.blurShader};
+            &context.texturedShader,  &context.colorShader,      &context.litShader,
+            &context.gouraudShader,   &context.skyboxShader,     &context.grassShader,
+            &context.compositeShader, &context.previewShader,    &context.brightPassShader,
+            &context.blurShader,      &context.shadowDepthShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
@@ -121,6 +125,7 @@ void DebugUI::draw(const DebugContext& context) {
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
         drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
+        drawShadowsPanel(context.moonShadowSettings, context.moonShadowMap, context.moonLightSpace);
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                       context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);

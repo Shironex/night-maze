@@ -8,12 +8,15 @@ używa.
 `gfx::Shader`.** Struktury z [`src/scene/`](../../src/scene/) (opis w
 [`../modules/scene/transforms.md`](../modules/scene/transforms.md) i
 [`../modules/scene/camera.md`](../modules/scene/camera.md)) wołają
-`translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i `normalize`.
+`translate`, `rotate`, `scale`, `lookAt`, `perspective`, `radians`, `cross` i `normalize`,
+a od czwartej części M7 (plik `src/scene/LightSpace.cpp`) także `ortho`, `min` i `max`.
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera, a `Shader::setVec3` tak samo wysyła wektor.
 Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz widoku i macierz
-rzutowania, wysyła je do programów shaderów (jest ich sześć, w jednej klatce pracują
-najwyżej cztery) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+rzutowania, wysyła je do programów shaderów (macierze kamery dostaje sześć programów sceny,
+z których w jednej klatce pracują najwyżej cztery, a od czwartej części M7 siódmy program,
+`shadow_depth`, dostaje macierze widoku i rzutowania światła księżyca. Wszystkich programów
+jest dziś jedenaście) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
 mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
 kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
 narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ
@@ -77,7 +80,7 @@ Windowsie zbudowany w Debug i Release bez ostrzeżeń, a testy przechodziły (21
 85098 asercji, stan po M5). Kod M6 (niebo, teren, trawa) jest na Windowsie kompletny: build
 bez ostrzeżeń zgłosił wykonawca, a 256 przypadków testowych i 101232 asercje uruchomiłem
 sam na programach testowych Debug i Release (2026-10-05). Po pierwszej części M7 zgłoszone
-jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412 (Windows, 2026-10-05). Pierwsza część M7 dodała jedno nowe
+jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751 (Windows, 2026-10-05). Pierwsza część M7 dodała jedno nowe
 miejsce użycia GLM: `gfx::srgbToLinear` i `gfx::linearToSrgb` w `src/gfx/ColorSpace.hpp`
 przyjmują i zwracają `glm::vec3` (kolor przeliczany kanał po kanale,
 [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md)). Trzecia część M7 (mgła i winieta)
@@ -86,7 +89,15 @@ odległości powierzchni od oka i mnożenie `glm::mat4` przez `glm::vec4` w
 `worldPositionFromDepth`) oraz `src/game/Vignette.*` (`glm::length` i `glm::smoothstep`),
 a `NightMazeApp::onRender` odwraca iloczyn `projection * view` funkcją `glm::inverse`
 ([`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 2.19,
-5.12 i 5.13). Na macOS kod M4, M5 i M6 nie był
+5.12 i 5.13). Czwarta część M7 (cienie księżyca) dodała plik `src/scene/LightSpace.*`
+z funkcją `scene::directionalLightSpace`: **pierwsze** użycie `glm::ortho` w projekcie (rzut
+prostokątny światła kierunkowego, sześć argumentów: lewa, prawa, dolna i górna krawędź oraz
+płaszczyzna bliska i daleka), drugie miejsce użycia `glm::lookAt` (widok światła, obok
+`scene::Camera`) oraz `glm::min` i `glm::max` na wektorach, składowa po składowej, którymi
+funkcja szuka najmniejszego pudełka wokół ośmiu narożników w przestrzeni światła. Struktura
+`scene::LightSpace` trzyma dwie macierze `glm::mat4` i wektor `glm::vec3` z wymiarami pudełka,
+a jej funkcja `matrix()` zwraca iloczyn `projection * view`
+([`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), sekcje 2.2 i 2.3). Na macOS kod M4, M5 i M6 nie był
 budowany.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem

@@ -72,7 +72,7 @@ inline constexpr float SHADERS_WIDTH =
 // have room for six, so these two start folded to their title bars, side by side at the
 // top edge between the columns. Unfolded each reaches down to the bottom row and covers
 // its part of the scene and the folded bars under it (Terrain or Grass, and its part of
-// the Framebuffers bar, see below), but no open panel. Camera is a little shorter than
+// the Framebuffers and Shadows bars, see below), but no open panel. Camera is a little shorter than
 // its contents, so it scrolls. Gameplay may start folded because the HUD shows the state of
 // the round all the time: the panel is for changing the rules.
 inline constexpr float CAMERA_WIDTH = 280.0F;
@@ -94,17 +94,24 @@ inline constexpr float GRASS_HEIGHT = 190.0F;
 // bar as wide as the two bars above it together (PanelPlacement::foldedRowsBefore is
 // 2). It is that wide because it shows four pictures side by side, under widgets that
 // stand in two columns. Unfolded it reaches down to just above the bottom row and
-// covers the scene between the columns, but no other panel. Its contents need a little
-// less than that height at that width.
+// covers the scene between the columns and the folded Shadows bar under its own, but
+// no open panel. Its contents need a little less than that height at that width.
 inline constexpr float FRAMEBUFFERS_WIDTH = CAMERA_WIDTH + PANEL_GAP + GAMEPLAY_WIDTH;
 inline constexpr float FRAMEBUFFERS_HEIGHT = 344.0F;
 
+// Shadows: the twelfth panel. It starts folded in a fourth row of title bars, as wide
+// as the Framebuffers bar above it (PanelPlacement::foldedRowsBefore is 3): its widgets
+// stand in the left half and the picture of the shadow map in the right half. Unfolded
+// it reaches down to just above the bottom row and covers the scene between the
+// columns, but no other panel.
+inline constexpr float SHADOWS_HEIGHT = 324.0F;
+
 // The number of rows of folded title bars at the top edge. The HUD starts below them
 // (Hud.cpp).
-inline constexpr int FOLDED_ROW_COUNT = 3;
+inline constexpr int FOLDED_ROW_COUNT = 4;
 
-// The eleven panels. No two rectangles overlap in a window of the reference size, with
-// the five folded panels counted as their title bars.
+// The twelve panels. No two rectangles overlap in a window of the reference size, with
+// the six folded panels counted as their title bars.
 inline constexpr PanelPlacement RENDERER_PLACEMENT{
     .corner = TOP_LEFT,
     .offset = {PANEL_GAP, PANEL_GAP},
@@ -147,6 +154,13 @@ inline constexpr PanelPlacement FRAMEBUFFERS_PLACEMENT{
     .size = {FRAMEBUFFERS_WIDTH, FRAMEBUFFERS_HEIGHT},
     .collapsed = true,
     .foldedRowsBefore = 2,
+};
+inline constexpr PanelPlacement SHADOWS_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {BOTTOM_ROW_LEFT, PANEL_GAP},
+    .size = {FRAMEBUFFERS_WIDTH, SHADOWS_HEIGHT},
+    .collapsed = true,
+    .foldedRowsBefore = 3,
 };
 inline constexpr PanelPlacement MAZE_PLACEMENT{
     .corner = TOP_RIGHT,

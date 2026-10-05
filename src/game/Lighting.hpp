@@ -50,15 +50,15 @@ struct LightingSettings {
 
     /// Light that reaches every surface: low, so that corners no light shines into are
     /// dark but not black. A cold blue, like the night sky. As an sRGB value it looks
-    /// like a lot, but only about a hundredth of it is left as linear light.
+    /// like a lot, but only a tenth to a fifth of each number is left as linear light.
     glm::vec3 ambient{0.105F, 0.135F, 0.225F};
 
     /// The moon, a directional light. The two angles say which way its light TRAVELS,
     /// with the conventions of scene::directionFromAngles: yaw like a compass (0 towards
     /// -Z, 90 towards +X), pitch below 0 means downwards. The yaw is deliberately not
     /// a multiple of 45 degrees: the walls face four directions, and this way each of
-    /// them gets a different share of the light. There are no shadows before M7, so the
-    /// moon also lights walls and ground that stand in the shade of another wall.
+    /// them gets a different share of the light. The moon casts shadows: its shadow map
+    /// is fitted to the land from this direction (game/Shadows.hpp).
     ///
     /// COUPLING WITH THE SKY: the moon disc of the skybox is painted where this light
     /// comes from, which is the direction opposite to the one the two defaults below
@@ -73,9 +73,12 @@ struct LightingSettings {
     /// it is.
     float moonYawDegrees = 25.0F;
     float moonPitchDegrees = -50.0F;
-    /// A cool, dim blue-white.
+    /// A cool, dim blue-white. The intensity is low on purpose (it is night), but high
+    /// enough that a surface in the moon light is clearly brighter than one in the
+    /// shadow of a wall, which only has the ambient light: about five times on level
+    /// ground.
     glm::vec3 moonColor{0.55F, 0.65F, 1.0F};
-    float moonIntensity = 0.12F;
+    float moonIntensity = 0.2F;
 
     /// The flashlight, a spot light at the eye of the player. Key F switches it. An
     /// empty battery switches it off and keeps it off (game::updateRound).
@@ -118,6 +121,11 @@ struct LightingSettings {
 /// mode Unlit has no lighting at all, but the debug view "Normals as colour" shows the
 /// normals of the maps in it, so the answer is true there.
 bool usesNormalMap(const LightingSettings& settings);
+
+/// The direction the light of the moon TRAVELS in, with length 1, from the two angles of
+/// the settings (scene::directionFromAngles). The lights of a frame and the shadow map
+/// of the moon both take it from here, so they can never disagree.
+glm::vec3 moonDirection(const LightingSettings& settings);
 
 /// The lights of one frame, with their colours converted from sRGB to linear.
 ///

@@ -5,11 +5,19 @@ Kod: trzy shadery [`assets/shaders/grass.vert`](../../../assets/shaders/grass.ve
 
 Dokument zakłada znajomość potoku i dwóch podstawowych etapów shaderów ([`../gfx/shaders.md`](../gfx/shaders.md)), klasy `gfx::Shader` ([`../gfx/shader-class.md`](../gfx/shader-class.md)), siatki i rodzaju prymitywu ([`../gfx/mesh.md`](../gfx/mesh.md)), świateł i pliku `common/lighting.glsl` ([`../scene/lights.md`](../scene/lights.md)), bloku uniformów ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) oraz terenu ([`terrain.md`](terrain.md)), na którym trawa stoi. Jak klasa `Shader` kompiluje i linkuje trzeci etap, opisuje linia po linii [`../gfx/shader-class.md`](../gfx/shader-class.md): tutaj jest teoria shadera geometrii i wszystko, co robi z nim gra.
 
-**Stan na dziś:** wzdłuż ścian labiryntu, po obu ich stronach, rosną kępki trawy, a na wzgórzach wokół labiryntu jest ich rzadki rozsiew. Każda kępka to **jeden punkt** w buforze wierzchołków. Trzy źdźbła, z których się składa, buduje na karcie graficznej shader geometrii `grass.geom`, w każdej klatce od nowa, i dlatego trawa kołysze się na wietrze bez wysyłania jakichkolwiek danych. Programów shaderów było od tej części sześć: doszedł `grass`, pierwszy z trzema plikami. Dziś jest ich dziesięć (pierwsza część M7 dodała `composite` i `preview`, druga `bright` i `blur`). Panel **Grass** ma pole `Enabled` i suwak `Density`: to są dwa pokazy, które PRD podaje dla tematu 9 ("gęstość trawy, toggle"), oraz suwaki `Blade height` i `Wind strength`.
+**Stan na dziś:** wzdłuż ścian labiryntu, po obu ich stronach, rosną kępki trawy, a na wzgórzach wokół labiryntu jest ich rzadki rozsiew. Każda kępka to **jeden punkt** w buforze wierzchołków. Trzy źdźbła, z których się składa, buduje na karcie graficznej shader geometrii `grass.geom`, w każdej klatce od nowa, i dlatego trawa kołysze się na wietrze bez wysyłania jakichkolwiek danych. Programów shaderów było od tej części sześć: doszedł `grass`, pierwszy z trzema plikami. Dziś jest ich jedenaście (pierwsza część M7 dodała `composite` i `preview`, druga `bright` i `blur`, czwarta `shadow_depth`). Panel **Grass** ma pole `Enabled` i suwak `Density`: to są dwa pokazy, które PRD podaje dla tematu 9 ("gęstość trawy, toggle"), oraz suwaki `Blade height` i `Wind strength`.
 
-**Czego nie ma:** PRD wymienia w temacie 9 obok trawy także iskry wokół kryształów. **Iskier nie zbudowano**: nie ma dla nich kodu ani shadera. Nie ma też cieni rzucanych przez trawę ani na trawę (cieni nie ma w grze w ogóle: są planowane w dalszej części M7). Mgła jest w grze od trzeciej części M7 i okrywa trawę jak wszystko inne w scenie: jest liczona po scenie, z bufora głębi, w przebiegu składającym, więc w shaderach trawy nie ma dla niej ani jednej linii ([`post-process.md`](post-process.md), sekcje 2.17 do 2.21). Bloom jest w grze od drugiej części M7, ale nie ma dla trawy osobnego kodu: najjaśniejszy kolor źdźbła (czubek) ma liniowo jasność około 0,3, więc bez mocnego światła leży pod progiem poświaty 0,8.
+**Czego nie ma:** PRD wymienia w temacie 9 obok trawy także iskry wokół kryształów. **Iskier nie zbudowano**: nie ma dla nich kodu ani shadera. Trawa **nie rzuca cienia**. Od czwartej części M7 za to cień księżyca **przyjmuje**: leży w cieniu ścian tak jak grunt, na którym rośnie (akapit niżej i sekcja 2.7). Latarka i światła kryształów cieni nie rzucają na nic, więc na trawę też nie. Mgła jest w grze od trzeciej części M7 i okrywa trawę jak wszystko inne w scenie: jest liczona po scenie, z bufora głębi, w przebiegu składającym, więc w shaderach trawy nie ma dla niej ani jednej linii ([`post-process.md`](post-process.md), sekcje 2.17 do 2.21). Bloom jest w grze od drugiej części M7, ale nie ma dla trawy osobnego kodu: najjaśniejszy kolor źdźbła (czubek) ma liniowo jasność około 0,3, więc bez mocnego światła leży pod progiem poświaty 0,8.
 
-**Co zmieniła pierwsza część M7 (2026-10-05).** Geometria trawy i shader geometrii się nie zmieniły. W `grass.frag` doszło `#include "common/color.glsl"`: dwa końce gradientu są liczbami sRGB i kolor jest przeliczany na liniowy przed oświetleniem, a oba widoki diagnostyczne przechodzą przez `srgbToLinear` (sekcja 4.3). Wynik trafia do bufora HDR sceny, nie do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412. Wyglądu trawy w nowym potoku nikt nie porównał ręcznie z poprzednim.
+**Co zmieniła pierwsza część M7 (2026-10-05).** Geometria trawy i shader geometrii się nie zmieniły. W `grass.frag` doszło `#include "common/color.glsl"`: dwa końce gradientu są liczbami sRGB i kolor jest przeliczany na liniowy przed oświetleniem, a oba widoki diagnostyczne przechodzą przez `srgbToLinear` (sekcja 4.3). Wynik trafia do bufora HDR sceny, nie do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751. Wyglądu trawy w nowym potoku nikt nie porównał ręcznie z poprzednim.
+
+**Co zmieniła czwarta część M7 (cienie księżyca, 2026-10-05).** Księżyc rzuca cienie z mapy cieni ([`shadows.md`](shadows.md)). Dla trawy znaczy to trzy rzeczy:
+
+- **Trawa przyjmuje cień księżyca.** `grass.frag` dołącza trzeci plik, `common/shadows.glsl`, pyta funkcję `moonShadow(gWorldPosition, moonFacing(GRASS_NORMAL))` o część światła księżyca, której fragment nie dostaje, i odejmuje ją: `light = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0)` (sekcja 4.3). Światło otoczenia, latarka i światła kryształów zostają w cieniu takie same.
+- **Trawa cienia nie rzuca.** `NightMazeApp::drawShadowCasters` rysuje do mapy cieni teren, labirynt, bramę i kryształy, a trawy nie. Źdźbło ma u korzenia 4 cm szerokości (`ROOT_HALF_WIDTH = 0.02` w `grass.geom`) i zwęża się ku czubkowi, a jeden teksel mapy cieni to dla labiryntu startowego około 3,2 cm (policzone dla mapy 2048, przy 1024 około 6,3 cm). Cień źdźbła byłby więc migotaniem pojedynczych tekseli, które do tego rusza się z wiatrem, na ziemi, którą kępka sama zasłania. Decyzja: [`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md), opis: [`shadows.md`](shadows.md), sekcja 2.16.
+- **`NightMazeApp::drawGrass` ustawia uniformy mapy cieni** w programie trawy: woła `m_grassShader.use()` i `setShadowUniforms(...)` przed `GrassRenderer::draw` (sekcje 3.3 i 5.4).
+
+Zmienił się też komentarz przy gradiencie w `grass.frag` (sekcja 4.3), a startowa intensywność księżyca wzrosła z 0,12 do 0,2. Geometria trawy, `grass.vert`, `grass.geom`, `placeGrass` i testy trawy są bez zmian. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi (310 przypadków testowych i 103751 asercji, żaden z 16 nowych nie dotyczy trawy), build Debug bez błędów OpenGL. Wyglądu trawy w cieniu nikt nie oceniał ręcznie, a przeładowania shaderów przy jedenastu programach nikt nie kliknął. Na macOS nic z tej części nie było budowane.
 
 Co jest sprawdzone (2026-10-05, Windows, stan po drugiej części M6):
 
@@ -17,7 +25,7 @@ Co jest sprawdzone (2026-10-05, Windows, stan po drugiej części M6):
 - **Przeliczone przeze mnie niezależnie**, skryptem w Pythonie z własnym generatorem Mersenne Twister: przy gęstości startowej 2,5 labirynt startowy dostaje 1210 kępek przy ścianach i 633 na wzgórzach, razem **1843 kępki**, czyli 5529 źdźbeł. Tę samą liczbę zgłosił autor kodu z panelu działającej gry.
 - **Sprawdzone w specyfikacji GLSL 4.10:** `max_vertices` przyjmuje w tej wersji tylko stałą całkowitą zapisaną wprost, a gwarantowane minimum `gl_MaxGeometryOutputVertices` to 256 i `gl_MaxGeometryTotalOutputComponents` to 1024.
 - **Zgłoszone przez autora kodu, nie powtarzane:** build Debug i Release bez ostrzeżeń, obraz obejrzany na zrzutach ekranu z tymczasowych wstawek (usuniętych), około 2000 klatek na sekundę w Release przed dodaniem trawy i po (rozrzut między uruchomieniami od 1438 do 2040 jest większy niż różnica). Zepsuty celowo `grass.geom` daje błąd z nazwą pliku i numerem linii, `grass.geom(84)`, a gra działa dalej. Zgłoszenie nie mówi, czy plik był zepsuty przed startem, czy przed przeładowaniem, więc tego, że trawa rysuje się dalej poprzednim programem, nikt jeszcze nie potwierdził na ekranie.
-- **Nikt nie sprawdził ręcznie:** żadnej kontrolki panelu Grass ani przycisku `Reload shaders` (wtedy przy sześciu programach, dziś przy dziesięciu). Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 16.
+- **Nikt nie sprawdził ręcznie:** żadnej kontrolki panelu Grass ani przycisku `Reload shaders` (wtedy przy sześciu programach, dziś przy jedenastu). Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 16.
 - **macOS:** nic. Kompilator GLSL Apple nie widział jeszcze shadera geometrii z tego projektu ([`../../guides/build-macos.md`](../../guides/build-macos.md), sekcja 2).
 
 M6 jest kompletny w kodzie na Windowsie i nie jest zamknięty.
@@ -259,6 +267,10 @@ Wiatr nie zmienia niczego w buforach. Punkty kępek stoją w miejscu, a zmienia 
 - **normalna jest zawsze `(0, 1, 0)`, prosto w górę.** Prawdziwa normalna płaskiego źdźbła wskazuje w bok. Z nią źdźbło byłoby jasne z jednej strony, czarne z drugiej i migałoby, gdy kamera je mija, a trzy źdźbła jednej kępki miałyby trzy różne jasności. Z normalną podłoża cała kępka jest tak jasna jak ziemia wokół niej, co dla trawy widzianej z kilku metrów jest wiarygodniejsze,
 - **używana jest tylko część rozproszona** (`.diffuse`). Trawa nie błyszczy, więc odbłysk jest pominięty. Plik `lighting.glsl` i tak go liczy, dlatego `GrassRenderer` ustawia mu bezpieczne wartości: siłę 0 i wykładnik 1 (potęga zera o wykładniku 0 jest w GLSL niezdefiniowana).
 
+**Cień księżyca (czwarta część M7).** Trawa przyjmuje cień księżyca tak samo jak ściany i grunt. `computeLighting` o cieniach nic nie wie: zwraca w polu `moonDiffuse` udział księżyca, który jest już zawarty w `diffuse`. `grass.frag` pyta mapę cieni funkcją `moonShadow` i ten udział, pomnożony przez wynik, odejmuje. Kępka w cieniu ściany ma więc tylko światło otoczenia i to, co dociera z latarki i kryształów, czyli dokładnie tyle co ziemia pod nią. Do biasu cienia idzie ta sama stała normalna `(0, 1, 0)` co do światła: `moonFacing(GRASS_NORMAL)` to cosinus kąta między pionem a kierunkiem do księżyca, przy ustawieniach startowych `sin(50°) = 0,77`, taki sam na całej trawie.
+
+Sama trawa cienia **nie rzuca**: nie jest rysowana do mapy cieni. Liczby: źdźbło ma u korzenia 4 cm szerokości (dwa razy `ROOT_HALF_WIDTH = 0.02`), w połowie wysokości 2 cm, a czubek jest punktem. Teksel mapy cieni księżyca dla labiryntu startowego to około 3,2 cm przy rozdzielczości 2048 i około 6,3 cm przy 1024 (policzone, [`shadows.md`](shadows.md), sekcja 2.4). Źdźbło jest więc mniej więcej tak szerokie jak jeden teksel: jego cień byłby pojedynczymi tekselami, które zapalają się i gasną, gdy wiatr przesuwa źdźbło, i to na ziemi, którą kępka i tak zasłania. Koszt też by wzrósł: shader geometrii budowałby wszystkie źdźbła drugi raz w każdej klatce. Decyzja: [`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md), szerzej: [`shadows.md`](shadows.md), sekcja 2.16. W trybie `Unlit` i w obu widokach diagnostycznych trawa cienia nie pokazuje: test cienia stoi w gałęzi `if (uLit)`, a widoki wychodzą z `main` wcześniej.
+
 **Jeden program na wszystkie tryby cieniowania.** Ściany mają osobny program dla trybu Gouraud, który liczy światło w wierzchołkach. Trawa takiego nie ma i mieć nie może w zwykłym sensie: kępka nie ma w żadnym buforze wierzchołków, w których dałoby się policzyć światło, jej wierzchołki powstają dopiero w shaderze geometrii. Trawa jest więc cieniowana **na fragment także w trybie Gouraud**. W trybie `Unlit` uniform `uLit` jest wyłączony i trawa ma pełną jasność, jak reszta sceny ([`../../decisions/grass-lit-with-up-normal.md`](../../decisions/grass-lit-with-up-normal.md)).
 
 **Odrzucanie tylnych ścian** (face culling) wyrzuca trójkąty widziane od tyłu. Ma sens dla brył zamkniętych, których wnętrza nigdy nie widać. Źdźbło jest jednym płaskim paskiem bez "drugiej strony": z włączonym odrzucaniem znikałaby mniej więcej połowa źdźbeł, zależnie od tego, z której strony stoi kamera. Gra dziś nie włącza `GL_CULL_FACE` nigdzie, więc `GrassRenderer::draw` zwykle nic nie musi robić. Sprawdza jednak stan (`glIsEnabled`) i gdyby odrzucanie było włączone, wyłącza je na czas rysowania trawy i włącza z powrotem. To zabezpieczenie na przyszłość, nie kod, który dziś coś zmienia.
@@ -326,7 +338,7 @@ Uczciwie: pomiar zgłoszony dla tej części (około 2000 klatek na sekundę prz
 - **Shader geometrii nie jest darmowy.** Karta musi zarezerwować miejsce na `max_vertices` wierzchołków dla każdego prymitywu wejściowego, a wypisywanie wierzchołków po jednym słabo się zrównolegla. Stąd reguła z komentarza w `grass.geom`: `max_vertices` ma być małe. Na wielu kartach ten sam efekt taniej dałoby rysowanie instancjami (jedno źdźbło w buforze, tysiące kopii), które jest tematem 15 wykładu.
 - **Koszt rośnie z gęstością liniowo.** Suwak `Density` na maksimum (8) daje 16 kępek na stronę ściany, czyli `121 * 32 = 3872` kępki przy ścianach, i 2580 prób na wzgórzach.
 - **Nie ma odrzucania niewidocznych kępek.** Wszystkie punkty idą do karty w jednym wywołaniu rysującym, także te za plecami gracza i za ścianami. Shader geometrii buduje źdźbła także dla nich, a dopiero przycinanie i test głębi je odrzucają.
-- **Koszt fragmentów jest mały.** Źdźbło ma na ekranie kilka pikseli szerokości. Każdy jego fragment liczy jednak pełne oświetlenie ze wszystkich świateł.
+- **Koszt fragmentów jest mały.** Źdźbło ma na ekranie kilka pikseli szerokości. Każdy jego fragment liczy jednak pełne oświetlenie ze wszystkich świateł, a od czwartej części M7 także test cienia księżyca: przy ustawieniach startowych (PCF o promieniu 1) to 9 odczytów mapy cieni na fragment. Tego kosztu nie mierzyłem.
 - **Trawa jest rysowana przed niebem i po labiryncie.** Pisze głębię jak każda nieprzezroczysta rzecz.
 
 ## 3. Jak to działa w OpenGL
@@ -354,20 +366,30 @@ Kod klasy linia po linii: [`../gfx/shader-class.md`](../gfx/shader-class.md). Pr
 
 Wierzchołek to zwykły `gfx::Vertex` (44 bajty), z którego trawa używa dwóch pól: pozycji (atrybut 0) i współrzędnej tekstury (atrybut 2), w której `u` niesie liczbę losową kępki. Normalna i styczna zostają zerami. 1843 kępki to 81 092 bajty wierzchołków i 7372 bajty indeksów.
 
-### 3.3 Klatka: `GrassRenderer::draw`
+### 3.3 Klatka: `NightMazeApp::drawGrass` i `GrassRenderer::draw`
+
+Kroki od 1 do 6 doszły w czwartej części M7 i należą do `NightMazeApp::drawGrass` (pięć ostatnich z nich wykonuje `game::setShadowUniforms`). Kroki od 7 do 14 to `GrassRenderer::draw`, bez zmian od M6.
 
 | # | Wywołanie | Co robi |
 |---|---|---|
-| 1 | `glUseProgram(grass)` | wybiera program |
-| 2 | `glUniformMatrix4fv` dla `uView` i `uProjection` | macierze klatki, używane w `grass.geom` |
-| 3 | `glUniform1f` dla `uTime`, `uBladeHeight`, `uWindStrength` | zegar wiatru i dwa suwaki |
-| 4 | `glUniform1i` dla `uLit` i `uViewMode` | tryb cieniowania i widok diagnostyczny |
-| 5 | `glUniform1f` dla `uSpecularStrength` (0) i `uShininess` (1) | bezpieczne wartości dla nieużywanego odbłysku |
-| 6 | `glIsEnabled(GL_CULL_FACE)`, ewentualnie `glDisable(GL_CULL_FACE)` | trawa jest widoczna z obu stron |
-| 7 | `glBindVertexArray`, `glDrawElements(GL_POINTS, 1843, GL_UNSIGNED_INT, ...)` | jedno wywołanie na całą trawę |
-| 8 | ewentualnie `glEnable(GL_CULL_FACE)` | stan wraca |
+| 1 | `glUseProgram(grass)` | `m_grassShader.use()` w `drawGrass`: uniform trafia do programu bieżącego, więc program musi być wybrany przed krokiem 2 |
+| 2 | `glUniform1i` dla `uMoonShadowMap` (3) i `uMoonShadowEnabled` | numer jednostki tekstur, na której leży mapa cieni księżyca, i przełącznik: czy przebieg cieni wypełnił mapę w tej klatce |
+| 3 | `glUniformMatrix4fv` dla `uMoonShadowMatrix` | z przestrzeni świata do przestrzeni przycinania księżyca |
+| 4 | `glUniform1f` dla `uMoonShadowConstantBias` i `uMoonShadowSlopeBias` | dwie części biasu, już przeliczone z metrów na różnicę głębi |
+| 5 | `glUniform1i` dla `uMoonShadowPcfRadius` | promień jądra PCF w tekselach, 0 przy wyłączonym PCF |
+| 6 | `glUniform1f` dla `uMoonShadowStrength` | jaką część światła księżyca cień zabiera |
+| 7 | `glUseProgram(grass)` | `shader.use()` w `GrassRenderer::draw`: drugi raz ten sam program, co niczego nie zmienia |
+| 8 | `glUniformMatrix4fv` dla `uView` i `uProjection` | macierze klatki, używane w `grass.geom` |
+| 9 | `glUniform1f` dla `uTime`, `uBladeHeight`, `uWindStrength` | zegar wiatru i dwa suwaki |
+| 10 | `glUniform1i` dla `uLit` i `uViewMode` | tryb cieniowania i widok diagnostyczny |
+| 11 | `glUniform1f` dla `uSpecularStrength` (0) i `uShininess` (1) | bezpieczne wartości dla nieużywanego odbłysku |
+| 12 | `glIsEnabled(GL_CULL_FACE)`, ewentualnie `glDisable(GL_CULL_FACE)` | trawa jest widoczna z obu stron |
+| 13 | `glBindVertexArray`, `glDrawElements(GL_POINTS, 1843, GL_UNSIGNED_INT, ...)` | jedno wywołanie na całą trawę |
+| 14 | ewentualnie `glEnable(GL_CULL_FACE)` | stan wraca |
 
-Światła nie są ustawiane tutaj: są w buforze uniformów, który `onRender` wypełnił przed rysowaniem sceny, a program `grass` czyta go przez blok `LightBlock`, tak samo jak `lit` i `gouraud`.
+**Rachunek, żeby było jasne, co jest liczone.** Liczę wywołania ustawiające uniformy (`glUniform1i`, `glUniform1f`, `glUniformMatrix4fv`), po jednym na uniform. Do trzeciej części M7 włącznie było ich 9 (kroki od 8 do 11: 2 macierze, 3 liczby, 2 liczby całkowite, 2 liczby). Czwarta część M7 dodała 7, dokładnie tyle, ile robi `setShadowUniforms` w [`src/game/ShadowMap.cpp`](../../../src/game/ShadowMap.cpp): 3 razy `glUniform1i` (`setInt`), 1 raz `glUniformMatrix4fv` (`setMat4`) i 3 razy `glUniform1f` (`setFloat`). Razem 16. Każde z nich poprzedza `glGetUniformLocation`, bo klasa `Shader` szuka położenia przy każdym wywołaniu. Do tego `glUseProgram` jest wołane dwa razy zamiast raz. Wywołanie rysujące jest nadal jedno: trawa nie jest rysowana do mapy cieni. Kroki od 1 do 6 są wykonywane także przy wyłączonych cieniach i w trybie `Unlit` (wtedy `uMoonShadowEnabled` dostaje 0 albo wynik nie jest używany). Pomijane są razem z całą trawą, gdy pole `Enabled` panelu Grass jest odznaczone, i same, gdy program trawy się nie wczytał.
+
+Światła nie są ustawiane tutaj: są w buforze uniformów, który `onRender` wypełnił przed rysowaniem sceny, a program `grass` czyta go przez blok `LightBlock`, tak samo jak `lit` i `gouraud`. Mapy cieni w tym bloku nie ma: sampler nie może być składnikiem bloku uniformów, więc jej macierz i liczby są zwykłymi uniformami, ustawianymi w każdym programie osobno (kroki od 2 do 6). Sama mapa jest podpinana do jednostki tekstur 3 raz na klatkę, po przebiegu cieni, i zostaje tam, gdy rysowana jest trawa. Trawa nie podpina żadnej własnej tekstury.
 
 Rozmiar punktu (`glPointSize`) nie ma znaczenia, bo żaden punkt nie dociera do rasteryzacji: shader geometrii zamienia każdy na trójkąty.
 
@@ -501,6 +523,7 @@ Pięć wierzchołków paska w kolejności lewy, prawy, lewy, prawy, czubek (sekc
 
 #include "common/lighting.glsl"
 #include "common/color.glsl"
+#include "common/shadows.glsl"
 
 in vec3 gWorldPosition;
 in vec2 gBladeUv;
@@ -511,7 +534,7 @@ uniform int uViewMode;
 out vec4 fragColor;
 ```
 
-- **`#include`** rozwija loader shaderów, nie kompilator GLSL ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Pierwszy dołączony plik wnosi blok `LightBlock`, uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` i funkcję `computeLighting`. Drugi (od M7) wnosi `srgbToLinear` dla kolorów zapisanych w tym pliku liczbami ([`../gfx/color-space.md`](../gfx/color-space.md)).
+- **`#include`** rozwija loader shaderów, nie kompilator GLSL ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Pierwszy dołączony plik wnosi blok `LightBlock`, uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` i funkcję `computeLighting`. Drugi (od M7) wnosi `srgbToLinear` dla kolorów zapisanych w tym pliku liczbami ([`../gfx/color-space.md`](../gfx/color-space.md)). Trzeci (od czwartej części M7) wnosi sampler `uMoonShadowMap` typu `sampler2DShadow`, sześć zwykłych uniformów mapy cieni księżyca i funkcję `moonShadow`. Komentarz nad nim w pliku mówi: "the same file lit.frag includes, so the grass lies in the shadows of the walls like the ground it grows on" ([`shadows.md`](shadows.md), sekcja 4).
 - **`out vec4 fragColor`**: komentarz w pliku mówi dziś, że wyjście trafia do bufora HDR sceny jako kolor **liniowy**.
 - **Wejścia** mają te same nazwy i typy co wyjścia `grass.geom`. Rasteryzator interpoluje je w obrębie każdego trójkąta źdźbła.
 - **`uniform bool uLit`**: C++ ustawia go przez `setInt` wartością 0 albo 1. Dla uniformu typu `bool` OpenGL traktuje zero jako fałsz, a każdą inną wartość jako prawdę.
@@ -543,13 +566,25 @@ Widoki diagnostyczne, z tymi samymi numerami co w `textured.frag` (wartości `ga
 
     vec3 light = vec3(1.0);
     if (uLit) {
-        light = computeLighting(gWorldPosition, GRASS_NORMAL).diffuse;
+        Lighting lighting = computeLighting(gWorldPosition, GRASS_NORMAL);
+        float shadow = moonShadow(gWorldPosition, moonFacing(GRASS_NORMAL));
+        light = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
     }
     fragColor = vec4(color * light, 1.0);
 }
 ```
 
-Gradient, światło i wynik. **Kolejność w pierwszej linii ma znaczenie:** najpierw mieszanie między liczbami sRGB, potem jedno przeliczenie wyniku. Tak gradient wygląda na ekranie tak, jak został dobrany: w połowie wysokości źdźbła mieszanka to `(0.28, 0.42, 0.165)`, liniowo około `(0,064, 0,147, 0,023)`. Odwrotna kolejność (przeliczyć oba końce, potem mieszać) dałaby w tym samym miejscu `(0,094, 0,200, 0,031)`, czyli wyraźnie jaśniejszy środek. Komentarz w pliku porównuje to do odczytu z tekstury sRGB: dokładniej, do tekstury, w której gradient byłby już namalowany teksel po tekselu. Wynik `color * light` jest liniowy i trafia do bufora HDR bez obcinania. `computeLighting` zwraca strukturę z polami `diffuse` i `specular`. Pole `diffuse` zawiera już światło otoczenia i składnik Lamberta każdego światła z tłumieniem. Dla światła księżyca przy ustawieniach startowych (pitch -50 stopni) i normalnej w górę składnik Lamberta to `sin(50°) = 0,77`, na całej trawie tak samo.
+Gradient, światło i wynik. **Kolejność w pierwszej linii ma znaczenie:** najpierw mieszanie między liczbami sRGB, potem jedno przeliczenie wyniku. Tak gradient wygląda na ekranie tak, jak został dobrany: w połowie wysokości źdźbła mieszanka to `(0.28, 0.42, 0.165)`, liniowo około `(0,064, 0,147, 0,023)`. Odwrotna kolejność (przeliczyć oba końce, potem mieszać) dałaby w tym samym miejscu `(0,094, 0,200, 0,031)`, czyli wyraźnie jaśniejszy środek. Komentarz w pliku (poprawiony w czwartej części M7) mówi to dokładnie: wynik jest przeliczany raz, "like one texel of an sRGB texture", czyli jak jeden teksel tekstury, w której gradient byłby już namalowany. Dodaje też zastrzeżenie w nawiasie: filtrowana tekstura sRGB miesza **po** przeliczeniu, więc jej tony pośrednie wychodzą trochę inne. Poprzednia wersja komentarza ("the same as reading it from an sRGB texture") tego rozróżnienia nie robiła. Wynik `color * light` jest liniowy i trafia do bufora HDR bez obcinania. `computeLighting` zwraca strukturę z polami `diffuse` i `specular`. Pole `diffuse` zawiera już światło otoczenia i składnik Lamberta każdego światła z tłumieniem. Dla światła księżyca przy ustawieniach startowych (pitch -50 stopni) i normalnej w górę składnik Lamberta to `sin(50°) = 0,77`, na całej trawie tak samo.
+
+**Trzy linie w gałęzi `if (uLit)` (czwarta część M7).** Do trzeciej części M7 była tu jedna: `light = computeLighting(gWorldPosition, GRASS_NORMAL).diffuse;`. Dziś:
+
+| Linia | Znaczenie |
+|---|---|
+| `Lighting lighting = computeLighting(gWorldPosition, GRASS_NORMAL);` | wynik trafia do zmiennej, bo potrzebne są z niego dwa pola: `diffuse` i `moonDiffuse`. Struktura ma od tej części cztery pola: `diffuse`, `specular`, `moonDiffuse`, `moonSpecular`. Dwa ostatnie to udział księżyca, **już zawarty** w dwóch pierwszych ([`../scene/lights.md`](../scene/lights.md), sekcja 4) |
+| `float shadow = moonShadow(gWorldPosition, moonFacing(GRASS_NORMAL));` | część światła księżyca, której ten fragment nie dostaje: 0 poza cieniem, `uMoonShadowStrength` w środku cienia, wartości pośrednie na miękkim brzegu. Pierwszy argument to pozycja fragmentu źdźbła w świecie, której funkcja szuka w mapie cieni. Drugi to cosinus kąta między normalną a kierunkiem do księżyca, potrzebny do biasu: dla trawy liczony ze stałej `GRASS_NORMAL`, tej samej co do światła |
+| `light = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);` | światło rozproszone bez zacienionej części księżyca. Odejmowany jest **tylko** udział księżyca: światło otoczenia, latarka i kryształy zostają. `max` jest zabezpieczeniem przed wynikiem o ostatnią cyfrę poniżej zera. Pola `moonSpecular` trawa nie potrzebuje, bo odbłysku nie używa wcale |
+
+To te same kroki co w `lit.frag` ([`lighting-gouraud-phong.md`](lighting-gouraud-phong.md), sekcje 2.8 i 4.2), bez odbłysku. Komentarz w pliku nad tymi liniami mówi też, czego trawa nie robi: "It casts none itself: a blade is about as wide as one texel of the shadow map" (sekcja 2.7).
 
 ### 4.4 Strona C++: kto ustawia uniformy
 
@@ -564,8 +599,14 @@ Gradient, światło i wynik. **Kolejność w pierwszej linii ma znaczenie:** naj
 | `uSpecularStrength`, `uShininess` | fragmentów (z `lighting.glsl`) | `GrassRenderer::draw` | 0 i 1 |
 | `uSpecularModel` | fragmentów (z `lighting.glsl`) | nikt | zostaje 0. Nie ma znaczenia przy sile odbłysku 0 |
 | blok `LightBlock` | fragmentów (z `lighting.glsl`) | `LightRig::upload`, raz na klatkę dla wszystkich programów | światła sceny |
+| `uMoonShadowMap` | fragmentów (z `shadows.glsl`) | `game::setShadowUniforms`, wołane z `NightMazeApp::drawGrass` | 3 (`MOON_SHADOW_TEXTURE_UNIT`) |
+| `uMoonShadowEnabled` | fragmentów (z `shadows.glsl`) | to samo | 1, gdy przebieg cieni wypełnił mapę w tej klatce (`m_moonShadowDrawn`), inaczej 0 |
+| `uMoonShadowMatrix` | fragmentów (z `shadows.glsl`) | to samo | `m_moonLightSpace.matrix()` |
+| `uMoonShadowConstantBias`, `uMoonShadowSlopeBias` | fragmentów (z `shadows.glsl`) | to samo | bias z ustawień (startowo 0,02 m i 0,12 m) podzielony przez głębokość pudełka światła |
+| `uMoonShadowPcfRadius` | fragmentów (z `shadows.glsl`) | to samo | startowo 1 (jądro 3 x 3), 0 przy wyłączonym PCF |
+| `uMoonShadowStrength` | fragmentów (z `shadows.glsl`) | to samo | startowo 1 |
 
-Nazwy są w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp): cztery nowe stałe (`GRASS_TIME_UNIFORM`, `GRASS_BLADE_HEIGHT_UNIFORM`, `GRASS_WIND_STRENGTH_UNIFORM`, `GRASS_LIT_UNIFORM`), reszta wspólna z innymi programami.
+Nazwy są w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp): cztery nowe stałe (`GRASS_TIME_UNIFORM`, `GRASS_BLADE_HEIGHT_UNIFORM`, `GRASS_WIND_STRENGTH_UNIFORM`, `GRASS_LIT_UNIFORM`), reszta wspólna z innymi programami. Siedem nazw uniformów mapy cieni stoi tam w jednej stałej strukturalnej `MOON_SHADOW_UNIFORMS` (typ `ShadowUniformNames`), obok stałej `MOON_SHADOW_TEXTURE_UNIT`: trawa dzieli je z programami `lit` i `gouraud`.
 
 Uwaga do dwóch uniformów odbłysku: `grass.frag` nie używa pola `specular`, więc kompilator ma prawo usunąć cały rachunek odbłysku razem z tymi uniformami. Wtedy `glGetUniformLocation` zwraca dla nich -1, a `glUniform1f` z położeniem -1 jest po cichu pomijane ([`../gfx/uniforms.md`](../gfx/uniforms.md)). Ustawianie ich jest poprawne w obu przypadkach.
 
@@ -581,6 +622,7 @@ Uwaga do dwóch uniformów odbłysku: `grass.frag` nie używa pola `specular`, w
 | [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp), [`.cpp`](../../../src/gfx/Shader.cpp) | opcjonalny trzeci plik programu ([`../gfx/shader-class.md`](../gfx/shader-class.md)) |
 | [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp) | komentarze: `GL_POINTS` jako trzeci rodzaj prymitywu. Kod klasy się nie zmienił |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_grassShader`, `m_grassRenderer`, `m_grassSettings`, funkcje `plantGrass` i `drawGrass` |
+| [`assets/shaders/common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl), [`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp), [`.cpp`](../../../src/game/ShadowMap.cpp) (czwarta część M7) | plik dołączany przez `grass.frag` z funkcją `moonShadow` i funkcja `game::setShadowUniforms`, którą woła `drawGrass`. Opisuje je [`shadows.md`](shadows.md) |
 | [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | cztery nazwy uniformów trawy |
 | [`src/debug/panels/GrassPanel.hpp`](../../../src/debug/panels/GrassPanel.hpp), [`.cpp`](../../../src/debug/panels/GrassPanel.cpp) | panel Grass (sekcja 6) |
 | [`src/debug/panels/ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp) | linia stanu programu pokazuje trzy pliki |
@@ -733,10 +775,18 @@ void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection)
 
     const bool lit = m_lighting.mode != LightingMode::Unlit;
     const auto windSeconds = static_cast<float>(glfwGetTime());
+
+    if (m_grassShader.isValid()) {
+        m_grassShader.use();
+        setShadowUniforms(m_grassShader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT,
+                          m_moonShadowDrawn, m_moonShadow, m_moonLightSpace);
+    }
     m_grassRenderer.draw(m_grassShader, view, projection, m_grassSettings, windSeconds, lit,
                          m_viewMode);
 }
 ```
+
+Blok `if (m_grassShader.isValid())` doszedł w czwartej części M7 (listing, jak pozostałe w tej sekcji, jest bez komentarzy z pliku). Komentarz nad nim w kodzie tłumaczy obie linie: trawa leży w cieniu księżyca jak grunt, więc jej program też dostaje uniformy mapy cieni, a "a uniform is written into the program in use, hence use() here: GrassRenderer::draw calls it again, which changes nothing". To pierwszy przypadek, w którym uniformy programu trawy ustawia ktoś poza `GrassRenderer` (sekcja 5.5): mapa cieni należy do aplikacji, a nie do trawy, więc `GrassRenderer` nic o niej nie wie. Warunek `isValid()` jest potrzebny, bo `use()` na programie, który się nie wczytał, nie ma sensu. `GrassRenderer::draw` sprawdza to samo jeszcze raz u siebie. Argumenty `setShadowUniforms` są te same co w `drawLitMaze`: nazwy uniformów, jednostka tekstur 3, flaga "przebieg cieni wypełnił mapę w tej klatce", ustawienia cieni i macierze księżyca z tej klatki.
 
 Pole `Enabled` wyłącza samo rysowanie: punkty zostają na karcie, więc włączenie z powrotem nic nie kosztuje. `drawGrass` jest wołane w `onRender` po `drawMaze` i przed liniami kolizji i niebem.
 
@@ -797,7 +847,7 @@ void GrassRenderer::draw(const gfx::Shader& shader, const glm::mat4& view,
     shader.setFloat(SHININESS_UNIFORM, PLAIN_SHININESS);
 ```
 
-Inaczej niż `TerrainRenderer` i `MazeRenderer`, ta klasa **sama wybiera program i ustawia wszystkie jego uniformy**. Tamte dostają program już przygotowany, bo dzielą go z innymi klasami. Program trawy ma jednego użytkownika. Gdy programu nie ma (pierwsze wczytanie się nie powiodło), funkcja po prostu wraca: błąd został wypisany raz, przy tworzeniu shadera.
+Inaczej niż `TerrainRenderer` i `MazeRenderer`, ta klasa **sama wybiera program i ustawia wszystkie uniformy, które należą do trawy** (od czwartej części M7 siedem uniformów mapy cieni ustawia przed nią `NightMazeApp::drawGrass`, sekcja 5.4). Tamte dostają program już przygotowany, bo dzielą go z innymi klasami. Program trawy ma jednego użytkownika. Gdy programu nie ma (pierwsze wczytanie się nie powiodło), funkcja po prostu wraca: błąd został wypisany raz, przy tworzeniu shadera.
 
 ```cpp
     GLboolean cullingWasOn = GL_FALSE;
@@ -840,14 +890,14 @@ Zgłoszone z Windowsa (nie powtarzane przeze mnie): po celowym zepsuciu `grass.g
 
 Czego testy **nie** sprawdzają:
 
-- **żadnego shadera.** Kształt źdźbła, wiatr, światło, `max_vertices`, zgodność wejść i wyjść etapów: tego nie da się sprawdzić bez karty graficznej. Jedynym sprawdzeniem jest kompilacja i linkowanie przy starcie gry oraz obraz,
+- **żadnego shadera.** Kształt źdźbła, wiatr, światło, cień księżyca na trawie, `max_vertices`, zgodność wejść i wyjść etapów: tego nie da się sprawdzić bez karty graficznej. Jedynym sprawdzeniem jest kompilacja i linkowanie przy starcie gry oraz obraz,
 - klasy `GrassRenderer` i tego, że liczba losowa trafia do `uv.x`,
 - tego, że liczby losowe są takie same na macOS. Wynika to z konstrukcji (`mt19937`, `randomBelow`), ale nikt nie porównał wyniku na dwóch systemach. Liczba 1843 dla labiryntu startowego jest dobrym punktem do porównania,
 - zgodności liczby `BLADES_PER_TUFT = 3` w panelu z `BLADE_COUNT` w shaderze.
 
 ## 6. Panel ImGui
 
-Panel **Grass** jest dziesiątym panelem (od pierwszej części M7 paneli jest jedenaście: doszedł Framebuffers). Startuje zwinięty do paska tytułu, w drugim rzędzie pasków przy górnej krawędzi okna, pod panelem Gameplay. Od M7 pod nim, w trzecim rzędzie, stoi pasek panelu Framebuffers: rozwinięty panel Grass zakrywa swoją część tego paska ([`../debug-ui.md`](../debug-ui.md)).
+Panel **Grass** jest dziesiątym panelem (od pierwszej części M7 paneli było jedenaście: doszedł Framebuffers, a od czwartej części M7 jest ich dwanaście: doszedł Shadows). Startuje zwinięty do paska tytułu, w drugim rzędzie pasków przy górnej krawędzi okna, pod panelem Gameplay. Od M7 pod nim, w trzecim rzędzie, stoi pasek panelu Framebuffers, a od czwartej części M7 w czwartym rzędzie pasek panelu Shadows (`FOLDED_ROW_COUNT` równe 4, sześć paneli startuje zwiniętych): rozwinięty panel Grass zakrywa swoją część obu tych pasków ([`../debug-ui.md`](../debug-ui.md)).
 
 ```cpp
 void drawGrassPanel(game::GrassSettings& settings, std::size_t tuftCount) {
@@ -885,7 +935,9 @@ Ostatnia kolumna to najlepszy materiał na obronę: dwa suwaki działają bez do
 
 Liczba źdźbeł w ostatniej linii jest liczona ze stałej `BLADES_PER_TUFT = 3` w `GrassPanel.cpp`, która jest kopią `BLADE_COUNT` z `grass.geom`. C++ nie może przeczytać stałej z pliku GLSL. Komentarz przy stałej mówi, że służy tylko do wyświetlenia liczby, więc błędna wartość nie zmienia niczego, co jest rysowane.
 
-Program trawy widać też w panelu **Shaders**: szósta linia stanu, z trzema plikami.
+Program trawy widać też w panelu **Shaders**: szósta linia stanu z jedenastu, z trzema plikami.
+
+Cień księżyca na trawie nie ma kontrolki w panelu Grass. Włącza go i stroi panel **Shadows** (od czwartej części M7, [`shadows.md`](shadows.md), sekcja 6): pole `Shadows`, lista `Resolution`, suwaki biasu, filtr i `Strength` działają na trawę tak samo jak na grunt, bo `drawGrass` wysyła do programu trawy te same ustawienia.
 
 ### 6.1 Scenariusz pokazu na obronie
 
@@ -899,6 +951,7 @@ Program trawy widać też w panelu **Shaders**: szósta linia stanu, z trzema pl
 6. **Tryby cieniowania.** W panelu Renderer przełączam `Lighting` przez cztery tryby. W `Unlit` trawa ma pełną jasność. W `Gouraud` ściany są cieniowane na wierzchołek, a trawa nadal na fragment. Mówię: kępka nie ma w buforze wierzchołków, w których dałoby się policzyć światło.
 7. **Powtarzalność.** W panelu Maze generuję labirynt z innym ziarnem, potem wracam do ziarna 1: licznik znów pokazuje 1843. Mówię: ziarno trawy to ziarno labiryntu plus stała, a liczby losowe pochodzą z własnej funkcji, takiej samej na każdym systemie.
 8. **Na żywo.** W `grass.geom` zmieniam `BLADE_COUNT` na 2 (albo kolor w `grass.frag`), kopiuję assety (na Windowsie `cmake --build --preset debug --target copy_assets`) i klikam `Reload shaders`. Potem wpisuję błąd składni i klikam jeszcze raz: panel Shaders pokazuje błąd z nazwą `grass.geom` i numerem linii, a trawa rysuje się dalej starym programem. Wycofuję zmiany.
+9. **Trawa w cieniu (czwarta część M7).** Gaszę latarkę i staję przy ścianie, której cień pada na grunt z trawą. Kępki w cieniu są ciemniejsze, tak samo jak ziemia pod nimi, a kępki w świetle księżyca jaśniejsze. W panelu Shadows odznaczam `Shadows`: różnica znika. Mówię: `grass.frag` dołącza ten sam plik `common/shadows.glsl` co ściany i odejmuje zacieniony udział księżyca. Pokazuję, że sama trawa cienia nie rzuca, i mówię dlaczego: źdźbło ma 4 cm u korzenia, teksel mapy około 3 cm, a źdźbła ruszają się z wiatrem.
 
 ## 7. Pułapki
 
@@ -917,10 +970,12 @@ Program trawy widać też w panelu **Shaders**: szósta linia stanu, z trzema pl
 13. **Trawa przechodzi przez gracza i ściany.** Kępki nie mają kolizji. Źdźbło pochylone w stronę ściany może wejść w nią czubkiem: pas zaczyna się 21 cm od osi ściany, a czubek odchyla się do 40 procent wysokości plus wiatr. Przy wysokości 0,8 m i wietrze 3 jest to nieuniknione.
 14. **Wiatr nie zna ścian.** Fala idzie przez cały świat w jednym kierunku, także w zamkniętych zaułkach.
 15. **Pełne oświetlenie na każdy fragment.** `computeLighting` przechodzi przez wszystkie światła (do 16 punktowych) dla każdego piksela trawy. Przy dużej gęstości i kamerze tuż przy ziemi to jest najdroższa część trawy.
-16. **Brak cieni.** Cieni w grze nie ma (są planowane w dalszej części M7), więc trawa jest oświetlona także za ścianą, która powinna zasłaniać światło.
+16. **Trawa przyjmuje cień tylko księżyca i sama żadnego nie rzuca.** Do trzeciej części M7 cieni w grze nie było wcale i trawa za ścianą była oświetlona przez wszystko. Od czwartej części M7 cień księżyca na trawie jest (sekcja 2.7). Latarka i światła kryształów cieni nadal nie rzucają, więc ich światło dociera do trawy także przez ścianę. Brak cienia źdźbeł na ziemi to decyzja, nie błąd ([`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md)).
 17. **Stary `imgui.ini`.** Jak przy każdym nowym panelu: najprościej usunąć plik przed pokazem.
 18. **macOS, niesprawdzone.** Shadery geometrii należą do OpenGL 4.1 Core, więc sterownik Apple powinien je przyjąć. Nikt tego nie sprawdził dla tych trzech plików, a `#define` wewnątrz `layout` i format błędów dla pliku `.geom` są tym, co warto obejrzeć najpierw.
 19. **Kolory gradientu to liczby sRGB.** Od M7 `main` przelicza je przez `srgbToLinear`. Kolor wpisany do shadera liczbami i użyty bez przeliczenia zostałby na końcu klatki zakodowany, chociaż nigdy nie był zdekodowany: trawa wyszłaby wyblakła i za jasna. Przeliczenie dwa razy dałoby trawę prawie czarną.
+20. **Uniformy cienia nieustawione w programie trawy.** `lit`, `gouraud` i `grass` mają osobne kopie uniformów z `common/shadows.glsl`. Bez wywołania `setShadowUniforms` w `drawGrass` sampler `uMoonShadowMap` programu trawy zostałby na jednostce 0, a po `Reload shaders` wróciłby tam na pewno. Program trawy nie ma innego samplera, więc nie byłoby błędu OpenGL, tylko zły obraz: trawa czytałaby jako mapę cieni to, co akurat leży na jednostce 0 (zwykłą teksturę koloru, dla której wynik odczytu z porównaniem jest niezdefiniowany). Dlatego uniformy są ustawiane w każdej klatce, także przy wyłączonych cieniach.
+21. **`use()` przed `setShadowUniforms`.** Uniform trafia do programu bieżącego. Bez `m_grassShader.use()` w `drawGrass` siedem wartości poszłoby do programu, którym przed chwilą rysowano labirynt.
 
 ## 8. Ćwiczenia
 
@@ -939,6 +994,8 @@ Program trawy widać też w panelu **Shaders**: szósta linia stanu, z trzema pl
 11. **Macierze za wcześnie.** Przenieś `uProjection * uView` do `grass.vert` (i usuń z `emitBladeVertex`). Obróć kamerę i opisz, co się stało z trawą.
 12. **Inne ziarno.** W `Grass.cpp` zmień `GRASS_SEED_OFFSET` na 0 i uruchom testy. Które przechodzą? Czy trawa wygląda gorzej? Dlaczego mimo to przesunięcie jest potrzebne?
 13. **Zepsuty etap.** Wpisz błąd składni do `grass.geom`, potem do `grass.frag`, potem zmień nazwę wyjścia `gBladeUv` tylko w `grass.geom`. Za każdym razem przeładuj i przeczytaj komunikat w panelu Shaders. Który błąd jest błędem kompilacji, a który linkowania? Jak wygląda różnica w komunikacie?
+14. **Trawa bez cienia.** W `grass.frag` zamień linię z `max(...)` na `light = lighting.diffuse;` i przeładuj shadery. Stań przy cieniu ściany przy zgaszonej latarce. Co widać na granicy cienia? (Oczekiwane z kodu: grunt w cieniu jest ciemny, a trawa na nim jasna jak w pełnym świetle księżyca.) Wycofaj zmianę.
+15. **Teksel a źdźbło, na kartce.** Mapa cieni księżyca pokrywa dla labiryntu startowego 64,8 na 54,1 m. Ile centymetrów ma teksel przy 2048 i przy 1024 tekselach na bok? Ile tekseli szerokości miałby cień źdźbła u korzenia (4 cm) i w połowie wysokości (2 cm)? (Odpowiedź: `64,8 / 2048 = 3,2 cm` i `64,8 / 1024 = 6,3 cm`. Przy 2048 trochę ponad jeden teksel u korzenia i mniej niż jeden w połowie, przy 1024 mniej niż jeden wszędzie.)
 
 ## 9. Pytania kontrolne
 
@@ -1017,6 +1074,15 @@ Program trawy widać też w panelu **Shaders**: szósta linia stanu, z trzema pl
 25. **Co PRD przewiduje w temacie 9, a czego nie zbudowano?**
     Iskry wokół kryształów. Jest tylko trawa.
 
+25. **Czy trawa leży w cieniu ścian?**
+    W cieniu księżyca tak, od czwartej części M7. `grass.frag` dołącza `common/shadows.glsl`, pyta `moonShadow(gWorldPosition, moonFacing(GRASS_NORMAL))` i odejmuje od światła rozproszonego zacieniony udział księżyca: `max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0)`. Latarka i światła kryształów cieni nie rzucają.
+
+26. **Dlaczego trawa sama nie rzuca cienia?**
+    Nie jest rysowana do mapy cieni (`NightMazeApp::drawShadowCasters` ją pomija). Źdźbło ma u korzenia 4 cm, a teksel mapy około 3,2 cm, więc cień byłby migotaniem pojedynczych tekseli, ruchomym przez wiatr, na ziemi zasłoniętej przez samą kępkę.
+
+27. **Kto ustawia uniformy mapy cieni w programie trawy?**
+    `NightMazeApp::drawGrass`: woła `m_grassShader.use()`, a potem `setShadowUniforms`, zanim odda sterowanie do `GrassRenderer::draw`. To 7 wywołań ustawiających uniformy więcej na klatkę (16 zamiast 9).
+
 ## 10. Źródła
 
 - LearnOpenGL, "Geometry Shader" (<https://learnopengl.com/Advanced-OpenGL/Geometry-Shader>): etap geometrii, deklaracje `layout`, `EmitVertex` i `EndPrimitive`, przykłady z punktów do pasków trójkątów.
@@ -1024,6 +1090,6 @@ Program trawy widać też w panelu **Shaders**: szósta linia stanu, z trzema pl
 - Specyfikacja OpenGL 4.1 Core (<https://registry.khronos.org/OpenGL/specs/gl/glspec41.core.pdf>): część "Geometry Shaders" (rodzaje prymitywów wejściowych i wyjściowych, zgodność z trybem rysowania).
 - Khronos OpenGL Wiki, "Geometry Shader" (<https://www.khronos.org/opengl/wiki/Geometry_Shader>): tabela wejść i wyjść, ograniczenia, uwagi o wydajności.
 - docs.gl: `glCreateShader` (<https://docs.gl/gl4/glCreateShader>, stała `GL_GEOMETRY_SHADER`), `glDrawElements`, `glIsEnabled`, `EmitVertex` (<https://docs.gl/sl4/EmitVertex>), `EndPrimitive` (<https://docs.gl/sl4/EndPrimitive>), `fract`, `mix`.
-- Dokumenty w tym repozytorium: [`terrain.md`](terrain.md) (teren, `heightAt`, `distanceOutsideMaze`), [`../gfx/shaders.md`](../gfx/shaders.md) (potok), [`../gfx/shader-class.md`](../gfx/shader-class.md) (trzeci etap w klasie `Shader`), [`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`../gfx/mesh.md`](../gfx/mesh.md) (`GL_POINTS`), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (blok świateł), [`../scene/lights.md`](../scene/lights.md) (`computeLighting`), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md) (tryby cieniowania), [`../game/maze-generator.md`](../game/maze-generator.md) (`randomBelow`, lista ścian), [`../debug-ui.md`](../debug-ui.md) (panele), [`README.md`](README.md).
+- Dokumenty w tym repozytorium: [`terrain.md`](terrain.md) (teren, `heightAt`, `distanceOutsideMaze`), [`../gfx/shaders.md`](../gfx/shaders.md) (potok), [`../gfx/shader-class.md`](../gfx/shader-class.md) (trzeci etap w klasie `Shader`), [`../gfx/shader-hot-reload.md`](../gfx/shader-hot-reload.md), [`../gfx/shader-includes.md`](../gfx/shader-includes.md), [`../gfx/mesh.md`](../gfx/mesh.md) (`GL_POINTS`), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (blok świateł), [`../scene/lights.md`](../scene/lights.md) (`computeLighting`), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md) (tryby cieniowania), [`shadows.md`](shadows.md) (mapa cieni księżyca, sekcja 2.16 o trawie), [`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md), [`../game/maze-generator.md`](../game/maze-generator.md) (`randomBelow`, lista ścian), [`../debug-ui.md`](../debug-ui.md) (panele), [`README.md`](README.md).
 - Notatki o decyzjach: [`../../decisions/grass-lit-with-up-normal.md`](../../decisions/grass-lit-with-up-normal.md), [`../../decisions/deterministic-random.md`](../../decisions/deterministic-random.md), [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdział o shaderach geometrii).

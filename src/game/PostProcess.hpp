@@ -31,8 +31,9 @@ enum class ToneMapping {
 /// What a preview picture shows. The numbers are the values of the uniform uMode in
 /// post/preview.frag.
 enum class AttachmentPreview {
-    Color = 0, ///< the HDR colour attachment
-    Depth = 1, ///< the depth attachment, as a distance
+    Color = 0,    ///< the HDR colour attachment
+    Depth = 1,    ///< the depth attachment of a perspective view, as a distance
+    RawDepth = 2, ///< a depth attachment as it is stored: the shadow map of the moon
 };
 
 /// What can be changed about the last pass of a frame while the game runs. The debug UI
@@ -160,8 +161,9 @@ public:
     /// for the debug UI. Not valid before the first successful beginScene.
     const gfx::Framebuffer& sceneTarget() const { return m_scene; }
 
-    /// The preview picture of one attachment: a small GL_RGBA8 framebuffer whose colour
-    /// texture can be shown as it is. Not valid before the first drawPreviews.
+    /// The preview picture of one attachment of the scene framebuffer (Color or Depth):
+    /// a small GL_RGBA8 framebuffer whose colour texture can be shown as it is. Not
+    /// valid before the first drawPreviews.
     const gfx::Framebuffer& preview(AttachmentPreview which) const {
         return which == AttachmentPreview::Depth ? m_depthPreview : m_colorPreview;
     }

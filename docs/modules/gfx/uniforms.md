@@ -1,6 +1,6 @@
 # Moduł gfx: uniformy
 
-Kamień milowy: M1, rozszerzony w M2 + M3, w M4 i w M5, a w drugiej części M7 o setter tablicy `setFloatArray`. Temat wykładu: 2 (Programowalny potok).
+Kamień milowy: M1, rozszerzony w M2 + M3, w M4 i w M5, w drugiej części M7 o setter tablicy `setFloatArray`, a w czwartej części M7 o siedem uniformów mapy cieni księżyca i jedenasty program. Temat wykładu: 2 (Programowalny potok).
 Kod: funkcje `setMat4`, `setInt`, `setVec3`, `setMat3`, `setFloat` i `setFloatArray` w [`src/gfx/Shader.hpp`](../../../src/gfx/Shader.hpp) i [`src/gfx/Shader.cpp`](../../../src/gfx/Shader.cpp), nazwy uniformów w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), uniformy w shaderach z [`assets/shaders/`](../../../assets/shaders/), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp), [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp), [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp) i [`src/game/LightRig.cpp`](../../../src/game/LightRig.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument jest dalszym ciągiem [`shaders.md`](shaders.md) (potok, język GLSL) i [`shader-class.md`](shader-class.md) (reszta klasy `gfx::Shader`). Skąd biorą się same macierze, opisują [`../scene/transforms.md`](../scene/transforms.md) (macierz modelu) i [`../scene/camera.md`](../scene/camera.md) (macierz widoku i rzutowania). Co dzieje się z uniformami po przeładowaniu shadera, widać w [`shader-hot-reload.md`](shader-hot-reload.md). Od M4 część danych trafia do shaderów inną drogą, przez blok uniformów w buforze: opisuje to [`uniform-buffers.md`](uniform-buffers.md), a różnicę streszcza sekcja 2.4. Ten dokument korzysta z makra `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)) i z typów GLM ([`../../libraries/glm.md`](../../libraries/glm.md)).
@@ -9,7 +9,7 @@ Część modułu `gfx`. Wstęp do całego modułu jest w [`README.md`](README.md
 
 Shader wierzchołków dostaje pozycję wierzchołka z bufora, ale żeby postawić obiekt w scenie, potrzebuje jeszcze trzech macierzy: modelu, widoku i rzutowania. Te macierze nie są danymi wierzchołka: są takie same dla wszystkich wierzchołków rysowanego obiektu, a dwie z nich zmieniają się najwyżej raz na klatkę. Do przekazywania takich wartości z C++ do shadera służą **uniformy**.
 
-W M1 uniformy to były trzy linie `uniform mat4` w shaderze wierzchołków kostki demonstracyjnej i jedna funkcja klasy `gfx::Shader`, `setMat4`, wołana trzy razy w każdej klatce. W kamieniu milowym M2 + M3 doszły dwa programy shaderów i settery `setInt` oraz `setVec3` (sekcja 5.4). W M4 doszły dwa programy oświetlenia, mapy normalnych z uniformami `uNormalMap` i `uNormalMapEnabled` oraz settery `setMat3` i `setFloat` (sekcja 5.7). M5 usunęło kostkę razem z jej programem i dodało jeden uniform, `uEmissive`: własne świecenie kryształów (sekcja 4). Pierwsza część M6 dodała piąty program, `skybox`, z dwoma nowymi uniformami: `uSkybox` i `uBrightness`. Druga część M6 dodała szósty, `grass` (trawa z shadera geometrii), z czterema nowymi: `uTime`, `uBladeHeight`, `uWindStrength` i `uLit`. Pierwsza część M7 dodała dwa programy, które nie rysują sceny, `composite` i `preview`, z ośmioma nowymi uniformami: `uScene`, `uExposure`, `uToneMapping` oraz `uSource`, `uMode`, `uNear`, `uFar`, `uDepthRange` ([`../renderer/post-process.md`](../renderer/post-process.md)). Druga część M7 (bloom) dodała dwa kolejne programy bez sceny, `bright` i `blur`, osiem nowych stałych z nazwami (`uBloom`, `uBloomEnabled`, `uBloomIntensity` w programie `composite`, `uScene` i `uThreshold` w `bright`, `uSource`, `uHorizontal` i `uWeights` w `blur`) i szósty setter, `setFloatArray`, dla pierwszej **tablicy** uniformów w grze (sekcja 5.8). Dziś gra ma **dziesięć programów** i **trzydzieści cztery nazwy zwykłych uniformów** (sekcja 4: dwadzieścia w sześciu programach sceny i czternaście w czterech programach przebiegów po scenie), a klasa ma sześć setterów. Wszystkie nazwy są zebrane w jednym nagłówku, `ShaderUniforms.hpp` (sekcja 5.5). Kodu jest mało, ale miejsc na pomyłkę, której OpenGL nie zgłosi, jest kilka:
+W M1 uniformy to były trzy linie `uniform mat4` w shaderze wierzchołków kostki demonstracyjnej i jedna funkcja klasy `gfx::Shader`, `setMat4`, wołana trzy razy w każdej klatce. W kamieniu milowym M2 + M3 doszły dwa programy shaderów i settery `setInt` oraz `setVec3` (sekcja 5.4). W M4 doszły dwa programy oświetlenia, mapy normalnych z uniformami `uNormalMap` i `uNormalMapEnabled` oraz settery `setMat3` i `setFloat` (sekcja 5.7). M5 usunęło kostkę razem z jej programem i dodało jeden uniform, `uEmissive`: własne świecenie kryształów (sekcja 4). Pierwsza część M6 dodała piąty program, `skybox`, z dwoma nowymi uniformami: `uSkybox` i `uBrightness`. Druga część M6 dodała szósty, `grass` (trawa z shadera geometrii), z czterema nowymi: `uTime`, `uBladeHeight`, `uWindStrength` i `uLit`. Pierwsza część M7 dodała dwa programy, które nie rysują sceny, `composite` i `preview`, z ośmioma nowymi uniformami: `uScene`, `uExposure`, `uToneMapping` oraz `uSource`, `uMode`, `uNear`, `uFar`, `uDepthRange` ([`../renderer/post-process.md`](../renderer/post-process.md)). Druga część M7 (bloom) dodała dwa kolejne programy bez sceny, `bright` i `blur`, osiem nowych stałych z nazwami (`uBloom`, `uBloomEnabled`, `uBloomIntensity` w programie `composite`, `uScene` i `uThreshold` w `bright`, `uSource`, `uHorizontal` i `uWeights` w `blur`) i szósty setter, `setFloatArray`, dla pierwszej **tablicy** uniformów w grze (sekcja 5.8). Po drugiej części M7 gra miała dziesięć programów i trzydzieści cztery nazwy zwykłych uniformów. Trzecia część M7 (mgła i winieta) dodała jedenaście nazw w programie `composite` i żadnego programu: czterdzieści pięć nazw. Czwarta część M7 (cienie księżyca, [`../renderer/shadows.md`](../renderer/shadows.md)) dodała jedenasty program, `shadow_depth`, który ma tylko trzy macierze, i siedem nowych nazw z pliku `common/shadows.glsl`: `uMoonShadowMap`, `uMoonShadowEnabled`, `uMoonShadowMatrix`, `uMoonShadowConstantBias`, `uMoonShadowSlopeBias`, `uMoonShadowPcfRadius` i `uMoonShadowStrength`, zadeklarowanych w trzech programach naraz (`lit`, `gouraud` i `grass`). Dziś gra ma **jedenaście programów** i **pięćdziesiąt dwie nazwy zwykłych uniformów** (sekcja 4: dwadzieścia siedem w sześciu programach sceny i dwadzieścia pięć w czterech programach przebiegów po scenie. Program `shadow_depth` nie ma żadnej własnej), a klasa ma sześć setterów. Wszystkie nazwy są zebrane w jednym nagłówku, `ShaderUniforms.hpp` (sekcja 5.5). Kodu jest mało, ale miejsc na pomyłkę, której OpenGL nie zgłosi, jest kilka:
 
 | Pomyłka | Skutek |
 |---|---|
@@ -74,7 +74,7 @@ Obie funkcje są w rdzeniu OpenGL od wersji 2.0, więc są dostępne w 4.1 Core 
 
 ## 4. Shadery
 
-Gra ma dziesięć programów i każdy ma własny zestaw zwykłych uniformów. Tabela pokazuje cztery programy sceny i linii, a w komórkach stoi nazwa pliku, który uniform deklaruje. Piąty program, `skybox`, i szósty, `grass`, mają osobne tabele pod spodem. Cztery ostatnie, `composite` i `preview` (pierwsza część M7) oraz `bright` i `blur` (druga część, bloom), nie mają macierzy ani żadnego uniformu wspólnego ze sceną: ich szesnaście uniformów (sześć w `post/composite.frag`, pięć w `post/preview.frag`, dwa w `post/bright.frag`, trzy w `post/blur.frag`, żadnego w `post/composite.vert`) opisuje [`../renderer/post-process.md`](../renderer/post-process.md), a nazwy stoją w tym samym nagłówku `ShaderUniforms.hpp` pod przedrostkami `COMPOSITE_`, `PREVIEW_`, `BRIGHT_` i `BLUR_`:
+Gra ma jedenaście programów i każdy ma własny zestaw zwykłych uniformów. Tabela pokazuje cztery programy sceny i linii, a w komórkach stoi nazwa pliku, który uniform deklaruje. Piąty program, `skybox`, szósty, `grass`, i jedenasty, `shadow_depth`, mają osobne tabele pod spodem. Cztery programy przebiegów po scenie, `composite` i `preview` (pierwsza część M7) oraz `bright` i `blur` (druga część, bloom), nie mają macierzy modelu, widoku ani rzutowania i żadnego uniformu wspólnego ze sceną: ich dwadzieścia siedem uniformów (siedemnaście w `post/composite.frag`, z czego jedenaście od trzeciej części M7, pięć w `post/preview.frag`, dwa w `post/bright.frag`, trzy w `post/blur.frag`, żadnego w `post/composite.vert`) opisuje [`../renderer/post-process.md`](../renderer/post-process.md), a nazwy stoją w tym samym nagłówku `ShaderUniforms.hpp` pod przedrostkami `COMPOSITE_`, `PREVIEW_`, `BRIGHT_` i `BLUR_`:
 
 | Uniform | Typ w GLSL | `textured` (scena bez oświetlenia i dwa widoki diagnostyczne) | `color` (linie pudełek i kul kolizji) | `lit` (scena, oświetlenie na fragment) | `gouraud` (scena, oświetlenie na wierzchołek) | Setter |
 |---|---|---|---|---|---|---|
@@ -92,7 +92,16 @@ Gra ma dziesięć programów i każdy ma własny zestaw zwykłych uniformów. Ta
 | `uSpecularStrength` | `float` | | | `lit.frag` (przez `#include`) | `gouraud.vert` (przez `#include`) | `setFloat` |
 | `uShininess` | `float` | | | `lit.frag` (przez `#include`) | `gouraud.vert` (przez `#include`) | `setFloat` |
 | `uColor` | `vec3` | | `color.frag` | | | `setVec3` |
-| razem zwykłych uniformów | | 9 | 4 | 12 | 10 | |
+| `uMoonShadowMap` | `sampler2DShadow` | | | `lit.frag` (przez `#include`) | `gouraud.frag` (przez `#include`) | `setInt` |
+| `uMoonShadowEnabled` | `bool` | | | `lit.frag` (przez `#include`) | `gouraud.frag` (przez `#include`) | `setInt` |
+| `uMoonShadowMatrix` | `mat4` | | | `lit.frag` (przez `#include`) | `gouraud.frag` (przez `#include`) | `setMat4` |
+| `uMoonShadowConstantBias` | `float` | | | `lit.frag` (przez `#include`) | `gouraud.frag` (przez `#include`) | `setFloat` |
+| `uMoonShadowSlopeBias` | `float` | | | `lit.frag` (przez `#include`) | `gouraud.frag` (przez `#include`) | `setFloat` |
+| `uMoonShadowPcfRadius` | `int` | | | `lit.frag` (przez `#include`) | `gouraud.frag` (przez `#include`) | `setInt` |
+| `uMoonShadowStrength` | `float` | | | `lit.frag` (przez `#include`) | `gouraud.frag` (przez `#include`) | `setFloat` |
+| razem zwykłych uniformów | | 9 | 4 | 19 (12 do trzeciej części M7) | 17 (10 do trzeciej części M7) | |
+
+Siedem wierszy `uMoonShadow...` doszło w czwartej części M7. Deklaruje je plik `common/shadows.glsl`, dołączany do shaderów **fragmentów** obu programów: także w programie `gouraud`, w którym światło liczy shader wierzchołków, cień jest sprawdzany dla każdego fragmentu. Wszystkie siedem ustawia jedna funkcja, `game::setShadowUniforms` (sekcja 5.2). `sampler2DShadow` ustawia się przez `setInt`, jak każdy sampler: przechowuje numer jednostki teksturującej, tu 3.
 
 Program `skybox` (pierwsza część M6, [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 4.3):
 
@@ -120,12 +129,23 @@ Program `grass` (druga część M6, [`../renderer/grass-geometry.md`](../rendere
 | `uSpecularModel` | `int` | `grass.frag` (przez `#include`) | (nikt) | zadeklarowany w `common/lighting.glsl`. `GrassRenderer` go **nie ustawia**: zostaje przy wartości początkowej 0, a wynik odblasku i tak nie jest używany |
 | `uSpecularStrength` | `float` | `grass.frag` (przez `#include`) | `setFloat` | ustawiany na 0 (stała `NO_SPECULAR_STRENGTH`): trawa nie ma odblasku |
 | `uShininess` | `float` | `grass.frag` (przez `#include`) | `setFloat` | ustawiany na 1 (stała `PLAIN_SHININESS`), żeby potęgowanie w `computeLighting` miało określony wynik |
+| siedem uniformów `uMoonShadow...` (czwarta część M7) | jak w pierwszej tabeli | `grass.frag` (przez `#include "common/shadows.glsl"`) | `game::setShadowUniforms` | trawa leży w cieniu księżyca jak ziemia, na której rośnie. Ustawia je nie `GrassRenderer`, tylko `NightMazeApp::drawGrass`, po własnym `m_grassShader.use()` |
 
-Uniformu `uModel` program trawy też nie ma: punkty kępek są w buforze od razu w przestrzeni świata. Wszystkie siedem uniformów własnych ustawia jedna funkcja, `game::GrassRenderer::draw`, po własnym `use()`. Trzy uniformy odblasku trafiły do programu razem z plikiem `common/lighting.glsl`, z którego trawa bierze tylko część rozproszoną (`computeLighting(...).diffuse`). Czy są **aktywne**, zależy od kompilatora sterownika: skoro wynik odblasku nie wpływa na kolor fragmentu, sterownik może je usunąć, a ich położenie będzie wtedy równe -1 (sekcja 2.3). Dla C++ nie ma to znaczenia, bo ustawienie nieistniejącego uniformu jest ignorowane. Tego, co zgłasza sterownik, nie mierzyłem.
+Uniformu `uModel` program trawy też nie ma: punkty kępek są w buforze od razu w przestrzeni świata. Wszystkie siedem uniformów własnych ustawia jedna funkcja, `game::GrassRenderer::draw`, po własnym `use()`. Trzy uniformy odblasku trafiły do programu razem z plikiem `common/lighting.glsl`, z którego trawa bierze tylko część rozproszoną (`computeLighting(...).diffuse`). Czy są **aktywne**, zależy od kompilatora sterownika: skoro wynik odblasku nie wpływa na kolor fragmentu, sterownik może je usunąć, a ich położenie będzie wtedy równe -1 (sekcja 2.3). Dla C++ nie ma to znaczenia, bo ustawienie nieistniejącego uniformu jest ignorowane. Tego, co zgłasza sterownik, nie mierzyłem. Od czwartej części M7 program `grass` ma razem siedemnaście zadeklarowanych uniformów (dziesięć wcześniej).
 
-W sześciu programach sceny: dwadzieścia nazw i 50 zadeklarowanych uniformów (35 w czterech programach z pierwszej tabeli, 5 w programie `skybox` i 10 w programie `grass`). Z czterema programami z M7 razem: trzydzieści cztery nazwy, dziesięć programów, 66 zadeklarowanych uniformów (po pierwszej części M7 było to dwadzieścia osiem nazw, osiem programów i 58 uniformów). Tablica `uWeights` liczy się tu jako jeden uniform, chociaż ma siedem elementów. "Scena" znaczy tu teren, ściany i słupki labiryntu razem z kryształami i bramą wyjścia: wszystko to rysuje w jednej klatce ten sam program (sekcja 5.2). Do M5 podłożem były płytki podłogi, od drugiej części M6 jest nim teren z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)). Dwa uniformy map normalnych są zadeklarowane w pliku [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl), dołączanym do `lit.frag` i do `textured.frag` ([`normal-mapping.md`](normal-mapping.md), sekcja 4). Program `gouraud` ich nie ma: liczy światło w wierzchołkach i z mapy normalnych nie korzysta. Trzy uniformy odblasku są zadeklarowane w pliku [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), który nie jest samodzielnym shaderem: jego tekst trafia do `lit.frag`, do `gouraud.vert` i, od drugiej części M6, do `grass.frag` przez linię `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md)). Dlatego w programach `lit` i `grass` należą do shadera fragmentów, a w programie `gouraud` do shadera wierzchołków. Dla C++ nie ma to znaczenia: uniform należy do programu jako całości i ustawia się go tak samo. Ten sam plik deklaruje blok `LightBlock`, którego pola (na przykład `uAmbient`) **nie są** zwykłymi uniformami i w tej tabeli ich nie ma (sekcja 2.4).
+Program `shadow_depth` (czwarta część M7, [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 4) rysuje scenę z kierunku księżyca do mapy cieni:
 
-Trzy macierze mają we wszystkich czterech shaderach wierzchołków te same nazwy. W `textured.vert` i `color.vert` stoją w jednym wyrażeniu: `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);`. Nad tą linią w `textured.vert` stoi komentarz, który rozpisuje łańcuch krok po kroku:
+| Uniform | Typ w GLSL | Plik | Setter | Uwaga |
+|---|---|---|---|---|
+| `uModel` | `mat4` | `shadow_depth.vert` | `setMat4` | ta sama nazwa co w programach sceny, celowo: `TerrainRenderer`, `MazeRenderer` i `GameplayRenderer` rysują tym programem bez żadnej zmiany w swoim kodzie |
+| `uView` | `mat4` | `shadow_depth.vert` | `setMat4` | ta sama nazwa, **inna macierz**: widok światła (`scene::LightSpace::view`), nie kamery |
+| `uProjection` | `mat4` | `shadow_depth.vert` | `setMat4` | rzut ortograficzny światła (`scene::LightSpace::projection`) |
+
+Nowych nazw ten program nie ma, a `shadow_depth.frag` nie ma żadnego uniformu: jego `main` jest puste. Renderery ustawiają przy rysowaniu także `uTexture`, `uNormalMap`, `uEmissive`, `uTint` i `uNormalMatrix`, których ten program nie zna: wszystkie trafiają w położenie -1 i są ignorowane (sekcja 2.3, komentarz w `NightMazeApp::drawShadowCasters`).
+
+W sześciu programach sceny: dwadzieścia siedem nazw i 71 zadeklarowanych uniformów (49 w czterech programach z pierwszej tabeli, 5 w programie `skybox` i 17 w programie `grass`). Do trzeciej części M7 było to dwadzieścia nazw i 50 uniformów: różnica to siedem nazw mapy cieni, zadeklarowanych trzy razy. Z czterema programami przebiegów po scenie (dwadzieścia pięć nazw, 27 uniformów) i z programem `shadow_depth` (3 uniformy, żadnej nowej nazwy) razem: pięćdziesiąt dwie nazwy, jedenaście programów, 101 zadeklarowanych uniformów. Historia: po pierwszej części M7 dwadzieścia osiem nazw, osiem programów i 58 uniformów, po drugiej trzydzieści cztery, dziesięć i 66, po trzeciej czterdzieści pięć, dziesięć i 77. Liczby są policzone z linii `uniform` w plikach shaderów po rozwinięciu `#include`, nie odczytane od sterownika. Tablica `uWeights` liczy się tu jako jeden uniform, chociaż ma siedem elementów. "Scena" znaczy tu teren, ściany i słupki labiryntu razem z kryształami i bramą wyjścia: wszystko to rysuje w jednej klatce ten sam program (sekcja 5.2). Do M5 podłożem były płytki podłogi, od drugiej części M6 jest nim teren z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)). Dwa uniformy map normalnych są zadeklarowane w pliku [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl), dołączanym do `lit.frag` i do `textured.frag` ([`normal-mapping.md`](normal-mapping.md), sekcja 4). Program `gouraud` ich nie ma: liczy światło w wierzchołkach i z mapy normalnych nie korzysta. Trzy uniformy odblasku są zadeklarowane w pliku [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), który nie jest samodzielnym shaderem: jego tekst trafia do `lit.frag`, do `gouraud.vert` i, od drugiej części M6, do `grass.frag` przez linię `#include "common/lighting.glsl"` ([`shader-includes.md`](shader-includes.md)). Dlatego w programach `lit` i `grass` należą do shadera fragmentów, a w programie `gouraud` do shadera wierzchołków. Dla C++ nie ma to znaczenia: uniform należy do programu jako całości i ustawia się go tak samo. Ten sam plik deklaruje blok `LightBlock`, którego pola (na przykład `uAmbient`) **nie są** zwykłymi uniformami i w tej tabeli ich nie ma (sekcja 2.4).
+
+Trzy macierze mają we wszystkich czterech shaderach wierzchołków te same nazwy, a od czwartej części M7 także w piątym, `shadow_depth.vert`, gdzie `uView` i `uProjection` są macierzami światła. W `textured.vert` i `color.vert` stoją w jednym wyrażeniu: `gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);`. Nad tą linią w `textured.vert` stoi komentarz, który rozpisuje łańcuch krok po kroku:
 
 ```glsl
     // gl_Position is the built-in output every vertex shader must write: the position in
@@ -144,7 +164,7 @@ W M1 ten komentarz stał w shaderze kostki. `color.vert` odsyła dziś do niego 
 
 **`uNormalMatrix`.** To jedyny uniform typu `mat3`. Jest to macierz, która przenosi **normalne** z przestrzeni lokalnej do przestrzeni świata: odwrócona i transponowana lewa górna część 3 x 3 macierzy modelu. Liczy ją na procesorze funkcja `scene::normalMatrix` dla każdego rysowanego obiektu w każdej klatce, a `game::drawModel` wysyła ją zaraz po `uModel` (sekcja 5.2). Shader używa jej w jednej linii: `vNormal = uNormalMatrix * aNormal;` w `lit.vert` i `vec3 normal = normalize(uNormalMatrix * aNormal);` w `gouraud.vert`. Dlaczego normalne potrzebują własnej macierzy, tłumaczy [`../scene/lights.md`](../scene/lights.md), a kod funkcji [`../scene/transforms.md`](../scene/transforms.md). `textured.vert` nadal obraca normalną przez `mat3(uModel)` i uniformu `uNormalMatrix` nie ma ([`textures.md`](textures.md), sekcja 4).
 
-**`uEmissive`.** Uniform dodany w M5: światło, które powierzchnia oddaje sama z siebie, zapisane jako kolor. Deklarują go trzy shadery fragmentów sceny. W `lit.frag` dołącza do światła rozproszonego: `fragColor = vec4(surface * (lighting.diffuse + uEmissive) + lighting.specular, 1.0);`. W `gouraud.frag` stoi ten sam wzór ze światłem policzonym w wierzchołkach: `surface * (vDiffuseLight + uEmissive) + vSpecularLight`. W `textured.frag` uniform działa tylko w zwykłym widoku (wartość 0 uniformu `uViewMode`): `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);`. Dla terenu, ścian, słupków i bramy wartość jest czarna, czyli `(0, 0, 0)`, i wzory dają to samo co bez tego uniformu. Dla kryształów jest to wynik `game::crystalGlow`. Po co kryształ świeci sam, mówi komentarz w `lit.frag`: światło punktowe kryształu wisi poza jego siatką i oświetla ścianki tylko z jednej strony, więc bez własnego świecenia źródło światła byłoby najciemniejszą rzeczą w okolicy. Reguły gry i funkcję `crystalGlow` opisuje [`../game/gameplay.md`](../game/gameplay.md) (sekcja 4).
+**`uEmissive`.** Uniform dodany w M5: światło, które powierzchnia oddaje sama z siebie, zapisane jako kolor. Deklarują go trzy shadery fragmentów sceny. W `lit.frag` dołącza do światła rozproszonego: `fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);`. W `gouraud.frag` stoi ta sama linia, ze światłem policzonym w wierzchołkach. Zmienne `diffuse` i `specular` są od czwartej części M7 światłem po odjęciu cienia księżyca (do trzeciej części stały tam wprost `lighting.diffuse` i `lighting.specular`, a w `gouraud.frag` `vDiffuseLight` i `vSpecularLight`). `uEmissive` jest dodawane **po** odjęciu cienia, więc kryształ świeci tak samo w cieniu ściany i poza nim. W `textured.frag` uniform działa tylko w zwykłym widoku (wartość 0 uniformu `uViewMode`): `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);`. Dla terenu, ścian, słupków i bramy wartość jest czarna, czyli `(0, 0, 0)`, i wzory dają to samo co bez tego uniformu. Dla kryształów jest to wynik `game::crystalGlow`. Po co kryształ świeci sam, mówi komentarz w `lit.frag`: światło punktowe kryształu wisi poza jego siatką i oświetla ścianki tylko z jednej strony, więc bez własnego świecenia źródło światła byłoby najciemniejszą rzeczą w okolicy. Reguły gry i funkcję `crystalGlow` opisuje [`../game/gameplay.md`](../game/gameplay.md) (sekcja 4).
 
 **Ta sama nazwa, osobna wartość w każdym programie.** Uniform należy do programu (sekcja 2.1). `uView` w programie `color` i `uView` w programie `lit` to dwa różne uniformy, które przypadkiem nazywają się tak samo. Macierz widoku trzeba więc wysłać do każdego używanego programu osobno, po jego `use()`. Dlatego każda funkcja rysująca w `NightMazeApp` zaczyna od `use()` i od własnych wywołań `setMat4` (sekcja 5.2). W jednej klatce pracują najwyżej **cztery** z sześciu programów: scenę rysuje dokładnie jeden z trójki `textured`, `lit`, `gouraud`, trawę program `grass`, gdy jest włączona, linie pudełek i kul kolizji program `color`, i to tylko wtedy, gdy są włączone, a niebo program `skybox`, gdy pole `Skybox` jest zaznaczone. Programy `skybox` i `grass` nie zaczynają w `NightMazeApp`: swoje `use()` i swoje settery mają w `Skybox::draw` i w `GrassRenderer::draw`.
 
@@ -199,7 +219,7 @@ void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
 
 Trzy decyzje, które trzeba umieć obronić:
 
-**Położenie jest wyszukiwane przy każdym wywołaniu, bez pamięci podręcznej.** Typowa klasa shadera trzyma mapę "nazwa na położenie", żeby nie pytać sterownika przy każdym ustawieniu. Tu jej nie ma: każda pamięć podręczna musiałaby być czyszczona w `reload()`, bo nowy program może nadać uniformom inne położenia, a mapa, o której czyszczeniu można zapomnieć, to źródło błędów trudnych do znalezienia. Decyzja zapadła w M1, gdy wyszukiwań było trzy na klatkę, i wtedy koszt był pomijalny. Dziś jest ich ponad siedemset na klatkę i tej ceny nie zmierzyłem (sekcja 5.6).
+**Położenie jest wyszukiwane przy każdym wywołaniu, bez pamięci podręcznej.** Typowa klasa shadera trzyma mapę "nazwa na położenie", żeby nie pytać sterownika przy każdym ustawieniu. Tu jej nie ma: każda pamięć podręczna musiałaby być czyszczona w `reload()`, bo nowy program może nadać uniformom inne położenia, a mapa, o której czyszczeniu można zapomnieć, to źródło błędów trudnych do znalezienia. Decyzja zapadła w M1, gdy wyszukiwań było trzy na klatkę, i wtedy koszt był pomijalny. Dziś jest ich ponad tysiąc na klatkę (od czwartej części M7 scena jest rysowana dwa razy, do mapy cieni i do obrazu) i tej ceny nie zmierzyłem (sekcja 5.6).
 
 **Program musi być w użyciu.** `glUniformMatrix4fv` nie przyjmuje identyfikatora programu: pisze do programu bieżącego (sekcja 2.2). `setMat4` **nie woła** `use()` samo. Gdyby wołało, ustawienie uniformu po cichu zmieniałoby bieżący program, a kilkaset macierzy na klatkę oznaczałoby kilkaset zbędnych `glUseProgram`. Kolejność "najpierw `use()`, potem `setMat4`" należy do wołającego i jest zapisana w komentarzu Doxygen. Jej złamanie nie zawsze daje błąd: macierz trafia wtedy do innego programu (pułapka 2).
 
@@ -224,11 +244,13 @@ Klatkę rysują dwa kroki `NightMazeApp::onRender`: `drawMaze` i `drawColliderLi
     // would use, so with normal mapping the ones from the normal maps.
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
+    // The ground first, then what stands on it. The order does not change the picture
+    // (the depth test sorts it out), it only follows the way the scene is built.
+    m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do.
-    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round,
-                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
+    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round, crystalEmissive());
 ```
 
 **Scena z oświetleniem**, `NightMazeApp::drawLitMaze`:
@@ -243,8 +265,8 @@ Klatkę rysują dwa kroki `NightMazeApp::onRender`: `drawMaze` i `drawColliderLi
     shader.use();
     shader.setMat4(VIEW_UNIFORM, view);
     shader.setMat4(PROJECTION_UNIFORM, projection);
-    // The material of the stone. The lights themselves are not set here: they are in
-    // the uniform buffer that onRender filled before this call.
+    // The material of the stone, which the ground shares. The lights themselves are not
+    // set here: they are in the uniform buffer that onRender filled before this call.
     // The enum values are the numbers common/lighting.glsl compares uSpecularModel with.
     shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
@@ -252,15 +274,22 @@ Klatkę rysują dwa kroki `NightMazeApp::onRender`: `drawMaze` i `drawColliderLi
     // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
     // has no such uniform, and usesNormalMap is false for it anyway.
     shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    // The shadow map of the moon: where it is bound, the matrix it was drawn with and
+    // the numbers of the comparison. Set in every frame, also with the shadows off.
+    setShadowUniforms(shader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT, m_moonShadowDrawn,
+                      m_moonShadow, m_moonLightSpace);
 
+    // The ground first, then what stands on it, as in drawUnlitMaze.
+    m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
     m_mazeRenderer.draw(shader, m_mazeWorld);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights.
-    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round,
-                            crystalGlow(m_lighting.pointColor, m_round.animationSeconds));
+    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalEmissive());
 ```
 
 Ten sam kod obsługuje dwa programy: `shader` jest referencją do `m_gouraudShader` albo do `m_litShader`. Oba mają te same nazwy uniformów oświetlenia, więc reszta funkcji nie musi wiedzieć, który wybrano. Wyjątkiem jest `uNormalMapEnabled`: ma go tylko program `lit`. W programie `gouraud` to ustawienie trafia w położenie -1 i jest ignorowane (sekcja 2.3), a wysyłana wartość i tak byłaby zerem, bo `game::usesNormalMap` zwraca fałsz dla trybu `Gouraud` ([`../game/flashlight.md`](../game/flashlight.md)). Uniform jest w GLSL typu `bool`, a ustawia go `setInt`: tak ustawia się `bool` w OpenGL (sekcja 5.4). Świateł tu nie ma: są w buforze uniformów, wypełnionym wcześniej w `onRender` ([`uniform-buffers.md`](uniform-buffers.md), sekcja 5).
+
+Linia `setShadowUniforms(...)` doszła w czwartej części M7. To wolna funkcja z `src/game/ShadowMap.cpp`, która ustawia siedem zwykłych uniformów mapy cieni: sampler (`setInt`, numer jednostki 3), przełącznik (`setInt`), macierz światła (`setMat4`), dwie części biasu przeliczone z metrów na jednostki głębi (`setFloat`), promień PCF (`setInt`) i siłę cienia (`setFloat`). Nazwy dostaje w strukturze `MOON_SHADOW_UNIFORMS` (sekcja 5.5). Dlaczego macierz światła jest zwykłym uniformem, a nie polem bloku `LightBlock`: sampler nie może być polem bloku uniformów, a liczby, które należą do jednej mapy, mają stać obok jej samplera (komentarz w `common/shadows.glsl`). Blok `LightBlock` się przez to nie zmienił. Funkcja jest wołana w każdej klatce, **także przy wyłączonych cieniach**: po przeładowaniu shaderów każdy uniform wraca do 0, a sampler cienia zostawiony na jednostce 0 dzieliłby ją z samplerem tekstury koloru, czego OpenGL nie pozwala narysować (dwa samplery różnych typów na jednej jednostce). Ta sama funkcja jest wołana drugi raz w `NightMazeApp::drawGrass`, dla programu `grass`.
 
 Obie funkcje ustawiają to, co jest wspólne dla całej klatki, i oddają program trzem klasom, w tej kolejności: `TerrainRenderer` rysuje teren (od drugiej części M6, w miejscu płytek podłogi), `MazeRenderer` ściany i słupki, a `GameplayRenderer` bramę i kryształy. Wszystkie trzy metody `draw` dostają shader jako parametr i **nie wołają** `use()`: zakładają, że wołający już wybrał program. To ta sama zasada co w `setMat4` (sekcja 5.1). Kryształy i brama idą tym samym programem co ściany, więc mają ten sam tryb oświetlenia i te same widoki diagnostyczne.
 
@@ -504,7 +533,7 @@ Sampler trzeba ustawiać dokładnie funkcją `glUniform1i`. Zmierzone w programi
 
 ### 5.5 `ShaderUniforms.hpp`: nazwy w jednym miejscu
 
-[`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) to cały plik poniżej. W M1 trzy nazwy macierzy stały w anonimowej przestrzeni nazw `NightMazeApp.cpp`. Odkąd rysują także inne klasy, nazwy są w nagłówku, który dołącza dziewięć plików: `NightMazeApp.cpp`, `ModelDraw.cpp`, `MazeRenderer.cpp`, `GameplayRenderer.cpp`, `ColliderLines.cpp`, `LightRig.cpp`, a od M6 także `Skybox.cpp`, `TerrainRenderer.cpp` i `GrassRenderer.cpp`.
+[`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) to plik poniżej, skrócony w jednym miejscu. W M1 trzy nazwy macierzy stały w anonimowej przestrzeni nazw `NightMazeApp.cpp`. Odkąd rysują także inne klasy, nazwy są w nagłówku, który dołącza dziś jedenaście plików: `NightMazeApp.cpp`, `ModelDraw.cpp`, `MazeRenderer.cpp`, `GameplayRenderer.cpp`, `ColliderLines.cpp`, `LightRig.cpp`, od M6 także `Skybox.cpp`, `TerrainRenderer.cpp` i `GrassRenderer.cpp`, od M7 `PostProcess.cpp`, a od czwartej części M7 `ShadowMap.cpp`.
 
 ```cpp
 // Names of the uniform variables of the shaders in assets/shaders, in one place.
@@ -523,7 +552,8 @@ namespace game {
 /// The three matrices. Every vertex shader (textured, color, lit, gouraud) declares
 /// them under the same names. skybox.vert has the view and the projection only: the sky
 /// is not placed anywhere in the world. The grass has the same two, in grass.geom: its
-/// points are already in world space.
+/// points are already in world space. shadow_depth.vert has all three, and there the
+/// view and the projection are the ones of a light (scene::LightSpace).
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
@@ -534,7 +564,7 @@ constexpr const char* TEXTURE_UNIFORM = "uTexture";
 constexpr const char* TINT_UNIFORM = "uTint";
 
 /// textured.frag, lit.frag and gouraud.frag: the light a surface gives off by itself,
-/// as a colour. Black for everything except the crystals.
+/// as a linear colour. Black for everything except the crystals.
 constexpr const char* EMISSIVE_UNIFORM = "uEmissive";
 
 /// common/normal_map.glsl, so lit.frag and textured.frag: the sampler of the normal map
@@ -564,7 +594,43 @@ constexpr const char* SHININESS_UNIFORM = "uShininess";
 constexpr const char* LIGHT_BLOCK_NAME = "LightBlock";
 constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
 
-/// color.frag: the one colour of everything drawn.
+/// common/shadows.glsl, so lit.frag, gouraud.frag and grass.frag: the names of the
+/// uniforms of ONE shadow map. Every light that casts shadows has a set of its own in
+/// that file, and a constant of this type here (game::setShadowUniforms takes it).
+struct ShadowUniformNames {
+    /// The sampler2DShadow of the map (it holds the number of a texture unit).
+    const char* map;
+    /// Whether the map is read (1) or nothing is in shadow (0).
+    const char* enabled;
+    /// World space to the clip space of the light (scene::LightSpace::matrix).
+    const char* matrix;
+    /// The two parts of the bias, as differences of stored depths.
+    const char* constantBias;
+    const char* slopeBias;
+    /// The radius of the PCF kernel in texels. 0: one comparison.
+    const char* pcfRadius;
+    /// The share of the light a shadow takes away, 0 to 1.
+    const char* strength;
+};
+
+/// The shadow map of the moon.
+constexpr ShadowUniformNames MOON_SHADOW_UNIFORMS{
+    .map = "uMoonShadowMap",
+    .enabled = "uMoonShadowEnabled",
+    .matrix = "uMoonShadowMatrix",
+    .constantBias = "uMoonShadowConstantBias",
+    .slopeBias = "uMoonShadowSlopeBias",
+    .pcfRadius = "uMoonShadowPcfRadius",
+    .strength = "uMoonShadowStrength",
+};
+
+/// The texture unit of the shadow map of the moon. The models use units 0 (colour
+/// picture) and 1 (normal map) in the lit programs, and the composite pass uses 0 to 2,
+/// so 3 is the first unit nothing else binds: the map is bound once per frame and stays
+/// there while everything lit is drawn. A second shadow map takes the next unit.
+constexpr GLuint MOON_SHADOW_TEXTURE_UNIT = 3;
+
+/// color.frag: the one colour of everything drawn, a linear colour.
 constexpr const char* COLOR_UNIFORM = "uColor";
 
 /// skybox.frag: the sampler of the cube map (it holds the number of a texture unit) and
@@ -585,13 +651,15 @@ constexpr const char* GRASS_LIT_UNIFORM = "uLit";
 } // namespace game
 ```
 
-Plik ma **trzydzieści osiem stałych**: trzydzieści sześć z nazwami zwykłych uniformów i dwie stałe bloku. Listing wyżej kończy się na stałych trawy i szesnastu stałych z M7 nie pokazuje. Osiem z nich doszło w drugiej części M7, z bloomem: `COMPOSITE_BLOOM_UNIFORM` (`"uBloom"`), `COMPOSITE_BLOOM_ENABLED_UNIFORM` (`"uBloomEnabled"`), `COMPOSITE_BLOOM_INTENSITY_UNIFORM` (`"uBloomIntensity"`), `BRIGHT_SCENE_UNIFORM` (`"uScene"`), `BRIGHT_THRESHOLD_UNIFORM` (`"uThreshold"`), `BLUR_SOURCE_UNIFORM` (`"uSource"`), `BLUR_HORIZONTAL_UNIFORM` (`"uHorizontal"`) i `BLUR_WEIGHTS_UNIFORM` (`"uWeights"`). Dwie z nich powtarzają napis, który plik już ma (`"uScene"` jest też w `COMPOSITE_SCENE_UNIFORM`, `"uSource"` w `PREVIEW_SOURCE_UNIFORM`): stałych z nazwami jest więc trzydzieści sześć, a różnych nazw trzydzieści cztery. Osobna stała dla każdego programu jest celowa: uniform należy do programu, a zmiana nazwy w jednym shaderze nie powinna ruszać drugiego. Osiem wcześniejszych nazw doszło w pierwszej części M7 i należy do dwóch programów przebiegów końcowych: `COMPOSITE_SCENE_UNIFORM` (`"uScene"`), `COMPOSITE_EXPOSURE_UNIFORM` (`"uExposure"`), `COMPOSITE_TONE_MAPPING_UNIFORM` (`"uToneMapping"`), `PREVIEW_SOURCE_UNIFORM` (`"uSource"`), `PREVIEW_MODE_UNIFORM` (`"uMode"`), `PREVIEW_NEAR_UNIFORM` (`"uNear"`), `PREVIEW_FAR_UNIFORM` (`"uFar"`) i `PREVIEW_DEPTH_RANGE_UNIFORM` (`"uDepthRange"`). Ustawia je `game::PostProcess` ([`../renderer/post-process.md`](../renderer/post-process.md)), a tabela niżej ich nie powtarza. Wszystkie szesnaście ustawia `game::PostProcess`. Pozostałe dwadzieścia dwie stałe to dwadzieścia nazw uniformów sceny (`SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM` doszły w pierwszej części M6, a cztery ostatnie, `GRASS_TIME_UNIFORM`, `GRASS_BLADE_HEIGHT_UNIFORM`, `GRASS_WIND_STRENGTH_UNIFORM` i `GRASS_LIT_UNIFORM`, w drugiej) oraz dwie stałe bloku uniformów, `LIGHT_BLOCK_NAME` i `LIGHT_BLOCK_BINDING_POINT`.
+(Między `COLOR_UNIFORM` a komentarzem `skybox.frag` listing pomija dwadzieścia siedem stałych przebiegów po scenie, o przedrostkach `COMPOSITE_`, `BRIGHT_`, `BLUR_` i `PREVIEW_`. Reszta jest przepisana z pliku bez zmian.)
+
+Plik ma dziś **czterdzieści siedem stałych z nazwami zwykłych uniformów**, dwie stałe bloku uniformów (`LIGHT_BLOCK_NAME` i `LIGHT_BLOCK_BINDING_POINT`) i, od czwartej części M7, trzy rzeczy dla mapy cieni: strukturę `ShadowUniformNames` z siedmioma polami `const char*`, jedną stałą tego typu, `MOON_SHADOW_UNIFORMS`, która trzyma siedem nazw uniformów mapy cieni księżyca, oraz numer jednostki teksturującej `MOON_SHADOW_TEXTURE_UNIT = 3`. Listing wyżej pokazuje początek pliku razem z częścią o cieniach i kończy się na stałych trawy: dwudziestu siedmiu stałych z pierwszych trzech części M7, które w pliku stoją między `COLOR_UNIFORM` a `SKYBOX_UNIFORM`, nie pokazuje. Historia liczby stałych z nazwami: dwadzieścia po M6 (`SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM` doszły w pierwszej części M6, a `GRASS_TIME_UNIFORM`, `GRASS_BLADE_HEIGHT_UNIFORM`, `GRASS_WIND_STRENGTH_UNIFORM` i `GRASS_LIT_UNIFORM` w drugiej), dwadzieścia osiem po pierwszej części M7, trzydzieści sześć po drugiej, czterdzieści siedem po trzeciej. Pierwsza część M7 dodała osiem, dla dwóch programów przebiegów końcowych: `COMPOSITE_SCENE_UNIFORM` (`"uScene"`), `COMPOSITE_EXPOSURE_UNIFORM` (`"uExposure"`), `COMPOSITE_TONE_MAPPING_UNIFORM` (`"uToneMapping"`), `PREVIEW_SOURCE_UNIFORM` (`"uSource"`), `PREVIEW_MODE_UNIFORM` (`"uMode"`), `PREVIEW_NEAR_UNIFORM` (`"uNear"`), `PREVIEW_FAR_UNIFORM` (`"uFar"`) i `PREVIEW_DEPTH_RANGE_UNIFORM` (`"uDepthRange"`). Druga część dodała osiem, z bloomem: `COMPOSITE_BLOOM_UNIFORM` (`"uBloom"`), `COMPOSITE_BLOOM_ENABLED_UNIFORM` (`"uBloomEnabled"`), `COMPOSITE_BLOOM_INTENSITY_UNIFORM` (`"uBloomIntensity"`), `BRIGHT_SCENE_UNIFORM` (`"uScene"`), `BRIGHT_THRESHOLD_UNIFORM` (`"uThreshold"`), `BLUR_SOURCE_UNIFORM` (`"uSource"`), `BLUR_HORIZONTAL_UNIFORM` (`"uHorizontal"`) i `BLUR_WEIGHTS_UNIFORM` (`"uWeights"`). Trzecia część dodała jedenaście, wszystkie dla programu `composite`: sześć dla mgły (`COMPOSITE_FOG_ENABLED_UNIFORM`, `COMPOSITE_DEPTH_UNIFORM`, `COMPOSITE_FOG_DENSITY_UNIFORM`, `COMPOSITE_FOG_BASE_HEIGHT_UNIFORM`, `COMPOSITE_FOG_HEIGHT_FALLOFF_UNIFORM`, `COMPOSITE_FOG_COLOR_UNIFORM`), dwie dla odtworzenia pozycji z głębi (`COMPOSITE_INVERSE_VIEW_PROJECTION_UNIFORM`, `COMPOSITE_EYE_UNIFORM`) i trzy dla winiety (`COMPOSITE_VIGNETTE_ENABLED_UNIFORM`, `COMPOSITE_VIGNETTE_STRENGTH_UNIFORM`, `COMPOSITE_VIGNETTE_RADIUS_UNIFORM`). Dwie stałe powtarzają napis, który plik już ma (`"uScene"` jest w `COMPOSITE_SCENE_UNIFORM` i w `BRIGHT_SCENE_UNIFORM`, `"uSource"` w `PREVIEW_SOURCE_UNIFORM` i w `BLUR_SOURCE_UNIFORM`): stałych z nazwami jest więc czterdzieści siedem, a różnych nazw czterdzieści pięć. Osobna stała dla każdego programu jest celowa: uniform należy do programu, a zmiana nazwy w jednym shaderze nie powinna ruszać drugiego. Wszystkie dwadzieścia siedem stałych z tych trzech części ustawia `game::PostProcess` ([`../renderer/post-process.md`](../renderer/post-process.md)), a tabela niżej ich nie powtarza. Czwarta część M7 poszła inną drogą: zamiast siedmiu kolejnych stałych jest **struktura** z siedmioma nazwami. Powód stoi w komentarzu nad nią: każde światło, które rzuca cień, ma w `common/shadows.glsl` własny zestaw tych siedmiu uniformów, więc druga mapa cieni to druga stała typu `ShadowUniformNames`, a funkcja `game::setShadowUniforms` przyjmuje taką stałą jako parametr i nie zna żadnej nazwy na sztywno. Dziś stała jest jedna (księżyc). Razem z jej siedmioma nazwami plik zna pięćdziesiąt dwie różne nazwy zwykłych uniformów.
 
 | Stała | Wartość | Który plik shadera to deklaruje | Kto jej używa |
 |---|---|---|---|
-| `MODEL_UNIFORM` | `"uModel"` | cztery shadery wierzchołków: `textured`, `color`, `lit`, `gouraud` | `game::drawModel`, `game::drawMesh`, `ColliderLines::draw`, `ColliderLines::drawSpheres` |
-| `VIEW_UNIFORM` | `"uView"` | te same cztery, do tego `skybox.vert` i `grass.geom` | `drawUnlitMaze`, `drawLitMaze`, `drawColliderLines` w `NightMazeApp`, `Skybox::draw`, `GrassRenderer::draw` |
-| `PROJECTION_UNIFORM` | `"uProjection"` | te same sześć plików | te same pięć funkcji |
+| `MODEL_UNIFORM` | `"uModel"` | cztery shadery wierzchołków: `textured`, `color`, `lit`, `gouraud`, a od czwartej części M7 piąty, `shadow_depth.vert` | `game::drawModel`, `game::drawMesh`, `ColliderLines::draw`, `ColliderLines::drawSpheres` |
+| `VIEW_UNIFORM` | `"uView"` | te same pięć, do tego `skybox.vert` i `grass.geom` | `drawUnlitMaze`, `drawLitMaze`, `drawColliderLines` i, od czwartej części M7, `drawShadowCasters` (z macierzą światła) w `NightMazeApp`, `Skybox::draw`, `GrassRenderer::draw` |
+| `PROJECTION_UNIFORM` | `"uProjection"` | te same siedem plików | te same sześć funkcji |
 | `TEXTURE_UNIFORM` | `"uTexture"` | `textured.frag`, `lit.frag`, `gouraud.frag` | `game::setModelSamplers` |
 | `TINT_UNIFORM` | `"uTint"` | te same trzy | `game::drawModel`, `game::drawMesh` |
 | `EMISSIVE_UNIFORM` | `"uEmissive"` | te same trzy | `TerrainRenderer::draw`, `MazeRenderer::draw`, `GameplayRenderer::draw` |
@@ -611,21 +679,24 @@ Plik ma **trzydzieści osiem stałych**: trzydzieści sześć z nazwami zwykłyc
 | `GRASS_LIT_UNIFORM` | `"uLit"` | `grass.frag` | `GrassRenderer::draw` |
 | `LIGHT_BLOCK_NAME` | `"LightBlock"` | `common/lighting.glsl`: nazwa **bloku**, nie uniformu | `LightRig::connect`, przez `Shader::bindUniformBlock` |
 | `LIGHT_BLOCK_BINDING_POINT` | `1` (typ `GLuint`) | nigdzie: GLSL 4.10 nie umie zapisać tego numeru | konstruktor `LightRig`, jako punkt wiązania bufora |
+| `MOON_SHADOW_UNIFORMS` (czwarta część M7) | struktura `ShadowUniformNames` z siedmioma napisami: `"uMoonShadowMap"`, `"uMoonShadowEnabled"`, `"uMoonShadowMatrix"`, `"uMoonShadowConstantBias"`, `"uMoonShadowSlopeBias"`, `"uMoonShadowPcfRadius"`, `"uMoonShadowStrength"` | `common/shadows.glsl` (czyli `lit.frag`, `gouraud.frag` i `grass.frag`) | `NightMazeApp::drawLitMaze` i `NightMazeApp::drawGrass`, jako argument `game::setShadowUniforms` |
+| `MOON_SHADOW_TEXTURE_UNIT` (czwarta część M7) | `3` (typ `GLuint`) | nigdzie: to numer jednostki, który trafia do samplera `uMoonShadowMap` | te same dwie funkcje i `NightMazeApp::drawMoonShadowMap`, jako argument `ShadowMap::bindForSampling` |
 
 | Element | Znaczenie |
 |---|---|
-| `#pragma once` | nagłówek jest dołączany przez dziewięć plików `.cpp`. W jednej jednostce kompilacji ma być wczytany raz |
+| `#pragma once` | nagłówek jest dołączany przez jedenaście plików `.cpp`. W jednej jednostce kompilacji ma być wczytany raz |
 | `#include <glad/gl.h>` | jedyne dołączenie, potrzebne dla typu `GLuint` stałej `LIGHT_BLOCK_BINDING_POINT`. Do M4 plik nie dołączał niczego |
 | `namespace game` | plik leży w `src/game/`, bo nazwy należą do shaderów tej gry, a nie do klasy `gfx::Shader`, która przyjmuje dowolny napis. Należy do programu `night_maze` (lista źródeł w [`CMakeLists.txt`](../../../CMakeLists.txt)), nie do biblioteki `engine` |
 | `constexpr const char*` | stała znana w czasie kompilacji, wskazująca na literał napisu. To dokładnie typ parametru `name` setterów. `constexpr` w przestrzeni nazw daje stałej wiązanie wewnętrzne, więc definicja w nagłówku dołączanym wiele razy nie powoduje błędu linkowania |
-| `constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;` | jedyna stała, która nie jest napisem: numer punktu wiązania bufora uniformów. Typ `GLuint`, bo taki przyjmują `glBindBufferBase` i `glUniformBlockBinding` |
-| sam nagłówek, bez pliku `.cpp` | plik nie zawiera kodu, tylko trzydzieści osiem stałych |
+| `constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;` | do trzeciej części M7 jedyna stała, która nie jest napisem (od czwartej drugą jest `MOON_SHADOW_TEXTURE_UNIT`): numer punktu wiązania bufora uniformów. Typ `GLuint`, bo taki przyjmują `glBindBufferBase` i `glUniformBlockBinding` |
+| `struct ShadowUniformNames` i `constexpr ShadowUniformNames MOON_SHADOW_UNIFORMS{ .map = ..., ... }` (czwarta część M7) | pierwsza struktura w tym pliku. Zbiera nazwy uniformów jednej mapy cieni, żeby funkcja ustawiająca je przyjmowała jeden parametr zamiast siedmiu napisów. Zapis z kropkami to inicjalizatory desygnowane z C++20: każda nazwa stoi przy swoim polu, więc nie da się ich zamienić miejscami przez pomyłkę w kolejności |
+| sam nagłówek, bez pliku `.cpp` | plik nie zawiera kodu, tylko stałe i jedną strukturę z danymi: czterdzieści siedem nazw uniformów, dwie stałe bloku i trzy rzeczy mapy cieni (akapit pod listingiem) |
 
 **Komentarz nad `LIGHT_BLOCK_NAME`.** Program, którego bloku nikt nie podłączył, czyta z punktu wiązania 0, a tam żaden bufor nie jest podpięty. Specyfikacja OpenGL 4.1 zostawia wartości, które wtedy dostaje shader, nieokreślone: nie ma gwarancji ani zer, ani "braku świateł". Wybór punktu 1 sprawia, że taka pomyłka pokazuje się jako błędne oświetlenie, zamiast działać przypadkiem ([`uniform-buffers.md`](uniform-buffers.md), sekcja 7, pułapka 3). Wcześniejsza wersja komentarza mówiła "reads no lights at all", co było nieścisłe, i została poprawiona.
 
 **Dlaczego jeden nagłówek.** Napis z nazwą jest jedynym łącznikiem między C++ a linią `uniform ...` w shaderze. Kompilator C++ nie wie nic o shaderze, a OpenGL ignoruje nieznaną nazwę po cichu (pułapka 1). Gdyby każda klasa rysująca miała własne literały, literówka w jednej z nich dałaby pusty ekran dla jednego rodzaju obiektów, bez żadnego komunikatu. Jeden nagłówek nie chroni przed literówką w samej stałej ani przed zmianą nazwy tylko w pliku shadera. Sprawia tylko, że pomyłkę robi się i poprawia w jednym miejscu.
 
-Czego w nagłówku nie ma: numerów jednostek teksturujących (`TEXTURE_UNIT` i `NORMAL_MAP_UNIT` to prywatne stałe `ModelDraw.cpp`), wartości trybu podglądu (typ `game::ViewMode` jest w `MazeRenderer.hpp`), wartości wzoru odblasku (typ `game::SpecularModel` jest w `Lighting.hpp`) ani nazw pól bloku `LightBlock`. Tych ostatnich C++ w ogóle nie zna z nazwy: zna tylko ich miejsce w bajtach bufora.
+Czego w nagłówku nie ma: numerów jednostek teksturujących modeli i przebiegów po scenie (`TEXTURE_UNIT` i `NORMAL_MAP_UNIT` to prywatne stałe `ModelDraw.cpp`, a trzy jednostki przebiegu składającego prywatne stałe `PostProcess.cpp`. Wyjątkiem jest od czwartej części M7 `MOON_SHADOW_TEXTURE_UNIT`: stoi w nagłówku, bo numer musi znać i kod, który wiąże mapę, i każde miejsce, które ustawia sampler), wartości trybu podglądu (typ `game::ViewMode` jest w `MazeRenderer.hpp`), wartości wzoru odblasku (typ `game::SpecularModel` jest w `Lighting.hpp`) ani nazw pól bloku `LightBlock`. Tych ostatnich C++ w ogóle nie zna z nazwy: zna tylko ich miejsce w bajtach bufora.
 
 ### 5.6 Ile wyszukiwań na klatkę
 
@@ -644,10 +715,14 @@ Tryb domyślny (`BlinnPhong`, program `lit`):
 | `GameplayRenderer::draw`: `uTexture`, `uNormalMap` | 2 |
 | brama: `uEmissive`, `uTint`, `uModel`, `uNormalMatrix` | 4 |
 | kryształy: `uEmissive` raz, a potem `uTint`, `uModel` i `uNormalMatrix` dla każdego z 13 | 1 + 39 = 40 |
-| razem program sceny, bez linii kształtów kolizji | **547** |
-| trawa, gdy jest włączona: dziewięć ustawień w `GrassRenderer::draw`, w osobnym programie `grass` | 9 |
+| razem program sceny, bez linii kształtów kolizji, stan do trzeciej części M7 | **547** |
+| od czwartej części M7: siedem uniformów mapy cieni w `drawLitMaze` (`game::setShadowUniforms`) | 7, razem **554** |
+| od czwartej części M7, przebieg głębi mapy cieni programem `shadow_depth`, gdy cienie są włączone: `uView` i `uProjection` w `drawShadowCasters` i te same wywołania trzech rendererów co wyżej (6 + 489 + 46) | 2 + 541 = **543**, z czego skutek mają 259 (rozpisane niżej) |
+| trawa, gdy jest włączona: dziewięć ustawień w `GrassRenderer::draw`, w osobnym programie `grass`, a od czwartej części M7 siedem uniformów mapy cieni w `drawGrass` | 9 + 7 = 16 |
 | niebo, gdy jest włączone: pięć ustawień w `Skybox::draw`, w osobnym programie `skybox` | 5 |
 | linie kształtów kolizji, gdy są włączone | 295 (rozpisane niżej) |
+
+Przebieg głębi (czwarta część M7) używa `TerrainRenderer::draw`, `MazeRenderer::draw` i `GameplayRenderer::draw` bez zmian, więc wykonuje te same 541 wywołań setterów co program sceny bez sześciu z `drawLitMaze` (6 terenu, 489 labiryntu, 46 bramy i kryształów). Program `shadow_depth` ma tylko trzy uniformy, więc skutek ma 257 ustawień `uModel` (1 terenu, 242 labiryntu, 1 bramy, 13 kryształów) i dwa z `drawShadowCasters`: razem 259. Pozostałe 284 trafiają w położenie -1, a każde i tak kosztuje wyszukanie po nazwie, a 257 z nich także policzenie macierzy normalnych na procesorze. W trybie domyślnym z cieniami scena i przebieg głębi to razem 554 + 543 = 1097 wywołań setterów na klatkę, policzonych z kodu.
 
 Linie, gdy są włączone: `uView` i `uProjection` (2), pudełka labiryntu (`uColor` i 242 razy `uModel`, czyli 243), pudełko gracza (2), pudełko bramy (2), strefa wyjścia (2), kula zasięgu gracza (`uColor` i trzy razy `uModel`, czyli 4), kule 13 kryształów (`uColor` i 39 razy `uModel`, czyli 40). Razem 295.
 
@@ -655,8 +730,8 @@ Pozostałe tryby:
 
 | Tryb | Program sceny | Razem bez linii | Skąd różnica |
 |---|---|---|---|
-| `Gouraud`, `Phong`, `BlinnPhong` | `gouraud` albo `lit` | 547 | te same wywołania setterów pod tymi samymi nazwami. W programie `gouraud` cztery z nich (`uNormalMap` trzy razy i `uNormalMapEnabled` raz) trafiają w położenie -1 |
-| `Unlit` albo widok diagnostyczny (`Normals`, `UVs`) w dowolnym trybie | `textured` | 545 | zamiast trzech uniformów odblasku jest `uViewMode`, więc funkcja `drawUnlitMaze` ustawia 4 uniformy, a nie 6 |
+| `Gouraud`, `Phong`, `BlinnPhong` | `gouraud` albo `lit` | 554 (547 do trzeciej części M7) | te same wywołania setterów pod tymi samymi nazwami, razem z siedmioma uniformami mapy cieni, które mają oba programy. W programie `gouraud` cztery z nich (`uNormalMap` trzy razy i `uNormalMapEnabled` raz) trafiają w położenie -1 |
+| `Unlit` albo widok diagnostyczny (`Normals`, `UVs`) w dowolnym trybie | `textured` | 545 | zamiast trzech uniformów odblasku jest `uViewMode`, więc funkcja `drawUnlitMaze` ustawia 4 uniformy, a nie 6. Program `textured` nie dołącza `common/shadows.glsl`, więc uniformów mapy cieni nie dostaje i cieni w tym trybie nie ma. Przebieg głębi (543 wywołania) jest mimo to wykonywany, dopóki cienie są włączone w panelu: `drawMoonShadowMap` nie patrzy na tryb oświetlenia |
 
 Liczby zmieniają się w trakcie rundy. Każdy zebrany kryształ to trzy ustawienia mniej (i trzy mniej w liniach), a brama, która zapadła się do końca, przestaje być rysowana i zabiera cztery. Kryształy są przy tym rysowane pojedynczo: jedno wywołanie `drawModel` na kryształ, więc `uTint` jest dla nich ustawiany 13 razy, choć dwa modele kryształów mają razem dwie części.
 
@@ -832,7 +907,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8). Po zmia
 
 1. **Bez macierzy.** Włącz `Draw collision shapes`. W `color.vert` zamień linię z `gl_Position` na `gl_Position = vec4(aPosition, 1.0);` i naciśnij `Reload shaders`. Wszystkie pudełka i wszystkie kule lądują w tym samym miejscu ekranu. Zanim spojrzysz, przewidź z danych w `ColliderLines.cpp` (sześcian jednostkowy od `(0, 0, 0)` do `(1, 1, 1)`, okrąg o promieniu 1 w płaszczyźnie XY): w której ćwiartce okna leży zarys sześcianu, dlaczego jest prostokątem, a nie kwadratem, i dlaczego okrąg wygląda jak elipsa dotykająca krawędzi okna. Dlaczego trzy okręgi kuli stały się jednym? Jakie położenie mają teraz uniformy `uModel`, `uView`, `uProjection` (sekcja 2.1)? Dlaczego program C++, który nadal woła `setMat4`, nie zgłasza błędu? (W M1 ta sama zmiana w shaderze kostki dawała prostokąt na środku okna, sekcja 5.3.)
 2. **Przesunięcie w przestrzeni lokalnej.** W `lit.vert` (tryb domyślny rysuje programem `lit`) zamień `vec4(aPosition, 1.0)` na `vec4(aPosition + vec3(1.0, 0.0, 0.0), 1.0)` i naciśnij `Reload shaders`. Teren i słupki przesunęły się o metr wzdłuż osi X świata, ale ściany nie wszystkie w tę samą stronę, a kryształy zaczęły krążyć po okręgach. Dlaczego? (Wskazówka: `game::wallModelMatrix` obraca ściany biegnące wzdłuż Z o 90 stopni, a macierz kryształu obraca się w czasie.) W którym miejscu wyrażenia trzeba by dodać przesunięcie, żeby było przesunięciem w przestrzeni świata, takim samym dla wszystkich? Nie zmieniaj kodu C++. Zauważ, że kolizje zostały na starym miejscu: shader zmienia tylko obraz.
-3. **Literówka w nazwie uniformu.** W `ShaderUniforms.hpp` zmień `MODEL_UNIFORM` na `"uModle"`, zbuduj i uruchom. Co widać w oknie, co w konsoli, co w panelu Shaders (linia każdego z dziesięciu programów)? Dlaczego znika wszystko naraz: labirynt, kryształy, brama i linie kolizji? Teren znika razem z nimi, chociaż jego macierz modelu jest jednostkowa: dlaczego? Co zostaje na ekranie (które programy sceny nie mają `uModel`)? Wyjaśnij, jaką wartość ma `uModel` w shaderach i gdzie lądują wierzchołki. Wycofaj zmianę.
+3. **Literówka w nazwie uniformu.** W `ShaderUniforms.hpp` zmień `MODEL_UNIFORM` na `"uModle"`, zbuduj i uruchom. Co widać w oknie, co w konsoli, co w panelu Shaders (linia każdego z jedenastu programów)? Dlaczego znika wszystko naraz: labirynt, kryształy, brama i linie kolizji? Co dzieje się z cieniami (program `shadow_depth` też ma `uModel`)? Teren znika razem z nimi, chociaż jego macierz modelu jest jednostkowa: dlaczego? Co zostaje na ekranie (które programy sceny nie mają `uModel`)? Wyjaśnij, jaką wartość ma `uModel` w shaderach i gdzie lądują wierzchołki. Wycofaj zmianę.
 4. **`setMat4` przed `use()`.** W `NightMazeApp::drawColliderLines` przenieś linię `m_colorShader.use();` pod dwa wywołania `setMat4`. Zbuduj, uruchom i włącz `Draw collision shapes`. Który program jest bieżący w chwili tych wywołań (która funkcja rysująca działa przed `drawColliderLines`)? Czy w konsoli buildu Debug jest błąd? Od czego to zależy (sekcja 7, pułapka 2)? Co dzieje się z liniami i dlaczego scena wygląda dobrze, choć dwie macierze trafiły do jej programu (wskazówka: kto i kiedy ustawia uniformy programu sceny w następnej klatce)? Wycofaj zmianę.
 5. **Transpozycja.** W `Shader::setMat4` zamień `GL_FALSE` na `GL_TRUE`. Zbuduj i uruchom. Opisz obraz. Dla macierzy, która jest samym obrotem, transpozycja to obrót w przeciwną stronę: dlaczego? Która z trzech macierzy psuje się najbardziej i dlaczego? Wycofaj zmianę.
 6. **Uniform `vec3`.** Dopisz do `color.frag` uniform `uniform vec3 uTint;` i pomnóż przez niego kolor. W `NightMazeApp::drawColliderLines`, po `m_colorShader.use()`, wyślij wartość funkcją `setVec3` (sekcja 5.4) pod nazwą `TINT_UNIFORM`, na przykład `glm::vec3(1.0F, 0.5F, 0.5F)`. Zbuduj, uruchom i włącz linie. Potem usuń wywołanie `setVec3` i zostaw uniform w shaderze: co widać i dlaczego? Wycofaj zmiany.
@@ -877,7 +952,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8). Po zmia
     OpenGL zgłosi `GL_INVALID_OPERATION` i wartości nie zmieni. Typ uniformu i funkcja muszą do siebie pasować, a dla samplerów jedyną dozwoloną funkcją jest `glUniform1i`.
 
 11. **Po co jest `ShaderUniforms.hpp` i przed czym nie chroni?**
-    Zbiera trzydzieści sześć stałych z nazwami zwykłych uniformów (trzydzieści cztery różne nazwy) oraz nazwę i punkt wiązania bloku `LightBlock` w jednym miejscu, żeby dziesięć plików, które z nich korzystają (`NightMazeApp.cpp`, `ModelDraw.cpp`, `MazeRenderer.cpp`, `GameplayRenderer.cpp`, `ColliderLines.cpp`, `LightRig.cpp`, `Skybox.cpp`, `TerrainRenderer.cpp`, `GrassRenderer.cpp` i, od M7, `PostProcess.cpp`), nie mogło się co do nich różnić. Nie chroni przed literówką w samej stałej ani przed zmianą nazwy tylko w pliku shadera: wtedy położenie to -1 i nie ma żadnego błędu.
+    Zbiera czterdzieści siedem stałych z nazwami zwykłych uniformów (czterdzieści pięć różnych nazw), od czwartej części M7 siedem nazw uniformów mapy cieni w jednej stałej `MOON_SHADOW_UNIFORMS` i numer jej jednostki teksturującej, oraz nazwę i punkt wiązania bloku `LightBlock` w jednym miejscu, żeby jedenaście plików, które z nich korzystają (`NightMazeApp.cpp`, `ModelDraw.cpp`, `MazeRenderer.cpp`, `GameplayRenderer.cpp`, `ColliderLines.cpp`, `LightRig.cpp`, `Skybox.cpp`, `TerrainRenderer.cpp`, `GrassRenderer.cpp`, od M7 `PostProcess.cpp` i od czwartej części M7 `ShadowMap.cpp`), nie mogło się co do nich różnić. Nie chroni przed literówką w samej stałej ani przed zmianą nazwy tylko w pliku shadera: wtedy położenie to -1 i nie ma żadnego błędu.
 
 12. **Sześć programów ma uniform `uView`. Ile razy trzeba go ustawić w klatce?**
     Raz w każdym programie, który w tej klatce rysuje, po jego `use()`: najwyżej w czterech, bo scenę rysuje jeden z trójki `textured`, `lit`, `gouraud`, a do tego dochodzi `grass`, gdy włączona jest trawa, `color`, gdy linie kształtów kolizji są włączone, i `skybox`, gdy włączone jest niebo. Uniform należy do programu, więc ta sama nazwa w sześciu programach sceny to sześć osobnych wartości (dwa programy z M7, `composite` i `preview`, tego uniformu nie mają). W programie trawy deklaruje go shader geometrii, a nie wierzchołków, co dla C++ niczego nie zmienia.
@@ -886,7 +961,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8). Po zmia
     `setInt`: samplery `uTexture` i `uNormalMap` (numery jednostek teksturujących 0 i 1), `uViewMode` (tryb podglądu, wartość typu `game::ViewMode` zrzutowana na `int`), `uSpecularModel` (wzór odblasku, wartość typu `game::SpecularModel`) i `uNormalMapEnabled` (typ `bool` w GLSL, 1 albo 0). `setVec3`: `uTint` (kolor materiału w trzech shaderach fragmentów sceny), `uEmissive` (własne świecenie powierzchni w tych samych trzech) i `uColor` (kolor linii w `color.frag`). Do tego `setMat3` dla `uNormalMatrix` i `setFloat` dla `uSpecularStrength` i `uShininess`.
 
 14. **Ile razy na klatkę jest ustawiany `uModel` dla labiryntu domyślnego i co z tego wynika?**
-    243 razy: raz dla terenu, 121 razy dla ścian i 121 dla słupków, każdy obiekt ma własne wywołanie rysujące. Tyle samo razy ustawiany jest `uNormalMatrix`, a z bramą i 13 kryształami cała klatka programu sceny w trybie domyślnym na początku rundy to 547 ustawień (do M5, ze stu płytkami podłogi zamiast terenu, było 342 i 742). Trawa i niebo dokładają 9 i 5 ustawień we własnych programach. Każde wyszukuje położenie po nazwie, bo klasa nie ma pamięci podręcznej. Kosztu nie zmierzyłem. To cena prostego kodu, do poprawienia dopiero wtedy, gdy pomiar pokaże problem.
+    243 razy: raz dla terenu, 121 razy dla ścian i 121 dla słupków, każdy obiekt ma własne wywołanie rysujące. Tyle samo razy ustawiany jest `uNormalMatrix`, a z bramą i 13 kryształami cała klatka programu sceny w trybie domyślnym na początku rundy to 554 ustawienia (547 do trzeciej części M7, a do M5, ze stu płytkami podłogi zamiast terenu, było 342 i 742). Od czwartej części M7 te same obiekty są rysowane jeszcze raz do mapy cieni: kolejne 257 ustawień `uModel` w programie `shadow_depth`, w 543 wywołaniach setterów (sekcja 5.6). Trawa i niebo dokładają 16 i 5 ustawień we własnych programach. Każde wyszukuje położenie po nazwie, bo klasa nie ma pamięci podręcznej. Kosztu nie zmierzyłem. To cena prostego kodu, do poprawienia dopiero wtedy, gdy pomiar pokaże problem.
 
 15. **Co robi `setMat3` i do czego służy w grze?**
     Wyszukuje położenie i woła `glUniformMatrix3fv`: jedna macierz 3 x 3, dziewięć liczb `float`, bez transpozycji. Gra wysyła nim `uNormalMatrix`, macierz dla normalnych policzoną przez `scene::normalMatrix` dla każdego obiektu.
@@ -907,7 +982,7 @@ Zasady pracy są takie same jak w [`shaders.md`](shaders.md) (sekcja 8). Po zmia
     Bo uniform trzyma wartość do następnego ustawienia, także między klatkami, a ten sam program rysuje potem kryształy, dla których `GameplayRenderer::draw` ustawia świecenie. Bez cofnięcia ściany następnej klatki byłyby rysowane z wartością zostawioną przez kryształy. Od drugiej części M6 to samo robi wcześniej `TerrainRenderer::draw` dla terenu, więc linia w `MazeRenderer` jest dziś zabezpieczeniem: klasa nie polega na tym, że ktoś przed nią ustawił czerń. Drugi powód jest ten sam co dla wszystkich uniformów: po `reload()` wartości wracają do zera i trzeba je wysłać ponownie.
 
 21. **Co robi `uEmissive` we wzorze koloru i dlaczego jest dodawany do światła rozproszonego, a nie do wyniku?**
-    W `lit.frag` kolor to `surface * (lighting.diffuse + uEmissive) + lighting.specular`. Świecenie jest więc mnożone przez kolor powierzchni (teksturę i `uTint`), tak jak światło rozproszone: kryształ świeci swoim kolorem i widać jego ścianki, a nie jednolitą plamę. Nie zależy od żadnego światła sceny, więc kryształ jest jasny także w ciemnym kącie. W `textured.frag` odpowiednikiem jest `texel * uTint * (vec3(1.0) + uEmissive)`: bez oświetlenia powierzchnia jest pokazana jak pod białym światłem o sile 1, a świecenie do niego dochodzi.
+    W `lit.frag` kolor to `surface * (diffuse + uEmissive) + specular`, gdzie `diffuse` i `specular` to od czwartej części M7 światło po odjęciu cienia księżyca. Świecenie jest więc mnożone przez kolor powierzchni (teksturę i `uTint`), tak jak światło rozproszone: kryształ świeci swoim kolorem i widać jego ścianki, a nie jednolitą plamę. Nie zależy od żadnego światła sceny, więc kryształ jest jasny także w ciemnym kącie. W `textured.frag` odpowiednikiem jest `texel * uTint * (vec3(1.0) + uEmissive)`: bez oświetlenia powierzchnia jest pokazana jak pod białym światłem o sile 1, a świecenie do niego dochodzi.
 
 ## 10. Źródła
 

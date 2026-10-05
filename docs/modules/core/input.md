@@ -257,7 +257,6 @@ m_debugUI.draw(debug::DebugContext{
     .time = time(),
     .window = window(),
     .clearColor = clearColor(),
-    .shader = shader(),
     .camera = camera(),
     .mouseSensitivity = mouseSensitivity(),
     .texturedShader = texturedShader(),
@@ -271,6 +270,24 @@ m_debugUI.draw(debug::DebugContext{
     .litShader = litShader(),
     .gouraudShader = gouraudShader(),
     .lighting = lighting(),
+    .gameplay = gameplaySettings(),
+    .round = round(),
+    .skyboxShader = skyboxShader(),
+    .skybox = skyboxSettings(),
+    .grassShader = grassShader(),
+    .terrain = terrainSettings(),
+    .grass = grassSettings(),
+    .grassTuftCount = grassTuftCount(),
+    .compositeShader = compositeShader(),
+    .previewShader = previewShader(),
+    .postProcessSettings = postProcessSettings(),
+    .postProcess = postProcess(),
+    .brightPassShader = brightPassShader(),
+    .blurShader = blurShader(),
+    .shadowDepthShader = shadowDepthShader(),
+    .moonShadowSettings = moonShadowSettings(),
+    .moonShadowMap = moonShadowMap(),
+    .moonLightSpace = moonLightSpace(),
 });
 
 // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -282,7 +299,7 @@ input().setKeyboardBlocked(m_debugUI.wantsKeyboard());
 input().setMouseBlocked(m_debugUI.wantsMouse());
 ```
 
-Ostatnia z tych linii to blokada myszy, opisana w sekcji 5.10. Pierwsza (`setMouseEnabled`) działa w przeciwną stronę, odcina ImGui od myszy przy przechwyconym kursorze, i jest opisana w sekcji 5.11.
+Lista pól kontekstu jest tu w stanie z czwartej części M7 (cienie księżyca, 2026-10-05): trzydzieści cztery pola, z czego cztery ostatnie należą do programu głębi i panelu Shadows ([`README.md`](README.md), sekcja 6). Dla wejścia liczą się tylko trzy wywołania spoza tej listy. Ostatnie z nich to blokada myszy, opisana w sekcji 5.10. Pierwsza (`setMouseEnabled`) działa w przeciwną stronę, odcina ImGui od myszy przy przechwyconym kursorze, i jest opisana w sekcji 5.11.
 
 **Dlaczego `core` dostaje neutralną flagę, a nie pyta ImGui samo.** `core/` to biblioteka `engine`, która linkuje tylko `glad`, `glfw` i nagłówki GLM i zgodnie z regułą warstw nie zna ani `debug/`, ani ImGui ([`README.md`](README.md), sekcja 3). Gdyby `Input::isKeyDown` wołało `ImGui::GetIO()`, `engine` musiałby linkować ImGui, a każdy program zbudowany na `engine` (na przykład zadanie laboratoryjne bez paneli) ciągnąłby tę bibliotekę za sobą. Flaga `m_keyboardBlocked` mówi tylko "ktoś inny ma teraz klawiaturę". `Input` nie wie kto i dlaczego: decyduje ten, kto woła setter. Dziś jest to `main.cpp` i powodem jest ImGui, ale tym samym setterem mogłoby się posłużyć na przykład menu pauzy. `debug::DebugUI` z kolei nie wie, co wołający zrobi z odpowiedzią `wantsKeyboard()`. Oba końce skleja `main.cpp`, jedyny plik znający obie warstwy.
 

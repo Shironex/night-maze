@@ -175,6 +175,8 @@ if (framebuffer.width == 0 || framebuffer.height == 0) {
     return;
 }
 
+drawMoonShadowMap();
+
 if (!m_postProcess.beginScene(framebuffer)) {
     return;
 }
@@ -187,7 +189,7 @@ GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
 GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
 
-To początek każdej klatki (komentarze pominięte, opis samych funkcji: [`window-context.md`](window-context.md), sekcja 3.2). Od pierwszej części M7 linii `glViewport` tu nie ma: scena jest rysowana do własnego framebuffera HDR, a wywołanie `glBindFramebuffer` razem z `glViewport` stoi w `gfx::Framebuffer::bind`, wołanym przez `m_postProcess.beginScene` (oba w makrze, [`../gfx/framebuffers.md`](../gfx/framebuffers.md)). Po tym początku `onRender` rysuje labirynt, bramę, kryształy, trawę, linie kolizji i niebo, a na końcu przebieg składający (`m_postProcess.composite`) przenosi obraz do okna ([`../renderer/post-process.md`](../renderer/post-process.md)). Od M5 w `NightMazeApp.cpp` nie ma już żadnego wywołania rysującego napisanego wprost (do M4 była nim linia `glDrawElements` kostki z M1): wszystko rysuje `gfx::Mesh::draw`, w którym `glDrawElements` stoi w makrze, a `glUseProgram`, `glGetUniformLocation`, `glUniformMatrix4fv` i `glBindVertexArray` są opakowane w makro wewnątrz klas `gfx` ([`../gfx/README.md`](../gfx/README.md), sekcja 6). W makro opakowane jest też każde wywołanie w `src/gfx/`. Wywołania `glGetString` w konstruktorze `Window` nie są opakowane: stoją przed pierwszą klatką, a ich wynik jest i tak sprawdzany pod kątem `nullptr`. Backend ImGui woła OpenGL własnym loaderem i mojego makra nie używa.
+To początek każdej klatki (komentarze pominięte, opis samych funkcji: [`window-context.md`](window-context.md), sekcja 3.2). Od pierwszej części M7 linii `glViewport` tu nie ma: scena jest rysowana do własnego framebuffera HDR, a wywołanie `glBindFramebuffer` razem z `glViewport` stoi w `gfx::Framebuffer::bind`, wołanym przez `m_postProcess.beginScene` (oba w makrze, [`../gfx/framebuffers.md`](../gfx/framebuffers.md)). Linia `drawMoonShadowMap();` doszła w czwartej części M7 (cienie księżyca, 2026-10-05): to przebieg cieni, który przed sceną rysuje ją z kierunku księżyca do tekstury głębi. Jego dwa własne wywołania OpenGL, `glEnable(GL_DEPTH_TEST)` i `glClear(GL_DEPTH_BUFFER_BIT)` w `ShadowMap::beginDepthPass`, też stoją w makrze ([`../renderer/shadows.md`](../renderer/shadows.md)). Po tym początku `onRender` rysuje labirynt, bramę, kryształy, trawę, linie kolizji i niebo, a na końcu przebieg składający (`m_postProcess.composite`) przenosi obraz do okna ([`../renderer/post-process.md`](../renderer/post-process.md)). Od M5 w `NightMazeApp.cpp` nie ma już żadnego wywołania rysującego napisanego wprost (do M4 była nim linia `glDrawElements` kostki z M1): wszystko rysuje `gfx::Mesh::draw`, w którym `glDrawElements` stoi w makrze, a `glUseProgram`, `glGetUniformLocation`, `glUniformMatrix4fv` i `glBindVertexArray` są opakowane w makro wewnątrz klas `gfx` ([`../gfx/README.md`](../gfx/README.md), sekcja 6). W makro opakowane jest też każde wywołanie w `src/gfx/`. Wywołania `glGetString` w konstruktorze `Window` nie są opakowane: stoją przed pierwszą klatką, a ich wynik jest i tak sprawdzany pod kątem `nullptr`. Backend ImGui woła OpenGL własnym loaderem i mojego makra nie używa.
 
 ## 6. Panel ImGui
 

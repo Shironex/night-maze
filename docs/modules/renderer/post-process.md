@@ -1,11 +1,11 @@
 # Moduł renderer: post-process, scena w buforze HDR, bloom, mgła, winieta i przebieg składający
 
-Kamień milowy: M7, część pierwsza (bufor HDR, przebieg składający, ekspozycja, mapowanie tonów, poprawna gamma, podgląd załączników) część druga (bloom: poświata wokół jasnych miejsc) i część trzecia (mgła liczona z bufora głębi i winieta). Cienie i minimapa to dalsze części M7 i **nie ma ich w kodzie**. Temat wykładu: 10 (Rendering pozaekranowy).
+Kamień milowy: M7, część pierwsza (bufor HDR, przebieg składający, ekspozycja, mapowanie tonów, poprawna gamma, podgląd załączników) część druga (bloom: poświata wokół jasnych miejsc) i część trzecia (mgła liczona z bufora głębi i winieta). Czwarta część M7 (cienie księżyca, 2026-10-05) dotknęła tego modułu tylko w trzech miejscach: przebieg cieni stoi teraz na początku klatki, program podglądu ma trzeci tryb (`RawDepth`), a jednostka teksturująca 3 jest zajęta przez mapę cieni. Same cienie opisuje [`shadows.md`](shadows.md). Cień latarki i minimapa to dalsze części M7 i **nie ma ich w kodzie**. Temat wykładu: 10 (Rendering pozaekranowy).
 Kod: klasa [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp) i [`PostProcess.cpp`](../../../src/game/PostProcess.cpp), ustawienia i matematyka bloomu w [`src/game/Bloom.hpp`](../../../src/game/Bloom.hpp) i [`Bloom.cpp`](../../../src/game/Bloom.cpp), mgły w [`src/game/Fog.hpp`](../../../src/game/Fog.hpp) i [`Fog.cpp`](../../../src/game/Fog.cpp), winiety w [`src/game/Vignette.hpp`](../../../src/game/Vignette.hpp) i [`Vignette.cpp`](../../../src/game/Vignette.cpp), shadery [`assets/shaders/post/composite.vert`](../../../assets/shaders/post/composite.vert), [`post/composite.frag`](../../../assets/shaders/post/composite.frag), [`post/preview.frag`](../../../assets/shaders/post/preview.frag), [`post/bright.frag`](../../../assets/shaders/post/bright.frag), [`post/blur.frag`](../../../assets/shaders/post/blur.frag), wspólne pliki [`common/color.glsl`](../../../assets/shaders/common/color.glsl) i [`common/depth.glsl`](../../../assets/shaders/common/depth.glsl), obiekt framebuffera [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), wywołania w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`onRender`), panel [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp), nazwy uniformów w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), testy [`tests/BloomTests.cpp`](../../../tests/BloomTests.cpp), [`tests/FogTests.cpp`](../../../tests/FogTests.cpp) i [`tests/VignetteTests.cpp`](../../../tests/VignetteTests.cpp).
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasa nazywa się `game::PostProcess` i leży w `src/game/`, wyjaśniają [`README.md`](README.md) i notatka [`../../decisions/post-process-in-game-layer.md`](../../decisions/post-process-in-game-layer.md). Dokument zakłada znajomość tekstur 2D ([`../gfx/textures.md`](../gfx/textures.md)), macierzy widoku, macierzy rzutowania i testu głębi ([`../scene/camera.md`](../scene/camera.md)) oraz dyrektywy `#include` w shaderach ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). Dwa tematy mają własne dokumenty i tutaj są tylko używane: obiekt framebuffera i klasę `gfx::Framebuffer` linia po linii opisuje [`../gfx/framebuffers.md`](../gfx/framebuffers.md), a przestrzeń sRGB, wartości liniowe i całą drogę koloru przez potok opisuje [`../gfx/color-space.md`](../gfx/color-space.md).
 
-**Stan na dziś:** scena 3D nie jest już rysowana prosto do okna. Trafia do własnego framebuffera z teksturą koloru `GL_RGBA16F` i teksturą głębi `GL_DEPTH_COMPONENT24`, a do okna przenosi ją ostatni przebieg klatki, **przebieg składający** (composite): jeden trójkąt na cały ekran, który mnoży kolor przez ekspozycję, stosuje krzywą mapowania tonów i koduje wynik do sRGB. Od drugiej części M7 między sceną a przebiegiem składającym stoi **bloom**: przebieg jasności (bright pass) wybiera z obrazu sceny światło jaśniejsze od progu, rozmycie Gaussa rozlewa je na sąsiednie piksele, a przebieg składający dodaje wynik do sceny przed ekspozycją. Wszystko to dzieje się w trzech celach `GL_RGBA16F` o połowie szerokości i połowie wysokości bufora sceny. Panel **Framebuffers** ma suwak ekspozycji, listę krzywych, przełącznik i trzy liczby bloomu, zakres podglądu głębi, rozmiary i formaty bufora sceny i celów bloomu oraz cztery podglądy: załącznika koloru, załącznika głębi, wyniku przebiegu jasności i gotowej poświaty. Programów shaderów jest dziesięć: w pierwszej części doszły `composite` i `preview`, w drugiej `bright` i `blur`. Trzecia część nie dodała ani programu, ani framebuffera, ani przebiegu: **mgła** i **winieta** to nowe linie tego samego `composite.frag`. Mgła zastępuje kolor powierzchni kolorem mgły tym mocniej, im dalej od oka i im niżej leży to, co pokazuje piksel: miejsce w świecie odtwarza z tekstury głębi sceny i odwrotności macierzy widoku i rzutowania. Winieta przyciemnia gotowy obraz w stronę rogów ekranu. Obie mają swoje ustawienia i wzory także w C++ (`game/Fog.*`, `game/Vignette.*`), pod testami, a w panelu Framebuffers drugą zakładkę z ośmioma kontrolkami.
+**Stan na dziś:** scena 3D nie jest już rysowana prosto do okna. Trafia do własnego framebuffera z teksturą koloru `GL_RGBA16F` i teksturą głębi `GL_DEPTH_COMPONENT24`, a do okna przenosi ją ostatni przebieg klatki, **przebieg składający** (composite): jeden trójkąt na cały ekran, który mnoży kolor przez ekspozycję, stosuje krzywą mapowania tonów i koduje wynik do sRGB. Od drugiej części M7 między sceną a przebiegiem składającym stoi **bloom**: przebieg jasności (bright pass) wybiera z obrazu sceny światło jaśniejsze od progu, rozmycie Gaussa rozlewa je na sąsiednie piksele, a przebieg składający dodaje wynik do sceny przed ekspozycją. Wszystko to dzieje się w trzech celach `GL_RGBA16F` o połowie szerokości i połowie wysokości bufora sceny. Panel **Framebuffers** ma suwak ekspozycji, listę krzywych, przełącznik i trzy liczby bloomu, zakres podglądu głębi, rozmiary i formaty bufora sceny i celów bloomu oraz cztery podglądy: załącznika koloru, załącznika głębi, wyniku przebiegu jasności i gotowej poświaty. Programów shaderów jest dziś jedenaście (po trzeciej części było ich dziesięć): w pierwszej części doszły `composite` i `preview`, w drugiej `bright` i `blur`, a w czwartej `shadow_depth`, który należy do cieni, a nie do tego modułu. Trzecia część nie dodała ani programu, ani framebuffera, ani przebiegu: **mgła** i **winieta** to nowe linie tego samego `composite.frag`. Mgła zastępuje kolor powierzchni kolorem mgły tym mocniej, im dalej od oka i im niżej leży to, co pokazuje piksel: miejsce w świecie odtwarza z tekstury głębi sceny i odwrotności macierzy widoku i rzutowania. Winieta przyciemnia gotowy obraz w stronę rogów ekranu. Obie mają swoje ustawienia i wzory także w C++ (`game/Fog.*`, `game/Vignette.*`), pod testami, a w panelu Framebuffers drugą zakładkę z ośmioma kontrolkami. Czwarta część (cienie księżyca) nie dodała klasie `PostProcess` ani pola, ani funkcji: w jej plikach zmieniły się tylko komentarze i wyliczenie `AttachmentPreview`, które dostało trzecią wartość, `RawDepth`. Zmieniło się to, co stoi wokół: klatka zaczyna się od przebiegu cieni, przed `beginScene` (sekcja 2.8), program `preview` umie pokazać głębię taką, jaka jest zapisana, i tym trybem `game::ShadowMap` rysuje obraz mapy cieni (sekcje 2.10 i 4.3), a przez cały przebieg sceny na jednostce 3 leży mapa cieni (sekcja 3).
 
 Temat 10 wykładu jest **w trakcie**. PRD wymienia w nim: scenę w buforze HDR, post-process (bloom, mgła, winieta), minimapę i podgląd załączników. Z tej listy są: bufor HDR, przebieg składający, bloom, mgła, winieta i podgląd załączników. **Nie ma minimapy**, więc temat nie jest zamknięty. To, czego jeszcze brakuje, wylicza sekcja 2.16.
 
@@ -14,6 +14,8 @@ Zgłoszone dla Windowsa (2026-10-05) dla **pierwszej części**, nie powtórzone
 Zgłoszone dla Windowsa (2026-10-05) dla **drugiej części**, też nie powtórzone przeze mnie: bramka `make check` przechodzi, zero ostrzeżeń w Debug i Release, **276 przypadków testowych i 102139 asercji** w obu konfiguracjach. Różnica to plik `tests/BloomTests.cpp`: 7 przypadków i 36 asercji, co zgadza się z policzeniem makr w pliku. Poświata jest widoczna na zrzutach ekranu wokół kryształów (w najciemniejszej i w najjaśniejszej chwili pulsu, w trybach Unlit, Gouraud i Blinn-Phong) i wokół tarczy księżyca, a gwiazdy zostają punktami. Liczba klatek w Release z ukrytymi panelami, pomiar niespokojny: 1280 x 720 od 1900 do 2450 bez bloomu i od 1500 do 2150 z bloomem, 2560 x 1440 od 1370 do 1480 bez i od 880 do 925 z bloomem. Wersji kompilatora, karty i sterownika dla żadnego z tych pomiarów nie zapisano. **Nikt jeszcze nie kliknął myszą** kontrolek panelu, nie przeciągał krawędzi okna i nie użył `Reload shaders` przy dziesięciu programach. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Otwarte obserwacje: plama latarki na ścianie nie daje poświaty nawet z metra, a poświata jest mierzona w tekselach celu o połowie rozdzielczości, więc w 1440p jest na ekranie względnie cieńsza. Szczegóły w sekcji 5.9.
 
 Zgłoszone dla Windowsa (2026-10-05) dla **trzeciej części**, też nie powtórzone przeze mnie: bramka `make check` przechodzi, zero ostrzeżeń w Debug i Release, **294 przypadki testowe i 102412 asercji** w obu konfiguracjach. Różnica to dwa pliki: `tests/FogTests.cpp` (11 przypadków, 241 asercji) i `tests/VignetteTests.cpp` (7 przypadków, 32 asercje), co zgadza się z policzeniem makr w plikach. Z wyłączoną mgłą i winietą obraz jest identyczny co do piksela z obrazem drugiej części, a oba widoki diagnostyczne są identyczne także przy włączonych ustawieniach startowych. Liczba klatek w Release z ukrytymi panelami, jeden spokojny przebieg: 1280 x 720 około 1880 z obydwoma efektami i około 1900 bez nich, 2560 x 1440 około 1145 z nimi i około 1158 bez. **Nikt nie kliknął myszą** żadnej z ośmiu nowych kontrolek. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Znane ograniczenie, zapisane w kodzie: wysokość mgły jest brana tylko w miejscu, które pokazuje piksel, więc z dużej wysokości labirynt prawie znika we mgle (sekcja 2.20). Szczegóły w sekcji 5.9.
+
+Zgłoszone dla Windowsa (2026-10-05) dla **czwartej części** (cienie księżyca), też nie powtórzone przeze mnie: bramka `make check` przechodzi (formatowanie, buildy Debug i Release, testy w obu, clang-tidy), **310 przypadków testowych i 103751 asercji**. Różnica to jeden plik, `tests/ShadowTests.cpp`: 16 przypadków i 1339 asercji, żaden nie dotyczy tego modułu. Z wyłączonymi cieniami i intensywnością księżyca cofniętą do 0,12 obraz jest poza pasem HUD identyczny co do piksela z obrazem trzeciej części (w trybie Phong różni się najwyżej o 1/255). Build Debug bez błędów OpenGL przy mapie cieni 2048 i 1024. Zgłoszone liczby klatek są w sekcji 5.9, z zastrzeżeniem: nie pokazują wiarygodnie kosztu cieni. **Nikt nie sprawdził** przełączania rozdzielczości mapy w działającym programie, kontrolek panelu Shadows myszą ani `Reload shaders` przy jedenastu programach. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
 
 ## 1. Po co to jest
 
@@ -173,7 +175,7 @@ Po ekspozycji kolor nadal może być większy niż 1, a ekran pokaże najwyżej 
 
 Wynik zbliża się do 1, ale nigdy jej nie osiąga, więc nic nie jest ucinane: dwie różne jasności zawsze dają dwa różne wyniki. Cena: krzywa leży **cała pod prostą** `y = x`. Dla małych x wynik jest prawie równy x (0,01 daje 0,0099), ale środek skali jest wyraźnie ściśnięty: biel o wartości 1 staje się szarością 0,5. Obraz wychodzi ciemniejszy i bardziej płaski.
 
-**ACES (dopasowana).** Krzywa filmowa: krótki wzór, który Krzysztof Narkowicz dopasował do krzywej odniesienia przemysłu filmowego (Academy Color Encoding System). Komentarz w shaderze podaje rok 2015, wpis na blogu autora z tym wzorem ma datę 6 stycznia 2016. To iloraz dwóch wielomianów drugiego stopnia:
+**ACES (dopasowana).** Krzywa filmowa: krótki wzór, który Krzysztof Narkowicz dopasował do krzywej odniesienia przemysłu filmowego (Academy Color Encoding System). Wpis na blogu autora z tym wzorem ma datę 6 stycznia 2016 i ten rok podaje dziś komentarz w shaderze (do czwartej części M7 podawał 2015). To iloraz dwóch wielomianów drugiego stopnia:
 
 ```text
             x * (A * x + B)
@@ -201,7 +203,7 @@ Krzywa ma kształt litery S i przecina prostą `y = x` w dwóch miejscach, okoł
 Dwie własności wzoru, o które łatwo zostać zapytanym:
 
 - Dla bardzo dużych x wynik dąży do `A / C = 2,51 / 2,43 = 1,033`, czyli **powyżej** 1. Krzywa osiąga 1 przy x równym około 7,24 i potem ją przekracza. Dlatego w shaderze wynik jest ujęty w `clamp(..., 0.0, 1.0)`: bez tego najjaśniejsze piksele wychodziłyby poza zakres.
-- Stała `E = 0,14` w mianowniku sprawia, że dla małych x ułamek jest w przybliżeniu równy `x * B / E = 0,21 * x`. Stąd mocne przyciemnienie cieni. Komentarz w `composite.frag` mówi o ciemnych tonach "przyciśniętych trochę". Liczby mówią więcej: przy 0,01 zostaje 38 procent.
+- Stała `E = 0,14` w mianowniku sprawia, że dla małych x ułamek jest w przybliżeniu równy `x * B / E = 0,21 * x`. Stąd mocne przyciemnienie cieni. Komentarz w `composite.frag` mówi dziś to samo liczbą: ciemne tony są przyciśnięte mocno ("pressed down hard"), a 0,01 wychodzi jako około 0,0038, czyli zostaje 38 procent. Do czwartej części M7 mówił "a little", co było za słabe.
 
 **Trzy krzywe obok siebie.** Wartość liniowa po ekspozycji, wynik każdej krzywej (jeszcze przed kodowaniem do sRGB):
 
@@ -219,12 +221,12 @@ Dwie własności wzoru, o które łatwo zostać zapytanym:
 
 Kryształ z sekcji 2.2, (0,132, 3,150, 2,415), przechodzi przez ACES jako (0,184, 0,957, 0,935): zielony i niebieski są blisko bieli, ale nadal różne. Po obcięciu byłoby (0,132, 1, 1). To jest sam składnik emisyjny przy pełnym pulsie: kolor piksela na ekranie jest jeszcze pomnożony przez teksturę kryształu, która go przyciemnia, i właśnie ta różnica między jasnymi a ciemnymi tekselami daje widoczne ścianki.
 
-**Dlaczego ACES jest krzywą domyślną i co to znaczy dla nocnej sceny.** Wybór uzasadnia notatka [`../../decisions/aces-default-tone-mapping.md`](../../decisions/aces-default-tone-mapping.md). Skutek uboczny jest ważny dla tej gry. Nocna scena jest ciemna: światło otoczenia po przeliczeniu na wartości liniowe to (0,011, 0,016, 0,041), a pomnożone przez kolor kamienia daje wartości jeszcze mniejsze. Większość pikseli leży więc **poniżej** pierwszego przecięcia 0,062, czyli tam, gdzie ACES przyciemnia. Wartość 0,01 po ACES i po kodowaniu do sRGB pojawia się na ekranie jako 0,048, a po samym obcięciu jako 0,100: połowa jasności. Dlatego wartości startowe zostały w pierwszej części M7 dobrane od nowa razem z krzywą (jedna z nich, siła świecenia kryształu, zmieniła się jeszcze raz w drugiej części):
+**Dlaczego ACES jest krzywą domyślną i co to znaczy dla nocnej sceny.** Wybór uzasadnia notatka [`../../decisions/aces-default-tone-mapping.md`](../../decisions/aces-default-tone-mapping.md). Skutek uboczny jest ważny dla tej gry. Nocna scena jest ciemna: światło otoczenia po przeliczeniu na wartości liniowe to (0,011, 0,016, 0,041), a pomnożone przez kolor kamienia daje wartości jeszcze mniejsze. Większość pikseli leży więc **poniżej** pierwszego przecięcia 0,062, czyli tam, gdzie ACES przyciemnia. Wartość 0,01 po ACES i po kodowaniu do sRGB pojawia się na ekranie jako 0,048, a po samym obcięciu jako 0,100: połowa jasności. Dlatego wartości startowe zostały w pierwszej części M7 dobrane od nowa razem z krzywą (jedna z nich, siła świecenia kryształu, zmieniła się jeszcze raz w drugiej części, a intensywność księżyca w czwartej, razem z cieniami):
 
 | Ustawienie | Przed M7 | Dziś | Gdzie |
 |---|---|---|---|
 | światło otoczenia (liczby sRGB) | (0,035, 0,045, 0,075), używane wprost | (0,105, 0,135, 0,225), liniowo (0,011, 0,016, 0,041) | `LightingSettings::ambient` |
-| intensywność księżyca | 0,3 | 0,12 | `LightingSettings::moonIntensity` |
+| intensywność księżyca | 0,3 | 0,2 (w pierwszych trzech częściach M7: 0,12) | `LightingSettings::moonIntensity` |
 | intensywność latarki | 1,6 | 1,3 | `LightingSettings::flashlightIntensity` |
 | intensywność światła kryształów | 2,0 | 0,9 | `LightingSettings::pointIntensity` |
 | siła świecenia kryształu | 1,0 | 4,0 (w pierwszej części M7: 2,5) | `CRYSTAL_GLOW_STRENGTH` |
@@ -232,6 +234,8 @@ Kryształ z sekcji 2.2, (0,132, 3,150, 2,415), przechodzi przez ACES jako (0,184
 | kolor tła (liczby sRGB) | (0,01, 0,015, 0,04) | (0,022, 0,033, 0,088) | `NightMazeApp::m_clearColor` |
 
 Liczb sprzed M7 i dzisiejszych nie da się porównać wprost: wtedy trafiały do rachunku jako wartości nieliniowe i wynik szedł na ekran bez kodowania, dziś kolory są najpierw przeliczane na liniowe, a wynik przechodzi przez krzywą i kodowanie ([`../gfx/color-space.md`](../gfx/color-space.md)).
+
+**Księżyc po czwartej części, policzone.** Kolor księżyca (0,55, 0,65, 1,0) to liczby sRGB. Po przeliczeniu dokładną krzywą sRGB wychodzi liniowo (0,263, 0,380, 1,000), a razy intensywność 0,2 daje (0,053, 0,076, 0,200) dla powierzchni zwróconej prosto do światła. Przy dawnym 0,12 było to (0,032, 0,046, 0,120). Na poziomej ziemi dochodzi cosinus kąta padania: światło leci 50 stopni w dół (`moonPitchDegrees = -50`), więc `sin(50°) = 0,766` i z księżyca zostaje (0,040, 0,058, 0,153). Razem ze światłem otoczenia (0,011, 0,016, 0,041) ziemia w świetle księżyca ma (0,051, 0,075, 0,195), a ziemia w cieniu ściany samo światło otoczenia: stosunek 4,7, 4,6 i 4,7 w trzech kanałach, czyli "około pięć razy" z komentarza przy `moonIntensity`. Przy 0,12 ten stosunek wynosił około 3,2. To liczby z bufora HDR, przed pomnożeniem przez kolor tekstury i przed krzywą mapowania tonów. Krzywa ACES przyciemnia małe wartości mocniej niż większe (sekcja 2.6), więc na ekranie stosunek nie jest tą samą liczbą. Po co ta zmiana: z cieniami różnica między miejscem oświetlonym i zacienionym ma być widoczna, a przy 0,12 była za mała ([`shadows.md`](shadows.md)).
 
 **Ograniczenie krzywych liczonych na kanał.** Każdy kanał jest ściskany osobno, więc bardzo jasny kolor nasycony traci nasycenie i przesuwa barwę w stronę bieli: (0,132, 3,150, 2,415) ma proporcję zielonego do niebieskiego 1,30, a po ACES 1,02. Dla świecącego kryształu to pożądany wygląd (rozżarzony środek jest prawie biały), ale jest to własność metody, a nie wierne odwzorowanie barwy.
 
@@ -265,7 +269,8 @@ Pełne uzasadnienie i rozważane możliwości są w notatce [`../../decisions/sr
 flowchart TD
     A["onRender: rozmiar framebuffera okna"] --> B{"0 x 0?"}
     B -->|tak| Z["koniec klatki: nic nie jest rysowane"]
-    B -->|nie| C["beginScene: framebuffer sceny jest celem,<br/>viewport na jego rozmiar"]
+    B -->|nie| S["drawMoonShadowMap: mapa cieni jest celem,<br/>sama głębia, widok z księżyca"]
+    S --> C["beginScene: framebuffer sceny jest celem,<br/>viewport na jego rozmiar"]
     C --> D["glEnable(GL_DEPTH_TEST),<br/>glClearColor z koloru liniowego, glClear"]
     D --> E["scena: drawMaze, drawGrass,<br/>linie kolizji, na końcu niebo"]
     E --> F{"settings.previews?"}
@@ -287,6 +292,7 @@ To samo jako lista kroków `NightMazeApp::onRender` (kod w sekcji 5.7):
 | # | Krok | Cel rysowania |
 |---|---|---|
 | 1 | odczyt rozmiaru framebuffera okna. Przy 0 x 0 (zminimalizowane okno) cała klatka jest pomijana | brak |
+| 1a | od czwartej części M7: `drawMoonShadowMap()`, przebieg cieni księżyca. Liczy pudełko światła, rysuje teren, labirynt, bramę i kryształy programem `shadow_depth` do mapy cieni, wiąże mapę na jednostce 3 i, tylko przy otwartym panelu Shadows, rysuje jej obraz podglądu. Przy wyłączonych cieniach liczy samo pudełko ([`shadows.md`](shadows.md), sekcja 2.18) | framebuffer mapy cieni (sama głębia), potem ewentualnie jej framebuffer podglądu |
 | 2 | `m_postProcess.beginScene(framebuffer)`: tworzy bufor sceny przy pierwszej klatce i po zmianie rozmiaru, wiąże go i ustawia viewport. Gdy zwróci fałsz, klatka jest pomijana | framebuffer sceny |
 | 3 | `glEnable(GL_DEPTH_TEST)`, kolor tła przeliczony przez `gfx::srgbToLinear`, `glClear` koloru i głębi | framebuffer sceny |
 | 4 | macierze, światła, `drawMaze`, `drawGrass`, opcjonalnie `drawColliderLines` | framebuffer sceny |
@@ -301,6 +307,8 @@ To samo jako lista kroków `NightMazeApp::onRender` (kod w sekcji 5.7):
 Bloom stoi **po** kopii ustawień, bo to kopia mówi mu, czy ma w ogóle rysować: w widoku diagnostycznym jest w niej wyłączony. Stoi **po** podglądach sceny, ale kolejność tych dwóch kroków nie ma znaczenia dla obrazu: oba tylko czytają bufor sceny. Miejsce na przyszłe przebiegi wskazuje komentarz w `onRender` między krokami 5 i 6: efekty liczone z gotowej sceny czytają tekstury bufora sceny i rysują do własnych framebufferów, a przebieg składający zostaje ostatni.
 
 Mgła i winieta **nie są** takimi przebiegami i nie mają swojego kroku w tabeli: obie są liniami shadera przebiegu składającego (krok 10). Trzecia część M7 dodała do klatki tylko krok 9, jedno odwrócenie macierzy na procesorze.
+
+**Krok 1a i stan OpenGL (czwarta część M7).** Przebieg cieni stoi przed `beginScene`, bo programy sceny czytają mapę cieni: musi być gotowa, zanim narysują pierwszy trójkąt. Dla tego modułu ważne jest, co ten przebieg zostawia po sobie. `ShadowMap::beginDepthPass` wiąże własny framebuffer i ustawia viewport na rozmiar mapy (2048 x 2048 albo 1024 x 1024), a `ShadowMap::drawPreview`, gdy jest wołany, zostawia związany framebuffer podglądu 256 x 256 i **wyłączony** test głębi. Nic z tego nie przeszkadza scenie: `beginScene` wiąże framebuffer sceny i ustawia viewport od nowa (`Framebuffer::bind`), a `onRender` zaraz potem włącza test głębi (krok 3). W drugą stronę jest tak samo: przebieg składający poprzedniej klatki zostawił test głębi wyłączony, więc `beginDepthPass` włącza go sam, zanim wyczyści głębię mapy. Komentarz w tej funkcji mówi to wprost ("The last pass of the frame before (the composite pass) has left the test switched off"). Klatka ma więc od tej części o jeden przebieg głębi więcej, a przy otwartym panelu Shadows jeszcze jeden mały przebieg podglądu. Oba należą do `game::ShadowMap`, nie do `PostProcess`.
 
 ### 2.9 Widoki diagnostyczne omijają ekspozycję, krzywą, bloom, mgłę i winietę
 
@@ -380,6 +388,27 @@ Trzy uwagi do tego podglądu:
 - **Szarość nie jest kodowana do sRGB.** Komentarz w shaderze mówi dlaczego: to miara, a nie światło. Wartość 0,5 ma być na ekranie liczbą 0,5, czyli połową zakresu suwaka.
 
 Tekstura głębi jest czytana przez zwykły `sampler2D` jako jedna liczba w kanale czerwonym, z filtrem `GL_NEAREST` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)). To, że głębia w ogóle jest teksturą, a nie renderbufferem, uzasadnia notatka [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md). Od trzeciej części M7 tę samą teksturę czyta drugi shader, `composite.frag`, dla mgły: też przez `sampler2D` i też jako jedną liczbę w kanale czerwonym, ale z jednostki 2 i bez przeliczania na metry.
+
+**Trzeci tryb: głębia taka, jaka jest zapisana (czwarta część M7).** Program `preview` ma od tej części tryb `uMode == 2`, w C++ `AttachmentPreview::RawDepth`. Pokazuje zapisaną głębię bez żadnego przeliczenia: `vec3(texture(uSource, vUv).r)`. Po całym wyprowadzeniu wyżej to wygląda na błąd, ale nim nie jest, bo ten tryb służy do innego rzutu. Mapa cieni księżyca jest rysowana rzutem **prostokątnym** (`glm::ortho`), a w nim nie ma dzielenia perspektywicznego: `w_clip` jest zawsze równe 1. Trzeci wiersz macierzy `glm::ortho` daje
+
+```text
+ndc    = -2 / (f - n) * z_e - (f + n) / (f - n)
+       =  2 * (d - n) / (f - n) - 1
+stored = (ndc + 1) / 2 = (d - n) / (f - n)
+```
+
+Odległość `d` stoi w **liczniku**. Zapisana głębia rośnie równo z odległością: połowa drogi między płaszczyzną bliską i daleką światła to dokładnie 0,5. Surowa głębia pokazana jako szarość jest więc od razu czytelnym obrazem: czerń to bliska płaszczyzna światła, biel daleka i każdy teksel, w który nic nie zostało narysowane (mapa jest czyszczona do 1). Porównanie obu rzutów:
+
+| | Scena (rzut perspektywiczny) | Mapa cieni księżyca (rzut prostokątny) |
+|---|---|---|
+| zapisana głębia w funkcji odległości | `d` w mianowniku: 2 m to już 0,951 | liniowa: `(d - n) / (f - n)` |
+| surowa głębia jako szarość | prawie biały obraz | równy gradient od czerni do bieli |
+| tryb `preview.frag` | 1: `linearDepth`, potem dzielenie przez `uDepthRange` | 2: liczba z tekstury wprost |
+| potrzebne uniformy | `uNear`, `uFar`, `uDepthRange` | żaden poza `uSource` i `uMode` |
+
+Tego trybu **nie używa** `PostProcess::drawPreviews`: funkcja `PostProcess::preview()` podaje nadal tylko dwa obrazy bufora sceny, `Color` i `Depth`. Trybem 2 rysuje `game::ShadowMap::drawPreview`, do własnego kwadratowego framebuffera 256 x 256 w formacie `GL_RGBA8`, tym samym programem `preview` i tym samym trójkątem pełnoekranowym, tylko z własnym VAO. Pokazuje go panel Shadows ([`../debug-ui.md`](../debug-ui.md), sekcja 6, i [`shadows.md`](shadows.md), sekcja 2.17). Powód osobnego małego obrazu jest ten sam co przy podglądach sceny: tekstura głębi podana wprost do ImGui wyszłaby czerwona, bo ma dane w jednym kanale.
+
+**Planowane, nie zbudowane:** mapa cieni latarki będzie miała rzut **perspektywiczny** (latarka jest reflektorem). Jej zapisana głębia będzie tak samo nierówna jak głębia sceny, więc tryb 2 pokazałby prawie biały obraz. Podgląd takiej mapy będzie potrzebował znowu trybu z przeliczeniem na odległość: trybu 1 z płaszczyznami przycinania światła zamiast kamery albo nowego. Dziś takiego kodu nie ma.
 
 ### 2.11 Bloom: skąd poświata i dlaczego potrzebuje HDR
 
@@ -520,7 +549,7 @@ Suma równa 1 znaczy, że rozmycie **przesuwa światło, ale go nie dodaje ani n
 | 6 (startowo) | 12 | 7,3 | 6,7 | 13,4 | 36 |
 | 10 | 20 | 9,5 | 8,6 | 17,3 | 60 |
 
-Komentarz przy `blurIterations` podaje dla wartości startowej "około 7 pikseli celu, czyli około 15 pikseli sceny dwa razy większej": to liczba z drugiej kolumny wzoru, `3 * sqrt(6) = 7,35`. Z poprawką na ucięcie wychodzi 6,7 i 13,4. Różnica nie ma znaczenia dla wyglądu, ale na obronie trzymam się tego, co wynika z wag.
+Komentarz przy `blurIterations` podaje dziś dla wartości startowej obie liczby: około 7,3 piksela celu dla pełnego rozkładu Gaussa (to `3 * sqrt(6) = 7,35`) i około 6,7 po ucięciu jądra na `BLOOM_BLUR_RADIUS`, czyli około 13 pikseli sceny dwa razy większej. Zgadza się to z tabelą: 6,7 i 13,4. Do czwartej części M7 komentarz mówił "około 7 pikseli celu, czyli około 15 pikseli sceny", bez poprawki na ucięcie. Różnica nie ma znaczenia dla wyglądu, ale na obronie trzymam się tego, co wynika z wag.
 
 Dwa wnioski z tabeli. Podwojenie liczby iteracji **nie** podwaja szerokości poświaty: z 6 na 10 iteracji szerokość rośnie o 29 procent, a koszt o 67 procent. I druga rzecz: większe jądro (na przykład promień 15) dałoby tę samą szerokość w jednym powtórzeniu, ale promień jest stałą wpisaną w shader (rozmiar tablicy `uWeights`), a liczba iteracji jest liczbą z suwaka. Dlatego szerokością steruje się iteracjami.
 
@@ -643,12 +672,13 @@ Kolor piksela to `tekstura * (światło rozproszone + uEmissive) + odbłysk`, wi
 
 ### 2.16 Planowane: czego jeszcze nie ma
 
-Do drugiej części M7 ta sekcja wymieniała cztery efekty z PRD, których nie było w kodzie. Dwa z nich, mgła i winieta, powstały w trzeciej części i mają własne sekcje: mgła 2.17 do 2.21, winieta 2.22. Zostały dwa:
+Do drugiej części M7 ta sekcja wymieniała cztery efekty z PRD, których nie było w kodzie. Dwa z nich, mgła i winieta, powstały w trzeciej części i mają własne sekcje: mgła 2.17 do 2.21, winieta 2.22. Po trzeciej części zostały dwa, minimapa i cienie. Czwarta część (2026-10-05) zrobiła z cieni połowę: cień księżyca. Stan na dziś:
 
 | Efekt | Stan | Co o nim wiadomo z kodu |
 |---|---|---|
-| **Planowane: minimapa** (widok z góry w osobnym framebufferze) | brak kodu | osobny przebieg do własnego celu. To ostatnia brakująca rzecz z listy tematu 10 |
-| **Planowane: cienie** (temat 11, shadow mapping) | brak kodu | osobne przebiegi przed sceną. `gfx::ColorFormat::None` (framebuffer z samą głębią) jest przygotowany, ale ta ścieżka nie została nigdy wykonana |
+| **Planowane: minimapa** (widok z góry w osobnym framebufferze) | brak kodu | osobny przebieg do własnego celu. To ostatnia brakująca rzecz z listy tematu 10. Ustalone jest tyle, że ma pokazywać tylko odkryte korytarze, z przełącznikiem do pokazania całości w panelu debugowania |
+| **Cień księżyca** (temat 11, shadow mapping) | jest, od czwartej części M7 | osobny przebieg przed sceną (krok 1a w sekcji 2.8), klasa `game::ShadowMap`. `gfx::ColorFormat::None`, czyli framebuffer z samą głębią, jest tu wykonywany po raz pierwszy (`ShadowMap::beginDepthPass`). Cały opis: [`shadows.md`](shadows.md) |
+| **Planowane: cień latarki** (druga połowa tematu 11) | brak kodu | mapa cieni z rzutem perspektywicznym, na następnej wolnej jednostce teksturującej (4). Jej podgląd będzie potrzebował trybu z przeliczeniem głębi na odległość (sekcja 2.10). Temat 11 jest więc w toku, nie zamknięty |
 
 Jedno zdanie z wcześniejszej wersji tej sekcji okazało się **fałszywe** i warto je znać, bo padało też w innych dokumentach: że mgła będzie czytać głębię funkcją `linearDepth` z `common/depth.glsl`. Nie czyta. `linearDepth` daje odległość od płaszczyzny kamery, a mgła potrzebuje odległości od oka w linii prostej i wysokości nad ziemią, więc odtwarza całą pozycję w świecie (sekcje 2.18 i 2.19). Plik `common/depth.glsl` ma nadal jednego użytkownika: podgląd głębi w `preview.frag` (sekcja 2.10).
 
@@ -823,7 +853,7 @@ Liczby dla wartości startowych, `baseHeight = 0,5` m i `heightFalloff = 0,4` na
 | 3 m (szczyt ściany, `WALL_HEIGHT`) | 2,5 m | exp(-1) = 0,368 | 31 procent |
 | 10 m | 9,5 m | exp(-3,8) = 0,022 | 2 procent |
 
-Gęstość spada o połowę co `ln(2) / 0,4 = 1,73` m. Na jednej ścianie widać więc gradient: stopa tonie we mgle mocniej niż szczyt. Komentarz przy `baseHeight` mówi, że ziemia labiryntu leży między 0 a około 0,5 m, więc cała podłoga jest w najgęstszej mgle. Sam tej liczby nie mierzyłem. Z kodu terenu wynika tyle: przy skali wysokości 1 ziemia pod labiryntem nie przekracza `MAZE_RELIEF = 0,6` m, a między najniższym i najwyższym miejscem pod labiryntem startowym jest około 0,4 m. `baseHeight` jest stałą liczbą w metrach świata i **nie idzie za suwakiem skali wysokości terenu**: przy skali 2,5 wyższe miejsca podłogi wychodzą ponad bazę i mają trochę mniej mgły.
+Gęstość spada o połowę co `ln(2) / 0,4 = 1,73` m. Na jednej ścianie widać więc gradient: stopa tonie we mgle mocniej niż szczyt. Komentarz przy `baseHeight` mówi dziś, że ziemia labiryntu leży między 0 a około 0,6 m przy skali wysokości 1 (`game::MAZE_RELIEF`), więc wartość startowa trzyma w najgęstszej mgle większość podłogi, i że ta liczba nie idzie za skalą wysokości terenu. Do czwartej części M7 mówił o ziemi między 0 a około 0,5 m i o całej podłodze, co było nieścisłe. Sam tych wysokości nie mierzyłem. Z kodu terenu wynika tyle: przy skali wysokości 1 ziemia pod labiryntem nie przekracza `MAZE_RELIEF = 0,6` m, a między najniższym i najwyższym miejscem pod labiryntem startowym jest około 0,4 m. `baseHeight` jest stałą liczbą w metrach świata i **nie idzie za suwakiem skali wysokości terenu**: przy skali 2,5 wyższe miejsca podłogi wychodzą ponad bazę i mają trochę mniej mgły.
 
 `heightFalloff = 0` daje `heightFactor = 1` wszędzie: mgłę jednakową na każdej wysokości, razem z niebem (sekcja 2.21).
 
@@ -869,7 +899,7 @@ tau = density * distance * (exp(-k * h0) - exp(-k * h1)) / (k * (h1 - h0))
 
 Odległość 100 m sama zakryłaby niebo w całości (`exp(-10)`). Ratuje je wysokość: punkt daleko **i wysoko** leży tam, gdzie mgły prawie nie ma. Horyzont jest więc zamglony, pas przejścia ma kilka stopni, a księżyc i gwiazdy zostają czyste. Poniżej horyzontu mgła jest pełna i zakrywa krawędź, na której kończy się siatka terenu. Liczby w tabeli są **policzone ze wzoru** dla środka ekranu, nie odczytane z gry. Test `the default fog leaves the moon clear and hides the sky below the horizon` sprawdza pierwszy i ostatni z tych faktów na funkcji `fogAmountAt`.
 
-**Uczciwie: na niebie mgła jednak zależy od obrotu kamery.** Płaszczyzna daleka jest płaska i obraca się razem z kamerą. Ten sam kierunek na niebie trafia w nią 100 m od oka, gdy jest w środku ekranu, ale 143 m, gdy jest przy lewej albo prawej krawędzi (`100 / cos(45,7°)`), i 155 m w rogu. Dalszy punkt na tym samym promieniu leży wyżej, więc dostaje mniej mgły: 3 stopnie nad horyzontem to 53 procent mgły w środku ekranu, 36 procent przy krawędzi i 31 procent w rogu. Zdanie "mgła nie zmienia się przy obrocie" (sekcja 2.18) jest więc prawdą dla ścian, ziemi i wszystkiego, co ma prawdziwą głębię, a **nie** dla wąskiego pasa nieba tuż nad horyzontem. To wniosek z rachunku: na ekranie nikt tego jeszcze nie szukał, a wzgórza wokół labiryntu zasłaniają dużą część tego pasa. Jest na liście testu ręcznego. Decyzję o braku osobnego przypadku zapisuje notatka [`../../decisions/fog-no-special-case-for-sky.md`](../../decisions/fog-no-special-case-for-sky.md).
+**Uczciwie: na niebie mgła jednak zależy od obrotu kamery.** Płaszczyzna daleka jest płaska i obraca się razem z kamerą. Ten sam kierunek na niebie trafia w nią 100 m od oka, gdy jest w środku ekranu, ale 143 m, gdy jest przy lewej albo prawej krawędzi (`100 / cos(45,7°)`), i 155 m w rogu. Dalszy punkt na tym samym promieniu leży wyżej, więc dostaje mniej mgły: 3 stopnie nad horyzontem to 53 procent mgły w środku ekranu, 36 procent przy krawędzi i 31 procent w rogu. Zdanie "mgła nie zmienia się przy obrocie" (sekcja 2.18) jest więc prawdą dla ścian, ziemi i wszystkiego, co ma prawdziwą głębię, a **nie** dla wąskiego pasa nieba tuż nad horyzontem. To wniosek z rachunku: na ekranie nikt tego jeszcze nie szukał, a wzgórza wokół labiryntu zasłaniają dużą część tego pasa. Jest na liście testu ręcznego. Od czwartej części M7 mówi o tym także komentarz w funkcji `main` shadera: "The far plane is flat and turns with the camera, so on that low strip of sky (and only there) the amount also depends on where on the screen a pixel is." Decyzję o braku osobnego przypadku zapisuje notatka [`../../decisions/fog-no-special-case-for-sky.md`](../../decisions/fog-no-special-case-for-sky.md).
 
 **Kolor mgły i jego przestrzeń.** `FogSettings::color` to liczby **sRGB**, takie, jakie pokazuje próbnik koloru w panelu: startowo (0,14, 0,18, 0,26), zimny szaroniebieski między światłem otoczenia (0,105, 0,135, 0,225) a kolorem księżyca (0,55, 0,65, 1,0). Mieszanie światła ma sens tylko na wartościach liniowych, więc `PostProcess::composite` przelicza kolor raz na klatkę funkcją `gfx::srgbToLinear` i dopiero wynik wysyła jako `uFogColor`. To ta sama zasada co przy kolorach świateł i kolorze tła ([`../gfx/color-space.md`](../gfx/color-space.md)).
 
@@ -880,7 +910,7 @@ Odległość 100 m sama zakryłaby niebo w całości (`exp(-10)`). Ratuje je wys
 | piksel w całości zamglony, po krzywej ACES (ekspozycja 1) | 0,008 | 0,017 | 0,051 |
 | ten sam piksel po kodowaniu, czyli na ekranie | 0,090 | 0,138 | 0,251 |
 
-Mgła na ekranie jest więc **ciemniejsza** niż próbka w panelu, najbardziej w czerwonym i zielonym. Komentarz przy polu i podpowiedź kontrolki `Fog colour` mówią to samo, a powód jest w sekcji 2.6: krzywa ACES przyciska ciemne tony, a kolor mgły jest mieszany **przed** nią. To nie błąd przeliczenia, tylko skutek tego, że mgła jest częścią sceny. Zdanie o ciemniejszej mgle dotyczy krzywej domyślnej: przy `Tone mapping: None (clamp)` i ekspozycji 1 piksel w całości zamglony ma na ekranie dokładnie kolor próbki, bo kodowanie znosi przeliczenie (`linearToSrgb(srgbToLinear(x)) = x`), a przy `Reinhard` jest tylko trochę ciemniejszy. Komentarz w kodzie i podpowiedź kontrolki mówią o tym bez tego zastrzeżenia.
+Mgła na ekranie jest więc **ciemniejsza** niż próbka w panelu, najbardziej w czerwonym i zielonym. Powód jest w sekcji 2.6: krzywa ACES przyciska ciemne tony, a kolor mgły jest mieszany **przed** nią. To nie błąd przeliczenia, tylko skutek tego, że mgła jest częścią sceny. Zdanie o ciemniejszej mgle dotyczy krzywej domyślnej: przy `Tone mapping: None (clamp)` i ekspozycji 1 piksel w całości zamglony ma na ekranie dokładnie kolor próbki, bo kodowanie znosi przeliczenie (`linearToSrgb(srgbToLinear(x)) = x`), a przy `Reinhard` jest tylko trochę ciemniejszy. Od czwartej części M7 komentarz przy polu `FogSettings::color` i podpowiedź kontrolki `Fog colour` mówią to z tym samym zastrzeżeniem: ciemniejsza z krzywą Reinharda albo ACES, zgodna z próbką przy `None (clamp)` i ekspozycji 1. Wcześniej mówiły o ciemniejszej mgle bez zastrzeżenia.
 
 **Dlaczego mgła stoi przed dodaniem bloomu, przed ekspozycją i przed krzywą.** Komentarz funkcji `main` stawia ją jako krok 2, zaraz po odczycie sceny:
 
@@ -967,6 +997,8 @@ Wywołania jednej klatki, w kolejności. Tworzenie framebuffera (kroki oznaczone
 | 2 | `glBindFramebuffer(GL_FRAMEBUFFER, id)` | od teraz rysowanie trafia do tekstur sceny |
 | 3 | `glViewport(0, 0, width, height)` | obszar rysowania na cały bufor sceny. Viewport należy do kontekstu, nie do framebuffera |
 
+**Przed sceną, od czwartej części M7** (`drawMoonShadowMap`, poza tą klasą): `glBindFramebuffer` na framebuffer mapy cieni z `glViewport` na jej rozmiar, `glEnable(GL_DEPTH_TEST)`, `glClear(GL_DEPTH_BUFFER_BIT)`, wywołania rysujące programem `shadow_depth`, potem `glActiveTexture(GL_TEXTURE3)`, `glBindTexture` tekstury głębi mapy, `glBindSampler(3, sampler z porównaniem)` i powrót do `glActiveTexture(GL_TEXTURE0)`. Wywołania linia po linii opisuje [`shadows.md`](shadows.md), sekcja 3. Kroki 2 i 3 tabeli wyżej nadpisują po tym przebiegu cel i viewport, dlatego ta klasa nie musiała się zmienić.
+
 **Scena** (`onRender`): `glEnable(GL_DEPTH_TEST)`, `glClearColor`, `glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)` i wywołania rysujące jak przed tą częścią. `glClear` czyści teraz dwie tekstury bufora sceny, nie okno.
 
 **Podglądy** (`drawPreviews`, tylko przy otwartym panelu), dla każdego z dwóch obrazów:
@@ -1024,13 +1056,15 @@ Okno **nie jest czyszczone** przed krokiem 20: trójkąt pokrywa każdy piksel, 
 
 Gdyby dwa samplery dostały ten sam numer, czytałyby tę samą teksturę: poświata byłaby kopią sceny, a "głębia" czerwonym kanałem koloru. Dlatego numery są wysyłane w każdej klatce i zawsze, także wtedy, gdy dany efekt jest wyłączony (sekcja 5.6). Mgła czyta **głębię** i **kolor tego samego framebuffera** w jednym przebiegu. Wolno, bo w tym przebiegu framebuffer sceny nie jest celem: celem jest okno.
 
+**Jednostka 3 jest zajęta (czwarta część M7).** Przebiegi tego modułu używają jednostek od 0 do 2. Czwarta, numer 3, należy od tej części do mapy cieni księżyca: stała `MOON_SHADOW_TEXTURE_UNIT = 3` w `ShaderUniforms.hpp`, z komentarzem, że modele używają jednostek 0 i 1, przebieg składający jednostek od 0 do 2, więc 3 to pierwsza, której nic innego nie wiąże. Mapa jest wiązana raz na klatkę, w przebiegu cieni, i leży tam przez cały przebieg sceny, razem z obiektem samplera z porównaniem. Przebiegi po scenie jej nie ruszają i jej nie czytają. Następna mapa cieni (planowana latarka) dostałaby jednostkę 4. Kto doda temu modułowi czwarty obraz wejściowy, nie może więc wziąć po prostu "następnej" jednostki.
+
 **Kroki 7, B5, 14, 16 i 17: dlaczego `glBindSampler(unit, 0)`.** Każda `Texture2D` zostawia na jednostce swój obiekt samplera z `GL_REPEAT` i mipmapami ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.8). Obiekt samplera należy do jednostki i zastępuje parametry każdej tekstury przez nią czytanej. Tekstura załącznika ma jeden poziom, więc czytana cudzym samplerem z filtrem mipmap byłaby niekompletna i dałaby czerń. `Framebuffer::bindColorTexture` i `bindDepthTexture` odpinają więc sampler i tekstura jest czytana własnymi parametrami.
 
-**Co zostaje po klatce.** Związany domyślny framebuffer, viewport na rozmiar okna, test głębi **wyłączony**, na jednostce 0 tekstura koloru sceny bez obiektu samplera, na jednostce 1 tekstura `m_bloom` bez obiektu samplera (gdy bloom był dodawany), na jednostce 2 tekstura głębi sceny bez obiektu samplera (gdy mgła była włączona), aktywna jednostka 0, związany pusty VAO, program `composite` w użyciu. Następna klatka włącza test głębi sama (krok 3 tabeli w sekcji 2.8), a każdy przebieg sceny wiąże swoje tekstury, swój VAO i swój program.
+**Co zostaje po klatce.** Związany domyślny framebuffer, viewport na rozmiar okna, test głębi **wyłączony**, na jednostce 0 tekstura koloru sceny bez obiektu samplera, na jednostce 1 tekstura `m_bloom` bez obiektu samplera (gdy bloom był dodawany), na jednostce 2 tekstura głębi sceny bez obiektu samplera (gdy mgła była włączona), aktywna jednostka 0, związany pusty VAO, program `composite` w użyciu. Od czwartej części M7 zostaje też, gdy cienie były rysowane, tekstura głębi mapy cieni z samplerem z porównaniem na jednostce 3. Następna klatka włącza test głębi sama (krok 3 tabeli w sekcji 2.8, a od czwartej części jeszcze wcześniej `ShadowMap::beginDepthPass`, krok 1a), a każdy przebieg sceny wiąże swoje tekstury, swój VAO i swój program.
 
 **Czy tekstura zostawiona na jednostce to pętla zwrotna?** Na początku następnej klatki tekstura koloru sceny nadal wisi na jednostce 0, a scena jest do niej rysowana. Tak samo `m_bloom` wisi na jednostce 1, kiedy następne `drawBloom` do niego rysuje. To **nie** jest pętla zwrotna. Niezdefiniowany wynik daje dopiero **odczyt** tekstury, która jest celem, a nie samo jej związanie. Programy `bright` i `blur` mają po jednym samplerze, który wskazuje jednostkę 0, a tam w chwili rysowania leży źródło, więc żaden ich sampler nie patrzy na teksturę celu. Shadery sceny wiążą na jednostkach, z których czytają, własne tekstury przed rysowaniem.
 
-Od trzeciej części to samo pytanie dotyczy **głębi**: tekstura głębi sceny zostaje na jednostce 2, a następna klatka do niej rysuje (test głębi czyta ją i zapisuje jako załącznik, nie jako teksturę). Odpowiedź jest ta sama. Żaden shader sceny nie ma samplera, który wskazuje jednostkę 2: modele czytają jednostki 0 i 1 (`TEXTURE_UNIT` i `NORMAL_MAP_UNIT` w `ModelDraw.cpp`), niebo jednostkę 0 (`SKYBOX_TEXTURE_UNIT`), a programy `bright`, `blur` i `preview` jednostkę 0. Stałych z numerem 2 nie ma w kodzie poza `DEPTH_TEXTURE_UNIT`. Kto doda do sceny trzecią teksturę (na przykład mapę cieni), musi o tym pamiętać: albo inna jednostka, albo własna tekstura związana przed rysowaniem.
+Od trzeciej części to samo pytanie dotyczy **głębi**: tekstura głębi sceny zostaje na jednostce 2, a następna klatka do niej rysuje (test głębi czyta ją i zapisuje jako załącznik, nie jako teksturę). Odpowiedź jest ta sama. Żaden shader sceny nie ma samplera, który wskazuje jednostkę 2: modele czytają jednostki 0 i 1 (`TEXTURE_UNIT` i `NORMAL_MAP_UNIT` w `ModelDraw.cpp`), niebo jednostkę 0 (`SKYBOX_TEXTURE_UNIT`), a programy `bright`, `blur` i `preview` jednostkę 0. Stałych z numerem 2 nie ma w kodzie poza `DEPTH_TEXTURE_UNIT`. Kto doda do sceny trzecią teksturę, musi o tym pamiętać: albo inna jednostka, albo własna tekstura związana przed rysowaniem. Czwarta część M7 dodała właśnie taką teksturę, mapę cieni księżyca, i wybrała pierwszą drogę: jednostkę 3. Programy `lit`, `gouraud` i `grass` mają odtąd sampler `sampler2DShadow` ustawiony na 3, a jednostka 2 nadal należy tylko do `DEPTH_TEXTURE_UNIT`. To samo pytanie o pętlę zwrotną ma tu tę samą odpowiedź: mapa cieni zostaje na jednostce 3, kiedy następna klatka do niej rysuje, ale program `shadow_depth` nie ma żadnego samplera, więc w tym przebiegu nikt jej nie czyta.
 
 Wszystkie użyte funkcje są w rdzeniu OpenGL 4.1: obiekty framebuffera i tekstury zmiennoprzecinkowe od 3.0, obiekty samplera od 3.3, `gl_VertexID` i `textureSize` w GLSL od 1.30, `glUniform1fv` od 2.0. Funkcje GLSL użyte przez mgłę i winietę (`exp`, `mix`, `max`, `length`, `smoothstep`) są w języku od pierwszych wersji.
 
@@ -1180,9 +1214,10 @@ vec3 toneMapReinhard(vec3 color) {
 }
 
 // ACES: the look of the film industry reference curve, as the short formula Krzysztof
-// Narkowicz fitted to it (2015). A quotient of two quadratic polynomials shaped like an
-// S: dark tones are pressed down a little (more contrast), the middle is almost
-// straight, and bright values bend softly towards 1. The five numbers are the fit.
+// Narkowicz fitted to it (2016). A quotient of two quadratic polynomials shaped like an
+// S: dark tones are pressed down hard (0.01 comes out as about 0.0038, which gives more
+// contrast), the middle is almost straight, and bright values bend softly towards 1.
+// The five numbers are the fit.
 vec3 toneMapAces(vec3 color) {
     const float A = 2.51;
     const float B = 0.03;
@@ -1200,7 +1235,7 @@ vec3 toneMapAces(vec3 color) {
 | `(color * (A * color + B)) / (color * (C * color + D) + E)` | iloraz dwóch wielomianów drugiego stopnia, na kanał. Przeliczone przykłady są w sekcji 2.6 |
 | `clamp(..., 0.0, 1.0)` | konieczne: granica wzoru to `A / C = 1,033`, a 1 jest przekraczana od około 7,24 |
 
-Komentarz mówi "przyciśnięte trochę" o ciemnych tonach i "środek prawie prosty". Liczby z sekcji 2.6 pokazują, że przy wartości 0,01 zostaje 38 procent wejścia, a środek skali jest podniesiony (0,18 daje 0,267). Na obronie trzymam się liczb.
+Komentarz mówi dziś o ciemnych tonach "przyciśniętych mocno" i podaje liczbę z sekcji 2.6: 0,01 wychodzi jako około 0,0038, czyli zostaje 38 procent wejścia (do czwartej części M7 mówił "trochę" i podawał rok 2015 zamiast 2016). Nadal mówi "środek prawie prosty", choć z liczb środek skali jest podniesiony (0,18 daje 0,267). Na obronie trzymam się liczb.
 
 Funkcja główna:
 
@@ -1229,7 +1264,9 @@ void main() {
     // the far clipping plane in the direction of the pixel. That point is far away, so
     // the distance alone would hide the sky. But looking upwards it is also very high,
     // where the height factor is almost 0: the moon and the stars stay clear, and only
-    // the sky close to the horizon, and below it, turns into fog.
+    // the sky close to the horizon, and below it, turns into fog. The far plane is flat
+    // and turns with the camera, so on that low strip of sky (and only there) the
+    // amount also depends on where on the screen a pixel is.
     if (uFogEnabled == 1) {
         float depth = texture(uDepth, vUv).r;
         vec3 position = worldPositionFromDepth(vUv, depth);
@@ -1298,8 +1335,8 @@ void main() {
 
 ```glsl
 #version 410 core
-// Fragment shader of the attachment previews: turns the colour texture or the depth
-// texture of the scene framebuffer into a small picture the debug UI can show as it is.
+// Fragment shader of the attachment previews: turns the colour or the depth texture of
+// a framebuffer (the scene, a shadow map) into a small picture the debug UI can show.
 // Used with post/composite.vert.
 // See docs/modules/renderer/post-process.md
 
@@ -1311,12 +1348,13 @@ void main() {
 in vec2 vUv;
 
 // The attachment to show (the number of a texture unit): the colour texture in mode 0,
-// the depth texture in mode 1.
+// a depth texture in modes 1 and 2.
 uniform sampler2D uSource;
 
 // What uSource is. The numbers are the values of game::AttachmentPreview in C++.
 //   0: HDR colour
-//   1: depth
+//   1: depth of a perspective view (the scene), shown as a distance
+//   2: depth as it is stored (the shadow map of the moon)
 uniform int uMode;
 
 // For the depth: the clipping planes of the camera and the distance in metres that is
@@ -1337,6 +1375,12 @@ void main() {
         // written as it is: it is a measure, not light, so it is not encoded.
         float metres = linearDepth(texture(uSource, vUv).r, uNear, uFar);
         fragColor = vec4(vec3(clamp(metres / uDepthRange, 0.0, 1.0)), 1.0);
+    } else if (uMode == 2) {
+        // The shadow map of a directional light is drawn with an orthographic
+        // projection, whose stored depth grows evenly with the distance. It needs no
+        // conversion: black is the near plane of the light, white its far plane (and
+        // every texel nothing was drawn into).
+        fragColor = vec4(vec3(texture(uSource, vUv).r), 1.0);
     } else {
         // The colour attachment holds linear values that may be above 1. The debug UI
         // draws a texture without any conversion, so the picture is encoded here.
@@ -1349,16 +1393,19 @@ void main() {
 
 | Linia | Znaczenie |
 |---|---|
-| `uniform sampler2D uSource;` | jeden sampler dla obu trybów. Tekstura głębi czytana przez `sampler2D` zwraca głębię w kanale czerwonym |
-| `uniform int uMode;` | 0 albo 1, wartości `enum class AttachmentPreview` |
+| `uniform sampler2D uSource;` | jeden sampler dla wszystkich trzech trybów. Tekstura głębi czytana przez `sampler2D` zwraca głębię w kanale czerwonym |
+| `uniform int uMode;` | 0, 1 albo 2 (do trzeciej części M7 0 albo 1), wartości `enum class AttachmentPreview`: `Color`, `Depth`, `RawDepth` |
 | `uNear`, `uFar` | płaszczyzny przycinania kamery, którą narysowano scenę. Muszą być te same, inaczej metry wyjdą złe |
 | `texture(uSource, vUv).r` | głębia zapisana w teksturze, od 0 do 1 |
 | `linearDepth(..., uNear, uFar)` | z powrotem na metry (sekcje 2.10 i 4.4) |
 | `clamp(metres / uDepthRange, 0.0, 1.0)` | 0 m to czerń, `uDepthRange` metrów i więcej to biel |
 | `vec4(vec3(szarość), 1.0)` | ta sama liczba w trzech kanałach. Bez `linearToSrgb` |
+| gałąź `else if (uMode == 2)` | od czwartej części M7: zapisana głębia wprost jako szarość, bez `linearDepth` i bez `uDepthRange`. Poprawne dla rzutu prostokątnego, w którym głębia rośnie równo z odległością (sekcja 2.10). Też bez `linearToSrgb`, z tego samego powodu: to miara, nie światło. Uniformy `uNear`, `uFar` i `uDepthRange` nie są w tej gałęzi czytane |
 | gałąź `else` | podgląd koloru: samo kodowanie, które przy okazji przycina do 1 |
 
 Podgląd ma 320 x 180 pikseli, a bufor sceny 1280 x 720 albo więcej, więc tu filtr liniowy tekstury koloru **pracuje**: każdy piksel podglądu jest mieszanką czterech sąsiednich tekseli sceny (przy pomniejszeniu większym niż dwukrotne część tekseli jest pomijana, bo załącznik nie ma mipmap). Głębia jest czytana filtrem najbliższego sąsiada.
+
+Gałęzi `uMode == 2` nie wybiera żadna funkcja klasy `PostProcess`. Ustawia ją `game::ShadowMap::drawPreview` (`previewShader.setInt(PREVIEW_MODE_UNIFORM, static_cast<int>(AttachmentPreview::RawDepth));`), które rysuje obraz mapy cieni księżyca do własnego framebuffera 256 x 256. Mapę wiąże przy tym przez `bindDepthTexture`, czyli **bez** obiektu samplera: shader dostaje zapisane głębie, a nie wyniki porównania, które daje ten sam obraz czytany w scenie przez `sampler2DShadow`. Tu obraz jest mocno pomniejszany (z 2048 albo 1024 do 256) filtrem najbliższego sąsiada, więc cienkie ściany mogą na nim wypadać nierówno: to podgląd tego, co mapa obejmuje, a nie jej ostrości. Komentarz na górze pliku mówi nadal tylko o załącznikach framebuffera sceny: pochodzi sprzed tej części.
 
 ### 4.4 `common/depth.glsl`
 
@@ -1394,8 +1441,8 @@ Nazwy uniformów są stałymi w [`src/game/ShaderUniforms.hpp`](../../../src/gam
 | `uVignetteEnabled` | `COMPOSITE_VIGNETTE_ENABLED_UNIFORM` | `PostProcess::composite`, `setInt` | 1, gdy `settings.vignette.enabled`, inaczej 0 |
 | `uVignetteStrength` | `COMPOSITE_VIGNETTE_STRENGTH_UNIFORM` | `PostProcess::composite`, `setFloat` | `VignetteSettings::strength` |
 | `uVignetteRadius` | `COMPOSITE_VIGNETTE_RADIUS_UNIFORM` | `PostProcess::composite`, `setFloat` | `VignetteSettings::radius` |
-| `uSource` | `PREVIEW_SOURCE_UNIFORM` | `PostProcess::drawPreviews`, `setInt` | `SOURCE_TEXTURE_UNIT`, czyli 0 |
-| `uMode` | `PREVIEW_MODE_UNIFORM` | `PostProcess::drawPreviews`, `setInt`, dwa razy w klatce. Od drugiej części także `PostProcess::drawBloom`, raz | `AttachmentPreview::Color` i `AttachmentPreview::Depth`. W `drawBloom` zawsze `Color` |
+| `uSource` | `PREVIEW_SOURCE_UNIFORM` | `PostProcess::drawPreviews`, `setInt`. Od czwartej części także `game::ShadowMap::drawPreview` | `SOURCE_TEXTURE_UNIT`, czyli 0. W `ShadowMap.cpp` własna stała `PREVIEW_SOURCE_UNIT`, też 0 |
+| `uMode` | `PREVIEW_MODE_UNIFORM` | `PostProcess::drawPreviews`, `setInt`, dwa razy w klatce. Od drugiej części także `PostProcess::drawBloom`, raz. Od czwartej także `game::ShadowMap::drawPreview`, raz | `AttachmentPreview::Color` i `AttachmentPreview::Depth`. W `drawBloom` zawsze `Color`, w `ShadowMap::drawPreview` zawsze `RawDepth` |
 | `uScene` w `bright.frag` | `BRIGHT_SCENE_UNIFORM` | `PostProcess::drawBloom`, `setInt` | `SOURCE_TEXTURE_UNIT`, czyli 0 |
 | `uThreshold` | `BRIGHT_THRESHOLD_UNIFORM` | `PostProcess::drawBloom`, `setFloat` | `BloomSettings::threshold` |
 | `uSource` w `blur.frag` | `BLUR_SOURCE_UNIFORM` | `PostProcess::drawBloom`, `setInt` | `SOURCE_TEXTURE_UNIT`, czyli 0 |
@@ -1404,7 +1451,7 @@ Nazwy uniformów są stałymi w [`src/game/ShaderUniforms.hpp`](../../../src/gam
 | `uNear`, `uFar` | `PREVIEW_NEAR_UNIFORM`, `PREVIEW_FAR_UNIFORM` | `PostProcess::drawPreviews`, `setFloat` | `m_camera.nearPlane`, `m_camera.farPlane` |
 | `uDepthRange` | `PREVIEW_DEPTH_RANGE_UNIFORM` | `PostProcess::drawPreviews`, `setFloat` | `PostProcessSettings::depthPreviewRange` |
 
-Osiem stałych z pierwszej części, osiem z drugiej (trzy `COMPOSITE_BLOOM_*`, dwie `BRIGHT_*`, trzy `BLUR_*`) i jedenaście z trzeciej (sześć dla mgły razem z `COMPOSITE_DEPTH_UNIFORM`, dwie dla kamery, trzy `COMPOSITE_VIGNETTE_*`): plik `ShaderUniforms.hpp` ma dziś 47 stałych z nazwami zwykłych uniformów (i dwie stałe bloku świateł). Program `composite` ma z nich 17, najwięcej ze wszystkich programów po scenie. `uScene` i `uSource` występują w dwóch shaderach każdy i mają po dwie stałe o tym samym napisie. To celowe: stała mówi, **którego** programu dotyczy, a zmiana nazwy w jednym shaderze nie rusza drugiego.
+Osiem stałych z pierwszej części, osiem z drugiej (trzy `COMPOSITE_BLOOM_*`, dwie `BRIGHT_*`, trzy `BLUR_*`) i jedenaście z trzeciej (sześć dla mgły razem z `COMPOSITE_DEPTH_UNIFORM`, dwie dla kamery, trzy `COMPOSITE_VIGNETTE_*`): plik `ShaderUniforms.hpp` ma dziś 47 stałych z nazwami zwykłych uniformów (i dwie stałe bloku świateł). Czwarta część M7 tej liczby nie zmieniła, bo nazwy uniformów mapy cieni zapisała inaczej: jako siedem napisów wewnątrz **jednej** stałej `MOON_SHADOW_UNIFORMS` typu `ShadowUniformNames` (`uMoonShadowMap`, `uMoonShadowEnabled`, `uMoonShadowMatrix`, `uMoonShadowConstantBias`, `uMoonShadowSlopeBias`, `uMoonShadowPcfRadius`, `uMoonShadowStrength`), a obok niej dopisała jedną stałą z numerem jednostki, `MOON_SHADOW_TEXTURE_UNIT`. Żadna z tych nazw nie należy do programów tego modułu ([`shadows.md`](shadows.md)). Program `composite` ma z nich 17, najwięcej ze wszystkich programów po scenie. `uScene` i `uSource` występują w dwóch shaderach każdy i mają po dwie stałe o tym samym napisie. To celowe: stała mówi, **którego** programu dotyczy, a zmiana nazwy w jednym shaderze nie rusza drugiego.
 
 Programy powstają w konstruktorze `NightMazeApp` jako pola `m_compositeShader`, `m_previewShader`, `m_brightPassShader` i `m_blurShader`, wszystkie cztery z tym samym plikiem wierzchołków (`FULLSCREEN_VERTEX_SHADER_FILE`, czyli `shaders/post/composite.vert`). Pliki fragmentów to stałe `BRIGHT_PASS_FRAGMENT_SHADER_FILE` (`shaders/post/bright.frag`) i `BLUR_FRAGMENT_SHADER_FILE` (`shaders/post/blur.frag`).
 
@@ -1427,7 +1474,8 @@ in vec2 vUv;
 
 // The picture of the scene: linear HDR colours (GL_RGBA16F). The target of this pass
 // is half as large in each direction, so one pixel here lies between four pixels of the
-// scene, and the linear filter of the texture returns their average.
+// scene, and the linear filter of the texture returns their average (exactly so when
+// the width and the height of the scene are even numbers).
 uniform sampler2D uScene;
 
 // Brightness (luminance) above which light takes part in the bloom.
@@ -1457,7 +1505,7 @@ void main() {
 |---|---|
 | `#include "../common/color.glsl"` | po funkcję `luminance` (sekcja 4.8). Z tego samego pliku `composite.frag` bierze `linearToSrgb` |
 | `uniform sampler2D uScene;` | ta sama nazwa co w `composite.frag`, ale to inny program, więc osobny uniform i osobna stała w C++ (`BRIGHT_SCENE_UNIFORM`) |
-| komentarz o czterech pikselach | cel ma połowę rozmiaru w każdym kierunku, więc środek jego piksela wypada na styku czterech pikseli sceny i filtr liniowy zwraca ich średnią. To prawda dla **parzystych** rozmiarów sceny. Przy nieparzystym (1281 daje cel 640) środki nie trafiają dokładnie w styk i wagi czterech pikseli nie są równe |
+| komentarz o czterech pikselach | cel ma połowę rozmiaru w każdym kierunku, więc środek jego piksela wypada na styku czterech pikseli sceny i filtr liniowy zwraca ich średnią. To prawda dla **parzystych** rozmiarów sceny, co od czwartej części M7 mówi też sam komentarz ("exactly so when the width and the height of the scene are even numbers"). Przy nieparzystym (1281 daje cel 640) środki nie trafiają dokładnie w styk i wagi czterech pikseli nie są równe |
 | `uniform float uThreshold;` | próg z suwaka `Threshold`, w liniowych wartościach bufora |
 | `const float MIN_LUMINANCE = 0.0001;` | zabezpieczenie mianownika (sekcja 2.12) |
 | `vec3 color = texture(uScene, vUv).rgb;` | kolor sceny, już uśredniony z czterech pikseli |
@@ -1715,8 +1763,9 @@ enum class ToneMapping {
 };
 
 enum class AttachmentPreview {
-    Color = 0, ///< the HDR colour attachment
-    Depth = 1, ///< the depth attachment, as a distance
+    Color = 0,    ///< the HDR colour attachment
+    Depth = 1,    ///< the depth attachment of a perspective view, as a distance
+    RawDepth = 2, ///< a depth attachment as it is stored: the shadow map of the moon
 };
 
 struct PostProcessSettings {
@@ -1833,8 +1882,7 @@ Stałe pliku `.cpp`:
 // The texture unit the passes read their input from. Every pass binds what it needs.
 constexpr GLuint SOURCE_TEXTURE_UNIT = 0;
 
-// The composite pass reads two pictures: the scene from the unit above and the bloom
-// from this one.
+// The composite pass reads the scene from the unit above and the bloom from this one.
 constexpr GLuint BLOOM_TEXTURE_UNIT = 1;
 
 // The fog of the composite pass reads a third picture, the depth of the scene, from
@@ -2095,6 +2143,13 @@ Fragmenty `NightMazeApp::onRender`, które należą do tego modułu (kod sceny m
         return;
     }
 
+    // The shadow pass comes first: the scene as the moon sees it, depths only, into
+    // the shadow map. The lit programs of the scene pass read that map, so it has to
+    // be complete before they draw. The pass binds a framebuffer and a viewport of its
+    // own (the size of the map), and beginScene below binds the scene framebuffer with
+    // its viewport again.
+    drawMoonShadowMap();
+
     if (!m_postProcess.beginScene(framebuffer)) {
         return;
     }
@@ -2148,6 +2203,7 @@ Fragmenty `NightMazeApp::onRender`, które należą do tego modułu (kod sceny m
 | Linia | Znaczenie |
 |---|---|
 | `if (framebuffer.width == 0 \|\| framebuffer.height == 0) return;` | przed tą częścią to sprawdzenie stało **po** `glClear`. Przeniosło się na początek, bo teraz nie ma też do czego rysować: tekstury o rozmiarze 0 nie da się podpiąć do framebuffera. Bufor sceny zachowuje ostatni rozmiar i jest użyty ponownie, gdy okno wróci |
+| `drawMoonShadowMap();` | od czwartej części M7: przebieg cieni księżyca, pierwszy przebieg klatki. Stoi po sprawdzeniu rozmiaru 0 x 0, więc przy zminimalizowanym oknie mapa cieni też nie jest rysowana. Zostawia związany własny framebuffer i viewport o rozmiarze mapy albo jej podglądu, co naprawia następna linia. Funkcja nie należy do tego modułu: [`shadows.md`](shadows.md), sekcja 5.7 |
 | `if (!m_postProcess.beginScene(framebuffer)) return;` | zastąpiło dawne `glViewport(0, 0, width, height)`: viewport ustawia teraz `Framebuffer::bind` |
 | `gfx::srgbToLinear(glm::vec3{...})` | kolor tła jest liczbą sRGB z próbnika w panelu Renderer, a bufor przechowuje wartości liniowe. Startowe (0,022, 0,033, 0,088) to liniowo (0,0017, 0,0026, 0,0083) |
 | `glClear(...)` | czyści dwie tekstury bufora sceny |
@@ -2163,7 +2219,7 @@ Fragmenty `NightMazeApp::onRender`, które należą do tego modułu (kod sceny m
 | `projection * view`, potem `glm::inverse` | kolejność mnożenia jak w shaderze wierzchołków: najpierw widok, potem rzutowanie (macierz po prawej działa pierwsza). Odwrotność jest liczona **raz na klatkę**, zawsze, także przy wyłączonej mgle i w widoku diagnostycznym, kiedy nikt jej nie czyta. To rząd stu mnożeń na klatkę. Kod liczy ją bezwarunkowo i nie mówi dlaczego |
 | `composite(..., compositeSettings, framebuffer, sceneView)` | te same ustawienia co bloom, ten sam rozmiar, z którym zaczęła się scena, jako rozmiar viewportu okna, i kamera tej klatki |
 
-Gdy `onRender` wraca wcześniej (okno 0 x 0 albo brak bufora sceny), ani `drawBloom`, ani `composite` nie są wołane, ale `DebugUI::draw` w `main.cpp` i tak rysuje panele. `m_bloomDrawn` zostaje wtedy z ostatniej narysowanej klatki, więc panel pokazuje ostatnie obrazy. Związany jest wtedy framebuffer z poprzedniej klatki, czyli okno (ostatnie wiązanie zrobiło `composite` albo konstruktor `Framebuffer`, który zostawia domyślny).
+Gdy `onRender` wraca wcześniej (okno 0 x 0 albo brak bufora sceny), ani `drawBloom`, ani `composite` nie są wołane, ale `DebugUI::draw` w `main.cpp` i tak rysuje panele. `m_bloomDrawn` zostaje wtedy z ostatniej narysowanej klatki, więc panel pokazuje ostatnie obrazy. Przy oknie 0 x 0 związany jest wtedy framebuffer z poprzedniej klatki, czyli okno (ostatnie wiązanie zrobiło `composite` albo konstruktor `Framebuffer`, który zostawia domyślny). Od czwartej części M7 drugi przypadek wygląda inaczej, bo przed `beginScene` biegnie już przebieg cieni. Gdy `beginScene` zwraca fałsz, a bufora sceny nie próbuje tworzyć od nowa (rozmiar się nie zmienił, więc konstruktor `Framebuffer` nie jest wołany), związany zostaje framebuffer mapy cieni albo jej podglądu, z viewportem o jego rozmiarze, i ImGui rysuje panele do niego, a nie do okna. To wniosek z czytania kodu: dotyczy tylko sytuacji, w której karta nie umie utworzyć bufora sceny, a mapę cieni umie, i nikt jej nie wywołał. Przy wyłączonych cieniach nic się nie zmienia.
 
 Funkcja `crystalEmissive`, wydzielona w pierwszej części M7 z dwóch identycznych wywołań, przelicza kolor światła kryształów na liniowy i podaje go do `crystalGlow`. Opis jest w [`../gfx/color-space.md`](../gfx/color-space.md) i w [`../game/gameplay.md`](../game/gameplay.md).
 
@@ -2230,7 +2286,7 @@ Czego **żaden** test nie sprawdza: wzorów Reinharda i ACES (istnieją tylko w 
 
 ### 5.9 Jak to zostało sprawdzone
 
-Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod, dla Windowsa, 2026-10-05. Przy pisaniu dokumentu nie było powtarzane. Najpierw pierwsza część M7, potem druga i trzecia.
+Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod, dla Windowsa, 2026-10-05. Przy pisaniu dokumentu nie było powtarzane. Najpierw pierwsza część M7, potem druga, trzecia i czwarta.
 
 **Pierwsza część M7 (bufor HDR, przebieg składający):**
 
@@ -2245,7 +2301,7 @@ Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod, dla Wind
 | 2560 x 1440 | około 2020 | około 1960 | około 3 procent mniej |
 
   W czasie klatki to około 0,37 ms przed i 0,40 ms po w mniejszej rozdzielczości. Wersji karty i sterownika nie zapisano, więc liczby mówią o rzędzie wielkości kosztu, a nie o konkretnym sprzęcie.
-- **Nie sprawdzone:** macOS i wyświetlacz Retina (nic z tej części nie było tam budowane ani uruchamiane), klikanie nowych kontrolek myszą, `Reload shaders`, zmiana rozmiaru okna przez przeciąganie krawędzi. Ścieżka framebuffera z samą głębią nie została nigdy wykonana (ta klasa jej nie używa). Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 17.
+- **Nie sprawdzone:** macOS i wyświetlacz Retina (nic z tej części nie było tam budowane ani uruchamiane), klikanie nowych kontrolek myszą, `Reload shaders`, zmiana rozmiaru okna przez przeciąganie krawędzi. Ścieżka framebuffera z samą głębią nie była wtedy nigdy wykonana (ta klasa jej nie używa. Od czwartej części wykonuje ją `game::ShadowMap`, sekcja 2.16). Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 17.
 - **Nie zmierzone:** koszt samych podglądów, pamięć karty zajęta przez bufor sceny, różnica między krzywymi na zrzutach ekranu.
 
 **Druga część M7 (bloom):**
@@ -2282,6 +2338,22 @@ Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod, dla Wind
 - **Wniosek z rachunku, którego nikt nie oglądał na ekranie.** Wąski pas nieba tuż nad horyzontem dostaje przy krawędziach ekranu mniej mgły niż w środku (53 procent wobec 31 do 36 procent na 3 stopniach), więc przy obrocie kamery może się lekko zmieniać (sekcja 2.21). Ściany i ziemia tego nie mają.
 - **Nie sprawdzone:** macOS i wyświetlacz Retina (nic z tej części nie było tam budowane ani uruchamiane), klikanie ośmiu nowych kontrolek i przełączanie zakładek panelu myszą, `Reload shaders` po tej zmianie, zmiana rozmiaru okna z włączoną mgłą. Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 19.
 - **Nie zmierzone:** koszt samej mgły i samej winiety osobno, koszt przy panelu otwartym na zakładce `Fog and vignette`, rzeczywista wysokość ziemi labiryntu względem `baseHeight` (sekcja 2.20), wygląd mgły przy skali wysokości terenu innej niż 1.
+
+**Czwarta część M7 (cienie księżyca), w zakresie tego modułu:**
+
+- **Bramka.** `make check` przechodzi: formatowanie, buildy Debug i Release, testy w obu, clang-tidy. **310 przypadków testowych i 103751 asercji.** Przyrost o 16 przypadków i 1339 asercji to jeden nowy plik, `tests/ShadowTests.cpp`, `294 + 16 = 310` i `102412 + 1339 = 103751`. Sam policzyłem jedno: makra `TEST_CASE` w tym pliku (16). Żaden z tych testów nie dotyczy klasy `PostProcess` ani trybu `RawDepth`. Samych testów nie uruchamiałem.
+- **Cienie wyłączone.** Z odznaczonym polem `Shadows` i intensywnością księżyca cofniętą do 0,12 obraz jest poza pasem HUD identyczny co do piksela z obrazem trzeciej części (w trybie Phong różni się najwyżej o 1/255). Pas HUD jest wyłączony z porównania: HUD stoi teraz o jeden rząd pasków niżej. Dzisiejsza klatka bez cieni różni się więc od trzeciej części jaśniejszym księżycem (0,2) i miejscem HUD, i to celowo.
+- **Błędy OpenGL.** Build Debug (z `GL_CHECK`) bez błędów przy mapie cieni 2048 i 1024.
+- **Wydajność, zgłoszona i niepewna.** Release, panele ukryte, pomiar niespokojny (klatka trwa poniżej 1 ms w mniejszej rozdzielczości):
+
+| Rozdzielczość | Cienie wyłączone | Mapa 2048 | Mapa 1024 | W czasie klatki |
+|---|---|---|---|---|
+| 1280 x 720 | około 1250 klatek na sekundę | około 1000 | około 1200 | około 0,80 ms bez, 1,00 ms przy 2048, 0,83 ms przy 1024 |
+| 2560 x 1440 | około 630 | około 560 | około 690 | około 1,59 ms bez, 1,79 ms przy 2048, 1,45 ms przy 1024 |
+
+  Tych liczb **nie wolno** czytać jako kosztu cieni. Po pierwsze, w 2560 x 1440 mapa 1024 wyszła szybciej niż cienie wyłączone (690 wobec 630), czego kod nie umie wyjaśnić: rozrzut pomiaru jest więc większy niż mierzony skutek. Po drugie, wartości "cienie wyłączone" (1250 i 630) leżą daleko poniżej 1880 i 1145 z tabeli trzeciej części, zmierzonych w innej sesji. Sesji nie wolno porównywać (to samo zastrzeżenie stoi przy drugiej i trzeciej części), więc z tej różnicy nie wynika, że sama ta część spowolniła klatkę bez cieni o jedną trzecią. Ale nie wynika też, że nie spowolniła: koszt tej części przy wyłączonych cieniach jest **niewyjaśniony** i wymaga czystego pomiaru, obu buildów (sprzed tej części i po niej) w jednej sesji. Wersji karty i sterownika nie zapisano. Dla MacBooka nie wynika z tych liczb nic.
+- **Nie sprawdzone:** macOS (nic z tej części nie było tam budowane ani uruchamiane), przełączanie rozdzielczości mapy w działającym programie, kontrolki panelu Shadows myszą, `Reload shaders` przy jedenastu programach.
+- **Nie zmierzone:** koszt przebiegu podglądu mapy cieni przy otwartym panelu Shadows, koszt samego przebiegu głębi osobno od kosztu porównań w programach sceny.
 
 ### 5.10 `Bloom.hpp` i `Bloom.cpp`: ustawienia i matematyka bez OpenGL
 
@@ -2537,9 +2609,9 @@ struct FogSettings {
 |---|---|---|---|
 | `enabled` | `true` | czy przebieg składający miesza mgłę | wyłączona daje dokładnie klatkę bez mgły: tekstura głębi nie jest nawet czytana |
 | `density` | 0,1 na metr | gęstość na wysokości bazowej i pod nią | po `1 / density` metrach 63 procent, po `ln(2) / density` połowa: 10 m i około 6,9 m, trzy i pół komórki |
-| `baseHeight` | 0,5 m | do tej wysokości świata mgła ma pełną gęstość | ziemia labiryntu leży między 0 a około 0,5 m, więc cała podłoga jest w najgęstszej mgle (tej liczby nie sprawdzałem, sekcja 2.20) |
+| `baseHeight` | 0,5 m | do tej wysokości świata mgła ma pełną gęstość | ziemia labiryntu leży między 0 a około 0,6 m przy skali wysokości 1 (`game::MAZE_RELIEF`), więc większość podłogi jest w najgęstszej mgle. Liczba jest stała i nie idzie za skalą wysokości terenu (sekcja 2.20. Tak mówi komentarz od czwartej części M7, wcześniej mówił o 0,5 m i całej podłodze) |
 | `heightFalloff` | 0,4 na metr | jak szybko mgła rzednie nad bazą | gęstość spada o połowę co `ln(2) / heightFalloff`, czyli co około 1,7 m. Szczyty ścian (3 m, czyli 2,5 m nad bazą) stoją w mgle o gęstości około jednej trzeciej (`exp(-1) = 0,37`). 0 daje tę samą gęstość wszędzie |
-| `color` | sRGB (0,14, 0,18, 0,26) | kolor, w który przechodzi powierzchnia | zimny szaroniebieski między światłem otoczenia a światłem księżyca. Liczba sRGB, na liniową przelicza ją `PostProcess`. Na ekranie mgła jest ciemniejsza niż próbka, bo jest mieszana przed ekspozycją i krzywą |
+| `color` | sRGB (0,14, 0,18, 0,26) | kolor, w który przechodzi powierzchnia | zimny szaroniebieski między światłem otoczenia a światłem księżyca. Liczba sRGB, na liniową przelicza ją `PostProcess`. Z krzywą Reinharda albo ACES mgła jest na ekranie ciemniejsza niż próbka, bo jest mieszana przed ekspozycją i krzywą. Z `None (clamp)` przy ekspozycji 1 zgadza się z próbką (sekcja 2.21) |
 
 Komentarz nad strukturą mówi, że wartości startowe są częścią wyglądu nocy: cienka mgiełka, która leży w korytarzach i zostawia niebo czyste. Zakresów suwaków w tym pliku nie ma: należą do panelu (sekcja 6.1), bo korzysta z nich tylko panel.
 
@@ -2638,7 +2710,7 @@ Tej funkcji, tak jak czterech funkcji mgły, gra nie woła: służy testom. Waru
 
 ## 6. Panel ImGui
 
-Panel **Framebuffers** rysuje funkcja `debug::drawFramebuffersPanel` z [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp). To jedenasty panel interfejsu debugowania. Druga część M7 nie dodała panelu: kontrolki i obrazy bloomu doszły do tego samego. Trzecia też nie: osiem kontrolek mgły i winiety stanęło w tym samym panelu, a żeby nie urósł, kontrolki są od tej części podzielone na **dwie zakładki** (tabs): `Tone and bloom` i `Fog and vignette`. Linie informacyjne i cztery obrazy pod zakładkami się nie zmieniły. Jego miejsce wśród pozostałych i mechanikę paneli opisuje [`../debug-ui.md`](../debug-ui.md).
+Panel **Framebuffers** rysuje funkcja `debug::drawFramebuffersPanel` z [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp). To jedenasty z dwunastu paneli interfejsu debugowania (dwunasty, Shadows, doszedł w czwartej części M7 i ma własny opis w [`../debug-ui.md`](../debug-ui.md), sekcja 6). Druga część M7 nie dodała panelu: kontrolki i obrazy bloomu doszły do tego samego. Trzecia też nie: osiem kontrolek mgły i winiety stanęło w tym samym panelu, a żeby nie urósł, kontrolki są od tej części podzielone na **dwie zakładki** (tabs): `Tone and bloom` i `Fog and vignette`. Linie informacyjne i cztery obrazy pod zakładkami się nie zmieniły. Jego miejsce wśród pozostałych i mechanikę paneli opisuje [`../debug-ui.md`](../debug-ui.md).
 
 ### 6.1 Kod panelu
 
@@ -2961,9 +3033,9 @@ Podglądy bloomu mają drugi warunek, niezależny od flagi: `bloomDrawn()`. Pane
 | Framebuffers | zakładki `Tone and bloom` i `Fog and vignette` (trzecia część M7) | nic w grze: tylko to, które kontrolki widać | siedem kontrolek wyżej stoi na pierwszej zakładce, osiem niżej na drugiej. Linie i obrazy pod zakładkami są wspólne |
 | Framebuffers, zakładka `Fog and vignette` | pole `Fog`, startowo zaznaczone (podpowiedź: `Far and low surfaces fade into the fog colour. Computed in the composite pass from the depth of the scene. The debug views (normals, UVs) are shown without it.`) | `FogSettings::enabled`, przez nie `uFogEnabled` | "przed i po": odznaczone daje dokładnie klatkę bez mgły. Koniec długiego korytarza odzyskuje kontrast, horyzont robi się ostry. Obrazy `HDR colour` i `Depth` w panelu **nie zmieniają się**: mgła nie jest zapisywana do bufora sceny, a głębię tylko czyta |
 | Framebuffers, zakładka `Fog and vignette` | suwak `Density`, 0 do 0,5, startowo `0.100 /m` (podpowiedź: `Fog: amount = 1 - exp(-density * height factor * distance). At 0.1, half of a surface on the ground is gone after 6.9 m.`) | `uFogDensity` | przy 0 mgły nie ma, choć pole `Fog` jest zaznaczone. Przy 0,5 widać najwyżej dwie komórki. Prawo wykładnicze na żywo: podwojenie gęstości skraca o połowę odległość, po której ginie połowa ściany |
-| Framebuffers, zakładka `Fog and vignette` | suwak `Base height`, -2 do 6 m, startowo `0.50 m` (podpowiedź: `Fog: up to this world height the fog has its full density. The ground of the maze lies between 0 and 0.5 m.`) | `uFogBaseHeight` | przy -2 cała scena jest ponad bazą i mgła rzednie już od ziemi. Przy 6 także szczyty ścian toną w pełnej gęstości, a pas mgły na niebie idzie w górę |
+| Framebuffers, zakładka `Fog and vignette` | suwak `Base height`, -2 do 6 m, startowo `0.50 m` (podpowiedź, poprawiona w czwartej części M7: `Fog: up to this world height the fog has its full density. The ground of the maze reaches about 0.6 m at height scale 1. This number does not follow the height scale.`) | `uFogBaseHeight` | przy -2 cała scena jest ponad bazą i mgła rzednie już od ziemi. Przy 6 także szczyty ścian toną w pełnej gęstości, a pas mgły na niebie idzie w górę |
 | Framebuffers, zakładka `Fog and vignette` | suwak `Height falloff`, 0 do 3, startowo `0.40 /m` (podpowiedź: `Fog: how fast it thins out above the base height: height factor = exp(-falloff * metres above the base). 0 gives the same fog at every height, the sky included.`) | `uFogHeightFalloff` | przy 0 **znika niebo**: punkt 100 m dalej ma prawie 100 procent mgły na każdej wysokości. To najlepszy dowód, że nieba nie chroni osobny warunek, tylko wysokość. Przy 3 mgła jest cienkim dywanem przy ziemi |
-| Framebuffers, zakładka `Fog and vignette` | próbnik `Fog colour`, startowo sRGB (0,14, 0,18, 0,26) (podpowiedź: `The colour surfaces fade into, as an sRGB value. It is mixed in before exposure and tone mapping, so on the screen the fog is darker than this swatch.`) | `FogSettings::color`, po przeliczeniu `uFogColor` | jaskrawa czerwień pokazuje od razu, gdzie mgła jest i ile jej jest: daleka ziemia czerwona, szczyty ścian mniej, księżyc wcale. Kolor w dali jest ciemniejszy niż próbka (sekcja 2.21) |
+| Framebuffers, zakładka `Fog and vignette` | próbnik `Fog colour`, startowo sRGB (0,14, 0,18, 0,26) (podpowiedź, poprawiona w czwartej części M7: `The colour surfaces fade into, as an sRGB value. It is mixed in before exposure and tone mapping: with Reinhard or ACES the fog on the screen is darker than this swatch, with None (clamp) at exposure 1 it matches.`) | `FogSettings::color`, po przeliczeniu `uFogColor` | jaskrawa czerwień pokazuje od razu, gdzie mgła jest i ile jej jest: daleka ziemia czerwona, szczyty ścian mniej, księżyc wcale. Przy krzywej domyślnej kolor w dali jest ciemniejszy niż próbka (sekcja 2.21) |
 | Framebuffers, zakładka `Fog and vignette` | pole `Vignette`, startowo zaznaczone (podpowiedź: `The corners of the finished picture are darkened, after tone mapping. The debug views (normals, UVs) are shown without it.`) | `VignetteSettings::enabled`, przez nie `uVignetteEnabled` | przy wartościach startowych różnica jest mała i najlepiej widać ją w rogach na tle nieba. Odznaczone daje dokładnie klatkę bez winiety |
 | Framebuffers, zakładka `Fog and vignette` | suwak `Strength`, 0 do 1, startowo `0.30` (podpowiedź: `Vignette: the share of the light the corners lose. 0 changes nothing, 1 makes them black.`) | `uVignetteStrength` | przy 1 rogi są czarne i widać kształt całej funkcji: gdzie się zaczyna i jak gładko narasta |
 | Framebuffers, zakładka `Fog and vignette` | suwak `Radius`, 0 do 0,65, startowo `0.40` (podpowiedź: `Vignette: the distance from the middle of the screen at which the darkening starts. 0.5 is the middle of an edge, 0.71 a corner. Not corrected for the shape of the window.`) | `uVignetteRadius` | przy 0 przyciemnienie zaczyna się w samym środku. Przy 0,65 zostaje wąski, stromy pas tuż przy rogach. Z siłą 1 i zmienianym kształtem okna widać elipsę zamiast koła |
@@ -2973,7 +3045,7 @@ Podglądy bloomu mają drugi warunek, niezależny od flagi: `bloomDrawn()`. Pane
 | Framebuffers | obraz `Bright pass` (podpowiedź: `What the scene has above the bloom threshold.`) | nic | czarny obraz z kilkoma jasnymi plamami: kryształy, tarcza księżyca. Ostre krawędzie, bo to stan **przed** rozmyciem. Dowód, że trzeci cel nie jest zamazywany |
 | Framebuffers | obraz `Bloom` (podpowiedź: `The bright pass after the blur, before the intensity.`) | nic | te same plamy rozlane w miękkie koła. To jest dokładnie to, co przebieg składający dodaje do sceny (razy `Intensity`) |
 | Assets | lista `View` | widok diagnostyczny | po przełączeniu na normalne albo UV suwak `Exposure`, lista `Tone mapping`, kontrolki bloomu i wszystkie kontrolki zakładki `Fog and vignette` przestają wpływać na obraz, a obrazy bloomu pokazują `(not drawn)` (sekcja 2.9) |
-| Shaders | `Reload shaders` | przeładowanie dziesięciu programów | cztery ostatnie linie listy to programy `composite`, `preview`, `bright` i `blur`, wszystkie z plikiem `composite.vert` |
+| Shaders | `Reload shaders` | przeładowanie jedenastu programów | linie od siódmej do dziesiątej to programy `composite`, `preview`, `bright` i `blur`, wszystkie z plikiem `composite.vert`. Jedenasta, `shadow_depth.vert + shadow_depth.frag`, należy do cieni |
 
 ### 6.4 Scenariusz pokazu na obronie
 
@@ -3014,9 +3086,9 @@ Kroków od 7 do 10 i od 12 do 18 nikt jeszcze nie przeszedł myszą: zrzuty ekra
 11. **Rozmiar 0 x 0.** Zminimalizowane okno. Framebuffer o rozmiarze 0 nie powstanie, a proporcja 0 / 0 to NaN. `onRender` pomija całą klatkę przed jakimkolwiek wywołaniem OpenGL.
 12. **Podgląd do góry nogami.** Tekstura framebuffera ma `v = 0` na dole, ImGui na górze. Współrzędne w `ImGui::Image` są odwrócone w pionie.
 13. **Wspólny shader wierzchołków.** `composite.vert` należy do czterech programów. Błąd w tym pliku psuje przy przeładowaniu wszystkie cztery naraz: okno zostaje z ostatnią klatką, a bloom i podglądy znikają.
-14. **Liczby wyliczenia a shader.** `ToneMapping` i `AttachmentPreview` są przekazywane jako `int`. Wpis dopisany w środku wyliczenia bez zmiany `if` w shaderze i napisu `TONE_MAPPING_ITEMS` wybierałby po cichu inną krzywą. Żaden test tego nie pilnuje.
+14. **Liczby wyliczenia a shader.** `ToneMapping` i `AttachmentPreview` są przekazywane jako `int`. Wpis dopisany w środku wyliczenia bez zmiany `if` w shaderze i napisu `TONE_MAPPING_ITEMS` wybierałby po cichu inną krzywą. Żaden test tego nie pilnuje. Od czwartej części M7 to samo dotyczy trzeciej wartości `AttachmentPreview`, `RawDepth = 2`, i gałęzi `uMode == 2` w `preview.frag`.
 15. **Płaszczyzny kamery w podglądzie głębi.** `uNear` i `uFar` muszą być tymi, którymi narysowano scenę. Inne wartości dają złe metry bez żadnego błędu.
-16. **Znane ograniczenia.** Bufor sceny ma pełną rozdzielczość okna, w połowie rozdzielczości pracuje tylko bloom. Framebuffer ma jeden załącznik koloru. Ekspozycja jest ręczna. Kolory `Kd` materiałów nie są przeliczane z sRGB (wszystkie modele gry mają `Kd` białe, więc różnicy nie ma). Minimapy i cieni nie ma. Mgła bierze wysokość tylko w pikselu, a jej kolor jest stałą, która nie reaguje na światła (punkty 35 i 39).
+16. **Znane ograniczenia.** Bufor sceny ma pełną rozdzielczość okna, w połowie rozdzielczości pracuje tylko bloom. Framebuffer ma jeden załącznik koloru. Ekspozycja jest ręczna. Kolory `Kd` materiałów nie są przeliczane z sRGB (wszystkie modele gry mają `Kd` białe, więc różnicy nie ma). Minimapy i cienia latarki nie ma (cień księżyca jest od czwartej części M7, [`shadows.md`](shadows.md)). Mgła bierze wysokość tylko w pikselu, a jej kolor jest stałą, która nie reaguje na światła (punkty 35 i 39).
 17. **Bloom na wartościach LDR.** Jeśli scena jest obcięta do 1, zanim trafi do przebiegu jasności (bufor 8-bitowy, bloom policzony po mapowaniu tonów albo cele bloomu w `GL_RGBA8`), próg nie odróżnia kryształu od białej ściany: obie mają 1 (tabela w sekcji 2.11). Świeci wtedy wszystko, co jasne, tak samo mocno. W tym kodzie pilnują tego trzy rzeczy: scena w `GL_RGBA16F`, cele bloomu w `GL_RGBA16F` i miejsce bloomu przed ekspozycją i krzywą.
 18. **Rozmycie, które czyta i pisze tę samą teksturę.** Kusząca "optymalizacja": jeden cel i rozmycie w miejscu. Wynik jest niezdefiniowany: część pikseli byłaby czytana już po zapisie, część przed, zależnie od karty. Stąd dwa cele i ping-pong (sekcja 2.14). Pokrewny błąd: pomylenie kolejności `bind()` i `bindColorTexture()` albo zamiana `source` na zły cel w pętli. `GL_CHECK` tego nie złapie, bo OpenGL nie zgłasza pętli zwrotnej jako błędu.
 19. **Próg w złej przestrzeni kolorów.** Wagi Rec. 709 i próg 0,8 mają sens dla wartości **liniowych**. Policzenie jasności z liczb zakodowanych w sRGB daje inną liczbę: liniowe 0,8 to w sRGB 0,91, a szarość zakodowana jako 0,8 ma liniowo tylko 0,60. Próg ustawiony "na oko" na obrazie sRGB przepuszczałby więc dużo więcej. Druga wersja tego błędu: zakodowanie wyniku przebiegu jasności przez `linearToSrgb` "żeby podgląd wyglądał dobrze". Kodowanie należy do `preview.frag` i `composite.frag`, a cele bloomu zostają liniowe.
@@ -3041,6 +3113,9 @@ Kroków od 7 do 10 i od 12 do 18 nikt jeszcze nie przeszedł myszą: zrzuty ekra
 38. **Sampler bez numeru jednostki.** Sampler, którego nikt nie ustawił, ma wartość 0, czyli jednostkę z obrazem sceny. `uDepth` czytałby wtedy czerwony kanał **koloru** jako głębię: ciemne piksele wyszłyby "przy kamerze", jasne "daleko", a mgła zależałaby od jasności ściany. Dlatego `composite` ustawia `uDepth` zawsze, także przy wyłączonej mgle i po każdym przeładowaniu shadera.
 39. **Mgła nie reaguje na światła.** Kolor mgły jest jedną stałą. Snop latarki nie rozświetla mgły, a przesunięcie księżyca albo zmiana światła otoczenia w panelu Lights nie zmienia jej barwy. Po zmianie świateł kolor mgły trzeba dobrać od nowa ręcznie. `Base height` też jest stałą w metrach świata i nie idzie za suwakiem skali wysokości terenu.
 40. **Winieta w złym miejscu.** Przed krzywą działa jak lokalna ekspozycja: prawie nie rusza jasnych rzeczy i mocno przyciemnia cienie. Po kodowaniu jest ponad dwa razy mocniejsza, niż mówi suwak (sekcja 2.22). I jeszcze jedno: winieta jest w przebiegu składającym, a ImGui rysuje **po** nim, więc panele i HUD nie są przyciemniane. Gdyby kiedyś interfejs gry miał być pod winietą, musiałby być rysowany przed nią.
+41. **Tryb `RawDepth` użyty do głębi sceny.** Tryb 2 programu `preview` pokazuje zapisaną głębię bez przeliczenia. Dla mapy cieni księżyca (rzut prostokątny) to poprawny, równy gradient. Dla głębi sceny albo dla przyszłej mapy cieni latarki (rzut perspektywiczny) dałby prawie biały obraz, bo wszystko dalej niż 2 m leży powyżej 0,95 (sekcja 2.10). O tym, który tryb pasuje, decyduje rzut, którym narysowano teksturę, a nie to, że jest teksturą głębi.
+42. **Nowy obraz wejściowy na jednostce 3.** Przebieg składający używa jednostek 0, 1 i 2, więc "następna wolna" wygląda na 3. Od czwartej części M7 leży tam mapa cieni księżyca razem z samplerem z porównaniem (`MOON_SHADOW_TEXTURE_UNIT`). `Framebuffer::bindColorTexture` i `bindDepthTexture` odpinają obiekt samplera z jednostki, na której wiążą, więc tekstura związana na 3 w przebiegu po scenie zdjęłaby sampler mapy cieni. Dziś nic by się nie zepsuło, bo przebieg cieni wiąże mapę i sampler od nowa na początku każdej klatki, w której cienie są rysowane, ale przy wyłączonych cieniach na jednostce 3 zostałaby obca tekstura. Numery jednostek trzeba dobierać, patrząc na oba pliki: `PostProcess.cpp` i `ShaderUniforms.hpp`.
+43. **Porównywanie liczby klatek między sesjami.** Tabele wydajności w sekcji 5.9 pochodzą z czterech różnych sesji i ich wartości "bez efektu" nie zgadzają się ze sobą (około 1960, od 1370 do 1480, około 1158 i około 630 klatek w 2560 x 1440). Koszt zmiany wolno liczyć tylko z dwóch liczb zmierzonych w tej samej sesji.
 
 ## 8. Ćwiczenia
 
@@ -3147,7 +3222,7 @@ Kroków od 7 do 10 i od 12 do 18 nikt jeszcze nie przeszedł myszą: zrzuty ekra
     Tekstura framebuffera ma `v = 0` na dole, a ImGui rysuje od góry.
 
 23. **Czego z tematu 10 jeszcze nie ma?**
-    Minimapy. Bufor HDR, przebieg składający, podglądy, bloom, mgła i winieta są w kodzie, więc temat jest w toku, a nie zamknięty. Cienie to osobny temat 11 i też ich nie ma.
+    Minimapy. Bufor HDR, przebieg składający, podglądy, bloom, mgła i winieta są w kodzie, więc temat jest w toku, a nie zamknięty. Cienie to osobny temat 11: od czwartej części M7 cień rzuca księżyc, a cień latarki jest planowany, więc ten temat też jest w toku.
 
 24. **Co to jest bloom i z jakich kroków się składa?**
     Poświata wokół miejsc jaśniejszych od progu. Trzy kroki: przebieg jasności zostawia światło ponad progiem, rozmycie Gaussa rozlewa je na sąsiadów, przebieg składający dodaje wynik do sceny.
@@ -3183,7 +3258,7 @@ Kroków od 7 do 10 i od 12 do 18 nikt jeszcze nie przeszedł myszą: zrzuty ekra
     Jeden przebieg jasności i dwa na każdą iterację rozmycia. Przy sześciu iteracjach 13, w zakresie suwaka od 3 do 21. Do tego dwa podglądy przy otwartym panelu.
 
 35. **Jak zmienia się szerokość poświaty z liczbą iteracji?**
-    Jak pierwiastek: `sigma * sqrt(n)`. Sześć iteracji z `sigma = 3` to około 7 pikseli celu, czyli około 14 pikseli ekranu.
+    Jak pierwiastek: `sigma * sqrt(n)`. Sześć iteracji z `sigma = 3` to około 7,3 piksela celu dla pełnego rozkładu, a po ucięciu jądra około 6,7, czyli około 13 pikseli ekranu.
 
 36. **Dlaczego bloom jest dodawany przed ekspozycją i mapowaniem tonów?**
     Poświata jest światłem, a światło dodaje się na wartościach liniowych. Ekspozycja i krzywa traktują ją potem jak resztę obrazu: krzywa sprowadza sumę do zakresu ekranu, zamiast ją obcinać, a suwak ekspozycji zmienia poświatę razem ze sceną.
@@ -3256,6 +3331,15 @@ Kroków od 7 do 10 i od 12 do 18 nikt jeszcze nie przeszedł myszą: zrzuty ekra
 
 59. **Jak panel mieści piętnaście kontrolek bez zmiany wysokości?**
     W dwóch zakładkach: `Tone and bloom` z siedmioma kontrolkami i `Fog and vignette` z ośmioma, każda jako tabela o dwóch kolumnach i czterech wierszach. `BeginTabItem` zwraca prawdę tylko dla wybranej zakładki, więc w klatce rysuje się jedna.
+
+60. **Dlaczego podgląd mapy cieni księżyca nie potrzebuje `linearDepth`, a podgląd głębi sceny potrzebuje?**
+    Scena jest rysowana rzutem perspektywicznym: po dzieleniu przez `w` odległość stoi w mianowniku i zapisana głębia jest bardzo nierówna (2 m to już 0,951). Mapa cieni księżyca jest rysowana rzutem prostokątnym, w którym dzielenia nie ma: zapisana głębia to `(d - n) / (f - n)`, rośnie równo z odległością. Dlatego `preview.frag` ma dla niej tryb 2 (`AttachmentPreview::RawDepth`), który wpisuje liczbę z tekstury wprost. Mapa cieni latarki (planowana) będzie miała rzut perspektywiczny i znów będzie potrzebowała przeliczenia.
+
+61. **Kto rysuje obraz mapy cieni dla panelu Shadows i czym?**
+    `game::ShadowMap::drawPreview`, nie `PostProcess`: programem `preview` w trybie 2, jednym trójkątem pełnoekranowym, do własnego framebuffera 256 x 256 w formacie `GL_RGBA8`. Mapę wiąże bez obiektu samplera, żeby shader dostał zapisane głębie, a nie wyniki porównania. Rysuje tylko wtedy, gdy panel Shadows jest otwarty (flaga `ShadowSettings::preview`).
+
+62. **Co zmieniło się w kolejności klatki po dodaniu cieni?**
+    Przed `beginScene` stoi teraz `drawMoonShadowMap()`: przebieg samej głębi do mapy cieni. Zostawia związany własny framebuffer i viewport o rozmiarze mapy, a `beginScene` wiąże framebuffer sceny i ustawia viewport od nowa. Test głębi, który przebieg składający poprzedniej klatki zostawił wyłączony, włącza `ShadowMap::beginDepthPass`. Mapa leży potem na jednostce 3 przez cały przebieg sceny.
 
 ## 10. Źródła
 

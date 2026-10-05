@@ -7,13 +7,15 @@ Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten 
 
 **Stan na dziś:** gra ma trzy źródła światła: księżyc, latarkę gracza i światła punktowe nad kryształami, których gracz jeszcze nie zebrał. Latarka jest włączona na początku każdej rundy, klawisz F ją przełącza. Od M5 latarka ma **baterię**: bateria ubywa tylko wtedy, gdy latarka świeci, poniżej progu światło migocze, a pusta bateria gasi latarkę do chwili zebrania kryształu.
 
-M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**, tak samo M6. Od drugiej części M6 światła z bufora uniformów czyta trzeci program, `grass` (trawa), a pod światłami leży teren zamiast płytek podłogi: ustawień świateł ani ich budowy to nie zmieniło. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412) (w tym wtedy 10 przypadków z `tests/LightingTests.cpp`, dziś 11, i 25 z `tests/RoundTests.cpp`), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: **nic z M5 ani z M6 nie było budowane ani uruchamiane na macOS** i **nikt jeszcze nie testował ręcznie**: klawisza F przy pustej baterii, migotania widzianego na ekranie, zbierania kryształów, klawisza R, suwaków panelu Gameplay. To, że stożek latarki zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane.
+M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**, tak samo M6. Od drugiej części M6 światła z bufora uniformów czyta trzeci program, `grass` (trawa), a pod światłami leży teren zamiast płytek podłogi: ustawień świateł ani ich budowy to nie zmieniło. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751) (w tym wtedy 10 przypadków z `tests/LightingTests.cpp`, dziś 11, i 25 z `tests/RoundTests.cpp`), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: **nic z M5 ani z M6 nie było budowane ani uruchamiane na macOS** i **nikt jeszcze nie testował ręcznie**: klawisza F przy pustej baterii, migotania widzianego na ekranie, zbierania kryształów, klawisza R, suwaków panelu Gameplay. To, że stożek latarki zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane.
 
 Z części M4 zostaje w mocy to, co wtedy sprawdzono na zrzutach ekranu z Windowsa: widok startowy z plamą latarki w środku ekranu i scena ze zgaszoną latarką.
 
-Czego nie ma: stanu przegranej (pusta bateria oznacza tylko ciemność, runda trwa dalej: notatka [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md)), tekstury "cookie" latarki z PRD i **cieni** (planowane w dalszej części M7).
+Czego nie ma: stanu przegranej (pusta bateria oznacza tylko ciemność, runda trwa dalej: notatka [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md)), tekstury "cookie" latarki z PRD i **cieni latarki oraz świateł kryształów** (cień latarki jest planowany w dalszej części M7, sekcja 2.1). Cienie rzuca od czwartej części M7 tylko księżyc.
 
-**Pierwsza część M7 (bufor HDR i gamma, 2026-10-05)** zmieniła w tym module trzy rzeczy: `buildLightSet` przelicza cztery kolory ustawień z sRGB na wartości liniowe (sekcja 5.5), wartości startowe świateł zostały dobrane od nowa do potoku HDR (sekcja 5.2), a `tests/LightingTests.cpp` ma jedenasty przypadek (sekcja 5.8). Zgłoszone dla Windowsa: bramka `make check` przechodzi, 269 przypadków i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412. Nowego wyglądu sceny nikt nie porównywał jeszcze ręcznie ze starym, a na macOS nic z tego nie było budowane. Teoria: [`../gfx/color-space.md`](../gfx/color-space.md), przebieg składający: [`../renderer/post-process.md`](../renderer/post-process.md).
+**Czwarta część M7 (cienie księżyca, 2026-10-05)** zmieniła w tym module cztery rzeczy. Księżyc rzuca cienie: jego mapę cieni i całą technikę opisuje [`../renderer/shadows.md`](../renderer/shadows.md). Intensywność startowa księżyca wzrosła z 0,12 do 0,2, żeby miejsce oświetlone księżycem dało się odróżnić od cienia ściany (sekcja 5.2). Doszła funkcja `game::moonDirection`, z której kierunek księżyca biorą i światła klatki, i mapa cieni (sekcja 5.5). Dwa komentarze w `Lighting.hpp` (światło otoczenia i księżyc) mają nową treść. **Latarka i światła kryształów cieni nie rzucają**: ich światło nadal przechodzi przez ściany. Blok uniformów świateł (`LightBlock`, 928 bajtów) się nie zmienił: macierz mapy cieni jedzie do shaderów zwykłymi uniformami, obok swojego samplera ([`../scene/lights.md`](../scene/lights.md)). `tests/LightingTests.cpp` nadal ma 11 przypadków: przypadek o `moonDirection` stoi w `tests/ShadowTests.cpp`. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi, 310 przypadków i 103751 asercji. Na macOS nic z tego nie było budowane ani uruchamiane.
+
+**Pierwsza część M7 (bufor HDR i gamma, 2026-10-05)** zmieniła w tym module trzy rzeczy: `buildLightSet` przelicza cztery kolory ustawień z sRGB na wartości liniowe (sekcja 5.5), wartości startowe świateł zostały dobrane od nowa do potoku HDR (sekcja 5.2), a `tests/LightingTests.cpp` ma jedenasty przypadek (sekcja 5.8). Zgłoszone dla Windowsa: bramka `make check` przechodzi, 269 przypadków i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751. Nowego wyglądu sceny nikt nie porównywał jeszcze ręcznie ze starym, a na macOS nic z tego nie było budowane. Teoria: [`../gfx/color-space.md`](../gfx/color-space.md), przebieg składający: [`../renderer/post-process.md`](../renderer/post-process.md).
 
 ## 1. Po co to jest
 
@@ -67,6 +69,8 @@ Skutki tego wyboru:
 - Gracz nigdy nie widzi własnego cienia ani boku stożka. Stożek widać tylko jako koło na tym, na co pada.
 
 Prawdziwą latarkę trzyma się w ręce, niżej i z boku. Przesunięcie jej względem oka dałoby ładniejszy obraz (widać by było, że plama nie jest dokładnie w środku), ale wymagałoby decyzji, gdzie jest ręka. Na dziś latarka jest w oku.
+
+**Planowane (nie ma tego w kodzie).** Decyzja właściciela projektu z 2026-10-05: latarka dostanie własną mapę cieni z rzutem perspektywicznym, a światło przeniesie się z oka do ręki, trochę w prawo i poniżej oka. Powód jest prosty: światło dokładnie w oku nie pokazuje własnych cieni, bo każdy cień chowa się za rzeczą, która go rzuca. Notatka: [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md), plan w [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20. **Dziś latarka jest w oku i nie rzuca żadnych cieni**: wszystko w tym dokumencie opisuje ten stan.
 
 ### 2.2 Dlaczego latarka powstaje w `onRender`, a nie w `onUpdate`
 
@@ -202,6 +206,8 @@ Ten moduł nie ma własnych shaderów. Dotyka istniejących w dwóch miejscach:
 
 Bateria nie zmieniła w shaderze ani jednej linii. Migotanie to mniejsza liczba w `uSpotColor.a` (intensywność), pusta bateria to zero w `uSpotCone.z` (przełącznik), puls kryształów to mniejsza liczba w `uPoints[i].color.a`, a zebrany kryształ to o jeden mniejsze `uPointCount`. Shader liczy tak samo jak w M4, tylko z innymi danymi.
 
+Czwarta część M7 zmieniła w `computeLighting` tylko gałąź księżyca: jego dwa składniki są dodatkowo zapamiętywane w polach `moonDiffuse` i `moonSpecular` wyniku, żeby shader wołający mógł je odjąć tam, gdzie punkt leży w cieniu księżyca. Gałęzi latarki i pętli świateł punktowych ta zmiana nie dotknęła: światło latarki i kryształów nie jest nigdy przyciemniane przez cień ([`../scene/lights.md`](../scene/lights.md), [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.14).
+
 **Blask kryształów: uniform `uEmissive`.** Trzy shadery fragmentów (`lit.frag`, `gouraud.frag`, `textured.frag`) mają od M5 uniform `uEmissive` (sekcja 2.6). To zwykły uniform poza blokiem świateł, ustawiany przez klasy rysujące: `MazeRenderer::draw` daje czerń, `GameplayRenderer::draw` czerń dla bramy i `crystalGlow(...)` dla kryształów. Shadery z nim omawia linia po linii [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcje 4.2 i 4.4, a to, kto i kiedy go ustawia, [`gameplay.md`](gameplay.md), sekcja 4.
 
 ## 5. Kod w projekcie
@@ -210,8 +216,8 @@ Bateria nie zmieniła w shaderze ani jednej linii. Migotanie to mniejsza liczba 
 
 | Plik | Co zawiera |
 |---|---|
-| [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp) | typy `LightingMode` i `SpecularModel`, struktura `LightingSettings`, deklaracje `specularModelOf`, `usesNormalMap`, `buildLightSet` |
-| [`src/game/Lighting.cpp`](../../../src/game/Lighting.cpp) | definicje tych trzech funkcji |
+| [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp) | typy `LightingMode` i `SpecularModel`, struktura `LightingSettings`, deklaracje `specularModelOf`, `usesNormalMap`, od czwartej części M7 `moonDirection`, `buildLightSet` |
+| [`src/game/Lighting.cpp`](../../../src/game/Lighting.cpp) | definicje tych czterech funkcji |
 | [`src/game/Round.hpp`](../../../src/game/Round.hpp), [`.cpp`](../../../src/game/Round.cpp) | pole `Round::battery`, liczby baterii w `GameplaySettings`, funkcje `updateRound` (zużycie, ładowanie, wymuszone wyłączenie), `flashlightFlicker`, `lightingForFrame`, `crystalLightPositions`. Resztę pliku omawia [`gameplay.md`](gameplay.md) |
 | [`src/game/Crystals.hpp`](../../../src/game/Crystals.hpp), [`.cpp`](../../../src/game/Crystals.cpp) | `crystalLightPosition`, `crystalBobPosition`, `crystalPulse`, `crystalGlow` i ich stałe. Resztę pliku omawia [`gameplay.md`](gameplay.md) |
 | [`src/game/LightRig.hpp`](../../../src/game/LightRig.hpp), [`.cpp`](../../../src/game/LightRig.cpp) | klasa `LightRig`: bufor uniformów świateł |
@@ -241,7 +247,7 @@ struct LightingSettings {
 
     /// Light that reaches every surface: low, so that corners no light shines into are
     /// dark but not black. A cold blue, like the night sky. As an sRGB value it looks
-    /// like a lot, but only about a hundredth of it is left as linear light.
+    /// like a lot, but only a tenth to a fifth of each number is left as linear light.
     glm::vec3 ambient{0.105F, 0.135F, 0.225F};
 ```
 
@@ -249,7 +255,7 @@ Struktura to **same dane z wartościami startowymi**: nie ma funkcji ani stanu u
 
 **Akapit `COLOUR SPACE` (pierwsza część M7).** Cztery kolory struktury (`ambient`, `moonColor`, `flashlightColor`, `pointColor`) są wartościami **sRGB**: liczbami, które pokazuje próbnik koloru i które wyświetla ekran. Shadery liczą na wartościach liniowych, więc `buildLightSet` przelicza je raz (sekcja 5.5). Intensywności są zwykłymi mnożnikami: mnożą już liniowy kolor i mogą wypchnąć go powyżej 1. To nie błąd: scena jest rysowana do bufora HDR, a w zakres ekranu sprowadza ją przebieg składający. Dlatego wartości startowe świateł są dobrane **razem** z ekspozycją (1,0) i krzywą mapowania tonów (ACES) z `PostProcessSettings`: zmiana jednego bez drugiego zmienia wygląd nocy.
 
-Zdanie komentarza o świetle otoczenia czytam ostrożnie. Liczbowo: 0,105 w sRGB to 0,0108 wartości liniowej, czyli około jednej dziesiątej samej liczby i około jednej setnej bieli. "A hundredth" jest więc prawdą względem bieli, nie względem wpisanej liczby.
+Zdanie komentarza o świetle otoczenia da się sprawdzić rachunkiem (policzone): 0,105 w sRGB to 0,0108 wartości liniowej, czyli 10 % samej liczby, 0,135 to 0,0163 (12 %), a 0,225 to 0,0414 (18 %). "A tenth to a fifth of each number" zgadza się więc z liczbami. Do trzeciej części M7 komentarz mówił "about a hundredth of it", co było prawdą tylko względem bieli (0,0108 to około jednej setnej z 1), nie względem wpisanej liczby: czwarta część M7 poprawiła to zdanie.
 
 | Pole | Wartość startowa | Znaczenie |
 |---|---|---|
@@ -259,17 +265,22 @@ Zdanie komentarza o świetle otoczenia czytam ostrożnie. Liczbowo: 0,105 w sRGB
 ```cpp
     float moonYawDegrees = 25.0F;
     float moonPitchDegrees = -50.0F;
-    /// A cool, dim blue-white.
+    /// A cool, dim blue-white. The intensity is low on purpose (it is night), but high
+    /// enough that a surface in the moon light is clearly brighter than one in the
+    /// shadow of a wall, which only has the ambient light: about five times on level
+    /// ground.
     glm::vec3 moonColor{0.55F, 0.65F, 1.0F};
-    float moonIntensity = 0.12F;
+    float moonIntensity = 0.2F;
 ```
 
 | Pole | Wartość startowa | Znaczenie |
 |---|---|---|
 | `moonYawDegrees`, `moonPitchDegrees` | 25 i -50 stopni | kierunek, w którym światło księżyca **leci**, jako dwa kąty w konwencji kamery (`scene::directionFromAngles`). Pitch ujemny: w dół. Yaw celowo nie jest wielokrotnością 45 stopni: ściany patrzą w cztery strony i każda dostaje inną część światła ([`../scene/lights.md`](../scene/lights.md), tabela w sekcji 2.3) |
-| `moonColor`, `moonIntensity` | zimny niebieskawy `(0,55, 0,65, 1,0)`, po przeliczeniu `(0,263, 0,380, 1,0)`, intensywność 0,12 (do M6 0,3) | księżyc jest słaby: ma dać kształt ścianom, a nie oświetlić labirynt |
+| `moonColor`, `moonIntensity` | zimny niebieskawy `(0,55, 0,65, 1,0)`, po przeliczeniu `(0,263, 0,380, 1,0)`, intensywność 0,2 (do M6 0,3, w trzech pierwszych częściach M7 0,12), czyli światło `(0,0527, 0,0760, 0,2)` | księżyc jest słaby: ma dać kształt ścianom, a nie oświetlić labirynt. Od czwartej części M7 ma też być widać, gdzie kończy się jego cień |
 
-Komentarz w pliku mówi: "There are no shadows before M7", więc księżyc oświetla także ściany i grunt stojące w cieniu innej ściany. To zdanie jest dziś o krok za stanem projektu: M7 się zaczął (bufor HDR i gamma), a cieni nadal nie ma. Są planowane w dalszej części M7.
+**Dlaczego 0,2, a nie 0,12 (czwarta część M7).** Odkąd księżyc rzuca cienie, w cieniu ściany zostaje samo światło otoczenia, a obok, na otwartym gruncie, dochodzi do niego księżyc. Granicę cienia widać tylko wtedy, gdy te dwie jasności wyraźnie się różnią. Komentarz mówi "about five times on level ground". Rachunek (policzone, wartości liniowe, płaski grunt z normalną w górę, dla której czynnik Lamberta przy pitch -50 stopni to `sin(50°) = 0,766`): księżyc daje `(0,263, 0,380, 1,0) * 0,2 * 0,766 = (0,0403, 0,0582, 0,153)`, światło otoczenia to `(0,0108, 0,0163, 0,0414)`, więc miejsce w świetle jest od 4,6 do 4,7 razy jaśniejsze od miejsca w cieniu (w kanałach: 4,73, 4,56, 4,70). "Około pięć razy" z komentarza to zaokrąglenie w górę. Dla dawnego 0,12 wychodziło około 3,2 razy (policzone dla 0,12). To stosunek wartości liniowych przed ekspozycją i krzywą mapowania tonów: na ekranie różnica wygląda inaczej i nikt jej nie mierzył.
+
+**Komentarz nad kątami księżyca też się zmienił.** Do trzeciej części M7 kończył się zdaniem "There are no shadows before M7, so the moon also lights walls and ground that stand in the shade of another wall". Dziś w tym miejscu stoi: "The moon casts shadows: its shadow map is fitted to the land from this direction (game/Shadows.hpp)". Dwa kąty z ustawień mają więc od czwartej części M7 drugiego odbiorcę: oprócz światła księżyca w shaderach wyznaczają też kierunek, z którego rysowana jest mapa cieni ([`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.2 i 2.3). Oba biorą kierunek z jednej funkcji `moonDirection` (sekcja 5.5). Cienie rzuca **tylko księżyc**: latarka i światła kryształów nadal świecą przez ściany.
 
 ```cpp
     /// The flashlight, a spot light at the eye of the player. Key F switches it. An
@@ -473,7 +484,7 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3&
     lights.ambient = gfx::srgbToLinear(settings.ambient);
 
     lights.directional = {
-        .direction = scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees),
+        .direction = moonDirection(settings),
         .color = gfx::srgbToLinear(settings.moonColor),
         .intensity = settings.moonIntensity,
     };
@@ -486,7 +497,26 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3&
 | parametry | ustawienia (kopia na jedną klatkę z `lightingForFrame`, sekcja 5.3), oko i kierunek patrzenia (z kamery tej klatki), pozycje świateł punktowych (z `crystalLightPositions`, sekcja 5.4). Trzy źródła danych, jedna funkcja, zero stanu: ten sam zestaw argumentów daje zawsze ten sam wynik. Funkcja nie wie, skąd pochodzą pozycje: komentarz w `Lighting.hpp` mówi to wprost ("The function does not know where they come from") |
 | `std::span<const glm::vec3>` | widok na ciąg pozycji bez kopiowania: przyjmie `std::vector`, tablicę albo pustą listę `{}` (tak wołają ją testy) |
 | `lights.ambient = gfx::srgbToLinear(settings.ambient)` | światło otoczenia jako wartość liniowa: `(0,105, 0,135, 0,225)` staje się `(0,0108, 0,0163, 0,0414)` |
-| `lights.directional = {...}` | księżyc: dwa kąty zamienione na wektor ([`../scene/lights.md`](../scene/lights.md), sekcja 5.5), kolor przeliczony na liniowy, intensywność przepisana |
+| `lights.directional = {...}` | księżyc: dwa kąty zamienione na wektor przez `moonDirection` (niżej; samą zamianę opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 5.5), kolor przeliczony na liniowy, intensywność przepisana |
+
+**`moonDirection` (czwarta część M7).** Do trzeciej części M7 w polu `.direction` stało wprost wywołanie `scene::directionFromAngles(...)`. Dziś to osobna funkcja. Deklaracja z komentarzem z `Lighting.hpp`:
+
+```cpp
+/// The direction the light of the moon TRAVELS in, with length 1, from the two angles of
+/// the settings (scene::directionFromAngles). The lights of a frame and the shadow map
+/// of the moon both take it from here, so they can never disagree.
+glm::vec3 moonDirection(const LightingSettings& settings);
+```
+
+Definicja z `Lighting.cpp`:
+
+```cpp
+glm::vec3 moonDirection(const LightingSettings& settings) {
+    return scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees);
+}
+```
+
+Funkcja ma dwóch odbiorców: `buildLightSet` (kierunek światła w shaderach) i `NightMazeApp::drawMoonShadowMap`, która w każdej klatce woła `scene::directionalLightSpace(shadowCasterBounds(m_mazeWorld.terrain), moonDirection(m_lighting))`, czyli ustawia pudełko mapy cieni z tego samego kierunku. Gdyby każde z tych miejsc liczyło wektor samo, po zmianie jednego z nich cień padałby w inną stronę, niż świeci światło, bez żadnego błędu kompilacji. Jedna różnica jest warta zapamiętania: `buildLightSet` dostaje **kopię ustawień na jedną klatkę** z `lightingForFrame`, a mapa cieni czyta `m_lighting` wprost. Kątów księżyca `lightingForFrame` nie zmienia (rusza tylko latarkę i światła punktowe, sekcja 5.3), więc oba wywołania dają ten sam wektor. Zgodność pilnuje przypadek `the moon direction of the settings is the one the lights are built with` w `tests/ShadowTests.cpp`: dla kątów 140 i -30 stopni kierunek z `moonDirection` ma długość 1 i jest równy `lights.directional.direction` z `buildLightSet`.
 
 ```cpp
     // The flashlight is held at the eye and points where the player looks.
@@ -664,6 +694,8 @@ Uczciwie: tego zachowania **nikt nie oglądał na ekranie**. Wynika z kolejnośc
 | `m_lightRig.upload(lights, eye);` | jedno kopiowanie na kartę, **przed** rysowaniem. Oba programy oświetlenia czytają ten sam bufor |
 | `drawMaze(view, projection);` | labirynt, a zaraz po nim brama i kryształy, tym samym programem ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 5.4). Osobnego rysowania znaczników świateł już nie ma |
 
+**Co stoi przed tym fragmentem od czwartej części M7.** Pierwszym przebiegiem `onRender` jest dziś `drawMoonShadowMap()`: zanim powstaną światła klatki, scena jest rysowana z kierunku księżyca do mapy cieni. Ten przebieg nie potrzebuje `LightSet` ani oka: bierze `moonDirection(m_lighting)` i granice terenu, więc kolejność "najpierw mapa cieni, potem światła" niczego nie psuje. Programy `lit`, `gouraud` i `grass` czytają potem dwie rzeczy: światła z bufora uniformów (jak dotąd) i mapę cieni księżyca z jednostki teksturującej 3 (`MOON_SHADOW_TEXTURE_UNIT`). Pozycja i kierunek latarki nie biorą w przebiegu cieni żadnego udziału.
+
 Zegar animacji i bateria są stanem symulacji: zmieniają się w stałych krokach. Klatka czyta je takie, jakie są po ostatnim kroku, bez interpolacji. Dla pulsu trwającego 2,4 s i unoszenia trwającego 3 s krok 1/120 s jest dużo drobniejszy niż ruch, który widać.
 
 **Nowa runda.**
@@ -740,7 +772,7 @@ void LightRig::upload(const scene::LightSet& lights, const glm::vec3& cameraPosi
 
 Dwa kroki: `packLightBlock` układa światła w strukturę o układzie bajtów bloku `std140`, a `update` kopiuje te bajty na kartę. Oba są omówione w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md). Funkcja jest `const`: zmienia zawartość bufora na karcie, a nie pola obiektu.
 
-**Światła ściana nie zasłania** (brak cieni), a kryształ tak: przechodzi test głębi jak każda inna geometria. Bywa więc, że widać turkusowy blask na podłodze, a kryształu, który go daje, nie.
+**Światła kryształu ściana nie zasłania** (światła punktowe nie mają cieni: od czwartej części M7 cienie rzuca tylko księżyc), a kryształ tak: przechodzi test głębi jak każda inna geometria. Bywa więc, że widać turkusowy blask na podłodze, a kryształu, który go daje, nie.
 
 ### 5.8 Jak to zostało sprawdzone
 
@@ -780,7 +812,7 @@ Bateria i światła klatki mają testy w `tests/RoundTests.cpp` (11 z 25 przypad
 
 Funkcje `crystalLightPosition`, `crystalPulse` i `crystalGlow` mają własne przypadki w `tests/CrystalTests.cpp`, opisane w [`gameplay.md`](gameplay.md).
 
-Wyniki dla Windowsa 2026-10-05: wszystkie te przypadki przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego z drugiej części M6 (po M5 było to 215 i 85098). Po pierwszej części M7, z jedenastym przypadkiem tego pliku, zgłoszone jest 269 przypadków i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412.
+Wyniki dla Windowsa 2026-10-05: wszystkie te przypadki przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego z drugiej części M6 (po M5 było to 215 i 85098). Po pierwszej części M7, z jedenastym przypadkiem tego pliku, zgłoszone jest 269 przypadków i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751.
 
 **Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp` i `LightRig`: klawisza F, tego, że `buildLightSet` dostaje interpolowane oko i kopię z `lightingForFrame`, kolejności `upload` przed rysowaniem, linii `flashlightOn = true` w `beginRound`. Ten kod wymaga okna. Migotania, pulsu i gasnącego światła zebranego kryształu **nikt jeszcze nie oglądał w działającej grze ręcznie**: to otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
@@ -840,7 +872,7 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 13. **Więcej niż 16 świateł.** Nie zdarza się: `crystalCountFor` przycina liczbę kryształów do `scene::MAX_POINT_LIGHTS`. Gdyby ktoś podniósł limit kryształów bez powiększenia tablicy w shaderze, `buildLightSet` po cichu pominie pozycje ponad 16: kryształy z końca listy będą świecić własnym blaskiem, ale nie oświetlą ścian.
 14. **Światło w środku siatki.** Światło punktowe ustawione w środku kryształu (bez `CRYSTAL_LIGHT_CLEARANCE`) świeci na jego ścianki od tyłu: `dot(N, L)` jest ujemny i kryształ nie dostaje ze swojego światła nic.
 15. **Blask to nie światło.** `uEmissive` zmienia tylko kolor samego kryształu. Niczego nie oświetla. I odwrotnie: `Point intensity` ustawione na 0 gasi blask na ścianach, a kryształy świecą dalej, bo `crystalGlow` bierze tylko `pointColor`.
-16. **Zasłonięty kryształ, widoczne światło.** Ściana zasłania model kryształu (test głębi), a jego światła nie (brak cieni). Blask na podłodze za ścianą jest skutkiem braku cieni, nie błędem pozycji.
+16. **Zasłonięty kryształ, widoczne światło.** Ściana zasłania model kryształu (test głębi), a jego światła nie: światła punktowe nie mają cieni. Blask na podłodze za ścianą jest skutkiem braku cieni tych świateł, nie błędem pozycji. Tak samo latarka świeci przez ściany. Cienie rzuca tylko księżyc (od czwartej części M7), więc w jednym kadrze bywa widać i cień ściany od księżyca, i turkusowy blask, który przez tę samą ścianę przeszedł.
 17. **Kryształy w trybie `Unlit` i w podglądach.** Są rysowane zawsze: `drawUnlitMaze` też woła `GameplayRenderer::draw`. W trybie `Unlit` kryształ jest jaśniejszy od ścian o swój blask (`texel * uTint * (1 + uEmissive)`). W podglądach normalnych i UV z panelu Assets blasku nie ma: `textured.frag` używa `uEmissive` tylko w zwykłym obrazie.
 18. **Prześwietlona ściana przed nosem.** Tłumienie w odległości bliskiej zera wynosi 1, a intensywność latarki to 1,3: jasna ściana tuż przed graczem dostaje wartości powyżej 1. Do M6 (intensywność 1,6, bez HDR) były obcinane do bieli. Od pierwszej części M7 zostają w buforze HDR, a krzywa ACES zgina je ku bieli zamiast obcinać, więc rysunek tekstury powinien zostać widoczny (tak wynika ze wzoru krzywej, nikt nie porównał tego jeszcze na ekranie). Kto przełączy `Tone mapping` na `None (clamp)` w panelu Framebuffers, zobaczy dawne obcięcie.
 19. **Zegar animacji stoi, gdy stoi symulacja.** Puls i migotanie biorą czas z `Round::animationSeconds`, który rośnie w stałych krokach. Klatka bez kroku rysuje te same wartości co poprzednia.

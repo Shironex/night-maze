@@ -1,5 +1,6 @@
-// Lighting shared by lit.frag (per fragment) and gouraud.vert (per vertex): the light
-// block and the functions that turn the lights into the brightness of one surface point.
+// Lighting shared by lit.frag and grass.frag (per fragment) and gouraud.vert (per
+// vertex): the light block and the functions that turn the lights into the brightness of
+// one surface point.
 // This file is not a shader of its own. It has no #version line: the shader loader puts
 // its text in place of the line  #include "common/lighting.glsl"  (gfx/ShaderSource.hpp).
 // See docs/modules/scene/lights.md
@@ -50,9 +51,17 @@ uniform float uShininess;
 // The light that reaches one point of a surface, in two parts, because they are used
 // differently: diffuse is multiplied by the colour of the surface (the texture), the
 // highlight is added on top and keeps the colour of the light.
+//
+// The share of the moon is ALSO kept on its own. diffuse and specular already contain
+// it. The moon is the light with a shadow map: where a surface lies in its shadow, the
+// caller takes that share away again (see common/shadows.glsl and the main function of
+// lit.frag). Nothing else is ever taken away, so a shadow of the moon never darkens the
+// ambient light, the flashlight, the crystals or a glowing surface.
 struct Lighting {
-    vec3 diffuse;  // ambient light plus the Lambert term of every light
-    vec3 specular; // the highlight of every light
+    vec3 diffuse;      // ambient light plus the Lambert term of every light
+    vec3 specular;     // the highlight of every light
+    vec3 moonDiffuse;  // the part of diffuse that comes from the moon
+    vec3 moonSpecular; // the part of specular that comes from the moon
 };
 
 // Lambert: a surface is brightest when it faces the light and gets darker as it turns
@@ -97,6 +106,13 @@ float attenuationFactor(vec4 terms, float lightDistance) {
     return 1.0 / (terms.x + terms.y * lightDistance + terms.z * lightDistance * lightDistance);
 }
 
+// How much a surface with this normal (length 1) faces the moon: the cosine of the angle
+// between the normal and the direction to the moon. 1 facing it, 0 grazed by its light,
+// below 0 facing away. The shadow bias grows as this number falls (common/shadows.glsl).
+float moonFacing(vec3 normal) {
+    return dot(normal, -uDirectionalDirection.xyz);
+}
+
 // Adds one light to the result. radiance is the colour of the light as it arrives at the
 // point: its colour times its intensity, already made weaker by distance and by the cone.
 void addLight(inout Lighting lighting, vec3 normal, vec3 toLight, vec3 toEye, vec3 radiance) {
@@ -105,9 +121,11 @@ void addLight(inout Lighting lighting, vec3 normal, vec3 toLight, vec3 toEye, ve
 }
 
 // The light at one point of a surface. position and normal are in world space, normal
-// has length 1. lit.frag calls this for every fragment, gouraud.vert for every vertex:
-// the same function, and the only difference between the two programs is where it runs.
-// There are no shadows yet: a light also reaches surfaces that stand behind a wall.
+// has length 1. lit.frag and grass.frag call this per fragment, gouraud.vert per vertex:
+// the same function, and the lit and the gouraud program differ only in where it runs.
+// This function knows nothing about shadows: it computes every light as if nothing stood
+// in its way. The shadow of the moon is applied by the caller, with the two moon fields
+// of the result.
 Lighting computeLighting(vec3 position, vec3 normal) {
     vec3 toEye = normalize(uCameraPosition.xyz - position);
 
@@ -117,9 +135,13 @@ Lighting computeLighting(vec3 position, vec3 normal) {
 
     // The moon, a directional light: the same direction everywhere, no attenuation.
     // uDirectionalDirection is the way the light travels, so the way TO the light is
-    // the opposite.
-    addLight(lighting, normal, -uDirectionalDirection.xyz, toEye,
-             uDirectionalColor.rgb * uDirectionalColor.a);
+    // the opposite. These lines do what addLight does, and keep the two terms.
+    vec3 toMoon = -uDirectionalDirection.xyz;
+    vec3 moonRadiance = uDirectionalColor.rgb * uDirectionalColor.a;
+    lighting.moonDiffuse = moonRadiance * diffuseFactor(normal, toMoon);
+    lighting.moonSpecular = moonRadiance * specularFactor(normal, toMoon, toEye);
+    lighting.diffuse += lighting.moonDiffuse;
+    lighting.specular += lighting.moonSpecular;
 
     // The point lights. The loop has a constant upper limit and leaves early. GLSL 4.10
     // does not require that (the rule comes from GLSL ES 1.00), but a constant limit
