@@ -19,15 +19,27 @@
 > kilku innych stanów (sekcja 13.1) oraz zrzuty ekranu map normalnych: kierunek reliefu,
 > reakcja na kierunek światła, tryby `Gouraud` i `Unlit` bez zmian (sekcja 13.3).
 >
+> **Zmierzone 2026-10-05 (M5: rozgrywka):** build Debug i Release bez ostrzeżeń, 215
+> przypadków testowych i 85098 asercji w obu konfiguracjach, obraz sprawdzony na zrzutach
+> ekranu zrobionych tymczasowymi wstawkami w kodzie, które są już usunięte (sekcja 14.1).
+> Wersji kompilatora, karty graficznej i sterownika, wyniku clang-format i clang-tidy ani
+> listy zrzutów dla M5 nie zapisano, więc ich tu nie podaję.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
-> i ślizganie po ścianach, klawisze N i F, obrót myszą, przyciski, listy i suwaki paneli, w
-> tym lista `Lighting` i cały panel Lights, rozwijanie panelu Camera, zmiana rozmiaru okna,
+> i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
+> tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
+> bateria, przejście przez otwartą bramę, karta wygranej, HUD przy ukrytych panelach,
+> rozwijanie paneli Camera i Gameplay, zmiana rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
-> są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3) i
-> 13 (oświetlenie, M4) rozróżniają punkty zmierzone (`[x]`, z wynikiem) od otwartych (`[ ]`).
-> Sekcje 11 i 12 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach `[x]`
-> opisują program z tamtego dnia. To, co program pokazuje dziś, opisują sekcje 2 i 13.
+> są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
+> 13 (oświetlenie i mapy normalnych, M4) i 14 (rozgrywka, M5) rozróżniają punkty zmierzone
+> (`[x]`, z wynikiem) od otwartych (`[ ]`).
+> Sekcje 11, 12 i 13 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach
+> `[x]` opisują program z dnia pomiaru (z kostką z M1, a w sekcji 13 także z kostkami
+> znaczników świateł, światłami w ślepych zaułkach i pięcioma programami shaderów: M5 to
+> wszystko usunął albo zastąpił). Punkty otwarte `[ ]` tych sekcji mają teksty dzisiejszego
+> programu. To, co program pokazuje dziś, opisują sekcje 2 i 14.
 
 ## 1. Wymagania
 
@@ -106,6 +118,11 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 
 ### Co powinno się pojawić (zmierzone)
 
+Słowo "zmierzone" w tytule dotyczy stanu do M4. To, co lista mówi o M5 (kryształy,
+brama, pasek HUD i jego napisy, osiem paneli z panelem Gameplay, liczby modeli i tekstur
+w liniach `[info]`), wynika z kodu, a nie z pomiaru: dla M5 zmierzone są build, testy
+jednostkowe i obraz na zrzutach, których listy nie zapisano (sekcja 14.1).
+
 - `cmake --preset debug` kończy się bez błędów. Wypisuje jedno ostrzeżenie o nieużytej
   zmiennej `CMAKE_BUILD_TYPE`. Jest ono oczekiwane (sekcja 3).
 - `cmake --build --preset debug` i `cmake --build --preset release` kończą się kodem 0, bez
@@ -114,13 +131,19 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 - Program otwiera okno z nocnym widokiem z wnętrza labiryntu: kamienna podłoga, ściany i
   słupki z teksturą, oświetlone (tryb startowy to Blinn-Phong). Świecą trzy rodzaje świateł:
   słabe, chłodne światło księżyca (kierunkowe), ciepły stożek latarki gracza na środku
-  obrazu (reflektor) i turkusowe światła punktowe w ślepych zaułkach, każde oznaczone małą
-  świecącą kostką. Miejsca, do których żadne z nich nie dociera, są ciemne, ale nie czarne
+  obrazu (reflektor) i turkusowe światła punktowe nad kryształami. Kryształ to mały model,
+  który unosi się na środku komórki, kołysze się, obraca i sam świeci (13 w labiryncie
+  startowym). Miejsca, do których żadne światło nie
+  dociera, są ciemne, ale nie czarne
   (światło otoczenia). Cieni nie ma: światła świecą przez ściany (cienie są w planie M7).
   Nad ścianami jest prawie czarne, granatowe tło: kolor czyszczenia to
-  `{0.01F, 0.015F, 0.04F}`, ciemniejszy niż przed M4 (`{0.02F, 0.03F, 0.08F}`). Kolorowa
-  kostka z M1 wisi nad komórką w przeciwległym rogu labiryntu, więc ze startu zwykle jej
-  nie widać. Widok startowy jest sprawdzony na zrzucie ekranu (sekcja 13.1). W terminalu
+  `{0.01F, 0.015F, 0.04F}`, ciemniejszy niż przed M4 (`{0.02F, 0.03F, 0.08F}`). Kolorowej
+  kostki z M1, która do M4 wisiała nad komórką w przeciwległym rogu labiryntu, już nie
+  ma: M5 ją usunął. Przy komórce wyjścia stoi drewniana brama. U góry okna, na środku,
+  jest pasek HUD: napis `Crystals`, liczby `0 / 10` i `(of 13)`, czas rundy `0:00` i pod
+  nimi pasek baterii z napisem `100%`. Widok startowy z M4 jest sprawdzony na zrzucie
+  ekranu (sekcja 13.1). Obraz po M5 był oglądany na zrzutach, których listy nie zapisano
+  (sekcja 14.1). W terminalu
   pierwsze dwie linie to:
 
   ```text
@@ -131,16 +154,20 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
   Napisy zależą od karty i sterownika. Sterownik NVIDII oddał kontekst dokładnie w wersji
   4.1, o którą prosi program. Komputer ma też zintegrowaną kartę AMD Radeon: system sam
   wybrał kartę NVIDIA. Po nich pamięć podręczna assetów wypisuje po jednej linii `[info]`
-  na każdy wczytany plik (`Loaded texture: ...` dla czterech tekstur, czyli dwóch obrazów
-  koloru i od M4 dwóch map normalnych, i `Loaded model: ...` dla trzech modeli, co wynika z
-  kodu `assets::AssetCache`). Zmierzone jest to, że na starcie
+  na każdy wczytany plik (`Loaded texture: ...` dla ośmiu tekstur, czyli czterech obrazów
+  koloru i czterech map normalnych, i `Loaded model: ...` dla sześciu modeli: podłogi,
+  ściany, słupka, dwóch kryształów i bramy, co wynika z
+  kodu `assets::AssetCache` i z plików `.mtl`). Zmierzone jest to, że na starcie
   nie ma żadnej linii `[error]`, w tym żadnej z nazwą błędu OpenGL (`GL_INVALID_...`), także
-  po dodaniu oświetlenia (2026-10-05). Dokładnej liczby linii `[info]` przy tych pomiarach
+  po dodaniu oświetlenia (2026-10-05, stan M4). Dla M5 tego wyniku nie zapisano (punkt
+  otwarty w sekcji 14.2). Dokładnej liczby linii `[info]` przy tych pomiarach
   nie zapisałem.
-- Widocznych jest siedem paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
+- Widocznych jest osiem paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
   kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole między kolumnami, a
-  Camera u góry, tuż na prawo od lewej kolumny, zwinięty do samego paska tytułu (rozwija go
-  kliknięcie strzałki w tym pasku). Każdy ma w kodzie miejsce i rozmiar startowy, ułożone
+  Camera i Gameplay u góry, między kolumnami, obok siebie, zwinięte do samych pasków tytułu
+  (panel rozwija kliknięcie strzałki w jego pasku). Pasek HUD stoi tuż pod tymi dwoma
+  paskami tytułu i nie jest panelem: nie znika razem z panelami i nie reaguje na mysz.
+  Każdy panel ma w kodzie miejsce i rozmiar startowy, ułożone
   dla okna 1280 x 720 (`src/debug/PanelLayout.hpp`). Działają one tylko wtedy, gdy w
   katalogu roboczym nie ma pliku `imgui.ini` z wpisem danego panelu (sekcja 7). To nie jest
   cecha Windowsa.
@@ -156,8 +183,9 @@ Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest
 ### Testy jednostkowe
 
 Zwykły build buduje też program testowy `night_maze_tests.exe` (kolizje, labirynt, gracz,
-loadery, a od M4 także tekst shaderów z `#include`, matematyka świateł, ustawienia
-oświetlenia, macierz normalnych i styczne wierzchołków: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
+loadery, od M4 także tekst shaderów z `#include`, matematyka świateł, ustawienia
+oświetlenia, macierz normalnych i styczne wierzchołków, a od M5 kule kolizji, wyjście,
+kryształy i reguły rundy: kod bez okna). Testy uruchamia `ctest`, program z pakietu CMake, dostępny w tym samym środowisku
 deweloperskim:
 
 ```bat
@@ -193,19 +221,22 @@ build\debug\Debug\night_maze_tests.exe
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:   163 |   163 passed | 0 failed | 0 skipped
-[doctest] assertions: 62220 | 62220 passed | 0 failed |
+[doctest] test cases:   215 |   215 passed | 0 failed | 0 skipped
+[doctest] assertions: 85098 | 85098 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
 Te same liczby daje `build\release\Release\night_maze_tests.exe` (oba pomiary 2026-10-05,
-po dodaniu map normalnych. Zmierzone są liczby i napis `Status: SUCCESS!`, odstępy przed
-liczbami odtworzyłem z wcześniejszego raportu). Przypadki w plikach:
-`ColliderTests.cpp` 12, `ImageLoaderTests.cpp` 9, `LightingTests.cpp` 17, `LightTests.cpp`
-20, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12, `MazeTests.cpp` 6,
-`MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 20, `PlayerTests.cpp` 13,
-`ShaderSourceTests.cpp` 22, `TangentTests.cpp` 9, `TransformTests.cpp` 4, razem 163. Po
-kroku łączącym M2 + M3 program miał osiem plików z testami, dziś ma trzynaście.
+po M5. Zmierzone są liczba przypadków, liczba asercji i to, że wszystkie przechodzą:
+układ tych trzech linii i odstępy przed liczbami odtworzyłem z wcześniejszego raportu).
+Przypadki w plikach:
+`ColliderTests.cpp` 19, `CrystalTests.cpp` 14, `ExitTests.cpp` 11, `ImageLoaderTests.cpp`
+9, `LightingTests.cpp` 10, `LightTests.cpp` 20, `MazeGeneratorTests.cpp` 11,
+`MazeLayoutTests.cpp` 12, `MazeTests.cpp` 8, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp`
+20, `PlayerTests.cpp` 13, `RoundTests.cpp` 25, `ShaderSourceTests.cpp` 22,
+`TangentTests.cpp` 9, `TransformTests.cpp` 4, razem 215. Po
+kroku łączącym M2 + M3 program miał osiem plików z testami, po M4 trzynaście (163
+przypadki i 62220 asercji, sekcja 13), dziś ma szesnaście.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
 
@@ -469,18 +500,24 @@ sekund po zmianie układu, a nie tylko przy zamykaniu. Przy wcześniejszych pomi
 był zabijany wcześniej i plik nie powstawał. Wiersze o dwukliku i o Visual Studio pozostają
 przewidywaniem.
 
-Bez tego pliku siedem paneli otwiera się w układzie zapisanym w kodzie (stałe
+Bez tego pliku osiem paneli otwiera się w układzie zapisanym w kodzie (stałe
 `..._PLACEMENT` w `src/debug/PanelLayout.hpp`, funkcja `placePanelOnFirstUse`, warunek
 `ImGuiCond_FirstUseEver`). Ten sam warunek obejmuje trzy rzeczy: pozycję, rozmiar i to, czy
-panel startuje zwinięty do paska tytułu (`ImGui::SetNextWindowCollapsed`). Zwinięty startuje
-tylko panel Camera (pole `collapsed = true` w stałej `CAMERA_PLACEMENT`). Gdy plik istnieje
+panel startuje zwinięty do paska tytułu (`ImGui::SetNextWindowCollapsed`). Zwinięte startują
+dwa panele: Camera i Gameplay (pole `collapsed = true` w stałych `CAMERA_PLACEMENT` i
+`GAMEPLAY_PLACEMENT`). Gdy plik istnieje
 i ma wpis panelu, wygrywa wpis: także stan zwinięcia jest potem brany z pliku. Plik
 `imgui.ini` zapisany przez program sprzed M4 ma wpisy sześciu paneli w starym układzie
 (Camera pod Rendererem) i nie ma wpisu panelu Lights. Z takim plikiem sześć paneli zostaje
 na starych miejscach, a tylko nowy panel Lights dostaje miejsce z kodu, czyli lewą kolumnę
-pod Rendererem, gdzie w starym układzie stoi Camera: panele nachodzą na siebie. To wniosek
-z kodu, nie obserwacja. Żeby obejrzeć układ domyślny, trzeba plik usunąć przed
-uruchomieniem (sekcja 13.2).
+pod Rendererem, gdzie w starym układzie stoi Camera: panele nachodzą na siebie. Plik
+zapisany przez program z M4 ma wpisy siedmiu paneli i nie ma wpisu panelu Gameplay: ten
+jeden panel dostaje miejsce z kodu, u góry, na prawo od paska panelu Camera, gdzie w
+układzie z M4 nic nie stoi, a dolny rząd (Collision i Shaders) zostaje o 8 pikseli niższy
+niż w dzisiejszym układzie. Oba opisy to wnioski
+z kodu, nie obserwacje. Żeby obejrzeć układ domyślny, trzeba plik usunąć przed
+uruchomieniem (sekcja 14.2). Paska HUD plik nie dotyczy: jego okna mają flagę
+`ImGuiWindowFlags_NoSavedSettings`.
 
 Plik jest w `.gitignore`, więc nigdzie nie przeszkadza w repozytorium. Skutkiem różnych
 katalogów jest tylko to, że układ paneli ustawiony przy uruchomieniu z terminala nie jest
@@ -522,11 +559,13 @@ uruchomienie. Na macOS krok 2 nie jest potrzebny. Pominięcie go na Windowsie ni
 panel dalej pokazuje przy każdym programie `: OK`, a obraz się nie zmienia, bo program
 wczytał poprawnie starą kopię pliku.
 
-Panel Shaders ma dziś jedną linię na program, a programów jest pięć (`basic`, `textured`,
-`color`, `lit`, `gouraud`). Po udanym wczytaniu linia ma postać:
+Panel Shaders ma dziś jedną linię na program, a programów jest cztery (`textured`,
+`color`, `lit`, `gouraud`). Do M4 było ich pięć: piąty, `basic`, rysował kostkę z M1 i
+został usunięty w M5 razem z plikami `basic.vert` i `basic.frag`. Po udanym wczytaniu
+linia ma postać:
 
 ```text
-basic.vert + basic.frag: OK
+textured.vert + textured.frag: OK
 ```
 
 Po nieudanym przeładowaniu linia jest czerwona, a pod nią, też na czerwono, stoi komunikat
@@ -567,7 +606,7 @@ zachowa się, gdy przy działającym programie zmieni się plik C++, nie mierzy�
 
 | Próba | Wynik |
 |---|---|
-| pierwszy build Debug i Release | powstają `build\debug\Debug\assets\shaders\basic.vert` i `basic.frag`, tak samo w `build\release\Release\` (stan M1, gdy shaderów było dwa). W wyjściu jest linia `Copying assets next to the executable` |
+| pierwszy build Debug i Release | powstają `build\debug\Debug\assets\shaders\basic.vert` i `basic.frag`, tak samo w `build\release\Release\` (stan M1, gdy shaderów było dwa. Od M5 tych dwóch plików nie ma w repozytorium). W wyjściu jest linia `Copying assets next to the executable` |
 | drugi build bez żadnych zmian, program zatrzymany | linia pojawia się ponownie, program nie jest linkowany |
 | zmiana shadera, `cmake --build --preset debug`, uruchomienie | kopia odświeżona, program pokazuje nowe kolory |
 | zmiana shadera, `cmake --build --preset debug --target night_maze` | kopia **nie** została odświeżona |
@@ -593,7 +632,10 @@ Uwagi:
   następnym kopiowaniu, bo kopia zostanie nadpisana plikami z repozytorium.
 - `copy_directory` nadpisuje istniejące pliki, ale nie usuwa z kopii plików, których nie ma
   już w repozytorium. Po usunięciu albo zmianie nazwy shadera warto skasować katalog
-  `build\debug\Debug\assets\` i wykonać `--target copy_assets` ponownie.
+  `build\debug\Debug\assets\` i wykonać `--target copy_assets` ponownie. Przykład: w
+  katalogu buildu sprzed M5 w kopii zostają `basic.vert` i `basic.frag`. Niczemu to nie
+  szkodzi, bo program ich już nie czyta (wniosek z opisanego zachowania `copy_directory`,
+  nie pomiar).
 - Kopię można też zrobić ręcznie, bez CMake jako systemu budowania:
   `cmake -E copy_directory assets build\debug\Debug\assets`.
 - Skrót `make debug` nie zastępuje kroku 2: wykonuje pełny build, a nie sam `copy_assets`
@@ -617,9 +659,11 @@ uruchamiamy program i przechwytujemy klatkę klawiszem F12 lub PrintScreen.
 
 Dziś w przechwyconej klatce powinny być: czyszczenie ekranu, po jednym wywołaniu
 `glDrawElements` na każdą płytkę podłogi, ścianę i słupek labiryntu (dla labiryntu startowego
-100 + 121 + 121, w trybie startowym programem `lit`), po jednym na każdy znacznik światła
-punktowego (11 w labiryncie startowym, programem `color`), jedno z kostką (programem
-`basic`) i rysowanie ImGui. Można w niej obejrzeć bufory wierzchołków i indeksów, macierze w
+100 + 121 + 121, w trybie startowym programem `lit`), tym samym programem jedno na bramę,
+dopóki nie schowała się w podłodze, i po jednym na każdy niezebrany kryształ (13 na
+starcie rundy), a na końcu rysowanie ImGui (panele i HUD). Przy zaznaczonym polu
+`Draw collision shapes` dochodzą linie programem `color`. Kostki z M1 i znaczników
+świateł, które były w klatce do M4, już nie ma. Można w niej obejrzeć bufory wierzchołków i indeksów, macierze w
 uniformach, bufor uniformów ze światłami (blok `LightBlock`, 928 bajtów, punkt wiązania 1),
 związaną teksturę i sampler, bufor głębi oraz wejścia i wyjścia shaderów. Narzędzie stanie
 się naprawdę użyteczne przy cieniach i efektach pozaekranowych.
@@ -666,15 +710,16 @@ dokumentacji narzędzi (przewidywane).
 | Ostrzeżenie `Manually-specified variables were not used by the project: CMAKE_BUILD_TYPE` przy konfiguracji | generator Visual Studio ignoruje `CMAKE_BUILD_TYPE` | nic, to oczekiwane (sekcja 3) | zmierzone |
 | `LINK : fatal error LNK1168` przy `cmake --build --preset debug` | program `night_maze.exe` działa, a Windows blokuje jego plik | zamknij program i zbuduj ponownie. Do odświeżenia samych shaderów użyj `cmake --build --preset debug --target copy_assets` (sekcja 7) | zmierzone |
 | Panele leżą jeden na drugim albo w dziwnych miejscach, na przykład panel Lights zasłania panel Camera | w katalogu roboczym jest `imgui.ini` zapisany przez starszą wersję programu albo przy innym rozmiarze okna: jego wpisy wygrywają z układem startowym z kodu | usuń `imgui.ini` z katalogu, z którego startuje program (sekcja 7), albo rozsuń panele myszą za paski tytułu | przewidywane (w stanie M1, bez pozycji startowych w kodzie, trzy panele leżały jeden na drugim: zmierzone) |
-| Nie widać panelu Camera, jest tylko wąski pasek z napisem "Camera" u góry okna | panel startuje zwinięty do paska tytułu: w oknie 1280 x 720 nie ma miejsca na siedem otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
+| Nie widać panelu Camera albo Gameplay, są tylko wąskie paski z napisami "Camera" i "Gameplay" u góry okna | oba panele startują zwinięte do paska tytułu: w oknie 1280 x 720 nie ma miejsca na osiem otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
+| Latarka nie daje się włączyć klawiszem F ani polem `Flashlight on (key F)` | bateria jest pusta: na pasku HUD jest `0%` i napis `Battery empty. Find a crystal.`. To reguła gry, nie błąd | zbierz kryształ (daje 25% baterii), potem naciśnij F. Do testów: suwak `Battery` w panelu Gameplay albo klawisz R (nowa runda) | przewidywane (z kodu `game::updateRound`, sekcja 14.2) |
 | Podłoga albo ściany są białe, w konsoli linia `[error]` o pliku obrazu | obok `night_maze.exe` brakuje pliku z `assets\textures\` albo nie da się go zdekodować. Część modelu dostaje wtedy białą teksturę zastępczą | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (pamięć podręczna nie ponawia nieudanego wczytania) | zmierzone (zrzut ekranu z celowo usuniętą teksturą, sekcja 12) |
 | Brakuje podłogi, ścian albo słupków, w konsoli `[error]` z nazwą pliku `.obj` albo `.mtl` | brakuje pliku modelu albo jego pliku `.mtl`. Model, którego nie udało się wczytać, nie jest rysowany, reszta labiryntu tak | jak wyżej | przewidywane |
 | Zmiana w pliku shadera nie jest widoczna po ponownym uruchomieniu | program czyta kopię obok `.exe`, a po zmianie pliku nie było kopiowania albo zbudowano tylko target `night_maze` (możliwe przy F5 w Visual Studio) | `cmake --build --preset debug --target copy_assets` albo pełny build przy zamkniętym programie, sekcja 7 | zmierzone dla `--target night_maze`, F5 przewidywane |
-| `[error] Shader compilation failed: ...\assets\shaders/basic.frag` i linia sterownika. Przy błędzie już na starcie znika to, co rysuje ten program (dla `basic` kostka), przy błędzie po "Reload shaders" obraz zostaje, bo działa poprzedni program | błąd składni w pliku shadera. Mieszane ukośniki w ścieżce są poprawne (sekcja 11, klasa `gfx::Shader`). Linia sterownika zaczyna się od nazwy pliku i numeru linii, na przykład `basic.frag(4)` | popraw plik, odśwież kopię (sekcja 7) | zmierzone w stanie M1, gdy program rysował samą kostkę: w oknie zostawało wtedy samo tło i panele, a linia sterownika zaczynała się od `0(15)`. Nazwa pliku w miejscu numeru: zmierzone 2026-10-05 (sekcja 13.1) |
+| `[error] Shader compilation failed: ...\assets\shaders/color.frag` (albo inny plik shadera) i linia sterownika. Przy błędzie już na starcie znika to, co rysuje ten program (dla `color` linie kształtów kolizji, dla `textured` scena w trybie `Unlit` i w widokach debug), przy błędzie po "Reload shaders" obraz zostaje, bo działa poprzedni program | błąd składni w pliku shadera. Mieszane ukośniki w ścieżce są poprawne (sekcja 11, klasa `gfx::Shader`). Linia sterownika zaczyna się od nazwy pliku i numeru linii, na przykład `color.frag(4)` | popraw plik, odśwież kopię (sekcja 7) | zmierzone w stanie M1 na pliku `basic.frag`, którego od M5 nie ma, gdy program rysował samą kostkę: w oknie zostawało wtedy samo tło i panele, a linia sterownika zaczynała się od `0(15)`. Nazwa pliku w miejscu numeru: zmierzone 2026-10-05 jako `basic.frag(4)` (sekcja 13.1). Dla dzisiejszych plików przewidywane |
 | Komunikat błędu shadera wskazuje `common/lighting.glsl(N)`, choć zmieniany był inny plik, albo czerwone są naraz linie `lit` i `gouraud` w panelu Shaders | błąd jest w pliku dołączanym przez `#include`. Dołączają go oba oświetlone programy, więc oba nie dają się zbudować | popraw `assets\shaders\common\lighting.glsl`, odśwież kopię (sekcja 7), "Reload shaders" | komunikat z nazwą pliku zmierzony na zrzucie ekranu (sekcja 13.1), reszta przewidywana |
 | `[error] Shader include failed: ...` | plik z dyrektywy `#include` nie istnieje w kopii obok programu, dołącza sam siebie albo linia `#include` jest błędnie zapisana. Komunikat podaje plik i linię | popraw dyrektywę albo odśwież kopię (sekcja 7) | przewidywane (tekst z kodu `src/gfx/Shader.cpp`) |
 | `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code` | sterownik ułożył blok uniformów inaczej niż struktura `scene::LightBlockData`, albo blok w `common/lighting.glsl` zmieniono bez zmiany struktury | porównaj blok w shaderze ze strukturą w `src/scene/LightBlock.hpp` ([`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md)) | przewidywane (na karcie NVIDIA linia się nie pojawia: zmierzone) |
-| Nie widać podłogi, ścian ani słupków, są tylko tło, znaczniki świateł i kostka | oświetlony program (`lit`, a w trybie `Gouraud` program `gouraud`) nie wczytał się przy starcie, więc nie ma czym rysować labiryntu. W konsoli jest `[error]`, a linia programu w panelu Shaders kończy się napisem `FAILED, there is no program to draw with` | popraw plik shadera, odśwież kopię (sekcja 7), "Reload shaders". Do tego czasu tryb `Unlit` w panelu Renderer rysuje labirynt programem `textured` | przewidywane (z kodu `NightMazeApp::drawLitMaze`) | przewidywane |
+| Nie widać podłogi, ścian, słupków, kryształów ani bramy, są tylko tło, panele i pasek HUD | oświetlony program (`lit`, a w trybie `Gouraud` program `gouraud`) nie wczytał się przy starcie, więc nie ma czym rysować sceny. W konsoli jest `[error]`, a linia programu w panelu Shaders kończy się napisem `FAILED, there is no program to draw with` | popraw plik shadera, odśwież kopię (sekcja 7), "Reload shaders". Do tego czasu tryb `Unlit` w panelu Renderer rysuje scenę programem `textured` | przewidywane (z kodu `NightMazeApp::drawLitMaze`) |
 | Konfiguracja pada przy pobieraniu GLFW, GLM lub ImGui | brak `git` w `PATH` albo brak sieci | zainstaluj git, otwórz nowy terminal, sprawdź `git --version` | przewidywane |
 | Błąd o niezgodności generatora | katalog buildu utworzony innym generatorem (terminal a IDE, Visual Studio a Ninja) | usuń `build\debug` i skonfiguruj ponownie jednym narzędziem, albo użyj osobnego katalogu (`-B`, sekcja 4) | przewidywane |
 | Nie ma pliku `build\debug\Debug\night_maze.exe` | użyto generatora jednokonfiguracyjnego (Ninja) | szukaj bezpośrednio w katalogu buildu, na przykład `build\debug\night_maze.exe`, patrz sekcja 4 | zmierzone (Ninja nie tworzy podkatalogu `Debug`) |
@@ -683,7 +728,7 @@ dokumentacji narzędzi (przewidywane).
 | FPS dużo wyższe niż odświeżanie monitora | sterownik wymusza wyłączony vsync | sprawdź ustawienie synchronizacji pionowej w panelu sterownika | przewidywane |
 | Ostrzeżenia `/W4` z plików w `_deps` lub `external` | nagłówki systemowe nie zostały wyciszone | sprawdź, czy katalog trafia do kompilatora przez `/external:I` (sekcja 5), zanotuj wersje CMake i MSVC | przewidywane (u mnie nie wystąpiło) |
 | Układ paneli nie zapamiętuje się | różne katalogi robocze | sekcja 7 | przewidywane |
-| `[error] Shader file cannot be opened: ...\assets\shaders/basic.vert`, w oknie samo tło | obok `night_maze.exe` nie ma katalogu `assets` (program skopiowany ręcznie albo zbudowano tylko target `night_maze`, bez `copy_assets`) | `cmake --build --preset debug --target copy_assets`, sekcja 7 | przewidywane |
+| `[error] Shader file cannot be opened: ...\assets\shaders/textured.vert` (i takie same linie dla pozostałych programów), w oknie samo tło | obok `night_maze.exe` nie ma katalogu `assets` (program skopiowany ręcznie albo zbudowano tylko target `night_maze`, bez `copy_assets`) | `cmake --build --preset debug --target copy_assets`, sekcja 7 | przewidywane |
 | Cursor lub VS Code pokazuje "file not found" przy każdym `#include`, choć build przechodzi | generator Visual Studio nie tworzy `compile_commands.json`, którego szuka `.clangd` | skonfiguruj `build\debug` generatorem Ninja, sekcja 4 | przewidywane |
 
 ## 11. Lista kontrolna pierwszego buildu na Windowsie
@@ -693,10 +738,14 @@ Do przejścia na PC przed uznaniem M1 za zamknięty na obu systemach i przed tag
 **Ta lista powstała dla stanu M1**, w którym program rysował samą kostkę na środku okna, a
 kamera latała swobodnie. Punkty `[x]` są zapisem pomiarów z tamtego stanu i zostają bez
 zmian w treści: mówią o kostce na środku, dwóch liniach `[info]` i trzech panelach, bo tak
-wtedy było. Po M2 + M3 program startuje w labiryncie (sekcja 2), kostka wisi nad komórką w
-przeciwległym rogu, a kamera idzie za graczem. Punkty otwarte `[ ]`, które mówiły o kostce
-albo o locie, są przepisane tak, żeby dało się je wykonać w obecnym programie. Sprawdzenia
-samego labiryntu, gracza i nowych paneli są w sekcji 12, a oświetlenia w sekcji 13.
+wtedy było. Po M2 + M3 program startuje w labiryncie (sekcja 2), a kamera idzie za graczem.
+Kostka wisiała potem nad komórką w przeciwległym rogu labiryntu do M4. M5 usunął ją
+razem z programem `basic`, plikami `basic.vert` i `basic.frag` i danymi wierzchołków w
+`NightMazeApp`. Punkty otwarte `[ ]`, które mówiły o kostce, o plikach `basic.*`
+albo o locie, są przepisane tak, żeby dało się je wykonać w obecnym programie: zamiast
+`basic` używają programu `color` albo `textured`. Sprawdzenia
+samego labiryntu, gracza i nowych paneli są w sekcji 12, oświetlenia w sekcji 13, a
+rozgrywki w sekcji 14.
 
 Po dodaniu oświetlenia (2026-10-05) zmieniły się trzy rzeczy, o których mówią punkty tej
 listy. Panel Shaders ma jedną linię na program zamiast kilkuliniowego bloku. Komunikat błędu shadera zaczyna się od nazwy pliku zamiast od numeru `0`.
@@ -774,14 +823,15 @@ clangd w edytorze i `make`.
       Radeon, system sam wybrał NVIDIA
 - [x] w konsoli nie ma linii `[error]`
 - [x] panele "Renderer", "Shaders" i "Camera" są widoczne. Przy pierwszym uruchomieniu (bez
-      `imgui.ini`) leżą jeden na drugim (stan M1. Dziś paneli jest siedem, mają miejsca
-      startowe i się nie zasłaniają, sekcja 13)
+      `imgui.ini`) leżą jeden na drugim (stan M1. Dziś paneli jest osiem, mają miejsca
+      startowe i według kodu się nie zasłaniają, sekcja 14.2)
 - [ ] FPS i czas klatki w panelu "Renderer" się aktualizują
 - [ ] linie "Framebuffer" i "Window" pokazują te same wartości (na Windowsie powinny być równe)
 
 **Sterowanie i interfejs**
 
-- [ ] klawisz `~` (na lewo od `1`) ukrywa i pokazuje panele
+- [ ] klawisz `~` (na lewo od `1`, w kodzie `GLFW_KEY_GRAVE_ACCENT`) ukrywa i pokazuje
+  panele. Pasek HUD u góry okna zostaje (sekcja 14.2)
 - [ ] Esc przy widocznym kursorze zamyka program, kod wyjścia 0
 - [ ] podczas wpisywania wartości w polu `Clear color` (Ctrl i kliknięcie) Esc anuluje tylko
   edycję i nie zamyka programu, a `~` nie chowa paneli
@@ -822,6 +872,7 @@ Funkcje są wołane przy każdym starcie programu (wczytywanie shaderów).
       zmienia się przy uruchomieniu z innego katalogu roboczego. Wycofać zmianę. Samego
       ćwiczenia nie robiłem. Pośrednio potwierdzają to punkty niżej: start z `C:\` oraz
       ścieżka `...\build\debug\Debug\assets\shaders/basic.frag` w komunikacie błędu shadera
+      (pomiar ze stanu M1, pliku `basic.frag` od M5 nie ma)
 - [x] po buildzie katalog `build\debug\Debug\assets\shaders\` istnieje i zawiera `basic.vert`
       oraz `basic.frag` (to samo dla `build\release\Release\`). W wyjściu buildu jest linia
       `Copying assets next to the executable`
@@ -867,10 +918,11 @@ jest skompilowana i sprawdzona przy starcie programu (poprawne pliki i błąd sk
   Druga linia to format sterownika NVIDII: numer napisu źródłowego 0 i numer linii 15 w
   nawiasie. Ścieżka ma mieszane ukośniki: wsteczne z katalogu programu i zwykły przed
   `basic.frag`, bo nazwa względna `shaders/basic.frag` jest w kodzie zapisana z `/`.
-  Windows przyjmuje oba. To zapis ze stanu M1 (2026-10-05). Dziś dwie rzeczy są inne: w
-  miejscu numeru `0` stoi nazwa pliku (zmierzone 2026-10-05 dla innego błędu jako
-  `basic.frag(4)`, sekcja 13.1), a przy błędzie w `basic.frag` znika sama kostka, bo
-  labirynt rysują inne programy
+  Windows przyjmuje oba. To zapis ze stanu M1 (2026-10-05). Później zmieniły się dwie
+  rzeczy: od M4 w miejscu numeru `0` stoi nazwa pliku (zmierzone 2026-10-05 dla innego
+  błędu jako `basic.frag(4)`, sekcja 13.1), a od M5 nie ma ani pliku `basic.frag`, ani
+  kostki. Tę samą próbę robi się dziś na `color.frag` (znikają linie kształtów kolizji)
+  albo na `textured.frag` (znika scena w trybie `Unlit`)
 - [ ] ścieżka z polską literą w komunikacie błędu nie zamyka
       programu (w konsoli litera może być wyświetlona błędnie, to dopuszczalne)
 
@@ -885,33 +937,42 @@ sekcji 13.2.
 - [x] `src/debug/panels/ShadersPanel.cpp`, `src/debug/DebugContext.hpp` i `src/main.cpp`
       kompilują się w MSVC z `/W4 /permissive-` bez ostrzeżeń (w szczególności stała
       `ERROR_TEXT_COLOR`, dziś `inline constexpr ImVec4` w `src/debug/Theme.hpp`, i
-      inicjalizatory desygnowane `DebugContext` z polem `.shader` w kolejności deklaracji):
+      inicjalizatory desygnowane `DebugContext` z ówczesnym polem `.shader` w kolejności
+      deklaracji; to pole zniknęło w M5 razem z programem `basic`):
       zero ostrzeżeń
 - [x] panel "Shaders" jest widoczny i pokazuje oba pliki programu `basic` oraz poprawne
       wczytanie (stan M1, 2026-10-05, z jednym programem i ówczesnymi napisami. Dziś
-      panel pokazuje pięć linii postaci `basic.vert + basic.frag: OK`, sekcje 7 i 13.2)
+      programu `basic` nie ma, a panel pokazuje cztery linie postaci
+      `textured.vert + textured.frag: OK`, sekcje 7 i 14.2)
 - [ ] panel "Shaders" daje się zadokować
-- [ ] podpowiedź nad linią `basic.vert + basic.frag: OK` pokazuje w dwóch wierszach pełne
-      ścieżki obu plików, czyli kopii w `build\debug\Debug\assets\shaders\`. Oczekiwane są
-      mieszane ukośniki, tak jak w komunikacie błędu wyżej: `...\assets\shaders/basic.frag`
+- [ ] podpowiedź nad linią `textured.vert + textured.frag: OK` pokazuje w dwóch wierszach
+      pełne ścieżki obu plików, czyli kopii w `build\debug\Debug\assets\shaders\`. Oczekiwane
+      są mieszane ukośniki, tak jak w komunikacie błędu wyżej:
+      `...\assets\shaders/textured.frag`
       (podpowiedź i komunikat powstają z tej samej ścieżki). Wcześniejsze oczekiwanie "same
       ukośniki wsteczne" było najpewniej błędne. Samej podpowiedzi nie oglądałem
-- [ ] przeładowanie udane: przy działającym programie zmiana koloru w
-      `assets\shaders\basic.frag`, `cmake --build --preset debug --target copy_assets` w
-      drugim terminalu, potem "Reload shaders". Zapisać, czy kostka zmienia kolor
-      (oczekiwane: tak; kostkę widać z góry w trybie noclip, sekcja 12). Przycisk przeładowuje
-      wszystkie pięć programów naraz. Samo polecenie przy działającym programie jest już
-      zmierzone (kod wyjścia 0, kopia odświeżona), otwarte zostaje naciśnięcie przycisku
+- [ ] przeładowanie udane: zaznaczyć `Draw collision shapes` w panelu Collision (żółte
+      linie rysuje program `color`). Przy działającym programie zmienić w
+      `assets\shaders\color.frag` linię `fragColor = vec4(uColor, 1.0);` na
+      `fragColor = vec4(uColor.bgr, 1.0);`, w drugim terminalu
+      `cmake --build --preset debug --target copy_assets`, potem "Reload shaders". Zapisać,
+      czy linie zmieniają kolor (oczekiwane: tak, żółte linie ścian robią się niebieskawe,
+      bo czerwony i niebieski kanał zamieniają się miejscami). Przycisk przeładowuje
+      wszystkie cztery programy naraz. Samo polecenie przy działającym programie jest już
+      zmierzone (kod wyjścia 0, kopia odświeżona), otwarte zostaje naciśnięcie przycisku.
+      Ten sam krok dla programu `textured` jest w sekcji 12.2
 - [ ] to samo bez kopiowania: "Reload shaders" zaraz po zapisaniu pliku. Oczekiwane:
-      linia `basic.vert + basic.frag: OK` i obraz bez zmian (program czyta kopię)
-- [ ] przeładowanie nieudane: usunięty średnik w `basic.frag`,
+      linia `color.vert + color.frag: OK` i obraz bez zmian (program czyta kopię)
+- [ ] przeładowanie nieudane: usunięty średnik w `color.frag`,
       `cmake --build --preset debug --target copy_assets`, "Reload shaders". Oczekiwane:
-      czerwona linia `basic.vert + basic.frag: FAILED, the previous program stays in use`,
+      czerwona linia `color.vert + color.frag: FAILED, the previous program stays in use`,
       pod nią czerwony tekst ze ścieżką pliku i dziennikiem sterownika, ten sam tekst w
-      konsoli jako `[error]`, cztery pozostałe linie z `: OK`, kostka bez zmian. Linia
-      sterownika powinna zaczynać się od nazwy pliku i numeru linii, `basic.frag(N)`
-- [ ] naprawa: przywrócony plik, `cmake --build --preset debug --target copy_assets`,
-      "Reload shaders". Oczekiwane: linia wraca do `basic.vert + basic.frag: OK`, pierwotne
+      konsoli jako `[error]`, trzy pozostałe linie z `: OK`, linie kształtów kolizji bez
+      zmian. Linia sterownika powinna zaczynać się od nazwy pliku i numeru linii,
+      `color.frag(N)`
+- [ ] naprawa: przywrócony plik (`git checkout assets/shaders/color.frag`),
+      `cmake --build --preset debug --target copy_assets`,
+      "Reload shaders". Oczekiwane: linia wraca do `color.vert + color.frag: OK`, pierwotne
       kolory
 - [ ] po kilku przeładowaniach w konsoli nie ma żadnej linii `[error] GL_...` (backend ImGui
       i usunięty stary program, `shader-hot-reload.md`, sekcja 6.3)
@@ -991,8 +1052,11 @@ kliknięciem strzałki w pasku tytułu (sekcja 13.2).
 **Klasy `gfx::Buffer` i `gfx::VertexArray`**
 
 Opis: [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) (klasy) i
-[`../modules/gfx/indexed-drawing.md`](../modules/gfx/indexed-drawing.md) (kostka w `NightMazeApp`). Na
-Windowsie klasy są skompilowane i rysują kostkę.
+[`../modules/gfx/indexed-drawing.md`](../modules/gfx/indexed-drawing.md) (rysowanie z
+indeksami). Punkty tej grupy są zapisem ze stanu M1, w którym obu klas używała wprost
+kostka w `NightMazeApp`. M5 usunął kostkę razem z jej danymi (tablicami wierzchołków i
+indeksów, stałymi układu) i funkcją rysującą: dziś obu klas używa tylko `gfx::Mesh`,
+czyli modele labiryntu, kryształów i bramy oraz linie kształtów kolizji.
 
 - [x] `src/gfx/Buffer.cpp` i `src/gfx/VertexArray.cpp` kompilują się w MSVC z
       `/W4 /permissive-` bez ostrzeżeń (w szczególności `reinterpret_cast<const void*>` z
@@ -1007,7 +1071,7 @@ Windowsie klasy są skompilowane i rysują kostkę.
       zero ostrzeżeń
 - [x] kostka jest widoczna i w konsoli nie ma linii `[error]`, także żadnej
       `GL_INVALID_OPERATION after glDrawElements` ani po `glUniformMatrix4fv` (build Debug,
-      w którym `GL_CHECK` jest aktywne)
+      w którym `GL_CHECK` jest aktywne. Stan M1)
 
 **Testy jednostkowe i kod bez okna (M2 + M3)**
 
@@ -1032,7 +1096,7 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
 - [x] `ctest` bez `-C`: test nie jest uruchamiany (`***Not Run`, kod wyjścia 8)
 - [x] program testowy uruchomiony wprost, Debug i Release: wszystkie przypadki testowe tego
       etapu (kolizje i labirynt) przechodzą, `Status: SUCCESS!`. Liczby dla całego programu
-      testowego po M2 + M3 są w sekcji 12, a dzisiejsze w sekcji 13.1
+      testowego po M2 + M3 są w sekcji 12, po M4 w sekcji 13.1, a dzisiejsze w sekcji 14.1
 - [x] labirynt wzorcowy (4 na 4, ziarno 1) jest ten sam w Debug i w Release i zgadza się z
       niezależnym skryptem w Pythonie
 - [x] program `night_maze.exe` nadal się buduje w obu konfiguracjach (nie uruchamiałem go po
@@ -1058,8 +1122,8 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` i `tests/ObjLoaderTests.cpp` budują się bez
       ostrzeżeń pod `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem
       Visual Studio (osobne katalogi buildu). `night_maze_tests.exe
-      --source-file=*ObjLoaderTests*`: wtedy 18 przypadków testowych i 804 asercje, dziś, po
-      mapach normalnych, 20 przypadków i 1576 asercji, `Status: SUCCESS!`. Konfiguracji Release dla tych plików wtedy nie budowałem (po M2 + M3 jest
+      --source-file=*ObjLoaderTests*`: wtedy 18 przypadków testowych i 804 asercje, po
+      mapach normalnych (M4) 20 przypadków i 1576 asercji, `Status: SUCCESS!`. Konfiguracji Release dla tych plików wtedy nie budowałem (po M2 + M3 jest
       zbudowana i przetestowana, sekcja 12). `gfx::Mesh` był wtedy tylko skompilowany, bez
       użytkownika. Dziś tworzą go `assets::AssetCache` i `game::ColliderLines`, testu
       jednostkowego nadal nie ma ([`../modules/gfx/mesh.md`](../modules/gfx/mesh.md))
@@ -1084,8 +1148,8 @@ Windowsie, więc wszystkie punkty poza ostatnimi dwoma są zmierzone przy jego p
       `setVec3`) i `tests/ImageLoaderTests.cpp` budują się bez ostrzeżeń pod
       `/W4 /permissive-` w konfiguracji Debug, generatorem Ninja i generatorem Visual
       Studio (osobne katalogi buildu). `night_maze_tests.exe
-      --source-file=*ImageLoaderTests*`: wtedy 7 przypadków testowych i 35 asercji, dziś, po
-      mapach normalnych, 9 przypadków i 57 asercji, `Status: SUCCESS!`. Cały program testowy razem z testami loadera OBJ też przechodził (liczby po
+      --source-file=*ImageLoaderTests*`: wtedy 7 przypadków testowych i 35 asercji, po
+      mapach normalnych (M4) 9 przypadków i 57 asercji, `Status: SUCCESS!`. Cały program testowy razem z testami loadera OBJ też przechodził (liczby po
       M2 + M3: sekcja 12). Konfiguracji Release dla tych plików wtedy nie budowałem. Test nazwy pliku ze
       znakami spoza ASCII (polskie litery i znak japoński) przechodzi przy stronie kodowej
       systemu 1250 ([`../modules/assets/images.md`](../modules/assets/images.md),
@@ -1155,8 +1219,9 @@ był budowany ([`build-macos.md`](build-macos.md)) i nie ma tagu.
 **Ta sekcja jest zapisem stanu z 2026-10-05**, sprzed oświetlenia. Program miał wtedy o jeden
 panel mniej (bez Lights), o dwa programy shaderów mniej (bez `lit` i `gouraud`), panel
 Shaders z kilkoma liniami na program, równo jasny labirynt i mniej testów. Punkty `[x]`
-są pomiarami z tamtego dnia i opisują tamten stan. Dzisiejsze liczby (163 i
-62220), siedem paneli, pięć programów i mapy normalnych opisuje sekcja 13. Punkty otwarte `[ ]` w sekcji
+są pomiarami z tamtego dnia i opisują tamten stan. Stan po M4 (163 przypadki i 62220
+asercji, siedem paneli, pięć programów, mapy normalnych) opisuje sekcja 13, a dzisiejszy
+(215 i 85098, osiem paneli, cztery programy, runda z kryształami) sekcja 14. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie.
 
 ### 12.1. Zmierzone (2026-10-05)
@@ -1167,13 +1232,13 @@ są pomiarami z tamtego dnia i opisują tamten stan. Dzisiejsze liczby (163 i
       wyjścia 0, zero ostrzeżeń pod `/W4 /permissive-`
 - [x] `night_maze_tests.exe` w Debug i w Release: wszystkie ówczesne przypadki przechodzą,
       `Status: SUCCESS!` (2026-10-05. Dzisiejsze liczby przypadków i asercji są w sekcji
-      13.1). `ctest` dla obu konfiguracji: `100% tests passed, 0 tests failed out of 1`
+      14.1). `ctest` dla obu konfiguracji: `100% tests passed, 0 tests failed out of 1`
 - [x] clang-tidy na plikach zmienionych w tym kroku: żadnej diagnostyki
 - [x] gra startuje bez linii `[error]`, w tym bez żadnej linii z nazwą błędu OpenGL
       (`GL_INVALID_...`), w buildzie Debug, w którym `GL_CHECK` jest aktywne
 - [x] zrzut ekranu ze startu: widok z wnętrza labiryntu, tekstury kamienia na podłodze,
       ścianach i słupkach stoją prosto i nie są odbite lustrzanie (wtedy równo jasne, bez
-      oświetlenia. Dzisiejszy widok startowy: sekcja 13.1)
+      oświetlenia. Dzisiejszy widok startowy: sekcja 2)
 - [x] zrzut ekranu z góry w trybie noclip: układ ścian zgadza się z planem w panelu Maze, a
       żółte linie pudełek kolizji leżą na ścianach i słupkach
 - [x] zrzuty ekranu obu widoków debug shadera `textured`: normalne jako kolor i współrzędne
@@ -1207,8 +1272,8 @@ sekcje 5.7 i 5.8):
       prawej, Collision i Shaders przy dolnej, między kolumnami. Panele Renderer, Camera,
       Maze, Collision i Shaders pokazują całą zawartość bez przewijania, panel Assets się
       przewija. Środek górnej części okna jest wolny i widać w nim scenę (układ z
-      2026-10-05. Dziś paneli jest siedem, pod Rendererem stoi Lights, a Camera jest
-      zwinięty u góry: sekcja 13.2)
+      2026-10-05. Dziś paneli jest osiem, pod Rendererem stoi Lights, a Camera i Gameplay
+      są zwinięte u góry: sekcja 14.2)
 - [x] większe okno w pierwszej klatce (1560 x 860 i 1700 x 940, ustawione tymczasową zmianą
       rozmiaru startowego): prawa kolumna stoi przy prawej krawędzi, dolny rząd przy dolnej
 - [x] polskie litery w czcionce paneli: tymczasowy napis z kompletem liter i tymczasowa
@@ -1233,7 +1298,7 @@ liczby żadnych wniosków: nie wiem, czy vsync był aktywny, a pomiar był jeden
 
 Tych kroków nikt jeszcze nie wykonał ręką: chodzenia i ślizgania prawdziwymi klawiszami,
 klawisza N, obrotu myszą w labiryncie, przycisków `Regenerate` i `Random seed`, przycisku
-`Reload shaders` (dziś z pięcioma programami) oraz klikania list i suwaka w panelu Assets.
+`Reload shaders` (dziś z czterema programami) oraz klikania list i suwaka w panelu Assets.
 Przy każdym kroku jest to, co powinno być widać. Oczekiwania wynikają z kodu i z testów
 jednostkowych, nie z obserwacji.
 
@@ -1241,7 +1306,10 @@ Lista powstała przed oświetleniem. W dzisiejszym programie scena jest nocna, w
 rady ułatwiają jej przejście: lista `Lighting` w panelu Renderer ustawiona na `Unlit` daje
 równo jasny labirynt z tamtego dnia (wygodny do oglądania tekstur, filtrów i kolizji), a
 panel Camera trzeba najpierw rozwinąć strzałką w pasku tytułu. Kroki samego oświetlenia są
-w sekcji 13.2.
+w sekcji 13.2. Od M5 w labiryncie trwa też runda: u góry okna jest pasek HUD, w komórkach
+wiszą kryształy, a wejście w kryształ go zbiera. Chodzeniu, kolizjom i panelom z tej listy
+to nie przeszkadza, a stan rundy przywraca klawisz R. Kroki samej rozgrywki są w sekcji
+14.2.
 
 Przygotowanie:
 
@@ -1256,9 +1324,9 @@ Start i układ paneli:
       między kolumnami. Środek górnej części okna jest wolny. Zawartość ówczesnego panelu Shaders
       mieściła się w nim bez przewijania, dopóki żaden program nie ma błędu (zmierzone na
       zrzucie ekranu 2026-10-05, sekcja 12.1. To układ i panel Shaders z tamtego dnia:
-      dzisiejszy układ siedmiu paneli jest punktem otwartym w sekcji 13.2)
+      dzisiejszy układ ośmiu paneli jest punktem otwartym w sekcji 14.2)
 - [ ] po prawdziwym usunięciu `imgui.ini` ręką i starcie z katalogu repozytorium (układ
-      siedmiu paneli z sekcji 13.2): obejrzeć na żywo, czy tekst jest wygodny do czytania z
+      ośmiu paneli z sekcji 14.2): obejrzeć na żywo, czy tekst jest wygodny do czytania z
       odległości (projektor) i czy najechanie myszą na suwak, przycisk i pole wyboru
       zmienia ich tło na ciepły brąz, a panel z fokusem ma morski pasek tytułu
 - [ ] panel Camera (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
@@ -1266,17 +1334,23 @@ Start i układ paneli:
       `Sprint speed` 5.5, `Fly speed` 6.0. Kąt 180 dla ziarna 1 podał autor kodu z
       uruchomienia, żaden test go nie przypina: testy sprawdzają tylko, że kamera patrzy w
       stronę bez ściany
-- [ ] panel Maze: `Width` 10, `Height` 10, `Seed` 1, linie `In play: 10 x 10 cells, seed 1` i
-      `Walls: 121, pillars: 121`, pod nimi plan z bursztynową kropką w lewym górnym rogu i
+- [ ] panel Maze: `Width` 10, `Height` 10, `Seed` 1, linie `In play: 10 x 10 cells, seed 1`,
+      `Walls: 121, pillars: 121` i (od M5) `Crystals: 13, exit in cell (6, 5)`, pod nimi plan
+      z bursztynową kropką w lewym górnym rogu i
       kreską skierowaną w dół planu (południe). Plan z kropką w tym miejscu jest widoczny na
-      zrzucie ekranu, wartości suwaków i linii tekstu też
-- [ ] panel Collision: `Wall boxes: 121`, `Pillar boxes: 121`, `All boxes: 242`,
+      zrzucie ekranu z M2 + M3, wartości suwaków i dwóch pierwszych linii tekstu też. Od M5
+      na planie są także kryształy, brama i strefa wyjścia (sekcja 14.2)
+- [ ] panel Collision: `Boxes: 121 walls, 121 pillars, 1 gate`,
+      `All boxes: 243, pickup spheres: 13`,
       `Wall box: 0.30 m thick (the visible wall: 0.20 m)`, pudełko gracza `min: 0.70, 0.00,
-      0.70` i `max: 1.30, 1.80, 1.30`
-- [ ] panel Assets: trzy modele (`floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`),
-      każdy z jedną częścią, nazwą pliku tekstury i linią `normal map:` z nazwą mapy
-      normalnych, cztery tekstury z podglądem (`floor_stone.png`, `wall_stone.png` i ich
-      mapy `floor_stone_normal.png`, `wall_stone_normal.png`), brak sekcji `Failed to load`
+      0.70` i `max: 1.30, 1.80, 1.30`. Do M4 w tym miejscu stały linie `Wall boxes: 121`,
+      `Pillar boxes: 121` i `All boxes: 242`: bramy i kul nie było
+- [ ] panel Assets: sześć modeli (`floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`,
+      `crystal_a.obj`, `crystal_b.obj`, `gate.obj`; kolejność według wczytania może być
+      inna), każdy z jedną częścią, nazwą pliku tekstury i linią `normal map:` z nazwą mapy
+      normalnych, osiem tekstur z podglądem (`floor_stone.png`, `wall_stone.png`,
+      `crystal.png`, `gate_wood.png` i mapa normalnych każdej z nich, o tej samej nazwie z
+      końcówką `_normal`), brak sekcji `Failed to load`
 
 Chodzenie i kolizje (kliknąć w scenę, kursor znika):
 
@@ -1303,28 +1377,35 @@ Noclip:
 - [ ] w trybie noclip (kursor przechwycony) spacja wznosi, lewy Shift opuszcza, W leci tam,
       gdzie patrzy kamera, także w górę i w dół, przez ściany
 - [ ] wzlecieć spacją ponad ściany i spojrzeć w dół: układ ścian zgadza się z planem w panelu
-      Maze (północ, czyli -Z, jest na górze planu). Nad komórką w rogu przeciwległym do
-      startu wisi kolorowa kostka
+      Maze (północ, czyli -Z, jest na górze planu). Z góry widać też turkusowe kryształy w
+      komórkach, w których plan ma kropki, i bramę przy komórce z zielonym prostokątem.
+      Kolorowej kostki nad rogiem przeciwległym do startu już nie ma (usunięta w M5)
 - [ ] drugi raz N w powietrzu: gracz od razu stoi na podłodze (y stóp równe 0), bez
       widocznego zjazdu w dół. Jeśli wylądował w ścianie, może z niej wyjść
 - [ ] to samo polem wyboru `Noclip (key N)` w panelu Collision zamiast klawisza
 
 Pudełka kolizji:
 
-- [ ] `Draw collision boxes`: żółte linie obrysowują każdą ścianę i każdy słupek, linie nie
+- [ ] `Draw collision shapes` (do M4 pole nazywało się `Draw collision boxes`): żółte linie
+      obrysowują każdą ścianę i każdy słupek, linie nie
       migoczą (pudełka są rysowane o 1 cm większe). Pudełka ścian są wyraźnie grubsze od
-      korpusu ściany i równe ze słupkami. Linie za ścianą są zasłonięte
+      korpusu ściany i równe ze słupkami. Linie za ścianą są zasłonięte. Pomarańczowe
+      pudełko bramy, turkusowe kule kryształów i pudełko strefy wyjścia w kolorze magenty
+      opisuje sekcja 14.2
 - [ ] zielone pudełko gracza: kamera stoi w jego środku, więc widać je po spojrzeniu pod
-      nogi albo nad głowę, a w całości z boku nie widać go nigdy. Zapisać, jak to wygląda
+      nogi albo nad głowę, a w całości z boku nie widać go nigdy. Od M5 w środku pudełka
+      jest też zielona kula z trzech okręgów (zasięg gracza). Zapisać, jak to wygląda
 
 Regeneracja:
 
 - [ ] zmienić `Width` i `Height` (suwaki od 2 do 40) oraz `Seed`: nic się nie dzieje, linia
       `In play` pokazuje stary labirynt. Dopiero `Regenerate` buduje nowy: zmienia się plan,
-      linia `In play` i liczby ścian, gracz stoi znowu w `Player feet` 1, 0, 1 z `Pitch` 0 i
-      patrzy w otwarty korytarz, kostka wisi nad nowym rogiem
+      linia `In play`, liczby ścian i linia `Crystals: ...`, gracz stoi znowu w
+      `Player feet` 1, 0, 1 z `Pitch` 0 i patrzy w otwarty korytarz, a runda zaczyna się od
+      nowa (pasek HUD: zero zebranych kryształów, czas `0:00`, bateria `100%`)
 - [ ] `Regenerate` nie zmienia trybu noclip, prędkości, trybu widoku ani pola `Draw collision
-      boxes`: ustawić je przed kliknięciem i sprawdzić po nim
+      shapes`: ustawić je przed kliknięciem i sprawdzić po nim. Zmienia jedno ustawienie:
+      nowa runda zawsze włącza latarkę
 - [ ] ten sam rozmiar i to samo ziarno dwa razy dają ten sam plan
 - [ ] `Random seed`: w polu `Seed` pojawia się nowa liczba i od razu powstaje nowy labirynt.
       Wpisanie tej liczby później i `Regenerate` odtwarza go
@@ -1338,8 +1419,9 @@ ustawić `Lighting` w panelu Renderer na `Unlit`):
 - [ ] `View mode`, `Normals as colour`: podłoga jasnozielona (normalna +Y), powierzchnie zwrócone
       na +X czerwonawe, na +Z niebieskawe, a zwrócone w przeciwne strony ciemne w tym
       kanale, więc dwie strony tej samej ściany mają różne kolory. `UVs as colour`: czerwono-zielone przejścia, które zaczynają się od nowa tam,
-      gdzie tekstura się powtarza. `Textured` przywraca obraz. Kostka i linie pudełek nie
-      zmieniają wyglądu. Oba widoki rysuje zawsze program `textured`, bez świateł (sekcja
+      gdzie tekstura się powtarza. `Textured` przywraca obraz. Linie kształtów kolizji nie
+      zmieniają wyglądu, a kryształy i brama są w obu widokach pokolorowane według tej
+      samej reguły co ściany. Oba widoki rysuje zawsze program `textured`, bez świateł (sekcja
       13.2). Opisane kolory normalnych to kolory podstawowe powierzchni: przy zaznaczonym
       polu `Normal mapping` i trybie `Lighting` innym niż `Gouraud` widać na nich jeszcze
       rysunek fug z map normalnych (sekcja 13.4). Żeby zobaczyć same normalne modelu,
@@ -1358,16 +1440,18 @@ Shadery i brakujący plik:
 - [ ] `Reload shaders` po zmianie w `textured.frag`: najpierw ustawić `Lighting` w panelu
       Renderer na `Unlit`, bo w pozostałych trybach labirynt rysują programy `lit` albo
       `gouraud` i zmiana w `textured.frag` nie byłaby widoczna. Przy działającym programie
-      zmienić w `assets\shaders\textured.frag` linię `fragColor = vec4(texel * uTint, 1.0);`
-      na `fragColor = vec4(texel * uTint * vec3(1.0, 0.5, 0.5), 1.0);`, w drugim terminalu
+      zmienić w `assets\shaders\textured.frag` linię
+      `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);` na
+      `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive) * vec3(1.0, 0.5, 0.5), 1.0);`,
+      w drugim terminalu
       `cmake --build --preset debug --target copy_assets`, potem kliknąć `Reload shaders`.
-      Oczekiwane: labirynt robi się czerwonawy, wszystkie pięć linii panelu kończy się
+      Oczekiwane: labirynt robi się czerwonawy, wszystkie cztery linie panelu kończą się
       napisem `: OK`
 - [ ] błąd w jednym programie (nadal w trybie `Unlit`): usunąć średnik w `textured.frag`,
       `copy_assets`, `Reload shaders`. Oczekiwane: czerwona linia
       `textured.vert + textured.frag: FAILED, the previous program stays in use`, pod nią
       czerwony tekst ze ścieżką pliku i linią sterownika zaczynającą się od
-      `textured.frag(N)`, labirynt rysuje się poprzednią wersją, cztery pozostałe linie
+      `textured.frag(N)`, labirynt rysuje się poprzednią wersją, trzy pozostałe linie
       mają `: OK`. Przywrócić plik (`git checkout assets/shaders/textured.frag`),
       `copy_assets`, `Reload shaders`
 - [ ] celowo brakująca tekstura: zamknąć program, zmienić nazwę
@@ -1416,14 +1500,24 @@ plik `common/lighting.glsl`, panel Lights),
 układ `std140`), [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md)
 (`#include`, nazwy plików w błędach),
 [`../modules/game/flashlight.md`](../modules/game/flashlight.md) (latarka, klawisz F,
-światła w ślepych zaułkach). Decyzje:
+światła punktowe gry). Decyzje:
 [`../decisions/no-gamma-until-m7.md`](../decisions/no-gamma-until-m7.md) i
 [`../decisions/dead-end-lights.md`](../decisions/dead-end-lights.md).
 
 Kamień milowy **nie jest zamknięty**: kod obu części jest kompletny, ale części ręczne
 poniżej (13.2 i 13.4) są otwarte, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i
 nie ma tagu. Czego w tej części nie ma: cieni (światła świecą przez ściany, cienie są w
-planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
+planie M7) oraz korekcji gamma i tekstur sRGB (M7). Baterii latarki w M4 też nie było:
+doszła w M5 (sekcja 14).
+
+**Sekcje 13.1 i 13.3 są zapisem stanu po M4.** M5 zmienił cztery rzeczy, o których mówią
+ich punkty `[x]`. Światła punktowe nie wiszą już w ślepych zaułkach, tylko nad kryształami
+(w labiryncie startowym było 11 świateł, dziś jest 13 kryształów), a notatka
+[`../decisions/dead-end-lights.md`](../decisions/dead-end-lights.md) opisuje rozwiązanie
+zastąpione. Kostek oznaczających światła i kostki z M1 nie ma. Programów shaderów jest
+cztery, bez `basic`. Paneli jest osiem, a dolny rząd jest o 8 pikseli wyższy. Punkty `[x]`
+zostają z tekstami z dnia pomiaru. Punkty otwarte w sekcjach 13.2 i 13.4 są przepisane
+tak, żeby dało się je wykonać w dzisiejszym programie.
 
 ### 13.1. Zmierzone (2026-10-05)
 
@@ -1431,8 +1525,9 @@ planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
 
 - [x] build Debug i Release: zero ostrzeżeń pod `/W4 /permissive-`
 - [x] `night_maze_tests.exe` w Debug i w Release: wszystkie przypadki przechodzą. Liczby
-      podaję dla stanu dzisiejszego, po obu częściach M4: 163 przypadki testowe i 62220
-      asercji (sekcja 13.3). Przypadki w plikach (policzone także jako makra `TEST_CASE`):
+      podaję dla stanu po obu częściach M4: 163 przypadki testowe i 62220
+      asercji (sekcja 13.3. Dzisiejsze liczby, po M5: sekcja 14.1). Przypadki w plikach
+      (policzone wtedy także jako makra `TEST_CASE`):
       `ColliderTests.cpp` 12, `ImageLoaderTests.cpp` 9, `LightingTests.cpp` 17,
       `LightTests.cpp` 20, `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12,
       `MazeTests.cpp` 6, `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 20, `PlayerTests.cpp`
@@ -1452,8 +1547,8 @@ planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
       definiowania tej nazwy (ostrzeżenie C4117, nazwa zastrzeżona). Opis:
       [`project-structure.md`](project-structure.md), sekcje 3.6 i 3.9
 - [x] gra startuje bez linii `[error]`, w tym bez żadnej z nazwą błędu OpenGL (`GL_...`), w
-      buildzie Debug, w którym `GL_CHECK` jest aktywne. Z tego wynika, że pięć programów
-      shaderów się wczytało (także `lit` i `gouraud`, które dołączają
+      buildzie Debug, w którym `GL_CHECK` jest aktywne. Z tego wynika, że pięć ówczesnych
+      programów shaderów się wczytało (z `basic`, a także `lit` i `gouraud`, które dołączają
       `common/lighting.glsl`) i że nie pojawiła się linia `[error] Uniform block LightBlock
       is ... bytes in the shader, but 928 bytes in the C++ code`: sterownik NVIDII układa
       blok w tylu bajtach, ile ma struktura `scene::LightBlockData`
@@ -1461,7 +1556,9 @@ planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
 - [x] zrzuty ekranu czterech trybów oświetlenia (`Unlit`, `Gouraud`, `Phong`,
       `Blinn-Phong`), każdy z trzech punktów widzenia
 - [x] zrzut ekranu z wyłączoną latarką
-- [x] zrzut ekranu ślepego zaułka z jego światłem punktowym
+- [x] zrzut ekranu ślepego zaułka z jego światłem punktowym (stan M4. Od M5 światło
+      punktowe wisi nad kryształem, a w ślepym zaułku jest tylko wtedy, gdy stoi w nim
+      kryształ)
 - [x] zrzut ekranu ścian oświetlonych przez księżyc i ścian, do których jego światło nie
       dociera. Które to strony, wynika z kodu: przy kątach startowych (`Moon yaw` 25,
       `Moon pitch` -50) światło biegnie w kierunku około (0,27, -0,77, -0,58), więc
@@ -1489,7 +1586,8 @@ planie M7), korekcji gamma i tekstur sRGB (M7) oraz baterii latarki (M5).
   dołącza też `common/normal_map.glsl`, więc legenda ma trzy pozycje: tego komunikatu po
   zmianie nikt nie wywołał (punkt otwarty w sekcji 13.4)
 - [x] shader bez `#include` też dostaje nazwę pliku w komunikacie: `basic.frag(4)` w
-      miejscu `0(4)`
+      miejscu `0(4)` (pomiar na pliku, który M5 usunął. Dziś shaderem bez `#include` jest
+      na przykład `color.frag`)
 
 Żaden z tych stanów nie był ustawiany ręką: klawiszem F, listą `Lighting`, widżetami panelu
 Lights ani przyciskiem `Reload shaders`. Dlatego te same kroki są jeszcze raz na liście
@@ -1509,30 +1607,33 @@ Przygotowanie:
       (przy starcie z katalogu repozytorium: z katalogu głównego repozytorium), zbudować
       (`cmake --build --preset debug`) i uruchomić `build\debug\Debug\night_maze.exe`
 
-Układ siedmiu paneli (okno 1280 x 720, bez `imgui.ini`):
+Układ paneli (okno 1280 x 720, bez `imgui.ini`). W M4 paneli było siedem, a dolny rząd
+miał wysokość 272. Dziś jest ich osiem:
 
-- [ ] lewa kolumna: Renderer (336 x 230) nad Lights (336 x 466). Prawa kolumna: Maze
-      (300 x 480) nad Assets (300 x 216). Dolny rząd między kolumnami: Collision
-      (312 x 272) i Shaders (292 x 272). Siódmy panel, Camera, jest zwinięty do paska
-      tytułu u góry okna, tuż na prawo od lewej kolumny. Żaden panel nie zasłania innego,
-      a środek okna, w który świeci latarka, jest wolny
+- [ ] układ ośmiu paneli i paska HUD: punkt z wymiarami jest w sekcji 14.2. Tu wystarczy
+      sprawdzić, że Lights stoi pod Rendererem w lewej kolumnie, że żaden panel nie
+      zasłania innego i że środek okna, w który świeci latarka, jest wolny
 - [ ] panel Renderer: pod edytorem `Clear color` jest lista `Lighting` z wybraną pozycją
       `Blinn-Phong`
 - [ ] panel Lights: u góry edytor koloru `Ambient`, pod nim cztery grupy z paskami:
-      `Moon (directional)` (zwinięta), `Flashlight (spot)`, `Point lights (dead ends)` i
+      `Moon (directional)` (zwinięta), `Flashlight (spot)`, `Point lights (crystals)` i
       `Highlight (specular)` (rozwinięte). Przy zwiniętej grupie księżyca panel pokazuje
-      całą zawartość bez przewijania. Wartości startowe: `Flashlight on (key F)`
+      całą zawartość bez przewijania (tak było w M4: zapisać, czy jest tak nadal).
+      Wartości startowe: `Flashlight on (key F)`
       zaznaczone, `Beam intensity` 1.60, `Cone` z polami `inner 13.0 deg` i
-      `outer 21.0 deg`, `Beam range` 16.0 m, linia `In this maze: 11 (at most 16)`,
-      `Point intensity` 2.00, `Point radius` 3.0 m, `Strength` 0.25, `Shininess` 32
-- [ ] panel Shaders: przycisk `Reload shaders` i pięć linii:
-      `basic.vert + basic.frag: OK`, `textured.vert + textured.frag: OK`,
+      `outer 21.0 deg`, `Beam range` 16.0 m, linia `Lit: 13 of 13 crystals (at most 16)`,
+      `Point intensity` 2.00, `Point radius` 3.0 m, `Strength` 0.25, `Shininess` 32. Do M4
+      trzecia grupa nazywała się `Point lights (dead ends)` i miała linię
+      `In this maze: 11 (at most 16)`
+- [ ] panel Shaders: przycisk `Reload shaders` i cztery linie:
+      `textured.vert + textured.frag: OK`,
       `color.vert + color.frag: OK`, `lit.vert + lit.frag: OK`,
       `gouraud.vert + gouraud.frag: OK`. Najechanie myszą na linię pokazuje w dwóch
       wierszach pełne ścieżki obu plików
 - [ ] rozwinięcie panelu Camera: kliknąć strzałkę w jego pasku tytułu. Panel otwiera się w
-      dół do rozmiaru 280 x 424 i kończy się 8 pikseli nad dolnym rzędem. Zasłania lewą
-      część sceny i żadnego innego panelu. Jest trochę niższy od swojej zawartości, więc
+      dół do rozmiaru 280 x 416 i kończy się 8 pikseli nad dolnym rzędem. Zasłania lewą
+      część sceny, lewą część paska HUD i żadnego innego panelu. Jest trochę niższy od
+      swojej zawartości, więc
       ma pasek przewijania. Drugie kliknięcie strzałki zwija go z powrotem. Po ponownym
       uruchomieniu (już z `imgui.ini`) panel jest w tym stanie, w jakim został
 
@@ -1542,7 +1643,9 @@ Latarka:
       światła punktowe i światło otoczenia, a pole `Flashlight on (key F)` w panelu Lights
       samo się odznacza. Drugi raz F włącza ją i zaznacza pole. Klawisz działa także przy
       widocznym kursorze (tak jak N), ale nie wtedy, gdy klawiaturę ma panel (na przykład
-      trwa wpisywanie wartości w polu)
+      trwa wpisywanie wartości w polu). Od M5 latarka zużywa baterię i przy pustej baterii
+      nie daje się włączyć: te kroki są w sekcji 14.2. Do tej listy wystarczy bateria,
+      która nie jest pusta (pasek HUD u góry okna)
 - [ ] to samo kliknięciem pola `Flashlight on (key F)` zamiast klawisza
 - [ ] stożek zostaje na środku obrazu w ruchu: iść do przodu (W), bokiem (A i D) i biec
       (lewy Shift) wzdłuż ściany. Plama latarki nie spóźnia się za obrazem i nie drży.
@@ -1551,11 +1654,13 @@ Latarka:
 
 Cztery tryby (lista `Lighting` w panelu Renderer):
 
-- [ ] `Unlit`: labirynt równo jasny, jak przed M4, sama tekstura. Znaczników świateł nie
-      ma, a klawisz F niczego nie zmienia w obrazie
+- [ ] `Unlit`: labirynt równo jasny, jak przed M4, sama tekstura. Klawisz F niczego nie
+      zmienia w obrazie. Kryształy i brama są rysowane tym samym programem `textured`:
+      brama równo jasna jak ściany, kryształy jaśniejsze od nich i turkusowe (uniform
+      `uEmissive` rozjaśnia ich teksturę także w tym programie)
 - [ ] `Gouraud`: światło liczone w wierzchołkach i rozciągane po trójkątach. Powierzchnie
       mają łagodne przejścia jasności od narożnika do narożnika, bez okrągłych plam.
-      Znaczniki świateł są widoczne
+      Kryształy świecą własnym kolorem także w tym trybie
 - [ ] `Phong`: światło liczone dla każdego fragmentu. Latarka daje okrągłą plamę z miękkim
       brzegiem, światła punktowe okrągłe kałuże światła na podłodze i ścianach
 - [ ] `Blinn-Phong` (tryb startowy): to samo co `Phong`, inny jest tylko wzór połysku
@@ -1608,15 +1713,18 @@ przewijać):
 
 Światła punktowe:
 
-- [ ] policzyć znaczniki: klawisz N, wznieść się spacją nad ściany i spojrzeć w dół.
-      Turkusowych kostek (bok 0,14 m, 1,4 m nad podłogą) jest 11, tyle, ile pokazuje linia
-      `In this maze: 11 (at most 16)`. Każda wisi nad środkiem komórki, która na planie w
-      panelu Maze ma ściany z trzech stron (ślepy zaułek). Komórka startowa, w lewym
-      górnym rogu planu, znacznika nie ma, nawet jeśli jest ślepym zaułkiem
+- [ ] policzyć źródła świateł: klawisz N, wznieść się spacją nad ściany i spojrzeć w dół.
+      Świecących turkusowych kryształów jest 13, tyle, ile pokazuje linia
+      `Lit: 13 of 13 crystals (at most 16)` i ile kropek ma plan w panelu Maze. Każdy
+      unosi się nad środkiem swojej komórki, a jego światło wisi 0,15 m nad jego czubkiem
+      (około 1,55 m nad podłogą). Komórka startowa (lewy górny róg planu) i komórka
+      wyjścia (zielony prostokąt na planie) kryształu nie mają. W M4 źródłami były
+      turkusowe kostki w ślepych zaułkach, 11 w tym labiryncie: tych kostek już nie ma
 - [ ] `Point radius` (suwak od 0.5 do 12.0 m): większy promień powiększa kałuże światła.
       Cieni nie ma, więc przy dużym promieniu światło widać także w sąsiednich korytarzach,
-      za ścianą. `Point intensity` 0 gasi światła, znaczniki zostają
-- [ ] `Point colour` zmienia naraz kolor świateł i kolor znaczników
+      za ścianą. `Point intensity` 0 gasi światła wokół kryształów, ale same kryształy
+      świecą dalej: ich blask jest liczony z `Point colour`, nie z natężenia
+- [ ] `Point colour` zmienia naraz kolor świateł i kolor, którym świecą kryształy
 
 Stożek i zasięg latarki:
 
@@ -1630,16 +1738,22 @@ Stożek i zasięg latarki:
 Regeneracja:
 
 - [ ] w panelu Maze ustawić inne ziarno (albo kliknąć `Random seed`) i `Regenerate`:
-      znaczniki i światła stoją w ślepych zaułkach nowego labiryntu, a liczba w linii
-      `In this maze: ...` odpowiada nowemu planowi. Ustawienia z panelu Lights i tryb
-      `Lighting` zostają bez zmian
-- [ ] `Width` 4, `Height` 4, `Seed` 1, `Regenerate`: linia `In this maze: 2 (at most 16)`,
-      znaczniki nad komórką w prawej kolumnie w drugim rzędzie od góry i nad komórką w
-      lewym dolnym rogu planu (pilnuje tego test `golden maze: 4 x 4 cells from seed 1 has
-      lights in its two dead ends`)
-- [ ] `Width` 40, `Height` 40, `Regenerate`: liczba świateł nie przekracza 16 (oczekiwane
-      dokładnie 16, bo tak duży labirynt ma więcej ślepych zaułków), a znaczniki są
-      rozłożone po całym labiryncie, nie tylko w pierwszych rzędach. Zapisać FPS z panelu
+      kryształy i ich światła są w komórkach nowego labiryntu, a liczby w linii
+      `Lit: ...` i w linii `Crystals: ...` panelu Maze odpowiadają nowemu planowi.
+      Ustawienia z panelu Lights i tryb
+      `Lighting` zostają bez zmian, poza jednym: nowa runda włącza latarkę
+- [ ] `Width` 4, `Height` 4, `Seed` 1, `Regenerate`: linia
+      `Lit: 2 of 2 crystals (at most 16)`, w panelu Maze `Crystals: 2, exit in cell (3, 1)`,
+      na pasku HUD `0 / 2` i `(of 2)`. Kryształy wiszą w lewym dolnym rogu planu (komórka
+      (0, 3), ślepy zaułek) i w drugiej kolumnie drugiego rzędu od góry (komórka (1, 1)),
+      a wyjście jest w prawej kolumnie w drugim rzędzie od góry, z bramą od północy
+      (pilnują tego testy `golden maze: 4 x 4 cells from seed 1 has exactly these two
+      crystals` i `golden maze: 4 x 4 cells from seed 1 has its exit in the dead end
+      (3, 1)`)
+- [ ] `Width` 40, `Height` 40, `Regenerate`: kryształów jest dokładnie 16
+      (`Lit: 16 of 16 crystals (at most 16)`: jeden na osiem komórek dałby 200, a shader ma
+      miejsce na 16 świateł), a na pasku HUD stoi `0 / 12` i `(of 16)`. Zapisać, jak
+      kryształy są rozłożone na planie, oraz FPS z panelu
       Renderer w trybach `Gouraud` i `Blinn-Phong`
 
 Błąd w dołączanym pliku:
@@ -1652,22 +1766,24 @@ Błąd w dołączanym pliku:
       `gouraud.vert + gouraud.frag: FAILED, the previous program stays in use` są
       czerwone, pod każdą jest czerwony komunikat, który nazywa plik `common/lighting.glsl`
       i numer linii w tym pliku (sterownik może wskazać linię następną po usuniętym
-      średniku), trzy pozostałe linie mają `: OK`, obraz się nie zmienia. Te same
+      średniku), dwie pozostałe linie (`textured` i `color`) mają `: OK`, obraz się nie
+      zmienia. Te same
       komunikaty są w konsoli jako `[error]`
 - [ ] naprawa: `git checkout assets/shaders`, znowu
       `cmake --build --preset debug --target copy_assets` i `Reload shaders`. Oczekiwane:
-      wszystkie pięć linii kończy się napisem `: OK`, a `git status` nie pokazuje
+      wszystkie cztery linie kończą się napisem `: OK`, a `git status` nie pokazuje
       zmienionych plików w `assets/shaders`
 
 Widoki debug w trybie z oświetleniem:
 
 - [ ] przy `Lighting` równym `Blinn-Phong` wybrać w panelu Assets `View mode`
       `Normals as colour`, potem `UVs as colour`. Labirynt jest wtedy rysowany programem
-      `textured`, bez świateł, tak samo jak w trybie `Unlit`, ale znaczniki świateł nadal
-      są widoczne. Widok normalnych pokazuje normalne używane przez wybrany tryb: z map
+      `textured`, bez świateł, tak samo jak w trybie `Unlit`, a razem z nim kryształy i
+      brama, pokolorowane według tej samej reguły co ściany i bez własnego blasku
+      (`uEmissive` działa tylko w widoku `Textured`). Widok normalnych pokazuje normalne
+      używane przez wybrany tryb: z map
       normalnych w trybach `Unlit`, `Phong` i `Blinn-Phong`, z samej siatki w trybie
-      `Gouraud` (sekcja 13.4). `Textured` przywraca oświetlony obraz. W trybie `Unlit` te same widoki
-      nie mają znaczników
+      `Gouraud` (sekcja 13.4). `Textured` przywraca oświetlony obraz
 
 Na koniec:
 
@@ -1683,9 +1799,11 @@ decyzja: [`../decisions/tangents-on-load.md`](../decisions/tangents-on-load.md).
 - [x] build Debug i Release: zero ostrzeżeń pod `/W4 /permissive-`
 - [x] `night_maze_tests.exe` w Debug i w Release: 163 przypadki testowe, 62220 asercji,
       wszystkie przechodzą. Doszło 14 przypadków: nowy plik `TangentTests.cpp` (9 przypadków,
-      177 asercji), po dwa w `ObjLoaderTests.cpp` (dziś 20 i 1576) i `ImageLoaderTests.cpp`
-      (dziś 9 i 57), jeden w `LightingTests.cpp` (dziś 17 i 133). Liczby z plików osobno:
-      opcja `--source-file`, Debug
+      177 asercji), po dwa w `ObjLoaderTests.cpp` (po tej części 20 i 1576) i
+      `ImageLoaderTests.cpp` (po tej części 9 i 57), jeden w `LightingTests.cpp` (po tej
+      części 17 i 133). Liczby z plików osobno:
+      opcja `--source-file`, Debug. To liczby z M4: dla stanu po M5 mam liczby przypadków
+      w plikach (sekcja 14.1), a liczb asercji w plikach nie
 - [x] clang-format i clang-tidy: żadnej uwagi
 - [x] gra startuje bez linii `[error]`, w tym bez żadnej z nazwą błędu OpenGL (`GL_...`), w
       buildzie Debug. Z tego wynika, że programy `lit` i `textured` skompilowały się z
@@ -1703,8 +1821,9 @@ decyzja: [`../decisions/tangents-on-load.md`](../decisions/tangents-on-load.md).
 - [x] tryby `Gouraud` i `Unlit`: zrzuty ekranu identyczne co do piksela z mapami włączonymi
       i wyłączonymi
 - [x] skrypty Blendera są powtarzalne: dwa kolejne uruchomienia skryptu tekstur i skryptów
-      modeli dały identyczne skróty wszystkich dziesięciu plików wyjściowych (4 PNG, 3 OBJ,
-      3 MTL). Obrazy koloru i pliki `.obj` są bajt w bajt takie same jak przed tą częścią,
+      modeli dały identyczne skróty wszystkich dziesięciu ówczesnych plików wyjściowych
+      (4 PNG, 3 OBJ, 3 MTL. Od M5 skrypty piszą 8 PNG, 6 OBJ i 6 MTL: dla nich tej próby
+      nie zapisano). Obrazy koloru i pliki `.obj` są bajt w bajt takie same jak przed tą częścią,
       każdy plik `.mtl` dostał jedną linię `map_Bump`
 - [x] liczba wierzchołków i indeksów modeli bez zmian: ściana i słupek 60 i 90, podłoga 4 i
       6 (styczne nie dodają wierzchołków)
@@ -1726,12 +1845,15 @@ jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak
       `Anisotropy`. Sprawdzić, czy panel nie zasłania innego i czy do list `Models` i
       `Textures` trzeba przewijać (panel jest niski, przewijanie jest spodziewane)
 - [ ] panel Assets, lista `Models`: pod każdą częścią modelu jest linia
-      `normal map: wall_stone_normal.png` (ściana i słupek) albo
-      `normal map: floor_stone_normal.png` (podłoga)
-- [ ] panel Assets, lista `Textures`: cztery tekstury z podglądem, każda 512 x 512:
-      `floor_stone.png`, `floor_stone_normal.png`, `wall_stone.png`, `wall_stone_normal.png`
+      `normal map: wall_stone_normal.png` (ściana i słupek),
+      `normal map: floor_stone_normal.png` (podłoga), a od M5 także
+      `normal map: crystal_normal.png` (oba kryształy) i
+      `normal map: gate_wood_normal.png` (brama)
+- [ ] panel Assets, lista `Textures`: osiem tekstur z podglądem, każda 512 x 512:
+      `floor_stone.png`, `wall_stone.png`, `crystal.png`, `gate_wood.png` i cztery mapy
+      normalnych o tych samych nazwach z końcówką `_normal`
       (kolejność według wczytania może być inna). Podglądy map normalnych są jasnoniebieskie
-      z kolorowymi kreskami fug i stoją prosto
+      i stoją prosto, a na mapach kamienia widać kolorowe kreski fug
 - [ ] `Lighting` równe `Blinn-Phong`, podejść do ściany z włączoną latarką: fugi są rowkami.
       Odznaczyć `Normal mapping`: ściana staje się płaska, plama latarki przesuwa się po
       rysunku kamieni. Zaznaczyć: relief wraca od razu, bez przeładowania
@@ -1757,16 +1879,286 @@ jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak
       płaska (płaska mapa zastępcza), ściany bez zmian, w konsoli jedna linia `[error]`, w
       panelu Assets przy części `floor_stone` napis `normal map: none (flat)` i sekcja
       `Failed to load` z nazwą pliku. Przywrócić nazwę pliku
-- [ ] `Reload shaders` przy włączonych mapach: wszystkie pięć linii kończy się napisem
+- [ ] `Reload shaders` przy włączonych mapach: wszystkie cztery linie kończą się napisem
       `: OK`, relief nie znika (numery jednostek i przełącznik są wysyłane w każdej klatce)
 - [ ] błąd w drugim pliku dołączanym: dopisać literę w `common/normal_map.glsl` w kopii
       `assets` obok programu, `Reload shaders`. Oczekiwane: programy `lit` i `textured` mają
-      `FAILED` z nazwą `common/normal_map.glsl` i numerem linii w tym pliku, pozostałe trzy
-      `: OK`, obraz się nie zmienia. Cofnąć zmianę i przeładować
+      `FAILED` z nazwą `common/normal_map.glsl` i numerem linii w tym pliku, pozostałe dwa
+      (`color` i `gouraud`) mają `: OK`, obraz się nie zmienia. Cofnąć zmianę i przeładować
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tymi wywołanymi
       celowo
 
-## 14. Powiązane dokumenty
+## 14. Lista kontrolna M5: rozgrywka
+
+Kamień milowy M5 zamienia spacer po oświetlonym labiryncie w rundę: w komórkach wiszą
+kryształy, każdy zebrany doładowuje baterię latarki, po zebraniu wystarczającej liczby
+otwiera się brama, a przejście przez nią do komórki wyjścia kończy rundę wygraną. Doszły:
+kule jako drugi kształt kolizji, wyjście w komórce najdalszej od startu, kryształy i brama
+jako modele, bateria latarki z migotaniem, pasek HUD z kartą wygranej, panel Gameplay,
+klawisz R i układ ośmiu paneli. Zniknęły: kostka z M1 z programem `basic`, kostki
+oznaczające światła i światła w ślepych zaułkach. Opis kodu:
+[`../modules/game/gameplay.md`](../modules/game/gameplay.md) (reguły rundy, wyjście,
+kryształy, HUD i panel Gameplay), [`../modules/scene/collision.md`](../modules/scene/collision.md)
+(kule i ich rysowanie liniami), [`../modules/game/flashlight.md`](../modules/game/flashlight.md)
+(bateria, migotanie, światła kryształów),
+[`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) (wspólne rysowanie
+modeli). Decyzje:
+[`../decisions/battery-darkness-no-loss.md`](../decisions/battery-darkness-no-loss.md),
+[`../decisions/crystal-count-and-gate-threshold.md`](../decisions/crystal-count-and-gate-threshold.md),
+[`../decisions/exit-farthest-cell.md`](../decisions/exit-farthest-cell.md) i
+[`../decisions/enemy-after-m5.md`](../decisions/enemy-after-m5.md).
+
+Kamień milowy **nie jest zamknięty**: kod jest kompletny na Windowsie, ale część ręczna
+poniżej (14.2) jest otwarta w całości, na macOS kod nie był budowany
+([`build-macos.md`](build-macos.md)) i nie ma tagu. Czego w M5 nie ma: stanu przegranej
+(pusta bateria oznacza tylko ciemność, runda trwa dalej), przeciwnika (jest w planie na
+później, kodu nie ma), cieni i korekcji gamma (M7).
+
+### 14.1. Zmierzone (2026-10-05)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla M5 nie
+zapisano, więc ich tu nie podaję (środowisko wcześniejszych pomiarów jest w sekcji 1).
+
+- [x] build Debug i Release: zero ostrzeżeń
+- [x] `night_maze_tests.exe` w Debug i w Release: 215 przypadków testowych i 85098 asercji,
+      wszystkie przechodzą. Przypadki w plikach (liczba makr `TEST_CASE` w pliku):
+      `ColliderTests.cpp` 19, `CrystalTests.cpp` 14, `ExitTests.cpp` 11,
+      `ImageLoaderTests.cpp` 9, `LightingTests.cpp` 10, `LightTests.cpp` 20,
+      `MazeGeneratorTests.cpp` 11, `MazeLayoutTests.cpp` 12, `MazeTests.cpp` 8,
+      `MazeWorldTests.cpp` 8, `ObjLoaderTests.cpp` 20, `PlayerTests.cpp` 13,
+      `RoundTests.cpp` 25, `ShaderSourceTests.cpp` 22, `TangentTests.cpp` 9,
+      `TransformTests.cpp` 4. Względem M4 (163 przypadki, 62220 asercji) doszły trzy pliki
+      (`ExitTests.cpp`, `CrystalTests.cpp`, `RoundTests.cpp`) i siedem przypadków kul w
+      `ColliderTests.cpp`, `MazeTests.cpp` ma o dwa przypadki więcej (test ślepego zaułka
+      przeniesiony razem z funkcją `isDeadEnd` i test porównania `MazeCell`), a
+      `LightingTests.cpp` o siedem mniej (ten jeden przeniesiony, a sześć testów świateł w
+      ślepych zaułkach usuniętych razem z tym kodem). Liczb asercji w poszczególnych plikach dla M5 nie zapisano
+- [x] obraz sprawdzony na zrzutach ekranu. Zrzuty powstały przez tymczasowe wstawki w
+      kodzie, które po pomiarze zostały usunięte. Listy zrzutów (jakie stany, z jakich
+      miejsc) nie zapisano
+
+Czego dla M5 nie zapisano i czego dlatego tu nie twierdzę: wyniku clang-format i
+clang-tidy, tego, czy gra startuje bez linii `[error]`, oraz liczby i treści zrzutów
+ekranu. Te punkty są na liście otwartej niżej.
+
+Żaden stan rundy nie był ustawiany ręką: klawiszem R, klawiszem F przy pustej baterii,
+wejściem w kryształ, przejściem przez bramę ani widżetami panelu Gameplay. Dlatego całą
+rozgrywkę trzeba przejść jeszcze raz według listy otwartej.
+
+### 14.2. Otwarte: test ręczny na około dwadzieścia minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
+być widać. Oczekiwania wynikają z kodu i z testów jednostkowych (`tests/RoundTests.cpp`,
+`CrystalTests.cpp`, `ExitTests.cpp`), nie z klikania. Nazwy widżetów i napisy są zapisane
+tak jak w `src/debug/panels/GameplayPanel.cpp`, `src/debug/Hud.cpp`, `LightsPanel.cpp`,
+`CollisionPanel.cpp` i `MazePanel.cpp`. Liczby dotyczą labiryntu startowego (10 na 10,
+ziarno 1): 13 kryształów, brama otwiera się po dziesiątym, wyjście jest w komórce (6, 5).
+
+Trzy rzeczy ułatwiają przejście listy. Dokładną wartość suwaka wpisuje się po kliknięciu go
+z wciśniętym Ctrl, ale dopóki trwa wpisywanie, klawiaturę ma panel: klawisze R, F i N nie
+działają, dopóki nie zatwierdzę wartości klawiszem Enter. Panel Gameplay startuje zwinięty:
+rozwija go strzałka w pasku tytułu. Kryształy na planie w panelu Maze to turkusowe kropki,
+więc plan pokazuje, dokąd iść.
+
+Przygotowanie:
+
+- [ ] zamknąć program, usunąć `imgui.ini` z katalogu, z którego program będzie uruchamiany
+      (przy starcie z katalogu repozytorium: z katalogu głównego repozytorium), zbudować
+      (`cmake --build --preset debug`) i uruchomić `build\debug\Debug\night_maze.exe`
+- [ ] na starcie w konsoli nie ma żadnej linii `[error]`, w tym żadnej z nazwą błędu OpenGL
+      (`GL_...`). Są linie `[info] Loaded model: ...` dla sześciu modeli i
+      `[info] Loaded texture: ...` dla ośmiu tekstur. Dla M5 tego wyniku nie zapisano
+
+Układ ośmiu paneli i pasek HUD (okno 1280 x 720, bez `imgui.ini`):
+
+- [ ] lewa kolumna: Renderer (336 x 230) nad Lights (336 x 466). Prawa kolumna: Maze
+      (300 x 480) nad Assets (300 x 216). Dolny rząd między kolumnami: Collision
+      (312 x 280) i Shaders (292 x 280). U góry, między kolumnami, dwa paski tytułu obok
+      siebie: Camera, a na prawo od niego Gameplay, oba zwinięte. Żaden panel nie zasłania
+      innego, a środek okna, w który świeci latarka, jest wolny
+- [ ] pasek HUD stoi na środku górnej krawędzi okna, tuż pod paskami tytułu paneli Camera
+      i Gameplay (46 pikseli od góry). Pierwsza linia: turkusowy napis `Crystals`, liczby
+      `0 / 10`, przygaszony napis `(of 13)` i przygaszony czas `0:00`, który rośnie co
+      sekundę. Druga
+      linia: bursztynowy pasek baterii i napis `100%`, który powoli maleje. Trzeciej linii
+      (podpowiedzi) nie ma. Zapisać, czy pasek HUD nie nachodzi na paski tytułu nad nim
+- [ ] rozwinięcie panelu Gameplay: kliknąć strzałkę w jego pasku tytułu. Panel otwiera się
+      w dół do rozmiaru 324 x 416 i kończy się 8 pikseli nad dolnym rzędem. Zasłania prawą
+      część paska HUD (pasek zostaje pod panelami, flaga
+      `ImGuiWindowFlags_NoBringToFrontOnFocus`) i żadnego innego panelu. Zawartość od góry:
+      `Round: playing, ... s`, `Crystals: 0 collected, 10 needed, 13 in the maze`,
+      `Gate: closed`, przycisk `Restart round (key R)`, suwak `Battery` (na starcie 1.00,
+      maleje), zaznaczone pole `Battery drains`, suwaki `Crystals needed` (`0.70 of all`),
+      `Battery lifetime` (`180 s`), `Recharge` (`0.25`), `Flicker below` (`0.20`) i
+      `Pickup radius` (`0.60 m`). Zapisać, czy zawartość mieści się bez przewijania
+- [ ] panel Maze: pod linią `Walls: 121, pillars: 121` jest linia
+      `Crystals: 13, exit in cell (6, 5)`. Na planie: 13 turkusowych kropek, zielony
+      prostokąt w siódmej kolumnie i szóstym rzędzie (komórki liczy się od zera, od lewego
+      górnego rogu) i gruba brązowa kreska na prawej (wschodniej) krawędzi tej komórki. W
+      komórce startowej i w komórce wyjścia kropki nie ma
+- [ ] panel Collision: pole `Draw collision shapes` (odznaczone), pod nim legenda
+      `Yellow: walls, pillars. Green: player. Orange: gate. Cyan: crystal pickup. Magenta:
+      exit zone.`, pole `Noclip (key N)`, linie `Boxes: 121 walls, 121 pillars, 1 gate` i
+      `All boxes: 243, pickup spheres: 13`
+- [ ] panel Lights: trzecia grupa nazywa się `Point lights (crystals)`, jej pierwsza linia
+      to `Lit: 13 of 13 crystals (at most 16)`
+- [ ] panel Shaders: cztery linie zakończone `: OK` (`textured`, `color`, `lit`, `gouraud`)
+- [ ] panel Assets: sześć modeli i osiem tekstur (lista w sekcji 12.2)
+
+Kryształy i brama w obrazie:
+
+- [ ] podejść do najbliższego kryształu. Kryształ unosi się nad środkiem komórki (podstawa
+      około 0,9 m nad podłogą, wysokość 0,5 m), kołysze się w górę i w dół o 8 cm raz na
+      3 sekundy i obraca wokół osi pionowej (pełny obrót w 9 sekund). Świeci na turkusowo
+      także tam, gdzie nie pada na niego żadne światło, a wokół niego na podłodze i
+      ścianach leży turkusowa plama jego światła punktowego. Blask kryształu i plama
+      pulsują razem, raz na 2,4 sekundy
+- [ ] obejrzeć kilka kryształów: są dwa kształty (jeden wysoki odłamek, grupa trzech
+      odłamków na podstawie). Dwa kryształy widziane naraz nie kołyszą się równo, ale
+      pulsują równo
+- [ ] dojść do bramy: drewniana, szeroka na 2 m i wysoka na 2,75 m (niższa od ścian),
+      stoi między dwoma słupkami na jedynym otwartym boku komórki wyjścia. Gracz zatrzymuje
+      się na niej tak jak na ścianie
+- [ ] przełączyć listę `Lighting` w panelu Renderer: kryształy i brama są rysowane tym
+      samym programem co ściany, więc w każdym trybie są cieniowane tak jak one
+
+HUD przy ukrytych panelach:
+
+- [ ] klawisz na lewo od `1` (akcent słaby, na klawiaturze amerykańskiej znaki `` ` `` i
+      `~`, w kodzie `GLFW_KEY_GRAVE_ACCENT` w `src/main.cpp`): osiem paneli znika, pasek HUD
+      zostaje, czas rośnie dalej. Drugie naciśnięcie przywraca panele. Klawisz działa przy
+      wolnym i przy przechwyconym kursorze
+- [ ] przy ukrytych panelach zebrać kryształ (krok niżej): liczba na pasku HUD rośnie
+- [ ] pasek HUD nie przyjmuje myszy: kliknięcie w niego przy wolnym kursorze przechwytuje
+      kursor tak samo jak kliknięcie w scenę (oczekiwanie z flagi
+      `ImGuiWindowFlags_NoInputs`: zapisać wynik)
+
+Zbieranie kryształów:
+
+- [ ] wejść w kryształ. Znika, zanim gracz dojdzie do środka komórki: wystarcza odległość
+      około 0,86 m w poziomie od środka komórki (kula zasięgu gracza o promieniu 0,3 m
+      nachodzi na kulę kryształu o promieniu 0,6 m, a ich środki dzieli 0,25 m wysokości).
+      Jednocześnie: gaśnie turkusowa plama tego kryształu, pasek HUD pokazuje `1 / 10`, na
+      planie w panelu Maze kropka zamienia się w ciemny pierścień, panel Lights pokazuje
+      `Lit: 12 of 13 crystals (at most 16)`, panel Collision `pickup spheres: 12`, a panel
+      Gameplay `Crystals: 1 collected, 10 needed, 13 in the maze`
+- [ ] doładowanie: w panelu Gameplay odznaczyć `Battery drains`, ustawić `Battery` na
+      0.50 i zebrać kryształ. Oczekiwane: `Battery` 0.75, na pasku HUD `75%`. Zaznaczyć
+      `Battery drains` z powrotem. Przy baterii powyżej 75% kryształ dopełnia ją tylko do
+      `100%`, więcej się nie zmieści
+- [ ] `Recharge` (suwak od 0.00 do 1.00): przy 0.00 zebrany kryształ nie zmienia baterii,
+      przy 1.00 ładuje ją do pełna. Przywrócić 0.25
+- [ ] `Pickup radius` z zaznaczonym `Draw collision shapes`: wokół każdego niezebranego
+      kryształu jest turkusowa kula narysowana trzema okręgami (jeden poziomy, dwa
+      pionowe). Kula stoi w miejscu, a kryształ kołysze się w jej środku. Po spojrzeniu pod
+      nogi widać zieloną kulę zasięgu gracza w środku zielonego pudełka. Suwak (od 0.10 do
+      2.00 m) zmienia rozmiar turkusowych kul od razu. Przy 2.00 kryształ zbiera się ze
+      środka sąsiedniej komórki, przez ścianę. Przy 0.10 trzeba stanąć prawie na środku
+      komórki kryształu (bliżej niż około 0,3 m). Przywrócić 0.60
+
+Bateria i latarka:
+
+- [ ] zużycie: przy włączonej latarce liczba na pasku HUD maleje, przy startowym
+      `Battery lifetime` 180 s o 10 punktów procentowych na 18 sekund. Wyłączyć latarkę
+      klawiszem F: liczba stoi w miejscu. Włączyć z powrotem
+- [ ] `Battery lifetime` (suwak od 5 do 600 s): ustawić 5 s. Pełna bateria wyczerpuje się w
+      5 sekund świecenia. Przywrócić 180 s
+- [ ] `Battery drains` odznaczone: bateria nie maleje także przy włączonej latarce
+- [ ] migotanie na ekranie: odznaczyć `Battery drains`, ustawić `Battery` na 0.10, latarka
+      włączona, stanąć twarzą do ściany. Oczekiwane: pasek baterii na HUD jest czerwony
+      (poniżej progu 0.20), a plama latarki co chwilę przygasa w nieregularnych odstępach
+      i wraca, najgłębiej o mniej więcej 40% jasności. Ustawić 0.02: przygasa głębiej,
+      prawie o 80%. Ustawić 0.25: światło jest równe, pasek bursztynowy. Migotania nie
+      mylić z pulsowaniem świateł kryształów, które jest powolne i równe
+- [ ] `Flicker below` (suwak od 0.00 do 0.50): przy 0.00 latarka nie migocze nawet przy
+      `Battery` 0.02, a pasek nie robi się czerwony. Przy 0.50 migocze już przy `Battery`
+      0.40. Przywrócić 0.20
+- [ ] pusta bateria: ustawić `Battery` na 0.00 (`Battery drains` może zostać odznaczone).
+      Oczekiwane: plama latarki znika, zostają księżyc, światła kryształów i światło
+      otoczenia. Pasek HUD pokazuje pusty pasek, `0%` i czerwoną podpowiedź
+      `Battery empty. Find a crystal.`. W panelu Lights pole `Flashlight on (key F)` samo
+      się odznacza, a po najechaniu na nie myszą pojawia się podpowiedź
+      `The battery is empty: collect a crystal first.`. Runda trwa dalej: czas rośnie,
+      gracz chodzi, panel Gameplay pokazuje `Round: playing`. Stanu przegranej nie ma
+- [ ] klawisz F przy pustej baterii: latarka się nie zapala, w żadnej klatce. Kliknięcie
+      pola `Flashlight on (key F)` też jej nie zapala: pole odznacza się z powrotem po
+      najbliższym kroku symulacji (może mignąć)
+- [ ] zebrać kryształ przy pustej baterii: `Battery` 0.25, na pasku HUD `25%`, pasek
+      bursztynowy (0.25 nie jest poniżej progu 0.20), podpowiedź znika. Latarka nadal jest
+      wyłączona: kryształ jej sam nie zapala. Nacisnąć F: latarka świeci
+
+Brama:
+
+- [ ] `Crystals needed` (suwak od 0.05 do 1.00) zmienia liczbę potrzebnych kryształów od
+      razu: przy `1.00 of all` pasek HUD pokazuje `/ 13`, przy 0.50 `/ 7`, przy 0.05 `/ 1`.
+      Przywrócić 0.70 (`/ 10`). Ta sama liczba jest w panelu Gameplay (`... needed`)
+- [ ] otwarta brama zostaje otwarta: zebrać trzy kryształy, obniżyć `Crystals needed` do
+      0.20 (potrzebne 3). Brama otwiera się od razu. Podnieść suwak do 1.00: pasek HUD
+      pokazuje `3 / 13`, a brama zostaje otwarta (`Gate: open`). Nacisnąć R, przywrócić
+      0.70
+- [ ] opadanie bramy na oczach: stanąć przed zamkniętą bramą (na planie: gruba brązowa
+      kreska), zebrać wcześniej jeden kryształ i przesunąć `Crystals needed` na 0.05.
+      Oczekiwane: brama zjeżdża w podłogę i znika pod nią w 1,5 sekundy, panel Gameplay
+      pokazuje w tym czasie `Gate: opening, N%` z rosnącą liczbą, potem `Gate: open`.
+      Przejść przez próg da się od pierwszej chwili, zanim brama zjedzie: pudełko bramy
+      przestaje być przeszkodą w chwili otwarcia. Nacisnąć R, przywrócić 0.70
+- [ ] brama po dziesiątym z 13 kryształów (suwak na 0.70): po zebraniu dziewiątego pasek
+      HUD pokazuje `9 / 10` i nie ma podpowiedzi. Po dziesiątym: `10 / 10` i turkusowa
+      podpowiedź `The gate is open. Find the exit.`. Panel Gameplay: `Gate: opening, N%`,
+      po 1,5 sekundy `Gate: open`. Panel Collision: `Boxes: 121 walls, 121 pillars, 0 gate`
+      i `All boxes: 242, pickup spheres: 3`. Na planie kreska bramy robi się ciemna. Z
+      zaznaczonym `Draw collision shapes` pomarańczowe pudełko bramy znika od razu
+- [ ] brama otwarta przy pustej baterii: na pasku HUD są obie podpowiedzi naraz, jedna pod
+      drugą
+
+Wyjście i wygrana:
+
+- [ ] z zaznaczonym `Draw collision shapes` obejrzeć komórkę wyjścia: w jej środku stoi
+      pudełko w kolorze magenty, 1 na 1 m na podłodze i wysokie jak ściany. To strefa
+      wyjścia
+- [ ] przejść przez otwartą bramę do komórki wyjścia. Gdy gracz wejdzie w strefę (wystarcza
+      krok za linię bramy), na środku okna pojawia się karta: duży turkusowy napis
+      `You escaped`, pod kreską `Time: m:ss`, `Crystals: N of 13` i bursztynowy napis
+      `R: play again`. Na pasku HUD czas staje, a podpowiedzi znikają. Panel Gameplay
+      pokazuje `Round: won, ... s` z liczbą, która już nie rośnie
+- [ ] po wygranej scena żyje dalej: niezebrane kryształy nadal się kołyszą, obracają,
+      pulsują i świecą, gracz może chodzić. Reguły rundy stoją: wejście w niezebrany
+      kryształ go nie zbiera, bateria nie maleje
+- [ ] karta a panele: karta pojawia się nad panelami. Kliknięcie w panel wysuwa ten panel
+      przed kartę. Zapisać, czy karta nie zasłania czegoś, czego potrzeba po wygranej
+- [ ] noclip nie wygrywa przez zamkniętą bramę: nacisnąć R (brama zamknięta), potem N i
+      wlecieć na wysokości stania, z poziomym wzrokiem, przez zamkniętą bramę w środek
+      strefy wyjścia. Oczekiwane: karty nie ma, `Round: playing`. Lot nad ścianami niczego
+      nie sprawdza, bo kula zasięgu gracza wisi 0,9 m nad stopami i strefy wtedy nie
+      dotyka. Wyłączyć noclip (N)
+
+Restart rundy:
+
+- [ ] klawisz R w środku rundy. Przed naciśnięciem: zebrać kilka kryształów, wyłączyć
+      latarkę, ustawić `Battery` na 0.30, odejść od startu. Po naciśnięciu: kryształy
+      wracają (pasek HUD `0 / 10`, 13 kropek na planie, `Lit: 13 of 13 crystals`), bateria
+      `100%`, latarka włączona (pole `Flashlight on (key F)` zaznaczone), brama zamknięta
+      (`Gate: closed`, `1 gate`), gracz na starcie (`Player feet` 1, 0, 1, `Yaw` 180,
+      `Pitch` 0 w panelu Camera), czas `0:00`. Kryształy są w tych samych komórkach co
+      przedtem
+- [ ] czego R nie zmienia: labiryntu, trybu noclip, suwaków i pola panelu Gameplay,
+      ustawień panelu Lights (poza włączeniem latarki), trybu `Lighting`, pola
+      `Draw collision shapes`. Ustawić kilka z nich przed naciśnięciem i sprawdzić po nim
+- [ ] R z karty wygranej: karta znika, zaczyna się nowa runda w tym samym labiryncie
+- [ ] R działa także przy wolnym kursorze (tak jak N i F), a nie działa, gdy trwa
+      wpisywanie wartości w polu panelu
+- [ ] przycisk `Restart round (key R)` w panelu Gameplay robi to samo co klawisz
+- [ ] `Regenerate` w panelu Maze też zaczyna nową rundę, w nowym labiryncie
+
+Na koniec:
+
+- [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]`
+- [ ] clang-format (`--dry-run --Werror`) i clang-tidy na plikach z `src/` i `tests/`: dla
+      M5 wyniku nie zapisano. Uruchomić i zapisać wynik, w szczególności dla nowych plików
+      `src/game/Exit.*`, `Crystals.*`, `Round.*`, `GameplayRenderer.*`, `ModelDraw.*`,
+      `src/debug/Hud.*`, `src/debug/panels/GameplayPanel.*` i trzech nowych plików testów
+
+## 15. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)

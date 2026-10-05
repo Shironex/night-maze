@@ -9,7 +9,9 @@ loader obrazów w [`src/assets/ImageLoader.cpp`](../../src/assets/ImageLoader.cp
 `assets::loadImage` zamienia nim plik PNG na tablicę bajtów
 ([`../modules/assets/images.md`](../modules/assets/images.md)). Wołają ją testy jednostkowe
 (`tests/ImageLoaderTests.cpp`) i gra: `assets::AssetCache::texture` wczytuje nią tekstury
-modeli labiryntu ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md)).
+modeli labiryntu, a od M5 także kryształów i bramy: razem osiem plików PNG w
+`assets/textures/`, cztery tekstury koloru i cztery mapy normalnych, każdy 512 x 512 pikseli
+w trzech kanałach ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md)).
 Na Windowsie (MSVC 19.44,
 2026-10-05) biblioteka kompiluje się bez ostrzeżeń i testy loadera przechodzą. **Na macOS
 ten kod nie był jeszcze budowany.**

@@ -5,36 +5,42 @@ Dokument biblioteki dla kamienia milowego M2 + M3. Opisuje konfigurację z
 [`CMakeLists.txt`](../../CMakeLists.txt) oraz tę część API, której używają testy w katalogu
 [`tests/`](../../tests/).
 
-**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z czternastu
-plików: `tests/main.cpp` (punkt wejścia) i trzynastu plików z testami. Osiem pierwszych
-wierszy tabeli to stan po M2 + M3, cztery następne doszły z oświetleniem (pierwsza część M4),
-a ostatni z mapami normalnych (druga część M4), które dopisały też przypadki do trzech
-istniejących plików:
+**Stan na dziś: doctest używa jeden program, `night_maze_tests`.** Składa się z siedemnastu
+plików: `tests/main.cpp` (punkt wejścia) i szesnastu plików z testami. Osiem pierwszych
+wierszy tabeli to pliki z M2 + M3, cztery następne doszły z oświetleniem (pierwsza część M4),
+trzynasty z mapami normalnych (druga część M4), a trzy ostatnie z rozgrywką (M5). M5 zmieniło
+też liczby w trzech starszych plikach: `ColliderTests.cpp` dostał siedem przypadków o kulach,
+`MazeTests.cpp` dwa (w tym przeniesiony test `isDeadEnd`), a z `LightingTests.cpp` ubyło
+siedem, bo światła w ślepych zaułkach zostały usunięte z gry:
 
 | Plik | Przypadków | Co sprawdza | Dokument |
 |---|---|---|---|
-| `ColliderTests.cpp` | 12 | kolizje: `Aabb`, `overlaps`, `moveAndSlide` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
-| `MazeTests.cpp` | 6 | klasa `Maze` i kierunki | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) |
+| `ColliderTests.cpp` | 19 | kolizje: `Aabb`, `overlaps`, `moveAndSlide`, od M5 także kule (`Sphere`, dwa testy `overlaps` z kulą, `closestPoint`) | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
+| `MazeTests.cpp` | 8 | klasa `Maze` i kierunki, od M5 także `isDeadEnd` (przeniesione z `Lighting`) i porównywanie `MazeCell` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) |
 | `MazeGeneratorTests.cpp` | 11 | `randomBelow`, `generateMaze`, labirynt wzorcowy | tamże |
 | `MazeLayoutTests.cpp` | 12 | układ w świecie i pudełka kolizji labiryntu | tamże |
-| `MazeWorldTests.cpp` | 8 | `buildMazeWorld`: macierze modelu, pudełka, start | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
+| `MazeWorldTests.cpp` | 8 | `buildMazeWorld`: macierze modelu, pudełka, start, od M5 także wyjście, brama i kryształy świata | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
 | `PlayerTests.cpp` | 13 | gracz: chodzenie, sprint, ślizganie, noclip | [`../modules/game/player.md`](../modules/game/player.md) |
 | `ObjLoaderTests.cpp` | 20 | loader OBJ i MTL, od M4 także linia mapy normalnych `map_Bump` i styczne modeli gry | [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md) |
 | `ImageLoaderTests.cpp` | 9 | loader obrazów, od M4 także zawartość map normalnych (średnia, konwencja kanału zielonego) | [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `ShaderSourceTests.cpp` | 22 | tekst shadera: `expandIncludes` (dyrektywa `#include`, linie `#line`, błędy) i `nameSourceFiles` (nazwy plików w komunikatach sterownika) | [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `LightTests.cpp` | 20 | matematyka świateł: zanik z odległością, stożek reflektora, `directionFromAngles`, bajty bloku świateł (`packLightBlock`) | [`../modules/scene/lights.md`](../modules/scene/lights.md) |
-| `LightingTests.cpp` | 17 | ustawienia oświetlenia gry: ślepe zaułki (`isDeadEnd`, `deadEndLightPositions`), wartości domyślne, `usesNormalMap`, `buildLightSet` | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
+| `LightingTests.cpp` | 10 | ustawienia oświetlenia gry: wartości domyślne, `usesNormalMap`, `buildLightSet`. Testy świateł w ślepych zaułkach z M4 zniknęły razem z tym kodem | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
 | `TransformTests.cpp` | 4 | macierz normalnych (`scene::normalMatrix`) | [`../modules/scene/transforms.md`](../modules/scene/transforms.md) |
 | `TangentTests.cpp` | 9 | styczne wierzchołków: `triangleTangents`, `computeTangents`, `countMirroredTriangles` | [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md) |
+| `ExitTests.cpp` | 11 | wyjście: odległości liczone w przejściach (`passageDistances`), najdalsza komórka (`farthestCell`), brama (`placeExit`, `wallSegmentOn`), strefa wyjścia (`exitZone`) | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
+| `CrystalTests.cpp` | 14 | kryształy: ile ich jest (`crystalCountFor`), gdzie stoją (`placeCrystals`), kołysanie, obrót, pulsowanie i świecenie | tamże |
+| `RoundTests.cpp` | 25 | cała runda bez okna: `startRound`, `updateRound` (zbieranie, bateria, brama, wygrana), `flashlightFlicker`, `lightingForFrame`, `crystalLightPositions` | tamże |
 
-Razem 163 przypadki testowe i 62220 asercji: tyle pokazał program na Windowsie w
-konfiguracjach Debug i Release (MSVC 19.44, 2026-10-05). Liczbę 163 potwierdza też
-policzenie makr `TEST_CASE` w plikach: 12 + 6 + 11 + 12 + 8 + 13 + 20 + 9 + 22 + 20 + 17 + 4 + 9.
-Poprzednie stany: po pierwszej części M4 dwanaście plików z testami, a po M2 + M3 osiem
-(wszystkie 2026-10-05). **Na macOS testy
-nie były jeszcze budowane ani uruchamiane.** Kod, który wymaga kontekstu OpenGL
+Razem 215 przypadków testowych i 85098 asercji: tyle pokazał program na Windowsie w
+konfiguracjach Debug i Release (2026-10-05). Liczbę 215 potwierdza też policzenie makr
+`TEST_CASE` w plikach, w kolejności tabeli:
+19 + 8 + 11 + 12 + 8 + 13 + 20 + 9 + 22 + 20 + 10 + 4 + 9 + 11 + 14 + 25.
+Poprzednie stany: po M4 trzynaście plików z testami, 163 przypadki i 62220 asercji, po
+pierwszej części M4 dwanaście plików, a po M2 + M3 osiem (wszystkie 2026-10-05). **Na macOS
+testy nie były jeszcze budowane ani uruchamiane.** Kod, który wymaga kontekstu OpenGL
 (`gfx::Mesh`, `gfx::Texture2D`, `gfx::UniformBuffer`, `gfx::Shader`, `assets::AssetCache`,
-klasy rysujące i panele), testów jednostkowych nie ma.
+klasy rysujące, panele i HUD), testów jednostkowych nie ma.
 
 W dokumencie są dwa rodzaje bloków C++. Blok zaczynający się komentarzem
 `// Przykład, nie kod projektu.` to **przykład użycia API**. Blok poprzedzony nazwą pliku to
@@ -72,8 +78,9 @@ zanim ruszy `main`. Nowy test to nowy blok `TEST_CASE` w dowolnym pliku testowym
   który ich nie potrzebuje: kolizje, logika labiryntu, gracz, dwa loadery plików (OBJ i
   obrazy), a od M4 także przetwarzanie tekstu shadera w `gfx` (samo składanie napisów, bez
   kompilacji GLSL), matematyka świateł i macierz normalnych w `scene` oraz ustawienia
-  oświetlenia w `game`. Klas `gfx`, które tworzą obiekty OpenGL, ani `NightMazeApp` w
-  testach nie ma.
+  oświetlenia w `game`. Od M5 dochodzą reguły rozgrywki: wyjście, kryształy i cała runda
+  (`game/Exit`, `game/Crystals`, `game/Round`) oraz kule w `scene/Collider`. Klas `gfx`,
+  które tworzą obiekty OpenGL, ani `NightMazeApp` w testach nie ma.
 - Nie mierzy pokrycia kodu testami i niczego nie udowadnia o kodzie, którego żaden test nie
   woła.
 
@@ -171,12 +178,16 @@ Fragmenty z [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
-# The maze, its generator, its layout in the world, the player and the settings of the
-# lighting are plain data and math. They live in a library of their own, and not in the
-# night_maze executable, so that
+# The maze, its generator, its layout in the world, the player, the settings of the
+# lighting and the rules of a round (exit, crystals, battery) are plain data and math.
+# They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
 add_library(game_logic STATIC
+    src/game/Crystals.cpp
+    src/game/Crystals.hpp
+    src/game/Exit.cpp
+    src/game/Exit.hpp
     src/game/Lighting.cpp
     src/game/Lighting.hpp
     src/game/Maze.cpp
@@ -189,9 +200,11 @@ add_library(game_logic STATIC
     src/game/MazeWorld.hpp
     src/game/Player.cpp
     src/game/Player.hpp
+    src/game/Round.cpp
+    src/game/Round.hpp
 )
-# PUBLIC: the headers of this library (Lighting.hpp, MazeLayout.hpp, MazeWorld.hpp,
-# Player.hpp) include headers of engine (scene/Collider.hpp, scene/Light.hpp) and GLM,
+# PUBLIC: the headers of this library (Exit.hpp, Lighting.hpp, MazeLayout.hpp,
+# MazeWorld.hpp, Player.hpp, Round.hpp) include headers of engine (scene/Collider.hpp, scene/Light.hpp) and GLM,
 # so whoever includes them needs the include paths of engine.
 # The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
@@ -212,6 +225,18 @@ samo: matematyka stycznych (`assets/Tangents`) jest w `engine` i ma własny plik
 funkcja `usesNormalMap` jest w `game/Lighting`. Kod GLSL (`common/normal_map.glsl`) i wiązanie
 drugiej tekstury testów nie mają.
 
+Rozgrywka (M5) jest podzielona tak samo, i to z myślą o testach. Reguły są zwykłymi danymi
+i wolnymi funkcjami w `game_logic`: `game/Exit` (gdzie jest wyjście), `game/Crystals` (ile
+kryształów, gdzie stoją i jak się ruszają) i `game/Round` (stan rundy i jeden krok reguł,
+`updateRound`). Żadna z nich nie dołącza OpenGL ani `core::Input`: `updateRound` dostaje
+pozycję gracza, przełącznik latarki i czas kroku jako argumenty. Dzięki temu
+`tests/RoundTests.cpp` rozgrywa rundę od początku do wygranej bez okna: buduje labirynt z
+ziarna, w pętli woła `updateRound` z pozycją pod kolejnymi kryształami i sprawdza baterię,
+bramę i stan rundy. Kule (`scene::Sphere` i testy `overlaps`) są w `engine`. To, co rysuje
+rundę i ją pokazuje (`game::GameplayRenderer`, `game::drawModel`, HUD, panel Gameplay,
+uniform `uEmissive` w shaderach) oraz spięcie w `NightMazeApp` (klawisz R, kolejność w
+`onUpdate`), testów nie ma.
+
 ```cmake
 # ---- night_maze_tests: unit tests of the code that runs without a window --------------
 # enable_testing() makes CMake write the list of tests into the build directory, where
@@ -221,6 +246,8 @@ enable_testing()
 add_executable(night_maze_tests
     tests/main.cpp
     tests/ColliderTests.cpp
+    tests/CrystalTests.cpp
+    tests/ExitTests.cpp
     tests/ImageLoaderTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
@@ -230,6 +257,7 @@ add_executable(night_maze_tests
     tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
+    tests/RoundTests.cpp
     tests/ShaderSourceTests.cpp
     tests/TangentTests.cpp
     tests/TransformTests.cpp
@@ -252,7 +280,7 @@ add_test(NAME night_maze_tests COMMAND night_maze_tests)
 | Linia | Znaczenie |
 |---|---|
 | `enable_testing()` | włącza obsługę testów w CMake: podczas generowania powstaje w katalogu buildu plik z listą testów, który czyta `ctest`. Musi stać w głównym `CMakeLists.txt`, bo `ctest` szuka listy w korzeniu katalogu buildu |
-| `add_executable(night_maze_tests ...)` | zwykły program z trzynastu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
+| `add_executable(night_maze_tests ...)` | zwykły program z siedemnastu plików. Nie ma słowa `EXCLUDE_FROM_ALL`, więc buduje go każde `cmake --build --preset debug`. Dzięki temu testy zawsze się kompilują: zmiana w API, która je psuje, wychodzi przy pierwszym buildzie |
 | `target_link_libraries(... PRIVATE game_logic doctest::doctest)` | kod testowany i biblioteka testów. "Linkowanie" targetu `INTERFACE` `doctest::doctest` oznacza tylko dodanie ścieżek nagłówków |
 | `night_maze_enable_warnings(night_maze_tests)` | testy kompilują się z tymi samymi ścisłymi ostrzeżeniami co reszta naszego kodu (`/W4 /permissive-` albo `-Wall -Wextra -Wpedantic`) |
 | `target_compile_definitions(night_maze_tests PRIVATE NIGHT_MAZE_ASSETS_DIR="...")` | makro preprocesora z bezwzględną ścieżką katalogu `assets` w repozytorium. Testy loaderów czytają nim prawdziwe modele i tekstury niezależnie od katalogu, z którego uruchomiono program ([`../modules/assets/images.md`](../modules/assets/images.md), sekcja 5.7) |
@@ -493,8 +521,8 @@ Wynik zmierzony na Windowsie (Debug, 2026-10-05, przed dodaniem testów oświetl
 ```
 
 "1 test" to cały program (sekcja 2). Kod wyjścia `ctest` to 0. W Release ten sam test trwał
-wtedy około 0,1 s. Dla programu ze 163 przypadkami (2026-10-05) zmierzone są liczby z
-raportu doctest niżej. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
+wtedy około 0,1 s. Dla dzisiejszego programu z 215 przypadkami (2026-10-05) znane są liczby
+z raportu doctest niżej. Wyjścia `ctest` z tego dnia nie zapisałem, więc blok wyżej zostaje z
 datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas.
 
 W pliku [`Makefile`](../../Makefile) są do tego skróty: `make test` (build Debug i testy),
@@ -515,25 +543,28 @@ build\debug\Debug\night_maze_tests.exe
 ./build/debug/night_maze_tests
 ```
 
-Wynik zmierzony na Windowsie 2026-10-05 (te same liczby w Debug i w Release):
+Wynik z Windowsa po M5, 2026-10-05 (te same liczby w Debug i w Release):
 
 ```text
 [doctest] doctest version is "2.5.3"
 [doctest] run with "--help" for options
 ===============================================================================
-[doctest] test cases:   163 |   163 passed | 0 failed | 0 skipped
-[doctest] assertions: 62220 | 62220 passed | 0 failed |
+[doctest] test cases:   215 |   215 passed | 0 failed | 0 skipped
+[doctest] assertions: 85098 | 85098 passed | 0 failed |
 [doctest] Status: SUCCESS!
 ```
 
-Zmierzone są liczby i napis `Status: SUCCESS!`. Odstępy przed liczbami odtworzyłem z
-wcześniejszego raportu z 2026-10-05: doctest wyrównuje obie liczby do szerokości dłuższej z nich.
+Z tego uruchomienia znane są obie liczby i to, że wszystkie testy przeszły. Postać raportu
+(nagłówek, kreska, odstępy przed liczbami) odtworzyłem z wcześniejszego raportu z
+2026-10-05, który pokazywał 163 przypadki i 62220 asercji: doctest wyrównuje obie liczby do
+szerokości dłuższej z nich.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
 
 Asercji jest dużo więcej niż przypadków, bo wiele z nich stoi w pętlach: własności labiryntu
-są sprawdzane dla 200 labiryntów, komórka po komórce.
+są sprawdzane dla 200 labiryntów, komórka po komórce. Testy z M5 robią to samo dla wyjścia
+i kryształów (pętle po ziarnach w `ExitTests.cpp` i `CrystalTests.cpp`).
 
 Przydatne opcje programu (pełna lista: `--help`):
 
@@ -595,8 +626,8 @@ sekcja 5.8).
     nazwa z przecinkiem wymaga poprzedzenia go ukośnikiem wstecznym. Prościej filtrować
     początkiem nazwy z gwiazdką.
 12. **Testy nie obejmują niczego z OpenGL.** Zielony wynik testów mówi o kolizjach,
-    labiryncie, graczu, loaderach plików, matematyce świateł, stycznych i składaniu tekstu
-    shadera. O
+    labiryncie, graczu, loaderach plików, matematyce świateł, stycznych, składaniu tekstu
+    shadera i, od M5, o regułach rundy (wyjście, kryształy, bateria, brama, wygrana). O
     kompilacji shaderów, buforach i rysowaniu nie mówi nic: te rzeczy sprawdza się
     uruchomieniem programu. Dwa przykłady z M4. `tests/ShaderSourceTests.cpp` sprawdza, że
     `#include` jest zastępowany treścią pliku i że numer w komunikacie błędu zamienia się w
@@ -605,7 +636,10 @@ sekcja 5.8).
     prawdziwego sterownika. `tests/LightTests.cpp` sprawdza przesunięcia pól struktury
     `scene::LightBlockData`, ale tego, czy sterownik układa blok `LightBlock` w tylu samych
     bajtach, pilnuje dopiero porównanie rozmiarów w działającej grze
-    (`Shader::bindUniformBlock`).
+    (`Shader::bindUniformBlock`). Przykład z M5: `tests/RoundTests.cpp` sprawdza, że pusta
+    bateria wyłącza latarkę i że brama przestaje blokować po zebraniu dość kryształów, ale
+    tego, czy kryształ naprawdę świeci na ekranie, czy brama opada w podłogę i czy HUD
+    pokazuje właściwe liczby, żaden test nie widzi.
 
 ## 6. Pytania kontrolne
 
@@ -655,8 +689,15 @@ sekcja 5.8).
 
 11. **Czego testy w tym projekcie nie sprawdzają?**
     Niczego, co potrzebuje okna albo kontekstu OpenGL: klas `gfx` tworzących obiekty
-    OpenGL, kompilacji shaderów, rysowania, sterowania. Sprawdzają kod, który jest samą
-    matematyką, logiką i pracą na tekście (w `gfx` to jeden plik, `ShaderSource`).
+    OpenGL, kompilacji shaderów, rysowania, sterowania, HUD i paneli. Sprawdzają kod, który
+    jest samą matematyką, logiką i pracą na tekście (w `gfx` to jeden plik, `ShaderSource`).
+
+12. **Jak da się przetestować całą rundę gry bez okna?**
+    Reguły rundy są wolnymi funkcjami w bibliotece `game_logic` i dostają wszystko w
+    argumentach: `updateRound(round, world, settings, feetPosition, flashlightOn,
+    stepSeconds)`. Test sam podaje pozycję gracza i czas kroku, więc nie potrzebuje ani
+    klawiatury, ani pętli głównej, ani OpenGL. `tests/RoundTests.cpp` buduje labirynt z
+    ziarna, "stawia" gracza pod kolejnymi kryształami i sprawdza baterię, bramę i wygraną.
 
 ## 7. Oficjalna dokumentacja
 

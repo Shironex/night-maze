@@ -100,7 +100,8 @@ target_link_libraries(engine PUBLIC glad glfw glm::glm-header-only)
 
 `PUBLIC` oznacza, że każdy, kto linkuje `engine` (czyli `night_maze`), dostaje też nagłówki i
 bibliotekę GLFW. Dlatego `src/main.cpp` może napisać `#include <GLFW/glfw3.h>` (dla `GLFW_KEY_GRAVE_ACCENT`),
-chociaż `night_maze` linkuje jawnie tylko `engine` i `imgui`.
+tak samo jak `src/game/NightMazeApp.cpp`, drugi plik tego samego programu (dla klawiszy gry: `GLFW_KEY_W`, `GLFW_KEY_A`, `GLFW_KEY_S`, `GLFW_KEY_D`, `GLFW_KEY_SPACE`, `GLFW_KEY_LEFT_SHIFT`, `GLFW_KEY_N`, `GLFW_KEY_F` i, od M5, `GLFW_KEY_R`),
+chociaż `night_maze` linkuje jawnie tylko `engine`, `game_logic` i `imgui`.
 
 ### Dlaczego przypinamy wersję
 
@@ -436,13 +437,18 @@ Jak to czytać:
   `m_window.pollEvents()`.
 - Trzymamy dwie tablice: stan z tej klatki (`m_current`) i z poprzedniej (`m_previous`).
   `isKeyDown` to "klawisz jest trzymany" (ruch gracza). `wasKeyPressed` to zbocze: jest
-  wciśnięty teraz, a klatkę temu nie był (przełączniki takie jak klawisz `~` i Esc). Bez tego
-  klawisz `~` przełączałby panel 60 razy na sekundę, dopóki go trzymamy.
+  wciśnięty teraz, a klatkę temu nie był (przełączniki takie jak klawisz `~` i Esc, a w grze
+  N, F i, od M5, R, który zaczyna rundę od nowa). Bez tego
+  klawisz `~` przełączałby panel 60 razy na sekundę, dopóki go trzymamy, a R zaczynałby
+  rundę od nowa w każdej klatce.
 - Pętla zaczyna od `GLFW_KEY_SPACE` (32), bo `glfwGetKey` dla wartości spoza zakresu od
   `GLFW_KEY_SPACE` do `GLFW_KEY_LAST` zgłasza błąd `GLFW_INVALID_ENUM`.
 - Klawisze identyfikujemy stałymi GLFW (`GLFW_KEY_ESCAPE`, `GLFW_KEY_GRAVE_ACCENT`). Oznaczają
   one fizyczne położenie klawisza w układzie US, nie znak, który klawisz wpisuje.
-  `GLFW_KEY_GRAVE_ACCENT` to klawisz na lewo od `1`, ten z `~`.
+  `GLFW_KEY_GRAVE_ACCENT` to klawisz na lewo od `1`, ten z `~`. Klawisze gry mają własne
+  nazwane stałe w `src/game/NightMazeApp.cpp`: `NOCLIP_KEY = GLFW_KEY_N`,
+  `FLASHLIGHT_KEY = GLFW_KEY_F` i `RESTART_KEY = GLFW_KEY_R`. Pełna lista klawiszy i miejsc,
+  w których są czytane: [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.7.
 - `m_keyboardBlocked` to flaga ustawiana z zewnątrz przez `setKeyboardBlocked`. Gdy jest
   ustawiona, oba pytania zwracają `false` dla każdego klawisza, a `update` mimo to dalej
   odświeża tablice. `main.cpp` ustawia ją, gdy klawiatury używa panel ImGui. Opis w
