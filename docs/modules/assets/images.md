@@ -1,6 +1,6 @@
 # Moduł assets: wczytywanie obrazów
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (doszły dwa pliki map normalnych i dwa testy na nich). Temat wykładu: 5 (Tekstury), część po stronie procesora.
+Kamień milowy: M2 + M3, zaktualizowany w M4 (doszły dwa pliki map normalnych i dwa testy na nich) i w M5 (cztery nowe pliki PNG kryształu i bramy, kod loadera bez zmian). Temat wykładu: 5 (Tekstury), część po stronie procesora.
 Kod: [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp), testy w [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), biblioteka dekodująca w [`external/stb/stb_image.c`](../../../external/stb/stb_image.c).
 
 Część modułu `assets`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument opisuje drogę od pliku PNG na dysku do tablicy bajtów w pamięci programu. Co dzieje się z tą tablicą dalej, czyli jak powstaje z niej tekstura na karcie graficznej, opisuje [`../gfx/textures.md`](../gfx/textures.md). Bibliotekę, która dekoduje plik, opisuje [`../../libraries/stb_image.md`](../../libraries/stb_image.md). Skąd biorą się same pliki PNG, opisuje [`../../guides/blender.md`](../../guides/blender.md), sekcja 7.
@@ -8,6 +8,8 @@ Część modułu `assets`. Wstęp do całego modułu jest w [`README.md`](README
 **Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go woła: `assets::AssetCache::texture` wczytuje nim każdy plik tekstury raz i tworzy z wyniku `gfx::Texture2D` (sekcja 5.6). Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń, testy przechodzą, a tekstury w grze mają na zrzutach ekranu właściwą orientację. **Na macOS ten kod nie był jeszcze budowany.**
 
 Od drugiej części M4 ten sam loader, bez żadnej zmiany w kodzie, wczytuje też **mapy normalnych** (normal maps): `wall_stone_normal.png` i `floor_stone_normal.png`. Dla loadera to zwykłe obrazy RGB 512 x 512. Zmieniły się tylko testy: doszły dwa przypadki, które czytają te pliki i sprawdzają ich zawartość (sekcja 5.7). Kolejność wierszy z sekcji 2.3 ma dla map normalnych dodatkowe znaczenie, opisane w sekcji 2.6.
+
+W M5 doszły cztery pliki: `crystal.png`, `crystal_normal.png`, `gate_wood.png` i `gate_wood_normal.png`, też RGB 512 x 512 (odczytane z nagłówków plików). Gra wczytuje więc osiem obrazów. Kod loadera się nie zmienił, a testy nadal czytają tylko cztery pliki kamienia: nowe pliki nie mają własnych przypadków testowych.
 
 ## 1. Po co to jest
 
@@ -412,7 +414,7 @@ W grze `loadImage` woła jedno miejsce: `assets::AssetCache::texture` w [`src/as
 | `gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data());` | cztery pola `Image` to dokładnie cztery argumenty konstruktora tekstury. `pixels.data()` to wskaźnik na pierwszy bajt, czyli na dolny wiersz obrazu, tak jak chce OpenGL (sekcja 2) |
 | `if (!texture.isValid())` | loader oddaje obraz o dowolnej liczbie kanałów, a `Texture2D` przyjmuje tylko 3 albo 4. Obraz w skali szarości (1 albo 2 kanały) wczytuje się więc poprawnie, a odrzuca go dopiero tekstura |
 
-Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopię pikseli ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.6), więc bajty w pamięci procesora nie są dalej potrzebne. Loader nie jest wołany nigdzie indziej: ani `NightMazeApp`, ani `MazeRenderer` nie czytają plików obrazów same.
+Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopię pikseli ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.6), więc bajty w pamięci procesora nie są dalej potrzebne. Loader nie jest wołany nigdzie indziej: ani `NightMazeApp`, ani `MazeRenderer`, ani `GameplayRenderer` nie czytają plików obrazów same.
 
 ### 5.7 Testy
 
@@ -426,7 +428,7 @@ Zmienna `image` ginie na końcu funkcji `texture`: OpenGL ma już własną kopi�
 | `the rows are flipped: the first row in memory is the bottom row of the file` | obrazek 2 x 3 zapisany przez sam test: wynik ma dokładnie te same piksele z wierszami w odwrotnej kolejności |
 | `a path with letters outside ASCII can be loaded` | ten sam obrazek pod nazwą z polskimi literami i jednym znakiem japońskim |
 | `a missing file is reported and leaves the image unchanged` | wynik `false`, w tekście błędu `cannot be opened` i nazwa pliku, obiekt `Image` z wcześniejszą zawartością nietknięty |
-| `a file that is not an image is reported` | plik `assets/shaders/basic.vert` podany jako obraz: `false` i `cannot be decoded` |
+| `a file that is not an image is reported` | plik `assets/shaders/color.vert` podany jako obraz: `false`, w tekście błędu `cannot be decoded` i nazwa `color.vert`. Do M4 test podawał tu `basic.vert`, plik usunięty w M5 razem z kostką: zmieniła się tylko nazwa pliku, liczba asercji została ta sama |
 | `an empty file is reported` | plik o długości 0: `false` i `is empty` |
 | `a successful load clears the error text of an earlier failure` | po sukcesie `error` jest pusty |
 
@@ -501,13 +503,13 @@ Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą
 
 **Linie `[error]` w wyjściu testów.** Trzy przypadki celowo wywołują błąd, a loader wypisuje go przez `core::logError`. W wyjściu programu testowego widać więc trzy linie `[error] Image file ...`. To nie są nieudane testy: wynik podaje ostatnia linia raportu doctest.
 
-**Wynik.** Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie 9 przypadków i 57 asercji tego pliku przechodzi (cały program testowy: 163 przypadki i 62220 asercji w Debug i w Release). Na macOS testy nie były jeszcze uruchamiane. Oba nowe testy czytają pliki PNG zapisane na Windowsie: jeśli skrypt tekstur uruchomiony na Macu da inne bajty, testy nadal powinny przechodzić (progi mają duży zapas), ale tego nikt nie sprawdził.
+**Wynik.** Na Windowsie (MSVC 19.44, 2026-10-05) wszystkie 9 przypadków i 57 asercji tego pliku przechodzi (cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release). Na macOS testy nie były jeszcze uruchamiane. Oba nowe testy czytają pliki PNG zapisane na Windowsie: jeśli skrypt tekstur uruchomiony na Macu da inne bajty, testy nadal powinny przechodzić (progi mają duży zapas), ale tego nikt nie sprawdził.
 
 Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcje 5.9 i 5.10): na zrzutach ekranu z gry na Windowsie tekstury ścian i podłogi nie są odwrócone ani odbite.
 
 ## 6. Panel ImGui
 
-Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Od drugiej części M4 lista ma cztery pozycje: dwa obrazy koloru i dwie mapy normalnych, których miniatury są jasnoniebieskie (większość tekseli jest bliska `(128, 128, 255)`). Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
+Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Od M5 lista ma osiem pozycji: cztery obrazy koloru (kamień ściany, kamień podłogi, kryształ, drewno bramy) i cztery mapy normalnych. Miniatury map kamienia są jasnoniebieskie (większość tekseli jest bliska `(128, 128, 255)`, co dla tych dwóch plików sprawdza test). Map kryształu i drewna żaden test nie czyta. Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
 
 ## 7. Pułapki
 
@@ -517,7 +519,7 @@ Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, 
 4. **Ścieżka jako `std::string`.** `path.string()` na Windowsie zamienia nazwę na lokalną stronę kodową i rzuca wyjątek, gdy znaku tam nie ma. Loader nigdzie nie zamienia ścieżki na tekst przed otwarciem pliku, a do komunikatów używa `core::pathText`.
 5. **Liczba kanałów inna niż 3 albo 4.** Loader zostawia kanały pliku. PNG zapisany w programie graficznym jako "grayscale" ma 1 kanał. `gfx::Texture2D` takiego obrazu nie przyjmie: wypisze błąd i tekstura nie powstanie. Tekstury gry trzeba zapisywać jako RGB albo RGBA.
 6. **Zakładanie, że kanałów jest zawsze 3.** Kod, który liczy pozycję piksela jako `(y * width + x) * 3`, przestanie działać dla pierwszego pliku z kanałem alfa. Zawsze `* image.channels`.
-7. **Wiersz 0 to dół.** Kto czyta `Image::pixels` we własnym kodzie (na przykład przyszła mapa wysokości terenu), musi pamiętać, że `y = 0` to dolny wiersz obrazu, a nie górny, jak w programie graficznym. Test konwencji mapy normalnych jest pierwszym takim kodem w projekcie: jego numery wierszy liczą się od dołu.
+7. **Wiersz 0 to dół.** Kto czyta `Image::pixels` we własnym kodzie (na przykład ktoś, kto dopisałby mapę wysokości terenu), musi pamiętać, że `y = 0` to dolny wiersz obrazu, a nie górny, jak w programie graficznym. Test konwencji mapy normalnych jest pierwszym takim kodem w projekcie: jego numery wierszy liczą się od dołu.
 8. **Użycie `image` po nieudanym wczytaniu.** Funkcja nie zmienia `image` przy błędzie. Jeśli obiekt był pusty, zostaje pusty: szerokość 0 i `pixels.data()` bez danych. Wynik `loadImage` trzeba sprawdzić przed utworzeniem tekstury.
 9. **Kolory w sRGB.** Bajty w pliku PNG są zapisane w przestrzeni sRGB. Loader oddaje je bez zmian i tak samo trafiają na kartę. Poprawna obsługa gammy nie jest jeszcze zrobiona ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10). Dla map normalnych "bez zmian" jest dokładnie tym, czego trzeba: ich bajty to kierunki, nie kolory, i żadne przeliczenie z sRGB nie może ich dotknąć. Kiedy w M7 obrazy koloru zaczną być wczytywane jako sRGB, mapy normalnych muszą zostać przy formacie liniowym.
 10. **Brak kopii `assets` na Windowsie.** Program czyta `assets` obok pliku `.exe`, a tam leży kopia robiona podczas budowania ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Nowa tekstura dodana do repozytorium nie istnieje dla programu, dopóki kopia nie zostanie odświeżona. Testów to nie dotyczy: czytają katalog z repozytorium.

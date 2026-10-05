@@ -21,7 +21,8 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 MODELS_DIR = os.path.join(REPO_ROOT, "assets", "models")
 TEXTURES_DIR = os.path.join(REPO_ROOT, "assets", "textures")
 
-# Texel density: one repeat of a texture covers 2 metres on every face of every model.
+# Texel density: one repeat of a texture covers 2 metres on every face of the models that
+# use box_project_uvs. The small crystals pass their own value to face_project_uvs.
 METRES_PER_UV_UNIT = 2.0
 
 # Size of a review render in pixels.
@@ -139,6 +140,37 @@ def box_project_uvs(mesh):
             uv_layer.data[loop_index].uv = (u / METRES_PER_UV_UNIT, v / METRES_PER_UV_UNIT)
 
 
+def face_project_uvs(mesh, metres_per_uv_unit):
+    """Gives every face texture coordinates by projecting it onto its own plane.
+
+    box_project_uvs only fits faces that are perpendicular to an axis. A slanted face (the
+    facet of a crystal) would be stretched by it. Here every face gets its own two
+    directions that lie in the face: `up` is the height (Blender Z) as far as the face
+    allows, and `right` points to the right for someone looking at the face from outside.
+    u and v are the position measured along these two directions, so the texture is not
+    stretched and is never a mirror image. `metres_per_uv_unit` is the size of one repeat
+    of the texture on the model.
+    """
+    uv_layer = mesh.uv_layers.new(name="uv")
+
+    for polygon in mesh.polygons:
+        normal = polygon.normal
+        # The height direction with its part along the normal removed lies in the face.
+        up = Vector((0.0, 0.0, 1.0)) - normal * normal.z
+        if up.length < 0.000001:
+            # A horizontal face has no height direction. Blender Y is used instead.
+            up = Vector((0.0, 1.0, 0.0))
+        up.normalize()
+        # right, up and the normal form a right-handed set, like x, y and z.
+        right = up.cross(normal)
+
+        for loop_index in polygon.loop_indices:
+            position = mesh.vertices[mesh.loops[loop_index].vertex_index].co
+            u = position.dot(right)
+            v = position.dot(up)
+            uv_layer.data[loop_index].uv = (u / metres_per_uv_unit, v / metres_per_uv_unit)
+
+
 def assign_textured_material(model, material_name, texture_file, normal_map_file):
     """Gives the object one material with a color picture and a normal map.
 
@@ -165,7 +197,7 @@ def assign_textured_material(model, material_name, texture_file, normal_map_file
     # The picture holds directions, not colors, so Blender must not convert it from sRGB.
     normal_image_node.image.colorspace_settings.name = "Non-Color"
     normal_map_node = nodes.new("ShaderNodeNormalMap")
-    # Tangent space of the UV map that box_project_uvs creates.
+    # Tangent space of the UV map that box_project_uvs or face_project_uvs creates.
     normal_map_node.space = "TANGENT"
     normal_map_node.uv_map = "uv"
     links.new(normal_image_node.outputs["Color"], normal_map_node.inputs["Color"])

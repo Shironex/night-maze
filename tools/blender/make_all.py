@@ -12,7 +12,9 @@ import sys
 # scripts next to this file would not be found without this line.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+import build_crystal
 import build_floor_tile
+import build_gate
 import build_wall_pillar
 import build_wall_straight
 import make_textures
@@ -26,3 +28,5 @@ make_textures.build()
 build_wall_straight.build(shots)
 build_wall_pillar.build(shots)
 build_floor_tile.build(shots)
+build_crystal.build(shots)
+build_gate.build(shots)

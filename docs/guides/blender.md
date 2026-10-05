@@ -13,14 +13,19 @@ końcu zapisuje plik OBJ. Polecenia dla Windowsa z sekcji 3 zostały uruchomione
 
 Polecenia dla macOS (sekcja 3) **nie były jeszcze uruchomione na Macu**.
 
-Stan: skrypty, trzy modele i cztery tekstury są w repozytorium: dwa obrazy koloru i, od
-drugiej części M4, dwie **mapy normalnych** (normal maps), po jednej do każdego obrazu koloru.
+Stan: skrypty, sześć modeli i osiem tekstur są w repozytorium. Trzy modele kamienne (ściana,
+słup, podłoga) i ich cztery tekstury pochodzą z M2 + M3 i M4: dwa obrazy koloru i, od drugiej
+części M4, dwie **mapy normalnych** (normal maps), po jednej do każdego obrazu koloru. M5
+(rozgrywka) dołożyło trzy modele, dwa kryształy i bramę, oraz cztery tekstury: obraz koloru
+i mapę normalnych kryształu i to samo dla drewna bramy.
 Istnieje też kod C++, który wczytuje pliki OBJ i MTL: własny parser `assets::loadObj`
 ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)). Jego testy wczytują
-wszystkie trzy modele i sprawdzają liczby i wymiary z sekcji 8. Gra te pliki rysuje: przy
-starcie wczytuje trzy modele i cztery tekstury i buduje z nich labirynt
+trzy modele kamienne i sprawdzają ich liczby i wymiary z sekcji 8. Modeli z M5 testy loadera
+nie wczytują. Gra rysuje wszystkie te pliki: przy starcie wczytuje sześć modeli i osiem
+tekstur, z kamiennych buduje labirynt, a z pozostałych kryształy i bramę przy wyjściu
 ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md),
-[`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md)). Sekcja 5 opisuje
+[`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md),
+[`../modules/game/gameplay.md`](../modules/game/gameplay.md)). Sekcja 5 opisuje
 dokładnie, co jest w plikach, i była podstawą do napisania parsera. Co mapa normalnych robi
 w shaderze, opisuje [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md):
 ten przewodnik mówi tylko, skąd bierze się jej plik (sekcja 7.2) i linia w pliku `.mtl`
@@ -57,7 +62,10 @@ Dlaczego skrypty, a nie modelowanie myszą:
 - **Wynik jest powtarzalny.** To samo polecenie daje te same bajty. Dwa uruchomienia pod rząd
   na Windowsie dały identyczne pliki `.obj`, `.mtl` i `.png`. Po dodaniu map normalnych
   powtórzyłem pomiar (2026-10-05): skróty wszystkich dziesięciu plików wynikowych (4 PNG,
-  3 OBJ, 3 MTL) były po dwóch kolejnych uruchomieniach skryptów identyczne.
+  3 OBJ, 3 MTL) były po dwóch kolejnych uruchomieniach skryptów identyczne. Ten pomiar
+  dotyczy plików z M4. Dla dziesięciu plików dodanych w M5 (kryształy, brama i ich tekstury)
+  takiego pomiaru nie ma: powtarzalność wynika tam z budowy skryptów (stałe wymiary w kodzie,
+  losowość tylko ze stałych ziaren, sekcja 7.4), a nie z porównania skrótów.
 - **Historia zmian jest czytelna.** `git diff` skryptu pokazuje, że cokół urósł z 0.25 do
   0.30 m. Różnicy dwóch plików binarnych nie pokazuje nic.
 - **Eksport nie zależy od pamięci.** Opcje eksportu są zapisane w jednym miejscu
@@ -67,12 +75,14 @@ Pliki skryptów:
 
 | Plik | Co robi |
 |---|---|
-| [`blender_common.py`](../../tools/blender/blender_common.py) | wspólne funkcje: czyszczenie sceny, budowanie prostopadłościanu, UV, materiał z teksturą i mapą normalnych, eksport, rendery kontrolne |
-| [`make_textures.py`](../../tools/blender/make_textures.py) | generuje obrazy koloru `wall_stone.png` i `floor_stone.png` oraz ich mapy normalnych `wall_stone_normal.png` i `floor_stone_normal.png` |
+| [`blender_common.py`](../../tools/blender/blender_common.py) | wspólne funkcje: czyszczenie sceny, budowanie prostopadłościanu, UV (rzut pudełkowy `box_project_uvs` i, od M5, rzut na płaszczyznę ściany `face_project_uvs`), materiał z teksturą i mapą normalnych, eksport, rendery kontrolne |
+| [`make_textures.py`](../../tools/blender/make_textures.py) | generuje cztery obrazy koloru (`wall_stone.png`, `floor_stone.png`, `gate_wood.png`, `crystal.png`) i do każdego mapę normalnych o tej samej nazwie z końcówką `_normal` |
 | [`build_wall_straight.py`](../../tools/blender/build_wall_straight.py) | model odcinka ściany |
 | [`build_wall_pillar.py`](../../tools/blender/build_wall_pillar.py) | model słupa |
 | [`build_floor_tile.py`](../../tools/blender/build_floor_tile.py) | model płyty podłogi |
-| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele |
+| [`build_crystal.py`](../../tools/blender/build_crystal.py) | dwa modele kryształów w jednym skrypcie: `crystal_a` i `crystal_b` (sekcja 8.1) |
+| [`build_gate.py`](../../tools/blender/build_gate.py) | model bramy przy wyjściu (sekcja 8.2) |
+| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele w kolejności ściana, słup, podłoga, kryształy, brama |
 | [`.gitignore`](../../tools/blender/.gitignore) | pomija katalog `__pycache__`, który Python tworzy przy imporcie modułów |
 
 ## 2. Konwencje
@@ -83,16 +93,24 @@ Konwencje pochodzą z PRD, sekcja 9. Każda ma powód:
 |---|---|---|
 | Układ współrzędnych gry | prawoskrętny, Y w górę, -Z do przodu | taki sam jak w kamerze i macierzach gry ([`../modules/scene/README.md`](../modules/scene/README.md)). Model wczytany z pliku nie wymaga wtedy żadnego dodatkowego obrotu |
 | Jednostka | 1 jednostka = 1 metr | prędkość kamery i rozmiary labiryntu są w metrach, więc model ma od razu właściwą wielkość |
-| Komórka labiryntu | 2 x 2 m, ściany 3 m | z tych liczb wynikają wymiary wszystkich trzech modeli |
-| Początek układu modelu (origin) | środek podstawy, podłoga to y = 0 | model stawiam przesunięciem o (x, 0, z), bez liczenia połowy wysokości |
+| Komórka labiryntu | 2 x 2 m, ściany 3 m | z tych liczb wynikają wymiary trzech modeli kamiennych i długość bramy |
+| Początek układu modelu (origin) | środek podstawy, podłoga to y = 0 | model stawiam przesunięciem o (x, 0, z), bez liczenia połowy wysokości. Jedno odstępstwo, `crystal_b`, opisuję pod tabelą |
 | Trójkąty | wszystkie ściany modelu są trójkątami | OpenGL w profilu Core rysuje trójkąty. Parser nie musi dzielić wielokątów |
 | Normalne | jedna na ścianę, cieniowanie płaskie (flat shading) | twarde krawędzie pasują do stylu low-poly. Od M4 liczy się z nich oświetlenie |
 | Mapy normalnych | przestrzeń styczna, konwencja OpenGL: zielony kanał to +Y, czyli "w górę obrazu" | zgadza się z UV, w których `v` rośnie w górę, i z loaderem obrazów, który oddaje dolny wiersz jako pierwszy. Mapa w konwencji DirectX (zielony to -Y) pokazałaby poziome fugi jako grzbiety (sekcja 7.2) |
-| UV | 1 jednostka UV = 2 m na każdej ścianie | stała gęstość tekseli (texel density): kamień ma wszędzie tę samą wielkość (sekcja 6) |
+| UV | 1 jednostka UV = 2 m na każdej ścianie modeli kamiennych i bramy | stała gęstość tekseli (texel density): kamień ma wszędzie tę samą wielkość. Kryształy mają własną gęstość (sekcja 6) |
 | Przekształcenia i modyfikatory | zapisane w wierzchołkach | plik nie niesie macierzy, więc pozycje w pliku są pozycjami modelu |
 | Nazwy | `snake_case` | jeden styl dla plików, obiektów i materiałów. Nazwa pliku, nazwa po `o` i nazwa skryptu są takie same |
 | Tekstury | PNG, rozmiar będący potęgą dwójki, 8 bitów na kanał, RGB | PNG nie traci jakości, a rozmiar 512 dzieli się na połowy aż do 1 piksela, co jest potrzebne mipmapom |
 | Ścieżki do tekstur w `.mtl` | względne, z ukośnikami `/` | ten sam plik działa na Windowsie i na macOS, niezależnie od miejsca repozytorium na dysku |
+
+Odstępstwo od konwencji początku układu: w modelu `crystal_b` (trzy odłamki) początek układu
+to środek podstawy **głównego**, najwyższego odłamka, a nie środek całego modelu. Dwa mniejsze
+odłamki odchylają się na boki, każdy na inną odległość, więc pudełko otaczające model nie jest
+symetryczne względem początku: x od -0.179 do 0.217, z od -0.151 do 0.119 (w metrach,
+w układzie gry, odczytane z linii `v` pliku). Gra obraca kryształ wokół osi Y przechodzącej
+przez początek układu, czyli wokół głównego odłamka, a nie wokół środka pudełka. Model
+`crystal_a` jest symetryczny i tego nie ma.
 
 Blender ma inny układ niż gra: też prawoskrętny, ale **Z w górę**. Geometria w skryptach jest
 zapisana w układzie Blendera, a zamianę robi eksporter (sekcja 4). Dlatego w skryptach wysokość
@@ -263,7 +281,7 @@ f 2/1/1 3/4/1 4/2/1
 | `usemtl floor_stone` | materiał dla wszystkich następnych linii `f` |
 | `f a/b/c a/b/c a/b/c` | trójkąt: trzy narożniki, każdy jako trzy indeksy `pozycja/uv/normalna` |
 
-Fakty ważne dla parsera, sprawdzone na wszystkich trzech plikach:
+Fakty ważne dla parsera, sprawdzone na trzech plikach modeli kamiennych:
 
 - Występują tylko linie `#`, `mtllib`, `o`, `v`, `vn`, `vt`, `s`, `usemtl` i `f`. Linii `g` nie
   ma. Kolejność jest zawsze taka jak wyżej: komentarze, `mtllib`, `o`, wszystkie `v`,
@@ -285,6 +303,17 @@ Fakty ważne dla parsera, sprawdzone na wszystkich trzech plikach:
 - Liczby mają kropkę dziesiętną i nie mają wykładnika. Pola dzieli jedna spacja.
 - Końce linii to sam znak LF, także w pliku zapisanym na Windowsie, a plik kończy się znakiem
   nowej linii.
+
+Trzy pliki z M5 (`crystal_a.obj`, `crystal_b.obj`, `gate.obj`) pisze ten sam eksporter z tymi
+samymi opcjami. Sprawdziłem je skryptem w Pythonie, który czyta plik linia po linii
+(2026-10-05): te same rodzaje linii w tej samej kolejności, same trójkąty z kompletem trzech
+indeksów w narożniku, jeden indeks normalnej na trójkąt i narożniki przeciwnie do ruchu
+wskazówek zegara. Jedna rzecz jest w nich nowa: ściany są skośne, więc normalne nie są już
+samymi zerami i jedynkami (na przykład `vn 0.8600 -0.1173 -0.4965` w `crystal_a.obj`).
+Cztery miejsca po przecinku mają tu skutek: `gate.obj` ma 11 linii `vn`, choć brama ma tylko
+9 kierunków ścian, bo ten sam kierunek skosu okucia został zapisany raz jako
+`-0.0000 0.5547 0.8321`, a raz jako `-0.0000 0.5547 0.8320` (i tak samo skos zwrócony w dół).
+Parserowi to nie przeszkadza: bierze normalną o tym indeksie, który stoi w linii `f`.
 
 ### 5.2 Jak Z w górę stało się Y w górę
 
@@ -359,7 +388,7 @@ Blenderze. Niczego w nich nie ustawiam. Parser musi umieć **pominąć linię, k
 Linia nazywa się `map_Bump`, choć wskazuje mapę normalnych, a nie mapę wypukłości (bump map,
 szary obraz wysokości): format MTL nie ma osobnej linii dla map normalnych i eksportery
 używają tej. Jest ostatnią linią materiału, po `map_Kd`. Dodanie map normalnych zmieniło
-w każdym z trzech plików `.mtl` dokładnie tę jedną linię (dopisało ją). Jak parser ją czyta
+w każdym z trzech istniejących wtedy plików `.mtl` dokładnie tę jedną linię (dopisało ją). Jak parser ją czyta
 i jakie inne pisownie przyjmuje, opisuje
 [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), sekcje 2.3 i 5.7.
 
@@ -368,17 +397,45 @@ Pliki `wall_straight.mtl` i `wall_pillar.mtl` są identyczne co do bajta: oba de
 wczytywany do karty dwa razy: pilnuje tego pamięć podręczna assetów
 ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md)).
 
+Trzy pliki `.mtl` z M5 mają te same linie i te same wartości domyślne, a różnią się tylko
+nazwą materiału i dwiema ścieżkami:
+
+| Plik | `newmtl` | `map_Kd` | `map_Bump -bm 1.000000` |
+|---|---|---|---|
+| [`crystal_a.mtl`](../../assets/models/crystal_a.mtl) | `crystal` | `../textures/crystal.png` | `../textures/crystal_normal.png` |
+| [`crystal_b.mtl`](../../assets/models/crystal_b.mtl) | `crystal` | `../textures/crystal.png` | `../textures/crystal_normal.png` |
+| [`gate.mtl`](../../assets/models/gate.mtl) | `gate_wood` | `../textures/gate_wood.png` | `../textures/gate_wood_normal.png` |
+
+`crystal_a.mtl` i `crystal_b.mtl` są identyczne co do bajta (porównane poleceniem `diff`
+2026-10-05), tak jak dwa pliki ściany. Świecenia kryształu w pliku `.mtl` nie ma: linia `Ke`
+ma same zera, a blask dodaje gra w shaderze
+([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 4).
+
 ## 6. UV i gęstość tekseli
 
 **Gęstość tekseli (texel density)** to liczba pikseli tekstury przypadająca na metr
-powierzchni. U mnie jest stała: jedno powtórzenie tekstury zajmuje 2 m, a tekstura ma 512
-pikseli, czyli wychodzi 256 pikseli na metr na każdej ścianie każdego modelu. Gdyby ściana
-i słup miały różną gęstość, te same kamienie byłyby na słupie większe albo mniejsze niż na
-ścianie obok.
+powierzchni. Na modelach kamiennych i na bramie jest stała: jedno powtórzenie tekstury zajmuje
+2 m, a tekstura ma 512 pikseli, czyli wychodzi 256 pikseli na metr na każdej ich ścianie.
+Gdyby ściana i słup miały różną gęstość, te same kamienie byłyby na słupie większe albo
+mniejsze niż na ścianie obok.
 
-UV liczy funkcja `box_project_uvs`. To **rzut pudełkowy (box projection)**: każda ściana modelu
-jest prostopadła do jednej osi, więc patrzę na nią wzdłuż tej osi, a dwie pozostałe
-współrzędne dzielę przez 2 m. W układzie gry wychodzi:
+Kryształy tej liczby nie trzymają: na nich jedno powtórzenie tekstury zajmuje **0.5 m**, a nie
+2 m (stała `METRES_PER_UV_UNIT = 0.5` w `build_crystal.py`, osobna od stałej o tej samej nazwie
+i wartości `2.0` w `blender_common.py`). Wychodzi 1024 piksele na metr, cztery razy gęściej.
+Powód stoi w komentarzu skryptu: kryształ ma 0.5 m wysokości, a jego ścianka około 0.1 m
+szerokości, więc przy 2 m na powtórzenie ścianka pokazałaby tylko kilka rozmytych pikseli
+obrazu. Kryształ nie styka się z kamieniem tą samą teksturą, więc różna gęstość nie daje
+szwu. Skutki są dwa: reguła "1 jednostka UV = 2 m" z sekcji 2 dotyczy czterech z sześciu
+modeli, a jednostka wysokości w mapie normalnych kryształu to 1 / 1024 m, a nie 1 / 256 m
+(sekcja 7.6).
+
+### 6.1 Rzut pudełkowy: `box_project_uvs`
+
+UV modeli kamiennych i bramy liczy funkcja `box_project_uvs`. To **rzut pudełkowy (box
+projection)**: każda ściana modelu kamiennego jest prostopadła do jednej osi, więc patrzę na
+nią wzdłuż tej osi, a dwie pozostałe współrzędne dzielę przez 2 m. O tym, która to oś,
+decyduje największa co do wartości bezwzględnej składowa normalnej ściany. W układzie gry
+wychodzi:
 
 | Ściana patrzy w | u | v |
 |---|---|---|
@@ -401,23 +458,88 @@ Co z tego wynika:
   Na samym obrazie kamienia tego nie widać, ale napis albo strzałka wyszłyby odwrócone. Od
   kiedy są mapy normalnych, ma to skutek widoczny także na kamieniu: na ścianie z teksturą
   w odbiciu lustrzanym mapa normalnych pokazałaby pionowe fugi jako grzbiety. Dzięki tej
-  zamianie znaku żaden trójkąt trzech modeli nie ma odbitej tekstury, co sprawdzają testy
-  loadera (`mirroredTriangleCount == 0`), i wierzchołek nie musi przechowywać znaku
-  skrętności stycznej
+  zamianie znaku żaden trójkąt trzech modeli kamiennych nie ma odbitej tekstury, co
+  sprawdzają testy loadera (`mirroredTriangleCount == 0`), i wierzchołek nie musi
+  przechowywać znaku skrętności stycznej
   ([`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 2.9).
+  Trzech modeli z M5 testy loadera nie wczytują. Policzyłem dla nich to samo skryptem
+  w Pythonie na plikach `.obj` (2026-10-05, znak pola trójkąta w UV): żaden z 24, 66 i 70
+  trójkątów nie ma odbitej tekstury.
 - UV zależy tylko od pozycji punktu, a nie od tego, który to model. Dwa odcinki ściany
   postawione obok siebie (przesunięte o 2 m, czyli o całe powtórzenie) mają więc wzór, który
   przechodzi z jednego w drugi bez szwu.
 - Nic nie jest rozciągnięte. Sprawdziłem liczbowo: dla każdej krawędzi każdego trójkąta
-  długość w metrach podzielona przez długość w UV daje dokładnie 2.
+  trzech modeli kamiennych długość w metrach podzielona przez długość w UV daje dokładnie 2.
+
+**Brama jest wyjątkiem od "dokładnie 2".** Jej okucia mają skośne krawędzie (sekcja 8.2),
+a rzut pudełkowy patrzy na skośną ściankę wzdłuż osi, nie prostopadle do niej, więc widzi ją
+krótszą, niż jest. Skos ma 0.03 m wysokości i 0.02 m głębokości, czyli naprawdę
+`sqrt(0.03^2 + 0.02^2) = 0.036` m, a w UV dostaje tylko wysokość 0.03 m. Tekstura jest tam
+rozciągnięta około 1.2 raza (0.036 / 0.03). W pliku `gate.obj` widać to tak: z 210 krawędzi
+trójkątów (70 trójkątów po 3) 186 daje iloraz 2 (po zaokrągleniu do trzech miejsc), a 24, czyli krótkie krawędzie dwunastu
+skośnych ścianek, daje 2.40. Zostawiłem to celowo: skos ma 3 cm, a dzięki rzutowi "od przodu"
+dostaje te same wiersze tekstury co okucie, czyli żelazo, a nie drewno.
+
+### 6.2 Rzut na płaszczyznę ściany: `face_project_uvs`
+
+Ścianki kryształu są skośne w obu kierunkach, więc rzut pudełkowy rozciągnąłby je wszystkie.
+Dla nich M5 dodało w `blender_common.py` funkcję `face_project_uvs(mesh, metres_per_uv_unit)`:
+każda ściana jest rzutowana na **własną** płaszczyznę.
+
+```python
+    for polygon in mesh.polygons:
+        normal = polygon.normal
+        # The height direction with its part along the normal removed lies in the face.
+        up = Vector((0.0, 0.0, 1.0)) - normal * normal.z
+        if up.length < 0.000001:
+            # A horizontal face has no height direction. Blender Y is used instead.
+            up = Vector((0.0, 1.0, 0.0))
+        up.normalize()
+        # right, up and the normal form a right-handed set, like x, y and z.
+        right = up.cross(normal)
+
+        for loop_index in polygon.loop_indices:
+            position = mesh.vertices[mesh.loops[loop_index].vertex_index].co
+            u = position.dot(right)
+            v = position.dot(up)
+            uv_layer.data[loop_index].uv = (u / metres_per_uv_unit, v / metres_per_uv_unit)
+```
+
+| Linia | Co robi |
+|---|---|
+| `up = Vector((0.0, 0.0, 1.0)) - normal * normal.z` | kierunek "w górę" leżący **w** ścianie. Biorę oś wysokości Blendera (0, 0, 1) i odejmuję od niej tę część, która idzie wzdłuż normalnej. `normal.z` to iloczyn skalarny normalnej z (0, 0, 1), czyli długość tej części. To, co zostaje, jest prostopadłe do normalnej, więc leży w płaszczyźnie ściany |
+| `if up.length < 0.000001:` | ściana pozioma (spód odłamka w `crystal_b`) ma normalną równoległą do osi wysokości, więc po odjęciu zostaje wektor zerowy. Wtedy za "górę" biorę oś Y Blendera |
+| `up.normalize()` | sprowadzenie do długości 1, żeby `v` wychodziło w metrach |
+| `right = up.cross(normal)` | iloczyn wektorowy daje kierunek prostopadły do obu, czyli drugi kierunek w ścianie. Kolejność `up`, potem `normal` sprawia, że `right`, `up` i normalna tworzą układ prawoskrętny, tak jak x, y i z: `right` wskazuje w prawo dla kogoś, kto patrzy na ścianę z zewnątrz |
+| `position.dot(right)`, `position.dot(up)` | położenie narożnika zmierzone wzdłuż obu kierunków, w metrach. Iloczyn skalarny z wektorem długości 1 to długość rzutu na ten wektor |
+| dzielenie przez `metres_per_uv_unit` | metry na jednostki UV. Kryształy podają tu 0.5 |
+
+Co z tego wynika:
+
+- Oba kierunki leżą w ścianie, są do siebie prostopadłe i mają długość 1, więc odległości na
+  ścianie przechodzą do UV bez zmiany proporcji. Policzyłem to na plikach `crystal_a.obj`
+  i `crystal_b.obj` tak jak dla kamienia: dla każdej krawędzi każdego trójkąta długość
+  w metrach podzielona przez długość w UV daje 0.5.
+- `right` jest liczone tak samo dla każdej ściany, więc tekstura nigdzie nie jest lustrzanym
+  odbiciem.
+- UV zależy tu od ściany, a nie tylko od pozycji punktu. Na krawędzi między dwiema ściankami
+  wzór tekstury się **nie** kontynuuje: każda ścianka pokazuje własny wycinek obrazu. Na
+  kamieniu byłby to błąd, na krysztale wygląda jak osobno oszlifowane ścianki.
+- Funkcja nazywa mapę UV `uv`, tak jak `box_project_uvs`, więc `assign_textured_material`
+  działa z obiema bez zmiany (sekcja 7.3).
+
+### 6.3 UV należy do narożnika
 
 UV jest zapisane dla narożnika ściany (w Blenderze: loop), a nie dla wierzchołka. Ten sam
-wierzchołek prostopadłościanu należy do trzech ścian i na każdej ma inne UV.
+wierzchołek prostopadłościanu należy do trzech ścian i na każdej ma inne UV. Czubek odłamka
+kryształu należy do sześciu ścianek i na każdej ma inne.
 
 ## 7. Tekstury
 
 Tekstury generuje [`make_textures.py`](../../tools/blender/make_textures.py) samym numpy, bez
-malowania. Wszystkie cztery mają 512 x 512 pikseli, 8 bitów na kanał, RGB bez kanału alfa.
+malowania. Wszystkie osiem ma 512 x 512 pikseli, 8 bitów na kanał, RGB bez kanału alfa. Cztery
+tekstury kamienia opisują tabela niżej i sekcje 7.1 do 7.4, drewno bramy sekcja 7.5, kryształ
+sekcja 7.6.
 
 | Plik | Co zawiera | Wzór | Kamień | Fuga (joint) | Ziarno losowe (seed) |
 |---|---|---|---|---|---|
@@ -428,6 +550,15 @@ malowania. Wszystkie cztery mają 512 x 512 pikseli, 8 bitów na kanał, RGB bez
 
 Rząd bloków ma 0.25 m, tyle samo co cokół ściany, więc cokół to dokładnie jeden rząd, a w 3 m
 ściany mieści się równo dwanaście rzędów.
+
+Cztery tekstury z M5:
+
+| Plik | Co zawiera | Wzór | Element | Ziarno losowe (seed) |
+|---|---|---|---|---|
+| `gate_wood.png` | kolor | osiem pionowych desek w ciepłym brązie, dwa poziome ciemne okucia z nitem na każdej desce | deska 64 px, czyli 0.25 m. Szpara 4 px. Okucie 40 px wysokości | 37 (`GATE_SEED`) |
+| `gate_wood_normal.png` | mapa normalnych | ten sam wzór co `gate_wood.png` | jak wyżej | 37 |
+| `crystal.png` | kolor | 28 nieregularnych jasnoturkusowych komórek z jaśniejszymi żyłkami na granicach | komórka wokół losowego punktu | 41 (`CRYSTAL_SEED`) |
+| `crystal_normal.png` | mapa normalnych | ten sam wzór co `crystal.png` | jak wyżej | 41 |
 
 Obraz koloru i jego mapa normalnych powstają z **jednego wzoru**: tych samych kamieni, tych
 samych fug i tego samego szumu. Dlatego relief leży dokładnie tam, gdzie obraz go pokazuje.
@@ -451,7 +582,26 @@ flowchart LR
 | `stone_height(pattern, joint_width, bevel_width, joint_depth, tilt, bump_depth, grain_depth)` | wzór i głębokości | tablica 512 x 512 wysokości (sekcja 7.2) |
 | `normal_map(height)` | wysokości | tablica 512 x 512 x 3 kolorów od 0 do 1: mapa normalnych |
 | `save_png(color, file_name)` | kolory od 0 do 1 | plik PNG w `assets/textures` |
-| `build()` | nic | woła powyższe dla ściany i dla podłogi i zapisuje cztery pliki |
+| `build()` | nic | woła powyższe dla ściany i dla podłogi, potem funkcje drewna i kryształu, i zapisuje osiem plików |
+
+Funkcje dodane w M5 (opis w sekcjach 7.5 i 7.6):
+
+| Funkcja | Wejście | Wynik |
+|---|---|---|
+| `blur_along(values, radius, axis)` | tablica 512 x 512 | to samo co `blur`, ale tylko wzdłuż jednej osi: oś 0 to y (w górę obrazu), oś 1 to x |
+| `stretch(values)` | tablica | ta sama tablica przesunięta i przeskalowana tak, żeby jej wartości szły od 0 do 1 |
+| `smooth_step(t)` | liczby od 0 do 1 | krzywa `3t^2 - 2t^3`, zapisana jako `t * t * (3.0 - 2.0 * t)` |
+| `wood_pattern(seed, plank_width, band_centres, band_half_height)` | ziarno, szerokość deski, wiersze okuć | słownik z tym, co wspólne dla obu obrazów bramy |
+| `wood_color(pattern, gap_width, rim_width, rivet_radius, wood_color, gap_color, iron_color)` | wzór i kolory | tablica 512 x 512 x 3 kolorów od 0 do 1 |
+| `wood_height(pattern, gap_width, bevel_width, gap_depth, grain_depth, band_rise, rivet_radius, rivet_rise)` | wzór i głębokości | tablica 512 x 512 wysokości |
+| `crystal_pattern(seed, cell_count)` | ziarno i liczba komórek | słownik z tym, co wspólne dla obu obrazów kryształu |
+| `crystal_color(pattern, vein_width, crystal_color, vein_color)` | wzór i kolory | tablica 512 x 512 x 3 kolorów od 0 do 1 |
+| `crystal_height(pattern, bevel_width, vein_depth, tilt, bump_depth)` | wzór i głębokości | tablica 512 x 512 wysokości |
+
+Podział jest ten sam co dla kamienia: jedna funkcja wzoru, z niej obraz koloru i pole
+wysokości, a z pola wysokości mapa normalnych przez tę samą funkcję `normal_map`. Kod kamienia
+(`stone_pattern`, `stone_color`, `stone_height`, `normal_map`, `save_png`) nie zmienił się
+w M5 i cztery pliki PNG kamienia nie są oznaczone w `git status` jako zmienione.
 
 ### 7.1 Wzór i obraz koloru
 
@@ -598,8 +748,8 @@ i 5 pikseli skosu wznoszącego się do lica: na tych liczbach opiera się test k
 Samo istnienie pliku PNG nie wystarcza, żeby trafił do pliku `.mtl`: eksporter pisze tylko to,
 co jest podłączone w materiale. Robi to funkcja `assign_textured_material(model,
 material_name, texture_file, normal_map_file)` w
-[`blender_common.py`](../../tools/blender/blender_common.py). Każdy z trzech skryptów modeli
-woła ją z dwiema nazwami plików, na przykład:
+[`blender_common.py`](../../tools/blender/blender_common.py). Każdy z pięciu skryptów modeli
+woła ją z dwiema nazwami plików (`build_crystal.py` dwa razy, raz na model), na przykład:
 
 ```python
     common.assign_textured_material(
@@ -624,7 +774,7 @@ Część dotycząca mapy normalnych:
     # The picture holds directions, not colors, so Blender must not convert it from sRGB.
     normal_image_node.image.colorspace_settings.name = "Non-Color"
     normal_map_node = nodes.new("ShaderNodeNormalMap")
-    # Tangent space of the UV map that box_project_uvs creates.
+    # Tangent space of the UV map that box_project_uvs or face_project_uvs creates.
     normal_map_node.space = "TANGENT"
     normal_map_node.uv_map = "uv"
     links.new(normal_image_node.outputs["Color"], normal_map_node.inputs["Color"])
@@ -640,7 +790,7 @@ Część dotycząca mapy normalnych:
 | `nodes.new("ShaderNodeTexImage")` i `.image = bpy.data.images.load(...)` | drugi węzeł `Image Texture`, z plikiem mapy normalnych z `assets/textures` |
 | `colorspace_settings.name = "Non-Color"` | obraz zawiera kierunki, nie kolory, więc Blender nie może go przeliczać z sRGB na wartości liniowe. Przeliczenie wykrzywiłoby kierunki |
 | `nodes.new("ShaderNodeNormalMap")` | węzeł `Normal Map`: zamienia kolor na kierunek. Jego pole `Strength` zostaje domyślne, 1 |
-| `space = "TANGENT"`, `uv_map = "uv"` | mapa jest w przestrzeni stycznej mapy UV o nazwie `uv`, tej, którą tworzy `box_project_uvs` |
+| `space = "TANGENT"`, `uv_map = "uv"` | mapa jest w przestrzeni stycznej mapy UV o nazwie `uv`, tej, którą tworzy `box_project_uvs` albo `face_project_uvs` |
 | dwa wywołania `links.new` | `Color` obrazu do `Color` węzła `Normal Map`, a jego `Normal` do wejścia `Normal` węzła `Principled BSDF` (zmienna `surface`) |
 | `nodes.active = image_node` | rendery kontrolne Workbench pokazują obraz **aktywnego** węzła obrazu. Bez tej linii aktywny byłby węzeł utworzony ostatnio, czyli mapa normalnych, i rendery kontrolne byłyby niebieskie |
 
@@ -678,11 +828,27 @@ szwów nie widać. Dla map normalnych sprawdzeniem są zrzuty ekranu z gry (2026
 których relief przechodzi między sąsiednimi odcinkami ściany i między płytami podłogi bez
 widocznego szwu.
 
+Tekstury z M5 kafelkują się z tych samych powodów, z dwiema różnicami:
+
+- Drewno: szerokość deski (64 px) dzieli 512 bez reszty, słoje i szumy są rozmywane przez
+  `np.roll`, a okucia leżą daleko od górnego i dolnego brzegu (wiersze od 76 do 116 i od 332
+  do 372), więc ich odległości nie trzeba liczyć przez brzeg.
+- Kryształ: odległość piksela od punktu komórki jest liczona **krótszą drogą przez brzeg**
+  (`(x - points[index, 0] + SIZE / 2) % SIZE - SIZE / 2`). Punkt przy prawym brzegu jest więc
+  blisko pikseli przy lewym i jego komórka przechodzi przez brzeg bez szwu.
+
+Dla tych czterech tekstur nie składałem obrazu 2 x 2: kafelkowanie wynika tu z kodu, a nie
+z oglądania.
+
 Dlaczego wynik jest powtarzalny: jedyne źródło losowości to `np.random.default_rng(seed)` ze
 stałym ziarnem. Zmiana ziarna daje inny układ jasnych i ciemnych kamieni i inne pochylenia.
-Zmierzone na Windowsie 2026-10-05: dwa kolejne uruchomienia skryptów dały identyczne skróty
-wszystkich dziesięciu plików wynikowych. **Na macOS skrypty nie były uruchamiane**, więc nie
-wiem, czy tam wychodzą te same bajty (sekcja 3).
+Zmierzone na Windowsie 2026-10-05, przed M5: dwa kolejne uruchomienia skryptów dały identyczne
+skróty wszystkich dziesięciu istniejących wtedy plików wynikowych. Tekstury z M5 biorą
+losowość z tego samego źródła (`GATE_SEED = 37`, `CRYSTAL_SEED = 41`), a skrypty modeli z M5
+nie losują niczego, więc ich wynik też powinien być powtarzalny. To wniosek z budowy
+skryptów: dla dziesięciu plików z M5 nikt nie porównał skrótów z dwóch uruchomień.
+**Na macOS skrypty nie były uruchamiane**, więc nie wiem, czy tam wychodzą te same bajty
+(sekcja 3).
 
 Obraz zapisuje Blender (`image.save()`), a nie osobna biblioteka. Dwa szczegóły:
 
@@ -691,6 +857,136 @@ Obraz zapisuje Blender (`image.save()`), a nie osobna biblioteka. Dwa szczegół
 - Zaokrąglenie do 256 poziomów robię sam (`np.round(color * 255.0) / 255.0`), żeby bajty
   w pliku nie zależały od sposobu zaokrąglania w Blenderze. To tu składowa 0.5 płaskiej
   normalnej staje się bajtem 128 (`0.5 * 255 = 127.5`, zaokrąglone do 128).
+
+### 7.5 Drewno bramy: `wood_pattern`, `wood_color`, `wood_height`
+
+Brama to pionowe deski spięte poziomymi żelaznymi okuciami (bands), z jednym nitem (rivet) na
+każdej desce. Na bramie tekstura ma 256 pikseli na metr (sekcja 6), więc deska 64 px to
+0.25 m, a osiem desek wypełnia dokładnie 2 m bramy.
+
+**Wzór: `wood_pattern`.** Dla każdego piksela liczy:
+
+1. Do której deski należy (`column = x // plank_width`) i jak daleko ma do bliższej krawędzi
+   swojej deski (`edge_distance`). Deski są pionowe, więc liczy się tylko x.
+2. Jedną losową jasność na deskę (`plank_brightness`, od 0.82 do 1.12).
+3. Jak głęboko leży w okuciu (`band_depth`): połowa wysokości okucia minus odległość środka
+   piksela od linii środkowej najbliższego okucia. Wartość dodatnia znaczy "w okuciu", zero
+   i mniej "poza nim". Środki okuć to wiersze 96 i 352 (`GATE_BAND_CENTRES`), a połowa
+   wysokości to 20 px (`GATE_BAND_HALF_HEIGHT`).
+4. Odległość od najbliższego nitu (`rivet_distance`). Nit leży na środku szerokości każdej
+   deski, na linii środkowej każdego okucia, więc jego odległość to pierwiastek z sumy
+   kwadratów odległości w poziomie od środka deski i w pionie od środka okucia.
+5. Słoje (`streaks`): losowa wartość na piksel, rozmyta daleko wzdłuż y (promień 48 px)
+   i tylko trochę wzdłuż x (promień 1 px), potem rozciągnięta do zakresu od 0 do 1. Długie
+   rozmycie w jednym kierunku i krótkie w drugim zamienia losowe piksele w pionowe smugi.
+6. Dwa szumy jak w kamieniu: `patches` (promień 6) i `grain` (promień 1).
+
+Losowania idą w kolejności: jasność desek, słoje, plamy, ziarno. `wood_height` niczego już
+nie losuje, więc słownik drewna nie zawiera generatora (inaczej niż słownik kamienia).
+
+**Dlaczego wiersze 96 i 352.** Jedno powtórzenie tekstury ma 2 m, a brama 2.75 m, więc na
+bramie widać teksturę 1.375 raza i dolne okucie pojawia się dwa razy. Wiersz 96 to
+`96 / 256 = 0.375` m, wiersz 352 to `1.375` m, a powtórzony wiersz 96 to `2.375` m. Na tych
+samych trzech wysokościach `build_gate.py` podnosi geometrię okuć (`BAND_CENTRES`, sekcja
+8.2). Obie pary liczb są wpisane ręcznie w dwóch plikach i muszą się zgadzać: komentarze
+w obu skryptach odsyłają do siebie nawzajem.
+
+**Kolor: `wood_color`.**
+
+1. Jasność deski mnożę przez słoje (`0.74 + 0.52 * streaks`) i przez drobne ziarno.
+2. Przy szparze deska jest ciemniejsza (`rim`), tak jak kamień przy fudze.
+3. Piksele najbliżej krawędzi deski (`edge_distance < gap_width // 2`, czyli 2 px z każdej
+   strony) to szpara: prawie czarny kolor `gap_color` z samym ziarnem.
+4. Okucie (`band_depth > 0.0`) zakrywa deski i szpary. Dostaje kolor żelaza `iron_color`,
+   miękkie plamy (wygląd kutego metalu) i ciemniejszy brzeg na 3 pikselach, który oddziela
+   je od drewna.
+5. Nit jest jaśniejszy od okucia: 1.5 raza na środku, spadając do 1 na promieniu
+   `rivet_radius` (6 px, około 2.3 cm).
+
+Parametry w `build()`: `gap_width=4`, `rim_width=5`, `rivet_radius=6`, drewno
+`(0.50, 0.33, 0.19)`, szpara `(0.10, 0.07, 0.05)`, żelazo `(0.24, 0.25, 0.28)`.
+
+**Wysokość: `wood_height`.** Jednostką jest piksel tekstury, na bramie 1 / 256 m.
+
+| Składnik | Jak powstaje | Parametr w `build()` |
+|---|---|---|
+| profil deski | 0 w szparze, gładki wzrost (`smooth_step`) na `bevel_width` pikselach, potem 1 na licu | `gap_width=4`, `bevel_width=4`, `gap_depth=2.5`: szpara ma około 1 cm głębokości |
+| rowki słojów | `streaks` rozmyte jeszcze raz w poprzek słojów (`blur_along(..., 1, axis=1)`), wyśrodkowane na zerze. Powód ten sam co przy drugim rozmyciu kamienia: nachylenie musi być gładkie | `grain_depth=3.0` |
+| drobne ziarno | `grain` rozmyte drugi raz, ze stałą głębokością 0.5 wpisaną w funkcji | brak |
+| okucie | leży na licu desek (wysokość `gap_depth`) i wznosi się przez 3 piksele od swojej krawędzi. Do tego miękkie wgniecenia z szumu `patches` | `band_rise=1.0` |
+| nit | kopułka: górna połowa kuli spłaszczona do wysokości `rivet_rise`, czyli `rivet_rise * sqrt(1 - (d / r)^2)` dla odległości `d` od środka nitu i promienia `r` | `rivet_radius=6`, `rivet_rise=2.5` |
+
+Złożenie:
+
+```python
+    wood = profile * (gap_depth + grooves) + fine
+    ...
+    iron = gap_depth + band_profile * (band_rise + dents) + fine
+    ...
+    return np.where(band_depth > 0.0, iron, wood)
+```
+
+`np.where` wybiera dla każdego piksela wysokość żelaza tam, gdzie jest okucie, i wysokość
+drewna wszędzie indziej. Okucie w mapie normalnych wznosi się tylko o 1 piksel (około 4 mm),
+bo prawdziwe wystawanie okucia, 2 cm, jest w **geometrii** modelu. Mapa dodaje do niej tylko
+zaokrąglenie krawędzi, wgniecenia i nity.
+
+### 7.6 Kryształ: `crystal_pattern`, `crystal_color`, `crystal_height`
+
+Obraz kryształu jest podzielony na **komórki wokół losowych punktów**: każdy piksel należy do
+tego punktu, do którego ma najbliżej. Taki podział nazywa się diagramem Woronoja (Voronoi
+diagram). Komórki wyglądają jak ścianki wewnątrz kryształu, a granice między nimi stają się
+żyłkami.
+
+**Wzór: `crystal_pattern(seed, cell_count)`**, wołany z `cell_count=28`:
+
+1. Losuje 28 punktów na obrazie (`rng.uniform(0.0, SIZE, (cell_count, 2))`).
+2. Przechodzi po punktach jeden po drugim i dla każdego piksela utrzymuje odległość do
+   najbliższego punktu (`nearest`) i do drugiego najbliższego (`second`), razem z numerami
+   obu (`cell` i `neighbour`) i przesunięciem piksela względem punktu swojej komórki
+   (`offset_x`, `offset_y`). Gdy nowy punkt jest bliżej niż dotychczasowy najbliższy, stary
+   najbliższy spada na drugie miejsce. Gdy pokonuje tylko drugiego, zastępuje jego.
+   Odległości są liczone krótszą drogą przez brzeg (sekcja 7.4).
+3. Liczy odległość piksela od granicy swojej komórki (`border_distance`). Granica między
+   dwiema komórkami to prosta, na której oba punkty są tak samo daleko. Odległość piksela od
+   niej to `(second^2 - nearest^2) / (2 * gap)`, gdzie `gap` to odległość między oboma
+   punktami. Wzór wynika z tego, że różnica kwadratów odległości od dwóch punktów rośnie
+   liniowo wzdłuż odcinka, który je łączy.
+4. Losuje jedną jasność na komórkę (`cell_brightness`, od 0.82 do 1.0) i dwa szumy (`patches`
+   o promieniu 12, `grain` o promieniu 1).
+
+Słownik zawiera też generator (`"rng"`) i liczbę komórek, bo `crystal_height` losuje dalej
+pochylenia komórek, po liczbach obrazu koloru, tak jak `stone_height`.
+
+**Kolor: `crystal_color`.** Jasność komórki mnożę przez oba szumy, ale słabo
+(`0.92 + 0.08 * patches`, `0.97 + 0.03 * grain`), i przez kolor `(0.60, 0.90, 0.86)`: jasny
+turkus. Żyłka ma wartość 1 na granicy komórek i zanika do 0 na `vein_width=3` pikselach
+(`smooth_step`), a kolor piksela jest mieszany w stronę jaśniejszego `(0.80, 0.97, 0.95)`:
+`color + vein * (vein_color - color)`. Przy `vein = 0` zostaje kolor komórki, przy `vein = 1` kolor żyłki. Obraz jest celowo
+jasny i mało kontrastowy: blask i turkusowe światło dodaje gra
+([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 4).
+
+**Wysokość: `crystal_height`.** Jednostką jest piksel tekstury, czyli na krysztale 1 / 1024 m
+(sekcja 6), nie 1 / 256 m.
+
+| Składnik | Jak powstaje | Parametr w `build()` |
+|---|---|---|
+| profil komórki | 0 na granicy komórki, gładki wzrost na `bevel_width` pikselach, potem 1 na licu | `bevel_width=6`, `vein_depth=1.0`: żyłka jest o 1 piksel, około 1 mm, głębiej niż lico |
+| pochylenie komórki | każda komórka to mała pochylona płaszczyzna, każda inaczej: dwa losowe nachylenia na komórkę, pomnożone przez przesunięcie piksela względem punktu komórki (`tilt_x * offset_x + tilt_y * offset_y`) | `tilt=0.06`: największe nachylenie to 0.06 piksela wysokości na piksel, czyli około 3.4 stopnia |
+| duże miękkie nierówności | `patches` rozmyte drugi raz (`BUMP_BLUR_RADIUS`), wyśrodkowane na zerze | `bump_depth=4.0` |
+
+```python
+    return profile * (vein_depth + lean + bumps)
+```
+
+Wszystko jest pomnożone przez profil, więc zanika w stronę granicy i dwie sąsiednie komórki
+spotykają się na tej samej wysokości (0), tak jak kamienie w fudze. Pochylone komórki łapią
+światło po kolei, gdy kryształ się obraca. Drobnego ziarna w wysokości kryształu nie ma:
+powierzchnia ma być gładka.
+
+Znana usterka, zostawiona jako kosmetyczna: w `crystal_normal.png` jest kilka załamań
+(creases) o szerokości jednego piksela, czyli cienkich kresek, na których kierunek normalnej
+skacze. Przyczyny nie ustalałem i pliku nie poprawiałem.
 
 ## 8. Lista assetów
 
@@ -701,11 +997,21 @@ Wymiary są w układzie gry i zostały odczytane z linii `v` gotowych plików.
 | `wall_straight` | `build_wall_straight.py` | od -1 do 1 | od 0 do 3 | od -0.14 do 0.14 | 30 | `wall_stone.png` | `wall_stone_normal.png` |
 | `wall_pillar` | `build_wall_pillar.py` | od -0.2 do 0.2 | od 0 do 3.15 | od -0.2 do 0.2 | 30 | `wall_stone.png` | `wall_stone_normal.png` |
 | `floor_tile` | `build_floor_tile.py` | od -1 do 1 | 0 | od -1 do 1 | 2 | `floor_stone.png` | `floor_stone_normal.png` |
+| `crystal_a` | `build_crystal.py` | od -0.105 do 0.105 | od 0 do 0.5 | od -0.091 do 0.091 | 24 | `crystal.png` | `crystal_normal.png` |
+| `crystal_b` | `build_crystal.py` | od -0.179 do 0.217 | od 0 do 0.5 | od -0.151 do 0.119 | 66 | `crystal.png` | `crystal_normal.png` |
+| `gate` | `build_gate.py` | od -1 do 1 | od 0 do 2.75 | od -0.06 do 0.06 | 70 | `gate_wood.png` | `gate_wood_normal.png` |
 
-Razem w repozytorium jest dziesięć plików wynikowych: trzy `.obj`, trzy `.mtl` i cztery `.png`
-(dwa obrazy koloru i dwie mapy normalnych, każdy 512 x 512, RGB). Mapy normalnych nie zmieniły
-geometrii: liczby trójkątów i wymiary są te same co przedtem, a pliki `.obj` identyczne co do
-bajta.
+Liczba linii `v` (pozycji) w plikach z M5: `crystal_a.obj` 14, `crystal_b.obj` 39, `gate.obj`
+56. To nie jest liczba wierzchołków w grze: loader składa wierzchołek z trójki indeksów
+`pozycja/uv/normalna`, a na płasko cieniowanym modelu ta sama pozycja występuje na kilku
+ścianach z różnymi normalnymi
+([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)).
+
+Razem w repozytorium jest dwadzieścia plików wynikowych: sześć `.obj`, sześć `.mtl` i osiem
+`.png` (cztery obrazy koloru i cztery mapy normalnych, każdy 512 x 512, RGB). Dziesięć z nich
+istniało po M4. Mapy normalnych nie zmieniły wtedy geometrii: liczby trójkątów i wymiary
+modeli kamiennych zostały te same co przedtem, a ich pliki `.obj` identyczne co do bajta. M5
+nie zmieniło żadnego z tych dziesięciu plików, dołożyło dziesięć nowych.
 
 **`wall_straight`**: odcinek ściany wzdłuż osi X. Trzy prostopadłościany jeden na drugim:
 
@@ -736,6 +1042,183 @@ leżą w jednej płaszczyźnie, więc nie migoczą (sekcja 10).
 
 **`floor_tile`**: płaski kwadrat 2 x 2 m na wysokości y = 0, zwrócony w górę (normalna +Y),
 dwa trójkąty. Jedna płyta na komórkę labiryntu.
+
+### 8.1 Kryształy: `build_crystal.py`
+
+Jeden skrypt buduje dwa modele, bo oba składają się z tego samego elementu: **odłamka
+(shard)**. Odłamek to sześciokątny słupek między dwoma poziomymi pierścieniami wierzchołków,
+z ostrzem na górze. Sześć boków (`SIDES = 6`) ma kryształ kwarcu. W skrypcie nie ma żadnej
+losowości: wszystkie liczby są wpisane w kod.
+
+**Krok 1: pierścień, `add_ring(vertices, centre, radius, turn)`.** Dopisuje sześć narożników
+poziomego sześciokąta wokół punktu `centre`:
+
+```python
+    for corner in range(SIDES):
+        angle = math.radians(turn + corner * 360.0 / SIDES)
+        vertices.append(
+            (centre_x + radius * math.cos(angle), centre_y + radius * math.sin(angle), centre_z)
+        )
+```
+
+Narożnik numer `corner` leży pod kątem `turn + corner * 60` stopni, w odległości `radius` od
+środka: `cos` daje składową x, `sin` składową y (w układzie Blendera to płaszczyzna podłogi).
+Rosnący kąt znaczy kolejność przeciwną do ruchu wskazówek zegara, patrząc z góry. `turn`
+obraca cały pierścień, żeby dwa odłamki nie stały ściankami w tę samą stronę.
+
+**Krok 2: odłamek, `add_shard`.** Pełna sygnatura:
+`add_shard(vertices, faces, bottom, bottom_radius, top, top_radius, tip, foot=None, turn=0.0)`.
+Funkcja dopisuje dolny pierścień (indeksy `lower` do `lower + 5`), górny pierścień (`upper` do
+`upper + 5`) i czubek `tip`, a potem ściany:
+
+| Ściany | Ile | Narożniki | Uwagi |
+|---|---|---|---|
+| bok słupka | 6 czworokątów | `(lower + corner, lower + following, upper + following, upper + corner)` | `following = (corner + 1) % SIDES`: po ostatnim narożniku znów pierwszy. Czworokąt jest płaski, bo oba pierścienie są poziome i obrócone o ten sam kąt, więc jego dolna i górna krawędź są równoległe |
+| ścianka górnego ostrza | 6 trójkątów | `(upper + corner, upper + following, tip_index)` | wszystkie schodzą się w czubku |
+| płaski spód (gdy nie ma `foot`) | 1 sześciokąt | dolny pierścień w odwrotnej kolejności | odwrotna kolejność sprawia, że ściana patrzy w dół |
+| ścianka dolnego ostrza (gdy jest `foot`) | 6 trójkątów | `(lower + following, lower + corner, foot_index)` | patrzą w dół i na zewnątrz |
+
+Narożniki każdej ściany idą przeciwnie do ruchu wskazówek zegara, patrząc z zewnątrz, więc
+normalne wskazują na zewnątrz. Przesunięcie `top` i `tip` w bok względem `bottom` pochyla
+odłamek. Eksporter dzieli potem każdy czworokąt na dwa trójkąty, a sześciokąt na cztery.
+
+**Krok 3: `crystal_a`**, jeden prosty odłamek stojący na dolnym ostrzu:
+
+| Parametr | Wartość (x, y, z w układzie Blendera, metry) |
+|---|---|
+| `foot` | `(0, 0, 0)`: dolny czubek, początek układu modelu |
+| `bottom`, `bottom_radius` | `(0, 0, 0.12)`, promień 0.075 |
+| `top`, `top_radius` | `(0, 0, 0.34)`, promień 0.105: u góry odłamek jest trochę szerszy |
+| `tip` | `(0, 0, 0.5)`: górny czubek. Górne ostrze (0.16 m) jest dłuższe od dolnego (0.12 m) |
+
+Wychodzi 14 pozycji (dwa pierścienie po 6, dwa czubki) i `12 + 6 + 6 = 24` trójkąty.
+Szerokość 0.21 m to dwa promienie górnego pierścienia, a głębokość 0.182 m to
+`2 * 0.105 * sin(60 stopni)`: sześciokąt jest węższy w poprzek boków niż w poprzek narożników.
+
+**Krok 4: `crystal_b`**, trzy odłamki rosnące z jednego miejsca na podłodze i odchylone od
+siebie. Każdy ma płaski spód na wysokości 0. Przy podłodze nachodzą na siebie, co ukrywa
+miejsce, w którym jeden się kończy, a drugi zaczyna.
+
+| Odłamek | `bottom`, promień | `top`, promień | `tip` | `turn` |
+|---|---|---|---|---|
+| główny | `(0, 0, 0)`, 0.085 | `(0.02, 0.015, 0.36)`, 0.07 | `(0.03, 0.02, 0.5)` | 0 |
+| średni | `(0.1, -0.04, 0)`, 0.06 | `(0.17, -0.07, 0.22)`, 0.05 | `(0.2, -0.085, 0.33)` | 20 |
+| mały | `(-0.08, 0.06, 0)`, 0.05 | `(-0.14, 0.11, 0.15)`, 0.042 | `(-0.165, 0.13, 0.24)` | 40 |
+
+Wychodzi `3 * 13 = 39` pozycji i `3 * (12 + 6 + 4) = 66` trójkątów. Tylko główny odłamek sięga
+pełnych 0.5 m. Jego podstawa leży w punkcie (0, 0, 0), stąd niesymetryczne pudełko opisane
+w sekcji 2.
+
+**Krok 5: `finish(name, vertices, faces, shots)`**, wspólne zakończenie obu modeli:
+
+```python
+    model = common.create_mesh_object(name, vertices, faces)
+    common.face_project_uvs(model.data, METRES_PER_UV_UNIT)
+    common.assign_textured_material(model, "crystal", "crystal.png", "crystal_normal.png")
+    common.export_obj(name)
+```
+
+| Wywołanie | Co robi |
+|---|---|
+| `create_mesh_object` | siatka z list, cieniowanie płaskie (`shade_flat`): jedna normalna na ścianę, twarde krawędzie między ściankami |
+| `face_project_uvs(model.data, METRES_PER_UV_UNIT)` | UV z rzutu każdej ściany na jej własną płaszczyznę, 0.5 m na powtórzenie tekstury (sekcje 6 i 6.2) |
+| `assign_textured_material(model, "crystal", ...)` | materiał `crystal` z obrazem koloru i mapą normalnych. Oba modele dostają materiał o tej samej nazwie, stąd identyczne pliki `.mtl` (sekcja 5.3) |
+| `export_obj(name)` | pliki `crystal_a.obj` i `.mtl` albo `crystal_b.obj` i `.mtl`, z opcjami z sekcji 4 |
+
+Z argumentem `--shots` dochodzą dwa rendery kontrolne każdego modelu, z boku i z góry,
+wycelowane w punkt `(0, 0, 0.25)`, czyli w połowę wysokości. Funkcja `build(shots)` woła po
+kolei `build_crystal_a` i `build_crystal_b`, a każda z nich zaczyna od `reset_scene()`, żeby
+pierwszy model nie trafił do pliku drugiego.
+
+**Na czym polega gra.** Oba modele mają 0.5 m wysokości, od y = 0 do y = 0.5, a początek
+układu leży na dole. Tę samą liczbę ma stała `CRYSTAL_HEIGHT = 0.5F` w
+[`src/game/Crystals.hpp`](../../src/game/Crystals.hpp): gra liczy z niej środek kryształu
+(`CRYSTAL_HEIGHT / 2`) i miejsce światła punktowego nad czubkiem. Stała nie jest czytana
+z pliku modelu, więc zmiana wysokości w skrypcie wymaga zmiany tej stałej. Gra losuje dla
+każdego kryształu jeden z dwóch modeli (`CRYSTAL_VARIANT_COUNT = 2`), zawiesza go nad podłogą
+i obraca wokół osi Y ([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 5).
+
+### 8.2 Brama: `build_gate.py`
+
+Brama zamyka jedną stronę komórki wyjścia, między dwoma słupami, w miejscu odcinka ściany.
+Jest zbudowana **tak jak `wall_straight`**: wzdłuż osi X od -1 do 1, początek układu na
+podłodze, na środku podstawy. Dzięki temu gra stawia ją tą samą funkcją co ścianę,
+`game::wallModelMatrix` z [`src/game/MazeWorld.cpp`](../../src/game/MazeWorld.cpp): przesunięcie
+do środka odcinka i, dla odcinka wzdłuż Z, obrót o 90 stopni wokół Y. W tym skrypcie też nie
+ma losowości.
+
+Stałe (metry, układ Blendera: X to szerokość, Y grubość, Z wysokość):
+
+| Stała | Wartość | Znaczenie |
+|---|---|---|
+| `HALF_LENGTH` | `1.0` | brama ma 2 m, tyle co bok komórki. Oba końce chowają się w słupach |
+| `HEIGHT` | `2.75` | niżej niż ściana (3 m), na wysokości, na której słup nie ma poziomej ściany (te leżą na 0.35, 2.90 i 3.15): dwie poziome ściany na jednej wysokości mogłyby migotać (sekcja 10) |
+| `PLANK_HALF_THICKNESS` | `0.04` | deski mają 0.08 m grubości |
+| `BAND_HALF_THICKNESS` | `0.06` | okucia wystają o 0.02 m z każdej strony, razem brama ma 0.12 m grubości |
+| `BAND_CENTRES` | `(0.375, 1.375, 2.375)` | wysokości środków trzech okuć, te same, na których tekstura maluje żelazo (sekcja 7.5) |
+| `BAND_HALF_HEIGHT` | `20 / 256` | połowa wysokości okucia: 20 pikseli tekstury przy 256 pikselach na metr, czyli 0.078 m |
+| `BAND_SLANT` | `0.03` | wysokość skośnej krawędzi okucia |
+
+**Krok 1: deski.** Jeden prostopadłościan na całą bramę, bez spodu, który leży na podłodze:
+
+```python
+    common.add_box(
+        vertices,
+        faces,
+        (-HALF_LENGTH, -PLANK_HALF_THICKNESS, 0.0),
+        (HALF_LENGTH, PLANK_HALF_THICKNESS, HEIGHT),
+        skip=("-z",),
+    )
+```
+
+Osobne deski są namalowane w teksturze i wytłoczone w mapie normalnych, a nie zbudowane
+z geometrii. To 8 pozycji i 5 ścian, czyli 10 trójkątów.
+
+**Krok 2: okucia, `add_band(vertices, faces, centre)`.** Każde okucie to wypukły pasek po obu
+stronach bramy (`side` równe -1 i +1). Przekrój paska widziany z końca ma cztery narożniki:
+
+| Nr | Punkt (y, z) | Gdzie |
+|---|---|---|
+| 0 | `(wood_y, bottom)` | na desce, dolna krawędź okucia |
+| 1 | `(iron_y, bottom + BAND_SLANT)` | pełna grubość, po dolnym skosie |
+| 2 | `(iron_y, top - BAND_SLANT)` | pełna grubość, przed górnym skosem |
+| 3 | `(wood_y, top)` | z powrotem na desce, górna krawędź okucia |
+
+Te same cztery narożniki powstają na lewym końcu (`x = -HALF_LENGTH`, indeksy od `first` do
+`first + 3`) i na prawym (`first + 4` do `first + 7`). Pasek ma pięć ścian: dolny skos,
+płaskie lico, górny skos i dwa końce. Ich narożniki są wypisane przeciwnie do ruchu wskazówek
+zegara dla strony zwróconej w -Y. Strona +Y jest lustrzanym odbiciem, a odbicie odwraca
+kierunek obiegu, więc dla niej kolejność narożników jest odwracana
+(`tuple(reversed(corners))`). Bez tego normalne tej strony wskazywałyby do środka bramy.
+
+Trzy okucia po dwa paski po 8 pozycji i 5 ścian dają 48 pozycji i 60 trójkątów. Razem
+z deskami: 56 pozycji i 70 trójkątów.
+
+**Dlaczego krawędzie okucia są skośne.** Skos ma 0.03 m wysokości na 0.02 m głębokości, więc
+jest bardziej stromy niż 45 stopni (około 56 stopni od poziomu). Rzut pudełkowy wybiera oś po
+największej składowej normalnej, więc traktuje taką ściankę jak przód bramy i daje jej
+wiersze tekstury z żelazem. Pozioma krawędź byłaby teksturowana "z góry", czyli wycinkiem
+z dołu obrazu, na którym jest drewno. Ceną jest rozciągnięcie tekstury na skosie opisane
+w sekcji 6.1.
+
+**Krok 3: UV, materiał, eksport.**
+
+```python
+    model = common.create_mesh_object(NAME, vertices, faces)
+    common.box_project_uvs(model.data)
+    common.assign_textured_material(model, "gate_wood", "gate_wood.png", "gate_wood_normal.png")
+    common.export_obj(NAME)
+```
+
+Ta sama kolejność co w skryptach ściany i słupa: siatka z cieniowaniem płaskim, rzut
+pudełkowy z 2 m na powtórzenie, materiał `gate_wood`, eksport do `gate.obj` i `gate.mtl`.
+Na przodzie bramy `u` idzie od -0.5 do 0.5 (jedno powtórzenie, osiem desek), a `v` od 0 do
+1.375.
+
+**Na czym polega gra.** Brama jest cieńsza (0.12 m) niż trzon słupa (0.3 m), więc jej końce
+chowają się w słupach tak jak końce ściany. Gdy brama się otwiera, gra obniża ją pod podłogę,
+odejmując od wysokości odcinka aż do `GATE_SINK_DEPTH = 3.3` m, więcej niż 2.75 m wysokości
+modelu ([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcje 2 i 5).
 
 ## 9. Blender MCP
 
@@ -815,7 +1298,10 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
 | Zielony kanał w konwencji DirectX | poziome fugi wyglądają jak grzbiety, bo -Y i +Y są zamienione | skrypt liczy nachylenie w tablicy, w której wiersz 0 jest dołem obrazu, i nie odwraca znaku. Test na pliku pilnuje wyniku |
 | Szum rozmyty tylko raz jako wysokość | nachylenie jest poszarpane i ściana wygląda jak tkanina | drugie rozmycie w `stone_height` (sekcja 7.2) |
 | `Strength` węzła `Normal Map` | zmienia tylko liczbę po `-bm` w `.mtl`, której gra nie czyta | siłę reliefu zmieniam parametrami `stone_height` |
-| Fuga reliefu obok fugi namalowanej | inna `joint_width` w `stone_color` i w `stone_height` rozsuwa obie fugi | ta sama liczba w obu wywołaniach w `build()` |
+| Fuga reliefu obok fugi namalowanej | inna `joint_width` w `stone_color` i w `stone_height` rozsuwa obie fugi | ta sama liczba w obu wywołaniach w `build()`. To samo dotyczy `gap_width` i `rivet_radius` drewna |
+| Okucie w teksturze na innej wysokości niż w geometrii | żelazo namalowane obok wypukłego paska | `GATE_BAND_CENTRES` i `GATE_BAND_HALF_HEIGHT` w `make_textures.py` odpowiadają `BAND_CENTRES` i `BAND_HALF_HEIGHT` w `build_gate.py`. Zmieniam zawsze oba pliki |
+| Rzut pudełkowy na skośnej ścianie | tekstura jest rozciągnięta, a na ścianie bliższej poziomu dostaje wycinek "z góry" | kryształy używają `face_project_uvs`. Skosy okuć bramy są bardziej strome niż 45 stopni i mają znane rozciągnięcie 1.2 raza (sekcja 6.1) |
+| Wysokość kryształu w dwóch miejscach | światło i środek kryształu w grze nie trafiają w model | 0.5 m w `build_crystal.py` i `CRYSTAL_HEIGHT` w `src/game/Crystals.hpp` zmieniam razem |
 | Import modułu pomocniczego | Blender nie dodaje katalogu skryptu do ścieżki modułów, `import blender_common` się nie udaje | `sys.path.append(...)` na początku każdego skryptu |
 | Katalog `__pycache__` | Python tworzy go w `tools/blender/` przy imporcie | wpis w `tools/blender/.gitignore` |
 | Indeksy od 1 | indeksy w liniach `f` zaczynają się od 1, tablice w C++ od 0 | parser odejmuje 1 |
@@ -840,13 +1326,16 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
    przeciwnie do ruchu wskazówek zegara, patrząc z zewnątrz.
 4. Zostaw kolejność wywołań: `create_mesh_object`, `box_project_uvs`,
    `assign_textured_material`, `export_obj`, a na końcu opcjonalnie `render_review_shots`.
-   Rzut pudełkowy pasuje do ścian prostopadłych do osi. Model ze skośnymi ścianami będzie
-   potrzebował innego sposobu liczenia UV.
+   Rzut pudełkowy pasuje do ścian prostopadłych do osi. Model ze skośnymi ścianami woła
+   zamiast niego `face_project_uvs` z własną liczbą metrów na powtórzenie, tak jak
+   [`build_crystal.py`](../../tools/blender/build_crystal.py).
 5. Jeśli model potrzebuje nowej tekstury, dodaj w funkcji `build` w
    [`make_textures.py`](../../tools/blender/make_textures.py) wywołania `stone_pattern`,
    `stone_color` i `save_png` dla obrazu koloru oraz `stone_height`, `normal_map` i `save_png`
    dla mapy normalnych, z tym samym wzorem i tą samą `joint_width`. Rozmiary kamieni muszą
-   dzielić 512 bez reszty. Obie nazwy plików podaj potem w `assign_textured_material`.
+   dzielić 512 bez reszty. Tekstura, która nie jest kamieniem, potrzebuje własnej trójki
+   funkcji wzoru, koloru i wysokości, tak jak drewno i kryształ (sekcje 7.5 i 7.6). Obie
+   nazwy plików podaj potem w `assign_textured_material`.
 6. Dopisz `import` i wywołanie `build(shots)` w
    [`make_all.py`](../../tools/blender/make_all.py).
 7. Uruchom skrypt z `-- --shots` i obejrzyj rendery.
@@ -857,9 +1346,14 @@ Na Macu most nie jest jeszcze skonfigurowany. Lista kroków:
    być powtarzalny.
 10. Dopisz model do tabeli w sekcji 8 tego dokumentu.
 
+Tą drogą doszły w M5 kryształy i brama. Kroku 9 nikt dla nich jeszcze nie wykonał
+(sekcja 7.4).
+
 ## 12. Powiązane dokumenty
 
 - Układ współrzędnych gry: [`../modules/scene/README.md`](../modules/scene/README.md)
+- Kryształy, brama i reszta rozgrywki w grze:
+  [`../modules/game/gameplay.md`](../modules/game/gameplay.md)
 - Parser plików OBJ i MTL: [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)
 - Mapy normalnych w grze (przestrzeń styczna, styczne, shader):
   [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md)

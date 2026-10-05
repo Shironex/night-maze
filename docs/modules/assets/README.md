@@ -1,9 +1,9 @@
 # Moduł assets: z pliku na dysku do danych w pamięci i na kartę
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych: styczne, linia `map_Bump`, płaska mapa zastępcza). Temat wykładu: 4 (Wczytywanie OBJ) i część tematu 5 (Tekstury: wczytanie obrazu, pamięć podręczna tekstur, panel z podglądem, mapy normalnych).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych: styczne, linia `map_Bump`, płaska mapa zastępcza) i w M5 (trzy nowe modele i cztery nowe tekstury rozgrywki, bez zmian w kodzie modułu). Temat wykładu: 4 (Wczytywanie OBJ) i część tematu 5 (Tekstury: wczytanie obrazu, pamięć podręczna tekstur, panel z podglądem, mapy normalnych).
 Kod: [`src/assets/`](../../../src/assets/), pliki wejściowe w [`assets/`](../../../assets/), testy w [`tests/`](../../../tests/).
 
-Moduł `gfx` umie wysłać na kartę graficzną to, co dostanie: tablicę wierzchołków, tablicę indeksów, tablicę pikseli. Nie wie, skąd te tablice pochodzą. Do tej pory pochodziły z kodu: kostka jest wpisana liczba po liczbie w `NightMazeApp.cpp`. Moduł `assets` jest drugim źródłem: **czyta pliki** z katalogu `assets/` (modele `.obj` z materiałami `.mtl`, obrazy `.png`) i zamienia je na zwykłe dane w pamięci procesora. Trzeci element modułu, pamięć podręczna assetów, robi z tych danych obiekty na karcie graficznej i pilnuje, żeby każdy plik był wczytany raz.
+Moduł `gfx` umie wysłać na kartę graficzną to, co dostanie: tablicę wierzchołków, tablicę indeksów, tablicę pikseli. Nie wie, skąd te tablice pochodzą. W M1 pochodziły wyłącznie z kodu: kostka była wpisana liczba po liczbie w `NightMazeApp.cpp`. Kostki już nie ma, a dane wpisane ręcznie zostały tylko w [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp) (tablice `UNIT_CUBE_CORNERS` i `UNIT_CUBE_EDGES` dla linii pudełek kolizji). Moduł `assets` jest drugim źródłem: **czyta pliki** z katalogu `assets/` (modele `.obj` z materiałami `.mtl`, obrazy `.png`) i zamienia je na zwykłe dane w pamięci procesora. Trzeci element modułu, pamięć podręczna assetów, robi z tych danych obiekty na karcie graficznej i pilnuje, żeby każdy plik był wczytany raz.
 
 Uwaga na dwie różne rzeczy o tej samej nazwie:
 
@@ -12,7 +12,9 @@ Uwaga na dwie różne rzeczy o tej samej nazwie:
 | katalog `assets/` w korzeniu repozytorium | **pliki danych**: modele, tekstury, shadery. Nie są kompilowane. Krok budowania umieszcza katalog obok programu ([`../core/paths.md`](../core/paths.md)) |
 | katalog `src/assets/` i przestrzeń nazw `assets` | **kod C++**, który te pliki czyta. Ten dokument jest o nim |
 
-**Stan.** Moduł ma dwa loadery (modeli OBJ i obrazów), funkcje liczące styczne wierzchołków (`Tangents`) oraz pamięć podręczną assetów `assets::AssetCache`. Wszystko to jest częścią biblioteki `engine`. Loadery i funkcje stycznych mają testy jednostkowe. Pamięć podręczna ich nie ma, bo tworzy obiekty OpenGL. Program z nich korzysta: przy starcie `game::MazeRenderer` prosi pamięć podręczną o trzy modele labiryntu, a ta wczytuje je loaderem OBJ razem z czterema teksturami: dwoma obrazami koloru i dwiema mapami normalnych. Na Windowsie (2026-10-05) program startuje bez linii `[error]`, a tekstury i relief z map normalnych na ścianach, słupkach i podłodze są sprawdzone na zrzutach ekranu. Na macOS kod nie był budowany ani uruchamiany.
+**Stan.** Moduł ma dwa loadery (modeli OBJ i obrazów), funkcje liczące styczne wierzchołków (`Tangents`) oraz pamięć podręczną assetów `assets::AssetCache`. Wszystko to jest częścią biblioteki `engine`. Loadery i funkcje stycznych mają testy jednostkowe. Pamięć podręczna ich nie ma, bo tworzy obiekty OpenGL. Program z nich korzysta: przy starcie `game::MazeRenderer` prosi pamięć podręczną o trzy modele labiryntu (płytka podłogi, ściana, słupek), a `game::GameplayRenderer` o trzy modele rozgrywki (dwa kryształy i brama). Pamięć podręczna wczytuje je loaderem OBJ razem z ośmioma teksturami: czterema obrazami koloru i czterema mapami normalnych. Razem sześć modeli i osiem tekstur. Na Windowsie (2026-10-05) program po M4 startował bez linii `[error]`, a tekstury i relief z map normalnych na ścianach, słupkach i podłodze są sprawdzone na zrzutach ekranu. Dla M5 autor kodu zgłosił na Windowsie build Debug i Release bez ostrzeżeń, przechodzące testy i obraz sprawdzony zrzutami ekranu. Ręcznie M5 nikt jeszcze nie testował. Na macOS kod nie był budowany ani uruchamiany.
+
+**Co doszło w M5 (rozgrywka).** W kodzie `src/assets/` nie zmieniła się ani jedna linia: nowe pliki (`crystal_a.obj`, `crystal_b.obj`, `gate.obj` i cztery pliki PNG) mają ten sam format co modele kamienne (same trójkąty, jedna część, jeden materiał z liniami `map_Kd` i `map_Bump`, obrazy RGB 512 x 512), więc loadery i pamięć podręczna wczytują je bez zmian. Zmienili się użytkownicy: doszedł `game::GameplayRenderer`, a wspólną pętlę rysowania modelu oba renderery biorą z wolnej funkcji `game::drawModel` ([`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp)). Testy loadera OBJ nadal czytają tylko trzy modele kamienne: nowe modele nie mają własnych przypadków testowych ([`obj-loader.md`](obj-loader.md), sekcja 5.9). Co kryształy i brama robią w grze, opisuje [`../game/gameplay.md`](../game/gameplay.md).
 
 **Co doszło z mapami normalnych (druga część M4).** Loader OBJ czyta linię `map_Bump` pliku MTL i liczy styczne po wczytaniu geometrii. Pamięć podręczna daje każdej części modelu mapę normalnych: własną albo płaską zastępczą. Panel Assets dostał pole `Normal mapping`. Temat jako całość (teoria, shader, styczne linia po linii) ma własny dokument w module `gfx`: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md). Dokumenty tego modułu opisują swoją część: parser w [`obj-loader.md`](obj-loader.md), pliki PNG i ich testy w [`images.md`](images.md), mapę zastępczą i panel w [`asset-cache.md`](asset-cache.md). Ten plik jest wstępem do modułu: indeks dokumentów i plików, wspólna zasada i miejsce w warstwach.
 
@@ -42,7 +44,7 @@ Proponowana kolejność czytania: [`../../guides/blender.md`](../../guides/blend
 | [`tests/ObjLoaderTests.cpp`](../../../tests/ObjLoaderTests.cpp) | 20 przypadków testowych loadera OBJ | [`obj-loader.md`](obj-loader.md), sekcja 5.9 |
 | [`tests/TangentTests.cpp`](../../../tests/TangentTests.cpp) | 9 przypadków testowych funkcji z `Tangents` | [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.10 |
 | [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 9 przypadków testowych loadera obrazów, w tym dwa na plikach map normalnych | [`images.md`](images.md), sekcja 5.7 |
-| [`assets/models/`](../../../assets/models/), [`assets/textures/`](../../../assets/textures/) | pliki wejściowe: trzy modele z materiałami i cztery tekstury (`wall_stone.png`, `floor_stone.png` i ich mapy normalnych `wall_stone_normal.png`, `floor_stone_normal.png`) | [`../../guides/blender.md`](../../guides/blender.md), sekcje 5, 7 i 8 |
+| [`assets/models/`](../../../assets/models/), [`assets/textures/`](../../../assets/textures/) | pliki wejściowe: sześć modeli z materiałami (`floor_tile`, `wall_straight`, `wall_pillar`, `crystal_a`, `crystal_b`, `gate`) i osiem tekstur (`wall_stone.png`, `floor_stone.png`, `crystal.png`, `gate_wood.png` i mapa normalnych każdej z nich, z końcówką `_normal`) | [`../../guides/blender.md`](../../guides/blender.md), sekcje 5, 7 i 8 |
 
 ## 3. Wspólna zasada loaderów: wynik to dane procesora, bez OpenGL
 
@@ -80,7 +82,7 @@ Oba loadery plików mają ten sam kształt, więc wystarczy nauczyć się go raz
 
 ```mermaid
 flowchart TD
-    Game["game/<br/>NightMazeApp, MazeRenderer"] --> Assets
+    Game["game/<br/>NightMazeApp, MazeRenderer,<br/>GameplayRenderer, ModelDraw"] --> Assets
     Debug["debug/<br/>AssetsPanel"] --> Assets
     Tests["tests/<br/>ObjLoaderTests, ImageLoaderTests,<br/>TangentTests"] --> Assets
     Assets["assets/<br/>ObjLoader, Tangents, ImageLoader,<br/>AssetCache"] --> Gfx["gfx/<br/>Vertex.hpp, Mesh, Texture2D"]
@@ -90,7 +92,7 @@ flowchart TD
     Gfx --> Core
 ```
 
-Strzałka znaczy "zna i dołącza nagłówki". Diagram pokazuje stan faktyczny. Testy dołączają tylko loadery i `assets/Tangents.hpp`. `game/` dołącza `assets/AssetCache.hpp` (pole `m_assets` w `NightMazeApp`, prośby o modele w `MazeRenderer`), a `debug/` dołącza go w panelu Assets.
+Strzałka znaczy "zna i dołącza nagłówki". Diagram pokazuje stan faktyczny. Testy dołączają tylko loadery i `assets/Tangents.hpp`. `game/` dołącza `assets/AssetCache.hpp` (pole `m_assets` w `NightMazeApp`, prośby o modele w `MazeRenderer` i `GameplayRenderer`, rysowanie wczytanego modelu w `ModelDraw`), a `debug/` dołącza go w panelu Assets.
 
 Zasady dla `assets`:
 
@@ -115,7 +117,7 @@ Pytania z odpowiedziami do formatów i kodu są w sekcji 9 dokumentów tematyczn
    Bo wtedy wymagałby okna i kontekstu, a nie dałoby się go testować w programie testowym. Loader zwraca dane procesora (`ObjModel`, `Image`), a obiekt na karcie tworzy z nich klasa `gfx` (`Mesh`, `Texture2D`). Rozbiór pliku i wysyłanie na kartę to dwa osobne zadania. Łączy je dopiero `AssetCache`.
 
 3. **Od czego zależy moduł `assets` i co zależy od niego?**
-   Loadery dołączają `gfx/Vertex.hpp`, `core/Log.hpp`, `core/Paths.hpp`, GLM i bibliotekę stb_image, a `AssetCache` także `gfx/Mesh.hpp` i `gfx/Texture2D.hpp`. Żaden plik modułu nie dołącza GLFW. Moduł dołączają `game/` (aplikacja i renderer labiryntu), `debug/` (panel Assets) i testy (loadery i funkcje stycznych). `core/` i `gfx/` go nie znają.
+   Loadery dołączają `gfx/Vertex.hpp`, `core/Log.hpp`, `core/Paths.hpp`, GLM i bibliotekę stb_image, a `AssetCache` także `gfx/Mesh.hpp` i `gfx/Texture2D.hpp`. Żaden plik modułu nie dołącza GLFW. Moduł dołączają `game/` (aplikacja, renderer labiryntu, renderer rozgrywki i wspólna funkcja rysowania modelu), `debug/` (panel Assets) i testy (loadery i funkcje stycznych). `core/` i `gfx/` go nie znają.
 
 4. **Po co pamięć podręczna, skoro są loadery?**
    Loader wczytuje plik za każdym razem, gdy zostanie wywołany, i oddaje dane procesora. Pamięć podręczna wczytuje każdy plik raz, tworzy z danych obiekt na karcie, jest jego jedynym właścicielem i oddaje stabilny wskaźnik, więc tekstura wspólna dla ściany i słupka istnieje na karcie raz. To samo dotyczy ich wspólnej mapy normalnych.
@@ -127,6 +129,6 @@ Pytania z odpowiedziami do formatów i kodu są w sekcji 9 dokumentów tematyczn
 
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 6 (warstwa `assets/`: ObjLoader, ImageLoader, AssetCache), sekcja 9 (konwencje modeli).
 - Przewodnik po assetach: [`../../guides/blender.md`](../../guides/blender.md).
-- Dokumenty w tym repozytorium: [`asset-cache.md`](asset-cache.md), [`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/textures.md`](../gfx/textures.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto prosi o modele).
+- Dokumenty w tym repozytorium: [`asset-cache.md`](asset-cache.md), [`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/textures.md`](../gfx/textures.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), [`../game/maze-rendering.md`](../game/maze-rendering.md) (kto prosi o modele labiryntu), [`../game/gameplay.md`](../game/gameplay.md) (kto prosi o modele kryształów i bramy).
 - Dokument biblioteki: [`../../libraries/stb_image.md`](../../libraries/stb_image.md).
 - Szczegółowe źródła do każdego zagadnienia są w sekcji 10 dokumentów tematycznych.

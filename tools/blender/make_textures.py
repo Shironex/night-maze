@@ -1,6 +1,7 @@
-# Generates the stone textures of the maze into assets/textures: the colour pictures
-# wall_stone.png and floor_stone.png, and their normal maps wall_stone_normal.png and
-# floor_stone_normal.png. All four are 512 x 512 pixels, 8 bits per channel, RGB.
+# Generates the textures of the game into assets/textures: the colour pictures
+# wall_stone.png, floor_stone.png, gate_wood.png and crystal.png, and one normal map for
+# each of them (the same name with _normal). All eight are 512 x 512 pixels, 8 bits per
+# channel, RGB.
 # See docs/guides/blender.md
 #
 # Run from the repository root:
@@ -8,7 +9,8 @@
 #
 # The textures are sampled with GL_REPEAT, so the left edge has to continue the right edge
 # and the bottom edge has to continue the top edge. Every step below keeps that property:
-# the stones divide the image evenly, and the noise is smoothed with wrap-around.
+# the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
+# and the distances between the cells of the crystal are measured across the edges.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
 # same joints, the same noise), so the relief lies exactly where the picture shows it.
@@ -35,13 +37,22 @@ import numpy as np
 import blender_common as common
 
 # Width and height of every texture in pixels. A power of two, and 256 pixels per metre
-# with the texel density of the models (one repeat = 2 m).
+# with the texel density of the stone and gate models (one repeat = 2 m).
 SIZE = 512
 
 # The same seeds give the same pictures on every run. Change a seed to get another
 # arrangement of light and dark stones.
 WALL_SEED = 11
 FLOOR_SEED = 23
+GATE_SEED = 37
+CRYSTAL_SEED = 41
+
+# The iron bands of the gate, in pixels: the rows of the band centres and half of the band
+# height. One repeat of the texture is 2 m high and the gate is taller, so the lower band
+# is seen twice: at 256 pixels per metre the bands lie at 0.375 m, 1.375 m and 2.375 m.
+# build_gate.py raises the geometry at the same heights.
+GATE_BAND_CENTRES = (96, 352)
+GATE_BAND_HALF_HEIGHT = 20
 
 # How far the two kinds of noise are blurred once more before they become relief, in
 # pixels (see stone_height).
@@ -63,6 +74,28 @@ def blur(values, radius):
             total += np.roll(values, shift, axis=axis)
         values = total / (2 * radius + 1)
     return values
+
+
+def blur_along(values, radius, axis):
+    """Like blur, but along one axis only: axis 0 is y (up the picture), axis 1 is x.
+
+    A long blur along y and a short one along x turns random pixels into the streaks of
+    wood grain.
+    """
+    total = np.zeros((SIZE, SIZE))
+    for shift in range(-radius, radius + 1):
+        total += np.roll(values, shift, axis=axis)
+    return total / (2 * radius + 1)
+
+
+def stretch(values):
+    """Returns the array moved and scaled so that its values run from 0 to 1."""
+    return (values - values.min()) / (values.max() - values.min())
+
+
+def smooth_step(t):
+    """The curve 3t^2 - 2t^3 for t from 0 to 1: it starts and ends flat."""
+    return t * t * (3.0 - 2.0 * t)
 
 
 def smooth_noise(rng, radius):
@@ -248,6 +281,268 @@ def normal_map(height):
     return normal * 0.5 + 0.5
 
 
+def wood_pattern(seed, plank_width, band_centres, band_half_height):
+    """Returns what the colour picture and the normal map of the gate have in common.
+
+    The gate is made of upright planks, held together by horizontal iron bands with one
+    rivet per plank.
+
+    plank_width: width of one plank in pixels. It must divide SIZE.
+    band_centres: the rows of the band centres in pixels.
+    band_half_height: half of the height of a band in pixels.
+
+    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
+      "edge_distance":     distance to the nearest edge of its plank, in pixels
+      "plank_brightness":  the random brightness of its plank
+      "band_depth":        how deep the pixel lies inside a band, in pixels. Zero and
+                           below means outside of every band
+      "rivet_distance":    distance to the nearest rivet, in pixels
+      "streaks":           the grain of the wood, long along y, from 0 to 1
+      "patches", "grain":  soft noise and fine noise, both from 0 to 1
+    """
+    rng = np.random.default_rng(seed)
+    columns = SIZE // plank_width
+
+    # Pixel coordinates. Row 0 is the bottom row of the image.
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+
+    column = x // plank_width
+    inside_x = x % plank_width
+    edge_distance = np.minimum(inside_x, plank_width - 1 - inside_x)
+
+    # One random brightness per plank, looked up for every pixel.
+    plank_brightness = rng.uniform(0.82, 1.12, columns)[column]
+
+    # Distance of the centre of every pixel to the centre line of the nearest band. The
+    # bands are far from the top and bottom edge, so no wrap-around is needed.
+    band_distance = np.full((SIZE, SIZE), float(SIZE))
+    for centre in band_centres:
+        band_distance = np.minimum(band_distance, np.abs(y + 0.5 - centre))
+    band_depth = band_half_height - band_distance
+
+    # One rivet in the middle of every plank, on the centre line of every band.
+    rivet_x = inside_x + 0.5 - plank_width / 2
+    rivet_distance = np.sqrt(rivet_x * rivet_x + band_distance * band_distance)
+
+    # Grain: random pixels blurred far along y and only a little along x.
+    streaks = stretch(blur_along(blur_along(rng.random((SIZE, SIZE)), 48, axis=0), 1, axis=1))
+    patches = smooth_noise(rng, 6)
+    grain = smooth_noise(rng, 1)
+
+    return {
+        "edge_distance": edge_distance,
+        "plank_brightness": plank_brightness,
+        "band_depth": band_depth,
+        "rivet_distance": rivet_distance,
+        "streaks": streaks,
+        "patches": patches,
+        "grain": grain,
+    }
+
+
+def wood_color(pattern, gap_width, rim_width, rivet_radius, wood_color, gap_color, iron_color):
+    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: planks with iron bands.
+
+    pattern: the result of wood_pattern.
+    gap_width: width of the gap between two planks in pixels.
+    rim_width: how far from the gap a plank is still darkened, in pixels.
+    rivet_radius: radius of a rivet in pixels.
+    wood_color, gap_color, iron_color: (red, green, blue) from 0 to 1.
+    """
+    edge_distance = pattern["edge_distance"]
+    band_depth = pattern["band_depth"]
+    grain = pattern["grain"]
+
+    # Wood: the brightness of the plank, the streaks of the grain and the fine noise.
+    brightness = pattern["plank_brightness"]
+    brightness = brightness * (0.74 + 0.52 * pattern["streaks"]) * (0.92 + 0.16 * grain)
+    # Darker towards the gap, like the rim of the stones.
+    rim = np.clip(edge_distance / rim_width, 0.0, 1.0)
+    brightness = brightness * (0.72 + 0.28 * rim)
+    color = brightness[..., None] * np.array(wood_color)
+
+    # The gap is the outer half gap_width of every plank.
+    gap = edge_distance < gap_width // 2
+    gap_shade = 0.85 + 0.30 * grain
+    color[gap] = gap_shade[gap][..., None] * np.array(gap_color)
+
+    # Iron band: it covers the planks and the gaps. Soft patches make it look hammered,
+    # and the 3 pixels next to its edge are darker, which separates it from the wood.
+    band = band_depth > 0.0
+    iron_shade = (0.80 + 0.40 * pattern["patches"]) * (0.92 + 0.16 * grain)
+    iron_shade = iron_shade * (0.65 + 0.35 * np.clip(band_depth / 3.0, 0.0, 1.0))
+    # Rivets are lighter than the band: 1.5 times in the middle, falling to 1 at the rim.
+    rivet = np.clip(1.0 - pattern["rivet_distance"] / rivet_radius, 0.0, 1.0)
+    iron_shade = iron_shade * (1.0 + 0.5 * rivet)
+    color[band] = iron_shade[band][..., None] * np.array(iron_color)
+
+    return np.clip(color, 0.0, 1.0)
+
+
+def wood_height(
+    pattern, gap_width, bevel_width, gap_depth, grain_depth, band_rise, rivet_radius, rivet_rise
+):
+    """Returns a SIZE x SIZE array: how far every pixel of the gate stands out.
+
+    The unit is the size of one pixel of the texture, like in stone_height.
+
+    pattern: the result of wood_pattern, the same one the colour picture was made from.
+    gap_width: width of the gap in pixels, the same number as for the colour picture.
+    bevel_width: over how many pixels a plank rises from the gap to its face.
+    gap_depth: how far the face of a plank stands in front of the gap.
+    grain_depth: depth of the grooves of the grain.
+    band_rise: how far an iron band stands in front of the planks.
+    rivet_radius: radius of a rivet in pixels, the same number as for the colour picture.
+    rivet_rise: how far the middle of a rivet stands in front of its band.
+    """
+    edge_distance = pattern["edge_distance"]
+    band_depth = pattern["band_depth"]
+
+    # The profile across a plank: 0 in the gap, a smooth rise, then 1 on the face.
+    profile = smooth_step(np.clip((edge_distance - (gap_width // 2 - 1)) / bevel_width, 0.0, 1.0))
+
+    # The streaks become grooves. They are blurred once more across the grain, for the
+    # same reason as the noise in stone_height: the slope has to be smooth.
+    grooves = grain_depth * (blur_along(pattern["streaks"], 1, axis=1) - 0.5)
+    fine = 0.5 * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
+    wood = profile * (gap_depth + grooves) + fine
+
+    # The band lies on the faces of the planks (height gap_depth) and rises over 3 pixels
+    # from its edge. Soft dents make it look hammered.
+    band_profile = smooth_step(np.clip(band_depth / 3.0, 0.0, 1.0))
+    dents = 2.0 * (blur(pattern["patches"], 4) - 0.5)
+    iron = gap_depth + band_profile * (band_rise + dents) + fine
+
+    # A rivet is a dome: the upper half of a ball, flattened to the height rivet_rise.
+    inside = np.clip(1.0 - (pattern["rivet_distance"] / rivet_radius) ** 2, 0.0, 1.0)
+    iron = iron + rivet_rise * np.sqrt(inside)
+
+    return np.where(band_depth > 0.0, iron, wood)
+
+
+def crystal_pattern(seed, cell_count):
+    """Returns what the colour picture and the normal map of the crystal have in common.
+
+    The picture is divided into cells around random points: every pixel belongs to the
+    point that is nearest to it. The cells look like the facets inside a crystal, and the
+    borders between them become the veins.
+
+    cell_count: number of random points, so also the number of cells.
+
+    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
+      "cell":                  which cell the pixel belongs to
+      "offset_x", "offset_y":  where the pixel lies relative to the point of its cell
+      "border_distance":       distance to the border of its cell, in pixels
+      "cell_brightness":       the random brightness of its cell
+      "patches", "grain":      soft noise and fine noise, both from 0 to 1
+    It also holds the random generator ("rng") and "cell_count".
+    """
+    rng = np.random.default_rng(seed)
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+
+    points = rng.uniform(0.0, SIZE, (cell_count, 2))
+
+    # For every pixel: the distance to the nearest point and to the second nearest one,
+    # and which points they are (`cell` and `neighbour`). Found by going through the
+    # points one by one.
+    nearest = np.full((SIZE, SIZE), float(SIZE))
+    second = np.full((SIZE, SIZE), float(SIZE))
+    cell = np.zeros((SIZE, SIZE), dtype=int)
+    neighbour = np.zeros((SIZE, SIZE), dtype=int)
+    offset_x = np.zeros((SIZE, SIZE))
+    offset_y = np.zeros((SIZE, SIZE))
+    for index in range(cell_count):
+        # The offset to the point, taken the short way around: a point near the right
+        # edge is close to the pixels at the left edge. This makes the cells tile.
+        dx = (x - points[index, 0] + SIZE / 2) % SIZE - SIZE / 2
+        dy = (y - points[index, 1] + SIZE / 2) % SIZE - SIZE / 2
+        distance = np.sqrt(dx * dx + dy * dy)
+
+        closer = distance < nearest
+        between = ~closer & (distance < second)
+        # Where this point is the new nearest one, the old nearest becomes the second.
+        # Where it only beats the second one, it replaces that.
+        second = np.where(closer, nearest, np.where(between, distance, second))
+        neighbour = np.where(closer, cell, np.where(between, index, neighbour))
+        nearest = np.where(closer, distance, nearest)
+        cell = np.where(closer, index, cell)
+        offset_x = np.where(closer, dx, offset_x)
+        offset_y = np.where(closer, dy, offset_y)
+
+    # The border between two cells is the line on which both points are equally far away.
+    # The distance of a pixel to that line is (second^2 - nearest^2) / (2 * gap), where
+    # gap is the distance between the two points, again taken the short way around.
+    gap_x = (points[cell, 0] - points[neighbour, 0] + SIZE / 2) % SIZE - SIZE / 2
+    gap_y = (points[cell, 1] - points[neighbour, 1] + SIZE / 2) % SIZE - SIZE / 2
+    gap = np.sqrt(gap_x * gap_x + gap_y * gap_y)
+    border_distance = (second * second - nearest * nearest) / (2.0 * gap)
+
+    cell_brightness = rng.uniform(0.82, 1.0, cell_count)[cell]
+    patches = smooth_noise(rng, 12)
+    grain = smooth_noise(rng, 1)
+
+    return {
+        "rng": rng,
+        "cell_count": cell_count,
+        "cell": cell,
+        "offset_x": offset_x,
+        "offset_y": offset_y,
+        "border_distance": border_distance,
+        "cell_brightness": cell_brightness,
+        "patches": patches,
+        "grain": grain,
+    }
+
+
+def crystal_color(pattern, vein_width, crystal_color, vein_color):
+    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: pale cells with light veins.
+
+    pattern: the result of crystal_pattern.
+    vein_width: how far from the border of a cell the vein still shows, in pixels.
+    crystal_color, vein_color: (red, green, blue) from 0 to 1.
+    """
+    brightness = pattern["cell_brightness"]
+    brightness = brightness * (0.92 + 0.08 * pattern["patches"]) * (0.97 + 0.03 * pattern["grain"])
+    color = brightness[..., None] * np.array(crystal_color)
+
+    # The vein: 1 on the border between two cells, fading to 0 over vein_width pixels.
+    vein = smooth_step(np.clip(1.0 - pattern["border_distance"] / vein_width, 0.0, 1.0))
+    # Mix towards the vein color: vein = 0 keeps the cell color, vein = 1 replaces it.
+    color = color + vein[..., None] * (np.array(vein_color) - color)
+
+    return np.clip(color, 0.0, 1.0)
+
+
+def crystal_height(pattern, bevel_width, vein_depth, tilt, bump_depth):
+    """Returns a SIZE x SIZE array: how far every pixel of the crystal stands out.
+
+    The unit is the size of one pixel of the texture, like in stone_height.
+
+    pattern: the result of crystal_pattern, the same one the colour picture was made from.
+    bevel_width: over how many pixels a cell rises from its border to its face.
+    vein_depth: how far the face of a cell stands in front of the vein.
+    tilt: the largest slope of a cell, in pixels of height per pixel.
+    bump_depth: height of the large soft bumps.
+    """
+    cell = pattern["cell"]
+
+    # 0 on the border of a cell, a smooth rise, then 1 on the face.
+    profile = smooth_step(np.clip(pattern["border_distance"] / bevel_width, 0.0, 1.0))
+
+    # Every cell is a small tilted plane, each one tilted differently, so the cells catch
+    # the light one after another. Two random slopes per cell, along x and along y.
+    rng = pattern["rng"]
+    tilt_x = rng.uniform(-tilt, tilt, pattern["cell_count"])[cell]
+    tilt_y = rng.uniform(-tilt, tilt, pattern["cell_count"])[cell]
+    lean = tilt_x * pattern["offset_x"] + tilt_y * pattern["offset_y"]
+
+    bumps = bump_depth * (blur(pattern["patches"], BUMP_BLUR_RADIUS) - 0.5)
+
+    # Like the stones: everything fades out towards the border, so two neighbouring cells
+    # meet at the same height (0) and the surface has no step.
+    return profile * (vein_depth + lean + bumps)
+
+
 def save_png(color, file_name):
     """Saves a SIZE x SIZE x 3 array of colors from 0 to 1 as an 8-bit RGB PNG."""
     # Round to the 256 levels of an 8-bit channel here, so the bytes in the file do not
@@ -332,6 +627,60 @@ def build():
         grain_depth=0.5,
     )
     save_png(normal_map(floor_height), "floor_stone_normal.png")
+
+    # Gate: eight upright planks of 0.25 m in a warm brown, with dark iron bands.
+    gate = wood_pattern(
+        seed=GATE_SEED,
+        plank_width=64,
+        band_centres=GATE_BAND_CENTRES,
+        band_half_height=GATE_BAND_HALF_HEIGHT,
+    )
+    gate_color = wood_color(
+        gate,
+        gap_width=4,
+        rim_width=5,
+        rivet_radius=6,
+        wood_color=(0.50, 0.33, 0.19),
+        gap_color=(0.10, 0.07, 0.05),
+        iron_color=(0.24, 0.25, 0.28),
+    )
+    save_png(gate_color, "gate_wood.png")
+
+    # The relief of the gate: gaps about 1 cm deep, shallow grooves along the grain, and
+    # the rivets as small domes. The bands themselves are real geometry in the model, so
+    # here they only rise by one pixel at their edge.
+    gate_height = wood_height(
+        gate,
+        gap_width=4,
+        bevel_width=4,
+        gap_depth=2.5,
+        grain_depth=3.0,
+        band_rise=1.0,
+        rivet_radius=6,
+        rivet_rise=2.5,
+    )
+    save_png(normal_map(gate_height), "gate_wood_normal.png")
+
+    # Crystal: pale turquoise cells with lighter veins. The game adds its own glow and a
+    # turquoise light, so the picture itself stays light.
+    crystal = crystal_pattern(seed=CRYSTAL_SEED, cell_count=28)
+    crystal_picture = crystal_color(
+        crystal,
+        vein_width=3,
+        crystal_color=(0.60, 0.90, 0.86),
+        vein_color=(0.80, 0.97, 0.95),
+    )
+    save_png(crystal_picture, "crystal.png")
+
+    # The relief of the crystal: shallow veins and gently tilted cells.
+    crystal_relief = crystal_height(
+        crystal,
+        bevel_width=6,
+        vein_depth=1.0,
+        tilt=0.06,
+        bump_depth=4.0,
+    )
+    save_png(normal_map(crystal_relief), "crystal_normal.png")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 # Moduł assets: pamięć podręczna modeli i tekstur, panel Assets
 
-Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych części, płaska mapa zastępcza, przełącznik `Normal mapping` w panelu). Tematy wykładu: 4 (Wczytywanie OBJ: "cache meshy", lista załadowanych modeli) i 5 (Tekstury: podgląd tekstur, filtrowanie, przełącznik map normalnych).
-Kod: [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp), [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp), panel w [`src/debug/panels/AssetsPanel.hpp`](../../../src/debug/panels/AssetsPanel.hpp) i [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp), użytkownik: [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp).
+Kamień milowy: M2 + M3, zaktualizowany w M4 (mapy normalnych części, płaska mapa zastępcza, przełącznik `Normal mapping` w panelu) i w M5 (drugi użytkownik, `GameplayRenderer`: sześć modeli i osiem tekstur zamiast trzech i czterech, kod klasy i panelu bez zmian). Tematy wykładu: 4 (Wczytywanie OBJ: "cache meshy", lista załadowanych modeli) i 5 (Tekstury: podgląd tekstur, filtrowanie, przełącznik map normalnych).
+Kod: [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp), [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp), panel w [`src/debug/panels/AssetsPanel.hpp`](../../../src/debug/panels/AssetsPanel.hpp) i [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.cpp), użytkownicy: [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) i [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp), wspólna pętla rysowania w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp).
 
-Część modułu `assets`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument łączy cztery inne: [`obj-loader.md`](obj-loader.md) (plik OBJ i MTL jako dane procesora: `ObjModel`), [`images.md`](images.md) (plik PNG jako piksele: `Image`), [`../gfx/mesh.md`](../gfx/mesh.md) (siatka na karcie: `gfx::Mesh`) i [`../gfx/textures.md`](../gfx/textures.md) (tekstura na karcie: `gfx::Texture2D`, filtry, anizotropia, shadery `textured`). Kto z wczytanych modeli rysuje labirynt, opisuje [`../game/maze-rendering.md`](../game/maze-rendering.md). Czym jest mapa normalnych i co robi z nią shader, opisuje [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md): tutaj jest tylko to, co robi z nią pamięć podręczna i panel.
+Część modułu `assets`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument łączy cztery inne: [`obj-loader.md`](obj-loader.md) (plik OBJ i MTL jako dane procesora: `ObjModel`), [`images.md`](images.md) (plik PNG jako piksele: `Image`), [`../gfx/mesh.md`](../gfx/mesh.md) (siatka na karcie: `gfx::Mesh`) i [`../gfx/textures.md`](../gfx/textures.md) (tekstura na karcie: `gfx::Texture2D`, filtry, anizotropia, shadery `textured`). Kto z wczytanych modeli rysuje labirynt, opisuje [`../game/maze-rendering.md`](../game/maze-rendering.md), a kto rysuje kryształy i bramę: [`../game/gameplay.md`](../game/gameplay.md). Czym jest mapa normalnych i co robi z nią shader, opisuje [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md): tutaj jest tylko to, co robi z nią pamięć podręczna i panel.
 
 ## 1. Po co to jest
 
@@ -19,9 +19,11 @@ Tym miejscem jest klasa `assets::AssetCache`, **pamięć podręczna assetów** (
 
 Drugą połową dokumentu jest panel **Assets**: pokaz tematów 4 i 5 na obronie (lista modeli, podgląd tekstur, przełącznik filtra, suwak anizotropii, tryb widoku, pole `Normal mapping`).
 
-**Stan na dziś, uczciwie.** Gra wczytuje przez pamięć podręczną trzy modele i cztery tekstury: dwa obrazy koloru i dwie mapy normalnych. Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik 610.74) build Debug i Release przechodzi bez ostrzeżeń, a program startuje bez linii `[error]`. Na zrzutach ekranu sprawdzone są: tekstury na ścianach i podłodze ustawione poprawnie, oba widoki diagnostyczne, porównanie filtrów (najbliższy sąsiad, dwuliniowy, trójliniowy, anizotropia 16x na ścianie oglądanej pod płaskim kątem), podglądy tekstur w panelu nieodwrócone oraz biała tekstura zastępcza z jedną linią `[error]` po usunięciu pliku tekstury. Stany filtra, anizotropii i trybu widoku były ustawiane tymczasowym kodem, który został usunięty: **widżetów panelu nikt jeszcze nie kliknął ręcznie**. Klasa nie ma testu jednostkowego, bo każda jej funkcja tworzy obiekty OpenGL. Na macOS kod nie był budowany ani uruchamiany.
+**Stan na dziś, uczciwie.** Gra wczytuje przez pamięć podręczną sześć modeli i osiem tekstur: cztery obrazy koloru i cztery mapy normalnych. Do M4 były to trzy modele i cztery tekstury, i tego stanu dotyczą pomiary w tym i w następnym akapicie. Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik 610.74) build Debug i Release przechodzi bez ostrzeżeń, a program startuje bez linii `[error]`. Na zrzutach ekranu sprawdzone są: tekstury na ścianach i podłodze ustawione poprawnie, oba widoki diagnostyczne, porównanie filtrów (najbliższy sąsiad, dwuliniowy, trójliniowy, anizotropia 16x na ścianie oglądanej pod płaskim kątem), podglądy tekstur w panelu nieodwrócone oraz biała tekstura zastępcza z jedną linią `[error]` po usunięciu pliku tekstury. Stany filtra, anizotropii i trybu widoku były ustawiane tymczasowym kodem, który został usunięty: **widżetów panelu nikt jeszcze nie kliknął ręcznie**. Klasa nie ma testu jednostkowego, bo każda jej funkcja tworzy obiekty OpenGL. Na macOS kod nie był budowany ani uruchamiany.
 
 Po dodaniu map normalnych (2026-10-05, ten sam komputer) build Debug i Release nadal przechodzi bez ostrzeżeń i program startuje bez linii `[error]` i `GL_`. Na zrzutach ekranu sprawdzony jest relief na ścianach, słupkach i podłodze przy mapach włączonych i jego brak przy wyłączonych. **Nie jest sprawdzone ręcznie:** kliknięcie pola `Normal mapping`, ostateczny układ panelu z tym polem na swoim miejscu, lista czterech tekstur z podglądami odczytana z ekranu oraz zachowanie przy brakującym pliku mapy normalnych (płaska mapa zastępcza i jedna linia `[error]`). Te punkty są otwarte na liście w [`../../guides/build-windows.md`](../../guides/build-windows.md).
+
+W M5 (2026-10-05) doszły trzy modele rozgrywki (`crystal_a.obj`, `crystal_b.obj`, `gate.obj`) i ich cztery tekstury. Kod `AssetCache` i kod panelu nie zmieniły się: nowe pliki wczytuje ta sama funkcja `model()`, o którą prosi teraz także `game::GameplayRenderer`. Autor kodu zgłosił dla Windowsa build Debug i Release bez ostrzeżeń, przechodzące testy i obraz sprawdzony zrzutami ekranu. **Nie jest sprawdzone ręcznie** nic z M5, w tym lista sześciu modeli i ośmiu tekstur odczytana z panelu: liczby, które ten dokument dla nich podaje, wynikają z kodu panelu i ze skryptu liczącego wierzchołki z plików `.obj` ([`obj-loader.md`](obj-loader.md), sekcja 5.9).
 
 ## 2. Teoria
 
@@ -35,7 +37,7 @@ Słupek i ściana używają tej samej tekstury `wall_stone.png`. Bez pamięci po
 | tekstury 512 x 512 z mipmapami na karcie | 2 identyczne | 1 |
 | zmiana filtra | trzeba pamiętać o obu | jedna lista |
 
-To samo dotyczy mapy normalnych `wall_stone_normal.png`: materiał ściany i materiał słupka wskazują ten sam plik. Przy czterech plikach to drobiazg. Zasada jest jednak ogólna i w większej grze decyduje o czasie wczytywania i o zajętości pamięci karty: **zasób identyfikuje plik, a nie ten, kto o niego prosi**. Ten sam schemat ma PRD w wierszu tematu 4 ("cache meshy").
+To samo dotyczy mapy normalnych `wall_stone_normal.png`: materiał ściany i materiał słupka wskazują ten sam plik. To samo robią dwa kryształy: `crystal_a.obj` i `crystal_b.obj` mają materiał `crystal` z tymi samymi dwoma plikami. Przy ośmiu plikach to drobiazg. Zasada jest jednak ogólna i w większej grze decyduje o czasie wczytywania i o zajętości pamięci karty: **zasób identyfikuje plik, a nie ten, kto o niego prosi**. Ten sam schemat ma PRD w wierszu tematu 4 ("cache meshy").
 
 Druga korzyść jest mniej oczywista: pamięć podręczna jest **jedynym właścicielem**. Renderer, panel i każdy inny kod dostają wskaźnik do odczytu i nie muszą się zastanawiać, kto i kiedy ma zasób zwolnić.
 
@@ -90,7 +92,7 @@ Inne możliwości i dlaczego nie one:
 | `std::vector` z `reserve(N)` | tylko do N elementów | działa do dnia, w którym ktoś wczyta N + 1 zasobów |
 | `std::vector<std::unique_ptr<LoadedModel>>` | tak | każdy element to osobny przydział pamięci i dodatkowy wskaźnik w kodzie |
 | `std::list<LoadedModel>` | tak | osobny przydział na element, wolniejsze przeglądanie |
-| `std::map` albo `std::unordered_map` | tak (elementy węzłowe) | potrzebny dopiero przy tysiącach zasobów. Tutaj jest ich siedem: trzy modele i cztery tekstury |
+| `std::map` albo `std::unordered_map` | tak (elementy węzłowe) | potrzebny dopiero przy tysiącach zasobów. Tutaj jest ich czternaście: sześć modeli i osiem tekstur |
 | `std::deque<LoadedModel>` | tak, przy dopisywaniu na końcu | wybrane: najprostszy kod, kolejność wczytania zachowana dla panelu |
 
 Wyszukiwanie to zwykłe przejście po liście i porównanie ścieżek. Przy kilku zasobach jest szybsze niż jakakolwiek tablica mieszająca i nie wymaga drugiej struktury danych.
@@ -104,7 +106,7 @@ Loader oddaje jeden wspólny wektor wierzchołków i indeksów oraz listę **cz�
 
 Kolor, tekstura i mapa normalnych są wyszukiwane **raz, przy wczytaniu**. W pętli rysowania nie ma już szukania materiału po nazwie: są gotowe wskaźniki i gotowy kolor.
 
-Trzy modele gry mają po jednej części, każdą z kolorem białym, teksturą kamienia i mapą normalnych tego kamienia.
+Sześć modeli gry ma po jednej części, każdą z kolorem białym, własną teksturą (kamień ściany, kamień podłogi, kryształ albo drewno bramy) i mapą normalnych tej tekstury.
 
 **Mapa normalnych jest dla pamięci podręcznej zwykłą teksturą.** Ten sam loader obrazów, ta sama funkcja `texture()`, ta sama lista, ten sam filtr. Pamięć podręczna nie wie, że bajty tego obrazu są kierunkami, a nie kolorami: o tym wie dopiero shader. Jedyna różnica po jej stronie to, którą teksturę zastępczą dostaje część, gdy pliku nie ma.
 
@@ -179,12 +181,17 @@ Anizotropia poprawia właśnie ostatni przypadek: powierzchnię oglądaną pod p
 | `model(floor_tile.obj)` | `texture(floor_stone.png)`, `texture(floor_stone_normal.png)`, potem `gfx::Mesh(...)` | dwie tekstury 512 x 512 `GL_RGB8`, każda z dziesięcioma poziomami mipmap i samplerem, potem VAO, bufor wierzchołków i bufor indeksów |
 | `model(wall_straight.obj)` | `texture(wall_stone.png)`, `texture(wall_stone_normal.png)`, potem `gfx::Mesh(...)` | następne dwie tekstury 512 x 512 i druga siatka |
 | `model(wall_pillar.obj)` | oba wywołania `texture(...)` oddają tekstury już wczytane, potem `gfx::Mesh(...)` | tylko trzecia siatka |
+| `model(crystal_a.obj)` | `texture(crystal.png)`, `texture(crystal_normal.png)`, potem `gfx::Mesh(...)` | następne dwie tekstury 512 x 512 i czwarta siatka |
+| `model(crystal_b.obj)` | oba wywołania `texture(...)` oddają tekstury już wczytane, potem `gfx::Mesh(...)` | tylko piąta siatka |
+| `model(gate.obj)` | `texture(gate_wood.png)`, `texture(gate_wood_normal.png)`, potem `gfx::Mesh(...)` | ostatnie dwie tekstury 512 x 512 i szósta siatka |
 
-Razem: 6 tekstur (cztery z plików, biała i płaska mapa normalnych), 6 obiektów samplera, 3 VAO i 6 buforów. Mapa normalnych jest przechowywana w tym samym formacie `GL_RGB8` co obraz koloru: liniowo, bez żadnego przeliczania, czego kierunki wymagają. Dane po stronie procesora (wektory z loaderów) są zwalniane zaraz po wysłaniu.
+Trzy pierwsze prośby pochodzą z konstruktora `MazeRenderer`, trzy następne z konstruktora `GameplayRenderer`. Kolejność wynika z kolejności pól w `NightMazeApp` (`m_mazeRenderer` stoi przed `m_gameplayRenderer`) i z kolejności wpisów na listach inicjalizacyjnych obu konstruktorów.
+
+Razem: 10 tekstur (osiem z plików, biała i płaska mapa normalnych), 10 obiektów samplera, 6 VAO i 12 buforów (bufor wierzchołków i bufor indeksów na siatkę). Mapa normalnych jest przechowywana w tym samym formacie `GL_RGB8` co obraz koloru: liniowo, bez żadnego przeliczania, czego kierunki wymagają. Dane po stronie procesora (wektory z loaderów) są zwalniane zaraz po wysłaniu.
 
 Zmiana filtra i anizotropii to `glSamplerParameteri` i `glSamplerParameterf` na obiekcie samplera każdej tekstury z listy ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5). Tekstur nie trzeba do tego podpinać ani wysyłać ponownie.
 
-Jeden skutek uboczny wart zapamiętania: utworzenie siatki podpina jej VAO i bufory, a utworzenie tekstury podpina ją do aktywnej jednostki. Wczytanie assetu **zmienia więc stan OpenGL**. Dlatego w `NightMazeApp` pamięć podręczna i renderer labiryntu stoją przed buforami kostki ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5).
+Jeden skutek uboczny wart zapamiętania: utworzenie siatki podpina jej VAO i bufory, a utworzenie tekstury podpina ją do aktywnej jednostki. Wczytanie assetu **zmienia więc stan OpenGL**. Dlatego gra prosi o modele tylko w konstruktorach obu rendererów, zanim cokolwiek zostanie narysowane, a nie w środku klatki (pułapka 9). W M1 dochodził do tego jeszcze jeden wzgląd, kolejność pól względem buforów kostki, ale kostki już nie ma.
 
 ## 4. Shadery
 
@@ -193,9 +200,9 @@ Pamięć podręczna nie ma własnego shadera. To, co przygotowuje, trafia do par
 | Pole `ModelPart` | Uniform | Linia w `textured.frag` |
 |---|---|---|
 | `texture` (podpinana do jednostki 0) | `uTexture` | `vec3 texel = texture(uTexture, vUv).rgb;` |
-| `color` | `uTint` | `fragColor = vec4(texel * uTint, 1.0);` |
+| `color` | `uTint` | `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);` |
 
-Z tych dwóch linii wynika cały mechanizm białej tekstury zastępczej: gdy `texel` to `(1, 1, 1)`, kolorem fragmentu jest samo `uTint`.
+Z tych dwóch linii wynika cały mechanizm białej tekstury zastępczej: gdy `texel` to `(1, 1, 1)`, kolorem fragmentu jest samo `uTint`. Czynnik z `uEmissive` doszedł w M5 i nie pochodzi z pamięci podręcznej: to własne świecenie powierzchni, które ustawia renderer. Dla labiryntu i bramy jest czarne, więc nawias jest jedynką i wynik się nie zmienia. Niezerowe jest tylko dla kryształów ([`../game/gameplay.md`](../game/gameplay.md), sekcja 4).
 
 Trzecie pole, mapa normalnych, trafia do pliku dołączanego `common/normal_map.glsl`, wspólnego dla `lit.frag` i `textured.frag` ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.1):
 
@@ -203,7 +210,7 @@ Trzecie pole, mapa normalnych, trafia do pliku dołączanego `common/normal_map.
 |---|---|---|
 | `normalMap` (podpinana do jednostki 1) | `uNormalMap` | `vec3 mapped = texture(uNormalMap, uv).rgb * 2.0 - 1.0;` |
 
-Z tej linii wynika mechanizm płaskiej mapy zastępczej: teksel `(128, 128, 255)` daje `mapped` bliskie `(0, 0, 1)`, a to po przejściu przez macierz styczna, bitangenta, normalna jest samą normalną siatki. Linia wykonuje się tylko wtedy, gdy uniform `uNormalMapEnabled` jest prawdą. Program `gouraud` nie ma żadnego z tych dwóch uniformów: renderer i tak podpina mapę do jednostki 1 i wysyła numer jednostki, a wywołanie dla nieistniejącego uniformu jest po cichu pomijane.
+Z tej linii wynika mechanizm płaskiej mapy zastępczej: teksel `(128, 128, 255)` daje `mapped` bliskie `(0, 0, 1)`, a to po przejściu przez macierz styczna, bitangenta, normalna jest samą normalną siatki. Linia wykonuje się tylko wtedy, gdy uniform `uNormalMapEnabled` jest prawdą. Program `gouraud` nie ma żadnego z tych dwóch uniformów: funkcje `game::drawModel` i `game::setModelSamplers` i tak podpinają mapę do jednostki 1 i wysyłają numer jednostki, a wywołanie dla nieistniejącego uniformu jest po cichu pomijane.
 
 Tryb widoku z panelu Assets ustawia uniform `uViewMode`: 0 to tekstura razy kolor, 1 to normalna jako kolor (przy działających mapach normalnych: normalna z mapy), 2 to współrzędne tekstury jako kolor. Pole `Normal mapping` z tego samego panelu trafia do shaderów jako `uNormalMapEnabled`, po przejściu przez `game::usesNormalMap` ([`../game/flashlight.md`](../game/flashlight.md)).
 
@@ -216,7 +223,9 @@ Tryb widoku z panelu Assets ustawia uniform `uViewMode`: 0 to tekstura razy kolo
 | [`src/assets/AssetCache.hpp`](../../../src/assets/AssetCache.hpp) | struktury `LoadedTexture`, `ModelPart`, `LoadedModel` i klasa `AssetCache` |
 | [`src/assets/AssetCache.cpp`](../../../src/assets/AssetCache.cpp) | stałe obu tekstur zastępczych, funkcje pomocnicze `cacheKey` i `findMaterial`, definicje funkcji klasy |
 | [`src/debug/panels/AssetsPanel.hpp`](../../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | funkcja `debug::drawAssetsPanel` (sekcja 6) |
-| [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) | jedyny kod, który prosi o modele ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) | prosi o trzy modele labiryntu: `models/floor_tile.obj`, `models/wall_straight.obj`, `models/wall_pillar.obj` ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5) |
+| [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) | prosi o trzy modele rozgrywki: `models/crystal_a.obj`, `models/crystal_b.obj`, `models/gate.obj` ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5). Poza tymi dwoma konstruktorami nikt o modele nie prosi |
+| [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | `game::drawModel` i `game::setModelSamplers`: jedyny kod, który czyta `LoadedModel::parts` przy rysowaniu. Do M4 była to funkcja `drawInstances` klasy `MazeRenderer` |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) | właściciel: pole `m_assets`, akcesor `assets()` |
 
 `AssetCache.*` należą do biblioteki `engine`. To pierwszy plik katalogu `src/assets/`, który dołącza nagłówki `gfx/` i tworzy obiekty OpenGL: loadery `ObjLoader` i `ImageLoader` nadal zwracają same dane procesora i nadal mają testy bez okna ([`README.md`](README.md)).
@@ -336,7 +345,7 @@ Funkcje publiczne:
 
 Wskaźniki i referencje, które oddaje, są `const`: wołający może rysować i czytać, ale nie zmieni ani siatki, ani tekstury. Filtr zmienia się tylko przez pamięć podręczną.
 
-`model` i `texture` nie są funkcjami `const`, bo mogą dopisać element do listy. Stąd `MazeRenderer` dostaje w konstruktorze referencję bez `const`.
+`model` i `texture` nie są funkcjami `const`, bo mogą dopisać element do listy. Stąd `MazeRenderer` i `GameplayRenderer` dostają w konstruktorze referencję bez `const`.
 
 Pola:
 
@@ -669,9 +678,10 @@ bool AssetCache::hasFailed(const std::filesystem::path& path) const {
 ```cpp
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
+    GameplayRenderer m_gameplayRenderer;
 ```
 
-`m_assets` nie ma wpisu w liście inicjalizacyjnej konstruktora (wystarcza konstruktor domyślny), a `m_mazeRenderer(m_assets)` dostaje do niej referencję i od razu prosi o trzy modele. Jako pole klasy pochodnej od `core::Application` pamięć podręczna powstaje po oknie i ginie przed nim, więc kontekst OpenGL istnieje przez całe jej życie. Panel dostaje ją przez akcesor:
+`m_assets` nie ma wpisu w liście inicjalizacyjnej konstruktora (wystarcza konstruktor domyślny), a `m_mazeRenderer(m_assets)` i `m_gameplayRenderer(m_assets)` dostają do niej referencję i każdy od razu prosi o swoje trzy modele. Pola są tworzone z góry na dół, więc oba renderery stoją po `m_assets` (mówi o tym komentarz nad polami w `NightMazeApp.hpp`). Jako pole klasy pochodnej od `core::Application` pamięć podręczna powstaje po oknie i ginie przed nim, więc kontekst OpenGL istnieje przez całe jej życie. Panel dostaje ją przez akcesor:
 
 ```cpp
     /// The loaded models and textures, exposed so the debug UI can list them and change
@@ -681,9 +691,9 @@ bool AssetCache::hasFailed(const std::filesystem::path& path) const {
 
 ### 5.9 Jak to zostało sprawdzone
 
-Klasa nie ma testu jednostkowego: konstruktor tworzy teksturę, więc bez kontekstu OpenGL nie da się jej nawet utworzyć. Części składowe mają własne testy bez okna: 20 przypadków loadera OBJ, 9 przypadków loadera obrazów (oba na prawdziwych plikach gry, w tym na obu mapach normalnych) i 9 przypadków funkcji liczących styczne. Cały program testowy: 163 przypadki i 62220 asercji w Debug i w Release (Windows, 2026-10-05).
+Klasa nie ma testu jednostkowego: konstruktor tworzy teksturę, więc bez kontekstu OpenGL nie da się jej nawet utworzyć. Części składowe mają własne testy bez okna: 20 przypadków loadera OBJ, 9 przypadków loadera obrazów (oba na prawdziwych plikach kamiennych modeli i tekstur, w tym na obu mapach normalnych kamienia) i 9 przypadków funkcji liczących styczne. Plików z M5 (kryształy, brama i ich tekstury) te testy nie czytają. Cały program testowy: 215 przypadków i 85098 asercji w Debug i w Release (Windows, 2026-10-05).
 
-Sprawdzenie na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik 610.74) przez uruchomienie programu i zrzuty ekranu:
+Sprawdzenie na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik 610.74) przez uruchomienie programu i zrzuty ekranu, wykonane przy stanie z M4 (trzy modele, cztery tekstury):
 
 | Sprawdzenie | Wynik |
 |---|---|
@@ -698,6 +708,8 @@ Sprawdzenie na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik 6
 | tryby `Gouraud` i `Unlit` z przełącznikiem włączonym i wyłączonym | zrzuty identyczne co do piksela: w tych trybach mapa normalnych nie bierze udziału w obrazie |
 
 Trzy ostatnie wiersze pochodzą z drugiej części M4. Przełącznik był przy tym ustawiany w kodzie, a nie kliknięciem. **Czego nikt nie sprawdził:** braku pliku mapy normalnych. Z kodu wynika, że część dostaje wtedy płaską mapę, w konsoli jest jedna linia `[error]` (choć mapy potrzebują ściana i słupek, bo nieudana ścieżka jest zapamiętywana), panel pokazuje przy części `normal map: none (flat)`, a plik trafia na listę `Failed to load`. To jest wniosek z czytania kodu, a nie pomiar.
+
+Dla M5 powyższych sprawdzeń nie powtarzałem. Autor kodu zgłosił obraz z kryształami i bramą sprawdzony zrzutami ekranu, ale panelu Assets z sześcioma modelami i ośmioma teksturami nikt jeszcze nie odczytał z ekranu ani nie przeszedł ręcznie.
 
 Stany filtra, anizotropii i trybu widoku były ustawiane tymczasowym kodem (usuniętym), a nie kliknięciem w panel. Ręczne przejście przez widżety jest otwartą pozycją listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md). Na macOS nic z tego nie było sprawdzane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
@@ -861,7 +873,18 @@ void drawModels(const assets::AssetCache& assets) {
 | `part.hasOwnNormalMap ? ... : std::string("none (flat)")` | ten sam wzór dla mapy normalnych: nazwa pliku albo napis mówiący, że część ma płaską mapę zastępczą |
 | `ImGui::Text("    normal map: %s", ...)` | osobna linia pod częścią, wcięta o dwie spacje głębiej niż linia części |
 
-Dla gry lista ma trzy modele, każdy z jedną częścią. Liczby trójkątów to 2 dla płytki i po 30 dla ściany i słupka. Pod każdą częścią stoi jej mapa normalnych: `floor_stone_normal.png` albo `wall_stone_normal.png`. To jest pokaz tematu 4: trzy listy indeksów pliku OBJ zamienione na jedną siatkę z podziałem na materiały.
+Dla gry lista ma sześć modeli, każdy z jedną częścią, w kolejności wczytania:
+
+| Plik | Linia `vertices, triangles` | Część | Tekstura | Mapa normalnych |
+|---|---|---|---|---|
+| `floor_tile.obj` | 4 i 2 | `floor_stone` | `floor_stone.png` | `floor_stone_normal.png` |
+| `wall_straight.obj` | 60 i 30 | `wall_stone` | `wall_stone.png` | `wall_stone_normal.png` |
+| `wall_pillar.obj` | 60 i 30 | `wall_stone` | `wall_stone.png` | `wall_stone_normal.png` |
+| `crystal_a.obj` | 60 i 24 | `crystal` | `crystal.png` | `crystal_normal.png` |
+| `crystal_b.obj` | 144 i 66 | `crystal` | `crystal.png` | `crystal_normal.png` |
+| `gate.obj` | 148 i 70 | `gate_wood` | `gate_wood.png` | `gate_wood_normal.png` |
+
+Liczby wierzchołków to nie liczby linii `v` z pliku: loader robi osobny wierzchołek z każdej różnej trójki `pozycja/uv/normalna`, więc `crystal_a.obj` ma 14 pozycji i 60 wierzchołków. Liczby trzech modeli kamiennych potwierdzają testy loadera. Liczby kryształów i bramy policzyłem skryptem, który powtarza tę regułę na liniach `f` pliku ([`obj-loader.md`](obj-loader.md), sekcje 2.4 i 5.9): nikt ich jeszcze nie odczytał z panelu. To jest pokaz tematu 4: trzy listy indeksów pliku OBJ zamienione na jedną siatkę z podziałem na materiały.
 
 `drawFailures` nie rysuje nic, gdy lista porażek jest pusta. W przeciwnym razie pokazuje nagłówek `Failed to load` i nazwy plików na czerwono (`PushStyleColor` i `PopStyleColor` wokół pętli).
 
@@ -882,7 +905,7 @@ void drawTextures(const assets::AssetCache& assets) {
 
 W pliku nad dwiema ostatnimi liniami stoi dłuższy komentarz po angielsku: wyjaśnia rzutowanie, odwrócone współrzędne i własny sampler ImGui.
 
-Kod tej funkcji nie zmienił się przy dodaniu map normalnych, a mimo to lista ma teraz **cztery** pozycje zamiast dwóch: `floor_stone.png`, `floor_stone_normal.png`, `wall_stone.png` i `wall_stone_normal.png`, w kolejności wczytania. Mapy normalnych są na liście `m_textures` jak każda inna tekstura. Ich podgląd to obraz taki, jaki jest zapisany, bez żadnego przeliczania: w większości jasnoniebieski, bo większość tekseli ma kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)`, a na nim wzór fug w odcieniach różu, zieleni i fioletu (skosy odchylone w różne strony). Tekstur zastępczych na liście nie ma.
+Kod tej funkcji nie zmienił się ani przy dodaniu map normalnych, ani w M5, a mimo to lista ma teraz **osiem** pozycji (w M2 + M3 dwie, w M4 cztery): `floor_stone.png`, `floor_stone_normal.png`, `wall_stone.png`, `wall_stone_normal.png`, `crystal.png`, `crystal_normal.png`, `gate_wood.png` i `gate_wood_normal.png`, w kolejności wczytania. Wszystkie mają 512 x 512 pikseli (odczytane z nagłówków plików PNG). Mapy normalnych są na liście `m_textures` jak każda inna tekstura. Ich podgląd to obraz taki, jaki jest zapisany, bez żadnego przeliczania: w większości jasnoniebieski, bo większość tekseli ma kierunek bliski `(0, 0, 1)`, czyli kolor `(128, 128, 255)`, a na nim wzór fug w odcieniach różu, zieleni i fioletu (skosy odchylone w różne strony). Ten opis dotyczy dwóch map kamienia, które widziałem na zrzutach. Podglądów map kryształu i drewna nie oglądałem: z kodowania wynika tylko, że płaskie miejsca też są jasnoniebieskie. Tekstur zastępczych na liście nie ma.
 
 | Linia | Znaczenie |
 |---|---|
@@ -910,12 +933,12 @@ Loader obrazów odwraca wiersze przy wczytaniu, żeby `v = 0` było dolnym wiers
 
 ### 6.5 Co pokazać na obronie
 
-Kroki z klikaniem nie były jeszcze wykonane ręcznie. Kolumna "co widać" opisuje to, co wynika z kodu shadera i klas. Na zrzutach ekranu z Windowsa, gdzie te same stany były ustawione kodem, sprawdzone są: oba widoki diagnostyczne, porównanie filtrów z anizotropią 16x, nieodwrócone podglądy, biała tekstura zastępcza oraz relief z mapami normalnych włączonymi i wyłączonymi (sekcja 5.9). Wiersze o liście czterech tekstur i o linii `normal map: ...` opisują to, co wynika z kodu panelu: nikt ich jeszcze nie odczytał z ekranu. Wrażeń z ruchu (migotanie) na nieruchomych zrzutach ocenić się nie da.
+Kroki z klikaniem nie były jeszcze wykonane ręcznie. Kolumna "co widać" opisuje to, co wynika z kodu shadera i klas. Na zrzutach ekranu z Windowsa, gdzie te same stany były ustawione kodem, sprawdzone są: oba widoki diagnostyczne, porównanie filtrów z anizotropią 16x, nieodwrócone podglądy, biała tekstura zastępcza oraz relief z mapami normalnych włączonymi i wyłączonymi (sekcja 5.9). Wiersze o liście sześciu modeli, o liście ośmiu tekstur i o linii `normal map: ...` opisują to, co wynika z kodu panelu: nikt ich jeszcze nie odczytał z ekranu. Wrażeń z ruchu (migotanie) na nieruchomych zrzutach ocenić się nie da.
 
 | Widżet | Co robię | Co widać | Co to pokazuje (temat) |
 |---|---|---|---|
-| lista `Models` | czytam trzy wpisy: liczby wierzchołków i trójkątów, część `wall_stone` albo `floor_stone` z nazwą tekstury i linią `normal map: ...` | 2 trójkąty płytki, po 30 ściany i słupka, pod każdą częścią plik mapy normalnych | 4: wynik parsera OBJ i MTL (linie `map_Kd` i `map_Bump`), jedna siatka z podziałem na materiały |
-| lista `Textures` | pokazuję cztery wpisy 512 x 512 i ich podglądy | cztery tekstury, choć modele są trzy i każdy ma dwie: dwa obrazy kamienia i dwie jasnoniebieskie mapy normalnych | 4 i 5: tekstura i mapa normalnych wspólne dla ściany i słupka są na karcie raz. Mapa normalnych to zwykły obraz RGB |
+| lista `Models` | czytam sześć wpisów: liczby wierzchołków i trójkątów, część `wall_stone`, `floor_stone`, `crystal` albo `gate_wood` z nazwą tekstury i linią `normal map: ...` | 2 trójkąty płytki, po 30 ściany i słupka, 24 i 66 kryształów, 70 bramy (tabela w sekcji 6.3), pod każdą częścią plik mapy normalnych | 4: wynik parsera OBJ i MTL (linie `map_Kd` i `map_Bump`), jedna siatka z podziałem na materiały |
+| lista `Textures` | pokazuję osiem wpisów 512 x 512 i ich podglądy | osiem tekstur, choć modeli jest sześć i każdy ma dwie: cztery obrazy koloru i cztery mapy normalnych | 4 i 5: tekstura i mapa normalnych wspólne dla ściany i słupka są na karcie raz, tak samo wspólne dla obu kryształów. Mapa normalnych to zwykły obraz RGB |
 | `Normal mapping` | przy trybie `Blinn-Phong` staję blisko ściany, świecę latarką pod płaskim kątem i odznaczam, a potem zaznaczam pole | bez map ściana wygląda jak tapeta: płaska, z namalowanymi fugami. Z mapami fugi są wgłębieniami, a skosy kamieni łapią światło | 5: mapa normalnych zmienia światło, nie kształt. Pełny scenariusz jest w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6 |
 | podgląd | najeżdżam na nazwę pliku | pełna ścieżka w dymku. Obraz nie jest do góry nogami | 5: `v = 0` na dole, odwrócone UV w `ImGui::Image` |
 | `Filter` | staję przed ścianą, potem patrzę wzdłuż długiego korytarza i przełączam `Nearest`, `Bilinear`, `Trilinear` | z bliska `Nearest` daje kwadraty tekseli, z daleka `Nearest` i `Bilinear` migoczą w ruchu, `Trilinear` jest spokojny | 5: filtr powiększenia i pomniejszenia, mipmapy |
@@ -931,18 +954,18 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 1. **`std::vector` zamiast `std::deque`.** Program działa, dopóki wektor nie przekroczy pojemności. Potem renderer rysuje ze wskaźnika na zwolnioną pamięć. Błąd nie zależy od kodu, który go wywołał, tylko od liczby wczytanych zasobów, więc pojawia się dużo później niż zmiana, która go wprowadziła.
 2. **Usuwanie albo wstawianie w środku `std::deque`.** Gwarancja stabilnych wskaźników dotyczy tylko dopisywania na początku albo na końcu. Funkcja "usuń zasób" unieważniłaby wskaźniki do pozostałych.
 3. **Odwrócona kolejność pól.** Lista modeli zadeklarowana przed listą tekstur ginęłaby po niej. Dziś nic by się nie stało (destruktor części nie dotyka tekstury), ale reguła "wskazywany żyje dłużej niż wskazujący" przestałaby obowiązywać i pierwszy destruktor, który sięgnie po teksturę, trafiłby na usunięty obiekt.
-4. **Przechowanie wskaźnika dłużej niż pamięć podręczna.** `MazeRenderer` trzyma gołe wskaźniki. Poprawność zależy od kolejności pól w `NightMazeApp`, a nie od typu wskaźnika.
+4. **Przechowanie wskaźnika dłużej niż pamięć podręczna.** `MazeRenderer` i `GameplayRenderer` trzymają gołe wskaźniki. Poprawność zależy od kolejności pól w `NightMazeApp`, a nie od typu wskaźnika.
 5. **Ten sam plik pod dwiema ścieżkami.** Normalizacja jest leksykalna: różna wielkość liter albo ścieżka względna i bezwzględna dają dwa klucze i dwa wczytania.
 6. **Naprawiony plik nie wraca.** Ścieżka, która raz zawiodła, nie jest próbowana ponownie. Po przywróceniu brakującej tekstury trzeba uruchomić program od nowa.
 7. **Brak tekstury wygląda jak zamierzony kolor.** Biała tekstura zastępcza sprawia, że program działa dalej, ale też że błąd łatwo przeoczyć. Śladem jest linia `[error]`, wpis `Failed to load` i napis `no texture (white)` przy części.
 8. **Obraz w odcieniach szarości.** Dekoduje się poprawnie, ale ma 1 albo 2 kanały, a `Texture2D` przyjmuje 3 albo 4. Skutek jest taki jak przy braku pliku. Tekstury trzeba zapisywać jako RGB albo RGBA.
-9. **Wczytanie assetu w środku rysowania.** `model()` i `texture()` podpinają VAO, bufory i teksturę. Wywołane między ustawieniem stanu a `glDrawElements` innego obiektu zepsułyby ten stan. Gra prosi o modele tylko w konstruktorze renderera.
+9. **Wczytanie assetu w środku rysowania.** `model()` i `texture()` podpinają VAO, bufory i teksturę. Wywołane między ustawieniem stanu a `glDrawElements` innego obiektu zepsułyby ten stan. Gra prosi o modele tylko w konstruktorach obu rendererów.
 10. **Podgląd z domyślnymi UV.** `ImGui::Image(id, rozmiar)` bez dwóch ostatnich argumentów pokazuje teksturę do góry nogami, bo ImGui liczy v od góry, a projekt od dołu.
 11. **Ocenianie filtra po podglądzie.** Podgląd rysuje ImGui własnym samplerem liniowym. Filtr i anizotropię widać tylko w scenie.
 12. **Kolejność pozycji listy a wyliczenie.** `VIEW_MODE_ITEMS` i `FILTER_ITEMS` muszą mieć pozycje w kolejności wartości wyliczeń. Nowa wartość dopisana w środku wyliczenia przesuwa wszystkie następne i lista zaczyna wybierać nie to, co pokazuje.
 13. **`setFilter` w każdej klatce.** `Combo` zwraca prawdę tylko przy zmianie i tylko wtedy kod woła `setFilter`. Wołanie bezwarunkowe ustawiałoby parametry samplerów wszystkich tekstur w każdej klatce, bez żadnego skutku.
 14. **Biała tekstura jako zastępcza mapa normalnych.** Biel `(255, 255, 255)` to w kodowaniu mapy normalnych kierunek `(1, 1, 1)`: normalna przechylona w stronę rogu, czyli złe światło na całej części. Mapa normalnych ma własną teksturę zastępczą, `(128, 128, 255)`.
-15. **Pusty wskaźnik `normalMap`.** Renderer woła `part.normalMap->bind(...)` bez sprawdzania. Działa to tylko dlatego, że `model()` ustawia wskaźnik na płaską mapę w pierwszych liniach pętli. Część zbudowana ręcznie, poza pamięcią podręczną, miałaby `nullptr` z wartości początkowej struktury.
+15. **Pusty wskaźnik `normalMap`.** Funkcja `game::drawModel` woła `part.normalMap->bind(...)` bez sprawdzania. Działa to tylko dlatego, że `model()` ustawia wskaźnik na płaską mapę w pierwszych liniach pętli. Część zbudowana ręcznie, poza pamięcią podręczną, miałaby `nullptr` z wartości początkowej struktury.
 16. **Brak mapy normalnych wygląda jak zamierzona płaskość.** Tak jak przy białej teksturze, program działa dalej i błąd łatwo przeoczyć: ściana ma teksturę, tylko bez reliefu. Śladem jest linia `[error]`, wpis `Failed to load` i napis `normal map: none (flat)` przy części.
 17. **Zaznaczone pole, a reliefu nie ma.** Pole `Normal mapping` jest zaznaczone, ale tryb oświetlenia to `Gouraud` albo `Unlit`. To nie błąd: tak działa `usesNormalMap` i mówi o tym notka pod polem.
 18. **Ocenianie mapy normalnych po podglądzie.** Podgląd pokazuje bajty mapy jako kolory. Widać na nim, że plik się wczytał i gdzie są fugi, ale nie widać, czy relief jest wgłębieniem, czy grzbietem. To widać dopiero w scenie, pod światłem.
@@ -952,16 +975,16 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 
 Ćwiczenia od 1 do 3 robi się na kartce. Pozostałe to zmiany w kodzie albo w skopiowanych assetach: po zmianie kodu zbuduj projekt (`cmake --build --preset debug`) i uruchom program, a na końcu wycofaj zmianę (`git checkout src`). Ćwiczeń od 4 do 12 nie wykonywałem: opisy skutków wynikają z czytania kodu, poza ćwiczeniem 4, którego skutek jest na zrzucie ekranu z Windowsa.
 
-1. **Ile obiektów.** Gra prosi o `floor_tile.obj`, `wall_straight.obj` i `wall_pillar.obj`. Ile razy wołana jest funkcja `texture()` i ile tekstur powstaje na karcie (z zastępczymi)? Odpowiedź: 6 wywołań (po dwa na część: obraz koloru i mapa normalnych), 4 wczytania, 6 tekstur (cztery z plików, biała i płaska).
+1. **Ile obiektów.** Gra prosi o `floor_tile.obj`, `wall_straight.obj`, `wall_pillar.obj`, `crystal_a.obj`, `crystal_b.obj` i `gate.obj`. Ile razy wołana jest funkcja `texture()` i ile tekstur powstaje na karcie (z zastępczymi)? Odpowiedź: 12 wywołań (po dwa na część: obraz koloru i mapa normalnych), 8 wczytań (słupek i drugi kryształ trafiają w pamięć podręczną), 10 tekstur (osiem z plików, biała i płaska).
 2. **Klucz.** Co zwraca `lexically_normal` dla `C:/gra/assets/models/../textures/./wall_stone.png`? Odpowiedź: `C:/gra/assets/textures/wall_stone.png` (na Windowsie z odwrotnymi ukośnikami).
 3. **Kolor części.** Materiał ma `Kd 1.0 0.5 0.0` i nie ma `map_Kd`. Jaki kolor ma fragment? Odpowiedź: `(1, 1, 1) * (1, 0,5, 0)`, czyli pomarańczowy `(1, 0,5, 0)`: biały teksel razy `uTint`.
 4. **Brak tekstury.** W katalogu `assets` obok pliku wykonywalnego (na Windowsie `build/debug/Debug/assets`) zmień nazwę `wall_stone.png` i uruchom program. Ile linii `[error]` jest w konsoli, choć tekstury potrzebują dwa modele? Co pokazuje panel Assets? Przywróć nazwę (albo odśwież kopię: `cmake --build --preset debug --target copy_assets`).
-5. **Wektor zamiast kolejki.** Zamień `std::deque<LoadedModel>` na `std::vector<LoadedModel>` (i typ zwracany przez `models()`). Czy program od razu przestaje działać przy trzech modelach? Od czego to zależy? Dopisz przed pierwszym wczytaniem `m_models.reserve(1)` i sprawdź ponownie. Dlaczego taki błąd jest groźniejszy niż błąd kompilacji?
+5. **Wektor zamiast kolejki.** Zamień `std::deque<LoadedModel>` na `std::vector<LoadedModel>` (i typ zwracany przez `models()`). Czy program od razu przestaje działać przy sześciu modelach? Od czego to zależy? Dopisz przed pierwszym wczytaniem `m_models.reserve(1)` i sprawdź ponownie. Dlaczego taki błąd jest groźniejszy niż błąd kompilacji?
 6. **Kolorowa tekstura zastępcza.** Zmień `WHITE_PIXEL` na jaskrawy róż `{255, 0, 255}` i powtórz ćwiczenie 4. Co zyskujesz przy szukaniu brakujących tekstur, a co tracisz dla materiałów, które celowo nie mają tekstury?
 7. **Licznik wczytań.** Dodaj tymczasowo `core::logInfo` na początku `texture()` z kluczem. Ile linii pojawia się przy starcie i które z nich są trafieniami w pamięć podręczną?
 8. **Podgląd do góry nogami.** W `drawTextures` usuń dwa ostatnie argumenty `ImGui::Image`. Porównaj podgląd z teksturą na ścianie. Potem zamień tylko u (`{1.0F, 1.0F}`, `{0.0F, 0.0F}`): co się zmieniło?
 9. **Filtr na jednej teksturze.** Dodaj do pamięci podręcznej funkcję, która ustawia filtr tylko tekstury o podanej ścieżce, i wywołaj ją tymczasowo dla `floor_stone.png` z filtrem `Nearest`. Dlaczego wspólne pole `m_filter` przestaje wtedy opisywać stan wszystkich tekstur i co powinien pokazywać panel?
-10. **Brak mapy normalnych.** Powtórz ćwiczenie 4 dla pliku `wall_stone_normal.png`. Ile linii `[error]` jest w konsoli? Co pokazuje panel przy częściach ściany i słupka i ile pozycji ma lista `Textures`? Jak wyglądają ściany pod latarką w porównaniu z podłogą? (Oczekiwane z kodu: jedna linia, `normal map: none (flat)` przy obu częściach, trzy tekstury na liście, ściany bez reliefu, podłoga z reliefem.)
+10. **Brak mapy normalnych.** Powtórz ćwiczenie 4 dla pliku `wall_stone_normal.png`. Ile linii `[error]` jest w konsoli? Co pokazuje panel przy częściach ściany i słupka i ile pozycji ma lista `Textures`? Jak wyglądają ściany pod latarką w porównaniu z podłogą? (Oczekiwane z kodu: jedna linia, `normal map: none (flat)` przy obu częściach, siedem tekstur na liście, ściany bez reliefu, podłoga z reliefem.)
 11. **Zła tekstura zastępcza.** Zmień tymczasowo w `model()` linię `part.normalMap = &m_flatNormalTexture;` na `part.normalMap = &m_whiteTexture;` i powtórz ćwiczenie 10. Policz na kartce, jaki kierunek shader odczyta z białego teksela i o ile stopni odchyla się on od normalnej. (`(1, 1, 1)`, po normalizacji około 55 stopni od osi z.)
 12. **127 czy 128.** Zmień `HALF_BRIGHTNESS` na 127. Jaki kierunek odczyta teraz shader z płaskiej mapy i czy różnicę da się zobaczyć? Dlaczego żadna z tych dwóch wartości nie daje dokładnie zera? (`127 / 255 * 2 - 1` to około -0,004 zamiast +0,004. Zero wymagałoby bajtu 127,5.)
 
@@ -1028,7 +1051,7 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
     Ustawia `LightingSettings::normalMapping`. Shader dostaje jednak wynik `usesNormalMap`: pole włączone i tryb oświetlenia inny niż `Gouraud`. W trybie `Gouraud` światło jest liczone w wierzchołkach, więc normalna na teksel nie ma jak wziąć w nim udziału, a w trybie `Unlit` nie ma światła (mapy widać wtedy tylko w widoku `Normals as colour`).
 
 21. **Ile tekstur pokazuje lista `Textures` i ile jest ich na karcie?**
-    Lista pokazuje cztery: dwa obrazy koloru i dwie mapy normalnych. Na karcie jest sześć, bo dochodzą dwie tekstury zastępcze 1 x 1, które nie są na liście.
+    Lista pokazuje osiem: cztery obrazy koloru i cztery mapy normalnych. Na karcie jest dziesięć, bo dochodzą dwie tekstury zastępcze 1 x 1, które nie są na liście.
 
 ## 10. Źródła
 
@@ -1039,6 +1062,6 @@ Dobra kolejność: najpierw listy (co jest wczytane), potem `Normal mapping` prz
 - LearnOpenGL, rozdział "Textures": <https://learnopengl.com/Getting-started/Textures> (filtry, mipmapy, zawijanie).
 - Rozszerzenie `GL_EXT_texture_filter_anisotropic`: <https://registry.khronos.org/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt>.
 - Dear ImGui, wiki "Image Loading and Displaying Examples": <https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples> (`ImGui::Image`, `ImTextureID`), oraz plik `backends/imgui_impl_opengl3.cpp` w pobranych źródłach (własne samplery backendu).
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `assets`), [`obj-loader.md`](obj-loader.md), [`images.md`](images.md), [`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/textures.md`](../gfx/textures.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (mapy normalnych: teoria, shader, scenariusz pokazu), [`../game/maze-rendering.md`](../game/maze-rendering.md) (użytkownik pamięci podręcznej), [`../debug-ui.md`](../debug-ui.md) (podpięcie panelu), [`../../libraries/imgui.md`](../../libraries/imgui.md).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `assets`), [`obj-loader.md`](obj-loader.md), [`images.md`](images.md), [`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/textures.md`](../gfx/textures.md), [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md) (mapy normalnych: teoria, shader, scenariusz pokazu), [`../game/maze-rendering.md`](../game/maze-rendering.md) i [`../game/gameplay.md`](../game/gameplay.md) (dwaj użytkownicy pamięci podręcznej), [`../debug-ui.md`](../debug-ui.md) (podpięcie panelu), [`../../libraries/imgui.md`](../../libraries/imgui.md).
 - LearnOpenGL, rozdział "Normal Mapping": <https://learnopengl.com/Advanced-Lighting/Normal-Mapping> (kodowanie kierunku w kolorze, skąd niebieski wygląd mapy).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (tematy 4 i 5 i ich pokaz w ImGui, "toggle normal map").
