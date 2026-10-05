@@ -1,0 +1,484 @@
+# Moduł assets: wczytywanie obrazów
+
+Kamień milowy: M2 + M3. Temat wykładu: 5 (Tekstury), część po stronie procesora.
+Kod: [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp), [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp), testy w [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), biblioteka dekodująca w [`external/stb/stb_image.c`](../../../external/stb/stb_image.c).
+
+Część modułu `assets`. Wstęp do całego modułu jest w [`README.md`](README.md). Ten dokument opisuje drogę od pliku PNG na dysku do tablicy bajtów w pamięci programu. Co dzieje się z tą tablicą dalej, czyli jak powstaje z niej tekstura na karcie graficznej, opisuje [`../gfx/textures.md`](../gfx/textures.md). Bibliotekę, która dekoduje plik, opisuje [`../../libraries/stb_image.md`](../../libraries/stb_image.md). Skąd biorą się same pliki PNG, opisuje [`../../guides/blender.md`](../../guides/blender.md), sekcja 7.
+
+**Stan na dziś:** loader jest napisany i sprawdzony testami jednostkowymi. Gra go jeszcze nie woła: `NightMazeApp` nadal rysuje kostkę bez tekstur. Na Windowsie (MSVC 19.44, 2026-10-05) kod kompiluje się bez ostrzeżeń i testy przechodzą. **Na macOS ten kod nie był jeszcze budowany.**
+
+## 1. Po co to jest
+
+Tekstura to obraz naklejony na trójkąty. Zanim trafi na kartę graficzną, obraz musi znaleźć się w pamięci programu jako zwykła tablica bajtów. Plik PNG taką tablicą nie jest: jest skompresowany, ma nagłówek, sumy kontrolne i wiersze zapisane od góry. Loader obrazów robi z pliku to, czego potrzebuje OpenGL:
+
+| Wejście | Wyjście |
+|---|---|
+| ścieżka do pliku, na przykład `assets/textures/wall_stone.png` | struktura `assets::Image`: szerokość, wysokość, liczba kanałów i bajty pikseli, **dolny wiersz pierwszy** |
+
+Całość to jedna struktura i jedna funkcja:
+
+```cpp
+bool loadImage(const std::filesystem::path& path, Image& image, std::string& error);
+```
+
+W tym pliku nie ma ani jednego wywołania OpenGL. To celowy podział: wczytanie pliku nie wymaga okna ani karty graficznej, więc da się je sprawdzić testem jednostkowym. Klasa `gfx::Texture2D` z kolei nie wie nic o plikach: dostaje gotowe bajty. Oba kawałki spotkają się dopiero w kodzie gry.
+
+## 2. Teoria
+
+### 2.1 Obraz rastrowy: piksele, kanały, bajty
+
+**Obraz rastrowy** (raster image) to prostokątna siatka **pikseli**. Każdy piksel to kilka liczb, po jednej na **kanał** (channel):
+
+| Liczba kanałów | Co zawiera piksel | Nazwa |
+|---|---|---|
+| 1 | jasność | odcienie szarości |
+| 2 | jasność i przezroczystość | szarość z alfą |
+| 3 | czerwony, zielony, niebieski | RGB |
+| 4 | czerwony, zielony, niebieski, przezroczystość | RGBA |
+
+W teksturach gry każdy kanał to jeden bajt, czyli liczba od 0 do 255 (8 bitów na kanał). 0 to brak danej barwy, 255 to pełna.
+
+W pamięci piksele leżą **wierszami**, jeden wiersz za drugim, a w wierszu piksel za pikselem, od lewej do prawej. Kanały jednego piksela leżą obok siebie. Obraz 2 x 3 w formacie RGB to 18 bajtów:
+
+```mermaid
+flowchart LR
+    subgraph R0["wiersz 0: bajty od 0 do 5"]
+        direction LR
+        A["piksel lewy<br/>R G B"] --- B["piksel prawy<br/>R G B"]
+    end
+    subgraph R1["wiersz 1: bajty od 6 do 11"]
+        direction LR
+        C["piksel lewy<br/>R G B"] --- D["piksel prawy<br/>R G B"]
+    end
+    subgraph R2["wiersz 2: bajty od 12 do 17"]
+        direction LR
+        E["piksel lewy<br/>R G B"] --- F["piksel prawy<br/>R G B"]
+    end
+    R0 --- R1 --- R2
+```
+
+Trzy wzory, które trzeba umieć:
+
+- rozmiar wiersza w bajtach: `szerokość * kanały`,
+- rozmiar całego obrazu: `szerokość * wysokość * kanały`,
+- pierwszy bajt piksela w kolumnie `x` i wierszu `y`: `(y * szerokość + x) * kanały`.
+
+Dla tekstur gry: 512 x 512 pikseli po 3 bajty to 786432 bajty, czyli 768 KB na jedną teksturę, choć plik `wall_stone.png` zajmuje na dysku mniej.
+
+### 2.2 Plik a piksele: dekodowanie
+
+Plik PNG przechowuje te same piksele **skompresowane bezstratnie**: po rozpakowaniu dostaję dokładnie te bajty, które zapisał program graficzny. Zamiana pliku na tablicę pikseli to **dekodowanie** (decoding). Nie piszę dekodera sam: robi to biblioteka stb_image ([`../../libraries/stb_image.md`](../../libraries/stb_image.md)). Powód jest prosty: format PNG to algorytm deflate, filtry wierszy i sumy kontrolne, czyli kilkaset linii kodu, który nie ma nic wspólnego z grafiką 3D i którego nie pokazuje wykład.
+
+Droga danych w loaderze ma więc dwa kroki i dwie różne tablice bajtów:
+
+```mermaid
+flowchart LR
+    File["plik .png na dysku<br/>bajty skompresowane"] -->|"std::ifstream, tryb binarny"| Bytes["fileBytes<br/>te same bajty w pamięci"]
+    Bytes -->|"stbi_load_from_memory"| Decoded["blok stb<br/>piksele, górny wiersz pierwszy"]
+    Decoded -->|"kopiowanie wierszy od końca"| Image["assets::Image<br/>piksele, dolny wiersz pierwszy"]
+```
+
+### 2.3 Który wiersz jest pierwszy
+
+To jest jedyne miejsce w loaderze, w którym można się pomylić bez żadnego komunikatu o błędzie.
+
+- **Pliki obrazów** (PNG, JPEG, PNM) zapisują wiersze **od góry**: pierwszy wiersz w pliku to górna krawędź obrazu. Tak rysują ekrany i tak czyta się tekst.
+- **OpenGL** traktuje pierwszy wiersz danych tekstury jako **dolną** krawędź: współrzędna tekstury `v = 0` to dół, `v = 1` to góra ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.1).
+- **Format OBJ** i Blender używają tej samej konwencji co OpenGL: `v` rośnie w górę ([`obj-loader.md`](obj-loader.md)). Współrzędne UV modeli są więc gotowe dla OpenGL i **nie wolno ich zmieniać**.
+
+Skoro model i OpenGL zgadzają się ze sobą, a nie zgadza się tylko plik obrazu, poprawkę robię w jednym miejscu: przy wczytywaniu obrazu. Loader odwraca kolejność wierszy, tak że pierwszy wiersz w `Image::pixels` jest dolnym wierszem obrazu.
+
+```mermaid
+flowchart LR
+    subgraph F["w pliku i w bloku stb"]
+        direction TB
+        F0["wiersz 0: góra obrazu"]
+        F1["wiersz 1"]
+        F2["wiersz 2: dół obrazu"]
+    end
+    subgraph M["w Image::pixels"]
+        direction TB
+        M0["wiersz 0: dół obrazu"]
+        M1["wiersz 1"]
+        M2["wiersz 2: góra obrazu"]
+    end
+    F2 --> M0
+    F1 --> M1
+    F0 --> M2
+```
+
+Odwracana jest tylko kolejność **wierszy**. Piksele wewnątrz wiersza zostają na miejscu: lewy piksel jest nadal pierwszy. Odwrócenie także tej kolejności dałoby obraz obrócony o 180 stopni, a nie odbity w pionie.
+
+Dlaczego nie zrobić tego w shaderze (`1.0 - v`)? Obraz wyszedłby taki sam, także dla UV spoza zakresu od 0 do 1: przy zawijaniu `GL_REPEAT` liczy się część ułamkowa współrzędnej, a część ułamkowa `1 - v` to dokładnie `1` minus część ułamkowa `v`. Powody są więc inne, organizacyjne:
+
+- **Jedno miejsce zamiast wielu.** Odwrócenie w shaderze trzeba by powtórzyć w każdym shaderze, który próbkuje teksturę z pliku, i pamiętać o nim przy każdym nowym.
+- **Jedna konwencja dla wszystkich tekstur.** Tekstury, które OpenGL wypełnia sam (obraz narysowany do bufora ramki, temat 10), mają wiersz 0 na dole. Gdyby tekstury z plików były trzymane do góry nogami, shader musiałby wiedzieć, skąd pochodzi tekstura, żeby wiedzieć, czy odwracać.
+- **Dane w pamięci zgadzają się z rysunkiem.** Kto czyta `Image::pixels` w C++, ma ten sam układ co shader: wiersz 0 to `v = 0`.
+
+Odwrócenie raz, przy wczytaniu, nie kosztuje też nic w czasie rysowania.
+
+### 2.4 Ścieżki ze znakami spoza ASCII
+
+Na Windowsie nazwa pliku to tekst w UTF-16 (znaki szerokie). Stare funkcje C (`fopen`) przyjmują nazwę jako `char*` w **lokalnej stronie kodowej**, która mieści tylko część znaków: na polskim Windowsie strona 1250 ma polskie litery, ale nie ma na przykład znaków japońskich. Ścieżka ze znakiem spoza strony kodowej nie da się wtedy w ogóle zapisać ([`../core/paths.md`](../core/paths.md), sekcja 2.6).
+
+Biblioteka stb_image otwiera pliki właśnie przez `fopen_s`. Loader omija ten problem: plik otwiera strumieniem `std::ifstream`, któremu podaje obiekt `std::filesystem::path`. Na Windowsie `path` trzyma znaki szerokie, a strumień ma konstruktor, który ich używa, więc każda nazwa działa. stb dostaje już nie nazwę, tylko bajty. Na macOS nazwy plików to UTF-8 i problem nie istnieje, ale ten sam kod działa tam bez zmian.
+
+### 2.5 Błąd bez wyjątku
+
+Brak pliku z teksturą nie jest powodem, żeby zatrzymać program: gra może narysować obiekt bez tekstury i wypisać błąd. Loader zachowuje się więc tak jak `gfx::Shader` przy błędzie w shaderze ([`../gfx/shader-class.md`](../gfx/shader-class.md)) i dokładnie tak jak `assets::loadObj` ([`obj-loader.md`](obj-loader.md)):
+
+- nie rzuca wyjątku,
+- zwraca `false`,
+- wypisuje błąd **raz** przez `core::logError`,
+- ten sam tekst zostawia w parametrze `error`, żeby wołający mógł go pokazać na przykład w panelu debug,
+- nie zmienia parametru `image`.
+
+## 3. Jak to działa w OpenGL
+
+Ta sekcja nie ma zastosowania: loader obrazów nie woła OpenGL. Plik `ImageLoader.cpp` nie dołącza `<glad/gl.h>` ani niczego z `gfx/`. Wywołania OpenGL, które przyjmują wynik loadera (`glTexImage2D` i reszta), są w [`../gfx/textures.md`](../gfx/textures.md), sekcja 3.
+
+Jedno ustalenie z tamtego dokumentu wpływa na loader: OpenGL chce dolnego wiersza jako pierwszego (sekcja 2.3) i wierszy bez dopełnienia, o ile ustawi się `GL_UNPACK_ALIGNMENT` na 1. `Image::pixels` ma dokładnie taki układ.
+
+## 4. Shadery
+
+Ta sekcja nie ma zastosowania: loader nie ma shaderów i żaden shader nie widzi jego danych bezpośrednio. Shader próbkuje teksturę, która z tych danych powstanie ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4).
+
+## 5. Kod w projekcie
+
+### 5.1 Pliki
+
+| Plik | Co zawiera |
+|---|---|
+| [`src/assets/ImageLoader.hpp`](../../../src/assets/ImageLoader.hpp) | struktura `assets::Image`, deklaracja `assets::loadImage`. Dołącza tylko `<filesystem>`, `<string>` i `<vector>` |
+| [`src/assets/ImageLoader.cpp`](../../../src/assets/ImageLoader.cpp) | stała `KEEP_FILE_CHANNELS`, funkcje pomocnicze `readBinaryFile` i `fail`, implementacja `loadImage`. Jedyny plik projektu, który dołącza `<stb_image.h>` |
+| [`external/stb/stb_image.c`](../../../external/stb/stb_image.c) | dwie linie, które kompilują implementację stb_image do biblioteki `stb_image` ([`../../libraries/stb_image.md`](../../libraries/stb_image.md), sekcja 2) |
+| [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | 7 przypadków testowych (sekcja 5.7) |
+
+Oba pliki z `src/assets/` są na liście źródeł biblioteki `engine` w [`CMakeLists.txt`](../../../CMakeLists.txt). Zależności: `core/Log.hpp` (wypisanie błędu), `core/Paths.hpp` (`core::pathText`, czyli ścieżka jako tekst UTF-8 do komunikatu), stb_image i biblioteka standardowa. Nic z GLAD, GLFW, GLM, `gfx/`, `scene/` ani `game/`.
+
+### 5.2 Nagłówek: struktura `Image` i funkcja `loadImage`
+
+```cpp
+struct Image {
+    /// Width in pixels.
+    int width = 0;
+    /// Height in pixels.
+    int height = 0;
+    /// Bytes per pixel, as stored in the file: 1 (grey), 2 (grey and alpha), 3 (RGB) or
+    /// 4 (RGBA).
+    int channels = 0;
+    /// width * height * channels bytes, bottom row first.
+    std::vector<unsigned char> pixels;
+};
+```
+
+| Element | Dlaczego tak |
+|---|---|
+| `struct` z publicznymi polami | to same dane, bez reguł, których trzeba by pilnować funkcjami. Tak samo wyglądają `scene::Transform` i `scene::Camera` |
+| `int width`, `int height`, `int channels` | typ `int`, bo takiego używa stb_image i takiego chce `gfx::Texture2D` (a w końcu `glTexImage2D`, gdzie `GLsizei` to też `int`) |
+| wartości początkowe 0 | pusty obiekt `Image` jest poprawnym "brakiem obrazu": rozmiar 0 i pusty wektor |
+| `std::vector<unsigned char> pixels` | wektor sam zwalnia pamięć i zna swój rozmiar. `unsigned char` to jeden bajt o wartościach od 0 do 255. Zwykły `char` mógłby mieć znak, a wtedy 255 byłoby liczbą ujemną |
+
+```cpp
+/// Reads an image file and decodes it into pixels. The channel count of the file is kept.
+/// The path may contain any characters, also non ASCII ones on Windows.
+///
+/// Returns true and fills image on success. On failure (the file cannot be opened, it is
+/// empty, it is not an image the decoder knows) it logs the error once, puts the same text
+/// into error, leaves image unchanged and returns false. It does not throw.
+bool loadImage(const std::filesystem::path& path, Image& image, std::string& error);
+```
+
+| Parametr | Znaczenie |
+|---|---|
+| `const std::filesystem::path& path` | plik do wczytania. Typ `path`, a nie `std::string`, żeby nazwa nie przechodziła przez stronę kodową (sekcja 2.4) |
+| `Image& image` | tu trafia wynik. Referencja niestała: funkcja wypełnia obiekt wołającego. Przy błędzie zostaje nietknięty |
+| `std::string& error` | tu trafia tekst błędu. Po udanym wczytaniu jest czyszczony |
+| wynik `bool` | `true` to sukces. Wołający pisze `if (!assets::loadImage(...))` |
+
+Ten sam kształt (wynik `bool`, dane i błąd przez referencje) ma `assets::loadObj`. W module `assets` obie funkcje wczytujące zachowują się jednakowo.
+
+Funkcja **nie zmienia liczby kanałów**. Tekstury gry są zapisane jako RGB, więc wynik ma 3 kanały. Plik w odcieniach szarości dałby 1 albo 2 kanały, a takich `gfx::Texture2D` nie przyjmuje (sekcja 7, pułapka 5).
+
+### 5.3 `readBinaryFile`: plik do pamięci
+
+```cpp
+bool readBinaryFile(const std::filesystem::path& path, std::vector<unsigned char>& bytes) {
+    // The stream takes the path object itself, not a string made from it. On Windows the
+    // path holds wide characters and the stream opens the file through them, so a letter
+    // outside the local code page is not damaged. std::ios::binary switches off the
+    // translation of line endings, which would corrupt image data on Windows.
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    // An istreambuf_iterator reads the file one char at a time, and an iterator made
+    // without a stream marks the end of the file. assign copies everything between the
+    // two into the vector.
+    bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    return true;
+}
+```
+
+| Linia | Co robi i dlaczego |
+|---|---|
+| `std::ifstream file(path, std::ios::binary);` | otwiera plik do czytania. Strumień dostaje **obiekt `path`**, a nie tekst z niego zrobiony: to jest cała obsługa nazw spoza ASCII. Strumień sam zamknie plik w destruktorze |
+| `std::ios::binary` | **tryb binarny**. W trybie tekstowym biblioteka na Windowsie zamienia przy czytaniu parę bajtów `\r\n` na `\n` i kończy czytanie na bajcie 26 (Ctrl+Z). Dla tekstu to pomoc, dla obrazu zniszczenie danych. Każdy plik PNG zaczyna się od ośmiu bajtów `89 50 4E 47 0D 0A 1A 0A`: są w nich celowo i para `\r\n` (`0D 0A`), i bajt 26 (`1A`), żeby plik uszkodzony przez tryb tekstowy dało się od razu rozpoznać. Zmierzone na Windowsie: bez `std::ios::binary` obie tekstury gry kończą się błędem `cannot be decoded ... (unknown image type)` i 2 z 7 przypadków testowych nie przechodzą. Na macOS oba tryby działają tak samo, więc błąd wyszedłby tylko na Windowsie |
+| `if (!file.is_open())` | pliku nie ma albo nie wolno go czytać. Funkcja zwraca `false`, a komunikat buduje wołający |
+| `std::istreambuf_iterator<char>(file)` | **iterator**, który czyta ze strumienia po jednym znaku (bajcie), bez żadnego przetwarzania |
+| `std::istreambuf_iterator<char>()` | iterator utworzony bez strumienia oznacza "koniec pliku". Para iteratorów opisuje zakres "od teraz do końca" |
+| `bytes.assign(początek, koniec)` | zastępuje zawartość wektora wszystkim z tego zakresu. Każdy `char` jest przy tym zamieniany na `unsigned char` o tym samym wzorze bitów |
+
+Shader jest czytany podobną funkcją `readTextFile` w `Shader.cpp`, ale tam plik jest tekstem i trafia do `std::string`. Tu potrzebne są surowe bajty jako `unsigned char`, bo takich chce stb_image, więc wektor wypełniam wprost, bez rzutowania wskaźników.
+
+### 5.4 `fail`: jedna linia na błąd
+
+```cpp
+bool fail(std::string& error, const std::string& message) {
+    error = message;
+    core::logError(error);
+    return false;
+}
+```
+
+Każda gałąź błędu w `loadImage` ma do zrobienia to samo: zapisać tekst, wypisać go i zwrócić `false`. Funkcja pomocnicza robi te trzy rzeczy, więc gałąź błędu to jedna linia `return fail(error, "...");`. Dzięki temu nie da się zapomnieć o wypisaniu błędu w jednej z gałęzi ani wypisać go dwa razy.
+
+### 5.5 `loadImage` linia po linii
+
+**Krok 1: wczytanie pliku i trzy sprawdzenia.**
+
+```cpp
+    std::vector<unsigned char> fileBytes;
+    if (!readBinaryFile(path, fileBytes)) {
+        return fail(error, "Image file cannot be opened: " + core::pathText(path));
+    }
+    if (fileBytes.empty()) {
+        return fail(error, "Image file is empty: " + core::pathText(path));
+    }
+    // stb_image takes the size of the data as an int.
+    if (fileBytes.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        return fail(error, "Image file is too large: " + core::pathText(path));
+    }
+```
+
+| Sprawdzenie | Po co |
+|---|---|
+| plik się nie otworzył | najczęstszy błąd: literówka w nazwie albo brak kopii katalogu `assets` obok programu |
+| plik jest pusty | stb też by go odrzucił, ale z ogólnym komunikatem. Tu komunikat mówi wprost, co jest nie tak |
+| plik jest większy niż największy `int` | stb przyjmuje rozmiar jako `int`. Rzutowanie większej liczby dałoby wartość ujemną. `std::numeric_limits<int>::max()` to największa wartość typu `int` (ponad 2 miliardy), więc w praktyce ta gałąź nie wykona się nigdy, ale rzutowanie bez sprawdzenia byłoby błędem czekającym na okazję |
+
+`core::pathText(path)` zamienia ścieżkę na tekst UTF-8 do komunikatu ([`../core/paths.md`](../core/paths.md), sekcja 5.7).
+
+**Krok 2: dekodowanie.**
+
+```cpp
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    stbi_uc* decoded = stbi_load_from_memory(fileBytes.data(), static_cast<int>(fileBytes.size()),
+                                             &width, &height, &channels, KEEP_FILE_CHANNELS);
+    if (decoded == nullptr) {
+        // stbi_failure_reason gives a short text such as "unknown image type".
+        return fail(error, "Image file cannot be decoded: " + core::pathText(path) + " (" +
+                               stbi_failure_reason() + ")");
+    }
+```
+
+Funkcja biblioteki dostaje bajty pliku i ich liczbę, a przez trzy wskaźniki oddaje szerokość, wysokość i liczbę kanałów. Zwraca wskaźnik na blok pikseli, który sama przydzieliła, albo `nullptr`. Parametry omawia [`../../libraries/stb_image.md`](../../libraries/stb_image.md), sekcja 3.1. `KEEP_FILE_CHANNELS` to nazwana stała o wartości 0: "nie przeliczaj kanałów". `stbi_uc` to `unsigned char`.
+
+Od tej chwili w pamięci są **dwie** tablice: `fileBytes` (skompresowany plik) i `decoded` (piksele). Pierwsza zniknie sama na końcu funkcji, drugą trzeba zwolnić ręcznie.
+
+**Krok 3: rozmiary.**
+
+```cpp
+    const std::size_t rowSize =
+        static_cast<std::size_t>(width) * static_cast<std::size_t>(channels);
+    const auto rowCount = static_cast<std::size_t>(height);
+```
+
+`rowSize` to liczba bajtów jednego wiersza (sekcja 2.1). Rzutowanie na `std::size_t` stoi **przed** mnożeniem: iloczyn trzech liczb `int` liczony w `int` mógłby się przepełnić dla bardzo dużego obrazu, a iloczyn liczony w `std::size_t` (64 bity) nie. Rzutowania są też potrzebne, żeby kompilator nie ostrzegał o mieszaniu liczb ze znakiem i bez znaku. `auto` w drugiej linii to ten sam typ `std::size_t`: nazwa typu stoi już w rzutowaniu po prawej stronie, a clang-tidy (reguła `modernize-use-auto`) każe jej wtedy nie powtarzać.
+
+**Krok 4: obiekt wyniku.**
+
+```cpp
+    Image loaded;
+    loaded.width = width;
+    loaded.height = height;
+    loaded.channels = channels;
+    loaded.pixels.resize(rowSize * rowCount);
+```
+
+Wynik powstaje w zmiennej **lokalnej**, a nie od razu w parametrze `image`. Parametr zostanie zmieniony dopiero w ostatnim kroku, jednym przypisaniem. `resize` przydziela wektorowi dokładnie tyle bajtów, ile ma obraz.
+
+**Krok 5: kopiowanie z odwróceniem wierszy.**
+
+```cpp
+    for (std::size_t row = 0; row < rowCount; ++row) {
+        const stbi_uc* source = decoded + (rowCount - 1 - row) * rowSize;
+        std::copy_n(source, rowSize,
+                    loaded.pixels.begin() + static_cast<std::ptrdiff_t>(row * rowSize));
+    }
+```
+
+To jest sedno pliku. Piksele i tak trzeba skopiować z bloku biblioteki do wektora, więc kopiuję je wiersz po wierszu **w odwrotnej kolejności** i odwrócenie nie kosztuje osobnego przejścia.
+
+| Element | Znaczenie |
+|---|---|
+| `row` | numer wiersza w **wyniku**, od 0 (dół obrazu) |
+| `rowCount - 1 - row` | numer odpowiadającego wiersza w **źródle**. Dla `row = 0` to ostatni wiersz pliku, dla ostatniego `row` to wiersz 0 |
+| `decoded + (...) * rowSize` | wskaźnik na pierwszy bajt tego wiersza źródła: początek bloku plus tyle bajtów, ile zajmują wiersze przed nim |
+| `std::copy_n(źródło, ile, cel)` | kopiuje `ile` elementów. Tu: cały wiersz, `rowSize` bajtów, w niezmienionej kolejności |
+| `loaded.pixels.begin() + ...` | iterator na pierwszy bajt wiersza `row` w wyniku. Do iteratora dodaje się liczbę ze znakiem (`std::ptrdiff_t`), stąd rzutowanie |
+
+Przykład dla obrazka testowego 2 x 3 RGB (`rowSize` = 6, `rowCount` = 3):
+
+| `row` (wynik) | wiersz źródła | bajty źródła | bajty wyniku |
+|---|---|---|---|
+| 0 | 2 | od 12 do 17 | od 0 do 5 |
+| 1 | 1 | od 6 do 11 | od 6 do 11 |
+| 2 | 0 | od 0 do 5 | od 12 do 17 |
+
+Środkowy wiersz obrazu o nieparzystej wysokości zostaje na swoim miejscu, co widać w tabeli.
+
+**Krok 6: sprzątanie i oddanie wyniku.**
+
+```cpp
+    stbi_image_free(decoded);
+
+    // Moving hands the pixel vector over without copying its bytes a second time.
+    image = std::move(loaded);
+    error.clear();
+    return true;
+```
+
+| Linia | Co robi |
+|---|---|
+| `stbi_image_free(decoded);` | zwalnia blok biblioteki. Od tej linii wskaźnik `decoded` jest nieważny, ale piksele są już w wektorze |
+| `image = std::move(loaded);` | **przeniesienie** ([`../gfx/README.md`](../gfx/README.md), sekcja 2.3): wektor w `image` przejmuje pamięć wektora z `loaded`, bez kopiowania 786432 bajtów drugi raz |
+| `error.clear();` | po sukcesie tekst błędu jest pusty, także wtedy, gdy wołający podał napis z wcześniejszego nieudanego wywołania |
+
+Między `stbi_load_from_memory` a `stbi_image_free` nie ma żadnego `return`, więc blok biblioteki jest zwalniany na każdej drodze przez funkcję.
+
+### 5.6 Jak wołać loader
+
+Kodu, który woła `loadImage` w grze, jeszcze nie ma. Tak będzie wyglądało połączenie z teksturą (przykład, nie kod projektu):
+
+```cpp
+// Przykład, nie kod projektu.
+assets::Image image;
+std::string error;
+if (assets::loadImage(core::assetPath("textures/wall_stone.png"), image, error)) {
+    gfx::Texture2D texture(image.width, image.height, image.channels, image.pixels.data());
+    // image może teraz zniknąć: OpenGL ma własną kopię pikseli.
+}
+```
+
+### 5.7 Testy
+
+[`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp), 7 przypadków, 35 asercji. Jak czytać i uruchamiać testy: [`../../libraries/doctest.md`](../../libraries/doctest.md).
+
+| Przypadek testowy | Co sprawdza |
+|---|---|
+| `the stone textures of the game load with the size and channels they were made with` | prawdziwe pliki `wall_stone.png` i `floor_stone.png`: 512 x 512, 3 kanały, 786432 bajty, pusty tekst błędu |
+| `the rows are flipped: the first row in memory is the bottom row of the file` | obrazek 2 x 3 zapisany przez sam test: wynik ma dokładnie te same piksele z wierszami w odwrotnej kolejności |
+| `a path with letters outside ASCII can be loaded` | ten sam obrazek pod nazwą z polskimi literami i jednym znakiem japońskim |
+| `a missing file is reported and leaves the image unchanged` | wynik `false`, w tekście błędu `cannot be opened` i nazwa pliku, obiekt `Image` z wcześniejszą zawartością nietknięty |
+| `a file that is not an image is reported` | plik `assets/shaders/basic.vert` podany jako obraz: `false` i `cannot be decoded` |
+| `an empty file is reported` | plik o długości 0: `false` i `is empty` |
+| `a successful load clears the error text of an earlier failure` | po sukcesie `error` jest pusty |
+
+**Skąd test zna katalog `assets`.** Test nie może zależeć od katalogu, z którego został uruchomiony. `CMakeLists.txt` wkompilowuje w program testowy bezwzględną ścieżkę katalogu `assets` z repozytorium jako makro:
+
+```cmake
+target_compile_definitions(night_maze_tests PRIVATE
+    NIGHT_MAZE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+)
+```
+
+W pliku testu makro zamienia się na napis, z którego funkcja pomocnicza `assetsDirectory()` robi ścieżkę (`return NIGHT_MAZE_ASSETS_DIR;` przy typie wyniku `std::filesystem::path`). Program gry tak nie robi (szuka katalogu `assets` obok własnego pliku wykonywalnego, [`../core/paths.md`](../core/paths.md)), bo ma działać także po przeniesieniu na inny komputer. Test jest zawsze uruchamiany z repozytorium, więc ścieżka wkompilowana na stałe mu wystarcza. Z tego samego makra korzystają testy loadera OBJ.
+
+**Obrazek testowy.** Test odwracania nie używa PNG. Zapisanie PNG wymagałoby kompresji i sum kontrolnych, czyli kodera w teście. Zamiast tego test zapisuje plik w formacie **PPM** (odmiana binarna, nagłówek `P6`): trzy linie tekstu (znacznik formatu, szerokość i wysokość, największa wartość) i potem surowe bajty pikseli, górny wiersz pierwszy. stb_image czyta ten format. Odwracanie wierszy dzieje się w loaderze **po** dekodowaniu, więc nie zależy od formatu pliku: jeśli działa dla PPM, działa dla PNG.
+
+Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą kolejność wierszy, jak i odwrócenie kolejności w wierszu. Szerokość różna od wysokości wykrywa zamianę tych dwóch liczb.
+
+**Nazwa spoza ASCII.** Nazwa pliku w teście jest zapisana w literale `u8"..."` kodami znaków (nazwy uniwersalne znaków: ukośnik wsteczny, litera `u` i numer znaku), a nie literami wpisanymi wprost. Dzięki temu wynik nie zależy od tego, w jakim kodowaniu kompilator czyta plik źródłowy. Znak japoński jest tam celowo: komputer, na którym test był uruchamiany, ma stronę kodową 1250, w której polskie litery istnieją, więc same polskie litery niczego by nie dowiodły.
+
+**Linie `[error]` w wyjściu testów.** Trzy przypadki celowo wywołują błąd, a loader wypisuje go przez `core::logError`. W wyjściu programu testowego widać więc trzy linie `[error] Image file ...`. To nie są nieudane testy: wynik podaje ostatnia linia raportu doctest.
+
+**Wynik.** Na Windowsie (MSVC 19.44, konfiguracja Debug, 2026-10-05) wszystkie 7 przypadków przechodzi. Na macOS testy nie były jeszcze uruchamiane.
+
+Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcja 5.9).
+
+## 6. Panel ImGui
+
+Loader nie ma panelu i nie jest on planowany: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do oglądania. Jego wynik będzie widać pośrednio w planowanym panelu Textures ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6), który jeszcze nie istnieje. Błąd wczytania widać w konsoli jako linię `[error] Image file ...`.
+
+## 7. Pułapki
+
+1. **Obraz do góry nogami.** Pominięcie odwracania wierszy nie daje żadnego błędu. Na teksturze kamienia prawie tego nie widać, bo wzór jest podobny w obu kierunkach. Widać to dopiero na teksturze z napisem albo strzałką. Dlatego odwracanie ma własny test na znanych pikselach.
+2. **Podwójne odwrócenie.** Loader odwraca wiersze sam. Gdyby ktoś dodatkowo włączył w stb przełącznik `stbi_set_flip_vertically_on_load` albo odwrócił `v` w shaderze, obraz wróciłby do złej orientacji. Odwrócenie ma być w jednym miejscu.
+3. **Tryb tekstowy.** `std::ifstream file(path);` bez `std::ios::binary` działa na macOS i psuje dane na Windowsie (sekcja 5.3). Objaw zmierzony na Windowsie: poprawny plik PNG jest zgłaszany jako `unknown image type`. Na macOS ten sam kod działa, więc błąd widać tylko na jednym systemie.
+4. **Ścieżka jako `std::string`.** `path.string()` na Windowsie zamienia nazwę na lokalną stronę kodową i rzuca wyjątek, gdy znaku tam nie ma. Loader nigdzie nie zamienia ścieżki na tekst przed otwarciem pliku, a do komunikatów używa `core::pathText`.
+5. **Liczba kanałów inna niż 3 albo 4.** Loader zostawia kanały pliku. PNG zapisany w programie graficznym jako "grayscale" ma 1 kanał. `gfx::Texture2D` takiego obrazu nie przyjmie: wypisze błąd i tekstura nie powstanie. Tekstury gry trzeba zapisywać jako RGB albo RGBA.
+6. **Zakładanie, że kanałów jest zawsze 3.** Kod, który liczy pozycję piksela jako `(y * width + x) * 3`, przestanie działać dla pierwszego pliku z kanałem alfa. Zawsze `* image.channels`.
+7. **Wiersz 0 to dół.** Kto czyta `Image::pixels` we własnym kodzie (na przykład przyszła mapa wysokości terenu), musi pamiętać, że `y = 0` to dolny wiersz obrazu, a nie górny, jak w programie graficznym.
+8. **Użycie `image` po nieudanym wczytaniu.** Funkcja nie zmienia `image` przy błędzie. Jeśli obiekt był pusty, zostaje pusty: szerokość 0 i `pixels.data()` bez danych. Wynik `loadImage` trzeba sprawdzić przed utworzeniem tekstury.
+9. **Kolory w sRGB.** Bajty w pliku PNG są zapisane w przestrzeni sRGB. Loader oddaje je bez zmian i tak samo trafiają na kartę. Poprawna obsługa gammy nie jest jeszcze zrobiona ([`../gfx/textures.md`](../gfx/textures.md), sekcja 2.10).
+10. **Brak kopii `assets` na Windowsie.** Program czyta `assets` obok pliku `.exe`, a tam leży kopia robiona podczas budowania ([`../core/paths.md`](../core/paths.md), sekcja 5.8). Nowa tekstura dodana do repozytorium nie istnieje dla programu, dopóki kopia nie zostanie odświeżona. Testów to nie dotyczy: czytają katalog z repozytorium.
+
+## 8. Ćwiczenia
+
+Zmiany w `ImageLoader.cpp` sprawdzaj testami: zbuduj projekt i uruchom `ctest --test-dir build/debug -C Debug --output-on-failure`. Po każdym ćwiczeniu wycofaj zmianę (`git checkout src/assets`).
+
+1. **Bez odwracania.** W pętli kopiującej zamień `(rowCount - 1 - row)` na `row`. Który test przestaje przechodzić? Dlaczego test na prawdziwych teksturach przechodzi dalej?
+2. **Odwrócenie w złą stronę.** Zamiast kolejności wierszy odwróć kolejność bajtów całego obrazu (na przykład `std::reverse` na całym wektorze). Zapisz na kartce, jak wyglądałby wtedy obrazek testowy: gdzie trafia piksel lewy górny i co stało się z kolejnością R, G, B?
+3. **Tryb tekstowy.** Usuń `std::ios::binary`. Uruchom testy na Windowsie. Co się zmieniło i w którym kroku loadera wychodzi błąd? (Na macOS nie zmieni się nic. Dlaczego?)
+4. **Rozmiary na kartce.** Obraz ma 300 x 200 pikseli i 4 kanały. Ile bajtów ma wiersz, a ile cały obraz? W którym bajcie `Image::pixels` zaczyna się piksel z lewego **górnego** rogu obrazu?
+5. **Wymuszone kanały.** Zmień `KEEP_FILE_CHANNELS` na 4 i przypisz `loaded.channels = 4`. Który test przestaje przechodzić i jaką wartość ma teraz czwarty bajt każdego piksela tekstury ściany? Co by się zepsuło, gdybyś zmienił tylko stałą, a `loaded.channels` zostawił?
+6. **Wyciek.** Usuń linię `stbi_image_free(decoded);`. Testy nadal przechodzą. Ile bajtów wycieka przy każdym wywołaniu dla tekstury ściany i dlaczego żaden test tego nie widzi?
+7. **Własny komunikat.** Dopisz test, który podaje jako ścieżkę katalog `assets/textures` zamiast pliku. Zanim go uruchomisz, przewidź, która gałąź błędu się wykona na Windowsie.
+
+## 9. Pytania kontrolne
+
+1. **Co zwraca loader obrazów i w jakim układzie?**
+   Strukturę `Image`: szerokość, wysokość, liczbę kanałów i wektor bajtów. Piksele leżą wierszami bez przerw, kanały piksela obok siebie, a pierwszy wiersz to dół obrazu.
+
+2. **Dlaczego wiersze są odwracane i dlaczego właśnie w loaderze?**
+   Pliki obrazów zapisują górny wiersz jako pierwszy, a OpenGL traktuje pierwszy wiersz jako dolny (`v = 0`). Format OBJ ma tę samą konwencję co OpenGL, więc UV modeli są dobre i jedyną rzeczą do poprawienia jest obraz. Odwrócenie w shaderze (`1 - v`) dałoby ten sam obraz, ale trzeba by je powtarzać w każdym shaderze, a tekstury wypełniane przez sam OpenGL mają wiersz 0 na dole, więc shader musiałby rozróżniać, skąd jest tekstura. Poprawka w jednym miejscu, przy wczytaniu, daje wszystkim teksturom jedną konwencję.
+
+3. **Jak pętla odwraca wiersze?**
+   Dla wiersza `row` wyniku bierze wiersz `rowCount - 1 - row` źródła i kopiuje go w całości (`std::copy_n`, `rowSize` bajtów). Kolejność pikseli w wierszu się nie zmienia.
+
+4. **Dlaczego nie użyto przełącznika `stbi_set_flip_vertically_on_load`?**
+   To ukryty stan globalny biblioteki: zmienia wynik wszystkich następnych wywołań w programie. Jawna pętla jest w tym samym pliku, widać ją i ma własny test.
+
+5. **Jak loader radzi sobie z nazwami plików spoza ASCII na Windowsie?**
+   Otwiera plik przez `std::ifstream` z obiektem `std::filesystem::path`, który trzyma znaki szerokie, i przekazuje bibliotece gotowe bajty (`stbi_load_from_memory`). Funkcje stb otwierające plik po nazwie używają `fopen_s` i lokalnej strony kodowej, więc są wyłączone makrem `STBI_NO_STDIO`.
+
+6. **Po co `std::ios::binary`?**
+   Bez niego Windows zamienia przy czytaniu pary `\r\n` na `\n` i kończy plik na bajcie 26, co niszczy dane binarne. Na macOS różnicy nie ma, więc błąd byłby widoczny tylko na jednym systemie.
+
+7. **Co się dzieje, gdy pliku nie ma?**
+   Funkcja zwraca `false`, wypisuje raz linię `[error]`, wpisuje ten sam tekst do `error` i nie zmienia `image`. Nie rzuca wyjątku.
+
+8. **Dlaczego rozmiary są liczone w `std::size_t`, skoro szerokość i wysokość to `int`?**
+   Iloczyn szerokości, wysokości i liczby kanałów może przekroczyć zakres `int`. Rzutowanie przed mnożeniem przenosi obliczenie do typu 64 bitowego bez znaku, którym i tak indeksuje się wektor.
+
+9. **Kto zwalnia pamięć zdekodowanego obrazu?**
+   Blok zwrócony przez stb zwalnia `stbi_image_free`, wołane po skopiowaniu pikseli. Wektor `pixels` zwalnia się sam w destruktorze `Image`.
+
+10. **Dlaczego loader nie tworzy od razu tekstury?**
+    Żeby nie zależał od OpenGL. Bez okna i kontekstu da się go wołać w teście jednostkowym, a `gfx::Texture2D` nie musi wiedzieć nic o plikach.
+
+11. **Ile pamięci zajmuje wczytana tekstura ściany i dlaczego więcej niż plik?**
+    512 * 512 * 3 = 786432 bajty. Plik PNG jest skompresowany, a tablica pikseli nie.
+
+## 10. Źródła
+
+- LearnOpenGL, rozdział "Textures" (<https://learnopengl.com/Getting-started/Textures>), części "Loading and creating textures" i "stb_image.h": wczytanie obrazu biblioteką stb i uwaga o odwróconej osi y.
+- Komentarz na początku `stb_image.h`: <https://github.com/nothings/stb/blob/2c980bb59875b0d32144a71867fbdebb2f77cd20/stb_image.h> (opis `stbi_load_from_memory`, kolejność wierszy i kanałów, makra konfiguracji).
+- cppreference: `std::basic_ifstream` (<https://en.cppreference.com/w/cpp/io/basic_ifstream/basic_ifstream>, konstruktor z `std::filesystem::path`), `std::istreambuf_iterator` (<https://en.cppreference.com/w/cpp/iterator/istreambuf_iterator>), `std::copy_n` (<https://en.cppreference.com/w/cpp/algorithm/copy_n>).
+- Opis formatu PPM (Netpbm): <https://netpbm.sourceforge.net/doc/ppm.html>.
+- Specyfikacja PNG (W3C): <https://www.w3.org/TR/png/> (dla ciekawych: kolejność wierszy i kompresja).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `assets`), [`obj-loader.md`](obj-loader.md) (drugi loader, ta sama obsługa błędów), [`../gfx/textures.md`](../gfx/textures.md) (co dzieje się z pikselami dalej), [`../../libraries/stb_image.md`](../../libraries/stb_image.md), [`../core/paths.md`](../core/paths.md) (ścieżki i znaki szerokie), [`../../guides/blender.md`](../../guides/blender.md) (skąd są tekstury).
