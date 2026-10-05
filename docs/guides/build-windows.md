@@ -118,11 +118,16 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
   trzech modeli, co wynika z kodu `assets::AssetCache`). Zmierzone jest to, że na starcie
   nie ma żadnej linii `[error]`, w tym żadnej z nazwą błędu OpenGL (`GL_INVALID_...`).
   Dokładnej liczby linii `[info]` przy tym pomiarze nie zapisałem.
-- Widocznych jest sześć paneli: Renderer, Camera i Shaders przy lewej krawędzi, Maze i
-  Collision przy prawej, Assets na dole obok lewej kolumny. Każdy ma w kodzie pozycję i
-  rozmiar startowy, ułożone dla okna 1280 x 720. Działają one tylko wtedy, gdy w katalogu
-  roboczym nie ma pliku `imgui.ini` z wpisem danego panelu (sekcja 7). To nie jest cecha
-  Windowsa.
+- Widocznych jest sześć paneli w ciemnym, granatowym motywie: Renderer i Camera przy lewej
+  krawędzi, Maze i Assets przy prawej, Collision i Shaders na dole między kolumnami. Każdy
+  ma w kodzie miejsce i rozmiar startowy, ułożone dla okna 1280 x 720
+  (`src/debug/PanelLayout.hpp`). Działają one tylko wtedy, gdy w katalogu roboczym nie ma
+  pliku `imgui.ini` z wpisem danego panelu (sekcja 7). To nie jest cecha Windowsa.
+- Tekst paneli jest w czcionce Atkinson Hyperlegible z pliku
+  `assets\fonts\AtkinsonHyperlegible-Regular.ttf` w kopii katalogu `assets` obok programu.
+  Gdy tego pliku brakuje, w konsoli jest jedna linia
+  `[error] Panel font cannot be loaded, using the built-in font: ...`, a panele używają
+  czcionki wbudowanej w ImGui (zmierzone).
 
 Opis samego pliku presetów (ukryty preset `base`, `inherits`, `binaryDir`) jest w
 [`build-macos.md`](build-macos.md), sekcja 3. Plik jest wspólny dla obu systemów.
@@ -429,17 +434,20 @@ directory)** procesu, a nie obok pliku `.exe`.
 | dwuklik na `night_maze.exe` | katalog z plikiem `.exe` | `build\debug\Debug\` |
 | Visual Studio (F5) | ustawiany przez IDE, zwykle katalog pliku wykonywalnego | do sprawdzenia |
 
-Ta tabela jest na Windowsie nadal przewidywaniem. Przy pomiarach program był za każdym razem
-zatrzymywany przez zabicie procesu, więc plik `imgui.ini` nigdy nie został zapisany i nie
-wiem z pomiaru, gdzie powstaje.
+Ta tabela jest na Windowsie w większości przewidywaniem. Zmierzony jest jeden przypadek:
+program uruchomiony z katalogiem roboczym `build\debug\Debug` i zabity po siedmiu sekundach
+zostawił `imgui.ini` w tym katalogu. ImGui zapisuje plik także w trakcie działania, kilka
+sekund po zmianie układu, a nie tylko przy zamykaniu. Przy wcześniejszych pomiarach program
+był zabijany wcześniej i plik nie powstawał. Wiersze o dwukliku i o Visual Studio pozostają
+przewidywaniem.
 
 Bez tego pliku sześć paneli otwiera się w układzie zapisanym w kodzie (stałe
-`FIRST_POSITION` i `FIRST_SIZE` w `src/debug/panels/*.cpp`, warunek
+`..._PLACEMENT` w `src/debug/PanelLayout.hpp`, funkcja `placePanelOnFirstUse`, warunek
 `ImGuiCond_FirstUseEver`). Gdy plik istnieje i ma wpis panelu, wygrywa wpis. W katalogu
-repozytorium na moim PC leży `imgui.ini` z wcześniejszych uruchomień, z wpisami paneli
-Renderer, Shaders i Camera: z takim plikiem te trzy panele zostają na starych miejscach, a
-nowy układ dostają tylko Maze, Collision i Assets. Żeby obejrzeć układ domyślny, trzeba
-plik usunąć przed uruchomieniem (sekcja 12).
+repozytorium na moim PC leży `imgui.ini` z wcześniejszych uruchomień: z takim plikiem
+panele zostają na starych miejscach i w starych rozmiarach, dobranych dla poprzedniej
+czcionki. Żeby obejrzeć układ domyślny, trzeba plik usunąć przed uruchomieniem
+(sekcja 12).
 
 Plik jest w `.gitignore`, więc nigdzie nie przeszkadza w repozytorium. Skutkiem różnych
 katalogów jest tylko to, że układ paneli ustawiony przy uruchomieniu z terminala nie jest
@@ -694,7 +702,8 @@ clangd w edytorze i `make`.
       Radeon, system sam wybrał NVIDIA
 - [x] w konsoli nie ma linii `[error]`
 - [x] panele "Renderer", "Shaders" i "Camera" są widoczne. Przy pierwszym uruchomieniu (bez
-      `imgui.ini`) leżą jeden na drugim
+      `imgui.ini`) leżą jeden na drugim (stan M1. Dziś panele mają miejsca startowe i się
+      nie zasłaniają, sekcja 12)
 - [ ] FPS i czas klatki w panelu "Renderer" się aktualizują
 - [ ] linie "Framebuffer" i "Window" pokazują te same wartości (na Windowsie powinny być równe)
 
@@ -719,7 +728,10 @@ clangd w edytorze i `make`.
 - [ ] zmiana rozmiaru okna: obraz wypełnia całe okno, wartości w panelu się zmieniają
 - [ ] maksymalizacja i przywrócenie okna działają
 - [ ] minimalizacja i przywrócenie nie powodują błędów ani zawieszenia
-- [ ] przeciąganie okna między monitorami o różnym skalowaniu (jeśli są dostępne)
+- [ ] przeciąganie okna między monitorami o różnym skalowaniu (jeśli są dostępne).
+      Oczekiwane: obraz sceny poprawny, a panele zostają w skali monitora, na którym
+      program wystartował (skala jest czytana raz, [`../modules/debug-ui.md`](../modules/debug-ui.md),
+      sekcja 5.8.4)
 
 **Build Release**
 
@@ -795,8 +807,9 @@ nikt tam jeszcze nie nacisnął.
 
 - [x] `src/debug/panels/ShadersPanel.cpp`, `src/debug/DebugContext.hpp` i `src/main.cpp`
       kompilują się w MSVC z `/W4 /permissive-` bez ostrzeżeń (w szczególności stała
-      `constexpr ImVec4 ERROR_TEXT_COLOR` i inicjalizatory desygnowane `DebugContext` z
-      polem `.shader` w kolejności deklaracji): zero ostrzeżeń
+      `ERROR_TEXT_COLOR`, dziś `inline constexpr ImVec4` w `src/debug/Theme.hpp`, i
+      inicjalizatory desygnowane `DebugContext` z polem `.shader` w kolejności deklaracji):
+      zero ostrzeżeń
 - [x] panel "Shaders" jest widoczny i pokazuje `Vertex: basic.vert`, `Fragment: basic.frag`,
       `Program: valid`, `Last load: OK`
 - [ ] panel "Shaders" daje się zadokować
@@ -823,10 +836,14 @@ nikt tam jeszcze nie nacisnął.
 - [ ] po kilku przeładowaniach w konsoli nie ma żadnej linii `[error] GL_...` (backend ImGui
       i usunięty stary program, `shader-hot-reload.md`, sekcja 6.3)
 - [ ] ścieżka z polską literą (kopia katalogu programu jak w punkcie o `Żółw` wyżej): panel
-      i podpowiedź pokazują ścieżkę bez zamknięcia programu. Zapisać, jak wyświetla się
-      polska litera (domyślna czcionka ImGui nie ma wszystkich polskich liter, więc
-      oczekiwany jest znak zastępczy). Sam start z takiego katalogu jest zmierzony, panelu w
-      nim nie oglądałem
+      i podpowiedź pokazują ścieżkę bez zamknięcia programu, a polskie litery są wyświetlone
+      poprawnie. Wcześniejsze oczekiwanie "znak zastępczy" dotyczyło domyślnej czcionki
+      ImGui i jest nieaktualne: panele mają czcionkę Atkinson Hyperlegible z polskimi
+      literami. Zmierzone jest tylko to, że czcionka je rysuje: tymczasowy napis `Zażółć
+      gęślą jaźń` z kompletem małych i wielkich liter oraz tymczasowa podpowiedź z napisem
+      `Żółw` wyglądają poprawnie na zrzucie ekranu. Sam start z takiego katalogu też jest
+      zmierzony. Otwarte zostaje obejrzenie w panelu **prawdziwej** ścieżki z polską literą,
+      czyli całej drogi przez `core::pathText`
 
 **Kamera: sterowanie i panel Camera**
 
@@ -1079,6 +1096,41 @@ Stany z czterech ostatnich punktów i widok z góry zostały osiągnięte tymcza
 w kodzie, które są już usunięte, a nie kliknięciami w panelach. Dlatego te same widżety są
 jeszcze raz na liście otwartej.
 
+Motyw paneli, czcionka i układ startowy (zmiana po M2 + M3, zmierzone 2026-10-05 na tym samym
+PC, ekran 1920 x 1080 przy skali 100%, opis w [`../modules/debug-ui.md`](../modules/debug-ui.md),
+sekcje 5.7 i 5.8):
+
+- [x] build Debug i Release generatorem Visual Studio oraz build generatorem Ninja z plikami
+      `src/debug/Theme.*` i `src/debug/PanelLayout.*`: kod wyjścia 0, zero ostrzeżeń pod
+      `/W4 /permissive-`. 87 przypadków testowych i 60858 asercji przechodzi w Debug,
+      `ctest` przechodzi w Debug i w Release
+- [x] clang-format i clang-tidy na plikach `src/debug/`: żadnej diagnostyki. Osobny
+      przebieg clang-tidy z samymi diagnostykami kompilatora clang i flagami
+      `-Wall -Wextra -Wpedantic` też nic nie zgłasza (kontrola: celowo dopisana nieużywana
+      zmienna była w tym przebiegu zgłaszana)
+- [x] katalog `assets\fonts` (czcionka, `OFL.txt`, `README.md`) trafia do kopii obok
+      `night_maze.exe` bez zmian w CMake: `copy_assets` kopiuje cały katalog `assets`
+- [x] okno 1280 x 720 po usunięciu `imgui.ini`: sześć paneli się nie zasłania i żaden nie
+      wychodzi poza okno. Renderer i Camera stoją przy lewej krawędzi, Maze i Assets przy
+      prawej, Collision i Shaders przy dolnej, między kolumnami. Panele Renderer, Camera,
+      Maze, Collision i Shaders pokazują całą zawartość bez przewijania, panel Assets się
+      przewija. Środek górnej części okna jest wolny i widać w nim scenę
+- [x] większe okno w pierwszej klatce (1560 x 860 i 1700 x 940, ustawione tymczasową zmianą
+      rozmiaru startowego): prawa kolumna stoi przy prawej krawędzi, dolny rząd przy dolnej
+- [x] polskie litery w czcionce paneli: tymczasowy napis z kompletem liter i tymczasowa
+      podpowiedź wyglądają poprawnie
+- [x] tekst błędu shadera w panelu Shaders (zepsuty `color.frag` w kopii `assets`) i wpis
+      `Failed to load` w panelu Assets (zmieniona nazwa tekstury) są czytelne, także na tle
+      białych ścian
+- [x] brak pliku czcionki i plik, który nie jest czcionką: jedna linia `[error]`, panele w
+      czcionce wbudowanej, program działa
+- [x] skala 150% symulowana mnożnikiem w kodzie: tekst i odstępy rosną, tekst jest ostry. W
+      oknie 1280 x 720 panele się wtedy nie zasłaniają, ale ich zawartość się nie mieści
+      (paski przewijania, ucięte etykiety)
+
+Tu także stany były ustawiane tymczasowymi wstawkami, już usuniętymi. Stany "pod kursorem" i
+"wciśnięty" były rysowane przez podstawienie koloru, a nie przez najechanie myszą.
+
 Obserwacja, nie pomiar wydajności: na starcie panel Renderer pokazywał około 1500 FPS w
 buildzie Debug, z synchronizacją pionową taką, jaką ustawił sterownik. Nie wyciągam z tej
 liczby żadnych wniosków: nie wiem, czy vsync był aktywny, a pomiar był jeden.
@@ -1099,18 +1151,24 @@ Przygotowanie:
 
 Start i układ paneli:
 
-- [ ] okno 1280 x 720: sześć paneli nie zasłania się nawzajem. Renderer, Camera i Shaders
-      stoją w kolumnie przy lewej krawędzi, Maze i Collision przy prawej, Assets na dole,
-      na prawo od lewej kolumny. Środek okna jest wolny. Zapisać, czy trzy bloki panelu
-      Shaders mieszczą się w nim bez przewijania
+- [x] okno 1280 x 720: sześć paneli nie zasłania się nawzajem. Renderer i Camera stoją w
+      kolumnie przy lewej krawędzi, Maze i Assets przy prawej, Collision i Shaders na dole
+      między kolumnami. Środek górnej części okna jest wolny. Trzy bloki panelu Shaders
+      mieszczą się w nim bez przewijania, dopóki żaden program nie ma błędu (zmierzone na
+      zrzucie ekranu, sekcja 12.1)
+- [ ] to samo po prawdziwym usunięciu `imgui.ini` ręką i starcie z katalogu repozytorium:
+      obejrzeć na żywo, czy tekst jest wygodny do czytania z odległości (projektor) i czy
+      najechanie myszą na suwak, przycisk i pole wyboru zmienia ich tło na ciepły brąz, a
+      panel z fokusem ma morski pasek tytułu
 - [ ] panel Camera: `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
       `Yaw` 180 (labirynt startowy: 10 na 10, ziarno 1), `Pitch` 0, `Walk speed` 3.0,
       `Sprint speed` 5.5, `Fly speed` 6.0. Kąt 180 dla ziarna 1 podał autor kodu z
       uruchomienia, żaden test go nie przypina: testy sprawdzają tylko, że kamera patrzy w
       stronę bez ściany
 - [ ] panel Maze: `Width` 10, `Height` 10, `Seed` 1, linie `In play: 10 x 10 cells, seed 1` i
-      `Walls: 121, pillars: 121`, pod nimi plan z zieloną kropką w lewym górnym rogu i
-      kreską skierowaną w dół planu (południe)
+      `Walls: 121, pillars: 121`, pod nimi plan z bursztynową kropką w lewym górnym rogu i
+      kreską skierowaną w dół planu (południe). Plan z kropką w tym miejscu jest widoczny na
+      zrzucie ekranu, wartości suwaków i linii tekstu też
 - [ ] panel Collision: `Wall boxes: 121`, `Pillar boxes: 121`, `All boxes: 242`,
       `Wall box: 0.30 m thick (the visible wall: 0.20 m)`, pudełko gracza `min: 0.70, 0.00,
       0.70` i `max: 1.30, 1.80, 1.30`
@@ -1214,9 +1272,16 @@ Okno:
 
 - [ ] zmiana rozmiaru okna myszą: obraz wypełnia okno, płytki podłogi zostają kwadratowe.
       Zapisać, co dzieje się z panelami przy prawej krawędzi, gdy okno robi się węższe
-- [ ] okno zmaksymalizowane, po usunięciu `imgui.ini` i ponownym starcie: układ startowy
-      jest liczony dla 1280 x 720, więc panele powinny stać w lewej górnej części okna, w
-      tych samych miejscach co w małym oknie, i nie zasłaniać się. Zapisać, jak to wygląda
+- [ ] okno zmaksymalizowane **po starcie**: układ startowy jest liczony raz, w pierwszej
+      klatce, z rozmiaru okna w tej chwili (1280 x 720), więc po maksymalizacji panele
+      zostają w lewej górnej części okna, w tych samych miejscach co w małym oknie.
+      Zapisać, jak to wygląda. Panele liczone od rogów większego okna widać dopiero wtedy,
+      gdy okno jest duże już w pierwszej klatce (zmierzone tymczasową zmianą rozmiaru
+      startowego, sekcja 12.1)
+- [ ] ekran ze skalą 150% (Ustawienia, Ekran, Skala): tekst paneli jest 1,5 raza większy i
+      ostry. W oknie 1280 x 720 zawartość paneli się nie mieści, po powiększeniu okna do
+      1920 x 1080 i usunięciu `imgui.ini` układ wygląda jak przy 100%. Niesprawdzone na
+      prawdziwym ekranie: ten PC ma skalę 100%
 - [ ] minimalizacja i przywrócenie w trakcie chodzenia: bez linii `[error]` i bez asercji
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza tymi wywołanymi
       celowo

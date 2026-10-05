@@ -1,0 +1,52 @@
+// Theme of the debug panels: night colours, soft metrics and the panel font.
+// See docs/modules/debug-ui.md
+#pragma once
+
+// This header shows ImGui types (ImVec4), so it includes imgui.h. Only the .cpp files of
+// src/debug include it, so the rest of the project still does not depend on ImGui.
+#include <imgui.h>
+
+#include <vector>
+
+namespace debug {
+
+/// Makes an ImGui colour from red, green and blue written as whole numbers from 0 to 255,
+/// the way colours are usually written down. ImGui wants floats from 0 to 1.
+/// alpha is the opacity: 1 hides what is behind, 0 is invisible.
+constexpr ImVec4 colorFromBytes(int red, int green, int blue, float alpha = 1.0F) {
+    constexpr float BYTE_MAX = 255.0F;
+    return {static_cast<float>(red) / BYTE_MAX, static_cast<float>(green) / BYTE_MAX,
+            static_cast<float>(blue) / BYTE_MAX, alpha};
+}
+
+// The colours below have a meaning of their own, so the panels name them directly
+// (ImGui::PushStyleColor, draw lists). All other colours of the theme are in Theme.cpp.
+
+/// Text of a failed load (Shaders and Assets panels): a soft red that stays readable on
+/// the dark panel background.
+inline constexpr ImVec4 ERROR_TEXT_COLOR = colorFromBytes(255, 150, 138);
+
+/// Walls on the plan of the Maze panel: pale stone in moonlight.
+inline constexpr ImVec4 PLAN_WALL_COLOR = colorFromBytes(176, 190, 216);
+
+/// The player on the plan of the Maze panel: the warm light of the flashlight.
+inline constexpr ImVec4 PLAN_PLAYER_COLOR = colorFromBytes(255, 184, 84);
+
+/// Sets the colours and the metrics (padding, spacing, rounding, font size) of all panels.
+///
+/// scale is the content scale of the display: 1 at 100 %, 1.5 at 150 % display scaling on
+/// Windows. All metrics and the font are multiplied by it. A value that is not positive
+/// counts as 1.
+/// Call it once, after ImGui::CreateContext and before the first frame.
+void applyTheme(float scale);
+
+/// Loads the panel font from assets/fonts into ImGui.
+///
+/// The bytes of the file are stored in fontBytes and ImGui keeps a pointer to them, so
+/// the vector must stay alive and unchanged until ImGui::DestroyContext.
+/// When the file cannot be read or is not a font, one error is logged, fontBytes is left
+/// empty and the font built into ImGui is used instead.
+/// Call it once, after ImGui::CreateContext and before the first frame.
+void loadFont(std::vector<unsigned char>& fontBytes);
+
+} // namespace debug

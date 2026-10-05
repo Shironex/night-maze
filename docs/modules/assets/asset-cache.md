@@ -609,11 +609,6 @@ Kod: [`src/debug/panels/AssetsPanel.cpp`](../../../src/debug/panels/AssetsPanel.
 ### 6.1 Stałe i funkcja główna
 
 ```cpp
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the bottom edge, right of the left column, of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{320.0F, 400.0F};
-constexpr ImVec2 FIRST_SIZE{340.0F, 310.0F};
-
 // The entries of the two lists, in the order of the enums game::ViewMode and
 // gfx::TextureFilter: the number of the chosen entry is the value of the enum. ImGui
 // wants the entries in one string, each ended by a zero character.
@@ -623,16 +618,16 @@ constexpr const char* FILTER_ITEMS = "Nearest\0Bilinear\0Trilinear\0";
 
 | Stała | Znaczenie |
 |---|---|
-| `FIRST_POSITION`, `FIRST_SIZE` | miejsce i rozmiar przy pierwszym uruchomieniu: dolna krawędź okna 1280 x 720, na prawo od lewej kolumny paneli. Działa tylko, gdy `imgui.ini` nie ma wpisu dla tego panelu |
 | `VIEW_MODE_ITEMS` | trzy pozycje listy w jednym napisie, każda zakończona znakiem zerowym (`\0`). Kolejność jest taka sama jak w wyliczeniu `game::ViewMode` (0, 1, 2), więc numer wybranej pozycji **jest** wartością wyliczenia |
 | `FILTER_ITEMS` | to samo dla `gfx::TextureFilter`: `Nearest`, `Bilinear`, `Trilinear` |
 
-Pozostałe stałe pliku: `NO_ANISOTROPY` (`1.0F`), `INDICES_PER_TRIANGLE` (3), `PREVIEW_SIZE` (`128.0F`, bok podglądu w pikselach) i `ERROR_TEXT_COLOR` (jasna czerwień, ta sama co w panelu Shaders).
+Pozostałe stałe pliku: `NO_ANISOTROPY` (`1.0F`), `INDICES_PER_TRIANGLE` (3) i `PREVIEW_SIZE` (`128.0F`, bok podglądu w pikselach). Dwie stałe, których panel używa, nie należą do niego: `ASSETS_PLACEMENT` z [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp) (miejsce i rozmiar przy pierwszym uruchomieniu: prawa krawędź okna, pod panelem Maze, [`../debug-ui.md`](../debug-ui.md), sekcja 5.7) i `ERROR_TEXT_COLOR` z [`Theme.hpp`](../../../src/debug/Theme.hpp) (łagodna czerwień motywu, ta sama co w panelu Shaders, [`../debug-ui.md`](../debug-ui.md), sekcja 5.8).
 
 ```cpp
 void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the right edge of the window, below the Maze panel (the constant
+    // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(ASSETS_PLACEMENT);
     if (ImGui::Begin("Assets")) {
         drawSettings(assets, viewMode);
         drawModels(assets);

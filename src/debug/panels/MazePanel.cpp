@@ -2,6 +2,8 @@
 // See docs/modules/game/maze-generator.md
 #include "debug/panels/MazePanel.hpp"
 
+#include "debug/PanelLayout.hpp"
+#include "debug/Theme.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
@@ -20,11 +22,6 @@ namespace debug {
 
 namespace {
 
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the top of the right edge of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{970.0F, 10.0F};
-constexpr ImVec2 FIRST_SIZE{300.0F, 430.0F};
-
 // Limits of the size sliders, in cells. The game draws every floor tile, wall and pillar
 // with its own draw call, about three per cell, so a much larger maze would make the
 // frame slow. game::Maze itself accepts up to Maze::MAX_SIZE.
@@ -33,10 +30,6 @@ constexpr int MAX_MAZE_SIZE = 40;
 
 // The seed field changes by this much for one click on its + or - button.
 constexpr std::uint32_t SEED_STEP = 1;
-
-// Colours of the plan (red, green, blue, alpha, each 0 to 255).
-constexpr ImU32 WALL_COLOR = IM_COL32(210, 210, 210, 255);
-constexpr ImU32 PLAYER_COLOR = IM_COL32(80, 255, 120, 255);
 
 // Sizes on the plan, in pixels: the dot of the player and the line that shows where the
 // camera looks.
@@ -76,6 +69,11 @@ void drawPlan(const game::MazeWorld& world, const game::Player& player,
     // with the panel and clipped to it.
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
+    // A draw list takes a colour packed into one 32 bit number. GetColorU32 packs a
+    // colour of the theme (Theme.hpp) and applies the opacity of the style to it.
+    const ImU32 wallColor = ImGui::GetColorU32(PLAN_WALL_COLOR);
+    const ImU32 playerColor = ImGui::GetColorU32(PLAN_PLAYER_COLOR);
+
     // A wall segment is a line from one grid corner to the next: half a wall length to
     // each side of its middle, along the axis it runs on.
     constexpr float HALF_WALL = game::WALL_LENGTH / 2.0F;
@@ -84,7 +82,7 @@ void drawPlan(const game::MazeWorld& world, const game::Player& player,
                                        ? glm::vec3{HALF_WALL, 0.0F, 0.0F}
                                        : glm::vec3{0.0F, 0.0F, HALF_WALL};
         drawList->AddLine(toScreen(wall.position - halfLine), toScreen(wall.position + halfLine),
-                          WALL_COLOR);
+                          wallColor);
     }
 
     // The player: a dot, and a line towards where the camera looks. Yaw 0 looks north
@@ -94,8 +92,8 @@ void drawPlan(const game::MazeWorld& world, const game::Player& player,
     const float yaw = glm::radians(camera.yawDegrees);
     const ImVec2 headingEnd{dot.x + std::sin(yaw) * HEADING_LENGTH,
                             dot.y - std::cos(yaw) * HEADING_LENGTH};
-    drawList->AddLine(dot, headingEnd, PLAYER_COLOR);
-    drawList->AddCircleFilled(dot, PLAYER_DOT_RADIUS, PLAYER_COLOR);
+    drawList->AddLine(dot, headingEnd, playerColor);
+    drawList->AddCircleFilled(dot, PLAYER_DOT_RADIUS, playerColor);
 
     // The draw list does not move the cursor. Dummy is an invisible widget of the given
     // size: it reserves the area of the plan, so the panel knows how tall its contents
@@ -108,8 +106,9 @@ void drawPlan(const game::MazeWorld& world, const game::Player& player,
 
 void drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world,
                    const game::Player& player, const scene::Camera& camera) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the top right corner of the window (the constant is in
+    // PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(MAZE_PLACEMENT);
     if (ImGui::Begin("Maze")) {
         // The three widgets edit the request, not the maze: nothing happens until one of
         // the buttons sets settings.regenerate.

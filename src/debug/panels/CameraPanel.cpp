@@ -2,6 +2,7 @@
 // See docs/modules/scene/camera-controls.md
 #include "debug/panels/CameraPanel.hpp"
 
+#include "debug/PanelLayout.hpp"
 #include "game/Player.hpp"
 #include "scene/Camera.hpp"
 
@@ -14,11 +15,6 @@
 namespace debug {
 
 namespace {
-
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the middle of the left edge of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{10.0F, 210.0F};
-constexpr ImVec2 FIRST_SIZE{300.0F, 300.0F};
 
 // How much the position changes for one pixel of dragging, in metres.
 constexpr float POSITION_DRAG_SPEED = 0.05F;
@@ -58,8 +54,9 @@ constexpr float MAX_MOVE_SPEED = 20.0F;
 } // namespace
 
 void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the left edge of the window, below the Renderer panel (the constant
+    // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(CAMERA_PLACEMENT);
     if (ImGui::Begin("Camera")) {
         ImGui::TextWrapped("Click the scene to capture the mouse, Esc releases it. While "
                            "captured the mouse looks around. Walking: W A S D walk level, "

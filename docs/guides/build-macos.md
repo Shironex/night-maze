@@ -354,10 +354,39 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
       filtering is not offered by this graphics driver.` Oba wyniki są poprawne. Błędem
       byłaby linia `[error]` z `GL_INVALID_ENUM`
 - [ ] **Retina a układ paneli**: panel Renderer pokazuje `Framebuffer` dwa razy większy niż
-      `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Pozycje startowe paneli są w
-      jednostkach okna i ułożone dla 1280 x 720, więc po usunięciu `imgui.ini` sześć paneli
-      powinno stać tak samo jak na Windowsie i nie zasłaniać się. Zapisać, czy plan w panelu
-      Maze i podglądy tekstur w panelu Assets mają poprawny rozmiar i ostrość
+      `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Miejsca startowe paneli
+      (`src/debug/PanelLayout.hpp`) są w jednostkach okna i ułożone dla 1280 x 720, więc po
+      usunięciu `imgui.ini` sześć paneli powinno stać tak samo jak na Windowsie i nie
+      zasłaniać się. Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
+      poprawny rozmiar i ostrość
+- [ ] **budowanie motywu pod clang**: `src/debug/Theme.cpp` i `src/debug/PanelLayout.cpp`
+      kompilują się z `-Wall -Wextra -Wpedantic` bez ostrzeżeń. Na Windowsie są zbudowane w
+      MSVC, a dodatkowo dziewięć plików `.cpp` z `src/debug/` przeszło bez żadnej
+      diagnostyki przez analizator składni clang z tymi trzema flagami (clang-tidy z
+      samymi diagnostykami kompilatora, w trybie zgodności z MSVC i z biblioteką
+      standardową Microsoftu). To nie to samo co Apple clang z libc++, więc punkt zostaje
+      otwarty. Miejsca do sprawdzenia: inicjalizatory desygnowane z zagnieżdżonymi klamrami
+      w stałych `..._PLACEMENT`, `std::min` z listą w klamrach, funkcja `constexpr`
+      `colorFromBytes` w nagłówku
+- [ ] **czcionka paneli**: tekst paneli jest w czcionce Atkinson Hyperlegible (zero jest
+      przekreślone, litery są proporcjonalne), a w terminalu nie ma linii `[error] Panel
+      font cannot be loaded`. Na macOS katalog `assets` obok programu jest dowiązaniem, więc
+      plik jest czytany wprost z `assets/fonts/` w repozytorium
+- [ ] **ostrość tekstu na Retinie**: czcionka ma być ostra, a nie rozciągnięta z małej
+      tekstury. Według źródeł ImGui 1.92 znaki są rysowane w gęstości framebuffera bez
+      mojego kodu. Nikt tego nie oglądał
+- [ ] **skala paneli na Retinie**: panele mają taki sam rozmiar w punktach jak na Windowsie
+      przy 100% (panel Renderer szeroki na około jedną czwartą okna 1280 x 720), a nie dwa
+      razy większy. Funkcja `ImGui_ImplGlfw_GetContentScaleForWindow` powinna zwrócić na
+      Macu 1 ([`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.4). Dwa razy
+      za duże panele oznaczałyby, że to założenie jest fałszywe
+- [ ] **polskie litery w panelu**: uruchomić program z kopii katalogu `build/debug` w
+      katalogu o nazwie z polskimi literami i najechać myszą na linię `Vertex` w panelu
+      Shaders. Oczekiwane: podpowiedź z pełną ścieżką i poprawnymi polskimi literami. Na
+      Windowsie zmierzone jest tylko to, że czcionka te litery rysuje
+- [ ] **kolory motywu**: tło paneli granatowe i lekko przezroczyste, tekst jasny, tekst
+      błędu w panelu Shaders czytelny. Kontrast jest policzony z liczb, ale ekran Maca ma
+      inny profil kolorów niż monitor, na którym motyw był oglądany
 - [ ] **linie pudełek kolizji mają 1 piksel framebuffera**: szerokość linii zostaje domyślna,
       bo profil Core na macOS nie obsługuje grubszych. Na ekranie Retina to połowa punktu.
       Zapisać, czy żółte i zielone linie są czytelne
@@ -394,8 +423,11 @@ każe odświeżyć kopię (`--target copy_assets`), na Macu nie trzeba robić ni
       uruchomić `./build/debug/night_maze`
 - [ ] start: widok z wnętrza labiryntu, tekstury stoją prosto i nie są odbite lustrzanie,
       w terminalu nie ma linii `[error]`
-- [ ] okno 1280 x 720: sześć paneli nie zasłania się nawzajem (Renderer, Camera i Shaders
-      po lewej, Maze i Collision po prawej, Assets na dole obok lewej kolumny)
+- [ ] okno 1280 x 720: sześć paneli nie zasłania się nawzajem (Renderer i Camera po lewej,
+      Maze i Assets po prawej, Collision i Shaders na dole między kolumnami). Zapisać, czy
+      panele Renderer, Camera, Maze, Collision i Shaders pokazują całą zawartość bez
+      przewijania, tak jak na Windowsie: nazwa karty Apple w panelu Renderer ma inną
+      długość
 - [ ] panel Camera: `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
       `Pitch` 0, `Walk speed` 3.0, `Sprint speed` 5.5, `Fly speed` 6.0
 - [ ] panele Maze i Collision: `In play: 10 x 10 cells, seed 1`, `Walls: 121, pillars: 121`,
@@ -438,8 +470,9 @@ każe odświeżyć kopię (`--target copy_assets`), na Macu nie trzeba robić ni
       nazwę pliku** i sprawdzić `git status`
 - [ ] zmiana rozmiaru okna, tryb pełnoekranowy macOS i powrót: obraz wypełnia okno, płytki
       podłogi zostają kwadratowe, bez linii `[error]`
-- [ ] okno powiększone na cały ekran po usunięciu `imgui.ini`: zapisać, gdzie stoją panele
-      (układ startowy jest liczony dla 1280 x 720)
+- [ ] okno powiększone na cały ekran po usunięciu `imgui.ini`: zapisać, gdzie stoją panele.
+      Układ startowy jest liczony raz, w pierwszej klatce, od rogów okna w tej chwili, więc
+      po późniejszym powiększeniu panele zostają na miejscach dla 1280 x 720
 
 ### Skróty: `make`
 

@@ -4,6 +4,7 @@
 
 #include "core/Window.hpp"
 #include "debug/DebugContext.hpp"
+#include "debug/Theme.hpp"
 #include "debug/panels/AssetsPanel.hpp"
 #include "debug/panels/CameraPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
@@ -23,13 +24,19 @@ DebugUI::DebugUI(const core::Window& window) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    ImGui::StyleColorsDark();
 
     // Platform backend: feeds GLFW input and window size into ImGui.
     // true = install GLFW callbacks (ImGui chains to callbacks that were set before).
     ImGui_ImplGlfw_InitForOpenGL(window.nativeHandle(), true);
     // Renderer backend: draws ImGui with OpenGL. The string is the GLSL version of its shaders.
     ImGui_ImplOpenGL3_Init("#version 410");
+
+    // The look of the panels. The content scale is 1 at 100 % display scaling and 1.5 at
+    // 150 % on Windows: the theme multiplies its sizes and the font by it. On macOS the
+    // function returns 1, because a Retina display is handled by the framebuffer being
+    // larger than the window, and ImGui follows that on its own.
+    applyTheme(ImGui_ImplGlfw_GetContentScaleForWindow(window.nativeHandle()));
+    loadFont(m_fontBytes);
 }
 
 DebugUI::~DebugUI() {

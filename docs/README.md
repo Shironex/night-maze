@@ -64,7 +64,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`modules/game/maze-generator.md`](modules/game/maze-generator.md) | `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `tests/Maze*.cpp`, `src/debug/panels/MazePanel.*` | Logika gry: siatka komórek ze ścianami na krawędziach, labirynt doskonały, recursive backtracker krok po kroku z przykładem, wersja iteracyjna, liczby losowe takie same na każdym systemie (`std::mt19937`, `randomBelow`, błąd reszty z dzielenia), układ w świecie (komórki, ściany, słupki, pudełka kolizji), labirynt wzorcowy w testach, panel Maze z planem z góry |
 | [`modules/game/maze-rendering.md`](modules/game/maze-rendering.md) | `src/game/MazeWorld.*`, `src/game/MazeRenderer.*`, `tests/MazeWorldTests.cpp` | 3, 4 i 5 w użyciu: od siatki komórek przez listę ścian i słupków do macierzy modelu, dlaczego macierze są liczone raz, obrót o 90 stopni dla ścian wzdłuż Z, jedno wywołanie rysujące na obiekt i jego koszt, pozycja startu i wyjścia, nowy labirynt przez `MazeSettings` |
 | [`modules/game/player.md`](modules/game/player.md) | `src/game/Player.*`, `tests/PlayerTests.cpp` | 14 (i 3) w użyciu: stan gracza, struktura `PlayerInput`, chodzenie a noclip, dlaczego chodzenie jest poziome, prędkości i normalizacja ruchu po skosie, użycie `moveAndSlide`, oczy a stopy, stały krok i interpolacja, powrót stóp na podłogę, testy |
-| [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui (Renderer, Shaders, Camera, Maze, Collision, Assets), struktura `DebugContext`, podpięcie nakładki w `main.cpp`, kto ma klawiaturę i mysz (blokady, `setMouseEnabled`), układ paneli przy pierwszym uruchomieniu, jak dodać nowy panel |
+| [`modules/debug-ui.md`](modules/debug-ui.md) | `src/debug/`, `src/main.cpp` | Narzędzie do wszystkich tematów: architektura paneli ImGui (Renderer, Shaders, Camera, Maze, Collision, Assets), struktura `DebugContext`, podpięcie nakładki w `main.cpp`, kto ma klawiaturę i mysz (blokady, `setMouseEnabled`), układ paneli przy pierwszym uruchomieniu (`PanelLayout`), motyw paneli (paleta i kontrast, odstępy, czcionka z pliku, skala ekranu), jak dodać nowy panel |
 
 ### Biblioteki (`libraries/`)
 
@@ -73,7 +73,7 @@ Każdy dokument modułu ma te same dziesięć sekcji: Po co to jest, Teoria, Jak
 | [`libraries/glfw.md`](libraries/glfw.md) | GLFW | Okno, kontekst OpenGL, wejście |
 | [`libraries/glad.md`](libraries/glad.md) | GLAD | Ładowanie funkcji OpenGL 4.1 Core |
 | [`libraries/glm.md`](libraries/glm.md) | GLM | Matematyka: wektory, macierze, przekształcenia. Używają jej `scene::Transform`, `scene::Camera`, `scene::Aabb`, układ labiryntu w `game/MazeLayout`, macierze modelu w `game/MazeWorld` i gracz w `game/Player` |
-| [`libraries/imgui.md`](libraries/imgui.md) | Dear ImGui (gałąź docking) | Panele debug: Renderer, Shaders, Camera, Maze, Collision, Assets |
+| [`libraries/imgui.md`](libraries/imgui.md) | Dear ImGui (gałąź docking) | Panele debug: Renderer, Shaders, Camera, Maze, Collision, Assets. API stylu i czcionek w wersji 1.92 |
 | [`libraries/doctest.md`](libraries/doctest.md) | doctest | Testy jednostkowe kodu bez okna: kolizji, labiryntu, `MazeWorld`, gracza, loadera OBJ i loadera obrazów. Program `night_maze_tests`, uruchamiany przez `ctest` |
 | [`libraries/stb_image.md`](libraries/stb_image.md) | stb_image | Dekodowanie plików obrazów (PNG) do tablicy pikseli. Dołącza ją tylko `assets::loadImage`, którą w programie woła `assets::AssetCache` |
 

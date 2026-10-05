@@ -3,6 +3,8 @@
 #include "debug/panels/ShadersPanel.hpp"
 
 #include "core/Paths.hpp"
+#include "debug/PanelLayout.hpp"
+#include "debug/Theme.hpp"
 #include "gfx/Shader.hpp"
 
 #include <imgui.h>
@@ -12,15 +14,6 @@
 namespace debug {
 
 namespace {
-
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the bottom of the left edge of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{10.0F, 520.0F};
-constexpr ImVec2 FIRST_SIZE{300.0F, 190.0F};
-
-// Text color of a failed load (red, green, blue, alpha): a light red that stands out from
-// the white text of the rest of the panel.
-constexpr ImVec4 ERROR_TEXT_COLOR{1.0F, 0.4F, 0.4F, 1.0F};
 
 // The lines of one program: its two files, whether it can be drawn with and how its last
 // load went.
@@ -46,7 +39,8 @@ void drawShaderStatus(const gfx::Shader& shader) {
     } else {
         ImGui::TextUnformatted("Last load: failed");
         // The message contains text written by the driver, so it goes in as an
-        // argument of "%s" and never as the format string itself.
+        // argument of "%s" and never as the format string itself. The red of the text
+        // is a colour of the theme (Theme.hpp), shared with the Assets panel.
         ImGui::PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR);
         ImGui::TextWrapped("%s", shader.lastError().c_str());
         ImGui::PopStyleColor();
@@ -56,8 +50,9 @@ void drawShaderStatus(const gfx::Shader& shader) {
 } // namespace
 
 void drawShadersPanel(std::span<gfx::Shader* const> shaders) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the bottom edge of the window, right of the Collision panel (the
+    // constant is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(SHADERS_PLACEMENT);
     if (ImGui::Begin("Shaders")) {
         // Button returns true only in the frame in which it was clicked. One button
         // reloads every program: after editing a file there is no need to know which

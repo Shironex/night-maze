@@ -47,6 +47,10 @@ night-maze/
 │   ├── extensions.json         # rekomendowane rozszerzenia
 │   └── settings.json           # clangd, presety CMake, formatowanie przy zapisie, GLSL
 ├── assets/                     # pliki wczytywane przez program w czasie działania
+│   ├── fonts/                  # czcionka paneli debug (cudzy materiał, licencja OFL)
+│   │   ├── AtkinsonHyperlegible-Regular.ttf  # Atkinson Hyperlegible 1.006, plik niezmieniony
+│   │   ├── OFL.txt                 # licencja czcionki: SIL Open Font License 1.1
+│   │   └── README.md               # skąd jest plik, wersja, suma kontrolna
 │   ├── models/                 # modele OBJ z materiałami MTL (budują je skrypty z tools/blender/)
 │   │   ├── floor_tile.obj/.mtl     # płytka podłogi 2 x 2 m
 │   │   ├── wall_pillar.obj/.mtl    # słupek na rogu siatki
@@ -91,6 +95,8 @@ night-maze/
 │   ├── debug/                  # interfejs debugowy (Dear ImGui)
 │   │   ├── DebugContext.hpp        # referencje do danych dla paneli
 │   │   ├── DebugUI.hpp/.cpp        # kontekst ImGui i cykl klatki
+│   │   ├── PanelLayout.hpp/.cpp    # układ paneli przy pierwszym uruchomieniu
+│   │   ├── Theme.hpp/.cpp          # motyw paneli: kolory, odstępy, czcionka, skala ekranu
 │   │   └── panels/
 │   │       ├── AssetsPanel.hpp/.cpp    # panel "Assets": widok, filtr, anizotropia, modele, tekstury
 │   │       ├── CameraPanel.hpp/.cpp    # panel "Camera": stopy gracza, kąty, FOV, prędkości
@@ -200,7 +206,7 @@ wypisane na początku drzewa, przed katalogami.
 |---|---|---|
 | `src/` | cały nasz kod C++ poza testami | my |
 | `tests/` | testy jednostkowe: osobny program `night_maze_tests`, który woła kod z bibliotek `engine` i `game_logic` i sprawdza wyniki ([`../libraries/doctest.md`](../libraries/doctest.md)) | my |
-| `assets/` | pliki, które program wczytuje w czasie działania: shadery GLSL, modele OBJ z materiałami MTL i tekstury PNG. Nie są kompilowane razem z programem. Krok budowania umieszcza katalog obok pliku wykonywalnego (sekcja 3.1, blok 7) | my |
+| `assets/` | pliki, które program wczytuje w czasie działania: shadery GLSL, modele OBJ z materiałami MTL, tekstury PNG i czcionka paneli debug. Nie są kompilowane razem z programem. Krok budowania umieszcza katalog obok pliku wykonywalnego (sekcja 3.1, blok 7) | my, z jednym wyjątkiem: `assets/fonts/` to cudzy materiał. Czcionka Atkinson Hyperlegible (Braille Institute of America) jest na licencji SIL Open Font License 1.1, a plik licencji `OFL.txt` leży obok niej i musi tam zostać |
 | `cmake/` | pomocnicze pliki CMake dołączane przez `include(...)` | my |
 | `external/` | cudzy kod trzymany w repozytorium (`glad/`) oraz plik, który kompiluje pobraną bibliotekę stb_image (`stb/`) | `glad/`: generator GLAD, nie edytujemy. `stb/`: dwa małe pliki napisane ręcznie |
 | `docs/` | dokumentacja do nauki | my |
@@ -245,7 +251,10 @@ wypisane na początku drzewa, przed katalogami.
 | `assets/shaders/color.vert`, `color.frag` | para shaderów jednego koloru dla linii pudełek kolizji: atrybut pozycji, trzy macierze i uniform `uColor` | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 4 |
 | `assets/models/*.obj`, `*.mtl`, `assets/textures/*.png` | trzy modele (`floor_tile`, `wall_straight`, `wall_pillar`), każdy z jednym materiałem, i dwie tekstury (`floor_stone.png`, `wall_stone.png`; ścianę i słupek pokrywa ta sama). Budują je skrypty z `tools/blender/` | [`blender.md`](blender.md), [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele czytają albo edytują, 14 pól (`time`, `window`, `clearColor`, `shader`, `camera`, `mouseSensitivity`, `texturedShader`, `colorShader`, `player`, `mazeSettings`, `mazeWorld`, `assets`, `viewMode`, `drawColliders`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5 |
-| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, `draw`, `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony) | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
+| `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, zastosowanie motywu i wczytanie czcionki, bajty czcionki, `draw`, `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony) | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
+| `src/debug/Theme.*` | motyw paneli: `debug::colorFromBytes`, stałe `ERROR_TEXT_COLOR`, `PLAN_WALL_COLOR` i `PLAN_PLAYER_COLOR`, `debug::applyTheme` (tabela kolorów, metryki, skala ekranu) i `debug::loadFont` (czcionka z `assets/fonts`, z czcionką wbudowaną jako wyjściem awaryjnym) | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8 |
+| `src/debug/PanelLayout.*` | układ paneli przy pierwszym uruchomieniu: struktura `debug::PanelPlacement`, sześć stałych `..._PLACEMENT` i `debug::placePanelOnFirstUse` | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7 |
+| `assets/fonts/AtkinsonHyperlegible-Regular.ttf`, `OFL.txt`, `README.md` | czcionka paneli debug (Atkinson Hyperlegible 1.006, 54 348 bajtów, plik niezmieniony), jej licencja SIL Open Font License 1.1 i opis źródła z sumą kontrolną. Cudzy materiał: nie jest kodem i nie powstaje ze skryptów projektu | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.5 |
 | `src/debug/panels/CameraPanel.*` | `debug::drawCameraPanel`: panel "Camera" (linia trybu, stopy gracza, oko tylko do odczytu, yaw, pitch, FOV, bliska i daleka płaszczyzna, czułość myszy, prędkość chodu, sprintu i lotu) | [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcja 6 |
 | `src/debug/panels/MazePanel.*` | `debug::drawMazePanel`: panel "Maze" (suwaki rozmiaru, ziarno, przyciski "Regenerate" i "Random seed", liczby ścian i słupków, plan labiryntu z góry z graczem) | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 6 |
 | `src/debug/panels/CollisionPanel.*` | `debug::drawCollisionPanel`: panel "Collision" (pola wyboru "Draw collision boxes" i "Noclip (key N)", liczby pudełek, pudełko gracza) | [`../modules/scene/collision.md`](../modules/scene/collision.md), sekcja 6 |
@@ -372,8 +381,13 @@ Jak to widać w kodzie:
   dołącza do tego `core/GlCheck.hpp`, `core/Paths.hpp`, `game/ShaderUniforms.hpp` i
   `<GLFW/glfw3.h>`, ten ostatni tylko dla stałych klawiszy i przycisku myszy (`GLFW_KEY_W`,
   `GLFW_KEY_N`, `GLFW_MOUSE_BUTTON_LEFT`): o stan wejścia pyta wyłącznie `core::Input`.
-- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`, nagłówki
-  sześciu paneli i nagłówki ImGui.
+- `src/debug/DebugUI.cpp` dołącza `core/Window.hpp`, `debug/DebugContext.hpp`,
+  `debug/Theme.hpp`, nagłówki sześciu paneli i nagłówki ImGui.
+- `src/debug/Theme.cpp` dołącza `core/Log.hpp` i `core/Paths.hpp` (błąd wczytania czcionki i
+  ścieżka do `assets/fonts`). `Theme.hpp` i `PanelLayout.hpp` dołączają `<imgui.h>`, bo
+  pokazują typy `ImVec4` i `ImVec2`: to jedyne nagłówki projektu z nagłówkiem ImGui i
+  dołączają je tylko pliki `.cpp` z `src/debug/`. Każdy z sześciu plików paneli dołącza
+  `debug/PanelLayout.hpp`, a panele Shaders, Assets i Maze także `debug/Theme.hpp`.
 - `src/debug/panels/CameraPanel.cpp` dołącza `game/Player.hpp`, `scene/Camera.hpp` i
   `<glm/gtc/type_ptr.hpp>`. Panele Maze i Collision dołączają `game/MazeLayout.hpp`,
   `game/MazeWorld.hpp` i `game/Player.hpp` (Maze także `scene/Camera.hpp`, Collision
@@ -665,6 +679,10 @@ add_executable(night_maze
     src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
+    src/debug/PanelLayout.cpp
+    src/debug/PanelLayout.hpp
+    src/debug/Theme.cpp
+    src/debug/Theme.hpp
     src/debug/panels/AssetsPanel.cpp
     src/debug/panels/AssetsPanel.hpp
     src/debug/panels/CameraPanel.cpp
@@ -1386,13 +1404,15 @@ Powstaje w **katalogu roboczym** procesu: przy uruchomieniu `./build/debug/night
 katalogu repozytorium jest to katalog główny repozytorium. Jest w `.gitignore`. Usunięcie go
 przywraca domyślny układ paneli. Więcej w [`../libraries/imgui.md`](../libraries/imgui.md).
 
-Od M2 + M3 każdy z sześciu paneli ma w kodzie pozycję i rozmiar startowy, ułożone dla okna
-1280 x 720 (stałe `FIRST_POSITION` i `FIRST_SIZE` w plikach `src/debug/panels/*.cpp`,
-ustawiane z warunkiem `ImGuiCond_FirstUseEver`). Ten warunek działa tylko wtedy, gdy
-`imgui.ini` nie ma jeszcze wpisu dla danego panelu. Plik zapisany przez starszą wersję
-programu ma wpisy paneli Renderer, Shaders i Camera, więc te trzy panele zostają tam, gdzie
-były, a nowy układ dostają tylko panele bez wpisu. Żeby zobaczyć domyślny układ w całości,
+Od M2 + M3 każdy z sześciu paneli ma w kodzie miejsce i rozmiar startowy, ułożone dla okna
+1280 x 720. Dziś to sześć stałych `..._PLACEMENT` w jednym pliku,
+`src/debug/PanelLayout.hpp`, ustawianych przez `placePanelOnFirstUse` z warunkiem
+`ImGuiCond_FirstUseEver` i liczonych od rogów okna ([`../modules/debug-ui.md`](../modules/debug-ui.md),
+sekcja 5.7). Ten warunek działa tylko wtedy, gdy `imgui.ini` nie ma jeszcze wpisu dla danego
+panelu. Plik zapisany przez starszą wersję programu trzyma panele na starych miejscach i w
+starych rozmiarach, dobranych dla wcześniejszej czcionki. Żeby zobaczyć domyślny układ,
 trzeba przed uruchomieniem usunąć `imgui.ini` z katalogu, z którego program startuje.
+Kolorów, odstępów ani czcionki w tym pliku nie ma: ustawia je kod przy każdym starcie.
 
 ### 4.4. Pozostałe pliki lokalne
 
@@ -1501,6 +1521,9 @@ pole w `debug::DebugContext` i linia w `main.cpp`). Opisuje je
    zamkniętym programie ([`build-windows.md`](build-windows.md), sekcja 7).
 6. **Opisz plik** w dokumencie modułu (sekcja 4 szablonu, "Shadery") i w drzewie na początku
    tego dokumentu.
+7. **Cudzy plik** (czcionka, obraz, model, którego nie zrobiłem sam) trafia do repozytorium
+   tylko razem z plikiem licencji i z plikiem `README.md`, w którym jest źródło, wersja i
+   data pobrania. Wzór: `assets/fonts/`.
 
 ### Nowa biblioteka zewnętrzna
 

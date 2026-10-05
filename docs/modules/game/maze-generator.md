@@ -906,11 +906,6 @@ void drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world,
 Z sygnatury widać najważniejszą własność panelu: **nie może zmienić labiryntu**. Ma do niego stałą referencję. Może tylko zapisać prośbę.
 
 ```cpp
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the top of the right edge of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{970.0F, 10.0F};
-constexpr ImVec2 FIRST_SIZE{300.0F, 430.0F};
-
 // Limits of the size sliders, in cells. The game draws every floor tile, wall and pillar
 // with its own draw call, about three per cell, so a much larger maze would make the
 // frame slow. game::Maze itself accepts up to Maze::MAX_SIZE.
@@ -919,10 +914,6 @@ constexpr int MAX_MAZE_SIZE = 40;
 
 // The seed field changes by this much for one click on its + or - button.
 constexpr std::uint32_t SEED_STEP = 1;
-
-// Colours of the plan (red, green, blue, alpha, each 0 to 255).
-constexpr ImU32 WALL_COLOR = IM_COL32(210, 210, 210, 255);
-constexpr ImU32 PLAYER_COLOR = IM_COL32(80, 255, 120, 255);
 
 // Sizes on the plan, in pixels: the dot of the player and the line that shows where the
 // camera looks.
@@ -936,17 +927,18 @@ constexpr float PLAN_PADDING = 4.0F;
 
 | Stała | Znaczenie |
 |---|---|
-| `FIRST_POSITION`, `FIRST_SIZE` | miejsce i rozmiar przy pierwszym uruchomieniu: prawa krawędź okna 1280 x 720, od góry. Wpis w `imgui.ini` ma pierwszeństwo |
+| `MAZE_PLACEMENT` (z [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), nie z tego pliku) | miejsce i rozmiar przy pierwszym uruchomieniu: prawy górny róg okna. Wpis w `imgui.ini` ma pierwszeństwo ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7) |
 | `MIN_MAZE_SIZE = 2`, `MAX_MAZE_SIZE = 40` | granice suwaków rozmiaru. Górna jest granicą wygody, nie poprawności: `Maze` przyjmuje do 256, ale gra rysuje każdy obiekt osobnym wywołaniem (około trzech na komórkę), a 40 na 40 to już 4962 wywołania ([`maze-rendering.md`](maze-rendering.md), sekcja 2). Dolnej granicy 2 komentarz w kodzie nie uzasadnia. Moje odczytanie: suwak pomija labirynt z jedną komórką i korytarze o szerokości jednej komórki, których używają testy, a które do pokazu się nie nadają |
 | `SEED_STEP = 1` | o ile zmienia ziarno kliknięcie w przycisk plus albo minus obok pola. Typ musi być taki sam jak typ ziarna |
-| `IM_COL32(r, g, b, a)` | makro ImGui pakujące cztery bajty koloru w jedną liczbę 32-bitową (`ImU32`): w takiej postaci kolory przyjmuje lista rysowania |
+| `PLAN_WALL_COLOR`, `PLAN_PLAYER_COLOR` (z [`Theme.hpp`](../../../src/debug/Theme.hpp), nie z tego pliku) | kolory planu jako kolory motywu: ściany w bladym kolorze kamienia w świetle księżyca `colorFromBytes(176, 190, 216)`, gracz w bursztynie latarki `colorFromBytes(255, 184, 84)` ([`../debug-ui.md`](../debug-ui.md), sekcja 5.8) |
 | `PLAYER_DOT_RADIUS`, `HEADING_LENGTH`, `PLAN_PADDING` | rozmiary w pikselach ekranu, niezależne od skali planu: kropka gracza ma zawsze 3 piksele promienia, nawet w labiryncie 40 na 40 |
 
 ### 6.2 Widżety: prośba o nowy labirynt
 
 ```cpp
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the top right corner of the window (the constant is in
+    // PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(MAZE_PLACEMENT);
     if (ImGui::Begin("Maze")) {
         // The three widgets edit the request, not the maze: nothing happens until one of
         // the buttons sets settings.regenerate.
@@ -1065,6 +1057,11 @@ Przykład: panel o szerokości 300 pikseli ma około 284 pikseli na zawartość 
     // The draw list of the panel takes shapes in screen coordinates. They are drawn
     // with the panel and clipped to it.
     ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    // A draw list takes a colour packed into one 32 bit number. GetColorU32 packs a
+    // colour of the theme (Theme.hpp) and applies the opacity of the style to it.
+    const ImU32 wallColor = ImGui::GetColorU32(PLAN_WALL_COLOR);
+    const ImU32 playerColor = ImGui::GetColorU32(PLAN_PLAYER_COLOR);
 ```
 
 | Linia | Znaczenie |
@@ -1074,6 +1071,7 @@ Przykład: panel o szerokości 300 pikseli ma około 284 pikseli na zawartość 
 | `[scale, origin](const glm::vec3& point) { ... }` | lambda: mała funkcja zdefiniowana w miejscu użycia. W nawiasach kwadratowych stoi lista przechwyceń: lambda dostaje kopie `scale` i `origin` i może ich używać w środku |
 | `origin.x + point.x * scale`, `origin.y + point.z * scale` | przeliczenie metrów na piksele. Składowa y punktu (wysokość) jest pomijana: z góry jej nie widać |
 | `ImGui::GetWindowDrawList()` | lista rysowania bieżącego panelu. Przyjmuje kształty we współrzędnych ekranu. Są rysowane razem z panelem i przycinane do jego obszaru |
+| `ImGui::GetColorU32(PLAN_WALL_COLOR)` | lista rysowania przyjmuje kolor jako jedną liczbę 32-bitową (`ImU32`: po jednym bajcie na czerwony, zielony, niebieski i alfę), a stałe motywu to cztery liczby `float` (`ImVec4`). Funkcja przelicza jedno na drugie i mnoży alfę przez przezroczystość ze stylu, więc plan wewnątrz wyszarzonego bloku też byłby wyszarzony. Wynik zależy od stylu, dlatego jest liczony w funkcji, a nie jako stała `constexpr` |
 
 ```cpp
     constexpr float HALF_WALL = game::WALL_LENGTH / 2.0F;
@@ -1082,7 +1080,7 @@ Przykład: panel o szerokości 300 pikseli ma około 284 pikseli na zawartość 
                                        ? glm::vec3{HALF_WALL, 0.0F, 0.0F}
                                        : glm::vec3{0.0F, 0.0F, HALF_WALL};
         drawList->AddLine(toScreen(wall.position - halfLine), toScreen(wall.position + halfLine),
-                          WALL_COLOR);
+                          wallColor);
     }
 ```
 
@@ -1103,8 +1101,8 @@ Segment w `(3, 0, 4)` o osi `AlongX` to odcinek od `(2, 0, 4)` do `(4, 0, 4)`. S
     const float yaw = glm::radians(camera.yawDegrees);
     const ImVec2 headingEnd{dot.x + std::sin(yaw) * HEADING_LENGTH,
                             dot.y - std::cos(yaw) * HEADING_LENGTH};
-    drawList->AddLine(dot, headingEnd, PLAYER_COLOR);
-    drawList->AddCircleFilled(dot, PLAYER_DOT_RADIUS, PLAYER_COLOR);
+    drawList->AddLine(dot, headingEnd, playerColor);
+    drawList->AddCircleFilled(dot, PLAYER_DOT_RADIUS, playerColor);
 ```
 
 | Linia | Znaczenie |

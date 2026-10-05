@@ -154,20 +154,14 @@ Dwie ostatnie linie bloku odpowiadają na dwa różne pytania (tabela stanów w 
 
 ### 6.1 Kod panelu
 
-Stałe w anonimowej przestrzeni nazw [`ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp):
+Plik [`ShadersPanel.cpp`](../../../src/debug/panels/ShadersPanel.cpp) nie ma własnych stałych. Dwie, których używa, są wspólne dla paneli i leżą w nagłówkach modułu `debug`:
 
-```cpp
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the bottom of the left edge of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{10.0F, 520.0F};
-constexpr ImVec2 FIRST_SIZE{300.0F, 190.0F};
+| Stała | Plik | Znaczenie |
+|---|---|---|
+| `SHADERS_PLACEMENT` | [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp) | miejsce i rozmiar panelu przy pierwszym uruchomieniu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7) |
+| `ERROR_TEXT_COLOR` | [`Theme.hpp`](../../../src/debug/Theme.hpp) | kolor tekstu błędu: łagodna czerwień `colorFromBytes(255, 150, 138)`, ta sama co w panelu Assets ([`../debug-ui.md`](../debug-ui.md), sekcja 5.8) |
 
-// Text color of a failed load (red, green, blue, alpha): a light red that stands out from
-// the white text of the rest of the panel.
-constexpr ImVec4 ERROR_TEXT_COLOR{1.0F, 0.4F, 0.4F, 1.0F};
-```
-
-Funkcja pomocnicza w tej samej przestrzeni nazw, która rysuje blok jednego programu:
+Funkcja pomocnicza w anonimowej przestrzeni nazw pliku, która rysuje blok jednego programu:
 
 ```cpp
 // The lines of one program: its two files, whether it can be drawn with and how its last
@@ -194,7 +188,8 @@ void drawShaderStatus(const gfx::Shader& shader) {
     } else {
         ImGui::TextUnformatted("Last load: failed");
         // The message contains text written by the driver, so it goes in as an
-        // argument of "%s" and never as the format string itself.
+        // argument of "%s" and never as the format string itself. The red of the text
+        // is a colour of the theme (Theme.hpp), shared with the Assets panel.
         ImGui::PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR);
         ImGui::TextWrapped("%s", shader.lastError().c_str());
         ImGui::PopStyleColor();
@@ -206,8 +201,9 @@ I sama funkcja panelu:
 
 ```cpp
 void drawShadersPanel(std::span<gfx::Shader* const> shaders) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the bottom edge of the window, right of the Collision panel (the
+    // constant is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(SHADERS_PLACEMENT);
     if (ImGui::Begin("Shaders")) {
         // Button returns true only in the frame in which it was clicked. One button
         // reloads every program: after editing a file there is no need to know which
@@ -235,7 +231,7 @@ void drawShadersPanel(std::span<gfx::Shader* const> shaders) {
 |---|---|
 | `std::span<gfx::Shader* const> shaders` | `std::span` (C++20) to widok na ciąg elementów leżących obok siebie: wskaźnik i liczba elementów, bez kopiowania. Elementem jest `gfx::Shader* const`, czyli **stały wskaźnik na niestały obiekt**: panel nie może podmienić wskaźników na liście, ale może wołać `reload()`, które zmienia obiekt. `const gfx::Shader*` znaczyłoby coś odwrotnego i `reload()` by się nie skompilowało |
 | lista wskaźników, a nie referencji | referencja nie może być elementem tablicy ani `std::span`, więc lista trzyma adresy. Umowa z nagłówka: żaden wskaźnik nie jest pusty. Funkcja tego nie sprawdza (pułapka 8) |
-| `ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver)` i `SetNextWindowSize(...)` | położenie i rozmiar panelu przy pierwszym uruchomieniu: lewy dolny róg okna 1280 x 720, pod panelem Camera. `ImGuiCond_FirstUseEver` znaczy, że wywołanie liczy się tylko wtedy, gdy w `imgui.ini` nie ma jeszcze wpisu dla tego panelu. Potem o położeniu decyduje użytkownik ([`../debug-ui.md`](../debug-ui.md)) |
+| `placePanelOnFirstUse(SHADERS_PLACEMENT)` | położenie i rozmiar panelu przy pierwszym uruchomieniu: dolna krawędź okna, na prawo od panelu Collision. Funkcja woła `ImGui::SetNextWindowPos` i `ImGui::SetNextWindowSize` z warunkiem `ImGuiCond_FirstUseEver`, czyli wywołanie liczy się tylko wtedy, gdy w `imgui.ini` nie ma jeszcze wpisu dla tego panelu. Potem o położeniu decyduje użytkownik ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7) |
 | `if (ImGui::Button("Reload shaders"))` | tryb natychmiastowy: `Button` rysuje przycisk i zwraca `true` tylko w tej klatce, w której został kliknięty. Nie ma callbacka ani zdarzenia ([`../../libraries/imgui.md`](../../libraries/imgui.md)) |
 | `for (gfx::Shader* shader : shaders) { shader->reload(); }` | przeładowanie **wszystkich** programów po kolei. Wynik `reload()` (`bool`) jest ignorowany: te same informacje są w `lastError()` i `isValid()`, które pętla niżej czyta już po przeładowaniu, jeszcze w tej samej klatce. Nieudane przeładowanie jednego programu nie przerywa pętli |
 | `for (const gfx::Shader* shader : shaders)` | druga pętla tylko czyta, więc jej zmienna wskazuje na obiekt stały, a `drawShaderStatus` przyjmuje `const gfx::Shader&` |
@@ -255,12 +251,12 @@ Panel pierwotnie (M1) pokazywał jeden program i przyjmował `gfx::Shader& shade
 | `ImGui::SetItemTooltip("%s", ...)` | Dotyczy **poprzedniego** widżetu, czyli linii z nazwą pliku. Podpowiedź pojawia się, gdy kursor chwilę nad nią stoi |
 | `shader.isValid() ? "valid" : "not valid"` | Operator warunkowy wybiera jeden z dwóch literałów. Oba są stałymi napisami C, więc pasują do `%s` |
 | `ImGui::TextUnformatted("Last load: OK")` | Stały tekst bez znaczników `%`. `TextUnformatted` wypisuje napis dokładnie tak, jak go dostał |
-| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | Zmiana koloru tekstu dla widżetów między tymi dwiema liniami. Każde `Push` musi mieć swoje `Pop`, inaczej kolor zostałby na resztę klatki, a ImGui zgłasza niedopasowanie jako błąd. Kolor jest nazwaną stałą, a nie czterema liczbami w środku wywołania |
+| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | Zmiana koloru tekstu dla widżetów między tymi dwiema liniami. Każde `Push` musi mieć swoje `Pop`, inaczej kolor zostałby na resztę klatki, a ImGui zgłasza niedopasowanie jako błąd. Kolor jest nazwaną stałą motywu z `Theme.hpp`, a nie czterema liczbami w środku wywołania: ta sama czerwień jest w panelu Assets, a jej kontrast z tłem panelu jest policzony ([`../debug-ui.md`](../debug-ui.md), sekcja 5.8) |
 | `ImGui::TextWrapped("%s", shader.lastError().c_str())` | Komunikat ma kilka linii i długą ścieżkę, więc jest zawijany do szerokości panelu. `"%s"` jest tu konieczne (niżej) |
 
 **Dlaczego `"%s"`, a nie sam napis.** `ImGui::Text` i `ImGui::TextWrapped` działają jak `printf`: pierwszy argument to **napis formatujący**, w którym znak `%` rozpoczyna znacznik. Tekst błędu pochodzi od sterownika karty i może zawierać znak `%` (na przykład w nazwie albo w komunikacie). Podany jako napis formatujący kazałby funkcji czytać argumenty, których nie ma, co jest niezdefiniowanym zachowaniem. Podany jako argument dla `"%s"` jest tylko kopiowany. Kompilator też tego pilnuje: `ImGui::TextWrapped(shader.lastError().c_str())` daje w clang ostrzeżenie `format string is not a string literal (potentially insecure)`.
 
-**Rozmiar panelu.** Jeden blok to cztery linie tekstu i kreska. Trzy bloki z przyciskiem nie mieszczą się w 190 pikselach wysokości z `FIRST_SIZE`, więc przy pierwszym uruchomieniu część panelu jest poniżej jego dolnej krawędzi: trzeba go przewinąć albo powiększyć. To wniosek z liczby linii, nie obserwacja z ekranu.
+**Rozmiar panelu.** Jeden blok to cztery linie tekstu i kreska. Wysokość z `SHADERS_PLACEMENT` (336 jednostek) jest dobrana tak, żeby przycisk i trzy bloki bez błędów mieściły się w całości: zmierzona wysokość zawartości to 334 (Windows, 2026-10-05, okno 1280 x 720, skala 100%). Tekst błędu dokłada kilka linii, więc po nieudanym przeładowaniu panel dostaje pasek przewijania. Błąd w pierwszym programie (`basic`) widać bez przewijania, bo jego blok jest na górze.
 
 Panel trzyma się zasad wszystkich paneli ([`../debug-ui.md`](../debug-ui.md)): jest wolną funkcją bez stanu, nie ma zmiennych globalnych ani `static`, i sam nie woła żadnej funkcji `gl*`. Wywołania OpenGL wykonuje `Shader::reload`, panel tylko o nie prosi.
 

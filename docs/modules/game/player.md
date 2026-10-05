@@ -597,7 +597,7 @@ Gracz nie ma własnego panelu. Jego pola pokazują i zmieniają dwa panele:
 | Collision | `Noclip (key N)` | pole wyboru: to samo pole `player.noclip`, które przełącza klawisz N |
 | Collision | `Player box` z liniami `min:` i `max:` | tylko do odczytu: wynik `player.box()` |
 | Collision | `Draw collision boxes` | rysuje pudełko gracza zielonymi liniami (i pudełka labiryntu żółtymi) |
-| Maze | plan z góry | zielona kropka w miejscu gracza i kreska w stronę, w którą patrzy kamera |
+| Maze | plan z góry | bursztynowa kropka w miejscu gracza i kreska w stronę, w którą patrzy kamera |
 
 Kod panelu Camera linia po linii jest w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6. Panel Collision opisuje [`../scene/collision.md`](../scene/collision.md), sekcja 6, a plan w panelu Maze [`maze-generator.md`](maze-generator.md), sekcja 6.
 

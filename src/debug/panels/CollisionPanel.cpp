@@ -2,6 +2,7 @@
 // See docs/modules/scene/collision.md
 #include "debug/panels/CollisionPanel.hpp"
 
+#include "debug/PanelLayout.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
@@ -11,18 +12,10 @@
 
 namespace debug {
 
-namespace {
-
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the bottom of the right edge of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{970.0F, 450.0F};
-constexpr ImVec2 FIRST_SIZE{300.0F, 260.0F};
-
-} // namespace
-
 void drawCollisionPanel(const game::MazeWorld& world, game::Player& player, bool& drawColliders) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the bottom edge of the window, right of the left column (the
+    // constant is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(COLLISION_PLACEMENT);
     if (ImGui::Begin("Collision")) {
         // Checkbox reads and writes a bool through the pointer.
         ImGui::Checkbox("Draw collision boxes", &drawColliders);

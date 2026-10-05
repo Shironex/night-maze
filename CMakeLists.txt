@@ -112,6 +112,10 @@ add_executable(night_maze
     src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
+    src/debug/PanelLayout.cpp
+    src/debug/PanelLayout.hpp
+    src/debug/Theme.cpp
+    src/debug/Theme.hpp
     src/debug/panels/AssetsPanel.cpp
     src/debug/panels/AssetsPanel.hpp
     src/debug/panels/CameraPanel.cpp

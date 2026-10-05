@@ -2,6 +2,8 @@
 // See docs/modules/debug-ui.md
 #pragma once
 
+#include <vector>
+
 namespace core {
 class Window;
 } // namespace core
@@ -16,7 +18,8 @@ struct DebugContext;
 /// It must be destroyed before the window, because shutdown needs the OpenGL context.
 class DebugUI {
 public:
-    /// Initializes ImGui with the GLFW and OpenGL 3 backends for this window.
+    /// Initializes ImGui with the GLFW and OpenGL 3 backends for this window, then applies
+    /// the theme and loads the panel font (Theme.hpp).
     explicit DebugUI(const core::Window& window);
     ~DebugUI();
 
@@ -50,6 +53,10 @@ public:
 
 private:
     bool m_visible = true;
+    // The bytes of the panel font file. ImGui only keeps a pointer to them, so they live
+    // here. The body of the destructor destroys the ImGui context first and the members
+    // are destroyed after it, so the bytes outlive every use of the pointer.
+    std::vector<unsigned char> m_fontBytes;
 };
 
 } // namespace debug

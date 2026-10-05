@@ -4,6 +4,8 @@
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
+#include "debug/PanelLayout.hpp"
+#include "debug/Theme.hpp"
 #include "game/MazeRenderer.hpp"
 #include "gfx/Texture2D.hpp"
 
@@ -16,11 +18,6 @@
 namespace debug {
 
 namespace {
-
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the bottom edge, right of the left column, of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{320.0F, 400.0F};
-constexpr ImVec2 FIRST_SIZE{340.0F, 310.0F};
 
 // The entries of the two lists, in the order of the enums game::ViewMode and
 // gfx::TextureFilter: the number of the chosen entry is the value of the enum. ImGui
@@ -37,9 +34,6 @@ constexpr std::uint32_t INDICES_PER_TRIANGLE = 3;
 
 // Side of the square preview of a texture, in pixels.
 constexpr float PREVIEW_SIZE = 128.0F;
-
-// Text color of a failed load, the same light red as in the Shaders panel.
-constexpr ImVec4 ERROR_TEXT_COLOR{1.0F, 0.4F, 0.4F, 1.0F};
 
 // One line with the file name. The full path appears as a tooltip when the mouse rests
 // on the line. ImGui expects UTF-8, which core::pathText returns.
@@ -130,6 +124,8 @@ void drawFailures(const assets::AssetCache& assets) {
         return;
     }
     ImGui::SeparatorText("Failed to load");
+    // The red of the text is a colour of the theme (Theme.hpp), shared with the Shaders
+    // panel.
     ImGui::PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR);
     for (const std::filesystem::path& path : assets.failedPaths()) {
         drawFileName(path);
@@ -140,8 +136,9 @@ void drawFailures(const assets::AssetCache& assets) {
 } // namespace
 
 void drawAssetsPanel(assets::AssetCache& assets, game::ViewMode& viewMode) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the right edge of the window, below the Maze panel (the constant
+    // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(ASSETS_PLACEMENT);
     if (ImGui::Begin("Assets")) {
         drawSettings(assets, viewMode);
         drawModels(assets);

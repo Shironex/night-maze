@@ -320,11 +320,6 @@ PRD w sekcji 10 wymienia dla panelu Camera: "Pozycja, FOV, czułość myszy, try
 ### 6.1 Kod panelu
 
 ```cpp
-// Where the panel appears and how big it is the first time the program runs (later ImGui
-// remembers it in imgui.ini): the middle of the left edge of a 1280 x 720 window.
-constexpr ImVec2 FIRST_POSITION{10.0F, 210.0F};
-constexpr ImVec2 FIRST_SIZE{300.0F, 300.0F};
-
 // How much the position changes for one pixel of dragging, in metres.
 constexpr float POSITION_DRAG_SPEED = 0.05F;
 
@@ -365,8 +360,9 @@ Uwaga do ostatniego komentarza: liczby są poprawne (20 m/s razy 1/120 s to oko�
 
 ```cpp
 void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity) {
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    // First run only: the left edge of the window, below the Renderer panel (the constant
+    // is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
+    placePanelOnFirstUse(CAMERA_PLACEMENT);
     if (ImGui::Begin("Camera")) {
         ImGui::TextWrapped("Click the scene to capture the mouse, Esc releases it. While "
                            "captured the mouse looks around. Walking: W A S D walk level, "
@@ -422,7 +418,7 @@ void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSe
 
 | Element | Znaczenie |
 |---|---|
-| `FIRST_POSITION`, `FIRST_SIZE` | miejsce i rozmiar panelu przy pierwszym uruchomieniu: lewa krawędź okna 1280 x 720, pod panelem Renderer. Liczą się tylko wtedy, gdy plik `imgui.ini` nie ma jeszcze wpisu dla tego panelu ([`../debug-ui.md`](../debug-ui.md), sekcja 5) |
+| `placePanelOnFirstUse(CAMERA_PLACEMENT)` | miejsce i rozmiar panelu przy pierwszym uruchomieniu: lewa krawędź okna, pod panelem Renderer. Stała `CAMERA_PLACEMENT` leży w [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp) razem z pięcioma pozostałymi. Wysokość panelu (456 jednostek) mieści całą zawartość, która ma 452. Wywołanie liczy się tylko wtedy, gdy plik `imgui.ini` nie ma jeszcze wpisu dla tego panelu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7) |
 | stałe `MIN_...` i `MAX_...` | granice suwaków, nazwane i opisane w jednym miejscu, w anonimowej przestrzeni nazw pliku. Bez nich w wywołaniach stałyby gołe liczby |
 | `drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity)` | panel dostaje dokładnie to, co edytuje: trzy referencje bez `const`. W M1 trzecim parametrem była prędkość ruchu, teraz prędkości są polami gracza |
 | `ImGui::SetNextWindowPos(..., ImGuiCond_FirstUseEver)` i `SetNextWindowSize` | dotyczą panelu otwieranego przez najbliższe `Begin`. Warunek `FirstUseEver`: tylko gdy ImGui nie zna jeszcze tego panelu |
@@ -486,7 +482,7 @@ Program uruchomiony, panele widoczne. Tego scenariusza nikt jeszcze nie przeszed
 7. **Obrót myszą, gdy kursor jest nad panelem.** Bez blokady myszy przeciąganie suwaka w panelu obracałoby kamerę, a kliknięcie w panel przechwytywałoby kursor. Gra pyta o mysz wyłącznie przez `input()`, a `main.cpp` blokuje te odpowiedzi, gdy myszy używa ImGui. W drugą stronę działa `DebugUI::setMouseEnabled`: przy przechwyconym kursorze panele nie widzą myszy ([`../debug-ui.md`](../debug-ui.md), sekcja 5).
 8. **Interpolacja kątów "przy okazji".** Yaw zawija się z 359 do 0. Zwykłe `mix(359, 1, 0,5)` daje 180, czyli obrót w przeciwną stronę. W projekcie kąty nie są interpolowane (zmieniają się raz na klatkę), ale kto przeniesie obrót do `onUpdate`, trafi na ten problem.
 9. **Kąty zmienione w tej klatce a ruch.** Obrót jest w `onRender`, czyli po krokach symulacji tej klatki. Gracz idzie więc w kierunku z poprzedniej klatki. Różnica to jedna klatka i nie jest błędem, ale wyjaśnia, dlaczego test ruchu podaje yaw jako parametr, a nie czyta go z kamery.
-10. **Panel nie stoi tam, gdzie mówi kod.** `FIRST_POSITION` i `FIRST_SIZE` działają tylko przy pierwszym uruchomieniu. Jeśli w katalogu roboczym leży `imgui.ini` z wpisem `[Window][Camera]`, wygrywa wpis. Żeby zobaczyć układ domyślny, trzeba ten plik usunąć.
+10. **Panel nie stoi tam, gdzie mówi kod.** `CAMERA_PLACEMENT` działa tylko przy pierwszym uruchomieniu. Jeśli w katalogu roboczym leży `imgui.ini` z wpisem `[Window][Camera]`, wygrywa wpis. Żeby zobaczyć układ domyślny, trzeba ten plik usunąć.
 11. **`Fly speed` nie zmienia chodu, `Sprint speed` nie zmienia lotu.** Każdy suwak pisze do pola używanego w jednym trybie. Ustawienie `Sprint speed` poniżej `Walk speed` jest dozwolone i sprawia, że Shift spowalnia.
 
 ## 8. Ćwiczenia
@@ -537,7 +533,7 @@ Wszystkie ćwiczenia są zmianami w działającym programie: zmiana w `NightMaze
     Bliska płaszczyzna obcina wszystko, co bliżej kamery: najbliższe ściany zostają przecięte i widać przez nie dalszą część sceny. FOV zmienia współczynnik `1 / tan(fov / 2)`, przez który macierz rzutowania mnoży x i y: mniejszy kąt to większy współczynnik i większy obraz, bez ruchu kamery.
 
 12. **Gdzie są pozycje i rozmiary panelu przy pierwszym uruchomieniu i co je nadpisuje?**
-    W stałych `FIRST_POSITION` i `FIRST_SIZE` pliku panelu, podawanych z warunkiem `ImGuiCond_FirstUseEver`. Nadpisuje je wpis w pliku `imgui.ini`, w którym ImGui zapamiętuje układ ustawiony przez użytkownika.
+    W stałej `CAMERA_PLACEMENT` w `src/debug/PanelLayout.hpp` (róg okna, odsunięcie od niego i rozmiar). Panel przekazuje ją do `placePanelOnFirstUse`, a ta funkcja ustawia pozycję i rozmiar z warunkiem `ImGuiCond_FirstUseEver`. Nadpisuje je wpis w pliku `imgui.ini`, w którym ImGui zapamiętuje układ ustawiony przez użytkownika.
 
 ## 10. Źródła
 

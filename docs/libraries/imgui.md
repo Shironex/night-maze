@@ -4,7 +4,9 @@ Dokument biblioteki dla kamienia milowego M0. Opisuje użycie Dear ImGui w
 [`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp),
 [`src/debug/panels/RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp) i
 [`src/debug/panels/ShadersPanel.cpp`](../../src/debug/panels/ShadersPanel.cpp) oraz
-konfigurację z [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake).
+konfigurację z [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake). API stylu i
+czcionek, którego używa motyw paneli ([`src/debug/Theme.cpp`](../../src/debug/Theme.cpp)),
+jest w sekcji 3.12.
 
 Architekturę modułu `debug` i instrukcję "jak dodać nowy panel" zawiera
 [`../modules/debug-ui.md`](../modules/debug-ui.md). Tutaj jest sama biblioteka.
@@ -225,13 +227,19 @@ DebugUI::DebugUI(const core::Window& window) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    ImGui::StyleColorsDark();
 
     // Platform backend: feeds GLFW input and window size into ImGui.
     // true = install GLFW callbacks (ImGui chains to callbacks that were set before).
     ImGui_ImplGlfw_InitForOpenGL(window.nativeHandle(), true);
     // Renderer backend: draws ImGui with OpenGL. The string is the GLSL version of its shaders.
     ImGui_ImplOpenGL3_Init("#version 410");
+
+    // The look of the panels. The content scale is 1 at 100 % display scaling and 1.5 at
+    // 150 % on Windows: the theme multiplies its sizes and the font by it. On macOS the
+    // function returns 1, because a Retina display is handled by the framebuffer being
+    // larger than the window, and ImGui follows that on its own.
+    applyTheme(ImGui_ImplGlfw_GetContentScaleForWindow(window.nativeHandle()));
+    loadFont(m_fontBytes);
 }
 
 DebugUI::~DebugUI() {
@@ -251,13 +259,18 @@ Linia po linii:
 - `ImGui::GetIO()` zwraca strukturę `ImGuiIO`: konfigurację i dane wejścia/wyjścia.
   `ConfigFlags |= ImGuiConfigFlags_DockingEnable` włącza dokowanie. Bez tej flagi gałąź
   docking zachowuje się jak master.
-- `ImGui::StyleColorsDark()` ustawia ciemny motyw.
 - `ImGui_ImplGlfw_InitForOpenGL(window.nativeHandle(), true)` uruchamia backend platformy dla
   naszego `GLFWwindow*`. Drugi argument (`install_callbacks`) równy `true` oznacza: zainstaluj
   w GLFW callbacki ImGui (klawisze, znaki, przyciski i ruch myszy, kółko, fokus okna).
   Backend zapamiętuje callbacki ustawione wcześniej i w każdym swoim callbacku najpierw woła
   ten poprzedni, a dopiero potem przekazuje zdarzenie do ImGui (łańcuchowanie).
 - `ImGui_ImplOpenGL3_Init("#version 410")` uruchamia backend renderera.
+- `applyTheme(ImGui_ImplGlfw_GetContentScaleForWindow(window.nativeHandle()))` ustawia wygląd
+  paneli: tabelę kolorów, odstępy i rozmiar czcionki, przemnożone przez skalę ekranu. Wcześniej
+  stało tu `ImGui::StyleColorsDark()`, czyli standardowy ciemny styl. Funkcja jest nasza
+  (`src/debug/Theme.cpp`), a API, z którego korzysta, opisuje sekcja 3.12.
+- `loadFont(m_fontBytes)` wczytuje czcionkę paneli z pliku w `assets/fonts`. Też nasza
+  funkcja, też sekcja 3.12.
 
 Destruktor zamyka wszystko w odwrotnej kolejności. `ImGui_ImplOpenGL3_Shutdown` usuwa obiekty
 OpenGL (shader, bufory, teksturę czcionki), więc kontekst OpenGL musi jeszcze istnieć. To
@@ -506,9 +519,10 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   "zniknął" albo wyjechał poza okno.
 - Układ domyślny naszych sześciu paneli ustawiają pary `SetNextWindowPos` i
   `SetNextWindowSize` z warunkiem `ImGuiCond_FirstUseEver` (sekcja 3.11). Ten warunek działa
-  tylko dla okna, którego w `imgui.ini` jeszcze nie ma. Stary plik z wpisami dla paneli
-  Renderer, Shaders i Camera zatrzyma je na starych miejscach, a nowe panele staną według
-  kodu. Tabela pozycji: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.
+  tylko dla okna, którego w `imgui.ini` jeszcze nie ma. Stary plik zatrzyma panele na starych
+  miejscach i w starych rozmiarach, dobranych dla starej czcionki. Tabela pozycji:
+  [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7.
+- W pliku nie ma wyglądu: kolory, odstępy i czcionkę ustawia kod przy każdym starcie.
 
 ### 3.8. `WantCaptureKeyboard` i `WantCaptureMouse`
 
@@ -642,8 +656,8 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
 wywołanie w `DebugUI::draw` obok pozostałych sześciu funkcji `draw...Panel`, dopisanie plików
-do `add_executable` w `CMakeLists.txt`. Przed `Begin` para `SetNextWindowPos` i
-`SetNextWindowSize` z `ImGuiCond_FirstUseEver`, żeby panel przy pierwszym uruchomieniu nie
+do `add_executable` w `CMakeLists.txt`. Przed `Begin` wywołanie `placePanelOnFirstUse` z nową
+stałą dopisaną w `src/debug/PanelLayout.hpp`, żeby panel przy pierwszym uruchomieniu nie
 przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
 jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 [`../modules/debug-ui.md`](../modules/debug-ui.md) i tam należy jej szukać.
@@ -653,18 +667,25 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
 Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
 
-**Pozycja i rozmiar na pierwsze uruchomienie** (wszystkie sześć paneli, tu
-[`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp)):
+**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie sześć paneli woła przed `Begin`
+jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Dwa wywołania
+ImGui są w niej ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
 
 ```cpp
-    ImGui::SetNextWindowPos(FIRST_POSITION, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(FIRST_SIZE, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(panelCorner, ImGuiCond_FirstUseEver, placement.corner);
+    ImGui::SetNextWindowSize({placement.size.x * layoutScale, placement.size.y * layoutScale},
+                             ImGuiCond_FirstUseEver);
 ```
 
 Funkcje `SetNextWindow...` dotyczą okna, które otworzy najbliższe `Begin`. Drugi argument to
 warunek: `ImGuiCond_FirstUseEver` stosuje wartość tylko wtedy, gdy ImGui nie ma dla tego okna
 danych w `imgui.ini`. Bez warunku (`ImGuiCond_Always`) panel wracałby na miejsce w każdej
-klatce i nie dałoby się go przesunąć.
+klatce i nie dałoby się go przesunąć. Trzeci argument `SetNextWindowPos` to **pivot**: punkt
+okna, który ma trafić w podaną pozycję, zapisany liczbami od 0 do 1 (`(0, 0)` lewy górny róg,
+`(1, 1)` prawy dolny, `(0.5, 0.5)` środek). Dzięki niemu panel przyczepiony do prawej krawędzi
+ustawia się swoim prawym rogiem, bez odejmowania szerokości. Pozycję liczymy od rogu głównego
+viewportu, `ImGui::GetMainViewport()` (pola `WorkPos` i `WorkSize`), czyli od rogu okna
+programu. Opis całej funkcji: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7.
 
 **Widżety edytujące wartość przez wskaźnik.** Wszystkie działają tak jak `ColorEdit3`: dostają
 adres zmiennej, pokazują jej wartość i zapisują nową, gdy użytkownik coś zmieni. Zwracają
@@ -698,7 +719,7 @@ Kolejność pozycji jest taka jak kolejność wartości wyliczeń `game::ViewMod
 | `TextUnformatted(text)` | `AssetsPanel.cpp`, `CollisionPanel.cpp`, `ShadersPanel.cpp` | tekst bez formatowania. Bezpieczny dla napisów, które mogą zawierać znak `%` (nazwy plików, komunikaty sterownika) |
 | `SetItemTooltip("%s", fullPath.c_str())` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | podpowiedź dla **poprzedniego** widżetu, pokazywana po najechaniu kursorem |
 | `SameLine()` | `MazePanel.cpp` | następny widżet staje w tej samej linii (przyciski `Regenerate` i `Random seed` obok siebie) |
-| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | zmiana koloru tekstu dla widżetów między tą parą. Każde `Push` musi mieć swoje `Pop` |
+| `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | zmiana koloru tekstu dla widżetów między tą parą. Każde `Push` musi mieć swoje `Pop`. Stała jest jedna, w `Theme.hpp` (sekcja 3.12) |
 
 **Obrazek z tekstury OpenGL** ([`AssetsPanel.cpp`](../../src/debug/panels/AssetsPanel.cpp)):
 
@@ -761,6 +782,68 @@ Stan sprawdzenia: wygląd planu, podglądów i list jest sprawdzony na zrzutach 
 Windowsa (2026-10-05). Samych kontrolek (kliknięcia w `Combo`, suwaki, pola wyboru, przyciski)
 nikt jeszcze ręcznie nie sprawdzał. Na macOS panele nie były uruchamiane.
 
+### 3.12. Styl i czcionki w wersji 1.92
+
+Kod: [`src/debug/Theme.cpp`](../../src/debug/Theme.cpp). Jak z tego API powstaje motyw
+projektu (paleta, kontrast, układ), opisuje [`../modules/debug-ui.md`](../modules/debug-ui.md),
+sekcje 5.7 i 5.8. Tutaj jest samo API, w kształcie z pobranej wersji `1.92.9b`. W wersji
+1.92 czcionki zostały przebudowane, więc przykłady ze starszych poradników wyglądają inaczej.
+
+**Styl: `ImGuiStyle`.** Jedna struktura na kontekst, zwracana przez `ImGui::GetStyle()`.
+
+| Element API | Użycie w projekcie | Co robi |
+|---|---|---|
+| `ImGuiStyle& style = ImGui::GetStyle();` | `applyTheme` | referencja do stylu bieżącego kontekstu |
+| `ImGui::StyleColorsDark(&style);` | `applyTheme` | wypełnia tabelę kolorów standardowym ciemnym zestawem. Bez argumentu działa na stylu bieżącego kontekstu |
+| `style.Colors[ImGuiCol_...]` | `applyColors` | tabela kolorów: tablica `ImVec4` (czerwony, zielony, niebieski, alfa od 0 do 1), indeksowana wyliczeniem `ImGuiCol_`. W tej wersji 63 pozycje |
+| `style.WindowPadding`, `FramePadding`, `ItemSpacing`, `ItemInnerSpacing` | `applyMetrics` | odstępy jako `ImVec2` (poziomo, pionowo) |
+| `style.WindowRounding`, `FrameRounding`, `GrabRounding` i pokrewne | `applyMetrics` | promienie zaokrągleń |
+| `style.DisabledAlpha` | `applyMetrics` | mnożnik przezroczystości dla wszystkiego między `BeginDisabled` a `EndDisabled` |
+| `style.ScaleAllSizes(scale)` | `applyTheme` | mnoży wszystkie odstępy, zaokrąglenia i grubości przez `scale` i obcina do pełnych pikseli. Nie zmienia czcionki. Stratne, więc woła się raz na świeżych wartościach |
+| `style.FontSizeBase` | `applyTheme` | **nowe w 1.92:** wysokość tekstu przed skalowaniem. Wcześniej rozmiar podawało się przy wczytywaniu czcionki |
+| `style.FontScaleDpi` | `applyTheme`, odczyt w `placePanelOnFirstUse` | **nowe w 1.92:** mnożnik tekstu od gęstości ekranu. Ostateczna wysokość to `FontSizeBase * FontScaleMain * FontScaleDpi` |
+| `ImGui::PushStyleColor(ImGuiCol_Text, kolor)` i `ImGui::PopStyleColor()` | panele Shaders i Assets | zmiana jednej pozycji tabeli na czas kilku widżetów. Każde `Push` musi mieć `Pop` |
+| `ImGui::GetColorU32(const ImVec4&)` | plan w panelu Maze | zamienia kolor z czterech `float` na jedną liczbę 32-bitową dla listy rysowania i uwzględnia przezroczystość ze stylu |
+
+Typy `ImVec2` i `ImVec4` mają konstruktory `constexpr`, więc kolory i odstępy mogą być
+stałymi `constexpr` (tak jest w `Theme.cpp` i `PanelLayout.hpp`).
+
+**Skala ekranu.** Dokument `docs/FONTS.md` w źródłach biblioteki podaje dla wersji 1.92
+przepis w trzech zdaniach: ustaw `style.FontScaleDpi` na skalę zawartości, zawołaj
+`style.ScaleAllSizes`, a skalę framebuffera w stylu macOS backend obsługuje sam. Skalę daje
+funkcja backendu GLFW:
+
+```cpp
+    applyTheme(ImGui_ImplGlfw_GetContentScaleForWindow(window.nativeHandle()));
+```
+
+`ImGui_ImplGlfw_GetContentScaleForWindow` woła `glfwGetWindowContentScale` i zwraca skalę
+osi x, ale na platformach Apple (oraz w przeglądarce i na Androidzie) zwraca zawsze 1, bo tam
+gęstość ekranu jest już w stosunku framebuffera do okna. Dzięki temu ten sam kod jest
+poprawny na Windowsie (skala 1,5 przy 150%) i na Macu (skala 1, Retina obsłużona niżej).
+Pole `io.ConfigDpiScaleFonts`, które aktualizuje skalę po przeniesieniu okna na inny
+monitor, jest w nagłówku oznaczone jako eksperymentalne i skaluje tylko czcionkę: nie
+używamy go. Ten komputer ma ekran w skali 100% (systemowe DPI 96), więc funkcja daje tu 1,
+a gałąź 150% jest sprawdzona tylko z wartością podstawioną na próbę.
+
+**Czcionki: `ImFontAtlas`.** Atlas czcionek jest polem `ImGui::GetIO().Fonts`.
+
+| Element API | Użycie | Co trzeba wiedzieć |
+|---|---|---|
+| `fonts->AddFontFromMemoryTTF(dane, rozmiar, rozmiarPikseli, &config)` | `loadFont` | rejestruje czcionkę z bajtów w pamięci. `rozmiarPikseli` równe 0 znaczy "użyj `style.FontSizeBase`". Zwraca `ImFont*` albo `nullptr`, gdy dane nie są czcionką. Ma asercję, że danych jest więcej niż 100 bajtów |
+| `ImFontConfig config; config.FontDataOwnedByAtlas = false;` | `loadFont` | domyślnie (`true`) atlas przejmuje wskaźnik i zwalnia go własnym alokatorem. Z `false` dane zostają nasze, ale od wersji 1.92 muszą istnieć tak długo jak atlas |
+| `fonts->AddFontFromFileTTF(nazwa, ...)` | nieużywane | czyta plik samo. Na Windowsie otwiera go poprawnie także przy nazwie w UTF-8 (`ImFileOpen` w `imgui.cpp` zamienia ją na znaki szerokie i woła `_wfopen`). Przy braku pliku domyślnie wywołuje asercję `Could not load font file!` (wyłącza ją flaga `ImFontFlags_NoLoadError` w polu `ImFontConfig::Flags`, opisanym w nagłówku jako jeszcze nie do użytku), dlatego projekt czyta plik sam |
+| `fonts->AddFontDefaultVector()` | `loadFont`, gałąź awaryjna | wbudowana czcionka skalowalna (ProggyForever). `AddFontDefaultBitmap()` to dawna czcionka 13 pikseli (ProggyClean), a `AddFontDefault()` wybiera między nimi według rozmiaru |
+| zakresy znaków (`glyph_ranges`, `GetGlyphRanges...`) | nieużywane | przed 1.92 trzeba było wymienić znaki do wczytania. Teraz znak jest rysowany do tekstury przy pierwszym użyciu, a funkcje `GetGlyphRanges...` są oznaczone jako przestarzałe |
+
+Dynamiczne czcionki wymagają, żeby backend renderera ustawił flagę
+`ImGuiBackendFlags_RendererHasTextures`. Backend OpenGL3 w naszej wersji to robi (w
+`imgui_impl_opengl3.cpp`, w funkcji `ImGui_ImplOpenGL3_Init`): potrafi tworzyć i powiększać
+teksturę czcionki w trakcie działania.
+
+Kolejność ma znaczenie: czcionki dodaje się po `ImGui::CreateContext()` i przed pierwszym
+`ImGui::NewFrame()`. Gdy atlas jest pusty, ImGui samo dodaje czcionkę wbudowaną.
+
 ## 4. Pułapki
 
 1. **`End()` wewnątrz `if (Begin(...))`.** Po zwinięciu okna `End` nie zostanie wywołane i
@@ -787,7 +870,9 @@ nikt jeszcze ręcznie nie sprawdzał. Na macOS panele nie były uruchamiane.
    program z innym katalogiem roboczym niż terminal. To dwa różne pliki.
 10. **Rozmyty interfejs na Retinie.** Gdyby panele były nieostre lub w złej skali, trzeba
     sprawdzić, czy `ImGui_ImplGlfw_NewFrame` jest wołane co klatkę: to ono przekazuje skalę
-    framebuffera.
+    framebuffera. Panele dwa razy za duże oznaczałyby, że do motywu trafiła skala z
+    `glfwGetWindowContentScale` zamiast z `ImGui_ImplGlfw_GetContentScaleForWindow`
+    (sekcja 3.12).
 11. **Pytanie o mysz z pominięciem `core::Input`.** Blokada `WantCaptureMouse` działa tylko
     dla pytań zadanych przez `input()` (sekcja 3.8). Kod gry wołający bezpośrednio
     `glfwGetCursorPos` albo `glfwGetMouseButton` widziałby też mysz używaną przez panel.
@@ -799,6 +884,12 @@ nikt jeszcze ręcznie nie sprawdzał. Na macOS panele nie były uruchamiane.
     (`DebugUI::setMouseEnabled(false)`, sekcja 3.8). Suwak ImGui ma też drugą drogę wejścia,
     o której łatwo zapomnieć: Ctrl i kliknięcie pozwala wpisać liczbę spoza zakresu, chyba że
     suwak ma flagę `ImGuiSliderFlags_AlwaysClamp` (tak jak wszystkie suwaki panelu Camera).
+14. **Czcionka z pamięci zwolniona dwa razy.** `AddFontFromMemoryTTF` domyślnie przejmuje
+    wskaźnik. Dane z `std::vector` wymagają `FontDataOwnedByAtlas = false` i muszą żyć tak
+    długo jak kontekst ImGui (sekcja 3.12).
+15. **Przykłady czcionek sprzed 1.92.** Rozmiar w pikselach przy wczytywaniu, zakresy znaków
+    i `io.FontGlobalScale` to stary sposób. W naszej wersji rozmiar i skala są w stylu, a
+    zakresy są zbędne.
 
 ## 5. Pytania kontrolne
 
@@ -847,11 +938,24 @@ nikt jeszcze ręcznie nie sprawdzał. Na macOS panele nie były uruchamiane.
     gdy kamera przechwyciła kursor, bo backend GLFW przekazuje pozycję także ukrytego
     kursora. Po Escape flaga jest zdejmowana w tej samej klatce.
 
+11. **Jak w ImGui 1.92 ustawia się rozmiar tekstu i skalę dla ekranu 150%?**
+    Rozmiar to pole `style.FontSizeBase`, a skala to `style.FontScaleDpi` dla czcionki i
+    `style.ScaleAllSizes(scale)` dla odstępów. Skalę daje
+    `ImGui_ImplGlfw_GetContentScaleForWindow`. Na macOS zwraca ona 1, bo Retinę obsługuje
+    skala framebuffera.
+
+12. **Dlaczego przy wczytywaniu czcionki nie podajemy zakresu polskich znaków?**
+    Od wersji 1.92 backend z flagą `ImGuiBackendFlags_RendererHasTextures` rysuje znak do
+    tekstury czcionki przy pierwszym użyciu, więc zakresy są zbędne. Wystarczy, że plik
+    czcionki ma te znaki.
+
 ## 6. Oficjalna dokumentacja
 
 - Repozytorium Dear ImGui (README, `docs/`, przykłady w `examples/`): <https://github.com/ocornut/imgui>
 - Wiki projektu (Getting Started, Docking, FAQ): <https://github.com/ocornut/imgui/wiki>
 - Dokumentacja CMake (FetchContent, `add_library`): <https://cmake.org/cmake/help/latest/>
+- Czcionki, skala ekranu i własność danych czcionki w naszej wersji:
+  `build/debug/_deps/imgui-src/docs/FONTS.md`.
 - Najlepsze źródło dla naszej wersji leży lokalnie po pierwszej konfiguracji:
   `build/debug/_deps/imgui-src/imgui.h` (komentarze przy każdej funkcji),
   `build/debug/_deps/imgui-src/imgui_demo.cpp` (przykład użycia każdego widżetu),
