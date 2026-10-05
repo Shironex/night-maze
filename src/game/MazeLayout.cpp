@@ -67,19 +67,32 @@ glm::vec3 cellCenter(int x, int z) {
     return {cellMiddle(x), 0.0F, cellMiddle(z)};
 }
 
+WallSegment wallSegmentOn(int x, int z, Direction side) {
+    // The north edge of a cell is the row line z, the south edge the row line z + 1.
+    // The west edge is the column line x, the east edge the column line x + 1.
+    if (side == Direction::North) {
+        return {.position = {cellMiddle(x), 0.0F, gridLine(z)}, .axis = WallAxis::AlongX};
+    }
+    if (side == Direction::South) {
+        return {.position = {cellMiddle(x), 0.0F, gridLine(z + 1)}, .axis = WallAxis::AlongX};
+    }
+    if (side == Direction::West) {
+        return {.position = {gridLine(x), 0.0F, cellMiddle(z)}, .axis = WallAxis::AlongZ};
+    }
+    // East is what is left.
+    return {.position = {gridLine(x + 1), 0.0F, cellMiddle(z)}, .axis = WallAxis::AlongZ};
+}
+
 std::vector<WallSegment> wallSegments(const Maze& maze) {
     std::vector<WallSegment> segments;
     for (int z = 0; z < maze.height(); ++z) {
         for (int x = 0; x < maze.width(); ++x) {
-            // Every cell reports its north and its west wall. The north edge is the row
-            // line z, the west edge is the column line x.
+            // Every cell reports its north and its west wall.
             if (maze.hasWall(x, z, Direction::North)) {
-                segments.push_back(
-                    {.position = {cellMiddle(x), 0.0F, gridLine(z)}, .axis = WallAxis::AlongX});
+                segments.push_back(wallSegmentOn(x, z, Direction::North));
             }
             if (maze.hasWall(x, z, Direction::West)) {
-                segments.push_back(
-                    {.position = {gridLine(x), 0.0F, cellMiddle(z)}, .axis = WallAxis::AlongZ});
+                segments.push_back(wallSegmentOn(x, z, Direction::West));
             }
 
             // The south wall of a cell is the north wall of the cell below it, and the
@@ -88,12 +101,10 @@ std::vector<WallSegment> wallSegments(const Maze& maze) {
             // row and the last column have no such neighbour and report the wall
             // themselves.
             if (z == maze.height() - 1 && maze.hasWall(x, z, Direction::South)) {
-                segments.push_back(
-                    {.position = {cellMiddle(x), 0.0F, gridLine(z + 1)}, .axis = WallAxis::AlongX});
+                segments.push_back(wallSegmentOn(x, z, Direction::South));
             }
             if (x == maze.width() - 1 && maze.hasWall(x, z, Direction::East)) {
-                segments.push_back(
-                    {.position = {gridLine(x + 1), 0.0F, cellMiddle(z)}, .axis = WallAxis::AlongZ});
+                segments.push_back(wallSegmentOn(x, z, Direction::East));
             }
         }
     }

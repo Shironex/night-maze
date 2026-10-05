@@ -106,3 +106,28 @@ TEST_CASE("asking about a cell outside the maze throws") {
     CHECK_THROWS_AS(maze.hasWall(-1, 0, game::Direction::North), std::out_of_range);
     CHECK_THROWS_AS(maze.removeWall(0, -1, game::Direction::South), std::out_of_range);
 }
+
+TEST_CASE("a cell is a dead end when it has exactly three walls") {
+    // A new maze has every wall: four per cell, no dead end.
+    game::Maze maze(2, 1);
+    CHECK_FALSE(game::isDeadEnd(maze, 0, 0));
+
+    // One passage between the two cells: both are closed on three sides.
+    maze.removeWall(0, 0, game::Direction::East);
+    CHECK(game::isDeadEnd(maze, 0, 0));
+    CHECK(game::isDeadEnd(maze, 1, 0));
+
+    // A second opening turns the cell into a corridor.
+    maze.removeWall(1, 0, game::Direction::South);
+    CHECK(game::isDeadEnd(maze, 0, 0));
+    CHECK_FALSE(game::isDeadEnd(maze, 1, 0));
+
+    CHECK_THROWS_AS(game::isDeadEnd(maze, 2, 0), std::out_of_range);
+}
+
+TEST_CASE("two maze cells are equal when column and row match") {
+    CHECK(game::MazeCell{.x = 2, .z = 3} == game::MazeCell{.x = 2, .z = 3});
+    CHECK_FALSE(game::MazeCell{.x = 2, .z = 3} == game::MazeCell{.x = 3, .z = 2});
+    // A cell created without numbers is the north-west corner.
+    CHECK(game::MazeCell{} == game::MazeCell{.x = 0, .z = 0});
+}

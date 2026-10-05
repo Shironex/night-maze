@@ -63,6 +63,12 @@ struct WallSegment {
 /// the world and covers x from 0 to width * CELL_SIZE and z from 0 to height * CELL_SIZE.
 glm::vec3 cellCenter(int x, int z);
 
+/// The segment that stands on one side of the cell in column x and row z: on its north
+/// or south edge it runs along X, on its west or east edge along Z. The function does
+/// not ask whether the maze has a wall there: the gate of the exit uses it for a side
+/// that is open.
+WallSegment wallSegmentOn(int x, int z, Direction side);
+
 /// Every wall of the maze exactly once. A wall between two cells belongs to both of
 /// them, but it is one segment here. The order is fixed: row after row, cell after cell.
 std::vector<WallSegment> wallSegments(const Maze& maze);

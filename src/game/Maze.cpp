@@ -22,6 +22,9 @@ std::size_t indexOf(Direction direction) {
     return static_cast<std::size_t>(direction);
 }
 
+// A dead end is closed on three of its four sides.
+constexpr int DEAD_END_WALL_COUNT = 3;
+
 // A size is valid when it is between 1 and Maze::MAX_SIZE.
 int checkedSize(int size) {
     if (size < 1 || size > Maze::MAX_SIZE) {
@@ -85,6 +88,16 @@ std::size_t Maze::cellIndex(int x, int z) const {
     // Rows are stored one after another, so row z starts after z full rows.
     return static_cast<std::size_t>(z) * static_cast<std::size_t>(m_width) +
            static_cast<std::size_t>(x);
+}
+
+bool isDeadEnd(const Maze& maze, int x, int z) {
+    int wallCount = 0;
+    for (const Direction side : ALL_DIRECTIONS) {
+        if (maze.hasWall(x, z, side)) {
+            ++wallCount;
+        }
+    }
+    return wallCount == DEAD_END_WALL_COUNT;
 }
 
 } // namespace game

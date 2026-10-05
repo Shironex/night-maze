@@ -31,6 +31,16 @@ int columnStep(Direction direction);
 /// 0 for East and West.
 int rowStep(Direction direction);
 
+/// One cell of a maze by its place on the grid. (0, 0) is the north-west corner.
+struct MazeCell {
+    int x = 0; ///< column: grows towards +X (east)
+    int z = 0; ///< row: grows towards +Z (south)
+
+    /// Two cells are the same when both numbers match. "= default" lets the compiler
+    /// write that comparison.
+    bool operator==(const MazeCell& other) const = default;
+};
+
 /// A rectangular maze: width columns (along X) by height rows (along Z) of square cells.
 ///
 /// A wall is not a cell. It stands on the edge between two cells, or on the outer edge
@@ -79,5 +89,10 @@ private:
     // four sides, in the order of the Direction enum.
     std::vector<std::array<bool, DIRECTION_COUNT>> m_walls;
 };
+
+/// True when the cell in column x and row z is a dead end: it has a wall on exactly
+/// three of its four sides, so there is one way in and no way on.
+/// Throws std::out_of_range when the cell is not in the maze.
+bool isDeadEnd(const Maze& maze, int x, int z);
 
 } // namespace game
