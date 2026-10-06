@@ -197,6 +197,7 @@ Krótkie notatki "dlaczego tak, a nie inaczej". Czym jest notatka i jak ją napi
 | [`decisions/reflect-own-program-and-pass.md`](decisions/reflect-own-program-and-pass.md) | Kryształy i kałuże rysuje osobny program `reflect` (czternasty w panelu Shaders) w osobnym przebiegu po trawie, a nie gałąź w `lit.frag` (wybór wykonawczy, decyzja właściciela z 2026-10-06 dotyczy tylko tego, co ma pokazać niebo). Skutek: przy włączonym efekcie Gouraud nie zmienia światła kryształów i kałuż |
 | [`decisions/puddle-on-lowest-ground.md`](decisions/puddle-on-lowest-ground.md) | Woda kałuży stoi na najniższym gruncie z 17 próbkowanych punktów plus 2 cm, a nie na najwyższym (wybór wykonawczy). Koszt: tarcza na zboczu jest częściowo ukryta |
 | [`decisions/visible-effect-over-physical-values.md`](decisions/visible-effect-over-physical-values.md) | Wartości startowe odbić dobrane do widoczności, nie do fizyki: `F0` kałuży 0,35 przy prawdziwej wodzie 0,02, Fresnel wyłączony dla kryształów, świecenie kryształu całe (wybór wykonawczy) |
+| [`decisions/menu-in-rmlui.md`](decisions/menu-in-rmlui.md) | Menu gry w RmlUi już w M9, Dear ImGui zostaje przy panelach debug. Decyzja właściciela z 2026-10-06, **bez kodu**: poluzowana zasada zero tajemnic dla warstwy menu, tło menu (żywa scena albo nagrana pętla) nierozstrzygnięte |
 
 ## Kolejność czytania
 
