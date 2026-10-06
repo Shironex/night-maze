@@ -79,7 +79,7 @@ SHOTS = [
     # A long corridor in the cone of the flashlight, with the shadows of the pillars,
     # then round a corner to a lever on the wall.
     Shot("lever", seed=1, difficulty="easy", shot="walk", time=72.0, seconds=8.5),
-    # Towards a crystal that glows at the end of a corridor, over grass and a puddle.
+    # Towards a crystal that glows at the end of a corridor, over the grass.
     Shot("crystal", seed=1, difficulty="easy", shot="walk", time=474.0, seconds=8.5),
     # Past the wooden gate of the exit and on to three crystals close by.
     Shot("gate", seed=1, difficulty="easy", shot="walk", time=244.0, seconds=8.5),
