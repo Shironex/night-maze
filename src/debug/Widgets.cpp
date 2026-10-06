@@ -21,8 +21,8 @@ constexpr float TOGGLE_HEIGHT = 18.0F;
 constexpr float TOGGLE_KNOB_GAP = 3.0F;
 
 // A slider: the column its value is written in, the bar itself and its ticks.
-constexpr float SLIDER_VALUE_WIDTH = 56.0F;
-constexpr float SLIDER_BAR_WIDTH = 60.0F;
+constexpr float SLIDER_VALUE_WIDTH = 62.0F;
+constexpr float SLIDER_BAR_WIDTH = 58.0F;
 constexpr int SLIDER_TICK_COUNT = 12;
 constexpr float SLIDER_TICK_HEIGHT = 12.0F;
 constexpr float SLIDER_TICK_GAP = 2.0F;
@@ -35,7 +35,7 @@ constexpr float COMBO_WIDTH = 142.0F;
 constexpr float COLOR_TEXT_WIDTH = 58.0F;
 
 // Free space between the edge of a card and its rows.
-constexpr ImVec2 CARD_PADDING{12.0F, 10.0F};
+constexpr ImVec2 CARD_PADDING{10.0F, 10.0F};
 // Free space between two cards that stand one below the other.
 constexpr float CARD_GAP = 10.0F;
 

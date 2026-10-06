@@ -7,6 +7,7 @@
 #include "debug/Hud.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
+#include "debug/categories/PlayerCategory.hpp"
 #include "debug/categories/RenderCategory.hpp"
 #include "game/GameState.hpp"
 #include "game/MazeWorld.hpp"
@@ -168,6 +169,15 @@ void drawWordmark(float centerX, float top, float bottom, float scale) {
         }
         y += wordGap;
     }
+}
+
+// The page of a category that has not moved into the window yet: its controls are
+// still in the old panels.
+void drawNotMovedYet(Page& page) {
+    page.setPlace("");
+    page.beginCard("Not here yet");
+    page.note("The controls of this category are still in the old panels.");
+    page.endCard();
 }
 
 } // namespace
@@ -343,16 +353,22 @@ void DebugWindow::drawCategory(Category category, Page& page, const DebugContext
         drawRenderCategory(page, context);
         break;
     case Category::Light:
+        drawNotMovedYet(page);
+        break;
     case Category::PostProcess:
+        drawNotMovedYet(page);
+        break;
     case Category::World:
+        drawNotMovedYet(page);
+        break;
     case Category::Player:
+        drawPlayerCategory(page, context);
+        break;
     case Category::Gameplay:
+        drawNotMovedYet(page);
+        break;
     case Category::Diagnostics:
-        // Not moved into the window yet: the controls are still in the old panels.
-        page.setPlace("");
-        page.beginCard("Not here yet");
-        page.note("The controls of this category are still in the old panels.");
-        page.endCard();
+        drawNotMovedYet(page);
         break;
     }
 }

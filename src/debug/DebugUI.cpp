@@ -7,7 +7,6 @@
 #include "debug/Hud.hpp"
 #include "debug/Theme.hpp"
 #include "debug/panels/AssetsPanel.hpp"
-#include "debug/panels/CameraPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
 #include "debug/panels/EnvironmentPanel.hpp"
 #include "debug/panels/FramebuffersPanel.hpp"
@@ -126,8 +125,6 @@ void DebugUI::draw(const DebugContext& context) {
             &context.minimapOverlayShader, &context.reflectShader};
         drawShadersPanel(shaders);
 
-        drawCameraPanel(context.camera, context.player, context.mouseSensitivity,
-                        context.menuCamera, context.menuCameraLoopSeconds);
         drawGameplayPanel(context.round, context.gameplay);
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);

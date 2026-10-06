@@ -1,5 +1,5 @@
-// "Collision" debug panel: the collision boxes and spheres as lines, their counts, the
-// noclip mode and the result of the last picking ray.
+// "Collision" debug panel: the collision boxes and spheres as lines, their counts and the
+// result of the last picking ray.
 // See docs/modules/scene/collision.md
 #include "debug/panels/CollisionPanel.hpp"
 
@@ -96,9 +96,6 @@ void drawCollisionPanel(const game::MazeWorld& world, const game::Round& round,
         ImGui::Checkbox("Draw collision shapes", &drawColliders);
         ImGui::TextWrapped("Yellow: walls, pillars. Green: player. Orange: gate. "
                            "Cyan: crystal pickup. Magenta: exit zone.");
-
-        // The same switch as the N key. In noclip mode the boxes below are ignored.
-        ImGui::Checkbox("Noclip (key N)", &player.noclip);
 
         ImGui::Separator();
         // world.colliders holds the box of every wall first and the box of every pillar

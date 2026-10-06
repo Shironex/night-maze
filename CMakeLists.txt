@@ -245,12 +245,12 @@ add_executable(night_maze
     src/debug/Theme.hpp
     src/debug/Widgets.cpp
     src/debug/Widgets.hpp
+    src/debug/categories/PlayerCategory.cpp
+    src/debug/categories/PlayerCategory.hpp
     src/debug/categories/RenderCategory.cpp
     src/debug/categories/RenderCategory.hpp
     src/debug/panels/AssetsPanel.cpp
     src/debug/panels/AssetsPanel.hpp
-    src/debug/panels/CameraPanel.cpp
-    src/debug/panels/CameraPanel.hpp
     src/debug/panels/CollisionPanel.cpp
     src/debug/panels/CollisionPanel.hpp
     src/debug/panels/EnvironmentPanel.cpp
