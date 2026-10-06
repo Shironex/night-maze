@@ -1,6 +1,7 @@
 # Tłem menu jest zmontowana, wyrenderowana wcześniej pętla wideo, a nie żywa scena
 
 Data: 2026-10-06. Stan: obowiązuje jako decyzja, **kodu odtwarzającego pętlę nie ma** (kod, który pętlę nagrywa, jest: tryb kamery menu). Decyzja właściciela projektu, w całości w sekcji 2; kontekst, tabela możliwości, skutki i warunki powrotu to moja analiza. Domyka punkt 3 decyzji z [`menu-in-rmlui.md`](menu-in-rmlui.md), który przedtem był nierozstrzygnięty.
+**Dopisek z 2026-10-06 (M9, część 4):** zdanie "kodu odtwarzającego pętlę nie ma" i zdania o braku odtwarzania w tym nagłówku oraz w dopiskach z części 2 i 3 są **nieaktualne**: odtwarzanie jest w kodzie (biblioteka `video`), pętla jest w repozytorium, a przepis na nagranie jest skryptem. Szczegóły w sekcji 7. Reszta notatki zostaje w brzmieniu z chwili zapisu.
 Kod: [`src/game/MenuCamera.hpp`](../../src/game/MenuCamera.hpp) i [`MenuCamera.cpp`](../../src/game/MenuCamera.cpp) (kamera jadąca po labiryncie), [`src/game/StartOptions.hpp`](../../src/game/StartOptions.hpp) i [`StartOptions.cpp`](../../src/game/StartOptions.cpp) (przełączniki `--menu-camera`, `--seed`, `--menu-shot`, `--menu-time`). Odtwarzania wideo w kodzie brak: w `cmake/Dependencies.cmake` nie ma żadnego dekodera. Dokument modułu: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md).
 
 **Dopisek z 2026-10-06 (M9, część 3).** Stan tła nie zmienił się: menu główne (i ustawienia otwarte z niego) pokazują żywy wysoki przelot kamery menu (`usesMenuCamera`), a odtwarzania pętli wideo nadal nie ma. Przelot ma od części 3 długość zależną od poziomu (około 46 s dla 10 na 10, 73 s dla 16 na 16, 100 s dla 22 na 22, policzone z wzorów w [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcja 2.8, nie zmierzone), a pierwszy labirynt za menu ma rozmiar poziomu zapisanego w pliku ustawień. Na `Normal` i `Hard` światła kryształów w tle są wybierane spośród 16 najbliższych oka przelotu ([`nearest-crystals-carry-the-lights.md`](nearest-crystals-carry-the-lights.md)); nikt nie oglądał, jak to wygląda na ekranie.
@@ -55,3 +56,19 @@ Sekcje od 1 do 5 zostają w brzmieniu z chwili zapisu. Co się zmieniło:
 - **Menu główne jest w kodzie** ([`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/game/game-states.md`](../modules/game/game-states.md)). Do czasu, aż pętla będzie odtwarzana, jego tłem jest **żywy wysoki przelot** kamery menu: `NightMazeApp` pożycza kamerę menu dla ekranu głównego (`usesMenuCamera`) i zawsze ustawia ujęcie `HighGlide`, bez włączania flagi `m_menuCamera.enabled`. To rozwiązanie przejściowe, a nie zmiana decyzji.
 - **Otwarty punkt "sposób odtwarzania" jest rozstrzygnięty** decyzją właściciela z 2026-10-06 w osobnej notatce: [`video-through-os-decoders-with-still-fallback.md`](video-through-os-decoders-with-still-fallback.md). Kodu odtwarzania nadal nie ma (sprawdzone: w `src/` i `cmake/` nie ma dekodera wideo).
 - Funkcja `game::drawsScene(mode, fullscreenBackground)` jest w kodzie i ma test, ale renderer jeszcze jej nie używa: tła na cały ekran nie ma.
+
+## 7. Dodatek z 2026-10-06 (M9, część 4): odtwarzanie i pętla istnieją
+
+Sekcje od 1 do 6 zostają w brzmieniu z chwili zapisu. **Decyzja właściciela z sekcji 2 się nie zmienia.** Co się zmieniło w kodzie (opis w [`../modules/video/README.md`](../modules/video/README.md)):
+
+- **Odtwarzanie jest w kodzie.** Menu główne i ustawienia otwarte z niego pokazują pętlę wideo, odtwarzaną przez dekoder systemu (decyzja właściciela z [`video-through-os-decoders-with-still-fallback.md`](video-through-os-decoders-with-still-fallback.md)), a gdy to się nie uda, nieruchomy obraz, a gdy i to się nie uda, żywą scenę. `game::drawsScene` jest wpięta: za wideo albo obrazem scena nie jest rysowana w ogóle. Żywy przelot zostaje jako `--menu-background scene`.
+- **Pętla jest w repozytorium:** `assets/video/menu_loop.mp4` (17 646 243 bajtów, 30 s, 1280 x 720, 4,71 Mbit/s) i `menu_still.png`. Sekcja 4 mówiła o 19,7 MB w jakości docelowej dla pętli 24 s (CRF 14); dzisiejsza pętla ma 30 s i CRF 16, więc to inny plik, a nie to samo zmierzone jeszcze raz. Przy CRF 18 miała 13,18 MB (pomiar autora kodu).
+- **Przepis jest skryptem:** `tools/record_menu_loop.py` (sekcja 4 mówiła, że "dokładnych poleceń `ffmpeg` w repozytorium nie ma", a skutki, że zostaną zapisane w `tools/`). Opis: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.9.
+- **Rola trybu kamery menu** jest taka, jak zapisano w sekcji 4: narzędzie do nagrywania (i pokaz pod F2), a nie tło.
+
+**Co zostaje otwarte** (analiza):
+
+- **Odbicia w kałuży w pętli nie ma.** Zadanie nagrania go wymagało, ale kamery menu nie patrzą w dół i żadnego nie dało się pokazać. To punkt do decyzji właściciela (czy dodać ujęcie z kamerą patrzącą w dół, co wymaga nowego ustawienia kamery).
+- **Rozmiar pliku w git.** 17,6 MB dochodzi do repozytorium przy każdym nagraniu na nowo; ścieżka awaryjna z sekcji 4 (Git LFS dla `assets/`) jest nadal opisana jako pierwszy krok, gdyby rozmiar zaczął przeszkadzać.
+- **Pętla się starzeje** (jak w sekcji 4); odnowienie to jedno polecenie skryptu, ale tylko na Windowsie.
+- **macOS:** dekoder jest napisany i nigdy nie skompilowany ([`../guides/build-macos.md`](../guides/build-macos.md)).

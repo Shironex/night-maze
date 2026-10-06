@@ -1,6 +1,6 @@
 # Bateria: pusta oznacza ciemność, a nie przegraną
 
-Data: 2026-10-05. Stan: obowiązuje.
+Data: 2026-10-05. Stan: obowiązuje, **częściowo zastąpiona 2026-10-06** przez [`enemy-light-shy-shadow.md`](enemy-light-shy-shadow.md): zostaje, że pusta bateria tylko gasi latarkę i że nie ma ekranu przegranej; przestaje być prawdą, że rundy nie da się przegrać, gdy powstanie przeciwnik (złapanie cofa gracza na początek tego samego labiryntu), a na poziomie Calm bez przeciwnika notatka obowiązuje bez zmian. Kodu przeciwnika jeszcze nie ma, więc kod jest zgodny z tą notatką.
 Kod: [`src/game/Round.hpp`](../../src/game/Round.hpp), [`Round.cpp`](../../src/game/Round.cpp) (`RoundState`, `updateRound`, `flashlightFlicker`, `lightingForFrame`), [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) (`beginRound`), [`src/debug/Hud.cpp`](../../src/debug/Hud.cpp) (podpowiedź na ekranie), testy w [`tests/RoundTests.cpp`](../../tests/RoundTests.cpp). Dokument modułu: [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcje 2 i 5.
 
 ## 1. Kontekst

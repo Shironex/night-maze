@@ -177,7 +177,7 @@ Macu.
 
 **Przełączniki wiersza poleceń (od M9, części 1).**
 
-Program przyjmuje pięć przełączników (piąty, `--play`, doszedł w M9, części 2). Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
+Program przyjmuje sześć przełączników (piąty, `--play`, doszedł w M9, części 2, szósty, `--menu-background`, w M9, części 4). Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
 
 | Przełącznik | Znaczenie |
 |---|---|
@@ -186,6 +186,7 @@ Program przyjmuje pięć przełączników (piąty, `--play`, doszedł w M9, czę
 | `--menu-camera` | start od razu w trybie kamery menu (gra pokazuje samą siebie; to samo robi klawisz F2) |
 | `--menu-shot <walk\|glide>` | ujęcie kamery menu: spacer po korytarzach albo wysoki przelot. Samo nie włącza trybu |
 | `--menu-time <sekundy>` | start ujęcia tyle sekund w głąb pętli, liczba z kropką dziesiętną (przecinek jest odrzucany), może być ujemna. Samo nie włącza trybu |
+| `--menu-background <video\|still\|scene>` | co jest za menu głównym i ustawieniami z niego (od M9, części 4): nagrane wideo (domyślnie), obraz nieruchomy albo żywa scena. Zmienia tylko tło, nie włącza trybu kamery menu i nie pomija menu |
 
 Przykład: `night_maze --menu-camera --seed 1 --menu-shot glide`. Opis i przepis na nagranie klipu: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcje 2.9 i 5.9.
 
@@ -2258,7 +2259,7 @@ Zmiana z 2026-10-06 (cztery dokumenty menu w `assets/ui/` z arkuszem w `vh`, `sr
 ([`build-windows.md`](build-windows.md), sekcja 28). **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie
 jest odhaczony.** Na Windowsie widział ją na zrzutach agent, który napisał kod, a nie właściciel; właściciel zgłosił grę na `Hard`
 w buildzie Debug ("it was great"), co nie jest listą kontrolną. **Pełna bramka nie została uruchomiona nawet na scalonym drzewie na
-Windowsie** (sekcja 28 tam). Opis kodu: [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md),
+Windowsie** (sekcja 28 tam). **Korekta z 2026-10-06 (po M9, części 4):** to zdanie jest nieaktualne, bramka przeszła na scalonym drzewie na Windowsie (`0f8d3b9`, 564 przypadki testowe i 220119 asercji, zgłoszone przez bramkę). Opis kodu: [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md),
 [`../modules/game/settings.md`](../modules/game/settings.md), [`../modules/game/difficulty.md`](../modules/game/difficulty.md).
 
 Ryzyko na macOS jest w czterech miejscach: **pełny ekran** (`glfwSetWindowMonitor` z bieżącym trybem wideo ekranu: czy na macOS i na
@@ -2289,6 +2290,33 @@ Retina daje pełny ekran bez zmiany trybu i czy powrót wraca do tego samego mie
 
 **Co nadal nie istnieje na żadnym systemie:** ekrany menu, poziomy i ustawienia nie zostały obejrzane przez właściciela ręką (poza relacją o
 grze na `Hard` w Debug na Windowsie), a na macOS nikt ich nie uruchomił.
+
+### M9, część 4 (wideo w tle menu) na macOS: lista w całości otwarta
+
+Zmiana z 2026-10-06 (biblioteka `video`: odtwarzacz z wątkiem dekodującym, `gfx::CoverFit` i `gfx::FrameTexture`, reguła tła `game::MenuBackground`, `MenuBackgroundRenderer`, przełącznik `--menu-background`, pętla `assets/video/menu_loop.mp4` i obraz `menu_still.png`, skrypt `tools/record_menu_loop.py`) powstała na Windowsie i tam jest zgłoszona ([`build-windows.md`](build-windows.md), sekcja 29). **Dekoder dla macOS, `src/video/VideoDecoderApple.mm`, napisano z dokumentacji AVFoundation na komputerze z Windowsem: nigdy nie został skompilowany ani uruchomiony, a żaden punkt poniżej nie jest odhaczony.** Gdyby się nie udał, gra jest używalna: menu pokazuje obraz nieruchomy (sekcja 29 tam, ścieżki zapasowe). Opis kodu: [`../modules/video/README.md`](../modules/video/README.md), sekcja 2.9.
+
+Do zbudowania na Macu (kolejność ma znaczenie, każdy punkt wymaga poprzedniego):
+
+1. [ ] **`cmake --preset debug` działa.** Miejsca ryzyka: `enable_language(OBJCXX)` wewnątrz `if(APPLE)` po `project(...)`, właściwości `OBJCXX_STANDARD 20`, opcja per plik `-fobjc-arc`, cztery frameworki (AVFoundation, CoreMedia, CoreVideo, Foundation) jako `PRIVATE` elementy linkowania statycznej biblioteki `video`, które mają dojść do linkowania `night_maze`
+2. [ ] **plik `.mm` kompiluje się bez błędów i, pod `-Wall -Wextra -Wpedantic`, bez ostrzeżeń.** Punkty, które są zgadywaniem: rzutowanie `__bridge` z `formatDescriptions.firstObject` na `CMVideoFormatDescriptionRef`, `#pragma clang diagnostic` wokół trzech przestarzałych właściwości synchronicznych (`tracksWithMediaType:`, `formatDescriptions`, `nominalFrameRate`), `return` wewnątrz `@autoreleasepool` wewnątrz pętli
+3. [ ] **`make format-check` przechodzi.** clang-format z Maca może sformatować plik `.mm` inaczej niż ten z Visual Studio 2022, który go tu sformatował. Jeśli tak: sformatować na Macu i sprawdzić Windows jeszcze raz, albo wyjąć plik z `OBJCXX_SOURCES` w `Makefile`
+4. [ ] **`make tidy` przechodzi:** dla `VideoDecoderWindows.cpp` (na macOS plik jest pusty poza dołączeniem interfejsu) wynik ma być pusty i czysty. Pliku `.mm` clang-tidy **nie** sprawdza (celowo, komentarz w `Makefile`); zdecydować, czy dodać go na Macu
+5. [ ] **linia w logu** `[info] Menu background: video (the video plays)`. Jeśli jest `still`, powód w nawiasie to błąd AVFoundation
+6. [ ] **obraz:** we właściwą stronę (nie odwrócony ani lustrzany), kolory nie zamienione (BGRA), nie za ciemny i nie wyblakły w porównaniu z `assets/video/menu_still.png` (uruchomić raz z `--menu-background still` i porównać okiem albo zrzutami). AVFoundation może zastosować własną obróbkę koloru do wyjścia 32BGRA
+7. [ ] **rozmiar:** `CMVideoFormatDescriptionGetDimensions` ma dać 1280 x 720 i bufory pikseli mają mieć ten rozmiar; w przeciwnym razie `copyPicture` zwraca fałsz i wideo zawodzi po pierwszej klatce
+8. [ ] **pętla:** zostawić menu na ponad 60 s. Przy 30 s i przy 60 s ma nie być pauzy, skoku ani czarnej klatki. Na macOS `rewind` tworzy nowy `AVAssetReader` na wątku dekodującym
+9. [ ] **kolejność klatek:** wyjście ma wydawać klatki w kolejności pokazywania. Pętla nie ma klatek B, więc z dostarczonym plikiem nie powinno być problemu, ale ponowne kodowanie z klatkami B trzeba by sprawdzić
+10. [ ] **Retina:** pokrycie okna i menu na ekranie, na którym bufor ramki jest dwa razy większy od okna; okno, które nie ma kształtu 16 : 9
+11. [ ] **`Play`, pauza, `Back to menu`:** wideo idzie dalej. Ustawienia z menu głównego: wideo gra za nimi
+12. [ ] **zamknięcie przy działającym wideo:** program kończy się bez zawieszenia (destruktor czeka na wątek dekodujący) i bez komunikatu o wycieku albo nadmiernym zwolnieniu obiektu
+13. [ ] **ścieżka zapasowa:** zmienić nazwę `assets/video/menu_loop.mp4` w katalogu builda (na macOS `assets` obok pliku wykonywalnego jest dowiązaniem do repozytorium, więc zmieniamy nazwę pliku w repozytorium i **przywracamy ją**): pojawia się obraz nieruchomy z linią `[warn]`
+14. [ ] **`--menu-background scene`** i `--menu-camera` nadal działają
+15. [ ] **`tools/record_menu_loop.py` jest tylko na Windowsie** (`gdigrab`, `user32`): nagrywania na Macu nie przewidziano, więc nie ma tu nic do sprawdzenia
+
+Dodatkowo, zapisać: liczbę przypadków testowych i asercji tego komputera po `make check` (na Windowsie: 583 i 220420, zgłoszone przez bramkę; trzy nowe pliki testów `CoverFitTests`, `VideoClockTests` i `MenuBackgroundTests` nie zależą od systemu).
+
+**Co nadal nie istnieje na żadnym systemie:** wideo w ruchu nie oglądał okiem nikt (na Windowsie agent oglądał zrzuty), a na macOS nikt nie zbudował dekodera.
+
 
 ### Skróty: `make`
 

@@ -175,6 +175,17 @@
 > zgłoszonych liczb. Agent oglądał na zrzutach wszystkie cztery ekrany (sekcja 28.1), a właściciel zgłosił grę na `Hard`
 > w buildzie Debug ("it was great"): relacja, nie zamknięta lista (sekcja 28.2 jest otwarta). Na macOS nic z tego nie było budowane.
 >
+> **Korekta z 2026-10-06 (po M9, części 4):** zdanie powyżej, że pełna bramka nie została uruchomiona na scalonym drzewie, jest
+> **nieaktualne**. `make check` przeszedł na `0f8d3b9` (scalone drzewo przed częścią 4): **564 przypadki testowe i 220119 asercji**
+> (zgłoszone przez bramkę, nie powtarzałem). Historia zostaje w sekcji 28.
+>
+> **Zgłoszone 2026-10-06 (M9, część 4: wideo w tle menu):** `make check` przeszedł na gałęzi wideo (na `232c7b0`; jedyny późniejszy
+> commit zmienia jedną linię komentarza w narzędziu Pythona): **583 przypadki testowe i 220420 asercji** (19 przypadków więcej niż na
+> `0f8d3b9`). Agent oglądał na zrzutach menu z wideo w czterech rozmiarach okna, wszystkie ścieżki zapasowe i klatki z miejsca zamknięcia
+> pętli (sekcja 29.1), a koordynator jedną planszę z czterech klatek menu nad czterema ujęciami. **Nikt nie oglądał wideo w ruchu okiem,
+> a właściciel nie wykonał żadnego punktu z sekcji 29.2.** Kod macOS dekodera nigdy nie był kompilowany. Gałąź `main` została wypchnięta
+> do prywatnego zdalnego repozytorium na `0f8d3b9` na słowo właściciela (2026-10-06); wydanie i upublicznienie repozytorium nadal czekają.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -285,7 +296,7 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 
 ### Przełączniki wiersza poleceń (od M9, części 1)
 
-Program przyjmuje pięć przełączników (piąty, `--play`, doszedł w M9, części 2). Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
+Program przyjmuje sześć przełączników (piąty, `--play`, doszedł w M9, części 2, szósty, `--menu-background`, w M9, części 4). Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
 
 | Przełącznik | Znaczenie |
 |---|---|
@@ -294,6 +305,7 @@ Program przyjmuje pięć przełączników (piąty, `--play`, doszedł w M9, czę
 | `--menu-camera` | start od razu w trybie kamery menu (gra pokazuje samą siebie; to samo robi klawisz F2, który od części 2 działa tylko w rundzie); pomija też menu główne |
 | `--menu-shot <walk\|glide>` | ujęcie kamery menu: spacer po korytarzach albo wysoki przelot. Samo nie włącza trybu |
 | `--menu-time <sekundy>` | start ujęcia tyle sekund w głąb pętli, liczba z kropką dziesiętną (przecinek jest odrzucany), może być ujemna. Samo nie włącza trybu |
+| `--menu-background <video\|still\|scene>` | co jest za menu głównym i ustawieniami z niego (od M9, części 4): nagrane wideo (domyślnie), obraz nieruchomy albo żywa scena. Zmienia tylko tło, nie włącza trybu kamery menu i nie pomija menu |
 
 Przykład: `build\debug\Debug\night_maze.exe --menu-camera --seed 1 --menu-shot glide`. Opis i przepis na nagranie klipu: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcje 2.9 i 5.9.
 
@@ -5642,7 +5654,7 @@ menu (żaden dokument go nie ma), build Debug zatwierdzonego kodu na ekranie i w
 Znane ograniczenia (z kodu, nie ze zrzutów): pauza nie zatrzymuje wiatru w trawie (idzie od `glfwGetTime`),
 poziom trudności nic nie zmienia, `drawsScene` jest przetestowana, ale renderer jej nie woła, menu główne
 używa wysokiego przelotu kamery menu zamiast tła w postaci wideo, bez dokumentów menu gra startuje w
-rundzie, a karta wygranej z `Hud.cpp` jest martwym kodem.
+rundzie, a karta wygranej z `Hud.cpp` jest martwym kodem. (Stan z części 2. Od części 4 `drawsScene` jest wpięta w `onRender`, a tłem menu głównego jest nagrane wideo, nie przelot kamery: [`../modules/video/README.md`](../modules/video/README.md).)
 
 ### 26.2. Otwarte: test ręczny na około trzydzieści minut
 
@@ -5904,6 +5916,8 @@ pamięci 2026-10-06, a właściciel zdecydował, że tego dnia ją pomija. **Ka�
 Dla scalonego drzewa nikt nie zgłosił liczby przypadków testowych ani asercji, a to, że scalone drzewo się buduje i przechodzi testy,
 nie zostało sprawdzone.
 
+**Uzupełnienie z 2026-10-06 (po M9, części 4):** pełna bramka została uruchomiona na scalonym drzewie: `make check` przeszedł na `0f8d3b9` (**564 przypadki testowe i 220119 asercji**, zgłoszone przez bramkę, nie powtarzałem). Zdanie powyżej o braku bramki dla scalonego drzewa opisuje stan sprzed tego przebiegu i zostaje jako historia. Punkt `[ ]` o bramce w sekcji 28.1 i w przygotowaniu sekcji 28.2 dostał dopisek.
+
 Decyzje właściciela (2026-10-06) są osobno: menu w RmlUi, cztery ekrany, angielskie teksty i trzy poziomy trudności zmieniające rozmiar
 labiryntu i liczbę kryształów ([`../decisions/menu-scope-for-m9.md`](../decisions/menu-scope-for-m9.md)). **Poziom zmienia w kodzie więcej**
 (baterię i próg bramy), a `Normal` i `Hard` mają mniej kryształów, niż dałaby reguła jeden na osiem komórek: to propozycja autora kodu,
@@ -5926,6 +5940,9 @@ Tej części **nie zamyka** żaden test ręczny: lista w sekcji 28.2 jest otwart
 - [ ] **`make check` na scalonym drzewie: nie uruchomiono.** Liczby asercji dla scalonego drzewa nie ma i nie sumuję asercji z dwóch
       gałęzi. Policzone z plików (nie jest to wynik bramki): na HEAD jest 564 makr `TEST_CASE(` na początku linii w `tests/*.cpp`,
       czyli 557 plus 7 z `SearchTests.cpp`
+      **Korekta z 2026-10-06 (po M9, części 4):** bramka na scalonym drzewie przeszła: `make check` na `0f8d3b9`, **564 przypadki testowe i 220119
+      asercji** (zgłoszone przez bramkę, nie powtarzałem). Punkt zostawiam otwarty w jego pierwotnym brzmieniu: liczba pochodzi z raportu bramki,
+      a nie z mojego uruchomienia.
 
 **2. Widziane na zrzucie ekranu przez agenta.** Poniższe punkty są zapisane jako "widziane na zrzucie ekranu przez agenta (2026-10-06),
 nie przez właściciela": agent, który napisał kod, uruchomił grę, sterował nią skryptem pod wspólną blokadą wejścia i oglądał zrzuty.
@@ -5985,6 +6002,8 @@ Przygotowanie:
 
 - [ ] zbudować scalone drzewo i uruchomić **pełną bramkę** `make check` (formatowanie, build i testy w Debug i Release, clang-tidy):
       to jedyny sposób, żeby dostać liczby dla scalonego drzewa; zapisać je tutaj
+      (Wykonane przez bramkę 2026-10-06, po części 4: `make check` na `0f8d3b9` przeszedł, 564 przypadki testowe i 220119 asercji. Ręcznie
+      właściciel go nie powtarzał.)
 - [ ] usunąć stary `night-maze-settings.txt` i `imgui.ini`, uruchomić grę z terminala: menu główne, w logu linia "No settings file" i brak
       linii `[error]`; **bez żadnej zmiany ustawień plik nie powstaje**
 
@@ -6046,7 +6065,90 @@ Okno, fokus i skala:
 
 Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Zamknięcie tej listy nie zamyka M9.
 
-## 29. Powiązane dokumenty
+## 29. Lista kontrolna M9, część 4: wideo w tle menu
+
+Kamień milowy M9 jest nadal **rozpoczęty, nie zamknięty**. Ta część: nagrana pętla wideo (30 s) za menu głównym i za ustawieniami otwartymi z niego, odtwarzana przez Media Foundation na Windowsie (AVFoundation na macOS: kod napisany, **nigdy nie skompilowany**), z obrazem nieruchomym i żywą sceną jako ścieżkami zapasowymi, przełącznik `--menu-background <video|still|scene>` i skrypt `tools/record_menu_loop.py`. Opis kodu: [`../modules/video/README.md`](../modules/video/README.md), nagranie: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.9, decyzje właściciela: [`../decisions/menu-background-prerendered-loop.md`](../decisions/menu-background-prerendered-loop.md) i [`../decisions/video-through-os-decoders-with-still-fallback.md`](../decisions/video-through-os-decoders-with-still-fallback.md).
+
+**Stan repozytorium.** Gałąź `main` została wypchnięta do prywatnego zdalnego repozytorium na `0f8d3b9` na słowo właściciela (2026-10-06). Dziesięć commitów tej części (`0f8d3b9..fc8324e`) leży tylko lokalnie. Wydanie (workflow, launcher, manifest) i upublicznienie repozytorium nadal czekają.
+
+Tej części **nie zamyka** żaden test ręczny: lista w sekcji 29.2 jest otwarta, a na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)).
+
+### 29.1. Zgłoszone (2026-10-06)
+
+Środowisko agenta: Windows, build Release (część sprawdzeń w Debug), okno 1280 na 720 o ile nie napisano inaczej, karta NVIDIA GeForce, skalowanie ekranu 100 procent. Trzy rodzaje dowodów trzymam osobno.
+
+**1. Bramka (zgłoszona przez bramkę, nie powtarzałem jej przy pisaniu tej sekcji).**
+
+- [x] `make check` na `0f8d3b9` (scalone drzewo przed tą częścią) przechodzi: **564 przypadki testowe i 220119 asercji**. To odpowiada na zastrzeżenie z sekcji 28 ("pełna bramka nie została uruchomiona na scalonym drzewie"); tamte zdania zostają jako historia z dopiskiem
+- [x] `make check` na gałęzi wideo przechodzi (przebieg na `232c7b0`; jedyny późniejszy commit `fc8324e` zmienia jedną linię komentarza w narzędziu Pythona): **583 przypadki testowe i 220420 asercji**, 19 przypadków więcej: 5 w `tests/CoverFitTests.cpp`, 7 w `tests/VideoClockTests.cpp`, 6 w `tests/MenuBackgroundTests.cpp` i 1 w `tests/StartOptionsTests.cpp`
+- [x] clang-tidy obejmuje na Windowsie dziesięć plików więcej (siedem nowych `.cpp` w `src/` i trzy w `tests/`): pasek postępu pokazuje `/140` zamiast `/130` (zgłoszone przez autora kodu; licznik samego clang-tidy biegnie w obu logach o jeden dalej)
+- [ ] `make format-check` i `make tidy` **na macOS**: nie uruchomiono (plik `.mm` jest formatowany, ale nie jest sprawdzany przez clang-tidy: komentarz w `Makefile`)
+
+**2. Widziane na zrzucie ekranu przez agenta.** Poniższe punkty są zapisane jako "widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela": agent, który napisał kod, uruchomił grę, sterował nią i oglądał zrzuty albo klatki nagrane z działającej gry. To **nie** jest test właściciela i **żaden punkt z sekcji 29.2 nie jest przez to zamknięty**.
+
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: menu z wideo w oknach 1280 na 720, 1600 na 900, 1100 na 700 i 800 na 900: obraz pokrywa okno, **nie jest rozciągnięty**, tekst menu czytelny
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: ustawienia otwarte z menu głównego, z wideo za nimi
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: `Play`, pauza i `Back to menu`: wideo idzie dalej (po około 9 s w rundzie i pauzie menu wróciło mniej więcej do miejsca pętli, w którym zostało: koniec ujęcia z przelotem, a nie 9 s dalej i nie początek)
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: ścieżki zapasowe, każda z **jedną** linią logu: brak pliku `menu_loop.mp4`, plik niebędący wideo (300 KB innych bajtów pod tą nazwą) i **zasymulowany** brak dekodera (sonda skierowana na nazwę nieistniejącej biblioteki w lokalnej wersji, niezatwierdzonej) pokazują obraz nieruchomy; brak obu plików pokazuje żywą scenę (po linii `[error]` z ładowania obrazu)
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: okno debug nad menu z wideo, w buildach Release i Debug; w Debug (z `GL_CHECK`) każda kategoria okna w świeżym starcie, bez linii `[error]` i `[warn]` w logu; kategoria Post process pokazuje "0 x 0 px" i "no picture yet", bo bufor sceny nie jest tworzony (linia "not drawn (bloom off or a debug view)" tej kategorii nie jest w menu prawdziwym powodem: znany, nieaktualny tekst)
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: klatki przez miejsce zamknięcia pętli, zgrane z działającej gry od 26 s do 34 s po starcie: ujęcie z bramą przechodzi w przelot i przelot idzie dalej, **bez czarnej klatki, bez zamrożenia i bez skoku**; dwa powtórzone obrazy w zgraniu (0,5 s i 2,4 s od jego początku, oba przed miejscem zamknięcia) to nagrywarka próbkująca dwa razy tę samą klatkę wideo
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: tryb nagrywania (`--menu-camera`) bez HUD, minimapy, menu i okna debug na nagranych klatkach; `--menu-camera` nadal pomija menu główne
+- widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela: build Debug z menu wideo w 1100 na 700, ustawienia, runda, pauza i tło w postaci obrazu nieruchomego
+- widziane na zrzucie ekranu przez koordynatora (2026-10-06), nie przez właściciela: jedna plansza z czterech klatek menu nad czterema ujęciami pętli (tytuł, `Play`, poziom, pole ziarna, wiersz informacji): tekst czytelny na każdej
+
+**Nie widziane na ekranie** (nikt tego nie oglądał): **wideo w ruchu okiem** (każde sprawdzenie było zrzutem albo liczbą); pełny ekran; rozmiary okna powyżej 1600 na 900; **prawdziwa edycja Windows N** (ścieżkę zasymulowano); skalowanie ekranu inne niż 100 procent; drugi monitor; **awaria dekodera w środku odtwarzania** (kod `MenuBackgroundRenderer::update` jest, ścieżka nie była uruchomiona); zrzut odtwarzanego wideo porównany z klatką, którą pokazuje; wszystko na macOS.
+
+**Pomiary autora kodu** (Windows, Release, 1280 na 720, komputer autora; tabele i opis w [`../modules/video/README.md`](../modules/video/README.md), sekcja 2.11): pierwsza klatka po przewinięciu 16,5 do 36,7 ms (zwykła klatka około 0,9 ms), wysłanie klatki do karty 1,06 ms średnio, kolejka czterech klatek nie spadła poniżej czterech na żadnym z pięciu przejść pętli, czas klatki menu 2,25 ms z żywą sceną, 1,19 ms z wideo i 1,00 ms z obrazem nieruchomym (vsync nie ograniczał). W pierwszym przebiegu pomiaru były **serie długich klatek** (do 101 ms między 12 s a 35 s), niezwiązane z miejscem zamknięcia pętli i niepowtórzone w drugim przebiegu (40 s, żadna klatka powyżej 12,4 ms): przyczyny nie znaleziono.
+
+**Znane ograniczenia (z kodu):** nagranie pętli działa tylko na Windowsie; w pętli nie ma odbicia w kałuży (kamery nie patrzą w dół); wideo nie ma przyciemnienia w shaderze (`uBrightness` = 1,0), a czytelność tekstu zapewniają dokumenty menu.
+
+### 29.2. Otwarte: test ręczny na około trzydzieści minut
+
+> Okno debug startuje ukryte: przed kontrolkami naciśnij `~`. Nazwy paneli i zasady czytania starszych kroków: sekcja 27.3.
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i z zrzutów agenta. Ta lista jest **otwarta**: nie odhaczono żadnego punktu. Lista z sekcji 28.2 (ekrany menu, poziomy, ustawienia) też jest nadal otwarta.
+
+Przygotowanie:
+
+- [ ] zbudować Release (`make release`) i uruchomić grę **z terminala**: w logu linia `[info] Menu background: video (the video plays)`, brak linii `[error]` i `[warn]`; start gry trwa o ułamek sekundy dłużej niż bez wideo (konstruktor odtwarzacza czeka na pierwszą klatkę: według pomiarów autora otwarcie dekodera 101 do 109 ms i pierwsza klatka 26 do 37 ms)
+
+Wideo:
+
+- [ ] **wideo w ruchu, okiem:** płynne, bez zacięć i migotania, cztery ujęcia (przelot, korytarz z dźwignią, kryształ, brama) z przenikaniami; zapisać wrażenia
+- [ ] **miejsce zamknięcia pętli:** zostawić menu na ponad dwie minuty (przejścia przy 30, 60, 90 s): bez pauzy, skoku i czarnej klatki
+- [ ] tekst menu (tytuł, `Play`, poziomy, pole ziarna, `Settings`, `Quit`, wiersz informacji) czytelny na każdym z czterech ujęć, także w jasnym stożku latarki
+- [ ] kolory: porównać z `--menu-background still`: ten sam odcień, wideo nie ciemniejsze i nie bledsze (kolory zostały zmierzone tylko liczbami, sekcja 29.1)
+- [ ] rozmiary okna (kroki rozmiaru w ustawieniach i ręczne ciągnięcie krawędzi): obraz **pokrywa** okno, nie jest rozciągnięty; okno wąskie (800 na 900), szerokie, **pełny ekran** i rozmiary powyżej 1600 na 900
+- [ ] `Play`, pauza, `Back to menu`: wideo idzie dalej od miejsca, w którym stanęło; ustawienia z menu głównego i z pauzy: za menu głównym wideo gra
+- [ ] Alt+Tab z menu i powrót: wideo nie przeskakuje do przodu (zegar czeka); minimalizacja okna i powrót
+- [ ] `Quit` przy działającym wideo: program kończy się bez zawieszenia
+- [ ] skalowanie ekranu 125, 150 i 200 procent: wideo nadal pokrywa okno, menu zajmuje ten sam kawałek obrazu
+- [ ] drugi monitor: okno z wideo przeniesione i pełny ekran na nim
+
+Ścieżki zapasowe (po każdej przywrócić pliki):
+
+- [ ] zmienić nazwę `assets/video/menu_loop.mp4` w katalogu builda: menu pokazuje obraz nieruchomy, **jedna** linia `[warn] Menu background: still (the video cannot be played: the file is missing [...])`
+- [ ] pod nazwą `menu_loop.mp4` plik, który nie jest wideo: obraz nieruchomy i linia z kodem `HRESULT`
+- [ ] obie nazwy (`menu_loop.mp4` i `menu_still.png`) zmienione: żywa scena, linia `[warn]` z końcówką "and the still image cannot be loaded either"
+- [ ] `--menu-background video`, `still`, `scene` i błędna nazwa (np. `live`: dwie linie `[error]`, okno się nie otwiera); `--menu-camera` i `--play` nadal pomijają menu
+- [ ] **prawdziwa edycja Windows N bez Media Feature Pack** (maszyna wirtualna wystarczy): gra się uruchamia, w logu `[warn] Menu background: still (the video cannot be played: Media Foundation is not installed (a Windows N edition needs the Media Feature Pack) ...)`, menu pokazuje obraz nieruchomy; po zainstalowaniu pakietu wideo gra
+- [ ] awaria dekodera w środku odtwarzania (trudna do wywołania; jeśli się uda): menu przechodzi na obraz nieruchomy, pada nowa linia logu, gra się nie zawiesza
+
+Okno debug i nagranie:
+
+- [ ] okno debug nad menu z wideo (`~`): kategoria Post process pokazuje "0 x 0 px" i "no picture yet"; zapisać, czy tekst "not drawn (bloom off or a debug view)" myli
+- [ ] `python tools/record_menu_loop.py --out-dir <katalog tymczasowy>` (potrzebne `ffmpeg` i `ffprobe`; okno gry będzie około minuty na wierzchu, nie dotykać go): powstaje `menu_loop.mp4` (30 s) i `menu_still.png`. **Bez `--out-dir` skrypt nadpisuje pliki z `assets/video/`**
+- [ ] tryb nagrywania (`--menu-camera`): bez HUD, minimapy, menu i okna debug
+
+Czas klatki i budowa:
+
+- [ ] czas klatki menu na komputerze właściciela **z włączonym vsync** (na komputerze autora vsync nie działał, więc jego liczby to czasy bez ograniczenia): zapisać FPS menu z wideo i ze sceną (`--menu-background scene`)
+- [ ] brak ostrzeżeń kompilatora przy buildzie Debug i Release po tej części; `make check`
+
+Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Zamknięcie tej listy nie zamyka M9.
+
+
+## 30. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -6057,6 +6159,7 @@ Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Za
 - Kamera menu i przełączniki wiersza poleceń: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), [`../decisions/menu-background-prerendered-loop.md`](../decisions/menu-background-prerendered-loop.md)
 - Menu w RmlUi, ekrany gry i Escape: [`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/game/game-states.md`](../modules/game/game-states.md), [`../libraries/rmlui.md`](../libraries/rmlui.md), [`../decisions/escape-pauses-and-goes-back.md`](../decisions/escape-pauses-and-goes-back.md)
 - Cztery ekrany menu, poziomy trudności i ustawienia (M9, część 3): [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md), [`../modules/game/difficulty.md`](../modules/game/difficulty.md), [`../modules/game/settings.md`](../modules/game/settings.md), [`../decisions/nearest-crystals-carry-the-lights.md`](../decisions/nearest-crystals-carry-the-lights.md)
+- Wideo w tle menu (M9, część 4): [`../modules/video/README.md`](../modules/video/README.md), [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md) (skrypt nagrywający, sekcja 5.9), [`../decisions/video-through-os-decoders-with-still-fallback.md`](../decisions/video-through-os-decoders-with-still-fallback.md)
 - Launcher (poza ocenianym kodem C++): [`launcher.md`](launcher.md)
 - Selekcja, dźwignie i kartki: [`../modules/scene/picking.md`](../modules/scene/picking.md), [`../modules/game/interactables.md`](../modules/game/interactables.md)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),

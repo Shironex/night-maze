@@ -3,6 +3,8 @@
 Data: 2026-10-06. Stan: obowiązuje jako decyzja, **kodu odtwarzającego wideo nie ma**. Decyzja właściciela projektu jest w całości w sekcji 2; kontekst, tabela możliwości, skutki i warunki powrotu to moja analiza. Domyka punkt otwarty z [`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md): tam wybór pętli wideo był rozstrzygnięty, a sposób jej odtwarzania nie.
 Kod: brak. W `cmake/Dependencies.cmake` nie ma żadnego dekodera wideo (sprawdzone wyszukiwaniem w `cmake/`, `CMakeLists.txt` i `src/`). Gotowy jest tylko jeden przygotowany punkt zaczepienia: funkcja `game::drawsScene(mode, fullscreenBackground)` w [`src/game/GameState.cpp`](../../src/game/GameState.cpp), która ma test i której renderer jeszcze nie woła ([`../modules/game/game-states.md`](../modules/game/game-states.md)). Dokumenty: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md) (nagrywanie pętli), [`../modules/ui/README.md`](../modules/ui/README.md) (warstwa menu).
 
+**Dopisek z 2026-10-06 (M9, część 4):** zdania w tym nagłówku "kodu odtwarzającego wideo nie ma" i "Kod: brak" są **nieaktualne**: kod jest, biblioteka `video` ([`../modules/video/README.md`](../modules/video/README.md)). Sekcje od 1 do 5 zostają w brzmieniu z chwili zapisu, a sekcja 6 mówi, co powstało i co zostaje otwarte. Decyzja właściciela z sekcji 2 się nie zmienia.
+
 ## 1. Kontekst
 
 Właściciel wybrał wcześniej wyrenderowaną pętlę wideo jako tło menu ([`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md)). Ta notatka zostawiała otwarte, jak gra ją odtworzy, i wymieniała trzech kandydatów bez wyboru: dużą bibliotekę dekodującą w rodzaju FFmpeg, mały jednoplikowy dekoder MPEG-1 i własny ciąg skompresowanych klatek.
@@ -48,3 +50,29 @@ To jest analiza. Pierwszy wiersz jest decyzją właściciela, trzy następne to 
 - Gdy powstanie kod odtwarzania: zapisać wybrany interfejs, format i zmierzony koszt (rozmiar pliku, czas dekodowania, zużycie procesora).
 - Jeśli któryś z systemów nie odtworzy wybranego formatu bez dodatkowych kodeków: wrócić do tabeli, w pierwszej kolejności do małego dekodera MPEG-1.
 - Jeśli kod zależny od platformy okaże się za drogi w utrzymaniu: nieruchomy obraz zostaje i tak jako stan końcowy menu, a pętlę można odłożyć.
+
+## 6. Dodatek z 2026-10-06 (M9, część 4): odtwarzanie istnieje
+
+**Decyzja właściciela z sekcji 2 się nie zmienia.** To, co poniżej, to wybory wykonawcze autora kodu i zmierzone koszty, których sekcja 5 ("Gdy powstanie kod odtwarzania: zapisać wybrany interfejs, format i zmierzony koszt") wymagała zapisać.
+
+**Wybrany interfejs, format i miejsce w kodzie:**
+
+- **Windows: Media Foundation** (`IMFSourceReader`), plik `src/video/VideoDecoderWindows.cpp`. Nazwa interfejsu, którą sekcja 4 oznaczała jako przypuszczenie, została użyta i działa. **macOS: AVFoundation** (`AVAssetReader`), plik `src/video/VideoDecoderApple.mm`: **napisany z dokumentacji, nigdy nie skompilowany ani uruchomiony** (sekcja 4 mówiła, że na macOS nic z tego nie było uruchamiane, i to nadal jest prawda).
+- **Format:** MP4 z H.264 (High, 8 bitów, 4:2:0, bez klatek B, kolory BT.709 w zakresie ograniczonym), jeden, który oba systemy odtwarzają bez dodatków.
+- **Jeden interfejs platformy** (`video/VideoDecoder.hpp`) i trzy pliki projektu z kodem zależnym od systemu: `src/core/Paths.cpp`, `src/video/VideoDecoderWindows.cpp` i `src/video/VideoDecoderApple.mm` (sekcja 3 mówiła o jednym pliku). Windows N: obie biblioteki Media Foundation są ładowane z opóźnieniem i sprawdzane sondą przed pierwszym wywołaniem.
+- **Nieruchomy obraz** to klatka 0 pętli jako PNG (`assets/video/menu_still.png`), a gdy i jego nie da się wczytać, menu pokazuje żywą scenę (sekcja 4 mówiła, że "skąd się weźmie i jak duży będzie, nie jest ustalone").
+
+**Zmierzony koszt** (pomiary autora kodu, Windows, Release, 1280 x 720, jego komputer; nie powtarzałem ich; szczegóły w [`../modules/video/README.md`](../modules/video/README.md), sekcja 2.11):
+
+- **plik:** 17 646 243 bajtów, 4,71 Mbit/s,
+- **czas dekodowania:** około 0,9 ms na zwykłą klatkę, 16,5 do 36,7 ms na pierwszą klatkę po przewinięciu (dekoduje to osobny wątek), otwarcie 101 do 109 ms,
+- **wysłanie klatki do karty:** 1,06 ms średnio,
+- **czas klatki menu:** 1,19 ms z wideo, 1,00 ms z obrazem nieruchomym i 2,25 ms z żywą sceną (bez vsync),
+- **zużycie procesora:** **nie mierzono**.
+
+**Co zostaje otwarte:**
+
+- **macOS:** cały dekoder do zbudowania i sprawdzenia (lista piętnastu punktów w [`../guides/build-macos.md`](../guides/build-macos.md)). Ścieżka zapasowa (obraz nieruchomy) powinna chronić menu, gdyby dekoder zawiódł, ale tego też nie sprawdzono na Macu.
+- **Prawdziwa edycja Windows N:** ścieżkę zasymulowano (sonda skierowana na nieistniejącą nazwę biblioteki w lokalnej wersji), nie sprawdzono na systemie bez Media Feature Pack.
+- **Awaria dekodera w środku odtwarzania:** kod zamienia wideo na obraz nieruchomy, ale ta ścieżka nie była uruchomiona.
+- **Wideo w ruchu okiem właściciela:** nikt go nie oglądał, wszystko sprawdzono zrzutami i liczbami.

@@ -1,6 +1,6 @@
 # Przeciwnik: chcę go mieć, ale po M5
 
-Data: 2026-10-05. Stan: obowiązuje.
+Data: 2026-10-05. Stan: obowiązuje; **dopisek z 2026-10-06:** część pytań z sekcji 5 jest rozstrzygnięta decyzją właściciela w [`enemy-light-shy-shadow.md`](enemy-light-shy-shadow.md) (przeciwnik rusza się tylko, gdy jest nieoświetlony i niewidziany; złapanie cofa na początek tego samego labiryntu bez ekranu przegranej; poziom Calm bez niego). Tabela tamtej notatki mówi, co zostaje otwarte.
 Kod: brak. W repozytorium nie ma ani jednej linii przeciwnika. Dokument modułu: brak. Zakres M5 opisuje [`../modules/game/gameplay.md`](../modules/game/gameplay.md).
 
 ## 1. Kontekst

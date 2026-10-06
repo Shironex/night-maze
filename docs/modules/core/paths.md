@@ -65,7 +65,7 @@ Biblioteka standardowa C++ (w tym `std::filesystem`) nie ma funkcji "gdzie jest 
 | macOS | `_NSGetExecutablePath` | `<mach-o/dyld.h>` |
 | Windows | `GetModuleFileNameW` | `<windows.h>` |
 
-To jedyne miejsce w `src/`, w którym kod rozgałęzia się na systemy dyrektywą preprocesora `#if`. Preprocesor (opisany przy makrze `GL_CHECK`, [`gl-check.md`](gl-check.md), sekcja 2.2) zostawia kompilatorowi tylko jedną gałąź: na Macu kompilator w ogóle nie widzi kodu dla Windows i odwrotnie. Makro `__APPLE__` definiuje sam kompilator na systemach Apple, a `_WIN32` na Windowsie (także 64 bitowym).
+To jedyne miejsce w `src/`, w którym kod rozgałęzia się na systemy dyrektywą preprocesora `#if`. Preprocesor (opisany przy makrze `GL_CHECK`, [`gl-check.md`](gl-check.md), sekcja 2.2) zostawia kompilatorowi tylko jedną gałąź: na Macu kompilator w ogóle nie widzi kodu dla Windows i odwrotnie. Makro `__APPLE__` definiuje sam kompilator na systemach Apple, a `_WIN32` na Windowsie (także 64 bitowym). **Zmiana z 2026-10-06 (M9, część 4):** to przestało być jedyne miejsce. Dekoder wideo ma kod zależny od systemu w dwóch plikach: `src/video/VideoDecoderWindows.cpp` (całe ciało w `#ifdef _WIN32`) i `src/video/VideoDecoderApple.mm` (osobny plik Objective-C++ dla macOS, nigdy nie skompilowany), za jednym interfejsem `video/VideoDecoder.hpp` ([`../video/README.md`](../video/README.md)). `Paths.cpp` pozostaje jedynym plikiem **rdzenia** (`core`) z takim rozgałęzieniem.
 
 ### 2.5 `std::filesystem::path`
 
@@ -545,7 +545,7 @@ Niesprawdzone na Windowsie: `pathText` dla ścieżki z polskimi literami (w komu
 11. **Co zwróci `assetPath` dla pliku, którego nie ma?**
     Normalną ścieżkę. Funkcja tylko ją buduje i nie zagląda na dysk. Brak pliku zgłasza kod, który go otwiera.
 
-12. **Dlaczego `<windows.h>` jest tylko w `Paths.cpp` i po co `WIN32_LEAN_AND_MEAN` oraz `NOMINMAX`?**
+12. **Dlaczego `<windows.h>` jest tylko w `Paths.cpp` i po co `WIN32_LEAN_AND_MEAN` oraz `NOMINMAX`?** (Dopisek z 2026-10-06, M9 część 4: od tej części `<windows.h>` jest też w `src/video/VideoDecoderWindows.cpp`, z tymi samymi `WIN32_LEAN_AND_MEAN` i `NOMINMAX`, a nigdy w pliku `.hpp`; w `core/` nadal tylko w `Paths.cpp`.)
     Nagłówek wprowadza ogromną liczbę nazw i makr. W pliku `.hpp` trafiłby do każdego pliku, który ten nagłówek dołącza. `WIN32_LEAN_AND_MEAN` pomija rzadko używane części, `NOMINMAX` zabrania definiowania makr `min` i `max`, które kolidują z `std::min` i `std::max`.
 
 13. **Kto dziś woła `executableDir` i `assetPath`?**
