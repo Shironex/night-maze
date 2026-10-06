@@ -105,8 +105,9 @@ night_maze_enable_warnings(engine)
 # of the grass, the player, the settings of the lighting, of the bloom, of the fog, of
 # the vignette and of the shadows, the rules of a round (exit, crystals, battery), the
 # levers and the notes with the picking of a frame, what the minimap shows (the
-# discovered cells and its shapes), the path of the menu camera and the switches of the
-# command line are plain data and math.
+# discovered cells and its shapes), the path of the menu camera, the screens of the
+# game (menu, playing, paused, round end) and the switches of the command line are plain
+# data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -123,6 +124,8 @@ add_library(game_logic STATIC
     src/game/Exit.hpp
     src/game/Fog.cpp
     src/game/Fog.hpp
+    src/game/GameState.cpp
+    src/game/GameState.hpp
     src/game/Grass.cpp
     src/game/Grass.hpp
     src/game/Interactables.cpp
@@ -279,6 +282,7 @@ add_executable(night_maze_tests
     tests/ExitTests.cpp
     tests/FogTests.cpp
     tests/FramebufferTests.cpp
+    tests/GameStateTests.cpp
     tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
     tests/InteractablesTests.cpp
