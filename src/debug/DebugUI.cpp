@@ -8,10 +8,8 @@
 #include "debug/Theme.hpp"
 #include "debug/panels/AssetsPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
-#include "debug/panels/LightsPanel.hpp"
 #include "debug/panels/RendererPanel.hpp"
 #include "debug/panels/ShadersPanel.hpp"
-#include "debug/panels/ShadowsPanel.hpp"
 #include "game/Interaction.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
@@ -94,7 +92,7 @@ void DebugUI::draw(const DebugContext& context) {
     // sets the flag again below. With the debug UI hidden nobody does, and the game
     // stops drawing the pictures.
     context.postProcessSettings.previews = false;
-    // The same for the preview pictures of the two shadow maps and the Shadows panel.
+    // The same for the preview pictures of the two shadow maps (the Light category).
     context.moonShadowSettings.preview = false;
     context.flashlightShadowSettings.preview = false;
 
@@ -120,18 +118,9 @@ void DebugUI::draw(const DebugContext& context) {
             &context.minimapOverlayShader, &context.reflectShader};
         drawShadersPanel(shaders);
 
-        drawShadowsPanel({.settings = context.moonShadowSettings,
-                          .map = context.moonShadowMap,
-                          .lightSpace = context.moonLightSpace,
-                          .drawn = context.moonShadowSettings.enabled},
-                         {.settings = context.flashlightShadowSettings,
-                          .map = context.flashlightShadowMap,
-                          .lightSpace = context.flashlightLightSpace,
-                          .drawn = context.flashlightShadowDrawn});
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders,
                            context.pick, context.pickDebug);
         drawAssetsPanel(context.assets, m_rawTextureSampler);
-        drawLightsPanel(context.lighting, context.round);
 
         // The debug window, which takes the place of the panels above one category at
         // a time.

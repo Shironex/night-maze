@@ -251,6 +251,8 @@ add_executable(night_maze
     src/debug/Widgets.hpp
     src/debug/categories/GameplayCategory.cpp
     src/debug/categories/GameplayCategory.hpp
+    src/debug/categories/LightCategory.cpp
+    src/debug/categories/LightCategory.hpp
     src/debug/categories/PlayerCategory.cpp
     src/debug/categories/PlayerCategory.hpp
     src/debug/categories/PostProcessCategory.cpp
@@ -263,14 +265,10 @@ add_executable(night_maze
     src/debug/panels/AssetsPanel.hpp
     src/debug/panels/CollisionPanel.cpp
     src/debug/panels/CollisionPanel.hpp
-    src/debug/panels/LightsPanel.cpp
-    src/debug/panels/LightsPanel.hpp
     src/debug/panels/RendererPanel.cpp
     src/debug/panels/RendererPanel.hpp
     src/debug/panels/ShadersPanel.cpp
     src/debug/panels/ShadersPanel.hpp
-    src/debug/panels/ShadowsPanel.cpp
-    src/debug/panels/ShadowsPanel.hpp
 )
 target_link_libraries(night_maze PRIVATE engine game_logic ui imgui)
 night_maze_enable_warnings(night_maze)

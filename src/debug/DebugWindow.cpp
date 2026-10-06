@@ -8,6 +8,7 @@
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
 #include "debug/categories/GameplayCategory.hpp"
+#include "debug/categories/LightCategory.hpp"
 #include "debug/categories/PlayerCategory.hpp"
 #include "debug/categories/PostProcessCategory.hpp"
 #include "debug/categories/RenderCategory.hpp"
@@ -356,7 +357,7 @@ void DebugWindow::drawCategory(Category category, Page& page, const DebugContext
         drawRenderCategory(page, context);
         break;
     case Category::Light:
-        drawNotMovedYet(page);
+        drawLightCategory(page, context, static_cast<LightTab>(tabOf(category)));
         break;
     case Category::PostProcess:
         drawPostProcessCategory(page, context);
