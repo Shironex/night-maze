@@ -34,11 +34,11 @@ Pusta bateria tylko gasi latarkę. Runda trwa dalej, stanu przegranej nie ma. La
 
 - `RoundState` ma dwie wartości: `Playing` i `Won`. Komentarz przy typie mówi wprost, że "lost" nie ma.
 - Bateria spada tylko wtedy, gdy latarka świeci, i tylko w stanie `Playing`. Pełna starcza na `batteryLifetimeSeconds` (180 s).
-- Gdy bateria jest pusta, `updateRound` ustawia przełącznik latarki na fałsz w każdym kroku. Klawisz F i pole wyboru w panelu Lights nie utrzymają jej włączonej. `lightingForFrame` dodatkowo wyłącza latarkę w ustawieniach klatki.
+- Gdy bateria jest pusta, `updateRound` ustawia przełącznik latarki na fałsz w każdym kroku. Klawisz F i pole wyboru w zakładce Light / Lights nie utrzymają jej włączonej. `lightingForFrame` dodatkowo wyłącza latarkę w ustawieniach klatki.
 - Zebrany kryształ oddaje `batteryPerCrystal` (0,25) baterii. Sprawdzenie pustej baterii stoi po zbieraniu, więc kryształ zebrany w tym samym kroku, w którym bateria się skończyła, ratuje światło (jest na to test).
 - Poniżej `lowBatteryThreshold` (0,2) latarka migocze, coraz głębiej: to zapowiedź ciemności.
 - HUD pokazuje wtedy `Battery empty. Find a crystal.`, a pasek baterii robi się czerwony już poniżej progu.
-- Nowa runda (klawisz R, przycisk w panelu Gameplay, nowy labirynt) zaczyna z pełną baterią i włączoną latarką.
+- Nowa runda (klawisz R, przycisk w kategorii Gameplay, nowy labirynt) zaczyna z pełną baterią i włączoną latarką.
 
 **Co przez to tracę.**
 

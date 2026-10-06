@@ -30,7 +30,7 @@ Każda ściana, każdy słupek i brama stoją na wysokości **najniższego punkt
 
 **Dlaczego obrys z zapasem.** Modele są przy ziemi szersze niż pudełka kolizji: stopa słupka ma 0,4 m, pudełko 0,3 m. Bez zapasu 5 cm szpara mogłaby się pojawić pod wystającą częścią modelu.
 
-**Dlaczego pudełko idzie razem z modelem.** Macierze modelu i pudełka kolizji są liczone z tych samych, już opuszczonych pozycji (`colliderBoxes(world.walls, world.pillars)`), więc linie pudełek rysowane po zaznaczeniu pola w panelu Collision nadal pokrywają modele.
+**Dlaczego pudełko idzie razem z modelem.** Macierze modelu i pudełka kolizji są liczone z tych samych, już opuszczonych pozycji (`colliderBoxes(world.walls, world.pillars)`), więc linie pudełek rysowane po zaznaczeniu pola w zakładce Diagnostics / Collision and picking nadal pokrywają modele.
 
 **Co przez to tracę.**
 

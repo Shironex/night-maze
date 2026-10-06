@@ -34,7 +34,7 @@ Trawa ma **jeden program** (`grass`) we wszystkich trybach. Światło jest liczo
 **Co przez to tracę.**
 
 - Przełączenie na `Gouraud` nie zmienia wyglądu trawy. Na obronie trzeba to powiedzieć, zanim ktoś zapyta.
-- Trawa nie reaguje na mapy normalnych ani na ustawienia odbłysku z panelu Renderer.
+- Trawa nie reaguje na mapy normalnych ani na ustawienia odbłysku z kategorii Render.
 - Każdy fragment trawy liczy pełne oświetlenie ze wszystkich świateł.
 
 ## 5. Kiedy wrócić do tej decyzji

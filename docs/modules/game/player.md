@@ -3,7 +3,7 @@
 Kamień milowy: M2 + M3, w M5 doszły klawisz R (restart rundy), lista przeszkód rundy (`m_obstacles`, z bramą) i kula zasięgu gracza. Tematy wykładu: 14 (Wstęp do kolizji) i 3 (Przekształcenia przestrzeni: kamera pierwszoosobowa).
 Kod: [`src/game/Player.hpp`](../../../src/game/Player.hpp), [`src/game/Player.cpp`](../../../src/game/Player.cpp), testy w [`tests/PlayerTests.cpp`](../../../tests/PlayerTests.cpp), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`onUpdate`, `onRender`, `beginRound`).
 
-Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość trzech innych: [`../scene/collision.md`](../scene/collision.md) (pudełko `Aabb` i funkcja `moveAndSlide`), [`../scene/camera.md`](../scene/camera.md) (kąty yaw i pitch, `forward()`, `right()`) oraz [`../core/main-loop.md`](../core/main-loop.md) (stały krok symulacji i `alpha`). Obrót myszą i panel Camera opisuje [`../scene/camera-controls.md`](../scene/camera-controls.md). Skąd biorą się przeszkody i pozycja startowa, opisuje [`maze-rendering.md`](maze-rendering.md), a rundę, w której gracz zbiera kryształy i szuka wyjścia, [`gameplay.md`](gameplay.md).
+Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość trzech innych: [`../scene/collision.md`](../scene/collision.md) (pudełko `Aabb` i funkcja `moveAndSlide`), [`../scene/camera.md`](../scene/camera.md) (kąty yaw i pitch, `forward()`, `right()`) oraz [`../core/main-loop.md`](../core/main-loop.md) (stały krok symulacji i `alpha`). Obrót myszą i kategoria Player opisuje [`../scene/camera-controls.md`](../scene/camera-controls.md). Skąd biorą się przeszkody i pozycja startowa, opisuje [`maze-rendering.md`](maze-rendering.md), a rundę, w której gracz zbiera kryształy i szuka wyjścia, [`gameplay.md`](gameplay.md).
 
 **Stan z 2026-10-06 (M9, część 2).** Gracz rusza się tylko na ekranie `Playing` z wyłączoną kamerą menu (`game::updatesRound`): w pauzie, w menu i na ekranie wyniku `onUpdate` nie woła `m_player.update`. Kursor jest przechwytywany, gdy zaczyna się runda (`showScreen`), więc klawisze ruchu działają od pierwszej klatki rundy, bez kliknięcia. Zdania niżej o kliknięciu w scenę jako włączniku sterowania i o Escape jako wyłączniku opisują stan sprzed tej części. Po pokazaniu paneli klawiszem `~` kursor jest wolny i ruch stoi, dopóki gracz nie kliknie w scenę. [`game-states.md`](game-states.md).
 
@@ -328,8 +328,8 @@ Stałe są `static constexpr` wewnątrz struktury, więc pisze się je z nazwą 
 | Pole | Znaczenie |
 |---|---|
 | `position` | stopy, w przestrzeni świata. `{0.0F}` zeruje wszystkie trzy składowe |
-| `noclip` | tryb. Przełącza go klawisz N i pole wyboru w panelu Collision |
-| `walkSpeed`, `sprintSpeed`, `flySpeed` | prędkości faktycznie używane. Są polami, bo zmieniają je suwaki panelu Camera. Stałe zostają jako wartości startowe i jako punkt odniesienia dla testów |
+| `noclip` | tryb. Przełącza go klawisz N i pole wyboru w kategorii Player |
+| `walkSpeed`, `sprintSpeed`, `flySpeed` | prędkości faktycznie używane. Są polami, bo zmieniają je suwaki kategorii Player. Stałe zostają jako wartości startowe i jako punkt odniesienia dla testów |
 
 Wszystkie pola są publiczne, bez konstruktora: `Player` jest agregatem, jak `Camera` i `Transform`. Nie ma w nim żadnego zasobu, o który trzeba by dbać.
 
@@ -358,7 +358,7 @@ scene::Aabb Player::box() const {
 | `position + glm::vec3{0.0F, BODY_HEIGHT / 2.0F, 0.0F}` | środek pudełka: 0,9 m nad stopami |
 | `scene::Aabb::fromCenter(center, BODY_HALF_EXTENTS)` | `min = środek - połowy`, `max = środek + połowy`. Dla stóp w `(1, 0, 5)` wychodzi `min = (0,7, 0, 4,7)` i `max = (1,3, 1,8, 5,3)`: dokładnie to sprawdza drugi przypadek testowy |
 
-Funkcja jest `const` i niczego nie zapamiętuje. Pudełko powstaje na żądanie: w `update`, w panelu Collision i przy rysowaniu zielonych linii.
+Funkcja jest `const` i niczego nie zapamiętuje. Pudełko powstaje na żądanie: w `update`, w zakładce Diagnostics / Collision and picking i przy rysowaniu zielonych linii.
 
 ```cpp
 glm::vec3 Player::eyePosition() const {
@@ -566,7 +566,7 @@ Lista przeszkód zmieniła się w M5. Do M4 gracz dostawał wprost `m_mazeWorld.
 |---|---|
 | `if (m_playerWasFlying && !m_player.noclip) { m_previousPlayerPosition.y = m_player.position.y; }` | tylko w kroku, w którym gracz **przestał lecieć**: poprzednie y dostaje wartość bieżącego, więc zrzut stóp na grunt nie jest mieszany. Bez tej linii jedna klatka byłaby narysowana z punktu "w części drogi w dół", czyli z wnętrza ściany albo znad niej. Do M5 warunek brzmiał `if (!m_player.noclip)` i wyrównywał wysokość w każdym kroku chodzenia: na płaskiej podłodze nic to nie kosztowało. Na nierównym gruncie wyłączyłoby interpolację wysokości i oczy podskakiwałyby co krok, stąd węższy warunek |
 | `m_playerWasFlying = m_player.noclip;` | zapamiętanie trybu na następny krok. Pole `bool m_playerWasFlying = false;` stoi w `NightMazeApp.hpp` pod `m_previousPlayerPosition` |
-| `m_camera.position = m_player.eyePosition();` | kamera staje w oczach gracza. `onRender` z tego pola nie rysuje (liczy oko z interpolacji), ale panel Camera pokazuje je jako `Eye` |
+| `m_camera.position = m_player.eyePosition();` | kamera staje w oczach gracza. `onRender` z tego pola nie rysuje (liczy oko z interpolacji), ale kategoria Player pokazuje je jako `Eye` |
 
 Od M5 `onUpdate` ma jeszcze koniec, w którym pozycja gracza trafia do reguł rundy:
 
@@ -594,7 +594,7 @@ Od M5 `onUpdate` ma jeszcze koniec, w którym pozycja gracza trafia do reguł ru
 | `if (gateBlocks(...) != gateBlockedBefore)` | porównanie stanu sprzed i po. Jedyna zmiana, jaką krok może tu zrobić, to otwarcie bramy (otwarta brama nie zamyka się w rundzie) |
 | `m_obstacles = roundObstacles(m_mazeWorld, m_round);` | lista przeszkód bez pudełka bramy. Od **następnego** kroku gracz może wejść do komórki wyjścia |
 
-Kolejność w kroku jest więc stała: najpierw ruch względem starej listy, potem reguły, na końcu ewentualna nowa lista. Opóźnienie o jeden krok nie ma widocznego skutku: krok trwa 1/120 s, a gracz pokonuje w nim najwyżej kilka centymetrów. Zwykle gracz jest zresztą w chwili otwarcia daleko od bramy, bo otwiera ją zebranie kryształu. Nie jest to jednak gwarancja: kryształ może wypaść w komórce tuż przed bramą, a suwak `Crystals needed` w panelu Gameplay może otworzyć bramę, gdy gracz przy niej stoi. Pudełko znika wtedy od razu, a model zapada się jeszcze 1,5 s, więc przez tę chwilę da się przejść przez widoczne deski.
+Kolejność w kroku jest więc stała: najpierw ruch względem starej listy, potem reguły, na końcu ewentualna nowa lista. Opóźnienie o jeden krok nie ma widocznego skutku: krok trwa 1/120 s, a gracz pokonuje w nim najwyżej kilka centymetrów. Zwykle gracz jest zresztą w chwili otwarcia daleko od bramy, bo otwiera ją zebranie kryształu. Nie jest to jednak gwarancja: kryształ może wypaść w komórce tuż przed bramą, a suwak `Crystals needed` w kategorii Gameplay może otworzyć bramę, gdy gracz przy niej stoi. Pudełko znika wtedy od razu, a model zapada się jeszcze 1,5 s, więc przez tę chwilę da się przejść przez widoczne deski.
 
 ### 5.7 Klawisz N i interpolacja: `NightMazeApp::onRender`
 
@@ -614,7 +614,7 @@ Trzy klawisze gry są czytane w `onRender`, w tej kolejności: R, N, F. Najpierw
 
 | Linia | Znaczenie |
 |---|---|
-| `m_gameplay.restart` | prośba o restart zapisana przez przycisk `Restart round (key R)` w panelu Gameplay. Ten sam wzorzec co `MazeSettings::regenerate`: panel tylko ustawia flagę, aplikacja wykonuje ją na początku następnej klatki |
+| `m_gameplay.restart` | prośba o restart zapisana przez przycisk `Restart round (key R)` w kategorii Gameplay. Ten sam wzorzec co `MazeSettings::regenerate`: panel tylko ustawia flagę, aplikacja wykonuje ją na początku następnej klatki |
 | `input().wasKeyPressed(RESTART_KEY)` | `RESTART_KEY` to `GLFW_KEY_R` (stała w `NightMazeApp.cpp`). Prawda tylko w klatce, w której klawisz został wciśnięty |
 | `m_gameplay.restart = false;` | flaga jest zerowana od razu: jedno kliknięcie to jeden restart |
 | `beginRound();` | runda od nowa **na tym samym labiryncie**: kryształy wracają, bateria jest pełna, brama zamknięta, a gracz staje na starcie (sekcja 5.8) |
@@ -701,7 +701,7 @@ Przypadki brzegowe interpolacji:
 | noclip wyłączony w powietrzu | krok ustawia y na wysokość gruntu, a `onUpdate` także poprzednie y (`m_playerWasFlying`) | natychmiastowy przeskok na grunt, bez klatki pośredniej w pionie |
 | zmiana skali wysokości terenu (od M6) | `rebuildTerrain` ustawia y obu pozycji chodzącego gracza na nowy grunt | gracz stoi na nowym gruncie od następnej klatki, bez klatki pośredniej |
 | nowy labirynt | `beginRound` ustawia obie pozycje naraz | przeskok na start, bez przelotu przez ściany |
-| restart rundy (klawisz R albo przycisk w panelu Gameplay) | to samo `beginRound`, ten sam labirynt | przeskok na start z dowolnego miejsca, bez klatki pośredniej |
+| restart rundy (klawisz R albo przycisk w kategorii Gameplay) | to samo `beginRound`, ten sam labirynt | przeskok na start z dowolnego miejsca, bez klatki pośredniej |
 | pozycja zmieniona suwakiem `Player feet` | panel pisze do `m_player.position` po narysowaniu sceny, najbliższy krok kopiuje ją do poprzedniej | przeskok. Gdy trafi się klatka bez kroku, ta jedna klatka jest rysowana z punktu między starą a nową pozycją |
 | okno zminimalizowane | `onRender` wraca przed liczeniem oka, `onUpdate` działa dalej | po przywróceniu okna gracz jest tam, gdzie doszedł |
 
@@ -749,7 +749,7 @@ Dla labiryntu domyślnego (10 na 10 komórek, ziarno 1) przy skali wysokości 1 
 
 `beginRound` **nie** dotyka trybu noclip ani prędkości. Kto wygeneruje nowy labirynt albo naciśnie R w trakcie lotu, nadal leci, tylko z punktu startowego.
 
-**Gracz a przebudowa terenu (od M6).** Suwak `Height scale` w panelu Terrain zmienia grunt pod stojącym graczem. Robi to `NightMazeApp::rebuildTerrain`, wołana na początku klatki ([`maze-rendering.md`](maze-rendering.md), sekcja 5.7). Jej część dotycząca gracza:
+**Gracz a przebudowa terenu (od M6).** Suwak `Height scale` w zakładce World / Terrain and grass zmienia grunt pod stojącym graczem. Robi to `NightMazeApp::rebuildTerrain`, wołana na początku klatki ([`maze-rendering.md`](maze-rendering.md), sekcja 5.7). Jej część dotycząca gracza:
 
 ```cpp
     // A walking player stands on the new ground at once, in both positions, so the next
@@ -768,7 +768,7 @@ Dla labiryntu domyślnego (10 na 10 komórek, ziarno 1) przy skali wysokości 1 
 | `if (!m_player.noclip)` | tylko gracz, który chodzi. Lecący zostaje tam, gdzie jest: nie stoi na gruncie, więc nie ma czego poprawiać |
 | `m_player.position.y = m_mazeWorld.terrain.heightAt(...)` | stopy na nowy grunt w tym samym `x` i `z`. Najbliższy krok zrobiłby to samo, ale dopiero po narysowaniu klatki |
 | `m_previousPlayerPosition.y = m_player.position.y;` | **obie pozycje**, z tego samego powodu co w `beginRound`: inaczej klatka byłaby narysowana z punktu między starą a nową wysokością |
-| `m_camera.position = m_player.eyePosition();` | panel Camera od razu pokazuje nowe oko |
+| `m_camera.position = m_player.eyePosition();` | kategoria Player od razu pokazuje nowe oko |
 
 Przed tym blokiem funkcja składa od nowa `m_obstacles`, bo pudełka ścian zmieniły wysokość razem z gruntem.
 
@@ -818,13 +818,13 @@ Kula zasięgu i lista przeszkód rundy mają testy w `tests/RoundTests.cpp` (25 
 
 Wyniki na Windowsie z 2026-10-05: wszystkie 13 przypadków gracza i trzy przypadki z `TerrainTests.cpp` przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego z drugiej części M6 (po M5 było to 215 przypadków i 85098 asercji, po pierwszej części M7 zgłoszone jest 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751). Na macOS nic z M5 ani z M6 nie było budowane ani uruchamiane.
 
-**Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp`: przypisania klawiszy do pól, reguły przechwyconego kursora, klawiszy N, F i R, `beginRound`, odbudowy `m_obstacles` po otwarciu bramy, interpolacji, linii z `m_previousPlayerPosition.y` i `m_playerWasFlying` ani części `rebuildTerrain` dotyczącej gracza. Ten kod wymaga okna. Gładkość ruchu oczu nad nierównym gruntem jest więc pokryta tylko testem jednostkowym małych zmian wysokości: na ekranie nikt jej jeszcze nie oglądał w ruchu. Program uruchomiony na Windowsie startuje bez linii `[error]` i pokazuje widok ze środka labiryntu (sprawdzone na zrzucie ekranu), a widok z góry w trybie noclip zgadza się z planem w panelu Maze (stan osiągnięty tymczasowym kodem, który został usunięty, a nie klawiszem N). Chodzenie i ślizganie prawdziwymi klawiszami są otwartą pozycją listy kontrolnej.
+**Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp`: przypisania klawiszy do pól, reguły przechwyconego kursora, klawiszy N, F i R, `beginRound`, odbudowy `m_obstacles` po otwarciu bramy, interpolacji, linii z `m_previousPlayerPosition.y` i `m_playerWasFlying` ani części `rebuildTerrain` dotyczącej gracza. Ten kod wymaga okna. Gładkość ruchu oczu nad nierównym gruntem jest więc pokryta tylko testem jednostkowym małych zmian wysokości: na ekranie nikt jej jeszcze nie oglądał w ruchu. Program uruchomiony na Windowsie startuje bez linii `[error]` i pokazuje widok ze środka labiryntu (sprawdzone na zrzucie ekranu), a widok z góry w trybie noclip zgadza się z planem w zakładce World / Maze (stan osiągnięty tymczasowym kodem, który został usunięty, a nie klawiszem N). Chodzenie i ślizganie prawdziwymi klawiszami są otwartą pozycją listy kontrolnej.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Gracz nie ma własnego panelu. Jego pola pokazują i zmieniają panele Camera i Collision, a pokazują go jeszcze plan w panelu Maze i, pośrednio, panel Gameplay:
+Gracz nie ma własnego panelu. Jego pola pokazują i zmieniają (od 2026-10-06) kategoria Player, w kartach Position, View i Movement (dawniej panele Camera i Collision), a pokazują go jeszcze plan w World / Maze i, pośrednio, kategoria Gameplay. W tabeli kolumna `Panel` podaje dawny panel: Camera to kategoria Player (`Mode`, `Player feet` i `Eye` w karcie Position), Terrain to World / Terrain and grass, Collision (`Noclip`) to Player / Position:
 
-| Panel | Widżet (dokładna etykieta) | Co robi |
+| Dawny panel | Widżet (dokładna etykieta) | Co robi |
 |---|---|---|
 | Camera | `Mode: walking` albo `Mode: noclip (free flight)` | tylko do odczytu: bieżący tryb |
 | Camera | `Player feet` | trzy liczby do przeciągania: `player.position`. Przy chodzeniu zmiana y trwa najwyżej jeden krok: gra trzyma y na gruncie |
@@ -838,19 +838,19 @@ Gracz nie ma własnego panelu. Jego pola pokazują i zmieniają panele Camera i 
 | Gameplay | `Pickup radius` | suwak: promień kuli wokół kryształu, na którą musi najść kula zasięgu gracza. Promienia samej kuli gracza żaden panel nie zmienia: to stała `PLAYER_REACH_RADIUS` |
 | Maze | plan z góry | bursztynowa kropka w miejscu gracza i kreska w stronę, w którą patrzy kamera |
 
-Kod panelu Camera linia po linii jest w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6. Panel Collision opisuje [`../scene/collision.md`](../scene/collision.md), sekcja 6, a plan w panelu Maze [`maze-generator.md`](maze-generator.md), sekcja 6. Panel Gameplay opisuje [`gameplay.md`](gameplay.md), sekcja 6. Od M4 panel Camera startuje **zwinięty do paska tytułu** u góry okna (miejsce w lewej kolumnie zajął panel Lights), a od M5 obok niego, też zwinięty, startuje panel Gameplay: oba leżą przy górnej krawędzi między lewą a prawą kolumną (`CAMERA_PLACEMENT` i `GAMEPLAY_PLACEMENT` w `PanelLayout.hpp`). Żeby zobaczyć kontrolki, trzeba kliknąć strzałkę na pasku. Rozwijania nikt jeszcze nie sprawdził ręcznie.
+Kod kategorii Player linia po linii jest w [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 6. Zakładka Diagnostics / Collision and picking opisuje [`../scene/collision.md`](../scene/collision.md), sekcja 6, a plan w zakładce World / Maze [`maze-generator.md`](maze-generator.md), sekcja 6. Kategoria Gameplay opisuje [`gameplay.md`](gameplay.md), sekcja 6. Od M4 kategoria Player startuje **zwinięty do paska tytułu** u góry okna (miejsce w lewej kolumnie zajął zakładkę Light / Lights), a od M5 obok niego, też zwinięty, startuje kategoria Gameplay: oba leżą przy górnej krawędzi między lewą a prawą kolumną (`CAMERA_PLACEMENT` i `GAMEPLAY_PLACEMENT` w `PanelLayout.hpp`). Żeby zobaczyć kontrolki, trzeba kliknąć strzałkę na pasku. Rozwijania nikt jeszcze nie sprawdził ręcznie.
 
-Zmiany w panelu Camera względem M1: pole `Player feet` zastąpiło pole pozycji kamery (kamera nie ma już własnej pozycji do edycji), doszła linia `Eye` i linia `Mode`, a jeden suwak prędkości został zastąpiony trzema.
+Zmiany w kategorii Player względem M1: pole `Player feet` zastąpiło pole pozycji kamery (kamera nie ma już własnej pozycji do edycji), doszła linia `Eye` i linia `Mode`, a jeden suwak prędkości został zastąpiony trzema.
 
 **Scenariusz pokazu na obronie** (temat 14 od strony gracza). Kroki wymagające myszy i klawiatury nie były jeszcze wykonane ręcznie, więc kolumna "co powinno być widać" opisuje to, co wynika z kodu i z testów:
 
 | Krok | Co robię | Co powinno być widać | Co to pokazuje |
 |---|---|---|---|
-| 1 | uruchamiam program, rozwijam panel Camera (od M4 startuje zwinięty do paska tytułu: klikam strzałkę na pasku) i patrzę na niego | `Mode: walking`, `Player feet` 1, około 0,12, 1, `Eye` 1, około 1,82, 1 | oko jest 1,7 m nad stopami, a stopy na gruncie, nie na zerze |
+| 1 | uruchamiam program, rozwijam kategorię Player (od M4 startuje zwinięty do paska tytułu: klikam strzałkę na pasku) i patrzę na niego | `Mode: walking`, `Player feet` 1, około 0,12, 1, `Eye` 1, około 1,82, 1 | oko jest 1,7 m nad stopami, a stopy na gruncie, nie na zerze |
 | 2 | klikam w scenę, trzymam W | idę korytarzem, `Player feet` zmienia się w x albo z, a y powoli idzie za gruntem (w labiryncie startowym między 0,085 a 0,461 m) | klawisze ruszają w poziomie, wysokość daje teren |
 | 3 | patrzę w ziemię i dalej trzymam W | prędkość się nie zmienia | pitch nie wpływa na chód (sekcja 2.2) |
 | 4 | idę ukosem w ścianę | sunę wzdłuż ściany, mijając słupki | ślizganie oś po osi, równe lica pudełek ścian i słupków |
-| 5 | w panelu Collision włączam `Draw collision shapes` | żółte pudełka na ścianach i słupkach, zielone pudełko i trzy zielone okręgi kuli zasięgu wokół mnie (widać je, gdy spojrzę w dół), cyjanowe kule wokół kryształów | bryły otaczające: pudełko do ruchu, kula do zbierania |
+| 5 | w zakładce Diagnostics / Collision and picking włączam `Draw collision shapes` | żółte pudełka na ścianach i słupkach, zielone pudełko i trzy zielone okręgi kuli zasięgu wokół mnie (widać je, gdy spojrzę w dół), cyjanowe kule wokół kryształów | bryły otaczające: pudełko do ruchu, kula do zbierania |
 | 6 | naciskam N, trzymam spację | `Mode: noclip (free flight)`, wznoszę się ponad ściany | noclip: brak kolizji, ruch w pionie |
 | 7 | lecę przez ścianę | przechodzę na wylot | lista przeszkód nie jest czytana |
 | 8 | naciskam N nad labiryntem | w następnej klatce stoję na gruncie pod tym miejscem | linia `position.y = terrain.heightAt(...)` i `m_playerWasFlying` |
@@ -959,5 +959,5 @@ Uwaga do kroku 8: jeśli pod graczem jest ściana, ląduje on **w ścianie**. `m
 - Christer Ericson, "Real-Time Collision Detection" (Morgan Kaufmann, 2005): rozdział 4.2 (AABB), 5.5 (obiekty w ruchu).
 - GLM, `glm::mix`, `glm::normalize`, `glm::length`: <https://github.com/g-truc/glm/blob/master/manual.md>.
 - cppreference, `std::span`: <https://en.cppreference.com/w/cpp/container/span>, inicjalizatory desygnowane: <https://en.cppreference.com/w/cpp/language/aggregate_initialization>.
-- Dokumenty w tym repozytorium: [`../scene/collision.md`](../scene/collision.md) (`Aabb`, `moveAndSlide`, kule, rysowanie pudełek i kul), [`../scene/camera.md`](../scene/camera.md) (`forward`, `right`, macierz widoku), [`../scene/camera-controls.md`](../scene/camera-controls.md) (obrót myszą, panel Camera), [`../core/main-loop.md`](../core/main-loop.md) (stały krok, `alpha`), [`../core/input.md`](../core/input.md) (`isKeyDown`, `wasKeyPressed`, blokady), [`maze-rendering.md`](maze-rendering.md) (przeszkody, start, regeneracja), [`gameplay.md`](gameplay.md) (runda: kryształy, brama, wyjście, `updateRound`, `roundObstacles`, panel Gameplay), [`../../libraries/doctest.md`](../../libraries/doctest.md) (testy).
+- Dokumenty w tym repozytorium: [`../scene/collision.md`](../scene/collision.md) (`Aabb`, `moveAndSlide`, kule, rysowanie pudełek i kul), [`../scene/camera.md`](../scene/camera.md) (`forward`, `right`, macierz widoku), [`../scene/camera-controls.md`](../scene/camera-controls.md) (obrót myszą, kategoria Player), [`../core/main-loop.md`](../core/main-loop.md) (stały krok, `alpha`), [`../core/input.md`](../core/input.md) (`isKeyDown`, `wasKeyPressed`, blokady), [`maze-rendering.md`](maze-rendering.md) (przeszkody, start, regeneracja), [`gameplay.md`](gameplay.md) (runda: kryształy, brama, wyjście, `updateRound`, `roundObstacles`, kategoria Gameplay), [`../../libraries/doctest.md`](../../libraries/doctest.md) (testy).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (tematy 3 i 14), sekcja 10 (tryb noclip w panelu).

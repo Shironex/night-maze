@@ -7,7 +7,7 @@ Kod: [`src/game/Skybox.hpp`](../../src/game/Skybox.hpp), [`Skybox.cpp`](../../sr
 
 PRD (sekcja 6) opisuje docelową strukturę kodu z warstwą `src/renderer/`: klasy `Renderer`, `ShadowPass`, `ScenePass`, `SkyboxPass`, `GrassPass`, `PostProcess`. Tabela potoku klatki (PRD, sekcja 8) ma skybox jako piąty z ośmiu przebiegów.
 
-Gdy powstawało niebo (pierwsza część M6), tej warstwy w kodzie nie było i nadal jej nie ma. Klatka jest jednym przebiegiem prosto do okna: `NightMazeApp::onRender` czyści ekran, liczy dwie macierze i światła, a potem woła po kolei funkcje rysujące. Klasy, które rysują, leżą w `src/game/` i należą do programu `night_maze`: `MazeRenderer`, `GameplayRenderer`, `ColliderLines`, `LightRig`. Programy shaderów są polami `NightMazeApp`, bo panel Shaders przeładowuje je wszystkie jedną drogą.
+Gdy powstawało niebo (pierwsza część M6), tej warstwy w kodzie nie było i nadal jej nie ma. Klatka jest jednym przebiegiem prosto do okna: `NightMazeApp::onRender` czyści ekran, liczy dwie macierze i światła, a potem woła po kolei funkcje rysujące. Klasy, które rysują, leżą w `src/game/` i należą do programu `night_maze`: `MazeRenderer`, `GameplayRenderer`, `ColliderLines`, `LightRig`. Programy shaderów są polami `NightMazeApp`, bo zakładka Diagnostics / Frame and shaders przeładowuje je wszystkie jedną drogą.
 
 Trzeba było zdecydować, gdzie postawić kod nieba: czy to jest moment na założenie warstwy `renderer/`, czy niebo dołącza do tego, co już jest.
 
@@ -31,7 +31,7 @@ Niebo rysuje klasa `game::Skybox` w `src/game/`, w programie `night_maze`, obok 
 
 **Dlaczego klasa, a nie funkcja w `NightMazeApp`.** Niebo ma własne obiekty OpenGL (teksturę sześcienną i siatkę sześcianu), własne dane (osiem narożników, nazwy sześciu plików) i własny stan do przywrócenia po rysowaniu. To komplet, który da się przeczytać w jednym pliku i wytłumaczyć bez reszty aplikacji.
 
-**Dlaczego program jest polem `NightMazeApp`, a nie `Skybox`.** Wszystkie programy gry stoją w jednym miejscu i trafiają do panelu Shaders tą samą drogą: akcesor, pole `DebugContext`, wpis w tablicy. `Skybox` dostaje program w argumencie `draw`, tak jak `MazeRenderer`.
+**Dlaczego program jest polem `NightMazeApp`, a nie `Skybox`.** Wszystkie programy gry stoją w jednym miejscu i trafiają do zakładki Diagnostics / Frame and shaders tą samą drogą: akcesor, pole `DebugContext`, wpis w tablicy. `Skybox` dostaje program w argumencie `draw`, tak jak `MazeRenderer`.
 
 **Co dzięki temu dostaję.** Zmiana dotknęła `NightMazeApp` w kilku miejscach (dwa pola z obiektami, pole ustawień, dwa akcesory dla panelu, jedno wywołanie) i nie zmieniła żadnej reguły zależności między warstwami. Dokument tematu 8 stoi mimo to pod nazwą z PRD, `docs/modules/renderer/skybox.md`, więc tabela w sylabusie prowadzi tam, gdzie prowadzący się go spodziewa.
 

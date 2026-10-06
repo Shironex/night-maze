@@ -1,7 +1,7 @@
 # Ręka latarki: w prawo poziomo, w dół prosto w dół w świecie, z granicą suwaka
 
 Data: 2026-10-06. Stan: obowiązuje. To wybór wykonawczy, nie decyzja właściciela projektu (właściciel zdecydował o ręce "w prawo i w dół" i o ich wartościach startowych, [`flashlight-in-hand.md`](flashlight-in-hand.md)).
-Kod: [`src/game/Lighting.cpp`](../../src/game/Lighting.cpp) (`flashlightPose`), [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp) (`flashlightHandRight`, `flashlightHandDown`, `MAX_FLASHLIGHT_HAND_RIGHT`), [`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp) (suwaki), [`tests/LightingTests.cpp`](../../tests/LightingTests.cpp). Dokumenty modułów: [`../modules/game/flashlight.md`](../modules/game/flashlight.md), sekcje 2.1 i 5.5, i [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), sekcja 2.20.9.
+Kod: [`src/game/Lighting.cpp`](../../src/game/Lighting.cpp) (`flashlightPose`), [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp) (`flashlightHandRight`, `flashlightHandDown`, `MAX_FLASHLIGHT_HAND_RIGHT`), [`src/debug/categories/LightCategory.cpp`](../../src/debug/categories/LightCategory.cpp) (suwaki), [`tests/LightingTests.cpp`](../../tests/LightingTests.cpp). Dokumenty modułów: [`../modules/game/flashlight.md`](../modules/game/flashlight.md), sekcje 2.1 i 5.5, i [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), sekcja 2.20.9.
 
 ## 1. Kontekst
 

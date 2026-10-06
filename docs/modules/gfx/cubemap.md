@@ -226,7 +226,7 @@ private:
 | jeden parametr `size` | ściany są kwadratami tej samej wielkości, więc szerokość i wysokość to jedna liczba dla wszystkich sześciu |
 | `ColorSpace colorSpace` bez wartości domyślnej | wołający **musi** powiedzieć, czym są bajty: kolorem (sRGB) czy danymi (liniowe). Klasa nie zgaduje i nie ma wyboru "na wszelki wypadek", który po cichu dawałby zły obraz |
 | `= delete` dla kopiowania, ręcznie napisane przenoszenie | reguła wspólna dla klas `gfx` ([`README.md`](README.md), sekcja 2) |
-| `m_id`, `m_sampler`, `m_size` | dwa identyfikatory i rozmiar. Klasa nie pamięta liczby kanałów ani przestrzeni kolorów: po utworzeniu nikt o nie nie pyta (`Texture2D` przestrzeń pamięta, bo pokazuje ją panel Assets) |
+| `m_id`, `m_sampler`, `m_size` | dwa identyfikatory i rozmiar. Klasa nie pamięta liczby kanałów ani przestrzeni kolorów: po utworzeniu nikt o nie nie pyta (`Texture2D` przestrzeń pamięta, bo pokazuje ją zakładkę Diagnostics / Assets) |
 
 ### 5.3 Stałe
 
@@ -392,9 +392,9 @@ Funkcja jest `const`: zmienia stan kontekstu OpenGL, a nie pola obiektu.
 - **Dane.** To, że sześć plików pasuje do reguł tekstury sześciennej, sprawdzają testy w `tests/SkyboxTests.cpp` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 5.8). One testują pliki, a nie tę klasę.
 - **macOS:** nic.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Klasa nie ma własnego panelu ani stanu do zmieniania: filtr i zawijanie są stałe. Jej skutek widać w panelu **Renderer**: pole wyboru `Skybox` i suwak `Sky brightness` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 6). Panel Assets tekstury nieba **nie** pokazuje: jego lista `Textures` pochodzi z `assets::AssetCache`, a niebo jest wczytywane poza pamięcią podręczną. Filtr i anizotropia z tego panelu nieba nie dotyczą.
+Klasa nie ma własnego panelu ani stanu do zmieniania: filtr i zawijanie są stałe. Jej skutek widać w kategorii Render: pole wyboru `Skybox` i suwak `Sky brightness` ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 6). Zakładka Diagnostics / Assets tekstury nieba **nie** pokazuje: jego lista `Textures` pochodzi z `assets::AssetCache`, a niebo jest wczytywane poza pamięcią podręczną. Filtr i anizotropia z tego panelu nieba nie dotyczą.
 
 ## 7. Pułapki
 

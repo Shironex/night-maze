@@ -28,7 +28,7 @@ Mapa jest rysowana **po** przebiegu składającym (`drawMinimap` w `onRender`), 
 
 - kod rysujący mapę nie zna ekspozycji, krzywej ani mgły, a testy kształtów nie zależą od ustawień przebiegu składającego,
 - oba widoki diagnostyczne (UV, normalne) pokazują mapę tak samo jak widok z teksturami, bo mapa jest po `composite`,
-- panel Framebuffers pokazuje teksturę mapy tak, jak leży w framebufferze, bo ImGui rysuje do okna bez kodowania.
+- kategoria Post process pokazuje teksturę mapy tak, jak leży w framebufferze, bo ImGui rysuje do okna bez kodowania.
 
 **Czego to kosztuje.**
 

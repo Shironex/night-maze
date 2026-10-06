@@ -59,7 +59,7 @@ Mniejsze rozstrzygnięcia:
 - Wszystkie wartości startowe zostały dobrane od nowa: światło otoczenia, intensywności księżyca, latarki i kryształów, `CRYSTAL_GLOW_STRENGTH`, jasność nieba, kolor tła. Tabela starych i nowych liczb jest w [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md).
 - Obraz w trybie `Unlit` różni się od obrazu sprzed M7 na granicach jasnych i ciemnych tekseli (zgłoszone: najwyżej 22 poziomy, średnio 1,1, tylko na spoinach cegieł). To skutek poprawniejszego filtrowania, ale porównanie "piksel w piksel" ze starymi zrzutami ekranu przestało być możliwe.
 - Stałe normy są zapisane dwa razy, w C++ i w GLSL, i żaden test nie pilnuje ich zgodności.
-- Podglądy tekstur sRGB w panelu Assets wymagają rozszerzenia `GL_EXT_texture_sRGB_decode`, żeby wyglądać jak pliki. Bez niego są ciemniejsze.
+- Podglądy tekstur sRGB w zakładce Diagnostics / Assets wymagają rozszerzenia `GL_EXT_texture_sRGB_decode`, żeby wyglądać jak pliki. Bez niego są ciemniejsze.
 - `pointColor` jest przeliczany w dwóch miejscach (światło i świecenie kryształu), które muszą zostać zgodne.
 
 **Co z poprzedniej notatki nadal obowiązuje.** Argument przeciw "połowie poprawki" (samo kodowanie bez dekodowania daje obraz wyprany) jest dziś pułapką opisaną w dokumencie modułu. Zdanie, że mapa normalnych nigdy nie może być teksturą sRGB i że format trzeba wybierać dla każdej tekstury osobno, stało się obowiązkowym argumentem `ColorSpace`. Obawa o kolory paneli ImGui jest powodem, dla którego kodowanie stoi w shaderze.

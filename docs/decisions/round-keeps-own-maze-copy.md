@@ -32,7 +32,7 @@ Dźwignia zabiera ścianę z labiryntu. Kto czyta ściany z siatki `Maze` (`hasW
 
 **Co tracę.**
 
-- Trzeba pamiętać, że prawdą o ścianach w trakcie rundy jest `roundMaze`, a nie `world.maze`. Plan w panelu Maze rysuje ściany świata, z otwartymi przyciemnionymi (`openedWallFlags`), a minimapa tylko ściany rundy. Obie rzeczy są zamierzone, ale łatwo je pomylić.
+- Trzeba pamiętać, że prawdą o ścianach w trakcie rundy jest `roundMaze`, a nie `world.maze`. Plan w zakładce World / Maze rysuje ściany świata, z otwartymi przyciemnionymi (`openedWallFlags`), a minimapa tylko ściany rundy. Obie rzeczy są zamierzone, ale łatwo je pomylić.
 - `NightMazeApp::drawMinimap` wciąż podaje `m_mazeWorld.maze` do `minimapProjection` i `minimapMetresPerPixel`. Liczy się tam tylko rozmiar siatki, który się nie zmienia, więc jest to nieszkodliwe, ale nie jest to "minimapa czyta wyłącznie labirynt rundy": wierzchołki idą z `roundMaze`, rozmiar ze świata.
 - `openedWalls` i `pullLever` z M8 (podstawy bez okna) zostały w kodzie i w testach, ale gra idzie drogą `pullRoundLever` i `MazeWorld::leverWalls`.
 

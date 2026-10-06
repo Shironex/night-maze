@@ -28,7 +28,7 @@ Teksele policzone dla labiryntu startowego i księżyca startowego (yaw 25, pitc
 
 **Dlaczego ta.** Przy terenie 48 m mapa 2048 daje teksel 3,2 cm i ścianę grubości ponad 6 tekseli: to wystarcza, co przypina test `the shadow map of the moon is fine enough for the walls of the default maze`. Druga rzecz jest ważniejsza na pokazie: cień, który nie zależy od kamery, **nie migocze**. W nocnej scenie z ostrym kontrastem migotanie krawędzi byłoby pierwszą rzeczą, którą widać.
 
-**Dlaczego co klatkę.** Policzenie pudełka to osiem mnożeń macierzy przez wektor i jedno `lookAt`. Dzięki temu nie ma żadnego miejsca, w którym trzeba pamiętać o odświeżeniu: nowy labirynt, zmiana skali wysokości terenu i suwaki księżyca w panelu Lights działają same.
+**Dlaczego co klatkę.** Policzenie pudełka to osiem mnożeń macierzy przez wektor i jedno `lookAt`. Dzięki temu nie ma żadnego miejsca, w którym trzeba pamiętać o odświeżeniu: nowy labirynt, zmiana skali wysokości terenu i suwaki księżyca w zakładce Light / Lights działają same.
 
 **Skutki, które przyjmuję.**
 

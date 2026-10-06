@@ -1,11 +1,11 @@
 # Księżyc namalowany na niebie, w domyślnym kierunku światła księżyca
 
 Data: 2026-10-05. Stan: obowiązuje.
-Kod: [`tools/blender/make_skybox.py`](../../tools/blender/make_skybox.py) (`MOON_LIGHT_YAW_DEGREES`, `MOON_LIGHT_PITCH_DEGREES`, `direction_from_angles`, `moon_layers`), [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp) (`moonYawDegrees`, `moonPitchDegrees` i komentarz nad nimi), [`tests/SkyboxTests.cpp`](../../tests/SkyboxTests.cpp) (przypadek `the moon is painted where the default moon light comes from`), [`src/debug/panels/RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp) (podpowiedź przy polu `Skybox`), [`assets/skybox/py.png`](../../assets/skybox/py.png) (ściana z tarczą). Dokument modułu: [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcje 2.8, 2.9 i 5.8.
+Kod: [`tools/blender/make_skybox.py`](../../tools/blender/make_skybox.py) (`MOON_LIGHT_YAW_DEGREES`, `MOON_LIGHT_PITCH_DEGREES`, `direction_from_angles`, `moon_layers`), [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp) (`moonYawDegrees`, `moonPitchDegrees` i komentarz nad nimi), [`tests/SkyboxTests.cpp`](../../tests/SkyboxTests.cpp) (przypadek `the moon is painted where the default moon light comes from`), [`src/debug/categories/RenderCategory.cpp`](../../src/debug/categories/RenderCategory.cpp) (podpowiedź przy polu `Skybox`), [`assets/skybox/py.png`](../../assets/skybox/py.png) (ściana z tarczą). Dokument modułu: [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcje 2.8, 2.9 i 5.8.
 
 ## 1. Kontekst
 
-Od M4 scenę oświetla księżyc: światło kierunkowe o kierunku z dwóch kątów, `moonYawDegrees = 25` i `moonPitchDegrees = -50` w `game::LightingSettings`. Kąty da się zmieniać suwakami `Moon yaw` i `Moon pitch` w panelu Lights. Do M5 samego księżyca nie było widać: nad ścianami był jeden kolor.
+Od M4 scenę oświetla księżyc: światło kierunkowe o kierunku z dwóch kątów, `moonYawDegrees = 25` i `moonPitchDegrees = -50` w `game::LightingSettings`. Kąty da się zmieniać suwakami `Moon yaw` i `Moon pitch` w zakładce Light / Lights. Do M5 samego księżyca nie było widać: nad ścianami był jeden kolor.
 
 W pierwszej części M6 doszło niebo, tekstura sześcienna z sześciu obrazów generowanych skryptem. Nocne niebo bez księżyca wyglądałoby dziwnie w scenie, w której ściany są wyraźnie oświetlone z jednej strony. Trzeba było zdecydować, czy księżyc ma być na niebie i skąd ma wiedzieć, gdzie stać.
 
@@ -13,7 +13,7 @@ Ograniczenia: temat 8 dotyczy tekstury sześciennej, a nie rysowania ciał niebi
 
 ## 2. Decyzja
 
-Tarcza księżyca z poświatą jest **częścią obrazu nieba**. Skrypt maluje ją w kierunku przeciwnym do kierunku, w którym leci domyślne światło księżyca, czyli tam, skąd to światło przychodzi. Dwa kąty domyślne są zapisane drugi raz, w skrypcie (`MOON_LIGHT_YAW_DEGREES`, `MOON_LIGHT_PITCH_DEGREES`). Zgodności obu par pilnuje test na plikach. Tarcza nie podąża za suwakami panelu Lights i mówi o tym podpowiedź przy polu `Skybox`.
+Tarcza księżyca z poświatą jest **częścią obrazu nieba**. Skrypt maluje ją w kierunku przeciwnym do kierunku, w którym leci domyślne światło księżyca, czyli tam, skąd to światło przychodzi. Dwa kąty domyślne są zapisane drugi raz, w skrypcie (`MOON_LIGHT_YAW_DEGREES`, `MOON_LIGHT_PITCH_DEGREES`). Zgodności obu par pilnuje test na plikach. Tarcza nie podąża za suwakami zakładki Light / Lights i mówi o tym podpowiedź przy polu `Skybox`.
 
 ## 3. Rozważane możliwości
 

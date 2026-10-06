@@ -7,13 +7,13 @@ Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten 
 
 **Stan na dziś:** gra ma trzy źródła światła: księżyc, latarkę gracza (w jego **ręce**, od części piątej M7) i światła punktowe nad kryształami, których gracz jeszcze nie zebrał. Latarka jest włączona na początku każdej rundy, klawisz F ją przełącza. Od M5 latarka ma **baterię**: bateria ubywa tylko wtedy, gdy latarka świeci, poniżej progu światło migocze, a pusta bateria gasi latarkę do chwili zebrania kryształu.
 
-M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**, tak samo M6. Od drugiej części M6 światła z bufora uniformów czyta trzeci program, `grass` (trawa), a pod światłami leży teren zamiast płytek podłogi: ustawień świateł ani ich budowy to nie zmieniło. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751) (w tym wtedy 10 przypadków z `tests/LightingTests.cpp`, dziś 11, i 25 z `tests/RoundTests.cpp`), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: **nic z M5 ani z M6 nie było budowane ani uruchamiane na macOS** i **nikt jeszcze nie testował ręcznie**: klawisza F przy pustej baterii, migotania widzianego na ekranie, zbierania kryształów, klawisza R, suwaków panelu Gameplay. To, że stożek latarki zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane.
+M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**, tak samo M6. Od drugiej części M6 światła z bufora uniformów czyta trzeci program, `grass` (trawa), a pod światłami leży teren zamiast płytek podłogi: ustawień świateł ani ich budowy to nie zmieniło. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751) (w tym wtedy 10 przypadków z `tests/LightingTests.cpp`, dziś 11, i 25 z `tests/RoundTests.cpp`), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: **nic z M5 ani z M6 nie było budowane ani uruchamiane na macOS** i **nikt jeszcze nie testował ręcznie**: klawisza F przy pustej baterii, migotania widzianego na ekranie, zbierania kryształów, klawisza R, suwaków kategorii Gameplay. To, że stożek latarki zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane.
 
 Z części M4 zostaje w mocy to, co wtedy sprawdzono na zrzutach ekranu z Windowsa: widok startowy z plamą latarki w środku ekranu i scena ze zgaszoną latarką.
 
 Czego nie ma: stanu przegranej (pusta bateria oznacza tylko ciemność, runda trwa dalej: notatka [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md)), tekstury "cookie" latarki z PRD i **cieni świateł kryształów** (nie ma ich w planie). Od piątej części M7 cienie rzucają księżyc i latarka.
 
-**Piąta część M7 (cień latarki i latarka w ręce, 2026-10-06)** zmieniła w tym module pięć rzeczy. (1) Latarka **nie stoi już w oku**: jej pozycja to oko przesunięte o 0,20 m w prawo i 0,25 m w dół, a kierunek wiązki biegnie z ręki do punktu na osi widzenia 4 m przed okiem (sekcje 2.1 i 5.5). Zapadły dwie decyzje właściciela (2026-10-05 i 2026-10-06), a reszta to moje wybory (sekcja 2.1 i [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20.9). (2) Nowa funkcja `game::flashlightPose` i struktura `game::FlashlightPose` liczą pozycję i kierunek **raz na klatkę**, a ten sam wynik dostają światło i mapa cieni latarki. (3) `buildLightSet` ma nowy podpis: `buildLightSet(settings, flashlight, pointPositions)` zamiast `(settings, eye, viewDirection, pointPositions)`. (4) `LightingSettings` ma trzy nowe pola (`flashlightHandRight`, `flashlightHandDown`, `flashlightConvergeDistance`) i dwie stałe (`MAX_FLASHLIGHT_HAND_RIGHT`, `MIN_FLASHLIGHT_CONVERGE_DISTANCE`), a panel Lights trzy suwaki. (5) `tests/LightingTests.cpp` ma 15 przypadków (było 11): jeden zmienił nazwę, a cztery doszły. Latarka **rzuca cień** (jej mapa: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20). Zgłoszone dla Windowsa (2026-10-06), nie powtarzałem: bramka `make check` zgłosiła 329 przypadków i 104306 asercji (przed częścią piątą 310 i 103751). **Nikt nie oglądał** plamy w ręce ani cienia latarki, a na macOS nic z tego nie było budowane ani uruchamiane. Blok `LightBlock` (928 bajtów) się nie zmienił.
+**Piąta część M7 (cień latarki i latarka w ręce, 2026-10-06)** zmieniła w tym module pięć rzeczy. (1) Latarka **nie stoi już w oku**: jej pozycja to oko przesunięte o 0,20 m w prawo i 0,25 m w dół, a kierunek wiązki biegnie z ręki do punktu na osi widzenia 4 m przed okiem (sekcje 2.1 i 5.5). Zapadły dwie decyzje właściciela (2026-10-05 i 2026-10-06), a reszta to moje wybory (sekcja 2.1 i [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20.9). (2) Nowa funkcja `game::flashlightPose` i struktura `game::FlashlightPose` liczą pozycję i kierunek **raz na klatkę**, a ten sam wynik dostają światło i mapa cieni latarki. (3) `buildLightSet` ma nowy podpis: `buildLightSet(settings, flashlight, pointPositions)` zamiast `(settings, eye, viewDirection, pointPositions)`. (4) `LightingSettings` ma trzy nowe pola (`flashlightHandRight`, `flashlightHandDown`, `flashlightConvergeDistance`) i dwie stałe (`MAX_FLASHLIGHT_HAND_RIGHT`, `MIN_FLASHLIGHT_CONVERGE_DISTANCE`), a zakładka Light / Lights trzy suwaki. (5) `tests/LightingTests.cpp` ma 15 przypadków (było 11): jeden zmienił nazwę, a cztery doszły. Latarka **rzuca cień** (jej mapa: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20). Zgłoszone dla Windowsa (2026-10-06), nie powtarzałem: bramka `make check` zgłosiła 329 przypadków i 104306 asercji (przed częścią piątą 310 i 103751). **Nikt nie oglądał** plamy w ręce ani cienia latarki, a na macOS nic z tego nie było budowane ani uruchamiane. Blok `LightBlock` (928 bajtów) się nie zmienił.
 
 **Czwarta część M7 (cienie księżyca, 2026-10-05)** zmieniła w tym module cztery rzeczy. Księżyc rzuca cienie: jego mapę cieni i całą technikę opisuje [`../renderer/shadows.md`](../renderer/shadows.md). Intensywność startowa księżyca wzrosła z 0,12 do 0,2, żeby miejsce oświetlone księżycem dało się odróżnić od cienia ściany (sekcja 5.2). Doszła funkcja `game::moonDirection`, z której kierunek księżyca biorą i światła klatki, i mapa cieni (sekcja 5.5). Dwa komentarze w `Lighting.hpp` (światło otoczenia i księżyc) mają nową treść. **Latarka i światła kryształów cieni wtedy nie rzucały** (latarka dostała cień w części piątej): ich światło przechodziło przez ściany. Blok uniformów świateł (`LightBlock`, 928 bajtów) się nie zmienił: macierz mapy cieni jedzie do shaderów zwykłymi uniformami, obok swojego samplera ([`../scene/lights.md`](../scene/lights.md)). `tests/LightingTests.cpp` miał wtedy nadal 11 przypadków (dziś 15): przypadek o `moonDirection` stoi w `tests/ShadowTests.cpp`. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi, 310 przypadków i 103751 asercji. Na macOS nic z tego nie było budowane ani uruchamiane.
 
@@ -31,7 +31,7 @@ Czego nie ma: stanu przegranej (pusta bateria oznacza tylko ciemność, runda tr
 | co bateria i puls kryształów zmieniają w tej jednej klatce | `game::lightingForFrame`, `game::flashlightFlicker`, `game::crystalPulse` |
 | jak z tego powstaje `LightSet` | `game::buildLightSet` (dostaje gotowy `FlashlightPose`) |
 | jak `LightSet` trafia na kartę | klasa `game::LightRig` |
-| jak gracz włącza latarkę i kiedy gra ją gasi | klawisz F w `onRender`, pole wyboru w panelu Lights, `game::updateRound` przy pustej baterii |
+| jak gracz włącza latarkę i kiedy gra ją gasi | klawisz F w `onRender`, pole wyboru w zakładce Light / Lights, `game::updateRound` przy pustej baterii |
 
 Kod jest podzielony tak samo jak reszta modułu `game` ([`README.md`](README.md)):
 
@@ -44,7 +44,7 @@ Kod jest podzielony tak samo jak reszta modułu `game` ([`README.md`](README.md)
 
 ```mermaid
 flowchart TD
-    Settings["LightingSettings<br>m_lighting, edytuje panel Lights i klawisz F"] --> Frame
+    Settings["LightingSettings<br>m_lighting, edytuje zakładkę Light / Lights i klawisz F"] --> Frame
     RoundState["Round<br>m_round: bateria, zegar animacji, kryształy"] --> Frame
     Frame["lightingForFrame<br>kopia ustawień na jedną klatkę:<br>migotanie latarki, puls kryształów"] --> Build
     RoundState --> Positions["crystalLightPositions<br>nad każdym niezebranym kryształem"]
@@ -155,7 +155,7 @@ Przykład na liczbach przy progu 0,2: dla baterii 0,1 słabość wynosi 0,5 i na
 
 **Nic tu nie jest losowe.** Ten sam ładunek i ta sama chwila dają zawsze ten sam mnożnik, więc wzór ma test jednostkowy. Wrażenie nieregularności bierze się z dwóch niewspółmiernych prędkości, a nie z generatora liczb losowych.
 
-**Mnożnik trafia do intensywności, nie do ustawień.** `lightingForFrame` mnoży przez niego `flashlightIntensity` w **kopii** ustawień, zrobionej na jedną klatkę (sekcja 5.3). Suwak `Beam intensity` w panelu Lights pokazuje cały czas wartość ustawioną przez użytkownika.
+**Mnożnik trafia do intensywności, nie do ustawień.** `lightingForFrame` mnoży przez niego `flashlightIntensity` w **kopii** ustawień, zrobionej na jedną klatkę (sekcja 5.3). Suwak `Beam intensity` w zakładce Light / Lights pokazuje cały czas wartość ustawioną przez użytkownika.
 
 ### 2.5 Światła punktowe nad kryształami
 
@@ -267,7 +267,7 @@ struct LightingSettings {
     glm::vec3 ambient{0.105F, 0.135F, 0.225F};
 ```
 
-Struktura to **same dane z wartościami startowymi**: nie ma funkcji ani stanu ukrytego. Panel Lights dostaje do niej referencję i edytuje pola, gra czyta ją co klatkę. Wartości wpisane w strukturze są sceną nocną, w której gra startuje.
+Struktura to **same dane z wartościami startowymi**: nie ma funkcji ani stanu ukrytego. Zakładka Light / Lights dostaje do niej referencję i edytuje pola, gra czyta ją co klatkę. Wartości wpisane w strukturze są sceną nocną, w której gra startuje.
 
 **Akapit `COLOUR SPACE` (pierwsza część M7).** Cztery kolory struktury (`ambient`, `moonColor`, `flashlightColor`, `pointColor`) są wartościami **sRGB**: liczbami, które pokazuje próbnik koloru i które wyświetla ekran. Shadery liczą na wartościach liniowych, więc `buildLightSet` przelicza je raz (sekcja 5.5). Intensywności są zwykłymi mnożnikami: mnożą już liniowy kolor i mogą wypchnąć go powyżej 1. To nie błąd: scena jest rysowana do bufora HDR, a w zakres ekranu sprowadza ją przebieg składający. Dlatego wartości startowe świateł są dobrane **razem** z ekspozycją (1,0) i krzywą mapowania tonów (ACES) z `PostProcessSettings`: zmiana jednego bez drugiego zmienia wygląd nocy.
 
@@ -275,7 +275,7 @@ Zdanie komentarza o świetle otoczenia da się sprawdzić rachunkiem (policzone)
 
 | Pole | Wartość startowa | Znaczenie |
 |---|---|---|
-| `mode` | `BlinnPhong` | tryb cieniowania (lista `Lighting` w panelu Renderer) |
+| `mode` | `BlinnPhong` | tryb cieniowania (lista `Lighting` w kategorii Render) |
 | `ambient` | `(0,105, 0,135, 0,225)` jako sRGB, po przeliczeniu `(0,0108, 0,0163, 0,0414)`. Do M6 `(0,035, 0,045, 0,075)`, wtedy używane bez przeliczenia | światło otoczenia: słabe, zimne, niebieskawe. Kąty bez światła są ciemne, ale nie czarne |
 
 ```cpp
@@ -368,7 +368,7 @@ Pozycji i kierunku latarki **w świecie** nie ma w ustawieniach: są wynikiem te
 | `pointRadius` | 3 m | zasięg jednego światła: półtorej komórki |
 | `specularStrength` | 0,25 | siła odbłysku. Kamień jest szorstki, więc odbłysk jest słaby |
 | `shininess` | 32 | wykładnik odbłysku |
-| `normalMapping` | `true` | mapowanie normalnych (normal mapping): normalna każdego fragmentu pochodzi z mapy normalnych materiału, a nie z siatki. Przełącza je pole wyboru `Normal mapping` w panelu **Assets** |
+| `normalMapping` | `true` | mapowanie normalnych (normal mapping): normalna każdego fragmentu pochodzi z mapy normalnych materiału, a nie z siatki. Przełącza je pole wyboru `Normal mapping` w kategorii Render |
 
 Kolor, intensywność i promień są **wspólne dla wszystkich** świateł punktowych. Różni je tylko miejsce.
 
@@ -406,7 +406,7 @@ Wynik trafia do shaderów jako uniform `uNormalMapEnabled` (1 albo 0): ustawiaj�
 
 ### 5.3 `lightingForFrame` i `flashlightFlicker`: ustawienia jednej klatki
 
-Panel Lights edytuje `m_lighting`. Bateria i puls kryształów zmieniają jasność świateł w każdej klatce. Gdyby robiły to wprost w `m_lighting`, suwaki w panelu jeździłyby same, a mnożniki nakładałyby się klatka po klatce. Dlatego jest funkcja, która robi **kopię** ustawień na jedną klatkę (`Round.cpp`):
+Zakładka Light / Lights edytuje `m_lighting`. Bateria i puls kryształów zmieniają jasność świateł w każdej klatce. Gdyby robiły to wprost w `m_lighting`, suwaki w panelu jeździłyby same, a mnożniki nakładałyby się klatka po klatce. Dlatego jest funkcja, która robi **kopię** ustawień na jedną klatkę (`Round.cpp`):
 
 ```cpp
 LightingSettings lightingForFrame(const LightingSettings& settings, const Round& round,
@@ -500,7 +500,7 @@ Ta sama funkcja `crystalBobPosition` z tym samym numerem i tym samym zegarem ust
 
 Funkcja zwraca same pozycje, a nie światła: kolor, intensywność i promień są wspólne i dochodzą dopiero w `buildLightSet`. Wynik jest liczony **w każdej klatce** (w `onRender`), bo pozycje się ruszają. W M4 pozycje świateł były polem `MazeWorld`, liczonym raz przy budowie labiryntu. Dziś `MazeWorld` trzyma tylko komórki kryształów (`crystals`), a to, które jeszcze świecą i gdzie dokładnie, jest stanem rundy.
 
-Po `Regenerate` w panelu Maze powstaje nowy `MazeWorld` z nowymi kryształami i `beginRound` zaczyna na nim nową rundę, więc światła przenoszą się razem z kryształami bez żadnego dodatkowego kodu.
+Po `Regenerate` w zakładce World / Maze powstaje nowy `MazeWorld` z nowymi kryształami i `beginRound` zaczyna na nim nową rundę, więc światła przenoszą się razem z kryształami bez żadnego dodatkowego kodu.
 
 ### 5.5 `flashlightPose` i `buildLightSet`: światła jednej klatki
 
@@ -668,7 +668,7 @@ constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 | `wasKeyPressed` | prawda tylko w klatce, w której klawisz został wciśnięty (zbocze). Trzymanie F nie miga latarką |
 | w `onRender`, nie w `onUpdate` | `onUpdate` biegnie zero albo więcej razy na klatkę. W klatce z dwoma krokami latarka przełączyłaby się dwa razy, czyli wcale, a w klatce bez kroku naciśnięcie by przepadło. To ten sam powód co dla klawisza N ([`player.md`](player.md)) |
 | brak warunku o przechwyconym kursorze | F działa także przy wolnym kursorze, tak jak N i R. **Nie działa, gdy klawiaturę ma ImGui** (edytowane pole tekstowe albo aktywny widżet): `core::Input` odpowiada wtedy fałszem na każde pytanie o klawisz ([`../core/input.md`](../core/input.md)) |
-| `m_lighting.flashlightOn` | to samo pole, które edytuje pole wyboru `Flashlight on (key F)` w panelu Lights. Klawisz i panel nie mogą się rozjechać, bo stan jest jeden |
+| `m_lighting.flashlightOn` | to samo pole, które edytuje pole wyboru `Flashlight on (key F)` w zakładce Light / Lights. Klawisz i panel nie mogą się rozjechać, bo stan jest jeden |
 | brak warunku o baterii | klawisz nie pyta o ładunek. Pustą baterię obsługują dwa inne miejsca, niżej |
 
 **Wymuszone wyłączenie przy pustej baterii.** `onUpdate` przekazuje przełącznik do zasad rundy przez referencję:
@@ -794,7 +794,7 @@ void NightMazeApp::beginRound() {
     m_lighting.flashlightOn = true;
 ```
 
-`startRound` zwraca świeże `Round`, w którym `battery` ma wartość domyślną 1, a każdy kryształ `collected = false`. Linia z `flashlightOn` jest potrzebna osobno, bo przełącznik nie należy do rundy, tylko do ustawień światła, i po pustej baterii zostałby wyłączony. `beginRound` biegnie w trzech sytuacjach: w konstruktorze dla pierwszego labiryntu, po `Regenerate` w panelu Maze i po klawiszu R albo przycisku `Restart round (key R)` w panelu Gameplay. Reszta funkcji (pozycja gracza, kamera) jest omówiona w [`gameplay.md`](gameplay.md).
+`startRound` zwraca świeże `Round`, w którym `battery` ma wartość domyślną 1, a każdy kryształ `collected = false`. Linia z `flashlightOn` jest potrzebna osobno, bo przełącznik nie należy do rundy, tylko do ustawień światła, i po pustej baterii zostałby wyłączony. `beginRound` biegnie w trzech sytuacjach: w konstruktorze dla pierwszego labiryntu, po `Regenerate` w zakładce World / Maze i po klawiszu R albo przycisku `Restart round (key R)` w kategorii Gameplay. Reszta funkcji (pozycja gracza, kamera) jest omówiona w [`gameplay.md`](gameplay.md).
 
 **Konstruktor.**
 
@@ -905,11 +905,11 @@ Wyniki dla Windowsa 2026-10-05: wszystkie te przypadki przechodzą w Debug i Rel
 
 **Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp` i `LightRig`: klawisza F, tego, że `flashlightPose` dostaje interpolowane oko i kopię z `lightingForFrame`, tego, że przebieg cieni latarki jest wołany **po** policzeniu pozycji, tego, że `upload` dostaje oko, a nie rękę, kolejności `upload` przed rysowaniem, linii `flashlightOn = true` w `beginRound`. Ten kod wymaga okna. Migotania, pulsu i gasnącego światła zebranego kryształu **nikt jeszcze nie oglądał w działającej grze ręcznie**, tak samo jak plamy w ręce i jej cienia (lista: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 21.2): to otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opisie panelu **Lights**. Kod panelu i wszystkie jego kontrolki omawia [`../scene/lights.md`](../scene/lights.md), sekcja 6. Bateria ma kontrolki w panelu **Gameplay** i pasek w HUD: oba opisuje [`gameplay.md`](gameplay.md), sekcja 6. Tu to, co dotyczy świateł gry:
+Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w kategorii Light, zakładce Lights, karcie Flashlight (dawniej panel Lights). Kod panelu i wszystkie jego kontrolki omawia [`../scene/lights.md`](../scene/lights.md), sekcja 6. Bateria ma kontrolki w kategorii Gameplay i pasek w HUD: oba opisuje [`gameplay.md`](gameplay.md), sekcja 6. Tu to, co dotyczy świateł gry:
 
-| Panel | Kontrolka | Pole | Co widać |
+| Dawny panel (dziś kategoria Light, zakładka Lights, karta Flashlight; dawna grupa `Flashlight (spot)`) | Kontrolka | Pole | Co widać |
 |---|---|---|---|
 | Lights, grupa `Flashlight (spot)` | `Flashlight on (key F)` | `flashlightOn` | to samo pole co klawisz F: po naciśnięciu F pole wyboru zmienia stan. Przy pustej baterii najechanie na pole pokazuje podpowiedź `The battery is empty: collect a crystal first.`, a zaznaczenie znika w następnym kroku symulacji |
 | | `Beam colour`, `Beam intensity` | `flashlightColor`, `flashlightIntensity` | kolor i jasność plamy. Migotanie słabej baterii **nie rusza** suwaka `Beam intensity`: działa na kopii ustawień |
@@ -926,7 +926,7 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 | Gameplay | suwaki `Battery lifetime`, `Recharge`, `Flicker below` | `batteryLifetimeSeconds`, `batteryPerCrystal`, `lowBatteryThreshold` | trzy liczby baterii z sekcji 2.3 |
 | Gameplay | przycisk `Restart round (key R)` | `GameplaySettings::restart` | nowa runda: pełna bateria, latarka włączona, wszystkie kryształy i ich światła z powrotem |
 | HUD | pasek baterii z procentami, napis `Battery empty. Find a crystal.` | odczyt `Round::battery` | pasek robi się czerwony poniżej progu migotania |
-| Maze | `Regenerate`, `Seed`, `Width`, `Height` | `MazeSettings` | nowy labirynt ma inne kryształy: światła się przenoszą, liczby w panelu Lights się zmieniają, zaczyna się nowa runda |
+| Maze | `Regenerate`, `Seed`, `Width`, `Height` | `MazeSettings` | nowy labirynt ma inne kryształy: światła się przenoszą, liczby w zakładce Light / Lights się zmieniają, zaczyna się nowa runda |
 | Maze | plan z góry | odczyt | kryształy są na planie kropkami (zebrane: przygaszonym kółkiem), więc da się je policzyć i porównać z linią `Lit: ...` |
 | Renderer | lista `Lighting` | `mode` | w trybie `Unlit` światła nie działają, ale kryształy są rysowane i nadal wyróżniają się własnym blaskiem |
 | Assets | pole wyboru `Normal mapping` | `normalMapping` | fugi i nierówności ścian pod latarką pojawiają się i znikają (tryby `Phong` i `Blinn-Phong`). W trybie `Gouraud` nic się nie zmienia: `usesNormalMap` jest tam fałszywe. Opis panelu jest w [`../assets/asset-cache.md`](../assets/asset-cache.md), a scenariusz pokazu w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6 |
@@ -937,16 +937,16 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 **Kroków nikt jeszcze nie wykonał ręcznie.** Wynikają z kodu i testów. Kroki od 1 do 3 opisują zachowanie z M4 w wersji z częścią piątą M7 (latarka w ręce), kroki od 4 do 9 to M5, a krok 11 to część piąta M7.
 
 1. **Latarka w ręce.** Start gry. Staję przed ścianą w odległości 4 m: plama jest w środku ekranu. Podchodzę na 1 m: plama leży na prawo od środka i poniżej niego. Obracam myszą: plama przesuwa się po ścianach. Mówię: reflektor dostaje co klatkę rękę (oko plus 0,20 m w prawo i 0,25 m w dół) i kierunek do punktu 4 m przed okiem, z tego samego oka i tych samych wektorów kamery, z których powstaje macierz widoku. Te zdania wynikają z kodu, **nikt ich nie oglądał**.
-2. **Klawisz F.** Naciskam F: latarka gaśnie, zostaje księżyc i turkusowe światła kryształów. Pokazuję, że pole `Flashlight on (key F)` w panelu Lights się odznaczyło. Naciskam jeszcze raz.
+2. **Klawisz F.** Naciskam F: latarka gaśnie, zostaje księżyc i turkusowe światła kryształów. Pokazuję, że pole `Flashlight on (key F)` w zakładce Light / Lights się odznaczyło. Naciskam jeszcze raz.
 3. **Ruch.** Idę i przesuwam się w bok blisko ściany, patrząc na plamę. Ma stać w środku ekranu bez drgania. Mówię o dwóch zegarach i o tym, dlaczego światła powstają w `onRender`.
-4. **Kryształy jako światła.** Naciskam N (noclip), wzlatuję nad labirynt i patrzę w dół. Liczę turkusowe kryształy: 13. Porównuję z planem w panelu Maze i z linią `Lit: 13 of 13 crystals (at most 16)`. Pokazuję, że w komórce startowej i w komórce wyjścia kryształu nie ma. Mówię: światło wisi 0,15 m nad czubkiem każdego kryształu i unosi się razem z nim.
+4. **Kryształy jako światła.** Naciskam N (noclip), wzlatuję nad labirynt i patrzę w dół. Liczę turkusowe kryształy: 13. Porównuję z planem w zakładce World / Maze i z linią `Lit: 13 of 13 crystals (at most 16)`. Pokazuję, że w komórce startowej i w komórce wyjścia kryształu nie ma. Mówię: światło wisi 0,15 m nad czubkiem każdego kryształu i unosi się razem z nim.
 5. **Zebrany kryształ gaśnie.** Wyłączam noclip, podchodzę do kryształu. Kryształ znika, jego światło też, linia w panelu pokazuje `Lit: 12 of 13 crystals (at most 16)`, pasek baterii w HUD rośnie. Mówię: lista świateł jest liczona co klatkę z kryształów, które zostały.
-6. **Migotanie.** W panelu Gameplay odznaczam `Battery drains` i ustawiam `Battery` na 0,10. Latarka przygasa nieregularnie. Ustawiam 0,02: przygaszenia są głębsze. Pokazuję, że suwak `Beam intensity` w panelu Lights stoi w miejscu. Mówię o iloczynie dwóch sinusów i o kopii ustawień.
+6. **Migotanie.** W kategorii Gameplay odznaczam `Battery drains` i ustawiam `Battery` na 0,10. Latarka przygasa nieregularnie. Ustawiam 0,02: przygaszenia są głębsze. Pokazuję, że suwak `Beam intensity` w zakładce Light / Lights stoi w miejscu. Mówię o iloczynie dwóch sinusów i o kopii ustawień.
 7. **Pusta bateria.** Ustawiam `Battery` na 0. Latarka gaśnie, pole `Flashlight on (key F)` się odznacza, HUD pokazuje `Battery empty. Find a crystal.`. Naciskam F: nic się nie zapala. Najeżdżam na pole wyboru: podpowiedź mówi dlaczego. Runda trwa dalej. Zbieram kryształ: bateria ma 25 procent, ale jest nadal ciemno. Naciskam F: latarka świeci. Mówię: kryształ ładuje baterię, a przełącznik należy do gracza.
 8. **Nowa runda.** Gaszę latarkę klawiszem F i naciskam R. Kryształy i ich światła wracają, bateria jest pełna, latarka świeci.
-9. **Nowy labirynt i limit 16.** W panelu Maze zmieniam `Seed` i naciskam `Regenerate`: kryształy są w innych miejscach. Ustawiam `Width` i `Height` na 30 i `Regenerate`: panel pokazuje `Lit: 16 of 16 crystals (at most 16)`. Mówię: liczba kryształów jest przycięta do rozmiaru tablicy świateł w shaderze.
+9. **Nowy labirynt i limit 16.** W zakładce World / Maze zmieniam `Seed` i naciskam `Regenerate`: kryształy są w innych miejscach. Ustawiam `Width` i `Height` na 30 i `Regenerate`: panel pokazuje `Lit: 16 of 16 crystals (at most 16)`. Mówię: liczba kryształów jest przycięta do rozmiaru tablicy świateł w shaderze.
 10. **Testy.** `ctest --test-dir build/debug -C Debug --output-on-failure`. Mówię, że zużycie baterii, obie blokady pustej baterii, wzór migotania, lista świateł i położenie ręki są przypięte testami bez okna.
-11. **Ręka i zbieganie.** W panelu Lights, grupa `Flashlight (spot)`: ustawiam `Hand right` i `Hand down` na 0. Światło jest w oku, plama pokrywa się ze środkiem ekranu w każdej odległości. Wracam do 0,20 i 0,25. Przesuwam `Converge at` od 0,5 do 20 m: miejsce, w którym plama przecina środek ekranu, wędruje z nim. Ustawiam `Hand right` na maksimum i stoję bokiem do ściany: światło jest wewnątrz pudełka ciała, więc ściana nie jest za nim. Mówię o geometrii z sekcji 2.1. Cień latarki: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 6.1, kroki od 11 do 18.
+11. **Ręka i zbieganie.** W zakładce Light / Lights, grupa `Flashlight (spot)`: ustawiam `Hand right` i `Hand down` na 0. Światło jest w oku, plama pokrywa się ze środkiem ekranu w każdej odległości. Wracam do 0,20 i 0,25. Przesuwam `Converge at` od 0,5 do 20 m: miejsce, w którym plama przecina środek ekranu, wędruje z nim. Ustawiam `Hand right` na maksimum i stoję bokiem do ściany: światło jest wewnątrz pudełka ciała, więc ściana nie jest za nim. Mówię o geometrii z sekcji 2.1. Cień latarki: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 6.1, kroki od 11 do 18.
 
 ## 7. Pułapki
 
@@ -966,8 +966,8 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 14. **Światło w środku siatki.** Światło punktowe ustawione w środku kryształu (bez `CRYSTAL_LIGHT_CLEARANCE`) świeci na jego ścianki od tyłu: `dot(N, L)` jest ujemny i kryształ nie dostaje ze swojego światła nic.
 15. **Blask to nie światło.** `uEmissive` zmienia tylko kolor samego kryształu. Niczego nie oświetla. I odwrotnie: `Point intensity` ustawione na 0 gasi blask na ścianach, a kryształy świecą dalej, bo `crystalGlow` bierze tylko `pointColor`.
 16. **Zasłonięty kryształ, widoczne światło.** Ściana zasłania model kryształu (test głębi), a jego światła nie: światła punktowe nie mają cieni. Blask na podłodze za ścianą jest skutkiem braku cieni tych świateł, nie błędem pozycji. Latarka natomiast **nie** świeci przez ściany od piątej części M7: ma własną mapę cieni (do czwartej części świeciła, bo cienie rzucał tylko księżyc). Cienie rzucają dziś księżyc i latarka, światła kryształów nadal nie, więc w jednym kadrze bywa widać i cień ściany od księżyca lub latarki, i turkusowy blask, który przez tę samą ścianę przeszedł.
-17. **Kryształy w trybie `Unlit` i w podglądach.** Są rysowane zawsze: `drawUnlitMaze` też je rysuje (od M8, części 1 przez `drawGateAndCrystals`, wcześniej `GameplayRenderer::draw`), chyba że robi to przebieg odbić programem `reflect`. W trybie `Unlit` kryształ jest jaśniejszy od ścian o swój blask (`texel * uTint * (1 + uEmissive)`). W podglądach normalnych i UV z panelu Assets blasku nie ma: `textured.frag` używa `uEmissive` tylko w zwykłym obrazie.
-18. **Prześwietlona ściana przed nosem.** Tłumienie w odległości bliskiej zera wynosi 1, a intensywność latarki to 1,3: jasna ściana tuż przed graczem dostaje wartości powyżej 1. Do M6 (intensywność 1,6, bez HDR) były obcinane do bieli. Od pierwszej części M7 zostają w buforze HDR, a krzywa ACES zgina je ku bieli zamiast obcinać, więc rysunek tekstury powinien zostać widoczny (tak wynika ze wzoru krzywej, nikt nie porównał tego jeszcze na ekranie). Kto przełączy `Tone mapping` na `None (clamp)` w panelu Framebuffers, zobaczy dawne obcięcie.
+17. **Kryształy w trybie `Unlit` i w podglądach.** Są rysowane zawsze: `drawUnlitMaze` też je rysuje (od M8, części 1 przez `drawGateAndCrystals`, wcześniej `GameplayRenderer::draw`), chyba że robi to przebieg odbić programem `reflect`. W trybie `Unlit` kryształ jest jaśniejszy od ścian o swój blask (`texel * uTint * (1 + uEmissive)`). W podglądach normalnych i UV z kategorii Render blasku nie ma: `textured.frag` używa `uEmissive` tylko w zwykłym obrazie.
+18. **Prześwietlona ściana przed nosem.** Tłumienie w odległości bliskiej zera wynosi 1, a intensywność latarki to 1,3: jasna ściana tuż przed graczem dostaje wartości powyżej 1. Do M6 (intensywność 1,6, bez HDR) były obcinane do bieli. Od pierwszej części M7 zostają w buforze HDR, a krzywa ACES zgina je ku bieli zamiast obcinać, więc rysunek tekstury powinien zostać widoczny (tak wynika ze wzoru krzywej, nikt nie porównał tego jeszcze na ekranie). Kto przełączy `Tone mapping` na `None (clamp)` w kategorii Post process, zobaczy dawne obcięcie.
 19. **Zegar animacji stoi, gdy stoi symulacja.** Puls i migotanie biorą czas z `Round::animationSeconds`, który rośnie w stałych krokach. Klatka bez kroku rysuje te same wartości co poprzednia.
 20. **macOS i test ręczny, niesprawdzone.** Nic z M5 nie było uruchamiane na Macu ani przeklikane ręcznie na Windowsie. Klawisz F idzie przez GLFW tak samo jak N, więc różnic nie oczekuję, ale to przewidywanie, nie pomiar.
 21. **Kolor ustawień wysłany bez przeliczenia albo przeliczony dwa razy.** Kolory w `LightingSettings` są wartościami sRGB. Kod, który zbuduje `scene::LightSet` ręcznie, z pominięciem `buildLightSet`, wyśle do shadera liczby sRGB jako liniowe i światło wyjdzie za jasne i wyblakłe. Odwrotnie, `gfx::srgbToLinear` zawołane jeszcze raz na wyniku `buildLightSet` da światło za ciemne. Reguła: przeliczenie jest w jednym miejscu.
@@ -981,7 +981,7 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
 3. **Pozycja światła na kartce.** Kryształ stoi w komórce `(5, 2)`. Gdzie wisi jego światło w spoczynku i w jakim zakresie wysokości się porusza? (Odpowiedź: `(11, 1,55, 5)`, od 1,47 do 1,63 m.)
 4. **Latarka z opóźnieniem.** W `onRender` zamień `eye` na `m_camera.position` w wywołaniu `flashlightPose` (tylko tam). Zbuduj, podejdź do ściany na pół metra i przesuwaj się w bok ze sprintem. Co robi plama? Wycofaj.
 5. **Klawisz w złym miejscu.** Przenieś blok z `FLASHLIGHT_KEY` do `onUpdate`. Naciśnij F kilkanaście razy. Ile razy latarka się przełączyła? Wycofaj.
-6. **Bez kopii.** W `onRender` podaj do `buildLightSet` `m_lighting` zamiast `frameLighting`. Ustaw w panelu Gameplay `Battery` na 0,05. Co się zmieniło w latarce i w kryształach? Co się stanie przy `Battery` równym 0 i dlaczego latarka mimo wszystko gaśnie? (Wskazówka: `updateRound`.) Wycofaj.
+6. **Bez kopii.** W `onRender` podaj do `buildLightSet` `m_lighting` zamiast `frameLighting`. Ustaw w kategorii Gameplay `Battery` na 0,05. Co się zmieniło w latarce i w kryształach? Co się stanie przy `Battery` równym 0 i dlaczego latarka mimo wszystko gaśnie? (Wskazówka: `updateRound`.) Wycofaj.
 7. **Jedna blokada mniej.** W `lightingForFrame` usuń `&& round.battery > 0.0F`. Czy na ekranie coś się zmieniło przy pustej baterii? Dlaczego nie? Który test przestał przechodzić? (Wskazówka: `flashlightFlicker` dla pustej baterii.) Wycofaj.
 8. **Latarka równoległa do widoku.** W `flashlightPose` zamień wyliczony kierunek na `forward` (wiązka równoległa do osi widzenia, bez zbiegania). Podejdź do ściany z 1 m i z 6 m. Gdzie jest plama względem środka ekranu i dlaczego jej przesunięcie zależy od odległości? Który test przestał przechodzić? (Wskazówka: `the beam of the flashlight passes through the point the view is aimed at`.) Wycofaj.
 9. **Światło w krysztale.** W `Crystals.hpp` zmień `CRYSTAL_LIGHT_CLEARANCE` na `-0.4F` (światło 0,1 m nad podstawą, w środku siatki). Jak wyglądają ściany dookoła, a jak sam kryształ? Który test przestał przechodzić? Wycofaj.
@@ -1062,7 +1062,7 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
     Tekstury "cookie". Jest stożek wewnętrzny i zewnętrzny z miękkim brzegiem i bateria.
 
 25. **Dlaczego kolory w `LightingSettings` są wartościami sRGB, a nie liniowymi?**
-    Bo wybiera się je na ekranie, próbnikiem koloru w panelu Lights, a ekran i próbnik pokazują sRGB. Struktura trzyma to, co widzi człowiek, a `buildLightSet` przelicza to raz na to, czego potrzebuje rachunek światła.
+    Bo wybiera się je na ekranie, próbnikiem koloru w zakładce Light / Lights, a ekran i próbnik pokazują sRGB. Struktura trzyma to, co widzi człowiek, a `buildLightSet` przelicza to raz na to, czego potrzebuje rachunek światła.
 
 26. **Dlaczego intensywności nie są przeliczane tak jak kolory?**
     Intensywność nie jest kolorem, tylko mnożnikiem ilości światła. Dwa razy większa intensywność ma dać dwa razy więcej światła, więc mnoży kolor już liniowy.
@@ -1103,5 +1103,5 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
 - LearnOpenGL, "Advanced GLSL" (<https://learnopengl.com/Advanced-OpenGL/Advanced-GLSL>): bufory uniformów.
 - Glenn Fiedler, "Fix Your Timestep!" (<https://gafferongames.com/post/fix_your_timestep/>): stały krok i interpolacja, z której bierze się oko klatki.
 - Dokumentacja GLFW, "Input guide" (<https://www.glfw.org/docs/latest/input_guide.html>): klawisze.
-- Dokumenty w tym repozytorium: [`gameplay.md`](gameplay.md) (zasady rundy, kryształy, bateria jako część rozgrywki, HUD i panel Gameplay), [`../scene/lights.md`](../scene/lights.md) (teoria, struktury świateł, `common/lighting.glsl`, panel Lights, składnik emisyjny), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (tryby cieniowania, `uEmissive` w shaderach), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (`packLightBlock`, `UniformBuffer`, `bindUniformBlock`), [`maze-rendering.md`](maze-rendering.md) (`MazeWorld`), [`maze-generator.md`](maze-generator.md) (komórki i ściany), [`player.md`](player.md) (oko, interpolacja, klawisz N), [`../core/main-loop.md`](../core/main-loop.md) (stały krok), [`../core/input.md`](../core/input.md) (`wasKeyPressed`, blokada klawiatury).
+- Dokumenty w tym repozytorium: [`gameplay.md`](gameplay.md) (zasady rundy, kryształy, bateria jako część rozgrywki, HUD i kategoria Gameplay), [`../scene/lights.md`](../scene/lights.md) (teoria, struktury świateł, `common/lighting.glsl`, zakładka Light / Lights, składnik emisyjny), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (tryby cieniowania, `uEmissive` w shaderach), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (`packLightBlock`, `UniformBuffer`, `bindUniformBlock`), [`maze-rendering.md`](maze-rendering.md) (`MazeWorld`), [`maze-generator.md`](maze-generator.md) (komórki i ściany), [`player.md`](player.md) (oko, interpolacja, klawisz N), [`../core/main-loop.md`](../core/main-loop.md) (stały krok), [`../core/input.md`](../core/input.md) (`wasKeyPressed`, blokada klawiatury).
 - Notatki decyzyjne: [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md) (latarka w ręce, decyzje właściciela), [`../../decisions/flashlight-hand-straight-down.md`](../../decisions/flashlight-hand-straight-down.md) ("w dół" w świecie, granica suwaka), [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md) (pusta bateria to ciemność, nie przegrana), [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md) (ile kryształów, a więc ile świateł). Notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md) opisuje rozwiązanie z M4 (światła w ślepych zaułkach), które M5 zastąpił.

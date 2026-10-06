@@ -5,7 +5,7 @@ Kod: [`src/game/Terrain.hpp`](../../src/game/Terrain.hpp) (`HEIGHTMAP_SPAN`, kom
 
 ## 1. Kontekst
 
-Teren czyta wysokości z jednego obrazu 256 x 256. Rozmiar terenu nie jest stały: zależy od labiryntu, a suwaki panelu Maze pozwalają ustawić od 2 do 40 komórek na bok. Ziemia ma wtedy od 32 m do 108 m boku. Trzeba było zdecydować, jak punkt świata `(x, z)` zamienia się na miejsce w obrazie.
+Teren czyta wysokości z jednego obrazu 256 x 256. Rozmiar terenu nie jest stały: zależy od labiryntu, a suwaki zakładki World / Maze pozwalają ustawić od 2 do 40 komórek na bok. Ziemia ma wtedy od 32 m do 108 m boku. Trzeba było zdecydować, jak punkt świata `(x, z)` zamienia się na miejsce w obrazie.
 
 ## 2. Decyzja
 

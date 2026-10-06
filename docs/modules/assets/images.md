@@ -513,7 +513,7 @@ Heightmap loadHeightmap() {
 | `return {};` po błędzie | pusta `Heightmap`, czyli jedna wartość 0: płaskie podłoże. Błąd jest w logu, gra działa dalej |
 | `heightmapFromImage(image)` | bierze pierwszy bajt każdego piksela (czerwony, w szarym obrazie równy jasności) i dzieli przez 255. Obraz `Image` ginie po wyjściu z funkcji, zostaje tablica `float` |
 
-To są dwa jedyne wywołania z czwartym argumentem w całym programie: ściany nieba i mapa wysokości. Skutek uboczny pominięcia pamięci podręcznej: panel Assets nie pokazuje `heightmap.png` ani na liście `Textures`, ani na liście `Failed to load`, bo obie listy należą do `AssetCache`.
+To są dwa jedyne wywołania z czwartym argumentem w całym programie: ściany nieba i mapa wysokości. Skutek uboczny pominięcia pamięci podręcznej: zakładka Diagnostics / Assets nie pokazuje `heightmap.png` ani na liście `Textures`, ani na liście `Failed to load`, bo obie listy należą do `AssetCache`.
 
 ### 5.7 Testy
 
@@ -607,9 +607,9 @@ Obrazek ma 2 x 3 piksele i każdy piksel inny, więc test wykrywa zarówno złą
 
 Czego testy **nie** sprawdzają: plików PNG z kanałem alfa (w repozytorium nie ma jeszcze takiej tekstury), plików JPEG i tego, jak obraz wygląda na ekranie. To ostatnie sprawdza się dopiero razem z teksturą ([`../gfx/textures.md`](../gfx/textures.md), sekcje 5.9 i 5.10): na zrzutach ekranu z gry na Windowsie (z M2 + M3) tekstury ścian i ówczesnej podłogi nie są odwrócone ani odbite. Na teksturze podłoża z M6 odwrócenia nie dałoby się zobaczyć: ziemia, mech i kamienie nie mają góry ani dołu.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w panelu **Assets** ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Od M5 lista ma osiem pozycji: cztery obrazy koloru (kamień ściany, podłoże terenu, które w M6 zastąpiło kamień podłogi, kryształ, drewno bramy) i cztery mapy normalnych. Mapy wysokości `heightmap.png` na liście nie ma: nie przechodzi przez pamięć podręczną (sekcja 5.6). Miniatury map ściany i podłoża są jasnoniebieskie (większość tekseli jest bliska `(128, 128, 255)`, co dla tych dwóch plików sprawdza test). Map kryształu i drewna żaden test nie czyta. Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
+Loader nie ma własnego panelu: wczytanie obrazu dzieje się raz, przy starcie, i nie ma stanu do zmieniania. Jego wynik widać pośrednio w zakładce Diagnostics / Assets ([`asset-cache.md`](asset-cache.md), sekcja 6): pod nagłówkiem `Textures` jest nazwa pliku każdej wczytanej tekstury, jej rozmiar w pikselach (pola `width` i `height` z `Image`, zapamiętane przez `Texture2D`) i miniatura. Od M5 lista ma osiem pozycji: cztery obrazy koloru (kamień ściany, podłoże terenu, które w M6 zastąpiło kamień podłogi, kryształ, drewno bramy) i cztery mapy normalnych. Mapy wysokości `heightmap.png` na liście nie ma: nie przechodzi przez pamięć podręczną (sekcja 5.6). Miniatury map ściany i podłoża są jasnoniebieskie (większość tekseli jest bliska `(128, 128, 255)`, co dla tych dwóch plików sprawdza test). Map kryształu i drewna żaden test nie czyta. Miniatura jest też widocznym sprawdzeniem odwracania wierszy: panel rysuje ją z odwróconymi współrzędnymi `uv0 = (0, 1)` i `uv1 = (1, 0)`, bo w pamięci karty dolny wiersz jest pierwszy, a ImGui rysuje od góry ([`../gfx/textures.md`](../gfx/textures.md), sekcja 6). Plik, którego nie dało się wczytać, trafia na listę `Failed to load` w tym samym panelu, a w konsoli jest linia `[error] Image file ...`.
 
 ## 7. Pułapki
 

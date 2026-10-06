@@ -1,11 +1,11 @@
 # Moduł renderer: teren z mapy wysokości
 
 Kamień milowy: M6, część druga (teren i trawa). Temat wykładu: 13 (Implementacja podłoża).
-Kod: dane i matematyka w [`src/game/Terrain.hpp`](../../../src/game/Terrain.hpp) i [`Terrain.cpp`](../../../src/game/Terrain.cpp), stawianie labiryntu na terenie w [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp) i [`MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) (`placeOnTerrain`), wysokość stóp gracza w [`src/game/Player.cpp`](../../../src/game/Player.cpp), rysowanie w [`src/game/TerrainRenderer.hpp`](../../../src/game/TerrainRenderer.hpp) i [`TerrainRenderer.cpp`](../../../src/game/TerrainRenderer.cpp) oraz w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp) (`drawMesh`), wczytanie mapy i przebudowa w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), panel w [`src/debug/panels/TerrainPanel.cpp`](../../../src/debug/panels/TerrainPanel.cpp), obraz [`assets/textures/heightmap.png`](../../../assets/textures/heightmap.png) i skrypt [`tools/blender/make_heightmap.py`](../../../tools/blender/make_heightmap.py), tekstury [`assets/textures/ground.png`](../../../assets/textures/ground.png) i [`ground_normal.png`](../../../assets/textures/ground_normal.png), testy w [`tests/TerrainTests.cpp`](../../../tests/TerrainTests.cpp).
+Kod: dane i matematyka w [`src/game/Terrain.hpp`](../../../src/game/Terrain.hpp) i [`Terrain.cpp`](../../../src/game/Terrain.cpp), stawianie labiryntu na terenie w [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp) i [`MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) (`placeOnTerrain`), wysokość stóp gracza w [`src/game/Player.cpp`](../../../src/game/Player.cpp), rysowanie w [`src/game/TerrainRenderer.hpp`](../../../src/game/TerrainRenderer.hpp) i [`TerrainRenderer.cpp`](../../../src/game/TerrainRenderer.cpp) oraz w [`src/game/ModelDraw.cpp`](../../../src/game/ModelDraw.cpp) (`drawMesh`), wczytanie mapy i przebudowa w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), panel w [`src/debug/categories/WorldCategory.cpp`](../../../src/debug/categories/WorldCategory.cpp), obraz [`assets/textures/heightmap.png`](../../../assets/textures/heightmap.png) i skrypt [`tools/blender/make_heightmap.py`](../../../tools/blender/make_heightmap.py), tekstury [`assets/textures/ground.png`](../../../assets/textures/ground.png) i [`ground_normal.png`](../../../assets/textures/ground_normal.png), testy w [`tests/TerrainTests.cpp`](../../../tests/TerrainTests.cpp).
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasy nazywają się `game::Terrain` i `game::TerrainRenderer`, wyjaśnia [`README.md`](README.md). Dokument zakłada znajomość siatki wierzchołków i indeksów ([`../gfx/mesh.md`](../gfx/mesh.md), [`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md)), tekstur i zawijania ([`../gfx/textures.md`](../gfx/textures.md)), map normalnych i stycznych ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)), układu labiryntu w świecie ([`../game/maze-generator.md`](../game/maze-generator.md)) i pudełek kolizji ([`../scene/collision.md`](../scene/collision.md)).
 
-**Stan na dziś:** płaskich płytek podłogi już nie ma. Labirynt stoi na jednej dużej siatce trójkątów, której wysokości pochodzą z obrazu w odcieniach szarości (mapy wysokości). Pod labiryntem podłoże jest łagodnie nierówne, a dookoła przechodzi we wzgórza. Ściany, słupki i brama są opuszczone tak, żeby nigdzie nie było pod nimi szpary, kryształy i strefa wyjścia stoją na wysokości podłoża swojej komórki, a stopy gracza idą po powierzchni. Panel **Terrain** ma suwak `Height scale` i pole `Wireframe`: to są dwa pokazy, które PRD podaje dla tematu 13 ("skala wysokości, wireframe").
+**Stan na dziś:** płaskich płytek podłogi już nie ma. Labirynt stoi na jednej dużej siatce trójkątów, której wysokości pochodzą z obrazu w odcieniach szarości (mapy wysokości). Pod labiryntem podłoże jest łagodnie nierówne, a dookoła przechodzi we wzgórza. Ściany, słupki i brama są opuszczone tak, żeby nigdzie nie było pod nimi szpary, kryształy i strefa wyjścia stoją na wysokości podłoża swojej komórki, a stopy gracza idą po powierzchni. Zakładka World / Terrain and grass ma suwak `Height scale` i pole `Wireframe`: to są dwa pokazy, które PRD podaje dla tematu 13 ("skala wysokości, wireframe").
 
 **Co zmieniła pierwsza część M7 (2026-10-05).** Kształt terenu, jego wysokości i kolizje się nie zmieniły. Zmieniło się to, jak podłoże trafia na ekran: tekstura `ground.png` jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe (sekcja 5.12), programy cieniujące liczą na wartościach liniowych, a teren, jak cała scena, jest rysowany do bufora HDR i dopiero przebieg składający przenosi go do okna ([`post-process.md`](post-process.md), [`../gfx/color-space.md`](../gfx/color-space.md)). Zgłoszone dla tej części: 269 przypadków testowych i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751. Żaden z przypadków trzech pierwszych części M7 nie dotyczy terenu. W czwartej jeden czyta `Terrain` (sekcja 5.15).
 
@@ -35,7 +35,7 @@ Decyzja właściciela projektu z 2026-10-05 ([`../../decisions/gentle-terrain-un
 | siatka trójkątów z normalnymi, UV i stycznymi | `game::buildTerrainMesh` | 2.6, 2.8, 2.9 |
 | funkcja "jaka jest wysokość w punkcie `(x, z)`", zgodna co do milimetra z tym, co narysowane | `Terrain::heightAt` | 2.7 |
 | wszystko, co stało na `y = 0`, postawione na nowym podłożu | `game::placeOnTerrain`, `Player::update` | 2.10, 2.11 |
-| rysowanie i przełączniki | `game::TerrainRenderer`, panel Terrain | 2.12, 3, 6 |
+| rysowanie i przełączniki | `game::TerrainRenderer`, zakładka World / Terrain and grass | 2.12, 3, 6 |
 
 Podział jest taki sam jak w reszcie gry: `Terrain` to dane i matematyka bez OpenGL w bibliotece `game_logic`, więc testy budują teren i pytają go o wysokości bez okna. `TerrainRenderer` to strona OpenGL w programie `night_maze`.
 
@@ -86,7 +86,7 @@ Jedynka na końcu: rząd z `K` kroków ma `K + 1` punktów (płot z 3 przęseł 
 
 Siatka zaczyna się w `x = -14`, `z = -14` (północno-zachodni róg ziemi) i kończy w `x = 34`, `z = 34`. Labirynt zajmuje środek, od 0 do 20 m na obu osiach. Cała ziemia ma 48 x 48 m.
 
-Największy labirynt, jaki oferuje panel Maze (40 x 40), daje siatkę 217 x 217: 47089 wierzchołków i 93312 trójkątów. Na komórkę labiryntu przypadają zawsze `4 * 4 * 2 = 32` trójkąty.
+Największy labirynt, jaki oferuje zakładka World / Maze (40 x 40), daje siatkę 217 x 217: 47089 wierzchołków i 93312 trójkątów. Na komórkę labiryntu przypadają zawsze `4 * 4 * 2 = 32` trójkąty.
 
 ### 2.3 Wzór na wysokość, krok po kroku
 
@@ -191,7 +191,7 @@ między:     120 + (119 - 120) * 0,333 = 119,667
 próbka = 119,667 / 255 = 0,4693
 ```
 
-**Dlaczego mapa jest kafelkowana w metrach świata, a nie rozciągana na cały teren.** Najprostszy wariant to `u = (x - minX) / szerokość terenu`: obraz zawsze pokrywa cały teren raz. Ma poważną wadę: wielkość wzgórz zależałaby od wielkości labiryntu. W labiryncie 40 x 40 ziemia ma 108 m, więc każdy pagórek byłby ponad dwa razy szerszy i ponad dwa razy łagodniejszy niż w labiryncie startowym, a w labiryncie 2 x 2 (32 m) ciaśniejszy i bardziej stromy. Suwak rozmiaru w panelu Maze zmieniałby charakter terenu. Przy kafelkowaniu w metrach pagórek ma zawsze tę samą wielkość (pierwsza oktawa szumu to 12 m), a większy labirynt po prostu widzi więcej powtórzeń obrazu. 48 m to labirynt startowy (20 m) z marginesem z obu stron (2 x 14 m), więc przy ustawieniach startowych wypada dokładnie jedno powtórzenie. Ceną jest warunek dla obrazu: lewa krawędź musi pasować do prawej, a górna do dolnej, inaczej co 48 m byłby uskok. Skrypt, który robi obraz, zapewnia to sam (sekcja 5.14). Notatka: [`../../decisions/heightmap-tiled-in-world-metres.md`](../../decisions/heightmap-tiled-in-world-metres.md).
+**Dlaczego mapa jest kafelkowana w metrach świata, a nie rozciągana na cały teren.** Najprostszy wariant to `u = (x - minX) / szerokość terenu`: obraz zawsze pokrywa cały teren raz. Ma poważną wadę: wielkość wzgórz zależałaby od wielkości labiryntu. W labiryncie 40 x 40 ziemia ma 108 m, więc każdy pagórek byłby ponad dwa razy szerszy i ponad dwa razy łagodniejszy niż w labiryncie startowym, a w labiryncie 2 x 2 (32 m) ciaśniejszy i bardziej stromy. Suwak rozmiaru w zakładce World / Maze zmieniałby charakter terenu. Przy kafelkowaniu w metrach pagórek ma zawsze tę samą wielkość (pierwsza oktawa szumu to 12 m), a większy labirynt po prostu widzi więcej powtórzeń obrazu. 48 m to labirynt startowy (20 m) z marginesem z obu stron (2 x 14 m), więc przy ustawieniach startowych wypada dokładnie jedno powtórzenie. Ceną jest warunek dla obrazu: lewa krawędź musi pasować do prawej, a górna do dolnej, inaczej co 48 m byłby uskok. Skrypt, który robi obraz, zapewnia to sam (sekcja 5.14). Notatka: [`../../decisions/heightmap-tiled-in-world-metres.md`](../../decisions/heightmap-tiled-in-world-metres.md).
 
 ### 2.6 Trójkąty i konwencja przekątnej
 
@@ -454,7 +454,7 @@ Jedyna zmiana w plikach shaderów związana z terenem to słowo w komentarzu `li
 | [`src/game/TerrainRenderer.hpp`](../../../src/game/TerrainRenderer.hpp), [`.cpp`](../../../src/game/TerrainRenderer.cpp) | siatka na karcie, dwie tekstury, `upload`, `draw` |
 | [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | `drawMesh`: jedna siatka z podanymi teksturami |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | `loadHeightmap`, pola `m_heightmap`, `m_terrainSettings`, `m_terrainRenderer`, `m_playerWasFlying`, funkcje `rebuildTerrain` i `uploadGround` |
-| [`src/debug/panels/TerrainPanel.hpp`](../../../src/debug/panels/TerrainPanel.hpp), [`.cpp`](../../../src/debug/panels/TerrainPanel.cpp) | panel Terrain (sekcja 6) |
+| [`src/debug/categories/WorldCategory.hpp`](../../../src/debug/categories/WorldCategory.hpp), [`.cpp`](../../../src/debug/categories/WorldCategory.cpp) | zakładka World / Terrain and grass (sekcja 6) |
 | [`assets/textures/heightmap.png`](../../../assets/textures/heightmap.png) | mapa wysokości, 256 x 256 |
 | [`assets/textures/ground.png`](../../../assets/textures/ground.png), [`ground_normal.png`](../../../assets/textures/ground_normal.png) | tekstura koloru i mapa normalnych podłoża, 512 x 512, ze skryptu [`make_textures.py`](../../../tools/blender/make_textures.py) |
 | [`tools/blender/make_heightmap.py`](../../../tools/blender/make_heightmap.py) | generator mapy wysokości (sekcja 5.14) |
@@ -553,7 +553,7 @@ Heightmap loadHeightmap() {
 - `HEIGHTMAP_FILE` to `"textures/heightmap.png"`.
 - `RowOrder::TopFirst`: bez odwracania wierszy (sekcja 2.1).
 - Gdy pliku nie da się wczytać, `loadImage` wypisuje błąd, a funkcja zwraca pustą `Heightmap`, czyli płaski grunt. Gra działa dalej, tylko bez nierówności.
-- Mapa jest wczytywana **poza `assets::AssetCache`**. Pamięć podręczna trzyma tekstury na karcie graficznej, a mapa wysokości nigdy na kartę nie trafia: to dane dla procesora. Skutek uboczny: panel Assets jej nie pokazuje.
+- Mapa jest wczytywana **poza `assets::AssetCache`**. Pamięć podręczna trzyma tekstury na karcie graficznej, a mapa wysokości nigdy na kartę nie trafia: to dane dla procesora. Skutek uboczny: zakładka Diagnostics / Assets jej nie pokazuje.
 
 `heightmapFromImage` w `Terrain.cpp` bierze pierwszy bajt każdego piksela (`image.pixels[pixel * channels]`) i dzieli przez `MAX_CHANNEL_VALUE = 255`. Zanim to zrobi, sprawdza, czy obraz ma piksele i czy tablica bajtów jest tak długa, jak obiecują wymiary. Jeśli nie, zwraca płaską mapę zamiast czytać poza końcem tablicy.
 
@@ -809,7 +809,7 @@ Obrys pudełka nie zależy od jego wysokości, więc o pudełko można zapytać,
 
 `groundHeightAt(world, cell)` to `heightAt` w środku komórki. `crystalRestPosition` i `exitZone` nie znają terenu: dostają wysokość gruntu jako liczbę, więc `Crystals.cpp` i `Exit.cpp` nie muszą dołączać `Terrain.hpp`.
 
-**Dźwignie i kartki (M8, część 2).** Ostatnia linia `placeOnTerrain` woła `placeInteractablesOnTerrain(world.interactables, terrain)`: dźwignie i kartki wiszą na ścianach na stałej wysokości nad gruntem, więc każda z nich dostaje wysokość gruntu pod punktem swojej ściany (`Terrain::heightAt` w starym `x` i `z`), a jej pozycja i pudełko wyboru są liczone od nowa. Nic się nie przesuwa w bok. Dlatego `placeOnTerrain` nie zostawia już dźwigni i kartek na wysokości płaskiego gruntu po zmianie skali w panelu Terrain.
+**Dźwignie i kartki (M8, część 2).** Ostatnia linia `placeOnTerrain` woła `placeInteractablesOnTerrain(world.interactables, terrain)`: dźwignie i kartki wiszą na ścianach na stałej wysokości nad gruntem, więc każda z nich dostaje wysokość gruntu pod punktem swojej ściany (`Terrain::heightAt` w starym `x` i `z`), a jej pozycja i pudełko wyboru są liczone od nowa. Nic się nie przesuwa w bok. Dlatego `placeOnTerrain` nie zostawia już dźwigni i kartek na wysokości płaskiego gruntu po zmianie skali w zakładce World / Terrain and grass.
 
 `buildMazeWorld` ma dwie wersje. Trzyargumentowa (szerokość, wysokość, ziarno) woła pięcioargumentową z pustą `Heightmap`, czyli daje labirynt na płaskim gruncie: używają jej starsze testy. Pięcioargumentowa najpierw liczy plan (ściany, słupki, wyjście, brama, kryształy), a na końcu woła `placeOnTerrain`.
 
@@ -922,8 +922,8 @@ Trzy drogi, którymi teren trafia na kartę:
 | Zdarzenie | Funkcja | Co robi |
 |---|---|---|
 | start programu | konstruktor | `buildMazeWorld` z mapą, `uploadGround`, `beginRound` |
-| nowy labirynt (panel Maze) | `regenerateMaze` | przycina skalę, `buildMazeWorld` z mapą, `uploadGround`, `beginRound` |
-| nowa skala (panel Terrain) | `rebuildTerrain` | patrz niżej |
+| nowy labirynt (zakładka World / Maze) | `regenerateMaze` | przycina skalę, `buildMazeWorld` z mapą, `uploadGround`, `beginRound` |
+| nowa skala (zakładka World / Terrain and grass) | `rebuildTerrain` | patrz niżej |
 
 ```cpp
 void NightMazeApp::rebuildTerrain() {
@@ -977,7 +977,7 @@ Jeśli w tej samej klatce powstał nowy labirynt, jest on już zbudowany z nową
                                                     moonDirection(m_lighting));
 ```
 
-Komentarz nad tą linią nazywa powód: to kilkadziesiąt mnożeń i nic, o czym dałoby się zapomnieć po zbudowaniu nowego labiryntu, zmianie skali wysokości albo przesunięciu księżyca w panelu Lights. Pudełko, z którego to powstaje, jest w `src/game/Shadows.cpp`:
+Komentarz nad tą linią nazywa powód: to kilkadziesiąt mnożeń i nic, o czym dałoby się zapomnieć po zbudowaniu nowego labiryntu, zmianie skali wysokości albo przesunięciu księżyca w zakładce Light / Lights. Pudełko, z którego to powstaje, jest w `src/game/Shadows.cpp`:
 
 ```cpp
 scene::Aabb shadowCasterBounds(const Terrain& terrain) {
@@ -1066,9 +1066,11 @@ Lista z początku dokumentu, tutaj z podziałem na źródło:
 - **Nie zapisano:** wersji kompilatora, karty i sterownika dla tego pomiaru, wyniku clang-tidy.
 - **Nie sprawdzono ręcznie:** niczego interaktywnego. **macOS:** nic.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Panel **Terrain** jest dziewiątym panelem. Startuje zwinięty do paska tytułu, w drugim rzędzie pasków przy górnej krawędzi okna, pod panelem Camera ([`../debug-ui.md`](../debug-ui.md)).
+**Stan na 2026-10-06.** Panele Terrain i Grass zastąpiło okno debugowania ([`../debug-ui.md`](../debug-ui.md)). Kontrolki terenu są w kategorii **World**, w zakładce **Terrain and grass**, w karcie **Terrain** ([`src/debug/categories/WorldCategory.cpp`](../../../src/debug/categories/WorldCategory.cpp)): `Height scale` (suwak, zmiana ustawia flagę `rebuild`) i `Wireframe`, a pod nimi odczyty `Grid`, `Triangles` i `Height`. Funkcja `drawTerrainPanel` i `TERRAIN_PLACEMENT` nie istnieją; kod niżej pochodzi z panelu sprzed zmiany (commity przed 5b6a38f) i jest zachowany jako historia.
+
+Dawny panel Terrain był dziewiątym panelem. Startował zwinięty do paska tytułu, w drugim rzędzie pasków przy górnej krawędzi okna, pod panelem Camera.
 
 ```cpp
 void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terrain) {
@@ -1106,12 +1108,12 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
 **Kroków nikt jeszcze nie wykonał ręcznie.** Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 16. Przed pokazem trzeba usunąć stary `imgui.ini`, żeby nowe panele stanęły na swoich miejscach.
 
 1. **Teren zamiast płytek.** Staję na starcie i patrzę w dół korytarza: podłoże lekko faluje. Mówię: to jedna siatka, 97 na 97 punktów, a wysokości pochodzą z obrazu 256 x 256.
-2. **Wireframe.** Rozwijam panel Terrain i zaznaczam `Wireframe`. Widać kwadraty po 0,5 m przecięte przekątną zawsze w tę samą stronę. Mówię: cztery kroki na komórkę, więc ściany stoją dokładnie na liniach siatki, a przekątna biegnie z północnego zachodu na południowy wschód. To jedno wywołanie `glPolygonMode`, przywracane zaraz po narysowaniu terenu, dlatego ściany są nadal wypełnione.
+2. **Wireframe.** Rozwijam zakładkę World / Terrain and grass i zaznaczam `Wireframe`. Widać kwadraty po 0,5 m przecięte przekątną zawsze w tę samą stronę. Mówię: cztery kroki na komórkę, więc ściany stoją dokładnie na liniach siatki, a przekątna biegnie z północnego zachodu na południowy wschód. To jedno wywołanie `glPolygonMode`, przywracane zaraz po narysowaniu terenu, dlatego ściany są nadal wypełnione.
 3. **Skala wysokości.** Przeciągam `Height scale` do 0: świat jest płaski, ściany stoją równo jak dawniej. Wracam do 1, potem do 2,5. Ściany, kryształy i gracz idą za terenem od razu. Mówię: każda wysokość to skala razy relief razy wartość z obrazu, a teren jest budowany od nowa na procesorze, bo za nim muszą pójść pudełka kolizji i gracz.
 4. **Brak szpar.** Przy skali 2,5 podchodzę do ściany i patrzę na jej podstawę. Mówię: ściana stoi na najniższym narożniku siatki pod swoim obrysem, a płaski trójkąt nigdy nie jest niżej niż jego najniższy narożnik.
 5. **Wzgórza.** Klawisz N (noclip), lecę w górę i patrzę na labirynt z zewnątrz. Mówię: ten sam obraz, ale relief rośnie od 0,6 m w labiryncie do 4,5 m na krawędzi, krzywą smoothstep, żeby na granicy nie było załamania.
-6. **Wysokość gracza.** Wyłączam noclip nad labiryntem: stopy wracają na ziemię. Idę korytarzem i pokazuję w panelu Camera, że `y` stóp się zmienia. Mówię: wysokość jest czytana z tego samego trójkąta, który jest rysowany, a nie mieszana dwuliniowo.
-7. **Tryby.** W panelu Assets przełączam `View mode` na `Normals as colour`: teren jest prawie cały zielony (normalne w górę) z lekkimi odcieniami na zboczach. Wracam do `Textured` i w panelu Renderer przełączam `Lighting` na `Gouraud`, a potem z powrotem: na ziemi światło jest w tym trybie liczone w wierzchołkach, czyli co 0,5 m, a nie w każdym pikselu.
+6. **Wysokość gracza.** Wyłączam noclip nad labiryntem: stopy wracają na ziemię. Idę korytarzem i pokazuję w kategorii Player, że `y` stóp się zmienia. Mówię: wysokość jest czytana z tego samego trójkąta, który jest rysowany, a nie mieszana dwuliniowo.
+7. **Tryby.** W kategorii Render przełączam `View mode` na `Normals as colour`: teren jest prawie cały zielony (normalne w górę) z lekkimi odcieniami na zboczach. Wracam do `Textured` i w kategorii Render przełączam `Lighting` na `Gouraud`, a potem z powrotem: na ziemi światło jest w tym trybie liczone w wierzchołkach, czyli co 0,5 m, a nie w każdym pikselu.
 
 ## 7. Pułapki
 
@@ -1126,7 +1128,7 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
 9. **Rzutowanie zamiast `std::floor`.** `static_cast<int>(-0.3F)` to 0, a nie -1. W `lowestHeightUnder` współrzędne względem `m_minX` są zwykle dodatnie, ale prostokąt wystający za zachodnią krawędź terenu dałby liczbę ujemną i o jedną kolumnę za mało.
 10. **Suwak a czas przebudowy.** Przeciąganie `Height scale` buduje teren, siatkę, styczne i trawę w każdej klatce, w której wartość się zmienia. Dla labiryntu startowego to 9409 wierzchołków. Dla 40 x 40 to 47089 i przeciąganie może szarpać. Nie zmierzono.
 11. **Zakopane modele.** Tekstura ściany zaczyna się u jej podstawy, więc w miejscach, gdzie ściana jest zagłębiona, dolny pas cokołu znika pod ziemią. To cena braku szpar, nie błąd.
-12. **Stary `imgui.ini`.** Położenie z `PanelLayout` działa tylko przy pierwszym użyciu panelu, czyli gdy panelu nie ma w pliku. Nowe panele Terrain i Grass staną więc na swoich miejscach, ale stare zostaną tam, gdzie zapisał je plik, a HUD jest od tej części niżej. Przed pokazem najprościej usunąć plik.
+12. **(Historia: od 2026-10-06 okno debugowania nie zapisuje położenia w `imgui.ini`.) Stary `imgui.ini`.** Położenie z `PanelLayout` działa tylko przy pierwszym użyciu panelu, czyli gdy panelu nie ma w pliku. Nowe panele Terrain i Grass staną więc na swoich miejscach, ale stare zostaną tam, gdzie zapisał je plik, a HUD jest od tej części niżej. Przed pokazem najprościej usunąć plik.
 13. **Teren nie ma kolizji.** Wysokość jest odczytywana. Na wzgórzach (do 4,5 m na jedynkę skali) gracz wejdzie na dowolnie strome zbocze z pełną prędkością poziomą. Do wzgórz da się dojść tylko w trybie noclip i po jego wyłączeniu poza labiryntem, bo labirynt jest zamknięty ścianami.
 14. **Tekstura podłoża jest sRGB.** Do M6 `ground.png` była dobrana na oko dla obrazu bez korekcji gamma ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)). Od M7 jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe. Zamiana tych dwóch argumentów w `TerrainRenderer` nie zgłasza błędu: podłoże wyszłoby wyblakłe, a jego nierówności oświetlone krzywo. `AssetCache::texture` loguje błąd tylko wtedy, gdy ten sam plik zostanie zamówiony raz jako sRGB, a raz jako liniowy.
 15. **macOS, niesprawdzone.** `glPolygonMode` z `GL_LINE` należy do profilu Core 4.1, ale sterownik Apple jeszcze tego kodu nie widział.
@@ -1222,7 +1224,7 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
 23. **Jakimi shaderami jest rysowany teren?**
     Tymi samymi co ściany: `textured`, `lit` albo `gouraud`, zależnie od trybu cieniowania. Macierz modelu jest jednostkowa, bo wierzchołki są już w przestrzeni świata.
 
-24. **Dlaczego mapy wysokości nie ma w panelu Assets?**
+24. **Dlaczego mapy wysokości nie ma w zakładce Diagnostics / Assets?**
     Jest wczytywana poza `AssetCache`, funkcją `loadHeightmap`. Pamięć podręczna trzyma tekstury na karcie, a mapa wysokości na kartę nie trafia.
 
 25. **Co się dzieje, gdy pliku `heightmap.png` brakuje?**

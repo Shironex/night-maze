@@ -19,7 +19,7 @@ Klasa nazywa się `game::PostProcess`, leży w `src/game/` i należy do programu
 
 | Możliwość | Zalety | Wady |
 |---|---|---|
-| **`game::PostProcess` w `src/game/` (wybrana)** | spójnie z każdą klasą rysującą, która już istnieje. Programy `composite` i `preview` są polami `NightMazeApp` jak pozostałe sześć, więc panel Shaders przeładowuje wszystkie osiem jedną drogą. Zmiana M7 dotyczy rysowania, a nie układu katalogów, więc da się ją przejrzeć jako jedną rzecz | kod rozjeżdża się z PRD w kolejnym miejscu. Warunek zapisany w dwóch wcześniejszych dokumentach został spełniony w połowie, a warstwy dalej nie ma |
+| **`game::PostProcess` w `src/game/` (wybrana)** | spójnie z każdą klasą rysującą, która już istnieje. Programy `composite` i `preview` są polami `NightMazeApp` jak pozostałe sześć, więc zakładka Diagnostics / Frame and shaders przeładowuje wszystkie osiem jedną drogą. Zmiana M7 dotyczy rysowania, a nie układu katalogów, więc da się ją przejrzeć jako jedną rzecz | kod rozjeżdża się z PRD w kolejnym miejscu. Warunek zapisany w dwóch wcześniejszych dokumentach został spełniony w połowie, a warstwy dalej nie ma |
 | Założyć `src/renderer/` teraz, tylko dla `PostProcess` | nazwa i miejsce jak w PRD | warstwa z jedną klasą, podczas gdy niebo, teren, trawa i labirynt rysują się z `src/game/`. Podział, którego nie umiałbym uzasadnić inaczej niż "tak było w planie" |
 | Założyć `src/renderer/` teraz i przenieść wszystkie klasy rysujące | docelowy układ z PRD | duża zmiana samych ścieżek i przestrzeni nazw w środku kamienia milowego, w którym część po części dochodzą kolejne przebiegi (bloom, mgła, cienie). Granice warstwy trzeba by zgadywać, zanim wiadomo, jakie przebiegi i jakie wspólne dane naprawdę powstaną |
 

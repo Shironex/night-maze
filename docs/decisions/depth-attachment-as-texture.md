@@ -10,7 +10,7 @@ Scena jest rysowana do własnego framebuffera. Żeby test głębi działał, fra
 - **renderbuffer** (`glGenRenderbuffers`, `glRenderbufferStorage`, `glFramebufferRenderbuffer`): pamięć, do której można tylko rysować. Shader nie może jej przeczytać.
 - **teksturę** (`glTexImage2D` z formatem `GL_DEPTH_COMPONENT24`, `glFramebufferTexture2D`): pamięć, do której można rysować i którą późniejszy przebieg może próbkować jak każdą inną teksturę.
 
-Większość samouczków pokazuje renderbuffer, bo w pierwszym przykładzie głębi nikt potem nie czyta. Tu było wiadomo z góry, że ktoś będzie: PRD przewiduje mgłę "liczoną w post-processie z bufora głębi", podgląd załączników w panelu Framebuffers i mapy cieni, które są samą głębią.
+Większość samouczków pokazuje renderbuffer, bo w pierwszym przykładzie głębi nikt potem nie czyta. Tu było wiadomo z góry, że ktoś będzie: PRD przewiduje mgłę "liczoną w post-processie z bufora głębi", podgląd załączników w kategorii Post process i mapy cieni, które są samą głębią.
 
 ## 2. Decyzja
 
@@ -20,7 +20,7 @@ Klasa `gfx::Framebuffer` dołącza głębię **zawsze jako teksturę** `GL_DEPTH
 
 | Możliwość | Zalety | Wady |
 |---|---|---|
-| **Tekstura głębi `GL_DEPTH_COMPONENT24` (wybrana)** | głębię sceny może przeczytać shader. Już dziś robi to podgląd głębi w panelu Framebuffers (`preview.frag` przez `bindDepthTexture`). Jeden rodzaj załącznika w klasie: ta sama funkcja `createAttachmentTexture` tworzy kolor i głębię. Ta sama droga posłuży mapom cieni | teksturze trzeba ustawić parametry odczytu (filtr, zawijanie, `GL_TEXTURE_MAX_LEVEL`), których renderbuffer nie ma. Sterownik może optymalizować renderbuffer lepiej, bo wie, że nikt go nie czyta. Tej różnicy nie mierzyłem |
+| **Tekstura głębi `GL_DEPTH_COMPONENT24` (wybrana)** | głębię sceny może przeczytać shader. Już dziś robi to podgląd głębi w kategorii Post process (`preview.frag` przez `bindDepthTexture`). Jeden rodzaj załącznika w klasie: ta sama funkcja `createAttachmentTexture` tworzy kolor i głębię. Ta sama droga posłuży mapom cieni | teksturze trzeba ustawić parametry odczytu (filtr, zawijanie, `GL_TEXTURE_MAX_LEVEL`), których renderbuffer nie ma. Sterownik może optymalizować renderbuffer lepiej, bo wie, że nikt go nie czyta. Tej różnicy nie mierzyłem |
 | Renderbuffer `GL_DEPTH_COMPONENT24` | najprostszy poprawny załącznik głębi, tak jak w większości przykładów | brak odczytu w shaderze: podgląd głębi i mgła wymagałyby i tak przejścia na teksturę, czyli drugiej ścieżki w klasie albo przeróbki |
 | Oba rodzaje, wybierane polem w `FramebufferSpec` | każdy cel dostaje to, czego potrzebuje | dwie ścieżki tworzenia, wiązania i sprzątania dla korzyści, której dziś nikt nie potrzebuje. Więcej kodu do wytłumaczenia |
 | Tekstura `GL_DEPTH24_STENCIL8` | głębia i szablon w jednym załączniku | szablonu gra nie używa. Shader czytałby tylko część wartości, a format komplikuje odczyt |

@@ -16,7 +16,7 @@ Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz wi
 rzutowania, wysyła je do programów shaderów (macierze kamery dostaje siedem programów sceny, a od
 M8, części 1 w tym `reflect`; w jednej klatce pracuje ich najwyżej pięć. Od czwartej części
 M7 ósmy program, `shadow_depth`, dostaje macierze widoku i rzutowania światła księżyca, a od
-piątej także światła latarki. Wszystkich programów jest dziś czternaście) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+piątej także światła latarki. Wszystkich programów jest dziś czternaście) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Kategoria Player (`src/debug/categories/PlayerCategory.cpp`) woła `value_ptr`, żeby ImGui
 mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
 kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
 narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ
@@ -35,7 +35,7 @@ Oświetlenie (M4) dołożyło kilka nowych użyć, wszystkie opisane niżej:
 | `glm::length` i `glm::normalize` dla kierunków świateł | funkcja `unitDirection` w tym samym pliku | 3.8 |
 | `glm::radians` dla kątów stożka i kątów księżyca | `coneCosines` i `directionFromAngles` w [`src/scene/Light.cpp`](../../src/scene/Light.cpp) | 3.7 |
 | `glm::value_ptr` z `glUniformMatrix3fv` | `Shader::setMat3` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) | 3.9 |
-| `glm::value_ptr` dla edytora koloru ImGui | `ImGui::ColorEdit3` w [`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp) | 3.9 |
+| `glm::value_ptr` dla edytora koloru ImGui | `ImGui::ColorEdit3` w [`src/debug/categories/LightCategory.cpp`](../../src/debug/categories/LightCategory.cpp) | 3.9 |
 
 Druga część M4, mapy normalnych, dołożyła jeden plik pełen GLM:
 [`src/assets/Tangents.cpp`](../../src/assets/Tangents.cpp) liczy styczne wierzchołków
@@ -293,8 +293,7 @@ Tak jest w `src/scene/`: `Transform.hpp` i `Camera.hpp` dołączają samo `<glm/
 `Shader.hpp` dołącza `<glm/glm.hpp>` (parametr typu `glm::mat4`), a `Shader.cpp`
 `<glm/gtc/type_ptr.hpp>` (funkcja `value_ptr`). Pliki świateł trzymają się tej samej zasady:
 `scene/Light.hpp` i `scene/LightBlock.hpp` dołączają samo `<glm/glm.hpp>`, a ich pliki `.cpp`
-niczego więcej z GLM nie potrzebują (`radians`, `length` i `normalize` są w rdzeniu). Panel
-Lights (`src/debug/panels/LightsPanel.cpp`) dołącza `<glm/gtc/type_ptr.hpp>` dla `value_ptr`.
+niczego więcej z GLM nie potrzebują (`radians`, `length` i `normalize` są w rdzeniu). Kategoria Light (zakładka Lights) (`src/debug/categories/LightCategory.cpp`) dołącza `<glm/gtc/type_ptr.hpp>` dla `value_ptr`.
 Od M5 dwa pliki dołączają `<glm/gtc/constants.hpp>`: `src/game/ColliderLines.cpp`
 i `src/game/Crystals.cpp`, oba dla `glm::two_pi<float>()`. Testy kul w `scene/Collider.cpp`
 nie dołączają niczego nowego: `dot` i `clamp` są w rdzeniu, który przychodzi z `Collider.hpp`.
@@ -904,20 +903,18 @@ kolumna po kolumnie, a `GL_FALSE` znaczy to samo co wyżej: nie transponuj. Sło
 w `scene::normalMatrix` jest częścią wzoru, a argument `transpose` funkcji OpenGL dotyczy
 tylko układu liczb w pamięci.
 
-**`value_ptr` poza OpenGL: edytor koloru w panelu.** Wskaźnika na surowe liczby potrzebuje
-też ImGui. Panel Lights w
-[`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp):
+**`value_ptr` poza OpenGL: edytor koloru w oknie debug.** Wskaźnika na surowe liczby potrzebuje
+też ImGui. Kategoria Light (zakładka Lights) w
+[`src/debug/categories/LightCategory.cpp`](../../src/debug/categories/LightCategory.cpp):
 
 ```cpp
-    // ColorEdit3 reads and writes three floats through the pointer. value_ptr gives the
-    // address of the three floats of a glm::vec3.
-    ImGui::ColorEdit3("Moon colour", glm::value_ptr(lighting.moonColor));
+    page.color("Moon colour", glm::value_ptr(lighting.moonColor), "The colour of the moon light.");
 ```
 
-`ImGui::ColorEdit3` przyjmuje `float*` na trzy liczby i zapisuje przez niego nowy kolor.
+`Page::color` (`src/debug/Widgets.cpp`) woła `ImGui::ColorEdit3`, który przyjmuje `float*` na trzy liczby i zapisuje przez niego nowy kolor.
 `lighting.moonColor` nie jest tu stałą, więc `value_ptr` zwraca wskaźnik do zapisu (dla
 obiektu `const` zwróciłby `const float*`). Tak samo edytowane są `Ambient`, `Beam colour`
-i `Point colour`. Panel Camera używa `value_ptr` w ten sam sposób dla pozycji gracza.
+i `Point colour`. Kategoria Player używa `value_ptr` w ten sam sposób dla pozycji gracza.
 
 ## 4. Pułapki
 

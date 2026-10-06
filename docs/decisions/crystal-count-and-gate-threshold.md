@@ -1,7 +1,7 @@
 # Kryształy: liczba rośnie z labiryntem, brama otwiera się przy około 70 procentach
 
 Data: 2026-10-05. Stan: obowiązuje. Zastępuje [`dead-end-lights.md`](dead-end-lights.md).
-Kod: [`src/game/Crystals.hpp`](../../src/game/Crystals.hpp), [`Crystals.cpp`](../../src/game/Crystals.cpp) (`crystalCountFor`, `placeCrystals`), [`src/game/Round.hpp`](../../src/game/Round.hpp), [`Round.cpp`](../../src/game/Round.cpp) (`requiredCrystalCount`, `crystalLightPositions`), [`src/debug/panels/GameplayPanel.cpp`](../../src/debug/panels/GameplayPanel.cpp) (suwak `Crystals needed`), testy w [`tests/CrystalTests.cpp`](../../tests/CrystalTests.cpp) i [`tests/RoundTests.cpp`](../../tests/RoundTests.cpp). Dokument modułu: [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcje 2 i 5.
+Kod: [`src/game/Crystals.hpp`](../../src/game/Crystals.hpp), [`Crystals.cpp`](../../src/game/Crystals.cpp) (`crystalCountFor`, `placeCrystals`), [`src/game/Round.hpp`](../../src/game/Round.hpp), [`Round.cpp`](../../src/game/Round.cpp) (`requiredCrystalCount`, `crystalLightPositions`), [`src/debug/categories/GameplayCategory.cpp`](../../src/debug/categories/GameplayCategory.cpp) (suwak `Crystals needed`), testy w [`tests/CrystalTests.cpp`](../../tests/CrystalTests.cpp) i [`tests/RoundTests.cpp`](../../tests/RoundTests.cpp). Dokument modułu: [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcje 2 i 5.
 
 ## 1. Kontekst
 
@@ -9,7 +9,7 @@ PRD mówi: "po zebraniu N kryształów wyjście się otwiera". Liczby N nie poda
 
 Trzeba było ustalić dwie liczby: ile kryształów dostaje labirynt i ile z nich otwiera bramę. Ograniczenia:
 
-- rozmiar labiryntu ustawia się w panelu Maze (suwaki od 2 do 40 komórek na bok), a sama klasa `Maze` przyjmuje od 1 do 256, więc liczby muszą mieć sens dla każdego rozmiaru,
+- rozmiar labiryntu ustawia się w zakładce World / Maze (suwaki od 2 do 40 komórek na bok), a sama klasa `Maze` przyjmuje od 1 do 256, więc liczby muszą mieć sens dla każdego rozmiaru,
 - każdy kryształ niesie światło punktowe, a tablica w shaderze ma 16 miejsc (`scene::MAX_POINT_LIGHTS`),
 - ten sam labirynt i to samo ziarno mają dawać te same kryształy na obu systemach ([`deterministic-random.md`](deterministic-random.md)).
 
@@ -17,7 +17,7 @@ W M4 miejsce kryształów zajmowały światła w ślepych zaułkach ([`dead-end-
 
 ## 2. Decyzja
 
-Labirynt dostaje jeden kryształ na 8 komórek (`CELLS_PER_CRYSTAL`), zaokrąglone do najbliższej liczby całkowitej, nie mniej niż 1 i nie więcej niż 16. Brama otwiera się po zebraniu 70 procent z nich (`requiredFraction`), zaokrąglone w górę, nie mniej niż 1. Ułamek da się zmienić w trakcie rundy suwakiem `Crystals needed` w panelu Gameplay.
+Labirynt dostaje jeden kryształ na 8 komórek (`CELLS_PER_CRYSTAL`), zaokrąglone do najbliższej liczby całkowitej, nie mniej niż 1 i nie więcej niż 16. Brama otwiera się po zebraniu 70 procent z nich (`requiredFraction`), zaokrąglone w górę, nie mniej niż 1. Ułamek da się zmienić w trakcie rundy suwakiem `Crystals needed` w kategorii Gameplay.
 
 ## 3. Rozważane możliwości
 

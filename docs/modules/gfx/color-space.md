@@ -173,9 +173,9 @@ Nie każdy kolor pochodzi z tekstury. Część jest wpisana w kodzie albo ustawi
 | kolor latarki `flashlightColor` | `game::LightingSettings` | `buildLightSet` | jak wyżej |
 | kolor świateł kryształów `pointColor` | `game::LightingSettings` | `buildLightSet`, raz dla wszystkich świateł punktowych (zmienna `pointColor` przed pętlą) | jak wyżej |
 | świecenie własne kryształów (`uEmissive`) | ten sam `pointColor` | `NightMazeApp::crystalEmissive()`: `crystalGlow(gfx::srgbToLinear(m_lighting.pointColor), ...)` | [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) |
-| kolor tła `m_clearColor` | pole `NightMazeApp`, edytowane w panelu Renderer | `onRender`, tuż przed `glClearColor` | jak wyżej |
+| kolor tła `m_clearColor` | pole `NightMazeApp`, edytowane w kategorii Render | `onRender`, tuż przed `glClearColor` | jak wyżej |
 | kolory linii brył kolizji (pięć stałych `..._COLLIDER_COLOR` i `EXIT_ZONE_COLOR`) | stałe w `NightMazeApp.cpp` | `ColliderLines::draw` i `ColliderLines::drawSpheres`, przy ustawianiu `uColor` | [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp) |
-| kolor mgły `FogSettings::color` (trzecia część M7) | `game::FogSettings` w `game::PostProcessSettings`, edytowany próbnikiem `Fog colour` w panelu Framebuffers | `PostProcess::composite`: `shader.setVec3(COMPOSITE_FOG_COLOR_UNIFORM, gfx::srgbToLinear(fog.color))`, raz na klatkę. Shader dostaje w `uFogColor` wartość już liniową | [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) |
+| kolor mgły `FogSettings::color` (trzecia część M7) | `game::FogSettings` w `game::PostProcessSettings`, edytowany próbnikiem `Fog colour` w kategorii Post process | `PostProcess::composite`: `shader.setVec3(COMPOSITE_FOG_COLOR_UNIFORM, gfx::srgbToLinear(fog.color))`, raz na klatkę. Shader dostaje w `uFogColor` wartość już liniową | [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) |
 | gradient trawy `ROOT_COLOR`, `TIP_COLOR` | stałe w shaderze | `srgbToLinear(mix(ROOT_COLOR, TIP_COLOR, gBladeUv.y))` | [`assets/shaders/grass.frag`](../../../assets/shaders/grass.frag) |
 | widoki diagnostyczne: normalna, UV, kierunek nieba | liczone w shaderze jako dane | `srgbToLinear(...)` przy zapisie do `fragColor` | [`textured.frag`](../../../assets/shaders/textured.frag), [`grass.frag`](../../../assets/shaders/grass.frag), [`skybox.frag`](../../../assets/shaders/skybox.frag) |
 
@@ -240,7 +240,7 @@ Trzy rzeczy warte zapamiętania o samym OpenGL:
 - **`GL_SRGB8` i `GL_SRGB8_ALPHA8` są w rdzeniu OpenGL od wersji 2.1**, więc w 4.1 Core nie wymagają rozszerzenia. `GL_RGBA16F` jest w rdzeniu od 3.0.
 - **`GL_FRAMEBUFFER_SRGB` działa tylko na załącznikach w formacie sRGB.** Włączony, każe OpenGL kodować przy zapisie do takiego załącznika. Bufor sceny (`GL_RGBA16F`) sRGB nie jest, więc tam przełącznik nic by nie zmienił. Dla okna wszystko zależy od tego, czy system dał mu framebuffer sRGB. Gra o taki nie prosi (w źródłach nie ma `GLFW_SRGB_CAPABLE`) i trzyma przełącznik wyłączony, więc wynik nie zależy od tego, co dał system.
 
-Jest jeszcze czwarte miejsce, poza rdzeniem: rozszerzenie `GL_EXT_texture_sRGB_decode`. Pozwala wyłączyć dekodowanie dla jednego obiektu samplera. Używa go tylko panel Assets, żeby podgląd tekstury sRGB wyglądał jak plik (klasa `debug::RawTextureSampler`, opisana w [`../debug-ui.md`](../debug-ui.md)). Gdzie sterownik rozszerzenia nie ma, podglądy w panelu są ciemniejsze niż pliki, a gra wygląda tak samo.
+Jest jeszcze czwarte miejsce, poza rdzeniem: rozszerzenie `GL_EXT_texture_sRGB_decode`. Pozwala wyłączyć dekodowanie dla jednego obiektu samplera. Używa go tylko zakładkę Diagnostics / Assets, żeby podgląd tekstury sRGB wyglądał jak plik (klasa `debug::RawTextureSampler`, opisana w [`../debug-ui.md`](../debug-ui.md)). Gdzie sterownik rozszerzenia nie ma, podglądy w panelu są ciemniejsze niż pliki, a gra wygląda tak samo.
 
 ## 4. Shadery
 
@@ -432,7 +432,7 @@ Wewnątrz klas argument zamienia się na format wewnętrzny. W `Texture2D.cpp` r
 | 3 | `GL_SRGB8` | `GL_RGB8` |
 | 4 | `GL_SRGB8_ALPHA8` | `GL_RGBA8` |
 
-`Texture2D` zapamiętuje argument w polu `m_colorSpace` i oddaje go przez `colorSpace()`. Korzystają z tego dwa miejsca: `AssetCache::texture` (wykrycie pliku poproszonego w dwóch przestrzeniach) i panel Assets (napis `sRGB` albo `linear` przy każdej teksturze i wybór sposobu podglądu). `Cubemap` argumentu nie zapamiętuje: po utworzeniu nikt o niego nie pyta.
+`Texture2D` zapamiętuje argument w polu `m_colorSpace` i oddaje go przez `colorSpace()`. Korzystają z tego dwa miejsca: `AssetCache::texture` (wykrycie pliku poproszonego w dwóch przestrzeniach) i zakładka Diagnostics / Assets (napis `sRGB` albo `linear` przy każdej teksturze i wybór sposobu podglądu). `Cubemap` argumentu nie zapamiętuje: po utworzeniu nikt o niego nie pyta.
 
 ### 5.7 Gdzie w kodzie stoi przeliczenie kolorów wpisanych
 
@@ -450,7 +450,7 @@ Pełna lista jest w tabeli w sekcji 2.8. Tu trzy miejsca po stronie C++ z kodem.
     };
 ```
 
-Kolor jest przeliczany, intensywność nie. Kierunek księżyca daje od czwartej części M7 funkcja `game::moonDirection` (wcześniej stało tu wprost `scene::directionFromAngles` z dwoma kątami): z tej samej funkcji bierze go mapa cieni, więc światło i cień nie mogą się rozjechać ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.2). `game::LightingSettings` trzyma liczby sRGB (takie, jakie pokazuje selektor koloru w panelu Lights), a `scene::LightSet`, który idzie do bufora uniformów, trzyma już wartości liniowe. Granica między dwoma znaczeniami jest więc granicą między dwiema strukturami. Resztę funkcji opisuje [`../game/flashlight.md`](../game/flashlight.md).
+Kolor jest przeliczany, intensywność nie. Kierunek księżyca daje od czwartej części M7 funkcja `game::moonDirection` (wcześniej stało tu wprost `scene::directionFromAngles` z dwoma kątami): z tej samej funkcji bierze go mapa cieni, więc światło i cień nie mogą się rozjechać ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.2). `game::LightingSettings` trzyma liczby sRGB (takie, jakie pokazuje selektor koloru w zakładce Light / Lights), a `scene::LightSet`, który idzie do bufora uniformów, trzyma już wartości liniowe. Granica między dwoma znaczeniami jest więc granicą między dwiema strukturami. Resztę funkcji opisuje [`../game/flashlight.md`](../game/flashlight.md).
 
 **Kolor tła** ([`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), `onRender`):
 
@@ -460,7 +460,7 @@ Kolor jest przeliczany, intensywność nie. Kierunek księżyca daje od czwartej
     GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
 ```
 
-`glClear` wypełnia teraz teksturę koloru bufora sceny, która trzyma wartości liniowe, więc kolor tła musi być liniowy jak wszystko inne w tym buforze. Pole `m_clearColor` zostaje liczbą sRGB, bo edytuje je selektor koloru w panelu Renderer.
+`glClear` wypełnia teraz teksturę koloru bufora sceny, która trzyma wartości liniowe, więc kolor tła musi być liniowy jak wszystko inne w tym buforze. Pole `m_clearColor` zostaje liczbą sRGB, bo edytuje je selektor koloru w kategorii Render.
 
 **Świecenie kryształów** (to samo `NightMazeApp.cpp`):
 
@@ -502,7 +502,7 @@ Zgłoszony wynik takiego porównania z poprzednim commitem (Windows, 2026-10-05,
 |---|---|---|
 | ściany i podłoże w trybie `Unlit` | najwyżej 22 poziomy z 255, średnio 1,1. Tylko na spoinach cegieł | filtr tekstury miesza teraz wartości liniowe (sekcja 2.10): tam, gdzie jasna cegła sąsiaduje z ciemną spoiną, średnia liniowa jest jaśniejsza od średniej z bajtów |
 | widoki normalnych i UV | najwyżej 1 poziom | dane przechodzą `srgbToLinear` w shaderze, zapis do 16-bitowej liczby zmiennoprzecinkowej, `linearToSrgb` i zaokrąglenie do bajta. Trzy zaokrąglenia zamiast jednego |
-| podglądy tekstur w panelu Assets | identyczne co do piksela | `RawTextureSampler` wyłącza dekodowanie, więc ImGui czyta te same bajty co przed M7 |
+| podglądy tekstur w zakładce Diagnostics / Assets | identyczne co do piksela | `RawTextureSampler` wyłącza dekodowanie, więc ImGui czyta te same bajty co przed M7 |
 
 Obraz **nie jest** więc identyczny i nie powinien być. W środku jednolitej powierzchni droga "dekoduj, koduj" oddaje ten sam bajt (test `encoding undoes decoding for every byte of a picture`). Różnica pojawia się tylko tam, gdzie między dekodowaniem a kodowaniem stoi uśrednianie różnych tekseli, a tam nowy wynik jest tym poprawnym. Skrajny przypadek z sekcji 2.10 (czerń obok bieli) dałby 60 poziomów różnicy. Zmierzone 22 poziomy to mniejszy kontrast cegły i spoiny.
 
@@ -528,21 +528,21 @@ Księżyc dostał w czwartej części M7 więcej światła z konkretnego powodu,
 
 Wartości są dobrane razem z ekspozycją 1,0 i krzywą ACES ostatniego przebiegu (komentarz przy `LightingSettings`). Zmiana jednej z tych rzeczy zmienia wygląd wszystkich.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Moduł nie ma własnego panelu. Jego skutki widać w czterech:
+Moduł nie ma własnego panelu. Jego skutki widać w czterech miejscach okna debugowania (kolumna `Panel` podaje dawne panele):
 
-| Panel | Kontrolka | Związek z przestrzenią kolorów |
+| Dawny panel (dziś: Assets to Diagnostics / Assets, Lights to Light / Lights, Renderer to Render / Scene, Framebuffers to Post process) | Kontrolka | Związek z przestrzenią kolorów |
 |---|---|---|
 | **Assets** | lista `Textures` | przy każdej teksturze stoi `sRGB` albo `linear`: wartość `Texture2D::colorSpace()`. Siedem obrazów koloru ma `sRGB`, siedem map normalnych `linear` (do M8, części 2 po cztery). Podgląd tekstury sRGB jest czytany bez dekodowania, żeby wyglądał jak plik ([`../debug-ui.md`](../debug-ui.md)) |
 | **Lights** | selektory koloru i suwaki intensywności | selektor pokazuje i zapisuje liczby sRGB. `buildLightSet` przelicza je co klatkę. Suwaki intensywności są mnożnikami wartości liniowej |
 | **Renderer** | `Clear color`, `Sky brightness` | kolor tła jest liczbą sRGB, przeliczaną w `onRender`. Jasność nieba mnoży liniowy kolor z tekstury sześciennej |
 | **Framebuffers** | `Tone mapping`, `Exposure`, podgląd `HDR colour` (w pierwszej części M7 podpisany `Colour (HDR, cut off at 1)`) | tryb `None (clamp)` z ekspozycją 1 pokazuje samo kodowanie, bez krzywej, pod warunkiem że trzy efekty przebiegu składającego są wyłączone: pole `Bloom` (od drugiej części M7) oraz pola `Fog` i `Vignette` w zakładce `Fog and vignette` (od trzeciej). Wszystkie trzy startują zaznaczone. Podgląd koloru to zawartość bufora liniowego po samym `linearToSrgb`, bez żadnego z tych efektów ([`../renderer/post-process.md`](../renderer/post-process.md)) |
-| **Framebuffers**, zakładka `Fog and vignette` (trzecia część M7) | próbnik `Fog colour` | pokazuje i zapisuje liczby sRGB, jak selektory panelu Lights. `PostProcess::composite` przelicza je co klatkę (tabela w sekcji 2.8) |
+| **Framebuffers**, zakładka `Fog and vignette` (trzecia część M7) | próbnik `Fog colour` | pokazuje i zapisuje liczby sRGB, jak selektory zakładki Light / Lights. `PostProcess::composite` przelicza je co klatkę (tabela w sekcji 2.8) |
 
 Czego uczy obserwacja:
 
-- **Kodowanie w izolacji.** W panelu Renderer wybierz `Unlit`, w Framebuffers `None (clamp)` i ekspozycję 1, odznacz `Bloom`, a w zakładce `Fog and vignette` odznacz `Fog` i `Vignette` (od trzeciej części M7 oba efekty startują włączone: bez tego kroku ściana 10 m dalej jest przy gruncie w 63 % kolorem mgły, a rogi ekranu mają 0,70 jasności). Ściana wygląda jak plik `wall_stone.png` otwarty w przeglądarce obrazów: dekodowanie i kodowanie się zniosły.
+- **Kodowanie w izolacji.** W kategorii Render wybierz `Unlit`, w Framebuffers `None (clamp)` i ekspozycję 1, odznacz `Bloom`, a w zakładce `Fog and vignette` odznacz `Fog` i `Vignette` (od trzeciej części M7 oba efekty startują włączone: bez tego kroku ściana 10 m dalej jest przy gruncie w 63 % kolorem mgły, a rogi ekranu mają 0,70 jasności). Ściana wygląda jak plik `wall_stone.png` otwarty w przeglądarce obrazów: dekodowanie i kodowanie się zniosły.
 - **Selektor koloru mówi sRGB.** Ustaw kolor latarki na szary 0,5 i policz, ile światła daje: 0,214, nie połowę. Przesunięcie suwaka z 0,5 na 0,735 podwaja światło.
 
 Nie ma przełącznika "gamma włącz, wyłącz": potok jest jeden. Żeby zobaczyć obraz bez kodowania, trzeba zmienić shader (ćwiczenie 1).
@@ -551,8 +551,8 @@ Nie ma przełącznika "gamma włącz, wyłącz": potok jest jeden. Żeby zobaczy
 
 1. **Podwójne kodowanie.** Kodowanie w shaderze **i** włączone `GL_FRAMEBUFFER_SRGB` na oknie sRGB: obraz jest wyblakły, ciemne tony szare, kontrast znika. `PostProcess::composite` woła `glDisable(GL_FRAMEBUFFER_SRGB)` właśnie po to, żeby ten stan był zapisany w kodzie, a nie tylko domyślny.
 2. **Kodowanie bez dekodowania (obraz wyprany).** Samo `linearToSrgb` na końcu, a tekstury nadal `GL_RGB8`: tekstura wchodzi do rachunku jako sRGB i jest kodowana drugi raz. Cała scena jaśnieje i blaknie. To "połowa poprawki", przed którą ostrzegała notatka o gammie. Objaw pojawi się też dla jednej tekstury, jeśli ktoś wczyta obraz koloru z `ColorSpace::Linear`.
-3. **Dekodowanie bez kodowania (obraz za ciemny).** Odwrotny błąd: tekstury `GL_SRGB8`, a wynik idzie na ekran bez `linearToSrgb`. Wszystko jest dużo ciemniejsze i bardziej kontrastowe. Tak wyglądałby podgląd tekstur w panelu Assets bez `RawTextureSampler`.
-4. **Mapa normalnych jako sRGB.** Bajt 128 przestaje znaczyć 0, wszystkie normalne wychylają się w tę samą stronę (sekcja 2.7), a światło pada pod złym kątem na każdą ścianę. Błąd jest podstępny, bo obraz nadal "jakoś" wygląda. Panel Assets pokazuje przy mapie normalnych `linear`: jeśli stoi tam `sRGB`, to jest ten błąd.
+3. **Dekodowanie bez kodowania (obraz za ciemny).** Odwrotny błąd: tekstury `GL_SRGB8`, a wynik idzie na ekran bez `linearToSrgb`. Wszystko jest dużo ciemniejsze i bardziej kontrastowe. Tak wyglądałby podgląd tekstur w zakładce Diagnostics / Assets bez `RawTextureSampler`.
+4. **Mapa normalnych jako sRGB.** Bajt 128 przestaje znaczyć 0, wszystkie normalne wychylają się w tę samą stronę (sekcja 2.7), a światło pada pod złym kątem na każdą ścianę. Błąd jest podstępny, bo obraz nadal "jakoś" wygląda. Zakładka Diagnostics / Assets pokazuje przy mapie normalnych `linear`: jeśli stoi tam `sRGB`, to jest ten błąd.
 5. **Kolor przeliczony dwa razy albo wcale.** Kolor świateł jest przeliczany w `buildLightSet`. Kto doda `srgbToLinear` także w shaderze albo w `LightRig`, przyciemni światła drugi raz. Kto doda nowy kolor do ustawień i nie przeliczy go, dostanie światło za jasne i wyblakłe. Reguła: jedno nazwane miejsce na każdy kolor (tabela w sekcji 2.8).
 6. **Przeliczanie mnożników.** Intensywność 0,5 ma dać połowę światła. `srgbToLinear(0.5)` dałoby 0,214. Mnożników się nie przelicza. Tego pilnuje test w `LightingTests.cpp`.
 7. **`pow(x, 2.2)` zmieszane z dokładną krzywą.** Karta dekoduje tekstury dokładną funkcją. Kodowanie przybliżeniem przesuwa ciemne tony (różnica do jednej ósmej wartości przy 0,2) i tekstura bez światła nie wraca już jako te same bajty.
@@ -564,11 +564,11 @@ Nie ma przełącznika "gamma włącz, wyłącz": potok jest jeden. Żeby zobaczy
 
 ## 8. Ćwiczenia
 
-Zmiany w shaderach widać po `Reload shaders` w panelu Shaders, bez przebudowy. Po każdym ćwiczeniu wycofaj zmianę.
+Zmiany w shaderach widać po `Reload shaders` w zakładce Diagnostics / Frame and shaders, bez przebudowy. Po każdym ćwiczeniu wycofaj zmianę.
 
-1. **Bez kodowania.** W `post/composite.frag` zamień ostatnią linię na `fragColor = vec4(color, 1.0);`. Jak zmieniła się scena? Która pułapka z sekcji 7 to jest? Porównaj z panelem Assets, gdzie podglądy zostały bez zmian. Dlaczego?
+1. **Bez kodowania.** W `post/composite.frag` zamień ostatnią linię na `fragColor = vec4(color, 1.0);`. Jak zmieniła się scena? Która pułapka z sekcji 7 to jest? Porównaj z zakładką Diagnostics / Assets, gdzie podglądy zostały bez zmian. Dlaczego?
 2. **Potęga zamiast normy.** W `common/color.glsl` zastąp treść `linearToSrgb` linią `return pow(clamp(linear, 0.0, 1.0), vec3(1.0 / 2.2));`. Ustaw `Unlit`, `None (clamp)` i ekspozycję 1. Gdzie widać różnicę: w jasnych cegłach czy w ciemnych spoinach? Sprawdź z tabelą w sekcji 2.9.
-3. **Mapa normalnych jako sRGB.** W `AssetCache.cpp` zmień `gfx::ColorSpace::Linear` przy `part.normalMapPath` na `Srgb`. Zbuduj, uruchom, włącz widok normalnych w panelu Assets. Jaki kolor ma teraz płaska ściana i jaki powinna mieć? Co pokazuje napis przy teksturze w liście `Textures`?
+3. **Mapa normalnych jako sRGB.** W `AssetCache.cpp` zmień `gfx::ColorSpace::Linear` przy `part.normalMapPath` na `Srgb`. Zbuduj, uruchom, włącz widok normalnych w kategorii Render. Jaki kolor ma teraz płaska ściana i jaki powinna mieć? Co pokazuje napis przy teksturze w liście `Textures`?
 4. **Na kartce.** Policz `srgbToLinear(0.75)` i `linearToSrgb(0.25)`. (Odpowiedź: 0,5225 i 0,5371.) Który bajt pliku PNG niesie ćwierć światła bieli? (Odpowiedź: `0.5371 * 255`, czyli 137.)
 5. **Kolor przeliczony dwa razy.** W `lit.frag` owiń kolor tekstury w `srgbToLinear(...)` (trzeba dołączyć `common/color.glsl`). Co się stało ze ścianami i dlaczego? Która tekstura wyjdzie z tego bez zmiany? (Biała zastępcza.)
 6. **Mieszanie gradientu.** W `grass.frag` zamień linię gradientu na `mix(srgbToLinear(ROOT_COLOR), srgbToLinear(TIP_COLOR), gBladeUv.y)`. Czy środek źdźbła jest jaśniejszy, czy ciemniejszy? Wyjaśnij to przykładem czerni i bieli z sekcji 2.10.

@@ -163,7 +163,7 @@ bok cokołu widziany z zewnątrz, od strony -X (oś Z w prawo, oś Y w górę)
 - Oba trójkąty obiegają prostokąt w tę samą stronę. Iloczyn wektorowy krawędzi pierwszego, `(v1 - v0) x (v2 - v0)`, to `(0, -0,25, -0,28) x (0, -0,25, 0) = (-0,07, 0, 0)`. Dla drugiego, `(v45 - v0) x (v1 - v0)`, to `(0, 0, -0,28) x (0, -0,25, -0,28) = (-0,07, 0, 0)`. Oba wskazują w stronę -X, czyli na zewnątrz ściany, zgodnie z normalną z pliku, (-1, 0, 0).
 - Dwa trójkąty jednego prostokąta nie muszą stać w pliku obok siebie ani dostać kolejnych numerów. Indeksy nie zależą od sąsiedztwa: liczy się tylko, która trójka jest którym wierzchołkiem.
 - Wartości indeksów muszą być mniejsze od liczby wierzchołków (60). OpenGL tego nie sprawdza (pułapka 6). Dla modeli pilnuje tego loader, który odrzuca plik z numerem spoza listy.
-- Panel Assets pokazuje te liczby dla każdego wczytanego modelu, w linii `%d vertices, %d triangles`.
+- Zakładka Diagnostics / Assets pokazuje te liczby dla każdego wczytanego modelu, w linii `%d vertices, %d triangles`.
 
 **Przykład z kodu: jeden kwadrat siatki terenu.** Teren nie ma pliku modelu. Jego wierzchołki i indeksy liczy funkcja `game::buildTerrainMesh` w [`src/game/Terrain.cpp`](../../../src/game/Terrain.cpp) ([`../renderer/terrain.md`](../renderer/terrain.md)). Teren jest regularną siatką punktów co 0,5 m: jeden wierzchołek na punkt siatki, wiersz po wierszu, a każdy kwadrat między czterema sąsiednimi punktami to dwa trójkąty. Pętla indeksów:
 
@@ -229,7 +229,7 @@ Liczby dla całego terenu labiryntu domyślnego (siatka 97 x 97 punktów, 96 x 9
 | indeksy | brak | 96 x 96 x 6 = 55296 indeksów, 221 184 bajty |
 | razem | około 2,43 MB | około 0,64 MB |
 
-Różnica bierze się stąd, że wierzchołek ma 44 bajty, a indeks 4: każde powtórzenie wierzchołka zastąpione indeksem oszczędza 40 bajtów. Rozmiar siatki (97 x 97 punktów, 18432 trójkąty) pokazuje panel Terrain.
+Różnica bierze się stąd, że wierzchołek ma 44 bajty, a indeks 4: każde powtórzenie wierzchołka zastąpione indeksem oszczędza 40 bajtów. Rozmiar siatki (97 x 97 punktów, 18432 trójkąty) pokazuje zakładkę World / Terrain and grass.
 
 Liczby dla wszystkich pięciu modeli, policzone skryptem z plików OBJ (każda linia `f` w tych plikach to trójkąt):
 
@@ -422,7 +422,7 @@ Są dwie funkcje `draw` i sześć miejsc, które je wołają (trzy ostatnie dosz
 
 `draw()` bez parametrów to `draw(0, m_indexCount)`, czyli cała siatka. Wszystkie pięć modeli gry ma po jednej części (jedna linia `usemtl` w każdym pliku OBJ), więc `part.firstIndex` jest dziś zawsze zerem, a `part.indexCount` obejmuje całą siatkę. Sprawdzenie zakresu, mnożenie przez 4 i rzutowanie na wskaźnik omawia linia po linii [`mesh.md`](mesh.md), sekcja 5.5.
 
-**Ile to wywołań.** Labirynt domyślny (10 na 10, ziarno 1) to 243 wywołania `glDrawElements` na klatkę: jedno dla terenu, 121 dla ścian i 121 dla słupków ([`../game/maze-rendering.md`](../game/maze-rendering.md)). Na początku rundy dochodzi jedno dla bramy i 13 dla kryształów, razem 257, a do tego po jednym dla trawy i dla nieba, gdy są włączone. Od czwartej części M7, przy włączonych cieniach, te same 257 wywołań jest wykonywane **drugi raz** na początku klatki: `NightMazeApp::drawShadowCasters` rysuje teren, labirynt, bramę i kryształy programem `shadow_depth` do mapy cieni księżyca, tymi samymi trzema rendererami. Razem 514 wywołań `glDrawElements` dla brył, policzone z kodu, nie zmierzone. Trawa i niebo do mapy cieni nie trafiają. Do M5 podłoga była setką płytek, każda z własnym wywołaniem (342 dla samego labiryntu, 356 z bramą i kryształami): zastąpienie ich jedną siatką terenu zdjęło 99 wywołań, chociaż teren ma 18432 trójkąty zamiast 200. Liczba wywołań i liczba trójkątów to dwa różne koszty. Zebrany kryształ przestaje być rysowany, a brama znika z listy, gdy po otwarciu schowa się pod ziemię ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5). Linie pudełek i kul dochodzą tylko wtedy, gdy włączy je panel Collision. Każde z tych wywołań uruchamia potok z [`shaders.md`](shaders.md) (sekcja 2.1): shader wierzchołków dla wierzchołków wskazanych przez indeksy, składanie trójkątów albo odcinków, rasteryzacja, shader fragmentów, test głębi.
+**Ile to wywołań.** Labirynt domyślny (10 na 10, ziarno 1) to 243 wywołania `glDrawElements` na klatkę: jedno dla terenu, 121 dla ścian i 121 dla słupków ([`../game/maze-rendering.md`](../game/maze-rendering.md)). Na początku rundy dochodzi jedno dla bramy i 13 dla kryształów, razem 257, a do tego po jednym dla trawy i dla nieba, gdy są włączone. Od czwartej części M7, przy włączonych cieniach, te same 257 wywołań jest wykonywane **drugi raz** na początku klatki: `NightMazeApp::drawShadowCasters` rysuje teren, labirynt, bramę i kryształy programem `shadow_depth` do mapy cieni księżyca, tymi samymi trzema rendererami. Razem 514 wywołań `glDrawElements` dla brył, policzone z kodu, nie zmierzone. Trawa i niebo do mapy cieni nie trafiają. Do M5 podłoga była setką płytek, każda z własnym wywołaniem (342 dla samego labiryntu, 356 z bramą i kryształami): zastąpienie ich jedną siatką terenu zdjęło 99 wywołań, chociaż teren ma 18432 trójkąty zamiast 200. Liczba wywołań i liczba trójkątów to dwa różne koszty. Zebrany kryształ przestaje być rysowany, a brama znika z listy, gdy po otwarciu schowa się pod ziemię ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5). Linie pudełek i kul dochodzą tylko wtedy, gdy włączy je zakładkę Diagnostics / Collision and picking. Każde z tych wywołań uruchamia potok z [`shaders.md`](shaders.md) (sekcja 2.1): shader wierzchołków dla wierzchołków wskazanych przez indeksy, składanie trójkątów albo odcinków, rasteryzacja, shader fragmentów, test głębi.
 
 `bind()` jest wołane przed każdym rysowaniem i jest konieczne: każde `Mesh::draw` wiąże VAO swojej siatki, więc po terenie bieżący jest VAO terenu, a ściany potrzebują własnego. Backend ImGui przy rysowaniu paneli też wiąże własny VAO i własny program. Przed rysowaniem ustawiam więc wszystko, czego potrzebuję.
 
@@ -449,18 +449,18 @@ Ostatni wiersz jest pomiarem pułapki 8. Wtedy żaden VAO nie był związany w c
 
 | Co | Jak sprawdzone |
 |---|---|
-| indeksy trójkątów modeli labiryntu | na obrazie, na Windowsie, w M2 + M3 i w M4: ściany, słupki i ówczesna podłoga z płytek na zrzutach ekranu zgadzają się z planem w panelu Maze ([`mesh.md`](mesh.md), sekcja 5.6) |
+| indeksy trójkątów modeli labiryntu | na obrazie, na Windowsie, w M2 + M3 i w M4: ściany, słupki i ówczesna podłoga z płytek na zrzutach ekranu zgadzają się z planem w zakładce World / Maze ([`mesh.md`](mesh.md), sekcja 5.6) |
 | indeksy terenu | testy jednostkowe w `tests/TerrainTests.cpp`: "the mesh has one vertex per grid point and two triangles per square", "every triangle of the mesh faces up, and its texture is not mirrored" i "heightAt agrees with the triangle of the mesh at random points". Uruchomione dziś z istniejących buildów Debug i Release razem z resztą: 256 przypadków i 101232 asercje. Teren na ekranie widział tylko autor zmiany, na zrzutach ekranu (Windows, 2026-10-05) |
 | indeksy odcinków sześcianu (`GL_LINES`) | na obrazie, w M2 + M3: żółte pudełka leżą na ścianach i słupkach |
 | M5: brama, kryształy, okrąg | dla Windowsa zgłoszone 2026-10-05: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach, obraz sprawdzony zrzutami ekranu. Żaden z tych testów nie dotyka `Mesh` ani `ColliderLines`: to testy logiki bez OpenGL |
 | rysowanie zakresu, który nie zaczyna się od indeksu 0 | **niesprawdzone**: wszystkie modele mają po jednej części, więc `firstIndex` jest zawsze zerem |
 | kierunek nawijania modeli | policzony na kartce dla boku cokołu ściany (sekcja 5.2), a do M5 dla płytki podłogi. Dla terenu sprawdza go test jednostkowy (wiersz wyżej). Z włączonym odrzucaniem tylnych ścian gry nie uruchamiałem |
 | macOS | nic z M5 nie było tam budowane ani uruchamiane |
-| ręcznie | nikt jeszcze nie przeszedł gry z M5 ręcznie, więc także nie włączał linii w panelu Collision |
+| ręcznie | nikt jeszcze nie przeszedł gry z M5 ręcznie, więc także nie włączał linii w zakładce Diagnostics / Collision and picking |
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Indeksy nie mają własnego panelu. Widać je pośrednio w dwóch miejscach. Panel **Assets** pokazuje dla każdego wczytanego modelu liczbę wierzchołków i trójkątów (linia `%d vertices, %d triangles`): to liczby z tabeli w sekcji 5.2, a liczba indeksów to trzy razy liczba trójkątów ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6). Panel **Collision** ma pole `Draw collision shapes`, które włącza rysowanie obu siatek z odcinków: sześcianu i okręgu ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
+Indeksy nie mają własnego panelu. Widać je pośrednio w dwóch miejscach. Zakładka Diagnostics / Assets pokazuje dla każdego wczytanego modelu liczbę wierzchołków i trójkątów (linia `%d vertices, %d triangles`): to liczby z tabeli w sekcji 5.2, a liczba indeksów to trzy razy liczba trójkątów ([`../assets/asset-cache.md`](../assets/asset-cache.md), sekcja 6). Zakładka Diagnostics / Collision and picking ma pole `Draw collision shapes`, które włącza rysowanie obu siatek z odcinków: sześcianu i okręgu ([`../scene/collision.md`](../scene/collision.md), sekcja 6).
 
 ## 7. Pułapki
 
@@ -479,7 +479,7 @@ Pułapki dotyczące kroku, przesunięcia, rozmiaru bufora, atrybutów i czasu ż
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 3 robi się na kartce. Pozostałe zmieniają kod i wymagają zbudowania programu. Linie pudełek i kul włącza pole `Draw collision shapes` w panelu Collision. Po każdym ćwiczeniu wycofaj zmianę (`git checkout src`). Tych ćwiczeń na dzisiejszym kodzie nikt jeszcze nie wykonał, więc nie podaję, co widać na ekranie: przewidź wynik, a potem go sprawdź.
+Ćwiczenia od 1 do 3 robi się na kartce. Pozostałe zmieniają kod i wymagają zbudowania programu. Linie pudełek i kul włącza pole `Draw collision shapes` w zakładce Diagnostics / Collision and picking. Po każdym ćwiczeniu wycofaj zmianę (`git checkout src`). Tych ćwiczeń na dzisiejszym kodzie nikt jeszcze nie wykonał, więc nie podaję, co widać na ekranie: przewidź wynik, a potem go sprawdź.
 
 1. **Bajty kwadratu terenu i sześcianu na kartce.** Ile bajtów zajmują w buforze wierzchołków cztery wierzchołki jednego kwadratu terenu, a ile jego sześć indeksów? W którym bajcie bufora indeksów zaczyna się drugi trójkąt pierwszego kwadratu? Ile bajtów zajęłyby indeksy sześcianu z krawędzi, gdyby były typu `GLubyte`, i dlaczego projekt mimo to używa jednego typu indeksu wszędzie? Odpowiedzi: 176 i 24, bajt 12, 24 bajty zamiast 96.
 2. **Tłumaczenie trójek na kartce.** Zrób dla pierwszych czterech linii `f` pliku `wall_straight.obj` taką tabelę jak w sekcji 5.2. Ile nowych wierzchołków daje każda linia? Dlaczego dwie linie `f` jednej płaskiej ściany dają razem 4 wierzchołki, a nie 6?
@@ -532,7 +532,7 @@ Pułapki dotyczące kroku, przesunięcia, rozmiaru bufora, atrybutów i czasu ż
     Pierwszy kwadrat ma indeksy 0, 98, 1 oraz 0, 97, 98: dwa trójkąty ze wspólną przekątną między wierzchołkami 0 i 98, z północnego zachodu na południowy wschód. Oba obiegają kwadrat w tę samą stronę, co widać po iloczynie wektorowym krawędzi: na płaskim podłożu w obu przypadkach (0, 0,25, 0). Numery wynikają ze wzoru `row * columns + column` przy 97 kolumnach.
 
 13. **Ile wywołań `glDrawElements` wykonuje klatka i skąd ta liczba?**
-    Jedno na każdą część każdego obiektu. Labirynt domyślny to teren, 121 ścian i 121 słupków, czyli 243. Na początku rundy dochodzi brama i 13 kryształów, razem 257, oraz po jednym dla trawy i dla nieba. Od czwartej części M7 te 257 wywołań jest wykonywane dwa razy na klatkę, gdy cienie są włączone: raz do mapy cieni, raz do obrazu. Gdy panel Collision włączy linie, dochodzi jedno na pudełko i trzy na kulę.
+    Jedno na każdą część każdego obiektu. Labirynt domyślny to teren, 121 ścian i 121 słupków, czyli 243. Na początku rundy dochodzi brama i 13 kryształów, razem 257, oraz po jednym dla trawy i dla nieba. Od czwartej części M7 te 257 wywołań jest wykonywane dwa razy na klatkę, gdy cienie są włączone: raz do mapy cieni, raz do obrazu. Gdy zakładka Diagnostics / Collision and picking włączy linie, dochodzi jedno na pudełko i trzy na kulę.
 
 14. **Co zastąpiło kostkę z M1 jako przykład rysowania z indeksami?**
     Trzy rzeczy. Modele z plików OBJ i teren liczony w kodzie, z bokiem cokołu ściany i kwadratem terenu jako przykładami indeksów trójkątów (do M5 przykładem była płytka podłogi). Sześcian z krawędzi w `ColliderLines.cpp` jako dane wierzchołków i indeksów wpisane ręcznie. Okrąg jako indeksy policzone w pętli. Wszystkie rysuje `gfx::Mesh`, która ma w środku te same trzy obiekty co dawna kostka: VAO, bufor wierzchołków i bufor indeksów.

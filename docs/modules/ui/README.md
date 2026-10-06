@@ -7,7 +7,7 @@ Kod: [`src/ui/UiLayer.hpp`](../../../src/ui/UiLayer.hpp) i [`UiLayer.cpp`](../..
 
 **Uczciwie o tym, co sprawdzono.** Trzy rodzaje dowodów trzymam osobno (tak jak w [`../../guides/build-windows.md`](../../guides/build-windows.md)):
 
-1. **Zgłoszone przez bramkę (2026-10-06), nie powtórzone przy pisaniu tego dokumentu:** `make check` przechodzi, **519 przypadków testowych i 219195 asercji** na commicie `8c99911`. Przypadki policzyłem z plików testów (suma makr `TEST_CASE` w `tests/*.cpp` to 519), liczby asercji nie da się policzyć z plików. Żaden z tych przypadków nie dotyka klasy `ui::UiLayer`.
+1. **Zgłoszone przez bramkę (2026-10-06), nie powtórzone przy pisaniu tego dokumentu:** `make check` przechodzi, **519 przypadków testowych i 219195 asercji** na commicie `8c99911`. (Stan z 2026-10-06 po wymianie paneli na okno debugowania, liczby zgłoszone przez bramkę na gałęzi debug, nie powtórzone przeze mnie: **526 przypadków testowych i 219214 asercji**, siedem przypadków i 19 asercji więcej w `tests/SearchTests.cpp`; `DebugContext` ma 51 pól.) Przypadki policzyłem z plików testów (suma makr `TEST_CASE` w `tests/*.cpp` to 519), liczby asercji nie da się policzyć z plików. Żaden z tych przypadków nie dotyka klasy `ui::UiLayer`.
 2. **Widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela** (Windows, Release, 1280 x 720, RTX 4070 Ti SUPER): menu główne po starcie nad przelatującą kamerą, bez HUD i minimapy; kolor przycisku pod kursorem zmienia się na pomarańczowy; `Play` zaczyna rundę; Escape pokazuje pauzę; panele debug działają na wierzchu pauzy i żaden przycisk menu nie reaguje na ich kliknięcie; `Resume`, `Restart`, `Back to menu` i `Quit` (kod wyjścia 0) działają; ekran wyniku widziany **tylko** przez tymczasową, niezatwierdzoną linię, która po trzech sekundach wymuszała wygraną.
 3. **Otwarte:** lista właściciela ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 26.2) i macOS ([`../../guides/build-macos.md`](../../guides/build-macos.md), podsekcja "M9, część 2 (menu w RmlUi) na macOS", w całości otwarta). Nie widziane przez nikogo: kursor (przechwycony albo wolny: nie da się go sfotografować), obrót myszą po `Play`, zmiana rozmiaru okna i minimalizacja, skalowanie ekranu inne niż 100 procent, Tab i Enter w menu, Debug zatwierdzonego kodu na ekranie, wszystko na macOS.
 
@@ -358,9 +358,9 @@ Trzy miejsca (szczegóły i tabela przejść w [`../game/game-states.md`](../gam
 
 Trzy rodzaje dowodów są na początku dokumentu.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Warstwa nie ma własnego panelu. Z panelami debug łączą ją dwie rzeczy: **panele rysują się na wierzchu menu i mają pierwszeństwo myszy** (sekcja 2.6), a pole `DebugContext::hudVisible` mówi `DebugUI::draw`, czy rysować HUD (gra decyduje: `NightMazeApp::hudVisible()` to prawda tylko w rundzie i bez kamery menu). `DebugContext` ma od tej części **50 pól** (49 przedtem, doszło `hudVisible`). Przy otwartym menu klawisz tyldy nadal pokazuje i chowa panele i oddaje kursor, więc ustawienia można zmieniać także z poziomu pauzy. Kontrolek paneli, które by dotyczyły menu, nie ma.
+Warstwa nie ma własnego panelu. Z panelami debug łączą ją dwie rzeczy: **panele rysują się na wierzchu menu i mają pierwszeństwo myszy** (sekcja 2.6), a pole `DebugContext::hudVisible` mówi `DebugUI::draw`, czy rysować HUD (gra decyduje: `NightMazeApp::hudVisible()` to prawda tylko w rundzie i bez kamery menu). `DebugContext` ma od tej części **50 pól** (49 przedtem, doszło `hudVisible`; od 2026-10-06 jest ich 51, doszło `gameMode`). Przy otwartym menu klawisz tyldy nadal pokazuje i chowa panele i oddaje kursor, więc ustawienia można zmieniać także z poziomu pauzy. Kontrolek paneli, które by dotyczyły menu, nie ma.
 
 ## 7. Pułapki
 

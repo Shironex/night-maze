@@ -7,7 +7,7 @@ Kod: [`src/game/GameState.hpp`](../../../src/game/GameState.hpp) i [`GameState.c
 
 **Uczciwie o tym, co sprawdzono.** Trzy rodzaje dowodów trzymam osobno (jak w [`../../guides/build-windows.md`](../../guides/build-windows.md)):
 
-1. **Zgłoszone przez bramkę (2026-10-06), nie powtórzone przy pisaniu:** `make check` przechodzi, **519 przypadków testowych i 219195 asercji** na commicie `8c99911` (przed częścią 497 i 219050). Przypadki policzyłem z plików: 21 w `GameStateTests.cpp`, 1 nowy w `StartOptionsTests.cpp`, razem 22, a 497 + 22 = 519 (suma makr `TEST_CASE` w `tests/*.cpp` to 519). Liczby asercji nie da się policzyć z plików, jest tylko zgłoszona.
+1. **Zgłoszone przez bramkę (2026-10-06), nie powtórzone przy pisaniu:** `make check` przechodzi, **519 przypadków testowych i 219195 asercji** na commicie `8c99911` (Stan z 2026-10-06 po wymianie paneli na okno debugowania, liczby zgłoszone przez bramkę na gałęzi debug, nie powtórzone przeze mnie: **526 przypadków testowych i 219214 asercji**, siedem przypadków i 19 asercji więcej w `tests/SearchTests.cpp`; `DebugContext` ma 51 pól.) (przed częścią 497 i 219050). Przypadki policzyłem z plików: 21 w `GameStateTests.cpp`, 1 nowy w `StartOptionsTests.cpp`, razem 22, a 497 + 22 = 519 (suma makr `TEST_CASE` w `tests/*.cpp` to 519). Liczby asercji nie da się policzyć z plików, jest tylko zgłoszona.
 2. **Widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela** (Windows, Release, 1280 x 720): menu główne po starcie nad przelatującą kamerą, bez HUD i minimapy; `Play` zaczyna rundę z HUD i minimapą; Escape pokazuje pauzę, HUD znika, minimapa jest przyciemniona pod menu, a czas rundy stoi; klawisze F, M i R w pauzie nic nie robią; `Resume` przez Escape; `Restart` (czas wraca do 0:01); `Back to menu`; ponowne `Play` (labirynt zbudowany od nowa ze zmienioną liczbą kartek); `Quit` (proces kończy się kodem 0); `--play` startuje od razu w rundzie; F2 włącza i wyłącza; `--menu-camera --menu-shot glide` bez dokumentu, Escape pokazuje pauzę, drugi Escape ją chowa. **Ekran wyniku** widziany tylko przez tymczasową, niezatwierdzoną linię w jednorazowym buildzie, która po trzech sekundach rundy ustawiała `RoundState::Won`: "You escaped", Time 0:03, Crystals 0 / 13, bez HUD i minimapy, panele nad nim, `Restart`, `Back to menu` i Escape do menu głównego. **Przejścia całej gry do wygranej nikt nie zagrał.**
 3. **Otwarte:** lista właściciela ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 26.2) i macOS ([`../../guides/build-macos.md`](../../guides/build-macos.md), podsekcja "M9, część 2 (menu w RmlUi) na macOS").
 
@@ -105,7 +105,7 @@ Kod w konstruktorze:
 
 **Jak kamera menu ma się do ekranów.** Są dwie różne rzeczy o podobnej nazwie:
 
-- **Flaga `m_menuCamera.enabled`** zostaje tym, czym była: **narzędziem do nagrywania** (F2, panel Camera, `--menu-camera`). Teraz działa **tylko w rundzie**: F2 jest odczytywany tylko gdy `updatesRound(m_mode)`. Włączona flaga chowa HUD, minimapę i panele (robi to `main.cpp`, który czyta flagę).
+- **Flaga `m_menuCamera.enabled`** zostaje tym, czym była: **narzędziem do nagrywania** (F2, kategoria Player, `--menu-camera`). Teraz działa **tylko w rundzie**: F2 jest odczytywany tylko gdy `updatesRound(m_mode)`. Włączona flaga chowa HUD, minimapę i panele (robi to `main.cpp`, który czyta flagę).
 - **Obraz z kamery menu w menu głównym** to coś innego: `usesMenuCamera(MainMenu)` mówi, że obraz bierze kamera menu, **bez ustawiania flagi**. Dzięki temu panele debug nie są chowane, a logika F2 w `main.cpp` pozostaje nietknięta. W menu głównym ustawienia kamery są kopią ustawień z flagi, ale z ujęciem wymuszonym na **wysoki przelot** (`MenuShot::HighGlide`), gdy flaga jest wyłączona:
 
 ```cpp
@@ -180,7 +180,7 @@ struct NewGame {
 };
 ```
 
-(Plik: `src/game/GameState.hpp`.) **Poziom trudności nie jest jeszcze czytany**: `startNewGame` ma w komentarzu, że trzy poziomy nie mają liczb. `m_newGame.seed` zaczyna od `--seed` i podąża za każdym `regenerateMaze`, więc `Play` buduje znów ten labirynt, który jest w grze, także gdy ziarno zmieniono z panelu Maze.
+(Plik: `src/game/GameState.hpp`.) **Poziom trudności nie jest jeszcze czytany**: `startNewGame` ma w komentarzu, że trzy poziomy nie mają liczb. `m_newGame.seed` zaczyna od `--seed` i podąża za każdym `regenerateMaze`, więc `Play` buduje znów ten labirynt, który jest w grze, także gdy ziarno zmieniono z zakładki World / Maze.
 
 ### 5.3 `nextMode`
 
@@ -328,7 +328,7 @@ W `onRender` klawisze i mysz rundy (R, N, F, M, E, kliknięcie, obrót myszą) m
 
 Patrz "Uczciwie o tym, co sprawdzono" na początku: bramka (zgłoszona), zrzuty agenta (nie właściciela), lista właściciela otwarta.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
 Brak panelu o ekranach. Pole `hudVisible` w `DebugContext` mówi `DebugUI::draw`, czy rysować HUD:
 

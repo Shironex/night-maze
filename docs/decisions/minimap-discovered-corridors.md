@@ -44,7 +44,7 @@ Uwaga o zakresie: treścią decyzji właściciela jest jedno zdanie z części 2
 | ściany czytane z `Maze` w każdym wywołaniu, nic nie zapamiętane | wykonawczy | `discoverFrom` | ściana usunięta w środku rundy otwiera widok od następnego wywołania |
 | widok przechodzi przez bramę, otwartą i zamkniętą | wykonawczy | brama nie jest ścianą `Maze` | brama jest częścią świata rozgrywki, a reguła pyta tylko o ściany labiryntu |
 | rozmiar 0,28 wysokości framebuffera okna, margines 0,02 | wykonawczy | `MinimapSettings` | część wysokości, a nie piksele, żeby mapa zajmowała ten sam ułamek obrazu w każdym oknie i na Retina |
-| narożnik prawy dolny | wykonawczy | `MinimapCorner::BottomRight` | HUD stoi na górze pośrodku i rośnie w dół z podpowiedziami |
+| narożnik prawy dolny (**zmieniony 2026-10-06 na lewy dolny**, `MinimapCorner::BottomLeft`: decyzja właściciela, [`minimap-default-corner-bottom-left.md`](minimap-default-corner-bottom-left.md)) | wykonawczy, potem właściciel | `MinimapCorner::BottomRight` (do 2026-10-06) | HUD stoi na górze pośrodku i rośnie w dół z podpowiedziami. Prawy róg zajmuje od 2026-10-06 okno debug |
 | framebuffer mapy `GL_RGBA8`, bez głębi, rozmiaru kwadratu na ekranie | wykonawczy | `MinimapRenderer::drawMap` | kopiowanie piksel w piksel, bez skalowania. Kolejność listy zastępuje głębię |
 | przezroczystość 0,85 | wykonawczy | `MinimapSettings::opacity` | mapa zasłania większość sceny, ale scena nadal prześwituje |
 | północ u góry, mapa się nie obraca | wykonawczy | `minimapProjection` | schemat ma stały układ, strzałka gracza się obraca |

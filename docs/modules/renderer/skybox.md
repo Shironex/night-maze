@@ -1,11 +1,11 @@
 # Moduł renderer: skybox, nocne niebo z tekstury sześciennej
 
 Kamień milowy: M6, część pierwsza (skybox). Teren z mapy wysokości i trawa z shadera geometrii, czyli pozostałe dwie części M6, nie należą do tego dokumentu. Temat wykładu: 8 (Tekstura sześcienna).
-Kod: klasa [`src/game/Skybox.hpp`](../../../src/game/Skybox.hpp) i [`Skybox.cpp`](../../../src/game/Skybox.cpp), shadery [`assets/shaders/skybox.vert`](../../../assets/shaders/skybox.vert) i [`skybox.frag`](../../../assets/shaders/skybox.frag), tekstura sześcienna [`src/gfx/Cubemap.hpp`](../../../src/gfx/Cubemap.hpp) i [`Cubemap.cpp`](../../../src/gfx/Cubemap.cpp), sześć obrazów w [`assets/skybox/`](../../../assets/skybox/), skrypt [`tools/blender/make_skybox.py`](../../../tools/blender/make_skybox.py), wywołanie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`onRender`), kontrolki w [`src/debug/panels/RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp), testy w [`tests/SkyboxTests.cpp`](../../../tests/SkyboxTests.cpp).
+Kod: klasa [`src/game/Skybox.hpp`](../../../src/game/Skybox.hpp) i [`Skybox.cpp`](../../../src/game/Skybox.cpp), shadery [`assets/shaders/skybox.vert`](../../../assets/shaders/skybox.vert) i [`skybox.frag`](../../../assets/shaders/skybox.frag), tekstura sześcienna [`src/gfx/Cubemap.hpp`](../../../src/gfx/Cubemap.hpp) i [`Cubemap.cpp`](../../../src/gfx/Cubemap.cpp), sześć obrazów w [`assets/skybox/`](../../../assets/skybox/), skrypt [`tools/blender/make_skybox.py`](../../../tools/blender/make_skybox.py), wywołanie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`onRender`), kontrolki w [`src/debug/categories/RenderCategory.cpp`](../../../src/debug/categories/RenderCategory.cpp), testy w [`tests/SkyboxTests.cpp`](../../../tests/SkyboxTests.cpp).
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasa nazywa się `game::Skybox` i leży w `src/game/`, wyjaśniają [`README.md`](README.md) i notatka [`../../decisions/skybox-in-game-layer.md`](../../decisions/skybox-in-game-layer.md). Dokument zakłada znajomość tekstur 2D ([`../gfx/textures.md`](../gfx/textures.md): teksele, filtry, zawijanie, jednostki teksturujące, obiekt samplera), macierzy widoku i rzutowania oraz testu głębi ([`../scene/camera.md`](../scene/camera.md)) i loadera obrazów ([`../assets/images.md`](../assets/images.md)). Samą klasę `gfx::Cubemap` linia po linii opisuje [`../gfx/cubemap.md`](../gfx/cubemap.md): tutaj jest teoria tekstury sześciennej i wszystko, co robi z nią gra.
 
-**Stan na dziś:** nad ścianami labiryntu i nad wzgórzami wokół niego widać nocne niebo: ciemnogranatowe tło jaśniejsze przy horyzoncie, gwiazdy, pas Drogi Mlecznej i tarczę księżyca z poświatą. Niebo jest teksturą sześcienną (cube map) z sześciu plików PNG 1024 x 1024, rysowaną przez `game::Skybox` jako ostatnie wywołanie rysujące sceny. Włącza je i wyłącza pole wyboru `Skybox` w panelu Renderer (startuje zaznaczone), jasność zmienia suwak `Sky brightness`. Od tej części programów shaderów było pięć: doszedł `skybox`. Druga część M6 dodała `grass` (trawa, [`grass-geometry.md`](grass-geometry.md)), pierwsza część M7 `composite` i `preview`, druga `bright` i `blur` (bloom), a czwarta (cienie księżyca, 2026-10-05) `shadow_depth`, więc po czwartej części M7 było ich jedenaście, a po M8, części 1 jest czternaście (doszły `minimap`, `minimap_overlay` i `reflect`). Niebo nie rzuca cienia i żadnego nie przyjmuje: nie jest rysowane do mapy cieni, a `skybox.frag` jej nie czyta. Czwarta część M7 nie zmieniła w kodzie nieba ani jednej linii, ale kierunek cieni ścian zależy od tych samych dwóch kątów co miejsce tarczy księżyca (sekcja 2.9). Trzecia część M7 (mgła i winieta) nie dodała programu ani linii w kodzie nieba, ale zmieniła jego wygląd przy ustawieniach startowych: przy horyzoncie niebo jest zamglone (ma kolor mgły), wyżej księżyc i gwiazdy zostają czyste, a winieta przyciemnia niebo ku rogom ekranu tak samo jak wszystko inne. Tak wynika ze wzoru mgły: nieba z mgłą nikt jeszcze nie oglądał ani nie zgłosił (sekcja 2.7, ostatnie dwa akapity).
+**Stan na dziś:** nad ścianami labiryntu i nad wzgórzami wokół niego widać nocne niebo: ciemnogranatowe tło jaśniejsze przy horyzoncie, gwiazdy, pas Drogi Mlecznej i tarczę księżyca z poświatą. Niebo jest teksturą sześcienną (cube map) z sześciu plików PNG 1024 x 1024, rysowaną przez `game::Skybox` jako ostatnie wywołanie rysujące sceny. Włącza je i wyłącza pole wyboru `Skybox` w kategorii Render (startuje zaznaczone), jasność zmienia suwak `Sky brightness`. Od tej części programów shaderów było pięć: doszedł `skybox`. Druga część M6 dodała `grass` (trawa, [`grass-geometry.md`](grass-geometry.md)), pierwsza część M7 `composite` i `preview`, druga `bright` i `blur` (bloom), a czwarta (cienie księżyca, 2026-10-05) `shadow_depth`, więc po czwartej części M7 było ich jedenaście, a po M8, części 1 jest czternaście (doszły `minimap`, `minimap_overlay` i `reflect`). Niebo nie rzuca cienia i żadnego nie przyjmuje: nie jest rysowane do mapy cieni, a `skybox.frag` jej nie czyta. Czwarta część M7 nie zmieniła w kodzie nieba ani jednej linii, ale kierunek cieni ścian zależy od tych samych dwóch kątów co miejsce tarczy księżyca (sekcja 2.9). Trzecia część M7 (mgła i winieta) nie dodała programu ani linii w kodzie nieba, ale zmieniła jego wygląd przy ustawieniach startowych: przy horyzoncie niebo jest zamglone (ma kolor mgły), wyżej księżyc i gwiazdy zostają czyste, a winieta przyciemnia niebo ku rogom ekranu tak samo jak wszystko inne. Tak wynika ze wzoru mgły: nieba z mgłą nikt jeszcze nie oglądał ani nie zgłosił (sekcja 2.7, ostatnie dwa akapity).
 
 **Co zmieniła pierwsza część M7 (2026-10-05).** Niebo, jak cała scena, jest rysowane do bufora HDR, a nie prosto do okna: po nim idą jeszcze podglądy załączników i przebieg składający ([`post-process.md`](post-process.md)). Tekstura sześcienna jest teraz teksturą sRGB (`gfx::ColorSpace::Srgb`, format `GL_SRGB8`), więc shader dostaje wartości liniowe ([`../gfx/color-space.md`](../gfx/color-space.md)). Domyślna jasność wzrosła z 1,0 do 2,2, a zakres suwaka z 3 do 6. Kolor czyszczenia zmienił się z `(0.01, 0.015, 0.04)` na `(0.022, 0.033, 0.088)` i jest przeliczany na liniowy. Widok diagnostyczny nieba przechodzi przez `srgbToLinear`. Obrazy w `assets/skybox/` i ich liczby w skrypcie się nie zmieniły.
 
@@ -283,7 +283,7 @@ W grze są dwa księżyce i trzeba umieć je rozdzielić:
 |---|---|---|
 | czym jest | światłem kierunkowym w bloku `LightBlock` ([`../scene/lights.md`](../scene/lights.md)) | kilkuset jasnymi pikselami w pliku `py.png` |
 | skąd kierunek | `moonYawDegrees = 25` i `moonPitchDegrees = -50` w `game::LightingSettings` | `MOON_LIGHT_YAW_DEGREES = 25.0` i `MOON_LIGHT_PITCH_DEGREES = -50.0` w `make_skybox.py` |
-| da się zmienić w grze | tak, suwaki `Moon yaw` i `Moon pitch` w panelu Lights | **nie**: obraz jest stały |
+| da się zmienić w grze | tak, suwaki `Moon yaw` i `Moon pitch` w zakładce Light / Lights | **nie**: obraz jest stały |
 
 Dwa kąty opisują kierunek, w którym światło **leci**. Funkcja `scene::directionFromAngles` (i jej kopia w skrypcie, `direction_from_angles`) zamienia je na wektor:
 
@@ -339,7 +339,7 @@ Wywołania w kolejności, raz na klatkę, po narysowaniu labiryntu, kryształów
 | 1 | `glUseProgram(skybox)` | `shader.use()` | uniformy należą do programu w użyciu |
 | 2 | `glUniformMatrix4fv` dla `uView` i `uProjection` | `setMat4` | te same dwie macierze co dla labiryntu. Macierz widoku idzie **cała**: przesunięcie usuwa shader |
 | 3 | `glUniform1f` dla `uBrightness` | `setFloat` | suwak `Sky brightness` |
-| 4 | `glUniform1i` dla `uViewMode` | `setInt` | tryb podglądu z panelu Assets |
+| 4 | `glUniform1i` dla `uViewMode` | `setInt` | tryb podglądu z kategorii Render |
 | 5 | `glUniform1i` dla `uSkybox`, wartość 0 | `setInt` | sampler dostaje numer jednostki teksturującej |
 | 6 | `glActiveTexture(GL_TEXTURE0)`, `glBindTexture(GL_TEXTURE_CUBE_MAP, id)`, `glBindSampler(0, sampler)` | `m_cubemap.bind(0)` | tekstura sześcienna i jej sampler na jednostce 0 |
 | 7 | `glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)` | wprost | filtrowanie przez krawędzie ścian |
@@ -535,7 +535,7 @@ Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Po tej cz�
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_skyboxShader`, `m_skybox`, `m_skyboxSettings`, akcesory `skyboxShader()` i `skyboxSettings()`, wywołanie w `onRender` po reszcie sceny (od M7 przed podglądami i przebiegiem składającym) |
 | [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | `SKYBOX_UNIFORM`, `SKYBOX_BRIGHTNESS_UNIFORM` |
 | [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp) | komentarz o sprzężeniu wartości domyślnych księżyca ze skryptem |
-| [`src/debug/panels/RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp), [`.hpp`](../../../src/debug/panels/RendererPanel.hpp), [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`src/debug/DebugUI.cpp`](../../../src/debug/DebugUI.cpp), [`src/debug/PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), [`src/main.cpp`](../../../src/main.cpp) | kontrolki nieba, dwa nowe pola kontekstu, piąty program na liście panelu Shaders, wyższy panel Renderer (sekcja 6) |
+| [`src/debug/categories/RenderCategory.cpp`](../../../src/debug/categories/RenderCategory.cpp), [`.hpp`](../../../src/debug/categories/RenderCategory.hpp), [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`src/debug/DebugUI.cpp`](../../../src/debug/DebugUI.cpp), `src/debug/PanelLayout.hpp` (plik usunięty 2026-10-06), [`src/main.cpp`](../../../src/main.cpp) | kontrolki nieba, dwa nowe pola kontekstu, piąty program na liście zakładki Diagnostics / Frame and shaders, wyższy panel Renderer (dziś kategoria Render, sekcja 6) |
 | [`tests/SkyboxTests.cpp`](../../../tests/SkyboxTests.cpp), [`tests/ImageLoaderTests.cpp`](../../../tests/ImageLoaderTests.cpp) | testy (sekcja 5.8) |
 
 W [`CMakeLists.txt`](../../../CMakeLists.txt) `Cubemap` należy do biblioteki `engine`, `Skybox` do programu `night_maze` (potrzebuje okna i kontekstu OpenGL, więc nie do biblioteki `game_logic`, którą linkują testy), a `SkyboxTests.cpp` do `night_maze_tests`.
@@ -557,7 +557,7 @@ struct SkyboxSettings {
 
 Wartość startowa `brightness` była do M6 równa 1,0. Pierwsza część M7 podniosła ją do 2,2 z powodu podanego w komentarzu: krzywa ACES mocno przyciemnia ciemne tony (wartość liniowa 0,01 wychodzi z niej jako 0,0038, [`post-process.md`](post-process.md), sekcja 2.6), a tło nocnego nieba to właśnie takie wartości. Mnożnik działa teraz na kolorze **liniowym**, więc 2,2 znaczy "2,2 raza więcej światła", a nie "2,2 raza większa liczba w pliku".
 
-Dwa pola i żadnej logiki: to struktura tego samego rodzaju co `LightingSettings` i `GameplaySettings`. Jest polem `NightMazeApp::m_skyboxSettings`, a panel Renderer dostaje do niej referencję i edytuje oba pola.
+Dwa pola i żadnej logiki: to struktura tego samego rodzaju co `LightingSettings` i `GameplaySettings`. Jest polem `NightMazeApp::m_skyboxSettings`, a kategoria Render dostaje do niej referencję i edytuje oba pola.
 
 ### 5.3 Dane: pliki, narożniki, trójkąty
 
@@ -715,7 +715,7 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
 | Linia | Znaczenie |
 |---|---|
 | `if (!m_cubemap.isValid() \|\| !shader.isValid()) return;` | bez obrazów albo bez programu nie ma nieba. Po nieudanym **przeładowaniu** shadera program zostaje ważny (poprzednia wersja), więc drugi warunek dotyczy tylko nieudanego pierwszego wczytania |
-| parametr `const gfx::Shader& shader` | `Skybox` nie posiada programu. Program jest polem `NightMazeApp`, jak cztery pozostałe, żeby panel Shaders mógł go przeładować tą samą drogą |
+| parametr `const gfx::Shader& shader` | `Skybox` nie posiada programu. Program jest polem `NightMazeApp`, jak cztery pozostałe, żeby zakładka Diagnostics / Frame and shaders mogła go przeładować tą samą drogą |
 | `shader.setMat4(VIEW_UNIFORM, view);` | macierz widoku **nieokrojona**. Decyzja, że przesunięcie znika, jest w jednym miejscu, w shaderze: wołający nie musi niczego przygotowywać i podaje te same dwie macierze co wszędzie |
 | `shader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(viewMode));` | liczby `game::ViewMode` są umową z `skybox.frag`, tak jak z `textured.frag` i z `grass.frag`. Komentarz przy wyliczeniu w `MazeRenderer.hpp` wymienia dziś wszystkie trzy pliki |
 | `shader.setInt(SKYBOX_UNIFORM, ...)` i `m_cubemap.bind(SKYBOX_TEXTURE_UNIT)` | dwa ogniwa tego samego łańcucha, z tą samą stałą: sampler wskazuje jednostkę, jednostka wskazuje teksturę |
@@ -726,7 +726,7 @@ void Skybox::draw(const gfx::Shader& shader, const glm::mat4& view, const glm::m
 
 ### 5.6 Miejsce w klatce: koniec sceny w `onRender`
 
-Do M6 niebo było ostatnią rzeczą w `onRender` i funkcja kończyła się zaraz po nim. Od pierwszej części M7 niebo jest ostatnim wywołaniem rysującym **sceny**: po nim `onRender` rysuje jeszcze podglądy załączników (gdy panel Framebuffers jest otwarty), od drugiej części M7 przebiegi bloomu, i przebieg składający, który przenosi obraz z bufora HDR do okna. Od trzeciej części M7 ten ostatni przebieg domieszkuje też mgłę i przyciemnia rogi, a niebo przechodzi przez oba efekty jak reszta sceny. Kolejność w nim: mgła, potem dodanie poświaty, ekspozycja, mapowanie tonów, winieta, kodowanie sRGB. Poświata jest liczona wcześniej, ze sceny bez mgły, i dodawana **po** mgle, więc poświata księżyca nie słabnie we mgle (notatka [`../../decisions/bloom-from-unfogged-scene.md`](../../decisions/bloom-from-unfogged-scene.md)). Te kroki opisuje [`post-process.md`](post-process.md), sekcje 2.8 i 5.7. Fragment z niebem:
+Do M6 niebo było ostatnią rzeczą w `onRender` i funkcja kończyła się zaraz po nim. Od pierwszej części M7 niebo jest ostatnim wywołaniem rysującym **sceny**: po nim `onRender` rysuje jeszcze podglądy załączników (gdy kategoria Post process jest na ekranie), od drugiej części M7 przebiegi bloomu, i przebieg składający, który przenosi obraz z bufora HDR do okna. Od trzeciej części M7 ten ostatni przebieg domieszkuje też mgłę i przyciemnia rogi, a niebo przechodzi przez oba efekty jak reszta sceny. Kolejność w nim: mgła, potem dodanie poświaty, ekspozycja, mapowanie tonów, winieta, kodowanie sRGB. Poświata jest liczona wcześniej, ze sceny bez mgły, i dodawana **po** mgle, więc poświata księżyca nie słabnie we mgle (notatka [`../../decisions/bloom-from-unfogged-scene.md`](../../decisions/bloom-from-unfogged-scene.md)). Te kroki opisuje [`post-process.md`](post-process.md), sekcje 2.8 i 5.7. Fragment z niebem:
 
 ```cpp
     drawMaze(view, projection);
@@ -764,7 +764,7 @@ Do M6 niebo było ostatnią rzeczą w `onRender` i funkcja kończyła się zaraz
 | komentarz nad `if` | mówi trzy rzeczy. Niebo jest na największej głębi i przechodzi test tylko tam, gdzie nic nie narysowano. Ściany i wzgórza są już w buforze głębi, więc karta **może** odrzucić zasłonięte fragmenty nieba przed uruchomieniem `skybox.frag` (wczesny test głębi, dozwolony tu, bo shader nie używa `discard` i nie zapisuje głębi). Obraz byłby ten sam przy niebie narysowanym wcześniej, a po niebie musiałoby stać tylko coś, co głębi nie zapisuje, na przykład efekt przezroczysty (sekcja 2.7) |
 | `if (m_skyboxSettings.enabled)` | cały przełącznik z PRD: jedno pole logiczne. Wyłączone niebo to brak jednego wywołania rysującego, a tłem jest znów kolor czyszczenia |
 | `view`, `projection` | te same zmienne, z którymi narysowane zostały teren, labirynt i trawa |
-| `m_viewMode` | tryb podglądu z panelu Assets. Niebo **nie** dostaje trybu oświetlenia: jest takie samo w `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong` |
+| `m_viewMode` | tryb podglądu z kategorii Render. Niebo **nie** dostaje trybu oświetlenia: jest takie samo w `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong` |
 
 Panele i HUD są rysowane później, w `main.cpp`, prosto do okna, na wierzchu obrazu, który przeniósł tam przebieg składający ([`../debug-ui.md`](../debug-ui.md)).
 
@@ -832,9 +832,11 @@ Czego testy **nie** sprawdzają:
 - **Nie zmierzone:** czas klatki z niebem i bez, zysk z rysowania na końcu, czas wczytania sześciu plików przy starcie, powtarzalność skryptu.
 - **macOS:** nic. Kompilator GLSL Apple nie widział jeszcze `skybox.vert` ani `skybox.frag`, a niebo na ekranie Retina nie było oglądane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Kontrolki nieba są w panelu **Renderer**, pod listą `Lighting`. PRD (sekcja 3) podaje dla tematu 8 pokaz "toggle skybox", a w sekcji 10 umieszcza w panelu Renderer "toggle każdego passu".
+**Stan na 2026-10-06.** Panel Renderer zastąpiło okno debugowania ([`../debug-ui.md`](../debug-ui.md)). Kontrolki nieba są w kategorii **Render**, w karcie **Scene**: `Lighting`, `Skybox`, `Sky brightness` (suwak od 0 do 6) i `Clear colour` (próbnik; dawniej `Clear color`), a kod jest w [`src/debug/categories/RenderCategory.cpp`](../../../src/debug/categories/RenderCategory.cpp). W tabeli kolumna `Panel` podaje dawny panel (`Renderer`, dziś ta karta). Dawny suwak `Sky brightness` nie miał `AlwaysClamp`, więc wartość wpisana po Ctrl i kliknięciu mogła wyjść poza zakres 0 do 6; suwaki nowego okna zawsze przycinają wartość do zakresu. Fragment kodu poniżej to panel sprzed zmiany; ostatni akapit przed sekcją 6.1 opisuje jego rozmiar i `imgui.ini`, które już nie obowiązują (okno ma stałe miejsce).
+
+Kontrolki nieba są w kategorii Render, pod listą `Lighting`. PRD (sekcja 3) podaje dla tematu 8 pokaz "toggle skybox", a w sekcji 10 umieszcza w kategorii Render "toggle każdego passu".
 
 ```cpp
 constexpr float MIN_SKY_BRIGHTNESS = 0.0F;
@@ -860,10 +862,10 @@ constexpr float MAX_SKY_BRIGHTNESS = 6.0F;
 
 Kontrolki, które zmieniają niebo:
 
-| Panel | Kontrolka | Co zmienia | Co widać |
+| Dawny panel (dziś Render, karta Scene) | Kontrolka | Co zmienia | Co widać |
 |---|---|---|---|
 | Renderer | pole `Skybox` | `m_skyboxSettings.enabled` | niebo pojawia się i znika. Bez niego tłem jest `Clear color` |
-| Renderer | suwak `Sky brightness` | `uBrightness` | jasność nieba. Co dzieje się z tarczą księżyca powyżej 1, zależy od krzywej w panelu Framebuffers: ACES ściska ją łagodnie, `None` przepala do bieli (liczby pod tabelą kolorów w sekcji 4.2) |
+| Renderer | suwak `Sky brightness` | `uBrightness` | jasność nieba. Co dzieje się z tarczą księżyca powyżej 1, zależy od krzywej w kategorii Post process: ACES ściska ją łagodnie, `None` przepala do bieli (liczby pod tabelą kolorów w sekcji 4.2) |
 | Renderer | `Clear color` | `m_clearColor` | **tylko przy odznaczonym `Skybox`**: z niebem żaden piksel nie zostaje w kolorze czyszczenia |
 | Assets | lista `View mode` | `uViewMode` | `Normals as colour` i `UVs as colour` zamieniają niebo w mapę kierunków (tabela kolorów w sekcji 4.2) |
 | Shaders | `Reload shaders` | przeładowanie czternastu programów (jedenastu do piątej części M7) | piąta linia panelu: `skybox.vert + skybox.frag: OK` (szósta, od drugiej części M6: `grass.vert + grass.geom + grass.frag: OK`, cztery następne, od M7: programy `composite`, `preview`, `bright` i `blur`, a jedenasta, od czwartej części M7: program głębi mapy cieni, `shadow_depth.vert + shadow_depth.frag`; dalej `minimap`, `minimap_overlay` i, od M8, części 1, czternasty, `reflect`) |
@@ -873,7 +875,7 @@ Kontrolki, które zmieniają niebo:
 | Lights | `Moon yaw`, `Moon pitch` | kierunek światła księżyca | światło na ścianach się zmienia, **tarcza na niebie nie** |
 | Camera | `Yaw`, `Pitch` | kierunek patrzenia | yaw 205 i pitch 50 ustawiają księżyc w środku ekranu |
 
-Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLayout.hpp` wzrosła z 230 do 284, a panel Lights pod nim zmalał z 466 do 412 i przewija się ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7). **Uwaga przed pokazem:** rozmiary paneli zapisane w starym pliku `imgui.ini` mają pierwszeństwo przed układem domyślnym. Panel Renderer o zapisanej wysokości 230 nie mieści nowych kontrolek: są pod dolną krawędzią i trzeba panel przewinąć albo powiększyć. Najprościej usunąć `imgui.ini` przed uruchomieniem.
+(Historia, do 2026-10-06.) Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLayout.hpp` wzrosła z 230 do 284, a panel Lights pod nim zmalał z 466 do 412 i przewijał się ([`../debug-ui.md`](../debug-ui.md)). **Uwaga przed pokazem:** rozmiary paneli zapisane w starym pliku `imgui.ini` mają pierwszeństwo przed układem domyślnym. Panel Renderer o zapisanej wysokości 230 nie mieścił nowych kontrolek. Od 2026-10-06 problem nie istnieje.
 
 ### 6.1 Scenariusz pokazu na obronie
 
@@ -881,10 +883,10 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
 
 1. **Przełącznik.** Staję na starcie i patrzę w górę nad ściany. Odznaczam `Skybox`: niebo znika, zostaje płaski granat. Zaznaczam z powrotem. Mówię: to jedno wywołanie rysujące, 12 trójkątów, i jedna tekstura z sześciu obrazów.
 2. **Niebo nie zbliża się.** Idę korytarzem i patrzę na gwiazdy: nie przesuwają się względem siebie ani względem horyzontu. Obracam kamerę: niebo obraca się w przeciwną stronę jak prawdziwe. Mówię: shader bierze z macierzy widoku obrót i wyrzuca przesunięcie (`mat4(mat3(uView))`).
-3. **Księżyc i światło.** W panelu Camera ustawiam yaw 205 i pitch 50: tarcza jest w środku ekranu. Mówię: światło księżyca leci w kierunku yaw 25, pitch -50, a tarcza jest namalowana w kierunku przeciwnym. Pokazuję ścianę oświetloną od tej samej strony.
-4. **Ograniczenie.** W panelu Lights przesuwam `Moon yaw`: światło na ścianach wędruje, tarcza stoi. Najeżdżam na pole `Skybox` i pokazuję podpowiedź. Mówię: obraz jest stały, to znana i zapisana decyzja.
+3. **Księżyc i światło.** W kategorii Player ustawiam yaw 205 i pitch 50: tarcza jest w środku ekranu. Mówię: światło księżyca leci w kierunku yaw 25, pitch -50, a tarcza jest namalowana w kierunku przeciwnym. Pokazuję ścianę oświetloną od tej samej strony.
+4. **Ograniczenie.** W zakładce Light / Lights przesuwam `Moon yaw`: światło na ścianach wędruje, tarcza stoi. Najeżdżam na pole `Skybox` i pokazuję podpowiedź. Mówię: obraz jest stały, to znana i zapisana decyzja.
 5. **Szwy.** Patrzę kolejno w cztery narożniki nieba (yaw 45, 135, 225, 315 przy pitch około 35) i prosto w górę. Krawędzi sześcianu nie widać. Mówię: skrypt liczy każdy piksel z kierunku, sampler ma `GL_CLAMP_TO_EDGE`, a `GL_TEXTURE_CUBE_MAP_SEAMLESS` pozwala filtrowi mieszać przez krawędź.
-6. **Kierunek jako kolor.** Panel Assets, `View mode`: `Normals as colour`. Niebo staje się gładkim gradientem. Obracam się: w stronę +X jest czerwonawe, w górę zielonkawe. Mówię: to jest współrzędna tekstury nieba, czyli kierunek, a ściany pokazują w tym samym kodowaniu swoje normalne.
+6. **Kierunek jako kolor.** Kategoria Render, `View mode`: `Normals as colour`. Niebo staje się gładkim gradientem. Obracam się: w stronę +X jest czerwonawe, w górę zielonkawe. Mówię: to jest współrzędna tekstury nieba, czyli kierunek, a ściany pokazują w tym samym kodowaniu swoje normalne.
 7. **Głębia.** Pokazuję w `skybox.vert` linię `gl_Position = position.xyww;` i w `Skybox.cpp` linię `glDepthFunc(GL_LEQUAL)`. Mówię: głębia nieba to dokładnie 1,0, tyle co po `glClear`, więc test "mniejsze" by je odrzucił, a "mniejsze albo równe" przepuszcza tylko tam, gdzie nic nie narysowano.
 8. **Na żywo.** W `skybox.frag` zmieniam `sky * uBrightness` na `sky.bgr * uBrightness`, kopiuję assety (na Windowsie `cmake --build --preset debug --target copy_assets`) i klikam `Reload shaders`: niebo zmienia odcień bez restartu. Wycofuję zmianę.
 
@@ -903,12 +905,12 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
 11. **Kolejność względem nieba.** Obiekt nieprzezroczysty narysowany po niebie wygląda poprawnie: niebo zostawia głębię 1,0, więc zwykły test głębi przepuszcza wszystko, co bliższe. Kłopot jest z obiektami przezroczystymi rysowanymi **przed** niebem: te, które nie zapisują głębi, niebo zamaluje, a przez te, które ją zapisują, będzie prześwitywał kolor czyszczenia zamiast nieba. Przezroczyste rysuje się po niebie (sekcja 2.7). Komentarz w `onRender` mówi dziś o obu przypadkach: nieprzezroczyste porządkuje test głębi, a po niebie musiałoby przyjść tylko to, co głębi nie zapisuje. Dziś w grze nie ma nic przezroczystego: trawa jest nieprzezroczysta i zapisuje głębię, więc stoi przed niebem.
 12. **Jasność powyżej 1.** Do M6 framebuffer okna obcinał wartości do 1 i tarcza księżyca przepalała się od jasności około 1,04. Od M7 scena trafia do bufora HDR i wartości powyżej 1 są zachowane, a o wyglądzie decyduje krzywa mapowania tonów. Przy `Tone mapping: None` obcięcie wraca: tarcza jest płaską białą plamą już przy domyślnej jasności 2,2. To nie błąd shadera nieba, tylko własność tej krzywej.
 13. **Niebo jako tekstura sRGB.** Do M6 obrazy nieba były używane bez korekcji gamma (decyzja [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)). Od M7 tekstura sześcienna jest sRGB, a klatka jest kodowana na końcu. Liczby w skrypcie zostały te same i nadal są liczbami sRGB, dobranymi na oko dla ekranu. Pomyłka w drugą stronę (`ColorSpace::Linear` dla nieba) dałaby niebo wyblakłe i za jasne: bajty zostałyby zakodowane na końcu klatki bez wcześniejszego zdekodowania. Wyglądu nieba po tej zmianie nikt nie porównał ręcznie z poprzednim.
-14. **Stary `imgui.ini`.** Zapisana wysokość panelu Renderer (230) chowa pole `Skybox` i suwak pod krawędzią panelu. Wygląda to tak, jakby kontrolek nie było.
+14. **Stary `imgui.ini`.** Zapisana wysokość kategorii Render (230) chowa pole `Skybox` i suwak pod krawędzią panelu. Wygląda to tak, jakby kontrolek nie było.
 15. **Ręczna poprawka w PNG.** Sześć plików jest wynikiem skryptu. Poprawka w edytorze graficznym zniknie przy następnym uruchomieniu `make_skybox.py` i prawie na pewno zrobi szew, bo zmieni jedną stronę krawędzi.
 16. **Zmiana domyślnego kierunku księżyca.** Dwie liczby są w dwóch plikach, w C++ i w Pythonie. Test wykrywa niezgodność dopiero powyżej około 2 stopni (sekcja 2.9).
-17. **Księżyc nisko, tarcza wysoko.** Suwak `Moon pitch` w panelu Lights ma zakres od -90 do -5 stopni (światło zawsze leci w dół). Przy -5 światło pada prawie poziomo, jak od księżyca tuż nad horyzontem, a namalowana tarcza stoi nadal 50 stopni nad nim.
+17. **Księżyc nisko, tarcza wysoko.** Suwak `Moon pitch` w zakładce Light / Lights ma zakres od -90 do -5 stopni (światło zawsze leci w dół). Przy -5 światło pada prawie poziomo, jak od księżyca tuż nad horyzontem, a namalowana tarcza stoi nadal 50 stopni nad nim.
 18. **macOS, niesprawdzone.** Shaderów nie kompilował jeszcze kompilator GLSL Apple, a na ekranie Retina teksel nieba zajmuje ponad dwa piksele ekranu.
-19. **"Niebo jest zamglone przy horyzoncie, czyli mgła ma kod dla nieba".** Nie ma. Od trzeciej części M7 mgła liczy piksel nieba jak każdy inny: głębia 1,0 daje punkt na dalekiej płaszczyźnie, a o wyniku decyduje jego wysokość (sekcja 2.7). Dwa skutki, które łatwo wziąć za błąd: suwak `Height falloff` ustawiony na 0 zakrywa mgłą całe niebo razem z tarczą księżyca (zostaje po niej rozmyta poświata bloomu, bo ta jest liczona ze sceny bez mgły i dodawana po mgle: to wynika z kolejności kroków, nie z obserwacji), a zmiana `Far plane` w panelu Camera przesuwa punkt, więc zmienia też pas zamglenia na niebie (wynika ze wzoru, nikt tego nie oglądał).
+19. **"Niebo jest zamglone przy horyzoncie, czyli mgła ma kod dla nieba".** Nie ma. Od trzeciej części M7 mgła liczy piksel nieba jak każdy inny: głębia 1,0 daje punkt na dalekiej płaszczyźnie, a o wyniku decyduje jego wysokość (sekcja 2.7). Dwa skutki, które łatwo wziąć za błąd: suwak `Height falloff` ustawiony na 0 zakrywa mgłą całe niebo razem z tarczą księżyca (zostaje po niej rozmyta poświata bloomu, bo ta jest liczona ze sceny bez mgły i dodawana po mgle: to wynika z kolejności kroków, nie z obserwacji), a zmiana `Far plane` w kategorii Player przesuwa punkt, więc zmienia też pas zamglenia na niebie (wynika ze wzoru, nikt tego nie oglądał).
 
 ## 8. Ćwiczenia
 
@@ -989,7 +991,7 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
 20. **Gdzie jest namalowany księżyc i skąd skrypt to wie?**
     W kierunku przeciwnym do kierunku światła księżyca: `-directionFromAngles(25, -50)`, czyli `(-0,272, 0,766, 0,583)`, na ścianie +Y. Skrypt ma kopie dwóch wartości domyślnych z `game::LightingSettings`.
 
-21. **Co się stanie z tarczą, gdy przesunę `Moon yaw` w panelu Lights?**
+21. **Co się stanie z tarczą, gdy przesunę `Moon yaw` w zakładce Light / Lights?**
     Nic. Światło na ścianach się zmieni, a tarcza zostanie, bo jest częścią stałego obrazu. To znane ograniczenie, opisane w podpowiedzi przy polu `Skybox` i w notatce o decyzji.
 
 22. **Jak test wykrywa ścianę wczytaną do góry nogami?**
@@ -1013,7 +1015,7 @@ Panel Renderer urósł o dwa wiersze, więc jego wysokość startowa w `PanelLay
 - Specyfikacja OpenGL 4.1 Core (<https://registry.khronos.org/OpenGL/specs/gl/glspec41.core.pdf>): część o teksturach sześciennych, tabela "Selection of cube map images" i część "Seamless Cube Map Filtering".
 - Khronos OpenGL Wiki, "Cubemap Texture" (<https://www.khronos.org/opengl/wiki/Cubemap_Texture>): orientacja ścian, filtrowanie bez szwów. "Early Fragment Test" (<https://www.khronos.org/opengl/wiki/Early_Fragment_Test>): kiedy test głębi może wyprzedzić shader fragmentów.
 - docs.gl: `glTexImage2D` (<https://docs.gl/gl4/glTexImage2D>, cele `GL_TEXTURE_CUBE_MAP_POSITIVE_X` i następne), `glDepthFunc`, `glDepthMask`, `glSamplerParameter`, `texture` dla `samplerCube` (<https://docs.gl/sl4/texture>).
-- Dokumenty w tym repozytorium: [`../gfx/cubemap.md`](../gfx/cubemap.md) (klasa `Cubemap` linia po linii), [`../gfx/textures.md`](../gfx/textures.md) (tekstury 2D, jednostki, obiekt samplera), [`../assets/images.md`](../assets/images.md) (`RowOrder`), [`../scene/camera.md`](../scene/camera.md) (macierz widoku, rzutowanie, głębia), [`../scene/lights.md`](../scene/lights.md) (`directionFromAngles`, światło księżyca), [`../game/flashlight.md`](../game/flashlight.md) (`LightingSettings`), [`../debug-ui.md`](../debug-ui.md) (panel Renderer, układ paneli), [`../../guides/blender.md`](../../guides/blender.md) (uruchamianie skryptów), [`README.md`](README.md) (dlaczego ten katalog).
+- Dokumenty w tym repozytorium: [`../gfx/cubemap.md`](../gfx/cubemap.md) (klasa `Cubemap` linia po linii), [`../gfx/textures.md`](../gfx/textures.md) (tekstury 2D, jednostki, obiekt samplera), [`../assets/images.md`](../assets/images.md) (`RowOrder`), [`../scene/camera.md`](../scene/camera.md) (macierz widoku, rzutowanie, głębia), [`../scene/lights.md`](../scene/lights.md) (`directionFromAngles`, światło księżyca), [`../game/flashlight.md`](../game/flashlight.md) (`LightingSettings`), [`../debug-ui.md`](../debug-ui.md) (kategoria Render, układ paneli), [`../../guides/blender.md`](../../guides/blender.md) (uruchamianie skryptów), [`README.md`](README.md) (dlaczego ten katalog).
 - Notatki o decyzjach: [`../../decisions/skybox-in-game-layer.md`](../../decisions/skybox-in-game-layer.md), [`../../decisions/painted-moon-fixed-direction.md`](../../decisions/painted-moon-fixed-direction.md), [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md) (zastąpiła [`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md)).
 - Dokumenty pierwszej części M7: [`post-process.md`](post-process.md) (bufor HDR, przebieg składający, krzywe), [`../gfx/color-space.md`](../gfx/color-space.md) (sRGB i wartości liniowe).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdział o teksturach, tekstury sześcienne).

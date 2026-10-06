@@ -1,5 +1,13 @@
 # Budowanie na macOS (Apple Silicon)
 
+> **Od 2026-10-06 trzynaście paneli to jedno okno debug** (kod z tego dnia na macOS nie był budowany: sekcja "Okno debug" niżej).
+> Nazwy w rodzaju "panel Renderer" albo "panel Lights" w tym dokumencie oznaczają miejsca w oknie debug (kategoria / zakładka /
+> karta), tabela jest w [`build-windows.md`](build-windows.md), sekcja 27.3. Okno startuje **ukryte**, więc przed każdym krokiem z
+> kontrolkami trzeba nacisnąć `~`. W punktach `[ ]` nazwy paneli są już zamienione na nowe miejsca, a kroki o zwijaniu paneli,
+> rzędach pasków tytułu i dokowaniu stałych paneli mają dopisek "bez odpowiednika w oknie debug". Punkty `[x]` i opisy pomiarów
+> zostają z nazwami z dnia pomiaru, żaden punkt nie został odhaczony ani odznaczony. Minimapa startuje od 2026-10-06 w lewym
+> dolnym rogu (była w prawym dolnym), a pasek HUD stoi zawsze przy górnej krawędzi.
+
 Przewodnik dla kamienia milowego M0. Polecenia budowania i uruchamiania z tego dokumentu
 zostały uruchomione na Macu na kodzie M0 i M1, w konfiguracji z tabeli niżej. **Kod M2 + M3
 (testy, labirynt, gracz, modele, tekstury, nowe panele) nie był na macOS ani budowany, ani
@@ -382,7 +390,7 @@ skompilowany pierwszy raz 2026-10-06, ale punktów poniżej nikt jeszcze nie prz
 - [ ] klasa `gfx::Texture2D` na sterowniku Apple: czy na liście rozszerzeń jest
       `GL_EXT_texture_filter_anisotropic`, jaką wartość ma `maxAnisotropy()` i czy
       konstruktor nie zostawia błędu w `glGetError`. Do sprawdzenia w grze: suwak
-      `Anisotropy` w panelu Assets pokazuje maksimum sterownika albo jest wyszarzony (lista
+      `Anisotropy` w oknie debug (Render / Textures and normals) pokazuje maksimum sterownika albo jest wyszarzony (lista
       "M2 + M3 na macOS" niżej)
 - [ ] powtórzyć pomiar pasów z [`../modules/gfx/textures.md`](../modules/gfx/textures.md),
       sekcja 5.9: czy poziom anizotropii ustawiony na obiekcie samplera zmienia obraz (na
@@ -475,7 +483,7 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 
 - [ ] **ścisły kompilator GLSL Apple** przyjmuje cztery pliki z M2 + M3: `textured.vert`,
       `textured.frag`, `color.vert`, `color.frag`. Po starcie w terminalu nie ma linii
-      `[error] Shader ...`, a panel Shaders pokazuje linie
+      `[error] Shader ...`, a okno debug (Diagnostics / Frame and shaders / Shaders) pokazuje linie
       `textured.vert + textured.frag: OK` i `color.vert + color.frag: OK` (pięć
       plików oświetlenia jest na liście M4 niżej, a uniform `uEmissive`, który doszedł w
       M5, na liście M5). Sterownik NVIDII na Windowsie przyjmuje je bez uwag, ale jest
@@ -485,21 +493,21 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 - [ ] **obiekty samplera** (`glGenSamplers`, `glSamplerParameteri`, `glBindSampler`, rdzeń
       OpenGL od 3.3): tekstury na ścianach powtarzają się (zawijanie `GL_REPEAT` ustawione
       na samplerze) i reagują na listę `Filter`. Backend ImGui wiąże na czas rysowania
-      paneli własny sampler: po klatce z otwartym panelem Assets tekstury w scenie nadal
+      paneli własny sampler: po klatce z otwartym oknem debug (Diagnostics / Assets) tekstury w scenie nadal
       mają wybrany filtr
 - [ ] **wyszukanie rozszerzenia anizotropii**: `gfx::Texture2D` szuka nazwy
       `GL_EXT_texture_filter_anisotropic` (albo `GL_ARB_texture_filter_anisotropic`) na
-      liście z `glGetStringi`. Zapisać, co pokazuje suwak `Anisotropy` w panelu Assets:
+      liście z `glGetStringi`. Zapisać, co pokazuje suwak `Anisotropy` w oknie debug (Render / Textures and normals):
       zakres od 1x do maksimum sterownika, albo suwak wyszarzony z napisem `Anisotropic
       filtering is not offered by this graphics driver.` Oba wyniki są poprawne. Błędem
       byłaby linia `[error]` z `GL_INVALID_ENUM`
-- [ ] **Retina a układ paneli**: panel Renderer pokazuje `Framebuffer` dwa razy większy niż
+- [ ] **Retina a układ paneli**: okno debug (Render / Scene) pokazuje `Framebuffer` dwa razy większy niż [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Miejsca startowe paneli
       (`src/debug/PanelLayout.hpp`) są w jednostkach okna i ułożone dla 1280 x 720, więc po
       usunięciu `imgui.ini` trzynaście paneli powinno stać tak samo jak na Windowsie i nie
-      zasłaniać się (panele Camera i Gameplay, pod nimi Terrain i Grass, a pod nimi Framebuffers, Shadows i Environment, zwinięte do pasków tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
+      zasłaniać się (panele Camera i Gameplay, pod nimi Terrain i Grass, a pod nimi Framebuffers, Shadows i Environment, zwinięte do pasków tytułu). Zapisać, czy plan w oknie debug (World / Maze) i podglądy tekstur w oknie debug (Diagnostics / Assets) mają
       poprawny rozmiar i ostrość
-- [ ] **budowanie motywu pod clang**: `src/debug/Theme.cpp` i `src/debug/PanelLayout.cpp`
+- [ ] **budowanie motywu pod clang**: `src/debug/Theme.cpp` i `src/debug/PanelLayout.cpp` [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       kompilują się z `-Wall -Wextra -Wpedantic` bez ostrzeżeń. Na Windowsie są zbudowane w
       MSVC, a dodatkowo dziewięć plików `.cpp` z `src/debug/` przeszło bez żadnej
       diagnostyki przez analizator składni clang z tymi trzema flagami (clang-tidy z
@@ -516,22 +524,22 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
       tekstury. Według źródeł ImGui 1.92 znaki są rysowane w gęstości framebuffera bez
       mojego kodu. Nikt tego nie oglądał
 - [ ] **skala paneli na Retinie**: panele mają taki sam rozmiar w punktach jak na Windowsie
-      przy 100% (panel Renderer szeroki na około jedną czwartą okna 1280 x 720), a nie dwa
+      przy 100% (okno debug (Render / Scene) szeroki na około jedną czwartą okna 1280 x 720), a nie dwa
       razy większy. Funkcja `ImGui_ImplGlfw_GetContentScaleForWindow` powinna zwrócić na
-      Macu 1 ([`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.4). Dwa razy
+      Macu 1 ([`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.12.4). Dwa razy
       za duże panele oznaczałyby, że to założenie jest fałszywe
 - [ ] **polskie litery w panelu**: uruchomić program z kopii katalogu `build/debug` w
       katalogu o nazwie z polskimi literami i najechać myszą na linię
-      `textured.vert + textured.frag: OK` w panelu Shaders. Oczekiwane: podpowiedź z dwiema
+      `textured.vert + textured.frag: OK` w oknie debug (Diagnostics / Frame and shaders / Shaders). Oczekiwane: podpowiedź z dwiema
       pełnymi ścieżkami i poprawnymi polskimi literami. Na
       Windowsie zmierzone jest tylko to, że czcionka te litery rysuje
 - [ ] **kolory motywu**: tło paneli granatowe i lekko przezroczyste, tekst jasny, tekst
-      błędu w panelu Shaders czytelny. Kontrast jest policzony z liczb, ale ekran Maca ma
+      błędu w oknie debug (Diagnostics / Frame and shaders / Shaders) czytelny. Kontrast jest policzony z liczb, ale ekran Maca ma
       inny profil kolorów niż monitor, na którym motyw był oglądany
 - [ ] **linie kształtów kolizji mają 1 piksel framebuffera**: szerokość linii zostaje domyślna,
       bo profil Core na macOS nie obsługuje grubszych. Na ekranie Retina to połowa punktu.
       Zapisać, czy żółte i zielone linie są czytelne (pozostałe kolory: lista M5 niżej)
-- [ ] **ten sam labirynt co na Windowsie, widziany w grze**: w panelu Maze ustawić `Width` 4,
+- [ ] **ten sam labirynt co na Windowsie, widziany w grze**: w oknie debug (World / Maze) ustawić `Width` 4,
       `Height` 4, `Seed` 1 i kliknąć `Regenerate`. Plan musi mieć ściany tak jak rysunek w
       teście `golden maze: 4 x 4 cells from seed 1 has exactly these walls` w
       [`tests/MazeGeneratorTests.cpp`](../../tests/MazeGeneratorTests.cpp):
@@ -552,7 +560,7 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
       (z rysunku: komórka startowa ma ścianę od wschodu i przejście na południe, więc `Yaw`
       wynosi 180). Sam test jednostkowy mierzy to samo bez okna, ten punkt sprawdza całą
       drogę od ziarna do ekranu
-- [ ] labirynt startowy (10 na 10, ziarno 1): zapisać `Yaw` z panelu Camera i porównać z
+- [ ] labirynt startowy (10 na 10, ziarno 1): zapisać `Yaw` z okna debug (Player / View) i porównać z
       Windowsem (tam 180 według autora kodu)
 
 **Test ręczny (ta sama lista co w [`build-windows.md`](build-windows.md), sekcja 12.2)**
@@ -567,14 +575,14 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       uruchomić `./build/debug/night_maze`
 - [ ] start: widok z wnętrza labiryntu, tekstury stoją prosto i nie są odbite lustrzanie,
       w terminalu nie ma linii `[error]`
-- [ ] okno 1280 x 720: trzynaście paneli nie zasłania się nawzajem (Renderer nad Lights po
+- [ ] okno 1280 x 720: trzynaście paneli nie zasłania się nawzajem (Renderer nad Lights po [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       lewej, Maze nad Assets po prawej, Collision i Shaders na dole między kolumnami,
       Camera i Gameplay zwinięte u góry, Terrain i Grass zwinięte w drugim rzędzie pod
       nimi, Framebuffers w trzecim, Shadows w czwartym i Environment w piątym). Zapisać, czy panele Renderer,
       Lights, Maze, Collision i
-      Shaders pokazują całą zawartość bez przewijania: nazwa karty Apple w panelu Renderer
+      Shaders pokazują całą zawartość bez przewijania: nazwa karty Apple w oknie debug (Render / Scene)
       ma inną długość niż na Windowsie, a wysokości paneli są dobrane do zawartości
-- [ ] panel Camera (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
+- [ ] okno debug (Player / Position) (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       `Pitch` 0, `Walk speed` 3.0, `Sprint speed` 5.5, `Fly speed` 6.0
 - [ ] panele Maze i Collision: `In play: 10 x 10 cells, seed 1`, `Walls: 121, pillars: 121`,
       `Crystals: 13, exit in cell (6, 5)`, `Boxes: 121 walls, 121 pillars, 1 gate`,
@@ -585,10 +593,10 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
 - [ ] gracz przytulony do długiej ściany nie zahacza o słupki stojące co 2 m
 - [ ] narożnik wewnętrzny zatrzymuje, narożnik zewnętrzny daje się obejść bez zacięcia
 - [ ] nie da się wyjść poza labirynt
-- [ ] klawisz N: `Mode: noclip (free flight)`, pole `Noclip (key N)` w panelu Collision jest
+- [ ] klawisz N: `Mode: noclip (free flight)`, pole `Noclip (key N)` w oknie debug (Player / Position) jest
       zaznaczone, spacja wznosi, lewy Shift opuszcza, W leci wzdłuż kierunku patrzenia przez
       ściany
-- [ ] widok z góry w trybie noclip zgadza się z planem w panelu Maze: ściany, kryształy
+- [ ] widok z góry w trybie noclip zgadza się z planem w oknie debug (World / Maze): ściany, kryształy
       tam, gdzie plan ma kropki, i brama przy komórce z zielonym prostokątem
 - [ ] drugi raz N w powietrzu: gracz od razu stoi na podłodze
 - [ ] `Draw collision shapes`: żółte linie na ścianach i słupkach, zielone pudełko gracza
@@ -597,15 +605,15 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       1, 0, 1, `Pitch` 0), nowa runda na pasku HUD, a tryb noclip, prędkości, tryb widoku i
       rysowanie kształtów kolizji zostają bez zmian
 - [ ] `Random seed`: nowa liczba w polu `Seed` i od razu nowy labirynt
-- [ ] panel Assets, `View mode`: `Normals as colour` (podłoże w odcieniach jasnej zieleni, ściany w
+- [ ] okno debug (Render / Textures and normals), `View mode`: `Normals as colour` (podłoże w odcieniach jasnej zieleni, ściany w
       kolorach zależnych od kierunku, a przy zaznaczonym polu `Normal mapping` i trybie
       `Lighting` innym niż `Gouraud` z rysunkiem fug z map normalnych), `UVs as colour` (czerwono-zielone powtarzające się
       przejścia), `Textured` przywraca obraz
-- [ ] panel Assets, `Filter`: `Nearest` (kwadratowe teksele z bliska, migotanie w oddali),
+- [ ] okno debug (Render / Textures and normals), `Filter`: `Nearest` (kwadratowe teksele z bliska, migotanie w oddali),
       `Bilinear` (gładko z bliska, migotanie w oddali), `Trilinear` (spokojnie w oddali)
-- [ ] panel Assets, `Anisotropy` (jeśli dostępna): większa wartość wyostrza podłoże widziane
+- [ ] okno debug (Render / Textures and normals), `Anisotropy` (jeśli dostępna): większa wartość wyostrza podłoże widziane
       pod płaskim kątem
-- [ ] podglądy tekstur w panelu Assets stoją prosto i nie reagują na filtr
+- [ ] podglądy tekstur w oknie debug (Render / Textures and normals) stoją prosto i nie reagują na filtr
 - [ ] `Reload shaders` po zmianie w `assets/shaders/textured.frag` (na przykład
       `fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive) * vec3(1.0, 0.5, 0.5), 1.0);`),
       przy `Lighting`
@@ -620,7 +628,7 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       programu jest dowiązaniem), uruchomić. Oczekiwane: ściany i słupki bez rysunku kamienia
       (białe w trybie `Unlit`, w kolorze padającego światła w trybach z oświetleniem, przy
       `Phong` i `Blinn-Phong` nadal z reliefem fug, bo mapa normalnych wczytuje się osobno), jedna
-      linia `[error]`, w panelu Assets `no texture (white)` i sekcja `Failed to load`. **Przywrócić
+      linia `[error]`, w oknie debug (Diagnostics / Assets) `no texture (white)` i sekcja `Failed to load`. **Przywrócić
       nazwę pliku** i sprawdzić `git status`. (Do M5 ten punkt używał tekstury
       `floor_stone.png` płytki podłogi, której już nie ma.)
 - [ ] zmiana rozmiaru okna, tryb pełnoekranowy macOS i powrót: obraz wypełnia okno, ściany
@@ -696,7 +704,7 @@ punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macO
 
 - [ ] **kompilator GLSL Apple przyjmuje pięć nowych plików**: `lit.vert`, `lit.frag`,
       `gouraud.vert`, `gouraud.frag` i dołączany `common/lighting.glsl`. Po starcie w
-      terminalu nie ma linii `[error] Shader ...`, a panel Shaders pokazuje
+      terminalu nie ma linii `[error] Shader ...`, a okno debug (Diagnostics / Frame and shaders / Shaders) pokazuje
       `lit.vert + lit.frag: OK` i `gouraud.vert + gouraud.frag: OK`. Sterownik NVIDII
       przyjmuje je bez uwag, ale jest łagodniejszy. Miejsca, na które sterownik Apple
       mógłby zareagować: blok `layout(std140) uniform LightBlock` z tablicą struktur
@@ -720,7 +728,7 @@ punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macO
       i zamienia numer napisu źródłowego na nazwę pliku, co daje
       `ERROR: common/lighting.glsl:15: ...`. Ten format jest wpisany w kod i sprawdzony
       tylko testem jednostkowym (`nameSourceFiles puts the file name into an Apple error
-      line`). Zapisać dokładną linię, którą pokazuje panel Shaders przy błędzie z
+      line`). Zapisać dokładną linię, którą pokazuje okno debug (Diagnostics / Frame and shaders / Shaders) przy błędzie z
       poprzedniego punktu. Jeśli zaczyna się od numeru zamiast od nazwy pliku, sterownik
       pisze błędy inaczej, niż zakłada kod: wtedy numer objaśnia ostatnia linia komunikatu,
       `Source files: 0 = lit.frag, 1 = common/lighting.glsl`
@@ -745,14 +753,14 @@ punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macO
       clangd na Macu. Oczekiwane: nic się nie zmienia, bo makro czytają tylko nagłówki
       biblioteki C Microsoftu. Do sprawdzenia: `make tidy` nie zgłasza niczego, a edytor z
       clangd nie pokazuje nowych błędów w `src/scene/LightBlock.hpp`. Niesprawdzone
-- [ ] **Retina: rozmiar framebuffera a światła**: panel Renderer pokazuje `Framebuffer`
+- [ ] **Retina: rozmiar framebuffera a światła**: okno debug (Render / Scene) pokazuje `Framebuffer`
       dwa razy większy niż `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Tryby
       `Phong` i `Blinn-Phong` liczą światło dla każdego fragmentu, a fragmentów jest wtedy
       cztery razy więcej niż na Windowsie przy tym samym oknie. Zapisać FPS z panelu
       Renderer w czterech trybach listy `Lighting`
-- [ ] **Retina a układ paneli**: po usunięciu `imgui.ini` Renderer stoi nad Lights
+- [ ] **Retina a układ paneli**: po usunięciu `imgui.ini` Renderer stoi nad Lights [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       w lewej kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole, Camera i
-      Gameplay zwinięte u góry, nic się nie zasłania. Zapisać, czy panel Lights (przy zwiniętej
+      Gameplay zwinięte u góry, nic się nie zasłania. Zapisać, czy okno debug (Light / Lights) (przy zwiniętej
       grupie `Moon (directional)`) pokazuje całą zawartość bez przewijania: jego wysokość
       jest dobrana do zawartości zmierzonej na Windowsie
 - [ ] **źródła świateł na Retinie**: świecące kryształy (wysokie na 0,5 m) są czytelne z
@@ -766,16 +774,16 @@ Nazwy widżetów są zapisane tak jak w kodzie paneli.
 - [ ] przygotowanie: usunąć `imgui.ini` z katalogu, z którego startuje program, zbudować,
       uruchomić `./build/debug/night_maze`
 - [ ] start: nocna scena w trybie Blinn-Phong, w terminalu nie ma linii `[error]`
-- [ ] panel Renderer: lista `Lighting` z wybraną pozycją `Blinn-Phong`
-- [ ] panel Lights: edytor `Ambient`, grupy `Moon (directional)` (zwinięta),
+- [ ] okno debug (Render / Scene): lista `Lighting` z wybraną pozycją `Blinn-Phong`
+- [ ] okno debug (Light / Lights): edytor `Ambient`, grupy `Moon (directional)` (zwinięta), [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       `Flashlight (spot)`, `Point lights (crystals)` i `Highlight (specular)`, linia
       `Lit: 13 of 13 crystals (at most 16)`
-- [ ] panel Shaders: cztery linie zakończone `: OK` (`textured`, `color`, `lit`,
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): cztery linie zakończone `: OK` (`textured`, `color`, `lit`,
       `gouraud`), podpowiedź nad linią z dwiema pełnymi ścieżkami
-- [ ] rozwinięcie panelu Camera strzałką w pasku tytułu: otwiera się w dół, kończy się tuż
+- [ ] rozwinięcie okna debug (Player) strzałką w pasku tytułu: otwiera się w dół, kończy się tuż [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       nad dolnym rzędem paneli i nie zasłania żadnego innego panelu
 - [ ] klawisz F wyłącza i włącza latarkę, także przy wolnym kursorze, a pole
-      `Flashlight on (key F)` w panelu Lights zmienia się razem z nią. Kliknięcie pola robi
+      `Flashlight on (key F)` w oknie debug (Light / Lights) zmienia się razem z nią. Kliknięcie pola robi
       to samo
 - [ ] stożek latarki zostaje na środku obrazu podczas chodzenia do przodu, bokiem i biegu
 - [ ] `Lighting`, `Unlit`: labirynt równo jasny, kryształy jaśniejsze od ścian
@@ -793,15 +801,15 @@ Nazwy widżetów są zapisane tak jak w kodzie paneli.
 - [ ] Phong a Blinn-Phong pod płaskim kątem do światła punktowego albo księżyca: w
       `Blinn-Phong` połysk rozciąga się w smugę, w `Phong` jest mniejszy albo się urywa.
       Przywrócić `Strength` 0.25 i `Shininess` 32
-- [ ] `Moon yaw` i `Moon pitch` (rozwinąć grupę `Moon (directional)`, wyłączyć latarkę):
+- [ ] `Moon yaw` i `Moon pitch` (rozwinąć grupę `Moon (directional)`, wyłączyć latarkę): [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       na starcie (25 i -50) jasne są strony ścian patrzące w stronę -X i +Z, ciemne te
       patrzące w stronę +X i -Z. `Moon yaw` 205 zamienia je miejscami, `Moon pitch` -90
       zostawia światło księżyca tylko na podłodze. Od czwartej części M7 ściany rzucają w
       tym świetle cień: samą zależność od kierunku widać po odznaczeniu pola `Shadows` w
-      panelu Shadows
+      okna debug (Light / Shadows)
 - [ ] `Point radius`: większy promień powiększa kałuże światła, także za ścianami (światła
       punktowe nie rzucają cieni, rzuca je tylko księżyc). Policzyć z góry (klawisz N,
-      spacja) 13 kryształów i porównać z kropkami na planie w panelu Maze. `Point intensity`
+      spacja) 13 kryształów i porównać z kropkami na planie w oknie debug (World / Maze). `Point intensity`
       0 gasi kałuże światła, a kryształy świecą dalej
 - [ ] `Cone`: większe `outer` poszerza plamę, `inner` bliskie `outer` daje ostry brzeg,
       pola `inner` nie da się przeciągnąć powyżej `outer`. `Beam range`: mała wartość
@@ -814,7 +822,7 @@ Nazwy widżetów są zapisane tak jak w kodzie paneli.
       czerwone, komunikat pod nimi nazywa plik `common/lighting.glsl` i linię, obraz się
       nie zmienia. Potem `git checkout assets/shaders` i `Reload shaders`: wszystkie cztery
       linie kończą się napisem `: OK`
-- [ ] panel Assets, `View mode` równy `Normals as colour` i `UVs as colour` przy trybie
+- [ ] okno debug (Render / Textures and normals), `View mode` równy `Normals as colour` i `UVs as colour` przy trybie
       `Blinn-Phong`: labirynt, kryształy i bramę rysuje program `textured`, bez świateł i
       bez blasku kryształów. Widok normalnych pokazuje normalne używane przez wybrany tryb
       (lista map normalnych niżej)
@@ -890,7 +898,7 @@ punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macO
       normalnych podłoża to `ground_normal.png`: ubita ziemia z kamykami, bez fug)
 - [ ] światło z boku: po przejściu latarki na drugą stronę jasne i ciemne skosy zamieniają
       się miejscami
-- [ ] pole `Normal mapping` w panelu Assets: odznaczone daje płaskie ściany, zaznaczone
+- [ ] pole `Normal mapping` w oknie debug (Render / Textures and normals): odznaczone daje płaskie ściany, zaznaczone
       przywraca relief od razu. To samo przy `Phong`
 - [ ] `Lighting` równe `Gouraud` i `Unlit`: pole niczego nie zmienia w obrazie
 - [ ] `View mode` równe `Normals as colour`: rysunek fug widać przy `Unlit`, `Phong` i
@@ -902,7 +910,7 @@ punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macO
 - [ ] celowo brakująca mapa normalnych: zmienić nazwę
       `assets/textures/wall_stone_normal.png` (na Macu to plik w repozytorium, bo `assets`
       obok programu jest dowiązaniem), uruchomić. Oczekiwane: ściany i słupki z teksturą
-      koloru, ale płaskie pod latarką, jedna linia `[error]`, w panelu Assets `normal map: none
+      koloru, ale płaskie pod latarką, jedna linia `[error]`, w oknie debug (Diagnostics / Assets) `normal map: none
       (flat)` i sekcja `Failed to load`. (Do M5 ten punkt używał mapy płytki podłogi.) **Przywrócić nazwę pliku** i sprawdzić `git status`
 
 **Skrypty Blendera**
@@ -981,7 +989,7 @@ kryształów).
 **Ryzyka specyficzne dla macOS**
 
 - [ ] **kompilator GLSL Apple i uniform `uEmissive`**: po starcie w terminalu nie ma linii
-      `[error] Shader ...`, a panel Shaders pokazuje cztery linie zakończone `: OK`. Nowe
+      `[error] Shader ...`, a okno debug (Diagnostics / Frame and shaders / Shaders) pokazuje cztery linie zakończone `: OK`. Nowe
       w shaderach są tylko deklaracja `uniform vec3 uEmissive;` w `lit.frag`,
       `gouraud.frag` i `textured.frag` oraz wyrażenia `surface * (lighting.diffuse +
       uEmissive)` i `texel * uTint * (vec3(1.0) + uEmissive)`. W `textured.frag` uniform
@@ -999,7 +1007,7 @@ kryształów).
       i zapisać wynik. Jeśli żaden, panele zostają widoczne na stałe: rozgrywce to nie
       przeszkadza, bo pasek HUD jest rysowany niezależnie od paneli. To punkt do
       sprawdzenia, nie fakt: na Macu z taką klawiaturą nikt programu nie uruchomił
-- [ ] **rozmiar HUD na Retinie**: pasek HUD i karta wygranej mnożą swoje wymiary przez
+- [ ] **rozmiar HUD na Retinie**: pasek HUD i karta wygranej mnożą swoje wymiary przez [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       `ImGui::GetStyle().FontScaleDpi` (`src/debug/Hud.cpp`), czyli przez tę samą skalę,
       którą `applyTheme` dostaje z `ImGui_ImplGlfw_GetContentScaleForWindow`
       (`src/debug/DebugUI.cpp`). Jeśli ta funkcja zwraca na Macu 1 (założenie z listy
@@ -1013,7 +1021,7 @@ kryształów).
 - [ ] **tytuł karty wygranej**: napis `You escaped` jest rysowany tą samą czcionką w
       rozmiarze 1,8 raza większym (`ImGui::PushFont` z rozmiarem). Zapisać, czy na Retinie
       jest ostry, a nie rozciągnięty z mniejszej tekstury
-- [ ] **Retina a układ paneli** (w M5 ośmiu, dziś dwunastu): po usunięciu `imgui.ini`
+- [ ] **Retina a układ paneli** (w M5 ośmiu, dziś dwunastu): po usunięciu `imgui.ini` [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       Renderer stoi nad Lights w
       lewej kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole, a Camera i
       Gameplay są zwinięte u góry, między kolumnami, z paskami Terrain i Grass pod sobą,
@@ -1027,7 +1035,7 @@ kryształów).
       sprawdzić, że jego plama światła znika od razu i że żadne inne światło nie gaśnie
       ani nie zmienia miejsca. Po `Regenerate` z `Width` 4, `Height` 4, `Seed` 1 świecą
       dokładnie dwa
-- [ ] **FPS przy 13 kryształach na Retinie**: zapisać FPS z panelu Renderer w trybach
+- [ ] **FPS przy 13 kryształach na Retinie**: zapisać FPS z okna debug (Diagnostics / Frame and shaders / Frame) w trybach
       `Gouraud` i `Blinn-Phong` na starcie i w labiryncie 40 na 40 (16 świateł
       punktowych liczonych dla każdego fragmentu, a fragmentów jest cztery razy więcej
       niż na Windowsie przy tym samym oknie)
@@ -1041,14 +1049,14 @@ jej grupy, każda do odhaczenia po przejściu wszystkich punktów grupy z Window
 - [ ] start: nocna scena z kryształami, w terminalu nie ma linii `[error]`, są linie
       `[info] Loaded model: ...` dla pięciu modeli (w M5 sześciu) i
       `[info] Loaded texture: ...` dla ośmiu tekstur
-- [ ] układ paneli i pasek HUD: `Crystals`, `0 / 10`, `(of 13)`, czas `0:00`, pasek
-      baterii z `100%`. Panel Gameplay po rozwinięciu, linie `Crystals: 13, exit in cell
-      (6, 5)` w panelu Maze, `Boxes: 121 walls, 121 pillars, 1 gate` i `All boxes: 243,
-      pickup spheres: 13` w panelu Collision, `Lit: 13 of 13 crystals (at most 16)` w
-      panelu Lights
+- [ ] układ paneli i pasek HUD: `Crystals`, `0 / 10`, `(of 13)`, czas `0:00`, pasek [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
+      baterii z `100%`. Okno debug (Gameplay) po rozwinięciu, linie `Crystals: 13, exit in cell
+      (6, 5)` w oknie debug (World / Maze), `Boxes: 121 walls, 121 pillars, 1 gate` i `All boxes: 243,
+      pickup spheres: 13` w oknie debug (Diagnostics / Collision and picking), `Lit: 13 of 13 crystals (at most 16)` w
+      okna debug (Light / Lights)
 - [ ] kryształy i brama w obrazie: dwa kształty kryształów, kołysanie, obrót, blask i
       pulsowanie, drewniana brama przy komórce wyjścia
-- [ ] HUD przy ukrytych panelach (klawisz z punktu o klawiaturze wyżej). Od 2026-10-06 (decyzja właściciela) przy schowanych panelach pasek stoi przy górnej krawędzi okna, `HUD_TOP_OFFSET * scale` od niej (16 punktów razy `FontScaleDpi`, na Retinie więcej pikseli), a po przywróceniu paneli wraca pod rzędy pasków: sprawdzić oba położenia i przeskok przy klawiszu
+- [ ] HUD przy ukrytych panelach (klawisz z punktu o klawiaturze wyżej). Od 2026-10-06 (decyzja właściciela) przy schowanych panelach pasek stoi przy górnej krawędzi okna, `HUD_TOP_OFFSET * scale` od niej (16 punktów razy `FontScaleDpi`, na Retinie więcej pikseli), a po przywróceniu paneli wraca pod rzędy pasków: sprawdzić oba położenia i przeskok przy klawiszu [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
 - [ ] zbieranie kryształów: licznik, bateria, gasnące światło, pierścień na planie,
       suwaki `Recharge` i `Pickup radius`
 - [ ] bateria i latarka: zużycie, `Battery lifetime`, `Battery drains`, migotanie poniżej
@@ -1134,8 +1142,8 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
       około 2,7 piksela ekranu zamiast około 1,3. Zapisać, czy gwiazdy są akceptowalnie
       ostre, czy ściany trzeba wygenerować w rozmiarze 2048 (stała `SIZE` w
       `make_skybox.py`)
-- [ ] panel Renderer mieści pole `Skybox` i suwak `Sky brightness` bez paska przewijania
-      przy skali ekranu Maca, a panel Lights pod nim się przewija
+- [ ] okno debug (Render / Scene) mieści pole `Skybox` i suwak `Sky brightness` bez paska przewijania
+      przy skali ekranu Maca, a okno debug (Light / Lights) pod nim się przewija
 
 **Panel i przełączniki**
 
@@ -1194,13 +1202,13 @@ i przez testy ręczne.
       po czwartej 310 i 103751, a dziś, po piątej, 329 i 104306
 - [ ] **te same wysokości co na Windowsie.** Teren jest liczony na liczbach `float`
       z pliku `heightmap.png`, bez funkcji, których wynik zależy od biblioteki. Po starcie
-      panel Camera powinien pokazać `Player feet` z y równym 0.124, a panel Terrain linie
+      okno debug (Player / Position) powinien pokazać `Player feet` z y równym 0.124, a okno debug (World / Terrain and grass / Terrain) linie
       `Grid: 97 x 97 points, 0.50 m apart`, `Triangles: 18432` i
       `Height: 0.00 m to 3.37 m`
 - [ ] **ta sama trawa co na Windowsie.** Miejsca kępek losuje `std::mt19937` przez
       `game::randomBelow`, bez rozkładów z biblioteki standardowej
       ([`../decisions/deterministic-random.md`](../decisions/deterministic-random.md)),
-      więc dla ziarna 1 i gęstości 2,5 panel Grass powinien pokazać dokładnie
+      więc dla ziarna 1 i gęstości 2,5 okno debug (World / Terrain and grass / Grass) powinien pokazać dokładnie
       `Tufts: 1843 (5529 blades)`. Inna liczba oznacza, że libc++ zaokrągla albo losuje
       inaczej: zapisać ją. Kandydaci to `std::lround` i porównania liczb `float` na
       granicy 0,6 m od labiryntu
@@ -1222,9 +1230,9 @@ i przez testy ręczne.
       `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code`
       dla programu `grass` (blok świateł jest podłączany do trzech programów)
 - [ ] trawa jest widoczna przy ścianach, kołysze się i jest oświetlona latarką. Jeśli jej
-      nie ma, a błędu w terminalu też nie ma, sprawdzić panel Grass (`Tufts`) i panel
+      nie ma, a błędu w terminalu też nie ma, sprawdzić okno debug (World / Terrain and grass / Grass) (`Tufts`) i panel
       Shaders (linia `grass.vert + grass.geom + grass.frag`)
-- [ ] **wireframe**: zaznaczyć `Wireframe` w panelu Terrain. Kod woła
+- [ ] **wireframe**: zaznaczyć `Wireframe` w oknie debug (World / Terrain and grass / Terrain). Kod woła
       `glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)` przed rysowaniem terenu i `GL_FILL` po
       nim. W profilu Core dozwolone jest tylko `GL_FRONT_AND_BACK`, a linie mają szerokość
       1. Oczekiwane: teren jako siatka linii, reszta sceny wypełniona, żadnej linii
@@ -1243,7 +1251,7 @@ i przez testy ręczne.
       tylko testem jednostkowym i na sterowniku NVIDII, a dla pliku `.geom` na macOS
       wcale: jeśli w linii zostaje `0:N`, zapisać dokładny tekst
 - [ ] po błędzie trawa rysuje się dalej poprzednim programem, linia programu `grass` w
-      panelu Shaders jest czerwona, pozostałe dziesięć kończy się `OK`. Naprawić plik,
+      okna debug (Diagnostics / Frame and shaders / Shaders) jest czerwona, pozostałe dziesięć kończy się `OK`. Naprawić plik,
       `Reload shaders`: jedenaście razy `OK`
 - [ ] błąd linkowania zamiast kompilacji (na przykład zmienić w `grass.frag` nazwę wejścia
       `gBladeUv` na inną): komunikat zaczyna się od `Shader linking failed:` i wymienia
@@ -1252,7 +1260,7 @@ i przez testy ręczne.
 
 **Ekran Retina i panele**
 
-- [ ] po usunięciu `imgui.ini`: u góry, między kolumnami, są dziś cztery rzędy pasków
+- [ ] po usunięciu `imgui.ini`: u góry, między kolumnami, są dziś cztery rzędy pasków [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       tytułu (Camera i Gameplay, pod nimi Terrain i Grass, a niżej Framebuffers
       i Shadows: po tej części rzędy były dwa), a pasek HUD stoi pod ostatnim rzędem
       i na żaden nie nachodzi. Wysokość paska tytułu jest brana z ImGui
@@ -1267,7 +1275,7 @@ i przez testy ręczne.
 
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 16.2: chodzenie
       po podłożu, szczeliny pod ścianami, `Height scale` z 0 i 2.50, `Wireframe`, wzgórza
-      w trybie noclip, panel Grass (`Enabled`, `Density`, `Blade height`,
+      w trybie noclip, okno debug (World / Terrain and grass / Grass) (`Enabled`, `Density`, `Blade height`,
       `Wind strength`), trawa pod latarką i przy krysztale, cztery tryby `Lighting`,
       widoki diagnostyczne, `Reload shaders` (dziś przy jedenastu programach, na macOS
       bez kroku kopiowania assetów), nowe labirynty innych rozmiarów, kryształy i brama na
@@ -1377,14 +1385,14 @@ wypisane na początku sekcji 17.2 w [`build-windows.md`](build-windows.md).
 **Rozszerzenie `GL_EXT_texture_sRGB_decode`**
 
 - [ ] czy sterownik Apple je ma. Program tego nie wypisuje, więc sprawdza się skutek:
-      w panelu Assets podglądy tekstur z napisem `sRGB` (`wall_stone.png`, `gate_wood.png`,
+      w oknie debug (Diagnostics / Assets) podglądy tekstur z napisem `sRGB` (`wall_stone.png`, `gate_wood.png`,
       `crystal.png`, `ground.png`) powinny wyglądać jak pliki otwarte w Podglądzie. Jeśli są
       wyraźnie ciemniejsze, rozszerzenia nie ma: `debug::RawTextureSampler` wtedy nic nie
       robi. Zapisać wynik. To dotyczy tylko podglądów w panelu, scena jest od tego
       niezależna
 - [ ] podglądy map normalnych (napis `linear`) są jasnoniebieskie w obu przypadkach
 - [ ] rozszerzenie filtrowania anizotropowego jest wykrywane tak jak przedtem (suwak
-      `Anisotropy` w panelu Assets): od M7 pyta o nie wspólna funkcja `gfx::hasExtension`
+      `Anisotropy` w oknie debug (Render / Textures and normals)): od M7 pyta o nie wspólna funkcja `gfx::hasExtension`
 
 **Wygląd**
 
@@ -1404,17 +1412,17 @@ wypisane na początku sekcji 17.2 w [`build-windows.md`](build-windows.md).
 
 **Panel i przełączniki**
 
-- [ ] po usunięciu `imgui.ini`: cztery rzędy pasków tytułu u góry (Camera i Gameplay,
+- [ ] po usunięciu `imgui.ini`: cztery rzędy pasków tytułu u góry (Camera i Gameplay, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       Terrain i Grass, Framebuffers na szerokość obu, a od czwartej części M7 pod nim
       Shadows tej samej szerokości), pasek HUD pod czwartym rzędem, nic
       na siebie nie nachodzi przy skali ekranu Maca
-- [ ] rozwinięty panel Framebuffers mieści kontrolki, linie z rozmiarami i podglądy (dziś
+- [ ] rozwinięty okno debug (Post process / Previews) mieści kontrolki, linie z rozmiarami i podglądy (dziś [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       cztery) bez przewijania. Podglądy są we właściwą stronę (niebo u góry) i ostre na Retinie
       (mają 180 pikseli wysokości i są rozciągane przez ImGui, więc mogą być miękkie:
       zapisać)
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 17.2: wygląd
       sceny, `Exposure`, trzy pozycje `Tone mapping`, podglądy i `Depth range`, oba widoki
-      debugowania, panel Assets, zmiana rozmiaru, minimalizacja, `Reload shaders` (dziś przy
+      debugowania, okno debug (Diagnostics / Assets), zmiana rozmiaru, minimalizacja, `Reload shaders` (dziś przy
       jedenastu programach, na macOS bez kroku kopiowania assetów)
 
 ### M7, część 2 (bloom) na macOS: lista częściowo odhaczona
@@ -1464,7 +1472,7 @@ listę zaraz po tej.
 
 **Shadery bloomu na sterowniku Apple**
 
-- [ ] panel Shaders: jedenaście linii (po tej części dziesięć), wszystkie `OK`. Dwie nowe
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): jedenaście linii (po tej części dziesięć), wszystkie `OK`. Dwie nowe
       w tej części to
       `composite.vert + bright.frag: OK` i `composite.vert + blur.frag: OK`
 - [x] `blur.frag` kompiluje się: tablica uniformów o rozmiarze z wyrażenia stałego
@@ -1476,7 +1484,7 @@ listę zaraz po tej.
       elementów: poświata jest widoczna i ma normalną jasność. Poświata czarna albo
       ledwo widoczna przy poprawnym obrazie `Bright pass` znaczyłaby, że wagi nie dotarły
 - [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy włączonym bloomie, przy
-      otwartym panelu Framebuffers, po zmianie rozmiaru okna i po minimalizacji
+      otwartym okna debug (Post process), po zmianie rozmiaru okna i po minimalizacji
 
 **Cele `GL_RGBA16F` bez głębi i połowa rozdzielczości na ekranie Retina**
 
@@ -1512,8 +1520,8 @@ listę zaraz po tej.
       nic z tego nie wynika
 - [ ] to samo przy `Blur iterations` równym 10 (dwadzieścia przebiegów rozmycia):
       zapisać, czy liczba klatek zostaje powyżej 60
-- [ ] jeśli z bloomem liczba klatek spada poniżej 60: zapisać, przy ilu iteracjach wraca,
-      i czy pomaga zwinięcie panelu Framebuffers (cztery podglądy mniej)
+- [ ] jeśli z bloomem liczba klatek spada poniżej 60: zapisać, przy ilu iteracjach wraca, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
+      i czy pomaga zwinięcie okna debug (Post process / Previews) (cztery podglądy mniej)
 - [x] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
       ekranu: zapisać, czy tak jest, bo wtedy liczba z panelu Renderer nie mówi nic
       o zapasie
@@ -1575,7 +1583,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
 
 **Shader mgły i winiety na sterowniku Apple (GLSL 4.10 na OpenGL 4.1)**
 
-- [ ] panel Shaders: jedenaście linii (po tej części nadal dziesięć), wszystkie `OK`.
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): jedenaście linii (po tej części nadal dziesięć), wszystkie `OK`.
       Mgła i winieta są w linii
       `composite.vert + composite.frag: OK`
 - [x] `composite.frag` kompiluje się: funkcje `smoothstep`, `exp`, `mix`, `length`
@@ -1587,7 +1595,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
       Mgła, która zależy od koloru ścian zamiast od odległości, znaczyłaby, że `uDepth`
       czyta jednostkę 0, czyli obraz sceny
 - [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy włączonej mgle, przy
-      otwartym panelu Framebuffers, po zmianie rozmiaru okna i po minimalizacji. Po klatce
+      otwartym okna debug (Post process), po zmianie rozmiaru okna i po minimalizacji. Po klatce
       z mgłą tekstura głębi sceny zostaje związana z jednostką 2, a następna klatka rysuje
       do framebuffera, który tę teksturę ma jako załącznik. Żaden shader sceny nie czyta
       jednostki 2, więc nie jest to pętla sprzężenia, ale sterownik Apple tego układu
@@ -1655,7 +1663,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
       powolnym obrocie kamery zapisać, czy zamglenie samego nieba zmienia się przy bokach
       ekranu (na Windowsie też jeszcze nieoglądane)
 - [ ] kryształ na końcu korytarza: bryła blednie w mgle, poświata zostaje
-- [ ] rozwinięty panel Framebuffers mieści pasek dwóch zakładek, cztery wiersze kontrolek
+- [ ] dawny rozwinięty panel Framebuffers mieścił pasek dwóch zakładek i cztery wiersze kontrolek (dziś kategoria Post process, bez zakładek) [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       w każdej z nich, dwie linie informacyjne i cztery obrazy bez przewijania przy skali
       ekranu Maca. Przełączanie zakładek nie przesuwa linii ani obrazów
 - [ ] pole `Fog colour`: trzy pola z liczbami `36`, `46`, `66` i kwadrat z kolorem, okno
@@ -1713,7 +1721,7 @@ całości.
 - [x] **`GL_CLAMP_TO_BORDER` z ramką 1.** Dziś nic nie jest rysowane poza mapą, więc błąd
       ramki nie byłby widoczny w zwykłej scenie. Sprawdzić pośrednio: w buildzie Debug nie
       ma linii `GL_INVALID_ENUM` przy tworzeniu samplera (start gry)
-- [ ] **podgląd głębi.** Obraz w panelu Shadows jest szary, a nie czerwony i nie czarny.
+- [ ] **podgląd głębi.** Obraz w oknie debug (Light / Shadows) jest szary, a nie czerwony i nie czarny.
       Podgląd czyta tę samą teksturę głębi zwykłym `sampler2D`, bez obiektu samplera, w
       trybie `RawDepth` programu `preview`, i rysuje ją do celu `GL_RGBA8` 256 x 256. Jeśli
       obraz jest czerwony, ImGui dostało teksturę głębi zamiast tekstury koloru podglądu
@@ -1745,7 +1753,7 @@ całości.
       `main`), `common/shadows.glsl` (sampler `sampler2DShadow` jako parametr funkcji,
       `textureSize` na samplerze cieni, pętla o zmiennej granicy obciętej stałą) oraz
       zmienione `lit.frag`, `gouraud.vert`, `gouraud.frag`, `grass.frag` i
-      `post/preview.frag`. Panel Shaders pokazuje jedenaście linii `OK`
+      `post/preview.frag`. Okno debug (Diagnostics / Frame and shaders / Shaders) pokazuje jedenaście linii `OK`
 
 **Retina i wydajność**
 
@@ -1758,7 +1766,7 @@ całości.
       (pomiar zaszumiony, na innej karcie): dla MacBooka nic z tego nie wynika
 - [x] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
       ekranu: zapisać, czy tak jest
-- [ ] panel Shadows przy skali ekranu Maca: osiem kontrolek, trzy linie faktów i obraz
+- [ ] okno debug (Light / Shadows) przy skali ekranu Maca: osiem kontrolek, trzy linie faktów i obraz [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       mieszczą się w panelu bez przewijania, lista `Kernel` stoi w jednej linii z polem
       `PCF`. Cztery rzędy pasków tytułowych i HUD nie nachodzą na siebie
 
@@ -1769,7 +1777,7 @@ całości.
       czy na ekranie MacBooka cień nie jest za słabo albo za mocno widoczny
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 20.2: przełącznik,
       rozdzielczość, oba suwaki biasu od zera do końca zakresu, filtr sprzętowy i trzy jądra
-      PCF, siła, księżyc przesuwany w panelu Lights (w tym pitch -90 i -5), podgląd, cztery
+      PCF, siła, księżyc przesuwany w oknie debug (Light / Lights) (w tym pitch -90 i -5), podgląd, cztery
       tryby cieniowania i oba widoki diagnostyczne, latarka i kryształ w cieniu, trawa w
       cieniu, teren z liniami, widok z góry, `Reload shaders` przy jedenastu programach
       (także z odznaczonym `Shadows`) i próba na pliku `common/shadows.glsl` (na macOS bez
@@ -1804,11 +1812,11 @@ części 4 zatrzyma też tę część.
 
 **Nowe dla sterownika Apple w tej części**
 
-- [ ] **drugi framebuffer z samą głębią i druga jednostka cieni.** `NightMazeApp` ma teraz
+- [ ] **drugi framebuffer z samą głębią i druga jednostka cieni.** `NightMazeApp` ma teraz [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       dwa obiekty `ShadowMap`: księżyca (jednostka 3, domyślnie 2048 x 2048) i latarki
       (jednostka 4, domyślnie 1024 x 1024). Oba framebuffery bez koloru i oba samplery z
       porównaniem muszą istnieć naraz. Oczekiwane: przy starcie żadnej linii `[error]` ze
-      słowami `is not complete`. Zakładka `Flashlight` panelu Shadows pokazuje `Map: 1024 x
+      słowami `is not complete`. Zakładka `Flashlight` okna debug (Light / Shadows) pokazuje `Map: 1024 x
       1024, GL_DEPTH_COMPONENT24` przy zapalonej latarce. Jeśli pokazuje `Map: not drawn` z
       zapaloną latarką i zaznaczonym `Shadows`, drugi framebuffer się nie udał: zapisać
       linię z konsoli
@@ -1858,7 +1866,7 @@ części 4 zatrzyma też tę część.
 - [ ] kompilator GLSL Apple przyjmuje zmienione `common/shadows.glsl` (druga funkcja cienia z
       `uniform vec3 uFlashlightShadowLightPosition` i wczesnymi `return` przed dzieleniem),
       `common/lighting.glsl` (dwa nowe pola struktury `Lighting` zerowane przed użyciem),
-      `gouraud.vert` (trzy nowe wyjścia), `gouraud.frag` i `post/preview.frag`. Panel Shaders
+      `gouraud.vert` (trzy nowe wyjścia), `gouraud.frag` i `post/preview.frag`. Okno debug (Diagnostics / Frame and shaders / Shaders)
       pokazuje jedenaście linii `OK`
 
 **Retina i wydajność**
@@ -1867,7 +1875,7 @@ części 4 zatrzyma też tę część.
       viewport sceny przywracany przez `beginScene`). Na ekranie Retina okno 1280 x 720 ma
       bufor 2560 x 1440: sprawdzić, że po przebiegu latarki scena nie jest narysowana w
       rogu ani w połowie okna, a pasek HUD stoi na swoim miejscu
-- [ ] Release, ustawienia startowe, panele ukryte, okno 1280 x 720: zapisać liczbę klatek na
+- [ ] Release, ustawienia startowe, panele ukryte, okno 1280 x 720: zapisać liczbę klatek na [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       sekundę z latarką zgaszoną, z zapaloną i `Shadows` zakładki `Flashlight` odznaczonym,
       z mapą 1024 i z mapą 2048, każdą wartość dwa razy. Test cienia latarki wykonuje się dla
       każdego fragmentu (9 odczytów mapy przy jądrze `3 x 3`), więc obok kosztu drugiego
@@ -1881,10 +1889,10 @@ części 4 zatrzyma też tę część.
 - [ ] położenie plamy: 4 m przed graczem w środku ekranu, z bliska w prawo i poniżej środka
       (ręka 0,20 m w prawo i 0,25 m w dół, `Converge at` 4 m). Wartości startowe są dobrane
       na Windowsie, bez oglądania obrazu
-- [ ] panel Lights: trzy nowe suwaki `Hand right`, `Hand down` i `Converge at` w grupie
-      `Flashlight (spot)`, panel nadal mieści się na ekranie MacBooka. Panel Shadows z dwiema
+- [ ] okno debug (Light / Lights): trzy nowe suwaki `Hand right`, `Hand down` i `Converge at` w grupie
+      `Flashlight (spot)`, panel nadal mieści się na ekranie MacBooka. Okno debug (Light / Shadows) z dwiema
       zakładkami nadal mieści osiem kontrolek, trzy linie faktów i obraz
-- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 21.2: położenie
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 21.2: położenie [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       plamy, cienie latarki i dwa cienie naraz, bias na dalekim gruncie i u podstawy ścian,
       zasięg i płaszczyzna daleka, patrzenie prawie prosto w górę i w dół, migotanie
       krawędzi przy ruchu, bateria, światło w ścianie w noclipie, zakładka `Flashlight`,
@@ -1911,7 +1919,7 @@ na Macu: [`m7-status.md`](m7-status.md).
 
 **Nowe dla sterownika Apple w tej części**
 
-- [ ] **drugi kolorowy framebuffer `GL_RGBA8` bez głębi.** Framebuffer minimapy jest
+- [ ] **drugi kolorowy framebuffer `GL_RGBA8` bez głębi.** Framebuffer minimapy jest [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       tworzony przy pierwszej klatce i przy każdej zmianie rozmiaru kwadratu mapy. Tylko
       kolor, bez głębi: kompletność z samym załącznikiem koloru. Oczekiwane: przy starcie
       żadnej linii `[error]` ze słowami `is not complete`. Zakładka `Minimap` panelu
@@ -1929,7 +1937,7 @@ na Macu: [`m7-status.md`](m7-status.md).
       zapisywana do okna, więc to nie powinno przeszkadzać. Zapisać, co widać
 - [ ] **viewport na część okna i trójkąt z `gl_VertexID`.** Nakładka ustawia `glViewport`
       na kwadrat w rogu i rysuje trójkąt bez bufora wierzchołków (pusta tablica `m_triangle`).
-      Oczekiwane: mapa wypełnia dokładnie kwadrat w prawym dolnym rogu, bez obcięcia i bez
+      Oczekiwane: mapa wypełnia dokładnie kwadrat w rogu (od 2026-10-06 domyślnie lewym dolnym, wcześniej prawym dolnym), bez obcięcia i bez
       przesunięcia. Po rysowaniu viewport wraca na całe okno: panele i HUD stoją na swoich
       miejscach
 - [ ] **bufor `GL_DYNAMIC_DRAW` zastępowany co klatkę.** `glBufferData` jest wołane w każdej
@@ -1953,16 +1961,16 @@ na Macu: [`m7-status.md`](m7-status.md).
       oraz kolory przez `==` (stałe są kopiowane, nie liczone): zapisać, jeśli któryś jest
       czerwony
 - [ ] kompilator GLSL Apple przyjmuje `post/minimap.vert`, `post/minimap.frag` i
-      `post/minimap_overlay.frag` (ten ostatni z `composite.vert`). Panel Shaders pokazuje
+      `post/minimap_overlay.frag` (ten ostatni z `composite.vert`). Okno debug (Diagnostics / Frame and shaders / Shaders) pokazuje
       trzynaście linii `OK`
 
 **Wygląd i panel**
 
-- [ ] mapa w prawym dolnym rogu, północ u góry, strzałka obraca się za myszą. Panele ukryte
-      (klawisz akcentu), bo domyślnie panel Assets stoi w prawej kolumnie
-- [ ] klawisz M włącza i wyłącza mapę, a pole `Minimap` w zakładce `Minimap` jest z nim
+- [ ] mapa w lewym dolnym rogu (od 2026-10-06 domyślny róg, wcześniej prawy dolny), północ u góry, strzałka obraca się za myszą.
+      Okno debug startuje ukryte i stoi po prawej, więc mapy nie zasłania
+- [ ] klawisz M włącza i wyłącza mapę, a pole `Minimap` w Gameplay / Minimap jest z nim
       zgodne
-- [ ] zakładka `Minimap`: siedem wierszy lewej kolumny (pole `Minimap`, pole `Reveal all`,
+- [ ] zakładka `Minimap`: siedem wierszy lewej kolumny (pole `Minimap`, pole `Reveal all`, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3 w build-windows.md]
       suwaki `Size`, `Margin`, lista `Corner`, suwak `Opacity`, linia `Framebuffer:`) i
       obraz po prawej. Czy panel przewija się na ekranie MacBooka
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 22.2
@@ -1999,7 +2007,7 @@ zatrzyma także tę część.
 - [ ] **kompilacja `reflect.vert` i `reflect.frag`.** Shader fragmentów dołącza trzy pliki
       (`common/lighting.glsl`, `common/normal_map.glsl`, `common/shadows.glsl`) i używa
       `samplerCube`, `refract` i `reflect`. Oczekiwane: przy starcie żadnej linii `[error]` ze
-      słowami `Shader compilation failed`, a linia `reflect` w panelu Shaders z `OK`. Jeśli jest
+      słowami `Shader compilation failed`, a linia `reflect` w oknie debug (Diagnostics / Frame and shaders / Shaders) z `OK`. Jeśli jest
       błąd, zapisać linię z konsoli (numer linii i nazwę pliku)
 - [ ] **pięć samplerów trzech rodzajów w jednym programie.** `reflect.frag` ma `uTexture` (jednostka
       0), `uNormalMap` (1), `uMoonShadowMap` i `uFlashlightShadowMap` (3 i 4, `sampler2DShadow`) i
@@ -2074,7 +2082,7 @@ programami, a podświetlenie to uniform `uEmissive`. Ryzyko leży w **współrz�
       i rozmiar z `windowSize()`, a proporcje obrazu (`aspectRatio`) z rozmiaru bufora ramki.
       Obie strony dają ten sam stosunek szerokości do wysokości, więc promień jest dobry, ale
       tylko dlatego, że stosunek jest równy. Sprawdzić przy wolnym kursorze: promień przez kursor
-      trafia w dźwignię dokładnie tam, gdzie kursor stoi na obrazie (panel Collision, linia
+      trafia w dźwignię dokładnie tam, gdzie kursor stoi na obrazie (okno debug (Diagnostics / Collision and picking), linia
       "Hit: lever ..."), także po zmianie rozmiaru okna i po przeciągnięciu okna między ekranami
       o różnej skali
 - [ ] **klawisz E** (`GLFW_KEY_E`) pociąga dźwignię i czyta kartkę, także z układem klawiatury
@@ -2094,8 +2102,8 @@ programami, a podświetlenie to uniform `uEmissive`. Ryzyko leży w **współrz�
       pociągnięcia, minimapa przestaje ją rysować, klawisz R przywraca ściany
 - [ ] kartka: karta z podpowiedzią i "E: close", zamyka się klawiszem E, kliknięciem, po
       odejściu dalej niż 3,0 m i po wygranej
-- [ ] panel Collision: ostatni promień, trafienie, pola `Draw pick boxes and ray` i `Freeze the
-      drawn ray`; panel Maze: suwaki `Levers` i `Notes`; panel Gameplay: przycisk `Pull all levers`
+- [ ] okno debug (Diagnostics / Collision and picking): ostatni promień, trafienie, pola `Draw pick boxes and ray` i `Freeze the
+      drawn ray`; okno debug (World / Maze): suwaki `Levers` i `Notes`; okno debug (Gameplay): przycisk `Pull all levers`
 - [ ] kliknięcie w panel debugowania nie dociera do gry
 
 **Testy jednostkowe na Macu**
@@ -2138,7 +2146,7 @@ bywają skrótami systemowymi, trzeba ewentualnie nacisnąć razem z Fn) i w **o
       bez Fn); panele i HUD wracają jak były
 - [ ] po włączeniu trybu kursor jest wolny, a mysz nie obraca kamery; po wyłączeniu trzeba kliknąć
       w scenę
-- [ ] grupa `Menu camera` w panelu Camera: pole, lista `Shot`, suwaki `Speed` i `Eye height`,
+- [ ] grupa `Menu camera` w oknie debug (Player / Menu camera): pole, lista `Shot`, suwaki `Speed` i `Eye height`,
       pole `Time offset`, linia `One loop`
 - [ ] zmiana rozmiaru okna i przesunięcie okna między ekranami o różnej skali w trakcie trybu nie
       psują obrazu
@@ -2192,6 +2200,55 @@ pięć): flagi `FT_DISABLE_*` mają ten sam skutek na każdym komputerze, ale na
 
 **Co nadal nie istnieje na żadnym systemie:** obraz menu nie został obejrzany przez właściciela, a ekran
 wyniku z prawdziwego przejścia gry nie został obejrzany przez nikogo.
+
+### Okno debug (jedno okno w miejsce trzynastu paneli) na macOS: lista w całości otwarta
+
+Zmiana z 2026-10-06 (klasa `DebugWindow` w `src/debug/DebugWindow.*`, widżety `src/debug/Widgets.*` i `src/debug/Icons.*`, kategorie w
+`src/debug/categories/`, test wyszukiwania `tests/SearchTests.cpp`, zmiany w `Theme.*`, `Hud.*`, `DebugUI.*`, `DebugContext.hpp`,
+domyślny róg minimapy w `src/game/Minimap.hpp`) powstała na Windowsie i tam jest zgłoszona jako zbudowana i przetestowana
+([`build-windows.md`](build-windows.md), sekcja 27, "Lista kontrolna: okno debug w miejsce trzynastu paneli"). **Na macOS nikt jej nie
+zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Na Windowsie okno oglądał na zrzutach ekranu agent, który
+napisał kod, a nie właściciel. Opis kodu: [`../modules/debug-ui.md`](../modules/debug-ui.md). Nazwy "panel X" w starszych punktach tego
+dokumentu to miejsca w oknie debug: tabela w [`build-windows.md`](build-windows.md), sekcja 27.3.
+
+Ta zmiana nie dodaje shadera ani zależności. Ryzyko na macOS jest w czterech miejscach: **skala Retina** (okno liczy rozmiary z
+`ImGuiStyle::FontScaleDpi`, a `applyTheme` dostaje na macOS skalę 1, bo Retina obsługuje bufor ramki; ikony i suwaki rysuje
+`ImDrawList`, więc ostrość i grubość linii trzeba obejrzeć), **dynamiczny rozmiar czcionki** (`ImGui::PushFont(nullptr, rozmiar)` dla
+tytułu okna i paska HUD), **klawisz `~`** (na klawiaturze Maca klawisz z lewej strony `1` bywa inny niż na
+amerykańskiej) i **Ctrl+klik**, którym wpisuje się wartość suwaka (system może zgłaszać Ctrl+klik jako prawy przycisk myszy).
+
+- [ ] build Debug i Release bez ostrzeżeń, w tym wszystkie nowe pliki `src/debug/*.cpp` i `src/debug/categories/*.cpp` (36 plików w
+      `src/debug`, z podkatalogiem; lista w `CMakeLists.txt`)
+- [ ] `ctest` albo `night_maze_tests`: wszystkie przechodzą, w tym 7 przypadków z `SearchTests.cpp` (razem na Windowsie 526
+      przypadków i 219214 asercji)
+- [ ] `night_maze` bez przełączników: menu główne, okno debug **ukryte**; `~` pokazuje okno przy prawej krawędzi i pasek stanu w
+      prawym górnym rogu (zapisać, który fizyczny klawisz Maca to robi); drugie `~` chowa oba
+- [ ] `night_maze --play`: pasek HUD przy górnej krawędzi i bez przeskoku po `~`; minimapa w **lewym dolnym** rogu, a okno debug po
+      prawej jej nie zasłania
+- [ ] **Retina**: tekst okna (14 pikseli) i paska HUD (16) jest ostry, ikony na pasku kategorii i w nagłówku mają równe linie,
+      suwaki mają dwanaście kresek bez rozmycia, a okno ma te same proporcje co na Windowsie przy 100 procentach (szerokość około
+      620 jednostek, połowa okna przy mniejszym oknie); w linii `Framebuffer` (Diagnostics / Frame and shaders / Frame) jest dwa razy
+      więcej pikseli niż okno
+- [ ] okno 1280 x 720: karty w dwóch kolumnach; okno 1100 x 700: jedna kolumna; zmiana rozmiaru okna gry: okno idzie za nim
+- [ ] siedem kategorii z ikonami, zakładki w Light, World i Diagnostics, liczby kontrolek w nagłówku (8, 34, 15, 22, 16, 15, 4)
+- [ ] po jednej zmienionej kontrolce w każdej kategorii daje skutek w obrazie albo w odczycie (lista z
+      [`build-windows.md`](build-windows.md), sekcja 27.1)
+- [ ] **Ctrl+klik na suwaku** zamienia pasek w pole tekstowe (zapisać, czy na Macu robi to Ctrl+klik, czy Cmd+klik, czy trzeba innego
+      sposobu); wpisana wartość spoza zakresu jest przycinana (`Sky brightness` 10 daje 6)
+- [ ] wyszukiwanie: `bias`, `shader`, `fog density` dają wyniki jak na Windowsie, `zzz` daje "Nothing matches. Try a shorter word.",
+      Escape opróżnia pole i nie otwiera pauzy
+- [ ] przypięcie: mały panel jednej kategorii, strzałki, rozwinięcie; panel da się przesunąć, zmienić jego rozmiar i zadokować, a po
+      ponownym uruchomieniu leży tam, gdzie go zostawiono (`imgui.ini` w katalogu roboczym)
+- [ ] lista (`Combo`) i okno wyboru koloru (wiersz `Clear colour`) otwierają się i działają
+- [ ] Diagnostics: `Reload shaders` z czternastoma programami `OK`, nieudane przeładowanie (zepsuty plik w kopii `assets`) pokazuje
+      `FAILED` z tekstem błędu, a karta `Failed to load` pokazuje wpis po zmianie nazwy tekstury
+- [ ] wiersz `Anisotropy` (Render / Textures and normals) pokazuje maksimum sterownika albo jest wyszarzony (zapisać, co pokazuje
+      ten Mac)
+- [ ] okno debug nad menu głównym, pauzą i ekranem wyniku: kliknięcie okna nie klika przycisku pod spodem
+- [ ] zmiana rozmiaru okna i przeniesienie okna między ekranami o różnej skali: okno debug dopasowuje rozmiar i nie psuje obrazu
+- [ ] brak linii `[error]` w terminalu przy starcie i po przejściu przez wszystkie kategorie
+
+**Co nadal nie istnieje na żadnym systemie:** okno debug nie zostało obejrzane przez właściciela (ani na Windowsie, ani na macOS).
 
 ### Skróty: `make`
 
@@ -2565,10 +2622,10 @@ pokazuje część tych samych diagnostyk w edytorze, bo czyta ten sam plik `.cla
 | `[error] Shader compilation failed: ...` z linią sterownika, znika to, co rysuje ten program (w stanie M1, z jednym programem, zostawało samo tło) | błąd w pliku shadera. Sterownik Apple pisze linię w postaci `ERROR: 0:N: ...`, gdzie 0 to numer napisu źródłowego, a `N` numer linii. Od M4 program zamienia ten numer na nazwę pliku, więc oczekiwana postać to `ERROR: color.frag:N: ...`, a dla błędu w pliku dołączanym `ERROR: common/lighting.glsl:N: ...`. Zamiana jest sprawdzona tylko testem jednostkowym, nie na prawdziwym sterowniku Apple: jeśli linia ma inną postać, zostaje taka, jak ją napisał sterownik | popraw plik w `assets/shaders/` i naciśnij "Reload shaders" w panelu Shaders (albo uruchom program ponownie). Opis w [`../modules/gfx/shader-class.md`](../modules/gfx/shader-class.md), sekcje 3.3 i 7, w [`../modules/gfx/shaders.md`](../modules/gfx/shaders.md), sekcja 7, oraz w [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-includes.md) |
 | `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code` | sterownik ułożył blok uniformów ze światłami inaczej niż struktura `scene::LightBlockData` (na macOS niesprawdzone, na karcie NVIDIA linia się nie pojawia) | zapisać liczbę z komunikatu i porównać blok w `assets/shaders/common/lighting.glsl` ze strukturą w `src/scene/LightBlock.hpp` ([`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md)) |
 | Podłoże albo ściany są białe, w terminalu linia `[error]` o pliku obrazu | brakuje pliku w `assets/textures/` albo nie da się go zdekodować: część modelu (albo teren, gdy chodzi o `ground.png`) dostaje białą teksturę zastępczą (na macOS niesprawdzone) | przywróć plik (`git status`, `git checkout assets/textures`) i uruchom program ponownie |
-| Okno otwiera się, ale panel "Renderer" jest niewidoczny, widać tylko pasek HUD u góry | panele ukryte klawiszem `~` albo zapisany układ poza oknem | naciśnij `~` (na lewo od `1`). Jeśli nie pomaga, usuń `imgui.ini` z katalogu, z którego uruchamiasz program |
+| Okno otwiera się, ale okno debug jest niewidoczne, widać tylko pasek HUD u góry (od 2026-10-06 okno debug startuje ukryte) | okno debug ukryte klawiszem `~` albo, dla przypiętego panelu, zapisany układ poza oknem | naciśnij `~` (klawisz na lewo od `1`). Jeśli nie pomaga, usuń `imgui.ini` z katalogu, z którego uruchamiasz program |
 | Latarka nie daje się włączyć klawiszem F | bateria jest pusta: pasek HUD pokazuje `0%` i napis `Battery empty. Find a crystal.`. To reguła gry, nie błąd | zbierz kryształ, potem naciśnij F, albo zacznij rundę od nowa klawiszem R |
 | Esc nie zamyka programu, `~` nie chowa paneli | aktywny jest widżet ImGui (wpisywanie albo przeciąganie wartości), więc klawiatura gry jest zablokowana | zakończ edycję (Enter, Esc albo kliknięcie poza polem). Opis w [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6 |
-| Układ paneli nie zapamiętuje się między uruchomieniami | program startuje z różnych katalogów roboczych (terminal i IDE) | `imgui.ini` powstaje w katalogu roboczym. Ustaw ten sam katalog w IDE |
+| Układ paneli nie zapamiętuje się między uruchomieniami (od 2026-10-06 dotyczy tylko przypiętego panelu okna debug) | program startuje z różnych katalogów roboczych (terminal i IDE) | `imgui.ini` powstaje w katalogu roboczym. Ustaw ten sam katalog w IDE |
 | Obraz zajmuje ćwiartkę okna | `glViewport` z rozmiarem okna zamiast framebuffera | zawsze `window().framebufferSize()`, opis w [`../libraries/glfw.md`](../libraries/glfw.md) |
 | FPS równe dokładnie 60 lub 120 | to nie błąd, działa vsync (`glfwSwapInterval(1)`) | do pomiarów wydajności można tymczasowo ustawić `0` |
 | Edytor (clangd) podkreśla wszystkie `#include`, błędy "file not found" | nie ma jeszcze `build/debug/compile_commands.json`, na który wskazuje `.clangd` | wykonaj `cmake --preset debug` i przeładuj okno edytora, opis w sekcji 6 |

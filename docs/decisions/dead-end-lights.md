@@ -69,10 +69,10 @@ Trzeba było zdecydować, gdzie postawić światła punktowe, dopóki nie ma kry
 
 - Liczby świateł nie da się ustawić: labirynt startowy ma ich 11, inne ziarna inaczej.
 - Światła są częścią `MazeWorld`, czyli danych poziomu, a kryształy będą obiektami rozgrywki, które znikają po zebraniu. W M5 pole `pointLightPositions` albo zniknie, albo zmieni znaczenie.
-- Zaułków ponad limit 16 nic nie oświetla i nic nie oznacza. Panel Lights pokazuje wtedy `In this maze: 16 (at most 16)`.
+- Zaułków ponad limit 16 nic nie oświetla i nic nie oznacza. Zakładka Light / Lights pokazuje wtedy `In this maze: 16 (at most 16)`.
 - Kostka znacznika to tymczasowa grafika: nie jest modelem kryształu i nie ma kolizji.
 
-**Co zostaje po zmianie w M5.** Cała reszta: struktura `scene::PointLight`, tablica w `LightSet`, blok uniformów, pętla w `common/lighting.glsl`, `buildLightSet` (przyjmuje listę pozycji i nie wie, skąd pochodzi), ustawienia w panelu Lights. Wymienia się jedna funkcja dostarczająca pozycje.
+**Co zostaje po zmianie w M5.** Cała reszta: struktura `scene::PointLight`, tablica w `LightSet`, blok uniformów, pętla w `common/lighting.glsl`, `buildLightSet` (przyjmuje listę pozycji i nie wie, skąd pochodzi), ustawienia w zakładce Light / Lights. Wymienia się jedna funkcja dostarczająca pozycje.
 
 ## 5. Kiedy wrócić do tej decyzji
 

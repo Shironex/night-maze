@@ -1,7 +1,7 @@
 # Moduł scene: promień i selekcja obiektów (ray casting)
 
 Kamień milowy: M8, podstawy bez okna (matematyka i testy), a w M8, części 2: selekcja, dźwignie i kartki, podpięcie promienia do pętli klatki działającej gry. Temat wykładu: 15 (Selekcja obiektów).
-Kod: [`src/scene/Raycast.hpp`](../../../src/scene/Raycast.hpp), [`src/scene/Raycast.cpp`](../../../src/scene/Raycast.cpp), testy w [`tests/RaycastTests.cpp`](../../../tests/RaycastTests.cpp). Użytkownicy promienia: [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp) (funkcja `pickInteractable`, opisana w [`../game/interactables.md`](../game/interactables.md)), [`src/game/Interaction.hpp`](../../../src/game/Interaction.hpp) i [`src/game/Interaction.cpp`](../../../src/game/Interaction.cpp) (promień z oka, wynik jednej klatki, akcja klawisza, podświetlenie), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (funkcje `pickForFrame`, `handleInteraction`, `drawPickLines`), [`src/game/InteractableRenderer.cpp`](../../../src/game/InteractableRenderer.cpp) (rysowanie z podświetleniem), [`src/debug/Hud.cpp`](../../../src/debug/Hud.cpp) (celownik i podpowiedź) i [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp) (ostatni promień). Testy gry: [`tests/InteractionTests.cpp`](../../../tests/InteractionTests.cpp).
+Kod: [`src/scene/Raycast.hpp`](../../../src/scene/Raycast.hpp), [`src/scene/Raycast.cpp`](../../../src/scene/Raycast.cpp), testy w [`tests/RaycastTests.cpp`](../../../tests/RaycastTests.cpp). Użytkownicy promienia: [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp) (funkcja `pickInteractable`, opisana w [`../game/interactables.md`](../game/interactables.md)), [`src/game/Interaction.hpp`](../../../src/game/Interaction.hpp) i [`src/game/Interaction.cpp`](../../../src/game/Interaction.cpp) (promień z oka, wynik jednej klatki, akcja klawisza, podświetlenie), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (funkcje `pickForFrame`, `handleInteraction`, `drawPickLines`), [`src/game/InteractableRenderer.cpp`](../../../src/game/InteractableRenderer.cpp) (rysowanie z podświetleniem), [`src/debug/Hud.cpp`](../../../src/debug/Hud.cpp) (celownik i podpowiedź) i [`src/debug/categories/DiagnosticsCategory.cpp`](../../../src/debug/categories/DiagnosticsCategory.cpp) (ostatni promień). Testy gry: [`tests/InteractionTests.cpp`](../../../tests/InteractionTests.cpp).
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z pudełka `Aabb` i kuli `Sphere` z [`collision.md`](collision.md) (sekcje 2.1, 2.9 i 2.11), z macierzy widoku i rzutowania z [`camera.md`](camera.md) (sekcje 2 i 5) oraz z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, `vec4`, `mat4`, `dot`, `normalize`, `inverse`). Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)).
 
@@ -429,7 +429,7 @@ Dwa widoki debugowe, **Normals** i **UVs**, pokazują dane, a nie powierzchnię,
 | `src/game/InteractableRenderer.hpp`, `src/game/InteractableRenderer.cpp` (rysowanie dźwigni i kartek z podświetleniem) | plik wykonywalny `night_maze` | tak | brak testów jednostkowych. Częściowo widziane na zrzutach przez agenta (2026-10-06), nie przez właściciela (sekcja 5.14) |
 | `src/game/NightMazeApp.cpp` (`pickForFrame`, `handleInteraction`, `drawPickLines`) | plik wykonywalny `night_maze` | tak | brak testów jednostkowych, jak reszta pętli klatki |
 | `src/core/Input.hpp`, `src/core/Input.cpp` (`cursorPosition`) | `engine` | nie | brak osobnego testu |
-| `src/debug/Hud.cpp`, `src/debug/panels/CollisionPanel.cpp` (celownik, podpowiedź, ostatni promień) | plik wykonywalny `night_maze` | tak (ImGui) | brak |
+| `src/debug/Hud.cpp`, `src/debug/categories/DiagnosticsCategory.cpp` (dawniej `panels/CollisionPanel.cpp`; celownik, podpowiedź, ostatni promień) | plik wykonywalny `night_maze` | tak (ImGui) | brak |
 
 Plik `Raycast` jest w liście źródeł biblioteki `engine` w `CMakeLists.txt`, obok `Collider`, i dołącza `scene/Collider.hpp`, żeby użyć `Aabb` i `Sphere`. `Interaction.cpp` jest w bibliotece `game_logic` (zwykłe dane i matematyka, jak reszta tej biblioteki), a `InteractableRenderer.cpp` razem z innymi rysownikami w pliku wykonywalnym `night_maze` (potrzebują okna i kontekstu OpenGL).
 
@@ -859,20 +859,22 @@ HUD czyta `PickState` (tylko do odczytu) przez `DebugContext::pick`:
 - ściana otwarta, minimapa przestaje ją rysować i pokazuje korytarz za nią, gracz przechodzi,
 - po R minimapa wraca do stanu początkowego i ściana znowu blokuje,
 - zamrożony promień jako zielona linia, pudełko trafienia na zielono,
-- panel Collision z początkiem, kierunkiem i "Hit: lever 0 at 0.72 m",
+- zakładka Diagnostics / Collision and picking z początkiem, kierunkiem i "Hit: lever 0 at 0.72 m",
 - klik wolnym kursorem na dźwigni pociągnął ją.
 
 **Po przeróbce modelu dźwigni agent widział też (zrzuty z 2026-10-06, nie właściciel):** dźwignię od przodu z 1 m przy włączonej latarce, w górnym położeniu i podświetloną (ciemna płyta, jasna bursztynowa gałka nad środkiem, podpowiedź na dole pośrodku), ten sam widok po E (pręt w dół, gałka poniżej krawędzi płyty z cieniem na ścianie, bez podświetlenia i podpowiedzi), widoki z boku w górnym i dolnym położeniu, wyłączoną latarkę (pociągnięta: płyta prawie czarna, gałka ciemna ochra; w górze z podświetleniem: gałka świeci bursztynem), około 2,4 m pod kątem z podświetleniem i podpowiedzią oraz około 2,9 m poza zasięgiem bez podświetlenia, drugą dźwignię, Gouraud (z podświetleniem) i Unlit, widok Normals (dźwignia jako dane, bez podświetlenia, pierścień i podpowiedź nadal są), kartkę z "E: read note" na dole, wolną od arkusza, i otwartą kartę kartki bez podpowiedzi i bez nakładania się na minimapę.
 
-**Czego agent NIE widział na ekranie:** uchwytu w połowie ruchu, cienia księżyca od dźwigni, Gouraud i Unlit dla kartki, widoku na wprost z 2,5 m, dodatków w panelu Gameplay, samego przycisku "Pull all levers", innych niż domyślne liczb dźwigni i kartek, czystej ramy połowicznie zatopionej ściany. **Uwagi kosmetyczne:** z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka.
+**Czego agent NIE widział na ekranie:** uchwytu w połowie ruchu, cienia księżyca od dźwigni, Gouraud i Unlit dla kartki, widoku na wprost z 2,5 m, dodatków w kategorii Gameplay, samego przycisku "Pull all levers", innych niż domyślne liczb dźwigni i kartek, czystej ramy połowicznie zatopionej ściany. **Uwagi kosmetyczne:** z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka.
 
 **Ręczny test właściciela i macOS: otwarte.** Lista kontrolna: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 24.2, i [`../../guides/build-macos.md`](../../guides/build-macos.md). Zrzuty agenta nie zastępują tej listy.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Wskazywanie ma w debugowym UI dwa miejsca: sekcję w panelu **Collision** (wynik ostatniego promienia i przełączniki widoku debugowego) oraz dodatki w panelach **Gameplay** i **Maze** (opisane w [`../game/interactables.md`](../game/interactables.md)). Fragment PRD "panel Collision z wynikiem ostatniego raycasta" (sekcja 10) jest tym spełniony ([`collision.md`](collision.md)).
+**Stan na 2026-10-06.** Panel Collision zastąpiło okno debugowania ([`../debug-ui.md`](../debug-ui.md)): sekcja `Last picking ray` jest kartą **Last picking ray** w kategorii Diagnostics, zakładce Collision and picking, a dwa pola wyboru (`Draw pick boxes and ray`, `Freeze the drawn ray`) w karcie **Debug drawing** ([`src/debug/categories/DiagnosticsCategory.cpp`](../../../src/debug/categories/DiagnosticsCategory.cpp)). Linie karty są te same (`Ray through`, `Origin`, `Direction`, `Hit`, `Key E`); gdy kursor jest nad oknem debugowania, linia `Ray` mówi `none (cursor over the debug window or outside)`. Nazwa funkcji `drawCollisionPanel` w tekście poniżej dotyczy panelu sprzed zmiany.
 
-### 6.1 Panel Collision: ostatni promień
+Wskazywanie ma w debugowym UI dwa miejsca: sekcję w zakładce Diagnostics / Collision and picking (wynik ostatniego promienia i przełączniki widoku debugowego) oraz dodatki w kategoriach **Gameplay** i **World / Maze** (dawniej panelach, opisane w [`../game/interactables.md`](../game/interactables.md)). Fragment PRD "zakładka Diagnostics / Collision and picking z wynikiem ostatniego raycasta" (sekcja 10) jest tym spełniony ([`collision.md`](collision.md)).
+
+### 6.1 Diagnostics / Collision and picking: ostatni promień (dawniej panel Collision)
 
 Funkcja `drawCollisionPanel` dostała dwa parametry: `const game::PickState& pick` (tylko do odczytu) i `game::PickDebugSettings& pickDebug` (edytowalne). Pod liniami o pudełkach i trybie noclip jest separator i sekcja "Last picking ray":
 
@@ -889,7 +891,7 @@ Panel pokazuje promień **ostatniej klatki** i ma sens przy przechwyconym kursor
 
 ### 6.2 Widok debugowy: pudełka, promień i zamrożenie
 
-Dwa pola wyboru w panelu Collision (`PickDebugSettings`):
+Dwa pola wyboru w zakładce Diagnostics / Collision and picking (`PickDebugSettings`):
 
 - **Draw pick boxes and ray** (`drawShapes`): `NightMazeApp::drawPickLines` rysuje programem `color` pudełka wskazania wszystkich dźwigni (czerwone) i kartek (białe), pudełko trafione (zielone), promień jako linię od oka do punktu trafienia (zieloną) albo, gdy nic nie trafił, na długość zasięgu (szarą), a na końcu promienia małą kulkę o promieniu 0,04 m (`PICK_MARKER_RADIUS`). Pudełka wskazania są większe niż modele i wystają poza pudełko kolizji ściany, na której wiszą,
 - **Freeze the drawn ray** (`freezeRay`): rysowana kopia wyniku (`m_shownPick`) przestaje nadążać za `m_pick`, a samo wskazywanie trwa dalej (podświetlenie i akcja liczą się z bieżącego `m_pick`).
@@ -900,7 +902,7 @@ Zielone pudełko trafienia jest rysowane **przed** pudełkiem w kolorze rodzaju,
 
 ### 6.3 Scenariusz pokazu na obronie
 
-1. Uruchom grę, naciśnij `` ` `` (backtick), otwórz panel **Collision**. Zaznacz **Draw pick boxes and ray**. Podejdź do dźwigni: w panelu zobaczysz `Hit: lever 0 at ...` z odległością mniejszą niż 2,5 m i `Key E: pull the lever`.
+1. Uruchom grę, naciśnij `` ` `` (backtick), otwórz zakładkę Diagnostics / Collision and picking. Zaznacz **Draw pick boxes and ray**. Podejdź do dźwigni: w panelu zobaczysz `Hit: lever 0 at ...` z odległością mniejszą niż 2,5 m i `Key E: pull the lever`.
 2. Zaznacz **Freeze the drawn ray**, odejdź na bok: zielona linia z oka do pudełka dźwigni, kulka na jej końcu.
 3. Naciśnij E (albo kliknij): dźwignia opuszcza uchwyt, ściana zaczyna się zanurzać, minimapa przestaje ją rysować. Panel nadal pokazuje `Hit: lever 0`, ale `Key E: nothing`.
 4. Wyłącz zamrożenie, wskaż dźwignię przez ścianę (z drugiej strony): wynik powinien być `Hit: nothing`, mimo że dźwignia jest blisko, bo ściana zasłania (oczekiwanie z kodu i z testu `a closed wall hides what is behind it...`, nie obejrzane na ekranie).
@@ -1011,7 +1013,7 @@ Co z tego **widział agent**, a czego nie: sekcja 5.14. Scenariusz w pełni na e
     `screenPointRay` dostaje dowolny punkt obrazu. Decyzja właściciela (środek okna przy przechwyconej myszy, kursor przy wolnej) jest w `pickForFrame`: `size / 2` albo `Input::cursorPosition()`, w jednostce rozmiaru okna.
 
 19. **Co składa się na jedną klatkę wskazywania?**
-    Mysz obraca kamerę, powstają `view` i `projection` z mieszanego oka, `pickForFrame` buduje promień (środek okna albo kursor, rozmiar okna, odwrotność `projection * view`, `rayFromEye`) i woła `pickInRound` z listą przeszkód rundy, `handleInteraction` czyta E i klik, a rysowanie podświetla wskazany obiekt, HUD rysuje celownik i podpowiedź, a panel Collision pokazuje wynik.
+    Mysz obraca kamerę, powstają `view` i `projection` z mieszanego oka, `pickForFrame` buduje promień (środek okna albo kursor, rozmiar okna, odwrotność `projection * view`, `rayFromEye`) i woła `pickInRound` z listą przeszkód rundy, `handleInteraction` czyta E i klik, a rysowanie podświetla wskazany obiekt, HUD rysuje celownik i podpowiedź, a zakładka Diagnostics / Collision and picking pokazuje wynik.
 
 20. **Jak sprawdzono poprawność odwracania rzutowania?**
     Testem z pętlą w obie strony: punkt świata jest rzutowany do piksela tym samym łańcuchem, co robi karta, a promień przez ten piksel ma trafić w małą kulę wokół tego punktu. Dodatkowo testy środka i rogów obrazu porównują kierunki z `forward`, `right` i `up` kamery.
@@ -1045,5 +1047,5 @@ Co z tego **widział agent**, a czego nie: sekcja 5.14. Scenariusz w pełni na e
 - GLFW, "Input guide", pozycja kursora: <https://www.glfw.org/docs/latest/input_guide.html#cursor_pos> (współrzędne ekranu, `y` w dół od lewego górnego rogu).
 - Dokumentacja OpenGL, `glViewport`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glViewport.xhtml> (NDC na piksele bufora) i `glReadPixels`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml> (odczyt używany przez colour picking).
 - cppreference, `std::span`: <https://en.cppreference.com/w/cpp/container/span>, inicjalizatory desygnowane: <https://en.cppreference.com/w/cpp/language/aggregate_initialization>.
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`collision.md`](collision.md) (pudełka, kule, styk, pułapka grubości ściany, panel Collision), [`camera.md`](camera.md) (macierze widoku i rzutowania, `forward`, `right`), [`../game/interactables.md`](../game/interactables.md) (kto używa promienia, dźwignie i kartki), [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora, `cursorPosition`), [`../debug-ui.md`](../debug-ui.md) (HUD i panele), [`../../decisions/pick-ray-starts-in-the-eye.md`](../../decisions/pick-ray-starts-in-the-eye.md), [`../../decisions/highlight-as-emissive-pulse.md`](../../decisions/highlight-as-emissive-pulse.md), [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md), [`../renderer/post-process.md`](../renderer/post-process.md) (bufor HDR i gamma, którą omijałby colour picking), [`../../libraries/glm.md`](../../libraries/glm.md), [`../../libraries/doctest.md`](../../libraries/doctest.md).
-- PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 15), sekcja 10 (panel Collision z wynikiem ostatniego raycasta).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`collision.md`](collision.md) (pudełka, kule, styk, pułapka grubości ściany, zakładka Diagnostics / Collision and picking), [`camera.md`](camera.md) (macierze widoku i rzutowania, `forward`, `right`), [`../game/interactables.md`](../game/interactables.md) (kto używa promienia, dźwignie i kartki), [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora, `cursorPosition`), [`../debug-ui.md`](../debug-ui.md) (HUD i panele), [`../../decisions/pick-ray-starts-in-the-eye.md`](../../decisions/pick-ray-starts-in-the-eye.md), [`../../decisions/highlight-as-emissive-pulse.md`](../../decisions/highlight-as-emissive-pulse.md), [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md), [`../renderer/post-process.md`](../renderer/post-process.md) (bufor HDR i gamma, którą omijałby colour picking), [`../../libraries/glm.md`](../../libraries/glm.md), [`../../libraries/doctest.md`](../../libraries/doctest.md).
+- PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 15), sekcja 10 (zakładka Diagnostics / Collision and picking z wynikiem ostatniego raycasta).

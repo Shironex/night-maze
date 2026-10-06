@@ -49,7 +49,7 @@ Wyjściem jest komórka najdalsza od startu, gdy odległość liczy się w przej
 
 **Co przez to tracę.**
 
-- Wyjście nie ma stałego miejsca. Na planie w panelu Maze je widać, w grze trzeba go szukać.
+- Wyjście nie ma stałego miejsca. Na planie w zakładce World / Maze je widać, w grze trzeba go szukać.
 - "Najdalej w przejściach" nie znaczy "daleko w metrach": w labiryncie wzorcowym wyjście `(3, 1)` leży trzy kolumny i jeden wiersz od startu.
 - Najdalsza od startu nie znaczy najdalsza od kryształów: ostatni potrzebny kryształ może wisieć w korytarzu obok bramy.
 

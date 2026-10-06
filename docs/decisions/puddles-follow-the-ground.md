@@ -13,7 +13,7 @@ Pierwsza wersja kładła na terenie płaską tarczę na najniższym gruncie pod 
 2. woda ma być lepiej widoczna: jaśniejszy odcień, mocniej odbijająca, miękki brzeg, więcej narożników,
 3. pasek HUD stoi przy górnej krawędzi okna, dopóki panele debug są schowane.
 
-Ta notatka dotyczy punktu 1. Punkt 2 jest w uzupełnieniu notatki [`visible-effect-over-physical-values.md`](visible-effect-over-physical-values.md), punkt 3 w notatce [`hud-at-top-edge-when-panels-hidden.md`](hud-at-top-edge-when-panels-hidden.md). Dwie dalsze zmiany z tego samego dnia (panel Environment w dwóch kolumnach i cienka ramka wokół minimapy) są poprawkami wykonawczymi, nie decyzjami.
+Ta notatka dotyczy punktu 1. Punkt 2 jest w uzupełnieniu notatki [`visible-effect-over-physical-values.md`](visible-effect-over-physical-values.md), punkt 3 w notatce [`hud-at-top-edge-when-panels-hidden.md`](hud-at-top-edge-when-panels-hidden.md). Dwie dalsze zmiany z tego samego dnia (zakładka World / Reflections w dwóch kolumnach i cienka ramka wokół minimapy) są poprawkami wykonawczymi, nie decyzjami.
 
 Ograniczenia: teren z mapy wysokości ma siatkę 0,5 m ([`gentle-terrain-under-maze.md`](gentle-terrain-under-maze.md)); wybór komórek kałuż nie pyta terenu i ma tak zostać (test `another height scale moves the puddles up or down and nowhere else`, własność "większy udział zachowuje istniejące kałuże").
 

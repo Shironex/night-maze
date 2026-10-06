@@ -1,9 +1,9 @@
 # Moduł renderer: minimapa, rendering do własnego framebuffera i odkrywanie korytarzy
 
 Kamień milowy: M7, część szósta i ostatnia (2026-10-06). Temat wykładu: 10 (Rendering pozaekranowy). Dokument zakłada, że znasz [`post-process.md`](post-process.md) (framebuffer sceny, przebieg składający, trójkąt pełnoekranowy) i klasę `gfx::Framebuffer` z [`../gfx/framebuffers.md`](../gfx/framebuffers.md). Bufory i tablicę atrybutów opisuje [`../gfx/buffers-vao.md`](../gfx/buffers-vao.md), a przestrzeń sRGB [`../gfx/color-space.md`](../gfx/color-space.md).
-Kod: reguła odkrywania [`src/game/Discovery.hpp`](../../../src/game/Discovery.hpp) i [`Discovery.cpp`](../../../src/game/Discovery.cpp), ustawienia, miejsce na ekranie i kształty mapy [`src/game/Minimap.hpp`](../../../src/game/Minimap.hpp) i [`Minimap.cpp`](../../../src/game/Minimap.cpp), strona OpenGL [`src/game/MinimapRenderer.hpp`](../../../src/game/MinimapRenderer.hpp) i [`MinimapRenderer.cpp`](../../../src/game/MinimapRenderer.cpp), shadery [`assets/shaders/post/minimap.vert`](../../../assets/shaders/post/minimap.vert), [`post/minimap.frag`](../../../assets/shaders/post/minimap.frag) i [`post/minimap_overlay.frag`](../../../assets/shaders/post/minimap_overlay.frag) (ten ostatni z istniejącym [`post/composite.vert`](../../../assets/shaders/post/composite.vert)), stan rundy w [`src/game/Round.hpp`](../../../src/game/Round.hpp) (pole `discovery`), `cellAt` w [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp), bufor z podpowiedzią użycia i `setData` w [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), wywołanie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`drawMinimap`, klawisz M), nazwy uniformów w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), zakładka panelu [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp), testy [`tests/DiscoveryTests.cpp`](../../../tests/DiscoveryTests.cpp), [`tests/MinimapTests.cpp`](../../../tests/MinimapTests.cpp) i jeden przypadek w [`tests/MazeLayoutTests.cpp`](../../../tests/MazeLayoutTests.cpp).
+Kod: reguła odkrywania [`src/game/Discovery.hpp`](../../../src/game/Discovery.hpp) i [`Discovery.cpp`](../../../src/game/Discovery.cpp), ustawienia, miejsce na ekranie i kształty mapy [`src/game/Minimap.hpp`](../../../src/game/Minimap.hpp) i [`Minimap.cpp`](../../../src/game/Minimap.cpp), strona OpenGL [`src/game/MinimapRenderer.hpp`](../../../src/game/MinimapRenderer.hpp) i [`MinimapRenderer.cpp`](../../../src/game/MinimapRenderer.cpp), shadery [`assets/shaders/post/minimap.vert`](../../../assets/shaders/post/minimap.vert), [`post/minimap.frag`](../../../assets/shaders/post/minimap.frag) i [`post/minimap_overlay.frag`](../../../assets/shaders/post/minimap_overlay.frag) (ten ostatni z istniejącym [`post/composite.vert`](../../../assets/shaders/post/composite.vert)), stan rundy w [`src/game/Round.hpp`](../../../src/game/Round.hpp) (pole `discovery`), `cellAt` w [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp), bufor z podpowiedzią użycia i `setData` w [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), wywołanie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`drawMinimap`, klawisz M), nazwy uniformów w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), zakładka panelu [`src/debug/categories/PostProcessCategory.cpp`](../../../src/debug/categories/PostProcessCategory.cpp), testy [`tests/DiscoveryTests.cpp`](../../../tests/DiscoveryTests.cpp), [`tests/MinimapTests.cpp`](../../../tests/MinimapTests.cpp) i jeden przypadek w [`tests/MazeLayoutTests.cpp`](../../../tests/MazeLayoutTests.cpp).
 
-**Stan na dziś:** w prawym dolnym rogu okna stoi kwadratowa mapa labiryntu, widok z góry, północ u góry, mapa się nie obraca. Pokazuje tylko komórki, które gracz odkrył, i strzałkę gracza. Rysuje ją osobny przebieg do własnego framebuffera `GL_RGBA8` (kwadrat o boku 0,28 wysokości okna), a drugi przebieg kopiuje ten obraz w róg okna z przezroczystością 0,85. Przebiegi stoją **po** przebiegu składającym, więc mgła, bloom i mapowanie tonów jej nie dotykają. Dwa nowe programy shaderów (`minimap` i `minimap_overlay`): programów jest trzynaście, paneli nadal dwanaście (po M8, części 1: czternaście programów i trzynaście paneli). Klawisz M włącza i wyłącza mapę, a trzecia zakładka panelu Framebuffers zmienia jej ustawienia i pokazuje jej framebuffer.
+**Stan na dziś:** w lewym dolnym rogu okna (domyślnie od 2026-10-06, wcześniej w prawym dolnym; [`../../decisions/minimap-default-corner-bottom-left.md`](../../decisions/minimap-default-corner-bottom-left.md)) stoi kwadratowa mapa labiryntu, widok z góry, północ u góry, mapa się nie obraca. Pokazuje tylko komórki, które gracz odkrył, i strzałkę gracza. Rysuje ją osobny przebieg do własnego framebuffera `GL_RGBA8` (kwadrat o boku 0,28 wysokości okna), a drugi przebieg kopiuje ten obraz w róg okna z przezroczystością 0,85. Przebiegi stoją **po** przebiegu składającym, więc mgła, bloom i mapowanie tonów jej nie dotykają. Dwa nowe programy shaderów (`minimap` i `minimap_overlay`): programów jest trzynaście (po M8, części 1: czternaście). Klawisz M włącza i wyłącza mapę, a jej ustawienia i podgląd jej framebuffera są w oknie debugowania, w kategorii Gameplay, w karcie Minimap (do 2026-10-06 była to trzecia zakładka panelu Framebuffers, dziś nie istnieje).
 
 **Zmiana w M8, części 2 (2026-10-06).** Mapa czyta ściany z **labiryntu rundy** (`roundMaze(world, round)`), a nie ze świata: ściana, którą otworzyła dźwignia, znika z mapy od następnej klatki, a odkrywanie widzi korytarz za nią (sekcje 2.3, 2.6 i 2.11). Doszły też małe kwadraty dźwigni i kartek (sekcja 2.6). Liczby programów (czternaście) i paneli (trzynaście) się nie zmieniły. Co z tego widziano na ekranie, mówi sekcja 5.9.
 
@@ -29,9 +29,9 @@ PRD wymienia przy temacie 10 minimapę: widok labiryntu rysowany do osobnego fra
 | pokazanie obrazu mapy w rogu okna z przezroczystością | `MinimapRenderer::drawOverlay`, `post/minimap_overlay.frag`, mieszanie | 2.9, 4.3, 5.4 |
 | kolory mapy jako liczby sRGB, bez konwersji | stałe `MINIMAP_*_COLOR`, oba shadery | 2.8 |
 | miejsce w klatce | `NightMazeApp::drawMinimap` | 2.10, 5.5 |
-| zakładka panelu | `drawMinimapSettings` | 6 |
+| karta Minimap kategorii Gameplay (dawniej zakładka panelu) | `drawMinimap` w `GameplayCategory.cpp` | 6 |
 
-Pokaz na obronie to ta sama myśl co przy pozostałych elementach tematu 10, tylko z drugim framebufferem: **obraz, który program narysował do tekstury, jest widoczny dwa razy**, w rogu okna i w zakładce Minimap panelu Framebuffers (w tej drugiej dokładnie w takiej postaci, w jakiej leży w teksturze).
+Pokaz na obronie to ta sama myśl co przy pozostałych elementach tematu 10, tylko z drugim framebufferem: **obraz, który program narysował do tekstury, jest widoczny dwa razy**, w rogu okna i w zakładce Minimap karty Gameplay / Minimap (w tej drugiej dokładnie w takiej postaci, w jakiej leży w teksturze).
 
 ## 2. Teoria
 
@@ -166,7 +166,7 @@ Zabezpieczenia: wartości z suwaków są wciskane w zakres (`MIN_MINIMAP_SIZE` 0
 
 **Komórka jest "pokazana"**, gdy jest odkryta w rundzie (`Round::discovery`) albo zawsze przy `revealAll`. Przełącznik `revealAll` zmienia **tylko to, co jest rysowane**: odkrywanie rundy toczy się pod spodem i po wyłączeniu przełącznika wraca (test `reveal all shows the whole maze without changing the discovery`).
 
-**Ściany idą z labiryntu rundy.** Grupa 2 pyta `Maze::hasWall` na `roundMaze(world, round)`. Ściana otwarta dźwignią jest w kopii rundy usunięta, więc **mapa jej nie rysuje**. Plan w panelu Maze robi inaczej: czyta `world.walls` (świat się nie zmienia) i rysuje otwartą ścianę przygaszoną. To dwa różne wybory dla dwóch różnych celów: mapa mówi graczowi, którędy może iść, plan jest narzędziem debugowania i pokazuje, gdzie skrót jest.
+**Ściany idą z labiryntu rundy.** Grupa 2 pyta `Maze::hasWall` na `roundMaze(world, round)`. Ściana otwarta dźwignią jest w kopii rundy usunięta, więc **mapa jej nie rysuje**. Plan w zakładce World / Maze robi inaczej: czyta `world.walls` (świat się nie zmienia) i rysuje otwartą ścianę przygaszoną. To dwa różne wybory dla dwóch różnych celów: mapa mówi graczowi, którędy może iść, plan jest narzędziem debugowania i pokazuje, gdzie skrót jest.
 
 **Kwadraty dźwigni i kartek.** Ich półbok to `MOUNT_MARK_HALF_SIZE` (0,22 m), nie mniej niż `MIN_MOUNT_MARK_PIXELS` (1,5 piksela) razy metrów na piksel: mniejsze niż romb kryształu, żeby nie zasłaniały ściany, na której wiszą. Kwadrat jest rysowany tylko wtedy, gdy komórka, w której wisi (`mount.cell`), jest pokazana. Dźwignia, której runda nie zna (runda innego świata), liczy się jako niepociągnięta. Test `the minimap drops an opened wall and marks levers and notes`: przy `revealAll` liczba wierzchołków w kolorze ściany to liczba ścian razy 6, po pociągnięciu o jedną ścianę mniej, a kolor dźwigni pociągniętej pojawia się 6 razy; bez żadnej odkrytej komórki nie ma żadnej dźwigni ani kartki.
 
@@ -214,7 +214,7 @@ Nic po drodze nie koduje ani nie dekoduje. To działa, bo:
 
 Gdyby `minimap_overlay.frag` wywołał `linearToSrgb`, kolory zostałyby zakodowane drugi raz i mapa byłaby za jasna i wyblakła. **Mieszanie z przezroczystością** (sekcja 2.9) odbywa się więc na wartościach sRGB, a nie na liniowych: nie jest to fizycznie poprawna mieszanka światła, tak samo jak mieszanie HUD i paneli ImGui. Wybór: [`../../decisions/minimap-srgb-constants-after-composite.md`](../../decisions/minimap-srgb-constants-after-composite.md).
 
-Kolory ściany, bramy, kryształu i gracza to te same, których używa plan w panelu Maze (`debug/Theme.hpp`: `PLAN_WALL_COLOR` 176, 190, 216 z 255 to `0,69, 0,75, 0,85`, i tak dalej). Kolor wyjścia jest inny: plan ma jasną zieleń (132, 220, 140), mapa ciemną (`0,17, 0,42, 0,24`), bo jest tłem podłogi, a nie znacznikiem.
+Kolory ściany, bramy, kryształu i gracza to te same, których używa plan w zakładce World / Maze (`debug/Theme.hpp`: `PLAN_WALL_COLOR` 176, 190, 216 z 255 to `0,69, 0,75, 0,85`, i tak dalej). Kolor wyjścia jest inny: plan ma jasną zieleń (132, 220, 140), mapa ciemną (`0,17, 0,42, 0,24`), bo jest tłem podłogi, a nie znacznikiem.
 
 ### 2.9 Mieszanie: przezroczysta nakładka
 
@@ -279,9 +279,9 @@ Odkrycie jest polem rundy (`Round::discovery`). Wynika stąd, kiedy się zeruje,
 - Odkryta komórka nie jest "zapamiętana jako widziana z odległości": reguła nie ma pojęcia zasięgu wzroku, korytarz jest odkrywany aż do ściany, także długi na 40 komórek.
 - Ściana między komórką pokazaną a niepokazaną jest rysowana, więc jej grubość wchodzi o pół grubości w niepokazaną komórkę. To drobna rzecz, której nie oglądał właściciel (agent jej nie wymienił wśród oglądanych punktów).
 - Mapa jest za mała do czytania w labiryncie 40 x 40 (komórka około 5 pikseli przy 202 px): kod trzyma tylko minimalne rozmiary kształtów, a samej czytelności nie poprawia. Test `the map of the largest maze can be built` sprawdza tylko, że lista powstaje.
-- Panel Framebuffers nie dostał większej wysokości przy trzeciej zakładce (`PanelLayout.hpp` nie zmieniono), więc zakładka Minimap może wymagać przewijania. Nikt tego nie sprawdził.
+- (Stan z 2026-10-05, dziś nieaktualny.) Panel nie dostał większej wysokości przy trzeciej zakładce, więc zakładka Minimap mogła wymagać przewijania. Od 2026-10-06 karta Minimap leży na stronie z przewijaniem w oknie debugowania i problem nie istnieje.
 - Mieszanie jest liczone na wartościach sRGB, a nie liniowych (sekcja 2.8).
-- Domyślny układ paneli: panel Assets stoi w prawej kolumnie do dołu okna (`ASSETS_PLACEMENT`), więc **przykrywa prawy dolny róg**, w którym stoi mapa. Do oglądania mapy trzeba schować panele (klawisz akcentu).
+- Okno debugowania stoi przy prawej krawędzi okna gry, więc przykrywa mapę, gdy ustawisz `Corner` na `Top right` albo `Bottom right`. Domyślnie mapa stoi w lewym dolnym rogu właśnie po to, żeby okno jej nie zasłaniało (do 2026-10-06 stała w prawym dolnym i przykrywał ją panel Assets). Okno startuje ukryte i klawisz akcentu pokazuje je i chowa.
 - macOS: framebuffer koloru `GL_RGBA8`, rozmiary Retina i mieszanie w domyślnym framebufferze nie były uruchamiane.
 
 ## 3. Jak to działa w OpenGL
@@ -415,7 +415,7 @@ Program `minimap_overlay` to **nowy plik fragmentów z już istniejącym** `post
 | [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | trzy stałe z sekcji 4.4 |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_minimapShader`, `m_minimapOverlayShader`, `m_minimapSettings`, `m_minimapRenderer`, cztery akcesory dla panelu, `MINIMAP_KEY`, funkcja `drawMinimap` |
 | [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`DebugUI.cpp`](../../../src/debug/DebugUI.cpp), [`src/main.cpp`](../../../src/main.cpp) | cztery nowe pola kontekstu (`minimapShader`, `minimapOverlayShader`, `minimapSettings`, `minimap`, razem 42), `SHADER_COUNT` 13, dwa dodatkowe argumenty `drawFramebuffersPanel` |
-| [`src/debug/panels/FramebuffersPanel.hpp`](../../../src/debug/panels/FramebuffersPanel.hpp), [`.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp) | trzecia zakładka `Minimap` (`drawMinimapSettings`) |
+| [`src/debug/categories/PostProcessCategory.hpp`](../../../src/debug/categories/PostProcessCategory.hpp), [`.cpp`](../../../src/debug/categories/PostProcessCategory.cpp) | trzecia zakładka `Minimap` (`drawMinimapSettings`) |
 | [`tests/DiscoveryTests.cpp`](../../../tests/DiscoveryTests.cpp) | 19 przypadków testowych (sekcja 5.8) |
 | [`tests/MinimapTests.cpp`](../../../tests/MinimapTests.cpp) | 19 przypadków testowych |
 | [`tests/MazeLayoutTests.cpp`](../../../tests/MazeLayoutTests.cpp) | 1 nowy przypadek (`cellAt finds the cell a point of the world lies in`) |
@@ -465,7 +465,7 @@ void discoverFrom(Discovery& discovery, const Maze& maze, MazeCell cell) {
 
 ### 5.3 `Minimap.hpp` i `Minimap.cpp`
 
-**Ustawienia** (`MinimapSettings`, wartości startowe pilnuje test `the minimap settings start with the agreed values`): `enabled = true`, `revealAll = false`, `size = 0,28`, `margin = 0,02`, `corner = BottomRight`, `opacity = 0,85`.
+**Ustawienia** (`MinimapSettings`, wartości startowe pilnuje test `the minimap settings start with the agreed values`): `enabled = true`, `revealAll = false`, `size = 0,28`, `margin = 0,02`, `corner = BottomLeft` (od 2026-10-06, wcześniej `BottomRight`), `opacity = 0,85`.
 
 **Funkcje:**
 
@@ -549,7 +549,7 @@ Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod (Windows,
 
 **Widziane na zrzutach ekranu przez agenta (2026-10-06), nie przez właściciela.** Pierwsze oglądanie obrazu M7 i M8 przez agenta: wersja Release z commitu `9a33f18`, 1280 x 720, RTX 4070 Ti SUPER, sterownik zgłaszający OpenGL 4.1.0 NVIDIA 610.74. Ustawienia zmieniał tymczasowy hak testowy, który pisał te same pola co panele (efekt potwierdzony, widżet nie); mysz, W, Shift, M, F, tylda i kliknięcia w panele były prawdziwym, syntetycznym wejściem. Widziane:
 
-- mapa w prawym dolnym rogu, kwadratowa, 202 piksele, ciemna z jasnymi ścianami; północ u góry, strzałka obraca się (po obrocie do `Yaw` 270 wskazuje w lewo)
+- mapa w prawym dolnym rogu (taki był wtedy domyślny róg), kwadratowa, 202 piksele, ciemna z jasnymi ścianami; północ u góry, strzałka obraca się (po obrocie do `Yaw` 270 wskazuje w lewo)
 - na starcie komórka startu i korytarze od niej; korytarz odkryty do pierwszej ściany i nie dalej
 - turkusowe romby kryształów w odkrytych komórkach; start niebieski, wyjście zielone, brama pomarańczowa (z `Reveal all`)
 - zakładka `Minimap` pokazuje `202 x 202 px, GL_RGBA8`, obraz ostry
@@ -557,16 +557,18 @@ Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod (Windows,
 - górne rogi okna są wolne od HUD
 - oba widoki diagnostyczne i `Unlit` nie zmieniają mapy
 - w labiryncie 40 x 40 strzałka jest większa od komórki i zasłania komórkę startu
-- panel Framebuffers przewija się na zakładce `Minimap`, a cztery podglądy pod nią są obcięte (otwarty drobny punkt kosmetyczny)
+- karta Gameplay / Minimap przewija się na zakładce `Minimap`, a cztery podglądy pod nią są obcięte (otwarty drobny punkt kosmetyczny)
 - ramka wokół mapy (wersja po poprawce, widziana przez autora poprawek w jego worktree przed scaleniem): cienka i wyciszona przy starcie rundy
 
 **Nie chodzone:** reguły odkrywania na odnogach i w narożnikach, otwarcie bramy i zebranie kryształu widziane na mapie. Kwadraty dźwigni i kartek, ich przygaszenie po pociągnięciu oraz zmiana rozmiaru okna, maksymalizacja, 1440p i `Reload shaders` nie były oglądane.
 
 **Odczyt liczby klatek** (jedna sesja, Release, 1280 x 720, panele ukryte, widok korytarza, synchronizacja pionowa nieaktywna na tej maszynie; to odczyt, nie pomiar): wszystko włączone około 1250, minimapa wyłączona około 1250 do 1270. Różnica mieści się w rozrzucie odczytu, więc koszt mapy tym odczytem nie został wykazany.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Trzecia zakładka panelu **Framebuffers**, `Minimap` (`drawMinimapSettings`, wołana z `drawSettings`). Tabela o dwóch kolumnach (`SETTING_COLUMNS`): w lewej siedem wierszy, w prawej obraz.
+**Stan na 2026-10-06.** Panel Framebuffers i jego trzecia zakładka `Minimap` już nie istnieją: wszystkie panele zastąpiło jedno okno debugowania ([`../debug-ui.md`](../debug-ui.md)). Ustawienia mapy są w kategorii **Gameplay**, w karcie **Minimap** (`drawMinimap` w [`src/debug/categories/GameplayCategory.cpp`](../../../src/debug/categories/GameplayCategory.cpp)), a obraz jej framebuffera w tej samej karcie (`drawFramebufferPicture` z [`src/debug/Pictures.cpp`](../../../src/debug/Pictures.cpp)). Karta ma te same kontrolki co wcześniej: `Minimap`, `Reveal all`, `Size`, `Margin`, `Corner`, `Opacity`, linia `Framebuffer` i obraz `Minimap framebuffer`; zakresy i `AlwaysClamp` bez zmian, a lista `Corner` ma wpisy `Top left`, `Top right`, `Bottom left`, `Bottom right`. Zmiany: pola są przełącznikami (pill), a suwaki rysują dwanaście kresek; obraz nie stoi w prawej kolumnie tabeli, tylko pod wierszami, nie szerszy niż 200 pikseli przy skali 100 procent; każdy wiersz ma podpowiedź.
+
+Poniższa tabela i opis opisują panel sprzed tej zmiany i są zachowane jako historia (kod z commitów przed 5b6a38f).
 
 | Wiersz | Widżet | Zakres | Co zmienia |
 |---|---|---|---|
@@ -581,11 +583,11 @@ Trzecia zakładka panelu **Framebuffers**, `Minimap` (`drawMinimapSettings`, wo�
 
 Obraz w panelu jest teksturą **tak, jak leży w framebufferze**, przed mieszaniem z sceną (bez przezroczystości). ImGui rysuje do okna bez kodowania, więc liczby sRGB są pokazane jako zapisane (podpowiedź: `sRGB colours, shown as stored`). Kod uznaje obraz za aktualny, gdy mapa jest włączona (`drawn = minimap.enabled`).
 
-Panel dostał dwa nowe argumenty (`drawFramebuffersPanel(settings, postProcess, minimapSettings, minimapTarget)`), a `DebugContext` cztery pola: **42 pola** (było 38; od M8, części 1 jest ich 45), z czego `minimapShader` i `minimapOverlayShader` to programy do przeładowania (lista w panelu Shaders ma trzynaście wpisów, `SHADER_COUNT = 13` (od M8, części 1, czternaście i 14: na końcu doszedł `reflect`)), `minimapSettings` ustawienia do edycji, `minimap` mapa tylko do odczytu. Paneli jest nadal dwanaście. Wysokość panelu (`FRAMEBUFFERS_HEIGHT` w `PanelLayout.hpp`) nie została zmieniona, więc **nie wiadomo**, czy zakładka mieści się bez przewijania (komentarz w kodzie mówi, że jest wyższa niż dwie pierwsze).
+Panel dostał dwa nowe argumenty (`drawFramebuffersPanel(settings, postProcess, minimapSettings, minimapTarget)`, funkcja usunięta 2026-10-06), a `DebugContext` cztery pola: **42 pola** (było 38; od M8, części 1 jest ich 45), z czego `minimapShader` i `minimapOverlayShader` to programy do przeładowania (lista w zakładce Diagnostics / Frame and shaders ma trzynaście wpisów, `SHADER_COUNT = 13` (od M8, części 1, czternaście i 14: na końcu doszedł `reflect`)), `minimapSettings` ustawienia do edycji, `minimap` mapa tylko do odczytu. Paneli jest nadal dwanaście. Wysokość panelu (`FRAMEBUFFERS_HEIGHT` w `PanelLayout.hpp`) nie została zmieniona, więc **nie wiadomo**, czy zakładka mieści się bez przewijania (komentarz w kodzie mówi, że jest wyższa niż dwie pierwsze).
 
 ## 7. Pułapki
 
-1. **Mapa w prawym dolnym rogu zasłonięta panelem.** Domyślny układ paneli stawia Assets w prawej kolumnie do dołu okna. Żeby zobaczyć mapę, schowaj panele (klawisz akcentu), albo zmień `Corner`.
+1. **Mapa w prawym rogu zasłonięta oknem debugowania.** Okno stoi przy prawej krawędzi okna gry. Żeby zobaczyć mapę ustawioną w prawym rogu, schowaj okno (klawisz akcentu) albo zmień `Corner`. Domyślny róg, lewy dolny, jest poza oknem.
 2. **Brak odkryć "przez ściany".** Reguła zatrzymuje się na ścianie. Odnoga widoczna jako otwór w ścianie korytarza nie jest odkryta (sekcja 2.3). To zamierzone, nie błąd.
 3. **`hasWall` rzuca dla komórki spoza labiryntu.** Każde wywołanie z nieznanymi współrzędnymi musi sprawdzić `contains` najpierw. `discoverFrom` robi to dwa razy: dla komórki gracza i po każdym kroku marszu.
 4. **`floor` przy `cellAt`.** Konwersja `static_cast<int>` na ujemnym ułamku daje 0, a nie -1 (sekcja 2.3). Test `cellAt` pilnuje obu stron.
@@ -609,7 +611,7 @@ Panel dostał dwa nowe argumenty (`drawFramebuffersPanel(settings, postProcess, 
 3. **`cellAt` na kartce.** Policz `cellAt` dla `(2,1; 40; 5,9)`, `(2,0; 0; 4,0)`, `(-0,5; 0; 1)`. (Odpowiedź: `(1, 2)`, `(1, 2)`, `(-1, 0)`.)
 4. **Rzut ortograficzny na kartce.** Dla labiryntu 10 x 10 policz `x_clip` i `y_clip` środka komórki `(9, 9)`, czyli `(19, 19)` m. (Odpowiedź: `x_clip = 2 * (19 - (-0,6)) / 21,2 - 1 = 0,849`, `y_clip = -0,849`: prawy dolny róg.)
 5. **Rozmiar kwadratu na kartce.** Policz `size`, `margin`, `x` i `y` prawego górnego rogu dla okna 1920 x 1080. (Odpowiedź: `size = lround(302,4) = 302`, `margin = lround(21,6) = 22`, `x = 1920 - 22 - 302 = 1596`, `y = 1080 - 22 - 302 = 756`.)
-6. **Poznaj odkrywanie.** Włącz panel Framebuffers, zakładkę Minimap, odznacz `Reveal all` i przejdź jeden korytarz. Sprawdź, czy odnoga widoczna w ścianie jest nieodkryta, dopóki nie staniesz w jej linii.
+6. **Poznaj odkrywanie.** Pokaż okno (`~`), wejdź w kategorię Gameplay, kartę Minimap, odznacz `Reveal all` i przejdź jeden korytarz. Sprawdź, czy odnoga widoczna w ścianie jest nieodkryta, dopóki nie staniesz w jej linii.
 7. **`Reveal all`.** Zaznacz i odznacz. Czy odkrycie z poprzedniej drogi wróciło po odznaczeniu?
 8. **Rozmiar a piksele.** Zmień `Size` i zobacz linię `Framebuffer:`: czy boki są równe rozmiarowi mapy na ekranie?
 9. **Bez mieszania.** W `drawOverlay` zakomentuj `glEnable(GL_BLEND)`. Co się dzieje z `Opacity`? (Przezroczystość przestaje działać, mapa ma zawsze pełne krycie.)

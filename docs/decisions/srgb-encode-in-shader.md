@@ -39,7 +39,7 @@ Klatkę koduje **shader**: ostatnia linia `post/composite.frag` to `fragColor = 
 - Kodowanie kosztuje potęgę na piksel. Zgłoszony pomiar całej zmiany M7 (bufor HDR, przebieg `composite`, kodowanie razem) to spadek z około 2700 do 2500 klatek na sekundę w 1280 x 720 i z około 2020 do 1960 w 2560 x 1440 (Windows, Release, bez synchronizacji pionowej, panele ukryte). Samego kodowania nikt nie mierzył osobno.
 - Zaokrąglenie do 8 bitów okna następuje po kodowaniu, czyli na liczbach sRGB. To jest właściwa kolejność: ciemne tony dostają więcej stopni.
 - ImGui miesza półprzezroczyste panele ze sceną na liczbach sRGB, a nie liniowych. Tak było zawsze i tak działa ImGui w większości programów.
-- Podgląd tekstur sRGB w panelu Assets potrzebuje osobnego obejścia (`debug::RawTextureSampler`), bo ImGui czyta teksturę i zapisuje ją bez kodowania. Z przełącznikiem włączonym dla ImGui ten podgląd byłby poprawny sam z siebie, ale kosztem wszystkich pozostałych kolorów paneli.
+- Podgląd tekstur sRGB w zakładce Diagnostics / Assets potrzebuje osobnego obejścia (`debug::RawTextureSampler`), bo ImGui czyta teksturę i zapisuje ją bez kodowania. Z przełącznikiem włączonym dla ImGui ten podgląd byłby poprawny sam z siebie, ale kosztem wszystkich pozostałych kolorów paneli.
 - Linia `glDisable(GL_FRAMEBUFFER_SRGB)` jest zabezpieczeniem: gdyby jakiś sterownik albo późniejszy kod włączył przełącznik na oknie sRGB, obraz byłby zakodowany dwa razy.
 
 **Czego nie zmierzyłem.** Nie sprawdzałem, czy okno na macOS (Retina) albo na Windowsie jest zdolne do sRGB bez proszenia o to. Przy wyłączonym przełączniku nie powinno to mieć znaczenia, ale to wniosek ze specyfikacji, nie z pomiaru. Punkt jest na liście w [`../guides/build-macos.md`](../guides/build-macos.md).

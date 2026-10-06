@@ -81,7 +81,7 @@ glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 ```
 
-Wersja w hintach to **minimum**, a nie wartość dokładna. Na Windowsie sterownik może oddać kontekst nowszy (na przykład 4.6), bo jest on zgodny z 4.1 Core. Dlatego panel Renderer może pokazywać na Windowsie wersję wyższą niż 4.1 i to nie jest błąd. Nie każdy sterownik tak robi: na moim PC sterownik NVIDII oddał dokładnie wersję, o którą prosi program (`GL_VERSION: 4.1.0 NVIDIA 610.74`). Zabezpieczeniem przed przypadkowym użyciem funkcji z 4.2+ jest GLAD wygenerowany dla 4.1 Core: takich funkcji po prostu nie ma w nagłówku i kod się nie skompiluje (zob. [`../../libraries/glad.md`](../../libraries/glad.md)).
+Wersja w hintach to **minimum**, a nie wartość dokładna. Na Windowsie sterownik może oddać kontekst nowszy (na przykład 4.6), bo jest on zgodny z 4.1 Core. Dlatego zakładka Diagnostics / Frame and shaders może pokazywać na Windowsie wersję wyższą niż 4.1 i to nie jest błąd. Nie każdy sterownik tak robi: na moim PC sterownik NVIDII oddał dokładnie wersję, o którą prosi program (`GL_VERSION: 4.1.0 NVIDIA 610.74`). Zabezpieczeniem przed przypadkowym użyciem funkcji z 4.2+ jest GLAD wygenerowany dla 4.1 Core: takich funkcji po prostu nie ma w nagłówku i kod się nie skompiluje (zob. [`../../libraries/glad.md`](../../libraries/glad.md)).
 
 ### 3.2 Jedna klatka
 
@@ -142,7 +142,7 @@ Moduł `core` nie tworzy żadnych obiektów OpenGL (żadnych `glGen*`, żadnych 
 
 ## 4. Shadery
 
-Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (cztery pary plików w `assets/shaders/`: `textured`, `color`, `lit` i `gouraud`, wszystkie `#version 410 core`, oraz dwa wspólne pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`) rysują po wyczyszczeniu ekranu scenę bez oświetlenia, linie pudełek i kul kolizji oraz scenę z oświetleniem ([`../gfx/shaders.md`](../gfx/shaders.md), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md), sekcja 4).
+Ta część modułu nie ma własnych shaderów: `glClear` nie przechodzi przez potok programowalny, więc do wyczyszczenia ekranu nie potrzeba ani shadera wierzchołków, ani fragmentów. Shadery projektu (cztery pary plików w `assets/shaders/`: `textured`, `color`, `lit` i `gouraud`, wszystkie `#version 410 core`, oraz dwa wspólne pliki dołączane, `common/lighting.glsl` i `common/normal_map.glsl`) rysują po wyczyszczeniu ekranu scenę bez oświetlenia, linie pudełek i kul kolizji oraz scenę z oświetleniem ([`../gfx/shaders.md`](../gfx/shaders.md), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)). Własne shadery ma też backend ImGui (zob. [`../debug-ui.md`](../debug-ui.md)).
 
 ## 5. Kod w projekcie
 
@@ -239,9 +239,9 @@ Trzy funkcje: `logInfo` pisze na `std::cout`, `logWarn` i `logError` na `std::ce
 
 Kto z niego korzysta w M0: `Window` (wersja OpenGL, nazwa karty, błędy GLFW), `checkGlErrors` (błędy OpenGL, zob. [`gl-check.md`](gl-check.md)) i `main` (wyjątek ze startu).
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Panel **Renderer** (kod: [`RendererPanel.cpp`](../../../src/debug/panels/RendererPanel.cpp)) pokazuje dane z klasy `Window`. Klawisz **`~`** (na lewo od `1`) chowa i pokazuje panele (HUD gry z M5 zostaje na ekranie). Sam moduł `core` ani gra nie wiedzą o panelu: dane dostaje on z `main.cpp` ([`README.md`](README.md), sekcja 6).
+Karta Frame w zakładce Frame and shaders kategorii Diagnostics (kod: [`DiagnosticsCategory.cpp`](../../../src/debug/categories/DiagnosticsCategory.cpp); do 2026-10-06 panel Renderer) pokazuje dane z klasy `Window`. Klawisz **`~`** (na lewo od `1`) pokazuje i chowa okno debugowania, które po starcie jest ukryte (HUD gry z M5 zostaje na ekranie). Sam moduł `core` ani gra nie wiedzą o panelu: dane dostaje on z `main.cpp` ([`README.md`](README.md), sekcja 6).
 
 | Element | Źródło | Czego uczy obserwacja |
 |---|---|---|
@@ -249,9 +249,9 @@ Panel **Renderer** (kod: [`RendererPanel.cpp`](../../../src/debug/panels/Rendere
 | `Window` | `Window::windowSize()` | Rozmiar we współrzędnych ekranu. Zmiana rozmiaru okna zmienia obie wartości na żywo |
 | `OpenGL` | `Window::glVersion()` | Wersja oddana przez sterownik: na macOS zaczyna się od 4.1, na Windowsie może być wyższa |
 | `GPU` | `Window::glRenderer()` | Która karta rysuje. Na laptopie z dwiema kartami od razu widać, czy nie została wybrana zintegrowana |
-| `Clear color` | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Wartość edytowalna. Startuje jako bardzo ciemny granat (`{0.022F, 0.033F, 0.088F}`, wartość sRGB, do pierwszej części M7 `{0.01F, 0.015F, 0.04F}`), do M5 kolor nieba. Od pierwszej części M6 niebo rysuje skybox, więc skutek zmiany widać dopiero po odznaczeniu pola `Skybox` w tym samym panelu ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 6). Zmiana jest wtedy widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę (od M7 z kolorem przeliczonym na liniowy): dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
+| `Clear colour` (kategoria Render, karta Scene; dawniej `Clear color`) | `NightMazeApp::m_clearColor` (przez `clearColor()`) | Wartość edytowalna. Startuje jako bardzo ciemny granat (`{0.022F, 0.033F, 0.088F}`, wartość sRGB, do pierwszej części M7 `{0.01F, 0.015F, 0.04F}`), do M5 kolor nieba. Od pierwszej części M6 niebo rysuje skybox, więc skutek zmiany widać dopiero po wyłączeniu przełącznika `Skybox` w tej samej karcie ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 6). Zmiana jest wtedy widoczna w następnej klatce, bo `glClearColor` jest wołane co klatkę (od M7 z kolorem przeliczonym na liniowy): dobry dowód, że OpenGL to stan odczytywany w momencie `glClear` |
 
-Elementy `FPS` i `Frame time` tego samego panelu opisuje [`main-loop.md`](main-loop.md), sekcja 6. Od M4 panel ma jeszcze drugą wartość edytowalną, listę `Lighting` z trybem oświetlenia, która nie dotyczy okna ani kontekstu: opisuje ją [`../debug-ui.md`](../debug-ui.md), sekcja 5.3.
+Elementy `FPS` i `Frame time` tej samej karty opisuje [`main-loop.md`](main-loop.md), sekcja 6. Od M4 w kategorii Render jest jeszcze druga wartość edytowalna, lista `Lighting` z trybem oświetlenia, która nie dotyczy okna ani kontekstu: opisuje ją [`../debug-ui.md`](../debug-ui.md)
 
 ## 7. Pułapki
 
@@ -267,7 +267,7 @@ Tabela różnic między macOS a Windowsem jest w [`README.md`](README.md), sekcj
 
 ## 8. Ćwiczenia
 
-1. **Vsync.** W `Window.cpp` zmień `glfwSwapInterval(1)` na `glfwSwapInterval(0)` i zbuduj program. Zapisz FPS i czas klatki z panelu Renderer przed zmianą i po niej. Wyjaśnij własnymi słowami, skąd różnica i dlaczego mimo tysięcy FPS symulacja nadal robiłaby 120 kroków na sekundę. Na koniec przywróć `1`.
+1. **Vsync.** W `Window.cpp` zmień `glfwSwapInterval(1)` na `glfwSwapInterval(0)` i zbuduj program. Zapisz FPS i czas klatki z zakładki Diagnostics / Frame and shaders przed zmianą i po niej. Wyjaśnij własnymi słowami, skąd różnica i dlaczego mimo tysięcy FPS symulacja nadal robiłaby 120 kroków na sekundę. Na koniec przywróć `1`.
 2. **Retina.** Na Macu zamień w `NightMazeApp::onRender` `framebufferSize()` na `windowSize()` i zobacz, gdzie ląduje obraz (dla wyraźnego efektu ustaw jasny `Clear color`). Wyjaśnij, dlaczego na Windowsie ta sama zmiana zwykle niczego nie psuje.
 3. **Ścieżka błędu.** W `Window.cpp` zmień hint `GLFW_CONTEXT_VERSION_MINOR` z `1` na `6` i uruchom program na Macu. Przeczytaj obie linie `[error]` w konsoli i wskaż w kodzie, skąd pochodzi każda z nich (callback `onGlfwError`, `catch` w `main`). Sprawdź kod wyjścia programu (`echo $?`). Przywróć `1`.
 

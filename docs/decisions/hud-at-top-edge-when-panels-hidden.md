@@ -1,7 +1,11 @@
 # Pasek HUD stoi przy górnej krawędzi okna, gdy panele debug są schowane
 
-Data: 2026-10-06. Stan: obowiązuje. Decyzja właściciela projektu (punkt 3 jego decyzji z tego dnia, w całości w sekcji 1); sposób wykonania (jeden dodatkowy argument funkcji) to wybór wykonawczy. Zmienia regułę opisaną w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.9.5, zgodnie z którą HUD stał pod wszystkimi rzędami pasków zawsze.
-Kod: [`src/debug/Hud.cpp`](../../src/debug/Hud.cpp) (`drawStatus`, `drawHud`), [`src/debug/Hud.hpp`](../../src/debug/Hud.hpp), [`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp) (wywołanie `drawHud` z `m_visible`), [`src/debug/PanelLayout.hpp`](../../src/debug/PanelLayout.hpp) (`FOLDED_ROW_COUNT`).
+Data: 2026-10-06. Stan: zastąpiona 2026-10-06 przez [`hud-always-at-the-top-edge.md`](hud-always-at-the-top-edge.md) (okno debug zastąpiło trzynaście paneli, rzędów pasków już nie ma). Poniżej brzmienie z chwili zapisu: decyzja właściciela projektu (punkt 3 jego decyzji z tego dnia, w całości w sekcji 1); sposób wykonania (jeden dodatkowy argument funkcji) to wybór wykonawczy. Zmieniała regułę opisaną w poprzednim dokumencie modułu `debug-ui.md`, zgodnie z którą HUD stał pod wszystkimi rzędami pasków zawsze (dziś ta sekcja opisuje nowy kod).
+Kod, którego dotyczyła (dziś `panelsVisible`, `FOLDED_ROW_COUNT` i `PanelLayout` już nie istnieją): `src/debug/Hud.cpp` (`drawStatus`, `drawHud`), `src/debug/DebugUI.cpp` (wywołanie `drawHud` z `m_visible`), `src/debug/PanelLayout.hpp` (`FOLDED_ROW_COUNT`). Stan dzisiejszy: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.13.
+
+## Co zastąpiło tę decyzję (2026-10-06, kod okna debug)
+
+Notatka zapisała własny koszt: HUD przeskakiwał przy tyldzie, a w sekcji 5 wskazała, że wrócę do niej, gdy dojdzie kolejny element przy górnej krawędzi albo gdy skakanie przeszkodzi. Oba się zdarzyły: okno debug (jedno zamiast trzynastu paneli) ma pasek stanu w prawym górnym rogu i nie ma rzędów pasków tytułu. HUD stoi dziś **zawsze** przy górnej krawędzi, a okno zaczyna się poniżej jego rezerwy: [`hud-always-at-the-top-edge.md`](hud-always-at-the-top-edge.md). Sekcje 1 do 5 niżej zostają w brzmieniu z chwili zapisu i opisują nieistniejący już kod (rzędy pasków, `panelsVisible`).
 
 ## 1. Kontekst
 

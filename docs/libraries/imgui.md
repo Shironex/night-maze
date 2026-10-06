@@ -1,28 +1,27 @@
 # Dear ImGui 1.92.9b (gałąź docking)
 
 Dokument biblioteki dla kamienia milowego M0. Opisuje użycie Dear ImGui w
-[`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp),
-[`src/debug/panels/RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp) i
-[`src/debug/panels/ShadersPanel.cpp`](../../src/debug/panels/ShadersPanel.cpp) oraz
-konfigurację z [`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake). API stylu i
-czcionek, którego używa motyw paneli ([`src/debug/Theme.cpp`](../../src/debug/Theme.cpp)),
-jest w sekcji 3.12. Widżety, które doszły w M4 razem z panelem Lights
-([`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp)): zwijane
-nagłówki, zakres z dwóch pól, suwak logarytmiczny i okno, które startuje zwinięte, są w
-sekcji 3.13. To, co doszło w M5: HUD gry jako okno ImGui, które jest tylko obrazem
-([`src/debug/Hud.cpp`](../../src/debug/Hud.cpp)), ósmy panel Gameplay
-([`src/debug/panels/GameplayPanel.cpp`](../../src/debug/panels/GameplayPanel.cpp)) i nowe
-kształty na planie w panelu Maze, jest w sekcji 3.14. To, co doszło w drugiej części M6:
-dziewiąty i dziesiąty panel, Terrain i Grass
-([`src/debug/panels/TerrainPanel.cpp`](../../src/debug/panels/TerrainPanel.cpp),
-[`src/debug/panels/GrassPanel.cpp`](../../src/debug/panels/GrassPanel.cpp)), i funkcja
-`ImGui::GetFrameHeight()`, którą układ paneli i HUD mierzą wysokość paska tytułu, jest w
-sekcji 3.15.
+[`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp), w oknie debug
+([`src/debug/DebugWindow.cpp`](../../src/debug/DebugWindow.cpp),
+[`src/debug/Widgets.cpp`](../../src/debug/Widgets.cpp),
+[`src/debug/Icons.cpp`](../../src/debug/Icons.cpp) i pliki w
+[`src/debug/categories/`](../../src/debug/categories/)) oraz konfigurację z
+[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake). API stylu i czcionek, którego
+używa motyw ([`src/debug/Theme.cpp`](../../src/debug/Theme.cpp)), jest w sekcji 3.12.
 
-Architekturę modułu `debug` i instrukcję "jak dodać nowy panel" zawiera
+**Stan z 2026-10-06 (okno debug).** Trzynaście osobnych paneli (`src/debug/panels/`, układ
+w `PanelLayout`) zastąpiło jedno okno debug z szyną siedmiu kategorii, polem szukania i
+panelem przypiętym (commity `5b6a38f` do `f6c6cd5`, patrz
+[`../modules/debug-ui.md`](../modules/debug-ui.md)). Sekcje 3.11 i 3.13 do 3.17 niżej są
+zapisem historycznym: opisują widżety ImGui tak, jak użyto ich w dawnych panelach (Maze,
+Collision, Assets, Lights, Gameplay, Terrain, Grass, Framebuffers, Shadows), i podają ich
+dawne pliki. Samo API ImGui opisane w tych sekcjach nie zmieniło się. Gdzie dziś stoi dana
+kontrolka, mówi tabela w `debug-ui.md`: kategoria, zakładka, karta.
+
+Architekturę modułu `debug` i instrukcję "jak dodać nowy wiersz" zawiera
 [`../modules/debug-ui.md`](../modules/debug-ui.md). Tutaj jest sama biblioteka.
 
-**Stan z 2026-10-06 (M9, część 2).** Menu gry rysuje RmlUi ([`rmlui.md`](rmlui.md)), a Dear ImGui zostaje przy panelach debug i HUD. W klatce ImGui rysuje po dokumencie menu, więc panele leżą na menu, a HUD jest rysowany tylko na ekranie `Playing` (`DebugContext::hudVisible`, a `DebugContext` ma dziś 50 pól), bo w pauzie leżałby na przyciskach. Dear ImGui instaluje swoje wywołania zwrotne GLFW po `ui::UiLayer` i przekazuje mu zdarzenia, a `main.cpp` wyłącza mysz menu, gdy panel jest pod kursorem (`setMouseEnabled`). Escape pauzuje grę i nie zamyka programu, a kursor jest przechwytywany od początku rundy, więc zdania niżej o Esc zwalniającym mysz opisują stan sprzed tej części. Czcionkę wczytuje `core::readBinaryFile` z `core::TEXT_FONT_FILE` (`src/core/Files.*`).
+**Stan z 2026-10-06 (M9, część 2).** Menu gry rysuje RmlUi ([`rmlui.md`](rmlui.md)), a Dear ImGui zostaje przy oknie debug i HUD. W klatce ImGui rysuje po dokumencie menu, więc okno debug leży na menu (od tego samego dnia startuje ukryte, `~` je pokazuje), a HUD jest rysowany tylko na ekranie `Playing` (`DebugContext::hudVisible`, a `DebugContext` ma dziś 51 pól), bo w pauzie leżałby na przyciskach. Dear ImGui instaluje swoje wywołania zwrotne GLFW po `ui::UiLayer` i przekazuje mu zdarzenia, a `main.cpp` wyłącza mysz menu, gdy okno debug jest pod kursorem (`setMouseEnabled`). Escape pauzuje grę i nie zamyka programu, a kursor jest przechwytywany od początku rundy, więc zdania niżej o Esc zwalniającym mysz opisują stan sprzed tej części. Czcionkę wczytuje `core::readBinaryFile` z `core::TEXT_FONT_FILE` (`src/core/Files.*`).
 
 ## 1. Czym jest Dear ImGui
 
@@ -69,16 +68,20 @@ if (ImGui::Button("Reload")) {
 ```
 
 Prawdziwy odpowiednik tej drugiej postaci jest w
-[`ShadersPanel.cpp`](../../src/debug/panels/ShadersPanel.cpp):
+[`DiagnosticsCategory.cpp`](../../src/debug/categories/DiagnosticsCategory.cpp) (przycisk
+`Reload shaders` w karcie Shaders):
 
 ```cpp
-        if (ImGui::Button("Reload shaders")) {
-            for (gfx::Shader* shader : shaders) {
-                shader->reload();
-            }
+    if (page.buttons("Shaders", "Reload shaders", nullptr,
+                     "Reads the files of all 14 shader programs again and builds them. "
+                     "A program that fails keeps its previous version.") == 1) {
+        for (gfx::Shader* shader : shaders) {
+            shader->reload();
         }
+    }
 ```
 
+`page.buttons` to nasza funkcja z `Widgets.cpp`, która pod spodem woła `ImGui::Button`.
 `shaders` to lista czternastu programów gry (sześć do M6, od pierwszej części M7 także
 `composite` i `preview`, od drugiej `bright` i `blur`, od czwartej `shadow_depth`, od szóstej
 `minimap` i `minimap_overlay`, od M8, części 1 `reflect`): jeden przycisk przeładowuje
@@ -93,12 +96,16 @@ Skutki praktyczne:
 - Kod interfejsu jest krótki i leży obok danych, które edytuje. Dlatego ImGui tak dobrze
   pasuje do paneli debugowych.
 
-Przykład z [`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp):
+Przykład z [`RenderCategory.cpp`](../../src/debug/categories/RenderCategory.cpp):
 
 ```cpp
-        // ColorEdit3 reads and writes three floats through the pointer.
-        ImGui::ColorEdit3("Clear color", clearColor.data());
+    // data() is the address of the three floats of the array.
+    page.color("Clear colour", context.clearColor.data(),
+               "The background where the sky is not drawn.");
 ```
+
+Funkcja `Page::color` woła pod spodem `ImGui::ColorEdit3`, który czyta i zapisuje trzy liczby
+przez wskaźnik.
 
 `clearColor` to `std::array<float, 3>` z `game::NightMazeApp` (pole `m_clearColor`, udostępniane
 przez metodę `clearColor()`, która zwraca referencję). Widżet czyta
@@ -342,9 +349,7 @@ Nasze własne shadery będą zaczynać się od `#version 410 core`. Dla wersji 4
 
 ### 3.4. Cykl klatki: NewFrame, widżety, Render, RenderDrawData
 
-Metoda `DebugUI::draw` w całości:
-
-> Uwaga (2026-10-06, M9 część 1): `drawCameraPanel` dostaje dziś dwa dodatkowe argumenty (`context.menuCamera` i `context.menuCameraLoopSeconds`), a `drawHud` jest wołane tylko wtedy, gdy `!context.menuCamera.enabled`: w trybie kamery menu HUD jest schowany. Opis: [`menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.4.
+Metoda `DebugUI::draw` w całości ([`src/debug/DebugUI.cpp`](../../src/debug/DebugUI.cpp), stan z 2026-10-06):
 
 ```cpp
 void DebugUI::draw(const DebugContext& context) {
@@ -354,45 +359,34 @@ void DebugUI::draw(const DebugContext& context) {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // The preview pictures of the framebuffer attachments are drawn by the game only
+    // while the card that shows them is drawn (the Post process category). That card
+    // sets the flag again below. With the debug UI hidden nobody does, and the game
+    // stops drawing the pictures.
+    context.postProcessSettings.previews = false;
+    // The same for the preview pictures of the two shadow maps (the Light category).
+    context.moonShadowSettings.preview = false;
+    context.flashlightShadowSettings.preview = false;
+
     if (m_visible) {
-        // An invisible dock area that covers the whole window, so panels can be docked to
-        // its edges. PassthruCentralNode keeps the middle transparent: the scene shows through.
+        // An invisible dock area that covers the whole window, so the pinned panel of
+        // the debug window can be docked to its edges. PassthruCentralNode keeps the
+        // middle transparent: the scene shows through.
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
                                      ImGuiDockNodeFlags_PassthruCentralNode);
 
-        // Each panel gets exactly the members it needs, so its signature still shows
-        // what it reads and what it edits.
-        drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode,
-                          context.skybox);
-
-        // The Shaders panel takes a list, so that a new program is one more entry here
-        // and no change in the panel. The array holds pointers, because a reference
-        // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 10;
-        const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader,  &context.colorShader,   &context.litShader,
-            &context.gouraudShader,   &context.skyboxShader,  &context.grassShader,
-            &context.compositeShader, &context.previewShader, &context.brightPassShader,
-            &context.blurShader};
-        drawShadersPanel(shaders);
-
-        drawCameraPanel(context.camera, context.player, context.mouseSensitivity,
-                        context.menuCamera, context.menuCameraLoopSeconds);
-        drawGameplayPanel(context.round, context.gameplay);
-        drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
-        drawGrassPanel(context.grass, context.grassTuftCount);
-        drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
-        drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
-                      context.camera);
-        drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
-        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping,
-                        m_rawTextureSampler);
-        drawLightsPanel(context.lighting, context.round);
+        // The debug window: every debug control and every readout, in seven
+        // categories.
+        m_window.draw(context);
     }
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not
-    // the panels are visible.
-    drawHud(context.round, context.gameplay);
+    // the debug UI is visible.
+    // The game says when: not under a menu, where it would lie on top of the buttons,
+    // and not in the picture of the menu camera, which shows no round.
+    if (context.hudVisible) {
+        drawHud(context.mazeWorld, context.round, context.gameplay, context.pick);
+    }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
     ImGui::Render();
@@ -400,27 +394,27 @@ void DebugUI::draw(const DebugContext& context) {
 }
 ```
 
-*Uwaga (2026-10-06):* listing pokazuje `DebugUI::draw` po drugiej części M7. Od szóstej części M7 `SHADER_COUNT` jest równe 13 (doszły `shadow_depth` z czwartej części oraz `minimap` i `minimap_overlay`, a lista kończy się wpisami `&context.minimapShader` i `&context.minimapOverlayShader`), a `drawFramebuffersPanel` dostaje cztery argumenty: `(context.postProcessSettings, context.postProcess, context.minimapSettings, context.minimap.target())`. Zakładek panelu Framebuffers jest trzy (`Tone and bloom`, `Fog and vignette`, `Minimap`). Od M8, części 1, `SHADER_COUNT` jest równe 14: na końcu listy doszedł `&context.reflectShader` (program `reflect`), a `DebugContext` ma 45 pól.
+Od 2026-10-06 nie ma trzynastu wywołań `draw...Panel` jedno po drugim: jedno wywołanie
+`m_window.draw(context)` buduje całe okno debug, a tablica programów shaderowych
+(dziś czternaście wpisów, `SHADER_COUNT` w `DiagnosticsCategory.cpp`) mieszka w kategorii
+Diagnostics. Dawna lista wywołań i jej historia (M1 do M8) jest w historii git przed
+commitem `5b6a38f`.
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele i HUD pokazują i edytują (dziś czterdzieści dziewięć pól, a po piątej części M7 było ich trzydzieści osiem: od `time` i `window` po `grass`
-i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją, cztery pola z
-pierwszej części M7: `compositeShader`, `previewShader`, `postProcessSettings` i
-`postProcess`, dwa z drugiej: `brightPassShader` i `blurShader`, oraz cztery z czwartej,
-cieni księżyca: `shadowDepthShader`, `moonShadowSettings`, `moonShadowMap` i
-`moonLightSpace`, oraz cztery z piątej, cienia latarki: `flashlightShadowSettings`,
-`flashlightShadowMap`, `flashlightLightSpace` i `flashlightShadowDrawn`, drugie pole będące
-wartością). Buduje ją co klatkę
-`main.cpp`.
-Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
+okno debug i HUD pokazują i edytują. Dziś ma pięćdziesiąt jeden pól (pięćdziesiąte
+pierwsze, `gameMode`, doszło 2026-10-06 dla paska stanu). Pola, które są wartościami, a nie
+referencjami, to `grassTuftCount`, `flashlightShadowDrawn`, `puddleCount`, `hudVisible`,
+`menuCameraLoopSeconds` i `gameMode`. Buduje ją co klatkę
+`main.cpp`. Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md).
+
 
 Cztery etapy, zawsze w tej kolejności:
 
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem trzynaście funkcji paneli (od M8, części 1; trzynasta, `drawEnvironmentPanel`, doszła z panelem Environment; jedenasta, `drawFramebuffersPanel`, od pierwszej części M7, w drugiej rozbudowana o `BeginTable`, `TableNextColumn`, `Checkbox` i `SliderInt`, w trzeciej o `BeginTabBar` i `BeginTabItem`: sekcje 3.16 i 3.17. Dwunasta, `drawShadowsPanel`, od czwartej części M7: `BeginTabBar`, `BeginTabItem`, `BeginTable`, `Checkbox`, `Combo`, `SliderFloat` z `ImGuiSliderFlags_AlwaysClamp`, `SameLine` z `SetNextItemWidth`, `Separator`, `Text`, `Image` i `SetItemTooltip`: sekcja 3.17) i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem jedno wywołanie `m_window.draw(context)` (okno debug: pasek stanu, szyna ikon, nagłówek z polem szukania, zakładki i karty; od 2026-10-06, wcześniej trzynaście funkcji `draw...Panel`) i, już poza warunkiem `m_visible`, `drawHud`. Widżety okna to wiersze kart: `Checkbox` zastąpiony przełącznikiem rysowanym ręcznie, `SliderScalar`, `Combo`, `ColorEdit3`, `Button`, `DragFloat3`, `DragFloatRange2`, `InputScalar`, `BeginTable`, `Image`, `BeginChild` i `BeginTooltip`. Szczegóły: [`../modules/debug-ui.md`](../modules/debug-ui.md) |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -507,22 +501,17 @@ Ważne szczegóły:
 
 ### 3.5. Reguła `Begin` / `End`
 
-Panel "Renderer" z [`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp):
+Okno debug z [`DebugWindow.cpp`](../../src/debug/DebugWindow.cpp) (`DebugWindow::drawMainWindow`):
 
 ```cpp
-    // Begin returns false when the panel is collapsed or hidden behind another tab.
-    // End must be called in both cases.
-    if (ImGui::Begin("Renderer")) {
-        ImGui::Text("FPS: %.1f", time.fps());
-        ImGui::Text("Frame time: %.2f ms", time.frameTimeMs());
-        ...
-        ImGui::ColorEdit3("Clear color", clearColor.data());
-        ...
-    }
-    ImGui::End();
+    // Begin returns false when the window cannot be seen. End must be called in both
+    // cases. The name is never shown: ImGui tells windows apart by it.
+    const bool open = ImGui::Begin("Debug window", nullptr, MAIN_WINDOW_FLAGS);
+    ImGui::PopStyleVar();
+    if (open) {
 ```
 
-- `ImGui::Begin("Renderer")` otwiera okno ImGui o tytule "Renderer". Wszystkie widżety aż do
+- `ImGui::Begin("Debug window", ...)` otwiera okno ImGui o tym tytule. Wszystkie widżety aż do
   `End` trafiają do tego okna.
 - `Begin` zwraca `false`, gdy okno jest zwinięte albo zasłonięte (na przykład jest
   nieaktywną zakładką w docku). Wtedy nie ma sensu budować zawartości, stąd `if`.
@@ -531,12 +520,10 @@ Panel "Renderer" z [`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cp
   drugim wyjątkiem, ale `BeginMenu`, `BeginTable`, `BeginPopup`, `BeginCombo`) odpowiednie
   `End...` woła się tylko wtedy, gdy `Begin...` zwróciło `true`.
 - Tytuł okna jest jednocześnie jego identyfikatorem. Dwa wywołania `Begin` z tym samym
-  tytułem dopisują do tego samego okna. Po tytule ImGui zapamiętuje też pozycję w `imgui.ini`.
+  tytułem dopisują do tego samego okna. Po tytule ImGui zapamiętuje też pozycję w `imgui.ini` (okno debug ma flagę `NoSavedSettings`, więc nic w nim nie zostaje; panel przypięty ma tytuł `"<Kategoria>###Pinned debug panel"`: wszystko po `###` jest nazwą okna, więc zmiana kategorii go nie przesuwa).
 
-Pozostałe widżety z panelu: `ImGui::Text` formatuje jak `printf`, `ImGui::TextWrapped` robi
-to samo z zawijaniem długich linii (nazwa karty graficznej), `ImGui::Separator` rysuje
-poziomą kreskę. Drugie wielokropki w kodzie wyżej zastępują listę `Lighting`, czyli
-`ImGui::Combo` z trybem oświetlenia (sekcja 3.11).
+Pozostałe widżety okna: `ImGui::TextUnformatted` i `ImGui::TextDisabled` w nagłówku i pasku
+stanu, `ImGui::TextWrapped` w kartach, `ImGui::Combo` w wierszach z listą (sekcja 3.11).
 
 ### 3.6. Docking: `DockSpaceOverViewport` i `PassthruCentralNode`
 
@@ -582,16 +569,14 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   komputera, a nie część projektu.
 - Skasowanie pliku przywraca układ domyślny. To pierwsza rzecz do zrobienia, gdy panel
   "zniknął" albo wyjechał poza okno.
-- Układ domyślny naszych trzynastu paneli (dwunastu do M8, części 1) ustawiają trójki `SetNextWindowPos`,
-  `SetNextWindowSize` i `SetNextWindowCollapsed` z warunkiem `ImGuiCond_FirstUseEver`
-  (sekcje 3.11 i 3.13). Ten warunek działa tylko dla okna, którego w `imgui.ini` jeszcze
-  nie ma. Stary plik zatrzyma panele na starych miejscach i w starych rozmiarach: plik
-  sprzed M4 ma panel Camera w lewej kolumnie, tam gdzie dziś staje panel Lights. Tabela
-  pozycji: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7.
-- Dla każdego okna plik trzyma pozycję, rozmiar, stan zwinięcia (linia `Collapsed=`) i
-  dane dokowania. Panel Camera, który startuje zwinięty, po rozwinięciu zostaje więc
-  rozwinięty przy następnych uruchomieniach. Stanu zwijanych nagłówków wewnątrz okna
-  (`CollapsingHeader`) w pliku nie ma.
+- Od 2026-10-06 okno debug nie zapisuje niczego w `imgui.ini`: jego miejsce i rozmiar
+  liczy kod w każdej klatce (`ImGuiCond_Always`, flaga `NoSavedSettings`). W pliku zostaje
+  tylko panel przypięty (`ImGuiCond_FirstUseEver` daje mu pozycję i rozmiar, gdy pliku
+  jeszcze nie ma) oraz dane dokowania. Stary plik z czasów trzynastu paneli zawiera wpisy
+  okien, których już nie ma: ImGui je ignoruje, a skasowanie pliku niczego nie psuje.
+  Opis: [`../modules/debug-ui.md`](../modules/debug-ui.md).
+- Dla okna, które nie ma flagi `NoSavedSettings` (panel przypięty), plik trzyma pozycję,
+  rozmiar, stan zwinięcia (linia `Collapsed=`) i dane dokowania.
 - W pliku nie ma wyglądu: kolory, odstępy i czcionkę ustawia kod przy każdym starcie.
 
 ### 3.8. `WantCaptureKeyboard` i `WantCaptureMouse`
@@ -697,7 +682,7 @@ void DebugUI::setMouseEnabled(bool enabled) {
   `ImGuiConfigFlags_DockingEnable`, zostają bez zmian.
 
 Pełny opis, z kolejnością zdarzeń w klatce kliknięcia i w klatce z Escape:
-[`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.6.
+[`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.11.
 
 Flagi są aktualizowane w `ImGui::NewFrame()`, więc odczytane wcześniej w tej samej klatce
 opisują stan z klatki poprzedniej. Dlatego `wantsKeyboard()` i `wantsMouse()` wołamy po
@@ -722,24 +707,28 @@ Skutki:
 Warunek: w chwili `ImGui_ImplOpenGL3_Init` kontekst OpenGL musi istnieć i być bieżący.
 Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 
-### 3.10. Jak dodać nowy panel
+### 3.10. Jak dodać nowy wiersz, kartę, zakładkę albo kategorię
 
-Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok pozostałych trzynastu funkcji `draw...Panel` (dwunastu do M8, części 1), dopisanie plików
-do `add_executable` w `CMakeLists.txt`. Przed `Begin` wywołanie `placePanelOnFirstUse` z nową
-stałą dopisaną w `src/debug/PanelLayout.hpp`, żeby panel przy pierwszym uruchomieniu nie
-przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
-jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
-[`../modules/debug-ui.md`](../modules/debug-ui.md) i tam należy jej szukać.
+Od 2026-10-06 nie ma osobnych paneli: jest jedno okno (`DebugWindow`), a ustawienia są
+wierszami kart w plikach `src/debug/categories/`. Nowy wiersz to jedno wywołanie
+`page.toggle(...)`, `page.slider(...)` i podobne w pliku kategorii. Nowa kategoria to
+wartość `enum class Category`, wpis w `CATEGORIES`, plik w `categories/`, `case` w
+`DebugWindow::drawCategory` i dopisanie plików do `add_executable` w `CMakeLists.txt`.
+Nowe dane to dodatkowo jedno pole w `debug::DebugContext` i jedna linia w `main.cpp`.
+Pełna instrukcja jest w [`../modules/debug-ui.md`](../modules/debug-ui.md) i tam należy jej
+szukać. (Do tego dnia nowy panel oznaczał plik w `src/debug/panels/` i wywołanie
+`placePanelOnFirstUse`.)
 
 ### 3.11. Widżety paneli Maze, Collision i Assets
+
+> Historia (2026-10-06): ta sekcja opisuje dawne panele i ich pliki z `src/debug/panels/` oraz `PanelLayout`, usunięte w commitach `5b6a38f` do `f6c6cd5`. Widżety ImGui, o których mowa, działają tak samo; dzisiejsze miejsca kontrolek wskazuje [`../modules/debug-ui.md`](../modules/debug-ui.md).
 
 Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
 Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
 
 **Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie dwanaście paneli (od M8, części 1, trzynaście: doszedł Environment) woła przed `Begin`
 jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Trzy wywołania
-ImGui są w niej ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
+ImGui są w niej (`PanelLayout.cpp`):
 
 ```cpp
     ImGui::SetNextWindowPos(panelCorner, ImGuiCond_FirstUseEver, placement.corner);
@@ -759,7 +748,7 @@ okna, który ma trafić w podaną pozycję, zapisany liczbami od 0 do 1 (`(0, 0)
 `(1, 1)` prawy dolny, `(0.5, 0.5)` środek). Dzięki niemu panel przyczepiony do prawej krawędzi
 ustawia się swoim prawym rogiem, bez odejmowania szerokości. Pozycję liczymy od rogu głównego
 viewportu, `ImGui::GetMainViewport()` (pola `WorkPos` i `WorkSize`), czyli od rogu okna
-programu. Opis całej funkcji: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7.
+programu. Jak okno i pasek stanu dostają miejsce: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.4.
 
 **Widżety edytujące wartość przez wskaźnik.** Wszystkie działają tak jak `ColorEdit3`: dostają
 adres zmiennej, pokazują jej wartość i zapisują nową, gdy użytkownik coś zmieni. Zwracają
@@ -786,7 +775,7 @@ Kolejność pozycji jest taka jak kolejność wartości wyliczeń `game::ViewMod
 `gfx::TextureFilter`, bo numer pozycji staje się wartością wyliczenia.
 
 Tak samo zbudowana jest trzecia lista projektu, `Lighting` w panelu Renderer
-([`RendererPanel.cpp`](../../src/debug/panels/RendererPanel.cpp)):
+(`RendererPanel.cpp`):
 
 ```cpp
 constexpr const char* LIGHTING_MODE_ITEMS = "Unlit\0Gouraud\0Phong\0Blinn-Phong\0";
@@ -804,7 +793,7 @@ Deklaracja tej postaci `Combo` w `imgui.h` nazywa parametr wprost
 lista zakończona `\0\0`. Biblioteka ma jeszcze dwie postaci tej funkcji (z tablicą napisów
 i z funkcją podającą napis o danym numerze), których projekt nie używa. Kolejność pozycji
 odpowiada wyliczeniu `game::LightingMode` (`Unlit = 0`, `Gouraud`, `Phong`, `BlinnPhong`).
-Opis linia po linii: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.3.
+Opis linia po linii (kategoria Render): [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7.
 
 **Teksty i układ.**
 
@@ -817,7 +806,7 @@ Opis linia po linii: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 
 | `SameLine()` | `MazePanel.cpp`, od M5 `Hud.cpp` | następny widżet staje w tej samej linii (przyciski `Regenerate` i `Random seed` obok siebie, a w HUD licznik kryształów, czas i procent baterii obok paska) |
 | `PushStyleColor(ImGuiCol_Text, ERROR_TEXT_COLOR)` i `PopStyleColor()` | `AssetsPanel.cpp`, `ShadersPanel.cpp` | zmiana koloru tekstu dla widżetów między tą parą. Każde `Push` musi mieć swoje `Pop`. Stała jest jedna, w `Theme.hpp` (sekcja 3.12). Od M5 ta sama para zmienia w `Hud.cpp` inną pozycję tabeli kolorów, `ImGuiCol_PlotHistogram` (sekcja 3.14) |
 
-**Obrazek z tekstury OpenGL** ([`AssetsPanel.cpp`](../../src/debug/panels/AssetsPanel.cpp)):
+**Obrazek z tekstury OpenGL** (`AssetsPanel.cpp`):
 
 ```cpp
         const auto textureId = static_cast<ImTextureID>(loaded.texture.id());
@@ -871,7 +860,7 @@ bez żadnej zmiany w kodzie: jako jasnoniebieskie obrazki, bo większość tekse
 ([`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), sekcja 2.4).
 
 **Rysowanie własnych kształtów: lista rysowania**
-([`MazePanel.cpp`](../../src/debug/panels/MazePanel.cpp), plan labiryntu):
+(`MazePanel.cpp`, plan labiryntu):
 
 | Funkcja | Co robi |
 |---|---|
@@ -899,7 +888,7 @@ uruchamiane. Kształty z M5 na planie (strefa wyjścia, brama, kryształy) opisu
 
 Kod: [`src/debug/Theme.cpp`](../../src/debug/Theme.cpp). Jak z tego API powstaje motyw
 projektu (paleta, kontrast, układ), opisuje [`../modules/debug-ui.md`](../modules/debug-ui.md),
-sekcje 5.7 i 5.8. Tutaj jest samo API, w kształcie z pobranej wersji `1.92.9b`. W wersji
+sekcje 5.4 i 5.12. Tutaj jest samo API, w kształcie z pobranej wersji `1.92.9b`. W wersji
 1.92 czcionki zostały przebudowane, więc przykłady ze starszych poradników wyglądają inaczej.
 
 **Styl: `ImGuiStyle`.** Jedna struktura na kontekst, zwracana przez `ImGui::GetStyle()`.
@@ -913,15 +902,15 @@ sekcje 5.7 i 5.8. Tutaj jest samo API, w kształcie z pobranej wersji `1.92.9b`.
 | `style.WindowRounding`, `FrameRounding`, `GrabRounding` i pokrewne | `applyMetrics` | promienie zaokrągleń |
 | `style.DisabledAlpha` | `applyMetrics` | mnożnik przezroczystości dla wszystkiego między `BeginDisabled` a `EndDisabled` |
 | `style.ScaleAllSizes(scale)` | `applyTheme` | mnoży wszystkie odstępy, zaokrąglenia i grubości przez `scale` i obcina do pełnych pikseli. Nie zmienia czcionki. Stratne, więc woła się raz na świeżych wartościach |
-| `style.FontSizeBase` | `applyTheme` | **nowe w 1.92:** wysokość tekstu przed skalowaniem. Wcześniej rozmiar podawało się przy wczytywaniu czcionki |
-| `style.FontScaleDpi` | `applyTheme`, odczyt w `placePanelOnFirstUse` | **nowe w 1.92:** mnożnik tekstu od gęstości ekranu. Ostateczna wysokość to `FontSizeBase * FontScaleMain * FontScaleDpi` |
+| `style.FontSizeBase` | `applyTheme` (od 2026-10-06 `FONT_SIZE` = 14, wcześniej 16; HUD zachowuje 16 przez `PushFont(nullptr, HUD_FONT_SIZE)`) | **nowe w 1.92:** wysokość tekstu przed skalowaniem. Wcześniej rozmiar podawało się przy wczytywaniu czcionki |
+| `style.FontScaleDpi` | `applyTheme`, odczyt w `displayScale()` (`Widgets.cpp`) | **nowe w 1.92:** mnożnik tekstu od gęstości ekranu. Ostateczna wysokość to `FontSizeBase * FontScaleMain * FontScaleDpi` |
 | `ImGui::PushStyleColor(ImGuiCol_Text, kolor)` i `ImGui::PopStyleColor()` | panele Shaders i Assets, a w HUD z pozycją `ImGuiCol_PlotHistogram` | zmiana jednej pozycji tabeli na czas kilku widżetów. Każde `Push` musi mieć `Pop` |
 | `ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, wartość)` i `ImGui::PopStyleVar()` | karta wygranej w HUD | to samo dla jednej metryki stylu (tu odstęp treści od brzegu okna, `ImVec2`). Musi stać przed `Begin`, bo `Begin` czyta ten odstęp |
 | `ImGui::PushFont(nullptr, rozmiar)` i `ImGui::PopFont()` | tytuł karty wygranej w HUD | **kształt z 1.92:** drugi argument to rozmiar czcionki przed skalowaniem. `nullptr` jako pierwszy znaczy "ta sama czcionka" (sekcja 3.14) |
 | `ImGui::GetColorU32(const ImVec4&)` | plan w panelu Maze | zamienia kolor z czterech `float` na jedną liczbę 32-bitową dla listy rysowania i uwzględnia przezroczystość ze stylu |
 
 Typy `ImVec2` i `ImVec4` mają konstruktory `constexpr`, więc kolory i odstępy mogą być
-stałymi `constexpr` (tak jest w `Theme.cpp` i `PanelLayout.hpp`).
+stałymi `constexpr` (tak jest w `Theme.hpp` i `DebugWindow.cpp`).
 
 **Skala ekranu.** Dokument `docs/FONTS.md` w źródłach biblioteki podaje dla wersji 1.92
 przepis w trzech zdaniach: ustaw `style.FontScaleDpi` na skalę zawartości, zawołaj
@@ -961,8 +950,10 @@ Kolejność ma znaczenie: czcionki dodaje się po `ImGui::CreateContext()` i prz
 
 ### 3.13. Widżety panelu Lights i okno, które startuje zwinięte
 
-Kod: [`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp) i
-[`src/debug/PanelLayout.cpp`](../../src/debug/PanelLayout.cpp). Co każda kontrolka panelu
+> Historia (2026-10-06): ta sekcja opisuje dawne panele i ich pliki z `src/debug/panels/` oraz `PanelLayout`, usunięte w commitach `5b6a38f` do `f6c6cd5`. Widżety ImGui, o których mowa, działają tak samo; dzisiejsze miejsca kontrolek wskazuje [`../modules/debug-ui.md`](../modules/debug-ui.md).
+
+Kod: `src/debug/panels/LightsPanel.cpp` i
+`src/debug/PanelLayout.cpp`. Co każda kontrolka panelu
 zmienia w oświetleniu, opisuje
 [`../modules/scene/lights.md`](../modules/scene/lights.md), sekcja 6. Tutaj jest samo API.
 Deklaracje i komentarze przytaczam z `build/debug/_deps/imgui-src/imgui.h` w naszej wersji.
@@ -1011,7 +1002,7 @@ grupy. Początki dwóch z nich:
 | wartość zwracana | `true`, gdy grupa jest rozwinięta. Kod rysuje wtedy jej widżety. Każda grupa jest u nas osobną funkcją (`drawMoon`, `drawFlashlight`, `drawPointLights`, `drawHighlight`), więc zamiast `if (...) { ... }` stoi odwrócony warunek i wczesne `return` |
 | brak pary `End` | inaczej niż `Begin` i `BeginDisabled`, nagłówek nie ma wywołania zamykającego. Nie ma więc czego zapomnieć przy wczesnym `return` |
 | `ImGuiTreeNodeFlags_DefaultOpen` | grupa jest rozwinięta, dopóki użytkownik jej nie zwinie (w `imgui.h`: "Default node to be open"). Bez flagi (wartość domyślna `0`) grupa startuje zwinięta: tak jest z `Moon (directional)` |
-| kolory | pasek nagłówka bierze kolory `ImGuiCol_Header`, `ImGuiCol_HeaderHovered` i `ImGuiCol_HeaderActive`, te same co pozycje rozwiniętej listy `Combo`. W motywie projektu to `SLATE_LIGHT`, `EMBER` i `EMBER_BRIGHT` ([`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.2) |
+| kolory | pasek nagłówka bierze kolory `ImGuiCol_Header`, `ImGuiCol_HeaderHovered` i `ImGuiCol_HeaderActive`, te same co pozycje rozwiniętej listy `Combo`. W motywie projektu to `SLATE_LIGHT`, `EMBER` i `EMBER_BRIGHT` ([`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.12.2) |
 
 Dwie rzeczy wynikają z komentarza przy deklaracji. Po pierwsze, nagłówek nie wcina
 zawartości: widżety grupy stoją w tej samej kolumnie co nagłówek. Po drugie, nagłówek
@@ -1106,10 +1097,12 @@ ze źródeł biblioteki. Na macOS kod M4 nie był budowany ani uruchamiany.
 
 ### 3.14. HUD gry, panel Gameplay i nowe kształty planu (M5)
 
+> Historia (2026-10-06): ta sekcja opisuje dawne panele i ich pliki z `src/debug/panels/` oraz `PanelLayout`, usunięte w commitach `5b6a38f` do `f6c6cd5`. Widżety ImGui, o których mowa, działają tak samo; dzisiejsze miejsca kontrolek wskazuje [`../modules/debug-ui.md`](../modules/debug-ui.md). W tej sekcji dotyczy to też reguły "HUD pod zwiniętymi paskami" (`FOLDED_ROW_COUNT`, argument `panelsVisible`): jej już nie ma, HUD stoi zawsze 16 px od górnej krawędzi (nota [`hud-at-top-edge-when-panels-hidden.md`](../decisions/hud-at-top-edge-when-panels-hidden.md), dziś zastąpiona).
+
 Kod: [`src/debug/Hud.cpp`](../../src/debug/Hud.cpp),
-[`src/debug/panels/GameplayPanel.cpp`](../../src/debug/panels/GameplayPanel.cpp),
-[`src/debug/panels/MazePanel.cpp`](../../src/debug/panels/MazePanel.cpp) i
-[`src/debug/panels/LightsPanel.cpp`](../../src/debug/panels/LightsPanel.cpp). Co HUD i panel
+`src/debug/panels/GameplayPanel.cpp`,
+`src/debug/panels/MazePanel.cpp` i
+`src/debug/panels/LightsPanel.cpp`. Co HUD i panel
 pokazują i jakie reguły za tym stoją, opisuje
 [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 6. Tutaj jest samo API.
 Deklaracje przytaczam z `build/debug/_deps/imgui-src/imgui.h` w naszej wersji.
@@ -1328,13 +1321,15 @@ komentarzy w `imgui.h`. Na macOS kod M5 nie był budowany ani uruchamiany.
 
 ### 3.15. Panele Terrain i Grass, `GetFrameHeight` i drugi rząd pasków (M6)
 
-Kod: [`src/debug/panels/TerrainPanel.cpp`](../../src/debug/panels/TerrainPanel.cpp),
-[`src/debug/panels/GrassPanel.cpp`](../../src/debug/panels/GrassPanel.cpp),
-[`src/debug/PanelLayout.cpp`](../../src/debug/PanelLayout.cpp) i
+> Historia (2026-10-06): ta sekcja opisuje dawne panele i ich pliki z `src/debug/panels/` oraz `PanelLayout`, usunięte w commitach `5b6a38f` do `f6c6cd5`. Widżety ImGui, o których mowa, działają tak samo; dzisiejsze miejsca kontrolek wskazuje [`../modules/debug-ui.md`](../modules/debug-ui.md).
+
+Kod: `src/debug/panels/TerrainPanel.cpp`,
+`src/debug/panels/GrassPanel.cpp`,
+`src/debug/PanelLayout.cpp` i
 [`src/debug/Hud.cpp`](../../src/debug/Hud.cpp). Co kontrolki znaczą dla terenu i trawy:
 [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) i
-[`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md). Kod paneli
-linia po linii: [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.10.
+[`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md). Kod kart Terrain i Grass
+(kategoria World): [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 6.4.
 
 **Widżety.** Dziewiąty i dziesiąty panel nie wprowadzają żadnego nowego widżetu. Używają
 tych, które projekt już zna:
@@ -1387,8 +1382,10 @@ pasków nikt nie oglądał. Na macOS kod M6 nie był budowany ani uruchamiany.
 
 ### 3.16. Panel Framebuffers, tekstura framebuffera w `Image` i własne polecenie na liście rysowania (M7)
 
+> Historia (2026-10-06): ta sekcja opisuje dawne panele i ich pliki z `src/debug/panels/` oraz `PanelLayout`, usunięte w commitach `5b6a38f` do `f6c6cd5`. Widżety ImGui, o których mowa, działają tak samo; dzisiejsze miejsca kontrolek wskazuje [`../modules/debug-ui.md`](../modules/debug-ui.md).
+
 Pierwsza część M7 (bufor HDR i gamma) dodała jedenasty panel, `Framebuffers`
-([`FramebuffersPanel.cpp`](../../src/debug/panels/FramebuffersPanel.cpp)), i klasę
+(`FramebuffersPanel.cpp`), i klasę
 `debug::RawTextureSampler` ([`RawTextureSampler.cpp`](../../src/debug/RawTextureSampler.cpp)).
 Co panel pokazuje i czego uczy, opisuje
 [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), a klasę
@@ -1521,8 +1518,10 @@ M7 nie był budowany ani uruchamiany.
 
 ### 3.17. Panel Shadows: zakładki, lista w linii z polem wyboru i tabela jako dwie połowy (M7, część czwarta)
 
+> Historia (2026-10-06): ta sekcja opisuje dawne panele i ich pliki z `src/debug/panels/` oraz `PanelLayout`, usunięte w commitach `5b6a38f` do `f6c6cd5`. Widżety ImGui, o których mowa, działają tak samo; dzisiejsze miejsca kontrolek wskazuje [`../modules/debug-ui.md`](../modules/debug-ui.md).
+
 Czwarta część M7 (cienie księżyca, 2026-10-05) dodała dwunasty panel, `Shadows`
-([`ShadowsPanel.cpp`](../../src/debug/panels/ShadowsPanel.cpp)). Co pokazuje i jak jest
+(`ShadowsPanel.cpp`). Co pokazuje i jak jest
 zbudowany linia po linii, opisuje [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 6,
 a znaczenie kontrolek [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md),
 sekcja 6. Tutaj jest tylko to, co w nim nowe albo dotąd nieopisane po stronie ImGui.
@@ -1652,11 +1651,11 @@ skali innej niż 100%. Na macOS ten kod nie był budowany ani uruchamiany.
    linkera, nie kompilatora.
 8. **Niszczenie w złej kolejności.** Zamknięcie backendu OpenGL3 po zniszczeniu okna to
    wywołania OpenGL bez kontekstu. U nas chroni przed tym kolejność pól i klas.
-9. **`imgui.ini` w dziwnym miejscu.** Układ paneli "nie zapamiętuje się", bo IDE uruchamia
+9. **`imgui.ini` w dziwnym miejscu.** Układ przypiętego panelu (jedyne okno debug, które trafia do pliku) "nie zapamiętuje się", bo IDE uruchamia
    program z innym katalogiem roboczym niż terminal. To dwa różne pliki.
-10. **Rozmyty interfejs na Retinie.** Gdyby panele były nieostre lub w złej skali, trzeba
+10. **Rozmyty interfejs na Retinie.** Gdyby okno debug było nieostre lub w złej skali, trzeba
     sprawdzić, czy `ImGui_ImplGlfw_NewFrame` jest wołane co klatkę: to ono przekazuje skalę
-    framebuffera. Panele dwa razy za duże oznaczałyby, że do motywu trafiła skala z
+    framebuffera. Okno debug dwa razy za duże oznaczałyby, że do motywu trafiła skala z
     `glfwGetWindowContentScale` zamiast z `ImGui_ImplGlfw_GetContentScaleForWindow`
     (sekcja 3.12).
 11. **Pytanie o mysz z pominięciem `core::Input`.** Blokada `WantCaptureMouse` działa tylko
@@ -1669,11 +1668,11 @@ skali innej niż 100%. Na macOS ten kod nie był budowany ani uruchamiany.
     przechwytuje kursor, musi na ten czas ustawić `ImGuiConfigFlags_NoMouse`
     (`DebugUI::setMouseEnabled(false)`, sekcja 3.8). Suwak ImGui ma też drugą drogę wejścia,
     o której łatwo zapomnieć: Ctrl i kliknięcie pozwala wpisać liczbę spoza zakresu, chyba że
-    suwak ma flagę `ImGuiSliderFlags_AlwaysClamp` (tak jak wszystkie suwaki paneli Camera
-    i Lights).
+    suwak ma flagę `ImGuiSliderFlags_AlwaysClamp` (tak jak wszystkie suwaki okna debug,
+    które ustawia ją w `hiddenSlider` w `Widgets.cpp`).
 16. **Ta sama etykieta w dwóch grupach `CollapsingHeader`.** Nagłówek nie dokłada niczego do
     stosu identyfikatorów, więc `Colour` w grupie księżyca i `Colour` w grupie latarki to
-    dla ImGui ten sam widżet (pułapka 3). Stąd pełne etykiety w panelu Lights (sekcja 3.13).
+    dla ImGui ten sam widżet (pułapka 3). Stąd pełne etykiety (`Moon colour`, `Beam colour`) w dawnym kategorii Light (zakładka Lights) (sekcja 3.13, dziś karty w kategorii Light, zakładka Lights).
 17. **`SetNextWindowCollapsed` bez warunku.** Wywołanie z domyślnym `cond = 0` działa w
     każdej klatce: okno byłoby zwijane od nowa i nie dałoby się go otworzyć. Projekt podaje
     `ImGuiCond_FirstUseEver`. Druga strona tego warunku: zmiana `.collapsed` w kodzie nie
@@ -1757,7 +1756,7 @@ skali innej niż 100%. Na macOS ten kod nie był budowany ani uruchamiany.
 
 13. **Jak sprawić, żeby okno ImGui startowało zwinięte, i gdzie ten stan jest pamiętany?**
     Przed `Begin` zawołać `ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver)`.
-    U nas robi to `placePanelOnFirstUse` dla panelu Camera. Warunek sprawia, że wartość
+    Do 2026-10-06 robiło to `placePanelOnFirstUse` dla kategorii Player (dziś okno debug niczego nie zwija, a panel przypięty ma tylko `ImGuiCond_FirstUseEver` na pozycję i rozmiar). Warunek sprawia, że wartość
     działa tylko przy braku wpisu okna w `imgui.ini`, a potem stan zapisuje ImGui w linii
     `Collapsed=`. Dla zwiniętego okna `Begin` zwraca `false`.
 
@@ -1768,7 +1767,7 @@ skali innej niż 100%. Na macOS ten kod nie był budowany ani uruchamiany.
     identyfikatorów. `DefaultOpen` sprawia, że grupa startuje rozwinięta. Stan grupy nie
     jest zapisywany w `imgui.ini`, więc flaga decyduje przy każdym uruchomieniu.
 
-15. **Co gwarantuje `DragFloatRange2` w kontrolce `Cone` panelu Lights?**
+15. **Co gwarantuje `DragFloatRange2` w kontrolce `Cone` (kategoria Light, zakładka Lights, karta Flashlight)?**
     Że pierwsza wartość (kąt wewnętrznego stożka) nie przekroczy drugiej (kąta
     zewnętrznego): granice obu pól zależą od bieżącej wartości drugiego pola. Obie są też
     trzymane między `MIN_CONE_DEGREES` a `MAX_CONE_DEGREES`, także przy wpisywaniu z
@@ -1784,7 +1783,7 @@ skali innej niż 100%. Na macOS ten kod nie był budowany ani uruchamiany.
     `AlwaysAutoResize` (rozmiar z zawartości), `NoInputs` i `NoNav` (mysz i klawiatura go
     omijają), `NoFocusOnAppearing`, `NoSavedSettings` (nic w `imgui.ini`), `NoDocking`
     i `NoMove`, a pozycję dostaje w każdej klatce (`ImGuiCond_Always`) z pivotem na środku.
-    Panel ma pozycję tylko na pierwsze uruchomienie (`ImGuiCond_FirstUseEver`) i potem
+    Okno debug ma pozycję liczoną w każdej klatce, a panel przypięty tylko na pierwsze uruchomienie (`ImGuiCond_FirstUseEver`) i potem
     należy do użytkownika. Poza tym HUD jest rysowany poza blokiem `if (m_visible)`.
 
 18. **Dlaczego pasek baterii zmienia kolor przez `ImGuiCol_PlotHistogram`?**
@@ -1792,10 +1791,10 @@ skali innej niż 100%. Na macOS ten kod nie był budowany ani uruchamiany.
     wykresu słupkowego. `PushStyleColor` podmienia tę pozycję tylko do najbliższego
     `PopStyleColor`, więc zmiana dotyczy jednego paska.
 
-19. **Jak panel Gameplay zaczyna rundę od nowa i dlaczego nie robi tego sam?**
-    `Button` zwraca `true` w klatce kliknięcia, a panel ustawia wtedy flagę
+19. **Jak przycisk Restart round (kategoria Gameplay) zaczyna rundę od nowa i dlaczego nie robi tego sam?**
+    `Button` zwraca `true` w klatce kliknięcia, a okno debug ustawia wtedy flagę
     `GameplaySettings::restart`. Gra czyta ją na początku następnej klatki, między krokami
-    symulacji. Panel rysuje się po scenie, w środku klatki, więc wymiana stanu gry w tym
+    symulacji. Okno debug rysuje się po scenie, w środku klatki, więc wymiana stanu gry w tym
     miejscu dałaby klatkę złożoną z dwóch stanów, a warstwa `debug/` decydowałaby o grze.
 
 ## 6. Oficjalna dokumentacja

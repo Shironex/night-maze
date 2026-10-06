@@ -3,7 +3,7 @@
 Kamień milowy: M1, użycie w grze zmienione w M2 + M3 (kamera stoi w oczach gracza) i w M5 (kąty ustawia początek rundy, cztery programy zamiast pięciu, przykład liczbowy na ścianie labiryntu). W pierwszej części M6 doszedł piąty program, `skybox`, który jako jedyny używa macierzy widoku **bez przesunięcia** ([`../renderer/skybox.md`](../renderer/skybox.md), sekcja 2.6). W drugiej części M6 doszedł szósty, `grass`, a oko kamery stoi 1,7 m nad terenem, a nie nad zerem (przykład liczbowy w sekcji 5.8 jest przeliczony). Temat wykładu: 3 (Przekształcenia przestrzeni).
 Kod: [`src/scene/Camera.hpp`](../../../src/scene/Camera.hpp), [`src/scene/Camera.cpp`](../../../src/scene/Camera.cpp), użycie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) i [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp).
 
-Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Pozostałe części: [`transforms.md`](transforms.md) (przestrzenie współrzędnych, macierze przesunięcia, obrotu i skali, macierz modelu) i [`camera-controls.md`](camera-controls.md) (sterowanie kamerą, panel Camera). Ten dokument zakłada znajomość [`transforms.md`](transforms.md) (sekcje od 2.1 do 2.5: łańcuch przestrzeni, współrzędne jednorodne, czytanie iloczynu od prawej) i korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `lookAt`, `perspective`, `radians`, `cross`, `normalize`).
+Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Pozostałe części: [`transforms.md`](transforms.md) (przestrzenie współrzędnych, macierze przesunięcia, obrotu i skali, macierz modelu) i [`camera-controls.md`](camera-controls.md) (sterowanie kamerą, kategoria Player). Ten dokument zakłada znajomość [`transforms.md`](transforms.md) (sekcje od 2.1 do 2.5: łańcuch przestrzeni, współrzędne jednorodne, czytanie iloczynu od prawej) i korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `lookAt`, `perspective`, `radians`, `cross`, `normalize`).
 
 ## 1. Po co to jest
 
@@ -269,7 +269,7 @@ flowchart TD
     M -- nie --> ML["drawLitMaze: m_gouraudShader albo m_litShader, use(), uView, uProjection,<br/>uSpecularModel, uSpecularStrength, uShininess, potem uModel i rysowanie dla każdego obiektu labiryntu, bramy i każdego kryształu"]
     MU --> L["gdy włączone: drawColliderLines: m_colorShader.use(), uView, uProjection,<br/>potem uModel i rysowanie dla każdego pudełka i każdego okręgu kuli"]
     ML --> L
-    L --> P["po scenie (M7): podglądy załączników, gdy panel Framebuffers jest otwarty,<br/>potem m_postProcess.composite: framebuffer okna jako cel, glViewport, trójkąt na cały ekran"]
+    L --> P["po scenie (M7): podglądy załączników, gdy kategoria Post process jest na ekranie,<br/>potem m_postProcess.composite: framebuffer okna jako cel, glViewport, trójkąt na cały ekran"]
 ```
 
 (Diagram pomija trawę i niebo, rysowane między labiryntem a przebiegami po scenie: nie zmieniają niczego w macierzach. Pełna kolejność klatki: [`../core/README.md`](../core/README.md), sekcja 6.6, i [`../renderer/post-process.md`](../renderer/post-process.md).)
@@ -516,9 +516,9 @@ Trzy rodzaje pól kamery mają dziś trzech różnych "kierowców":
 
 | Pola `Camera` | Kto je zmienia | Kiedy |
 |---|---|---|
-| `yawDegrees`, `pitchDegrees` | mysz przez `m_camera.rotate` ([`camera-controls.md`](camera-controls.md), sekcja 5), suwaki panelu Camera, a na początku każdej rundy `beginRound` (yaw w otwarty bok komórki startowej, pitch 0) | mysz raz na klatkę, `beginRound` przy starcie programu, po wymianie labiryntu i po restarcie rundy (klawisz R) |
+| `yawDegrees`, `pitchDegrees` | mysz przez `m_camera.rotate` ([`camera-controls.md`](camera-controls.md), sekcja 5), suwaki kategorii Player, a na początku każdej rundy `beginRound` (yaw w otwarty bok komórki startowej, pitch 0) | mysz raz na klatkę, `beginRound` przy starcie programu, po wymianie labiryntu i po restarcie rundy (klawisz R) |
 | `position` | ostatnia linia `onUpdate`: `m_camera.position = m_player.eyePosition();` | po każdym stałym kroku |
-| `fovDegrees`, `nearPlane`, `farPlane` | tylko panel Camera | gdy ruszam suwak |
+| `fovDegrees`, `nearPlane`, `farPlane` | tylko kategorię Player | gdy ruszam suwak |
 
 Pole `position` ma wartość domyślną `(0, 0, 3)` tylko do chwili, gdy konstruktor zawoła `beginRound()`. Po starcie kamera stoi w oczach gracza: `(1; 1,824; 1)` przy domyślnej skali wysokości terenu (stopy na gruncie na 0,124 m i 1,7 m do oczu).
 
@@ -535,7 +535,7 @@ constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
 ```
 
-**Początek `onRender`: stan, od którego zależy obraz.** Przed tym fragmentem stoją jeszcze: obsługa prośby o nowy labirynt, restart rundy (klawisz R albo prośba z panelu Gameplay), klawisz N, klawisz F (latarka) i obsługa myszy ([`../core/README.md`](../core/README.md), sekcja 6, [`camera-controls.md`](camera-controls.md), sekcja 5).
+**Początek `onRender`: stan, od którego zależy obraz.** Przed tym fragmentem stoją jeszcze: obsługa prośby o nowy labirynt, restart rundy (klawisz R albo prośba z kategorii Gameplay), klawisz N, klawisz F (latarka) i obsługa myszy ([`../core/README.md`](../core/README.md), sekcja 6, [`camera-controls.md`](camera-controls.md), sekcja 5).
 
 ```cpp
     const core::Size framebuffer = window().framebufferSize();
@@ -589,7 +589,7 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 | `glEnable(GL_DEPTH_TEST)` | test głębi (sekcja 3). W labiryncie to on sprawia, że bliska ściana zasłania dalsze korytarze, choć ściany są rysowane w kolejności listy, a nie od najdalszej |
 | `glClear(GL_COLOR_BUFFER_BIT \| GL_DEPTH_BUFFER_BIT)` | jedno wywołanie czyści oba bufory. `\|` to bitowe "lub": łączy dwie flagi w jedną maskę |
 
-**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (cel rysowania z viewportem, test głębi, kolor czyszczenia), a potem każda funkcja rysująca wybiera swój program. Koszt to jedno wywołanie na klatkę. Od pierwszej części M7 jest jeszcze drugi, własny powód: przebieg składający na końcu każdej klatki sam wyłącza test głębi i zostawia go wyłączonego (`PostProcess::composite`), więc wariant "raz w konstruktorze" już by nie działał. Od czwartej części M7 z tego samego powodu test włącza także `ShadowMap::beginDepthPass`, który działa przed tą linią, a podgląd mapy cieni (`ShadowMap::drawPreview`, tylko przy otwartym panelu Shadows) znów go wyłącza: ta linia `glEnable` w `onRender` pozostaje więc potrzebna.
+**Dlaczego `glEnable(GL_DEPTH_TEST)` jest wołane co klatkę, a nie raz w konstruktorze.** Test głębi to stan kontekstu: raz włączony zostaje włączony, więc jedno wywołanie przy starcie by wystarczyło. Pod warunkiem, że nikt go nie wyłączy. A wyłącza go backend ImGui, który rysuje panele bez testu głębi (`glDisable(GL_DEPTH_TEST)` w `imgui_impl_opengl3.cpp`). Dzisiejsza wersja backendu po sobie przywraca poprzedni stan, więc wariant "raz" też by działał. Wolę jednak, żeby klatka nie zależała od tego, czy cudzy kod po sobie posprzątał: `onRender` ustawia na początku cały stan, od którego zależy (cel rysowania z viewportem, test głębi, kolor czyszczenia), a potem każda funkcja rysująca wybiera swój program. Koszt to jedno wywołanie na klatkę. Od pierwszej części M7 jest jeszcze drugi, własny powód: przebieg składający na końcu każdej klatki sam wyłącza test głębi i zostawia go wyłączonego (`PostProcess::composite`), więc wariant "raz w konstruktorze" już by nie działał. Od czwartej części M7 z tego samego powodu test włącza także `ShadowMap::beginDepthPass`, który działa przed tą linią, a podgląd mapy cieni (`ShadowMap::drawPreview`, tylko przy widocznej zakładce Light / Shadows) znów go wyłącza: ta linia `glEnable` w `onRender` pozostaje więc potrzebna.
 
 **Reszta: proporcje, oko i dwie macierze.**
 
@@ -644,7 +644,7 @@ Zaraz po nich światła tej klatki i trzy wywołania rysujące (listing do czwar
 | `m_lightRig.upload(lights, eye)` | kopiuje światła i pozycję oka do bufora uniformów, raz na klatkę, także w trybie bez oświetlenia. Oko jest tu pozycją kamery w przestrzeni świata, z której shader liczy kierunek do obserwatora ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)) |
 | `drawMaze(view, projection)` | teren, labirynt, brama i kryształy jednym programem. Obie macierze idą dalej przez `const glm::mat4&` |
 | `drawGrass(view, projection)` | trawa programem `grass`, gdy jest włączona. Te same dwie macierze (tabela niżej) |
-| `if (m_drawColliders) { drawColliderLines(view, projection); }` | linie pudełek i kul kolizji, tylko gdy są włączone w panelu Collision. Te same dwie macierze, więc linie leżą dokładnie na tym, co opisują |
+| `if (m_drawColliders) { drawColliderLines(view, projection); }` | linie pudełek i kul kolizji, tylko gdy są włączone w zakładce Diagnostics / Collision and picking. Te same dwie macierze, więc linie leżą dokładnie na tym, co opisują |
 
 W M4 między `drawMaze` a rysowaniem linii stały jeszcze dwa wywołania: rysowanie małych sześcianów w miejscach świateł punktowych i rysowanie kostki z M1. Oba zostały usunięte w M5.
 
@@ -746,15 +746,15 @@ Uczciwie o tym, co naprawdę widać w pikselu `(819, 622)`. Wierzchołek shader 
 
 Kroki 1, 2 i 3 wykonuje shader wierzchołków programu, którym rysowany jest labirynt (przy domyślnym trybie `BlinnPhong` to `lit.vert`), dla każdego wierzchołka każdej ściany. Kroki 4 i 5 karta wykonuje sama.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna) edytuje na żywo panel Camera. Jego kod, znaczenie każdej kontrolki i scenariusz pokazu na obronie są w [`camera-controls.md`](camera-controls.md), sekcja 6. Z tego dokumentu panel korzysta w dwóch miejscach: granice suwaka `Pitch` pochodzą ze stałej `MAX_PITCH_DEGREES` (sekcja 5.2), a ćwiczenia 8 i 9 robi się właśnie w nim.
+Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna) edytuje na żywo kategorię Player. Jego kod, znaczenie każdej kontrolki i scenariusz pokazu na obronie są w [`camera-controls.md`](camera-controls.md), sekcja 6. Z tego dokumentu panel korzysta w dwóch miejscach: granice suwaka `Pitch` pochodzą ze stałej `MAX_PITCH_DEGREES` (sekcja 5.2), a ćwiczenia 8 i 9 robi się właśnie w nim.
 
 ## 7. Pułapki
 
 1. **Proporcje z rozmiaru okna albo z dzielenia całkowitego.** Proporcje muszą pochodzić z rozmiaru **framebuffera**, tego samego, który trafia do `glViewport`. Na ekranie Retina rozmiar okna i framebuffera różnią się dwukrotnie; sam iloraz zwykle wychodzi ten sam, ale mieszanie jednej wartości z okna i drugiej z framebuffera już nie. `width / height` na typach `int` to dzielenie całkowite: 1280 / 720 daje 1, a nie 1,78, i obraz jest ściśnięty. Trzeba dzielić liczby `float`. Wysokość 0 przy zminimalizowanym oknie to dzielenie przez zero.
 2. **Pitch równy 90 stopni.** Kierunek patrzenia równoległy do `WORLD_UP` daje wektor zerowy w iloczynie wektorowym, `NaN` po normalizacji i pusty ekran (sekcja 2.2). Chroni przed tym `MAX_PITCH_DEGREES` w `rotate()`.
-3. **Wartość wpisana wprost w pole omija `rotate()`.** Pola są publiczne. `camera.pitchDegrees = 90.0F;` nie przechodzi przez `std::clamp` i psuje macierz widoku tak samo jak w pułapce 2. Kod, który ustawia kąty bezpośrednio, musi sam trzymać się zakresu od `-MAX_PITCH_DEGREES` do `MAX_PITCH_DEGREES`. Tak robi panel Camera: suwak `Pitch` ma te granice i flagę `ImGuiSliderFlags_AlwaysClamp`, bez której wartość wpisana z klawiatury (Ctrl i kliknięcie w suwak) mogłaby wyjść poza zakres ([`camera-controls.md`](camera-controls.md), sekcja 6.1).
+3. **Wartość wpisana wprost w pole omija `rotate()`.** Pola są publiczne. `camera.pitchDegrees = 90.0F;` nie przechodzi przez `std::clamp` i psuje macierz widoku tak samo jak w pułapce 2. Kod, który ustawia kąty bezpośrednio, musi sam trzymać się zakresu od `-MAX_PITCH_DEGREES` do `MAX_PITCH_DEGREES`. Tak robi kategoria Player: suwak `Pitch` ma te granice i flagę `ImGuiSliderFlags_AlwaysClamp`, bez której wartość wpisana z klawiatury (Ctrl i kliknięcie w suwak) mogłaby wyjść poza zakres ([`camera-controls.md`](camera-controls.md), sekcja 6.1).
 4. **Bliska płaszczyzna równa 0 albo bardzo mała.** Przy 0 macierz rzutowania jest błędna (każdy punkt dostaje tę samą głębię). Przy bardzo małej wartości prawie cała precyzja bufora głębi idzie na pierwsze milimetry i odległe powierzchnie migoczą (z-fighting, sekcja 2.3). Większe `nearPlane` pomaga bardziej niż mniejsze `farPlane`.
 5. **`center` w `lookAt` to punkt, nie kierunek.** `glm::lookAt(eye, forward(), up)` każe kamerze patrzeć na punkt leżący jedną jednostkę od początku układu świata, zamiast przed siebie. Poprawnie: `eye + forward()`.
 6. **Yaw kamery a obrót wokół osi Y.** Dodatni yaw obraca kamerę w prawo (zgodnie z ruchem wskazówek zegara, patrząc z góry), a dodatni `rotationDegrees.y` w `Transform` obraca obiekt w lewo (reguła prawej dłoni). Obiekt, który ma być zwrócony tam, gdzie patrzy kamera, dostaje `rotationDegrees.y = -yawDegrees`.
@@ -768,7 +768,7 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 7 robi się na kartce (kalkulator wystarczy). Ćwiczenia 8 i 9 robi się w panelu Camera, bez zmiany kodu. Ćwiczenia 10 i 11 to zmiany w `NightMazeApp.cpp`: wymagają zbudowania (`make run`). Po każdym ćwiczeniu wycofaj zmianę (`git checkout src assets/shaders`).
+Ćwiczenia od 1 do 7 robi się na kartce (kalkulator wystarczy). Ćwiczenia 8 i 9 robi się w kategorii Player, bez zmiany kodu. Ćwiczenia 10 i 11 to zmiany w `NightMazeApp.cpp`: wymagają zbudowania (`make run`). Po każdym ćwiczeniu wycofaj zmianę (`git checkout src assets/shaders`).
 
 1. **Wektor kierunku.** Policz `forward()` dla yaw 90, pitch 0, potem dla yaw 0, pitch 45, potem dla yaw 180, pitch -30. Sprawdź długość każdego wyniku. Odpowiedzi: `(1, 0, 0)`, `(0, 0,707, -0,707)`, `(0, -0,5, 0,866)`.
 2. **Wektor w prawo.** Dla yaw 90 i pitch 0 policz ręcznie `cross(forward, WORLD_UP)`. Odpowiedź: `(0, 0, 1)`. Zamień argumenty miejscami i wyjaśnij wynik.
@@ -777,7 +777,7 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
 5. **Rzutowanie.** FOV 90 stopni, proporcje 1, punkt w przestrzeni widoku `(2, 1, -4)`. Policz x i y w NDC. Odpowiedź: `tan(45 stopni) = 1`, więc `f = 1`, x = 2 / 4 = 0,5, y = 1 / 4 = 0,25. Jak zmieni się x przy proporcjach 2? Odpowiedź: 0,25.
 6. **Głębia.** Ze wzoru `z_ndc = (far + near) / (far - near) - 2 * far * near / ((far - near) * d)` policz z w NDC dla near 1, far 10 i odległości d równych 1, 2, 5 i 10. Odpowiedź: -1, około 0,111, około 0,778, 1. Jaka część zakresu przypada na odległości od 1 do 2?
 7. **Piksel.** Framebuffer 2560 x 1440, `glViewport(0, 0, 2560, 1440)`. W który piksel trafia punkt NDC `(0,5, -0,5)`? Odpowiedź: x = 1920, y = 360, licząc od lewego dolnego rogu.
-8. **Odsuń kamerę.** Stań w korytarzu twarzą do ściany na jego końcu i zapamiętaj, ile ekranu zajmuje. W panelu Camera przeciągnij `Player feet` tak, żeby stanąć dwa razy dalej od tej ściany (Ctrl i kliknięcie w pole pozwala wpisać liczbę, a w trybie chodzenia zmieniaj tylko x i z). Ile razy mniejsza jest ściana na ekranie i z którego wzoru sekcji 2.3 to wynika? Potem przesuń gracza o pół metra w bok: w którą stronę ekranu przesunęła się ściana i dlaczego w przeciwną niż kamera? Pozycji kamery nie da się wpisać wprost: dlaczego (sekcja 5.7)?
+8. **Odsuń kamerę.** Stań w korytarzu twarzą do ściany na jego końcu i zapamiętaj, ile ekranu zajmuje. W kategorii Player przeciągnij `Player feet` tak, żeby stanąć dwa razy dalej od tej ściany (Ctrl i kliknięcie w pole pozwala wpisać liczbę, a w trybie chodzenia zmieniaj tylko x i z). Ile razy mniejsza jest ściana na ekranie i z którego wzoru sekcji 2.3 to wynika? Potem przesuń gracza o pół metra w bok: w którą stronę ekranu przesunęła się ściana i dlaczego w przeciwną niż kamera? Pozycji kamery nie da się wpisać wprost: dlaczego (sekcja 5.7)?
 9. **Kąt widzenia.** Ustaw suwak `FOV` na 30, potem na 100. Stań w korytarzu twarzą do ściany na jego końcu. Opisz jej rozmiar na ekranie i zniekształcenie ścian bocznych. Policz dla obu wartości `f = 1 / tan(fov / 2)` i porównaj z tym, ile razy zmieniła się wysokość tej ściany na ekranie.
 10. **Bez testu głębi.** Zakomentuj w `onRender` linię `GL_CHECK(glEnable(GL_DEPTH_TEST));`. Przejdź się po labiryncie: które ściany są widoczne "przez" inne i dlaczego właśnie te (podpowiedź: `TerrainRenderer` rysuje najpierw teren, `MazeRenderer` ściany w kolejności listy, potem słupki, a po nim `GameplayRenderer` bramę i kryształy, na końcu `drawGrass` trawę)? Dlaczego kryształy widać przez wszystkie ściany? Przywróć linię i zamiast tego usuń `| GL_DEPTH_BUFFER_BIT` z `glClear`. Co dzieje się z obrazem po pierwszej klatce, gdy stoisz, i co, gdy się ruszasz (pułapka 10)?
 11. **Proporcje.** W `onRender` zamień argument `projectionMatrix(aspectRatio)` na `projectionMatrix(1.0F)`. Jak wyglądają kwadratowe komórki labiryntu (najlepiej widać je z góry, w trybie noclip) i co dzieje się z obrazem przy zmianie rozmiaru okna? Potem przywróć `aspectRatio`, ale usuń oba `static_cast<float>`: przeczytaj ostrzeżenie kompilatora i opisz obraz w oknie 1280 x 720 oraz w oknie zwężonym tak, żeby było wyższe niż szersze.
@@ -837,6 +837,6 @@ Pola struktury `Camera` (pozycja, yaw, pitch, FOV, bliska i daleka płaszczyzna)
 - songho.ca, "OpenGL Camera": <https://www.songho.ca/opengl/gl_camera.html> (macierz widoku jako odwrotność przekształcenia kamery, `lookAt`).
 - docs.gl, OpenGL 4: <https://docs.gl/gl4/glUniform> (`glUniformMatrix4fv`), <https://docs.gl/gl4/glGetUniformLocation>, <https://docs.gl/gl4/glViewport>, <https://docs.gl/gl4/glDepthRange>.
 - Kod GLM dokładnie w naszej wersji, lokalnie po pierwszej konfiguracji: `build/debug/_deps/glm-src/glm/ext/matrix_transform.inl` (`translate`, `rotate`, `scale`, `lookAtRH`) i `build/debug/_deps/glm-src/glm/ext/matrix_clip_space.inl` (`perspectiveRH_NO`).
-- Dokumenty w tym repozytorium: [`../../libraries/glm.md`](../../libraries/glm.md) (biblioteka), [`transforms.md`](transforms.md) (przestrzenie i macierz modelu), [`camera-controls.md`](camera-controls.md) (sterowanie kamerą i panel Camera), [`../gfx/uniforms.md`](../gfx/uniforms.md) (`setMat4`), [`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md) (rysowanie indeksowane i `glDrawElements`), [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`), [`../core/window-context.md`](../core/window-context.md) (rozmiar okna a framebuffera, `glViewport`), [`../game/gameplay.md`](../game/gameplay.md) (runda, kryształy i brama).
+- Dokumenty w tym repozytorium: [`../../libraries/glm.md`](../../libraries/glm.md) (biblioteka), [`transforms.md`](transforms.md) (przestrzenie i macierz modelu), [`camera-controls.md`](camera-controls.md) (sterowanie kamerą i kategoria Player), [`../gfx/uniforms.md`](../gfx/uniforms.md) (`setMat4`), [`../gfx/indexed-drawing.md`](../gfx/indexed-drawing.md) (rysowanie indeksowane i `glDrawElements`), [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`), [`../core/window-context.md`](../core/window-context.md) (rozmiar okna a framebuffera, `glViewport`), [`../game/gameplay.md`](../game/gameplay.md) (runda, kryształy i brama).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 3 i jego pokaz w ImGui), sekcja 9 (konwencja osi i skali dla modeli).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o przekształceniach geometrycznych i rzutowaniu).

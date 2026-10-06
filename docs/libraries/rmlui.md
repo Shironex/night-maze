@@ -28,7 +28,7 @@ RmlUi produkuje listy trójkątów i prosi interfejs renderujący o ich narysowa
 
 ## 2. Dlaczego RmlUi jest w projekcie
 
-Decyzja właściciela z 2026-10-06: menu gry powstanie w RmlUi, a Dear ImGui zostaje przy panelach debug ([`../decisions/menu-in-rmlui.md`](../decisions/menu-in-rmlui.md)). Powody właściciela są w tamtej notatce (płynność i animacje menu, droga do dalszej rozbudowy gry). Skutek, który notatka zapisuje wprost: zasada "zero tajemnic" z PRD jest dla warstwy menu świadomie poluzowana, bo biblioteka i jej podłączenie są większe, niż zdąży się wytłumaczyć na obronie.
+Decyzja właściciela z 2026-10-06: menu gry powstanie w RmlUi, a Dear ImGui zostaje przy oknie debug ([`../decisions/menu-in-rmlui.md`](../decisions/menu-in-rmlui.md)). Powody właściciela są w tamtej notatce (płynność i animacje menu, droga do dalszej rozbudowy gry). Skutek, który notatka zapisuje wprost: zasada "zero tajemnic" z PRD jest dla warstwy menu świadomie poluzowana, bo biblioteka i jej podłączenie są większe, niż zdąży się wytłumaczyć na obronie.
 
 ## 3. Przypięte wersje
 
@@ -177,7 +177,7 @@ button:hover {
 - **Jednostka `dp`** to piksel niezależny od gęstości: 1 dp to 1 piksel przy skalowaniu ekranu 100 procent, 1,5 piksela przy 150 procentach na Windowsie, 2 piksele na ekranie Retina. Dzięki niej menu ma ten sam rozmiar na każdym ekranie. Współczynnik jest ustawiany w każdej klatce z `glfwGetWindowContentScale` (kod w `UiLayer::draw`).
 - **Kolor `#05081099`** to osiem cyfr szesnastkowych: czerwony, zielony, niebieski i **alfa** (`99` to około 60 procent). Dlatego tło `body` jest półprzezroczyste i widać pod nim przyciemniony obraz gry.
 - **`button:hover`** zmienia kolor pod kursorem, a `transition` rozkłada tę zmianę na 0,2 s z krzywą `cubic-out`. To jedyna animacja w menu dziś.
-- **Czcionka** `"Atkinson Hyperlegible"` to nazwa rodziny, pod którą RmlUi zna plik załadowany przez `Rml::LoadFontFace(core::TEXT_FONT_FILE)`. Ten sam plik czcionki co w panelach debug, `assets/fonts/AtkinsonHyperlegible-Regular.ttf` ([`../modules/debug-ui.md`](../modules/debug-ui.md)).
+- **Czcionka** `"Atkinson Hyperlegible"` to nazwa rodziny, pod którą RmlUi zna plik załadowany przez `Rml::LoadFontFace(core::TEXT_FONT_FILE)`. Ten sam plik czcionki co w oknie debug, `assets/fonts/AtkinsonHyperlegible-Regular.ttf` ([`../modules/debug-ui.md`](../modules/debug-ui.md)).
 - **RmlUi nie ma wbudowanego arkusza stylów.** Komentarz w pliku: bez reguły `display: block` każdy element jest w linii (inline). Dlatego `body` i `div, h1, p` mają `display: block` zapisane jawnie.
 
 ## 6. Z czego projekt korzysta, a z czego nie
@@ -208,7 +208,7 @@ button:hover {
 6. **Jedno wywołanie zwrotne każdego rodzaju na okno.** GLFW ma jedną funkcję zwrotną każdego rodzaju na okno, a `UiLayer` ustawia sześć (klawisz, znak, wejście kursora, pozycja kursora, przycisk myszy, kółko). Dear ImGui instaluje swoje później i, według komentarza w kodzie, przekazuje każde zdarzenie dalej do tych poprzednich, więc obie biblioteki widzą każde zdarzenie. Dlatego `UiLayer` musi powstać **przed** debug UI i zostać zniszczony **po** nim ([`../modules/ui/README.md`](../modules/ui/README.md), sekcja 5.3).
 7. **Kolejność niszczenia.** `Rml::Shutdown` niszczy kontekst i dokumenty i zwalnia tekstury przez interfejs renderujący. Interfejsy muszą więc żyć dłużej niż `Shutdown`: są składowymi `UiLayer` i niszczą się po ciele destruktora.
 8. **macOS.** Renderer GL3 z kontekstem 4.1 Core na Apple, FreeType i RmlUi budowane Apple clang oraz ostrość i pozycje trafień na Retina **nie były sprawdzone** ([`../guides/build-macos.md`](../guides/build-macos.md)).
-9. **Obraz.** To, co poniżej, jest **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela** (Windows, Release, 1280 x 720): menu główne, pauza i ekran wyniku (ten ostatni tylko przez tymczasową linię wymuszającą wygraną) wyświetlają się, przycisk pod kursorem zmienia kolor na pomarańczowy, kliknięcia dochodzą do gry, a panele debug działają nad menu ([`../guides/build-windows.md`](../guides/build-windows.md), sekcja 26).
+9. **Obraz.** To, co poniżej, jest **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela** (Windows, Release, 1280 x 720): menu główne, pauza i ekran wyniku (ten ostatni tylko przez tymczasową linię wymuszającą wygraną) wyświetlają się, przycisk pod kursorem zmienia kolor na pomarańczowy, kliknięcia dochodzą do gry, a okno debug działa nad menu ([`../guides/build-windows.md`](../guides/build-windows.md), sekcja 26).
 
 ## 9. Pytania kontrolne
 

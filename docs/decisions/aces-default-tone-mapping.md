@@ -1,7 +1,7 @@
 # Mapowanie tonów: domyślnie krzywa ACES (dopasowanie Narkowicza), z przełącznikiem na Reinharda i na brak krzywej
 
 Data: 2026-10-05. Stan: obowiązuje.
-Kod: [`assets/shaders/post/composite.frag`](../../assets/shaders/post/composite.frag) (`toneMapReinhard`, `toneMapAces`, `main`), [`src/game/PostProcess.hpp`](../../src/game/PostProcess.hpp) (`ToneMapping`, `PostProcessSettings`), [`src/debug/panels/FramebuffersPanel.cpp`](../../src/debug/panels/FramebuffersPanel.cpp) (lista `Tone mapping`), wartości dobrane do krzywej: [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp), [`src/game/Crystals.hpp`](../../src/game/Crystals.hpp) (`CRYSTAL_GLOW_STRENGTH`), [`src/game/Skybox.hpp`](../../src/game/Skybox.hpp) (`SkyboxSettings::brightness`). Dokument modułu: [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md).
+Kod: [`assets/shaders/post/composite.frag`](../../assets/shaders/post/composite.frag) (`toneMapReinhard`, `toneMapAces`, `main`), [`src/game/PostProcess.hpp`](../../src/game/PostProcess.hpp) (`ToneMapping`, `PostProcessSettings`), [`src/debug/categories/PostProcessCategory.cpp`](../../src/debug/categories/PostProcessCategory.cpp) (lista `Tone mapping`), wartości dobrane do krzywej: [`src/game/Lighting.hpp`](../../src/game/Lighting.hpp), [`src/game/Crystals.hpp`](../../src/game/Crystals.hpp) (`CRYSTAL_GLOW_STRENGTH`), [`src/game/Skybox.hpp`](../../src/game/Skybox.hpp) (`SkyboxSettings::brightness`). Dokument modułu: [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md).
 
 ## 1. Kontekst
 
@@ -11,7 +11,7 @@ Trzeba było wybrać, jaka krzywa jest domyślna, i czy inne w ogóle zostają w
 
 ## 2. Decyzja
 
-W kodzie są **trzy tryby**, przełączane listą `Tone mapping` w panelu Framebuffers: `None` (samo przycięcie do 1), `Reinhard` (`x / (1 + x)`) i `Aces` (krzywa dopasowana przez Krzysztofa Narkowicza do krzywej referencyjnej ACES, iloraz dwóch wielomianów kwadratowych). **Domyślny jest `Aces`**, z ekspozycją 1,0. Wszystkie wartości startowe świateł, świecenia kryształów i jasności nieba są dobrane do tej pary.
+W kodzie są **trzy tryby**, przełączane listą `Tone mapping` w kategorii Post process: `None` (samo przycięcie do 1), `Reinhard` (`x / (1 + x)`) i `Aces` (krzywa dopasowana przez Krzysztofa Narkowicza do krzywej referencyjnej ACES, iloraz dwóch wielomianów kwadratowych). **Domyślny jest `Aces`**, z ekspozycją 1,0. Wszystkie wartości startowe świateł, świecenia kryształów i jasności nieba są dobrane do tej pary.
 
 ## 3. Rozważane możliwości
 

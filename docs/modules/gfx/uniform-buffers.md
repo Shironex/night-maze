@@ -908,7 +908,7 @@ Zwykłe uniformy mają ten sam problem i projekt rozwiązuje go wysyłaniem wszy
 | Wariant | Dlaczego nie |
 |---|---|
 | wołać `bindUniformBlock` co klatkę z kodu gry | trzy wywołania sterownika na program i klatkę (indeks po nazwie, wiązanie, pytanie o rozmiar) dla wartości, która zmienia się tylko przy przeładowaniu |
-| wołać je z panelu Shaders po przeładowaniu | panel debugowy musiałby wiedzieć, które programy mają bloki i gdzie jest bufor. Przeładowanie bez panelu (na przykład przyszłe śledzenie zmian plików) znów by o tym zapomniało |
+| wołać je z zakładki Diagnostics / Frame and shaders po przeładowaniu | panel debugowy musiałby wiedzieć, które programy mają bloki i gdzie jest bufor. Przeładowanie bez panelu (na przykład przyszłe śledzenie zmian plików) znów by o tym zapomniało |
 | zapamiętać w `Shader` | **wybrane**. Kod gry mówi to raz, w konstruktorze `NightMazeApp`, a kto woła `reload()`, nie musi o blokach wiedzieć nic |
 
 Dwa szczegóły pętli:
@@ -985,7 +985,7 @@ W `NightMazeApp::onRender`, po policzeniu macierzy, a przed rysowaniem:
 
 | Linia | Co robi |
 |---|---|
-| `lightingForFrame(m_lighting, m_round, m_gameplay)` | kopia ustawień oświetlenia na tę jedną klatkę. Runda zmienia w niej dwie rzeczy: latarka jest wyłączona przy pustej baterii i przyciemniona (migocze) przy słabej, a natężenie świateł punktowych jest pomnożone przez puls kryształów. Samo `m_lighting`, które edytuje panel Lights, zostaje nietknięte |
+| `lightingForFrame(m_lighting, m_round, m_gameplay)` | kopia ustawień oświetlenia na tę jedną klatkę. Runda zmienia w niej dwie rzeczy: latarka jest wyłączona przy pustej baterii i przyciemniona (migocze) przy słabej, a natężenie świateł punktowych jest pomnożone przez puls kryształów. Samo `m_lighting`, które edytuje zakładkę Light / Lights, zostaje nietknięte |
 | `crystalLightPositions(m_round)` | pozycje świateł punktowych tej chwili: nad każdym kryształem, którego gracz jeszcze nie zebrał, razem z jego kołysaniem. Zebrany kryształ nie ma światła, więc lista skraca się w trakcie rundy. W M4 była to stała lista pozycji w ślepych zaułkach, liczona raz przy budowie labiryntu |
 | `buildLightSet(frameLighting, flashlight, crystalLights)` | zestaw świateł klatki (`scene::LightSet`) z kopii ustawień, z pozy latarki (`game::FlashlightPose`, od piątej części M7) i z listy pozycji |
 | `m_lightRig.upload(lights, eye)` | pakowanie do 928 bajtów i wysyłka |
@@ -1040,15 +1040,15 @@ Uwaga do ostatniego przypadku. Komentarz w teście mówi, że rozmiar bloku `std
 | stan po M5 | raport z Windowsa (2026-10-05): build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji, zrzuty ekranu | kod bloku i bufora bez zmian. Pulsu świateł, gasnącego światła zebranego kryształu i migotania latarki nikt jeszcze nie sprawdzał ręcznie w działającej grze |
 | macOS | | **nic**: ani kompilacja asercji pod Apple clang, ani rozmiar bloku podawany przez sterownik Apple, ani obraz |
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
 Blok uniformów i bufor nie mają własnego panelu: żaden panel nie pokazuje zawartości bufora, numeru punktu wiązania ani rozmiaru bloku. Ich działanie widać pośrednio w dwóch miejscach.
 
-**Panel Lights.** Każdy widżet tego panelu zmienia pole struktury `game::LightingSettings`. W następnej klatce `lightingForFrame` robi jej kopię z poprawkami rundy (bateria latarki, puls kryształów), `buildLightSet` robi z kopii `LightSet`, `packLightBlock` bajty, a `UniformBuffer::update` wysyła je na kartę. Zmiana koloru księżyca w panelu to zatem zmiana bajtów od 48 do 59 bufora (natężenie leży w bajtach od 60 do 63), a wyłączenie latarki to zmiana bajtów od 136 do 139 (składowa `z` pola `uSpotCone`). Od M5 tak samo działa pusta bateria: `lightingForFrame` wyłącza latarkę w kopii ustawień, bez udziału panelu. Oba programy oświetlające widzą ją w tej samej klatce, bez żadnego wywołania skierowanego do nich. Panel i scenariusz pokazu opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 6. Widżetów tego panelu nikt jeszcze nie klikał ręcznie.
+**Zakładka Light / Lights.** Każdy widżet tego panelu zmienia pole struktury `game::LightingSettings`. W następnej klatce `lightingForFrame` robi jej kopię z poprawkami rundy (bateria latarki, puls kryształów), `buildLightSet` robi z kopii `LightSet`, `packLightBlock` bajty, a `UniformBuffer::update` wysyła je na kartę. Zmiana koloru księżyca w panelu to zatem zmiana bajtów od 48 do 59 bufora (natężenie leży w bajtach od 60 do 63), a wyłączenie latarki to zmiana bajtów od 136 do 139 (składowa `z` pola `uSpotCone`). Od M5 tak samo działa pusta bateria: `lightingForFrame` wyłącza latarkę w kopii ustawień, bez udziału panelu. Oba programy oświetlające widzą ją w tej samej klatce, bez żadnego wywołania skierowanego do nich. Panel i scenariusz pokazu opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 6. Widżetów tego panelu nikt jeszcze nie klikał ręcznie.
 
-**Panel Shaders, przycisk `Reload shaders`.** Przeładowanie buduje nowe obiekty programów. Jeśli po naciśnięciu labirynt jest nadal oświetlony tak samo, to znaczy, że pętla w `reload` podpięła blok nowego programu do punktu 1 (sekcja 5.9). Gdyby jej nie było, programy `lit` i `gouraud` straciłyby światła po pierwszym naciśnięciu. To jest dobry punkt pokazu na obronie, ale z zastrzeżeniem: **tego naciśnięcia nikt jeszcze nie wykonał**, więc opis pochodzi z kodu. Panel opisuje [`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.
+**Zakładka Diagnostics / Frame and shaders, przycisk `Reload shaders`.** Przeładowanie buduje nowe obiekty programów. Jeśli po naciśnięciu labirynt jest nadal oświetlony tak samo, to znaczy, że pętla w `reload` podpięła blok nowego programu do punktu 1 (sekcja 5.9). Gdyby jej nie było, programy `lit` i `gouraud` straciłyby światła po pierwszym naciśnięciu. To jest dobry punkt pokazu na obronie, ale z zastrzeżeniem: **tego naciśnięcia nikt jeszcze nie wykonał**, więc opis pochodzi z kodu. Panel opisuje [`shader-hot-reload.md`](shader-hot-reload.md), sekcja 6.
 
-Przełączanie listy `Lighting` w panelu Renderer między `Gouraud` a `Phong` zmienia program rysujący labirynt z `gouraud` na `lit`. Światła się przy tym nie zmieniają, bo oba programy czytają ten sam bufor, a trawa, rysowana cały czas trzecim programem, jest oświetlona tak samo jak ściany obok niej: to pokaz zdania "blok jest wspólny dla programów" ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)).
+Przełączanie listy `Lighting` w kategorii Render między `Gouraud` a `Phong` zmienia program rysujący labirynt z `gouraud` na `lit`. Światła się przy tym nie zmieniają, bo oba programy czytają ten sam bufor, a trawa, rysowana cały czas trzecim programem, jest oświetlona tak samo jak ściany obok niej: to pokaz zdania "blok jest wspólny dla programów" ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md)).
 
 ## 7. Pułapki
 

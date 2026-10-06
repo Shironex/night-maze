@@ -36,7 +36,7 @@ Przykład: kryształ 30 m od oka, 95 procent mgły w pikselach jego bryły.
 - Przy dużej gęstości (suwak `Density` w prawo) bryła dalekiego kryształu znika w całości, a poświata zostaje: plama światła bez źródła. Przy wartościach startowych jest na to mało miejsca: labirynt startowy ma 20 m boku, a na 20 metrach mgła zabiera 86 procent, więc bryłę kryształu w korytarzu jeszcze widać.
 - To samo dotyczy tarczy księżyca: jej poświata nie słabnie we mgle. Przy `Height falloff` równym 0 niebo znika w mgle, a poświata księżyca nadal jest dodawana.
 - Poświata kryształu zasłoniętego ścianą nie przechodzi przez ścianę: tego kryształu nie ma w obrazie sceny, więc nie ma z czego jej policzyć. Mgła tego nie zmienia.
-- Obraz `Bright pass` i obraz `Bloom` w panelu Framebuffers wyglądają tak samo z mgłą i bez niej.
+- Obraz `Bright pass` i obraz `Bloom` w kategorii Post process wyglądają tak samo z mgłą i bez niej.
 
 **Czego nie zmierzyłem.** Odrzuconych wersji nikt nie zbudował, a wybranej nikt nie oglądał z myszą w ręku: opis wyglądu wynika z kolejności linii w shaderze. Test ręczny ma punkt "kryształ świecący przez mgłę" ([`../guides/build-windows.md`](../guides/build-windows.md), sekcja 19).
 

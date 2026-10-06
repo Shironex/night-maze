@@ -1,5 +1,13 @@
 # Budowanie na Windowsie
 
+> **Od 2026-10-06 trzynaście paneli to jedno okno debug.** Nazwy w rodzaju "panel Renderer", "panel Lights" albo "panel Framebuffers"
+> w tym dokumencie oznaczają miejsca w oknie debug (kategoria / zakładka / karta): tabela w sekcji 27.3, lista kontrolna
+> okna w sekcji 27. Okno startuje **ukryte**, więc przed każdym krokiem z kontrolkami naciśnij `~`. W punktach `[ ]` nazwy
+> paneli są już zamienione na nowe miejsca, a kroki o zwijaniu paneli, rzędach pasków tytułu, układzie kolumn i dokowaniu
+> stałych paneli mają dopisek "bez odpowiednika w oknie debug". Punkty `[x]` i opisy pomiarów zostają z nazwami z dnia pomiaru.
+> Żaden punkt nie został odhaczony ani odznaczony przy tej zmianie. Minimapa startuje od 2026-10-06 w lewym dolnym rogu (była
+> w prawym dolnym), a pasek HUD stoi zawsze przy górnej krawędzi.
+
 > **Stan na 2026-10-05: build z terminala jest sprawdzony na Windowsie, część ręczna nie.**
 > Kod M0 i M1 powstał na macOS (patrz [`build-macos.md`](build-macos.md)). Na Windowsie 11
 > zbudowałem go i uruchomiłem po raz pierwszy 2026-10-05, samymi narzędziami "Visual Studio
@@ -360,7 +368,10 @@ z kodu i ze zgłoszonych pomiarów (sekcje 15.1, 16.1, 17.1, 18.1 i 20.1).
   dla okna 1280 x 720 (`src/debug/PanelLayout.hpp`). Działają one tylko wtedy, gdy w
   katalogu roboczym nie ma pliku `imgui.ini` z wpisem danego panelu (sekcja 7). To nie jest
   cecha Windowsa.
-- Tekst paneli jest w czcionce Atkinson Hyperlegible z pliku
+  Od 2026-10-06 ten opis nie jest aktualny: trzynaście paneli zastąpiło jedno okno debug, które startuje ukryte (`~`) i stoi przy
+  prawej krawędzi pod paskiem HUD, bez zwiniętych pasków i bez `PanelLayout` (sekcja 27). Opis powyżej zostaje jako zapis
+  pomiaru z dnia, w którym go zapisano.
+- Tekst okna debug (od 2026-10-06 14 pikseli, HUD ma 16) jest w czcionce Atkinson Hyperlegible z pliku
   `assets\fonts\AtkinsonHyperlegible-Regular.ttf` w kopii katalogu `assets` obok programu.
   Gdy tego pliku brakuje, w konsoli jest jedna linia
   `[error] Panel font cannot be loaded, using the built-in font: ...`, a panele używają
@@ -703,7 +714,8 @@ oraz błędy z `GL_CHECK` i z callbacku błędów GLFW. Bez konsoli nie byłoby 
 ## 7. Katalog roboczy, `imgui.ini` i katalog `assets`
 
 Dear ImGui zapisuje układ paneli w pliku `imgui.ini` w **katalogu roboczym (working
-directory)** procesu, a nie obok pliku `.exe`.
+directory)** procesu, a nie obok pliku `.exe`. Od 2026-10-06 zapisuje tam już tylko przypięty panel okna debug i stan
+dokowania (sekcja 27): samo okno debug ma miejsce i rozmiar liczone w każdej klatce.
 
 | Sposób uruchomienia | Katalog roboczy | Gdzie powstanie `imgui.ini` |
 |---|---|---|
@@ -717,6 +729,10 @@ zostawił `imgui.ini` w tym katalogu. ImGui zapisuje plik także w trakcie dzia�
 sekund po zmianie układu, a nie tylko przy zamykaniu. Przy wcześniejszych pomiarach program
 był zabijany wcześniej i plik nie powstawał. Wiersze o dwukliku i o Visual Studio pozostają
 przewidywaniem.
+
+> Od 2026-10-06 nie istnieją `PanelLayout`, `placePanelOnFirstUse` ani trzynaście paneli. Przypięty panel dostaje miejsce
+> z kodu (320 x 460 pikseli przy prawej krawędzi, pod paskiem HUD) tylko wtedy, gdy `imgui.ini` nie ma jego wpisu
+> (`ImGuiCond_FirstUseEver`). Akapit poniżej opisuje układ do 2026-10-05.
 
 Bez tego pliku trzynaście paneli otwiera się w układzie zapisanym w kodzie (stałe
 `..._PLACEMENT` w `src/debug/PanelLayout.hpp`, funkcja `placePanelOnFirstUse`, warunek
@@ -775,14 +791,14 @@ Reguła pracy z shaderami na Windowsie, gdy program działa:
 1. zmień plik w `assets\shaders\` (także plik dołączany dyrektywą `#include`, czyli
    `assets\shaders\common\lighting.glsl`: kopiowany jest cały katalog, z podkatalogami),
 2. w drugim terminalu wykonaj `cmake --build --preset debug --target copy_assets`,
-3. naciśnij przycisk "Reload shaders" w panelu Shaders.
+3. naciśnij przycisk "Reload shaders" w oknie debug (Diagnostics / Frame and shaders / Shaders).
 
 Gdy program nie działa, wystarczy zwykłe `cmake --build --preset debug` i ponowne
 uruchomienie. Na macOS krok 2 nie jest potrzebny. Pominięcie go na Windowsie nie daje błędu:
 panel dalej pokazuje przy każdym programie `: OK`, a obraz się nie zmienia, bo program
 wczytał poprawnie starą kopię pliku.
 
-Panel Shaders ma dziś jedną linię na program, a programów jest jedenaście (`textured`,
+Okno debug (Diagnostics / Frame and shaders / Shaders) ma dziś jedną linię na program, a programów jest jedenaście (`textured`,
 `color`, `lit`, `gouraud`, od M6 `skybox` i `grass`, od pierwszej części M7 `composite`
 i `preview`, od drugiej `bright` i `blur`, od czwartej `shadow_depth`, czyli linia
 `shadow_depth.vert + shadow_depth.frag`). W M4 było ich pięć:
@@ -963,9 +979,14 @@ dokumentacji narzędzi (przewidywane).
 | `GL_RENDERER` pokazuje kartę zintegrowaną na komputerze z drugą kartą | system wybrał kartę energooszczędną | w ustawieniach grafiki Windows lub panelu sterownika przypisz `night_maze.exe` do wydajnej karty | przewidywane (na moim PC z kartami AMD Radeon i NVIDIA system sam wybrał NVIDIA) |
 | FPS dużo wyższe niż odświeżanie monitora | sterownik wymusza wyłączony vsync | sprawdź ustawienie synchronizacji pionowej w panelu sterownika | przewidywane |
 | Ostrzeżenia `/W4` z plików w `_deps` lub `external` | nagłówki systemowe nie zostały wyciszone | sprawdź, czy katalog trafia do kompilatora przez `/external:I` (sekcja 5), zanotuj wersje CMake i MSVC | przewidywane (u mnie nie wystąpiło) |
-| Układ paneli nie zapamiętuje się | różne katalogi robocze | sekcja 7 | przewidywane |
+| Układ paneli nie zapamiętuje się (od 2026-10-06 dotyczy tylko przypiętego panelu okna debug) | różne katalogi robocze | sekcja 7 | przewidywane |
+| Gra działa, ale nie widać okna debug ani paska stanu | okno debug startuje ukryte (od 2026-10-06) | naciśnij `~` (klawisz na lewo od `1`) | z kodu, nie z pomiaru na tym komputerze |
 | `[error] Shader file cannot be opened: ...\assets\shaders/textured.vert` (i takie same linie dla pozostałych programów), w oknie samo tło | obok `night_maze.exe` nie ma katalogu `assets` (program skopiowany ręcznie albo zbudowano tylko target `night_maze`, bez `copy_assets`) | `cmake --build --preset debug --target copy_assets`, sekcja 7 | przewidywane |
 | Cursor lub VS Code pokazuje "file not found" przy każdym `#include`, choć build przechodzi | generator Visual Studio nie tworzy `compile_commands.json`, którego szuka `.clangd` | skonfiguruj `build\debug` generatorem Ninja, sekcja 4 | przewidywane |
+
+Od 2026-10-06 wiersze tej tabeli o panelach (nakładanie się, wąskie paski zwiniętych paneli, panel Assets i panel Shaders) opisują
+program sprzed jednego okna debug. Dzisiejsze miejsca: Diagnostics / Assets i Diagnostics / Frame and shaders / Shaders, a okno jest stałe
+i nie nakłada się na siebie (tabela w sekcji 27.3).
 
 ## 11. Lista kontrolna pierwszego buildu na Windowsie
 
@@ -982,6 +1003,9 @@ albo o locie, są przepisane tak, żeby dało się je wykonać w obecnym program
 `basic` używają programu `color` albo `textured`. Sprawdzenia
 samego labiryntu, gracza i nowych paneli są w sekcji 12, oświetlenia w sekcji 13, a
 rozgrywki w sekcji 14.
+
+> Od 2026-10-06: kroki `[ ]` tej sekcji, które mówią o panelach, wskazują miejsce w oknie debug (tabela w sekcji 27.3), a okno startuje
+> ukryte (`~`). Kroki o zwijaniu, dokowaniu i układzie paneli mają dopisek "bez odpowiednika w oknie debug".
 
 Po dodaniu oświetlenia (2026-10-05) zmieniły się trzy rzeczy, o których mówią punkty tej
 listy. Panel Shaders ma jedną linię na program zamiast kilkuliniowego bloku. Komunikat błędu shadera zaczyna się od nazwy pliku zamiast od numeru `0`.
@@ -1048,7 +1072,7 @@ clangd w edytorze i `make`.
       zachowują proporcje, obraz się nie rozciąga
 - [ ] minimalizacja okna i przywrócenie: program nie kończy pracy, w konsoli nie ma linii
       `[error]` ani komunikatu o asercji, obraz wraca. Zapisać, jaki rozmiar framebuffera
-      pokazuje panel Renderer zaraz po przywróceniu (na Windowsie zminimalizowane okno ma
+      pokazuje okno debug (Render / Scene) zaraz po przywróceniu (na Windowsie zminimalizowane okno ma
       framebuffer 0 x 0, a `NightMazeApp::onRender` pomija wtedy rysowanie: sprawdza
       szerokość i wysokość)
 - [x] przy uruchomieniu z terminala są w nim dokładnie dwie linie `[info]`
@@ -1061,7 +1085,7 @@ clangd w edytorze i `make`.
 - [x] panele "Renderer", "Shaders" i "Camera" są widoczne. Przy pierwszym uruchomieniu (bez
       `imgui.ini`) leżą jeden na drugim (stan M1. Dziś paneli jest dwanaście, mają miejsca
       startowe i według kodu się nie zasłaniają, sekcje 14.2, 16.2, 17.2 i 20.2)
-- [ ] FPS i czas klatki w panelu "Renderer" się aktualizują
+- [ ] FPS i czas klatki w oknie debug (Diagnostics / Frame and shaders / Frame) się aktualizują
 - [ ] linie "Framebuffer" i "Window" pokazują te same wartości (na Windowsie powinny być równe)
 
 **Sterowanie i interfejs**
@@ -1074,10 +1098,10 @@ clangd w edytorze i `make`.
 - [ ] w menu głównym kursor myszy jest widoczny, a po `Play` jest przechwycony bez klikania w scenę
   (gra startuje w menu głównym: sekcja 26)
 - [ ] krzyżyk okna zamyka program bez błędów w konsoli
-- [ ] docking: panel "Renderer" daje się przeciągnąć i zadokować do krawędzi okna, środek
+- [ ] docking: okno debug (Render / Scene) daje się przeciągnąć i zadokować do krawędzi okna, środek [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       pozostaje przezroczysty
 - [ ] edytor "Clear color" zmienia kolor tła na żywo
-- [ ] po ponownym uruchomieniu układ paneli jest zapamiętany (zapisać, gdzie powstał
+- [ ] po ponownym uruchomieniu układ paneli jest zapamiętany (zapisać, gdzie powstał [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `imgui.ini`). Przy pomiarach program był zatrzymywany przez zabicie procesu, więc plik
       nie powstał
 
@@ -1089,7 +1113,7 @@ clangd w edytorze i `make`.
 - [ ] przeciąganie okna między monitorami o różnym skalowaniu (jeśli są dostępne).
       Oczekiwane: obraz sceny poprawny, a panele zostają w skali monitora, na którym
       program wystartował (skala jest czytana raz, [`../modules/debug-ui.md`](../modules/debug-ui.md),
-      sekcja 5.8.4)
+      sekcja 5.12.4)
 
 **Build Release**
 
@@ -1180,14 +1204,14 @@ sekcji 13.2.
       wczytanie (stan M1, 2026-10-05, z jednym programem i ówczesnymi napisami. Dziś
       programu `basic` nie ma, a panel pokazuje jedenaście linii postaci
       `textured.vert + textured.frag: OK`, sekcje 7 i 14.2)
-- [ ] panel "Shaders" daje się zadokować
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders) daje się zadokować [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
 - [ ] podpowiedź nad linią `textured.vert + textured.frag: OK` pokazuje w dwóch wierszach
       pełne ścieżki obu plików, czyli kopii w `build\debug\Debug\assets\shaders\`. Oczekiwane
       są mieszane ukośniki, tak jak w komunikacie błędu wyżej:
       `...\assets\shaders/textured.frag`
       (podpowiedź i komunikat powstają z tej samej ścieżki). Wcześniejsze oczekiwanie "same
       ukośniki wsteczne" było najpewniej błędne. Samej podpowiedzi nie oglądałem
-- [ ] przeładowanie udane: zaznaczyć `Draw collision shapes` w panelu Collision (żółte
+- [ ] przeładowanie udane: zaznaczyć `Draw collision shapes` w oknie debug (Diagnostics / Collision and picking) (żółte
       linie rysuje program `color`). Przy działającym programie zmienić w
       `assets\shaders\color.frag` linię `fragColor = vec4(uColor, 1.0);` na
       `fragColor = vec4(uColor.bgr, 1.0);`, w drugim terminalu
@@ -1246,7 +1270,7 @@ kliknięciem strzałki w pasku tytułu (sekcja 13.2).
       nazywa się `m_previousPlayerPosition`, a build nadal nie daje ostrzeżeń (sekcja 12)
 - [x] stan M1: panel "Camera" był widoczny i pokazywał pozycję kamery 0, 0, 3, `Yaw` 0,
       `Pitch` 0, `FOV` 60. Wartości startowe po M2 + M3 są w sekcji 12
-- [ ] panel "Camera" daje się zadokować
+- [ ] okno debug (Player) daje się zadokować [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
 - [ ] kliknięcie lewym przyciskiem w scenę chowa kursor, a kursor nie wyjeżdża poza okno
       (także na drugi monitor)
 - [ ] pierwsza klatka po kliknięciu: obraz nie szarpie (kamera nie odskakuje)
@@ -1263,21 +1287,21 @@ kliknięciem strzałki w pasku tytułu (sekcja 13.2).
 - [ ] przy widocznym kursorze klawisze ruchu nie przesuwają gracza
 - [ ] pierwszy Esc przy przechwyconym kursorze otwiera pauzę i oddaje kursor (pojawia się w miejscu, w którym
       zniknął), nie zamykając programu, drugi Esc wznawia grę i przechwytuje kursor ponownie
-- [ ] po pokazaniu paneli tyldą (kursor oddany), **bez ruszania myszą**, kliknięcie w scenę znowu przechwytuje kursor i żaden
+- [ ] po pokazaniu paneli tyldą (kursor oddany), **bez ruszania myszą**, kliknięcie w scenę znowu przechwytuje kursor i żaden [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       panel nie reaguje na to kliknięcie. Zapisać wynik także dla sytuacji, w której przed
       tyldą mysz była długo przesuwana w stronę zadokowanego panelu (to samo sprawdzić na
       Macu: po zwolnieniu kursora ImGui może do pierwszego ruchu myszy pamiętać ostatnią
       pozycję ukrytego kursora)
-- [ ] suwaki panelu Camera (na przykład `FOV`) działają, a ich przeciąganie nie obraca kamery
+- [ ] suwaki okna debug (Player / View) (na przykład `FOV`) działają, a ich przeciąganie nie obraca kamery
       i nie chowa kursora, także gdy kursor wyjedzie przy przeciąganiu nad scenę
 - [ ] kliknięcie w panel (pasek tytułu, suwak) nie chowa kursora
-- [ ] przy przechwyconym kursorze panele nie reagują na mysz: kręcenie myszą tak, żeby ukryty
+- [ ] przy przechwyconym kursorze panele nie reagują na mysz: kręcenie myszą tak, żeby ukryty [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       kursor "przeszedł" nad zadokowanym panelem, nie zatrzymuje obrotu, nie podświetla
       widżetów i nie zmienia żadnej wartości, także przy klikaniu i przy trzymaniu przycisku
 - [ ] Alt+Tab przy przechwyconym kursorze: kursor jest widoczny w innym programie. Po
       powrocie do okna zapisać, czy kursor jest znowu schowany i czy kamera nie odskoczyła
 - [ ] ruch jest płynny na monitorze o odświeżaniu innym niż 60 Hz (na przykład 144 Hz): chód
-      bokiem (D) wzdłuż ściany przy `Walk speed` 20 nie szarpie. Zapisać FPS z panelu Renderer
+      bokiem (D) wzdłuż ściany przy `Walk speed` 20 nie szarpie. Zapisać FPS z okna debug (Diagnostics / Frame and shaders / Frame)
 - [ ] to samo przy wyłączonym vsync w panelu sterownika (kilkaset FPS i więcej, większość
       klatek bez kroku symulacji): ruch nadal płynny, prędkość chodu i czułość myszy takie
       same
@@ -1505,7 +1529,7 @@ jeszcze raz na liście otwartej.
 
 Motyw paneli, czcionka i układ startowy (zmiana po M2 + M3, zmierzone 2026-10-05 na tym samym
 PC, ekran 1920 x 1080 przy skali 100%, opis w [`../modules/debug-ui.md`](../modules/debug-ui.md),
-sekcje 5.7 i 5.8):
+sekcje 5.4 (układ okna) i 5.12 (motyw; opis dotyczy stanu sprzed 2026-10-06):
 
 - [x] build Debug i Release generatorem Visual Studio oraz build generatorem Ninja z plikami
       `src/debug/Theme.*` i `src/debug/PanelLayout.*`: kod wyjścia 0, zero ostrzeżeń pod
@@ -1547,16 +1571,18 @@ liczby żadnych wniosków: nie wiem, czy vsync był aktywny, a pomiar był jeden
 
 ### 12.2. Otwarte: test ręczny na około dziesięć minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką: chodzenia i ślizgania prawdziwymi klawiszami,
 klawisza N, obrotu myszą w labiryncie, przycisków `Regenerate` i `Random seed`, przycisku
-`Reload shaders` (dziś z jedenastoma programami) oraz klikania list i suwaka w panelu Assets.
+`Reload shaders` (dziś z jedenastoma programami) oraz klikania list i suwaka w oknie debug (Diagnostics / Assets).
 Przy każdym kroku jest to, co powinno być widać. Oczekiwania wynikają z kodu i z testów
 jednostkowych, nie z obserwacji.
 
 Lista powstała przed oświetleniem. W dzisiejszym programie scena jest nocna, więc dwie
-rady ułatwiają jej przejście: lista `Lighting` w panelu Renderer ustawiona na `Unlit` daje
+rady ułatwiają jej przejście: lista `Lighting` w oknie debug (Render / Scene) ustawiona na `Unlit` daje
 równo jasny labirynt z tamtego dnia (wygodny do oglądania tekstur, filtrów i kolizji), a
-panel Camera trzeba najpierw rozwinąć strzałką w pasku tytułu. Kroki samego oświetlenia są
+okno debug (Player) trzeba najpierw rozwinąć strzałką w pasku tytułu. Kroki samego oświetlenia są
 w sekcji 13.2. Od M5 w labiryncie trwa też runda: u góry okna jest pasek HUD, w komórkach
 wiszą kryształy, a wejście w kryształ go zbiera. Chodzeniu, kolizjom i panelom z tej listy
 to nie przeszkadza, a stan rundy przywraca klawisz R. Kroki samej rozgrywki są w sekcji
@@ -1572,34 +1598,34 @@ Start i układ paneli:
 
 - [x] okno 1280 x 720: ówczesne panele (bez Lights) nie zasłaniają się nawzajem. Renderer i Camera stoją w
       kolumnie przy lewej krawędzi, Maze i Assets przy prawej, Collision i Shaders na dole
-      między kolumnami. Środek górnej części okna jest wolny. Zawartość ówczesnego panelu Shaders
+      między kolumnami. Środek górnej części okna jest wolny. Zawartość ówczesnego okna debug (Diagnostics / Frame and shaders / Shaders)
       mieściła się w nim bez przewijania, dopóki żaden program nie ma błędu (zmierzone na
-      zrzucie ekranu 2026-10-05, sekcja 12.1. To układ i panel Shaders z tamtego dnia:
+      zrzucie ekranu 2026-10-05, sekcja 12.1. To układ i okno debug (Diagnostics / Frame and shaders / Shaders) z tamtego dnia:
       dzisiejszy układ dwunastu paneli jest punktem otwartym w sekcjach 14.2, 16.2, 17.2
       i 20.2)
 - [ ] po prawdziwym usunięciu `imgui.ini` ręką i starcie z katalogu repozytorium (układ
       dwunastu paneli z sekcji 14.2, 16.2, 17.2 i 20.2): obejrzeć na żywo, czy tekst jest
       wygodny do czytania z odległości (projektor) i czy najechanie myszą na suwak, przycisk
       i pole wyboru zmienia ich tło na ciepły brąz, a panel z fokusem ma morski pasek tytułu
-- [ ] panel Camera (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`,
+- [ ] okno debug (Player / Position) (rozwinąć strzałką w pasku tytułu): `Mode: walking`, `Player feet` 1, 0, 1, `Eye: 1.00, 1.70, 1.00`, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `Yaw` 180 (labirynt startowy: 10 na 10, ziarno 1), `Pitch` 0, `Walk speed` 3.0,
       `Sprint speed` 5.5, `Fly speed` 6.0. Kąt 180 dla ziarna 1 podał autor kodu z
       uruchomienia, żaden test go nie przypina: testy sprawdzają tylko, że kamera patrzy w
       stronę bez ściany
-- [ ] panel Maze: `Width` 10, `Height` 10, `Seed` 1, linie `In play: 10 x 10 cells, seed 1`,
+- [ ] okno debug (World / Maze): `Width` 10, `Height` 10, `Seed` 1, linie `In play: 10 x 10 cells, seed 1`,
       `Walls: 121, pillars: 121` i (od M5) `Crystals: 13, exit in cell (6, 5)`, pod nimi plan
       z bursztynową kropką w lewym górnym rogu i
       kreską skierowaną w dół planu (południe). Plan z kropką w tym miejscu jest widoczny na
       zrzucie ekranu z M2 + M3, wartości suwaków i dwóch pierwszych linii tekstu też. Od M5
       na planie są także kryształy, brama i strefa wyjścia (sekcja 14.2)
-- [ ] panel Collision: `Boxes: 121 walls, 121 pillars, 1 gate`,
+- [ ] okno debug (Diagnostics / Collision and picking): `Boxes: 121 walls, 121 pillars, 1 gate`,
       `All boxes: 243, pickup spheres: 13`,
       `Wall box: 0.30 m thick (the visible wall: 0.20 m)`, pudełko gracza `min: 0.70, 0.12,
       0.70` i `max: 1.30, 1.92, 1.30` (stopy stoją na terenie, który w środku komórki
       startowej ma wysokość 0,124 m: liczba z przeliczenia w sekcji 16.1, nie z ekranu. Do
       M5 było tu `0.00` i `1.80`). Do M4 w tym miejscu stały linie `Wall boxes: 121`,
       `Pillar boxes: 121` i `All boxes: 242`: bramy i kul nie było
-- [ ] panel Assets: pięć modeli (`wall_straight.obj`, `wall_pillar.obj`,
+- [ ] okno debug (Diagnostics / Assets): pięć modeli (`wall_straight.obj`, `wall_pillar.obj`,
       `crystal_a.obj`, `crystal_b.obj`, `gate.obj`; kolejność według wczytania może być
       inna), każdy z jedną częścią, nazwą pliku tekstury i linią `normal map:` z nazwą mapy
       normalnych, osiem tekstur z podglądem (`wall_stone.png`,
@@ -1627,14 +1653,14 @@ Chodzenie i kolizje (kliknąć w scenę, kursor znika):
 - [ ] róg: wejść ukosem w narożnik wewnętrzny (gracz staje w rogu) i obejść narożnik
       zewnętrzny (gracz zsuwa się po nim bez zacięcia)
 - [ ] nie da się wyjść poza labirynt: obejść kawałek ściany zewnętrznej, pchając w nią
-- [ ] kropka na planie w panelu Maze porusza się razem z graczem, a jej kreska obraca się
+- [ ] kropka na planie w oknie debug (World / Maze) porusza się razem z graczem, a jej kreska obraca się
       razem z kamerą
 - [ ] Esc otwiera pauzę i oddaje kursor, klawisze ruchu przestają działać, gracz staje w miejscu, a runda stoi
 
 Noclip:
 
 - [ ] klawisz N (działa także przy widocznym kursorze): `Mode: noclip (free flight)`, w
-      panelu Collision pole `Noclip (key N)` jest zaznaczone
+      okna debug (Player / Position) pole `Noclip (key N)` jest zaznaczone
 - [ ] w trybie noclip (kursor przechwycony) spacja wznosi, lewy Shift opuszcza, W leci tam,
       gdzie patrzy kamera, także w górę i w dół, przez ściany
 - [ ] wzlecieć spacją ponad ściany i spojrzeć w dół: układ ścian zgadza się z planem w panelu
@@ -1643,7 +1669,7 @@ Noclip:
       Kolorowej kostki nad rogiem przeciwległym do startu już nie ma (usunięta w M5)
 - [ ] drugi raz N w powietrzu: gracz od razu stoi na podłodze (y stóp równe 0), bez
       widocznego zjazdu w dół. Jeśli wylądował w ścianie, może z niej wyjść
-- [ ] to samo polem wyboru `Noclip (key N)` w panelu Collision zamiast klawisza
+- [ ] to samo polem wyboru `Noclip (key N)` w oknie debug (Player / Position) zamiast klawisza
 
 Pudełka kolizji:
 
@@ -1670,12 +1696,12 @@ Regeneracja:
 - [ ] ten sam rozmiar i to samo ziarno dwa razy dają ten sam plan
 - [ ] `Random seed`: w polu `Seed` pojawia się nowa liczba i od razu powstaje nowy labirynt.
       Wpisanie tej liczby później i `Regenerate` odtwarza go
-- [ ] labirynt 40 na 40: zapisać FPS z panelu Renderer (każdy obiekt to osobne wywołanie
+- [ ] labirynt 40 na 40: zapisać FPS z okna debug (Diagnostics / Frame and shaders / Frame) (każdy obiekt to osobne wywołanie
       rysujące)
 
-Panel Assets (stanąć tak, żeby widzieć długi korytarz i podłoże pod płaskim kątem. W
+Okno debug (Render / Textures and normals) (stanąć tak, żeby widzieć długi korytarz i podłoże pod płaskim kątem. W
 nocnej scenie daleki koniec korytarza jest ciemny, więc do porównania filtrów najpierw
-ustawić `Lighting` w panelu Renderer na `Unlit`):
+ustawić `Lighting` w oknie debug (Render / Scene) na `Unlit`):
 
 - [ ] `View mode`, `Normals as colour`: podłoże w odcieniach jasnej zieleni (normalne bliskie +Y, odchylone przez pochyłość terenu i przez mapę normalnych), powierzchnie zwrócone
       na +X czerwonawe, na +Z niebieskawe, a zwrócone w przeciwne strony ciemne w tym
@@ -1722,7 +1748,7 @@ Shadery i brakujący plik:
       nie światła (biała tekstura zastępcza razy światło). Mapa normalnych kamienia wczytała
       się niezależnie, więc w trybach `Phong` i `Blinn-Phong` na białych ścianach nadal widać
       relief fug. Podłoże, kryształy i brama bez zmian,
-      w konsoli jedna linia `[error]`, w panelu Assets przy części `wall_stone` napis
+      w konsoli jedna linia `[error]`, w oknie debug (Diagnostics / Assets) przy części `wall_stone` napis
       `no texture (white)` i sekcja `Failed to load` z nazwą pliku na czerwono. Przywrócić
       nazwę pliku. (Do M5 ten punkt używał tekstury `floor_stone.png` płytki podłogi,
       a zrzut ekranu z sekcji 12.1 pokazuje tamtą wersję.)
@@ -1866,6 +1892,8 @@ sprawdzony tylko testem jednostkowym, nie na prawdziwym sterowniku.
 
 ### 13.2. Otwarte: test ręczny na około dziesięć minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze zrzutów z sekcji 13.1,
 nie z klikania. Nazwy widżetów są zapisane tak jak w `src/debug/panels/LightsPanel.cpp` i
@@ -1880,13 +1908,13 @@ Przygotowanie:
 Układ paneli (okno 1280 x 720, bez `imgui.ini`). W M4 paneli było siedem, a dolny rząd
 miał wysokość 272. Dziś jest ich dwanaście:
 
-- [ ] układ dwunastu paneli i paska HUD: punkty z wymiarami są w sekcjach 14.2, 16.2, 17.2
+- [ ] układ dwunastu paneli i paska HUD: punkty z wymiarami są w sekcjach 14.2, 16.2, 17.2 [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       i 20.2. Tu wystarczy
       sprawdzić, że Lights stoi pod Rendererem w lewej kolumnie, że żaden panel nie
       zasłania innego i że środek okna, w który świeci latarka, jest wolny
-- [ ] panel Renderer: pod edytorem `Clear color` jest lista `Lighting` z wybraną pozycją
+- [ ] okno debug (Render / Scene): pod edytorem `Clear color` jest lista `Lighting` z wybraną pozycją
       `Blinn-Phong`
-- [ ] panel Lights: u góry edytor koloru `Ambient`, pod nim cztery grupy z paskami:
+- [ ] okno debug (Light / Lights): u góry edytor koloru `Ambient`, pod nim cztery grupy z paskami: [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `Moon (directional)` (zwinięta), `Flashlight (spot)`, `Point lights (crystals)` i
       `Highlight (specular)` (rozwinięte). Przy zwiniętej grupie księżyca panel pokazuje
       całą zawartość bez przewijania (tak było w M4: zapisać, czy jest tak nadal).
@@ -1896,13 +1924,13 @@ miał wysokość 272. Dziś jest ich dwanaście:
       `Point intensity` 0.90 (do M6 2.00), `Point radius` 3.0 m, `Strength` 0.25, `Shininess` 32. Do M4
       trzecia grupa nazywała się `Point lights (dead ends)` i miała linię
       `In this maze: 11 (at most 16)`
-- [ ] panel Shaders: przycisk `Reload shaders` i jedenaście linii. Cztery pierwsze to
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): przycisk `Reload shaders` i jedenaście linii. Cztery pierwsze to
       `textured.vert + textured.frag: OK`,
       `color.vert + color.frag: OK`, `lit.vert + lit.frag: OK`,
       `gouraud.vert + gouraud.frag: OK` (po M5 były tylko te cztery, pozostałe siedem
       doszło w M6 i w M7: sekcje 15.2, 16.2, 17.2, 18.2 i 20.2). Najechanie myszą na linię
       pokazuje w dwóch wierszach pełne ścieżki obu plików
-- [ ] rozwinięcie panelu Camera: kliknąć strzałkę w jego pasku tytułu. Panel otwiera się w
+- [ ] rozwinięcie okna debug (Player): kliknąć strzałkę w jego pasku tytułu. Panel otwiera się w [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       dół do rozmiaru 280 x 416 i kończy się 8 pikseli nad dolnym rzędem. Zasłania lewą
       część sceny, lewą część paska HUD i żadnego innego panelu. Jest trochę niższy od
       swojej zawartości, więc
@@ -1912,7 +1940,7 @@ miał wysokość 272. Dziś jest ich dwanaście:
 Latarka:
 
 - [ ] klawisz F wyłącza latarkę: ciepła plama na środku obrazu znika, zostają księżyc,
-      światła punktowe i światło otoczenia, a pole `Flashlight on (key F)` w panelu Lights
+      światła punktowe i światło otoczenia, a pole `Flashlight on (key F)` w oknie debug (Light / Lights)
       samo się odznacza. Drugi raz F włącza ją i zaznacza pole. Klawisz działa także przy
       widocznym kursorze (tak jak N), ale nie wtedy, gdy klawiaturę ma panel (na przykład
       trwa wpisywanie wartości w polu). Od M5 latarka zużywa baterię i przy pustej baterii
@@ -1924,7 +1952,7 @@ Latarka:
       Wynika to z kodu (latarka jest stawiana w tym samym punkcie, z którego liczony jest
       widok klatki), nikt tego nie oglądał w ruchu
 
-Cztery tryby (lista `Lighting` w panelu Renderer):
+Cztery tryby (lista `Lighting` w oknie debug (Render / Scene)):
 
 - [ ] `Unlit`: labirynt równo jasny, jak przed M4, sama tekstura. Klawisz F niczego nie
       zmienia w obrazie. Kryształy i brama są rysowane tym samym programem `textured`:
@@ -1957,7 +1985,7 @@ Gouraud a Phong:
       2 m na 2 m o czterech wierzchołkach i w `Gouraud` rozjaśniały się dużymi
       trójkątnymi klinami od narożnika: tego obrazu już nie ma, został na ścianach.)
 
-Phong a Blinn-Phong (w panelu Lights ustawić `Strength` 1.0 i `Shininess` 16):
+Phong a Blinn-Phong (w oknie debug (Light / Lights) ustawić `Strength` 1.0 i `Shininess` 16):
 
 - [ ] twarzą do ściany, latarka na wprost: przełączać `Phong` i `Blinn-Phong`. W
       `Blinn-Phong` jasna plama połysku na środku jest szersza i jaśniejsza niż w `Phong`
@@ -1968,18 +1996,18 @@ Phong a Blinn-Phong (w panelu Lights ustawić `Strength` 1.0 i `Shininess` 16):
       daje zero, gdy między promieniem odbitym a kierunkiem do oka jest więcej niż 90
       stopni). Po próbie przywrócić `Strength` 0.25 i `Shininess` 32
 
-Księżyc (w panelu Lights rozwinąć grupę `Moon (directional)`, panel zaczyna się wtedy
+Księżyc (w oknie debug (Light / Lights) rozwinąć grupę `Moon (directional)`, panel zaczyna się wtedy
 przewijać):
 
 - [ ] wartości startowe: `Moon yaw` 25 deg, `Moon pitch` -50 deg, `Moon intensity` 0.20
       (od pierwszej do trzeciej części M7 0.12, do M6 0.30).
       Wyłączyć latarkę (F), żeby widzieć samo światło księżyca. Strony ścian patrzące w
       stronę -X i +Z są jaśniejsze, strony patrzące w stronę +X i -Z ciemne (tylko światło
-      otoczenia). Na planie w panelu Maze północ to -Z, czyli góra planu, a +X to prawa
+      otoczenia). Na planie w oknie debug (World / Maze) północ to -Z, czyli góra planu, a +X to prawa
       strona. Od czwartej części M7 ściany rzucają w tym świetle cień, więc także strona
       zwrócona do księżyca i podłoże są ciemne tam, gdzie zasłania je inna ściana. Żeby
-      zobaczyć samą zależność od kierunku, bez cieni, odznaczyć pole `Shadows` w panelu
-      Shadows (sekcja 20.2)
+      zobaczyć samą zależność od kierunku, bez cieni, odznaczyć pole `Shadows` w oknie debug
+      (Light / Shadows) (sekcja 20.2)
 - [ ] `Moon yaw` (suwak od 0 do 360): kąt mówi, w którą stronę światło biegnie. Przy 205
       (o 180 więcej niż na starcie) jasne i ciemne strony ścian zamieniają się miejscami.
       Przy 90 światło biegnie w stronę +X: ze stron ścian jasne są tylko te, które patrzą w
@@ -1987,7 +2015,7 @@ przewijać):
 - [ ] `Moon pitch` (suwak od -90 do -5): przy -90 światło pada prosto w dół, podłoże jest
       najjaśniejsze, a żadna pionowa strona ściany nie dostaje światła księżyca. Przy -5
       światło ledwie muska podłoże, a ściany zwrócone do księżyca są najjaśniejsze: tak
-      jest przy odznaczonym polu `Shadows` w panelu Shadows. Przy zaznaczonym cienie są
+      jest przy odznaczonym polu `Shadows` w oknie debug (Light / Shadows). Przy zaznaczonym cienie są
       przy -90 schowane pod ścianami, a przy -5 bardzo długie: zakrywają większość podłoża
       w korytarzach i te ściany zwrócone do księżyca, przed którymi stoi inna ściana.
       Jasne zostają ściany, których od strony księżyca nic nie zasłania
@@ -2000,7 +2028,7 @@ przewijać):
 
 - [ ] policzyć źródła świateł: klawisz N, wznieść się spacją nad ściany i spojrzeć w dół.
       Świecących turkusowych kryształów jest 13, tyle, ile pokazuje linia
-      `Lit: 13 of 13 crystals (at most 16)` i ile kropek ma plan w panelu Maze. Każdy
+      `Lit: 13 of 13 crystals (at most 16)` i ile kropek ma plan w oknie debug (World / Maze). Każdy
       unosi się nad środkiem swojej komórki, a jego światło wisi 0,15 m nad jego czubkiem
       (około 1,55 m nad podłożem w środku komórki). Komórka startowa (lewy górny róg planu) i komórka
       wyjścia (zielony prostokąt na planie) kryształu nie mają. W M4 źródłami były
@@ -2023,13 +2051,13 @@ Stożek i zasięg latarki:
 
 Regeneracja:
 
-- [ ] w panelu Maze ustawić inne ziarno (albo kliknąć `Random seed`) i `Regenerate`:
+- [ ] w oknie debug (World / Maze) ustawić inne ziarno (albo kliknąć `Random seed`) i `Regenerate`:
       kryształy i ich światła są w komórkach nowego labiryntu, a liczby w linii
-      `Lit: ...` i w linii `Crystals: ...` panelu Maze odpowiadają nowemu planowi.
-      Ustawienia z panelu Lights i tryb
+      `Lit: ...` i w linii `Crystals: ...` okna debug (World / Maze) odpowiadają nowemu planowi.
+      Ustawienia z okna debug (Light / Lights) i tryb
       `Lighting` zostają bez zmian, poza jednym: nowa runda włącza latarkę
-- [ ] `Width` 4, `Height` 4, `Seed` 1, `Regenerate`: linia
-      `Lit: 2 of 2 crystals (at most 16)`, w panelu Maze `Crystals: 2, exit in cell (3, 1)`,
+- [ ] `Width` 4, `Height` 4, `Seed` 1, `Regenerate`: linia [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
+      `Lit: 2 of 2 crystals (at most 16)`, w oknie debug (World / Maze) `Crystals: 2, exit in cell (3, 1)`,
       na pasku HUD `0 / 2` i `(of 2)`. Kryształy wiszą w lewym dolnym rogu planu (komórka
       (0, 3), ślepy zaułek) i w drugiej kolumnie drugiego rzędu od góry (komórka (1, 1)),
       a wyjście jest w prawej kolumnie w drugim rzędzie od góry, z bramą od północy
@@ -2063,7 +2091,7 @@ Błąd w dołączanym pliku:
 
 Widoki debug w trybie z oświetleniem:
 
-- [ ] przy `Lighting` równym `Blinn-Phong` wybrać w panelu Assets `View mode`
+- [ ] przy `Lighting` równym `Blinn-Phong` wybrać w oknie debug (Render / Textures and normals) `View mode`
       `Normals as colour`, potem `UVs as colour`. Labirynt jest wtedy rysowany programem
       `textured`, bez świateł, tak samo jak w trybie `Unlit`, a razem z nim kryształy i
       brama, pokolorowane według tej samej reguły co ściany i bez własnego blasku
@@ -2123,20 +2151,22 @@ sekcja 2.12.
 
 ### 13.4. Otwarte: mapy normalnych, test ręczny na około pięć minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów
 jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak w
 `src/debug/panels/AssetsPanel.cpp`. Program uruchomiony jak w sekcji 13.2, bez `imgui.ini`.
 
-- [ ] układ: panel Assets stoi w prawej kolumnie pod panelem Maze. Pod listą `View mode`
+- [ ] układ: okno debug (Render / Textures and normals) stoi w prawej kolumnie pod oknem debug (World / Maze). Pod listą `View mode`
       jest pole `Normal mapping` (zaznaczone) i notatka, pod nimi `Filter` i
       `Anisotropy`. Sprawdzić, czy panel nie zasłania innego i czy do list `Models` i
       `Textures` trzeba przewijać (panel jest niski, przewijanie jest spodziewane)
-- [ ] panel Assets, lista `Models`: pod każdą częścią modelu jest linia
+- [ ] okno debug (Diagnostics / Assets), lista `Models`: pod każdą częścią modelu jest linia
       `normal map: wall_stone_normal.png` (ściana i słupek), a od M5 także
       `normal map: crystal_normal.png` (oba kryształy) i
       `normal map: gate_wood_normal.png` (brama). Linii
       `normal map: floor_stone_normal.png` płytki podłogi już nie ma: M6 usunął model
-- [ ] panel Assets, lista `Textures`: osiem tekstur z podglądem, każda 512 x 512:
+- [ ] okno debug (Diagnostics / Assets), lista `Textures`: osiem tekstur z podglądem, każda 512 x 512:
       `wall_stone.png`, `crystal.png`, `gate_wood.png`, `ground.png` (od M6, w miejscu
       `floor_stone.png`) i cztery mapy
       normalnych o tych samych nazwach z końcówką `_normal`
@@ -2166,7 +2196,7 @@ jednostkowych i ze zrzutów z sekcji 13.3. Nazwy widżetów są zapisane tak jak
       repozytorium), uruchomić. Oczekiwane: ściany i słupki mają teksturę koloru, ale pod
       latarką są płaskie, bez rowków fug (płaska mapa zastępcza), podłoże i brama bez
       zmian, w konsoli jedna linia `[error]`, w
-      panelu Assets przy części `wall_stone` napis `normal map: none (flat)` i sekcja
+      okna debug (Diagnostics / Assets) przy części `wall_stone` napis `normal map: none (flat)` i sekcja
       `Failed to load` z nazwą pliku. Przywrócić nazwę pliku. (Do M5 ten punkt używał
       mapy `floor_stone_normal.png` płytki podłogi.)
 - [ ] `Reload shaders` przy włączonych mapach: wszystkie linie (dziś jedenaście) kończą
@@ -2240,6 +2270,8 @@ rozgrywkę trzeba przejść jeszcze raz według listy otwartej.
 
 ### 14.2. Otwarte: test ręczny na około dwadzieścia minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu i z testów jednostkowych (`tests/RoundTests.cpp`,
 `CrystalTests.cpp`, `ExitTests.cpp`), nie z klikania. Nazwy widżetów i napisy są zapisane
@@ -2249,8 +2281,8 @@ ziarno 1): 13 kryształów, brama otwiera się po dziesiątym, wyjście jest w k
 
 Trzy rzeczy ułatwiają przejście listy. Dokładną wartość suwaka wpisuje się po kliknięciu go
 z wciśniętym Ctrl, ale dopóki trwa wpisywanie, klawiaturę ma panel: klawisze R, F i N nie
-działają, dopóki nie zatwierdzę wartości klawiszem Enter. Panel Gameplay startuje zwinięty:
-rozwija go strzałka w pasku tytułu. Kryształy na planie w panelu Maze to turkusowe kropki,
+działają, dopóki nie zatwierdzę wartości klawiszem Enter. Okno debug (Gameplay) startuje zwinięty (od 2026-10-06 bez odpowiednika: okno debug nie zwija się do paska tytułu):
+rozwija go strzałka w pasku tytułu. Kryształy na planie w oknie debug (World / Maze) to turkusowe kropki,
 więc plan pokazuje, dokąd iść.
 
 Przygotowanie:
@@ -2267,7 +2299,7 @@ Układ paneli i pasek HUD (okno 1280 x 720, bez `imgui.ini`). W M5 paneli było 
 jest ich dwanaście (jedenasty, Framebuffers, opisuje sekcja 17.2, dwunasty, Shadows,
 sekcja 20.2), a wymiary niżej są dzisiejsze, ze stałych w `src/debug/PanelLayout.hpp`:
 
-- [ ] lewa kolumna: Renderer (336 x 284) nad Lights (336 x 412). Prawa kolumna: Maze
+- [ ] lewa kolumna: Renderer (336 x 284) nad Lights (336 x 412). Prawa kolumna: Maze [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       (300 x 480) nad Assets (300 x 216). Dolny rząd między kolumnami: Collision
       (312 x 280) i Shaders (292 x 280). U góry, między kolumnami, dwa paski tytułu obok
       siebie: Camera, a na prawo od niego Gameplay, oba zwinięte. Pod nimi drugi rząd:
@@ -2276,7 +2308,7 @@ sekcja 20.2), a wymiary niżej są dzisiejsze, ze stałych w `src/debug/PanelLay
       20.2), oba zwinięte. Żaden panel nie
       zasłania innego, a środek okna, w który świeci latarka, jest wolny. (W M5 Renderer
       miał 336 x 230, a Lights 336 x 466: Renderer urósł razem z kontrolkami nieba.)
-- [ ] [stan na dziś: od panelu Environment rzędów jest pięć, a od 2026-10-06 przy schowanych panelach HUD stoi przy górnej krawędzi; liczby w tym punkcie to stan z czwartej części M7] pasek HUD stoi na środku górnej krawędzi okna, pod czterema rzędami pasków tytułu
+- [ ] [stan na dziś: od okna debug (World / Reflections) rzędów jest pięć, a od 2026-10-06 przy schowanych panelach HUD stoi przy górnej krawędzi; liczby w tym punkcie to stan z czwartej części M7] pasek HUD stoi na środku górnej krawędzi okna, pod czterema rzędami pasków tytułu [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       (Camera i Gameplay, pod nimi Terrain i Grass, pod nimi Framebuffers, a pod nim
       Shadows: od czwartej części M7 `FOLDED_ROW_COUNT` wynosi 4, od pierwszej do
       trzeciej było 3). Odległość od góry to cztery razy
@@ -2289,31 +2321,31 @@ sekcja 20.2), a wymiary niżej są dzisiejsze, ze stałych w `src/debug/PanelLay
       sekundę. Druga
       linia: bursztynowy pasek baterii i napis `100%`, który powoli maleje. Trzeciej linii
       (podpowiedzi) nie ma. Zapisać, czy pasek HUD nie nachodzi na paski tytułu nad nim
-- [ ] rozwinięcie panelu Gameplay: kliknąć strzałkę w jego pasku tytułu. Panel otwiera się
+- [ ] rozwinięcie okna debug (Gameplay): kliknąć strzałkę w jego pasku tytułu. Panel otwiera się [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       w dół do rozmiaru 324 x 416 i kończy się 8 pikseli nad dolnym rzędem. Zasłania prawą
       część paska HUD (pasek zostaje pod panelami, flaga
-      `ImGuiWindowFlags_NoBringToFrontOnFocus`) i zwinięty pasek tytułu panelu Grass pod
+      `ImGuiWindowFlags_NoBringToFrontOnFocus`) i zwinięty pasek tytułu okna debug (World / Terrain and grass / Grass) pod
       sobą, ale żadnego innego panelu. Zawartość od góry:
       `Round: playing, ... s`, `Crystals: 0 collected, 10 needed, 13 in the maze`,
       `Gate: closed`, przycisk `Restart round (key R)`, suwak `Battery` (na starcie 1.00,
       maleje), zaznaczone pole `Battery drains`, suwaki `Crystals needed` (`0.70 of all`),
       `Battery lifetime` (`180 s`), `Recharge` (`0.25`), `Flicker below` (`0.20`) i
       `Pickup radius` (`0.60 m`). Zapisać, czy zawartość mieści się bez przewijania
-- [ ] panel Maze: pod linią `Walls: 121, pillars: 121` jest linia
+- [ ] okno debug (World / Maze): pod linią `Walls: 121, pillars: 121` jest linia [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `Crystals: 13, exit in cell (6, 5)`. Na planie: 13 turkusowych kropek, zielony
       prostokąt w siódmej kolumnie i szóstym rzędzie (komórki liczy się od zera, od lewego
       górnego rogu) i gruba brązowa kreska na prawej (wschodniej) krawędzi tej komórki. W
       komórce startowej i w komórce wyjścia kropki nie ma
-- [ ] panel Collision: pole `Draw collision shapes` (odznaczone), pod nim legenda
+- [ ] okno debug (Diagnostics / Collision and picking): pole `Draw collision shapes` (odznaczone), pod nim legenda
       `Yellow: walls, pillars. Green: player. Orange: gate. Cyan: crystal pickup. Magenta:
       exit zone.`, pole `Noclip (key N)`, linie `Boxes: 121 walls, 121 pillars, 1 gate` i
       `All boxes: 243, pickup spheres: 13`
-- [ ] panel Lights: trzecia grupa nazywa się `Point lights (crystals)`, jej pierwsza linia
+- [ ] okno debug (Light / Lights): trzecia grupa nazywa się `Point lights (crystals)`, jej pierwsza linia
       to `Lit: 13 of 13 crystals (at most 16)`
-- [ ] panel Shaders: jedenaście linii zakończonych `: OK` (`textured`, `color`, `lit`,
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): jedenaście linii zakończonych `: OK` (`textured`, `color`, `lit`,
       `gouraud`, od M6 `skybox` i `grass`, ta ostatnia z trzema plikami, a od M7 pięć
       kolejnych: sekcje 17.2, 18.2 i 20.2). W M5 linii było cztery
-- [ ] panel Assets: pięć modeli i osiem tekstur (lista w sekcji 12.2)
+- [ ] okno debug (Diagnostics / Assets): pięć modeli i osiem tekstur (lista w sekcji 12.2)
 
 Kryształy i brama w obrazie:
 
@@ -2329,12 +2361,12 @@ Kryształy i brama w obrazie:
 - [ ] dojść do bramy: drewniana, szeroka na 2 m i wysoka na 2,75 m (niższa od ścian),
       stoi między dwoma słupkami na jedynym otwartym boku komórki wyjścia. Gracz zatrzymuje
       się na niej tak jak na ścianie
-- [ ] przełączyć listę `Lighting` w panelu Renderer: kryształy i brama są rysowane tym
+- [ ] przełączyć listę `Lighting` w oknie debug (Render / Scene): kryształy i brama są rysowane tym
       samym programem co ściany, więc w każdym trybie są cieniowane tak jak one
 
 HUD przy ukrytych panelach:
 
-- [ ] klawisz na lewo od `1` (akcent słaby, na klawiaturze amerykańskiej znaki `` ` `` i
+- [ ] klawisz na lewo od `1` (akcent słaby, na klawiaturze amerykańskiej znaki `` ` `` i [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `~`, w kodzie `GLFW_KEY_GRAVE_ACCENT` w `src/main.cpp`): dwanaście paneli znika, pasek HUD
       zostaje (od 2026-10-06 przesuwa się wtedy do górnej krawędzi okna), czas rośnie dalej. Drugie naciśnięcie przywraca panele (i HUD wraca pod rzędy pasków). Klawisz działa przy
       wolnym i przy przechwyconym kursorze
@@ -2345,14 +2377,14 @@ HUD przy ukrytych panelach:
 
 Zbieranie kryształów:
 
-- [ ] wejść w kryształ. Znika, zanim gracz dojdzie do środka komórki: wystarcza odległość
+- [ ] wejść w kryształ. Znika, zanim gracz dojdzie do środka komórki: wystarcza odległość [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       około 0,86 m w poziomie od środka komórki (kula zasięgu gracza o promieniu 0,3 m
       nachodzi na kulę kryształu o promieniu 0,6 m, a ich środki dzieli 0,25 m wysokości).
       Jednocześnie: gaśnie turkusowa plama tego kryształu, pasek HUD pokazuje `1 / 10`, na
-      planie w panelu Maze kropka zamienia się w ciemny pierścień, panel Lights pokazuje
-      `Lit: 12 of 13 crystals (at most 16)`, panel Collision `pickup spheres: 12`, a panel
+      planie w oknie debug (World / Maze) kropka zamienia się w ciemny pierścień, okno debug (Light / Lights) pokazuje
+      `Lit: 12 of 13 crystals (at most 16)`, okno debug (Diagnostics / Collision and picking) `pickup spheres: 12`, a panel
       Gameplay `Crystals: 1 collected, 10 needed, 13 in the maze`
-- [ ] doładowanie: w panelu Gameplay odznaczyć `Battery drains`, ustawić `Battery` na
+- [ ] doładowanie: w oknie debug (Gameplay) odznaczyć `Battery drains`, ustawić `Battery` na
       0.50 i zebrać kryształ. Oczekiwane: `Battery` 0.75, na pasku HUD `75%`. Zaznaczyć
       `Battery drains` z powrotem. Przy baterii powyżej 75% kryształ dopełnia ją tylko do
       `100%`, więcej się nie zmieści
@@ -2386,10 +2418,10 @@ Bateria i latarka:
 - [ ] pusta bateria: ustawić `Battery` na 0.00 (`Battery drains` może zostać odznaczone).
       Oczekiwane: plama latarki znika, zostają księżyc, światła kryształów i światło
       otoczenia. Pasek HUD pokazuje pusty pasek, `0%` i czerwoną podpowiedź
-      `Battery empty. Find a crystal.`. W panelu Lights pole `Flashlight on (key F)` samo
+      `Battery empty. Find a crystal.`. W oknie debug (Light / Lights) pole `Flashlight on (key F)` samo
       się odznacza, a po najechaniu na nie myszą pojawia się podpowiedź
       `The battery is empty: collect a crystal first.`. Runda trwa dalej: czas rośnie,
-      gracz chodzi, panel Gameplay pokazuje `Round: playing`. Stanu przegranej nie ma
+      gracz chodzi, okno debug (Gameplay) pokazuje `Round: playing`. Stanu przegranej nie ma
 - [ ] klawisz F przy pustej baterii: latarka się nie zapala, w żadnej klatce. Kliknięcie
       pola `Flashlight on (key F)` też jej nie zapala: pole odznacza się z powrotem po
       najbliższym kroku symulacji (może mignąć)
@@ -2401,21 +2433,21 @@ Brama:
 
 - [ ] `Crystals needed` (suwak od 0.05 do 1.00) zmienia liczbę potrzebnych kryształów od
       razu: przy `1.00 of all` pasek HUD pokazuje `/ 13`, przy 0.50 `/ 7`, przy 0.05 `/ 1`.
-      Przywrócić 0.70 (`/ 10`). Ta sama liczba jest w panelu Gameplay (`... needed`)
+      Przywrócić 0.70 (`/ 10`). Ta sama liczba jest w oknie debug (Gameplay) (`... needed`)
 - [ ] otwarta brama zostaje otwarta: zebrać trzy kryształy, obniżyć `Crystals needed` do
       0.20 (potrzebne 3). Brama otwiera się od razu. Podnieść suwak do 1.00: pasek HUD
       pokazuje `3 / 13`, a brama zostaje otwarta (`Gate: open`). Nacisnąć R, przywrócić
       0.70
 - [ ] opadanie bramy na oczach: stanąć przed zamkniętą bramą (na planie: gruba brązowa
       kreska), zebrać wcześniej jeden kryształ i przesunąć `Crystals needed` na 0.05.
-      Oczekiwane: brama zjeżdża w ziemię i znika pod nią w 1,5 sekundy, panel Gameplay
+      Oczekiwane: brama zjeżdża w ziemię i znika pod nią w 1,5 sekundy, okno debug (Gameplay)
       pokazuje w tym czasie `Gate: opening, N%` z rosnącą liczbą, potem `Gate: open`.
       Przejść przez próg da się od pierwszej chwili, zanim brama zjedzie: pudełko bramy
       przestaje być przeszkodą w chwili otwarcia. Nacisnąć R, przywrócić 0.70
 - [ ] brama po dziesiątym z 13 kryształów (suwak na 0.70): po zebraniu dziewiątego pasek
       HUD pokazuje `9 / 10` i nie ma podpowiedzi. Po dziesiątym: `10 / 10` i turkusowa
-      podpowiedź `The gate is open. Find the exit.`. Panel Gameplay: `Gate: opening, N%`,
-      po 1,5 sekundy `Gate: open`. Panel Collision: `Boxes: 121 walls, 121 pillars, 0 gate`
+      podpowiedź `The gate is open. Find the exit.`. Okno debug (Gameplay): `Gate: opening, N%`,
+      po 1,5 sekundy `Gate: open`. Okno debug (Diagnostics / Collision and picking): `Boxes: 121 walls, 121 pillars, 0 gate`
       i `All boxes: 242, pickup spheres: 3`. Na planie kreska bramy robi się ciemna. Z
       zaznaczonym `Draw collision shapes` pomarańczowe pudełko bramy znika od razu
 - [ ] brama otwarta przy pustej baterii: na pasku HUD są obie podpowiedzi naraz, jedna pod
@@ -2429,7 +2461,7 @@ Wyjście i wygrana:
 - [ ] przejść przez otwartą bramę do komórki wyjścia. Gdy gracz wejdzie w strefę (wystarcza
       krok za linię bramy), na środku okna pojawia się karta: duży turkusowy napis
       `You escaped`, pod kreską `Time: m:ss`, `Crystals: N of 13` i bursztynowy napis
-      `R: play again`. Na pasku HUD czas staje, a podpowiedzi znikają. Panel Gameplay
+      `R: play again`. Na pasku HUD czas staje, a podpowiedzi znikają. Okno debug (Gameplay)
       pokazuje `Round: won, ... s` z liczbą, która już nie rośnie
 - [ ] po wygranej scena żyje dalej: niezebrane kryształy nadal się kołyszą, obracają,
       pulsują i świecą, gracz może chodzić. Reguły rundy stoją: wejście w niezebrany
@@ -2449,16 +2481,16 @@ Restart rundy:
       wracają (pasek HUD `0 / 10`, 13 kropek na planie, `Lit: 13 of 13 crystals`), bateria
       `100%`, latarka włączona (pole `Flashlight on (key F)` zaznaczone), brama zamknięta
       (`Gate: closed`, `1 gate`), gracz na starcie (`Player feet` 1, 0, 1, `Yaw` 180,
-      `Pitch` 0 w panelu Camera), czas `0:00`. Kryształy są w tych samych komórkach co
+      `Pitch` 0 w oknie debug (Player / View)), czas `0:00`. Kryształy są w tych samych komórkach co
       przedtem
-- [ ] czego R nie zmienia: labiryntu, trybu noclip, suwaków i pola panelu Gameplay,
-      ustawień panelu Lights (poza włączeniem latarki), trybu `Lighting`, pola
+- [ ] czego R nie zmienia: labiryntu, trybu noclip, suwaków i pola okna debug (Gameplay),
+      ustawień okna debug (Light / Lights) (poza włączeniem latarki), trybu `Lighting`, pola
       `Draw collision shapes`. Ustawić kilka z nich przed naciśnięciem i sprawdzić po nim
 - [ ] R z karty wygranej: karta znika, zaczyna się nowa runda w tym samym labiryncie
 - [ ] R działa także przy wolnym kursorze (tak jak N i F), a nie działa, gdy trwa
       wpisywanie wartości w polu panelu
-- [ ] przycisk `Restart round (key R)` w panelu Gameplay robi to samo co klawisz
-- [ ] `Regenerate` w panelu Maze też zaczyna nową rundę, w nowym labiryncie
+- [ ] przycisk `Restart round (key R)` w oknie debug (Gameplay) robi to samo co klawisz
+- [ ] `Regenerate` w oknie debug (World / Maze) też zaczyna nową rundę, w nowym labiryncie
 
 Na koniec:
 
@@ -2521,6 +2553,8 @@ przycisku `Reload shaders` przy pięciu programach.
 
 ### 15.2. Otwarte: test ręczny na około dziesięć minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i z jednego zrzutu ekranu,
 nie z klikania. Nazwy widżetów są zapisane tak jak w `src/debug/panels/RendererPanel.cpp`.
@@ -2528,7 +2562,7 @@ nie z klikania. Nazwy widżetów są zapisane tak jak w `src/debug/panels/Render
 Przygotowanie:
 
 - [ ] **usunąć plik `imgui.ini`** z katalogu, z którego uruchamiam program (sekcja 7). Stary
-      plik pamięta wysokość panelu Renderer sprzed tej zmiany (230), a nowe kontrolki są
+      plik pamięta wysokość okna debug (Render / Scene) sprzed tej zmiany (230), a nowe kontrolki są
       wtedy pod jego dolną krawędzią i wygląda to tak, jakby ich nie było
 - [ ] uruchomić grę z terminala. Oczekiwane w konsoli: sześć linii
       `[info] Loaded sky face: ...` z nazwami `px.png`, `nx.png`, `py.png`, `ny.png`,
@@ -2536,15 +2570,15 @@ Przygotowanie:
 
 Panele:
 
-- [ ] panel Renderer: pod listą `Lighting` jest pole wyboru `Skybox` (zaznaczone) i suwak
+- [ ] okno debug (Render / Scene): pod listą `Lighting` jest pole wyboru `Skybox` (zaznaczone) i suwak
       `Sky brightness` (wartość 2.200, do M6 1.000). Panel nie ma paska przewijania w oknie 1280 x 720
-- [ ] panel Lights pod nim zaczyna się niżej niż dotąd i ma pasek przewijania (tak jest
+- [ ] okno debug (Light / Lights) pod nim zaczyna się niżej niż dotąd i ma pasek przewijania (tak jest [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       zamierzone: komentarz w `PanelLayout.hpp`). Wszystkie cztery grupy da się przewinąć
-- [ ] panel Shaders: jedenaście linii programów, piąta to `skybox.vert + skybox.frag: OK`
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): jedenaście linii programów, piąta to `skybox.vert + skybox.frag: OK`
       (szósta, `grass`, doszła w drugiej części M6, pięć kolejnych w M7)
 - [ ] najechać kursorem na pole `Skybox`: podpowiedź zaczyna się od
       `The night sky (a cube map).` i mówi, że namalowany księżyc nie podąża za suwakami
-      `Moon` panelu Lights
+      `Moon` okna debug (Light / Lights)
 
 Przełącznik:
 
@@ -2585,18 +2619,18 @@ horyzont:
 
 Księżyc a światło księżyca:
 
-- [ ] w panelu Camera ustawić `Yaw` na 205 i `Pitch` na 50: tarcza księżyca jest w środku
+- [ ] w oknie debug (Player / View) ustawić `Yaw` na 205 i `Pitch` na 50: tarcza księżyca jest w środku
       ekranu, z jasną poświatą wokół
 - [ ] wyłączyć latarkę (klawisz F) i obejrzeć ściany: jaśniejsze są te, które są zwrócone
       w stronę księżyca (lica zwrócone w stronę +Z i, słabiej, -X), ciemniejsze te
       odwrócone od niego
-- [ ] w panelu Lights rozwinąć grupę `Moon (directional)` i przesunąć `Moon yaw`: światło
+- [ ] w oknie debug (Light / Lights) rozwinąć grupę `Moon (directional)` i przesunąć `Moon yaw`: światło [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       na ścianach wędruje, **tarcza na niebie zostaje w miejscu**. To znane ograniczenie,
       nie błąd. Przywrócić 25
 
 Widoki diagnostyczne:
 
-- [ ] panel Assets, `View mode`: `Normals as colour`. Niebo jest gładkim gradientem bez
+- [ ] okno debug (Render / Textures and normals), `View mode`: `Normals as colour`. Niebo jest gładkim gradientem bez
       gwiazd: różowoczerwone w stronę +X (yaw 90), jasnozielone prosto w górę,
       niebieskofioletowe w stronę +Z (yaw 180), oliwkowe w stronę -Z (yaw 0)
 - [ ] `View mode`: `UVs as colour`. Ściany zmieniają kolory, niebo wygląda tak samo jak
@@ -2606,7 +2640,7 @@ Widoki diagnostyczne:
 
 Kolejność rysowania:
 
-- [ ] panel Collision, `Draw collision shapes`: linie pudełek widziane na tle nieba są
+- [ ] okno debug (Diagnostics / Collision and picking), `Draw collision shapes`: linie pudełek widziane na tle nieba są
       w całości widoczne, niebo ich nie zamalowuje
 - [ ] kryształ widziany na tle nieba (z góry, w trybie noclip) ma ostre krawędzie, bez
       obwódki w kolorze `Clear color`
@@ -2745,6 +2779,8 @@ testy jednostkowe. Na macOS nic z tej części nie było budowane ani uruchamian
 
 ### 16.2. Otwarte: test ręczny na około piętnaście minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze zgłoszonych zrzutów
 ekranu, nie z klikania. Nazwy widżetów są zapisane tak jak w
@@ -2762,37 +2798,37 @@ Przygotowanie:
 
 Panele i pasek HUD:
 
-- [ ] u góry okna, między kolumnami, są w dwóch pierwszych rzędach pasków tytułu Camera
+- [ ] u góry okna, między kolumnami, są w dwóch pierwszych rzędach pasków tytułu Camera [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       i Gameplay, a tuż pod nimi Terrain (pod Camera, tej samej szerokości) i Grass (pod
       Gameplay). Wszystkie cztery są zwinięte. Paski nie nachodzą na siebie. Pod nimi są
       dziś jeszcze dwa rzędy: Framebuffers (sekcja 17.2) i Shadows (sekcja 20.2)
-- [ ] [stan z czwartej części M7; dziś rzędów jest pięć] pasek HUD stoi dziś pod czwartym rzędem pasków, z wyraźnym odstępem, i nie nachodzi
+- [ ] [stan z czwartej części M7; dziś rzędów jest pięć] pasek HUD stoi dziś pod czwartym rzędem pasków, z wyraźnym odstępem, i nie nachodzi [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       na żaden z nich (po tej części stał pod drugim, a zgłoszone przesunięcie względem
       wersji przed nią to około 30 pikseli w dół)
-- [ ] rozwinąć panel Terrain (strzałka w pasku). Zawartość od góry: suwak `Height scale`
+- [ ] rozwinąć okno debug (World / Terrain and grass / Terrain) (strzałka w pasku). Zawartość od góry: suwak `Height scale` [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       (`1.00`), pole wyboru `Wireframe` (odznaczone), kreska, linie
       `Grid: 97 x 97 points, 0.50 m apart`, `Triangles: 18432` i
       `Height: 0.00 m to 3.37 m`. Zapisać, czy zawartość mieści się bez przewijania
-- [ ] rozwinąć panel Grass. Zawartość od góry: pole wyboru `Enabled` (zaznaczone), suwaki
+- [ ] rozwinąć okno debug (World / Terrain and grass / Grass). Zawartość od góry: pole wyboru `Enabled` (zaznaczone), suwaki [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `Density` (`2.5 per m`), `Blade height` (`0.30 m`) i `Wind strength` (`1.00`),
       kreska i linia `Tufts: 1843 (5529 blades)`. Zapisać, czy zawartość mieści się bez
       przewijania
-- [ ] rozwinięty panel Camera zasłania pasek Terrain, a rozwinięty Gameplay pasek Grass
+- [ ] rozwinięty okno debug (Player) zasłania pasek Terrain, a rozwinięty Gameplay pasek Grass [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       (tak jest zamierzone: komentarz w `PanelLayout.hpp`). Rozwinięte panele Terrain
       i Grass zasłaniają tylko pas sceny pod sobą
-- [ ] panel Shaders: jedenaście linii programów, szósta to
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): jedenaście linii programów, szósta to
       `grass.vert + grass.geom + grass.frag: OK` (po tej części była ostatnia). Podpowiedź
       po najechaniu kursorem pokazuje trzy pełne ścieżki, po jednej w linii
-- [ ] panel Assets: na liście `Textures` są `ground.png` i `ground_normal.png`, nie ma
+- [ ] okno debug (Diagnostics / Assets): na liście `Textures` są `ground.png` i `ground_normal.png`, nie ma
       `heightmap.png`, a na liście `Models` nie ma płytki podłogi (pięć modeli)
-- [ ] panel Camera: `Player feet` ma na starcie y równe 0.124, a `Eye` y równe 1.82
+- [ ] okno debug (Player / Position): `Player feet` ma na starcie y równe 0.124, a `Eye` y równe 1.82
 
 Chodzenie po podłożu (kliknąć w scenę, kursor znika):
 
 - [ ] przejść kilka korytarzy klawiszami W, A, S, D: podłoże łagodnie się wznosi i opada,
       a obraz płynie, bez schodków i bez drgania w pionie. Lewy Shift przyspiesza i nic
       się nie zmienia poza prędkością
-- [ ] obserwować w panelu Camera pole `Player feet` w marszu: y zmienia się płynnie
+- [ ] obserwować w oknie debug (Player / Position) pole `Player feet` w marszu: y zmienia się płynnie
       w granicach od około 0.08 do 0.46 w obrębie labiryntu, a `Eye` jest zawsze o 1.70
       wyżej
 - [ ] iść pod górę i z góry tym samym korytarzem: prędkość po ziemi jest ta sama w obie
@@ -2814,7 +2850,7 @@ z której podłoże opada:
 - [ ] górne krawędzie sąsiednich ścian nie są na jednej wysokości: różnią się o kilka do
       kilkunastu centymetrów. Zapisać, jak to wygląda z góry w trybie noclip
 
-Skala wysokości (panel Terrain, suwak `Height scale`, zakres od 0.00 do 2.50):
+Skala wysokości (okno debug (World / Terrain and grass / Terrain), suwak `Height scale`, zakres od 0.00 do 2.50):
 
 - [ ] przesuwać suwak powoli: podłoże zmienia się na bieżąco, a ściany, słupki, brama,
       kryształy, trawa i gracz podążają za nim w tej samej klatce. Nic nie zostaje w
@@ -2841,7 +2877,7 @@ Wireframe:
       przekątną, zawsze w tę samą stronę: z północnego zachodu na południowy wschód
 - [ ] **tylko teren** jest liniami: ściany, słupki, brama, kryształy, trawa, niebo, panele
       i pasek HUD są wypełnione jak zwykle
-- [ ] przełączyć listę `Lighting` w panelu Renderer przez cztery tryby przy włączonym
+- [ ] przełączyć listę `Lighting` w oknie debug (Render / Scene) przez cztery tryby przy włączonym
       `Wireframe`: siatka zostaje w każdym trybie, zmienia się tylko jej jasność
 - [ ] w trybie noclip wznieść się nad labirynt: widać, że siatka jest równa w całym
       terenie (97 na 97 punktów), a w obrębie labiryntu na jedną komórkę przypadają
@@ -2863,7 +2899,7 @@ Wzgórza i noclip:
       wyjściu poza krawędź terenu wysokość zostaje taka jak na krawędzi
 - [ ] klawisz R: gracz wraca na start, na podłoże
 
-Trawa (panel Grass):
+Trawa (okno debug (World / Terrain and grass / Grass)):
 
 - [ ] przy ścianach, po obu stronach każdej, rosną kępki po trzy źdźbła, ciemniejsze u
       nasady i jaśniejsze na czubku. Stoją w pasie przy ścianie, nie w linii od linijki,
@@ -2876,7 +2912,7 @@ Trawa (panel Grass):
 - [ ] `Density` na 0.0: trawy nie ma, linia to `Tufts: 0 (0 blades)`
 - [ ] `Density` na 8.0 (prawy koniec): trawa jest gęsta, przy ścianach 16 kępek na stronę
       (3872 przy samych ścianach, do tego wzgórza). Zapisać liczbę z linii `Tufts` i to,
-      czy liczba klatek w panelu Renderer wyraźnie spada
+      czy liczba klatek w oknie debug (Render / Scene) wyraźnie spada
 - [ ] wrócić do 2.5: linia znów pokazuje `Tufts: 1843 (5529 blades)`, a kępki stoją w tych
       samych miejscach co na początku (miejsca zależą tylko od ziarna labiryntu i od
       gęstości)
@@ -2895,11 +2931,11 @@ Trawa a światło:
 - [ ] obejść kępkę dookoła z włączoną latarką: jej jasność nie skacze przy zmianie strony
       (trawa jest cieniowana normalną podłoża, nie normalną źdźbła) i źdźbła widać z obu
       stron
-- [ ] lista `Lighting` w panelu Renderer, cztery tryby po kolei. `Blinn-Phong` i `Phong`:
+- [ ] lista `Lighting` w oknie debug (Render / Scene), cztery tryby po kolei. `Blinn-Phong` i `Phong`:
       trawa oświetlona jak wyżej, bez połysku. `Gouraud`: ściany i podłoże są cieniowane
       na wierzchołek, a trawa **nadal na fragment**, więc krawędź stożka latarki na trawie
       jest gładka. `Unlit`: trawa ma pełną jasność, jak reszta sceny
-- [ ] panel Assets, `View mode`: `Normals as colour`. Trawa jest jednolicie jasnozielona
+- [ ] okno debug (Render / Textures and normals), `View mode`: `Normals as colour`. Trawa jest jednolicie jasnozielona
       (normalna prosto w górę), podłoże w odcieniach jasnej zieleni. `UVs as colour`:
       źdźbła są ciemne u nasady i zielenieją ku czubkowi, z czerwienią rosnącą w poprzek
       źdźbła, a podłoże ma czerwono-zielone przejścia powtarzane co 4 m. Wrócić do
@@ -2923,16 +2959,16 @@ Przeładowanie shaderów:
       razy `OK`, trawa jak na początku i nadal oświetlona (połączenie z blokiem świateł jest
       odtwarzane po przeładowaniu)
 
-Nowy labirynt (panel Maze):
+Nowy labirynt (okno debug (World / Maze)):
 
 - [ ] `Seed` 2, `Regenerate`: nowy układ ścian, podłoże pod labiryntem jest takie samo
       jak przedtem (mapa wysokości nie zależy od ziarna), trawa rośnie przy nowych
-      ścianach, a liczba kępek w panelu Grass jest bliska poprzedniej (ścian jest znów
+      ścianach, a liczba kępek w oknie debug (World / Terrain and grass / Grass) jest bliska poprzedniej (ścian jest znów
       121, zmienia się tylko liczba kępek na wzgórzach)
 - [ ] `Seed` 1, `Regenerate`: linia znów pokazuje `Tufts: 1843 (5529 blades)`. Zapamiętać
       miejsce jednej kępki przy starcie, zmienić ziarno, wrócić do 1: kępka stoi tam, gdzie
       stała
-- [ ] `Width` 20, `Height` 15, `Regenerate`: panel Terrain pokazuje
+- [ ] `Width` 20, `Height` 15, `Regenerate`: okno debug (World / Terrain and grass / Terrain) pokazuje
       `Grid: 137 x 117 points, 0.50 m apart` i `Triangles: 31552`, wzgórza zaczynają się
       za nowymi ścianami zewnętrznymi i mają ten sam rozmiar co przedtem (mapa wysokości
       powtarza się co 48 m, nie rozciąga). Pod żadną ścianą nie ma szczeliny
@@ -2951,13 +2987,13 @@ Kryształy, brama i wyjście na podłożu:
       nie tkwi w ziemi ani nie wisi wyraźnie wyżej niż inne
 - [ ] zebrać kryształ, wchodząc w niego: zbieranie działa tak samo jak na płaskiej
       podłodze, także w najwyżej i w najniżej położonej komórce
-- [ ] panel Collision, `Draw collision shapes`: żółte pudełka ścian i słupków zaczynają
+- [ ] okno debug (Diagnostics / Collision and picking), `Draw collision shapes`: żółte pudełka ścian i słupków zaczynają
       się na wysokości podstaw modeli (każde na innej), zielone pudełko gracza stoi na
       podłożu, turkusowe kule kryształów otaczają kryształy, a magentowe pudełko strefy
       wyjścia stoi na podłożu komórki wyjścia. Żadne pudełko ściany nie kończy się nad
       stopami gracza, który przy niej stoi
 - [ ] brama: stoi na podłożu bez szczeliny pod spodem. Otworzyć ją (zebrać kryształy albo
-      w panelu Gameplay przesunąć `Crystals needed` na 0.05 po zebraniu jednego):
+      w oknie debug (Gameplay) przesunąć `Crystals needed` na 0.05 po zebraniu jednego):
       zjeżdża w ziemię w 1,5 sekundy i **znika pod nią w całości**, nic z niej nie wystaje,
       także po stronie, z której podłoże opada
 - [ ] przejść przez otwartą bramę do komórki wyjścia: karta `You escaped` pojawia się tak
@@ -2969,7 +3005,7 @@ Na koniec:
 
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi
       celowo
-- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z panelu Renderer:
+- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z okna debug (Render / Scene):
       zapisać wartość przy włączonej i wyłączonej trawie (`Enabled`) oraz z `Wireframe`.
       Zgłoszone około 2000 nie rozróżnia tych stanów. Jeśli liczba stoi na częstotliwości
       odświeżania monitora, zapisać to: na tym komputerze synchronizacja pionowa nie
@@ -3110,6 +3146,8 @@ macOS nic z tej części nie było budowane ani uruchamiane.
 
 ### 17.2. Otwarte: test ręczny na około piętnaście minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze zgłoszonych pomiarów,
 nie z klikania. Nazwy widżetów są zapisane tak jak w
@@ -3119,7 +3157,7 @@ nie z klikania. Nazwy widżetów są zapisane tak jak w
 została wykonana, zanim doszedł bloom. Wykonując ją w dzisiejszym programie, trzeba
 pamiętać o sześciu różnicach:
 
-- panel Framebuffers wygląda inaczej: kontrolki stoją w dwóch kolumnach, `Depth range`
+- okno debug (Post process / Previews) wygląda inaczej: kontrolki stoją w dwóch kolumnach, `Depth range`
   jest w tabeli nad kreską, pod linią `Scene framebuffer` jest linia `Bloom targets`,
   a obrazów jest cztery. Ten układ opisuje sekcja 18.2. Od trzeciej części M7 tabela
   kontrolek jest dodatkowo w zakładce `Tone and bloom`, obok zakładki `Fog and vignette`
@@ -3130,18 +3168,18 @@ pamiętać o sześciu różnicach:
 - kroki o wyglądzie kryształu, ekspozycji i krzywych najlepiej wykonać z **odznaczonym**
   polem `Bloom`, bo opisują obraz bez poświaty. Kryształy są przy tym jaśniejsze i bledsze
   niż w pierwszej części: `CRYSTAL_GLOW_STRENGTH` ma dziś 4,0, a nie 2,5 z tabeli wyżej
-- lista w panelu Shaders ma jedenaście linii, nie osiem. Linie `composite.vert +
+- lista w oknie debug (Diagnostics / Frame and shaders / Shaders) ma jedenaście linii, nie osiem. Linie `composite.vert +
   composite.frag` i `composite.vert + preview.frag` są siódmą i ósmą, nie dwiema
   ostatnimi, a zepsuty `composite.vert` daje cztery czerwone linie, nie dwie
 - podglądy kosztują przy rozwiniętym panelu cztery małe przebiegi, nie dwa
 - od czwartej części M7 w scenie są cienie księżyca, a `Moon intensity` ma 0,2, nie 0,12
   z tabeli wyżej. Kroki, które porównują obraz z wersją sprzed M7, najlepiej wykonać z
-  odznaczonym polem `Shadows` w panelu Shadows (sekcja 20.2)
+  odznaczonym polem `Shadows` w oknie debug (Light / Shadows) (sekcja 20.2)
 
 Przygotowanie:
 
 - [ ] **usunąć plik `imgui.ini`** z katalogu, z którego uruchamiam program (sekcja 7). Stary
-      plik nie ma wpisu panelu Framebuffers, więc ten stanie w miejscu z kodu, ale
+      plik nie ma wpisu okna debug (Post process), więc ten stanie w miejscu z kodu, ale
       pozostałe zostaną tam, gdzie zapisał je plik, i układ może się nie zgadzać
 - [ ] uruchomić grę z terminala. Oczekiwane w konsoli: żadnej linii `[error]`,
       w szczególności żadnej zaczynającej się od `Framebuffer of` ani
@@ -3160,37 +3198,37 @@ Wygląd sceny startowej w porównaniu z poprzednią wersją (panele ukryte klawi
 - [ ] niebo: gwiazdy i tarcza księżyca są widoczne i jaśniejsze od reszty nieba. Zapisać,
       czy niebo nie jest za jasne w porównaniu ze ścianami
 - [ ] trawa ma gradient od ciemnej nasady do jaśniejszego czubka, jak przedtem
-- [ ] linie brył kolizji (panel Collision, pole `Draw collision shapes`): kolory linii są takie
+- [ ] linie brył kolizji (okno debug (Diagnostics / Collision and picking), pole `Draw collision shapes`): kolory linii są takie
       jak przedtem, czyste i jasne, nie wyprane
 
 Pasek HUD i panele bez zmian:
 
-- [ ] pasek HUD i karta wygranej mają te same kolory co przed M7 (są rysowane po
+- [ ] pasek HUD i karta wygranej mają te same kolory co przed M7 (są rysowane po [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       ostatnim przebiegu, prosto do okna). Pasek stoi dziś o dwa paski tytułu niżej niż
       przed M7: jeden rząd doszedł w tej części, drugi w czwartej
 - [ ] otworzyć panele klawiszem akcentu: kolory motywu, tła paneli i tekstu są takie jak
       przed M7. Nic nie jest rozjaśnione ani wyblakłe
-- [ ] u góry okna, między kolumnami, są cztery rzędy pasków tytułu: Camera i Gameplay,
+- [ ] u góry okna, między kolumnami, są cztery rzędy pasków tytułu: Camera i Gameplay, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       pod nimi Terrain i Grass, pod nimi jeden szeroki pasek Framebuffers, szeroki jak dwa
       paski nad nim razem, a pod nim pasek Shadows tej samej szerokości (czwarty rząd
       doszedł w czwartej części M7). Wszystkie sześć są zwinięte i nie nachodzą na siebie
       ani na pasek HUD
-- [ ] panel Renderer: `Sky brightness` pokazuje 2,2, a suwak dochodzi do 6. `Clear color`
+- [ ] okno debug (Render / Scene): `Sky brightness` pokazuje 2,2, a suwak dochodzi do 6. `Clear color`
       pokazuje ciemny granat
 
-Panel Framebuffers:
+Okno debug (Post process):
 
-- [ ] rozwinąć panel (strzałka w pasku). Zawartość od góry: suwak `Exposure` (`1.00`),
+- [ ] rozwinąć panel (strzałka w pasku). Zawartość od góry: suwak `Exposure` (`1.00`), [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       lista `Tone mapping` (`ACES (fitted)`), kreska, linia
       `Scene framebuffer: 1280 x 720 px, GL_RGBA16F + GL_DEPTH_COMPONENT24` (rozmiar taki
-      jak w linii `Framebuffer` panelu Renderer), suwak `Depth range` (`15 m`) i dwa
+      jak w linii `Framebuffer` okna debug (Render / Scene)), suwak `Depth range` (`15 m`) i dwa
       obrazy obok siebie z podpisami `Colour (HDR, cut off at 1)` i `Depth (as distance)`.
       Zapisać, czy zawartość mieści się bez przewijania
-- [ ] w pierwszej klatce po rozwinięciu w miejscu obrazów może mignąć napis
+- [ ] w pierwszej klatce po rozwinięciu w miejscu obrazów może mignąć napis [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `(no picture yet)`: podglądy są rysowane dopiero w następnej klatce
 - [ ] oba obrazy są **we właściwą stronę** (niebo u góry, podłoże na dole) i mają kształt
       okna
-- [ ] rozwinięty panel zasłania scenę między kolumnami i żadnego innego otwartego panelu
+- [ ] rozwinięty panel zasłania scenę między kolumnami i żadnego innego otwartego panelu [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
 
 Ekspozycja:
 
@@ -3226,13 +3264,13 @@ Podglądy załączników:
 - [ ] `Depth range` na `2 m`: prawie wszystko jest białe, ciemne zostaje tylko to, co tuż
       przed kamerą. Na `100 m`: prawie wszystko jest ciemne, niebo zostaje białe
 - [ ] obrócić kamerę: oba podglądy podążają za sceną bez opóźnienia widocznego gołym okiem
-- [ ] zwinąć panel Framebuffers i zapisać liczbę klatek z panelu Renderer, potem rozwinąć
+- [ ] zwinąć okno debug (Post process) i zapisać liczbę klatek z okna debug (Render / Scene), potem rozwinąć [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       i zapisać jeszcze raz: podglądy kosztują dwa małe przebiegi tylko przy rozwiniętym
       panelu
-- [ ] ukryć wszystkie panele klawiszem akcentu przy rozwiniętym panelu Framebuffers
+- [ ] ukryć wszystkie panele klawiszem akcentu przy rozwiniętym okna debug (Post process) [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       i pokazać je znowu: podglądy wracają, bez błędów w konsoli
 
-Oba widoki diagnostyczne (panel Assets, lista `View mode`):
+Oba widoki diagnostyczne (okno debug (Render / Textures and normals), lista `View mode`):
 
 - [ ] `Normals as colour`: płaska ściana zwrócona w +X jest czerwonawa, podłoże zielonkawe,
       jak przed M7. Kolory **nie zmieniają się** przy ruchu suwaka `Exposure` ani przy
@@ -3244,7 +3282,7 @@ Oba widoki diagnostyczne (panel Assets, lista `View mode`):
 - [ ] wrócić do `Textured`: `Exposure` i `Tone mapping` znów działają, a ich wartości
       w panelu są takie, jakie zostawiłem
 
-Panel Assets:
+Okno debug (Diagnostics / Assets):
 
 - [ ] na liście `Textures` przy każdej pozycji stoi rozmiar i przestrzeń kolorów: `sRGB` przy
       `wall_stone.png`, `gate_wood.png`, `crystal.png` i `ground.png`, `linear` przy
@@ -3262,8 +3300,8 @@ Zmiana rozmiaru okna:
       razu wypełnia całe okno w nowym rozmiarze, bez czarnych pasów i bez rozciągnięcia,
       a w konsoli nie ma linii `[error]` (bufor sceny jest tworzony od nowa w pierwszej
       klatce z nowym rozmiarem)
-- [ ] linia `Scene framebuffer` w panelu Framebuffers pokazuje po puszczeniu krawędzi
-      ten sam rozmiar co linia `Framebuffer` w panelu Renderer
+- [ ] linia `Scene framebuffer` w oknie debug (Post process) pokazuje po puszczeniu krawędzi
+      ten sam rozmiar co linia `Framebuffer` w oknie debug (Render / Scene)
 - [ ] zrobić okno bardzo wąskie i bardzo niskie: gra działa, podglądy zachowują kształt
       okna
 - [ ] zmaksymalizować okno i przywrócić je
@@ -3272,10 +3310,10 @@ Minimalizacja i przywrócenie:
 
 - [ ] zminimalizować okno na kilka sekund i przywrócić je: obraz wraca od razu, bez
       czarnej klatki i bez linii `[error]`
-- [ ] to samo przy rozwiniętym panelu Framebuffers
+- [ ] to samo przy rozwiniętym okna debug (Post process) [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
 - [ ] to samo w buildzie Debug: żadnej linii `GL_` w konsoli
 
-Przeładowanie shaderów (panel Shaders):
+Przeładowanie shaderów (okno debug (Diagnostics / Frame and shaders / Shaders)):
 
 - [ ] lista ma osiem linii. Dwie ostatnie to `composite.vert + composite.frag: OK`
       i `composite.vert + preview.frag: OK`
@@ -3297,7 +3335,7 @@ Na koniec:
 
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi
       celowo
-- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z panelu Renderer,
+- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z okna debug (Render / Scene),
       w oknie 1280 x 720 i po zmaksymalizowaniu: zapisać obie wartości. Zgłoszone około
       2500 i około 1960 (w 2560 x 1440) zmierzono przy wyłączonej synchronizacji pionowej
       i ukrytych panelach, więc liczba z panelu może być inna. Jeśli stoi na częstotliwości
@@ -3426,6 +3464,8 @@ przy dziesięciu programach. Na macOS nic z tej części nie było budowane ani 
 
 ### 18.2. Otwarte: test ręczny na około piętnaście minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze zgłoszonych zrzutów,
 nie z klikania. Nazwy widżetów są zapisane tak jak w
@@ -3436,9 +3476,9 @@ Przygotowanie:
 - [ ] uruchomić grę z terminala. Oczekiwane w konsoli: żadnej linii `[error]`,
       w szczególności żadnej zaczynającej się od `Framebuffer of` ani
       `Framebuffer cannot be created` (cele bloomu powstają w pierwszej klatce)
-- [ ] otworzyć panele klawiszem akcentu i rozwinąć panel Framebuffers
+- [ ] otworzyć panele klawiszem akcentu i rozwinąć okno debug (Post process) [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
 
-Panel Framebuffers w nowym układzie:
+Okno debug (Post process) w nowym układzie:
 
 - [ ] kontrolki stoją w dwóch kolumnach, wierszami: `Exposure` i `Tone mapping`, `Bloom`
       i `Blur iterations`, `Threshold` i `Intensity`, `Depth range` i puste miejsce.
@@ -3494,7 +3534,7 @@ Iteracje:
       `Bloom` jest tylko lekko rozmyty
 - [ ] `Blur iterations` na `10`: poświata jest szeroka i miękka. Jest **okrągła**, nie
       kwadratowa i nie w kształcie krzyża
-- [ ] przy każdej wartości zapisać liczbę klatek z panelu Renderer (z odznaczoną
+- [ ] przy każdej wartości zapisać liczbę klatek z okna debug (Render / Scene) (z odznaczoną
       synchronizacją pionową, jeśli się da): każda iteracja to dwa przebiegi więcej
 - [ ] obraz `Bright pass` **nie zmienia się** przy ruchu tego suwaka: rozmycie go nie
       dotyka
@@ -3506,7 +3546,7 @@ Podglądy:
 - [ ] obraz `HDR colour` **nie ma** poświaty: bloom nie jest zapisywany do bufora sceny
 - [ ] obrócić kamerę: wszystkie cztery obrazy podążają za sceną bez opóźnienia widocznego
       gołym okiem
-- [ ] zwinąć panel i zapisać liczbę klatek, rozwinąć i zapisać jeszcze raz: przy
+- [ ] zwinąć panel i zapisać liczbę klatek, rozwinąć i zapisać jeszcze raz: przy [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       rozwiniętym panelu dochodzą cztery małe przebiegi (w pierwszej części M7 dwa)
 
 Kryształ z bliska i z daleka:
@@ -3523,7 +3563,7 @@ Kryształ z bliska i z daleka:
       połowy wychodzi także na ścianę, która go zasłania (bloom jest liczony z obrazu,
       nie z geometrii). Zapisać, czy to nie razi
 - [ ] zebrać kryształ: jego poświata znika razem z nim
-- [ ] przełączyć listę `Lighting` w panelu Renderer na `Unlit`, `Gouraud`, `Phong`
+- [ ] przełączyć listę `Lighting` w oknie debug (Render / Scene) na `Unlit`, `Gouraud`, `Phong`
       i `Blinn-Phong`: kryształ ma poświatę w każdym trybie
 
 Księżyc i gwiazdy:
@@ -3531,7 +3571,7 @@ Księżyc i gwiazdy:
 - [ ] spojrzeć na księżyc: tarcza ma miękką poświatę
 - [ ] gwiazdy zostają ostrymi punktami, bez poświaty. Zapisać, czy najjaśniejsze mają
       choć ślad
-- [ ] przesunąć `Sky brightness` w panelu Renderer do 6: poświata księżyca rośnie.
+- [ ] przesunąć `Sky brightness` w oknie debug (Render / Scene) do 6: poświata księżyca rośnie.
       Zapisać, czy gwiazdy zaczynają świecić. Wrócić na 2,2
 - [ ] odznaczyć pole `Skybox`: poświata księżyca znika razem z niebem
 
@@ -3549,10 +3589,10 @@ Ekspozycja i mapowanie tonów razem z bloomem:
 - [ ] `Tone mapping` na `None (clamp)`: środek kryształu z poświatą jest płaską białą
       plamą. Na `Reinhard`: zapisać, jak wygląda poświata. Zostawić `ACES (fitted)`
 
-Oba widoki diagnostyczne (panel Assets, lista `View mode`):
+Oba widoki diagnostyczne (okno debug (Render / Textures and normals), lista `View mode`):
 
 - [ ] `Normals as colour`: obraz jest taki jak przed tą częścią, bez żadnej poświaty.
-      Pole `Bloom` w panelu Framebuffers jest **nadal zaznaczone**, druga linia brzmi
+      Pole `Bloom` w oknie debug (Post process) jest **nadal zaznaczone**, druga linia brzmi
       `Bloom targets: not drawn (bloom off or a debug view)`, a w miejscu dwóch obrazów
       bloomu stoi `(not drawn)`
 - [ ] `UVs as colour`: to samo. Jasne żółte rogi płytek tekstury nie mają poświaty
@@ -3573,7 +3613,7 @@ Zmiana rozmiaru okna:
 - [ ] zminimalizować okno na kilka sekund i przywrócić: obraz z poświatą wraca od razu,
       bez linii `[error]`, także w buildzie Debug bez linii `GL_`
 
-Przeładowanie shaderów (panel Shaders):
+Przeładowanie shaderów (okno debug (Diagnostics / Frame and shaders / Shaders)):
 
 - [ ] lista ma jedenaście linii. Linie od siódmej do dziesiątej to
       `composite.vert + composite.frag: OK`,
@@ -3599,7 +3639,7 @@ Na koniec:
 
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi
       celowo
-- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z panelu Renderer,
+- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z okna debug (Render / Scene),
       z bloomem i bez, w oknie 1280 x 720 i po zmaksymalizowaniu: zapisać cztery wartości.
       Zgłoszone zakresy są w sekcji 18.1, zmierzone przy ukrytych panelach. Jeśli liczba
       stoi na częstotliwości odświeżania monitora, zapisać to
@@ -3743,6 +3783,8 @@ było budowane ani uruchamiane.
 
 ### 19.2. Otwarte: test ręczny na około dwadzieścia minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze wzorów, nie z klikania
 ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
@@ -3750,24 +3792,24 @@ ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
 i `CameraPanel.cpp`. Ustawień mgły i winiety program nigdzie nie zapisuje, więc ponowne
 uruchomienie gry zawsze przywraca wartości startowe.
 
-Listy 17.2 i 18.2 też są otwarte. Ich kroki dotyczące kontrolek panelu Framebuffers
+Listy 17.2 i 18.2 też są otwarte. Ich kroki dotyczące kontrolek okna debug (Post process)
 wykonuje się teraz w zakładce `Tone and bloom`.
 
 Przygotowanie:
 
 - [ ] uruchomić grę z terminala. Oczekiwane w konsoli: żadnej linii `[error]`,
       w szczególności żadnej o shaderze `composite.frag`
-- [ ] otworzyć panele klawiszem akcentu i rozwinąć panel Framebuffers
+- [ ] otworzyć panele klawiszem akcentu i rozwinąć okno debug (Post process) [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
 
-Panel Framebuffers w nowym układzie:
+Okno debug (Post process) w nowym układzie:
 
 - [ ] na górze panelu jest pasek z dwiema zakładkami: `Tone and bloom`
       i `Fog and vignette`. Po starcie wybrana jest pierwsza
-- [ ] zakładka `Tone and bloom` ma te same siedem kontrolek co w sekcji 18.2, w dwóch
+- [ ] zakładka `Tone and bloom` ma te same siedem kontrolek co w sekcji 18.2, w dwóch [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       kolumnach i czterech wierszach: `Exposure` i `Tone mapping`, `Bloom`
       i `Blur iterations`, `Threshold` i `Intensity`, `Depth range` i puste miejsce.
       Wartości startowe: `1.00`, `ACES (fitted)`, zaznaczone, `6`, `0.80`, `1.00`, `15 m`
-- [ ] kliknąć zakładkę `Fog and vignette`: osiem kontrolek w dwóch kolumnach i czterech
+- [ ] kliknąć zakładkę `Fog and vignette`: osiem kontrolek w dwóch kolumnach i czterech [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       wierszach: `Fog` i `Density`, `Base height` i `Height falloff`, `Fog colour`
       i `Vignette`, `Strength` i `Radius`
 - [ ] wartości startowe w tej zakładce: `Fog` zaznaczone, `0.100 /m`, `0.50 m`,
@@ -3781,8 +3823,8 @@ Panel Framebuffers w nowym układzie:
 - [ ] przełączyć zakładki kilka razy: linie i obrazy pod nimi nie skaczą w pionie (obie
       zakładki mają po cztery wiersze), wartości kontrolek zostają, a obraz gry się nie
       zmienia
-- [ ] zapisać, czy w **każdej** z dwóch zakładek cała zawartość mieści się w panelu bez
-      paska przewijania. Wysokość panelu (344) nie została zmieniona, a doszedł wiersz
+- [ ] zapisać, czy w **każdej** z dwóch zakładek dawnego panelu cała zawartość mieściła się w panelu bez
+      paska przewijania [od 2026-10-06 bez odpowiednika w oknie debug: dziś karty kategorii Post process przewija okno]. Wysokość panelu (344) nie została zmieniona, a doszedł wiersz
       zakładek
 - [ ] najechać kursorem na każdą z piętnastu kontrolek (siedem w pierwszej zakładce, osiem
       w drugiej) i na każdy z czterech obrazów: przy każdym pojawia się podpowiedź.
@@ -3877,9 +3919,9 @@ Obrót w miejscu (mgła nie może pływać):
 
 Widok z góry w trybie noclip (znane ograniczenie):
 
-- [ ] nacisnąć N: panel Camera pokazuje `Mode: noclip (free flight)`. Kliknąć w scenę
+- [ ] nacisnąć N: okno debug (Player / Position) pokazuje `Mode: noclip (free flight)`. Kliknąć w scenę
       (klawisze ruchu działają tylko przy przechwyconej myszy) i lecieć w górę klawiszem
-      Spacja, aż środkowa liczba pola `Player feet` w panelu Camera pokaże około 30
+      Spacja, aż środkowa liczba pola `Player feet` w oknie debug (Player / Position) pokaże około 30
       (można ją też wpisać: Ctrl i kliknięcie w środkowe pole)
 - [ ] spojrzeć prosto w dół: labirynt jest **prawie zakryty mgłą**. Ze wzoru podłoże
       dostaje około 95 % mgły, wierzchy ścian około 65 %, więc z labiryntu powinien
@@ -3898,10 +3940,10 @@ Niebo i księżyc:
       około połowy 3 stopnie nad nim, poniżej 1 % od około 10 stopni
 - [ ] obejrzeć krawędź ściany na tle nieba: zapisać, czy wzdłuż niej widać jasną albo
       ciemną obwódkę
-- [ ] odznaczyć pole `Skybox` w panelu Renderer: niebo zastępuje kolor tła, a pas zamglenia
+- [ ] odznaczyć pole `Skybox` w oknie debug (Render / Scene): niebo zastępuje kolor tła, a pas zamglenia
       przy horyzoncie **zostaje** (wyczyszczony bufor głębi też ma wartość 1). Zaznaczyć
       z powrotem
-- [ ] przesunąć `Far plane` w panelu Camera ze `100.0 m` na około `20.0 m`: zapisać, jak
+- [ ] przesunąć `Far plane` w oknie debug (Player / View) ze `100.0 m` na około `20.0 m`: zapisać, jak
       zmienia się zamglenie nieba (punkt nieba leży na dalekiej płaszczyźnie, więc mgła
       na niebie od niej zależy). Wrócić na `100.0 m`
 
@@ -3969,14 +4011,14 @@ Winieta przesadzona:
 - [ ] wpisać w `Radius` wartość spoza zakresu (Ctrl i kliknięcie, potem `0.9`): zostaje
       przycięta do `0.65`. Ustawić z powrotem `Strength` `0.30` i `Radius` `0.40`
 
-Oba widoki diagnostyczne (panel Assets, lista `View mode`):
+Oba widoki diagnostyczne (okno debug (Render / Textures and normals), lista `View mode`):
 
 - [ ] `Normals as colour`: obraz jest taki jak przed tą częścią, **bez mgły i bez
       winiety**: dalekie ściany mają tak samo czyste kolory jak bliskie, a rogi ekranu nie
-      są ciemniejsze. Pola `Fog` i `Vignette` w panelu Framebuffers są **nadal
+      są ciemniejsze. Pola `Fog` i `Vignette` w oknie debug (Post process) są **nadal
       zaznaczone**
 - [ ] `UVs as colour`: to samo
-- [ ] w obu widokach ruch suwaków z zakładki `Fog and vignette` i zmiana `Fog colour` nie
+- [ ] w obu widokach ruch suwaków z zakładki `Fog and vignette` i zmiana `Fog colour` nie [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       zmieniają obrazu
 - [ ] wrócić do `Textured`: mgła i winieta wracają z takimi ustawieniami, jakie zostawiłem
 
@@ -3998,7 +4040,7 @@ Zmiana rozmiaru okna:
 - [ ] zminimalizować okno na kilka sekund i przywrócić: obraz z mgłą i winietą wraca od
       razu, bez linii `[error]`, także w buildzie Debug bez linii `GL_`
 
-Przeładowanie shaderów (panel Shaders):
+Przeładowanie shaderów (okno debug (Diagnostics / Frame and shaders / Shaders)):
 
 - [ ] lista ma jedenaście linii (po tej części było ich nadal dziesięć, jedenasta doszła
       w czwartej), wszystkie `OK`. Mgła i winieta są w linii
@@ -4028,7 +4070,7 @@ Na koniec:
 
 - [ ] przez cały test w konsoli nie pojawia się żadna linia `[error]` poza wywołanymi
       celowo
-- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z panelu Renderer,
+- [ ] liczba klatek na sekundę w Release przy ustawieniach startowych, z okna debug (Render / Scene),
       z zaznaczonymi polami `Fog` i `Vignette` i z oboma odznaczonymi, w oknie 1280 x 720
       i po zmaksymalizowaniu: zapisać cztery wartości. Zgłoszone liczby są w sekcji 19.1,
       zmierzone przy ukrytych panelach. Jeśli liczba stoi na częstotliwości odświeżania
@@ -4201,6 +4243,8 @@ Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie p
 
 ### 20.2. Otwarte: test ręczny na około dwadzieścia pięć minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Punkty, które agent widział na zrzutach (lista "Widziane na zrzutach ekranu przez agenta" w sekcji 20.1), zostają `[ ]`: oglądanie przez agenta nie zastępuje testu właściciela.
 
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
@@ -4218,10 +4262,10 @@ Przygotowanie:
       Oczekiwane w konsoli: żadnej linii `[error]`, w szczególności żadnej o shaderach
       `shadow_depth.vert`, `shadow_depth.frag`, `lit.frag`, `gouraud.frag` i `grass.frag`
       ani o niekompletnym framebufferze
-- [ ] otworzyć panele klawiszem akcentu. U góry między kolumnami są cztery rzędy pasków
+- [ ] otworzyć panele klawiszem akcentu. U góry między kolumnami są cztery rzędy pasków [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       tytułowych: Camera i Gameplay, Terrain i Grass, Framebuffers, a pod nim nowy pasek
       Shadows tej samej szerokości. HUD stoi pod czwartym rzędem (stan z tej części; dziś pod piątym, przy widocznych panelach) i nie nachodzi na żaden pasek
-- [ ] rozwinąć panel Shadows: jedna zakładka `Moon`, po lewej osiem kontrolek, kreska i trzy
+- [ ] rozwinąć okno debug (Light / Shadows): jedna zakładka `Moon`, po lewej osiem kontrolek, kreska i trzy [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       linie faktów, po prawej podpis `Depth seen from the moon` i kwadratowy obraz
 - [ ] linie faktów przy wartościach startowych: `Map: 2048 x 2048, GL_DEPTH_COMPONENT24`,
       `Covers 64.8 x 54.1 m, 47.0 m deep` i `One texel: 3.2 cm`. Te liczby są policzone, nie
@@ -4289,10 +4333,10 @@ Siła:
 - [ ] suwak `Strength` na 0: cieni nie widać, obraz jak przy odznaczonym `Shadows`. Na 0,5:
       cienie o połowę słabsze. Na 1: jak na starcie
 
-Księżyc (panel Lights, grupa `Moon (directional)`), przy rozwiniętym panelu Shadows:
+Księżyc (okno debug (Light / Lights), grupa `Moon (directional)`), przy rozwiniętym okna debug (Light / Shadows):
 
 - [ ] przesuwać `Moon yaw` przez cały zakres: cienie obracają się płynnie wokół ścian, obraz
-      mapy w panelu Shadows też się zmienia, linia `Covers` pokazuje inne rozmiary. Tarcza
+      mapy w oknie debug (Light / Shadows) też się zmienia, linia `Covers` pokazuje inne rozmiary. Tarcza
       księżyca na niebie zostaje na miejscu (znane ograniczenie)
 - [ ] `Moon pitch` na -90: cienie chowają się pod ściany, obraz mapy to widok prosto z góry,
       linia `Covers` pokazuje około `49.0 x 49.0 m, 7.5 m deep`. W konsoli żadnej linii
@@ -4308,21 +4352,21 @@ Księżyc (panel Lights, grupa `Moon (directional)`), przy rozwiniętym panelu S
 
 Podgląd:
 
-- [ ] obraz w panelu Shadows: jasne tło, ciemniejsze plamy wzgórz i ciemne linie ścian
+- [ ] obraz w oknie debug (Light / Shadows): jasne tło, ciemniejsze plamy wzgórz i ciemne linie ścian
       labiryntu. Jest szary, nie czerwony
-- [ ] zwinąć panel Shadows i rozwinąć: przez pierwszą klatkę w miejscu obrazu może stać `(no
+- [ ] zwinąć okno debug (Light / Shadows) i rozwinąć: przez pierwszą klatkę w miejscu obrazu może stać `(no [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       picture yet)`, potem obraz wraca
 - [ ] najechać na obraz: podpowiedź zaczyna się od `The shadow map: black is near the moon`
-- [ ] patrząc na obraz, przesunąć w panelu Lights suwak `Moon yaw`: obraz zmienia się na
+- [ ] patrząc na obraz, przesunąć w oknie debug (Light / Lights) suwak `Moon yaw`: obraz zmienia się na
       żywo, bo mapa jest rysowana co klatkę
 
-Tryby cieniowania (panel Renderer, lista `Lighting`):
+Tryby cieniowania (okno debug (Render / Scene), lista `Lighting`):
 
 - [ ] `Blinn-Phong` (startowy) i `Phong`: cienie w tych samych miejscach
 - [ ] `Gouraud`: cienie w tych samych miejscach i z **tak samo ostrymi** krawędziami.
       Światło jest kanciaste jak zawsze w tym trybie
 - [ ] `Unlit`: cieni nie ma, scena jest równo jasna jak dotąd
-- [ ] panel Assets, lista `View mode`: `Normals as colour` i `UVs as colour` nie pokazują
+- [ ] okno debug (Render / Textures and normals), lista `View mode`: `Normals as colour` i `UVs as colour` nie pokazują
       cieni. Wrócić do `Textured` i `Blinn-Phong`
 
 Tylko księżyc:
@@ -4338,18 +4382,18 @@ Tylko księżyc:
 
 Teren i widok z góry:
 
-- [ ] panel Terrain, pole `Wireframe`: teren jest rysowany liniami, a cienie na nim i cień
+- [ ] okno debug (World / Terrain and grass / Terrain), pole `Wireframe`: teren jest rysowany liniami, a cienie na nim i cień
       wzgórz zostają pełne
 - [ ] suwak `Height scale` w górę: wzgórza rosną, ich cienie się wydłużają, linia `Covers`
       rośnie. Wrócić do 1
 - [ ] klawisz N (noclip), wznieść się nad labirynt i spojrzeć w dół. Odznaczyć `Fog` w
-      panelu Framebuffers, bo z góry mgła zakrywa labirynt (znane ograniczenie z sekcji
+      okna debug (Post process), bo z góry mgła zakrywa labirynt (znane ograniczenie z sekcji
       19.1). Cienie wszystkich ścian padają w tę samą stronę, nie urywają się na brzegu
       labiryntu ani na brzegu terenu, a na wzgórzach nie ma obcych smug
-- [ ] panel Maze, przycisk `Regenerate` z innym rozmiarem labiryntu: cienie pasują do nowych
+- [ ] okno debug (World / Maze), przycisk `Regenerate` z innym rozmiarem labiryntu: cienie pasują do nowych
       ścian od pierwszej klatki, linia `Covers` zmienia się razem z terenem
 
-Przeładowanie shaderów (panel Shaders):
+Przeładowanie shaderów (okno debug (Diagnostics / Frame and shaders / Shaders)):
 
 - [ ] `Reload shaders` przy wartościach startowych: jedenaście linii, wszystkie `OK`,
       ostatnia to `shadow_depth.vert + shadow_depth.frag`. Cienie zostają
@@ -4525,6 +4569,8 @@ Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie p
 
 ### 21.2. Otwarte: test ręczny na około trzydzieści minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Punkty, które agent widział na zrzutach (lista "Widziane na zrzutach ekranu przez agenta" w sekcji 21.1), zostają `[ ]`: oglądanie przez agenta nie zastępuje testu właściciela.
 
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
@@ -4539,16 +4585,16 @@ Przygotowanie:
       linii `[error]`, w szczególności o shaderach `lit.frag`, `gouraud.vert`, `gouraud.frag`,
       `grass.frag`, `common/shadows.glsl` i `common/lighting.glsl` ani o niekompletnym
       framebufferze. W buildzie Debug żadnej linii `GL_...`
-- [ ] panel Shadows ma teraz dwie zakładki, `Moon` i `Flashlight`. Panel Lights w grupie
+- [ ] okno debug (Light / Shadows) ma teraz dwie zakładki, `Moon` i `Flashlight`. Okno debug (Light / Lights) w grupie
       `Flashlight (spot)` ma po suwaku `Beam range` trzy nowe suwaki: `Hand right`, `Hand
       down` i `Converge at`
-- [ ] zakładka `Flashlight`, wartości startowe: `Map: 1024 x 1024, GL_DEPTH_COMPONENT24`,
+- [ ] zakładka `Flashlight`, wartości startowe: `Map: 1024 x 1024, GL_DEPTH_COMPONENT24`, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `Covers 13.6 x 13.6 m at 16.0 m`, `One texel: 0.08 cm per metre away`. Te liczby są
       policzone, nie odczytane: zapisać, jeśli panel pokazuje co innego
 
 Obraz bez zmian i położenie plamy:
 
-- [ ] **obraz księżyca bez zmian.** Zgasić latarkę (F): scena ma wyglądać jak po części 4
+- [ ] **obraz księżyca bez zmian.** Zgasić latarkę (F): scena ma wyglądać jak po części 4 [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       (cienie księżyca w tych samych miejscach, ten sam kontrast). Zakładka `Moon` działa
       jak dotąd
 - [ ] zapalić latarkę, stanąć twarzą do ściany 4 m dalej: plama jest w środku ekranu
@@ -4572,7 +4618,7 @@ Cienie latarki:
 - [ ] w zakładce `Flashlight` odznaczyć `Shadows`: latarka znów świeci przez wszystko, cienie
       latarki znikają, cienie księżyca zostają. Linia faktów pokazuje `Map: not drawn`, a w
       miejscu obrazu stoi `(not drawn)`. Zaznaczyć z powrotem
-- [ ] `Strength` zakładki `Flashlight` na 0, 0,5 i 1: cienie latarki niewidoczne, o połowę
+- [ ] `Strength` zakładki `Flashlight` na 0, 0,5 i 1: cienie latarki niewidoczne, o połowę [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       słabsze, pełne. Cienie księżyca bez zmian
 - [ ] **dwa cienie naraz.** Stanąć tam, gdzie cień księżyca i cień latarki nakładają się:
       fragment w obu traci oba udziały, ale zachowuje światło otoczenia i kryształy. Nic nie
@@ -4609,11 +4655,11 @@ Kamera i ruch:
 - [ ] **migotanie krawędzi.** Iść, obracać się i patrzeć na krawędź cienia latarki na ścianie:
       zapisać, czy krawędź pływa albo migocze (mapa idzie za ręką). Powtórzyć z `Kernel`
       `7 x 7`
-- [ ] latarka przy niskiej baterii (panel Gameplay, `Battery` poniżej progu): światło migocze,
+- [ ] latarka przy niskiej baterii (okno debug (Gameplay), `Battery` poniżej progu): światło migocze, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       a przebieg cieni dostaje ustawienia klatki (nie ustawienia z panelu), więc cień ma iść
       za światłem. Przy pustej baterii latarka gaśnie, a zakładka `Flashlight` pokazuje
       `(not drawn)`
-- [ ] klawisz F: zakładka `Flashlight` przełącza się między obrazem a `(not drawn)`, a po
+- [ ] klawisz F: zakładka `Flashlight` przełącza się między obrazem a `(not drawn)`, a po [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       ponownym włączeniu wraca bez błędów w konsoli
 
 Pozycja przy ścianie:
@@ -4621,11 +4667,11 @@ Pozycja przy ścianie:
 - [ ] stanąć bokiem do ściany tak blisko, jak pozwalają kolizje, `Hand right` 0,20, potem 0,25
       (koniec zakresu): ściana obok nie znika i nie jest odcięta (płaszczyzna bliska 0,05
       m). Obrócić się dookoła w miejscu: ręka zawsze zostaje wewnątrz ciała
-- [ ] **noclip (klawisz N)**, lot w ścianę tak, żeby światło znalazło się wewnątrz niej: nie ma
+- [ ] **noclip (klawisz N)**, lot w ścianę tak, żeby światło znalazło się wewnątrz niej: nie ma [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       awarii ani NaN w obrazie. Zapisać, co widać (zakładka `Flashlight` i scena)
 - [ ] patrząc w dół (`Hand down` 0,25): latarka jest pod okiem, a nie za nim
 
-Zakładka `Flashlight` panelu Shadows:
+Zakładka `Flashlight` okna debug (Light / Shadows):
 
 - [ ] obraz po prawej (`Distance seen from the flashlight`): szary, nie czerwony i nie
       cały biały. Bliskie powierzchnie ciemne, dalekie jasne, puste miejsca (niebo) białe
@@ -4636,23 +4682,23 @@ Zakładka `Flashlight` panelu Shadows:
       `[error]`
 - [ ] podpowiedź obrazu zaczyna się od `The shadow map of the flashlight: black is at the
       hand`
-- [ ] przełączanie zakładek `Flashlight` i `Moon`: obraz mapy wraca po jednej klatce. Zwinięty
-      panel Shadows: żadna z map nie jest rysowana do podglądu
-- [ ] układ: panel Shadows po zmianie ma dwie zakładki i nadal mieści osiem kontrolek, trzy
-      linie faktów i obraz bez przewijania. Grupa `Flashlight (spot)` w panelu Lights jest
+- [ ] przełączanie zakładek `Flashlight` i `Moon`: obraz mapy wraca po jednej klatce. Zwinięty [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
+      okno debug (Light / Shadows): żadna z map nie jest rysowana do podglądu
+- [ ] układ: okno debug (Light / Shadows) po zmianie ma dwie zakładki i nadal mieści osiem kontrolek, trzy
+      linie faktów i obraz bez przewijania. Grupa `Flashlight (spot)` w oknie debug (Light / Lights) jest
       dłuższa o trzy suwaki: sprawdzić, czy panel mieści się w oknie 1280 x 720
 
 Tryby i przeładowanie:
 
-- [ ] panel Renderer, lista `Lighting`: `Blinn-Phong` i `Phong` z cieniami latarki w tych samych
+- [ ] okno debug (Render / Scene), lista `Lighting`: `Blinn-Phong` i `Phong` z cieniami latarki w tych samych
       miejscach. **`Gouraud`**: cienie latarki w tych samych miejscach i z ostrymi krawędziami
       (udział latarki jest liczony na wierzchołek, test cienia na fragment). Ten tryb nie był
       rysowany podczas zgłoszonego startu. `Unlit`: żadnych cieni
-- [ ] panel Shaders, `Reload shaders`: jedenaście linii `OK`, cienie latarki zostają. Odznaczyć
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders), `Reload shaders`: jedenaście linii `OK`, cienie latarki zostają. Odznaczyć
       oba `Shadows` (księżyc i latarka) i przeładować: scena nadal się rysuje, w buildzie
       Debug żadnej linii `GL_INVALID_OPERATION` (dwa samplery cieni na jednostkach 3 i 4 oraz
       sampler tekstury na 0 i 1). Przeładowanie nie było w zgłoszonym starcie
-- [ ] zakładka `Moon`: jej obraz i fakty bez zmian względem listy 20.2 (`Map: 2048 x 2048`,
+- [ ] zakładka `Moon`: jej obraz i fakty bez zmian względem listy 20.2 (`Map: 2048 x 2048`, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       `Covers 64.8 x 54.1 m, 47.0 m deep`)
 
 Na koniec:
@@ -4670,7 +4716,7 @@ Na koniec:
 ## 22. Lista kontrolna M7, część 6: minimapa
 
 Szósta, ostatnia część kamienia milowego M7 daje grze minimapę: kwadratową mapę labiryntu
-w prawym dolnym rogu okna, z północą u góry, która pokazuje **tylko korytarze, które gracz
+w prawym dolnym rogu okna (od 2026-10-06 domyślnie w lewym dolnym: sekcja 27), z północą u góry, która pokazuje **tylko korytarze, które gracz
 odkrył**. Dwa przebiegi po przebiegu składającym (`NightMazeApp::drawMinimap`): pierwszy
 rysuje schemat z danych labiryntu (podłogi odkrytych komórek, ściany, brama, kryształy,
 strzałkę gracza) do własnego framebuffera `GL_RGBA8` bez głębi, o boku równym kwadratowi na
@@ -4793,7 +4839,7 @@ Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.12):
 
 Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela". **Nie zamykają żadnego punktu listy właściciela** (sekcja 22.2).
 
-- widziane na zrzucie ekranu przez agenta: mapa stoi w prawym dolnym rogu, jest kwadratowa (202 piksele), ciemna z jasnymi ścianami
+- widziane na zrzucie ekranu przez agenta: mapa stoi w prawym dolnym rogu (wtedy domyślny róg, od 2026-10-06 jest lewy dolny), jest kwadratowa (202 piksele), ciemna z jasnymi ścianami
 - widziane na zrzucie ekranu przez agenta: północ jest u góry, strzałka gracza się obraca (po obrocie do `Yaw` 270 wskazuje w lewo)
 - widziane na zrzucie ekranu przez agenta: na starcie widać komórkę startu i korytarze od niej; korytarz jest odkryty do pierwszej ściany i nie dalej
 - widziane na zrzucie ekranu przez agenta: turkusowe romby kryształów w odkrytych komórkach; start niebieski, wyjście zielone, brama pomarańczowa (z `Reveal all`)
@@ -4811,6 +4857,8 @@ Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie p
 
 ### 22.2. Otwarte: test ręczny na około trzydzieści minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Punkty, które agent widział na zrzutach (lista "Widziane na zrzutach ekranu przez agenta" w sekcji 22.1), zostają `[ ]`: oglądanie przez agenta nie zastępuje testu właściciela. Doszedł jeden punkt po poprawce z 2026-10-06:
 
 - [ ] **ramka minimapy.** Przy starcie rundy mapa ma cienką, wyciszoną niebiesko-szarą linię po całym obwodzie (1 piksel przy 720 pikselach wysokości framebuffera okna, 2 przy 1440), która pokazuje, gdzie mapa się kończy, nie zasłania pierwszych komórek i nie wygląda jak ściana labiryntu
@@ -4827,15 +4875,15 @@ Przygotowanie:
       `minimap_overlay.frag` ani o niekompletnym framebufferze. W buildzie Debug żadnej linii
       `GL_...`
 - [ ] **schować panele** (klawisz akcentu, `~`) przed oglądaniem mapy: w domyślnym układzie
-      panel Assets stoi w prawej kolumnie do dołu okna i przykrywa prawy dolny róg. Panele
+      okno debug (Diagnostics / Assets) stoi w prawej kolumnie do dołu okna i przykrywa prawy dolny róg. Panele
       wracają tym samym klawiszem
-- [ ] panel Shaders: trzynaście linii `OK`, dwie ostatnie to `minimap.vert + minimap.frag` i
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders): trzynaście linii `OK`, dwie ostatnie to `minimap.vert + minimap.frag` i
       `composite.vert + minimap_overlay.frag`. Zapisać, czy panel się przewija (z rachunku
       tak)
 
 Wygląd i orientacja mapy:
 
-- [ ] mapa stoi w prawym dolnym rogu, jest kwadratem, ma ciemne tło i jasne ściany. Zapisać
+- [ ] mapa stoi w lewym dolnym rogu (od 2026-10-06 domyślny róg, wcześniej prawy dolny), jest kwadratem, ma ciemne tło i jasne ściany. Zapisać
       wygląd kolorów i czytelność: **tego nikt jeszcze nie widział**
 - [ ] **północ u góry.** Ustawić się twarzą na północ (strzałka na mapie wskazuje w górę), potem
       obracać mysz: strzałka obraca się razem z kamerą, mapa stoi w miejscu. Twarzą na wschód
@@ -4866,15 +4914,15 @@ Odkrywanie:
 - [ ] **noclip (klawisz N).** W locie nad labiryntem odkrywane są komórki pod graczem, a
       strzałka jest na mapie w odpowiednim miejscu. Poza labiryntem strzałka może być ucięta
       przez krawędź obrazu mapy
-- [ ] **nowy labirynt i restart.** `Regenerate` w panelu Maze i klawisz R zerują odkrycie:
+- [ ] **nowy labirynt i restart.** `Regenerate` w oknie debug (World / Maze) i klawisz R zerują odkrycie:
       mapa znów pokazuje tylko komórkę startu i korytarze z niej. Nowy labirynt ma inny
       kształt mapy
-- [ ] **zmiana skali wysokości terenu** (panel Terrain): odkrycie **zostaje** (to nie jest
+- [ ] **zmiana skali wysokości terenu** (okno debug (World / Terrain and grass / Terrain)): odkrycie **zostaje** (to nie jest
       nowa runda)
 
 Położenie i rozmiar:
 
-- [ ] **położenie względem HUD.** HUD stoi na górze pośrodku. Mapa w prawym dolnym rogu nie
+- [ ] **położenie względem HUD.** HUD stoi na górze pośrodku. Mapa w lewym dolnym rogu (od 2026-10-06 domyślny róg) nie
       zasłania go przy 720p i przy 1440p. Zapisać, czy przy `Top right` mapa i HUD się
       spotykają
 - [ ] rozdzielczość 1280 x 720: mapa ma mieć 202 piksele boku i margines 14 pikseli (z rachunku).
@@ -4883,14 +4931,14 @@ Położenie i rozmiar:
       zajmuje ten sam ułamek wysokości okna co przy 720p
 - [ ] kopia piksel w piksel: obraz mapy jest ostry, bez rozmycia ani ząbków na krawędziach
       ścian (zapisać, czy tak jest)
-- [ ] labirynt 40 x 40 (panel Maze, `Width` i `Height` na 40, `Regenerate`): zapisać
+- [ ] labirynt 40 x 40 (okno debug (World / Maze), `Width` i `Height` na 40, `Regenerate`): zapisać
       czytelność. Z rachunku komórka ma około 5 pikseli, a ściana, romb kryształu i strzałka
       mają minima w pikselach. Czy da się z mapy czytać? Czy strzałka jest widoczna?
 
-Zakładka `Minimap` panelu Framebuffers:
+Zakładka `Minimap` okna debug (Gameplay / Minimap):
 
-- [ ] panel Framebuffers ma trzy zakładki: `Tone and bloom`, `Fog and vignette`, `Minimap`
-- [ ] zakładka `Minimap`: **siedem wierszy** lewej kolumny (pole `Minimap`, pole `Reveal all`,
+- [ ] dawny panel Framebuffers miał trzy zakładki (`Tone and bloom`, `Fog and vignette`, `Minimap`). Dziś te kontrolki stoją w kategorii Post process (karty Tone mapping, Bloom, Fog, Vignette, Previews, bez zakładek) i w kategorii Gameplay (karta Minimap)
+- [ ] zakładka `Minimap`: **siedem wierszy** lewej kolumny (pole `Minimap`, pole `Reveal all`, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       suwaki `Size` i `Margin`, lista `Corner`, suwak `Opacity` i linia `Framebuffer:`) i
       obraz po prawej. **Czy panel się przewija** (wysokość 344 nie została zmieniona) i czy
       obraz mieści się bez przewijania. Zapisać rozmiar obrazu
@@ -4906,14 +4954,14 @@ Zakładka `Minimap` panelu Framebuffers:
       bok (72 i 432 piksele przy 720p), mapa zostaje ostra
 - [ ] `Margin` na 0 i na 0,100: odstęp od krawędzi okna zmienia się, mapa nigdy nie wychodzi
       poza okno
-- [ ] `Corner`: wszystkie cztery rogi. Mapa stoi w wybranym rogu, a przy górnych rogach
+- [ ] `Corner`: wszystkie cztery rogi. Mapa stoi w wybranym rogu, a przy górnych rogach [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       zapisać, czy HUD ją nachodzi
 - [ ] `Opacity` na 1,00 i na 0,10: przy 1,00 mapa zakrywa scenę całkowicie, przy 0,10 scena
       jest prawie w całości widoczna. Zapisać wygląd przy 0,85 (wartość startowa)
 
 Okno, shadery, tryby:
 
-- [ ] **zmiana rozmiaru okna.** Przeciągnąć krawędź: mapa zostaje w prawym dolnym rogu, jej
+- [ ] **zmiana rozmiaru okna.** Przeciągnąć krawędź: mapa zostaje w lewym dolnym rogu (od 2026-10-06 domyślny róg), jej
       rozmiar idzie za wysokością, linia `Framebuffer:` się zmienia, w buildzie Debug żadnej
       linii `GL_...` i żadnego `is not complete`. **Zminimalizować** okno (framebuffer
       0 x 0) i przywrócić: bez awarii, mapa wraca
@@ -4924,7 +4972,7 @@ Okno, shadery, tryby:
       `minimap.vert + minimap.frag` pokazuje błąd, a mapa nie rysuje się (kod
       `MinimapRenderer::drawMap` zwraca `false` dla nieprawidłowego programu), ale program
       nie ulega awarii. Przywrócić plik i przeładować
-- [ ] **oba widoki diagnostyczne** (lista `View mode` w panelu Renderer): mapa jest widoczna
+- [ ] **oba widoki diagnostyczne** (lista `View mode` w oknie debug (Render / Scene)): mapa jest widoczna
       w obu, bez zmiany kolorów (jest po przebiegu składającym)
 - [ ] **mgła i bloom nie ruszają mapy.** Zwiększyć `Density` mgły i `Intensity` bloomu: kolory
       mapy się nie zmieniają
@@ -5087,6 +5135,8 @@ Dowody tych poprawek, osobno:
 
 ### 23.2. Otwarte: test ręczny na około czterdzieści minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
 nie z klikania ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
 `src/debug/panels/EnvironmentPanel.cpp`. Ustawień efektu program nigdzie nie zapisuje, więc
@@ -5097,8 +5147,8 @@ Przygotowanie:
 - [ ] usunąć stary plik `imgui.ini`, uruchomić grę z terminala. Oczekiwane w konsoli: żadnej
       linii `[error]`, w szczególności o `reflect.vert`, `reflect.frag` ani o niekompletnym
       framebufferze. W buildzie Debug żadnej linii `GL_...`
-- [ ] panel Shaders ma czternaście linii, ostatnia dla programu `reflect`, z `OK`
-- [ ] panel **Environment** jest trzynasty, zwinięty w piątym rzędzie pasków tytułowych pod panelem
+- [ ] okno debug (Diagnostics / Frame and shaders / Shaders) ma czternaście linii, ostatnia dla programu `reflect`, z `OK`
+- [ ] panel **Environment** jest trzynasty, zwinięty w piątym rzędzie pasków tytułowych pod panelem [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       Shadows, a pasek HUD stoi (przy widocznych panelach) o jeden rząd niżej niż przed tą częścią. Po rozwinięciu panel ma dziewięć kontrolek w dwóch grupach (`Crystals`, `Puddles`), od poprawek z 2026-10-06 **w dwóch kolumnach**, i linię `Puddles: 13` pod `Fresnel`: wszystkie bez przewijania (w wersji z `9a33f18` dwie ostatnie linie były schowane). Żaden panel nie jest zasłonięty (zapisać, jeśli któryś jest)
 - [ ] wartości startowe z tabeli powyżej
 
@@ -5133,15 +5183,15 @@ Kałuże:
       jednym korytarzu
 - [ ] **kałuża nie dotyka ściany ani słupka**, nie leży w komórce startu, wyjścia ani pod
       kryształem
-- [ ] **księżyc w kałuży.** Panel Camera, `Yaw` 205 i `Pitch` -50 (sprawdzić znak i zakres): kałuża około 1,4 m przed graczem powinna pokazywać tarczę księżyca. Zapisać, czy tak jest (agent widział tarczę i gwiazdy w kałuży przy tych ustawieniach, w wersji z `9a33f18`)
+- [ ] **księżyc w kałuży.** Okno debug (Player / View), `Yaw` 205 i `Pitch` -50 (sprawdzić znak i zakres): kałuża około 1,4 m przed graczem powinna pokazywać tarczę księżyca. Zapisać, czy tak jest (agent widział tarczę i gwiazdy w kałuży przy tych ustawieniach, w wersji z `9a33f18`)
 - [ ] **Fresnel.** Odznaczyć `Fresnel`: dalekie kałuże słabną względem bliskich. Zaznaczyć: dalekie
       mocniej odbijają
 - [ ] **prawdziwa woda.** `Reflectivity` na 0,02 przy zaznaczonym `Fresnel`: kałuża w następnej
       komórce prawie niewidoczna. Zapisać, w jakiej odległości zaczyna coś odbijać. Wrócić do 0,50
 - [ ] **kałuża w cieniu.** Stanąć tam, gdzie cień księżyca albo latarki pada na kałużę: odbłysk
       znika, odbite niebo nie ciemnieje
-- [ ] **odległe kałuże we mgle.** Zapisać, czy dalekie kałuże, w których Fresnel odbija najwięcej,
-      giną razem z odbiciem w mgle. (Panel Framebuffers, zakładka `Fog and vignette`)
+- [ ] **odległe kałuże we mgle.** Zapisać, czy dalekie kałuże, w których Fresnel odbija najwięcej, [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
+      giną razem z odbiciem w mgle. (Okno debug (Post process), zakładka `Fog and vignette`)
 - [ ] **kępka trawy w kałuży.** Przejrzeć kałuże przy ścianach: zapisać, czy źdźbła wystają z wody
 - [ ] odznaczyć `Puddles`: kałuże znikają, kryształy nadal pokazują niebo. Zaznaczyć. Linia
       `Puddles: 13` nie zmienia się przy odznaczeniu pola
@@ -5151,12 +5201,12 @@ Udział i ponowne rozmieszczenie:
 - [ ] `Share of cells` na 0: zero kałuż, linia `Puddles: 0`. Na 0,50: `Puddles: 43` (policzone).
       Powolne przeciągnięcie z 0,15 w górę dodaje kałuże, **żadna z istniejących nie zmienia
       miejsca ani rozmiaru**. Wrócić do 0,15
-- [ ] nowy labirynt (panel Maze, `Regenerate`): kałuże są w innych komórkach, `Puddles: N` zgadza
+- [ ] nowy labirynt (okno debug (World / Maze), `Regenerate`): kałuże są w innych komórkach, `Puddles: N` zgadza
       się z `lround(wolne komórki * 0,15)`. Ta sama wartość ziarna daje te same kałuże
 
 Teren i woda:
 
-- [ ] **skala wysokości.** Panel Terrain, `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z gruntem, nie przeskakują do innych komórek. **Żadna kałuża nie jest obcięta prostą cięciwą ani nie wisi nad niższym gruntem**, także przy 2,5, i nic nie wystaje spod wody. Zapisać, czy brzeg wygląda jak brzeg wody (agent widział 13 kałuż z góry całych przy 1,0 i 2,5, nie z wysokości chodzenia przy 2,5)
+- [ ] **skala wysokości.** Okno debug (World / Terrain and grass / Terrain), `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z gruntem, nie przeskakują do innych komórek. **Żadna kałuża nie jest obcięta prostą cięciwą ani nie wisi nad niższym gruntem**, także przy 2,5, i nic nie wystaje spod wody. Zapisać, czy brzeg wygląda jak brzeg wody (agent widział 13 kałuż z góry całych przy 1,0 i 2,5, nie z wysokości chodzenia przy 2,5)
 - [ ] **brzeg i migotanie.** Na styku kałuży i gruntu: zapisać, czy brzeg migocze i czy z bliska widać fasetki warstwy (warstwa 8 mm nad gruntem, płaska między wierzchołkami)
 - [ ] **miękki brzeg i przezroczysty środek.** Patrząc z góry (noclip, klawisz N, w dół): brzeg kałuży zanika bez widocznej linii, a przez środek prześwituje grunt. W widoku `UVs as colour` ta sama kałuża jest pełną 32-kątną tarczą (program `textured` zapisuje alfę 1)
 - [ ] **wygląd z wysokości chodzenia.** W 2, 4 i 8 m, z latarką i bez, w świetle księżyca i w cieniu: zapisać, w jakiej odległości kałuża przestaje być widoczna. Wersja po poprawkach według agenta: w 2 m plama z kamykami, w 4 m mała niebieskawa plama z błyskiem, w 8 m nie do odróżnienia; bez latarki w cieniu tylko błysk gwiazdy. Zapisać, czy właściciel uważa to za wystarczające
@@ -5171,26 +5221,26 @@ Tryby oświetlenia i widoki (tu nikt jeszcze nic nie uruchomił):
       w Phongu (światło na fragment). Zapisać, że przełączenie nie zmienia wyglądu kryształów
 - [ ] **Unlit.** `Unlit`: kryształy i kałuże pokazane z pełną jasnością, niebo nadal domieszane.
       Zapisać wygląd
-- [ ] **widoki diagnostyczne.** Panel Assets, `View mode`: `Normals as colour` i `UVs as colour`:
+- [ ] **widoki diagnostyczne.** Okno debug (Render / Textures and normals), `View mode`: `Normals as colour` i `UVs as colour`:
       kryształy są rysowane jak ściany (kolor z danych), kałuże też (kolor normalnej `(0,5, 1, 0,5)`
       albo współrzędnej tekstury), a obraz nie ma niczego z nieba na kryształach. Wrócić do `Textured`
-- [ ] **niebo wyłączone.** Panel Renderer, odznaczyć `Skybox`: kryształ i kałuża pokazują kolor
+- [ ] **niebo wyłączone.** Okno debug (Render / Scene), odznaczyć `Skybox`: kryształ i kałuża pokazują kolor
       czyszczenia w każdym kierunku (nie czerń). Zaznaczyć z powrotem
 - [ ] **efekt wyłączony w widoku diagnostycznym.** Odznaczyć `Environment mapping` w widoku
       `Normals as colour`: kałuże znikają
 
 Shader na żywo:
 
-- [ ] **`Reload shaders`.** Przycisk w panelu Shaders: czternaście linii z `OK`. Zmienić w `reflect.frag`
+- [ ] **`Reload shaders`.** Przycisk w oknie debug (Diagnostics / Frame and shaders / Shaders): czternaście linii z `OK`. Zmienić w `reflect.frag`
       wzór koloru, `copy_assets`, `Reload shaders`: obraz kryształów się zmienia bez restartu.
       Wprowadzić celowy błąd składni: linia `reflect` pokazuje błąd, kryształy wracają do programu
       ścian (a kałuże nie są rysowane w widoku `Textured`). Wycofać zmianę
 
 Okno i granice:
 
-- [ ] zmiana rozmiaru okna do bardzo małego i minimalizacja: bez `GL_...` w konsoli i bez zmiany
+- [ ] zmiana rozmiaru okna do bardzo małego i minimalizacja: bez `GL_...` w konsoli i bez zmiany [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
       obrazu po powrocie. Pasek HUD pod pięcioma rzędami pasków tytułowych (przy widocznych panelach)
-- [ ] **HUD przy schowanych panelach** (klawisz tyldy): pasek stoi przy górnej krawędzi okna, a nie nad środkiem obrazu, i wraca pod pięć rzędów pasków po przywróceniu paneli (decyzja właściciela z 2026-10-06; agent widział to na zrzutach). Zapisać, czy przeskok przy klawiszu przeszkadza
+- [ ] **HUD przy schowanych panelach** (klawisz tyldy): pasek stoi przy górnej krawędzi okna, a nie nad środkiem obrazu, i wraca pod pięć rzędów pasków po przywróceniu paneli (decyzja właściciela z 2026-10-06; agent widział to na zrzutach). Zapisać, czy przeskok przy klawiszu przeszkadza [od 2026-10-06 bez odpowiednika w oknie debug, patrz sekcja 27.3]
 - [ ] **noclip (klawisz N)**: lot nad kałużami i kryształami z góry. Fresnel przy patrzeniu w dół:
       kałuża pokazuje głównie jasną szaroniebieską wodę z gruntem przez nią (`F` około 0,5 przy `Reflectivity` 0,5, krycie około 0,85), a nie lustro
 - [ ] **brak ostrzeżeń kompilatora** przy buildzie Debug i Release po tej części
@@ -5274,6 +5324,8 @@ który kończył tylko otwartą ścianę, stoi sam.
 
 ### 24.2. Otwarte: test ręczny na około trzydzieści pięć minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów. Pierwsze
 grupy powtarzają to, co agent widział na zrzutach: to ma zobaczyć właściciel.
 
@@ -5281,9 +5333,9 @@ Przygotowanie:
 
 - [ ] usunąć stary `imgui.ini`, uruchomić grę z terminala: żadnej linii `[error]`, w buildzie
       Debug żadnej linii `GL_...`, trzy nowe modele i nowe tekstury wypisane jako wczytane
-- [ ] panel Maze ma dwa suwaki `Levers` i `Notes` (od 0 do 16) i linię "Levers: N, notes: M" z
+- [ ] okno debug (World / Maze) ma dwa suwaki `Levers` i `Notes` (od 0 do 16) i linię "Levers: N, notes: M" z
       liczbami, które labirynt naprawdę dostał (domyślnie żądane 2 i 3)
-- [ ] panel Gameplay ma linie "Levers: N pulled of M" i "Note card: open/closed" oraz przycisk
+- [ ] okno debug (Gameplay) ma linie "Levers: N pulled of M" i "Note card: open/closed" oraz przycisk
       `Pull all levers`
 
 Dźwignia i kartka (to, co widział agent):
@@ -5307,13 +5359,13 @@ Dźwignia i kartka (to, co widział agent):
 - [ ] klawisz R przywraca wszystkie ściany: minimapa wraca do stanu początkowego, ściana znowu
       blokuje, dźwignie są znowu do pociągnięcia
 
-Zamrożony promień i panel Collision (to, co widział agent):
+Zamrożony promień i okno debug (Diagnostics / Collision and picking) (to, co widział agent):
 
 - [ ] pole `Draw pick boxes and ray` rysuje czerwone pudełka dźwigni, białe pudełka kartek i
       promień, a trafione pudełko na zielono
 - [ ] pole `Freeze the drawn ray` zatrzymuje rysowany promień (po kroku w bok widać go z boku jako
       zieloną linię), a restart rundy go czyści
-- [ ] panel Collision pokazuje "Ray through", początek, kierunek i linię w rodzaju
+- [ ] okno debug (Diagnostics / Collision and picking) pokazuje "Ray through", początek, kierunek i linię w rodzaju
       "Hit: lever 0 at 0.72 m", a liczba pudełek ścian maleje po pociągnięciu dźwigni
 - [ ] kliknięcie wolnym kursorem w dźwignię ją pociąga. Kliknięcie wolnym kursorem gdzie indziej
       w scenie przechwytuje kursor. Przy otwartej karcie kliknięcie ją zamyka i nie przechwytuje
@@ -5345,7 +5397,7 @@ Granice i szczególne przypadki:
 - [ ] podpowiedzi kartek o kryształach po zebraniu kryształów: tekst liczy tylko kryształy, które
       zostały, a po zebraniu wszystkich mówi "No crystal is left to find."
 - [ ] minimapa: małe kwadraty dźwigni (pociągnięta ciemniejsza) i kartek w odkrytych komórkach
-- [ ] plan w panelu Maze: kwadraty dźwigni i kartek, otwarta ściana narysowana przygaszona
+- [ ] plan w oknie debug (World / Maze): kwadraty dźwigni i kartek, otwarta ściana narysowana przygaszona
 - [ ] labirynt 40 x 40: pociągnięcie dźwigni, minimapa i plan działają, brak spadku płynności
 - [ ] brak ostrzeżeń kompilatora przy buildzie Debug i Release po tej części
 
@@ -5423,13 +5475,15 @@ zatrzymują się w połowie opadania na czas trybu, a w pierwszej zmontowanej p�
 
 ### 25.2. Otwarte: test ręczny na około trzydzieści minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów.
 
 Przygotowanie:
 
 - [ ] usunąć stary `imgui.ini`, uruchomić grę z terminala bez przełączników: gra startuje jak
       zawsze (HUD, minimapa i panele widoczne), żadnej linii `[error]`
-- [ ] panel Camera ma na dole grupę `Menu camera`: pole `Menu camera (F2)`, listę `Shot`, suwaki
+- [ ] okno debug (Player / Menu camera) ma na dole grupę `Menu camera`: pole `Menu camera (F2)`, listę `Shot`, suwaki
       `Speed` (domyślnie 0,70 m/s) i `Eye height` (domyślnie 1,50 m), pole `Time offset` (0,0 s) i
       linię `One loop: N s`
 
@@ -5437,7 +5491,7 @@ F2 w trakcie rundy:
 
 - [ ] F2: HUD, minimapa i panele znikają, kamera sama jedzie po korytarzach, a w logu jest linia
       `Menu camera on, one loop takes N s`
-- [ ] runda stoi: licznik czasu i bateria (sprawdzić w panelu Gameplay po naciśnięciu tyldy) nie
+- [ ] runda stoi: licznik czasu i bateria (sprawdzić w oknie debug (Gameplay) po naciśnięciu tyldy) nie
       zmieniają się, a kryształy dalej się kołyszą i ich światła pulsują
 - [ ] F2 jeszcze raz: HUD, minimapa i panele wracają dokładnie tak, jak były (także gdy przed F2
       panele były schowane tyldą: wtedy po F2 zostają schowane)
@@ -5479,7 +5533,7 @@ Ujęcia i ustawienia:
 - [ ] suwak `Eye height` od 0,3 do 2,8 m: spacer zmienia wysokość, przelot się nie zmienia
 - [ ] pole `Time offset` (także ujemne i duże): ujęcie startuje w innym miejscu, bez przeskoku po
       zawinięciu
-- [ ] pętla po pełnym obiegu: w panelu Maze ustawić mały labirynt (na przykład 3 na 3) i
+- [ ] pętla po pełnym obiegu: w oknie debug (World / Maze) ustawić mały labirynt (na przykład 3 na 3) i
       `Regenerate`, odczekać `One loop` sekund i sprawdzić, że w miejscu zamknięcia nie ma
       skoku obrazu ani obrotu
 - [ ] ciasne zakręty i miejsca zawracania: zapisać, czy kamera nie przechodzi przez słupek ani ścianę
@@ -5489,14 +5543,14 @@ Ujęcia i ustawienia:
 
 Granice i szczególne przypadki:
 
-- [ ] labirynt 1 na 1 (panel Maze, `Regenerate`): spacer to małe koło w środku komórki, bez błędu
+- [ ] labirynt 1 na 1 (okno debug (World / Maze), `Regenerate`): spacer to małe koło w środku komórki, bez błędu
       i bez `NaN`, przelot działa
 - [ ] `Regenerate` w trakcie trybu: ścieżka dopasowuje się do nowego labiryntu, kamera nie
       przechodzi przez ściany
 - [ ] zmiana skali wysokości terenu w trakcie trybu: kamera idzie za gruntem
 - [ ] zmiana rozmiaru okna i zminimalizowanie okna w trakcie trybu nie psują obrazu ani nie
       wypisują błędu
-- [ ] restart rundy z panelu Gameplay w trakcie trybu: runda zaczyna się od nowa, tryb działa dalej
+- [ ] restart rundy z okna debug (Gameplay) w trakcie trybu: runda zaczyna się od nowa, tryb działa dalej
 - [ ] brama albo ściana, która opadała w chwili F2: stoi zatrzymana w trakcie trybu i dokańcza po
       wyłączeniu (znane zachowanie, zapisać)
 - [ ] brak ostrzeżeń kompilatora przy buildzie Debug i Release po tej części
@@ -5585,6 +5639,8 @@ rundzie, a karta wygranej z `Hud.cpp` jest martwym kodem.
 
 ### 26.2. Otwarte: test ręczny na około trzydzieści minut
 
+> Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
+
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów.
 
 Przygotowanie:
@@ -5643,7 +5699,184 @@ Przełączniki i błędy:
 Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Zamknięcie tej listy nie
 zamyka M9.
 
-## 27. Powiązane dokumenty
+## 27. Lista kontrolna: okno debug w miejsce trzynastu paneli
+
+2026-10-06 trzynaście osobnych paneli Dear ImGui (`src/debug/panels/*`, układanych przez `PanelLayout`) zastąpiło **jedno
+okno debug**: klasa `DebugWindow` w `src/debug/DebugWindow.*`, widżety w `src/debug/Widgets.*` i `src/debug/Icons.*`,
+siedem plików kategorii w `src/debug/categories/`, test wyszukiwania w `tests/SearchTests.cpp`. Okno ma pionowy pasek ikon z
+siedmioma kategoriami (Render, Light, Post process, World, Player, Gameplay, Diagnostics), nagłówek z polem wyszukiwania i
+przyciskiem przypięcia, zakładki w trzech kategoriach i karty z wierszami ustawień. W prawym górnym rogu stoi pasek stanu.
+Zostało wszystkich 114 kontrolek i każdy odczyt, który był w panelach. Zmieniło się też: okno debug **startuje ukryte** (pokazuje
+je `~`), pasek HUD **zawsze** stoi przy górnej krawędzi okna (nie ma już `FOLDED_ROW_COUNT` ani argumentu `panelsVisible` w
+`drawHud`), minimapa startuje w **lewym dolnym** rogu (było: prawy dolny), tekst okna ma 14 pikseli (HUD zostaje przy 16), a
+w `imgui.ini` zostaje już tylko przypięty panel. Opis kodu: [`../modules/debug-ui.md`](../modules/debug-ui.md), decyzje:
+[`../decisions/debug-window-redesign.md`](../decisions/debug-window-redesign.md), [`../decisions/hud-always-at-the-top-edge.md`](../decisions/hud-always-at-the-top-edge.md) i [`../decisions/minimap-default-corner-bottom-left.md`](../decisions/minimap-default-corner-bottom-left.md). To, że okno startuje ukryte, jest decyzją
+koordynatora pracy, a nie właściciela: czeka na jego potwierdzenie.
+
+Tej zmiany **nie zamyka** żaden test ręczny: lista w sekcji 27.2 jest otwarta, a na macOS kod nie był budowany
+([`build-macos.md`](build-macos.md)).
+
+### 27.1. Zgłoszone (2026-10-06)
+
+Środowisko: Windows. Wersji kompilatora ani sterownika dla bramki nie zapisano w tym dokumencie.
+
+Bramka (zgłoszona przez bramkę na gałęzi z oknem debug, nie powtarzałem jej przy pisaniu tej sekcji):
+
+- [x] `night_maze_tests.exe` w buildzie Debug: **526 przypadków testowych i 219214 asercji** (zgłoszone). Przed tą zmianą było 519
+      i 219195. Nowych przypadków jest 7, wszystkie w `tests/SearchTests.cpp` (`matchesSearch` i `hasSearchWords`), a asercji
+      19 więcej. Liczbę przypadków sprawdziłem na kodzie: suma makr `TEST_CASE` w `tests/*.cpp` na commicie `f6c6cd5` to 526
+      (519 + 7). Liczby asercji nie da się policzyć z plików, jest tylko zgłoszona. Żaden z tych przypadków nie dotyka okna,
+      kategorii ani widżetów: te wymagają ImGui i okna
+
+**Widziane na zrzutach ekranu przez agenta.** Poniższe punkty są zapisane jako "widziane na zrzucie ekranu przez agenta
+(2026-10-06), nie przez właściciela": agent, który napisał kod, uruchomił własny build Debug (Windows 11, skalowanie ekranu 100
+procent, NVIDIA GeForce RTX 4070 Ti SUPER, OpenGL 4.1), sterował grą skryptem z prawdziwą myszą i klawiaturą i oglądał zrzuty
+ekranu. To **nie jest** test ręczny właściciela i nie zamyka żadnego punktu z sekcji 27.2.
+
+- widziane na zrzucie ekranu przez agenta: okno 1280 x 720 z `--play`: okno debug jest ukryte na starcie, pasek HUD stoi przy
+  górnej krawędzi, minimapa w lewym dolnym rogu. Po `~` pojawia się pasek stanu w prawym górnym rogu i okno przy prawej krawędzi,
+  pod paskiem HUD, a pasek HUD się nie przesuwa
+- widziane na zrzucie ekranu przez agenta: wszystkie siedem kategorii i każda zakładka rysują się: Render, Light (zakładki
+  Lights i Shadows, z obydwoma obrazami map cieni), Post process (z czterema podglądami), World (Maze z planem, Terrain and
+  grass, Reflections), Player, Gameplay (z obrazem framebuffera minimapy), Diagnostics (Frame and shaders, Collision and
+  picking, Assets z listą modeli i podglądami tekstur)
+- widziane na zrzucie ekranu przez agenta: wyszukiwanie. `bias`: sześć wierszy w dwóch kartach cieni (wiersze `Resolution`
+  trafiają się przez tekst pomocy). `shader`: przełącznik trawy przez tekst pomocy, cała karta `Frame` przez nazwę zakładki
+  `Frame and shaders` i karta `Shaders` z listą. `fog density`: dwa wiersze. `zzz`: napis "Nothing matches. Try a shorter word.".
+  Po Escape okno wraca do swojej kategorii
+- widziane na zrzucie ekranu przez agenta: po jednej obsłużonej kontrolce z każdej kategorii, z widocznym skutkiem w obrazie
+  albo w odczycie. Render: `Skybox` wyłączony (gwiazdy znikają), `Sky brightness` na 6. Light: latarka wyłączona i włączona,
+  `Moon intensity` na 2. Post process: `Fog` wyłączona, `Exposure` na 8. World: `Wireframe` (podłoże jako linie), `Height scale`
+  na 2,5. Player: `FOV` na 120, `Noclip` (linia `Mode` mówi noclip). Gameplay: `Minimap` wyłączona i włączona, `Battery` na 0
+  (HUD pokazuje 0 procent i podpowiedź "Battery empty. Find a crystal.", latarka jest ciemna, HUD i okno się nie zasłaniają).
+  Diagnostics: `Draw collision shapes` (żółte linie). Diagnostics nie ma suwaka
+- widziane na zrzucie ekranu przez agenta: Ctrl+klik na `Yaw` zamienił pasek w pole tekstowe, wpisane "45" zostało przyjęte,
+  Tab przeszedł do `Pitch`, wpisane tam "999" zostało przycięte do 89.0
+- widziane na zrzucie ekranu przez agenta: przypięcie. Kategoria Light jako mały panel przy prawej krawędzi. Kliknięcie w scenę
+  przechwyciło kursor (kropka celownika, ukryty kursor), a panel został na ekranie. `~` schował panel i pokazał go ponownie.
+  Strzałka "następna" przeszła do Post process. Przycisk rozwinięcia przywrócił okno
+- widziane na zrzucie ekranu przez agenta: menu główne (start bez `--play`): okno ukryte, po `~` leży nad prawą częścią karty
+  menu, a pasek stanu mówi "Main menu". Pauza (Escape w rundzie): to samo, pasek mówi "Paused"
+- widziane na zrzucie ekranu przez agenta: okno 1100 x 700: okno ma 550 pikseli szerokości, a karty stoją w jednej kolumnie
+  (oglądane: Light, Post process, World, Gameplay, Diagnostics)
+
+**Nie widziane na ekranie** (nikt tego nie oglądał): macOS, skalowanie ekranu inne niż 100 procent, przypięty panel zadokowany
+albo ze zmienionym rozmiarem, okno wyboru koloru z wiersza koloru, otwarta lista (`Combo`), nieudane przeładowanie shadera w
+nowej liście, karta `Failed to load`, ekran wyniku rundy z oknem debug, wyszarzony wiersz `Anisotropy` (ten sterownik ma
+anizotropię), build Release na ekranie, pad. Suwak przeciągnięto w lewo tylko raz (`Battery`).
+
+Znane ograniczenia (z kodu, nie ze zrzutów): brak okienek przy ikonie zębatki (każda kontrolka jest w wierszu), obydwa podglądy
+map cieni są żądane naraz (zakładka Shadows pokazuje księżyc i latarkę obok siebie, a stary panel miał zakładkę na światło),
+wartość suwaka wpisuje się Ctrl+klikiem, nie ma pogrubionej czcionki ani czcionki z ikonami (ikony rysuje `ImDrawList`), a
+`Sky brightness` przycina wpisaną wartość do zakresu od 0 do 6 (stary suwak tego nie robił). Kontrastu koloru `TEXT_FAINT_COLOR`
+na tle karty nikt nie zmierzył.
+
+### 27.2. Otwarte: test ręczny na około czterdzieści minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów.
+
+Start i pasek stanu:
+
+- [ ] usunąć stary `imgui.ini`, uruchomić grę z terminala bez przełączników: menu główne, okno debug **ukryte**, w logu brak
+      linii `[error]`
+- [ ] `~`: pokazuje okno przy prawej krawędzi i pasek stanu w prawym górnym rogu (`NIGHT MAZE`, ekran, FPS, czas klatki w ms,
+      `seed N`); drugie `~` chowa oba. Pasek stanu zmienia ekran: "Main menu", "Playing", "Paused", "Round end"
+- [ ] `--play`: pasek HUD stoi przy górnej krawędzi i **nie przeskakuje** po `~`; okno debug zaczyna się pod nim i nie zasłania
+      go przy 1280 x 720, 1920 x 1080 i przy małej baterii (dwie linie podpowiedzi)
+- [ ] minimapa stoi w **lewym dolnym** rogu (domyślnie), a okno debug po prawej jej nie zasłania; `Corner` w Gameplay / Minimap
+      przełącza wszystkie cztery rogi
+
+Układ i skala:
+
+- [ ] okno 1280 x 720: karty w dwóch kolumnach, środek obrazu wolny; zmiana rozmiaru okna gry: okno idzie za nim
+- [ ] okno 1100 x 700: okno ma 550 pikseli, karty w jednej kolumnie, etykiety nie są ucięte; bardzo małe okno: okno nie ma
+      mniej niż 160 pikseli wysokości i wystaje poniżej dolnej krawędzi (zapisać, jak to wygląda)
+- [ ] maksymalizacja i przywrócenie okna: okno debug zostaje przy prawej krawędzi, a obraz wraca
+- [ ] skalowanie ekranu 125, 150 i 200 procent: tekst, ikony, suwaki i przełączniki rosną proporcjonalnie i są ostre, pasek stanu
+      mieści się, napis `NIGHT MAZE` pod ikonami znika, gdy brakuje miejsca
+- [ ] czytelność tekstu 14 pikseli w oknie (szczególnie `TEXT_FAINT_COLOR` na kartach: ścieżka karty w wynikach wyszukiwania) i
+      16 pikseli w pasku HUD: zapisać, czy któryś jest za mały
+
+Kategorie i zakładki:
+
+- [ ] siedem ikon na pasku, podpowiedź przy każdej; nagłówek pokazuje nazwę i liczbę kontrolek (Render 8, Light 34, Post
+      process 15, World 22, Player 16, Gameplay 15, Diagnostics 4)
+- [ ] zakładki w Light, World i Diagnostics przełączają się, a po powrocie do kategorii jest wybrana ta, na której ją zostawiono
+- [ ] po jednej zmienionej kontrolce w każdej kategorii (lista z sekcji 27.1) daje skutek w obrazie albo w odczycie, także
+      w buildzie Release
+
+Widżety:
+
+- [ ] przełącznik zmienia stan po kliknięciu; suwak ma dwanaście kresek, wartość po lewej, przeciąganie w obie strony działa
+      (w lewo sprawdzono tylko na `Battery`)
+- [ ] Ctrl+klik na suwaku: pole tekstowe, wpisana wartość spoza zakresu jest przycinana; sprawdzić `Sky brightness` (wpisać 10:
+      ma zostać 6)
+- [ ] lista (`Combo`): otwarta lista czyta się, wybór zmienia wartość (na przykład `Lighting`, `Filter`)
+- [ ] wiersz koloru (`Clear colour`): okno wyboru koloru otwiera się, a zapis `#rrggbb` obok pola odpowiada wybranemu kolorowi
+- [ ] podpowiedź kartą po chwili spoczynku myszy, na etykiecie i na kontrolce; długa etykieta jest ucięta, a podpowiedź ją
+      pokazuje w całości
+- [ ] wyszarzony wiersz `Anisotropy` (tylko na sterowniku bez anizotropii: zapisać, czy taki sprzęt jest pod ręką)
+
+Wyszukiwanie:
+
+- [ ] `bias`, `shader`, `fog density`: wyniki jak w sekcji 27.1; nagłówek pokazuje "Search" i "N matches", a karty w wynikach
+      mają miejsce (na przykład `Light / Shadows`) przy prawej krawędzi
+- [ ] wartość zmieniona z wyników wyszukiwania działa (wiersze są żywe)
+- [ ] Escape w polu opróżnia je i **nie otwiera pauzy**; klawisze gry nie działają, gdy pole jest edytowane; kliknięcie ikony
+      kategorii kończy wyszukiwanie
+- [ ] `zzz`: "Nothing matches. Try a shorter word."
+
+Przypięcie:
+
+- [ ] przycisk pinezki zamienia okno na mały panel z jedną kategorią; strzałki przechodzą po kategoriach (z ostatniej na
+      pierwszą), przycisk rozwinięcia i krzyżyk w pasku tytułu przywracają okno
+- [ ] panel da się przesunąć, zmienić jego rozmiar i zadokować do krawędzi okna gry; po ponownym uruchomieniu leży tam, gdzie
+      go zostawiono (`imgui.ini`); samo okno debug niczego do `imgui.ini` nie zapisuje (sprawdzić plik)
+- [ ] przy przechwyconym kursorze panel da się czytać, ale nie reaguje na mysz; `~` chowa go i pokazuje
+
+Odczyty i ekrany:
+
+- [ ] Diagnostics: `Frame` (FPS, czas klatki, framebuffer, okno, OpenGL, GPU), `Shaders` (czternaście programów z `OK`),
+      Collision and picking, Assets: wartości zgadzają się z tym, co było w starych panelach
+- [ ] nieudane przeładowanie shadera: zepsuć plik w kopii `assets`, `Reload shaders`: program z `FAILED`, plik i tekst błędu
+      w liście, pełne ścieżki w podpowiedzi
+- [ ] zmienić nazwę tekstury w kopii `assets`: karta `Failed to load` w Diagnostics / Assets pokazuje wpis
+- [ ] okno debug nad pauzą, menu głównym i ekranem wyniku prawdziwie wygranej rundy: kliknięcie okna nie klika przycisku pod
+      spodem; F2 chowa okno i przywraca je po wyłączeniu kamery menu
+- [ ] build Release: okno, pasek stanu i HUD wyglądają jak w Debug; brak ostrzeżeń kompilatora po tej zmianie
+
+Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje.
+
+### 27.3. Mapa: stare panele i nowe miejsca
+
+Nazwy "panel X" w starszych sekcjach tego dokumentu oznaczają miejsca z tej tabeli (źródło: `Categories.hpp`, pliki w
+`src/debug/categories/` i nota autora kodu). Punkty `[x]` i opisy pomiarów zostają z nazwami z dnia pomiaru. Punkty `[ ]` mają
+nazwy zamienione na nowe miejsce, a krok, który opisuje coś, czego okno nie ma (zwijanie panelu do paska tytułu, rozwijanie
+strzałką, rzędy pasków tytułu, układ kolumn paneli, dokowanie stałego panelu, zakładki starych paneli), ma dopisek "bez
+odpowiednika w oknie debug": tylko przypięty panel da się przesuwać, zmieniać i dokować.
+
+| Stary panel | Kontrolki | Nowe miejsce (kategoria / zakładka / karta) |
+|---|---:|---|
+| Renderer | 4 | Render: karta Scene (`Lighting`, `Skybox`, `Sky brightness`, `Clear colour`). FPS, czas klatki, framebuffer, okno, OpenGL i GPU: Diagnostics / Frame and shaders / Frame |
+| Shaders | 1 | Diagnostics / Frame and shaders / Shaders: `Reload shaders` i lista czternastu programów |
+| Camera | 15 | Player: Position (`Player feet`, odczyty `Mode` i `Eye`), View (`Yaw`, `Pitch`, `FOV`, `Near plane`, `Far plane`), Movement (`Mouse sensitivity` i trzy prędkości), Menu camera (`Menu camera (F2)`, `Shot`, `Speed`, `Eye height`, `Time offset`) |
+| Gameplay | 9 | Gameplay: Round (`Restart round`, `Pull all levers`), Battery, Rules (`Crystals needed`, `Battery lifetime`, `Recharge`, `Flicker below`, `Pickup radius`) |
+| Terrain | 2 | World / Terrain and grass / Terrain: `Height scale`, `Wireframe` |
+| Grass | 4 | World / Terrain and grass / Grass: `Grass`, `Density`, `Blade height`, `Wind strength` |
+| Framebuffers | 21 | Post process: Tone mapping, Bloom, Fog, Vignette, Previews (`Depth range`, cztery obrazy). Minimapa (sześć kontrolek, trzecia zakładka starego panelu): Gameplay / Minimap |
+| Shadows | 16 | Light / Shadows: karty Moon shadows i Flashlight shadows, po osiem kontrolek, i dwie karty z obrazami map |
+| Environment | 9 | World / Reflections: karty Crystals (pięć kontrolek) i Puddles (cztery) |
+| Maze | 7 | World / Maze: karta Next maze (`Width`, `Height`, `Seed`, `Levers`, `Notes`, `Regenerate`, `Random seed`), In play i Plan |
+| Collision | 4 | Diagnostics / Collision and picking / Debug drawing (trzy pola) i Player / Position (`Noclip`) |
+| Assets | 4 | Render: karta Textures and normals (`View mode`, `Normal mapping`, `Filter`, `Anisotropy`). Listy modeli, tekstur i `Failed to load`: Diagnostics / Assets |
+| Lights | 18 | Light / Lights: karty Ambient, Moon, Flashlight, Crystal lights, Highlight |
+
+Razem 13 paneli i 114 kontrolek w siedmiu kategoriach (Render 8, Light 34, Post process 15, World 22, Player 16, Gameplay 15,
+Diagnostics 4). Liczby pochodzą z pliku `Categories.hpp` i z noty autora kodu. Mniejsze zmiany: format wartości `Mouse
+sensitivity` to `%.2f` (było `%.2f deg/unit`), `Crystals needed` to `%.2f` (było `%.2f of all`), oba pola `Cone` pokazują
+`%.1f deg`, a grupy panelu Lights (dawniej `CollapsingHeader`) są kartami, grupa księżyca nie startuje zwinięta.
+
+## 28. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)

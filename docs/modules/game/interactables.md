@@ -384,7 +384,7 @@ Od części 2 dźwignie i kartki są **polem `MazeWorld`** (`world.interactables
 
 `world.colliders` ma pudełko każdej ściany **najpierw**, w kolejności `world.walls`, a pudełka słupków po nich. Dlatego ten sam numer znajduje macierz ściany (`wallMatrices[i]`), jej pudełko (`colliders[i]`) i wpis w `leverWalls`: trzy listy są w tej samej kolejności. Z tego korzystają `roundObstacles` i `roundWallMatrices`.
 
-Liczby dźwigni i kartek są polem `MazeSettings::interactables` (typu `InteractableSettings`), więc idą tą samą drogą co rozmiar i ziarno: panel Maze edytuje je, **Regenerate** buduje labirynt z nimi (po przycięciu do `0..MAX_*` w `regenerateMaze`), a to zaczyna nową rundę. Domyślnie 2 dźwignie i 3 kartki. Ziarno dźwigni to ziarno labiryntu plus `LEVER_SEED_OFFSET` (5000011).
+Liczby dźwigni i kartek są polem `MazeSettings::interactables` (typu `InteractableSettings`), więc idą tą samą drogą co rozmiar i ziarno: zakładka World / Maze edytuje je, **Regenerate** buduje labirynt z nimi (po przycięciu do `0..MAX_*` w `regenerateMaze`), a to zaczyna nową rundę. Domyślnie 2 dźwignie i 3 kartki. Ziarno dźwigni to ziarno labiryntu plus `LEVER_SEED_OFFSET` (5000011).
 
 Test `a maze world holds the levers and notes of its seed and the wall of every lever` porównuje świat z `placeInteractables` wywołanym ręcznie i sprawdza, że numer w `leverWalls` wskazuje właśnie segment z `openedWallSegment`. `the settings of a maze world decide how many levers and notes it gets` sprawdza 0 i 0, 1 i 7 oraz domyślne wartości `MazeSettings`. `levers and notes of a world hang above its terrain, also after a rebuild` używa terenu o nachyleniu i po zmianie skali wysokości sprawdza `y` (nic nie rusza `x` i `z`).
 
@@ -423,7 +423,7 @@ Testy: `pulling a lever opens its wall once: obstacles, maze of the round, sinki
 
 `roundObstacles(world, round)` buduje listę dla gracza **i** dla promienia: pudełka z `world.colliders` bez pudełek ścian z `openedWallFlags`, a na końcu pudełko bramy, dopóki `gateBlocks` jest prawdą. Pętla korzysta z tego, że pierwsze `walls.size()` pudełek to ściany w kolejności świata. Aplikacja trzyma listę w `m_obstacles` i buduje ją od nowa tylko wtedy, gdy się zmienia: początek rundy, otwarcie bramy, **pociągnięcie dźwigni** (`interact` zwraca `true`, gdy ściana się otworzyła) i zmiana skali wysokości terenu.
 
-Dwa skutki do zapamiętania: panel Collision liczy ściany bez otwartych (`%d walls (%d opened by levers)`), a `drawColliderLines` rysuje `m_obstacles` bez pudełka bramy (bramę rysuje osobno), więc ściana otwarta dźwignią traci też swoje pudełko w widoku debugowym.
+Dwa skutki do zapamiętania: zakładka Diagnostics / Collision and picking liczy ściany bez otwartych (`%d walls (%d opened by levers)`), a `drawColliderLines` rysuje `m_obstacles` bez pudełka bramy (bramę rysuje osobno), więc ściana otwarta dźwignią traci też swoje pudełko w widoku debugowym.
 
 ### 2.18 Opadająca ściana: wspólne wzory z bramą
 
@@ -863,16 +863,16 @@ W teście pomocniczym `checkPlacement` każde rozmieszczenie jest sprawdzane pe�
 - ściana otwarta, minimapa przestaje ją rysować i pokazuje korytarz za nią, gracz przechodzi,
 - po R minimapa wraca do stanu początkowego i ściana znowu blokuje,
 - zamrożony promień jako zielona linia, pudełko trafienia na zielono,
-- panel Collision z początkiem, kierunkiem i "Hit: lever 0 at 0.72 m",
+- zakładka Diagnostics / Collision and picking z początkiem, kierunkiem i "Hit: lever 0 at 0.72 m",
 - klik wolnym kursorem na dźwigni pociągnął ją.
 
 Po przeróbce modelu dźwigni agent widział też (zrzuty z 2026-10-06, nie właściciel): dźwignię od przodu z 1 m przy włączonej latarce, w górnym położeniu i podświetloną (ciemna płyta, jasna bursztynowa gałka nad środkiem, podpowiedź na dole pośrodku); ten sam widok po E (pręt w dół, gałka poniżej krawędzi płyty z cieniem na ścianie, bez podświetlenia i podpowiedzi); widoki z boku w górnym i dolnym położeniu; wyłączoną latarkę (pociągnięta: płyta prawie czarna, gałka ciemna ochra; w górze z podświetleniem: gałka świeci bursztynem); około 2,4 m pod kątem z podświetleniem i podpowiedzią oraz około 2,9 m poza zasięgiem bez podświetlenia; drugą dźwignię; Gouraud (z podświetleniem) i Unlit; widok Normals (dźwignia jako dane, bez podświetlenia, pierścień i podpowiedź nadal są); kartkę z "E: read note" na dole, wolną od arkusza; otwartą kartę kartki bez podpowiedzi i bez nakładania się na minimapę.
 
-**Czego agent NIE widział na ekranie:** uchwyt w połowie ruchu, cień księżyca od dźwigni, Gouraud i Unlit dla kartki, widok na wprost z 2,5 m, dodatki w panelu Gameplay i przycisk "Pull all levers", inne niż domyślne liczby dźwigni i kartek, czysta rama połowicznie zatopionej ściany. Znane uwagi kosmetyczne: z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka. **Ręczny test właściciela i macOS: otwarte** ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 24.2).
+**Czego agent NIE widział na ekranie:** uchwyt w połowie ruchu, cień księżyca od dźwigni, Gouraud i Unlit dla kartki, widok na wprost z 2,5 m, dodatki w kategorii Gameplay i przycisk "Pull all levers", inne niż domyślne liczby dźwigni i kartek, czysta rama połowicznie zatopionej ściany. Znane uwagi kosmetyczne: z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka. **Ręczny test właściciela i macOS: otwarte** ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 24.2).
 
 ### 5.12 Uwagi o komentarzach w kodzie
 
-W części 1 komentarze opisywały plan w czasie teraźniejszym (opis planu zamiast stanu). W części 2 komentarze w `Interactables.hpp` zostały poprawione, żeby mówiły prawdę: `InteractableSettings` (są polem `MazeSettings`, edytuje je panel Maze, czyta `buildMazeWorld`), `Interactables` (jest polem `MazeWorld`), `InteractableState` (jest polem `Round`) i komentarz w `tests/InteractablesTests.cpp` (numer ściany znajduje `buildMazeWorld`, `MazeWorld::leverWalls`). Zostały dwie drobne rzeczy:
+W części 1 komentarze opisywały plan w czasie teraźniejszym (opis planu zamiast stanu). W części 2 komentarze w `Interactables.hpp` zostały poprawione, żeby mówiły prawdę: `InteractableSettings` (są polem `MazeSettings`, edytuje je zakładkę World / Maze, czyta `buildMazeWorld`), `Interactables` (jest polem `MazeWorld`), `InteractableState` (jest polem `Round`) i komentarz w `tests/InteractablesTests.cpp` (numer ściany znajduje `buildMazeWorld`, `MazeWorld::leverWalls`). Zostały dwie drobne rzeczy:
 
 - Komentarz do `openedWalls` w nagłówku opisuje budowę listy przeszkód przez kod rundy. Dziś robi to `roundObstacles`, ale przez `openedWallFlags`, a nie przez `openedWalls` (obserwacja: komentarz jest bliski prawdy, ale nazwa funkcji jest inna),
 - `Interaction.hpp` odsyła w nagłówku do [`../scene/picking.md`](../scene/picking.md), ale zawiera też macierze modeli, które opisuje sekcja 2.19 tego dokumentu.
@@ -895,18 +895,18 @@ Lista z części 1 ("co zostaje do podpięcia") jest **zrobiona**. Gdzie każdy 
 
 Czego nadal **nie ma**: nowych dźwigni po starcie rundy, odwracania dźwigni (pociągnięta zostaje pociągnięta do końca rundy), trawy i słupków dostosowanych do otwartego przejścia (sekcja 2.21), dźwięku i zakończonego, ręcznie sprawdzonego przez właściciela wyglądu modelu dźwigni.
 
-## 6. Panel ImGui
+## 6. Okno debugowania (dawniej panel ImGui)
 
-Dodatki w panelach opisuje sekcja 2.22: **Gameplay** ("Levers: %d pulled of %d", "Note card", przycisk "Pull all levers"), **Maze** (suwaki Levers i Notes, plan z kwadratami, przyciemniona otwarta ściana) i **Collision** (ostatni promień, [`../scene/picking.md`](../scene/picking.md), sekcja 6). Karta kartki, celownik i podpowiedź są w HUD ([`../debug-ui.md`](../debug-ui.md)).
+Dodatki w oknie debugowania opisuje sekcja 2.22 (pod nazwami dawnych paneli): **Gameplay** (kategoria Gameplay, karta Round: "Levers: %d pulled of %d", "Note card", przycisk "Pull all levers"), **Maze** (World / Maze: suwaki Levers i Notes, plan z kwadratami, przyciemniona otwarta ściana) i **Collision** (Diagnostics / Collision and picking: ostatni promień, [`../scene/picking.md`](../scene/picking.md), sekcja 6). Karta kartki, celownik i podpowiedź są w HUD ([`../debug-ui.md`](../debug-ui.md)).
 
 **Scenariusz pokazu na obronie.**
 
-1. Otwórz panel **Maze**: suwaki Levers i Notes (domyślnie 2 i 3), na planie czerwone i jasne kwadraty. Ustaw Levers na 4, kliknij **Regenerate**: nowy labirynt, nowa runda. Tekst "Levers: n, notes: n" pokaże, ile labirynt naprawdę dostał (może być mniej).
-2. Podejdź do dźwigni, zobacz pierścień celownika i podpowiedź. Naciśnij E: uchwyt opada w 0,3 s, ściana opada w 1,5 s. Plan w panelu Maze rysuje tę ścianę przyciemnioną, minimapa przestaje ją rysować, a w panelu Gameplay jest "Levers: 1 pulled of ...".
-3. W panelu Gameplay naciśnij **Pull all levers**: pociągnięte zostają wszystkie. **R** zaczyna rundę od nowa i ściany wracają.
+1. Otwórz zakładkę World / Maze: suwaki Levers i Notes (domyślnie 2 i 3), na planie czerwone i jasne kwadraty. Ustaw Levers na 4, kliknij **Regenerate**: nowy labirynt, nowa runda. Tekst "Levers: n, notes: n" pokaże, ile labirynt naprawdę dostał (może być mniej).
+2. Podejdź do dźwigni, zobacz pierścień celownika i podpowiedź. Naciśnij E: uchwyt opada w 0,3 s, ściana opada w 1,5 s. Plan w zakładce World / Maze rysuje tę ścianę przyciemnioną, minimapa przestaje ją rysować, a w kategorii Gameplay jest "Levers: 1 pulled of ...".
+3. W kategorii Gameplay naciśnij **Pull all levers**: pociągnięte zostają wszystkie. **R** zaczyna rundę od nowa i ściany wracają.
 4. Podejdź do kartki i naciśnij E: karta z podpowiedzią. Odejdź na ponad 3 m: karta znika.
 
-Z tego scenariusza agent widział na zrzutach tylko część (sekcja 5.11): nie widział przycisku "Pull all levers" i panelu Gameplay, ani drugiej dźwigni, ani liczb innych niż domyślne. Reszta to zadanie na listę ręczną właściciela.
+Z tego scenariusza agent widział na zrzutach tylko część (sekcja 5.11): nie widział przycisku "Pull all levers" i kategorii Gameplay, ani drugiej dźwigni, ani liczb innych niż domyślne. Reszta to zadanie na listę ręczną właściciela.
 
 ## 7. Pułapki
 

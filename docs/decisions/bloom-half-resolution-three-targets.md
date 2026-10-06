@@ -7,7 +7,7 @@ Kod: [`src/game/Bloom.hpp`](../../src/game/Bloom.hpp) (`BLOOM_DOWNSCALE`, `bloom
 
 Bloom to przebieg jasności i kilka powtórzeń rozmycia Gaussa, każde jako przebieg poziomy i pionowy. Przebieg nie może czytać tekstury, do której rysuje, więc rozmycie potrzebuje co najmniej dwóch celów, które zamieniają się rolami (ping-pong). Trzeba było rozstrzygnąć trzy rzeczy naraz: w jakiej rozdzielczości pracują te przebiegi, ile jest celów i w jakim są formacie.
 
-Ograniczenia: PRD wymaga stabilnych 60 klatek na sekundę w 1440p na MacBooku i sam wspomina o post-processie w połowie rozdzielczości, a panel Framebuffers ma pokazywać załączniki, czyli także to, co zostało po progu.
+Ograniczenia: PRD wymaga stabilnych 60 klatek na sekundę w 1440p na MacBooku i sam wspomina o post-processie w połowie rozdzielczości, a kategoria Post process ma pokazywać załączniki, czyli także to, co zostało po progu.
 
 ## 2. Decyzja
 
@@ -27,7 +27,7 @@ Wszystkie przebiegi bloomu rysują do celów o **połowie szerokości i połowie
 
 **Dlaczego połowa.** Rozmyty obraz nie ma ostrych szczegółów, po których byłoby widać mniejszy rozmiar, więc niższa rozdzielczość jest tu prawie darmowa. Filtr liniowy pomaga dwa razy: przy zmniejszaniu (przebieg jasności dostaje średnią czterech pikseli sceny) i przy powiększaniu (przebieg składający rozciąga wynik gładko na cały ekran).
 
-**Dlaczego trzy.** Panel Framebuffers jest pokazem tematu 10 i ma pozwalać rozłożyć efekt na kroki. Trzeci cel kosztuje kilka megabajtów i jedno pole w klasie, a daje obraz, na którym widać sam próg. Komentarz w `drawBloom` mówi to jednym zdaniem: przebieg jasności nie jest nigdy zamazywany, więc jego podgląd pokazuje go takim, jaki był.
+**Dlaczego trzy.** Kategoria Post process jest pokazem tematu 10 i ma pozwalać rozłożyć efekt na kroki. Trzeci cel kosztuje kilka megabajtów i jedno pole w klasie, a daje obraz, na którym widać sam próg. Komentarz w `drawBloom` mówi to jednym zdaniem: przebieg jasności nie jest nigdy zamazywany, więc jego podgląd pokazuje go takim, jaki był.
 
 **Dlaczego `GL_RGBA16F`.** Z tego samego powodu co scena: poświata ma być proporcjonalna do tego, o ile coś jest jaśniejsze od progu.
 
