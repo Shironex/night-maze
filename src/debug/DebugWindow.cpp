@@ -5,6 +5,7 @@
 #include "core/Time.hpp"
 #include "debug/DebugContext.hpp"
 #include "debug/Hud.hpp"
+#include "debug/Search.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
 #include "debug/categories/DiagnosticsCategory.hpp"
@@ -23,6 +24,7 @@
 #include <array>
 #include <cfloat>
 #include <cstddef>
+#include <cstdio>
 #include <span>
 
 namespace debug {
@@ -65,6 +67,19 @@ constexpr float TITLE_FONT_SIZE = 16.0F;
 
 // Free space between the edge of the right part of the window and its contents.
 constexpr ImVec2 MAIN_PADDING{14.0F, 12.0F};
+
+// The search box in the header: its width and the size of the magnifying glass in
+// front of it.
+constexpr float SEARCH_BOX_WIDTH = 176.0F;
+constexpr float SEARCH_ICON_SIZE = 15.0F;
+
+// The size a pinned panel has the first time it is used.
+constexpr float PINNED_WIDTH = 320.0F;
+constexpr float PINNED_HEIGHT = 460.0F;
+
+// Room for the title of a pinned panel: the longest name of a category and the fixed
+// part that follows it.
+constexpr std::size_t PINNED_TITLE_SIZE = 64;
 
 // Two columns of cards are used when each of them can be at least this wide. Below
 // that the labels of the rows would be cut off, so the cards stand in one column.
@@ -142,6 +157,23 @@ void drawTitle(const char* title) {
     ImGui::PopFont();
 }
 
+// The y coordinate below which the debug window and a new pinned panel start. In
+// a narrow game window they reach the middle of the picture, where the HUD of the round
+// stands at the top edge. So they start below the room the HUD can take, always:
+// a window that moved whenever the HUD grew by a line of hint would be hard to work
+// with.
+float topBelowHud() {
+    return ImGui::GetMainViewport()->WorkPos.y + hudReservedHeight() +
+           WINDOW_MARGIN * displayScale();
+}
+
+// The category that stands step places after the given one on the rail (before it for
+// a negative step), going round from the last one to the first.
+Category neighbourCategory(Category category, int step) {
+    const int index = (static_cast<int>(category) + step + CATEGORY_COUNT) % CATEGORY_COUNT;
+    return static_cast<Category>(index);
+}
+
 // The name of the game down the rail, one letter below the other, ending at bottom.
 // It is decoration: when the rail is too short for it, it is left out.
 void drawWordmark(float centerX, float top, float bottom, float scale) {
@@ -180,7 +212,15 @@ void drawWordmark(float centerX, float top, float bottom, float scale) {
 
 void DebugWindow::draw(const DebugContext& context) {
     drawStatusStrip(context);
+    // Pinned, the window gives way to a small panel with one category in it.
+    if (m_pinned) {
+        drawPinnedPanel(context);
+    } else {
+        drawMainWindow(context);
+    }
+}
 
+void DebugWindow::drawMainWindow(const DebugContext& context) {
     const float scale = displayScale();
     const float margin = WINDOW_MARGIN * scale;
     // The main viewport is the window of the game. WorkPos is its top left corner and
@@ -189,11 +229,7 @@ void DebugWindow::draw(const DebugContext& context) {
     const float right = viewport->WorkPos.x + viewport->WorkSize.x - margin;
     const float bottom = viewport->WorkPos.y + viewport->WorkSize.y - margin;
 
-    // In a narrow game window the debug window reaches the middle of the picture, where
-    // the HUD of the round stands at the top edge. So it starts below the room the HUD
-    // can take, always: a window that moved whenever the HUD grew by a line of hint
-    // would be hard to work with.
-    const float top = viewport->WorkPos.y + hudReservedHeight() + margin;
+    const float top = topBelowHud();
     const float width =
         std::min(WINDOW_WIDTH * scale, viewport->WorkSize.x * MAX_WINDOW_WIDTH_SHARE);
     const float height = std::max(bottom - top, MIN_WINDOW_HEIGHT * scale);
@@ -224,12 +260,54 @@ void DebugWindow::draw(const DebugContext& context) {
         ImGui::PopStyleVar();
         if (mainOpen) {
             drawHeader();
-            drawTabs();
-            drawBody(context);
+            const bool searching = hasSearchWords(m_search.data());
+            // The search shows the rows of every category, so the tabs of the chosen
+            // one would mean nothing.
+            if (!searching) {
+                drawTabs();
+            }
+            m_matchCount = drawCards(context, m_search.data());
         }
         ImGui::EndChild();
     }
     ImGui::End();
+}
+
+void DebugWindow::drawPinnedPanel(const DebugContext& context) {
+    const float scale = displayScale();
+    const float margin = WINDOW_MARGIN * scale;
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const CategoryInfo& info = categoryInfo(m_category);
+
+    // Where the panel appears the first time it is used: at the right edge, below the
+    // HUD, like the window. ImGuiCond_FirstUseEver: only while ImGui has no place for
+    // it in imgui.ini. After that the user decides: the panel can be moved, resized and
+    // docked to an edge of the game window, and ImGui remembers it.
+    const ImVec2 size{PINNED_WIDTH * scale, PINNED_HEIGHT * scale};
+    ImGui::SetNextWindowPos(
+        {viewport->WorkPos.x + viewport->WorkSize.x - margin - size.x, topBelowHud()},
+        ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
+
+    // The title bar shows the name of the category. Everything after "###" is the name
+    // ImGui tells the window apart by: it stays the same when the category changes, so
+    // the panel keeps its place.
+    std::array<char, PINNED_TITLE_SIZE> title{};
+    std::snprintf(title.data(), title.size(), "%s###Pinned debug panel", info.name);
+
+    // The second argument adds a close button to the title bar. ImGui sets the bool to
+    // false when it is clicked: that unpins the category, like the button in the panel.
+    bool keepPinned = true;
+    if (ImGui::Begin(title.data(), &keepPinned, ImGuiWindowFlags_NoCollapse)) {
+        drawPinnedHeader();
+        drawTabs();
+        // No search in the small panel: it shows its one category.
+        drawCards(context, "");
+    }
+    ImGui::End();
+    if (!keepPinned) {
+        m_pinned = false;
+    }
 }
 
 void DebugWindow::drawStatusStrip(const DebugContext& context) const {
@@ -265,6 +343,7 @@ void DebugWindow::drawRail() {
     const float scale = displayScale();
     const float railWidth = RAIL_WIDTH * scale;
     const float buttonSize = RAIL_BUTTON_SIZE * scale;
+    const bool searching = hasSearchWords(m_search.data());
 
     // A child window of a fixed width and the full height of the debug window.
     if (ImGui::BeginChild("rail", {railWidth, 0.0F}, ImGuiChildFlags_None,
@@ -291,8 +370,12 @@ void DebugWindow::drawRail() {
             const auto category = static_cast<Category>(i);
             const CategoryInfo& info = categoryInfo(category);
             ImGui::SetCursorPos({(railSize.x - buttonSize) / 2.0F, y});
-            if (iconButton(info.name, info.icon, category == m_category, buttonSize)) {
+            // While the user searches, the page shows rows of every category, so no
+            // icon is marked. A click on an icon ends the search and opens the category.
+            const bool current = !searching && category == m_category;
+            if (iconButton(info.name, info.icon, current, buttonSize)) {
                 m_category = category;
+                m_search[0] = '\0';
             }
             tooltipCard(info.name, info.description);
             y += buttonSize + RAIL_BUTTON_GAP * scale;
@@ -304,14 +387,93 @@ void DebugWindow::drawRail() {
     ImGui::EndChild();
 }
 
-void DebugWindow::drawHeader() const {
+void DebugWindow::drawHeader() {
     const CategoryInfo& info = categoryInfo(m_category);
-    // AlignTextToFramePadding moves the text down to where the text of a button on
-    // the same line stands, so the header keeps its height when buttons join it.
+    const bool searching = hasSearchWords(m_search.data());
+    const float scale = displayScale();
+
+    // AlignTextToFramePadding moves the text down to where the text of a widget on the
+    // same line stands, here the text in the search box.
     ImGui::AlignTextToFramePadding();
-    drawTitle(info.name);
+    drawTitle(searching ? "Search" : info.name);
     ImGui::SameLine();
-    ImGui::TextDisabled("%d controls", info.controlCount);
+    if (searching) {
+        // The number of rows the cards showed in the frame before: the cards of this
+        // frame are drawn after the header.
+        ImGui::TextDisabled("%d matches", m_matchCount);
+    } else {
+        ImGui::TextDisabled("%d controls", info.controlCount);
+    }
+
+    // The search box and the pin button stand at the right edge of the header.
+    const float buttonSize = ImGui::GetFrameHeight();
+    const float searchWidth = SEARCH_BOX_WIDTH * scale;
+    const float iconSize = SEARCH_ICON_SIZE * scale;
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+    const float rightPartWidth = iconSize + spacing + searchWidth + spacing + buttonSize;
+    ImGui::SameLine();
+    const float room = ImGui::GetContentRegionAvail().x;
+    if (room > rightPartWidth) {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + room - rightPartWidth);
+    }
+
+    // A magnifying glass in front of the box. Dummy reserves its room.
+    const ImVec2 iconPosition = ImGui::GetCursorScreenPos();
+    drawIcon(ImGui::GetWindowDrawList(), Icon::Search,
+             {iconPosition.x, iconPosition.y + (buttonSize - iconSize) / 2.0F}, iconSize,
+             ImGui::GetColorU32(TEXT_DIM_COLOR));
+    ImGui::Dummy({iconSize, buttonSize});
+    ImGui::SameLine();
+
+    // InputTextWithHint edits the characters of the buffer in place and shows the hint
+    // while the buffer is empty. EscapeClearsAll: Esc empties the box, which ends the
+    // search. While the box is being typed into, the game gets no keys (main.cpp), so
+    // the same Esc does not open the pause menu.
+    ImGui::SetNextItemWidth(searchWidth);
+    ImGui::InputTextWithHint("##search", "Search all settings", m_search.data(), m_search.size(),
+                             ImGuiInputTextFlags_EscapeClearsAll);
+    tooltipCard("Search", "Shows the rows of all seven categories that contain every word "
+                          "typed here: in their label, their card, their category or their "
+                          "help text. The rows stay live, so a value can be changed from "
+                          "the results. Esc empties the box.");
+
+    ImGui::SameLine();
+    if (iconButton("pin", Icon::Pin, false, buttonSize)) {
+        m_pinned = true;
+    }
+    tooltipCard("Pin", "Shrinks the window to a small panel with only this category in it, "
+                       "to keep an eye on while playing. The panel can be moved, resized "
+                       "and docked to an edge of the game window.");
+}
+
+void DebugWindow::drawPinnedHeader() {
+    const float buttonSize = ImGui::GetFrameHeight();
+
+    // The two arrows walk through the categories, from the last one back to the first.
+    if (iconButton("previous", Icon::Previous, false, buttonSize)) {
+        m_category = neighbourCategory(m_category, -1);
+    }
+    tooltipCard("Previous category", nullptr);
+    ImGui::SameLine();
+    if (iconButton("next", Icon::Next, false, buttonSize)) {
+        m_category = neighbourCategory(m_category, 1);
+    }
+    tooltipCard("Next category", nullptr);
+
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextDisabled("%d controls", categoryInfo(m_category).controlCount);
+
+    // The button that brings the window back, at the right edge.
+    ImGui::SameLine();
+    const float room = ImGui::GetContentRegionAvail().x;
+    if (room > buttonSize) {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + room - buttonSize);
+    }
+    if (iconButton("expand", Icon::Expand, false, buttonSize)) {
+        m_pinned = false;
+    }
+    tooltipCard("Expand", "Back to the debug window with all seven categories.");
 }
 
 void DebugWindow::drawTabs() {
@@ -325,11 +487,12 @@ void DebugWindow::drawTabs() {
     segmentedButtons("tabs", names, &tabOf(m_category));
 }
 
-void DebugWindow::drawBody(const DebugContext& context) {
+int DebugWindow::drawCards(const DebugContext& context, std::string_view search) const {
+    int shownRows = 0;
     // The cards stand in a child window that takes the rest of the height and scrolls
     // when they are taller than it. NavFlattened: the keyboard moves between the header
     // and the cards as if they were in one window.
-    if (ImGui::BeginChild("body", {0.0F, 0.0F}, ImGuiChildFlags_NavFlattened)) {
+    if (ImGui::BeginChild("cards", {0.0F, 0.0F}, ImGuiChildFlags_NavFlattened)) {
         const float scale = displayScale();
         // Room for two columns? Each needs MIN_COLUMN_WIDTH, and the table that holds
         // them puts its cell padding on both sides of each column.
@@ -337,10 +500,24 @@ void DebugWindow::drawBody(const DebugContext& context) {
             ImGui::GetContentRegionAvail().x / 2.0F - 2.0F * ImGui::GetStyle().CellPadding.x;
         const bool wide = columnWidth >= MIN_COLUMN_WIDTH * scale;
 
-        Page page("", wide);
-        drawCategory(m_category, page, context);
+        Page page(search, wide);
+        if (page.searching()) {
+            // The search is a filter, not a second list of settings: every category
+            // draws itself as always, and the page leaves out the rows that do not
+            // match. So a new row can be found without any further work.
+            for (int i = 0; i < CATEGORY_COUNT; ++i) {
+                drawCategory(static_cast<Category>(i), page, context);
+            }
+            if (page.shownRows() == 0) {
+                ImGui::TextDisabled("Nothing matches. Try a shorter word.");
+            }
+        } else {
+            drawCategory(m_category, page, context);
+        }
+        shownRows = page.shownRows();
     }
     ImGui::EndChild();
+    return shownRows;
 }
 
 void DebugWindow::drawCategory(Category category, Page& page, const DebugContext& context) const {
