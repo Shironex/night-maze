@@ -91,6 +91,12 @@ jobs:
       - name: Unit tests
         run: ctest --test-dir build/release -C Release --output-on-failure
 
+      # The packaging scripts use zlib.crc32, which needs Node 22.
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       - name: Tests of the packaging scripts
         run: node --test launcher/scripts/lib/feed.test.mjs
 
@@ -155,6 +161,12 @@ jobs:
           codesign --force --sign - build/release/night_maze
           codesign --verify --verbose build/release/night_maze
 
+      # The packaging scripts use zlib.crc32, which needs Node 22.
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       # build/release/assets is a link into the checkout on macOS, so the
       # packager reads the assets folder of the repository itself.
       - name: Package
@@ -190,6 +202,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
 
       - name: Download the packages
         uses: actions/download-artifact@v8
