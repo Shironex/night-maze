@@ -24,6 +24,8 @@ Podział jest taki sam jak w całym projekcie: dane i matematyka bez okna po jed
 
 **Stan na dziś, uczciwie.** Program startuje nocą wewnątrz oteksturowanego i oświetlonego labiryntu 10 na 10 komórek z ziarna 1, w którym od M5 toczy się runda: w labiryncie wisi 13 kryształów, a wyjście w komórce (6, 5) zamyka brama ([`gameplay.md`](gameplay.md)). Od M6 labirynt stoi na łagodnie nierównym terenie, który wokół niego przechodzi we wzgórza: płytek podłogi już nie ma, a ściany, słupki i brama są opuszczone na najniższy grunt pod sobą ([`../renderer/terrain.md`](../renderer/terrain.md), decyzje [`../../decisions/gentle-terrain-under-maze.md`](../../decisions/gentle-terrain-under-maze.md) i [`../../decisions/floor-tiles-retired.md`](../../decisions/floor-tiles-retired.md)). Teren, labirynt, bramę i kryształy rysuje jeden z trzech programów, zależnie od trybu cieniowania: `lit` (tryby `Phong` i `Blinn-Phong`, startowy), `gouraud` albo `textured` (tryb `Unlit` i oba podglądy diagnostyczne). Od czwartej części M7 (cienie księżyca, 2026-10-05) te same cztery rzeczy są w każdej klatce rysowane jeszcze raz, wcześniej, czwartym programem `shadow_depth` do mapy cieni księżyca (sekcje 2.5, 3 i 5.7, cała technika w [`../renderer/shadows.md`](../renderer/shadows.md)). M6 jest na Windowsie kompletny w kodzie i **nie jest zamknięty**: macOS i testy ręczne są otwarte, tagu wersji nie ma. Testy uruchomiłem 2026-10-05 na gotowych programach Debug i Release: wtedy 256 przypadków i 101232 asercje przechodziły w obu (po pierwszej części M7 zgłoszone: 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751), w tym 8 przypadków `MazeWorldTests.cpp` i przypadki `TerrainTests.cpp` o labiryncie na terenie (sekcja 5.9). Build bez ostrzeżeń i obraz terenu to zgłoszenie autora kodu z tego samego dnia: obraz był sprawdzony na zrzutach ekranu zrobionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: nic z M5 ani z M6 nie było budowane ani uruchamiane na macOS i nikt jeszcze nie testował ręcznie (przycisków `Regenerate` i `Random seed`, listy `Lighting`, pola wyboru `Normal mapping`, przejścia przez otwartą bramę, suwaka `Height scale`, chodzenia po nierównym gruncie). Z wcześniejszych kamieni milowych zostają sprawdzone na zrzutach ekranu z Windowsa (2026-10-05): widok startowy, cztery tryby cieniowania z trzech miejsc, tekstury ustawione poprawnie (nie do góry nogami i nie w lustrze), widok z góry, na którym ściany zgadzają się z planem w panelu Maze, oraz mapy normalnych (fugi czytają się jako rowki na ścianach wzdłuż X, wzdłuż Z, na słupku i na ówczesnych płytkach podłogi, które usunął M6). Mapy normalnych: `drawModel` podpina mapę normalnych każdej części do jednostki 1 (a `drawMesh` mapę normalnych podłoża), a o tym, czy shader z niej korzysta, decyduje `usesNormalMap` (sekcje 5.6 i 5.7, cała technika w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md)). Cienie: od czwartej części M7 (2026-10-05) teren, ściany, słupki, brama i kryształy rzucają i przyjmują **cień księżyca** w trybach `Gouraud`, `Phong` i `Blinn-Phong`. W trybie `Unlit` i w obu podglądach diagnostycznych cieni nie widać, bo program `textured` nie dołącza `common/shadows.glsl`. Światła kryształów cieni nie rzucają: ich światło nadal przechodzi przez ściany. Od piątej części M7 (2026-10-06) cień rzuca też latarka: teren, ściany, słupki, brama i kryształy idą do drugiej mapy cieni. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi, build Debug nie zapisał błędów OpenGL przy mapie 2048 i 1024. Nie sprawdzone: przełączanie rozdzielczości i widżety panelu Shadows myszą, przeładowanie shaderów przy jedenastu programach, macOS. Od pierwszej części M7 labirynt jest rysowany do framebuffera HDR, jego tekstury koloru są teksturami sRGB dekodowanymi przy odczycie, a mapy normalnych zostały liniowe ([`../gfx/color-space.md`](../gfx/color-space.md), [`../renderer/post-process.md`](../renderer/post-process.md)).
 
+**M8, część 2 (2026-10-06): ściany mogą opadać.** Do tej części macierze ścian były policzone raz i niezmienne. Teraz ściana, którą otworzyła dźwignia, opada w ziemię tak jak brama, więc lista macierzy ścian jest składana **w każdej klatce**: `game::roundWallMatrices(world, round)` kopiuje `world.wallMatrices` i obniża te ściany, które opadają. `MazeRenderer::draw` dostał trzeci parametr, tę listę. Szczegóły w sekcji 2.9. Ściany nadal są tym samym modelem i tymi samymi macierzami świata: zmienia się tylko lista oddana do rysowania. Bramka tej części, zgłoszona przez autora kodu: 466 przypadków i 152264 asercji w Debug i Release. Opadającą ścianę widział na zrzutach agent, który pisał kod (widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela): ściana otwarta, gracz idący przez otwór. Czystej ramy półzatopionej ściany nikt nie oglądał.
+
 ## 2. Teoria
 
 ### 2.1 Od siatki do sceny: trzy kroki i wysokość
@@ -95,6 +97,8 @@ Normalne obracają się razem ze ścianą: shader wierzchołków mnoży je przez
 Labirynt się nie rusza. Macierz modelu ściany jest taka sama w każdej klatce, aż do wygenerowania nowego labiryntu albo zmiany skali wysokości terenu. Liczenie jej w każdej klatce to 242 razy na klatkę: budowa macierzy jednostkowej, przesunięcie, trzy obroty (każdy z sinusem i kosinusem) i skala. Dlatego `buildMazeWorld` (a dokładnie `placeOnTerrain`, którą woła na końcu) liczy wszystkie macierze **raz** i zapisuje je w dwóch wektorach, a pętla rysowania tylko je czyta.
 
 Zasada ogólna: to, co zależy tylko od poziomu, liczy się przy wczytaniu poziomu. To, co zależy od klatki (macierz widoku, pozycja gracza), liczy się w klatce. Ta sama zasada działa w drugą stronę dla bramy i kryształów: brama zapada się w ziemię po otwarciu, a kryształy unoszą się i obracają, więc ich macierze zależą od czasu rundy i są liczone w klatce, w `GameplayRenderer::draw`. Macierz bramy liczy przy tym ta sama funkcja `wallModelMatrix`, która raz policzyła macierze ścian (sekcja 5.5).
+
+**Wyjątek od M8, części 2: ściana otwarta dźwignią.** Macierze w `MazeWorld::wallMatrices` nadal są liczone raz i nigdy się nie zmieniają. Ale ściana, której dźwignia jest pociągnięta, opada, więc jej macierz zależy od czasu rundy. Dlatego klatka robi własną kopię listy (`roundWallMatrices`, sekcja 2.9), a świat zostaje nietknięty.
 
 To samo dotyczy pudełek kolizji: `colliderBoxes` jest wołane raz na teren, a gracz dostaje gotową listę 120 razy na sekundę. Lista gracza (`m_obstacles`) jest budowana od nowa na początku rundy, w chwili otwarcia bramy i po każdej przebudowie terenu (`rebuildTerrain`, sekcja 5.7).
 
@@ -201,6 +205,25 @@ Dwie rzeczy się **nie** zmieniają i obie są przypięte testami w `tests/Terra
 - **Wysokości pudełek są te same**: 3 m dla ściany i bramy, 3,15 m dla słupka. Pudełko zaczyna się tylko niżej albo wyżej. Dlaczego gracz stojący obok ściany zawsze dzieli z jej pudełkiem jakiś zakres wysokości i co ma do tego stała `MAX_HEIGHT_SCALE`, wyjaśnia [`../scene/collision.md`](../scene/collision.md), sekcja 2.13.
 
 Skalę wysokości zmienia suwak `Height scale` w panelu Terrain. Zmiana nie generuje nowego labiryntu: `placeOnTerrain` jest wołana drugi raz na tym samym `MazeWorld`, a to, co skopiowało sobie wysokości (kryształy rundy, lista przeszkód, gracz), poprawia aplikacja w `rebuildTerrain` (sekcja 5.7, decyzja w [`../../decisions/height-scale-rebuilds-terrain.md`](../../decisions/height-scale-rebuilds-terrain.md)).
+
+### 2.9 Ściana, którą otwiera dźwignia: lista macierzy na klatkę (M8, część 2)
+
+**Decyzja właściciela (2026-10-06):** dźwignia otwiera skrót, obniżając jeden wewnętrzny segment ściany. Poniżej wybory implementacji, sprawdzone w kodzie.
+
+1. **Która ściana.** `buildMazeWorld` dla każdej dźwigni szuka raz jej ściany na liście `walls` (`wallIndexOf`: segment `openedWallSegment(lever)` porównany po miejscu i osi, zanim ściany zostaną obniżone do terenu, bo to zmienia ich `y`). Numer trafia do `MazeWorld::leverWalls`. Ten sam numer wskazuje macierz w `wallMatrices` i pudełko w `colliders`, bo trzy listy mają tę samą kolejność. Gdyby ściany nie było na liście, funkcja rzuca `std::logic_error`.
+2. **Jak opada.** `roundWallMatrices` bierze `world.walls[wall]`, odejmuje od jego `position.y` wartość `sinkDepth(round.wallProgress[i])` i liczy macierz od nowa funkcją `wallModelMatrix`: tą samą, która liczy macierze ścian i bramy. Ściana opada w 1,5 s o do 3,3 m, jak brama (te same funkcje `sinkProgressAfter` i `sinkDepth`, [`gameplay.md`](gameplay.md)).
+3. **Lista na klatkę.** `NightMazeApp::onRender` buduje `m_wallMatrices` **raz**, na początku klatki, i oddaje ją trzem rysowaniom: przebiegowi cieni księżyca, przebiegowi cieni latarki i przebiegowi sceny. Dzięki temu cień ściany zawsze pasuje do ściany (te same macierze), a koszt to jedna kopia wektora 242 macierzy na klatkę.
+4. **Całkiem opadła ściana zostaje na liście.** Po 1,5 s leży 3,3 m niżej, czyli (ściana ma 3,0 m wysokości) cała pod najniższym gruntem pod sobą, i teren ją zasłania. Nie jest usuwana z listy: nie byłoby to prostsze, a lista musiałaby zmieniać rozmiar.
+5. **Słupki bez zmian.** `MazeRenderer::draw` rysuje słupki nadal z `world.pillarMatrices`. Znane ograniczenia: słupek, który stał tylko na końcu otwartej ściany, zostaje sam, a kępki trawy obok otwartej ściany zostają, bo trawa jest sadzona raz na teren.
+
+Zmienia się też samo wywołanie:
+
+```cpp
+void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
+                        std::span<const glm::mat4> wallMatrices) const;
+```
+
+Lista macierzy ścian jest parametrem, a nie polem świata. `drawModel(shader, m_wall, wallMatrices)` rysuje ściany, a `drawModel(shader, m_pillar, world.pillarMatrices)` słupki. Zob. [`interactables.md`](interactables.md), gdzie opisano dźwignie jako obiekty świata.
 
 ## 3. Jak to działa w OpenGL
 
@@ -387,7 +410,9 @@ struct MazeWorld {
 | `seed` | panel Maze (linia `In play`) |
 | `walls`, `pillars` | panel Maze (plan z góry, liczniki), panel Collision (liczniki) |
 | `terrain` (od M6) | `placeOnTerrain` (buduje go i czyta z niego wysokości), `Player::update` (wysokość stóp), `buildTerrainMesh` w `uploadGround` (siatka do narysowania), `placeGrass` (wysokość kępek), panel Terrain (rozmiar siatki, liczba trójkątów, zakres wysokości) |
-| `wallMatrices`, `pillarMatrices` | `MazeRenderer::draw` |
+| `wallMatrices`, `pillarMatrices` | `roundWallMatrices` (kopia na klatkę, od M8, części 2) i `MazeRenderer::draw` (słupki wprost z `pillarMatrices`) |
+| `interactables` (od M8, części 2) | dźwignie i kartki z ich pudełkami wskazywania, położone na terenie przez `placeInteractablesOnTerrain`; czytają je `InteractableRenderer`, wskazywanie i panele |
+| `leverWalls` (od M8, części 2) | numer ściany każdej dźwigni w `walls`, `colliders` i `wallMatrices` |
 | `colliders` | `game::roundObstacles` (z niej powstaje lista przeszkód gracza) i rysowanie żółtych linii pudełek w `NightMazeApp::drawColliderLines` |
 | `startPosition`, `startYawDegrees` | `NightMazeApp::beginRound` |
 | `exitCell` (od M5) | panel Maze (linia `Crystals: ..., exit in cell (..., ...)`) |
@@ -407,7 +432,7 @@ Pięć rzeczy wartych uwagi:
 
 - **Konstruktor z `explicit` i `std::move`.** `Maze` nie ma konstruktora domyślnego, bo labirynt bez rozmiaru nie ma sensu. Struktura z takim polem też nie może powstać "pusta": musi dostać gotową siatkę. Parametr jest przyjmowany przez wartość i przenoszony do pola, więc wektor ścian wewnątrz `Maze` nie jest kopiowany. `explicit` zabrania cichej zamiany `Maze` na `MazeWorld`.
 - **Kolejność w listach się zgadza.** `wallMatrices[i]` jest macierzą segmentu `walls[i]`, a `pillarMatrices[i]` słupka `pillars[i]`. W `colliders` najpierw idą pudełka wszystkich ścian, potem wszystkich słupków.
-- **`colliders` to przeszkody, które nigdy się nie zmieniają.** Bramy na tej liście nie ma i nie ma jej też w `walls` ani w `wallMatrices`: brama przestaje być przeszkodą w chwili otwarcia, a ściany nie. Jej pudełko leży osobno w `gateBox`, a listę przeszkód rundy składa `roundObstacles`.
+- **`colliders` to przeszkody, które nigdy się nie zmieniają.** Bramy na tej liście nie ma i nie ma jej też w `walls` ani w `wallMatrices`: brama przestaje być przeszkodą w chwili otwarcia. Od M8, części 2 ściany też mogą przestać: ściana otwarta dźwignią wypada z listy przeszkód rundy (`roundObstacles` pomija jej pudełko), ale **sama lista `colliders` świata się nie zmienia**. Jej pudełko leży osobno w `gateBox`, a listę przeszkód rundy składa `roundObstacles`.
 - **Dla paneli tylko do odczytu.** Aplikacja udostępnia strukturę panelom przez akcesor zwracający `const MazeWorld&`. Nowy labirynt to nowa struktura, a nie poprawianie starej. Od M6 jest jeden wyjątek po stronie aplikacji: zmiana skali wysokości woła `placeOnTerrain` na istniejącej strukturze (komentarz struktury: "and again when the height scale of the terrain changes").
 - **`terrain` zaczyna jako płaski.** Konstruktor domyślny `Terrain` daje grunt na `y = 0` wszędzie. Pole ma sensowną wartość od pierwszej chwili, a prawdziwy teren wstawia `placeOnTerrain`. `Terrain` jest zwykłą klasą z danymi (wektor wysokości), więc `MazeWorld` nadal da się kopiować i przenosić.
 
@@ -679,13 +704,14 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
 **`draw`.**
 
 ```cpp
-void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world) const {
+void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
+                        std::span<const glm::mat4> wallMatrices) const {
     setModelSamplers(shader);
     // Stone gives off no light of its own. A uniform keeps its value from one draw call
     // to the next, and the crystals set this one, so it is set back in every frame.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 
-    drawModel(shader, m_wall, world.wallMatrices);
+    drawModel(shader, m_wall, wallMatrices);
     drawModel(shader, m_pillar, world.pillarMatrices);
 }
 ```
@@ -694,7 +720,7 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world) const
 |---|---|
 | `setModelSamplers(shader);` | oba samplery programu dostają numery swoich jednostek teksturujących (funkcja niżej) |
 | `shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});` (od M5) | `uEmissive` na czerń: kamień sam nie świeci. `glm::vec3{0.0F}` to wektor `(0, 0, 0)`. Dlaczego trzeba to robić w każdej klatce, wyjaśnia akapit pod tabelą |
-| dwa wywołania `drawModel` | ściany, potem słupki. Wektor macierzy sam zamienia się na `std::span<const glm::mat4>` |
+| dwa wywołania `drawModel` | ściany (z listy `wallMatrices` tej klatki, od M8, części 2; wcześniej z `world.wallMatrices`), potem słupki (z `world.pillarMatrices`). Wektor macierzy sam zamienia się na `std::span<const glm::mat4>` |
 
 **Dlaczego `uEmissive` trzeba zerować w każdej klatce.** Uniform nie jest parametrem jednego wywołania rysującego. To zmienna **obiektu programu** na karcie graficznej: raz ustawiona, trzyma wartość, aż ktoś ustawi inną, także przez granicę klatki. W jednej klatce kolejność jest taka: `TerrainRenderer::draw` rysuje ziemię, `MazeRenderer::draw` rysuje kamień, potem `GameplayRenderer::draw` tym samym programem ustawia `uEmissive` na blask kryształów i rysuje kryształy. Po tej klatce w programie zostaje więc blask kryształów. Następna klatka zaczyna od ziemi i kamienia: gdyby `TerrainRenderer::draw` i `MazeRenderer::draw` nie ustawiły czerni, teren, ściany i słupki dostałyby `surface * (diffuse + blask)` i cały labirynt świeciłby kolorem kryształów. Każda z tych dwóch funkcji zeruje uniform sama (w `TerrainRenderer::draw` z komentarzem "Earth gives off no light of its own"), więc żadna nie zależy od tego, że druga była wołana wcześniej. Nie byłoby żadnego błędu OpenGL, tylko zły obraz. Zmiana trybu cieniowania też by nie pomogła: każdy z trzech programów pamięta własną wartość, więc "zarażony" byłby każdy program, którym choć raz narysowano kryształy. Odwrotny przypadek to nowy program po `Reload shaders`: jego uniformy zaczynają od zera, czyli akurat od czerni, ale kod na tym nie polega.
 
@@ -1043,7 +1069,7 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     // The ground first, then what stands on it. The order does not change the picture
     // (the depth test sorts it out), it only follows the way the scene is built.
     m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
+    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices); // od M8, części 2: macierze ścian tej klatki
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do.
     drawGateAndCrystals(m_texturedShader); // od M8, części 1: brama, a kryształy tylko gdy ich nie rysuje przebieg odbić
@@ -1091,7 +1117,7 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     // at the ground, and a ground of lines would cast a shadow of lines.
     constexpr bool NO_WIREFRAME = false;
     m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
-    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld);
+    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
     // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
     // a texel of the map is about 3 cm, so its shadow would be a flicker of single

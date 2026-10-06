@@ -1,10 +1,12 @@
-// "Maze" debug panel: size and seed of the maze, regeneration and a plan seen from above
-// with the crystals, the gate and the exit on it.
+// "Maze" debug panel: size and seed of the maze, the numbers of levers and notes,
+// regeneration and a plan seen from above with the crystals, the levers, the notes, the
+// gate and the exit on it.
 // See docs/modules/game/maze-generator.md
 #include "debug/panels/MazePanel.hpp"
 
 #include "debug/PanelLayout.hpp"
 #include "debug/Theme.hpp"
+#include "game/Interactables.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
@@ -17,8 +19,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <random>
+#include <vector>
 
 namespace debug {
 
@@ -43,13 +47,16 @@ constexpr float HEADING_LENGTH = 10.0F;
 constexpr float CRYSTAL_DOT_RADIUS = 2.5F;
 constexpr float GATE_LINE_THICKNESS = 3.0F;
 
+// A lever and a note on the plan are squares with this half side, in pixels.
+constexpr float MOUNT_MARK_HALF_SIZE = 2.5F;
+
 // Free pixels around the plan, so that the border walls are not drawn on the very edge
 // of the reserved area.
 constexpr float PLAN_PADDING = 4.0F;
 
 // Draws the walls of the maze as seen from above, north (-Z) at the top, with the gate,
-// the exit zone, the crystals and the player on it. World x runs to the right of the
-// screen and world z down the screen. Screen y grows downwards and z grows towards the
+// the exit zone, the crystals, the levers, the notes and the player on it. World x runs to the
+// right of the screen and world z down the screen. Screen y grows downwards and z grows towards the
 // south, so neither axis has to be flipped.
 void drawPlan(const game::MazeWorld& world, const game::Round& round, const game::Player& player,
               const scene::Camera& camera) {
@@ -85,6 +92,8 @@ void drawPlan(const game::MazeWorld& world, const game::Round& round, const game
     const ImU32 collectedColor = ImGui::GetColorU32(PLAN_COLLECTED_COLOR);
     const ImU32 gateColor = ImGui::GetColorU32(PLAN_GATE_COLOR);
     const ImU32 exitColor = ImGui::GetColorU32(PLAN_EXIT_COLOR);
+    const ImU32 leverColor = ImGui::GetColorU32(PLAN_LEVER_COLOR);
+    const ImU32 noteColor = ImGui::GetColorU32(PLAN_NOTE_COLOR);
 
     // A wall segment is a line from one grid corner to the next: half a wall length to
     // each side of its middle, along the axis it runs on.
@@ -93,10 +102,14 @@ void drawPlan(const game::MazeWorld& world, const game::Round& round, const game
         return segment.axis == game::WallAxis::AlongX ? glm::vec3{HALF_WALL, 0.0F, 0.0F}
                                                       : glm::vec3{0.0F, 0.0F, HALF_WALL};
     };
-    for (const game::WallSegment& wall : world.walls) {
+    // A wall that a pulled lever has opened is still in the list of the world (the world
+    // never changes during a round). It is drawn dim: a trace of where the shortcut is.
+    const std::vector<bool> opened = game::openedWallFlags(world, round);
+    for (std::size_t i = 0; i < world.walls.size(); ++i) {
+        const game::WallSegment& wall = world.walls[i];
         const glm::vec3 halfLine = halfLineOf(wall);
         drawList->AddLine(toScreen(wall.position - halfLine), toScreen(wall.position + halfLine),
-                          wallColor);
+                          opened[i] ? collectedColor : wallColor);
     }
 
     // The exit zone: the outline of the box that wins the round, seen from above. The
@@ -121,6 +134,24 @@ void drawPlan(const game::MazeWorld& world, const game::Round& round, const game
         } else {
             drawList->AddCircleFilled(place, CRYSTAL_DOT_RADIUS, crystalColor);
         }
+    }
+
+    // The levers and the notes: small squares where they hang. A lever that is pulled
+    // is drawn dim. The state of the round has one entry per lever.
+    const std::vector<game::Lever>& levers = world.interactables.levers;
+    for (std::size_t i = 0; i < levers.size(); ++i) {
+        const bool pulled =
+            i < round.interactables.leverPulled.size() && round.interactables.leverPulled[i];
+        const ImVec2 place = toScreen(levers[i].position);
+        drawList->AddRectFilled({place.x - MOUNT_MARK_HALF_SIZE, place.y - MOUNT_MARK_HALF_SIZE},
+                                {place.x + MOUNT_MARK_HALF_SIZE, place.y + MOUNT_MARK_HALF_SIZE},
+                                pulled ? collectedColor : leverColor);
+    }
+    for (const game::Note& note : world.interactables.notes) {
+        const ImVec2 place = toScreen(note.position);
+        drawList->AddRectFilled({place.x - MOUNT_MARK_HALF_SIZE, place.y - MOUNT_MARK_HALF_SIZE},
+                                {place.x + MOUNT_MARK_HALF_SIZE, place.y + MOUNT_MARK_HALF_SIZE},
+                                noteColor);
     }
 
     // The player: a dot, and a line towards where the camera looks. Yaw 0 looks north
@@ -149,8 +180,8 @@ void drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world,
     // PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
     placePanelOnFirstUse(MAZE_PLACEMENT);
     if (ImGui::Begin("Maze")) {
-        // The three widgets edit the request, not the maze: nothing happens until one of
-        // the buttons sets settings.regenerate.
+        // The widgets edit the request, not the maze: nothing happens until one of the
+        // buttons sets settings.regenerate.
         ImGui::SliderInt("Width", &settings.width, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells",
                          ImGuiSliderFlags_AlwaysClamp);
         ImGui::SliderInt("Height", &settings.height, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells",
@@ -158,6 +189,12 @@ void drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world,
         // InputScalar edits a number of any type through a pointer: the type is named by
         // the second argument and must match the variable, here a 32 bit unsigned.
         ImGui::InputScalar("Seed", ImGuiDataType_U32, &settings.seed, &SEED_STEP);
+        // How many levers and notes the next maze should get. A maze can end up with
+        // fewer: it only gets a lever for a wall that is worth opening.
+        ImGui::SliderInt("Levers", &settings.interactables.leverCount, 0, game::MAX_LEVER_COUNT,
+                         "%d", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SliderInt("Notes", &settings.interactables.noteCount, 0, game::MAX_NOTE_COUNT, "%d",
+                         ImGuiSliderFlags_AlwaysClamp);
 
         if (ImGui::Button("Regenerate")) {
             settings.regenerate = true;
@@ -183,6 +220,9 @@ void drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world,
         // open the gate is a rule of the round (the Gameplay panel).
         ImGui::Text("Crystals: %d, exit in cell (%d, %d)", static_cast<int>(world.crystals.size()),
                     world.exitCell.x, world.exitCell.z);
+        // The levers and the notes the maze really got, which can be fewer than asked.
+        ImGui::Text("Levers: %d, notes: %d", static_cast<int>(world.interactables.levers.size()),
+                    static_cast<int>(world.interactables.notes.size()));
 
         drawPlan(world, round, player, camera);
     }

@@ -101,8 +101,9 @@ night_maze_enable_warnings(engine)
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
 # The maze, its generator, its layout in the world, the terrain it stands on, the places
 # of the grass, the player, the settings of the lighting, of the bloom, of the fog, of
-# the vignette and of the shadows, the rules of a round (exit, crystals, battery) and what
-# the minimap shows (the discovered cells and its shapes) are plain data and math.
+# the vignette and of the shadows, the rules of a round (exit, crystals, battery), the
+# levers and the notes with the picking of a frame, and what the minimap shows (the
+# discovered cells and its shapes) are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -123,6 +124,8 @@ add_library(game_logic STATIC
     src/game/Grass.hpp
     src/game/Interactables.cpp
     src/game/Interactables.hpp
+    src/game/Interaction.cpp
+    src/game/Interaction.hpp
     src/game/Lighting.cpp
     src/game/Lighting.hpp
     src/game/Maze.cpp
@@ -157,8 +160,9 @@ target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
-# NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer, TerrainRenderer,
-# GrassRenderer, ColliderLines, LightRig, Skybox, PostProcess, ShadowMap, MinimapRenderer,
+# NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer,
+# InteractableRenderer, TerrainRenderer, GrassRenderer, ColliderLines, LightRig, Skybox,
+# PostProcess, ShadowMap, MinimapRenderer,
 # with the shared ModelDraw) stay in the executable: they need a window and an OpenGL
 # context, so they are not something a test can run.
 add_executable(night_maze
@@ -169,6 +173,8 @@ add_executable(night_maze
     src/game/GameplayRenderer.hpp
     src/game/GrassRenderer.cpp
     src/game/GrassRenderer.hpp
+    src/game/InteractableRenderer.cpp
+    src/game/InteractableRenderer.hpp
     src/game/LightRig.cpp
     src/game/LightRig.hpp
     src/game/MazeRenderer.cpp
@@ -250,6 +256,7 @@ add_executable(night_maze_tests
     tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
     tests/InteractablesTests.cpp
+    tests/InteractionTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp

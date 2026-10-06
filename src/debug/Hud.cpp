@@ -1,9 +1,12 @@
-// Game HUD: the crystal counter, the battery bar, hints and the "You escaped" card.
+// Game HUD: the crystal counter, the battery bar, hints, the crosshair with its prompt,
+// the card of a note and the "You escaped" card.
 // See docs/modules/game/gameplay.md
 #include "debug/Hud.hpp"
 
 #include "debug/PanelLayout.hpp"
 #include "debug/Theme.hpp"
+#include "game/Interaction.hpp"
+#include "game/MazeWorld.hpp"
 #include "game/Round.hpp"
 
 #include <imgui.h>
@@ -11,6 +14,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdio>
+#include <string>
 
 namespace debug {
 
@@ -44,6 +48,26 @@ constexpr ImVec2 CARD_PADDING{28.0F, 20.0F};
 constexpr float MIDDLE = 0.5F;
 constexpr ImVec2 TOP_CENTER{MIDDLE, 0.0F};
 constexpr ImVec2 CENTER{MIDDLE, MIDDLE};
+
+// The card of a note stands below the middle of the window, so the crosshair and the
+// scene in front of the player stay free.
+constexpr ImVec2 BELOW_CENTER{MIDDLE, 0.74F};
+
+// The crosshair: a dot in the middle of the window, and a ring around it while the
+// player can use what it points at. Radii and the thickness of the ring in pixels.
+constexpr float CROSSHAIR_DOT_RADIUS = 2.0F;
+constexpr float CROSSHAIR_RING_RADIUS = 8.0F;
+constexpr float CROSSHAIR_RING_THICKNESS = 1.5F;
+
+// The prompt ("E: pull lever") stands near the bottom edge of the window, in the
+// middle. The thing the player points at is around the crosshair, so down there the
+// prompt never covers it. It is also below the card of a note (BELOW_CENTER) and
+// beside the minimap, which stands in a corner.
+constexpr ImVec2 PROMPT_PLACE{MIDDLE, 0.9F};
+
+// How much of the scene shows through the prompt: more than through the HUD, so the
+// ground in front of the player stays visible behind it.
+constexpr float PROMPT_OPACITY = 0.55F;
 
 constexpr int SECONDS_PER_MINUTE = 60;
 
@@ -181,12 +205,88 @@ void drawWinCard(const game::Round& round, float scale) {
     ImGui::PopStyleVar();
 }
 
+// True when the interaction key would use the thing the ray points at: pull that lever
+// or read that note. (Closing an open card needs no aim, so it does not count here.)
+bool pointsAtSomethingUsable(const game::PickState& pick) {
+    return pick.action == game::Interaction::PullLever ||
+           pick.action == game::Interaction::ReadNote;
+}
+
+// The crosshair in the middle of the window: the point the picking ray goes through
+// while the cursor is captured. With a free cursor the cursor itself shows that point,
+// so nothing is drawn.
+void drawCrosshair(const game::PickState& pick, float scale) {
+    if (!pick.hasRay || !pick.centered) {
+        return;
+    }
+    // The background draw list takes shapes in screen coordinates and draws them
+    // behind every ImGui window, so the crosshair never covers a panel or a card.
+    ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+    const ImVec2 center = windowPoint(CENTER);
+
+    if (pointsAtSomethingUsable(pick)) {
+        const ImU32 color = ImGui::GetColorU32(HUD_CROSSHAIR_ACTIVE_COLOR);
+        drawList->AddCircleFilled(center, CROSSHAIR_DOT_RADIUS * scale, color);
+        // The fourth argument is the number of straight pieces: 0 lets ImGui choose.
+        drawList->AddCircle(center, CROSSHAIR_RING_RADIUS * scale, color, 0,
+                            CROSSHAIR_RING_THICKNESS * scale);
+    } else {
+        drawList->AddCircleFilled(center, CROSSHAIR_DOT_RADIUS * scale,
+                                  ImGui::GetColorU32(HUD_CROSSHAIR_COLOR));
+    }
+}
+
+// The line near the bottom of the window that names the key, while there is something
+// to use.
+void drawPrompt(const game::PickState& pick) {
+    if (!pointsAtSomethingUsable(pick)) {
+        return;
+    }
+    ImGui::SetNextWindowPos(windowPoint(PROMPT_PLACE), ImGuiCond_Always, CENTER);
+    ImGui::SetNextWindowBgAlpha(PROMPT_OPACITY);
+
+    if (ImGui::Begin("Interaction prompt", nullptr, STATUS_WINDOW_FLAGS)) {
+        ImGui::TextColored(HUD_CROSSHAIR_ACTIVE_COLOR, "%s", game::interactionPrompt(pick.action));
+    }
+    ImGui::End();
+}
+
+// The card of the note that is being read: its text and the key that closes it.
+void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float scale) {
+    // The text is asked for in every frame: a hint towards a crystal changes when that
+    // crystal is collected.
+    const std::string text = game::openNoteText(world, round);
+
+    ImGui::SetNextWindowPos(windowPoint(BELOW_CENTER), ImGuiCond_Always, CENTER);
+    ImGui::SetNextWindowBgAlpha(CARD_OPACITY);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+                        {CARD_PADDING.x * scale, CARD_PADDING.y * scale});
+
+    if (ImGui::Begin("Note", nullptr, CARD_WINDOW_FLAGS)) {
+        ImGui::TextColored(HUD_NOTE_COLOR, "A note on the wall");
+        ImGui::Separator();
+        // "%s" and the text as an argument: the text itself is never read as a format.
+        ImGui::Text("%s", text.c_str());
+        ImGui::Spacing();
+        ImGui::TextColored(HUD_BATTERY_COLOR, "%s",
+                           game::interactionPrompt(game::Interaction::CloseNote));
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
 } // namespace
 
-void drawHud(const game::Round& round, const game::GameplaySettings& settings) {
+void drawHud(const game::MazeWorld& world, const game::Round& round,
+             const game::GameplaySettings& settings, const game::PickState& pick) {
     const float scale = ImGui::GetStyle().FontScaleDpi;
 
     drawStatus(round, settings, scale);
+    drawCrosshair(pick, scale);
+    drawPrompt(pick);
+    if (round.noteOpen) {
+        drawNoteCard(world, round, scale);
+    }
     if (round.state == game::RoundState::Won) {
         drawWinCard(round, scale);
     }

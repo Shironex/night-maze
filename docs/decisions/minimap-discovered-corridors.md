@@ -61,6 +61,15 @@ Uwaga o zakresie: treścią decyzji właściciela jest jedno zdanie z części 2
 
 **Czego nie wiadomo.** Kod ma zgłoszoną bramkę (414 przypadków testowych, 138711 asercji) i siedmiosekundowy start bez błędów w `stderr`. **Nikt nie oglądał obrazu**: kolory, grubości, rozmiar strzałki, czytelność w dużym labiryncie i położenie względem HUD nie są ocenione. Nie ćwiczono ruchu gracza, klawisza M, zakładki Minimap, `Reveal all`, `Reload shaders` ani zmiany rozmiaru okna. Lista do wykonania: [`../guides/build-windows.md`](../guides/build-windows.md), sekcja 22.
 
+## Dopisek, 2026-10-06 (M8, część 2): ściany z labiryntu rundy
+
+Decyzja o odkrywaniu przez linię wzroku wzdłuż korytarzy nie zmieniła się. Zmieniło się to, **z czego** funkcje czytają ściany. Odkrywanie (`discoverAround`) i minimapa (`buildMinimapVertices`) czytają teraz `roundMaze(world, round)`: kopię labiryntu, którą runda robi w `startRound` i z której `pullRoundLever` usuwa ścianę otwartą dźwignią (po obu stronach). Dwa skutki dla tej decyzji:
+
+- **Ściana otwarta dźwignią zmienia linię wzroku.** Reguła czyta ściany w każdym wywołaniu i niczego nie zapamiętuje (sekcja 4), więc od kroku po pociągnięciu odkrywanie przechodzi przez otwór i odkrywa korytarz za nim. Minimapa przestaje rysować tę ścianę. Ta własność, która do M8 była tylko testem (`a wall that is removed later opens the view from the next call on`), jest od teraz używana w grze.
+- **Nowa runda znowu ma każdą ścianę.** Zmienia się kopia rundy, nie `MazeWorld::maze`. Wybór kopii opisuje [`round-keeps-own-maze-copy.md`](round-keeps-own-maze-copy.md).
+
+Doszły też kwadraty dźwigni i kartek na mapie (rysowane tylko w pokazanych komórkach), co nie zmienia zasady "mapa pokazuje to, co gracz odkrył". Obraz minimapy widział po raz pierwszy agent, który pisał kod M8, części 2, na zrzutach ekranu (widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela): ściana znikająca z mapy po pociągnięciu dźwigni i powrót mapy do stanu początkowego po klawiszu R. Właściciel mapy nie oglądał, więc zdanie na górze noty o oglądaniu obrazu pozostaje prawdziwe w odniesieniu do niego.
+
 ## 5. Kiedy wrócić do tej decyzji
 
 - Gdyby testy z graczami pokazały, że bez widoku całości gra jest za trudna albo za długa.

@@ -6,6 +6,9 @@
 #include "game/MazeGenerator.hpp"
 #include "scene/Transform.hpp"
 
+#include <cstddef>
+#include <stdexcept>
+
 namespace game {
 
 namespace {
@@ -47,6 +50,22 @@ float startYaw(const Maze& maze) {
         }
     }
     return yawTowards(Direction::North);
+}
+
+// The number of the wall a lever opens in the list of wall segments. openedWallSegment
+// gives the segment at y = 0, exactly as wallSegments lists it, so it is found by its
+// place and its axis. It has to be asked before the walls are lowered to the terrain:
+// that changes their y.
+std::size_t wallIndexOf(const std::vector<WallSegment>& walls, const Lever& lever) {
+    const WallSegment opened = openedWallSegment(lever);
+    for (std::size_t i = 0; i < walls.size(); ++i) {
+        if (walls[i].position == opened.position && walls[i].axis == opened.axis) {
+            return i;
+        }
+    }
+    // Cannot happen: a lever only opens a wall the maze has, and every wall of the maze
+    // is in the list. An error is better than a wrong wall going down.
+    throw std::logic_error("buildMazeWorld: the wall of a lever is not in the wall list");
 }
 
 } // namespace
@@ -101,15 +120,20 @@ void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightSc
         lowerToGround(terrain, world.gate);
         world.gateBox = wallBox(world.gate);
     }
+
+    // The levers and the notes hang on the walls at a height above the ground, so they
+    // follow the ground too.
+    placeInteractablesOnTerrain(world.interactables, terrain);
 }
 
-MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed) {
+MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed,
+                         const InteractableSettings& interactables) {
     // A new heightmap is flat, so the height scale does not matter.
-    return buildMazeWorld(width, height, seed, Heightmap{}, DEFAULT_HEIGHT_SCALE);
+    return buildMazeWorld(width, height, seed, Heightmap{}, DEFAULT_HEIGHT_SCALE, interactables);
 }
 
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Heightmap& heightmap,
-                         float heightScale) {
+                         float heightScale, const InteractableSettings& interactables) {
     MazeWorld world(generateMaze(width, height, seed));
     world.seed = seed;
     const Maze& maze = world.maze;
@@ -130,6 +154,16 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
     // The crystals: never in the start cell (the player would collect one without
     // moving) and never in the exit cell (it is behind the gate).
     world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
+
+    // The levers and the notes come after the crystals: a lever avoids the cells that
+    // have a crystal. For every lever the wall it opens is looked up in the wall list
+    // once, here, so nothing has to search for it while the game runs.
+    world.interactables =
+        placeInteractables(maze, seed, START_CELL, exit.cell, world.crystals, interactables);
+    world.leverWalls.reserve(world.interactables.levers.size());
+    for (const Lever& lever : world.interactables.levers) {
+        world.leverWalls.push_back(wallIndexOf(world.walls, lever));
+    }
 
     // The heights: the terrain, and everything above standing on it.
     placeOnTerrain(world, heightmap, heightScale);

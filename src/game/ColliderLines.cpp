@@ -1,5 +1,5 @@
-// ColliderLines: draws collision boxes and spheres as thin lines, a debug view of the
-// collisions.
+// ColliderLines: draws collision boxes, spheres and single lines as thin lines, a debug
+// view of the collisions and of the picking ray.
 // See docs/modules/scene/collision.md
 #include "game/ColliderLines.hpp"
 
@@ -92,11 +92,20 @@ constexpr std::array<glm::vec3, 3> CIRCLE_ROTATIONS = {
     glm::vec3{0.0F, QUARTER_TURN_DEGREES, 0.0F},
 };
 
+// A line from the origin to the point (1, 0, 0): its two ends and the one line that
+// joins them.
+constexpr std::array<gfx::Vertex, 2> UNIT_LINE_ENDS = {
+    gfx::Vertex{.position = {0.0F, 0.0F, 0.0F}},
+    gfx::Vertex{.position = {1.0F, 0.0F, 0.0F}},
+};
+constexpr std::array<std::uint32_t, INDICES_PER_LINE> UNIT_LINE_INDICES = {0, 1};
+
 } // namespace
 
 ColliderLines::ColliderLines()
     : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES),
-      m_unitCircle(unitCirclePoints(), unitCircleLines(), GL_LINES) {}
+      m_unitCircle(unitCirclePoints(), unitCircleLines(), GL_LINES),
+      m_unitLine(UNIT_LINE_ENDS, UNIT_LINE_INDICES, GL_LINES) {}
 
 void ColliderLines::draw(const gfx::Shader& shader, std::span<const scene::Aabb> boxes,
                          const glm::vec3& color) const {
@@ -138,6 +147,25 @@ void ColliderLines::drawSpheres(const gfx::Shader& shader, std::span<const scene
             m_unitCircle.draw();
         }
     }
+}
+
+void ColliderLines::drawLine(const gfx::Shader& shader, const glm::vec3& from, const glm::vec3& to,
+                             const glm::vec3& color) const {
+    // Converted to a linear colour, as in draw.
+    shader.setVec3(COLOR_UNIFORM, gfx::srgbToLinear(color));
+
+    // The model matrix is written by hand here. A matrix is four columns: where the X,
+    // the Y and the Z axis of the model go, and where its origin goes. The unit line
+    // runs from the origin along X to x = 1. So with the X column set to (to - from) and
+    // the origin column set to from, the start of the line lands on from and its end on
+    // from + (to - from), which is to. The Y and Z columns stay as in the identity: the
+    // line has no extent in those directions, so they change nothing.
+    glm::mat4 model{1.0F};
+    model[0] = glm::vec4{to - from, 0.0F};
+    model[3] = glm::vec4{from, 1.0F};
+
+    shader.setMat4(MODEL_UNIFORM, model);
+    m_unitLine.draw();
 }
 
 } // namespace game

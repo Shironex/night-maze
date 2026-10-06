@@ -8,6 +8,18 @@ struct GLFWwindow;
 
 namespace core {
 
+/// Where the cursor is, the answer of Input::cursorPosition.
+struct CursorPosition {
+    /// False while the mouse is blocked: x and y mean nothing then.
+    bool valid = false;
+
+    /// The position in screen coordinates (the units of the window size, not framebuffer
+    /// pixels), measured from the top left corner of the window: x grows to the right
+    /// and y grows downwards.
+    double x = 0.0;
+    double y = 0.0;
+};
+
 /// Snapshot of the keyboard and the mouse, refreshed once per frame.
 ///
 /// Keys are identified by the GLFW key constants (GLFW_KEY_W, GLFW_KEY_ESCAPE, ...),
@@ -54,8 +66,17 @@ public:
     /// Same once-per-frame rule as mouseDeltaX. Returns 0 while the mouse is blocked.
     double mouseDeltaY() const;
 
+    /// Where the cursor was when update read it. Pair it with the size of the WINDOW
+    /// (core::Window::windowSize), never with the size of the framebuffer: on a Retina
+    /// display the two differ. While the mouse is blocked the answer is not valid, the
+    /// same rule as for the buttons: a cursor over a debug panel points at nothing in
+    /// the scene. While the cursor is captured the position is a virtual one without
+    /// limits and says nothing about a place in the window.
+    CursorPosition cursorPosition() const;
+
     /// Blocks or unblocks the mouse. While blocked, isMouseButtonDown and
-    /// wasMouseButtonPressed return false for every button and the mouse delta is 0.
+    /// wasMouseButtonPressed return false for every button, the mouse delta is 0 and
+    /// cursorPosition is not valid.
     /// Used when something else owns the mouse, for example a panel of the debug UI under
     /// the cursor. core/ does not know who blocks it: the caller decides.
     void setMouseBlocked(bool blocked) { m_mouseBlocked = blocked; }

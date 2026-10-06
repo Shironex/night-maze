@@ -17,7 +17,7 @@ i dziesiąty program), trzeciej (mgła z bufora głębi i winieta w przebiegu sk
 czwartej (mapa cieni księżyca, jedenasty program, panel Shadows) piątej, z 2026-10-06
 (mapa cieni latarki z rzutem perspektywicznym i latarka w ręce, bez nowego programu ani
 panelu) i szóstej, z 2026-10-06 (minimapa: drugi framebuffer, dwunasty i trzynasty program,
-zakładka w panelu Framebuffers) oraz M8, część 1, z 2026-10-06 (environment mapping: odbicia i załamania nieba na kryształach i w kałużach, czternasty program `reflect`, panel Environment).
+zakładka w panelu Framebuffers) oraz M8, część 1, z 2026-10-06 (environment mapping: odbicia i załamania nieba na kryształach i w kałużach, czternasty program `reflect`, panel Environment) oraz M8, część 2, z 2026-10-06 (selekcja, dźwignie i kartki: promień z kamery w działającej grze, bez nowego programu ani panelu).
 Wszystko, co ten dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
@@ -25,7 +25,7 @@ do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M
 "M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS", "M7, część 1
 (bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS", "M7, część 3 (mgła
 i winieta) na macOS", "M7, część 4 (cienie księżyca) na macOS", "M7, część 5 (cień latarki)
-na macOS", "M7, część 6 (minimapa) na macOS" i "M8, część 1 (environment mapping) na macOS".
+na macOS", "M7, część 6 (minimapa) na macOS" "M8, część 1 (environment mapping) na macOS" i "M8, część 2 (selekcja, dźwignie i kartki) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -1918,7 +1918,7 @@ sekcja 23, "Lista kontrolna M8, część 1: environment mapping"). **Na macOS ni
 nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Na Windowsie zgłoszono też tylko
 krótki start programu Debug (około 8 sekund, tylko ścieżka domyślna): nikt nie obejrzał odbić na
 żadnym systemie. Opis kodu: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md).
-M8 jest rozpoczęty i nie jest kompletny (obie części, "podstawy bez okna" i "część 1"). Kolejność sprawdzania wszystkich części na Macu:
+M8 jest rozpoczęty i nie jest kompletny ("M8, podstawy bez okna", "M8, część 1: environment mapping" i "M8, część 2: selekcja, dźwignie i kartki"). Kolejność sprawdzania wszystkich części na Macu:
 [`m7-status.md`](m7-status.md).
 
 Ta część używa już znanych funkcji OpenGL (teksturę sześcienną z nieba, `samplerCube`, `reflect`
@@ -1980,8 +1980,66 @@ zatrzyma także tę część.
 - [ ] build Debug i Release bez ostrzeżeń kompilatora
 
 **Co nadal nie istnieje na żadnym systemie:** obraz tej części nikogo nie przekonał ani nie
-rozczarował: nikt go jeszcze nie zobaczył. M8 jest rozpoczęty: selekcja obiektów i dźwignie z
-kartkami mają własne części.
+rozczarował: nikt go jeszcze nie zobaczył. M8 jest rozpoczęty: selekcja obiektów, dźwignie i
+kartki mają własną listę poniżej.
+
+### M8, część 2 (selekcja, dźwignie i kartki) na macOS: lista w całości otwarta
+
+Druga część kamienia milowego M8 (promień z kamery w działającej grze: pliki `src/game/Interaction.*`,
+`src/game/InteractableRenderer.*`, `src/game/NightMazeApp.*` (`pickForFrame`, `handleInteraction`),
+`src/game/Round.*`, `src/game/Minimap.*`, `src/core/Input.*` (`cursorPosition`), `src/debug/Hud.*`,
+trzy nowe modele i nowe tekstury, skrypty Blendera `build_lever.py` i `build_note.py`) powstała na
+Windowsie 2026-10-06 i tam jest zgłoszona jako zbudowana i przetestowana
+([`build-windows.md`](build-windows.md), sekcja 24, "Lista kontrolna M8, część 2: selekcja,
+dźwignie i kartki"). **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt
+poniżej nie jest odhaczony.** Na Windowsie grę poprowadził skryptem i oglądał na zrzutach agent,
+który napisał kod, a nie właściciel. Opis kodu:
+[`../modules/scene/picking.md`](../modules/scene/picking.md) i
+[`../modules/game/interactables.md`](../modules/game/interactables.md). Kolejność sprawdzania
+wszystkich części na Macu: [`m7-status.md`](m7-status.md).
+
+Ta część nie dodaje shadera ani nowego wywołania OpenGL: dźwignie i kartki rysują się istniejącymi
+programami, a podświetlenie to uniform `uEmissive`. Ryzyko leży w **współrzędnych kursora**.
+
+**Nowe dla macOS w tej części**
+
+- [ ] **kursor w jednostkach okna, nie bufora ramki.** GLFW podaje pozycję kursora w współrzędnych
+      ekranu. Na ekranie Retina bufor ramki ma dwa razy więcej pikseli. `pickForFrame` bierze punkt
+      i rozmiar z `windowSize()`, a proporcje obrazu (`aspectRatio`) z rozmiaru bufora ramki.
+      Obie strony dają ten sam stosunek szerokości do wysokości, więc promień jest dobry, ale
+      tylko dlatego, że stosunek jest równy. Sprawdzić przy wolnym kursorze: promień przez kursor
+      trafia w dźwignię dokładnie tam, gdzie kursor stoi na obrazie (panel Collision, linia
+      "Hit: lever ..."), także po zmianie rozmiaru okna i po przeciągnięciu okna między ekranami
+      o różnej skali
+- [ ] **klawisz E** (`GLFW_KEY_E`) pociąga dźwignię i czyta kartkę, także z układem klawiatury
+      innym niż amerykański
+- [ ] **przechwycenie myszy.** Wolny kursor: kliknięcie w dźwignię ją pociąga, kliknięcie gdzie
+      indziej w scenie przechwytuje kursor. Przechwycony kursor: promień idzie przez środek
+      obrazu (pierścień celownika na dźwigni). Zapisać, czy `GLFW_CURSOR_DISABLED` na macOS nie
+      przesuwa środka okna
+- [ ] **trzy nowe modele i tekstury** wczytują się (log bez `[error]`), płytka i rączka dźwigni
+      oraz kartka są widoczne na ekranie Retina
+
+**Obraz i zachowanie (tak jak na Windowsie, lista tam jest pełniejsza)**
+
+- [ ] pierścień celownika i podpowiedź "E: pull lever" przy dźwigni w zasięgu 2,5 m, podświetlenie
+      pulsuje
+- [ ] pociągnięcie: rączka opada, ściana opada w około 1,5 s i przestaje blokować od chwili
+      pociągnięcia, minimapa przestaje ją rysować, klawisz R przywraca ściany
+- [ ] kartka: karta z podpowiedzią i "E: close", zamyka się klawiszem E, kliknięciem, po
+      odejściu dalej niż 3,0 m i po wygranej
+- [ ] panel Collision: ostatni promień, trafienie, pola `Draw pick boxes and ray` i `Freeze the
+      drawn ray`; panel Maze: suwaki `Levers` i `Notes`; panel Gameplay: przycisk `Pull all levers`
+- [ ] kliknięcie w panel debugowania nie dociera do gry
+
+**Testy jednostkowe na Macu**
+
+- [ ] `ctest` albo `night_maze_tests`: wszystkie przechodzą, w tym 21 przypadków z
+      `InteractionTests.cpp` (razem na Windowsie 466 przypadków i 152264 asercji)
+- [ ] build Debug i Release bez ostrzeżeń kompilatora
+
+**Co nadal nie istnieje na żadnym systemie:** obraz tej części nie został obejrzany przez
+właściciela. Blendera na macOS nie trzeba (modele są w repozytorium).
 
 ### Skróty: `make`
 

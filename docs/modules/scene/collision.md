@@ -1,6 +1,6 @@
 # Moduł scene: kolizje, AABB, kule i przesuwanie wzdłuż ścian
 
-Kamień milowy: M2 + M3 (pudełka i ruch), M5 (kule). Temat wykładu: 14 (Wstęp do kolizji).
+Kamień milowy: M2 + M3 (pudełka i ruch), M5 (kule), M8 część 2 (panel pokazuje ostatni promień wskazywania, ściana otwarta dźwignią przestaje być przeszkodą). Temat wykładu: 14 (Wstęp do kolizji).
 Kod: [`src/scene/Collider.hpp`](../../../src/scene/Collider.hpp), [`src/scene/Collider.cpp`](../../../src/scene/Collider.cpp), testy w [`tests/ColliderTests.cpp`](../../../tests/ColliderTests.cpp). Rysowanie pudełek i kul: [`src/game/ColliderLines.hpp`](../../../src/game/ColliderLines.hpp), [`src/game/ColliderLines.cpp`](../../../src/game/ColliderLines.cpp), shadery [`assets/shaders/color.vert`](../../../assets/shaders/color.vert) i [`assets/shaders/color.frag`](../../../assets/shaders/color.frag), panel w [`src/debug/panels/CollisionPanel.hpp`](../../../src/debug/panels/CollisionPanel.hpp) i [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Użytkownicy: [`src/game/MazeLayout.cpp`](../../../src/game/MazeLayout.cpp) (pudełka ścian i słupków), [`src/game/Player.cpp`](../../../src/game/Player.cpp) (ruch gracza) i [`src/game/Round.cpp`](../../../src/game/Round.cpp) (kule: zbieranie kryształów i strefa wyjścia).
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, dodawanie i odejmowanie wektorów) i odwołuje się do stałego kroku symulacji z [`../core/main-loop.md`](../core/main-loop.md), sekcje 2.2 i 2.3. Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Skąd biorą się pudełka ścian labiryntu, opisuje [`../game/maze-generator.md`](../game/maze-generator.md), sekcje 2.7 i 5.7. Gracza, który z kolizji korzysta, opisuje [`../game/player.md`](../game/player.md), a reguły rundy, które korzystają z kul, [`../game/gameplay.md`](../game/gameplay.md).
@@ -17,6 +17,8 @@ Obie realizuje plik `Collider`: struktura `scene::Aabb` (pudełko o ścianach r�
 Od M5 w tym samym pliku jest druga bryła: `scene::Sphere` (kula), z testami `overlaps` dla dwóch kul i dla kuli z pudełkiem oraz z funkcją `closestPoint`. Kula służy do rzeczy, które się zbiera albo w które się wchodzi i które nigdy nie blokują drogi: kryształów i strefy wyjścia. Dla kul jest **samo wykrywanie**, bez reakcji: `moveAndSlide` nadal przesuwa pudełko wśród pudełek i nic nie ślizga się po kuli.
 
 Tak jak `Transform` i `Camera`, to zwykłe dane i matematyka: żadnego wywołania OpenGL, żadnej klawiatury, żadnego czasu. Dzięki temu cały kod da się sprawdzić testami jednostkowymi bez okna.
+
+**Zmiana w M8, części 2 (2026-10-06).** Lista przeszkód gracza może teraz **tracić pudełka ścian**: ściana, którą otworzyła dźwignia, wypada z listy `roundObstacles` w chwili pociągnięcia, tak jak brama w chwili otwarcia (do 1,5 s gracz może przejść przez ścianę, którą jeszcze widać). Lista `MazeWorld::colliders` się nie zmienia: ściany są w niej pierwsze, w kolejności `world.walls`, a `roundObstacles` pomija pudełko ściany numer `i`, gdy `openedWallFlags[i]` jest prawdą. Ta sama lista przeszkód służy promieniowi wskazywania, więc otwarta ściana przestaje też zasłaniać dźwignie i kartki za sobą. Reguły: [`../game/gameplay.md`](../game/gameplay.md). Wybór i alternatywy: [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md). Panel Collision pokazuje od M8, części 2 ostatni promień (sekcja 6).
 
 Do pokazu i do szukania błędów dochodzą dwie rzeczy z programu `night_maze`: klasa `game::ColliderLines`, która rysuje pudełka i kule cienkimi liniami (sekcje 3, 4 i 5.8), i panel Collision (sekcja 6).
 
@@ -906,6 +908,7 @@ public:
 private:
     gfx::Mesh m_unitCube;
     gfx::Mesh m_unitCircle;
+    gfx::Mesh m_unitLine; // since M8, part 2: a line from (0, 0, 0) to (1, 0, 0)
 };
 ```
 
@@ -957,6 +960,8 @@ ColliderLines::ColliderLines()
     : m_unitCube(UNIT_CUBE_CORNERS, UNIT_CUBE_EDGES, GL_LINES),
       m_unitCircle(unitCirclePoints(), unitCircleLines(), GL_LINES) {}
 ```
+
+**Linia (od M8, części 2).** Konstruktor ma trzecią siatkę: `m_unitLine`, dwa wierzchołki, `(0, 0, 0)` i `(1, 0, 0)`, jedna linia (`UNIT_LINE_ENDS`, `UNIT_LINE_INDICES = {0, 1}`). Funkcja `drawLine(shader, from, to, color)` rysuje ją między dwoma punktami, bez osobnej siatki na każdy odcinek: macierz modelu jest wpisana ręcznie, kolumna X to `to - from` (tam trafia koniec jednostkowej linii), kolumna początku to `from`, a kolumny Y i Z zostają z jednostkowej, bo linia nie ma w tych kierunkach rozmiaru. Kolor jest przeliczany z sRGB na liniowy, jak w `draw`. Używa jej promień wskazywania ([`picking.md`](picking.md)).
 
 Trzeci argument konstruktora `gfx::Mesh` to rodzaj prymitywu. Tablice `std::array` same zamieniają się na `std::span`. Dane okręgu (funkcje `unitCirclePoints` i `unitCircleLines`) są omówione niżej, przy `drawSpheres`.
 
@@ -1143,7 +1148,14 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
     // each box really is. The box of the player is drawn at the simulation position (the
     // last fixed step), the camera at a blend of two steps, so while moving the box runs
     // ahead of the camera by a fraction of one step.
-    m_colliderLines.draw(m_colorShader, m_mazeWorld.colliders, MAZE_COLLIDER_COLOR);
+    //
+    // (Since M8, part 2) The boxes of the maze come from the obstacle list of the round,
+    // so a wall that a lever has opened is not drawn. While the gate blocks, its box is
+    // the last one of that list: it is left out here and drawn in its own colour below.
+    const std::size_t gateBoxes = gateBlocks(m_mazeWorld, m_round) ? 1 : 0;
+    const std::span<const scene::Aabb> mazeBoxes =
+        std::span<const scene::Aabb>(m_obstacles).first(m_obstacles.size() - gateBoxes);
+    m_colliderLines.draw(m_colorShader, mazeBoxes, MAZE_COLLIDER_COLOR);
     // draw takes a list of boxes. A span made of a pointer and a count of 1 is a list
     // with this one box in it.
     const scene::Aabb playerBox = m_player.box();
@@ -1179,7 +1191,7 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
 |---|---|
 | `if (!m_colorShader.isValid()) { return; }` | bez programu nie ma czym rysować. Błąd wczytania shadera był w logu przy starcie, a reszta klatki rysuje się normalnie |
 | `use()`, potem `uView` i `uProjection` | te same macierze co dla labiryntu: linie są widziane z tego samego oka |
-| `draw(m_colorShader, m_mazeWorld.colliders, MAZE_COLLIDER_COLOR)` | żółte: ściany i słupki, czyli stała część listy przeszkód. Wektor sam zamienia się na `std::span` |
+| `draw(m_colorShader, mazeBoxes, MAZE_COLLIDER_COLOR)` | żółte: ściany i słupki. Do M8, części 2 było to `m_mazeWorld.colliders`, teraz `m_obstacles` bez ostatniego pudełka, gdy brama blokuje (jest rysowana osobno na pomarańczowo). Dlatego ściana otwarta dźwignią **traci swoje żółte pudełko** razem z przeszkodą. Widok `std::span` na początek listy: `first(rozmiar - pudełka bramy)` |
 | `const scene::Aabb playerBox = m_player.box();` | pudełko gracza w pozycji symulacji, na zielono |
 | `std::span<const scene::Aabb>(&playerBox, 1)` | widok na jeden element: wskaźnik i liczba 1. Dzięki temu `draw` ma jedną wersję, dla listy |
 | `if (gateBlocks(m_mazeWorld, m_round))` | pomarańczowe pudełko bramy jest rysowane tylko wtedy, gdy brama jest na liście przeszkód. Ten sam warunek stoi w `roundObstacles`, więc **żółte i pomarańczowe linie razem to dokładnie lista `m_obstacles`**, którą dostaje `Player::update` |
@@ -1368,13 +1380,14 @@ Warunek `round.gateOpen` stoi przed testem brył z powodu trybu noclip. Z kolizj
 
 Panel **Collision** jest pokazem tematu 14. Kod: [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Jak panel jest podpięty do `DebugUI`, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
 
-PRD (sekcja 10) opisuje panel Collision jako "Debug draw AABB i sfer, wynik ostatniego raycasta", a tryb noclip wymienia przy panelu Camera. W programie jest rysowanie pudełek AABB i, od M5, kul. Promieni (raycast) panel nie pokazuje: matematyka promienia istnieje od M8 w `src/scene/Raycast.*` ([`picking.md`](picking.md)), ale nic w działającym programie jej nie woła, więc nie ma czego tu wypisać. Przełącznik noclip trafił do tego panelu, bo znaczy "wyłącz kolizje", a panel Camera pokazuje tylko bieżący tryb ([`camera-controls.md`](camera-controls.md), sekcja 6).
+PRD (sekcja 10) opisuje panel Collision jako "Debug draw AABB i sfer, wynik ostatniego raycasta", a tryb noclip wymienia przy panelu Camera. W programie jest rysowanie pudełek AABB i, od M5, kul. Linia PRD o wyniku ostatniego raycasta jest od M8, części 2 **spełniona**: panel ma sekcję `Last picking ray`, a promień wskazywania (matematyka z `src/scene/Raycast.*`, [`picking.md`](picking.md)) jest budowany w każdej klatce. Panel pokazuje, przez co poszedł promień, jego początek i kierunek, trafienie i działanie klawisza E, a dwa pola wyboru rysują pudełka wskazywania i promień w scenie. Przełącznik noclip trafił do tego panelu, bo znaczy "wyłącz kolizje", a panel Camera pokazuje tylko bieżący tryb ([`camera-controls.md`](camera-controls.md), sekcja 6).
 
 ### 6.1 Kod panelu
 
 ```cpp
 void drawCollisionPanel(const game::MazeWorld& world, const game::Round& round,
-                        game::Player& player, bool& drawColliders) {
+                        game::Player& player, bool& drawColliders, const game::PickState& pick,
+                        game::PickDebugSettings& pickDebug) {
     // First run only: the bottom edge of the window, right of the left column (the
     // constant is in PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
     placePanelOnFirstUse(COLLISION_PLACEMENT);
@@ -1440,8 +1453,11 @@ Czego panel **nie** liczy: strefy wyjścia (to pudełko, ale nie przeszkoda, wi�
 | `Draw collision shapes` | `m_drawColliders` | bryła otaczająca jest prostsza niż model: żółte pudełko ściany to sześć płaszczyzn zamiast 30 trójkątów, a kula kryształu to środek i promień |
 | legenda kolorów | odczyt | każda bryła ma swoją rolę: przeszkoda stała (żółty), przeszkoda do czasu (pomarańczowy), gracz (zielony), coś do zebrania (cyjan), strefa (magenta) |
 | `Noclip (key N)` | `player.noclip` | kolizje ruchu są osobnym krokiem, który można pominąć: w trybie noclip lista pudełek nie jest czytana. Testy kul działają dalej |
-| `Boxes: ... walls, ... pillars, ... gate` | odczyt | z czego składa się lista przeszkód. Dla labiryntu startowego na początku rundy: `Boxes: 121 walls, 121 pillars, 1 gate` |
-| `All boxes: ..., pickup spheres: ...` | odczyt | ile przeszkód sprawdza każdy krok i ile kul sprawdza każdy krok rundy. Na początku: `All boxes: 243, pickup spheres: 13`. Po otwarciu bramy pierwsza liczba spada do 242, a druga maleje z każdym kryształem |
+| `Boxes: ... walls (... opened by levers), ... pillars, ... gate` | odczyt | z czego składa się lista przeszkód. Dla labiryntu startowego na początku rundy: `Boxes: 121 walls (0 opened by levers), 121 pillars, 1 gate`. Pociągnięta dźwignia zmniejsza pierwszą liczbę o 1 i zwiększa drugą o 1 (`pulledLeverCount`) |
+| sekcja `Last picking ray` | odczyt | `Ray through: the middle of the picture` albo `the cursor`, `origin`, `direction` (jednostkowy), `Hit: lever 0 at 0.72 m` albo `Hit: nothing within 2.5 m`, `Key E: pull the lever` (też `read the note`, `close the note card`, `nothing`). Gdy promienia nie ma: `Ray: none (cursor over a panel or outside)`. Pokazuje promień **ostatniej klatki**: początek jest w oku (`rayFromEye`), więc wysokość `y` to wysokość oczu gracza |
+| `Draw pick boxes and ray` | pole wyboru (`pickDebug.drawShapes`) | rysuje pudełka wskazywania dźwigni (czerwone) i kartek (białe), pudełko trafione (zielone) i promień (zielony po trafieniu, szary bez), z małą kulą na końcu. Z oka promień jest jednym punktem |
+| `Freeze the drawn ray` | pole wyboru (`pickDebug.freezeRay`) | rysowany promień zostaje tam, gdzie był, a wskazywanie toczy się dalej: dopiero zatrzymany promień da się obejrzeć z boku (chodzi o kopię `m_shownPick`, nie o sam wynik, którego używa gra) |
+| `All boxes: ..., pickup spheres: ...` | odczyt | (po M8, części 2 pierwsza liczba maleje też o każdą ścianę otwartą dźwignią) ile przeszkód sprawdza każdy krok i ile kul sprawdza każdy krok rundy. Na początku: `All boxes: 243, pickup spheres: 13`. Po otwarciu bramy pierwsza liczba spada do 242, a druga maleje z każdym kryształem |
 | `Wall box: 0.30 m thick (the visible wall: 0.20 m)` | odczyt | bryła kolizji nie musi mieć wymiarów modelu |
 | `Player box`, `min`, `max` | odczyt | pudełko jest liczone z pozycji: na starcie `min: 0.70, 0.00, 0.70` i `max: 1.30, 1.80, 1.30` |
 

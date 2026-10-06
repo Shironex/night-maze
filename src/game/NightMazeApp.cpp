@@ -7,9 +7,11 @@
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 #include "game/Crystals.hpp"
+#include "game/Interactables.hpp"
 #include "game/Puddles.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
+#include "scene/Raycast.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -82,6 +84,17 @@ constexpr glm::vec3 GATE_COLLIDER_COLOR{1.0F, 0.45F, 0.1F};
 constexpr glm::vec3 PICKUP_COLLIDER_COLOR{0.2F, 0.9F, 1.0F};
 constexpr glm::vec3 EXIT_ZONE_COLOR{1.0F, 0.3F, 0.9F};
 
+// Colours of the debug view of the picking: the pick boxes of the levers in red and of
+// the notes in white, the picking ray and the box it hit in bright green, and a ray that
+// hit nothing in grey.
+constexpr glm::vec3 LEVER_PICK_COLOR{1.0F, 0.35F, 0.25F};
+constexpr glm::vec3 NOTE_PICK_COLOR{0.95F, 0.95F, 0.85F};
+constexpr glm::vec3 PICK_HIT_COLOR{0.3F, 1.0F, 0.3F};
+constexpr glm::vec3 PICK_MISS_COLOR{0.6F, 0.6F, 0.6F};
+
+// Radius of the small sphere that marks the end of the drawn picking ray, in metres.
+constexpr float PICK_MARKER_RADIUS = 0.04F;
+
 // Key that switches between walking and noclip (free flight).
 constexpr int NOCLIP_KEY = GLFW_KEY_N;
 
@@ -93,6 +106,10 @@ constexpr int RESTART_KEY = GLFW_KEY_R;
 
 // Key that shows and hides the minimap.
 constexpr int MINIMAP_KEY = GLFW_KEY_M;
+
+// Key that uses what the picking ray points at: pulls a lever, reads a note, closes the
+// card of a note. A left click does the same.
+constexpr int INTERACT_KEY = GLFW_KEY_E;
 
 // Pitch of a level look, in degrees: how the player looks at the start.
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
@@ -166,11 +183,13 @@ NightMazeApp::NightMazeApp()
                       core::assetPath(REFLECT_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
+      m_interactableRenderer(m_assets),
       m_terrainRenderer(m_assets),
       m_puddleRenderer(m_assets),
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
-                                 m_heightmap, m_terrainSettings.heightScale)) {
+                                 m_heightmap, m_terrainSettings.heightScale,
+                                 m_mazeSettings.interactables)) {
     // The two lit programs and the grass program read the lights from the uniform buffer
     // of m_lightRig. Each program is told once: the shader repeats it by itself after
     // a reload.
@@ -192,15 +211,21 @@ void NightMazeApp::regenerateMaze() {
     // written back for the panel to show.
     m_mazeSettings.width = std::clamp(m_mazeSettings.width, 1, Maze::MAX_SIZE);
     m_mazeSettings.height = std::clamp(m_mazeSettings.height, 1, Maze::MAX_SIZE);
+    // The same for the wanted numbers of levers and notes. placeInteractables would
+    // bring them into the range itself, here they are written back for the panel.
+    InteractableSettings& interactables = m_mazeSettings.interactables;
+    interactables.leverCount = std::clamp(interactables.leverCount, 0, MAX_LEVER_COUNT);
+    interactables.noteCount = std::clamp(interactables.noteCount, 0, MAX_NOTE_COUNT);
 
     // The height scale can be typed into its slider too.
     m_terrainSettings.heightScale =
         std::clamp(m_terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
 
-    // Replaces the maze, its terrain, the model matrices, the collision boxes, the exit
-    // and the crystals in one assignment. A new maze is a new round.
+    // Replaces the maze, its terrain, the model matrices, the collision boxes, the exit,
+    // the crystals, the levers and the notes in one assignment. A new maze is a new
+    // round.
     m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
-                                 m_heightmap, m_terrainSettings.heightScale);
+                                 m_heightmap, m_terrainSettings.heightScale, interactables);
     uploadGround();
     beginRound();
 }
@@ -209,7 +234,8 @@ void NightMazeApp::rebuildTerrain() {
     m_terrainSettings.heightScale =
         std::clamp(m_terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
 
-    // The world: a new terrain, and the walls, the gate, the start and the exit on it.
+    // The world: a new terrain, and the walls, the gate, the start, the exit, the levers
+    // and the notes on it.
     placeOnTerrain(m_mazeWorld, m_heightmap, m_terrainSettings.heightScale);
 
     // What copied heights out of the world. The crystals keep their state (collected or
@@ -254,9 +280,13 @@ void NightMazeApp::plantGrass() {
 }
 
 void NightMazeApp::beginRound() {
-    // The state of the round: every crystal back, a full battery, the gate closed.
+    // The state of the round: every crystal back, a full battery, the gate closed, no
+    // lever pulled and so every wall back in the obstacle list.
     m_round = startRound(m_mazeWorld, m_gameplay);
     m_obstacles = roundObstacles(m_mazeWorld, m_round);
+    // The picking of the round before may name a lever the new maze does not have.
+    m_pick = pickNothing(m_round);
+    m_shownPick = m_pick;
     // A round starts with the light on, also after one that ended in the dark.
     m_lighting.flashlightOn = true;
 
@@ -342,6 +372,15 @@ void NightMazeApp::onRender(double alpha) {
         beginRound();
     }
 
+    // Every lever at once, asked for by a button of the debug UI. Handled here like the
+    // restart: between two fixed steps. Open walls leave the obstacle list.
+    if (m_gameplay.pullAllLevers) {
+        m_gameplay.pullAllLevers = false;
+        if (pullAllLevers(m_round, m_mazeWorld) > 0) {
+            m_obstacles = roundObstacles(m_mazeWorld, m_round);
+        }
+    }
+
     // A new height scale of the terrain or a new density of the grass, asked for by the
     // debug UI. Both are handled here for the same reason as a new maze. A maze that
     // was regenerated in this frame is already built with the new numbers: doing it
@@ -380,15 +419,13 @@ void NightMazeApp::onRender(double alpha) {
         m_minimapSettings.enabled = !m_minimapSettings.enabled;
     }
 
-    // Mouse look. It runs here, once per frame, and not in onUpdate: a click and a mouse
-    // delta describe one frame, and onUpdate runs zero or more times per frame.
-    if (!input().isCursorCaptured()) {
-        // A click on a debug panel does not arrive here: main.cpp blocks the mouse for
-        // the game while the debug UI is using it.
-        if (input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
-            input().setCursorCaptured(true);
-        }
-    } else {
+    // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
+    // describes one frame, and onUpdate runs zero or more times per frame. It comes
+    // before the view matrix is built, so the picture and the picking ray of this frame
+    // already use the new angles. The click that captures a free cursor is read further
+    // down (handleInteraction), because it first has to be known what the click hit.
+    const bool cursorCaptured = input().isCursorCaptured();
+    if (cursorCaptured) {
         // Mouse movement to the right is positive and positive yaw turns right, so x is
         // used as it is. Screen y grows downwards while pitch grows upwards, hence the
         // minus sign: moving the mouse up (negative y) looks up.
@@ -423,6 +460,31 @@ void NightMazeApp::onRender(double alpha) {
     const glm::vec3 feet =
         glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
     const glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
+
+    // Width divided by height of the same pixels the viewport covers. The casts make it
+    // a division of floats: 1280 / 720 as integers would be 1.
+    const float aspectRatio =
+        static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
+
+    // The two matrices that are the same for everything drawn in this frame, built from
+    // the blended eye. They are needed this early for the picking ray, which has to go
+    // through the picture exactly as it will be drawn.
+    const glm::mat4 view = m_camera.viewMatrix(eye);
+    const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
+
+    // Object picking: one ray per frame, what it hits, and then the key or the click
+    // that uses it. This runs once per frame like the other keys. A lever that is
+    // pulled here changes the round between two fixed steps, never inside one.
+    m_pick = pickForFrame(view, projection, eye, cursorCaptured);
+    handleInteraction(cursorCaptured);
+    // The debug view draws this copy, which stands still while "freeze" is set.
+    if (!m_pickDebug.freezeRay) {
+        m_shownPick = m_pick;
+    }
+
+    // Where the walls stand in this frame: a wall that a lever has opened is on its way
+    // into the ground. One list for the shadow passes and for the scene pass.
+    m_wallMatrices = roundWallMatrices(m_mazeWorld, m_round);
 
     // The lighting of this frame. The round changes two things for this frame only:
     // a low battery dims the flashlight (an empty one switches it off) and the crystal
@@ -477,16 +539,6 @@ void NightMazeApp::onRender(double alpha) {
     GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
-    // Width divided by height of the same pixels the viewport covers. The casts make it
-    // a division of floats: 1280 / 720 as integers would be 1.
-    const float aspectRatio =
-        static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
-
-    // The two matrices that are the same for everything drawn in this frame. The eye is
-    // the blended one from the top of this function.
-    const glm::mat4 view = m_camera.viewMatrix(eye);
-    const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
-
     // The lights of this frame, from the lighting and the flashlight pose computed
     // before the shadow passes. The point lights hang above the crystals that are still
     // there. The copy to the graphics card happens once, and the two lit programs and
@@ -503,6 +555,9 @@ void NightMazeApp::onRender(double alpha) {
     drawReflections(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
+    }
+    if (m_pickDebug.drawShapes) {
+        drawPickLines(view, projection);
     }
 
     // The sky comes LAST, after everything that writes depth. It is drawn at the largest
@@ -567,6 +622,72 @@ void NightMazeApp::onRender(double alpha) {
     drawMinimap(framebuffer, feet);
 }
 
+PickState NightMazeApp::pickForFrame(const glm::mat4& view, const glm::mat4& projection,
+                                     const glm::vec3& eye, bool cursorCaptured) {
+    // The cursor is measured in the units of the WINDOW size (screen coordinates), so
+    // that size is its partner here and not the size of the framebuffer: on a Retina
+    // display the framebuffer has twice as many pixels. A window without a size has no
+    // point to cast a ray through (scene::screenPointRay would throw).
+    const core::Size windowSize = window().windowSize();
+    if (windowSize.width <= 0 || windowSize.height <= 0) {
+        return pickNothing(m_round);
+    }
+    const glm::vec2 size{static_cast<float>(windowSize.width),
+                         static_cast<float>(windowSize.height)};
+
+    // With the cursor captured the player aims with the camera: the ray goes through
+    // the middle of the picture, where the crosshair is. With a free cursor it goes
+    // through the cursor.
+    glm::vec2 point = size / 2.0F;
+    if (!cursorCaptured) {
+        // Not valid while the debug UI uses the mouse: a cursor over a panel points at
+        // the panel, not at the scene behind it.
+        const core::CursorPosition cursor = input().cursorPosition();
+        if (!cursor.valid) {
+            return pickNothing(m_round);
+        }
+        point = {static_cast<float>(cursor.x), static_cast<float>(cursor.y)};
+        // A cursor that has left the window points at nothing in the picture.
+        if (point.x < 0.0F || point.y < 0.0F || point.x > size.x || point.y > size.y) {
+            return pickNothing(m_round);
+        }
+    }
+
+    // From the point of the picture back into the world: the inverse of the two
+    // matrices the frame is drawn with. The ray then starts in the eye, so the reach
+    // is measured from the eye (game::rayFromEye).
+    const scene::Ray screenRay =
+        scene::screenPointRay(point, size, glm::inverse(projection * view));
+    // The obstacles of the round are what hides a lever or a note: walls, pillars and
+    // the closed gate. A wall that a lever has opened is not in the list.
+    return pickInRound(rayFromEye(screenRay, eye), cursorCaptured, m_mazeWorld, m_round,
+                       m_obstacles);
+}
+
+void NightMazeApp::handleInteraction(bool cursorCaptured) {
+    // wasKeyPressed and wasMouseButtonPressed are true for one frame. A click on
+    // a debug panel does not arrive here: main.cpp blocks the mouse for the game while
+    // the debug UI is using it.
+    const bool keyPressed = input().wasKeyPressed(INTERACT_KEY);
+    const bool clicked = input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
+
+    if ((keyPressed || clicked) && m_pick.action != Interaction::None) {
+        // There is something to do: pull the lever, read the note or close the card.
+        // A wall that opened is no obstacle any more.
+        if (interact(m_round, m_mazeWorld, m_pick)) {
+            m_obstacles = roundObstacles(m_mazeWorld, m_round);
+        }
+        // The round has changed, so the action is asked again: the lever that was just
+        // pulled is not highlighted in this frame, and an opened card can be closed.
+        m_pick.action = interactionFor(m_round, m_pick.picked);
+    } else if (clicked && !cursorCaptured) {
+        // A click into the scene that hit nothing to use: it captures the cursor, which
+        // switches on mouse look and movement. So a click with the free cursor ON
+        // a lever or a note uses it, and any other click captures.
+        input().setCursorCaptured(true);
+    }
+}
+
 void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
     if (!m_minimapSettings.enabled) {
         return;
@@ -584,7 +705,7 @@ void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
     // covered by tests), and copied to the graphics card in one piece. Every frame and
     // not only after a change, because the arrow of the player moves all the time, and
     // because then nothing can be forgotten: a cell that was discovered, a crystal that
-    // was collected, the gate, a new maze or a wall that is taken away later all show
+    // was collected, the gate, a new maze or a wall that a lever has opened all show
     // up by themselves. The default maze is about 1400 vertices of 20 bytes when all
     // of it is shown.
     const Maze& maze = m_mazeWorld.maze;
@@ -681,8 +802,9 @@ void NightMazeApp::setShadowUniformsOf(const gfx::Shader& shader) const {
 void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const {
     // The classes that draw the scene are used as they are, with another program and
     // the matrices of the light in place of the ones of the camera. So everything
-    // stands in the shadow map exactly where it stands in the picture: the gate as far
-    // as it has sunk, every crystal where it floats at this moment. The depth program
+    // stands in the shadow map exactly where it stands in the picture: the gate and
+    // the walls of pulled levers as far as they have sunk, every crystal where it
+    // floats at this moment. The depth program
     // has no samplers, no tint and no glow: those uniforms are set all the same and
     // ignored, as every uniform a program does not have.
     m_shadowDepthShader.use();
@@ -693,8 +815,12 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     // at the ground, and a ground of lines would cast a shadow of lines.
     constexpr bool NO_WIREFRAME = false;
     m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
-    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld);
+    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
+    // The levers and the notes cast shadows too. An empty PickState: nothing is
+    // highlighted, the depth program has no colours.
+    m_interactableRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, PickState{},
+                                glm::vec3{0.0F});
     // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
     // a texel of the map of the moon is about 3 cm, so its shadow would be a flicker of
     // single texels that moves with the wind, on ground the tuft itself hides. The map
@@ -742,11 +868,14 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     // The ground first, then what stands on it. The order does not change the picture
     // (the depth test sorts it out), it only follows the way the scene is built.
     m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
+    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do. (In the picture without lighting the crystals may be
     // left to the reflection pass, see drawGateAndCrystals.)
     drawGateAndCrystals(m_texturedShader);
+    // The levers and the notes. The highlight of the picked one shows in the picture
+    // without lighting. The two debug views show data and ignore it.
+    drawInteractables(m_texturedShader);
 }
 
 void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const {
@@ -776,11 +905,19 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 
     // The ground first, then what stands on it, as in drawUnlitMaze.
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(shader, m_mazeWorld);
+    m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights. (The crystals may be left to the
     // reflection pass, see drawGateAndCrystals.)
     drawGateAndCrystals(shader);
+    // The levers and the notes, lit like the walls they hang on.
+    drawInteractables(shader);
+}
+
+void NightMazeApp::drawInteractables(const gfx::Shader& shader) const {
+    // The highlight pulses on the animation clock of the round, which never stops.
+    m_interactableRenderer.draw(shader, m_mazeWorld, m_round, m_pick,
+                                highlightGlow(m_round.animationSeconds));
 }
 
 bool NightMazeApp::crystalsReflect() const {
@@ -925,7 +1062,15 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
     // each box really is. The box of the player is drawn at the simulation position (the
     // last fixed step), the camera at a blend of two steps, so while moving the box runs
     // ahead of the camera by a fraction of one step.
-    m_colliderLines.draw(m_colorShader, m_mazeWorld.colliders, MAZE_COLLIDER_COLOR);
+    //
+    // The boxes of the maze come from the obstacle list of the round, so a wall that
+    // a lever has opened is not drawn. While the gate blocks, its box is the last one of
+    // that list (game::roundObstacles): it is left out here and drawn in its own colour
+    // below.
+    const std::size_t gateBoxes = gateBlocks(m_mazeWorld, m_round) ? 1 : 0;
+    const std::span<const scene::Aabb> mazeBoxes =
+        std::span<const scene::Aabb>(m_obstacles).first(m_obstacles.size() - gateBoxes);
+    m_colliderLines.draw(m_colorShader, mazeBoxes, MAZE_COLLIDER_COLOR);
     // draw takes a list of boxes. A span made of a pointer and a count of 1 is a list
     // with this one box in it.
     const scene::Aabb playerBox = m_player.box();
@@ -954,6 +1099,69 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
         }
     }
     m_colliderLines.drawSpheres(m_colorShader, pickupSpheres, PICKUP_COLLIDER_COLOR);
+}
+
+void NightMazeApp::drawPickLines(const glm::mat4& view, const glm::mat4& projection) const {
+    if (!m_colorShader.isValid()) {
+        return;
+    }
+
+    m_colorShader.use();
+    m_colorShader.setMat4(VIEW_UNIFORM, view);
+    m_colorShader.setMat4(PROJECTION_UNIFORM, projection);
+
+    // The pick boxes: what the ray has to hit. They are larger than the models on
+    // purpose, and they reach out of the collision box of the wall they hang on.
+    const Interactables& interactables = m_mazeWorld.interactables;
+    std::vector<scene::Aabb> leverBoxes;
+    leverBoxes.reserve(interactables.levers.size());
+    for (const Lever& lever : interactables.levers) {
+        leverBoxes.push_back(lever.box);
+    }
+    std::vector<scene::Aabb> noteBoxes;
+    noteBoxes.reserve(interactables.notes.size());
+    for (const Note& note : interactables.notes) {
+        noteBoxes.push_back(note.box);
+    }
+
+    // The ray that is shown: the one of this frame, or the frozen one. The box it hit
+    // is drawn FIRST, in the colour of a hit. The same box follows below in the colour
+    // of its kind, exactly on top of these lines: the depth test keeps a fragment only
+    // when it is nearer than what is there, so the lines drawn first stay. The index is
+    // checked: the frozen ray may be older than the maze.
+    const PickState& shown = m_shownPick;
+    const PickedInteractable& picked = shown.picked;
+    const bool hitLever =
+        shown.hasRay && picked.kind == InteractableKind::Lever && picked.index < leverBoxes.size();
+    const bool hitNote =
+        shown.hasRay && picked.kind == InteractableKind::Note && picked.index < noteBoxes.size();
+    if (hitLever) {
+        m_colliderLines.draw(m_colorShader,
+                             std::span<const scene::Aabb>(&leverBoxes[picked.index], 1),
+                             PICK_HIT_COLOR);
+    }
+    if (hitNote) {
+        m_colliderLines.draw(m_colorShader,
+                             std::span<const scene::Aabb>(&noteBoxes[picked.index], 1),
+                             PICK_HIT_COLOR);
+    }
+    m_colliderLines.draw(m_colorShader, leverBoxes, LEVER_PICK_COLOR);
+    m_colliderLines.draw(m_colorShader, noteBoxes, NOTE_PICK_COLOR);
+    if (!shown.hasRay) {
+        return;
+    }
+
+    // The ray itself: from the eye to the point where it enters the box it hit, or as
+    // far as the player can reach when it hit nothing. A small sphere marks its end.
+    // Seen from the eye it started in, the line is a single point behind the crosshair:
+    // freeze it and step aside to see it.
+    const bool hit = hitLever || hitNote;
+    const float length = hit ? picked.distance : INTERACTION_REACH;
+    const glm::vec3 end = shown.ray.origin + shown.ray.direction * length;
+    const glm::vec3 color = hit ? PICK_HIT_COLOR : PICK_MISS_COLOR;
+    m_colliderLines.drawLine(m_colorShader, shown.ray.origin, end, color);
+    const scene::Sphere marker{.center = end, .radius = PICK_MARKER_RADIUS};
+    m_colliderLines.drawSpheres(m_colorShader, std::span<const scene::Sphere>(&marker, 1), color);
 }
 
 } // namespace game

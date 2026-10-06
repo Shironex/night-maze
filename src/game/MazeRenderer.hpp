@@ -2,6 +2,10 @@
 // See docs/modules/game/maze-rendering.md
 #pragma once
 
+#include <glm/glm.hpp>
+
+#include <span>
+
 namespace assets {
 class AssetCache;
 struct LoadedModel;
@@ -42,7 +46,12 @@ public:
     /// The function sets the samplers and uEmissive (black: stone does not glow), and
     /// draws every object with game::drawModel, which sets the textures, uTint, uModel
     /// and uNormalMatrix.
-    void draw(const gfx::Shader& shader, const MazeWorld& world) const;
+    ///
+    /// wallMatrices are the model matrices of the walls for this frame
+    /// (game::roundWallMatrices): the ones of the world, with the walls that levers have
+    /// opened lowered into the ground. The pillars are drawn from the world.
+    void draw(const gfx::Shader& shader, const MazeWorld& world,
+              std::span<const glm::mat4> wallMatrices) const;
 
 private:
     // Not owned. nullptr when the model could not be loaded.

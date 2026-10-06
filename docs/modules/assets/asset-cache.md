@@ -21,6 +21,8 @@ Drugą połową dokumentu jest panel **Assets**: pokaz tematów 4 i 5 na obronie
 
 **Stan na dziś, uczciwie.** Gra wczytuje przez pamięć podręczną pięć modeli i osiem tekstur: cztery obrazy koloru i cztery mapy normalnych. Do M4 były to trzy modele i cztery tekstury (trzecim modelem była płytka podłogi, usunięta w drugiej części M6), i tego stanu dotyczą pomiary w tym i w następnym akapicie. Na Windowsie (2026-10-05, MSVC 19.44, RTX 4070 Ti SUPER, sterownik 610.74) build Debug i Release przechodzi bez ostrzeżeń, a program startuje bez linii `[error]`. Na zrzutach ekranu sprawdzone są: tekstury na ścianach i podłodze ustawione poprawnie, oba widoki diagnostyczne, porównanie filtrów (najbliższy sąsiad, dwuliniowy, trójliniowy, anizotropia 16x na ścianie oglądanej pod płaskim kątem), podglądy tekstur w panelu nieodwrócone oraz biała tekstura zastępcza z jedną linią `[error]` po usunięciu pliku tekstury. Stany filtra, anizotropii i trybu widoku były ustawiane tymczasowym kodem, który został usunięty: **widżetów panelu nikt jeszcze nie kliknął ręcznie**. Klasa nie ma testu jednostkowego, bo każda jej funkcja tworzy obiekty OpenGL. Na macOS kod nie był budowany ani uruchamiany.
 
+**Po M8, części 2 (2026-10-06).** Pamięć podręczna wczytuje osiem modeli i czternaście tekstur: doszły `lever.obj`, `lever_handle.obj` i `note.obj` oraz tekstury `lever_iron`, `lever_brass` i `note_paper` z mapami normalnych. Kod `AssetCache` się nie zmienił. Trzecim użytkownikiem obok `MazeRenderer` i `GameplayRenderer` jest `game::InteractableRenderer` (konstruktor prosi o trzy modele przez `AssetCache::model`). Zdania o pięciu modelach i ośmiu teksturach w tym dokumencie opisują stan sprzed tej części, w którym wykonano opisane pomiary.
+
 Po dodaniu map normalnych (2026-10-05, ten sam komputer) build Debug i Release nadal przechodzi bez ostrzeżeń i program startuje bez linii `[error]` i `GL_`. Na zrzutach ekranu sprawdzony jest relief na ścianach, słupkach i podłodze przy mapach włączonych i jego brak przy wyłączonych. **Nie jest sprawdzone ręcznie:** kliknięcie pola `Normal mapping`, ostateczny układ panelu z tym polem na swoim miejscu, lista czterech tekstur z podglądami odczytana z ekranu oraz zachowanie przy brakującym pliku mapy normalnych (płaska mapa zastępcza i jedna linia `[error]`). Te punkty są otwarte na liście w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
 W M5 (2026-10-05) doszły trzy modele rozgrywki (`crystal_a.obj`, `crystal_b.obj`, `gate.obj`) i ich cztery tekstury. Kod `AssetCache` i kod panelu nie zmieniły się: nowe pliki wczytuje ta sama funkcja `model()`, o którą prosi teraz także `game::GameplayRenderer`. Autor kodu zgłosił dla Windowsa build Debug i Release bez ostrzeżeń, przechodzące testy i obraz sprawdzony zrzutami ekranu. **Nie jest sprawdzone ręcznie** nic z M5, w tym lista sześciu modeli i ośmiu tekstur odczytana z panelu: liczby, które ten dokument dla nich podaje, wynikają z kodu panelu i ze skryptu liczącego wierzchołki z plików `.obj` ([`obj-loader.md`](obj-loader.md), sekcja 5.9).
@@ -104,7 +106,7 @@ Inne możliwości i dlaczego nie one:
 | `std::vector` z `reserve(N)` | tylko do N elementów | działa do dnia, w którym ktoś wczyta N + 1 zasobów |
 | `std::vector<std::unique_ptr<LoadedModel>>` | tak | każdy element to osobny przydział pamięci i dodatkowy wskaźnik w kodzie |
 | `std::list<LoadedModel>` | tak | osobny przydział na element, wolniejsze przeglądanie |
-| `std::map` albo `std::unordered_map` | tak (elementy węzłowe) | potrzebny dopiero przy tysiącach zasobów. Tutaj jest ich trzynaście: pięć modeli i osiem tekstur |
+| `std::map` albo `std::unordered_map` | tak (elementy węzłowe) | potrzebny dopiero przy tysiącach zasobów. Tutaj jest ich dziś dwadzieścia dwa: osiem modeli i czternaście tekstur (do M8, części 2 trzynaście: pięć i osiem) |
 | `std::deque<LoadedModel>` | tak, przy dopisywaniu na końcu | wybrane: najprostszy kod, kolejność wczytania zachowana dla panelu |
 
 Wyszukiwanie to zwykłe przejście po liście i porównanie ścieżek. Przy kilku zasobach jest szybsze niż jakakolwiek tablica mieszająca i nie wymaga drugiej struktury danych.
@@ -238,6 +240,7 @@ Tryb widoku z panelu Assets ustawia uniform `uViewMode`: 0 to tekstura razy kolo
 | [`src/debug/panels/AssetsPanel.hpp`](../../../src/debug/panels/AssetsPanel.hpp), [`.cpp`](../../../src/debug/panels/AssetsPanel.cpp) | funkcja `debug::drawAssetsPanel` (sekcja 6) |
 | [`src/game/MazeRenderer.cpp`](../../../src/game/MazeRenderer.cpp) | prosi o dwa modele labiryntu: `models/wall_straight.obj`, `models/wall_pillar.obj` ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5). Do M6 prosił też o `models/floor_tile.obj` |
 | [`src/game/GameplayRenderer.cpp`](../../../src/game/GameplayRenderer.cpp) | prosi o trzy modele rozgrywki: `models/crystal_a.obj`, `models/crystal_b.obj`, `models/gate.obj` ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5). Poza tymi dwoma konstruktorami nikt o modele nie prosi |
+| [`src/game/InteractableRenderer.cpp`](../../../src/game/InteractableRenderer.cpp) | od M8, części 2: prosi o trzy modele: `models/lever.obj`, `models/lever_handle.obj` i `models/note.obj` (model, którego nie udało się wczytać, jest po prostu nierysowany) ([`../game/interactables.md`](../game/interactables.md)) |
 | [`src/game/TerrainRenderer.cpp`](../../../src/game/TerrainRenderer.cpp) | od M6: prosi wprost o dwie tekstury, `textures/ground.png` i `textures/ground_normal.png`, każdą ze swoją przestrzenią kolorów (`Srgb` i `Linear`), a gdy `texture()` odda `nullptr`, bierze `whiteTexture()` albo `flatNormalTexture()` (funkcja pomocnicza `textureOr`). Opis w [`../renderer/terrain.md`](../renderer/terrain.md) |
 | [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | `game::drawModel` i `game::setModelSamplers`: jedyny kod, który czyta `LoadedModel::parts` przy rysowaniu. Od M6 jest tam też `game::drawMesh` dla siatki spoza pamięci podręcznej (teren), z teksturami podanymi wprost. Do M4 była to funkcja `drawInstances` klasy `MazeRenderer` |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp) | właściciel: pole `m_assets`, akcesor `assets()` |
@@ -924,7 +927,7 @@ void drawModels(const assets::AssetCache& assets) {
 | `part.hasOwnNormalMap ? ... : std::string("none (flat)")` | ten sam wzór dla mapy normalnych: nazwa pliku albo napis mówiący, że część ma płaską mapę zastępczą |
 | `ImGui::Text("    normal map: %s", ...)` | osobna linia pod częścią, wcięta o dwie spacje głębiej niż linia części |
 
-Dla gry lista ma pięć modeli, każdy z jedną częścią, w kolejności wczytania:
+Dla gry lista miała do M8, części 2 pięć modeli, każdy z jedną częścią, w kolejności wczytania (od M8, części 2 ma ich osiem, wiersze `lever`, `lever_handle` i `note` poniżej tabeli):
 
 | Plik | Linia `vertices, triangles` | Część | Tekstura | Mapa normalnych |
 |---|---|---|---|---|
@@ -933,6 +936,8 @@ Dla gry lista ma pięć modeli, każdy z jedną częścią, w kolejności wczyta
 | `crystal_a.obj` | 60 i 24 | `crystal` | `crystal.png` | `crystal_normal.png` |
 | `crystal_b.obj` | 144 i 66 | `crystal` | `crystal.png` | `crystal_normal.png` |
 | `gate.obj` | 148 i 70 | `gate_wood` | `gate_wood.png` | `gate_wood_normal.png` |
+
+Po M8, części 2 doszły wiersze `lever.obj` (część `lever_iron`, tekstura `lever_iron.png`), `lever_handle.obj` (część `lever_brass`, `lever_brass.png`) i `note.obj` (część `note_paper`, `note_paper.png`, 10 trójkątów policzonych ze skryptu), każdy z mapą normalnych z końcówką `_normal`. Liczba trójkątów po przeróbce modelu (policzone z linii `f` plików `.obj`, nie z panelu): `lever.obj` 52, `lever_handle.obj` 20. Panelu Assets z nową listą nikt nie oglądał.
 
 Do M6 pierwszym wierszem była płytka podłogi (`floor_tile.obj`, 4 i 2). Terenu na liście nie ma i nie będzie: lista pokazuje `AssetCache::models()`, a siatka terenu nie pochodzi z pliku i należy do `TerrainRenderer`. Liczby terenu (punkty siatki, trójkąty) pokazuje panel Terrain.
 

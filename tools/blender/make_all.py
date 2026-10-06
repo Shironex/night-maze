@@ -14,6 +14,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import build_crystal
 import build_gate
+import build_lever
+import build_note
 import build_wall_pillar
 import build_wall_straight
 import make_heightmap
@@ -30,6 +32,8 @@ build_wall_straight.build(shots)
 build_wall_pillar.build(shots)
 build_crystal.build(shots)
 build_gate.build(shots)
+build_lever.build(shots)
+build_note.build(shots)
 
 # The six faces of the sky. They depend on nothing above: no model uses them.
 make_skybox.build()

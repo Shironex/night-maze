@@ -1,13 +1,13 @@
 # Moduł scene: promień i selekcja obiektów (ray casting)
 
-Kamień milowy: M8, tylko podstawy bez okna (matematyka i testy). Temat wykładu: 15 (Selekcja obiektów).
-Kod: [`src/scene/Raycast.hpp`](../../../src/scene/Raycast.hpp), [`src/scene/Raycast.cpp`](../../../src/scene/Raycast.cpp), testy w [`tests/RaycastTests.cpp`](../../../tests/RaycastTests.cpp). Użytkownik promienia: [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp) (funkcja `pickInteractable`, opisana w [`../game/interactables.md`](../game/interactables.md)).
+Kamień milowy: M8, podstawy bez okna (matematyka i testy), a w M8, części 2: selekcja, dźwignie i kartki, podpięcie promienia do pętli klatki działającej gry. Temat wykładu: 15 (Selekcja obiektów).
+Kod: [`src/scene/Raycast.hpp`](../../../src/scene/Raycast.hpp), [`src/scene/Raycast.cpp`](../../../src/scene/Raycast.cpp), testy w [`tests/RaycastTests.cpp`](../../../tests/RaycastTests.cpp). Użytkownicy promienia: [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp) (funkcja `pickInteractable`, opisana w [`../game/interactables.md`](../game/interactables.md)), [`src/game/Interaction.hpp`](../../../src/game/Interaction.hpp) i [`src/game/Interaction.cpp`](../../../src/game/Interaction.cpp) (promień z oka, wynik jednej klatki, akcja klawisza, podświetlenie), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (funkcje `pickForFrame`, `handleInteraction`, `drawPickLines`), [`src/game/InteractableRenderer.cpp`](../../../src/game/InteractableRenderer.cpp) (rysowanie z podświetleniem), [`src/debug/Hud.cpp`](../../../src/debug/Hud.cpp) (celownik i podpowiedź) i [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp) (ostatni promień). Testy gry: [`tests/InteractionTests.cpp`](../../../tests/InteractionTests.cpp).
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z pudełka `Aabb` i kuli `Sphere` z [`collision.md`](collision.md) (sekcje 2.1, 2.9 i 2.11), z macierzy widoku i rzutowania z [`camera.md`](camera.md) (sekcje 2 i 5) oraz z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, `vec4`, `mat4`, `dot`, `normalize`, `inverse`). Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)).
 
 ## 1. Po co to jest
 
-Do M7 gracz mógł chodzić, zbierać kryształy i dojść do wyjścia, ale nie mógł **wskazać** żadnej rzeczy w świecie. M8 dodaje dwie rzeczy, które się wskazuje: dźwignię, która obniża jedną ścianę labiryntu, i kartkę z podpowiedzią ([`../game/interactables.md`](../game/interactables.md)). Żeby je wskazać, program musi odpowiedzieć na pytanie: **na co patrzy gracz** (albo na co wskazuje kursor myszy)?
+Do M7 gracz mógł chodzić, zbierać kryształy i dojść do wyjścia, ale nie mógł **wskazać** żadnej rzeczy w świecie. M8 dodaje dwie rzeczy, które się wskazuje (a druga część M8 podpina wskazywanie do działającej gry): dźwignię, która obniża jedną ścianę labiryntu, i kartkę z podpowiedzią ([`../game/interactables.md`](../game/interactables.md)). Żeby je wskazać, program musi odpowiedzieć na pytanie: **na co patrzy gracz** (albo na co wskazuje kursor myszy)?
 
 Odpowiedzią jest **promień** (ray): półprosta, która startuje w kamerze i biegnie przez wybrany punkt obrazu w głąb sceny. Pierwsza rzecz, w którą ten promień uderzy, jest tą, którą gracz wskazał. Technika nazywa się **ray casting** (rzucanie promienia), a w wykładzie to temat 15, "Selekcja obiektów".
 
@@ -22,13 +22,24 @@ Plik `Raycast` robi cztery rzeczy:
 
 Tak jak `Aabb`, `Camera` i `Transform`, to zwykłe dane i matematyka: żadnego wywołania OpenGL, żadnej myszy, żadnego okna. Dzięki temu całość da się sprawdzić testami jednostkowymi bez okna.
 
-**Stan na dziś (2026-10-06), uczciwie.** Kod ma 17 przypadków testowych w `tests/RaycastTests.cpp` (policzone z pliku: 17 makr `TEST_CASE`, w nich 30 podprzypadków `SUBCASE`). Autor kodu zgłosił, że testy przechodzą w bramce projektu. Ja ich nie uruchamiałem: w drzewie trwał w tym czasie build, a ten dokument opisuje kod z plików. **Nikt nie użył promienia w działającym programie.** Nie ma odczytu pozycji kursora, nie ma wywołania `screenPointRay` w pętli klatki, nie ma podświetlenia wskazanego obiektu i nie ma linii o promieniu w panelu Collision. Funkcję `pickInteractable` pokrywają testy z przypadkami zbudowanymi ręcznie, ale ona też nie jest nigdzie wywołana poza testami. Co zostaje do podpięcia, opisuje sekcja 5.9.
+**Stan na dziś (2026-10-06), uczciwie.** Promień działa teraz w pętli klatki gry. Co jest sprawdzone i czym:
+
+| Co | Czym sprawdzone | Kto |
+|---|---|---|
+| matematyka promienia (`Raycast`) | 17 przypadków w `tests/RaycastTests.cpp` (policzone z pliku: 17 makr `TEST_CASE`, w nich 30 podprzypadków `SUBCASE`) | bramka projektu, zgłoszona przez autora kodu |
+| wskazywanie w świecie i rundzie (promień z oka, ściana otwarta dźwignią nie zasłania, akcja klawisza, karta kartki, podświetlenie, macierze modeli) | 21 nowych przypadków w `tests/InteractionTests.cpp` (policzone z pliku: 21 makr `TEST_CASE`) | bramka projektu, zgłoszona przez autora kodu |
+| bramka `make check` | **466 przypadków i 152264 asercji** w Debug i Release (przed tą porcją 445 i 150296) | zgłoszone przez autora kodu. Ja ich nie uruchamiałem: ten dokument opisuje kod z plików |
+| start Debug | czysty log, wymienia nowe modele i tekstury jako wczytane | zgłoszone przez autora kodu |
+| obraz działającej gry | **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela**: lista w sekcji 5.14 | agent, który napisał kod, uruchomił grę skryptem i oglądał zrzuty |
+| ręczny test właściciela, macOS | **otwarte** | lista kontrolna w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 24.2, i w [`../../guides/build-macos.md`](../../guides/build-macos.md) |
+
+Zrzuty agenta to nowa kategoria dowodu: lepsza niż sam test jednostkowy (ktoś zobaczył obraz), ale nie jest testem właściciela i nie obejmuje wszystkiego. Czego agent **nie** widział, wymienia sekcja 5.14. Model dźwigni, który z przodu czytał się jak szara płyta, został przerobiony, a podpowiedź przeniesiona na dół okna; zrzuty po przeróbce są w sekcji 5.14. Znane drobne uwagi kosmetyczne: z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie.
 
 ### 1.1 Decyzja właściciela a wybory implementacji
 
 Te dwie rzeczy trzeba rozdzielać na obronie. Decyzję podjął właściciel projektu, a wybory implementacji to moje rozwiązania, do których dochodzi uzasadnienie.
 
-**Decyzja właściciela (2026-10-06):** wybieranie obiektów to **ray casting**: promień z kamery przez **środek ekranu**, gdy mysz jest przechwycona (tak gracz chodzi i rozgląda się), albo przez **kursor**, gdy mysz jest wolna (na przykład gdy gracz klika w panele). Pozostałe decyzje z tego samego dnia (dźwignia obniża jedną wewnętrzną ścianę, kartka pokazuje krótką podpowiedź na karcie HUD, temat 12 dostanie kryształy i kałuże) należą do [`../game/interactables.md`](../game/interactables.md) albo do osobnego tematu i w tym kodzie ich nie ma.
+**Decyzje właściciela (2026-10-06), w całości:** (1) wybieranie obiektów to **ray casting**: promień z kamery przez **środek ekranu**, gdy mysz jest przechwycona (tak gracz chodzi i rozgląda się), albo przez **kursor**, gdy mysz jest wolna; (2) dźwignia otwiera skrót, obniżając jeden wewnętrzny odcinek ściany; (3) kartka pokazuje krótką podpowiedź na karcie HUD. Pierwsza jest sednem tego dokumentu, dwie pozostałe opisuje [`../game/interactables.md`](../game/interactables.md). Wszystko inne poniżej (promień z oka, podświetlenie, zasady kliknięć, panel) to wybory implementacji.
 
 **Wybory implementacji** (każdy z uzasadnieniem z komentarzy w kodzie, a tam, gdzie kod żadnego nie podaje, powiedziane wprost):
 
@@ -42,6 +53,9 @@ Te dwie rzeczy trzeba rozdzielać na obronie. Decyzję podjął właściciel pro
 | kierunek musi być wektorem jednostkowym | komentarz: tylko wtedy `t` jest odległością w metrach |
 | promień z `screenPointRay` startuje na **bliskiej płaszczyźnie**, nie w oku | komentarz w nagłówku opisuje fakt ("w punkcie rysowanym dokładnie w tym miejscu obrazu"), ale **nie podaje powodu**. Moja analiza jest w sekcji 2.10 |
 | zasięg to odległość liczona po promieniu; pudełko dokładnie w zasięgu się liczy | komentarz przy `nearestHit` |
+| w grze promień startuje w **oku**, nie na bliskiej płaszczyźnie (`rayFromEye`) | komentarz w `Interaction.hpp`: zasięg gracza jest mierzony od oka, kierunek zostaje ten sam. Sekcja 2.10 i notatka [`../../decisions/pick-ray-starts-in-the-eye.md`](../../decisions/pick-ray-starts-in-the-eye.md) |
+| podświetlenie wskazanego obiektu to pulsujący `uEmissive`, bez nowego shadera | komentarz w `Interaction.hpp`. Sekcja 4 i notatka [`../../decisions/highlight-as-emissive-pulse.md`](../../decisions/highlight-as-emissive-pulse.md) |
+| wskazywanie liczy się raz na klatkę, po ruchu myszy, przed rysowaniem | komentarze w `onRender`. Sekcja 5.10 |
 | z dwóch pudełek w tej samej odległości wygrywa wcześniejsze na liście | komentarz: `<`, nie `<=` |
 | `screenPointRay` rzuca `std::invalid_argument` dla rozmiaru obrazu nie większego od 0 | komentarz: zminimalizowane okno ma rozmiar 0 i wołający nie ma wtedy prosić o promień |
 
@@ -270,18 +284,28 @@ return {.origin = nearPoint, .direction = glm::normalize(farPoint - nearPoint)};
 
 `screenPointRay` przyjmuje `position` i `size` w **tej samej jednostce**: obie w współrzędnych ekranu albo obie w pikselach, nie ma znaczenia, który wariant, byle zgodnie. Ma to praktyczny powód. Okno GLFW ma dwa rozmiary: rozmiar okna w współrzędnych ekranu, w których GLFW podaje kursor, i rozmiar bufora ramki w pikselach (do `glViewport`). Na ekranie HiDPI drugi jest dwa razy większy. W projekcie rozdziela je `core::Window::windowSize()` ("Mouse positions use these units") i `core::Window::framebufferSize()` ("Use this for glViewport"). Test `the unit of the position does not matter as long as the size uses the same` pokazuje, że `(320, 500)` w obrazie 1280 na 720 i `(640, 1000)` w obrazie 2560 na 1440 dają ten sam promień.
 
-Zminimalizowane okno ma rozmiar 0, a dzielenie przez 0 w kroku 1 dałoby `NaN` w całym promieniu. Dlatego funkcja rzuca `std::invalid_argument`, gdy szerokość albo wysokość nie jest większa od 0, a wołający ma takiego promienia w ogóle nie zamawiać (sekcja 5.9).
+Zminimalizowane okno ma rozmiar 0, a dzielenie przez 0 w kroku 1 dałoby `NaN` w całym promieniu. Dlatego funkcja rzuca `std::invalid_argument`, gdy szerokość albo wysokość nie jest większa od 0, a wołający ma takiego promienia w ogóle nie zamawiać (w grze robi to `pickForFrame`, sekcja 5.10).
 
-### 2.10 Dlaczego promień zaczyna się na bliskiej płaszczyźnie
+### 2.10 Początek promienia: bliska płaszczyzna a oko
 
 Początek promienia z `screenPointRay` to punkt **na bliskiej płaszczyźnie przycinania**, a nie oko. Dla promienia przez środek obrazu różnica to dokładnie `nearPlane`, czyli 0,1 m w domyślnej kamerze. Dla piksela z boku jest trochę więcej: punkt leży na płaszczyźnie `z = -0,1` w przestrzeni widoku, więc jego odległość od oka wzdłuż promienia to `0,1 / cos(kąt)`. Dla lewego górnego rogu z sekcji 2.8 wychodzi `0,1 / 0,647 = 0,155` m (rachunek własny).
 
-Co mówi kod: komentarz w nagłówku opisuje fakt i go podkreśla, ale **nie podaje powodu**. Dalej **analiza**, nie uzasadnienie z kodu:
+Dlaczego funkcja tak robi (**analiza**, komentarz w nagłówku podaje tylko fakt):
 
 - Oko jest **środkiem rzutowania**: żaden punkt NDC mu nie odpowiada, więc odwracanie macierzy nie może dać punktu "w oku". Najbliższy punkt, który odwrócenie daje bez żadnych dodatkowych założeń, leży na bliskiej płaszczyźnie.
-- Rzeczy bliżej niż `nearPlane` nie są rysowane (są przycięte). Promień, który zaczyna dopiero na płaszczyźnie, też ich nie trafi, więc "co widać, to można wskazać".
+- Rzeczy bliżej niż `nearPlane` nie są rysowane (są przycięte).
 
-Konsekwencja do zapamiętania: **zasięg liczy się od początku promienia**, czyli mierzony od oka zasięg sięga o 0,1 do 0,155 m dalej, niż mówi liczba (pułapka 6). Testy `Interactables` rzucają promienie z oczu gracza, a nie z bliskiej płaszczyzny.
+**Co z tym robi gra.** Zasięg gracza (`INTERACTION_REACH`, 2,5 m) ma być mierzony **od oka**, a promień z bliskiej płaszczyzny sięgałby od oka o 0,1 do około 0,155 m dalej, zależnie od miejsca w obrazie (w pierwszej wersji tego dokumentu to była pułapka 6, dziś jest rozwiązana). Dlatego `game::rayFromEye` zamienia początek na oko i **zostawia kierunek**:
+
+```cpp
+scene::Ray rayFromEye(const scene::Ray& screenRay, const glm::vec3& eye) {
+    return {.origin = eye, .direction = screenRay.direction};
+}
+```
+
+Czemu ten sam kierunek jest poprawny: w rzutowaniu perspektywicznym każdy promień przez punkt obrazu to prosta, która wychodzi **z oka**. Punkt na bliskiej płaszczyźnie, który zwraca `screenPointRay`, leży na tej prostej, więc prosta od oka w tym samym kierunku przechodzi przez ten sam punkt bliskiej płaszczyzny i przez ten sam piksel. Pilnuje tego test `the picking ray starts in the eye and keeps its direction`: sprawdza, że `ray.origin + ray.direction * toNear` wypada w początku promienia z ekranu (`toNear` to odległość od oka do tego początku). Uzasadnienie, alternatywy i kiedy wrócić: [`../../decisions/pick-ray-starts-in-the-eye.md`](../../decisions/pick-ray-starts-in-the-eye.md).
+
+Cena: promień z oka może trafić rzecz, której kamera nie rysuje, bo leży bliżej niż `nearPlane`. Przy pudełkach dźwigni i kartek, które wiszą na ścianie, to nie ma praktycznego znaczenia (analiza, nie pomiar).
 
 ### 2.11 Najbliższe trafienie i zasięg
 
@@ -327,13 +351,17 @@ flowchart TD
     Ndc --> Two["dwa punkty NDC<br>z = -1 i z = 1"]
     Inv["inverse(projection * view)<br>macierz z tej samej klatki"] --> World
     Two --> World["mnożenie przez macierz odwrotną<br>i dzielenie przez w"]
-    World --> Ray["Ray<br>origin: punkt bliski<br>direction: normalize(daleki - bliski)"]
-    Ray --> Near["nearestHit<br>pudełka wskazywalnych rzeczy,<br>zasięg"]
+    World --> Screen["Ray z screenPointRay<br>origin: punkt bliski<br>direction: normalize(daleki - bliski)"]
+    Screen --> Ray["rayFromEye<br>origin: oko, direction bez zmian"]
+    Ray --> Near["nearestHit<br>pudełka wskazywalnych rzeczy,<br>zasięg 2,5 m od oka"]
     Near --> Pick["najbliższa rzecz w zasięgu"]
     Ray --> Block["nearestHit<br>pudełka ścian, słupków i bramy,<br>zasięg = odległość rzeczy"]
     Pick --> Block
     Block --> Result["wskazana rzecz<br>albo nic, gdy coś ją zasłania"]
+    Result --> Use["PickState: akcja klawisza,<br>podświetlenie, celownik, panel"]
 ```
+
+Lista "ścian, słupków i bramy" to w grze lista przeszkód rundy (`m_obstacles`): ściana otwarta dźwignią już w niej nie ma, więc promień ją mija (sekcja 5.10).
 
 ```text
 widok z góry (XZ), promień biegnie w dół rysunku, zasięg 2,5 m
@@ -352,22 +380,39 @@ widok z góry (XZ), promień biegnie w dół rysunku, zasięg 2,5 m
 
 ## 3. Jak to działa w OpenGL
 
-Nie dotyczy: `Raycast.hpp` i `Raycast.cpp` dołączają tylko GLM i bibliotekę standardową (`<algorithm>`, `<cmath>`, `<limits>`, `<stdexcept>`, `<utility>`, `<span>`). Nie ma w nich GLAD ani żadnego wywołania `gl*`. OpenGL nie wie, że jakiekolwiek promienie istnieją.
+Sam `Raycast` nie ma wywołań OpenGL: `Raycast.hpp` i `Raycast.cpp` dołączają tylko GLM i bibliotekę standardową (`<algorithm>`, `<cmath>`, `<limits>`, `<stdexcept>`, `<utility>`, `<span>`). Nie ma w nich GLAD ani żadnego wywołania `gl*`. OpenGL nie wie, że jakiekolwiek promienie istnieją.
 
-Związek z OpenGL jest wyłącznie **konwencyjny**, i to on powoduje błędy, jeśli go pomylić:
+Związek z OpenGL jest **konwencyjny**, i to on powoduje błędy, jeśli go pomylić:
 
 | Konwencja | Skąd | Gdzie w kodzie |
 |---|---|---|
 | NDC to sześcian od -1 do 1, głębia od -1 (blisko) do 1 (daleko) | OpenGL i `glm::perspective` w domyślnym trybie | stałe `NDC_NEAR`, `NDC_FAR` |
 | w NDC `y` rośnie w górę | OpenGL | `1 - position.y / size.y * 2` |
 | kursor okna ma `y = 0` na **górze** i rośnie w dół | GLFW | ten sam wiersz, odwrócenie |
-| kursor jest w współrzędnych ekranu, `glViewport` w pikselach bufora | GLFW | `Window::windowSize()` a `Window::framebufferSize()`, sekcja 2.9 |
+| kursor jest w współrzędnych ekranu, `glViewport` w pikselach bufora | GLFW | `Window::windowSize()` a `Window::framebufferSize()`, sekcja 2.9 i 5.10 |
 
-Tabela wywołań OpenGL tego kodu jest pusta. Kiedy promień zostanie podpięty, jedyne wywołania OpenGL po stronie wskazywania będą tylko tymi, które i tak są w kroku klatki (rysowanie sceny). Wybór ray castingu zamiast colour pickingu oznacza, że **wskazywanie nie dodaje żadnego przebiegu rysowania ani odczytu z karty**.
+**Co w grze dotyka OpenGL po stronie wskazywania.** Wybór ray castingu zamiast colour pickingu sprawia, że wskazywanie **nie dodaje przebiegu rysowania ani odczytu z karty**: ani `glReadPixels`, ani osobnego bufora ramki. Wszystko, co jest związane z OpenGL, to rzeczy, które i tak są w klatce:
+
+| Co | Wywołanie albo mechanizm | Gdzie |
+|---|---|---|
+| podświetlenie wskazanej dźwigni albo kartki | jedna zmiana uniformu `uEmissive` (`shader.setVec3`, czyli `glUniform3f`) przed rysowaniem tego obiektu | `InteractableRenderer::draw`, sekcja 5.12 |
+| widok debugowy promienia i pudełek | linie `GL_LINES` programem `color` (jedno wywołanie rysowania na pudełko i jedno na linię promienia) | `NightMazeApp::drawPickLines`, `ColliderLines::drawLine`, sekcja 6.2 |
+| celownik, podpowiedź, karta kartki | ImGui, rysowane po scenie jak reszta HUD | `Hud.cpp`, sekcja 5.13 |
+
+Test głębi linii ma znaczenie dla widoku debugowego: zielone pudełko trafienia jest rysowane **przed** pudełkiem w kolorze swojego rodzaju, dokładnie w tym samym miejscu. Przy domyślnym `glDepthFunc(GL_LESS)` fragment o **takiej samej** głębi nie przechodzi testu, więc zielone linie zostają. Gdyby test miał `GL_LEQUAL`, drugi rysunek nadpisałby pierwszy i zieleń by zniknęła. (Kod ustawia `GL_LEQUAL` tylko na czas rysowania nieba i wraca do `GL_LESS`.)
 
 ## 4. Shadery
 
-Nie dotyczy: ten kod nie ma shadera i nie przekazuje niczego do żadnego. Planowane z tematu 15 jest **podświetlenie wskazanego obiektu** (kolumna "Przełącznik w ImGui" w [`../../syllabus.md`](../../syllabus.md)), ale nie ma jeszcze ani kodu, ani decyzji, jak ma być narysowane (osobny kolor, kontur, uniform w istniejącym programie). Ten dokument niczego tu nie zakłada.
+Wskazywanie nie ma własnego shadera ani żadnej zmiany w pliku shadera. Podświetlenie wskazanego obiektu (kolumna "Przełącznik w ImGui" tematu 15) to **uniform, który programy i tak mają**: `uEmissive`, "własne światło powierzchni", którym wcześniej tylko świeciły kryształy.
+
+| Program | Jak używa `uEmissive` | Efekt podświetlenia |
+|---|---|---|
+| `lit.frag` (Phong) | `fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0)` | dodane do światła rozproszonego, pomnożone przez kolor powierzchni |
+| `gouraud.frag` | ta sama linia | to samo |
+| `textured.frag` (bez oświetlenia) | `texel * uTint * (vec3(1.0) + uEmissive)` w gałęzi rysowania z teksturą | rozjaśnia teksel mnożnikiem `1 + uEmissive` |
+| `reflect.frag` | `+ surface * uEmissive` po zmieszaniu z otoczeniem | niewykorzystane przez dźwignie i kartki (rysuje je inny program) |
+
+Dwa widoki debugowe, **Normals** i **UVs**, pokazują dane, a nie powierzchnię, i **ignorują** `uEmissive`: tam podświetlenia nie widać (komentarz w `drawUnlitMaze`). Co kod robi z wartością: `highlightGlow(seconds)` zwraca `HIGHLIGHT_COLOR * glow`, gdzie `glow` pulsuje między `HIGHLIGHT_MIN_GLOW` i `HIGHLIGHT_MAX_GLOW` (sekcja 5.9). Dlaczego emisja, a nie kontur: [`../../decisions/highlight-as-emissive-pulse.md`](../../decisions/highlight-as-emissive-pulse.md).
 
 ## 5. Kod w projekcie
 
@@ -377,8 +422,13 @@ Nie dotyczy: ten kod nie ma shadera i nie przekazuje niczego do żadnego. Planow
 |---|---|---|---|
 | `src/scene/Raycast.hpp`, `src/scene/Raycast.cpp` | `engine` | nie | 17 przypadków w `tests/RaycastTests.cpp` |
 | `src/game/Interactables.cpp` (funkcja `pickInteractable`) | `game_logic` | nie | `tests/InteractablesTests.cpp`, opis w [`../game/interactables.md`](../game/interactables.md) |
+| `src/game/Interaction.hpp`, `src/game/Interaction.cpp` (promień z oka, `PickState`, akcja klawisza, podświetlenie, macierze modeli) | `game_logic` | nie | 21 przypadków w `tests/InteractionTests.cpp` (razem z testami świata i rundy) |
+| `src/game/InteractableRenderer.hpp`, `src/game/InteractableRenderer.cpp` (rysowanie dźwigni i kartek z podświetleniem) | plik wykonywalny `night_maze` | tak | brak testów jednostkowych. Częściowo widziane na zrzutach przez agenta (2026-10-06), nie przez właściciela (sekcja 5.14) |
+| `src/game/NightMazeApp.cpp` (`pickForFrame`, `handleInteraction`, `drawPickLines`) | plik wykonywalny `night_maze` | tak | brak testów jednostkowych, jak reszta pętli klatki |
+| `src/core/Input.hpp`, `src/core/Input.cpp` (`cursorPosition`) | `engine` | nie | brak osobnego testu |
+| `src/debug/Hud.cpp`, `src/debug/panels/CollisionPanel.cpp` (celownik, podpowiedź, ostatni promień) | plik wykonywalny `night_maze` | tak (ImGui) | brak |
 
-Plik jest w liście źródeł biblioteki `engine` w `CMakeLists.txt`, obok `Collider`, i dołącza `scene/Collider.hpp`, żeby użyć `Aabb` i `Sphere`.
+Plik `Raycast` jest w liście źródeł biblioteki `engine` w `CMakeLists.txt`, obok `Collider`, i dołącza `scene/Collider.hpp`, żeby użyć `Aabb` i `Sphere`. `Interaction.cpp` jest w bibliotece `game_logic` (zwykłe dane i matematyka, jak reszta tej biblioteki), a `InteractableRenderer.cpp` razem z innymi rysownikami w pliku wykonywalnym `night_maze` (potrzebują okna i kontekstu OpenGL).
 
 ### 5.2 `Ray`, `RayHit`, `NearestHit`
 
@@ -594,44 +644,291 @@ Test z pętlą w obie strony jest najmocniejszy: sprawdza zgodność `screenPoin
 
 ### 5.8 Użycie: `pickInteractable`
 
-Jedynym użytkownikiem `nearestHit` w kodzie gry jest `game::pickInteractable` w [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp): dwa razy dla pudełek dźwigni i kartek (z zasięgiem) i raz dla przesłaniaczy. Szczegóły w [`../game/interactables.md`](../game/interactables.md), sekcja 2.10. `screenPointRay` nie ma w kodzie gry żadnego użytkownika poza testami.
+`nearestHit` używa w kodzie gry `game::pickInteractable` w [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp): dwa razy dla pudełek dźwigni i kartek (z zasięgiem) i raz dla przesłaniaczy. Szczegóły w [`../game/interactables.md`](../game/interactables.md). Wołają ją `game::pickInRound` (sekcja 5.9) i testy. `screenPointRay` woła w grze jedna funkcja: `NightMazeApp::pickForFrame` (sekcja 5.10).
 
-### 5.9 Co zostaje do podpięcia
+### 5.9 `Interaction.hpp`: wynik wskazywania jednej klatki
 
-Tego nie ma w kodzie. To lista rzeczy, które trzeba zrobić, żeby promień zaczął działać w grze, w kolejności, w jakiej widzę zależności. Żadna nie była zaczęta.
+Plik [`src/game/Interaction.hpp`](../../../src/game/Interaction.hpp) i [`.cpp`](../../../src/game/Interaction.cpp) to zwykłe dane i matematyka (biblioteka `game_logic`), bez OpenGL, bez klawiatury i myszy: aplikacja buduje promień, a funkcje tu mówią, co on trafia i co robi klawisz. Dzięki temu testy mogą "wycelować" promień i "nacisnąć klawisz" bez okna. (Nagłówek odsyła do tego dokumentu, ale zawiera też macierze modeli dźwigni i kartek, które opisuje [`../game/interactables.md`](../game/interactables.md).)
 
-1. **Pozycja kursora.** `core::Input` czyta pozycję kursora wewnętrznie (pola `m_cursorX` i `m_cursorY`, żeby policzyć przesunięcie), ale **nie ma publicznego akcesora**. Są tylko `mouseDeltaX()` i `mouseDeltaY()`. Trzeba dodać getter pozycji (w współrzędnych ekranu).
-2. **Rozmiar okna a rozmiar bufora ramki.** Kursor jest w jednostkach `Window::windowSize()`, a obraz scen jest rysowany w pikselach `Window::framebufferSize()` (a sceną do bufora HDR rządzi jeszcze osobny rozmiar). Do `screenPointRay` trzeba podać `position` i `size` **w tej samej jednostce** (sekcja 2.9) i tych proporcji, z jakimi liczono macierz `projection` tej klatki.
-3. **Pominięcie rozmiaru 0.** Zminimalizowane okno ma rozmiar 0, a funkcja rzuca wyjątek (sekcja 2.9). Wołający musi pominąć wołanie i nie wybierać niczego, a nie łapać wyjątek w każdej klatce.
-4. **Wybór źródła punktu.** Zgodnie z decyzją właściciela: środek obrazu (`size / 2`), gdy mysz jest przechwycona (`Input::isCursorCaptured()`), a pozycja kursora, gdy jest wolna. Przy wolnej myszy trzeba jeszcze rozstrzygnąć, czy klik w panel ImGui jest też wskazaniem (`Input::setMouseBlocked` istnieje po to, żeby panel pod kursorem blokował mysz: komentarz w `Input.hpp`).
-5. **Macierz odwrotna.** `glm::inverse(projection * view)` z tych samych macierzy, którymi rysowana jest klatka.
-6. **Podświetlenie wskazanego obiektu** (kolumna "Przełącznik w ImGui" tematu 15): nie ma ani kodu, ani decyzji (sekcja 4).
-7. **Panel Collision.** PRD (sekcja 10) opisuje go jako "wynik ostatniego raycasta". Dziś panel go nie pokazuje ([`collision.md`](collision.md), sekcja 6). Linia z początkiem, kierunkiem i wynikiem ostatniego promienia jest planowana, a jej dokładna postać nie była ustalana.
-8. **Reszta rozgrywki wokół wskazywania** (świat, runda, klawisz, karta HUD, animacja ściany): opisana w [`../game/interactables.md`](../game/interactables.md), sekcja 5.13.
+```cpp
+enum class Interaction { None = 0, PullLever, ReadNote, CloseNote };
+
+struct PickState {
+    bool hasRay = false;     // false: no ray could be built in this frame
+    bool centered = false;   // true: through the middle, false: through the free cursor
+    scene::Ray ray;          // starts in the EYE
+    PickedInteractable picked;
+    Interaction action = Interaction::None;
+};
+
+struct PickDebugSettings {
+    bool drawShapes = false;
+    bool freezeRay = false;
+};
+```
+
+| Funkcja | Co robi |
+|---|---|
+| `rayFromEye(screenRay, eye)` | początek w oku, kierunek bez zmian (sekcja 2.10) |
+| `interactionFor(round, picked)` | akcja klawisza dla rundy i wskazanej rzeczy (reguły niżej) |
+| `pickInRound(ray, centered, world, round, obstacles)` | `pickInteractable(ray, world.interactables, obstacles, INTERACTION_REACH)` i akcja. `obstacles` to lista przeszkód rundy (`roundObstacles`): ściany otwartej dźwignią w niej nie ma |
+| `pickNothing(round)` | wynik bez promienia: `hasRay = false`, nic niewskazane. Akcja może nadal być `CloseNote` |
+| `interact(round, world, pick)` | robi to, co mówi akcja: `closeNote`, `readNote` albo `pullRoundLever`. Zwraca `true`, gdy otworzyła się ściana (wołający odbudowuje wtedy listę przeszkód) |
+| `interactionPrompt(action)` | tekst podpowiedzi: `"E: pull lever"`, `"E: read note"`, `"E: close"`, a dla `None` pusty |
+| `highlightGlow(seconds)` | kolor emisji podświetlenia w tej chwili |
+
+**Reguły `interactionFor`** (kolejność ma znaczenie):
+
+1. runda inna niż `Playing` (wygrana): `None`. Wygrana runda jest skończona,
+2. karta kartki otwarta (`round.noteOpen`): `CloseNote`, **cokolwiek** promień wskazuje, także nic,
+3. wskazana dźwignia, która nie jest jeszcze pociągnięta: `PullLever`. Pociągnięta: `None`. Numer dźwigni jest sprawdzany przed użyciem (`PickedInteractable` mogłoby pochodzić z innego labiryntu),
+4. wskazana kartka: `ReadNote`,
+5. inaczej `None`.
+
+Z punktu 2 wynika zachowanie, które widać w grze: **otwarta karta wyłącza podpowiedź, pierścień celownika i podświetlenie**, nawet gdy celownik jest na dźwigni, bo wszystkie trzy wymagają akcji `PullLever` albo `ReadNote`.
+
+`interact` pyta rundę o akcję **jeszcze raz** (`interactionFor(round, pick.picked)`) zamiast ufać `pick.action`. Test `interacting pulls a lever once and tells when a wall opened` woła dwa razy ten sam stary `PickState`: drugie wywołanie nic nie zmienia.
+
+**Stałe podświetlenia** (z `Interaction.hpp`):
+
+| Stała | Wartość | Znaczenie |
+|---|---|---|
+| `HIGHLIGHT_COLOR` | `(1,0; 0,8; 0,4)` | ciepła żółć, kolor liniowy |
+| `HIGHLIGHT_MIN_GLOW` | 0,8 | najsłabsze świecenie (nigdy 0: wskazany obiekt zawsze się wyróżnia) |
+| `HIGHLIGHT_MAX_GLOW` | 2,4 | najsilniejsze. Celowo dużo powyżej 1: w smudze latarki powierzchnia jest już oświetlona z siłą większą niż 1 i słabsze świecenie nie dałoby się od niej odróżnić |
+| `HIGHLIGHT_PULSE_SPEED` | 5 rad/s | trochę mniej niż jeden puls na sekundę (pełny obrót to 6,28) |
+
+```cpp
+glm::vec3 highlightGlow(float seconds) {
+    const float swing = 0.5F + 0.5F * std::sin(HIGHLIGHT_PULSE_SPEED * seconds);
+    const float glow = HIGHLIGHT_MIN_GLOW + (HIGHLIGHT_MAX_GLOW - HIGHLIGHT_MIN_GLOW) * swing;
+    return HIGHLIGHT_COLOR * glow;
+}
+```
+
+Sinus waha się od -1 do 1, połowa plus jedna druga od 0 do 1 (`swing`), a mieszanie między najsłabszym i najsilniejszym świeceniem robi z tego pulsującą wartość. Czas to `m_round.animationSeconds`, zegar animacji rundy, który nie staje (puls trwa więc także po wygranej).
+
+### 5.10 `pickForFrame`: gdzie powstaje promień w klatce
+
+Funkcja `NightMazeApp::pickForFrame` jest wołana **raz na klatkę** z `onRender`. Kolejność w `onRender` ma znaczenie:
+
+1. wczytanie żądań z panelu (nowy labirynt, restart, "Pull all levers"),
+2. **ruch myszy** (obrót kamery), jeśli kursor jest przechwycony,
+3. pozycja oka (`eye`, mieszanka dwóch kroków symulacji) i proporcje obrazu z **bufora ramki**,
+4. macierze `view` i `projection` z tego oka (zbudowane wcześniej niż przed M8, dokładnie po to, żeby promień ich użył),
+5. `m_pick = pickForFrame(view, projection, eye, cursorCaptured)`,
+6. `handleInteraction(cursorCaptured)`: klawisz E albo klik użyje wyniku (sekcja 5.11),
+7. `m_shownPick = m_pick`, chyba że promień jest zamrożony,
+8. `m_wallMatrices = roundWallMatrices(...)` i dopiero potem oświetlenie i rysowanie.
+
+Mysz jest więc czytana **przed** budową macierzy widoku: obraz i promień tej klatki używają tych samych, już nowych kątów. Gdyby promień był liczony z macierzy sprzed obrotu, celownik wskazywałby to, co było w środku obrazu klatkę wcześniej.
+
+```cpp
+PickState NightMazeApp::pickForFrame(const glm::mat4& view, const glm::mat4& projection,
+                                     const glm::vec3& eye, bool cursorCaptured) {
+    const core::Size windowSize = window().windowSize();
+    if (windowSize.width <= 0 || windowSize.height <= 0) {
+        return pickNothing(m_round);
+    }
+    const glm::vec2 size{static_cast<float>(windowSize.width),
+                         static_cast<float>(windowSize.height)};
+
+    glm::vec2 point = size / 2.0F;
+    if (!cursorCaptured) {
+        const core::CursorPosition cursor = input().cursorPosition();
+        if (!cursor.valid) {
+            return pickNothing(m_round);
+        }
+        point = {static_cast<float>(cursor.x), static_cast<float>(cursor.y)};
+        if (point.x < 0.0F || point.y < 0.0F || point.x > size.x || point.y > size.y) {
+            return pickNothing(m_round);
+        }
+    }
+
+    const scene::Ray screenRay =
+        scene::screenPointRay(point, size, glm::inverse(projection * view));
+    return pickInRound(rayFromEye(screenRay, eye), cursorCaptured, m_mazeWorld, m_round,
+                       m_obstacles);
+}
+```
+
+| Fragment | Znaczenie |
+|---|---|
+| `window().windowSize()` | rozmiar okna **w współrzędnych ekranu**, w jednostce kursora. Rozmiar 0 (zminimalizowane okno): brak promienia, `screenPointRay` rzuciłby wyjątek (sekcja 2.9) |
+| `point = size / 2` | kursor przechwycony: promień przez **środek obrazu**, tam, gdzie jest celownik. Decyzja właściciela |
+| `input().cursorPosition()` | kursor wolny: promień przez **kursor**. `Input::cursorPosition` jest nieważne (`valid = false`), gdy mysz jest zablokowana dla gry, czyli gdy kursor jest nad panelem ImGui: kursor nad panelem wskazuje panel, a nie scenę za nim |
+| sprawdzenie `point.x < 0 ...` | kursor, który wyszedł z okna, nic nie wskazuje |
+| `glm::inverse(projection * view)` | odwrotność dokładnie tych dwóch macierzy, którymi rysowana jest klatka (pułapka 11) |
+| `rayFromEye(screenRay, eye)` | początek w oku (sekcja 2.10). `eye` to oko mieszane między krokami, to samo, z którego zbudowano `view` |
+| `m_obstacles` | lista przeszkód rundy: ściany bez tych otwartych dźwignią, słupki i zamknięta brama |
+
+**Okno a bufor ramki: poprawne tylko dzięki równym proporcjom.** Punkt i rozmiar do `screenPointRay` pochodzą z **rozmiaru okna**, a proporcje obrazu w `projection` (`aspectRatio` w `onRender`) z **rozmiaru bufora ramki**. To dwie różne liczby: na ekranie Retina bufor ma dwa razy więcej pikseli, niż okno ma współrzędnych ekranu. Wynik jest poprawny, bo stosunek szerokości do wysokości jest w obu przypadkach ten sam (ten sam obszar okna, tylko inna jednostka), a `screenPointRay` dzieli pozycję przez rozmiar, więc liczy się wyłącznie stosunek (sekcja 2.9). Gdyby kiedyś proporcje się rozjechały, promień przesunąłby się względem obrazu. To ryzyko dla macOS, gdzie kod nie był uruchamiany.
+
+**Co wchodzi do `m_obstacles`.** Lista jest odbudowywana tylko wtedy, gdy się zmienia: na początku rundy, gdy brama się otwiera, gdy dźwignia otwiera ścianę i gdy teren dostaje inną skalę wysokości. Promień jest więc zasłaniany przez to samo, przez co gracz nie przejdzie, a pociągnięcie dźwigni otwiera przejście także dla promienia (notatka [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md)).
+
+### 5.11 `handleInteraction`: klawisz, klik i zasady
+
+```cpp
+void NightMazeApp::handleInteraction(bool cursorCaptured) {
+    const bool keyPressed = input().wasKeyPressed(INTERACT_KEY);
+    const bool clicked = input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
+
+    if ((keyPressed || clicked) && m_pick.action != Interaction::None) {
+        if (interact(m_round, m_mazeWorld, m_pick)) {
+            m_obstacles = roundObstacles(m_mazeWorld, m_round);
+        }
+        m_pick.action = interactionFor(m_round, m_pick.picked);
+    } else if (clicked && !cursorCaptured) {
+        input().setCursorCaptured(true);
+    }
+}
+```
+
+`INTERACT_KEY` to `GLFW_KEY_E`. Wynik `interact` mówi, czy ściana się otworzyła: wtedy lista przeszkód jest budowana od nowa. Po zadziałaniu akcja jest liczona ponownie: dźwignia, którą właśnie pociągnięto, nie jest w tej klatce podświetlona (`None`), a otwartą kartę da się zamknąć.
+
+**Zasady, jak działają w kodzie** (decyzją właściciela jest tylko wybór źródła punktu promienia, reszta to wybory implementacji):
+
+| Sytuacja | Co się dzieje |
+|---|---|
+| kursor przechwycony, E albo lewy klik, promień na dźwigni lub kartce w zasięgu | dźwignia jest pociągana, kartka się otwiera |
+| kursor przechwycony, E albo klik, nic do użycia | nic |
+| kursor wolny, lewy klik **na** dźwigni albo kartce, którą da się użyć | użycie (i **bez** przechwytywania kursora) |
+| kursor wolny, lewy klik gdzie indziej w scenie | **przechwycenie kursora** (włącza obrót myszą i chodzenie, jak przed M8) |
+| kursor wolny, **E** | też działa na to, co wskazuje kursor: klawisz nie sprawdza `cursorCaptured` |
+| kursor wolny nad panelem ImGui | brak promienia, mysz zablokowana dla gry: klik w panel nie dociera do gry |
+| kursor poza oknem | brak promienia |
+| karta kartki otwarta | akcja to `CloseNote`: E albo **dowolny** klik zamyka kartę. Klik przy wolnym kursorze **nie** przechwytuje wtedy kursora (akcja nie jest `None`) |
+| runda wygrana | brak akcji. Klik przy wolnym kursorze przechwytuje kursor |
+| okno bez rozmiaru | brak promienia |
+| pole tekstowe w panelu w edycji | klawiatura jest zablokowana dla gry, więc E w polu tekstowym nie pociąga dźwigni |
+
+`wasKeyPressed` i `wasMouseButtonPressed` są prawdziwe przez **jedną** klatkę (krawędź naciśnięcia), a pociągnięta dźwignia i tak nie daje już akcji. Blokada myszy dla gry jest ustawiana w `main.cpp` z `wantsMouse()` panelu ImGui i obowiązuje od następnej klatki.
+
+### 5.12 Podświetlenie i rysowanie: `InteractableRenderer`
+
+Klasa [`InteractableRenderer`](../../../src/game/InteractableRenderer.hpp) rysuje dźwignie i kartki trzema modelami z pamięci podręcznej assetów (płytka dźwigni, uchwyt dźwigni, kartka). Jej `draw(shader, world, round, pick, highlight)` jest wołane z tych samych miejsc co rysowanie ścian: z `drawUnlitMaze`, `drawLitMaze` i z przebiegu cienia. Wskazany obiekt dostaje `uEmissive = highlight`, reszta `0`:
+
+```cpp
+const bool picked = pick.action == Interaction::PullLever && pick.picked.index == i;
+shader.setVec3(EMISSIVE_UNIFORM, picked ? highlight : NO_GLOW);
+```
+
+`uEmissive` ustawia się dla **każdej** dźwigni i kartki, także niewskazanych: uniform zachowuje wartość między wywołaniami rysowania i poprzednia dźwignia mogła być tą wskazaną. Na końcu funkcja zeruje go, żeby kolejne rysowania tego programu nie dziedziczyły. Przebieg cienia dostaje pusty `PickState{}`: program głębi nie ma kolorów do podświetlenia. `highlight` to `highlightGlow(m_round.animationSeconds)`. Podświetla się tylko obiekt, którego akcja to `PullLever` albo `ReadNote`: pociągnięta dźwignia (akcja `None`) i wszystko przy otwartej karcie nie świeci. Macierze modeli, uchwyt i animację opisuje [`../game/interactables.md`](../game/interactables.md).
+
+### 5.13 Celownik, podpowiedź i karta: `Hud.cpp`
+
+HUD czyta `PickState` (tylko do odczytu) przez `DebugContext::pick`:
+
+| Element | Kiedy | Wygląd (z kodu) |
+|---|---|---|
+| celownik | `pick.hasRay && pick.centered`, czyli tylko przy przechwyconym kursorze (wolny kursor sam pokazuje punkt) | kropka o promieniu 2 px w kolorze `HUD_CROSSHAIR_COLOR` (szarobiały), a gdy gracz może użyć wskazanej rzeczy (`PullLever` albo `ReadNote`) kropka i pierścień o promieniu 8 px i grubości 1,5 px w kolorze `HUD_CROSSHAIR_ACTIVE_COLOR` (ciepły, kolor latarki). Wymiary są mnożone przez skalę HUD. Rysowany na liście rysowania tła ImGui, więc nigdy nie zakrywa panelu ani karty |
+| podpowiedź | gdy gracz może użyć wskazanej rzeczy | okno `Interaction prompt` z tekstem z `interactionPrompt` w kolorze celownika, krycie tła 0,55. Miejsce: dół okna pośrodku (`PROMPT_PLACE` = (0,5; 0,9) okna), więc podpowiedź nie zasłania wskazanego obiektu wokół celownika |
+| karta kartki | `round.noteOpen` | okno `Note` pod środkiem ekranu (punkt `BELOW_CENTER` = (0,5; 0,74) okna w `Hud.cpp`, nad podpowiedzią, która stoi niżej), tytuł "A note on the wall", linia oddzielająca, tekst z `openNoteText` i na dole "E: close". Tekst jest liczony **w każdej klatce**: podpowiedź w stronę kryształu zmienia się, gdy ten kryształ zostanie zebrany |
+
+`ImGui::Text("%s", text.c_str())`: tekst kartki idzie jako argument, nigdy jako format. `drawHud` ma od tej pory sygnaturę `(world, round, settings, pick)`.
+
+### 5.14 Jak to zostało sprawdzone w grze
+
+**Testy jednostkowe: 21 nowych przypadków** w `tests/InteractionTests.cpp` (policzone z pliku: 21 makr `TEST_CASE`). Plik testuje też świat i rundę (opisane w [`../game/interactables.md`](../game/interactables.md)). Te, które dotyczą wskazywania:
+
+| Przypadek testowy | Co przypina |
+|---|---|
+| `the picking ray starts in the eye and keeps its direction` | `rayFromEye`: początek w oku, kierunek taki sam, a promień przechodzi przez ten sam punkt bliskiej płaszczyzny |
+| `every lever and note of a world is picked from the middle of its cell` | z oka stojącego w środku komórki promień na pozycję dźwigni albo kartki wskazuje właśnie ją, z akcją `PullLever` albo `ReadNote`, a `centered` jest kopiowane do wyniku. Patrzenie w górę nic nie wskazuje |
+| `a closed wall hides what is behind it, the wall a lever opened does not` | kartka za ścianą nie jest wskazana, po pociągnięciu dźwigni tej ściany jest |
+| `interacting pulls a lever once and tells when a wall opened` | `interact` zwraca `true` raz, stary `PickState` nie pociąga drugi raz, pociągnięta dźwignia nadal jest wskazana, ale akcja to `None` |
+| `a note opens its card, the key closes it first, and walking away closes it` | `ReadNote` nie otwiera ściany, akcja przy otwartej karcie to `CloseNote` także bez promienia (`pickNothing`), karta zamyka się po przejściu dalej niż `NOTE_READ_DISTANCE` |
+| `a won round has nothing to interact with and closes the card` | w rundzie `Won` `interactionFor` daje `None` dla dźwigni i kartki, a numer dźwigni, której runda nie ma, nie jest błędem. **Uwaga:** mimo nazwy przypadek sprawdza tylko `interactionFor`, a nie to, że wygrana zamyka kartę (zamykanie jest w `updateRound` i nie ma własnej asercji) |
+| `every action has its prompt` | teksty podpowiedzi |
+| `the highlight pulses between its weakest and its strongest glow` | w 600 próbkach wartość mieści się między `HIGHLIGHT_MIN_GLOW` i `HIGHLIGHT_MAX_GLOW` i osiąga oba końce |
+| `a model on a wall points away from the wall on every side of the cell` i `the handle of a lever turns around its pivot: up before the pull, down after` | macierze modeli (opisane w interactables.md) |
+
+**Bramka projektu** (zgłoszona przez autora kodu, nie uruchamiana przeze mnie): `make check` przeszło z **466 przypadkami i 152264 asercjami** w Debug i Release (przed tą porcją 445 i 150296). Start Debug miał czysty log i wymienił nowe modele i tekstury jako wczytane.
+
+**Zrzuty ekranu agenta.** Agent, który napisał kod, uruchomił grę, sterował nią skryptem i oglądał zrzuty ekranu. Poniższe rzeczy są zapisane jako **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela**:
+
+- płytka dźwigni na ścianie z pierścieniem celownika i podpowiedzią "E: pull lever",
+- po E uchwyt opuszczony i podpowiedź zniknęła,
+- podświetlenie pulsuje (silniejsze przy wyłączonej latarce),
+- kartka z liniami atramentu, jej karta z podpowiedzią i napisem "E: close", a po odejściu karta zniknęła,
+- ściana otwarta, minimapa przestaje ją rysować i pokazuje korytarz za nią, gracz przechodzi,
+- po R minimapa wraca do stanu początkowego i ściana znowu blokuje,
+- zamrożony promień jako zielona linia, pudełko trafienia na zielono,
+- panel Collision z początkiem, kierunkiem i "Hit: lever 0 at 0.72 m",
+- klik wolnym kursorem na dźwigni pociągnął ją.
+
+**Po przeróbce modelu dźwigni agent widział też (zrzuty z 2026-10-06, nie właściciel):** dźwignię od przodu z 1 m przy włączonej latarce, w górnym położeniu i podświetloną (ciemna płyta, jasna bursztynowa gałka nad środkiem, podpowiedź na dole pośrodku), ten sam widok po E (pręt w dół, gałka poniżej krawędzi płyty z cieniem na ścianie, bez podświetlenia i podpowiedzi), widoki z boku w górnym i dolnym położeniu, wyłączoną latarkę (pociągnięta: płyta prawie czarna, gałka ciemna ochra; w górze z podświetleniem: gałka świeci bursztynem), około 2,4 m pod kątem z podświetleniem i podpowiedzią oraz około 2,9 m poza zasięgiem bez podświetlenia, drugą dźwignię, Gouraud (z podświetleniem) i Unlit, widok Normals (dźwignia jako dane, bez podświetlenia, pierścień i podpowiedź nadal są), kartkę z "E: read note" na dole, wolną od arkusza, i otwartą kartę kartki bez podpowiedzi i bez nakładania się na minimapę.
+
+**Czego agent NIE widział na ekranie:** uchwytu w połowie ruchu, cienia księżyca od dźwigni, Gouraud i Unlit dla kartki, widoku na wprost z 2,5 m, dodatków w panelu Gameplay, samego przycisku "Pull all levers", innych niż domyślne liczb dźwigni i kartek, czystej ramy połowicznie zatopionej ściany. **Uwagi kosmetyczne:** z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka.
+
+**Ręczny test właściciela i macOS: otwarte.** Lista kontrolna: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 24.2, i [`../../guides/build-macos.md`](../../guides/build-macos.md). Zrzuty agenta nie zastępują tej listy.
 
 ## 6. Panel ImGui
 
-Nie ma kodu panelu dla tego tematu. Panel Collision ([`collision.md`](collision.md), sekcja 6) mówi w PRD o "wyniku ostatniego raycasta", a w programie pokazuje dziś pudełka i kule, nie promienie. **Planowane**: jedna linia w tym panelu z ostatnim promieniem (początek, kierunek, co trafił i w jakiej odległości) oraz podświetlenie wskazanego obiektu. Żadna z tych rzeczy nie istnieje, więc nie ma jeszcze scenariusza pokazu na obronie. Do tego czasu pokazem tematu 15 są testy: `ctest --test-dir build/debug -C Debug --output-on-failure` uruchamia 17 przypadków z `RaycastTests.cpp` razem z resztą.
+Wskazywanie ma w debugowym UI dwa miejsca: sekcję w panelu **Collision** (wynik ostatniego promienia i przełączniki widoku debugowego) oraz dodatki w panelach **Gameplay** i **Maze** (opisane w [`../game/interactables.md`](../game/interactables.md)). Fragment PRD "panel Collision z wynikiem ostatniego raycasta" (sekcja 10) jest tym spełniony ([`collision.md`](collision.md)).
+
+### 6.1 Panel Collision: ostatni promień
+
+Funkcja `drawCollisionPanel` dostała dwa parametry: `const game::PickState& pick` (tylko do odczytu) i `game::PickDebugSettings& pickDebug` (edytowalne). Pod liniami o pudełkach i trybie noclip jest separator i sekcja "Last picking ray":
+
+| Linia panelu | Skąd |
+|---|---|
+| `Ray through: the middle of the picture` albo `the cursor` | `pick.centered` |
+| `origin: x, y, z` (po dwa miejsca po przecinku) | `pick.ray.origin`: to jest **oko**, nie bliska płaszczyzna |
+| `direction: x, y, z` (po trzy miejsca) | `pick.ray.direction` |
+| `Hit: nothing within 2.5 m` albo `Hit: lever 0 at 0.72 m` | `pick.picked`: rodzaj, numer i odległość od oka. Zasięg to `INTERACTION_REACH` |
+| `Key E: pull the lever` / `read the note` / `close the note card` / `nothing` | `pick.action` |
+| gdy nie ma promienia: `Ray: none (cursor over a panel or outside)` i sama linia `Key E: ...` | `pick.hasRay == false`. Akcja może być wtedy `close the note card` |
+
+Panel pokazuje promień **ostatniej klatki** i ma sens przy przechwyconym kursorze (przy wolnym kursorze nad panelem promienia nie ma, bo mysz jest zablokowana dla gry). Linia `Boxes:` w tym panelu liczy teraz ściany otwarte dźwignią (`%d walls (%d opened by levers)`).
+
+### 6.2 Widok debugowy: pudełka, promień i zamrożenie
+
+Dwa pola wyboru w panelu Collision (`PickDebugSettings`):
+
+- **Draw pick boxes and ray** (`drawShapes`): `NightMazeApp::drawPickLines` rysuje programem `color` pudełka wskazania wszystkich dźwigni (czerwone) i kartek (białe), pudełko trafione (zielone), promień jako linię od oka do punktu trafienia (zieloną) albo, gdy nic nie trafił, na długość zasięgu (szarą), a na końcu promienia małą kulkę o promieniu 0,04 m (`PICK_MARKER_RADIUS`). Pudełka wskazania są większe niż modele i wystają poza pudełko kolizji ściany, na której wiszą,
+- **Freeze the drawn ray** (`freezeRay`): rysowana kopia wyniku (`m_shownPick`) przestaje nadążać za `m_pick`, a samo wskazywanie trwa dalej (podświetlenie i akcja liczą się z bieżącego `m_pick`).
+
+Po co zamrożenie: promień **wychodzi z oka**, więc oglądany z tego oka jest jednym punktem za celownikiem. Tylko promień, który został w miejscu, da się obejrzeć z boku (stań obok i zobacz linię). Linię rysuje nowa funkcja `ColliderLines::drawLine(shader, from, to, color)`: jednostkowa linia od początku układu do `(1, 0, 0)` i ręcznie złożona macierz modelu, w której kolumna osi X to `to - from`, a kolumna początku to `from`. Dzięki temu początek linii ląduje w `from`, a koniec w `to`.
+
+Zielone pudełko trafienia jest rysowane **przed** pudełkiem w kolorze rodzaju, w tym samym miejscu: przy domyślnym `GL_LESS` fragment o równej głębi nie przechodzi testu, więc zielone linie zostają (sekcja 3). Numer w `m_shownPick` może pochodzić ze starszego labiryntu, więc `drawPickLines` porównuje `picked.index` z liczbą pudełek, zanim go użyje. `beginRound` ustawia też `m_shownPick`, więc restart i nowy labirynt kasują zamrożony promień.
+
+### 6.3 Scenariusz pokazu na obronie
+
+1. Uruchom grę, naciśnij `` ` `` (backtick), otwórz panel **Collision**. Zaznacz **Draw pick boxes and ray**. Podejdź do dźwigni: w panelu zobaczysz `Hit: lever 0 at ...` z odległością mniejszą niż 2,5 m i `Key E: pull the lever`.
+2. Zaznacz **Freeze the drawn ray**, odejdź na bok: zielona linia z oka do pudełka dźwigni, kulka na jej końcu.
+3. Naciśnij E (albo kliknij): dźwignia opuszcza uchwyt, ściana zaczyna się zanurzać, minimapa przestaje ją rysować. Panel nadal pokazuje `Hit: lever 0`, ale `Key E: nothing`.
+4. Wyłącz zamrożenie, wskaż dźwignię przez ścianę (z drugiej strony): wynik powinien być `Hit: nothing`, mimo że dźwignia jest blisko, bo ściana zasłania (oczekiwanie z kodu i z testu `a closed wall hides what is behind it...`, nie obejrzane na ekranie).
+5. Zwolnij kursor (Escape) i kliknij dźwignię myszą: ten sam efekt, bez przechwytywania kursora.
+
+Co z tego **widział agent**, a czego nie: sekcja 5.14. Scenariusz w pełni na ekranie to zadanie na ręczną listę właściciela.
 
 ## 7. Pułapki
 
 1. **Kierunek musi być jednostkowy.** Test kuli zakłada `|direction| = 1`: dla dłuższego kierunku `closestDistance` jest przeskalowane, a wynik jest po prostu błędny (ćwiczenie 9). Test pudełka działa dla dowolnego niezerowego kierunku, ale wtedy `t` jest w jednostkach długości kierunku, a nie w metrach, a porównanie z `maxDistance` w `nearestHit` jest nieprawdziwe. `screenPointRay` zawsze zwraca kierunek jednostkowy. Ktoś, kto buduje `Ray` ręcznie, musi znormalizować kierunek sam.
 2. **Styk w `float`.** Trafienie "na styk" działa dla liczb testu (`2,0` i `-5,0` z kierunkiem `(-1, 0, 1)`), ale dwie odległości liczone różnymi działaniami mogą różnić się o ostatni bit, i wtedy styk raz wychodzi jako trafienie, a raz jako chybienie. Nie opieraj niczego w grze na dokładnym styku.
 3. **Oś `y` do góry w NDC, w dół w oknie.** Pominięcie `1 - ...` w kroku 1 odwraca świat góra-dół: kliknięcie w górę ekranu wskazuje podłogę. Pilnuje tego test lewego górnego rogu.
-4. **Rozmiar 0 to wyjątek, nie "brak trafienia".** Zminimalizowane okno trzeba obsłużyć w wołającym (sekcja 5.9, punkt 3).
+4. **Rozmiar 0 to wyjątek, nie "brak trafienia".** Zminimalizowane okno trzeba obsłużyć w wołającym: robi to `pickForFrame`, który wraca przez `pickNothing` (sekcja 5.10).
 5. **Kursor w pikselach okna, obraz w pikselach bufora.** Na ekranie HiDPI wspólna jednostka jest konieczna (sekcja 2.9). Pomieszanie ich przesuwa wskazanie w stronę lewego górnego rogu.
-6. **Zasięg liczy się od początku promienia, czyli od bliskiej płaszczyzny.** Z `screenPointRay` początek jest 0,1 m (środek obrazu) do około 0,155 m (róg, przy proporcjach 16 do 9 i kącie 60 stopni) przed okiem, więc mierzony od oka zasięg sięga o tyle dalej, niż mówi stała (zasięg 2,5 m od początku promienia to do około 2,65 m od oka). Testy `Interactables` rzucają promienie z oczu, więc tego nie sprawdzają. To **analiza**: różnica jest mała, ale istnieje.
+6. **Zasięg liczy się od początku promienia, więc początek musi być tam, skąd gracz ma zasięg.** Promień z `screenPointRay` startuje na bliskiej płaszczyźnie, 0,1 do około 0,155 m przed okiem, więc zasięg 2,5 m od jego początku sięgałby do około 2,65 m od oka. Gra tego nie robi: `rayFromEye` przenosi początek do oka (sekcja 2.10), a test `the picking ray starts in the eye and keeps its direction` to przypina. Kto woła `screenPointRay` wprost, nadal dostaje początek na płaszczyźnie.
 7. **Wskazuje się pudełko, nie model.** Pudełko ściany jest grubsze (0,3 m) od widocznej ściany (0,2 m) ([`collision.md`](collision.md), pułapka 1), więc promień trafia w pudełko ściany 5 cm przed jej widocznym licem. Dlatego pudełka dźwigni i kartek są głębsze niż ta różnica ([`../game/interactables.md`](../game/interactables.md), sekcja 2.8).
 8. **`nearestHit` sprawdza każde pudełko z listy.** Nie ma siatki ani drzewa. Dla labiryntu 10 na 10 to około 240 pudełek i nikt nie ma z tym kłopotu. Dla największego labiryntu (256 na 256) lista przeszkód miałaby około 130 tysięcy pudełek (66 049 ścian i tyle samo słupków, mój rachunek z wzorów z `maze-generator.md`, nie zmierzone), więc jedno wołanie z listą przeszkód byłoby tam kosztem do zmierzenia. Struktury przyspieszające są poza zakresem projektu.
 9. **`nearestHit` zwraca indeks, nie pudełko.** Kto filtruje listę przed wywołaniem (na przykład usuwa pudełka), przesuwa indeksy. `pickInteractable` buduje osobną listę pudełek dźwigni i osobną kartek właśnie po to, żeby indeks był numerem dźwigni albo kartki.
 10. **Promień z początkiem w pudełku trafia je zawsze, z odległością 0.** Pudełko, które zawiera początek promienia, jest więc zawsze "pierwsze". Użyte jako przesłaniacz, ukryłoby wszystko za sobą. W trybie noclip gracz może stać w ścianie, więc to możliwe (analiza, nie sprawdzone w grze).
 11. **Macierz odwrotna musi pasować do rysowania.** Inne proporcje, inne oko albo macierz z poprzedniej klatki przesuwają promień względem tego, co gracz widzi. Test z pętlą w obie strony działa, bo używa tych samych macierzy w obie strony.
 12. **Odwrócenie macierzy może się nie udać.** `glm::inverse` osobliwej macierzy daje `NaN` albo nieskończoności, a `worldPointFromNdc` nie sprawdza `w == 0`. Macierz `projection * view` kamery nie jest osobliwa, więc to nie występuje, ale funkcja tego nie chroni.
-13. **Rysunek nie jest dowodem.** Promień, którego nikt nie zobaczył, może być dobry, a obraz bez promienia może wyglądać dobrze. Dowodem poprawności są testy ([`collision.md`](collision.md), pułapka 11): tu nikt nie sprawdził jeszcze niczego w działającej grze.
+13. **Rysunek nie jest dowodem.** Promień, którego nikt nie zobaczył, może być dobry, a obraz bez promienia może wyglądać dobrze. Dowodem poprawności są testy ([`collision.md`](collision.md), pułapka 11). Zrzut ekranu z grą jest dodatkowym dowodem innego rodzaju (ktoś widział efekt), ale nie testem: agent widział na zrzutach to, co wymienia sekcja 5.14, a właściciel nie sprawdził jeszcze niczego ręcznie.
+14. **Pomieszane jednostki kursora i bufora.** Punkt i rozmiar dla `screenPointRay` pochodzą z rozmiaru okna, a macierz `projection` z proporcji bufora ramki. Działa, bo proporcje są równe (sekcja 5.10). Na Retina i przy zmianie rozmiaru okna to pierwsze, co sprawdzić, gdy celownik "wskazuje obok".
+15. **Promień z macierzy sprzed obrotu myszą.** Mysz jest czytana przed budową `view`, a promień po niej. Przeniesienie `pickForFrame` przed odczyt myszy przesunęłoby wskazanie o jedną klatkę ruchu.
+16. **Test głębi i kolejność rysowania linii debugowych.** Zielone pudełko trafienia jest widoczne tylko dlatego, że jest rysowane pierwsze i że test głębi to `GL_LESS` (sekcja 3). Zmiana kolejności albo `GL_LEQUAL` ukryłaby zieleń.
+17. **Wskazanie przez ścianę, która właśnie opada.** Ściana otwarta dźwignią wypada z listy przeszkód w chwili pociągnięcia, więc promień przechodzi przez nią, choć model jeszcze 1,5 s jest widoczny ([`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md)). To zamierzone, ale na ekranie może wyglądać jak "dźwignia za ścianą jest wskazana".
+18. **Otwarta karta chowa podświetlenie i podpowiedź.** Gdy karta kartki jest otwarta, akcja to `CloseNote` i `PullLever` nie istnieje: celownik na dźwigni nie świeci i nie ma "E: pull lever", dopóki karta nie zostanie zamknięta (sekcja 5.9).
+19. **Klawisz E działa przy wolnym kursorze, a klik nie zawsze przechwytuje.** E nie sprawdza `cursorCaptured`, a klik przy otwartej karcie ją zamyka i nie przechwytuje kursora (sekcja 5.11).
+
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 6 i 8 robi się na kartce. Ćwiczenia 7 i od 9 do 12 to zmiany w kodzie albo w testach: po każdej zmianie w kodzie zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj swoją zmianę. Wyniki oznaczone jako "przewidywanie" są wyprowadzone z kodu, nie zmierzone.
+Ćwiczenia od 1 do 6, 8, 13, 14 i 15 robi się na kartce. Ćwiczenia 7, od 9 do 12, 16 i 17 to zmiany w kodzie albo w testach: po każdej zmianie w kodzie zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj swoją zmianę. Wyniki oznaczone jako "przewidywanie" są wyprowadzone z kodu, nie zmierzone.
 
 1. **Metoda płyt na kartce.** Pudełko ma `min = (-1, -1, -3)` i `max = (1, 1, -2)`. Promień startuje w `(0, 0, 0)` i biegnie wzdłuż `-Z`. Podaj odległość trafienia. Odpowiedź: 2. Na osi `z` odległości do płaszczyzn to `3` i `2`, po zamianie wejście 2, wyjście 3; osie `x` i `y` mają kierunek 0 i początek wewnątrz.
 2. **Mija o włos.** Pudełko ma `x` od -1 do 1 i `z` od -6 do -4. Promień startuje w `(-4, 0, 0)` z kierunkiem `(0,8, 0, -0,6)`. Czy trafia? Odpowiedź: nie. Na osi `x` wejście `(-1 + 4) / 0,8 = 3,75`, wyjście `(1 + 4) / 0,8 = 6,25`. Na osi `z` wejście `-6 / -0,6 = 10`, a wyjście `-4 / -0,6 = 6,667`, po zamianie wejście 6,667, wyjście 10. Wejście do pudełka `max(0; 3,75; 6,667) = 6,667`, wyjście `min(6,25; 10) = 6,25`, więc `6,667 > 6,25`: brak trafienia. W chwili `t = 6,25` promień jest już poza prawą ścianą (`x = 1`), ale przed bliską ścianą (`z = -3,75`).
@@ -645,6 +942,12 @@ Nie ma kodu panelu dla tego tematu. Panel Collision ([`collision.md`](collision.
 10. **Brak wcześniejszego wyjścia dla zerowego kierunku.** Usuń pierwszy `if` z `intersect` dla pudełka i uruchom testy. Przewidywanie: przestaje przechodzić `a ray without a direction hits nothing`, w sprawdzeniach `inside` dla pudełka i dla `nearestHit` (wszystkie trzy osie mają kierunek 0, a początek leży wewnątrz, więc nic nie ogranicza przedziału i wychodzi trafienie). Sprawdzenie `outside` dla pudełka nadal przejdzie, bo początek leży poza płytą `z`. Sprawdzenia dla kuli nie zmienią się, bo ta funkcja ma własny `if`.
 11. **Początek przedziału od minus nieskończoności.** Zmień `enterDistance = 0.0F` na `-infinity`. Przewidywanie: nie przechodzi `the box is behind the origin` (wynik byłby trafieniem z ujemną odległością) i podprzypadki testu `a ray that starts inside a box...`, bo `distance` byłoby ujemne zamiast 0.
 12. **Własny test.** Dopisz w `tests/RaycastTests.cpp` przypadek z promieniem biegnącym wzdłuż `-X`, równoległym do czterech ścian pudełka, startującym z `y` poza pudełkiem. Wzoruj się na `a ray parallel to faces of a box hits only from between those faces`. Oczekiwany wynik: brak trafienia.
+
+13. **Promień z oka.** Oko jest w `(3; 1,7; 5)`, a promień z `screenPointRay` startuje w `(3,05; 1,66; 4,9)` z kierunkiem `d` (długość 1). Jaki jest początek i kierunek po `rayFromEye`? Odpowiedź: początek `(3; 1,7; 5)`, kierunek `d` bez zmian. Prosta od oka w kierunku `d` przechodzi przez punkt `(3,05; 1,66; 4,9)`, bo promień przez piksel w rzutowaniu perspektywicznym wychodzi z oka, więc rysowany piksel jest ten sam (liczby są wymyślone, ilustrują zasadę, którą sprawdza test `the picking ray starts in the eye and keeps its direction`).
+14. **Reguły `interactionFor`.** Runda trwa, karta kartki jest otwarta, a celownik jest na pociągniętej dźwigni. Jaka jest akcja i co pokazuje HUD? Odpowiedź: `CloseNote`. Podpowiedź i pierścień są wyłączone (wymagają `PullLever` albo `ReadNote`), karta pokazuje "E: close".
+15. **Okno, bufor, proporcje.** Okno ma 1280 na 720 współrzędnych ekranu, bufor 2560 na 1440. Kursor jest w `(320, 180)`. Który punkt dostaje `screenPointRay` i co by się stało, gdyby bufor miał rozmiar 2560 na 1600? Odpowiedź: `(320, 180)` z rozmiarem `(1280, 720)`. Przy buforze 2560 na 1600 proporcje obrazu (`aspectRatio`) byłyby 1,6, a promień byłby liczony z proporcji 16 do 9 okna, więc rozjechałby się z obrazem: wskazanie byłoby obok (przewidywanie z kodu, nie pomiar).
+16. **Własny test.** Dopisz test, w którym oko stoi tuż przy ścianie, a kartka po jej drugiej stronie, tak że `pickInRound` zwraca `None` (ściana zasłania). Wzoruj się na `a closed wall hides what is behind it, the wall a lever opened does not`. Po zmianie zbuduj i uruchom testy, na końcu wycofaj zmianę.
+17. **Zmień zakres pulsu.** W `Interaction.hpp` ustaw `HIGHLIGHT_MIN_GLOW = 0` i uruchom test `the highlight pulses between its weakest and its strongest glow`. Przewidywanie: nadal przechodzi (sprawdza zakres względem stałych, a nie liczby), ale wskazany obiekt gaśnie w dolnym punkcie pulsu, co łamie założenie komentarza "nigdy nie schodzi do 0". Wycofaj zmianę.
 
 ## 9. Pytania kontrolne
 
@@ -687,8 +990,8 @@ Nie ma kodu panelu dla tego tematu. Panel Collision ([`collision.md`](collision.
 13. **Po co dzielenie przez `w` po mnożeniu przez macierz odwrotną?**
     Macierz perspektywiczna zostawia w `w` odległość od oka, a karta dzieli przez nią w drodze na ekran. Macierz odwrotna cofa mnożenie, ale nie dzielenie, więc po niej `w` nie jest 1 i trzeba podzielić drugi raz.
 
-14. **Dlaczego promień startuje na bliskiej płaszczyźnie, a nie w oku?**
-    Kod podaje fakt, nie powód. Analiza: oku nie odpowiada żaden punkt NDC, a to, co bliżej niż `nearPlane`, nie jest rysowane, więc "co widać, to można wskazać". Skutek: zasięg liczy się od bliskiej płaszczyzny (0,1 m przed okiem w środku obrazu), więc od oka sięga trochę dalej.
+14. **Dlaczego `screenPointRay` zaczyna promień na bliskiej płaszczyźnie, a gra przenosi go do oka?**
+    Oku nie odpowiada żaden punkt NDC, więc odwrócenie macierzy daje najbliższy punkt na bliskiej płaszczyźnie (analiza, kod podaje tylko fakt). Zasięg gracza ma być liczony od oka, więc `rayFromEye` ustawia początek w oku i zostawia kierunek: prosta przez punkt obrazu wychodzi z oka, więc ten sam kierunek z oka przechodzi przez ten sam piksel.
 
 15. **Kiedy `screenPointRay` rzuca wyjątek i dlaczego?**
     Gdy szerokość albo wysokość obrazu nie jest większa od 0. Zminimalizowane okno ma rozmiar 0, a dzielenie przez 0 dałoby `NaN` w promieniu. Wołający ma wtedy nie prosić o promień.
@@ -699,14 +1002,35 @@ Nie ma kodu panelu dla tego tematu. Panel Collision ([`collision.md`](collision.
 17. **Czym różni się ray casting od colour pickingu i dlaczego wybrano pierwszy?**
     Colour picking rysuje obiekty w unikalnych kolorach do osobnego bufora i czyta piksel pod kursorem: dokładny co do piksela, ale potrzebuje OpenGL, dodatkowego przebiegu i odczytu z karty, a kolory psują się przy mieszaniu, wygładzaniu i gamma. Ray casting liczy się na procesorze na bryłach zastępczych, da się go testować bez okna i daje odległość i zasięg za darmo. Wybór to decyzja właściciela z 2026-10-06. Uzasadnienie dopasowane do projektu (istniejące bryły, testy bez okna, potok HDR) to moja analiza.
 
-18. **Co ten kod mówi o środku ekranu i kursorze?**
-    Nic wprost: funkcja dostaje dowolny punkt obrazu. Decyzja właściciela (środek ekranu przy przechwyconej myszy, kursor przy wolnej) to zadanie dla wołającego, który jeszcze nie istnieje.
+18. **Skąd w grze bierze się punkt obrazu?**
+    `screenPointRay` dostaje dowolny punkt obrazu. Decyzja właściciela (środek okna przy przechwyconej myszy, kursor przy wolnej) jest w `pickForFrame`: `size / 2` albo `Input::cursorPosition()`, w jednostce rozmiaru okna.
 
-19. **Co jeszcze trzeba zrobić, żeby promień zadziałał w grze?**
-    Dodać publiczną pozycję kursora w `core::Input`, zgodnie dobrać rozmiar okna i bufora, pominąć rozmiar 0, policzyć macierz odwrotną z macierzy klatki, wywołać `pickInteractable`, a potem pokazać wynik (podświetlenie, linia w panelu Collision) i podpiąć resztę rozgrywki (sekcja 5.9).
+19. **Co składa się na jedną klatkę wskazywania?**
+    Mysz obraca kamerę, powstają `view` i `projection` z mieszanego oka, `pickForFrame` buduje promień (środek okna albo kursor, rozmiar okna, odwrotność `projection * view`, `rayFromEye`) i woła `pickInRound` z listą przeszkód rundy, `handleInteraction` czyta E i klik, a rysowanie podświetla wskazany obiekt, HUD rysuje celownik i podpowiedź, a panel Collision pokazuje wynik.
 
 20. **Jak sprawdzono poprawność odwracania rzutowania?**
     Testem z pętlą w obie strony: punkt świata jest rzutowany do piksela tym samym łańcuchem, co robi karta, a promień przez ten piksel ma trafić w małą kulę wokół tego punktu. Dodatkowo testy środka i rogów obrazu porównują kierunki z `forward`, `right` i `up` kamery.
+
+21. **Co robi `pickNothing` i kiedy jest wołany?**
+    Zwraca `PickState` bez promienia (`hasRay = false`, nic niewskazane), a akcja nadal jest liczona z rundy, więc może być `CloseNote`. Wołany jest przy oknie bez rozmiaru, przy wolnym kursorze nad panelem (mysz zablokowana, `cursorPosition` nieważne), przy kursorze poza oknem, a także w `beginRound`, bo wskazanie z poprzedniej rundy mogło nazywać dźwignię, której nowy labirynt nie ma.
+
+22. **Które klawisze i kliknięcia używają wskazanej rzeczy?**
+    E i lewy klik, gdy akcja nie jest `None`. E nie sprawdza, czy kursor jest przechwycony. Klik wolnym kursorem poza wskazaniem przechwytuje kursor, a klik przy otwartej karcie ją zamyka i kursora nie przechwytuje.
+
+23. **Jak działa podświetlenie i dlaczego nie ma nowego shadera?**
+    Wskazany obiekt jest rysowany z `uEmissive = highlightGlow(czas)`: ciepła żółć pulsująca między 0,8 a 2,4. Programy `lit`, `gouraud` i `textured` już dodają `uEmissive`, więc podświetlenie widać w każdym trybie oświetlenia. Widoki Normals i UVs go ignorują.
+
+24. **Dlaczego zielone pudełko trafienia widać, mimo że drugie pudełko leży w tym samym miejscu?**
+    Zielone jest rysowane pierwsze, a test głębi `GL_LESS` odrzuca fragment o równej głębi, więc drugi rysunek go nie nadpisuje.
+
+25. **Co znaczy "zamrożony promień" i po co?**
+    Rysowana kopia wyniku wskazania przestaje nadążać za bieżącą. Promień wychodzi z oka, więc z oka jest punktem. Zamrożony da się obejrzeć z boku. Samo wskazywanie (podświetlenie, akcja) działa dalej.
+
+26. **Co jest decyzją właściciela, a co wyborem implementacji w tej części M8?**
+    Decyzje właściciela (2026-10-06): promień przez środek ekranu przy przechwyconej myszy albo przez kursor przy wolnej, dźwignia otwierająca skrót przez obniżenie jednej wewnętrznej ściany, kartka z krótką podpowiedzią na karcie HUD. Reszta (promień z oka, podświetlenie emisją, zasady kliknięć, zamrażanie promienia, panel) to wybory implementacji.
+
+27. **Co sprawdzono, a co nie?**
+    Bramka projektu (zgłoszona przez autora): 466 przypadków i 152264 asercji, w tym 21 nowych w `InteractionTests.cpp`. Agent widział na zrzutach działanie wskazywania, podświetlenia, kartki, otwartej ściany i panelu (lista w sekcji 5.14). Ręczny test właściciela i macOS są otwarte.
 
 ## 10. Źródła
 
@@ -716,5 +1040,5 @@ Nie ma kodu panelu dla tego tematu. Panel Collision ([`collision.md`](collision.
 - GLFW, "Input guide", pozycja kursora: <https://www.glfw.org/docs/latest/input_guide.html#cursor_pos> (współrzędne ekranu, `y` w dół od lewego górnego rogu).
 - Dokumentacja OpenGL, `glViewport`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glViewport.xhtml> (NDC na piksele bufora) i `glReadPixels`: <https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml> (odczyt używany przez colour picking).
 - cppreference, `std::span`: <https://en.cppreference.com/w/cpp/container/span>, inicjalizatory desygnowane: <https://en.cppreference.com/w/cpp/language/aggregate_initialization>.
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`collision.md`](collision.md) (pudełka, kule, styk, pułapka grubości ściany), [`camera.md`](camera.md) (macierze widoku i rzutowania, `forward`, `right`), [`../game/interactables.md`](../game/interactables.md) (kto używa promienia), [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora), [`../renderer/post-process.md`](../renderer/post-process.md) (bufor HDR i gamma, którą omijałby colour picking), [`../../libraries/glm.md`](../../libraries/glm.md), [`../../libraries/doctest.md`](../../libraries/doctest.md).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `scene`), [`collision.md`](collision.md) (pudełka, kule, styk, pułapka grubości ściany, panel Collision), [`camera.md`](camera.md) (macierze widoku i rzutowania, `forward`, `right`), [`../game/interactables.md`](../game/interactables.md) (kto używa promienia, dźwignie i kartki), [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora, `cursorPosition`), [`../debug-ui.md`](../debug-ui.md) (HUD i panele), [`../../decisions/pick-ray-starts-in-the-eye.md`](../../decisions/pick-ray-starts-in-the-eye.md), [`../../decisions/highlight-as-emissive-pulse.md`](../../decisions/highlight-as-emissive-pulse.md), [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md), [`../renderer/post-process.md`](../renderer/post-process.md) (bufor HDR i gamma, którą omijałby colour picking), [`../../libraries/glm.md`](../../libraries/glm.md), [`../../libraries/doctest.md`](../../libraries/doctest.md).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 15), sekcja 10 (panel Collision z wynikiem ostatniego raycasta).

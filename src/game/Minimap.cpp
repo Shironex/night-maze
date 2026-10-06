@@ -1,5 +1,5 @@
 // Minimap: the settings of the small map in a corner of the screen, where it stands, and
-// the flat shapes it is drawn from (floors, walls, gate, crystals, player).
+// the flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
 // See docs/modules/renderer/minimap.md
 #include "game/Minimap.hpp"
 
@@ -33,6 +33,11 @@ constexpr float MIN_WALL_PIXELS = 1.5F;
 // pixels, so it stays a visible dot.
 constexpr float CRYSTAL_RADIUS = 0.4F;
 constexpr float MIN_CRYSTAL_PIXELS = 2.0F;
+
+// A lever or a note is a square with this half side, in metres, and at least this many
+// pixels: smaller than a crystal, because it hangs on a wall and must not cover it.
+constexpr float MOUNT_MARK_HALF_SIZE = 0.22F;
+constexpr float MIN_MOUNT_MARK_PIXELS = 1.5F;
 
 // The arrow of the player. Its tip is this far in front of the place of the player, in
 // metres, and at least this many pixels, so the player can be found on the map of
@@ -161,7 +166,9 @@ float minimapMetresPerPixel(const Maze& maze, int pixels) {
 std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Round& round,
                                                 bool revealAll, const MinimapPlayer& player,
                                                 float metresPerPixel) {
-    const Maze& maze = world.maze;
+    // The walls of the ROUND: the maze of the world without the walls that pulled
+    // levers have opened.
+    const Maze& maze = roundMaze(world, round);
     const Discovery& discovery = round.discovery;
 
     // Whether a cell is drawn. isDiscovered is false for a cell outside the grid, so
@@ -252,7 +259,30 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
         addTriangle(vertices, north, south, west, MINIMAP_CRYSTAL_COLOR);
     }
 
-    // 5. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
+    // 5. The levers and the notes, where they hang. A lever shows whether it is pulled.
+    const float markHalfSize =
+        atLeastPixels(MOUNT_MARK_HALF_SIZE, MIN_MOUNT_MARK_PIXELS, metresPerPixel);
+    const glm::vec2 markHalf{markHalfSize, markHalfSize};
+    const std::vector<Lever>& levers = world.interactables.levers;
+    for (std::size_t i = 0; i < levers.size(); ++i) {
+        const MazeCell cell = levers[i].mount.cell;
+        if (!shown(cell.x, cell.z)) {
+            continue;
+        }
+        // A lever the round does not know (a round of another world) counts as not
+        // pulled.
+        const bool pulled =
+            i < round.interactables.leverPulled.size() && round.interactables.leverPulled[i];
+        addRectangle(vertices, mapPoint(levers[i].position), markHalf,
+                     pulled ? MINIMAP_LEVER_PULLED_COLOR : MINIMAP_LEVER_COLOR);
+    }
+    for (const Note& note : world.interactables.notes) {
+        if (shown(note.mount.cell.x, note.mount.cell.z)) {
+            addRectangle(vertices, mapPoint(note.position), markHalf, MINIMAP_NOTE_COLOR);
+        }
+    }
+
+    // 6. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
     // smaller z, and the yaw grows clockwise seen from above. So "forward" on the map
     // is (sin yaw, -cos yaw), the x and z of scene::Camera::forward for a level look,
     // and "to the right" is that direction turned by a quarter: (cos yaw, sin yaw).

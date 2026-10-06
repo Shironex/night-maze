@@ -1,7 +1,7 @@
 # Moduł game: dźwignie i kartki (rozmieszczenie, reguły, wskazywanie)
 
-Kamień milowy: M8, tylko podstawy bez okna (dane, matematyka i testy). Temat wykładu: żaden wprost. To logika gry, która używa tematu 15 (promień z [`../scene/picking.md`](../scene/picking.md)).
-Kod: [`src/game/Interactables.hpp`](../../../src/game/Interactables.hpp), [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp), testy w [`tests/InteractablesTests.cpp`](../../../tests/InteractablesTests.cpp). Korzysta z [`src/scene/Raycast.hpp`](../../../src/scene/Raycast.hpp), [`src/game/Exit.hpp`](../../../src/game/Exit.hpp) (`passageDistances`), [`src/game/Crystals.hpp`](../../../src/game/Crystals.hpp) (`CrystalSpawn`), [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp) (`cellCenter`, `wallSegmentOn`) i [`src/game/Terrain.hpp`](../../../src/game/Terrain.hpp) (`heightAt`).
+Kamień milowy: M8, podstawy bez okna (dane, matematyka i testy), a w M8, części 2: selekcja, dźwignie i kartki, podpięcie do świata, rundy, rysowania i wejścia. Temat wykładu: żaden wprost. To logika gry, która używa tematu 15 (promień z [`../scene/picking.md`](../scene/picking.md)).
+Kod: [`src/game/Interactables.hpp`](../../../src/game/Interactables.hpp), [`src/game/Interactables.cpp`](../../../src/game/Interactables.cpp), testy w [`tests/InteractablesTests.cpp`](../../../tests/InteractablesTests.cpp). Część 2 dodaje: [`src/game/Interaction.hpp`](../../../src/game/Interaction.hpp) i [`.cpp`](../../../src/game/Interaction.cpp) (macierze modeli, akcja klawisza), [`src/game/InteractableRenderer.hpp`](../../../src/game/InteractableRenderer.hpp) i [`.cpp`](../../../src/game/InteractableRenderer.cpp) (rysowanie), zmiany w [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp), [`src/game/Round.hpp`](../../../src/game/Round.hpp) i [`src/game/Round.cpp`](../../../src/game/Round.cpp) oraz testy w [`tests/InteractionTests.cpp`](../../../tests/InteractionTests.cpp). Korzysta z [`src/scene/Raycast.hpp`](../../../src/scene/Raycast.hpp), [`src/game/Exit.hpp`](../../../src/game/Exit.hpp) (`passageDistances`), [`src/game/Crystals.hpp`](../../../src/game/Crystals.hpp) (`CrystalSpawn`), [`src/game/MazeLayout.hpp`](../../../src/game/MazeLayout.hpp) (`cellCenter`, `wallSegmentOn`) i [`src/game/Terrain.hpp`](../../../src/game/Terrain.hpp) (`heightAt`).
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument stoi na czterech innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, kierunki, `MazeCell`, `randomBelow`, układ w świecie), [`gameplay.md`](gameplay.md) (przeszukiwanie wszerz `passageDistances`, wyjście i brama, kryształy, tasowanie komórek), [`../scene/collision.md`](../scene/collision.md) (pudełka `Aabb`, pudełko ściany grubsze od ściany) i [`../scene/picking.md`](../scene/picking.md) (promień, `nearestHit`). Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)).
 
@@ -20,12 +20,26 @@ Ten dokument odpowiada na pytania, które z tego wynikają:
 | w której komórce i na której ścianie wisi dźwignia albo kartka | `game::placeInteractables` |
 | gdzie dokładnie jest dźwignia w świecie i jakie ma pudełko | `game::leverPosition`, `game::leverBox`, `game::notePosition`, `game::noteBox` |
 | co oznacza "dźwignia pociągnięta" | `game::InteractableState`, `game::pullLever`, `game::openedWalls` |
-| na co patrzy gracz | `game::pickInteractable` (używa `scene::nearestHit`) |
+| na co patrzy gracz | `game::pickInteractable` (używa `scene::nearestHit`), w grze przez `game::pickInRound` ([`../scene/picking.md`](../scene/picking.md)) |
+| co robi pociągnięcie w rundzie | `game::pullRoundLever`, `roundObstacles`, `roundWallMatrices`, `roundMaze` (sekcje 2.15 do 2.18) |
+| jak dźwignia i kartka są narysowane | `game::InteractableRenderer`, `game::mountModelMatrix`, `game::leverHandleMatrix` (sekcja 2.19) |
+| jak karta kartki jest otwierana i zamykana | `game::readNote`, `game::closeNote`, `game::openNoteText` (sekcja 2.20) |
 | co jest napisane na kartce | `game::compassTowards`, `game::compassName`, `game::noteText` |
 
 Kod leży w bibliotece `game_logic` i nie potrzebuje okna ani OpenGL. Test potrafi zbudować labirynt, ustawić dźwignie i kartki, wycelować promieniem i pociągnąć dźwignię, nie tworząc ani okna, ani kontekstu OpenGL.
 
-**Stan na dziś (2026-10-06), uczciwie.** Kod ma 29 przypadków testowych w `tests/InteractablesTests.cpp` (policzone z pliku: 29 makr `TEST_CASE`, w nich 23 podprzypadki `SUBCASE`). Autor kodu zgłosił, że testy przechodzą w bramce projektu. Ja ich nie uruchamiałem: w drzewie trwał w tym czasie build, a ten dokument opisuje kod z plików. **Nikt nie użył niczego z tego modułu w działającej grze.** W kodzie gry nie ma ani jednego wywołania `placeInteractables`, `pickInteractable` ani `pullLever` (poza testami). Konkretnie, czego nie ma: dźwignie i kartki nie są polem `MazeWorld`, runda (`Round`) nie wie o dźwigniach, `roundObstacles` nie zna stanu dźwigni, nie ma rysowania dźwigni i kartek, nie ma animacji opadania ściany, nie ma klawisza do pociągnięcia, nie ma karty HUD z tekstem i nie ma pól w panelu. Część komentarzy w nagłówku opisuje to czasem w czasie teraźniejszym ("The code that builds the obstacle list of a round leaves these walls out"): to opis planu, nie stanu kodu (sekcja 5.12). Co zostaje do podpięcia, opisuje sekcja 5.13.
+**Stan na dziś (2026-10-06), uczciwie.** Dźwignie i kartki działają teraz w grze: wiszą w `MazeWorld`, runda zna ich stan, pociągnięta dźwignia opuszcza ścianę, a kartka otwiera kartę HUD. Co jest sprawdzone i czym:
+
+| Co | Czym sprawdzone | Kto |
+|---|---|---|
+| rozmieszczenie, reguły, wskazywanie (stan z części 1) | 29 przypadków w `tests/InteractablesTests.cpp` (policzone z pliku). W części 2 zmienił się w tym pliku tylko jeden komentarz | bramka projektu, zgłoszona przez autora kodu |
+| świat, runda, ściana otwarta dźwignią, karta kartki, macierze modeli, minimapa | 21 nowych przypadków w `tests/InteractionTests.cpp` (policzone z pliku: 21 makr `TEST_CASE`) | bramka projektu, zgłoszona przez autora kodu |
+| bramka `make check` | **466 przypadków i 152264 asercji** w Debug i Release (przed tą porcją 445 i 150296). Ja ich nie uruchamiałem: ten dokument opisuje kod z plików | zgłoszone przez autora kodu |
+| start Debug | czysty log, wymienia nowe modele i tekstury jako wczytane | zgłoszone przez autora kodu |
+| obraz działającej gry | **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela**: lista w sekcji 5.11 | agent, który napisał kod, uruchomił grę skryptem i oglądał zrzuty |
+| ręczny test właściciela, macOS | **otwarte** | listy w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 24.2, i [`../../guides/build-macos.md`](../../guides/build-macos.md) |
+
+Znane problemy w chwili pisania: model dźwigni, który od przodu czytał się jak szara płyta, został przerobiony (ciemna płyta z ramą, jasna gałka, sekcja 2.19), a podpowiedź "E: pull lever" stoi teraz na dole okna pośrodku i nie zasłania wskazanego obiektu. Znane uwagi kosmetyczne: z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie. Znane ograniczenia zachowania: sekcja 2.21.
 
 ### 1.1 Decyzje właściciela a wybory implementacji
 
@@ -34,7 +48,8 @@ Kod leży w bibliotece `game_logic` i nie potrzebuje okna ani OpenGL. Test potra
 1. Wybieranie obiektów to ray casting: promień z kamery przez środek ekranu, gdy mysz jest przechwycona, albo przez kursor, gdy jest wolna ([`../scene/picking.md`](../scene/picking.md), sekcja 1.1).
 2. **Dźwignia otwiera skrót: obniża jeden wewnętrzny segment ściany.**
 3. **Kartki pokazują krótką podpowiedź na karcie HUD**: albo policzoną z labiryntu, albo linię z tabeli ("flavour").
-4. Temat 12 (mapowanie środowiska) dostanie kryształy i kałuże. To nie jest częścią tego kodu, wspominam tylko dlatego, że to ta sama rozgrywka.
+
+To wszystkie trzy decyzje właściciela z tego dnia dla tej porcji. Wszystko inne w tym dokumencie (także cała część 2: kiedy ściana przestaje blokować, kopia labiryntu w rundzie, podświetlenie, zasady kliknięć) to wybory implementacji.
 
 **Wybory implementacji.** Każdy z uzasadnieniem z komentarzy w kodzie. Tam, gdzie kod nie podaje powodu, jest to powiedziane i dodana jest oznaczona jako **analiza** hipoteza:
 
@@ -58,7 +73,23 @@ Kod leży w bibliotece `game_logic` i nie potrzebuje okna ani OpenGL. Test potra
 | tekst kartki liczony na żądanie, nie zapisany w kartce | komentarz: odpowiedź zmienia się w trakcie rundy, a podpowiedź do zebranego kryształu byłaby kłamstwem |
 | kompas liczbami całkowitymi, granica 1 do 2 | komentarz: "close to the 22.5 degrees that would cut the circle into eight equal parts, and it needs whole numbers only" |
 | rodzaje po kolei: wyjście, kryształ, linia | komentarz: pierwsze trzy kartki to po jednej z rodzaju. Kolejne linie to kolejne wiersze tabeli, "so none repeats before all were used" |
-| `InteractableState` jako osobna struktura | komentarz: żeby mogła stać się polem rundy |
+| `InteractableState` jako osobna struktura | komentarz (część 1): żeby mogła stać się polem rundy. Dziś jest nim: `Round::interactables`, zaczynane od nowa z każdą rundą |
+| ściana otwarta dźwignią przestaje blokować **w chwili pociągnięcia** | reguła bramy (`gateBlocks`): to, co się otwiera, przestaje być przeszkodą w chwili otwarcia, a model jeszcze opada. Przez 1,5 s gracz może przejść przez ścianę, którą jeszcze widać. Notatka [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md) |
+| `sinkProgressAfter` i `sinkDepth` wspólne dla bramy i ścian | brama i ściana opadają w tym samym czasie (`GATE_OPEN_SECONDS`, 1,5 s) i na tę samą głębokość (`GATE_SINK_DEPTH`, 3,3 m) |
+| całkiem opadła ściana zostaje na liście rysowania, pod gruntem | lista macierzy ma stały rozmiar i kolejność ścian świata. Teren zasłania ścianę (sekcja 2.18) |
+| runda ma **własną kopię labiryntu** (`Round::maze`) | `roundMaze(world, round)` czytają przeszukiwanie (discovery) i minimapa, `world.maze` nigdy się nie zmienia. Notatka [`../../decisions/round-keeps-own-maze-copy.md`](../../decisions/round-keeps-own-maze-copy.md) |
+| `roundWallMatrices` liczone raz na klatkę dla trzech przebiegów | dwa przebiegi cienia i przebieg sceny rysują ściany z tej samej listy, więc cień pasuje do ściany (sekcja 2.18) |
+| podświetlenie to pulsujące `uEmissive` wskazanego obiektu | bez nowego shadera, nie widać go w widokach Normals i UVs. Notatka [`../../decisions/highlight-as-emissive-pulse.md`](../../decisions/highlight-as-emissive-pulse.md) |
+| początek promienia przeniesiony z bliskiej płaszczyzny do oka | zasięg 2,5 m jest od oka. Notatka [`../../decisions/pick-ray-starts-in-the-eye.md`](../../decisions/pick-ray-starts-in-the-eye.md) |
+| zasady kliknięć (E albo lewy klik, wolny kursor, panele) | [`../scene/picking.md`](../scene/picking.md), sekcja 5.11. Interakcja tylko w trwającej rundzie |
+| karta kartki zamyka się: E, klik, odejście dalej niż 3,0 m, wygrana. Bez licznika czasu | `NOTE_READ_DISTANCE` to trochę więcej niż zasięg promienia (2,5 m), żeby karta nie zamykała się, gdy gracz jeszcze stoi przy kartce |
+| uchwyt dźwigni przechyla się między dwoma kątami w 0,3 s | `LEVER_PULL_SECONDS`, szybki ruch ręki, znacznie krótszy niż opadanie ściany |
+| uchwyt to osobny model (`lever_handle.obj`) | `drawModel` daje każdej części modelu jedną macierz, a uchwyt jest jedyną częścią, która się rusza |
+| przycisk "Pull all levers" to flaga prośby obsługiwana w `onRender` | jak restart: między dwoma krokami symulacji |
+| liczby dźwigni i kartek w `MazeSettings::interactables` | zwykły przepływ Regenerate: nowy labirynt, nowa runda |
+| `MazeWorld::leverWalls` | numer ściany każdej dźwigni na liście ścian, szukany raz przy budowie świata |
+| `MazeRenderer::draw` bierze macierze ścian klatki | ściany opadają, więc lista macierzy świata nie wystarcza |
+| `openedWalls` nie jest drogą, którą idzie gra | gra używa `openedWallFlags(world, round)`. `openedWalls` zostało z części 1 (z testem) |
 
 ## 2. Teoria
 
@@ -205,6 +236,8 @@ Testy potwierdzają zachowanie, a nie konkretne komórki: `the same maze and see
 
 ### 2.8 Pozycja i pudełko wskazywania
 
+**Uwaga o liczbach.** Wymiary pudełka **dźwigni** w tej sekcji, w sekcji 2.10, w ćwiczeniu 7 i w pytaniu 11 odpowiadają stałym z części 1. Pudełko dźwigni po przeróbce modelu się nie zmieniło (0,3 x 0,4 x 0,25 m): gałka sięga w głąb dokładnie do 0,25 m, gdy wskazuje prosto ze ściany. Wymiary pudełka kartki też się nie zmieniły.
+
 **Pozycja.** Dźwignia i kartka wiszą na **widocznym licu** ściany, w środku ściany. Ściana stoi na granicy komórki, a jej widoczna grubość to `WALL_VISUAL_THICKNESS = 0,2 m`, więc lico patrzące do komórki leży `1 - 0,1 = 0,9 m` od środka komórki (`CELL_SIZE / 2 - WALL_VISUAL_THICKNESS / 2`):
 
 ```text
@@ -252,7 +285,7 @@ Stan dźwigni to jedno `std::vector<bool>`: `leverPulled[i]` jest prawdą, gdy d
 
 Test `a round starts with no lever pulled, and a lever opens its wall once` przeprowadza cały scenariusz: nic nie pociągnięte, pociągnięcie dźwigni 1 otwiera jej ścianę, drugie pociągnięcie nic nie robi, dźwignia 0 nadal działa, `openedWalls` zwraca ściany w kolejności dźwigni (0, potem 1), a nowy stan z `startInteractables` zamyka wszystko.
 
-**Czego tu nie ma:** żadnej animacji opadania, usunięcia ściany z listy przeszkód gracza ani ze świata rysowanego, ani zmiany listy przesłaniaczy do wskazywania. To zadania podpięcia (sekcja 5.13), które z `openedWalls` i `openedWallSegment` korzystają.
+**Co z tego robi runda (część 2):** `pullLever` zmienia tylko flagę. Usunięcie ściany z listy przeszkód, kopia labiryntu rundy, opadanie modelu i animacja uchwytu są w `Round` (sekcje 2.15 do 2.18). Gra wywołuje `pullLever` przez `pullRoundLever`, a ścian nie szuka przez `openedWalls`, tylko przez `openedWallFlags` (sekcja 2.16).
 
 ### 2.10 Wskazywanie z przesłaniaczami
 
@@ -341,15 +374,144 @@ Z testów (`a maze without a wall worth opening gets no lever`):
 
 W labiryncie 2 na 2 powód jest ogólny (rozumowanie własne, test sprawdza 10 ziaren): drzewo rozpinające czterech komórek to ścieżka, a jedyna ściana wewnętrzna łączy dwa końce tej ścieżki, a jednym z końców jest zawsze wyjście (najdalsza komórka od startu jest końcem). Ściana dotyka więc komórki wyjścia, a jej wynik to najwyżej `|0 - 3| - 1 = 2` (gdy start jest drugim końcem; gdy jest drugą komórką ścieżki, wynik to 0), czyli poniżej progu 6. Odrzucają ją więc obie reguły naraz.
 
+### 2.14 Dźwignie i kartki w świecie: rozmieszczenie i teren
+
+Od części 2 dźwignie i kartki są **polem `MazeWorld`** (`world.interactables`), tak jak kryształy. Co dodało `buildMazeWorld`:
+
+1. po kryształach wywołuje `placeInteractables(maze, seed, START_CELL, exit.cell, world.crystals, interactables)`: dźwignia omija komórki z kryształem, więc kryształy muszą być policzone wcześniej,
+2. dla każdej dźwigni szuka **raz** numeru jej ściany na liście `world.walls` i zapisuje go w `world.leverWalls` (`wallIndexOf` porównuje pozycję i oś segmentu z `openedWallSegment(lever)`). Szukanie dzieje się **przed** obniżeniem ścian do gruntu (to zmienia ich `y`), a gdyby ściany nie znaleziono, funkcja rzuca `std::logic_error`: lepszy błąd niż obniżenie złej ściany,
+3. `placeOnTerrain` dostaje dodatkowy krok: `placeInteractablesOnTerrain(world.interactables, terrain)`, więc dźwignie i kartki wiszą na wysokości gruntu (plus `LEVER_MOUNT_HEIGHT` i `NOTE_MOUNT_HEIGHT`) także po zmianie skali wysokości. Nic nie przesuwa się w bok.
+
+`world.colliders` ma pudełko każdej ściany **najpierw**, w kolejności `world.walls`, a pudełka słupków po nich. Dlatego ten sam numer znajduje macierz ściany (`wallMatrices[i]`), jej pudełko (`colliders[i]`) i wpis w `leverWalls`: trzy listy są w tej samej kolejności. Z tego korzystają `roundObstacles` i `roundWallMatrices`.
+
+Liczby dźwigni i kartek są polem `MazeSettings::interactables` (typu `InteractableSettings`), więc idą tą samą drogą co rozmiar i ziarno: panel Maze edytuje je, **Regenerate** buduje labirynt z nimi (po przycięciu do `0..MAX_*` w `regenerateMaze`), a to zaczyna nową rundę. Domyślnie 2 dźwignie i 3 kartki. Ziarno dźwigni to ziarno labiryntu plus `LEVER_SEED_OFFSET` (5000011).
+
+Test `a maze world holds the levers and notes of its seed and the wall of every lever` porównuje świat z `placeInteractables` wywołanym ręcznie i sprawdza, że numer w `leverWalls` wskazuje właśnie segment z `openedWallSegment`. `the settings of a maze world decide how many levers and notes it gets` sprawdza 0 i 0, 1 i 7 oraz domyślne wartości `MazeSettings`. `levers and notes of a world hang above its terrain, also after a rebuild` używa terenu o nachyleniu i po zmianie skali wysokości sprawdza `y` (nic nie rusza `x` i `z`).
+
+### 2.15 Stan rundy: co dochodzi do `Round`
+
+`startRound` zaczyna rundę **bez** pociągniętych dźwigni:
+
+| Pole `Round` | Znaczenie |
+|---|---|
+| `interactables` (`InteractableState`) | które dźwignie są pociągnięte (`startInteractables`), po jednym wpisie na dźwignię |
+| `wallProgress` | `std::vector<float>`: jak głęboko opadła ściana każdej dźwigni, 0 stoi, 1 całkiem w gruncie. Zaczyna się od zer |
+| `maze` (`std::optional<Maze>`) | **własna kopia labiryntu rundy**: `round.maze = world.maze` w `startRound`. `std::optional`, bo `Maze` nie ma konstruktora domyślnego, a `Round` musi mieć wartość domyślną |
+| `noteOpen`, `noteIndex` | czy karta kartki jest otwarta i numer kartki |
+| `pullAllLevers` (w `GameplaySettings`, nie w `Round`) | flaga prośby z panelu (sekcja 2.22) |
+
+`roundMaze(world, round)` zwraca `*round.maze`, a dla rundy, która nie była zaczęta przez `startRound` (nie ma kopii), labirynt świata. Czyta ją przeszukiwanie (`discoverAround(round.discovery, roundMaze(world, round), feet)` w każdym kroku) i minimapa (`buildMinimapVertices`). `world.maze` **nigdy** się nie zmienia, więc nowa runda na tym samym labiryncie ma wszystkie ściany. Test `a new round has no lever pulled, every wall standing and no note open` pilnuje stanu początkowego: wszystko puste, lista przeszkód ma tyle pudełek co świat plus brama, macierze ścian identyczne ze światowymi, a `&roundMaze(world, notStarted) == &world.maze`.
+
+### 2.16 Pociągnięcie dźwigni w rundzie
+
+`pullRoundLever(round, world, index)` opakowuje `pullLever`:
+
+1. `pullLever(round.interactables, world.interactables, index)` ustawia flagę (przy pierwszym pociągnięciu) i zwraca ścianę. Dla złego numeru **rzuca `std::out_of_range`**,
+2. gdy nic się nie otworzyło (dźwignia była pociągnięta), funkcja zwraca `false`,
+3. inaczej usuwa ścianę z kopii labiryntu rundy: `round.maze->removeWall(x, z, side)` (usuwa ją dla **obu** komórek), o ile kopia istnieje,
+4. zwraca `true`.
+
+W tej chwili dzieją się naraz trzy rzeczy: (a) ściana znika dla przeszukiwania i minimapy (przez kopię labiryntu), (b) jej pudełko wypada z `roundObstacles` (sekcja 2.17), więc gracz i promień przechodzą, (c) ściana zaczyna opadać (`wallProgress` rośnie w `updateRound`). Jest to ta sama zasada co dla bramy: to, co się otwiera, przestaje być przeszkodą w chwili otwarcia, a model jeszcze opada ([`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md)).
+
+Pozostałe funkcje: `pullAllLevers(round, world)` (funkcja `game::`, osobna od pola `GameplaySettings::pullAllLevers`) pociąga wszystkie jeszcze niepociągnięte i zwraca, ile ścian się otworzyło, `pulledLeverCount(round)` liczy pociągnięte, `openedWallFlags(world, round)` daje po fladze na ścianę świata (według `world.leverWalls` i stanu dźwigni, z zabezpieczeniem przed rozmiarami z innego świata).
+
+Testy: `pulling a lever opens its wall once: obstacles, maze of the round, sinking` (drugie pociągnięcie zwraca `false`, zły numer rzuca `std::out_of_range`, z listy znika dokładnie jedno pudełko, kopia traci ścianę z obu komórek, a `world.maze` ją zachowuje), `pull all levers opens every wall and counts them` i `the view passes an opened wall, and a restart brings every wall back` (przeszukiwanie widzi komórkę za otwartą ścianą, a nowa runda ma ścianę z powrotem).
+
+**Uwaga do kodu.** Gdy `round.maze` jest puste (runda nie zaczęta przez `startRound`), `pullRoundLever` pomija `removeWall`: ściana przestaje blokować i opada, ale przeszukiwanie i minimapa nadal ją widzą (obserwacja z kodu, ta ścieżka nie jest w grze użyta, bo każda runda idzie przez `startRound`).
+
+### 2.17 Przeszkody: `roundObstacles`
+
+`roundObstacles(world, round)` buduje listę dla gracza **i** dla promienia: pudełka z `world.colliders` bez pudełek ścian z `openedWallFlags`, a na końcu pudełko bramy, dopóki `gateBlocks` jest prawdą. Pętla korzysta z tego, że pierwsze `walls.size()` pudełek to ściany w kolejności świata. Aplikacja trzyma listę w `m_obstacles` i buduje ją od nowa tylko wtedy, gdy się zmienia: początek rundy, otwarcie bramy, **pociągnięcie dźwigni** (`interact` zwraca `true`, gdy ściana się otworzyła) i zmiana skali wysokości terenu.
+
+Dwa skutki do zapamiętania: panel Collision liczy ściany bez otwartych (`%d walls (%d opened by levers)`), a `drawColliderLines` rysuje `m_obstacles` bez pudełka bramy (bramę rysuje osobno), więc ściana otwarta dźwignią traci też swoje pudełko w widoku debugowym.
+
+### 2.18 Opadająca ściana: wspólne wzory z bramą
+
+Brama (od M5) opada przez `GATE_OPEN_SECONDS` (1,5 s) na głębokość `GATE_SINK_DEPTH` (3,3 m). Części 2 wyodrębniła dwa wzory, których używają brama i ściany:
+
+```cpp
+float sinkProgressAfter(float progress, float stepSeconds) {
+    return std::min(progress + stepSeconds / GATE_OPEN_SECONDS, 1.0F);
+}
+float sinkDepth(float progress) { return progress * GATE_SINK_DEPTH; }
+```
+
+`updateRound` liczy teraz `gateProgress` przez `sinkProgressAfter`, a dla **każdej pociągniętej dźwigni** to samo robi z `wallProgress[i]` (z zabezpieczeniem rozmiarów). Głębokość 3,3 m jest większa od wysokości ściany (3,0 m, `WALL_HEIGHT`) i słupka (3,15 m, `PILLAR_HEIGHT`): test `the sink formulas reach the full depth in 1.5 s and stop there` pilnuje `GATE_SINK_DEPTH > WALL_HEIGHT` i tego, że 180 kroków po 1/120 s daje 1, a dalszy czas niczego nie zmienia.
+
+**Macierze ścian klatki.** `roundWallMatrices(world, round)` kopiuje `world.wallMatrices` i dla każdej pociągniętej dźwigni liczy macierz ściany od nowa z obniżonego segmentu:
+
+```cpp
+WallSegment lowered = world.walls[wall];
+lowered.position.y -= sinkDepth(round.wallProgress[i]);
+matrices[wall] = wallModelMatrix(lowered);
+```
+
+(tak, jak `GameplayRenderer` obniża bramę). Lista ma ten sam rozmiar i kolejność co `world.walls`, a całkiem opadła ściana **zostaje** na niej: leży wtedy poniżej najniższego gruntu pod sobą i teren ją zasłania. Aplikacja liczy listę **raz na klatkę** (`m_wallMatrices`) i przekazuje do `MazeRenderer::draw(shader, world, wallMatrices)` w obu przebiegach cienia i w przebiegu sceny, więc cień opadającej ściany jest cieniem tego, co jeszcze jest nad gruntem. Słupki rysują się nadal ze świata. Test: w połowie opadania macierz ściany daje punkt o `GATE_SINK_DEPTH / 2` niżej, żadna inna ściana się nie rusza, a po całym czasie punkt jest o `GATE_SINK_DEPTH` niżej.
+
+### 2.19 Rysowanie: modele, macierze mocowania i uchwyt
+
+Trzy modele (`lever.obj`, `lever_handle.obj`, `note.obj`, opis w [`../../guides/blender.md`](../../guides/blender.md)) mają jedną konwencję: początek w środku **tyłu**, czyli punktu przymocowanego do ściany, tył leży w płaszczyźnie `z = 0`, a model sterczy wzdłuż `+Z`. To model czegoś na **północnej** ścianie komórki: sięga na południe, w głąb komórki. Płyta (`lever.obj`) ma 0,16 x 0,30 m i 0,02 m grubości, podniesioną ramę z czterech listew po 0,02 m i obudowę osi wystającą na 0,07 m (52 trójkąty). Uchwyt (`lever_handle.obj`) to pręt 0,03 x 0,03 m i 0,14 m długości oraz gałka 0,07 x 0,07 m kończąca się 0,20 m od osi (20 trójkątów).
+
+Macierze mocowania **nie są w `InteractableRenderer`**, tylko w `Interaction.hpp` i `Interaction.cpp` (choć komentarz nagłówka odsyła do picking.md, to ten dokument je opisuje):
+
+- `mountModelMatrix(position, side)`: model przesunięty do `position` (punkt na licu ściany: `Lever::position` albo `Note::position`) i obrócony wokół osi pionowej o `-yawTowards(side)` stopni. `yawTowards` liczy strony zgodnie z ruchem wskazówek zegara patrząc z góry (północ 0, wschód 90, południe 180, zachód 270), a dodatni obrót wokół `+Y` jest przeciwny do ruchu wskazówek, stąd minus. Dla ściany wschodniej to -90 stopni, które wynosi `+Z` na `-X`, czyli na zachód, od wschodniej ściany. Test `a model on a wall points away from the wall on every side of the cell` sprawdza dla czterech stron: początek modelu w punkcie na ścianie, 1 m wzdłuż `+Z` modelu to 1 m od ściany, a góra zostaje górą,
+- `leverHandleMatrix(lever, handleProgress)`: początek modelu uchwytu leży w **osi obrotu** `LEVER_PIVOT_DEPTH` (5 cm, w obudowie osi modelu, która sięga od 0,02 do 0,07 m) przed licem, w środku płyty (`lever.position` minus krok w stronę ściany razy ta głębokość). Przechył wokół osi X modelu to `glm::mix(LEVER_HANDLE_UP_DEGREES, LEVER_HANDLE_DOWN_DEGREES, handleProgress)`, czyli od -55 do +55 stopni: dodatni obrót wokół X zwraca `+Z` ku `-Y`, czyli w dół, więc "w górę" to kąt ujemny. `Transform` obraca wokół X przed obrotem wokół Y, więc uchwyt jest przechylony w przestrzeni modelu, a dopiero potem obrócony ze ścianą. Przy 55 stopniach gałka stoi nad krawędzią płyty, a w całym ruchu mieści się w pudełku dźwigni (w głąb sięga dokładnie 0,25 m przy kącie 0). Test `the handle of a lever turns around its pivot: up before the pull, down after` sprawdza dla czterech stron, że początek leży w osi, a koniec uchwytu (0,2 m od osi) jest przed pociągnięciem wyżej, a po pociągnięciu niżej, o ten sam kąt, i **w obu** położeniach wewnątrz pudełka dźwigni,
+- `leverHandleProgress(round, index)`: czas od pociągnięcia to `wallProgress * GATE_OPEN_SECONDS`, a postęp uchwytu to ten czas przez `LEVER_PULL_SECONDS` (0,3 s), nie więcej niż 1. Runda ma więc jedną liczbę na dźwignię, a uchwyt jest opuszczony na długo przed końcem opadania ściany. Dla dźwigni, której runda nie ma: 0. Test `the handle of a lever swings down in 0.3 s after the pull`: po 18 krokach (0,15 s) postęp to 0,5.
+
+`InteractableRenderer::draw` rysuje dla każdej dźwigni płytę (macierz mocowania) i uchwyt (macierz uchwytu), a dla każdej kartki jeden model. Wskazany obiekt dostaje `uEmissive` (podświetlenie), reszta zero (opis: [`../scene/picking.md`](../scene/picking.md), sekcja 5.12). Kartka ma teksturę `note_paper.png` pokazaną **raz** na arkuszu (nie powtarza się), a dźwignia dwie: `lever_iron.png` (ciemne żelazo) na płycie i `lever_brass.png` (mosiądz) na uchwycie.
+
+### 2.20 Karta kartki: otwieranie i zamykanie
+
+`readNote(round, world, index)` ustawia `round.noteOpen = true` i `noteIndex` (numer spoza labiryntu jest ignorowany), `closeNote(round)` zamyka kartę. `openNoteText(world, round)` zwraca pusty napis, gdy karta jest zamknięta, a inaczej `noteText(note, exitCell, komórki niezebranych kryształów)`: lista kryształów jest budowana **za każdym razem**, więc podpowiedź w stronę kryształu zmienia się w trakcie czytania, gdy ten kryształ zostanie zebrany. Test `the card of a crystal hint counts only the crystals that are left` sprawdza zebranie pierwszego kryształu i zebranie wszystkich ("No crystal is left to find.").
+
+Karta zamyka się:
+
+| Kiedy | Gdzie w kodzie |
+|---|---|
+| E, gdy karta jest otwarta (akcja `CloseNote`) | `interact` |
+| lewy klik (przy przechwyconym i przy wolnym kursorze), gdy karta jest otwarta | `handleInteraction` (klik zamyka kartę, **nie** przechwytuje przy tym kursora) |
+| gracz oddalił się od kartki o **więcej niż `NOTE_READ_DISTANCE` (3,0 m)**, liczone po gruncie (tylko `x` i `z`) | `closeNoteFarAway` w `updateRound` |
+| runda wygrana | `updateRound`: karta wygranej zajmuje miejsce karty kartki |
+| restart i nowy labirynt | `startRound` zaczyna rundę z `noteOpen = false` (to nie jest zamykanie przez regułę, tylko świeża runda) |
+
+Nie ma licznika czasu: karta nie znika sama. Test `a note opens its card, the key closes it first, and walking away closes it` sprawdza stanie przy kartce (karta zostaje), odejście o `NOTE_READ_DISTANCE + 0,1` m (karta się zamyka) i zamknięcie klawiszem bez promienia. Zamykanie karty przy **wygranej** nie ma własnej asercji: test o nazwie `a won round has nothing to interact with and closes the card` sprawdza tylko, że `interactionFor` daje `None` w rundzie wygranej.
+
+Interakcja działa **tylko w trwającej rundzie** (`RoundState::Playing`): po wygranej `interactionFor` zawsze daje `None`.
+
+### 2.21 Znane ograniczenia
+
+1. **Trawa przy otwartej ścianie zostaje.** Kępki trawy rosną przy ścianach, a ściana opada i znika, ale kępki obok niej stoją dalej. Trawę sadzi się przy budowie labiryntu i przy zmianie jej gęstości, a nie w reakcji na pociągnięcie dźwigni (obserwacja z kodu: nic w pociągnięciu nie wywołuje sadzenia trawy).
+2. **Samotny słupek.** Słupek, który stał tylko dlatego, że kończyła go otwarta ściana, zostaje sam w przejściu.
+3. **Przejście przez widoczną ścianę.** Przez 1,5 s opadania gracz może przejść przez ścianę, którą jeszcze widać (decyzja implementacji, sekcja 2.16).
+4. **Pełna ściana poniżej gruntu rysowana dalej.** Całkiem opadła ściana zostaje na liście rysowania (pod gruntem), co kosztuje jedno wywołanie rysowania.
+5. **Czysta rama połowicznie zatopionej ściany** nie była oglądana na zrzucie.
+6. **Mniej dźwigni, niż zamówiono** (sekcja 5.2 i pułapka 5).
+
+### 2.22 Panele i debug
+
+Dodatki w debugowym UI (nie rysują niczego w scenie, zmieniają wartości lub pokazują stan):
+
+- **Gameplay:** "Levers: %d pulled of %d", "Note card: open/closed" i przycisk **Pull all levers**, który ustawia `GameplaySettings::pullAllLevers`. Aplikacja obsługuje flagę w `onRender` jak restart (między krokami): `game::pullAllLevers(m_round, m_mazeWorld)` i, gdy coś się otworzyło, odbudowa listy przeszkód. Restart zamyka ściany z powrotem.
+- **Maze:** suwaki "Levers" i "Notes" (0 do 16, `ImGuiSliderFlags_AlwaysClamp`), tekst "Levers: %d, notes: %d" (ile labirynt naprawdę dostał), na planie czerwone kwadraty dźwigni, jasne kartek, a ściana otwarta dźwignią narysowana **przyciemniona** (kolor zebranego kryształu). Minimapa w grze robi odwrotnie: ściany otwartej **nie rysuje** ([`../renderer/minimap.md`](../renderer/minimap.md)).
+- **Collision:** ostatni promień, pudełka wskazywania i zamrożenie ([`../scene/picking.md`](../scene/picking.md), sekcja 6).
+
+**Minimapa** pokazuje też dźwignie i kartki (nie było tego w opisie zadania): małe kwadraty (połowa boku 0,22 m, co najmniej 1,5 piksela) w komórkach już odkrytych, dźwignia w mocnym pomarańczowoczerwonym kolorze, a po pociągnięciu przyciemniona, kartka w jasnożółtym. Test `the minimap drops an opened wall and marks levers and notes` liczy wierzchołki kolorów przed i po pociągnięciu oraz dla nic nieodkrytej mapy.
+
 ## 3. Jak to działa w OpenGL
 
-Nie dotyczy: `Interactables.hpp` i `Interactables.cpp` dołączają GLM, bibliotekę standardową i nagłówki gry bez OpenGL. Nie ma tu GLAD ani żadnego wywołania `gl*`. Dźwignia i kartka są **danymi**: komórka, strona, pozycja, pudełko, rodzaj. Wskazywanie to matematyka na procesorze ([`../scene/picking.md`](../scene/picking.md)), więc nie dodaje żadnego wywołania OpenGL ani przebiegu rysowania.
+`Interactables.hpp`, `Interactables.cpp` i `Interaction.cpp` dołączają GLM, bibliotekę standardową i nagłówki gry bez OpenGL: dźwignia i kartka są **danymi** (komórka, strona, pozycja, pudełko, rodzaj), a wskazywanie to matematyka na procesorze ([`../scene/picking.md`](../scene/picking.md)). OpenGL pojawia się dopiero w `InteractableRenderer.cpp`:
 
-Związek z OpenGL będzie dopiero przy rysowaniu dźwigni i kartek (modele, macierze modelu z pozycji i strony) i przy karcie HUD z tekstem. Żadne z nich nie istnieje, więc tabela wywołań OpenGL tego modułu jest pusta.
+| Co | Wywołanie | Gdzie |
+|---|---|---|
+| model dźwigni, uchwytu i kartki | `drawModel`: dla każdej części modelu `glBindTexture` (kolor i mapa normalnych), jedna macierz modelu (`uModel`) i `glDrawElements` | `InteractableRenderer::draw` przez `game::drawModel` |
+| podświetlenie | `shader.setVec3(EMISSIVE_UNIFORM, ...)`, czyli `glUniform3f`, przed każdą dźwignią i kartką i zerowanie na końcu | ta sama funkcja |
+| ściany opadające | zmiana **macierzy** w liście, bez żadnego nowego stanu OpenGL | `MazeRenderer::draw` z `m_wallMatrices` |
+
+`drawModel` daje **każdej** części modelu tę samą macierz, dlatego uchwyt (jedyna ruchoma część) jest osobnym modelem. Modele są wczytywane przez pamięć podręczną assetów ([`../assets/asset-cache.md`](../assets/asset-cache.md)): konstruktor `InteractableRenderer` prosi o trzy modele, a model, który się nie wczyta, jest logowany i po prostu nie jest rysowany. Wskazywanie nie dodaje żadnego przebiegu rysowania ani odczytu z karty.
 
 ## 4. Shadery
 
-Nie dotyczy: ten kod nie ma shadera. Dźwignie i kartki nie są jeszcze rysowane, więc nie ma programu ani uniformów do opisania. Co się zmieni, gdy będą rysowane, zależy od modeli i od decyzji o ich materiałach, których jeszcze nie ma.
+Moduł nie ma własnego shadera i nie zmienia żadnego pliku shadera. Dźwignie i kartki są rysowane **tymi samymi programami co ściany**: `textured` (bez oświetlenia i w widokach debugowych), `lit` (Phong), `gouraud` i program głębi w przebiegach cienia. Dzięki temu dostają ten sam tryb oświetlenia, te same widoki debugowe i te same cienie księżyca i latarki (kod rysuje je także w przebiegach cienia, z pustym `PickState`). Wszystkie trzy programy kolorowe mają uniform `uEmissive`, którego używa podświetlenie ([`../scene/picking.md`](../scene/picking.md), sekcja 4). Nie było oglądane na ekranie, jak wyglądają w trybach Gouraud i Unlit ani ich cienie księżyca (sekcja 5.11).
 
 ## 5. Kod w projekcie
 
@@ -359,6 +521,10 @@ Nie dotyczy: ten kod nie ma shadera. Dźwignie i kartki nie są jeszcze rysowane
 |---|---|---|---|
 | `src/game/Interactables.hpp`, `src/game/Interactables.cpp` | `game_logic` | nie | 29 przypadków w `tests/InteractablesTests.cpp` |
 | `src/scene/Raycast.hpp`, `src/scene/Raycast.cpp` | `engine` | nie | 17 przypadków w `tests/RaycastTests.cpp`, opis w [`../scene/picking.md`](../scene/picking.md) |
+| `src/game/Interaction.hpp`, `src/game/Interaction.cpp` (macierze modeli, akcja klawisza, podświetlenie) | `game_logic` | nie | 21 przypadków w `tests/InteractionTests.cpp` (razem ze światem i rundą) |
+| `src/game/MazeWorld.*`, `src/game/Round.*` (pola i funkcje dźwigni i kartek) | `game_logic` | nie | `tests/InteractionTests.cpp` |
+| `src/game/InteractableRenderer.hpp`, `src/game/InteractableRenderer.cpp` | plik wykonywalny `night_maze` | tak | brak testów jednostkowych. Częściowo widziane na zrzutach przez agenta (2026-10-06), nie przez właściciela (sekcja 5.11) |
+| `assets/models/lever.obj`, `lever_handle.obj`, `note.obj` i ich tekstury | dane | wczytywane przez pamięć podręczną | [`../../guides/blender.md`](../../guides/blender.md) |
 
 ### 5.2 Stałe
 
@@ -368,10 +534,17 @@ Nie dotyczy: ten kod nie ma shadera. Dźwignie i kartki nie są jeszcze rysowane
 | `MAX_LEVER_COUNT`, `MAX_NOTE_COUNT` | 16, 16 | najwyższe zamówienia, reszta jest obcinana |
 | `LEVER_MIN_STEPS_SAVED` | 6 | najmniejszy wynik ściany, żeby miała dźwignię |
 | `LEVER_MOUNT_HEIGHT`, `NOTE_MOUNT_HEIGHT` | 1,2 m, 1,5 m | wysokość środka dźwigni i kartki nad gruntem |
-| `LEVER_BOX_WIDTH`, `_HEIGHT`, `_DEPTH` | 0,3 m, 0,4 m, 0,25 m | pudełko wskazywania dźwigni |
+| `LEVER_BOX_WIDTH`, `_HEIGHT`, `_DEPTH` | 0,3 m, 0,4 m, 0,25 m | pudełko wskazywania dźwigni (po przeróbce modelu bez zmian) |
 | `NOTE_BOX_WIDTH`, `_HEIGHT`, `_DEPTH` | 0,4 m, 0,5 m, 0,15 m | pudełko wskazywania kartki |
 | `MOUNT_BOX_MIN_DEPTH` | `(0,3 - 0,2) / 2 = 0,05 m` | o tyle pudełko kolizji ściany wystaje przed widoczne lico |
-| `INTERACTION_REACH` | 2,5 m | zasięg wskazywania |
+| `INTERACTION_REACH` | 2,5 m | zasięg wskazywania, od oka |
+| `LEVER_PULL_SECONDS` (`Round.hpp`) | 0,3 s | czas opuszczania uchwytu |
+| `NOTE_READ_DISTANCE` (`Round.hpp`) | 3,0 m | dalej od kartki karta zamyka się sama |
+| `GATE_OPEN_SECONDS`, `GATE_SINK_DEPTH` (`Round.hpp`) | 1,5 s, 3,3 m | czas i głębokość opadania bramy i ścian |
+| `LEVER_PIVOT_DEPTH` (`Interaction.hpp`) | 0,05 m | oś obrotu uchwytu przed licem ściany, w obudowie modelu |
+| `LEVER_HANDLE_UP_DEGREES`, `LEVER_HANDLE_DOWN_DEGREES` | -55, +55 stopni | kąty uchwytu przed i po pociągnięciu (przy 55 stopniach gałka stoi nad krawędzią płyty i wciąż mieści się w pudełku dźwigni) |
+| `HIGHLIGHT_COLOR`, `HIGHLIGHT_MIN_GLOW`, `HIGHLIGHT_MAX_GLOW`, `HIGHLIGHT_PULSE_SPEED` | `(1; 0,8; 0,4)`, 0,8, 2,4, 5 rad/s | podświetlenie ([`../scene/picking.md`](../scene/picking.md), sekcja 5.9) |
+| `MINIMAP_LEVER_COLOR`, `MINIMAP_LEVER_PULLED_COLOR`, `MINIMAP_NOTE_COLOR` (`Minimap.hpp`) | `(0,93; 0,36; 0,24)`, `(0,42; 0,24; 0,22)`, `(0,90; 0,86; 0,70)` | kwadraty na minimapie |
 | `NOTE_KIND_COUNT` | 3 | liczba rodzajów kartek |
 | `LEVER_SEED_OFFSET`, `NOTE_SEED_OFFSET` (w `.cpp`) | 5000011, 3000017 | dodawane do ziarna labiryntu. Różne od przesunięć kryształów (1000003), trawy (2000003) i kałuż (4000037) |
 | `STRAIGHT_FACTOR` (w `.cpp`) | 2 | granica kompasu: przesunięcie "więcej niż dwa razy" większe od drugiego |
@@ -401,7 +574,7 @@ enum class Compass { Here = 0, North, NorthEast, East, SouthEast, South, SouthWe
 | `Lever::opens` | ściana, która opada po pociągnięciu. Zawsze inna niż `mount` |
 | `Lever::position`, `Lever::box` | środek tyłu dźwigni na licu ściany i pudełko wskazywania. Nie jest przeszkodą |
 | `Note::flavourIndex` | numer linii tabeli, tylko dla rodzaju `Flavour` (0 do 5), inne rodzaje go nie używają |
-| `Interactables` | wszystko, co w labiryncie można wskazać. Należy do labiryntu i nie zmienia się w trakcie rundy (komentarz: "like the crystals in MazeWorld"; to jest opis planu, bo dziś nie jest polem `MazeWorld`) |
+| `Interactables` | wszystko, co w labiryncie można wskazać. Należy do labiryntu (jest polem `MazeWorld::interactables`, jak kryształy) i nie zmienia się w trakcie rundy |
 | `InteractableState::leverPulled` | po jednym wpisie na dźwignię w kolejności `levers`, prawda po pociągnięciu. Wpis nigdy nie wraca do fałszu w ramach rundy |
 | `PullResult::opened` | prawda tylko przy pierwszym pociągnięciu |
 | `PickedInteractable::index` | numer dźwigni albo kartki. Bez znaczenia dla `None` |
@@ -580,7 +753,7 @@ PullResult pullLever(InteractableState& state, const Interactables& interactable
 | `return {};` | pociągnięta wcześniej: nic się nie dzieje i nic nie jest zgłaszane |
 | `{.opened = true, .wall = ...}` | pierwsze pociągnięcie zgłasza ścianę do opadnięcia |
 
-`isLeverPulled`, `openedWalls` i `openedWallSegment` są opisane w sekcji 2.9.
+`isLeverPulled`, `openedWalls` i `openedWallSegment` są opisane w sekcji 2.9. W grze `pullLever` woła `pullRoundLever` (sekcja 2.16), a ściany otwarte dźwigniami zna `openedWallFlags`, nie `openedWalls` (które jest już tylko wynikiem części 1 z testem).
 
 ### 5.9 `pickInteractable`
 
@@ -653,29 +826,87 @@ Wszystkie 29 przypadków jest w `tests/InteractablesTests.cpp` i nie wymaga okna
 
 W teście pomocniczym `checkPlacement` każde rozmieszczenie jest sprawdzane pełną listą reguł: dźwignie nie wiszą w starcie ani w wyjściu, ściana istnieje, żadna dźwignia jej nie otwiera, pozycja jest na licu, pudełko jest w komórce i wystaje przed pudełko kolizji ściany, ściana do otwarcia jest wewnętrzna, nazwana z `East` albo `South`, nie należy do wyjścia, ma wynik co najmniej 6 **po otwarciu wcześniejszych**, żadne dwie dźwignie nie dzielą komórki ani ściany, a kartki mają rodzaje po kolei, własne komórki i prawidłowy numer linii.
 
+**Część 2: 21 nowych przypadków w `tests/InteractionTests.cpp`** (policzone z pliku: 21 makr `TEST_CASE`). Plik używa świata 10 na 10 z ziarna 1 (`defaultWorld`), który ma dźwignie (testy, które ich potrzebują, najpierw to sprawdzają).
+
+| Przypadek testowy | Co przypina | Sekcja |
+|---|---|---|
+| `a maze world holds the levers and notes of its seed and the wall of every lever` | świat zawiera to, co daje `placeInteractables`, 3 kartki, a `leverWalls` wskazuje właściwy segment | 2.14 |
+| `the settings of a maze world decide how many levers and notes it gets` | 0 i 0, 1 i 7, domyślne `MazeSettings` | 2.14 |
+| `levers and notes of a world hang above its terrain, also after a rebuild` | wysokość nad gruntem, pudełko dźwigni na środku jej wysokości, `x` i `z` bez zmian | 2.14 |
+| `a new round has no lever pulled, every wall standing and no note open` | stan początkowy, `roundMaze` rundy nie zaczętej | 2.15 |
+| `the sink formulas reach the full depth in 1.5 s and stop there` | `sinkDepth`, `sinkProgressAfter`, 180 kroków daje 1 | 2.18 |
+| `pulling a lever opens its wall once: obstacles, maze of the round, sinking` | pociągnięcie, lista przeszkód, kopia labiryntu, opadanie w połowie i do końca | 2.16, 2.18 |
+| `the handle of a lever swings down in 0.3 s after the pull` | 18 kroków daje 0,5, nieznana dźwignia daje 0 | 2.19 |
+| `the view passes an opened wall, and a restart brings every wall back` | przeszukiwanie widzi za otwartą ścianą, restart przywraca | 2.16 |
+| `pull all levers opens every wall and counts them` | `pullAllLevers`, powtórka daje 0 | 2.16 |
+| `the minimap drops an opened wall and marks levers and notes` | liczby wierzchołków kolorów przed i po, nic nieodkryte | 2.22 |
+| `the picking ray starts in the eye and keeps its direction` | `rayFromEye` | picking.md, 2.10 |
+| `every lever and note of a world is picked from the middle of its cell` | wskazanie każdej dźwigni i kartki | picking.md, 5.14 |
+| `a closed wall hides what is behind it, the wall a lever opened does not` | zasłanianie przez ścianę, a po pociągnięciu brak | picking.md, 5.14 |
+| `interacting pulls a lever once and tells when a wall opened` | `interact` | picking.md, 5.14 |
+| `a note opens its card, the key closes it first, and walking away closes it` | karta | 2.20 |
+| `the card of a crystal hint counts only the crystals that are left` | tekst z niezebranych kryształów | 2.20 |
+| `a won round has nothing to interact with and closes the card` | tylko `interactionFor` w rundzie wygranej (zamknięcie karty przy wygranej nie jest sprawdzone) | 2.20 |
+| `every action has its prompt` | teksty podpowiedzi | picking.md |
+| `the highlight pulses between its weakest and its strongest glow` | zakres pulsu | picking.md |
+| `a model on a wall points away from the wall on every side of the cell` | macierz mocowania | 2.19 |
+| `the handle of a lever turns around its pivot: up before the pull, down after` | macierz uchwytu | 2.19 |
+
+**Czego testy nie obejmują:** rysowania (`InteractableRenderer`), HUD, panelu, pętli klatki (`pickForFrame`, `handleInteraction`), cieni, wyglądu modeli ani tego, że wygrana zamyka kartę.
+
+**Zrzuty ekranu agenta.** Agent, który napisał kod, uruchomił grę, sterował nią skryptem i oglądał zrzuty ekranu. **Widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela:**
+
+- płytka dźwigni na ścianie z pierścieniem celownika i podpowiedzią "E: pull lever",
+- po E uchwyt opuszczony i podpowiedź zniknęła,
+- podświetlenie pulsuje (silniejsze przy wyłączonej latarce),
+- kartka z liniami atramentu, jej karta z podpowiedzią i napisem "E: close", a po odejściu karta zniknęła,
+- ściana otwarta, minimapa przestaje ją rysować i pokazuje korytarz za nią, gracz przechodzi,
+- po R minimapa wraca do stanu początkowego i ściana znowu blokuje,
+- zamrożony promień jako zielona linia, pudełko trafienia na zielono,
+- panel Collision z początkiem, kierunkiem i "Hit: lever 0 at 0.72 m",
+- klik wolnym kursorem na dźwigni pociągnął ją.
+
+Po przeróbce modelu dźwigni agent widział też (zrzuty z 2026-10-06, nie właściciel): dźwignię od przodu z 1 m przy włączonej latarce, w górnym położeniu i podświetloną (ciemna płyta, jasna bursztynowa gałka nad środkiem, podpowiedź na dole pośrodku); ten sam widok po E (pręt w dół, gałka poniżej krawędzi płyty z cieniem na ścianie, bez podświetlenia i podpowiedzi); widoki z boku w górnym i dolnym położeniu; wyłączoną latarkę (pociągnięta: płyta prawie czarna, gałka ciemna ochra; w górze z podświetleniem: gałka świeci bursztynem); około 2,4 m pod kątem z podświetleniem i podpowiedzią oraz około 2,9 m poza zasięgiem bez podświetlenia; drugą dźwignię; Gouraud (z podświetleniem) i Unlit; widok Normals (dźwignia jako dane, bez podświetlenia, pierścień i podpowiedź nadal są); kartkę z "E: read note" na dole, wolną od arkusza; otwartą kartę kartki bez podpowiedzi i bez nakładania się na minimapę.
+
+**Czego agent NIE widział na ekranie:** uchwyt w połowie ruchu, cień księżyca od dźwigni, Gouraud i Unlit dla kartki, widok na wprost z 2,5 m, dodatki w panelu Gameplay i przycisk "Pull all levers", inne niż domyślne liczby dźwigni i kartek, czysta rama połowicznie zatopionej ściany. Znane uwagi kosmetyczne: z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka. **Ręczny test właściciela i macOS: otwarte** ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 24.2).
+
 ### 5.12 Uwagi o komentarzach w kodzie
 
-Rzeczy, które znalazłem przy czytaniu, a które nie są błędami działania:
+W części 1 komentarze opisywały plan w czasie teraźniejszym (opis planu zamiast stanu). W części 2 komentarze w `Interactables.hpp` zostały poprawione, żeby mówiły prawdę: `InteractableSettings` (są polem `MazeSettings`, edytuje je panel Maze, czyta `buildMazeWorld`), `Interactables` (jest polem `MazeWorld`), `InteractableState` (jest polem `Round`) i komentarz w `tests/InteractablesTests.cpp` (numer ściany znajduje `buildMazeWorld`, `MazeWorld::leverWalls`). Zostały dwie drobne rzeczy:
 
-- **Komentarze w czasie teraźniejszym o tym, czego nie ma.** `openedWalls`: "The code that builds the obstacle list of a round leaves these walls out" (dziś `roundObstacles` nie przyjmuje stanu dźwigni). `InteractableSettings`: "The debug UI can edit the two numbers" (nie ma pól w panelu). `Interactables`: "belongs to the maze, like the crystals in MazeWorld" (nie jest polem `MazeWorld`). Komentarz do testu `the wall a lever opens is one of the wall segments...`: "this is how the game finds the wall to lower" (gra jeszcze niczego nie obniża). Wszystkie cztery opisują plan i staną się prawdziwe przy podpinaniu (sekcja 5.13).
+- Komentarz do `openedWalls` w nagłówku opisuje budowę listy przeszkód przez kod rundy. Dziś robi to `roundObstacles`, ale przez `openedWallFlags`, a nie przez `openedWalls` (obserwacja: komentarz jest bliski prawdy, ale nazwa funkcji jest inna),
+- `Interaction.hpp` odsyła w nagłówku do [`../scene/picking.md`](../scene/picking.md), ale zawiera też macierze modeli, które opisuje sekcja 2.19 tego dokumentu.
 
-### 5.13 Co zostaje do podpięcia
+### 5.13 Podpięcie do gry: co jest, czego nie ma
 
-Tego nie ma w kodzie. To lista rzeczy, które trzeba zrobić, żeby dźwignie i kartki zaczęły działać w grze. Żadna nie była zaczęta.
+Lista z części 1 ("co zostaje do podpięcia") jest **zrobiona**. Gdzie każdy punkt wylądował:
 
-1. **`MazeWorld`.** Wywołać `placeInteractables` w `buildMazeWorld` (z ziarnem labiryntu, startem, wyjściem i kryształami) i trzymać wynik w świecie, a po ustawieniu świata na terenie wywołać `placeInteractablesOnTerrain` (także po każdej przebudowie terenu).
-2. **`Round`.** Dodać `InteractableState` do rundy (`startInteractables` na początku rundy, jak reszta stanu rundy) i wystawić pociągnięcie dźwigni jako część kroku reguł albo osobne wywołanie.
-3. **`roundObstacles` i przesłaniacze wskazywania.** Dziś `roundObstacles` zwraca ściany, słupki i bramę. Ściana otwarta dźwignią (`openedWalls`) musi z tej listy wypaść, żeby gracz mógł przez nią przejść, i z listy przesłaniaczy, żeby dało się wskazać dźwignię za nią. Trzeba pomyśleć, czy lista przesłaniaczy to ta sama lista co przeszkody, czy osobna: brama zamknięta jest w obu.
-4. **Animacja opadania ściany** (jak brama, `gateSinkDepth`: [`gameplay.md`](gameplay.md), sekcja 2.6) i wyłączenie jej pudełka od chwili otwarcia. Segment ściany znajduje się w `MazeWorld::walls` przez `openedWallSegment`.
-5. **Rysowanie dźwigni i kartek** (modele, macierze z pozycji i strony). Nie ma jeszcze modeli.
-6. **Wejście.** Klawisz albo przycisk myszy do pociągnięcia i przeczytania. Tryb przechwycenia myszy rozstrzyga, czy promień idzie przez środek ekranu, czy przez kursor ([`../scene/picking.md`](../scene/picking.md), sekcja 5.9).
-7. **Karta HUD z tekstem kartki.** Źródło tekstu to `noteText` z komórkami **niezebranych** kryształów. Font HUD to zwykłe ASCII (komentarz w teście).
-8. **Panel.** Pola `leverCount` i `noteCount` z `InteractableSettings` (zasięg 0 do `MAX_*`), podobnie do pól `GameplaySettings` w panelu Gameplay.
-9. **Oś czasu rundy.** Czy restart (`R`) i nowy labirynt zerują stan dźwigni: tak ma być wynikać z `startInteractables`, ale nic tego nie woła.
+| Dawny punkt | Gdzie jest teraz |
+|---|---|
+| `MazeWorld`: `placeInteractables`, `placeInteractablesOnTerrain` | `buildMazeWorld`, `placeOnTerrain` (sekcja 2.14) |
+| `Round`: `InteractableState` | `Round::interactables`, `startRound` (sekcja 2.15) |
+| `roundObstacles` i przesłaniacze | `roundObstacles` bez pudełek otwartych ścian, ta sama lista dla gracza i promienia (sekcja 2.17) |
+| animacja opadania ściany | `wallProgress`, `sinkProgressAfter`, `sinkDepth`, `roundWallMatrices` (sekcja 2.18) |
+| rysowanie dźwigni i kartek | `InteractableRenderer`, `mountModelMatrix`, `leverHandleMatrix` (sekcja 2.19) |
+| wejście | klawisz E i lewy klik, `handleInteraction` ([`../scene/picking.md`](../scene/picking.md), sekcja 5.11) |
+| karta HUD z tekstem kartki | `drawNoteCard` w `Hud.cpp`, `openNoteText` (sekcja 2.20) |
+| panel | pola Levers i Notes (Maze), "Pull all levers" (Gameplay), ostatni promień (Collision) (sekcja 2.22) |
+| oś czasu rundy: restart zeruje stan | `startRound` zaczyna każdą rundę od nowa, także po R i po regeneracji |
+
+Czego nadal **nie ma**: nowych dźwigni po starcie rundy, odwracania dźwigni (pociągnięta zostaje pociągnięta do końca rundy), trawy i słupków dostosowanych do otwartego przejścia (sekcja 2.21), dźwięku i zakończonego, ręcznie sprawdzonego przez właściciela wyglądu modelu dźwigni.
 
 ## 6. Panel ImGui
 
-Nie ma kodu panelu dla tego modułu. Komentarz przy `InteractableSettings` mówi, że "The debug UI can edit the two numbers" (liczba dźwigni i kartek, czytana przy budowie labiryntu), ale to opis planu. **Planowane**: pola `leverCount` i `noteCount`, być może w panelu Gameplay, i karta HUD z tekstem kartki. Dokładna postać nie była ustalana, więc nie ma jeszcze scenariusza pokazu na obronie. Do tego czasu pokazem są testy: `ctest --test-dir build/debug -C Debug --output-on-failure` uruchamia 29 przypadków z `InteractablesTests.cpp` razem z resztą.
+Dodatki w panelach opisuje sekcja 2.22: **Gameplay** ("Levers: %d pulled of %d", "Note card", przycisk "Pull all levers"), **Maze** (suwaki Levers i Notes, plan z kwadratami, przyciemniona otwarta ściana) i **Collision** (ostatni promień, [`../scene/picking.md`](../scene/picking.md), sekcja 6). Karta kartki, celownik i podpowiedź są w HUD ([`../debug-ui.md`](../debug-ui.md)).
+
+**Scenariusz pokazu na obronie.**
+
+1. Otwórz panel **Maze**: suwaki Levers i Notes (domyślnie 2 i 3), na planie czerwone i jasne kwadraty. Ustaw Levers na 4, kliknij **Regenerate**: nowy labirynt, nowa runda. Tekst "Levers: n, notes: n" pokaże, ile labirynt naprawdę dostał (może być mniej).
+2. Podejdź do dźwigni, zobacz pierścień celownika i podpowiedź. Naciśnij E: uchwyt opada w 0,3 s, ściana opada w 1,5 s. Plan w panelu Maze rysuje tę ścianę przyciemnioną, minimapa przestaje ją rysować, a w panelu Gameplay jest "Levers: 1 pulled of ...".
+3. W panelu Gameplay naciśnij **Pull all levers**: pociągnięte zostają wszystkie. **R** zaczyna rundę od nowa i ściany wracają.
+4. Podejdź do kartki i naciśnij E: karta z podpowiedzią. Odejdź na ponad 3 m: karta znika.
+
+Z tego scenariusza agent widział na zrzutach tylko część (sekcja 5.11): nie widział przycisku "Pull all levers" i panelu Gameplay, ani drugiej dźwigni, ani liczb innych niż domyślne. Reszta to zadanie na listę ręczną właściciela.
 
 ## 7. Pułapki
 
@@ -684,7 +915,7 @@ Nie ma kodu panelu dla tego modułu. Komentarz przy `InteractableSettings` mówi
 3. **Wynik jest parzysty.** Próg 6 jest równoważny "więcej niż 5". Próg nieparzysty (na przykład 5) działałby tak samo jak 6.
 4. **Brak testu "złotego" dla rozmieszczenia.** Złoty labirynt przypina dokładnie ściany, a test rozmieszczenia sprawdza tylko własności i powtarzalność na jednej maszynie. Zgodność macOS i Windows opiera się na generatorze `std::mt19937` i na `randomBelow` ([`../../decisions/deterministic-random.md`](../../decisions/deterministic-random.md)). Kolejność losowań (dwa tasowania, potem po jednym losowaniu strony na dźwignię; tasowanie, numer linii, strony kartek) jest częścią wyniku: zmiana kolejności zmienia rozmieszczenie dla każdego ziarna.
 5. **Mniej dźwigni niż zamówiono to normalne.** Mały labirynt często nie ma żadnej, a w labiryncie 4 na 4 z ziarna 1 jest tylko jedna. Wołający nie może zakładać, że `levers.size() == settings.leverCount`.
-6. **Dźwignia jest przeszkodą dla promienia, nie dla gracza.** Jej pudełko nie jest na liście przeszkód i gracza nigdy nie zatrzymuje, ale jest na liście pudełek wskazywania.
+6. **Dźwignia jest celem dla promienia, a nie przeszkodą dla gracza.** Jej pudełko nie jest na liście przeszkód i gracza nigdy nie zatrzymuje, ale jest na liście pudełek wskazywania.
 7. **Pudełko płytsze niż 5 cm** zniknęłoby w pudełku ściany i ściana zasłaniałaby to, co na niej wisi. Pilnują tego dwa `static_assert`. Przy zmianie grubości widocznej ściany albo pudełka kolizji trzeba zmienić `MOUNT_BOX_MIN_DEPTH` razem z nimi (jest liczone z obu stałych, więc zmieni się samo).
 8. **Wysokości dla płaskiego gruntu.** `placeInteractables` daje `y` dla gruntu 0. Teren trzeba nałożyć osobno (`placeInteractablesOnTerrain`) i powtórzyć po każdej przebudowie terenu.
 9. **`PullResult` przy powtórnym pociągnięciu ma pole `wall` bez znaczenia** (domyślna ściana `(0, 0)` `North`). Zawsze najpierw sprawdzić `opened`.
@@ -692,15 +923,21 @@ Nie ma kodu panelu dla tego modułu. Komentarz przy `InteractableSettings` mówi
 11. **Podpowiedź do kryształu wymaga listy kryształów, które zostały.** Przekazanie wszystkich komórek kryształów, także zebranych, dałoby kartkę, która wskazuje kryształ, którego już nie ma.
 12. **`Here` dla wyjścia nie wystąpi w grze**, bo w komórce wyjścia nic nie wisi (jest w teście tylko dlatego, że ma odpowiedź: `"The exit lies right here."`). `Here` dla kryształu jest możliwe: kartka może wisieć w komórce z kryształem.
 13. **Przesłaniacz w tej samej odległości nie zasłania.** `blocker.distance < picked.distance`: ostro. A przesłaniacz, w którym leży początek promienia, ma odległość 0 i zasłania wszystko ([`../scene/picking.md`](../scene/picking.md), pułapka 10).
-14. **Zasięg od początku promienia, nie od oka.** Promień z `screenPointRay` startuje na bliskiej płaszczyźnie, a testy rzucają promienie z oczu ([`../scene/picking.md`](../scene/picking.md), pułapka 6). To analiza: różnica jest mała.
+14. **Zasięg od oka.** W grze `rayFromEye` przenosi początek promienia do oka, więc 2,5 m to odległość od oka. Testy z części 1 też rzucają promienie z oczu ([`../scene/picking.md`](../scene/picking.md), sekcja 2.10).
 15. **Pudełko wskazywania, nie model.** Kartka o szerokości 0,4 m i wysokości 0,5 m jest trafiona także w rogu pudełka, w którym model już nie sięga.
 16. **Teksty są po angielsku, tylko ASCII, do 60 znaków.** To wymaganie karty HUD, sprawdzane testem. Polskie znaki nie przeszłyby.
 17. **Ziarno jest osobnym parametrem.** `placeInteractables` dostaje `seed` jako argument, nie bierze go z labiryntu. W testach podaje się ziarno labiryntu, tak jak dla `placeCrystals`, ale nic w kodzie tego nie wymusza.
-18. **Rysunek (i ekran) nie jest dowodem.** Nic z tego nie było oglądane w grze. Dowodem poprawności są testy.
+18. **Rysunek (i ekran) nie jest dowodem.** Zrzuty agenta pokazują, że rzecz działa na ekranie, ale nie zastępują testu ani ręcznego sprawdzenia właściciela (sekcja 5.11).
+19. **Ściana przestaje blokować przed zniknięciem z ekranu.** Przestaje w chwili pociągnięcia, a znika z ekranu po 1,5 s. Przez ten czas gracz przechodzi przez ścianę, którą jeszcze widzi (sekcja 2.16).
+20. **`world.maze` nie jest labiryntem rundy.** Kto czyta ściany do logiki rundy (przeszukiwanie, minimapa), ma użyć `roundMaze(world, round)`. `world.maze` zawsze ma wszystkie ściany. Minimapa dostaje z `world.maze` tylko rozmiar (do rzutowania), a wierzchołki z kopii rundy.
+21. **`pullAllLevers` to dwie różne rzeczy.** Pole `GameplaySettings::pullAllLevers` to flaga prośby z panelu, a `game::pullAllLevers(round, world)` to funkcja, która pociąga dźwignie.
+22. **Lista macierzy ścian ma ten sam rozmiar co ściany świata.** Całkiem opadła ściana jest w niej nadal. Kto wyrzuci ją z listy, przesunie numery ścian względem `leverWalls`.
+23. **Karta zamyka się przy kliknięciu bez przechwytywania kursora.** Wolny kursor plus otwarta karta: klik zamyka kartę i kursor zostaje wolny, a pierścień i podpowiedź nie świecą, dopóki karta jest otwarta.
+24. **Trawa i słupek przy otwartej ścianie** (sekcja 2.21).
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 8 robi się na kartce. Ćwiczenia od 9 do 12 to zmiany w kodzie albo w testach: po każdej zmianie w kodzie zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj swoją zmianę. Wyniki oznaczone jako "przewidywanie" są wyprowadzone z kodu, nie zmierzone.
+Ćwiczenia od 1 do 8, 13 i 14 robi się na kartce. Ćwiczenia od 9 do 12 i 15 to zmiany w kodzie albo w testach: po każdej zmianie w kodzie zbuduj projekt i uruchom testy (`cmake --build --preset debug`, potem `ctest --test-dir build/debug -C Debug --output-on-failure`), a na końcu wycofaj swoją zmianę. Wyniki oznaczone jako "przewidywanie" są wyprowadzone z kodu, nie zmierzone.
 
 1. **Nazwy ściany.** Podaj drugą nazwę ściany wschodniej komórki `(4, 2)` i południowej komórki `(1, 1)`. Odpowiedź: zachodnia komórki `(5, 2)` i północna komórki `(1, 2)`.
 2. **Wynik ściany.** Dwie sąsiednie komórki mają odległości od startu 3 i 12. Jaki wynik ma ściana między nimi? Odpowiedź: `|3 - 12| - 1 = 8`. Czy odległości 3 i 11 są możliwe? Odpowiedź: nie, bo różnica sąsiednich komórek jest nieparzysta (szachownica), a 8 jest parzyste.
@@ -714,6 +951,10 @@ Nie ma kodu panelu dla tego modułu. Komentarz przy `InteractableSettings` mówi
 10. **Bez reguły komórki wyjścia.** Usuń z `chooseShortcutWalls` warunek `wall.cell == exit || behind == exit` i uruchom testy. Przewidywanie: w tym labiryncie 2 na 2 nic się nie zmieni (ściana oszczędza najwyżej 2 przejścia, a próg to 6), więc przypadek `a maze without a wall worth opening gets no lever` nadal przejdzie. Natomiast wyjście to najdalsza komórka, a jej sąsiad za ścianą bywa blisko startu, więc taka ściana ma wysoki wynik i może zostać wybrana: spodziewam się porażki sprawdzeń `CHECK_FALSE(lever.opens.cell == test.exit)` i `CHECK_FALSE(cellBehind(lever.opens) == test.exit)` w `checkPlacement` dla niektórych ziaren. Sprawdź, dla których, i wyjaśnij, dlaczego ta reguła w ogóle istnieje (komentarz w kodzie o bramie).
 11. **Za płytkie pudełko.** Zmień `LEVER_BOX_DEPTH` na `0.04F` i zbuduj. Przewidywanie: błąd kompilacji z `static_assert(LEVER_BOX_DEPTH > MOUNT_BOX_MIN_DEPTH)`. Dlaczego kompilator, a nie test, pilnuje tej reguły?
 12. **Własny test.** Dopisz w `tests/InteractablesTests.cpp` przypadek, w którym kartka i dźwignia leżą w dokładnie tej samej odległości od początku promienia, i sprawdź, że `pickInteractable` zwraca dźwignię. Wzoruj się na podprzypadku `of a note and a lever in the line of the ray the nearer one is picked` (dziś sprawdza tylko, że **bliższa** wygrywa, a nie remis).
+
+13. **Opadanie na kartce.** Pociągnięto dźwignię, a od tej chwili minęło 0,6 s. Jaki jest `wallProgress`, jak głęboko jest ściana i jaki jest postęp uchwytu? Odpowiedź: `0,6 / 1,5 = 0,4`, głębokość `0,4 * 3,3 = 1,32` m, uchwyt `min(0,6 / 0,3; 1) = 1` (opuszczony).
+14. **Trzy listy, jeden numer.** Dźwignia 1 ma `leverWalls[1] = 7`. Którą macierz, które pudełko i którą flagę z `openedWallFlags` zmienia jej pociągnięcie? Odpowiedź: macierz `wallMatrices[7]` (w `roundWallMatrices`), pudełko `colliders[7]` (wypada z `roundObstacles`) i flagę numer 7. Wszystkie trzy listy są w kolejności `world.walls`.
+15. **Własna zmiana.** W `NOTE_READ_DISTANCE` ustaw 2,0 i przeczytaj test `a note opens its card, the key closes it first, and walking away closes it`. Przewidywanie: nadal przechodzi (test używa stałej, a nie liczby). Zastanów się, czy 2,0 m jest rozsądne wobec zasięgu 2,5 m: karta zamykałaby się, zanim gracz wyjdzie poza zasięg wskazywania. Wycofaj zmianę.
 
 ## 9. Pytania kontrolne
 
@@ -783,16 +1024,31 @@ Nie ma kodu panelu dla tego modułu. Komentarz przy `InteractableSettings` mówi
 22. **Czemu labirynt 3 na 3 z ziarna 7 nie dostaje dźwigni?**
     Najlepsza ściana oszczędza 4 przejścia, a próg to 6.
 
-23. **Co jeszcze brakuje, żeby dźwignie zadziałały w grze?**
-    Umieścić je w `MazeWorld` i w rundzie, wyłączyć otwartą ścianę z listy przeszkód i przesłaniaczy, dodać animację opadania, rysowanie, wejście, kartę HUD i pola w panelu (sekcja 5.13).
+23. **Co robi pociągnięcie dźwigni w rundzie?**
+    `pullRoundLever` ustawia flagę (`pullLever`), usuwa ścianę z kopii labiryntu rundy (`Round::maze`, obie komórki), a `roundObstacles` nie zawiera już jej pudełka (aplikacja odbudowuje listę). Ściana opada przez 1,5 s (`wallProgress`), uchwyt opuszcza się w 0,3 s. Drugie pociągnięcie nic nie zmienia, a zły numer rzuca `std::out_of_range`.
 
 24. **Co w tym module jest decyzją właściciela, a co wyborem implementacji?**
-    Właściciel zdecydował (2026-10-06) o ray castingu, o tym, że dźwignia obniża jeden wewnętrzny segment ściany, i o tym, że kartka pokazuje podpowiedź policzoną z labiryntu albo linię z tabeli. Reszta (wynik z odległości od startu, próg 6, reguła komórki wyjścia, domyślne liczby, zasięg, rozmiary pudełek, osobne ziarna, tekst na żądanie, kompas) to wybory implementacji z uzasadnieniami w sekcji 1.1.
+    Właściciel zdecydował (2026-10-06) o ray castingu (środek ekranu przy przechwyconej myszy, kursor przy wolnej), o tym, że dźwignia otwiera skrót, obniżając jeden wewnętrzny segment ściany, i o tym, że kartka pokazuje krótką podpowiedź na karcie HUD. Reszta (wynik z odległości od startu, próg 6, reguła komórki wyjścia, domyślne liczby, zasięg, rozmiary pudełek, osobne ziarna, tekst na żądanie, kompas, a w części 2 moment przestawania blokowania, kopia labiryntu rundy, wspólne wzory opadania, podświetlenie, zasady kliknięć, uchwyt jako osobny model) to wybory implementacji z uzasadnieniami w sekcji 1.1.
+
+25. **Dlaczego runda ma własną kopię labiryntu?**
+    Przeszukiwanie i minimapa czytają ściany labiryntu, a otwarta ściana ma zniknąć dla obu. Kopia (`Round::maze`) traci ścianę, a `world.maze` nigdy się nie zmienia, więc nowa runda na tym samym labiryncie ma wszystkie ściany bez odbudowy świata ([`../../decisions/round-keeps-own-maze-copy.md`](../../decisions/round-keeps-own-maze-copy.md)).
+
+26. **Które funkcje mają wspólne brama i ściany otwarte dźwignią?**
+    `sinkProgressAfter` i `sinkDepth` ze stałymi `GATE_OPEN_SECONDS` (1,5 s) i `GATE_SINK_DEPTH` (3,3 m). Macierz ściany jest liczona od nowa z obniżonego segmentu, tak jak `GameplayRenderer` obniża bramę.
+
+27. **Dlaczego uchwyt dźwigni jest osobnym modelem?**
+    `drawModel` daje wszystkim częściom modelu jedną macierz, a uchwyt jest jedyną częścią, która się rusza (przechyla się między dwoma kątami wokół osi obrotu tuż przed licem ściany; wartości w sekcji 5.2).
+
+28. **Co zamyka kartę kartki?**
+    E, lewy klik, odejście na ponad 3,0 m (po gruncie) i wygrana. Nie ma licznika czasu. Restart i nowy labirynt zaczynają rundę od nowa, więc karta też jest zamknięta.
+
+29. **Co sprawdzono w części 2, a co nie?**
+    Bramka projektu (zgłoszona przez autora): 466 przypadków i 152264 asercji, w tym 21 nowych w `InteractionTests.cpp`. Agent widział na zrzutach działanie (sekcja 5.11), czego nie widział, jest wymienione. Test właściciela i macOS są otwarte.
 
 ## 10. Źródła
 
 - Thomas H. Cormen i in., "Wprowadzenie do algorytmów" (Introduction to Algorithms), rozdział o przeszukiwaniu wszerz (BFS): odległości w przejściach.
 - Donald E. Knuth, "The Art of Computer Programming", tom 2, algorytm P (tasowanie, Fisher i Yates): tasowanie komórek.
 - cppreference, `std::mersenne_twister_engine` (`std::mt19937`): <https://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine>, `std::clamp`: <https://en.cppreference.com/w/cpp/algorithm/clamp>, `std::span`: <https://en.cppreference.com/w/cpp/container/span>.
-- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `game`), [`maze-generator.md`](maze-generator.md) (siatka, kierunki, układ w świecie, `randomBelow`), [`gameplay.md`](gameplay.md) (`passageDistances`, wyjście, brama, kryształy, tasowanie), [`../scene/picking.md`](../scene/picking.md) (promień i `nearestHit`), [`../scene/collision.md`](../scene/collision.md) (pudełko ściany grubsze od ściany), [`../renderer/terrain.md`](../renderer/terrain.md) (`Terrain::heightAt`), [`../../decisions/deterministic-random.md`](../../decisions/deterministic-random.md) (dlaczego własne `randomBelow`), [`../../decisions/exit-farthest-cell.md`](../../decisions/exit-farthest-cell.md) (wyjście i brama), [`../../libraries/doctest.md`](../../libraries/doctest.md).
+- Dokumenty w tym repozytorium: [`README.md`](README.md) (moduł `game`), [`../renderer/minimap.md`](../renderer/minimap.md) (ściany z labiryntu rundy, znaczniki), [`../renderer/shadows.md`](../renderer/shadows.md) (macierze ścian w przebiegach cienia), [`maze-rendering.md`](maze-rendering.md) (macierze ścian klatki), [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md), [`../../decisions/round-keeps-own-maze-copy.md`](../../decisions/round-keeps-own-maze-copy.md), [`../../decisions/highlight-as-emissive-pulse.md`](../../decisions/highlight-as-emissive-pulse.md), [`../../decisions/pick-ray-starts-in-the-eye.md`](../../decisions/pick-ray-starts-in-the-eye.md), [`maze-generator.md`](maze-generator.md) (siatka, kierunki, układ w świecie, `randomBelow`), [`gameplay.md`](gameplay.md) (`passageDistances`, wyjście, brama, kryształy, tasowanie), [`../scene/picking.md`](../scene/picking.md) (promień i `nearestHit`), [`../scene/collision.md`](../scene/collision.md) (pudełko ściany grubsze od ściany), [`../renderer/terrain.md`](../renderer/terrain.md) (`Terrain::heightAt`), [`../../decisions/deterministic-random.md`](../../decisions/deterministic-random.md) (dlaczego własne `randomBelow`), [`../../decisions/exit-farthest-cell.md`](../../decisions/exit-farthest-cell.md) (wyjście i brama), [`../../libraries/doctest.md`](../../libraries/doctest.md).
 - PRD ([`../../PRD.pdf`](../../PRD.pdf)): sekcja 3 (temat 15).

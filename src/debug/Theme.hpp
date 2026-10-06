@@ -52,6 +52,21 @@ inline constexpr ImVec4 PLAN_EXIT_COLOR = colorFromBytes(132, 220, 140);
 inline constexpr ImVec4 HUD_BATTERY_COLOR = PLAN_PLAYER_COLOR;
 inline constexpr ImVec4 HUD_BATTERY_LOW_COLOR = ERROR_TEXT_COLOR;
 
+/// A lever on the plan of the Maze panel while it can still be pulled: the red of
+/// a switch. A pulled lever is drawn like a collected crystal.
+inline constexpr ImVec4 PLAN_LEVER_COLOR = colorFromBytes(238, 92, 62);
+
+/// A note on the plan of the Maze panel, and the title of the note card in the HUD: the
+/// pale yellow of old paper.
+inline constexpr ImVec4 PLAN_NOTE_COLOR = colorFromBytes(230, 220, 178);
+inline constexpr ImVec4 HUD_NOTE_COLOR = PLAN_NOTE_COLOR;
+
+/// The crosshair in the middle of the screen: a quiet grey white while it points at
+/// nothing, and the warm colour of the flashlight when the player can use what it
+/// points at. The same warm colour writes the prompt (the line that names the key).
+inline constexpr ImVec4 HUD_CROSSHAIR_COLOR = colorFromBytes(214, 220, 232);
+inline constexpr ImVec4 HUD_CROSSHAIR_ACTIVE_COLOR = PLAN_PLAYER_COLOR;
+
 /// Sets the colours and the metrics (padding, spacing, rounding, font size) of all panels.
 ///
 /// scale is the content scale of the display: 1 at 100 %, 1.5 at 150 % display scaling on

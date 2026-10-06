@@ -77,6 +77,8 @@ protected:
             .reflectShader = reflectShader(),
             .environment = environmentSettings(),
             .puddleCount = puddleCount(),
+            .pick = pick(),
+            .pickDebug = pickDebug(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

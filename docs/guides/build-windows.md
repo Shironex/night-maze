@@ -113,6 +113,15 @@
 > kryształach ani w kałużach** i nikt nie zmierzył liczby klatek. Temat 12 jest w toku, macOS
 > otwarty ([`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md)).
 >
+> **Zgłoszone 2026-10-06 (M8, część 2: selekcja, dźwignie i kartki):** bramka `make check`
+> przechodzi w Debug i Release, 466 przypadków testowych (445 przed tą częścią plus 21 w
+> `InteractionTests.cpp`) i 152264 asercji (przed tą częścią 150296). Start programu Debug z
+> czystym logiem, w którym nowe modele i tekstury są wypisane jako wczytane (sekcja 24.1).
+> Agent, który napisał kod, uruchomił grę, sterował nią skryptem i oglądał zrzuty ekranu:
+> widział dźwignię z pierścieniem i podpowiedzią, pociągnięcie, pulsujące podświetlenie,
+> kartkę z jej kartą, otwartą ścianę na minimapie, restart, zamrożony promień i panel
+> Collision. To **nie** jest test właściciela. Po przeróbce modelu dźwigni agent widział też (zrzuty z 2026-10-06, nie właściciel): dźwignię od przodu z 1 m przy włączonej latarce, w górnym położeniu i podświetloną (ciemna płyta, jasna bursztynowa gałka nad środkiem, podpowiedź na dole pośrodku); ten sam widok po E (pręt w dół, gałka poniżej krawędzi płyty z cieniem na ścianie, bez podświetlenia i podpowiedzi); widoki z boku w górnym i dolnym położeniu; wyłączoną latarkę (pociągnięta: płyta prawie czarna, gałka ciemna ochra; w górze z podświetleniem: gałka świeci bursztynem); około 2,4 m pod kątem z podświetleniem i podpowiedzią oraz około 2,9 m poza zasięgiem bez podświetlenia; drugą dźwignię; Gouraud (z podświetleniem) i Unlit; widok Normals (dźwignia jako dane, bez podświetlenia, pierścień i podpowiedź nadal są); kartkę z "E: read note" na dole, wolną od arkusza; otwartą kartę kartki bez podpowiedzi i bez nakładania się na minimapę. Nadal niewidziane: uchwyt w połowie ruchu, cień księżyca od dźwigni, Gouraud i Unlit dla kartki, widok na wprost z 2,5 m, dodatki w panelu Gameplay i przycisk "Pull all levers", inne niż domyślne liczby dźwigni i kartek, czysta rama połowicznie zatopionej ściany. Znane uwagi kosmetyczne: z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka. Temat 15 jest w toku, macOS otwarty.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -130,7 +139,7 @@
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
 > M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
 > 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7), 20 (cienie księżyca,
-> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7) oraz 23 (M8, część 1: environment mapping)
+> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7) 23 (M8, część 1: environment mapping) i 24 (M8, część 2: selekcja, dźwignie i kartki)
 > rozróżniają punkty
 > zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
@@ -145,7 +154,7 @@
 > tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
 > pokazuje dziś, opisują sekcje 2, 14, 15 i 16, koniec klatki (bufor HDR, bloom, mgłę
 > i winietę) sekcje 17, 18 i 19, cienie księżyca sekcja 20, cień latarki i latarkę w ręce
-> sekcja 21, minimapę sekcja 22, a environment mapping (M8, część 1) sekcja 23.
+> sekcja 21, minimapę sekcja 22, environment mapping (M8, część 1) sekcja 23, a selekcję, dźwignie i kartki (M8, część 2) sekcja 24.
 
 ## 1. Wymagania
 
@@ -5043,7 +5052,161 @@ Okno i granice:
 Sprawdziwszy wszystko: zaznaczyć wyniki tutaj, wpisać zapisane obserwacje, i dopiero wtedy
 zmienić stan tematu 12 w [`../syllabus.md`](../syllabus.md) z "w toku".
 
-## 24. Powiązane dokumenty
+## 24. Lista kontrolna M8, część 2: selekcja, dźwignie i kartki
+
+Druga część kamienia milowego M8 podpina promień z "M8, podstawy bez okna" do działającej gry
+(temat 15 wykładu, selekcja obiektów). W każdej klatce program rzuca jeden promień z oka gracza:
+przez środek obrazu, gdy mysz jest przechwycona, albo przez kursor, gdy jest wolna. Dźwignia na
+ścianie, którą promień trafia w zasięgu 2,5 m, jest podświetlona pulsującym świeceniem, a klawisz
+E albo lewy przycisk myszy ją pociąga: jedna wewnętrzna ściana opada w ziemię w 1,5 s i
+przestaje blokować gracza od chwili pociągnięcia. Kartka na ścianie otwiera kartę HUD z krótką
+podpowiedzią. Doszły: `src/game/Interaction.*` (wynik wskazywania w klatce, reakcja na klawisz,
+macierze modeli, podświetlenie), `src/game/InteractableRenderer.*` (rysowanie dźwigni i kartek),
+`tests/InteractionTests.cpp` (21 przypadków), trzy modele (`lever.obj`, `lever_handle.obj`,
+`note.obj`), tekstury `lever_iron`, `lever_brass` i `note_paper` (każda z mapą normalnych) oraz
+skrypty `tools/blender/build_lever.py` i `build_note.py`. Zmieniły się: `Input.*` (odczyt
+pozycji kursora), `MazeWorld.*`, `Round.*`, `Minimap.*`, `MazeRenderer.*`, `ColliderLines.*`,
+`NightMazeApp.*`, `DebugContext.hpp` (47 pól, doszły `pick` i `pickDebug`), `DebugUI.cpp`,
+`Hud.*`, `Theme.hpp`, panele Collision, Gameplay i Maze, `main.cpp`, `CMakeLists.txt`,
+`make_all.py` i `make_textures.py`. Liczba programów shaderów (14) i paneli (13) się nie zmieniła.
+Opis kodu: [`../modules/scene/picking.md`](../modules/scene/picking.md) i
+[`../modules/game/interactables.md`](../modules/game/interactables.md).
+
+Temat 15 wykładu jest **w toku**, nie zaliczony: test ręczny właściciela (sekcja 24.2) jest
+otwarty, a na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)). M8 jako całość nie
+jest zamknięty.
+
+### 24.1. Zgłoszone (2026-10-06)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru nie
+zapisano w tym dokumencie. Poniższe punkty są **zgłoszone przez autora kodu**, nie powtarzałem
+ich przy pisaniu tej sekcji.
+
+Bramka i start:
+
+- [x] `make check` przechodzi w Debug i Release (zgłoszone)
+- [x] `night_maze_tests.exe`: **466 przypadków testowych i 152264 asercji** w obu konfiguracjach.
+      Przed tą częścią 445 i 150296. Nowych przypadków jest 21 i wszystkie są w
+      `tests/InteractionTests.cpp` (policzone z pliku: 21 makr `TEST_CASE`), a
+      `tests/InteractablesTests.cpp` zmienił tylko komentarz
+- [x] start programu Debug z czystym logiem (bez linii `[error]`), w którym trzy nowe modele
+      (`lever.obj`, `lever_handle.obj`, `note.obj`) i nowe tekstury są wypisane jako wczytane
+
+**Widziane na zrzutach ekranu przez agenta.** Poniższe punkty są zapisane jako "widziane na
+zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela": agent, który napisał kod,
+uruchomił grę, sterował nią skryptem i oglądał zrzuty ekranu. To **nie jest** test ręczny
+właściciela i nie zamyka żadnego punktu z sekcji 24.2.
+
+- widziane na zrzucie ekranu przez agenta: płytka dźwigni na ścianie, wokół środka obrazu
+  pierścień celownika i podpowiedź "E: pull lever"
+- widziane na zrzucie ekranu przez agenta: po E rączka opuszczona, a podpowiedź zniknęła
+- widziane na zrzucie ekranu przez agenta: podświetlenie pulsuje (mocniejsze przy wyłączonej
+  latarce)
+- widziane na zrzucie ekranu przez agenta: kartka z liniami atramentu, jej karta z podpowiedzią i
+  napisem "E: close", a po odejściu od kartki karta zniknęła
+- widziane na zrzucie ekranu przez agenta: ściana się otworzyła, minimapa przestała rysować tę
+  ścianę i pokazała korytarz za nią, a gracz przeszedł przez otwór
+- widziane na zrzucie ekranu przez agenta: po R minimapa wróciła do stanu początkowego, a ściana
+  znowu blokowała
+- widziane na zrzucie ekranu przez agenta: zamrożony promień jako zielona linia i trafione
+  pudełko na zielono
+- widziane na zrzucie ekranu przez agenta: panel Collision z początkiem, kierunkiem i linią
+  "Hit: lever 0 at 0.72 m"
+- widziane na zrzucie ekranu przez agenta: kliknięcie wolnym kursorem w dźwignię ją pociągnęło
+
+Po przeróbce modelu dźwigni agent widział też (zrzuty z 2026-10-06, nie właściciel): dźwignię od przodu z 1 m przy włączonej latarce, w górnym położeniu i podświetloną (ciemna płyta, jasna bursztynowa gałka nad środkiem, podpowiedź na dole pośrodku); ten sam widok po E (pręt w dół, gałka poniżej krawędzi płyty z cieniem na ścianie, bez podświetlenia i podpowiedzi); widoki z boku w górnym i dolnym położeniu; wyłączoną latarkę (pociągnięta: płyta prawie czarna, gałka ciemna ochra; w górze z podświetleniem: gałka świeci bursztynem); około 2,4 m pod kątem z podświetleniem i podpowiedzią oraz około 2,9 m poza zasięgiem bez podświetlenia; drugą dźwignię; Gouraud (z podświetleniem) i Unlit; widok Normals (dźwignia jako dane, bez podświetlenia, pierścień i podpowiedź nadal są); kartkę z "E: read note" na dole, wolną od arkusza; otwartą kartę kartki bez podpowiedzi i bez nakładania się na minimapę.
+
+**Nie widziane na ekranie** (nikt tego nie oglądał): uchwyt w połowie ruchu, cień księżyca od dźwigni, Gouraud i Unlit dla kartki, widok na wprost z 2,5 m, dodatki w panelu Gameplay i przycisk "Pull all levers", inne niż domyślne liczby dźwigni i kartek, czysta rama połowicznie zatopionej ściany.
+
+**Znane problemy wyglądu w chwili pisania (otwarte):**
+
+- model dźwigni czytał się z przodu jak szara płyta i został przerobiony: płyta 0,16 x 0,30 m i 0,02 m grubości z podniesioną ramą z czterech listew po 0,02 m i obudową osi wystającą na 0,07 m (52 trójkąty, materiał `lever_iron`, ciemne żelazo), uchwyt z prętem 0,03 x 0,03 m i 0,14 m długości oraz gałką 0,07 x 0,07 m kończącą się 0,20 m od osi (20 trójkątów, materiał `lever_brass`, mosiądz); zrzuty po przeróbce są na liście wyżej. Znane drobne uwagi kosmetyczne: patrząc na wprost z 1 m, gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na tle ściany i niesie ją tylko gałka.
+- podpowiedź "E: pull lever" zasłaniała wskazany obiekt i została przesunięta: podpowiedź stoi na dole okna, pośrodku (`PROMPT_PLACE` = (0,5; 0,9) okna), a nie pod celownikiem, więc nie zasłania wskazanego obiektu.
+
+Znane ograniczenia (z kodu, nie ze zrzutów): kępki trawy przy otwartej ścianie zostają, a słupek,
+który kończył tylko otwartą ścianę, stoi sam.
+
+### 24.2. Otwarte: test ręczny na około trzydzieści pięć minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów. Pierwsze
+grupy powtarzają to, co agent widział na zrzutach: to ma zobaczyć właściciel.
+
+Przygotowanie:
+
+- [ ] usunąć stary `imgui.ini`, uruchomić grę z terminala: żadnej linii `[error]`, w buildzie
+      Debug żadnej linii `GL_...`, trzy nowe modele i nowe tekstury wypisane jako wczytane
+- [ ] panel Maze ma dwa suwaki `Levers` i `Notes` (od 0 do 16) i linię "Levers: N, notes: M" z
+      liczbami, które labirynt naprawdę dostał (domyślnie żądane 2 i 3)
+- [ ] panel Gameplay ma linie "Levers: N pulled of M" i "Note card: open/closed" oraz przycisk
+      `Pull all levers`
+
+Dźwignia i kartka (to, co widział agent):
+
+- [ ] dźwignia na ścianie jest widoczna, a przy mierzeniu w nią środkiem obrazu z mniej niż 2,5 m
+      celownik dostaje pierścień i pojawia się "E: pull lever". Z dalej niż 2,5 m nie
+- [ ] wygląd dźwigni po przeróbce (ciemna płyta z ramą, mosiężna gałka): zapisać, czy rączka i płytka
+      dają się odróżnić od ściany i od siebie
+- [ ] miejsce podpowiedzi (na dole okna, pośrodku): zapisać, czy podpowiedź nie
+      zasłania wskazanego obiektu
+- [ ] podświetlenie pulsuje, przy wyłączonej latarce (klawisz F) jest mocniejsze
+- [ ] E albo lewy przycisk myszy pociąga dźwignię: rączka opada w około 0,3 s, podpowiedź znika,
+      podświetlenie znika
+- [ ] ściana dźwigni opada w około 1,5 s, minimapa przestaje ją rysować i pokazuje korytarz za
+      nią, a gracz przechodzi przez otwór
+- [ ] pociągnięta dźwignia nie reaguje drugi raz (brak podpowiedzi, brak podświetlenia)
+- [ ] kartka: pierścień, "E: read note", E otwiera kartę z napisem "A note on the wall",
+      tekstem i "E: close"
+- [ ] karta kartki zamyka się: klawiszem E, kliknięciem, po odejściu dalej niż 3,0 m od kartki,
+      po wygranej, a także przy restarcie (R) i regeneracji labiryntu
+- [ ] klawisz R przywraca wszystkie ściany: minimapa wraca do stanu początkowego, ściana znowu
+      blokuje, dźwignie są znowu do pociągnięcia
+
+Zamrożony promień i panel Collision (to, co widział agent):
+
+- [ ] pole `Draw pick boxes and ray` rysuje czerwone pudełka dźwigni, białe pudełka kartek i
+      promień, a trafione pudełko na zielono
+- [ ] pole `Freeze the drawn ray` zatrzymuje rysowany promień (po kroku w bok widać go z boku jako
+      zieloną linię), a restart rundy go czyści
+- [ ] panel Collision pokazuje "Ray through", początek, kierunek i linię w rodzaju
+      "Hit: lever 0 at 0.72 m", a liczba pudełek ścian maleje po pociągnięciu dźwigni
+- [ ] kliknięcie wolnym kursorem w dźwignię ją pociąga. Kliknięcie wolnym kursorem gdzie indziej
+      w scenie przechwytuje kursor. Przy otwartej karcie kliknięcie ją zamyka i nie przechwytuje
+- [ ] klawisz E działa też przy wolnym kursorze (na to, na co wskazuje kursor)
+- [ ] kliknięcie w panel debugowania nie dociera do gry (nie pociąga ani nie przechwytuje)
+- [ ] kursor poza oknem nie wskazuje niczego, zmiana rozmiaru okna i zminimalizowanie okna nie
+      psują wskazywania ani nie wypisują błędu
+
+To, czego agent nie widział:
+
+- [ ] tryby `Gouraud` i `Unlit`: dźwignia, kartka i podświetlenie rysują się, ściany opadają
+- [ ] widoki `Normals as colour` i `UVs as colour`: dźwignia i kartka rysują się, podświetlenia
+      w nich nie ma (pokazują dane)
+- [ ] cienie księżyca rzucane przez dźwignię i kartkę na ścianę; opadająca ściana rzuca cień
+      zgodny z tym, co jeszcze wystaje z ziemi
+- [ ] przycisk `Pull all levers` otwiera wszystkie ściany naraz (linia "Levers" je liczy), a
+      restart je zamyka
+- [ ] druga dźwignia: pociągnięcie jednej nie rusza ściany drugiej
+- [ ] pola `Levers` i `Notes` z innymi liczbami (0, 1, 16) i `Regenerate`: labirynt dostaje tyle,
+      ile się da (może mniej), a po 0 nie ma nic do wskazania
+- [ ] klatka z ramą ściany zatopioną do połowy: zapisać, czy nie ma migotania ani szczeliny
+
+Granice i szczególne przypadki:
+
+- [ ] wejście w ścianę w czasie jej 1,5 s opadania: gracz przechodzi przez ścianę, która jest
+      jeszcze widoczna (ściana przestaje blokować w chwili pociągnięcia, jak brama)
+- [ ] w otwartym przejściu stoi sam słupek i zostają kępki trawy (znane ograniczenie): zapisać,
+      czy to przeszkadza
+- [ ] podpowiedzi kartek o kryształach po zebraniu kryształów: tekst liczy tylko kryształy, które
+      zostały, a po zebraniu wszystkich mówi "No crystal is left to find."
+- [ ] minimapa: małe kwadraty dźwigni (pociągnięta ciemniejsza) i kartek w odkrytych komórkach
+- [ ] plan w panelu Maze: kwadraty dźwigni i kartek, otwarta ściana narysowana przygaszona
+- [ ] labirynt 40 x 40: pociągnięcie dźwigni, minimapa i plan działają, brak spadku płynności
+- [ ] brak ostrzeżeń kompilatora przy buildzie Debug i Release po tej części
+
+Sprawdziwszy wszystko: zaznaczyć wyniki tutaj, wpisać zapisane obserwacje, i dopiero wtedy
+zmienić stan tematu 15 w [`../syllabus.md`](../syllabus.md) z "w toku".
+
+## 25. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -5051,6 +5214,7 @@ zmienić stan tematu 12 w [`../syllabus.md`](../syllabus.md) z "w toku".
 - Biblioteki: [`../libraries/glfw.md`](../libraries/glfw.md),
   [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
+- Selekcja, dźwignie i kartki: [`../modules/scene/picking.md`](../modules/scene/picking.md), [`../modules/game/interactables.md`](../modules/game/interactables.md)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
   [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapy cieni księżyca i latarki),
   [`../modules/game/flashlight.md`](../modules/game/flashlight.md) (latarka w ręce),

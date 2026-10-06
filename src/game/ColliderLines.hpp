@@ -1,5 +1,5 @@
-// ColliderLines: draws collision boxes and spheres as thin lines, a debug view of the
-// collisions.
+// ColliderLines: draws collision boxes, spheres and single lines as thin lines, a debug
+// view of the collisions and of the picking ray.
 // See docs/modules/scene/collision.md
 #pragma once
 
@@ -18,10 +18,11 @@ namespace game {
 
 /// Draws axis-aligned boxes as their 12 edges and spheres as three circles.
 ///
-/// It owns two small meshes: the edges of a cube with a side of 1, and a circle with
-/// a radius of 1. Every box is that cube, scaled to the size of the box and moved to its
-/// place by the model matrix. Every sphere is that circle drawn three times, once around
-/// each axis. It owns OpenGL objects, so it must be destroyed before the window.
+/// It owns three small meshes: the edges of a cube with a side of 1, a circle with
+/// a radius of 1 and a line of length 1. Every box is that cube, scaled to the size of
+/// the box and moved to its place by the model matrix. Every sphere is that circle drawn
+/// three times, once around each axis. A line between two points is the unit line laid
+/// between them. It owns OpenGL objects, so it must be destroyed before the window.
 class ColliderLines {
 public:
     /// Uploads the unit cube and the unit circle.
@@ -40,9 +41,15 @@ public:
     void drawSpheres(const gfx::Shader& shader, std::span<const scene::Sphere> spheres,
                      const glm::vec3& color) const;
 
+    /// Draws one straight line from one point of the world to another, in one colour:
+    /// the picking ray. shader is prepared as for draw.
+    void drawLine(const gfx::Shader& shader, const glm::vec3& from, const glm::vec3& to,
+                  const glm::vec3& color) const;
+
 private:
     gfx::Mesh m_unitCube;
     gfx::Mesh m_unitCircle;
+    gfx::Mesh m_unitLine;
 };
 
 } // namespace game

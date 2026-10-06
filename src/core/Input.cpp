@@ -68,6 +68,13 @@ double Input::mouseDeltaY() const {
     return m_mouseBlocked ? 0.0 : m_mouseDeltaY;
 }
 
+CursorPosition Input::cursorPosition() const {
+    if (m_mouseBlocked) {
+        return {};
+    }
+    return {.valid = true, .x = m_cursorX, .y = m_cursorY};
+}
+
 void Input::setCursorCaptured(bool captured) {
     if (captured == m_cursorCaptured) {
         return;

@@ -23,13 +23,14 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
     : m_wall(assets.model(core::assetPath(WALL_MODEL_FILE))),
       m_pillar(assets.model(core::assetPath(PILLAR_MODEL_FILE))) {}
 
-void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world) const {
+void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
+                        std::span<const glm::mat4> wallMatrices) const {
     setModelSamplers(shader);
     // Stone gives off no light of its own. A uniform keeps its value from one draw call
     // to the next, and the crystals set this one, so it is set back in every frame.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 
-    drawModel(shader, m_wall, world.wallMatrices);
+    drawModel(shader, m_wall, wallMatrices);
     drawModel(shader, m_pillar, world.pillarMatrices);
 }
 

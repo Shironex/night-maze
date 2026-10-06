@@ -1,7 +1,7 @@
 # Generates the textures of the game into assets/textures: the colour pictures
-# wall_stone.png, ground.png, gate_wood.png and crystal.png, and one normal map for
-# each of them (the same name with _normal). All eight are 512 x 512 pixels, 8 bits per
-# channel, RGB.
+# wall_stone.png, ground.png, gate_wood.png, crystal.png, lever_iron.png, lever_brass.png
+# and note_paper.png, and one normal map for each of them (the same name with _normal).
+# All fourteen are 512 x 512 pixels, 8 bits per channel, RGB.
 # See docs/guides/blender.md
 #
 # Run from the repository root:
@@ -12,6 +12,9 @@
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
 # and the distances between the cells of the crystal and to the stones of the ground are
 # measured across the edges.
+# The one exception is note_paper.png: the model of the note shows the whole picture
+# exactly once, so its ink lines do not have to continue across the edges. Its noise still
+# wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
 # same joints, the same noise), so the relief lies exactly where the picture shows it.
@@ -49,6 +52,9 @@ WALL_SEED = 11
 GROUND_SEED = 67
 GATE_SEED = 37
 CRYSTAL_SEED = 41
+LEVER_SEED = 53
+LEVER_BRASS_SEED = 71
+NOTE_SEED = 29
 
 # The iron bands of the gate, in pixels: the rows of the band centres and half of the band
 # height. One repeat of the texture is 2 m high and the gate is taller, so the lower band
@@ -61,6 +67,25 @@ GATE_BAND_HALF_HEIGHT = 20
 # pixels (see stone_height).
 BUMP_BLUR_RADIUS = 8
 GRAIN_BLUR_RADIUS = 1
+
+# The ink lines on the paper of the note, in pixels. The model note shows the whole picture
+# once on a sheet 0.30 m wide and 0.40 m high (see build_note.py), so one pixel is about
+# 0.6 mm wide and 0.8 mm high there.
+# Plain paper between the edge of the picture and the writing, on the left and the right.
+NOTE_MARGIN = 72
+# The row of the centre of the top line. Row 0 is the bottom row of the picture, so the
+# top line has the largest number.
+NOTE_TOP_LINE_ROW = 432
+# Distance between the centres of two lines, and the number of lines. The bottom line lies
+# at row 432 - 8 * 40 = 112, which leaves a margin below it too.
+NOTE_LINE_SPACING = 40
+NOTE_LINE_COUNT = 9
+# Half of the height of one ink line: 2.5 pixels are about 2 mm on the sheet, so a line is
+# about 4 mm high.
+NOTE_LINE_HALF_HEIGHT = 2.5
+# A line never ends before this part of the width between the two margins (0.55 = 55 %).
+# Every line gets a random end between this and the full width, like lines of handwriting.
+NOTE_SHORTEST_LINE = 0.55
 
 
 def blur(values, radius):
@@ -665,6 +690,166 @@ def ground_height(pattern, stone_rise, moss_rise, bump_depth, grain_depth):
     return stone_rise * dome + moss_rise * pattern["moss"] + bumps + grain
 
 
+def metal_pattern(seed):
+    """Returns what the colour picture and the normal map of one metal have in common.
+
+    The lever is made of two metals: dark iron for the plate and brass for the handle.
+    Neither has stones or planks: each is one surface with soft lighter and darker patches
+    and a fine grain. Two different seeds give the two metals different patches.
+
+    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
+      "patches", "grain":  large soft noise and fine noise, both from 0 to 1
+    """
+    # Its own random generator, so the numbers of the other textures stay what they are.
+    rng = np.random.default_rng(seed)
+
+    patches = smooth_noise(rng, 12)
+    grain = smooth_noise(rng, 1)
+
+    return {
+        "patches": patches,
+        "grain": grain,
+    }
+
+
+def metal_color(pattern, metal_color, patch_strength):
+    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: one metal with soft patches.
+
+    pattern: the result of metal_pattern.
+    metal_color: (red, green, blue) from 0 to 1, the average color of the picture.
+    patch_strength: how much the patches change the brightness in total. 0.30 means from
+        15 % darker to 15 % lighter.
+    """
+    # Both factors are close to 1 on average (the noise is about 0.5 on average), so the
+    # average of the picture stays close to metal_color. The first factor runs from
+    # 1 - patch_strength / 2 to 1 + patch_strength / 2. The grain changes the brightness
+    # by up to 8 % in each direction.
+    patches = 1.0 - patch_strength / 2.0 + patch_strength * pattern["patches"]
+    brightness = patches * (0.92 + 0.16 * pattern["grain"])
+
+    # brightness[..., None] adds a third axis of length 1, so one brightness per pixel
+    # multiplies all three color channels.
+    color = brightness[..., None] * np.array(metal_color)
+
+    return np.clip(color, 0.0, 1.0)
+
+
+def metal_height(pattern, bump_depth, grain_depth):
+    """Returns a SIZE x SIZE array: how far every pixel of the metal stands out.
+
+    The unit is the size of one pixel of the texture, like in stone_height.
+
+    pattern: the result of metal_pattern, the same one the colour picture was made from.
+    bump_depth: height of the large soft dents, like the marks of a hammer.
+    grain_depth: height of the fine grain.
+    """
+    # The two kinds of noise, blurred once more for a smooth slope (see stone_height), and
+    # centred on 0, so they raise and lower the surface by the same amount.
+    bumps = bump_depth * (blur(pattern["patches"], BUMP_BLUR_RADIUS) - 0.5)
+    grain = grain_depth * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
+
+    return bumps + grain
+
+
+def paper_pattern(seed):
+    """Returns what the colour picture and the normal map of the note have in common.
+
+    The note is a sheet of old paper with soft stains and a few lines of ink that suggest
+    handwriting. The lines are only dark strokes of different lengths: nobody can read
+    them, and the text of a note is shown by the game.
+
+    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
+      "stains":   how strong the stain on the pixel is, from 0 to 1
+      "grain":    fine noise, from 0 to 1
+      "crumple":  large soft noise for the relief of the sheet, from 0 to 1
+      "ink":      how much ink covers the pixel, from 0 to 1
+    """
+    # Its own random generator, so the numbers of the other textures stay what they are.
+    rng = np.random.default_rng(seed)
+
+    # Pixel coordinates. Row 0 is the bottom row of the image.
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+
+    # Stains: wide soft noise, and only its upper part counts as a stain, with a smooth
+    # ramp at its edge. The noise is blurred a second time, which rounds the patches (see
+    # the moss in ground_pattern).
+    stain_noise = stretch(blur(smooth_noise(rng, 20), 12))
+    stains = smooth_step(np.clip((stain_noise - 0.55) / 0.25, 0.0, 1.0))
+
+    grain = smooth_noise(rng, 1)
+    crumple = smooth_noise(rng, 10)
+
+    # The ink lines. Every line starts at the left margin and is as high as two times
+    # NOTE_LINE_HALF_HEIGHT. Where it ends is random, so the lines have uneven lengths.
+    line_left = NOTE_MARGIN
+    full_width = SIZE - 2 * NOTE_MARGIN
+    ink = np.zeros((SIZE, SIZE))
+    for line in range(NOTE_LINE_COUNT):
+        # The lines go down the sheet, and row 0 is the bottom row: the row gets smaller.
+        centre = NOTE_TOP_LINE_ROW - line * NOTE_LINE_SPACING
+        line_right = line_left + full_width * rng.uniform(NOTE_SHORTEST_LINE, 1.0)
+
+        # How far the centre of a pixel lies inside the line, in pixels, measured up and
+        # down (across) and left and right (along). Cut off at 0 and 1 it is 1 inside the
+        # line, 0 outside, and the pixels on its border get a value in between: a soft
+        # edge instead of steps.
+        across = np.clip(NOTE_LINE_HALF_HEIGHT - np.abs(y + 0.5 - centre), 0.0, 1.0)
+        along = np.clip(np.minimum(x + 0.5 - line_left, line_right - (x + 0.5)), 0.0, 1.0)
+
+        # The lines do not overlap, so taking the larger value just adds this line.
+        ink = np.maximum(ink, across * along)
+
+    # A pen does not press evenly: soft noise makes the ink stronger and weaker along a
+    # line, between 55 % and 100 %.
+    ink = ink * (0.55 + 0.45 * smooth_noise(rng, 3))
+
+    return {
+        "stains": stains,
+        "grain": grain,
+        "crumple": crumple,
+        "ink": ink,
+    }
+
+
+def paper_color(pattern, paper_color, stain_color, ink_color):
+    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: old paper with ink lines.
+
+    pattern: the result of paper_pattern.
+    paper_color, stain_color, ink_color: (red, green, blue) from 0 to 1.
+    """
+    # The paper with a little grain: up to 4 % lighter or darker.
+    brightness = 0.96 + 0.08 * pattern["grain"]
+    color = brightness[..., None] * np.array(paper_color)
+
+    # Mix towards the stain colour. Even the middle of a stain only goes half of the way
+    # (the factor 0.5), so the stains stay soft.
+    stains = 0.5 * pattern["stains"]
+    color = color + stains[..., None] * (np.array(stain_color) - color)
+
+    # Mix towards the ink colour: ink = 0 keeps the paper, ink = 1 replaces it.
+    ink = pattern["ink"]
+    color = color + ink[..., None] * (np.array(ink_color) - color)
+
+    return np.clip(color, 0.0, 1.0)
+
+
+def paper_height(pattern, crumple_depth, grain_depth):
+    """Returns a SIZE x SIZE array: how far every pixel of the paper stands out.
+
+    The unit is the size of one pixel of the texture, like in stone_height.
+
+    pattern: the result of paper_pattern, the same one the colour picture was made from.
+    crumple_depth: height of the soft waves of a sheet that was folded and got damp.
+    grain_depth: height of the fine grain of the paper.
+    """
+    # The two kinds of noise, blurred once more for a smooth slope (see stone_height).
+    # The ink is flat: it soaked into the paper and has no relief.
+    crumple = crumple_depth * (blur(pattern["crumple"], BUMP_BLUR_RADIUS) - 0.5)
+    grain = grain_depth * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
+
+    return crumple + grain
+
+
 def save_png(color, file_name):
     """Saves a SIZE x SIZE x 3 array of colors from 0 to 1 as an 8-bit RGB PNG."""
     # Round to the 256 levels of an 8-bit channel here, so the bytes in the file do not
@@ -796,6 +981,68 @@ def build():
         bump_depth=4.0,
     )
     save_png(normal_map(crystal_relief), "crystal_normal.png")
+
+    # The textures of the lever and the note. They are in a function of their own, so
+    # they can also be made without writing the eight pictures above again.
+    build_interactable_textures()
+
+
+def build_interactable_textures():
+    """Writes the textures of the things the player uses: the lever and the note.
+
+    To make only these six pictures, run from the repository root (one line):
+      blender --background --factory-startup --python-expr "import sys;
+      sys.path.append('tools/blender'); import make_textures;
+      make_textures.build_interactable_textures()"
+    The two functions it calls can be run alone in the same way, to make only the four
+    pictures of the lever or only the two pictures of the note.
+    """
+    build_lever_textures()
+    build_note_textures()
+
+
+def build_lever_textures():
+    """Writes the two textures of the lever, each with its normal map."""
+    # The plate of the lever: iron with a little blue in it. Unlike the other pictures
+    # this one is dark on purpose: the lever hangs on a stone wall that the flashlight
+    # lights up, and the picture of that wall is about 0.62. A light plate had the same
+    # colour as the wall and could not be told apart from it.
+    iron = metal_pattern(seed=LEVER_SEED)
+    iron_picture = metal_color(iron, metal_color=(0.17, 0.18, 0.21), patch_strength=0.30)
+    save_png(iron_picture, "lever_iron.png")
+
+    # The relief of the iron: soft dents and fine grain, like the bands of the gate.
+    iron_relief = metal_height(iron, bump_depth=5.0, grain_depth=0.6)
+    save_png(normal_map(iron_relief), "lever_iron_normal.png")
+
+    # The handle of the lever: warm brass, light and yellow, so it stands out against
+    # both the dark plate and the grey wall. The patches are weaker than on the iron:
+    # the red channel is already 0.86, and stronger patches would push it past 1, where
+    # it is cut off and the colour of the light patches would change.
+    brass = metal_pattern(seed=LEVER_BRASS_SEED)
+    brass_picture = metal_color(brass, metal_color=(0.86, 0.58, 0.20), patch_strength=0.14)
+    save_png(brass_picture, "lever_brass.png")
+
+    # The relief of the brass: gentler than the iron, like metal polished by many hands.
+    brass_relief = metal_height(brass, bump_depth=3.0, grain_depth=0.4)
+    save_png(normal_map(brass_relief), "lever_brass_normal.png")
+
+
+def build_note_textures():
+    """Writes the texture of the note with its normal map."""
+    # Note: warm off-white paper, light brown stains and dark blue-black ink.
+    note = paper_pattern(seed=NOTE_SEED)
+    note_picture = paper_color(
+        note,
+        paper_color=(0.86, 0.82, 0.70),
+        stain_color=(0.66, 0.56, 0.38),
+        ink_color=(0.14, 0.13, 0.20),
+    )
+    save_png(note_picture, "note_paper.png")
+
+    # The relief of the note: a gently crumpled sheet.
+    note_relief = paper_height(note, crumple_depth=5.0, grain_depth=0.4)
+    save_png(normal_map(note_relief), "note_paper_normal.png")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Moduł core: klawiatura i mysz
 
-Kamień milowy: M0 (klawiatura), M1 (mysz). Temat wykładu: 1 (Pierwszy program OpenGL).
+Kamień milowy: M0 (klawiatura), M1 (mysz), M8 część 2 (pozycja kursora i klawisz E, 2026-10-06). Temat wykładu: 1 (Pierwszy program OpenGL), a pozycja kursora służy tematowi 15 (selekcja obiektów, [`../scene/picking.md`](../scene/picking.md)).
 Kod: [`src/core/Input.hpp`](../../../src/core/Input.hpp), [`src/core/Input.cpp`](../../../src/core/Input.cpp), użycie w [`src/core/Application.cpp`](../../../src/core/Application.cpp), [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (obrót kamery myszą i klawisze gracza) i [`src/main.cpp`](../../../src/main.cpp).
 
 Część modułu `core`. Wstęp do całego modułu i diagram warstw są w [`README.md`](README.md). Pozostałe części: [`window-context.md`](window-context.md) (okno i kontekst), [`main-loop.md`](main-loop.md) (pętla i czas), [`gl-check.md`](gl-check.md) (błędy OpenGL). Funkcje wejścia samej biblioteki GLFW opisuje [`../../libraries/glfw.md`](../../libraries/glfw.md).
@@ -42,7 +42,7 @@ O kursor można pytać na dwa sposoby:
 - **pozycja** (position): gdzie kursor jest teraz, na przykład (640, 360). Potrzebna do klikania w elementy na ekranie.
 - **przesunięcie** (delta): o ile kursor przesunął się od poprzedniego odczytu, na przykład (+12, -3). Potrzebne do obracania kamery: ruch myszy w prawo o 12 jednostek to obrót w prawo o 12 razy czułość.
 
-`Input` udostępnia tylko przesunięcie, bo tylko ono jest potrzebne (kamerze). GLFW przy odpytywaniu podaje pozycję (`glfwGetCursorPos`), więc przesunięcie liczę sam: pozycja z tej klatki minus pozycja z poprzedniej. Tak jak przy zboczu, potrzebne są dwa pomiary. Z tego wynika problem "pierwszej myszy" (first mouse): przy pierwszym odczycie nie ma poprzedniej pozycji, z którą można porównać. Gdybym odjął pozycję od zera, dostałbym jedno ogromne przesunięcie i kamera szarpnęłaby w losowym kierunku. Ten sam problem wraca przy każdej zmianie trybu kursora (sekcja 2.6).
+Do M8, części 2 `Input` udostępniał tylko przesunięcie, bo tylko ono było potrzebne (kamerze). Od M8, części 2 oddaje też **pozycję** (`Input::cursorPosition`, sekcja 5.8.1), bo wskazywanie obiektów kursorem potrzebuje punktu na obrazie. GLFW przy odpytywaniu podaje pozycję (`glfwGetCursorPos`), więc przesunięcie liczę sam: pozycja z tej klatki minus pozycja z poprzedniej. Tak jak przy zboczu, potrzebne są dwa pomiary. Z tego wynika problem "pierwszej myszy" (first mouse): przy pierwszym odczycie nie ma poprzedniej pozycji, z którą można porównać. Gdybym odjął pozycję od zera, dostałbym jedno ogromne przesunięcie i kamera szarpnęłaby w losowym kierunku. Ten sam problem wraca przy każdej zmianie trybu kursora (sekcja 2.6).
 
 ### 2.5 Współrzędne ekranu a piksele
 
@@ -102,7 +102,7 @@ Ta część modułu nie ma shaderów i nie ma z nimi żadnego związku.
 | [`src/core/Input.hpp`](../../../src/core/Input.hpp) | klasa `Input`. Klawiatura: `update`, `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`, stała `KEY_COUNT`. Mysz: `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setMouseBlocked`, `setCursorCaptured`, `isCursorCaptured`, stała `MOUSE_BUTTON_COUNT`. Tablice stanu, pozycja kursora i flagi |
 | [`src/core/Input.cpp`](../../../src/core/Input.cpp) | implementacja i dwa `static_assert` pilnujące `KEY_COUNT` i `MOUSE_BUTTON_COUNT` |
 | [`src/core/Application.cpp`](../../../src/core/Application.cpp) | `m_input.update()` raz na klatkę i obsługa Escape (zwolnienie kursora albo zamknięcie programu) |
-| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik: klawisze N, F i (od szóstej części M7) M, kliknięcie, przechwycenie kursora i przesunięcie myszy w `onRender`, klawisze ruchu w `onUpdate` ([`README.md`](README.md), sekcje 6.5 i 6.6, [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5, [`../game/player.md`](../game/player.md), sekcja 5) |
+| [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) | użytkownik: klawisze N, F, E (od M8, części 2) i (od szóstej części M7) M, pozycja kursora (`cursorPosition`) do promienia wskazywania, kliknięcie, przechwycenie kursora i przesunięcie myszy w `onRender`, klawisze ruchu w `onUpdate` ([`README.md`](README.md), sekcje 6.5 i 6.6, [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5, [`../game/player.md`](../game/player.md), sekcja 5) |
 | [`src/main.cpp`](../../../src/main.cpp) | przełącznik paneli (`GLFW_KEY_GRAVE_ACCENT`, chowa panele, ale nie HUD), ustawianie blokady klawiatury i myszy, wyłączanie myszy w ImGui na czas przechwycenia kursora |
 
 ### 5.2 `update`: migawka klawiatury i myszy
@@ -339,11 +339,12 @@ Dzięki odświeżaniu klawisz wciśnięty w czasie blokady jest po jej zdjęciu 
 | R | `GLFW_KEY_R` (stała `RESTART_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender` w [`NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), zaraz po prośbie o nowy labirynt | zaczyna rundę od nowa na tym samym labiryncie (`beginRound()`). Ten sam skutek ma flaga `GameplaySettings::restart`, którą ustawia przycisk `Restart round (key R)` panelu Gameplay: oba warunki stoją w jednym `if`. Działa także przy wolnym kursorze i po wygranej ([`../game/gameplay.md`](../game/gameplay.md)) |
 | N | `GLFW_KEY_N` (stała `NOCLIP_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender`, pod klawiszem R | przełącza `m_player.noclip`: chodzenie z kolizjami albo lot bez kolizji. Działa także przy wolnym kursorze |
 | F | `GLFW_KEY_F` (stała `FLASHLIGHT_KEY`) | `wasKeyPressed` | `NightMazeApp::onRender`, tuż pod klawiszem N | przełącza `m_lighting.flashlightOn`: latarka gracza świeci albo nie. Działa także przy wolnym kursorze ([`../game/flashlight.md`](../game/flashlight.md)). Przy pustej baterii klawisz nadal ustawia pole, ale najbliższy stały krok (`updateRound`) je gasi, a klatka i tak jest rysowana bez latarki (`lightingForFrame`) |
+| E | `GLFW_KEY_E` (stała `INTERACT_KEY`, od M8, części 2) | `wasKeyPressed` | `NightMazeApp::handleInteraction`, wołana z `onRender` | używa tego, na co wskazuje promień: pociąga dźwignię, czyta kartkę albo zamyka kartę. Działa przy przechwyconym i przy wolnym kursorze. Lewy przycisk myszy robi to samo (reguły niżej) |
 | W, S, A, D | `GLFW_KEY_W`, `GLFW_KEY_S`, `GLFW_KEY_A`, `GLFW_KEY_D` | `isKeyDown` | `NightMazeApp::onUpdate`, tamże | pola `forward`, `backward`, `left`, `right` struktury `PlayerInput`, tylko przy przechwyconym kursorze |
 | spacja | `GLFW_KEY_SPACE` | `isKeyDown` | `NightMazeApp::onUpdate` | pole `up`: w górę, używane tylko w trybie noclip |
 | lewy Shift | `GLFW_KEY_LEFT_SHIFT` | `isKeyDown`, dwa razy | `NightMazeApp::onUpdate` | pola `down` (noclip: w dół) i `sprint` (chodzenie: bieg). Gracz czyta to pole, które należy do jego trybu |
 
-Wszystkie pytania przechodzą przez `Input`, więc wszystkie podlegają blokadzie. Pięć pierwszych to zbocza i stoi w kodzie wykonywanym raz na klatkę. Klawisze ruchu to stan ciągły, czytany w każdym kroku symulacji.
+Wszystkie pytania przechodzą przez `Input`, więc wszystkie podlegają blokadzie. Pięć pierwszych (E to szósty) to zbocza i stoi w kodzie wykonywanym raz na klatkę. Klawisze ruchu to stan ciągły, czytany w każdym kroku symulacji.
 
 Klawisze ruchu nie trafiają do gracza wprost. `onUpdate` wpisuje je do struktury `game::PlayerInput` (siedem pól `bool`) i dopiero ją przekazuje do `Player::update`:
 
@@ -450,7 +451,50 @@ double Input::mouseDeltaY() const {
 
 Operator `? :` zwraca zero przy zablokowanej myszy, a inaczej zapamiętane przesunięcie. Typ to `double`, bo taki typ podaje GLFW (pozycja kursora może mieć część ułamkową). Dodatnie `mouseDeltaX` to ruch w prawo, dodatnie `mouseDeltaY` to ruch **w dół**.
 
-`Input` celowo nie ma funkcji zwracającej pozycję kursora ani obsługi kółka myszy: nic w projekcie ich nie potrzebuje.
+`Input` nie ma obsługi kółka myszy: nic w projekcie jej nie potrzebuje. Pozycję kursora ma od M8, części 2 (następna podsekcja).
+
+#### 5.8.1 Pozycja kursora: `cursorPosition` i `CursorPosition` (M8, część 2)
+
+```cpp
+struct CursorPosition {
+    bool valid = false;   // false while the mouse is blocked
+    double x = 0.0;
+    double y = 0.0;
+};
+
+CursorPosition Input::cursorPosition() const {
+    if (m_mouseBlocked) {
+        return {};
+    }
+    return {.valid = true, .x = m_cursorX, .y = m_cursorY};
+}
+```
+
+| Element | Znaczenie |
+|---|---|
+| `m_cursorX`, `m_cursorY` | pozycja zapamiętana przez `update` w tej klatce (te same pola, z których liczy się przesunięcie). Funkcja więc nie woła GLFW: oddaje to, co `update` odczytał raz na klatkę |
+| `valid` równe `false` | mysz jest zablokowana dla gry, czyli kursor jest nad panelem ImGui (sekcja 5.10). Ta sama zasada co dla przycisków: kursor nad panelem nie wskazuje niczego w scenie. `x` i `y` nie mają wtedy znaczenia |
+| jednostki | współrzędne ekranu, jak w sekcji 2.5: jednostki rozmiaru **okna**, początek w lewym górnym rogu, y w dół |
+| przechwycony kursor | pozycja jest wirtualna i bez granic, nie mówi nic o miejscu w oknie (sekcja 2.6). Gra w takim trybie w ogóle jej nie czyta: promień idzie przez środek obrazu |
+
+**Z czym ją łączyć.** Komentarz w nagłówku mówi to wprost: z rozmiarem **okna** (`core::Window::windowSize`), nigdy z rozmiarem framebuffera. Na ekranie Retina oba się różnią (sekcja 2.5), więc pozycja podzielona przez rozmiar framebuffera wskazywałaby złe miejsce. `NightMazeApp::pickForFrame` dzieli ją przez rozmiar okna.
+
+**Czego nie sprawdzono.** Na macOS (Retina) pozycja kursora i rozmiar okna nie były uruchamiane. Na Windowsie, przy skali ekranu 1, okno i framebuffer mają ten sam rozmiar, więc błąd w doborze jednostek nie byłby tam widoczny: to ryzyko na liście macOS.
+
+### 5.12 Klawisz E i reguły kliknięcia w grze (M8, część 2)
+
+`NightMazeApp` czyta nowy klawisz `INTERACT_KEY = GLFW_KEY_E` (`wasKeyPressed`, raz na klatkę w `onRender`, w `handleInteraction`) i lewy przycisk myszy (`wasMouseButtonPressed`). Reguły, z kodu:
+
+| Sytuacja | Co się dzieje |
+|---|---|
+| E albo kliknięcie, a wynik wskazywania ma działanie (pociągnięcie dźwigni, przeczytanie kartki, zamknięcie karty) | gra to robi. Dotyczy kursora przechwyconego **i** wolnego: E działa na to, w co trafia promień, także przy wolnym kursorze |
+| kliknięcie przy **wolnym** kursorze, a nie ma czego użyć | przechwytuje kursor (`setCursorCaptured(true)`), jak przed M8 |
+| kliknięcie przy wolnym kursorze **na** dźwigni albo kartce | używa jej i **nie** przechwytuje kursora |
+| karta kartki jest otwarta | działanie to zawsze `CloseNote`, także gdy nie ma promienia, więc kliknięcie zamyka kartę i nie przechwytuje kursora |
+| kursor nad panelem ImGui (mysz zablokowana) | nie ma promienia, kliknięcie nie dociera do gry (blokada, sekcja 5.10) |
+| kursor poza oknem albo okno o rozmiarze 0 | nie ma promienia |
+
+Blok obrotu kamery myszą stoi teraz **przed** zbudowaniem macierzy widoku, żeby obraz i promień tej klatki używały tych samych kątów (macierze widoku i rzutowania są liczone wcześniej niż dotąd). Ta zmiana nie dotyczy `Input`. Szczegóły: [`../scene/picking.md`](../scene/picking.md) i [`../game/interactables.md`](../game/interactables.md).
 
 ### 5.9 Przechwycenie kursora: `setCursorCaptured`
 
@@ -612,7 +656,8 @@ Mysz sprawdza się na kamerze, z otwartym panelem Camera ([`../scene/camera-cont
 
 | Co zrobić | Co obserwować |
 |---|---|
-| Kliknąć lewym przyciskiem w scenę | Kursor znika: `wasMouseButtonPressed` i `setCursorCaptured(true)` |
+| Kliknąć lewym przyciskiem w scenę (nie na dźwigni ani kartce) | Kursor znika: `wasMouseButtonPressed` i `setCursorCaptured(true)`. Kliknięcie na dźwigni albo kartce używa jej i kursora nie przechwytuje (od M8, części 2) |
+| Nacisnąć E, patrząc na dźwignię w zasięgu | Linia `Levers: 1 pulled of N` w panelu Gameplay, `wasKeyPressed` w `onRender`. Nikt z właścicieli tego jeszcze nie sprawdził |
 | Poruszać myszą przy przechwyconym kursorze | Wartości `Yaw` i `Pitch` w panelu Camera zmieniają się: `mouseDeltaX` i `mouseDeltaY` |
 | Kręcić myszą długo w jedną stronę | `Yaw` rośnie bez końca (zawijając się przez 360): pozycja wirtualna nie zatrzymuje się na krawędzi ekranu |
 | Przytrzymać W przy przechwyconym kursorze | `Player feet` i `Eye` w panelu się zmieniają, aż gracz dojdzie do ściany: `isKeyDown` |
@@ -640,7 +685,7 @@ Surowe wartości można podejrzeć kodem z ćwiczenia 4.
 9. **Zamiana kolejności `pollEvents` i `update`.** `glfwGetKey`, `glfwGetMouseButton` i `glfwGetCursorPos` oddają stan z ostatniego `glfwPollEvents`, więc `update` przed `pollEvents` widziałby wejście z opóźnieniem jednej klatki.
 10. **Skok kursora przy zmianie trybu.** Po `glfwSetInputMode(..., GLFW_CURSOR, ...)` pozycja kursora może odskoczyć. Bez `m_skipNextMouseDelta` pierwsza klatka po przechwyceniu albo zwolnieniu dałaby jedno ogromne przesunięcie. To samo przy pierwszym `update` po starcie.
 11. **Blokada myszy spóźnia się o klatkę.** Tak jak przy klawiaturze, nowa wartość `setMouseBlocked` działa od następnej klatki. Kliknięcie, które trafia w panel w tej samej klatce, w której kursor na niego najechał, gra może jeszcze zobaczyć: kamera przechwyciłaby wtedy kursor mimo kliknięcia w panel. Wymaga to najechania i kliknięcia w ciągu jednej klatki (kilkunastu milisekund), a skutek cofa jeden Escape.
-12. **Retina: mysz jest we współrzędnych ekranu.** Przesunięcie jest liczone w jednostkach rozmiaru okna, nie w pikselach framebuffera. Na ekranie 2x ruch przez całe okno 1280 x 720 daje 1280, a nie 2560. Mieszanie tych jednostek z `framebufferSize()` daje wynik dwukrotnie za mały albo za duży.
+12. **Retina: mysz jest we współrzędnych ekranu.** (Od M8, części 2 dotyczy to też `cursorPosition`: dziel ją przez `windowSize()`, nie przez `framebufferSize()`.) Przesunięcie jest liczone w jednostkach rozmiaru okna, nie w pikselach framebuffera. Na ekranie 2x ruch przez całe okno 1280 x 720 daje 1280, a nie 2560. Mieszanie tych jednostek z `framebufferSize()` daje wynik dwukrotnie za mały albo za duży.
 13. **Oś y myszy rośnie w dół.** Ruch myszy do góry daje ujemne `mouseDeltaY`. Kod kamery odwraca znak (`-static_cast<float>(input().mouseDeltaY())`), żeby ruch do góry podnosił wzrok.
 14. **Własny callback myszy.** `glfwSetCursorPosCallback` albo `glfwSetMouseButtonCallback` ustawione po utworzeniu `DebugUI` podmieniają callbacki backendu ImGui i panele przestają reagować na mysz. Dlatego mysz jest odpytywana.
 15. **Przechwycony kursor a panele ImGui.** Backend GLFW biblioteki ImGui w trybie `GLFW_CURSOR_DISABLED` nie zmienia kształtu kursora, ale pozycję kursora nadal przekazuje do ImGui (jest to wtedy pozycja wirtualna). Niewidoczny kursor mógłby więc "najechać" na panel i ustawić `WantCaptureMouse`, blokada myszy wyzerowałaby przesunięcie i kamera przestałaby się obracać, a kliknięcie trafiłoby w niewidoczny widżet. Rozwiązanie: `main.cpp` woła przed `draw` `m_debugUI.setMouseEnabled(!input().isCursorCaptured());`, czyli na czas przechwycenia wyłącza mysz w ImGui flagą `ImGuiConfigFlags_NoMouse` (sekcja 5.11). Kto przenosi ten kod do innego programu i zapomni o tej linii, dostanie kamerę, która zacina się, gdy niewidoczny kursor przechodzi nad panelem.

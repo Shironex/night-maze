@@ -9,6 +9,8 @@
 #include "game/GameplayRenderer.hpp"
 #include "game/Grass.hpp"
 #include "game/GrassRenderer.hpp"
+#include "game/InteractableRenderer.hpp"
+#include "game/Interaction.hpp"
 #include "game/LightRig.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
@@ -62,6 +64,12 @@ namespace game {
 /// flashlight, and when enough of them are collected the gate of the exit opens.
 /// Walking through it wins the round. The rules are in game/Round.hpp, this class feeds
 /// them the position of the player and draws their state.
+///
+/// On the walls hang levers and notes. In every frame a ray is cast from the eye through
+/// the middle of the picture (or through the free cursor), and the lever or the note it
+/// hits is highlighted: object picking by ray casting. The key E or a click pulls the
+/// lever, which lowers a wall somewhere in the maze, or opens the card of the note. The
+/// rules are in game/Interaction.hpp, this class builds the ray and reads the key.
 ///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels and the HUD on top of the frame.
@@ -238,6 +246,15 @@ protected:
     /// UI can switch it live.
     bool& drawColliders() { return m_drawColliders; }
 
+    /// The picking of the last frame (the ray, what it hit and what the interaction key
+    /// does), read only: the HUD shows the crosshair and the prompt from it, the debug UI
+    /// its numbers.
+    const PickState& pick() const { return m_pick; }
+
+    /// The switches of the debug view of the picking (draw the pick boxes and the ray,
+    /// freeze the drawn ray), exposed so the debug UI can switch them live.
+    PickDebugSettings& pickDebug() { return m_pickDebug; }
+
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
@@ -268,10 +285,26 @@ private:
     void layPuddles();
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
-    /// a full battery with the flashlight on, the gate closed and the player at the
-    /// start, looking down an open passage. It runs for the first maze, after every
-    /// regeneration and when the round is restarted (key R or the debug UI).
+    /// a full battery with the flashlight on, the gate closed, no lever pulled, every
+    /// wall standing and the player at the start, looking down an open passage. It runs for the
+    /// first maze, after every regeneration and when the round is restarted (key R or the debug
+    /// UI).
     void beginRound();
+
+    /// The picking ray of this frame and what it hits (game::pickInRound). The ray goes
+    /// through the middle of the picture while the cursor is captured and through the
+    /// cursor while it is free, and it is built from view and projection, the two
+    /// matrices the frame is drawn with, and from eye, the blended eye of the frame.
+    /// Without a ray (a window without a size, a cursor over a debug panel or outside
+    /// the window) the result is game::pickNothing.
+    PickState pickForFrame(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& eye,
+                           bool cursorCaptured);
+
+    /// Reads the interaction key and the left mouse button of this frame and does what
+    /// m_pick says (game::interact). A click with the free cursor that hits nothing to
+    /// interact with captures the cursor, as before. cursorCaptured is the state at the
+    /// start of the frame.
+    void handleInteraction(bool cursorCaptured);
 
     /// The shadow pass of the moon, the first pass of a frame. It fits the box of the
     /// moon to the land (m_moonLightSpace), draws the shadow casters into the shadow
@@ -294,8 +327,9 @@ private:
                                  const FlashlightPose& flashlight);
 
     /// Draws everything that casts a shadow with the depth program, as the light with
-    /// the given view and projection sees it: the terrain, the walls and the pillars,
-    /// the gate (as far as it has sunk) and the crystals. The grass casts no shadow.
+    /// the given view and projection sees it: the terrain, the walls (a wall opened by
+    /// a lever as far as it has sunk) and the pillars, the gate (as far as it has sunk),
+    /// the crystals, the levers and the notes. The grass casts no shadow.
     /// The target (a shadow map) must be bound already.
     void drawShadowCasters(const scene::LightSpace& lightSpace) const;
 
@@ -306,15 +340,24 @@ private:
     void setShadowUniformsOf(const gfx::Shader& shader) const;
 
     /// The parts of a frame. Each one selects its own shader program and sets its
-    /// uniforms. drawMaze draws the terrain and the maze together with the crystals and
-    /// the gate, and has two ways to do it: without lighting (the textured program, also
-    /// used for the debug views of the normals and the texture coordinates) and with
-    /// lighting. drawGrass draws the grass with its own program.
+    /// uniforms. drawMaze draws the terrain and the maze together with the crystals,
+    /// the gate, the levers and the notes, and has two ways to do it: without lighting (the
+    /// textured program, also used for the debug views of the normals and the texture coordinates)
+    /// and with lighting. drawGrass draws the grass with its own program.
     void drawMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawGrass(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
+
+    /// The debug view of the picking, drawn with the program of the collider lines: the
+    /// pick box of every lever and note, the box the ray hit in a colour of its own, and
+    /// the ray of m_shownPick as a line with a small sphere at its end.
+    void drawPickLines(const glm::mat4& view, const glm::mat4& projection) const;
+
+    /// Draws the levers and the notes with the given program of the maze, the picked
+    /// one highlighted (game::highlightGlow).
+    void drawInteractables(const gfx::Shader& shader) const;
 
     /// The reflection pass, after the maze and the grass and before the sky: the
     /// crystals and the puddles, drawn with the reflect program, which shows the sky on
@@ -380,6 +423,7 @@ private:
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
+    InteractableRenderer m_interactableRenderer;
     TerrainRenderer m_terrainRenderer;
     GrassRenderer m_grassRenderer;
     PuddleRenderer m_puddleRenderer;
@@ -417,11 +461,29 @@ private:
     GameplaySettings m_gameplay;
     Round m_round;
 
-    // What the player cannot walk through in this round: the boxes of the maze, plus the
-    // box of the gate while it is closed (game::roundObstacles). A copy that is rebuilt
-    // only when it changes: at the start of a round, when the gate opens and when the
-    // terrain is built again with another height scale (the boxes move up or down).
+    // What the player cannot walk through in this round: the boxes of the maze without
+    // the walls that levers have opened, plus the box of the gate while it is closed
+    // (game::roundObstacles). The picking ray is stopped by the same boxes. A copy that
+    // is rebuilt only when it changes: at the start of a round, when the gate opens, when
+    // a lever is pulled and when the terrain is built again with another height scale
+    // (the boxes move up or down).
     std::vector<scene::Aabb> m_obstacles;
+
+    // The model matrices of the walls for the frame that is being drawn
+    // (game::roundWallMatrices): a wall that a lever has opened is lower in every frame
+    // while it sinks. Built once per frame in onRender and used by the shadow passes and
+    // by the scene pass, so the shadow of a wall always fits the wall.
+    std::vector<glm::mat4> m_wallMatrices;
+
+    // The picking of this frame: the ray, what it hits and what the interaction key
+    // does. Built in onRender, read by the drawing (the highlight), the HUD and the
+    // debug UI.
+    PickState m_pick;
+    // The switches of the debug view of the picking (edited by the debug UI), and the
+    // picking that view draws: a copy of m_pick that stops following it while the
+    // "freeze" switch is set.
+    PickDebugSettings m_pickDebug;
+    PickState m_shownPick;
 
     // The player is simulation state: onUpdate moves it in fixed steps.
     Player m_player;

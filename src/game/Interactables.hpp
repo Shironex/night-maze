@@ -76,8 +76,9 @@ static_assert(NOTE_BOX_DEPTH > MOUNT_BOX_MIN_DEPTH);
 /// within reach, and one two cells away is not.
 constexpr float INTERACTION_REACH = 2.5F;
 
-/// How many levers and notes the next maze should get. The debug UI can edit the two
-/// numbers. They are read when a maze is built (placeInteractables).
+/// How many levers and notes the next maze should get. They are a field of
+/// MazeSettings, the Maze panel of the debug UI edits the two numbers, and they are read
+/// when a maze is built (buildMazeWorld calls placeInteractables).
 struct InteractableSettings {
     /// Wanted number of levers, from 0 to MAX_LEVER_COUNT. A maze gets fewer when it has
     /// fewer walls that are worth opening: a small maze often has none.
@@ -182,8 +183,9 @@ struct Note {
     int flavourIndex = 0;
 };
 
-/// Everything of a maze that can be picked. It belongs to the maze, like the crystals in
-/// MazeWorld: it does not change while a round is played.
+/// Everything of a maze that can be picked. It belongs to the maze: it is a field of
+/// MazeWorld (MazeWorld::interactables), like the crystals, and does not change while
+/// a round is played.
 struct Interactables {
     std::vector<Lever> levers;
     std::vector<Note> notes;
@@ -243,7 +245,7 @@ scene::Aabb noteBox(const glm::vec3& position, Direction side);
 void placeInteractablesOnTerrain(Interactables& interactables, const Terrain& terrain);
 
 /// The part of a round that belongs to the levers: which of them are pulled. It is
-/// a struct of its own so that it can become a field of the round later.
+/// a field of the round (Round::interactables), started again with every round.
 struct InteractableState {
     /// One entry per lever, in the order of Interactables::levers: true once pulled.
     /// A pulled lever never goes back within a round.
@@ -276,12 +278,15 @@ PullResult pullLever(InteractableState& state, const Interactables& interactable
                      std::size_t index);
 
 /// The walls that are open now: the wall of every pulled lever, in the order of the
-/// levers. The code that builds the obstacle list of a round leaves these walls out.
+/// levers. The game itself does not go through this list: game::pullRoundLever takes
+/// each wall out of the maze of the round at the moment of the pull, and
+/// game::roundObstacles finds the boxes to leave out through MazeWorld::leverWalls.
 std::vector<WallRef> openedWalls(const Interactables& interactables,
                                  const InteractableState& state);
 
 /// The wall segment of the layout that a lever opens, at y = 0: the same segment
 /// game::wallSegments lists for that wall, so it can be found there by its x and z.
+/// buildMazeWorld does that once per lever and keeps the number (MazeWorld::leverWalls).
 WallSegment openedWallSegment(const Lever& lever);
 
 /// What the picking ray points at.

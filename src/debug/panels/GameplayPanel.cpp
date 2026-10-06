@@ -58,6 +58,12 @@ void drawRoundState(const game::Round& round) {
     } else {
         ImGui::TextUnformatted("Gate: open");
     }
+
+    // The levers of the maze and how many of them are pulled. Each pulled lever is one
+    // wall that is open. The state has one entry per lever.
+    ImGui::Text("Levers: %d pulled of %d", game::pulledLeverCount(round),
+                static_cast<int>(round.interactables.leverPulled.size()));
+    ImGui::Text("Note card: %s", round.noteOpen ? "open" : "closed");
 }
 
 // The battery: its charge can be dragged, to look at a low and at an empty battery.
@@ -98,6 +104,12 @@ void drawGameplayPanel(game::Round& round, game::GameplaySettings& settings) {
         // asks: the game starts the round at the start of its next frame.
         if (ImGui::Button("Restart round (key R)")) {
             settings.restart = true;
+        }
+        // A switch for testing: opens every shortcut without walking to the levers. The
+        // panel only asks here too. A restart closes the walls again.
+        ImGui::SameLine();
+        if (ImGui::Button("Pull all levers")) {
+            settings.pullAllLevers = true;
         }
 
         ImGui::Separator();

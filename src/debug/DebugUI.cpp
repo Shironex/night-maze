@@ -19,6 +19,7 @@
 #include "debug/panels/ShadersPanel.hpp"
 #include "debug/panels/ShadowsPanel.hpp"
 #include "debug/panels/TerrainPanel.hpp"
+#include "game/Interaction.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Minimap.hpp"
@@ -141,7 +142,8 @@ void DebugUI::draw(const DebugContext& context) {
                           .drawn = context.flashlightShadowDrawn});
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                       context.camera);
-        drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);
+        drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders,
+                           context.pick, context.pickDebug);
         drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping,
                         m_rawTextureSampler);
         drawLightsPanel(context.lighting, context.round);
@@ -150,7 +152,7 @@ void DebugUI::draw(const DebugContext& context) {
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not
     // the panels are visible.
-    drawHud(context.round, context.gameplay);
+    drawHud(context.mazeWorld, context.round, context.gameplay, context.pick);
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
     ImGui::Render();

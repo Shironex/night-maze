@@ -13,7 +13,7 @@ końcu zapisuje plik OBJ. Polecenia dla Windowsa z sekcji 3 zostały uruchomione
 
 Polecenia dla macOS (sekcja 3) **nie były jeszcze uruchomione na Macu**.
 
-Stan: skrypty, pięć modeli, osiem tekstur i mapa wysokości terenu są w repozytorium. Dwa
+Stan: skrypty, osiem modeli, czternaście tekstur i mapa wysokości terenu są w repozytorium. Dwa
 modele kamienne (ściana i słup) i tekstury kamienia ściany pochodzą z M2 + M3 i M4: obraz
 koloru i, od drugiej części M4, **mapa normalnych** (normal map). M5
 (rozgrywka) dołożyło trzy modele, dwa kryształy i bramę, oraz cztery tekstury: obraz koloru
@@ -30,9 +30,9 @@ i [`../decisions/floor-tiles-retired.md`](../decisions/floor-tiles-retired.md).
 Istnieje też kod C++, który wczytuje pliki OBJ i MTL: własny parser `assets::loadObj`
 ([`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md)). Jego testy wczytują
 dwa modele kamienne i sprawdzają ich liczby i wymiary z sekcji 8. Modeli z M5 testy loadera
-nie wczytują. Gra używa wszystkich tych plików: przy starcie wczytuje pięć modeli, osiem
-tekstur i mapę wysokości, z kamiennych modeli buduje labirynt, z pozostałych kryształy i bramę
-przy wyjściu, a z mapy wysokości teren pod nimi
+nie wczytują. Gra używa wszystkich tych plików: przy starcie wczytuje osiem modeli, czternaście
+tekstur i mapę wysokości, z kamiennych modeli buduje labirynt, z pozostałych kryształy, bramę
+przy wyjściu, dźwignie i kartki (M8, część 2: sekcja 8.3), a z mapy wysokości teren pod nimi
 ([`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md),
 [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md),
 [`../modules/game/gameplay.md`](../modules/game/gameplay.md)). Sekcja 5 opisuje
@@ -92,14 +92,16 @@ Pliki skryptów:
 | Plik | Co robi |
 |---|---|
 | [`blender_common.py`](../../tools/blender/blender_common.py) | wspólne funkcje: czyszczenie sceny, budowanie prostopadłościanu, UV (rzut pudełkowy `box_project_uvs` i, od M5, rzut na płaszczyznę ściany `face_project_uvs`), materiał z teksturą i mapą normalnych, eksport, rendery kontrolne |
-| [`make_textures.py`](../../tools/blender/make_textures.py) | generuje cztery obrazy koloru (`wall_stone.png`, `ground.png`, `gate_wood.png`, `crystal.png`) i do każdego mapę normalnych o tej samej nazwie z końcówką `_normal`. Do M6 drugim obrazem był `floor_stone.png` |
+| [`make_textures.py`](../../tools/blender/make_textures.py) | generuje siedem obrazów koloru (`wall_stone.png`, `ground.png`, `gate_wood.png`, `crystal.png`, od M8 także `lever_iron.png`, `lever_brass.png` i `note_paper.png`) i do każdego mapę normalnych o tej samej nazwie z końcówką `_normal`. Do M6 drugim obrazem był `floor_stone.png` |
 | [`build_wall_straight.py`](../../tools/blender/build_wall_straight.py) | model odcinka ściany |
 | [`build_wall_pillar.py`](../../tools/blender/build_wall_pillar.py) | model słupa |
 | [`build_crystal.py`](../../tools/blender/build_crystal.py) | dwa modele kryształów w jednym skrypcie: `crystal_a` i `crystal_b` (sekcja 8.1) |
 | [`build_gate.py`](../../tools/blender/build_gate.py) | model bramy przy wyjściu (sekcja 8.2) |
+| [`build_lever.py`](../../tools/blender/build_lever.py) | od M8, część 2: dwa modele dźwigni w jednym skrypcie, `lever` (płytka) i `lever_handle` (rączka) (sekcja 8.3) |
+| [`build_note.py`](../../tools/blender/build_note.py) | od M8, część 2: model kartki na ścianie (sekcja 8.3) |
 | [`make_skybox.py`](../../tools/blender/make_skybox.py) | od M6: generuje sześć ścian nieba, `px.png`, `nx.png`, `py.png`, `ny.png`, `pz.png` i `nz.png`, do `assets/skybox/` (sekcja 7.7) |
 | [`make_heightmap.py`](../../tools/blender/make_heightmap.py) | od M6: generuje mapę wysokości terenu, `heightmap.png`, do `assets/textures/` (sekcja 7.9) |
-| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele w kolejności ściana, słup, kryształy, brama, potem niebo, na końcu mapę wysokości |
+| [`make_all.py`](../../tools/blender/make_all.py) | uruchamia wszystko po kolei: najpierw tekstury, potem modele w kolejności ściana, słup, kryształy, brama, dźwignia, kartka, potem niebo, na końcu mapę wysokości |
 | [`.gitignore`](../../tools/blender/.gitignore) | pomija katalog `__pycache__`, który Python tworzy przy imporcie modułów |
 
 ## 2. Konwencje
@@ -1385,6 +1387,11 @@ Wymiary są w układzie gry i zostały odczytane z linii `v` gotowych plików.
 | `crystal_a` | `build_crystal.py` | od -0.105 do 0.105 | od 0 do 0.5 | od -0.091 do 0.091 | 24 | `crystal.png` | `crystal_normal.png` |
 | `crystal_b` | `build_crystal.py` | od -0.179 do 0.217 | od 0 do 0.5 | od -0.151 do 0.119 | 66 | `crystal.png` | `crystal_normal.png` |
 | `gate` | `build_gate.py` | od -1 do 1 | od 0 do 2.75 | od -0.06 do 0.06 | 70 | `gate_wood.png` | `gate_wood_normal.png` |
+| `lever` | `build_lever.py` | od -0.08 do 0.08 | od -0.15 do 0.15 | od 0 do 0.07 | 52 | `lever_iron.png` | `lever_iron_normal.png` |
+| `lever_handle` | `build_lever.py` | od -0.035 do 0.035 | od -0.035 do 0.035 | od 0 do 0.2 | 20 | `lever_brass.png` | `lever_brass_normal.png` |
+| `note` | `build_note.py` | od -0.15 do 0.15 | od -0.2 do 0.2 | od 0.004 do 0.012 | 10 | `note_paper.png` | `note_paper_normal.png` |
+
+Wymiary kartki są ze stałych skryptu (arkusz 0,30 x 0,40 m, tył 4 mm i przód 12 mm od ściany), a 10 trójkątów to pięć widocznych ścian pudełka po dwa trójkąty (policzone z kodu skryptu, nie z pliku). Wymiary i trójkąty dźwigni po przeróbce modelu zostaną dopisane.
 
 Liczba linii `v` (pozycji) w plikach z M5: `crystal_a.obj` 14, `crystal_b.obj` 39, `gate.obj`
 56. To nie jest liczba wierzchołków w grze: loader składa wierzchołek z trójki indeksów
@@ -1409,6 +1416,8 @@ nie ma w tabeli wyżej, bo nie należą do żadnego modelu:
 | `ground.png` | `make_textures.py` | 512 x 512, RGB | `game::TerrainRenderer`, przez `assets::AssetCache` |
 | `ground_normal.png` | `make_textures.py` | 512 x 512, RGB | `game::TerrainRenderer`, przez `assets::AssetCache` |
 | `heightmap.png` | `make_heightmap.py` | 256 x 256, RGB z trzema równymi kanałami | `loadHeightmap` w `src/game/NightMazeApp.cpp`, poza pamięcią podręczną |
+
+Po M8, części 2 (selekcja, dźwignie i kartki) pliki wynikowe to: osiem `.obj`, osiem `.mtl`, czternaście tekstur 512 x 512 i mapa wysokości, razem trzydzieści jeden. Doszły trzy modele (`lever`, `lever_handle`, `note`) i sześć tekstur: `lever_iron`, `lever_brass` i `note_paper`, każda z mapą normalnych (sekcja 8.3). Trzy modele wczytuje `game::InteractableRenderer` przez `assets::AssetCache::model`. Kod loaderów się nie zmienił.
 
 Pierwsza część M6 dołożyła sześć plików innego rodzaju: obrazy nieba w `assets/skybox/`
 (1024 x 1024, RGB, razem 5 278 627 bajtów). Nie należą do żadnego modelu i nie ma ich w
@@ -1627,6 +1636,85 @@ chowają się w słupach tak jak końce ściany. Gdy brama się otwiera, gra obn
 odejmując od wysokości odcinka aż do `GATE_SINK_DEPTH = 3.3` m, więcej niż 2.75 m wysokości
 modelu ([`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcje 2 i 5).
 
+### 8.3 Dźwignia i kartka: `build_lever.py` i `build_note.py`
+
+Trzy modele z "M8, część 2: selekcja, dźwignie i kartki": `lever` (płytka dźwigni), `lever_handle`
+(rączka) i `note` (kartka). Wiszą na ścianie, więc mają **wspólną konwencję**, inną niż ściana i
+brama:
+
+- początek układu leży **w środku tyłu** modelu, w punkcie przymocowanym do ściany,
+- tył leży w płaszczyźnie `z = 0` (układ gry; w kartce płaszczyzna `z = 0` to powierzchnia ściany, a tył arkusza stoi 4 mm przed nią), a model wystaje wzdłuż **+Z**, czyli od ściany do
+  wnętrza komórki. To model rzeczy wiszącej na ścianie **północnej**; na pozostałe strony komórki gra
+  obraca go wokół osi pionowej (`mountModelMatrix` w `src/game/Interaction.cpp`),
+- w Blenderze oś głębi jest odwrócona: oś `+Z` gry to oś `-Y` Blendera (eksporter zamienia punkt
+  Blendera `(x, y, z)` na punkt gry `(x, z, -y)`, sekcja 5.2), dlatego w obu skryptach każda głębia
+  jest zapisana ze znakiem minus przed współrzędną Y.
+
+**Dlaczego rączka jest osobnym modelem.** `game::drawModel` rysuje wszystkie części modelu jedną
+macierzą. Płytka wisi nieruchomo, a rączka obraca się wokół osi, więc rączka musi mieć własną
+macierz, a to znaczy własny model. Początek `lever_handle` jest osią obrotu rączki. Rączka jest
+jedną macierzą na dźwignię (`leverHandleMatrix`), płytka drugą (`mountModelMatrix`). Opis rysowania:
+[`../modules/game/interactables.md`](../modules/game/interactables.md).
+
+**Dwa materiały dźwigni.** Płytka to ciemne żelazo (`lever_iron.png`, `lever_iron_normal.png`), rączka
+to jasny mosiądz (`lever_brass.png`, `lever_brass_normal.png`), żeby rączkę dało się odróżnić od
+płytki, a oba od kamiennej ściany. Wymiary (ze skryptu i z plików `.obj`):
+płytka ma 0,16 x 0,30 m i 0,02 m grubości, na jej froncie stoi rama z czterech listew po 0,02 m
+(front listew 0,04 m od ściany), a w środku obudowa osi 0,06 x 0,08 m, której front jest 0,07 m od
+ściany (52 trójkąty). Rączka to pręt 0,03 x 0,03 m i 0,14 m długości od osi oraz gałka 0,07 x 0,07 m
+od 0,13 do 0,20 m od osi (20 trójkątów). Stała zależna od modelu w kodzie gry to `LEVER_PIVOT_DEPTH`
+(0,05 m) w `src/game/Interaction.hpp`: oś obrotu leży w obudowie, która sięga od 0,02 do 0,07 m.
+Kąty rączki to -55 i +55 stopni (`LEVER_HANDLE_UP_DEGREES`, `LEVER_HANDLE_DOWN_DEGREES`): przy 55
+stopniach gałka leży w pozycji górnej około 0,09 do 0,18 m nad osią, a płytka kończy się na 0,15 m.
+Skrypt sprawdza (`check_pick_box`), że płytka i rączka w skrajnym położeniu mieszczą się w
+pudełku wskazywania 0,3 x 0,4 x 0,25 m; gałka sięga w głąb dokładnie do 0,25 m, gdy wskazuje prosto
+ze ściany.
+
+**UV dźwigni: 0,5 m na jednostkę.** Skrypt używa `common.face_project_uvs(model.data,
+METRES_PER_UV_UNIT)` ze stałą `METRES_PER_UV_UNIT = 0.5` (sekcja 6.2). Jedno powtórzenie tekstury
+obejmuje więc 0,5 m, a nie 2 m jak na ścianach. Komentarz w skrypcie podaje powód: przy 2 m na
+powtórzenie niewielka płytka dźwigni pokazywałaby tylko mały, rozmyty róg obrazu. Rzut pudełkowy
+(`box_project_uvs`) dałby dla tych pudełek to samo, ale tylko z gęstością ścian. Obie tekstury
+dźwigni kafelkują się jak tekstury ściany.
+
+**Kartka: `note.obj`.** Cienkie pudełko: arkusz papieru 0,30 m szeroki i 0,40 m wysoki
+(`HALF_WIDTH = 0.15`, `HALF_HEIGHT = 0.20`), którego tył leży 4 mm od ściany (`BACK_DISTANCE =
+0.004`, żeby nie migotał razem ze ścianą: z-fighting), a przód 12 mm od ściany
+(`FRONT_DISTANCE = 0.012`), więc arkusz ma 8 mm grubości. Prawdziwy papier jest dużo cieńszy, ale
+wtedy nie byłoby widać jego krawędzi z boku. Skrypt pomija ścianę tyłu (`skip=("+y",)`), której nikt
+nie widzi. Arkusz mieści się w pudełku wskazywania kartki z `src/game/Interactables.hpp`.
+
+**UV kartki: cały obraz raz.** `note_uvs` nie używa pomocników z `blender_common`, które powtarzają
+teksturę co kilka metrów. Przód arkusza dostaje cały obraz dokładnie raz (`u` i `v` to położenie na
+arkuszu jako ułamek od 0 do 1), a każda z czterech krawędzi cienki pasek (`EDGE_STRIP = 0.02`, około
+10 z 512 pikseli). Obraz jest kwadratowy, a arkusz nie, więc obraz jest pokazany nieco węższy, niż
+go namalowano, a linie atramentu zostają poziome. Z tego wynika, że **`note_paper.png` nie jest
+kafelkowany**: jego linie atramentu nie muszą się łączyć na krawędziach. Szum papieru nadal się
+zawija, bo pochodzi z tych samych pomocników co szum innych tekstur.
+
+**Tekstury: `make_textures.py`.** Doszły funkcje `metal_pattern`, `metal_color`, `metal_height`
+(żelazo i mosiądz), `paper_pattern`, `paper_color`, `paper_height` (papier) oraz
+`build_lever_textures` i `build_note_textures` (wołane z `build_interactable_textures`). Wszystkie
+**czternaście** tekstur gry ma 512 x 512 pikseli, 8 bitów na kanał, RGB (było osiem). Linie atramentu
+kartki są rysowane na obrazie ze stałymi z komentarzami w skrypcie (marginesy, odstęp 40 pikseli,
+osiem odstępów, losowy koniec linii od 55 procent szerokości do pełnej); jeden piksel to około 0,6 mm
+na szerokość i 0,8 mm na wysokość arkusza.
+
+**Jak były uruchamiane.** Oba skrypty uruchamia się tak samo jak pozostałe (sekcja 3), z korzenia
+repozytorium, w tej samej konfiguracji co w tabeli na początku (Blender 5.2.1):
+
+```text
+blender --background --factory-startup --python tools/blender/build_lever.py
+blender --background --factory-startup --python tools/blender/build_note.py
+```
+
+Z `-- --shots` na końcu każdy zapisuje też rendery kontrolne do folderu tymczasowego (sekcja 3).
+`build_lever.py` pisze `lever.obj`, `lever.mtl`, `lever_handle.obj` i `lever_handle.mtl`,
+`build_note.py` pisze `note.obj` i `note.mtl`. Oba są dopisane do `make_all.py` (import i wywołanie
+`build(shots)`), więc `make_all.py` buduje także je. **Uruchomił je agent, który pisał kod** (zgłoszone
+przez autora, nie powtarzałem): pliki są w repozytorium jako nieśledzone w chwili pisania tego
+rozdziału. Wygląd dźwigni nie jest ostateczny.
+
 ## 9. Blender MCP
 
 Blenderem można też sterować na żywo z Claude Code, przez oficjalny serwer MCP z Blender Lab
@@ -1779,6 +1867,8 @@ wywołania w `build()` skryptu tekstur, przypadek testowy loadera i wiersz tabel
   [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md)
 - Testy map normalnych na prawdziwych plikach:
   [`../modules/assets/images.md`](../modules/assets/images.md)
+- Dźwignie i kartki w grze (rysowanie, macierze montażu i rączki):
+  [`../modules/game/interactables.md`](../modules/game/interactables.md)
 - Struktura repozytorium: [`project-structure.md`](project-structure.md)
 - Skąd program bierze katalog `assets`: [`../modules/core/paths.md`](../modules/core/paths.md)
 - Dokumentacja Blendera, API Pythona: <https://docs.blender.org/api/current/>

@@ -24,6 +24,8 @@ struct MazeSettings;
 struct MazeWorld;
 class MinimapRenderer;
 struct MinimapSettings;
+struct PickDebugSettings;
+struct PickState;
 struct Player;
 class PostProcess;
 struct PostProcessSettings;
@@ -74,7 +76,8 @@ struct DebugContext {
     gfx::Shader& colorShader;
     /// The player, editable: position, speeds and the noclip mode.
     game::Player& player;
-    /// Request for the next maze, editable: size, seed and the "regenerate" flag.
+    /// Request for the next maze, editable: size, seed, the wanted numbers of levers and
+    /// notes and the "regenerate" flag.
     game::MazeSettings& mazeSettings;
     /// The maze in play, read only: its plan, its collision boxes and its terrain.
     const game::MazeWorld& mazeWorld;
@@ -93,7 +96,8 @@ struct DebugContext {
     /// The lighting mode, the settings of every light and the normal mapping switch,
     /// editable.
     game::LightingSettings& lighting;
-    /// The numbers of the rules of a round and the request for a restart, editable.
+    /// The numbers of the rules of a round and the requests for a restart and for
+    /// pulling every lever, editable.
     game::GameplaySettings& gameplay;
     /// The round in play: the HUD and the panels show it. Editable for one thing, the
     /// charge of the battery (the Gameplay panel).
@@ -172,6 +176,13 @@ struct DebugContext {
     /// How many puddles lie in the maze. A plain number, copied when the context is
     /// built: the panels only show it.
     std::size_t puddleCount;
+    /// The picking of the last frame, read only: the ray, the lever or the note it hit
+    /// and what the interaction key does. The HUD draws the crosshair and the prompt
+    /// from it, the Collision panel shows its numbers.
+    const game::PickState& pick;
+    /// The switches of the debug view of the picking (draw the pick boxes and the ray,
+    /// freeze the drawn ray), editable.
+    game::PickDebugSettings& pickDebug;
 };
 
 } // namespace debug

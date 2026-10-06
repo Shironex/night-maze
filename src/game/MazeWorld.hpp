@@ -3,6 +3,7 @@
 #pragma once
 
 #include "game/Crystals.hpp"
+#include "game/Interactables.hpp"
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/Terrain.hpp"
@@ -10,6 +11,7 @@
 
 #include <glm/glm.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 #include <vector>
@@ -24,7 +26,7 @@ constexpr std::uint32_t DEFAULT_MAZE_SEED = 1;
 /// The start cell of every maze: its north-west corner. The player starts in its centre.
 constexpr MazeCell START_CELL{.x = 0, .z = 0};
 
-/// What the next maze should be like. The debug UI edits the three numbers and sets
+/// What the next maze should be like. The debug UI edits the numbers and sets
 /// regenerate. The application reads the request at the start of the next frame, builds
 /// the maze and clears the flag. A plain struct: the panel only writes data, and the
 /// application decides when the maze is replaced.
@@ -35,6 +37,10 @@ struct MazeSettings {
 
     /// Seed of the generator: the same size and seed always give the same maze.
     std::uint32_t seed = DEFAULT_MAZE_SEED;
+
+    /// How many levers and notes the maze should get (see game/Interactables.hpp). They
+    /// are placed when the maze is built, so a new number shows after "regenerate" too.
+    InteractableSettings interactables;
 
     /// True when a new maze was asked for and has not been built yet.
     bool regenerate = false;
@@ -104,6 +110,16 @@ struct MazeWorld {
     /// The crystals of the maze, chosen from its seed (game::placeCrystals). Which of
     /// them are already collected is not stored here: that is the state of a round.
     std::vector<CrystalSpawn> crystals;
+
+    /// The levers and the notes of the maze, chosen from its seed
+    /// (game::placeInteractables) and hanging at the height of the terrain. Which levers
+    /// are pulled is not stored here: that is the state of a round.
+    Interactables interactables;
+
+    /// For every lever, in the order of Interactables::levers: the number of the wall it
+    /// opens in walls. The same number finds the matrix of that wall in wallMatrices and
+    /// its box in colliders, because the three lists are in the same order.
+    std::vector<std::size_t> leverWalls;
 };
 
 /// Camera yaw, in degrees, that looks in the given direction: 0 for North (-Z), 90 for
@@ -126,9 +142,9 @@ float groundHeightAt(const MazeWorld& world, MazeCell cell);
 
 /// Builds the terrain of the world from the heightmap and puts everything on it: the
 /// walls, the pillars and the gate are lowered to the lowest ground under them, their
-/// matrices and collision boxes follow, and the start, the exit and the exit zone are
-/// moved to the height of the ground. Nothing moves sideways, so the plan of the maze
-/// and every collision in the horizontal plane stay as they were.
+/// matrices and collision boxes follow, and the start, the exit, the exit zone, the
+/// levers and the notes are moved to the height of the ground. Nothing moves sideways, so the plan
+/// of the maze and every collision in the horizontal plane stay as they were.
 ///
 /// It can be called again on the same world with another height scale. Things that copy
 /// heights out of the world (the crystals and the obstacle list of a round, the player)
@@ -136,13 +152,15 @@ float groundHeightAt(const MazeWorld& world, MazeCell cell);
 void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightScale);
 
 /// Generates a maze (game::generateMaze) and computes everything else in MazeWorld
-/// from it, on flat ground at y = 0. Throws std::invalid_argument for a size that Maze
-/// does not accept.
-MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed);
+/// from it, on flat ground at y = 0. interactables says how many levers and notes are
+/// wanted: left out, the maze gets the default numbers. Throws std::invalid_argument for
+/// a size that Maze does not accept.
+MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed,
+                         const InteractableSettings& interactables = {});
 
 /// The same, with the maze standing on the terrain made from the heightmap
 /// (placeOnTerrain).
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Heightmap& heightmap,
-                         float heightScale);
+                         float heightScale, const InteractableSettings& interactables = {});
 
 } // namespace game

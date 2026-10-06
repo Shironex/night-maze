@@ -805,7 +805,8 @@ TEST_CASE("the wall a lever opens is one of the wall segments of the maze") {
                     ++matches;
                 }
             }
-            // Exactly one: this is how the game finds the wall to lower.
+            // Exactly one: this is how buildMazeWorld finds the wall a lever lowers
+            // (MazeWorld::leverWalls).
             CHECK(matches == 1);
         }
     }

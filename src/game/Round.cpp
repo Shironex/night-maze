@@ -1,4 +1,5 @@
-// Round: the state of one play through a maze (crystals, gate, battery, time) and its rules.
+// Round: the state of one play through a maze (crystals, gate, levers, battery, time) and
+// its rules.
 // See docs/modules/game/gameplay.md
 #include "game/Round.hpp"
 
@@ -63,6 +64,19 @@ void collectCrystals(Round& round, const GameplaySettings& settings, const scene
     }
 }
 
+// Closes the card of the open note when the player has walked away from it. The
+// distance is measured on the ground (x and z only), so a slope does not count.
+void closeNoteFarAway(Round& round, const MazeWorld& world, const glm::vec3& feetPosition) {
+    if (!round.noteOpen || round.noteIndex >= world.interactables.notes.size()) {
+        return;
+    }
+    const glm::vec3 note = world.interactables.notes[round.noteIndex].position;
+    const glm::vec2 away{feetPosition.x - note.x, feetPosition.z - note.z};
+    if (glm::length(away) > NOTE_READ_DISTANCE) {
+        closeNote(round);
+    }
+}
+
 } // namespace
 
 int requiredCrystalCount(int total, float fraction) {
@@ -99,7 +113,18 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     // the first step, so that the very first frame already shows it.
     round.discovery = Discovery(world.maze.width(), world.maze.height());
     discoverAround(round.discovery, world.maze, world.startPosition);
+
+    // The levers: none is pulled, so every wall stands. The round gets its own copy of
+    // the maze, which loses a wall when its lever is pulled (pullRoundLever).
+    round.interactables = startInteractables(world.interactables);
+    round.wallProgress.assign(world.interactables.levers.size(), 0.0F);
+    round.maze = world.maze;
     return round;
+}
+
+const Maze& roundMaze(const MazeWorld& world, const Round& round) {
+    // has_value: whether the box holds a maze. The star takes it out.
+    return round.maze.has_value() ? *round.maze : world.maze;
 }
 
 void restCrystalsOnGround(Round& round, const MazeWorld& world) {
@@ -123,13 +148,26 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
     // bobbing, and a gate that was still sinking when the round ended finishes.
     round.animationSeconds += stepSeconds;
     if (round.gateOpen) {
-        round.gateProgress = std::min(round.gateProgress + stepSeconds / GATE_OPEN_SECONDS, 1.0F);
+        round.gateProgress = sinkProgressAfter(round.gateProgress, stepSeconds);
+    }
+    // The wall of every pulled lever sinks like the gate. The smaller of the two sizes
+    // guards against a state that was written by hand.
+    const std::size_t leverCount =
+        std::min(round.wallProgress.size(), round.interactables.leverPulled.size());
+    for (std::size_t i = 0; i < leverCount; ++i) {
+        if (round.interactables.leverPulled[i]) {
+            round.wallProgress[i] = sinkProgressAfter(round.wallProgress[i], stepSeconds);
+        }
     }
 
     // What the player sees from where the feet are after this step goes onto the
     // minimap. Also after the round is won: the player can still walk around. The walls
-    // are read from the maze in every step, so the result follows a maze that changes.
-    discoverAround(round.discovery, world.maze, feetPosition);
+    // are read from the maze of the ROUND in every step, so the view passes a wall from
+    // the step after its lever was pulled.
+    discoverAround(round.discovery, roundMaze(world, round), feetPosition);
+
+    // A note is read standing in front of it: the card closes when the player leaves.
+    closeNoteFarAway(round, world, feetPosition);
 
     // A won round is over: its time, its battery and its crystals stay as they were at
     // the moment of the win.
@@ -154,6 +192,8 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
         // not win.
         if (round.gateOpen && scene::overlaps(reach, world.exitZone)) {
             round.state = RoundState::Won;
+            // The card of the win takes the place of the card of a note.
+            closeNote(round);
         }
     }
 
@@ -173,12 +213,139 @@ bool gateVisible(const MazeWorld& world, const Round& round) {
     return world.hasGate && round.gateProgress < 1.0F;
 }
 
+float sinkProgressAfter(float progress, float stepSeconds) {
+    // The share of the whole way that one step covers is stepSeconds / GATE_OPEN_SECONDS.
+    return std::min(progress + stepSeconds / GATE_OPEN_SECONDS, 1.0F);
+}
+
+float sinkDepth(float progress) {
+    return progress * GATE_SINK_DEPTH;
+}
+
 float gateSinkDepth(const Round& round) {
-    return round.gateProgress * GATE_SINK_DEPTH;
+    return sinkDepth(round.gateProgress);
+}
+
+bool pullRoundLever(Round& round, const MazeWorld& world, std::size_t index) {
+    // pullLever checks the number and the state and throws for a wrong one.
+    const PullResult result = pullLever(round.interactables, world.interactables, index);
+    if (!result.opened) {
+        return false;
+    }
+    // The wall is gone for the discovery and the minimap from now on. Only the copy of
+    // the round changes. Removing a wall updates both cells it stands between.
+    if (round.maze.has_value()) {
+        round.maze->removeWall(result.wall.cell.x, result.wall.cell.z, result.wall.side);
+    }
+    return true;
+}
+
+int pullAllLevers(Round& round, const MazeWorld& world) {
+    int opened = 0;
+    for (std::size_t i = 0; i < world.interactables.levers.size(); ++i) {
+        if (pullRoundLever(round, world, i)) {
+            ++opened;
+        }
+    }
+    return opened;
+}
+
+int pulledLeverCount(const Round& round) {
+    int count = 0;
+    for (const bool pulled : round.interactables.leverPulled) {
+        if (pulled) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+std::vector<bool> openedWallFlags(const MazeWorld& world, const Round& round) {
+    std::vector<bool> opened(world.walls.size(), false);
+    // The smaller of the two sizes guards against a round that belongs to another world.
+    const std::size_t leverCount =
+        std::min(world.leverWalls.size(), round.interactables.leverPulled.size());
+    for (std::size_t i = 0; i < leverCount; ++i) {
+        const std::size_t wall = world.leverWalls[i];
+        if (round.interactables.leverPulled[i] && wall < opened.size()) {
+            opened[wall] = true;
+        }
+    }
+    return opened;
+}
+
+std::vector<glm::mat4> roundWallMatrices(const MazeWorld& world, const Round& round) {
+    std::vector<glm::mat4> matrices = world.wallMatrices;
+    const std::size_t leverCount =
+        std::min({world.leverWalls.size(), round.interactables.leverPulled.size(),
+                  round.wallProgress.size()});
+    for (std::size_t i = 0; i < leverCount; ++i) {
+        const std::size_t wall = world.leverWalls[i];
+        if (!round.interactables.leverPulled[i] || wall >= matrices.size()) {
+            continue;
+        }
+        // The same wall, lower: the matrix is made again from the lowered segment, the
+        // way GameplayRenderer lowers the gate.
+        WallSegment lowered = world.walls[wall];
+        lowered.position.y -= sinkDepth(round.wallProgress[i]);
+        matrices[wall] = wallModelMatrix(lowered);
+    }
+    return matrices;
+}
+
+float leverHandleProgress(const Round& round, std::size_t index) {
+    if (index >= round.wallProgress.size()) {
+        return 0.0F;
+    }
+    // The wall has been sinking for wallProgress * GATE_OPEN_SECONDS seconds: that is
+    // the time since the pull (until the wall is down, and by then the handle is too).
+    const float secondsSincePull = round.wallProgress[index] * GATE_OPEN_SECONDS;
+    return std::min(secondsSincePull / LEVER_PULL_SECONDS, 1.0F);
+}
+
+void readNote(Round& round, const MazeWorld& world, std::size_t index) {
+    if (index >= world.interactables.notes.size()) {
+        return;
+    }
+    round.noteOpen = true;
+    round.noteIndex = index;
+}
+
+void closeNote(Round& round) {
+    round.noteOpen = false;
+}
+
+std::string openNoteText(const MazeWorld& world, const Round& round) {
+    if (!round.noteOpen || round.noteIndex >= world.interactables.notes.size()) {
+        return {};
+    }
+
+    // The cells of the crystals that are still there. The crystals of a round are in
+    // the order of MazeWorld::crystals, which knows their cells.
+    std::vector<MazeCell> crystalCells;
+    const std::size_t crystalCount = std::min(round.crystals.size(), world.crystals.size());
+    for (std::size_t i = 0; i < crystalCount; ++i) {
+        if (!round.crystals[i].collected) {
+            crystalCells.push_back(world.crystals[i].cell);
+        }
+    }
+    return noteText(world.interactables.notes[round.noteIndex], world.exitCell, crystalCells);
 }
 
 std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& round) {
-    std::vector<scene::Aabb> obstacles = world.colliders;
+    // world.colliders holds the box of every wall first, in the order of world.walls,
+    // and the boxes of the pillars after them. So box number i belongs to wall number
+    // i as long as i is below the number of walls. An opened wall is left out at once,
+    // also while its model is still sinking (see pullRoundLever).
+    const std::vector<bool> opened = openedWallFlags(world, round);
+    std::vector<scene::Aabb> obstacles;
+    obstacles.reserve(world.colliders.size() + 1);
+    for (std::size_t i = 0; i < world.colliders.size(); ++i) {
+        if (i < opened.size() && opened[i]) {
+            continue;
+        }
+        obstacles.push_back(world.colliders[i]);
+    }
     if (gateBlocks(world, round)) {
         obstacles.push_back(world.gateBox);
     }

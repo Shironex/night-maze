@@ -20,6 +20,8 @@ Czego nie ma: **stanu przegranej** (decyzja właściciela, sekcja 2.1), **przeci
 **Piąta część M7 (cień latarki, 2026-10-06)** też nie zmieniła żadnej reguły rundy. Brama i kryształy rzucają teraz cień także w świetle latarki: `GameplayRenderer::draw` jest wołane z `drawShadowCasters` jeszcze raz, dla mapy cieni latarki (sekcja 3). Pusta bateria, która gasi latarkę, gasi też jej przebieg cieni (`drawFlashlightShadowMap` pyta o `frameLighting.flashlightOn`). Zgłoszone: 329 przypadków testowych i 104306 asercji, żaden z nowych nie dotyczy reguł rundy.
 
 **Szósta część M7 (minimapa, 2026-10-06)** dodała do rundy jedno pole i dwa wywołania, bez zmiany żadnej dotychczasowej reguły. `Round::discovery` (`game::Discovery`, [`src/game/Discovery.hpp`](../../../src/game/Discovery.hpp)) to jeden znacznik na komórkę labiryntu: czy gracz ją odkrył. `startRound` robi nową siatkę o rozmiarze labiryntu i od razu odkrywa komórkę startu z korytarzami, które z niej wychodzą (`discoverAround` z `MazeWorld::startPosition`), żeby pierwsza klatka już miała mapę. `updateRound` woła `discoverAround` z pozycją stóp **po** kroku, w każdym kroku stałym, także po wygranej i w trybie noclip (liczą się tylko `x` i `z`). Reguła odkrywania (komórka gracza i linia prosta w czterech kierunkach aż do ściany) i cała minimapa są opisane w [`../renderer/minimap.md`](../renderer/minimap.md). Nowa runda (klawisz R, nowy labirynt) zeruje odkrycie, bo `startRound` składa całą `Round` od nowa. Zgłoszone: 414 przypadków testowych i 138711 asercji, z nich 19 przypadków jest w `tests/DiscoveryTests.cpp`, a sześć z tych dotyczy rundy (`a round starts with what can be seen from the start cell`, `a round that was not started has nothing discovered`, `walking discovers cells, and a new round forgets them`, `a step outside the maze discovers nothing`, `the discovery goes on after the round is won` i `the round of a maze of one cell knows its only cell from the start`). Nikt nie oglądał minimapy.
+**M8, część 2 (selekcja, dźwignie i kartki, 2026-10-06)** dodała do rundy stan dźwigni i kartek i **wspólne opadanie** ściany i bramy. `Round` ma pięć nowych pól stanu: `interactables` (które dźwignie są pociągnięte), `wallProgress` (jak głęboko opadła ściana każdej dźwigni), `maze` (własna kopia labiryntu rundy, `std::optional<Maze>`) oraz `noteOpen` i `noteIndex` (karta kartki). `GameplaySettings` ma flagę prośby `pullAllLevers`. Opadanie bramy zostało wydzielone do dwóch małych funkcji, `sinkProgressAfter` i `sinkDepth`, z których korzysta teraz także ściana otwarta dźwignią (sekcja 2.16). Reguły bramy się nie zmieniły: ta sama liczba 1,5 s i ta sama głębokość 3,3 m, tylko policzone w jednym miejscu. Całość opisuje sekcja 2.16, a wskazywanie promieniem, dźwignie i kartki jako obiekty świata [`../scene/picking.md`](../scene/picking.md) i [`interactables.md`](interactables.md). Zgłoszone przez autora kodu: bramka `make check` przechodzi, 466 przypadków i 152264 asercji w Debug i Release (wcześniej 445 i 150296), z czego 21 nowych przypadków jest w `tests/InteractionTests.cpp`. Ja bramki nie uruchamiałem. Zachowanie w działającej grze widział agent, który pisał kod, na zrzutach ekranu: widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela. Ręcznie właściciel jeszcze tego nie sprawdził, a macOS jest otwarty.
+
 ## 1. Po co to jest
 
 Do M4 program był labiryntem do zwiedzania: ściany, gracz, światła. M5 robi z niego grę. PRD opisuje pętlę rozgrywki tak: gracz idzie korytarzem, widzi poświatę kryształu, zbiera go (bateria rośnie, licznik rośnie), po zebraniu odpowiedniej liczby kryształów otwiera się wyjście i trzeba do niego dojść. Ten moduł odpowiada na pytania, które z tej pętli wynikają:
@@ -244,6 +246,8 @@ obniżenie = gateProgress * GATE_SINK_DEPTH = gateProgress * 3,3 m
 ```
 
 Prędkość to 3,3 / 1,5 = 2,2 m/s. `GATE_SINK_DEPTH` wynosi 3,3 m, czyli więcej niż wysokość modelu (2,75 m) i więcej niż wysokość słupków (3,15 m, do nich odnosi się komentarz przy stałej). Od M6 zamknięta brama stoi już na najniższym gruncie pod swoim obrysem (komentarz stałej: "The closed gate already stands on the lowest ground under it"), więc obniżenie liczy się od tego poziomu. Górna krawędź modelu schodzi poniżej tego poziomu po 2,75 / 3,3 * 1,5 = 1,25 s. Przez ostatnie ćwierć sekundy brama jest jeszcze rysowana, ale cała pod powierzchnią terenu, który ją zasłania dzięki testowi głębi (do M5 zasłaniały ją płytki podłogi). Zapas głębokości gwarantuje, że przy `gateProgress` równym 1 nic nie wystaje, a wtedy `gateVisible` zwraca fałsz i brama przestaje być rysowana w ogóle.
+
+**Dwie wspólne funkcje (od M8, części 2).** Wzory z ramki wyżej są w kodzie dwiema funkcjami w `Round.cpp`: `sinkProgressAfter(progress, stepSeconds)` zwraca `min(progress + stepSeconds / GATE_OPEN_SECONDS, 1)`, a `sinkDepth(progress)` zwraca `progress * GATE_SINK_DEPTH`. `updateRound` woła pierwszą dla `gateProgress`, a `gateSinkDepth` drugą. Te same dwie funkcje obsługują ścianę, którą otworzyła dźwignia (sekcja 2.16): ściana opada w tym samym czasie i na tę samą głębokość co brama, bez drugiego zestawu stałych. `GATE_SINK_DEPTH` (3,3 m) jest większe niż wysokość ściany (`WALL_HEIGHT`, 3,0 m) i słupka (`PILLAR_HEIGHT`, 3,15 m), więc ściana opuszczona o pełną głębokość leży całkowicie pod najniższym gruntem pod sobą (test `the sink formulas reach the full depth in 1.5 s and stop there` sprawdza `GATE_SINK_DEPTH > WALL_HEIGHT`).
 
 Dlaczego przeszkoda znika od razu, a nie po opadnięciu: komentarz w `Round.hpp` mówi, że brama otwiera się, gdy kryształ jest zbierany gdzieś indziej w labiryncie, więc zanim gracz do niej dojdzie, zwykle już opadnie. "Zwykle", bo to **nie jest gwarantowane**: opisuję je jako pułapkę 3 w sekcji 7.
 
@@ -590,6 +594,10 @@ Nową rundę na tym samym labiryncie zaczyna klawisz R albo przycisk `Restart ro
 | bateria | pełna |
 | oba zegary | 0 |
 | odkrycie minimapy (`Round::discovery`, od szóstej części M7) | nowa siatka, odkryta tylko komórka startu i korytarze z niej |
+| dźwignie (`Round::interactables`, `Round::wallProgress`, od M8, części 2) | żadna nie jest pociągnięta, każdy `wallProgress` równy 0, uchwyt znów u góry |
+| labirynt rundy (`Round::maze`) | świeża kopia `MazeWorld::maze`: każda ściana wraca, także w odkrywaniu i na minimapie. `MazeWorld::maze` nigdy się nie zmienia |
+| karta kartki (`noteOpen`) | zamknięta (`startRound` robi świeży stan), także przy regeneracji labiryntu |
+| wynik wskazywania (`m_pick`, `m_shownPick`) | `beginRound` zeruje oba (`pickNothing`), więc restart usuwa też zamrożony promień |
 | stan | `Playing` |
 | lista przeszkód `m_obstacles` | zbudowana od nowa: brama znów jest przeszkodą |
 | przełącznik latarki | **włączony**, także po rundzie skończonej w ciemności |
@@ -605,6 +613,45 @@ Czego restart **nie** zmienia:
 | ustawienia rozgrywki (`m_gameplay`) | próg, czas życia baterii, doładowanie, próg migotania, promień zbierania i `batteryDrains` zostają takie, jak ustawił panel. Runda zaczyna się z **aktualnym** progiem |
 | prędkości gracza, czułość myszy, podgląd, rysowanie brył kolizji | to ustawienia narzędzi, nie stan rundy |
 | labirynt | ten sam `MazeWorld`. Nowy labirynt to `Regenerate` |
+
+### 2.16 Dźwignie, otwarta ściana i kartki w regułach rundy (M8, część 2)
+
+Ta sekcja opisuje to, co dźwignie i kartki zmieniają w **stanie i regułach rundy**. Gdzie stoją na ścianach i jak je narysowano, opisuje [`interactables.md`](interactables.md), a jak są wskazywane promieniem [`../scene/picking.md`](../scene/picking.md).
+
+**Decyzja właściciela (2026-10-06):** dźwignia otwiera skrót, obniżając jeden wewnętrzny segment ściany, a kartka pokazuje krótką podpowiedź na karcie HUD. Wszystko poniżej to **wybory implementacji**, każdy sprawdzony w kodzie.
+
+**Pociągnięcie: `pullRoundLever(round, world, index)`.** Pierwsze pociągnięcie dźwigni robi trzy rzeczy naraz, w tej samej chwili:
+
+| Co | Jak w kodzie | Skutek |
+|---|---|---|
+| ściana znika z labiryntu rundy | `round.maze->removeWall(...)` na kopii rundy, po obu stronach ściany | odkrywanie (`discoverAround`) i minimapa widzą korytarz za ścianą od następnego kroku |
+| pudełko ściany wypada z przeszkód | `roundObstacles` pomija pudełka ścian, których dźwignia jest pociągnięta (`openedWallFlags`) | gracz może przejść, a promień wskazywania nie jest już zasłaniany |
+| ściana zaczyna opadać | `updateRound` zwiększa `wallProgress[i]` funkcją `sinkProgressAfter` | model opada o `sinkDepth(wallProgress)` w ciągu 1,5 s |
+
+Funkcja zwraca `true`, gdy to pociągnięcie otworzyło ścianę, i `false`, gdy dźwignia była już pociągnięta. Numer spoza listy dźwigni rzuca `std::out_of_range` (rzuca go `pullLever`; test `pulling a lever opens its wall once: obstacles, maze of the round, sinking`). Po `true` wołający musi zbudować listę przeszkód od nowa: robi to `NightMazeApp` (`m_obstacles = roundObstacles(...)`).
+
+**Reguła bramy, powtórzona dla ściany.** Brama przestaje być przeszkodą w chwili otwarcia, choć model jeszcze opada (sekcja 2.6). Ściana dźwigni robi tak samo: **przez 1,5 s gracz może przejść przez ścianę, którą jeszcze widać**. To wybór implementacji, nie decyzja właściciela. Uzasadnienie i alternatywy: [`../../decisions/opened-wall-stops-blocking-at-pull.md`](../../decisions/opened-wall-stops-blocking-at-pull.md).
+
+**Własna kopia labiryntu.** `startRound` robi `round.maze = world.maze`. Odkrywanie i minimapa czytają ściany przez `roundMaze(world, round)`, czyli przez kopię rundy (albo, dla rundy niestartowanej, przez `world.maze`). `world.maze` nigdy się nie zmienia, więc nowa runda na tym samym labiryncie ma znowu każdą ścianę. Dlaczego kopia, a nie zmiana świata: [`../../decisions/round-keeps-own-maze-copy.md`](../../decisions/round-keeps-own-maze-copy.md). Pole jest `std::optional`, bo `Maze` nie ma konstruktora domyślnego, a `Round` musi się dać zbudować pusty.
+
+**Macierze ścian w tej rundzie: `roundWallMatrices`.** Funkcja kopiuje `world.wallMatrices` i dla każdej pociągniętej dźwigni liczy macierz od nowa z segmentu obniżonego o `sinkDepth(wallProgress[i])` (`wallModelMatrix`), tak jak `GameplayRenderer` obniża bramę. Lista ma rozmiar i kolejność `world.walls`. Ściana opuszczona do końca **zostaje na liście rysowania**, pod gruntem: teren ją zasłania, a wycinanie jej z listy wymagałoby drugiej listy do utrzymania. Znane ograniczenia: kępki trawy obok otwartej ściany zostają, a słupek, który kończył tylko otwartą ścianę, stoi sam.
+
+**Kolejność pudełek.** `roundObstacles` korzysta z tego, że `world.colliders` ma najpierw pudełka wszystkich ścian (w kolejności `world.walls`), a potem słupki. Pudełko numer `i` poniżej liczby ścian należy do ściany numer `i`. `MazeWorld::leverWalls` mówi, którą ścianę otwiera dźwignia numer `k`: ten sam numer znajduje ścianę w `walls`, jej pudełko w `colliders` i jej macierz w `wallMatrices`.
+
+**Uchwyt dźwigni: `leverHandleProgress`.** Zwraca 0 przed pociągnięciem i rośnie do 1 w `LEVER_PULL_SECONDS` (0,3 s) po nim. Runda nie przechowuje osobnego licznika: wartość jest liczona z `wallProgress` (czas od pociągnięcia to `wallProgress * GATE_OPEN_SECONDS`). Dźwignia, której runda nie ma, daje 0.
+
+**Prośba "Pull all levers".** Przycisk w panelu Gameplay ustawia pole `GameplaySettings::pullAllLevers`, a `NightMazeApp::onRender` czyta flagę między krokami, zeruje ją i woła **funkcję** `game::pullAllLevers(round, world)` (to dwie różne rzeczy o tej samej nazwie: pole flagi i funkcja). Funkcja zwraca liczbę ścian, które się otworzyły; gdy jest większa od 0, gra buduje listę przeszkód od nowa.
+
+**Kartka.** `readNote(round, world, index)` ustawia `noteOpen` i `noteIndex` (numer spoza listy jest ignorowany), `closeNote` zamyka kartę. Tekst daje `openNoteText(world, round)`: liczony przy każdym pytaniu, bo podpowiedź o kryształach liczy tylko kryształy, których jeszcze nie zebrano (test `the card of a crystal hint counts only the crystals that are left`). Karta zamyka się w czterech sytuacjach, bez żadnego zegara:
+
+| Kiedy | Gdzie w kodzie |
+|---|---|
+| gracz naciska E albo klika, gdy karta jest otwarta | `interactionFor` daje `CloseNote` przed wszystkim innym |
+| gracz oddali się od kartki o więcej niż `NOTE_READ_DISTANCE` (3,0 m), liczone po ziemi (x i z) | `closeNoteFarAway` w `updateRound` |
+| runda zostaje wygrana | `updateRound` woła `closeNote` w chwili wygranej: karta wygranej zajmuje jej miejsce |
+| nowa runda | `startRound` robi świeży stan (restart i regeneracja też) |
+
+Dźwignia i kartka działają **tylko w rundzie `Playing`**: `interactionFor` daje `None` dla rundy wygranej. Test `a won round has nothing to interact with and closes the card` sprawdza tylko tę pierwszą część (wynik `interactionFor` dla wygranej rundy), nie samo zamknięcie karty. Zamknięcie przy wygranej wynika z kodu `updateRound` i nie ma własnego testu.
 
 ## 3. Jak to działa w OpenGL
 
@@ -1672,6 +1719,18 @@ Wyniki dla Windowsa (2026-10-05): wszystkie 50 przypadków trzech plików i przy
 
 **Czego testy nie sprawdzają.** Wszystkiego, co wymaga okna: `GameplayRenderer`, `ModelDraw`, uniformu `uEmissive`, klawisza R i flagi `restart`, tego, że `m_obstacles` jest odbudowywane w chwili otwarcia bramy, `beginRound`, `rebuildTerrain` (czyli tego, że aplikacja naprawdę woła `restCrystalsOnGround`), HUD i panelu Gameplay. Obraz był oglądany na zrzutach ekranu z Windowsa. Gry ręcznej (lista w nagłówku dokumentu) nikt jeszcze nie wykonał: listy kontrolne testów ręcznych prowadzi [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
+### 5.13 Dźwignie i kartki w `Round` (M8, część 2)
+
+| Element | Plik | Rola |
+|---|---|---|
+| `Round::interactables`, `wallProgress`, `maze`, `noteOpen`, `noteIndex` | `Round.hpp` | stan opisany w sekcji 2.16 |
+| `GameplaySettings::pullAllLevers` | `Round.hpp` | flaga prośby z panelu |
+| `LEVER_PULL_SECONDS` (0,3 s), `NOTE_READ_DISTANCE` (3,0 m) | `Round.hpp` | dwie nowe stałe rundy |
+| `sinkProgressAfter`, `sinkDepth` | `Round.cpp` | wspólne opadanie bramy i ściany |
+| `roundMaze`, `pullRoundLever`, `pullAllLevers`, `pulledLeverCount`, `openedWallFlags`, `roundWallMatrices`, `leverHandleProgress`, `readNote`, `closeNote`, `openNoteText` | `Round.cpp` | funkcje wolne, bez OpenGL |
+
+`updateRound` dostała w tym kroku dwa dodatkowe zadania: opuszcza ściany pociągniętych dźwigni (długość pętli to mniejszy z dwóch rozmiarów list, na wypadek stanu zapisanego ręcznie) i zamyka kartę, gdy gracz odszedł. Odkrywanie czyta teraz `roundMaze(world, round)` zamiast `world.maze`. Testy tej części to 21 przypadków w `tests/InteractionTests.cpp`, opisane w [`../scene/picking.md`](../scene/picking.md). Dotyczące rundy: `a new round has no lever pulled, every wall standing and no note open`, `the sink formulas reach the full depth in 1.5 s and stop there`, `pulling a lever opens its wall once: obstacles, maze of the round, sinking`, `the handle of a lever swings down in 0.3 s after the pull`, `the view passes an opened wall, and a restart brings every wall back`, `pull all levers opens every wall and counts them`.
+
 ## 6. Panel ImGui
 
 Rundę pokazują dwie rzeczy rysowane przez ImGui: **HUD**, który jest częścią gry i jest na ekranie zawsze, oraz **panel Gameplay**, który jest narzędziem i znika razem z pozostałymi panelami po naciśnięciu klawisza z akcentem (na lewo od 1). Trzy inne panele (Maze, Collision, Lights) dostały po kilka linii o rundzie.
@@ -1799,6 +1858,9 @@ Sygnatura: `drawGameplayPanel(game::Round& round, game::GameplaySettings& settin
 | tekst `Crystals: %d collected, %d needed, %d in the maze` | `collectedCount`, `requiredCount`, rozmiar listy | odczyt | trzy liczby naraz |
 | tekst `Gate: closed`, `Gate: opening, 40%` albo `Gate: open` | `gateOpen`, `gateProgress` | odczyt | trzy fazy bramy. `opening` trwa 1,5 s: widać w nim postęp opadania w procentach |
 | przycisk `Restart round (key R)` | `settings.restart = true` | | prośba o nową rundę. Gra zaczyna ją w następnej klatce (sekcja 2.15) |
+| przycisk `Pull all levers` (obok przycisku restartu) | `settings.pullAllLevers = true` | | prośba z M8, części 2: gra pociąga wszystkie dźwignie między krokami (sekcja 2.16). Restart zamyka ściany z powrotem |
+| tekst `Levers: %d pulled of %d` | `pulledLeverCount(round)`, rozmiar `leverPulled` | odczyt | ile ścian jest otwartych |
+| tekst `Note card: open` albo `closed` | `round.noteOpen` | odczyt | stan karty kartki |
 | suwak `Battery` | `round.battery` | od 0 do 1, format `%.2f` | ręczne ustawienie baterii: żeby obejrzeć migotanie i ciemność bez czekania 3 minut |
 | pole wyboru `Battery drains` | `settings.batteryDrains` | | odznaczone: bateria stoi tam, gdzie postawił ją suwak |
 | suwak `Crystals needed` | `requiredFraction` | od 0,05 do 1, format `%.2f of all` | próg bramy. Dół to 0,05, a nie 0: i tak potrzebny jest co najmniej jeden kryształ, więc mniejsze wartości niczego by nie zmieniały |
@@ -1817,6 +1879,8 @@ Dlaczego suwak `Battery` edytuje rundę, a nie ustawienia: bateria jest stanem, 
 |---|---|---|
 | Maze | linia `Crystals: %d, exit in cell (%d, %d)`. Na planie z góry: strefa wyjścia jako zielony prostokąt, brama jako gruba linia (w kolorze drewna, gdy zamknięta, przygaszona po otwarciu), kryształy jako turkusowe kropki, a zebrany kryształ jako przygaszony pierścień | [`maze-generator.md`](maze-generator.md), sekcja 6 |
 | Collision | pole `Draw collision shapes` z legendą kolorów (żółty: ściany i słupki, zielony: gracz, pomarańczowy: brama, błękitny: kule zbierania, purpurowy: strefa wyjścia), linie `Boxes: %d walls, %d pillars, %d gate` i `All boxes: %d, pickup spheres: %d`. Liczba przy `gate` zmienia się z 1 na 0 w chwili otwarcia bramy, a liczba kul maleje z każdym kryształem | [`../scene/collision.md`](../scene/collision.md), sekcja 6 |
+| Maze (M8, część 2) | dwa suwaki `Levers` i `Notes` (od 0 do 16, `AlwaysClamp`) i linia `Levers: %d, notes: %d` z liczbami, które labirynt naprawdę dostał. Na planie: kwadraty dźwigni (czerwone, przygaszone po pociągnięciu) i kartek (jasnożółte), a otwarta ściana jest **przygaszona**, nie wycięta (świat się nie zmienia). Minimapa, przeciwnie, otwartej ściany nie rysuje | [`interactables.md`](interactables.md) |
+| Collision (M8, część 2) | linia `Boxes: %d walls (%d opened by levers), %d pillars, %d gate`, sekcja `Last picking ray` i dwa pola wyboru | [`../scene/collision.md`](../scene/collision.md), [`../scene/picking.md`](../scene/picking.md) |
 | Lights | grupa `Point lights (crystals)` z linią `Lit: %d of %d crystals (at most %d)`. Pole `Flashlight on (key F)` ma przy pustej baterii podpowiedź `The battery is empty: collect a crystal first.` i samo się odznacza w najbliższym kroku | [`../scene/lights.md`](../scene/lights.md), sekcja 6 |
 
 Układ wszystkich dwunastu paneli (od M6 doszły Terrain i Grass, od pierwszej części M7 Framebuffers, od czwartej Shadows) i motyw kolorów opisuje [`../debug-ui.md`](../debug-ui.md).

@@ -5,6 +5,8 @@ Kod: reguła odkrywania [`src/game/Discovery.hpp`](../../../src/game/Discovery.h
 
 **Stan na dziś:** w prawym dolnym rogu okna stoi kwadratowa mapa labiryntu, widok z góry, północ u góry, mapa się nie obraca. Pokazuje tylko komórki, które gracz odkrył, i strzałkę gracza. Rysuje ją osobny przebieg do własnego framebuffera `GL_RGBA8` (kwadrat o boku 0,28 wysokości okna), a drugi przebieg kopiuje ten obraz w róg okna z przezroczystością 0,85. Przebiegi stoją **po** przebiegu składającym, więc mgła, bloom i mapowanie tonów jej nie dotykają. Dwa nowe programy shaderów (`minimap` i `minimap_overlay`): programów jest trzynaście, paneli nadal dwanaście (po M8, części 1: czternaście programów i trzynaście paneli). Klawisz M włącza i wyłącza mapę, a trzecia zakładka panelu Framebuffers zmienia jej ustawienia i pokazuje jej framebuffer.
 
+**Zmiana w M8, części 2 (2026-10-06).** Mapa czyta ściany z **labiryntu rundy** (`roundMaze(world, round)`), a nie ze świata: ściana, którą otworzyła dźwignia, znika z mapy od następnej klatki, a odkrywanie widzi korytarz za nią (sekcje 2.3, 2.6 i 2.11). Doszły też małe kwadraty dźwigni i kartek (sekcja 2.6). Liczby programów (czternaście) i paneli (trzynaście) się nie zmieniły. Co z tego widziano na ekranie, mówi sekcja 5.9.
+
 **Uczciwie o tym, co sprawdzono.** Wszystko poniżej o obrazie jest **policzone z kodu i z jego testów, nikt nie obejrzał minimapy**. Zgłoszone przez wykonawcę (Windows, 2026-10-06), nie powtórzone przy pisaniu tego dokumentu: bramka `make check` przechodzi w Debug i Release, **414 przypadków testowych i 138711 asercji** (przed tą częścią 375 i 138506), a start programu Debug przez około 7 sekund wypisał `GL_VERSION` 4.1.0 NVIDIA i linie wczytania zasobów, przy pustym standardowym wyjściu błędów (błędy shaderów, `GL_CHECK` i framebuffera trafiają tam tylko wtedy, gdy się zdarzą). Minimapa jest domyślnie włączona, więc z pustego `stderr` wynika (to **moje wnioskowanie ze zgłoszenia**, nie osobna obserwacja), że oba nowe programy się skompilowały i framebuffer mapy był kompletny. **Nie ćwiczono**: ruchu gracza, klawisza M, zakładki Minimap, `Reveal all`, `Reload shaders`, zmiany rozmiaru okna ani obu widoków diagnostycznych. Brak błędu nie mówi nic o tym, jak mapa wygląda: trójkąt odrzucony przy odrzucaniu tylnych ścian nie zgłasza błędu OpenGL. Lista do wykonania ręcznie: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 22. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
 
 ## 1. Po co to jest
@@ -84,7 +86,7 @@ z=4    #   #   #   #   #
 
 Na wschód bok jest otwarty cztery razy, więc odkryte są `(1, 2)` do `(4, 2)`, potem ściana zewnętrzna. Z `(0, 2)` na północ i południe ściany. Razem pięć komórek. Odnogi kolumny 2, czyli `(2, 1)` i `(2, 3)`, są widoczne jako otwory w ścianie korytarza, ale **zostają nieznane**, dopóki gracz nie stanie w linii z nimi (test `a side passage is seen only from a cell in line with it`). Gdy gracz dojdzie do `(2, 2)`, odkrywa cały krzyż: wiersz 2 i kolumnę 2, razem dziewięć komórek, bo środkowa jest liczona raz (test `the view reaches equally far in all four directions`).
 
-Ściany czyta funkcja **w każdym wywołaniu** z `Maze` i nic o nich nie zapamiętuje. Dzięki temu ściana usunięta w środku rundy otwiera widok od następnego wywołania (test `a wall that is removed later opens the view from the next call on`). **Brama wyjścia nie jest ścianą labiryntu**, więc widok przechodzi przez nią, otwartą czy zamkniętą (wybór wykonawczy, sekcja 4 notatki o decyzji).
+Ściany czyta funkcja **w każdym wywołaniu** z `Maze` i nic o nich nie zapamiętuje. Dzięki temu ściana usunięta w środku rundy otwiera widok od następnego wywołania (test `a wall that is removed later opens the view from the next call on`). Od M8, części 2 ta własność jest używana w grze: `updateRound` woła `discoverAround` z `roundMaze(world, round)`, czyli z kopią labiryntu, z której `pullRoundLever` usunął ścianę otwartą dźwignią (po obu stronach). Od kroku po pociągnięciu odkrywanie przechodzi przez otwór. Test `the view passes an opened wall, and a restart brings every wall back` sprawdza to i to, że nowa runda ma znowu każdą ścianę. **Brama wyjścia nie jest ścianą labiryntu**, więc widok przechodzi przez nią, otwartą czy zamkniętą (wybór wykonawczy, sekcja 4 notatki o decyzji).
 
 **Skąd bierze się komórka gracza.** `cellAt(position)` w `MazeLayout`: `floor(x / CELL_SIZE)` i `floor(z / CELL_SIZE)`, wysokość nie liczy się. `floor`, a nie zwykła konwersja na `int`: konwersja obcina ułamek w stronę zera, więc punkt 0,5 m na zachód od labiryntu (`x = -0,5`) trafiłby do kolumny 0, czyli do komórki labiryntu, a `floor` daje kolumnę `-1`. Zachodnia i północna krawędź kwadratu należą do jego komórki. Funkcja nie zna labiryntu, więc odpowiedź może być komórką, której labirynt nie ma: pyta się potem `Maze::contains` (przypadek `cellAt finds the cell a point of the world lies in`). Gracz w trybie noclip leci nad labiryntem i odkrywa komórki pod sobą, bo liczą się tylko `x` i `z`.
 
@@ -154,9 +156,14 @@ Zabezpieczenia: wartości z suwaków są wciskane w zakres (`MIN_MINIMAP_SIZE` 0
 | 2 | ściany pokazanych komórek | cienkie prostokąty na krawędziach komórek | `MINIMAP_WALL_COLOR` |
 | 3 | brama, gdy komórka wyjścia jest pokazana | prostokąt jak ściana | `MINIMAP_GATE_COLOR` (blokuje) albo `MINIMAP_GATE_OPEN_COLOR` (otwarta) |
 | 4 | kryształy niezebrane w pokazanych komórkach | romb z dwóch trójkątów | `MINIMAP_CRYSTAL_COLOR` |
-| 5 | gracz | jeden trójkąt wskazujący, gdzie patrzy kamera | `MINIMAP_PLAYER_COLOR` |
+| 5 | dźwignie i kartki w pokazanych komórkach (od M8, części 2) | mały kwadrat w miejscu, gdzie wiszą (`Lever::position`, `Note::position`) | dźwignia `MINIMAP_LEVER_COLOR` (0,93; 0,36; 0,24), pociągnięta `MINIMAP_LEVER_PULLED_COLOR` (0,42; 0,24; 0,22), kartka `MINIMAP_NOTE_COLOR` (0,90; 0,86; 0,70) |
+| 6 | gracz | jeden trójkąt wskazujący, gdzie patrzy kamera | `MINIMAP_PLAYER_COLOR` |
 
 **Komórka jest "pokazana"**, gdy jest odkryta w rundzie (`Round::discovery`) albo zawsze przy `revealAll`. Przełącznik `revealAll` zmienia **tylko to, co jest rysowane**: odkrywanie rundy toczy się pod spodem i po wyłączeniu przełącznika wraca (test `reveal all shows the whole maze without changing the discovery`).
+
+**Ściany idą z labiryntu rundy.** Grupa 2 pyta `Maze::hasWall` na `roundMaze(world, round)`. Ściana otwarta dźwignią jest w kopii rundy usunięta, więc **mapa jej nie rysuje**. Plan w panelu Maze robi inaczej: czyta `world.walls` (świat się nie zmienia) i rysuje otwartą ścianę przygaszoną. To dwa różne wybory dla dwóch różnych celów: mapa mówi graczowi, którędy może iść, plan jest narzędziem debugowania i pokazuje, gdzie skrót jest.
+
+**Kwadraty dźwigni i kartek.** Ich półbok to `MOUNT_MARK_HALF_SIZE` (0,22 m), nie mniej niż `MIN_MOUNT_MARK_PIXELS` (1,5 piksela) razy metrów na piksel: mniejsze niż romb kryształu, żeby nie zasłaniały ściany, na której wiszą. Kwadrat jest rysowany tylko wtedy, gdy komórka, w której wisi (`mount.cell`), jest pokazana. Dźwignia, której runda nie zna (runda innego świata), liczy się jako niepociągnięta. Test `the minimap drops an opened wall and marks levers and notes`: przy `revealAll` liczba wierzchołków w kolorze ściany to liczba ścian razy 6, po pociągnięciu o jedną ścianę mniej, a kolor dźwigni pociągniętej pojawia się 6 razy; bez żadnej odkrytej komórki nie ma żadnej dźwigni ani kartki.
 
 **Ściany** są brane każda raz, w kolejności `wallSegments`: każda komórka zgłasza swoją północną i zachodnią ścianę, a południową i wschodnią tylko ostatni wiersz i ostatnia kolumna (test `every wall of a generated maze is drawn exactly once when all is revealed`). Ściana między dwiema komórkami jest rysowana, gdy **któraś z nich** jest pokazana (wybór wykonawczy: gracz widział ją z jednej strony, a przy otwartym korytarzu to ściany, które go ograniczają). Prostokąt ściany jest o pół grubości dłuższy od krawędzi komórki z obu końców, więc dwie ściany spotykające się w rogu siatki wypełniają róg, w którym świat ma słupek. Grubość to `PILLAR_SIZE`, 0,3 m.
 
@@ -254,10 +261,12 @@ Odkrycie jest polem rundy (`Round::discovery`). Wynika stąd, kiedy się zeruje,
 | noclip | odkrywa komórki pod graczem | liczą się tylko `x` i `z` |
 | suwak skali wysokości terenu (`rebuildTerrain`) | odkrycie **zostaje** | funkcja nie robi nowej rundy, przestawia tylko miejsca kryształów (`restCrystalsOnGround`) |
 | `revealAll` albo wyłączenie mapy (M) | odkrycie nietknięte | to ustawienia rysowania |
+| pociągnięcie dźwigni (M8, część 2) | odkrycie zostaje, ale od następnego kroku widzi przez otwór | `pullRoundLever` usuwa ścianę z `Round::maze`, a odkrywanie i mapa czytają `roundMaze` |
+| restart | ściana wraca na mapę i do odkrywania | `startRound` robi nową kopię `world.maze` |
 
 ### 2.12 Znane ograniczenia
 
-- **Nikt nie obejrzał mapy.** Kolory, grubości, rozmiar strzałki i czytelność są policzone, nie zobaczone.
+- **Właściciel nie obejrzał mapy.** Kolory, grubości, rozmiar strzałki i czytelność są policzone, a pierwszy raz zobaczył je agent na zrzutach ekranu z M8, części 2 (sekcja 5.9), nie właściciel.
 - Odkryta komórka nie jest "zapamiętana jako widziana z odległości": reguła nie ma pojęcia zasięgu wzroku, korytarz jest odkrywany aż do ściany, także długi na 40 komórek.
 - Ściana między komórką pokazaną a niepokazaną jest rysowana, więc jej grubość wchodzi o pół grubości w niepokazaną komórkę. To drobna rzecz, której nikt nie oglądał.
 - Mapa jest za mała do czytania w labiryncie 40 x 40 (komórka około 5 pikseli przy 202 px): kod trzyma tylko minimalne rozmiary kształtów, a samej czytelności nie poprawia. Test `the map of the largest maze can be built` sprawdza tylko, że lista powstaje.
@@ -440,9 +449,11 @@ void discoverFrom(Discovery& discovery, const Maze& maze, MazeCell cell) {
 | `minimapHalfExtent` | `max(szerokość, wysokość) * CELL_SIZE / 2 * 1,06` | 2.4 |
 | `minimapProjection` | `glm::ortho(west, east, south, north)` wokół środka labiryntu | 2.4 |
 | `minimapMetresPerPixel` | `2 * półbok / max(piksele, 1)` | 2.6 |
-| `buildMinimapVertices` | pięć grup kształtów z sekcji 2.6, `reserve` na podłogi pokazanych komórek | 2.6 |
+| `buildMinimapVertices` | sześć grup kształtów z sekcji 2.6, ściany z `roundMaze`, `reserve` na podłogi pokazanych komórek | 2.6 |
 
 W `buildMinimapVertices` pomocnicze funkcje w anonimowej przestrzeni nazw to `addTriangle`, `addRectangle` (dwa trójkąty po przekątnej, wierzchołki w kolejności północny zachód, północny wschód, południowy wschód, południowy zachód), `mapPoint` (z `vec3` świata robi `vec2`: `x` zostaje, `z` staje się drugą liczbą), `addWall` (prostokąt ściany o długości `WALL_LENGTH + grubość`) i `atLeastPixels`. Pozycje ścian i bramy bierze z `wallSegmentOn` i `world.gate`, używając tylko ich `x` i `z`, więc teren, na którym stoi labirynt, nie wpływa na mapę.
+
+**Dźwignie i kartki (M8, część 2).** Funkcja pyta labirynt rundy: `const Maze& maze = roundMaze(world, round)`. Dźwignie i kartki bierze z `world.interactables`, a stan "pociągnięta" z `round.interactables.leverPulled` (indeks sprawdzany, bo runda może należeć do innego świata). W `NightMazeApp::drawMinimap` `minimapProjection` i `minimapMetresPerPixel` nadal dostają `m_mazeWorld.maze`: liczy się z niego tylko rozmiar (szerokość i wysokość), który się nie zmienia, więc to bez skutku.
 
 **Kryształy.** Kolejność kryształów rundy jest taka jak `MazeWorld::crystals`, które znają swoje komórki. Pętla idzie do mniejszej z dwóch długości (`std::min`), żeby runda należąca do innego świata niczego nie popsuła. Rysowany jest każdy kryształ, który nie jest zebrany (`!collected`) i leży w pokazanej komórce.
 
@@ -483,7 +494,7 @@ Konstruktor `Buffer(target, data, sizeInBytes, usage = GL_STATIC_DRAW)` zapamię
 
 ### 5.7 `Round`, `MazeLayout` i testy
 
-`Round::discovery` ma domyślnie siatkę bez komórek. `startRound` tworzy `Discovery(szerokość, wysokość)` labiryntu i woła `discoverAround(round.discovery, world.maze, world.startPosition)`. `updateRound` woła `discoverAround` z pozycją stóp **po** kroku, przed sprawdzeniem stanu rundy, więc także po wygranej. `cellAt` w `MazeLayout`: sekcja 2.3.
+`Round::discovery` ma domyślnie siatkę bez komórek. `startRound` tworzy `Discovery(szerokość, wysokość)` labiryntu i woła `discoverAround(round.discovery, world.maze, world.startPosition)` (kopia rundy `Round::maze` powstaje w tym samym `startRound`, a od następnego kroku `updateRound` czyta już `roundMaze`). `updateRound` woła `discoverAround` z pozycją stóp **po** kroku, przed sprawdzeniem stanu rundy, więc także po wygranej. `cellAt` w `MazeLayout`: sekcja 2.3.
 
 ### 5.8 Testy
 
@@ -506,7 +517,8 @@ Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod (Windows,
 - **Bramka.** `make check` przechodzi w Debug i w Release: 414 przypadków testowych, 138711 asercji.
 - **Start.** Program Debug uruchomiony na około 7 sekund: `GL_VERSION` 4.1.0 NVIDIA, linie wczytania zasobów, pusty `stderr`. Z tego **wnioskuję** (nie zgłoszono tego wprost), że oba nowe programy się skompilowały, a framebuffer mapy był kompletny, bo mapa jest domyślnie włączona.
 - **Nie ćwiczono:** ruch gracza, klawisz M, zakładka Minimap, `Reveal all`, `Reload shaders`, zmiana rozmiaru okna, oba widoki diagnostyczne.
-- **Obrazu mapy nikt nie oglądał.** Liczby klatek nie mierzono. Wersji kompilatora, karty i sterownika nie zapisano.
+- **M8, część 2.** Bramka po tej części: 466 przypadków i 152264 asercji w Debug i Release (zgłoszone przez autora kodu, wcześniej 445 i 150296). Minimapy dotyczy przypadek `the minimap drops an opened wall and marks levers and notes` w `tests/InteractionTests.cpp`, a odkrywania `the view passes an opened wall, and a restart brings every wall back`. Agent, który pisał kod, uruchomił grę i widział minimapę na zrzutach ekranu: ściana otwarta dźwignią znika z mapy i mapa pokazuje korytarz za nią, a po klawiszu R wraca do stanu początkowego (widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela). Kwadratów dźwigni i kartek, ich przygaszenia po pociągnięciu ani mapy w labiryncie 40 x 40 agent nie wymienił wśród oglądanych rzeczy, więc to otwarte.
+- **Obrazu mapy nie oglądał właściciel** (agent widział go dopiero w M8, części 2, patrz wyżej). Liczby klatek nie mierzono. Wersji kompilatora, karty i sterownika nie zapisano.
 
 ## 6. Panel ImGui
 

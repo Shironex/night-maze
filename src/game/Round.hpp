@@ -1,14 +1,20 @@
-// Round: the state of one play through a maze (crystals, gate, battery, time) and its rules.
+// Round: the state of one play through a maze (crystals, gate, levers, battery, time) and
+// its rules.
 // See docs/modules/game/gameplay.md
 #pragma once
 
 #include "game/Discovery.hpp"
+#include "game/Interactables.hpp"
 #include "game/Lighting.hpp"
+#include "game/Maze.hpp"
 #include "game/MazeWorld.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>
 
+#include <cstddef>
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace game {
@@ -16,13 +22,24 @@ namespace game {
 // Plain data and free functions without OpenGL, like the rest of the game_logic library,
 // so tests can play a whole round without a window.
 
-/// How long the gate takes to sink into the ground after it opens, in seconds.
+/// How long the gate takes to sink into the ground after it opens, in seconds. A wall
+/// that a lever opens sinks in the same time.
 constexpr float GATE_OPEN_SECONDS = 1.5F;
 
 /// How far below its closed position the gate is when it is fully open, in metres: a
 /// little more than the pillars are high (3.15 m), so nothing of it is left above the
-/// ground. The closed gate already stands on the lowest ground under it.
+/// ground. The closed gate already stands on the lowest ground under it. A wall that
+/// a lever opens (3 m high, standing on the lowest ground under it too) sinks as far.
 constexpr float GATE_SINK_DEPTH = 3.3F;
+
+/// How long the handle of a lever takes to swing from up to down after it is pulled, in
+/// seconds: a quick move of the hand, much shorter than the sinking of the wall.
+constexpr float LEVER_PULL_SECONDS = 0.3F;
+
+/// The card of a note closes by itself when the player is farther than this from the
+/// note, in metres, measured on the ground: a little more than the reach of the picking
+/// ray (2.5 m), so the card does not close while the player still stands at the note.
+constexpr float NOTE_READ_DISTANCE = 3.0F;
 
 /// The player reaches for crystals and for the exit with a sphere: its centre is this
 /// far above the feet (the middle of the 1.8 m body), and it is as wide as the body.
@@ -56,6 +73,10 @@ struct GameplaySettings {
     /// The debug UI sets it, the application starts the round at the start of the next
     /// frame and clears it, like MazeSettings::regenerate.
     bool restart = false;
+
+    /// True when the debug UI asked to pull every lever of the round at once: a switch
+    /// for testing, handled by the application in the same way as restart.
+    bool pullAllLevers = false;
 };
 
 /// Whether a round is still being played. There is no "lost": an empty battery only
@@ -113,6 +134,27 @@ struct Round {
     /// Which cells of the maze the player has seen in this round (game/Discovery.hpp):
     /// what the minimap shows. A round that was not started has a grid without cells.
     Discovery discovery;
+
+    /// Which levers of the maze are pulled, in the order of Interactables::levers
+    /// (game::startInteractables). A pulled lever stays pulled until the round ends.
+    InteractableState interactables;
+
+    /// How far the wall of every lever has sunk, in the order of the levers: 0 is
+    /// standing, 1 is fully in the ground. It grows for GATE_OPEN_SECONDS after the
+    /// lever is pulled, like gateProgress.
+    std::vector<float> wallProgress;
+
+    /// The walls as they are in THIS round: a copy of the maze of the world that loses
+    /// the wall of every pulled lever. The discovery and the minimap read the walls
+    /// from here (game::roundMaze). MazeWorld::maze is never changed, so a new round on
+    /// the same maze has every wall again. Empty in a round that was not started: Maze
+    /// has no default constructor, and std::optional is a box that may hold no value.
+    std::optional<Maze> maze;
+
+    /// The note the player is reading: noteOpen is true while its card is shown, and
+    /// noteIndex is its number in Interactables::notes (it means nothing otherwise).
+    bool noteOpen = false;
+    std::size_t noteIndex = 0;
 };
 
 /// How many of total crystals open the gate: fraction of them, rounded up, at least 1
@@ -124,8 +166,13 @@ int requiredCrystalCount(int total, float fraction);
 /// closed and the clocks at 0. A maze without crystals needs none, and a maze without
 /// a gate has nothing to open: in both cases the round starts with the way out open.
 /// Nothing of the maze is discovered except what the player sees from the start
-/// (game::discoverAround of MazeWorld::startPosition).
+/// (game::discoverAround of MazeWorld::startPosition). No lever is pulled, every wall
+/// stands and no note is open.
 Round startRound(const MazeWorld& world, const GameplaySettings& settings);
+
+/// The maze with the walls of this round: Round::maze, or the maze of the world for
+/// a round that was not started with startRound (it has no copy, and no pulled lever).
+const Maze& roundMaze(const MazeWorld& world, const Round& round);
 
 /// Puts every crystal of the round on the ground of the world again: its resting place
 /// is CRYSTAL_FLOAT_HEIGHT above the ground at the centre of its cell. Which crystals are
@@ -140,7 +187,9 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 ///   - the clocks run (the round time only while the round is being played),
 ///   - the cells the player sees from feetPosition become discovered (also after the
 ///     round is won),
-///   - an open gate keeps sinking,
+///   - an open gate keeps sinking, and so does the wall of every pulled lever,
+///   - the card of a note closes when the player walks away from the note
+///     (NOTE_READ_DISTANCE) or the round is won,
 ///   - the battery drains while the flashlight is on,
 ///   - every crystal whose pickup sphere the player reaches is collected and charges
 ///     the battery,
@@ -166,12 +215,75 @@ bool gateBlocks(const MazeWorld& world, const Round& round);
 /// the sinking takes.
 bool gateVisible(const MazeWorld& world, const Round& round);
 
+/// The sinking of the gate and of a wall that a lever opens, as two small formulas that
+/// both of them use. progress runs from 0 (standing) to 1 (fully in the ground).
+///
+/// sinkProgressAfter: the progress after one more step of stepSeconds seconds. It grows
+/// evenly and reaches 1 after GATE_OPEN_SECONDS, where it stays.
+/// sinkDepth: how far below its standing position the thing is drawn, in metres: 0 for
+/// progress 0, GATE_SINK_DEPTH for progress 1.
+float sinkProgressAfter(float progress, float stepSeconds);
+float sinkDepth(float progress);
+
 /// How far below its closed position the gate is drawn, in metres: 0 when closed,
-/// GATE_SINK_DEPTH when fully open.
+/// GATE_SINK_DEPTH when fully open (sinkDepth of Round::gateProgress).
 float gateSinkDepth(const Round& round);
 
-/// The obstacle list for the player: the boxes of the maze (MazeWorld::colliders), and
-/// the box of the gate as the last one while gateBlocks is true (until the gate opens).
+/// Pulls lever number index of the round (game::pullLever). The first pull opens the
+/// wall of the lever, at that moment and for everything at once:
+///   - the wall leaves the maze of the round (Round::maze), so the discovery sees
+///     through the opening and the minimap stops drawing the wall,
+///   - its box is no longer in the list of roundObstacles, so the player can walk
+///     through and the picking ray passes. The caller has to build its copy of that
+///     list again,
+///   - the wall starts to sink (Round::wallProgress, advanced by updateRound).
+/// This is the rule of the gate (gateBlocks): what opens stops being an obstacle when it
+/// opens, while its model is still sinking.
+///
+/// Returns true when this pull opened the wall, false when the lever was pulled before.
+/// Throws std::out_of_range when the maze has no lever with that number, or when the
+/// round was not started on this world.
+bool pullRoundLever(Round& round, const MazeWorld& world, std::size_t index);
+
+/// Pulls every lever of the round that is not pulled yet, for the debug UI. Returns how
+/// many walls that opened. The round must have been started on this world.
+int pullAllLevers(Round& round, const MazeWorld& world);
+
+/// How many levers of the round are pulled: the number of walls that are open.
+int pulledLeverCount(const Round& round);
+
+/// One flag per wall of the world, in the order of MazeWorld::walls: true for a wall
+/// that a pulled lever of this round has opened.
+std::vector<bool> openedWallFlags(const MazeWorld& world, const Round& round);
+
+/// The model matrices of the walls as this round draws them: MazeWorld::wallMatrices,
+/// with the wall of every pulled lever lowered by how far it has sunk (sinkDepth). The
+/// list keeps the size and the order of MazeWorld::walls. A wall that is fully sunk stays
+/// in it: it then lies below the lowest ground under it, and the terrain hides it.
+/// The scene pass and the shadow passes draw the walls from this one list, so a sinking
+/// wall casts exactly the shadow of what is still above the ground.
+std::vector<glm::mat4> roundWallMatrices(const MazeWorld& world, const Round& round);
+
+/// How far the handle of lever number index has swung: 0 is up (not pulled), 1 is down.
+/// It reaches 1 LEVER_PULL_SECONDS after the pull. It is computed from the progress of
+/// the wall, which started at the same moment, so the round keeps one number per lever.
+/// A lever the round does not have gives 0.
+float leverHandleProgress(const Round& round, std::size_t index);
+
+/// Opens the card of note number index: from now on openNoteText gives its text. A note
+/// the maze does not have is ignored. closeNote closes the card again.
+void readNote(Round& round, const MazeWorld& world, std::size_t index);
+void closeNote(Round& round);
+
+/// The text of the note that is open (game::noteText), or an empty text when none is.
+/// It is computed when it is asked for: a hint towards a crystal counts only the
+/// crystals that are not collected yet, so it changes while the card is open.
+std::string openNoteText(const MazeWorld& world, const Round& round);
+
+/// The obstacle list for the player and for the picking ray: the boxes of the maze
+/// (MazeWorld::colliders) without the box of every wall that a pulled lever has opened,
+/// and the box of the gate as the last one while gateBlocks is true (until the gate
+/// opens).
 std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& round);
 
 /// The brightness of the flashlight as a factor from 0 to 1, for a battery charge and

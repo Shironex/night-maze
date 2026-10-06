@@ -1,5 +1,5 @@
 // Minimap: the settings of the small map in a corner of the screen, where it stands, and
-// the flat shapes it is drawn from (floors, walls, gate, crystals, player).
+// the flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
 // See docs/modules/renderer/minimap.md
 #pragma once
 
@@ -135,6 +135,12 @@ constexpr glm::vec3 MINIMAP_GATE_COLOR{0.84F, 0.56F, 0.32F};
 constexpr glm::vec3 MINIMAP_GATE_OPEN_COLOR{0.17F, 0.41F, 0.44F};
 /// A crystal that is still there: turquoise.
 constexpr glm::vec3 MINIMAP_CRYSTAL_COLOR{0.34F, 0.84F, 0.79F};
+/// A lever that is not pulled yet: a strong orange red, the colour of a switch.
+constexpr glm::vec3 MINIMAP_LEVER_COLOR{0.93F, 0.36F, 0.24F};
+/// A lever that is pulled: the same colour, dim. Its wall is no longer on the map.
+constexpr glm::vec3 MINIMAP_LEVER_PULLED_COLOR{0.42F, 0.24F, 0.22F};
+/// A note: the pale yellow of paper.
+constexpr glm::vec3 MINIMAP_NOTE_COLOR{0.90F, 0.86F, 0.70F};
 /// The arrow of the player: a warm yellow.
 constexpr glm::vec3 MINIMAP_PLAYER_COLOR{1.0F, 0.72F, 0.33F};
 
@@ -172,11 +178,14 @@ struct MinimapPlayer {
 ///      their own,
 ///   2. the walls of the shown cells, as thin rectangles on the cell edges. A wall is
 ///      drawn when at least one of the two cells it stands between is shown. The walls
-///      are asked from the maze (Maze::hasWall) in every call,
+///      are asked from the maze of the round (game::roundMaze, Maze::hasWall) in every
+///      call, so a wall that a lever has opened is not drawn any more,
 ///   3. the gate, when the exit cell is shown: across the open side of that cell, in
 ///      one colour while it blocks the way and in another once it has opened,
 ///   4. a small diamond for every crystal that is not collected and whose cell is shown,
-///   5. the player: a triangle that points where the camera looks. It is always drawn,
+///   5. a small square for every lever and every note whose cell is shown, at the wall
+///      it hangs on: a lever in one colour until it is pulled and in a dim one after,
+///   6. the player: a triangle that points where the camera looks. It is always drawn,
 ///      also outside the maze (where the picture may cut it off).
 ///
 /// A cell is "shown" when it is discovered in the round (Round::discovery), or always

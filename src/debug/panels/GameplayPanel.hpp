@@ -15,8 +15,8 @@ namespace debug {
 /// battery and the darkness of an empty one can be looked at without waiting for them.
 /// Everything else of the round is only shown. settings is editable: the numbers of the
 /// rules (they apply from the next fixed step on), the switch that stops the battery
-/// from draining and the request for a new round, which the game reads at the start of
-/// the next frame.
+/// from draining and the two requests the game reads at the start of the next frame:
+/// for a new round and for pulling every lever at once.
 void drawGameplayPanel(game::Round& round, game::GameplaySettings& settings);
 
 } // namespace debug

@@ -1449,8 +1449,12 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     // at the ground, and a ground of lines would cast a shadow of lines.
     constexpr bool NO_WIREFRAME = false;
     m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
-    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld);
+    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
+    // The levers and the notes cast shadows too (M8, part 2). An empty PickState:
+    // nothing is highlighted, the depth program has no colours.
+    m_interactableRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, PickState{},
+                                glm::vec3{0.0F});
     // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
     // a texel of the map of the moon is about 3 cm, so its shadow would be a flicker of
     // single texels that moves with the wind, on ground the tuft itself hides. The map
@@ -1460,9 +1464,11 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
 }
 ```
 
-(Tu też pominąłem komentarz otwierający.) Trzy klasy rysujące są użyte **tak, jak są**, z innym programem. Stąd dwie własności, które przychodzą za darmo:
+(Tu też pominąłem komentarz otwierający.) **Zmiana w M8, części 2 (2026-10-06).** `drawShadowCasters` ma dwie nowe rzeczy w porównaniu z kodem wyżej. Po pierwsze, ściany nie idą już z `world.wallMatrices`, tylko z listy `m_wallMatrices`: składa ją `onRender` raz na klatkę (`roundWallMatrices`), a używają jej oba przebiegi cieni i przebieg sceny, więc cień opadającej ściany jest cieniem tego, co jeszcze wystaje nad grunt, a w pełni opadła ściana (3,3 m niżej, pod najniższym gruntem) cienia nie rzuca, bo teren ją zasłania. Po drugie, rzucają cień **dźwignie i kartki**: `InteractableRenderer::draw` jest wołane z pustym `PickState` i czarnym podświetleniem, bo program głębi nie ma kolorów do podświetlenia. Cieni dźwigni, kartki ani opadającej ściany nikt nie oglądał (agent oglądał inne rzeczy, patrz [`../scene/picking.md`](../scene/picking.md)): to otwarte w liście ręcznej.
 
-- wszystko stoi w mapie dokładnie tam, gdzie stoi w obrazie: brama tak głęboko, jak się zapadła, każdy kryształ tam, gdzie unosi się w tej chwili, a kryształ zebrany nie jest rysowany, więc nie rzuca cienia,
+Trzy klasy rysujące (cztery od M8, części 2) są użyte **tak, jak są**, z innym programem. Stąd dwie własności, które przychodzą za darmo:
+
+- wszystko stoi w mapie dokładnie tam, gdzie stoi w obrazie: brama tak głęboko, jak się zapadła, ściana otwarta dźwignią tak głęboko, jak opadła (oba przebiegi dostają tę samą listę macierzy ścian tej klatki, `m_wallMatrices`, zbudowaną raz przez `roundWallMatrices`), każdy kryształ tam, gdzie unosi się w tej chwili, a kryształ zebrany nie jest rysowany, więc nie rzuca cienia,
 - teren jest **rzucającym**: wzgórza rzucają cień na labirynt, jeśli księżyc stoi nisko, a zbocze odwrócone od księżyca jest w cieniu własnym.
 
 Teren jest w mapie zawsze wypełniony, także gdy pole `Wireframe` w panelu Terrain pokazuje go liniami: grunt z linii rzucałby cień z linii.
