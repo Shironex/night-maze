@@ -63,9 +63,10 @@ public:
     virtual VideoRead readFrame(std::vector<unsigned char>& pixels, double& stampSeconds) = 0;
 
     /// Goes back to the first frame of the file: the next readFrame decodes it. False
-    /// when that failed. This is the slow call (tens of milliseconds: the decoder
-    /// starts again at a key frame), which is why a player keeps it away from the
-    /// thread that draws.
+    /// when that failed. The call itself is short, but the readFrame after it is the
+    /// slow one (measured on Windows: 16 to 37 milliseconds, against less than one for
+    /// any other frame, because the decoder starts again at a key frame). That is why
+    /// a player keeps both away from the thread that draws.
     virtual bool rewind() = 0;
 };
 

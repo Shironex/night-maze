@@ -34,11 +34,11 @@ namespace video {
 ///     the newest of them into the texture. It never waits for the decoder: when no
 ///     frame is due or none is ready, the picture in the texture stays.
 ///
-/// Why a thread at all: decoding one frame takes about two milliseconds, which the
-/// drawing thread could afford. Going back to the first frame takes about thirty (the
-/// decoder starts again at a key frame), and on the drawing thread that was two missed
-/// frames of the game at every pass of the loop. On the decoding thread it costs
-/// nothing that can be seen: the queue holds enough frames to cover it.
+/// Why a thread at all: decoding one frame takes about one millisecond, which the
+/// drawing thread could afford. The first frame after going back to the start takes
+/// 16 to 37 (the decoder starts again at a key frame), and on the drawing thread that
+/// was one or two missed frames of the game at every pass of the loop. On the decoding
+/// thread it costs nothing that can be seen: the queue holds enough frames to cover it.
 ///
 /// The two threads share only the queue and a few flags, all guarded by one mutex. The
 /// decoder is touched by the decoding thread alone and OpenGL by the drawing thread
