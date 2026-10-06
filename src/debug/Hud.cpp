@@ -309,4 +309,20 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
     ImGui::PopFont();
 }
 
+float hudReservedHeight() {
+    const float scale = ImGui::GetStyle().FontScaleDpi;
+    const ImGuiStyle& style = ImGui::GetStyle();
+
+    // The strip is a window with four lines in it: the counter, the battery bar and
+    // two hints. A line of text is as high as the font, and the bar is a widget: the
+    // font plus the frame padding above and below.
+    constexpr float TEXT_LINE_COUNT = 3.0F;
+    constexpr float GAP_COUNT = 3.0F;
+    const float textLine = HUD_FONT_SIZE * scale;
+    const float bar = textLine + 2.0F * style.FramePadding.y;
+    const float strip = 2.0F * style.WindowPadding.y + TEXT_LINE_COUNT * textLine + bar +
+                        GAP_COUNT * style.ItemSpacing.y;
+    return HUD_TOP_OFFSET * scale + strip;
+}
+
 } // namespace debug

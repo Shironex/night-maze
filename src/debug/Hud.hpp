@@ -41,4 +41,10 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
              const game::GameplaySettings& settings, const game::PickState& pick,
              bool panelsVisible);
 
+/// The height of the room at the top edge of the window that the strip of the HUD can
+/// take, in pixels of the screen: its distance from the edge plus its height with both
+/// lines of hint shown. The debug window starts below it, so the two never overlap.
+/// Call it inside an ImGui frame.
+float hudReservedHeight();
+
 } // namespace debug

@@ -2,6 +2,7 @@
 // See docs/modules/debug-ui.md
 #pragma once
 
+#include "debug/DebugWindow.hpp"
 #include "debug/RawTextureSampler.hpp"
 
 #include <vector>
@@ -62,7 +63,11 @@ public:
     void draw(const DebugContext& context);
 
 private:
-    bool m_visible = true;
+    // The debug UI starts hidden: the game opens with its main menu, and the window
+    // would cover a part of it. The panel key (main.cpp) shows it.
+    bool m_visible = false;
+    // The window with the seven categories. It only keeps what the user chose in it.
+    DebugWindow m_window;
     // The bytes of the panel font file. ImGui only keeps a pointer to them, so they live
     // here. The body of the destructor destroys the ImGui context first and the members
     // are destroyed after it, so the bytes outlive every use of the pointer.

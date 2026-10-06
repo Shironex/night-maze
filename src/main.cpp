@@ -117,6 +117,7 @@ protected:
             .menuCamera = menuCameraSettings(),
             .hudVisible = hudVisible(),
             .menuCameraLoopSeconds = menuCameraLoopSeconds(),
+            .gameMode = gameMode(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

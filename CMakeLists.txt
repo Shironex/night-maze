@@ -225,9 +225,12 @@ add_executable(night_maze
     src/game/Skybox.hpp
     src/game/TerrainRenderer.cpp
     src/game/TerrainRenderer.hpp
+    src/debug/Categories.hpp
     src/debug/DebugContext.hpp
     src/debug/DebugUI.cpp
     src/debug/DebugUI.hpp
+    src/debug/DebugWindow.cpp
+    src/debug/DebugWindow.hpp
     src/debug/Hud.cpp
     src/debug/Hud.hpp
     src/debug/Icons.cpp

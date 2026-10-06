@@ -150,6 +150,10 @@ void DebugUI::draw(const DebugContext& context) {
                         m_rawTextureSampler);
         drawLightsPanel(context.lighting, context.round);
         drawEnvironmentPanel(context.environment, context.puddleCount);
+
+        // The debug window, which takes the place of the panels above one category at
+        // a time.
+        m_window.draw(context);
     }
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not

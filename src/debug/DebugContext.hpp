@@ -15,6 +15,7 @@ class Window;
 } // namespace core
 
 namespace game {
+enum class GameMode;
 enum class ViewMode;
 struct EnvironmentSettings;
 struct GameplaySettings;
@@ -192,6 +193,9 @@ struct DebugContext {
     bool hudVisible;
     /// How long one loop of the menu camera takes, in seconds: the Camera panel shows it.
     float menuCameraLoopSeconds;
+    /// The screen the game is on (main menu, playing, paused, round end). A plain value,
+    /// copied when the context is built: the status strip of the debug window shows it.
+    game::GameMode gameMode;
 };
 
 } // namespace debug
