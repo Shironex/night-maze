@@ -375,7 +375,7 @@ Kula ma więc ten sam zasięg we wszystkich kierunkach, a pudełko o tym samym r
 - **Nie przemiatają drogi.** W teorii bryłę do zebrania dałoby się przeskoczyć (sekcja 2.5). W grze nie: krok symulacji przy sprincie to około 4,6 cm, a suma promieni zasięgu gracza i kryształu to 0,9 m.
 - **Nie mają tolerancji styku.** Tolerancja należy do ruchu (sekcja 2.7), a kule niczego nie przesuwają.
 
-Poza zakresem projektu zostają: bryły obrócone (OBB), kapsuły, siatki trójkątów, promienie (raycast), struktury przyspieszające (siatka, drzewo BVH) i pełna symulacja fizyki z masą, pędem i odbiciami ([`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md)). Oba testy kul opisuje Ericson (sekcja 10), a wersję 2D rozdział "Collision detection" z LearnOpenGL.
+Poza zakresem projektu zostają: bryły obrócone (OBB), kapsuły, siatki trójkątów, struktury przyspieszające (siatka, drzewo BVH) i pełna symulacja fizyki z masą, pędem i odbiciami ([`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md)). Promienie (raycast) istnieją od M8 jako osobna matematyka bez okna w `src/scene/Raycast.*`, opisana w [`picking.md`](picking.md): nie należą do kolizji, panel Collision ich nie pokazuje, a działający program ich nie używa. Oba testy kul opisuje Ericson (sekcja 10), a wersję 2D rozdział "Collision detection" z LearnOpenGL.
 
 ### 2.13 Pudełka na nierównym gruncie: co się zmieniło w M6, a co nie
 
@@ -1368,7 +1368,7 @@ Warunek `round.gateOpen` stoi przed testem brył z powodu trybu noclip. Z kolizj
 
 Panel **Collision** jest pokazem tematu 14. Kod: [`src/debug/panels/CollisionPanel.cpp`](../../../src/debug/panels/CollisionPanel.cpp). Jak panel jest podpięty do `DebugUI`, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
 
-PRD (sekcja 10) opisuje panel Collision jako "Debug draw AABB i sfer, wynik ostatniego raycasta", a tryb noclip wymienia przy panelu Camera. W programie jest rysowanie pudełek AABB i, od M5, kul. Promieni (raycast) nie ma: w kodzie nie ma nic, co by ich używało. Przełącznik noclip trafił do tego panelu, bo znaczy "wyłącz kolizje", a panel Camera pokazuje tylko bieżący tryb ([`camera-controls.md`](camera-controls.md), sekcja 6).
+PRD (sekcja 10) opisuje panel Collision jako "Debug draw AABB i sfer, wynik ostatniego raycasta", a tryb noclip wymienia przy panelu Camera. W programie jest rysowanie pudełek AABB i, od M5, kul. Promieni (raycast) panel nie pokazuje: matematyka promienia istnieje od M8 w `src/scene/Raycast.*` ([`picking.md`](picking.md)), ale nic w działającym programie jej nie woła, więc nie ma czego tu wypisać. Przełącznik noclip trafił do tego panelu, bo znaczy "wyłącz kolizje", a panel Camera pokazuje tylko bieżący tryb ([`camera-controls.md`](camera-controls.md), sekcja 6).
 
 ### 6.1 Kod panelu
 

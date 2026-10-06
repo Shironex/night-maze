@@ -187,6 +187,8 @@ mają pięć z sześciu części i żadna nie jest zamknięta. Minimapy (szósta
 nie ma, na macOS nic z M7 nie było budowane, a kontrolek nikt nie klikał. Krótki stan zbiera
 [`m7-status.md`](m7-status.md).
 
+Poza M7 doszły podstawy M8 bez okna (2026-10-06): promień (`src/scene/Raycast.*`, [`../modules/scene/picking.md`](../modules/scene/picking.md)) oraz dźwignie i kartki (`src/game/Interactables.*`, [`../modules/game/interactables.md`](../modules/game/interactables.md)), każde z plikiem testów (`tests/RaycastTests.cpp`, `tests/InteractablesTests.cpp`: 17 i 29 przypadków). Nic z tego nie jest podpięte do działającej gry: nie ma wejścia, rysowania ani panelu. Łącznie zgłoszone jest 375 przypadków testowych i 138506 asercji (329 i 104306 po piątej części M7 plus 46 nowych przypadków), nie mierzone przeze mnie.
+
 Docelową strukturę (z `renderer/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -322,6 +324,7 @@ night-maze/
 │   │   ├── GameplayRenderer.hpp/.cpp # rysowanie kryształów i bramy ich modelami
 │   │   ├── Grass.hpp/.cpp          # trawa: miejsca kępek z ziarna labiryntu, ustawienia
 │   │   ├── GrassRenderer.hpp/.cpp  # rysowanie trawy: punkty (GL_POINTS) dla shadera geometrii
+│   │   ├── Interactables.hpp/.cpp  # dźwignie i kartki bez OpenGL: ściany-skróty, rozmieszczenie z ziarna, pociąganie, wskazywanie (M8, tylko podstawy)
 │   │   ├── LightRig.hpp/.cpp       # bufor uniformów ze światłami klatki
 │   │   ├── Lighting.hpp/.cpp       # tryby i ustawienia oświetlenia, światła klatki
 │   │   ├── Maze.hpp/.cpp           # labirynt: siatka komórek, ściany na krawędziach, ślepy zaułek
@@ -361,6 +364,7 @@ night-maze/
 │       ├── Light.hpp/.cpp          # światła jako dane: kierunkowe, punktowe, reflektor, zanik, stożek
 │       ├── LightBlock.hpp/.cpp     # bajty bloku uniformów LightBlock (std140) i packLightBlock
 │       ├── LightSpace.hpp/.cpp     # przestrzeń światła: widok i rzut ortograficzny księżyca, współrzędne w mapie cieni (M7, część 4)
+│       ├── Raycast.hpp/.cpp        # promień: test pudełka i kuli, najbliższe trafienie, promień przez punkt obrazu (M8, tylko podstawy)
 │       └── Transform.hpp/.cpp      # pozycja, obrót, skala, macierz modelu i macierz normalnych
 ├── tests/                      # testy jednostkowe (doctest): program night_maze_tests
 │   ├── main.cpp                    # punkt wejścia: main() generuje doctest
@@ -373,6 +377,7 @@ night-maze/
 │   ├── FramebufferTests.cpp        # testy nazw formatów i tekstów stanu framebuffera, bez kontekstu OpenGL (M7)
 │   ├── GrassTests.cpp              # testy placeGrass: liczba kępek, pas przy ścianie, rozsiew na wzgórzach
 │   ├── ImageLoaderTests.cpp        # testy loadImage: tekstury i mapy normalnych gry (ściana, grunt), odwracanie wierszy, błędy
+│   ├── InteractablesTests.cpp      # testy dźwigni i kartek bez okna (M8, tylko podstawy)
 │   ├── LightingTests.cpp           # testy ustawień oświetlenia, usesNormalMap i buildLightSet
 │   ├── LightTests.cpp              # testy zaniku, stożka reflektora i bajtów bloku świateł
 │   ├── MazeGeneratorTests.cpp      # testy randomBelow i generateMaze, labirynt wzorcowy
@@ -381,6 +386,7 @@ night-maze/
 │   ├── MazeWorldTests.cpp          # testy buildMazeWorld: macierze, pudełka, start
 │   ├── ObjLoaderTests.cpp          # testy parseObj, parseMtl i loadObj
 │   ├── PlayerTests.cpp             # testy gracza: chodzenie, sprint, ślizganie, noclip
+│   ├── RaycastTests.cpp            # testy promienia bez okna: pudełko, kula, najbliższe trafienie, punkt obrazu (M8, tylko podstawy)
 │   ├── RoundTests.cpp              # testy rundy: zbieranie, brama, bateria, migotanie, wygrana
 │   ├── ShaderSourceTests.cpp       # testy expandIncludes i nameSourceFiles
 │   ├── ShadowTests.cpp             # testy cieni bez OpenGL: pudełko światła, współrzędne w mapie, bias, teksel, jądro PCF (M7, część 4)
@@ -467,6 +473,7 @@ night-maze/
         │   ├── README.md               # wstęp, aplikacja a logika bez okna, indeks
         │   ├── flashlight.md           # latarka, klawisz F, bateria, LightingSettings, światła kryształów, LightRig
         │   ├── gameplay.md             # runda: wyjście, kryształy, brama, bateria, HUD, panel Gameplay
+        │   ├── interactables.md        # dźwignie i kartki bez okna: skróty, rozmieszczenie, pociąganie, wskazywanie (M8)
         │   ├── maze-generator.md       # labirynt, generator, układ w świecie, panel Maze
         │   ├── maze-rendering.md       # MazeWorld, MazeRenderer, ModelDraw, macierze modelu, regeneracja
         │   └── player.md               # gracz: chodzenie, noclip, oczy a stopy, testy
@@ -501,6 +508,7 @@ night-maze/
         │   ├── camera.md               # macierz widoku, rzutowanie, Camera
         │   ├── collision.md            # AABB, kule, ruch ze ślizganiem, linie pudełek i kul, panel Collision
         │   ├── lights.md               # rodzaje świateł, model odbicia, lighting.glsl, panel Lights
+        │   ├── picking.md              # promień: pudełko, kula, od punktu obrazu do promienia, ray casting (M8)
         │   └── transforms.md           # przestrzenie, macierz modelu, Transform, macierz normalnych
         └── debug-ui.md             # panele ImGui i HUD w projekcie
 ```
@@ -590,6 +598,7 @@ wypisane na początku drzewa, przed katalogami.
 | `src/scene/LightSpace.*` (M7, część czwarta) | przestrzeń światła, czyli scena tak, jak widzi ją światło: stałe `LIGHT_BOX_MARGIN` (0,5 m) i `VERTICAL_DIRECTION_LIMIT` (0,999), struktura `scene::LightSpace` (macierze `view` i `projection`, wektor `extent`: szerokość, wysokość i głębokość pudełka w metrach, funkcja `matrix()` równa `projection * view`), funkcja `directionalLightSpace` (rzut ortograficzny światła kierunkowego: pudełko obrócone wzdłuż kierunku światła i dopasowane do ośmiu narożników podanego `scene::Aabb` plus margines; wynik zależy tylko od pudełka i kierunku, nie od kamery; dla światła prawie pionowego kierunkiem "w górę" jest -Z, a kierunek o długości 0 jest zastępowany kierunkiem prosto w dół) i funkcja `shadowMapCoordinates` (punkt świata we współrzędnych mapy cieni: `x` i `y` od 0 do 1 wewnątrz mapy, `z` jako głębia, którą mapa zapisuje). Sama matematyka na GLM, bez OpenGL, więc ma testy. Woła je `NightMazeApp::drawMoonShadowMap`, a te same kroki ma `common/shadows.glsl` Od piątej części M7: wyliczenie `LightProjection`, pola `kind`, `position`, `nearPlane` i `farPlane` struktury, stałe `SPOT_NEAR_PLANE` (0,05 m), `SPOT_CONE_MARGIN_DEGREES` (2) i granice kąta otwarcia (1 i 170 stopni) oraz funkcja `spotLightSpace` (rzut perspektywiczny dla latarki). | [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), sekcje 2.2, 2.3 i 2.5, notatka [`../decisions/shadow-box-fitted-to-terrain.md`](../decisions/shadow-box-fitted-to-terrain.md) |
 | `src/scene/Camera.*` | `scene::Camera`: struktura z publicznymi polami `position`, `yawDegrees`, `pitchDegrees`, `fovDegrees`, `nearPlane`, `farPlane`, stałymi `WORLD_UP` i `MAX_PITCH_DEGREES` oraz funkcjami `forward`, `right`, `rotate`, `viewMatrix`, `projectionMatrix`. Sama matematyka na GLM, bez OpenGL i bez wejścia. Używają jej `NightMazeApp` (pole `m_camera`) i `game::Player::update` (jako kalkulator kierunków `forward` i `right`) | [`../modules/scene/camera.md`](../modules/scene/camera.md) |
 | `src/scene/Collider.*` | `scene::Aabb` (pudełko o ścianach równoległych do osi: pola `min` i `max`, funkcja `fromCenter`), stała `CONTACT_TOLERANCE`, funkcje `scene::overlaps` dla dwóch pudełek (czy na siebie nachodzą) i `scene::moveAndSlide` (o ile wolno przesunąć pudełko wśród przeszkód, oś po osi, ze ślizganiem po ścianach). Od M5 także drugi kształt: `scene::Sphere` (pola `center` i `radius`), `overlaps` dla dwóch kul (kwadrat odległości środków mniejszy od kwadratu sumy promieni), `overlaps` dla kuli i pudełka oraz `closestPoint` (punkt pudełka najbliższy danemu punktowi, przez `glm::clamp`). Kule, które się tylko stykają, nie nachodzą na siebie. Sama matematyka na GLM, bez OpenGL i bez wejścia. Pudełka tworzą `game/MazeLayout`, `game::exitZone` i `game::Player::box`, `moveAndSlide` woła `game::Player::update` w każdym kroku chodzenia, a kule tworzą `game::playerReach` i zbieranie kryształów w `game::updateRound` | [`../modules/scene/collision.md`](../modules/scene/collision.md) |
+| `src/scene/Raycast.*` (M8, tylko podstawy bez okna) | promień jako dane i matematyka: struktury `scene::Ray`, `RayHit` i `NearestHit`, funkcje `scene::intersect` (promień z pudełkiem metodą płyt i promień z kulą), `scene::nearestHit` (najbliższe pudełko w zasięgu) i `scene::screenPointRay` (promień przez punkt obrazu: odwrócenie `y`, macierz odwrotna, dzielenie przez `w`). Sama matematyka na GLM, bez OpenGL. Użytkownik: `game::pickInteractable`. Nie podpięte do pętli klatki ani do panelu Collision | [`../modules/scene/picking.md`](../modules/scene/picking.md) |
 | `src/game/Maze.*` | typ `game::Direction` (North, East, South, West), stałe `DIRECTION_COUNT` i `ALL_DIRECTIONS`, funkcje `opposite`, `columnStep`, `rowStep`, struktura `game::MazeCell` (komórka jako para `x`, `z`, z porównaniem `==`, od M5), klasa `game::Maze`: siatka komórek ze ścianami na krawędziach (`width`, `height`, `contains`, `hasWall`, `removeWall`, stała `MAX_SIZE`) i funkcja `isDeadEnd` (komórka ze ścianami z dokładnie trzech stron, w M5 przeniesiona tu z `Lighting.*`). Bez OpenGL. Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md) |
 | `src/game/MazeGenerator.*` | `game::randomBelow` (losowa liczba poniżej granicy, taka sama na każdym systemie) i `game::generateMaze` (labirynt doskonały z rozmiaru i ziarna, algorytm recursive backtracker z własnym stosem). Część biblioteki `game_logic` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcje 5.4 i 5.5 |
 | `src/game/MazeLayout.*` | stałe wymiarów w metrach (`CELL_SIZE`, `WALL_LENGTH`, `WALL_HEIGHT`, `PILLAR_SIZE`, `WALL_VISUAL_THICKNESS`, `WALL_COLLISION_THICKNESS`, `PILLAR_HEIGHT`), typy `WallAxis` i `WallSegment`, funkcje `cellCenter`, `wallSegments`, `wallSegmentOn` (segment na wskazanym boku komórki, także otwartym: tak powstaje brama, od M5), `pillarPositions`, `wallBox`, `pillarBox`, `mazeColliders`. Część biblioteki `game_logic`. Woła je `game::buildMazeWorld`. Od M6 funkcje układu dają pozycje na `y = 0`, a na teren stawia je `game::placeOnTerrain`. Doszła funkcja `colliderBoxes` (pudełka z gotowych list ścian i słupków), którą woła `mazeColliders` i `placeOnTerrain` | [`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5 |
@@ -597,6 +606,7 @@ wypisane na początku drzewa, przed katalogami.
 | `src/game/Exit.*` | stałe `UNREACHABLE` (-1) i `EXIT_ZONE_HALF_SIZE` (0,5 m), funkcje `game::passageDistances` (dla każdej komórki liczba przejść na najkrótszej drodze od startu, przeszukiwanie wszerz), `farthestCell` (komórka najdalsza od startu, przy remisie pierwsza w kolejności wierszy), struktura `ExitPlacement` (`cell`, `hasGate`, `gate`), `placeExit` (wyjście w najdalszej komórce, brama na jej pierwszym otwartym boku w kolejności `ALL_DIRECTIONS`) i `exitZone` (pudełko 1 x 1 m na środku komórki wyjścia, wysokie jak ściany). Bez OpenGL. Część biblioteki `game_logic`. Woła je `game::buildMazeWorld`. Od M6 `exitZone` dostaje drugi argument, wysokość gruntu w środku komórki: strefa stoi na terenie | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), notatka [`../decisions/exit-farthest-cell.md`](../decisions/exit-farthest-cell.md) |
 | `src/game/Crystals.*` | stałe `CELLS_PER_CRYSTAL` (8), `CRYSTAL_VARIANT_COUNT` (2) i stałe ruchu i blasku kryształu (`CRYSTAL_HEIGHT`, `CRYSTAL_FLOAT_HEIGHT`, `CRYSTAL_BOB_AMPLITUDE`, `CRYSTAL_BOB_SECONDS`, `CRYSTAL_SPIN_DEGREES_PER_SECOND`, `CRYSTAL_LIGHT_CLEARANCE`, `CRYSTAL_PULSE_DEPTH`, `CRYSTAL_PULSE_SECONDS`, `CRYSTAL_GLOW_STRENGTH`), struktura `game::CrystalSpawn` (komórka i wariant modelu), funkcje `crystalCountFor` (jeden kryształ na osiem komórek, od 1 do `scene::MAX_POINT_LIGHTS`), `placeCrystals` (komórki kryształów z ziarna: nigdy start ani wyjście, najpierw ślepe zaułki), `crystalRestPosition`, `crystalCenter`, `crystalLightPosition`, `crystalBobPosition`, `crystalSpinDegrees`, `crystalPulse` i `crystalGlow` (wartość uniformu `uEmissive`: od pierwszej części M7 liczona z koloru liniowego, a `CRYSTAL_GLOW_STRENGTH` wynosi od drugiej części M7 4,0 (w pierwszej 2,5, do M6 1), więc blask jest w buforze HDR jaśniejszy niż biel i po nim znajduje kryształy bloom). Bez OpenGL. Część biblioteki `game_logic`. Od M6 `crystalRestPosition` dostaje drugi argument, wysokość gruntu w środku komórki: kryształ unosi się `CRYSTAL_FLOAT_HEIGHT` nad terenem | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), notatka [`../decisions/crystal-count-and-gate-threshold.md`](../decisions/crystal-count-and-gate-threshold.md) |
 | `src/game/Round.*` | stałe `GATE_OPEN_SECONDS` (1,5), `GATE_SINK_DEPTH` (3,3 m), `PLAYER_REACH_HEIGHT` i `PLAYER_REACH_RADIUS`, struktura `game::GameplaySettings` (liczby reguł do zmiany w działającej grze: `requiredFraction`, `batteryLifetimeSeconds`, `batteryPerCrystal`, `lowBatteryThreshold`, `pickupRadius`, `batteryDrains` i prośba `restart`), typ `RoundState` (`Playing`, `Won`: stanu przegranej nie ma), struktury `RoundCrystal` i `Round` (stan jednej rundy: kryształy, liczniki, brama, bateria, dwa zegary), funkcje `requiredCrystalCount`, `startRound`, `playerReach`, `updateRound` (jeden stały krok reguł: zegary, opadanie bramy, bateria, zbieranie, otwarcie bramy, wygrana, wyłączenie latarki przy pustej baterii), `gateBlocks`, `gateVisible`, `gateSinkDepth`, `roundObstacles`, `flashlightFlicker`, `lightingForFrame` i `crystalLightPositions`. Bez OpenGL. Część biblioteki `game_logic`. Od M6 funkcja `restCrystalsOnGround` przestawia pozycje spoczynku kryształów rundy po przebudowie terenu, bez zmiany tego, które są zebrane | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), bateria i światła w [`../modules/game/flashlight.md`](../modules/game/flashlight.md), notatka [`../decisions/battery-darkness-no-loss.md`](../decisions/battery-darkness-no-loss.md) |
+| `src/game/Interactables.*` (M8, tylko podstawy bez okna) | dźwignie i kartki jako dane i matematyka: `game::WallRef`, `Lever`, `Note`, `Interactables`, `InteractableState`, `PullResult`, `PickedInteractable`, funkcje `chooseShortcutWalls`, `placeInteractables`, `leverBox`, `noteBox`, `pullLever`, `openedWalls`, `pickInteractable`, `compassTowards`, `noteText`. Nie podpięte do `MazeWorld`, rundy ani rysowania | [`../modules/game/interactables.md`](../modules/game/interactables.md) |
 | `src/game/Lighting.*` | typy `game::LightingMode` (`Unlit`, `Gouraud`, `Phong`, `BlinnPhong`: pozycje listy `Lighting` w panelu Renderer) i `game::SpecularModel` (wartości uniformu `uSpecularModel`), funkcja `specularModelOf`, struktura `game::LightingSettings` (wszystko, co da się zmienić w działającej grze: tryb, światło otoczenia, kąty, kolor i natężenie księżyca, wyłącznik, kolor, natężenie, stożek i zasięg latarki, kolor, natężenie i promień świateł punktowych, siła i wykładnik połysku), pole `normalMapping` (przełącznik map normalnych, startowo włączony) i funkcja `usesNormalMap` (włączone i tryb inny niż `Gouraud`) oraz `buildLightSet` (światła jednej klatki z ustawień, oka, kierunku patrzenia i listy pozycji świateł punktowych, którą od M5 podaje `game::crystalLightPositions`). Od pierwszej części M7 cztery kolory ustawień są wartościami sRGB, a `buildLightSet` przelicza je na liniowe (`gfx::srgbToLinear`). Wartości startowe dobrane od nowa: otoczenie `(0,105, 0,135, 0,225)`, natężenie księżyca 0,12 (od czwartej części M7 0,2, żeby miejsce w świetle księżyca było wyraźnie jaśniejsze od miejsca w cieniu ściany), latarki 1,3, świateł punktowych 0,9. Od czwartej części M7 także funkcja `moonDirection`: kierunek, w którym leci światło księżyca, z dwóch kątów ustawień. Biorą go z niej i `buildLightSet`, i mapa cieni, więc nie mogą się rozjechać. Kod świateł w ślepych zaułkach z M4 (stała wysokości światła i funkcja wybierająca zaułki) został usunięty w M5, a `isDeadEnd` przeniesiona do `Maze.*`. Zwykłe dane i matematyka bez OpenGL. Część biblioteki `game_logic` Od piątej części M7: struktura `FlashlightPose`, funkcja `flashlightPose` (latarka w ręce: 0,2 m na prawo, 0,25 m w dół, wiązka zbieżna z osią widoku 4 m przed okiem), stałe `MAX_FLASHLIGHT_HAND_RIGHT` (0,25) i `MIN_FLASHLIGHT_CONVERGE_DISTANCE` (0,5), trzy nowe pola `LightingSettings` i nowa sygnatura `buildLightSet(settings, pose, pointPositions)`. | [`../modules/game/flashlight.md`](../modules/game/flashlight.md) |
 | `src/game/Player.*` | struktura `game::PlayerInput` (siedem pól `bool`: czego gracz chce w jednym kroku) i struktura `game::Player`: stałe ciała i prędkości (`BODY_WIDTH`, `BODY_HEIGHT`, `EYE_HEIGHT`, `WALK_SPEED`, `SPRINT_SPEED`, `FLY_SPEED`; stałą `FLOOR_Y` usunął M6), pola `position` (stopy), `noclip`, `walkSpeed`, `sprintSpeed`, `flySpeed`, funkcje `box`, `eyePosition` i `update` (jeden stały krok: chodzenie przez `scene::moveAndSlide` albo lot bez kolizji. Od M6 dostaje też `const Terrain&` i po ruchu stawia stopy na wysokości `Terrain::heightAt`). Bez OpenGL, bez klawiatury i bez zegara. Część biblioteki `game_logic` | [`../modules/game/player.md`](../modules/game/player.md) |
 | `src/game/MazeRenderer.*` | typ `game::ViewMode` (`Textured`, `Normals`, `Uvs`: wartości uniformu `uViewMode`) i klasa `game::MazeRenderer`: prosi pamięć podręczną o dwa modele labiryntu, ścianę i słupek (do M5 trzy, z płytką podłogi) i rysuje `MazeWorld`, jedno wywołanie rysujące na obiekt. Program shaderów dostaje z zewnątrz: `textured` albo jeden z dwóch oświetlonych (`lit`, `gouraud`). Ustawia `uEmissive` na czerń (kamień sam nie świeci) i woła `game::drawModel` dla ścian i słupków. Grunt pod nimi rysuje od M6 `game::TerrainRenderer`. Niczego nie posiada. Część programu `night_maze` (potrzebuje kontekstu OpenGL) | [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md) |
@@ -668,6 +678,8 @@ wypisane na początku drzewa, przed katalogami.
 | `tests/ExitTests.cpp` | 11 przypadków testowych wyjścia: `passageDistances` (korytarz, komórka nieosiągalna, droga przez przejścia), `farthestCell` (remis), labirynt wzorcowy 4 na 4 z ziarna 1 (wyjście w ślepym zaułku (3, 1)), wyjście jako ślepy zaułek z bramą dla 25 ziaren, labirynt z jednej komórki, `wallSegmentOn`, `exitZone`, pola wyjścia w `MazeWorld` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | `tests/CrystalTests.cpp` | 14 przypadków testowych kryształów: `crystalCountFor`, labirynt wzorcowy (dokładnie dwa kryształy), labirynt startowy (13 kryształów, wyjście w komórce (6, 5)), różne komórki bez startu i wyjścia, ślepe zaułki najpierw, oba warianty modelu, powtarzalność, za mało wolnych komórek, błędne argumenty, pozycja spoczynku i światła, kołysanie, obrót, pulsowanie i blask | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | `tests/RoundTests.cpp` | 25 przypadków testowych rundy: wartości domyślne reguł, `requiredCrystalCount`, nowa runda, zasięg gracza, zbieranie i promień zbierania, bateria (zużycie tylko przy włączonej latarce, pusta wyłącza latarkę, doładowanie kryształem, kryształ w kroku wyczerpania), brama (otwarcie, opadanie w 1,5 s, zmiana progu w trakcie rundy), wygrana tylko przy otwartej bramie, zegary po wygranej, labirynt bez kryształów i z jednej komórki, migotanie, `lightingForFrame`, `crystalLightPositions`, limit świateł | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
+| `tests/InteractablesTests.cpp` (M8) | 29 przypadków testowych dźwigni i kartek bez okna | [`../modules/game/interactables.md`](../modules/game/interactables.md) |
+| `tests/RaycastTests.cpp` (M8) | 17 przypadków testowych promienia bez okna (pudełko, kula, najbliższe trafienie, punkt obrazu) | [`../modules/scene/picking.md`](../modules/scene/picking.md) |
 | `tests/SkyboxTests.cpp` | 5 przypadków testowych plików nieba (M6): sześć kwadratów jednej wielkości z trzema kanałami, reguła wyboru ściany i teksela przepisana ze specyfikacji OpenGL (`facePointOf`), tarcza księżyca tam, skąd leci domyślne światło księżyca z `game::LightingSettings`, niebo jaśniejsze przy horyzoncie niż w zenicie i zgodność koloru po obu stronach każdej z dwunastu krawędzi sześcianu. Test czyta pliki loaderem, bez OpenGL | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcja 5.8 |
 | `tests/TerrainTests.cpp` | 27 przypadków testowych terenu (M6): stałe, `Heightmap::sample` i `heightmapFromImage`, `terrainRelief`, rozmiar siatki, wzór wysokości i skala (0 daje płaski świat), `heightAt` w punktach siatki, na krawędziach, na przekątnej, poza siatką i w losowych punktach względem trójkąta siatki, `buildTerrainMesh` (liczby, kierunek nawijania, normalne, UV, styczne), `gridNormal`, `lowestHeightUnder`, prawdziwy plik `heightmap.png`, świat bez mapy na płaskim gruncie, ściany, słupki i brama zatopione bez szczelin, kryształy nad gruntem, stopy gracza na gruncie i kolizje takie same jak na płaskim | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) |
 | `tests/GrassTests.cpp` | 9 przypadków testowych trawy (M6): stałe i ustawienia domyślne, gęstość 0, powtarzalność z ziarna i inne ziarno, liczba kępek na ścianę i stronę z pasem, w którym stoją, podwojenie gęstości, żadna kępka w ścianie, słupku ani bramie, kępki na gruncie z liczbą losową od 0 do 1, rozsiew na wzgórzach z dala od labiryntu | [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md) |
@@ -942,8 +954,8 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
-| `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
-| `game_logic` | biblioteka statyczna | `src/game/Bloom.*` (M7, część druga), `src/game/Crystals.*`, `src/game/Exit.*`, `src/game/Fog.*` (M7, część trzecia), `src/game/Grass.*`, `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Player.*`, `src/game/Round.*`, `src/game/Shadows.*` (M7, część czwarta), `src/game/Terrain.*`, `src/game/Vignette.*` (M7, część trzecia) | `engine` (`PUBLIC`) |
+| `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` (od M8 także `Raycast.*`) | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
+| `game_logic` | biblioteka statyczna | `src/game/Bloom.*` (M7, część druga), `src/game/Crystals.*`, `src/game/Exit.*`, `src/game/Fog.*` (M7, część trzecia), `src/game/Grass.*`, `src/game/Interactables.*` (M8, tylko podstawy bez okna), `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Player.*`, `src/game/Round.*`, `src/game/Shadows.*` (M7, część czwarta), `src/game/Terrain.*`, `src/game/Vignette.*` (M7, część trzecia) | `engine` (`PUBLIC`) |
 | `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/GameplayRenderer.*`, `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*`, `src/game/ModelDraw.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/Skybox.*`, `src/game/PostProcess.*`, `src/game/ShadowMap.*` (M7, część czwarta), `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, HUD, układ, motyw, sampler podglądów, dwanaście paneli) | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
 | `night_maze_tests` | program | `tests/*.cpp` | `game_logic`, `doctest::doctest` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
@@ -1232,6 +1244,8 @@ add_library(engine STATIC
     src/scene/LightBlock.hpp
     src/scene/LightSpace.cpp
     src/scene/LightSpace.hpp
+    src/scene/Raycast.cpp
+    src/scene/Raycast.hpp
     src/scene/Transform.cpp
     src/scene/Transform.hpp
 )
@@ -1323,6 +1337,8 @@ add_library(game_logic STATIC
     src/game/Fog.hpp
     src/game/Grass.cpp
     src/game/Grass.hpp
+    src/game/Interactables.cpp
+    src/game/Interactables.hpp
     src/game/Lighting.cpp
     src/game/Lighting.hpp
     src/game/Maze.cpp
@@ -1353,9 +1369,9 @@ target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 ```
 
-- `add_library(game_logic STATIC ...)`: druga nasza biblioteka statyczna, z trzydziestu
+- `add_library(game_logic STATIC ...)`: druga nasza biblioteka statyczna, z trzydziestu dwóch
   plików logiki gry bez okna (labirynt, `MazeWorld`, gracz, od M4 `Lighting`, od M5 `Exit`,
-  `Crystals` i `Round`, od M6 `Terrain` i `Grass`, od drugiej części M7 `Bloom`, od trzeciej `Fog` i `Vignette`, a od czwartej `Shadows`). Lista jest jawna, tak jak przy
+  `Crystals` i `Round`, od M6 `Terrain` i `Grass`, od drugiej części M7 `Bloom`, od trzeciej `Fog` i `Vignette`, od czwartej `Shadows`, a od M8 `Interactables`). Lista jest jawna, tak jak przy
   `engine`.
 - `target_link_libraries(game_logic PUBLIC engine)`: `game_logic` używa `scene::Aabb` z
   `engine`. `PUBLIC`, bo nagłówek `game/MazeLayout.hpp` sam dołącza `scene/Collider.hpp` i
@@ -1475,6 +1491,7 @@ add_executable(night_maze_tests
     tests/FramebufferTests.cpp
     tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
+    tests/InteractablesTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp
@@ -1483,6 +1500,7 @@ add_executable(night_maze_tests
     tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
+    tests/RaycastTests.cpp
     tests/RoundTests.cpp
     tests/ShaderSourceTests.cpp
     tests/ShadowTests.cpp
@@ -1513,7 +1531,7 @@ Drugi program w projekcie. Każdą linię omawia
 - `enable_testing()` włącza zapis listy testów do katalogu buildu, gdzie znajduje ją program
   `ctest`.
 - `add_executable(night_maze_tests ...)` buduje program testowy z dwudziestu sześciu plików
-  (`tests/main.cpp` i dwadzieścia pięć plików z testami, od pierwszej części M7 z `ColorSpaceTests.cpp` i `FramebufferTests.cpp`, od drugiej z `BloomTests.cpp`, od trzeciej z `FogTests.cpp` i `VignetteTests.cpp`, od czwartej z `ShadowTests.cpp`) przy każdym zwykłym buildzie (jest częścią
+  (`tests/main.cpp` i dwadzieścia siedem plików z testami, od pierwszej części M7 z `ColorSpaceTests.cpp` i `FramebufferTests.cpp`, od drugiej z `BloomTests.cpp`, od trzeciej z `FogTests.cpp` i `VignetteTests.cpp`, od czwartej z `ShadowTests.cpp`, od M8 z `RaycastTests.cpp` i `InteractablesTests.cpp`) przy każdym zwykłym buildzie (jest częścią
   targetu domyślnego), więc testy zawsze się kompilują.
 - `target_link_libraries(... PRIVATE game_logic doctest::doctest)`: kod testowany i
   biblioteka testów. `engine` przychodzi przez `game_logic`.

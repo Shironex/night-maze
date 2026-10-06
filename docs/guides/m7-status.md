@@ -4,7 +4,7 @@ Krótka ściąga: co z kamienia milowego M7 jest w kodzie, co zostało, jakie de
 
 **Jednym zdaniem:** pięć części z sześciu jest kompletnych w kodzie na Windowsie, **żadna nie jest zamknięta** (testy ręczne i macOS są otwarte dla wszystkich), tagu nie ma. Brakuje części szóstej, minimapy: jej kodu nie ma, a dwie decyzje o niej zapadły (sekcja 3).
 
-Poza M7 istnieją w kodzie bezokienkowe fundamenty M8 (rzutowanie promieni, rozmieszczanie dźwigni i notatek). Nie są częścią M7 i są opisane osobno, w swoich dokumentach.
+Poza M7 istnieją w kodzie bezokienkowe fundamenty M8 (rzutowanie promieni, rozmieszczanie dźwigni i notatek). Nie są częścią M7 i są opisane osobno, w swoich dokumentach: [`../modules/scene/picking.md`](../modules/scene/picking.md) i [`../modules/game/interactables.md`](../modules/game/interactables.md).
 
 ## 1. Co jest zbudowane
 
