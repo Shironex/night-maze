@@ -227,10 +227,13 @@ void drawFlashlight(Page& page, game::LightingSettings& lighting, const game::Ro
 // glow in.
 void drawCrystalLights(Page& page, game::LightingSettings& lighting, const game::Round& round) {
     page.beginCard("Crystal lights");
-    // Every crystal that is not collected yet carries one light.
+    // A crystal that is not collected yet can carry a light, but only the nearest
+    // MAX_POINT_LIGHTS of them do: a large maze has more crystals than lights.
     const int crystalCount = static_cast<int>(round.crystals.size());
-    page.stat("Lit", "%d of %d crystals (at most %d)", crystalCount - round.collectedCount,
-              crystalCount, scene::MAX_POINT_LIGHTS);
+    const int remaining = crystalCount - round.collectedCount;
+    const int lit = remaining < scene::MAX_POINT_LIGHTS ? remaining : scene::MAX_POINT_LIGHTS;
+    page.stat("Lit", "%d of %d crystals left (at most %d)", lit, remaining,
+              scene::MAX_POINT_LIGHTS);
     page.color("Point colour", glm::value_ptr(lighting.pointColor),
                "The colour of the lights of the crystals, and the colour the crystals "
                "glow in.");
