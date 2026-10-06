@@ -1,4 +1,4 @@
-// Debug context: the data the debug panels may read or edit during one frame.
+// Debug context: the data the debug window may read or edit during one frame.
 // See docs/modules/debug-ui.md
 #pragma once
 
@@ -49,13 +49,14 @@ struct LightSpace;
 
 namespace debug {
 
-/// Everything the debug panels and the HUD may read or edit this frame.
+/// Everything the debug window and the HUD may read or edit this frame.
 ///
 /// A plain struct of references into objects owned by the application. main.cpp builds it
 /// every frame and passes it to DebugUI::draw. It owns nothing and must not outlive the
 /// frame it was built in.
 ///
-/// A const member is read only for the panels, a non-const member can be edited by them.
+/// A const member is read only for the debug window, a non-const member can be edited
+/// by it.
 /// A reference member keeps this meaning even when the struct itself is const: constness
 /// of the struct does not pass through a reference to the object it refers to.
 struct DebugContext {
@@ -71,7 +72,7 @@ struct DebugContext {
     /// Mouse look sensitivity in degrees per screen coordinate unit, editable.
     float& mouseSensitivity;
     /// Shader program of the scene without lighting (textured models), editable: the
-    /// Shaders panel reloads it.
+    /// Diagnostics category reloads it.
     gfx::Shader& texturedShader;
     /// Shader program of the lines of the collision boxes and spheres, editable:
     /// reloaded like texturedShader.
@@ -83,7 +84,7 @@ struct DebugContext {
     game::MazeSettings& mazeSettings;
     /// The maze in play, read only: its plan, its collision boxes and its terrain.
     const game::MazeWorld& mazeWorld;
-    /// Loaded models and textures, editable: the Assets panel changes the filtering.
+    /// Loaded models and textures, editable: the Render category changes the filtering.
     assets::AssetCache& assets;
     /// What the textured shader shows (picture, normals or UVs), editable.
     game::ViewMode& viewMode;
@@ -101,8 +102,8 @@ struct DebugContext {
     /// The numbers of the rules of a round and the requests for a restart and for
     /// pulling every lever, editable.
     game::GameplaySettings& gameplay;
-    /// The round in play: the HUD and the panels show it. Editable for one thing, the
-    /// charge of the battery (the Gameplay panel).
+    /// The round in play: the HUD and the debug window show it. Editable for one thing,
+    /// the charge of the battery (the Gameplay category).
     game::Round& round;
     /// Shader program of the sky, editable: reloaded like texturedShader.
     gfx::Shader& skyboxShader;
@@ -115,7 +116,7 @@ struct DebugContext {
     /// The switch, the density, the blade height and the wind of the grass, editable.
     game::GrassSettings& grass;
     /// How many tufts of grass are drawn. A plain number, copied when the context is
-    /// built: the panels only show it.
+    /// built: the debug window only shows it.
     std::size_t grassTuftCount;
     /// Shader program of the composite pass, editable: reloaded like texturedShader.
     gfx::Shader& compositeShader;
@@ -156,7 +157,7 @@ struct DebugContext {
     const scene::LightSpace& flashlightLightSpace;
     /// Whether the shadow map of the flashlight was drawn in the last frame: not with
     /// its shadows switched off, and not while the flashlight is off. A plain value,
-    /// copied when the context is built: the Shadows panel only shows it.
+    /// copied when the context is built: the Light category only shows it.
     bool flashlightShadowDrawn;
     /// Shader program that draws the minimap into its framebuffer, editable: reloaded
     /// like texturedShader.
@@ -176,22 +177,23 @@ struct DebugContext {
     /// puddles), editable.
     game::EnvironmentSettings& environment;
     /// How many puddles lie in the maze. A plain number, copied when the context is
-    /// built: the panels only show it.
+    /// built: the debug window only shows it.
     std::size_t puddleCount;
     /// The picking of the last frame, read only: the ray, the lever or the note it hit
     /// and what the interaction key does. The HUD draws the crosshair and the prompt
-    /// from it, the Collision panel shows its numbers.
+    /// from it, the Diagnostics category shows its numbers.
     const game::PickState& pick;
     /// The switches of the debug view of the picking (draw the pick boxes and the ray,
     /// freeze the drawn ray), editable.
     game::PickDebugSettings& pickDebug;
-    /// The settings of the menu camera, editable: the Camera panel edits them, and
+    /// The settings of the menu camera, editable: the Player category edits them, and
     /// while the camera runs the HUD is not drawn.
     game::MenuCameraSettings& menuCamera;
     /// Whether the HUD of the round is drawn in this frame. The game decides: only
     /// while a round is played and the menu camera is off (NightMazeApp::hudVisible).
     bool hudVisible;
-    /// How long one loop of the menu camera takes, in seconds: the Camera panel shows it.
+    /// How long one loop of the menu camera takes, in seconds: the Player category shows
+    /// it.
     float menuCameraLoopSeconds;
     /// The screen the game is on (main menu, playing, paused, round end). A plain value,
     /// copied when the context is built: the status strip of the debug window shows it.

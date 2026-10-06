@@ -3,7 +3,6 @@
 // See docs/modules/game/gameplay.md
 #include "debug/Hud.hpp"
 
-#include "debug/PanelLayout.hpp"
 #include "debug/Theme.hpp"
 #include "game/Interaction.hpp"
 #include "game/MazeWorld.hpp"
@@ -21,14 +20,12 @@ namespace debug {
 namespace {
 
 // Sizes in pixels at 100 % display scaling. They are multiplied by the display scale
-// (ImGuiStyle::FontScaleDpi, set by applyTheme), like the sizes of the panels.
+// (ImGuiStyle::FontScaleDpi, set by applyTheme), like the sizes of the debug window.
 
-// While the debug panels are shown, the HUD stands below the rows of title bars of the
-// panels that start folded at the top edge (FOLDED_ROW_COUNT rows). This is the free
-// space above the first row plus the extra space between the last row and the HUD, which
-// makes the HUD read as a thing of its own: two panel gaps. With the panels hidden it is
-// the distance of the HUD from the top edge of the window.
-constexpr float HUD_TOP_OFFSET = 2.0F * PANEL_GAP;
+// The distance of the strip from the top edge of the window. It is the same whether the
+// debug UI is shown or hidden: the debug window starts below the strip
+// (hudReservedHeight), so nothing has to make room for the other.
+constexpr float HUD_TOP_OFFSET = 16.0F;
 
 // Height of the text of the HUD in pixels. The HUD is read while playing, from further
 // away than the debug window is worked with, so it keeps a larger text than FONT_SIZE
@@ -46,7 +43,7 @@ constexpr float CARD_OPACITY = 0.9F;
 // The title of the card is drawn this much larger than the other text.
 constexpr float CARD_TITLE_SCALE = 1.8F;
 
-// Free space around the text of the card, wider than in a panel.
+// Free space around the text of the card, wider than in the debug window.
 constexpr ImVec2 CARD_PADDING{28.0F, 20.0F};
 
 // Places on the screen as parts of the window: x is 0 at the left edge and 1 at the
@@ -86,7 +83,7 @@ constexpr std::size_t TIME_TEXT_SIZE = 16;
 //   AlwaysAutoResize    exactly as large as its contents, in every frame
 //   NoInputs            the mouse passes through it, it is never hovered or clicked
 //   NoNav               the keyboard navigation of ImGui skips it
-//   NoFocusOnAppearing  appearing does not take the focus from a panel
+//   NoFocusOnAppearing  appearing does not take the focus from the debug window
 //   NoSavedSettings     nothing about it is written to imgui.ini
 //   NoDocking           it cannot be docked into the dock area
 //   NoMove              it stays where the code puts it
@@ -95,10 +92,10 @@ constexpr ImGuiWindowFlags PICTURE_WINDOW_FLAGS =
     ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing |
     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove;
 
-// The strip at the top also stays behind the debug panels (NoBringToFrontOnFocus): a
-// panel that is unfolded over it is being worked with, and the strip must not cover
-// its widgets. The card has no such flag: ImGui puts a new window in front of the ones
-// that are already there, so the card starts on top of the panels. A panel that is
+// The strip at the top also stays behind the debug UI (NoBringToFrontOnFocus): a pinned
+// panel that is dragged over it is being worked with, and the strip must not cover its
+// widgets. The card has no such flag: ImGui puts a new window in front of the ones that
+// are already there, so the card starts on top of the debug window. A window that is
 // clicked afterwards comes in front of it, like in front of any other window.
 constexpr ImGuiWindowFlags STATUS_WINDOW_FLAGS =
     PICTURE_WINDOW_FLAGS | ImGuiWindowFlags_NoBringToFrontOnFocus;
@@ -156,20 +153,12 @@ void drawHint(const game::Round& round) {
 }
 
 // The strip at the top of the window.
-void drawStatus(const game::Round& round, const game::GameplaySettings& settings, float scale,
-                bool panelsVisible) {
+void drawStatus(const game::Round& round, const game::GameplaySettings& settings, float scale) {
     // The third argument is the pivot: the point of the HUD that is put at the given
     // position. (0.5, 0) is the middle of its top edge, so the HUD is centred whatever
     // its width turns out to be.
     const ImVec2 top = windowPoint(TOP_CENTER);
-    // The rows of title bars are measured with the real height of a bar, which follows
-    // the font (foldedRowsHeight).
-    // With the panels hidden there are no title bars to stay clear of: the HUD then stands
-    // at the top edge, and not a quarter of the window down, over the middle of the
-    // picture, where the flashlight shines.
-    const float rowsAbove = panelsVisible ? foldedRowsHeight(FOLDED_ROW_COUNT, scale) : 0.0F;
-    ImGui::SetNextWindowPos({top.x, top.y + rowsAbove + HUD_TOP_OFFSET * scale}, ImGuiCond_Always,
-                            TOP_CENTER);
+    ImGui::SetNextWindowPos({top.x, top.y + HUD_TOP_OFFSET * scale}, ImGuiCond_Always, TOP_CENTER);
     ImGui::SetNextWindowBgAlpha(HUD_OPACITY);
 
     // The name is never shown (there is no title bar). ImGui tells windows apart by it.
@@ -229,7 +218,8 @@ void drawCrosshair(const game::PickState& pick, float scale) {
         return;
     }
     // The background draw list takes shapes in screen coordinates and draws them
-    // behind every ImGui window, so the crosshair never covers a panel or a card.
+    // behind every ImGui window, so the crosshair never covers the debug window or
+    // a card.
     ImDrawList* drawList = ImGui::GetBackgroundDrawList();
     const ImVec2 center = windowPoint(CENTER);
 
@@ -287,8 +277,7 @@ void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float 
 } // namespace
 
 void drawHud(const game::MazeWorld& world, const game::Round& round,
-             const game::GameplaySettings& settings, const game::PickState& pick,
-             bool panelsVisible) {
+             const game::GameplaySettings& settings, const game::PickState& pick) {
     const float scale = ImGui::GetStyle().FontScaleDpi;
 
     // The same font as the debug window, in the size of the HUD, for everything below.
@@ -296,7 +285,7 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
     // multiplies it by FontScaleDpi itself.
     ImGui::PushFont(nullptr, HUD_FONT_SIZE);
 
-    drawStatus(round, settings, scale, panelsVisible);
+    drawStatus(round, settings, scale);
     drawCrosshair(pick, scale);
     drawPrompt(pick);
     if (round.noteOpen) {

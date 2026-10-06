@@ -83,7 +83,7 @@ TEST_CASE("the minimap settings start with the agreed values") {
     CHECK_FALSE(settings.revealAll);
     CHECK(settings.size == 0.28F);
     CHECK(settings.margin == 0.02F);
-    CHECK(settings.corner == game::MinimapCorner::BottomRight);
+    CHECK(settings.corner == game::MinimapCorner::BottomLeft);
     CHECK(settings.opacity == 0.85F);
 }
 

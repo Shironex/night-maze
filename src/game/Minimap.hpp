@@ -62,8 +62,9 @@ struct MinimapSettings {
     float margin = 0.02F;
 
     /// The corner the map stands in. A bottom corner by default: the HUD stands at the
-    /// top of the window, in the middle, and grows downwards with its hints.
-    MinimapCorner corner = MinimapCorner::BottomRight;
+    /// top of the window, in the middle, and grows downwards with its hints. The left
+    /// one, because the debug window stands at the right edge while it is shown.
+    MinimapCorner corner = MinimapCorner::BottomLeft;
 
     /// How much the map hides of the scene behind it: 1 hides it completely, lower
     /// values let it show through.

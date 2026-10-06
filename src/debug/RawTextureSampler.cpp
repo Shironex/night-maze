@@ -56,7 +56,7 @@ void RawTextureSampler::begin() const {
     if (!isSupported()) {
         return;
     }
-    // ImGui does not draw while the panels are built: it collects draw commands and
+    // ImGui does not draw while the windows are built: it collects draw commands and
     // runs them at the end of the frame. A callback is a command of our own in that
     // list. With a size as the third argument ImGui copies the bytes it is given, so
     // the callback does not depend on this object or on the local variable.

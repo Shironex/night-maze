@@ -1,4 +1,4 @@
-// Debug user interface: owns the Dear ImGui context and draws the debug panels and the HUD.
+// Debug user interface: owns the Dear ImGui context and draws the debug window and the HUD.
 // See docs/modules/debug-ui.md
 #include "debug/DebugUI.hpp"
 
@@ -26,7 +26,7 @@ DebugUI::DebugUI(const core::Window& window) {
     // Renderer backend: draws ImGui with OpenGL. The string is the GLSL version of its shaders.
     ImGui_ImplOpenGL3_Init("#version 410");
 
-    // The look of the panels. The content scale is 1 at 100 % display scaling and 1.5 at
+    // The look of the debug UI. The content scale is 1 at 100 % display scaling and 1.5 at
     // 150 % on Windows: the theme multiplies its sizes and the font by it. On macOS the
     // function returns 1, because a Retina display is handled by the framebuffer being
     // larger than the window, and ImGui follows that on its own.
@@ -48,8 +48,9 @@ bool DebugUI::wantsKeyboard() const {
 bool DebugUI::wantsMouse() const {
     const ImGuiIO& io = ImGui::GetIO();
     // With the mouse switched off ImGui still sets WantCaptureMouse while a button is
-    // held down and the hidden cursor is at the position of a panel. Nothing in the panel
-    // reacts, but the caller would block the mouse for the game, so the answer is no.
+    // held down and the hidden cursor is at the position of the debug window. Nothing in
+    // the window reacts, but the caller would block the mouse for the game, so the answer
+    // is no.
     if ((io.ConfigFlags & ImGuiConfigFlags_NoMouse) != 0) {
         return false;
     }
@@ -57,7 +58,7 @@ bool DebugUI::wantsMouse() const {
 }
 
 void DebugUI::setMouseEnabled(bool enabled) {
-    // ConfigFlags is a set of bits. With the NoMouse bit set, ImGui treats no panel as
+    // ConfigFlags is a set of bits. With the NoMouse bit set, ImGui treats no window as
     // being under the cursor when it starts a frame, so nothing is hovered or clicked.
     ImGuiIO& io = ImGui::GetIO();
     if (enabled) {
@@ -84,8 +85,9 @@ void DebugUI::draw(const DebugContext& context) {
     context.flashlightShadowSettings.preview = false;
 
     if (m_visible) {
-        // An invisible dock area that covers the whole window, so panels can be docked to
-        // its edges. PassthruCentralNode keeps the middle transparent: the scene shows through.
+        // An invisible dock area that covers the whole window, so the pinned panel of
+        // the debug window can be docked to its edges. PassthruCentralNode keeps the
+        // middle transparent: the scene shows through.
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
                                      ImGuiDockNodeFlags_PassthruCentralNode);
 
@@ -95,11 +97,11 @@ void DebugUI::draw(const DebugContext& context) {
     }
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not
-    // the panels are visible.
+    // the debug UI is visible.
     // The game says when: not under a menu, where it would lie on top of the buttons,
     // and not in the picture of the menu camera, which shows no round.
     if (context.hudVisible) {
-        drawHud(context.mazeWorld, context.round, context.gameplay, context.pick, m_visible);
+        drawHud(context.mazeWorld, context.round, context.gameplay, context.pick);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.

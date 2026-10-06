@@ -237,8 +237,6 @@ add_executable(night_maze
     src/debug/Icons.hpp
     src/debug/MazePlan.cpp
     src/debug/MazePlan.hpp
-    src/debug/PanelLayout.cpp
-    src/debug/PanelLayout.hpp
     src/debug/Pictures.cpp
     src/debug/Pictures.hpp
     src/debug/RawTextureSampler.cpp

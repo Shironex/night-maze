@@ -13,8 +13,8 @@ struct Round;
 namespace debug {
 
 /// Draws the HUD of the game on top of the scene. Called by DebugUI::draw, inside the
-/// ImGui frame, in every frame: unlike the debug panels it is not hidden by the panel
-/// toggle key, because it is part of the game and not a tool.
+/// ImGui frame, in every frame: unlike the debug window it is not hidden by the debug
+/// key, because it is part of the game and not a tool.
 ///
 /// It lives in src/debug only because this is where ImGui is: the game itself must not
 /// include ImGui. world, round, settings and pick are read only.
@@ -35,11 +35,11 @@ namespace debug {
 ///
 /// The HUD takes no input: the mouse and the keyboard pass through it to the game.
 ///
-/// panelsVisible tells whether the debug panels are shown. With them the strip stands
-/// below the rows of folded title bars, without them at the top edge of the window.
+/// The strip always stands at the top edge of the window, in the middle. The debug
+/// window keeps clear of it (hudReservedHeight), so the strip does not move when the
+/// debug UI is shown or hidden.
 void drawHud(const game::MazeWorld& world, const game::Round& round,
-             const game::GameplaySettings& settings, const game::PickState& pick,
-             bool panelsVisible);
+             const game::GameplaySettings& settings, const game::PickState& pick);
 
 /// The height of the room at the top edge of the window that the strip of the HUD can
 /// take, in pixels of the screen: its distance from the edge plus its height with both

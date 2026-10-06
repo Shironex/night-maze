@@ -66,17 +66,17 @@ inline constexpr ImVec4 TRACK_HOVER_COLOR = colorFromBytes(66, 87, 143);
 
 // ---- Colours with a meaning in the game ------------------------------------------------
 
-/// Text of a failed load (Shaders and Assets panels): a soft red that stays readable on
-/// the dark panel background.
+/// Text of a failed load (the lists of shader programs and of assets in the Diagnostics
+/// category): a soft red that stays readable on the dark background of a card.
 inline constexpr ImVec4 ERROR_TEXT_COLOR = colorFromBytes(255, 150, 138);
 
-/// Walls on the plan of the Maze panel: pale stone in moonlight.
+/// Walls on the plan of the maze (MazePlan.hpp): pale stone in moonlight.
 inline constexpr ImVec4 PLAN_WALL_COLOR = colorFromBytes(176, 190, 216);
 
-/// The player on the plan of the Maze panel: the warm light of the flashlight.
+/// The player on the plan of the maze: the warm light of the flashlight.
 inline constexpr ImVec4 PLAN_PLAYER_COLOR = colorFromBytes(255, 184, 84);
 
-/// Crystals on the plan of the Maze panel, and everything about crystals in the HUD: the
+/// Crystals on the plan of the maze, and everything about crystals in the HUD: the
 /// cyan the crystals glow in.
 inline constexpr ImVec4 PLAN_CRYSTAL_COLOR = colorFromBytes(86, 214, 202);
 inline constexpr ImVec4 HUD_CRYSTAL_COLOR = PLAN_CRYSTAL_COLOR;
@@ -96,11 +96,11 @@ inline constexpr ImVec4 PLAN_EXIT_COLOR = colorFromBytes(132, 220, 140);
 inline constexpr ImVec4 HUD_BATTERY_COLOR = PLAN_PLAYER_COLOR;
 inline constexpr ImVec4 HUD_BATTERY_LOW_COLOR = ERROR_TEXT_COLOR;
 
-/// A lever on the plan of the Maze panel while it can still be pulled: the red of
+/// A lever on the plan of the maze while it can still be pulled: the red of
 /// a switch. A pulled lever is drawn like a collected crystal.
 inline constexpr ImVec4 PLAN_LEVER_COLOR = colorFromBytes(238, 92, 62);
 
-/// A note on the plan of the Maze panel, and the title of the note card in the HUD: the
+/// A note on the plan of the maze, and the title of the note card in the HUD: the
 /// pale yellow of old paper.
 inline constexpr ImVec4 PLAN_NOTE_COLOR = colorFromBytes(230, 220, 178);
 inline constexpr ImVec4 HUD_NOTE_COLOR = PLAN_NOTE_COLOR;
@@ -111,7 +111,8 @@ inline constexpr ImVec4 HUD_NOTE_COLOR = PLAN_NOTE_COLOR;
 inline constexpr ImVec4 HUD_CROSSHAIR_COLOR = colorFromBytes(214, 220, 232);
 inline constexpr ImVec4 HUD_CROSSHAIR_ACTIVE_COLOR = PLAN_PLAYER_COLOR;
 
-/// Sets the colours and the metrics (padding, spacing, rounding, font size) of all panels.
+/// Sets the colours and the metrics (padding, spacing, rounding, font size) of the debug
+/// UI.
 ///
 /// scale is the content scale of the display: 1 at 100 %, 1.5 at 150 % display scaling on
 /// Windows. All metrics and the font are multiplied by it. A value that is not positive
