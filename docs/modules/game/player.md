@@ -485,6 +485,8 @@ Funkcja nie zwraca niczego i nie mówi, czy doszło do kolizji. Nikt tej informa
 
 ### 5.6 Kto woła `update`: `NightMazeApp::onUpdate`
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](menu-camera.md), sekcja 2.10.
+
 ```cpp
 void NightMazeApp::onUpdate(double fixedDt) {
     // Remember where the player was before this step. It is done in every step, also
@@ -565,6 +567,8 @@ Lista przeszkód zmieniła się w M5. Do M4 gracz dostawał wprost `m_mazeWorld.
 
 Od M5 `onUpdate` ma jeszcze koniec, w którym pozycja gracza trafia do reguł rundy:
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](menu-camera.md), sekcja 2.10.
+
 ```cpp
     // The rules of the round, with the position the player has after this step: the
     // battery, the crystals within reach, the gate and the exit. The switch of the
@@ -593,6 +597,8 @@ Kolejność w kroku jest więc stała: najpierw ruch względem starej listy, pot
 
 Trzy klawisze gry są czytane w `onRender`, w tej kolejności: R, N, F. Najpierw R, od M5:
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](menu-camera.md), sekcja 5.4.
+
 ```cpp
     // A new round on the same maze, asked for with the restart key or by the debug UI.
     // It is started here for the same reason: between two fixed steps, never inside one.
@@ -613,6 +619,8 @@ Trzy klawisze gry są czytane w `onRender`, w tej kolejności: R, N, F. Najpierw
 "For the same reason" w komentarzu odnosi się do bloku nad nim, czyli do regeneracji labiryntu: restart też dzieje się na początku klatki, między dwoma stałymi krokami, więc żaden krok nie widzi rundy w połowie wymienionej. Blok stoi **po** regeneracji: gdy w jednej klatce przyjdą obie prośby, najpierw powstaje nowy labirynt (i tak z nową rundą), a potem runda zaczyna się jeszcze raz, co niczego nie zmienia.
 
 Potem N:
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](menu-camera.md), sekcja 5.4.
 
 ```cpp
     // The noclip key. wasKeyPressed is true for one frame, so it is read here, once per
@@ -645,6 +653,8 @@ Te same reguły dotyczą klawisza R: działa przy wolnym kursorze i nie działa,
 
 Żaden z klawiszy N, F i R nie działa, gdy klawiaturę ma ImGui.
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](menu-camera.md), sekcja 5.4.
+
 ```cpp
     const glm::vec3 feet =
         glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
@@ -661,6 +671,8 @@ Te same reguły dotyczą klawisza R: działa przy wolnym kursorze i nie działa,
 | `m_camera.viewMatrix(eye)` | macierz widoku z oka podanego jako parametr. Pole `m_player.position` nie jest zmieniane: rysowanie tylko czyta stan symulacji |
 
 Pole pamiętające poprzednią pozycję (`NightMazeApp.hpp`):
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](menu-camera.md), sekcja 2.10.
 
 ```cpp
     // The player is simulation state: onUpdate moves it in fixed steps.
@@ -691,6 +703,8 @@ Przypadki brzegowe interpolacji:
 | okno zminimalizowane | `onRender` wraca przed liczeniem oka, `onUpdate` działa dalej | po przywróceniu okna gracz jest tam, gdzie doszedł |
 
 ### 5.8 Start, nowy labirynt i restart: `beginRound`
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](menu-camera.md), sekcja 2.10.
 
 ```cpp
 void NightMazeApp::beginRound() {

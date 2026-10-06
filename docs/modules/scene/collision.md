@@ -810,6 +810,8 @@ Brama nie jest w `MazeWorld::colliders`, bo w trakcie rundy przestaje być przes
 
 Lista jest budowana w trzech miejscach `NightMazeApp`: w `beginRound` (nowa runda, także po nowym labiryncie), od M6 w `rebuildTerrain` (zmiana skali wysokości terenu przesuwa wszystkie pudełka w pionie) i w `onUpdate`, w kroku, w którym brama się otworzyła:
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
+
 ```cpp
     const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);
     updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,

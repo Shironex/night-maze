@@ -723,6 +723,8 @@ Funkcja `NightMazeApp::pickForFrame` jest wołana **raz na klatkę** z `onRender
 
 Mysz jest więc czytana **przed** budową macierzy widoku: obraz i promień tej klatki używają tych samych, już nowych kątów. Gdyby promień był liczony z macierzy sprzed obrotu, celownik wskazywałby to, co było w środku obrazu klatkę wcześniej.
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
+
 ```cpp
 PickState NightMazeApp::pickForFrame(const glm::mat4& view, const glm::mat4& projection,
                                      const glm::vec3& eye, bool cursorCaptured) {

@@ -22,6 +22,7 @@
 #include "game/Interaction.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/MenuCamera.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/PostProcess.hpp"
@@ -126,7 +127,8 @@ void DebugUI::draw(const DebugContext& context) {
             &context.minimapOverlayShader, &context.reflectShader};
         drawShadersPanel(shaders);
 
-        drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
+        drawCameraPanel(context.camera, context.player, context.mouseSensitivity,
+                        context.menuCamera, context.menuCameraLoopSeconds);
         drawGameplayPanel(context.round, context.gameplay);
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
@@ -152,7 +154,11 @@ void DebugUI::draw(const DebugContext& context) {
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not
     // the panels are visible.
-    drawHud(context.mazeWorld, context.round, context.gameplay, context.pick, m_visible);
+    // The picture of the menu camera is the exception: it shows no round, so it has
+    // no counter, no battery, no crosshair and no card.
+    if (!context.menuCamera.enabled) {
+        drawHud(context.mazeWorld, context.round, context.gameplay, context.pick, m_visible);
+    }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
     ImGui::Render();

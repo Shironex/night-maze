@@ -136,6 +136,16 @@
 > są **odczytami, nie pomiarami**, a spadek liczby klatek z [`m7-status.md`](m7-status.md), sekcja 5, zostaje niewyjaśniony.
 > Na macOS nic z tego nie było budowane ani uruchamiane.
 >
+> **Zgłoszone 2026-10-06 (M9, część 1: kamera menu):** bramka `make check` przechodzi,
+> **497 przypadków testowych i 219050 asercji** (przed tą częścią 467 i 158006; nowych
+> przypadków 30: 23 w `MenuCameraTests.cpp` i 7 w `StartOptionsTests.cpp`, policzone z plików).
+> Agent, który napisał kod, uruchomił grę z `--menu-camera`, nagrał ją i obejrzał klatki (sekcja
+> 25.1): kamera w korytarzach, bez HUD, minimapy i paneli, bez przeciętych ścian, ruch płynny. To
+> **nie** jest test właściciela. Klawisza F2 i kontrolek panelu Camera nikt nie uruchomił na
+> ekranie. Właściciel zdecydował (2026-10-06), że tłem menu będzie zmontowana pętla wideo, a
+> przełączniki `--menu-shot` i `--menu-time` zostają. Lista właściciela: sekcja 25.2. Na macOS nic
+> z tego nie było budowane.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -152,7 +162,7 @@
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
 > M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
 > 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7), 20 (cienie księżyca,
-> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7) 23 (M8, część 1: environment mapping) i 24 (M8, część 2: selekcja, dźwignie i kartki)
+> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7) 23 (M8, część 1: environment mapping) i 24 (M8, część 2: selekcja, dźwignie i kartki) oraz 25 (M9, część 1: kamera menu)
 > rozróżniają punkty
 > zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
@@ -167,7 +177,7 @@
 > tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
 > pokazuje dziś, opisują sekcje 2, 14, 15 i 16, koniec klatki (bufor HDR, bloom, mgłę
 > i winietę) sekcje 17, 18 i 19, cienie księżyca sekcja 20, cień latarki i latarkę w ręce
-> sekcja 21, minimapę sekcja 22, environment mapping (M8, część 1) sekcja 23, a selekcję, dźwignie i kartki (M8, część 2) sekcja 24.
+> sekcja 21, minimapę sekcja 22, environment mapping (M8, część 1) sekcja 23, a selekcję, dźwignie i kartki (M8, część 2) sekcja 24, kamerę menu i przełączniki wiersza poleceń (M9, część 1) sekcja 25.
 
 ## 1. Wymagania
 
@@ -243,6 +253,19 @@ build\release\Release\night_maze.exe
 
 Zwróć uwagę na dodatkowy katalog `Debug` lub `Release` w ścieżce programu. Na Macu program
 leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
+
+### Przełączniki wiersza poleceń (od M9, części 1)
+
+Program przyjmuje cztery przełączniki. Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
+
+| Przełącznik | Znaczenie |
+|---|---|
+| `--seed <liczba>` | ziarno pierwszego labiryntu, liczba całkowita od 0 do 4294967295 (domyślnie 1) |
+| `--menu-camera` | start od razu w trybie kamery menu (gra pokazuje samą siebie; to samo robi klawisz F2) |
+| `--menu-shot <walk\|glide>` | ujęcie kamery menu: spacer po korytarzach albo wysoki przelot. Samo nie włącza trybu |
+| `--menu-time <sekundy>` | start ujęcia tyle sekund w głąb pętli, liczba z kropką dziesiętną (przecinek jest odrzucany), może być ujemna. Samo nie włącza trybu |
+
+Przykład: `build\debug\Debug\night_maze.exe --menu-camera --seed 1 --menu-shot glide`. Opis i przepis na nagranie klipu: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcje 2.9 i 5.9.
 
 ### Co powinno się pojawić (zmierzone)
 
@@ -5312,7 +5335,157 @@ Granice i szczególne przypadki:
 Sprawdziwszy wszystko: zaznaczyć wyniki tutaj, wpisać zapisane obserwacje, i dopiero wtedy
 zmienić stan tematu 15 w [`../syllabus.md`](../syllabus.md) z "w toku".
 
-## 25. Powiązane dokumenty
+## 25. Lista kontrolna M9, część 1: kamera menu
+
+Pierwsza część kamienia milowego M9 dodaje tryb, w którym gra pokazuje samą siebie: HUD, minimapa i
+panele są schowane, a kamera sama jedzie przez labirynt. Włącza go klawisz F2, pole `Menu camera (F2)`
+w panelu Camera albo przełącznik `--menu-camera`. Są dwa ujęcia (spacer po korytarzach z latarką i
+wysoki przelot nad labiryntem), a przełączniki wiersza poleceń to `--menu-camera`, `--seed <n>`,
+`--menu-shot <walk|glide>` i `--menu-time <sekundy>`. Doszły: `src/game/MenuCamera.*`,
+`src/game/StartOptions.*`, `tests/MenuCameraTests.cpp` (23 przypadki) i `tests/StartOptionsTests.cpp`
+(7 przypadków). Zmieniły się: `CMakeLists.txt`, `src/main.cpp`, `NightMazeApp.*`,
+`DebugContext.hpp` (49 pól, doszły `menuCamera` i `menuCameraLoopSeconds`), `DebugUI.*` i
+`panels/CameraPanel.*`. Liczba programów shaderów (14) i paneli (13) się nie zmieniła. Opis kodu:
+[`../modules/game/menu-camera.md`](../modules/game/menu-camera.md).
+
+Decyzje właściciela (2026-10-06) są osobno: menu powstanie w RmlUi, **tłem menu będzie zmontowana,
+wyrenderowana wcześniej pętla wideo**, a przełączniki `--menu-shot` i `--menu-time` zostają, żeby
+można było nagrywać klipy ponownie ([`../decisions/menu-background-prerendered-loop.md`](../decisions/menu-background-prerendered-loop.md)).
+Wszystko inne w tym trybie (prędkość 0,7 m/s, wysokość 1,5 m, klawisz F2, zamrożenie rundy, jedna
+zamknięta pętla przez wszystkie kryształy) to wybory wykonawcze.
+
+Tej części **nie zamyka** żaden test ręczny: lista w sekcji 25.2 jest otwarta, a na macOS kod nie był
+budowany ([`build-macos.md`](build-macos.md)). M9 jako całość dopiero się zaczął (nie ma jeszcze
+menu, RmlUi ani stanów gry).
+
+### 25.1. Zgłoszone (2026-10-06)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru nie
+zapisano w tym dokumencie. Poniższe punkty są **zgłoszone przez bramkę i autora kodu**, nie powtarzałem
+ich przy pisaniu tej sekcji.
+
+Bramka:
+
+- [x] `make check` przechodzi (zgłoszone)
+- [x] `night_maze_tests.exe`: **497 przypadków testowych i 219050 asercji** (przed tą częścią 467 i
+      158006). Nowych przypadków jest 30 i wszystkie są w nowych plikach (policzone z plików: 23
+      makr `TEST_CASE` w `tests/MenuCameraTests.cpp` i 7 w `tests/StartOptionsTests.cpp`, 467 + 30 =
+      497). Liczby asercji nie da się policzyć z plików, jest tylko zgłoszona
+
+**Widziane na zrzutach ekranu przez agenta.** Poniższe punkty są zapisane jako "widziane na zrzucie
+ekranu przez agenta (2026-10-06), nie przez właściciela": agent, który napisał kod, uruchomił grę z
+przełącznikiem `--menu-camera`, nagrał ją `ffmpeg` i obejrzał wyciągnięte klatki. To **nie jest** test
+ręczny właściciela i nie zamyka żadnego punktu z sekcji 25.2.
+
+- widziane na zrzucie ekranu przez agenta: kamera zostaje we wnętrzu korytarzy, bez HUD, minimapy
+  i paneli
+- widziane na zrzucie ekranu przez agenta: żadna ściana nie jest przecięta, ruch między kolejnymi
+  klatkami jest płynny
+- widziane na zrzucie ekranu przez agenta: mniej więcej połowa spaceru to dobre widoki w głąb
+  korytarza, a reszta to ściany z bliska w ciasnych zakrętach i w miejscach, gdzie kamera zawraca
+  przy celu
+- widziane na zrzucie ekranu przez agenta: kamera mija kryształy w przelotowym korytarzu w
+  odległości około 20 cm z boku i tuż nad nimi
+
+**Nie widziane na ekranie** (nikt tego nie oglądał): klawisz F2 (każde uruchomienie agenta było z
+przełącznikiem), kontrolki grupy `Menu camera` w panelu Camera, wysoki przelot w całej pętli, powrót
+paneli po wyłączeniu trybu, kryształy kołyszące się w trybie, klawisz tyldy w trakcie trybu i
+wszystkie punkty z sekcji 25.2.
+
+**Materiał porównawczy poza repozytorium** (zgłoszone przez autora, nie powtarzałem, nie ma tych
+plików w projekcie i nie ma na nie odnośników): dwa nagrania pokazane właścicielowi w makiecie
+projektowej, ciągłe ujęcie 30 s (9,5 MB) i zmontowana pętla 24 s z czterech ujęć z przenikaniami
+(10,6 MB w 720p30; ta sama pętla w jakości docelowej CRF 14 miała 19,7 MB). Po ich obejrzeniu
+właściciel zdecydował, że tłem menu będzie zmontowana pętla.
+
+Znane ograniczenia (z kodu, nie ze zrzutów): zmiana prędkości suwakiem w trakcie przeskakuje kamerę
+(pozycja to `(sekundy + przesunięcie) * prędkość`), zmiana ujęcia też, brama i ściany po dźwigniach
+zatrzymują się w połowie opadania na czas trybu, a w pierwszej zmontowanej pętli brakuje kałuż i bramy.
+
+### 25.2. Otwarte: test ręczny na około trzydzieści minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów.
+
+Przygotowanie:
+
+- [ ] usunąć stary `imgui.ini`, uruchomić grę z terminala bez przełączników: gra startuje jak
+      zawsze (HUD, minimapa i panele widoczne), żadnej linii `[error]`
+- [ ] panel Camera ma na dole grupę `Menu camera`: pole `Menu camera (F2)`, listę `Shot`, suwaki
+      `Speed` (domyślnie 0,70 m/s) i `Eye height` (domyślnie 1,50 m), pole `Time offset` (0,0 s) i
+      linię `One loop: N s`
+
+F2 w trakcie rundy:
+
+- [ ] F2: HUD, minimapa i panele znikają, kamera sama jedzie po korytarzach, a w logu jest linia
+      `Menu camera on, one loop takes N s`
+- [ ] runda stoi: licznik czasu i bateria (sprawdzić w panelu Gameplay po naciśnięciu tyldy) nie
+      zmieniają się, a kryształy dalej się kołyszą i ich światła pulsują
+- [ ] F2 jeszcze raz: HUD, minimapa i panele wracają dokładnie tak, jak były (także gdy przed F2
+      panele były schowane tyldą: wtedy po F2 zostają schowane)
+- [ ] po wyłączeniu trybu gracz patrzy tam, gdzie patrzył przed F2, a kursor jest wolny (trzeba
+      kliknąć w scenę)
+- [ ] w trakcie trybu klawisze R, N, F, M, E i mysz nic nie robią, a kliknięcie w scenę nie
+      przechwytuje kursora
+- [ ] klawisz tyldy w trakcie trybu pokazuje i chowa panele, żeby można było zmienić ustawienia
+- [ ] F2 nie działa w trakcie edycji pola tekstowego w panelu (klawiatura zablokowana)
+
+Przełączniki:
+
+- [ ] `night_maze.exe --menu-camera`: gra startuje od razu w trybie
+- [ ] `--seed 7` (bez trybu): inny labirynt niż domyślny, `--seed 4294967295` przyjęte,
+      `--seed 4294967296`, `--seed -3` i `--seed abc` odrzucone
+- [ ] `--menu-shot glide --menu-camera`: wysoki przelot, latarka wyłączona; `--menu-shot walk`:
+      spacer, latarka włączona; `--menu-shot` samo, bez `--menu-camera`, nie włącza trybu
+- [ ] `--menu-time 30 --menu-camera`: kamera startuje 30 s w głąb pętli (inne miejsce niż bez
+      przełącznika); `--menu-time 12,5` (przecinek) jest odrzucone, `--menu-time 12.5` przyjęte
+- [ ] zły przełącznik (`--fullscreen`, `--seed` bez wartości, `--menu-shot orbit`): dwie linie
+      `[error]` (komunikat i lista przełączników), kod wyjścia niezerowy, okno się nie otwiera
+- [ ] te same przełączniki dają dwa razy ten sam obraz (porównać dwa zrzuty po tej samej liczbie
+      sekund)
+
+Nagranie klipu (do tego służy tryb):
+
+- [ ] nagrać kilka sekund okna gry (`ffmpeg` albo nagrywanie ekranu) z `--menu-camera --seed 1
+      --menu-shot glide`, potem z `--seed 6 --menu-shot walk`: obraz bez HUD, minimapy i paneli,
+      płynny, bez przeskoku po pełnej pętli. Zapisać, jak długo trwa pętla (`One loop`)
+- [ ] ten sam klip nagrany drugi raz z tymi samymi przełącznikami jest taki sam co do klatki
+- [ ] czy zmontowanie pętli z kilku ujęć (przenikania) jest możliwe z tych nagrań: zapisać uwagi
+
+Ujęcia i ustawienia:
+
+- [ ] oba ujęcia w panelu (lista `Shot`): przelot patrzy w dół na środek labiryntu, spacer na
+      wysokości oczu; przełączenie przeskakuje kamerę (znane ograniczenie)
+- [ ] suwak `Speed`: 0 zatrzymuje kamerę, 4 jedzie bardzo szybko; zmiana w trakcie przeskakuje
+      (znane ograniczenie, zapisać jak bardzo)
+- [ ] suwak `Eye height` od 0,3 do 2,8 m: spacer zmienia wysokość, przelot się nie zmienia
+- [ ] pole `Time offset` (także ujemne i duże): ujęcie startuje w innym miejscu, bez przeskoku po
+      zawinięciu
+- [ ] pętla po pełnym obiegu: w panelu Maze ustawić mały labirynt (na przykład 3 na 3) i
+      `Regenerate`, odczekać `One loop` sekund i sprawdzić, że w miejscu zamknięcia nie ma
+      skoku obrazu ani obrotu
+- [ ] ciasne zakręty i miejsca zawracania: zapisać, czy kamera nie przechodzi przez słupek ani ścianę
+      i czy obrót widoku nie jest nagły
+- [ ] kamera przy krysztale: mija go w odległości kilkunastu centymetrów, bez wejścia w kryształ
+- [ ] spacer w pełnym labiryncie 10 na 10: zapisać wartość `One loop` (autor zgłasza około 500 s)
+
+Granice i szczególne przypadki:
+
+- [ ] labirynt 1 na 1 (panel Maze, `Regenerate`): spacer to małe koło w środku komórki, bez błędu
+      i bez `NaN`, przelot działa
+- [ ] `Regenerate` w trakcie trybu: ścieżka dopasowuje się do nowego labiryntu, kamera nie
+      przechodzi przez ściany
+- [ ] zmiana skali wysokości terenu w trakcie trybu: kamera idzie za gruntem
+- [ ] zmiana rozmiaru okna i zminimalizowanie okna w trakcie trybu nie psują obrazu ani nie
+      wypisują błędu
+- [ ] restart rundy z panelu Gameplay w trakcie trybu: runda zaczyna się od nowa, tryb działa dalej
+- [ ] brama albo ściana, która opadała w chwili F2: stoi zatrzymana w trakcie trybu i dokańcza po
+      wyłączeniu (znane zachowanie, zapisać)
+- [ ] brak ostrzeżeń kompilatora przy buildzie Debug i Release po tej części
+
+Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Zamknięcie tej listy nie
+zamyka M9.
+
+## 26. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -5320,6 +5493,7 @@ zmienić stan tematu 15 w [`../syllabus.md`](../syllabus.md) z "w toku".
 - Biblioteki: [`../libraries/glfw.md`](../libraries/glfw.md),
   [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
+- Kamera menu i przełączniki wiersza poleceń: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), [`../decisions/menu-background-prerendered-loop.md`](../decisions/menu-background-prerendered-loop.md)
 - Selekcja, dźwignie i kartki: [`../modules/scene/picking.md`](../modules/scene/picking.md), [`../modules/game/interactables.md`](../modules/game/interactables.md)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
   [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapy cieni księżyca i latarki),

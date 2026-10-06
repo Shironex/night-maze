@@ -15,6 +15,7 @@
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/MenuCamera.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/Player.hpp"
@@ -24,6 +25,7 @@
 #include "game/ShadowMap.hpp"
 #include "game/Shadows.hpp"
 #include "game/Skybox.hpp"
+#include "game/StartOptions.hpp"
 #include "game/Terrain.hpp"
 #include "game/TerrainRenderer.hpp"
 #include "gfx/Shader.hpp"
@@ -71,13 +73,20 @@ namespace game {
 /// lever, which lowers a wall somewhere in the maze, or opens the card of the note. The
 /// rules are in game/Interaction.hpp, this class builds the ray and reads the key.
 ///
+/// The game can also show itself: with the menu camera switched on (key F2, the Camera
+/// panel or the switch --menu-camera) the picture is taken by a camera that travels
+/// through the maze alone (game/MenuCamera.hpp). The round stands still meanwhile, and
+/// the keys and the mouse of the round are ignored.
+///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels and the HUD on top of the frame.
 class NightMazeApp : public core::Application {
 public:
     /// Creates the window (through core::Application), loads the shaders and the models,
-    /// generates the first maze and starts the first round in it.
-    NightMazeApp();
+    /// generates the first maze and starts the first round in it. options comes from
+    /// the command line (game::parseStartOptions): the seed of that first maze and the
+    /// settings the menu camera starts with. Left out, the game starts as always.
+    explicit NightMazeApp(const StartOptions& options = {});
 
 protected:
     void onUpdate(double fixedDt) override;
@@ -255,6 +264,17 @@ protected:
     /// freeze the drawn ray), exposed so the debug UI can switch them live.
     PickDebugSettings& pickDebug() { return m_pickDebug; }
 
+    /// The settings of the menu camera (switch, shot, speed, eye height, time offset),
+    /// exposed so the debug UI can edit them live and can hide itself while the camera
+    /// runs.
+    MenuCameraSettings& menuCameraSettings() { return m_menuCamera; }
+
+    /// How long one loop of the menu camera takes with the present maze and settings,
+    /// in seconds (game::menuCameraLoopSeconds), for the debug UI.
+    float menuCameraLoopSeconds() const {
+        return game::menuCameraLoopSeconds(m_menuCameraPath, m_mazeWorld, m_menuCamera);
+    }
+
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
@@ -283,6 +303,11 @@ private:
     /// that draws them. The same seed gives the same puddles, so after a new height
     /// scale they only move up or down with the ground.
     void layPuddles();
+
+    /// Reads the key of the menu camera and notices when the camera was switched on or
+    /// off, by that key, by the debug UI or by the command line. Switching it on starts
+    /// its shot from the beginning and gives the cursor back. Called once per frame.
+    void updateMenuCameraSwitch();
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed, no lever pulled, every
@@ -545,6 +570,18 @@ private:
     // Whether the minimap is drawn, whether it shows the whole maze, and its size, its
     // corner and its opacity.
     MinimapSettings m_minimapSettings;
+
+    // The menu camera: its settings (edited by the debug UI and set by the command
+    // line) and the line its corridor walk follows through the maze in play. The line
+    // is built again whenever the maze or the terrain changes.
+    MenuCameraSettings m_menuCamera;
+    MenuCameraPath m_menuCameraPath;
+    // The clock of the menu camera: seconds since it was switched on, kept inside one
+    // loop of the shot. A double, like the clock of the frame it is advanced by.
+    double m_menuCameraSeconds = 0.0;
+    // Whether the menu camera was on in the frame before: the frame in which the two
+    // differ is the one that switches it.
+    bool m_menuCameraWasEnabled = false;
 };
 
 } // namespace game

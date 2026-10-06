@@ -16,6 +16,7 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <span>
 #include <string>
@@ -111,6 +112,9 @@ constexpr int MINIMAP_KEY = GLFW_KEY_M;
 // card of a note. A left click does the same.
 constexpr int INTERACT_KEY = GLFW_KEY_E;
 
+// Key that switches the menu camera on and off: the game then shows itself.
+constexpr int MENU_CAMERA_KEY = GLFW_KEY_F2;
+
 // Pitch of a level look, in degrees: how the player looks at the start.
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
 
@@ -148,7 +152,7 @@ Heightmap loadHeightmap() {
 
 } // namespace
 
-NightMazeApp::NightMazeApp()
+NightMazeApp::NightMazeApp(const StartOptions& options)
     : core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze"),
       m_texturedShader(core::assetPath(TEXTURED_VERTEX_SHADER_FILE),
                        core::assetPath(TEXTURED_FRAGMENT_SHADER_FILE)),
@@ -186,10 +190,14 @@ NightMazeApp::NightMazeApp()
       m_interactableRenderer(m_assets),
       m_terrainRenderer(m_assets),
       m_puddleRenderer(m_assets),
+      // The seed of the first maze, from the command line. The size and the numbers of
+      // levers and notes keep their defaults.
+      m_mazeSettings{.seed = options.seed},
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale,
-                                 m_mazeSettings.interactables)) {
+                                 m_mazeSettings.interactables)),
+      m_menuCamera(options.menuCamera) {
     // The two lit programs and the grass program read the lights from the uniform buffer
     // of m_lightRig. Each program is told once: the shader repeats it by itself after
     // a reload.
@@ -203,6 +211,7 @@ NightMazeApp::NightMazeApp()
     // created empty. What is left is the same as after every later regeneration.
     uploadGround();
     beginRound();
+    m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
 }
 
 void NightMazeApp::regenerateMaze() {
@@ -228,6 +237,8 @@ void NightMazeApp::regenerateMaze() {
                                  m_heightmap, m_terrainSettings.heightScale, interactables);
     uploadGround();
     beginRound();
+    // The menu camera walks the corridors of the maze, so a new maze is a new path.
+    m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
 }
 
 void NightMazeApp::rebuildTerrain() {
@@ -254,6 +265,37 @@ void NightMazeApp::rebuildTerrain() {
     }
 
     uploadGround();
+    // The path of the menu camera lies on the ground, so it moves up or down with it.
+    m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
+}
+
+void NightMazeApp::updateMenuCameraSwitch() {
+    // wasKeyPressed is true for one frame, so the key is read once per frame.
+    if (input().wasKeyPressed(MENU_CAMERA_KEY)) {
+        m_menuCamera.enabled = !m_menuCamera.enabled;
+    }
+
+    // The numbers can be typed into the sliders of the debug UI, so they are brought
+    // into their ranges here.
+    m_menuCamera.speed =
+        std::clamp(m_menuCamera.speed, MIN_MENU_CAMERA_SPEED, MAX_MENU_CAMERA_SPEED);
+    m_menuCamera.eyeHeight =
+        std::clamp(m_menuCamera.eyeHeight, MIN_MENU_CAMERA_EYE_HEIGHT, MAX_MENU_CAMERA_EYE_HEIGHT);
+
+    if (m_menuCamera.enabled == m_menuCameraWasEnabled) {
+        return;
+    }
+    m_menuCameraWasEnabled = m_menuCamera.enabled;
+    if (m_menuCamera.enabled) {
+        // Every run of the menu camera starts at the beginning of its shot, so the same
+        // maze and settings always show the same pictures. The cursor is given back: the
+        // mouse does not turn this camera, and a menu needs the cursor.
+        m_menuCameraSeconds = 0.0;
+        input().setCursorCaptured(false);
+        // For whoever records the picture: after this many seconds it repeats.
+        core::logInfo("Menu camera on, one loop takes " +
+                      std::to_string(static_cast<int>(menuCameraLoopSeconds())) + " s");
+    }
 }
 
 void NightMazeApp::uploadGround() {
@@ -306,6 +348,15 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // Remember where the player was before this step. It is done in every step, also
     // when the player does not move, so that onRender never blends with an old position.
     m_previousPlayerPosition = m_player.position;
+
+    // While the menu camera runs the round stands still: the player does not move, the
+    // battery does not drain, nothing is collected and the time of the round does not
+    // count. Only the animation clock goes on, so the crystals keep bobbing and their
+    // lights keep pulsing in the picture.
+    if (m_menuCamera.enabled) {
+        m_round.animationSeconds += static_cast<float>(fixedDt);
+        return;
+    }
 
     // The keys reach the player only while the cursor is captured: one click in the scene
     // switches on both mouse look and movement, Escape switches both off. Without the
@@ -364,10 +415,16 @@ void NightMazeApp::onRender(double alpha) {
         regenerateMaze();
     }
 
+    // The menu camera: its key, and what has to happen when it was just switched on.
+    // While it runs, the keys and the mouse of the round are ignored: the checks below
+    // ask menuCamera first.
+    updateMenuCameraSwitch();
+    const bool menuCamera = m_menuCamera.enabled;
+
     // A new round on the same maze, asked for with the restart key or by the debug UI.
     // It is started here for the same reason: between two fixed steps, never inside one.
     // wasKeyPressed is true for one frame, so the key is read once per frame.
-    if (m_gameplay.restart || input().wasKeyPressed(RESTART_KEY)) {
+    if (m_gameplay.restart || (!menuCamera && input().wasKeyPressed(RESTART_KEY))) {
         m_gameplay.restart = false;
         beginRound();
     }
@@ -401,7 +458,7 @@ void NightMazeApp::onRender(double alpha) {
 
     // The noclip key. wasKeyPressed is true for one frame, so it is read here, once per
     // frame, and not in onUpdate, which runs zero or more times per frame.
-    if (input().wasKeyPressed(NOCLIP_KEY)) {
+    if (!menuCamera && input().wasKeyPressed(NOCLIP_KEY)) {
         m_player.noclip = !m_player.noclip;
     }
 
@@ -410,12 +467,12 @@ void NightMazeApp::onRender(double alpha) {
     // still sets the switch, but the next fixed step turns it off again
     // (game::updateRound), and no frame is drawn with the light of an empty battery
     // (game::lightingForFrame).
-    if (input().wasKeyPressed(FLASHLIGHT_KEY)) {
+    if (!menuCamera && input().wasKeyPressed(FLASHLIGHT_KEY)) {
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
 
     // The minimap key, read once per frame like the two keys above.
-    if (input().wasKeyPressed(MINIMAP_KEY)) {
+    if (!menuCamera && input().wasKeyPressed(MINIMAP_KEY)) {
         m_minimapSettings.enabled = !m_minimapSettings.enabled;
     }
 
@@ -425,7 +482,7 @@ void NightMazeApp::onRender(double alpha) {
     // already use the new angles. The click that captures a free cursor is read further
     // down (handleInteraction), because it first has to be known what the click hit.
     const bool cursorCaptured = input().isCursorCaptured();
-    if (cursorCaptured) {
+    if (cursorCaptured && !menuCamera) {
         // Mouse movement to the right is positive and positive yaw turns right, so x is
         // used as it is. Screen y grows downwards while pitch grows upwards, hence the
         // minus sign: moving the mouse up (negative y) looks up.
@@ -459,7 +516,29 @@ void NightMazeApp::onRender(double alpha) {
     // eyes.
     const glm::vec3 feet =
         glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
-    const glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
+    glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
+
+    // The camera this frame is drawn with: the camera of the player, or a copy of it
+    // that stands and looks where the menu camera does. A copy, so the angles of the
+    // player are still there when the menu camera is switched off, and the field of
+    // view and the two planes are the same in both.
+    scene::Camera frameCamera = m_camera;
+    if (menuCamera) {
+        // The clock of the menu camera follows the real time of the frames, not the
+        // fixed steps: the pose is a function of time, so it can be asked for the exact
+        // moment of every frame and needs no blending. It is kept inside one loop of
+        // the shot, so the number stays small however long the menu is open.
+        m_menuCameraSeconds += time().deltaSeconds();
+        const double loopSeconds = menuCameraLoopSeconds();
+        if (loopSeconds > 0.0) {
+            m_menuCameraSeconds = std::fmod(m_menuCameraSeconds, loopSeconds);
+        }
+        const MenuCameraPose pose = menuCameraPose(m_menuCameraPath, m_mazeWorld, m_menuCamera,
+                                                   static_cast<float>(m_menuCameraSeconds));
+        eye = pose.eye;
+        frameCamera.yawDegrees = pose.yawDegrees;
+        frameCamera.pitchDegrees = pose.pitchDegrees;
+    }
 
     // Width divided by height of the same pixels the viewport covers. The casts make it
     // a division of floats: 1280 / 720 as integers would be 1.
@@ -469,14 +548,20 @@ void NightMazeApp::onRender(double alpha) {
     // The two matrices that are the same for everything drawn in this frame, built from
     // the blended eye. They are needed this early for the picking ray, which has to go
     // through the picture exactly as it will be drawn.
-    const glm::mat4 view = m_camera.viewMatrix(eye);
-    const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
+    const glm::mat4 view = frameCamera.viewMatrix(eye);
+    const glm::mat4 projection = frameCamera.projectionMatrix(aspectRatio);
 
     // Object picking: one ray per frame, what it hits, and then the key or the click
     // that uses it. This runs once per frame like the other keys. A lever that is
     // pulled here changes the round between two fixed steps, never inside one.
-    m_pick = pickForFrame(view, projection, eye, cursorCaptured);
-    handleInteraction(cursorCaptured);
+    // The menu camera picks nothing and uses nothing: no lever is highlighted in its
+    // picture, and a click or the key does not reach the round.
+    if (menuCamera) {
+        m_pick = pickNothing(m_round);
+    } else {
+        m_pick = pickForFrame(view, projection, eye, cursorCaptured);
+        handleInteraction(cursorCaptured);
+    }
     // The debug view draws this copy, which stands still while "freeze" is set.
     if (!m_pickDebug.freezeRay) {
         m_shownPick = m_pick;
@@ -490,7 +575,17 @@ void NightMazeApp::onRender(double alpha) {
     // a low battery dims the flashlight (an empty one switches it off) and the crystal
     // lights pulse. That happens in a copy, so the settings the debug UI shows stay as
     // they were set.
-    const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+    LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+    if (menuCamera) {
+        // The flashlight of the menu camera is not the one of the round: it does not
+        // depend on the switch or on the battery, and it never flickers. In the
+        // corridors it is on, at the brightness of the settings: the cone of warm light
+        // on the stone is the look of the game. High above the maze it is off: its
+        // light does not reach the ground from there, and the moon and the crystals
+        // are what that shot shows.
+        frameLighting.flashlightOn = m_menuCamera.shot == MenuShot::CorridorWalk;
+        frameLighting.flashlightIntensity = m_lighting.flashlightIntensity;
+    }
 
     // Where the flashlight is and where it points in this frame: in the hand, a little
     // to the right of the eye and below it, aimed at a point in front of the eye. It is
@@ -500,7 +595,7 @@ void NightMazeApp::onRender(double alpha) {
     // shadow pass of the flashlight and the lights of the frame both get this result,
     // so the shadows always belong to the light that is drawn.
     const FlashlightPose flashlight =
-        flashlightPose(frameLighting, eye, m_camera.forward(), m_camera.right());
+        flashlightPose(frameLighting, eye, frameCamera.forward(), frameCamera.right());
 
     // The shadow passes come first: the scene as the moon sees it and then as the
     // flashlight sees it, depths only, each into its own shadow map. The lit programs
@@ -581,8 +676,8 @@ void NightMazeApp::onRender(double alpha) {
 
     // The pictures of the attachments, only while the debug UI shows them.
     if (m_postProcessSettings.previews) {
-        m_postProcess.drawPreviews(m_previewShader, m_postProcessSettings, m_camera.nearPlane,
-                                   m_camera.farPlane);
+        m_postProcess.drawPreviews(m_previewShader, m_postProcessSettings, frameCamera.nearPlane,
+                                   frameCamera.farPlane);
     }
 
     // The two debug views show data as colours (a normal, a texture coordinate), not
@@ -618,8 +713,11 @@ void NightMazeApp::onRender(double alpha) {
     // The minimap comes after the composite pass, on top of the finished picture: it is
     // a schematic, and the fog, the bloom and the tone mapping must not touch it. It is
     // shown in the two debug views too, like the HUD. feet is the blended position the
-    // scene was drawn from, so the arrow moves as smoothly as the camera.
-    drawMinimap(framebuffer, feet);
+    // scene was drawn from, so the arrow moves as smoothly as the camera. The picture of
+    // the menu camera has no minimap: it is part of the HUD of a round.
+    if (!menuCamera) {
+        drawMinimap(framebuffer, feet);
+    }
 }
 
 PickState NightMazeApp::pickForFrame(const glm::mat4& view, const glm::mat4& projection,

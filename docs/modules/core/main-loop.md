@@ -5,6 +5,8 @@ Kod: [`src/core/Application.hpp`](../../../src/core/Application.hpp), [`src/core
 
 Część modułu `core`. Wstęp do całego modułu, diagram klas i opis dziedziczenia po `core::Application` są w [`README.md`](README.md). Pozostałe części: [`window-context.md`](window-context.md) (okno i kontekst), [`input.md`](input.md) (klawiatura i mysz), [`gl-check.md`](gl-check.md) (błędy OpenGL).
 
+**Zmiana w M9, części 1 (2026-10-06).** Dwie rzeczy dotyczą tego dokumentu. (1) `main` czyta teraz przełączniki wiersza poleceń (`--seed`, `--menu-camera`, `--menu-shot`, `--menu-time`) **przed** otwarciem okna: `game::parseStartOptions` dostaje słowa po nazwie programu, a błąd kończy program dwiema liniami logu i `EXIT_FAILURE`; opis w [`../game/menu-camera.md`](../game/menu-camera.md), sekcje 2.9 i 5.6. (2) `NightMazeApp::onUpdate` ma **wczesny powrót** w trybie kamery menu: po zapamiętaniu poprzedniej pozycji gracza dodaje stały krok do `m_round.animationSeconds` i wraca, więc gracz, `updateRound` i bateria stoją (sekcja 2.10 tamtego dokumentu). Pętla stałego kroku i `alpha` się nie zmieniły: poza kamery menu jest funkcją czasu klatki i nie jest mieszana przez `alpha`.
+
 ## 1. Po co to jest
 
 Program czasu rzeczywistego nie kończy się po jednym przebiegu: działa w pętli, która w każdym obrocie odbiera zdarzenia, przesuwa symulację i rysuje klatkę. `core::Application::run` jest tą pętlą, a `core::Time` jest jej zegarem. Razem rozwiązują problem, który wraca w każdym późniejszym kamieniu milowym: klatki trwają różnie długo (inny monitor, inny komputer, vsync włączony albo nie), a ruch gracza i kolizje mają działać zawsze tak samo. Rozwiązaniem jest stały krok czasowy (fixed timestep): symulacja idzie krokami o stałej długości, a rysowanie odbywa się raz na klatkę, niezależnie od tego, ile kroków się zmieściło. Dodatkowo `Time` liczy uśredniony FPS i czas klatki dla panelu Renderer.
@@ -265,6 +267,8 @@ Dlatego `Application::run` zaczyna się od `m_time.reset();`. `reset()` ustawia 
 
 Początek, środek i koniec `NightMazeApp::onUpdate`:
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
+
 ```cpp
     // Remember where the player was before this step. It is done in every step, also
     // when the player does not move, so that onRender never blends with an old position.
@@ -284,6 +288,8 @@ Początek, środek i koniec `NightMazeApp::onUpdate`:
 ```
 
 Oraz w `NightMazeApp::onRender`:
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
 
 ```cpp
     const glm::vec3 feet =
@@ -312,6 +318,8 @@ Jak ten kod zachowuje się w trzech rodzajach klatek z sekcji 2.2:
 Obrót kamery myszą nie jest w `onUpdate`, tylko na początku `onRender`: przesunięcie myszy to dane jednej klatki, tak samo jak zbocze klawisza ([`input.md`](input.md), sekcje 2.8 i 5.5).
 
 **Drugi użytkownik stałego kroku: runda (M5).** Na końcu `NightMazeApp::onUpdate`, po ruchu gracza, stoi krok reguł gry:
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
 
 ```cpp
     updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,

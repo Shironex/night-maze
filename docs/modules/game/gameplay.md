@@ -5,6 +5,8 @@ Kod: [`src/game/Exit.hpp`](../../../src/game/Exit.hpp), [`src/game/Exit.cpp`](..
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument jest **o regułach gry: co to jest runda, gdzie jest wyjście, skąd biorą się kryształy, jak działa bateria i co z tego widać na ekranie**. Stoi na pięciu innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, kierunki, `randomBelow`, układ w świecie), [`maze-rendering.md`](maze-rendering.md) (`MazeWorld`, `MazeRenderer`, rysowanie modelu), [`flashlight.md`](flashlight.md) (latarka i `buildLightSet`), [`../scene/collision.md`](../scene/collision.md) (AABB, kule, `moveAndSlide`) i [`player.md`](player.md) (gracz, stały krok, noclip).
 
+**M9, część 1 (2026-10-06): runda stoi w trybie kamery menu.** Gdy tryb jest włączony (klawisz F2, `--menu-camera`), `NightMazeApp::onUpdate` **nie woła** `updateRound` ani `m_player.update`: gracz stoi, bateria nie spada, kryształy nie są zbierane, `elapsedSeconds` nie rośnie, odkrywanie minimapy stoi, a brama i ściany po dźwigniach, które opadały w chwili włączenia, **zatrzymują się w połowie opadania** (ich postęp liczy `updateRound`) i dokończą po wyłączeniu. Jedyne, co idzie dalej, to `m_round.animationSeconds` (jedna linia w `onUpdate`), więc kryształy się kołyszą, a ich światła pulsują. Latarka w tym trybie jest ustawiana osobno (włączona dla spaceru, wyłączona dla przelotu, jasność z ustawień, bez migotania i bez wpływu baterii). Reguły rundy się nie zmieniły. Opis: [`menu-camera.md`](menu-camera.md), sekcje 2.10 i 5.4.
+
 **Stan na dziś (2026-10-05):** kod M5 jest kompletny na Windowsie, a kamień **nie jest zamknięty** i nie ma tagu wersji. Zgłoszone dla Windowsa po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym 50 przypadków z trzech plików tego dokumentu; po drugiej części M6 cały program testowy miał 256 przypadków i 101232 asercje, uruchomione 2026-10-05 w Debug i Release, a po pierwszej części M7 zgłoszone jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751), obraz sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Otwarte:** nic z M5 nie było budowane ani uruchamiane na macOS i **nikt jeszcze nie grał ręcznie**: klawisz R, klawisz F przy pustej baterii, przycisk `Restart round (key R)`, suwaki panelu Gameplay, przejście przez otwartą bramę, zbieranie, karta `You escaped`, migotanie na ekranie i HUD przy schowanych panelach wynikają z kodu i z testów, a nie z oglądania.
 
 **Co zmienił M6 (teren).** Labirynt stoi na terenie z mapy wysokości ([`../renderer/terrain.md`](../renderer/terrain.md)), więc rzeczy rundy dostały wysokość: `crystalRestPosition` i `exitZone` biorą wysokość gruntu jako drugi parametr, kryształy unoszą się 0,9 m nad gruntem w środku swojej komórki, strefa wyjścia stoi na gruncie, a brama jest opuszczona na najniższy grunt pod sobą, tak jak ściany. Doszła funkcja `restCrystalsOnGround` (po zmianie skali wysokości terenu). HUD stoi niżej, pod rzędami zwiniętych pasków paneli (w M6 dwoma, od pierwszej części M7 trzema, od czwartej czterema). Liczby w przykładach tego dokumentu, w których `y` wynosi 0 albo jest liczone od zera, dotyczą płaskiego gruntu: tak budują świat testy tych trzech plików (przeciążenie `buildMazeWorld` bez mapy wysokości). Kod M6 jest kompletny na Windowsie, a kamień nie jest zamknięty: macOS i testy ręczne są otwarte.
@@ -1480,6 +1482,8 @@ Lista ma najwyżej tyle pozycji, ile jest kryształów, czyli najwyżej 16: `bui
 
 **`beginRound` i `regenerateMaze`.**
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](menu-camera.md), sekcja 2.10.
+
 ```cpp
 void NightMazeApp::beginRound() {
     // The state of the round: every crystal back, a full battery, the gate closed.
@@ -1514,6 +1518,8 @@ Funkcja biegnie w trzech sytuacjach: w konstruktorze (pierwszy labirynt powstaje
                     m_obstacles);
 ```
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](menu-camera.md), sekcja 2.10.
+
 ```cpp
     const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);
     updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,
@@ -1536,6 +1542,8 @@ Funkcja biegnie w trzech sytuacjach: w konstruktorze (pierwszy labirynt powstaje
 
 **`onRender`: prośby i światła.**
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](menu-camera.md), sekcja 5.4.
+
 ```cpp
     if (m_gameplay.restart || input().wasKeyPressed(RESTART_KEY)) {
         m_gameplay.restart = false;
@@ -1544,6 +1552,8 @@ Funkcja biegnie w trzech sytuacjach: w konstruktorze (pierwszy labirynt powstaje
 ```
 
 `RESTART_KEY` to `GLFW_KEY_R`. Flaga jest zerowana zawsze, także gdy powodem był klawisz. Blok stoi zaraz po obsłudze `m_mazeSettings.regenerate`, więc gdy w jednej klatce przyszły obie prośby, najpierw powstaje nowy labirynt (z rundą), a potem runda zaczyna się drugi raz: wynik jest ten sam. Klawisz R, tak jak F i N, działa niezależnie od tego, czy kursor jest przechwycony, ale nie wtedy, gdy klawiaturę ma ImGui ([`../core/input.md`](../core/input.md)).
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](menu-camera.md), sekcja 5.4.
 
 ```cpp
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);

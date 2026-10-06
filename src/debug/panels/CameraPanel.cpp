@@ -3,6 +3,7 @@
 #include "debug/panels/CameraPanel.hpp"
 
 #include "debug/PanelLayout.hpp"
+#include "game/MenuCamera.hpp"
 #include "game/Player.hpp"
 #include "scene/Camera.hpp"
 
@@ -11,6 +12,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
 
 namespace debug {
 
@@ -51,9 +53,43 @@ constexpr float MAX_MOUSE_SENSITIVITY = 1.0F;
 constexpr float MIN_MOVE_SPEED = 0.5F;
 constexpr float MAX_MOVE_SPEED = 20.0F;
 
+// The shots of the menu camera, in the order of the enum game::MenuShot.
+constexpr std::array<const char*, game::MENU_SHOT_COUNT> MENU_SHOT_ITEMS = {
+    "Corridor walk",
+    "High glide",
+};
+
+// How much the time offset of the menu camera changes for one pixel of dragging, in
+// seconds.
+constexpr float TIME_OFFSET_DRAG_SPEED = 0.25F;
+
+// The settings of the menu camera: the last group of the panel.
+void drawMenuCamera(game::MenuCameraSettings& menuCamera, float loopSeconds) {
+    ImGui::SeparatorText("Menu camera");
+    ImGui::TextWrapped("The game shows itself: the camera travels alone, the round stands "
+                       "still, and the HUD and these panels are hidden. Key F2 switches it "
+                       "on and off, the panel key brings the panels back while it runs.");
+    ImGui::Checkbox("Menu camera (F2)", &menuCamera.enabled);
+
+    // Combo works on the number of the chosen entry.
+    int shotIndex = static_cast<int>(menuCamera.shot);
+    if (ImGui::Combo("Shot", &shotIndex, MENU_SHOT_ITEMS.data(), game::MENU_SHOT_COUNT)) {
+        menuCamera.shot = static_cast<game::MenuShot>(shotIndex);
+    }
+    ImGui::SliderFloat("Speed", &menuCamera.speed, game::MIN_MENU_CAMERA_SPEED,
+                       game::MAX_MENU_CAMERA_SPEED, "%.2f m/s", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SliderFloat("Eye height", &menuCamera.eyeHeight, game::MIN_MENU_CAMERA_EYE_HEIGHT,
+                       game::MAX_MENU_CAMERA_EYE_HEIGHT, "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    // Any number is a valid offset, also a negative one: the shot is a loop.
+    ImGui::DragFloat("Time offset", &menuCamera.timeOffset, TIME_OFFSET_DRAG_SPEED, 0.0F, 0.0F,
+                     "%.1f s");
+    ImGui::Text("One loop: %.0f s", loopSeconds);
+}
+
 } // namespace
 
-void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity) {
+void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity,
+                     game::MenuCameraSettings& menuCamera, float menuCameraLoopSeconds) {
     // First run only: the top edge of the window, right of the left column, folded to its
     // title bar (the constant is in PanelLayout.hpp). Later ImGui remembers the panel in
     // imgui.ini.
@@ -106,6 +142,8 @@ void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSe
                            "%.1f m/s", ImGuiSliderFlags_AlwaysClamp);
         ImGui::SliderFloat("Fly speed", &player.flySpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED,
                            "%.1f m/s", ImGuiSliderFlags_AlwaysClamp);
+
+        drawMenuCamera(menuCamera, menuCameraLoopSeconds);
     }
     ImGui::End();
 }

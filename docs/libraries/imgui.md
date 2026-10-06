@@ -341,6 +341,8 @@ Nasze własne shadery będą zaczynać się od `#version 410 core`. Dla wersji 4
 
 Metoda `DebugUI::draw` w całości:
 
+> Uwaga (2026-10-06, M9 część 1): `drawCameraPanel` dostaje dziś dwa dodatkowe argumenty (`context.menuCamera` i `context.menuCameraLoopSeconds`), a `drawHud` jest wołane tylko wtedy, gdy `!context.menuCamera.enabled`: w trybie kamery menu HUD jest schowany. Opis: [`menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.4.
+
 ```cpp
 void DebugUI::draw(const DebugContext& context) {
     // An ImGui frame is started every frame, also when hidden, so that ImGui keeps
@@ -371,7 +373,8 @@ void DebugUI::draw(const DebugContext& context) {
             &context.blurShader};
         drawShadersPanel(shaders);
 
-        drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
+        drawCameraPanel(context.camera, context.player, context.mouseSensitivity,
+                        context.menuCamera, context.menuCameraLoopSeconds);
         drawGameplayPanel(context.round, context.gameplay);
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);

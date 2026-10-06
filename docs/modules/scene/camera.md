@@ -13,6 +13,8 @@ Ten dokument opisuje też miejsce, w którym trzy macierze spotykają się w jed
 
 Stan na dziś: `game::NightMazeApp` ma jedną `Camera`. Co klatkę liczy z niej macierz widoku i macierz rzutowania, raz, i wysyła je do każdego programu shaderów, którym ta klatka rysuje. Programów jest od M6 sześć, a w jednej klatce pracują najwyżej cztery: jeden program sceny wybrany według trybu oświetlenia (`textured` bez oświetlenia, `gouraud` albo `lit`), którym rysowane są teren, labirynt, brama i kryształy, `grass` (trawa, gdy jest włączona), `color` (linie pudełek i kul kolizji, gdy są włączone) oraz `skybox` (niebo, gdy jest włączone). Od czwartej części M7 (cienie księżyca, 2026-10-05) jest jeszcze siódmy program z uniformami `uView` i `uProjection`, `shadow_depth`, ale on **nie dostaje macierzy kamery**: rysuje scenę z kierunku księżyca, a od piątej części (2026-10-06) także z ręki z latarką, i dostaje widok i rzutowanie światła (`scene::LightSpace`, [`lights.md`](lights.md), sekcja 5.7). Macierz modelu każdy rysowany obiekt ma własną (kod: sekcja 5.7). To samo oko, z którego powstaje macierz widoku, i wektory `forward()` i `right()` ustawiają też latarkę gracza: od piątej części M7 trafiają do `flashlightPose`, które daje pozę latarki w ręce (kawałek na prawo i w dół od oka, wiązka celuje w punkt na osi widoku), a ta poza idzie do `buildLightSet` i do przebiegu cieni latarki. Samo oko trafia jeszcze do `LightRig::upload` (sekcja 5.7). Kamera nie ma już własnego sterowania pozycją: jej kąty obraca mysz ([`camera-controls.md`](camera-controls.md)), a pozycję po każdym kroku symulacji dostaje z oczu gracza ([`../game/player.md`](../game/player.md)). Struktura `Camera` ma też drugiego użytkownika: `Player::update` tworzy tymczasową kamerę i używa jej jak kalkulatora kierunków `forward()` i `right()` (sekcja 5.3).
 
+**Zmiana w M9, części 1 (2026-10-06): kamera może być prowadzona przez tryb menu.** Struktura `Camera` się nie zmieniła. Zmieniło się użycie w `onRender`: w trybie kamery menu (klawisz F2, przełącznik `--menu-camera`) klatka jest rysowana z **kopii** kamery (`scene::Camera frameCamera = m_camera;`), której `yawDegrees` i `pitchDegrees` pochodzą z `game::MenuCameraPose`, a oko z `pose.eye`; macierze widoku i rzutowania, kierunek latarki i płaszczyzny podglądu głębi bierze się z kopii. Kamera gracza `m_camera` zostaje nietknięta, więc po wyłączeniu trybu gracz patrzy tam, gdzie patrzył. Pole widzenia i płaszczyzny są te same. Opis: [`../game/menu-camera.md`](../game/menu-camera.md), sekcje 2.5 i 3. Fragmenty `onRender` w sekcji 5.7 i w pytaniu 12 opisują klatkę bez tego trybu i mają przy sobie notatkę.
+
 Przykład liczbowy w sekcji 5.8 używa dzisiejszej sceny: kamery w pozie, z której startuje runda, i wierzchołka ściany labiryntu startowego. Tabele w sekcjach 2.3 i 5.6 oraz ćwiczenie 4 używają kamery z wartościami domyślnymi struktury (pozycja `(0, 0, 3)`, patrzy na początek układu). To poprawna ilustracja rachunku, ale nie poza, z której startuje gra (oko w `(1; 1,824; 1)` wewnątrz labiryntu: 1,7 m nad gruntem, który ma w tym miejscu 0,124 m). Mówię o tym wprost w każdym takim miejscu. W M1 sceną przykładów była kostka w początku układu: została usunięta w M5.
 
 ## 2. Teoria
@@ -247,6 +249,8 @@ Macierze to zwykła matematyka na procesorze. `Transform` i `Camera` nie wołaj�
 Wszystkie te wywołania poza `glDepthRange` wykonuje program w każdej klatce: `glEnable(GL_DEPTH_TEST)` i `glClear` wprost w `NightMazeApp::onRender`, `glViewport` od pierwszej części M7 wewnątrz `m_postProcess.beginScene` (przez `gfx::Framebuffer::bind`) i drugi raz w przebiegu składającym (`Framebuffer::bindDefault`), a od czwartej części M7 jeszcze wcześniej, w przebiegu cieni: `ShadowMap::beginDepthPass` wiąże framebuffer mapy cieni (viewport o rozmiarze mapy, 2048 x 2048 przy ustawieniach startowych), włącza test głębi i czyści głębię, zanim `beginScene` ustawi viewport sceny od nowa. `glGetUniformLocation` i `glUniformMatrix4fv` wewnątrz `gfx::Shader::setMat4` ([`../gfx/uniforms.md`](../gfx/uniforms.md), sekcja 5). Macierze widoku i rzutowania wysyła raz każda funkcja rysująca do swojego programu, a macierz modelu jest wysyłana raz dla każdego rysowanego obiektu.
 
 Kolejność w klatce:
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
 
 ```mermaid
 flowchart TD
@@ -596,6 +600,8 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
         static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
 ```
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
+
 ```cpp
     const glm::vec3 feet =
         glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
@@ -607,6 +613,8 @@ constexpr const char* PROJECTION_UNIFORM = "uProjection";
 ```
 
 Zaraz po nich światła tej klatki i trzy wywołania rysujące (listing do czwartej części M7 pomijał linię `drawGrass`, która jest w kodzie od drugiej części M6):
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
 
 ```cpp
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);

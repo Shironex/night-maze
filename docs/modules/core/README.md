@@ -150,6 +150,7 @@ sequenceDiagram
 | Nowa skala wysokości terenu albo nowa gęstość trawy, jeśli panel o nie poprosił (M6) | `m_terrainSettings.rebuild`: `rebuildTerrain()`. `m_grassSettings.replant`: `plantGrass()` | sekcje 6.4 i 6.6, [`../renderer/terrain.md`](../renderer/terrain.md), [`../renderer/grass-geometry.md`](../renderer/grass-geometry.md) |
 | Klawisz N | `wasKeyPressed(NOCLIP_KEY)` przełącza `m_player.noclip` | sekcja 6.6, [`../game/player.md`](../game/player.md), sekcja 5 |
 | Klawisz F | `wasKeyPressed(FLASHLIGHT_KEY)` przełącza `m_lighting.flashlightOn` | sekcja 6.6, [`../game/flashlight.md`](../game/flashlight.md) |
+| Klawisz F2 (M9, część 1) | `wasKeyPressed(MENU_CAMERA_KEY)` w `updateMenuCameraSwitch` przełącza `m_menuCamera.enabled`: gra pokazuje samą siebie | [`../game/menu-camera.md`](../game/menu-camera.md), sekcja 5.4 |
 | Mysz kamery | kliknięcie w scenę przechwytuje kursor, przy przechwyconym kursorze przesunięcie myszy obraca kamerę | [`input.md`](input.md), sekcja 5.9, [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5 |
 | Rysowanie gry: cel, stan i tło | `NightMazeApp::onRender`: strażnik rozmiaru 0 x 0, od czwartej części M7 przebieg cieni księżyca (wiersz niżej), potem `m_postProcess.beginScene(framebuffer)` (wiąże framebuffer HDR sceny i ustawia `glViewport`), `glEnable(GL_DEPTH_TEST)`, `glClearColor` z kolorem przeliczonym z sRGB na liniowy, `glClear` (kolor i głębia) w `GL_CHECK` | [`window-context.md`](window-context.md), [`gl-check.md`](gl-check.md), [`../gfx/framebuffers.md`](../gfx/framebuffers.md), [`../renderer/post-process.md`](../renderer/post-process.md) |
 | Rysowanie gry: mapa cieni latarki (piąta część M7) | `drawFlashlightShadowMap(frameLighting, flashlight)`, zaraz po przebiegu księżyca: liczy `m_flashlightLightSpace` (`scene::spotLightSpace` z pozycji i kierunku ręki, zewnętrznego kąta stożka i zasięgu latarki), a gdy cienie latarki są włączone, latarka świeci w tej klatce i program `shadow_depth` jest poprawny, rysuje te same obiekty co przebieg księżyca (`drawShadowCasters`), wiąże mapę w jednostce 4 (`FLASHLIGHT_SHADOW_TEXTURE_UNIT`) i, tylko gdy pokazana jest zakładka `Flashlight` panelu Shadows, rysuje podgląd | [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20 |
@@ -163,6 +164,8 @@ sequenceDiagram
 | Zamiana buforów | `m_window.swapBuffers()` | [`window-context.md`](window-context.md) |
 
 ## 5. Od `main` do pierwszej klatki
+
+> Uwaga (2026-10-06, M9 część 1): `main` ma dziś sygnaturę `int main(int argc, char** argv)`, czyta przełączniki (`game::parseStartOptions`) przed otwarciem okna i przekazuje wynik do `DebugNightMazeApp app(start.options)`. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcje 2.9 i 5.6.
 
 ```cpp
 int main() {
@@ -185,6 +188,8 @@ int main() {
 ### 6.1 Dwa haki klasy bazowej
 
 `Application` implementuje wzorzec **metody szablonowej** (template method): klasa bazowa ustala niezmienny szkielet klatki w `run()`, a klasa pochodna wypełnia dwa "haki":
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
 
 ```cpp
 virtual void onUpdate(double fixedDt) = 0;
@@ -462,6 +467,8 @@ Wszystkie trzy to zwykłe dane bez OpenGL i stoją między `m_lighting` a `m_vie
 
 ### 6.3 Konstruktor
 
+> Uwaga (2026-10-06, M9 część 1): konstruktor ma dziś parametr `const StartOptions& options = {}` (ziarno pierwszego labiryntu i ustawienia kamery menu) i po `beginRound()` buduje ścieżkę kamery menu. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.5.
+
 ```cpp
 NightMazeApp::NightMazeApp()
     : core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze"),
@@ -670,6 +677,8 @@ void NightMazeApp::plantGrass() {
 
 `plantGrass` przycina gęstość do zakresu od 0 do `MAX_GRASS_DENSITY` (8), woła `placeGrass` (miejsca kępek z ziarna labiryntu: ten sam świat i gęstość dają zawsze te same kępki) i wysyła wynik do `GrassRenderer`. Wektor `tufts` jest zmienną lokalną i znika na końcu funkcji. Woła ją `uploadGround` i, osobno, `onRender` po zmianie suwaka `Density` (sekcja 6.6): wtedy teren zostaje, a wymieniane są same punkty trawy.
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
+
 ```cpp
 void NightMazeApp::beginRound() {
     // The state of the round: every crystal back, a full battery, the gate closed.
@@ -711,6 +720,8 @@ Do M4 ta funkcja nazywała się `enterMaze` i poza graczem i kamerą ustawiała 
 Skąd biorą się `startPosition` i `startYawDegrees`, opisuje [`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5, a co dokładnie robią `startRound` i `roundObstacles`, [`../game/gameplay.md`](../game/gameplay.md), sekcja 5.
 
 ### 6.5 `onUpdate`: jeden stały krok
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
 
 ```cpp
 void NightMazeApp::onUpdate(double fixedDt) {
@@ -794,6 +805,8 @@ Tutaj jest kolejność części i podział pracy między aplikację, gracza i ru
 Funkcja ma trzy etapy: obsługa zdarzeń, które opisują jedną klatkę, przygotowanie stanu OpenGL i narysowanie sceny. Trzeci etap urósł w M4 (przed rysowaniem buduje i wysyła światła) i zmienił się w M5: światła przechodzą najpierw przez rundę (bateria, pulsowanie, pozycje nad kryształami), a rysowanie miało wtedy tylko dwie części, scenę i linie kolizji. M6 dołożył dwie następne, trawę i niebo, a do etapu pierwszego dwie prośby paneli: o nową skalę wysokości terenu i o nową gęstość trawy.
 
 **Etap 1: prośba o labirynt, prośba o nową rundę i klawisz R, prośby o teren i trawę, klawisze N i F, mysz.**
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
 
 ```cpp
 void NightMazeApp::onRender(double alpha) {
@@ -911,6 +924,8 @@ Opis samych wywołań: [`window-context.md`](window-context.md), sekcja 3.2, i [
 Funkcja zostawia związany framebuffer mapy albo podglądu i ich viewport. Dlatego zaraz po niej musi stać `beginScene`. Klasy rysujące nie wiedzą, że rysują do mapy cieni: dostają inny program i tyle. Ustawiają przy tym uniformy, których program głębi nie ma (samplery, `uTint`, `uEmissive`): `Shader::set*` woła wtedy `glUniform*` z lokalizacją -1, a OpenGL takie wywołanie po cichu pomija. Teoria, shadery i klasa `ShadowMap`: [`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.18 i 5.
 
 **Etap 3: oko, dwie macierze, światła i części sceny.**
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
 
 ```cpp
     const glm::vec3 feet =
@@ -1266,6 +1281,8 @@ Nikt jeszcze nie sprawdził ręcznie: chodzenia prawdziwymi klawiszami, klawisza
 
 W programie są trzy klasy, każda w innej warstwie:
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
+
 ```mermaid
 classDiagram
     class Application {
@@ -1551,6 +1568,8 @@ Komentarz wymienia dziś jedną zależność, i to ona jest w tej grupie jedyną
 Gdyby natomiast ktoś trzymał obiekt z zasobami GL dłużej niż `Application` (na przykład jako zmienną globalną albo lokalną w `main` zadeklarowaną przed `app`), jego destruktor wołałby `glDelete*` bez kontekstu.
 
 Drugie miejsce w tej klasie, gdzie liczy się kolejność, nie dotyczy OpenGL:
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
 
 ```cpp
     Player m_player;

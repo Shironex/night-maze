@@ -207,6 +207,8 @@ Poza tym doszła M8, część 2: selekcja, dźwignie i kartki (2026-10-06, temat
 
 Poza tym doszły poprawki z 2026-10-06, po pierwszym obejrzeniu obrazu M7 i M8 przez agenta na zrzutach ekranu (nie przez właściciela), na podstawie decyzji właściciela z tego dnia: 17 zmienionych plików w `src/`, `assets/shaders/` i `tests/` (w drzewie roboczym, nie w commicie). Kałuże idą za gruntem (`Puddles.*`: siatka-pajęczyna, `PuddleRenderer.*`: jedna siatka, mieszanie, `reflect.frag`: miękki brzeg i alfa, usunięte `puddleWaterLevel`, `PUDDLE_DEPTH` i `puddleModelMatrix`), `drawHud` dostaje argument `panelsVisible` (`Hud.*`, `DebugUI.cpp`), panel Environment ma dwie kolumny, a minimapa ramkę (`minimap_overlay.frag`, `Minimap.hpp`, `MinimapRenderer.cpp`, trzy nowe nazwy uniformów i dwie nowe dla brzegu kałuż w `ShaderUniforms.hpp`). Dwie nowe notatki: `puddles-follow-the-ground.md` i `hud-at-top-edge-when-panels-hidden.md` (razem 54 notatki). Zgłoszone przez bramkę: **467 przypadków testowych i 158006 asercji** (przed poprawkami 466 i 152264). Liczby programów (14) i paneli (13) bez zmian. Opis: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md), sekcja 5.12.
 
+Poza tym doszła M9, część 1: kamera menu (2026-10-06). Nowe pliki: `src/game/MenuCamera.*` (ścieżka przez labirynt i poza kamery jako funkcja czasu) i `src/game/StartOptions.*` (przełączniki wiersza poleceń), oba w bibliotece `game_logic`, oraz `tests/MenuCameraTests.cpp` (23 przypadki) i `tests/StartOptionsTests.cpp` (7). Zmieniły się: `CMakeLists.txt`, `src/main.cpp` (`main(argc, argv)` i chowanie paneli), `NightMazeApp.*`, `debug/DebugContext.hpp` (49 pól, doszły `menuCamera` i `menuCameraLoopSeconds`), `DebugUI.*` i `panels/CameraPanel.*`. Dwie nowe notatki: `menu-camera-closed-walk.md` i `menu-background-prerendered-loop.md` (razem 56 notatek). Zgłoszone przez bramkę: **497 przypadków testowych i 219050 asercji** (przed częścią 467 i 158006). Liczby programów (14) i paneli (13) bez zmian. Opis: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md).
+
 Docelową strukturę (z `renderer/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -363,6 +365,7 @@ night-maze/
 │   │   ├── MazeLayout.hpp/.cpp     # układ w świecie: ściany, słupki, pudełka kolizji
 │   │   ├── MazeRenderer.hpp/.cpp   # rysowanie ścian i słupków modelami
 │   │   ├── MazeWorld.hpp/.cpp      # jeden labirynt w świecie, na terenie: macierze modelu, pudełka, start, wyjście, kryształy
+│   │   ├── MenuCamera.hpp/.cpp     # kamera menu bez OpenGL: ścieżka przez labirynt i poza jako funkcja czasu (M9, część 1)
 │   │   ├── Minimap.hpp/.cpp        # minimapa bez OpenGL: ustawienia, kwadrat w rogu okna, rzut ortograficzny, lista trójkątów mapy (M7, część 6)
 │   │   ├── MinimapRenderer.hpp/.cpp # minimapa: framebuffer mapy, bufor GL_DYNAMIC_DRAW, przebieg mapy i nakładka w rogu okna (M7, część 6)
 │   │   ├── ModelDraw.hpp/.cpp      # rysowanie modelu albo siatki z teksturami, wspólne dla trzech rendererów
@@ -375,6 +378,7 @@ night-maze/
 │   │   ├── ShaderUniforms.hpp      # nazwy uniformów shaderów w jednym miejscu
 │   │   ├── ShadowMap.hpp/.cpp      # mapa cieni: framebuffer z samą głębią, sampler z porównaniem, podgląd (M7, część 4)
 │   │   ├── Shadows.hpp/.cpp        # cienie bez OpenGL: ustawienia, rozmiar mapy, bias, promień PCF, pudełko rzucających cień (M7, część 4)
+│   │   ├── StartOptions.hpp/.cpp   # przełączniki wiersza poleceń: ziarno, kamera menu, ujęcie, przesunięcie czasu (M9, część 1)
 │   │   ├── Skybox.hpp/.cpp         # niebo: tekstura sześcienna na sześcianie, rysowane na końcu klatki
 │   │   ├── Terrain.hpp/.cpp        # teren: mapa wysokości, siatka wysokości, heightAt, siatka trójkątów
 │   │   ├── TerrainRenderer.hpp/.cpp # rysowanie terenu: jedna siatka, tekstura gruntu, wireframe
@@ -422,6 +426,7 @@ night-maze/
 │   ├── MazeLayoutTests.cpp         # testy układu w świecie i kolizji w labiryncie
 │   ├── MazeTests.cpp               # testy klasy Maze, kierunków, isDeadEnd i MazeCell
 │   ├── MazeWorldTests.cpp          # testy buildMazeWorld: macierze, pudełka, start
+│   ├── MenuCameraTests.cpp         # testy kamery menu bez okna: trasa, ścieżka, poza w czasie, przelot (M9, część 1)
 │   ├── MinimapTests.cpp            # testy minimapy bez OpenGL: kwadrat w rogu, rzut ortograficzny, kształty mapy (M7, część 6)
 │   ├── ObjLoaderTests.cpp          # testy parseObj, parseMtl i loadObj
 │   ├── PlayerTests.cpp             # testy gracza: chodzenie, sprint, ślizganie, noclip
@@ -431,6 +436,7 @@ night-maze/
 │   ├── ShaderSourceTests.cpp       # testy expandIncludes i nameSourceFiles
 │   ├── ShadowTests.cpp             # testy cieni bez OpenGL: pudełko światła, współrzędne w mapie, bias, teksel, jądro PCF (M7, część 4)
 │   ├── SkyboxTests.cpp             # testy plików nieba: rozmiar, księżyc, gradient, granice ścian
+│   ├── StartOptionsTests.cpp       # testy przełączników wiersza poleceń (M9, część 1)
 │   ├── TangentTests.cpp            # testy triangleTangents, computeTangents i countMirroredTriangles
 │   ├── TerrainTests.cpp            # testy terenu: mapa wysokości, heightAt, siatka, ściany i gracz na gruncie
 │   ├── TransformTests.cpp          # testy macierzy normalnych
@@ -739,6 +745,8 @@ wypisane na początku drzewa, przed katalogami.
 | `tests/RoundTests.cpp` | 25 przypadków testowych rundy: wartości domyślne reguł, `requiredCrystalCount`, nowa runda, zasięg gracza, zbieranie i promień zbierania, bateria (zużycie tylko przy włączonej latarce, pusta wyłącza latarkę, doładowanie kryształem, kryształ w kroku wyczerpania), brama (otwarcie, opadanie w 1,5 s, zmiana progu w trakcie rundy), wygrana tylko przy otwartej bramie, zegary po wygranej, labirynt bez kryształów i z jednej komórki, migotanie, `lightingForFrame`, `crystalLightPositions`, limit świateł | [`../modules/game/gameplay.md`](../modules/game/gameplay.md) |
 | `tests/InteractablesTests.cpp` (M8) | 29 przypadków testowych dźwigni i kartek bez okna | [`../modules/game/interactables.md`](../modules/game/interactables.md) |
 | `tests/InteractionTests.cpp` (M8, część 2) | 21 przypadków testowych: dźwignie i kartki świata (rozmieszczenie, teren), nowa runda, wzory opadania, pociągnięcie i opadająca ściana, rączka, widok i restart, `pullAllLevers`, minimapa, promień z oka, przesłanianie, `interact`, karta kartki, kartka z podpowiedzią o kryształach, wygrana, podpowiedzi, podświetlenie, macierze modeli | [`../modules/scene/picking.md`](../modules/scene/picking.md), [`../modules/game/interactables.md`](../modules/game/interactables.md) |
+| `tests/MenuCameraTests.cpp` (M9, część 1) | 23 przypadki testowe kamery menu: trasa, ścieżka, poza w czasie, wysoki przelot | [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md) |
+| `tests/StartOptionsTests.cpp` (M9, część 1) | 7 przypadków testowych przełączników wiersza poleceń | [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md) |
 | `tests/RaycastTests.cpp` (M8) | 17 przypadków testowych promienia bez okna (pudełko, kula, najbliższe trafienie, punkt obrazu) | [`../modules/scene/picking.md`](../modules/scene/picking.md) |
 | `tests/SkyboxTests.cpp` | 5 przypadków testowych plików nieba (M6): sześć kwadratów jednej wielkości z trzema kanałami, reguła wyboru ściany i teksela przepisana ze specyfikacji OpenGL (`facePointOf`), tarcza księżyca tam, skąd leci domyślne światło księżyca z `game::LightingSettings`, niebo jaśniejsze przy horyzoncie niż w zenicie i zgodność koloru po obu stronach każdej z dwunastu krawędzi sześcianu. Test czyta pliki loaderem, bez OpenGL | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcja 5.8 |
 | `tests/TerrainTests.cpp` | 27 przypadków testowych terenu (M6): stałe, `Heightmap::sample` i `heightmapFromImage`, `terrainRelief`, rozmiar siatki, wzór wysokości i skala (0 daje płaski świat), `heightAt` w punktach siatki, na krawędziach, na przekątnej, poza siatką i w losowych punktach względem trójkąta siatki, `buildTerrainMesh` (liczby, kierunek nawijania, normalne, UV, styczne), `gridNormal`, `lowestHeightUnder`, prawdziwy plik `heightmap.png`, świat bez mapy na płaskim gruncie, ściany, słupki i brama zatopione bez szczelin, kryształy nad gruntem, stopy gracza na gruncie i kolizje takie same jak na płaskim | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) |
@@ -1416,6 +1424,7 @@ add_library(game_logic STATIC
     src/game/MazeLayout.cpp
     src/game/MazeLayout.hpp
     src/game/MazeWorld.cpp
+    src/game/MenuCamera.cpp
     src/game/MazeWorld.hpp
     src/game/Player.cpp
     src/game/Player.hpp
@@ -1424,6 +1433,7 @@ add_library(game_logic STATIC
     src/game/Round.cpp
     src/game/Round.hpp
     src/game/Shadows.cpp
+    src/game/StartOptions.cpp
     src/game/Shadows.hpp
     src/game/Terrain.cpp
     src/game/Terrain.hpp
@@ -1576,6 +1586,7 @@ add_executable(night_maze_tests
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
     tests/MazeWorldTests.cpp
+    tests/MenuCameraTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
     tests/PuddleTests.cpp
@@ -1584,6 +1595,7 @@ add_executable(night_maze_tests
     tests/ShaderSourceTests.cpp
     tests/ShadowTests.cpp
     tests/SkyboxTests.cpp
+    tests/StartOptionsTests.cpp
     tests/TangentTests.cpp
     tests/TerrainTests.cpp
     tests/TransformTests.cpp
@@ -1610,7 +1622,7 @@ Drugi program w projekcie. Każdą linię omawia
 - `enable_testing()` włącza zapis listy testów do katalogu buildu, gdzie znajduje ją program
   `ctest`.
 - `add_executable(night_maze_tests ...)` buduje program testowy z trzydziestu trzech plików
-  (`tests/main.cpp` i trzydzieści dwa pliki z testami, od M8, części 2, także z `InteractionTests.cpp`; od M8, części 1, także z `EnvironmentMappingTests.cpp` i `PuddleTests.cpp`; wcześniej: od pierwszej części M7 z `ColorSpaceTests.cpp` i `FramebufferTests.cpp`, od drugiej z `BloomTests.cpp`, od trzeciej z `FogTests.cpp` i `VignetteTests.cpp`, od czwartej z `ShadowTests.cpp`, od M8 z `RaycastTests.cpp` i `InteractablesTests.cpp`, od części 2 z `InteractionTests.cpp`) przy każdym zwykłym buildzie (jest częścią
+  (`tests/main.cpp` i trzydzieści cztery pliki z testami, od M9, części 1, także z `MenuCameraTests.cpp` i `StartOptionsTests.cpp`; od M8, części 2, także z `InteractionTests.cpp`; od M8, części 1, także z `EnvironmentMappingTests.cpp` i `PuddleTests.cpp`; wcześniej: od pierwszej części M7 z `ColorSpaceTests.cpp` i `FramebufferTests.cpp`, od drugiej z `BloomTests.cpp`, od trzeciej z `FogTests.cpp` i `VignetteTests.cpp`, od czwartej z `ShadowTests.cpp`, od M8 z `RaycastTests.cpp` i `InteractablesTests.cpp`, od części 2 z `InteractionTests.cpp`) przy każdym zwykłym buildzie (jest częścią
   targetu domyślnego), więc testy zawsze się kompilują.
 - `target_link_libraries(... PRIVATE game_logic doctest::doctest)`: kod testowany i
   biblioteka testów. `engine` przychodzi przez `game_logic`.

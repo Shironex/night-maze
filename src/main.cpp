@@ -7,8 +7,10 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstddef>
 #include <cstdlib>
 #include <exception>
+#include <span>
 #include <string>
 
 namespace {
@@ -18,9 +20,28 @@ namespace {
 /// This is the only place where the game meets the debug UI. The panels read game types,
 /// but nothing in game/ includes debug code, so the game never depends on the panels.
 class DebugNightMazeApp final : public game::NightMazeApp {
+public:
+    /// options is what the command line asked for (game::parseStartOptions).
+    explicit DebugNightMazeApp(const game::StartOptions& options) : game::NightMazeApp(options) {}
+
 protected:
     void onRender(double alpha) override {
         game::NightMazeApp::onRender(alpha);
+
+        // The menu camera shows the game alone: in the frame it is switched on the
+        // panels are hidden, and in the frame it is switched off they come back as they
+        // were. In between the panel key below still works, so the settings of the
+        // camera can be changed while it runs. The HUD is left out by DebugUI::draw.
+        const bool menuCameraOn = menuCameraSettings().enabled;
+        if (menuCameraOn != m_menuCameraWasOn) {
+            m_menuCameraWasOn = menuCameraOn;
+            if (menuCameraOn) {
+                m_panelsVisibleBeforeMenuCamera = m_debugUI.isVisible();
+                m_debugUI.setVisible(false);
+            } else {
+                m_debugUI.setVisible(m_panelsVisibleBeforeMenuCamera);
+            }
+        }
 
         // The key left of 1 (` and ~ on a US keyboard) shows or hides the debug panels.
         if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) {
@@ -79,6 +100,8 @@ protected:
             .puddleCount = puddleCount(),
             .pick = pick(),
             .pickDebug = pickDebug(),
+            .menuCamera = menuCameraSettings(),
+            .menuCameraLoopSeconds = menuCameraLoopSeconds(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
@@ -94,13 +117,31 @@ private:
     // Members are destroyed before base classes, so ImGui shuts down while the window
     // and its OpenGL context (owned by core::Application) still exist.
     debug::DebugUI m_debugUI{window()};
+
+    // Whether the menu camera was on in the frame before, and whether the panels were
+    // shown when it was switched on: that is the state they return to.
+    bool m_menuCameraWasOn = false;
+    bool m_panelsVisibleBeforeMenuCamera = true;
 };
 
 } // namespace
 
-int main() {
+// argc is the number of words on the command line and argv the words themselves. The
+// first word is the name of the program, the switches follow.
+int main(int argc, char** argv) {
+    // The switches are read before the window is opened: a mistyped one ends the
+    // program with a line in the log and the list of switches, not with a game that
+    // silently ignores it.
+    const std::span<const char* const> arguments(argv + 1, static_cast<std::size_t>(argc - 1));
+    const game::StartOptionsResult start = game::parseStartOptions(arguments);
+    if (!start.error.empty()) {
+        core::logError(start.error);
+        core::logError(game::START_OPTIONS_USAGE);
+        return EXIT_FAILURE;
+    }
+
     try {
-        DebugNightMazeApp app;
+        DebugNightMazeApp app(start.options);
         app.run();
     } catch (const std::exception& error) {
         // Startup failures (no window, no OpenGL 4.1) arrive here as exceptions.

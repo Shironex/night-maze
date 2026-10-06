@@ -20,6 +20,8 @@ W kamieniu milowym M1 kamerą sterowało się wprost: mysz ją obracała, a klaw
 
 Dawny lot kamery nie zniknął: stał się trybem noclip gracza (klawisz N). Sterowanie należy do `game::NightMazeApp` i do `game::Player`, a nie do `scene::Camera`. Drugim sposobem zmiany tych samych liczb jest panel Camera z `debug/`: pokaz tematu 3 na obronie.
 
+**Zmiana w M9, części 1 (2026-10-06): sterowanie może być wyłączone przez tryb kamery menu.** Gdy tryb jest włączony (klawisz F2, przełącznik `--menu-camera`, pole `Menu camera (F2)` w panelu Camera), `onRender` **nie obraca kamery myszą** (warunek `cursorCaptured && !menuCamera`), a `onUpdate` nie porusza gracza: kamerą prowadzi `game::menuCameraPose`, a rysowanie idzie z kopii kamery (sekcja 5.5 niżej opisuje klatkę bez tego trybu). Przy włączeniu trybu kursor jest oddawany (`setCursorCaptured(false)`), a po wyłączeniu trzeba kliknąć w scenę, żeby przechwycić go znowu. Panel Camera dostał grupę `Menu camera` (sekcja 6.2). Opis: [`../game/menu-camera.md`](../game/menu-camera.md).
+
 Stan na dziś: program startuje z graczem w środku komórki (0, 0) labiryntu, oko w `(1; 1,824; 1)` (1,7 m nad gruntem, który ma na starcie 0,124 m przy domyślnej skali wysokości terenu), pitch 0, yaw w stronę otwartego boku komórki startowej (dla ziarna 1: 180, południe). Tę pozę ustawia `beginRound`, a od M5 wraca do niej także klawisz R, który zaczyna rundę od nowa na tym samym labiryncie (sekcja 5.2). Kliknięcie w scenę przechwytuje kursor, mysz obraca kamerę, klawisze poruszają gracza, Escape oddaje kursor. Od M4 scena jest nocna i oświetlona, a oko i kierunek patrzenia kamery mają drugiego odbiorcę: w tym samym punkcie i w tym samym kierunku świeci latarka gracza (sekcja 5.5). Panel Camera przy pierwszym uruchomieniu jest zwinięty do paska tytułu i od M5 stoi obok zwiniętego panelu Gameplay (sekcja 6). Co z tego jest sprawdzone, mówi sekcja 5.6: build i testy na Windowsie przechodzą, obraz był oglądany na zrzutach ekranu, a obrotu myszą, klawiszy i panelu nikt jeszcze nie sprawdził ręcznie.
 
 ## 2. Teoria
@@ -260,6 +262,8 @@ Co się zmieniło: przy chodzeniu ruch jest poziomy i ograniczony ścianami, a k
 
 ### 5.5 Interpolacja: oko w `onRender`
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
+
 ```cpp
     // The simulation moves the player in fixed steps, and this frame is drawn at some
     // moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
@@ -291,6 +295,8 @@ Trzy pozycje, które łatwo pomylić:
 Macierze widoku i rzutowania są liczone raz na klatkę i przekazywane dwóm funkcjom rysującym (`drawMaze` i, gdy linie kolizji są włączone, `drawColliderLines`), więc labirynt, brama, kryształy i linie kształtów kolizji są zawsze widziane z tego samego punktu.
 
 **Drugi odbiorca oka: latarka.** Zaraz po dwóch macierzach, w tym samym `onRender`, stoi:
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
 
 ```cpp
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
@@ -407,8 +413,11 @@ constexpr float MAX_MOVE_SPEED = 20.0F;
 
 Uwaga do ostatniego komentarza: liczby są poprawne (20 m/s razy 1/120 s to około 0,17 m, pudełko ściany ma 0,3 m), ale uzasadnienie jest słabsze, niż mogłoby być. `moveAndSlide` mierzy odstęp do przeszkody na każdej osi, więc nie przepuściłby gracza przez ścianę także przy kroku dłuższym niż jej grubość ([`collision.md`](collision.md), sekcja 2.6). Krótki krok jest potrzebny z innego powodu: żeby droga "po schodkach" nie różniła się wyraźnie od prostej ([`collision.md`](collision.md), sekcja 2.8).
 
+> Uwaga (2026-10-06, M9 część 1): `drawCameraPanel` dostaje dziś dwa dodatkowe argumenty (`context.menuCamera` i `context.menuCameraLoopSeconds`), a `drawHud` jest wołane tylko wtedy, gdy `!context.menuCamera.enabled`: w trybie kamery menu HUD jest schowany. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 5.4.
+
 ```cpp
-void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity) {
+void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity,
+                     game::MenuCameraSettings& menuCamera, float menuCameraLoopSeconds) {
     // First run only: the top edge of the window, right of the left column, folded to its
     // title bar (the constant is in PanelLayout.hpp). Later ImGui remembers the panel in
     // imgui.ini.
@@ -471,7 +480,7 @@ void drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSe
 | `placePanelOnFirstUse(CAMERA_PLACEMENT)` | miejsce, rozmiar i stan zwinięcia panelu przy pierwszym uruchomieniu: górna krawędź okna, na prawo od lewej kolumny, zwinięty do paska tytułu. Stała `CAMERA_PLACEMENT` leży w [`PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp) razem z siedmioma pozostałymi. Pole `.collapsed = true` mają dwie z nich: ta i `GAMEPLAY_PLACEMENT`. Rozmiar po rozwinięciu to 280 na 416 jednostek. Zawartość przy dawnej szerokości 336 miała zmierzoną wysokość 452 (pomiar z M4, 2026-10-05), więc w 416 się nie mieści i panel się przewija: dla nowej szerokości wysokości nie mierzyłem. Wywołanie liczy się tylko wtedy, gdy plik `imgui.ini` nie ma jeszcze wpisu dla tego panelu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7) |
 | `if (ImGui::Begin("Camera"))` | dla zwiniętego panelu `Begin` zwraca `false`. Dopóki panel jest zwinięty, żaden z widżetów niżej nie jest budowany, a `ImGui::End()` wykonuje się jak zawsze |
 | stałe `MIN_...` i `MAX_...` | granice suwaków, nazwane i opisane w jednym miejscu, w anonimowej przestrzeni nazw pliku. Bez nich w wywołaniach stałyby gołe liczby |
-| `drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity)` | panel dostaje dokładnie to, co edytuje: trzy referencje bez `const`. W M1 trzecim parametrem była prędkość ruchu, teraz prędkości są polami gracza |
+| `drawCameraPanel(scene::Camera& camera, game::Player& player, float& mouseSensitivity, game::MenuCameraSettings& menuCamera, float menuCameraLoopSeconds)` (od M9, części 1 dwa ostatnie argumenty: ustawienia kamery menu, edytowalne, i długość jej pętli, tylko do odczytu; grupa `Menu camera` pod trzema suwakami prędkości) | panel dostaje dokładnie to, co edytuje: trzy referencje bez `const`. W M1 trzecim parametrem była prędkość ruchu, teraz prędkości są polami gracza |
 | `ImGui::SetNextWindowPos(..., ImGuiCond_FirstUseEver)`, `SetNextWindowSize` i `SetNextWindowCollapsed` (wewnątrz `placePanelOnFirstUse`) | dotyczą panelu otwieranego przez najbliższe `Begin`. Warunek `FirstUseEver`: tylko gdy ImGui nie zna jeszcze tego panelu |
 | `ImGui::TextWrapped(...)` | linia pomocy tylko do odczytu: jak przechwycić kursor i czym się steruje w obu trybach. Sąsiednie napisy w cudzysłowach kompilator skleja w jeden |
 | `ImGui::Text("Mode: %s", player.noclip ? "noclip (free flight)" : "walking")` | bieżący tryb gracza, tylko do odczytu |

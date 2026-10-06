@@ -650,6 +650,8 @@ Funkcja ma dwóch odbiorców: `buildLightSet` (kierunek światła w shaderach) i
 constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 ```
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](menu-camera.md), sekcja 5.4.
+
 ```cpp
     // The flashlight key, read once per frame for the same reason. Like the noclip key
     // it works whether or not the cursor is captured. With an empty battery the key
@@ -670,6 +672,8 @@ constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 | brak warunku o baterii | klawisz nie pyta o ładunek. Pustą baterię obsługują dwa inne miejsca, niżej |
 
 **Wymuszone wyłączenie przy pustej baterii.** `onUpdate` przekazuje przełącznik do zasad rundy przez referencję:
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](menu-camera.md), sekcja 2.10.
 
 ```cpp
     // The rules of the round, with the position the player has after this step: the
@@ -723,6 +727,8 @@ Przełącznik jest więc włączony najwyżej do następnego stałego kroku (kro
 Uczciwie: tego zachowania **nikt nie oglądał na ekranie**. Wynika z kolejności w kodzie i z testu `an empty battery switches the flashlight off and keeps it off`, który sprawdza obie blokady osobno.
 
 **Budowanie i wysyłanie świateł** (fragmenty `onRender` w kolejności wykonania, z pominięciem rysowania; od części piątej oko, ustawienia klatki i pozycja latarki są liczone **na początku**, przed przebiegami cieni).
+
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](menu-camera.md), sekcja 5.4.
 
 ```cpp
     const glm::vec3 feet =

@@ -32,6 +32,11 @@ public:
     /// Shows or hides all panels. The HUD of the game is not a panel: it stays.
     void toggleVisible() { m_visible = !m_visible; }
 
+    /// Shows (true) or hides (false) all panels, and tells which of the two it is. The
+    /// menu camera hides them while it runs and puts them back afterwards.
+    void setVisible(bool visible) { m_visible = visible; }
+    bool isVisible() const { return m_visible; }
+
     /// True while ImGui uses the keyboard itself: a text field is being edited or another
     /// widget is active (for example a slider being dragged).
     /// ImGui computes this at the start of each frame it builds, so it lags by a frame.
@@ -50,7 +55,8 @@ public:
     void setMouseEnabled(bool enabled);
 
     /// Builds and renders the HUD and, while they are visible, the debug panels on top of
-    /// the current frame.
+    /// the current frame. While the menu camera runs the HUD is left out: the game
+    /// then shows itself, not a round.
     /// Call it last in the frame, after the scene has been drawn.
     /// The context holds the data the panels show and edit, see DebugContext.hpp.
     void draw(const DebugContext& context);

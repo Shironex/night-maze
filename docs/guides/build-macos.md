@@ -25,7 +25,7 @@ do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M
 "M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS", "M7, część 1
 (bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS", "M7, część 3 (mgła
 i winieta) na macOS", "M7, część 4 (cienie księżyca) na macOS", "M7, część 5 (cień latarki)
-na macOS", "M7, część 6 (minimapa) na macOS" "M8, część 1 (environment mapping) na macOS" i "M8, część 2 (selekcja, dźwignie i kartki) na macOS".
+na macOS", "M7, część 6 (minimapa) na macOS" "M8, część 1 (environment mapping) na macOS" "M8, część 2 (selekcja, dźwignie i kartki) na macOS" i "M9, część 1 (kamera menu) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -156,9 +156,23 @@ Macu.
 | spacja przy przechwyconym kursorze | tylko w trybie noclip: w górę | tamże |
 | N | przełącza chodzenie i noclip (lot wzdłuż kierunku patrzenia, bez kolizji). Działa także przy wolnym kursorze | `NightMazeApp::onRender` |
 | F | włącza i wyłącza latarkę. Działa także przy wolnym kursorze. To samo robi pole `Flashlight on (key F)` w panelu Lights. Przy pustej baterii latarka się nie zapala, dopóki gracz nie zbierze kryształu | `NightMazeApp::onRender`, reguła baterii w `game::updateRound` w [`src/game/Round.cpp`](../../src/game/Round.cpp) |
+| F2 (od M9, części 1) | włącza i wyłącza tryb kamery menu: gra pokazuje samą siebie (kamera jedzie po labiryncie, runda stoi, HUD, minimapa i panele są schowane). W trakcie trybu klawisze R, N, F, M i E oraz mysz rundy są ignorowane, a `~` nadal pokazuje panele. Na MacBooku może wymagać Fn | `NightMazeApp::updateMenuCameraSwitch` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
 | R | zaczyna rundę od nowa w tym samym labiryncie: kryształy wracają, bateria jest pełna, latarka włączona, brama zamknięta, gracz na starcie. Działa także przy wolnym kursorze i na karcie wygranej. To samo robi przycisk `Restart round (key R)` w panelu Gameplay | `NightMazeApp::onRender` i `NightMazeApp::beginRound` |
 | Esc | przy przechwyconym kursorze oddaje kursor, przy wolnym zamyka program | `Application::run` w [`src/core/Application.cpp`](../../src/core/Application.cpp) |
-| `~` (na lewo od `1`, `GLFW_KEY_GRAVE_ACCENT`) | pokazuje lub ukrywa panele debugowe. Pasek HUD zostaje | `DebugNightMazeApp::onRender` w [`src/main.cpp`](../../src/main.cpp) |
+| `~` (na lewo od `1`, `GLFW_KEY_GRAVE_ACCENT`) | pokazuje lub ukrywa panele debugowe. Pasek HUD zostaje (poza trybem kamery menu, F2) | `DebugNightMazeApp::onRender` w [`src/main.cpp`](../../src/main.cpp) |
+
+**Przełączniki wiersza poleceń (od M9, części 1).**
+
+Program przyjmuje cztery przełączniki. Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
+
+| Przełącznik | Znaczenie |
+|---|---|
+| `--seed <liczba>` | ziarno pierwszego labiryntu, liczba całkowita od 0 do 4294967295 (domyślnie 1) |
+| `--menu-camera` | start od razu w trybie kamery menu (gra pokazuje samą siebie; to samo robi klawisz F2) |
+| `--menu-shot <walk\|glide>` | ujęcie kamery menu: spacer po korytarzach albo wysoki przelot. Samo nie włącza trybu |
+| `--menu-time <sekundy>` | start ujęcia tyle sekund w głąb pętli, liczba z kropką dziesiętną (przecinek jest odrzucany), może być ujemna. Samo nie włącza trybu |
+
+Przykład: `night_maze --menu-camera --seed 1 --menu-shot glide`. Opis i przepis na nagranie klipu: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcje 2.9 i 5.9.
 
 Klawisze są ignorowane, dopóki aktywny jest widżet panelu ImGui (na przykład trwa
 wpisywanie wartości): klawiatura należy wtedy do panelu. Opis w
@@ -2043,6 +2057,47 @@ programami, a podświetlenie to uniform `uEmissive`. Ryzyko leży w **współrz�
 
 **Co nadal nie istnieje na żadnym systemie:** obraz tej części nie został obejrzany przez
 właściciela. Blendera na macOS nie trzeba (modele są w repozytorium).
+
+### M9, część 1 (kamera menu) na macOS: lista w całości otwarta
+
+Pierwsza część kamienia milowego M9 (tryb, w którym gra pokazuje samą siebie: pliki
+`src/game/MenuCamera.*`, `src/game/StartOptions.*`, `src/game/NightMazeApp.*`, `src/main.cpp`,
+`src/debug/DebugContext.hpp`, `DebugUI.*`, `panels/CameraPanel.*`) powstała na Windowsie
+2026-10-06 i tam jest zgłoszona jako zbudowana i przetestowana
+([`build-windows.md`](build-windows.md), sekcja 25, "Lista kontrolna M9, część 1: kamera menu").
+**Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
+odhaczony.** Na Windowsie grę z przełącznikiem `--menu-camera` uruchomił i oglądał na klatkach
+agent, który napisał kod, a nie właściciel. Opis kodu:
+[`../modules/game/menu-camera.md`](../modules/game/menu-camera.md).
+
+Ta część nie dodaje shadera ani nowego wywołania OpenGL. Ryzyko jest w trzech miejscach: w
+**czytaniu liczby sekund** (`std::strtof`, wybrane dlatego, że biblioteka standardowa Apple clang
+nie czyta `float` przez `std::from_chars`), w **klawiszu F2** (na MacBooku klawisze funkcyjne
+bywają skrótami systemowymi, trzeba ewentualnie nacisnąć razem z Fn) i w **oddawaniu kursora**.
+
+- [ ] build Debug i Release bez ostrzeżeń, w tym `StartOptions.cpp` (`strtof`, `isfinite`)
+- [ ] `ctest` albo `night_maze_tests`: wszystkie przechodzą, w tym 23 przypadki z
+      `MenuCameraTests.cpp` i 7 z `StartOptionsTests.cpp` (razem na Windowsie 497 przypadków i
+      219050 asercji)
+- [ ] `night_maze --menu-camera`: gra startuje od razu w trybie, bez HUD, minimapy i paneli,
+      kamera jedzie po korytarzach
+- [ ] `night_maze --menu-camera --seed 1 --menu-shot glide`: wysoki przelot nad labiryntem,
+      latarka wyłączona
+- [ ] `night_maze --menu-time 12,5` i `--menu-shot orbit`: dwie linie `[error]` (komunikat i
+      lista przełączników), kod wyjścia niezerowy, okno się nie otwiera
+- [ ] klawisz F2 włącza i wyłącza tryb w działającej grze (zapisać, czy na tym klawiaturze działa
+      bez Fn); panele i HUD wracają jak były
+- [ ] po włączeniu trybu kursor jest wolny, a mysz nie obraca kamery; po wyłączeniu trzeba kliknąć
+      w scenę
+- [ ] grupa `Menu camera` w panelu Camera: pole, lista `Shot`, suwaki `Speed` i `Eye height`,
+      pole `Time offset`, linia `One loop`
+- [ ] zmiana rozmiaru okna i przesunięcie okna między ekranami o różnej skali w trakcie trybu nie
+      psują obrazu
+- [ ] tryb nagrywania: `ffmpeg` (albo nagrywanie ekranu systemu) z okna gry nagrywa ten sam obraz
+      przy tych samych przełącznikach
+
+**Co nadal nie istnieje na żadnym systemie:** obraz tego trybu nie został obejrzany przez
+właściciela.
 
 ### Skróty: `make`
 

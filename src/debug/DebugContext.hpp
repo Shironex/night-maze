@@ -22,6 +22,7 @@ struct GrassSettings;
 struct LightingSettings;
 struct MazeSettings;
 struct MazeWorld;
+struct MenuCameraSettings;
 class MinimapRenderer;
 struct MinimapSettings;
 struct PickDebugSettings;
@@ -183,6 +184,11 @@ struct DebugContext {
     /// The switches of the debug view of the picking (draw the pick boxes and the ray,
     /// freeze the drawn ray), editable.
     game::PickDebugSettings& pickDebug;
+    /// The settings of the menu camera, editable: the Camera panel edits them, and
+    /// while the camera runs the HUD is not drawn.
+    game::MenuCameraSettings& menuCamera;
+    /// How long one loop of the menu camera takes, in seconds: the Camera panel shows it.
+    float menuCameraLoopSeconds;
 };
 
 } // namespace debug

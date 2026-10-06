@@ -1,6 +1,6 @@
 # Menu gry w RmlUi już w M9, Dear ImGui zostaje przy panelach debug
 
-Data: 2026-10-06. Stan: obowiązuje jako decyzja, **kodu nie ma**.
+Data: 2026-10-06. Stan: obowiązuje jako decyzja, **kodu menu nie ma** (od 2026-10-06 jest tylko kamera menu, sekcja 6, i rozstrzygnięte tło menu: [`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md)).
 Kod: brak. W `cmake/Dependencies.cmake` nie ma ani RmlUi, ani FreeType, w `src/` nie ma menu, a w `docs/` nie ma dokumentu biblioteki RmlUi (sprawdzone wyszukiwaniem tych nazw w `src/`, `cmake/`, `CMakeLists.txt` i `docs/`). Zbudowane jest tylko to, co dziś stoi w `Dependencies.cmake`: GLFW, GLM, Dear ImGui i pozostałe biblioteki z [`../libraries/`](../libraries/). Dokument modułu: brak. Powiązane: [`small-calls-after-m6.md`](small-calls-after-m6.md) (punkt 2: pauza dojdzie razem z menu), [`enemy-after-m5.md`](enemy-after-m5.md) (ten sam sposób zapisu decyzji bez kodu).
 
 ## 1. Kontekst
@@ -56,4 +56,13 @@ To jest analiza, nie decyzja. Wybór z pierwszego wiersza jest decyzją właści
 - Gdy zacznie się M9: przypiąć wersję RmlUi i FreeType, sprawdzić interfejs renderujący i backend GLFW na przypiętej wersji, sprawdzić oba na obu systemach.
 - Jeśli RmlUi nie działa na macOS z profilem 4.1 Core: wtedy wybór trzeba rozstrzygnąć od nowa, bo projekt musi się budować na macOS i Windowsie.
 - Jeśli czasu przed obroną zabraknie: planem awaryjnym jest menu w Dear ImGui (drugi wiersz tabeli), które jest zgodne z PRD i mieści się w tym, co już jest w buildzie.
-- Gdy będzie gotowe porównanie tła: prawdziwa żywa scena kontra prawdziwa nagrana pętla z gry. Wtedy punkt 3 decyzji dostanie rozstrzygnięcie, w tej notatce albo w osobnej.
+- Gdy będzie gotowe porównanie tła: prawdziwa żywa scena kontra prawdziwa nagrana pętla z gry. Wtedy punkt 3 decyzji dostanie rozstrzygnięcie, w tej notatce albo w osobnej. (Rozstrzygnięte 2026-10-06: sekcja 6 i [`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md).)
+
+## 6. Dodatek z 2026-10-06: kamera menu istnieje w kodzie, tło menu jest rozstrzygnięte
+
+Sekcje od 1 do 5 zostają w brzmieniu z chwili zapisu. Co się zmieniło tego samego dnia, później:
+
+- **Kod, którego dotyczy ta notatka, nadal nie istnieje:** RmlUi i FreeType nie ma w `cmake/Dependencies.cmake`, menu nie ma w `src/`. Zmienia się to, że **w kodzie jest kamera menu** (pierwsza część M9): tryb pod klawiszem F2 albo przełącznikiem `--menu-camera`, w którym gra pokazuje samą siebie z ukrytym HUD, minimapą i panelami ([`../modules/game/menu-camera.md`](../modules/game/menu-camera.md); `src/game/MenuCamera.*`, `src/game/StartOptions.*`). To nie jest menu: nie ma ekranów, przycisków ani stanów gry.
+- **Materiał porównawczy istnieje:** dwa nagrania z gry (ciągłe ujęcie 30 s i zmontowana pętla 24 s z czterech ujęć), poza repozytorium, pokazane właścicielowi (informacja od autora kodu, nie do sprawdzenia w repozytorium).
+- **Punkt 3 decyzji jest rozstrzygnięty.** Właściciel zdecydował po obejrzeniu obu nagrań (2026-10-06): tłem menu będzie **zmontowana, wyrenderowana wcześniej pętla wideo**, nie żywa scena, a przełączniki `--menu-shot` i `--menu-time` zostają. Pełna treść, tabela możliwości i skutki (brak dekodera wideo, plik binarny, starzenie się pętli) są w osobnej notatce [`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md). Punkty 1 i 2 decyzji bez zmian: menu w RmlUi.
+- Skutek dla ostatniej pozycji sekcji 5 ("Gdy będzie gotowe porównanie tła"): porównanie powstało i wybór jest zapisany w tej notatce.

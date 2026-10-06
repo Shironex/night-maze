@@ -802,6 +802,8 @@ Te funkcje mają siedem przypadków w `tests/ColliderTests.cpp`. Teorię i rysun
 `mix` przy rysowaniu, `NightMazeApp::onRender` w
 [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp):
 
+> Uwaga (2026-10-06, M9 część 1): fragment `onRender` poniżej pochodzi sprzed kamery menu i jest skrócony. Dziś `onRender` woła na początku `updateMenuCameraSwitch()`, a macierze, kierunek latarki i podglądy bufora głębi bierze z kopii kamery `frameCamera` (kamera gracza albo poza kamery menu), a oko `eye` bywa podmienione na oko kamery menu. Klawisze R, N, F i M, obrót myszą i wskazywanie mają warunek `!menuCamera`, `frameLighting` nie jest `const` (w trybie menu latarka jest ustawiana osobno), a minimapa nie jest rysowana. Opis: [`menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.4.
+
 ```cpp
     const glm::vec3 feet =
         glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
