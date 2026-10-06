@@ -1,6 +1,6 @@
 # Wartości odbić dobrane tak, żeby efekt było widać, a nie tak, jak jest w fizyce
 
-Data: 2026-10-06. Stan: obowiązuje (wybór wykonawczy).
+Data: 2026-10-06. Stan: obowiązuje (wybór wykonawczy), z uzupełnieniem z 2026-10-06 na końcu: po obejrzeniu zrzutów wartość startowa `puddleReflectivity` wynosi 0,5, a kolor wody jest jaśniejszy.
 Kod: [`src/game/EnvironmentMapping.hpp`](../../src/game/EnvironmentMapping.hpp) (`EnvironmentSettings`: `puddleReflectivity`, `crystalGlowShare`, `crystalStrength`), [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) (`drawReflections`, `PUDDLE_SPECULAR_STRENGTH`, `PUDDLE_SHININESS`), [`assets/shaders/reflect.frag`](../../assets/shaders/reflect.frag), [`tests/EnvironmentMappingTests.cpp`](../../tests/EnvironmentMappingTests.cpp). Dokument modułu: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md), sekcje 2.7 i 2.9.
 
 ## 1. Kontekst
@@ -16,7 +16,7 @@ Efekt ma być **zobaczony**: na obronie i na zrzucie ekranu. Fizyka mu w tym prz
 
 Wartości startowe są wybrane **dla widoczności**:
 
-- `puddleReflectivity` = **0,35** zamiast 0,02 (kałuża 2 m dalej odbija 35 procent, 8 m dalej 55 procent, 16 m dalej 72 procent, policzone ze wzoru Schlicka).
+- `puddleReflectivity` = **0,35** zamiast 0,02 (kałuża 2 m dalej odbija 35 procent, 8 m dalej 55 procent, 16 m dalej 72 procent, policzone ze wzoru Schlicka). **Od uzupełnienia z 2026-10-06 wartość startowa to 0,5** (niżej).
 - Odbłysk kałuży jest ostry i mocny (`PUDDLE_SPECULAR_STRENGTH` 1,0, `PUDDLE_SHININESS` 128), a nie słaby i szeroki jak kamień ścian.
 - Kryształ ma **stały** udział nieba 0,5 bez efektu Fresnela, a jego własne świecenie zostaje **całe** (`crystalGlowShare` równe dokładnie 1,0, test tego pilnuje), żeby bloom nadal go znajdował.
 - Suwaki pozwalają zejść do wartości fizycznych: `Reflectivity` od 0 (w tym 0,02) i `Glow` od 0.
@@ -45,3 +45,26 @@ Wartości startowe są wybrane **dla widoczności**:
 - Gdy po obejrzeniu kałuże wyglądają jak lustro w podłodze: obniżyć `puddleReflectivity` (na przykład do 0,2).
 - Gdy kryształy po `Sky share` 0,5 są za ciemne: obniżyć udział albo dodać światło własne.
 - Gdy prowadzący zapyta o fizykę: pokazać `Reflectivity` na 0,02 i tabelę.
+
+## Uzupełnienie 2026-10-06: po obejrzeniu zrzutów woda jest jaśniejsza i mocniej odbija
+
+**Co zobaczył agent** (pierwsze zrzuty ekranu, wersja Release z commitu `9a33f18`; "widziane na zrzucie ekranu przez agenta, nie przez właściciela"): kałuże czytały się jako **prawie czarne dziury** w wiązce latarki i nie były widoczne z wysokości chodzenia w 4 m i 8 m. Ten sam agent widział w kałuży tarczę księżyca i gwiazdy przy `Yaw` 205 i `Pitch` -50, więc odbicie samo działało. **Nie oceniono** różnicy między `Fresnel` włączonym i wyłączonym.
+
+**Decyzja właściciela projektu (2026-10-06), w całości:** woda ma być lepiej widoczna: jaśniejszy odcień, mocniej odbijająca, miękki brzeg, więcej narożników. (Dwie pozostałe decyzje tego dnia: [`puddles-follow-the-ground.md`](puddles-follow-the-ground.md) i [`hud-at-top-edge-when-panels-hidden.md`](hud-at-top-edge-when-panels-hidden.md).)
+
+**Jak to jest w kodzie.**
+
+| Co | Przed | Po | Skąd |
+|---|---|---|---|
+| kolor wody (`PUDDLE_COLOR`, sRGB) | `(0,07; 0,09; 0,11)` | `(0,32; 0,40; 0,50)` | `PuddleRenderer.cpp` |
+| `puddleReflectivity` (`F0`) | 0,35 | 0,5 | `EnvironmentMapping.hpp` |
+| brzeg | twardy | miękki: zewnętrzne 45 procent promienia znika (`PUDDLE_RIM_FADE`) | `reflect.frag`, `Puddles.hpp` |
+| narożniki brzegu | 16 | 32, w 6 pierścieniach | `Puddles.hpp` |
+
+Przy `F0` 0,5 kałuża 2 m dalej odbija 50 procent, 8 m dalej 66, 16 m dalej 79 (policzone ze wzoru Schlicka, tabela w sekcji 2.9 dokumentu modułu). Komentarz przy stałej koloru mówi wprost, że pierwsza wartość dawała czarną dziurę w wiązce latarki.
+
+**Wybór wykonawczy, którego nie ma na liście właściciela: środek kałuży przepuszcza grunt.** Autor poprawek dodał przezroczystość: krycie wody w środku to `mix(0,7; 1; F) * (1 - zanik brzegu)` (`PUDDLE_OPACITY` 0,7), więc przy ustawieniach startowych grunt prześwituje w około 15 procentach prosto w dół (krycie 0,85) i coraz mniej dalej. Powód z komentarzy kodu: cienka warstwa wody pokazuje ziemię i kamyki pod sobą, a to rozbija wygląd czarnej dziury. To jest **jego wybór, poza decyzją właściciela**, i można go cofnąć jedną stałą (`PUDDLE_OPACITY` 1 daje krycie 1).
+
+**Co agent widział po zmianie** (autor poprawek, build jego worktree przed scaleniem z kodem dźwigni; nie właściciel): z wysokości chodzenia przy włączonej latarce w 2 m szaroniebieska mokra plama z kamykami widocznymi przez wodę, w 4 m mała niebieskawa plama z błyskiem gwiazdy, w 8 m kałuża nie do odróżnienia; przy wyłączonej latarce w cieniu księżyca tylko błysk gwiazdy w 2 m i 4 m; w świetle księżyca tarcza księżyca i gwiazdy w kałuży o miękkim brzegu. **Nie widziane:** widoki chodzenia w świetle księżyca w 2, 4 i 8 m, wygląd przy `Share of cells` 0,5, różnica `Fresnel` włączony i wyłączony. Poza wiązką latarki i dalej niż około 4 m kałuże pozostają trudne do zobaczenia.
+
+**Kiedy wrócić do tego uzupełnienia.** Gdy właściciel obejrzy grę i kałuża będzie za mało albo za bardzo widoczna: `PUDDLE_COLOR`, `PUDDLE_OPACITY` i `puddleReflectivity` to trzy stałe do zmiany. Gdy wyjdzie na jaw, że przezroczystość środka przeszkadza: `PUDDLE_OPACITY` na 1.

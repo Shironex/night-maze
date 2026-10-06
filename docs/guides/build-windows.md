@@ -82,8 +82,7 @@
 > programu Debug przez około 7 sekund: OpenGL 4.1.0 NVIDIA, assety wczytane, puste
 > standardowe wyjście błędów, panele ukryte (sekcja 21.1). Start **nie obejmował** trybu
 > `Gouraud`, zakładki `Flashlight` i jej podglądu, ścieżki z wyłączoną latarką ani przycisku
-> `Reload shaders`. Żadnego z tych pomiarów nie powtarzałem, **nikt nie obejrzał obrazu tej
-> części** i nikt nie zmierzył liczby klatek. Wersji kompilatora, karty graficznej i
+> `Reload shaders`. Żadnego z tych pomiarów nie powtarzałem, **w chwili tego zgłoszenia nikt nie obejrzał obrazu tej części** i nikt nie zmierzył liczby klatek (agent obejrzał obraz później na zrzutach, nie właściciel: sekcja 21.1; z odczytami liczby klatek: sekcja 23.1). Wersji kompilatora, karty graficznej i
 > sterownika dla tej części nie zapisano. M7 jest rozpoczęty, nie kompletny: w kodzie jest
 > pięć części z sześciu (bufor HDR, bloom, mgła i winieta, cienie księżyca, cień latarki),
 > minimapy nie ma ([`m7-status.md`](m7-status.md)).
@@ -95,8 +94,7 @@
 > sekund: OpenGL 4.1.0 NVIDIA, assety wczytane, puste standardowe wyjście błędów (sekcja
 > 22.1). Start **nie obejmował** poruszania graczem, klawisza M, zakładki `Minimap`, pola
 > `Reveal all`, przycisku `Reload shaders`, zmiany rozmiaru okna ani obu widoków
-> diagnostycznych. Żadnego z tych pomiarów nie powtarzałem, **nikt nie obejrzał minimapy**
-> i nikt nie zmierzył liczby klatek. Wersji kompilatora, karty graficznej i sterownika dla
+> diagnostycznych. Żadnego z tych pomiarów nie powtarzałem, **w chwili tego zgłoszenia nikt nie obejrzał minimapy** i nikt nie zmierzył liczby klatek (agent obejrzał ją później na zrzutach, nie właściciel: sekcja 22.1). Wersji kompilatora, karty graficznej i sterownika dla
 > tej części nie zapisano. M7 jest kompletny w kodzie na Windowsie (wszystkie sześć części)
 > i **nie jest zamknięty** ([`m7-status.md`](m7-status.md)).
 >
@@ -109,8 +107,7 @@
 > (Blinn-Phong, widok `Textured`, niebo i efekt włączone) i **nie obejmował** trybów `Unlit`,
 > `Gouraud` i `Phong`, widoków diagnostycznych, nieba wyłączonego, efektu wyłączonego,
 > przycisku `Reload shaders` (dziś czternaście programów) ani żadnej z dziewięciu kontrolek
-> panelu Environment. Żadnego z tych pomiarów nie powtarzałem, **nikt nie obejrzał odbić na
-> kryształach ani w kałużach** i nikt nie zmierzył liczby klatek. Temat 12 jest w toku, macOS
+> panelu Environment. Żadnego z tych pomiarów nie powtarzałem, **do tego dnia nikt nie obejrzał odbić na kryształach ani w kałużach** (patrz następny akapit) i nikt nie zmierzył liczby klatek. Temat 12 jest w toku, macOS
 > otwarty ([`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md)).
 >
 > **Zgłoszone 2026-10-06 (M8, część 2: selekcja, dźwignie i kartki):** bramka `make check`
@@ -122,6 +119,23 @@
 > kartkę z jej kartą, otwartą ścianę na minimapie, restart, zamrożony promień i panel
 > Collision. To **nie** jest test właściciela. Po przeróbce modelu dźwigni agent widział też (zrzuty z 2026-10-06, nie właściciel): dźwignię od przodu z 1 m przy włączonej latarce, w górnym położeniu i podświetloną (ciemna płyta, jasna bursztynowa gałka nad środkiem, podpowiedź na dole pośrodku); ten sam widok po E (pręt w dół, gałka poniżej krawędzi płyty z cieniem na ścianie, bez podświetlenia i podpowiedzi); widoki z boku w górnym i dolnym położeniu; wyłączoną latarkę (pociągnięta: płyta prawie czarna, gałka ciemna ochra; w górze z podświetleniem: gałka świeci bursztynem); około 2,4 m pod kątem z podświetleniem i podpowiedzią oraz około 2,9 m poza zasięgiem bez podświetlenia; drugą dźwignię; Gouraud (z podświetleniem) i Unlit; widok Normals (dźwignia jako dane, bez podświetlenia, pierścień i podpowiedź nadal są); kartkę z "E: read note" na dole, wolną od arkusza; otwartą kartę kartki bez podpowiedzi i bez nakładania się na minimapę. Nadal niewidziane: uchwyt w połowie ruchu, cień księżyca od dźwigni, Gouraud i Unlit dla kartki, widok na wprost z 2,5 m, dodatki w panelu Gameplay i przycisk "Pull all levers", inne niż domyślne liczby dźwigni i kartek, czysta rama połowicznie zatopionej ściany. Znane uwagi kosmetyczne: z 1 m na wprost gałka w górnym położeniu zasłania górną trzecią część płyty, a przy wyłączonej latarce i bez podświetlenia płyta jest prawie czarna na ścianie i niesie ją tylko gałka. Temat 15 jest w toku, macOS otwarty.
 >
+> **Zgłoszone 2026-10-06 (pierwsze obejrzenie obrazu M7 i M8 przez agenta oraz poprawki kałuż, ramki
+> minimapy i paska HUD):** po raz pierwszy ktoś obejrzał obraz części 4, 5 i 6 M7 i części 1 M8. To był
+> **agent**, na zrzutach ekranu (wersja Release z commitu `9a33f18`, 1280 x 720, RTX 4070 Ti SUPER, sterownik
+> zgłaszający OpenGL 4.1.0 NVIDIA 610.74; ustawienia zmieniał tymczasowy hak testowy, który pisał te same pola
+> co panele). Wyniki są w sekcjach 20.1, 21.1, 22.1 i 23.1 jako "widziane na zrzucie ekranu przez agenta
+> (2026-10-06), nie przez właściciela". **Listy właściciela (od 17.2 do 24.2), macOS, odhaczenie tematów i tag
+> zostają otwarte**, a właściciel nie wykonał żadnej z list ręcznych. Na ekranie znaleziono błędy kałuż (cztery
+> z trzynastu obcięte do 54 do 69 procent, czarne dziury w wiązce latarki, ukryte linie panelu Environment), po
+> czym właściciel zdecydował (2026-10-06): kałuże idą za gruntem, woda ma być lepiej widoczna, pasek HUD stoi
+> przy górnej krawędzi, dopóki panele są schowane. Poprawki (17 plików w `src/`, `assets/shaders/` i `tests/`)
+> są w drzewie roboczym, **nie w commicie**. Bramka scalonego drzewa z poprawkami: `make check` przechodzi,
+> **467 przypadków testowych i 158006 asercji** (przed poprawkami 466 i 152264), start Debug przez 8 sekund bez
+> linii błędu (zgłoszone przez bramkę, nie powtarzałem). Rzędy liczby klatek z jednej sesji (około 1250 ze wszystkim
+> włączonym, około 1920 przy wyłączonych dwóch cieniach, mapie i environment mapping, około 578 w buildzie Debug)
+> są **odczytami, nie pomiarami**, a spadek liczby klatek z [`m7-status.md`](m7-status.md), sekcja 5, zostaje niewyjaśniony.
+> Na macOS nic z tego nie było budowane ani uruchamiane.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -131,8 +145,7 @@
 > Framebuffers z suwakiem ekspozycji, listą krzywych i podglądami, jego dwie zakładki
 > z kontrolkami bloomu, mgły i winiety, cały panel Shadows z przełączaniem rozdzielczości
 > mapy cieni w działającej grze i jego zakładka `Flashlight`, trzy nowe suwaki ręki w panelu
-> Lights, cienie latarki na ekranie, minimapa (obraz, klawisz M, trzecia zakładka panelu
-> Framebuffers), zmiana rozmiaru okna,
+> Lights, cienie latarki na ekranie i minimapa (obraz, klawisz M, trzecia zakładka panelu Framebuffers: **agent widział je na zrzutach 2026-10-06, właściciel nie**; tak samo cienie księżyca, tryby oświetlenia i widoki diagnostyczne w części M7 i M8), zmiana rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
 > są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
@@ -1014,7 +1027,7 @@ clangd w edytorze i `make`.
 **Sterowanie i interfejs**
 
 - [ ] klawisz `~` (na lewo od `1`, w kodzie `GLFW_KEY_GRAVE_ACCENT`) ukrywa i pokazuje
-  panele. Pasek HUD u góry okna zostaje (sekcja 14.2)
+  panele. Pasek HUD u góry okna zostaje (sekcja 14.2) i od 2026-10-06 przesuwa się wtedy do górnej krawędzi okna, a po powrocie paneli wraca pod rzędy pasków
 - [ ] Esc przy widocznym kursorze zamyka program, kod wyjścia 0
 - [ ] podczas wpisywania wartości w polu `Clear color` (Ctrl i kliknięcie) Esc anuluje tylko
   edycję i nie zamyka programu, a `~` nie chowa paneli
@@ -2223,7 +2236,7 @@ sekcja 20.2), a wymiary niżej są dzisiejsze, ze stałych w `src/debug/PanelLay
       20.2), oba zwinięte. Żaden panel nie
       zasłania innego, a środek okna, w który świeci latarka, jest wolny. (W M5 Renderer
       miał 336 x 230, a Lights 336 x 466: Renderer urósł razem z kontrolkami nieba.)
-- [ ] pasek HUD stoi na środku górnej krawędzi okna, pod czterema rzędami pasków tytułu
+- [ ] [stan na dziś: od panelu Environment rzędów jest pięć, a od 2026-10-06 przy schowanych panelach HUD stoi przy górnej krawędzi; liczby w tym punkcie to stan z czwartej części M7] pasek HUD stoi na środku górnej krawędzi okna, pod czterema rzędami pasków tytułu
       (Camera i Gameplay, pod nimi Terrain i Grass, pod nimi Framebuffers, a pod nim
       Shadows: od czwartej części M7 `FOLDED_ROW_COUNT` wynosi 4, od pierwszej do
       trzeciej było 3). Odległość od góry to cztery razy
@@ -2283,7 +2296,7 @@ HUD przy ukrytych panelach:
 
 - [ ] klawisz na lewo od `1` (akcent słaby, na klawiaturze amerykańskiej znaki `` ` `` i
       `~`, w kodzie `GLFW_KEY_GRAVE_ACCENT` w `src/main.cpp`): dwanaście paneli znika, pasek HUD
-      zostaje, czas rośnie dalej. Drugie naciśnięcie przywraca panele. Klawisz działa przy
+      zostaje (od 2026-10-06 przesuwa się wtedy do górnej krawędzi okna), czas rośnie dalej. Drugie naciśnięcie przywraca panele (i HUD wraca pod rzędy pasków). Klawisz działa przy
       wolnym i przy przechwyconym kursorze
 - [ ] przy ukrytych panelach zebrać kryształ (krok niżej): liczba na pasku HUD rośnie
 - [ ] pasek HUD nie przyjmuje myszy: kliknięcie w niego przy wolnym kursorze przechwytuje
@@ -2713,7 +2726,7 @@ Panele i pasek HUD:
       i Gameplay, a tuż pod nimi Terrain (pod Camera, tej samej szerokości) i Grass (pod
       Gameplay). Wszystkie cztery są zwinięte. Paski nie nachodzą na siebie. Pod nimi są
       dziś jeszcze dwa rzędy: Framebuffers (sekcja 17.2) i Shadows (sekcja 20.2)
-- [ ] pasek HUD stoi dziś pod czwartym rzędem pasków, z wyraźnym odstępem, i nie nachodzi
+- [ ] [stan z czwartej części M7; dziś rzędów jest pięć] pasek HUD stoi dziś pod czwartym rzędem pasków, z wyraźnym odstępem, i nie nachodzi
       na żaden z nich (po tej części stał pod drugim, a zgłoszone przesunięcie względem
       wersji przed nią to około 30 pikseli w dół)
 - [ ] rozwinąć panel Terrain (strzałka w pasku). Zawartość od góry: suwak `Height scale`
@@ -4131,7 +4144,24 @@ mieszczą się bez nakładania w oknie innym niż 1280 x 720.
 działającej grze i nikt nie użył przycisku `Reload shaders` po tej zmianie. Na macOS nic z
 tej części nie było budowane ani uruchamiane.
 
+**Widziane na zrzutach ekranu przez agenta (2026-10-06).** Środowisko i metoda tego oglądania (jedna sesja agenta, 2026-10-06): wersja Release z commitu `9a33f18`, okno 1280 x 720, karta RTX 4070 Ti SUPER, sterownik zgłaszający OpenGL 4.1.0 NVIDIA 610.74. Ustawienia były zmieniane **tymczasowym hakiem testowym**, który pisał te same pola, które edytują panele, więc punkty typu "odznacz X w panelu" są potwierdzone co do **efektu**, nie co do widżetu. Prawdziwe, syntetyczne wejście posłużyło do obrotu myszą, klawiszy W, Shift, M, F, tyldy i kliknięć w panele.
+
+Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela". **Nie zamykają żadnego punktu listy właściciela** (sekcja 20.2).
+
+- widziane na zrzucie ekranu przez agenta: w konsoli żadnej linii `[error]`
+- widziane na zrzucie ekranu przez agenta: zakładka `Moon` panelu Shadows: `2048 x 2048`, `64.8 x 54.1 m, 47.0 m deep`, `3.2 cm`
+- widziane na zrzucie ekranu przez agenta: podgląd mapy cieni jest szary z ciemnymi liniami labiryntu
+- widziane na zrzucie ekranu przez agenta: wyłączone `Shadows` rozjaśnia ziemię, która była w cieniu
+- widziane na zrzucie ekranu przez agenta: przy wartościach startowych krawędź cienia jest miękka, a przy obu filtrach wyłączonych ma schodki
+- widziane na zrzucie ekranu przez agenta: Blinn-Phong, Phong i Gouraud pokazują cienie w tych samych miejscach, a `Unlit` i oba widoki diagnostyczne bez cieni
+- widziane na zrzucie ekranu przez agenta: patrząc z góry, wszystkie cienie padają w tę samą stronę
+- widziane na zrzucie ekranu przez agenta: bez shadow acne (prążków na oświetlonym gruncie)
+
+**Nie widziane na ekranie:** przeciąganie `Moon yaw` i `Moon pitch` (sweepy), suwaki przeciągane i wpisywane w panelu, `Reload shaders`, zmiana rozmiaru okna.
+
 ### 20.2. Otwarte: test ręczny na około dwadzieścia pięć minut
+
+Punkty, które agent widział na zrzutach (lista "Widziane na zrzutach ekranu przez agenta" w sekcji 20.1), zostają `[ ]`: oglądanie przez agenta nie zastępuje testu właściciela.
 
 Tych kroków nikt jeszcze nie wykonał ręką. Przy każdym jest to, co zrobić, i to, co powinno
 być widać. Oczekiwania wynikają z kodu, z testów jednostkowych i ze wzorów, nie z klikania
@@ -4150,8 +4180,7 @@ Przygotowanie:
       ani o niekompletnym framebufferze
 - [ ] otworzyć panele klawiszem akcentu. U góry między kolumnami są cztery rzędy pasków
       tytułowych: Camera i Gameplay, Terrain i Grass, Framebuffers, a pod nim nowy pasek
-      Shadows tej samej szerokości. HUD stoi pod czwartym rzędem i nie nachodzi na żaden
-      pasek
+      Shadows tej samej szerokości. HUD stoi pod czwartym rzędem (stan z tej części; dziś pod piątym, przy widocznych panelach) i nie nachodzi na żaden pasek
 - [ ] rozwinąć panel Shadows: jedna zakładka `Moon`, po lewej osiem kontrolek, kreska i trzy
       linie faktów, po prawej podpis `Depth seen from the moon` i kwadratowy obraz
 - [ ] linie faktów przy wartościach startowych: `Map: 2048 x 2048, GL_DEPTH_COMPONENT24`,
@@ -4357,8 +4386,7 @@ minimapa (część szósta, temat 10). Nie ma tagu. Stan całego M7 w jednym mie
 Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
 nie zapisano w tym dokumencie. Z uruchomienia programu zgłoszono tylko linię `GL_VERSION`
 (OpenGL 4.1.0, NVIDIA). **Żadnego z poniższych punktów nie powtarzałem przy pisaniu tej
-sekcji.** Liczby w tabelach poniżej przepisałem z kodu albo policzyłem z jego stałych: nie są
-odczytane z ekranu, a **nikt nie obejrzał obrazu tej części**.
+sekcji.** Liczby w tabelach poniżej przepisałem z kodu albo policzyłem z jego stałych: nie są odczytane z ekranu, a **w chwili tego zgłoszenia nikt nie obejrzał obrazu tej części** (agent obejrzał go później: lista "Widziane na zrzutach ekranu przez agenta" przed sekcją 21.2).
 
 Bramka i start:
 
@@ -4439,7 +4467,25 @@ Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.20):
 - panel Shadows pokazuje obraz zakładki `Flashlight` według faktu (czy mapa była rysowana w
   ostatniej klatce), a zakładki `Moon` według ustawienia `Shadows`
 
+**Widziane na zrzutach ekranu przez agenta (2026-10-06).** Środowisko i metoda jak w sekcji 20.1 (ta sama sesja, ten sam hak testowy).
+
+Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela". **Nie zamykają żadnego punktu listy właściciela** (sekcja 21.2).
+
+- widziane na zrzucie ekranu przez agenta: panel Shadows ma dwie zakładki, a panel Lights trzy nowe suwaki ręki
+- widziane na zrzucie ekranu przez agenta: zakładka `Flashlight`: `1024 x 1024`, `13.6 x 13.6 m at 16.0 m`, `0.08 cm per metre away`
+- widziane na zrzucie ekranu przez agenta: plama latarki jest wyśrodkowana w 4 m, a w 1 m i 1,6 m leży na prawo i poniżej środka obrazu (ręka jest przesunięta)
+- widziane na zrzucie ekranu przez agenta: cień kryształu leży obok niego (w górę i w lewo), wypełniony turkusem własnego światła kryształu; przy słupkach cienkie pasy
+- widziane na zrzucie ekranu przez agenta: oświetlony grunt jest identyczny przy włączonych i wyłączonych cieniach do 13 m, z jądrami `3 x 3` i `7 x 7`; przy bias 0 widać przyciemnienie i prążki
+- widziane na zrzucie ekranu przez agenta: podstawy ścian są czyste: bez jasnej szczeliny i bez ciemnego pasa
+- widziane na zrzucie ekranu przez agenta: patrząc prosto w dół, plama jest okrągła i nie ma skoku obrazu
+- widziane na zrzucie ekranu przez agenta: noclip (klawisz N) w ścianę bez awarii
+- widziane na zrzucie ekranu przez agenta: podgląd mapy latarki jest szary z białym niebem, a klawisz F przełącza światło
+
+**Nie widziane na ekranie:** brama rzucająca cień latarki; cienie latarki w trybie `Gouraud`. **Znane ograniczenie trybu `Gouraud` (z kodu, potwierdzone na zrzucie):** światło jest liczone w wierzchołkach, a ściana ma jeden czworokąt na 2 m, więc sama plama latarki na ścianach znika, zanim cień ma co pokazać. To granica trybu, nie błąd cieni.
+
 ### 21.2. Otwarte: test ręczny na około trzydzieści minut
+
+Punkty, które agent widział na zrzutach (lista "Widziane na zrzutach ekranu przez agenta" w sekcji 21.1), zostają `[ ]`: oglądanie przez agenta nie zastępuje testu właściciela.
 
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
 nie z klikania ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
@@ -4619,8 +4665,7 @@ był budowany ([`build-macos.md`](build-macos.md)), tematy 10 i 11 nie są odhac
 nie zapisano w tym dokumencie. Z uruchomienia programu zgłoszono linię `GL_VERSION`
 (OpenGL 4.1.0, NVIDIA) i linie wczytania zasobów. **Żadnego z poniższych punktów nie
 powtarzałem przy pisaniu tej sekcji.** Liczby w tabelach poniżej przepisałem z kodu albo
-policzyłem z jego stałych i testów: nie są odczytane z ekranu, a **nikt nie obejrzał
-minimapy**.
+policzyłem z jego stałych i testów: nie są odczytane z ekranu, a **do 2026-10-06 nikt nie obejrzał minimapy** (agent obejrzał ją później: lista niżej, przed sekcją 22.2).
 
 Bramka i start:
 
@@ -4689,7 +4734,7 @@ zmierzone na ekranie**; część jest przypięta testami `MinimapTests.cpp`):
 
 Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.12):
 
-- obrazu nikt nie oglądał: kolory, grubości, rozmiar strzałki i czytelność są policzone
+- obrazu nie oglądał właściciel (agent tak, patrz niżej): kolory, grubości, rozmiar strzałki i czytelność są policzone
 - w domyślnym układzie paneli panel Assets stoi w prawej kolumnie do dołu okna i **przykrywa
   prawy dolny róg**, w którym stoi mapa. Do oglądania mapy trzeba schować panele
 - panel Framebuffers nie dostał większej wysokości (`FRAMEBUFFERS_HEIGHT` 344 bez zmian),
@@ -4704,7 +4749,31 @@ Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.12):
   zerowane przy klawiszu R i przy nowym labiryncie
 - lista wierzchołków jest odbudowywana i kopiowana co klatkę: koszt niezmierzony
 
+**Widziane na zrzutach ekranu przez agenta (2026-10-06).** Środowisko i metoda jak w sekcji 20.1 (ta sama sesja, ten sam hak testowy).
+
+Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela". **Nie zamykają żadnego punktu listy właściciela** (sekcja 22.2).
+
+- widziane na zrzucie ekranu przez agenta: mapa stoi w prawym dolnym rogu, jest kwadratowa (202 piksele), ciemna z jasnymi ścianami
+- widziane na zrzucie ekranu przez agenta: północ jest u góry, strzałka gracza się obraca (po obrocie do `Yaw` 270 wskazuje w lewo)
+- widziane na zrzucie ekranu przez agenta: na starcie widać komórkę startu i korytarze od niej; korytarz jest odkryty do pierwszej ściany i nie dalej
+- widziane na zrzucie ekranu przez agenta: turkusowe romby kryształów w odkrytych komórkach; start niebieski, wyjście zielone, brama pomarańczowa (z `Reveal all`)
+- widziane na zrzucie ekranu przez agenta: zakładka `Minimap` pokazuje `202 x 202 px, GL_RGBA8`, obraz jest ostry
+- widziane na zrzucie ekranu przez agenta: klawisz M chowa mapę, a zakładka pokazuje wtedy `not drawn (minimap off)`; `Reveal all` pokazuje cały labirynt
+- widziane na zrzucie ekranu przez agenta: górne rogi okna są wolne od HUD
+- widziane na zrzucie ekranu przez agenta: oba widoki diagnostyczne i `Unlit` nie zmieniają mapy
+- widziane na zrzucie ekranu przez agenta: w labiryncie 40 x 40 strzałka jest większa od komórki i zasłania komórkę startu
+- widziane na zrzucie ekranu przez agenta: panel Framebuffers przewija się na zakładce `Minimap`, a cztery podglądy pod nią są obcięte (otwarty drobny punkt kosmetyczny)
+- widziane na zrzucie ekranu przez agenta: ramka wokół mapy (po poprawce z 2026-10-06; widział ją autor poprawek w swoim worktree przed scaleniem, nie ten sam agent): cienka i wyciszona przy starcie rundy
+
+**Nie widziane na ekranie:** reguły odkrywania na odnogach i w narożnikach, otwarcie bramy i zebranie kryształu widziane na mapie (to **nie było chodzone**), kwadraty dźwigni i kartek, zmiana rozmiaru okna, `Reload shaders`.
+
+**Ramka minimapy (poprawka wykonawcza z 2026-10-06, nie decyzja właściciela).** Przy kilku odkrytych komórkach mapa była ciemnym kwadratem na ciemnej scenie i nic nie pokazywało, gdzie się kończy. Przebieg nakładki (`post/minimap_overlay.frag`) rysuje teraz linię o szerokości `max(1, round(0,0015 * wysokość framebuffera okna))` pikseli (1 piksel przy 720, 2 przy 1440) w kolorze `MINIMAP_BORDER_COLOR` `(0,30; 0,36; 0,48)` (sRGB), na najbardziej zewnętrznych pikselach kwadratu, z tą samą przezroczystością 0,85 co mapa (zgłoszone z kodu; opis w [`../modules/renderer/minimap.md`](../modules/renderer/minimap.md), sekcja 2.9). Zmiana nie ma testu jednostkowego.
+
 ### 22.2. Otwarte: test ręczny na około trzydzieści minut
+
+Punkty, które agent widział na zrzutach (lista "Widziane na zrzutach ekranu przez agenta" w sekcji 22.1), zostają `[ ]`: oglądanie przez agenta nie zastępuje testu właściciela. Doszedł jeden punkt po poprawce z 2026-10-06:
+
+- [ ] **ramka minimapy.** Przy starcie rundy mapa ma cienką, wyciszoną niebiesko-szarą linię po całym obwodzie (1 piksel przy 720 pikselach wysokości framebuffera okna, 2 przy 1440), która pokazuje, gdzie mapa się kończy, nie zasłania pierwszych komórek i nie wygląda jak ściana labiryntu
 
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
 nie z klikania ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
@@ -4836,12 +4905,12 @@ Wydajność:
 
 Pierwsza część kamienia milowego M8 daje kryształom i kałużom niebo. Kryształ odbija i załamuje
 teksturę sześcienną nocnego nieba (ta sama, z której rysuje się skybox), a suwak `Refract /
-reflect` wybiera między jednym a drugim. Płaskie kałuże leżą w części korytarzy (domyślnie 15
+reflect` wybiera między jednym a drugim. Kałuże leżą w części korytarzy (domyślnie 15
 procent wolnych komórek, w labiryncie startowym 13 z 85) i odbijają to samo niebo, tym mocniej,
-im bardziej płasko na nie patrzę (przybliżenie Schlicka). Obie rzeczy rysuje **nowy, czternasty
+im bardziej płasko na nie patrzę (przybliżenie Schlicka). Od poprawek z 2026-10-06 kałuża jest cienką warstwą wody, która idzie za gruntem (każdy wierzchołek 8 mm nad terenem), ma miękki brzeg i przepuszcza grunt w środku. Obie rzeczy rysuje **nowy, czternasty
 program shaderów, `reflect`** (po jedenastu starych i dwóch programach minimapy), w osobnym przebiegu po trawie i przed niebem. Doszedł też
 **trzynasty panel, Environment**. Doszły: `src/game/EnvironmentMapping.*` (ustawienia i cztery
-funkcje), `src/game/Puddles.*` (rozmieszczenie z ziarna, poziom wody, siatka tarczy),
+funkcje), `src/game/Puddles.*` (rozmieszczenie z ziarna, siatka kałuży idąca za gruntem),
 `src/game/PuddleRenderer.*`, `assets/shaders/reflect.vert` i `reflect.frag`,
 `src/debug/panels/EnvironmentPanel.*`, `tests/EnvironmentMappingTests.cpp` i
 `tests/PuddleTests.cpp`. Zmieniły się: `NightMazeApp.*` (przebieg `drawReflections`, funkcje
@@ -4852,33 +4921,30 @@ funkcje), `src/game/Puddles.*` (rozmieszczenie z ziarna, poziom wody, siatka tar
 `PanelLayout.hpp` (`FOLDED_ROW_COUNT` z 4 na 5) i `main.cpp`. Opis kodu:
 [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md). Decyzje:
 [`../decisions/reflect-own-program-and-pass.md`](../decisions/reflect-own-program-and-pass.md),
-[`../decisions/puddle-on-lowest-ground.md`](../decisions/puddle-on-lowest-ground.md) i
+[`../decisions/puddles-follow-the-ground.md`](../decisions/puddles-follow-the-ground.md) (zastępuje [`../decisions/puddle-on-lowest-ground.md`](../decisions/puddle-on-lowest-ground.md), zachowaną jako historię),
 [`../decisions/visible-effect-over-physical-values.md`](../decisions/visible-effect-over-physical-values.md).
 
-Temat 12 wykładu (environment mapping) jest **w toku**, nie zaliczony: nikt nie obejrzał obrazu, a
-na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)). M8 jako całość nie jest
-zamknięty.
+Temat 12 wykładu (environment mapping) jest **w toku**, nie zaliczony: obraz obejrzał tylko agent (zrzuty z 2026-10-06, sekcja 23.1, nie właściciel), test ręczny właściciela (23.2) jest otwarty, a na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)). M8 jako całość nie jest zamknięty.
 
 ### 23.1. Zgłoszone (2026-10-06)
 
 Środowisko: Windows, scalone drzewo (po minimapie).
 Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru nie zapisano w tym
 dokumencie. **Żadnego z poniższych punktów nie powtarzałem przy pisaniu tej sekcji.** Liczby w
-tabelach poniżej przepisałem z kodu albo policzyłem z jego stałych: nie są odczytane z ekranu, a
-**nikt nie obejrzał obrazu tej części**.
+tabelach poniżej przepisałem z kodu albo policzyłem z jego stałych: nie są odczytane z ekranu, a **w chwili tego zgłoszenia nikt nie obejrzał obrazu tej części** (agent obejrzał go później: lista "Widziane na zrzutach ekranu przez agenta" przed sekcją 23.2).
 
 Bramka i start:
 
 - [x] `make check` przechodzi (zgłoszone)
 - [x] `night_maze_tests.exe` w scalonym drzewie (po szóstej części M7, minimapie): 445
-      przypadków testowych i 150296 asercji (bramka scalonego drzewa z 2026-10-06:K8711 plus 11585 asercji tej części).
+      przypadków testowych i 150296 asercji (bramka scalonego drzewa z 2026-10-06: 138711 plus 11585 asercji tej części).
       Przypadki policzyłem z plików testów: 414 przed tą częścią plus 11 w
       `EnvironmentMappingTests.cpp` i 20 w `PuddleTests.cpp`, razem 31 (`414 + 31 = 445`).
       Podziału 11585 nowych asercji między pliki nie liczyłem. Przed scaleniem, w drzewie z samą
       tą częścią, zgłoszono 406 przypadków i 150091 asercji (przed tą częścią 375 i 138506)
 - [x] start programu Debug przez około 8 sekund, standardowe wyjście błędów puste (zgłoszone)
 
-Czego ten start **nie** obejmował (zgłoszone wprost). Wykonała się **tylko ścieżka domyślna**:
+Czego ten start **nie** obejmował (zgłoszone wprost; część z tego agent obejrzał potem, lista niżej). Wykonała się **tylko ścieżka domyślna**:
 oświetlenie Blinna-Phonga, widok `Textured`, niebo włączone, efekt włączony. Nie wykonało się:
 
 - rysowanie w trybach `Unlit`, `Gouraud` i `Phong`
@@ -4887,7 +4953,7 @@ oświetlenie Blinna-Phonga, widok `Textured`, niebo włączone, efekt włączony
 - efekt wyłączony (pole `Environment mapping`) i kałuże wyłączone (pole `Puddles`)
 - przycisk `Reload shaders` (dziś przy czternastu programach)
 
-Nikt nie kliknął żadnej z nowych kontrolek i nikt nie obejrzał ani jednego odbicia.
+W tym starcie nikt nie kliknął żadnej z nowych kontrolek i nikt nie obejrzał ani jednego odbicia.
 
 Wartości startowe (kontrolki panelu **Environment**; w nawiasie napis, jaki pokazuje kontrolka):
 
@@ -4900,11 +4966,13 @@ Wartości startowe (kontrolki panelu **Environment**; w nawiasie napis, jaki pok
 | `Glow` | 1,00, suwak od 0 do 1 |
 | `Puddles` | zaznaczone |
 | `Share of cells` | 0,15, suwak od 0 do 0,50 (`MAX_PUDDLE_SHARE`) |
-| `Reflectivity` | 0,35, suwak od 0 do 1 |
+| `Reflectivity` | 0,50 (od poprawek z 2026-10-06, wcześniej 0,35), suwak od 0 do 1 |
 | `Fresnel` | zaznaczone |
 | `Puddles: N` | 13 w labiryncie startowym (policzone: `lround(85 * 0,15)`, test `the default maze has 13 puddles at the default share`) |
 | `ENVIRONMENT_TEXTURE_UNIT` (stała) | 5 |
-| `PUDDLE_DEPTH`, `PUDDLE_CORNERS` (stałe) | 0,02 m i 16 |
+| `PUDDLE_LIFT`, `PUDDLE_RINGS`, `PUDDLE_CORNERS` (stałe) | 0,008 m, 6 i 32 (od poprawek z 2026-10-06; wcześniej `PUDDLE_DEPTH` 0,02 m i 16 narożników) |
+| `PUDDLE_RIM_FADE`, `PUDDLE_OPACITY` (stałe) | 0,45 i 0,7 |
+| kolor wody `PUDDLE_COLOR` (sRGB) | `(0,32; 0,40; 0,50)`, wcześniej `(0,07; 0,09; 0,11)` |
 | `PUDDLE_MIN_RADIUS`, `PUDDLE_MAX_RADIUS`, `PUDDLE_MAX_OFFSET` (stałe) | 0,25 m, 0,45 m i 0,30 m |
 | panel Environment | zwinięty w piątym rzędzie pasków pod panelem Shadows, po rozwinięciu 296 w wysokość |
 
@@ -4913,18 +4981,15 @@ ekranie**; część jest przypięta testami):
 
 - kałuża sięga najwyżej 0,75 m od środka komórki (0,3 przesunięcia plus 0,45 promienia), a stopa
   ściany zaczyna się 0,8 m od środka: żadna nie dotyka ściany (test `no puddle reaches a wall`)
-- udział nieba w kałuży przy Fresnelu i `Reflectivity` 0,35, oczy 1,7 m nad gruntem: 35 procent z
-  góry, 35 procent w 2 m, 40 procent w 4 m, 55 procent w 8 m, 72 procent w 16 m. Dla 0,02: 2,5
+- udział nieba w kałuży przy Fresnelu i `Reflectivity` 0,5, oczy 1,7 m nad gruntem: 50 procent z góry, 50 procent w 2 m, 54 procent w 4 m, 66 procent w 8 m, 79 procent w 16 m (przy dawnych 0,35: 35, 35, 40, 55 i 72). Krycie wody w środku kałuży (`0,7 + 0,3 F`): 0,85 z góry i w 2 m, 0,86 w 4 m, 0,90 w 8 m, 0,94 w 16 m. Dla 0,02: 2,5
   procent w 2 m, 10 procent w 4 m, 33 procent w 8 m. Test przypina cztery z tych nierówności
 - kąt krytyczny szkła do powietrza: 41,81 stopnia (test), wody do powietrza 48,75 stopnia (nie
   testowany)
 - księżyc w kałuży: kamera `Yaw` 205 i `Pitch` -50 (znak sprawdzić w panelu Camera), kałuża około
-  1,4 m przed graczem w poziomie. Przybliżona odbijalność w tym miejscu 0,35 (policzone)
+  1,4 m przed graczem w poziomie. Przybliżona odbijalność w tym miejscu 0,5 (policzone)
 - jasność nieba na kryształach: zenit razy 2,2 to około 0,003, tarcza księżyca około 1,3 do 1,6.
   Świecenie kryształu przed teksturą około 2,45 przy pulsie 1 i 1,72 przy 0,7 (z notatki o bloomie)
-- poziom wody: najniższy grunt z 17 punktów plus 2 cm. Maksymalna różnica gruntu pod największą
-  tarczą (środki komórek, test): około 7 cm przy skali 1,0 i około 17,5 cm przy 2,5. Mediany
-  zgłoszone przez autora, **nie mierzone ponownie**: 2,4 cm i 6,1 cm
+- wysokość wody: każdy wierzchołek kałuży 8 mm nad gruntem pod nim. Najmniejszy odstęp od gruntu między wierzchołkami, z komentarza testu (nie mierzony ponownie): 7,56 mm przy skali 1,0 i 6,89 mm przy 2,5 dla 13 kałuż, 7,35 mm i 6,37 mm dla największej kałuży w dziewięciu miejscach każdej komórki. (Dawna reguła, "najniższy grunt z 17 punktów plus 2 cm", już nie obowiązuje.)
 
 Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.15):
 
@@ -4933,17 +4998,59 @@ Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.15):
 - przy `Glow` 1 niebo na kryształach jest słabą domieszką (policzone), a `Sky share` 0,5 zmniejsza
   o połowę część oświetloną kryształu
 - przy włączonym efekcie Gouraud nie zmienia światła kryształów i kałuż (światło na fragment)
-- kałuża na zboczu jest częściowo ukryta, kałuże nie rzucają cienia
+- kałuże nie rzucają cienia; są trudne do zobaczenia poza wiązką latarki i dalej niż około 4 m (agent po poprawkach); warstwa jest płaska między wierzchołkami (do 7,5 cm), a nie gładka
 - kępka trawy może stać w kałuży przy jej brzegu (pas trawy 0,57 do 0,79 m od środka komórki,
   kałuża do 0,75 m)
-- wartości są dobrane do widoczności, nie do fizyki (`Reflectivity` 0,35, prawdziwa woda 0,02)
+- wartości są dobrane do widoczności, nie do fizyki (`Reflectivity` 0,5, prawdziwa woda 0,02)
+
+**Widziane na zrzutach ekranu przez agenta (2026-10-06).** Środowisko i metoda tego oglądania (jedna sesja agenta, 2026-10-06): wersja Release z commitu `9a33f18`, okno 1280 x 720, karta RTX 4070 Ti SUPER, sterownik zgłaszający OpenGL 4.1.0 NVIDIA 610.74. Ustawienia były zmieniane **tymczasowym hakiem testowym**, który pisał te same pola, które edytują panele, więc punkty typu "odznacz X w panelu" są potwierdzone co do **efektu**, nie co do widżetu. Prawdziwe, syntetyczne wejście posłużyło do obrotu myszą, klawiszy W, Shift, M, F, tyldy i kliknięć w panele.
+
+Poniższe punkty to "widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela". **Nie zamykają żadnego punktu listy właściciela** (sekcja 23.2), a jej punkty zostają `[ ]`.
+
+- widziane na zrzucie ekranu przez agenta: panel Environment stoi w piątym rzędzie pasków, HUD pod nim; wartości startowe jak w tabeli (w wersji z commitu `9a33f18`, czyli `Reflectivity` 0,35) i linia `Puddles: 13`
+- widziane na zrzucie ekranu przez agenta: efekt wyłączony wygląda jak przed tą częścią
+- widziane na zrzucie ekranu przez agenta: `Glow` 0 przy `Sky share` 1 pokazuje gwiazdy na krysztale
+- widziane na zrzucie ekranu przez agenta: `Refract / reflect` 0, 0,5 i 1 dają różne obrazy; `Refraction ratio` 1,0 i 1,5 dają czysty obraz
+- widziane na zrzucie ekranu przez agenta: przy pełnym świeceniu widać słaby odcień nieba na krysztale
+- widziane na zrzucie ekranu przez agenta: przy wyłączonym niebie kryształ jest prawie czarny
+- widziane na zrzucie ekranu przez agenta: tarcza księżyca i gwiazdy w kałuży przy `Yaw` 205 i `Pitch` -50
+- widziane na zrzucie ekranu przez agenta: Phong, Gouraud, Unlit i oba widoki diagnostyczne bez czarnych kryształów
+- widziane na zrzucie ekranu przez agenta: brzeg kałuży nie migocze między dwiema klatkami
+- widziane na zrzucie ekranu przez agenta: obraz jako całość jest zdrowy: nic czarnego, prześwietlonego ani migoczącego, dwie klatki w odstępie 100 ms różnią się tylko zegarem HUD, falowaniem trawy i pulsem kryształów; mgła patrząc z góry ukrywa labirynt tak, jak mówi sekcja 19
+
+**Znalezione na ekranie jako błędne** w wersji z commitu `9a33f18` (przyczyna poprawek niżej):
+
+- **cztery z trzynastu kałuż pokazywały tylko 54 do 69 procent tarczy**, zakończone prostą cięciwą; trzy kolejne były lekko obcięte, sześć całych
+- kałuże czytały się jako **prawie czarne dziury** w wiązce latarki i **nie były widoczne z wysokości chodzenia** w 4 m i 8 m
+- panel Environment **ukrywał** `Fresnel` i `Puddles: 13`
+- **nie oceniono** różnicy między `Fresnel` włączonym i wyłączonym
+
+**Poprawki z 2026-10-06 (po pierwszym obejrzeniu).** Decyzje właściciela, w całości: (1) kałuże idą za gruntem, (2) woda ma być lepiej widoczna: jaśniejszy odcień, mocniej odbijająca, miękki brzeg, więcej narożników, (3) pasek HUD stoi przy górnej krawędzi, dopóki panele debug są schowane. Dwie dalsze zmiany to poprawki wykonawcze, nie decyzje: panel Environment w dwóch kolumnach (żeby nic nie było schowane) i cienka ramka wokół minimapy (sekcja 22). Zmiany są w drzewie roboczym, w 17 plikach w `src/`, `assets/shaders/` i `tests/`, i w chwili pisania **nie są zacommitowane**. Opis z kodu (nie powtarzałem go na ekranie):
+
+- kałuża to jeden wierzchołek w środku i 6 pierścieni po 32 wierzchołki (193 wierzchołki, 352 trójkąty), zbudowana dla każdej kałuży osobno w przestrzeni świata, każdy wierzchołek 8 mm (`PUDDLE_LIFT`) nad `Terrain::heightAt`; wszystkie kałuże w jednej siatce z macierzą modelu równą jedynce; normalne `(0, 1, 0)`
+- zewnętrzne 45 procent promienia zanika (`PUDDLE_RIM_FADE`), liczone na fragment ze współrzędnej tekstury
+- przebieg kałuż używa mieszania alfa i nie zapisuje głębi, a po rysowaniu przywraca stan mieszania, maskę głębi i uniform brzegu
+- środek kałuży przepuszcza grunt: krycie `mix(0,7; 1; F)`, czyli przy ustawieniach startowych 0,85 prosto w dół. Wychodzi to **poza listę właściciela** i było wyborem autora poprawek (żeby nie wyglądała jak czarna dziura)
+- kolor wody z `(0,07; 0,09; 0,11)` na `(0,32; 0,40; 0,50)`, `Reflectivity` startowe z 0,35 na 0,5
+- usunięte: `puddleWaterLevel`, `PUDDLE_DEPTH`, `puddleModelMatrix`. Test na prawdziwej mapie wysokości mierzy, jak blisko wody podchodzi grunt między wierzchołkami: najmniej 7,56 mm przy skali 1,0 i 6,89 mm przy 2,5 dla 13 kałuż, 7,35 mm i 6,37 mm dla największej kałuży w dziewięciu miejscach każdej komórki (grunt zbliża się najwyżej o 0,44 i 1,11 mm oraz 0,65 i 1,63 mm), i wymaga ponad 6 mm z 8. Siatka terenu ma 0,5 m, a odstęp wierzchołków kałuży najwyżej 7,5 cm; nie ma `glPolygonOffset`
+- `drawHud` dostaje `panelsVisible` (przy schowanych panelach wysokość rzędów pasków to 0); ramka minimapy ma 1 piksel (2 przy 1440p) w kolorze `(0,30; 0,36; 0,48)`; panel Environment ma `Crystals` i `Puddles` w dwóch kolumnach
+
+Dowody tych poprawek, osobno:
+
+- **Zgłoszone przez bramkę** (koordynator, scalone drzewo): `make check` przechodzi, **467 przypadków testowych i 158006 asercji** (przed poprawkami 466 i 152264). Nowy jest jeden przypadek w `tests/PuddleTests.cpp` (21 zamiast 20, policzone z pliku), a liczby asercji zmieniły się także w przerobionych testach kałuż, więc różnicy 5742 asercji nie przypisuję jednemu przypadkowi. Start programu Debug przez 8 sekund: 31 linii logu, pusty strumień błędów, żadnej linii błędu
+- **Widziane na zrzucie ekranu przez agenta, nie przez właściciela** (autor poprawek, build jego worktree **przed scaleniem** z kodem dźwigni i kartek): wszystkie 13 kałuż z góry całe, okrągłe i miękkie przy skali 1,0, a przy 2,5 całe i nic nie wystaje; z wysokości chodzenia przy włączonej latarce w 2 m szaroniebieska mokra plama z kamykami widocznymi przez wodę, w 4 m mała niebieskawa plama z błyskiem gwiazdy, w 8 m kałuża nie do odróżnienia; przy wyłączonej latarce w cieniu księżyca tylko błysk gwiazdy w 2 m i 4 m; w świetle księżyca tarcza księżyca i gwiazdy w kałuży o miękkim brzegu; Blinn-Phong, Phong, Gouraud i Unlit pokazują miękką plamę; w widoku `Normals as colour` kałuża jest niewidoczna (pozioma normalna, ten sam kolor co płaski grunt), w `UVs as colour` to pełna 32-kątna tarcza, bo program `textured` zapisuje alfę 1; udział 0, kałuże wyłączone i niebo wyłączone bez awarii; HUD przy górnej krawędzi przy schowanych panelach i pod pięcioma rzędami pasków przy widocznych; ramka minimapy cienka i wyciszona przy starcie rundy; panel Environment pokazuje wszystkie swoje linie. Koordynator obejrzał zestawienie trzynastu kałuż z góry przed i po i to potwierdza
+- **Nadal otwarte lub niewidziane:** kałuże bez latarki w zacienionych korytarzach i dalej niż około 4 m z latarką pozostają **trudne do zobaczenia**; widoki chodzenia w świetle księżyca w 2, 4 i 8 m; `Share of cells` 0,5; nowe tooltipy; ścieżka mieszania w buildzie Debug w ruchu; liczba klatek po zmianie; różnica Fresnela
+
+**Odczyty liczby klatek** (jedna sesja, Release, 1280 x 720, panele ukryte, widok korytarza; synchronizacja pionowa nie była aktywna na tej maszynie, choć `Window.cpp` o nią prosi; liczby nieco zaniżone przez hak testowy). To **odczyty, nie pomiary**: wszystko włączone około 1250; cienie latarki wyłączone około 1370 do 1410; minimapa wyłączona około 1250 do 1270; environment mapping wyłączony około 1240 do 1270; cienie księżyca wyłączone około 1490 (jeden odczyt); oba cienie, minimapa i environment wyłączone około 1920 (jeden odczyt); build Debug około 578. Odpowiadają tylko z grubsza na otwarte punkty o koszcie liczby klatek (sekcje 20.2, 21.2, 22.2 i 23.2): wyłączenie environment mapping i minimapy mieści się w rozrzucie odczytu. Nie wyjaśniają one spadku liczby klatek zapisanego w [`m7-status.md`](m7-status.md), sekcja 5, i nie porównywano ich z wcześniejszymi commitami.
+
+**Nie sprawdzono w ogóle:** suwaki przeciągane i wpisywane w panelach, tooltipy, `Reload shaders`, zmiana rozmiaru okna, maksymalizacja, 1440p, minimalizacja, przeciąganie `Yaw` i `Pitch` księżyca, `Beam range` 6 i 60, `Converge at`, migotanie przy niskiej baterii, skala wysokości 2,5 na kałużach przed poprawką.
 
 ### 23.2. Otwarte: test ręczny na około czterdzieści minut
 
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
 nie z klikania ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
 `src/debug/panels/EnvironmentPanel.cpp`. Ustawień efektu program nigdzie nie zapisuje, więc
-ponowne uruchomienie gry przywraca wartości startowe. Listy 17.2 do 22.2 też są otwarte.
+ponowne uruchomienie gry przywraca wartości startowe. Listy 17.2 do 22.2 też są otwarte. **Punkty, które agent widział na zrzutach (sekcja 23.1), zostają `[ ]`:** oglądanie przez agenta nie zastępuje testu właściciela.
 
 Przygotowanie:
 
@@ -4952,9 +5059,7 @@ Przygotowanie:
       framebufferze. W buildzie Debug żadnej linii `GL_...`
 - [ ] panel Shaders ma czternaście linii, ostatnia dla programu `reflect`, z `OK`
 - [ ] panel **Environment** jest trzynasty, zwinięty w piątym rzędzie pasków tytułowych pod panelem
-      Shadows, a pasek HUD stoi o jeden rząd niżej niż przed tą częścią. Po rozwinięciu panel ma
-      dziewięć kontrolek w dwóch grupach (`Crystals`, `Puddles`) i linię `Puddles: 13`. Żaden
-      panel nie jest zasłonięty (zapisać, jeśli któryś jest)
+      Shadows, a pasek HUD stoi (przy widocznych panelach) o jeden rząd niżej niż przed tą częścią. Po rozwinięciu panel ma dziewięć kontrolek w dwóch grupach (`Crystals`, `Puddles`), od poprawek z 2026-10-06 **w dwóch kolumnach**, i linię `Puddles: 13` pod `Fresnel`: wszystkie bez przewijania (w wersji z `9a33f18` dwie ostatnie linie były schowane). Żaden panel nie jest zasłonięty (zapisać, jeśli któryś jest)
 - [ ] wartości startowe z tabeli powyżej
 
 Obraz bez zmian i podstawowy wygląd (tryb Blinn-Phong, `Textured`, niebo włączone):
@@ -4988,12 +5093,11 @@ Kałuże:
       jednym korytarzu
 - [ ] **kałuża nie dotyka ściany ani słupka**, nie leży w komórce startu, wyjścia ani pod
       kryształem
-- [ ] **księżyc w kałuży.** Panel Camera, `Yaw` 205 i `Pitch` -50 (sprawdzić znak i zakres):
-      kałuża około 1,4 m przed graczem powinna pokazywać tarczę księżyca. Zapisać, czy tak jest
+- [ ] **księżyc w kałuży.** Panel Camera, `Yaw` 205 i `Pitch` -50 (sprawdzić znak i zakres): kałuża około 1,4 m przed graczem powinna pokazywać tarczę księżyca. Zapisać, czy tak jest (agent widział tarczę i gwiazdy w kałuży przy tych ustawieniach, w wersji z `9a33f18`)
 - [ ] **Fresnel.** Odznaczyć `Fresnel`: dalekie kałuże słabną względem bliskich. Zaznaczyć: dalekie
       mocniej odbijają
 - [ ] **prawdziwa woda.** `Reflectivity` na 0,02 przy zaznaczonym `Fresnel`: kałuża w następnej
-      komórce prawie niewidoczna. Zapisać, w jakiej odległości zaczyna coś odbijać. Wrócić do 0,35
+      komórce prawie niewidoczna. Zapisać, w jakiej odległości zaczyna coś odbijać. Wrócić do 0,50
 - [ ] **kałuża w cieniu.** Stanąć tam, gdzie cień księżyca albo latarki pada na kałużę: odbłysk
       znika, odbite niebo nie ciemnieje
 - [ ] **odległe kałuże we mgle.** Zapisać, czy dalekie kałuże, w których Fresnel odbija najwięcej,
@@ -5012,11 +5116,12 @@ Udział i ponowne rozmieszczenie:
 
 Teren i woda:
 
-- [ ] **skala wysokości.** Panel Terrain, `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z
-      gruntem, nie przeskakują do innych komórek. Przy 2,5 zapisać, ile z tarczy kałuży na zboczu
-      jest ukryte i czy ukrycie wygląda jak brzeg wody, czy jak błąd
-- [ ] **brzeg i migotanie.** Na styku kałuży i gruntu: zapisać, czy brzeg migocze (tarcza 2 cm
-      nad najniższym gruntem)
+- [ ] **skala wysokości.** Panel Terrain, `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z gruntem, nie przeskakują do innych komórek. **Żadna kałuża nie jest obcięta prostą cięciwą ani nie wisi nad niższym gruntem**, także przy 2,5, i nic nie wystaje spod wody. Zapisać, czy brzeg wygląda jak brzeg wody (agent widział 13 kałuż z góry całych przy 1,0 i 2,5, nie z wysokości chodzenia przy 2,5)
+- [ ] **brzeg i migotanie.** Na styku kałuży i gruntu: zapisać, czy brzeg migocze i czy z bliska widać fasetki warstwy (warstwa 8 mm nad gruntem, płaska między wierzchołkami)
+- [ ] **miękki brzeg i przezroczysty środek.** Patrząc z góry (noclip, klawisz N, w dół): brzeg kałuży zanika bez widocznej linii, a przez środek prześwituje grunt. W widoku `UVs as colour` ta sama kałuża jest pełną 32-kątną tarczą (program `textured` zapisuje alfę 1)
+- [ ] **wygląd z wysokości chodzenia.** W 2, 4 i 8 m, z latarką i bez, w świetle księżyca i w cieniu: zapisać, w jakiej odległości kałuża przestaje być widoczna. Wersja po poprawkach według agenta: w 2 m plama z kamykami, w 4 m mała niebieskawa plama z błyskiem, w 8 m nie do odróżnienia; bez latarki w cieniu tylko błysk gwiazdy. Zapisać, czy właściciel uważa to za wystarczające
+- [ ] `Share of cells` 0,5: ścieżka mieszania i wygląd 43 kałuż w ruchu, w buildzie Debug bez `GL_...` w konsoli
+- [ ] nowe tooltipy: `Puddles` ("A puddle is a thin film of water that follows the ground..."), `Reflectivity` ("...The rest is the water and the ground that shows through it.") i `Fresnel` (o kryciu gruntu)
 
 Tryby oświetlenia i widoki (tu nikt jeszcze nic nie uruchomił):
 
@@ -5044,9 +5149,10 @@ Shader na żywo:
 Okno i granice:
 
 - [ ] zmiana rozmiaru okna do bardzo małego i minimalizacja: bez `GL_...` w konsoli i bez zmiany
-      obrazu po powrocie. Pasek HUD pod pięcioma rzędami pasków tytułowych
+      obrazu po powrocie. Pasek HUD pod pięcioma rzędami pasków tytułowych (przy widocznych panelach)
+- [ ] **HUD przy schowanych panelach** (klawisz tyldy): pasek stoi przy górnej krawędzi okna, a nie nad środkiem obrazu, i wraca pod pięć rzędów pasków po przywróceniu paneli (decyzja właściciela z 2026-10-06; agent widział to na zrzutach). Zapisać, czy przeskok przy klawiszu przeszkadza
 - [ ] **noclip (klawisz N)**: lot nad kałużami i kryształami z góry. Fresnel przy patrzeniu w dół:
-      kałuża pokazuje głównie ciemną wodę (`F` około 0,35 przy `Reflectivity` 0,35), a nie lustro
+      kałuża pokazuje głównie jasną szaroniebieską wodę z gruntem przez nią (`F` około 0,5 przy `Reflectivity` 0,5, krycie około 0,85), a nie lustro
 - [ ] **brak ostrzeżeń kompilatora** przy buildzie Debug i Release po tej części
 
 Sprawdziwszy wszystko: zaznaczyć wyniki tutaj, wpisać zapisane obserwacje, i dopiero wtedy

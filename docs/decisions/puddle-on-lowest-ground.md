@@ -1,7 +1,28 @@
 # Woda kałuży stoi na najniższym gruncie pod tarczą, a nie na najwyższym
 
-Data: 2026-10-06. Stan: obowiązuje (wybór wykonawczy).
-Kod: [`src/game/Puddles.cpp`](../../src/game/Puddles.cpp) (`puddleWaterLevel`, `puddlesOnGround`), [`src/game/Puddles.hpp`](../../src/game/Puddles.hpp) (`PUDDLE_DEPTH`, `PUDDLE_CORNERS`), [`tests/PuddleTests.cpp`](../../tests/PuddleTests.cpp). Dokument modułu: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md), sekcja 2.12.
+Data: 2026-10-06. Stan: zastąpiona 2026-10-06 przez [`puddles-follow-the-ground.md`](puddles-follow-the-ground.md). Stan dzisiejszy opisuje [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md), sekcje 2.11 i 2.12.
+Kod, którego dotyczyła (dziś `puddleWaterLevel`, `PUDDLE_DEPTH` i `puddleModelMatrix` już nie istnieją): [`src/game/Puddles.cpp`](../../src/game/Puddles.cpp) (`puddleWaterLevel`, `puddlesOnGround`), [`src/game/Puddles.hpp`](../../src/game/Puddles.hpp) (`PUDDLE_DEPTH`, `PUDDLE_CORNERS`), [`tests/PuddleTests.cpp`](../../tests/PuddleTests.cpp). Dokument modułu: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md), sekcja 2.12.
+
+## Co zastąpiło tę decyzję (2026-10-06, po pierwszym obejrzeniu obrazu)
+
+Notatka zapowiadała własny koszt: "tarcza na zboczu jest częściowo ukryta, nikt nie obejrzał, jak to wygląda". Pierwsze zrzuty ekranu (agent, wersja Release z commitu `9a33f18`) pokazały go: **cztery z trzynastu kałuż miały widoczne tylko 54 do 69 procent tarczy**, zakończone prostą cięciwą (trzy kolejne lekko obcięte, sześć całych). Właściciel zdecydował (2026-10-06), że **kałuże idą za gruntem**.
+
+**Co jest dziś.**
+
+- Każdy wierzchołek kałuży leży 8 mm (`PUDDLE_LIFT`) nad `Terrain::heightAt` pod nim. Kałuża to pajęczyna: środek i 6 pierścieni po 32 wierzchołki (193 wierzchołki, 352 trójkąty), zbudowana osobno dla każdej kałuży w przestrzeni świata, wszystkie w jednej siatce z macierzą modelu równą jedynce.
+- Normalne zostają poziome, `(0, 1, 0)`: woda leży na nierównym gruncie, ale odbija jak stojąca.
+- Nowy test mierzy, jak blisko wody podchodzi grunt między wierzchołkami (najwyżej 1,63 mm), i wymaga co najmniej 6 mm z 8.
+
+**Co z rozumowania tej notatki nadal obowiązuje.**
+
+- **Woda ma być pozioma w sensie normalnej**: lustro z normalną gruntu odbijałoby inny kawałek nieba w każdym miejscu. Siatka idzie za gruntem tylko położeniem, nie normalnymi.
+- **Wyrównanie terenu pod kałużą jest odrzucone** z tych samych powodów (psuje `heightAt` dla gracza, trawy i ścian).
+- **Kałuża zależy od terenu tylko wysokością**: wybór komórek nadal nie pyta terenu, a nowa skala wysokości nie przenosi kałuży do innej komórki.
+- **Brak `glPolygonOffset`**: wierzchołki są nad gruntem, więc nie jest potrzebny.
+
+**Co przestało być prawdą.** Wszystko, co poniższe sekcje mówią o poziomie wody "na najniższym gruncie z siedemnastu punktów plus 2 cm", o ukrywaniu tarczy przez test głębi, o liczbach maksimów różnicy pod tarczą (7 cm i 17,5 cm) i o teście `the ground of the game under a puddle`. Reszta notatki zostaje bez zmian, jako zapis tego, co wtedy rozważano.
+
+Nowa decyzja: [`puddles-follow-the-ground.md`](puddles-follow-the-ground.md).
 
 ## 1. Kontekst
 

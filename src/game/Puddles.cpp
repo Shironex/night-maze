@@ -1,5 +1,5 @@
-// Puddles: which cells of a maze get a puddle, how big it is and at what height its
-// water stands.
+// Puddles: which cells of a maze get a puddle, how big it is and the mesh that lays its
+// water on the ground.
 // See docs/modules/renderer/env-mapping.md
 #include "game/Puddles.hpp"
 
@@ -7,7 +7,6 @@
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Terrain.hpp"
-#include "scene/Transform.hpp"
 
 #include <glm/gtc/constants.hpp>
 
@@ -31,20 +30,22 @@ constexpr std::uint32_t PUDDLE_SEED_OFFSET = 4000037U;
 // of 33 values, which is finer than the eye can tell.
 constexpr std::uint32_t RANDOM_STEPS = 32U;
 
-// The normal of the disc: straight up, the direction level water faces.
+// The normal of the water: straight up, the direction level water faces.
 constexpr glm::vec3 UP{0.0F, 1.0F, 0.0F};
 
-// The tangent of the disc: the direction in which its texture coordinate u grows.
+// The tangent of the water: the direction in which its texture coordinate u grows.
 constexpr glm::vec3 TANGENT{1.0F, 0.0F, 0.0F};
 
-// The vertex in the middle of the disc is the first one of the mesh.
+// The vertex in the middle of a puddle is the first one of its vertices, and the rings
+// follow it.
 constexpr std::uint32_t CENTER_VERTEX = 0U;
+constexpr std::uint32_t FIRST_RING_VERTEX = 1U;
 
 // A triangle has three corners.
 constexpr std::size_t INDICES_PER_TRIANGLE = 3U;
 
-// The texture coordinate runs from 0 to 1 across the disc: the middle of the disc is
-// the middle of the picture, and the rim is half a picture away from it.
+// The texture coordinate runs from 0 to 1 across the puddle: the middle of the puddle
+// is the middle of the picture, and the rim is half a picture away from it.
 constexpr glm::vec2 UV_CENTER{0.5F, 0.5F};
 constexpr float UV_RADIUS = 0.5F;
 
@@ -138,15 +139,6 @@ glm::vec2 puddleRimCorner(int corner) {
     return {std::cos(angle), std::sin(angle)};
 }
 
-float puddleWaterLevel(const Terrain& terrain, float x, float z, float radius) {
-    float lowest = terrain.heightAt(x, z);
-    for (int corner = 0; corner < PUDDLE_CORNERS; ++corner) {
-        const glm::vec2 rim = radius * puddleRimCorner(corner);
-        lowest = std::min(lowest, terrain.heightAt(x + rim.x, z + rim.y));
-    }
-    return lowest + PUDDLE_DEPTH;
-}
-
 std::vector<Puddle> puddlesOnGround(const MazeWorld& world, float share) {
     const std::vector<PuddleSpawn> spawns =
         placePuddles(world.maze, world.seed, START_CELL, world.exitCell, world.crystals, share);
@@ -154,58 +146,85 @@ std::vector<Puddle> puddlesOnGround(const MazeWorld& world, float share) {
     std::vector<Puddle> puddles;
     puddles.reserve(spawns.size());
     for (const PuddleSpawn& spawn : spawns) {
-        // The middle of the disc: the centre of the cell moved by the offset (its two
-        // numbers are along X and along Z), at the height of the water.
+        // The middle of the puddle: the centre of the cell moved by the offset (its two
+        // numbers are along X and along Z), as high as the film of water lies there.
         glm::vec3 center = cellCenter(spawn.cell.x, spawn.cell.z);
         center.x += spawn.offset.x;
         center.z += spawn.offset.y;
-        center.y = puddleWaterLevel(world.terrain, center.x, center.z, spawn.radius);
+        center.y = world.terrain.heightAt(center.x, center.z) + PUDDLE_LIFT;
         puddles.push_back({.center = center, .radius = spawn.radius});
     }
     return puddles;
 }
 
-PuddleMeshData buildPuddleMesh() {
+PuddleMeshData buildPuddleMesh(const Terrain& terrain, std::span<const Puddle> puddles) {
     PuddleMeshData mesh;
-    mesh.vertices.reserve(static_cast<std::size_t>(PUDDLE_CORNERS) + 1U);
+    mesh.vertices.reserve(puddles.size() * static_cast<std::size_t>(PUDDLE_VERTEX_COUNT));
+    mesh.indices.reserve(puddles.size() * static_cast<std::size_t>(PUDDLE_TRIANGLE_COUNT) *
+                         INDICES_PER_TRIANGLE);
 
-    // The middle, then the corners of the rim. v grows towards -Z, like on the terrain,
-    // so a picture would be seen from above the right way round. No picture is drawn on
-    // a puddle today (its texture is plain white): the coordinate is there for the
-    // debug view of the texture coordinates.
-    mesh.vertices.push_back(
-        {.position = glm::vec3{0.0F}, .normal = UP, .uv = UV_CENTER, .tangent = TANGENT});
-    for (int corner = 0; corner < PUDDLE_CORNERS; ++corner) {
-        const glm::vec2 rim = puddleRimCorner(corner);
-        mesh.vertices.push_back({.position = {rim.x, 0.0F, rim.y},
+    // One vertex of the film: at (x, z) of the world, PUDDLE_LIFT above the ground
+    // there. along is where it lies in the puddle seen from above, from (-1, -1) to
+    // (1, 1) with the middle at (0, 0). v grows towards -Z, like on the terrain, so
+    // a picture would be seen from above the right way round. No picture is drawn on
+    // a puddle (its texture is plain white): the coordinate is there for the fade of
+    // the rim and for the debug view of the texture coordinates.
+    const auto addVertex = [&mesh, &terrain](float x, float z, const glm::vec2& along) {
+        mesh.vertices.push_back({.position = {x, terrain.heightAt(x, z) + PUDDLE_LIFT, z},
                                  .normal = UP,
-                                 .uv = UV_CENTER + UV_RADIUS * glm::vec2{rim.x, -rim.y},
+                                 .uv = UV_CENTER + UV_RADIUS * glm::vec2{along.x, -along.y},
                                  .tangent = TANGENT});
-    }
+    };
 
-    // One triangle per corner: the middle, the NEXT corner, this corner. The corners
-    // run from +X towards +Z, which is clockwise when seen from above. Taking the next
-    // corner first makes the triangle counter-clockwise from above, so its front face
-    // looks up, like the triangles of the terrain.
-    mesh.indices.reserve(static_cast<std::size_t>(PUDDLE_CORNERS) * INDICES_PER_TRIANGLE);
-    for (int corner = 0; corner < PUDDLE_CORNERS; ++corner) {
-        // The rim vertices follow the middle one, so corner c is vertex c + 1. After the
-        // last corner the first one comes again.
-        const auto thisCorner = static_cast<std::uint32_t>(corner + 1);
-        const auto nextCorner = static_cast<std::uint32_t>((corner + 1) % PUDDLE_CORNERS + 1);
-        mesh.indices.insert(mesh.indices.end(), {CENTER_VERTEX, nextCorner, thisCorner});
+    for (const Puddle& puddle : puddles) {
+        // The indices count from the first vertex of the whole mesh, so every puddle
+        // adds the number of vertices that are there already.
+        const auto base = static_cast<std::uint32_t>(mesh.vertices.size());
+
+        // The middle, then ring after ring outwards. Ring number ring (1 is the
+        // innermost) lies at that part of the radius, so the rings are equally far
+        // apart and the last one is the rim.
+        addVertex(puddle.center.x, puddle.center.z, glm::vec2{0.0F});
+        for (int ring = 1; ring <= PUDDLE_RINGS; ++ring) {
+            const float share = static_cast<float>(ring) / static_cast<float>(PUDDLE_RINGS);
+            for (int corner = 0; corner < PUDDLE_CORNERS; ++corner) {
+                const glm::vec2 along = share * puddleRimCorner(corner);
+                addVertex(puddle.center.x + puddle.radius * along.x,
+                          puddle.center.z + puddle.radius * along.y, along);
+            }
+        }
+
+        // The vertex of corner number corner of ring number ring (0 is the innermost
+        // here). After the last corner of a ring its first one comes again.
+        const auto ringVertex = [base](int ring, int corner) {
+            return base + FIRST_RING_VERTEX +
+                   static_cast<std::uint32_t>(ring * PUDDLE_CORNERS + corner % PUDDLE_CORNERS);
+        };
+
+        for (int corner = 0; corner < PUDDLE_CORNERS; ++corner) {
+            // The innermost ring: one triangle per corner, the middle, the NEXT corner,
+            // this corner. The corners run from +X towards +Z, which is clockwise when
+            // seen from above. Taking the next corner first makes the triangle
+            // counter-clockwise from above, so its front face looks up, like the
+            // triangles of the terrain.
+            mesh.indices.insert(
+                mesh.indices.end(),
+                {base + CENTER_VERTEX, ringVertex(0, corner + 1), ringVertex(0, corner)});
+
+            // Every other ring: the four-sided piece between this corner and the next
+            // one, and between this ring and the one inside it, cut into two triangles
+            // that turn the same way as the one above.
+            for (int ring = 1; ring < PUDDLE_RINGS; ++ring) {
+                const std::uint32_t inner = ringVertex(ring - 1, corner);
+                const std::uint32_t innerNext = ringVertex(ring - 1, corner + 1);
+                const std::uint32_t outer = ringVertex(ring, corner);
+                const std::uint32_t outerNext = ringVertex(ring, corner + 1);
+                mesh.indices.insert(mesh.indices.end(),
+                                    {inner, outerNext, outer, inner, innerNext, outerNext});
+            }
+        }
     }
     return mesh;
-}
-
-glm::mat4 puddleModelMatrix(const Puddle& puddle) {
-    scene::Transform transform;
-    transform.position = puddle.center;
-    // Wider along X and Z only. The disc is flat (every y is 0), so a factor along
-    // Y would change nothing: it stays 1, which also keeps the matrix invertible for
-    // scene::normalMatrix.
-    transform.scale = {puddle.radius, 1.0F, puddle.radius};
-    return transform.matrix();
 }
 
 } // namespace game

@@ -152,7 +152,7 @@ void DebugUI::draw(const DebugContext& context) {
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not
     // the panels are visible.
-    drawHud(context.mazeWorld, context.round, context.gameplay, context.pick);
+    drawHud(context.mazeWorld, context.round, context.gameplay, context.pick, m_visible);
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
     ImGui::Render();

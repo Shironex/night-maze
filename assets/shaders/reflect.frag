@@ -19,7 +19,7 @@ in vec3 vTangent;       // tangent in world space, no longer exactly of length 1
 in vec3 vWorldPosition; // position in world space
 
 // The texture, the colour of the material and the glow of the surface, as in lit.frag.
-// A puddle has a plain white texture and the colour of dark water as its tint.
+// A puddle has a plain white texture and the colour of its water as its tint.
 uniform sampler2D uTexture;
 uniform vec3 uTint;
 uniform vec3 uEmissive;
@@ -53,9 +53,21 @@ uniform float uReflectShare;
 // the material it leaves divided by the one it enters (air into glass: 1 / 1.5).
 uniform float uRefractionRatio;
 
+// The soft rim of a puddle. uRimFade is the part of the radius over which the water
+// fades out towards the rim, and uOpacity how much the water hides of the ground in
+// the middle of the puddle. With uRimFade at 0 (the crystals, and the value after
+// a reload) the surface is solid and uOpacity is not read.
+uniform float uRimFade;
+uniform float uOpacity;
+
 // Output: the color written to the HDR framebuffer of the scene (red, green, blue,
 // alpha), as a LINEAR colour that may be brighter than 1.
 out vec4 fragColor;
+
+// The texture coordinate in the middle of a puddle and the distance from there to its
+// rim (game::buildPuddleMesh).
+const vec2 PUDDLE_UV_CENTER = vec2(0.5);
+const float PUDDLE_UV_RADIUS = 0.5;
 
 // The exponent of Schlick's formula. The same number as game::SCHLICK_EXPONENT in
 // src/game/EnvironmentMapping.hpp.
@@ -158,5 +170,24 @@ void main() {
     // (uEmissive, see lit.frag) is added afterwards and so stays whole: a crystal keeps
     // glowing, and the bloom keeps finding it, however much of the sky it shows. With
     // a strength of 0 this line gives exactly the colour of lit.frag.
-    fragColor = vec4(mix(litColor, environment, strength) + surface * uEmissive, 1.0);
+    vec3 color = mix(litColor, environment, strength) + surface * uEmissive;
+
+    // THE ALPHA: how much of this colour covers what is in the framebuffer already. It
+    // matters only while OpenGL blends, which game::PuddleRenderer switches on for the
+    // puddles alone. A crystal is solid: 1.
+    float alpha = 1.0;
+    if (uRimFade > 0.0) {
+        // How far out this fragment lies in its puddle: 0 in the middle, 1 at the rim.
+        // It is computed per fragment from the texture coordinate, so the fade is
+        // a true circle whatever the number of corners of the mesh.
+        float outwards = length(vUv - PUDDLE_UV_CENTER) / PUDDLE_UV_RADIUS;
+        // smoothstep goes from 0 to 1 between its first two arguments, slowly at both
+        // ends: the water is whole up to (1 - uRimFade) of the radius and gone at the
+        // rim, without a visible line where the fade starts or ends.
+        float gone = smoothstep(1.0 - uRimFade, 1.0, outwards);
+        // The mirror gets stronger at flat angles (Fresnel), and so does the cover: far
+        // ahead the water hides the ground, under the feet the ground shows through.
+        alpha = mix(uOpacity, 1.0, strength) * (1.0 - gone);
+    }
+    fragColor = vec4(color, alpha);
 }

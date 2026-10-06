@@ -1,5 +1,5 @@
-// Puddles: which cells of a maze get a puddle, how big it is and at what height its
-// water stands.
+// Puddles: which cells of a maze get a puddle, how big it is and the mesh that lays its
+// water on the ground.
 // See docs/modules/renderer/env-mapping.md
 #pragma once
 
@@ -22,11 +22,18 @@ struct MazeWorld;
 // is decoration: it is not an obstacle, the player walks through it and no rule of the
 // round knows about it. It is drawn by game::PuddleRenderer with the reflect program,
 // as a mirror of the sky.
+//
+// A puddle is a thin film of water that LIES ON the ground: a round patch whose every
+// point is a little above the ground under it. It is not a level disc. The ground of
+// the game is uneven, and a level disc on it is either cut off by the higher ground in
+// a straight line or hangs in the air over the lower ground. The film follows the
+// ground instead, like a wet patch. Only its normal stays straight up, so it still
+// mirrors the sky like level water (see buildPuddleMesh).
 
 // All sizes are in metres.
 
-/// A puddle is a flat disc. Its radius is between these two numbers, chosen from the
-/// seed, so the puddles are not all the same.
+/// A puddle is round when seen from above. Its radius is between these two numbers,
+/// chosen from the seed, so the puddles are not all the same.
 constexpr float PUDDLE_MIN_RADIUS = 0.25F;
 constexpr float PUDDLE_MAX_RADIUS = 0.45F;
 
@@ -38,13 +45,42 @@ constexpr float PUDDLE_MAX_RADIUS = 0.45F;
 /// no puddle ever reaches a wall, a pillar or the gate.
 constexpr float PUDDLE_MAX_OFFSET = 0.3F;
 
-/// How deep the water of a puddle stands over the lowest ground under it. The water
-/// level is that lowest ground plus this number, see puddleWaterLevel.
-constexpr float PUDDLE_DEPTH = 0.02F;
+/// How far the film of water lies above the ground, at every vertex of its mesh.
+///
+/// It has to be more than nothing for two reasons. The depth buffer cannot tell two
+/// surfaces at the same place apart (they would flicker through each other), and the
+/// film is only exactly parallel to the ground AT its vertices: between them it is
+/// flat, while the ground under it may have a crease (an edge between two triangles of
+/// the terrain, which are TERRAIN_SPACING wide). Where such a crease is a ridge, the
+/// ground rises towards the film. Measured on the heightmap of the game with the mesh
+/// below (PuddleTests.cpp): under the 13 puddles of the default maze the ground comes
+/// at most 0.5 mm closer to the film at the default height scale and 1.2 mm at the
+/// largest one, and with the largest puddle tried all over the maze 0.7 mm and 1.7 mm.
+/// So 8 mm leaves more than 6 mm of air everywhere. A depth buffer of 24 bits with the
+/// planes of the camera (0.1 m and 100 m) tells surfaces 6 mm apart from each other up
+/// to about 30 m away, and the fog hides the ground long before that. From the height
+/// of the eyes 8 mm cannot be seen as a gap.
+constexpr float PUDDLE_LIFT = 0.008F;
 
-/// The disc is drawn as a fan of this many triangles around its middle, so its rim is
-/// a polygon with this many corners. 16 look round from the height of the eyes.
-constexpr int PUDDLE_CORNERS = 16;
+/// The mesh of a puddle is a vertex in the middle and PUDDLE_RINGS rings around it, each
+/// with PUDDLE_CORNERS vertices: like a spider web. The corners make the rim round (32
+/// of them are 99.4 % of a circle). The rings are what lets the film follow the ground:
+/// with 6 of them a vertex is never more than 7.5 cm from the next one along a spoke,
+/// much finer than the terrain (TERRAIN_SPACING, 0.5 m).
+constexpr int PUDDLE_CORNERS = 32;
+constexpr int PUDDLE_RINGS = 6;
+
+/// The numbers of vertices and of triangles of one puddle. The innermost ring is joined
+/// to the middle by one triangle per corner, every other ring to the ring inside it by
+/// two.
+constexpr int PUDDLE_VERTEX_COUNT = 1 + PUDDLE_RINGS * PUDDLE_CORNERS;
+constexpr int PUDDLE_TRIANGLE_COUNT = PUDDLE_CORNERS * (2 * PUDDLE_RINGS - 1);
+
+/// The outer part of a puddle fades out, so that the water has no hard edge: over this
+/// part of the radius, counted from the rim inwards, the film goes from fully there to
+/// not there at all (reflect.frag, uniform uRimFade). The corners of the rim cannot be
+/// seen then, because the rim itself is invisible.
+constexpr float PUDDLE_RIM_FADE = 0.45F;
 
 /// One puddle of a maze as the seed chose it: only the plan, no height yet.
 struct PuddleSpawn {
@@ -59,9 +95,10 @@ struct PuddleSpawn {
 
 /// One puddle in the world, ready to draw.
 struct Puddle {
-    /// The middle of the disc. Its y is the water level (puddleWaterLevel).
+    /// The middle of the puddle. Its y is the height of the film there: the ground
+    /// under the middle plus PUDDLE_LIFT.
     glm::vec3 center{0.0F};
-    /// The radius of the disc.
+    /// The radius of the puddle, measured level (along X and Z).
     float radius = PUDDLE_MIN_RADIUS;
 };
 
@@ -94,48 +131,45 @@ std::vector<PuddleSpawn> placePuddles(const Maze& maze, std::uint32_t seed, Maze
 /// 0 lies on the +X axis. Corner numbers past the last one go around again.
 glm::vec2 puddleRimCorner(int corner);
 
-/// The height at which the water of a puddle stands: the lowest ground under the disc
-/// plus PUDDLE_DEPTH. (x, z) is the middle of the disc.
-///
-/// WHY THE LOWEST GROUND. The ground is uneven and water is level, so the disc cannot
-/// follow the ground. Put on the HIGHEST ground under it, its other side would hang in
-/// the air: under the largest puddle the ground differs by up to 7 cm in the default
-/// maze, and by 17 cm at the largest height scale. Put on the lowest ground, the disc
-/// never stands more than PUDDLE_DEPTH above the ground anywhere along its rim.
-/// Wherever the ground rises above the water level, the ground is simply drawn in front
-/// of the disc (the depth test), and the shore follows the ground: on level ground
-/// the whole disc shows, on a slope only the lower part of it, like water that has run
-/// to the low side.
-///
-/// The lowest ground is looked up at the points of the disc that is drawn: its middle
-/// and the PUDDLE_CORNERS corners of its rim (Terrain::heightAt).
-float puddleWaterLevel(const Terrain& terrain, float x, float z, float radius);
-
-/// The puddles of a world, standing on its terrain: placePuddles with the maze, the
-/// seed, the exit and the crystals of the world, and every puddle at its water level.
-/// Call it again after the terrain of the world was rebuilt: the same puddles come
-/// back at their new heights.
+/// The puddles of a world, lying on its terrain: placePuddles with the maze, the seed,
+/// the exit and the crystals of the world, and the middle of every puddle PUDDLE_LIFT
+/// above the ground there. Call it again after the terrain of the world was rebuilt:
+/// the same puddles come back at their new heights.
 std::vector<Puddle> puddlesOnGround(const MazeWorld& world, float share);
 
-/// The disc of a puddle as triangles, ready for gfx::Mesh: plain data, so tests can
+/// The water of all puddles as triangles, ready for gfx::Mesh: plain data, so tests can
 /// check it.
 struct PuddleMeshData {
-    /// The middle first, then the PUDDLE_CORNERS corners of the rim. The disc has the
-    /// radius 1 and lies in the plane y = 0 around the origin: the model matrix of
-    /// a puddle makes it as big as the puddle and moves it to its place. Every normal
-    /// points straight up, which is what makes the disc a level mirror.
+    /// PUDDLE_VERTEX_COUNT vertices per puddle, puddle after puddle: the middle first,
+    /// then the rings from the innermost to the rim, each starting at the corner on the
+    /// +X side. The positions are in WORLD space (the mesh is drawn with the identity
+    /// as its model matrix). Every normal points straight up.
     std::vector<gfx::Vertex> vertices;
 
-    /// Three indices per triangle, PUDDLE_CORNERS triangles, counter-clockwise when
-    /// seen from above.
+    /// Three indices per triangle, PUDDLE_TRIANGLE_COUNT triangles per puddle,
+    /// counter-clockwise when seen from above.
     std::vector<std::uint32_t> indices;
 };
 
-/// Builds the vertices and the indices of the disc.
-PuddleMeshData buildPuddleMesh();
-
-/// The model matrix of a puddle: the disc of buildPuddleMesh made puddle.radius wide
-/// (not higher: it is flat) and moved to puddle.center.
-glm::mat4 puddleModelMatrix(const Puddle& puddle);
+/// Builds the water of the given puddles on the terrain, as one mesh for all of them.
+///
+/// THE HEIGHTS. Every vertex is put PUDDLE_LIFT above the ground under it
+/// (Terrain::heightAt, the same triangles the terrain is drawn with). So the film
+/// follows the ground: no part of it is hidden by higher ground, and no part hangs in
+/// the air. That is why the mesh is built for every puddle on its own and in world
+/// space: each puddle lies on different ground. It has to be built again whenever the
+/// terrain or the puddles change.
+///
+/// THE NORMALS. They do not follow the ground: every one is (0, 1, 0). The surface of
+/// still water is level however the ground under it lies, and the normal is what
+/// decides where the mirrored ray goes (reflect.frag). With the normals of the ground
+/// every puddle would mirror another part of the sky and be lit like earth. With the
+/// level normal it reads as water, a few millimetres thin.
+///
+/// THE TEXTURE COORDINATE runs from 0 to 1 across the puddle, with (0.5, 0.5) in the
+/// middle, so its distance from the middle tells how far out a point lies: 0 in the
+/// middle, 0.5 at the rim. reflect.frag fades the water out towards the rim with it
+/// (PUDDLE_RIM_FADE), and the debug view of the texture coordinates shows it.
+PuddleMeshData buildPuddleMesh(const Terrain& terrain, std::span<const Puddle> puddles);
 
 } // namespace game

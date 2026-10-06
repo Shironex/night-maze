@@ -1158,7 +1158,10 @@ na wierzchu paneli, a panel kliknięty później wychodzi przed nią jak przed k
     const ImVec2 top = windowPoint(TOP_CENTER);
     // The rows of title bars are measured with the real height of a bar, which follows
     // the font (foldedRowsHeight).
-    const float rowsAbove = foldedRowsHeight(FOLDED_ROW_COUNT, scale);
+    // With the panels hidden there are no title bars to stay clear of: the HUD then stands
+    // at the top edge, and not a quarter of the window down, over the middle of the
+    // picture, where the flashlight shines.
+    const float rowsAbove = panelsVisible ? foldedRowsHeight(FOLDED_ROW_COUNT, scale) : 0.0F;
     ImGui::SetNextWindowPos({top.x, top.y + rowsAbove + HUD_TOP_OFFSET * scale}, ImGuiCond_Always,
                             TOP_CENTER);
     ImGui::SetNextWindowBgAlpha(HUD_OPACITY);
@@ -1170,7 +1173,7 @@ na wierzchu paneli, a panel kliknięty później wychodzi przed nią jak przed k
 | Element | Znaczenie |
 |---|---|
 | `windowPoint(TOP_CENTER)` | nasza funkcja: punkt okna programu podany jako części jego rozmiaru, liczony z `ImGui::GetMainViewport()` (`WorkPos` i `WorkSize`). `TOP_CENTER` to `{0.5, 0}`, środek górnej krawędzi |
-| `foldedRowsHeight(FOLDED_ROW_COUNT, scale)` | nasza funkcja z `PanelLayout.cpp` (od M6): wysokość dwóch rzędów zwiniętych pasków tytułów, liczona z `ImGui::GetFrameHeight()` (sekcja 3.15). HUD staje pod nimi |
+| `panelsVisible ? foldedRowsHeight(FOLDED_ROW_COUNT, scale) : 0.0F` | nasza funkcja z `PanelLayout.cpp` (od M6): wysokość rzędów zwiniętych pasków tytułów (dziś pięciu), liczona z `ImGui::GetFrameHeight()` (sekcja 3.15). HUD staje pod nimi, **ale tylko wtedy, gdy panele są widoczne** (od 2026-10-06, decyzja właściciela); przy schowanych klawiszem tyldy rzędów nie ma i HUD stoi przy górnej krawędzi |
 | `ImGuiCond_Always` | pozycja jest ustawiana w **każdej** klatce. Panele używają `ImGuiCond_FirstUseEver` (sekcja 3.11), bo użytkownik ma móc je przesunąć. HUD ma zostać na środku także po zmianie rozmiaru okna programu |
 | trzeci argument, `TOP_CENTER` | pivot: punkt okna ImGui, który ma trafić w podaną pozycję. `{0.5, 0}` to środek jego górnej krawędzi, więc pasek jest wyśrodkowany, choć jego szerokość zmienia się z zawartością (`AlwaysAutoResize`) i nie jest znana przed `Begin`. Karta wygranej używa pivotu `{0.5, 0.5}` i jest wyśrodkowana w obu kierunkach |
 | `ImGui::SetNextWindowBgAlpha(HUD_OPACITY)` | deklaracja: `void SetNextWindowBgAlpha(float alpha);`. Ustawia przezroczystość tła najbliższego okna: 0 to tło niewidoczne, 1 to pełne. Pasek ma 0,72, karta 0,9: przez pasek widać scenę, karta ma być czytelna |
@@ -1361,7 +1364,7 @@ float foldedRowsHeight(int count, float gapScale) {
 | Kto woła `foldedRowsHeight` | Z czym | Po co |
 |---|---|---|
 | `placePanelOnFirstUse` | `placement.foldedRowsBefore` (0, 1, od pierwszej części M7 także 2, a od czwartej 3) i `layoutScale` | panele Terrain i Grass stają o jeden rząd pasków niżej niż Camera i Gameplay, panel Framebuffers o dwa, a panel Shadows o trzy |
-| `drawStatus` w `Hud.cpp` | `FOLDED_ROW_COUNT` (2 w M6, 3 od pierwszej części M7, 4 od czwartej, 5 od M8, części 1) i skala ekranu | HUD staje pod wszystkimi rzędami pasków |
+| `drawStatus` w `Hud.cpp` | `FOLDED_ROW_COUNT` (2 w M6, 3 od pierwszej części M7, 4 od czwartej, 5 od M8, części 1), skala ekranu i od 2026-10-06 argument `panelsVisible` | HUD staje pod wszystkimi rzędami pasków, gdy panele są widoczne, a przy schowanych przy górnej krawędzi |
 
 Dlaczego pytać ImGui, a nie wpisać 22: wysokość paska idzie za czcionką, a czcionka za skalą
 ekranu (`FontScaleDpi`, sekcja 3.12). Przy skali 150% pasek ma 33 jednostki. Stała wpisana w

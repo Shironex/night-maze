@@ -34,7 +34,11 @@ namespace debug {
 ///     crystals and the key that starts a new round.
 ///
 /// The HUD takes no input: the mouse and the keyboard pass through it to the game.
+///
+/// panelsVisible tells whether the debug panels are shown. With them the strip stands
+/// below the rows of folded title bars, without them at the top edge of the window.
 void drawHud(const game::MazeWorld& world, const game::Round& round,
-             const game::GameplaySettings& settings, const game::PickState& pick);
+             const game::GameplaySettings& settings, const game::PickState& pick,
+             bool panelsVisible);
 
 } // namespace debug

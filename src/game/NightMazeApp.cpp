@@ -270,7 +270,7 @@ void NightMazeApp::uploadGround() {
 void NightMazeApp::layPuddles() {
     m_environment.puddleShare = std::clamp(m_environment.puddleShare, 0.0F, MAX_PUDDLE_SHARE);
     const std::vector<Puddle> puddles = puddlesOnGround(m_mazeWorld, m_environment.puddleShare);
-    m_puddleRenderer.upload(puddles);
+    m_puddleRenderer.upload(m_mazeWorld.terrain, puddles);
 }
 
 void NightMazeApp::plantGrass() {

@@ -1,5 +1,5 @@
-// Tests of game::Puddles: how many puddles a maze gets, which cells they lie in, at what
-// height their water stands and the disc they are drawn with.
+// Tests of game::Puddles: how many puddles a maze gets, which cells they lie in and the
+// mesh that lays their water on the ground.
 // See docs/modules/renderer/env-mapping.md
 #include "game/Puddles.hpp"
 
@@ -42,7 +42,7 @@ game::Heightmap gameHeightmap() {
     return game::heightmapFromImage(image);
 }
 
-// A rough heightmap, so that the water levels are worth checking: 8 by 8 values from
+// A rough heightmap, so that the heights of the water are worth checking: 8 by 8 values from
 // 0 to 1 made by a formula, the same in every run (the one of GrassTests.cpp).
 game::Heightmap roughHeightmap() {
     constexpr int SIZE = 8;
@@ -87,22 +87,44 @@ float distanceToFootprint(const scene::Aabb& box, float x, float z) {
     return std::hypot(x - nearestX, z - nearestZ);
 }
 
-// The lowest and the highest ground under a disc, looked up where puddleWaterLevel looks:
-// at its middle and at the corners of its rim.
-struct GroundRange {
-    float lowest = 0.0F;
-    float highest = 0.0F;
-};
+// One puddle of radius radius with its middle at (x, z), lying on the terrain the way
+// puddlesOnGround lays it.
+game::Puddle puddleAt(const game::Terrain& terrain, float x, float z, float radius) {
+    return {.center = {x, terrain.heightAt(x, z) + game::PUDDLE_LIFT, z}, .radius = radius};
+}
 
-GroundRange groundUnderDisc(const game::Terrain& terrain, float x, float z, float radius) {
-    GroundRange range{.lowest = terrain.heightAt(x, z), .highest = terrain.heightAt(x, z)};
-    for (int corner = 0; corner < game::PUDDLE_CORNERS; ++corner) {
-        const glm::vec2 rim = radius * game::puddleRimCorner(corner);
-        const float height = terrain.heightAt(x + rim.x, z + rim.y);
-        range.lowest = std::min(range.lowest, height);
-        range.highest = std::max(range.highest, height);
+// The number of the first vertex of ring number ring (1 is the innermost) of a puddle
+// whose vertices start at base.
+std::size_t firstOfRing(std::size_t base, int ring) {
+    return base + 1U + static_cast<std::size_t>((ring - 1) * game::PUDDLE_CORNERS);
+}
+
+// How close the ground comes to the film of water BETWEEN the vertices of its mesh, as
+// the smallest distance from the ground up to the film, in metres. At the vertices it
+// is PUDDLE_LIFT. Inside a triangle the film is flat and the ground may not be, so
+// every triangle is looked at on a fine grid of points: the height of the film there
+// (blended from its three corners, as the graphics card does) minus the height of the
+// ground. A number below 0 would mean that the ground pokes through the water.
+float smallestClearance(const game::Terrain& terrain, const game::PuddleMeshData& mesh) {
+    // Points per edge of a triangle. The triangles are at most 9 cm long, so the points
+    // are about 1 cm apart.
+    constexpr int STEPS = 8;
+    float smallest = game::PUDDLE_LIFT;
+    for (std::size_t i = 0; i < mesh.indices.size(); i += 3) {
+        const glm::vec3 a = mesh.vertices[mesh.indices[i]].position;
+        const glm::vec3 b = mesh.vertices[mesh.indices[i + 1]].position;
+        const glm::vec3 c = mesh.vertices[mesh.indices[i + 2]].position;
+        for (int u = 0; u <= STEPS; ++u) {
+            for (int v = 0; u + v <= STEPS; ++v) {
+                // Two of the three weights of the corners: the third is what is left.
+                const float alongB = static_cast<float>(u) / static_cast<float>(STEPS);
+                const float alongC = static_cast<float>(v) / static_cast<float>(STEPS);
+                const glm::vec3 film = a + alongB * (b - a) + alongC * (c - a);
+                smallest = std::min(smallest, film.y - terrain.heightAt(film.x, film.z));
+            }
+        }
     }
-    return range;
+    return smallest;
 }
 
 } // namespace
@@ -110,9 +132,16 @@ GroundRange groundUnderDisc(const game::Terrain& terrain, float x, float z, floa
 TEST_CASE("the puddle constants keep a puddle inside its cell, clear of the walls") {
     CHECK(game::PUDDLE_MIN_RADIUS > 0.0F);
     CHECK(game::PUDDLE_MAX_RADIUS > game::PUDDLE_MIN_RADIUS);
-    CHECK(game::PUDDLE_DEPTH > 0.0F);
-    // A fan needs at least three triangles to be a polygon.
+    CHECK(game::PUDDLE_LIFT > 0.0F);
+    // A ring needs at least three corners to be a polygon, and there has to be a ring.
     CHECK(game::PUDDLE_CORNERS >= 3);
+    CHECK(game::PUDDLE_RINGS >= 1);
+    // 32 corners and 6 rings: 193 vertices and 352 triangles per puddle.
+    CHECK(game::PUDDLE_VERTEX_COUNT == 193);
+    CHECK(game::PUDDLE_TRIANGLE_COUNT == 352);
+    // The rim fades over a part of the radius, not over more than all of it.
+    CHECK(game::PUDDLE_RIM_FADE > 0.0F);
+    CHECK(game::PUDDLE_RIM_FADE <= 1.0F);
 
     // The farthest a puddle reaches from the centre of its cell, and where the foot of
     // a wall starts: half a cell, minus half the collision box, minus what the model is
@@ -296,35 +325,28 @@ TEST_CASE("the corners of the rim lie evenly on a circle of radius 1, the first 
     CHECK(again.y == doctest::Approx(0.0F));
 }
 
-TEST_CASE("on flat ground the water stands PUDDLE_DEPTH above it") {
-    const game::Terrain flat;
-    CHECK(game::puddleWaterLevel(flat, 3.0F, 5.0F, game::PUDDLE_MAX_RADIUS) ==
-          doctest::Approx(game::PUDDLE_DEPTH));
-
+TEST_CASE("on flat ground the middle of a puddle lies PUDDLE_LIFT above it") {
     const game::MazeWorld world = game::buildMazeWorld(6, 6, 2);
-    for (const game::Puddle& puddle : game::puddlesOnGround(world, 0.5F)) {
-        CHECK(puddle.center.y == doctest::Approx(game::PUDDLE_DEPTH));
+    const std::vector<game::Puddle> puddles = game::puddlesOnGround(world, 0.5F);
+    REQUIRE_FALSE(puddles.empty());
+    for (const game::Puddle& puddle : puddles) {
+        CHECK(puddle.center.y == doctest::Approx(game::PUDDLE_LIFT));
     }
 }
 
-TEST_CASE("on uneven ground the water stands PUDDLE_DEPTH above the lowest ground under it") {
+TEST_CASE("on uneven ground the middle of a puddle lies PUDDLE_LIFT above the ground there") {
     const game::MazeWorld world = game::buildMazeWorld(6, 5, 21, roughHeightmap(), 1.0F);
     const std::vector<game::Puddle> puddles = game::puddlesOnGround(world, 1.0F);
     REQUIRE(puddles.size() > 10U);
 
+    bool anyAboveZero = false;
     for (const game::Puddle& puddle : puddles) {
-        const GroundRange ground =
-            groundUnderDisc(world.terrain, puddle.center.x, puddle.center.z, puddle.radius);
-        CHECK(puddle.center.y == doctest::Approx(ground.lowest + game::PUDDLE_DEPTH));
-        // Nowhere along its rim does the disc stand more than the depth above the
-        // ground: it never hangs in the air on one side.
-        for (int corner = 0; corner < game::PUDDLE_CORNERS; ++corner) {
-            const glm::vec2 rim = puddle.radius * game::puddleRimCorner(corner);
-            const float groundAtRim =
-                world.terrain.heightAt(puddle.center.x + rim.x, puddle.center.z + rim.y);
-            CHECK(puddle.center.y - groundAtRim <= game::PUDDLE_DEPTH + HEIGHT_TOLERANCE);
-        }
+        const float ground = world.terrain.heightAt(puddle.center.x, puddle.center.z);
+        CHECK(puddle.center.y == doctest::Approx(ground + game::PUDDLE_LIFT));
+        anyAboveZero = anyAboveZero || ground > HEIGHT_TOLERANCE;
     }
+    // The ground of this world really is uneven, so the check above says something.
+    CHECK(anyAboveZero);
 }
 
 TEST_CASE("the puddles of a world lie where the seed put them, in every cell they belong to") {
@@ -385,18 +407,43 @@ TEST_CASE("no puddle reaches a wall, a pillar or the gate") {
     CHECK(clearOfGate);
 }
 
-TEST_CASE("the disc has a middle and a rim of radius 1, flat, with every normal straight up") {
-    const game::PuddleMeshData mesh = game::buildPuddleMesh();
-    const auto corners = static_cast<std::size_t>(game::PUDDLE_CORNERS);
-    REQUIRE(mesh.vertices.size() == corners + 1U);
-    REQUIRE(mesh.indices.size() == corners * 3U);
+TEST_CASE("the mesh of a puddle has a middle and rings of corners around it") {
+    const game::Terrain flat;
+    const game::Puddle puddle = puddleAt(flat, 5.0F, 7.0F, 0.4F);
+    const game::PuddleMeshData mesh = game::buildPuddleMesh(flat, {&puddle, 1});
+    REQUIRE(mesh.vertices.size() == static_cast<std::size_t>(game::PUDDLE_VERTEX_COUNT));
+    REQUIRE(mesh.indices.size() == static_cast<std::size_t>(game::PUDDLE_TRIANGLE_COUNT) * 3U);
 
-    CHECK(mesh.vertices[0].position == glm::vec3{0.0F});
-    for (std::size_t i = 0; i < mesh.vertices.size(); ++i) {
-        const gfx::Vertex& vertex = mesh.vertices[i];
-        CHECK(vertex.position.y == 0.0F);
+    // The middle of the mesh is the middle of the puddle, in world space.
+    CHECK(mesh.vertices[0].position.x == doctest::Approx(5.0F));
+    CHECK(mesh.vertices[0].position.y == doctest::Approx(game::PUDDLE_LIFT));
+    CHECK(mesh.vertices[0].position.z == doctest::Approx(7.0F));
+    CHECK(mesh.vertices[0].uv.x == doctest::Approx(0.5F));
+    CHECK(mesh.vertices[0].uv.y == doctest::Approx(0.5F));
+
+    for (int ring = 1; ring <= game::PUDDLE_RINGS; ++ring) {
+        // Ring number ring lies at that part of the radius: the rings are equally far
+        // apart, and the last one is the rim, exactly as far out as the radius.
+        const float share = static_cast<float>(ring) / static_cast<float>(game::PUDDLE_RINGS);
+        for (int corner = 0; corner < game::PUDDLE_CORNERS; ++corner) {
+            const gfx::Vertex& vertex =
+                mesh.vertices[firstOfRing(0, ring) + static_cast<std::size_t>(corner)];
+            const float fromMiddle = std::hypot(vertex.position.x - 5.0F, vertex.position.z - 7.0F);
+            CHECK(fromMiddle == doctest::Approx(share * 0.4F));
+            // The texture coordinate tells the same thing, for the fade of the rim:
+            // 0 in the middle, half a picture away at the rim.
+            CHECK(glm::distance(vertex.uv, glm::vec2{0.5F}) == doctest::Approx(share * 0.5F));
+        }
+        // Every ring starts on the +X side of the middle.
+        const gfx::Vertex& first = mesh.vertices[firstOfRing(0, ring)];
+        CHECK(first.position.x == doctest::Approx(5.0F + share * 0.4F));
+        CHECK(first.position.z == doctest::Approx(7.0F));
+    }
+
+    for (const gfx::Vertex& vertex : mesh.vertices) {
+        // Level water: every normal straight up, whatever the ground does.
         CHECK(vertex.normal == glm::vec3{0.0F, 1.0F, 0.0F});
-        // The tangent has length 1 and lies in the disc: perpendicular to the normal.
+        // The tangent has length 1 and is perpendicular to the normal.
         CHECK(glm::length(vertex.tangent) == doctest::Approx(1.0F));
         CHECK(glm::dot(vertex.tangent, vertex.normal) == doctest::Approx(0.0F));
         // The texture coordinate stays inside the picture.
@@ -404,92 +451,158 @@ TEST_CASE("the disc has a middle and a rim of radius 1, flat, with every normal 
         CHECK(vertex.uv.x <= 1.0F);
         CHECK(vertex.uv.y >= 0.0F);
         CHECK(vertex.uv.y <= 1.0F);
-        if (i > 0) {
-            CHECK(glm::length(vertex.position) == doctest::Approx(1.0F));
-        }
     }
 }
 
-TEST_CASE("every triangle of the disc starts in the middle and faces up") {
-    const game::PuddleMeshData mesh = game::buildPuddleMesh();
+TEST_CASE("every triangle of a puddle faces up and together they cover the puddle once") {
+    const game::MazeWorld world = game::buildMazeWorld(6, 5, 21, roughHeightmap(), 1.0F);
+    const game::Puddle puddle = puddleAt(world.terrain, 3.0F, 5.0F, 0.4F);
+    const game::PuddleMeshData mesh = game::buildPuddleMesh(world.terrain, {&puddle, 1});
     REQUIRE(mesh.indices.size() % 3U == 0U);
 
-    float area = 0.0F;
+    float levelArea = 0.0F;
     for (std::size_t i = 0; i < mesh.indices.size(); i += 3) {
-        REQUIRE(mesh.indices[i] == 0U);
+        REQUIRE(mesh.indices[i] < mesh.vertices.size());
         REQUIRE(mesh.indices[i + 1] < mesh.vertices.size());
         REQUIRE(mesh.indices[i + 2] < mesh.vertices.size());
         const glm::vec3 a = mesh.vertices[mesh.indices[i]].position;
         const glm::vec3 b = mesh.vertices[mesh.indices[i + 1]].position;
         const glm::vec3 c = mesh.vertices[mesh.indices[i + 2]].position;
         // The cross product of two edges points along the front face of a triangle whose
-        // corners go counter-clockwise, and is twice as long as the triangle is large.
+        // corners go counter-clockwise. Its y is twice the area of the triangle as seen
+        // from straight above, and positive when the front face looks up.
         const glm::vec3 face = glm::cross(b - a, c - a);
         CHECK(face.y > 0.0F);
-        area += glm::length(face) / 2.0F;
+        levelArea += face.y / 2.0F;
     }
-    // The triangles cover the whole polygon once: 16 corners give 97 % of the circle,
-    // whose area is pi.
-    CHECK(area < glm::pi<float>());
-    CHECK(area > 0.97F * glm::pi<float>());
+    // Seen from above the triangles cover the whole polygon once, on uneven ground too:
+    // 32 corners give 99.4 % of the circle, whose area is pi times the radius squared.
+    const float circle = glm::pi<float>() * 0.4F * 0.4F;
+    CHECK(levelArea < circle);
+    CHECK(levelArea > 0.99F * circle);
 }
 
-TEST_CASE("the model matrix makes the disc as wide as the puddle and moves it to its place") {
-    const game::Puddle puddle{.center = {5.0F, 0.25F, 7.0F}, .radius = 0.4F};
-    const glm::mat4 matrix = game::puddleModelMatrix(puddle);
+TEST_CASE("every vertex of a puddle lies exactly PUDDLE_LIFT above the ground under it") {
+    // A sloped and bumpy ground: the film has to follow it, not stay level.
+    const game::MazeWorld world = game::buildMazeWorld(6, 5, 21, roughHeightmap(), 2.0F);
+    const std::vector<game::Puddle> puddles = game::puddlesOnGround(world, 1.0F);
+    REQUIRE(puddles.size() > 10U);
+    const game::PuddleMeshData mesh = game::buildPuddleMesh(world.terrain, puddles);
+    REQUIRE(mesh.vertices.size() ==
+            puddles.size() * static_cast<std::size_t>(game::PUDDLE_VERTEX_COUNT));
 
-    const glm::vec3 middle = glm::vec3(matrix * glm::vec4{0.0F, 0.0F, 0.0F, 1.0F});
-    const glm::vec3 east = glm::vec3(matrix * glm::vec4{1.0F, 0.0F, 0.0F, 1.0F});
-    const glm::vec3 south = glm::vec3(matrix * glm::vec4{0.0F, 0.0F, 1.0F, 1.0F});
-    CHECK(middle.x == doctest::Approx(5.0F));
-    CHECK(middle.y == doctest::Approx(0.25F));
-    CHECK(middle.z == doctest::Approx(7.0F));
-    CHECK(east.x == doctest::Approx(5.4F));
-    CHECK(east.y == doctest::Approx(0.25F));
-    CHECK(east.z == doctest::Approx(7.0F));
-    CHECK(south.x == doctest::Approx(5.0F));
-    CHECK(south.y == doctest::Approx(0.25F));
-    CHECK(south.z == doctest::Approx(7.4F));
+    bool everyVertexOnGround = true;
+    float lowest = mesh.vertices.front().position.y;
+    float highest = lowest;
+    for (const gfx::Vertex& vertex : mesh.vertices) {
+        const float ground = world.terrain.heightAt(vertex.position.x, vertex.position.z);
+        everyVertexOnGround =
+            everyVertexOnGround &&
+            std::abs(vertex.position.y - (ground + game::PUDDLE_LIFT)) <= HEIGHT_TOLERANCE;
+        lowest = std::min(lowest, vertex.position.y);
+        highest = std::max(highest, vertex.position.y);
+    }
+    CHECK(everyVertexOnGround);
+    // The water is not level: its vertices are at many different heights.
+    CHECK(highest - lowest > 0.1F);
+
+    // Inside one puddle too: on this ground the rim of some puddle is tilted by more
+    // than the old flat disc could have been (it had one height for all of it).
+    float largestTilt = 0.0F;
+    for (std::size_t i = 0; i < puddles.size(); ++i) {
+        const std::size_t base = i * static_cast<std::size_t>(game::PUDDLE_VERTEX_COUNT);
+        float rimLowest = mesh.vertices[firstOfRing(base, game::PUDDLE_RINGS)].position.y;
+        float rimHighest = rimLowest;
+        for (int corner = 0; corner < game::PUDDLE_CORNERS; ++corner) {
+            const float y = mesh.vertices[firstOfRing(base, game::PUDDLE_RINGS) +
+                                          static_cast<std::size_t>(corner)]
+                                .position.y;
+            rimLowest = std::min(rimLowest, y);
+            rimHighest = std::max(rimHighest, y);
+        }
+        largestTilt = std::max(largestTilt, rimHighest - rimLowest);
+    }
+    CHECK(largestTilt > 0.02F);
 }
 
-TEST_CASE("the ground of the game under a puddle: why the water stands on the lowest ground") {
-    // The numbers behind the comment at game::puddleWaterLevel, measured on the real
-    // heightmap: how much the ground differs under the largest puddle, in the middle of
-    // every cell of the default maze.
+TEST_CASE("the mesh holds all puddles one after another, and none for no puddles") {
+    const game::Terrain flat;
+    CHECK(game::buildPuddleMesh(flat, {}).vertices.empty());
+    CHECK(game::buildPuddleMesh(flat, {}).indices.empty());
+
+    const std::vector<game::Puddle> puddles = {puddleAt(flat, 1.0F, 1.0F, 0.3F),
+                                               puddleAt(flat, 3.0F, 5.0F, 0.45F)};
+    const game::PuddleMeshData mesh = game::buildPuddleMesh(flat, puddles);
+    const auto perPuddle = static_cast<std::size_t>(game::PUDDLE_VERTEX_COUNT);
+    const auto indicesPerPuddle = static_cast<std::size_t>(game::PUDDLE_TRIANGLE_COUNT) * 3U;
+    REQUIRE(mesh.vertices.size() == 2U * perPuddle);
+    REQUIRE(mesh.indices.size() == 2U * indicesPerPuddle);
+
+    // The triangles of the first puddle use its vertices only, the ones of the second
+    // puddle only the vertices that follow.
+    for (std::size_t i = 0; i < mesh.indices.size(); ++i) {
+        if (i < indicesPerPuddle) {
+            CHECK(mesh.indices[i] < perPuddle);
+        } else {
+            CHECK(mesh.indices[i] >= perPuddle);
+            CHECK(mesh.indices[i] < 2U * perPuddle);
+        }
+    }
+    CHECK(mesh.vertices[perPuddle].position.x == doctest::Approx(3.0F));
+    CHECK(mesh.vertices[perPuddle].position.z == doctest::Approx(5.0F));
+}
+
+TEST_CASE("the ground of the game never pokes through the water of a puddle") {
+    // The numbers behind the comment at game::PUDDLE_LIFT, measured on the real
+    // heightmap. The film lies PUDDLE_LIFT above the ground at its vertices. Between
+    // them the ground may rise towards it, where an edge of the terrain crosses
+    // a triangle of the film: smallestClearance finds how close it comes.
     const game::Heightmap heightmap = gameHeightmap();
 
-    const auto largestDifference = [&heightmap](float heightScale) {
+    // The puddles of the default maze, as the game draws them.
+    const auto clearanceOfDefaultPuddles = [&heightmap](float heightScale) {
         const game::MazeWorld world = defaultWorld(heightmap, heightScale);
-        float largest = 0.0F;
+        const std::vector<game::Puddle> puddles =
+            game::puddlesOnGround(world, game::DEFAULT_PUDDLE_SHARE);
+        return smallestClearance(world.terrain, game::buildPuddleMesh(world.terrain, puddles));
+    };
+
+    // The worst place for a puddle: the largest one in the middle of every cell of the
+    // default maze and at the four corners of the square its middle can move in.
+    const auto clearanceEverywhere = [&heightmap](float heightScale) {
+        const game::MazeWorld world = defaultWorld(heightmap, heightScale);
+        std::vector<game::Puddle> puddles;
         for (int z = 0; z < world.maze.height(); ++z) {
             for (int x = 0; x < world.maze.width(); ++x) {
                 const glm::vec3 center = game::cellCenter(x, z);
-                const GroundRange ground =
-                    groundUnderDisc(world.terrain, center.x, center.z, game::PUDDLE_MAX_RADIUS);
-                largest = std::max(largest, ground.highest - ground.lowest);
+                for (const float offsetX :
+                     {-game::PUDDLE_MAX_OFFSET, 0.0F, game::PUDDLE_MAX_OFFSET}) {
+                    for (const float offsetZ :
+                         {-game::PUDDLE_MAX_OFFSET, 0.0F, game::PUDDLE_MAX_OFFSET}) {
+                        puddles.push_back(puddleAt(world.terrain, center.x + offsetX,
+                                                   center.z + offsetZ, game::PUDDLE_MAX_RADIUS));
+                    }
+                }
             }
         }
-        return largest;
+        return smallestClearance(world.terrain, game::buildPuddleMesh(world.terrain, puddles));
     };
 
-    // At the default height scale up to 7 cm, at the largest one up to 17.5 cm: a disc
-    // put on the HIGHEST ground would hang that far in the air on its other side.
-    const float atDefaultScale = largestDifference(game::DEFAULT_HEIGHT_SCALE);
-    CHECK(atDefaultScale > 0.06F);
-    CHECK(atDefaultScale < 0.08F);
-    const float atLargestScale = largestDifference(game::MAX_HEIGHT_SCALE);
-    CHECK(atLargestScale > 0.16F);
-    CHECK(atLargestScale < 0.19F);
+    // Measured (2026-10-06, PUDDLE_LIFT 8 mm, 6 rings of 32 corners): the smallest
+    // distance is 7.56 mm and 6.89 mm for the puddles of the default maze (default and
+    // largest height scale), and 7.35 mm and 6.37 mm with the largest puddle all over
+    // the maze. So the ground comes at most 1.7 mm closer than at the vertices. The
+    // checks ask for 6 mm, three quarters of the lift: a coarser mesh or a rougher
+    // heightmap that eats more of it than that should be noticed here.
+    constexpr float NEEDED_CLEARANCE = 0.75F * game::PUDDLE_LIFT;
+    CHECK(clearanceOfDefaultPuddles(game::DEFAULT_HEIGHT_SCALE) > NEEDED_CLEARANCE);
+    CHECK(clearanceOfDefaultPuddles(game::MAX_HEIGHT_SCALE) > NEEDED_CLEARANCE);
+    CHECK(clearanceEverywhere(game::DEFAULT_HEIGHT_SCALE) > NEEDED_CLEARANCE);
+    CHECK(clearanceEverywhere(game::MAX_HEIGHT_SCALE) > NEEDED_CLEARANCE);
 
-    // On the lowest ground, the puddles of the default maze stand at most PUDDLE_DEPTH
-    // above the ground at every point that was looked up, at both scales.
-    for (const float heightScale : {game::DEFAULT_HEIGHT_SCALE, game::MAX_HEIGHT_SCALE}) {
-        const game::MazeWorld world = defaultWorld(heightmap, heightScale);
-        for (const game::Puddle& puddle :
-             game::puddlesOnGround(world, game::DEFAULT_PUDDLE_SHARE)) {
-            const GroundRange ground =
-                groundUnderDisc(world.terrain, puddle.center.x, puddle.center.z, puddle.radius);
-            CHECK(puddle.center.y - ground.lowest == doctest::Approx(game::PUDDLE_DEPTH));
-        }
-    }
+    // On level ground nothing comes closer at all.
+    const game::Terrain flat;
+    const game::Puddle onFlat = puddleAt(flat, 3.0F, 5.0F, game::PUDDLE_MAX_RADIUS);
+    CHECK(smallestClearance(flat, game::buildPuddleMesh(flat, {&onFlat, 1})) ==
+          doctest::Approx(game::PUDDLE_LIFT));
 }

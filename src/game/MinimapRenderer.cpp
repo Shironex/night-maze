@@ -8,6 +8,7 @@
 #include "gfx/Shader.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <type_traits>
 
@@ -138,7 +139,8 @@ void MinimapRenderer::drawOverlay(const gfx::Shader& shader, const MinimapRect& 
     // result = colour * alpha + window * (1 - alpha). The alpha is the opacity of the
     // map. It is switched on for this one draw call and put back afterwards, as
     // GrassRenderer does with back-face culling. The blend function is left set:
-    // nothing else in the game blends, and the debug UI sets its own before it draws.
+    // everything else that blends (the puddles, the debug UI) sets its own before it
+    // draws.
     GLboolean blendingWasOn = GL_FALSE;
     GL_CHECK(blendingWasOn = glIsEnabled(GL_BLEND));
     GL_CHECK(glEnable(GL_BLEND));
@@ -151,6 +153,15 @@ void MinimapRenderer::drawOverlay(const gfx::Shader& shader, const MinimapRect& 
     shader.setInt(MINIMAP_OVERLAY_MAP_UNIFORM, static_cast<int>(MAP_TEXTURE_UNIT));
     shader.setFloat(MINIMAP_OVERLAY_OPACITY_UNIFORM,
                     std::clamp(opacity, MIN_MINIMAP_OPACITY, MAX_MINIMAP_OPACITY));
+    // The line around the map: its width follows the height of the window, like the
+    // size of the map, so it is as thin on every display, and whole pixels keep it
+    // sharp.
+    const float borderPixels =
+        std::max(MIN_MINIMAP_BORDER_PIXELS,
+                 std::round(MINIMAP_BORDER_WIDTH * static_cast<float>(windowSize.height)));
+    shader.setFloat(MINIMAP_OVERLAY_SIZE_UNIFORM, static_cast<float>(rect.size));
+    shader.setFloat(MINIMAP_OVERLAY_BORDER_WIDTH_UNIFORM, borderPixels);
+    shader.setVec3(MINIMAP_OVERLAY_BORDER_COLOR_UNIFORM, MINIMAP_BORDER_COLOR);
     // Reading the texture of the minimap is allowed here because the window is the
     // target: a pass must never read the texture it is drawing into.
     m_target.bindColorTexture(MAP_TEXTURE_UNIT);

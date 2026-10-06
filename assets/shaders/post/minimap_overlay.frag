@@ -16,6 +16,13 @@ uniform sampler2D uMap;
 // How much the map hides of the scene behind it: 1 hides it completely.
 uniform float uOpacity;
 
+// The line around the map. uSizePixels is the side of the map in pixels of the window,
+// uBorderPixels the width of the line in the same pixels and uBorderColor its colour,
+// an sRGB value like the colours of the picture.
+uniform float uSizePixels;
+uniform float uBorderPixels;
+uniform vec3 uBorderColor;
+
 // Output: the color written to the window (red, green, blue, alpha).
 out vec4 fragColor;
 
@@ -30,5 +37,17 @@ void main() {
     // scene that is already in the window: colour * alpha + scene * (1 - alpha). Both
     // are sRGB values at that point, so the mix is not the physically right one of
     // linear light. The debug UI and the HUD are mixed in the same way.
-    fragColor = vec4(texture(uMap, vUv).rgb, uOpacity);
+    vec3 color = texture(uMap, vUv).rgb;
+
+    // THE BORDER. With only a few cells discovered the map is a dark square on a dark
+    // scene, and nothing shows where it ends. So the outermost pixels of the square get
+    // the colour of a thin line. vUv * uSizePixels is the place of this pixel in the
+    // square, counted in pixels from its bottom left corner, and the smallest of the
+    // four distances to the edges tells how far inside the square it lies.
+    vec2 fromEdge = min(vUv, 1.0 - vUv) * uSizePixels;
+    if (min(fromEdge.x, fromEdge.y) < uBorderPixels) {
+        color = uBorderColor;
+    }
+
+    fragColor = vec4(color, uOpacity);
 }

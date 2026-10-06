@@ -121,6 +121,16 @@ static_assert(sizeof(MinimapVertex) ==
 /// What is not discovered, and the land around the maze: a very dark blue. The picture
 /// is cleared to it before the shapes are drawn.
 constexpr glm::vec3 MINIMAP_BACKGROUND_COLOR{0.03F, 0.04F, 0.07F};
+/// The thin line around the whole map, drawn by the overlay pass
+/// (post/minimap_overlay.frag): a muted blue grey, between the background and the
+/// walls. It shows where the map ends while most of it is still dark, without looking
+/// like a wall of the maze.
+constexpr glm::vec3 MINIMAP_BORDER_COLOR{0.30F, 0.36F, 0.48F};
+/// The width of that line as a part of the HEIGHT of the framebuffer of the window,
+/// like the size and the margin of the map, and the least it is in pixels: 1 pixel at
+/// 720 pixels of height, 2 at 1440.
+constexpr float MINIMAP_BORDER_WIDTH = 0.0015F;
+constexpr float MIN_MINIMAP_BORDER_PIXELS = 1.0F;
 /// The floor of a cell that is shown.
 constexpr glm::vec3 MINIMAP_FLOOR_COLOR{0.15F, 0.18F, 0.25F};
 /// The floor of the start cell: a lighter blue.

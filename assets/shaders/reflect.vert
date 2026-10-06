@@ -20,8 +20,10 @@ uniform mat4 uModel;      // local space to world space
 uniform mat4 uView;       // world space to view space
 uniform mat4 uProjection; // view space to clip space
 // Local space to world space for normals: the inverse transpose of the upper left 3 x 3
-// part of uModel, computed in C++ (scene::normalMatrix). A puddle is a disc made wider
-// along X and Z only, so this is a model matrix for which mat3(uModel) would not do.
+// part of uModel, computed in C++ (scene::normalMatrix). A crystal is turned and made
+// bigger by its model matrix. The puddles are in world space already (their model
+// matrix is the identity) and their normal is straight up at every vertex: the water
+// lies on the uneven ground, but it mirrors like level water.
 uniform mat3 uNormalMatrix;
 
 // Outputs to the fragment shader, blended across the triangle by the rasterizer.

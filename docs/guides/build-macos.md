@@ -985,7 +985,7 @@ jej grupy, każda do odhaczenia po przejściu wszystkich punktów grupy z Window
       panelu Lights
 - [ ] kryształy i brama w obrazie: dwa kształty kryształów, kołysanie, obrót, blask i
       pulsowanie, drewniana brama przy komórce wyjścia
-- [ ] HUD przy ukrytych panelach (klawisz z punktu o klawiaturze wyżej)
+- [ ] HUD przy ukrytych panelach (klawisz z punktu o klawiaturze wyżej). Od 2026-10-06 (decyzja właściciela) przy schowanych panelach pasek stoi przy górnej krawędzi okna, `HUD_TOP_OFFSET * scale` od niej (16 punktów razy `FontScaleDpi`, na Retinie więcej pikseli), a po przywróceniu paneli wraca pod rzędy pasków: sprawdzić oba położenia i przeskok przy klawiszu
 - [ ] zbieranie kryształów: licznik, bateria, gasnące światło, pierścień na planie,
       suwaki `Recharge` i `Pickup radius`
 - [ ] bateria i latarka: zużycie, `Battery lifetime`, `Battery drains`, migotanie poniżej
@@ -1607,6 +1607,8 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
 
 ### M7, część 4 (cienie księżyca) na macOS: lista w całości otwarta
 
+**Stan na 2026-10-06:** na Windowsie agent obejrzał obraz tej części na zrzutach ekranu ([`build-windows.md`](build-windows.md), sekcja 20.1, "Widziane na zrzutach ekranu przez agenta"). To nie dotyczy macOS: tu nadal nikt niczego nie zbudował ani nie uruchomił i żaden punkt poniżej nie jest odhaczony.
+
 Czwarta część kamienia milowego M7 (mapa cieni księżyca: przebieg głębi na początku klatki
 do framebuffera bez tekstury koloru, rzut ortograficzny dopasowany do terenu, odczyt przez
 `sampler2DShadow` z obiektem samplera z porównaniem, filtr sprzętowy 2 x 2, PCF do 7 x 7,
@@ -1711,6 +1713,8 @@ całości.
       kroku kopiowania assetów)
 
 ### M7, część 5 (cień latarki) na macOS: lista w całości otwarta
+
+**Stan na 2026-10-06:** na Windowsie agent obejrzał obraz tej części na zrzutach ekranu (sekcja 21.1 w [`build-windows.md`](build-windows.md)), poza bramą i cieniami latarki w `Gouraud`. Na macOS nadal nic nie było budowane ani uruchamiane. Do sprawdzenia tu także znane ograniczenie trybu `Gouraud` (plama latarki na ścianach znika, bo światło jest liczone w wierzchołkach).
 
 Piąta część kamienia milowego M7 (mapa cieni latarki z rzutem perspektywicznym i światło
 latarki przeniesione z oka do ręki: pliki `src/scene/LightSpace.*` (`spotLightSpace`),
@@ -1825,6 +1829,8 @@ części 4 zatrzyma też tę część.
 
 ### M7, część 6 (minimapa) na macOS: lista w całości otwarta
 
+**Stan na 2026-10-06:** na Windowsie agent obejrzał minimapę na zrzutach ekranu (sekcja 22.1 w [`build-windows.md`](build-windows.md)). Od tego dnia nakładka rysuje też cienką ramkę: `minimap_overlay.frag` ma trzy nowe uniformy (`uSizePixels`, `uBorderPixels`, `uBorderColor`), więc przy sprawdzaniu na Macu trzeba zobaczyć ramkę, której szerokość liczy się z **wysokości framebuffera w pikselach** (`round(0,0015 * wysokość)`, najmniej 1): 1 piksel przy 720 pikselach, 2 przy 1440. Okno 1280 x 720 punktów na ekranie Retina ma framebuffer 2560 x 1440, więc ramka ma tam 2 piksele. Na macOS nadal nic nie było budowane ani uruchamiane.
+
 Szósta, ostatnia część kamienia milowego M7 (minimapa: pliki `src/game/Discovery.*`,
 `Minimap.*` i `MinimapRenderer.*`, `Round::discovery`, `cellAt` w `MazeLayout.*`, nowe
 parametry `gfx::Buffer` (podpowiedź użycia i `setData`), `NightMazeApp::drawMinimap` z
@@ -1916,8 +1922,7 @@ Pierwsza część kamienia milowego M8 (odbicia i załamania nieba na kryształa
 2026-10-06 i tam jest zgłoszona jako zbudowana i przetestowana ([`build-windows.md`](build-windows.md),
 sekcja 23, "Lista kontrolna M8, część 1: environment mapping"). **Na macOS nikt jej nie zbudował ani
 nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Na Windowsie zgłoszono też tylko
-krótki start programu Debug (około 8 sekund, tylko ścieżka domyślna): nikt nie obejrzał odbić na
-żadnym systemie. Opis kodu: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md).
+krótki start programu Debug (około 8 sekund, tylko ścieżka domyślna): do 2026-10-06 nikt nie obejrzał odbić na żadnym systemie. Tego dnia na Windowsie agent obejrzał je na zrzutach ekranu ([`build-windows.md`](build-windows.md), sekcja 23.1) i znalazł błędy kałuż, po których kałuże zostały przerobione (idą za gruntem, miękki brzeg, krycie): **na macOS nadal nikt nic nie widział**. Opis kodu: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md).
 M8 jest rozpoczęty i nie jest kompletny ("M8, podstawy bez okna", "M8, część 1: environment mapping" i "M8, część 2: selekcja, dźwignie i kartki"). Kolejność sprawdzania wszystkich części na Macu:
 [`m7-status.md`](m7-status.md).
 
@@ -1962,9 +1967,9 @@ zatrzyma także tę część.
       ścian, `Share of cells` od 0 do 0,50 dodaje kałuże i niczego nie przesuwa (na 0,50: 43)
 - [ ] księżyc w kałuży: kamera `Yaw` 205, `Pitch` -50 (znak sprawdzić), kałuża około 1,4 m przed
       graczem
-- [ ] `Fresnel` włączony i wyłączony, `Reflectivity` 0,35 i 0,02
-- [ ] `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z gruntem, na zboczach są częściowo
-      ukryte
+- [ ] `Fresnel` włączony i wyłączony, `Reflectivity` 0,5 (wartość startowa od poprawek z 2026-10-06, wcześniej 0,35) i 0,02
+- [ ] `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z gruntem, żadna nie jest obcięta ani nie wisi, nic nie wystaje spod wody (od poprawek z 2026-10-06; wcześniej tarcze na zboczach były częściowo ukryte)
+- [ ] **mieszanie w przebiegu kałuż (nowe dla sterownika Apple):** brzeg kałuży zanika miękko, bez prążków i bez ostrej linii. Przebieg używa `glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)` i `glDepthMask(GL_FALSE)`, a po rysowaniu przywraca stan (mieszanie wyłączone, zapis głębi włączony): sprawdzić, że minimapa i panele rysują się dalej poprawnie, i że kryształy rysowane tym samym programem przed kałużami zostają pełne (uniform `uRimFade` wraca do 0)
 - [ ] tryby `Unlit`, `Gouraud`, `Phong`, widoki `Normals as colour` i `UVs as colour`, niebo
       wyłączone, `Reload shaders`: bez błędów w konsoli, wyglądy jak w liście Windowsa
 - [ ] ekran Retina: odbicie na kryształach i kałuże przy podwójnej rozdzielczości, brak migotania
@@ -1972,15 +1977,13 @@ zatrzyma także tę część.
 
 **Testy jednostkowe na Macu**
 
-- [ ] `ctest` albo `night_maze_tests`: wszystkie przechodzą, w tym 11 przypadków z
-      `EnvironmentMappingTests.cpp` i 20 z `PuddleTests.cpp` (razem 31). Testy kałuż korzystają z
+- [ ] `ctest` albo `night_maze_tests`: wszystkie przechodzą, w tym 11 przypadków z `EnvironmentMappingTests.cpp` i 21 z `PuddleTests.cpp` (razem 32; do poprawek kałuż z 2026-10-06 było 20 i 31). Testy kałuż korzystają z
       `heightmap.png` z katalogu assetów (`NIGHT_MAZE_ASSETS_DIR`). Test złoty `golden maze: 4 x 4
       cells from seed 1 has exactly these puddles` ma wartości z Windowsa: ma przejść także na
       Macu (`std::mt19937` i `randomBelow` są takie same na każdym kompilatorze)
 - [ ] build Debug i Release bez ostrzeżeń kompilatora
 
-**Co nadal nie istnieje na żadnym systemie:** obraz tej części nikogo nie przekonał ani nie
-rozczarował: nikt go jeszcze nie zobaczył. M8 jest rozpoczęty: selekcja obiektów, dźwignie i
+**Co nadal nie istnieje na żadnym systemie:** na Macu obraz tej części nie został zobaczony przez nikogo. Na Windowsie widział go tylko agent (zrzuty z 2026-10-06, nie właściciel). M8 jest rozpoczęty: selekcja obiektów, dźwignie i
 kartki mają własną listę poniżej.
 
 ### M8, część 2 (selekcja, dźwignie i kartki) na macOS: lista w całości otwarta
@@ -2035,7 +2038,7 @@ programami, a podświetlenie to uniform `uEmissive`. Ryzyko leży w **współrz�
 **Testy jednostkowe na Macu**
 
 - [ ] `ctest` albo `night_maze_tests`: wszystkie przechodzą, w tym 21 przypadków z
-      `InteractionTests.cpp` (razem na Windowsie 466 przypadków i 152264 asercji)
+      `InteractionTests.cpp` (razem na Windowsie 466 przypadków i 152264 asercji; po poprawkach kałuż z 2026-10-06 zgłoszone 467 i 158006)
 - [ ] build Debug i Release bez ostrzeżeń kompilatora
 
 **Co nadal nie istnieje na żadnym systemie:** obraz tej części nie został obejrzany przez

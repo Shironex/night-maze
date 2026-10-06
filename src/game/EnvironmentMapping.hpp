@@ -88,8 +88,11 @@ struct EnvironmentSettings {
     /// How much of the colour of a puddle is the mirrored sky when the puddle is looked
     /// at straight from above: 0 none, 1 a perfect mirror. Real water has only 0.02
     /// there. The default is much higher on purpose: the night sky is dark, and with
-    /// 0.02 a puddle a few steps away would show almost nothing of it.
-    float puddleReflectivity = 0.35F;
+    /// 0.02 a puddle a few steps away would show almost nothing of it. At 0.5 the stars
+    /// can be made out in a puddle under the feet, and the rest of what is seen there
+    /// is the water itself and the ground under it (a puddle is a thin film that lets
+    /// the ground show through, see game::PuddleRenderer).
+    float puddleReflectivity = 0.5F;
 
     /// Whether the mirror of a puddle gets stronger the flatter it is looked at
     /// (fresnelSchlick). Switched off, the reflectivity above is used at every angle.

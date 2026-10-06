@@ -183,6 +183,12 @@ constexpr const char* MINIMAP_MAP_TO_CLIP_UNIFORM = "uMapToClip";
 constexpr const char* MINIMAP_OVERLAY_MAP_UNIFORM = "uMap";
 constexpr const char* MINIMAP_OVERLAY_OPACITY_UNIFORM = "uOpacity";
 
+/// post/minimap_overlay.frag, the line around the map: the side of the map in pixels,
+/// the width of the line in pixels and its colour (an sRGB value, like the picture).
+constexpr const char* MINIMAP_OVERLAY_SIZE_UNIFORM = "uSizePixels";
+constexpr const char* MINIMAP_OVERLAY_BORDER_WIDTH_UNIFORM = "uBorderPixels";
+constexpr const char* MINIMAP_OVERLAY_BORDER_COLOR_UNIFORM = "uBorderColor";
+
 /// skybox.frag: the sampler of the cube map (it holds the number of a texture unit) and
 /// the number the colour of the sky is multiplied by.
 constexpr const char* SKYBOX_UNIFORM = "uSkybox";
@@ -218,6 +224,13 @@ constexpr const char* ENVIRONMENT_STRENGTH_UNIFORM = "uEnvironmentStrength";
 constexpr const char* ENVIRONMENT_FRESNEL_ENABLED_UNIFORM = "uFresnelEnabled";
 constexpr const char* ENVIRONMENT_REFLECT_SHARE_UNIFORM = "uReflectShare";
 constexpr const char* ENVIRONMENT_REFRACTION_RATIO_UNIFORM = "uRefractionRatio";
+
+/// reflect.frag, the soft rim of a puddle: the part of the radius over which the water
+/// fades out towards its rim (0 switches the fade off and makes the surface solid, as
+/// for the crystals), and how much the water hides of the ground in its middle (0 to
+/// 1). The second one is read only while the first is above 0.
+constexpr const char* REFLECT_RIM_FADE_UNIFORM = "uRimFade";
+constexpr const char* REFLECT_OPACITY_UNIFORM = "uOpacity";
 
 /// The texture unit of the cube map of the sky while the reflect program draws: the
 /// next free one after the two shadow maps (3 and 4). It must not share a unit with the

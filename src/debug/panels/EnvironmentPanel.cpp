@@ -20,6 +20,12 @@ constexpr float MAX_SHARE = 1.0F;
 // game::MAX_PUDDLE_SHARE.
 constexpr float MIN_PUDDLE_SHARE = 0.0F;
 
+// The widgets stand in two columns of equal width, the crystals on the left and the
+// puddles on the right. One below the other they are taller than the panel (its height
+// is all the room there is above the bottom row of panels), and the last two lines
+// could only be reached by scrolling.
+constexpr int GROUP_COLUMNS = 2;
+
 } // namespace
 
 void drawEnvironmentPanel(game::EnvironmentSettings& settings, std::size_t puddleCount) {
@@ -35,7 +41,15 @@ void drawEnvironmentPanel(game::EnvironmentSettings& settings, std::size_t puddl
                               "refracted ray. Only the sky: walls are never mirrored.\n"
                               "Off: the crystals are drawn like the walls, no puddles.");
 
+        // BeginTable returns false when no part of the table can be seen. Nothing is drawn
+        // then, and EndTable must not be called.
+        if (!ImGui::BeginTable("crystals and puddles", GROUP_COLUMNS)) {
+            ImGui::End();
+            return;
+        }
+
         // These are uniforms of the reflect program: a change shows in the next frame.
+        ImGui::TableNextColumn();
         ImGui::SeparatorText("Crystals");
         ImGui::SliderFloat("Sky share", &settings.crystalStrength, MIN_SHARE, MAX_SHARE, "%.2f",
                            ImGuiSliderFlags_AlwaysClamp);
@@ -59,8 +73,11 @@ void drawEnvironmentPanel(game::EnvironmentSettings& settings, std::size_t puddl
                               "brighter than the night sky: turn it down to see the sky on\n"
                               "a crystal plainly. The halo of the bloom fades with it.");
 
+        ImGui::TableNextColumn();
         ImGui::SeparatorText("Puddles");
         ImGui::Checkbox("Puddles", &settings.puddles);
+        ImGui::SetItemTooltip("A puddle is a thin film of water that follows the ground,\n"
+                              "with a level mirror on it and a rim that fades out.");
         // SliderFloat returns true in every frame in which the value changed. The panel
         // only asks: the game places the puddles at the start of its next frame.
         if (ImGui::SliderFloat("Share of cells", &settings.puddleShare, MIN_PUDDLE_SHARE,
@@ -73,14 +90,15 @@ void drawEnvironmentPanel(game::EnvironmentSettings& settings, std::size_t puddl
         ImGui::SliderFloat("Reflectivity", &settings.puddleReflectivity, MIN_SHARE, MAX_SHARE,
                            "%.2f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::SetItemTooltip("How much of the sky a puddle shows when looked at straight\n"
-                              "from above. Real water: 0.02.");
+                              "from above. Real water: 0.02. The rest is the water and the\n"
+                              "ground that shows through it.");
         ImGui::Checkbox("Fresnel", &settings.puddleFresnel);
         ImGui::SetItemTooltip("On: a puddle mirrors more the flatter it is looked at\n"
-                              "(Schlick's formula), up to a full mirror far ahead.\n"
-                              "Off: the reflectivity above at every angle.");
+                              "(Schlick's formula), up to a full mirror far ahead, and hides\n"
+                              "more of the ground. Off: the reflectivity above at every angle.");
 
-        ImGui::Separator();
         ImGui::Text("Puddles: %d", static_cast<int>(puddleCount));
+        ImGui::EndTable();
     }
     ImGui::End();
 }

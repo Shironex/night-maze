@@ -7,7 +7,9 @@ Kod: reguła odkrywania [`src/game/Discovery.hpp`](../../../src/game/Discovery.h
 
 **Zmiana w M8, części 2 (2026-10-06).** Mapa czyta ściany z **labiryntu rundy** (`roundMaze(world, round)`), a nie ze świata: ściana, którą otworzyła dźwignia, znika z mapy od następnej klatki, a odkrywanie widzi korytarz za nią (sekcje 2.3, 2.6 i 2.11). Doszły też małe kwadraty dźwigni i kartek (sekcja 2.6). Liczby programów (czternaście) i paneli (trzynaście) się nie zmieniły. Co z tego widziano na ekranie, mówi sekcja 5.9.
 
-**Uczciwie o tym, co sprawdzono.** Wszystko poniżej o obrazie jest **policzone z kodu i z jego testów, nikt nie obejrzał minimapy**. Zgłoszone przez wykonawcę (Windows, 2026-10-06), nie powtórzone przy pisaniu tego dokumentu: bramka `make check` przechodzi w Debug i Release, **414 przypadków testowych i 138711 asercji** (przed tą częścią 375 i 138506), a start programu Debug przez około 7 sekund wypisał `GL_VERSION` 4.1.0 NVIDIA i linie wczytania zasobów, przy pustym standardowym wyjściu błędów (błędy shaderów, `GL_CHECK` i framebuffera trafiają tam tylko wtedy, gdy się zdarzą). Minimapa jest domyślnie włączona, więc z pustego `stderr` wynika (to **moje wnioskowanie ze zgłoszenia**, nie osobna obserwacja), że oba nowe programy się skompilowały i framebuffer mapy był kompletny. **Nie ćwiczono**: ruchu gracza, klawisza M, zakładki Minimap, `Reveal all`, `Reload shaders`, zmiany rozmiaru okna ani obu widoków diagnostycznych. Brak błędu nie mówi nic o tym, jak mapa wygląda: trójkąt odrzucony przy odrzucaniu tylnych ścian nie zgłasza błędu OpenGL. Lista do wykonania ręcznie: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 22. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
+**Zmiana z 2026-10-06 (ramka).** Wokół mapy stoi cienka ramka: najbardziej zewnętrzne piksele kwadratu dostają kolor `MINIMAP_BORDER_COLOR` (`(0,30; 0,36; 0,48)`, wartość sRGB, wyciszony niebiesko-szary między tłem a ścianami). Przy kilku odkrytych komórkach mapa to ciemny kwadrat na ciemnej scenie i nic nie pokazywało, gdzie się kończy. Ramkę rysuje przebieg nakładki (`post/minimap_overlay.frag`), nie obraz mapy (sekcja 2.9). To poprawka wykonawcza, nie decyzja właściciela.
+
+**Uczciwie o tym, co sprawdzono.** Trzy rodzaje dowodów trzymam osobno (szczegóły w sekcji 5.9): **zgłoszone** przez wykonawcę i przez bramkę; **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela**, bo agent uruchomił grę i obejrzał mapę (sekcja 5.9, lista tej oglądanej i tej nieoglądanej części); **otwarta lista właściciela** (build-windows.md, sekcja 22.2) i macOS. Poniżej, poza sekcją 5.9, liczby o obrazie są **policzone z kodu i z jego testów**, a agent potwierdził tylko to, co jest wymienione w 5.9. W chwili pisania pierwotnej części (przed obejrzeniem) było tak: Zgłoszone przez wykonawcę (Windows, 2026-10-06), nie powtórzone przy pisaniu tego dokumentu: bramka `make check` przechodzi w Debug i Release, **414 przypadków testowych i 138711 asercji** (przed tą częścią 375 i 138506), a start programu Debug przez około 7 sekund wypisał `GL_VERSION` 4.1.0 NVIDIA i linie wczytania zasobów, przy pustym standardowym wyjściu błędów (błędy shaderów, `GL_CHECK` i framebuffera trafiają tam tylko wtedy, gdy się zdarzą). Minimapa jest domyślnie włączona, więc z pustego `stderr` wynika (to **moje wnioskowanie ze zgłoszenia**, nie osobna obserwacja), że oba nowe programy się skompilowały i framebuffer mapy był kompletny. **Nie ćwiczono**: ruchu gracza, klawisza M, zakładki Minimap, `Reveal all`, `Reload shaders`, zmiany rozmiaru okna ani obu widoków diagnostycznych. Brak błędu nie mówi nic o tym, jak mapa wygląda: trójkąt odrzucony przy odrzucaniu tylnych ścian nie zgłasza błędu OpenGL. Lista do wykonania ręcznie: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 22. **Na macOS ten kod nie był ani budowany, ani uruchamiany.**
 
 ## 1. Po co to jest
 
@@ -175,7 +177,7 @@ Zabezpieczenia: wartości z suwaków są wciskane w zakres (`MIN_MINIMAP_SIZE` 0
 | promień rombu kryształu | 0,4 | 2 | 0,4 m | `2 * 0,42 = 0,84` m |
 | długość strzałki | 0,9 | 5 | 0,9 m | `5 * 0,42 = 2,1` m |
 
-Kolumna 40 x 40: półbok `40 * 2 / 2 * 1,06 = 42,4` m, więc `84,8 / 202 = 0,42` m na piksel, a komórka ma około 4,8 piksela. To **policzone**, nikt nie oglądał mapy 40 x 40. Test `thin shapes keep a smallest size in pixels on the map of a large maze` sprawdza mechanizm dla `1 m` na piksel (ściana 1,5 m, strzałka 5 m).
+Kolumna 40 x 40: półbok `40 * 2 / 2 * 1,06 = 42,4` m, więc `84,8 / 202 = 0,42` m na piksel, a komórka ma około 4,8 piksela. To **policzone**. Agent widział na zrzucie (2026-10-06, nie właściciel), że w labiryncie 40 x 40 strzałka jest większa od komórki i zasłania komórkę startu; właściciel nie oglądał mapy 40 x 40. Test `thin shapes keep a smallest size in pixels on the map of a large maze` sprawdza mechanizm dla `1 m` na piksel (ściana 1,5 m, strzałka 5 m).
 
 **Strzałka gracza.** Yaw kamery 0 patrzy na północ (w stronę mniejszego `z`), 90 na wschód. Kierunek "przód" na mapie to `(sin yaw, -cos yaw)`, a "w prawo" to ten kierunek obrócony o ćwierć obrotu, `(cos yaw, sin yaw)`. Czubek stoi `length` przed graczem, dwa tylne rogi `0,6 * length` za nim i po `0,65 * length` na boki. Strzałka jest rysowana zawsze, także poza labiryntem (obraz może ją wtedy uciąć), i jako ostatnia, żeby nic jej nie przykryło. Pozycja strzałki to **stopy** gracza z klatki (zmieszane między dwoma krokami stałymi tak jak kamera), więc porusza się równie płynnie jak widok.
 
@@ -215,7 +217,7 @@ Kolory ściany, bramy, kryształu i gracza to te same, których używa plan w pa
 
 Drugi przebieg rysuje obraz mapy do okna, **na gotowym obrazie sceny**. Żeby scena była widać przez mapę, używa **mieszania** (blending): zamiast zastąpić piksel okna, OpenGL liczy `wynik = kolor * alfa + okno * (1 - alfa)`. To `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)`, a alfą jest przezroczystość mapy `uOpacity`, domyślnie 0,85: mapa zakrywa 85 procent sceny pod sobą. Shader zwraca `vec4(texture(uMap, vUv).rgb, uOpacity)`.
 
-Gra nigdzie indziej nie używa mieszania (ImGui ustawia własne). Dlatego przebieg:
+Poza nakładką mieszania używają w grze tylko kałuże ([`env-mapping.md`](env-mapping.md), sekcja 2.11; od poprawek z 2026-10-06) i interfejs ImGui, każde z własną funkcją mieszania ustawianą przed rysowaniem. Dlatego przebieg:
 
 1. zapamiętuje, czy mieszanie było włączone (`glIsEnabled`),
 2. włącza je i ustawia funkcję **na czas tego jednego wywołania rysującego**,
@@ -223,6 +225,10 @@ Gra nigdzie indziej nie używa mieszania (ImGui ustawia własne). Dlatego przebi
 4. funkcji mieszania nie przywraca: nic poza ImGui jej nie używa, a ImGui ustawia własną przed rysowaniem.
 
 Przebieg mapy do framebuffera mapy ma mieszanie **wyłączone** (`glDisable(GL_BLEND)`): każdy kształt jest nieprzezroczysty i zastępuje to, co pod nim. Gra nigdy go nie włącza, ale linia mówi wprost, że przebieg na tym polega.
+
+**Ramka wokół mapy (od 2026-10-06).** Przebieg nakładki rysuje też cienką linię na samym brzegu kwadratu. Shader dostaje trzy uniformy: `uSizePixels` (bok mapy w pikselach okna, `rect.size`), `uBorderPixels` (szerokość linii w tych samych pikselach) i `uBorderColor` (kolor, wartość sRGB jak kolory obrazu). Dla piksela `fromEdge = min(vUv, 1 - vUv) * uSizePixels` to jego odległość od najbliższej z czterech krawędzi, w pikselach, a gdy mniejsza z dwóch składowych jest poniżej `uBorderPixels`, kolor piksela jest kolorem ramki zamiast koloru z tekstury. Ramka **zastępuje najbardziej zewnętrzne piksele mapy** (nie rośnie poza kwadrat), a dostaje tę samą przezroczystość `uOpacity` co reszta.
+
+Szerokość to `max(MIN_MINIMAP_BORDER_PIXELS, round(MINIMAP_BORDER_WIDTH * wysokość framebuffera okna))`, czyli część wysokości jak rozmiar i margines mapy (sekcja 2.5): `MINIMAP_BORDER_WIDTH` = 0,0015 i najmniej 1 piksel. Przy 720 pikselach wysokości wychodzi `round(1,08) = 1`, przy 1440 `round(2,16) = 2` (policzone), więc linia jest cienka na każdym ekranie, a całe piksele dbają o jej ostrość. Stałe są w `Minimap.hpp`. Kolor jest stałą sRGB bez konwersji, zgodnie z decyzją [`../../decisions/minimap-srgb-constants-after-composite.md`](../../decisions/minimap-srgb-constants-after-composite.md).
 
 ### 2.10 Kolejność klatki
 
@@ -268,7 +274,7 @@ Odkrycie jest polem rundy (`Round::discovery`). Wynika stąd, kiedy się zeruje,
 
 - **Właściciel nie obejrzał mapy.** Kolory, grubości, rozmiar strzałki i czytelność są policzone, a pierwszy raz zobaczył je agent na zrzutach ekranu z M8, części 2 (sekcja 5.9), nie właściciel.
 - Odkryta komórka nie jest "zapamiętana jako widziana z odległości": reguła nie ma pojęcia zasięgu wzroku, korytarz jest odkrywany aż do ściany, także długi na 40 komórek.
-- Ściana między komórką pokazaną a niepokazaną jest rysowana, więc jej grubość wchodzi o pół grubości w niepokazaną komórkę. To drobna rzecz, której nikt nie oglądał.
+- Ściana między komórką pokazaną a niepokazaną jest rysowana, więc jej grubość wchodzi o pół grubości w niepokazaną komórkę. To drobna rzecz, której nie oglądał właściciel (agent jej nie wymienił wśród oglądanych punktów).
 - Mapa jest za mała do czytania w labiryncie 40 x 40 (komórka około 5 pikseli przy 202 px): kod trzyma tylko minimalne rozmiary kształtów, a samej czytelności nie poprawia. Test `the map of the largest maze can be built` sprawdza tylko, że lista powstaje.
 - Panel Framebuffers nie dostał większej wysokości przy trzeciej zakładce (`PanelLayout.hpp` nie zmieniono), więc zakładka Minimap może wymagać przewijania. Nikt tego nie sprawdził.
 - Mieszanie jest liczone na wartościach sRGB, a nie liniowych (sekcja 2.8).
@@ -293,7 +299,7 @@ Wywołania przebiegów w kolejności wykonania. Przebieg mapy (`drawMap`) i prze
 | 10 | `Framebuffer::bindDefault(w, h)` | w `drawOverlay`: z powrotem okno |
 | 11 | `glViewport(rect.x, rect.y, rect.size, rect.size)` | viewport na kwadrat w rogu okna |
 | 12 | `glDisable(GL_DEPTH_TEST)`, `glIsEnabled(GL_BLEND)`, `glEnable(GL_BLEND)`, `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)` | mieszanie na czas jednego wywołania |
-| 13 | `setInt("uMap", 0)`, `setFloat("uOpacity", ...)`, `bindColorTexture(0)` | sampler, przezroczystość i tekstura mapy na jednostce 0 |
+| 13 | `setInt("uMap", 0)`, `setFloat("uOpacity", ...)`, trzy uniformy ramki (od 2026-10-06), `bindColorTexture(0)` | sampler, przezroczystość, ramka i tekstura mapy na jednostce 0 |
 | 14 | `m_triangle.bind()`, `glDrawArrays(GL_TRIANGLES, 0, 3)` | trójkąt pełnoekranowy (ma pokryć viewport, czyli kwadrat) |
 | 15 | `glDisable(GL_BLEND)` (gdy było wyłączone), `glViewport(0, 0, w, h)` | porządek na koniec |
 
@@ -349,10 +355,20 @@ Jedna linia pracy: kolor trafia do tekstury **tak, jak jest**, z alfą 1 (obraz 
 in vec2 vUv;
 uniform sampler2D uMap;
 uniform float uOpacity;
+uniform float uSizePixels;
+uniform float uBorderPixels;
+uniform vec3 uBorderColor;
 out vec4 fragColor;
 
 void main() {
-    fragColor = vec4(texture(uMap, vUv).rgb, uOpacity);
+    vec3 color = texture(uMap, vUv).rgb;
+
+    vec2 fromEdge = min(vUv, 1.0 - vUv) * uSizePixels;
+    if (min(fromEdge.x, fromEdge.y) < uBorderPixels) {
+        color = uBorderColor;
+    }
+
+    fragColor = vec4(color, uOpacity);
 }
 ```
 
@@ -361,7 +377,11 @@ void main() {
 | `in vec2 vUv` | współrzędna tekstury z `composite.vert`: `(0, 0)` w lewym dolnym rogu rysowanego obszaru, `(1, 1)` w prawym górnym. Obszarem jest tu kwadrat mapy, nie całe okno |
 | `uniform sampler2D uMap` | numer jednostki teksturującej z obrazem mapy (0) |
 | `uniform float uOpacity` | przezroczystość mapy, wciśnięta w zakres od 0,1 do 1 po stronie C++ |
-| `vec4(texture(uMap, vUv).rgb, uOpacity)` | kolor bez zmian, a alfa to przezroczystość. Mieszanie OpenGL zrobi z tego `kolor * alfa + scena * (1 - alfa)` |
+| `uniform float uSizePixels`, `uBorderPixels`, `uniform vec3 uBorderColor` (od 2026-10-06) | bok mapy w pikselach okna, szerokość ramki w pikselach i jej kolor (sRGB) |
+| `vec3 color = texture(uMap, vUv).rgb` | kolor mapy bez zmian |
+| `fromEdge = min(vUv, 1.0 - vUv) * uSizePixels` | odległość piksela od najbliższej z czterech krawędzi kwadratu, w pikselach okna (`vUv` liczy od lewego dolnego rogu) |
+| `if (min(fromEdge.x, fromEdge.y) < uBorderPixels)` | piksele na samym brzegu, szerokości `uBorderPixels`, dostają kolor ramki |
+| `vec4(color, uOpacity)` | kolor, a alfa to przezroczystość. Mieszanie OpenGL zrobi z tego `kolor * alfa + scena * (1 - alfa)`, także dla ramki |
 
 Program `minimap_overlay` to **nowy plik fragmentów z już istniejącym** `post/composite.vert`: wspólny shader wierzchołków obsługuje teraz pięć programów (`composite`, `preview`, `bright`, `blur`, `minimap_overlay`).
 
@@ -372,6 +392,9 @@ Program `minimap_overlay` to **nowy plik fragmentów z już istniejącym** `post
 | `MINIMAP_MAP_TO_CLIP_UNIFORM` | `uMapToClip` (`mat4`) | `MinimapRenderer::drawMap` | co klatkę, po `shader.use()` |
 | `MINIMAP_OVERLAY_MAP_UNIFORM` | `uMap` (`sampler2D`) | `drawOverlay` | co klatkę, wartość 0. Po `Reload shaders` każdy uniform wraca do 0, więc ustawianie co klatkę jest potrzebne |
 | `MINIMAP_OVERLAY_OPACITY_UNIFORM` | `uOpacity` (`float`) | `drawOverlay` | co klatkę, wartość ograniczona do zakresu od 0,1 do 1 (`std::clamp`) |
+| `MINIMAP_OVERLAY_SIZE_UNIFORM` | `uSizePixels` (`float`) | `drawOverlay` | co klatkę, `rect.size` |
+| `MINIMAP_OVERLAY_BORDER_WIDTH_UNIFORM` | `uBorderPixels` (`float`) | `drawOverlay` | co klatkę, `max(1, round(0,0015 * wysokość framebuffera okna))` |
+| `MINIMAP_OVERLAY_BORDER_COLOR_UNIFORM` | `uBorderColor` (`vec3`) | `drawOverlay` | co klatkę, `MINIMAP_BORDER_COLOR` |
 
 ## 5. Kod w projekcie
 
@@ -518,7 +541,25 @@ Wszystko poniżej jest **zgłoszone** przez osobę, która pisała kod (Windows,
 - **Start.** Program Debug uruchomiony na około 7 sekund: `GL_VERSION` 4.1.0 NVIDIA, linie wczytania zasobów, pusty `stderr`. Z tego **wnioskuję** (nie zgłoszono tego wprost), że oba nowe programy się skompilowały, a framebuffer mapy był kompletny, bo mapa jest domyślnie włączona.
 - **Nie ćwiczono:** ruch gracza, klawisz M, zakładka Minimap, `Reveal all`, `Reload shaders`, zmiana rozmiaru okna, oba widoki diagnostyczne.
 - **M8, część 2.** Bramka po tej części: 466 przypadków i 152264 asercji w Debug i Release (zgłoszone przez autora kodu, wcześniej 445 i 150296). Minimapy dotyczy przypadek `the minimap drops an opened wall and marks levers and notes` w `tests/InteractionTests.cpp`, a odkrywania `the view passes an opened wall, and a restart brings every wall back`. Agent, który pisał kod, uruchomił grę i widział minimapę na zrzutach ekranu: ściana otwarta dźwignią znika z mapy i mapa pokazuje korytarz za nią, a po klawiszu R wraca do stanu początkowego (widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela). Kwadratów dźwigni i kartek, ich przygaszenia po pociągnięciu ani mapy w labiryncie 40 x 40 agent nie wymienił wśród oglądanych rzeczy, więc to otwarte.
-- **Obrazu mapy nie oglądał właściciel** (agent widział go dopiero w M8, części 2, patrz wyżej). Liczby klatek nie mierzono. Wersji kompilatora, karty i sterownika nie zapisano.
+- **Obrazu mapy nie oglądał właściciel.** Jego lista ręczna (build-windows.md, sekcja 22.2) jest otwarta, macOS nie był budowany, tagu nie ma.
+- **Bramka dziś (zgłoszone przez bramkę, 2026-10-06):** scalone drzewo z poprawkami kałuż, ramką mapy i HUD przechodzi `make check`: **467 przypadków i 158006 asercji**. Start Debug na 8 sekund: 31 linii logu, pusty stderr, żadnej linii błędu. Ramka mapy nie ma testu jednostkowego (to shader i uniformy).
+
+**Widziane na zrzutach ekranu przez agenta (2026-10-06), nie przez właściciela.** Pierwsze oglądanie obrazu M7 i M8 przez agenta: wersja Release z commitu `9a33f18`, 1280 x 720, RTX 4070 Ti SUPER, sterownik zgłaszający OpenGL 4.1.0 NVIDIA 610.74. Ustawienia zmieniał tymczasowy hak testowy, który pisał te same pola co panele (efekt potwierdzony, widżet nie); mysz, W, Shift, M, F, tylda i kliknięcia w panele były prawdziwym, syntetycznym wejściem. Widziane:
+
+- mapa w prawym dolnym rogu, kwadratowa, 202 piksele, ciemna z jasnymi ścianami; północ u góry, strzałka obraca się (po obrocie do `Yaw` 270 wskazuje w lewo)
+- na starcie komórka startu i korytarze od niej; korytarz odkryty do pierwszej ściany i nie dalej
+- turkusowe romby kryształów w odkrytych komórkach; start niebieski, wyjście zielone, brama pomarańczowa (z `Reveal all`)
+- zakładka `Minimap` pokazuje `202 x 202 px, GL_RGBA8`, obraz ostry
+- klawisz M chowa mapę, a zakładka pokazuje wtedy `not drawn (minimap off)`; `Reveal all` działa
+- górne rogi okna są wolne od HUD
+- oba widoki diagnostyczne i `Unlit` nie zmieniają mapy
+- w labiryncie 40 x 40 strzałka jest większa od komórki i zasłania komórkę startu
+- panel Framebuffers przewija się na zakładce `Minimap`, a cztery podglądy pod nią są obcięte (otwarty drobny punkt kosmetyczny)
+- ramka wokół mapy (wersja po poprawce, widziana przez autora poprawek w jego worktree przed scaleniem): cienka i wyciszona przy starcie rundy
+
+**Nie chodzone:** reguły odkrywania na odnogach i w narożnikach, otwarcie bramy i zebranie kryształu widziane na mapie. Kwadraty dźwigni i kartek, ich przygaszenie po pociągnięciu oraz zmiana rozmiaru okna, maksymalizacja, 1440p i `Reload shaders` nie były oglądane.
+
+**Odczyt liczby klatek** (jedna sesja, Release, 1280 x 720, panele ukryte, widok korytarza, synchronizacja pionowa nieaktywna na tej maszynie; to odczyt, nie pomiar): wszystko włączone około 1250, minimapa wyłączona około 1250 do 1270. Różnica mieści się w rozrzucie odczytu, więc koszt mapy tym odczytem nie został wykazany.
 
 ## 6. Panel ImGui
 
