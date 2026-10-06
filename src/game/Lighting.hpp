@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include <span>
+#include <vector>
 
 namespace game {
 
@@ -193,15 +194,49 @@ struct FlashlightPose {
 FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3& eye,
                               const glm::vec3& forward, const glm::vec3& right);
 
+/// One point light of a frame: where it hangs and how much of its brightness it has.
+struct PointLightSpot {
+    glm::vec3 position{0.0F};
+    /// From 0 (dark) to 1 (the full intensity of the settings).
+    float strength = 1.0F;
+};
+
+/// Over this many metres a point light fades out before it leaves the set of lights of
+/// a frame (nearestPointLights): two cells of the maze.
+constexpr float POINT_LIGHT_FADE_DISTANCE = 4.0F;
+
+/// Chooses the point lights one frame is drawn with: the maxCount lights nearest to eye,
+/// the place the picture is taken from.
+///
+/// Why: the shaders have room for scene::MAX_POINT_LIGHTS point lights (the array of
+/// the uniform block), and a large maze has more crystals than that. A light reaches
+/// about 3 m (LightingSettings::pointRadius), so a crystal far from the eye lights
+/// ground that is small in the picture or hidden behind walls. Its own glow, which is
+/// not a light but a colour of its material, is drawn for every crystal.
+///
+/// Without more care a light would switch on or off at full brightness in the frame in
+/// which two crystals change places in the order. So the lights near the edge of the
+/// set are dimmed: the distance of the nearest light that was LEFT OUT is the edge, a
+/// light at the edge has strength 0, and one POINT_LIGHT_FADE_DISTANCE or more inside
+/// it has strength 1. When two lights change places they are equally far away, both at
+/// the edge and both dark, so nothing jumps.
+///
+/// With maxCount lights or fewer all of them are returned at strength 1. The result is
+/// sorted from the nearest to the farthest. A maxCount below 1 gives no lights.
+std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,
+                                               const glm::vec3& eye,
+                                               int maxCount = scene::MAX_POINT_LIGHTS);
+
 /// The lights of one frame, with their colours converted from sRGB to linear.
 ///
 /// flashlight is where the spot light stands and where it points in this frame
 /// (flashlightPose).
 ///
-/// pointPositions are the places of the point lights: one above every crystal that has
-/// not been collected yet (game::crystalLightPositions). The function does not know
-/// where they come from. Positions past scene::MAX_POINT_LIGHTS are ignored.
+/// pointLights are the point lights: the ones above the crystals nearest to the eye
+/// (game::crystalLightPositions, then nearestPointLights). The function does not know
+/// where they come from. Each one gets the intensity of the settings times its
+/// strength. Lights past scene::MAX_POINT_LIGHTS are ignored.
 scene::LightSet buildLightSet(const LightingSettings& settings, const FlashlightPose& flashlight,
-                              std::span<const glm::vec3> pointPositions);
+                              std::span<const PointLightSpot> pointLights);
 
 } // namespace game

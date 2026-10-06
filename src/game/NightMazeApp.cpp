@@ -786,10 +786,13 @@ void NightMazeApp::onRender(double alpha) {
 
     // The lights of this frame, from the lighting and the flashlight pose computed
     // before the shadow passes. The point lights hang above the crystals that are still
-    // there. The copy to the graphics card happens once, and the two lit programs and
-    // the grass program read it. It takes the EYE, not the hand: the highlights are
-    // computed for the place the picture is taken from.
-    const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
+    // there: the ones nearest to the eye of this frame, because a large maze has more
+    // crystals than the shaders have point lights (game::nearestPointLights). The copy
+    // to the graphics card happens once, and the two lit programs and the grass program
+    // read it. It takes the EYE, not the hand: the highlights are computed for the place
+    // the picture is taken from.
+    const std::vector<PointLightSpot> crystalLights =
+        nearestPointLights(crystalLightPositions(m_round), eye);
     const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 

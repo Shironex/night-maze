@@ -597,10 +597,20 @@ TEST_CASE("every crystal that is left carries a light, a collected one does not"
     CHECK(game::crystalLightPositions(round).empty());
 }
 
-TEST_CASE("a large maze never has more crystal lights than the shader has room for") {
+TEST_CASE("a large maze has more crystals than lights, and a frame takes the nearest ones") {
     const game::MazeWorld world = game::buildMazeWorld(40, 40, 11U);
     const game::Round round = game::startRound(world, game::GameplaySettings{});
-    CHECK(round.crystals.size() == static_cast<std::size_t>(scene::MAX_POINT_LIGHTS));
-    CHECK(game::crystalLightPositions(round).size() ==
-          static_cast<std::size_t>(scene::MAX_POINT_LIGHTS));
+    REQUIRE(round.crystals.size() == static_cast<std::size_t>(game::MAX_CRYSTAL_COUNT));
+
+    // Every crystal that is still there has a place for a light.
+    const std::vector<glm::vec3> positions = game::crystalLightPositions(round);
+    CHECK(positions.size() == round.crystals.size());
+
+    // The frame is drawn with as many as the shader has room for, however many there are.
+    const std::vector<game::PointLightSpot> chosen =
+        game::nearestPointLights(positions, world.startPosition);
+    CHECK(chosen.size() == static_cast<std::size_t>(scene::MAX_POINT_LIGHTS));
+    const scene::LightSet lights =
+        game::buildLightSet(game::LightingSettings{}, game::FlashlightPose{}, chosen);
+    CHECK(lights.pointCount == scene::MAX_POINT_LIGHTS);
 }

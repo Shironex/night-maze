@@ -127,13 +127,15 @@ void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightSc
 }
 
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed,
-                         const InteractableSettings& interactables) {
+                         const InteractableSettings& interactables, int crystalCount) {
     // A new heightmap is flat, so the height scale does not matter.
-    return buildMazeWorld(width, height, seed, Heightmap{}, DEFAULT_HEIGHT_SCALE, interactables);
+    return buildMazeWorld(width, height, seed, Heightmap{}, DEFAULT_HEIGHT_SCALE, interactables,
+                          crystalCount);
 }
 
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Heightmap& heightmap,
-                         float heightScale, const InteractableSettings& interactables) {
+                         float heightScale, const InteractableSettings& interactables,
+                         int crystalCount) {
     MazeWorld world(generateMaze(width, height, seed));
     world.seed = seed;
     const Maze& maze = world.maze;
@@ -153,7 +155,7 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
 
     // The crystals: never in the start cell (the player would collect one without
     // moving) and never in the exit cell (it is behind the gate).
-    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
+    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount);
 
     // The levers and the notes come after the crystals: a lever avoids the cells that
     // have a crystal. For every lever the wall it opens is looked up in the wall list

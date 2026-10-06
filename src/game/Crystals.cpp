@@ -4,7 +4,6 @@
 
 #include "game/MazeGenerator.hpp"
 #include "game/MazeLayout.hpp"
-#include "scene/Light.hpp"
 
 #include <glm/gtc/constants.hpp>
 
@@ -62,11 +61,11 @@ int crystalCountFor(int cellCount) {
     // Whole number division rounds down. Adding half of the divisor first makes it round
     // to the nearest: (100 + 4) / 8 = 13 for 12.5, (96 + 4) / 8 = 12 for 12.
     const int rounded = (cellCount + CELLS_PER_CRYSTAL / 2) / CELLS_PER_CRYSTAL;
-    return std::clamp(rounded, 1, scene::MAX_POINT_LIGHTS);
+    return std::clamp(rounded, 1, MAX_CRYSTAL_COUNT);
 }
 
 std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, MazeCell start,
-                                        MazeCell exit) {
+                                        MazeCell exit, int wantedCount) {
     if (!maze.contains(start.x, start.z) || !maze.contains(exit.x, exit.z)) {
         throw std::out_of_range("placeCrystals: the start or the exit is outside the maze");
     }
@@ -98,9 +97,13 @@ std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, Ma
     std::vector<MazeCell> candidates = deadEnds;
     candidates.insert(candidates.end(), otherCells.begin(), otherCells.end());
 
+    // The wanted number: the one that was asked for, or the one the size of the maze
+    // gives. Never more than there are candidates.
     const int cellCount = maze.width() * maze.height();
-    const std::size_t count =
-        std::min(static_cast<std::size_t>(crystalCountFor(cellCount)), candidates.size());
+    const int wanted = wantedCount == CRYSTAL_COUNT_FROM_SIZE
+                           ? crystalCountFor(cellCount)
+                           : std::clamp(wantedCount, 0, MAX_CRYSTAL_COUNT);
+    const std::size_t count = std::min(static_cast<std::size_t>(wanted), candidates.size());
 
     std::vector<CrystalSpawn> crystals;
     crystals.reserve(count);

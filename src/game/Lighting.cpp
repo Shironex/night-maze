@@ -55,8 +55,49 @@ FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3&
     return {.position = position, .direction = glm::normalize(toTarget)};
 }
 
+std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,
+                                               const glm::vec3& eye, int maxCount) {
+    if (maxCount < 1) {
+        return {};
+    }
+
+    // Every light with its distance from the eye, sorted from the nearest to the
+    // farthest. stable_sort keeps two lights at the same distance in the order they came
+    // in, so the same input always gives the same result.
+    struct Candidate {
+        glm::vec3 position;
+        float distance;
+    };
+    std::vector<Candidate> candidates;
+    candidates.reserve(positions.size());
+    for (const glm::vec3& position : positions) {
+        candidates.push_back({.position = position, .distance = glm::distance(position, eye)});
+    }
+    std::ranges::stable_sort(
+        candidates, [](const Candidate& a, const Candidate& b) { return a.distance < b.distance; });
+
+    // The edge of the set: the distance of the first light that is left out. With no
+    // light left out there is no edge, and every light keeps its full strength.
+    const auto count = static_cast<std::size_t>(maxCount);
+    const bool someLeftOut = candidates.size() > count;
+    const float edge = someLeftOut ? candidates[count].distance : 0.0F;
+
+    std::vector<PointLightSpot> chosen;
+    chosen.reserve(std::min(candidates.size(), count));
+    for (std::size_t i = 0; i < candidates.size() && i < count; ++i) {
+        float strength = 1.0F;
+        if (someLeftOut) {
+            // 0 at the edge, 1 from POINT_LIGHT_FADE_DISTANCE inside of it.
+            strength =
+                std::clamp((edge - candidates[i].distance) / POINT_LIGHT_FADE_DISTANCE, 0.0F, 1.0F);
+        }
+        chosen.push_back({.position = candidates[i].position, .strength = strength});
+    }
+    return chosen;
+}
+
 scene::LightSet buildLightSet(const LightingSettings& settings, const FlashlightPose& flashlight,
-                              std::span<const glm::vec3> pointPositions) {
+                              std::span<const PointLightSpot> pointLights) {
     // The colours of the settings are sRGB values: they are picked on the screen. The
     // shaders compute with linear light, so this function is the one place where the
     // four colours are converted. The intensities are plain factors and stay as they
@@ -86,17 +127,17 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const Flashlight
     };
     lights.spotEnabled = settings.flashlightOn;
 
-    // All point lights share one colour, one intensity and one radius. Only the place
-    // differs.
+    // All point lights share one colour and one radius. The place differs, and the
+    // intensity where a light is fading out of the set (nearestPointLights).
     const scene::Attenuation pointAttenuation = scene::attenuationForRadius(settings.pointRadius);
     const glm::vec3 pointColor = gfx::srgbToLinear(settings.pointColor);
     const std::size_t pointCount =
-        std::min(pointPositions.size(), static_cast<std::size_t>(scene::MAX_POINT_LIGHTS));
+        std::min(pointLights.size(), static_cast<std::size_t>(scene::MAX_POINT_LIGHTS));
     for (std::size_t i = 0; i < pointCount; ++i) {
         lights.points[i] = {
-            .position = pointPositions[i],
+            .position = pointLights[i].position,
             .color = pointColor,
-            .intensity = settings.pointIntensity,
+            .intensity = settings.pointIntensity * pointLights[i].strength,
             .attenuation = pointAttenuation,
         };
     }

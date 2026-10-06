@@ -38,6 +38,11 @@ struct MazeSettings {
     /// Seed of the generator: the same size and seed always give the same maze.
     std::uint32_t seed = DEFAULT_MAZE_SEED;
 
+    /// How many crystals the maze should get: a number, or CRYSTAL_COUNT_FROM_SIZE for
+    /// one crystal per CELLS_PER_CRYSTAL cells. A new game writes the number of its
+    /// difficulty level here (game/Difficulty.hpp).
+    int crystalCount = CRYSTAL_COUNT_FROM_SIZE;
+
     /// How many levers and notes the maze should get (see game/Interactables.hpp). They
     /// are placed when the maze is built, so a new number shows after "regenerate" too.
     InteractableSettings interactables;
@@ -153,14 +158,17 @@ void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightSc
 
 /// Generates a maze (game::generateMaze) and computes everything else in MazeWorld
 /// from it, on flat ground at y = 0. interactables says how many levers and notes are
-/// wanted: left out, the maze gets the default numbers. Throws std::invalid_argument for
-/// a size that Maze does not accept.
+/// wanted: left out, the maze gets the default numbers. crystalCount says how many
+/// crystals are wanted (game::placeCrystals): left out, the size of the maze decides.
+/// Throws std::invalid_argument for a size that Maze does not accept.
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed,
-                         const InteractableSettings& interactables = {});
+                         const InteractableSettings& interactables = {},
+                         int crystalCount = CRYSTAL_COUNT_FROM_SIZE);
 
 /// The same, with the maze standing on the terrain made from the heightmap
 /// (placeOnTerrain).
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Heightmap& heightmap,
-                         float heightScale, const InteractableSettings& interactables = {});
+                         float heightScale, const InteractableSettings& interactables = {},
+                         int crystalCount = CRYSTAL_COUNT_FROM_SIZE);
 
 } // namespace game

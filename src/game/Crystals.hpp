@@ -16,6 +16,17 @@ namespace game {
 /// One crystal for this many cells of the maze: a maze of 10 by 10 cells gets 13.
 constexpr int CELLS_PER_CRYSTAL = 8;
 
+/// The most crystals a maze can have, whoever asks. Every crystal is a model drawn in
+/// three passes (two shadow maps and the scene) and a diamond on the minimap, so the
+/// number has to end somewhere. It is not the number of point lights the shader has
+/// room for (scene::MAX_POINT_LIGHTS, 16): only the crystals nearest to the eye carry
+/// a light in a frame (game::nearestPointLights).
+constexpr int MAX_CRYSTAL_COUNT = 64;
+
+/// In place of a wanted number of crystals: take the number from the size of the maze
+/// (crystalCountFor).
+constexpr int CRYSTAL_COUNT_FROM_SIZE = -1;
+
 /// The number of crystal models. Each crystal is drawn with one of them.
 constexpr int CRYSTAL_VARIANT_COUNT = 2;
 
@@ -65,10 +76,10 @@ struct CrystalSpawn {
     int variant = 0;
 };
 
-/// How many crystals a maze of cellCount cells should get: one for every
-/// CELLS_PER_CRYSTAL cells, rounded to the nearest whole number, but at least 1 and at
-/// most scene::MAX_POINT_LIGHTS, because every crystal carries a point light and the
-/// shader has room for that many.
+/// How many crystals a maze of cellCount cells gets when nobody asks for a number: one
+/// for every CELLS_PER_CRYSTAL cells, rounded to the nearest whole number, but at least
+/// 1 and at most MAX_CRYSTAL_COUNT. The three difficulty levels of the game do ask for
+/// a number of their own (game/Difficulty.hpp).
 int crystalCountFor(int cellCount);
 
 /// Chooses the cells of the crystals of a maze. The same maze, seed, start and exit
@@ -80,12 +91,16 @@ int crystalCountFor(int cellCount);
 ///   - dead ends first, in an order shuffled by the seed: a dead end is a place worth
 ///     walking into only if something is there,
 ///   - when the dead ends run out, the other cells, also shuffled by the seed,
-///   - crystalCountFor(cells) crystals, or fewer when the maze has fewer free cells
-///     (a maze of one or two cells gets none).
+///   - wantedCount crystals (brought into 0 to MAX_CRYSTAL_COUNT), or
+///     crystalCountFor(cells) of them when wantedCount is CRYSTAL_COUNT_FROM_SIZE, or
+///     fewer when the maze has fewer free cells (a maze of one or two cells gets none).
+///
+/// A larger wantedCount only adds crystals at the end of the list: the first ones are
+/// the same cells as with a smaller number.
 ///
 /// Throws std::out_of_range when start or exit is not a cell of the maze.
 std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, MazeCell start,
-                                        MazeCell exit);
+                                        MazeCell exit, int wantedCount = CRYSTAL_COUNT_FROM_SIZE);
 
 /// Where the base of a crystal rests: above the centre of its cell, CRYSTAL_FLOAT_HEIGHT
 /// over the ground. groundHeight is the height of the ground at the centre of the cell

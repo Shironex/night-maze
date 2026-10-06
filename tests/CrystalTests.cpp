@@ -48,7 +48,7 @@ std::size_t countFreeDeadEnds(const game::Maze& maze, game::MazeCell start, game
 
 } // namespace
 
-TEST_CASE("a maze gets one crystal for every eight cells, between 1 and 16") {
+TEST_CASE("a maze gets one crystal for every eight cells, between 1 and 64") {
     CHECK(game::CELLS_PER_CRYSTAL == 8);
 
     // The default maze: 100 / 8 = 12.5, rounded to the nearest whole number.
@@ -63,11 +63,50 @@ TEST_CASE("a maze gets one crystal for every eight cells, between 1 and 16") {
     CHECK(game::crystalCountFor(1) == 1);
     CHECK(game::crystalCountFor(3) == 1);
 
-    // Never more than the shader has point lights for.
+    // More than the shader has point lights for: only the nearest crystals carry
+    // a light in a frame (game::nearestPointLights).
     CHECK(scene::MAX_POINT_LIGHTS == 16);
     CHECK(game::crystalCountFor(128) == 16);
-    CHECK(game::crystalCountFor(40 * 40) == 16);
-    CHECK(game::crystalCountFor(256 * 256) == 16);
+    CHECK(game::crystalCountFor(16 * 16) == 32);
+
+    // Never more than the largest number of crystals.
+    CHECK(game::MAX_CRYSTAL_COUNT == 64);
+    CHECK(game::crystalCountFor(40 * 40) == 64);
+    CHECK(game::crystalCountFor(256 * 256) == 64);
+}
+
+TEST_CASE("a maze gets the number of crystals that was asked for") {
+    const game::Maze maze = game::generateMaze(10, 10, 5U);
+    const game::MazeCell exit = game::farthestCell(maze, START);
+
+    CHECK(game::placeCrystals(maze, 5U, START, exit, 20).size() == 20U);
+    CHECK(game::placeCrystals(maze, 5U, START, exit, 0).empty());
+    // Left out, the size of the maze decides: 13 for 100 cells.
+    CHECK(game::placeCrystals(maze, 5U, START, exit).size() == 13U);
+    CHECK(game::placeCrystals(maze, 5U, START, exit, game::CRYSTAL_COUNT_FROM_SIZE).size() == 13U);
+
+    // A number outside 0 to MAX_CRYSTAL_COUNT is brought into that range.
+    CHECK(game::placeCrystals(maze, 5U, START, exit, -7).empty());
+    CHECK(game::placeCrystals(maze, 5U, START, exit, 1000).size() ==
+          static_cast<std::size_t>(game::MAX_CRYSTAL_COUNT));
+
+    // Never more than the maze has free cells: 9 cells without the start and the exit.
+    const game::Maze small = game::generateMaze(3, 3, 5U);
+    CHECK(game::placeCrystals(small, 5U, START, game::farthestCell(small, START), 30).size() == 7U);
+}
+
+TEST_CASE("asking for more crystals keeps the first ones where they were") {
+    const game::Maze maze = game::generateMaze(12, 12, 9U);
+    const game::MazeCell exit = game::farthestCell(maze, START);
+
+    const std::vector<game::CrystalSpawn> few = game::placeCrystals(maze, 9U, START, exit, 6);
+    const std::vector<game::CrystalSpawn> many = game::placeCrystals(maze, 9U, START, exit, 30);
+
+    REQUIRE(few.size() == 6U);
+    REQUIRE(many.size() == 30U);
+    for (std::size_t i = 0; i < few.size(); ++i) {
+        CHECK(few[i].cell == many[i].cell);
+    }
 }
 
 TEST_CASE("golden maze: 4 x 4 cells from seed 1 has exactly these two crystals") {
@@ -155,11 +194,11 @@ TEST_CASE("the dead ends are filled before any other cell gets a crystal") {
 }
 
 TEST_CASE("both crystal models are used") {
-    // 16 crystals with a variant drawn from the seed each: all the same is possible in
-    // principle, but not for the seeds pinned here.
+    // 50 crystals (400 cells, one for every 8) with a variant drawn from the seed each:
+    // all the same is possible in principle, but not for the seeds pinned here.
     const game::Maze maze = game::generateMaze(20, 20, 3U);
     const std::vector<game::CrystalSpawn> crystals = crystalsOf(maze, 3U);
-    REQUIRE(crystals.size() == 16U);
+    REQUIRE(crystals.size() == 50U);
 
     int firstVariant = 0;
     int secondVariant = 0;

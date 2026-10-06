@@ -302,8 +302,10 @@ float flashlightFlicker(float battery, float seconds, const GameplaySettings& se
 LightingSettings lightingForFrame(const LightingSettings& settings, const Round& round,
                                   const GameplaySettings& gameplay);
 
-/// Where the point lights of this moment hang: above every crystal that is not
-/// collected yet, following its bobbing. This is the list buildLightSet takes.
+/// Where the point lights of this moment could hang: above every crystal that is not
+/// collected yet, following its bobbing. A frame is drawn with the ones nearest to the
+/// eye (game::nearestPointLights), because a large maze has more crystals than the
+/// shaders have point lights.
 std::vector<glm::vec3> crystalLightPositions(const Round& round);
 
 } // namespace game

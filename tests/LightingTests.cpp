@@ -269,13 +269,14 @@ TEST_CASE("every point light gets the shared colour, intensity and radius") {
     settings.pointColor = {0.1F, 0.8F, 0.9F};
     settings.pointIntensity = 1.5F;
     settings.pointRadius = 4.0F;
-    const std::vector<glm::vec3> positions = {{1.0F, 1.4F, 7.0F}, {7.0F, 1.4F, 3.0F}};
+    const std::vector<game::PointLightSpot> spots = {{.position = {1.0F, 1.4F, 7.0F}},
+                                                     {.position = {7.0F, 1.4F, 3.0F}}};
 
-    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, positions);
+    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, spots);
 
     REQUIRE(lights.pointCount == 2);
-    for (std::size_t i = 0; i < positions.size(); ++i) {
-        checkVector(lights.points[i].position, positions[i]);
+    for (std::size_t i = 0; i < spots.size(); ++i) {
+        checkVector(lights.points[i].position, spots[i].position);
         checkVector(lights.points[i].color, gfx::srgbToLinear(settings.pointColor));
         CHECK(lights.points[i].intensity == 1.5F);
         CHECK(scene::attenuationFactor(lights.points[i].attenuation, 4.0F) ==
@@ -285,12 +286,95 @@ TEST_CASE("every point light gets the shared colour, intensity and radius") {
 
 TEST_CASE("buildLightSet ignores positions past the largest number of point lights") {
     const game::LightingSettings settings;
-    const std::vector<glm::vec3> positions(static_cast<std::size_t>(scene::MAX_POINT_LIGHTS) + 4,
-                                           glm::vec3{1.0F, 1.4F, 1.0F});
+    const std::vector<game::PointLightSpot> spots(
+        static_cast<std::size_t>(scene::MAX_POINT_LIGHTS) + 4,
+        game::PointLightSpot{.position = {1.0F, 1.4F, 1.0F}});
 
-    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, positions);
+    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, spots);
 
     CHECK(lights.pointCount == scene::MAX_POINT_LIGHTS);
+}
+
+TEST_CASE("a point light is as bright as the settings say, times its strength") {
+    game::LightingSettings settings;
+    settings.pointIntensity = 0.8F;
+    const std::vector<game::PointLightSpot> spots = {
+        {.position = {1.0F, 1.4F, 1.0F}, .strength = 1.0F},
+        {.position = {3.0F, 1.4F, 1.0F}, .strength = 0.25F},
+        {.position = {5.0F, 1.4F, 1.0F}, .strength = 0.0F}};
+
+    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, spots);
+
+    REQUIRE(lights.pointCount == 3);
+    CHECK(lights.points[0].intensity == doctest::Approx(0.8F));
+    CHECK(lights.points[1].intensity == doctest::Approx(0.2F));
+    CHECK(lights.points[2].intensity == 0.0F);
+}
+
+TEST_CASE("with few lights every one is chosen at full strength, nearest first") {
+    const std::vector<glm::vec3> positions = {
+        {9.0F, 1.0F, 0.0F}, {1.0F, 1.0F, 0.0F}, {5.0F, 1.0F, 0.0F}};
+    const glm::vec3 eye{0.0F, 1.0F, 0.0F};
+
+    const std::vector<game::PointLightSpot> chosen = game::nearestPointLights(positions, eye, 3);
+
+    REQUIRE(chosen.size() == 3U);
+    CHECK(chosen[0].position.x == 1.0F);
+    CHECK(chosen[1].position.x == 5.0F);
+    CHECK(chosen[2].position.x == 9.0F);
+    for (const game::PointLightSpot& spot : chosen) {
+        CHECK(spot.strength == 1.0F);
+    }
+    // No lights and no room both give an empty list.
+    CHECK(game::nearestPointLights({}, eye, 3).empty());
+    CHECK(game::nearestPointLights(positions, eye, 0).empty());
+}
+
+TEST_CASE("with too many lights the nearest ones are chosen and fade towards the edge") {
+    // Lights on a line, 1 m, 2 m, 3 m ... 10 m from the eye, given in the wrong order.
+    std::vector<glm::vec3> positions;
+    for (int metres = 10; metres >= 1; --metres) {
+        positions.emplace_back(static_cast<float>(metres), 0.0F, 0.0F);
+    }
+    const glm::vec3 eye{0.0F};
+
+    // Room for 6: the lights at 1 m to 6 m. The first one left out is 7 m away, which
+    // is the edge of the set.
+    const std::vector<game::PointLightSpot> chosen = game::nearestPointLights(positions, eye, 6);
+
+    REQUIRE(chosen.size() == 6U);
+    CHECK(game::POINT_LIGHT_FADE_DISTANCE == 4.0F);
+    for (std::size_t i = 0; i < chosen.size(); ++i) {
+        CHECK(chosen[i].position.x == static_cast<float>(i + 1));
+    }
+    // 6 m, 5 m and 4 m inside the edge: full strength. Then 3, 2 and 1 m inside: three
+    // quarters, a half and a quarter.
+    CHECK(chosen[0].strength == 1.0F);
+    CHECK(chosen[1].strength == 1.0F);
+    CHECK(chosen[2].strength == 1.0F);
+    CHECK(chosen[3].strength == doctest::Approx(0.75F));
+    CHECK(chosen[4].strength == doctest::Approx(0.5F));
+    CHECK(chosen[5].strength == doctest::Approx(0.25F));
+}
+
+TEST_CASE("two lights that change places at the edge of the set are both dark") {
+    // Room for one light, and two lights almost equally far from the eye: whichever is
+    // chosen has almost no strength, so the change from one to the other shows no jump.
+    const std::vector<glm::vec3> positions = {{5.0F, 0.0F, 0.0F}, {-5.01F, 0.0F, 0.0F}};
+    const glm::vec3 eye{0.0F};
+
+    const std::vector<game::PointLightSpot> before = game::nearestPointLights(positions, eye, 1);
+    REQUIRE(before.size() == 1U);
+    CHECK(before[0].position.x == 5.0F);
+    CHECK(before[0].strength < 0.01F);
+
+    // The eye moves a little towards the other light: now that one is chosen, as dark.
+    const glm::vec3 movedEye{-0.01F, 0.0F, 0.0F};
+    const std::vector<game::PointLightSpot> after =
+        game::nearestPointLights(positions, movedEye, 1);
+    REQUIRE(after.size() == 1U);
+    CHECK(after[0].position.x == -5.01F);
+    CHECK(after[0].strength < 0.01F);
 }
 
 TEST_CASE("buildLightSet converts the colours from sRGB to linear and leaves the rest") {
@@ -302,9 +386,9 @@ TEST_CASE("buildLightSet converts the colours from sRGB to linear and leaves the
     // White and black are the same numbers in both colour spaces.
     settings.flashlightColor = glm::vec3{1.0F};
     settings.pointColor = glm::vec3{0.0F};
-    const std::vector<glm::vec3> positions = {{1.0F, 1.4F, 7.0F}};
+    const std::vector<game::PointLightSpot> spots = {{.position = {1.0F, 1.4F, 7.0F}}};
 
-    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, positions);
+    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, spots);
 
     checkVector(lights.ambient, glm::vec3{0.21404F});
     checkVector(lights.directional.color, glm::vec3{0.21404F});
