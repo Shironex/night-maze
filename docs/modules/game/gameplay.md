@@ -26,6 +26,9 @@ Czego nie ma: **stanu przegranej** (decyzja właściciela, sekcja 2.1), **przeci
 
 **Zmiana z 2026-10-06 po pierwszym obejrzeniu obrazu (HUD).** Pasek stanu stoi przy górnej krawędzi okna, gdy panele debug są schowane klawiszem `~`, a pod rzędami pasków tytułu, gdy są widoczne (decyzja właściciela, [`../../decisions/hud-at-top-edge-when-panels-hidden.md`](../../decisions/hud-at-top-edge-when-panels-hidden.md); `drawHud` dostaje `panelsVisible`, sekcja 6). Reguły rundy się nie zmieniły. Bramka scalonego drzewa po tej zmianie i poprawkach kałuż: 467 przypadków i 158006 asercji (zgłoszone przez bramkę; przed poprawkami kałuż 466 i 152264, a liczby w akapicie wyżej opisują stan po części 2 M8).
 
+**Stan z 2026-10-06 (M9, część 2).** Karta `You escaped` z HUD i podpowiedź `R: play again` nie pojawiają się już na ekranie: HUD jest rysowany tylko na ekranie `Playing` (`hudVisible`), a wygrana rundy (`RoundState::Won`) wysyła zdarzenie `RoundWon` i gra przechodzi na ekran wyniku, który pokazuje dokument RmlUi z czasem i kryształami (`assets/ui/round_end.rml`, `NightMazeApp::fillRoundEndDocument`). Kod karty w `Hud.cpp` zostaje, ale nie jest osiągalny. Na ekranie wyniku runda stoi (`updatesRound` jest fałszem), a zegar animacji idzie dalej. Klawisz R zaczyna rundę od nowa tylko w grze, a restart z menu pauzy i z ekranu wyniku to przycisk `Restart`. Zdania niżej o karcie i o R w każdym stanie rundy opisują stan sprzed tej części. [`game-states.md`](game-states.md).
+
+
 ## 1. Po co to jest
 
 Do M4 program był labiryntem do zwiedzania: ściany, gracz, światła. M5 robi z niego grę. PRD opisuje pętlę rozgrywki tak: gracz idzie korytarzem, widzi poświatę kryształu, zbiera go (bateria rośnie, licznik rośnie), po zebraniu odpowiedniej liczby kryształów otwiera się wyjście i trzeba do niego dojść. Ten moduł odpowiada na pytania, które z tej pętli wynikają:

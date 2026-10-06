@@ -28,6 +28,9 @@ Na dziś moduł ma dwie części o bardzo różnym charakterze:
 
 Ten plik jest wstępem i indeksem dokumentów modułu.
 
+**Stan z 2026-10-06 (M9, część 2).** Moduł ma dwa nowe elementy. (1) `GameState.*` w `game_logic`: ekrany gry jako czyste dane i funkcje (`GameMode`, `GameEvent`, `nextMode`, `updatesRound`, `showsHud`, `showsMinimap` i inne) z 21 przypadkami testowymi: [`game-states.md`](game-states.md). Gra startuje w menu głównym, a `--play` i `--menu-camera` je pomijają. (2) Warstwa `ui` (`src/ui/`, RmlUi) leży obok `gfx` i `scene`, pod `game`, i nie wie nic o grze: [`../ui/README.md`](../ui/README.md). `NightMazeApp` w wykonywalnym `night_maze` trzyma `m_mode`, `m_newGame` i `m_ui` oraz funkcje `handleGameEvent`, `handleMenuActions`, `showScreen`, `startNewGame`. Escape nie zamyka programu: pauzuje grę. HUD jest widoczny tylko na ekranie `Playing`, minimapa w grze i w pauzie. Zdania o karcie `You escaped` i o R w tym dokumencie opisują stan sprzed tej części.
+
+
 ## 1. Dokumenty modułu
 
 | Dokument | Co opisuje | Typy i pliki |

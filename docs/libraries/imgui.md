@@ -22,6 +22,8 @@ sekcji 3.15.
 Architekturę modułu `debug` i instrukcję "jak dodać nowy panel" zawiera
 [`../modules/debug-ui.md`](../modules/debug-ui.md). Tutaj jest sama biblioteka.
 
+**Stan z 2026-10-06 (M9, część 2).** Menu gry rysuje RmlUi ([`rmlui.md`](rmlui.md)), a Dear ImGui zostaje przy panelach debug i HUD. W klatce ImGui rysuje po dokumencie menu, więc panele leżą na menu, a HUD jest rysowany tylko na ekranie `Playing` (`DebugContext::hudVisible`, a `DebugContext` ma dziś 50 pól), bo w pauzie leżałby na przyciskach. Dear ImGui instaluje swoje wywołania zwrotne GLFW po `ui::UiLayer` i przekazuje mu zdarzenia, a `main.cpp` wyłącza mysz menu, gdy panel jest pod kursorem (`setMouseEnabled`). Escape pauzuje grę i nie zamyka programu, a kursor jest przechwytywany od początku rundy, więc zdania niżej o Esc zwalniającym mysz opisują stan sprzed tej części. Czcionkę wczytuje `core::readBinaryFile` z `core::TEXT_FONT_FILE` (`src/core/Files.*`).
+
 ## 1. Czym jest Dear ImGui
 
 Dear ImGui to biblioteka C++ do budowania interfejsu narzędziowego: paneli, suwaków,

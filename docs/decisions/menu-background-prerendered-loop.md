@@ -45,3 +45,11 @@ Reszta tej notatki to analiza, nie decyzja.
 - Gdy M9 wybierze sposób odtwarzania pętli: zapisać wybór i jego koszt (rozmiar zależności, rozmiar pliku, jakość).
 - Jeśli rozmiar pliku albo dekoder okaże się za drogi: plan awaryjny to żywa scena, która już działa (druga i trzecia możliwość z tabeli).
 - Gdy zmieni się grafika: nagrać pętlę od nowa według przepisu.
+
+## 6. Dodatek z 2026-10-06 (M9, część 2): menu istnieje, odtwarzania pętli nadal brak
+
+Sekcje od 1 do 5 zostają w brzmieniu z chwili zapisu. Co się zmieniło:
+
+- **Menu główne jest w kodzie** ([`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/game/game-states.md`](../modules/game/game-states.md)). Do czasu, aż pętla będzie odtwarzana, jego tłem jest **żywy wysoki przelot** kamery menu: `NightMazeApp` pożycza kamerę menu dla ekranu głównego (`usesMenuCamera`) i zawsze ustawia ujęcie `HighGlide`, bez włączania flagi `m_menuCamera.enabled`. To rozwiązanie przejściowe, a nie zmiana decyzji.
+- **Otwarty punkt "sposób odtwarzania" jest rozstrzygnięty** decyzją właściciela z 2026-10-06 w osobnej notatce: [`video-through-os-decoders-with-still-fallback.md`](video-through-os-decoders-with-still-fallback.md). Kodu odtwarzania nadal nie ma (sprawdzone: w `src/` i `cmake/` nie ma dekodera wideo).
+- Funkcja `game::drawsScene(mode, fullscreenBackground)` jest w kodzie i ma test, ale renderer jeszcze jej nie używa: tła na cały ekran nie ma.

@@ -15,7 +15,7 @@ Po zakończeniu kodu M5 i M6 zostały cztery otwarte pytania. Żadne nie blokowa
 ## 2. Decyzja
 
 1. **Klawisz paneli zostaje klawiszem akcentu.** Zmieniłem go z F1 świadomie, pracując na MacBooku: tam klawisze funkcyjne domyślnie sterują jasnością i głośnością, a F1 wymaga trzymania Fn. PRD w tym miejscu jest nieaktualny, kod i dokumenty są źródłem prawdy.
-2. **Esc na razie nie zatrzymuje rundy.** Pauza dojdzie razem z menu (plan M9), jako jeden z jego stanów.
+2. **Esc na razie nie zatrzymuje rundy.** Pauza dojdzie razem z menu (plan M9), jako jeden z jego stanów. *Stan z 2026-10-06 (M9, część 2): zrobione. Esc pauzuje grę i wznawia ją, runda w pauzie stoi, a zamknięcie programu to przycisk `Quit` w menu głównym ([`escape-pauses-and-goes-back.md`](escape-pauses-and-goes-back.md), [`../modules/game/game-states.md`](../modules/game/game-states.md)). Punkt 2 powyżej zostaje jako zapis stanu z chwili decyzji.*
 3. **Latarka po zebraniu kryształu zostaje zgaszona.** Gracz zapala ją sam klawiszem F.
 4. **Obrazy nieba zostają w rozmiarze 1024 px.** Nie zmniejszam ich.
 

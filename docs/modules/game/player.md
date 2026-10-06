@@ -5,6 +5,9 @@ Kod: [`src/game/Player.hpp`](../../../src/game/Player.hpp), [`src/game/Player.cp
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość trzech innych: [`../scene/collision.md`](../scene/collision.md) (pudełko `Aabb` i funkcja `moveAndSlide`), [`../scene/camera.md`](../scene/camera.md) (kąty yaw i pitch, `forward()`, `right()`) oraz [`../core/main-loop.md`](../core/main-loop.md) (stały krok symulacji i `alpha`). Obrót myszą i panel Camera opisuje [`../scene/camera-controls.md`](../scene/camera-controls.md). Skąd biorą się przeszkody i pozycja startowa, opisuje [`maze-rendering.md`](maze-rendering.md), a rundę, w której gracz zbiera kryształy i szuka wyjścia, [`gameplay.md`](gameplay.md).
 
+**Stan z 2026-10-06 (M9, część 2).** Gracz rusza się tylko na ekranie `Playing` z wyłączoną kamerą menu (`game::updatesRound`): w pauzie, w menu i na ekranie wyniku `onUpdate` nie woła `m_player.update`. Kursor jest przechwytywany, gdy zaczyna się runda (`showScreen`), więc klawisze ruchu działają od pierwszej klatki rundy, bez kliknięcia. Zdania niżej o kliknięciu w scenę jako włączniku sterowania i o Escape jako wyłączniku opisują stan sprzed tej części. Po pokazaniu paneli klawiszem `~` kursor jest wolny i ruch stoi, dopóki gracz nie kliknie w scenę. [`game-states.md`](game-states.md).
+
+
 ## 1. Po co to jest
 
 W kamieniu milowym M1 poruszała się sama kamera: latała tam, gdzie patrzy, i przechodziła przez wszystko. Labirynt wymaga czegoś innego. Ktoś ma **chodzić po ziemi** i **zatrzymywać się na ścianach**. Kamera jest punktem i dwoma kątami, więc nie ma czym się o ścianę oprzeć. Potrzebne jest ciało: pudełko o szerokości człowieka.
@@ -648,7 +651,7 @@ Te same reguły dotyczą klawisza R: działa przy wolnym kursorze i nie działa,
 | N | przełącza noclip | `onRender` | `wasKeyPressed` (zbocze) | nie |
 | F | przełącza latarkę | `onRender` | `wasKeyPressed` | nie |
 | R (od M5) | zaczyna rundę od nowa na tym samym labiryncie | `onRender` | `wasKeyPressed` | nie |
-| Escape | oddaje przechwycony kursor, a przy wolnym kursorze zamyka okno | `core::Application`, przed krokami symulacji | `wasKeyPressed` | |
+| Escape | od M9, części 2: `Application::onEscapePressed`, w grze pauza (wcześniej oddawał kursor, a przy wolnym zamykał okno) | `core::Application`, przed krokami symulacji | `wasKeyPressed` | |
 | akcent grawis (klawisz na lewo od 1, `GLFW_KEY_GRAVE_ACCENT`) | pokazuje i chowa panele debugowania. Pasek HUD zostaje | `src/main.cpp` | `wasKeyPressed` | |
 
 Żaden z klawiszy N, F i R nie działa, gdy klawiaturę ma ImGui.

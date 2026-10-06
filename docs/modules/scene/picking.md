@@ -5,6 +5,9 @@ Kod: [`src/scene/Raycast.hpp`](../../../src/scene/Raycast.hpp), [`src/scene/Rayc
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Ten dokument korzysta z pudełka `Aabb` i kuli `Sphere` z [`collision.md`](collision.md) (sekcje 2.1, 2.9 i 2.11), z macierzy widoku i rzutowania z [`camera.md`](camera.md) (sekcje 2 i 5) oraz z biblioteki GLM ([`../../libraries/glm.md`](../../libraries/glm.md): `vec3`, `vec4`, `mat4`, `dot`, `normalize`, `inverse`). Testy są napisane w bibliotece doctest ([`../../libraries/doctest.md`](../../libraries/doctest.md)).
 
+**Stan z 2026-10-06 (M9, część 2).** Promień wskazywania biegnie tylko na ekranie `Playing` z wyłączoną kamerą menu (`roundInput`). Pod menu (główne, pauza, wynik) `m_pick = pickNothing(m_round)`: nic nie jest wskazywane, podświetlane ani używane, a E i kliknięcie nie docierają do rundy. Kursor jest wolny na ekranach z menu i przechwycony w grze od początku rundy, więc zdania o klikaniu myszą wolnym kursorem dotyczą dziś głównie sytuacji po pokazaniu paneli klawiszem `~`.
+
+
 ## 1. Po co to jest
 
 Do M7 gracz mógł chodzić, zbierać kryształy i dojść do wyjścia, ale nie mógł **wskazać** żadnej rzeczy w świecie. M8 dodaje dwie rzeczy, które się wskazuje (a druga część M8 podpina wskazywanie do działającej gry): dźwignię, która obniża jedną ścianę labiryntu, i kartkę z podpowiedzią ([`../game/interactables.md`](../game/interactables.md)). Żeby je wskazać, program musi odpowiedzieć na pytanie: **na co patrzy gracz** (albo na co wskazuje kursor myszy)?
@@ -901,7 +904,7 @@ Zielone pudełko trafienia jest rysowane **przed** pudełkiem w kolorze rodzaju,
 2. Zaznacz **Freeze the drawn ray**, odejdź na bok: zielona linia z oka do pudełka dźwigni, kulka na jej końcu.
 3. Naciśnij E (albo kliknij): dźwignia opuszcza uchwyt, ściana zaczyna się zanurzać, minimapa przestaje ją rysować. Panel nadal pokazuje `Hit: lever 0`, ale `Key E: nothing`.
 4. Wyłącz zamrożenie, wskaż dźwignię przez ścianę (z drugiej strony): wynik powinien być `Hit: nothing`, mimo że dźwignia jest blisko, bo ściana zasłania (oczekiwanie z kodu i z testu `a closed wall hides what is behind it...`, nie obejrzane na ekranie).
-5. Zwolnij kursor (Escape) i kliknij dźwignię myszą: ten sam efekt, bez przechwytywania kursora.
+5. Zwolnij kursor (od M9, części 2 Escape pauzuje grę, więc kursor oddaje klawisz `~`, który pokazuje panele) i kliknij dźwignię myszą: ten sam efekt, bez przechwytywania kursora.
 
 Co z tego **widział agent**, a czego nie: sekcja 5.14. Scenariusz w pełni na ekranie to zadanie na ręczną listę właściciela.
 

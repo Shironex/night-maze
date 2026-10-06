@@ -400,7 +400,7 @@ constexpr const char* GROUND_NORMAL_MAP_FILE = "textures/ground_normal.png";
     const gfx::Texture2D* texture = assets.texture(core::assetPath(file), colorSpace);
 ```
 
-Szóstym użytkownikiem jest motyw paneli: `loadFont` w [`src/debug/Theme.cpp`](../../../src/debug/Theme.cpp) woła `core::assetPath(FONT_FILE)`.
+Szóstym użytkownikiem jest motyw paneli: `loadFont` w [`src/debug/Theme.cpp`](../../../src/debug/Theme.cpp) woła `core::assetPath(core::TEXT_FONT_FILE)`. Od M9, części 2 stała `TEXT_FONT_FILE` i funkcja `core::readBinaryFile` leżą w [`src/core/Files.hpp`](../../../src/core/Files.hpp) i [`Files.cpp`](../../../src/core/Files.cpp) (część `engine`), bo ten sam plik czcionki rysuje menu. Siódmym użytkownikiem `assetPath` jest `ui::AssetFileInterface`, przez który RmlUi czyta dokumenty, style i czcionkę z katalogu `assets` ([`../ui/README.md`](../ui/README.md)).
 
 **Tekstury modeli: ścieżka z pliku, nie z kodu.** W kodzie nie ma nazwy żadnej tekstury modelu, także tekstur kryształów i bramy. Wyjątkiem od M6 są dwie tekstury gruntu z bloku wyżej: teren powstaje w kodzie z mapy wysokości, nie ma pliku `.obj` ani `.mtl`, więc nazwy jego tekstur muszą stać w `TerrainRenderer.cpp`. Plik `wall_straight.mtl` zawiera linię `map_Kd ../textures/wall_stone.png`, a loader liczy tę ścieżkę względem katalogu pliku `.mtl` ([`src/assets/ObjLoader.cpp`](../../../src/assets/ObjLoader.cpp)):
 

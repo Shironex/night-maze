@@ -280,6 +280,8 @@ Funkcja **nie zmienia liczby kanałów**. Tekstury gry są zapisane jako RGB, wi
 
 ### 5.3 `readBinaryFile`: plik do pamięci
 
+**Stan z 2026-10-06 (M9, część 2).** Ta funkcja jest lokalna dla `ImageLoader.cpp` (sprawdzone: nadal tam jest). Funkcja o tym samym ciele i nazwie, `core::readBinaryFile`, leży też w [`src/core/Files.cpp`](../../../src/core/Files.cpp): przeniesiono do niej kopię z `debug/Theme.cpp`, a używają jej motyw paneli i `ui::AssetFileInterface`. `ImageLoader.cpp` zachował własną kopię.
+
 ```cpp
 bool readBinaryFile(const std::filesystem::path& path, std::vector<unsigned char>& bytes) {
     // The stream takes the path object itself, not a string made from it. On Windows the

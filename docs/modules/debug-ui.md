@@ -5,6 +5,9 @@ Teoria samej biblioteki (tryb natychmiastowy, backendy, docking) jest w [`../lib
 
 **Zmiana w M9, części 1 (2026-10-06): kamera menu.** `DebugContext` ma **49 pól** (47 przedtem: doszły `menuCamera`, referencja do `game::MenuCameraSettings`, i `menuCameraLoopSeconds`, czyli długość pętli w sekundach). Panel Camera dostał grupę `Menu camera` i dwa argumenty `drawCameraPanel`. `DebugUI` ma `setVisible(bool)` i `isVisible()`, a `DebugUI::draw` **nie woła `drawHud`**, gdy `context.menuCamera.enabled`: w trybie kamery menu HUD jest schowany. `main.cpp` chowa panele w klatce włączenia trybu i przywraca ich poprzedni stan w klatce wyłączenia (sekcja 5.12). Liczba paneli (13) i programów (14) się nie zmieniła.
 
+**Stan z 2026-10-06 (M9, część 2).** (1) `DebugContext` ma **50 pól** (doszło `hudVisible`, po `menuCamera`); liczby pól podane niżej dla wcześniejszych części są historią. (2) HUD rysuje się tylko wtedy, gdy `context.hudVisible` (gra mówi: `NightMazeApp::hudVisible()` to `showsHud(m_mode) && !m_menuCamera.enabled`), czyli tylko na ekranie `Playing`; warunek `!context.menuCamera.enabled` w `DebugUI::draw` został zastąpiony. Powód: ImGui rysuje po RmlUi, więc HUD w pauzie leżałby na przyciskach. Karta `You escaped` i podpowiedź `R: play again` nie mogą się więc już pojawić (HUD jest ukryty na ekranie wyniku, a wynik pokazuje dokument RmlUi), kod w `Hud.cpp` zostaje bez zmian. R zaczyna rundę od nowa tylko w grze. (3) Escape nie zamyka programu: pauzuje grę. Zdania niżej o Escape zwalniającym mysz i zamykającym program oraz o kliknięciu jako drodze do przechwycenia kursora opisują stan sprzed tej części; kursor przechwytuje się, gdy zaczyna się runda, a `~` oddaje go panelom. (4) `main.cpp` ustawia `menuUi().setMouseEnabled(!m_debugUI.wantsMouse())` (panele wygrywają z menu pod kursorem) i blokuje klawiaturę także na czas pola tekstowego menu. Szczegóły: [`ui/README.md`](ui/README.md).
+
+
 ## 1. Po co to jest
 
 Grafiki 3D nie da się wygodnie debugować `printf`em: chcę widzieć liczby (FPS, rozmiar framebuffera, wersję sterownika) i zmieniać parametry w działającym programie, bez przebudowywania. Moduł `debug` daje do tego nakładkę z panelami Dear ImGui rysowaną na wierzchu sceny. Nie realizuje osobnego tematu wykładu, ale obsługuje wszystkie piętnaście: każdy temat dostaje w panelu przełącznik, którym na obronie pokażę efekt "przed i po" (PRD, sekcje 3 i 10). Dziś istnieje trzynaście paneli: **Renderer**, pokazujący dane z tematu 1 (FPS, czas klatki) przełącznik tematu 7 (lista `Lighting`: bez oświetlenia, Gouraud, Phong, Blinn-Phong) i, od pierwszej części M6, przełącznik tematu 8 (pole `Skybox` z suwakiem `Sky brightness`), **Shaders**, pokaz tematu 2 (przycisk "Reload shaders" dla czternastu programów), **Camera**, pokaz tematu 3 (pozycja gracza, kąty, FOV, płaszczyzny przycinania, czułość myszy, trzy prędkości gracza), **Gameplay** (stan rundy, przycisk nowej rundy, suwak baterii i liczby reguł gry), **Terrain**, pokaz tematu 13 (suwak skali wysokości terenu, pole `Wireframe`, rozmiar siatki, liczba trójkątów i zakres wysokości), **Grass**, pokaz tematu 9 (włącznik trawy z shadera geometrii, gęstość kępek, wysokość źdźbeł, siła wiatru, liczba kępek), **Framebuffers**, od pierwszej części M7 pokaz tematu 10 w jego dzisiejszym zakresie (dwie zakładki kontrolek: ekspozycja, krzywa mapowania tonów i bloom w pierwszej, mgła i winieta w drugiej, pod nimi rozmiar i formaty framebuffera sceny i celów bloomu oraz cztery obrazy podglądu: kolor HDR, głębia, przebieg jasności i bloom), **Shadows**, od czwartej części M7 pokaz tematu 11 w jego dzisiejszym zakresie, czyli cieni księżyca (włącznik cieni, rozdzielczość mapy cieni, dwie części biasu, filtr sprzętowy 2 x 2, PCF z rozmiarem jądra i siła cienia, pod nimi rozmiar i format mapy, obszar, który pokrywa, i rozmiar teksela, a obok obraz mapy widzianej z księżyca. Cienia latarki nie ma: jest planowany), **Maze** (rozmiar i ziarno labiryntu, przyciski "Regenerate" i "Random seed", plan z góry z kryształami, bramą i strefą wyjścia), **Collision**, pokaz tematu 14 (rysowanie pudełek i sfer kolizji, tryb noclip), **Assets**, pokaz tematów 4 i 5 (tryb widoku, pole wyboru `Normal mapping`, filtr tekstur, anizotropia, lista modeli i tekstur), **Lights**, pokaz tematu 6 (światło otoczenia, księżyc, latarka, światła punktowe nad kryształami, połysk) i, od M8 (część 1), **Environment**, pokaz tematu 12 (włącznik efektu, dla kryształów udział nieba, suwak między odbiciem a załamaniem, współczynnik załamania i świecenie, dla kałuż włącznik, udział komórek, odbijalność i Fresnel, linia z liczbą kałuż). PRD nie ma panelu o nazwie Assets: w sekcji 3 wymienia dla tematu 4 pokaz "Lista załadowanych modeli", a dla tematu 5 "Podgląd tekstur, toggle normal map". Panel Assets niesie oba pokazy, razem z przełącznikiem map normalnych: polem wyboru `Normal mapping` pod listą `View mode` ([`gfx/normal-mapping.md`](gfx/normal-mapping.md), sekcja 6). Od M5 moduł rysuje jeszcze jedną rzecz, która nie jest panelem ani narzędziem: **HUD gry** (licznik kryształów, czas, pasek baterii, karta wygranej). Mieszka tutaj tylko dlatego, że tu jest ImGui (sekcja 5.9).
@@ -1766,8 +1769,7 @@ Plik: [`assets/fonts/AtkinsonHyperlegible-Regular.ttf`](../../assets/fonts/Atkin
 ```cpp
 // ---- Font ------------------------------------------------------------------------------
 
-// The font file, relative to the assets directory. Licence: assets/fonts/OFL.txt.
-constexpr const char* FONT_FILE = "fonts/AtkinsonHyperlegible-Regular.ttf";
+// The font file is core::TEXT_FONT_FILE: the menu of the game uses the same one.
 
 // ImGui refuses (with an assertion) data of 100 bytes or less: no font file is that small.
 constexpr std::size_t SMALLEST_FONT_FILE = 101;
@@ -1780,19 +1782,7 @@ constexpr std::array<unsigned char, 4> TRUETYPE_SIGNATURE{0x00, 0x01, 0x00, 0x00
 constexpr float SIZE_FROM_STYLE = 0.0F;
 ```
 
-```cpp
-// Reads a whole file into bytes. Returns false when the file cannot be opened.
-bool readBinaryFile(const std::filesystem::path& path, std::vector<unsigned char>& bytes) {
-    // The stream takes the path object itself, so on Windows a letter outside the local
-    // code page is not damaged (same reason as in assets/ImageLoader.cpp).
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
-        return false;
-    }
-    bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-    return true;
-}
-```
+**Stan z 2026-10-06 (M9, część 2).** Lokalnej funkcji `readBinaryFile` w `Theme.cpp` już nie ma: jej ciało jest bez zmian w [`src/core/Files.cpp`](../../src/core/Files.cpp) jako `core::readBinaryFile`, a nazwa pliku czcionki to `core::TEXT_FONT_FILE` z `src/core/Files.hpp` (`Theme.cpp` dołącza `core/Files.hpp`, a `<fstream>` i `<iterator>` usunięto). Fragment kodu, który tu stał, był sprzed tej zmiany.
 
 ```cpp
 // True when the bytes can be handed to ImGui: their number is above its lower limit and
@@ -1812,7 +1802,7 @@ bool looksLikeFont(const std::vector<unsigned char>& bytes) {
 ```cpp
 void loadFont(std::vector<unsigned char>& fontBytes) {
     ImFontAtlas* fonts = ImGui::GetIO().Fonts;
-    const std::filesystem::path path = core::assetPath(FONT_FILE);
+    const std::filesystem::path path = core::assetPath(core::TEXT_FONT_FILE);
 
     if (readBinaryFile(path, fontBytes) && looksLikeFont(fontBytes)) {
         // By default ImGui takes the bytes over and frees them with its own allocator.
@@ -1840,7 +1830,7 @@ void loadFont(std::vector<unsigned char>& fontBytes) {
 |---|---|
 | `ImFontAtlas* fonts = ImGui::GetIO().Fonts;` | atlas czcionek: obiekt ImGui, który trzyma wczytane czcionki i teksturę z ich znakami |
 | `core::assetPath(FONT_FILE)` | ścieżka do pliku w katalogu `assets` obok programu ([`core/paths.md`](core/paths.md)). Nie zależy od katalogu roboczego |
-| `readBinaryFile(path, fontBytes)` | cały plik do wektora bajtów. Strumień dostaje obiekt `path`, a nie napis, więc na Windowsie ścieżka z literą spoza strony kodowej otwiera się poprawnie. To ten sam wzór co w `assets::loadImage` ([`assets/images.md`](assets/images.md), sekcje 2.4 i 5.3) |
+| `core::readBinaryFile(path, fontBytes)` | cały plik do wektora bajtów. Strumień dostaje obiekt `path`, a nie napis, więc na Windowsie ścieżka z literą spoza strony kodowej otwiera się poprawnie. To ten sam wzór co w `assets::loadImage` ([`assets/images.md`](assets/images.md), sekcje 2.4 i 5.3) |
 | `looksLikeFont(fontBytes)` | trzy warunki: więcej niż 100 bajtów (ImGui ma asercję `font_data_size > 100`), rozmiar mieści się w `int`, pierwsze cztery bajty to `00 01 00 00`, czyli początek każdego pliku TrueType |
 | `config.FontDataOwnedByAtlas = false;` | **kto zwalnia bajty.** Domyślnie `AddFontFromMemoryTTF` przejmuje wskaźnik i przy niszczeniu atlasu zwalnia go własną funkcją. Moje bajty należą do `std::vector`, który zwolni je sam: dwa zwolnienia tej samej pamięci to uszkodzenie sterty. Z `false` ImGui tylko czyta |
 | `fonts->AddFontFromMemoryTTF(fontBytes.data(), static_cast<int>(fontBytes.size()), SIZE_FROM_STYLE, &config)` | rejestruje czcionkę z pamięci. Rozmiar 0 znaczy "weź z `style.FontSizeBase`". Zwraca wskaźnik na czcionkę albo `nullptr`, gdy dane nie są czcionką |

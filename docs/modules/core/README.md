@@ -7,6 +7,9 @@ Zanim narysuję cokolwiek w OpenGL, muszę mieć trzy rzeczy: okno systemowe, ko
 
 Moduł jest opisany w pięciu dokumentach tematycznych. Ten plik jest ich wspólnym wstępem: pokazuje, jak części pasują do siebie, opisuje klatkę jako całość i to, jak program dziedziczy po `core::Application`. Jest też dokumentem klasy `game::NightMazeApp` (na niego wskazuje komentarz na górze `NightMazeApp.hpp` i `NightMazeApp.cpp`): sekcja 6 przechodzi przez tę klasę linia po linii, a sekcja 7 tłumaczy kolejność jej pól.
 
+**Stan z 2026-10-06 (M9, część 2).** Gra ma ekrany (menu główne, runda, pauza, wynik rundy) i startuje w menu głównym (przełączniki `--play` i `--menu-camera` je pomijają). Escape nie służy już do oddania kursora przy biegnącej rundzie (otwiera pauzę, która zatrzymuje rundę) i nie zamyka programu: `Application::run` woła `onEscapePressed()`, a `NightMazeApp` wysyła zdarzenie `Escape` do ekranów. Runda biegnie tylko na ekranie `Playing`, więc zdanie niżej o rundzie idącej przy wolnym kursorze i o R działającym w każdym stanie rundy opisuje stan sprzed tej części (R działa dziś tylko w grze). Kursor jest przechwytywany, gdy zaczyna się runda. Warstwa menu (`ui::UiLayer`, RmlUi) leży obok `gfx` i `scene`, pod `game`: [`../ui/README.md`](../ui/README.md). Opis ekranów: [`../game/game-states.md`](../game/game-states.md). Fragmenty kodu z `NightMazeApp` w tym dokumencie są sprzed tej części i nie pokazują nowych pól (`m_mode`, `m_newGame`, `m_ui`) ani funkcji `handleGameEvent`, `handleMenuActions`, `showScreen`.
+
+
 ## 1. Dokumenty modułu
 
 | Dokument | Co opisuje | Klasy i pliki |
@@ -93,11 +96,7 @@ sequenceDiagram
     Run->>Win: pollEvents()
     Run->>In: update()
     Run->>In: wasKeyPressed(GLFW_KEY_ESCAPE)
-    alt Escape i kursor przechwycony
-        Run->>In: setCursorCaptured(false)
-    else Escape i kursor wolny
-        Run->>Win: requestClose()
-    end
+    Note over Run: od M9, części 2: onEscapePressed() (domyślnie requestClose, gra pauzuje)
     Run->>T: beginFrame()
     loop dopóki consumeFixedStep() zwraca true
         Run->>App: onUpdate(Time::FIXED_DT)
@@ -141,7 +140,7 @@ sequenceDiagram
 |---|---|---|
 | Start zegara, raz przed pętlą (nie należy do obrotu) | `m_time.reset()` | [`main-loop.md`](main-loop.md), sekcja 5.4 |
 | Zdarzenia systemu | `m_window.pollEvents()` | [`window-context.md`](window-context.md) |
-| Migawka klawiatury i myszy, Escape (zwalnia przechwycony kursor albo zamyka program) | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)`, `isCursorCaptured()` | [`input.md`](input.md), sekcja 5.7 |
+| Migawka klawiatury i myszy, Escape (od M9, części 2 wywołanie metody wirtualnej `onEscapePressed`: domyślnie zamyka okno, gra pauzuje) | `m_input.update()`, `wasKeyPressed(GLFW_KEY_ESCAPE)`, `isCursorCaptured()` | [`input.md`](input.md), sekcja 5.7 |
 | Pomiar czasu, kroki symulacji | `m_time.beginFrame()`, `consumeFixedStep()`, `onUpdate` | [`main-loop.md`](main-loop.md) |
 | Symulacja: krok gracza | `NightMazeApp::onUpdate`: zapamiętanie poprzedniej pozycji gracza, przy przechwyconym kursorze `isKeyDown` dla sześciu klawiszy wpisane do `PlayerInput`, `m_player.update(...)` z listą `m_obstacles` i, od M6, z terenem `m_mazeWorld.terrain` (wysokość stóp), potem kamera w oczach gracza | sekcja 6.5, [`../game/player.md`](../game/player.md), sekcja 5 |
 | Symulacja: krok rundy | `NightMazeApp::onUpdate`: `updateRound(...)` z pozycją gracza po ruchu, z przełącznikiem latarki przez referencję i z `fixedDt`, a gdy `gateBlocks` zmieniło wynik, nowa lista `m_obstacles` z `roundObstacles` | sekcja 6.5, [`../game/gameplay.md`](../game/gameplay.md) |

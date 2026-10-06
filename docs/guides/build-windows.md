@@ -146,6 +146,20 @@
 > przełączniki `--menu-shot` i `--menu-time` zostają. Lista właściciela: sekcja 25.2. Na macOS nic
 > z tego nie było budowane.
 >
+> **Zgłoszone 2026-10-06 (M9, część 2: menu w RmlUi, ekrany gry i Escape):** bramka `make check`
+> przechodzi, **519 przypadków testowych i 219195 asercji** na commicie `8c99911` (przed tą częścią 497
+> i 219050; nowych przypadków 22: 21 w `GameStateTests.cpp` i 1 w `StartOptionsTests.cpp`, policzone z
+> plików). Agent, który napisał kod, uruchomił grę, sterował nią skryptem i oglądał zrzuty ekranu
+> (sekcja 26.1): menu główne nad przelatującą kamerą, `Play`, Escape z pauzą i stojącym czasem, F, M i R
+> bez działania w pauzie, panele nad pauzą, `Resume`, `Restart`, `Back to menu`, `Quit` (kod wyjścia 0),
+> `--play`, F2 i `--menu-camera`. Ekran wyniku widział **tylko** przez tymczasową, niezatwierdzoną
+> linię, która po trzech sekundach wymuszała wygraną: przejścia całej gry do wygranej nikt nie zagrał.
+> To **nie** jest test właściciela. Nie widziane przez nikogo: kursor (przechwycony albo wolny), obrót
+> myszą po `Play`, zmiana rozmiaru okna, minimalizacja, skalowanie ekranu inne niż 100 procent, Tab i
+> Enter w menu. Lista właściciela: sekcja 26.2. Od tej części **Escape cofa o jeden ekran (z rundy do pauzy, a pauza zatrzymuje rundę) i nigdy nie zamyka
+> programu**, gra **startuje w menu głównym**, a punkty `[ ]` starszych sekcji o
+> Escape i o kursorze zostały przepisane na zachowanie dzisiejszego programu (sekcje 11, 12 i 14; opis: sekcja 26). Na macOS nic z tego nie było budowane.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -162,7 +176,7 @@
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
 > M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
 > 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7), 20 (cienie księżyca,
-> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7) 23 (M8, część 1: environment mapping) i 24 (M8, część 2: selekcja, dźwignie i kartki) oraz 25 (M9, część 1: kamera menu)
+> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7) 23 (M8, część 1: environment mapping) i 24 (M8, część 2: selekcja, dźwignie i kartki) oraz 25 (M9, część 1: kamera menu) i 26 (M9, część 2: menu w RmlUi, ekrany gry i Escape)
 > rozróżniają punkty
 > zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
@@ -184,7 +198,7 @@
 | Narzędzie | Po co | Uwagi |
 |---|---|---|
 | Visual Studio 2022 albo same "Build Tools for Visual Studio 2022", z pakietem roboczym "Desktop development with C++" (Programowanie aplikacji klasycznych w C++) | kompilator MSVC, Windows SDK, MSBuild, dołączone CMake i Ninja | do pracy z terminala wystarczają same Build Tools (tak było na moim PC). IDE jest potrzebne tylko do sekcji 4. Alternatywa: CLion |
-| git dostępny w `PATH` | CMake klonuje nim GLFW, GLM, ImGui, doctest i stb podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
+| git dostępny w `PATH` | CMake klonuje nim GLFW, GLM, ImGui, doctest, stb, FreeType i RmlUi podczas konfiguracji | sprawdzenie: `git --version` w nowym oknie terminala. Instalator: <https://git-scm.com/> |
 | CMake w wersji co najmniej 3.24 | konfiguracja i build | jest częścią pakietu roboczego C++ (u mnie 3.31.6-msvc6). Osobny instalator: <https://cmake.org/download/> |
 
 Środowisko, na którym wykonałem pomiary z tego dokumentu (2026-10-05 i 2026-10-05):
@@ -207,7 +221,7 @@ Uwagi:
   `PATH`.
 - Git jest potrzebny w tym samym terminalu, w którym uruchamiamy CMake. Jeśli
   `git --version` nie działa, konfiguracja zakończy się błędem przy pobieraniu GLFW.
-- Bibliotek nie instalujemy ręcznie. GLFW, GLM, ImGui, doctest i stb (dla stb_image) pobiera
+- Bibliotek nie instalujemy ręcznie. GLFW, GLM, ImGui, doctest, stb (dla stb_image), FreeType i RmlUi pobiera
   CMake, GLAD jest w repozytorium.
 - Sterownik karty graficznej musi obsługiwać OpenGL 4.1 lub nowszy. Aktualne sterowniki
   kart NVIDIA, AMD i Intel obsługują 4.6. Przy bardzo starym sterowniku okno się nie utworzy.
@@ -256,12 +270,13 @@ leży w `build/debug/night_maze`. Wyjaśnienie w następnej sekcji.
 
 ### Przełączniki wiersza poleceń (od M9, części 1)
 
-Program przyjmuje cztery przełączniki. Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
+Program przyjmuje pięć przełączników (piąty, `--play`, doszedł w M9, części 2). Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
 
 | Przełącznik | Znaczenie |
 |---|---|
 | `--seed <liczba>` | ziarno pierwszego labiryntu, liczba całkowita od 0 do 4294967295 (domyślnie 1) |
-| `--menu-camera` | start od razu w trybie kamery menu (gra pokazuje samą siebie; to samo robi klawisz F2) |
+| `--play` | start od razu w rundzie, z pominięciem menu głównego (dla testów, skryptów i nagrywania; bez wartości) |
+| `--menu-camera` | start od razu w trybie kamery menu (gra pokazuje samą siebie; to samo robi klawisz F2, który od części 2 działa tylko w rundzie); pomija też menu główne |
 | `--menu-shot <walk\|glide>` | ujęcie kamery menu: spacer po korytarzach albo wysoki przelot. Samo nie włącza trybu |
 | `--menu-time <sekundy>` | start ujęcia tyle sekund w głąb pętli, liczba z kropką dziesiętną (przecinek jest odrzucany), może być ujemna. Samo nie włącza trybu |
 
@@ -1053,11 +1068,11 @@ clangd w edytorze i `make`.
 
 - [ ] klawisz `~` (na lewo od `1`, w kodzie `GLFW_KEY_GRAVE_ACCENT`) ukrywa i pokazuje
   panele. Pasek HUD u góry okna zostaje (sekcja 14.2) i od 2026-10-06 przesuwa się wtedy do górnej krawędzi okna, a po powrocie paneli wraca pod rzędy pasków
-- [ ] Esc przy widocznym kursorze zamyka program, kod wyjścia 0
+- [ ] Escape nie zamyka programu na żadnym ekranie: w menu głównym nic nie robi, a program zamyka przycisk `Quit` (kod wyjścia 0)
 - [ ] podczas wpisywania wartości w polu `Clear color` (Ctrl i kliknięcie) Esc anuluje tylko
   edycję i nie zamyka programu, a `~` nie chowa paneli
-- [ ] dopóki nikt nie kliknął w scenę, kursor myszy jest widoczny, a Esc zamyka program
-  jednym naciśnięciem
+- [ ] w menu głównym kursor myszy jest widoczny, a po `Play` jest przechwycony bez klikania w scenę
+  (gra startuje w menu głównym: sekcja 26)
 - [ ] krzyżyk okna zamyka program bez błędów w konsoli
 - [ ] docking: panel "Renderer" daje się przeciągnąć i zadokować do krawędzi okna, środek
       pozostaje przezroczysty
@@ -1246,11 +1261,11 @@ kliknięciem strzałki w pasku tytułu (sekcja 13.2).
       sprint, w trybie noclip spacja i lewy Shift to góra i dół), ruch po skosie (W i D) nie
       jest szybszy, klawisze przeciwne (W i S) się znoszą. Szczegółowe kroki: sekcja 12
 - [ ] przy widocznym kursorze klawisze ruchu nie przesuwają gracza
-- [ ] pierwszy Esc przy przechwyconym kursorze oddaje kursor (pojawia się w miejscu, w którym
-      zniknął) i nie zamyka programu, drugi Esc zamyka program
-- [ ] po Esc, **bez ruszania myszą**, kliknięcie w scenę znowu przechwytuje kursor i żaden
+- [ ] pierwszy Esc przy przechwyconym kursorze otwiera pauzę i oddaje kursor (pojawia się w miejscu, w którym
+      zniknął), nie zamykając programu, drugi Esc wznawia grę i przechwytuje kursor ponownie
+- [ ] po pokazaniu paneli tyldą (kursor oddany), **bez ruszania myszą**, kliknięcie w scenę znowu przechwytuje kursor i żaden
       panel nie reaguje na to kliknięcie. Zapisać wynik także dla sytuacji, w której przed
-      Esc mysz była długo przesuwana w stronę zadokowanego panelu (to samo sprawdzić na
+      tyldą mysz była długo przesuwana w stronę zadokowanego panelu (to samo sprawdzić na
       Macu: po zwolnieniu kursora ImGui może do pierwszego ruchu myszy pamiętać ostatnią
       pozycję ukrytego kursora)
 - [ ] suwaki panelu Camera (na przykład `FOV`) działają, a ich przeciąganie nie obraca kamery
@@ -1614,7 +1629,7 @@ Chodzenie i kolizje (kliknąć w scenę, kursor znika):
 - [ ] nie da się wyjść poza labirynt: obejść kawałek ściany zewnętrznej, pchając w nią
 - [ ] kropka na planie w panelu Maze porusza się razem z graczem, a jej kreska obraca się
       razem z kamerą
-- [ ] Esc oddaje kursor, klawisze ruchu przestają działać, gracz staje w miejscu
+- [ ] Esc otwiera pauzę i oddaje kursor, klawisze ruchu przestają działać, gracz staje w miejscu, a runda stoi
 
 Noclip:
 
@@ -5357,8 +5372,10 @@ Wszystko inne w tym trybie (prędkość 0,7 m/s, wysokość 1,5 m, klawisz F2, z
 zamknięta pętla przez wszystkie kryształy) to wybory wykonawcze.
 
 Tej części **nie zamyka** żaden test ręczny: lista w sekcji 25.2 jest otwarta, a na macOS kod nie był
-budowany ([`build-macos.md`](build-macos.md)). M9 jako całość dopiero się zaczął (nie ma jeszcze
-menu, RmlUi ani stanów gry).
+budowany ([`build-macos.md`](build-macos.md)). M9 jako całość dopiero się zaczął (w chwili tej części nie
+było jeszcze menu, RmlUi ani stanów gry: stan z 2026-10-06, M9, część 2, jest w sekcji 26. Punkty 25.2 o starcie bez
+przełączników i o kursorze po wyłączeniu trybu opisują program sprzed części 2: dziś gra startuje w menu głównym, F2
+włącza kamerę menu tylko w rundzie, a po wyłączeniu trybu kursor jest znów przechwytywany).
 
 ### 25.1. Zgłoszone (2026-10-06)
 
@@ -5487,7 +5504,146 @@ Granice i szczególne przypadki:
 Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Zamknięcie tej listy nie
 zamyka M9.
 
-## 26. Powiązane dokumenty
+## 26. Lista kontrolna M9, część 2: menu w RmlUi, ekrany gry i Escape
+
+Druga część kamienia milowego M9 dodaje menu gry. Gra ma teraz **ekrany**: menu główne, rundę, pauzę
+i ekran wyniku, i **startuje w menu głównym** (przełączniki `--play` i `--menu-camera` je pomijają).
+Menu rysuje RmlUi (dokumenty `assets/ui/*.rml` i arkusz `menu.rcss`) na wierzchu klatki gry i minimapy,
+a przed panelami Dear ImGui. Escape cofa o jeden ekran i **nigdy nie zamyka programu**: wyjście to przycisk
+`Quit` w menu głównym. HUD jest tylko w rundzie, minimapa w rundzie i w pauzie. Doszły: `src/ui/*`
+(`UiLayer`, `AssetFileInterface`), `src/core/Files.*` (`readBinaryFile` i `TEXT_FONT_FILE`, przeniesione z
+`debug/Theme.cpp`), `src/game/GameState.*`, `assets/ui/*`, `tests/GameStateTests.cpp` (21 przypadków)
+i jeden nowy przypadek w `tests/StartOptionsTests.cpp` (razem 8). Zmieniły się: `CMakeLists.txt` (nowa
+biblioteka `ui`), `cmake/Dependencies.cmake` (RmlUi 6.3 i FreeType 2.14.3: dwie nowe zależności z
+`FetchContent`, razem siedem, [`../libraries/rmlui.md`](../libraries/rmlui.md)), `THIRD-PARTY-NOTICES.txt`
+i `launcher/scripts/build-notices.mjs`, `src/core/Application.*` (wirtualna `onEscapePressed`),
+`NightMazeApp.*`, `StartOptions.*` (`--play`), `src/main.cpp` i w `src/debug/`: `Theme.cpp`,
+`DebugContext.hpp` (50 pól, doszło `hudVisible`) i `DebugUI.cpp`. Liczba programów shaderów gry (14) i
+paneli (13) się nie zmieniła: RmlUi kompiluje własne shadery we własnym rendererze. Opis kodu:
+[`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/game/game-states.md`](../modules/game/game-states.md),
+[`../libraries/rmlui.md`](../libraries/rmlui.md).
+
+Decyzje właściciela (2026-10-06) są osobno: menu w RmlUi ([`../decisions/menu-in-rmlui.md`](../decisions/menu-in-rmlui.md)),
+Escape cofa o jeden ekran ([`../decisions/escape-pauses-and-goes-back.md`](../decisions/escape-pauses-and-goes-back.md)),
+zakres menu w M9 ([`../decisions/menu-scope-for-m9.md`](../decisions/menu-scope-for-m9.md)) i odtwarzanie tła
+przez dekodery systemu z nieruchomym obrazem na wypadek porażki
+([`../decisions/video-through-os-decoders-with-still-fallback.md`](../decisions/video-through-os-decoders-with-still-fallback.md)).
+Wszystko inne (kolejność klatki, warstwa `ui`, nazwy akcji w dokumentach) to wybory wykonawcze.
+
+Tej części **nie zamyka** żaden test ręczny: lista w sekcji 26.2 jest otwarta, a na macOS kod nie był
+budowany ([`build-macos.md`](build-macos.md)). Nie istnieje jeszcze: ekran ustawień, poziomy trudności z
+liczbami i tło menu w postaci pętli wideo (menu główne pokazuje żywy wysoki przelot kamery menu).
+
+### 26.1. Zgłoszone (2026-10-06)
+
+Środowisko: Windows. Wersji kompilatora ani sterownika dla bramki nie zapisano w tym dokumencie.
+
+Bramka (zgłoszona przez bramkę na commicie `8c99911`, nie powtarzałem jej przy pisaniu tej sekcji):
+
+- [x] `make check` przechodzi (zgłoszone)
+- [x] `night_maze_tests.exe`: **519 przypadków testowych i 219195 asercji** (przed tą częścią 497 i
+      219050). Nowych przypadków jest 22: 21 w `tests/GameStateTests.cpp` i 1 w
+      `tests/StartOptionsTests.cpp` (policzone z plików: 497 + 22 = 519, a suma makr `TEST_CASE` w
+      `tests/*.cpp` to 519). Liczby asercji nie da się policzyć z plików, jest tylko zgłoszona. Żaden z
+      tych przypadków nie dotyka klas `ui::UiLayer` i `ui::AssetFileInterface`: wymagają okna i OpenGL
+
+**Widziane na zrzutach ekranu przez agenta.** Poniższe punkty są zapisane jako "widziane na zrzucie
+ekranu przez agenta (2026-10-06), nie przez właściciela": agent, który napisał kod, uruchomił grę (Windows,
+Release, 1280 x 720, RTX 4070 Ti SUPER), sterował nią skryptem i oglądał zrzuty ekranu. To **nie jest** test
+ręczny właściciela i nie zamyka żadnego punktu z sekcji 26.2.
+
+- widziane na zrzucie ekranu przez agenta: menu główne po starcie, nad przelatującą kamerą, bez HUD i
+  minimapy; przycisk `Play` pod kursorem robi się pomarańczowy
+- widziane na zrzucie ekranu przez agenta: `Play` zaczyna rundę, z HUD i minimapą
+- widziane na zrzucie ekranu przez agenta: Escape pokazuje pauzę, HUD znika, minimapa jest przyciemniona
+  pod menu, a czas rundy stoi
+- widziane na zrzucie ekranu przez agenta: klawisze F, M i R w pauzie nic nie robią
+- widziane na zrzucie ekranu przez agenta: tylda nad pauzą pokazuje panele na wierzchu, suwak w panelu
+  Maze da się przesunąć i żaden przycisk menu nie zadziałał
+- widziane na zrzucie ekranu przez agenta: `Resume` przez Escape, `Restart` (czas wraca do 0:01),
+  `Back to menu`, ponowne `Play` (labirynt zbudowany od nowa ze zmienioną liczbą kartek) i `Quit` (proces
+  kończy się kodem 0)
+- widziane na zrzucie ekranu przez agenta: tylda w trakcie rundy pokazuje panele
+- widziane na zrzucie ekranu przez agenta: `--play` startuje od razu w rundzie; F2 włącza i wyłącza
+  kamerę menu; `--menu-camera --menu-shot glide` startuje bez dokumentu, Escape pokazuje pauzę, drugi
+  Escape ją chowa
+- widziane na zrzucie ekranu przez agenta, ale **tylko przez tymczasową, niezatwierdzoną linię** w
+  jednorazowym buildzie, która po trzech sekundach rundy ustawiała `RoundState::Won`: ekran wyniku
+  ("You escaped", Time 0:03, Crystals 0 / 13), bez HUD i minimapy, panele nad nim, `Restart`, `Back to
+  menu` i Escape do menu głównego. **Przejścia całej gry do wygranej nikt nie zagrał**, więc ekranu wyniku
+  z prawdziwego zakończenia rundy nikt nie widział
+
+**Nie widziane na ekranie** (nikt tego nie oglądał): sam kursor (przechwycony albo wolny: nie da się go
+sfotografować), obrót myszą po `Play`, ponowne przechwycenie kursora kliknięciem w scenę po tyldzie, zmiana
+rozmiaru okna, minimalizacja, skalowanie ekranu inne niż 100 procent, Tab i Enter w menu, pole tekstowe w
+menu (żaden dokument go nie ma), build Debug zatwierdzonego kodu na ekranie i wszystko na macOS.
+
+Znane ograniczenia (z kodu, nie ze zrzutów): pauza nie zatrzymuje wiatru w trawie (idzie od `glfwGetTime`),
+poziom trudności nic nie zmienia, `drawsScene` jest przetestowana, ale renderer jej nie woła, menu główne
+używa wysokiego przelotu kamery menu zamiast tła w postaci wideo, bez dokumentów menu gra startuje w
+rundzie, a karta wygranej z `Hud.cpp` jest martwym kodem.
+
+### 26.2. Otwarte: test ręczny na około trzydzieści minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów.
+
+Przygotowanie:
+
+- [ ] usunąć stary `imgui.ini`, uruchomić grę z terminala bez przełączników: menu główne nad
+      przelatującą kamerą, napisy czytelne, w logu brak linii `[error]` i brak linii `RmlUi:` z błędem
+- [ ] `THIRD-PARTY-NOTICES.txt` zawiera sekcje RmlUi, kontenerów RmlUi, FreeType i kopii zlib z FreeType
+
+Kursor i mysz (to, czego nie da się zobaczyć na zrzucie):
+
+- [ ] w menu głównym kursor jest widoczny i mysz nie obraca kamery
+- [ ] `Play`: kursor znika, a mysz obraca kamerę **od razu**, bez klikania w scenę
+- [ ] Escape w rundzie: kursor się pojawia, a mysz nie obraca kamery; Escape jeszcze raz (albo `Resume`):
+      kursor znów znika i mysz obraca kamerę
+- [ ] tylda w rundzie: panele i kursor; kliknięcie w scenę przechwytuje kursor ponownie i żaden panel nie
+      reaguje na to kliknięcie
+- [ ] klawisze W, A, S, D, Shift i spacja działają po `Play` bez dodatkowego kliknięcia
+
+Menu:
+
+- [ ] Tab i Enter w menu: zapisać, czy Tab przechodzi po przyciskach i czy Enter klika (kod niczego tu
+      nie ustawia, wynik nie jest znany)
+- [ ] w menu głównym, w pauzie i na ekranie wyniku klawisze R, N, F, M i E nic nie robią
+- [ ] `Quit` zamyka okno z kodem wyjścia 0, a Escape w menu głównym nie robi nic
+- [ ] `Back to menu` z pauzy i z wyniku, potem `Play`: nowa gra
+- [ ] pauza: czas rundy na HUD po wznowieniu nie przeskoczył, kryształy w pauzie stoją, trawa nadal
+      faluje (znane zachowanie)
+- [ ] panele debug nad pauzą i nad menu głównym: kliknięcie panelu nie klika przycisku pod spodem
+
+Rozmiar okna i skala:
+
+- [ ] zmiana rozmiaru okna w menu: panel zostaje na środku, przyciski reagują tam, gdzie je widać
+- [ ] minimalizacja i przywrócenie okna w menu i w rundzie: obraz wraca, w logu brak błędu
+- [ ] skalowanie ekranu 125, 150 i 200 procent: menu proporcjonalnie większe, przyciski reagują tam, gdzie
+      je widać (przycisk ma 220 dp, czyli 330 pikseli przy 150 procentach: policzone, nie zmierzone)
+- [ ] okno przeniesione między ekranami o różnej skali: menu dopasowuje rozmiar
+
+Runda i wynik:
+
+- [ ] przejście całej gry do wygranej: ekran wyniku z prawdziwym czasem i liczbą kryształów, `Restart`,
+      `Back to menu` i Escape z wyniku do menu głównego
+- [ ] `Restart` z pauzy: czas rundy wraca do zera, labirynt ten sam; `Play` po powrocie do menu: labirynt
+      zbudowany od nowa z tego samego ziarna
+
+Przełączniki i błędy:
+
+- [ ] `--play`: start od razu w rundzie; `--menu-camera`: start w kamerze menu, bez menu głównego; `--play now`:
+      dwie linie `[error]` (komunikat i lista pięciu przełączników), kod wyjścia niezerowy
+- [ ] F2 w menu głównym i w pauzie nic nie robi, w rundzie włącza kamerę menu
+- [ ] brak plików menu: tymczasowo zmienić nazwę katalogu `assets/ui` i uruchomić: gra startuje w rundzie,
+      w logu błąd "The menus cannot be shown" (agent tego nie sprawdzał)
+- [ ] build Debug zatwierdzonego kodu: przejść wszystkie ekrany i sprawdzić, że log nie ma linii z
+      `GL_` (w `UiLayer::draw` stoi `GL_CHECK`)
+- [ ] brak ostrzeżeń kompilatora przy buildzie Debug i Release po tej części
+
+Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Zamknięcie tej listy nie
+zamyka M9.
+
+## 27. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -5496,6 +5652,8 @@ zamyka M9.
   [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
 - Kamera menu i przełączniki wiersza poleceń: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), [`../decisions/menu-background-prerendered-loop.md`](../decisions/menu-background-prerendered-loop.md)
+- Menu w RmlUi, ekrany gry i Escape: [`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/game/game-states.md`](../modules/game/game-states.md), [`../libraries/rmlui.md`](../libraries/rmlui.md), [`../decisions/escape-pauses-and-goes-back.md`](../decisions/escape-pauses-and-goes-back.md)
+- Launcher (poza ocenianym kodem C++): [`launcher.md`](launcher.md)
 - Selekcja, dźwignie i kartki: [`../modules/scene/picking.md`](../modules/scene/picking.md), [`../modules/game/interactables.md`](../modules/game/interactables.md)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
   [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapy cieni księżyca i latarki),

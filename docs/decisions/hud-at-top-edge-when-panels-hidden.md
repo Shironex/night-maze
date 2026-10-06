@@ -43,3 +43,7 @@ Dwa ostatnie wiersze to możliwości zapisane przy pisaniu notatki, których wł
 - Gdy skakanie HUD przy klawiszu tyldy przeszkadza przy pokazie: wtedy układ z panelami przesuniętymi pod HUD.
 - Gdy dojdzie kolejny element przy górnej krawędzi (pasek stanu, kompas): miejsce HUD trzeba będzie ustalić z nim.
 - Gdy `FOLDED_ROW_COUNT` albo `HUD_TOP_OFFSET` zmienią się: ten opis liczb (166 i 16 pikseli) trzeba poprawić.
+
+## Dodatek z 2026-10-06 (M9, część 2)
+
+Sekcje 1 do 5 zostają w brzmieniu z chwili zapisu. Nowe: HUD jest rysowany tylko na ekranie `Playing` (`context.hudVisible` w `DebugUI::draw`, wartość z `NightMazeApp::hudVisible()`), a nie "zawsze, poza kamerą menu". Reguła tej notatki (gdzie stoi pasek) dotyczy tylko chwil, w których HUD jest w ogóle rysowany. Powód ograniczenia: Dear ImGui rysuje po dokumentach menu, więc HUD w pauzie leżałby na przyciskach ([`../modules/game/game-states.md`](../modules/game/game-states.md)).

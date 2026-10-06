@@ -13,6 +13,8 @@ Z myszą jest tak samo, tylko pytań jest więcej. Przyciski myszy mają te same
 
 Stan na dziś: użytkownikiem myszy i klawiszy jest `game::NightMazeApp`. Kliknięcie lewym przyciskiem w scenę przechwytuje kursor (`wasMouseButtonPressed`, `setCursorCaptured(true)`), przesunięcie myszy obraca kamerę (`mouseDeltaX`, `mouseDeltaY`), klawisze W, A, S, D, spacja i lewy Shift przesuwają gracza (`isKeyDown`, wpisywane do struktury `PlayerInput`), klawisz R zaczyna rundę od nowa, klawisz N przełącza tryb noclip, klawisz F latarkę, a od szóstej części M7 klawisz M włącza i wyłącza minimapę (wszystkie cztery `wasKeyPressed`, czytane raz na klatkę w `onRender`), a Escape oddaje kursor. HUD z M5 (licznik kryształów, bateria, karta wygranej) nie jest użytkownikiem wejścia: niczego nie czyta ani z `Input`, ani z ImGui. Obrót myszą opisuje [`../scene/camera-controls.md`](../scene/camera-controls.md), sekcja 5, ruch gracza [`../game/player.md`](../game/player.md), sekcja 5, a całe `onUpdate` i `onRender` [`README.md`](README.md), sekcje 6.5 i 6.6. Ten dokument opisuje narzędzia, z których on korzysta. Od M9, części 1 dochodzi klawisz F2 (tryb kamery menu): w tym trybie klawisze i mysz rundy są ignorowane, a przy jego włączeniu kursor jest oddawany.
 
+**Stan z 2026-10-06 (M9, część 2).** Escape nie służy już do oddania kursora przy biegnącej rundzie (otwiera pauzę, która zatrzymuje rundę) i nie zamyka programu: `Application::run` woła metodę wirtualną `onEscapePressed()`, a gra pauzuje (sekcja 5.7, fragment kodu, ma nowe brzmienie). Kursor jest przechwytywany, gdy zaczyna się runda (`NightMazeApp::showScreen`), a nie dopiero po kliknięciu w scenę. Kliknięcie w scenę przechwytuje go jeszcze po pokazaniu paneli klawiszem `~` (`main.cpp` oddaje wtedy kursor). Blokada klawiatury obejmuje od teraz także pole tekstowe menu (`menuUi().wantsKeyboard()`), a menu bez pola tekstowego niczego nie blokuje. Starsze zdania w tym dokumencie o Escape i o kliknięciu jako jedynej drodze do przechwycenia opisują stan sprzed M9, części 2.
+
 ## 2. Teoria
 
 ### 2.1 Odpytywanie zamiast zdarzeń
@@ -382,16 +384,13 @@ Klawisza R, klawisza N, klawisza F i ruchu prawdziwymi klawiszami nikt jeszcze r
 Obsługa Escape w `Application::run`:
 
 ```cpp
-// Escape first gives a captured cursor back, and closes the window only when
-// the cursor is not captured.
+// What Escape means is up to the program: a game opens its pause menu.
 if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE)) {
-    if (m_input.isCursorCaptured()) {
-        m_input.setCursorCaptured(false);
-    } else {
-        m_window.requestClose();
-    }
+    onEscapePressed();
 }
 ```
+
+**Stan z 2026-10-06 (M9, część 2).** Powyżej jest dzisiejszy kod z `src/core/Application.cpp`. Domyślne ciało `Application::onEscapePressed` zamyka okno, ale `game::NightMazeApp` je nadpisuje: Escape pauzuje grę, wznawia ją albo wraca z ekranu wyniku do menu głównego i nigdy nie zamyka programu (wyjście to przycisk `Quit` w menu głównym, [`../game/game-states.md`](../game/game-states.md)). Kursor nie jest już zwalniany przez Escape: przechwytuje go `NightMazeApp::showScreen`, gdy ekran staje się grą, i oddaje, gdy staje się menu. Zdania niżej o dwóch naciśnięciach Escape (pierwsze zwalnia kursor, drugie zamyka program) i wiersze tabel o Escape opisują stan sprzed tej części. Prawdziwe pozostaje to, że przy zablokowanej klawiaturze (aktywny widżet ImGui albo pole tekstowe menu) `wasKeyPressed` zwraca `false` i `onEscapePressed` nie jest wołane.
 
 Jedno naciśnięcie Escape robi dokładnie jedną z dwóch rzeczy. Przy przechwyconym kursorze użytkownik nie widzi kursora i nie może kliknąć w panel ani w krzyżyk okna, więc pierwszy Escape ma mu oddać mysz, a dopiero drugi zamyka program. Kursor przechwytuje kamera po kliknięciu w scenę (sekcja 5.9). Dopóki nikt w scenę nie kliknął, `isCursorCaptured()` zwraca `false` i Escape po prostu zamyka program, tak jak w M0.
 

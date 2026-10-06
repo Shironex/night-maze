@@ -7,6 +7,8 @@ Część modułu `core`. Wstęp do całego modułu, diagram klas i opis dziedzic
 
 **Zmiana w M9, części 1 (2026-10-06).** Dwie rzeczy dotyczą tego dokumentu. (1) `main` czyta teraz przełączniki wiersza poleceń (`--seed`, `--menu-camera`, `--menu-shot`, `--menu-time`) **przed** otwarciem okna: `game::parseStartOptions` dostaje słowa po nazwie programu, a błąd kończy program dwiema liniami logu i `EXIT_FAILURE`; opis w [`../game/menu-camera.md`](../game/menu-camera.md), sekcje 2.9 i 5.6. (2) `NightMazeApp::onUpdate` ma **wczesny powrót** w trybie kamery menu: po zapamiętaniu poprzedniej pozycji gracza dodaje stały krok do `m_round.animationSeconds` i wraca, więc gracz, `updateRound` i bateria stoją (sekcja 2.10 tamtego dokumentu). Pętla stałego kroku i `alpha` się nie zmieniły: poza kamery menu jest funkcją czasu klatki i nie jest mieszana przez `alpha`.
 
+**Stan z 2026-10-06 (M9, część 2).** Escape nie służy już do oddania kursora przy biegnącej rundzie (otwiera pauzę, która zatrzymuje rundę) i nie zamyka programu w `Application::run`: pętla woła metodę wirtualną `onEscapePressed()`, a jej domyślne ciało zamyka okno. Fragment kodu w sekcji 5.2 jest już w nowym brzmieniu (odczytane z `src/core/Application.cpp`). Gra nadpisuje metodę i ma ekrany (menu główne, pauza, koniec rundy), a to, co w sekcjach niżej jest napisane o zwalnianiu kursora Escape i o zamykaniu programu tym klawiszem, opisuje stan sprzed tej części. Opis nowego zachowania: [`../game/game-states.md`](../game/game-states.md).
+
 ## 1. Po co to jest
 
 Program czasu rzeczywistego nie kończy się po jednym przebiegu: działa w pętli, która w każdym obrocie odbiera zdarzenia, przesuwa symulację i rysuje klatkę. `core::Application::run` jest tą pętlą, a `core::Time` jest jej zegarem. Razem rozwiązują problem, który wraca w każdym późniejszym kamieniu milowym: klatki trwają różnie długo (inny monitor, inny komputer, vsync włączony albo nie), a ruch gracza i kolizje mają działać zawsze tak samo. Rozwiązaniem jest stały krok czasowy (fixed timestep): symulacja idzie krokami o stałej długości, a rysowanie odbywa się raz na klatkę, niezależnie od tego, ile kroków się zmieściło. Dodatkowo `Time` liczy uśredniony FPS i czas klatki dla panelu Renderer.
@@ -119,14 +121,9 @@ void Application::run() {
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();
-        // Escape first gives a captured cursor back, and closes the window only when
-        // the cursor is not captured.
+        // What Escape means is up to the program: a game opens its pause menu.
         if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE)) {
-            if (m_input.isCursorCaptured()) {
-                m_input.setCursorCaptured(false);
-            } else {
-                m_window.requestClose();
-            }
+            onEscapePressed();
         }
 
         // Simulation: as many fixed steps as fit into the time that has passed.
@@ -149,8 +146,7 @@ void Application::run() {
 | `m_window.pollEvents();` | Najpierw zdarzenia, bo od nich zależy stan klawiszy czytany w następnej linii |
 | `m_input.update();` | Migawka klawiatury i myszy, dokładnie raz na obrót pętli ([`input.md`](input.md)) |
 | `if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE))` | Obsługa Escape. Sprawdzenie stoi **przed** pętlą kroków, czyli wykonuje się raz na klatkę. Gdy klawiatura jest zablokowana (ImGui używa jej samo), `wasKeyPressed` zwraca `false` i Escape nie robi nic ([`input.md`](input.md), sekcja 5.6) |
-| `if (m_input.isCursorCaptured()) { m_input.setCursorCaptured(false); }` | Jeśli kursor jest przechwycony, Escape tylko go zwalnia i program działa dalej. Kursor przechwytuje kamera po kliknięciu w scenę ([`input.md`](input.md), sekcje 5.7 i 5.9). Zwolnienie stoi przed pętlą kroków i przed `onRender`, więc w klatce z Escape gracz nie dostaje już klawiszy, a kamera się nie obraca |
-| `else { m_window.requestClose(); }` | Kursor nie jest przechwycony, więc Escape zamyka program. Tylko ustawia flagę. Bieżąca klatka wykona się do końca, a pętla zakończy się przy następnym sprawdzeniu warunku |
+| `onEscapePressed();` | Metoda wirtualna (od M9, części 2). Domyślnie zamyka okno (`m_window.requestClose()`, tylko ustawia flagę: bieżąca klatka wykona się do końca). `game::NightMazeApp` ją nadpisuje i wysyła zdarzenie `GameEvent::Escape` do ekranów gry ([`../game/game-states.md`](../game/game-states.md)): Escape pauzuje, wznawia albo wraca do menu głównego, a nigdy nie zamyka programu. Wywołanie stoi przed pętlą kroków, więc to, co zmieni, obowiązuje w całej klatce |
 | `m_time.beginFrame();` | Pomiar czasu od poprzedniej klatki i dopisanie go do akumulatora |
 | `while (m_time.consumeFixedStep()) { onUpdate(Time::FIXED_DT); }` | Od zera do 30 kroków symulacji. Argumentem jest zawsze ta sama stała, nigdy czas zmierzony. Dziś każdy krok to jeden krok gracza i jeden krok rundy (sekcja 5.5) |
 | `onRender(m_time.alpha());` | Jedno rysowanie na klatkę, z informacją, jak daleko jesteśmy między krokami. `NightMazeApp::onRender` używa jej do wyznaczenia pozycji oka (sekcja 5.5) |

@@ -5,6 +5,8 @@ Dokument biblioteki dla kamienia milowego M0. Opisuje stan kodu z `src/core` i k
 (pętla gry, `Time`, `GL_CHECK`) opisuje [`../modules/core/README.md`](../modules/core/README.md), tutaj
 skupiamy się na samej bibliotece.
 
+**Stan z 2026-10-06 (M9, część 2).** Od tej części wywołania zwrotne GLFW (klawisz, znak, wejście kursora, pozycja kursora, przycisk myszy, przewijanie) ma także `ui::UiLayer`: ustawia je w konstruktorze, a Dear ImGui instaluje swoje później i przekazuje każde zdarzenie dalej. Escape w `Application::run` woła dziś `onEscapePressed()` (domyślnie zamyka okno, gra pauzuje), a nie jest skrótem do zwolnienia kursora przy biegnącej rundzie, więc fragment kodu niżej i zdania o Escape zwalniającym mysz opisują stan sprzed tej części. Kursor jest przechwytywany (`GLFW_CURSOR_DISABLED`), gdy zaczyna się runda, i wolny na ekranach z menu.
+
 ## 1. Czym jest GLFW
 
 GLFW to mała biblioteka w języku C, która załatwia trzy rzeczy zależne od systemu operacyjnego:
@@ -324,6 +326,7 @@ void Application::run() {
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();
+        // (Stan sprzed M9, części 2; dziś: onEscapePressed(), patrz uwaga niżej.)
         // Escape first gives a captured cursor back, and closes the window only when
         // the cursor is not captured.
         if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE)) {

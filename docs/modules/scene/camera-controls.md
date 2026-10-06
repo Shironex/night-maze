@@ -5,6 +5,9 @@ Kod: sterowanie w [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.h
 
 Część modułu `scene`. Wstęp do modułu i jego miejsce w warstwach są w [`README.md`](README.md). Pozostałe części: [`transforms.md`](transforms.md) (przestrzenie współrzędnych i macierz modelu) i [`camera.md`](camera.md) (macierz widoku, rzutowanie, struktura `Camera`). Ten dokument zakłada znajomość [`camera.md`](camera.md) (kąty yaw i pitch, `forward()`, `right()`, `rotate()`, `viewMatrix(eye)`) i korzysta z trzech dokumentów modułu `core`: [`../core/input.md`](../core/input.md) (mysz, przechwycenie kursora, blokady), [`../core/main-loop.md`](../core/main-loop.md) (stały krok i `alpha`) oraz z [`../debug-ui.md`](../debug-ui.md) (jak panel jest podpięty). Ruch gracza, za którym kamera podąża, opisuje [`../game/player.md`](../game/player.md).
 
+**Stan z 2026-10-06 (M9, część 2).** Escape nie służy już do oddania kursora przy biegnącej rundzie (otwiera pauzę) i nie zamyka programu: wysyła zdarzenie do ekranów gry i pauzuje (jeden Escape: pauza, drugi: wznowienie), [`../game/game-states.md`](../game/game-states.md). Kursor jest przechwytywany, gdy zaczyna się runda (`NightMazeApp::showScreen`), a nie dopiero po kliknięciu w scenę, i jest wolny na ekranach z menu. Kliknięcie w scenę przechwytuje go nadal po pokazaniu paneli klawiszem `~` (`main.cpp` oddaje wtedy kursor panelom). Zdania w tym dokumencie, że kliknięcie jest drogą do mouse look, a Escape ją kończy (i drugi Escape zamyka program), opisują stan sprzed tej części. Mouse look i klawisze rundy działają tylko wtedy, gdy `roundInput = updatesRound(mode) && !menuCamera.enabled`.
+
+
 ## 1. Po co to jest
 
 Kamera z [`camera.md`](camera.md) to same liczby: pozycja, dwa kąty i parametry rzutowania. Sama z siebie stoi w miejscu. Ten dokument opisuje, kto i kiedy te liczby zmienia.

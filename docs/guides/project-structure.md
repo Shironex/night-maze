@@ -4,7 +4,7 @@ Kompletna mapa repozytorium Night Maze: co leży w którym katalogu, do czego s�
 konfiguracyjny i co powstaje dopiero podczas budowania. Dokument opisuje stan faktyczny po
 czwartej części kamienia milowego M7, która dodała cienie księżyca, czyli pierwszą mapę
 cieni (2026-10-05). Poprzedni stan to trzecia część M7, mgła z bufora głębi i winieta
-(2026-10-05). Uwaga (2026-10-06): od tamtej pory doszły szósta część M7, M8 i M9, część 1; opisują je dopiski z datą niżej, a drzewo plików poniżej jest zgodne z systemem plików na HEAD (c7b1a45). Listy plików w `CMakeLists.txt` mają na HEAD (policzone z pliku): `engine` 61 plików, `game_logic` 46, `night_maze` 67 i `night_maze_tests` 35 (`tests/main.cpp` i trzydzieści cztery pliki z testami).
+(2026-10-05). Uwaga (2026-10-06): od tamtej pory doszły szósta część M7, M8, M9, część 1 i M9, część 2 (stan na HEAD 8c99911, ostatni dopisek niżej); opisują je dopiski z datą niżej, a drzewo plików poniżej jest zgodne z systemem plików na HEAD `8c99911` (po M9, części 2). Listy plików w `CMakeLists.txt` mają na HEAD `8c99911` (policzone z pliku): `engine` 63 pliki, `game_logic` 48, `ui` 4, `night_maze` 67 i `night_maze_tests` 36 (`tests/main.cpp` i trzydzieści pięć plików z testami); na `c7b1a45` było 61, 46, bez `ui`, 67 i 35.
 
 Z M1 są: mysz, ścieżki do assetów, GLM, warstwa `gfx/` z klasami `Shader`, `Buffer` i
 `VertexArray`, warstwa `scene/` ze strukturami `Transform` i `Camera` oraz panele Shaders i
@@ -209,6 +209,8 @@ Poza tym doszły poprawki z 2026-10-06, po pierwszym obejrzeniu obrazu M7 i M8 p
 
 Poza tym doszła M9, część 1: kamera menu (2026-10-06). Nowe pliki: `src/game/MenuCamera.*` (ścieżka przez labirynt i poza kamery jako funkcja czasu) i `src/game/StartOptions.*` (przełączniki wiersza poleceń), oba w bibliotece `game_logic`, oraz `tests/MenuCameraTests.cpp` (23 przypadki) i `tests/StartOptionsTests.cpp` (7). Zmieniły się: `CMakeLists.txt`, `src/main.cpp` (`main(argc, argv)` i chowanie paneli), `NightMazeApp.*`, `debug/DebugContext.hpp` (49 pól, doszły `menuCamera` i `menuCameraLoopSeconds`), `DebugUI.*` i `panels/CameraPanel.*`. Dwie nowe notatki: `menu-camera-closed-walk.md` i `menu-background-prerendered-loop.md` (razem 56 notatek). Zgłoszone przez bramkę: **497 przypadków testowych i 219050 asercji** (przed częścią 467 i 158006). Liczby programów (14) i paneli (13) bez zmian. Opis: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md).
 
+Poza tym doszła M9, część 2: menu w RmlUi, ekrany gry i Escape (2026-10-06, HEAD `8c99911`). Nowe pliki: `src/ui/UiLayer.*` i `src/ui/AssetFileInterface.*` (nowa biblioteka `ui`, obok `gfx` i `scene`, poniżej `game`), `src/core/Files.*` (`core::readBinaryFile` i `core::TEXT_FONT_FILE`, w bibliotece `engine`), `src/game/GameState.*` (w bibliotece `game_logic`, ma testy), `assets/ui/` (trzy dokumenty `.rml` i arkusz `menu.rcss`) i `tests/GameStateTests.cpp` (21 przypadków). Dwie nowe zależności z `FetchContent` (RmlUi 6.3 i FreeType 2.14.3, razem siedem) i dwa nowe cele CMake: `rmlui_backend` (dwa pliki backendów RmlUi kompilowane bez zmian) oraz `ui`. Zmieniły się: `CMakeLists.txt`, `cmake/Dependencies.cmake`, `THIRD-PARTY-NOTICES.txt` (generowany) i `launcher/scripts/build-notices.mjs`, `src/core/Application.*` (wirtualna `onEscapePressed`), `NightMazeApp.*`, `StartOptions.*` (`--play`, `tests/StartOptionsTests.cpp` ma 8 przypadków), `src/main.cpp`, a w `src/debug/`: `Theme.cpp` (czytnik plików i nazwa czcionki z `core/Files.hpp`), `DebugContext.hpp` (50 pól, doszło `hudVisible`) i `DebugUI.cpp`. Listy plików w `CMakeLists.txt` mają na HEAD `8c99911` (policzone z pliku): `engine` 63 pliki, `game_logic` 48, `ui` 4, `night_maze` 67 i `night_maze_tests` 36 (`tests/main.cpp` i trzydzieści pięć plików z testami). Nowe dokumenty: [`../libraries/rmlui.md`](../libraries/rmlui.md), [`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/game/game-states.md`](../modules/game/game-states.md) i pięć notatek o decyzjach (razem 61 notatek). Zgłoszone przez bramkę: **519 przypadków testowych i 219195 asercji** (przed częścią 497 i 219050). Liczby programów shaderów (14) i paneli (13) bez zmian. Katalog `launcher/` (launcher w Tauri 2, [`launcher.md`](launcher.md)) i `.github/workflows/release.yml` są poza ocenianym kodem C++ i poza listami plików CMake; drzewo niżej pokazuje je jednym wierszem każdy.
+
 Docelową strukturę (z `renderer/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -228,6 +230,9 @@ night-maze/
 ├── .clangd                     # gdzie clangd ma szukać compile_commands.json, ta sama flaga
 ├── .gitattributes              # normalizacja końców linii
 ├── .gitignore                  # czego nie wersjonujemy
+├── .github/
+│   └── workflows/release.yml   # workflow wydania launchera i gry (M9; nigdy nie działał, nic nieopublikowane)
+├── THIRD-PARTY-NOTICES.txt     # noty licencyjne bibliotek w paczce, generowane: node launcher/scripts/build-notices.mjs --deps build/release/_deps
 ├── .vscode/                    # ustawienia obszaru roboczego Cursor i VS Code
 │   ├── extensions.json         # rekomendowane rozszerzenia
 │   └── settings.json           # clangd, presety CMake, formatowanie przy zapisie, GLSL
@@ -285,24 +290,29 @@ night-maze/
 │   │   ├── px.png                  # ściana +X
 │   │   ├── py.png                  # ściana +Y (zenit, tu jest tarcza księżyca)
 │   │   └── pz.png                  # ściana +Z
-│   └── textures/               # tekstury PNG: siedem obrazów koloru, ich siedem map normalnych i mapa wysokości (razem piętnaście plików)
-│       ├── crystal.png
-│       ├── crystal_normal.png
-│       ├── gate_wood.png
-│       ├── gate_wood_normal.png
-│       ├── ground.png                  # grunt terenu, powtarzany co 4 m
-│       ├── ground_normal.png
-│       ├── heightmap.png               # mapa wysokości terenu 256 x 256 (buduje ją make_heightmap.py)
-│       ├── lever_brass.png             # mosiądz dźwigni (M8, część 2)
-│       ├── lever_brass_normal.png
-│       ├── lever_iron.png              # żelazo dźwigni (M8, część 2)
-│       ├── lever_iron_normal.png
-│       ├── note_paper.png              # papier kartki (M8, część 2)
-│       ├── note_paper_normal.png
-│       ├── wall_stone.png
-│       └── wall_stone_normal.png
+│   ├── textures/               # tekstury PNG: siedem obrazów koloru, ich siedem map normalnych i mapa wysokości (razem piętnaście plików)
+│   │   ├── crystal.png
+│   │   ├── crystal_normal.png
+│   │   ├── gate_wood.png
+│   │   ├── gate_wood_normal.png
+│   │   ├── ground.png                  # grunt terenu, powtarzany co 4 m
+│   │   ├── ground_normal.png
+│   │   ├── heightmap.png               # mapa wysokości terenu 256 x 256 (buduje ją make_heightmap.py)
+│   │   ├── lever_brass.png             # mosiądz dźwigni (M8, część 2)
+│   │   ├── lever_brass_normal.png
+│   │   ├── lever_iron.png              # żelazo dźwigni (M8, część 2)
+│   │   ├── lever_iron_normal.png
+│   │   ├── note_paper.png              # papier kartki (M8, część 2)
+│   │   ├── note_paper_normal.png
+│   │   ├── wall_stone.png
+│   │   └── wall_stone_normal.png
+│   └── ui/                     # dokumenty menu w RmlUi (M9, część 2): po angielsku
+│       ├── main_menu.rml           # menu główne: Play (`data-action="play"`) i Quit (`quit`)
+│       ├── menu.rcss               # wspólny arkusz stylów trzech dokumentów, długości w dp
+│       ├── pause.rml               # pauza: Resume, Restart, Back to menu
+│       └── round_end.rml           # ekran wyniku: czas, kryształy, Restart, Back to menu
 ├── cmake/
-│   └── Dependencies.cmake      # FetchContent: GLFW, GLM, Dear ImGui, doctest i stb, targety imgui i stb_image
+│   └── Dependencies.cmake      # FetchContent: GLFW, GLM, Dear ImGui, doctest, stb, FreeType i RmlUi (siedem), targety imgui, stb_image i rmlui_backend
 ├── external/
 │   ├── glad/                   # wygenerowany loader OpenGL 4.1 Core (kod w repozytorium)
 │   │   ├── CMakeLists.txt      # target glad (napisany ręcznie)
@@ -314,6 +324,7 @@ night-maze/
 │   └── stb/                    # stb_image: w repozytorium tylko plik z implementacją
 │       ├── README.md           # skąd jest nagłówek i jak zmienić wersję
 │       └── stb_image.c         # dwie linie: makro i #include pobranego nagłówka
+├── launcher/                   # launcher w Tauri 2 (M9): Rust, React i TypeScript, poza ocenianym kodem C++ (opis: guides/launcher.md i launcher/README.md)
 ├── src/
 │   ├── main.cpp                # punkt wejścia, łączy game/ z debug/
 │   ├── assets/                 # wczytywanie plików z assets/: loadery bez OpenGL i pamięć podręczna
@@ -323,6 +334,7 @@ night-maze/
 │   │   └── Tangents.hpp/.cpp       # styczne wierzchołków z pozycji i UV, dla map normalnych
 │   ├── core/                   # warstwa bazowa: okno, wejście, czas, logi, ścieżki, GL_CHECK
 │   │   ├── Application.hpp/.cpp    # klasa bazowa programu, pętla główna
+│   │   ├── Files.hpp/.cpp          # core::readBinaryFile i core::TEXT_FONT_FILE, wspólne dla paneli i menu (M9, część 2)
 │   │   ├── GlCheck.hpp/.cpp        # makro GL_CHECK
 │   │   ├── Input.hpp/.cpp          # stan klawiatury i myszy, blokady, kursor
 │   │   ├── Log.hpp/.cpp            # logowanie do konsoli
@@ -359,6 +371,7 @@ night-maze/
 │   │   ├── Exit.hpp/.cpp           # wyjście: najdalsza komórka, brama, strefa wygranej
 │   │   ├── Fog.hpp/.cpp            # mgła bez OpenGL: ustawienia, współczynnik wysokości, ilość mgły, miejsce w świecie z głębi (M7, część 3)
 │   │   ├── GameplayRenderer.hpp/.cpp # rysowanie kryształów i bramy ich modelami
+│   │   ├── GameState.hpp/.cpp      # ekrany gry jako dane: GameMode, GameEvent, nextMode i pytania o ekran, bez okna (M9, część 2)
 │   │   ├── Grass.hpp/.cpp          # trawa: miejsca kępek z ziarna labiryntu, ustawienia
 │   │   ├── GrassRenderer.hpp/.cpp  # rysowanie trawy: punkty (GL_POINTS) dla shadera geometrii
 │   │   ├── InteractableRenderer.hpp/.cpp # rysowanie dźwigni i kartek trzema modelami, podświetlenie wskazanego (M8, część 2)
@@ -384,7 +397,7 @@ night-maze/
 │   │   ├── ShaderUniforms.hpp      # nazwy uniformów shaderów w jednym miejscu
 │   │   ├── ShadowMap.hpp/.cpp      # mapa cieni: framebuffer z samą głębią, sampler z porównaniem, podgląd (M7, część 4)
 │   │   ├── Shadows.hpp/.cpp        # cienie bez OpenGL: ustawienia, rozmiar mapy, bias, promień PCF, pudełko rzucających cień (M7, część 4)
-│   │   ├── StartOptions.hpp/.cpp   # przełączniki wiersza poleceń: ziarno, kamera menu, ujęcie, przesunięcie czasu (M9, część 1)
+│   │   ├── StartOptions.hpp/.cpp   # przełączniki wiersza poleceń: ziarno, kamera menu, ujęcie, przesunięcie czasu (M9, część 1), --play (część 2)
 │   │   ├── Skybox.hpp/.cpp         # niebo: tekstura sześcienna na sześcianie, rysowane na końcu klatki
 │   │   ├── Terrain.hpp/.cpp        # teren: mapa wysokości, siatka wysokości, heightAt, siatka trójkątów
 │   │   ├── TerrainRenderer.hpp/.cpp # rysowanie terenu: jedna siatka, tekstura gruntu, wireframe
@@ -403,14 +416,17 @@ night-maze/
 │   │   ├── UniformBuffer.hpp/.cpp  # bufor uniformów: pamięć bloku uniformów na karcie
 │   │   ├── Vertex.hpp              # jeden wierzchołek modelu: pozycja, normalna, uv, styczna
 │   │   └── VertexArray.hpp/.cpp    # tablica wierzchołków (VAO), opis atrybutów
-│   └── scene/                  # opis sceny: dane i matematyka na GLM, bez OpenGL
-│       ├── Camera.hpp/.cpp         # kamera: kierunek, macierz widoku i rzutowania
-│       ├── Collider.hpp/.cpp       # pudełka AABB i kule, testy nakładania, ruch ze ślizganiem
-│       ├── Light.hpp/.cpp          # światła jako dane: kierunkowe, punktowe, reflektor, zanik, stożek
-│       ├── LightBlock.hpp/.cpp     # bajty bloku uniformów LightBlock (std140) i packLightBlock
-│       ├── LightSpace.hpp/.cpp     # przestrzeń światła: widok i rzut ortograficzny księżyca, współrzędne w mapie cieni (M7, część 4)
-│       ├── Raycast.hpp/.cpp        # promień: test pudełka i kuli, najbliższe trafienie, promień przez punkt obrazu (M8, tylko podstawy)
-│       └── Transform.hpp/.cpp      # pozycja, obrót, skala, macierz modelu i macierz normalnych
+│   ├── scene/                  # opis sceny: dane i matematyka na GLM, bez OpenGL
+│   │   ├── Camera.hpp/.cpp         # kamera: kierunek, macierz widoku i rzutowania
+│   │   ├── Collider.hpp/.cpp       # pudełka AABB i kule, testy nakładania, ruch ze ślizganiem
+│   │   ├── Light.hpp/.cpp          # światła jako dane: kierunkowe, punktowe, reflektor, zanik, stożek
+│   │   ├── LightBlock.hpp/.cpp     # bajty bloku uniformów LightBlock (std140) i packLightBlock
+│   │   ├── LightSpace.hpp/.cpp     # przestrzeń światła: widok i rzut ortograficzny księżyca, współrzędne w mapie cieni (M7, część 4)
+│   │   ├── Raycast.hpp/.cpp        # promień: test pudełka i kuli, najbliższe trafienie, promień przez punkt obrazu (M8, tylko podstawy)
+│   │   └── Transform.hpp/.cpp      # pozycja, obrót, skala, macierz modelu i macierz normalnych
+│   └── ui/                     # warstwa menu w RmlUi (M9, część 2): obok gfx i scene, poniżej game
+│       ├── AssetFileInterface.hpp/.cpp # Rml::FileInterface: pliki z katalogu assets/ programu, UTF-8
+│       └── UiLayer.hpp/.cpp        # własność RmlUi, dokumenty, kolejka nazw kliknięć (data-action), rysowanie na wierzchu klatki
 ├── tests/                      # testy jednostkowe (doctest): program night_maze_tests
 │   ├── main.cpp                    # punkt wejścia: main() generuje doctest
 │   ├── BloomTests.cpp              # testy bloomu bez OpenGL: rozmiar celów, wagi rozmycia, ustawienia (M7, część 2)
@@ -422,6 +438,7 @@ night-maze/
 │   ├── ExitTests.cpp               # testy wyjścia: odległości, najdalsza komórka, brama, strefa
 │   ├── FogTests.cpp                # testy mgły bez OpenGL: współczynnik wysokości, prawo wykładnicze, miejsce w świecie z głębi (M7, część 3)
 │   ├── FramebufferTests.cpp        # testy nazw formatów i tekstów stanu framebuffera, bez kontekstu OpenGL (M7)
+│   ├── GameStateTests.cpp          # testy ekranów gry: przejścia, pytania o ekran, nazwy przycisków (M9, część 2)
 │   ├── GrassTests.cpp              # testy placeGrass: liczba kępek, pas przy ścianie, rozsiew na wzgórzach
 │   ├── ImageLoaderTests.cpp        # testy loadImage: tekstury i mapy normalnych gry (ściana, grunt), odwracanie wierszy, błędy
 │   ├── InteractablesTests.cpp      # testy dźwigni i kartek bez okna (M8, tylko podstawy)
@@ -442,7 +459,7 @@ night-maze/
 │   ├── ShaderSourceTests.cpp       # testy expandIncludes i nameSourceFiles
 │   ├── ShadowTests.cpp             # testy cieni bez OpenGL: pudełko światła, współrzędne w mapie, bias, teksel, jądro PCF (M7, część 4)
 │   ├── SkyboxTests.cpp             # testy plików nieba: rozmiar, księżyc, gradient, granice ścian
-│   ├── StartOptionsTests.cpp       # testy przełączników wiersza poleceń (M9, część 1)
+│   ├── StartOptionsTests.cpp       # testy przełączników wiersza poleceń, od M9, części 2 z --play (8 przypadków)
 │   ├── TangentTests.cpp            # testy triangleTangents, computeTangents i countMirroredTriangles
 │   ├── TerrainTests.cpp            # testy terenu: mapa wysokości, heightAt, siatka, ściany i gracz na gruncie
 │   ├── TransformTests.cpp          # testy macierzy normalnych
@@ -465,7 +482,9 @@ night-maze/
     │   ├── dead-end-lights.md          # światła punktowe w ślepych zaułkach (M4, zastąpiona w M5)
     │   ├── depth-attachment-as-texture.md # głębia framebuffera sceny jako tekstura, nie renderbuffer (M7)
     │   ├── deterministic-random.md     # własna randomBelow zamiast rozkładów std
+    │   ├── debug-window-redesign.md    # jedno okno debug po prawej zamiast trzynastu paneli, kodu nie ma (2026-10-06)
     │   ├── enemy-after-m5.md           # przeciwnik dopiero po M5
+    │   ├── escape-pauses-and-goes-back.md # Escape cofa o jeden ekran, wyjście to przycisk menu (M9, część 2)
     │   ├── exit-farthest-cell.md       # wyjście w komórce najdalszej od startu, nie w rogu
     │   ├── flashlight-in-hand.md       # M7, część 5: latarka w ręce, decyzja właściciela, obowiązuje, kod jest
     │   ├── flashlight-hand-straight-down.md # M7, część 5: ręka latarki, w dół prosto w dół w świecie, granica suwaka w prawo
@@ -481,6 +500,11 @@ night-maze/
     │   ├── grass-lit-with-up-normal.md # trawa oświetlana normalną gruntu, jeden program na wszystkie tryby
     │   ├── height-scale-rebuilds-terrain.md # skala wysokości przebudowuje teren na procesorze, nie jest uniformem
     │   ├── heightmap-tiled-in-world-metres.md # mapa wysokości powtarzana co 48 m świata
+    │   ├── launcher-tauri-in-this-repo.md # launcher w Tauri 2 w launcher/, tylko Night Maze, nic nieopublikowane (2026-10-06)
+    │   ├── menu-background-prerendered-loop.md # tło menu to nagrana pętla wideo (2026-10-06)
+    │   ├── menu-camera-closed-walk.md  # kamera menu: jedna zamknięta pętla przez kryształy (2026-10-06)
+    │   ├── menu-in-rmlui.md            # menu w RmlUi już w M9 (2026-10-06)
+    │   ├── menu-scope-for-m9.md        # cztery ekrany, angielskie teksty, trzy poziomy trudności (2026-10-06)
     │   ├── minimap-discovered-corridors.md # M7, część 6: minimapa tylko z odkrytych korytarzy, decyzje właściciela i wybory wykonawcze, z kodem
     │   ├── minimap-srgb-constants-after-composite.md # minimapa po przebiegu składającym, stałe sRGB bez konwersji (M7, część 6)
     │   ├── minimap-vertices-rebuilt-every-frame.md # lista trójkątów minimapy budowana i wysyłana co klatkę (M7, część 6)
@@ -498,12 +522,14 @@ night-maze/
     │   ├── small-calls-after-m6.md     # cztery drobne rozstrzygnięcia po M6: klawisz paneli, Esc, latarka, rozmiar nieba
     │   ├── srgb-encode-in-shader.md    # kodowanie sRGB w shaderze, GL_FRAMEBUFFER_SRGB wyłączone (M7)
     │   ├── tangents-on-load.md         # styczne liczone przy wczytaniu, bez znaku skrętności
+    │   ├── video-through-os-decoders-with-still-fallback.md # wideo przez dekodery systemu, nieruchomy obraz na wypadek porażki (2026-10-06)
     │   ├── vignette-not-aspect-corrected.md # winieta bez korekty proporcji okna (M7, część 3)
     │   └── walls-sunk-to-lowest-corner.md # ściany, słupki i brama zatopione do najniższego gruntu pod sobą
     ├── guides/                 # przewodniki
     │   ├── blender.md              # modele i tekstury: skrypty Blendera, eksport OBJ
     │   ├── build-macos.md          # budowanie na macOS
     │   ├── build-windows.md        # budowanie na Windowsie
+    │   ├── launcher.md             # launcher w Tauri 2: czym jest, co sprawdzono, odnośnik do launcher/README.md (M9)
     │   ├── m7-status.md            # gdzie stoi M7: co jest, co zostało, decyzje, ograniczenia, sprawdzenia na macOS
     │   └── project-structure.md    # ten dokument
     ├── libraries/              # dokumenty bibliotek
@@ -512,6 +538,7 @@ night-maze/
     │   ├── glfw.md
     │   ├── glm.md
     │   ├── imgui.md
+    │   ├── rmlui.md                # RmlUi i FreeType: menu gry, CMake, backendy, RML i RCSS (M9, część 2)
     │   └── stb_image.md
     └── modules/                # dokumenty modułów
         ├── assets/                 # moduł assets: wczytywanie plików
@@ -529,8 +556,10 @@ night-maze/
         ├── game/                   # moduł game
         │   ├── README.md               # wstęp, aplikacja a logika bez okna, indeks
         │   ├── flashlight.md           # latarka, klawisz F, bateria, LightingSettings, światła kryształów, LightRig
+        │   ├── game-states.md          # ekrany gry jako dane: automat skończony, przejścia, Escape, --play (M9, część 2)
         │   ├── gameplay.md             # runda: wyjście, kryształy, brama, bateria, HUD, panel Gameplay
         │   ├── interactables.md        # dźwignie i kartki bez okna: skróty, rozmieszczenie, pociąganie, wskazywanie (M8)
+        │   ├── menu-camera.md          # kamera menu: spacer po labiryncie, wysoki przelot, przełączniki wiersza poleceń (M9, część 1)
         │   ├── maze-generator.md       # labirynt, generator, układ w świecie, panel Maze
         │   ├── maze-rendering.md       # MazeWorld, MazeRenderer, ModelDraw, macierze modelu, regeneracja
         │   └── player.md               # gracz: chodzenie, noclip, oczy a stopy, testy
@@ -569,6 +598,8 @@ night-maze/
         │   ├── lights.md               # rodzaje świateł, model odbicia, lighting.glsl, panel Lights
         │   ├── picking.md              # promień: pudełko, kula, od punktu obrazu do promienia, ray casting (M8)
         │   └── transforms.md           # przestrzenie, macierz modelu, Transform, macierz normalnych
+        ├── ui/                     # moduł ui: warstwa menu w RmlUi (M9, część 2)
+        │   └── README.md               # UiLayer, interfejs plików, kolejka akcji, kolejność klatki
         └── debug-ui.md             # panele ImGui i HUD w projekcie
 ```
 
@@ -628,7 +659,8 @@ wypisane na początku drzewa, przed katalogami.
 | Plik | Co zawiera | Dokument |
 |---|---|---|
 | `src/main.cpp` | `main()` z obsługą wyjątków oraz klasę `DebugNightMazeApp`, która dokłada do gry interfejs debugowy i HUD | [`../modules/debug-ui.md`](../modules/debug-ui.md) |
-| `src/core/Application.*` | `core::Application`: posiada `Window`, `Input`, `Time`, prowadzi pętlę główną, obsługuje Esc (zwolnienie przechwyconego kursora albo zamknięcie programu) | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
+| `src/core/Application.*` | `core::Application`: posiada `Window`, `Input`, `Time`, prowadzi pętlę główną, wywołuje wirtualną `onEscapePressed` po naciśnięciu Escape (domyślnie zamyka okno, `NightMazeApp` pauzuje grę lub cofa o jeden ekran: od M9, części 2 Escape nie służy już do oddania kursora przy biegnącej rundzie (otwiera pauzę, która zatrzymuje rundę) i nie zamyka programu) | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
+| `src/core/Files.*` | `core::readBinaryFile` (cały plik do bajtów, fałsz gdy się nie otworzy, nic nie loguje) i stała `core::TEXT_FONT_FILE`. Przeniesione z `debug/Theme.cpp` w M9, części 2: korzystają z nich panele debug i menu | [`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/core/paths.md`](../modules/core/paths.md) |
 | `src/core/Window.*` | `core::Window`: inicjalizacja GLFW, okno, kontekst 4.1 Core, `gladLoadGL`, vsync | [`../modules/core/window-context.md`](../modules/core/window-context.md), [`../libraries/glfw.md`](../libraries/glfw.md) |
 | `src/core/Input.*` | `core::Input`: odpytywanie klawiszy i myszy. Klawiatura: `isKeyDown`, `wasKeyPressed`, `setKeyboardBlocked`. Mysz: `isMouseButtonDown`, `wasMouseButtonPressed`, `mouseDeltaX`, `mouseDeltaY`, `setMouseBlocked`, `setCursorCaptured`, `isCursorCaptured` | [`../modules/core/input.md`](../modules/core/input.md) |
 | `src/core/Time.*` | `core::Time`: delta czasu, akumulator stałego kroku (`FIXED_DT`), uśrednione FPS | [`../modules/core/main-loop.md`](../modules/core/main-loop.md) |
@@ -715,10 +747,13 @@ wypisane na początku drzewa, przed katalogami.
 | `assets/shaders/common/shadows.glsl` (M7, część czwarta) | plik dołączany, bez linii `#version`: stała `MAX_PCF_RADIUS` (3), siedem uniformów mapy cieni księżyca (`uMoonShadowMap` typu `sampler2DShadow`, `uMoonShadowMatrix`, `uMoonShadowEnabled`, `uMoonShadowConstantBias`, `uMoonShadowSlopeBias`, `uMoonShadowPcfRadius`, `uMoonShadowStrength`) i funkcje `slopeScaledBias`, `shadowMapVisibility` (jedno porównanie albo jądro PCF; głębia powyżej 1 od razu daje "oświetlony") i `moonShadow(worldPosition, facing)`, która zwraca udział światła księżyca zabierany przez cień, od 0 do `uMoonShadowStrength`. To zwykłe uniformy, a nie pola bloku `LightBlock`: sampler nie może być polem bloku. Dołączają go `lit.frag`, `gouraud.frag` i `grass.frag` | [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), sekcja 4, notatka [`../decisions/shadow-matrix-as-plain-uniforms.md`](../decisions/shadow-matrix-as-plain-uniforms.md) |
 | `assets/models/*.obj`, `*.mtl`, `assets/textures/*.png` | osiem modeli (`wall_straight`, `wall_pillar`, a od M5 `crystal_a`, `crystal_b` i `gate`, a od M8, części 2 `lever`, `lever_handle` i `note`; płytkę podłogi usunął M6). Po M8, części 2 tekstur koloru jest siedem, bo doszły `lever_iron.png`, `lever_brass.png` i `note_paper.png` (każda z mapą `_normal`), razem czternaście plików (do tego `heightmap.png`, razem piętnaście plików w `assets/textures/`). Poniżej opis sprzed tej części: pięć modeli (szósty, płytkę podłogi, usunął M6), każdy z jednym materiałem, cztery tekstury koloru (`ground.png`, `wall_stone.png`, `crystal.png`, `gate_wood.png`; ścianę i słupek pokrywa ta sama, oba kryształy też, a `ground.png` nie należy do żadnego modelu: nakłada ją na teren `game::TerrainRenderer`) i cztery mapy normalnych o tych samych nazwach z końcówką `_normal`, które materiały nazywają linią `map_Bump` (mapę gruntu `ground_normal.png` nazywa kod, nie materiał). Dziewiąty plik w `assets/textures/` to `heightmap.png`: szara mapa wysokości terenu 256 x 256, którą gra czyta jako liczby i z której nie robi tekstury. Budują je skrypty z `tools/blender/` | [`blender.md`](blender.md), [`../modules/assets/obj-loader.md`](../modules/assets/obj-loader.md), [`../modules/assets/images.md`](../modules/assets/images.md) |
 | `assets/skybox/*.png` | sześć ścian nieba (M6): `px`, `nx`, `py`, `ny`, `pz`, `nz`, każda 1024 x 1024, RGB, razem 5 278 627 bajtów. Nie należą do żadnego modelu ani materiału. Wczytuje je `game::Skybox`, bez odwracania wierszy i bez pamięci podręcznej assetów. Buduje je `tools/blender/make_skybox.py`, a ich zawartość sprawdza `tests/SkyboxTests.cpp` | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), [`blender.md`](blender.md), sekcja 7.7 |
-| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele i HUD czytają albo edytują, 49 pól (45 po M8, części 1, 42 po szóstej części M7; od M8, części 1 doszły trzy: `reflectShader`, `environment` i `puddleCount`, od M8, części 2 `pick` i `pickDebug`, od M9, części 1 `menuCamera` i `menuCameraLoopSeconds`; stan po szóstej części M7: do 38 pól po piątej doszły cztery z minimapy, `minimapShader`, `minimapOverlayShader`, `minimapSettings` i `minimap`; lista kończyła się na czwartej części, od piątej doszły `flashlightShadowSettings`, `flashlightShadowMap`, `flashlightLightSpace` i `flashlightShadowDrawn`, drugie pole będące wartością) (`time`, `window`, `clearColor`, `camera`, `mouseSensitivity`, `texturedShader`, `colorShader`, `player`, `mazeSettings`, `mazeWorld`, `assets`, `viewMode`, `drawColliders`, `litShader`, `gouraudShader`, `lighting`, od M5 `gameplay` i `round`, a od M6 `skyboxShader`, `skybox`, `grassShader`, `terrain`, `grass` i `grassTuftCount`, jedyne pole będące liczbą, a nie referencją, a od pierwszej części M7 `compositeShader`, `previewShader`, `postProcessSettings` i `postProcess`, a od drugiej części M7 `brightPassShader` i `blurShader`; trzecia część M7 zmieniła tylko komentarz pola `postProcessSettings`; od czwartej części M7 `shadowDepthShader`, `moonShadowSettings` oraz dwa pola tylko do odczytu, `moonShadowMap` i `moonLightSpace`; pole `shader` zniknęło razem z programem `basic`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5 |
+| `src/ui/UiLayer.*`, `src/ui/AssetFileInterface.*` | `ui::UiLayer`: własność RmlUi (RAII), `loadDocument`, `show`, `setText`, `takeActions` (nazwy kliknięć `data-action`), `wantsKeyboard`, `setMouseEnabled`, `draw`. `ui::AssetFileInterface`: `Rml::FileInterface` z katalogu `assets/`. Biblioteka `ui`, obok `gfx` i `scene`, poniżej `game`; nie dołącza nagłówków `gfx`, `scene` ani `game` | [`../modules/ui/README.md`](../modules/ui/README.md) |
+| `src/game/GameState.*` | `game::GameMode`, `GameEvent`, `Difficulty`, `NewGame`, `nextMode`, `startsRound`, `eventForAction` i pytania `updatesRound`, `animatesScene`, `isMenuOpen`, `showsHud`, `showsMinimap`, `usesMenuCamera`, `drawsScene`. Czyste dane i funkcje, w `game_logic` | [`../modules/game/game-states.md`](../modules/game/game-states.md) |
+| `assets/ui/*` | trzy dokumenty menu (`main_menu.rml`, `pause.rml`, `round_end.rml`) i wspólny arkusz `menu.rcss`, po angielsku | [`../libraries/rmlui.md`](../libraries/rmlui.md) |
+| `src/debug/DebugContext.hpp` | `debug::DebugContext`: struktura referencji do danych, które panele i HUD czytają albo edytują, 50 pól (49 po M9, części 1, od M9, części 2 doszło `hudVisible`; 45 po M8, części 1, 42 po szóstej części M7; od M8, części 1 doszły trzy: `reflectShader`, `environment` i `puddleCount`, od M8, części 2 `pick` i `pickDebug`, od M9, części 1 `menuCamera` i `menuCameraLoopSeconds`; stan po szóstej części M7: do 38 pól po piątej doszły cztery z minimapy, `minimapShader`, `minimapOverlayShader`, `minimapSettings` i `minimap`; lista kończyła się na czwartej części, od piątej doszły `flashlightShadowSettings`, `flashlightShadowMap`, `flashlightLightSpace` i `flashlightShadowDrawn`, drugie pole będące wartością) (`time`, `window`, `clearColor`, `camera`, `mouseSensitivity`, `texturedShader`, `colorShader`, `player`, `mazeSettings`, `mazeWorld`, `assets`, `viewMode`, `drawColliders`, `litShader`, `gouraudShader`, `lighting`, od M5 `gameplay` i `round`, a od M6 `skyboxShader`, `skybox`, `grassShader`, `terrain`, `grass` i `grassTuftCount`, jedyne pole będące liczbą, a nie referencją, a od pierwszej części M7 `compositeShader`, `previewShader`, `postProcessSettings` i `postProcess`, a od drugiej części M7 `brightPassShader` i `blurShader`; trzecia część M7 zmieniła tylko komentarz pola `postProcessSettings`; od czwartej części M7 `shadowDepthShader`, `moonShadowSettings` oraz dwa pola tylko do odczytu, `moonShadowMap` i `moonLightSpace`; pole `shader` zniknęło razem z programem `basic`). Sam nagłówek | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5 |
 | `src/debug/DebugUI.*` | `debug::DebugUI`: inicjalizacja i zamknięcie ImGui, zastosowanie motywu i wczytanie czcionki, bajty czcionki, od M7 pole `m_rawTextureSampler`, `draw` (zeruje flagę podglądów `postProcessSettings.previews` i, od czwartej części M7, flagę podglądu mapy cieni `moonShadowSettings.preview`, rysuje trzynaście paneli (dwanaście do M8, części 1), gdy są widoczne, a panelowi Shaders podaje tablicę czternastu programów (trzynastu od szóstej części M7, czternastu od M8, części 1), stała `SHADER_COUNT`; potem zawsze rysuje HUD, `drawHud`), `toggleVisible` (chowa i pokazuje panele, HUD zostaje), `wantsKeyboard`, `wantsMouse`, `setMouseEnabled` (ImGui ignoruje mysz, gdy kursor jest przechwycony). Od pierwszej części M7 `draw` woła jedenaście funkcji paneli, a od drugiej podaje panelowi Shaders listę dziesięciu programów (w pierwszej: ośmiu). Od czwartej części M7 funkcji paneli jest dwanaście (doszło `drawShadowsPanel`), a programów na liście jedenaście | [`../modules/debug-ui.md`](../modules/debug-ui.md), [`../libraries/imgui.md`](../libraries/imgui.md) |
 | `src/debug/RawTextureSampler.*` (M7) | klasa `debug::RawTextureSampler`: obiekt samplera OpenGL z wyłączonym dekodowaniem sRGB (rozszerzenie `GL_EXT_texture_sRGB_decode`, stałe wpisane ręcznie, sprawdzane przez `gfx::hasExtension`). `begin` i `end` dopisują do listy rysowania ImGui wywołania zwrotne, które na czas jednego obrazu wpinają ten sampler na jednostkę 0 i potem przywracają sampler backendu. Dzięki temu podgląd tekstury sRGB w panelu Assets wygląda jak plik. Bez rozszerzenia obiekt nic nie robi. Posiada go `DebugUI` | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.11 |
-| `src/debug/Hud.*` | `debug::drawHud`: HUD gry, rysowany przez ImGui w każdej klatce, także przy ukrytych panelach. Pasek u góry okna (napis `Crystals` z liczbą zebranych, potrzebnych i wszystkich kryształów, czas rundy, pasek baterii, który robi się czerwony poniżej progu, podpowiedzi `The gate is open. Find the exit.` i `Battery empty. Find a crystal.`) i karta `You escaped` po wygranej. Nie przyjmuje myszy ani klawiatury. Leży w `src/debug/`, bo tylko tam wolno dołączać ImGui. Od M6 pasek stoi pod rzędami zwiniętych pasków tytułów (w M6 pod dwoma, od pierwszej części M7 pod trzema, od czwartej pod czterema): jego odległość od góry liczy `debug::foldedRowsHeight`, a `HUD_TOP_OFFSET` to już tylko dwa odstępy `PANEL_GAP` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 6 |
+| `src/debug/Hud.*` | `debug::drawHud`: HUD gry, rysowany przez ImGui, także przy ukrytych panelach, ale od M9, części 2 tylko gdy `DebugContext::hudVisible` jest prawdą (w rundzie i bez kamery menu, nie pod menu). Pasek u góry okna (napis `Crystals` z liczbą zebranych, potrzebnych i wszystkich kryształów, czas rundy, pasek baterii, który robi się czerwony poniżej progu, podpowiedzi `The gate is open. Find the exit.` i `Battery empty. Find a crystal.`) i karta `You escaped` po wygranej (od M9, części 2 nie może się już pojawić: HUD jest ukryty na ekranie wyniku, który jest dokumentem RmlUi). Nie przyjmuje myszy ani klawiatury. Leży w `src/debug/`, bo tylko tam wolno dołączać ImGui. Od M6 pasek stoi pod rzędami zwiniętych pasków tytułów (w M6 pod dwoma, od pierwszej części M7 pod trzema, od czwartej pod czterema): jego odległość od góry liczy `debug::foldedRowsHeight`, a `HUD_TOP_OFFSET` to już tylko dwa odstępy `PANEL_GAP` | [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcja 6 |
 | `src/debug/Theme.*` | motyw paneli: `debug::colorFromBytes`, stałe `ERROR_TEXT_COLOR`, `PLAN_WALL_COLOR` i `PLAN_PLAYER_COLOR`, a od M5 kolory kryształów, bramy i wyjścia na planie (`PLAN_CRYSTAL_COLOR`, `PLAN_COLLECTED_COLOR`, `PLAN_GATE_COLOR`, `PLAN_EXIT_COLOR`) i kolory HUD (`HUD_CRYSTAL_COLOR`, `HUD_BATTERY_COLOR`, `HUD_BATTERY_LOW_COLOR`), `debug::applyTheme` (tabela kolorów, metryki, skala ekranu) i `debug::loadFont` (czcionka z `assets/fonts`, z czcionką wbudowaną jako wyjściem awaryjnym) | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8 |
 | `src/debug/PanelLayout.*` | układ paneli przy pierwszym uruchomieniu: struktura `debug::PanelPlacement` (róg okna, odsunięcie, rozmiar i pole `collapsed`: czy panel startuje zwinięty do paska tytułu), stałe wymiarów (między innymi `LEFT_COLUMN_WIDTH`, `BOTTOM_ROW_HEIGHT`), trzynaście stałych `..._PLACEMENT` (dwanaście do M8, części 1, kiedy doszedł `ENVIRONMENT_PLACEMENT`; od M5 z `GAMEPLAY_PLACEMENT`, od M6 z `TERRAIN_PLACEMENT` i `GRASS_PLACEMENT`, od pierwszej części M7 z `FRAMEBUFFERS_PLACEMENT`, od czwartej z `SHADOWS_PLACEMENT`; te pięć i `CAMERA_PLACEMENT` mają `collapsed = true`, czyli sześć paneli startuje zwiniętych, Terrain i Grass mają także `foldedRowsBefore = 1`, czyli stoją w drugim rzędzie pasków, Framebuffers `foldedRowsBefore = 2`, trzeci rząd, a Shadows `foldedRowsBefore = 3`, czwarty rząd, z rozmiarem `FRAMEBUFFERS_WIDTH` na `SHADOWS_HEIGHT`, czyli 324), stała `FOLDED_ROW_COUNT` (4, w pierwszych trzech częściach M7 3, do M6 2), funkcja `debug::foldedRowsHeight` (wysokość rzędów pasków z `ImGui::GetFrameHeight()`) i `debug::placePanelOnFirstUse`, która ustawia pozycję, rozmiar i stan zwinięcia z warunkiem `ImGuiCond_FirstUseEver` | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.7 |
 | `assets/fonts/AtkinsonHyperlegible-Regular.ttf`, `OFL.txt`, `README.md` | czcionka paneli debug (Atkinson Hyperlegible 1.006, 54 348 bajtów, plik niezmieniony), jej licencja SIL Open Font License 1.1 i opis źródła z sumą kontrolną. Cudzy materiał: nie jest kodem i nie powstaje ze skryptów projektu | [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.8.5 |
@@ -752,7 +787,8 @@ wypisane na początku drzewa, przed katalogami.
 | `tests/InteractablesTests.cpp` (M8) | 29 przypadków testowych dźwigni i kartek bez okna | [`../modules/game/interactables.md`](../modules/game/interactables.md) |
 | `tests/InteractionTests.cpp` (M8, część 2) | 21 przypadków testowych: dźwignie i kartki świata (rozmieszczenie, teren), nowa runda, wzory opadania, pociągnięcie i opadająca ściana, rączka, widok i restart, `pullAllLevers`, minimapa, promień z oka, przesłanianie, `interact`, karta kartki, kartka z podpowiedzią o kryształach, wygrana, podpowiedzi, podświetlenie, macierze modeli | [`../modules/scene/picking.md`](../modules/scene/picking.md), [`../modules/game/interactables.md`](../modules/game/interactables.md) |
 | `tests/MenuCameraTests.cpp` (M9, część 1) | 23 przypadki testowe kamery menu: trasa, ścieżka, poza w czasie, wysoki przelot | [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md) |
-| `tests/StartOptionsTests.cpp` (M9, część 1) | 7 przypadków testowych przełączników wiersza poleceń | [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md) |
+| `tests/GameStateTests.cpp` (M9, część 2) | 21 przypadków testowych ekranów gry: przejścia, pytania o ekran, nazwy przycisków, nowa gra | [`../modules/game/game-states.md`](../modules/game/game-states.md) |
+| `tests/StartOptionsTests.cpp` (M9, część 1) | 8 przypadków testowych przełączników wiersza poleceń (7 w części 1, jeden nowy dla `--play` w części 2) | [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md) |
 | `tests/RaycastTests.cpp` (M8) | 17 przypadków testowych promienia bez okna (pudełko, kula, najbliższe trafienie, punkt obrazu) | [`../modules/scene/picking.md`](../modules/scene/picking.md) |
 | `tests/SkyboxTests.cpp` | 5 przypadków testowych plików nieba (M6): sześć kwadratów jednej wielkości z trzema kanałami, reguła wyboru ściany i teksela przepisana ze specyfikacji OpenGL (`facePointOf`), tarcza księżyca tam, skąd leci domyślne światło księżyca z `game::LightingSettings`, niebo jaśniejsze przy horyzoncie niż w zenicie i zgodność koloru po obu stronach każdej z dwunastu krawędzi sześcianu. Test czyta pliki loaderem, bez OpenGL | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), sekcja 5.8 |
 | `tests/TerrainTests.cpp` | 27 przypadków testowych terenu (M6): stałe, `Heightmap::sample` i `heightmapFromImage`, `terrainRelief`, rozmiar siatki, wzór wysokości i skala (0 daje płaski świat), `heightAt` w punktach siatki, na krawędziach, na przekątnej, poza siatką i w losowych punktach względem trójkąta siatki, `buildTerrainMesh` (liczby, kierunek nawijania, normalne, UV, styczne), `gridNormal`, `lowestHeightUnder`, prawdziwy plik `heightmap.png`, świat bez mapy na płaskim gruncie, ściany, słupki i brama zatopione bez szczelin, kryształy nad gruntem, stopy gracza na gruncie i kolizje takie same jak na płaskim | [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md) |
@@ -823,6 +859,8 @@ Trzecia rzecz: panele w `debug/` czytają teraz dane gry, więc dołączają nag
 `LightingMode`, a od M5 panele Gameplay, Maze, Collision i Lights oraz HUD `Round.hpp` dla
 `Round` i `GameplaySettings`). Kierunek jest dozwolony: `debug/` może zależeć od każdej warstwy, a `game/`
 nadal nie dołącza niczego z `debug/`.
+
+Od M9, części 2 jest też warstwa `ui/` (menu w RmlUi), której rysunek wyżej nie pokazuje. Stoi **obok `gfx/` i `scene/`, poniżej `game/`**: potrzebuje tylko `core/` (okno, log, ścieżki, czytnik plików) oraz GLFW, GLAD i RmlUi, nie dołącza niczego z `gfx/`, `scene/` ani `game/` i nic nie wie o grze. Pełny łańcuch to dziś `core < gfx < scene < game`, z `ui` obok `gfx` i `scene` (`game` ją dołącza: `NightMazeApp` trzyma `ui::UiLayer`), a `debug/` nadal na wierzchu. Reguły gry (`GameState`) zostają w `game_logic` i nie dołączają `ui`. Opis: [`../modules/ui/README.md`](../modules/ui/README.md), sekcja 2.1.
 
 Jak to widać w kodzie:
 
@@ -994,7 +1032,7 @@ Jak to widać w kodzie:
   Renderer dostaje
   pole `mode` struktury `LightingSettings`), od M6 `game/Skybox.hpp` i `game/MazeWorld.hpp`
   (panel Terrain dostaje pole `terrain` struktury `MazeWorld`), od pierwszej części M7 `game/PostProcess.hpp` (zeruje pole `previews` struktury `PostProcessSettings`), od czwartej `game/Shadows.hpp` (zeruje pole `preview` struktury `ShadowSettings`) i nagłówki ImGui. `DebugUI.hpp` dołącza od M7 `debug/RawTextureSampler.hpp` (pole przez wartość), a przez niego `<glad/gl.h>`.
-- `src/debug/Theme.cpp` dołącza `core/Log.hpp` i `core/Paths.hpp` (błąd wczytania czcionki i
+- `src/debug/Theme.cpp` dołącza `core/Files.hpp` (czytnik plików i nazwa czcionki), `core/Log.hpp` i `core/Paths.hpp` (błąd wczytania czcionki i
   ścieżka do `assets/fonts`). `Theme.hpp` i `PanelLayout.hpp` dołączają `<imgui.h>`, bo
   pokazują typy `ImVec4` i `ImVec2`: to jedyne nagłówki projektu z nagłówkiem ImGui i
   dołączają je tylko pliki `.cpp` z `src/debug/`. Każdy z trzynastu plików paneli dołącza
@@ -1032,16 +1070,20 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
-| `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` (od M8 także `Raycast.*`) | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
-| `game_logic` | biblioteka statyczna | `src/game/Bloom.*` (M7, część druga), `src/game/Crystals.*`, `src/game/Discovery.*` (M7, część szósta), `src/game/EnvironmentMapping.*` (M8, część 1), `src/game/Exit.*`, `src/game/Fog.*` (M7, część trzecia), `src/game/Grass.*`, `src/game/Interactables.*` (M8, podstawy bez okna), `src/game/Interaction.*` (M8, część 2), `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Minimap.*` (M7, część szósta), `src/game/Player.*`, `src/game/Puddles.*` (M8, część 1), `src/game/Round.*`, `src/game/Shadows.*` (M7, część czwarta), `src/game/Terrain.*`, `src/game/Vignette.*` (M7, część trzecia) | `engine` (`PUBLIC`) |
-| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/GameplayRenderer.*`, `src/game/InteractableRenderer.*` (M8, część 2), `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*`, `src/game/ModelDraw.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/Skybox.*`, `src/game/PostProcess.*`, `src/game/ShadowMap.*` (M7, część czwarta), `src/game/MinimapRenderer.*` (M7, część szósta), `src/game/PuddleRenderer.*` (M8, część 1), `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, HUD, układ, motyw, sampler podglądów, trzynaście paneli) | `engine`, `game_logic`, `imgui` (`PRIVATE`) |
-| `night_maze_tests` | program | `tests/*.cpp` (od M8, części 1, z `EnvironmentMappingTests.cpp` i `PuddleTests.cpp`, od części 2 z `InteractionTests.cpp`) | `game_logic`, `doctest::doctest` (`PRIVATE`) |
+| `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` (od M8 także `Raycast.*`, od M9, części 2 `src/core/Files.*`) | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
+| `game_logic` | biblioteka statyczna | `src/game/Bloom.*` (M7, część druga), `src/game/Crystals.*`, `src/game/Discovery.*` (M7, część szósta), `src/game/EnvironmentMapping.*` (M8, część 1), `src/game/Exit.*`, `src/game/Fog.*` (M7, część trzecia), `src/game/GameState.*` (M9, część 2), `src/game/Grass.*`, `src/game/Interactables.*` (M8, podstawy bez okna), `src/game/Interaction.*` (M8, część 2), `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Minimap.*` (M7, część szósta), `src/game/Player.*`, `src/game/Puddles.*` (M8, część 1), `src/game/Round.*`, `src/game/Shadows.*` (M7, część czwarta), `src/game/Terrain.*`, `src/game/Vignette.*` (M7, część trzecia) | `engine` (`PUBLIC`) |
+| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/GameplayRenderer.*`, `src/game/InteractableRenderer.*` (M8, część 2), `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*`, `src/game/ModelDraw.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/Skybox.*`, `src/game/PostProcess.*`, `src/game/ShadowMap.*` (M7, część czwarta), `src/game/MinimapRenderer.*` (M7, część szósta), `src/game/PuddleRenderer.*` (M8, część 1), `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, HUD, układ, motyw, sampler podglądów, trzynaście paneli) | `engine`, `game_logic`, `ui`, `imgui` (`PRIVATE`) |
+| `ui` (M9, część 2) | biblioteka statyczna | `src/ui/UiLayer.*`, `src/ui/AssetFileInterface.*` (cztery pliki) | `engine` (`PUBLIC`), `rmlui_backend` (`PRIVATE`) |
+| `night_maze_tests` | program | `tests/*.cpp` (od M8, części 1, z `EnvironmentMappingTests.cpp` i `PuddleTests.cpp`, od części 2 z `InteractionTests.cpp`, od M9, części 2 z `GameStateTests.cpp`; 36 plików z `tests/main.cpp`) | `game_logic`, `doctest::doctest` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
 | `glfw` | biblioteka statyczna | pobrana przez FetchContent | biblioteki systemowe |
 | `glm-header-only` (alias `glm::glm-header-only`) | target `INTERFACE`: same nagłówki, nic się nie kompiluje | pobrany przez FetchContent | nic |
 | `imgui` | biblioteka statyczna | pobrana przez FetchContent, lista plików w `Dependencies.cmake` | `glfw` |
 | `doctest` (alias `doctest::doctest`) | target `INTERFACE`: jeden nagłówek, nic się nie kompiluje | pobrany przez FetchContent | nic |
 | `stb_image` | biblioteka statyczna | `external/stb/stb_image.c`, nagłówek pobrany przez FetchContent. Target zdefiniowany w `Dependencies.cmake` | nic |
+| `freetype` (alias `Freetype::Freetype`, M9, część 2) | biblioteka statyczna | pobrana przez FetchContent (`VER-2-14-3`, z `OVERRIDE_FIND_PACKAGE`), pięć bibliotek opcjonalnych wyłączonych | nic |
+| `rmlui_core` (alias `RmlUi::RmlUi`, M9, część 2) | biblioteka statyczna | pobrana przez FetchContent (`6.3`), nagłówki jako systemowe | `freetype` |
+| `rmlui_backend` (M9, część 2) | biblioteka statyczna | dwa pliki backendów RmlUi (`RmlUi_Platform_GLFW.cpp`, `RmlUi_Renderer_GL3.cpp`) bez zmian, z `RMLUI_GL3_CUSTOM_LOADER=<glad/gl.h>` | `RmlUi::RmlUi`, `glad`, `glfw` (`PUBLIC`) |
 
 Co doszło do targetów z oświetleniem (M4), plik po pliku z list w `CMakeLists.txt`:
 

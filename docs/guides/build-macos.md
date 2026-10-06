@@ -25,7 +25,7 @@ do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M
 "M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS", "M7, część 1
 (bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS", "M7, część 3 (mgła
 i winieta) na macOS", "M7, część 4 (cienie księżyca) na macOS", "M7, część 5 (cień latarki)
-na macOS", "M7, część 6 (minimapa) na macOS" "M8, część 1 (environment mapping) na macOS" "M8, część 2 (selekcja, dźwignie i kartki) na macOS" i "M9, część 1 (kamera menu) na macOS".
+na macOS", "M7, część 6 (minimapa) na macOS" "M8, część 1 (environment mapping) na macOS" "M8, część 2 (selekcja, dźwignie i kartki) na macOS", "M9, część 1 (kamera menu) na macOS" i "M9, część 2 (menu w RmlUi, ekrany gry i Escape) na macOS". M9, część 2 (menu w RmlUi, ekrany gry, dwie nowe zależności: RmlUi i FreeType) powstała na Windowsie 2026-10-06 i na macOS nie była ani budowana, ani uruchamiana.
 
 **Stan na 2026-10-06:** cały ten kod (commit `26c21c4`) został tego dnia pierwszy raz
 zbudowany, przetestowany i uruchomiony na Macu. Akapit wyżej opisuje stan sprzed tego dnia.
@@ -49,7 +49,7 @@ Wersja dla Windowsa: [`build-windows.md`](build-windows.md).
 |---|---|---|---|
 | Xcode Command Line Tools | kompilator `clang`, `make`, `git`, nagłówki systemowe i frameworki (Cocoa, OpenGL) | `xcode-select --install` | `clang --version` |
 | CMake w wersji co najmniej 3.24 | konfiguracja i uruchamianie buildu | `brew install cmake` | `cmake --version` |
-| git | CMake pobiera nim GLFW, GLM, ImGui, doctest i stb | jest w Command Line Tools | `git --version` |
+| git | CMake pobiera nim GLFW, GLM, ImGui, doctest, stb, FreeType i RmlUi | jest w Command Line Tools | `git --version` |
 | Ninja | opcjonalny szybszy generator | `brew install ninja` | `ninja --version` |
 
 Uwagi:
@@ -60,8 +60,8 @@ Uwagi:
 - Skąd wymóg 3.24: `cmake_minimum_required(VERSION 3.24)` w
   [`CMakeLists.txt`](../../CMakeLists.txt) i `cmakeMinimumRequired` w
   [`CMakePresets.json`](../../CMakePresets.json).
-- Bibliotek (GLFW, GLM, ImGui, doctest, stb_image, GLAD) nie instalujemy ręcznie. GLFW, GLM,
-  ImGui, doctest i stb pobiera CMake, GLAD leży w repozytorium.
+- Bibliotek (GLFW, GLM, ImGui, doctest, stb_image, FreeType, RmlUi, GLAD) nie instalujemy ręcznie. GLFW, GLM,
+  ImGui, doctest, stb, FreeType i RmlUi pobiera CMake, GLAD leży w repozytorium.
 - Pierwsza konfiguracja wymaga dostępu do internetu.
 
 ## 2. Budowanie i uruchamianie
@@ -155,25 +155,26 @@ Macu.
 
 | Klawisz albo mysz | Działanie | Gdzie w kodzie |
 |---|---|---|
-| lewy przycisk myszy w scenie | przechwytuje kursor (kursor znika) i włącza sterowanie | `NightMazeApp::onRender` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
+| lewy przycisk myszy w scenie | przechwytuje kursor (kursor znika) i włącza sterowanie. Od M9, części 2 kursor jest przechwytywany już przy `Play` (i przy wznowieniu z pauzy), więc kliknięcie jest potrzebne tylko po pokazaniu paneli tyldą | `NightMazeApp::onRender` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
 | ruch myszy przy przechwyconym kursorze | obraca kamerę | tamże |
 | W, S, A, D przy przechwyconym kursorze | chodzenie: do przodu, do tyłu, w lewo, w prawo, zawsze poziomo, z kolizjami | `NightMazeApp::onUpdate` zbiera klawisze, ruch liczy `Player::update` w [`src/game/Player.cpp`](../../src/game/Player.cpp) |
 | lewy Shift przy przechwyconym kursorze | chodzenie: sprint. W trybie noclip: w dół | tamże |
 | spacja przy przechwyconym kursorze | tylko w trybie noclip: w górę | tamże |
-| N | przełącza chodzenie i noclip (lot wzdłuż kierunku patrzenia, bez kolizji). Działa także przy wolnym kursorze | `NightMazeApp::onRender` |
-| F | włącza i wyłącza latarkę. Działa także przy wolnym kursorze. To samo robi pole `Flashlight on (key F)` w panelu Lights. Przy pustej baterii latarka się nie zapala, dopóki gracz nie zbierze kryształu | `NightMazeApp::onRender`, reguła baterii w `game::updateRound` w [`src/game/Round.cpp`](../../src/game/Round.cpp) |
-| F2 (od M9, części 1) | włącza i wyłącza tryb kamery menu: gra pokazuje samą siebie (kamera jedzie po labiryncie, runda stoi, HUD, minimapa i panele są schowane). W trakcie trybu klawisze R, N, F, M i E oraz mysz rundy są ignorowane, a `~` nadal pokazuje panele. Na MacBooku może wymagać Fn | `NightMazeApp::updateMenuCameraSwitch` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
-| R | zaczyna rundę od nowa w tym samym labiryncie: kryształy wracają, bateria jest pełna, latarka włączona, brama zamknięta, gracz na starcie. Działa także przy wolnym kursorze i na karcie wygranej. To samo robi przycisk `Restart round (key R)` w panelu Gameplay | `NightMazeApp::onRender` i `NightMazeApp::beginRound` |
-| Esc | przy przechwyconym kursorze oddaje kursor, przy wolnym zamyka program | `Application::run` w [`src/core/Application.cpp`](../../src/core/Application.cpp) |
+| N | przełącza chodzenie i noclip (lot wzdłuż kierunku patrzenia, bez kolizji). Działa także przy wolnym kursorze, ale od M9, części 2 tylko w rundzie (w menu i w pauzie nic nie robi) | `NightMazeApp::onRender` |
+| F | włącza i wyłącza latarkę. Działa także przy wolnym kursorze, ale od M9, części 2 tylko w rundzie (w menu i w pauzie nic nie robi). To samo robi pole `Flashlight on (key F)` w panelu Lights. Przy pustej baterii latarka się nie zapala, dopóki gracz nie zbierze kryształu | `NightMazeApp::onRender`, reguła baterii w `game::updateRound` w [`src/game/Round.cpp`](../../src/game/Round.cpp) |
+| F2 (od M9, części 1; od części 2 tylko w rundzie, nie w menu) | włącza i wyłącza tryb kamery menu: gra pokazuje samą siebie (kamera jedzie po labiryncie, runda stoi, HUD, minimapa i panele są schowane). W trakcie trybu klawisze R, N, F, M i E oraz mysz rundy są ignorowane, a `~` nadal pokazuje panele. Na MacBooku może wymagać Fn | `NightMazeApp::updateMenuCameraSwitch` w [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) |
+| R | zaczyna rundę od nowa w tym samym labiryncie: kryształy wracają, bateria jest pełna, latarka włączona, brama zamknięta, gracz na starcie. Od M9, części 2 działa tylko w rundzie (w menu, w pauzie i na ekranie wyniku nic nie robi: ekran wyniku ma przycisk `Restart`), w rundzie także przy wolnym kursorze. To samo robi przycisk `Restart round (key R)` w panelu Gameplay | `NightMazeApp::onRender` i `NightMazeApp::beginRound` |
+| Esc (od M9, części 2) | cofa o jeden ekran: z rundy do pauzy, z pauzy do rundy, z ekranu wyniku do menu głównego, w menu głównym nic. **Nigdy nie zamyka programu** (wyjście to przycisk `Quit` w menu głównym). Do M9, części 2: oddawał kursor albo zamykał program | `Application::run` w [`src/core/Application.cpp`](../../src/core/Application.cpp) woła `onEscapePressed`, `NightMazeApp::onEscapePressed` i `game::nextMode` w [`src/game/GameState.cpp`](../../src/game/GameState.cpp) |
 | `~` (na lewo od `1`, `GLFW_KEY_GRAVE_ACCENT`) | pokazuje lub ukrywa panele debugowe. Pasek HUD zostaje (poza trybem kamery menu, F2) | `DebugNightMazeApp::onRender` w [`src/main.cpp`](../../src/main.cpp) |
 
 **Przełączniki wiersza poleceń (od M9, części 1).**
 
-Program przyjmuje cztery przełączniki. Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
+Program przyjmuje pięć przełączników (piąty, `--play`, doszedł w M9, części 2). Są czytane przed otwarciem okna, a błędny kończy program dwiema liniami `[error]` (komunikat i lista przełączników) i niezerowym kodem wyjścia.
 
 | Przełącznik | Znaczenie |
 |---|---|
 | `--seed <liczba>` | ziarno pierwszego labiryntu, liczba całkowita od 0 do 4294967295 (domyślnie 1) |
+| `--play` | start od razu w rundzie, z pominięciem menu głównego (dla testów, skryptów i nagrywania; bez wartości) |
 | `--menu-camera` | start od razu w trybie kamery menu (gra pokazuje samą siebie; to samo robi klawisz F2) |
 | `--menu-shot <walk\|glide>` | ujęcie kamery menu: spacer po korytarzach albo wysoki przelot. Samo nie włącza trybu |
 | `--menu-time <sekundy>` | start ujęcia tyle sekund w głąb pętli, liczba z kropką dziesiętną (przecinek jest odrzucany), może być ujemna. Samo nie włącza trybu |
@@ -184,7 +185,7 @@ Klawisze są ignorowane, dopóki aktywny jest widżet panelu ImGui (na przykład
 wpisywanie wartości): klawiatura należy wtedy do panelu. Opis w
 [`../modules/core/input.md`](../modules/core/input.md), sekcja 5.6. Kliknięcie w panel nie
 przechwytuje kursora, a przy przechwyconym kursorze panele nie reagują na mysz: żeby
-przesunąć suwak, trzeba najpierw nacisnąć Esc. Obrót kamery opisuje
+przesunąć suwak, trzeba najpierw pokazać panele tyldą, która oddaje kursor (od M9, części 2 Escape otwiera pauzę, która zatrzymuje rundę). Obrót kamery opisuje
 [`../modules/scene/camera-controls.md`](../modules/scene/camera-controls.md), sekcje 5
 i 6, a ruch gracza [`../modules/game/player.md`](../modules/game/player.md). Obrót myszą i
 lot były na Macu sprawdzone ręcznie w stanie M1. Chodzenia z kolizjami, sprintu oraz klawiszy N,
@@ -2147,6 +2148,51 @@ bywają skrótami systemowymi, trzeba ewentualnie nacisnąć razem z Fn) i w **o
 **Co nadal nie istnieje na żadnym systemie:** obraz tego trybu nie został obejrzany przez
 właściciela.
 
+### M9, część 2 (menu w RmlUi, ekrany gry i Escape) na macOS: lista w całości otwarta
+
+Druga część kamienia milowego M9 (menu rysowane przez RmlUi: biblioteka `ui` w `src/ui/`, dokumenty w
+`assets/ui/`, ekrany gry w `src/game/GameState.*`, wirtualna `onEscapePressed` w `src/core/Application.*`,
+nowe zależności RmlUi 6.3 i FreeType 2.14.3 w `cmake/Dependencies.cmake`) powstała na Windowsie 2026-10-06 i
+tam jest zgłoszona jako zbudowana i przetestowana ([`build-windows.md`](build-windows.md), sekcja 26,
+"Lista kontrolna M9, część 2: menu w RmlUi, ekrany gry i Escape"). **Na macOS nikt jej nie zbudował ani nie
+uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Na Windowsie grę uruchomił i oglądał na zrzutach
+agent, który napisał kod, a nie właściciel. Opis kodu: [`../modules/ui/README.md`](../modules/ui/README.md),
+[`../modules/game/game-states.md`](../modules/game/game-states.md), [`../libraries/rmlui.md`](../libraries/rmlui.md).
+
+Ta część dodaje **dwie zależności i kod rysujący własnymi shaderami**, więc na macOS ryzyko jest większe niż
+przy poprzednich częściach: dwie biblioteki do zbudowania Apple clang, renderer RmlUi z shaderami
+`#version 330` w kontekście 4.1 Core na Apple, i skalowanie Retina (współczynnik `dp` i położenie kursora).
+FreeType jest zbudowany bez zlib, bzip2, libpng, HarfBuzz i Brotli z systemu (Homebrew ma wszystkie
+pięć): flagi `FT_DISABLE_*` mają ten sam skutek na każdym komputerze, ale na Macu nie było to sprawdzone.
+
+- [ ] `cmake --preset debug` pobiera RmlUi i FreeType (dwa nowe katalogi w `build/debug/_deps`: `rmlui-src` i
+      `freetype-src`) i konfiguracja kończy się bez błędu, **bez użycia FreeType z Homebrew** (w logu
+      konfiguracji nie ma ścieżki do bibliotek systemowych FreeType)
+- [ ] build Debug i Release bez ostrzeżeń: FreeType i RmlUi budują się Apple clang (nagłówki RmlUi są
+      oznaczone jako systemowe), a także `src/ui/*` i `src/game/GameState.cpp`
+- [ ] `make check` albo `ctest`: wszystkie przechodzą, w tym 21 przypadków z `GameStateTests.cpp` i 8 z
+      `StartOptionsTests.cpp` (razem na Windowsie 519 przypadków i 219195 asercji)
+- [ ] `night_maze` bez przełączników startuje w menu głównym nad przelatującą kamerą, napisy są widoczne
+- [ ] **w logu przy starcie nie ma błędów shaderów RmlUi** (renderer GL3 kompiluje własne shadery
+      `#version 330` w konstruktorze; jeśli kompilacja zawiedzie, w logu jest "the OpenGL renderer of RmlUi
+      could not be created" i gra startuje bez menu)
+- [ ] `Play` zaczyna rundę, kursor jest przechwycony i mysz obraca kamerę od razu
+- [ ] Escape pokazuje pauzę z działającym przyciskiem `Resume`; Escape jeszcze raz wraca do gry; w menu
+      głównym Escape nic nie robi
+- [ ] `Quit` zamyka okno, kod wyjścia 0
+- [ ] **ostrość i położenie trafień na Retina**: napisy i krawędzie przycisków są ostre (współczynnik `dp` jest
+      czytany z `glfwGetWindowContentScale`, na Retina 2), a kliknięcie trafia w przycisk dokładnie tam, gdzie
+      go widać (funkcja `RmlGLFW::ProcessCursorPosCallback` przelicza współrzędne okna na piksele bufora ramki)
+- [ ] zmiana rozmiaru okna i przeniesienie okna między ekranami o różnej skali w menu nie psują obrazu ani
+      położenia przycisków
+- [ ] panele debug na wierzchu pauzy, kliknięcie panelu nie klika przycisku pod spodem
+- [ ] Escape i klawisze funkcyjne: F2 działa tylko w rundzie (na MacBooku może wymagać Fn)
+- [ ] `night_maze --play` startuje od razu w rundzie; `--play now` daje dwie linie `[error]` i niezerowy kod
+      wyjścia
+
+**Co nadal nie istnieje na żadnym systemie:** obraz menu nie został obejrzany przez właściciela, a ekran
+wyniku z prawdziwego przejścia gry nie został obejrzany przez nikogo.
+
 ### Skróty: `make`
 
 Te same polecenia mają krótsze odpowiedniki w pliku [`Makefile`](../../Makefile) w katalogu
@@ -2258,7 +2304,7 @@ generatorem Ninja. Nie trafia do repozytorium.
 ## 4. Co pobiera FetchContent i dokąd
 
 Przy pierwszym `cmake --preset debug` CMake wykonuje
-[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje pięć repozytoriów:
+[`cmake/Dependencies.cmake`](../../cmake/Dependencies.cmake) i klonuje siedem repozytoriów (pięć z M2 + M3 i dwa z M9, części 2: FreeType i RmlUi):
 
 | Biblioteka | Tag | Katalog źródeł |
 |---|---|---|
@@ -2267,6 +2313,8 @@ Przy pierwszym `cmake --preset debug` CMake wykonuje
 | Dear ImGui | `v1.92.9b-docking` | `build/debug/_deps/imgui-src` |
 | doctest | `v2.5.3` | `build/debug/_deps/doctest-src` |
 | stb (dla stb_image) | brak tagów, commit `2c980bb5...` | `build/debug/_deps/stb-src` |
+| FreeType (M9, część 2) | `VER-2-14-3` | `build/debug/_deps/freetype-src` |
+| RmlUi (M9, część 2) | `6.3` | `build/debug/_deps/rmlui-src` |
 
 Czwarty wiersz doszedł w kamieniu milowym M2 + M3 i na Macu nie był jeszcze pobierany
 (sekcja 2, "Testy jednostkowe"). Na Windowsie katalog `doctest-src` powstaje zgodnie z
@@ -2300,6 +2348,7 @@ Po buildzie w `build/debug` znajdują się między innymi:
 | `night_maze` | program |
 | `assets` | dowiązanie symboliczne do katalogu `assets/` z repozytorium, tworzone po linkowaniu |
 | `libengine.a` | nasza biblioteka statyczna `engine` (kod z `src/core`, `src/gfx` i `src/scene`) |
+| `libui.a` (od M9, części 2) | nasza biblioteka statyczna `ui` (kod z `src/ui`: warstwa menu w RmlUi); RmlUi, FreeType i backendy RmlUi są osobnymi bibliotekami statycznymi |
 | `libimgui.a` | biblioteka `imgui` zdefiniowana w `Dependencies.cmake` |
 | `external/glad/libglad.a` | biblioteka `glad` |
 | `_deps/glfw-build/src/libglfw3.a` | biblioteka `glfw` |

@@ -1,7 +1,7 @@
 # Menu gry w RmlUi już w M9, Dear ImGui zostaje przy panelach debug
 
-Data: 2026-10-06. Stan: obowiązuje jako decyzja, **kodu menu nie ma** (od 2026-10-06 jest tylko kamera menu, sekcja 6, i rozstrzygnięte tło menu: [`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md)).
-Kod: brak. W `cmake/Dependencies.cmake` nie ma ani RmlUi, ani FreeType, w `src/` nie ma menu, a w `docs/` nie ma dokumentu biblioteki RmlUi (sprawdzone wyszukiwaniem tych nazw w `src/`, `cmake/`, `CMakeLists.txt` i `docs/`). Zbudowane jest tylko to, co dziś stoi w `Dependencies.cmake`: GLFW, GLM, Dear ImGui i pozostałe biblioteki z [`../libraries/`](../libraries/). Dokument modułu: brak. Powiązane: [`small-calls-after-m6.md`](small-calls-after-m6.md) (punkt 2: pauza dojdzie razem z menu), [`enemy-after-m5.md`](enemy-after-m5.md) (ten sam sposób zapisu decyzji bez kodu).
+Data: 2026-10-06. Stan: obowiązuje jako decyzja, **w chwili zapisu kodu menu nie było, a od 2026-10-06 (M9, część 2) jest: sekcja 7** (wcześniej tego dnia była tylko kamera menu, sekcja 6, i rozstrzygnięte tło menu: [`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md)).
+Kod (stan z chwili zapisu, dzisiejszy opisuje sekcja 7): brak. W `cmake/Dependencies.cmake` nie było ani RmlUi, ani FreeType, w `src/` nie ma menu, a w `docs/` nie ma dokumentu biblioteki RmlUi (sprawdzone wyszukiwaniem tych nazw w `src/`, `cmake/`, `CMakeLists.txt` i `docs/`). Zbudowane jest tylko to, co dziś stoi w `Dependencies.cmake`: GLFW, GLM, Dear ImGui i pozostałe biblioteki z [`../libraries/`](../libraries/). Dokument modułu: brak. Powiązane: [`small-calls-after-m6.md`](small-calls-after-m6.md) (punkt 2: pauza dojdzie razem z menu), [`enemy-after-m5.md`](enemy-after-m5.md) (ten sam sposób zapisu decyzji bez kodu).
 
 ## 1. Kontekst
 
@@ -66,3 +66,13 @@ Sekcje od 1 do 5 zostają w brzmieniu z chwili zapisu. Co się zmieniło tego sa
 - **Materiał porównawczy istnieje:** dwa nagrania z gry (ciągłe ujęcie 30 s i zmontowana pętla 24 s z czterech ujęć), poza repozytorium, pokazane właścicielowi (informacja od autora kodu, nie do sprawdzenia w repozytorium).
 - **Punkt 3 decyzji jest rozstrzygnięty.** Właściciel zdecydował po obejrzeniu obu nagrań (2026-10-06): tłem menu będzie **zmontowana, wyrenderowana wcześniej pętla wideo**, nie żywa scena, a przełączniki `--menu-shot` i `--menu-time` zostają. Pełna treść, tabela możliwości i skutki (brak dekodera wideo, plik binarny, starzenie się pętli) są w osobnej notatce [`menu-background-prerendered-loop.md`](menu-background-prerendered-loop.md). Punkty 1 i 2 decyzji bez zmian: menu w RmlUi.
 - Skutek dla ostatniej pozycji sekcji 5 ("Gdy będzie gotowe porównanie tła"): porównanie powstało i wybór jest zapisany w tej notatce.
+
+## 7. Dodatek z 2026-10-06 (M9, część 2): kod menu istnieje
+
+Sekcje od 1 do 6 zostają w brzmieniu z chwili zapisu, a nagłówek i opis "kodu menu nie ma" na górze jest już nieaktualny. Co się zmieniło (odczytane z kodu na `8c99911`):
+
+- **Zależności są.** `cmake/Dependencies.cmake` przypina RmlUi `6.3` i FreeType `VER-2-14-3`. Ze źródeł RmlUi kompilowane są bez zmian dwa pliki backendu (renderer OpenGL 3 i pomocnicy GLFW), z GLAD projektu jako loaderem. Opis: [`../libraries/rmlui.md`](../libraries/rmlui.md).
+- **Kod jest.** Warstwa `ui` (`src/ui/`: `UiLayer`, `AssetFileInterface`) i trzy dokumenty w `assets/ui/` (menu główne, pauza, wynik rundy): [`../modules/ui/README.md`](../modules/ui/README.md).
+- **Stany gry są.** `GameMode`, `GameEvent`, `nextMode` w `src/game/GameState.*` z testami; Escape pauzuje: [`../modules/game/game-states.md`](../modules/game/game-states.md).
+- **Punkty z sekcji 4, które dało się sprawdzić:** kolejność w klatce to scena, minimapa, menu RmlUi, panele ImGui; wejście do menu idzie przez wywołania zwrotne GLFW, które Dear ImGui przekazuje dalej, a panele wygrywają z menu pod kursorem. Co zostaje otwarte: macOS z profilem 4.1 Core (nikt tego nie budował ani nie uruchamiał) i ostrość na ekranie Retina.
+- Zasada zero tajemnic została poluzowana tak, jak zapisano w sekcji 4: warstwa menu jest opisana w dokumentach, ale większa, niż zdążę wytłumaczyć na obronie.
