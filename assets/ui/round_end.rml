@@ -3,15 +3,25 @@
     <title>Round end</title>
     <link type="text/rcss" href="menu.rcss"/>
 </head>
-<body>
-<div id="panel">
-    <h1>You escaped</h1>
-    <!-- The two numbers are written by the game when the screen comes up
-         (NightMazeApp::fillRoundEndDocument). -->
-    <p>Time: <span id="time">0:00</span></p>
-    <p>Crystals: <span id="crystals">0 / 0</span></p>
-    <button data-action="restart">Restart</button>
-    <button data-action="menu">Back to menu</button>
+<body class="dim">
+<div class="center">
+    <div class="card">
+        <h2 class="card-title">You escaped</h2>
+        <div class="sep"></div>
+        <!-- The four values are written by the game when the screen comes up
+             (NightMazeApp::fillRoundEndDocument). The seed and the difficulty together
+             name the maze: a friend who enters both plays the same one. -->
+        <div class="row"><span class="row-name">Time</span><span class="row-value" id="time">0:00</span></div>
+        <div class="row"><span class="row-name">Crystals</span><span class="row-value" id="crystals">0 of 0</span></div>
+        <div class="row"><span class="row-name">Difficulty</span><span class="row-value" id="difficulty">Normal</span></div>
+        <div class="row"><span class="row-name">Seed</span><span class="row-value" id="seed">1</span></div>
+        <div class="buttons">
+            <button class="btn primary" data-action="restart" autofocus>Play again</button>
+            <button class="btn" data-action="new-maze">New maze</button>
+            <button class="btn" data-action="menu">Back to menu</button>
+        </div>
+        <p class="keys">Play again: the same maze | New maze: another seed | Esc: back to menu</p>
+    </div>
 </div>
 </body>
 </rml>

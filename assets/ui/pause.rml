@@ -3,13 +3,30 @@
     <title>Pause</title>
     <link type="text/rcss" href="menu.rcss"/>
 </head>
-<body>
-<div id="panel">
-    <h1>Paused</h1>
-    <p>Escape goes back to the game.</p>
-    <button data-action="resume">Resume</button>
-    <button data-action="restart">Restart</button>
-    <button data-action="menu">Back to menu</button>
+<body class="left paused">
+<div class="column">
+    <div class="rise">
+        <p class="overline">Paused</p>
+    </div>
+    <div class="menu">
+        <div class="rise d1">
+            <button class="item" data-action="resume" autofocus><div class="bar"></div>Resume</button>
+        </div>
+        <div class="rise d2">
+            <button class="item" data-action="restart"><div class="bar"></div>Restart maze</button>
+        </div>
+        <div class="rise d3">
+            <button class="item" data-action="settings"><div class="bar"></div>Settings</button>
+        </div>
+        <div class="rise d4">
+            <button class="item" data-action="menu"><div class="bar"></div>Back to menu</button>
+        </div>
+    </div>
+    <!-- The seed and the difficulty of the round are written by the game when the
+         screen comes up (NightMazeApp::fillPauseDocument). -->
+    <div class="rise d5">
+        <p class="note"><span id="difficulty">Normal</span>, seed <span id="seed">1</span>. Press <span class="amber">Esc</span> to resume.</p>
+    </div>
 </div>
 </body>
 </rml>

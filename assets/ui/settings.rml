@@ -1,0 +1,43 @@
+<rml>
+<head>
+    <title>Settings</title>
+    <link type="text/rcss" href="menu.rcss"/>
+</head>
+<body class="dim">
+<!-- A control names its setting with data-setting: when it changes, the game gets the
+     name and the new value (game::applySetting), uses the value at once and writes the
+     settings file. The limits of the two sliders are the ones in game/Settings.hpp. The
+     elements with an id are written by the game. -->
+<div class="panel">
+    <h2 class="panel-title">Settings</h2>
+    <div class="sep"></div>
+    <div class="field">
+        <span class="field-name">Mouse sensitivity</span>
+        <input type="range" id="mouse_sensitivity" data-setting="mouse_sensitivity" min="1" max="10" step="0.1" value="4" autofocus/>
+        <span class="field-value" id="mouse_sensitivity-text">4.0</span>
+    </div>
+    <div class="field">
+        <span class="field-name">Field of view</span>
+        <input type="range" id="field_of_view" data-setting="field_of_view" min="45" max="90" step="1" value="60"/>
+        <span class="field-value" id="field_of_view-text">60 deg</span>
+    </div>
+    <div class="field">
+        <span class="field-name">Fullscreen</span>
+        <button class="toggle" id="fullscreen" data-action="toggle-fullscreen"><div class="knob"></div></button>
+        <span class="field-value" id="fullscreen-text">Off</span>
+    </div>
+    <div class="field" id="window-size-row">
+        <span class="field-name">Window size</span>
+        <button class="step" data-action="window-size-smaller">-</button>
+        <span class="field-value wide" id="window-size">1280 x 720</span>
+        <button class="step" data-action="window-size-larger">+</button>
+    </div>
+    <div class="buttons">
+        <button class="btn primary" data-action="back">Back</button>
+        <button class="btn" data-action="reset-settings">Reset defaults</button>
+        <span class="keys" id="saved"></span>
+    </div>
+    <p class="keys">Left and right move a slider | Esc: back</p>
+</div>
+</body>
+</rml>

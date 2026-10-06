@@ -3,12 +3,59 @@
     <title>Main menu</title>
     <link type="text/rcss" href="menu.rcss"/>
 </head>
-<body>
-<div id="panel">
-    <h1>Night Maze</h1>
-    <p>Find the crystals, open the gate, get out.</p>
-    <button data-action="play">Play</button>
-    <button data-action="quit">Quit</button>
+<body class="left">
+<!-- A button names what it does with data-action: the game turns the name into an event
+     (game::eventForAction) or into a command of this screen (NightMazeApp). The elements
+     with an id are written by the game: the chosen difficulty, the seed and the numbers
+     of the info block. -->
+<div class="column">
+    <div class="rise">
+        <div class="gem"></div>
+        <h1 class="wordmark">NIGHT MAZE</h1>
+        <p class="tagline">The moon sees every corridor. You see one.</p>
+    </div>
+    <div class="menu">
+        <div class="rise d1">
+            <button class="item" id="play" data-action="play" autofocus><div class="bar"></div>Play</button>
+        </div>
+        <div class="rise d2">
+            <div class="choices">
+                <span class="label">Difficulty</span>
+                <button class="chip" id="difficulty-easy" data-action="difficulty-easy">Easy</button>
+                <button class="chip" id="difficulty-normal" data-action="difficulty-normal">Normal</button>
+                <button class="chip" id="difficulty-hard" data-action="difficulty-hard">Hard</button>
+            </div>
+            <!-- Enter in the seed field starts the game, like the button Play. -->
+            <div class="choices">
+                <span class="label">Seed</span>
+                <input type="text" id="seed" maxlength="10" data-submit="play"/>
+                <button class="chip" id="new-seed" data-action="new-seed">New seed</button>
+            </div>
+            <!-- Empty until the seed field holds something that is not a seed. -->
+            <p class="hint" id="seed-hint"></p>
+        </div>
+        <div class="rise d3">
+            <button class="item" id="open-settings" data-action="settings"><div class="bar"></div>Settings</button>
+        </div>
+        <div class="rise d4">
+            <button class="item" id="quit" data-action="quit"><div class="bar"></div>Quit</button>
+        </div>
+    </div>
 </div>
+<div class="info rise d5">
+    <div class="fact">
+        <p class="fact-name">Maze</p>
+        <p class="fact-value" id="info-maze">16 x 16</p>
+    </div>
+    <div class="fact">
+        <p class="fact-name">Crystals to find</p>
+        <p class="fact-value" id="info-crystals">19 of 26</p>
+    </div>
+    <div class="fact">
+        <p class="fact-name">Battery</p>
+        <p class="fact-value" id="info-battery">2:30</p>
+    </div>
+</div>
+<p class="keys corner">Arrows or Tab: move | Enter: choose</p>
 </body>
 </rml>

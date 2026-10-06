@@ -1,59 +1,538 @@
-/* The style sheet of the three menu documents (main_menu.rml, pause.rml, round_end.rml).
-   It is plain on purpose: the screens get their real look later. The lengths are in dp,
-   a pixel at 100 % display scaling, so the menu has the same size on every display. */
+/* The style sheet of the four menu documents: main_menu.rml, pause.rml, round_end.rml
+   and settings.rml.
 
-/* RmlUi has no built-in style sheet: without these rules every element is inline. */
+   RCSS is the style language of RmlUi: it looks like CSS and knows a part of it. What
+   differs from a browser and matters here:
+   - RmlUi has no built-in style sheet: without the rules below every element is inline
+     and nothing can take the keyboard focus.
+   - A length in vh is a hundredth of the HEIGHT of the window. Every size here is in
+     vh, so a menu covers the same share of the picture in a window of any size.
+   - "decorator" paints a background (here: colour gradients), "font-effect" a glow
+     around text. Colours are #rrggbb or #rrggbbaa, where aa is the opacity.
+   - There is no ::before and no outline: the marker bar of a menu item is a real
+     element, and the focus frame is a border or a box-shadow.
+   - "box-shadow" takes the colour first, then four lengths: the offset to the right and
+     downwards, the blur and the spread. A spread without blur is a sharp ring around
+     the element. A blur without spread is much fainter than in a browser, so the glows
+     here have both. A box-shadow cannot be animated by a transition.
+   - "tab-index: auto" lets Tab stop at an element and lets Enter or Space click it.
+     "nav: auto" lets the arrow keys move the focus from it to its nearest neighbour.
+
+   The colours are the ones of the HUD and of the debug theme: moon white #e2eaf6, dim
+   blue grey #8c9ab6, amber #ffb854 (hover, like the flashlight), crystal #56d6ca
+   (focus, like the crystals), slate blue for surfaces. */
+
+/* ---- the basics ---------------------------------------------------------------------- */
+
 body {
     display: block;
     width: 100%;
     height: 100%;
     font-family: "Atkinson Hyperlegible";
-    font-size: 18dp;
-    color: #e8ecf4;
-    /* Half transparent: the frame of the game shows through, darkened. */
-    background-color: #05081099;
+    font-size: 2.8vh;
+    color: #e2eaf6;
+    /* The entrance of a screen. The game adds the class "open" to the body one moment
+       after the document became visible (ui::UiLayer::show), and the transition fades
+       the screen in between the two states. */
+    opacity: 0;
+    transition: opacity 0.25s cubic-out;
 }
-div, h1, p {
+body.open {
+    opacity: 1;
+}
+div, h1, h2, p {
     display: block;
 }
 
-/* The box in the middle of the window that holds the title and the buttons. */
-#panel {
-    width: 320dp;
-    margin: 120dp auto 0 auto;
-    padding: 28dp;
-    text-align: center;
-    background-color: #101828e6;
-    border: 1dp #5b7cc4;
-    border-radius: 10dp;
-}
-h1 {
-    font-size: 38dp;
-    color: #ffffff;
-    margin-bottom: 8dp;
-}
-p {
-    color: #9fb0d0;
-    margin-bottom: 4dp;
-}
-
-/* One button per row. data-action in the document names what a click does. */
-button {
-    display: block;
-    width: 220dp;
-    margin: 14dp auto 0 auto;
-    padding: 10dp 0;
-    color: #dfe6f5;
-    background-color: #24345c;
-    border: 1dp #5b7cc4;
-    border-radius: 6dp;
+/* What can take the keyboard focus, and how the arrow keys leave it. */
+button, input {
+    tab-index: auto;
+    nav: auto;
     cursor: pointer;
-    transition: background-color color 0.2s cubic-out;
 }
-button:hover {
-    color: #101828;
-    background-color: #e0a030;
+
+/* ---- what lies between the scene and the menu ---------------------------------------- */
+
+/* The main menu and the pause menu stand on the left: the picture is darkened there and
+   left clear on the right, and a little at the bottom, under the info block. */
+body.left {
+    decorator: linear-gradient(90deg, #050812f0 0%, #050812b8 30%, #05081226 62%, #05081200 78%),
+               linear-gradient(0deg, #05081299 0%, #05081200 30%);
 }
-button:active {
+/* The pause menu lies over a round that stands still: all of it is dimmed a little
+   more, so the stopped picture reads as "not running". */
+body.left.paused {
+    decorator: linear-gradient(90deg, #050812f5 0%, #050812cc 30%, #05081280 62%, #05081266 100%);
+}
+/* The result and the settings have a panel of their own: the whole picture is dimmed. */
+body.dim {
+    background-color: #090d1a99;
+}
+
+/* ---- the column of the main menu and of the pause menu ------------------------------- */
+
+.column {
+    position: absolute;
+    left: 12.4vh;
+    top: 9.8vh;
+    width: 80vh;
+}
+body.paused .column {
+    top: 16vh;
+}
+
+/* The parts of a column come in one after another, from the left: each one has
+   a transition with a longer delay (the third number). */
+.rise {
+    opacity: 0;
+    transform: translateX(-3vh);
+    transition: opacity transform 0.5s 0.05s cubic-out;
+}
+.rise.d1 { transition: opacity transform 0.5s 0.11s cubic-out; }
+.rise.d2 { transition: opacity transform 0.5s 0.17s cubic-out; }
+.rise.d3 { transition: opacity transform 0.5s 0.23s cubic-out; }
+.rise.d4 { transition: opacity transform 0.5s 0.29s cubic-out; }
+.rise.d5 { transition: opacity transform 0.5s 0.35s cubic-out; }
+.rise.d6 { transition: opacity transform 0.5s 0.41s cubic-out; }
+body.open .rise {
+    opacity: 1;
+    transform: translateX(0vh);
+}
+
+/* The crystal above the title: a square turned onto its corner and stretched upwards. */
+.gem {
+    width: 3.2vh;
+    height: 3.2vh;
+    margin: 1.6vh 0 2.6vh 0.6vh;
+    background-color: #12444c;
+    border: 0.3vh #56d6ca;
+    transform: scaleY(1.45) rotate(45deg);
+}
+.wordmark {
+    font-size: 8.9vh;
+    line-height: 1;
+    letter-spacing: 0.18em;
+    color: #e2eaf6;
+    font-effect: glow(0dp 6dp 0dp 0dp #56d6ca48);
+}
+.tagline {
+    margin-top: 1.4vh;
+    font-size: 2.7vh;
+    color: #8c9ab6;
+}
+.overline {
+    font-size: 2.3vh;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #8c9ab6;
+}
+
+.menu {
+    margin-top: 3.9vh;
+}
+body.paused .menu {
+    margin-top: 2.8vh;
+}
+
+/* One item of a menu: plain text, no box. Hover makes it amber and moves it to the
+   right, the focus of the keyboard puts a crystal frame around it. */
+button.item {
+    display: inline-block;
+    position: relative;
+    padding: 0.8vh 1.6vh 0.8vh 2.8vh;
+    margin-bottom: 0.2vh;
+    font-size: 4.6vh;
+    line-height: 1.15;
+    text-align: left;
+    color: #e2eaf6d1;
+    border-radius: 0.9vh;
+    transition: color transform background-color 0.22s cubic-out;
+}
+button.item.small {
+    font-size: 3.7vh;
+}
+/* The marker bar in front of an item: it grows out of nothing on hover and on focus. */
+button.item .bar {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0vh;
+    height: 0.5vh;
+    margin-top: -0.25vh;
+    background-color: #ffb854;
+    transition: width 0.25s cubic-out;
+}
+button.item:hover {
+    color: #ffb854;
+    transform: translateX(1.4vh);
+}
+button.item:hover .bar, button.item:focus-visible .bar {
+    width: 2vh;
+}
+button.item:focus-visible {
+    color: #e2eaf6;
+    /* A sharp ring and a soft glow around it. */
+    box-shadow: #56d6ca 0 0 0 0.25vh, #56d6ca47 0 0 2.2vh 0.7vh;
+}
+button.item:focus-visible:hover {
+    color: #ffb854;
+}
+button.item:active {
+    background-color: #4e3616;
+}
+
+/* A row under an item: a label and a few small controls beside it. */
+.choices {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 0.6vh 0 0.9vh 2.8vh;
+    font-size: 2.7vh;
+    color: #8c9ab6;
+}
+.choices .label {
+    display: block;
+    width: 16vh;
+}
+/* The line under the seed row that says what is wrong with the seed. While it is empty
+   it has no height. */
+.hint {
+    margin: 0 0 0.9vh 18.8vh;
+    font-size: 2.3vh;
+    color: #ff6b5a;
+}
+
+/* The way of the arrow keys through the main menu, named element by element. "auto"
+   would look for the nearest element straight below, and the small controls of the two
+   rows do not stand below the word "Play": the arrows would skip them. */
+#play { nav-down: #difficulty-normal; }
+#difficulty-easy, #difficulty-normal, #difficulty-hard { nav-up: #play; nav-down: #seed; }
+#seed { nav-up: #difficulty-normal; nav-down: #open-settings; }
+#new-seed { nav-up: #difficulty-hard; nav-down: #open-settings; }
+#open-settings { nav-up: #seed; nav-down: #quit; }
+#quit { nav-up: #open-settings; }
+
+/* ---- small buttons, the text field ---------------------------------------------------- */
+
+button.chip, button.btn, button.step {
+    display: block;
+    margin-right: 1.4vh;
+    padding: 0.9vh 2vh;
+    font-size: 2.7vh;
+    color: #e2eaf6;
+    background-color: #303e5e;
+    border: 0.25vh #303e5e;
+    border-radius: 0.9vh;
+    transition: background-color border-color color transform 0.2s cubic-out;
+}
+button.btn {
+    padding: 1.2vh 2.5vh;
+    font-size: 2.9vh;
+}
+button.step {
+    width: 5vh;
+    padding: 0.9vh 0;
+    margin-right: 0;
+    text-align: center;
+}
+button.chip:hover, button.btn:hover, button.step:hover {
+    background-color: #4e3616;
+    border-color: #4e3616;
+    transform: translateY(-0.27vh);
+    box-shadow: #00000066 0 0.7vh 1.4vh 0.2vh;
+}
+button.chip:active, button.btn:active, button.step:active {
+    background-color: #624214;
+    border-color: #624214;
+}
+button.chip:focus-visible, button.btn:focus-visible, button.step:focus-visible,
+button.toggle:focus-visible, input.text:focus-visible {
+    border-color: #56d6ca;
+    box-shadow: #56d6ca47 0 0 1.8vh 0.5vh;
+}
+/* The first choice of a row of buttons, and the chosen one of the three difficulty
+   buttons (the game sets the class "chosen"): the dark crystal green, amber text. */
+button.btn.primary {
+    background-color: #12444c;
+    border-color: #12444c;
+}
+button.chip.chosen {
+    color: #ffb854;
+    background-color: #12444c;
+    border-color: #2c6870;
+}
+button.btn.primary:hover, button.chip.chosen:hover {
+    background-color: #4e3616;
+    border-color: #4e3616;
+}
+button.btn.primary:focus-visible, button.chip.chosen:focus-visible {
+    border-color: #56d6ca;
+}
+
+/* The seed field. Left and right move the caret in it, so only up and down leave it. */
+input.text {
+    display: block;
+    width: 21vh;
+    height: 3.5vh;
+    margin-right: 1.4vh;
+    padding: 0.9vh 1.4vh;
+    font-size: 2.7vh;
+    line-height: 3.5vh;
+    color: #e2eaf6;
+    caret-color: #ffb854;
+    background-color: #242f4a;
+    border: 0.25vh #242f4a;
+    border-radius: 0.9vh;
+    cursor: text;
+    nav-left: none;
+    nav-right: none;
+    transition: background-color border-color 0.2s cubic-out;
+}
+input.text:hover {
+    background-color: #4e3616;
+    border-color: #4e3616;
+}
+input.text:focus {
+    border-color: #56d6ca;
+}
+/* The marked part of the text. */
+input.text selection {
+    background-color: #2c6870;
+}
+
+/* ---- the info block at the bottom of the main menu ----------------------------------- */
+
+.info {
+    position: absolute;
+    left: 12.4vh;
+    bottom: 8vh;
+    display: flex;
+    flex-direction: row;
+}
+.fact {
+    margin-right: 5.3vh;
+    padding-left: 1.8vh;
+    border-left: 0.2vh #2c6870;
+}
+.fact-name {
+    font-size: 1.9vh;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8c9ab6;
+}
+.fact-value {
+    margin-top: 0.3vh;
+    font-size: 3vh;
+    color: #e2eaf6;
+}
+
+/* A line of small text: which keys do what, the note under the pause menu. */
+.keys {
+    font-size: 2.1vh;
+    color: #8c9ab6;
+}
+.keys.corner {
+    position: absolute;
+    right: 4.3vh;
+    bottom: 3.2vh;
+}
+.note {
+    margin: 2.5vh 0 0 2.8vh;
+    font-size: 2.4vh;
+    color: #8c9ab6;
+}
+.amber {
+    color: #ffb854;
+}
+
+/* ---- the card of the result screen and the panel of the settings --------------------- */
+
+/* A box as large as the window that puts its one child in its middle. */
+.center {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+}
+.card, .panel {
+    padding: 4.3vh 5vh;
+    border: 0.15vh #5c709c73;
+    border-radius: 2.1vh;
+    decorator: linear-gradient(160deg, #18223ef0 0%, #090d1af5 100%);
+    box-shadow: #00000080 0 2.5vh 5vh 1.5vh;
+    /* The entrance: the box rises a little while the screen fades in. */
+    transform: translateY(2.5vh);
+    transition: transform 0.45s cubic-out;
+}
+body.open .card, body.open .panel {
+    transform: translateY(0vh);
+}
+.card {
+    width: 82vh;
+}
+.panel {
+    position: absolute;
+    left: 12.4vh;
+    top: 10.7vh;
+    width: 96vh;
+}
+.card-title {
+    font-size: 6.4vh;
+    line-height: 1.1;
+    color: #56d6ca;
+}
+.panel-title {
+    font-size: 5vh;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+}
+.sep {
+    height: 0.15vh;
+    margin: 2.1vh 0;
+    background-color: #2c6870;
+}
+
+/* The rows of the result: a name on the left, its value on the right. */
+.row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 1.2vh;
+    font-size: 3.4vh;
+}
+.row-name {
+    display: block;
+    color: #8c9ab6;
+}
+.row-value {
+    display: block;
+    color: #e2eaf6;
+}
+.buttons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 3.2vh 0 2vh 0;
+}
+
+/* ---- the settings: one row per setting ------------------------------------------------ */
+
+.field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 6vh;
+    margin-bottom: 1vh;
+    font-size: 2.9vh;
+}
+.field-name {
+    display: block;
+    width: 32vh;
+}
+.field-value {
+    display: block;
+    width: 14vh;
+    margin-left: 2.5vh;
+    font-size: 2.6vh;
+    color: #8c9ab6;
+}
+.field-value.wide {
+    width: 26vh;
+    margin-left: 0;
+    text-align: center;
+    color: #e2eaf6;
+}
+/* A row that does nothing at the moment (the window size while fullscreen is on). */
+.field.off .field-name, .field.off .field-value.wide {
+    color: #8c9ab680;
+}
+.field.off button.step {
+    opacity: 0.4;
+}
+
+/* A slider. RmlUi builds it from parts of its own: the track, the part of the track
+   that is filled (sliderprogress) and the bar that is dragged. Left and right move the
+   bar, so only up and down leave the slider. */
+input.range {
+    display: block;
+    width: 40vh;
+    height: 3.6vh;
+    nav-left: none;
+    nav-right: none;
+}
+input.range slidertrack {
+    height: 1.6vh;
+    margin-top: 1vh;
+    background-color: #242f4a;
+    border-radius: 0.8vh;
+}
+input.range sliderprogress {
+    height: 1.6vh;
+    margin-top: 0vh;
+    background-color: #ac6e1c;
+    border-radius: 0.8vh;
+}
+input.range sliderbar {
+    width: 3.6vh;
+    height: 3.6vh;
+    background-color: #ffb854;
+    border-radius: 1.8vh;
+    box-shadow: #ffb85466 0 0 1.2vh 0.4vh;
+    transition: background-color 0.2s cubic-out;
+}
+input.range:hover slidertrack {
+    background-color: #4e3616;
+}
+input.range sliderbar:active {
     background-color: #ffffff;
+}
+/* The slider with the keyboard focus: a crystal ring around its bar, and a brighter
+   track. */
+input.range:focus-visible sliderbar {
+    box-shadow: #56d6ca 0 0 0 0.45vh, #56d6ca59 0 0 1.6vh 1vh;
+}
+input.range:focus-visible slidertrack {
+    background-color: #303e5e;
+}
+/* The two arrow buttons at the ends of a slider are not used. */
+input.range sliderarrowdec, input.range sliderarrowinc {
+    width: 0;
+    height: 0;
+}
+
+/* A switch: a track with a knob that slides to the right when the switch is on. The
+   game sets the class "on". */
+button.toggle {
+    display: block;
+    position: relative;
+    width: 7.5vh;
+    height: 3.9vh;
+    background-color: #242f4a;
+    border: 0.25vh #242f4a;
+    border-radius: 2.2vh;
+    transition: background-color border-color 0.25s cubic-out;
+}
+button.toggle .knob {
+    position: absolute;
+    left: 0.5vh;
+    top: 0.5vh;
+    width: 2.9vh;
+    height: 2.9vh;
+    background-color: #8c9ab6;
+    border-radius: 1.45vh;
+    transition: left background-color 0.25s cubic-out;
+}
+button.toggle:hover {
+    background-color: #4e3616;
+    border-color: #4e3616;
+}
+button.toggle.on {
+    background-color: #12444c;
+    border-color: #12444c;
+}
+button.toggle.on .knob {
+    left: 4.1vh;
+    background-color: #ffb854;
+    box-shadow: #ffb85466 0 0 1vh 0.3vh;
 }
