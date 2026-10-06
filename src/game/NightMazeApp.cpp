@@ -115,6 +115,26 @@ constexpr int INTERACT_KEY = GLFW_KEY_E;
 // Key that switches the menu camera on and off: the game then shows itself.
 constexpr int MENU_CAMERA_KEY = GLFW_KEY_F2;
 
+// The documents of the menus, relative to the assets directory, and the two elements
+// of the result screen the code writes into (their id attributes).
+constexpr const char* MAIN_MENU_DOCUMENT_FILE = "ui/main_menu.rml";
+constexpr const char* PAUSE_DOCUMENT_FILE = "ui/pause.rml";
+constexpr const char* ROUND_END_DOCUMENT_FILE = "ui/round_end.rml";
+constexpr const char* ROUND_END_TIME_ID = "time";
+constexpr const char* ROUND_END_CRYSTALS_ID = "crystals";
+
+constexpr int SECONDS_PER_MINUTE = 60;
+// Below this number of seconds a leading zero is written: 1:05 and not 1:5.
+constexpr int TWO_DIGITS = 10;
+
+// A time as minutes and seconds, for example "1:05". Parts of a second are cut off.
+std::string timeText(float seconds) {
+    const int whole = static_cast<int>(seconds);
+    const int minutes = whole / SECONDS_PER_MINUTE;
+    const int rest = whole % SECONDS_PER_MINUTE;
+    return std::to_string(minutes) + (rest < TWO_DIGITS ? ":0" : ":") + std::to_string(rest);
+}
+
 // Pitch of a level look, in degrees: how the player looks at the start.
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
 
@@ -197,7 +217,12 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale,
                                  m_mazeSettings.interactables)),
-      m_menuCamera(options.menuCamera) {
+      m_menuCamera(options.menuCamera),
+      // The menu camera is a tool for recording the game: with it the main menu is
+      // skipped like with --play, so no menu ever lies over the recorded picture.
+      m_mode(options.play || options.menuCamera.enabled ? GameMode::Playing : GameMode::MainMenu),
+      m_newGame{.seed = options.seed},
+      m_ui(window()) {
     // The two lit programs and the grass program read the lights from the uniform buffer
     // of m_lightRig. Each program is told once: the shader repeats it by itself after
     // a reload.
@@ -212,6 +237,99 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     uploadGround();
     beginRound();
     m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
+
+    // The documents of the three screens with a menu. They are loaded once and stay
+    // hidden until their screen comes up. An error is in the log (ui::UiLayer).
+    m_mainMenuDocument = m_ui.loadDocument(MAIN_MENU_DOCUMENT_FILE);
+    m_pauseDocument = m_ui.loadDocument(PAUSE_DOCUMENT_FILE);
+    m_roundEndDocument = m_ui.loadDocument(ROUND_END_DOCUMENT_FILE);
+    m_menusLoaded = m_mainMenuDocument != ui::NO_DOCUMENT && m_pauseDocument != ui::NO_DOCUMENT &&
+                    m_roundEndDocument != ui::NO_DOCUMENT;
+    if (!m_menusLoaded) {
+        core::logError("The menus cannot be shown: the game starts straight in a round");
+        m_mode = GameMode::Playing;
+    }
+    showScreen();
+}
+
+void NightMazeApp::onEscapePressed() {
+    handleGameEvent(GameEvent::Escape);
+}
+
+void NightMazeApp::handleGameEvent(GameEvent event) {
+    const GameMode before = m_mode;
+    // Asked before the screen changes: the answer depends on the screen the event
+    // was sent on.
+    const bool newRound = startsRound(before, event);
+    m_mode = nextMode(before, event);
+
+    // Without the documents only the pause can be entered: it shows nothing, but Escape
+    // leaves it again. The main menu and the result screen have no key that leaves
+    // them, so a round is started in their place.
+    bool roundInsteadOfMenu = false;
+    if (!m_menusLoaded && (m_mode == GameMode::MainMenu || m_mode == GameMode::RoundEnd)) {
+        m_mode = GameMode::Playing;
+        roundInsteadOfMenu = true;
+    }
+
+    if (m_mode == before && !roundInsteadOfMenu) {
+        return;
+    }
+    if (event == GameEvent::Play) {
+        startNewGame(m_newGame);
+    } else if (newRound || roundInsteadOfMenu) {
+        beginRound();
+    }
+    if (m_mode == GameMode::Quitting) {
+        // The main loop ends after this frame (core::Application::run).
+        window().requestClose();
+    }
+    showScreen();
+}
+
+void NightMazeApp::handleMenuActions() {
+    for (const std::string& action : m_ui.takeActions()) {
+        GameEvent event = GameEvent::Escape;
+        if (eventForAction(action, event)) {
+            handleGameEvent(event);
+        } else {
+            core::logWarn("A menu button has an unknown action: " + action);
+        }
+    }
+}
+
+void NightMazeApp::showScreen() {
+    ui::DocumentId document = ui::NO_DOCUMENT;
+    if (m_mode == GameMode::MainMenu) {
+        document = m_mainMenuDocument;
+    } else if (m_mode == GameMode::Paused) {
+        document = m_pauseDocument;
+    } else if (m_mode == GameMode::RoundEnd) {
+        document = m_roundEndDocument;
+        fillRoundEndDocument();
+    }
+    m_ui.show(document);
+
+    // The cursor follows the screen: captured for mouse look while a round is played,
+    // free for the buttons of a menu. The menu camera does not turn with the mouse, so
+    // it leaves the cursor free too.
+    input().setCursorCaptured(updatesRound(m_mode) && !m_menuCamera.enabled);
+}
+
+void NightMazeApp::startNewGame(const NewGame& newGame) {
+    // newGame.difficulty is not read yet: the three levels have no numbers so far.
+    // The maze is always built again, also for the seed that is in play: the size and
+    // the numbers of levers and notes in m_mazeSettings may have been changed since.
+    m_mazeSettings.seed = newGame.seed;
+    m_mazeSettings.regenerate = false;
+    regenerateMaze();
+}
+
+void NightMazeApp::fillRoundEndDocument() {
+    m_ui.setText(m_roundEndDocument, ROUND_END_TIME_ID, timeText(m_round.elapsedSeconds));
+    m_ui.setText(m_roundEndDocument, ROUND_END_CRYSTALS_ID,
+                 std::to_string(m_round.collectedCount) + " / " +
+                     std::to_string(m_round.crystals.size()));
 }
 
 void NightMazeApp::regenerateMaze() {
@@ -235,6 +353,9 @@ void NightMazeApp::regenerateMaze() {
     // round.
     m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale, interactables);
+    // The button "Play" starts the maze that is in play again, also when this one was
+    // asked for by the debug UI with another seed.
+    m_newGame.seed = m_mazeSettings.seed;
     uploadGround();
     beginRound();
     // The menu camera walks the corridors of the maze, so a new maze is a new path.
@@ -270,8 +391,9 @@ void NightMazeApp::rebuildTerrain() {
 }
 
 void NightMazeApp::updateMenuCameraSwitch() {
-    // wasKeyPressed is true for one frame, so the key is read once per frame.
-    if (input().wasKeyPressed(MENU_CAMERA_KEY)) {
+    // wasKeyPressed is true for one frame, so the key is read once per frame. Like the
+    // other keys of a round it works only while a round is played, not under a menu.
+    if (updatesRound(m_mode) && input().wasKeyPressed(MENU_CAMERA_KEY)) {
         m_menuCamera.enabled = !m_menuCamera.enabled;
     }
 
@@ -288,14 +410,15 @@ void NightMazeApp::updateMenuCameraSwitch() {
     m_menuCameraWasEnabled = m_menuCamera.enabled;
     if (m_menuCamera.enabled) {
         // Every run of the menu camera starts at the beginning of its shot, so the same
-        // maze and settings always show the same pictures. The cursor is given back: the
-        // mouse does not turn this camera, and a menu needs the cursor.
+        // maze and settings always show the same pictures.
         m_menuCameraSeconds = 0.0;
-        input().setCursorCaptured(false);
         // For whoever records the picture: after this many seconds it repeats.
         core::logInfo("Menu camera on, one loop takes " +
                       std::to_string(static_cast<int>(menuCameraLoopSeconds())) + " s");
     }
+    // The cursor: free while the menu camera runs (the mouse does not turn it), and
+    // captured again for the round when it is switched off.
+    input().setCursorCaptured(updatesRound(m_mode) && !m_menuCamera.enabled);
 }
 
 void NightMazeApp::uploadGround() {
@@ -349,12 +472,15 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // when the player does not move, so that onRender never blends with an old position.
     m_previousPlayerPosition = m_player.position;
 
-    // While the menu camera runs the round stands still: the player does not move, the
+    // The round runs only while it is played (game::updatesRound). Under a menu, and
+    // while the menu camera runs, it stands still: the player does not move, the
     // battery does not drain, nothing is collected and the time of the round does not
     // count. Only the animation clock goes on, so the crystals keep bobbing and their
-    // lights keep pulsing in the picture.
-    if (m_menuCamera.enabled) {
-        m_round.animationSeconds += static_cast<float>(fixedDt);
+    // lights keep pulsing in the picture. The pause menu stops that clock too.
+    if (!updatesRound(m_mode) || m_menuCamera.enabled) {
+        if (animatesScene(m_mode)) {
+            m_round.animationSeconds += static_cast<float>(fixedDt);
+        }
         return;
     }
 
@@ -405,9 +531,20 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (gateBlocks(m_mazeWorld, m_round) != gateBlockedBefore) {
         m_obstacles = roundObstacles(m_mazeWorld, m_round);
     }
+
+    // This step took the player through the open gate: the result screen comes up. The
+    // steps that may follow in the same frame then find the round stopped.
+    if (m_round.state == RoundState::Won) {
+        handleGameEvent(GameEvent::RoundWon);
+    }
 }
 
 void NightMazeApp::onRender(double alpha) {
+    // The menu buttons that were clicked since the last frame. The clicks arrived
+    // while the events of this frame were read, so the screen they lead to is drawn
+    // in this very frame.
+    handleMenuActions();
+
     // A new maze asked for by the debug UI is built here, at the start of a frame and
     // outside of the fixed steps, so no step ever sees a half replaced maze.
     if (m_mazeSettings.regenerate) {
@@ -416,15 +553,25 @@ void NightMazeApp::onRender(double alpha) {
     }
 
     // The menu camera: its key, and what has to happen when it was just switched on.
-    // While it runs, the keys and the mouse of the round are ignored: the checks below
-    // ask menuCamera first.
     updateMenuCameraSwitch();
-    const bool menuCamera = m_menuCamera.enabled;
+    // Two questions the rest of the frame asks. roundInput: do the keys and the mouse
+    // of the round work? Only while a round is played and the menu camera is off, so
+    // under a menu no key of the round does anything. menuCamera: is the picture taken
+    // by the menu camera? While it is switched on, and in the main menu, where it
+    // stands in for the background the menu will get later.
+    const bool roundInput = updatesRound(m_mode) && !m_menuCamera.enabled;
+    const bool menuCamera = m_menuCamera.enabled || usesMenuCamera(m_mode);
+    // The settings the menu camera uses in this frame. The main menu always shows the
+    // high glide over the maze, whatever shot the recording tool is set to.
+    MenuCameraSettings menuCameraSettings = m_menuCamera;
+    if (!m_menuCamera.enabled) {
+        menuCameraSettings.shot = MenuShot::HighGlide;
+    }
 
     // A new round on the same maze, asked for with the restart key or by the debug UI.
     // It is started here for the same reason: between two fixed steps, never inside one.
     // wasKeyPressed is true for one frame, so the key is read once per frame.
-    if (m_gameplay.restart || (!menuCamera && input().wasKeyPressed(RESTART_KEY))) {
+    if (m_gameplay.restart || (roundInput && input().wasKeyPressed(RESTART_KEY))) {
         m_gameplay.restart = false;
         beginRound();
     }
@@ -458,7 +605,7 @@ void NightMazeApp::onRender(double alpha) {
 
     // The noclip key. wasKeyPressed is true for one frame, so it is read here, once per
     // frame, and not in onUpdate, which runs zero or more times per frame.
-    if (!menuCamera && input().wasKeyPressed(NOCLIP_KEY)) {
+    if (roundInput && input().wasKeyPressed(NOCLIP_KEY)) {
         m_player.noclip = !m_player.noclip;
     }
 
@@ -467,12 +614,12 @@ void NightMazeApp::onRender(double alpha) {
     // still sets the switch, but the next fixed step turns it off again
     // (game::updateRound), and no frame is drawn with the light of an empty battery
     // (game::lightingForFrame).
-    if (!menuCamera && input().wasKeyPressed(FLASHLIGHT_KEY)) {
+    if (roundInput && input().wasKeyPressed(FLASHLIGHT_KEY)) {
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
 
     // The minimap key, read once per frame like the two keys above.
-    if (!menuCamera && input().wasKeyPressed(MINIMAP_KEY)) {
+    if (roundInput && input().wasKeyPressed(MINIMAP_KEY)) {
         m_minimapSettings.enabled = !m_minimapSettings.enabled;
     }
 
@@ -482,7 +629,7 @@ void NightMazeApp::onRender(double alpha) {
     // already use the new angles. The click that captures a free cursor is read further
     // down (handleInteraction), because it first has to be known what the click hit.
     const bool cursorCaptured = input().isCursorCaptured();
-    if (cursorCaptured && !menuCamera) {
+    if (cursorCaptured && roundInput) {
         // Mouse movement to the right is positive and positive yaw turns right, so x is
         // used as it is. Screen y grows downwards while pitch grows upwards, hence the
         // minus sign: moving the mouse up (negative y) looks up.
@@ -529,12 +676,14 @@ void NightMazeApp::onRender(double alpha) {
         // moment of every frame and needs no blending. It is kept inside one loop of
         // the shot, so the number stays small however long the menu is open.
         m_menuCameraSeconds += time().deltaSeconds();
-        const double loopSeconds = menuCameraLoopSeconds();
+        const double loopSeconds =
+            game::menuCameraLoopSeconds(m_menuCameraPath, m_mazeWorld, menuCameraSettings);
         if (loopSeconds > 0.0) {
             m_menuCameraSeconds = std::fmod(m_menuCameraSeconds, loopSeconds);
         }
-        const MenuCameraPose pose = menuCameraPose(m_menuCameraPath, m_mazeWorld, m_menuCamera,
-                                                   static_cast<float>(m_menuCameraSeconds));
+        const MenuCameraPose pose =
+            menuCameraPose(m_menuCameraPath, m_mazeWorld, menuCameraSettings,
+                           static_cast<float>(m_menuCameraSeconds));
         eye = pose.eye;
         frameCamera.yawDegrees = pose.yawDegrees;
         frameCamera.pitchDegrees = pose.pitchDegrees;
@@ -554,9 +703,9 @@ void NightMazeApp::onRender(double alpha) {
     // Object picking: one ray per frame, what it hits, and then the key or the click
     // that uses it. This runs once per frame like the other keys. A lever that is
     // pulled here changes the round between two fixed steps, never inside one.
-    // The menu camera picks nothing and uses nothing: no lever is highlighted in its
-    // picture, and a click or the key does not reach the round.
-    if (menuCamera) {
+    // Under a menu and in the picture of the menu camera nothing is picked and nothing
+    // is used: no lever is highlighted, and a click or the key does not reach the round.
+    if (!roundInput) {
         m_pick = pickNothing(m_round);
     } else {
         m_pick = pickForFrame(view, projection, eye, cursorCaptured);
@@ -583,7 +732,7 @@ void NightMazeApp::onRender(double alpha) {
         // on the stone is the look of the game. High above the maze it is off: its
         // light does not reach the ground from there, and the moon and the crystals
         // are what that shot shows.
-        frameLighting.flashlightOn = m_menuCamera.shot == MenuShot::CorridorWalk;
+        frameLighting.flashlightOn = menuCameraSettings.shot == MenuShot::CorridorWalk;
         frameLighting.flashlightIntensity = m_lighting.flashlightIntensity;
     }
 
@@ -717,10 +866,17 @@ void NightMazeApp::onRender(double alpha) {
     // a schematic, and the fog, the bloom and the tone mapping must not touch it. It is
     // shown in the two debug views too, like the HUD. feet is the blended position the
     // scene was drawn from, so the arrow moves as smoothly as the camera. The picture of
-    // the menu camera has no minimap: it is part of the HUD of a round.
-    if (!menuCamera) {
+    // the menu camera has no minimap: it is part of the HUD of a round. In the pause
+    // menu it stays, as a part of the stopped picture (game::showsMinimap).
+    if (showsMinimap(m_mode) && !m_menuCamera.enabled) {
         drawMinimap(framebuffer, feet);
     }
+
+    // The menu comes last in this function, on top of the finished frame and of the
+    // minimap: a menu covers the game and its map. The debug UI is drawn after this
+    // function returns (main.cpp), so its panels stay usable on top of a menu. While
+    // a round is played no document is shown and this call does nothing.
+    m_ui.draw(framebuffer);
 }
 
 PickState NightMazeApp::pickForFrame(const glm::mat4& view, const glm::mat4& projection,

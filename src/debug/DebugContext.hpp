@@ -187,6 +187,9 @@ struct DebugContext {
     /// The settings of the menu camera, editable: the Camera panel edits them, and
     /// while the camera runs the HUD is not drawn.
     game::MenuCameraSettings& menuCamera;
+    /// Whether the HUD of the round is drawn in this frame. The game decides: only
+    /// while a round is played and the menu camera is off (NightMazeApp::hudVisible).
+    bool hudVisible;
     /// How long one loop of the menu camera takes, in seconds: the Camera panel shows it.
     float menuCameraLoopSeconds;
 };

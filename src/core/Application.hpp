@@ -14,8 +14,7 @@ namespace core {
 ///
 /// A concrete program derives from this class and fills in onUpdate and onRender.
 /// Each frame: poll events, run zero or more fixed updates, render once, swap buffers.
-/// Escape releases a captured cursor, or closes the window when the cursor is not captured
-/// (unless the keyboard is blocked, see Input).
+/// The Escape key is handed to onEscapePressed (unless the keyboard is blocked, see Input).
 class Application {
 public:
     /// Creates the window and the OpenGL context. Throws std::runtime_error on failure.
@@ -36,6 +35,12 @@ protected:
     /// Draws one frame. alpha in [0, 1) tells how far the frame is between two fixed
     /// steps, see Time::alpha.
     virtual void onRender(double alpha) = 0;
+
+    /// Called once when the Escape key goes down, after the events of the frame were
+    /// read and before the fixed updates, so what it changes holds for the whole frame.
+    /// It is not called while the keyboard is blocked (a text field is being edited).
+    /// A program that does not override it closes its window: Escape quits.
+    virtual void onEscapePressed();
 
     Window& window() { return m_window; }
     Input& input() { return m_input; }

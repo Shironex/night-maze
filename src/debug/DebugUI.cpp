@@ -154,9 +154,9 @@ void DebugUI::draw(const DebugContext& context) {
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not
     // the panels are visible.
-    // The picture of the menu camera is the exception: it shows no round, so it has
-    // no counter, no battery, no crosshair and no card.
-    if (!context.menuCamera.enabled) {
+    // The game says when: not under a menu, where it would lie on top of the buttons,
+    // and not in the picture of the menu camera, which shows no round.
+    if (context.hudVisible) {
         drawHud(context.mazeWorld, context.round, context.gameplay, context.pick, m_visible);
     }
 

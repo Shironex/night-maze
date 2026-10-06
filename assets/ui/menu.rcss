@@ -1,0 +1,59 @@
+/* The style sheet of the three menu documents (main_menu.rml, pause.rml, round_end.rml).
+   It is plain on purpose: the screens get their real look later. The lengths are in dp,
+   a pixel at 100 % display scaling, so the menu has the same size on every display. */
+
+/* RmlUi has no built-in style sheet: without these rules every element is inline. */
+body {
+    display: block;
+    width: 100%;
+    height: 100%;
+    font-family: "Atkinson Hyperlegible";
+    font-size: 18dp;
+    color: #e8ecf4;
+    /* Half transparent: the frame of the game shows through, darkened. */
+    background-color: #05081099;
+}
+div, h1, p {
+    display: block;
+}
+
+/* The box in the middle of the window that holds the title and the buttons. */
+#panel {
+    width: 320dp;
+    margin: 120dp auto 0 auto;
+    padding: 28dp;
+    text-align: center;
+    background-color: #101828e6;
+    border: 1dp #5b7cc4;
+    border-radius: 10dp;
+}
+h1 {
+    font-size: 38dp;
+    color: #ffffff;
+    margin-bottom: 8dp;
+}
+p {
+    color: #9fb0d0;
+    margin-bottom: 4dp;
+}
+
+/* One button per row. data-action in the document names what a click does. */
+button {
+    display: block;
+    width: 220dp;
+    margin: 14dp auto 0 auto;
+    padding: 10dp 0;
+    color: #dfe6f5;
+    background-color: #24345c;
+    border: 1dp #5b7cc4;
+    border-radius: 6dp;
+    cursor: pointer;
+    transition: background-color color 0.2s cubic-out;
+}
+button:hover {
+    color: #101828;
+    background-color: #e0a030;
+}
+button:active {
+    background-color: #ffffff;
+}

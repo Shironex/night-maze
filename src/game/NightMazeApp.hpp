@@ -6,6 +6,7 @@
 #include "core/Application.hpp"
 #include "game/ColliderLines.hpp"
 #include "game/EnvironmentMapping.hpp"
+#include "game/GameState.hpp"
 #include "game/GameplayRenderer.hpp"
 #include "game/Grass.hpp"
 #include "game/GrassRenderer.hpp"
@@ -32,6 +33,7 @@
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 #include "scene/LightSpace.hpp"
+#include "ui/UiLayer.hpp"
 
 #include <glm/glm.hpp>
 
@@ -78,19 +80,43 @@ namespace game {
 /// through the maze alone (game/MenuCamera.hpp). The round stands still meanwhile, and
 /// the keys and the mouse of the round are ignored.
 ///
+/// The game is always on one screen (game/GameState.hpp): the main menu, a round being
+/// played, the pause menu or the result of a won round. The round runs only while it
+/// is played. The menus are documents drawn by RmlUi (ui::UiLayer) on top of the
+/// finished frame. Their buttons and the Escape key are events, and game::nextMode
+/// says which screen follows.
+///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels and the HUD on top of the frame.
 class NightMazeApp : public core::Application {
 public:
     /// Creates the window (through core::Application), loads the shaders and the models,
     /// generates the first maze and starts the first round in it. options comes from
-    /// the command line (game::parseStartOptions): the seed of that first maze and the
-    /// settings the menu camera starts with. Left out, the game starts as always.
+    /// the command line (game::parseStartOptions): the seed of that first maze, the
+    /// settings the menu camera starts with and whether the main menu is skipped. Left
+    /// out, the game starts in the main menu.
     explicit NightMazeApp(const StartOptions& options = {});
 
 protected:
     void onUpdate(double fixedDt) override;
     void onRender(double alpha) override;
+
+    /// Escape goes one screen back (game::nextMode): out of the game into the pause
+    /// menu, out of the pause menu back into the game.
+    void onEscapePressed() override;
+
+    /// The screen the game is on, for the debug UI.
+    GameMode gameMode() const { return m_mode; }
+
+    /// Whether the HUD of the round is to be drawn in this frame: only while a round is
+    /// played and the menu camera is off. The HUD is drawn by the debug UI layer
+    /// (main.cpp), which asks here.
+    bool hudVisible() const { return showsHud(m_mode) && !m_menuCamera.enabled; }
+
+    /// The layer that draws the menu documents, exposed so main.cpp can keep the mouse
+    /// away from it while a debug panel is under the cursor and can ask whether a text
+    /// field of a menu has the keyboard.
+    ui::UiLayer& menuUi() { return m_ui; }
 
     /// Clear color (red, green, blue, as sRGB values), exposed so the debug UI can edit
     /// it live. It is the background only where the sky is not drawn: with the skybox
@@ -308,6 +334,27 @@ private:
     /// off, by that key, by the debug UI or by the command line. Switching it on starts
     /// its shot from the beginning and gives the cursor back. Called once per frame.
     void updateMenuCameraSwitch();
+
+    /// Sends an event to the screen of the game (game::nextMode) and does what the new
+    /// screen needs: a round from the beginning, a new maze for a new game, the window
+    /// closed. Then showScreen.
+    void handleGameEvent(GameEvent event);
+
+    /// Takes the names of the menu buttons that were clicked since the last frame
+    /// (ui::UiLayer::takeActions) and sends each one as its event.
+    void handleMenuActions();
+
+    /// Makes the window match m_mode: shows the document of the screen (or none while
+    /// playing) and captures the cursor for the game or gives it back to the menu.
+    void showScreen();
+
+    /// Builds the maze of a new game and starts its round. The difficulty has no
+    /// numbers yet and changes nothing.
+    void startNewGame(const NewGame& newGame);
+
+    /// Writes the result of the round (its time and its crystals) into the document of
+    /// the result screen.
+    void fillRoundEndDocument();
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed, no lever pulled, every
@@ -582,6 +629,22 @@ private:
     // Whether the menu camera was on in the frame before: the frame in which the two
     // differ is the one that switches it.
     bool m_menuCameraWasEnabled = false;
+
+    // The screen the game is on. It starts with the main menu, or straight in a round
+    // when the command line asked for that.
+    GameMode m_mode = GameMode::MainMenu;
+    // The game the button "Play" starts: its seed is the seed of the maze in play.
+    NewGame m_newGame;
+
+    // The menu: RmlUi and the three documents, one per screen with a menu. Each
+    // DocumentId is ui::NO_DOCUMENT when its file could not be loaded.
+    ui::UiLayer m_ui;
+    ui::DocumentId m_mainMenuDocument = ui::NO_DOCUMENT;
+    ui::DocumentId m_pauseDocument = ui::NO_DOCUMENT;
+    ui::DocumentId m_roundEndDocument = ui::NO_DOCUMENT;
+    // True when all three documents are loaded. Without them a menu screen would show
+    // nothing and could not be left, so the game then never enters one.
+    bool m_menusLoaded = false;
 };
 
 } // namespace game

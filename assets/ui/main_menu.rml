@@ -1,0 +1,14 @@
+<rml>
+<head>
+    <title>Main menu</title>
+    <link type="text/rcss" href="menu.rcss"/>
+</head>
+<body>
+<div id="panel">
+    <h1>Night Maze</h1>
+    <p>Find the crystals, open the gate, get out.</p>
+    <button data-action="play">Play</button>
+    <button data-action="quit">Quit</button>
+</div>
+</body>
+</rml>

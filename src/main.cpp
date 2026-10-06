@@ -26,6 +26,13 @@ public:
 
 protected:
     void onRender(double alpha) override {
+        // The debug panels are drawn on top of the menu, so the mouse is theirs first:
+        // while one of them is under the cursor the menu ignores the mouse. Dear ImGui
+        // knows that from the frame before.
+        menuUi().setMouseEnabled(!m_debugUI.wantsMouse());
+
+        // The frame of the game, with the menu of its screen on top (ui::UiLayer). The
+        // debug UI follows, on top of both.
         game::NightMazeApp::onRender(alpha);
 
         // The menu camera shows the game alone: in the frame it is switched on the
@@ -43,9 +50,16 @@ protected:
             }
         }
 
-        // The key left of 1 (` and ~ on a US keyboard) shows or hides the debug panels.
+        // The key left of 1 (` and ~ on a US keyboard) shows or hides the debug panels,
+        // on every screen of the game: the keyboard is blocked only while a text field
+        // is being edited. While a round is played the cursor is captured for mouse
+        // look, so showing the panels gives it back for them. A click into the scene
+        // captures it again (NightMazeApp::handleInteraction).
         if (input().wasKeyPressed(GLFW_KEY_GRAVE_ACCENT)) {
             m_debugUI.toggleVisible();
+            if (m_debugUI.isVisible()) {
+                input().setCursorCaptured(false);
+            }
         }
         // While the cursor is captured the mouse belongs to the camera. The hidden cursor
         // still has a position that moves with the mouse, so the panels must ignore it,
@@ -101,6 +115,7 @@ protected:
             .pick = pick(),
             .pickDebug = pickDebug(),
             .menuCamera = menuCameraSettings(),
+            .hudVisible = hudVisible(),
             .menuCameraLoopSeconds = menuCameraLoopSeconds(),
         });
 
@@ -109,7 +124,12 @@ protected:
         // being dragged). Block each device for the game from the next frame on, so typing
         // does not trigger Escape, the panel toggle or player movement, and working with
         // a panel does not click or look around in the scene.
-        input().setKeyboardBlocked(m_debugUI.wantsKeyboard());
+        //
+        // A menu blocks nothing here. The game itself reads no key and no mouse of the
+        // round while a menu is open (game::updatesRound), and that takes effect in
+        // the same frame. The one exception is a text field of a menu: while it has
+        // the focus, typing belongs to it, like for a text field of a panel.
+        input().setKeyboardBlocked(m_debugUI.wantsKeyboard() || menuUi().wantsKeyboard());
         input().setMouseBlocked(m_debugUI.wantsMouse());
     }
 

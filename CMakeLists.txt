@@ -263,7 +263,7 @@ add_executable(night_maze
     src/debug/panels/TerrainPanel.cpp
     src/debug/panels/TerrainPanel.hpp
 )
-target_link_libraries(night_maze PRIVATE engine game_logic imgui)
+target_link_libraries(night_maze PRIVATE engine game_logic ui imgui)
 night_maze_enable_warnings(night_maze)
 
 # ---- night_maze_tests: unit tests of the code that runs without a window --------------

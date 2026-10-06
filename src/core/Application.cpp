@@ -16,14 +16,9 @@ void Application::run() {
     while (!m_window.shouldClose()) {
         m_window.pollEvents();
         m_input.update();
-        // Escape first gives a captured cursor back, and closes the window only when
-        // the cursor is not captured.
+        // What Escape means is up to the program: a game opens its pause menu.
         if (m_input.wasKeyPressed(GLFW_KEY_ESCAPE)) {
-            if (m_input.isCursorCaptured()) {
-                m_input.setCursorCaptured(false);
-            } else {
-                m_window.requestClose();
-            }
+            onEscapePressed();
         }
 
         // Simulation: as many fixed steps as fit into the time that has passed.
@@ -36,6 +31,10 @@ void Application::run() {
         onRender(m_time.alpha());
         m_window.swapBuffers();
     }
+}
+
+void Application::onEscapePressed() {
+    m_window.requestClose();
 }
 
 } // namespace core
