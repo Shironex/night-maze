@@ -117,6 +117,8 @@ add_library(game_logic STATIC
     src/game/Fog.hpp
     src/game/Grass.cpp
     src/game/Grass.hpp
+    src/game/Interactables.cpp
+    src/game/Interactables.hpp
     src/game/Lighting.cpp
     src/game/Lighting.hpp
     src/game/Maze.cpp
@@ -231,6 +233,7 @@ add_executable(night_maze_tests
     tests/FramebufferTests.cpp
     tests/GrassTests.cpp
     tests/ImageLoaderTests.cpp
+    tests/InteractablesTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp
