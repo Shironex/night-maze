@@ -8,8 +8,9 @@
 #include "common/lighting.glsl"
 // srgbToLinear, for the colours written in this file.
 #include "common/color.glsl"
-// The shadow map of the moon and the function moonShadow: the same file lit.frag
-// includes, so the grass lies in the shadows of the walls like the ground it grows on.
+// The shadow maps of the moon and of the flashlight and the functions moonShadow and
+// flashlightShadow: the same file lit.frag includes, so the grass lies in the shadows
+// of the walls like the ground it grows on.
 #include "common/shadows.glsl"
 
 // Inputs from the geometry shader, already blended for this fragment.
@@ -66,14 +67,20 @@ void main() {
     // crystals and the flashlight, each weaker with distance. Grass is not shiny, so the
     // highlight is left out.
     //
-    // The grass receives the shadow of the moon like every lit surface (see lit.frag):
-    // the share of the moon light that does not arrive is taken away again. It casts
-    // none itself: a blade is about as wide as one texel of the shadow map.
+    // The grass receives the shadows of the moon and of the flashlight like every lit
+    // surface (see lit.frag): the share of the moon light and of the flashlight light
+    // that does not arrive is taken away again. It casts none itself: a blade is about
+    // as wide as one texel of the shadow map of the moon.
     vec3 light = vec3(1.0);
     if (uLit) {
         Lighting lighting = computeLighting(gWorldPosition, GRASS_NORMAL);
         float shadow = moonShadow(gWorldPosition, moonFacing(GRASS_NORMAL));
-        light = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
+        // The same for the flashlight and its own shadow map.
+        float flashlightShade =
+            flashlightShadow(gWorldPosition, flashlightFacing(GRASS_NORMAL, gWorldPosition));
+        light = max(lighting.diffuse - lighting.moonDiffuse * shadow -
+                        lighting.flashlightDiffuse * flashlightShade,
+                    0.0);
     }
     fragColor = vec4(color * light, 1.0);
 }

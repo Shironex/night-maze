@@ -103,6 +103,8 @@ Gra ma jedenaście programów i każdy ma własny zestaw zwykłych uniformów. T
 
 Siedem wierszy `uMoonShadow...` doszło w czwartej części M7. Deklaruje je plik `common/shadows.glsl`, dołączany do shaderów **fragmentów** obu programów: także w programie `gouraud`, w którym światło liczy shader wierzchołków, cień jest sprawdzany dla każdego fragmentu. Wszystkie siedem ustawia jedna funkcja, `game::setShadowUniforms` (sekcja 5.2). `sampler2DShadow` ustawia się przez `setInt`, jak każdy sampler: przechowuje numer jednostki teksturującej, tu 3.
 
+Od piątej części M7 (cień latarki, 2026-10-06) ten sam plik ma jeszcze osiem uniformów latarki, `uFlashlightShadowMap`, `uFlashlightShadowEnabled`, `uFlashlightShadowMatrix`, `uFlashlightShadowConstantBias`, `uFlashlightShadowSlopeBias`, `uFlashlightShadowPcfRadius`, `uFlashlightShadowStrength` i `uFlashlightShadowLightPosition` (typy jak wyżej, a ostatni to `vec3`). Dostają je te same trzy programy (`lit`, `gouraud`, `grass`), tym samym `game::setShadowUniforms` (teraz przez `NightMazeApp::setShadowUniformsOf`, które woła go dwa razy). Nazwy siedmiu pierwszych są w drugiej stałej `FLASHLIGHT_SHADOW_UNIFORMS`, a ósma w nowym polu `lightPosition` struktury `ShadowUniformNames` (dla księżyca `nullptr`). Liczby w wierszu "razem" tabeli wyżej opisują stan po czwartej części. Sampler latarki ma jednostkę 4, a dwa biasy są w metrach (`game::biasForShader`), nie w jednostkach głębi.
+
 Program `skybox` (pierwsza część M6, [`../renderer/skybox.md`](../renderer/skybox.md), sekcja 4.3):
 
 | Uniform | Typ w GLSL | Plik | Setter | Uwaga |

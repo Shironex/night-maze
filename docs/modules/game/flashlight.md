@@ -1,19 +1,21 @@
 # Moduł game: latarka i światła gry
 
-Kamień milowy: M4 (część "oświetlenie"), rozbudowany w M5 o baterię latarki i światła kryształów. Tematy wykładu w użyciu: 6 (światła) i 7 (tryb cieniowania).
+Kamień milowy: M4 (część "oświetlenie"), rozbudowany w M5 o baterię latarki i światła kryształów, a w M7 (część piąta) o latarkę w ręce gracza i jej cień. Tematy wykładu w użyciu: 6 (światła), 7 (tryb cieniowania) i 11 (cień latarki: [`../renderer/shadows.md`](../renderer/shadows.md)).
 Kod: [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), [`src/game/Lighting.cpp`](../../../src/game/Lighting.cpp), [`src/game/LightRig.hpp`](../../../src/game/LightRig.hpp), [`src/game/LightRig.cpp`](../../../src/game/LightRig.cpp), część oświetleniowa [`src/game/Round.hpp`](../../../src/game/Round.hpp), [`src/game/Round.cpp`](../../../src/game/Round.cpp) i [`src/game/Crystals.cpp`](../../../src/game/Crystals.cpp), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp), testy [`tests/LightingTests.cpp`](../../../tests/LightingTests.cpp) i [`tests/RoundTests.cpp`](../../../tests/RoundTests.cpp).
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument jest **o tym, jakie światła ma gra i jak co klatkę trafiają na kartę**. Teoria świateł i wzory są w [`../scene/lights.md`](../scene/lights.md), cieniowanie Gourauda i Phonga w [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), a układ bajtów bloku uniformów w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md). Zasady rundy (kryształy, brama, bateria jako część rozgrywki, HUD) opisuje [`gameplay.md`](gameplay.md): tutaj jest z nich tylko to, czego potrzebuje latarka i światła punktowe. Przydają się też [`player.md`](player.md) (oko gracza, stały krok i interpolacja) i [`maze-generator.md`](maze-generator.md) (siatka komórek i ściany).
 
-**Stan na dziś:** gra ma trzy źródła światła: księżyc, latarkę gracza i światła punktowe nad kryształami, których gracz jeszcze nie zebrał. Latarka jest włączona na początku każdej rundy, klawisz F ją przełącza. Od M5 latarka ma **baterię**: bateria ubywa tylko wtedy, gdy latarka świeci, poniżej progu światło migocze, a pusta bateria gasi latarkę do chwili zebrania kryształu.
+**Stan na dziś:** gra ma trzy źródła światła: księżyc, latarkę gracza (w jego **ręce**, od części piątej M7) i światła punktowe nad kryształami, których gracz jeszcze nie zebrał. Latarka jest włączona na początku każdej rundy, klawisz F ją przełącza. Od M5 latarka ma **baterię**: bateria ubywa tylko wtedy, gdy latarka świeci, poniżej progu światło migocze, a pusta bateria gasi latarkę do chwili zebrania kryształu.
 
 M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**, tak samo M6. Od drugiej części M6 światła z bufora uniformów czyta trzeci program, `grass` (trawa), a pod światłami leży teren zamiast płytek podłogi: ustawień świateł ani ich budowy to nie zmieniło. Zgłoszone dla Windowsa 2026-10-05 po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji przechodzi w obu konfiguracjach (po drugiej części M6 256 przypadków i 101232 asercje, po pierwszej części M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751) (w tym wtedy 10 przypadków z `tests/LightingTests.cpp`, dziś 11, i 25 z `tests/RoundTests.cpp`), obraz był sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. Otwarte: **nic z M5 ani z M6 nie było budowane ani uruchamiane na macOS** i **nikt jeszcze nie testował ręcznie**: klawisza F przy pustej baterii, migotania widzianego na ekranie, zbierania kryształów, klawisza R, suwaków panelu Gameplay. To, że stożek latarki zostaje w środku ekranu podczas ruchu, wynika z kodu (sekcja 2.2) i nie było oglądane.
 
 Z części M4 zostaje w mocy to, co wtedy sprawdzono na zrzutach ekranu z Windowsa: widok startowy z plamą latarki w środku ekranu i scena ze zgaszoną latarką.
 
-Czego nie ma: stanu przegranej (pusta bateria oznacza tylko ciemność, runda trwa dalej: notatka [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md)), tekstury "cookie" latarki z PRD i **cieni latarki oraz świateł kryształów** (cień latarki jest planowany w dalszej części M7, sekcja 2.1). Cienie rzuca od czwartej części M7 tylko księżyc.
+Czego nie ma: stanu przegranej (pusta bateria oznacza tylko ciemność, runda trwa dalej: notatka [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md)), tekstury "cookie" latarki z PRD i **cieni świateł kryształów** (nie ma ich w planie). Od piątej części M7 cienie rzucają księżyc i latarka.
 
-**Czwarta część M7 (cienie księżyca, 2026-10-05)** zmieniła w tym module cztery rzeczy. Księżyc rzuca cienie: jego mapę cieni i całą technikę opisuje [`../renderer/shadows.md`](../renderer/shadows.md). Intensywność startowa księżyca wzrosła z 0,12 do 0,2, żeby miejsce oświetlone księżycem dało się odróżnić od cienia ściany (sekcja 5.2). Doszła funkcja `game::moonDirection`, z której kierunek księżyca biorą i światła klatki, i mapa cieni (sekcja 5.5). Dwa komentarze w `Lighting.hpp` (światło otoczenia i księżyc) mają nową treść. **Latarka i światła kryształów cieni nie rzucają**: ich światło nadal przechodzi przez ściany. Blok uniformów świateł (`LightBlock`, 928 bajtów) się nie zmienił: macierz mapy cieni jedzie do shaderów zwykłymi uniformami, obok swojego samplera ([`../scene/lights.md`](../scene/lights.md)). `tests/LightingTests.cpp` nadal ma 11 przypadków: przypadek o `moonDirection` stoi w `tests/ShadowTests.cpp`. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi, 310 przypadków i 103751 asercji. Na macOS nic z tego nie było budowane ani uruchamiane.
+**Piąta część M7 (cień latarki i latarka w ręce, 2026-10-06)** zmieniła w tym module pięć rzeczy. (1) Latarka **nie stoi już w oku**: jej pozycja to oko przesunięte o 0,20 m w prawo i 0,25 m w dół, a kierunek wiązki biegnie z ręki do punktu na osi widzenia 4 m przed okiem (sekcje 2.1 i 5.5). Zapadły dwie decyzje właściciela (2026-10-05 i 2026-10-06), a reszta to moje wybory (sekcja 2.1 i [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20.9). (2) Nowa funkcja `game::flashlightPose` i struktura `game::FlashlightPose` liczą pozycję i kierunek **raz na klatkę**, a ten sam wynik dostają światło i mapa cieni latarki. (3) `buildLightSet` ma nowy podpis: `buildLightSet(settings, flashlight, pointPositions)` zamiast `(settings, eye, viewDirection, pointPositions)`. (4) `LightingSettings` ma trzy nowe pola (`flashlightHandRight`, `flashlightHandDown`, `flashlightConvergeDistance`) i dwie stałe (`MAX_FLASHLIGHT_HAND_RIGHT`, `MIN_FLASHLIGHT_CONVERGE_DISTANCE`), a panel Lights trzy suwaki. (5) `tests/LightingTests.cpp` ma 15 przypadków (było 11): jeden zmienił nazwę, a cztery doszły. Latarka **rzuca cień** (jej mapa: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20). Zgłoszone dla Windowsa (2026-10-06), nie powtarzałem: bramka `make check` zgłosiła 329 przypadków i 104306 asercji (przed częścią piątą 310 i 103751). **Nikt nie oglądał** plamy w ręce ani cienia latarki, a na macOS nic z tego nie było budowane ani uruchamiane. Blok `LightBlock` (928 bajtów) się nie zmienił.
+
+**Czwarta część M7 (cienie księżyca, 2026-10-05)** zmieniła w tym module cztery rzeczy. Księżyc rzuca cienie: jego mapę cieni i całą technikę opisuje [`../renderer/shadows.md`](../renderer/shadows.md). Intensywność startowa księżyca wzrosła z 0,12 do 0,2, żeby miejsce oświetlone księżycem dało się odróżnić od cienia ściany (sekcja 5.2). Doszła funkcja `game::moonDirection`, z której kierunek księżyca biorą i światła klatki, i mapa cieni (sekcja 5.5). Dwa komentarze w `Lighting.hpp` (światło otoczenia i księżyc) mają nową treść. **Latarka i światła kryształów cieni wtedy nie rzucały** (latarka dostała cień w części piątej): ich światło przechodziło przez ściany. Blok uniformów świateł (`LightBlock`, 928 bajtów) się nie zmienił: macierz mapy cieni jedzie do shaderów zwykłymi uniformami, obok swojego samplera ([`../scene/lights.md`](../scene/lights.md)). `tests/LightingTests.cpp` miał wtedy nadal 11 przypadków (dziś 15): przypadek o `moonDirection` stoi w `tests/ShadowTests.cpp`. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi, 310 przypadków i 103751 asercji. Na macOS nic z tego nie było budowane ani uruchamiane.
 
 **Pierwsza część M7 (bufor HDR i gamma, 2026-10-05)** zmieniła w tym module trzy rzeczy: `buildLightSet` przelicza cztery kolory ustawień z sRGB na wartości liniowe (sekcja 5.5), wartości startowe świateł zostały dobrane od nowa do potoku HDR (sekcja 5.2), a `tests/LightingTests.cpp` ma jedenasty przypadek (sekcja 5.8). Zgłoszone dla Windowsa: bramka `make check` przechodzi, 269 przypadków i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751. Nowego wyglądu sceny nikt nie porównywał jeszcze ręcznie ze starym, a na macOS nic z tego nie było budowane. Teoria: [`../gfx/color-space.md`](../gfx/color-space.md), przebieg składający: [`../renderer/post-process.md`](../renderer/post-process.md).
 
@@ -25,9 +27,9 @@ Czego nie ma: stanu przegranej (pusta bateria oznacza tylko ciemność, runda tr
 |---|---|
 | jakie światła ma gra i z jakimi ustawieniami | struktura `game::LightingSettings` |
 | gdzie wiszą światła punktowe | `game::crystalLightPositions`: nad każdym kryształem rundy, który nie jest jeszcze zebrany |
-| gdzie jest latarka w tej klatce | oko i kierunek patrzenia z `NightMazeApp::onRender` |
+| gdzie jest latarka w tej klatce | `game::flashlightPose`: oko, wektory "do przodu" i "w prawo" kamery i ustawienia ręki, w `NightMazeApp::onRender` |
 | co bateria i puls kryształów zmieniają w tej jednej klatce | `game::lightingForFrame`, `game::flashlightFlicker`, `game::crystalPulse` |
-| jak z tego powstaje `LightSet` | `game::buildLightSet` |
+| jak z tego powstaje `LightSet` | `game::buildLightSet` (dostaje gotowy `FlashlightPose`) |
 | jak `LightSet` trafia na kartę | klasa `game::LightRig` |
 | jak gracz włącza latarkę i kiedy gra ją gasi | klawisz F w `onRender`, pole wyboru w panelu Lights, `game::updateRound` przy pustej baterii |
 
@@ -35,7 +37,7 @@ Kod jest podzielony tak samo jak reszta modułu `game` ([`README.md`](README.md)
 
 | Plik | Biblioteka | Potrzebuje OpenGL | Testy |
 |---|---|---|---|
-| `Lighting.hpp`, `Lighting.cpp` | `game_logic` | nie: same dane i matematyka | 11 przypadków w `tests/LightingTests.cpp` |
+| `Lighting.hpp`, `Lighting.cpp` | `game_logic` | nie: same dane i matematyka | 15 przypadków w `tests/LightingTests.cpp` (przypadek o wspólnej pozycji światła i jego mapy jest w `tests/ShadowTests.cpp`) |
 | `Round.hpp`, `Round.cpp` (tu: bateria, migotanie, światła klatki) | `game_logic` | nie | 25 przypadków w `tests/RoundTests.cpp`, z czego 11 dotyczy baterii i świateł (sekcja 5.8) |
 | `Crystals.hpp`, `Crystals.cpp` (tu: pozycja światła, puls, blask) | `game_logic` | nie | 14 przypadków w `tests/CrystalTests.cpp`, omówione w [`gameplay.md`](gameplay.md) |
 | `LightRig.hpp`, `LightRig.cpp` | program `night_maze` | tak: bufor uniformów | brak |
@@ -47,7 +49,9 @@ flowchart TD
     Frame["lightingForFrame<br>kopia ustawień na jedną klatkę:<br>migotanie latarki, puls kryształów"] --> Build
     RoundState --> Positions["crystalLightPositions<br>nad każdym niezebranym kryształem"]
     Positions --> Build
-    Eye["oko = mix(poprzedni krok, ten krok, alpha) + wysokość oczu<br>kierunek = m_camera.forward()"] --> Build
+    Eye["oko = mix(poprzedni krok, ten krok, alpha) + wysokość oczu<br>kamera: forward(), right()"] --> Pose["flashlightPose<br>ręka: oko + w prawo + w dół<br>kierunek: do punktu przed okiem"]
+    Pose --> Build
+    Pose --> ShadowMap["scene::spotLightSpace<br>mapa cieni latarki"]
     Build["buildLightSet<br>(game_logic, bez OpenGL)"] --> Set["scene::LightSet"]
     Set --> Upload["LightRig::upload<br>packLightBlock i UniformBuffer::update"]
     Upload --> Card["bufor uniformów, punkt wiązania 1"]
@@ -58,19 +62,31 @@ flowchart TD
 
 ## 2. Teoria
 
-### 2.1 Latarka to reflektor przyczepiony do kamery
+### 2.1 Latarka to reflektor w ręce, a ręka jest przyczepiona do kamery
 
-Latarka jest światłem typu reflektor ([`../scene/lights.md`](../scene/lights.md), sekcje 2.1 i 2.6). Od zwykłego reflektora różni ją jedno: **nie ma własnej pozycji ani kierunku**. W każdej klatce dostaje pozycję oka i kierunek patrzenia kamery. Gracz "trzyma ją przy oku".
+Latarka jest światłem typu reflektor ([`../scene/lights.md`](../scene/lights.md), sekcje 2.1 i 2.6). Od zwykłego reflektora różni ją jedno: **nie ma własnej pozycji ani kierunku w świecie**. W każdej klatce dostaje je od kamery: pozycję **ręki**, czyli oka przesuniętego w prawo i w dół, oraz kierunek wiązki, który wiąże ją z osią widzenia. Do części piątej M7 latarka stała w oku i świeciła dokładnie tam, gdzie gracz patrzył. Teraz stoi w ręce.
 
-Skutki tego wyboru:
+**Dlaczego ręka (moje wyjaśnienie, nie treść decyzji).** Mapa cieni latarki ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20) rysuje scenę z miejsca, w którym stoi światło. Światło dokładnie w oku rzuca każdy cień dokładnie za rzecz, która go rzuca, wzdłuż promienia widzenia, więc cień jest schowany. Mapa byłaby narysowana i odczytana poprawnie, a na ekranie nie zmieniłoby się nic. Przesunięcie źródła względem oka sprawia, że cień latarki w ogóle da się zobaczyć. Notatka: [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md).
 
-- Plama światła jest zawsze w środku ekranu, a oś stożka pokrywa się z osią patrzenia.
-- Kierunek do światła i kierunek do oka to dla latarki ten sam wektor. Upraszcza to wzory odbłysku i tłumaczy, dlaczego tryby `Phong` i `Blinn-Phong` różnią się mało wzdłuż korytarza ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 2.6).
-- Gracz nigdy nie widzi własnego cienia ani boku stożka. Stożek widać tylko jako koło na tym, na co pada.
+**Co zdecydował właściciel projektu (to jest cała treść decyzji):** 2026-10-05: światło jest w ręce, trochę w prawo i poniżej oka, a mapa cieni latarki ma rzut perspektywiczny. 2026-10-06: wiązka **zbiega się**, to znaczy celuje z ręki w punkt na osi widzenia przed okiem, a odległość tego punktu jest ustawieniem. Startowe przesunięcia ręki to **0,20 m w prawo i 0,25 m w dół**, oba jako suwaki. Wszystko inne w tej sekcji to wybory, które zrobiłem przy implementacji.
 
-Prawdziwą latarkę trzyma się w ręce, niżej i z boku. Przesunięcie jej względem oka dałoby ładniejszy obraz (widać by było, że plama nie jest dokładnie w środku), ale wymagałoby decyzji, gdzie jest ręka. Na dziś latarka jest w oku.
+**Jak to liczy `flashlightPose`** (kod w sekcji 5.5):
 
-**Planowane (nie ma tego w kodzie).** Decyzja właściciela projektu z 2026-10-05: latarka dostanie własną mapę cieni z rzutem perspektywicznym, a światło przeniesie się z oka do ręki, trochę w prawo i poniżej oka. Powód jest prosty: światło dokładnie w oku nie pokazuje własnych cieni, bo każdy cień chowa się za rzeczą, która go rzuca. Notatka: [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md), plan w [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.20. **Dziś latarka jest w oku i nie rzuca żadnych cieni**: wszystko w tym dokumencie opisuje ten stan.
+| Krok | Wzór | Liczby startowe |
+|---|---|---|
+| pozycja ręki | `eye + right * flashlightHandRight - WORLD_UP * flashlightHandDown` | oko plus 0,20 m w prawo minus 0,25 m w górę świata, czyli 0,25 m w dół |
+| punkt, na który celuje wiązka | `eye + forward * max(flashlightConvergeDistance, 0,5)` | 4 m przed okiem na osi widzenia |
+| kierunek | znormalizowany wektor od ręki do tego punktu | przy poziomym spojrzeniu wiązka odchyla się od osi widzenia o około 3,6 stopnia ku górze i o 2,9 stopnia ku lewej (policzone) |
+
+Skutki tego wyboru (z kodu i z rachunku, nikt tego nie oglądał):
+
+- Plama światła jest w środku ekranu **w jednej odległości**, 4 m od oka (ustawienie `Converge at`). Na ścianie bliższej leży na prawo od środka i poniżej niego, na dalszej nieco na lewo i powyżej: tak mówi podpowiedź suwaka. Przy zerowych przesunięciach wiązka pokrywa się z osią widzenia dla każdej odległości zbiegania (test `with both hand offsets at zero the flashlight is at the eye, as it used to be`).
+- Kierunek do światła i kierunek do oka **nie są już tym samym wektorem**. Przybliżenie `L = V` z [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 2.6, jest teraz tylko przybliżeniem: ręka jest 0,32 m od oka, więc z 4 m kąt między nimi to około 4,6 stopnia (policzone). Różnica między `Phong` a `Blinn-Phong` pod latarką jest przez to nieco większa niż przedtem (moja analiza, nie oglądane).
+- Gracz nadal nie widzi własnego cienia ani boku stożka: stożek widać tylko jako koło na tym, na co pada.
+
+**Dlaczego "w dół" jest w świecie, a nie pod kamerą** (mój wybór). Wektor "w prawo" kamery jest zawsze poziomy, więc przesunięcie w prawo jest poziome i ręka stoi 0,2 m od środka ciała. Ciało gracza to pudełko 0,6 m szerokości (`Player::BODY_WIDTH`), do którego nie wchodzi żadna ściana, a oko jest w jego środku: ręka jest więc 0,1 m w środku pudełka, niezależnie od obrotu gracza. Przesunięcie "w dół" po osi `Y` świata nie psuje tego. Przesunięcie "pod kamerą" zrobiłoby z ręki punkt 0,25 m **za** okiem dla gracza patrzącego w ziemię, a oba przesunięcia razem (`sqrt(0,2^2 + 0,25^2)` = 0,32 m) mogłyby wyjść z pudełka. Granica suwaka "w prawo" to `MAX_FLASHLIGHT_HAND_RIGHT` = 0,25 m, czyli połowa ciała (0,3 m) minus bliska płaszczyzna mapy cieni (0,05 m): ściana, o którą gracz stoi bokiem, nie jest ani za światłem, ani ucięta bliską płaszczyzną mapy. Suwak "w dół" sięga 0,5 m (komentarz w panelu: wysokość ręki trzymanej przy biodrze). Notatka: [`../../decisions/flashlight-hand-straight-down.md`](../../decisions/flashlight-hand-straight-down.md).
+
+**Zbieganie wiązki.** Odległość startowa 4 m to dwie komórki labiryntu (`CELL_SIZE` = 2 m): zwykła odległość do ściany, ku której gracz idzie. Najmniejsza wartość to 0,5 m (`MIN_FLASHLIGHT_CONVERGE_DISTANCE`): bliżej wiązka biegłaby stromo przez obraz, a przy 0 nie miałaby kierunku. Funkcja bierze `max(ustawienie, 0,5)`, więc 0 z ustawień nie daje błędu (test `the flashlight always has a direction`). Jeden przypadek nadal nie ma kierunku: kamera patrzy prosto w dół, a ręka jest tyle poniżej oka, ile punkt zbiegania przed okiem. Wtedy ręka **jest** tym punktem, wektor ma długość 0, a funkcja zwraca kierunek kamery. Ten sam test sprawdza ten przypadek.
 
 ### 2.2 Dlaczego latarka powstaje w `onRender`, a nie w `onUpdate`
 
@@ -82,12 +98,12 @@ oko = mix(pozycja przed ostatnim krokiem, pozycja po nim, alpha) + wysokość oc
 
 Macierz widoku jest budowana z tego oka ([`player.md`](player.md), sekcja o interpolacji). Obrót kamery myszą też jest robiony w `onRender`, raz na klatkę.
 
-Latarka ma być dokładnie tam, skąd robiony jest obraz. Musi więc dostać **to samo oko i ten sam kierunek, z których powstała macierz widoku tej klatki**. Gdyby powstawała w `onUpdate` z `m_camera.position` (pozycja po ostatnim kroku):
+Ręka stoi w stałym miejscu względem oka, więc latarka ma być liczona z **tego samego oka i tych samych wektorów kamery (do przodu i w prawo), z których powstała macierz widoku tej klatki**. Gdyby powstawała w `onUpdate` z `m_camera.position` (pozycja po ostatnim kroku):
 
 - przy ruchu byłaby przesunięta względem oka o ułamek kroku: do 2,5 cm przy chodzeniu (3 m/s razy 1/120 s) i do 4,6 cm przy sprincie. Na dalekiej ścianie tego nie widać, ale na ścianie tuż przed nosem plama drgałaby względem środka ekranu, inaczej w każdej klatce, bo `alpha` jest w każdej klatce inne;
 - przy obrocie myszą spóźniałaby się o klatkę: `onUpdate` biegnie przed obrotem kamery w `onRender`.
 
-Dlatego cały zestaw świateł jest budowany w `onRender`, po obrocie kamery i po policzeniu oka. Uczciwie: tego, że stożek stoi w środku ekranu podczas ruchu, **nie oglądałem**. Wynika to z tego, że `buildLightSet` i `viewMatrix` dostają tę samą zmienną `eye` (sekcja 5.6).
+Dlatego cały zestaw świateł jest budowany w `onRender`, po obrocie kamery i po policzeniu oka. Od części piątej pozycja latarki jest do tego liczona **przed przebiegami cieni**, bo mapa cieni latarki jest rysowana z ręki i potrzebuje jej, zanim powstanie jakakolwiek reszta klatki (sekcja 5.6). Uczciwie: tego, że stożek stoi w środku ekranu podczas ruchu, **nie oglądałem**. Wynika to z tego, że `flashlightPose` i `viewMatrix` dostają tę samą zmienną `eye` (sekcja 5.6).
 
 ### 2.3 Bateria: czego latarka potrzebuje od rundy
 
@@ -206,7 +222,7 @@ Ten moduł nie ma własnych shaderów. Dotyka istniejących w dwóch miejscach:
 
 Bateria nie zmieniła w shaderze ani jednej linii. Migotanie to mniejsza liczba w `uSpotColor.a` (intensywność), pusta bateria to zero w `uSpotCone.z` (przełącznik), puls kryształów to mniejsza liczba w `uPoints[i].color.a`, a zebrany kryształ to o jeden mniejsze `uPointCount`. Shader liczy tak samo jak w M4, tylko z innymi danymi.
 
-Czwarta część M7 zmieniła w `computeLighting` tylko gałąź księżyca: jego dwa składniki są dodatkowo zapamiętywane w polach `moonDiffuse` i `moonSpecular` wyniku, żeby shader wołający mógł je odjąć tam, gdzie punkt leży w cieniu księżyca. Gałęzi latarki i pętli świateł punktowych ta zmiana nie dotknęła: światło latarki i kryształów nie jest nigdy przyciemniane przez cień ([`../scene/lights.md`](../scene/lights.md), [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.14).
+Czwarta część M7 zmieniła w `computeLighting` tylko gałąź księżyca: jego dwa składniki są dodatkowo zapamiętywane w polach `moonDiffuse` i `moonSpecular` wyniku, żeby shader wołający mógł je odjąć tam, gdzie punkt leży w cieniu księżyca. Gałęzi latarki i pętli świateł punktowych ta zmiana nie dotknęła. Piąta część M7 zrobiła z gałęzią latarki to samo: jej dwa składniki są zapamiętywane w polach `flashlightDiffuse` i `flashlightSpecular` (zerowanych przed gałęzią, bo latarka bywa wyłączona), a shader wołający odejmuje je tam, gdzie punkt leży w cieniu latarki. Pętli świateł punktowych (kryształów) ta zmiana nie dotknęła: ich światło nie jest nigdy przyciemniane przez cień ([`../scene/lights.md`](../scene/lights.md), [`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.14 i 2.20.5).
 
 **Blask kryształów: uniform `uEmissive`.** Trzy shadery fragmentów (`lit.frag`, `gouraud.frag`, `textured.frag`) mają od M5 uniform `uEmissive` (sekcja 2.6). To zwykły uniform poza blokiem świateł, ustawiany przez klasy rysujące: `MazeRenderer::draw` daje czerń, `GameplayRenderer::draw` czerń dla bramy i `crystalGlow(...)` dla kryształów. Shadery z nim omawia linia po linii [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcje 4.2 i 4.4, a to, kto i kiedy go ustawia, [`gameplay.md`](gameplay.md), sekcja 4.
 
@@ -283,8 +299,10 @@ Zdanie komentarza o świetle otoczenia da się sprawdzić rachunkiem (policzone)
 **Komentarz nad kątami księżyca też się zmienił.** Do trzeciej części M7 kończył się zdaniem "There are no shadows before M7, so the moon also lights walls and ground that stand in the shade of another wall". Dziś w tym miejscu stoi: "The moon casts shadows: its shadow map is fitted to the land from this direction (game/Shadows.hpp)". Dwa kąty z ustawień mają więc od czwartej części M7 drugiego odbiorcę: oprócz światła księżyca w shaderach wyznaczają też kierunek, z którego rysowana jest mapa cieni ([`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.2 i 2.3). Oba biorą kierunek z jednej funkcji `moonDirection` (sekcja 5.5). Cienie rzuca **tylko księżyc**: latarka i światła kryształów nadal świecą przez ściany.
 
 ```cpp
-    /// The flashlight, a spot light at the eye of the player. Key F switches it. An
-    /// empty battery switches it off and keeps it off (game::updateRound).
+    /// The flashlight, a spot light in the hand of the player (flashlightPose). Key
+    /// F switches it. An empty battery switches it off and keeps it off
+    /// (game::updateRound). It casts shadows: its shadow map is drawn from the hand
+    /// (game/Shadows.hpp).
     bool flashlightOn = true;
     /// A warm white.
     glm::vec3 flashlightColor{1.0F, 0.9F, 0.72F};
@@ -292,9 +310,20 @@ Zdanie komentarza o świetle otoczenia da się sprawdzić rachunkiem (policzone)
     /// Half angles of the cone in degrees, see scene::SpotLight.
     float flashlightInnerDegrees = 13.0F;
     float flashlightOuterDegrees = 21.0F;
-    /// How far the flashlight reaches, in metres (scene::attenuationForRadius).
+    /// How far the flashlight reaches, in metres (scene::attenuationForRadius). It is
+    /// also the far plane of its shadow map.
     float flashlightRange = 16.0F;
+    /// Where the hand holds the flashlight, measured from the eye in metres: this far
+    /// to the right of it (along the right vector of the camera, which is always level)
+    /// and this far below it (straight down in the world, whatever the pitch is).
+    float flashlightHandRight = 0.2F;
+    float flashlightHandDown = 0.25F;
+    /// The beam does not run parallel to the view. It points from the hand at the
+    /// point this many metres in front of the eye on the line the player looks along.
+    float flashlightConvergeDistance = 4.0F;
 ```
+
+(Pominąłem część komentarzy przy polach ręki: dłuższe uzasadnienie, dlaczego światło nie może wejść w ścianę, jest w sekcji 2.1.)
 
 | Pole | Wartość startowa | Znaczenie |
 |---|---|---|
@@ -302,9 +331,12 @@ Zdanie komentarza o świetle otoczenia da się sprawdzić rachunkiem (policzone)
 | `flashlightColor` | ciepła biel `(1, 0,9, 0,72)`, po przeliczeniu `(1, 0,787, 0,477)` | kontrast z zimnym księżycem i turkusowymi światłami kryształów: trzy światła da się odróżnić po kolorze |
 | `flashlightIntensity` | 1,3 (do M6 1,6) | powyżej 1: światło w osi stożka tuż przy graczu ma w czerwonym kanale wartość 1,3, czyli więcej niż biel. Do M6 było to obcinane do 1, dziś zostaje w buforze HDR i o wyglądzie środka plamy decyduje krzywa mapowania tonów. Przy słabej baterii klatka jest rysowana z tą liczbą pomnożoną przez mnożnik migotania, ale samo pole się nie zmienia |
 | `flashlightInnerDegrees`, `flashlightOuterDegrees` | 13 i 21 stopni | połówki kąta stożka. Między nimi 8 stopni miękkiego brzegu |
-| `flashlightRange` | 16 m | zasięg: w tej odległości zostaje 5 procent jasności. 16 m to osiem komórek |
+| `flashlightRange` | 16 m | zasięg: w tej odległości zostaje 5 procent jasności. 16 m to osiem komórek. Od części piątej to także **daleka płaszczyzna mapy cieni** latarki |
+| `flashlightHandRight` | 0,20 m | o ile ręka jest na prawo od oka, wzdłuż wektora "w prawo" kamery. **Wartość startowa jest decyzją właściciela** (2026-10-06). Suwak w panelu sięga do `MAX_FLASHLIGHT_HAND_RIGHT` = 0,25 m |
+| `flashlightHandDown` | 0,25 m | o ile ręka jest poniżej oka, prosto w dół w świecie. Wartość startowa jest decyzją właściciela. Suwak sięga do 0,5 m (granica jest mojego autorstwa) |
+| `flashlightConvergeDistance` | 4 m | w jakiej odległości przed okiem wiązka przecina oś widzenia. Wartość startowa jest moim wyborem (decyzja właściciela mówi, że odległość jest ustawieniem). Suwak od `MIN_FLASHLIGHT_CONVERGE_DISTANCE` (0,5 m) do 20 m |
 
-Pozycji i kierunku latarki **nie ma** w ustawieniach: nie są ustawieniem, tylko wynikiem tego, gdzie stoi i dokąd patrzy gracz. Ładunku baterii też tu nie ma: to stan rundy (`Round::battery`), a nie ustawienie światła.
+Pozycji i kierunku latarki **w świecie** nie ma w ustawieniach: są wynikiem tego, gdzie stoi i dokąd patrzy gracz (`flashlightPose`, sekcja 5.5). W ustawieniach są tylko trzy liczby, które mówią, jak ręka leży względem oka. Ładunku baterii też tu nie ma: to stan rundy (`Round::battery`), a nie ustawienie światła.
 
 ```cpp
     /// The point lights of the crystals: one hangs just above every crystal that has not
@@ -470,11 +502,51 @@ Funkcja zwraca same pozycje, a nie światła: kolor, intensywność i promień s
 
 Po `Regenerate` w panelu Maze powstaje nowy `MazeWorld` z nowymi kryształami i `beginRound` zaczyna na nim nową rundę, więc światła przenoszą się razem z kryształami bez żadnego dodatkowego kodu.
 
-### 5.5 `buildLightSet`: światła jednej klatki
+### 5.5 `flashlightPose` i `buildLightSet`: światła jednej klatki
+
+**`flashlightPose` (piąta część M7).** Funkcja liczy, gdzie jest latarka i dokąd świeci w tej klatce. Do części piątej tego robiły dwa parametry `buildLightSet` (oko i kierunek patrzenia), a latarka stała w oku.
 
 ```cpp
-scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3& eye,
-                              const glm::vec3& viewDirection,
+struct FlashlightPose {
+    glm::vec3 position{0.0F};
+    glm::vec3 direction{0.0F, 0.0F, -1.0F};
+};
+
+FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3& eye,
+                              const glm::vec3& forward, const glm::vec3& right) {
+    const glm::vec3 position =
+        eye + right * settings.flashlightHandRight - WORLD_UP * settings.flashlightHandDown;
+
+    const float convergeDistance =
+        std::max(settings.flashlightConvergeDistance, MIN_FLASHLIGHT_CONVERGE_DISTANCE);
+    const glm::vec3 target = eye + forward * convergeDistance;
+
+    const glm::vec3 toTarget = target - position;
+    if (glm::length(toTarget) < MIN_DIRECTION_LENGTH) {
+        return {.position = position, .direction = forward};
+    }
+    return {.position = position, .direction = glm::normalize(toTarget)};
+}
+```
+
+(Pominąłem komentarze.)
+
+| Linia | Znaczenie |
+|---|---|
+| parametry `forward` i `right` | wektory kamery o długości 1 (`scene::Camera::forward()` i `right()`), z tej samej klatki co `eye`. Funkcja nie zna kamery: dostaje liczby, więc działa w `game_logic` bez OpenGL i testy podają jej własne wektory |
+| `eye + right * settings.flashlightHandRight` | przesunięcie w prawo. `right` jest zawsze poziome, więc to całe poziome przesunięcie od oka |
+| `- WORLD_UP * settings.flashlightHandDown` | przesunięcie w dół **w świecie**: oś `Y`, nie "w dół" kamery (sekcja 2.1). `WORLD_UP` to `(0, 1, 0)` w anonimowej przestrzeni nazw `Lighting.cpp` |
+| `std::max(settings.flashlightConvergeDistance, MIN_FLASHLIGHT_CONVERGE_DISTANCE)` | ustawienie nie zejdzie poniżej 0,5 m, więc wiązka zawsze ma kierunek |
+| `target = eye + forward * convergeDistance` | punkt na osi widzenia. Liczony od **oka**, nie od ręki |
+| `if (glm::length(toTarget) < MIN_DIRECTION_LENGTH)` | jedyny przypadek, gdy ręka i cel się pokrywają (sekcja 2.1). `MIN_DIRECTION_LENGTH` = 0,0001: poniżej tego wektora nie da się znormalizować (ta sama stała co w `scene/LightBlock.cpp`) |
+| `return {.position = ..., .direction = ...}` | inicjalizacja z nazwanymi polami (C++20), jak w innych miejscach projektu |
+
+**Jedno wywołanie dla dwóch odbiorców.** Wynik jest podawany do `buildLightSet` (światło sceny) i do `scene::spotLightSpace` (mapa cieni latarki), więc światło i jego cień biorą pozycję i kierunek z jednego miejsca, tak jak światło i mapa księżyca biorą kierunek z `moonDirection`. Test `the flashlight and its shadow map stand in the same place and look the same way` (w `tests/ShadowTests.cpp`) sprawdza zgodność. Gdyby `flashlightPose` była wołana osobno przy świetle i przy mapie, a ustawienia zmieniły się między wywołaniami (suwak ręki), cień mógłby wyjść z innego miejsca niż światło.
+
+**`buildLightSet` po zmianie.** Pozycję i kierunek reflektora dostaje gotowe. Podpis:
+
+```cpp
+scene::LightSet buildLightSet(const LightingSettings& settings, const FlashlightPose& flashlight,
                               std::span<const glm::vec3> pointPositions) {
     // The colours of the settings are sRGB values: they are picked on the screen. The
     // shaders compute with linear light, so this function is the one place where the
@@ -494,7 +566,7 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3&
 
 | Linia | Znaczenie |
 |---|---|
-| parametry | ustawienia (kopia na jedną klatkę z `lightingForFrame`, sekcja 5.3), oko i kierunek patrzenia (z kamery tej klatki), pozycje świateł punktowych (z `crystalLightPositions`, sekcja 5.4). Trzy źródła danych, jedna funkcja, zero stanu: ten sam zestaw argumentów daje zawsze ten sam wynik. Funkcja nie wie, skąd pochodzą pozycje: komentarz w `Lighting.hpp` mówi to wprost ("The function does not know where they come from") |
+| parametry | ustawienia (kopia na jedną klatkę z `lightingForFrame`, sekcja 5.3), pozycja i kierunek latarki (`FlashlightPose` z `flashlightPose`, z kamery tej klatki), pozycje świateł punktowych (z `crystalLightPositions`, sekcja 5.4). Trzy źródła danych, jedna funkcja, zero stanu: ten sam zestaw argumentów daje zawsze ten sam wynik. Funkcja nie wie, skąd pochodzą pozycje: komentarz w `Lighting.hpp` mówi to wprost ("The function does not know where they come from") |
 | `std::span<const glm::vec3>` | widok na ciąg pozycji bez kopiowania: przyjmie `std::vector`, tablicę albo pustą listę `{}` (tak wołają ją testy) |
 | `lights.ambient = gfx::srgbToLinear(settings.ambient)` | światło otoczenia jako wartość liniowa: `(0,105, 0,135, 0,225)` staje się `(0,0108, 0,0163, 0,0414)` |
 | `lights.directional = {...}` | księżyc: dwa kąty zamienione na wektor przez `moonDirection` (niżej; samą zamianę opisuje [`../scene/lights.md`](../scene/lights.md), sekcja 5.5), kolor przeliczony na liniowy, intensywność przepisana |
@@ -519,10 +591,11 @@ glm::vec3 moonDirection(const LightingSettings& settings) {
 Funkcja ma dwóch odbiorców: `buildLightSet` (kierunek światła w shaderach) i `NightMazeApp::drawMoonShadowMap`, która w każdej klatce woła `scene::directionalLightSpace(shadowCasterBounds(m_mazeWorld.terrain), moonDirection(m_lighting))`, czyli ustawia pudełko mapy cieni z tego samego kierunku. Gdyby każde z tych miejsc liczyło wektor samo, po zmianie jednego z nich cień padałby w inną stronę, niż świeci światło, bez żadnego błędu kompilacji. Jedna różnica jest warta zapamiętania: `buildLightSet` dostaje **kopię ustawień na jedną klatkę** z `lightingForFrame`, a mapa cieni czyta `m_lighting` wprost. Kątów księżyca `lightingForFrame` nie zmienia (rusza tylko latarkę i światła punktowe, sekcja 5.3), więc oba wywołania dają ten sam wektor. Zgodność pilnuje przypadek `the moon direction of the settings is the one the lights are built with` w `tests/ShadowTests.cpp`: dla kątów 140 i -30 stopni kierunek z `moonDirection` ma długość 1 i jest równy `lights.directional.direction` z `buildLightSet`.
 
 ```cpp
-    // The flashlight is held at the eye and points where the player looks.
+    // The flashlight is held in the hand and aimed at a point in front of the eye: the
+    // caller has computed both (flashlightPose), once for the light and its shadow map.
     lights.spot = {
-        .position = eye,
-        .direction = viewDirection,
+        .position = flashlight.position,
+        .direction = flashlight.direction,
         .color = gfx::srgbToLinear(settings.flashlightColor),
         .intensity = settings.flashlightIntensity,
         .attenuation = scene::attenuationForRadius(settings.flashlightRange),
@@ -537,7 +610,7 @@ Funkcja ma dwóch odbiorców: `buildLightSet` (kierunek światła w shaderach) i
 
 | Linia | Znaczenie |
 |---|---|
-| `.position = eye`, `.direction = viewDirection` | **cała latarka**: reflektor w oku, wzdłuż kierunku patrzenia |
+| `.position = flashlight.position`, `.direction = flashlight.direction` | **cała latarka**: reflektor w ręce, z kierunkiem do punktu zbiegania. Funkcja niczego tu nie liczy: przepisuje wynik `flashlightPose` |
 | `.attenuation = scene::attenuationForRadius(settings.flashlightRange)` | zasięg w metrach zamieniony na trzy współczynniki tłumienia |
 | `std::min(inner, outer)` | stożek wewnętrzny nie może być szerszy od zewnętrznego. Panel tego pilnuje widżetem `DragFloatRange2`, ale ustawienia może zmienić także inny kod, więc funkcja pilnuje sama |
 | `lights.spotEnabled = settings.flashlightOn;` | przełącznik idzie osobno od ustawień: zgaszona latarka zachowuje kolor, kąty i zasięg |
@@ -649,32 +722,37 @@ Przełącznik jest więc włączony najwyżej do następnego stałego kroku (kro
 
 Uczciwie: tego zachowania **nikt nie oglądał na ekranie**. Wynika z kolejności w kodzie i z testu `an empty battery switches the flashlight off and keeps it off`, który sprawdza obie blokady osobno.
 
-**Budowanie i wysyłanie świateł.**
+**Budowanie i wysyłanie świateł** (fragmenty `onRender` w kolejności wykonania, z pominięciem rysowania; od części piątej oko, ustawienia klatki i pozycja latarki są liczone **na początku**, przed przebiegami cieni).
 
 ```cpp
     const glm::vec3 feet =
         glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
     const glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
 
-    // The two matrices that are the same for everything drawn in this frame.
+    // The round changes two things for this frame only: a low battery dims the
+    // flashlight (an empty one switches it off) and the crystal lights pulse. That
+    // happens in a copy, so the settings the debug UI shows stay as they were set.
+    const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+
+    // Where the flashlight is and where it points in this frame: in the hand, a little
+    // to the right of the eye and below it, aimed at a point in front of the eye. It is
+    // computed ONCE: the shadow pass of the flashlight and the lights of the frame both
+    // get this result, so the shadows always belong to the light that is drawn.
+    const FlashlightPose flashlight =
+        flashlightPose(frameLighting, eye, m_camera.forward(), m_camera.right());
+
+    drawMoonShadowMap();
+    drawFlashlightShadowMap(frameLighting, flashlight);
+
+    // ... beginScene, the clear, the matrices ...
     const glm::mat4 view = m_camera.viewMatrix(eye);
     const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
 
-    // The lights of this frame. They are built here, after the mouse has turned the
-    // camera and from the same eye the view matrix uses: the flashlight then sits
-    // exactly where the picture is taken from, and its cone stays in the middle of the
-    // screen. From m_camera.position (the last fixed step) it would trail behind while
-    // the player moves. The copy to the graphics card happens once, and the two lit
-    // programs and the grass program read it.
-    //
-    // The round changes two things for this frame only: a low battery dims the
-    // flashlight (an empty one switches it off) and the crystal lights pulse. That
-    // happens in a copy, so the settings the debug UI shows stay as they were set. The
-    // point lights hang above the crystals that are still there.
-    const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+    // The lights of this frame, from the lighting and the flashlight pose computed
+    // before the shadow passes. It takes the EYE, not the hand, in upload: the
+    // highlights are computed for the place the picture is taken from.
     const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
-    const scene::LightSet lights =
-        buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights);
+    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);
@@ -685,16 +763,17 @@ Uczciwie: tego zachowania **nikt nie oglądał na ekranie**. Wynika z kolejnośc
 
 | Linia | Znaczenie |
 |---|---|
-| `eye` | interpolowane oko: ta sama zmienna idzie do `viewMatrix`, do `buildLightSet` (pozycja latarki) i do `upload` (pozycja kamery dla odbłysku). To jest gwarancja z sekcji 2.2 |
+| `eye` | interpolowane oko: ta sama zmienna idzie do `flashlightPose` (pozycja ręki), do `viewMatrix` i do `upload` (pozycja kamery dla odbłysku). To jest gwarancja z sekcji 2.2. `upload` dostaje **oko**, a nie rękę: odbłysk zależy od tego, skąd patrzy kamera |
 | `lightingForFrame(m_lighting, m_round, m_gameplay)` | kopia ustawień z migotaniem i pulsem tej klatki (sekcja 5.3). `m_lighting` zostaje nietknięte |
 | `crystalLightPositions(m_round)` | pozycje świateł nad niezebranymi kryształami w tej chwili (sekcja 5.4) |
-| `buildLightSet(frameLighting, ...)` | dostaje **kopię**, a nie `m_lighting`. Podanie tu `m_lighting` skompilowałoby się i dało latarkę bez baterii i kryształy bez pulsu |
-| `m_camera.forward()` | kierunek patrzenia po obrocie myszą z tej samej klatki (obrót jest wcześniej w `onRender`) |
+| `flashlightPose(frameLighting, eye, m_camera.forward(), m_camera.right())` | pozycja i kierunek latarki z **kopii** ustawień klatki (te same pola ręki co w `m_lighting`) i z wektorów kamery po obrocie myszą z tej samej klatki (obrót jest wcześniej w `onRender`). Liczona raz, przed przebiegami cieni |
+| `drawMoonShadowMap(); drawFlashlightShadowMap(frameLighting, flashlight);` | dwa przebiegi głębi. Drugi dostaje ten sam `FlashlightPose` i ustawienia klatki (zasięg i kąt stożka) |
+| `buildLightSet(frameLighting, flashlight, ...)` | dostaje **kopię** ustawień, a nie `m_lighting`. Podanie tu `m_lighting` skompilowałoby się i dało latarkę bez baterii i kryształy bez pulsu |
 | `crystalLights` | wektor zamienia się sam na `std::span` |
 | `m_lightRig.upload(lights, eye);` | jedno kopiowanie na kartę, **przed** rysowaniem. Oba programy oświetlenia czytają ten sam bufor |
 | `drawMaze(view, projection);` | labirynt, a zaraz po nim brama i kryształy, tym samym programem ([`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md), sekcja 5.4). Osobnego rysowania znaczników świateł już nie ma |
 
-**Co stoi przed tym fragmentem od czwartej części M7.** Pierwszym przebiegiem `onRender` jest dziś `drawMoonShadowMap()`: zanim powstaną światła klatki, scena jest rysowana z kierunku księżyca do mapy cieni. Ten przebieg nie potrzebuje `LightSet` ani oka: bierze `moonDirection(m_lighting)` i granice terenu, więc kolejność "najpierw mapa cieni, potem światła" niczego nie psuje. Programy `lit`, `gouraud` i `grass` czytają potem dwie rzeczy: światła z bufora uniformów (jak dotąd) i mapę cieni księżyca z jednostki teksturującej 3 (`MOON_SHADOW_TEXTURE_UNIT`). Pozycja i kierunek latarki nie biorą w przebiegu cieni żadnego udziału.
+**Co stoi przed tym fragmentem od czwartej części M7 (zmienione w piątej).** Pierwszymi przebiegami `onRender` są dziś `drawMoonShadowMap()` i `drawFlashlightShadowMap(...)`: zanim powstaną światła klatki, scena jest rysowana z kierunku księżyca i z ręki do dwóch map cieni. Przebieg księżyca nie potrzebuje `LightSet` ani oka (bierze `moonDirection(m_lighting)` i granice terenu). **Przebieg latarki potrzebuje oka, ustawień klatki i pozycji latarki**, więc `onRender` liczy je wcześniej niż dawniej: oko, `lightingForFrame` i `flashlightPose` stoją przed oboma przebiegami. Programy `lit`, `gouraud` i `grass` czytają potem trzy rzeczy: światła z bufora uniformów (jak dotąd) i mapy cieni z jednostek teksturujących 3 (księżyc, `MOON_SHADOW_TEXTURE_UNIT`) i 4 (latarka, `FLASHLIGHT_SHADOW_TEXTURE_UNIT`). Szczegóły kolejności klatki: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.18.
 
 Zegar animacji i bateria są stanem symulacji: zmieniają się w stałych krokach. Klatka czyta je takie, jakie są po ostatnim kroku, bez interpolacji. Dla pulsu trwającego 2,4 s i unoszenia trwającego 3 s krok 1/120 s jest dużo drobniejszy niż ruch, który widać.
 
@@ -772,11 +851,11 @@ void LightRig::upload(const scene::LightSet& lights, const glm::vec3& cameraPosi
 
 Dwa kroki: `packLightBlock` układa światła w strukturę o układzie bajtów bloku `std140`, a `update` kopiuje te bajty na kartę. Oba są omówione w [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md). Funkcja jest `const`: zmienia zawartość bufora na karcie, a nie pola obiektu.
 
-**Światła kryształu ściana nie zasłania** (światła punktowe nie mają cieni: od czwartej części M7 cienie rzuca tylko księżyc), a kryształ tak: przechodzi test głębi jak każda inna geometria. Bywa więc, że widać turkusowy blask na podłodze, a kryształu, który go daje, nie.
+**Światła kryształu ściana nie zasłania** (światła punktowe nie mają cieni: od piątej części M7 cienie rzucają tylko księżyc i latarka), a kryształ tak: przechodzi test głębi jak każda inna geometria. Bywa więc, że widać turkusowy blask na podłodze, a kryształu, który go daje, nie.
 
 ### 5.8 Jak to zostało sprawdzone
 
-Testy jednostkowe w `tests/LightingTests.cpp`, 11 przypadków:
+Testy jednostkowe w `tests/LightingTests.cpp`, 15 przypadków (11 z wcześniejszych części i 4 z piątej części M7, jeden z dawnych przypadków zmienił nazwę):
 
 | Przypadek testowy | Co sprawdza | Wynik |
 |---|---|---|
@@ -785,7 +864,11 @@ Testy jednostkowe w `tests/LightingTests.cpp`, 11 przypadków:
 | `Gouraud and Phong use the Phong highlight, Blinn-Phong its own` | `specularModelOf` i wartości `SpecularModel` | Phong, Phong, BlinnPhong. Liczby 0 i 1 |
 | `normal mapping is on by default and applies to every mode except Gouraud` | domyślne `LightingSettings`, potem `usesNormalMap` dla czterech trybów przy włączonym i wyłączonym polu | pole startuje jako `true`. Włączone: prawda dla `Phong`, `BlinnPhong` i `Unlit`, fałsz dla `Gouraud`. Wyłączone: fałsz dla wszystkich czterech |
 | `buildLightSet takes the ambient light and the moon from the settings` | yaw 90, pitch -90 | kierunek `(0, -1, 0)`, kolory równe `gfx::srgbToLinear` kolorów z ustawień (od M7), intensywność przepisana, zero świateł punktowych |
-| `the flashlight sits at the eye and points where the camera looks` | oko `(3, 1,7, 5)`, kierunek `(1, 0, 0)`, zasięg 10 | pozycja i kierunek reflektora równe podanym, kolor równy `gfx::srgbToLinear(settings.flashlightColor)`, 5 procent jasności w 10 m |
+| `the flashlight sits in the hand and is aimed at a point in front of the eye` (dawniej `the flashlight sits at the eye and points where the camera looks`) | wartości startowe ręki (0,2, 0,25, 4), oko `(3, 1,7, 5)`, kamera patrząca na wschód `(1, 0, 0)` z wektorem w prawo `(0, 0, 1)`, zasięg 10 | pozycja ręki `(3, 1,45, 5,2)`, kierunek do punktu `(7, 1,7, 5)`, czyli `normalize(4, 0,25, -0,2)`. Reflektor zbudowany z tego `FlashlightPose` ma tę pozycję i kierunek, kolor równy `gfx::srgbToLinear(settings.flashlightColor)`, 5 procent jasności w 10 m |
+| `with both hand offsets at zero the flashlight is at the eye, as it used to be` | oba przesunięcia 0, pięć nachyleń kamery i trzy odległości zbiegania | pozycja równa oku, kierunek równy kierunkowi kamery, we wszystkich piętnastu kombinacjach |
+| `the beam of the flashlight passes through the point the view is aimed at` | wartości startowe, pięć kątów obrotu i pięć nachyleń | kierunek ma długość 1, a przejście od ręki wzdłuż wiązki na odległość do celu kończy się w punkcie 4 m przed okiem |
+| `the hand stays inside the body of the player however the camera is turned` | `Hand right` na granicy, siedem obrotów i pięć nachyleń | `MAX_FLASHLIGHT_HAND_RIGHT` równe połowie ciała (`Player::BODY_WIDTH` / 2) minus `scene::SPOT_NEAR_PLANE`, poziome przesunięcie ręki nie przekracza tej granicy na żadnej z osi świata, a `Y` jest przesunięte o dokładnie `flashlightHandDown`, bez względu na nachylenie |
+| `the flashlight always has a direction` | zbieganie 0 i przypadek, w którym ręka jest celem | zbieganie 0 daje to samo co 0,5 m, a przypadek zdegenerowany daje kierunek kamery zamiast `NaN` |
 | `switching the flashlight off keeps its settings` | `flashlightOn = false` | `spotEnabled` fałszywe, intensywność bez zmian |
 | `the inner cone of the flashlight is never wider than the outer cone` | kąty 40 i 15 | oba wychodzą 15 |
 | `every point light gets the shared colour, intensity and radius` | dwie pozycje, promień 4 | oba światła mają wspólny kolor (przeliczony na liniowy) i intensywność, 5 procent jasności w 4 m |
@@ -812,9 +895,9 @@ Bateria i światła klatki mają testy w `tests/RoundTests.cpp` (11 z 25 przypad
 
 Funkcje `crystalLightPosition`, `crystalPulse` i `crystalGlow` mają własne przypadki w `tests/CrystalTests.cpp`, opisane w [`gameplay.md`](gameplay.md).
 
-Wyniki dla Windowsa 2026-10-05: wszystkie te przypadki przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego z drugiej części M6 (po M5 było to 215 i 85098). Po pierwszej części M7, z jedenastym przypadkiem tego pliku, zgłoszone jest 269 przypadków i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751.
+Wyniki dla Windowsa 2026-10-05: wszystkie te przypadki przechodzą w Debug i Release, w ramach 256 przypadków i 101232 asercji całego programu testowego z drugiej części M6 (po M5 było to 215 i 85098). Po pierwszej części M7, z jedenastym przypadkiem tego pliku, zgłoszone jest 269 przypadków i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751. Po części piątej (2026-10-06, zgłoszone, nie powtarzałem): 329 przypadków i 104306 asercji, z tym plikiem mającym 15 przypadków. Ile z 555 nowych asercji przypada na ten plik, nie policzyłem.
 
-**Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp` i `LightRig`: klawisza F, tego, że `buildLightSet` dostaje interpolowane oko i kopię z `lightingForFrame`, kolejności `upload` przed rysowaniem, linii `flashlightOn = true` w `beginRound`. Ten kod wymaga okna. Migotania, pulsu i gasnącego światła zebranego kryształu **nikt jeszcze nie oglądał w działającej grze ręcznie**: to otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md).
+**Czego testy nie sprawdzają.** Wszystkiego, co jest w `NightMazeApp` i `LightRig`: klawisza F, tego, że `flashlightPose` dostaje interpolowane oko i kopię z `lightingForFrame`, tego, że przebieg cieni latarki jest wołany **po** policzeniu pozycji, tego, że `upload` dostaje oko, a nie rękę, kolejności `upload` przed rysowaniem, linii `flashlightOn = true` w `beginRound`. Ten kod wymaga okna. Migotania, pulsu i gasnącego światła zebranego kryształu **nikt jeszcze nie oglądał w działającej grze ręcznie**, tak samo jak plamy w ręce i jej cienia (lista: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 21.2): to otwarte pozycje listy kontrolnej w [`../../guides/build-windows.md`](../../guides/build-windows.md).
 
 ## 6. Panel ImGui
 
@@ -825,7 +908,10 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 | Lights, grupa `Flashlight (spot)` | `Flashlight on (key F)` | `flashlightOn` | to samo pole co klawisz F: po naciśnięciu F pole wyboru zmienia stan. Przy pustej baterii najechanie na pole pokazuje podpowiedź `The battery is empty: collect a crystal first.`, a zaznaczenie znika w następnym kroku symulacji |
 | | `Beam colour`, `Beam intensity` | `flashlightColor`, `flashlightIntensity` | kolor i jasność plamy. Migotanie słabej baterii **nie rusza** suwaka `Beam intensity`: działa na kopii ustawień |
 | | `Cone` | `flashlightInnerDegrees`, `flashlightOuterDegrees` | rozmiar plamy i szerokość miękkiego brzegu |
-| | `Beam range` | `flashlightRange` | jak daleko w korytarz sięga światło |
+| | `Beam range` | `flashlightRange` | jak daleko w korytarz sięga światło. Od części piątej to też daleka płaszczyzna mapy cieni latarki (podpowiedź to mówi) |
+| | `Hand right` | `flashlightHandRight` | o ile ręka jest na prawo od oka. Od 0 do `MAX_FLASHLIGHT_HAND_RIGHT` (0,25 m), format `%.2f m`. Przy 0 (razem z `Hand down` 0) światło jest w oku. Podpowiedź mówi, że granica trzyma światło wewnątrz ciała gracza (0,6 m szerokości), więc nie wejdzie w ścianę |
+| | `Hand down` | `flashlightHandDown` | o ile ręka jest poniżej oka, prosto w dół w świecie. Od 0 do 0,5 m |
+| | `Converge at` | `flashlightConvergeDistance` | w jakiej odległości plama jest w środku ekranu. Od 0,5 do 20 m, format `%.1f m`. Podpowiedź: bliżej plama leży na prawo i poniżej środka, dalej nieco na lewo i powyżej |
 | Lights, grupa `Point lights (crystals)` | tekst `Lit: 13 of 13 crystals (at most 16)` | `round.crystals.size()` i `round.collectedCount` | ile kryształów jeszcze świeci i ile ich jest w labiryncie. Pierwsza liczba maleje o jeden z każdym zebranym kryształem |
 | | `Point colour` | `pointColor` | kolor wszystkich świateł punktowych i jednocześnie kolor blasku samych kryształów |
 | | `Point intensity`, `Point radius` | `pointIntensity`, `pointRadius` | wszystkie światła naraz. Puls nie rusza suwaka. Na blask samych kryształów te dwa suwaki nie wpływają |
@@ -842,9 +928,9 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 
 ### 6.1 Scenariusz pokazu na obronie
 
-**Kroków nikt jeszcze nie wykonał ręcznie.** Wynikają z kodu i testów. Kroki od 1 do 3 opisują zachowanie z M4, kroki od 4 do 9 to M5.
+**Kroków nikt jeszcze nie wykonał ręcznie.** Wynikają z kodu i testów. Kroki od 1 do 3 opisują zachowanie z M4 w wersji z częścią piątą M7 (latarka w ręce), kroki od 4 do 9 to M5, a krok 11 to część piąta M7.
 
-1. **Latarka w oku.** Start gry. Plama jest w środku ekranu. Obracam myszą: plama zostaje w środku, przesuwa się po ścianach. Mówię: reflektor dostaje co klatkę oko i kierunek kamery, te same, z których powstaje macierz widoku.
+1. **Latarka w ręce.** Start gry. Staję przed ścianą w odległości 4 m: plama jest w środku ekranu. Podchodzę na 1 m: plama leży na prawo od środka i poniżej niego. Obracam myszą: plama przesuwa się po ścianach. Mówię: reflektor dostaje co klatkę rękę (oko plus 0,20 m w prawo i 0,25 m w dół) i kierunek do punktu 4 m przed okiem, z tego samego oka i tych samych wektorów kamery, z których powstaje macierz widoku. Te zdania wynikają z kodu, **nikt ich nie oglądał**.
 2. **Klawisz F.** Naciskam F: latarka gaśnie, zostaje księżyc i turkusowe światła kryształów. Pokazuję, że pole `Flashlight on (key F)` w panelu Lights się odznaczyło. Naciskam jeszcze raz.
 3. **Ruch.** Idę i przesuwam się w bok blisko ściany, patrząc na plamę. Ma stać w środku ekranu bez drgania. Mówię o dwóch zegarach i o tym, dlaczego światła powstają w `onRender`.
 4. **Kryształy jako światła.** Naciskam N (noclip), wzlatuję nad labirynt i patrzę w dół. Liczę turkusowe kryształy: 13. Porównuję z planem w panelu Maze i z linią `Lit: 13 of 13 crystals (at most 16)`. Pokazuję, że w komórce startowej i w komórce wyjścia kryształu nie ma. Mówię: światło wisi 0,15 m nad czubkiem każdego kryształu i unosi się razem z nim.
@@ -853,11 +939,12 @@ Latarka nie ma własnego panelu. PRD nie przewiduje go: kąty latarki są w opis
 7. **Pusta bateria.** Ustawiam `Battery` na 0. Latarka gaśnie, pole `Flashlight on (key F)` się odznacza, HUD pokazuje `Battery empty. Find a crystal.`. Naciskam F: nic się nie zapala. Najeżdżam na pole wyboru: podpowiedź mówi dlaczego. Runda trwa dalej. Zbieram kryształ: bateria ma 25 procent, ale jest nadal ciemno. Naciskam F: latarka świeci. Mówię: kryształ ładuje baterię, a przełącznik należy do gracza.
 8. **Nowa runda.** Gaszę latarkę klawiszem F i naciskam R. Kryształy i ich światła wracają, bateria jest pełna, latarka świeci.
 9. **Nowy labirynt i limit 16.** W panelu Maze zmieniam `Seed` i naciskam `Regenerate`: kryształy są w innych miejscach. Ustawiam `Width` i `Height` na 30 i `Regenerate`: panel pokazuje `Lit: 16 of 16 crystals (at most 16)`. Mówię: liczba kryształów jest przycięta do rozmiaru tablicy świateł w shaderze.
-10. **Testy.** `ctest --test-dir build/debug -C Debug --output-on-failure`. Mówię, że zużycie baterii, obie blokady pustej baterii, wzór migotania i lista świateł są przypięte testami bez okna.
+10. **Testy.** `ctest --test-dir build/debug -C Debug --output-on-failure`. Mówię, że zużycie baterii, obie blokady pustej baterii, wzór migotania, lista świateł i położenie ręki są przypięte testami bez okna.
+11. **Ręka i zbieganie.** W panelu Lights, grupa `Flashlight (spot)`: ustawiam `Hand right` i `Hand down` na 0. Światło jest w oku, plama pokrywa się ze środkiem ekranu w każdej odległości. Wracam do 0,20 i 0,25. Przesuwam `Converge at` od 0,5 do 20 m: miejsce, w którym plama przecina środek ekranu, wędruje z nim. Ustawiam `Hand right` na maksimum i stoję bokiem do ściany: światło jest wewnątrz pudełka ciała, więc ściana nie jest za nim. Mówię o geometrii z sekcji 2.1. Cień latarki: [`../renderer/shadows.md`](../renderer/shadows.md), sekcja 6.1, kroki od 11 do 18.
 
 ## 7. Pułapki
 
-1. **Latarka z pozycji symulacji.** `buildLightSet(frameLighting, m_camera.position, ...)` zamiast `eye` kompiluje się i wygląda dobrze, gdy gracz stoi. Przy ruchu plama drga względem środka ekranu. `m_camera.position` to pozycja po ostatnim kroku, a klatka jest rysowana z punktu między krokami.
+1. **Latarka z pozycji symulacji.** `flashlightPose(frameLighting, m_camera.position, ...)` zamiast `eye` kompiluje się i wygląda dobrze, gdy gracz stoi. Przy ruchu plama drga względem środka ekranu. `m_camera.position` to pozycja po ostatnim kroku, a klatka jest rysowana z punktu między krokami.
 2. **Klawisz czytany w `onUpdate`.** `wasKeyPressed` opisuje klatkę, a `onUpdate` biegnie zero albo kilka razy na klatkę. Latarka przełączałaby się losowo: czasem wcale, czasem dwa razy.
 3. **F przy aktywnym polu panelu.** Gdy w panelu edytowane jest pole (na przykład `Seed`), `core::Input` blokuje klawiaturę dla gry i F nie przełącza latarki. To celowe: inaczej wpisanie litery w pole tekstowe sterowałoby grą.
 4. **`upload` po rysowaniu.** Bufor wypełniony po `drawMaze` daje światła z poprzedniej klatki: latarka spóźnia się o klatkę przy obrocie. Kolejność w `onRender` jest: zbuduj, wyślij, rysuj.
@@ -886,11 +973,11 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
 1. **Bateria na kartce.** Bateria wystarcza na 180 s. Gracz świeci 100 s, zbiera kryształ, świeci jeszcze 60 s. Ile ładunku zostało? Czy latarka migocze? (Odpowiedź: `1 - 100/180 = 0,444`, po krysztale 0,694, po kolejnych 60 s 0,361. Nie: próg to 0,2.)
 2. **Migotanie na kartce.** Próg 0,2, bateria 0,05. Jaka jest słabość i jaki najmniejszy mnożnik jasności może wyjść? Z jaką intensywnością jest wtedy rysowana latarka o ustawieniu startowym 1,3? (Odpowiedź: 0,75, mnożnik `1 - 0,85 * 0,75 = 0,3625`, intensywność około 0,47.)
 3. **Pozycja światła na kartce.** Kryształ stoi w komórce `(5, 2)`. Gdzie wisi jego światło w spoczynku i w jakim zakresie wysokości się porusza? (Odpowiedź: `(11, 1,55, 5)`, od 1,47 do 1,63 m.)
-4. **Latarka z opóźnieniem.** W `onRender` zamień `eye` na `m_camera.position` w wywołaniu `buildLightSet` (tylko tam). Zbuduj, podejdź do ściany na pół metra i przesuwaj się w bok ze sprintem. Co robi plama? Wycofaj.
+4. **Latarka z opóźnieniem.** W `onRender` zamień `eye` na `m_camera.position` w wywołaniu `flashlightPose` (tylko tam). Zbuduj, podejdź do ściany na pół metra i przesuwaj się w bok ze sprintem. Co robi plama? Wycofaj.
 5. **Klawisz w złym miejscu.** Przenieś blok z `FLASHLIGHT_KEY` do `onUpdate`. Naciśnij F kilkanaście razy. Ile razy latarka się przełączyła? Wycofaj.
 6. **Bez kopii.** W `onRender` podaj do `buildLightSet` `m_lighting` zamiast `frameLighting`. Ustaw w panelu Gameplay `Battery` na 0,05. Co się zmieniło w latarce i w kryształach? Co się stanie przy `Battery` równym 0 i dlaczego latarka mimo wszystko gaśnie? (Wskazówka: `updateRound`.) Wycofaj.
 7. **Jedna blokada mniej.** W `lightingForFrame` usuń `&& round.battery > 0.0F`. Czy na ekranie coś się zmieniło przy pustej baterii? Dlaczego nie? Który test przestał przechodzić? (Wskazówka: `flashlightFlicker` dla pustej baterii.) Wycofaj.
-8. **Latarka w ręce.** W `buildLightSet` przesuń pozycję reflektora: `.position = eye + glm::vec3{0.0F, -0.3F, 0.0F}`. Podejdź blisko do ściany. Gdzie jest teraz plama względem środka ekranu i dlaczego jej przesunięcie zależy od odległości? Wycofaj.
+8. **Latarka równoległa do widoku.** W `flashlightPose` zamień wyliczony kierunek na `forward` (wiązka równoległa do osi widzenia, bez zbiegania). Podejdź do ściany z 1 m i z 6 m. Gdzie jest plama względem środka ekranu i dlaczego jej przesunięcie zależy od odległości? Który test przestał przechodzić? (Wskazówka: `the beam of the flashlight passes through the point the view is aimed at`.) Wycofaj.
 9. **Światło w krysztale.** W `Crystals.hpp` zmień `CRYSTAL_LIGHT_CLEARANCE` na `-0.4F` (światło 0,1 m nad podstawą, w środku siatki). Jak wyglądają ściany dookoła, a jak sam kryształ? Który test przestał przechodzić? Wycofaj.
 10. **Drugi kolor.** Zmień `buildLightSet` tak, żeby co drugie światło punktowe było czerwone. Ile linii trzeba zmienić i dlaczego kryształy nadal świecą wszystkie na turkusowo?
 
@@ -906,7 +993,7 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
    Klatka jest rysowana z oka interpolowanego między dwoma krokami symulacji, a kamera obraca się w `onRender`. Latarka musi dostać to samo oko i ten sam kierunek co macierz widoku, inaczej plama drgałaby względem środka ekranu.
 
 4. **Skąd pewność, że latarka i macierz widoku używają tego samego oka?**
-   Obie dostają tę samą zmienną lokalną `eye` w `onRender`.
+   `flashlightPose` i `viewMatrix` dostają tę samą zmienną lokalną `eye` w `onRender`. Do `LightRig::upload` idzie też `eye`, a nie ręka: odbłysk zależy od tego, skąd patrzy kamera.
 
 5. **Dlaczego klawisz F jest czytany w `onRender`?**
    `wasKeyPressed` jest prawdą przez jedną klatkę. `onUpdate` biegnie zero albo więcej razy na klatkę, więc naciśnięcie mogłoby przepaść albo zadziałać dwa razy.
@@ -942,7 +1029,7 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
     Tyle ma tablica `uPoints` w shaderze i tablica w `scene::LightSet`: blok uniformów ma stały rozmiar. Pilnuje go liczba kryształów (`crystalCountFor` daje najwyżej 16), a `buildLightSet` dodatkowo ignoruje pozycje ponad limit.
 
 16. **Co robi `buildLightSet`?**
-    Zamienia ustawienia, oko, kierunek patrzenia i listę pozycji na `scene::LightSet`: księżyc z dwóch kątów, latarkę w oku, światła punktowe ze wspólnym kolorem, intensywnością i tłumieniem. Od pierwszej części M7 przelicza przy tym cztery kolory ustawień z sRGB na wartości liniowe (`gfx::srgbToLinear`), a intensywności zostawia. Nie wie, skąd pochodzą pozycje.
+    Zamienia ustawienia, pozycję i kierunek latarki (`FlashlightPose`) i listę pozycji na `scene::LightSet`: księżyc z dwóch kątów, latarkę w ręce (pozycja i kierunek są gotowe: liczy je `flashlightPose`), światła punktowe ze wspólnym kolorem, intensywnością i tłumieniem. Od pierwszej części M7 przelicza przy tym cztery kolory ustawień z sRGB na wartości liniowe (`gfx::srgbToLinear`), a intensywności zostawia. Nie wie, skąd pochodzą pozycje.
 
 17. **Dlaczego `buildLightSet` i `lightingForFrame` są w bibliotece `game_logic`, a `LightRig` w programie?**
     Pierwsze dwie to dane i matematyka bez OpenGL, więc da się je testować. `LightRig` posiada bufor uniformów, który wymaga kontekstu.
@@ -977,6 +1064,32 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
 27. **Intensywność latarki to 1,3. Co się dzieje z wartością powyżej 1?**
     Zostaje w buforze HDR sceny (`GL_RGBA16F`) taka, jaka wyszła. W zakres ekranu sprowadza ją mapowanie tonów w przebiegu składającym. Do M6 framebuffer okna obcinał ją do 1.
 
+**Pytania o część piątą M7.**
+
+1. **Gdzie stoi latarka i dokąd świeci?**
+   W ręce: oko plus 0,20 m w prawo (wzdłuż poziomego wektora "w prawo" kamery) minus 0,25 m wzdłuż osi `Y` świata. Wiązka celuje w punkt na osi widzenia 4 m przed okiem. To pozycja startowa: wartości ręki są decyzją właściciela, odległość zbiegania 4 m moim wyborem.
+
+2. **Dlaczego światło musiało wyjść z oka?**
+   Bo światło w oku rzuca każdy cień dokładnie za rzecz, która go rzuca, więc mapa cieni latarki nie dałaby na ekranie żadnej zmiany. Ręka przesuwa źródło względem oka.
+
+3. **Dlaczego "w dół" jest w świecie?**
+   Z "pod kamerą" gracz patrzący w ziemię trzymałby rękę 0,25 m za okiem, a oba przesunięcia razem (0,32 m) mogłyby wyjść z pudełka ciała o szerokości 0,6 m. Wektor "w prawo" kamery jest zawsze poziomy, więc w prawo ręka leży 0,2 m od środka ciała, w środku pudełka.
+
+4. **Jak wyznaczone są granice suwaków ręki?**
+   W prawo: `MAX_FLASHLIGHT_HAND_RIGHT` = połowa ciała (0,3 m) minus bliska płaszczyzna mapy cieni (0,05 m) = 0,25 m. W dół: 0,5 m (komentarz w panelu: ręka przy biodrze). Zbieganie: od 0,5 m (bliżej wiązka biegłaby stromo, a przy 0 nie miałaby kierunku) do 20 m.
+
+5. **Co robi `flashlightPose`, gdy ręka jest celem?**
+   Zwraca kierunek kamery zamiast wektora zerowego. To jedyny przypadek, gdy cel i ręka się pokrywają: kamera patrzy prosto w dół, a ręka jest tyle poniżej oka, ile cel przed okiem. Chroni to przed `NaN` po normalizacji.
+
+6. **Dlaczego `flashlightPose` jest wołana raz na klatkę i przed przebiegami cieni?**
+   Bo mapa cieni latarki jest rysowana z ręki i potrzebuje jej wcześniej niż światła sceny. Ten sam wynik dostają mapa (`scene::spotLightSpace`) i światło (`buildLightSet`), więc cień nie może wyjść z innego miejsca niż światło.
+
+7. **Do czego `LightRig::upload` używa oka, a nie ręki?**
+   Do pozycji kamery w bloku świateł: odbłysk zależy od tego, skąd patrzy kamera. Pozycja światła w tym samym bloku to ręka.
+
+8. **Czy latarka jest teraz w środku ekranu?**
+   Tylko w odległości zbiegania (4 m startowo). Bliżej plama leży na prawo od środka i poniżej niego, dalej nieco na lewo i powyżej. To wynika z geometrii i podpowiedzi suwaka, **nikt tego nie oglądał**.
+
 ## 10. Źródła
 
 - LearnOpenGL, "Light casters" (<https://learnopengl.com/Lighting/Light-casters>): reflektor i przykład latarki przyczepionej do kamery.
@@ -985,4 +1098,4 @@ Po ćwiczeniu, które zmienia kod, wycofaj zmianę (`git checkout src`).
 - Glenn Fiedler, "Fix Your Timestep!" (<https://gafferongames.com/post/fix_your_timestep/>): stały krok i interpolacja, z której bierze się oko klatki.
 - Dokumentacja GLFW, "Input guide" (<https://www.glfw.org/docs/latest/input_guide.html>): klawisze.
 - Dokumenty w tym repozytorium: [`gameplay.md`](gameplay.md) (zasady rundy, kryształy, bateria jako część rozgrywki, HUD i panel Gameplay), [`../scene/lights.md`](../scene/lights.md) (teoria, struktury świateł, `common/lighting.glsl`, panel Lights, składnik emisyjny), [`../renderer/lighting-gouraud-phong.md`](../renderer/lighting-gouraud-phong.md) (tryby cieniowania, `uEmissive` w shaderach), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (`packLightBlock`, `UniformBuffer`, `bindUniformBlock`), [`maze-rendering.md`](maze-rendering.md) (`MazeWorld`), [`maze-generator.md`](maze-generator.md) (komórki i ściany), [`player.md`](player.md) (oko, interpolacja, klawisz N), [`../core/main-loop.md`](../core/main-loop.md) (stały krok), [`../core/input.md`](../core/input.md) (`wasKeyPressed`, blokada klawiatury).
-- Notatki decyzyjne: [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md) (pusta bateria to ciemność, nie przegrana), [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md) (ile kryształów, a więc ile świateł). Notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md) opisuje rozwiązanie z M4 (światła w ślepych zaułkach), które M5 zastąpił.
+- Notatki decyzyjne: [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md) (latarka w ręce, decyzje właściciela), [`../../decisions/flashlight-hand-straight-down.md`](../../decisions/flashlight-hand-straight-down.md) ("w dół" w świecie, granica suwaka), [`../../decisions/battery-darkness-no-loss.md`](../../decisions/battery-darkness-no-loss.md) (pusta bateria to ciemność, nie przegrana), [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md) (ile kryształów, a więc ile świateł). Notatka [`../../decisions/dead-end-lights.md`](../../decisions/dead-end-lights.md) opisuje rozwiązanie z M4 (światła w ślepych zaułkach), które M5 zastąpił.

@@ -10,8 +10,8 @@
 // The normal map and the function surfaceNormal. The same file is included by
 // textured.frag, for its debug view of the normals.
 #include "common/normal_map.glsl"
-// The shadow map of the moon and the function moonShadow. The same file is included by
-// gouraud.frag and grass.frag.
+// The shadow maps of the moon and of the flashlight and the functions moonShadow and
+// flashlightShadow. The same file is included by gouraud.frag and grass.frag.
 #include "common/shadows.glsl"
 
 // Inputs from the vertex shader, already blended for this fragment.
@@ -58,9 +58,23 @@ void main() {
     //
     // max(): the difference is never below 0 on paper, but two floats that should be
     // equal can differ in their last digit.
-    float shadow = moonShadow(vWorldPosition, moonFacing(normalize(vNormal)));
-    vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
-    vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow, 0.0);
+    vec3 modelNormal = normalize(vNormal);
+    float shadow = moonShadow(vWorldPosition, moonFacing(modelNormal));
+
+    // The shadow of the flashlight, in the same way and from a map of its own: the
+    // share of the flashlight light that something on the way from the hand of the
+    // player keeps from this fragment. Only the light of the flashlight is taken away
+    // by it. A fragment in the shadow of the moon AND of the flashlight loses both
+    // shares and keeps the ambient light and the crystals.
+    float flashlightShade =
+        flashlightShadow(vWorldPosition, flashlightFacing(modelNormal, vWorldPosition));
+
+    vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow -
+                           lighting.flashlightDiffuse * flashlightShade,
+                       0.0);
+    vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow -
+                            lighting.flashlightSpecular * flashlightShade,
+                        0.0);
 
     // The colour of the surface takes part in the diffuse light only: a red wall
     // reflects the red part of the light. The highlight is added on top in the colour

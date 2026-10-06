@@ -26,7 +26,8 @@ struct ShadowUniformNames;
 /// a small preview picture for the debug UI. The math (where the light looks, the bias)
 /// is plain data in game/Shadows.hpp and scene/LightSpace.hpp.
 ///
-/// One object per light that casts shadows: the moon has one.
+/// One object per light that casts shadows: the moon has one and the flashlight has
+/// one.
 ///
 /// A frame with it:
 ///   1. beginDepthPass: the map becomes the target, with the viewport set to its size
@@ -61,13 +62,21 @@ public:
     /// models expects.
     void bindForSampling(GLuint unit, bool linearFilter);
 
-    /// Draws the preview picture: the stored depths as greys, from black at the near
-    /// plane of the light to white at its far plane, with the preview program
-    /// (post/composite.vert and post/preview.frag). It is right for the map of
-    /// a directional light, whose depths grow evenly with the distance. Call it after
-    /// the depth pass. It switches the depth test off and leaves the preview
-    /// framebuffer bound.
-    void drawPreview(const gfx::Shader& previewShader);
+    /// Draws the preview picture: the depths of the map as greys, from black at the
+    /// light to white at its far plane, with the preview program (post/composite.vert
+    /// and post/preview.frag). lightSpace is the one the map was drawn with: it tells
+    /// how a stored depth becomes a grey.
+    ///
+    /// Orthographic (the moon): the stored depths grow evenly with the distance, so
+    /// they are shown as they are (AttachmentPreview::RawDepth).
+    /// Perspective (the flashlight): stored as they are, almost every depth is close to
+    /// 1 and the picture would be nearly white. They are turned back into metres with
+    /// the near and the far plane of the light and shown as a share of its far plane
+    /// (AttachmentPreview::Depth, the mode the depth of the scene is shown with).
+    ///
+    /// Call it after the depth pass. It switches the depth test off and leaves the
+    /// preview framebuffer bound.
+    void drawPreview(const gfx::Shader& previewShader, const scene::LightSpace& lightSpace);
 
     /// The framebuffer of the map, for the debug UI (its size and format). Not valid
     /// before the first successful beginDepthPass.
@@ -95,8 +104,9 @@ private:
 };
 
 /// Sets the uniforms one shadow map has in common/shadows.glsl, in the program shader,
-/// which must be in use. names are the names of those uniforms (MOON_SHADOW_UNIFORMS in
-/// game/ShaderUniforms.hpp) and unit is the texture unit of bindForSampling.
+/// which must be in use. names are the names of those uniforms (MOON_SHADOW_UNIFORMS or
+/// FLASHLIGHT_SHADOW_UNIFORMS in game/ShaderUniforms.hpp) and unit is the texture unit
+/// of bindForSampling.
 ///
 /// Call it in every frame for every program that includes common/shadows.glsl, also
 /// when the shadows are switched off: after a shader reload every uniform is back at 0,
@@ -105,8 +115,10 @@ private:
 ///
 /// drawn says whether the depth pass has filled the map in this frame. When it is false
 /// the shaders do not read the map at all. The bias of the settings is in metres and is
-/// handed over as a difference of stored depths (game::biasInDepthUnits with the depth
-/// range of lightSpace), the PCF radius as game::pcfRadiusInUse.
+/// handed over as game::biasForShader gives it for lightSpace (a difference of stored
+/// depths for the box of the moon, metres for the pyramid of the flashlight), the PCF
+/// radius as game::pcfRadiusInUse. A set of names with a lightPosition also gets the
+/// position of lightSpace.
 void setShadowUniforms(const gfx::Shader& shader, const ShadowUniformNames& names, GLuint unit,
                        bool drawn, const ShadowSettings& settings,
                        const scene::LightSpace& lightSpace);

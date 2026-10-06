@@ -80,7 +80,7 @@ Windowsie zbudowany w Debug i Release bez ostrzeżeń, a testy przechodziły (21
 85098 asercji, stan po M5). Kod M6 (niebo, teren, trawa) jest na Windowsie kompletny: build
 bez ostrzeżeń zgłosił wykonawca, a 256 przypadków testowych i 101232 asercje uruchomiłem
 sam na programach testowych Debug i Release (2026-10-05). Po pierwszej części M7 zgłoszone
-jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751 (Windows, 2026-10-05). Pierwsza część M7 dodała jedno nowe
+jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751 (Windows, 2026-10-05), po piątej 329 i 104306 (Windows, 2026-10-06). Pierwsza część M7 dodała jedno nowe
 miejsce użycia GLM: `gfx::srgbToLinear` i `gfx::linearToSrgb` w `src/gfx/ColorSpace.hpp`
 przyjmują i zwracają `glm::vec3` (kolor przeliczany kanał po kanale,
 [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md)). Trzecia część M7 (mgła i winieta)

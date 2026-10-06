@@ -296,14 +296,15 @@ Macierze widoku i rzutowania są liczone raz na klatkę i przekazywane dwóm fun
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
     const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
     const scene::LightSet lights =
-        buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights);
+        buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 ```
 
 | Wartość z kamery | Dokąd trafia | Po co |
 |---|---|---|
-| `eye` (to samo oko, z którego powstała macierz widoku) | `buildLightSet`: pozycja latarki | reflektor stoi dokładnie w punkcie, z którego robiony jest obraz |
-| `m_camera.forward()` (kierunek z bieżących yaw i pitch) | `buildLightSet`: kierunek latarki | stożek światła celuje tam, gdzie patrzę |
+| `eye` (to samo oko, z którego powstała macierz widoku) | `flashlightPose`: punkt odniesienia ręki i punktu, w który celuje wiązka (od piątej części M7) | latarka stoi 0,2 m na prawo i 0,25 m poniżej tego punktu, a nie w nim |
+| `m_camera.forward()` (kierunek z bieżących yaw i pitch) | `flashlightPose`: kierunek, w którym leży punkt zbieżności | wiązka celuje z ręki w punkt 4 m przed okiem na osi widoku, więc plama jest w środku ekranu na ścianie w tej odległości |
+| `m_camera.right()` | `flashlightPose`: kierunek "na prawo" | wektor jest poziomy, więc ręka jest zawsze 0,2 m od środka ciała, jakkolwiek gracz jest obrócony |
 | `eye` | `m_lightRig.upload`: pozycja kamery w bloku świateł | shader liczy z niej kierunek do oka, potrzebny do połysku |
 
 Dwie pierwsze linie są z M5 i z kamery niczego nie biorą: `lightingForFrame` robi kopię ustawień, w której słaba bateria przygasza latarkę, a `crystalLightPositions` podaje miejsca świateł punktowych nad niezebranymi kryształami ([`../game/gameplay.md`](../game/gameplay.md)).
@@ -536,7 +537,7 @@ Program uruchomiony, panele widoczne. Tego scenariusza nikt jeszcze nie przeszed
 10. **Panel nie stoi tam, gdzie mówi kod.** `CAMERA_PLACEMENT` działa tylko przy pierwszym uruchomieniu. Jeśli w katalogu roboczym leży `imgui.ini` z wpisem `[Window][Camera]`, wygrywa wpis, razem z zapisanym stanem zwinięcia. Plik sprzed M4 trzyma panel Camera rozwinięty w lewej kolumnie, a nowy panel Lights, który wpisu nie ma, staje na nim. Plik sprzed M5 nie ma wpisu panelu Gameplay, więc ten panel staje w miejscu domyślnym niezależnie od tego, gdzie stoją panele zapamiętane. Żeby zobaczyć układ domyślny, trzeba ten plik usunąć.
 11. **`Fly speed` nie zmienia chodu, `Sprint speed` nie zmienia lotu.** Każdy suwak pisze do pola używanego w jednym trybie. Ustawienie `Sprint speed` poniżej `Walk speed` jest dozwolone i sprawia, że Shift spowalnia.
 12. **"Nie ma panelu Camera".** Jest, tylko zwinięty: sam pasek tytułu przy górnej krawędzi okna, na prawo od panelu Renderer, obok zwiniętego panelu Gameplay. To stan startowy od M4, a nie błąd.
-13. **Latarka liczona z `m_camera.position`.** Ta sama pomyłka co w pułapce 4, tylko dla światła: reflektor ustawiony w oczach po ostatnim kroku, a obraz rysowany z oka interpolowanego. W ruchu stożek zostawałby za obrazem o ułamek kroku. `onRender` podaje do `buildLightSet` to samo `eye`, z którego liczy macierz widoku (sekcja 5.5).
+13. **Latarka liczona z `m_camera.position`.** Ta sama pomyłka co w pułapce 4, tylko dla światła: reflektor ustawiony w oczach po ostatnim kroku, a obraz rysowany z oka interpolowanego. W ruchu stożek zostawałby za obrazem o ułamek kroku. `onRender` podaje do `flashlightPose` (a dalej do `buildLightSet`) to samo `eye`, z którego liczy macierz widoku (sekcja 5.5).
 
 ## 8. Ćwiczenia
 
@@ -589,7 +590,7 @@ Wszystkie ćwiczenia są zmianami w działającym programie: zmiana w `NightMaze
     W stałej `CAMERA_PLACEMENT` w `src/debug/PanelLayout.hpp` (róg okna, odsunięcie od niego, rozmiar i `.collapsed = true`). Panel przekazuje ją do `placePanelOnFirstUse`, a ta funkcja ustawia pozycję, rozmiar i stan zwinięcia z warunkiem `ImGuiCond_FirstUseEver`. Panel startuje więc jako pasek tytułu przy górnej krawędzi, obok lewej kolumny, obok zwiniętego panelu Gameplay (`GAMEPLAY_PLACEMENT`), i rozwija się do 280 na 416 jednostek. Nadpisuje to wpis w pliku `imgui.ini`, w którym ImGui zapamiętuje układ ustawiony przez użytkownika.
 
 13. **Do czego jeszcze, poza macierzą widoku, służą oko i kierunek patrzenia kamery?**
-    Do ustawienia latarki. `onRender` podaje to samo interpolowane `eye` i `m_camera.forward()` do `buildLightSet`, więc reflektor stoi w punkcie, z którego rysowana jest klatka, i świeci tam, gdzie patrzę. `eye` trafia też do `m_lightRig.upload` jako pozycja kamery potrzebna shaderowi do połysku. Latarkę przełącza klawisz F, czytany w `onRender` zaraz po klawiszu N. Od M5 latarka ma baterię i przy pustej gaśnie sama.
+    Do ustawienia latarki. `onRender` podaje to samo interpolowane `eye` oraz `m_camera.forward()` i `m_camera.right()` do `flashlightPose`, więc reflektor stoi w stałym miejscu względem punktu, z którego rysowana jest klatka (od piątej części M7 w ręce, a nie w oku), i celuje w punkt na osi mojego widoku. `eye` trafia też do `m_lightRig.upload` jako pozycja kamery potrzebna shaderowi do połysku. Latarkę przełącza klawisz F, czytany w `onRender` zaraz po klawiszu N. Od M5 latarka ma baterię i przy pustej gaśnie sama.
 
 14. **Co klawisz R robi z kamerą?**
     Zaczyna rundę od nowa na tym samym labiryncie: `onRender` woła `beginRound`, a ta funkcja stawia gracza na starcie (obie pozycje, bieżącą i poprzednią, naraz), ustawia `m_camera.position` na jego oczy, `yawDegrees` na `startYawDegrees` labiryntu i `pitchDegrees` na 0. Kąty są wpisywane wprost w pola, bez `rotate`, bo obie wartości mieszczą się w zakresach. FOV, płaszczyzn, czułości i trybu noclip restart nie zmienia.

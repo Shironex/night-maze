@@ -1,6 +1,6 @@
 # Minimapa pokazuje tylko odkryte korytarze (planowane)
 
-Data: 2026-10-05. Stan: obowiązuje jako decyzja, **kod nie jest jeszcze napisany**.
+Data: 2026-10-05, uzupełniona 2026-10-06 (dwie dalsze decyzje właściciela, sekcja 4). Stan: obowiązuje jako decyzja, **kod nie jest jeszcze napisany**.
 Kod, którego dotyczy: brak. Minimapy nie ma. Dokumenty: [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md) (temat 10, rendering pozaekranowy, w trakcie), [`../syllabus.md`](../syllabus.md). Stan M7: [`../guides/m7-status.md`](../guides/m7-status.md).
 
 ## 1. Kontekst
@@ -32,9 +32,14 @@ Uwaga o zakresie: treścią decyzji właściciela jest jedno zdanie z części 2
 - Mgła liczy wysokość w miejscu piksela i z góry zakrywa labirynt prawie w całości ([`fog-height-at-the-pixel.md`](fog-height-at-the-pixel.md)). Widok minimapy nie może przejść przez przebieg składający z włączoną mgłą.
 - Framebuffery, przebieg do tekstury i pokazywanie tekstury w ImGui są gotowe ([`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md)).
 
-**Czego dziś nie wiadomo.** Reguła odkrywania (komórka, w której gracz stoi, czy także to, co widzi), sposób rysowania (osobny widok sceny z góry czy schemat z danych labiryntu), rozmiar i miejsce na ekranie nie są ustalone. Zostaną zapisane tutaj, gdy powstanie kod.
+**Dwie dalsze decyzje właściciela projektu (2026-10-06), to jest cała ich treść:**
+
+- komórka jest **odkryta przez linię wzroku wzdłuż korytarzy**: odkrywa się komórka, w której gracz stoi, i komórki w linii prostej w czterech kierunkach, aż do ściany,
+- minimapa to **schemat rysowany z danych labiryntu** do własnego framebuffera, a nie osobny widok sceny z góry.
+
+**Czego dziś nie wiadomo.** Rozmiar i miejsce minimapy na ekranie, wygląd schematu i to, jak przełącznik debugowania odsłania cały labirynt, nie są ustalone. Kod minimapy **nie istnieje**. Zostanie zapisany tutaj, gdy powstanie.
 
 ## 5. Kiedy wrócić do tej decyzji
 
-- Przy pisaniu szóstej części M7: uzupełnić tę notatkę o regułę odkrywania i o to, jak minimapa jest rysowana.
+- Przy pisaniu szóstej części M7: uzupełnić tę notatkę o to, jak wyszła reguła odkrywania z linii wzroku i rysowanie schematu (obie reguły są już zdecydowane, 2026-10-06).
 - Gdyby testy z graczami pokazały, że bez widoku całości gra jest za trudna albo za długa.

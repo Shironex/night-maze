@@ -53,10 +53,13 @@ constexpr int DEFAULT_PCF_RADIUS = 1;
 int pcfKernelSide(int radius);
 
 /// What can be changed about one shadow map while the game runs. The debug UI edits the
-/// fields. One light with a shadow map has one of these: the moon today.
+/// fields. Every light with a shadow map has one of these: the moon and the flashlight.
+/// The defaults below are the ones of the moon. The flashlight starts with
+/// flashlightShadowDefaults.
 struct ShadowSettings {
-    /// False: the shadow map is not drawn and nothing is in shadow. The picture is then
-    /// exactly the one of the game without shadows.
+    /// False: the shadow map is not drawn and nothing is in the shadow of this light.
+    /// With the shadows of every light switched off the picture is exactly the one of
+    /// the game without shadows.
     bool enabled = true;
 
     /// The size of the shadow map.
@@ -94,10 +97,35 @@ struct ShadowSettings {
     float strength = 1.0F;
 
     /// Whether the preview picture of the shadow map is drawn in this frame. It costs
-    /// a small pass, so it is made only while the Shadows panel of the debug UI is
-    /// open: the debug UI sets this field every frame.
+    /// a small pass, so it is made only while the Shadows panel of the debug UI shows
+    /// the tab of this light: the debug UI sets this field every frame.
     bool preview = false;
 };
+
+/// The bias the shadow map of the flashlight starts with, in metres (the two bias fields
+/// of ShadowSettings). The map of the flashlight is a pyramid, so its texels are not of
+/// one size: they grow with the distance from the light. At 1024 texels over an opening
+/// angle of 46 degrees a texel is 0.08 cm wide for every metre of distance: 0.3 cm on
+/// a wall 4 m away, where a texel of the moon has 3.2 cm.
+///
+/// The constant part is therefore smaller than the one of the moon: on a surface that
+/// faces the flashlight the depth inside a texel differs by millimetres.
+///
+/// The slope part is what the ground needs. The flashlight is held about 1.45 m above
+/// it, so its light grazes the ground more and more the farther ahead it falls. On the
+/// ground 10 m ahead, one texel to the side is 5.8 cm nearer to the light or farther
+/// from it, and the PCF kernel of 3 x 3 with the hardware filter reaches 2 texels:
+/// 11.6 cm. The bias there is 0.01 + 0.13 * (1 - 0.14) = 12.1 cm. Farther ahead the
+/// bias is too small, but hardly any light arrives there. The largest bias is 0.14 m,
+/// as for the moon: less than the 0.2 m of a wall. A test checks these numbers.
+constexpr float FLASHLIGHT_SHADOW_CONSTANT_BIAS = 0.01F;
+constexpr float FLASHLIGHT_SHADOW_SLOPE_BIAS = 0.13F;
+
+/// The settings the shadow map of the flashlight starts with: the small map and the bias
+/// above, everything else as for the moon. The small map is enough, because the pyramid
+/// of the flashlight covers far less than the box of the moon: even at the end of its
+/// default reach of 16 m a texel is 1.3 cm, less than half of the 3.2 cm of the moon.
+ShadowSettings flashlightShadowDefaults();
 
 /// The box that holds everything that can cast a shadow of the moon: the whole land of
 /// the terrain, from its lowest ground up to PILLAR_HEIGHT above its highest ground. The
@@ -122,15 +150,38 @@ float shadowBias(float constantBias, float slopeBias, float facing);
 /// A range that is not positive gives 0.
 float biasInDepthUnits(float biasMetres, float depthRange);
 
+/// A bias in metres as the number the shaders want for the shadow map of lightSpace (the
+/// two bias uniforms of a map in common/shadows.glsl). It depends on the projection:
+///
+/// Orthographic (the moon): the stored depth grows evenly, so a metre is always the same
+/// share of the stored range, and the bias is handed over as that share
+/// (biasInDepthUnits with the depth range of the box). The shader subtracts it from the
+/// depth of the fragment.
+///
+/// Perspective (the flashlight): the stored depth does not grow evenly. A metre near
+/// the light is a large step of it and a metre far away a tiny one, so no number of
+/// depth units is "one metre". The bias stays IN METRES, and the shader moves the
+/// fragment that far towards the light before it projects it into the map.
+float biasForShader(float biasMetres, const scene::LightSpace& lightSpace);
+
 /// The size of one texel of a shadow map on a surface that faces the light, in metres:
 /// the larger of the width and the height of the area the map covers, divided by the
 /// number of texels along a side. Smaller is sharper. A size that is not positive gives
-/// 0.
+/// 0. For a perspective light space this is the size at its far plane, where the texels
+/// are largest: see shadowTexelSizeAt.
 float shadowTexelSize(const scene::LightSpace& lightSpace, int mapSize);
 
-/// The radius the shaders use (the uniform uMoonShadowPcfRadius): the radius of the
-/// settings brought into MIN_PCF_RADIUS to MAX_PCF_RADIUS, or 0 when the PCF kernel is
-/// switched off. With 0 a shader makes one comparison.
+/// The size of one texel of a shadow map at the given distance from the light, in
+/// metres, on a surface that faces the light. In the box of a directional light a texel
+/// has the same size everywhere and the distance does not matter. In the pyramid of
+/// a spot light the area the map covers grows in proportion to the distance from the
+/// light, and its texels with it: at half of the far plane they are half as large as at
+/// the far plane. A distance below 0 counts as 0.
+float shadowTexelSizeAt(const scene::LightSpace& lightSpace, int mapSize, float distance);
+
+/// The radius the shaders use (the PCF radius uniform of a map in common/shadows.glsl):
+/// the radius of the settings brought into MIN_PCF_RADIUS to MAX_PCF_RADIUS, or 0 when
+/// the PCF kernel is switched off. With 0 a shader makes one comparison.
 int pcfRadiusInUse(const ShadowSettings& settings);
 
 } // namespace game

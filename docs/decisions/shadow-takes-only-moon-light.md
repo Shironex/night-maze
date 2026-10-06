@@ -30,7 +30,7 @@ Najprostszy sposób użycia tej odpowiedzi, znany z wielu poradników, to pomno�
 
 **Skutki, które przyjmuję.**
 
-- Latarka i kryształy nie mają własnych map cieni, więc nadal świecą przez ściany. Cień latarki jest planowany, cieni kryształów nie ma w planie.
+- Latarka i kryształy nie mają własnych map cieni, więc nadal świecą przez ściany. Cień latarki jest planowany, cieni kryształów nie ma w planie. **Dopisek z 2026-10-06 (M7, część piąta):** latarka ma własną mapę cieni, a ta decyzja została zastosowana do niej bez zmiany zasady: struktura `Lighting` ma drugą parę pól, `flashlightDiffuse` i `flashlightSpecular`, a cień latarki odbiera tylko je. Cieni kryształów nadal nie ma.
 - Odejmowanie dwóch liczb, które powinny być równe, może dać wynik o ostatni bit poniżej zera. Stąd `max(..., 0.0)` w trzech shaderach.
 - Suwak `Strength` skaluje odejmowaną część. To pokrętło wyglądu, a nie model fizyczny.
 - Scena jest ogólnie jaśniejsza niż przed tą częścią w miejscach oświetlonych przez księżyc. Liczby w dokumentach, które wynikały z intensywności 0,12, trzeba czytać z tą poprawką.
@@ -39,5 +39,5 @@ Najprostszy sposób użycia tej odpowiedzi, znany z wielu poradników, to pomno�
 
 ## 5. Kiedy wrócić do tej decyzji
 
-- Gdy latarka dostanie mapę cieni: struktura `Lighting` potrzebuje wtedy drugiej pary pól, a przy trzecim świetle warto rozważyć tablicę udziałów.
+- Gdy latarka dostanie mapę cieni: struktura `Lighting` potrzebuje wtedy drugiej pary pól, a przy trzecim świetle warto rozważyć tablicę udziałów. **Latarka ją dostała (2026-10-06)**, para pól doszła. Trzecie światło z mapą nie jest planowane.
 - Gdyby wygląd wymagał cieni przyciemniających także światło otoczenia (na przykład prosty model zacienienia otoczenia): to osobny efekt, nie zmiana tej reguły.

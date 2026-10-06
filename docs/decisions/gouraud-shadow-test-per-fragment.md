@@ -38,4 +38,4 @@ W programie `gouraud` oświetlenie zostaje na wierzchołek, ale **odczyt mapy ci
 ## 5. Kiedy wrócić do tej decyzji
 
 - Gdyby prowadzący wymagał trybu Gouraud bez żadnej pracy na fragment: wtedy trzecia możliwość (brak cieni w tym trybie) jest zmianą jednej linii.
-- Gdy dojdzie cień latarki: ten sam wzór trzeba będzie powtórzyć dla udziału reflektora.
+- Gdy dojdzie cień latarki: ten sam wzór trzeba będzie powtórzyć dla udziału reflektora. **Powtórzony (2026-10-06):** program `gouraud` ma trzy kolejne zmienne wyjściowe dla latarki (`vFlashlightDiffuseLight`, `vFlashlightSpecularLight`, `vFlashlightFacing`), a odczyt mapy latarki jest na fragment. Tryb Gouraud z cieniem latarki **nie był ćwiczony** (siedmiosekundowy start go nie obejmował).

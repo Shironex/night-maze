@@ -1,10 +1,10 @@
 #version 410 core
 // Fragment shader of lit models, lighting per vertex (Gouraud shading): the light was
-// computed in gouraud.vert, here it meets the texture and the shadow of the moon.
+// computed in gouraud.vert, here it meets the texture and the two shadows.
 // See docs/modules/renderer/lighting-gouraud-phong.md
 
-// The shadow map of the moon and the function moonShadow: the same file lit.frag
-// includes.
+// The shadow maps of the moon and of the flashlight and the functions moonShadow and
+// flashlightShadow: the same file lit.frag includes.
 #include "common/shadows.glsl"
 
 // Inputs from the vertex shader: the light of the three vertices of the triangle,
@@ -20,6 +20,11 @@ in vec3 vMoonDiffuseLight;
 in vec3 vMoonSpecularLight;
 in vec3 vWorldPosition;
 in float vMoonFacing;
+
+// The same for the shadow of the flashlight.
+in vec3 vFlashlightDiffuseLight;
+in vec3 vFlashlightSpecularLight;
+in float vFlashlightFacing;
 
 // The texture (the number of a texture unit) and the colour of the material, as in
 // textured.frag.
@@ -41,13 +46,19 @@ void main() {
     // lit.frag. All values are linear, and the result is encoded for the screen later,
     // in the composite pass (see lit.frag).
     //
-    // The one thing computed per fragment is the shadow of the moon: whether this
-    // fragment lies in it is looked up in the shadow map here, and the share of the
-    // moon light it loses is taken away from the blended light, as in lit.frag. The
-    // ambient light and the other lights stay as they are.
+    // The one thing computed per fragment is the shadow test, for the moon and for the
+    // flashlight: whether this fragment lies in a shadow is looked up in the two
+    // shadow maps here, and the share of the moon light and of the flashlight light it
+    // loses is taken away from the blended light, as in lit.frag. The ambient light
+    // and the crystal lights stay as they are.
     float shadow = moonShadow(vWorldPosition, vMoonFacing);
-    vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow, 0.0);
-    vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow, 0.0);
+    float flashlightShade = flashlightShadow(vWorldPosition, vFlashlightFacing);
+    vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow -
+                           vFlashlightDiffuseLight * flashlightShade,
+                       0.0);
+    vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow -
+                            vFlashlightSpecularLight * flashlightShade,
+                        0.0);
 
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
     fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);

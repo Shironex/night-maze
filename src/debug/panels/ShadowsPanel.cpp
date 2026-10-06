@@ -1,4 +1,4 @@
-// "Shadows" debug panel: the settings of the shadow map of the moon and a picture of it.
+// "Shadows" debug panel: the settings of the two shadow maps and a picture of each.
 // See docs/modules/renderer/shadows.md
 #include "debug/panels/ShadowsPanel.hpp"
 
@@ -49,26 +49,32 @@ constexpr int PANEL_COLUMNS = 2;
 // Centimetres in a metre, for the size of a texel.
 constexpr float CENTIMETRES_PER_METRE = 100.0F;
 
+// The texels of a perspective map grow with the distance from the light, so the panel
+// shows their size at this distance from it, in metres. At 1 m that size is also what
+// a texel grows by with every metre.
+constexpr float TEXEL_REFERENCE_DISTANCE = 1.0F;
+
 // The widgets of one shadow map. Every widget writes through the pointer it is given.
 void drawSettings(game::ShadowSettings& settings) {
     ImGui::Checkbox("Shadows", &settings.enabled);
-    ImGui::SetItemTooltip("Off: the shadow map is not drawn and nothing is in shadow.\n"
-                          "The picture is then the one of the game without shadows.");
+    ImGui::SetItemTooltip("Off: the shadow map of this light is not drawn and nothing\n"
+                          "is in its shadow. The shadows of the other light stay.");
 
     int resolutionIndex = static_cast<int>(settings.resolution);
     if (ImGui::Combo("Resolution", &resolutionIndex, RESOLUTION_ITEMS)) {
         settings.resolution = static_cast<game::ShadowResolution>(resolutionIndex);
     }
     ImGui::SetItemTooltip("The size of the shadow map in texels. The map covers the same\n"
-                          "ground at every size, so a smaller map has larger texels:\n"
+                          "area at every size, so a smaller map has larger texels:\n"
                           "coarser shadow edges, and more bias is needed.");
 
     ImGui::SliderFloat("Constant bias", &settings.constantBias, MIN_BIAS, MAX_CONSTANT_BIAS,
                        "%.3f m", ImGuiSliderFlags_AlwaysClamp);
     ImGui::SetItemTooltip("Every surface is compared with the shadow map as if it were\n"
-                          "this much nearer to the light. With both parts at 0 the\n"
-                          "surfaces shade themselves (shadow acne): stripes with both\n"
-                          "filters off, an overall darkening with them on.");
+                          "this much nearer to the light, in metres for both lights.\n"
+                          "With both parts at 0 the surfaces shade themselves (shadow\n"
+                          "acne): stripes with both filters off, an overall darkening\n"
+                          "with them on.");
     ImGui::SliderFloat("Slope bias", &settings.slopeBias, MIN_BIAS, MAX_SLOPE_BIAS, "%.3f m",
                        ImGuiSliderFlags_AlwaysClamp);
     ImGui::SetItemTooltip("Added on top for surfaces the light only grazes:\n"
@@ -104,22 +110,36 @@ void drawSettings(game::ShadowSettings& settings) {
                           "the other lights are never darkened.");
 }
 
-// What the map is and how much ground it covers.
-void drawFacts(const game::ShadowSettings& settings, const game::ShadowMap& map,
-               const scene::LightSpace& lightSpace) {
-    const gfx::Framebuffer& target = map.target();
-    if (settings.enabled && target.isValid()) {
+// What the map is and how much it covers.
+void drawFacts(const ShadowMapView& view) {
+    const gfx::Framebuffer& target = view.map.target();
+    if (view.drawn && target.isValid()) {
         ImGui::Text("Map: %d x %d, %s", target.width(), target.height(),
                     gfx::depthFormatName(target.depthFormat()));
     } else {
         ImGui::TextUnformatted("Map: not drawn");
     }
-    ImGui::Text("Covers %.1f x %.1f m, %.1f m deep", lightSpace.extent.x, lightSpace.extent.y,
-                lightSpace.extent.z);
+
+    const scene::LightSpace& lightSpace = view.lightSpace;
     // The size of a texel at the resolution that is chosen, also while the map is off.
-    const float texelSize =
-        game::shadowTexelSize(lightSpace, game::shadowMapSize(settings.resolution));
-    ImGui::Text("One texel: %.1f cm", texelSize * CENTIMETRES_PER_METRE);
+    const int mapSize = game::shadowMapSize(view.settings.resolution);
+    if (lightSpace.kind == scene::LightProjection::Perspective) {
+        // A pyramid: what the map covers and the size of its texels grow in proportion
+        // to the distance from the light. So the covered area is given at the far
+        // plane, where it is largest, and the texel as its size 1 m from the light,
+        // which is also how much it grows with every metre.
+        ImGui::Text("Covers %.1f x %.1f m at %.1f m", lightSpace.extent.x, lightSpace.extent.y,
+                    lightSpace.farPlane);
+        const float texelPerMetre =
+            game::shadowTexelSizeAt(lightSpace, mapSize, TEXEL_REFERENCE_DISTANCE);
+        ImGui::Text("One texel: %.2f cm per metre away", texelPerMetre * CENTIMETRES_PER_METRE);
+    } else {
+        // A box: the same everywhere.
+        ImGui::Text("Covers %.1f x %.1f m, %.1f m deep", lightSpace.extent.x, lightSpace.extent.y,
+                    lightSpace.extent.z);
+        const float texelSize = game::shadowTexelSize(lightSpace, mapSize);
+        ImGui::Text("One texel: %.1f cm", texelSize * CENTIMETRES_PER_METRE);
+    }
 }
 
 // The picture of the map: a square as wide as the room that is left, with a caption
@@ -141,7 +161,8 @@ void drawPicture(const char* caption, const char* tooltip, const game::ShadowMap
         ImGui::Image(textureId, {side, side}, {0.0F, 1.0F}, {1.0F, 0.0F});
     } else {
         // The first frame after the panel was opened (the picture is drawn by the game
-        // in its next frame), or the shadows are switched off.
+        // in its next frame), or the map is not drawn: its shadows are switched off, or
+        // it is the map of the flashlight and the flashlight is off.
         ImGui::TextUnformatted(drawn ? "(no picture yet)" : "(not drawn)");
     }
     ImGui::EndGroup();
@@ -149,37 +170,39 @@ void drawPicture(const char* caption, const char* tooltip, const game::ShadowMap
 }
 
 // One tab: the widgets and the facts of a shadow map on the left, its picture on the
-// right. A second light with a shadow map is one more call of this function.
+// right. One more light with a shadow map is one more call of this function.
 void drawShadowMapTab(const char* pictureCaption, const char* pictureTooltip,
-                      game::ShadowSettings& settings, const game::ShadowMap& map,
-                      const scene::LightSpace& lightSpace) {
+                      const ShadowMapView& view) {
+    // This tab is the one that is shown: its preview picture is asked for. The game
+    // reads the flag in its next frame, and DebugUI::draw clears it before every frame,
+    // so the picture of a tab nobody looks at is not drawn.
+    view.settings.preview = true;
+
     // BeginTable returns false when no part of the table can be seen. Nothing is drawn
     // then, and EndTable must not be called.
     if (!ImGui::BeginTable("shadow map", PANEL_COLUMNS)) {
         return;
     }
     ImGui::TableNextColumn();
-    drawSettings(settings);
+    drawSettings(view.settings);
     ImGui::Separator();
-    drawFacts(settings, map, lightSpace);
+    drawFacts(view);
 
     ImGui::TableNextColumn();
-    drawPicture(pictureCaption, pictureTooltip, map, settings.enabled);
+    drawPicture(pictureCaption, pictureTooltip, view.map, view.drawn);
     ImGui::EndTable();
 }
 
 } // namespace
 
-void drawShadowsPanel(game::ShadowSettings& moon, const game::ShadowMap& moonMap,
-                      const scene::LightSpace& moonLightSpace) {
+void drawShadowsPanel(const ShadowMapView& moon, const ShadowMapView& flashlight) {
     // First run only: the fourth row of title bars at the top edge of the window, folded
     // (the constant is in PanelLayout.hpp). Later ImGui remembers the panel in
     // imgui.ini.
     placePanelOnFirstUse(SHADOWS_PLACEMENT);
-    // Begin returns false when the panel is folded. The preview is asked for only while
-    // it is open: the game reads the flag in its next frame.
+    // Begin returns false when the panel is folded: no tab is drawn then, and no
+    // preview picture is asked for.
     const bool open = ImGui::Begin("Shadows");
-    moon.preview = open;
     // BeginTabBar returns false when the bar cannot be seen. EndTabBar must not be
     // called then. BeginTabItem returns true for the tab that is selected.
     if (open && ImGui::BeginTabBar("lights")) {
@@ -187,7 +210,18 @@ void drawShadowsPanel(game::ShadowSettings& moon, const game::ShadowMap& moonMap
             drawShadowMapTab("Depth seen from the moon",
                              "The shadow map: black is near the moon, white is far\n"
                              "from it or empty. The walls are the dark lines.",
-                             moon, moonMap, moonLightSpace);
+                             moon);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Flashlight")) {
+            drawShadowMapTab("Distance seen from the flashlight",
+                             "The shadow map of the flashlight: black is at the hand,\n"
+                             "white is as far as the beam reaches, or empty. The map\n"
+                             "has a perspective projection, so its stored depth is\n"
+                             "turned back into metres for this picture: shown as it\n"
+                             "is, the picture would be almost white. No picture while\n"
+                             "the flashlight is off.",
+                             flashlight);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

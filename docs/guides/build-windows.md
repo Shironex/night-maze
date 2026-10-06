@@ -77,6 +77,17 @@
 > HDR, bloom, mgła i winieta, cienie księżyca), cieni latarki i minimapy nie ma
 > ([`m7-status.md`](m7-status.md)).
 >
+> **Zgłoszone 2026-10-06 (M7, część 5: cień latarki):** bramka `make check` przechodzi,
+> 329 przypadków testowych i 104306 asercji (po części 4 było 310 i 103751) i start
+> programu Debug przez około 7 sekund: OpenGL 4.1.0 NVIDIA, assety wczytane, puste
+> standardowe wyjście błędów, panele ukryte (sekcja 21.1). Start **nie obejmował** trybu
+> `Gouraud`, zakładki `Flashlight` i jej podglądu, ścieżki z wyłączoną latarką ani przycisku
+> `Reload shaders`. Żadnego z tych pomiarów nie powtarzałem, **nikt nie obejrzał obrazu tej
+> części** i nikt nie zmierzył liczby klatek. Wersji kompilatora, karty graficznej i
+> sterownika dla tej części nie zapisano. M7 jest rozpoczęty, nie kompletny: w kodzie jest
+> pięć części z sześciu (bufor HDR, bloom, mgła i winieta, cienie księżyca, cień latarki),
+> minimapy nie ma ([`m7-status.md`](m7-status.md)).
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -85,14 +96,15 @@
 > nierównym podłożu, panele Terrain i Grass z ich suwakami i polami wyboru, panel
 > Framebuffers z suwakiem ekspozycji, listą krzywych i podglądami, jego dwie zakładki
 > z kontrolkami bloomu, mgły i winiety, cały panel Shadows z przełączaniem rozdzielczości
-> mapy cieni w działającej grze, zmiana rozmiaru okna,
+> mapy cieni w działającej grze i jego zakładka `Flashlight`, trzy nowe suwaki ręki w panelu
+> Lights, cienie latarki na ekranie, zmiana rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
 > są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
 > M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
-> 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7) i 20 (cienie księżyca,
-> czwarta część M7) rozróżniają punkty
+> 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7), 20 (cienie księżyca,
+> czwarta część M7) i 21 (cień latarki, piąta część M7) rozróżniają punkty
 > zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
 > Sekcje 11, 12 i 13 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach
@@ -105,7 +117,8 @@
 > usunęła je i zastąpiła terenem z mapy wysokości, więc słowo "podłoga" w punktach `[x]`
 > tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
 > pokazuje dziś, opisują sekcje 2, 14, 15 i 16, koniec klatki (bufor HDR, bloom, mgłę
-> i winietę) sekcje 17, 18 i 19, a cienie księżyca sekcja 20.
+> i winietę) sekcje 17, 18 i 19, cienie księżyca sekcja 20, a cień latarki i latarkę w ręce
+> sekcja 21.
 
 ## 1. Wymagania
 
@@ -210,8 +223,8 @@ z kodu i ze zgłoszonych pomiarów (sekcje 15.1, 16.1, 17.1, 18.1 i 20.1).
   dociera, są ciemne, ale nie czarne
   (światło otoczenia). Od czwartej części M7 ściany, słupki, brama, kryształy i wzgórza
   rzucają cień w świetle księżyca (sekcja 20), więc na podłożu i na ścianach widać granice
-  światła i cienia. Latarka i światła kryształów cieni nie rzucają: świecą przez ściany
-  (cienie latarki są w planie piątej części M7).
+  światła i cienia. Od piątej części M7 (2026-10-06) cień rzuca też latarka, trzymana w
+  ręce, a nie w oku (sekcja 21). Światła kryształów cieni nie rzucają: świecą przez ściany.
   Nad ścianami jest od pierwszej części M6 nocne niebo z gwiazdami i księżycem (skybox,
   sekcja 15). Prawie czarne, granatowe tło widać tylko po odznaczeniu pola `Skybox`: kolor
   czyszczenia to od M7
@@ -338,7 +351,9 @@ drugiej części M7 miał dwadzieścia dwa: doszedł `BloomTests.cpp` (7 przypad
 dwadzieścia cztery: doszły `FogTests.cpp` (11 przypadków) i `VignetteTests.cpp` (7, razem
 294 przypadki i 102412 asercji, sekcja 19.1). Dziś, po czwartej części M7, ma dwadzieścia
 pięć: doszedł `ShadowTests.cpp` (16 przypadków). Zgłoszone liczby dla tego stanu to
-**310 przypadków i 103751 asercji** (sekcja 20.1). Blok wyjścia programu wyżej jest zapisem
+310 przypadków i 103751 asercji (sekcja 20.1). Dziś, po piątej części M7, plików jest nadal
+dwadzieścia pięć: `ShadowTests.cpp` ma 31 przypadków, `LightingTests.cpp` 15, a zgłoszone
+liczby to **329 przypadków i 104306 asercji** (sekcja 21.1). Blok wyjścia programu wyżej jest zapisem
 z drugiej części M6: nowego wyjścia nie przepisywałem, bo sam go nie uruchamiałem.
 Program testowy nie otwiera okna. Opis biblioteki, makr i opcji programu:
 [`../libraries/doctest.md`](../libraries/doctest.md).
@@ -1362,8 +1377,9 @@ sekcja 16, stan po pierwszej części M7 (zgłoszone 269 i 102103, jedenaście p
 programów, scena rysowana do bufora HDR, gamma i nowe wartości świateł) sekcja 17,
 stan po drugiej (zgłoszone 276 i 102139, dziesięć programów, bloom) sekcja 18,
 stan po trzeciej (zgłoszone 294 i 102412, nadal dziesięć programów, mgła i winieta)
-sekcja 19, a dzisiejszy (zgłoszone 310 i 103751, dwanaście paneli, jedenaście programów,
-cienie księżyca) sekcja 20. Punkty otwarte `[ ]` w sekcji
+sekcja 19, po czwartej (zgłoszone 310 i 103751, dwanaście paneli, jedenaście programów,
+cienie księżyca) sekcja 20, a dzisiejszy (zgłoszone 329 i 104306, nadal dwanaście paneli
+i jedenaście programów, cień latarki) sekcja 21. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie. Punkty `[x]`
 mówią o podłodze z płytek (`floor_tile.obj`, `floor_stone.png`), którą druga część M6
 usunęła.
@@ -1663,7 +1679,7 @@ układ `std140`), [`../modules/gfx/shader-includes.md`](../modules/gfx/shader-in
 Kamień milowy **nie jest zamknięty**: kod obu części jest kompletny, ale części ręczne
 poniżej (13.2 i 13.4) są otwarte, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i
 nie ma tagu. Czego w tej części nie było: cieni (światła świeciły przez ściany. Cienie
-księżyca doszły w czwartej części M7, sekcja 20, cienie latarki są w planie) oraz korekcji
+księżyca doszły w czwartej części M7, sekcja 20, cienie latarki w piątej części, sekcja 21) oraz korekcji
 gamma i tekstur sRGB (doszły w pierwszej części M7, sekcja 17).
 Baterii latarki w M4 też nie było:
 doszła w M5 (sekcja 14).
@@ -2099,7 +2115,7 @@ poniżej (14.2) jest otwarta w całości, na macOS kod nie był budowany
 ([`build-macos.md`](build-macos.md)) i nie ma tagu. Czego w M5 nie ma: stanu przegranej
 (pusta bateria oznacza tylko ciemność, runda trwa dalej), przeciwnika (jest w planie na
 później, kodu nie ma), cieni (cienie księżyca doszły w czwartej części M7, sekcja 20,
-cienie latarki są w planie) i korekcji gamma (doszła w pierwszej części M7, sekcja 17).
+cienie latarki w piątej, sekcja 21) i korekcji gamma (doszła w pierwszej części M7, sekcja 17).
 
 ### 14.1. Zmierzone (2026-10-05)
 
@@ -2573,9 +2589,8 @@ Z tą częścią kod M6 jest kompletny na Windowsie (skybox, teren, trawa). Kami
 **nie jest zamknięty**: część ręczna poniżej (16.2) i część ręczna skyboxa (15.2) są
 otwarte w całości, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md))
 i nie ma tagu. **Nie są zbudowane:** iskry wokół kryształów, które PRD wymienia w temacie
-9 obok trawy, oraz cienie latarki (plan piątej części M7). Bloom, mgła i cienie księżyca,
-których po tej części też nie było, doszły w drugiej, trzeciej i czwartej części M7
-(sekcje 18, 19 i 20).
+9 obok trawy. Bloom, mgła, cienie księżyca i cienie latarki, których po tej części też nie
+było, doszły w drugiej, trzeciej, czwartej i piątej części M7 (sekcje 18, 19, 20 i 21).
 
 ### 16.1. Zmierzone (2026-10-05)
 
@@ -3522,7 +3537,8 @@ jednostkę teksturującą 2), `PostProcessSettings` (pola `fog` i `vignette`),
 `ShaderUniforms.hpp` (jedenaście nazw), `NightMazeApp` (budowa `SceneView` w `onRender`,
 a kopia ustawień dla widoków diagnostycznych wyłącza już pięć rzeczy), panel Framebuffers
 (dwie zakładki), `DebugContext.hpp` (sam komentarz, pól było nadal trzydzieści: dziś,
-po czwartej części, jest ich trzydzieści cztery) i `CMakeLists.txt`. **Nie doszedł**
+po czwartej części było ich trzydzieści cztery, dziś, po piątej, trzydzieści osiem) i
+`CMakeLists.txt`. **Nie doszedł**
 żaden program shaderów (było ich nadal dziesięć, dziś jest jedenaście), żaden
 framebuffer ani żaden panel (było ich nadal jedenaście, dziś jest dwanaście).
 Opis kodu: [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md)
@@ -3976,6 +3992,9 @@ biasem. **Nie są zbudowane:** cienie latarki (część piąta) i minimapa (czę
 18.2 i 19.2, na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)) i nie ma
 tagu. Stan całego M7 w jednym miejscu: [`m7-status.md`](m7-status.md).
 
+Zdania o cieniach latarki i minimapie w tej sekcji opisują stan po części czwartej. Cień
+latarki doszedł 2026-10-06: sekcja 21.
+
 ### 20.1. Zgłoszone (2026-10-05)
 
 Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
@@ -4249,7 +4268,282 @@ Na koniec:
 - [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
       zostały zapisane
 
-## 21. Powiązane dokumenty
+## 21. Lista kontrolna M7, część 5: cień latarki
+
+Piąta część kamienia milowego M7 daje latarce własną mapę cieni i przenosi jej światło z oka
+do ręki. Na początku klatki, zaraz po przebiegu cieni księżyca, wszystko, co rzuca cień,
+jest rysowane drugi raz: z ręki gracza, wzdłuż osi stożka latarki, **rzutem
+perspektywicznym** o kącie rozwarcia 46 stopni (dwa razy 21 stopni zewnętrznego stożka plus
+2 stopnie zapasu), z płaszczyzną bliską 0,05 m i daleką równą zasięgowi latarki (16 m), do
+drugiej tekstury głębi, domyślnie 1024 x 1024, związanej z jednostką teksturującą 4. Programy
+`lit`, `gouraud` i `grass` odejmują potem od światła **sam udział latarki**, osobno od
+udziału księżyca. Latarka stoi w ręce: 0,20 m w prawo i 0,25 m w dół od oka, a promień celuje
+w punkt na osi widzenia 4 m przed okiem. Doszły: w `src/scene/LightSpace.*` funkcja
+`spotLightSpace` i wyliczenie `LightProjection` (pola `kind`, `position`, `nearPlane`,
+`farPlane` struktury `LightSpace`), w `src/game/Lighting.*` struktura `FlashlightPose`,
+funkcja `flashlightPose`, trzy pola ustawień (`flashlightHandRight`, `flashlightHandDown`,
+`flashlightConvergeDistance`) i stałe `MAX_FLASHLIGHT_HAND_RIGHT` i
+`MIN_FLASHLIGHT_CONVERGE_DISTANCE`, w `src/game/Shadows.*` funkcje `flashlightShadowDefaults`,
+`biasForShader` i `shadowTexelSizeAt`, w `src/game/ShadowMap.*` nowy argument
+`drawPreview(previewShader, lightSpace)` i pole `lightPosition` w `ShadowUniformNames`,
+w `ShaderUniforms.hpp` stałe `FLASHLIGHT_SHADOW_UNIFORMS` i `FLASHLIGHT_SHADOW_TEXTURE_UNIT`,
+w `NightMazeApp` funkcje `drawFlashlightShadowMap` i `setShadowUniformsOf` oraz pozycja
+latarki liczona **przed** przebiegami cieni, w `common/shadows.glsl` funkcja
+`flashlightShadow` i uniformy `uFlashlightShadow*`, w `common/lighting.glsl` pola
+`flashlightDiffuse` i `flashlightSpecular` oraz funkcja `flashlightFacing`, w `gouraud.vert` i
+`gouraud.frag` trzy nowe zmienne przekazywane, w `post/preview.frag` użycie trybu głębi
+perspektywicznej także dla mapy latarki, w `DebugContext.hpp` cztery nowe pola (razem
+trzydzieści osiem), w `ShadowsPanel.*` struktura `ShadowMapView` i druga zakładka
+`Flashlight`, w `LightsPanel.cpp` trzy suwaki. **Nie doszedł** żaden program shaderów (jest
+ich nadal jedenaście) ani panel (jest ich nadal dwanaście). Blok uniformów `LightBlock` się
+nie zmienił. Opis kodu: [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md)
+(sekcja 2.20 i jej podsekcje: perspektywiczna przestrzeń światła, nieliniowa głębia, bias w
+metrach w przestrzeni świata, punkt za światłem, podgląd z linearyzacją, teksel na metr),
+[`../modules/game/flashlight.md`](../modules/game/flashlight.md) (ręka, `flashlightPose`),
+[`../modules/debug-ui.md`](../modules/debug-ui.md) (zakładka `Flashlight`, trzy suwaki).
+Decyzje:
+[`../decisions/flashlight-in-hand.md`](../decisions/flashlight-in-hand.md),
+[`../decisions/flashlight-shadow-bias-in-world-space.md`](../decisions/flashlight-shadow-bias-in-world-space.md)
+i
+[`../decisions/flashlight-hand-straight-down.md`](../decisions/flashlight-hand-straight-down.md).
+
+Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**: w kodzie jest pięć części z
+sześciu. Temat 11 wykładu (shadow mapping) ma w kodzie obie mapy, ortograficzną i
+perspektywiczną, ale **nie jest zaliczony**: części ręczne 20.2 i 21.2 są otwarte, a na
+macOS kod nie był budowany ([`build-macos.md`](build-macos.md)). **Nie jest zbudowana**
+minimapa (część szósta, temat 10). Nie ma tagu. Stan całego M7 w jednym miejscu:
+[`m7-status.md`](m7-status.md).
+
+### 21.1. Zgłoszone (2026-10-06)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
+nie zapisano w tym dokumencie. Z uruchomienia programu zgłoszono tylko linię `GL_VERSION`
+(OpenGL 4.1.0, NVIDIA). **Żadnego z poniższych punktów nie powtarzałem przy pisaniu tej
+sekcji.** Liczby w tabelach poniżej przepisałem z kodu albo policzyłem z jego stałych: nie są
+odczytane z ekranu, a **nikt nie obejrzał obrazu tej części**.
+
+Bramka i start:
+
+- [x] `make check` przechodzi (zgłoszone)
+- [x] `night_maze_tests.exe`: 329 przypadków testowych i 104306 asercji, wszystkie
+      przechodzą (zgłoszone). Względem części czwartej (310 i 103751) doszło 19 przypadków i
+      555 asercji. Przypadki policzyłem z plików testów: 15 nowych w `ShadowTests.cpp` (z 16
+      na 31) i 4 nowe w `LightingTests.cpp` (z 11 na 15, a jeden dotychczasowy przypadek
+      zmienił nazwę na `the flashlight sits in the hand and is aimed at a point in front of
+      the eye`): `310 + 15 + 4 = 329`. Podziału 555 asercji między pliki nie liczyłem
+- [x] start programu Debug przez około 7 sekund (zgłoszone): `GL_VERSION` 4.1.0 NVIDIA,
+      assety wczytane, standardowe wyjście błędów puste, panele ukryte
+
+Czego ten start **nie** obejmował (zgłoszone wprost):
+
+- rysowania w trybie `Gouraud`
+- zakładki `Flashlight` panelu Shadows i jej podglądu
+- ścieżki z wyłączoną latarką (klawisz F)
+- przycisku `Reload shaders`
+
+Nikt nie kliknął żadnej z nowych kontrolek (trzy suwaki w panelu Lights, zakładka
+`Flashlight`) i nikt nie obejrzał ani jednego cienia latarki. Liczby klatek dla tej części
+nie zostały zmierzone.
+
+Wartości startowe nowych ustawień. Suwaki `Hand right`, `Hand down` i `Converge at` stoją w
+panelu Lights, w grupie `Flashlight (spot)`, a zakładka `Flashlight` w panelu Shadows. W
+nawiasie jest napis, jaki pokazuje kontrolka:
+
+| Ustawienie | Wartość |
+|---|---|
+| `Hand right` | 0,20 m (`0.20 m`), suwak od 0 do 0,25 (`MAX_FLASHLIGHT_HAND_RIGHT`) |
+| `Hand down` | 0,25 m (`0.25 m`), suwak od 0 do 0,5 |
+| `Converge at` | 4,0 m (`4.0 m`), suwak od 0,5 (`MIN_FLASHLIGHT_CONVERGE_DISTANCE`) do 20 |
+| `Beam range` (istniejący) | 16 m, jest też płaszczyzną daleką mapy cieni latarki |
+| `Shadows` (zakładka `Flashlight`) | zaznaczone |
+| `Resolution` (zakładka `Flashlight`) | `1024 x 1024` (księżyc: `2048 x 2048`) |
+| `Constant bias`, `Slope bias` (zakładka `Flashlight`) | 0,010 m i 0,130 m (księżyc: 0,020 i 0,120) |
+| `Hardware 2 x 2 filter`, `PCF`, `Kernel`, `Strength` | jak u księżyca: zaznaczone, zaznaczone, `3 x 3`, 1,00 |
+| `FLASHLIGHT_SHADOW_TEXTURE_UNIT` (stała) | 4 |
+| `SPOT_NEAR_PLANE` (stała) | 0,05 m |
+| `SPOT_CONE_MARGIN_DEGREES` (stała) | 2 stopnie |
+
+Co te wartości znaczą w liczbach (policzone ze wzorów i komentarzy kodu, **nie zmierzone na
+ekranie**; część jest przypięta testami `ShadowTests.cpp` i `LightingTests.cpp`):
+
+- ręka stoi 1,45 m nad gruntem (oko 1,7 m minus 0,25 m) i 0,2 m od środka ciała, czyli 0,1 m
+  wewnątrz pudła kolizji o szerokości 0,6 m. Największy suwak (0,25 m) zostawia 0,05 m,
+  czyli dokładnie płaszczyznę bliską mapy
+- plama latarki na ścianie 4 m przed graczem leży w środku ekranu. Na ścianie 1 m przed nim
+  około 0,15 m w prawo i 0,19 m niżej od osi widzenia, a na ścianie 8 m przed nim około
+  0,2 m w lewo i 0,25 m wyżej (poziomy wzrok, rachunek z podobieństwa trójkątów)
+- mapa pokrywa 13,6 x 13,6 m na płaszczyźnie dalekiej (16 m). Teksel ma 0,83 mm na każdy
+  metr odległości: 3,3 mm na ścianie 4 m dalej i 13,3 mm na końcu zasięgu, wobec 32 mm u
+  księżyca. Panel powinien pokazać `Covers 13.6 x 13.6 m at 16.0 m` i `One texel: 0.08 cm
+  per metre away`
+- bias startowy na gruncie 10 m przed graczem to 12,1 cm przy potrzebnych 11,6 cm
+  (rachunek w komentarzu do `FLASHLIGHT_SHADOW_SLOPE_BIAS`, sprawdza go test `the default
+  bias of the flashlight covers the ground up to 10 m ahead`). Dalej bias jest za mały, ale
+  prawie tam nie dociera światło
+- mapa 1024 x 1024 z głębią 24-bitową to około 3 do 4 MB
+
+Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.20):
+
+- cień latarki zabiera tylko udział latarki: światło otoczenia, księżyc, kryształy i
+  świecenie własne zostają. Światła kryształów nadal świecą przez ściany
+- trawa przyjmuje cień latarki, ale go nie rzuca (jak u księżyca)
+- test cienia latarki wykonuje się dla każdego fragmentu, także poza stożkiem: kod nie ma
+  wcześniejszego wyjścia dla fragmentu, do którego latarka nie dociera (poza przypadkiem,
+  gdy cienie latarki są wyłączone albo mapa nie była rysowana)
+- mapa idzie za ręką, więc przy ruchu siatka tekseli przesuwa się po świecie (czego pudełko
+  księżyca unika): krawędzie cieni mogą migotać. Nikt tego nie oglądał
+- wektor "w górę" światła zmienia się skokiem, gdy wiązka jest odchylona od pionu o mniej niż
+  2,56 stopnia (próg `VERTICAL_DIRECTION_LIMIT`), więc mapa w jednej klatce obraca się. Przy
+  ustawieniach startowych to **nie następuje** nawet przy kamerze nachylonej o 89 stopni (wiązka
+  ma wtedy 2,85 stopnia od pionu w górę i 3,24 w dół, bo ręka jest 0,2 m w prawo). Następuje
+  przy `Converge at` powyżej około 4,6 m (patrzenie w górę) albo 5,2 m (w dół), albo przy
+  mniejszym `Hand right`. Policzone, nie oglądane
+- panel Shadows pokazuje obraz zakładki `Flashlight` według faktu (czy mapa była rysowana w
+  ostatniej klatce), a zakładki `Moon` według ustawienia `Shadows`
+
+### 21.2. Otwarte: test ręczny na około trzydzieści minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
+nie z klikania ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/ShadowsPanel.cpp` i `LightsPanel.cpp`. Ustawień cieni i ręki program nigdzie
+nie zapisuje, więc ponowne uruchomienie gry przywraca wartości startowe. Listy 17.2 do 20.2
+też są otwarte.
+
+Przygotowanie:
+
+- [ ] usunąć stary plik `imgui.ini`, uruchomić grę z terminala. Oczekiwane w konsoli: żadnej
+      linii `[error]`, w szczególności o shaderach `lit.frag`, `gouraud.vert`, `gouraud.frag`,
+      `grass.frag`, `common/shadows.glsl` i `common/lighting.glsl` ani o niekompletnym
+      framebufferze. W buildzie Debug żadnej linii `GL_...`
+- [ ] panel Shadows ma teraz dwie zakładki, `Moon` i `Flashlight`. Panel Lights w grupie
+      `Flashlight (spot)` ma po suwaku `Beam range` trzy nowe suwaki: `Hand right`, `Hand
+      down` i `Converge at`
+- [ ] zakładka `Flashlight`, wartości startowe: `Map: 1024 x 1024, GL_DEPTH_COMPONENT24`,
+      `Covers 13.6 x 13.6 m at 16.0 m`, `One texel: 0.08 cm per metre away`. Te liczby są
+      policzone, nie odczytane: zapisać, jeśli panel pokazuje co innego
+
+Obraz bez zmian i położenie plamy:
+
+- [ ] **obraz księżyca bez zmian.** Zgasić latarkę (F): scena ma wyglądać jak po części 4
+      (cienie księżyca w tych samych miejscach, ten sam kontrast). Zakładka `Moon` działa
+      jak dotąd
+- [ ] zapalić latarkę, stanąć twarzą do ściany 4 m dalej: plama jest w środku ekranu
+- [ ] podejść do ściany na 1 m: plama jest w prawo i poniżej środka ekranu (rachunek: około
+      0,15 m w prawo i 0,19 m niżej). Odejść na 8 m: plama jest lekko w lewo i powyżej
+      środka
+- [ ] `Converge at` na 10: plama jest w środku ekranu na ścianie 10 m dalej, a z bliska
+      jeszcze bardziej w prawo i w dół. `Converge at` na 0,5: plama z bliska jest blisko
+      środka, a daleko mocno w lewo i w górę. Wrócić do 4
+- [ ] `Hand right` i `Hand down` na 0: latarka jest w oku, plama zawsze w środku, a cienie
+      latarki chowają się za rzucającymi (każdy dokładnie za swoim przedmiotem). Przywrócić
+      0,20 i 0,25
+- [ ] obracać mysz podczas chodzenia: plama nie spóźnia się za obrazem (pozycja ręki jest
+      liczona z tego samego oka co macierz widoku)
+
+Cienie latarki:
+
+- [ ] stanąć w korytarzu, patrzeć wzdłuż niego: róg ściany lub słupek rzuca cień na ścianę
+      za nim, a cień jest **widoczny** obok rzucającego (to jest cel przeniesienia latarki do
+      ręki). Zapisać, po której stronie rzucającego pada cień
+- [ ] w zakładce `Flashlight` odznaczyć `Shadows`: latarka znów świeci przez wszystko, cienie
+      latarki znikają, cienie księżyca zostają. Linia faktów pokazuje `Map: not drawn`, a w
+      miejscu obrazu stoi `(not drawn)`. Zaznaczyć z powrotem
+- [ ] `Strength` zakładki `Flashlight` na 0, 0,5 i 1: cienie latarki niewidoczne, o połowę
+      słabsze, pełne. Cienie księżyca bez zmian
+- [ ] **dwa cienie naraz.** Stanąć tam, gdzie cień księżyca i cień latarki nakładają się:
+      fragment w obu traci oba udziały, ale zachowuje światło otoczenia i kryształy. Nic nie
+      robi się czarne
+- [ ] kryształ stojący w cieniu latarki nadal świeci własnym światłem i oświetla ziemię
+- [ ] trawa przy ścianie w cieniu latarki jest ciemniejsza od trawy w plamie
+
+Bias i wycieki:
+
+- [ ] **grunt daleko.** Patrzeć na poziomy grunt 8 do 16 m przed sobą (korytarz lub otwarty
+      teren). Zapisać, czy oświetlony grunt ciemnieje albo ma prążki za około 10 m. Powtórzyć
+      dla `Kernel` `3 x 3`, `5 x 5` i `7 x 7` oraz dla obu biasów równych 0 (acne). Z rachunku
+      bias startowy wystarcza do 10 m przy jądrze `3 x 3`: dalej i przy większym jądrze może
+      brakować
+- [ ] **podstawy ścian.** Iść wzdłuż korytarza, patrzeć na styk ściany z ziemią w plamie:
+      zapisać, czy między ścianą a ziemią jest jasna szczelina (za duży bias, światło
+      przecieka u podstawy) albo ciemny pas (za mały)
+- [ ] `Constant bias` na koniec zakresu: cień odkleja się od rzucającego. Wrócić do 0,010 i
+      0,130
+- [ ] **za płaszczyzną daleką.** `Beam range` na 6 m: za 6 m światło zanika, a cienie nie
+      pojawiają się za granicą zasięgu (kod zwraca "oświetlone" dla głębi powyżej 1). Zapisać,
+      czy na granicy widać pas albo skok jasności. Wrócić do 16 m
+- [ ] `Beam range` na 60 m: mapa pokrywa dużo więcej, tekseli jest mniej na metr. Zapisać
+      wygląd krawędzi cieni na 20 m. Wrócić do 16 m
+
+Kamera i ruch:
+
+- [ ] **prawie prosto w górę i w dół, ustawienia startowe.** Patrzeć kolejno na niebo i na
+      ziemię pod stopami (pochylenie do 89 stopni). Oczekiwane (z rachunku): cień nie znika i
+      nie skacze, bo wiązka nie zbliża się do pionu bliżej niż 2,85 stopnia
+- [ ] **skok wektora "w górę", wywołany.** Ustawić `Converge at` na 10 m (albo `Hand right` na 0),
+      patrzeć w górę i w dół z pochyleniem 89 stopni. Oczekiwane: w jednej klatce przy
+      przejściu przez próg mapa obraca się. Zapisać, czy skok jest widoczny w scenie
+- [ ] **migotanie krawędzi.** Iść, obracać się i patrzeć na krawędź cienia latarki na ścianie:
+      zapisać, czy krawędź pływa albo migocze (mapa idzie za ręką). Powtórzyć z `Kernel`
+      `7 x 7`
+- [ ] latarka przy niskiej baterii (panel Gameplay, `Battery` poniżej progu): światło migocze,
+      a przebieg cieni dostaje ustawienia klatki (nie ustawienia z panelu), więc cień ma iść
+      za światłem. Przy pustej baterii latarka gaśnie, a zakładka `Flashlight` pokazuje
+      `(not drawn)`
+- [ ] klawisz F: zakładka `Flashlight` przełącza się między obrazem a `(not drawn)`, a po
+      ponownym włączeniu wraca bez błędów w konsoli
+
+Pozycja przy ścianie:
+
+- [ ] stanąć bokiem do ściany tak blisko, jak pozwalają kolizje, `Hand right` 0,20, potem 0,25
+      (koniec zakresu): ściana obok nie znika i nie jest odcięta (płaszczyzna bliska 0,05
+      m). Obrócić się dookoła w miejscu: ręka zawsze zostaje wewnątrz ciała
+- [ ] **noclip (klawisz N)**, lot w ścianę tak, żeby światło znalazło się wewnątrz niej: nie ma
+      awarii ani NaN w obrazie. Zapisać, co widać (zakładka `Flashlight` i scena)
+- [ ] patrząc w dół (`Hand down` 0,25): latarka jest pod okiem, a nie za nim
+
+Zakładka `Flashlight` panelu Shadows:
+
+- [ ] obraz po prawej (`Distance seen from the flashlight`): szary, nie czerwony i nie
+      cały biały. Bliskie powierzchnie ciemne, dalekie jasne, puste miejsca (niebo) białe
+- [ ] po naciśnięciu F (latarka zgaszona) w miejscu obrazu stoi `(not drawn)`, a linia faktów
+      pokazuje `Map: not drawn`
+- [ ] lista `Resolution`, `2048 x 2048`: fakty pokazują `One texel: 0.04 cm per metre away`,
+      a po powrocie do `1024 x 1024` `0.08 cm per metre away`. W konsoli żadnej linii
+      `[error]`
+- [ ] podpowiedź obrazu zaczyna się od `The shadow map of the flashlight: black is at the
+      hand`
+- [ ] przełączanie zakładek `Flashlight` i `Moon`: obraz mapy wraca po jednej klatce. Zwinięty
+      panel Shadows: żadna z map nie jest rysowana do podglądu
+- [ ] układ: panel Shadows po zmianie ma dwie zakładki i nadal mieści osiem kontrolek, trzy
+      linie faktów i obraz bez przewijania. Grupa `Flashlight (spot)` w panelu Lights jest
+      dłuższa o trzy suwaki: sprawdzić, czy panel mieści się w oknie 1280 x 720
+
+Tryby i przeładowanie:
+
+- [ ] panel Renderer, lista `Lighting`: `Blinn-Phong` i `Phong` z cieniami latarki w tych samych
+      miejscach. **`Gouraud`**: cienie latarki w tych samych miejscach i z ostrymi krawędziami
+      (udział latarki jest liczony na wierzchołek, test cienia na fragment). Ten tryb nie był
+      rysowany podczas zgłoszonego startu. `Unlit`: żadnych cieni
+- [ ] panel Shaders, `Reload shaders`: jedenaście linii `OK`, cienie latarki zostają. Odznaczyć
+      oba `Shadows` (księżyc i latarka) i przeładować: scena nadal się rysuje, w buildzie
+      Debug żadnej linii `GL_INVALID_OPERATION` (dwa samplery cieni na jednostkach 3 i 4 oraz
+      sampler tekstury na 0 i 1). Przeładowanie nie było w zgłoszonym starcie
+- [ ] zakładka `Moon`: jej obraz i fakty bez zmian względem listy 20.2 (`Map: 2048 x 2048`,
+      `Covers 64.8 x 54.1 m, 47.0 m deep`)
+
+Na koniec:
+
+- [ ] **koszt drugiego przebiegu głębi.** W jednej sesji, w buildzie Release, z ukrytymi
+      panelami, w oknie 1280 x 720 i po zmaksymalizowaniu zapisać liczbę klatek na sekundę
+      dla commita części 4 (poprzedniego commita tego repozytorium) i dla tej części, każdą
+      wartość dwa razy: z latarką zgaszoną, z latarką zapaloną i `Shadows` zakładki
+      `Flashlight` odznaczonym, z mapą 1024 i z mapą 2048. Przebieg latarki rysuje te same
+      obiekty drugi raz, a test cienia dochodzi do każdego fragmentu (sekcja 21.1)
+- [ ] w konsoli przez cały test żadnej linii `[error]` poza wywołanymi celowo
+- [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
+      zostały zapisane
+
+## 22. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -4258,5 +4552,6 @@ Na koniec:
   [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
-  [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapa cieni księżyca)
+  [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapy cieni księżyca i latarki),
+  [`../modules/game/flashlight.md`](../modules/game/flashlight.md) (latarka w ręce)
 - Dokumentacja CMake (generatory, presety): <https://cmake.org/cmake/help/latest/>

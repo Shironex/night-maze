@@ -361,19 +361,49 @@ void NightMazeApp::onRender(double alpha) {
         return;
     }
 
-    // The shadow pass comes first: the scene as the moon sees it, depths only, into
-    // the shadow map. The lit programs of the scene pass read that map, so it has to
-    // be complete before they draw. The pass binds a framebuffer and a viewport of its
-    // own (the size of the map), and beginScene below binds the scene framebuffer with
-    // its viewport again.
+    // The simulation moves the player in fixed steps, and this frame is drawn at some
+    // moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
+    // between the position before the last step and the position after it keeps the
+    // movement smooth at any frame rate, in all three directions: the height of the
+    // feet follows the ground from step to step and is blended like x and z.
+    // m_player.position itself is not changed. The eyes are a fixed height above the
+    // feet, so blending the feet and then going up gives the same point as blending the
+    // eyes.
+    const glm::vec3 feet =
+        glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
+    const glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
+
+    // The lighting of this frame. The round changes two things for this frame only:
+    // a low battery dims the flashlight (an empty one switches it off) and the crystal
+    // lights pulse. That happens in a copy, so the settings the debug UI shows stay as
+    // they were set.
+    const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+
+    // Where the flashlight is and where it points in this frame: in the hand, a little
+    // to the right of the eye and below it, aimed at a point in front of the eye. It is
+    // computed here, after the mouse has turned the camera and from the same eye the
+    // view matrix uses below. From m_camera.position (the last fixed step) the cone
+    // would trail behind the picture while the player moves. It is computed ONCE: the
+    // shadow pass of the flashlight and the lights of the frame both get this result,
+    // so the shadows always belong to the light that is drawn.
+    const FlashlightPose flashlight =
+        flashlightPose(frameLighting, eye, m_camera.forward(), m_camera.right());
+
+    // The shadow passes come first: the scene as the moon sees it and then as the
+    // flashlight sees it, depths only, each into its own shadow map. The lit programs
+    // of the scene pass read those maps, so they have to be complete before they draw.
+    // Each pass binds a framebuffer and a viewport of its own (the size of its map),
+    // and beginScene below binds the scene framebuffer with its viewport again.
     drawMoonShadowMap();
+    drawFlashlightShadowMap(frameLighting, flashlight);
 
     // From here on the draw calls do not land in the window. They land in the HDR
     // framebuffer of the scene, which is created again here when the size of the window
     // has changed. The viewport is set to its size by the same call. Without
     // a framebuffer (the driver refused it, the error is in the log) nothing is drawn.
-    // The shadow pass above may have left its own framebuffer bound, so the window is
-    // bound again first: the debug UI is drawn after this function and must land there.
+    // The shadow passes above may have left their own framebuffer bound, so the window
+    // is bound again first: the debug UI is drawn after this function and must land
+    // there.
     if (!m_postProcess.beginScene(framebuffer)) {
         gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
         return;
@@ -401,37 +431,18 @@ void NightMazeApp::onRender(double alpha) {
     const float aspectRatio =
         static_cast<float>(framebuffer.width) / static_cast<float>(framebuffer.height);
 
-    // The simulation moves the player in fixed steps, and this frame is drawn at some
-    // moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
-    // between the position before the last step and the position after it keeps the
-    // movement smooth at any frame rate, in all three directions: the height of the
-    // feet follows the ground from step to step and is blended like x and z.
-    // m_player.position itself is not changed. The eyes are a fixed height above the
-    // feet, so blending the feet and then going up gives the same point as blending the
-    // eyes.
-    const glm::vec3 feet =
-        glm::mix(m_previousPlayerPosition, m_player.position, static_cast<float>(alpha));
-    const glm::vec3 eye = feet + glm::vec3{0.0F, Player::EYE_HEIGHT, 0.0F};
-
-    // The two matrices that are the same for everything drawn in this frame.
+    // The two matrices that are the same for everything drawn in this frame. The eye is
+    // the blended one from the top of this function.
     const glm::mat4 view = m_camera.viewMatrix(eye);
     const glm::mat4 projection = m_camera.projectionMatrix(aspectRatio);
 
-    // The lights of this frame. They are built here, after the mouse has turned the
-    // camera and from the same eye the view matrix uses: the flashlight then sits
-    // exactly where the picture is taken from, and its cone stays in the middle of the
-    // screen. From m_camera.position (the last fixed step) it would trail behind while
-    // the player moves. The copy to the graphics card happens once, and the two lit
-    // programs and the grass program read it.
-    //
-    // The round changes two things for this frame only: a low battery dims the
-    // flashlight (an empty one switches it off) and the crystal lights pulse. That
-    // happens in a copy, so the settings the debug UI shows stay as they were set. The
-    // point lights hang above the crystals that are still there.
-    const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
+    // The lights of this frame, from the lighting and the flashlight pose computed
+    // before the shadow passes. The point lights hang above the crystals that are still
+    // there. The copy to the graphics card happens once, and the two lit programs and
+    // the grass program read it. It takes the EYE, not the hand: the highlights are
+    // computed for the place the picture is taken from.
     const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
-    const scene::LightSet lights =
-        buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights);
+    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);
@@ -523,8 +534,55 @@ void NightMazeApp::drawMoonShadowMap() {
 
     // The picture of the map, only while the debug UI shows it.
     if (m_moonShadow.preview) {
-        m_moonShadowMap.drawPreview(m_previewShader);
+        m_moonShadowMap.drawPreview(m_previewShader, m_moonLightSpace);
     }
+}
+
+void NightMazeApp::drawFlashlightShadowMap(const LightingSettings& frameLighting,
+                                           const FlashlightPose& flashlight) {
+    // Where the flashlight looks: a pyramid with its tip in the hand, along the beam,
+    // a little wider than the cone of light and as deep as the light reaches. It is
+    // computed again in every frame, also with the shadows switched off: the debug UI
+    // shows its size. The position and the direction are the ones the spot light of
+    // this frame is built with (onRender), the cone and the range come from the same
+    // settings of the frame.
+    m_flashlightLightSpace =
+        scene::spotLightSpace(flashlight.position, flashlight.direction,
+                              frameLighting.flashlightOuterDegrees, frameLighting.flashlightRange);
+
+    // Until the pass below has run, this frame has no flashlight shadows.
+    m_flashlightShadowDrawn = false;
+    // A flashlight that is off gives no light, so there is nothing its shadows could
+    // take away: the pass is skipped. frameLighting is asked and not m_lighting,
+    // because an empty battery switches the light off for the frame.
+    if (!m_flashlightShadow.enabled || !frameLighting.flashlightOn ||
+        !m_shadowDepthShader.isValid()) {
+        return;
+    }
+    if (!m_flashlightShadowMap.beginDepthPass(shadowMapSize(m_flashlightShadow.resolution))) {
+        return;
+    }
+    drawShadowCasters(m_flashlightLightSpace);
+    m_flashlightShadowDrawn = true;
+
+    // The map goes to its own texture unit, next to the one of the moon.
+    m_flashlightShadowMap.bindForSampling(FLASHLIGHT_SHADOW_TEXTURE_UNIT,
+                                          m_flashlightShadow.hardwareFilter);
+
+    // The picture of the map, only while the debug UI shows it.
+    if (m_flashlightShadow.preview) {
+        m_flashlightShadowMap.drawPreview(m_previewShader, m_flashlightLightSpace);
+    }
+}
+
+void NightMazeApp::setShadowUniformsOf(const gfx::Shader& shader) const {
+    // The shadow map of the moon: where it is bound, the matrix it was drawn with and
+    // the numbers of the comparison.
+    setShadowUniforms(shader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT, m_moonShadowDrawn,
+                      m_moonShadow, m_moonLightSpace);
+    // The same for the shadow map of the flashlight.
+    setShadowUniforms(shader, FLASHLIGHT_SHADOW_UNIFORMS, FLASHLIGHT_SHADOW_TEXTURE_UNIT,
+                      m_flashlightShadowDrawn, m_flashlightShadow, m_flashlightLightSpace);
 }
 
 void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const {
@@ -545,9 +603,11 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
     // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
-    // a texel of the map is about 3 cm, so its shadow would be a flicker of single
-    // texels that moves with the wind, on ground the tuft itself hides. The grass still
-    // RECEIVES shadows.
+    // a texel of the map of the moon is about 3 cm, so its shadow would be a flicker of
+    // single texels that moves with the wind, on ground the tuft itself hides. The map
+    // of the flashlight has finer texels, but the grass is left out of it too: one rule
+    // for both lights, and no shadows that sway on every wall the beam passes. The
+    // grass still RECEIVES shadows.
 }
 
 glm::vec3 NightMazeApp::crystalEmissive() const {
@@ -616,10 +676,9 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
     // has no such uniform, and usesNormalMap is false for it anyway.
     shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
-    // The shadow map of the moon: where it is bound, the matrix it was drawn with and
-    // the numbers of the comparison. Set in every frame, also with the shadows off.
-    setShadowUniforms(shader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT, m_moonShadowDrawn,
-                      m_moonShadow, m_moonLightSpace);
+    // The two shadow maps (the moon and the flashlight). Set in every frame, also with
+    // the shadows off.
+    setShadowUniformsOf(shader);
 
     // The ground first, then what stands on it, as in drawUnlitMaze.
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
@@ -643,13 +702,13 @@ void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection)
     // restarted.
     const auto windSeconds = static_cast<float>(glfwGetTime());
 
-    // The grass lies in the shadows of the moon like the ground, so its program gets
-    // the uniforms of the shadow map too. A uniform is written into the program in
-    // use, hence use() here: GrassRenderer::draw calls it again, which changes nothing.
+    // The grass lies in the shadows of the moon and of the flashlight like the ground,
+    // so its program gets the uniforms of the two shadow maps too. A uniform is written
+    // into the program in use, hence use() here: GrassRenderer::draw calls it again,
+    // which changes nothing.
     if (m_grassShader.isValid()) {
         m_grassShader.use();
-        setShadowUniforms(m_grassShader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT,
-                          m_moonShadowDrawn, m_moonShadow, m_moonLightSpace);
+        setShadowUniformsOf(m_grassShader);
     }
     m_grassRenderer.draw(m_grassShader, view, projection, m_grassSettings, windSeconds, lit,
                          m_viewMode);

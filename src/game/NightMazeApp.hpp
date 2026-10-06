@@ -40,9 +40,10 @@ namespace game {
 /// moon, by the flashlight of the player and by the glowing crystals. Grass grows along
 /// the walls, and above them is the night sky, a skybox.
 ///
-/// The moon casts shadows. Before the scene, everything that casts one is drawn from
-/// the direction of the moon into a depth texture (game::ShadowMap), and the lit
-/// programs look every fragment up in it.
+/// The moon and the flashlight cast shadows. Before the scene, everything that casts
+/// one is drawn twice into a depth texture (game::ShadowMap): from the direction of the
+/// moon and from the hand that holds the flashlight. The lit programs look every
+/// fragment up in both.
 ///
 /// The scene is not drawn into the window directly. It is drawn into an HDR framebuffer
 /// (game::PostProcess). Its bright parts are blurred into a glow (bloom), and a last
@@ -121,6 +122,22 @@ protected:
     /// The view and the projection the shadow map of the moon was drawn with in the
     /// last frame, read only: the debug UI shows how much ground the map covers.
     const scene::LightSpace& moonLightSpace() const { return m_moonLightSpace; }
+
+    /// The settings of the shadows of the flashlight, exposed like the ones of the
+    /// moon.
+    ShadowSettings& flashlightShadowSettings() { return m_flashlightShadow; }
+
+    /// The shadow map of the flashlight, read only, like the one of the moon.
+    const ShadowMap& flashlightShadowMap() const { return m_flashlightShadowMap; }
+
+    /// The view and the projection the shadow map of the flashlight was drawn with in
+    /// the last frame, read only: the debug UI shows how much the map covers.
+    const scene::LightSpace& flashlightLightSpace() const { return m_flashlightLightSpace; }
+
+    /// Whether the shadow map of the flashlight was drawn in the last frame. It is not
+    /// with its shadows switched off, and not while the flashlight itself is off (key
+    /// F or an empty battery). The debug UI then shows no picture of the map.
+    bool flashlightShadowDrawn() const { return m_flashlightShadowDrawn; }
 
     /// The exposure, the tone mapping and the preview switch of the composite pass and
     /// the settings of the bloom, the fog and the vignette, exposed so the debug UI can
@@ -225,11 +242,29 @@ private:
     /// the scene framebuffer has to be bound after it.
     void drawMoonShadowMap();
 
+    /// The shadow pass of the flashlight, right after the one of the moon. It builds
+    /// the pyramid the flashlight looks along (m_flashlightLightSpace) from flashlight,
+    /// the place and the direction of the light in this frame, and from the cone and
+    /// the range of frameLighting, the lighting of this frame (game::lightingForFrame).
+    /// Then it draws the shadow casters into the shadow map of the flashlight, binds
+    /// the map for the lit programs and, while the debug UI asks for it, draws its
+    /// preview picture. With the shadows of the flashlight switched off, or with the
+    /// flashlight itself off in this frame, it only computes the pyramid. Like
+    /// drawMoonShadowMap it leaves a framebuffer of its own bound.
+    void drawFlashlightShadowMap(const LightingSettings& frameLighting,
+                                 const FlashlightPose& flashlight);
+
     /// Draws everything that casts a shadow with the depth program, as the light with
     /// the given view and projection sees it: the terrain, the walls and the pillars,
     /// the gate (as far as it has sunk) and the crystals. The grass casts no shadow.
     /// The target (a shadow map) must be bound already.
     void drawShadowCasters(const scene::LightSpace& lightSpace) const;
+
+    /// Sets the uniforms of both shadow maps (the moon and the flashlight) in the
+    /// program shader, which must be in use and must include common/shadows.glsl:
+    /// game::setShadowUniforms once for each map. Called in every frame for the lit
+    /// program in use and for the grass program, also with the shadows switched off.
+    void setShadowUniformsOf(const gfx::Shader& shader) const;
 
     /// The parts of a frame. Each one selects its own shader program and sets its
     /// uniforms. drawMaze draws the terrain and the maze together with the crystals and
@@ -284,6 +319,8 @@ private:
     PostProcess m_postProcess;
     // The depth texture the scene is drawn into from the direction of the moon.
     ShadowMap m_moonShadowMap;
+    // The depth texture the scene is drawn into from the flashlight.
+    ShadowMap m_flashlightShadowMap;
 
     // The request for the next maze (edited by the debug UI).
     MazeSettings m_mazeSettings;
@@ -340,6 +377,13 @@ private:
     ShadowSettings m_moonShadow;
     scene::LightSpace m_moonLightSpace;
     bool m_moonShadowDrawn = false;
+
+    // The same three for the shadows of the flashlight, set by drawFlashlightShadowMap
+    // in every frame. The settings start with a smaller map and a bias of their own
+    // (game::flashlightShadowDefaults).
+    ShadowSettings m_flashlightShadow = flashlightShadowDefaults();
+    scene::LightSpace m_flashlightLightSpace;
+    bool m_flashlightShadowDrawn = false;
 
     // What the textured shader shows: the picture, or one of the two debug views. A debug
     // view replaces the lighting: it is drawn with the textured program in every

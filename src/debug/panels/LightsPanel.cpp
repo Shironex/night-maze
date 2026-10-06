@@ -45,6 +45,20 @@ constexpr float MAX_FLASHLIGHT_RANGE = 60.0F;
 constexpr float MIN_POINT_RADIUS = 0.5F;
 constexpr float MAX_POINT_RADIUS = 12.0F;
 
+// Where the hand holds the flashlight, in metres from the eye. 0 for both puts the light
+// back at the eye, where its shadows hide exactly behind the things that cast them.
+// To the right the limit is game::MAX_FLASHLIGHT_HAND_RIGHT (0.25 m): half of the body
+// of the player (0.3 m) minus the near plane of the shadow map, so the light never
+// leaves the body box and cannot get into a wall the player stands sideways against.
+// Downwards the limit is the height of a hand held at the hip.
+constexpr float MIN_HAND_OFFSET = 0.0F;
+constexpr float MAX_HAND_DOWN = 0.5F;
+
+// The distance in front of the eye at which the beam crosses the line of view, in
+// metres. The upper end is past the default reach of the beam: there the beam runs
+// almost parallel to the view.
+constexpr float MAX_CONVERGE_DISTANCE = 20.0F;
+
 constexpr float MIN_SPECULAR_STRENGTH = 0.0F;
 constexpr float MAX_SPECULAR_STRENGTH = 2.0F;
 
@@ -74,7 +88,7 @@ void drawMoon(game::LightingSettings& lighting) {
                        "%.2f", ImGuiSliderFlags_AlwaysClamp);
 }
 
-// The flashlight: a spot light at the eye of the player.
+// The flashlight: a spot light in the hand of the player.
 void drawFlashlight(game::LightingSettings& lighting, const game::Round& round) {
     // DefaultOpen: the group is open the first time the program runs.
     if (!ImGui::CollapsingHeader("Flashlight (spot)", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -98,6 +112,29 @@ void drawFlashlight(game::LightingSettings& lighting, const game::Round& round) 
                            ImGuiSliderFlags_AlwaysClamp);
     ImGui::SliderFloat("Beam range", &lighting.flashlightRange, MIN_FLASHLIGHT_RANGE,
                        MAX_FLASHLIGHT_RANGE, "%.1f m", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("How far the light reaches. It is also the far plane of\n"
+                          "the shadow map of the flashlight.");
+
+    // The hand: where the light stands, measured from the eye (game::flashlightPose).
+    ImGui::SliderFloat("Hand right", &lighting.flashlightHandRight, MIN_HAND_OFFSET,
+                       game::MAX_FLASHLIGHT_HAND_RIGHT, "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("How far to the right of the eye the flashlight is held.\n"
+                          "At the eye (0 here and below) every shadow of the\n"
+                          "flashlight hides behind the thing that casts it. The\n"
+                          "limit keeps the light inside the body of the player,\n"
+                          "which is 0.6 m wide, so it cannot get into a wall.");
+    ImGui::SliderFloat("Hand down", &lighting.flashlightHandDown, MIN_HAND_OFFSET, MAX_HAND_DOWN,
+                       "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("How far below the eye the flashlight is held: straight\n"
+                          "down in the world, whatever the camera looks at.");
+    ImGui::SliderFloat("Converge at", &lighting.flashlightConvergeDistance,
+                       game::MIN_FLASHLIGHT_CONVERGE_DISTANCE, MAX_CONVERGE_DISTANCE, "%.1f m",
+                       ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SetItemTooltip("The beam points from the hand at the point this far in\n"
+                          "front of the eye. On a wall at this distance the spot is\n"
+                          "in the middle of the screen. Nearer walls show it to the\n"
+                          "right and below, farther ones a little to the left and\n"
+                          "above.");
 }
 
 // The point lights of the crystals. They are edited as a group: one colour, one

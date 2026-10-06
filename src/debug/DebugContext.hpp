@@ -136,6 +136,19 @@ struct DebugContext {
     /// The view and the projection of the moon in the last frame, read only: how much
     /// ground its shadow map covers.
     const scene::LightSpace& moonLightSpace;
+    /// The settings of the shadows of the flashlight and the preview switch of its
+    /// shadow map, editable like the ones of the moon.
+    game::ShadowSettings& flashlightShadowSettings;
+    /// The shadow map of the flashlight, read only: its size, its format and its
+    /// preview.
+    const game::ShadowMap& flashlightShadowMap;
+    /// The view and the projection of the flashlight in the last frame, read only: how
+    /// much its shadow map covers.
+    const scene::LightSpace& flashlightLightSpace;
+    /// Whether the shadow map of the flashlight was drawn in the last frame: not with
+    /// its shadows switched off, and not while the flashlight is off. A plain value,
+    /// copied when the context is built: the Shadows panel only shows it.
+    bool flashlightShadowDrawn;
 };
 
 } // namespace debug

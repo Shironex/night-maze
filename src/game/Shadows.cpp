@@ -19,6 +19,14 @@ int pcfKernelSide(int radius) {
     return 2 * radius + 1;
 }
 
+ShadowSettings flashlightShadowDefaults() {
+    ShadowSettings settings;
+    settings.resolution = ShadowResolution::Low;
+    settings.constantBias = FLASHLIGHT_SHADOW_CONSTANT_BIAS;
+    settings.slopeBias = FLASHLIGHT_SHADOW_SLOPE_BIAS;
+    return settings;
+}
+
 scene::Aabb shadowCasterBounds(const Terrain& terrain) {
     // The pillars are the tallest things that stand on the ground. One of them on the
     // highest point of the land is higher than anything really is: the maze lies in
@@ -40,11 +48,33 @@ float biasInDepthUnits(float biasMetres, float depthRange) {
     return biasMetres / depthRange;
 }
 
+float biasForShader(float biasMetres, const scene::LightSpace& lightSpace) {
+    if (lightSpace.kind == scene::LightProjection::Perspective) {
+        // Metres, as they are: the shader moves the fragment towards the light.
+        return biasMetres;
+    }
+    // The depth range of the box of the light: its z extent in metres is the stored
+    // range from 0 to 1.
+    return biasInDepthUnits(biasMetres, lightSpace.extent.z);
+}
+
 float shadowTexelSize(const scene::LightSpace& lightSpace, int mapSize) {
     if (mapSize < 1) {
         return 0.0F;
     }
     return std::max(lightSpace.extent.x, lightSpace.extent.y) / static_cast<float>(mapSize);
+}
+
+float shadowTexelSizeAt(const scene::LightSpace& lightSpace, int mapSize, float distance) {
+    const float atFarPlane = shadowTexelSize(lightSpace, mapSize);
+    if (lightSpace.kind != scene::LightProjection::Perspective || lightSpace.farPlane <= 0.0F) {
+        // A box: the same size at every distance.
+        return atFarPlane;
+    }
+    // The extent of a perspective light space is measured at its far plane. The sides
+    // of the pyramid are straight lines through the light, so the size at another
+    // distance is that size times distance / far plane.
+    return atFarPlane * std::max(distance, 0.0F) / lightSpace.farPlane;
 }
 
 int pcfRadiusInUse(const ShadowSettings& settings) {

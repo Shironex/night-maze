@@ -9,6 +9,16 @@
 
 namespace game {
 
+namespace {
+
+// The up direction of the world. The hand holds the flashlight straight below the eye.
+constexpr glm::vec3 WORLD_UP{0.0F, 1.0F, 0.0F};
+
+// A vector shorter than this cannot be brought to length 1 (see scene/LightBlock.cpp).
+constexpr float MIN_DIRECTION_LENGTH = 0.0001F;
+
+} // namespace
+
 SpecularModel specularModelOf(LightingMode mode) {
     return mode == LightingMode::BlinnPhong ? SpecularModel::BlinnPhong : SpecularModel::Phong;
 }
@@ -21,8 +31,31 @@ glm::vec3 moonDirection(const LightingSettings& settings) {
     return scene::directionFromAngles(settings.moonYawDegrees, settings.moonPitchDegrees);
 }
 
-scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3& eye,
-                              const glm::vec3& viewDirection,
+FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3& eye,
+                              const glm::vec3& forward, const glm::vec3& right) {
+    // The hand: to the right of the eye and below it. The right vector of the camera is
+    // level and "below" is straight down, so the first offset is the whole horizontal
+    // distance from the eye and the second the whole vertical one.
+    const glm::vec3 position =
+        eye + right * settings.flashlightHandRight - WORLD_UP * settings.flashlightHandDown;
+
+    // The point on the line of view the beam is aimed at.
+    const float convergeDistance =
+        std::max(settings.flashlightConvergeDistance, MIN_FLASHLIGHT_CONVERGE_DISTANCE);
+    const glm::vec3 target = eye + forward * convergeDistance;
+
+    // From the hand to that point. The two fall together in one case only: a camera that
+    // looks straight down and a hand exactly as far below the eye as the point is in
+    // front of it. A vector of length 0 has no direction, so the beam then simply
+    // points where the camera looks.
+    const glm::vec3 toTarget = target - position;
+    if (glm::length(toTarget) < MIN_DIRECTION_LENGTH) {
+        return {.position = position, .direction = forward};
+    }
+    return {.position = position, .direction = glm::normalize(toTarget)};
+}
+
+scene::LightSet buildLightSet(const LightingSettings& settings, const FlashlightPose& flashlight,
                               std::span<const glm::vec3> pointPositions) {
     // The colours of the settings are sRGB values: they are picked on the screen. The
     // shaders compute with linear light, so this function is the one place where the
@@ -37,10 +70,11 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3&
         .intensity = settings.moonIntensity,
     };
 
-    // The flashlight is held at the eye and points where the player looks.
+    // The flashlight is held in the hand and aimed at a point in front of the eye: the
+    // caller has computed both (flashlightPose), once for the light and its shadow map.
     lights.spot = {
-        .position = eye,
-        .direction = viewDirection,
+        .position = flashlight.position,
+        .direction = flashlight.direction,
         .color = gfx::srgbToLinear(settings.flashlightColor),
         .intensity = settings.flashlightIntensity,
         .attenuation = scene::attenuationForRadius(settings.flashlightRange),

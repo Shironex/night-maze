@@ -396,12 +396,14 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele i HUD pokazują i edytują (trzydzieści cztery pola: od `time` i `window` po `grass`
+panele i HUD pokazują i edytują (trzydzieści osiem pól: od `time` i `window` po `grass`
 i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją, cztery pola z
 pierwszej części M7: `compositeShader`, `previewShader`, `postProcessSettings` i
 `postProcess`, dwa z drugiej: `brightPassShader` i `blurShader`, oraz cztery z czwartej,
 cieni księżyca: `shadowDepthShader`, `moonShadowSettings`, `moonShadowMap` i
-`moonLightSpace`). Buduje ją co klatkę
+`moonLightSpace`, oraz cztery z piątej, cienia latarki: `flashlightShadowSettings`,
+`flashlightShadowMap`, `flashlightLightSpace` i `flashlightShadowDrawn`, drugie pole będące
+wartością). Buduje ją co klatkę
 `main.cpp`.
 Opis struktury jest w [`../modules/debug-ui.md`](../modules/debug-ui.md), sekcja 5.2.
 

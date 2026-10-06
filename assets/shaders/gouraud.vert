@@ -43,6 +43,13 @@ out vec3 vMoonSpecularLight; // the part of vSpecularLight that comes from the m
 out vec3 vWorldPosition;     // position in world space
 out float vMoonFacing;       // cosine between the normal and the direction to the moon
 
+// The same three for the shadow of the flashlight, which has a shadow map of its own:
+// its share of the two light values, and how much the surface faces it. The position
+// above serves both maps.
+out vec3 vFlashlightDiffuseLight;  // the part of vDiffuseLight from the flashlight
+out vec3 vFlashlightSpecularLight; // the part of vSpecularLight from the flashlight
+out float vFlashlightFacing;       // cosine between the normal and the way to the flashlight
+
 void main() {
     vec4 worldPosition = uModel * vec4(aPosition, 1.0);
     // The normal of a vertex comes straight from the model with length 1, but the
@@ -56,6 +63,9 @@ void main() {
     vMoonSpecularLight = lighting.moonSpecular;
     vWorldPosition = worldPosition.xyz;
     vMoonFacing = moonFacing(normal);
+    vFlashlightDiffuseLight = lighting.flashlightDiffuse;
+    vFlashlightSpecularLight = lighting.flashlightSpecular;
+    vFlashlightFacing = flashlightFacing(normal, worldPosition.xyz);
     vUv = aUv;
 
     gl_Position = uProjection * uView * worldPosition;

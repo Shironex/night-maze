@@ -32,7 +32,7 @@ enum class ToneMapping {
 /// post/preview.frag.
 enum class AttachmentPreview {
     Color = 0,    ///< the HDR colour attachment
-    Depth = 1,    ///< the depth attachment of a perspective view, as a distance
+    Depth = 1,    ///< depth of a perspective view (scene, flashlight map), as a distance
     RawDepth = 2, ///< a depth attachment as it is stored: the shadow map of the moon
 };
 

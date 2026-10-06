@@ -13,15 +13,18 @@ niebo, piąty program shaderów) i drugiej (teren z mapy wysokości w miejscu p�
 trawa z shadera geometrii, szósty program, panele Terrain i Grass), oraz pierwszej części
 M7, też z 2026-10-05 (scena rysowana do bufora HDR, przebieg składający z mapowaniem tonów,
 korekcja gamma, siódmy i ósmy program, panel Framebuffers), drugiej (bloom, dziewiąty
-i dziesiąty program), trzeciej (mgła z bufora głębi i winieta w przebiegu składającym)
-i czwartej (mapa cieni księżyca, jedenasty program, panel Shadows).
+i dziesiąty program), trzeciej (mgła z bufora głębi i winieta w przebiegu składającym),
+czwartej (mapa cieni księżyca, jedenasty program, panel Shadows) i piątej, z 2026-10-06
+(mapa cieni latarki z rzutem perspektywicznym i latarka w ręce, bez nowego programu ani
+panelu).
 Wszystko, co ten dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
 (oświetlenie) na macOS", "M4 (mapy normalnych) na macOS", "M5 (rozgrywka) na macOS",
 "M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS", "M7, część 1
 (bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS", "M7, część 3 (mgła
-i winieta) na macOS" i "M7, część 4 (cienie księżyca) na macOS".
+i winieta) na macOS", "M7, część 4 (cienie księżyca) na macOS" i "M7, część 5 (cień latarki)
+na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -253,7 +256,9 @@ przypadków i 102139 asercji). Po trzeciej części M7 plików było dwadzieści
 cztery: doszły `FogTests.cpp` (11 przypadków) i `VignetteTests.cpp` (7, zgłoszone dla
 Windowsa 294 przypadki i 102412 asercji). Dziś, po czwartej części M7, plików jest
 dwadzieścia pięć: doszedł `ShadowTests.cpp` (16 przypadków). Zgłoszone dla Windowsa liczby
-tego stanu to 310 przypadków i 103751 asercji.
+tego stanu to 310 przypadków i 103751 asercji. Dziś, po piątej części M7, plików jest nadal
+dwadzieścia pięć: `ShadowTests.cpp` ma 31 przypadków, `LightingTests.cpp` 15, a zgłoszone
+dla Windowsa liczby to 329 przypadków i 104306 asercji.
 
 Nad tym raportem program wypisuje kilka linii `[error]`: pochodzą z testów, które celowo
 podają loaderom zły plik, i nie oznaczają nieudanego testu.
@@ -1037,8 +1042,8 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
       i lambda w `std::ranges::any_of` w `Cubemap.cpp`
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
       przechodzą (po pierwszej części M6 było ich 221, po drugiej 256, po pierwszej
-      części M7 zgłoszone 269, po drugiej 276, po trzeciej 294, a dziś, po czwartej,
-      310). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
+      części M7 zgłoszone 269, po drugiej 276, po trzeciej 294, po czwartej 310, a dziś, po
+      piątej, 329). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
       powinny przejść bez zmian, bo to te same bajty z repozytorium
 
 **Shadery i OpenGL**
@@ -1122,7 +1127,7 @@ i przez testy ręczne.
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki przechodzą.
       Po tej części było ich 256 (na Windowsie 101232 asercje), po pierwszej części
       M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412,
-      a dziś, po czwartej, 310 i 103751
+      po czwartej 310 i 103751, a dziś, po piątej, 329 i 104306
 - [ ] **te same wysokości co na Windowsie.** Teren jest liczony na liczbach `float`
       z pliku `heightmap.png`, bez funkcji, których wynik zależy od biblioteki. Po starcie
       panel Camera powinien pokazać `Player feet` z y równym 0.124, a panel Terrain linie
@@ -1240,7 +1245,7 @@ Lista powstała dla programu z pierwszej części. W dzisiejszym programie panel
 Framebuffers ma inny układ i cztery obrazy, podpisy obrazów brzmią `HDR colour` i `Depth`
 (a nie `Colour (HDR, cut off at 1)` i `Depth (as distance)`), kontrolki stoją w zakładce
 `Tone and bloom`, programów jest jedenaście, pasków tytułu u góry są cztery rzędy,
-w scenie są cienie księżyca, a przypadków testowych jest 310: różnice są
+w scenie są cienie księżyca i latarki, a przypadków testowych jest 329: różnice są
 wypisane na początku sekcji 17.2 w [`build-windows.md`](build-windows.md).
 
 **Build i testy**
@@ -1365,7 +1370,7 @@ do 2.15, 4.6 do 4.8, 5.10 i 5.11.
 Lista powstała dla programu z drugiej części. W dzisiejszym programie siedem kontrolek
 bloomu, ekspozycji i podglądu głębi stoi w zakładce `Tone and bloom` panelu Framebuffers
 (obok zakładki `Fog and vignette`), plików testów jest dwadzieścia pięć, a przypadków
-testowych 310 (zgłoszone dla Windowsa 103751 asercji). Kroki o wyglądzie poświaty
+testowych 329 (zgłoszone dla Windowsa 104306 asercji). Kroki o wyglądzie poświaty
 najlepiej wykonać z odznaczonymi polami `Fog` i `Vignette`. Mgła i winieta mają własną
 listę zaraz po tej.
 
@@ -1495,8 +1500,8 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
       `float` w `Fog.cpp`
 - [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
       przechodzą (po tej części 294, zgłoszone dla Windowsa 102412 asercji, z czego 241
-      w `FogTests.cpp` i 32 w `VignetteTests.cpp`. Dziś, po czwartej części, 310
-      i 103751). `FogTests.cpp` porównuje wyniki `std::exp` z wartościami
+      w `FogTests.cpp` i 32 w `VignetteTests.cpp`. Po czwartej części 310
+      i 103751, dziś, po piątej, 329 i 104306). `FogTests.cpp` porównuje wyniki `std::exp` z wartościami
       do czterech miejsc (`0.4966` i `0.5507` z tolerancją 0,001) i pozycję odtworzoną
       z głębi z pozycją wyjściową z tolerancją 0,01, a `VignetteTests.cpp` porównuje
       współczynniki z domyślną tolerancją `doctest::Approx`: zapisać, czy któryś
@@ -1613,7 +1618,8 @@ zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** 
 wynikają z kodu, z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
 [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) i
 [`../modules/gfx/comparison-sampler.md`](../modules/gfx/comparison-sampler.md). M7 jest
-nadal rozpoczęty, nie kompletny: cieni latarki i minimapy nie ma na żadnym systemie.
+nadal rozpoczęty, nie kompletny: cień latarki doszedł w części piątej (lista niżej), a
+minimapy nie ma na żadnym systemie.
 Kolejność sprawdzania wszystkich części na Macu: [`m7-status.md`](m7-status.md).
 
 Ta część używa pierwszy raz czterech rzeczy, których sterownik OpenGL 4.1 firmy Apple w tym
@@ -1663,7 +1669,8 @@ całości.
       stała `constexpr ShadowUniformNames MOON_SHADOW_UNIFORMS` z nazwanymi polami w
       nagłówku, `constexpr glm::vec3` w przestrzeni nazw bez nazwy
 - [ ] `./build/debug/night_maze_tests` i wersja Release: 310 przypadków testowych i 103751
-      asercji, wszystkie przechodzą (liczby zgłoszone na Windowsie). Testy cieni porównują
+      asercji po tej części (po piątej 329 i 104306), wszystkie przechodzą (liczby zgłoszone
+      na Windowsie). Testy cieni porównują
       liczby zmiennoprzecinkowe z tolerancją `doctest::Approx`, z jednym wyjątkiem: `a light
       direction of length zero is replaced by straight down` porównuje dwie macierze znakiem
       `==`. Obie powstają z tych samych liczb tą samą drogą, więc powinny być równe także na
@@ -1701,6 +1708,118 @@ całości.
       cieniu, teren z liniami, widok z góry, `Reload shaders` przy jedenastu programach
       (także z odznaczonym `Shadows`) i próba na pliku `common/shadows.glsl` (na macOS bez
       kroku kopiowania assetów)
+
+### M7, część 5 (cień latarki) na macOS: lista w całości otwarta
+
+Piąta część kamienia milowego M7 (mapa cieni latarki z rzutem perspektywicznym i światło
+latarki przeniesione z oka do ręki: pliki `src/scene/LightSpace.*` (`spotLightSpace`),
+`src/game/Lighting.*` (`flashlightPose`), `src/game/Shadows.*`, `src/game/ShadowMap.*`,
+`src/game/NightMazeApp.*` (`drawFlashlightShadowMap`), `src/debug/panels/ShadowsPanel.*` i
+`LightsPanel.cpp`, shadery `common/shadows.glsl`, `common/lighting.glsl`, `lit.frag`,
+`gouraud.vert`, `gouraud.frag`, `grass.frag` i `post/preview.frag`; **bez** nowego programu
+shaderów i bez nowego panelu) powstała na Windowsie 2026-10-06 i tam jest zgłoszona jako
+zbudowana i przetestowana ([`build-windows.md`](build-windows.md), sekcja 21). **Na macOS
+nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Na
+Windowsie zgłoszono też tylko krótki start programu Debug: nikt nie obejrzał cienia latarki
+na żadnym systemie, a start nie obejmował trybu `Gouraud`, podglądu zakładki `Flashlight`,
+ścieżki z wyłączoną latarką ani `Reload shaders`. Opis kodu:
+[`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (sekcja 2.20) i
+[`../modules/game/flashlight.md`](../modules/game/flashlight.md). M7 jest nadal rozpoczęty,
+nie kompletny: minimapy nie ma na żadnym systemie. Kolejność sprawdzania wszystkich części
+na Macu: [`m7-status.md`](m7-status.md).
+
+Ta część nie używa nowej funkcji OpenGL: powtarza trzy rzeczy z części 4 (framebuffer bez
+koloru, `sampler2DShadow` z obiektem samplera, ramka `GL_CLAMP_TO_BORDER`) w nowym układzie.
+Warto sprawdzić od razu po części 4 (jej lista jest wyżej), a dopiero potem poniższe: błąd
+części 4 zatrzyma też tę część.
+
+**Nowe dla sterownika Apple w tej części**
+
+- [ ] **drugi framebuffer z samą głębią i druga jednostka cieni.** `NightMazeApp` ma teraz
+      dwa obiekty `ShadowMap`: księżyca (jednostka 3, domyślnie 2048 x 2048) i latarki
+      (jednostka 4, domyślnie 1024 x 1024). Oba framebuffery bez koloru i oba samplery z
+      porównaniem muszą istnieć naraz. Oczekiwane: przy starcie żadnej linii `[error]` ze
+      słowami `is not complete`. Zakładka `Flashlight` panelu Shadows pokazuje `Map: 1024 x
+      1024, GL_DEPTH_COMPONENT24` przy zapalonej latarce. Jeśli pokazuje `Map: not drawn` z
+      zapaloną latarką i zaznaczonym `Shadows`, drugi framebuffer się nie udał: zapisać
+      linię z konsoli
+- [ ] **dwa samplery cieni naraz w jednym programie.** `lit`, `gouraud` i `grass` mają teraz
+      `uMoonShadowMap` (jednostka 3) i `uFlashlightShadowMap` (jednostka 4), obok
+      `uTexture` i `uNormalMap` (jednostki 0 i 1). Sterownik Apple bywa surowszy przy
+      sprawdzaniu programów: w buildzie Debug zapisać, czy konsola pokazuje
+      `GL_INVALID_OPERATION` przy rysowaniu. To samo po `Reload shaders` z wyłączonymi
+      cieniami (sampler jest ustawiany zawsze, także przy wyłączonych cieniach)
+- [ ] **próbkowanie z rzutem perspektywicznym.** Shader dzieli `clip.xyz / clip.w` przed
+      porównaniem, a bias przesuwa punkt w przestrzeni świata ku światłu przed rzutowaniem.
+      Oczekiwane: cień latarki obok rzucającego, bez szumu i bez pasów na całej scenie.
+      Objaw błędu: cała plama w cieniu, brak cieni latarki albo szum
+- [ ] **test `w <= 0`.** Punkty za latarką lub obok niej nie mogą dostać współrzędnych
+      lustrzanych. Sprawdzić, patrząc w bok od ściany stojącej tuż za graczem: nie pojawia
+      się cień ani plama z drugiej strony latarki
+- [ ] **zachowanie ramki poza ostrosłupem.** Fragmenty poza mapą (z boku) czytają ramkę o
+      głębi 1 i są oświetlone. Sprawdzić pośrednio: w buildzie Debug brak linii
+      `GL_INVALID_ENUM`. Obraz: żadnych smug od brzegu mapy latarki na ścianach daleko od
+      plamy
+- [ ] **podgląd z linearyzacją.** Obraz w zakładce `Flashlight` jest szary i czytelny
+      (bliskie ciemne, dalekie jasne), a nie prawie cały biały. Podgląd używa trybu
+      `AttachmentPreview::Depth` programu `preview` z płaszczyznami bliską i daleką
+      latarki, a nie `RawDepth`. Jeśli jest cały biały, linearyzacja nie dostała właściwych
+      płaszczyzn. Jeśli czerwony, patrz część 4
+- [ ] **dokładność głębi 24-bitowej przy płaszczyźnie bliskiej 0,05 m.** Mapa ma płaszczyznę
+      bliską 0,05 m i daleką 16 m. Rachunek mówi, że głębia 24-bitowa rozróżnia powierzchnie
+      oddalone o około 0,3 mm na 16 m (policzone, nie zmierzone). Jeśli sterownik Apple daje
+      mniej bitów, na dalekim gruncie pojawia się acne mimo biasu: zapisać odległość, od
+      której
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Miejsca warte uwagi: wyliczenie `LightProjection` w
+      strukturze z domyślnymi wartościami pól i inicjalizacja z nazwami pól
+      (`spotLightSpace`, `flashlightPose`), `constexpr ShadowUniformNames` z polem
+      `lightPosition` równym `nullptr`, struktura referencji `debug::ShadowMapView`
+- [ ] `./build/debug/night_maze_tests` i wersja Release: 329 przypadków testowych i 104306
+      asercji, wszystkie przechodzą (liczby zgłoszone na Windowsie; przed tą częścią 310 i
+      103751). Nowe przypadki porównują wyniki `std::tan`, `std::cos` i macierzy
+      perspektywicznej z tolerancją `doctest::Approx`, część z jawnie podaną tolerancją
+      względną (`epsilon`). Jeden przypadek porównuje dwie macierze znakiem `==` (`the
+      direction of a spot light may have any length, and none means straight down`:
+      `fallback.matrix() == down.matrix()`), obie z tych samych liczb tą samą drogą: zapisać,
+      jeśli na Macu nie są równe
+- [ ] kompilator GLSL Apple przyjmuje zmienione `common/shadows.glsl` (druga funkcja cienia z
+      `uniform vec3 uFlashlightShadowLightPosition` i wczesnymi `return` przed dzieleniem),
+      `common/lighting.glsl` (dwa nowe pola struktury `Lighting` zerowane przed użyciem),
+      `gouraud.vert` (trzy nowe wyjścia), `gouraud.frag` i `post/preview.frag`. Panel Shaders
+      pokazuje jedenaście linii `OK`
+
+**Retina i wydajność**
+
+- [ ] przebieg latarki rysuje scenę drugi raz do mapy 1024 x 1024 (viewport mapy, potem
+      viewport sceny przywracany przez `beginScene`). Na ekranie Retina okno 1280 x 720 ma
+      bufor 2560 x 1440: sprawdzić, że po przebiegu latarki scena nie jest narysowana w
+      rogu ani w połowie okna, a pasek HUD stoi na swoim miejscu
+- [ ] Release, ustawienia startowe, panele ukryte, okno 1280 x 720: zapisać liczbę klatek na
+      sekundę z latarką zgaszoną, z zapaloną i `Shadows` zakładki `Flashlight` odznaczonym,
+      z mapą 1024 i z mapą 2048, każdą wartość dwa razy. Test cienia latarki wykonuje się dla
+      każdego fragmentu (9 odczytów mapy przy jądrze `3 x 3`), więc obok kosztu drugiego
+      przebiegu głębi rośnie koszt fragmentów. PRD wymaga stabilnych 60 klatek w 1440p na
+      MacBooku. Dla Windowsa pomiaru tej części nie ma: nic z niego nie wynika
+- [ ] synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania ekranu:
+      zapisać, czy tak jest
+
+**Wygląd i panel**
+
+- [ ] położenie plamy: 4 m przed graczem w środku ekranu, z bliska w prawo i poniżej środka
+      (ręka 0,20 m w prawo i 0,25 m w dół, `Converge at` 4 m). Wartości startowe są dobrane
+      na Windowsie, bez oglądania obrazu
+- [ ] panel Lights: trzy nowe suwaki `Hand right`, `Hand down` i `Converge at` w grupie
+      `Flashlight (spot)`, panel nadal mieści się na ekranie MacBooka. Panel Shadows z dwiema
+      zakładkami nadal mieści osiem kontrolek, trzy linie faktów i obraz
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 21.2: położenie
+      plamy, cienie latarki i dwa cienie naraz, bias na dalekim gruncie i u podstawy ścian,
+      zasięg i płaszczyzna daleka, patrzenie prawie prosto w górę i w dół, migotanie
+      krawędzi przy ruchu, bateria, światło w ścianie w noclipie, zakładka `Flashlight`,
+      tryb `Gouraud`, `Reload shaders` i pomiar kosztu drugiego przebiegu
 
 ### Skróty: `make`
 
@@ -2097,6 +2216,7 @@ cmake --build --preset debug
   [`../libraries/glad.md`](../libraries/glad.md), [`../libraries/imgui.md`](../libraries/imgui.md),
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
-  [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapa cieni księżyca)
+  [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapy cieni księżyca i latarki),
+  [`../modules/game/flashlight.md`](../modules/game/flashlight.md) (latarka w ręce)
 - Windows: [`build-windows.md`](build-windows.md)
 - Dokumentacja CMake (presety, FetchContent): <https://cmake.org/cmake/help/latest/>

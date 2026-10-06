@@ -52,16 +52,20 @@ uniform float uShininess;
 // differently: diffuse is multiplied by the colour of the surface (the texture), the
 // highlight is added on top and keeps the colour of the light.
 //
-// The share of the moon is ALSO kept on its own. diffuse and specular already contain
-// it. The moon is the light with a shadow map: where a surface lies in its shadow, the
-// caller takes that share away again (see common/shadows.glsl and the main function of
-// lit.frag). Nothing else is ever taken away, so a shadow of the moon never darkens the
-// ambient light, the flashlight, the crystals or a glowing surface.
+// The shares of the moon and of the flashlight are ALSO kept on their own. diffuse and
+// specular already contain them. These are the two lights with a shadow map: where
+// a surface lies in the shadow of one of them, the caller takes the share of THAT light
+// away again (see common/shadows.glsl and the main function of lit.frag). Nothing else
+// is ever taken away, so a shadow of the moon never darkens the flashlight, a shadow of
+// the flashlight never darkens the moon light, and neither darkens the ambient light,
+// the crystals or a glowing surface.
 struct Lighting {
-    vec3 diffuse;      // ambient light plus the Lambert term of every light
-    vec3 specular;     // the highlight of every light
-    vec3 moonDiffuse;  // the part of diffuse that comes from the moon
-    vec3 moonSpecular; // the part of specular that comes from the moon
+    vec3 diffuse;            // ambient light plus the Lambert term of every light
+    vec3 specular;           // the highlight of every light
+    vec3 moonDiffuse;        // the part of diffuse that comes from the moon
+    vec3 moonSpecular;       // the part of specular that comes from the moon
+    vec3 flashlightDiffuse;  // the part of diffuse that comes from the flashlight
+    vec3 flashlightSpecular; // the part of specular that comes from the flashlight
 };
 
 // Lambert: a surface is brightest when it faces the light and gets darker as it turns
@@ -113,6 +117,14 @@ float moonFacing(vec3 normal) {
     return dot(normal, -uDirectionalDirection.xyz);
 }
 
+// The same for the flashlight: the cosine of the angle between the normal (length 1) of
+// the surface at position and the direction from there to the flashlight. The moon is
+// in the same direction from everywhere. The flashlight is a point, so the direction to
+// it depends on where the surface is.
+float flashlightFacing(vec3 normal, vec3 position) {
+    return dot(normal, normalize(uSpotPosition.xyz - position));
+}
+
 // Adds one light to the result. radiance is the colour of the light as it arrives at the
 // point: its colour times its intensity, already made weaker by distance and by the cone.
 void addLight(inout Lighting lighting, vec3 normal, vec3 toLight, vec3 toEye, vec3 radiance) {
@@ -124,8 +136,8 @@ void addLight(inout Lighting lighting, vec3 normal, vec3 toLight, vec3 toEye, ve
 // has length 1. lit.frag and grass.frag call this per fragment, gouraud.vert per vertex:
 // the same function, and the lit and the gouraud program differ only in where it runs.
 // This function knows nothing about shadows: it computes every light as if nothing stood
-// in its way. The shadow of the moon is applied by the caller, with the two moon fields
-// of the result.
+// in its way. The shadows of the moon and of the flashlight are applied by the caller,
+// with the two moon fields and the two flashlight fields of the result.
 Lighting computeLighting(vec3 position, vec3 normal) {
     vec3 toEye = normalize(uCameraPosition.xyz - position);
 
@@ -157,7 +169,12 @@ Lighting computeLighting(vec3 position, vec3 normal) {
         addLight(lighting, normal, offset / lightDistance, toEye, radiance);
     }
 
-    // The flashlight, a spot light: a point light that only shines into a cone.
+    // The flashlight, a spot light: a point light that only shines into a cone. Its two
+    // terms are kept like the ones of the moon. They are set to nothing first: a field
+    // of a struct that was never written holds an undefined value, and the flashlight
+    // may be switched off.
+    lighting.flashlightDiffuse = vec3(0.0);
+    lighting.flashlightSpecular = vec3(0.0);
     if (uSpotCone.z > 0.5) {
         vec3 offset = uSpotPosition.xyz - position;
         float lightDistance = length(offset);
@@ -173,7 +190,11 @@ Lighting computeLighting(vec3 position, vec3 normal) {
 
         vec3 radiance = uSpotColor.rgb * uSpotColor.a * cone *
                         attenuationFactor(uSpotAttenuation, lightDistance);
-        addLight(lighting, normal, toLight, toEye, radiance);
+        // What addLight does, with the two terms kept, as for the moon.
+        lighting.flashlightDiffuse = radiance * diffuseFactor(normal, toLight);
+        lighting.flashlightSpecular = radiance * specularFactor(normal, toLight, toEye);
+        lighting.diffuse += lighting.flashlightDiffuse;
+        lighting.specular += lighting.flashlightSpecular;
     }
 
     return lighting;

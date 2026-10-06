@@ -1,13 +1,17 @@
 // Tests of the parts of the shadows that need no OpenGL context: the light space of the
-// moon (the box its shadow map covers), the bias and the small helpers of the settings.
+// moon (the box its shadow map covers) and of the flashlight (a pyramid), the bias and
+// the small helpers of the settings.
 // See docs/modules/renderer/shadows.md
 #include "game/Shadows.hpp"
 
 #include "game/Lighting.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/Player.hpp"
 #include "game/Terrain.hpp"
+#include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
+#include "scene/Light.hpp"
 #include "scene/LightSpace.hpp"
 
 #include <doctest/doctest.h>
@@ -34,6 +38,12 @@ std::array<glm::vec3, 8> cornersOf(const scene::Aabb& box) {
         glm::vec3{box.min.x, box.max.y, box.max.z}, glm::vec3{box.max.x, box.max.y, box.max.z},
     };
 }
+
+// A spot light for the tests of the perspective light space: it does not stand at the
+// origin, and it has the cone and the reach of the flashlight of the game.
+constexpr glm::vec3 SPOT_POSITION{3.0F, 1.45F, -7.0F};
+constexpr float SPOT_OUTER_DEGREES = 21.0F;
+constexpr float SPOT_RANGE = 16.0F;
 
 // The direction the light of the moon travels in with the default settings.
 glm::vec3 defaultMoonDirection() {
@@ -305,11 +315,365 @@ TEST_CASE("the moon direction of the settings is the one the lights are built wi
     game::LightingSettings settings;
     settings.moonYawDegrees = 140.0F;
     settings.moonPitchDegrees = -30.0F;
-    const scene::LightSet lights =
-        game::buildLightSet(settings, glm::vec3{0.0F}, glm::vec3{0.0F, 0.0F, -1.0F}, {});
+    const scene::LightSet lights = game::buildLightSet(settings, game::FlashlightPose{}, {});
     const glm::vec3 direction = game::moonDirection(settings);
     CHECK(glm::length(direction) == doctest::Approx(1.0F));
     CHECK(lights.directional.direction.x == doctest::Approx(direction.x));
     CHECK(lights.directional.direction.y == doctest::Approx(direction.y));
     CHECK(lights.directional.direction.z == doctest::Approx(direction.z));
+}
+
+TEST_CASE("the light space of a directional light is an orthographic box without a position") {
+    const scene::LightSpace lightSpace =
+        scene::directionalLightSpace(TEST_BOUNDS, defaultMoonDirection());
+    CHECK(lightSpace.kind == scene::LightProjection::Orthographic);
+    CHECK(lightSpace.position == glm::vec3{0.0F});
+    CHECK(lightSpace.nearPlane == 0.0F);
+    CHECK(lightSpace.farPlane == 0.0F);
+}
+
+TEST_CASE("a point on the axis of a spot light lands in the middle of its shadow map") {
+    const glm::vec3 direction = glm::normalize(glm::vec3{1.0F, -0.2F, 0.5F});
+    const scene::LightSpace lightSpace =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+
+    for (const float distance : {0.5F, 2.0F, 8.0F, 15.0F}) {
+        const glm::vec3 coordinates =
+            scene::shadowMapCoordinates(lightSpace.matrix(), SPOT_POSITION + direction * distance);
+        CHECK(coordinates.x == doctest::Approx(0.5F));
+        CHECK(coordinates.y == doctest::Approx(0.5F));
+        // Between the near and the far plane.
+        CHECK(coordinates.z > 0.0F);
+        CHECK(coordinates.z < 1.0F);
+    }
+}
+
+TEST_CASE("the whole cone of a spot light is inside its shadow map, with a margin") {
+    const glm::vec3 direction = glm::normalize(glm::vec3{1.0F, -0.2F, 0.5F});
+    const scene::LightSpace lightSpace =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+
+    // Two directions across the axis, to walk around the side of the cone with.
+    const glm::vec3 across = glm::normalize(glm::cross(direction, glm::vec3{0.0F, 1.0F, 0.0F}));
+    const glm::vec3 upwards = glm::cross(across, direction);
+    const float outer = glm::radians(SPOT_OUTER_DEGREES);
+
+    // The map looks 21 + 2 degrees to every side. A ray on the side of the cone is 21
+    // degrees from the axis, so its distance from the middle of the map is
+    // tan(21) / tan(23) of the half width of the map: 0.452 of the 0.5.
+    const float expected =
+        0.5F * std::tan(outer) /
+        std::tan(glm::radians(SPOT_OUTER_DEGREES + scene::SPOT_CONE_MARGIN_DEGREES));
+    CHECK(expected == doctest::Approx(0.452F).epsilon(0.005));
+
+    for (const float turn : {0.0F, 45.0F, 90.0F, 135.0F, 180.0F, 225.0F, 270.0F, 315.0F}) {
+        const float angle = glm::radians(turn);
+        const glm::vec3 sideways = across * std::cos(angle) + upwards * std::sin(angle);
+        const glm::vec3 ray = direction * std::cos(outer) + sideways * std::sin(outer);
+        for (const float distance : {1.0F, 6.0F, 15.0F}) {
+            const glm::vec3 coordinates =
+                scene::shadowMapCoordinates(lightSpace.matrix(), SPOT_POSITION + ray * distance);
+            // The same place in the map at every distance: the rays of a spot light
+            // spread out exactly as its map does.
+            const float fromMiddle =
+                glm::length(glm::vec2{coordinates.x, coordinates.y} - glm::vec2{0.5F});
+            CHECK(fromMiddle == doctest::Approx(expected).epsilon(0.001));
+            CHECK(coordinates.x > 0.0F);
+            CHECK(coordinates.x < 1.0F);
+            CHECK(coordinates.y > 0.0F);
+            CHECK(coordinates.y < 1.0F);
+        }
+    }
+}
+
+TEST_CASE("the depth of a spot light map runs from its near to its far plane, unevenly") {
+    const glm::vec3 direction{0.0F, 0.0F, -1.0F};
+    const scene::LightSpace lightSpace =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+    CHECK(lightSpace.nearPlane == scene::SPOT_NEAR_PLANE);
+    CHECK(lightSpace.farPlane == SPOT_RANGE);
+
+    const glm::vec3 atNear = scene::shadowMapCoordinates(
+        lightSpace.matrix(), SPOT_POSITION + direction * scene::SPOT_NEAR_PLANE);
+    const glm::vec3 atFar =
+        scene::shadowMapCoordinates(lightSpace.matrix(), SPOT_POSITION + direction * SPOT_RANGE);
+    // The depth changes fastest right at the near plane, so a rounding error in the
+    // place of the point shows there: hence the wider tolerance.
+    CHECK(atNear.z == doctest::Approx(0.0F).epsilon(0.001));
+    CHECK(atFar.z == doctest::Approx(1.0F));
+
+    // Half way to the far plane the stored depth is not 0.5 at all: almost the whole
+    // range is used up within the first metre. This is why a bias cannot be a number
+    // of depth units here, and why the preview picture needs a conversion.
+    const glm::vec3 halfWay = scene::shadowMapCoordinates(
+        lightSpace.matrix(), SPOT_POSITION + direction * (SPOT_RANGE * 0.5F));
+    CHECK(halfWay.z > 0.99F);
+    const glm::vec3 oneMetre =
+        scene::shadowMapCoordinates(lightSpace.matrix(), SPOT_POSITION + direction);
+    CHECK(oneMetre.z > 0.95F);
+
+    // Past the far plane and to the side of the pyramid: outside the map.
+    const glm::vec3 beyond = scene::shadowMapCoordinates(
+        lightSpace.matrix(), SPOT_POSITION + direction * (SPOT_RANGE + 5.0F));
+    CHECK(beyond.z > 1.0F);
+    const glm::vec3 aside = scene::shadowMapCoordinates(
+        lightSpace.matrix(), SPOT_POSITION + direction * 4.0F + glm::vec3{4.0F, 0.0F, 0.0F});
+    CHECK(aside.x > 1.0F);
+}
+
+TEST_CASE("the light space of a spot light keeps its position, its planes and its size") {
+    const glm::vec3 direction{0.0F, 0.0F, -1.0F};
+    const scene::LightSpace lightSpace =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+
+    CHECK(lightSpace.kind == scene::LightProjection::Perspective);
+    CHECK(lightSpace.position == SPOT_POSITION);
+    // At the far plane, 16 m away, a map that opens 2 * 23 degrees covers
+    // 2 * 16 * tan(23) = 13.58 m in each direction.
+    CHECK(lightSpace.extent.x == doctest::Approx(13.58F).epsilon(0.001));
+    CHECK(lightSpace.extent.y == doctest::Approx(lightSpace.extent.x));
+    CHECK(lightSpace.extent.z == doctest::Approx(SPOT_RANGE - scene::SPOT_NEAR_PLANE));
+
+    // The corner of that square at the far plane is the corner of the map.
+    const float half = lightSpace.extent.x * 0.5F;
+    const glm::vec3 corner = SPOT_POSITION + direction * SPOT_RANGE + glm::vec3{half, half, 0.0F};
+    const glm::vec3 coordinates = scene::shadowMapCoordinates(lightSpace.matrix(), corner);
+    CHECK(coordinates.x == doctest::Approx(1.0F));
+    CHECK(coordinates.y == doctest::Approx(1.0F));
+}
+
+TEST_CASE("a spot light that points straight up or down still gets a usable matrix") {
+    // The player can look almost straight up and down (scene::Camera::MAX_PITCH_DEGREES),
+    // and the flashlight follows the view.
+    for (const float pitch : {-90.0F, -89.0F, -87.5F, -87.0F, -60.0F, 0.0F, 87.0F, 89.0F, 90.0F}) {
+        const glm::vec3 direction = scene::directionFromAngles(140.0F, pitch);
+        const scene::LightSpace lightSpace =
+            scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+        // lookAt with an up vector parallel to the view direction would divide by zero.
+        CHECK(isFinite(lightSpace.matrix()));
+        const glm::vec3 coordinates =
+            scene::shadowMapCoordinates(lightSpace.matrix(), SPOT_POSITION + direction * 3.0F);
+        CHECK(coordinates.x == doctest::Approx(0.5F));
+        CHECK(coordinates.y == doctest::Approx(0.5F));
+    }
+}
+
+TEST_CASE("the direction of a spot light may have any length, and none means straight down") {
+    const glm::vec3 direction = glm::normalize(glm::vec3{1.0F, -0.2F, 0.5F});
+    const scene::LightSpace unit =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+    const scene::LightSpace longer =
+        scene::spotLightSpace(SPOT_POSITION, direction * 25.0F, SPOT_OUTER_DEGREES, SPOT_RANGE);
+    const glm::vec3 point = SPOT_POSITION + glm::vec3{3.0F, -1.0F, 1.0F};
+    const glm::vec3 a = scene::shadowMapCoordinates(unit.matrix(), point);
+    const glm::vec3 b = scene::shadowMapCoordinates(longer.matrix(), point);
+    CHECK(a.x == doctest::Approx(b.x));
+    CHECK(a.y == doctest::Approx(b.y));
+    CHECK(a.z == doctest::Approx(b.z));
+
+    const scene::LightSpace fallback =
+        scene::spotLightSpace(SPOT_POSITION, glm::vec3{0.0F}, SPOT_OUTER_DEGREES, SPOT_RANGE);
+    const scene::LightSpace down = scene::spotLightSpace(
+        SPOT_POSITION, glm::vec3{0.0F, -1.0F, 0.0F}, SPOT_OUTER_DEGREES, SPOT_RANGE);
+    CHECK(isFinite(fallback.matrix()));
+    CHECK(fallback.matrix() == down.matrix());
+}
+
+TEST_CASE("a spot light with a cone or a range out of bounds still gets a usable matrix") {
+    const glm::vec3 direction{0.0F, 0.0F, -1.0F};
+
+    // A cone of 120 degrees to each side would be a map that opens 244 degrees. The
+    // opening angle stops at its largest value.
+    const scene::LightSpace wide = scene::spotLightSpace(SPOT_POSITION, direction, 120.0F, 10.0F);
+    CHECK(isFinite(wide.matrix()));
+    const float widest =
+        2.0F * 10.0F * std::tan(glm::radians(scene::MAX_SPOT_FIELD_OF_VIEW_DEGREES * 0.5F));
+    CHECK(wide.extent.x == doctest::Approx(widest));
+
+    // A cone without any width: the smallest opening angle.
+    const scene::LightSpace thin = scene::spotLightSpace(SPOT_POSITION, direction, -30.0F, 10.0F);
+    CHECK(isFinite(thin.matrix()));
+    CHECK(thin.extent.x > 0.0F);
+
+    // A range of 0 would put the far plane on the light, before the near plane.
+    const scene::LightSpace noRange =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, 0.0F);
+    CHECK(isFinite(noRange.matrix()));
+    CHECK(noRange.farPlane > noRange.nearPlane);
+}
+
+TEST_CASE("moving a point towards a spot light keeps its texel and lowers its depth") {
+    // This is the bias of the flashlight in common/shadows.glsl: the fragment is moved
+    // some centimetres along the straight line to the light before it is looked up.
+    const glm::vec3 direction = glm::normalize(glm::vec3{1.0F, -0.2F, 0.5F});
+    const scene::LightSpace lightSpace =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+
+    // A point off the axis, 6 m from the light.
+    const glm::vec3 point = SPOT_POSITION + direction * 5.8F + glm::vec3{0.0F, 1.5F, 0.0F};
+    const glm::vec3 toLight = glm::normalize(SPOT_POSITION - point);
+    const float bias = 0.1F;
+
+    const glm::vec3 plain = scene::shadowMapCoordinates(lightSpace.matrix(), point);
+    const glm::vec3 biased =
+        scene::shadowMapCoordinates(lightSpace.matrix(), point + toLight * bias);
+
+    CHECK(biased.x == doctest::Approx(plain.x));
+    CHECK(biased.y == doctest::Approx(plain.y));
+    CHECK(biased.z < plain.z);
+}
+
+TEST_CASE("a point behind a spot light has no place in its shadow map") {
+    const glm::vec3 direction{0.0F, 0.0F, -1.0F};
+    const scene::LightSpace lightSpace =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+
+    // w of the clip position is the distance in front of the light. Behind the light
+    // it is negative: the shader tests for that and does not divide by it.
+    const glm::vec4 inFront =
+        lightSpace.matrix() * glm::vec4{SPOT_POSITION + direction * 3.0F, 1.0F};
+    const glm::vec4 behind =
+        lightSpace.matrix() * glm::vec4{SPOT_POSITION - direction * 3.0F, 1.0F};
+    CHECK(inFront.w == doctest::Approx(3.0F));
+    CHECK(behind.w == doctest::Approx(-3.0F));
+}
+
+TEST_CASE("the flashlight and its shadow map stand in the same place and look the same way") {
+    const game::LightingSettings settings;
+    scene::Camera camera;
+    camera.yawDegrees = 70.0F;
+    camera.pitchDegrees = -20.0F;
+    const glm::vec3 eye{3.0F, 1.7F, 5.0F};
+
+    // One pose, used twice, as in NightMazeApp::onRender.
+    const game::FlashlightPose pose =
+        game::flashlightPose(settings, eye, camera.forward(), camera.right());
+    const scene::LightSet lights = game::buildLightSet(settings, pose, {});
+    const scene::LightSpace lightSpace = scene::spotLightSpace(
+        pose.position, pose.direction, settings.flashlightOuterDegrees, settings.flashlightRange);
+
+    CHECK(lightSpace.position == lights.spot.position);
+    CHECK(lightSpace.farPlane == settings.flashlightRange);
+    // A point on the axis of the cone of light is in the middle of the map.
+    const glm::vec3 onAxis = lights.spot.position + lights.spot.direction * 5.0F;
+    const glm::vec3 coordinates = scene::shadowMapCoordinates(lightSpace.matrix(), onAxis);
+    CHECK(coordinates.x == doctest::Approx(0.5F));
+    CHECK(coordinates.y == doctest::Approx(0.5F));
+}
+
+TEST_CASE("a bias goes to the shaders as depth for a box and as metres for a pyramid") {
+    // The moon: a share of the depth range of its box.
+    const scene::LightSpace box = scene::directionalLightSpace(TEST_BOUNDS, defaultMoonDirection());
+    CHECK(game::biasForShader(0.05F, box) ==
+          doctest::Approx(game::biasInDepthUnits(0.05F, box.extent.z)));
+    CHECK(game::biasForShader(0.05F, box) == doctest::Approx(0.05F / box.extent.z));
+
+    // The flashlight: the metres themselves, whatever its range is.
+    const glm::vec3 direction{0.0F, 0.0F, -1.0F};
+    for (const float range : {2.0F, 16.0F, 60.0F}) {
+        const scene::LightSpace pyramid =
+            scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, range);
+        CHECK(game::biasForShader(0.05F, pyramid) == 0.05F);
+        CHECK(game::biasForShader(0.0F, pyramid) == 0.0F);
+    }
+}
+
+TEST_CASE("the texels of a spot light map grow with the distance from the light") {
+    const glm::vec3 direction{0.0F, 0.0F, -1.0F};
+    const scene::LightSpace pyramid =
+        scene::spotLightSpace(SPOT_POSITION, direction, SPOT_OUTER_DEGREES, SPOT_RANGE);
+    const int mapSize = game::SHADOW_MAP_SIZE_LOW;
+
+    // The sizes are compared in millimetres: the numbers are then large enough for the
+    // tolerance of the comparison to mean something.
+    const float millimetres = 1000.0F;
+
+    // At the far plane: the size shadowTexelSize gives, 13.58 m over 1024 texels.
+    const float atFarPlane = game::shadowTexelSizeAt(pyramid, mapSize, SPOT_RANGE);
+    CHECK(atFarPlane == game::shadowTexelSize(pyramid, mapSize));
+    CHECK(atFarPlane * millimetres == doctest::Approx(13.265F).epsilon(0.001));
+    // In proportion to the distance: 0.83 mm for every metre, 3.3 mm on a wall 4 m
+    // away. A texel of the moon has 32 mm.
+    CHECK(game::shadowTexelSizeAt(pyramid, mapSize, 8.0F) * millimetres ==
+          doctest::Approx(atFarPlane * 0.5F * millimetres));
+    CHECK(game::shadowTexelSizeAt(pyramid, mapSize, 1.0F) * millimetres ==
+          doctest::Approx(0.829F).epsilon(0.001));
+    CHECK(game::shadowTexelSizeAt(pyramid, mapSize, 4.0F) * millimetres ==
+          doctest::Approx(3.316F).epsilon(0.001));
+    CHECK(game::shadowTexelSizeAt(pyramid, mapSize, 0.0F) == doctest::Approx(0.0F));
+    CHECK(game::shadowTexelSizeAt(pyramid, mapSize, -2.0F) == doctest::Approx(0.0F));
+    // A map without texels has no texel size.
+    CHECK(game::shadowTexelSizeAt(pyramid, 0, 4.0F) == doctest::Approx(0.0F));
+
+    // In the box of a directional light a texel has one size everywhere.
+    const scene::LightSpace box = scene::directionalLightSpace(TEST_BOUNDS, defaultMoonDirection());
+    CHECK(game::shadowTexelSizeAt(box, mapSize, 1.0F) ==
+          doctest::Approx(game::shadowTexelSize(box, mapSize)));
+    CHECK(game::shadowTexelSizeAt(box, mapSize, 30.0F) ==
+          doctest::Approx(game::shadowTexelSize(box, mapSize)));
+}
+
+TEST_CASE("the shadows of the flashlight start with the small map and a bias of their own") {
+    const game::ShadowSettings settings = game::flashlightShadowDefaults();
+    CHECK(settings.enabled);
+    CHECK(settings.resolution == game::ShadowResolution::Low);
+    CHECK(settings.constantBias == game::FLASHLIGHT_SHADOW_CONSTANT_BIAS);
+    CHECK(settings.slopeBias == game::FLASHLIGHT_SHADOW_SLOPE_BIAS);
+    // Everything else as for the moon.
+    const game::ShadowSettings moon;
+    CHECK(settings.hardwareFilter == moon.hardwareFilter);
+    CHECK(settings.pcf == moon.pcf);
+    CHECK(settings.pcfRadius == moon.pcfRadius);
+    CHECK(settings.strength == moon.strength);
+
+    // The largest bias a surface can get is below the thickness of a wall, so a shadow
+    // does not come loose from the wall that casts it.
+    CHECK(game::shadowBias(settings.constantBias, settings.slopeBias, 0.0F) <
+          game::WALL_VISUAL_THICKNESS);
+}
+
+TEST_CASE("the default bias of the flashlight covers the ground up to 10 m ahead") {
+    const game::LightingSettings lighting;
+    const game::ShadowSettings settings = game::flashlightShadowDefaults();
+    const int mapSize = game::shadowMapSize(settings.resolution);
+
+    // The flashlight of a player who stands on level ground: in the hand, this high.
+    const float height = game::Player::EYE_HEIGHT - lighting.flashlightHandDown;
+    CHECK(height == doctest::Approx(1.45F));
+    const scene::LightSpace lightSpace =
+        scene::spotLightSpace({0.0F, height, 0.0F}, {0.0F, 0.0F, -1.0F},
+                              lighting.flashlightOuterDegrees, lighting.flashlightRange);
+
+    // The kernel of 3 x 3 with the hardware filter compares texels up to 2 away from
+    // the fragment.
+    const float texelReach = 2.0F;
+
+    for (const float ahead : {1.0F, 2.0F, 4.0F, 6.0F, 8.0F, 10.0F}) {
+        // A point of the ground this far ahead. The light, the point below the light
+        // and that point make a right triangle.
+        const float distance = std::sqrt(ahead * ahead + height * height);
+        // The light meets the ground at a flat angle: the cosine between the normal of
+        // the ground (straight up) and the way to the light.
+        const float facing = height / distance;
+        // One texel further along the ground is this much farther from the light: the
+        // size of the texel times the tangent of the angle between the normal and the
+        // way to the light.
+        const float tangent = ahead / height;
+        const float error =
+            texelReach * game::shadowTexelSizeAt(lightSpace, mapSize, distance) * tangent;
+
+        const float bias = game::shadowBias(settings.constantBias, settings.slopeBias, facing);
+        CHECK(bias > error);
+    }
+
+    // The numbers of the comment in Shadows.hpp, 10 m ahead, in centimetres: 11.6 cm
+    // are needed and the bias is 12.1 cm.
+    const float centimetres = 100.0F;
+    const float distance = std::sqrt(10.0F * 10.0F + height * height);
+    const float error =
+        texelReach * game::shadowTexelSizeAt(lightSpace, mapSize, distance) * (10.0F / height);
+    const float bias =
+        game::shadowBias(settings.constantBias, settings.slopeBias, height / distance);
+    CHECK(error * centimetres == doctest::Approx(11.6F).epsilon(0.005));
+    CHECK(bias * centimetres == doctest::Approx(12.1F).epsilon(0.005));
 }

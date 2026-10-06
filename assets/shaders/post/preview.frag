@@ -17,12 +17,14 @@ uniform sampler2D uSource;
 
 // What uSource is. The numbers are the values of game::AttachmentPreview in C++.
 //   0: HDR colour
-//   1: depth of a perspective view (the scene), shown as a distance
+//   1: depth of a perspective view (the scene, the shadow map of the flashlight), shown
+//      as a distance
 //   2: depth as it is stored (the shadow map of the moon)
 uniform int uMode;
 
-// For the depth: the clipping planes of the camera and the distance in metres that is
-// shown as white.
+// For the depth of mode 1: the clipping planes of the view it was drawn with (the
+// camera for the scene, the flashlight for its shadow map) and the distance in metres
+// that is shown as white.
 uniform float uNear;
 uniform float uFar;
 uniform float uDepthRange;
@@ -36,7 +38,9 @@ void main() {
         // farther than a few metres is above 0.95 (see linearDepth). So it is turned
         // back into metres and shown from black (at the camera) to white (uDepthRange
         // metres away or more). The sky, at the far plane, is white. The grey is
-        // written as it is: it is a measure, not light, so it is not encoded.
+        // written as it is: it is a measure, not light, so it is not encoded. The
+        // shadow map of the flashlight is shown the same way, with the flashlight in
+        // the place of the camera and its reach as the distance that is white.
         float metres = linearDepth(texture(uSource, vUv).r, uNear, uFar);
         fragColor = vec4(vec3(clamp(metres / uDepthRange, 0.0, 1.0)), 1.0);
     } else if (uMode == 2) {

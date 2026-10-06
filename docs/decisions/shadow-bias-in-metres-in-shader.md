@@ -34,12 +34,12 @@ Bias jest liczony **tylko w shaderze sceny**, wzorem `constantBias + slopeBias *
 - Bias nie rośnie z rozmiarem teksela ani z jądrem PCF. Z rachunku wynika, że jądra `5 x 5` i `7 x 7` przy mapie 2048 oraz każde jądro przy mapie 1024 sięgają na gruncie dalej, niż pokrywa bias startowy (4,8 cm), więc oświetlony grunt może być wtedy lekko przyciemniony. To jest **policzone, nie zaobserwowane**, i stoi na liście testów ręcznych. Jeśli się potwierdzi, poprawką jest pomnożenie biasu przez rozmiar teksela i promień jądra, a nie zmiana tej decyzji.
 - Zbocza odwrócone od księżyca prawie stycznie mogą pokazywać acne mimo biasu. Ich udział światła księżyca jest wtedy bliski zeru, więc błąd jest słabo widoczny.
 - Wzór jest w dwóch miejscach (GLSL i C++), a testy pilnują tylko strony C++.
-- Przeliczenie przez głębię pudełka nie zadziała dla rzutu perspektywicznego (planowana mapa latarki): tam głębia nie jest liniowa.
+- Przeliczenie przez głębię pudełka nie zadziała dla rzutu perspektywicznego (mapa latarki): tam głębia nie jest liniowa. **Dopisek z 2026-10-06 (M7, część piąta):** mapa latarki ma osobny sposób: bias zostaje w metrach i przesuwa punkt w przestrzeni świata ([`flashlight-shadow-bias-in-world-space.md`](flashlight-shadow-bias-in-world-space.md)). Decyzja z tej notatki dotyczy dalej księżyca.
 
 **Co jest zgłoszone z działającej gry (Windows, 2026-10-05).** Przy samych suwakach biasu na 0 acne wygląda jak ogólne przyciemnienie, a wyraźne prążki pojawiają się po wyłączeniu także PCF i filtra sprzętowego. Przy biasie 0,5 m widać światło przeciekające na ścianach.
 
 ## 5. Kiedy wrócić do tej decyzji
 
 - Gdy test ręczny potwierdzi przyciemnienie przy dużym jądrze albo małej mapie.
-- Gdy powstanie mapa cieni latarki: potrzebne będzie inne przeliczenie na jednostki głębi.
+- Gdy powstanie mapa cieni latarki: potrzebne będzie inne przeliczenie na jednostki głębi. **Powstała (2026-10-06):** `game::biasForShader` wybiera przeliczenie według rodzaju rzutu.
 - Gdy gra dostanie cienkie rzucające (cieńsze niż bias startowy 0,14 m w najgorszym przypadku).

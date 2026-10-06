@@ -1,5 +1,6 @@
-// Shadow mapping shared by lit.frag, gouraud.frag and grass.frag: the shadow map of the
-// moon and the functions that tell how much of the moon light a point loses.
+// Shadow mapping shared by lit.frag, gouraud.frag and grass.frag: the shadow maps of the
+// moon and of the flashlight, and the functions that tell how much of the light of each
+// a point loses.
 // This file is not a shader of its own. It has no #version line: the shader loader puts
 // its text in place of the line  #include "common/shadows.glsl"  (gfx/ShaderSource.hpp).
 // See docs/modules/renderer/shadows.md
@@ -18,6 +19,8 @@ const int MAX_PCF_RADIUS = 3;
 // The shadow map of the moon, plain uniforms set from C++ for each program
 // (game::setShadowUniforms). A sampler cannot be a member of a uniform block, so the
 // numbers that belong to the map stay next to it instead of joining the light block.
+// The moon has the texture unit 3 and the flashlight the unit 4
+// (game/ShaderUniforms.hpp).
 //
 // sampler2DShadow: a depth texture that is read WITH A COMPARISON. texture() takes
 // three numbers, the texture coordinate and a depth, and returns 1 where that depth is
@@ -40,6 +43,22 @@ uniform float uMoonShadowSlopeBias;
 uniform int uMoonShadowPcfRadius;
 // The share of the moon light a shadow takes away: 1 leaves none of it, 0 all of it.
 uniform float uMoonShadowStrength;
+
+// The shadow map of the flashlight: the same set once more, with two differences. Its
+// matrix holds a PERSPECTIVE projection (the light shines from one point), and the two
+// parts of its bias are in METRES, not in stored depths: see flashlightShadow.
+uniform sampler2DShadow uFlashlightShadowMap;
+uniform mat4 uFlashlightShadowMatrix;
+uniform bool uFlashlightShadowEnabled;
+uniform float uFlashlightShadowConstantBias;
+uniform float uFlashlightShadowSlopeBias;
+uniform int uFlashlightShadowPcfRadius;
+uniform float uFlashlightShadowStrength;
+// Where the flashlight stands in world space: the place the shadow map was drawn from.
+// It is the same point as uSpotPosition of the light block (C++ sets both from one
+// result, game::flashlightPose). It is a uniform of its own because this file is also
+// included by gouraud.frag, which does not have the light block.
+uniform vec3 uFlashlightShadowLightPosition;
 
 // The bias of a surface: how much nearer to the light it is taken to be in the
 // comparison. A texel of the shadow map covers a small patch of a surface and stores
@@ -117,4 +136,56 @@ float moonShadow(vec3 worldPosition, float facing) {
 
     float visibility = shadowMapVisibility(uMoonShadowMap, coordinates, uMoonShadowPcfRadius);
     return uMoonShadowStrength * (1.0 - visibility);
+}
+
+// The share of the light of the flashlight that does NOT reach a point, because
+// something stands between it and the flashlight: 0 outside every shadow,
+// uFlashlightShadowStrength in the middle of one. The caller takes that share of the
+// flashlight light away (see lit.frag).
+// worldPosition: the point in world space. facing: how much its surface faces the
+// flashlight (flashlightFacing in common/lighting.glsl).
+float flashlightShadow(vec3 worldPosition, float facing) {
+    if (!uFlashlightShadowEnabled) {
+        return 0.0;
+    }
+
+    // The bias comes FIRST here, and in metres: the point is moved that far along the
+    // straight line towards the flashlight, and the moved point is looked up in the
+    // map. It stays on the same ray of the light, so it lands in the same texel, only
+    // nearer to the light.
+    //
+    // Why not like the moon, by taking a number away from the depth: the projection of
+    // the moon is orthographic and its stored depth grows evenly, so a metre is the
+    // same step of depth everywhere. A perspective projection stores a depth that
+    // changes fast near the light and hardly at all far from it (see linearDepth in
+    // common/depth.glsl). One number taken from that depth would be centimetres next
+    // to the flashlight and metres at the end of its beam. Moving the point in world
+    // space, before the projection, is a bias of the same length everywhere.
+    vec3 toLight = uFlashlightShadowLightPosition - worldPosition;
+    float lightDistance = length(toLight);
+    float bias = slopeScaledBias(uFlashlightShadowConstantBias, uFlashlightShadowSlopeBias, facing);
+    // A point nearer to the flashlight than the bias would be moved past it. Nothing
+    // can stand between the light and a point that close.
+    if (lightDistance <= bias) {
+        return 0.0;
+    }
+    vec3 biasedPosition = worldPosition + toLight / lightDistance * bias;
+
+    // The matrix gives clip space. With a perspective projection w is the distance of
+    // the point in front of the light, measured along the axis of its cone. At 0 or
+    // below, the point is beside the light or behind it: the division would mirror it
+    // into the map. Such a point is outside the cone and gets no light of the
+    // flashlight anyway, so there is nothing a shadow could take away.
+    vec4 clip = uFlashlightShadowMatrix * vec4(biasedPosition, 1.0);
+    if (clip.w <= 0.0) {
+        return 0.0;
+    }
+
+    // The perspective division, which really changes something here, and the step from
+    // the range -1..1 to the range 0..1, as for the moon.
+    vec3 coordinates = clip.xyz / clip.w * 0.5 + 0.5;
+
+    float visibility =
+        shadowMapVisibility(uFlashlightShadowMap, coordinates, uFlashlightShadowPcfRadius);
+    return uFlashlightShadowStrength * (1.0 - visibility);
 }

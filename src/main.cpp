@@ -66,6 +66,10 @@ protected:
             .moonShadowSettings = moonShadowSettings(),
             .moonShadowMap = moonShadowMap(),
             .moonLightSpace = moonLightSpace(),
+            .flashlightShadowSettings = flashlightShadowSettings(),
+            .flashlightShadowMap = flashlightShadowMap(),
+            .flashlightLightSpace = flashlightLightSpace(),
+            .flashlightShadowDrawn = flashlightShadowDrawn(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

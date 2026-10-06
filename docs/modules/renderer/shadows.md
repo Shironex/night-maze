@@ -1,33 +1,38 @@
-# Moduł renderer: cienie, mapa cieni księżyca
+# Moduł renderer: cienie, mapy cieni księżyca i latarki
 
-Kamień milowy: M7, część czwarta (cienie księżyca). Cień latarki, czyli część piąta, **nie jest zbudowany** (sekcja 2.20). Temat wykładu: 11 (Shadow mapping), **w trakcie**.
-Kod: przestrzeń światła [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp) i [`LightSpace.cpp`](../../../src/scene/LightSpace.cpp), ustawienia i matematyka bez OpenGL [`src/game/Shadows.hpp`](../../../src/game/Shadows.hpp) i [`Shadows.cpp`](../../../src/game/Shadows.cpp), klasa mapy cieni [`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp) i [`ShadowMap.cpp`](../../../src/game/ShadowMap.cpp), sampler z porównaniem [`src/gfx/ComparisonSampler.hpp`](../../../src/gfx/ComparisonSampler.hpp) i [`ComparisonSampler.cpp`](../../../src/gfx/ComparisonSampler.cpp), shadery [`assets/shaders/shadow_depth.vert`](../../../assets/shaders/shadow_depth.vert), [`shadow_depth.frag`](../../../assets/shaders/shadow_depth.frag) i [`common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl), wywołania w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`drawMoonShadowMap`, `drawShadowCasters`, `drawLitMaze`, `drawGrass`), panel [`src/debug/panels/ShadowsPanel.cpp`](../../../src/debug/panels/ShadowsPanel.cpp), testy w [`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp).
+Kamień milowy: M7, część czwarta (cienie księżyca) i część piąta (cień latarki, latarka w ręce). Temat wykładu: 11 (Shadow mapping), **w trakcie**: testy ręczne i macOS są otwarte (sekcja 5.11).
+Kod: przestrzeń światła [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp) i [`LightSpace.cpp`](../../../src/scene/LightSpace.cpp), ustawienia i matematyka bez OpenGL [`src/game/Shadows.hpp`](../../../src/game/Shadows.hpp) i [`Shadows.cpp`](../../../src/game/Shadows.cpp), klasa mapy cieni [`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp) i [`ShadowMap.cpp`](../../../src/game/ShadowMap.cpp), sampler z porównaniem [`src/gfx/ComparisonSampler.hpp`](../../../src/gfx/ComparisonSampler.hpp) i [`ComparisonSampler.cpp`](../../../src/gfx/ComparisonSampler.cpp), shadery [`assets/shaders/shadow_depth.vert`](../../../assets/shaders/shadow_depth.vert), [`shadow_depth.frag`](../../../assets/shaders/shadow_depth.frag) i [`common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl), wywołania w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`drawMoonShadowMap`, `drawFlashlightShadowMap`, `drawShadowCasters`, `setShadowUniformsOf`, `drawLitMaze`, `drawGrass`), pozycja latarki w ręce w [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp) i [`Lighting.cpp`](../../../src/game/Lighting.cpp) (`flashlightPose`), panel [`src/debug/panels/ShadowsPanel.cpp`](../../../src/debug/panels/ShadowsPanel.cpp), testy w [`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp) i [`tests/LightingTests.cpp`](../../../tests/LightingTests.cpp).
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż klasa nazywa się `game::ShadowMap` i leży w `src/game/`, wyjaśnia [`README.md`](README.md). Dokument zakłada znajomość macierzy widoku i rzutowania oraz bufora głębi ([`../scene/camera.md`](../scene/camera.md)), świateł gry i funkcji `computeLighting` ([`../scene/lights.md`](../scene/lights.md), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md)), framebufferów ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)) i obiektu samplera ([`../gfx/textures.md`](../gfx/textures.md)). Samą klasę `gfx::ComparisonSampler` opisuje [`../gfx/comparison-sampler.md`](../gfx/comparison-sampler.md): tutaj jest teoria i wszystko, co robi z nią gra.
 
-**Stan na dziś:** ściany, słupki, brama, kryształy i wzgórza rzucają cień w świetle księżyca. Przed sceną gra rysuje wszystko, co rzuca cień, z kierunku księżyca do tekstury głębi 2048 x 2048 (**mapy cieni**), a programy `lit`, `gouraud` i `grass` sprawdzają w niej każdy fragment. Cień odbiera **tylko światło księżyca**: światło otoczenia, latarka, światła kryształów i świecenie własne zostają. Wszystkim steruje nowy, dwunasty panel **Shadows**: przełącznik, rozdzielczość (1024 albo 2048), dwa suwaki biasu w metrach, filtr sprzętowy 2 x 2, jądro PCF od 3 x 3 do 7 x 7, siła cienia i podgląd mapy. Programów shaderów jest jedenaście: doszedł `shadow_depth`. Latarka i światła kryształów **nie rzucają cieni**: świecą przez ściany jak dotąd.
+**Stan na dziś (2026-10-06):** dwa światła rzucają cienie, księżyc i latarka. Ściany, słupki, brama, kryształy i wzgórza rzucają cień w świetle **księżyca** i w świetle **latarki**. Przed sceną gra rysuje wszystko, co rzuca cień, **dwa razy**: z kierunku księżyca do tekstury głębi 2048 x 2048 (rzut ortograficzny, sekcja 2.2) i z ręki gracza do tekstury 1024 x 1024 (**rzut perspektywiczny**, sekcja 2.20). Programy `lit`, `gouraud` i `grass` sprawdzają w obu mapach każdy fragment. Każdy cień odbiera **tylko udział własnego światła**: cień księżyca odbiera światło księżyca, cień latarki odbiera światło latarki, a światło otoczenia, światła kryształów i świecenie własne zostają (sekcje 2.14 i 2.20.5). Wszystkim steruje dwunasty panel **Shadows**, który ma dwie zakładki, `Moon` i `Flashlight`. Każda ma przełącznik, rozdzielczość (1024 albo 2048), dwa suwaki biasu w metrach, filtr sprzętowy 2 x 2, jądro PCF od 3 x 3 do 7 x 7, siłę cienia i podgląd mapy. Programów shaderów jest jedenaście, paneli dwanaście (obie liczby bez zmian od czwartej części). Światła kryształów **nie rzucają cieni**: świecą przez ściany jak dotąd.
 
-**Co ta część zmieniła poza cieniami (2026-10-05).** Domyślna intensywność księżyca (`LightingSettings::moonIntensity`) wzrosła z 0,12 do 0,2, żeby różnicę między światłem a cieniem było widać (sekcja 2.14). Stała `FOLDED_ROW_COUNT` wzrosła z 3 do 4, więc HUD stoi o jeden rząd pasków tytułowych niżej. Wyliczenie `AttachmentPreview` dostało trzecią wartość, `RawDepth`, a `post/preview.frag` trzecią gałąź (sekcja 2.17). Struktura `Lighting` w GLSL ma dwa nowe pola z udziałem księżyca. Blok `LightBlock` **nie zmienił się**.
+**Co zmieniła czwarta część poza cieniami (2026-10-05).** Domyślna intensywność księżyca (`LightingSettings::moonIntensity`) wzrosła z 0,12 do 0,2, żeby różnicę między światłem a cieniem było widać (sekcja 2.14). Stała `FOLDED_ROW_COUNT` wzrosła z 3 do 4, więc HUD stoi o jeden rząd pasków tytułowych niżej. Wyliczenie `AttachmentPreview` dostało trzecią wartość, `RawDepth`, a `post/preview.frag` trzecią gałąź (sekcja 2.17). Struktura `Lighting` w GLSL dostała dwa nowe pola z udziałem księżyca. Blok `LightBlock` **nie zmienił się**.
 
-Zgłoszone dla Windowsa (2026-10-05): bramka `make check` przechodzi (formatowanie, build i testy Debug i Release, clang-tidy), 310 przypadków testowych i 103751 asercji. Liczby zgadzają się z kodem: po trzeciej części M7 było 294 i 102412, doszło 16 przypadków i 1339 asercji w `tests/ShadowTests.cpp` (129 asercji niezależnych od labiryntu i po 5 na każde z 242 pudełek kolizji labiryntu startowego). Z wyłączonymi cieniami i księżycem cofniętym do 0,12 obraz jest identyczny co do piksela z obrazem sprzed tej części poza paskiem HUD (w trybie Phong różnica najwyżej 1/255). Build Debug nie zapisał żadnego błędu OpenGL przy 2048 i przy 1024. **Nikt jeszcze nie kliknął myszą** kontrolek panelu Shadows ani nie przełączył rozdzielczości w działającej grze, nikt nie sprawdził `Reload shaders` przy jedenastu programach. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Pełna lista tego, co sprawdzone, a co nie: sekcja 5.11.
+**Co zmieniła piąta część (2026-10-06).** (1) Latarka stoi w **ręce**: 0,20 m w prawo i 0,25 m w dół od oka, a jej oś celuje w punkt na osi widzenia 4 m przed okiem (`flashlightPose`, sekcja 2.20.8 i [`../game/flashlight.md`](../game/flashlight.md)). (2) `scene::LightSpace` ma drugi rodzaj rzutu: `scene::spotLightSpace` buduje rzut perspektywiczny, a struktura dostała pola `kind`, `position`, `nearPlane` i `farPlane` (sekcja 2.20.1). (3) Bias latarki jest w metrach i działa w przestrzeni świata, bo głębia rzutu perspektywicznego nie jest liniowa (sekcje 2.20.2 i 2.20.3). (4) Struktura `Lighting` w GLSL ma dwa kolejne pola, `flashlightDiffuse` i `flashlightSpecular`, a program Gouraud trzy nowe wyjścia (sekcja 2.15). (5) Podgląd mapy latarki jest linearyzowany (sekcja 2.20.6). (6) `buildLightSet` przyjmuje `FlashlightPose` zamiast oka i kierunku patrzenia, a `ShadowMap::drawPreview` przestrzeń światła. (7) `DebugContext` ma 38 pól (było 34), a panel Lights trzy suwaki ręki. Blok `LightBlock` **nie zmienił się** (928 bajtów): pozycja latarki dla mapy cieni jedzie osobnym uniformem.
+
+Zgłoszone dla Windowsa (2026-10-05, część czwarta): bramka `make check` przechodzi (formatowanie, build i testy Debug i Release, clang-tidy), 310 przypadków testowych i 103751 asercji. Liczby zgadzają się z kodem: po trzeciej części M7 było 294 i 102412, doszło 16 przypadków i 1339 asercji w `tests/ShadowTests.cpp` (129 asercji niezależnych od labiryntu i po 5 na każde z 242 pudełek kolizji labiryntu startowego). Z wyłączonymi cieniami i księżycem cofniętym do 0,12 obraz jest identyczny co do piksela z obrazem sprzed czwartej części poza paskiem HUD (w trybie Phong różnica najwyżej 1/255). Build Debug nie zapisał żadnego błędu OpenGL przy 2048 i przy 1024. Pełna lista tego, co sprawdzone, a co nie: sekcja 5.11.
+
+Zgłoszone dla Windowsa (2026-10-06, część piąta), nie powtarzałem: bramka `make check` zgłosiła **329 przypadków testowych i 104306 asercji** (przed tą częścią 310 i 103751). To 19 nowych przypadków: 15 w `tests/ShadowTests.cpp` (było 16, jest 31) i 4 w `tests/LightingTests.cpp` (było 11, jest 15; jeden istniejący przypadek zmienił nazwę). Ile z 555 nowych asercji przypada na który plik, nie policzyłem. Debug exe uruchomiony na 7 sekund: OpenGL 4.1.0 NVIDIA, zasoby wczytane, stderr pusty, panele ukryte. **Nie było ćwiczone**: rysowanie w trybie Gouraud, podgląd w zakładce Flashlight, ścieżka z wyłączoną latarką i `Reload shaders`. **Nikt nie oglądał obrazu** tej części ani panelu. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Pełna lista: sekcja 5.11.
 
 ## 1. Po co to jest
 
-Do trzeciej części M7 księżyc oświetlał każdą powierzchnię zwróconą w jego stronę, także tę, która stoi za ścianą. Model oświetlenia Phonga jest **lokalny**: liczy światło z normalnej, kierunku do światła i kierunku do oka i nie wie nic o tym, co stoi po drodze. Skutek: korytarz w głębi labiryntu jest tak samo jasny jak otwarte pole, a ściany wyglądają, jakby unosiły się nad ziemią, bo nic ich z nią nie łączy.
+Do czwartej części M7 księżyc oświetlał każdą powierzchnię zwróconą w jego stronę, także tę, która stoi za ścianą. Model oświetlenia Phonga jest **lokalny**: liczy światło z normalnej, kierunku do światła i kierunku do oka i nie wie nic o tym, co stoi po drodze. Skutek: korytarz w głębi labiryntu jest tak samo jasny jak otwarte pole, a ściany wyglądają, jakby unosiły się nad ziemią, bo nic ich z nią nie łączy.
 
 Cień odpowiada na jedno pytanie, którego model lokalny nie zadaje: **czy między tym punktem a światłem coś stoi?** Najprostsza i najczęściej używana odpowiedź w grafice czasu rzeczywistego to **mapa cieni** (shadow mapping). Potrzebne są do tego:
 
 | Rzecz | Gdzie | Sekcja |
 |---|---|---|
-| widok i rzut światła, dopasowane do sceny | `scene::directionalLightSpace` | 2.2, 2.3, 5.2 |
+| widok i rzut światła: pudełko dopasowane do sceny (księżyc) i ostrosłup z czubkiem w świetle (latarka) | `scene::directionalLightSpace`, `scene::spotLightSpace` | 2.2, 2.3, 2.20.1, 5.2 |
 | framebuffer z samą teksturą głębi | `gfx::Framebuffer` z `ColorFormat::None`, klasa `game::ShadowMap` | 3.1, 5.5 |
 | przebieg głębi: scena z kierunku światła, bez kolorów | program `shadow_depth`, `NightMazeApp::drawShadowCasters` | 2.1, 4.1, 5.7 |
 | odczyt z porównaniem | `sampler2DShadow`, `gfx::ComparisonSampler` | 2.6, 2.7 |
 | filtrowanie krawędzi cienia | filtr sprzętowy 2 x 2 i pętla PCF w `common/shadows.glsl` | 2.8, 2.9, 4.2 |
-| bias, czyli obrona przed cieniem rzucanym na samego siebie | `slopeScaledBias`, `game::shadowBias`, `game::biasInDepthUnits` | 2.10 do 2.12 |
-| decyzja, które światło cień odbiera | pola `moonDiffuse` i `moonSpecular` struktury `Lighting` | 2.14, 2.15 |
+| bias, czyli obrona przed cieniem rzucanym na samego siebie | `slopeScaledBias`, `game::shadowBias`, `game::biasInDepthUnits`, `game::biasForShader` | 2.10 do 2.12, 2.20.3 |
+| decyzja, które światło cień odbiera | pola `moonDiffuse`, `moonSpecular`, `flashlightDiffuse` i `flashlightSpecular` struktury `Lighting` | 2.14, 2.15, 2.20.5 |
+| druga mapa z rzutem perspektywicznym i latarka w ręce | `flashlightShadow` w `common/shadows.glsl`, `flashlightPose`, `NightMazeApp::drawFlashlightShadowMap` | 2.20 |
 
-To jest temat 11 wykładu, "Shadow mapping", a PRD (sekcja 3) wymienia przy nim mapę ortograficzną dla księżyca, mapę perspektywiczną dla latarki, PCF i bias. Ta część daje pierwszą mapę, PCF i bias. Druga mapa jest planem na następny dzień pracy (sekcja 2.20), dlatego temat **nie jest zaliczony**.
+To jest temat 11 wykładu, "Shadow mapping", a PRD (sekcja 3) wymienia przy nim mapę ortograficzną dla księżyca, mapę perspektywiczną dla latarki, PCF i bias. Część czwarta dała pierwszą mapę, PCF i bias, część piąta drugą mapę, perspektywiczną (sekcja 2.20). Kod jest kompletny, ale temat **nie jest zaliczony**: testy ręczne na Windowsie i cały macOS są otwarte (sekcja 5.11).
 
 ## 2. Teoria
 
@@ -48,9 +53,9 @@ Przykład na liczbach z testu `points on one ray of the light share a texel and 
 ```mermaid
 flowchart LR
     Casters["wszystko, co rzuca cień:<br/>teren, ściany, słupki,<br/>brama, kryształy"] --> DepthPass["przebieg głębi<br/>program shadow_depth<br/>macierze światła"]
-    DepthPass --> Map["mapa cieni<br/>GL_DEPTH_COMPONENT24<br/>2048 x 2048"]
+    DepthPass --> Map["mapa cieni<br/>GL_DEPTH_COMPONENT24<br/>2048 x 2048 (księżyc)<br/>1024 x 1024 (latarka)"]
     Map --> Lookup["przebieg sceny:<br/>lit.frag, gouraud.frag, grass.frag<br/>porównanie głębi fragmentu z mapą"]
-    Lookup --> Result["udział cienia 0..1<br/>odejmowany od światła księżyca"]
+    Lookup --> Result["udział cienia 0..1<br/>odejmowany od światła,<br/>które rzuca ten cień"]
 ```
 
 Co z tego wynika od razu:
@@ -70,11 +75,11 @@ Co z tego wynika od razu:
 |---|---|---|
 | bryła widzenia | ścięty ostrosłup | prostopadłościan |
 | promienie | rozchodzą się z punktu | równoległe |
-| dla jakiego światła | reflektor, czyli latarka (planowane) | światło kierunkowe, czyli księżyc |
+| dla jakiego światła | reflektor, czyli latarka (sekcja 2.20.1) | światło kierunkowe, czyli księżyc |
 | `w` po mnożeniu przez macierz | zależy od odległości | zawsze 1 |
 | głębia zapisana w buforze | nieliniowa: gęsta blisko, rzadka daleko ([`post-process.md`](post-process.md), sekcja 2.10) | **liniowa**: rośnie równo z odległością |
 
-Ostatni wiersz jest ważny dwa razy: przy biasie (sekcja 2.11, metr to zawsze ten sam ułamek zakresu głębi) i przy podglądzie mapy (sekcja 2.17, głębi nie trzeba przeliczać).
+Ostatni wiersz jest ważny dwa razy: przy biasie (sekcja 2.11, metr to zawsze ten sam ułamek zakresu głębi) i przy podglądzie mapy (sekcja 2.17, głębi nie trzeba przeliczać). Dla latarki, która ma rzut perspektywiczny, oba rachunki są inne: sekcje 2.20.2, 2.20.3 i 2.20.6.
 
 `glm::ortho(left, right, bottom, top, near, far)` buduje macierz, która skaluje pudełko do sześcianu od -1 do 1 na każdej osi. To samo robi rzut perspektywiczny ze swoim ostrosłupem, tylko bez dzielenia przez odległość.
 
@@ -177,7 +182,7 @@ Shader sceny zna pozycję fragmentu w świecie. Żeby zajrzeć do mapy, powtarza
 | Krok | Wzór | Wynik |
 |---|---|---|
 | 1. macierz światła | `clip = projection * view * vec4(pozycja, 1)` | przestrzeń przycięcia światła |
-| 2. dzielenie przez `w` | `ndc = clip.xyz / clip.w` | współrzędne znormalizowane: od -1 do 1 na każdej osi wewnątrz pudełka. Dla rzutu ortograficznego `w = 1` i ten krok nic nie zmienia. Kod wykonuje go mimo to, żeby funkcja była poprawna także dla rzutu perspektywicznego |
+| 2. dzielenie przez `w` | `ndc = clip.xyz / clip.w` | współrzędne znormalizowane: od -1 do 1 na każdej osi wewnątrz pudełka. Dla rzutu ortograficznego `w = 1` i ten krok nic nie zmienia. Dla latarki `w` jest odległością przed światłem i dzielenie przez nie jest właśnie tym, co sprawia, że dalsze rzeczy są w mapie mniejsze (sekcja 2.20.1) |
 | 3. skala i przesunięcie | `coordinates = ndc * 0,5 + 0,5` | od 0 do 1 na każdej osi |
 
 Skąd `* 0,5 + 0,5`: współrzędne znormalizowane biegną od -1 do 1, a tekstura jest adresowana od 0 do 1 i **w tym samym zakresie od 0 do 1 bufor głębi przechowuje głębię** (domyślne `glDepthRange(0, 1)`). Pomnożenie przez pół zwęża zakres o długości 2 do długości 1 (od -0,5 do 0,5), a dodanie pół przesuwa go na miejsce. Ta sama operacja dla wszystkich trzech składowych:
@@ -185,7 +190,7 @@ Skąd `* 0,5 + 0,5`: współrzędne znormalizowane biegną od -1 do 1, a tekstur
 - `coordinates.x`, `coordinates.y`: miejsce w mapie, czyli współrzędna tekstury,
 - `coordinates.z`: głębia fragmentu widziana ze światła, w tych samych jednostkach, w jakich mapa ją zapisała (0 na bliskiej płaszczyźnie światła, 1 na dalekiej).
 
-Macierz z kroku 1 to `LightSpace::matrix()`, czyli `projection * view`. Rzutowanie stoi po lewej, bo wektor mnoży się od prawej: najpierw działa widok, potem rzut. Te trzy kroki są w kodzie dwa razy i muszą się zgadzać: w GLSL w funkcji `moonShadow` (sekcja 4.2) i w C++ w `scene::shadowMapCoordinates`, na której stoją testy.
+Macierz z kroku 1 to `LightSpace::matrix()`, czyli `projection * view`. Rzutowanie stoi po lewej, bo wektor mnoży się od prawej: najpierw działa widok, potem rzut. Te trzy kroki są w kodzie dwa razy i muszą się zgadzać: w GLSL w funkcjach `moonShadow` i `flashlightShadow` (sekcja 4.2) i w C++ w `scene::shadowMapCoordinates`, na której stoją testy. Latarka dodaje do nich jeden krok przed dzieleniem: sprawdzenie, czy `w` jest dodatnie (sekcja 2.20.4).
 
 Często spotyka się wersję, w której skala i przesunięcie są wmnożone w macierz ("bias matrix") i shader nie ma kroku 3. Wynik jest ten sam. Tu krok jest w shaderze jawnie, żeby dało się go pokazać palcem.
 
@@ -218,7 +223,7 @@ Mapa cieni jest czytana **na dwa sposoby**:
 
 | Kto czyta | Jak | Czego potrzebuje |
 |---|---|---|
-| `lit.frag`, `gouraud.frag`, `grass.frag` | `sampler2DShadow`, jednostka 3 | porównania |
+| `lit.frag`, `gouraud.frag`, `grass.frag` | `sampler2DShadow`, jednostka 3 (mapa księżyca) i 4 (mapa latarki, każda z własnym samplerem) | porównania |
 | `post/preview.frag` (podgląd w panelu) | `sampler2D`, jednostka 0 | **surowych głębi**, bez porównania |
 
 Gdyby tryb porównania był zapisany w teksturze, podgląd czytałby ją zwykłym `sampler2D` z włączonym porównaniem, czyli z wynikiem nieokreślonym. Dlatego tekstura głębi zostaje zwykłą teksturą (`gfx::Framebuffer` ustawia jej filtr najbliższego sąsiada i `GL_CLAMP_TO_EDGE`), a trzy reguły potrzebne cieniom trzyma osobny obiekt, `gfx::ComparisonSampler`:
@@ -353,6 +358,8 @@ Gdyby tak było na ekranie, oświetlony grunt byłby przy dużym jądrze albo pr
 
 **Normalna do biasu to normalna modelu.** W `lit.frag` oświetlenie liczy się z normalnej z mapy normalnych, ale bias dostaje `moonFacing(normalize(vNormal))`, czyli normalną trójkąta. Bias należy do trójkąta, który został narysowany do mapy cieni, a wypukłości mapy normalnych w tym trójkącie nie ma.
 
+**Bias latarki jest liczony inaczej.** Wzór jest ten sam, ale mapa latarki ma rzut perspektywiczny, a jej głębia nie jest liniowa, więc dzielenie metrów przez `extent.z` nie działa. Bias latarki zostaje w metrach aż do shadera i przesuwa **punkt w przestrzeni świata** (sekcje 2.20.2 i 2.20.3). Funkcja `game::biasForShader` wybiera sposób według rodzaju rzutu światła.
+
 ### 2.12 Peter panning: za dużo biasu
 
 Bias ma swoją cenę. Fragment przysunięty do światła o `b` metrów wygrywa porównanie nie tylko ze sobą, ale z każdym rzucającym, który leży **bliżej niż `b`** przed nim na promieniu. Cień zaczyna się więc dopiero `b` metrów za rzucającym. Przy dużym biasie cień **odkleja się** od przedmiotu, który go rzuca, i przedmiot wygląda, jakby unosił się nad ziemią. Nazwa pochodzi od Piotrusia Pana, który zgubił swój cień.
@@ -388,44 +395,56 @@ if (coordinates.z > 1.0) {
 }
 ```
 
-**Czy to się dziś zdarza?** Nie powinno. Pudełko księżyca obejmuje cały teren z marginesem, a wszystko, co gra rysuje programami z cieniem, stoi na tym terenie. Oba zabezpieczenia są regułą na wszelki wypadek i na przyszłość: mapa reflektora (latarki) pokryje tylko stożek światła, a reszta sceny będzie poza nią. Testy sprawdzają samą geometrię: punkt 100 m na wschód od pudełka ma `x > 1`, a punkt 100 m pod nim `z > 1` (`a point outside the bounds lands outside the shadow map`).
+**Czy to się dziś zdarza?** Dla księżyca nie powinno: jego pudełko obejmuje cały teren z marginesem, a wszystko, co gra rysuje programami z cieniem, stoi na tym terenie. Dla **latarki zdarza się ciągle**: jej mapa pokrywa tylko ostrosłup wokół stożka światła, więc większość sceny leży poza nią. Z boku ostrosłupa działa ramka. Za daleką płaszczyzną (dalej niż zasięg latarki) działa warunek `z > 1`. Tuż obok jest trzeci przypadek, którego księżyc nie ma: punkt **za światłem** albo na jego wysokości (sekcja 2.20.4). Fragment z boku poza ostrosłupem jest też poza stożkiem światła, więc nie dostaje światła latarki i nie ma czego zabierać cieniem. Za daleką płaszczyzną jest inaczej: światło latarki nigdy nie dochodzi dokładnie do zera (przy zasięgu zostaje 5 procent jasności, `scene::attenuationForRadius`), a cień tam nie jest sprawdzany. Dalej niż 16 m światło latarki idzie więc przez ściany, tylko jest bardzo słabe (sekcja 2.19). Testy sprawdzają samą geometrię: punkt 100 m na wschód od pudełka ma `x > 1`, a punkt 100 m pod nim `z > 1` (`a point outside the bounds lands outside the shadow map`).
 
 Tekstura, do której nic nie narysowano, ma po `glClear` głębię 1 w każdym tekselu: pusta mapa to "wszędzie oświetlone", tak jak ramka.
 
-### 2.14 Które światło jest cieniowane: tylko udział księżyca
+### 2.14 Które światło jest cieniowane: udział księżyca i udział latarki
 
-Mapa cieni księżyca mówi o jednej rzeczy: czy do punktu dociera **światło księżyca**. Nie mówi nic o latarce ani o kryształach. Punkt w cieniu ściany jest zasłonięty przed księżycem, ale latarka gracza świeci na niego z zupełnie innej strony. Cień musi więc zabrać dokładnie jeden składnik oświetlenia i żadnego innego.
+Mapa cieni księżyca mówi o jednej rzeczy: czy do punktu dociera **światło księżyca**. Nie mówi nic o latarce ani o kryształach. Punkt w cieniu ściany jest zasłonięty przed księżycem, ale latarka gracza świeci na niego z zupełnie innej strony. Cień musi więc zabrać dokładnie jeden składnik oświetlenia i żadnego innego. Od części piątej to samo dotyczy cienia latarki: ma własną mapę i zabiera tylko udział latarki. Sekcja opisuje mechanizm na przykładzie księżyca, a potem pokazuje, co doszło dla latarki.
 
-Funkcja `computeLighting` sumuje wszystkie światła do dwóch liczb, `diffuse` i `specular`. Od tej części zapisuje **osobno** także to, co w tych sumach pochodzi od księżyca:
+Funkcja `computeLighting` sumuje wszystkie światła do dwóch liczb, `diffuse` i `specular`. Zapisuje **osobno** także to, co w tych sumach pochodzi od księżyca (od części czwartej) i od latarki (od części piątej):
 
 ```glsl
 struct Lighting {
-    vec3 diffuse;      // ambient light plus the Lambert term of every light
-    vec3 specular;     // the highlight of every light
-    vec3 moonDiffuse;  // the part of diffuse that comes from the moon
-    vec3 moonSpecular; // the part of specular that comes from the moon
+    vec3 diffuse;            // ambient light plus the Lambert term of every light
+    vec3 specular;           // the highlight of every light
+    vec3 moonDiffuse;        // the part of diffuse that comes from the moon
+    vec3 moonSpecular;       // the part of specular that comes from the moon
+    vec3 flashlightDiffuse;  // the part of diffuse that comes from the flashlight
+    vec3 flashlightSpecular; // the part of specular that comes from the flashlight
 };
 ```
 
-`diffuse` i `specular` **już zawierają** udział księżyca. Wołający odejmuje go z powrotem tam, gdzie jest cień:
+`diffuse` i `specular` **już zawierają** oba udziały. Wołający odejmuje je z powrotem tam, gdzie jest cień. Tak wygląda to w `lit.frag` (część czwarta miała tylko pierwszą linię z księżycem):
 
 ```glsl
-float shadow = moonShadow(vWorldPosition, moonFacing(normalize(vNormal)));
-vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
-vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow, 0.0);
+vec3 modelNormal = normalize(vNormal);
+float shadow = moonShadow(vWorldPosition, moonFacing(modelNormal));
+float flashlightShade =
+    flashlightShadow(vWorldPosition, flashlightFacing(modelNormal, vWorldPosition));
+
+vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow -
+                       lighting.flashlightDiffuse * flashlightShade,
+                   0.0);
+vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow -
+                        lighting.flashlightSpecular * flashlightShade,
+                    0.0);
 ```
 
-`shadow` to **udział cienia**: 0 poza cieniem, `uMoonShadowStrength` (startowo 1) w środku cienia, wartości pośrednie na miękkiej krawędzi. Tabela tego, co zostaje w pełnym cieniu przy sile 1:
+`shadow` i `flashlightShade` to **udziały cienia**: 0 poza cieniem, siła cienia (`uMoonShadowStrength`, `uFlashlightShadowStrength`, startowo 1) w środku cienia, wartości pośrednie na miękkiej krawędzi. Tabela tego, co zostaje w pełnym cieniu przy sile 1:
 
-| Składnik | W cieniu księżyca |
-|---|---|
-| światło otoczenia (`uAmbient`) | zostaje |
-| rozproszone i odbłysk od **księżyca** | **znikają** |
-| latarka | zostaje (nie ma własnej mapy cieni: świeci przez ściany) |
-| światła kryształów | zostają (to samo) |
-| świecenie własne (`uEmissive`) | zostaje: dodawane po odjęciu |
+| Składnik | W cieniu księżyca | W cieniu latarki | W obu |
+|---|---|---|---|
+| światło otoczenia (`uAmbient`) | zostaje | zostaje | zostaje |
+| rozproszone i odbłysk od **księżyca** | **znikają** | zostają | **znikają** |
+| rozproszone i odbłysk od **latarki** | zostają | **znikają** | **znikają** |
+| światła kryształów | zostają (nie mają map cieni: świecą przez ściany) | zostają | zostają |
+| świecenie własne (`uEmissive`) | zostaje: dodawane po odjęciu | zostaje | zostaje |
 
-Dlaczego odejmowanie, a nie parametr "cień" w `computeLighting`: funkcja jest wspólna dla `lit.frag` (na fragment) i `gouraud.vert` (na wierzchołek), a w trybie Gouraud cień musi być sprawdzony w **innym etapie** niż światło (sekcja 2.15). Funkcja, która o cieniach nie wie nic i oddaje udział księżyca osobno, obsługuje oba przypadki bez zmiany. `max(..., 0.0)` jest tylko na błąd zaokrąglenia: różnica na papierze nigdy nie jest ujemna, ale dwie liczby zmiennoprzecinkowe, które powinny być równe, mogą się różnić ostatnią cyfrą.
+Dlaczego odejmowanie, a nie parametr "cień" w `computeLighting`: funkcja jest wspólna dla `lit.frag` (na fragment) i `gouraud.vert` (na wierzchołek), a w trybie Gouraud cień musi być sprawdzony w **innym etapie** niż światło (sekcja 2.15). Funkcja, która o cieniach nie wie nic i oddaje udziały świateł osobno, obsługuje oba przypadki bez zmiany. `max(..., 0.0)` jest tylko na błąd zaokrąglenia: różnica na papierze nigdy nie jest ujemna (udziały obu świateł są częściami sumy, a udziały cienia nie przekraczają 1), ale dwie liczby zmiennoprzecinkowe, które powinny być równe, mogą się różnić ostatnią cyfrą.
+
+**Co jest inne dla latarki.** Jej udział w `computeLighting` jest liczony tym samym wzorem co dawniej: gałąź reflektora zapisuje swoje dwa składniki do pól `flashlightDiffuse` i `flashlightSpecular` i dodaje je do sum (robi to, co `addLight`). Pola są ustawiane na zero **przed** gałęzią, bo latarka bywa wyłączona, a pole struktury, do którego nikt nie zapisał, ma w GLSL wartość nieokreśloną. Cosinus do biasu liczy funkcja `flashlightFacing(normal, position)`: dla księżyca kierunek do światła jest wszędzie ten sam, dla latarki, która jest punktem, zależy od miejsca, więc funkcja bierze też pozycję fragmentu. Dokładnie jak dla księżyca, do biasu idzie normalna modelu, a nie normalna z mapy normalnych.
 
 **Suwak `Strength`.** Przy 1 w cieniu nie zostaje nic ze światła księżyca. Przy 0,5 zostaje połowa. Przy 0 cienie są niewidoczne, choć mapa nadal jest rysowana. To nie jest model fizyczny (prawdziwy cień nie przepuszcza połowy światła), tylko pokrętło do wyglądu. C++ obcina wartość do zakresu od 0 do 1 przed wysłaniem.
 
@@ -435,7 +454,7 @@ Dlaczego odejmowanie, a nie parametr "cień" w `computeLighting`: funkcja jest w
 
 **Przy okazji: mapa normalnych i tył ściany.** Ściana odwrócona tyłem do księżyca ma udział księżyca równy 0 z samego wzoru Lamberta. Z mapą normalnych pojedyncze teksele mogą mieć normalną odchyloną na tyle, że dostają odrobinę światła księżyca "zza rogu". Od tej części taki fragment jest w cieniu własnej ściany (0,2 m grubości to więcej niż największy bias startowy, 0,14 m), więc to światło znika. Wynika to z kodu, nikt tego nie porównywał na zrzutach.
 
-Notatka: [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md).
+Notatka: [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md) (decyzja z części czwartej: cień zabiera tylko udział światła, które go rzuca. Część piąta stosuje ją do drugiego światła bez zmiany zasady).
 
 ### 2.15 Gouraud: światło na wierzchołek, cień na fragment
 
@@ -448,10 +467,10 @@ Rozwiązanie rozdziela dwie rzeczy:
 | Co | Gdzie liczone w programie `gouraud` |
 |---|---|
 | światło (wszystkie światła, wzory Lamberta i Phonga) | na **wierzchołek**, jak dotąd: `computeLighting` w `gouraud.vert` |
-| **udział księżyca** w tym świetle | na wierzchołek, w osobnych zmiennych |
-| czy fragment jest w cieniu | na **fragment**: `moonShadow` w `gouraud.frag` |
+| **udział księżyca** i **udział latarki** w tym świetle | na wierzchołek, w osobnych zmiennych |
+| czy fragment jest w cieniu księżyca i czy w cieniu latarki | na **fragment**: `moonShadow` i `flashlightShadow` w `gouraud.frag` |
 
-Shader wierzchołków dostał cztery nowe wyjścia:
+Shader wierzchołków dostał w części czwartej cztery nowe wyjścia:
 
 ```glsl
 out vec3 vMoonDiffuseLight;  // the part of vDiffuseLight that comes from the moon
@@ -460,57 +479,77 @@ out vec3 vWorldPosition;     // position in world space
 out float vMoonFacing;       // cosine between the normal and the direction to the moon
 ```
 
+a w części piątej trzy kolejne, dla cienia latarki. Pozycja w świecie jest wspólna dla obu map:
+
+```glsl
+out vec3 vFlashlightDiffuseLight;  // the part of vDiffuseLight from the flashlight
+out vec3 vFlashlightSpecularLight; // the part of vSpecularLight from the flashlight
+out float vFlashlightFacing;       // cosine between the normal and the way to the flashlight
+```
+
 a shader fragmentów robi z nimi to samo odejmowanie co `lit.frag`, tylko na wartościach zmieszanych przez rasteryzer:
 
 ```glsl
 float shadow = moonShadow(vWorldPosition, vMoonFacing);
-vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow, 0.0);
-vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow, 0.0);
+float flashlightShade = flashlightShadow(vWorldPosition, vFlashlightFacing);
+vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow -
+                       vFlashlightDiffuseLight * flashlightShade,
+                   0.0);
+vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow -
+                        vFlashlightSpecularLight * flashlightShade,
+                    0.0);
 ```
 
-Uczciwie: zdanie "w trybie Gouraud wszystko liczy się na wierzchołek" ma od tej części **jeden wyjątek**, odczyt mapy cieni. Różnica między trybami Gouraud i Phong, którą pokazuje temat 7, zostaje nietknięta: to nadal pytanie, gdzie liczone jest **światło**. Odbłysk jest w Gouraud kanciasty jak przedtem, a krawędzie cieni są w obu trybach tak samo ostre. Notatka: [`../../decisions/gouraud-shadow-test-per-fragment.md`](../../decisions/gouraud-shadow-test-per-fragment.md).
+Dla latarki jest tu jedna rzecz, której księżyc nie ma: `vFlashlightFacing` jest cosinusem policzonym **na wierzchołku** i zmieszanym liniowo w poprzek trójkąta, a kierunek do latarki zmienia się w poprzek trójkąta (latarka jest punktem). Zmieszana wartość jest przybliżeniem cosinusa liczonego na fragment, więc bias latarki w trybie Gouraud jest nieco inny niż w trybie Phong. To wynika z kodu, nikt tego nie porównywał na zrzutach. Tryb Gouraud z cieniem latarki **nie był też uruchomiony** (zgłoszone: sekcja 5.11).
+
+Uczciwie: zdanie "w trybie Gouraud wszystko liczy się na wierzchołek" ma od tej części **jeden wyjątek**, odczyt mapy cieni. Różnica między trybami Gouraud i Phong, którą pokazuje temat 7, zostaje nietknięta: to nadal pytanie, gdzie liczone jest **światło**. Odbłysk jest w Gouraud kanciasty jak przedtem, a krawędzie cieni są w obu trybach tak samo ostre. Notatka: [`../../decisions/gouraud-shadow-test-per-fragment.md`](../../decisions/gouraud-shadow-test-per-fragment.md) (część piąta powtarza ten wzór dla udziału latarki, tak jak notatka przewidywała).
 
 ### 2.16 Trawa: przyjmuje cień, nie rzuca go
 
-Trawa rośnie pod ścianami, więc bez cienia świeciłaby jasnymi kępkami na zacienionej ziemi. `grass.frag` włącza więc `common/shadows.glsl` i odejmuje udział księżyca tak samo jak ściany, z normalną podłoża `GRASS_NORMAL`, którą trawa jest oświetlana ([`grass-geometry.md`](grass-geometry.md)):
+Trawa rośnie pod ścianami, więc bez cienia świeciłaby jasnymi kępkami na zacienionej ziemi. `grass.frag` włącza więc `common/shadows.glsl` i odejmuje udział księżyca i udział latarki tak samo jak ściany, z normalną podłoża `GRASS_NORMAL`, którą trawa jest oświetlana ([`grass-geometry.md`](grass-geometry.md)):
 
 ```glsl
 Lighting lighting = computeLighting(gWorldPosition, GRASS_NORMAL);
 float shadow = moonShadow(gWorldPosition, moonFacing(GRASS_NORMAL));
-light = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
+float flashlightShade =
+    flashlightShadow(gWorldPosition, flashlightFacing(GRASS_NORMAL, gWorldPosition));
+light = max(lighting.diffuse - lighting.moonDiffuse * shadow -
+                lighting.flashlightDiffuse * flashlightShade,
+            0.0);
 ```
 
-Trawa **nie rzuca** cienia: `drawShadowCasters` jej nie rysuje. Powód jest w liczbach: źdźbło ma 4 cm szerokości u nasady (`ROOT_HALF_WIDTH = 0,02` w `grass.geom`) i zwęża się do zera, a teksel mapy ma około 3,2 cm. Cień źdźbła byłby migotaniem pojedynczych tekseli, które rusza się z wiatrem, na ziemi, którą sama kępka i tak zasłania. Do tego przebieg głębi dla trawy wymagałby osobnego programu z shaderem geometrii. Notatka: [`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md).
+Trawa **nie rzuca** cienia: `drawShadowCasters` jej nie rysuje. Powód jest w liczbach: źdźbło ma 4 cm szerokości u nasady (`ROOT_HALF_WIDTH = 0,02` w `grass.geom`) i zwęża się do zera, a teksel mapy księżyca ma około 3,2 cm. Cień źdźbła byłby migotaniem pojedynczych tekseli, które rusza się z wiatrem, na ziemi, którą sama kępka i tak zasłania. Mapa latarki ma drobniejsze teksele (około 3 mm na ścianie 4 m od ręki, sekcja 2.20.7), ale trawa jest wyłączona także z niej: jedna reguła dla obu świateł i brak cieni, które kołyszą się na każdej ścianie, obok której przechodzi snop. Do tego przebieg głębi dla trawy wymagałby osobnego programu z shaderem geometrii. Notatka: [`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md).
 
 ### 2.17 Podgląd mapy: mały przebieg zamiast tekstury głębi
 
-Panel Shadows pokazuje mapę jako obraz: czarne jest blisko księżyca, białe daleko albo puste, a ściany labiryntu to ciemne linie. Najprościej byłoby podać ImGui teksturę głębi. `ImGui::Image` rysuje jednak teksturę zwykłym samplerem i bierze z niej cztery kanały, a tekstura głębi ma dane tylko w pierwszym: obraz wychodzi **czerwony** zamiast szarego. Dlatego `ShadowMap::drawPreview` rysuje mapę jednym trójkątem pełnoekranowym do małego framebuffera `GL_RGBA8` (256 x 256), a panel pokazuje jego teksturę koloru.
+Panel Shadows pokazuje mapę jako obraz, po jednym w każdej zakładce: czarne jest blisko światła, białe daleko albo puste, a ściany labiryntu to ciemne linie. Ten rozdział opisuje podgląd mapy księżyca. Mapa latarki ma ten sam przebieg, ale w innym trybie (sekcja 2.20.6). Najprościej byłoby podać ImGui teksturę głębi. `ImGui::Image` rysuje jednak teksturę zwykłym samplerem i bierze z niej cztery kanały, a tekstura głębi ma dane tylko w pierwszym: obraz wychodzi **czerwony** zamiast szarego. Dlatego `ShadowMap::drawPreview` rysuje mapę jednym trójkątem pełnoekranowym do małego framebuffera `GL_RGBA8` (256 x 256), a panel pokazuje jego teksturę koloru.
 
 Rysuje ją tym samym programem `preview`, którym panel Framebuffers pokazuje głębię sceny, w nowym trybie:
 
 | `uMode` | `AttachmentPreview` | Co robi `post/preview.frag` |
 |---|---|---|
 | 0 | `Color` | koduje kolor HDR do sRGB |
-| 1 | `Depth` | głębia **perspektywiczna** sceny: przelicza na metry (`linearDepth`) i dzieli przez zakres |
+| 1 | `Depth` | głębia **perspektywiczna**: przelicza na metry (`linearDepth`) i dzieli przez zakres. Pokazuje głębię sceny (panel Framebuffers) i, od części piątej, mapę latarki (z płaszczyznami światła w miejscu płaszczyzn kamery) |
 | 2 | `RawDepth` (nowe) | głębia **tak, jak jest zapisana**: `vec3(texture(uSource, vUv).r)` |
 
-Tryb 2 nie potrzebuje przeliczenia, bo głębia rzutu ortograficznego rośnie równo z odległością (sekcja 2.2): szarość jest wprost odległością od bliskiej płaszczyzny światła. Dla mapy perspektywicznej (planowanej dla latarki) ten tryb pokazywałby prawie jednolitą biel i potrzebny będzie tryb z linearyzacją.
+Tryb 2 nie potrzebuje przeliczenia, bo głębia rzutu ortograficznego rośnie równo z odległością (sekcja 2.2): szarość jest wprost odległością od bliskiej płaszczyzny światła. Dla mapy perspektywicznej ten tryb pokazywałby prawie jednolitą biel, więc mapa latarki jest rysowana trybem 1 (sekcja 2.20.6). `ShadowMap::drawPreview` wybiera tryb po `lightSpace.kind`.
 
-Podgląd kosztuje jeden mały przebieg, więc jest rysowany **tylko wtedy, gdy panel Shadows jest rozwinięty**: panel ustawia `ShadowSettings::preview` co klatkę, `DebugUI::draw` zeruje je na początku, a gra czyta je w następnej klatce. Ten sam mechanizm co podglądy panelu Framebuffers ([`post-process.md`](post-process.md), sekcja 2.10).
+Podgląd kosztuje jeden mały przebieg, więc jest rysowany **tylko dla zakładki, którą panel Shadows pokazuje**: funkcja `drawShadowMapTab` ustawia `ShadowSettings::preview` tej zakładki co klatkę (w części czwartej robił to cały panel, bo zakładka była jedna), `DebugUI::draw` zeruje je na początku, a gra czyta je w następnej klatce. Ten sam mechanizm co podglądy panelu Framebuffers ([`post-process.md`](post-process.md), sekcja 2.10).
 
 ### 2.18 Kolejność klatki
 
-Przebieg cieni jest **pierwszym** przebiegiem klatki: mapa musi być gotowa, zanim programy sceny zaczną z niej czytać.
+Przebiegi cieni są **pierwszymi** przebiegami klatki: mapy muszą być gotowe, zanim programy sceny zaczną z nich czytać. Przed nimi `onRender` liczy trzy rzeczy, których potrzebuje mapa latarki: oko klatki (to samo, z którego powstanie macierz widoku), ustawienia świateł tej klatki (`lightingForFrame`: bateria, migotanie) i **pozycję latarki** (`flashlightPose`). Pozycja jest liczona **raz**, przed przebiegami cieni, i ten sam wynik dostają mapa latarki i światło sceny (sekcja 2.20.8).
 
 | # | Przebieg | Cel | Co ustawia i zostawia |
 |---|---|---|---|
 | 1 | **cienie księżyca** (`drawMoonShadowMap`): przeliczenie pudełka światła, przebieg głębi, związanie mapy z jednostką 3, podgląd na życzenie | mapa cieni 2048 x 2048, potem (na życzenie) podgląd 256 x 256 | włącza test głębi (przebieg składający poprzedniej klatki zostawił go wyłączonego), zostawia związany swój framebuffer i swój viewport. Podgląd wyłącza test głębi |
+| 1b | **cienie latarki** (`drawFlashlightShadowMap`): przeliczenie ostrosłupa światła, przebieg głębi, związanie mapy z jednostką 4, podgląd na życzenie. Pomijany przy wyłączonych cieniach latarki, przy zgaszonej latarce w tej klatce i przy niewczytanym programie `shadow_depth` | mapa cieni 1024 x 1024, potem (na życzenie) podgląd 256 x 256 | to samo co w wierszu 1 |
 | 2 | scena (`beginScene`, `drawMaze`, `drawGrass`, linie kolizji, niebo) | bufor HDR sceny | `beginScene` wiąże framebuffer sceny i ustawia jego viewport od nowa, `onRender` włącza test głębi i czyści bufory |
 | 3 | podglądy załączników sceny (na życzenie) | dwa cele `GL_RGBA8` | [`post-process.md`](post-process.md) |
 | 4 | bloom | trzy cele o połowie rozmiaru | |
 | 5 | przebieg składający | okno | |
 
-Przebieg cieni stoi po sprawdzeniu, czy okno ma niezerowy rozmiar: przy zminimalizowanym oknie cała klatka jest pomijana razem z nim. Przy wyłączonych cieniach `drawMoonShadowMap` liczy tylko pudełko (panel pokazuje jego rozmiar także wtedy) i wraca.
+Przebiegi cieni stoją po sprawdzeniu, czy okno ma niezerowy rozmiar: przy zminimalizowanym oknie cała klatka jest pomijana razem z nimi. Przy wyłączonych cieniach `drawMoonShadowMap` liczy tylko pudełko (panel pokazuje jego rozmiar także wtedy) i wraca. `drawFlashlightShadowMap` robi to samo z ostrosłupem, a także wtedy, gdy latarka jest zgaszona w tej klatce (klawisz F albo pusta bateria): światła nie ma, więc nie ma czego cieniem zabierać.
 
 Jednostki teksturujące w przebiegu sceny:
 
@@ -520,52 +559,259 @@ Jednostki teksturujące w przebiegu sceny:
 | 1 | mapa normalnych | jak wyżej, w programie `lit` |
 | 2 | (w przebiegu sceny wolna: przebieg składający czyta z niej głębię sceny) | |
 | 3 | **mapa cieni księżyca** z samplerem z porównaniem (`MOON_SHADOW_TEXTURE_UNIT`) | `bindForSampling`, **raz na klatkę** |
+| 4 | **mapa cieni latarki** z własnym samplerem z porównaniem (`FLASHLIGHT_SHADOW_TEXTURE_UNIT`) | `bindForSampling`, raz na klatkę, tylko gdy mapa została narysowana |
 
-Mapa jest wiązana raz i zostaje na jednostce 3 przez cały przebieg sceny, bo nic innego tej jednostki nie rusza. Druga mapa cieni dostanie jednostkę 4.
+Każda mapa jest wiązana raz i zostaje na swojej jednostce przez cały przebieg sceny, bo nic innego tych jednostek nie rusza. Każdy obiekt `ShadowMap` ma własny `gfx::ComparisonSampler`, więc filtr jednej mapy nie zmienia filtra drugiej. Uniform `uFlashlightShadowMap` dostaje numer 4 w **każdej** klatce, także gdy mapy nie narysowano (sekcja 5.6). Jednostka 4 bez związanej tekstury nie psuje rysowania (moja analiza, nikt tego nie sprawdzał na zgaszonej latarce): sampler cienia latarki jest jedynym samplerem, który ją wskazuje, więc nie ma dwóch samplerów różnych typów na jednej jednostce (pułapka 4).
 
 ### 2.19 Znane ograniczenia
 
-- **Tylko księżyc.** Latarka i światła kryształów nie mają map cieni i świecą przez ściany. Cień latarki jest planowany (sekcja 2.20). Cieni świateł punktowych (kryształów) nie ma w planie: wymagałyby mapy sześciennej na każde z do 16 świateł.
+- **Cień rzucają dwa światła, księżyc i latarka.** Światła kryształów nie mają map cieni i świecą przez ściany. Cieni świateł punktowych (kryształów) nie ma w planie: wymagałyby mapy sześciennej na każde z do 16 świateł.
 - **Jedna mapa, bez kaskad.** Rozdzielczość jest rozłożona równo na cały teren, tak samo pod nogami gracza i na dalekim wzgórzu. W tej scenie wystarcza (3,2 cm na teksel). Przy terenie kilka razy większym teksel urósłby tyle samo razy.
 - **Pudełko jest stałe względem terenu.** Nie zwęża się do labiryntu ani do widoku. Około połowy mapy pokrywa wzgórza poza labiryntem, na których nic nie stoi.
 - **Teksele nie są kwadratowe** (64,8 m na 54,1 m w kwadratowej mapie) i rozciągają się na powierzchniach pochylonych względem światła.
 - **Bias nie zna rozmiaru teksela ani promienia PCF** (sekcja 2.11). Duże jądro albo mała mapa mogą lekko przyciemniać oświetlone powierzchnie: policzone, do sprawdzenia.
 - **PCF ma stałą szerokość w tekselach.** Nie ma półcienia, który rozszerza się z odległością od rzucającego.
-- **Trawa nie rzuca cienia** (sekcja 2.16).
+- **Trawa nie rzuca cienia** (sekcja 2.16), z mapy księżyca ani z mapy latarki.
 - **Tarcza księżyca na niebie stoi w miejscu**, gdy suwaki `Moon yaw` i `Moon pitch` przesuwają światło ([`skybox.md`](skybox.md), sekcja 2.9). Cienie idą za światłem, więc po przesunięciu suwaków padają z innej strony, niż wskazuje namalowany księżyc.
 - **Księżyc nisko nad horyzontem** (pitch bliski -5): pudełko robi się długie i płaskie, cienie bardzo długie, a teksele na ziemi rozciągnięte kilkanaście razy. Wynika z geometrii, nikt tego nie oglądał.
-- **Koszt wydajności jest niepewny** (sekcja 5.11): zgłoszone liczby FPS są zaszumione i pochodzą z innej sesji niż pomiary poprzedniej części.
-- **Panel pokazuje obraz mapy według ustawienia, nie według faktu.** `drawPicture` dostaje `settings.enabled`. Gdyby przebieg głębi się nie udał (program `shadow_depth` nie wczytał się albo framebuffer jest niekompletny), panel pokazywałby ostatni narysowany obraz. To ścieżka błędu, w zwykłej pracy nie do zobaczenia.
+- **Koszt wydajności jest niepewny** (sekcja 5.11): zgłoszone liczby FPS (część czwarta) są zaszumione i pochodzą z innej sesji niż pomiary poprzedniej części. Kosztu drugiego przebiegu głębi i drugiego zestawu odczytów (część piąta) nikt nie mierzył.
+- **Panel pokazuje obraz mapy księżyca według ustawienia, nie według faktu.** `drawPicture` dostaje dla zakładki `Moon` `moonShadowSettings.enabled`. Zakładka `Flashlight` dostaje fakt (`flashlightShadowDrawn`: cienie włączone **i** latarka świeci **i** przebieg się udał), więc obie zakładki zachowują się inaczej. Gdyby przebieg głębi się nie udał (program `shadow_depth` nie wczytał się albo framebuffer jest niekompletny), panel pokazywałby ostatni narysowany obraz. To ścieżka błędu, w zwykłej pracy nie do zobaczenia.
+- **Ograniczenia cienia latarki** (jedna lista, bo wszystkie wynikają z kodu i żadnego nikt nie oglądał): mapa jest przeliczana w każdej klatce i porusza się z ręką, więc siatka tekseli przesuwa się po ścianach przy każdym kroku i krawędzie cieni mogą migotać (sekcja 2.20.7). Dalej niż zasięg latarki (16 m) cień nie jest sprawdzany, a światło latarki nie wygasa do zera (5 procent przy zasięgu), więc tam idzie przez ściany. Bias startowy latarki pokrywa grunt do 10 m przed graczem, dalej jest za mały, ale światła dochodzi tam już niewiele (sekcja 2.20.3). Wektor `up` mapy przełącza się skokiem (jedna klatka), gdy wiązka jest odchylona od pionu o mniej niż 2,56 stopnia. Przy ustawieniach startowych tak nie jest nawet przy kamerze nachylonej o 89 stopni (wiązka ma wtedy 2,85 i 3,24 stopnia od pionu), ale przy dłuższym `Converge at` (powyżej około 4,6 m w górę albo 5,2 m w dół) albo mniejszym `Hand right` tak. Shader sprawdza cień latarki dla każdego fragmentu, także poza stożkiem światła (nie ma wczesnego wyjścia): policzone z kodu, koszt niezmierzony.
 
-### 2.20 Planowane: cień latarki
+### 2.20 Cień latarki
 
-**Tego kodu nie ma.** Sekcja zapisuje wyłącznie to, co jest dziś ustalone, żeby następna część miała od czego zacząć.
+Od części piątej latarka ma własną mapę cieni, a światło latarki stoi w **ręce** gracza, nie w oku. Ten rozdział jest dłuższy od innych, bo latarka to drugi rodzaj światła: reflektor z rzutem **perspektywicznym**. Większość tego, co działa dla księżyca (dwa przebiegi, porównanie, PCF, bias jako pomysł), działa tu tak samo. Różnice są w czterech miejscach: kształt bryły widzenia, nieliniowa głębia, stosowanie biasu i punkty za światłem. Podrozdziały od 2.20.1 do 2.20.8 opisują to po kolei, a 2.20.9 oddziela decyzje właściciela projektu od wyborów, które zrobiłem przy pisaniu kodu.
 
-Ustalone (decyzja właściciela projektu, 2026-10-05): latarka dostanie własną mapę cieni z **rzutem perspektywicznym** (reflektor świeci z punktu, stożkiem), a światło przeniesie się z oka do **ręki**: trochę w prawo i trochę poniżej oka. To jest cała treść decyzji.
+**Księżyc i latarka obok siebie** (wszystkie liczby z kodu, ustawienia startowe):
 
-Dlaczego ma to znaczenie dla cieni (moje wyjaśnienie, nie treść decyzji): światło stojące dokładnie w oku rzuca cienie dokładnie za przedmioty, czyli tam, gdzie kamera ich nie widzi. Dopiero przesunięcie źródła względem oka sprawia, że cień latarki w ogóle da się zobaczyć. Notatka: [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md).
-
-Co kod tej części daje gotowe (z notatek z implementacji, sprawdzone w kodzie):
-
-| Element | Gdzie | Dlaczego nadaje się bez zmian |
+| | Księżyc | Latarka |
 |---|---|---|
-| klasa `ShadowMap` | `src/game/ShadowMap.*` | "jeden obiekt na światło": framebuffer głębi, sampler, podgląd |
-| `gfx::ComparisonSampler` | `src/gfx/` | reguły odczytu nie zależą od rodzaju rzutu |
-| `ShadowSettings` | `src/game/Shadows.hpp` | komentarz struktury: jedno światło z mapą ma jedną taką strukturę |
-| `ShadowUniformNames` i `setShadowUniforms` | `ShaderUniforms.hpp`, `ShadowMap.*` | nazwy uniformów jednej mapy są parametrem. Drugi zestaw to druga stała |
-| `shadowMapVisibility(map, coordinates, pcfRadius)` | `common/shadows.glsl` | mapa jest parametrem funkcji |
-| `drawShadowCasters(lightSpace)` | `NightMazeApp` | dostaje przestrzeń światła jako argument |
-| `drawShadowMapTab` | `ShadowsPanel.cpp` | druga zakładka to drugie wywołanie |
-| jednostka teksturująca 4 | komentarz przy `MOON_SHADOW_TEXTURE_UNIT` | "druga mapa bierze następną jednostkę" |
+| rodzaj światła | kierunkowe: promienie równoległe | reflektor: promienie z jednego punktu, w stożku |
+| funkcja przestrzeni światła | `scene::directionalLightSpace` | `scene::spotLightSpace` |
+| rzut | ortograficzny, pudełko dopasowane do terenu | perspektywiczny, ostrosłup z czubkiem w ręce |
+| co wpływa na przestrzeń światła | teren i kąty księżyca | pozycja ręki i kierunek wiązki, więc rusza się z graczem. Liczona co klatkę |
+| kąt otwarcia | nie dotyczy | 46 stopni (2 * (21 stopni stożka + 2 stopnie zapasu)) |
+| płaszczyzny | liczone z pudełka | bliska 0,05 m, daleka równa zasięgowi latarki (16 m) |
+| rozmiar mapy startowo | 2048 x 2048 | 1024 x 1024 |
+| teksel | 3,2 cm wszędzie | 0,08 cm na każdy metr od ręki (3,3 mm na ścianie 4 m dalej) |
+| głębia w mapie | liniowa | nieliniowa |
+| bias startowo | 0,02 m i 0,12 m, odejmowany od głębi | 0,01 m i 0,13 m, przesuwa punkt w świecie |
+| jednostka teksturująca | 3 | 4 |
+| funkcja w shaderze | `moonShadow` | `flashlightShadow` |
+| co cień zabiera | `moonDiffuse` i `moonSpecular` | `flashlightDiffuse` i `flashlightSpecular` |
+| podgląd w panelu | `RawDepth` | `Depth` (zlinearyzowana głębia) |
 
-Czego brakuje i co trzeba będzie dopisać:
+#### 2.20.1 Perspektywiczna przestrzeń światła
 
-- **perspektywicznej przestrzeni światła**: `scene::LightSpace` ma dziś tylko funkcję dla światła kierunkowego,
-- **przeliczenia biasu, które nie opiera się na `extent.z`**: głębia rzutu perspektywicznego nie jest liniowa, więc dzielenie metrów przez głębię pudełka (sekcja 2.11) nie działa,
-- **trybu podglądu z linearyzacją** (sekcja 2.17),
-- **pól `Lighting` z udziałem reflektora** (rozproszone i odbłysk) i pasujących zmiennych w programie Gouraud, tak jak dziś ma je księżyc (sekcje 2.14 i 2.15).
+Reflektor to kamera, która stoi tam, gdzie światło, i patrzy wzdłuż osi jego stożka. Mapa cieni latarki jest więc zdjęciem, które zrobiłaby taka kamera. Funkcja `scene::spotLightSpace(position, direction, outerConeDegrees, range)` składa dwie macierze tak samo jak funkcja dla księżyca:
 
-Nic więcej nie jest ustalone: ani rozmiar mapy latarki, ani dokładne przesunięcie ręki, ani zasięg stożka.
+```cpp
+const glm::vec3 axis = unitDirection(direction);
+const glm::mat4 view = glm::lookAt(position, position + axis, upFor(axis));
+
+const float fieldOfViewDegrees =
+    std::clamp(2.0F * (outerConeDegrees + SPOT_CONE_MARGIN_DEGREES),
+               MIN_SPOT_FIELD_OF_VIEW_DEGREES, MAX_SPOT_FIELD_OF_VIEW_DEGREES);
+const float fieldOfView = glm::radians(fieldOfViewDegrees);
+
+const float nearPlane = SPOT_NEAR_PLANE;
+const float farPlane = std::max(range, nearPlane + MIN_SPOT_DEPTH_RANGE);
+const float sideAtFarPlane = 2.0F * farPlane * std::tan(fieldOfView * 0.5F);
+// ... glm::perspective(fieldOfView, SQUARE_ASPECT_RATIO, nearPlane, farPlane)
+```
+
+(Pominąłem komentarze i końcowe `return` ze strukturą.)
+
+| Krok | Co robi | Liczby startowe |
+|---|---|---|
+| `lookAt(position, position + axis, up)` | oko w ręce, patrzy wzdłuż osi stożka. `lookAt` chce punktu, na który patrzy, więc to jeden krok wzdłuż osi | |
+| kąt otwarcia | pełny kąt od boku do boku: dwa razy (kąt zewnętrzny stożka plus `SPOT_CONE_MARGIN_DEGREES`). Obcięty do zakresu od 1 do 170 stopni: rzut perspektywiczny potrzebuje kąta większego od 0 i mniejszego od 180 | 2 * (21 + 2) = 46 stopni |
+| bliska płaszczyzna | `SPOT_NEAR_PLANE`. Nie może być 0: rzut perspektywiczny dzieli przez odległość | 0,05 m |
+| daleka płaszczyzna | zasięg latarki (`flashlightRange`). Zasięg niewiększy od bliskiej płaszczyzny jest przesuwany tuż za nią (o `MIN_SPOT_DEPTH_RANGE`, 1 cm) | 16 m |
+| `glm::perspective(kąt, 1, near, far)` | kwadratowa mapa, więc proporcje 1 | |
+| `extent` | `x` i `y`: szerokość i wysokość tego, co mapa pokrywa **na dalekiej płaszczyźnie**. `z`: odległość od bliskiej do dalekiej płaszczyzny | `2 * 16 * tan(23 stopnie)` = 13,58 m oraz 15,95 m |
+
+Wzór na `extent` bierze się z trójkąta prostokątnego: oś, połowa szerokości i bok ostrosłupa. Połowa szerokości to odległość razy tangens połowy kąta. Szerokość mapy **rośnie więc proporcjonalnie do odległości od ręki**: w połowie zasięgu (8 m) mapa pokrywa 6,79 m, na dalekiej płaszczyźnie 13,58 m. Pudełko księżyca pokrywa wszędzie tyle samo. Z tej różnicy wynika sekcja 2.20.7.
+
+**Zapas kąta (2 stopnie).** Światło latarki kończy się na stożku zewnętrznym (21 stopni). Mapa jest kwadratem, a stożek kołem: gdyby mapa była dokładnie tak szeroka jak stożek, dotykałaby okręgu stożka w środkach czterech boków. Fragment tuż przy brzegu stożka miałby wtedy jądro PCF wystające poza mapę. Z zapasem brzeg stożka leży w odległości `tan(21) / tan(23)` połowy szerokości od środka, czyli 0,452 z 0,5 (test `the whole cone of a spot light is inside its shadow map, with a margin` sprawdza to dla ośmiu kierunków i trzech odległości). Zostaje 0,048 szerokości mapy, czyli około 49 tekseli przy 1024 (policzone). Jądro 7 x 7 sięga 3 tekseli, więc zapas jest duży.
+
+**Wektor "w górę".** Ta sama reguła co dla księżyca, w jednej wspólnej funkcji `upFor`: dla osi niemal pionowej (`|y| > 0,999`, czyli odchylonej od pionu o mniej niż 2,56 stopnia) wektor `up` to `(0, 0, -1)`, inaczej `(0, 1, 0)`. Kamera pozwala patrzeć do 89 stopni (`MAX_PITCH_DEGREES`), ale **przy ustawieniach startowych ten próg nie jest przekraczany** (policzone). Wiązka nie biegnie wzdłuż osi widzenia, tylko od ręki do punktu 4 m przed okiem, a ręka jest 0,2 m na prawo, więc nawet przy nachyleniu kamery 89 stopni wiązka jest odchylona od pionu o 2,85 stopnia w górę (poziomo 0,212 m na 4,249 m w pionie) i o 3,24 stopnia w dół (0,212 m na 3,749 m). Skok `up` dałoby dopiero przekroczenie progu 2,56 stopnia: `Converge at` powyżej około 4,6 m przy patrzeniu w górę albo powyżej około 5,2 m przy patrzeniu w dół, albo `Hand right` zmniejszone (przy 0 i startowych 4 m wiązka ma 0,9 stopnia od pionu). W momencie przełączenia mapa obraca się skokiem w jednej klatce, a siatka tekseli leży inaczej. Test `a spot light that points straight up or down still gets a usable matrix` sprawdza tylko, że macierz jest skończona, a oś trafia w środek mapy, dla dowolnego kierunku. Czy skok widać na ekranie, nikt nie sprawdzał, a przy ustawieniach startowych w ogóle nie powinien wystąpić (lista w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 21.2, podaje, jak go wywołać). Kierunek o długości 0 zastępuje kierunek prosto w dół (`unitDirection`), jak dla księżyca.
+
+**Nowe pola `LightSpace`.** Struktura dostała cztery pola: `kind` (`LightProjection::Orthographic` albo `Perspective`), `position`, `nearPlane` i `farPlane`. Kto czyta mapę, musi wiedzieć, który to rzut: bias, rozmiar teksela i obraz podglądu liczy się inaczej dla głębi liniowej i nieliniowej. Dla księżyca `position`, `nearPlane` i `farPlane` zostają zerem (nie ma położenia, a głębia pudełka jest w `extent.z`). Test `the light space of a directional light is an orthographic box without a position` pilnuje, że księżyc pod tym względem nie zmienił się.
+
+**Przestrzeń światła co klatkę, razem ze światłem.** W odróżnieniu od pudełka księżyca ostrosłup rusza się z ręką. `drawFlashlightShadowMap` liczy go w każdej klatce, **także przy wyłączonych cieniach latarki**, bo panel pokazuje jego rozmiar. Pozycję i kierunek bierze z wyniku `flashlightPose` tej klatki (sekcja 2.20.8), a kąt stożka i zasięg z ustawień tej klatki (`lightingForFrame`), z tych samych, z których zbudowano światło.
+
+#### 2.20.2 Głębia nieliniowa
+
+Rzut perspektywiczny nie zapisuje odległości, tylko liczbę od 0 do 1, która zmienia się szybko blisko światła i prawie wcale daleko od niego. Dla odległości `z` przed światłem, bliskiej płaszczyzny `n` i dalekiej `f` zapisana głębia to (z macierzy `glm::perspective`, po przeliczeniu z zakresu od -1 do 1 na zakres od 0 do 1):
+
+```text
+głębia(z) = f * (z - n) / (z * (f - n))
+```
+
+Dla `n = 0,05` i `f = 16` (policzone):
+
+| Odległość `z` od światła | 0,1 m | 0,5 m | 1 m | 2 m | 4 m | 8 m | 16 m |
+|---|---|---|---|---|---|---|---|
+| zapisana głębia | 0,502 | 0,903 | 0,953 | 0,978 | 0,991 | 0,997 | 1,000 |
+
+Połowa zakresu głębi jest zużyta w pierwszych 10 cm (`2 n f / (f + n)` = 0,0997 m), a od 1 m do końca zasięgu głębia zmienia się tylko o 0,047. Test `the depth of a spot light map runs from its near to its far plane, unevenly` sprawdza, że w połowie drogi do dalekiej płaszczyzny głębia przekracza 0,99, a w odległości 1 m przekracza 0,95.
+
+**Co to znaczy dla biasu.** Bias z sekcji 2.11 to liczba odejmowana od głębi. Dla księżyca głębia jest liniowa, więc "jeden metr" to wszędzie ten sam ułamek zakresu i wystarczy podzielić metry przez `extent.z`. Dla latarki taka liczba nie istnieje. Pochodna głębi to `f n / ((f - n) z^2)`, więc stała różnica głębi `d` odpowiada `d * (f - n) z^2 / (f n)` metrów. Dla `d = 0,001` (policzone):
+
+| Odległość od światła | 1 m | 4 m | 10 m |
+|---|---|---|---|
+| 0,001 głębi to w metrach | 2,0 cm | 31,9 cm | 1,99 m |
+
+Ten sam bias byłby więc grubością włosa tuż przy ręce i grubością całej ściany pod koniec wiązki. Dlatego bias latarki nie może być liczbą jednostek głębi (sekcja 2.20.3).
+
+**Precyzja samej liczby** (24 bity, krok `2^-24` = 6e-8): pochodna głębi przy 1 m to 0,050 na metr, więc krok liczby to 1,2 mikrometra. Przy 16 m pochodna to 0,0002 na metr, więc krok to 0,30 mm (policzone). To nadal mniej niż milimetr, więc komentarz w `LightSpace.hpp` ma rację: przy bliskiej płaszczyźnie 5 cm głębia wciąż odróżnia powierzchnie odległe o ułamek milimetra także na końcu zasięgu. Błędy, o których mówi sekcja 2.20.3, pochodzą jak dla księżyca z rozmiaru teksela, nie z dokładności liczby. Bliska płaszczyzna stoi w liczniku pochodnej, więc mniejsza dałaby gorszą dokładność daleko. Wartość 0,05 m wybrałem sam: to nie jest decyzja właściciela (sekcja 2.20.9).
+
+#### 2.20.3 Bias w metrach, w przestrzeni świata
+
+**Wzór biasu jest ten sam**: `bias = constantBias + slopeBias * (1 - facing)` w metrach (sekcja 2.11), z `facing` z funkcji `flashlightFacing` (cosinus między normalną a kierunkiem **do latarki**, liczony dla pozycji fragmentu). Inne jest to, **gdzie bias wchodzi do rachunku**. Funkcja `flashlightShadow` z `common/shadows.glsl`:
+
+```glsl
+float flashlightShadow(vec3 worldPosition, float facing) {
+    if (!uFlashlightShadowEnabled) {
+        return 0.0;
+    }
+
+    vec3 toLight = uFlashlightShadowLightPosition - worldPosition;
+    float lightDistance = length(toLight);
+    float bias = slopeScaledBias(uFlashlightShadowConstantBias, uFlashlightShadowSlopeBias, facing);
+    if (lightDistance <= bias) {
+        return 0.0;
+    }
+    vec3 biasedPosition = worldPosition + toLight / lightDistance * bias;
+
+    vec4 clip = uFlashlightShadowMatrix * vec4(biasedPosition, 1.0);
+    if (clip.w <= 0.0) {
+        return 0.0;
+    }
+    vec3 coordinates = clip.xyz / clip.w * 0.5 + 0.5;
+
+    float visibility =
+        shadowMapVisibility(uFlashlightShadowMap, coordinates, uFlashlightShadowPcfRadius);
+    return uFlashlightShadowStrength * (1.0 - visibility);
+}
+```
+
+(W pliku każdy krok ma komentarz. Tu zostawiłem sam kod.)
+
+| Linia | Znaczenie |
+|---|---|
+| `toLight`, `lightDistance` | wektor od punktu do ręki i jego długość |
+| `bias = slopeScaledBias(...)` | ta sama funkcja co dla księżyca, ale liczby są **metrami**, nie jednostkami głębi |
+| `if (lightDistance <= bias) return 0.0;` | punkt bliższy światłu niż bias zostałby przesunięty **za** światło. Nic nie może stać między światłem a punktem tak bliskim, więc cień wynosi 0 |
+| `biasedPosition = worldPosition + toLight / lightDistance * bias` | punkt przesunięty o `bias` metrów po prostej do światła |
+| `clip.w <= 0.0` | sekcja 2.20.4 |
+| reszta | rzutowanie przesuniętego punktu macierzą światła i odczyt. Głębia **nie** jest już zmniejszana: jest taka, jaką ma przesunięty punkt |
+
+**Dlaczego przesuwanie punktu zamiast odejmowania od głębi.** Punkt przesunięty po prostej do światła zostaje na tym samym promieniu światła, więc po rzutowaniu ma te same współrzędne `x` i `y` w mapie (ten sam teksel) i mniejszą głębię. Test `moving a point towards a spot light keeps its texel and lowers its depth` pokazuje to na liczbach. Efekt jest taki sam jak przy odejmowaniu od głębi, ale **długość przesunięcia jest taka sama w metrach w każdym miejscu**, bo przesunięcie dzieje się w przestrzeni świata, zanim nieliniowy rzut zniekształci odległości. Odejmowanie jednej liczby od głębi dawałoby wedle tabeli z sekcji 2.20.2 centymetry przy ręce i metry pod koniec wiązki. Notatka: [`../../decisions/flashlight-shadow-bias-in-world-space.md`](../../decisions/flashlight-shadow-bias-in-world-space.md).
+
+**Po stronie C++** `setShadowUniforms` nie dzieli już zawsze przez `extent.z`: woła `game::biasForShader(biasMetres, lightSpace)`. Dla rzutu ortograficznego to dalej `biasInDepthUnits(metry, extent.z)`, dla perspektywicznego **metry bez zmiany** (test `a bias goes to the shaders as depth for a box and as metres for a pyramid`: 0,05 m zostaje 0,05 dla zasięgów 2, 16 i 60 m). Te same pola struktury `ShadowUniformNames` (`constantBias`, `slopeBias`) niosą więc raz ułamek głębi, a raz metry. Suwaki w panelu są w metrach dla obu świateł.
+
+**Liczby startowe i skąd się wzięły** (komentarz przy `FLASHLIGHT_SHADOW_CONSTANT_BIAS` w `Shadows.hpp`, przeliczone przeze mnie i potwierdzone testem `the default bias of the flashlight covers the ground up to 10 m ahead`): stała część 0,01 m, część zależna od nachylenia 0,13 m (księżyc ma 0,02 i 0,12). Ręka jest 1,45 m nad gruntem (oko 1,7 m minus 0,25 m), więc światło muska grunt coraz bardziej płasko, im dalej pada. Dla gruntu przed graczem (wiązka pozioma, `facing` to wysokość ręki podzielona przez odległość do punktu) jądro 3 x 3 z filtrem sprzętowym sięga 2 tekseli od fragmentu. Policzone:
+
+| Grunt przed graczem | `facing` | Teksel na gruncie | Błąd 2 tekseli | Bias startowy |
+|---|---|---|---|---|
+| 1 m | 0,823 | 1,5 mm | 0,2 cm | 3,3 cm |
+| 2 m | 0,587 | 2,0 mm | 0,6 cm | 6,4 cm |
+| 4 m | 0,341 | 3,5 mm | 1,9 cm | 9,6 cm |
+| 6 m | 0,235 | 5,1 mm | 4,2 cm | 11,0 cm |
+| 8 m | 0,178 | 6,7 mm | 7,4 cm | 11,7 cm |
+| 10 m | 0,144 | 8,4 mm | 11,6 cm | 12,1 cm |
+| 12 m | 0,120 | 10,0 mm | 16,6 cm | 12,4 cm |
+
+Do 10 m bias jest większy od błędu, dalej mniejszy (przecięcie wypada około 10,3 m). Test sprawdza wiersze od 1 do 10 m i dwie liczby z 10 m (11,6 i 12,1 cm); wiersz 12 m dopisałem z rachunku. **Co dzieje się dalej, nie jest zmierzone.** Z rachunku wynika, że za 10 m grunt może pokazywać acne albo przyciemnienie. Światła dochodzi tam już niewiele: wzór tłumienia daje około 11 procent jasności na 10 m i 5 procent na 16 m (policzone, bez stożka). Największy możliwy bias to 0,14 m, mniej niż 0,2 m grubości ściany (`WALL_VISUAL_THICKNESS`), więc cień nie odkleja się od ściany (test `the shadows of the flashlight start with the small map and a bias of their own`). Wszystko to **policzone, nikt tego nie oglądał**. Sprawdzenie jest na liście testów ręcznych (z jądrami 3 x 3, 5 x 5, 7 x 7 i z biasem 0).
+
+**Bias a rozdzielczość i jądro.** Tak jak dla księżyca (sekcja 2.11), bias latarki nie zna promienia PCF ani rozmiaru teksela. Przy mapie 2048 teksele są dwa razy mniejsze, więc bias startowy ma większy zapas. Przy jądrze 5 x 5 albo 7 x 7 sięga się dalej niż 2 teksele i zapas maleje.
+
+#### 2.20.4 Punkt za światłem: `w <= 0`
+
+Dla rzutu ortograficznego `w` po mnożeniu przez macierz wynosi 1. Dla perspektywicznego jest **odległością przed światłem**, mierzoną wzdłuż osi stożka (test `a point behind a spot light has no place in its shadow map`: punkt 3 m przed światłem ma `w = 3`, punkt 3 m za nim `w = -3`). Dzielenie `clip.xyz / clip.w` dla ujemnego `w` **odbija punkt** do mapy, jakby leżał przed światłem: punkt za plecami ręki mógłby dostać współrzędne w środku mapy i zostać uznany za zacieniony przez to, co stoi przed światłem.
+
+Dlatego shader sprawdza `clip.w <= 0.0` **przed** dzieleniem i zwraca 0 (brak cienia). Taki punkt leży z boku światła albo za nim, czyli poza stożkiem, więc i tak nie dostaje światła latarki: nie ma czego zabierać (moja analiza). Bliźniak w C++ (`scene::shadowMapCoordinates`) tego sprawdzenia nie ma: jego komentarz mówi, że wynik ma sens tylko dla punktu przed światłem. Test nie sprawdza więc samego warunku w GLSL, tylko znaczenie `w`.
+
+Dla `0 < w < n` (punkt przed światłem, ale bliżej niż bliska płaszczyzna, czyli mniej niż 5 cm) głębia wychodzi ujemna. Porównanie obcina głębię odniesienia do zakresu od 0 do 1, więc taki punkt wygrywa porównanie i jest oświetlony (moja analiza, z reguł `sampler2DShadow`).
+
+#### 2.20.5 Co cień latarki zabiera
+
+Tylko to, co `computeLighting` zapisało osobno jako udział latarki: `flashlightDiffuse` i `flashlightSpecular` (sekcja 2.14, tabela). Światło księżyca w cieniu latarki zostaje, a latarka w cieniu księżyca zostaje. Światło otoczenia, światła kryształów i świecenie własne nie są ruszane w żadnym z cieni. Gdy latarka jest zgaszona (F albo pusta bateria), jej pola są zerem, więc odejmowanie niczego nie zmienia, a przebieg cieni latarki jest w ogóle pomijany.
+
+Dwie rzeczy łatwo pomylić:
+
+- Przygaszenie baterii (migotanie) zmienia **intensywność** światła w ustawieniach tej klatki (`lightingForFrame`), więc `flashlightDiffuse` jest już przygaszone, a cień odejmuje swój udział od tej przygaszonej wartości. Zasięg i kąt stożka nie zmieniają się, więc mapa cieni jest rysowana tak samo.
+- Cień nie rozróżnia, czy fragment jest w stożku. Poza stożkiem udział latarki wynosi 0, a odejmowanie 0 niczego nie zmienia. Shader mimo to robi rachunek cienia dla każdego fragmentu (policzone z kodu: nie ma wcześniejszego wyjścia dla fragmentu poza stożkiem, są tylko dwa wyjścia dla `lightDistance <= bias` i `w <= 0`, a poza ostrosłupem działa ramka samplera). Koszt nie był mierzony.
+
+#### 2.20.6 Podgląd ze zlinearyzowaną głębią
+
+Podgląd z sekcji 2.17 pokazuje zapisaną głębię tak, jak jest (`RawDepth`). Dla mapy latarki dałoby to obraz prawie jednolicie biały: tabela z sekcji 2.20.2 mówi, że głębia powyżej 1 m wynosi ponad 0,95. `ShadowMap::drawPreview(previewShader, lightSpace)` wybiera tryb według `lightSpace.kind`:
+
+| Rzut | Tryb `post/preview.frag` | Uniformy |
+|---|---|---|
+| ortograficzny (księżyc) | `RawDepth`: głębia tak, jak jest zapisana | tylko źródło i tryb |
+| perspektywiczny (latarka) | `Depth`: `linearDepth` (`common/depth.glsl`) zamienia zapisaną głębię na metry i dzieli przez zakres | `uNear` = bliska płaszczyzna światła, `uFar` = daleka płaszczyzna, `uDepthRange` = daleka płaszczyzna |
+
+Szarość to więc **odległość od ręki jako ułamek zasięgu**: ściana 4 m od ręki ma szarość `4 / 16` = 0,25, a puste miejsce (głębia 1) i miejsce na dalekiej płaszczyźnie są białe. To ten sam tryb, którym panel Framebuffers pokazuje głębię sceny, z płaszczyznami światła w miejscu płaszczyzn kamery. Dlatego `AttachmentPreview::Depth` ma teraz komentarz "depth of a perspective view (scene, flashlight map)". Tryb z linearyzacją był trzecią pozycją na liście "do dopisania" w planie z części czwartej. W kodzie okazał się jedną gałęzią `if` w `drawPreview`, bo program `preview` już go miał.
+
+Podgląd jest rysowany tylko wtedy, gdy mapa została narysowana w tej klatce i zakładka Flashlight jest wybrana (flaga `preview`, sekcja 2.17). Przy zgaszonej latarce panel pokazuje `(not drawn)`. Podglądu zakładki Flashlight **nikt nie oglądał** (siedmiosekundowy start miał panele ukryte).
+
+#### 2.20.7 Teksel na metr i rozmiar mapy
+
+Rozmiar teksela latarki zależy od odległości, więc `shadowTexelSize` (większy bok podzielony przez liczbę tekseli) daje dla ostrosłupa **rozmiar na dalekiej płaszczyźnie**, czyli największy. Nowa funkcja `shadowTexelSizeAt(lightSpace, mapSize, distance)` skaluje go liczbą `distance / farPlane`, bo boki ostrosłupa są prostymi przez światło. Dla pudełka zwraca ten sam rozmiar, jaką odległość by podano. Policzone (test `the texels of a spot light map grow with the distance from the light`):
+
+| Odległość od ręki | 1 m | 2 m | 4 m | 8 m | 16 m | księżyc (2048) |
+|---|---|---|---|---|---|---|
+| teksel latarki (1024) | 0,83 mm | 1,66 mm | 3,3 mm | 6,6 mm | 13,3 mm | 31,6 mm wszędzie |
+| tekseli na grubość ściany (20 cm) | 241 | 120 | 60 | 30 | 15 | 6 |
+
+Teksele latarki są od 2 do prawie 40 razy drobniejsze niż księżyca, zależnie od odległości. Dlatego mapa startuje od 1024 (`flashlightShadowDefaults`): nawet na końcu zasięgu teksel (1,3 cm) jest mniejszy niż połowa teksela księżyca przy 2048 (3,2 cm). Odległość w `shadowTexelSizeAt` jest skalowana względem dalekiej płaszczyzny mierzonej wzdłuż osi, a panel i test podają ją jako odległość od ręki: dla punktów daleko od osi to niewielkie przybliżenie (moja analiza).
+
+**Panel pokazuje to inaczej niż dla księżyca.** Dla ostrosłupa `drawFacts` wypisuje `Covers 13.6 x 13.6 m at 16.0 m` (powierzchnia na dalekiej płaszczyźnie) i `One texel: 0.08 cm per metre away` (teksel 1 m od ręki, czyli też przyrost na każdy metr). Dla pudełka zostały dwie dawne linie. Te napisy są policzone ze wzorów i sformatowane tak, jak robi to kod. Zrzutu panelu nie widziałem.
+
+**Migotanie krawędzi (moja analiza, nikt tego nie oglądał).** Pudełko księżyca stoi w miejscu względem terenu, więc siatka jego tekseli jest przyklejona do świata i cienie stoją. Ostrosłup latarki rusza się z ręką, czyli z graczem: siatka tekseli jest przyklejona do **światła**, nie do świata. Przy każdym kroku i każdym obrocie krawędź cienia przesuwa się o ułamek teksela względem ściany. Filtr sprzętowy i PCF 3 x 3 miękczą to, ale nie usuwają. Kod nie ma żadnego środka przeciw temu. Czy to widać przy 1024 i teksel 3 mm, wyjaśni lista testów ręcznych.
+
+**Koszt (policzone z kodu, niezmierzone).** Przebieg głębi latarki rysuje te same obiekty co przebieg księżyca i scena: teren, 242 obiekty labiryntu startowego, bramę i kryształy. Nie ma tam obcinania do ostrosłupa, więc w klatce te obiekty są rysowane trzy razy (przed częścią piątą dwa razy). Mapa 1024 x 1024 ma od 3,1 do 4,2 MB (3 do 4 bajtów na teksel, policzone) i 0,26 MB za podgląd, tworzony przy pierwszym użyciu. Wypełnienie to około miliona tekseli, czwarta część tego, co przy mapie księżyca. Pomiar FPS w jednej sesji, porównujący ten commit z poprzednim, jest na liście testów ręcznych.
+
+#### 2.20.8 Ręka: pozycja i kierunek wiązki
+
+Skąd bierze się pozycja ręki i kierunek wiązki, opisuje [`../game/flashlight.md`](../game/flashlight.md), sekcje 2.1 i 5.5. Tu tylko to, co dotyczy cieni:
+
+- **Jeden wynik dla światła i dla mapy.** `flashlightPose(settings, eye, forward, right)` zwraca strukturę `FlashlightPose` (pozycja i kierunek). `onRender` woła ją **raz**, przed przebiegami cieni, i podaje ten sam wynik do `scene::spotLightSpace` (mapa) i do `buildLightSet` (światło sceny). Światło i jego cień nie mogą się więc rozjechać. Test `the flashlight and its shadow map stand in the same place and look the same way` sprawdza, że pozycja mapy jest pozycją światła, daleka płaszczyzna zasięgiem, a punkt na osi stożka ląduje w środku mapy.
+- **Pozycja.** Oko plus `flashlightHandRight` (startowo 0,20 m) wzdłuż wektora "w prawo" kamery, minus `flashlightHandDown` (0,25 m) wzdłuż osi `Y` świata. "W dół" to więc **prosto w dół w świecie**, niezależnie od pochylenia kamery (wybór wykonawczy, sekcja 2.20.9).
+- **Kierunek.** Od ręki do punktu na osi widzenia, `flashlightConvergeDistance` (startowo 4 m) przed okiem. Wiązka **zbiega się** z osią widzenia: tam, gdzie się przecinają, plama jest w środku ekranu (decyzja właściciela).
+- **Oko do świateł sceny.** `m_lightRig.upload(lights, eye)` dostaje dalej **oko**, nie rękę: to pozycja kamery, od której zależą odbłyski. Pozycja światła w bloku to ręka.
+- **Pozycja dla shadera cieni.** Mapa potrzebuje pozycji światła w osobnym uniformie `uFlashlightShadowLightPosition` (to samo miejsce co `uSpotPosition` w bloku świateł, ustawiane z jednego wyniku `flashlightPose`), bo `gouraud.frag` nie ma bloku świateł. Dla księżyca nie ma takiego uniformu: `ShadowUniformNames::lightPosition` wynosi `nullptr`.
+
+#### 2.20.9 Decyzje właściciela i wybory wykonawcze
+
+**Treść decyzji właściciela projektu** (to jest cała ich treść):
+
+| Data | Decyzja |
+|---|---|
+| 2026-10-05 | światło latarki jest w ręce (trochę w prawo i poniżej oka), a mapa cieni latarki ma rzut perspektywiczny |
+| 2026-10-06 | wiązka **zbiega się**: celuje z ręki w punkt na osi widzenia przed okiem, a odległość tego punktu jest ustawieniem |
+| 2026-10-06 | startowe przesunięcia ręki: **0,20 m w prawo i 0,25 m w dół**, oba jako suwaki |
+
+**Wybory, które zrobiłem przy implementacji** (nie są decyzjami właściciela; uzasadnienia z komentarzy w kodzie, sprawdzone w kodzie):
+
+| Wybór | Uzasadnienie |
+|---|---|
+| "w dół" znaczy w dół w świecie, nie "pod kamerą". Suwak w prawo ma górną granicę 0,25 m (`MAX_FLASHLIGHT_HAND_RIGHT`) | ciało gracza to pudełko 0,6 m szerokości, do którego nie wchodzi żadna ściana, a oko jest w jego środku. Przesunięcie w prawo jest poziome, więc ręka jest 0,2 m od środka, czyli 0,1 m w środku pudełka, niezależnie od obrotu gracza. "Pod kamerą" dałoby graczowi patrzącemu w ziemię rękę 0,25 m **za** okiem, a oba przesunięcia razem (0,32 m) mogłyby wyjść z pudełka. Granica 0,25 to połowa ciała (0,3 m) minus bliska płaszczyzna mapy (0,05 m). Notatka: [`../../decisions/flashlight-hand-straight-down.md`](../../decisions/flashlight-hand-straight-down.md) |
+| bias latarki jest w metrach i przesuwa punkt w świecie | sekcja 2.20.3. Notatka: [`../../decisions/flashlight-shadow-bias-in-world-space.md`](../../decisions/flashlight-shadow-bias-in-world-space.md) |
+| odległość zbiegania 4 m startowo, od 0,5 do 20 m w panelu | 4 m to dwie komórki labiryntu (`CELL_SIZE` = 2 m): zwykła odległość do ściany, ku której gracz idzie. Poniżej 0,5 m wiązka biegłaby stromo przez obraz, a przy 0 nie miałaby kierunku. 20 m to już poza zasięgiem wiązki, gdzie biegnie niemal równolegle do widoku |
+| suwak "w dół" do 0,5 m | komentarz w panelu: wysokość ręki trzymanej przy biodrze |
+| zapas kąta mapy 2 stopnie | sekcja 2.20.1 |
+| bliska płaszczyzna 0,05 m | sekcja 2.20.2: im mniejsza, tym mniej dokładna głębia daleko. Granica ręki 0,25 m jest z nią związana |
+| mapa 1024 x 1024 startowo, bias 0,01 i 0,13 | sekcje 2.20.3 i 2.20.7 |
+| podgląd używa trybu `Depth` z płaszczyznami światła | sekcja 2.20.6: gotowy tryb, jedna gałąź `if` |
+| podgląd tylko dla wybranej zakładki | żeby gra nie rysowała podglądu, którego nikt nie ogląda: panel ustawia flagę w `drawShadowMapTab` |
+| osobny uniform z pozycją światła | `gouraud.frag` nie ma bloku świateł, a `common/shadows.glsl` jest włączany także przez niego |
+| trawa nie rzuca cienia także w mapie latarki | sekcja 2.16: jedna reguła dla obu świateł |
+
+**Co zostaje otwarte.** Nikt nie oglądał żadnego cienia latarki, plamy w ręce, podglądu ani panelu. Zgłoszone jest tylko to, co zrobiła bramka i siedmiosekundowy start (sekcja 5.11). Pozostałe punkty są na liście w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 21.2, i, dla macOS, w [`../../guides/build-macos.md`](../../guides/build-macos.md).
 
 ## 3. Jak to działa w OpenGL
 
@@ -602,29 +848,32 @@ Konstruktor `gfx::ComparisonSampler`: `glGenSamplers`, pięć razy `glSamplerPar
 
 W przebiegu głębi nie ma ani `glColorMask`, ani `glPolygonOffset`, ani `glCullFace`: framebuffer nie ma koloru, więc nie ma czego maskować, a bias jest w shaderze sceny.
 
+**Przebieg latarki** to te same dziewięć kroków, z trzema różnicami: rozmiar mapy to 1024 (wiersz 1), macierze `uView` i `uProjection` w wierszu 4 pochodzą z `scene::spotLightSpace` (rzut perspektywiczny), a mapa trafia na **jednostkę 4** (wiersze 7 i 8: `glActiveTexture(GL_TEXTURE4)`, `glBindSampler(4, ...)`). Framebuffer, tekstura i sampler to osobne obiekty drugiego `ShadowMap`. Przebieg jest pomijany, gdy cienie latarki są wyłączone, latarka jest zgaszona w tej klatce albo program `shadow_depth` się nie wczytał.
+
 ### 3.4 Klatka: podgląd (tylko przy rozwiniętym panelu)
 
-`glDisable(GL_DEPTH_TEST)`, `glUseProgram(preview)`, `uSource = 0` i `uMode = 2`, `glBindFramebuffer` na cel podglądu 256 x 256 z jego viewportem, tekstura głębi mapy na jednostce 0 **bez samplera** (`bindDepthTexture(0)`), pusty VAO i `glDrawArrays(GL_TRIANGLES, 0, 3)`. Czytanie tekstury głębi mapy jest tu dozwolone, bo celem rysowania jest inny framebuffer.
+`glDisable(GL_DEPTH_TEST)`, `glUseProgram(preview)`, `uSource = 0` i `uMode = 2` dla mapy księżyca (dla mapy latarki `uMode = 1` i dodatkowo trzy `glUniform1f`: `uNear`, `uFar` i `uDepthRange`, sekcja 2.20.6), `glBindFramebuffer` na cel podglądu 256 x 256 z jego viewportem, tekstura głębi mapy na jednostce 0 **bez samplera** (`bindDepthTexture(0)`), pusty VAO i `glDrawArrays(GL_TRIANGLES, 0, 3)`. Czytanie tekstury głębi mapy jest tu dozwolone, bo celem rysowania jest inny framebuffer.
 
 ### 3.5 Klatka: odczyt w przebiegu sceny
 
-Dla programu `lit` albo `gouraud` (w `drawLitMaze`) i dla programu `grass` (w `drawGrass`) `setShadowUniforms` ustawia siedem uniformów: `glUniform1i` dla samplera (wartość 3), przełącznika i promienia PCF, `glUniformMatrix4fv` dla macierzy światła, `glUniform1f` dla dwóch części biasu i siły. Dzieje się to **w każdej klatce, także przy wyłączonych cieniach** (sekcja 5.6 mówi dlaczego). Sam odczyt to wywołania `texture()` w shaderze: żadnego wywołania OpenGL na fragment.
+Dla programu `lit` albo `gouraud` (w `drawLitMaze`) i dla programu `grass` (w `drawGrass`) `setShadowUniforms` ustawia siedem uniformów dla mapy księżyca: `glUniform1i` dla samplera (wartość 3), przełącznika i promienia PCF, `glUniformMatrix4fv` dla macierzy światła, `glUniform1f` dla dwóch części biasu i siły. Dla mapy latarki robi to samo (sampler dostaje 4) i dodaje ósmy, `glUniform3fv` dla pozycji światła. Oba zestawy ustawia jedna funkcja, `NightMazeApp::setShadowUniformsOf`, więc program ma 15 uniformów cieni. Dzieje się to **w każdej klatce, także przy wyłączonych cieniach** (sekcja 5.6 mówi dlaczego). Sam odczyt to wywołania `texture()` w shaderze: żadnego wywołania OpenGL na fragment.
 
 ### 3.6 Co zostaje po przebiegu cieni
 
-| Stan | Po `drawMoonShadowMap` | Czy to komuś przeszkadza |
+| Stan | Po `drawMoonShadowMap` i `drawFlashlightShadowMap` | Czy to komuś przeszkadza |
 |---|---|---|
 | związany framebuffer | mapa cieni albo jej podgląd | nie: `beginScene` wiąże framebuffer sceny |
-| viewport | 2048 x 2048, 1024 x 1024 albo 256 x 256 | nie: `Framebuffer::bind` sceny ustawia swój |
+| viewport | 2048 x 2048, 1024 x 1024 albo 256 x 256 (mapa księżyca, mapa latarki, podgląd) | nie: `Framebuffer::bind` sceny ustawia swój |
 | test głębi | włączony, a po podglądzie wyłączony | nie: `onRender` włącza go po `beginScene` |
 | program w użyciu | `shadow_depth` albo `preview` | nie: każda funkcja rysująca zaczyna od `use()` |
-| jednostka 3 | tekstura głębi mapy i sampler z porównaniem | tak ma być: z niej czytają programy sceny |
+| jednostka 3 | tekstura głębi mapy księżyca i sampler z porównaniem | tak ma być: z niej czytają programy sceny |
+| jednostka 4 | to samo dla mapy latarki, **o ile** została w tej klatce narysowana. Zgaszona latarka zostawia tu starą teksturę albo nic | tak ma być: shader czyta mapę tylko przy `uFlashlightShadowEnabled` równym 1 |
 | jednostka 0 po podglądzie | tekstura głębi mapy, bez samplera | nie: pierwszy rysowany model wiąże swoją teksturę i swój sampler |
 | aktywna jednostka | 0 | tak ma być |
 
 ## 4. Shadery
 
-Jeden nowy program, `shadow_depth`, jedenasty program gry, i jeden nowy plik wspólny, `common/shadows.glsl`, włączany przez trzy shadery fragmentów. Wszystkie pliki mają na górze komentarz z odnośnikiem do tego dokumentu.
+Jeden program wprowadzony w części czwartej, `shadow_depth` (jedenasty program gry, jego liczba nie zmieniła się w części piątej), i jeden plik wspólny, `common/shadows.glsl`, włączany przez trzy shadery fragmentów. Od części piątej plik wspólny zawiera zestaw uniformów i funkcję dla obu świateł. Wszystkie pliki mają na górze komentarz z odnośnikiem do tego dokumentu.
 
 ### 4.1 `shadow_depth.vert` i `shadow_depth.frag`
 
@@ -690,7 +939,7 @@ uniform int uMoonShadowPcfRadius;
 uniform float uMoonShadowStrength;
 ```
 
-(W pliku każdy uniform ma nad sobą komentarz. Tu są same deklaracje.) To **zwykłe uniformy**, a nie pola bloku `LightBlock`, w którym mieszka reszta danych świateł. Powód jest w języku: sampler jest typem nieprzezroczystym i **nie może być polem bloku uniformów**. Skoro sampler musi zostać poza blokiem, liczby należące do tej samej mapy (macierz, bias, promień, siła) zostają obok niego, a blok `LightBlock` z jego układem std140 nie zmienia się ani o bajt ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)). Cena: zestaw trzeba ustawić osobno w każdym z trzech programów, co klatkę. Notatka: [`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md).
+(W pliku każdy uniform ma nad sobą komentarz. Tu są same deklaracje.) Od części piątej plik ma ten sam zestaw drugi raz, dla latarki, z nazwami `uFlashlightShadowMap`, `uFlashlightShadowMatrix`, `uFlashlightShadowEnabled`, `uFlashlightShadowConstantBias`, `uFlashlightShadowSlopeBias`, `uFlashlightShadowPcfRadius` i `uFlashlightShadowStrength`, oraz ósmy uniform, `uniform vec3 uFlashlightShadowLightPosition`, czyli miejsce, z którego mapa została narysowana. Różnią się dwa znaczenia: macierz latarki zawiera rzut **perspektywiczny**, a oba biasy są **metrami**, nie jednostkami głębi (sekcja 2.20.3). To **zwykłe uniformy**, a nie pola bloku `LightBlock`, w którym mieszka reszta danych świateł. Powód jest w języku: sampler jest typem nieprzezroczystym i **nie może być polem bloku uniformów**. Skoro sampler musi zostać poza blokiem, liczby należące do tej samej mapy (macierz, bias, promień, siła) zostają obok niego, a blok `LightBlock` z jego układem std140 nie zmienia się ani o bajt ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)). Cena: zestaw trzeba ustawić osobno w każdym z trzech programów, co klatkę, a od części piątej są dwa zestawy. Notatka: [`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md).
 
 **Bias:**
 
@@ -784,32 +1033,36 @@ float moonShadow(vec3 worldPosition, float facing) {
 | `coordinates.z -= slopeScaledBias(...)` | bias zmniejsza głębię odniesienia: fragment jest porównywany tak, jakby był o tyle bliżej księżyca |
 | `return uMoonShadowStrength * (1.0 - visibility);` | zamiana "ile światła dociera" na "ile światła odpada", pomnożona przez siłę cienia |
 
+**Cień latarki:** funkcja `flashlightShadow(worldPosition, facing)` ma ten sam szkielet (przełącznik, rzutowanie, `shadowMapVisibility`, siła), ale bias wchodzi **przed rzutowaniem** i w metrach, a przed dzieleniem przez `w` stoi sprawdzenie `w <= 0`. Cały kod i tabela linia po linii: sekcja 2.20.3. Obie funkcje wołają tę samą `shadowMapVisibility(map, coordinates, pcfRadius)`: mapa jest jej parametrem, więc PCF, filtr sprzętowy i przypadek `z > 1` działają dla latarki bez zmiany.
+
 ### 4.3 Zmiany w shaderach, które już były
 
 | Plik | Co doszło |
 |---|---|
-| `common/lighting.glsl` | pola `moonDiffuse` i `moonSpecular` w strukturze `Lighting`, funkcja `moonFacing`, gałąź księżyca w `computeLighting` zapisuje swoje dwa składniki osobno i dodaje je do sum (robi to, co `addLight`, i zachowuje wynik). Funkcja nadal nic nie wie o cieniach |
-| `lit.frag` | `#include "common/shadows.glsl"`, trzy linie odejmowania (sekcja 2.14) |
-| `gouraud.vert` | cztery nowe wyjścia (sekcja 2.15) |
-| `gouraud.frag` | `#include "common/shadows.glsl"`, cztery nowe wejścia, trzy linie odejmowania |
-| `grass.frag` | `#include "common/shadows.glsl"`, odejmowanie udziału księżyca od części rozproszonej (sekcja 2.16) |
-| `post/preview.frag` | gałąź `uMode == 2` (sekcja 2.17) |
+| `common/lighting.glsl` | pola `moonDiffuse` i `moonSpecular` w strukturze `Lighting`, funkcja `moonFacing`, gałąź księżyca w `computeLighting` zapisuje swoje dwa składniki osobno i dodaje je do sum (robi to, co `addLight`, i zachowuje wynik). Część piąta: pola `flashlightDiffuse` i `flashlightSpecular`, funkcja `flashlightFacing(normal, position)` i to samo dla gałęzi reflektora, z wyzerowaniem pól przed gałęzią. Funkcja nadal nic nie wie o cieniach |
+| `lit.frag` | `#include "common/shadows.glsl"`, trzy linie odejmowania (sekcja 2.14). Część piąta: drugi udział w obu odejmowaniach i wywołanie `flashlightShadow` |
+| `gouraud.vert` | cztery nowe wyjścia (sekcja 2.15). Część piąta: trzy kolejne |
+| `gouraud.frag` | `#include "common/shadows.glsl"`, cztery nowe wejścia, trzy linie odejmowania. Część piąta: trzy kolejne wejścia i drugi udział w odejmowaniu |
+| `grass.frag` | `#include "common/shadows.glsl"`, odejmowanie udziału księżyca od części rozproszonej (sekcja 2.16). Część piąta: także udziału latarki |
+| `post/preview.frag` | gałąź `uMode == 2` (sekcja 2.17). Część piąta: tylko komentarze (tryb 1 pokazuje też mapę latarki), kod się nie zmienił |
 
 Shadery wierzchołków `lit.vert` i `grass.vert` oraz `grass.geom` nie zmieniły się: pozycję w świecie, której potrzebuje `moonShadow`, przekazywały do shadera fragmentów już wcześniej.
 
 ### 4.4 Strona C++: kto ustawia uniformy
 
-Nazwy są w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), w nowej strukturze `ShadowUniformNames` (siedem pól) i jej jedynej dziś stałej, `MOON_SHADOW_UNIFORMS`. Do tego jedna stała z numerem jednostki, `MOON_SHADOW_TEXTURE_UNIT = 3`.
+Nazwy są w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp), w strukturze `ShadowUniformNames` (osiem pól: siedem z części czwartej i `lightPosition`) i jej dwóch stałych, `MOON_SHADOW_UNIFORMS` (z `lightPosition` równym `nullptr`) i `FLASHLIGHT_SHADOW_UNIFORMS`. Do tego dwie stałe z numerami jednostek, `MOON_SHADOW_TEXTURE_UNIT = 3` i `FLASHLIGHT_SHADOW_TEXTURE_UNIT = 4`. Tabela poniżej jest dla księżyca, dla latarki nazwy to `uFlashlightShadow...` i jednostka 4.
 
 | Uniform w GLSL | Pole `ShadowUniformNames` | Setter | Wartość |
 |---|---|---|---|
 | `uMoonShadowMap` | `map` | `setInt` | numer jednostki, 3 |
 | `uMoonShadowEnabled` | `enabled` | `setInt` | 1, gdy przebieg głębi wypełnił mapę w tej klatce (`m_moonShadowDrawn`), inaczej 0 |
 | `uMoonShadowMatrix` | `matrix` | `setMat4` | `lightSpace.matrix()` |
-| `uMoonShadowConstantBias` | `constantBias` | `setFloat` | `biasInDepthUnits(settings.constantBias, extent.z)` |
-| `uMoonShadowSlopeBias` | `slopeBias` | `setFloat` | `biasInDepthUnits(settings.slopeBias, extent.z)` |
+| `uMoonShadowConstantBias` | `constantBias` | `setFloat` | `biasForShader(settings.constantBias, lightSpace)`: dla pudełka `biasInDepthUnits(..., extent.z)`, dla ostrosłupa metry bez zmiany |
+| `uMoonShadowSlopeBias` | `slopeBias` | `setFloat` | to samo dla `settings.slopeBias` |
 | `uMoonShadowPcfRadius` | `pcfRadius` | `setInt` | `pcfRadiusInUse(settings)`: 0, gdy PCF wyłączone, inaczej promień obcięty do zakresu od 1 do 3 |
 | `uMoonShadowStrength` | `strength` | `setFloat` | `settings.strength` obcięte do zakresu od 0 do 1 |
+
+Ósmy uniform, tylko latarki: `uFlashlightShadowLightPosition` (pole `lightPosition`, `setVec3`) dostaje `lightSpace.position`. Jest ustawiany tylko wtedy, gdy zestaw nazw ma to pole (`lightPosition != nullptr`).
 
 Program `shadow_depth` dostaje tylko trzy macierze: `uView` i `uProjection` w `drawShadowCasters`, a `uModel` od klas rysujących.
 
@@ -819,17 +1072,17 @@ Program `shadow_depth` dostaje tylko trzy macierze: `uView` i `uProjection` w `d
 
 | Plik | Co zawiera | Biblioteka w CMake |
 |---|---|---|
-| [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp), [`.cpp`](../../../src/scene/LightSpace.cpp) | struktura `LightSpace`, `directionalLightSpace`, `shadowMapCoordinates`, stałe `LIGHT_BOX_MARGIN` i `VERTICAL_DIRECTION_LIMIT`. Sama matematyka | `engine` |
+| [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp), [`.cpp`](../../../src/scene/LightSpace.cpp) | struktura `LightSpace` (od części piątej z polami `kind`, `position`, `nearPlane`, `farPlane`), wyliczenie `LightProjection`, `directionalLightSpace`, `spotLightSpace`, `shadowMapCoordinates`, stałe `LIGHT_BOX_MARGIN`, `VERTICAL_DIRECTION_LIMIT`, `SPOT_CONE_MARGIN_DEGREES`, `SPOT_NEAR_PLANE`, `MIN_SPOT_FIELD_OF_VIEW_DEGREES` i `MAX_SPOT_FIELD_OF_VIEW_DEGREES`. Sama matematyka | `engine` |
 | [`src/gfx/ComparisonSampler.hpp`](../../../src/gfx/ComparisonSampler.hpp), [`.cpp`](../../../src/gfx/ComparisonSampler.cpp) | RAII na obiekt samplera z porównaniem. Osobny dokument: [`../gfx/comparison-sampler.md`](../gfx/comparison-sampler.md) | `engine` |
-| [`src/game/Shadows.hpp`](../../../src/game/Shadows.hpp), [`.cpp`](../../../src/game/Shadows.cpp) | `ShadowResolution`, `ShadowSettings`, `shadowCasterBounds`, `shadowBias`, `biasInDepthUnits`, `shadowTexelSize`, `pcfKernelSide`, `pcfRadiusInUse`. Bez OpenGL | `game_logic` (linkują ją testy) |
-| [`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp), [`.cpp`](../../../src/game/ShadowMap.cpp) | klasa `ShadowMap` i funkcja `setShadowUniforms` | program `night_maze` (potrzebuje kontekstu OpenGL) |
+| [`src/game/Shadows.hpp`](../../../src/game/Shadows.hpp), [`.cpp`](../../../src/game/Shadows.cpp) | `ShadowResolution`, `ShadowSettings`, `shadowCasterBounds`, `shadowBias`, `biasInDepthUnits`, `shadowTexelSize`, `pcfKernelSide`, `pcfRadiusInUse`. Od części piątej: `flashlightShadowDefaults` (ze stałymi `FLASHLIGHT_SHADOW_CONSTANT_BIAS` i `FLASHLIGHT_SHADOW_SLOPE_BIAS`), `biasForShader`, `shadowTexelSizeAt`. Bez OpenGL | `game_logic` (linkują ją testy) |
+| [`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp), [`.cpp`](../../../src/game/ShadowMap.cpp) | klasa `ShadowMap` (jeden obiekt na światło: dwa w `NightMazeApp`) i funkcja `setShadowUniforms`. `drawPreview` dostaje od części piątej przestrzeń światła | program `night_maze` (potrzebuje kontekstu OpenGL) |
 | [`assets/shaders/shadow_depth.vert`](../../../assets/shaders/shadow_depth.vert), [`.frag`](../../../assets/shaders/shadow_depth.frag), [`common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl) | sekcja 4 | |
-| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_shadowDepthShader`, `m_moonShadowMap`, `m_moonShadow`, `m_moonLightSpace`, `m_moonShadowDrawn`, funkcje `drawMoonShadowMap` i `drawShadowCasters`, cztery akcesory dla panelu | |
-| [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), [`.cpp`](../../../src/game/Lighting.cpp) | `moonDirection(settings)`, nowa wartość `moonIntensity` | `game_logic` |
-| [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | `ShadowUniformNames`, `MOON_SHADOW_UNIFORMS`, `MOON_SHADOW_TEXTURE_UNIT` | |
-| [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp) | `AttachmentPreview::RawDepth` | |
-| [`src/debug/panels/ShadowsPanel.hpp`](../../../src/debug/panels/ShadowsPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadowsPanel.cpp), [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`src/debug/DebugUI.cpp`](../../../src/debug/DebugUI.cpp), [`src/debug/PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), [`src/main.cpp`](../../../src/main.cpp) | panel Shadows, cztery nowe pola kontekstu, jedenasty program na liście panelu Shaders, czwarty rząd zwiniętych pasków (sekcja 6) | |
-| [`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp) | 16 przypadków (sekcja 5.10) | `night_maze_tests` |
+| [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_shadowDepthShader`, `m_moonShadowMap`, `m_moonShadow`, `m_moonLightSpace`, `m_moonShadowDrawn` i ich odpowiedniki `m_flashlightShadowMap`, `m_flashlightShadow`, `m_flashlightLightSpace`, `m_flashlightShadowDrawn`, funkcje `drawMoonShadowMap`, `drawFlashlightShadowMap`, `drawShadowCasters` i `setShadowUniformsOf`, osiem akcesorów dla panelu | |
+| [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), [`.cpp`](../../../src/game/Lighting.cpp) | `moonDirection(settings)`, nowa wartość `moonIntensity`. Od części piątej: `FlashlightPose`, `flashlightPose`, trzy pola ręki w `LightingSettings`, `MAX_FLASHLIGHT_HAND_RIGHT`, `MIN_FLASHLIGHT_CONVERGE_DISTANCE`, nowy podpis `buildLightSet` (sekcja 2.20.8 i [`../game/flashlight.md`](../game/flashlight.md)) | `game_logic` |
+| [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | `ShadowUniformNames` (z polem `lightPosition`), `MOON_SHADOW_UNIFORMS`, `FLASHLIGHT_SHADOW_UNIFORMS`, `MOON_SHADOW_TEXTURE_UNIT`, `FLASHLIGHT_SHADOW_TEXTURE_UNIT` | |
+| [`src/game/PostProcess.hpp`](../../../src/game/PostProcess.hpp) | `AttachmentPreview::RawDepth` (część czwarta), nowy komentarz przy `Depth` (część piąta) | |
+| [`src/debug/panels/ShadowsPanel.hpp`](../../../src/debug/panels/ShadowsPanel.hpp), [`.cpp`](../../../src/debug/panels/ShadowsPanel.cpp), [`src/debug/DebugContext.hpp`](../../../src/debug/DebugContext.hpp), [`src/debug/DebugUI.cpp`](../../../src/debug/DebugUI.cpp), [`src/debug/PanelLayout.hpp`](../../../src/debug/PanelLayout.hpp), [`src/main.cpp`](../../../src/main.cpp) | panel Shadows (od części piątej z dwiema zakładkami i strukturą `ShadowMapView`), cztery nowe pola kontekstu w części czwartej i cztery w piątej (razem 38), jedenasty program na liście panelu Shaders, czwarty rząd zwiniętych pasków (sekcja 6) | |
+| [`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp), [`tests/LightingTests.cpp`](../../../tests/LightingTests.cpp) | 31 i 15 przypadków (sekcja 5.10) | `night_maze_tests` |
 
 Podział jest ten sam co przy bloomie i mgle: wszystko, co da się policzyć bez karty, leży w bibliotekach, które linkują testy, a klasa trzymająca obiekty OpenGL w programie.
 
@@ -837,18 +1090,14 @@ Podział jest ten sam co przy bloomie i mgle: wszystko, co da się policzyć bez
 
 ```cpp
 LightSpace directionalLightSpace(const Aabb& bounds, const glm::vec3& lightDirection) {
-    const glm::vec3 direction = glm::length(lightDirection) < MIN_DIRECTION_LENGTH
-                                    ? FALLBACK_DIRECTION
-                                    : glm::normalize(lightDirection);
+    const glm::vec3 direction = unitDirection(lightDirection);
 
     // The view of the light: it looks at the middle of the box, along the direction its
     // rays travel. A directional light has no position, so the eye is simply put one
     // step before the middle. Where exactly it stands along the ray does not matter:
     // the near and the far plane are measured from it below.
-    const glm::vec3 up =
-        std::abs(direction.y) > VERTICAL_DIRECTION_LIMIT ? UP_FOR_VERTICAL_LIGHT : WORLD_UP;
     const glm::vec3 center = (bounds.min + bounds.max) * 0.5F;
-    const glm::mat4 view = glm::lookAt(center - direction, center, up);
+    const glm::mat4 view = glm::lookAt(center - direction, center, upFor(direction));
 
     // The box in the space of the light: the smallest and the largest coordinate of the
     // eight corners along each of its three axes.
@@ -879,8 +1128,8 @@ LightSpace directionalLightSpace(const Aabb& bounds, const glm::vec3& lightDirec
 
 | Linia | Znaczenie |
 |---|---|
-| `glm::length(lightDirection) < MIN_DIRECTION_LENGTH ? FALLBACK_DIRECTION : glm::normalize(...)` | kierunek może mieć dowolną długość (test `the length of the light direction does not change the box`). Zerowy zastępuje "prosto w dół" |
-| `std::abs(direction.y) > VERTICAL_DIRECTION_LIMIT ? ... : WORLD_UP` | wybór wektora `up` z sekcji 2.2 |
+| `unitDirection(lightDirection)` | kierunek może mieć dowolną długość (test `the length of the light direction does not change the box`). Zerowy zastępuje "prosto w dół". Funkcja pomocnicza w pliku, z której od części piątej korzysta też `spotLightSpace` (wcześniej były to dwie linie w treści funkcji) |
+| `upFor(direction)` | wybór wektora `up` z sekcji 2.2: `(0, 0, -1)`, gdy `std::abs(direction.y) > VERTICAL_DIRECTION_LIMIT`, inaczej `WORLD_UP`. Też wspólna funkcja pomocnicza |
 | `glm::lookAt(center - direction, center, up)` | oko metr przed środkiem pudełka, patrzy na środek: kierunek patrzenia to `direction` |
 | `glm::vec3{view * glm::vec4{corner, 1.0F}}` | narożnik jako punkt (`w = 1`, żeby zadziałało przesunięcie), wynik obcięty z powrotem do trzech liczb |
 | `glm::min`, `glm::max` na wektorach | działają składowa po składowej: po pętli `smallest` i `largest` to dwa przeciwległe narożniki pudełka w przestrzeni światła |
@@ -896,7 +1145,8 @@ Składnia `return { .view = ..., ... }` to inicjalizacja z nazwanymi polami (des
 glm::vec3 shadowMapCoordinates(const glm::mat4& lightSpaceMatrix, const glm::vec3& worldPosition) {
     const glm::vec4 clip = lightSpaceMatrix * glm::vec4{worldPosition, 1.0F};
     // The perspective division. For an orthographic projection w is 1 and nothing
-    // changes. It is done all the same, so the function is right for every light.
+    // changes. For a perspective projection w is the distance in front of the light,
+    // and dividing by it is what makes far things small.
     const glm::vec3 ndc = glm::vec3{clip} / clip.w;
     // Normalised device coordinates run from -1 to 1, texture coordinates and stored
     // depths from 0 to 1.
@@ -904,23 +1154,34 @@ glm::vec3 shadowMapCoordinates(const glm::mat4& lightSpaceMatrix, const glm::vec
 }
 ```
 
-Gra jej nie woła: to bliźniak kodu z `moonShadow` w GLSL, na którym stoją testy.
+Gra jej nie woła: to bliźniak kodu z `moonShadow` i `flashlightShadow` w GLSL, na którym stoją testy. Dla światła z rzutem perspektywicznym wynik ma sens tylko dla punktu **przed** światłem (sekcja 2.20.4): shader sprawdza to przed dzieleniem, a ta funkcja nie.
+
+`spotLightSpace` (rzut perspektywiczny latarki) jest opisana w sekcji 2.20.1 wraz z kodem. Ma te same cechy co `directionalLightSpace`: czysta matematyka bez OpenGL, kierunek dowolnej długości, ochrona przed pionowym kierunkiem, i dodatkowo obcina kąt otwarcia do zakresu od 1 do 170 stopni oraz przesuwa daleką płaszczyznę za bliską, gdy zasięg jest za mały. Testy: sekcja 5.10.
 
 ### 5.3 Ustawienia: `ShadowSettings`
 
 | Pole | Wartość startowa | Znaczenie |
 |---|---|---|
-| `enabled` | `true` | wyłączone: mapa nie jest rysowana i nic nie jest w cieniu |
+| `enabled` | `true` | wyłączone: mapa **tego światła** nie jest rysowana i nic nie jest w jego cieniu. Przy obu światłach wyłączonych obraz jest taki jak bez cieni |
 | `resolution` | `ShadowResolution::High` | `Low` to 1024 (`SHADOW_MAP_SIZE_LOW`), `High` to 2048 (`SHADOW_MAP_SIZE_HIGH`). Wartości wyliczenia to numery pozycji na liście w panelu |
 | `constantBias` | `0.02F` | metry (sekcja 2.11) |
 | `slopeBias` | `0.12F` | metry |
 | `hardwareFilter` | `true` | filtr liniowy samplera z porównaniem (sekcja 2.8) |
 | `pcf` | `true` | pętla PCF w shaderze |
 | `pcfRadius` | `DEFAULT_PCF_RADIUS`, czyli 1 | od `MIN_PCF_RADIUS` (1) do `MAX_PCF_RADIUS` (3): jądra 3 x 3, 5 x 5, 7 x 7 |
-| `strength` | `1.0F` | jaką część światła księżyca cień zabiera |
-| `preview` | `false` | czy w tej klatce rysować podgląd. Ustawia je panel, co klatkę |
+| `strength` | `1.0F` | jaką część światła tego światła cień zabiera |
+| `preview` | `false` | czy w tej klatce rysować podgląd. Ustawia je panel, co klatkę, dla wybranej zakładki |
 
-Komentarz struktury mówi, że jedno światło z mapą cieni ma jedną taką strukturę, "dziś księżyc". Jest polem `NightMazeApp::m_moonShadow`.
+Komentarz struktury mówi, że każde światło z mapą cieni ma jedną taką strukturę: księżyc (`NightMazeApp::m_moonShadow`) i latarka (`m_flashlightShadow`). Wartości w tabeli są wartościami księżyca. Latarka startuje z `flashlightShadowDefaults()`:
+
+| Pole | Księżyc | Latarka |
+|---|---|---|
+| `resolution` | `High` (2048) | `Low` (1024) |
+| `constantBias` | 0,02 m | 0,01 m (`FLASHLIGHT_SHADOW_CONSTANT_BIAS`) |
+| `slopeBias` | 0,12 m | 0,13 m (`FLASHLIGHT_SHADOW_SLOPE_BIAS`) |
+| pozostałe | jak w tabeli | te same (test `the shadows of the flashlight start with the small map and a bias of their own` porównuje je z księżycem) |
+
+Skąd liczby latarki: sekcje 2.20.3 i 2.20.7.
 
 ### 5.4 Matematyka bez OpenGL: `Shadows.cpp`
 
@@ -968,6 +1229,41 @@ int pcfRadiusInUse(const ShadowSettings& settings) {
 | `biasInDepthUnits` | warunek `depthRange <= 0` chroni przed dzieleniem przez zero dla pudełka bez głębi |
 | `shadowTexelSize` | większy bok pudełka przez liczbę tekseli: pesymistyczna z dwóch liczb, bo to ona decyduje o najgorszej krawędzi |
 | `pcfRadiusInUse` | przełącznik `pcf` i promień sprowadzone do jednej liczby dla shadera: 0 znaczy "jeden odczyt" |
+
+Część piąta dodała do tego pliku trzy funkcje:
+
+```cpp
+ShadowSettings flashlightShadowDefaults() {
+    ShadowSettings settings;
+    settings.resolution = ShadowResolution::Low;
+    settings.constantBias = FLASHLIGHT_SHADOW_CONSTANT_BIAS;
+    settings.slopeBias = FLASHLIGHT_SHADOW_SLOPE_BIAS;
+    return settings;
+}
+
+float biasForShader(float biasMetres, const scene::LightSpace& lightSpace) {
+    if (lightSpace.kind == scene::LightProjection::Perspective) {
+        // Metres, as they are: the shader moves the fragment towards the light.
+        return biasMetres;
+    }
+    return biasInDepthUnits(biasMetres, lightSpace.extent.z);
+}
+
+float shadowTexelSizeAt(const scene::LightSpace& lightSpace, int mapSize, float distance) {
+    const float atFarPlane = shadowTexelSize(lightSpace, mapSize);
+    if (lightSpace.kind != scene::LightProjection::Perspective || lightSpace.farPlane <= 0.0F) {
+        // A box: the same size at every distance.
+        return atFarPlane;
+    }
+    return atFarPlane * std::max(distance, 0.0F) / lightSpace.farPlane;
+}
+```
+
+| Funkcja | Uwagi |
+|---|---|
+| `flashlightShadowDefaults` | ustawienia startowe latarki: mała mapa i własny bias (sekcja 5.3). Reszta pól jak w domyślnym `ShadowSettings` |
+| `biasForShader` | jedno miejsce, które wie, w jakiej jednostce shader chce biasu: ułamek głębi pudełka dla księżyca, metry dla ostrosłupa latarki. Zastąpiła w `setShadowUniforms` dwa bezpośrednie wywołania `biasInDepthUnits` (sekcja 2.20.3) |
+| `shadowTexelSizeAt` | rozmiar teksela w danej odległości od światła. Dla pudełka ten sam co `shadowTexelSize`, dla ostrosłupa proporcjonalny do odległości (sekcja 2.20.7). Odległość ujemna liczy się jak 0, mapa bez tekseli daje 0 przez `shadowTexelSize` |
 
 ### 5.5 Klasa `ShadowMap`
 
@@ -1024,7 +1320,7 @@ void ShadowMap::bindForSampling(GLuint unit, bool linearFilter) {
 
 Filtr samplera jest zmieniany tylko wtedy, gdy pole w panelu się zmieniło. Kolejność dwóch wiązań: sekcja 2.7.
 
-`drawPreview` (sekcja 3.4) tworzy przy pierwszym użyciu cel `PREVIEW_SIZE = 256` pikseli w formacie `Rgba8` bez głębi i rysuje do niego jeden trójkąt programem `preview` z `uMode` równym `AttachmentPreview::RawDepth`. Pole `m_triangle` to pusty obiekt VAO: trójkąt pełnoekranowy nie ma danych wierzchołków ([`post-process.md`](post-process.md), sekcja 2.4), ale profil Core nie rysuje bez związanego VAO.
+`drawPreview` (sekcja 3.4) tworzy przy pierwszym użyciu cel `PREVIEW_SIZE = 256` pikseli w formacie `Rgba8` bez głębi i rysuje do niego jeden trójkąt programem `preview`. Od części piątej funkcja dostaje `lightSpace` i wybiera tryb po `lightSpace.kind`: `AttachmentPreview::RawDepth` dla pudełka księżyca, a dla ostrosłupa latarki `AttachmentPreview::Depth` z uniformami `uNear`, `uFar` i `uDepthRange` ustawionymi z płaszczyzn światła (sekcja 2.20.6). Pole `m_triangle` to pusty obiekt VAO: trójkąt pełnoekranowy nie ma danych wierzchołków ([`post-process.md`](post-process.md), sekcja 2.4), ale profil Core nie rysuje bez związanego VAO.
 
 Klasa trzyma obiekty OpenGL, więc jak każda taka klasa w grze musi zostać zniszczona przed oknem. Jest polem `NightMazeApp`, co to zapewnia.
 
@@ -1039,23 +1335,30 @@ void setShadowUniforms(const gfx::Shader& shader, const ShadowUniformNames& name
     shader.setInt(names.enabled, drawn ? 1 : 0);
     shader.setMat4(names.matrix, lightSpace.matrix());
 
-    // The depth range of the box of the light: its z extent in metres is the stored
-    // range from 0 to 1.
-    const float depthRange = lightSpace.extent.z;
-    shader.setFloat(names.constantBias, biasInDepthUnits(settings.constantBias, depthRange));
-    shader.setFloat(names.slopeBias, biasInDepthUnits(settings.slopeBias, depthRange));
+    // The settings hold the bias in metres. What the shader wants depends on the
+    // projection of the light: a share of the depth range for the box of the moon, the
+    // metres themselves for the pyramid of the flashlight (game::biasForShader).
+    shader.setFloat(names.constantBias, biasForShader(settings.constantBias, lightSpace));
+    shader.setFloat(names.slopeBias, biasForShader(settings.slopeBias, lightSpace));
     shader.setInt(names.pcfRadius, pcfRadiusInUse(settings));
+    // Only a light that stands somewhere has this uniform: the shader moves a fragment
+    // towards that place by the bias.
+    if (names.lightPosition != nullptr) {
+        shader.setVec3(names.lightPosition, lightSpace.position);
+    }
     // The number comes from a slider, where anything can be typed. Above 1 a shadow
     // would take away more light than there is.
     shader.setFloat(names.strength, std::clamp(settings.strength, 0.0F, 1.0F));
 }
 ```
 
-Najważniejsza rzecz jest w komentarzu nagłówka: funkcja musi być wołana **w każdej klatce dla każdego programu, który włącza `common/shadows.glsl`, także przy wyłączonych cieniach**. Po przeładowaniu shaderów (`Reload shaders`) każdy uniform nowego programu ma wartość 0. Sampler cieni zostawiony na jednostce 0 dzieliłby ją z samplerem tekstury koloru (`sampler2D`), a OpenGL odmawia rysowania programem, w którym dwa samplery **różnych typów** wskazują tę samą jednostkę. Scena zniknęłaby po kliknięciu `Reload shaders` przy wyłączonych cieniach. Dlatego numer jednostki jest ustawiany zawsze, a o tym, czy mapa jest czytana, decyduje osobny uniform `enabled`.
+Dwie linie dotyczą części piątej: bias przechodzi przez `biasForShader` (sekcja 2.20.3), a pozycja światła jest wysyłana tylko wtedy, gdy zestaw nazw ją ma (księżyc ma `lightPosition == nullptr`, więc jego zestaw ma siedem uniformów, a zestaw latarki osiem).
 
-Parametr `drawn` to `m_moonShadowDrawn`: prawda tylko wtedy, gdy przebieg głębi naprawdę wypełnił mapę w tej klatce. Przełącznik w panelu nie wystarcza: cienie mogą być włączone, a mapy może nie być (nieudany framebuffer, niewczytany program głębi).
+Najważniejsza rzecz jest w komentarzu nagłówka: funkcja musi być wołana **w każdej klatce dla każdego programu, który włącza `common/shadows.glsl`, także przy wyłączonych cieniach**, i **dla każdego zestawu** (`NightMazeApp::setShadowUniformsOf` woła ją dwa razy: dla księżyca i dla latarki). Po przeładowaniu shaderów (`Reload shaders`) każdy uniform nowego programu ma wartość 0. Sampler cieni zostawiony na jednostce 0 dzieliłby ją z samplerem tekstury koloru (`sampler2D`), a OpenGL odmawia rysowania programem, w którym dwa samplery **różnych typów** wskazują tę samą jednostkę. Scena zniknęłaby po kliknięciu `Reload shaders` przy wyłączonych cieniach. Dlatego numer jednostki jest ustawiany zawsze, a o tym, czy mapa jest czytana, decyduje osobny uniform `enabled`.
 
-### 5.7 Przebieg w klatce: `drawMoonShadowMap` i `drawShadowCasters`
+Parametr `drawn` to `m_moonShadowDrawn` albo `m_flashlightShadowDrawn`: prawda tylko wtedy, gdy przebieg głębi naprawdę wypełnił mapę w tej klatce. Dla latarki to także oznacza, że latarka świeci (klawisz F i bateria). Przełącznik w panelu nie wystarcza: cienie mogą być włączone, a mapy może nie być (nieudany framebuffer, niewczytany program głębi).
+
+### 5.7 Przebieg w klatce: `drawMoonShadowMap`, `drawFlashlightShadowMap` i `drawShadowCasters`
 
 ```cpp
 void NightMazeApp::drawMoonShadowMap() {
@@ -1078,7 +1381,7 @@ void NightMazeApp::drawMoonShadowMap() {
 
     // The picture of the map, only while the debug UI shows it.
     if (m_moonShadow.preview) {
-        m_moonShadowMap.drawPreview(m_previewShader);
+        m_moonShadowMap.drawPreview(m_previewShader, m_moonLightSpace);
     }
 }
 ```
@@ -1093,6 +1396,49 @@ void NightMazeApp::drawMoonShadowMap() {
 | `bindForSampling(...)` | raz na klatkę, po przebiegu głębi |
 | `if (m_moonShadow.preview)` | flaga z panelu (sekcja 2.17) |
 
+Przebieg latarki ma ten sam szkielet, z trzema różnicami:
+
+```cpp
+void NightMazeApp::drawFlashlightShadowMap(const LightingSettings& frameLighting,
+                                           const FlashlightPose& flashlight) {
+    m_flashlightLightSpace =
+        scene::spotLightSpace(flashlight.position, flashlight.direction,
+                              frameLighting.flashlightOuterDegrees, frameLighting.flashlightRange);
+
+    // Until the pass below has run, this frame has no flashlight shadows.
+    m_flashlightShadowDrawn = false;
+    if (!m_flashlightShadow.enabled || !frameLighting.flashlightOn ||
+        !m_shadowDepthShader.isValid()) {
+        return;
+    }
+    if (!m_flashlightShadowMap.beginDepthPass(shadowMapSize(m_flashlightShadow.resolution))) {
+        return;
+    }
+    drawShadowCasters(m_flashlightLightSpace);
+    m_flashlightShadowDrawn = true;
+
+    m_flashlightShadowMap.bindForSampling(FLASHLIGHT_SHADOW_TEXTURE_UNIT,
+                                          m_flashlightShadow.hardwareFilter);
+
+    if (m_flashlightShadow.preview) {
+        m_flashlightShadowMap.drawPreview(m_previewShader, m_flashlightLightSpace);
+    }
+}
+```
+
+(Pominąłem komentarze.)
+
+| Linia | Znaczenie |
+|---|---|
+| parametry `frameLighting` i `flashlight` | oba liczy `onRender` **przed** wywołaniem: ustawienia klatki (bateria, migotanie) i pozycję latarki (sekcja 2.20.8). Funkcja nie liczy oka ani pozycji sama, więc nie może się rozjechać ze światłem sceny |
+| `m_flashlightLightSpace = scene::spotLightSpace(...)` | co klatkę i **przed** sprawdzeniem przełącznika, jak dla księżyca: panel pokazuje rozmiar mapy także, gdy nic nie jest rysowane. Kąt stożka i zasięg są z ustawień klatki |
+| `!frameLighting.flashlightOn` | **różnica 1.** Księżyc świeci zawsze, a latarka bywa zgaszona. Pytanie idzie do ustawień klatki, a nie do `m_lighting`, bo pusta bateria wyłącza światło tylko w kopii klatki (`lightingForFrame`). Zgaszona latarka nie ma co zabierać cieniem, więc przebieg jest pomijany |
+| `drawShadowCasters(m_flashlightLightSpace)` | **różnica 2.** Ta sama funkcja co dla księżyca, z macierzami perspektywicznymi. Nic w niej się nie zmienia: bierze przestrzeń światła jako argument, o co chodziło w planie z części czwartej |
+| `FLASHLIGHT_SHADOW_TEXTURE_UNIT` | **różnica 3.** Jednostka 4, własny obiekt `ShadowMap` z własnym samplerem |
+| `drawPreview(m_previewShader, m_flashlightLightSpace)` | podgląd z linearyzacją (sekcja 2.20.6), tylko gdy zakładka Flashlight jest wybrana |
+
+Kolejność w `onRender` ma znaczenie i jest zapisana w komentarzach: oko klatki i `lightingForFrame`, potem `flashlightPose`, potem `drawMoonShadowMap` i `drawFlashlightShadowMap`, na końcu `beginScene`. Wcześniej oko było liczone **po** przebiegu księżyca, bo nic przed sceną go nie potrzebowało. Teraz potrzebuje go mapa latarki. Światła sceny (`buildLightSet` i `m_lightRig.upload(lights, eye)`) są budowane później z tego samego wyniku `flashlightPose` i tego samego oka.
+
 ```cpp
 void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const {
     m_shadowDepthShader.use();
@@ -1106,9 +1452,11 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
     // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
-    // a texel of the map is about 3 cm, so its shadow would be a flicker of single
-    // texels that moves with the wind, on ground the tuft itself hides. The grass still
-    // RECEIVES shadows.
+    // a texel of the map of the moon is about 3 cm, so its shadow would be a flicker of
+    // single texels that moves with the wind, on ground the tuft itself hides. The map
+    // of the flashlight has finer texels, but the grass is left out of it too: one rule
+    // for both lights, and no shadows that sway on every wall the beam passes. The
+    // grass still RECEIVES shadows.
 }
 ```
 
@@ -1119,24 +1467,24 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
 
 Teren jest w mapie zawsze wypełniony, także gdy pole `Wireframe` w panelu Terrain pokazuje go liniami: grunt z linii rzucałby cień z linii.
 
-W przebiegu sceny `drawLitMaze` i `drawGrass` wołają `setShadowUniforms` dla swojego programu. W `drawGrass` stoi przed tym `m_grassShader.use()`, bo uniform zapisuje się do programu w użyciu, a `GrassRenderer::draw` woła `use()` dopiero w środku.
+W przebiegu sceny `drawLitMaze` i `drawGrass` wołają `setShadowUniformsOf` (dwa razy `setShadowUniforms`: księżyc i latarka) dla swojego programu. W `drawGrass` stoi przed tym `m_grassShader.use()`, bo uniform zapisuje się do programu w użyciu, a `GrassRenderer::draw` woła `use()` dopiero w środku.
 
 ### 5.8 Jak dodano pola dla panelu
 
-`NightMazeApp` ma cztery nowe akcesory (`shadowDepthShader()`, `moonShadowSettings()`, `moonShadowMap()`, `moonLightSpace()`), a `DebugContext` cztery nowe pola o tych samych nazwach. Dwa ostatnie są referencjami `const`: panel czyta mapę i przestrzeń światła, ale ich nie zmienia. `main.cpp` wpisuje je do kontekstu co klatkę ([`../debug-ui.md`](../debug-ui.md)).
+`NightMazeApp` ma osiem akcesorów dla panelu: cztery z części czwartej (`shadowDepthShader()`, `moonShadowSettings()`, `moonShadowMap()`, `moonLightSpace()`) i cztery z części piątej (`flashlightShadowSettings()`, `flashlightShadowMap()`, `flashlightLightSpace()`, `flashlightShadowDrawn()`). `DebugContext` ma osiem pól o tych samych nazwach, w sumie 38 pól (było 34). Dwa pola z mapą i przestrzenią światła każdego światła są referencjami `const`: panel czyta mapę i przestrzeń światła, ale ich nie zmienia. `flashlightShadowDrawn` to zwykła wartość, kopiowana przy budowie kontekstu: panel tylko ją pokazuje. `main.cpp` wpisuje wszystko do kontekstu co klatkę ([`../debug-ui.md`](../debug-ui.md)).
 
 ### 5.9 Ile to kosztuje
 
-- **Przebieg głębi** rysuje te same obiekty co scena, jeszcze raz: teren, 242 obiekty labiryntu startowego, bramę i kryształy, które jeszcze nie zostały zebrane (na początku rundy 13). Shader wierzchołków to jedno mnożenie macierzy, shader fragmentów jest pusty, ale liczba wywołań rysujących w klatce prawie się podwaja.
-- **Wypełnienie**: 4,2 miliona tekseli przy 2048, 1 milion przy 1024.
-- **Odczyt**: 9 odczytów mapy na oświetlony fragment przy ustawieniach startowych (sekcja 2.9).
-- **Pamięć**: około 12,6 do 16,8 MB dla mapy 2048 i 0,26 MB dla podglądu.
+- **Przebieg głębi** rysuje te same obiekty co scena, jeszcze raz: teren, 242 obiekty labiryntu startowego, bramę i kryształy, które jeszcze nie zostały zebrane (na początku rundy 13). Shader wierzchołków to jedno mnożenie macierzy, shader fragmentów jest pusty, ale liczba wywołań rysujących w klatce prawie się podwaja. **Od części piątej są dwa takie przebiegi** (księżyc i latarka), więc te same obiekty są rysowane w klatce trzy razy. Przebieg latarki jest pomijany przy zgaszonej latarce albo wyłączonych jej cieniach.
+- **Wypełnienie**: 4,2 miliona tekseli przy 2048, 1 milion przy 1024. Księżyc startuje z 2048, latarka z 1024.
+- **Odczyt**: 9 odczytów mapy na oświetlony fragment przy ustawieniach startowych (sekcja 2.9). Od części piątej drugie 9 odczytów z mapy latarki, **dla każdego fragmentu**, także poza stożkiem światła (sekcja 2.20.5), o ile latarka świeci i jej cienie są włączone.
+- **Pamięć**: około 12,6 do 16,8 MB dla mapy 2048 i 0,26 MB dla podglądu. Mapa latarki 1024: od 3,1 do 4,2 MB i drugi podgląd 0,26 MB, tworzony przy pierwszym użyciu (policzone).
 
 Zmierzone liczby FPS i zastrzeżenia do nich: sekcja 5.11.
 
 ### 5.10 Testy
 
-[`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp): 16 przypadków, 1339 asercji. Plik nie potrzebuje okna ani OpenGL. Większość przypadków używa pudełka `TEST_BOUNDS` od `(-4, 0, 2)` do `(10, 6, 30)`: nie jest sześcianem i nie stoi w początku układu, żeby zamiana dwóch osi albo zgubione przesunięcie wyszły na jaw.
+[`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp): 31 przypadków (16 z części czwartej, 15 z piątej). W części czwartej plik miał 1339 asercji. Część piąta dodała do całego programu 555 asercji w 19 przypadkach (15 tu i 4 w `tests/LightingTests.cpp`), ale podziału na pliki nie liczyłem. Plik nie potrzebuje okna ani OpenGL. Większość przypadków używa pudełka `TEST_BOUNDS` od `(-4, 0, 2)` do `(10, 6, 30)`: nie jest sześcianem i nie stoi w początku układu, żeby zamiana dwóch osi albo zgubione przesunięcie wyszły na jaw.
 
 | Przypadek testowy | Co sprawdza |
 |---|---|
@@ -1157,15 +1505,52 @@ Zmierzone liczby FPS i zastrzeżenia do nich: sekcja 5.11.
 | `the PCF kernel has an odd side and a radius inside its limits` | boki 3, 5, 7. Promień 40 obcięty do 3, -2 do 1, wyłączony PCF daje 0 |
 | `the moon direction of the settings is the one the lights are built with` | `moonDirection` ma długość 1 i jest tym kierunkiem, który `buildLightSet` wpisuje do światła kierunkowego |
 
+**Część piąta: piętnaście przypadków.** Mapa latarki w testach to światło w `SPOT_POSITION = (3, 1,45, -7)`, stożek 21 stopni i zasięg 16 m (jak w grze). Dwa ostatnie przypadki używają ustawień startowych gry.
+
+| Przypadek testowy | Co sprawdza |
+|---|---|
+| `the light space of a directional light is an orthographic box without a position` | `kind` to `Orthographic`, a `position`, `nearPlane` i `farPlane` są zerem: księżyc się nie zmienił |
+| `a point on the axis of a spot light lands in the middle of its shadow map` | punkty na osi stożka w odległościach 0,5, 2, 8 i 15 m mają `x` i `y` równe 0,5, a głębię między 0 a 1 |
+| `the whole cone of a spot light is inside its shadow map, with a margin` | osiem kierunków wokół osi i trzy odległości: ten sam punkt mapy co `0,5 * tan(21) / tan(23)` = 0,452 od środka, więc cały stożek mieści się w mapie z zapasem (sekcja 2.20.1) |
+| `the depth of a spot light map runs from its near to its far plane, unevenly` | głębia 0 na bliskiej płaszczyźnie i 1 na dalekiej, ale ponad 0,99 w połowie drogi i ponad 0,95 w 1 m (sekcja 2.20.2). Za daleką płaszczyzną `z > 1`, z boku `x > 1` |
+| `the light space of a spot light keeps its position, its planes and its size` | `kind`, `position`, płaszczyzny, `extent.x` 13,58 m, `extent.z` 15,95 m, róg mapy na dalekiej płaszczyźnie ma współrzędne (1, 1) |
+| `a spot light that points straight up or down still gets a usable matrix` | nachylenia od -90 do 90 stopni (w tym po obu stronach progu 87,4): macierz skończona, oś w środku mapy |
+| `the direction of a spot light may have any length, and none means straight down` | kierunek 25 razy dłuższy daje te same współrzędne, kierunek 0 daje macierz kierunku prosto w dół |
+| `a spot light with a cone or a range out of bounds still gets a usable matrix` | stożek 120 stopni obcięty do 170 stopni otwarcia, stożek ujemny do 1 stopnia, zasięg 0 daje daleką płaszczyznę za bliską |
+| `moving a point towards a spot light keeps its texel and lowers its depth` | podstawa biasu latarki (sekcja 2.20.3): ten sam `x` i `y`, mniejsza głębia |
+| `a point behind a spot light has no place in its shadow map` | `w` jest `+3` przed światłem i `-3` za nim (sekcja 2.20.4) |
+| `the flashlight and its shadow map stand in the same place and look the same way` | światło i mapa z jednego `FlashlightPose`: ta sama pozycja, daleka płaszczyzna równa zasięgowi, punkt na osi w środku mapy |
+| `a bias goes to the shaders as depth for a box and as metres for a pyramid` | `biasForShader`: dla pudełka tyle co `biasInDepthUnits`, dla ostrosłupa metry bez zmiany przy zasięgach 2, 16 i 60 m |
+| `the texels of a spot light map grow with the distance from the light` | `shadowTexelSizeAt`: 13,265 mm na dalekiej płaszczyźnie, 0,829 mm w 1 m, 3,316 mm w 4 m, połowa w połowie zasięgu, 0 dla odległości 0 i ujemnej, mapa bez tekseli daje 0, pudełko ma ten sam rozmiar w każdej odległości |
+| `the shadows of the flashlight start with the small map and a bias of their own` | wartości `flashlightShadowDefaults` i największy bias (0,14 m) poniżej grubości ściany |
+| `the default bias of the flashlight covers the ground up to 10 m ahead` | tabela z sekcji 2.20.3: dla gruntu 1, 2, 4, 6, 8 i 10 m przed ręką bias jest większy od błędu dwóch tekseli, a w 10 m wychodzi 11,6 cm i 12,1 cm |
+
+**Cztery przypadki w `tests/LightingTests.cpp`** (część piąta; jedenaście dawnych przypadków zostało, jeden z nich zmienił nazwę, razem 15):
+
+| Przypadek testowy | Co sprawdza |
+|---|---|
+| `the flashlight sits in the hand and is aimed at a point in front of the eye` (dawniej `the flashlight sits at the eye and points where the camera looks`) | wartości startowe ręki (0,2 m, 0,25 m, 4 m), pozycja `(3; 1,45; 5,2)` dla kamery patrzącej na wschód, kierunek do punktu 4 m przed okiem, światło zbudowane z tego `FlashlightPose` |
+| `with both hand offsets at zero the flashlight is at the eye, as it used to be` | przy zerowych przesunięciach pozycja to oko, a kierunek to kierunek kamery, dla pięciu nachyleń i trzech odległości zbiegania |
+| `the beam of the flashlight passes through the point the view is aimed at` | dla pięciu kątów obrotu i pięciu nachyleń wiązka ma długość 1 i przechodzi przez punkt na osi widzenia |
+| `the hand stays inside the body of the player however the camera is turned` | `MAX_FLASHLIGHT_HAND_RIGHT` równe połowie ciała minus bliska płaszczyzna, ręka w pudełku ciała na obu poziomych osiach, `Y` przesunięte o dokładnie `flashlightHandDown` |
+| `the flashlight always has a direction` | zbieganie 0 używa najmniejszej odległości, a przypadek, w którym ręka *jest* punktem celu (kamera prosto w dół i ręka tyle poniżej oka, ile wynosi odległość), daje kierunek kamery, nie NaN |
+
+Pozostałe przypadki `tests/LightingTests.cpp` zmieniły tylko wywołanie `buildLightSet` (pozycja jako `FlashlightPose` zamiast oka i kierunku).
+
 Czego testy **nie** sprawdzają:
 
 - niczego, co wymaga karty: przebiegu głębi, klas `ShadowMap` i `ComparisonSampler`, porównania, filtrów, pętli PCF, ramki, podglądu, kolejności wiązań,
-- zgodności wzorów w GLSL z ich bliźniakami w C++ (`moonShadow` z `shadowMapCoordinates`, `slopeScaledBias` z `shadowBias`, `MAX_PCF_RADIUS` w dwóch plikach). Testy pilnują strony C++, a zgodność obu stron jest umową,
-- tego, czy bias wystarcza: testy sprawdzają wzór, a nie brak acne,
+- zgodności wzorów w GLSL z ich bliźniakami w C++ (`moonShadow` i `flashlightShadow` z `shadowMapCoordinates`, w tym sprawdzenia `w <= 0` i przesunięcia punktu przed rzutowaniem, które w GLSL stoją przed dzieleniem, `slopeScaledBias` z `shadowBias`, `MAX_PCF_RADIUS` w dwóch plikach). Testy pilnują strony C++, a zgodność obu stron jest umową,
+- tego, czy bias wystarcza: testy sprawdzają wzór i rachunek dla gruntu do 10 m, a nie brak acne, i nic nie mówią o gruncie dalej niż 10 m,
+- migotania krawędzi cienia latarki przy ruchu gracza, kosztu drugiego przebiegu i tego, czy cień w ogóle wygląda dobrze,
 - tego, że kryształy mieszczą się w pudełku rzucających (wynika z ich wysokości nad ziemią, test obejmuje pudełka kolizji ścian i słupków),
 - wyglądu.
 
 ### 5.11 Jak to zostało sprawdzone
+
+Pierwsza lista dotyczy części czwartej (2026-10-05), druga części piątej (2026-10-06). Nic z części piątej nie zostało obejrzane.
+
+**Część czwarta (cienie księżyca, 2026-10-05):**
 
 - **Build i testy** (zgłoszone dla Windowsa, 2026-10-05): `make check` przechodzi: formatowanie, build Debug i Release, testy w obu konfiguracjach, clang-tidy. 310 przypadków i 103751 asercji. Sam przeliczyłem przyrost z pliku testów (16 przypadków, 129 asercji stałych i 5 na każde z 242 pudełek kolizji): zgadza się.
 - **Brak regresji** (zgłoszone): z wyłączonymi cieniami i intensywnością księżyca cofniętą do 0,12 obraz jest identyczny co do piksela z obrazem sprzed tej części poza paskiem HUD (HUD stoi o rząd niżej). W trybie Phong różnica wynosi najwyżej 1/255 w kanale. Oznacza to, że wydzielenie udziału księżyca w `computeLighting` nie zmieniło sumy światła.
@@ -1183,22 +1568,31 @@ Czego testy **nie** sprawdzają:
 - **Nie sprawdzone ręcznie:** przełączanie rozdzielczości w działającej grze, każda kontrolka panelu Shadows kliknięta myszą, `Reload shaders` przy jedenastu programach (w tym z wyłączonymi cieniami, sekcja 5.6), przesuwanie księżyca suwakami z cieniami na ekranie, wszystkie tryby cieniowania po kolei, układ paneli z czwartym rzędem pasków.
 - **macOS:** nic. Otwarte są cztery rzeczy, których Windows nie mógł pokazać: kompletność framebuffera bez koloru, `sampler2DShadow` z obiektem samplera, `GL_CLAMP_TO_BORDER` i obejście czerwonego podglądu głębi ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
+**Część piąta (cień latarki i latarka w ręce, 2026-10-06):**
+
+- **Bramka** (zgłoszone dla Windowsa, nie powtarzałem): `make check` zgłosiła 329 przypadków testowych i 104306 asercji (przed częścią piątą 310 i 103751). Różnica to 19 przypadków i 555 asercji. Przeliczyłem przyrost przypadków z plików testów: 15 nowych w `tests/ShadowTests.cpp` (16 było, 31 jest) i 4 w `tests/LightingTests.cpp` (11 było, 15 jest) dają 19, a 310 plus 19 to 329. Przyrostu asercji nie przeliczałem.
+- **Start programu** (zgłoszone): Debug exe uruchomiony na 7 sekund: OpenGL 4.1.0 NVIDIA, zasoby wczytane, stderr pusty, panele ukryte. W buildzie Debug `GL_CHECK` zapisuje błędy OpenGL na stderr (`core::logError`), więc pusty stderr znaczy, że w tych 7 sekundach, z przebiegiem latarki włączonym domyślnie, żaden błąd OpenGL nie został zapisany. **Nie** znaczy to, że cokolwiek wygląda poprawnie: panele były ukryte, a obrazu nikt nie oglądał.
+- **Nie było ćwiczone** (zgłoszone): rysowanie w trybie Gouraud, podgląd w zakładce Flashlight, ścieżka ze zgaszoną latarką (F albo pusta bateria) i `Reload shaders`. Pozostałe: wszystko z listy w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 21.2.
+- **Liczby w tym dokumencie** (policzone przeze mnie z kodu i ze stałych): kąt otwarcia, rozmiar mapy na dalekiej płaszczyźnie, zapas stożka w mapie, tabela głębi, rachunek biasu w metrach, tabela gruntu do 12 m, rozmiary tekseli w odległościach, pamięć, zapis napisów panelu. Wartości z sekcji 2.20.3 dla odległości od 1 do 10 m i liczby 11,6 i 12,1 cm potwierdza test, a pozostałe (wiersz 12 m, tłumienie 11 i 5 procent, precyzja 24 bitów, 49 tekseli zapasu) nie mają testu. Żadna nie była mierzona na ekranie.
+- **Nie sprawdzone ręcznie**: położenie plamy w ręce (w prawo i poniżej środka na bliskich ścianach, w środku w odległości 4 m), acne albo przyciemnienie gruntu dalej niż 10 m z jądrami 3 x 3, 5 x 5 i 7 x 7 oraz z biasem 0, przecieki światła u podstaw ścian wzdłuż korytarza i za daleką płaszczyzną, skok mapy przy patrzeniu prawie prosto w górę i w dół, migotanie krawędzi cienia przy chodzeniu, tryb Gouraud, zakładka Flashlight (podgląd, `(not drawn)` po F, lista rozdzielczości), układ panelu, `Reload shaders`, koszt FPS drugiego przebiegu (jedna sesja, porównanie z poprzednim commitem), noclip ze światłem w ścianie.
+- **macOS:** nic. Do czterech rzeczy z części czwartej dochodzą: drugi framebuffer z samą głębią, czytanie mapy z rzutem perspektywicznym przez `sampler2DShadow`, dwa samplery cieni w jednym programie i ramka samplera poza ostrosłupem ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
+
 ## 6. Panel ImGui
 
-Dwunasty panel, **Shadows**, startuje zwinięty w czwartym rzędzie pasków tytułowych, pod paskiem Framebuffers i tej samej szerokości (`SHADOWS_PLACEMENT` w `PanelLayout.hpp`, wysokość po rozwinięciu `SHADOWS_HEIGHT = 324`). Ma jedną zakładkę, `Moon`. Układ: tabela o dwóch kolumnach, kontrolki i fakty po lewej, obraz mapy po prawej. Budowę panelu linia po linii opisuje [`../debug-ui.md`](../debug-ui.md). Tu jest to, co każda kontrolka znaczy.
+Dwunasty panel, **Shadows**, startuje zwinięty w czwartym rzędzie pasków tytułowych, pod paskiem Framebuffers i tej samej szerokości (`SHADOWS_PLACEMENT` w `PanelLayout.hpp`, wysokość po rozwinięciu `SHADOWS_HEIGHT = 324`). Ma dwie zakładki, `Moon` i `Flashlight` (od części piątej). Obie rysuje ta sama funkcja `drawShadowMapTab`, więc mają te same kontrolki. Różnią się tym, co mówią o mapie (fakty pod kontrolkami) i obrazem. Układ: tabela o dwóch kolumnach, kontrolki i fakty po lewej, obraz mapy po prawej. Budowę panelu linia po linii opisuje [`../debug-ui.md`](../debug-ui.md). Tu jest to, co każda kontrolka znaczy.
 
 | Kontrolka | Pole | Zakres | Co zmienia | Co widać |
 |---|---|---|---|---|
-| pole `Shadows` | `enabled` | | przebieg głębi i odczyt | wyłączone: obraz gry bez cieni. Linia faktów zmienia się na `Map: not drawn`, obraz na `(not drawn)` |
-| lista `Resolution` | `resolution` | `1024 x 1024`, `2048 x 2048` | rozmiar mapy: framebuffer jest tworzony od nowa | przy 1024 krawędzie cieni grubsze, linia `One texel` pokazuje dwa razy więcej |
+| pole `Shadows` | `enabled` | | przebieg głębi i odczyt **tego światła** | wyłączone: obraz gry bez cieni tego światła, cienie drugiego zostają. Linia faktów zmienia się na `Map: not drawn`, obraz na `(not drawn)` |
+| lista `Resolution` | `resolution` | `1024 x 1024`, `2048 x 2048` | rozmiar mapy: framebuffer jest tworzony od nowa | przy 1024 krawędzie cieni grubsze, linia `One texel` pokazuje dwa razy więcej. Zakładka `Moon` startuje z 2048, zakładka `Flashlight` z 1024 |
 | suwak `Constant bias` | `constantBias` | od 0 do 0,5 m | część stała biasu | 0 razem z `Slope bias` 0: acne (sekcja 2.10). Koniec zakresu: peter panning (sekcja 2.12) |
 | suwak `Slope bias` | `slopeBias` | od 0 do 1 m | część zależna od pochylenia | działa najmocniej na powierzchniach, które światło muska |
 | pole `Hardware 2 x 2 filter` | `hardwareFilter` | | filtr samplera z porównaniem | odznaczone: schodki tekseli na krawędziach (najlepiej widać przy wyłączonym PCF) |
 | pole `PCF` | `pcf` | | pętla w shaderze | odznaczone: twarda krawędź |
 | lista `Kernel` | `pcfRadius` | `3 x 3`, `5 x 5`, `7 x 7` | promień 1, 2 albo 3 | większe jądro: szersze, miększe przejście i więcej odczytów (9, 25, 49) |
-| suwak `Strength` | `strength` | od 0 do 1 | udział światła księżyca, który cień zabiera | 0: cieni nie widać. 1: w cieniu zostaje samo światło otoczenia (i inne światła) |
+| suwak `Strength` | `strength` | od 0 do 1 | udział światła **tego światła**, który cień zabiera | 0: cieni nie widać. 1: w cieniu zostaje samo światło otoczenia (i inne światła) |
 
-Wszystkie trzy suwaki mają `ImGuiSliderFlags_AlwaysClamp`, więc wartość wpisana z klawiatury też nie wyjdzie poza zakres.
+Obie zakładki mają ten sam zakres suwaków biasu (0 do 0,5 m i 0 do 1 m), a podpowiedź przy `Constant bias` mówi, że bias jest w metrach dla obu świateł. Wszystkie trzy suwaki mają `ImGuiSliderFlags_AlwaysClamp`, więc wartość wpisana z klawiatury też nie wyjdzie poza zakres.
 
 Fakty pod kontrolkami (funkcja `drawFacts`), dla ustawień startowych:
 
@@ -1210,7 +1604,17 @@ One texel: 3.2 cm
 
 Liczby w tych liniach są policzone przeze mnie ze wzorów (sekcje 2.3 i 2.4) i sformatowane tak, jak robi to kod (`%.1f`). Zrzutu ekranu z panelem nie widziałem.
 
-Obraz po prawej (`Depth seen from the moon`): czarne jest blisko księżyca, białe daleko albo puste. Podpowiedź obrazu mówi, że ściany to ciemne linie. Obraz jest odświeżany tylko przy rozwiniętym panelu (sekcja 2.17). W pierwszej klatce po rozwinięciu w jego miejscu stoi `(no picture yet)`.
+**Fakty zakładki `Flashlight`** (ostrosłup, sekcja 2.20.7), dla ustawień startowych:
+
+```text
+Map: 1024 x 1024, GL_DEPTH_COMPONENT24
+Covers 13.6 x 13.6 m at 16.0 m
+One texel: 0.08 cm per metre away
+```
+
+Pierwszą linię zastępuje `Map: not drawn`, gdy mapa nie została narysowana: przy wyłączonych cieniach latarki, **przy zgaszonej latarce** (F albo pusta bateria) i przy nieudanym przebiegu. Dla księżyca warunek jest inny: panel pokazuje obraz według przełącznika `Shadows`, nie według faktu (sekcja 2.19). Przy mapie 2048 ostatnia linia pokazuje `0.04 cm per metre away`. Liczby są policzone ze wzorów, formatowanie z kodu (`%.1f` i `%.2f`), **zrzutu panelu nie widziałem**. Czy zawartość tej zakładki mieści się w stałej wysokości panelu (`SHADOWS_HEIGHT = 324`) bez paska przewijania, nie sprawdzałem.
+
+Obraz po prawej w zakładce `Moon` (`Depth seen from the moon`): czarne jest blisko księżyca, białe daleko albo puste. Podpowiedź obrazu mówi, że ściany to ciemne linie. W zakładce `Flashlight` obraz nazywa się `Distance seen from the flashlight`: czarne jest przy ręce, białe jest tak daleko, jak sięga wiązka, albo puste, a szarość to odległość jako ułamek zasięgu (sekcja 2.20.6). Obraz jest odświeżany tylko dla zakładki, którą panel pokazuje (sekcja 2.17). W pierwszej klatce po rozwinięciu w jego miejscu stoi `(no picture yet)`.
 
 Kontrolki w innych panelach, które zmieniają cienie:
 
@@ -1218,19 +1622,23 @@ Kontrolki w innych panelach, które zmieniają cienie:
 |---|---|---|
 | Lights | `Moon yaw`, `Moon pitch` | cienie obracają się i wydłużają na żywo: pudełko światła jest liczone co klatkę. Linia `Covers` w panelu Shadows pokazuje nowy rozmiar |
 | Lights | `Moon intensity`, `Moon colour` | kontrast cienia: w cieniu zostaje światło otoczenia, poza nim dochodzi księżyc |
+| Lights, grupa `Flashlight (spot)` | `Hand right` (od 0 do 0,25 m), `Hand down` (od 0 do 0,5 m), `Converge at` (od 0,5 do 20 m) | światło, jego cień i mapa ruszają się na żywo: pozycja i kierunek są liczone co klatkę (sekcja 2.20.8). Przy obu przesunięciach 0 latarka jest w oku, a jej cienie chowają się za rzeczami, które je rzucają |
+| Lights, grupa `Flashlight (spot)` | `Beam range` | zasięg jest też daleką płaszczyzną mapy latarki: linia `Covers` w zakładce `Flashlight` zmienia się razem z nim |
+| Lights, grupa `Flashlight (spot)` | `Cone` | szerokość stożka zmienia kąt otwarcia mapy (46 stopni przy stożku 21), więc też linię `Covers` |
+| Lights, grupa `Flashlight (spot)` | `Flashlight on (key F)` | zgaszona latarka: przebieg latarki jest pomijany, obraz zakładki to `(not drawn)` |
 | Lights | światło otoczenia | jak ciemny jest cień |
 | Renderer | lista `Lighting` | `Unlit`: bez cieni. `Gouraud`, `Phong`, `Blinn-Phong`: cienie w każdym, o tych samych krawędziach |
 | Assets | lista `View mode` | widoki diagnostyczne: bez cieni |
 | Terrain | suwak `Height scale` | teren i pudełko światła zmieniają się razem, cienie wzgórz rosną |
 | Terrain | pole `Wireframe` | teren z linii nadal rzuca pełny cień (sekcja 5.7) |
 | Maze | przycisk `Regenerate` | nowy teren i nowe pudełko w następnej klatce |
-| Shaders | `Reload shaders` | jedenaście programów, ostatni to `shadow_depth` |
+| Shaders | `Reload shaders` | jedenaście programów, ostatni to `shadow_depth`. Po przeładowaniu uniformy obu map wracają do 0 i są ustawiane w następnej klatce od nowa (sekcja 5.6). Z latarką zgaszoną i po przeładowaniu: **nie ćwiczone** |
 
-**Uwaga przed pokazem:** stary plik `imgui.ini` nie zna panelu Shadows, więc panel dostanie położenie domyślne, ale HUD i tak stoi o rząd niżej. Najprościej usunąć `imgui.ini` przed uruchomieniem.
+**Uwaga przed pokazem:** stary plik `imgui.ini` nie zna panelu Shadows (z zakładką `Flashlight` nic się nie zmienia: to samo okno), więc panel dostanie położenie domyślne, ale HUD i tak stoi o rząd niżej. Najprościej usunąć `imgui.ini` przed uruchomieniem.
 
 ### 6.1 Scenariusz pokazu na obronie
 
-**Kroków nikt jeszcze nie wykonał ręcznie.** Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja o części czwartej M7.
+**Kroków nikt jeszcze nie wykonał ręcznie.** Lista do odhaczenia jest w [`../../guides/build-windows.md`](../../guides/build-windows.md): sekcja 20 (część czwarta) dla kroków od 1 do 10 i sekcja 21 (część piąta) dla kroków od 11 do 18.
 
 1. **Przełącznik.** Staję w korytarzu, w którym widać granicę światła i cienia na ziemi. Rozwijam panel Shadows i odznaczam `Shadows`: cała ziemia jaśnieje, ściany przestają "stać" na gruncie. Zaznaczam z powrotem. Mówię: model Phonga jest lokalny, nie wie, co stoi między punktem a światłem. Mapa cieni dodaje to jedno pytanie.
 2. **Mapa.** Pokazuję obraz po prawej. Mówię: to scena widziana z księżyca, sama głębia. Ciemne linie to szczyty ścian, bo są bliżej księżyca niż ziemia. Linia `Covers 64.8 x 54.1 m`: pudełko rzutu ortograficznego jest dopasowane do terenu, nie do kamery, dlatego cienie nie migoczą, gdy idę.
@@ -1239,9 +1647,17 @@ Kontrolki w innych panelach, które zmieniają cienie:
 5. **Filtry.** Odznaczam `PCF`: krawędź twarda. Odznaczam `Hardware 2 x 2 filter`: widać schodki tekseli. Mówię: z filtrem liniowym karta porównuje cztery teksele i miesza cztery odpowiedzi, nie cztery głębie.
 6. **Acne.** Z oboma filtrami wyłączonymi ustawiam oba suwaki biasu na 0: oświetlone powierzchnie pokrywają prążki. Mówię: teksel przechowuje jedną głębię dla kawałka pochyłej powierzchni, więc połowa kawałka jest "za" nią. Włączam filtry z powrotem przy biasie 0: prążki zamieniają się w równe przyciemnienie.
 7. **Peter panning.** Przywracam filtry i ciągnę `Constant bias` do 0,5 m: przy ścianach pojawia się światło tam, gdzie powinien być cień. Mówię: bias większy niż grubość rzucającego. Wracam do 0,02 i 0,12.
-8. **Tylko księżyc.** Staję w cieniu ściany i zapalam latarkę (F): świeci w cieniu normalnie. Podchodzę do kryształu stojącego w cieniu: świeci i oświetla ziemię. Mówię: cień odejmuje wyłącznie udział księżyca.
+8. **Cień księżyca nie gasi latarki.** Staję w cieniu ściany, zapalam latarkę (F) i świecę nią na grunt w cieniu: świeci normalnie. Podchodzę do kryształu stojącego w cieniu: świeci i oświetla ziemię. Mówię: każdy cień odejmuje wyłącznie udział swojego światła. Cienie świateł kryształów nie istnieją (sekcja 2.19).
 9. **Tryby.** Panel Renderer, `Lighting`: `Gouraud`. Cienie mają te same ostre krawędzie co w `Phong`. Mówię: światło jest na wierzchołek, ale odczyt mapy jest na fragment. `Unlit`: cieni nie ma, bo nie ma światła.
 10. **Trawa.** Pokazuję kępki w cieniu ściany: są ciemne jak ziemia pod nimi. Mówię: trawa przyjmuje cień, ale go nie rzuca, bo źdźbło ma szerokość jednego teksela mapy.
+11. **Latarka w ręce.** Staję twarzą do ściany z 1 m: plama leży na prawo i poniżej środka ekranu. Odchodzę na 4 m: plama jest w środku. Mówię: światło jest w ręce, ale wiązka celuje w punkt na osi widzenia 4 m przed okiem (decyzja właściciela). Przesuwam suwak `Converge at`: miejsce, w którym plama przechodzi przez środek, wędruje razem z nim. **Nikt tego nie oglądał.**
+12. **Po co ręka.** Ustawiam `Hand right` i `Hand down` na 0: światło jest w oku, a cień słupka na ścianie za nim chowa się za samym słupkiem. Wracam do 0,20 i 0,25: cień wychodzi zza słupka i go widać. Mówię: to jest powód decyzji o ręce (notatka [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md)). Zdanie wynika z geometrii, a obrazu nikt nie widział.
+13. **Mapa latarki.** Zakładka `Flashlight`: obraz odległości od ręki (szarość to ułamek zasięgu) i linia `Covers 13.6 x 13.6 m at 16.0 m`. Mówię: to zdjęcie zrobione z ręki aparatem o kącie 46 stopni, ostrosłup, nie pudełko. Teksel rośnie z odległością: `0.08 cm per metre away`. Zmieniam `Beam range`: linia `Covers` zmienia się razem z nim.
+14. **Dlaczego podgląd jest zlinearyzowany.** Na kartce: tabela z sekcji 2.20.2. Zapisana głębia 1 m od światła to już 0,953, więc bez przeliczenia obraz byłby biały. Połowa zakresu głębi jest zużyta w pierwszych 10 cm.
+15. **Bias w metrach.** W zakładce `Flashlight` ustawiam oba suwaki biasu na 0 przy wyłączonym PCF i filtrze sprzętowym: grunt dalej niż kilka metrów od ręki pokrywają prążki (**nie oglądane**, z rachunku sekcji 2.20.3). Mówię: bias jest w metrach i przesuwa punkt po prostej do światła, bo głębia nie jest liniowa. Wracam do 0,01 i 0,13.
+16. **Dwa cienie niezależnie.** Odznaczam `Shadows` w zakładce `Moon`: znikają cienie księżyca, cienie latarki zostają. Odwrotnie w zakładce `Flashlight`. Mówię: każdy cień zabiera udział własnego światła.
+17. **Zgaszona latarka.** Klawisz F: obraz zakładki `Flashlight` zmienia się na `(not drawn)`, a linia faktów na `Map: not drawn`. Mówię: bez światła nie ma czego zabierać cieniem, więc przebieg jest pomijany. **Ta ścieżka nie była ćwiczona.**
+18. **Punkt za światłem.** Na kartce: `w` w rzucie perspektywicznym to odległość przed światłem. Dla punktu za plecami jest ujemne, dzielenie odbiłoby go do środka mapy, więc shader sprawdza `w <= 0` przed dzieleniem (sekcja 2.20.4).
 
 ## 7. Pułapki
 
@@ -1268,11 +1684,23 @@ Kontrolki w innych panelach, które zmieniają cienie:
 21. **"Tryb Gouraud nie może mieć ostrych cieni".** Może: światło jest na wierzchołek, cień na fragment (sekcja 2.15). To wyjątek zapisany wprost, nie przeoczenie.
 22. **Namalowany księżyc a cienie.** Po przesunięciu suwaków `Moon yaw` i `Moon pitch` cienie padają z nowego kierunku, a tarcza na niebie zostaje. Wygląda to jak błąd cieni, a jest znanym ograniczeniem nieba.
 23. **Stary `imgui.ini`.** Panel Shadows pojawia się w położeniu domyślnym, pozostałe panele w zapisanych. Układ może wyglądać inaczej niż w dokumentach.
-24. **macOS, niesprawdzone.** Framebuffer bez koloru, `sampler2DShadow` z obiektem samplera i `GL_CLAMP_TO_BORDER` nie były nigdy uruchomione na sterowniku Apple.
+24. **macOS, niesprawdzone.** Framebuffer bez koloru, `sampler2DShadow` z obiektem samplera i `GL_CLAMP_TO_BORDER` nie były nigdy uruchomione na sterowniku Apple. Od części piątej do tego drugi framebuffer, mapa z rzutem perspektywicznym i dwa samplery cieni w jednym programie.
+25. **Bias w jednostkach głębi dla rzutu perspektywicznego.** Ta sama liczba odejmowana od głębi jest 2 cm przy ręce i prawie 2 m w odległości 10 m (sekcja 2.20.2). Bias latarki przesuwa punkt w świecie, w metrach (sekcja 2.20.3).
+26. **Zapomniane `w <= 0`.** Punkt za plecami ręki ma ujemne `w`, a dzielenie odbija go do mapy. Cień pojawia się za graczem na rzeczach, które stoją przed nim. Sprawdzenie jest w GLSL przed dzieleniem (sekcja 2.20.4).
+27. **Podgląd mapy perspektywicznej bez linearyzacji.** `RawDepth` dla latarki daje obraz prawie biały i wygląda jak pusta mapa (sekcja 2.20.6). Pusta mapa jest zresztą też biała: trzeba patrzeć na ciemne kształty, nie na jasność ogólną.
+28. **Ręka "pod kamerą".** Gracz patrzący w ziemię trzymałby światło 0,25 m **za** okiem, a oba przesunięcia razem wychodziłyby poza pudełko ciała. Dlatego "w dół" jest w świecie (sekcja 2.20.9).
+29. **Pozycja światła z dwóch miejsc.** Mapa liczona z jednej pozycji, a światło z drugiej (na przykład z `m_camera.position` zamiast z oka klatki): cienie są przesunięte względem plamy i widać to przy chodzeniu. Dlatego `flashlightPose` jest wołana raz i jej wynik idzie w dwa miejsca (sekcja 2.20.8). Do `LightRig::upload` idzie za to oko, nie ręka.
+30. **Ustawienia świateł zamiast ustawień klatki.** Pytanie o to, czy latarka świeci, i o jej zasięg do przebiegu cieni musi iść do `frameLighting`, nie do `m_lighting`: pusta bateria wyłącza światło tylko w kopii klatki.
+31. **Niezainicjalizowane pola `Lighting` w GLSL.** Pola `flashlightDiffuse` i `flashlightSpecular` są zerowane przed gałęzią reflektora. Bez tego wyłączona latarka zostawiłaby w nich wartość nieokreśloną, którą cień odjąłby od światła.
+32. **Dwie mapy cieni na jednej jednostce.** Obie mapy mają `sampler2DShadow`, więc dwa uniformy ustawione na tę samą jednostkę (na przykład po `Reload shaders`, gdy są 0) czytałyby jedną teksturę. Księżyc ma jednostkę 3, latarka 4, a numery są ustawiane w każdej klatce.
+33. **Duży `Beam range`.** Zasięg jest daleką płaszczyzną mapy: przy 60 m mapa o kącie 46 stopni pokrywa 50,9 m na dalekiej płaszczyźnie, a teksel ma tam 5 cm (policzone: `2 * 60 * tan(23 stopnie) / 1024`), więc krawędzie cieni są grube, a bias startowy za mały. Suwak sięga 60 m.
+34. **Migotanie krawędzi cienia latarki wzięte za błąd cienia.** Siatka tekseli jest przyklejona do ręki, nie do świata (sekcja 2.20.7). Przy chodzeniu krawędź przesuwa się o ułamki teksela. To skutek konstrukcji, nie pomyłka w kodzie (moja analiza, nie oglądane).
+35. **Latarka w ścianie.** Z `noclip` albo z `Hand right` większym niż ciało pozwala (suwak ma granicę 0,25 m), światło może stać wewnątrz ściany. Co wtedy widać, nie było sprawdzane.
+36. **Odległość od ręki, nie od osi.** `shadowTexelSizeAt` skaluje rozmiar teksela odległością wzdłuż osi, a panel i dokument mówią "od ręki". Dla fragmentów daleko od osi to przybliżenie.
 
 ## 8. Ćwiczenia
 
-Ćwiczenia od 1 do 4 są na kartce, pozostałe w działającej grze. Po zmianie pliku shadera na Windowsie: `cmake --build --preset debug --target copy_assets`, potem `Reload shaders`. Po ćwiczeniu wycofaj zmianę.
+Ćwiczenia od 1 do 4 oraz 14 do 16 są na kartce, pozostałe w działającej grze. Po zmianie pliku shadera na Windowsie: `cmake --build --preset debug --target copy_assets`, potem `Reload shaders`. Po ćwiczeniu wycofaj zmianę.
 
 1. **Współrzędne mapy na kartce.** Światło świeci prosto w dół na pudełko od `(0, 0, 0)` do `(10, 4, 10)`, margines 0,5 m. Jaki rozmiar ma pudełko światła? Jaką głębię (od 0 do 1) ma punkt na wysokości 4 m, a jaką na wysokości 0? (Odpowiedź: 11 x 11 m i 5 m głębi. Góra jest 0,5 m od bliskiej płaszczyzny: `0,5 / 5 = 0,1`. Dół: `4,5 / 5 = 0,9`.)
 2. **Teksel.** Dla pudełka z ćwiczenia 1 i mapy 1024: ile centymetrów ma teksel? Ile tekseli grubości ma ściana 0,2 m? (Odpowiedź: `11 / 1024 = 1,07 cm`, około 19 tekseli.)
@@ -1287,6 +1715,14 @@ Kontrolki w innych panelach, które zmieniają cienie:
 11. **Gouraud na wierzchołek.** W `gouraud.frag` zamień `moonShadow(vWorldPosition, vMoonFacing)` na stałą `1.0` i zobacz, jak wygląda scena bez światła księżyca. Potem zastanów się, co trzeba by przenieść do `gouraud.vert`, żeby cień był liczony na wierzchołek, i dlaczego wynik byłby zły (sekcja 2.15).
 12. **Pionowy księżyc.** W `LightSpace.cpp` zamień `UP_FOR_VERTICAL_LIGHT` na `WORLD_UP` w wyborze wektora `up`, ustaw `Moon pitch` na -90 i uruchom testy. Który przypadek przestał przechodzić? Co widać w grze?
 13. **Trawa rzuca cień.** Zastanów się, czego brakuje, żeby dopisać trawę do `drawShadowCasters` (wskazówka: program `shadow_depth` nie ma shadera geometrii), i co byłoby widać przy tekselu 3,2 cm.
+14. **Głębia perspektywiczna na kartce.** Płaszczyzny `n = 0,05` i `f = 16`. Jaką zapisaną głębię ma punkt 2 m od światła? W jakiej odległości głębia wynosi 0,5? (Odpowiedź: `16 * (2 - 0,05) / (2 * 15,95)` = 0,978. Połowa: `2 n f / (f + n)` = 0,0997 m, około 10 cm.)
+15. **Bias w metrach z biasu w głębi.** Ile metrów to różnica głębi 0,002 w odległości 3 m przy tych samych płaszczyznach? Porównaj z 3 cm biasu księżyca. (Wskazówka: `Δz = Δgłębi * (f - n) z^2 / (f n)` = `0,002 * 15,95 * 9 / 0,8` = 0,359 m. To dwanaście razy więcej niż 3 cm w odległości, w której teksel ma 2,5 mm.)
+16. **Mapa latarki na kartce.** Stożek zewnętrzny 30 stopni, zapas 2 stopnie, zasięg 10 m, mapa 1024. Jaki kąt otwarcia, jaka szerokość mapy na dalekiej płaszczyźnie i jaki teksel w 5 m? (Odpowiedź: 64 stopnie, `2 * 10 * tan(32)` = 12,50 m, teksel na dalekiej płaszczyźnie 12,2 mm, w 5 m połowa: 6,1 mm.)
+17. **Bez sprawdzenia `w`.** W `flashlightShadow` usuń `if (clip.w <= 0.0) return 0.0;`. Stań przy ścianie, odwróć się plecami do niej i patrz na grunt. Czy coś się zmieniło? Dlaczego tak mało albo tak dużo? (Wskazówka: punkt za światłem jest poza stożkiem, więc nie dostaje światła latarki. Zastanów się, co widać, gdy ten punkt jest w świetle księżyca. Po ćwiczeniu przywróć kod.)
+18. **Bias latarki jak księżyca.** W `setShadowUniforms` zastąp `biasForShader` dzieleniem przez `extent.z` także dla latarki, a w `flashlightShadow` odejmij bias od `coordinates.z` zamiast przesuwać punkt. Co się dzieje z cieniem blisko ręki i pod koniec wiązki? Porównaj z tabelą z sekcji 2.20.2. (To jest eksperyment do zrobienia w grze i opisania: wynik jest otwarty.)
+19. **Podgląd bez linearyzacji.** W `ShadowMap::drawPreview` wymuś `RawDepth` także dla ostrosłupa. Co widać w zakładce `Flashlight` i dlaczego?
+20. **Ręka pod kamerą.** W `flashlightPose` zamień `WORLD_UP` na wektor "w górę" kamery (`cross(right, forward)`). Spójrz w ziemię przy ścianie. Gdzie stoi światło względem oka? Policz, ile wynosi odległość ręki od środka ciała dla `Hand right` 0,25 i `Hand down` 0,25 (odpowiedź: `sqrt(0,25^2 + 0,25^2)` = 0,35 m, czyli więcej niż połowa ciała, 0,3 m).
+21. **Migotanie.** Idź wzdłuż ściany z cieniem słupka na niej, przy mapie 1024 i potem 2048, z PCF i bez. Czy krawędź cienia drży? Zapisz wynik jako obserwację otwartą (sekcja 2.20.7).
 
 ## 9. Pytania kontrolne
 
@@ -1312,7 +1748,7 @@ Kontrolki w innych panelach, które zmieniają cienie:
    Przelicza współrzędne znormalizowane, które biegną od -1 do 1, na zakres od 0 do 1. W tym zakresie adresuje się teksturę (`x` i `y`) i w tym zakresie bufor głębi przechowuje głębię (`z`).
 
 8. **Po co dzielenie przez `w`, skoro dla rzutu ortograficznego `w` to 1?**
-   Dla księżyca nic nie zmienia. Zostało, żeby te same linie były poprawne dla rzutu perspektywicznego, w którym `w` zależy od odległości.
+   Dla księżyca nic nie zmienia. Zostało, żeby te same linie były poprawne dla rzutu perspektywicznego, w którym `w` zależy od odległości. Od części piątej ten zapas się przydał: dla latarki dzielenie przez `w` jest tym, co zmniejsza dalekie rzeczy w mapie.
 
 9. **Czym `sampler2DShadow` różni się od `sampler2D`?**
    `texture()` dostaje trzecią liczbę, głębię odniesienia, i zwraca nie zawartość teksela, tylko wynik porównania tej głębi z zapisaną: 1 albo 0, a z filtrem liniowym wartość pośrednią. Wymaga tekstury głębi czytanej z włączonym trybem porównania.
@@ -1336,7 +1772,7 @@ Kontrolki w innych panelach, które zmieniają cienie:
     Fragment jest przed porównaniem przysuwany do światła o zapas większy od błędu teksela. Część stała jest dodawana zawsze. Część zależna od pochylenia jest mnożona przez `1 - cos(kąt między normalną a kierunkiem do światła)`, bo błąd rośnie z pochyleniem: dla powierzchni zwróconej do światła jest prawie zerowy, dla muskanej największy.
 
 16. **Dlaczego bias jest w metrach i jak trafia do shadera?**
-    Żeby ustawienie znaczyło to samo przy każdym pudełku światła. C++ dzieli metry przez głębię pudełka (`extent.z`) i wysyła wynik jako różnicę zapisanych głębi. Dzielenie wystarcza, bo głębia rzutu ortograficznego jest liniowa.
+    Żeby ustawienie znaczyło to samo przy każdym świetle. Dla księżyca C++ dzieli metry przez głębię pudełka (`extent.z`) i wysyła wynik jako różnicę zapisanych głębi. Dzielenie wystarcza, bo głębia rzutu ortograficznego jest liniowa. Dla latarki głębia nie jest liniowa, więc C++ wysyła metry bez zmiany, a shader przesuwa punkt w świecie (pytania 33 i 34).
 
 17. **Co to jest peter panning?**
     Skutek za dużego biasu: fragment przysunięty do światła o więcej niż odległość do rzucającego wygrywa porównanie, więc cień zaczyna się dopiero za rzucającym i odkleja się od niego. W grze widać to dopiero przy biasie rzędu grubości ściany, 0,2 m.
@@ -1348,10 +1784,10 @@ Kontrolki w innych panelach, które zmieniają cienie:
     Z boku: sampler ma `GL_CLAMP_TO_BORDER` z ramką 1, czyli głębią dalekiej płaszczyzny, więc porównanie zawsze wygrywa i fragment jest oświetlony. Za daleką płaszczyzną (`z > 1`): shader zwraca 1 warunkiem, bo tam ramka nie pomaga. Dziś nic takiego nie jest rysowane: pudełko obejmuje cały teren.
 
 20. **Które światło jest cieniowane i jak?**
-    Tylko księżyc. `computeLighting` zwraca sumy `diffuse` i `specular` oraz osobno udział księżyca w każdej z nich. Wołający odejmuje `udział księżyca * udział cienia`. Światło otoczenia, latarka, kryształy i świecenie własne zostają nietknięte.
+    Księżyc i latarka, każde własną mapą. `computeLighting` zwraca sumy `diffuse` i `specular` oraz osobno udział księżyca i udział latarki w każdej z nich. Wołający odejmuje `udział światła * udział cienia` tego światła. Światło otoczenia, światła kryształów i świecenie własne zostają nietknięte, a cień księżyca nie rusza latarki i na odwrót.
 
 21. **Dlaczego latarka świeci w cieniu księżyca?**
-    Bo cień księżyca mówi tylko, czy do punktu dociera światło księżyca. Latarka świeci z innego miejsca. Własnej mapy cieni jeszcze nie ma, więc świeci też przez ściany: to znane ograniczenie i plan następnej części.
+    Bo cień księżyca mówi tylko, czy do punktu dociera światło księżyca. Latarka świeci z innego miejsca i ma własną mapę, która mówi, czy dociera do punktu światło latarki. Światła kryształów mapy nie mają i świecą przez ściany: to znane ograniczenie.
 
 22. **Jak cienie działają w trybie Gouraud?**
     Światło jest liczone na wierzchołek, jak zawsze. Shader wierzchołków przekazuje dodatkowo udział księżyca w tym świetle, pozycję w świecie i cosinus do biasu. Shader fragmentów czyta mapę cieni dla każdego fragmentu i odejmuje udział księżyca. Odczyt na wierzchołek dałby cztery odpowiedzi na ścianę i gradient zamiast krawędzi cienia.
@@ -1360,35 +1796,70 @@ Kontrolki w innych panelach, które zmieniają cienie:
     Przyjmuje, bo rośnie pod ścianami i bez cienia świeciłaby na ciemnej ziemi. Nie rzuca, bo źdźbło ma 4 cm u nasady, a teksel mapy 3,2 cm: cień byłby migotaniem pojedynczych tekseli poruszanych wiatrem.
 
 24. **Dlaczego podgląd mapy jest osobnym przebiegiem?**
-    Tekstura głębi ma dane w jednym kanale, więc pokazana wprost przez `ImGui::Image` byłaby czerwona. Przebieg rysuje ją jako szarość do małej tekstury `GL_RGBA8`. Głębi nie trzeba przeliczać, bo w rzucie ortograficznym rośnie równo z odległością.
+    Tekstura głębi ma dane w jednym kanale, więc pokazana wprost przez `ImGui::Image` byłaby czerwona. Przebieg rysuje ją jako szarość do małej tekstury `GL_RGBA8`. Dla księżyca głębi nie trzeba przeliczać, bo w rzucie ortograficznym rośnie równo z odległością. Dla latarki trzeba (pytanie 36).
 
 25. **Dlaczego uniformy cieni są ustawiane także przy wyłączonych cieniach?**
     Po przeładowaniu shaderów każdy uniform ma wartość 0. Sampler cieni wskazywałby wtedy jednostkę 0, tę samą co sampler tekstury koloru, a OpenGL nie rysuje programem z dwoma samplerami różnych typów na jednej jednostce.
 
 26. **Dlaczego macierz światła nie jest w bloku `LightBlock`?**
-    Sampler nie może być polem bloku uniformów, więc mapa i tak musi być zwykłym uniformem. Liczby, które do niej należą, zostają obok niej, a układ bloku się nie zmienia. Cena: siedem uniformów ustawianych w trzech programach co klatkę.
+    Sampler nie może być polem bloku uniformów, więc mapa i tak musi być zwykłym uniformem. Liczby, które do niej należą, zostają obok niej, a układ bloku się nie zmienia. Cena: siedem uniformów dla księżyca i osiem dla latarki, ustawianych w trzech programach co klatkę.
 
 27. **Co się dzieje, gdy księżyc świeci prosto w dół?**
     Kierunek jest równoległy do góry świata i `lookAt` dałby macierz z NaN. Powyżej `|y| = 0,999` kod bierze jako wektor `up` oś `-Z`. Pilnują tego dwa testy, w tym dla kątów po obu stronach progu.
 
 28. **Co testy sprawdzają, a czego nie?**
-    Sprawdzają matematykę bez karty: pudełko światła, współrzędne mapy, przypadki pionowe, wzór biasu, przeliczenie na jednostki głębi, rozmiar teksela, granice promienia PCF, wspólny kierunek księżyca. Nie sprawdzają niczego, co dzieje się na karcie, ani zgodności wzorów w GLSL z ich kopiami w C++.
+    Sprawdzają matematykę bez karty: pudełko światła i ostrosłup latarki, współrzędne mapy, przypadki pionowe, wzór biasu, przeliczenie biasu na jednostki shadera, rozmiar teksela (też w zależności od odległości), granice promienia PCF, wspólny kierunek księżyca, wspólną pozycję latarki i jej mapy oraz położenie ręki. Nie sprawdzają niczego, co dzieje się na karcie, ani zgodności wzorów w GLSL z ich kopiami w C++, ani tego, czy cień wygląda dobrze.
 
 29. **Jakie są ograniczenia tej implementacji?**
-    Cień rzuca tylko księżyc. Mapa jest jedna, bez kaskad, i pokrywa cały teren ze stałą rozdzielczością. Bias nie zależy od rozmiaru teksela ani od jądra PCF. Półcień ma stałą szerokość. Trawa nie rzuca cienia. Namalowana tarcza księżyca nie idzie za suwakami.
+    Cień rzucają tylko księżyc i latarka, światła kryształów świecą przez ściany. Mapa księżyca jest jedna, bez kaskad, i pokrywa cały teren ze stałą rozdzielczością. Bias nie zależy od rozmiaru teksela ani od jądra PCF. Półcień ma stałą szerokość. Trawa nie rzuca cienia. Namalowana tarcza księżyca nie idzie za suwakami. Mapa latarki rusza się z ręką, więc siatka tekseli może powodować migotanie krawędzi, a bias startowy pokrywa grunt do około 10 m przed graczem. Dalej niż zasięg latarki cień nie jest sprawdzany.
 
-30. **Co jest planowane, a czego jeszcze nie ma?**
-    Cień latarki: mapa z rzutem perspektywicznym i światło przeniesione z oka do ręki, trochę w prawo i poniżej oka, żeby cień było widać. Tego kodu nie ma.
+30. **Co jest zbudowane, a co nie jest sprawdzone?**
+    Kod cienia latarki jest zbudowany: mapa z rzutem perspektywicznym i światło przeniesione z oka do ręki (0,20 m w prawo i 0,25 m w dół), żeby cień było widać. Nie jest sprawdzone żadne zachowanie na ekranie: cienie, położenie plamy, migotanie, tryb Gouraud, panel i koszt. Nie sprawdzono też niczego na macOS.
+
+31. **Czym mapa latarki różni się od mapy księżyca?**
+    Rzutem (perspektywiczny ostrosłup z czubkiem w ręce zamiast prostopadłościanu), kątem otwarcia (46 stopni z zasięgu stożka i zapasu), płaszczyznami (0,05 m i zasięg latarki), nieliniową głębią, biasem w metrach przesuwającym punkt, rozmiarem startowym (1024), jednostką teksturującą (4) i tym, że jej przestrzeń światła zmienia się co klatkę razem z ręką.
+
+32. **Jak wyznaczony jest kąt otwarcia mapy latarki i po co zapas?**
+    Pełny kąt to dwa razy (kąt zewnętrzny stożka plus 2 stopnie zapasu), czyli 46 stopni. Mapa jest kwadratem, a stożek kołem: bez zapasu mapa dotykałaby okręgu stożka w środkach boków i jądro PCF fragmentu przy brzegu stożka wystawałoby poza mapę. Z zapasem brzeg stożka leży 0,452 szerokości od środka z 0,5, czyli zostaje około 49 tekseli.
+
+33. **Dlaczego głębia rzutu perspektywicznego jest nieliniowa i co to zmienia w biasie?**
+    Zapisana głębia to `f (z - n) / (z (f - n))`: szybko rośnie blisko światła i prawie stoi daleko. Połowa zakresu jest zużyta w pierwszych 10 cm. Stała różnica głębi 0,001 to 2 cm w odległości 1 m i prawie 2 m w odległości 10 m, więc bias w jednostkach głębi nie ma stałej długości.
+
+34. **Jak działa bias latarki?**
+    Zostaje w metrach. Shader przesuwa punkt po prostej do światła o bias metrów, zanim rzutuje go macierzą mapy. Punkt zostaje na tym samym promieniu światła, więc trafia w ten sam teksel, tylko bliżej światła. Długość przesunięcia jest taka sama wszędzie, bo dzieje się w przestrzeni świata, przed nieliniowym rzutem.
+
+35. **Po co sprawdzenie `w <= 0` w `flashlightShadow`?**
+    `w` po mnożeniu przez macierz rzutu perspektywicznego to odległość przed światłem. Dla punktu za światłem lub z boku jest niedodatnie, a dzielenie przez nie odbiłoby punkt do mapy i dało cień w złym miejscu. Taki punkt jest poza stożkiem, więc nie dostaje światła latarki i cień zwraca 0.
+
+36. **Dlaczego podgląd mapy latarki jest zlinearyzowany?**
+    Zapisana głębia jest powyżej 0,95 już w odległości 1 m, więc podgląd bez przeliczenia byłby prawie biały. `drawPreview` wybiera tryb po rodzaju rzutu: `RawDepth` dla pudełka, a dla ostrosłupa `Depth` z `linearDepth` i płaszczyznami światła. Szarość to odległość od ręki jako ułamek zasięgu.
+
+37. **Co zabiera cień latarki, a czego nie?**
+    Tylko udział latarki w świetle rozproszonym i odbłysku (`flashlightDiffuse`, `flashlightSpecular`). Światło księżyca, światło otoczenia, światła kryształów i świecenie własne zostają. W cieniu obu świateł znikają oba udziały.
+
+38. **Skąd latarka i jej mapa mają tę samą pozycję?**
+    `flashlightPose` jest wołana raz na klatkę, przed przebiegami cieni, i jej wynik idzie do `scene::spotLightSpace` (mapa) i do `buildLightSet` (światło). Do bloku świateł na karcie idzie pozycja ręki, a do `LightRig::upload` oko klatki (odbłyski liczą się od kamery). Test sprawdza zgodność pozycji i osi.
+
+39. **Dlaczego "w dół" ręki jest w świecie, a nie pod kamerą?**
+    Z "pod kamerą" gracz patrzący w ziemię trzymałby rękę 0,25 m za okiem, a oba przesunięcia razem (0,32 m) mogłyby wyjść z pudełka ciała, szerokiego na 0,6 m. Przesunięcie w prawo jest poziome (wektor "w prawo" kamery jest zawsze poziomy), a w dół idzie po osi `Y` świata, więc ręka jest zawsze w środku pudełka. To wybór wykonawczy, nie decyzja właściciela.
+
+40. **Które z liczb w tym rozdziale są decyzjami właściciela, a które moimi?**
+    Właściciel zdecydował (2026-10-05): światło w ręce i mapa perspektywiczna; (2026-10-06): wiązka zbiega się z osią widzenia w odległości będącej ustawieniem, a ręka startuje 0,20 m w prawo i 0,25 m w dół, oba jako suwaki. Reszta jest moim wyborem: "w dół" w świecie, granice suwaków, 4 m zbiegania, zapas 2 stopnie, bliska płaszczyzna 0,05 m, mapa 1024, liczby biasu, bias w przestrzeni świata, osobny uniform z pozycją, podgląd w trybie `Depth` (sekcja 2.20.9).
+
+41. **Jaki jest koszt cienia latarki i skąd to wiadomo?**
+    Jeszcze jeden przebieg głębi (te same obiekty rysowane trzeci raz w klatce, bez obcinania do ostrosłupa), mapa 1024 (3 do 4 MB) i drugie 9 odczytów mapy dla każdego fragmentu, także poza stożkiem. To jest policzone z kodu. **Nie jest zmierzone**: pomiar FPS w jednej sesji, ten commit przeciw poprzedniemu, jest na liście testów ręcznych.
 
 ## 10. Źródła
 
-- LearnOpenGL, "Shadow Mapping" (<https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping>): dwa przebiegi, framebuffer z samą głębią i `glDrawBuffer(GL_NONE)`, przestrzeń światła, shadow acne, bias, peter panning, ramka i przypadek `z > 1`, PCF.
+- LearnOpenGL, "Shadow Mapping" (<https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping>): dwa przebiegi, framebuffer z samą głębią i `glDrawBuffer(GL_NONE)`, przestrzeń światła, rzut ortograficzny i perspektywiczny (dla reflektora), shadow acne, bias, peter panning, ramka i przypadek `z > 1`, PCF.
+- LearnOpenGL, "Depth testing" (<https://learnopengl.com/Advanced-OpenGL/Depth-testing>): nieliniowa głębia rzutu perspektywicznego i jej zamiana z powrotem na odległość (sekcja 2.20.2 i podgląd z linearyzacją).
+- Song Ho Ahn, "OpenGL Projection Matrix" (<https://www.songho.ca/opengl/gl_projectionmatrix.html>): skąd bierze się `w` równe odległości przed kamerą i wzór na zapisaną głębię (sekcje 2.20.2 i 2.20.4).
 - Lance Williams, "Casting Curved Shadows on Curved Surfaces" (SIGGRAPH 1978): pierwszy opis mapy cieni.
 - William Reeves, David Salesin, Robert Cook, "Rendering Antialiased Shadows with Depth Maps" (SIGGRAPH 1987): percentage closer filtering.
 - Specyfikacja OpenGL 4.1 Core (<https://registry.khronos.org/OpenGL/specs/gl/glspec41.core.pdf>): część "Texture Comparison Modes", obiekty samplerów, kompletność framebuffera.
 - Khronos OpenGL Wiki, "Sampler Object" (<https://www.khronos.org/opengl/wiki/Sampler_Object>) i "Sampler (GLSL)" (<https://www.khronos.org/opengl/wiki/Sampler_(GLSL)>): samplery cieni, tryb porównania, dlaczego sampler nie może być w bloku uniformów.
 - docs.gl: `glSamplerParameter` (<https://docs.gl/gl4/glSamplerParameter>), `glDrawBuffer`, `glFramebufferTexture`, `texture` i `textureSize` dla `sampler2DShadow` (<https://docs.gl/sl4/texture>).
-- Dokumenty w tym repozytorium: [`../gfx/comparison-sampler.md`](../gfx/comparison-sampler.md) (klasa samplera linia po linii), [`../gfx/framebuffers.md`](../gfx/framebuffers.md) (framebuffer, tekstura głębi), [`../gfx/textures.md`](../gfx/textures.md) (jednostki, obiekt samplera), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (blok `LightBlock`), [`../gfx/shader-includes.md`](../gfx/shader-includes.md) (`#include`), [`../scene/lights.md`](../scene/lights.md) (światła, `computeLighting`, `LightSpace`), [`../scene/camera.md`](../scene/camera.md) (widok, rzut, głębia), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md), [`grass-geometry.md`](grass-geometry.md), [`terrain.md`](terrain.md), [`post-process.md`](post-process.md) (program `preview`, kolejność klatki), [`skybox.md`](skybox.md) (namalowany księżyc), [`../debug-ui.md`](../debug-ui.md) (panel Shadows linia po linii), [`../game/flashlight.md`](../game/flashlight.md) (`LightingSettings`), [`README.md`](README.md).
-- Notatki o decyzjach: [`../../decisions/shadow-box-fitted-to-terrain.md`](../../decisions/shadow-box-fitted-to-terrain.md), [`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md), [`../../decisions/shadow-bias-in-metres-in-shader.md`](../../decisions/shadow-bias-in-metres-in-shader.md), [`../../decisions/gouraud-shadow-test-per-fragment.md`](../../decisions/gouraud-shadow-test-per-fragment.md), [`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md), [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md), [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md) (planowane), [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md), [`../../decisions/post-process-in-game-layer.md`](../../decisions/post-process-in-game-layer.md).
+- Dokumenty w tym repozytorium: [`../gfx/comparison-sampler.md`](../gfx/comparison-sampler.md) (klasa samplera linia po linii), [`../gfx/framebuffers.md`](../gfx/framebuffers.md) (framebuffer, tekstura głębi), [`../gfx/textures.md`](../gfx/textures.md) (jednostki, obiekt samplera), [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md) (blok `LightBlock`), [`../gfx/shader-includes.md`](../gfx/shader-includes.md) (`#include`), [`../scene/lights.md`](../scene/lights.md) (światła, `computeLighting`, `LightSpace`), [`../scene/camera.md`](../scene/camera.md) (widok, rzut, głębia), [`lighting-gouraud-phong.md`](lighting-gouraud-phong.md), [`grass-geometry.md`](grass-geometry.md), [`terrain.md`](terrain.md), [`post-process.md`](post-process.md) (program `preview`, kolejność klatki), [`skybox.md`](skybox.md) (namalowany księżyc), [`../debug-ui.md`](../debug-ui.md) (panel Shadows linia po linii), [`../game/flashlight.md`](../game/flashlight.md) (`LightingSettings`, `flashlightPose`, ręka), [`README.md`](README.md).
+- Notatki o decyzjach: [`../../decisions/shadow-box-fitted-to-terrain.md`](../../decisions/shadow-box-fitted-to-terrain.md), [`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md), [`../../decisions/shadow-bias-in-metres-in-shader.md`](../../decisions/shadow-bias-in-metres-in-shader.md), [`../../decisions/gouraud-shadow-test-per-fragment.md`](../../decisions/gouraud-shadow-test-per-fragment.md), [`../../decisions/grass-casts-no-shadow.md`](../../decisions/grass-casts-no-shadow.md), [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md), [`../../decisions/flashlight-in-hand.md`](../../decisions/flashlight-in-hand.md) (obowiązuje, z kodem), [`../../decisions/flashlight-shadow-bias-in-world-space.md`](../../decisions/flashlight-shadow-bias-in-world-space.md), [`../../decisions/flashlight-hand-straight-down.md`](../../decisions/flashlight-hand-straight-down.md), [`../../decisions/depth-attachment-as-texture.md`](../../decisions/depth-attachment-as-texture.md), [`../../decisions/post-process-in-game-layer.md`](../../decisions/post-process-in-game-layer.md).
 - Stan całego M7: [`../../guides/m7-status.md`](../../guides/m7-status.md).
 - Janusz Ganczarski, "OpenGL. Podstawy programowania grafiki 3D" (rozdziały o buforze ramki i o teksturach głębi).

@@ -62,6 +62,7 @@ W projekcie obowiązuje prosta reguła podziału:
 | `uModel`, `uNormalMatrix`, `uTint` | dla każdego obiektu albo części modelu | program, który akurat rysuje | zwykłe uniformy |
 | materiał (`uSpecularModel`, `uSpecularStrength`, `uShininess`) | raz na klatkę | program, który akurat rysuje labirynt | zwykłe uniformy |
 | mapa cieni księżyca: sampler, macierz światła, dwie części biasu, promień PCF, siła i przełącznik (czwarta część M7) | raz na klatkę | `lit` albo `gouraud` (ten, który rysuje scenę) i `grass` | siedem zwykłych uniformów w każdym programie, ustawianych przez `game::setShadowUniforms`. Nie blok, chociaż dane są wspólne i zmieniają się raz na klatkę: sampler nie może być polem bloku uniformów, a liczby jednej mapy mają stać obok jej samplera (komentarz w `common/shadows.glsl`) |
+| mapa cieni latarki: ten sam zestaw plus pozycja światła (piąta część M7) | raz na klatkę | te same trzy programy | osiem zwykłych uniformów (`uFlashlightShadow...` i `uFlashlightShadowLightPosition`), na jednostce teksturującej 4. Pozycja światła jest osobnym uniformem, bo `gouraud.frag` nie ma bloku `LightBlock`, a ta sama liczba jest w bloku jako `uSpotPosition`. Sam blok (928 bajtów) się nie zmienił |
 
 Blok opłaca się tam, gdzie danych jest dużo, są wspólne dla kilku programów i zmieniają się rzadko. Macierze widoku i rzutowania też by tu pasowały i w większym silniku trafiłyby do drugiego bloku. Zostały zwykłymi uniformami, bo są nimi od M1 w trzech starszych programach, a dwa wywołania na program to mały koszt. Blok dostały tylko światła, dla których różnica jest duża: 58 wartości i tablica struktur.
 
@@ -974,7 +975,7 @@ W `NightMazeApp::onRender`, po policzeniu macierzy, a przed rysowaniem:
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
     const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
     const scene::LightSet lights =
-        buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights);
+        buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 ```
 
@@ -982,7 +983,7 @@ W `NightMazeApp::onRender`, po policzeniu macierzy, a przed rysowaniem:
 |---|---|
 | `lightingForFrame(m_lighting, m_round, m_gameplay)` | kopia ustawień oświetlenia na tę jedną klatkę. Runda zmienia w niej dwie rzeczy: latarka jest wyłączona przy pustej baterii i przyciemniona (migocze) przy słabej, a natężenie świateł punktowych jest pomnożone przez puls kryształów. Samo `m_lighting`, które edytuje panel Lights, zostaje nietknięte |
 | `crystalLightPositions(m_round)` | pozycje świateł punktowych tej chwili: nad każdym kryształem, którego gracz jeszcze nie zebrał, razem z jego kołysaniem. Zebrany kryształ nie ma światła, więc lista skraca się w trakcie rundy. W M4 była to stała lista pozycji w ślepych zaułkach, liczona raz przy budowie labiryntu |
-| `buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights)` | zestaw świateł klatki (`scene::LightSet`) z kopii ustawień i z listy pozycji |
+| `buildLightSet(frameLighting, flashlight, crystalLights)` | zestaw świateł klatki (`scene::LightSet`) z kopii ustawień, z pozy latarki (`game::FlashlightPose`, od piątej części M7) i z listy pozycji |
 | `m_lightRig.upload(lights, eye)` | pakowanie do 928 bajtów i wysyłka |
 
 Dla bloku nic się przez to nie zmieniło: to nadal jedna struktura i jedna wysyłka na klatkę. Inne są tylko wartości. W M4 przy nieruchomej kamerze bajty były co klatkę takie same, a dziś natężenie i pozycje świateł punktowych zmieniają się z klatki na klatkę, a ich lista skraca się z każdym zebranym kryształem. Labirynt startowy (10 x 10, ziarno 1) ma 13 kryształów, więc na początku rundy lista ma 13 pozycji z 16 miejsc tablicy `uPoints` (w M4 było to 11 świateł w ślepych zaułkach). Zasady rundy, puls i baterię opisuje [`../game/gameplay.md`](../game/gameplay.md).

@@ -95,8 +95,9 @@ void DebugUI::draw(const DebugContext& context) {
     // while the Framebuffers panel is open. The panel sets the flag again below. With
     // the panels hidden nobody does, and the game stops drawing the pictures.
     context.postProcessSettings.previews = false;
-    // The same for the preview picture of the shadow map and the Shadows panel.
+    // The same for the preview pictures of the two shadow maps and the Shadows panel.
     context.moonShadowSettings.preview = false;
+    context.flashlightShadowSettings.preview = false;
 
     if (m_visible) {
         // An invisible dock area that covers the whole window, so panels can be docked to
@@ -125,7 +126,14 @@ void DebugUI::draw(const DebugContext& context) {
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
         drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
-        drawShadowsPanel(context.moonShadowSettings, context.moonShadowMap, context.moonLightSpace);
+        drawShadowsPanel({.settings = context.moonShadowSettings,
+                          .map = context.moonShadowMap,
+                          .lightSpace = context.moonLightSpace,
+                          .drawn = context.moonShadowSettings.enabled},
+                         {.settings = context.flashlightShadowSettings,
+                          .map = context.flashlightShadowMap,
+                          .lightSpace = context.flashlightLightSpace,
+                          .drawn = context.flashlightShadowDrawn});
         drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
                       context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders);

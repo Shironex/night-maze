@@ -80,8 +80,10 @@ struct LightingSettings {
     glm::vec3 moonColor{0.55F, 0.65F, 1.0F};
     float moonIntensity = 0.2F;
 
-    /// The flashlight, a spot light at the eye of the player. Key F switches it. An
-    /// empty battery switches it off and keeps it off (game::updateRound).
+    /// The flashlight, a spot light in the hand of the player (flashlightPose). Key
+    /// F switches it. An empty battery switches it off and keeps it off
+    /// (game::updateRound). It casts shadows: its shadow map is drawn from the hand
+    /// (game/Shadows.hpp).
     bool flashlightOn = true;
     /// A warm white.
     glm::vec3 flashlightColor{1.0F, 0.9F, 0.72F};
@@ -89,8 +91,32 @@ struct LightingSettings {
     /// Half angles of the cone in degrees, see scene::SpotLight.
     float flashlightInnerDegrees = 13.0F;
     float flashlightOuterDegrees = 21.0F;
-    /// How far the flashlight reaches, in metres (scene::attenuationForRadius).
+    /// How far the flashlight reaches, in metres (scene::attenuationForRadius). It is
+    /// also the far plane of its shadow map.
     float flashlightRange = 16.0F;
+    /// Where the hand holds the flashlight, measured from the eye in metres: this far
+    /// to the right of it (along the right vector of the camera, which is always level)
+    /// and this far below it (straight down in the world, whatever the pitch is).
+    ///
+    /// Why not at the eye: a light that stands exactly where the picture is taken from
+    /// casts every shadow exactly behind the thing that casts it, where the camera
+    /// cannot see it. Only a light a little to the side shows its shadows.
+    ///
+    /// Why the light cannot end up inside a wall: the body of the player is a box 0.6
+    /// m wide (Player::BODY_WIDTH) that no wall enters, and the eye is in its middle.
+    /// The offset to the right is level, so the hand is 0.2 m from the middle and 0.1
+    /// m inside the box, however the player is turned. Straight down keeps it that
+    /// way: with "below the camera" a player who looks at the ground would hold the
+    /// hand 0.25 m behind the eye, and the two offsets together (0.32 m) could leave
+    /// the box. See MAX_FLASHLIGHT_HAND_RIGHT.
+    float flashlightHandRight = 0.2F;
+    float flashlightHandDown = 0.25F;
+    /// The beam does not run parallel to the view. It points from the hand at the
+    /// point this many metres in front of the eye on the line the player looks along,
+    /// so the spot of light is in the middle of the screen on a wall at this distance
+    /// and close to the middle on every wall that is not much nearer. 4 m is two
+    /// cells of the maze: a usual distance to the wall the player walks towards.
+    float flashlightConvergeDistance = 4.0F;
 
     /// The point lights of the crystals: one hangs just above every crystal that has not
     /// been collected yet. They all share these settings. A cyan-teal: the colour the
@@ -127,18 +153,55 @@ bool usesNormalMap(const LightingSettings& settings);
 /// of the moon both take it from here, so they can never disagree.
 glm::vec3 moonDirection(const LightingSettings& settings);
 
-/// The lights of one frame, with their colours converted from sRGB to linear.
+/// The largest offset of the flashlight to the right of the eye, in metres: the range
+/// of the slider in the Lights panel. Half of the body of the player (0.3 m, half of
+/// Player::BODY_WIDTH) minus the near plane of the shadow map of the flashlight (0.05
+/// m, scene::SPOT_NEAR_PLANE). Up to here the light stays inside the body box with the
+/// near plane to spare, so a wall the player stands sideways against is neither behind
+/// the light nor cut off by the near plane of its shadow map. A test checks the sum.
+constexpr float MAX_FLASHLIGHT_HAND_RIGHT = 0.25F;
+
+/// The smallest distance at which the beam of the flashlight may meet the line of view,
+/// in metres. Nearer than this the beam would point steeply across the picture, and at
+/// 0 it would have no direction at all.
+constexpr float MIN_FLASHLIGHT_CONVERGE_DISTANCE = 0.5F;
+
+/// Where the flashlight is and where it points in one frame, in world space.
+struct FlashlightPose {
+    /// The place of the light: the hand of the player.
+    glm::vec3 position{0.0F};
+    /// The axis of the cone, with length 1.
+    glm::vec3 direction{0.0F, 0.0F, -1.0F};
+};
+
+/// The flashlight in the hand of the player, from the camera of this frame.
 ///
-/// eye and viewDirection are where the camera stands and where it looks in this frame:
-/// the flashlight is put exactly there, so its cone stays in the middle of the picture.
+/// eye is where the camera stands, forward where it looks and right its right vector
+/// (scene::Camera::forward and scene::Camera::right), both of length 1. The position is
+/// the eye moved by flashlightHandRight along right and by flashlightHandDown straight
+/// down. The direction points from there to the point flashlightConvergeDistance metres
+/// in front of the eye (at least MIN_FLASHLIGHT_CONVERGE_DISTANCE), so the beam crosses
+/// the line of view there. With both offsets at 0 the result is the eye and forward:
+/// the flashlight at the eye, as it was before it cast shadows.
+///
 /// Pass the same eye the view matrix is built from (the blend of two fixed steps), not
 /// the position of the last step, or the cone would trail behind the picture.
+///
+/// The spot light of the frame (buildLightSet) and the shadow map of the flashlight
+/// (scene::spotLightSpace) both take the place and the direction from ONE result of
+/// this function, so the light and its shadows can never disagree.
+FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3& eye,
+                              const glm::vec3& forward, const glm::vec3& right);
+
+/// The lights of one frame, with their colours converted from sRGB to linear.
+///
+/// flashlight is where the spot light stands and where it points in this frame
+/// (flashlightPose).
 ///
 /// pointPositions are the places of the point lights: one above every crystal that has
 /// not been collected yet (game::crystalLightPositions). The function does not know
 /// where they come from. Positions past scene::MAX_POINT_LIGHTS are ignored.
-scene::LightSet buildLightSet(const LightingSettings& settings, const glm::vec3& eye,
-                              const glm::vec3& viewDirection,
+scene::LightSet buildLightSet(const LightingSettings& settings, const FlashlightPose& flashlight,
                               std::span<const glm::vec3> pointPositions);
 
 } // namespace game

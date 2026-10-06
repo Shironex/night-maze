@@ -33,5 +33,5 @@ Wszystkie siedem danych jednej mapy to zwykłe uniformy, zadeklarowane obok sieb
 
 ## 5. Kiedy wrócić do tej decyzji
 
-- Gdy map cieni będzie kilka i programów z cieniem kilka: liczba wywołań rośnie jak ich iloczyn.
+- Gdy map cieni będzie kilka i programów z cieniem kilka: liczba wywołań rośnie jak ich iloczyn. **Dopisek z 2026-10-06:** map jest dwie (księżyc, latarka), programów trzy, a `NightMazeApp::setShadowUniformsOf` ustawia oba zestawy: siedem uniformów dla księżyca i osiem dla latarki (dochodzi pozycja światła). Zestaw nazw ma pole `lightPosition`, które dla księżyca jest `nullptr`.
 - Gdy projekt przejdzie na wersję OpenGL z jawnym `layout(binding = ...)` dla samplerów (4.2): znika wtedy problem jednostki 0 po przeładowaniu.

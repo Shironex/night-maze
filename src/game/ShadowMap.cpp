@@ -69,7 +69,7 @@ void ShadowMap::bindForSampling(GLuint unit, bool linearFilter) {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + FIRST_TEXTURE_UNIT));
 }
 
-void ShadowMap::drawPreview(const gfx::Shader& previewShader) {
+void ShadowMap::drawPreview(const gfx::Shader& previewShader, const scene::LightSpace& lightSpace) {
     if (!m_target.isValid() || !previewShader.isValid()) {
         return;
     }
@@ -89,7 +89,19 @@ void ShadowMap::drawPreview(const gfx::Shader& previewShader) {
 
     previewShader.use();
     previewShader.setInt(PREVIEW_SOURCE_UNIFORM, static_cast<int>(PREVIEW_SOURCE_UNIT));
-    previewShader.setInt(PREVIEW_MODE_UNIFORM, static_cast<int>(AttachmentPreview::RawDepth));
+    if (lightSpace.kind == scene::LightProjection::Perspective) {
+        // The depth of a perspective view: the shader turns it back into metres with
+        // the two planes of the light (linearDepth in common/depth.glsl) and shows the
+        // far plane as white. This is the mode of the depth preview of the scene, with
+        // the planes of the light in place of the ones of the camera.
+        previewShader.setInt(PREVIEW_MODE_UNIFORM, static_cast<int>(AttachmentPreview::Depth));
+        previewShader.setFloat(PREVIEW_NEAR_UNIFORM, lightSpace.nearPlane);
+        previewShader.setFloat(PREVIEW_FAR_UNIFORM, lightSpace.farPlane);
+        previewShader.setFloat(PREVIEW_DEPTH_RANGE_UNIFORM, lightSpace.farPlane);
+    } else {
+        // The depth of an orthographic box grows evenly: it is shown as it is stored.
+        previewShader.setInt(PREVIEW_MODE_UNIFORM, static_cast<int>(AttachmentPreview::RawDepth));
+    }
 
     // Reading the depth texture of the map is allowed here because another framebuffer
     // is the target. bindDepthTexture binds it WITHOUT a sampler object, so the shader
@@ -109,12 +121,17 @@ void setShadowUniforms(const gfx::Shader& shader, const ShadowUniformNames& name
     shader.setInt(names.enabled, drawn ? 1 : 0);
     shader.setMat4(names.matrix, lightSpace.matrix());
 
-    // The depth range of the box of the light: its z extent in metres is the stored
-    // range from 0 to 1.
-    const float depthRange = lightSpace.extent.z;
-    shader.setFloat(names.constantBias, biasInDepthUnits(settings.constantBias, depthRange));
-    shader.setFloat(names.slopeBias, biasInDepthUnits(settings.slopeBias, depthRange));
+    // The settings hold the bias in metres. What the shader wants depends on the
+    // projection of the light: a share of the depth range for the box of the moon, the
+    // metres themselves for the pyramid of the flashlight (game::biasForShader).
+    shader.setFloat(names.constantBias, biasForShader(settings.constantBias, lightSpace));
+    shader.setFloat(names.slopeBias, biasForShader(settings.slopeBias, lightSpace));
     shader.setInt(names.pcfRadius, pcfRadiusInUse(settings));
+    // Only a light that stands somewhere has this uniform: the shader moves a fragment
+    // towards that place by the bias.
+    if (names.lightPosition != nullptr) {
+        shader.setVec3(names.lightPosition, lightSpace.position);
+    }
     // The number comes from a slider, where anything can be typed. Above 1 a shadow
     // would take away more light than there is.
     shader.setFloat(names.strength, std::clamp(settings.strength, 0.0F, 1.0F));

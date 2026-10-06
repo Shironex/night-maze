@@ -57,8 +57,9 @@ constexpr const char* LIGHT_BLOCK_NAME = "LightBlock";
 constexpr GLuint LIGHT_BLOCK_BINDING_POINT = 1;
 
 /// common/shadows.glsl, so lit.frag, gouraud.frag and grass.frag: the names of the
-/// uniforms of ONE shadow map. Every light that casts shadows has a set of its own in
-/// that file, and a constant of this type here (game::setShadowUniforms takes it).
+/// uniforms of ONE shadow map. Every light that casts shadows (the moon and the
+/// flashlight) has a set of its own in that file, and a constant of this type here
+/// (game::setShadowUniforms takes it).
 struct ShadowUniformNames {
     /// The sampler2DShadow of the map (it holds the number of a texture unit).
     const char* map;
@@ -66,16 +67,20 @@ struct ShadowUniformNames {
     const char* enabled;
     /// World space to the clip space of the light (scene::LightSpace::matrix).
     const char* matrix;
-    /// The two parts of the bias, as differences of stored depths.
+    /// The two parts of the bias, as game::biasForShader gives them: differences of
+    /// stored depths for the map of the moon, metres for the map of the flashlight.
     const char* constantBias;
     const char* slopeBias;
     /// The radius of the PCF kernel in texels. 0: one comparison.
     const char* pcfRadius;
     /// The share of the light a shadow takes away, 0 to 1.
     const char* strength;
+    /// Where the light stands in world space (scene::LightSpace::position). Only the
+    /// map of a light that has a position has this uniform. nullptr: there is none.
+    const char* lightPosition;
 };
 
-/// The shadow map of the moon.
+/// The shadow map of the moon. A directional light has no position.
 constexpr ShadowUniformNames MOON_SHADOW_UNIFORMS{
     .map = "uMoonShadowMap",
     .enabled = "uMoonShadowEnabled",
@@ -84,13 +89,28 @@ constexpr ShadowUniformNames MOON_SHADOW_UNIFORMS{
     .slopeBias = "uMoonShadowSlopeBias",
     .pcfRadius = "uMoonShadowPcfRadius",
     .strength = "uMoonShadowStrength",
+    .lightPosition = nullptr,
 };
 
-/// The texture unit of the shadow map of the moon. The models use units 0 (colour
-/// picture) and 1 (normal map) in the lit programs, and the composite pass uses 0 to 2,
-/// so 3 is the first unit nothing else binds: the map is bound once per frame and stays
-/// there while everything lit is drawn. A second shadow map takes the next unit.
+/// The shadow map of the flashlight.
+constexpr ShadowUniformNames FLASHLIGHT_SHADOW_UNIFORMS{
+    .map = "uFlashlightShadowMap",
+    .enabled = "uFlashlightShadowEnabled",
+    .matrix = "uFlashlightShadowMatrix",
+    .constantBias = "uFlashlightShadowConstantBias",
+    .slopeBias = "uFlashlightShadowSlopeBias",
+    .pcfRadius = "uFlashlightShadowPcfRadius",
+    .strength = "uFlashlightShadowStrength",
+    .lightPosition = "uFlashlightShadowLightPosition",
+};
+
+/// The texture units of the two shadow maps. The models use units 0 (colour picture)
+/// and 1 (normal map) in the lit programs, and the composite pass uses 0 to 2, so 3 is
+/// the first unit nothing else binds, and 4 the next. A map is bound once per frame and
+/// stays on its unit while everything lit is drawn. One more shadow map takes the next
+/// unit.
 constexpr GLuint MOON_SHADOW_TEXTURE_UNIT = 3;
+constexpr GLuint FLASHLIGHT_SHADOW_TEXTURE_UNIT = 4;
 
 /// color.frag: the one colour of everything drawn, a linear colour.
 constexpr const char* COLOR_UNIFORM = "uColor";
@@ -145,7 +165,8 @@ constexpr const char* BLUR_HORIZONTAL_UNIFORM = "uHorizontal";
 constexpr const char* BLUR_WEIGHTS_UNIFORM = "uWeights";
 
 /// post/preview.frag: the sampler of the attachment to show, what it is (a value of
-/// game::AttachmentPreview), the clipping planes of the camera and the distance in
+/// game::AttachmentPreview), the clipping planes of the perspective view the depth was
+/// drawn with (the camera, or the flashlight for its shadow map) and the distance in
 /// metres the depth preview shows as white.
 constexpr const char* PREVIEW_SOURCE_UNIFORM = "uSource";
 constexpr const char* PREVIEW_MODE_UNIFORM = "uMode";

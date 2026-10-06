@@ -17,6 +17,8 @@ Czego nie ma: **stanu przegranej** (decyzja właściciela, sekcja 2.1), **przeci
 
 **Czwarta część M7 (cienie księżyca, 2026-10-05)** nie zmieniła żadnej reguły rundy ani żadnego z trzech plików testów tego dokumentu. Zmieniła trzy rzeczy wokół nich. Po pierwsze, brama i kryształy **rzucają cień księżyca**: `GameplayRenderer::draw` jest wołane w każdej klatce drugi raz, z programem głębi `shadow_depth`, z funkcji `NightMazeApp::drawShadowCasters`, więc brama stoi w mapie cieni tak nisko, jak opadła, a każdy kryształ tam, gdzie się w tej chwili unosi (sekcja 3). Jako rzeczy rysowane programem `lit` albo `gouraud` brama i kryształy także cień **przyjmują**; własny blask kryształu (`uEmissive`) nie jest przez cień przyciemniany. Po drugie, HUD stoi o jeszcze jeden pasek tytułu niżej: doszedł czwarty rząd zwiniętych pasków paneli (panel Shadows, `FOLDED_ROW_COUNT` równe 4, sekcja 6). Po trzecie, paneli jest dwanaście. Całą technikę opisuje [`../renderer/shadows.md`](../renderer/shadows.md). Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi, 310 przypadków testowych i 103751 asercji (16 nowych przypadków, wszystkie w `tests/ShadowTests.cpp`). Nowego położenia HUD i cieni bramy oraz kryształów nikt nie oglądał ręcznie, a na macOS nic z tego nie było budowane.
 
+**Piąta część M7 (cień latarki, 2026-10-06)** też nie zmieniła żadnej reguły rundy. Brama i kryształy rzucają teraz cień także w świetle latarki: `GameplayRenderer::draw` jest wołane z `drawShadowCasters` jeszcze raz, dla mapy cieni latarki (sekcja 3). Pusta bateria, która gasi latarkę, gasi też jej przebieg cieni (`drawFlashlightShadowMap` pyta o `frameLighting.flashlightOn`). Zgłoszone: 329 przypadków testowych i 104306 asercji, żaden z nowych nie dotyczy reguł rundy.
+
 ## 1. Po co to jest
 
 Do M4 program był labiryntem do zwiedzania: ściany, gracz, światła. M5 robi z niego grę. PRD opisuje pętlę rozgrywki tak: gracz idzie korytarzem, widzi poświatę kryształu, zbiera go (bateria rośnie, licznik rośnie), po zebraniu odpowiedniej liczby kryształów otwiera się wyjście i trzeba do niego dojść. Ten moduł odpowiada na pytania, które z tej pętli wynikają:
@@ -1496,11 +1498,11 @@ Funkcja biegnie w trzech sytuacjach: w konstruktorze (pierwszy labirynt powstaje
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
     const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
     const scene::LightSet lights =
-        buildLightSet(frameLighting, eye, m_camera.forward(), crystalLights);
+        buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 ```
 
-W M4 `buildLightSet` dostawało `m_lighting` i stałą listę pozycji z labiryntu. Teraz dostaje kopię klatki i listę z rundy. Sama funkcja się nie zmieniła.
+W M4 `buildLightSet` dostawało `m_lighting` i stałą listę pozycji z labiryntu. Teraz dostaje kopię klatki i listę z rundy. Sama funkcja się nie zmieniła w M5. Od piątej części M7 ma inną sygnaturę: zamiast oka i kierunku patrzenia dostaje gotową pozę latarki (`FlashlightPose`, [`flashlight.md`](flashlight.md)).
 
 **`drawUnlitMaze` i `drawLitMaze`.** Obie kończą się tak samo:
 
