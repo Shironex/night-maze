@@ -3,6 +3,8 @@
 Kamień milowy: M4 (część "oświetlenie", uzupełniony w części "mapy normalnych": sekcja 2.9), w M5 doszły światła kryształów i składnik emisyjny (sekcja 2.2), w pierwszej części M7 rachunek światła przeszedł na wartości liniowe z wynikiem w buforze HDR (sekcja 2.8), w czwartej części M7 (cienie księżyca, 2026-10-05) doszedł udział księżyca w wyniku `computeLighting`, funkcja `moonFacing` i struktura `scene::LightSpace` (sekcje 2.8, 4.3, 4.4, 4.6 i 5.7). Temat wykładu: 6 (Światło kierunkowe i punktowe).
 Kod: [`src/scene/Light.hpp`](../../../src/scene/Light.hpp), [`src/scene/Light.cpp`](../../../src/scene/Light.cpp), plik dołączany do shaderów [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl), panel [`src/debug/categories/LightCategory.hpp`](../../../src/debug/categories/LightCategory.hpp) i [`LightCategory.cpp`](../../../src/debug/categories/LightCategory.cpp), testy [`tests/LightTests.cpp`](../../../tests/LightTests.cpp). Od czwartej części M7 także [`src/scene/LightSpace.hpp`](../../../src/scene/LightSpace.hpp) i [`src/scene/LightSpace.cpp`](../../../src/scene/LightSpace.cpp) z testami w [`tests/ShadowTests.cpp`](../../../tests/ShadowTests.cpp).
 
+**Zmiana z 2026-10-06 (M9, część 3).** Labirynt może mieć do 64 kryształów, a blok światła ma nadal 16 miejsc na światła punktowe (928 bajtów, shadery bez zmian): w każdej klatce światła niosą 16 kryształów najbliższych oka, wygaszane do zera na brzegu zbioru (sekcja 5.8). Wszystko niżej, co mówi, że "liczba kryształów nigdy nie przekracza 16" albo że "tyle kryształów, tyle świateł", opisuje stan sprzed tej zmiany.
+
 Część modułu `scene`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument zakłada znajomość przekształceń ([`transforms.md`](transforms.md)), kamery ([`camera.md`](camera.md)), shaderów i uniformów ([`../gfx/shaders.md`](../gfx/shaders.md), [`../gfx/uniforms.md`](../gfx/uniforms.md)) oraz tekstur ([`../gfx/textures.md`](../gfx/textures.md)).
 
 Oświetlenie jest rozłożone na siedem dokumentów (siódmy, o cieniach, doszedł w czwartej części M7). Każdy plik kodu jest omawiany linia po linii w jednym z nich:
@@ -466,8 +468,8 @@ Blok uniformów (uniform block) to grupa uniformów, których wartości nie są 
 | `uSpotPosition.xyz`, `uSpotDirection.xyz` | latarka: wierzchołek stożka i jego oś, długość 1 | oko i `Camera::forward()` |
 | `uSpotColor`, `uSpotAttenuation` | kolor z intensywnością, trzy współczynniki tłumienia | ustawienia latarki, `attenuationForRadius`. Intensywność jest przy słabej baterii pomnożona przez mnożnik migotania (`game::lightingForFrame`) |
 | `uSpotCone` | `x`: cosinus kąta wewnętrznego, `y`: zewnętrznego, `z`: 1 włączona, 0 wyłączona | `coneCosines`, przełącznik latarki. Przy pustej baterii zawsze 0 |
-| `uPointCount` | ile elementów `uPoints` jest w użyciu | liczba kryształów, które nie są jeszcze zebrane, najwyżej 16 |
-| `uPoints[i]` | pozycja, kolor z intensywnością, tłumienie jednego światła punktowego | `buildLightSet` z pozycji od `game::crystalLightPositions`. Intensywność jest pomnożona przez puls kryształów |
+| `uPointCount` | ile elementów `uPoints` jest w użyciu | liczba świateł wybranych na tę klatkę: najbliższe oka, najwyżej 16 (od 2026-10-06 kryształów może być do 64, sekcja 5.8) |
+| `uPoints[i]` | pozycja, kolor z intensywnością, tłumienie jednego światła punktowego | `buildLightSet` z wyniku `game::nearestPointLights` (pozycje od `game::crystalLightPositions`, wybrane i wygaszone na brzegu zbioru, sekcja 5.8). Intensywność jest pomnożona przez puls kryształów i przez siłę światła |
 
 Kierunki są normalizowane **w C++**, więc shader nie woła dla nich `normalize`. Przełącznik latarki to liczba `float` (1 albo 0), a nie `bool`: powód jest w dokumencie o buforach uniformów.
 
@@ -782,7 +784,7 @@ struct Attenuation {
 
 (Komentarze z pliku są tu pominięte, żeby fragment był krótki: w pliku każde pole ma opis.)
 
-Domyślne `Attenuation` to mianownik równy 1: światło bez tłumienia. `MAX_POINT_LIGHTS` to długość tablicy w `LightSet` i w shaderze. PRD (sekcja "Model oświetlenia") przewiduje dokładnie taki zestaw: jedno światło kierunkowe, do 16 punktowych, jeden reflektor.
+Domyślne `Attenuation` to mianownik równy 1: światło bez tłumienia. `MAX_POINT_LIGHTS` to długość tablicy w `LightSet` i w shaderze. PRD (sekcja "Model oświetlenia") przewiduje dokładnie taki zestaw: jedno światło kierunkowe, do 16 punktowych, jeden reflektor. Od 2026-10-06 labirynt może mieć więcej kryształów niż 16, a tablica zostaje przy 16 miejscach: światła niosą kryształy najbliższe oka (sekcja 5.8).
 
 ```cpp
 struct DirectionalLight {
@@ -1079,6 +1081,118 @@ Gdzie punkt świata ląduje w mapie cieni: `x` i `y` to współrzędna tekstury 
 
 Zgłoszone dla Windowsa, 2026-10-05: wszystkie przechodzą w Debug i Release w ramach `make check` (310 przypadków i 103751 asercji całego programu testowego). Na macOS nic nie było budowane.
 
+### 5.8 Więcej kryształów niż świateł: 16 najbliższych oka (M9, część 3, 2026-10-06)
+
+**Nowa reguła.** Blok światła ma nadal 16 miejsc na światła punktowe (`MAX_POINT_LIGHTS` w trzech miejscach, 928 bajtów, shadery bez zmian), ale labirynt może mieć **do 64 kryształów** (`game::MAX_CRYSTAL_COUNT`). W każdej klatce światła niosą **16 kryształów najbliższych oka tej klatki**, a światła przy brzegu zbioru **gasną do zera**, żeby żadne nie zapalało się ani nie gasło skokiem. Wybór robi funkcja `game::nearestPointLights` z `src/game/Lighting.cpp`, a `game::buildLightSet` przyjmuje już gotowy wynik. Uzasadnienie i odrzucone możliwości (większy blok, oświetlenie klastrowane): [`../../decisions/nearest-crystals-carry-the-lights.md`](../../decisions/nearest-crystals-carry-the-lights.md).
+
+Typ wyniku i opis funkcji (komentarz w nagłówku jest uzasadnieniem):
+
+```cpp
+/// One point light of a frame: where it hangs and how much of its brightness it has.
+struct PointLightSpot {
+    glm::vec3 position{0.0F};
+    /// From 0 (dark) to 1 (the full intensity of the settings).
+    float strength = 1.0F;
+};
+
+/// Over this many metres a point light fades out before it leaves the set of lights of
+/// a frame (nearestPointLights): two cells of the maze.
+constexpr float POINT_LIGHT_FADE_DISTANCE = 4.0F;
+
+/// Chooses the point lights one frame is drawn with: the maxCount lights nearest to eye,
+/// the place the picture is taken from.
+///
+/// Why: the shaders have room for scene::MAX_POINT_LIGHTS point lights (the array of
+/// the uniform block), and a large maze has more crystals than that. A light reaches
+/// about 3 m (LightingSettings::pointRadius), so a crystal far from the eye lights
+/// ground that is small in the picture or hidden behind walls. Its own glow, which is
+/// not a light but a colour of its material, is drawn for every crystal.
+///
+/// Without more care a light would switch on or off at full brightness in the frame in
+/// which two crystals change places in the order. So the lights near the edge of the
+/// set are dimmed: the distance of the nearest light that was LEFT OUT is the edge, a
+/// light at the edge has strength 0, and one POINT_LIGHT_FADE_DISTANCE or more inside
+/// it has strength 1. When two lights change places they are equally far away, both at
+/// the edge and both dark, so nothing jumps.
+///
+/// With maxCount lights or fewer all of them are returned at strength 1. The result is
+/// sorted from the nearest to the farthest. A maxCount below 1 gives no lights.
+std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,
+                                               const glm::vec3& eye,
+                                               int maxCount = scene::MAX_POINT_LIGHTS);
+```
+
+(Plik: `src/game/Lighting.hpp`.) Kod:
+
+```cpp
+std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,
+                                               const glm::vec3& eye, int maxCount) {
+    if (maxCount < 1) {
+        return {};
+    }
+
+    // Every light with its distance from the eye, sorted from the nearest to the
+    // farthest. stable_sort keeps two lights at the same distance in the order they came
+    // in, so the same input always gives the same result.
+    struct Candidate {
+        glm::vec3 position;
+        float distance;
+    };
+    std::vector<Candidate> candidates;
+    candidates.reserve(positions.size());
+    for (const glm::vec3& position : positions) {
+        candidates.push_back({.position = position, .distance = glm::distance(position, eye)});
+    }
+    std::ranges::stable_sort(
+        candidates, [](const Candidate& a, const Candidate& b) { return a.distance < b.distance; });
+
+    // The edge of the set: the distance of the first light that is left out. With no
+    // light left out there is no edge, and every light keeps its full strength.
+    const auto count = static_cast<std::size_t>(maxCount);
+    const bool someLeftOut = candidates.size() > count;
+    const float edge = someLeftOut ? candidates[count].distance : 0.0F;
+
+    std::vector<PointLightSpot> chosen;
+    chosen.reserve(std::min(candidates.size(), count));
+    for (std::size_t i = 0; i < candidates.size() && i < count; ++i) {
+        float strength = 1.0F;
+        if (someLeftOut) {
+            // 0 at the edge, 1 from POINT_LIGHT_FADE_DISTANCE inside of it.
+            strength =
+                std::clamp((edge - candidates[i].distance) / POINT_LIGHT_FADE_DISTANCE, 0.0F, 1.0F);
+        }
+        chosen.push_back({.position = candidates[i].position, .strength = strength});
+    }
+    return chosen;
+}
+```
+
+(Plik: `src/game/Lighting.cpp`, funkcja `nearestPointLights`.) Krok po kroku: (1) każde światło dostaje odległość od oka (`glm::distance`); (2) `stable_sort` ustawia je od najbliższego do najdalszego (stabilny, więc dwa światła w tej samej odległości zostają w kolejności wejścia i ten sam wejściowy porządek daje ten sam wynik); (3) **brzeg zbioru** to odległość pierwszego światła, które nie weszło (`candidates[count]`), albo 0, gdy żadne nie zostało pominięte; (4) siła każdego wybranego światła to `(brzeg - odległość) / POINT_LIGHT_FADE_DISTANCE`, ucięta do przedziału od 0 do 1: 0 na brzegu, 1 od 4 m (`POINT_LIGHT_FADE_DISTANCE`, dwie komórki) wewnątrz brzegu. Z `maxCount` światłami albo mniej wszystkie mają siłę 1.
+
+**Przykład policzony ręcznie** (z testu `with too many lights the nearest ones are chosen and fade towards the edge`). Dziesięć świateł na prostej w odległościach 1, 2, ..., 10 m od oka (podanych w złej kolejności), miejsce na 6. Wybrane są światła od 1 do 6 m. Pierwsze pominięte jest w 7 m, więc **brzeg to 7 m**. Siły: dla 1, 2 i 3 m wychodzi `(7 - 1) / 4 = 1,5`, `(7 - 2) / 4 = 1,25` i `(7 - 3) / 4 = 1`, uciętych do 1, 1 i 1; dla 4 m `(7 - 4) / 4 = 0,75`; dla 5 m `0,5`; dla 6 m `0,25`. Test sprawdza dokładnie te liczby: 1, 1, 1, 0,75, 0,5, 0,25.
+
+**Dlaczego nic nie skacze.** Zbiór zmienia się w klatce, w której dwa światła zamieniają się miejscami w uporządkowaniu. W tej klatce mają tę samą odległość od oka, więc oba leżą na brzegu, gdzie siła wynosi 0 (test `two lights that change places at the edge of the set are both dark`: światła w odległościach 5,00 m i 5,01 m, miejsce na jedno, siła poniżej 0,01 po obu stronach zamiany).
+
+**Użycie w klatce** (`NightMazeApp::onRender`):
+
+```cpp
+    // The lights of this frame, from the lighting and the flashlight pose computed
+    // before the shadow passes. The point lights hang above the crystals that are still
+    // there: the ones nearest to the eye of this frame, because a large maze has more
+    // crystals than the shaders have point lights (game::nearestPointLights). The copy
+    // to the graphics card happens once, and the two lit programs and the grass program
+    // read it. It takes the EYE, not the hand: the highlights are computed for the place
+    // the picture is taken from.
+    const std::vector<PointLightSpot> crystalLights =
+        nearestPointLights(crystalLightPositions(m_round), eye);
+    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
+    m_lightRig.upload(lights, eye);
+```
+
+(Plik: `src/game/NightMazeApp.cpp`.) Pozycje świateł pochodzą z `crystalLightPositions` (nad każdym niezebranym kryształem, z uwzględnieniem jego kołysania), a oko to oko tej klatki: oko gracza w rundzie, a **oko kamery menu w menu głównym** (kamera przelotu). Funkcja `buildLightSet` mnoży intensywność z ustawień przez siłę światła (`settings.pointIntensity * pointLights[i].strength`) i ignoruje światła ponad `MAX_POINT_LIGHTS`. **Jarzenie samego kryształu** (materiał emisyjny, bloom) jest rysowane dla każdego kryształu, bo to nie jest światło.
+
+**Czego to nie rozwiązuje.** Nikt nie widział na ekranie, jak światła gasną i zapalają się przy ruchu po labiryncie z więcej niż 16 kryształami (to nie było oglądane). W menu głównym na poziomach `Normal` i `Hard` światła wybiera się spośród 16 najbliższych oka przelotu, więc spora część tła może nie mieć światła kryształu; to też nie było oglądane.
+
 ## 6. Okno debugowania (dawniej panel ImGui)
 
 **Stan na 2026-10-06.** Panel Lights zastąpiło okno debugowania ([`../debug-ui.md`](../debug-ui.md)). Jego osiemnaście kontrolek jest w kategorii **Light**, w zakładce **Lights** ([`LightCategory.cpp`](../../../src/debug/categories/LightCategory.cpp), funkcja `drawLightCategory`), w pięciu kartach: **Ambient** (`Ambient`), **Moon** (`Moon yaw`, `Moon pitch`, `Moon colour`, `Moon intensity`), **Flashlight** (`Flashlight on (key F)`, `Beam colour`, `Beam intensity`, `Cone`, `Beam range`, `Hand right`, `Hand down`, `Converge at`), **Crystal lights** (`Point colour`, `Point intensity`, `Point radius` i odczyt `Lit`) i **Highlight** (`Strength`, `Shininess`). Grupy `CollapsingHeader` stały się kartami, a grupa Moon nie startuje już zwinięta. Pole `Cone` pokazuje oba kąty w formacie `%.1f deg` (było `inner %.1f deg` i `outer %.1f deg`, który kąt jest który, mówi podpowiedź). `drawLightsPanel`, `LIGHTS_PLACEMENT` i `PanelLayout.hpp` nie istnieją; sekcja 6.1 poniżej opisuje kod panelu sprzed zmiany (commity przed 5b6a38f) i jest zachowana jako historia.
@@ -1159,22 +1273,40 @@ Dwa miejsca panelu czytają rundę. Pierwsze jest w `drawFlashlight`:
 | `if (round.battery <= 0.0F)` | przy pustej baterii gra wyłącza przełącznik w następnym kroku symulacji (`game::updateRound`), więc pola nie da się zaznaczyć na stałe. Bez wyjaśnienia wyglądałoby to na zepsuty widżet |
 | `ImGui::SetItemTooltip(...)` | podpowiedź doklejona do **ostatnio narysowanego** widżetu, czyli do pola wyboru: pokazuje się po najechaniu na nie kursorem |
 
-Drugie jest w `drawPointLights`:
+Drugie jest w karcie `Crystal lights` (kod od 2026-10-06, po poprawce `7988ae0`; wcześniejsza wersja, z `ImGui::Text`, już nie istnieje):
 
 ```cpp
-    // Every crystal that is not collected yet carries one light.
+// The point lights of the crystals. They are edited as a group: one colour, one
+// intensity and one radius for all of them. The colour is also the colour the crystals
+// glow in.
+void drawCrystalLights(Page& page, game::LightingSettings& lighting, const game::Round& round) {
+    page.beginCard("Crystal lights");
+    // A crystal that is not collected yet can carry a light, but only the nearest
+    // MAX_POINT_LIGHTS of them do: a large maze has more crystals than lights.
     const int crystalCount = static_cast<int>(round.crystals.size());
-    ImGui::Text("Lit: %d of %d crystals (at most %d)", crystalCount - round.collectedCount,
-                crystalCount, scene::MAX_POINT_LIGHTS);
+    const int remaining = crystalCount - round.collectedCount;
+    const int lit = remaining < scene::MAX_POINT_LIGHTS ? remaining : scene::MAX_POINT_LIGHTS;
+    page.stat("Lit", "%d of %d crystals left (at most %d)", lit, remaining,
+              scene::MAX_POINT_LIGHTS);
+    page.color("Point colour", glm::value_ptr(lighting.pointColor),
+               "The colour of the lights of the crystals, and the colour the crystals "
+               "glow in.");
+    page.slider("Point intensity", &lighting.pointIntensity, MIN_INTENSITY, MAX_POINT_INTENSITY,
+                "%.2f", "How strong the light of a crystal is.");
+    page.slider("Point radius", &lighting.pointRadius, MIN_POINT_RADIUS, MAX_POINT_RADIUS, "%.1f m",
+                "How far the light of a crystal reaches.");
+    page.endCard();
+}
 ```
 
 | Linia | Znaczenie |
 |---|---|
-| `round.crystals.size()` | wszystkie kryształy rundy, zebrane i niezebrane. `size()` zwraca typ bez znaku, a `%d` chce `int`, stąd rzutowanie |
-| `crystalCount - round.collectedCount` | ile kryształów jeszcze świeci: tyle świateł punktowych ma ta klatka |
-| `scene::MAX_POINT_LIGHTS` | 16: długość tablicy świateł w shaderze. Liczba kryształów nigdy jej nie przekracza (`game::crystalCountFor`) |
+| `round.crystals.size()` | wszystkie kryształy rundy, zebrane i niezebrane |
+| `remaining = crystalCount - round.collectedCount` | ile kryształów zostało w labiryncie |
+| `lit = min(remaining, MAX_POINT_LIGHTS)` | ile świateł ma zbiór klatki. **To liczba świateł w zbiorze, a nie liczba świateł o pełnej sile**: światła przy brzegu zbioru mają siłę poniżej 1, a światło na brzegu 0, i też są policzone |
+| `page.stat("Lit", "%d of %d crystals left (at most %d)", ...)` | odczyt w formie `Lit: 16 of 26 crystals left (at most 16)` |
 
-Dla labiryntu startowego linia brzmi na początku rundy `Lit: 13 of 13 crystals (at most 16)`.
+Do 2026-10-06 ta linia brzmiała `Lit: %d of %d crystals (at most %d)` i pierwsza liczba była liczbą niezebranych kryształów, co przy ponad 16 kryształach było błędne. Dla labiryntu startowego na poziomie `Easy` linia brzmi na początku rundy `Lit: 13 of 13 crystals left (at most 16)`, a dla domyślnego poziomu `Normal` `Lit: 16 of 26 crystals left (at most 16)` (policzone z kodu, nie oglądane na ekranie).
 
 Dwa widżety z innych grup są nowe w projekcie:
 
@@ -1206,7 +1338,7 @@ Suwak **logarytmiczny**: połowa jego długości przypada na małe wykładniki, 
 | | `Beam colour`, `Beam intensity` | kolor, od 0 do 10 | `flashlightColor`, `flashlightIntensity` | powyżej pewnej wartości środek plamy się prześwietla. Od M7 wartości powyżej 1 zostają w buforze HDR, a o tym, kiedy plama robi się płasko biała, decyduje krzywa mapowania tonów z kategorii Post process: przy `None (clamp)` obcięcie następuje przy 1 jak dawniej, przy domyślnej `ACES (fitted)` krzywa dochodzi do bieli dopiero w okolicy 7 |
 | | `Cone` | dwa kąty od 1 do 60 stopni | `flashlightInnerDegrees`, `flashlightOuterDegrees` | stożek wewnętrzny i zewnętrzny. Równe wartości dają ostrą krawędź, duża różnica szeroki miękki brzeg |
 | | `Beam range` | od 2 do 60 m | `flashlightRange` | tłumienie z promienia: jak daleko w korytarz sięga światło |
-| `Point lights (crystals)` | tekst `Lit: 13 of 13 crystals (at most 16)` | odczyt | `round.crystals.size()`, `round.collectedCount` | liczba świateł to liczba niezebranych kryształów, z limitem tablicy w shaderze. 13 dla labiryntu startowego na początku rundy |
+| `Point lights (crystals)` | tekst `Lit: 13 of 13 crystals left (at most 16)` | odczyt | `round.crystals.size()`, `round.collectedCount` | liczba świateł w zbiorze klatki: mniejsza z liczby pozostałych kryształów i 16 (sekcja 5.8). 13 z 13 dla labiryntu `Easy` na początku rundy, 16 z 26 dla `Normal` |
 | | `Point colour`, `Point intensity` | kolor, od 0 do 10 | `pointColor`, `pointIntensity` | wszystkie światła punktowe mają wspólne ustawienia. Kolor zmienia też blask samych kryształów (`uEmissive`), intensywność nie: przy 0 ściany wokół kryształu gasną, a kryształ świeci dalej. To pokaz różnicy między światłem a emisją |
 | | `Point radius` | od 0,5 do 12 m | `pointRadius` | tłumienie: przy 3 m światło gaśnie w półtorej komórki, przy 12 m zalewa pół labiryntu, także przez ściany |
 | `Highlight (specular)` | `Strength` | od 0 do 2 | `specularStrength` | siła odbłysku. 0 zostawia sam składnik rozproszony |
@@ -1328,7 +1460,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
     W przestrzeni świata: pozycje świateł, oko, pozycja punktu i normalna. Normalna z mapy normalnych jest zapisana w przestrzeni stycznej, więc `surfaceNormal` przenosi ją do świata przed wzorami.
 
 18. **Co to jest `LightSet` i jak trafia do shadera?**
-    Struktura ze wszystkimi światłami jednej klatki: otoczenie, jedno kierunkowe, do 16 punktowych z licznikiem, jeden reflektor z przełącznikiem. `packLightBlock` zamienia ją na 928 bajtów w układzie `std140`, a `UniformBuffer::update` kopiuje je na kartę raz na klatkę.
+    Struktura ze wszystkimi światłami jednej klatki: otoczenie, jedno kierunkowe, do 16 punktowych z licznikiem (wybranych spośród kryształów, sekcja 5.8), jeden reflektor z przełącznikiem. `packLightBlock` zamienia ją na 928 bajtów w układzie `std140`, a `UniformBuffer::update` kopiuje je na kartę raz na klatkę.
 
 19. **Dlaczego `direction` światła kierunkowego to kierunek lotu światła, a shader ma minus?**
     Bo tak łatwiej myśleć o źródle: "księżyc świeci w dół". Wzory potrzebują kierunku od punktu do światła, czyli przeciwnego.
@@ -1349,7 +1481,7 @@ Tryb cieniowania (Unlit, Gouraud, Phong, Blinn-Phong) przełącza lista `Lightin
     Testami: wzory tłumienia i stożka w C++, kierunek z kątów, pakowanie bloku i jego rozmiar, a od czwartej części M7 także `LightSpace` (osiem przypadków w `tests/ShadowTests.cpp`). Nie: kod GLSL (druga kopia wzorów, w tym pola księżyca i `moonFacing`) i panel. Obraz jest sprawdzony na zrzutach ekranu z Windowsa, a widżetów nikt nie klikał.
 
 25. **Skąd gra bierze światła punktowe?**
-    Z kryształów rundy: `game::crystalLightPositions` daje pozycję 0,15 m nad czubkiem każdego kryształu, który nie jest zebrany. Zebrany kryształ traci światło. Najwyżej 16, bo tyle kryształów może mieć labirynt i tyle ma tablica w shaderze.
+    Z kryształów rundy: `game::crystalLightPositions` daje pozycję 0,15 m nad czubkiem każdego kryształu, który nie jest zebrany. Zebrany kryształ traci światło. Do tablicy w shaderze wchodzi najwyżej 16 z nich: od 2026-10-06 labirynt może mieć do 64 kryształów, a `game::nearestPointLights` wybiera te najbliższe oka i wygasza je na brzegu zbioru (sekcja 5.8). Do 2026-10-06 limit 16 wynikał z liczby kryształów.
 
 26. **Co to jest składnik emisyjny i jak wygląda w projekcie?**
     Światło, które powierzchnia oddaje sama, niezależnie od świateł sceny. W projekcie to uniform `uEmissive` w shaderach fragmentów: `kolor = powierzchnia * (światło rozproszone + emisja) + odbłysk`. Dla kryształów ma kolor ich świateł, dla wszystkiego innego jest czarny.

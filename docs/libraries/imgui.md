@@ -1085,7 +1085,7 @@ logarytmicznej.
 flagą `ImGuiSliderFlags_AlwaysClamp` (dziewięć razy, na przykład `"%.0f deg"` dla kątów
 księżyca i `"%.1f m"` dla zasięgów), `Checkbox("Flashlight on (key F)", &lighting.flashlightOn)`
 na zmiennej `bool` i `Text` z liczbą świateł punktowych. Od M5 ta ostatnia linia to
-`Lit: %d of %d crystals (at most %d)`, grupa nazywa się `Point lights (crystals)` (w M4
+`Lit: %d of %d crystals (at most %d)` (postać z M4; od 2026-10-06 `Lit: %d of %d crystals left (at most %d)` w karcie `Crystal lights` okna debug), grupa nazywa się `Point lights (crystals)` (w M4
 `Point lights (dead ends)`), a pole wyboru latarki ma przy pustej baterii podpowiedź
 (sekcja 3.14).
 

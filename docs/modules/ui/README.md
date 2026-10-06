@@ -1,15 +1,15 @@
 # Moduł ui: warstwa menu w RmlUi, interfejs plików i kolejka akcji
 
-Kamień milowy: M9, część 2 (2026-10-06). Temat wykładu: brak własnego (to dodatek do gry, poza listą 15 tematów). Dokument korzysta z biblioteki opisanej w [`../../libraries/rmlui.md`](../../libraries/rmlui.md), z okna i ścieżek do assetów ([`../core/window-context.md`](../core/window-context.md), [`../core/paths.md`](../core/paths.md)), z pętli głównej ([`../core/main-loop.md`](../core/main-loop.md)) i z klawiatury i myszy ([`../core/input.md`](../core/input.md)). Co oznaczają ekrany i zdarzenia, opisuje [`../game/game-states.md`](../game/game-states.md); ten dokument opisuje tylko warstwę, która je pokazuje.
+Kamień milowy: M9, część 2 (2026-10-06), uzupełniony w części 3 (2026-10-06: cztery ekrany, pole tekstowe, zmiany kontrolek, wejście ekranu). Temat wykładu: brak własnego (to dodatek do gry, poza listą 15 tematów). Dokument korzysta z biblioteki opisanej w [`../../libraries/rmlui.md`](../../libraries/rmlui.md), z okna i ścieżek do assetów ([`../core/window-context.md`](../core/window-context.md), [`../core/paths.md`](../core/paths.md)), z pętli głównej ([`../core/main-loop.md`](../core/main-loop.md)) i z klawiatury i myszy ([`../core/input.md`](../core/input.md)). Co oznaczają ekrany i zdarzenia, opisuje [`../game/game-states.md`](../game/game-states.md); ten dokument opisuje tylko warstwę, która je pokazuje. **Same ekrany (RML, RCSS, akcje, fokus, pole ziarna, wejście ekranu) opisuje [`menu-screens.md`](menu-screens.md).**
 Kod: [`src/ui/UiLayer.hpp`](../../../src/ui/UiLayer.hpp) i [`UiLayer.cpp`](../../../src/ui/UiLayer.cpp), [`src/ui/AssetFileInterface.hpp`](../../../src/ui/AssetFileInterface.hpp) i [`AssetFileInterface.cpp`](../../../src/ui/AssetFileInterface.cpp), [`src/core/Files.hpp`](../../../src/core/Files.hpp) i [`Files.cpp`](../../../src/core/Files.cpp) (czytnik plików i nazwa czcionki, wspólne z paneli debug), dokumenty menu w [`assets/ui/`](../../../assets/ui/), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) i [`src/main.cpp`](../../../src/main.cpp), reguły w CMake: [`CMakeLists.txt`](../../../CMakeLists.txt) (biblioteka `ui`) i [`cmake/Dependencies.cmake`](../../../cmake/Dependencies.cmake). Testów warstwy `ui` **nie ma** (wymaga okna i OpenGL, jak reszta kodu z OpenGL, sekcja 5.10).
 
-**Stan na dziś:** gra ma trzy dokumenty menu (menu główne, pauza, koniec rundy) wczytywane przez klasę `ui::UiLayer`. Warstwa pokazuje jeden dokument naraz, rysuje go na wierzchu gotowej klatki gry i minimapy, a przed Dear ImGui, oraz oddaje grze **listę nazw** kliknięć (`data-action`), z których gra robi zdarzenia. Warstwa nie wie nic o grze. Ekranu ustawień, animacji wejścia i tła w postaci wideo nie ma.
+**Stan na dziś (po części 3):** gra ma **cztery dokumenty menu** (menu główne, pauza, koniec rundy, ustawienia) wczytywane przez klasę `ui::UiLayer`. Warstwa pokazuje jeden dokument naraz, rysuje go na wierzchu gotowej klatki gry i minimapy, a przed Dear ImGui, oraz oddaje grze **listę nazw** kliknięć (`data-action`), z których gra robi zdarzenia i polecenia ekranu. Od części 3 warstwa umie też: **zgłaszać zmiany kontrolek** (`data-setting`, `takeChanges`: suwak zgłasza nazwę i nową wartość), **ustawiać i czytać wartości kontrolek** (`setValue`, `value`), **ustawiać klasy elementów** (`setClass`: wybrany poziom, włączony przełącznik), **przyjąć pole tekstowe** (`wantsKeyboard` jest prawdą tylko dla `input` bez typu albo z `type="text"` i dla `textarea`, a Enter w polu z `data-submit` jest akcją), **oddać fokus polu przy Escape** i **wprowadzić ekran animacją** (`show` dodaje klasę `open` po jednym `Update`). Klawiatura (Tab, strzałki, Enter, Spacja) działa w każdym dokumencie bez kodu gry. Warstwa nadal nie wie nic o grze. Tła w postaci wideo nie ma.
 
 **Uczciwie o tym, co sprawdzono.** Trzy rodzaje dowodów trzymam osobno (tak jak w [`../../guides/build-windows.md`](../../guides/build-windows.md)):
 
-1. **Zgłoszone przez bramkę (2026-10-06), nie powtórzone przy pisaniu tego dokumentu:** `make check` przechodzi, **519 przypadków testowych i 219195 asercji** na commicie `8c99911`. (Stan z 2026-10-06 po wymianie paneli na okno debugowania, liczby zgłoszone przez bramkę na gałęzi debug, nie powtórzone przeze mnie: **526 przypadków testowych i 219214 asercji**, siedem przypadków i 19 asercji więcej w `tests/SearchTests.cpp`; `DebugContext` ma 51 pól.) Przypadki policzyłem z plików testów (suma makr `TEST_CASE` w `tests/*.cpp` to 519), liczby asercji nie da się policzyć z plików. Żaden z tych przypadków nie dotyka klasy `ui::UiLayer`.
+1. **Zgłoszone przez bramkę (2026-10-06), nie powtórzone przy pisaniu tego dokumentu.** Stan po części 3: bramka na gałęzi menu (przed scaleniem z oknem debug) zgłosiła **557 przypadków testowych i 220100 asercji**, a bramka na gałęzi okna debug **526 i 219214** (każda osobno, każda przed scaleniem). **Dla scalonego drzewa żadna bramka nie zgłosiła liczb**: pełna bramka nie została na nim uruchomiona (przebieg przerwał system z braku pamięci, a właściciel zdecydował, że tego dnia go pomija). Stan z części 2: `make check` przechodzi, **519 przypadków testowych i 219195 asercji** na commicie `8c99911`. (Stan z 2026-10-06 po wymianie paneli na okno debugowania, liczby zgłoszone przez bramkę na gałęzi debug, nie powtórzone przeze mnie: **526 przypadków testowych i 219214 asercji**, siedem przypadków i 19 asercji więcej w `tests/SearchTests.cpp`; `DebugContext` ma 51 pól.) Przypadki policzyłem z plików testów (suma makr `TEST_CASE` w `tests/*.cpp` to 519), liczby asercji nie da się policzyć z plików. Żaden z tych przypadków nie dotyka klasy `ui::UiLayer`.
 2. **Widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela** (Windows, Release, 1280 x 720, RTX 4070 Ti SUPER): menu główne po starcie nad przelatującą kamerą, bez HUD i minimapy; kolor przycisku pod kursorem zmienia się na pomarańczowy; `Play` zaczyna rundę; Escape pokazuje pauzę; panele debug działają na wierzchu pauzy i żaden przycisk menu nie reaguje na ich kliknięcie; `Resume`, `Restart`, `Back to menu` i `Quit` (kod wyjścia 0) działają; ekran wyniku widziany **tylko** przez tymczasową, niezatwierdzoną linię, która po trzech sekundach wymuszała wygraną.
-3. **Otwarte:** lista właściciela ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 26.2) i macOS ([`../../guides/build-macos.md`](../../guides/build-macos.md), podsekcja "M9, część 2 (menu w RmlUi) na macOS", w całości otwarta). Nie widziane przez nikogo: kursor (przechwycony albo wolny: nie da się go sfotografować), obrót myszą po `Play`, zmiana rozmiaru okna i minimalizacja, skalowanie ekranu inne niż 100 procent, Tab i Enter w menu, Debug zatwierdzonego kodu na ekranie, wszystko na macOS.
+3. **Otwarte:** lista właściciela ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcje 26.2 i 28.2) i macOS ([`../../guides/build-macos.md`](../../guides/build-macos.md), podsekcje "M9, część 2 (menu w RmlUi) na macOS" i "M9, część 3 (ekrany menu, poziomy trudności, ustawienia) na macOS", w całości otwarte). Część 3 widział na zrzutach agent (Tab, strzałki, Enter, pole tekstowe, pierścienie fokusu, wejście ekranu: [`menu-screens.md`](menu-screens.md)), nie właściciel. Właściciel zagrał 2026-10-06 na `Hard` w buildzie Debug i zgłosił, że menu, okno debug i gra działają ("it was great"): relacja, nie zamknięta lista. Nie widziane przez nikogo: kursor (przechwycony albo wolny: nie da się go sfotografować), obrót myszą po `Play`, zmiana rozmiaru okna i minimalizacja, skalowanie ekranu inne niż 100 procent, wszystko na macOS.
 
 Liczby w sekcji 2.7 (przykład) są **policzone ręcznie z kodu**, nie zmierzone w programie.
 
@@ -75,7 +75,7 @@ Szczegół: element, w który trafia kliknięcie, jest często nie samym przycis
 
 ### 2.4 Piksele i dp
 
-Rozmiar kontekstu RmlUi to rozmiar bufora ramki okna w pikselach, a współczynnik `dp` to to, ile pikseli ma jeden `dp` arkusza: 1 przy skalowaniu ekranu 100 procent, 1,5 przy 150 procentach na Windowsie, 2 na Retina. Przycisk z szerokością `220dp` ma więc **220 pikseli przy współczynniku 1, 330 przy 1,5 i 440 przy 2** (policzone z arkusza i z definicji, nie zmierzone na ekranie; zrzuty agenta były przy 100 procentach). Oba parametry gra podaje w każdej klatce (sekcja 5.6), więc działa to przy zmianie rozmiaru okna i przy przeniesieniu okna na inny ekran. Kursor dostaje RmlUi w pikselach bufora ramki: funkcja pomocnicza z backendu przelicza współrzędne okna na piksele (różnią się na Retina).
+Rozmiar kontekstu RmlUi to rozmiar bufora ramki okna w pikselach, a współczynnik `dp` to to, ile pikseli ma jeden `dp` arkusza: 1 przy skalowaniu ekranu 100 procent, 1,5 przy 150 procentach na Windowsie, 2 na Retina. Przycisk z szerokością `220dp` miałby więc **220 pikseli przy współczynniku 1, 330 przy 1,5 i 440 przy 2** (policzone z definicji, nie zmierzone na ekranie). **Od części 3 arkusz menu nie używa `dp` (poza jednym przesunięciem poświaty tytułu): wszystkie długości są w `vh`, setnych częściach wysokości okna, więc menu nie rośnie ze skalowaniem ekranu systemu** ([`menu-screens.md`](menu-screens.md), sekcja 2.1). Przykład z `220dp` ilustruje jednostkę, a nie bieżący arkusz. Oba parametry gra podaje w każdej klatce (sekcja 5.6), więc działa to przy zmianie rozmiaru okna i przy przeniesieniu okna na inny ekran. Kursor dostaje RmlUi w pikselach bufora ramki: funkcja pomocnicza z backendu przelicza współrzędne okna na piksele (różnią się na Retina).
 
 ### 2.5 Kolejność w klatce i dlaczego taka
 
@@ -98,7 +98,7 @@ Reguły (wybory wykonawcze, z komentarzy w `main.cpp` i `NightMazeApp.cpp`):
 
 - **Zdarzenia z GLFW** trafiają najpierw do wywołań zwrotnych Dear ImGui, a stamtąd do wywołań `UiLayer`. RmlUi dostaje je tylko wtedy, gdy dokument jest pokazany (klawiatura) i dodatkowo, gdy mysz nie jest wyłączona (mysz).
 - **Panele wygrywają z menu pod tym samym kursorem.** `main.cpp` przed klatką woła `setMouseEnabled(!m_debugUI.wantsMouse())`: gdy Dear ImGui chce myszy (kursor nad panelem), menu jej nie dostaje. Informacja pochodzi z poprzedniej klatki: to opóźnienie Dear ImGui, nie warstwy.
-- **Menu nie blokuje `core::Input`.** Gra sama nie czyta klawiszy ani myszy rundy, gdy menu jest otwarte (`updatesRound`), i działa to w tej samej klatce, bez jednoklatkowego opóźnienia blokady. Wyjątek: **pole tekstowe** w menu. Gdy ma fokus, `wantsKeyboard()` jest prawdą, a `main.cpp` blokuje klawiaturę dla gry. Żaden dokument pola tekstowego dziś nie ma.
+- **Menu nie blokuje `core::Input`.** Gra sama nie czyta klawiszy ani myszy rundy, gdy menu jest otwarte (`updatesRound`), i działa to w tej samej klatce, bez jednoklatkowego opóźnienia blokady. Wyjątek: **pole tekstowe** w menu. Gdy ma fokus, `wantsKeyboard()` jest prawdą, a `main.cpp` blokuje klawiaturę dla gry. Od części 3 menu główne ma takie pole (ziarno labiryntu, [`menu-screens.md`](menu-screens.md), sekcja 2.6), a Escape w polu tylko odbiera mu fokus (`UiLayer::onKey`).
 - **Escape** nie idzie przez RmlUi: pętla główna woła `onEscapePressed` ([`../core/main-loop.md`](../core/main-loop.md)).
 
 ### 2.7 Przykład policzony ręcznie: jedno kliknięcie `Play`
@@ -113,8 +113,8 @@ Gra stoi w menu głównym (`m_mode == MainMenu`, dokument `main_menu.rml` pokaza
 | 4 | `ActionListener::ProcessEvent` | od klikniętego elementu idzie w górę po rodzicach, znajduje atrybut `data-action` przycisku i dopisuje `"play"` do `m_actions` |
 | 5 | `Application::run` | `Input::update`, Escape nie naciśnięty, kroki stałe: `onUpdate` ze stanem `MainMenu` nie robi nic poza zegarem animacji (`updatesRound` fałsz) |
 | 6 | `DebugNightMazeApp::onRender` | `menuUi().setMouseEnabled(!wantsMouse())`, potem `NightMazeApp::onRender` |
-| 7 | `handleMenuActions` | `takeActions()` oddaje `["play"]` i zostawia pustą listę. `eventForAction("play", event)` daje `GameEvent::Play` |
-| 8 | `handleGameEvent` | `startsRound(MainMenu, Play)` jest prawdą, `nextMode` daje `Playing`, a że zdarzenie to `Play`, wołane jest `startNewGame(m_newGame)` (labirynt od nowa z ziarna i nowa runda) |
+| 7 | `handleMenuActions` | `takeActions()` oddaje `["play"]` i zostawia pustą listę. `eventForAction("play", event)` daje `GameEvent::Play`; od części 3 `Play` w menu głównym ma jeszcze bramkę: `readSeedField` czyta ziarno z pola tekstowego, a ziarno nie do odczytania zatrzymuje klik (menu zostaje, w linii podpowiedzi jest tekst) |
+| 8 | `handleGameEvent` | `startsNewGame(MainMenu, Play)` jest prawdą (w części 2 pytanie nazywało się `startsRound`), `nextMode` daje `Playing`, a że zdarzenie to `Play`, wołane jest `startNewGame(m_newGame)` (labirynt od nowa z ziarna i nowa runda) |
 | 9 | `showScreen` | `m_ui.show(NO_DOCUMENT)`: poprzedni dokument jest ukryty i `ProcessMouseLeave` zdejmuje podświetlenie, kursor zostaje przechwycony (`updatesRound(Playing)`) |
 | 10 | reszta `onRender` | `roundInput` jest już prawdą, klatka jest rysowana z oczu gracza, `m_ui.draw` nic nie robi (żaden dokument nie jest pokazany) |
 
@@ -143,13 +143,13 @@ Brak własnych. Renderer GL3 RmlUi kompiluje **własne programy w swoim konstruk
 
 | Plik | Co zawiera |
 |---|---|
-| `src/ui/UiLayer.hpp`, `.cpp` | `ui::UiLayer`: własność RmlUi (RAII), `loadDocument`, `show`, `shown`, `setText`, `takeActions`, `wantsKeyboard`, `setMouseEnabled`, `draw`, sześć wywołań zwrotnych GLFW. Nagłówek tylko deklaruje typy RmlUi, nie dołącza ich nagłówków ani nagłówka GLFW |
+| `src/ui/UiLayer.hpp`, `.cpp` | `ui::UiLayer`: własność RmlUi (RAII), `loadDocument`, `show` (z wejściem ekranu), `shown`, `setText`, `setValue`, `value`, `setClass`, `takeActions`, `takeChanges` (struktura `ControlChange`), `wantsKeyboard`, `setMouseEnabled`, `draw`, sześć wywołań zwrotnych GLFW, dwa nasłuchiwacze (kliknięcia i zmiany). Nagłówek tylko deklaruje typy RmlUi, nie dołącza ich nagłówków ani nagłówka GLFW |
 | `src/ui/AssetFileInterface.hpp`, `.cpp` | `ui::AssetFileInterface`: `Rml::FileInterface` czytający z katalogu `assets/` |
 | `src/core/Files.hpp`, `.cpp` | `core::readBinaryFile` i stała `core::TEXT_FONT_FILE`. Przeniesione z `src/debug/Theme.cpp` (to samo ciało), żeby czcionka i czytnik były wspólne dla paneli i menu. Część biblioteki `engine` |
-| `assets/ui/main_menu.rml`, `pause.rml`, `round_end.rml`, `menu.rcss` | trzy dokumenty i wspólny arkusz stylów ([`../../libraries/rmlui.md`](../../libraries/rmlui.md), sekcja 5) |
+| `assets/ui/main_menu.rml`, `pause.rml`, `round_end.rml`, `settings.rml`, `menu.rcss` | cztery dokumenty i wspólny arkusz stylów ([`menu-screens.md`](menu-screens.md); do części 3 trzy dokumenty i krótszy arkusz, [`../../libraries/rmlui.md`](../../libraries/rmlui.md), sekcja 5) |
 | `CMakeLists.txt` | biblioteka `ui` (cztery pliki), `target_link_libraries(ui PUBLIC engine)`, `target_link_libraries(ui PRIVATE rmlui_backend)`, a `night_maze` linkuje `engine game_logic ui imgui` |
 
-Cele CMake po tej części: `glad`, `engine` (63 pliki na liście), `game_logic` (48), `ui` (4), `imgui`, `stb_image`, `rmlui_backend`, `rmlui_core`, `freetype`, `night_maze` (67), `night_maze_tests` (36). Liczby plików policzone z `CMakeLists.txt` na `8c99911`. `RmlUi` jest zależnością **prywatną** `ui`, bo `UiLayer.hpp` tylko wymienia nazwy jego klas (deklaracje zapowiadające): kod, który używa warstwy, nie potrzebuje ani nagłówków RmlUi, ani ścieżek dołączania.
+Cele CMake po tej części: `glad`, `engine` (63 pliki na liście), `game_logic` (48), `ui` (4), `imgui`, `stb_image`, `rmlui_backend`, `rmlui_core`, `freetype`, `night_maze` (67), `night_maze_tests` (36). Liczby plików policzone z `CMakeLists.txt` na `8c99911`; **na HEAD po części 3** (policzone z pliku, wiersz po wierszu): `engine` 63, `game_logic` 52 (dochodzą `Difficulty.*` i `Settings.*`), `ui` 4, `night_maze` 66 (okno debug zmieniło listę plików debug), `night_maze_tests` 41 (39 plików z `tests/`, w tym `tests/main.cpp`, oraz dwa pliki `src/debug/Search.*` kompilowane do programu testowego). `RmlUi` jest zależnością **prywatną** `ui`, bo `UiLayer.hpp` tylko wymienia nazwy jego klas (deklaracje zapowiadające): kod, który używa warstwy, nie potrzebuje ani nagłówków RmlUi, ani ścieżek dołączania.
 
 ### 5.2 `AssetFileInterface`: pliki z katalogu `assets/`
 
@@ -215,7 +215,7 @@ Konstruktor wykonuje kroki w ustalonej kolejności i **przy pierwszym błędzie 
     m_started = true;
 ```
 
-(Plik: `src/ui/UiLayer.cpp`, początek konstruktora.) Potem: ładowanie czcionki (`Rml::LoadFontFace(core::TEXT_FONT_FILE)`: ścieżka idzie przez interfejs plików, więc jest ścieżką w `assets/`), utworzenie kontekstu `menu` o rozmiarze bufora ramki, jeden nasłuchiwacz kliknięć na kontekście i sześć wywołań zwrotnych:
+(Plik: `src/ui/UiLayer.cpp`, początek konstruktora.) Potem: ładowanie czcionki (`Rml::LoadFontFace(core::TEXT_FONT_FILE)`: ścieżka idzie przez interfejs plików, więc jest ścieżką w `assets/`), utworzenie kontekstu `menu` o rozmiarze bufora ramki, dwa nasłuchiwacze na kontekście (kliknięć i, od części 3, zmian kontrolek) i sześć wywołań zwrotnych (poniższy fragment pokazuje ich ustawienie):
 
 ```cpp
     glfwSetWindowUserPointer(m_window, this);
@@ -280,15 +280,41 @@ std::vector<std::string> UiLayer::takeActions() {
 `show(document)` pokazuje jeden dokument i **chowa poprzedni**:
 
 ```cpp
+void UiLayer::show(DocumentId document) {
+    // A number that names no document shows nothing.
+    if (documentOf(document) == nullptr) {
+        document = NO_DOCUMENT;
+    }
+    if (document == m_shown) {
+        return;
+    }
+
     if (Rml::ElementDocument* previous = documentOf(m_shown)) {
+        // Without the class the document is back in the state its next entrance
+        // starts from.
+        previous->SetClass(OPEN_CLASS, false);
         previous->Hide();
         // The cursor is no longer over anything of that document: without this
         // a button would still be drawn hovered when the document comes back.
         m_context->ProcessMouseLeave();
     }
+    m_shown = document;
+    if (Rml::ElementDocument* next = documentOf(m_shown)) {
+        // Not modal (the debug UI stays usable), and the keyboard focus goes to the
+        // element with the attribute autofocus, so Enter and the arrow keys work at
+        // once.
+        next->Show(Rml::ModalFlag::None, Rml::FocusFlag::Auto);
+        // The entrance: a transition runs between two computed styles. So the style
+        // WITHOUT the class is computed once, by this update, and then the class is
+        // added. The next update finds the difference and starts the transitions the
+        // style sheet names for it.
+        m_context->Update();
+        next->SetClass(OPEN_CLASS, true);
+    }
+}
 ```
 
-(Plik: `src/ui/UiLayer.cpp`, funkcja `show`.) Pokazanie dokumentu już pokazanego nic nie robi. `show(NO_DOCUMENT)` chowa wszystko. `setText(document, elementId, text)` szuka elementu po atrybucie `id` i podmienia jego zawartość przez `SetInnerRML`: tak ekran wyniku dostaje czas i liczbę kryształów (`NightMazeApp::fillRoundEndDocument`). Tekst jest brany jako RML, więc nie może zawierać `<` ani `&`.
+(Plik: `src/ui/UiLayer.cpp`, funkcja `show`, w całości, z komentarzami; do części 3 funkcja chowała tylko poprzedni dokument. Teraz zdejmuje z niego klasę `open`, a nowy pokazuje z fokusem na elemencie `autofocus` i wprowadza go animacją: [`menu-screens.md`](menu-screens.md), sekcja 2.7.) Pokazanie dokumentu już pokazanego nic nie robi. `show(NO_DOCUMENT)` chowa wszystko. `setText(document, elementId, text)` szuka elementu po atrybucie `id` i podmienia jego zawartość przez `SetInnerRML`: tak ekran wyniku dostaje czas i liczbę kryształów (`NightMazeApp::fillRoundEndDocument`). Tekst jest brany jako RML, więc nie może zawierać `<` ani `&`.
 
 ### 5.6 `draw`
 
@@ -325,7 +351,7 @@ void UiLayer::draw(core::Size framebuffer) {
 
 (Plik: `src/ui/UiLayer.hpp`.) Każde z sześciu wywołań zwrotnych sprawdza jedną z dwóch bramek i dopiero wtedy woła funkcję pomocniczą `RmlGLFW::Process...Callback`. Klawiatura i znaki: tylko gdy dokument jest pokazany. Mysz (pozycja, przyciski, kółko, wejście kursora): także gdy `setMouseEnabled(true)`. `setMouseEnabled(false)` dodatkowo woła `ProcessMouseLeave`, żeby przycisk, nad którym był kursor, przestał wyglądać na podświetlony, gdy kursor przeszedł nad panel.
 
-`wantsKeyboard()` zwraca prawdę, gdy pokazany dokument ma fokus na elemencie `input` albo `textarea`: tylko wtedy pisanie należy do menu i gra ma nie reagować na klawisze. Dziś żaden dokument nie ma pola tekstowego, więc zwraca zawsze fałsz.
+`wantsKeyboard()` zwraca prawdę, gdy pokazany dokument ma fokus na elemencie `input` albo `textarea`: tylko wtedy pisanie należy do menu i gra ma nie reagować na klawisze. Pole `<input type="text">` jest w menu głównym od części 3: tylko ono (i ewentualna `textarea`) sprawia, że funkcja zwraca prawdę. **Suwak ani przycisk z fokusem się nie liczą** (przyjmują pojedyncze klawisze). Warunek zna też `input` bez atrybutu `type`: brak typu znaczy pole tekstowe.
 
 ### 5.8 Podłączenie w `main.cpp`
 
@@ -347,14 +373,14 @@ Komentarz w kodzie: menu **niczego tu nie blokuje** poza polem tekstowym, bo gra
 
 Trzy miejsca (szczegóły i tabela przejść w [`../game/game-states.md`](../game/game-states.md)):
 
-- **Konstruktor** wczytuje trzy dokumenty i sprawdza, że żaden nie zwrócił `NO_DOCUMENT`. Jeśli któryś zawiódł, gra zapisuje błąd w logu i startuje od razu w rundzie (`m_menusLoaded` fałsz).
+- **Konstruktor** wczytuje cztery dokumenty i sprawdza, że żaden nie zwrócił `NO_DOCUMENT`. Jeśli któryś zawiódł, gra zapisuje błąd w logu i startuje od razu w rundzie (`m_menusLoaded` fałsz).
 - **`handleMenuActions`** na początku `onRender` zabiera listę nazw i zamienia je na zdarzenia.
 - **`showScreen`** pokazuje dokument ekranu (albo żaden w rundzie) i ustawia kursor.
 - Na końcu `onRender`: `m_ui.draw(framebuffer)` (sekcja 2.5).
 
 ### 5.10 Testy i jak to sprawdzono
 
-**Testów klasy `UiLayer` i `AssetFileInterface` nie ma.** Klasy potrzebują okna i kontekstu OpenGL (`UiLayer` tworzy renderer, który kompiluje shadery), a program testowy działa bez okna i nie linkuje biblioteki `ui`. To ta sama granica, co dla `gfx::Mesh` i `AssetCache` ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Testowane bez okna są **reguły gry**, które rządzą tym, co warstwa pokazuje: 21 przypadków w `tests/GameStateTests.cpp` (nazwy przycisków na zdarzenia, przejścia ekranów, co który ekran pozwala) i nowy przypadek w `tests/StartOptionsTests.cpp` dla `--play` ([`../game/game-states.md`](../game/game-states.md), sekcja 5.8). `AssetFileInterface` mógłby być testowany bez OpenGL (czyta tylko pliki i `std::map`), ale testu nie ma: to znana luka.
+**Testów klasy `UiLayer` i `AssetFileInterface` nie ma.** Klasy potrzebują okna i kontekstu OpenGL (`UiLayer` tworzy renderer, który kompiluje shadery), a program testowy działa bez okna i nie linkuje biblioteki `ui`. To ta sama granica, co dla `gfx::Mesh` i `AssetCache` ([`../../libraries/doctest.md`](../../libraries/doctest.md)). Testowane bez okna są **reguły gry**, które rządzą tym, co warstwa pokazuje: 26 przypadków w `tests/GameStateTests.cpp` (nazwy przycisków na zdarzenia, przejścia ekranów, co który ekran pozwala; 21 w części 2), 10 w `tests/StartOptionsTests.cpp` (w tym `--play` i czytanie ziarna) i 17 w `tests/SettingsTests.cpp` ([`../game/settings.md`](../game/settings.md)) ([`../game/game-states.md`](../game/game-states.md), sekcja 5.8). `AssetFileInterface` mógłby być testowany bez OpenGL (czyta tylko pliki i `std::map`), ale testu nie ma: to znana luka.
 
 Trzy rodzaje dowodów są na początku dokumentu.
 
@@ -369,15 +395,15 @@ Warstwa nie ma własnego panelu. Z panelami debug łączą ją dwie rzeczy: **pa
 3. **Brak pliku dokumentu nie wywraca gry.** Gra startuje w rundzie i nigdy nie wchodzi do menu głównego ani na ekran wyniku. Błąd jest tylko w logu.
 4. **`setText` bierze RML.** Znaki `<` i `&` w tekście zostałyby zinterpretowane.
 5. **Panele i menu pod jednym kursorem.** Informacja o tym, że panel jest pod kursorem, jest z poprzedniej klatki (opóźnienie Dear ImGui): w pierwszej klatce po wjechaniu na panel kliknięcie może jeszcze trafić w przycisk pod nim. Nie sprawdzone na ekranie.
-6. **Pole tekstowe nie jest przećwiczone.** Kod rozpoznaje `input` i `textarea`, ale żaden dokument ich nie ma, więc ta ścieżka nie była wykonana.
-7. **Skalowanie ekranu inne niż 100 procent.** Współczynnik jest czytany co klatkę, ale zrzuty agenta były przy 100 procentach: reszta jest z czytania kodu.
+6. **Pole tekstowe widział tylko agent.** Agent wpisał na zrzutach złe ziarno z podpowiedzią i dobre ziarno 12345 uruchomione Enterem; właściciel pola nie sprawdzał ręcznie (poza relacją o grze na `Hard`). `textarea` żaden dokument nie ma.
+7. **Skalowanie ekranu inne niż 100 procent.** Współczynnik dp jest czytany co klatkę, ale zrzuty agenta były przy 100 procentach, a arkusz menu jest w `vh` (nie rośnie ze skalowaniem). Czy przyciski reagują tam, gdzie je widać, przy 125, 150 i 200 procentach, nie było sprawdzone.
 8. **Powrót do dokumentu po `Hide`.** `show` woła `ProcessMouseLeave` przy chowaniu. Bez tej linii przycisk zostawałby podświetlony po powrocie (komentarz w kodzie). Widziane przy zmianie ekranów na zrzutach tylko pośrednio.
 9. **Rozmycie sceny za menu nie jest możliwe przez RmlUi** ([`../../libraries/rmlui.md`](../../libraries/rmlui.md), pułapka 2).
 
 ## 8. Ćwiczenia
 
-1. **Nowy przycisk.** Dodaj do `pause.rml` przycisk `Settings` z `data-action="settings"`. Co się stanie po kliknięciu i które trzy miejsca trzeba zmienić, żeby coś robił? Odpowiedź: bez zmian w kodzie warstwy `ui` kliknięcie dopisze `"settings"` do listy, `handleMenuActions` zapisze w logu ostrzeżenie o nieznanej akcji (`eventForAction` zwróci fałsz). Do działania potrzeba: zdarzenia w `GameEvent`, wiersza w `eventForAction` i przejścia w `nextMode` (z testami).
-2. **Dp na papierze.** Panel `#panel` ma `margin: 120dp auto 0 auto` i przyciski `220dp`. Ile pikseli od góry okna ma jego górna krawędź przy współczynniku 1,5? Odpowiedź: 180 pikseli (120 razy 1,5).
+1. **Nowy przycisk.** Dodaj do `pause.rml` przycisk `Controls` z `data-action="controls"`. Co się stanie po kliknięciu i które trzy miejsca trzeba zmienić, żeby coś robił? Odpowiedź: bez zmian w kodzie warstwy `ui` kliknięcie dopisze `"controls"` do listy, `handleMenuActions` zapisze w logu ostrzeżenie o nieznanej akcji (`eventForAction` i `handleMenuCommand` zwrócą fałsz). Do działania potrzeba: zdarzenia w `GameEvent`, wiersza w `eventForAction` i przejścia w `nextMode` (z testami), albo polecenia w `handleMenuCommand`, jeśli przycisk nie zmienia ekranu. (Przycisk `Settings` z tego ćwiczenia z części 2 istnieje od części 3.)
+2. **Dp na papierze.** Panel `#panel` ma `margin: 120dp auto 0 auto` i przyciski `220dp`. Ile pikseli od góry okna ma jego górna krawędź przy współczynniku 1,5? Odpowiedź: 180 pikseli (120 razy 1,5). Obecny arkusz używa `vh`: przy oknie wysokim na 1080 pikseli `12.4vh` to 133,9 piksela, niezależnie od skalowania systemu.
 3. **Dwa kliknięcia w jednej klatce.** Co się stanie, jeśli w jednej klatce klikniesz `Play`, a potem coś innego? Odpowiedź: lista ma dwie nazwy w kolejności kliknięć, a `handleMenuActions` obsłuży je kolejno. Drugie zdarzenie dostaje ekran po pierwszym, więc zdarzenie niemające znaczenia na nowym ekranie zostanie zignorowane (`nextMode` zwraca ten sam ekran).
 4. **Bez czcionki.** Zmień nazwę pliku w `core::TEXT_FONT_FILE` na nieistniejącą. Co zobaczysz w logu i co w grze? Odpowiedź: błąd "the font cannot be loaded" w logu, warstwa niepoprawna, brak menu, gra startuje w rundzie (przy okazji panele debug też nie dostaną czcionki).
 5. **Kolejność w klatce.** Przestaw w myślach `m_ui.draw` za `DebugUI::draw`. Co się zmieni? Odpowiedź: menu pokryłoby panele i HUD, a panele nie byłyby użyteczne nad pauzą.
@@ -407,6 +433,6 @@ Warstwa nie ma własnego panelu. Z panelami debug łączą ją dwie rzeczy: **pa
 ## 10. Źródła
 
 - Notatki: [`../../decisions/menu-in-rmlui.md`](../../decisions/menu-in-rmlui.md), [`../../decisions/escape-pauses-and-goes-back.md`](../../decisions/escape-pauses-and-goes-back.md), [`../../decisions/menu-scope-for-m9.md`](../../decisions/menu-scope-for-m9.md), [`../../decisions/video-through-os-decoders-with-still-fallback.md`](../../decisions/video-through-os-decoders-with-still-fallback.md).
-- Dokumenty: [`../../libraries/rmlui.md`](../../libraries/rmlui.md), [`../game/game-states.md`](../game/game-states.md), [`../core/README.md`](../core/README.md), [`../core/main-loop.md`](../core/main-loop.md), [`../core/input.md`](../core/input.md), [`../core/paths.md`](../core/paths.md), [`../debug-ui.md`](../debug-ui.md).
+- Dokumenty: [`menu-screens.md`](menu-screens.md), [`../../libraries/rmlui.md`](../../libraries/rmlui.md), [`../game/game-states.md`](../game/game-states.md), [`../game/settings.md`](../game/settings.md), [`../game/difficulty.md`](../game/difficulty.md), [`../core/README.md`](../core/README.md), [`../core/main-loop.md`](../core/main-loop.md), [`../core/input.md`](../core/input.md), [`../core/paths.md`](../core/paths.md), [`../debug-ui.md`](../debug-ui.md).
 - RmlUi: <https://mikke89.github.io/RmlUiDoc/> (interfejsy `FileInterface`, `SystemInterface`, `RenderInterface`, zdarzenia i nasłuchiwacze).
 - GLFW, wskaźnik użytkownika okna i wywołania zwrotne: <https://www.glfw.org/docs/latest/input_guide.html>.

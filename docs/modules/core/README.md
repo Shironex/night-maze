@@ -949,9 +949,9 @@ Funkcja zostawia związany framebuffer mapy albo podglądu i ich viewport. Dlate
     // happens in a copy, so the settings the debug UI shows stay as they were set. The
     // point lights hang above the crystals that are still there.
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
-    const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
-    const scene::LightSet lights =
-        buildLightSet(frameLighting, flashlight, crystalLights);
+    const std::vector<PointLightSpot> crystalLights =
+        nearestPointLights(crystalLightPositions(m_round), eye);
+    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);

@@ -5,6 +5,8 @@ Kod: [`src/core/Input.hpp`](../../../src/core/Input.hpp), [`src/core/Input.cpp`]
 
 Część modułu `core`. Wstęp do całego modułu i diagram warstw są w [`README.md`](README.md). Pozostałe części: [`window-context.md`](window-context.md) (okno i kontekst), [`main-loop.md`](main-loop.md) (pętla i czas), [`gl-check.md`](gl-check.md) (błędy OpenGL). Funkcje wejścia samej biblioteki GLFW opisuje [`../../libraries/glfw.md`](../../libraries/glfw.md).
 
+**Zmiana z 2026-10-06 (M9, część 3).** Klawiatura ma jeszcze jednego pana poza panelami debug: **pole tekstowe w menu** (ziarno labiryntu). Gdy ma fokus, `UiLayer::wantsKeyboard()` jest prawdą, a `main.cpp` woła `setKeyboardBlocked` z alternatywą `m_debugUI.wantsKeyboard() || menuUi().wantsKeyboard()`; Escape w polu tylko odbiera mu fokus ([`../ui/menu-screens.md`](../ui/menu-screens.md), sekcja 2.5). Sama klasa `core::Input` się nie zmieniła. Utratę fokusu okna zgłasza `core::Window::isFocused`, a nie `Input` ([`../game/settings.md`](../game/settings.md), sekcja 2.6).
+
 ## 1. Po co to jest
 
 Gra potrzebuje odpowiedzi na dwa różne pytania o klawisz: "czy jest teraz trzymany" (ruch) i "czy został właśnie wciśnięty" (przełącznik, zamknięcie programu). GLFW odpowiada wprost tylko na pierwsze. Klasa `core::Input` raz na klatkę robi migawkę (snapshot) stanu całej klawiatury, pamięta migawkę z poprzedniej klatki i z ich porównania wyprowadza drugie pytanie. Ma też jedną flagę, `setKeyboardBlocked`, którą ktoś z zewnątrz może na chwilę odebrać grze klawiaturę. Dziś robi to `main.cpp`, gdy klawiatury używa panel ImGui: dzięki temu Escape wciśnięty podczas edycji pola w panelu nie zamyka programu.

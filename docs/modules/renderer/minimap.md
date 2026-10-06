@@ -14,6 +14,8 @@ Kod: reguła odkrywania [`src/game/Discovery.hpp`](../../../src/game/Discovery.h
 **Stan z 2026-10-06 (M9, część 2).** Warunek rysowania minimapy w `onRender` to `showsMinimap(m_mode) && !m_menuCamera.enabled`: mapa jest rysowana w grze i w menu pauzy, gdzie jest częścią zatrzymanego obrazu pod menu (rysowana przed dokumentem RmlUi, więc leży pod jego półprzezroczystą warstwą), a nie jest rysowana w menu głównym i na ekranie wyniku. Zdania o tym, że mapę ukrywa tylko kamera menu, opisują stan sprzed tej części. Klawisz M działa tylko w grze (`roundInput`). Kolejność klatki: [`../ui/README.md`](../ui/README.md).
 
 
+**Zmiana z 2026-10-06 (M9, część 3).** Zdanie o "około 1400 wierzchołkach dla domyślnego labiryntu" opisuje labirynt 10 na 10, czyli poziom `Easy`. Domyślnym poziomem jest od tej zmiany `Normal` (16 na 16), a `Hard` ma 22 na 22; minimapa skaluje się sama (`minimapHalfExtent`) i według autora kodu nie ma limitu, którego poziom dosięga. Kryształów na minimapie może być do 64 (romb na każdy). Rozmiar listy wierzchołków dla `Normal` i `Hard` nie był liczony. Autor widział na zrzucie minimapę labiryntu `Hard` po przelocie po przekątnej (ściany ostre, komórki około 9 pikseli): zrzut agenta, nie właściciela ([`../game/difficulty.md`](../game/difficulty.md)).
+
 ## 1. Po co to jest
 
 PRD wymienia przy temacie 10 minimapę: widok labiryntu rysowany do osobnego framebuffera. Była to ostatnia brakująca rzecz tego tematu. Gra polega na szukaniu drogi, więc mapa, która od początku pokazuje wyjście, odpowiadałaby na to pytanie za gracza (notatka [`../../decisions/minimap-discovered-corridors.md`](../../decisions/minimap-discovered-corridors.md)). Mapa pokazuje dlatego tylko to, co gracz już widział.

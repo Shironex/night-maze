@@ -122,7 +122,7 @@ Od M5 dochodzą rzeczy rundy, rysowane przez `GameplayRenderer` tą samą funkcj
 | Co | Obiekty | Trójkąty na obiekt | Kiedy |
 |---|---|---|---|
 | brama | 1 | 70 | dopóki choć część wystaje nad grunt (`gateVisible`): przez całą rundę przed otwarciem i jeszcze 1,5 s po nim |
-| kryształy | 13 w labiryncie startowym, najwyżej 16 w dowolnym | 24 (`crystal_a`) albo 66 (`crystal_b`) | dopóki kryształ nie jest zebrany |
+| kryształy | 13 w labiryncie startowym 10 na 10 (poziom `Easy`), najwyżej 64 w dowolnym (do 2026-10-06 16) | 24 (`crystal_a`) albo 66 (`crystal_b`) | dopóki kryształ nie jest zebrany |
 
 Na początku rundy w labiryncie startowym daje to `243 + 1 + 13 = 257` wywołań, a z każdym zebranym kryształem o jedno mniej. Trawa to osobny program i jedno wywołanie więcej, gdy jest włączona ([`../renderer/grass-geometry.md`](../renderer/grass-geometry.md)), a niebo kolejne ([`../renderer/skybox.md`](../renderer/skybox.md)): tych dwóch tutaj nie liczę. Liczby trójkątów modeli pochodzą z plików OBJ (linie `f`, wszystkie ściany są trójkątami), a liczba trójkątów terenu z `Terrain::triangleCount`. Sumy trójkątów kryształów nie podaję, bo zależy od tego, który z dwóch modeli wylosował każdy kryształ.
 
@@ -542,7 +542,7 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
 
     // The crystals: never in the start cell (the player would collect one without
     // moving) and never in the exit cell (it is behind the gate).
-    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
+    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount);
 
     // The heights: the terrain, and everything above standing on it.
     placeOnTerrain(world, heightmap, heightScale);
@@ -559,7 +559,7 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
 | `world.startYawDegrees = startYaw(maze);` | kierunek patrzenia na starcie zależy tylko od planu. Pozycja startu ma wysokość, więc przeszła do `placeOnTerrain` |
 | `const ExitPlacement exit = placeExit(maze, START_CELL);` (od M5) | wybór wyjścia: komórka najdalsza od startu w przejściach i brama na jej pierwszym otwartym boku (`Exit.cpp`, [`gameplay.md`](gameplay.md), sekcje 2 i 5). Wynik to mała struktura: komórka, flaga `hasGate` i segment bramy |
 | `world.exitCell = exit.cell;`, `world.hasGate = exit.hasGate;`, `world.gate = exit.gate;` | plan wyjścia: komórka i segment bramy z `y = 0`. Środek wyjścia, strefę wyjścia i pudełko bramy liczy `placeOnTerrain`. Bez bramy (labirynt z jedną komórką) pole `gate` zostaje takie, jakie powstało, i nikt go nie czyta |
-| `world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);` (od M5) | komórki kryształów i numer modelu każdego z nich, wylosowane z tego samego ziarna co labirynt. Komentarz podaje, dlaczego nigdy nie w komórce startowej (gracz zebrałby kryształ, nie ruszając się) ani w komórce wyjścia (jest za bramą). To same komórki, bez wysokości: wysokość kryształu liczy runda ([`gameplay.md`](gameplay.md), sekcja 5) |
+| `world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount);` (od M5; piąty argument od 2026-10-06) | komórki kryształów i numer modelu każdego z nich, wylosowane z tego samego ziarna co labirynt. Komentarz podaje, dlaczego nigdy nie w komórce startowej (gracz zebrałby kryształ, nie ruszając się) ani w komórce wyjścia (jest za bramą). To same komórki, bez wysokości: wysokość kryształu liczy runda ([`gameplay.md`](gameplay.md), sekcja 5) |
 | `placeOnTerrain(world, heightmap, heightScale);` (od M6) | ostatni krok: teren i wysokości wszystkiego powyżej |
 | `return world;` | zwrot przez wartość. Kompilator przenosi strukturę (albo buduje ją od razu w miejscu docelowym), więc wektory nie są kopiowane |
 
@@ -908,14 +908,19 @@ Ciało konstruktora kończy się wywołaniami `uploadGround()` i `beginRound()`:
 
 ```cpp
     // A new maze asked for by the debug UI is built here, at the start of a frame and
-    // outside of the fixed steps, so no step ever sees a half replaced maze.
+    // outside of the fixed steps, so no step ever sees a half replaced maze. When that
+    // happens on the result screen, the screen is left: its numbers belong to the
+    // round that is gone. Restart is the event that leads from there into the game.
     if (m_mazeSettings.regenerate) {
         m_mazeSettings.regenerate = false;
         regenerateMaze();
+        if (m_mode == GameMode::RoundEnd) {
+            handleGameEvent(GameEvent::Restart);
+        }
     }
 ```
 
-Flaga jest zerowana od razu, więc jedno kliknięcie to dokładnie jedna budowa. Blok stoi przed wszystkim innym w `onRender`: przed restartem rundy (klawisz R), przed prośbami o przebudowę terenu i o nową trawę (niżej), przed klawiszami N i F, przed obrotem myszą i przed rysowaniem.
+Flaga jest zerowana od razu, więc jedno kliknięcie to dokładnie jedna budowa. Od 2026-10-06 przebudowa na ekranie wyniku opuszcza ten ekran (`handleGameEvent(GameEvent::Restart)`): jego liczby należały do rundy, której już nie ma. Blok stoi przed wszystkim innym w `onRender`: przed restartem rundy (klawisz R), przed prośbami o przebudowę terenu i o nową trawę (niżej), przed klawiszami N i F, przed obrotem myszą i przed rysowaniem.
 
 ```cpp
 void NightMazeApp::regenerateMaze() {

@@ -1,6 +1,6 @@
 # RmlUi 6.3 i FreeType 2.14.3
 
-Dokument biblioteki dla kamienia milowego M9, części 2 (2026-10-06). Opisuje dwie zależności dodane do `cmake/Dependencies.cmake`: **RmlUi**, bibliotekę interfejsu, w której napisane jest menu gry, i **FreeType**, bibliotekę czcionek, której RmlUi potrzebuje. Dokument o samej warstwie, która z RmlUi korzysta (klasa `ui::UiLayer`, kolejność klatki, kolejka akcji), to [`../modules/ui/README.md`](../modules/ui/README.md). Dokument o ekranach gry to [`../modules/game/game-states.md`](../modules/game/game-states.md).
+Dokument biblioteki dla kamienia milowego M9, części 2 (2026-10-06), uzupełniony w części 3 (2026-10-06: cztery dokumenty, arkusz w `vh`, pole tekstowe, suwaki). Opisuje dwie zależności dodane do `cmake/Dependencies.cmake`: **RmlUi**, bibliotekę interfejsu, w której napisane jest menu gry, i **FreeType**, bibliotekę czcionek, której RmlUi potrzebuje. Dokument o samej warstwie, która z RmlUi korzysta (klasa `ui::UiLayer`, kolejność klatki, kolejka akcji), to [`../modules/ui/README.md`](../modules/ui/README.md). Dokument o ekranach gry to [`../modules/game/game-states.md`](../modules/game/game-states.md), a o samych dokumentach menu i ich arkuszu [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md).
 
 **Czego ten dokument nie obiecuje.** Wszystko poniżej o samym działaniu RmlUi jest czytane z kodu projektu i z jego komentarzy, z nagłówków i z źródeł RmlUi 6.3 pobranych do przeglądu (ten sam tag), a nie z uruchamiania eksperymentów. Co zostało zobaczone w działającym programie, jest wprost oznaczone, a na macOS nic z tego nie było budowane ani uruchamiane.
 
@@ -119,7 +119,7 @@ Do projektu `night_maze` linkuje się tylko biblioteka `ui`, a ona linkuje `rmlu
 
 ## 5. RML i RCSS w kilku słowach
 
-Dokument menu głównego, [`assets/ui/main_menu.rml`](../../assets/ui/main_menu.rml), w całości:
+**Stan z części 3.** W części 2 ten rozdział pokazywał krótki dokument menu głównego i arkusz w `dp`; oba zostały przepisane i **nie ma ich już w repozytorium**. Poniżej początek dzisiejszego `main_menu.rml` (głowa dokumentu, komentarz, nagłówek menu i przycisk `Play`; cały plik jest w [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md)):
 
 ```xml
 <rml>
@@ -127,22 +127,31 @@ Dokument menu głównego, [`assets/ui/main_menu.rml`](../../assets/ui/main_menu.
     <title>Main menu</title>
     <link type="text/rcss" href="menu.rcss"/>
 </head>
-<body>
-<div id="panel">
-    <h1>Night Maze</h1>
-    <p>Find the crystals, open the gate, get out.</p>
-    <button data-action="play">Play</button>
-    <button data-action="quit">Quit</button>
-</div>
-</body>
-</rml>
+<body class="left">
+<!-- A button names what it does with data-action: the game turns the name into an event
+     (game::eventForAction) or into a command of this screen (NightMazeApp). The elements
+     with an id are written by the game: the chosen difficulty, the seed and the numbers
+     of the info block. -->
+<div class="column">
+    <div class="rise">
+        <div class="gem"></div>
+        <h1 class="wordmark">NIGHT MAZE</h1>
+        <p class="tagline">The moon sees every corridor. You see one.</p>
+    </div>
+    <div class="menu">
+        <div class="rise d1">
+            <button class="item" id="play" data-action="play" autofocus><div class="bar"></div>Play</button>
+        </div>
 ```
 
-- Korzeniem jest `<rml>` z `<head>` i `<body>`. `<link type="text/rcss" href="menu.rcss"/>` dołącza arkusz stylów. Ścieżka `menu.rcss` jest względna do dokumentu, a plik czyta nasz interfejs plików (sekcja 7).
-- Elementy są jak w HTML: `div`, `h1`, `p`, `button`. Atrybut `id` służy do wyszukiwania elementu z kodu (`GetElementById`).
-- `data-action="play"` to **zwykły atrybut, który wymyśla projekt**: RmlUi nic o nim nie wie. Kod warstwy menu szuka go przy kliknięciu i zapisuje jego wartość na liście nazw kliknięć ([`../modules/ui/README.md`](../modules/ui/README.md), sekcja 5.4).
+(Plik: `assets/ui/main_menu.rml`, linie od 1 do 20.)
 
-Fragment arkusza [`assets/ui/menu.rcss`](../../assets/ui/menu.rcss):
+- Korzeniem jest `<rml>` z `<head>` i `<body>`. `<link type="text/rcss" href="menu.rcss"/>` dołącza arkusz stylów. Ścieżka `menu.rcss` jest względna do dokumentu, a plik czyta nasz interfejs plików (sekcja 7).
+- Elementy są jak w HTML: `div`, `h1`, `p`, `button`, `input`. Atrybut `id` służy do wyszukiwania elementu z kodu (`GetElementById`).
+- `data-action="play"` to **zwykły atrybut, który wymyśla projekt**: RmlUi nic o nim nie wie. Kod warstwy menu szuka go przy kliknięciu i zapisuje jego wartość na liście nazw kliknięć ([`../modules/ui/README.md`](../modules/ui/README.md), sekcja 5.4). Podobnie `data-setting` (kontrolka zgłasza nową wartość) i `data-submit` (Enter w polu tekstowym jest akcją).
+- `autofocus` (zwykły atrybut) mówi warstwie, który element dostaje fokus klawiatury po pokazaniu dokumentu.
+
+Początek arkusza [`assets/ui/menu.rcss`](../../assets/ui/menu.rcss) (podstawy: ciało dokumentu, wejście ekranu i reguła fokusu):
 
 ```css
 body {
@@ -150,47 +159,49 @@ body {
     width: 100%;
     height: 100%;
     font-family: "Atkinson Hyperlegible";
-    font-size: 18dp;
-    color: #e8ecf4;
-    background-color: #05081099;
+    font-size: 2.8vh;
+    color: #e2eaf6;
+    /* The entrance of a screen. The game adds the class "open" to the body one moment
+       after the document became visible (ui::UiLayer::show), and the transition fades
+       the screen in between the two states. */
+    opacity: 0;
+    transition: opacity 0.25s cubic-out;
 }
-button {
+body.open {
+    opacity: 1;
+}
+div, h1, h2, p {
     display: block;
-    width: 220dp;
-    margin: 14dp auto 0 auto;
-    padding: 10dp 0;
-    color: #dfe6f5;
-    background-color: #24345c;
-    border: 1dp #5b7cc4;
-    border-radius: 6dp;
-    cursor: pointer;
-    transition: background-color color 0.2s cubic-out;
 }
-button:hover {
-    color: #101828;
-    background-color: #e0a030;
+
+/* What can take the keyboard focus, and how the arrow keys leave it. */
+button, input {
+    tab-index: auto;
+    nav: auto;
+    cursor: pointer;
 }
 ```
 
-(Plik: `assets/ui/menu.rcss`, z pominiętymi komentarzami i regułami `div, h1, p`, `#panel`, `h1`, `p` i `button:active`.)
+(Plik: `assets/ui/menu.rcss`, linie od 27 do 52.)
 
-- **Jednostka `dp`** to piksel niezależny od gęstości: 1 dp to 1 piksel przy skalowaniu ekranu 100 procent, 1,5 piksela przy 150 procentach na Windowsie, 2 piksele na ekranie Retina. Dzięki niej menu ma ten sam rozmiar na każdym ekranie. Współczynnik jest ustawiany w każdej klatce z `glfwGetWindowContentScale` (kod w `UiLayer::draw`).
-- **Kolor `#05081099`** to osiem cyfr szesnastkowych: czerwony, zielony, niebieski i **alfa** (`99` to około 60 procent). Dlatego tło `body` jest półprzezroczyste i widać pod nim przyciemniony obraz gry.
-- **`button:hover`** zmienia kolor pod kursorem, a `transition` rozkłada tę zmianę na 0,2 s z krzywą `cubic-out`. To jedyna animacja w menu dziś.
-- **Czcionka** `"Atkinson Hyperlegible"` to nazwa rodziny, pod którą RmlUi zna plik załadowany przez `Rml::LoadFontFace(core::TEXT_FONT_FILE)`. Ten sam plik czcionki co w oknie debug, `assets/fonts/AtkinsonHyperlegible-Regular.ttf` ([`../modules/debug-ui.md`](../modules/debug-ui.md)).
-- **RmlUi nie ma wbudowanego arkusza stylów.** Komentarz w pliku: bez reguły `display: block` każdy element jest w linii (inline). Dlatego `body` i `div, h1, p` mają `display: block` zapisane jawnie.
+- **Jednostka `vh`** to setna część wysokości okna (tu: bufora ramki, który jest rozmiarem kontekstu). **Cały arkusz menu jest w `vh`**, więc menu zajmuje ten sam kawałek obrazu w oknie każdego rozmiaru; od części 3 nie rośnie ze skalowaniem ekranu systemu. Jednostka `dp` (piksel niezależny od gęstości: 1 piksel przy skalowaniu 100 procent, 1,5 przy 150, 2 na Retina) zostaje w jednym miejscu, w przesunięciu poświaty tytułu (`glow(0dp 6dp 0dp 0dp #56d6ca48)`). Współczynnik `dp` jest nadal ustawiany w każdej klatce z `glfwGetWindowContentScale` (kod w `UiLayer::draw`).
+- **Kolor `#090d1a99`** (reguła `body.dim`) to osiem cyfr szesnastkowych: czerwony, zielony, niebieski i **alfa** (`99` to około 60 procent). Dlatego ekrany wyniku i ustawień przyciemniają obraz gry, a nie zasłaniają go.
+- **`transition`** rozkłada zmianę właściwości na czas z krzywą (`cubic-out`). W arkuszu są przejścia koloru, przesunięcia, przezroczystości i szerokości paska; wejście ekranu opiera się na klasie `open` i opóźnieniach (część 3, [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md), sekcja 2.7).
+- **Czcionka** `"Atkinson Hyperlegible"` to nazwa rodziny, pod którą RmlUi zna plik załadowany przez `Rml::LoadFontFace(core::TEXT_FONT_FILE)`. Ten sam plik czcionki co w oknie debug, `assets/fonts/AtkinsonHyperlegible-Regular.ttf` ([`../modules/debug-ui.md`](../modules/debug-ui.md)). **Jedna grubość**: nie ma pogrubienia.
+- **RmlUi nie ma wbudowanego arkusza stylów.** Bez reguły `display: block` każdy element jest w linii (inline), a bez `tab-index` nic nie przyjmuje fokusu. Dlatego arkusz zaczyna się od jawnego `display: block` i od reguły `button, input { tab-index: auto; nav: auto; cursor: pointer; }`.
 
 ## 6. Z czego projekt korzysta, a z czego nie
 
-**Używa:**
+**Używa (po części 3):**
 
-- jeden kontekst, trzy dokumenty (`main_menu.rml`, `pause.rml`, `round_end.rml`), jeden arkusz `menu.rcss`,
-- `LoadDocument`, `Show` i `Hide`, `GetElementById`, `SetInnerRML` (dwa teksty na ekranie wyniku),
-- jeden `Rml::EventListener` na zdarzenie `click` na kontekście,
-- przejścia (`transition`) w arkuszu i pseudoklasy `:hover` i `:active`,
+- jeden kontekst, cztery dokumenty (`main_menu.rml`, `pause.rml`, `round_end.rml`, `settings.rml`), jeden arkusz `menu.rcss`,
+- `LoadDocument`, `Show` (z `ModalFlag::None` i `FocusFlag::Auto`) i `Hide`, `GetElementById`, `SetInnerRML`, `SetClass`, `SetValue` i `GetValue` kontrolek formularza, `Blur`, `Update` przed dodaniem klasy,
+- dwa `Rml::EventListener` na kontekście: na zdarzenie `click` i na zdarzenie `change`,
+- przejścia (`transition`), pseudoklasy `:hover`, `:active`, `:focus` i `:focus-visible`, `decorator: linear-gradient`, `font-effect: glow`, `box-shadow`, `transform`, `nav`, `tab-index`, jednostka `vh`,
+- pola formularza: `input type="text"` (z `maxlength`), `input type="range"` (suwak z `min`, `max`, `step`),
 - renderer GL3 i platformę GLFW z backendów, jeden plik czcionki.
 
-**Nie używa:** wiązań danych (data binding), pluginu debuggera, Lua, wielu kontekstów, animacji `@keyframes`, filtrów ani `backdrop-filter`, obrazów w dokumentach, pól tekstowych (kod rozpoznaje `input` i `textarea` w `wantsKeyboard`, ale żaden dokument ich nie ma), kilku czcionek, obsługi dotyku, zmiany czcionek w czasie działania. To, co jest w tym akapicie jako "nie używa", sprawdziłem wyszukiwaniem w `assets/ui/` i `src/ui/`.
+**Nie używa:** wiązań danych (data binding), pluginu debuggera, Lua, wielu kontekstów, animacji `@keyframes`, filtrów ani `backdrop-filter`, obrazów w dokumentach, `textarea` (kod rozpoznaje je w `wantsKeyboard`, ale żaden dokument ich nie ma), kilku czcionek, obsługi dotyku, zmiany czcionek w czasie działania. Sprawdziłem to wyszukiwaniem w `assets/ui/` i `src/ui/` (dla części 2); dla części 3 lista jest z czytania arkusza i dokumentów.
 
 ## 7. Licencja
 
@@ -204,11 +215,12 @@ button:hover {
 2. **`backdrop-filter` nie rozmyje klatki gry.** Wniosek z czytania źródła renderera GL3 w RmlUi 6.3, **nie sprawdzony na ekranie**: renderer rysuje dokument do własnych warstw (framebufferów), a `EndFrame` dopiero kopiuje wynik na okno. Klatka gry leży w domyślnym framebufferze okna, poza tymi warstwami, więc `backdrop-filter` miałby do rozmycia tylko to, co RmlUi samo narysowało pod spodem. Gdyby menu miało rozmywać scenę, musiałaby to zrobić gra własnym przebiegiem (rozmycie bloomu jest w `game::PostProcess`) przed `UiLayer::draw`. Przy tle w postaci pętli wideo ([`../decisions/video-through-os-decoders-with-still-fallback.md`](../decisions/video-through-os-decoders-with-still-fallback.md)) rozmycie sceny nie jest potrzebne.
 3. **Bez czcionki nie ma tekstu.** RmlUi nie ma wbudowanej czcionki. Jeśli `Rml::LoadFontFace` zawiedzie, dokumenty wczytują się, ale napisów nie widać. Konstruktor `UiLayer` zapisuje w logu błąd i przerywa, a gra startuje bez menu.
 4. **`BeginFrame` zapisuje stan OpenGL, a `Clear` renderera kasuje klatkę.** Przed `Render` kod woła `BeginFrame` (zapisuje stan i wiąże własny framebuffer), po nim `EndFrame` (nakłada wynik na okno i przywraca stan). Metody `Clear` renderera **nie wolno** wołać: wymazałaby klatkę gry. Komentarz w `UiLayer::draw` mówi to wprost.
-5. **Tekst w `setText` jest RML.** `SetInnerRML` traktuje argument jako RML, więc tekst z `<` albo `&` zostałby zinterpretowany. Dwie liczby ekranu wyniku (czas i kryształy) nie zawierają takich znaków.
+5. **Tekst w `setText` jest RML.** `SetInnerRML` traktuje argument jako RML, więc tekst z `<` albo `&` zostałby zinterpretowany. Teksty, które gra wpisuje do dokumentów (czas, liczby kryształów, nazwa poziomu, ziarno, podpowiedź o ziarnie), nie zawierają takich znaków.
 6. **Jedno wywołanie zwrotne każdego rodzaju na okno.** GLFW ma jedną funkcję zwrotną każdego rodzaju na okno, a `UiLayer` ustawia sześć (klawisz, znak, wejście kursora, pozycja kursora, przycisk myszy, kółko). Dear ImGui instaluje swoje później i, według komentarza w kodzie, przekazuje każde zdarzenie dalej do tych poprzednich, więc obie biblioteki widzą każde zdarzenie. Dlatego `UiLayer` musi powstać **przed** debug UI i zostać zniszczony **po** nim ([`../modules/ui/README.md`](../modules/ui/README.md), sekcja 5.3).
 7. **Kolejność niszczenia.** `Rml::Shutdown` niszczy kontekst i dokumenty i zwalnia tekstury przez interfejs renderujący. Interfejsy muszą więc żyć dłużej niż `Shutdown`: są składowymi `UiLayer` i niszczą się po ciele destruktora.
 8. **macOS.** Renderer GL3 z kontekstem 4.1 Core na Apple, FreeType i RmlUi budowane Apple clang oraz ostrość i pozycje trafień na Retina **nie były sprawdzone** ([`../guides/build-macos.md`](../guides/build-macos.md)).
-9. **Obraz.** To, co poniżej, jest **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela** (Windows, Release, 1280 x 720): menu główne, pauza i ekran wyniku (ten ostatni tylko przez tymczasową linię wymuszającą wygraną) wyświetlają się, przycisk pod kursorem zmienia kolor na pomarańczowy, kliknięcia dochodzą do gry, a okno debug działa nad menu ([`../guides/build-windows.md`](../guides/build-windows.md), sekcja 26).
+9. **Obraz.** Część 3: cztery ekrany widział agent w oknie i w pełnym ekranie (ekran wyniku z prawdziwego końca rundy, osiągniętego lotem z wyłączonymi kolizjami); lista: [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md). Właściciel zgłosił 2026-10-06, że zagrał na `Hard` w buildzie Debug i menu działa ("it was great"): relacja, nie zamknięta lista. To, co poniżej, jest **widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela** (Windows, Release, 1280 x 720, stan z części 2): menu główne, pauza i ekran wyniku (ten ostatni tylko przez tymczasową linię wymuszającą wygraną) wyświetlają się, przycisk pod kursorem zmienia kolor na pomarańczowy, kliknięcia dochodzą do gry, a okno debug działa nad menu ([`../guides/build-windows.md`](../guides/build-windows.md), sekcja 26).
+10. **Ograniczenia RCSS, na które trafił autor (część 3).** `box-shadow` nie da się animować przejściem (RmlUi zapisuje ostrzeżenie), cień z samym rozmyciem i bez rozciągnięcia jest prawie niewidoczny, `nav: auto` pomija wąskie przyciski, które nie nakładają się poziomo, a margines `sliderprogress` jest liczony względem toru suwaka. Rozmycia klatki gry nie da się zrobić (pułapka 2), a czcionka ma jedną grubość. Opis: [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md), sekcja 2.8.
 
 ## 9. Pytania kontrolne
 

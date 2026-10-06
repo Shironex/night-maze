@@ -263,7 +263,7 @@ flowchart TD
     C --> E["aspectRatio = szerokość / wysokość (float)"]
     E --> X["feet = glm::mix(poprzednia pozycja gracza, pozycja gracza, alpha)<br/>eye = feet + wysokość oczu"]
     X --> V["view = m_camera.viewMatrix(eye)<br/>projection = m_camera.projectionMatrix(aspectRatio)"]
-    V --> LS["frameLighting = lightingForFrame(...), crystalLights = crystalLightPositions(m_round)<br/>lights = buildLightSet(frameLighting, flashlight, crystalLights)<br/>m_lightRig.upload(lights, eye)"]
+    V --> LS["frameLighting = lightingForFrame(...), crystalLights = nearestPointLights(crystalLightPositions(m_round), eye)<br/>lights = buildLightSet(frameLighting, flashlight, crystalLights)<br/>m_lightRig.upload(lights, eye)"]
     LS --> M{"drawMaze: tryb Unlit<br/>albo widok inny niż Textured?"}
     M -- tak --> MU["drawUnlitMaze: m_texturedShader.use(), uView, uProjection, uViewMode,<br/>potem uModel i rysowanie dla każdego obiektu labiryntu, bramy i każdego kryształu"]
     M -- nie --> ML["drawLitMaze: m_gouraudShader albo m_litShader, use(), uView, uProjection,<br/>uSpecularModel, uSpecularStrength, uShininess, potem uModel i rysowanie dla każdego obiektu labiryntu, bramy i każdego kryształu"]
@@ -618,9 +618,9 @@ Zaraz po nich światła tej klatki i trzy wywołania rysujące (listing do czwar
 
 ```cpp
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
-    const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
-    const scene::LightSet lights =
-        buildLightSet(frameLighting, flashlight, crystalLights);
+    const std::vector<PointLightSpot> crystalLights =
+        nearestPointLights(crystalLightPositions(m_round), eye);
+    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);

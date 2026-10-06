@@ -5,6 +5,8 @@ Kod: [`src/core/Paths.hpp`](../../../src/core/Paths.hpp), [`src/core/Paths.cpp`]
 
 Część modułu `core`. Wstęp do całego modułu jest w [`README.md`](README.md). Pozostałe części: [`window-context.md`](window-context.md) (okno i kontekst), [`main-loop.md`](main-loop.md) (pętla i czas), [`input.md`](input.md) (klawiatura i mysz), [`gl-check.md`](gl-check.md) (błędy OpenGL).
 
+**Zmiana z 2026-10-06 (M9, część 3).** `core/Files.*` ma od tej zmiany także `core::readTextFile` i `core::writeTextFile` (cały tekst, bez zmiany końców linii; fałsz, gdy plik się nie otwiera lub nie wszystkie bajty zapisano; nic nie logują). Plik ustawień `night-maze-settings.txt` jest czytany i pisany **względem katalogu roboczego**, a nie przez `core::assetPath` ([`../game/settings.md`](../game/settings.md), sekcja 2.2); `.gitignore` go ignoruje.
+
 ## 1. Po co to jest
 
 Program wczytuje pliki z dysku: shadery, modele i tekstury. Wszystkie mają leżeć w katalogu `assets/`. Pytanie brzmi: jak program ma ten katalog znaleźć. Najprostsza odpowiedź, czyli ścieżka względna (relative path) `"assets/shaders/lit.vert"`, działa tylko wtedy, gdy program został uruchomiony z "właściwego" miejsca. Ten sam plik `.exe` uruchomiony z terminala, z IDE i dwuklikiem dostaje trzy różne katalogi robocze (working directory), a ścieżka względna jest liczona właśnie od katalogu roboczego. To ta sama historia co z plikiem `imgui.ini`, który raz powstaje w katalogu repozytorium, a raz obok programu ([`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 7). Dla `imgui.ini` skutkiem jest tylko inny układ paneli. Dla shaderów, modeli i tekstur skutkiem byłby program, który niczego nie rysuje.

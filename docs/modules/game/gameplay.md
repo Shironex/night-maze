@@ -5,6 +5,8 @@ Kod: [`src/game/Exit.hpp`](../../../src/game/Exit.hpp), [`src/game/Exit.cpp`](..
 
 Część modułu `game`. Wstęp do modułu jest w [`README.md`](README.md). Ten dokument jest **o regułach gry: co to jest runda, gdzie jest wyjście, skąd biorą się kryształy, jak działa bateria i co z tego widać na ekranie**. Stoi na pięciu innych: [`maze-generator.md`](maze-generator.md) (siatka `Maze`, kierunki, `randomBelow`, układ w świecie), [`maze-rendering.md`](maze-rendering.md) (`MazeWorld`, `MazeRenderer`, rysowanie modelu), [`flashlight.md`](flashlight.md) (latarka i `buildLightSet`), [`../scene/collision.md`](../scene/collision.md) (AABB, kule, `moveAndSlide`) i [`player.md`](player.md) (gracz, stały krok, noclip).
 
+**Zmiana z 2026-10-06 (M9, część 3).** (1) Liczby opisane w tym dokumencie jako "gra" (13 kryształów, labirynt 10 na 10, brama przy 0,7, bateria 180 s) są od tej zmiany **poziomem `Easy`**; domyślnym poziomem jest `Normal` (16 na 16, 26 kryształów, 0,7, 150 s), a trzeci to `Hard` ([`difficulty.md`](difficulty.md): liczby `Normal` i `Hard` to propozycja autora kodu, którą właściciel dopracuje). (2) Labirynt może mieć do 64 kryształów, nie 16, a światła niosą 16 najbliższych oka ([`../scene/lights.md`](../scene/lights.md), sekcja 5.8, i [`../../decisions/nearest-crystals-carry-the-lights.md`](../../decisions/nearest-crystals-carry-the-lights.md)); sekcja 2.7 i pułapka 9 są poprawione. (3) Ekran wyniku jest dokumentem RmlUi z przyciskami `Play again`, `New maze` i `Back to menu` ([`../ui/menu-screens.md`](../ui/menu-screens.md)), a restart i nowy labirynt idą przez zdarzenia z [`game-states.md`](game-states.md); karta wygranej z `Hud.cpp` jest martwym kodem. Opisy "restart" i "karta wygranej" niżej są sprzed tej zmiany.
+
 **M9, część 1 (2026-10-06): runda stoi w trybie kamery menu.** Gdy tryb jest włączony (klawisz F2, `--menu-camera`), `NightMazeApp::onUpdate` **nie woła** `updateRound` ani `m_player.update`: gracz stoi, bateria nie spada, kryształy nie są zbierane, `elapsedSeconds` nie rośnie, odkrywanie minimapy stoi, a brama i ściany po dźwigniach, które opadały w chwili włączenia, **zatrzymują się w połowie opadania** (ich postęp liczy `updateRound`) i dokończą po wyłączeniu. Jedyne, co idzie dalej, to `m_round.animationSeconds` (jedna linia w `onUpdate`), więc kryształy się kołyszą, a ich światła pulsują. Latarka w tym trybie jest ustawiana osobno (włączona dla spaceru, wyłączona dla przelotu, jasność z ustawień, bez migotania i bez wpływu baterii). Reguły rundy się nie zmieniły. Opis: [`menu-camera.md`](menu-camera.md), sekcje 2.10 i 5.4.
 
 **Stan na dziś (2026-10-05):** kod M5 jest kompletny na Windowsie, a kamień **nie jest zamknięty** i nie ma tagu wersji. Zgłoszone dla Windowsa po M5: build Debug i Release bez ostrzeżeń, 215 przypadków testowych i 85098 asercji w obu konfiguracjach (w tym 50 przypadków z trzech plików tego dokumentu; po drugiej części M6 cały program testowy miał 256 przypadków i 101232 asercje, uruchomione 2026-10-05 w Debug i Release, a po pierwszej części M7 zgłoszone jest 269 przypadków i 102103 asercje, po drugiej 276 i 102139, po trzeciej 294 i 102412, po czwartej 310 i 103751), obraz sprawdzony na zrzutach ekranu robionych przez tymczasowe zaczepy w kodzie, które potem usunięto. **Otwarte:** nic z M5 nie było budowane ani uruchamiane na macOS i **nikt jeszcze nie grał ręcznie**: klawisz R, klawisz F przy pustej baterii, przycisk `Restart round (key R)`, suwaki kategorii Gameplay, przejście przez otwartą bramę, zbieranie, karta `You escaped`, migotanie na ekranie i HUD przy schowanych panelach wynikają z kodu i z testów, a nie z oglądania.
@@ -260,18 +262,18 @@ Dlaczego przeszkoda znika od razu, a nie po opadnięciu: komentarz w `Round.hpp`
 
 ### 2.7 Ile kryształów dostaje labirynt
 
-**Reguła (decyzja właściciela z 2026-10-05):** liczba kryształów rośnie z labiryntem, jeden na 8 komórek, najwyżej 16. Notatka: [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md).
+**Reguła (decyzja właściciela z 2026-10-05; limit zmieniony 2026-10-06 przez autora kodu):** liczba kryształów rośnie z labiryntem, jeden na 8 komórek, najwyżej **64** (do 2026-10-06 najwyżej 16, bo tyle świateł ma shader: od tej daty światła niosą kryształy najbliższe oka, [`../../decisions/nearest-crystals-carry-the-lights.md`](../../decisions/nearest-crystals-carry-the-lights.md)). Poziomy trudności podają liczbę wprost (13, 26 i 40: [`difficulty.md`](difficulty.md)), a wzór poniżej działa dla pola `MazeSettings::crystalCount` o wartości domyślnej `CRYSTAL_COUNT_FROM_SIZE`. Notatka: [`../../decisions/crystal-count-and-gate-threshold.md`](../../decisions/crystal-count-and-gate-threshold.md).
 
 Wzór z `crystalCountFor`:
 
 ```text
 liczba = (komórki + 4) / 8        dzielenie całkowite
-liczba = obetnij(liczba, 1, 16)
+liczba = obetnij(liczba, 1, 64)
 ```
 
 **Sztuczka z zaokrąglaniem.** Dzielenie liczb całkowitych w C++ obcina część ułamkową, czyli zaokrągla w dół: `100 / 8` to 12, chociaż dokładny wynik to 12,5. Żeby zaokrąglić **do najbliższej**, dodaję przed dzieleniem połowę dzielnika (`CELLS_PER_CRYSTAL / 2`, czyli 4). Wynik dokładny przesuwa się wtedy o 0,5, a obcięcie robi resztę: 12,5 + 0,5 = 13,0, obcięte do 13. Dla 12,0 wychodzi 12,5, obcięte do 12. Bez liczb zmiennoprzecinkowych i bez `std::round`.
 
-| Labirynt | Komórki | Dokładnie | `(n + 4) / 8` | Po obcięciu do 1..16 |
+| Labirynt | Komórki | Dokładnie | `(n + 4) / 8` | Po obcięciu do 1..64 |
 |---|---|---|---|---|
 | 1 na 1 | 1 | 0,125 | 0 | 1 (ale patrz niżej) |
 | 2 na 2 | 4 | 0,5 | 1 | 1 |
@@ -280,12 +282,16 @@ liczba = obetnij(liczba, 1, 16)
 | 10 na 10 (startowy) | 100 | 12,5 | 13 | **13** |
 | 12 na 10 | 120 | 15,0 | 15 | 15 |
 | | 123 | 15,375 | 15 | 15 |
-| | 124 | 15,5 | 16 | **16**: od tej liczby komórek działa limit |
-| 40 na 40 | 1600 | 200 | 200 | 16 |
+| | 124 | 15,5 | 16 | 16 (do 2026-10-06 od tej liczby działał limit) |
+| 16 na 16 | 256 | 32 | 32 | 32 |
+| 22 na 22 | 484 | 60,5 | 61 | 61 |
+| | 507 | 63,375 | 63 | 63 |
+| | 508 | 63,5 | 64 | **64**: od tej liczby komórek działa limit |
+| 40 na 40 | 1600 | 200 | 200 | 64 |
 
-Limit 16 jest osiągany od **124 komórek** (na przykład 12 na 11 to 132 komórki, a 11 na 11 to 121 i daje jeszcze 15). Każdy większy labirynt ma dokładnie 16 kryształów, więc w dużym labiryncie kryształy są rzadsze.
+Limit 64 jest osiągany od **508 komórek** (na przykład 23 na 23 to 529 komórek, a 22 na 23 to 506 i daje jeszcze 63; do 2026-10-06 limit wynosił 16 i działał od 124 komórek). Każdy większy labirynt ma dokładnie 64 kryształy, więc w bardzo dużym labiryncie kryształy są rzadsze. Poziomy trudności omijają wzór: `Normal` (256 komórek) ma 26 kryształów, a nie 32, `Hard` (484 komórki) 40, a nie 61.
 
-**Skąd 16.** Każdy kryształ niesie światło punktowe, a tablica świateł punktowych w shaderze i w `scene::LightSet` ma 16 miejsc (`scene::MAX_POINT_LIGHTS`, [`../scene/lights.md`](../scene/lights.md)). Kryształ bez światła byłby w ciemnym labiryncie prawie niewidoczny i łamałby regułę "idź do poświaty". Limit liczby kryształów jest więc limitem bloku uniformów, a nie strojeniem trudności.
+**Skąd 64 (do 2026-10-06 16).** Do 2026-10-06 każdy kryształ niósł światło punktowe, a tablica świateł w shaderze i w `scene::LightSet` ma 16 miejsc (`scene::MAX_POINT_LIGHTS`, [`../scene/lights.md`](../scene/lights.md)), więc limit liczby kryształów był limitem bloku uniformów. Od 2026-10-06 światła punktowe nosi 16 kryształów najbliższych oka (sekcja 5.8 w `lights.md`), a limit 64 (`MAX_CRYSTAL_COUNT`) wynika z kosztu samych kryształów: model rysowany w trzech przebiegach (dwie mapy cieni i scena) i romb na minimapie. Dalekie kryształy świecą własnym jarzeniem, a nie światłem.
 
 **Skąd dolna granica 1 i kiedy kryształów jest mniej.** `crystalCountFor` zwraca co najmniej 1, ale `placeCrystals` nie może postawić kryształu w komórce startowej ani w komórce wyjścia. Labirynt jednej komórki i labirynt dwóch komórek nie mają żadnej wolnej komórki i dostają zero kryształów. Labirynt trzech komórek w rzędzie dostaje jeden. Te przypadki są w sekcji 7.
 
@@ -980,7 +986,7 @@ int crystalCountFor(int cellCount) {
     // Whole number division rounds down. Adding half of the divisor first makes it round
     // to the nearest: (100 + 4) / 8 = 13 for 12.5, (96 + 4) / 8 = 12 for 12.
     const int rounded = (cellCount + CELLS_PER_CRYSTAL / 2) / CELLS_PER_CRYSTAL;
-    return std::clamp(rounded, 1, scene::MAX_POINT_LIGHTS);
+    return std::clamp(rounded, 1, MAX_CRYSTAL_COUNT);
 }
 ```
 
@@ -1039,12 +1045,18 @@ Początek `placeCrystals` sprawdza, czy start i wyjście są komórkami labirynt
 | dwa wywołania `shuffleCells` w tej kolejności | kolejność jest częścią wyniku: zamiana tych dwóch linii dałaby inne kryształy |
 
 ```cpp
+    // One list of candidates: every dead end comes before every other cell. A cell is
+    // in it once, so no cell can get two crystals.
     std::vector<MazeCell> candidates = deadEnds;
     candidates.insert(candidates.end(), otherCells.begin(), otherCells.end());
 
+    // The wanted number: the one that was asked for, or the one the size of the maze
+    // gives. Never more than there are candidates.
     const int cellCount = maze.width() * maze.height();
-    const std::size_t count =
-        std::min(static_cast<std::size_t>(crystalCountFor(cellCount)), candidates.size());
+    const int wanted = wantedCount == CRYSTAL_COUNT_FROM_SIZE
+                           ? crystalCountFor(cellCount)
+                           : std::clamp(wantedCount, 0, MAX_CRYSTAL_COUNT);
+    const std::size_t count = std::min(static_cast<std::size_t>(wanted), candidates.size());
 
     std::vector<CrystalSpawn> crystals;
     crystals.reserve(count);
@@ -1054,12 +1066,14 @@ Początek `placeCrystals` sprawdza, czy start i wyjście są komórkami labirynt
         crystals.push_back({.cell = candidates[i], .variant = variant});
     }
     return crystals;
+}
 ```
 
 | Linia | Znaczenie |
 |---|---|
 | `candidates.insert(end, ...)` | dokleja drugą listę za pierwszą: każdy zaułek stoi przed każdą inną komórką. Komórka jest na liście raz, więc nie dostanie dwóch kryształów |
-| `std::min(crystalCountFor(...), candidates.size())` | mały labirynt może mieć mniej wolnych komórek niż wynosi liczba ze wzoru. Wtedy kryształów jest tyle, ile kandydatów, aż do zera |
+| `wantedCount == CRYSTAL_COUNT_FROM_SIZE ? crystalCountFor(...) : std::clamp(wantedCount, 0, MAX_CRYSTAL_COUNT)` | od 2026-10-06 liczbę kryształów można podać wprost (poziomy trudności robią to zawsze), a bez niej decyduje wzór; liczba jest przycięta do od 0 do 64 |
+| `std::min(wanted, candidates.size())` | mały labirynt może mieć mniej wolnych komórek niż wynosi zamówiona liczba. Wtedy kryształów jest tyle, ile kandydatów, aż do zera |
 | `randomBelow(generator, 2)` | wariant 0 albo 1, losowany **po** mieszaniu, w kolejności kryształów |
 | `{.cell = ..., .variant = ...}` | inicjalizacja z nazwami pól (C++20) |
 
@@ -1133,7 +1147,7 @@ glm::vec3 crystalRestPosition(MazeCell cell, float groundHeight) {
 | `hasGate` | `bool` | fałsz tylko w labiryncie jednej komórki |
 | `gate` | `WallSegment` | segment bramy, od M6 opuszczony na najniższy grunt pod swoim obrysem (`lowerToGround`) |
 | `gateBox` | `scene::Aabb` | `wallBox(world.gate)`: pudełko ściany w tym miejscu, liczone po opuszczeniu |
-| `crystals` | `std::vector<CrystalSpawn>` | `placeCrystals(maze, seed, START_CELL, exit.cell)` |
+| `crystals` | `std::vector<CrystalSpawn>` | `placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount)` (od 2026-10-06 z liczbą kryształów z prośby o labirynt) |
 
 Od M6 te pola powstają w dwóch miejscach. `buildMazeWorld` ustala plan: komórkę wyjścia, to, czy jest brama, jej segment i komórki kryształów:
 
@@ -1148,7 +1162,7 @@ Od M6 te pola powstają w dwóch miejscach. `buildMazeWorld` ustala plan: komór
 
     // The crystals: never in the start cell (the player would collect one without
     // moving) and never in the exit cell (it is behind the gate).
-    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell);
+    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount);
 ```
 
 A `placeOnTerrain` nadaje im wysokość, razem ze ścianami i słupkami:
@@ -1341,7 +1355,7 @@ void collectCrystals(Round& round, const GameplaySettings& settings, const scene
 | `scene::overlaps(reach, pickup)` | test dwóch kul ([`../scene/collision.md`](../scene/collision.md)) |
 | pętla bez `break` | gracz może w jednym kroku zebrać kilka kryształów, jeśli kule kilku z nich sięgają do niego (możliwe przy dużym promieniu) |
 
-Test jest robiony dla każdego niezebranego kryształu w każdym kroku: najwyżej 16 porównań po kilka mnożeń. Żadnej struktury przyspieszającej nie trzeba.
+Test jest robiony dla każdego niezebranego kryształu w każdym kroku: najwyżej 64 porównania po kilka mnożeń (do 2026-10-06 16). Żadnej struktury przyspieszającej nie trzeba.
 
 ```cpp
 void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& settings,
@@ -1468,7 +1482,7 @@ std::vector<glm::vec3> crystalLightPositions(const Round& round) {
 | `static_cast<int>(i)` | numer kryształu na **pełnej** liście, razem z zebranymi. Ten sam numer dostaje `GameplayRenderer`, więc światło kołysze się dokładnie z tym kryształem, nad którym wisi |
 | `if (crystal.collected) continue;` | zebrany kryształ nie daje światła |
 
-Lista ma najwyżej tyle pozycji, ile jest kryształów, czyli najwyżej 16: `buildLightSet` i tak obcina do `MAX_POINT_LIGHTS`, ale tu nie ma czego obcinać.
+Lista ma najwyżej tyle pozycji, ile jest kryształów, czyli od 2026-10-06 najwyżej 64 (do tej daty 16). Z listy `nearestPointLights` wybiera 16 najbliższych oka ([`../scene/lights.md`](../scene/lights.md), sekcja 5.8).
 
 ### 5.11 Użycie w `NightMazeApp`, `GameplayRenderer` i `ModelDraw`
 
@@ -1560,9 +1574,9 @@ Funkcja biegnie w trzech sytuacjach: w konstruktorze (pierwszy labirynt powstaje
 
 ```cpp
     const LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
-    const std::vector<glm::vec3> crystalLights = crystalLightPositions(m_round);
-    const scene::LightSet lights =
-        buildLightSet(frameLighting, flashlight, crystalLights);
+    const std::vector<PointLightSpot> crystalLights =
+        nearestPointLights(crystalLightPositions(m_round), eye);
+    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
     m_lightRig.upload(lights, eye);
 ```
 
@@ -1694,7 +1708,7 @@ Reguły są w bibliotece `game_logic`, do której program testowy `night_maze_te
 
 | Przypadek testowy | Co sprawdza |
 |---|---|
-| `a maze gets one crystal for every eight cells, between 1 and 16` | wzór: 100 daje 13, 96 daje 12, 11 daje 1, 12 daje 2, 128 i więcej daje 16 |
+| `a maze gets one crystal for every eight cells, between 1 and 64` (do 2026-10-06 `... between 1 and 16`) | wzór: 100 daje 13, 96 daje 12, 11 daje 1, 12 daje 2, 128 daje 16, 256 daje 32, a 1600 i 65536 dają 64. Dochodzą `a maze gets the number of crystals that was asked for` i `asking for more crystals keeps the first ones where they were` |
 | `golden maze: 4 x 4 cells from seed 1 has exactly these two crystals` | komórki `(0, 3)` i `(1, 1)`, warianty 0 i 1: strażnik zgodności między kompilatorami |
 | `the default maze has 13 crystals and its exit in the cell (6, 5)` | liczby labiryntu startowego i brama `(14, 0, 11)` wzdłuż Z |
 | `crystals are in different cells, never in the start or the exit cell` | 30 ziaren labiryntu 9 na 7: po 8 kryształów, każdy w innej komórce |
@@ -1721,7 +1735,7 @@ Reguły są w bibliotece `game_logic`, do której program testowy `night_maze_te
 | wygrana | `the round is won in the exit zone, but only while the gate is open`, `the player cannot reach the exit zone from in front of the closed gate`, `the time of the round stops at the win, the animation clock goes on` | noclip nie wygrywa przez zamkniętą bramę, granica strefy co do 5 cm, dwa zegary |
 | małe labirynty | `a maze without crystals starts with its gate open`, `a maze of one cell has no gate, and standing in it wins the round` | przypadki brzegowe z sekcji 7 |
 | migotanie | `the flashlight is steady above the low-battery threshold and dark when empty`, `a low battery flickers: the factor stays in 0 to 1, dips, and repeats exactly`, `a threshold of zero means no flicker at all` | zakres, głębsze spadki przy słabszej baterii, światło nigdy nie gaśnie przy niepustej baterii, ponad ćwierć chwil z pełną jasnością, brak losowości |
-| światła klatki | `the lighting of a frame dims the flashlight and the crystals, not the settings`, `every crystal that is left carries a light, a collected one does not`, `a large maze never has more crystal lights than the shader has room for` | kopia zamiast zmiany ustawień, światło znika z zebranym kryształem, labirynt 40 na 40 ma dokładnie 16 świateł |
+| światła klatki | `the lighting of a frame dims the flashlight and the crystals, not the settings`, `every crystal that is left carries a light, a collected one does not`, `a large maze has more crystals than lights, and a frame takes the nearest ones` (do 2026-10-06 `a large maze never has more crystal lights than the shader has room for`) | kopia zamiast zmiany ustawień, światło znika z zebranym kryształem, labirynt 40 na 40 ma 64 kryształy i 64 pozycje świateł, a zbiór klatki 16 świateł |
 
 **`tests/TerrainTests.cpp`, część o rundzie (od M6).** Trzy pliki wyżej budują świat na płaskim gruncie. Rzeczy rundy na nierównym gruncie sprawdza osobny plik:
 
@@ -1902,7 +1916,7 @@ Dlaczego suwak `Battery` edytuje rundę, a nie ustawienia: bateria jest stanem, 
 | Collision (dziś Diagnostics / Collision and picking) | pole `Draw collision shapes` z legendą kolorów (żółty: ściany i słupki, zielony: gracz, pomarańczowy: brama, błękitny: kule zbierania, purpurowy: strefa wyjścia), linie `Boxes: %d walls, %d pillars, %d gate` i `All boxes: %d, pickup spheres: %d`. Liczba przy `gate` zmienia się z 1 na 0 w chwili otwarcia bramy, a liczba kul maleje z każdym kryształem | [`../scene/collision.md`](../scene/collision.md), sekcja 6 |
 | Maze (M8, część 2; dziś World / Maze) | dwa suwaki `Levers` i `Notes` (od 0 do 16, `AlwaysClamp`) i linia `Levers: %d, notes: %d` z liczbami, które labirynt naprawdę dostał. Na planie: kwadraty dźwigni (czerwone, przygaszone po pociągnięciu) i kartek (jasnożółte), a otwarta ściana jest **przygaszona**, nie wycięta (świat się nie zmienia). Minimapa, przeciwnie, otwartej ściany nie rysuje | [`interactables.md`](interactables.md) |
 | Collision (M8, część 2; dziś Diagnostics / Collision and picking) | linia `Boxes: %d walls (%d opened by levers), %d pillars, %d gate`, sekcja `Last picking ray` i dwa pola wyboru | [`../scene/collision.md`](../scene/collision.md), [`../scene/picking.md`](../scene/picking.md) |
-| Lights (dziś Light / Lights) | karta `Crystal lights` (dawniej grupa `Point lights (crystals)`) z linią `Lit: %d of %d crystals (at most %d)`. Pole `Flashlight on (key F)` ma przy pustej baterii podpowiedź `The battery is empty: collect a crystal first.` i samo się odznacza w najbliższym kroku | [`../scene/lights.md`](../scene/lights.md), sekcja 6 |
+| Lights (dziś Light / Lights) | karta `Crystal lights` (dawniej grupa `Point lights (crystals)`) z linią `Lit: %d of %d crystals left (at most %d)` (od 2026-10-06; wcześniej bez słowa `left`, a pierwsza liczba była liczbą niezebranych kryształów). Pole `Flashlight on (key F)` ma przy pustej baterii podpowiedź `The battery is empty: collect a crystal first.` i samo się odznacza w najbliższym kroku | [`../scene/lights.md`](../scene/lights.md), sekcja 6 |
 
 Układ okna debugowania (siedem kategorii zamiast trzynastu paneli) i motyw kolorów opisuje [`../debug-ui.md`](../debug-ui.md).
 
@@ -1933,7 +1947,7 @@ Najpierw znane ograniczenia rozgrywki (od 1 do 16): rzeczy, które działają ta
 6. **Pasek HUD jest za oknami debugowania, a kartę wygranej można zakryć.** Pasek ma flagę `NoBringToFrontOnFocus` i jest zawsze za oknami ImGui. Okno debugowania zaczyna się pod miejscem, które pasek może zająć (`hudReservedHeight()`), więc go nie zasłania; zasłonić go może tylko przypięty panel, który użytkownik przeniesie. Karta `You escaped` stoi w środku okna i okno debugowania, które zajmuje prawą połowę, może ją częściowo przykryć. Schowanie okna klawiszem z akcentem odsłania wszystko. (Do 2026-10-06 rozwinięte panele Player i Gameplay stały tuż nad paskiem i zasłaniały go.)
 7. **W trybie `Unlit` blask może się przepalić.** `textured.frag` mnoży kolor przez `1 + uEmissive`, czyli dla domyślnego koloru nawet przez około 3 w zieleni (do M6 przez 1,9). Do M6 każda wartość ponad 1 była obcinana i jasne partie kryształu traciły rysunek tekstury. Od pierwszej części M7 scena trafia do bufora HDR, który wartości ponad 1 przechowuje, a domyślna krzywa ACES zgina je ku bieli zamiast obcinać. Przepalenie wraca w dwóch przypadkach: przy `Tone mapping` ustawionym na `None (clamp)` i przy dużej ekspozycji. W trybach z oświetleniem suma `diffuse + uEmissive` też przekracza 1 (już sam blask ma w zieleni prawie 2), z tym samym zastrzeżeniem.
 8. **Podglądy danych nie pokazują blasku.** W widokach `Normals as colour` i `UVs as colour` `uEmissive` nie jest używane. Kryształy i brama są w nich widoczne (rysuje je ten sam program), ale kryształ nie świeci i nie pulsuje. Dalej się kołysze i obraca.
-9. **Kryształów nie będzie więcej niż 16.** Limit to `scene::MAX_POINT_LIGHTS`, czyli rozmiar tablicy świateł w bloku uniformów. Labirynt 40 na 40 (1600 komórek) ma tyle samo kryształów co labirynt 12 na 11: po jednym na 100 komórek zamiast na 8. Baterii może w nim zabraknąć między kryształami. Podniesienie limitu wymaga zmiany stałej w C++ i w `common/lighting.glsl` naraz ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
+9. **Kryształów nie będzie więcej niż 64** (do 2026-10-06 16, bo tyle ma tablica świateł w bloku uniformów). Labirynt 40 na 40 (1600 komórek) ma 64 kryształy: po jednym na 25 komórek zamiast na 8. Światła niosą tylko 16 najbliższych oka, więc w dużym labiryncie dalekie kryształy świecą własnym jarzeniem, a nie światłem. Zmiana liczby świateł w bloku nadal wymaga zmiany stałej w C++ i w `common/lighting.glsl` naraz ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 10. **Duży `Pickup radius` zbiera przez ścianę.** Suwak sięga 2 m. Gracz przyciśnięty do ściany od strony sąsiedniej komórki ma stopy 1,45 m od środka komórki z kryształem, więc zbiera go przez mur już przy promieniu większym niż około 1,17 m (pierwiastek z 1,45 do kwadratu plus 0,25 do kwadratu, minus 0,3). Przy 2 m zbiera ze środka sąsiedniej komórki. Wartość domyślna 0,6 m tego nie umie: z sąsiedniej komórki brakuje ponad pół metra. Test dwóch kul nie sprawdza, czy między kulami jest ściana.
 11. **Bateria traci także wtedy, gdy światła latarki nie widać.** Zużycie zależy tylko od przełącznika `flashlightOn`. W trybie `Unlit` i w podglądach danych scena jest rysowana bez świateł, a bateria i tak ubywa. Po wygranej zużycie stoi.
 12. **Po wygranej gra się nie zatrzymuje.** `onUpdate` dalej porusza graczem, klawisze F i N działają, kamera się obraca. Zatrzymują się tylko czas rundy, zużycie baterii i zbieranie: kryształy, obok których gracz przejdzie po wygranej, zostają. Menu końca rundy z PRD (priorytet COULD) to na razie sama karta.
@@ -2026,10 +2040,10 @@ Najpierw znane ograniczenia rozgrywki (od 1 do 16): rzeczy, które działają ta
     W `beginRound` i w `onUpdate` w kroku, w którym `gateBlocks` zmieniło wartość, czyli w chwili otwarcia bramy.
 
 17. **Ile kryształów dostaje labirynt?**
-    Jeden na 8 komórek, zaokrąglone do najbliższej liczby całkowitej wzorem `(komórki + 4) / 8`, co najmniej 1 i najwyżej 16. Labirynt 10 na 10 dostaje 13. Limit 16 działa od 124 komórek.
+    Jeden na 8 komórek, zaokrąglone do najbliższej liczby całkowitej wzorem `(komórki + 4) / 8`, co najmniej 1 i najwyżej 64 (do 2026-10-06 najwyżej 16). Labirynt 10 na 10 dostaje 13. Limit 64 działa od 508 komórek. Poziomy trudności podają liczbę wprost.
 
 18. **Skąd limit 16?**
-    Każdy kryształ niesie światło punktowe, a tablica świateł punktowych w bloku uniformów ma 16 miejsc (`scene::MAX_POINT_LIGHTS`).
+    Do 2026-10-06 każdy kryształ niósł światło punktowe, a tablica świateł punktowych w bloku uniformów ma 16 miejsc (`scene::MAX_POINT_LIGHTS`). Od 2026-10-06 limit wynosi 64, a światła niosą 16 kryształów najbliższych oka.
 
 19. **Gdzie stoją kryształy?**
     Nigdy w komórce startowej ani w komórce wyjścia, najwyżej jeden na komórkę. Najpierw w ślepych zaułkach w kolejności wymieszanej ziarnem, a gdy ich zabraknie, w pozostałych komórkach, też wymieszanych.

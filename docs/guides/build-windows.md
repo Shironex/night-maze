@@ -168,6 +168,13 @@
 > programu**, gra **startuje w menu głównym**, a punkty `[ ]` starszych sekcji o
 > Escape i o kursorze zostały przepisane na zachowanie dzisiejszego programu (sekcje 11, 12 i 14; opis: sekcja 26). Na macOS nic z tego nie było budowane.
 >
+> **Zgłoszone 2026-10-06 (M9, część 3: ekrany menu, poziomy trudności i ustawienia):** bramka na gałęzi menu
+> (przed scaleniem z oknem debug) **557 przypadków testowych i 220100 asercji**, bramka na gałęzi okna debug
+> **526 i 219214**, każda osobno. **Pełna bramka NIE została uruchomiona na scalonym drzewie** (przebieg przerwał
+> system z braku pamięci, właściciel zdecydował, że tego dnia go pomija), więc dla scalonego drzewa nie ma
+> zgłoszonych liczb. Agent oglądał na zrzutach wszystkie cztery ekrany (sekcja 28.1), a właściciel zgłosił grę na `Hard`
+> w buildzie Debug ("it was great"): relacja, nie zamknięta lista (sekcja 28.2 jest otwarta). Na macOS nic z tego nie było budowane.
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -5639,6 +5646,8 @@ rundzie, a karta wygranej z `Hud.cpp` jest martwym kodem.
 
 ### 26.2. Otwarte: test ręczny na około trzydzieści minut
 
+> Uwaga z 2026-10-06 (M9, część 3): część 3 zmieniła kilka założeń tej listy. Ustawienia i poziomy trudności istnieją (sekcja 28), Tab, strzałki i Enter w menu widział agent na zrzutach (nie właściciel), a arkusz menu jest w `vh`, więc punkt o skalowaniu ekranu 125, 150 i 200 procent nie oczekuje już, że menu rośnie: ma zostać tym samym kawałkiem obrazu. Nowe punkty są w sekcji 28.2. Żaden punkt poniżej nie został odhaczony ani odznaczony.
+
 > Od 2026-10-06 nazwy paneli w tych krokach wskazują miejsce w oknie debug (Kategoria / zakładka / karta), a okno startuje ukryte: przed kontrolkami naciśnij `~`. Mapa i zasady czytania starszych kroków: sekcja 27.3. Zwijanie, rzędy pasków tytułu, dokowanie i stare zakładki paneli opisują program sprzed tej zmiany. Żaden punkt nie został odhaczony ani odznaczony.
 
 Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów.
@@ -5876,7 +5885,168 @@ Diagnostics 4). Liczby pochodzą z pliku `Categories.hpp` i z noty autora kodu. 
 sensitivity` to `%.2f` (było `%.2f deg/unit`), `Crystals needed` to `%.2f` (było `%.2f of all`), oba pola `Cone` pokazują
 `%.1f deg`, a grupy panelu Lights (dawniej `CollapsingHeader`) są kartami, grupa księżyca nie startuje zwinięta.
 
-## 28. Powiązane dokumenty
+## 28. Lista kontrolna M9, część 3: ekrany menu, poziomy trudności i ustawienia
+
+Trzecia część kamienia milowego M9 dopełnia menu. Gra ma **cztery ekrany menu** (nowy to ustawienia: czułość myszy, pole widzenia, pełny
+ekran, rozmiar okna), arkusz `menu.rcss` przepisany w `vh`, pole ziarna z wpisywaniem tekstu, wejście ekranu z animacją i nawigację
+klawiaturą. Ma też **trzy poziomy trudności** w jednej tabeli (`Easy` 10 na 10 z 13 kryształami, `Normal` 16 na 16 z 26, `Hard`
+22 na 22 z 40; **liczby `Normal` i `Hard` to propozycja autora kodu, którą właściciel dopracuje po zagraniu**), **ustawienia gracza w pliku**
+`night-maze-settings.txt`, do 64 kryształów z 16 światłami najbliższymi oka (wygaszanymi na brzegu zbioru) i pauzę po utracie fokusu
+okna. Doszły: `src/game/Difficulty.*`, `src/game/Settings.*`, `assets/ui/settings.rml`, `tests/DifficultyTests.cpp` (8 przypadków) i
+`tests/SettingsTests.cpp` (17). Zmieniły się: `CMakeLists.txt`, `.gitignore`, `src/core/Files.*`, `src/core/Window.*`,
+`src/ui/UiLayer.*`, `src/game/GameState.*`, `Crystals.*`, `MazeWorld.*`, `Lighting.*`, `StartOptions.*`, `NightMazeApp.*`, przepisane
+`assets/ui/*` i pięć plików testów, oraz jedna linia okna debug (poprawka `7988ae0`: linia `Lit` w karcie `Crystal lights`). Opis kodu:
+[`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md), [`../modules/game/difficulty.md`](../modules/game/difficulty.md),
+[`../modules/game/settings.md`](../modules/game/settings.md), [`../decisions/nearest-crystals-carry-the-lights.md`](../decisions/nearest-crystals-carry-the-lights.md).
+
+**Pełna bramka (`make check`) NIE została uruchomiona na scalonym drzewie okna debug i ekranów menu.** Próbę przerwał system z braku
+pamięci 2026-10-06, a właściciel zdecydował, że tego dnia ją pomija. **Każda z dwóch gałęzi przeszła własną bramkę przed scaleniem.**
+Dla scalonego drzewa nikt nie zgłosił liczby przypadków testowych ani asercji, a to, że scalone drzewo się buduje i przechodzi testy,
+nie zostało sprawdzone.
+
+Decyzje właściciela (2026-10-06) są osobno: menu w RmlUi, cztery ekrany, angielskie teksty i trzy poziomy trudności zmieniające rozmiar
+labiryntu i liczbę kryształów ([`../decisions/menu-scope-for-m9.md`](../decisions/menu-scope-for-m9.md)). **Poziom zmienia w kodzie więcej**
+(baterię i próg bramy), a `Normal` i `Hard` mają mniej kryształów, niż dałaby reguła jeden na osiem komórek: to propozycja autora kodu,
+nie decyzja. Wszystko inne (układ ekranów, nazwy akcji, format pliku ustawień, wybór świateł najbliższych oka) to wybory wykonawcze.
+
+Tej części **nie zamyka** żaden test ręczny: lista w sekcji 28.2 jest otwarta, a na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)).
+
+### 28.1. Zgłoszone (2026-10-06)
+
+Środowisko agenta: Windows, build Release, RTX 4070 Ti SUPER, skalowanie ekranu 100 procent, **gałąź menu przed scaleniem z oknem debug**
+(stare panele). Wersji kompilatora ani sterownika dla bramki nie zapisano w tym dokumencie. Trzy rodzaje dowodów trzymam osobno.
+
+**1. Bramka (zgłoszona przez bramkę, nie powtarzałem jej przy pisaniu tej sekcji).**
+
+- [x] `make check` na gałęzi menu przechodzi: **557 przypadków testowych i 220100 asercji** (przed częścią 519 i 219195). Przyrost 38
+      przypadków: 8 w `tests/DifficultyTests.cpp`, 17 w `tests/SettingsTests.cpp` i 13 w pięciu zmienionych plikach (`CrystalTests` 2,
+      `LightingTests` 4, `GameStateTests` 5, `StartOptionsTests` 2, `RoundTests` 0 nowych: jeden przypadek przemianowany)
+- [x] `make check` na gałęzi okna debug przechodzi: **526 przypadków testowych i 219214 asercji** (siedem przypadków i 19 asercji
+      więcej w `tests/SearchTests.cpp`; [`../modules/debug-ui.md`](../modules/debug-ui.md))
+- [ ] **`make check` na scalonym drzewie: nie uruchomiono.** Liczby asercji dla scalonego drzewa nie ma i nie sumuję asercji z dwóch
+      gałęzi. Policzone z plików (nie jest to wynik bramki): na HEAD jest 564 makr `TEST_CASE(` na początku linii w `tests/*.cpp`,
+      czyli 557 plus 7 z `SearchTests.cpp`
+
+**2. Widziane na zrzucie ekranu przez agenta.** Poniższe punkty są zapisane jako "widziane na zrzucie ekranu przez agenta (2026-10-06),
+nie przez właściciela": agent, który napisał kod, uruchomił grę, sterował nią skryptem pod wspólną blokadą wejścia i oglądał zrzuty.
+Większość klatek zapisał tymczasowy, niezatwierdzony skrót `F9`, który zrzucał bufor ramki (zrzut okna i zrzut ekranu zwracały
+nieaktualny obraz okna z pełnym ekranem OpenGL). To **nie jest** test ręczny właściciela i nie zamyka żadnego punktu z sekcji 28.2.
+
+- widziane na zrzucie ekranu przez agenta: każdy z czterech ekranów w oknie 1280 na 720 i w pełnym ekranie 1920 na 1080
+- widziane na zrzucie ekranu przez agenta: najechanie myszą na pozycję menu głównego, pozycję pauzy i przycisk ekranu wyniku, pierścienie
+  fokusu klawiatury
+- widziane na zrzucie ekranu przez agenta: nawigacja strzałkami po menu głównym i po wierszach ustawień, Tab po menu głównym
+- widziane na zrzucie ekranu przez agenta: wpisane złe ziarno z podpowiedzią (`Digits only, up to 4294967295`) i ziarno 12345
+  uruchomione Enterem (i pokazane na ekranie pauzy)
+- widziane na zrzucie ekranu przez agenta: każdy poziom uruchomiony z menu, z sumą na HUD odpowiednio 10 z 13, 19 z 26 i 32 z 40
+  kryształów
+- widziane na zrzucie ekranu przez agenta: ustawienia z menu głównego i z pauzy; suwaki ruszane klawiaturą, a pole widzenia zmienia się
+  za panelem na żywo
+- widziane na zrzucie ekranu przez agenta: pełny ekran włączony i wyłączony z ekranu ustawień (klient 1920 na 1080, potem powrót do tego
+  samego prostokąta okna); krok rozmiaru okna do 1366 na 768
+- widziane na zrzucie ekranu przez agenta: gra uruchomiona ponownie z zachowanymi ustawieniami (ten sam plik: czułość, pole widzenia,
+  rozmiar okna i poziom nadal zastosowane); start od razu w pełnym ekranie z pliku
+- widziane na zrzucie ekranu przez agenta: nowe losowe ziarno po `Back to menu`; automatyczna pauza po oddaniu pierwszego planu
+  paskowi zadań; pierwsza klatka wejścia ekranu (panel jeszcze niewidoczny)
+- widziane na zrzucie ekranu przez agenta: `Regenerate` z okna debug na ekranie wyniku opuszcza ekran
+- widziane na zrzucie ekranu przez agenta: **prawdziwy koniec rundy** na `Easy`, ziarno 7 (ekran wyniku z czasem 0:23, `Easy`, ziarno 7),
+  osiągnięty **lotem z wyłączonymi kolizjami (klawisz `N`) od kryształu do kryształu, a nie chodzeniem**: zebrano 10 z 13, brama
+  się otworzyła, wlot w strefę wyjścia dał ekran wyniku. Zrobione dwa razy (w oknie i w pełnym ekranie)
+- widziane na zrzucie ekranu przez agenta: minimapa labiryntu `Hard` po przelocie po przekątnej (ściany ostre, komórki około 9 pikseli)
+
+**Nie widziane na ekranie** (nikt tego nie oglądał): przycisk `Restart` okna debug na ekranie wyniku (ta sama ścieżka kodu co
+`Regenerate` plus `handleGameEvent(Restart)`); **zmiana świateł przy ruchu po labiryncie z więcej niż 16 kryształami** (wygaszanie na
+brzegu zbioru); **suwak przeciągany myszą**; skalowanie ekranu inne niż 100 procent; gra na drugim monitorze; cień księżyca z bliska na
+`Hard` (dwa zrzuty z komórki startu leżały w całości w cieniu); tło menu głównego na `Normal` i `Hard` pod kątem braku światła
+kryształów; mysz i chodzenie ręką człowieka; build Debug przez agenta; wszystko na macOS.
+
+**Zdarzenie niewyjaśnione (agent).** W jednym wczesnym przebiegu pod wspólną blokadą okno gry zniknęło zaraz po sekwencji Dół, Dół, Dół,
+Enter w menu głównym (kod wyjścia nie został zapisany). Ta sama sekwencja odtworzona dwa razy później otworzyła ustawienia i proces
+zakończył się kodem 0. **Przypuszczenie autora kodu (nie sprawdzone):** Enter trafił w `Quit`, który stoi tuż pod `Settings` i o nic nie
+pyta.
+
+**3. Relacja właściciela (nie zamknięta lista).** Właściciel zagrał 2026-10-06 na `Hard` w buildzie **Debug** i zgłosił, że menu, okno
+debug i gra działają, własnymi słowami: "it was great". To **relacja właściciela, a nie odhaczone punkty z sekcji 28.2 i nie
+zatwierdzenie liczb poziomów** (liczby dopracuje po zagraniu).
+
+Znane ograniczenia (z kodu, nie ze zrzutów): linia `Lit` w karcie `Crystal lights` okna debug brzmi od 2026-10-06 `Lit: N of M crystals left (at most 16)` i liczy światła w zbiorze klatki (także te wygaszone do zera); starsze listy w tym dokumencie (sekcje 8 do 24) cytują dawną postać `Lit: 13 of 13 crystals (at most 16)`; `<span id="saved">` w ustawieniach jest pusty i nieużywany; `Reset defaults` nie rusza
+poziomu trudności; pauza po utracie fokusu nie działa przy kamerze menu; pierwszy labirynt za menu ma ziarno `options.seed` (domyślnie 1),
+a nie ziarno z pola; po przebudowie labiryntu z okna debug poziom w pauzie i na wyniku to `Custom`; kod pełnego ekranu, rozmiaru okna i
+fokusu nie był uruchamiany na macOS.
+
+### 28.2. Otwarte: test ręczny na około czterdzieści minut
+
+> Okno debug startuje ukryte: przed kontrolkami naciśnij `~`. Nazwy paneli i zasady czytania starszych kroków: sekcja 27.3.
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu i z testów. Ta lista jest **otwarta**: nie odhaczono żadnego punktu,
+a relacja właściciela z sekcji 28.1 ("it was great") jej nie zamyka.
+
+Przygotowanie:
+
+- [ ] zbudować scalone drzewo i uruchomić **pełną bramkę** `make check` (formatowanie, build i testy w Debug i Release, clang-tidy):
+      to jedyny sposób, żeby dostać liczby dla scalonego drzewa; zapisać je tutaj
+- [ ] usunąć stary `night-maze-settings.txt` i `imgui.ini`, uruchomić grę z terminala: menu główne, w logu linia "No settings file" i brak
+      linii `[error]`; **bez żadnej zmiany ustawień plik nie powstaje**
+
+Menu główne:
+
+- [ ] cztery pozycje i dwa rzędy małych kontrolek, blok informacji: dla `Normal` "16 x 16", "19 of 26", "2:30"; dla `Easy` "10 x 10",
+      "10 of 13", "3:00"; dla `Hard` "22 x 22", "32 of 40", "2:00"
+- [ ] najechanie myszą: pozycja robi się bursztynowa i wsuwa się w prawo; Tab, Shift+Tab i strzałki: pierścień fokusu, kolejność strzałek
+      w dół `Play`, `Normal`, pole ziarna, `Settings`, `Quit`, a w górę z powrotem; Enter i Spacja klikają element z fokusem
+- [ ] **uważać na `Quit`, który stoi tuż pod `Settings`**: strzałka w dół z `Settings` i Enter zamyka grę (niewyjaśnione zniknięcie okna z
+      jednego przebiegu agenta mogło mieć ten powód)
+- [ ] pole ziarna: `12x4` plus Enter pokazuje czerwoną podpowiedź i nie startuje gry; `124` plus Enter startuje; puste pole startuje z
+      losowym ziarnem; `4294967296` jest odrzucone, `4294967295` przyjęte; do dziesięciu znaków; Escape w polu tylko odbiera mu fokus;
+      w polu nie działają klawisze gry ani `~`
+- [ ] `New seed` losuje nowe ziarno; powrót z ustawień zostawia ziarno; `Back to menu` z gry losuje nowe
+- [ ] przyciski poziomu: wybrany jest zaznaczony (ciemna zieleń, bursztynowy tekst), blok informacji się zmienia, a wybór pamięta się po
+      ponownym uruchomieniu gry
+
+Pauza i ustawienia:
+
+- [ ] pauza: `Resume`, `Restart maze` (ten sam labirynt, czas wraca do zera), `Settings`, `Back to menu`; notatka "Normal, seed N"
+- [ ] ustawienia z menu i z pauzy: pole widzenia i czułość zmieniają się od razu (suwakiem **przeciąganym myszą**, czego agent nie widział,
+      i klawiaturą); liczba obok suwaka jest zgodna; `Reset defaults` przywraca wartości, ale nie poziom
+- [ ] pełny ekran włączony i wyłączony; wiersz rozmiaru okna jest przyciemniony przy pełnym ekranie; kroki rozmiaru okna `-` i `+`
+      zatrzymują się na końcach listy; po wyłączeniu pełnego ekranu okno wraca na swoje miejsce
+- [ ] `Back` i Escape wychodzą z ustawień i **zapisują plik**; zawartość `night-maze-settings.txt` zgadza się z ustawieniami (pięć linii);
+      po ponownym uruchomieniu gra stosuje wszystko
+- [ ] uszkodzony plik (litery zamiast liczb, brakujące linie, nieznany klucz): gra startuje z wartościami domyślnymi dla tego, czego nie
+      rozumie, i nie przerywa
+
+Runda i wynik:
+
+- [ ] **przejście całej gry do wygranej chodzeniem** (agent doszedł do końca rundy tylko lotem z wyłączonymi kolizjami): ekran wyniku z
+      prawdziwym czasem, liczbą kryształów, poziomem i ziarnem; `Play again` (ten sam labirynt), `New maze` (ten sam poziom, inne ziarno),
+      `Back to menu`, Escape do menu
+- [ ] ziarno i poziom z ekranu wyniku wpisane w menu dają ten sam labirynt
+- [ ] debug `Restart` na ekranie wyniku opuszcza ekran (agent widział tylko `Regenerate`)
+
+Poziomy trudności (decyzja o liczbach należy do właściciela):
+
+- [ ] rozegrać rundę na każdym poziomie i zapisać wrażenia: czy rozmiar, liczba kryształów, próg bramy (70, 70, 80 procent) i bateria
+      (180, 150, 120 s) dają rosnącą trudność; porównać czasy z propozycją autora ([`../modules/game/difficulty.md`](../modules/game/difficulty.md): najkrótsza
+      runda dla gracza, który zna labirynt, 1:10, 2:59 i 6:00 chodu); zapisać, które liczby chcesz zmienić
+- [ ] `Hard`: czy bateria starcza (górne ograniczenie 18 minut światła, a realnie mniej)
+- [ ] labirynt `Normal` i `Hard` z więcej niż 16 kryształami: światła kryształów wygasają i zapalają się płynnie przy ruchu (bez skoków);
+      wygaszanie na brzegu zbioru widać albo nie
+- [ ] menu główne na `Normal` i `Hard`: czy tło przelotu nie jest zbyt ciemne (światła kryształów tylko od 16 najbliższych oka przelotu)
+- [ ] cień księżyca z bliska na `Hard` (teksel 4,72 cm według autora)
+
+Okno, fokus i skala:
+
+- [ ] automatyczna pauza po przełączeniu na inny program (Alt+Tab) w trakcie rundy; wrócić: gra czeka na `Resume`; start bez fokusu nie
+      pauzuje; kamera menu (`F2`) nie pauzuje po utracie fokusu
+- [ ] skalowanie ekranu 125, 150 i 200 procent: menu zajmuje **ten sam kawałek obrazu** (arkusz jest w `vh`) i **nie rośnie** ze skalowaniem;
+      przyciski reagują tam, gdzie je widać
+- [ ] okno przeniesione na drugi monitor i pełny ekran na nim; bardzo wąskie okno (kolumna menu głównego mieści się?)
+- [ ] build Debug na ekranie: przejść wszystkie ekrany i sprawdzić, że log nie ma linii `GL_`
+- [ ] brak ostrzeżeń kompilatora przy buildzie Debug i Release po tej części
+
+Sprawdziwszy wszystko: zaznaczyć wyniki tutaj i wpisać zapisane obserwacje. Zamknięcie tej listy nie zamyka M9.
+
+## 29. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -5886,6 +6056,7 @@ sensitivity` to `%.2f` (było `%.2f deg/unit`), `Crystals needed` to `%.2f` (by�
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
 - Kamera menu i przełączniki wiersza poleceń: [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), [`../decisions/menu-background-prerendered-loop.md`](../decisions/menu-background-prerendered-loop.md)
 - Menu w RmlUi, ekrany gry i Escape: [`../modules/ui/README.md`](../modules/ui/README.md), [`../modules/game/game-states.md`](../modules/game/game-states.md), [`../libraries/rmlui.md`](../libraries/rmlui.md), [`../decisions/escape-pauses-and-goes-back.md`](../decisions/escape-pauses-and-goes-back.md)
+- Cztery ekrany menu, poziomy trudności i ustawienia (M9, część 3): [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md), [`../modules/game/difficulty.md`](../modules/game/difficulty.md), [`../modules/game/settings.md`](../modules/game/settings.md), [`../decisions/nearest-crystals-carry-the-lights.md`](../decisions/nearest-crystals-carry-the-lights.md)
 - Launcher (poza ocenianym kodem C++): [`launcher.md`](launcher.md)
 - Selekcja, dźwignie i kartki: [`../modules/scene/picking.md`](../modules/scene/picking.md), [`../modules/game/interactables.md`](../modules/game/interactables.md)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),

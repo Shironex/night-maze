@@ -1,7 +1,7 @@
 # Zakres menu w M9: cztery ekrany, angielskie teksty, trzy poziomy trudności
 
-Data: 2026-10-06. Stan: obowiązuje jako decyzja, **kod jest częściowy**: trzy z czterech ekranów istnieją (menu główne, pauza, koniec rundy), ekranu ustawień i liczb poziomów trudności nie ma. Decyzje właściciela projektu są w sekcji 2; kontekst, tabela i skutki to moja analiza. Uzupełnia [`menu-in-rmlui.md`](menu-in-rmlui.md), która rozstrzygała bibliotekę, ale nie zakres.
-Kod: [`assets/ui/`](../../assets/ui/) (trzy dokumenty i arkusz stylów), [`src/game/GameState.hpp`](../../src/game/GameState.hpp) (`GameMode`, `Difficulty`, `NewGame`), [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) (`startNewGame`). Dokumenty: [`../modules/game/game-states.md`](../modules/game/game-states.md), [`../modules/ui/README.md`](../modules/ui/README.md).
+Data: 2026-10-06. Stan: obowiązuje jako decyzja, **kod jest** (dopisek z M9, części 3, na końcu tej notatki): wszystkie cztery ekrany istnieją, a poziomy trudności mają liczby, które są **propozycją autora kodu do dopracowania przez właściciela**. Poniższe sekcje 1 do 5 opisują stan z części 2. Decyzje właściciela projektu są w sekcji 2; kontekst, tabela i skutki to moja analiza. Uzupełnia [`menu-in-rmlui.md`](menu-in-rmlui.md), która rozstrzygała bibliotekę, ale nie zakres.
+Kod: [`assets/ui/`](../../assets/ui/) (cztery dokumenty i arkusz stylów; w części 2 trzy), [`src/game/GameState.hpp`](../../src/game/GameState.hpp) (`GameMode`, `NewGame`), [`src/game/Difficulty.hpp`](../../src/game/Difficulty.hpp) (tabela poziomów, od części 3), [`src/game/Settings.hpp`](../../src/game/Settings.hpp) (ustawienia, od części 3), [`src/game/NightMazeApp.cpp`](../../src/game/NightMazeApp.cpp) (`startNewGame`). Dokumenty: [`../modules/game/game-states.md`](../modules/game/game-states.md), [`../modules/ui/README.md`](../modules/ui/README.md).
 
 ## 1. Kontekst
 
@@ -49,3 +49,13 @@ To jest analiza. Pierwszy wiersz każdej grupy jest decyzją właściciela.
 - Gdy powstanie ekran ustawień: zapisać, co w nim jest.
 - Gdy zostaną dobrane liczby poziomów: zapisać je tutaj albo w nowej notatce razem z tym, jak je sprawdzono w grze.
 - Gdy po balansie runda nadal będzie za krótka: wrócić do pytania o przeciwnika ([`enemy-after-m5.md`](enemy-after-m5.md)).
+
+## 6. Dopisek z 2026-10-06 (M9, część 3): zbudowane, liczby do dopracowania
+
+**Co jest w kodzie** (sprawdzone w plikach, nie powtórzone na ekranie przy pisaniu): cztery ekrany istnieją, w tym ekran ustawień (czułość myszy, pole widzenia, pełny ekran, rozmiar okna), a ustawienia leżą w pliku `night-maze-settings.txt` ([`../modules/game/settings.md`](../modules/game/settings.md)). Poziomy trudności mają liczby w jednej tabeli ([`../modules/game/difficulty.md`](../modules/game/difficulty.md)): `Easy` 10 na 10 z 13 kryształami, `Normal` 16 na 16 z 26 i `Hard` 22 na 22 z 40. Opis ekranów: [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md).
+
+**Co jest decyzją właściciela, a co propozycją.** Decyzje właściciela z sekcji 2 zostały zbudowane tak, jak je zapisano: cztery ekrany, angielskie teksty, trzy poziomy zmieniające rozmiar labiryntu i liczbę kryształów. **Liczby poziomów są propozycją autora kodu, którą właściciel dopracuje po zagraniu** (punkt 4 decyzji pozostaje otwarty). Propozycja idzie dalej niż decyzja: zmienia też baterię (180, 150 i 120 sekund) i próg bramy (70, 70 i 80 procent), a `Normal` i `Hard` mają mniej kryształów, niż dałaby reguła "jeden na osiem komórek" (26 i 40 zamiast 32 i 61). Pomiary autora dla trzech poziomów (ziarna od 1 do 50: droga do wyjścia, najkrótsza runda, texel cienia, czasy klatek) są w [`../modules/game/difficulty.md`](../modules/game/difficulty.md) jako pomiary autora z gałęzi menu przed scaleniem. Limit 16 kryształów, o którym mówi sekcja 4, nie obowiązuje: [`nearest-crystals-carry-the-lights.md`](nearest-crystals-carry-the-lights.md).
+
+**Relacja właściciela (2026-10-06).** Właściciel zagrał na `Hard` w buildzie Debug i zgłosił, że menu, okno debug i gra działają, własnymi słowami: "it was great". To jest **relacja właściciela, a nie zamknięta lista kontrolna i nie zatwierdzenie liczb poziomów**: lista ręczna w [`../guides/build-windows.md`](../guides/build-windows.md), sekcja 28.2, pozostaje otwarta, a na macOS kod nie był budowany.
+
+**Co jest nadal otwarte.** Liczby poziomów (po rozegraniu rund na wszystkich trzech); to, czy poziom ma zmieniać baterię i próg bramy; wygląd ekranów w porównaniu z makietą (makiety nie ma w repozytorium); czy rozmycie tła ma być zrobione własnym przebiegiem gry (RmlUi go nie umie); pełna bramka na scalonym drzewie okna debug i ekranów menu, która nie została uruchomiona.

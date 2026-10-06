@@ -15,6 +15,8 @@ Zgłoszone dla Windowsa (2026-10-05, część czwarta): bramka `make check` prze
 
 Zgłoszone dla Windowsa (2026-10-06, część piąta), nie powtarzałem: bramka `make check` zgłosiła **329 przypadków testowych i 104306 asercji** (przed tą częścią 310 i 103751). To 19 nowych przypadków: 15 w `tests/ShadowTests.cpp` (było 16, jest 31) i 4 w `tests/LightingTests.cpp` (było 11, jest 15; jeden istniejący przypadek zmienił nazwę). Ile z 555 nowych asercji przypada na który plik, nie policzyłem. Debug exe uruchomiony na 7 sekund: OpenGL 4.1.0 NVIDIA, zasoby wczytane, stderr pusty, panele ukryte. **Nie było ćwiczone**: rysowanie w trybie Gouraud, podgląd w zakładce Flashlight, ścieżka z wyłączoną latarką i `Reload shaders`. **Nikt nie oglądał obrazu** tej części ani panelu. **Na macOS ten kod nie był ani budowany, ani uruchamiany.** Pełna lista: sekcja 5.11.
 
+**Zmiana z 2026-10-06 (M9, część 3).** Liczba "3,2 cm na teksel mapy księżyca" dotyczy labiryntu startowego 10 na 10, czyli poziomu `Easy`. Mapa obejmuje cały ląd, więc większy labirynt to większy teksel: **3,16, 3,94 i 4,72 cm przy mapie 2048 dla `Easy`, `Normal` i `Hard`** (pomiar autora, ziarno 1, gałąź menu przed scaleniem: [`../game/difficulty.md`](../game/difficulty.md), sekcja 2.4). Test `the shadow map of the moon stays finer than a wall is thick on every level` pilnuje progu 5 cm. Liczby "3,2 cm" niżej opisują `Easy`.
+
 ## 1. Po co to jest
 
 Do czwartej części M7 księżyc oświetlał każdą powierzchnię zwróconą w jego stronę, także tę, która stoi za ścianą. Model oświetlenia Phonga jest **lokalny**: liczy światło z normalnej, kierunku do światła i kierunku do oka i nie wie nic o tym, co stoi po drodze. Skutek: korytarz w głębi labiryntu jest tak samo jasny jak otwarte pole, a ściany wyglądają, jakby unosiły się nad ziemią, bo nic ich z nią nie łączy.
@@ -152,7 +154,7 @@ Dla porównania: księżyc prosto nad głową (pitch -90) dałby pudełko 49 x 4
 |---|---|---|
 | od czego zależy | teren i dwa kąty księżyca | do tego pozycja i kierunek kamery |
 | cienie przy ruchu gracza | stoją nieruchomo: mapa pokrywa co klatkę ten sam grunt | migoczą bez dodatkowej stabilizacji |
-| teksel przy mapie 2048 | 3,2 cm dla labiryntu startowego | mniejszy przy małym zasięgu widoku |
+| teksel przy mapie 2048 | 3,2 cm dla labiryntu startowego (`Easy`; od 2026-10-06 `Normal` 3,94 cm, `Hard` 4,72 cm, pomiar autora) | mniejszy przy małym zasięgu widoku |
 | scena większa niż dziś | teksele rosną razem z terenem | bez zmian |
 | kod | jedna funkcja, bez stanu | stabilizacja, często kaskady |
 

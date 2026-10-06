@@ -3,6 +3,8 @@
 Data: 2026-10-05. Stan: obowiązuje. Zastępuje [`dead-end-lights.md`](dead-end-lights.md).
 Kod: [`src/game/Crystals.hpp`](../../src/game/Crystals.hpp), [`Crystals.cpp`](../../src/game/Crystals.cpp) (`crystalCountFor`, `placeCrystals`), [`src/game/Round.hpp`](../../src/game/Round.hpp), [`Round.cpp`](../../src/game/Round.cpp) (`requiredCrystalCount`, `crystalLightPositions`), [`src/debug/categories/GameplayCategory.cpp`](../../src/debug/categories/GameplayCategory.cpp) (suwak `Crystals needed`), testy w [`tests/CrystalTests.cpp`](../../tests/CrystalTests.cpp) i [`tests/RoundTests.cpp`](../../tests/RoundTests.cpp). Dokument modułu: [`../modules/game/gameplay.md`](../modules/game/gameplay.md), sekcje 2 i 5.
 
+**Uzupełnienie z 2026-10-06 (M9, część 3).** Limit 16 kryształów z sekcji 2 **nie obowiązuje**: labirynt może mieć do 64 kryształów, a światła punktowe niosą 16 kryształów najbliższych oka, wygaszane na brzegu zbioru ([`nearest-crystals-carry-the-lights.md`](nearest-crystals-carry-the-lights.md)). Ta notatka odrzuciła to rozwiązanie z powodu świateł zapalających się i gasnących w polu widzenia; wygaszanie jest odpowiedzią na ten zarzut. Próg bramy jest od tej daty **na poziom** (70, 70 i 80 procent: [`../modules/game/difficulty.md`](../modules/game/difficulty.md)), a liczba kryształów poziomów (13, 26 i 40) nie wynika ze wzoru jeden na 8 komórek. Reszta notatki opisuje decyzję z 2026-10-05 w jej pierwotnej postaci.
+
 ## 1. Kontekst
 
 PRD mówi: "po zebraniu N kryształów wyjście się otwiera". Liczby N nie podaje, liczby kryształów w labiryncie też nie. Podaje za to limit świateł: jeden bufor uniformów z "do 16 punktowych", a kryształy są światłami punktowymi.

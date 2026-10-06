@@ -2250,6 +2250,46 @@ amerykańskiej) i **Ctrl+klik**, którym wpisuje się wartość suwaka (system m
 
 **Co nadal nie istnieje na żadnym systemie:** okno debug nie zostało obejrzane przez właściciela (ani na Windowsie, ani na macOS).
 
+### M9, część 3 (ekrany menu, poziomy trudności, ustawienia) na macOS: lista w całości otwarta
+
+Zmiana z 2026-10-06 (cztery dokumenty menu w `assets/ui/` z arkuszem w `vh`, `src/game/Difficulty.*` i `src/game/Settings.*`,
+`core::Window` z pełnym ekranem, rozmiarem okna i fokusem, `ui::UiLayer` z polem tekstowym i zmianami kontrolek, kryształy do 64 z
+16 światłami najbliższymi oka, `tests/DifficultyTests.cpp` i `tests/SettingsTests.cpp`) powstała na Windowsie i tam jest zgłoszona
+([`build-windows.md`](build-windows.md), sekcja 28). **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie
+jest odhaczony.** Na Windowsie widział ją na zrzutach agent, który napisał kod, a nie właściciel; właściciel zgłosił grę na `Hard`
+w buildzie Debug ("it was great"), co nie jest listą kontrolną. **Pełna bramka nie została uruchomiona nawet na scalonym drzewie na
+Windowsie** (sekcja 28 tam). Opis kodu: [`../modules/ui/menu-screens.md`](../modules/ui/menu-screens.md),
+[`../modules/game/settings.md`](../modules/game/settings.md), [`../modules/game/difficulty.md`](../modules/game/difficulty.md).
+
+Ryzyko na macOS jest w czterech miejscach: **pełny ekran** (`glfwSetWindowMonitor` z bieżącym trybem wideo ekranu: czy na macOS i na
+Retina daje pełny ekran bez zmiany trybu i czy powrót wraca do tego samego miejsca), **współrzędne okna a piksele bufora ramki**
+(`desktopSize` i `setWindowedSize` liczą we współrzędnych ekranu, a menu w `vh` bufora ramki, które na Retina są dwa razy większe),
+**fokus** (`GLFW_FOCUSED` przy Cmd+Tab) i **wpisywanie tekstu** w polu ziarna (klawisz Enter i Return, Escape, zdarzenia znaków).
+
+- [ ] `make check` (build Debug i Release, formatowanie, clang-tidy, testy), w tym `DifficultyTests.cpp` (8 przypadków) i
+      `SettingsTests.cpp` (17); zapisać liczbę przypadków i asercji tego komputera
+- [ ] cztery ekrany klawiaturą i myszą: menu główne, pauza, koniec rundy, ustawienia; Tab, strzałki, Enter i Spacja; kolejność strzałek w
+      menu głównym `Play`, `Normal`, pole ziarna, `Settings`, `Quit`; pierścień fokusu i najechanie widoczne
+- [ ] ostrość i proporcje menu na **Retina**: arkusz w `vh` zajmuje ten sam kawałek obrazu co na Windowsie; przyciski reagują tam, gdzie je
+      widać
+- [ ] **pełny ekran włączony i wyłączony** z ekranu ustawień na Retina: obraz ma rozdzielczość pulpitu, pulpit się nie przełącza,
+      wyłączenie wraca do okna w tym samym miejscu i o tym samym rozmiarze; zapisać, czy nie pojawia się natywne animowane przejście
+      pełnoekranowe macOS
+- [ ] **krok rozmiaru okna** (`-` i `+`) na Retina: okno ma wybrany rozmiar we współrzędnych ekranu, mieści się na pulpicie, a lista rozmiarów
+      kończy się na największym, który się mieści
+- [ ] **Cmd+Tab** w trakcie rundy: automatyczna pauza; powrót do gry: runda czeka na `Resume`; start bez fokusu nie pauzuje
+- [ ] **wpisywanie ziarna**: cyfry, `12x4` plus Enter (podpowiedź), `124` plus Enter (start), puste pole, Escape w polu, `~` w polu nie otwiera okna
+      debug (zapisać, który klawisz Maca to robi)
+- [ ] **plik ustawień czytany po ponownym uruchomieniu**: zmienić czułość, pole widzenia, pełny ekran, rozmiar okna i poziom,
+      wyjść i uruchomić ponownie; `night-maze-settings.txt` leży w katalogu, z którego uruchomiono grę (zapisać, w którym), a ustawienia są
+      zastosowane
+- [ ] poziomy `Easy`, `Normal`, `Hard`: rozmiar, liczba kryształów, blok informacji w menu, czas klatki na `Hard`
+- [ ] labirynt z więcej niż 16 kryształami: światła wygasają i zapalają się płynnie przy ruchu
+- [ ] brak linii `[error]` w terminalu przy starcie i po przejściu przez wszystkie ekrany
+
+**Co nadal nie istnieje na żadnym systemie:** ekrany menu, poziomy i ustawienia nie zostały obejrzane przez właściciela ręką (poza relacją o
+grze na `Hard` w Debug na Windowsie), a na macOS nikt ich nie uruchomił.
+
 ### Skróty: `make`
 
 Te same polecenia mają krótsze odpowiedniki w pliku [`Makefile`](../../Makefile) w katalogu
