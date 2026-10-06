@@ -29,6 +29,13 @@ using DocumentId = int;
 /// every document.
 constexpr DocumentId NO_DOCUMENT = -1;
 
+/// A control of a document that was moved by the player: a slider, for example. name is
+/// what the attribute data-setting of the control says, value its new value as text.
+struct ControlChange {
+    std::string name;
+    std::string value;
+};
+
 /// Owns RmlUi for the lifetime of the object (RAII): the library itself, the three
 /// interfaces it talks to the program through, the context the documents live in and
 /// the GLFW callbacks that feed it the keyboard and the mouse.
@@ -38,7 +45,13 @@ constexpr DocumentId NO_DOCUMENT = -1;
 /// the assets directory, shows one of them at a time and reports clicks by name: an
 /// element with the attribute data-action="play" puts "play" on a list when it is
 /// clicked, and whoever owns the layer takes the list once per frame (takeActions) and
-/// decides what each name means.
+/// decides what each name means. A control with the attribute data-setting="name"
+/// reports its new value in the same way whenever it changes (takeChanges).
+///
+/// The keyboard works in every document without code of the game: Tab and the arrow
+/// keys move the focus between the elements the style sheet allows (tab-index and nav),
+/// and Enter or Space clicks the focused one, which reports its action like a click of
+/// the mouse.
 ///
 /// The object must be created before the debug UI and destroyed after it: Dear ImGui
 /// installs its own GLFW callbacks later and passes every event on to the ones
@@ -63,6 +76,11 @@ public:
 
     /// Shows this document and hides the one that was shown. NO_DOCUMENT hides it and
     /// shows nothing. Showing the document that is shown already does nothing.
+    ///
+    /// The keyboard focus goes to the element of the new document that carries the
+    /// attribute autofocus. The body of the document gets the class "open" one moment
+    /// after it became visible, so a style sheet can let the screen fade or slide in
+    /// with a transition between "body" and "body.open".
     void show(DocumentId document);
 
     /// The document that is shown, or NO_DOCUMENT.
@@ -72,12 +90,33 @@ public:
     /// taken as RML, so it must not contain the characters < and &.
     void setText(DocumentId document, const std::string& elementId, const std::string& text);
 
+    /// Sets the value of a control (a text field, a slider) of a document, as text. The
+    /// control reports that like a change made by the player (takeChanges).
+    void setValue(DocumentId document, const std::string& elementId, const std::string& value);
+
+    /// The value of a control of a document, as text: what a text field holds, where
+    /// a slider stands. Empty when there is no such control.
+    std::string value(DocumentId document, const std::string& elementId) const;
+
+    /// Adds a class to the element with this id attribute (on true) or takes it away
+    /// (on false). The style sheet decides what the class looks like: a chosen
+    /// difficulty, a switch that is on.
+    void setClass(DocumentId document, const std::string& elementId, const std::string& className,
+                  bool on);
+
     /// The data-action names of the elements that were clicked since the last call, in
-    /// the order of the clicks. The list is empty again afterwards.
+    /// the order of the clicks. The list is empty again afterwards. Enter in a text
+    /// field with the attribute data-submit="name" puts that name on the list too.
     std::vector<std::string> takeActions();
 
+    /// The controls with a data-setting attribute whose value changed since the last
+    /// call, in the order of the changes. A slider that is dragged reports many values.
+    /// The list is empty again afterwards.
+    std::vector<ControlChange> takeChanges();
+
     /// True while a text field of the shown document has the keyboard focus: typing
-    /// then belongs to the field, and the caller blocks the keyboard for the game.
+    /// then belongs to the field, and the caller blocks the keyboard for the game. A
+    /// slider or a button with the focus does not count: it takes single keys only.
     bool wantsKeyboard() const;
 
     /// Lets the documents use the mouse (true) or makes them ignore it (false).
@@ -134,6 +173,11 @@ private:
     // data-action name of the clicked element into m_actions.
     std::unique_ptr<Rml::EventListener> m_clickListener;
     std::vector<std::string> m_actions;
+
+    // RmlUi calls this object for every changed control in the context. It writes the
+    // data-setting name of the control and its new value into m_changes.
+    std::unique_ptr<Rml::EventListener> m_changeListener;
+    std::vector<ControlChange> m_changes;
 };
 
 } // namespace ui

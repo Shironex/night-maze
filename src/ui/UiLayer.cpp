@@ -8,6 +8,7 @@
 
 #include <GLFW/glfw3.h>
 #include <RmlUi/Core.h>
+#include <RmlUi/Core/Elements/ElementFormControl.h>
 // The two backends of RmlUi that are used as they are: the renderer for OpenGL 3.3 and
 // later, and the helper functions that translate GLFW events for RmlUi.
 #include <RmlUi_Platform_GLFW.h>
@@ -27,10 +28,39 @@ constexpr const char* CONTEXT_NAME = "menu";
 constexpr const char* ACTION_ATTRIBUTE = "data-action";
 constexpr const char* CLICK_EVENT = "click";
 
+// The attribute that makes a control report its new value, the event it reports and
+// the name the event gives that value.
+constexpr const char* SETTING_ATTRIBUTE = "data-setting";
+constexpr const char* CHANGE_EVENT = "change";
+constexpr const char* VALUE_PARAMETER = "value";
+// A text field sends the same event when Enter is pressed in it, with this parameter
+// set. The attribute names the action that Enter stands for.
+constexpr const char* LINEBREAK_PARAMETER = "linebreak";
+constexpr const char* SUBMIT_ATTRIBUTE = "data-submit";
+
 // The elements text is typed into: while one of them has the focus, the keyboard
-// belongs to the document.
+// belongs to the document. An input is a text field when its type says so or says
+// nothing. The other types (range, checkbox) are not typed into.
 constexpr const char* INPUT_TAG = "input";
 constexpr const char* TEXTAREA_TAG = "textarea";
+constexpr const char* TYPE_ATTRIBUTE = "type";
+constexpr const char* TEXT_TYPE = "text";
+
+// The class the body of the shown document carries (UiLayer::show).
+constexpr const char* OPEN_CLASS = "open";
+
+// True for an element text is typed into.
+bool isTextField(const Rml::Element* element) {
+    if (element == nullptr) {
+        return false;
+    }
+    const Rml::String& tag = element->GetTagName();
+    if (tag == TEXTAREA_TAG) {
+        return true;
+    }
+    return tag == INPUT_TAG &&
+           element->GetAttribute<Rml::String>(TYPE_ATTRIBUTE, TEXT_TYPE) == TEXT_TYPE;
+}
 
 // The system interface of the GLFW backend (time, clipboard, cursor shape), with one
 // change: the messages of RmlUi go to the log of the game.
@@ -74,6 +104,49 @@ private:
     // The list of the layer the names are written to.
     std::vector<std::string>& m_actions;
 };
+
+// The listener of every "change" event in the context: a slider that was moved, a text
+// field that was typed into. Only a control with the setting attribute is reported.
+class ChangeListener final : public Rml::EventListener {
+public:
+    ChangeListener(std::vector<ControlChange>& changes, std::vector<std::string>& actions)
+        : m_changes(changes), m_actions(actions) {}
+
+    void ProcessEvent(Rml::Event& event) override {
+        Rml::Element* element = event.GetTargetElement();
+        if (element == nullptr) {
+            return;
+        }
+        // Enter in a text field: the action the field names, as if its button was
+        // clicked. The text itself did not change.
+        if (event.GetParameter<bool>(LINEBREAK_PARAMETER, false)) {
+            if (element->HasAttribute(SUBMIT_ATTRIBUTE)) {
+                m_actions.push_back(element->GetAttribute<Rml::String>(SUBMIT_ATTRIBUTE, ""));
+            }
+            return;
+        }
+        if (element->HasAttribute(SETTING_ATTRIBUTE)) {
+            m_changes.push_back({.name = element->GetAttribute<Rml::String>(SETTING_ATTRIBUTE, ""),
+                                 .value = event.GetParameter<Rml::String>(VALUE_PARAMETER, "")});
+        }
+    }
+
+private:
+    // The two lists of the layer that are written to.
+    std::vector<ControlChange>& m_changes;
+    std::vector<std::string>& m_actions;
+};
+
+// The control with this id in a document, or nullptr when the document has no such
+// element or the element is not a control (a text field, a slider).
+Rml::ElementFormControl* controlOf(Rml::ElementDocument* document, const std::string& elementId) {
+    if (document == nullptr) {
+        return nullptr;
+    }
+    // rmlui_dynamic_cast is the dynamic_cast of RmlUi: nullptr for another kind of
+    // element.
+    return rmlui_dynamic_cast<Rml::ElementFormControl*>(document->GetElementById(elementId));
+}
 
 // The object a GLFW callback belongs to: the constructor stored it in the window.
 UiLayer* layerOf(GLFWwindow* window) {
@@ -122,6 +195,9 @@ UiLayer::UiLayer(const core::Window& window) : m_window(window.nativeHandle()) {
     // stopped travels up to the context.
     m_clickListener = std::make_unique<ActionListener>(m_actions);
     m_context->AddEventListener(CLICK_EVENT, m_clickListener.get());
+    // And one for the controls that change their value.
+    m_changeListener = std::make_unique<ChangeListener>(m_changes, m_actions);
+    m_context->AddEventListener(CHANGE_EVENT, m_changeListener.get());
 
     // The callbacks. GLFW has one callback of each kind per window. Nothing else in the
     // program has set one at this point. Dear ImGui sets its own later and calls these
@@ -188,6 +264,9 @@ void UiLayer::show(DocumentId document) {
     }
 
     if (Rml::ElementDocument* previous = documentOf(m_shown)) {
+        // Without the class the document is back in the state its next entrance
+        // starts from.
+        previous->SetClass(OPEN_CLASS, false);
         previous->Hide();
         // The cursor is no longer over anything of that document: without this
         // a button would still be drawn hovered when the document comes back.
@@ -195,7 +274,16 @@ void UiLayer::show(DocumentId document) {
     }
     m_shown = document;
     if (Rml::ElementDocument* next = documentOf(m_shown)) {
-        next->Show();
+        // Not modal (the debug UI stays usable), and the keyboard focus goes to the
+        // element with the attribute autofocus, so Enter and the arrow keys work at
+        // once.
+        next->Show(Rml::ModalFlag::None, Rml::FocusFlag::Auto);
+        // The entrance: a transition runs between two computed styles. So the style
+        // WITHOUT the class is computed once, by this update, and then the class is
+        // added. The next update finds the difference and starts the transitions the
+        // style sheet names for it.
+        m_context->Update();
+        next->SetClass(OPEN_CLASS, true);
     }
 }
 
@@ -209,21 +297,45 @@ void UiLayer::setText(DocumentId document, const std::string& elementId, const s
     }
 }
 
+void UiLayer::setValue(DocumentId document, const std::string& elementId,
+                       const std::string& value) {
+    if (Rml::ElementFormControl* control = controlOf(documentOf(document), elementId)) {
+        control->SetValue(value);
+    }
+}
+
+std::string UiLayer::value(DocumentId document, const std::string& elementId) const {
+    if (const Rml::ElementFormControl* control = controlOf(documentOf(document), elementId)) {
+        return control->GetValue();
+    }
+    return {};
+}
+
+void UiLayer::setClass(DocumentId document, const std::string& elementId,
+                       const std::string& className, bool on) {
+    Rml::ElementDocument* target = documentOf(document);
+    if (target == nullptr) {
+        return;
+    }
+    if (Rml::Element* element = target->GetElementById(elementId)) {
+        element->SetClass(className, on);
+    }
+}
+
 std::vector<std::string> UiLayer::takeActions() {
     // std::exchange hands out the list and leaves an empty one in its place.
     return std::exchange(m_actions, {});
+}
+
+std::vector<ControlChange> UiLayer::takeChanges() {
+    return std::exchange(m_changes, {});
 }
 
 bool UiLayer::wantsKeyboard() const {
     if (!isValid() || m_shown == NO_DOCUMENT) {
         return false;
     }
-    const Rml::Element* focused = m_context->GetFocusElement();
-    if (focused == nullptr) {
-        return false;
-    }
-    const Rml::String& tag = focused->GetTagName();
-    return tag == INPUT_TAG || tag == TEXTAREA_TAG;
+    return isTextField(m_context->GetFocusElement());
 }
 
 void UiLayer::setMouseEnabled(bool enabled) {
@@ -269,9 +381,19 @@ void UiLayer::draw(core::Size framebuffer) {
 
 void UiLayer::onKey(GLFWwindow* window, int key, int /*scancode*/, int action, int mods) {
     UiLayer* layer = layerOf(window);
-    if (layer->takesKeyboard()) {
-        RmlGLFW::ProcessKeyCallback(layer->m_context, key, action, mods);
+    if (!layer->takesKeyboard()) {
+        return;
     }
+    // Escape in a text field ends the typing: the focus leaves the field and goes to
+    // the document. The game does not see this press (its keyboard is blocked while
+    // a field has the focus), so the first Escape leaves the field and only the next
+    // one goes a screen back.
+    Rml::Element* focused = layer->m_context->GetFocusElement();
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS && isTextField(focused)) {
+        focused->Blur();
+        return;
+    }
+    RmlGLFW::ProcessKeyCallback(layer->m_context, key, action, mods);
 }
 
 void UiLayer::onChar(GLFWwindow* window, unsigned int codepoint) {
