@@ -23,6 +23,12 @@ do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M
 (bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS", "M7, część 3 (mgła
 i winieta) na macOS" i "M7, część 4 (cienie księżyca) na macOS".
 
+**Stan na 2026-10-06:** cały ten kod (commit `26c21c4`) został tego dnia pierwszy raz
+zbudowany, przetestowany i uruchomiony na Macu. Akapit wyżej opisuje stan sprzed tego dnia.
+W listach odhaczone są tylko punkty, które wynikają z buildu, z testów, z konsoli przy
+starcie i z dwóch zrzutów ekranu. Reszta jest nadal otwarta. Wyniki są w sekcji 2,
+w podrozdziale "Pierwszy build na macOS (2026-10-06): wyniki".
+
 | Element | Wersja |
 |---|---|
 | Kompilator | Apple clang 17.0.0 (z Xcode) |
@@ -205,10 +211,13 @@ blok 7.
 
 ### Testy jednostkowe
 
-> **Na macOS jeszcze nie uruchomione.** Kod kolizji, labiryntu, gracza i loaderów oraz jego
-> testy powstały na Windowsie (2026-10-05), a testy oświetlenia i rozgrywki później. Tam są
-> zmierzone: [`build-windows.md`](build-windows.md), sekcja 2. Wszystko w tym podrozdziale
-> jest dla Maca oczekiwaniem, nie pomiarem.
+> **Na macOS uruchomione pierwszy raz 2026-10-06:** 310 przypadków testowych i 103751
+> asercji, wszystkie przechodzą w konfiguracjach Debug i Release, tak jak na Windowsie
+> (podrozdział "Pierwszy build na macOS (2026-10-06): wyniki" niżej). Kod kolizji,
+> labiryntu, gracza i loaderów oraz jego testy powstały na Windowsie (2026-10-05), a testy
+> oświetlenia i rozgrywki później. Tam są zmierzone:
+> [`build-windows.md`](build-windows.md), sekcja 2. Liczby w dalszej części tego
+> podrozdziału są z Windowsa i ze starszego stanu kodu.
 
 Zwykły build (`cmake --build --preset debug`) buduje też program testowy
 `build/debug/night_maze_tests`. Testy uruchamia `ctest`, program z pakietu CMake:
@@ -260,60 +269,60 @@ podają loaderom zły plik, i nie oznaczają nieudanego testu.
 
 Opis biblioteki, makr i opcji programu: [`../libraries/doctest.md`](../libraries/doctest.md).
 
-**Do zrobienia przy pierwszym buildzie tego kodu na Macu** (punkty otwarte, nikt ich jeszcze
-nie wykonał):
+**Do zrobienia przy pierwszym buildzie tego kodu na Macu** (pierwszy build był 2026-10-06,
+odhaczone są punkty zmierzone tego dnia):
 
-- [ ] `cmake --preset debug` pobiera doctest `v2.5.3` do `build/debug/_deps/doctest-src` i
+- [x] `cmake --preset debug` pobiera doctest `v2.5.3` do `build/debug/_deps/doctest-src` i
       kończy się bez błędów (doctest deklaruje `cmake_minimum_required(VERSION 3.14)`, więc
       CMake 4 nie powinien go odrzucić)
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic` w nowych plikach: `src/scene/Collider.*`, `src/game/Maze*`
       i `tests/*.cpp`. Kompilator Apple clang z biblioteką libc++ nie widział jeszcze tego
       kodu. Na Windowsie diagnostyki kompilatora clang 19 (przez clang-tidy, z biblioteką
       standardową MSVC) nie zgłaszają w nim niczego
       ([`build-windows.md`](build-windows.md), sekcja 11), ale to inna biblioteka standardowa
-- [ ] nagłówek doctest trafia do kompilatora przez `-isystem` i nie daje ostrzeżeń w plikach
+- [x] nagłówek doctest trafia do kompilatora przez `-isystem` i nie daje ostrzeżeń w plikach
       testów
-- [ ] `ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release:
+- [x] `ctest --test-dir build/debug -C Debug --output-on-failure` i to samo dla Release:
       zapisać liczbę przypadków i asercji (oczekiwane dla całego programu: 215 przypadków i
       85098 asercji, liczby z Windowsa z 2026-10-05)
-- [ ] **najważniejszy punkt**: przechodzą testy `golden maze: 4 x 4 cells from seed 1 has
+- [x] **najważniejszy punkt**: przechodzą testy `golden maze: 4 x 4 cells from seed 1 has
       exactly these walls` i `randomBelow gives the same numbers on every system`. To jest
       pomiar, że macOS i Windows generują ten sam labirynt
       ([`../modules/game/maze-generator.md`](../modules/game/maze-generator.md), sekcja 5.8)
-- [ ] przechodzi test `a box wandering through a generated maze never ends up inside a wall`
+- [x] przechodzi test `a box wandering through a generated maze never ends up inside a wall`
       (wynik zależy od zaokrągleń `float`, które mogą się różnić między procesorami na
       ostatniej cyfrze: test ma na to zapas, ale to pierwsze uruchomienie na ARM)
 - [ ] `make test`, `make test-release` i `make check` działają (cele są nowe, plik `Makefile`
       w tej postaci nie był jeszcze uruchamiany)
 - [ ] `make tidy` nie zgłasza niczego w `src/scene/Collider.cpp`, `src/game/Maze*.cpp` ani w
       `tests/*.cpp` (na Windowsie LLVM 19.1.5 nie zgłasza niczego w tych plikach)
-- [ ] program `./build/debug/night_maze` buduje się i startuje w labiryncie (lista "M2 + M3
+- [x] program `./build/debug/night_maze` buduje się i startuje w labiryncie (lista "M2 + M3
       na macOS" niżej)
 
 **Loader OBJ i siatka (temat 4): do zrobienia przy pierwszym buildzie tego kodu na Macu.**
 Kod powstał na Windowsie (2026-10-05) i tam jest zmierzony: po M4, razem z testami linii
 `map_Bump` i stycznych, 20 przypadków testowych i 1576 asercji w `tests/ObjLoaderTests.cpp`
 (po M5 przypadków jest nadal 20, liczby asercji w tym pliku dla M5 nie zapisano).
-Na Macu nikt go jeszcze nie kompilował:
+Na Macu skompilowany pierwszy raz 2026-10-06:
 
-- [ ] `src/assets/ObjLoader.*`, `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` i
+- [x] `src/assets/ObjLoader.*`, `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` i
       `tests/ObjLoaderTests.cpp` kompilują się bez ostrzeżeń pod `-Wall -Wextra -Wpedantic`
-- [ ] przechodzą trzy asercje czasu kompilacji: `sizeof(gfx::Vertex)` równe 11 liczbom
+- [x] przechodzą trzy asercje czasu kompilacji: `sizeof(gfx::Vertex)` równe 11 liczbom
       `float` (44 bajty, od M4 z polem `tangent`) i
       `std::is_standard_layout_v<gfx::Vertex>` w `Vertex.hpp` oraz
       `std::is_same_v<GLuint, std::uint32_t>` w `Mesh.cpp`
-- [ ] `./build/debug/night_maze_tests --source-file='*ObjLoaderTests*'`: zapisać liczbę
+- [x] `./build/debug/night_maze_tests --source-file='*ObjLoaderTests*'`: zapisać liczbę
       przypadków i asercji (oczekiwane 20 przypadków. Liczba 1576 asercji pochodzi z M4)
-- [ ] przechodzi przypadek `parseObj: numbers` i podprzypadki z błędnymi liczbami w
+- [x] przechodzi przypadek `parseObj: numbers` i podprzypadki z błędnymi liczbami w
       `parseObj: a bad line is reported with its line number`. Liczby czyta
       `std::istringstream` z klasycznym locale, a libc++ może traktować teksty graniczne
       (`+2`, `2.5E2`, `1.5x`, `--1`) inaczej niż biblioteka MSVC
-- [ ] przechodzą dwa przypadki `loadObj: wall_straight.obj` i `wall_pillar.obj`
+- [x] przechodzą dwa przypadki `loadObj: wall_straight.obj` i `wall_pillar.obj`
       (trzeci, dla płytki podłogi `floor_tile.obj`, zniknął w M6 razem z modelem): ścieżka
       z `NIGHT_MAZE_ASSETS_DIR` i ścieżki tekstur po
       `lexically_normal()` porównują się poprawnie także z separatorem `/`
-- [ ] przechodzi przypadek `loadObj: material libraries and texture paths of files written by
+- [x] przechodzi przypadek `loadObj: material libraries and texture paths of files written by
       the test` (zapis do katalogu tymczasowego systemu i sprzątanie po sobie)
 - [ ] sprawdzić, czy `std::from_chars` dla `float` kompiluje się Apple clangiem przy
       domyślnej wersji docelowej systemu. Jeśli tak, `parseFloat` w `ObjLoader.cpp` można
@@ -324,8 +333,8 @@ Na Macu nikt go jeszcze nie kompilował:
 na Windowsie (2026-10-05) i tam jest zmierzony: po M4, razem z testami map normalnych, 9
 przypadków testowych i 57 asercji w `tests/ImageLoaderTests.cpp` (po M5 przypadków jest
 nadal 9, liczby asercji w tym pliku dla M5 nie zapisano) oraz program z ukrytym oknem dla klasy `gfx::Texture2D`
-([`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 5.9). Na Macu nikt go
-jeszcze nie kompilował:
+([`../modules/gfx/textures.md`](../modules/gfx/textures.md), sekcja 5.9). Na Macu
+skompilowany pierwszy raz 2026-10-06, ale punktów poniżej nikt jeszcze nie przeszedł:
 
 - [ ] `cmake --preset debug` pobiera repozytorium stb w commicie
       `2c980bb59875b0d32144a71867fbdebb2f77cd20` do `build/debug/_deps/stb-src` (pełny
@@ -365,12 +374,51 @@ jeszcze nie kompilował:
 Po wykonaniu punkty trzeba odhaczyć i dopisać wynik, tak jak na liście w
 [`build-windows.md`](build-windows.md), sekcja 11.
 
-### M2 + M3 na macOS: lista w całości otwarta
+### Pierwszy build na macOS (2026-10-06): wyniki
+
+Commit `26c21c4`. MacBook Air 15 cali z Apple M3 (`Mac15,13`), macOS 26.6.2, Apple clang
+17.0.0, CMake 4.3.3, wbudowany ekran 2880 x 1864. To jest jedyne źródło punktów `[x]`
+w listach niżej: punkt jest odhaczony tylko wtedy, gdy wynika z jednej z pozycji tej
+listy. Nikt nie przechodził list punkt po punkcie i nikt nie klikał w panele.
+
+- **Build.** `cmake --build --preset debug --clean-first` i to samo dla `release`: zero
+  ostrzeżeń kompilatora pod `-Wall -Wextra -Wpedantic`, także w kodzie z `external/`
+  i z `_deps`. W każdej konfiguracji jest jedno ostrzeżenie linkera:
+  `ld: warning: ignoring duplicate libraries: 'libengine.a'`.
+- **Testy.** `ctest` i program `night_maze_tests` uruchomiony wprost, Debug i Release: 310
+  przypadków testowych i 103751 asercji, wszystkie przechodzą, żaden nie jest pominięty.
+  To te same liczby co na Windowsie. Pliki osobno, opcją `--source-file` (Debug):
+  `ObjLoaderTests` 19 przypadków i 1492 asercje, `ImageLoaderTests` 10 i 63,
+  `ShaderSourceTests` 22 i 61, `LightTests` 20 i 173, `LightingTests` 11 i 84,
+  `TransformTests` 4 i 24. Listy niżej podają dla `ObjLoaderTests` 20 przypadków, a dla
+  `LightingTests` 10: to liczby ze starszego stanu kodu, nie różnica między systemami.
+- **`make`.** `make format-check`, `make test` i `make test-release` przechodzą.
+  **`make tidy` nie przechodzi** (29 zgłoszeń z clang-tidy 23.1.2 z Homebrew, także
+  w `tests/`), więc `make check` jest czerwone. Punkty o `make check` i o clang-tidy
+  zostają otwarte. Lista zgłoszeń: [`m7-status.md`](m7-status.md), sekcja 6.1.
+- **Start programu.** `./build/debug/night_maze` uruchomiony z katalogu głównego na 8
+  sekund, bez dotykania okna: 22 linie `[info]`, żadnej linii `[error]` i żadnej linii
+  z nazwą błędu OpenGL. Zmiany rozmiaru okna, minimalizacji ani przeładowania shaderów
+  nikt nie próbował.
+- **Zrzuty ekranu właściciela** (dwa, z tego samego dnia): okno 1710 x 953, linie
+  `Framebuffer` i `Scene framebuffer` pokazują 3420 x 1906 px, `Bloom targets (3)` 1710 x
+  953 px, obraz wypełnia okno. W panelu Shaders widać dziesięć linii, wszystkie `OK`,
+  w tym `grass.vert + grass.geom + grass.frag`. Jedenasta jest poniżej widocznej części
+  listy. Podglądy `HDR colour`, `Depth`, `Bright pass` i `Bloom` pokazują scenę, a poświata
+  leży na krysztale i na księżycu. Paneli Shadows, Terrain, Grass, Camera i Gameplay na
+  zrzutach nie widać (są zwinięte).
+- **Synchronizacja pionowa nie trzyma licznika.** Panel Renderer pokazuje 79 i 95 klatek
+  na sekundę (dwa widoki), a ekran MacBooka Air odświeża się 60 razy na sekundę. Program
+  woła `glfwSwapInterval(1)`, więc licznik powinien stać na 60. Użycie GPU wynosi przy tym
+  100 procent. Przyczyny nikt nie szukał. Nie zapisano też, czy zrzuty są z buildu Debug
+  czy Release, więc punkty o liczbie klatek w Release zostają otwarte.
+
+### M2 + M3 na macOS: lista częściowo odhaczona
 
 Krok, który łączy kolizje, labirynt, loadery, siatkę i tekstury w działającą grę, powstał na
 Windowsie i tam jest zbudowany i częściowo sprawdzony
-([`build-windows.md`](build-windows.md), sekcja 12). **Na macOS nikt go nie zbudował ani nie
-uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania wynikają z kodu i z
+([`build-windows.md`](build-windows.md), sekcja 12). **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania wynikają z kodu i z
 pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game/player.md),
 [`../modules/game/maze-rendering.md`](../modules/game/maze-rendering.md),
 [`../modules/assets/asset-cache.md`](../modules/assets/asset-cache.md),
@@ -380,7 +428,7 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/assets/AssetCache.*`, `src/game/Player.*`, `MazeWorld.*`, `MazeRenderer.*`,
       `ColliderLines.*`, `ShaderUniforms.hpp`, `src/debug/panels/MazePanel.*`,
@@ -392,10 +440,10 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
       `std::ranges::find` w `AssetCache.cpp`, `constexpr std::span<const scene::Aabb>` w
       `PlayerTests.cpp`, `static_cast<ImTextureID>` z `GLuint` w `AssetsPanel.cpp`. Zapisać
       każde ostrzeżenie
-- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
+- [x] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
       85098 asercji, `Status: SUCCESS!` (liczby z Windowsa z 2026-10-05, razem z testami
       oświetlenia, map normalnych i rozgrywki)
-- [ ] przechodzą nowe przypadki zależne od zaokrągleń `float`: `a player wandering through a
+- [x] przechodzą nowe przypadki zależne od zaokrągleń `float`: `a player wandering through a
       closed maze never leaves it or enters a wall` i `a player pressing into a wall slides
       along it and past the pillars` z `tests/PlayerTests.cpp` oraz `a box that hugs a wall
       slides past the pillars in the middle of it` z `tests/MazeLayoutTests.cpp`. To pierwsze
@@ -560,7 +608,7 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       Układ startowy jest liczony raz, w pierwszej klatce, od rogów okna w tej chwili, więc
       po późniejszym powiększeniu panele zostają na miejscach dla 1280 x 720
 
-### M4 (oświetlenie) na macOS: lista w całości otwarta
+### M4 (oświetlenie) na macOS: lista częściowo odhaczona
 
 Druga część M4, mapy normalnych, ma własną listę zaraz po tej. Pierwsza część M4 (światła, cztery tryby cieniowania, blok uniformów, `#include` w
 shaderach, panel Lights, układ siedmiu paneli) powstała na Windowsie 2026-10-05 i tam jest
@@ -571,8 +619,8 @@ są przepisane na dzisiejszy program: paneli jest dwanaście, programów shader�
 jedenaście, źródłem światła punktowego jest kryształ, podłogą jest teren (M6), scena jest
 rysowana do bufora HDR z nowymi wartościami świateł (M7), a księżyc rzuca cienie (czwarta
 część M7, `Moon intensity` 0,2).
-**Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
-odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
+**Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 [`../modules/scene/lights.md`](../modules/scene/lights.md),
 [`../modules/renderer/lighting-gouraud-phong.md`](../modules/renderer/lighting-gouraud-phong.md),
 [`../modules/gfx/uniform-buffers.md`](../modules/gfx/uniform-buffers.md),
@@ -581,7 +629,7 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/gfx/ShaderSource.*`, `src/gfx/UniformBuffer.*`, `src/scene/Light.*`,
       `src/scene/LightBlock.*`, `src/game/Lighting.*`, `src/game/LightRig.*`,
@@ -596,7 +644,7 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
       `std::function` jako typ `gfx::IncludeReader`,
       `std::span<const std::string>`, tablica `std::array<std::int32_t, 3>` jako
       wypełnienie w `LightBlockData`. Zapisać każde ostrzeżenie
-- [ ] **`offsetof` wewnątrz `static_assert` pod Apple clang**:
+- [x] **`offsetof` wewnątrz `static_assert` pod Apple clang**:
       [`src/scene/LightBlock.hpp`](../../src/scene/LightBlock.hpp) sprawdza układ bloku
       świateł piętnastoma liniami postaci `static_assert(offsetof(...) == ...)` (trzy dla
       `PointLightData`, dwanaście dla `LightBlockData`) i liniami z `sizeof` (16, 48 i 928
@@ -605,19 +653,19 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
       a obie struktury mają układ standardowy. Kłopot z `offsetof` na Windowsie dotyczył
       nagłówków biblioteki C Microsoftu czytanych przez clang, których na Macu nie ma.
       Niesprawdzone
-- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
+- [x] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
       85098 asercji, `Status: SUCCESS!` (liczby z Windowsa, po M5)
-- [ ] cztery pliki testów oświetlenia osobno, opcją `--source-file`: `'*ShaderSourceTests*'` 22
+- [x] cztery pliki testów oświetlenia osobno, opcją `--source-file`: `'*ShaderSourceTests*'` 22
       przypadki, `'*LightTests*'` 20, `'*LightingTests*'` 10 (w M4 było 17: w M5 test
       funkcji `isDeadEnd` przeszedł do `MazeTests.cpp`, a sześć testów świateł w ślepych
       zaułkach zniknęło razem z tym kodem), `'*TransformTests*'` 4
       (liczby przypadków z Windowsa). Uwaga: wzorzec `'*LightTests*'` nie pasuje do
       `LightingTests.cpp`, a `'*Light*'` pasuje do obu plików
-- [ ] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `a light made for a radius
+- [x] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `a light made for a radius
       has 5 % of its brightness left at that radius`, `directionFromAngles gives a vector
       of length 1` i cztery przypadki macierzy normalnych z `tests/TransformTests.cpp`
       (tolerancja 0,0001)
-- [ ] przechodzi przypadek `the default maze has 13 crystals and its exit in the cell
+- [x] przechodzi przypadek `the default maze has 13 crystals and its exit in the cell
       (6, 5)` z `tests/CrystalTests.cpp`: zależy od tego samego generatora co labirynt
       wzorcowy, więc jest drugim pomiarem, że oba systemy budują ten sam labirynt. W M4 tę
       rolę miał test liczby świateł w ślepych zaułkach (11), usunięty w M5
@@ -752,20 +800,20 @@ Nazwy widżetów są zapisane tak jak w kodzie paneli.
 - [ ] przez cały test w terminalu nie pojawia się żadna linia `[error]` poza tymi
       wywołanymi celowo
 
-### M4 (mapy normalnych) na macOS: lista w całości otwarta
+### M4 (mapy normalnych) na macOS: lista częściowo odhaczona
 
 Druga część M4 (mapy normalnych z pola wysokości, linia `map_Bump` w MTL, styczne
 wierzchołków, czwarty atrybut, plik `common/normal_map.glsl`, druga jednostka teksturująca,
 pole `Normal mapping` w panelu Assets) powstała na Windowsie 2026-10-05 i tam jest zbudowana
 i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcje 13.3 i 13.4).
-**Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
-odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
+**Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 [`../modules/gfx/normal-mapping.md`](../modules/gfx/normal-mapping.md), decyzja:
 [`../decisions/tangents-on-load.md`](../decisions/tangents-on-load.md).
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/assets/Tangents.*` i `tests/TangentTests.cpp`. Zmienione: `src/gfx/Vertex.hpp`,
       `src/gfx/Mesh.*`, `src/assets/ObjLoader.*`, `src/assets/AssetCache.*`,
@@ -776,20 +824,20 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
       `computeTangents` (w teście także pusta lista `{}` jako zakres indeksów),
       inicjalizatory desygnowane `gfx::Vertex{.position = ...}`, które teraz pomijają także
       pole `tangent`. Zapisać każde ostrzeżenie
-- [ ] przechodzą asercje czasu kompilacji w `Vertex.hpp`: rozmiar równy 11 liczbom `float`
+- [x] przechodzą asercje czasu kompilacji w `Vertex.hpp`: rozmiar równy 11 liczbom `float`
       (44 bajty) i układ standardowy
-- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
+- [x] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
       85098 asercji, `Status: SUCCESS!` (liczby z Windowsa z 2026-10-05, po M5)
 - [ ] pliki testów osobno, opcją `--source-file`: `'*TangentTests*'` 9 przypadków,
       `'*ObjLoaderTests*'` 20, `'*ImageLoaderTests*'` 9, `'*LightingTests*'` 10 (liczby
       przypadków z Windowsa po M5. Liczby asercji w plikach są zapisane tylko dla stanu
       M4: 177, 1576, 57 i, przy 17 przypadkach `LightingTests.cpp`, 133)
-- [ ] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `computeTangents: the
+- [x] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `computeTangents: the
       tangent is made perpendicular to the normal (Gram-Schmidt)`, `computeTangents: a
       vertex shared by two triangles gets the average tangent` i sprawdzenia stycznych w
       trzech przypadkach `loadObj` (długość 1, iloczyn skalarny z normalną równy 0,
       `cross(N, T)` w górę)
-- [ ] przechodzą dwa przypadki map normalnych w `tests/ImageLoaderTests.cpp` (`the normal
+- [x] przechodzą dwa przypadki map normalnych w `tests/ImageLoaderTests.cpp` (`the normal
       maps of the game load, and most of their texels are flat` i `the wall normal map
       follows the OpenGL convention: a joint is a groove`): czytają pliki PNG z
       repozytorium, więc wynik nie zależy od Blendera na Macu
@@ -852,14 +900,14 @@ odhaczony.** Oczekiwania wynikają z kodu i z pomiarów na Windowsie. Opis kodu:
 - [ ] po próbie przywrócić pliki z repozytorium (`git checkout assets`), żeby testy
       czytały te same mapy co na Windowsie
 
-### M5 (rozgrywka) na macOS: lista w całości otwarta
+### M5 (rozgrywka) na macOS: lista częściowo odhaczona
 
 Kamień milowy M5 (kule kolizji, wyjście w komórce najdalszej od startu, kryształy i brama
 jako modele, bateria latarki z migotaniem, pasek HUD z kartą wygranej, panel Gameplay,
 klawisz R, układ ośmiu paneli, usunięcie kostki z M1 i programu `basic`) powstał na
 Windowsie 2026-10-05 i tam jest zbudowany i przetestowany testami jednostkowymi
-([`build-windows.md`](build-windows.md), sekcja 14). **Na macOS nikt go nie zbudował ani
-nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Na Windowsie też nikt jeszcze
+([`build-windows.md`](build-windows.md), sekcja 14). **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Na Windowsie też nikt jeszcze
 nie przeszedł rozgrywki ręcznie. Oczekiwania wynikają z kodu, z testów jednostkowych i z
 tego, co zmierzono na Windowsie. Opis kodu:
 [`../modules/game/gameplay.md`](../modules/game/gameplay.md),
@@ -869,7 +917,7 @@ kryształów).
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/game/Exit.*`, `Crystals.*`, `Round.*`, `GameplayRenderer.*`, `ModelDraw.*`,
       `src/debug/Hud.*`, `src/debug/panels/GameplayPanel.*`, `tests/ExitTests.cpp`,
@@ -886,12 +934,12 @@ kryształów).
       w `NightMazeApp.cpp`), `std::array` ze `static_cast<std::size_t>` stałej jako
       rozmiarem w `GameplayRenderer.hpp`, `std::snprintf` do `std::array<char, ...>` w
       `Hud.cpp`. Zapisać każde ostrzeżenie
-- [ ] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
+- [x] `./build/debug/night_maze_tests` i to samo dla Release: 215 przypadków testowych i
       85098 asercji, `Status: SUCCESS!` (liczby z Windowsa z 2026-10-05)
 - [ ] trzy nowe pliki testów osobno, opcją `--source-file`: `'*ExitTests*'` 11 przypadków,
       `'*CrystalTests*'` 14, `'*RoundTests*'` 25, do tego `'*ColliderTests*'` 19 (siedem
       nowych przypadków kul). Liczb asercji w plikach dla M5 nie zapisano
-- [ ] **najważniejszy punkt tej listy**: przechodzą testy `golden maze: 4 x 4 cells from
+- [x] **najważniejszy punkt tej listy**: przechodzą testy `golden maze: 4 x 4 cells from
       seed 1 has exactly these two crystals`, `golden maze: 4 x 4 cells from seed 1 has its
       exit in the dead end (3, 1)` i `the default maze has 13 crystals and its exit in the
       cell (6, 5)`. Kryształy losuje `std::mt19937` z ziarna labiryntu powiększonego o stałą
@@ -900,7 +948,7 @@ kryształów).
       ([`../decisions/deterministic-random.md`](../decisions/deterministic-random.md)). To
       jest pomiar, że macOS i Windows stawiają kryształy, wyjście i bramę w tych samych
       komórkach
-- [ ] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `the gate needs 70 percent
+- [x] przechodzą przypadki zależne od zaokrągleń `float` na ARM: `the gate needs 70 percent
       of the crystals, rounded up, and at least one` (iloczyn `0.7F * 10` nie może
       zaokrąglić się w górę do 8), `a low battery flickers: the factor stays in 0 to 1,
       dips, and repeats exactly` (dwa sinusy z `<cmath>`), `spheres that only touch do not
@@ -1007,14 +1055,14 @@ jej grupy, każda do odhaczenia po przejściu wszystkich punktów grupy z Window
       "dwa uruchomienia dają te same bajty" nie zapisano nawet na Windowsie. Zapisać, które
       pliki się różnią, a po próbie przywrócić pliki z repozytorium (`git checkout assets`)
 
-### M6, część 1 (skybox) na macOS: lista w całości otwarta
+### M6, część 1 (skybox) na macOS: lista częściowo odhaczona
 
 Pierwsza część kamienia milowego M6 (tekstura sześcienna `gfx::Cubemap`, niebo
 `game::Skybox`, piąty program shaderów `skybox`, `assets::RowOrder` w loaderze obrazów,
 sześć plików w `assets/skybox/`, pole `Skybox` i suwak `Sky brightness` w panelu Renderer)
 powstała na Windowsie 2026-10-05 i tam jest zbudowana i przetestowana testami
-jednostkowymi ([`build-windows.md`](build-windows.md), sekcja 15). **Na macOS nikt jej nie
-zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania
+jednostkowymi ([`build-windows.md`](build-windows.md), sekcja 15). **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania
 wynikają z kodu, z testów i z tego, co zmierzono na Windowsie. Opis kodu:
 [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md),
 [`../modules/gfx/cubemap.md`](../modules/gfx/cubemap.md). Teren i trawa, czyli reszta M6,
@@ -1023,7 +1071,7 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/gfx/Cubemap.*`, `src/game/Skybox.*`, `tests/SkyboxTests.cpp`. Zmienione:
       `src/assets/ImageLoader.*`, `src/game/NightMazeApp.*`, `Lighting.hpp`,
@@ -1035,7 +1083,7 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
       (`return {first.width, first.channels, pixels};` i `return {};` w `loadSkyCubemap`),
       pętla po liście w klamrach w teście (`for (const float firstSign : {-1.0F, 1.0F})`)
       i lambda w `std::ranges::any_of` w `Cubemap.cpp`
-- [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
+- [x] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
       przechodzą (po pierwszej części M6 było ich 221, po drugiej 256, po pierwszej
       części M7 zgłoszone 269, po drugiej 276, po trzeciej 294, a dziś, po czwartej,
       310). Pięć przypadków `SkyboxTests.cpp` czyta pliki PNG zapisane na Windowsie:
@@ -1085,7 +1133,7 @@ to stan po pierwszej części: dzisiejsze są w następnej liście.
       pliki się różnią i czy testy nadal przechodzą, a po próbie przywrócić pliki z
       repozytorium (`git checkout assets`)
 
-### M6, część 2 (teren i trawa) na macOS: lista w całości otwarta
+### M6, część 2 (teren i trawa) na macOS: lista częściowo odhaczona
 
 Druga część kamienia milowego M6 (teren z mapy wysokości `game::Terrain` w miejscu płytek
 podłogi, wszystko w labiryncie postawione na terenie, `game::TerrainRenderer`, trawa
@@ -1093,8 +1141,8 @@ podłogi, wszystko w labiryncie postawione na terenie, `game::TerrainRenderer`, 
 shaderów `grass` z plikiem `grass.geom`, prymityw `GL_POINTS` w `gfx::Mesh`, panele
 Terrain i Grass w drugim rzędzie pasków tytułu, skrypt `make_heightmap.py`) powstała na
 Windowsie 2026-10-05 i tam jest zbudowana i przetestowana testami jednostkowymi
-([`build-windows.md`](build-windows.md), sekcja 16). **Na macOS nikt jej nie zbudował ani
-nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania wynikają z kodu,
+([`build-windows.md`](build-windows.md), sekcja 16). **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania wynikają z kodu,
 z testów i z tego, co zmierzono i zgłoszono na Windowsie. Opis kodu:
 [`../modules/renderer/terrain.md`](../modules/renderer/terrain.md),
 [`../modules/renderer/grass-geometry.md`](../modules/renderer/grass-geometry.md),
@@ -1104,7 +1152,7 @@ i przez testy ręczne.
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/game/Terrain.*`, `src/game/TerrainRenderer.*`, `src/game/Grass.*`,
       `src/game/GrassRenderer.*`, `src/debug/panels/TerrainPanel.*`,
@@ -1119,7 +1167,7 @@ i przez testy ręczne.
       stała `constexpr glm::mat4 IDENTITY{1.0F}` w `TerrainRenderer.cpp`, `std::lround`
       w `Grass.cpp` i przypisanie wewnątrz makra
       (`GL_CHECK(cullingWasOn = glIsEnabled(GL_CULL_FACE))`)
-- [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki przechodzą.
+- [x] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki przechodzą.
       Po tej części było ich 256 (na Windowsie 101232 asercje), po pierwszej części
       M7 zgłoszone 269 i 102103, po drugiej 276 i 102139, po trzeciej 294 i 102412,
       a dziś, po czwartej, 310 i 103751
@@ -1138,7 +1186,7 @@ i przez testy ręczne.
 
 **Shader geometrii i OpenGL**
 
-- [ ] start gry bez linii `[error]`: kompilator GLSL Apple nie widział jeszcze żadnego
+- [x] start gry bez linii `[error]`: kompilator GLSL Apple nie widział jeszcze żadnego
       z trzech plików trawy, a **shadera geometrii ten projekt nie uruchamiał na macOS
       nigdy**. Etap geometrii należy do rdzenia OpenGL od wersji 3.2, więc kontekst 4.1
       Core go ma, ale sprawdzić trzeba sterownik Apple, nie specyfikację. Miejsca warte
@@ -1147,9 +1195,9 @@ i przez testy ręczne.
       podstawioną przez `#define` (preprocesor musi rozwinąć nazwę wewnątrz `layout`),
       tablica wejściowa bez rozmiaru `in float vRandom[];`, `gl_in[0].gl_Position`,
       `EmitVertex()` i `EndPrimitive()` w pętli
-- [ ] w `grass.frag`: dołączony `common/lighting.glsl` w trzecim programie i uniform
+- [x] w `grass.frag`: dołączony `common/lighting.glsl` w trzecim programie i uniform
       `uniform bool uLit`, ustawiany z C++ przez `setInt`
-- [ ] w terminalu nie ma linii
+- [x] w terminalu nie ma linii
       `[error] Uniform block LightBlock is ... bytes in the shader, but 928 bytes in the C++ code`
       dla programu `grass` (blok świateł jest podłączany do trzech programów)
 - [ ] trawa jest widoczna przy ścianach, kołysze się i jest oświetlona latarką. Jeśli jej
@@ -1216,7 +1264,7 @@ i przez testy ręczne.
       Zapisać, czy tak jest, a jeśli nie, to czy testy nadal przechodzą i jaką wysokość
       pokazuje `Player feet` na starcie. Po próbie przywrócić plik z repozytorium
 
-### M7, część 1 (bufor HDR i gamma) na macOS: lista w całości otwarta
+### M7, część 1 (bufor HDR i gamma) na macOS: lista częściowo odhaczona
 
 Pierwsza część kamienia milowego M7 (scena rysowana do własnego framebuffera
 `gfx::Framebuffer` z teksturą koloru `GL_RGBA16F` i teksturą głębi, klasa
@@ -1225,8 +1273,8 @@ korekcja gamma w całym potoku przez `gfx::ColorSpace` i tekstury `GL_SRGB8`, si
 program shaderów `composite` i `preview`, klasa `debug::RawTextureSampler`, panel
 Framebuffers w trzecim rzędzie pasków tytułu, nowe wartości startowe świateł) powstała na
 Windowsie 2026-10-05 i tam jest zgłoszona jako zbudowana i przetestowana
-([`build-windows.md`](build-windows.md), sekcja 17). **Na macOS nikt jej nie zbudował ani
-nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania wynikają z kodu,
+([`build-windows.md`](build-windows.md), sekcja 17). **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania wynikają z kodu,
 z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
 [`../modules/gfx/color-space.md`](../modules/gfx/color-space.md),
 [`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md),
@@ -1245,7 +1293,7 @@ wypisane na początku sekcji 17.2 w [`build-windows.md`](build-windows.md).
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/gfx/ColorSpace.*`, `src/gfx/Extensions.*`, `src/gfx/Framebuffer.*`,
       `src/game/PostProcess.*`, `src/debug/RawTextureSampler.*`,
@@ -1262,35 +1310,35 @@ wypisane na początku sekcji 17.2 w [`build-windows.md`](build-windows.md).
       w `PostProcess.cpp`, rzutowanie `static_cast<ImTextureID>` z `GLuint`
       w `FramebuffersPanel.cpp` oraz stałe rozszerzenia wpisane liczbami w
       `RawTextureSampler.cpp` (`0x8A48`, `0x8A4A`), których nagłówek GLAD nie deklaruje
-- [ ] `ctest --test-dir build/debug --output-on-failure`: 269 przypadków, wszystkie
+- [x] `ctest --test-dir build/debug --output-on-failure`: 269 przypadków, wszystkie
       przechodzą (zgłoszone dla Windowsa 102103 asercje). Testy `ColorSpaceTests.cpp`
       porównują wyniki `std::pow` z liczbami do czterech albo pięciu miejsc: zapisać, czy
       któryś nie przechodzi na libc++ i Apple Silicon przez ostatnią cyfrę
-- [ ] gra startuje bez linii `[error]`, w szczególności bez linii zaczynającej się od
+- [x] gra startuje bez linii `[error]`, w szczególności bez linii zaczynającej się od
       `Framebuffer of`
 
 **Cel `GL_RGBA16F` na sterowniku Apple**
 
-- [ ] bufor sceny jest kompletny. Specyfikacja OpenGL 4.1 wymaga, żeby `GL_RGBA16F` dało
+- [x] bufor sceny jest kompletny. Specyfikacja OpenGL 4.1 wymaga, żeby `GL_RGBA16F` dało
       się użyć jako celu rysowania, ale na macOS OpenGL działa jako warstwa nad Metalem
       i tego zestawu (tekstura `GL_RGBA16F` z teksturą głębi `GL_DEPTH_COMPONENT24`) nikt
       tam jeszcze nie utworzył. Błąd wyglądałby tak:
       `[error] Framebuffer of ... (GL_RGBA16F, GL_DEPTH_COMPONENT24) is not complete: ...`
       i czarna scena przy działających panelach. Zapisać cały komunikat
-- [ ] podglądy w panelu Framebuffers (dwa małe framebuffery `GL_RGBA8` bez głębi) też
+- [x] podglądy w panelu Framebuffers (dwa małe framebuffery `GL_RGBA8` bez głębi) też
       powstają bez błędu
-- [ ] odczyt tekstury głębi przez `sampler2D` działa: podgląd `Depth` pokazuje
+- [x] odczyt tekstury głębi przez `sampler2D` działa: podgląd `Depth` pokazuje
       scenę w odcieniach szarości, a nie jednolitą biel albo czerń
 - [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy otwartym panelu
       Framebuffers, po zmianie rozmiaru okna i po minimalizacji
 
 **Ekran Retina: rozmiar framebuffera**
 
-- [ ] linia `Scene framebuffer` w panelu Framebuffers pokazuje **rozmiar w pikselach**,
+- [x] linia `Scene framebuffer` w panelu Framebuffers pokazuje **rozmiar w pikselach**,
       czyli dla okna 1280 x 720 oczekiwane `2560 x 1440 px`, ten sam co linia `Framebuffer`
       w panelu Renderer, a nie rozmiar z linii `Window`. `onRender` bierze rozmiar
       z `window().framebufferSize()` i ten sam rozmiar dostają `beginScene` i `composite`
-- [ ] obraz wypełnia całe okno i jest ostry. Gdyby do bufora albo do viewportu trafił
+- [x] obraz wypełnia całe okno i jest ostry. Gdyby do bufora albo do viewportu trafił
       rozmiar okna zamiast rozmiaru framebuffera, scena zajmowałaby lewą dolną ćwiartkę
       okna albo byłaby rozmyta
 - [ ] przeciągnąć okno między ekranem Retina a zewnętrznym monitorem o skali 1 (jeśli
@@ -1348,7 +1396,7 @@ wypisane na początku sekcji 17.2 w [`build-windows.md`](build-windows.md).
       debugowania, panel Assets, zmiana rozmiaru, minimalizacja, `Reload shaders` (dziś przy
       jedenastu programach, na macOS bez kroku kopiowania assetów)
 
-### M7, część 2 (bloom) na macOS: lista w całości otwarta
+### M7, część 2 (bloom) na macOS: lista częściowo odhaczona
 
 Druga część kamienia milowego M7 (bloom: przebieg jasności i rozdzielne rozmycie Gaussa
 w trzech celach `GL_RGBA16F` o połowie rozmiaru bufora sceny, dodanie poświaty
@@ -1356,8 +1404,8 @@ w przebiegu składającym, pliki `src/game/Bloom.*`, shadery `post/bright.frag`
 i `post/blur.frag`, setter `Shader::setFloatArray`, kontrolki i dwa kolejne podglądy
 w panelu Framebuffers, `CRYSTAL_GLOW_STRENGTH` równe 4,0) powstała na Windowsie 2026-10-05
 i tam jest zgłoszona jako zbudowana i przetestowana ([`build-windows.md`](build-windows.md),
-sekcja 18). **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej
-nie jest odhaczony.** Oczekiwania wynikają z kodu, z testów i z tego, co zgłoszono na
+sekcja 18). **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania wynikają z kodu, z testów i z tego, co zgłoszono na
 Windowsie. Opis kodu:
 [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 2.11
 do 2.15, 4.6 do 4.8, 5.10 i 5.11.
@@ -1371,7 +1419,7 @@ listę zaraz po tej.
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/game/Bloom.hpp`, `src/game/Bloom.cpp`, `tests/BloomTests.cpp`. Zmienione:
       `src/game/PostProcess.*`, `src/game/NightMazeApp.*`, `src/game/ShaderUniforms.hpp`,
@@ -1382,13 +1430,13 @@ listę zaraz po tej.
       `std::span`), przekazanie `std::array<float, 7>` tam, gdzie funkcja chce `std::span`,
       rzutowanie `static_cast<GLsizei>(values.size())`, `std::clamp` na trzech wartościach
       `int` w `PostProcess.cpp` i wskaźnik `const gfx::Framebuffer*` przestawiany w pętli
-- [ ] `ctest --test-dir build/debug --output-on-failure`: 276 przypadków, wszystkie
+- [x] `ctest --test-dir build/debug --output-on-failure`: 276 przypadków, wszystkie
       przechodzą (zgłoszone dla Windowsa 102139 asercji). `BloomTests.cpp` porównuje
       wyniki `std::exp` na liczbach `float` z wartościami do czterech miejsc
       (`0.1370` z tolerancją 0,001 i `0.0185` z tolerancją 0,01) i sumę wag z jedynką
       z tolerancją 0,00001: zapisać, czy któryś przypadek nie przechodzi na libc++
       i Apple Silicon przez ostatnią cyfrę
-- [ ] gra startuje bez linii `[error]`. Trzy cele bloomu powstają w pierwszej klatce: błąd
+- [x] gra startuje bez linii `[error]`. Trzy cele bloomu powstają w pierwszej klatce: błąd
       wyglądałby tak: `[error] Framebuffer of ... is not complete: ...`, i wracałby
       w **każdej** klatce, bo cele bloomu nie pamiętają nieudanej próby
       ([`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md), sekcja 5.14)
@@ -1398,12 +1446,12 @@ listę zaraz po tej.
 - [ ] panel Shaders: jedenaście linii (po tej części dziesięć), wszystkie `OK`. Dwie nowe
       w tej części to
       `composite.vert + bright.frag: OK` i `composite.vert + blur.frag: OK`
-- [ ] `blur.frag` kompiluje się: tablica uniformów o rozmiarze z wyrażenia stałego
+- [x] `blur.frag` kompiluje się: tablica uniformów o rozmiarze z wyrażenia stałego
       (`uniform float uWeights[BLUR_RADIUS + 1]`), pętla `for` o stałej liczbie obrotów
       z indeksowaniem tej tablicy i funkcja `textureSize`. Wszystko to jest w GLSL 4.10,
       ale kompilator shaderów Apple tych plików jeszcze nie widział. Zapisać cały
       komunikat, jeśli linia jest czerwona
-- [ ] `glUniform1fv` z nazwą tablicy bez indeksu (`"uWeights"`) ustawia wszystkie siedem
+- [x] `glUniform1fv` z nazwą tablicy bez indeksu (`"uWeights"`) ustawia wszystkie siedem
       elementów: poświata jest widoczna i ma normalną jasność. Poświata czarna albo
       ledwo widoczna przy poprawnym obrazie `Bright pass` znaczyłaby, że wagi nie dotarły
 - [ ] build Debug: żadnej linii `GL_` w konsoli przy starcie, przy włączonym bloomie, przy
@@ -1411,13 +1459,13 @@ listę zaraz po tej.
 
 **Cele `GL_RGBA16F` bez głębi i połowa rozdzielczości na ekranie Retina**
 
-- [ ] trzy cele bloomu są kompletne. To pierwsze framebuffery gry z kolorem `GL_RGBA16F`
+- [x] trzy cele bloomu są kompletne. To pierwsze framebuffery gry z kolorem `GL_RGBA16F`
       i **bez** załącznika głębi: tej kombinacji nikt na macOS jeszcze nie utworzył
-- [ ] linia `Bloom targets (3)` w panelu Framebuffers pokazuje połowę liczb z linii
+- [x] linia `Bloom targets (3)` w panelu Framebuffers pokazuje połowę liczb z linii
       `Scene framebuffer`. Na ekranie Retina dla okna 1280 x 720 oczekiwane
       `Scene framebuffer: 2560 x 1440 px` i `Bloom targets (3): 1280 x 720 px`: cele
       bloomu mają wtedy rozmiar **okna w punktach**, a nie jego połowę
-- [ ] poświata leży dokładnie na kryształach i na księżycu, nie jest przesunięta ani
+- [x] poświata leży dokładnie na kryształach i na księżycu, nie jest przesunięta ani
       przeskalowana względem sceny. Przesunięcie oznaczałoby pomylenie rozmiaru okna
       z rozmiarem framebuffera w którymś viewporcie
 - [ ] **szerokość poświaty.** Jądro rozmycia ma stały promień w pikselach celu, więc na
@@ -1445,7 +1493,7 @@ listę zaraz po tej.
       zapisać, czy liczba klatek zostaje powyżej 60
 - [ ] jeśli z bloomem liczba klatek spada poniżej 60: zapisać, przy ilu iteracjach wraca,
       i czy pomaga zwinięcie panelu Framebuffers (cztery podglądy mniej)
-- [ ] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
+- [x] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
       ekranu: zapisać, czy tak jest, bo wtedy liczba z panelu Renderer nie mówi nic
       o zapasie
 
@@ -1456,14 +1504,14 @@ listę zaraz po tej.
       Windowsie
 - [ ] kryształ z odznaczonym polem `Bloom`: zapisać, czy przy sile 4,0 nie jest na
       ekranie MacBooka za blady
-- [ ] rozwinięty panel Framebuffers mieści siedem kontrolek w dwóch kolumnach, dwie linie
+- [x] rozwinięty panel Framebuffers mieści siedem kontrolek w dwóch kolumnach, dwie linie
       informacyjne i cztery obrazy bez przewijania przy skali ekranu Maca
 - [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 18.2: włącznik,
       próg, intensywność, iteracje, podglądy, kryształ z bliska i z daleka, księżyc
       i gwiazdy, latarka, oba widoki debugowania, zmiana rozmiaru, `Reload shaders` przy
       jedenastu programach (na macOS bez kroku kopiowania assetów)
 
-### M7, część 3 (mgła i winieta) na macOS: lista w całości otwarta
+### M7, część 3 (mgła i winieta) na macOS: lista częściowo odhaczona
 
 Trzecia część kamienia milowego M7 (mgła wykładnicza ze współczynnikiem wysokości, liczona
 w przebiegu składającym z pozycji w świecie odtworzonej z tekstury głębi sceny, i winieta
@@ -1472,8 +1520,8 @@ uniformów i cztery funkcje w `post/composite.frag`, struktura `SceneView` przek
 `PostProcess::composite`, tekstura głębi na jednostce teksturującej 2, dwie zakładki
 w panelu Framebuffers) powstała na Windowsie 2026-10-05 i tam jest zgłoszona jako
 zbudowana i przetestowana ([`build-windows.md`](build-windows.md), sekcja 19). Nie doszedł
-żaden program shaderów, żaden framebuffer ani żaden panel. **Na macOS nikt jej nie
-zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania
+żaden program shaderów, żaden framebuffer ani żaden panel. **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania
 wynikają z kodu, z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
 [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), sekcje 2.17
 do 2.22, 4.2, 4.9, 5.6, 5.7, 5.12 i 5.13. M7 jest nadal rozpoczęty, nie kompletny:
@@ -1482,7 +1530,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/game/Fog.hpp`, `src/game/Fog.cpp`, `src/game/Vignette.hpp`,
       `src/game/Vignette.cpp`, `tests/FogTests.cpp`, `tests/VignetteTests.cpp`. Zmienione:
@@ -1493,7 +1541,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
       (`const SceneView sceneView{.inverseViewProjection = ..., .eye = eye}`)
       w `NightMazeApp.cpp`, `glm::inverse` na macierzy `mat4` i `std::exp` na liczbach
       `float` w `Fog.cpp`
-- [ ] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
+- [x] `ctest --test-dir build/debug --output-on-failure`: wszystkie przypadki
       przechodzą (po tej części 294, zgłoszone dla Windowsa 102412 asercji, z czego 241
       w `FogTests.cpp` i 32 w `VignetteTests.cpp`. Dziś, po czwartej części, 310
       i 103751). `FogTests.cpp` porównuje wyniki `std::exp` z wartościami
@@ -1501,7 +1549,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
       z głębi z pozycją wyjściową z tolerancją 0,01, a `VignetteTests.cpp` porównuje
       współczynniki z domyślną tolerancją `doctest::Approx`: zapisać, czy któryś
       przypadek nie przechodzi na libc++ i Apple Silicon przez ostatnią cyfrę
-- [ ] gra startuje bez linii `[error]`, w szczególności bez linii o shaderze
+- [x] gra startuje bez linii `[error]`, w szczególności bez linii o shaderze
       `composite.frag`
 
 **Shader mgły i winiety na sterowniku Apple (GLSL 4.10 na OpenGL 4.1)**
@@ -1509,7 +1557,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
 - [ ] panel Shaders: jedenaście linii (po tej części nadal dziesięć), wszystkie `OK`.
       Mgła i winieta są w linii
       `composite.vert + composite.frag: OK`
-- [ ] `composite.frag` kompiluje się: funkcje `smoothstep`, `exp`, `mix`, `length`
+- [x] `composite.frag` kompiluje się: funkcje `smoothstep`, `exp`, `mix`, `length`
       i `max`, uniform typu `mat4` w shaderze fragmentów, mnożenie `mat4` przez `vec4`,
       dzielenie przez `world.w` i **trzeci** sampler `sampler2D` w jednym programie.
       Wszystko to jest w rdzeniu GLSL 4.10, ale kompilator shaderów Apple tej wersji pliku
@@ -1530,7 +1578,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
       przy zaznaczonym polu `Fog` albo mgła jednolita na całym ekranie znaczyłyby, że
       odczyt tekstury głębi przez zwykły `sampler2D` zwraca na tej karcie coś innego niż
       głębię w kanale czerwonym
-- [ ] obraz `Depth` w panelu Framebuffers jest poprawny (czyta tę samą teksturę od
+- [x] obraz `Depth` w panelu Framebuffers jest poprawny (czyta tę samą teksturę od
       pierwszej części M7, na macOS też jeszcze niesprawdzony): jeśli on działa, a mgła
       nie, błąd jest w odtwarzaniu pozycji, nie w odczycie
 - [ ] mgła na dalekich ścianach i na dalekim podłożu jest gładka: bez pasów, schodków
@@ -1572,7 +1620,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
 - [ ] mgła kosztuje na każdy piksel ekranu jeden odczyt tekstury więcej, jedno mnożenie
       przez macierz i dwa wywołania `exp`: zapisać, czy na karcie Apple różnica jest
       większa niż zgłoszony na Windowsie 1 %
-- [ ] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
+- [x] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
       ekranu: zapisać, czy tak jest, bo wtedy liczba z panelu Renderer nie mówi nic
       o zapasie
 
@@ -1599,7 +1647,7 @@ a cieni latarki i minimapy nie ma na żadnym systemie.
       przy jedenastu programach i próby na pliku `composite.frag` (na macOS bez kroku
       kopiowania assetów)
 
-### M7, część 4 (cienie księżyca) na macOS: lista w całości otwarta
+### M7, część 4 (cienie księżyca) na macOS: lista częściowo odhaczona
 
 Czwarta część kamienia milowego M7 (mapa cieni księżyca: przebieg głębi na początku klatki
 do framebuffera bez tekstury koloru, rzut ortograficzny dopasowany do terenu, odczyt przez
@@ -1608,8 +1656,8 @@ bias w metrach: pliki `src/scene/LightSpace.*`, `src/gfx/ComparisonSampler.*`,
 `src/game/Shadows.*`, `src/game/ShadowMap.*`, `src/debug/panels/ShadowsPanel.*`, shadery
 `shadow_depth.vert`, `shadow_depth.frag` i `common/shadows.glsl`, jedenasty program i
 dwunasty panel) powstała na Windowsie 2026-10-05 i tam jest zgłoszona jako zbudowana i
-przetestowana ([`build-windows.md`](build-windows.md), sekcja 20). **Na macOS nikt jej nie
-zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Oczekiwania
+przetestowana ([`build-windows.md`](build-windows.md), sekcja 20). **Na macOS pierwszy build i pierwsze uruchomienie były 2026-10-06: odhaczone są tylko
+punkty sprawdzone tego dnia, a wyniki są w podrozdziale "Pierwszy build na macOS" wyżej.** Oczekiwania
 wynikają z kodu, z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
 [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) i
 [`../modules/gfx/comparison-sampler.md`](../modules/gfx/comparison-sampler.md). M7 jest
@@ -1622,7 +1670,7 @@ całości.
 
 **Cztery rzeczy nowe dla sterownika Apple**
 
-- [ ] **framebuffer z samą głębią jest kompletny.** `gfx::Framebuffer` z `ColorFormat::None`
+- [x] **framebuffer z samą głębią jest kompletny.** `gfx::Framebuffer` z `ColorFormat::None`
       i `DepthFormat::Depth24` woła `glDrawBuffer(GL_NONE)` i `glReadBuffer(GL_NONE)`, a
       potem `glCheckFramebufferStatus`. Na Windowsie ścieżka działa (zgłoszone, pierwszy raz
       w tej części). Oczekiwane na Macu: przy starcie żadnej linii `[error]` ze słowami `is
@@ -1638,7 +1686,7 @@ całości.
 - [ ] **filtr liniowy z porównaniem.** Z zaznaczonym `Hardware 2 x 2 filter` i odznaczonym
       `PCF` krawędź cienia jest wygładzona, a z odznaczonym ma schodki. Jeśli obie wersje
       wyglądają tak samo, sterownik nie miesza wyników porównania: zapisać to
-- [ ] **`GL_CLAMP_TO_BORDER` z ramką 1.** Dziś nic nie jest rysowane poza mapą, więc błąd
+- [x] **`GL_CLAMP_TO_BORDER` z ramką 1.** Dziś nic nie jest rysowane poza mapą, więc błąd
       ramki nie byłby widoczny w zwykłej scenie. Sprawdzić pośrednio: w buildzie Debug nie
       ma linii `GL_INVALID_ENUM` przy tworzeniu samplera (start gry)
 - [ ] **podgląd głębi.** Obraz w panelu Shadows jest szary, a nie czerwony i nie czarny.
@@ -1653,7 +1701,7 @@ całości.
 
 **Build i testy**
 
-- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+- [x] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
       `-Wall -Wextra -Wpedantic`. Nowe pliki, których Apple clang z libc++ nie widział:
       `src/scene/LightSpace.hpp`, `LightSpace.cpp`, `src/gfx/ComparisonSampler.hpp`,
       `ComparisonSampler.cpp`, `src/game/Shadows.hpp`, `Shadows.cpp`,
@@ -1662,7 +1710,7 @@ całości.
       nazwami pól w instrukcji `return` (`directionalLightSpace`, `shadowCasterBounds`),
       stała `constexpr ShadowUniformNames MOON_SHADOW_UNIFORMS` z nazwanymi polami w
       nagłówku, `constexpr glm::vec3` w przestrzeni nazw bez nazwy
-- [ ] `./build/debug/night_maze_tests` i wersja Release: 310 przypadków testowych i 103751
+- [x] `./build/debug/night_maze_tests` i wersja Release: 310 przypadków testowych i 103751
       asercji, wszystkie przechodzą (liczby zgłoszone na Windowsie). Testy cieni porównują
       liczby zmiennoprzecinkowe z tolerancją `doctest::Approx`, z jednym wyjątkiem: `a light
       direction of length zero is replaced by straight down` porównuje dwie macierze znakiem
@@ -1683,7 +1731,7 @@ całości.
       mapą 2048 i z mapą 1024, a potem z jądrem `7 x 7`. PRD wymaga stabilnych 60 klatek w
       1440p na MacBooku. Na Windowsie zgłoszono w tym rozmiarze około 630, 560 i 690 klatek
       (pomiar zaszumiony, na innej karcie): dla MacBooka nic z tego nie wynika
-- [ ] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
+- [x] na macOS synchronizacja pionowa może trzymać licznik na częstotliwości odświeżania
       ekranu: zapisać, czy tak jest
 - [ ] panel Shadows przy skali ekranu Maca: osiem kontrolek, trzy linie faktów i obraz
       mieszczą się w panelu bez przewijania, lista `Kernel` stoi w jednej linii z polem

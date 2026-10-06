@@ -79,7 +79,7 @@ Zebrane ze wszystkich czterech części. "Znane" znaczy: zapisane, świadomie zo
 
 ## 6. macOS: kolejność sprawdzania
 
-Na Macu nie był budowany ani uruchamiany żaden kod od M2. Listy są w [`build-macos.md`](build-macos.md), po jednej na część, wszystkie w całości otwarte. Poniżej kolejność od rzeczy, które najłatwiej mogą nie zadziałać na sterowniku OpenGL 4.1 firmy Apple, bo każda z nich blokuje to, co po niej.
+Do 2026-10-05 na Macu nie był budowany ani uruchamiany żaden kod od M2. Pierwsze uruchomienie jest opisane w sekcji 6.1. Listy są w [`build-macos.md`](build-macos.md), po jednej na część, wszystkie w całości otwarte. Poniżej kolejność od rzeczy, które najłatwiej mogą nie zadziałać na sterowniku OpenGL 4.1 firmy Apple, bo każda z nich blokuje to, co po niej.
 
 | # | Co sprawdzić najpierw | Dlaczego to ryzyko | Sekcja w `build-macos.md` |
 |---|---|---|---|
@@ -90,6 +90,37 @@ Na Macu nie był budowany ani uruchamiany żaden kod od M2. Listy są w [`build-
 | 4 | **framebuffer z samą głębią i sampler cieni** (`glDrawBuffer(GL_NONE)`, `sampler2DShadow` z obiektem samplera, `GL_CLAMP_TO_BORDER`, podgląd głębi) | cztery rzeczy użyte pierwszy raz w części 4. Każda może wyłączyć cienie w całości | "M7, część 4 (cienie księżyca)" |
 | 5 | **rozmiary framebufferów na ekranie Retina** | okno 1280 x 720 ma bufor 2560 x 1440: scena, cele bloomu, podglądy i `glViewport` po każdym przebiegu. Do tego wydajność: PRD wymaga 60 klatek w 1440p na MacBooku | listy części 1 do 4 M7, punkty o Retinie |
 | 6 | **`glPolygonMode`** (pole `Wireframe` terenu) | tryb linii w profilu Core na sterowniku Apple | "M6, część 2 (teren i trawa)" |
-| 7 | reszta list, od M2 do części 4 M7, w kolejności dokumentu | wygląd, panele, sterowanie | wszystkie sekcje "na macOS: lista w całości otwarta" |
+| 7 | reszta list, od M2 do części 4 M7, w kolejności dokumentu | wygląd, panele, sterowanie | wszystkie sekcje "na macOS: lista częściowo odhaczona" |
 
 Wskazówka do punktu 0: jeśli `make` nie działa, wszystkie kroki da się wykonać samymi presetami CMake, które są opisane w tym samym dokumencie.
+
+### 6.1 Pierwsze uruchomienie na Macu (2026-10-06)
+
+Zdanie "na Macu nie był budowany żaden kod od M2" przestało być prawdą: commit `26c21c4` został zbudowany i uruchomiony na MacBooku z Apple M3 (`OpenGL: 4.1 Metal - 90.5`). Poniżej tylko to, co wynika z bramki i z dwóch zrzutów ekranu. W [`build-macos.md`](build-macos.md) odhaczone są tylko punkty, które z tego wynikają (podrozdział "Pierwszy build na macOS (2026-10-06): wyniki"). Nikt nie przeszedł list punkt po punkcie.
+
+| # | Wynik | Skąd wiadomo |
+|---|---|---|
+| 0 | `make format-check`, `make test` i `make test-release` przechodzą: 310 przypadków testowych i 103751 asercji, tak jak na Windowsie. Czysty build obu konfiguracji nie daje ostrzeżeń kompilatora. **`make tidy` nie przechodzi**, więc `make check` jest czerwone | uruchomione na Macu. Szczegóły niżej |
+| 1 | program `grass.vert + grass.geom + grass.frag` ma stan `OK`, źdźbła są na obrazie | panel Shaders i zrzut ekranu |
+| 2 | framebuffer sceny `GL_RGBA16F + GL_DEPTH_COMPONENT24` jest kompletny, obraz jest, podglądy `HDR colour`, `Depth`, `Bright pass` i `Bloom` pokazują scenę. Build Debug startuje bez linii `[error]` i bez nazw błędów OpenGL | panel Framebuffers i konsola przy starcie |
+| 3 | otwarte: kolorów nikt nie porównał z Windowsem, obecności `GL_EXT_texture_sRGB_decode` nikt nie sprawdził | |
+| 4 | częściowo: przy starcie nie ma linii `is not complete` ani `GL_INVALID_ENUM`, więc framebuffer z samą głębią i sampler powstają. Otwarte: wygląd cieni, filtr i podgląd. Panelu Shadows nie ma na zrzutach, a program cieni jest poniżej widocznej części listy w panelu Shaders | konsola przy starcie |
+| 5 | rozmiary się zgadzają: okno 1710 x 953, framebuffer sceny 3420 x 1906, cele bloomu 1710 x 953, obraz wypełnia całe okno. Wydajność: 79 i 95 klatek na sekundę w dwóch widokach, przy 100 procentach użycia GPU. **Vsync nie trzyma licznika na 60** | panele Renderer i Framebuffers, pasek systemowy |
+| 6 | otwarte | |
+| 7 | otwarte | |
+
+Uwagi do punktu 5:
+
+- 3420 x 1906 to około 6,5 miliona pikseli, czyli 1,77 raza więcej niż 1440p (2560 x 1440, około 3,7 miliona). Wymóg z PRD (60 klatek w 1440p) nie był więc mierzony wprost, tylko w cięższym ustawieniu. Nie zapisano, czy to był build Debug czy Release.
+- **Vsync nie działa tak, jak zakłada kod.** Program woła `glfwSwapInterval(1)` (`src/core/Window.cpp`), a ekran MacBooka Air 15 odświeża się 60 razy na sekundę, więc licznik powinien stać na 60. Pokazuje 79 i 95, czyli klatki nie czekają na odświeżenie ekranu i karta rysuje bez przerwy: stąd 100 procent użycia GPU. Przyczyny nikt nie szukał (GLFW 3.4, macOS 26.6.2). Do sprawdzenia przed ustawieniami jakości: ogranicznik klatek albo naprawa vsync obniży użycie GPU bardziej niż mniejsza rozdzielczość.
+- Ustawienia jakości (na przykład skala rozdzielczości sceny) są planowane razem z menu.
+
+`make tidy` na Macu: 29 zgłoszeń z clang-tidy 23.1.2 z Homebrew, których nie zgłasza clang-tidy z Visual Studio. Decyzja, co poprawić w kodzie, a co wyłączyć w `.clang-tidy`, jest otwarta.
+
+| Sprawdzenie | Ile | Gdzie |
+|---|---|---|
+| `performance-enum-size` | 14 | typy wyliczeniowe w `src/`, na przykład `ColorFormat`, `DepthFormat`, `TextureFilter` |
+| `bugprone-random-generator-seed` | 8 | `std::mt19937` ze stałym ziarnem, tylko w `tests/` |
+| `bugprone-float-loop-counter` | 5 | pętle `for (float ...)` w `tests/TerrainTests.cpp` |
+| `modernize-use-integer-sign-comparison` | 1 | `src/gfx/Shader.cpp:232` |
+| `bugprone-throwing-static-initialization` | 1 | `flatGround` w `tests/PlayerTests.cpp:38` |
