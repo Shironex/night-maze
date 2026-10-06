@@ -3,6 +3,7 @@
 #include "game/NightMazeApp.hpp"
 
 #include "assets/ImageLoader.hpp"
+#include "core/Files.hpp"
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
@@ -18,6 +19,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <random>
 #include <span>
 #include <string>
 #include <vector>
@@ -115,13 +117,56 @@ constexpr int INTERACT_KEY = GLFW_KEY_E;
 // Key that switches the menu camera on and off: the game then shows itself.
 constexpr int MENU_CAMERA_KEY = GLFW_KEY_F2;
 
-// The documents of the menus, relative to the assets directory, and the two elements
-// of the result screen the code writes into (their id attributes).
+// The documents of the menus, relative to the assets directory.
 constexpr const char* MAIN_MENU_DOCUMENT_FILE = "ui/main_menu.rml";
 constexpr const char* PAUSE_DOCUMENT_FILE = "ui/pause.rml";
 constexpr const char* ROUND_END_DOCUMENT_FILE = "ui/round_end.rml";
-constexpr const char* ROUND_END_TIME_ID = "time";
-constexpr const char* ROUND_END_CRYSTALS_ID = "crystals";
+constexpr const char* SETTINGS_DOCUMENT_FILE = "ui/settings.rml";
+
+// The elements of the documents the code writes into or reads: their id attributes.
+// The result screen and the pause menu use the same four names.
+constexpr const char* TIME_ID = "time";
+constexpr const char* CRYSTALS_ID = "crystals";
+constexpr const char* DIFFICULTY_ID = "difficulty";
+constexpr const char* SEED_ID = "seed";
+// The main menu: the hint next to the seed field, the three numbers of the info block
+// and the three difficulty buttons, whose ids are this prefix and the key of a level.
+constexpr const char* SEED_HINT_ID = "seed-hint";
+constexpr const char* INFO_MAZE_ID = "info-maze";
+constexpr const char* INFO_CRYSTALS_ID = "info-crystals";
+constexpr const char* INFO_BATTERY_ID = "info-battery";
+constexpr const char* DIFFICULTY_ID_PREFIX = "difficulty-";
+// The settings screen: the two sliders (their ids are the names of their settings), the
+// text next to each control and the row of the window size.
+constexpr const char* TEXT_ID_SUFFIX = "-text";
+constexpr const char* FULLSCREEN_ID = "fullscreen";
+constexpr const char* WINDOW_SIZE_ID = "window-size";
+constexpr const char* WINDOW_SIZE_ROW_ID = "window-size-row";
+
+// The classes the code sets on elements. The style sheet says what they look like.
+constexpr const char* CHOSEN_CLASS = "chosen";
+constexpr const char* ON_CLASS = "on";
+constexpr const char* OFF_CLASS = "off";
+
+// The buttons that do not change the screen: their data-action names. A difficulty
+// button is named by the same prefix as its id.
+constexpr const char* NEW_SEED_ACTION = "new-seed";
+constexpr const char* TOGGLE_FULLSCREEN_ACTION = "toggle-fullscreen";
+constexpr const char* WINDOW_SIZE_SMALLER_ACTION = "window-size-smaller";
+constexpr const char* WINDOW_SIZE_LARGER_ACTION = "window-size-larger";
+constexpr const char* RESET_SETTINGS_ACTION = "reset-settings";
+// The button that starts a game: its seed is read from the seed field first.
+constexpr const char* PLAY_ACTION = "play";
+
+// What the hint next to the seed field says when the field cannot be read.
+constexpr const char* SEED_HINT_TEXT = "Digits only, up to 4294967295";
+
+// The name of the difficulty of a maze that no level describes: one the debug UI built.
+constexpr const char* CUSTOM_DIFFICULTY_NAME = "Custom";
+
+// A random seed of the menu is below this number: at most six digits, short enough to
+// read out to a friend. A typed seed can be any number a seed can be.
+constexpr std::uint32_t RANDOM_SEED_LIMIT = 1000000;
 
 constexpr int SECONDS_PER_MINUTE = 60;
 // Below this number of seconds a leading zero is written: 1:05 and not 1:5.
@@ -133,6 +178,40 @@ std::string timeText(float seconds) {
     const int minutes = whole / SECONDS_PER_MINUTE;
     const int rest = whole % SECONDS_PER_MINUTE;
     return std::to_string(minutes) + (rest < TWO_DIGITS ? ":0" : ":") + std::to_string(rest);
+}
+
+// A seed nobody can predict, from 1 to RANDOM_SEED_LIMIT - 1. std::random_device asks
+// the operating system for a random number. It only picks the seed: the maze itself is
+// built by the seeded generator, so the same seed always brings the same maze back.
+std::uint32_t randomSeed() {
+    std::random_device device;
+    return 1 + static_cast<std::uint32_t>(device()) % (RANDOM_SEED_LIMIT - 1);
+}
+
+// Reads the settings file from the working directory. Without a file (the first start)
+// and with a file that cannot be read the game starts with its defaults: parseSettings
+// skips everything it does not understand.
+GameSettings loadSettings() {
+    std::string text;
+    if (!core::readTextFile(SETTINGS_FILE_NAME, text)) {
+        core::logInfo(std::string("No settings file (") + SETTINGS_FILE_NAME +
+                      "): starting with the defaults");
+        return {};
+    }
+    core::logInfo(std::string("Loaded settings: ") + SETTINGS_FILE_NAME);
+    return parseSettings(text);
+}
+
+// The request for the maze of a new game: the size and the crystals of its difficulty
+// level and its seed. The numbers of levers and notes keep their defaults.
+MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed) {
+    const DifficultyLevel& level = difficultyLevel(difficulty);
+    MazeSettings settings;
+    settings.width = level.mazeWidth;
+    settings.height = level.mazeHeight;
+    settings.crystalCount = level.crystalCount;
+    settings.seed = seed;
+    return settings;
 }
 
 // Pitch of a level look, in degrees: how the player looks at the start.
@@ -210,18 +289,25 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_interactableRenderer(m_assets),
       m_terrainRenderer(m_assets),
       m_puddleRenderer(m_assets),
-      // The seed of the first maze, from the command line. The size and the numbers of
-      // levers and notes keep their defaults.
-      m_mazeSettings{.seed = options.seed},
+      // The settings file is read before the first maze is built: the maze has the size
+      // of the difficulty that was chosen last.
+      m_settings(loadSettings()),
+      m_savedSettings(m_settings),
+      // The first maze: the seed of the command line and the level of the settings. It
+      // is the maze behind the main menu, and the maze of the round --play starts in.
+      m_mazeSettings(mazeSettingsFor(m_settings.difficulty, options.seed)),
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale,
-                                 m_mazeSettings.interactables)),
+                                 m_mazeSettings.interactables, m_mazeSettings.crystalCount)),
       m_menuCamera(options.menuCamera),
       // The menu camera is a tool for recording the game: with it the main menu is
       // skipped like with --play, so no menu ever lies over the recorded picture.
       m_mode(options.play || options.menuCamera.enabled ? GameMode::Playing : GameMode::MainMenu),
-      m_newGame{.seed = options.seed},
+      // The game "Play" starts: the difficulty of the settings, and the seed of the
+      // command line when one was named there. Otherwise the menu rolls one (below).
+      m_newGame{.difficulty = m_settings.difficulty, .seed = options.seed},
+      m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
       m_ui(window()) {
     // The two lit programs and the grass program read the lights from the uniform buffer
     // of m_lightRig. Each program is told once: the shader repeats it by itself after
@@ -232,24 +318,50 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // The reflect program lights the crystals and the puddles with the same lights.
     m_lightRig.connect(m_reflectShader);
 
+    // The rules of the first round are the ones of the same difficulty level as the
+    // first maze (the gate and the battery).
+    const DifficultyLevel& level = difficultyLevel(m_settings.difficulty);
+    m_gameplay.requiredFraction = level.requiredFraction;
+    m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
+
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
     uploadGround();
     beginRound();
     m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
 
-    // The documents of the three screens with a menu. They are loaded once and stay
+    // What the settings file says about the mouse, the camera and the window.
+    applyViewSettings();
+    applyWindowSettings();
+    // A window that starts in the background must not pause the game by "losing" a
+    // focus it never had.
+    m_windowWasFocused = window().isFocused();
+
+    // The documents of the four screens with a menu. They are loaded once and stay
     // hidden until their screen comes up. An error is in the log (ui::UiLayer).
     m_mainMenuDocument = m_ui.loadDocument(MAIN_MENU_DOCUMENT_FILE);
     m_pauseDocument = m_ui.loadDocument(PAUSE_DOCUMENT_FILE);
     m_roundEndDocument = m_ui.loadDocument(ROUND_END_DOCUMENT_FILE);
+    m_settingsDocument = m_ui.loadDocument(SETTINGS_DOCUMENT_FILE);
     m_menusLoaded = m_mainMenuDocument != ui::NO_DOCUMENT && m_pauseDocument != ui::NO_DOCUMENT &&
-                    m_roundEndDocument != ui::NO_DOCUMENT;
+                    m_roundEndDocument != ui::NO_DOCUMENT && m_settingsDocument != ui::NO_DOCUMENT;
     if (!m_menusLoaded) {
         core::logError("The menus cannot be shown: the game starts straight in a round");
         m_mode = GameMode::Playing;
     }
+
+    // The seed the main menu offers for the first game: the one of the command line, or
+    // a random one.
+    if (options.seedGiven) {
+        m_ui.setValue(m_mainMenuDocument, SEED_ID, std::to_string(m_newGame.seed));
+    } else {
+        rollSeed();
+    }
     showScreen();
+}
+
+NightMazeApp::~NightMazeApp() {
+    saveSettings();
 }
 
 void NightMazeApp::onEscapePressed() {
@@ -258,9 +370,10 @@ void NightMazeApp::onEscapePressed() {
 
 void NightMazeApp::handleGameEvent(GameEvent event) {
     const GameMode before = m_mode;
-    // Asked before the screen changes: the answer depends on the screen the event
+    // Asked before the screen changes: the answers depend on the screen the event
     // was sent on.
     const bool newRound = startsRound(before, event);
+    const bool newGame = startsNewGame(before, event);
     m_mode = nextMode(before, event);
 
     // Without the documents only the pause can be entered: it shows nothing, but Escape
@@ -275,11 +388,30 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     if (m_mode == before && !roundInsteadOfMenu) {
         return;
     }
-    if (event == GameEvent::Play) {
+    if (newGame) {
+        // "New maze" on the result screen: the same difficulty, another seed. "Play"
+        // in the main menu starts the seed its field shows (handleMenuActions has read
+        // it).
+        if (event == GameEvent::NewMaze) {
+            m_newGame.seed = randomSeed();
+        }
         startNewGame(m_newGame);
     } else if (newRound || roundInsteadOfMenu) {
         beginRound();
     }
+
+    // The settings screen was left: what was changed there goes into the file.
+    const bool wasSettings =
+        before == GameMode::SettingsFromMenu || before == GameMode::SettingsFromPause;
+    if (wasSettings) {
+        saveSettings();
+    }
+    // Back in the main menu after a game: the next game gets a fresh seed. Coming back
+    // from the settings the seed stays, with whatever was typed into its field.
+    if (m_mode == GameMode::MainMenu && !wasSettings) {
+        rollSeed();
+    }
+
     if (m_mode == GameMode::Quitting) {
         // The main loop ends after this frame (core::Application::run).
         window().requestClose();
@@ -291,22 +423,132 @@ void NightMazeApp::handleMenuActions() {
     for (const std::string& action : m_ui.takeActions()) {
         GameEvent event = GameEvent::Escape;
         if (eventForAction(action, event)) {
+            // Play in the main menu starts the seed of the seed field. A field that
+            // cannot be read keeps the menu open.
+            if (action == PLAY_ACTION && m_mode == GameMode::MainMenu && !readSeedField()) {
+                continue;
+            }
             handleGameEvent(event);
-        } else {
+        } else if (!handleMenuCommand(action)) {
             core::logWarn("A menu button has an unknown action: " + action);
         }
     }
 }
 
+bool NightMazeApp::handleMenuCommand(const std::string& action) {
+    // The three difficulty buttons of the main menu: "difficulty-" and the key of
+    // a level. The choice is a setting too, so the next start of the game shows it.
+    const std::string difficultyPrefix = DIFFICULTY_ID_PREFIX;
+    if (action.starts_with(difficultyPrefix)) {
+        if (!difficultyFromKey(action.substr(difficultyPrefix.size()), m_newGame.difficulty)) {
+            return false;
+        }
+        m_settings.difficulty = m_newGame.difficulty;
+        fillMainMenuDocument();
+        return true;
+    }
+    if (action == NEW_SEED_ACTION) {
+        rollSeed();
+        return true;
+    }
+
+    // The buttons of the settings screen. Each one changes m_settings, uses the new
+    // value at once and shows it. The file is written when the screen is left.
+    if (action == TOGGLE_FULLSCREEN_ACTION) {
+        m_settings.fullscreen = !m_settings.fullscreen;
+        applyWindowSettings();
+        fillSettingsDocument();
+        return true;
+    }
+    if (action == WINDOW_SIZE_SMALLER_ACTION || action == WINDOW_SIZE_LARGER_ACTION) {
+        // While the game is fullscreen the size of the window means nothing: the row
+        // is shown dimmed and its buttons do nothing.
+        if (!m_settings.fullscreen) {
+            const core::Size desktop = window().desktopSize();
+            const std::vector<WindowSize> choices = windowSizeChoices(
+                {.width = desktop.width, .height = desktop.height}, m_settings.windowSize);
+            const int step = action == WINDOW_SIZE_LARGER_ACTION ? 1 : -1;
+            m_settings.windowSize = steppedWindowSize(choices, m_settings.windowSize, step);
+            applyWindowSettings();
+            fillSettingsDocument();
+        }
+        return true;
+    }
+    if (action == RESET_SETTINGS_ACTION) {
+        // Everything this screen shows goes back to its default. The difficulty is
+        // chosen in the main menu and stays.
+        const Difficulty difficulty = m_settings.difficulty;
+        m_settings = GameSettings{};
+        m_settings.difficulty = difficulty;
+        applyViewSettings();
+        applyWindowSettings();
+        fillSettingsDocument();
+        return true;
+    }
+    return false;
+}
+
+void NightMazeApp::handleControlChanges() {
+    const std::vector<ui::ControlChange> changes = m_ui.takeChanges();
+    // Only the settings screen has controls that report: a change that arrives on
+    // another screen is a late echo of fillSettingsDocument and is dropped.
+    if (m_mode != GameMode::SettingsFromMenu && m_mode != GameMode::SettingsFromPause) {
+        return;
+    }
+    for (const ui::ControlChange& change : changes) {
+        GameSettings changed = m_settings;
+        // A slider also reports the value the code has just given it. Then nothing is
+        // different and nothing is done.
+        if (!applySetting(changed, change.name, change.value) || changed == m_settings) {
+            continue;
+        }
+        m_settings = changed;
+        applyViewSettings();
+        // Only the numbers next to the sliders: the sliders themselves already stand
+        // where the player put them.
+        m_ui.setText(m_settingsDocument, std::string(MOUSE_SENSITIVITY_SETTING) + TEXT_ID_SUFFIX,
+                     mouseSensitivityLabel(m_settings.mouseSensitivity));
+        m_ui.setText(m_settingsDocument, std::string(FIELD_OF_VIEW_SETTING) + TEXT_ID_SUFFIX,
+                     fieldOfViewLabel(m_settings.fieldOfViewDegrees));
+    }
+}
+
+bool NightMazeApp::readSeedField() {
+    const std::string text = m_ui.value(m_mainMenuDocument, SEED_ID);
+    if (text.empty()) {
+        // Nothing typed: any maze will do.
+        rollSeed();
+        return true;
+    }
+    if (!parseSeed(text, m_newGame.seed)) {
+        m_ui.setText(m_mainMenuDocument, SEED_HINT_ID, SEED_HINT_TEXT);
+        return false;
+    }
+    m_ui.setText(m_mainMenuDocument, SEED_HINT_ID, "");
+    return true;
+}
+
+void NightMazeApp::rollSeed() {
+    m_newGame.seed = randomSeed();
+    m_ui.setValue(m_mainMenuDocument, SEED_ID, std::to_string(m_newGame.seed));
+    m_ui.setText(m_mainMenuDocument, SEED_HINT_ID, "");
+}
+
 void NightMazeApp::showScreen() {
+    // The document of the screen, filled with what it shows at this moment.
     ui::DocumentId document = ui::NO_DOCUMENT;
     if (m_mode == GameMode::MainMenu) {
         document = m_mainMenuDocument;
+        fillMainMenuDocument();
     } else if (m_mode == GameMode::Paused) {
         document = m_pauseDocument;
+        fillPauseDocument();
     } else if (m_mode == GameMode::RoundEnd) {
         document = m_roundEndDocument;
         fillRoundEndDocument();
+    } else if (m_mode == GameMode::SettingsFromMenu || m_mode == GameMode::SettingsFromPause) {
+        document = m_settingsDocument;
+        fillSettingsDocument();
     }
     m_ui.show(document);
 
@@ -317,19 +559,120 @@ void NightMazeApp::showScreen() {
 }
 
 void NightMazeApp::startNewGame(const NewGame& newGame) {
-    // newGame.difficulty is not read yet: the three levels have no numbers so far.
-    // The maze is always built again, also for the seed that is in play: the size and
-    // the numbers of levers and notes in m_mazeSettings may have been changed since.
+    // The numbers of the level: the size of the maze and its crystals go into the
+    // request for the maze, the gate and the battery into the rules of the round. They
+    // overwrite what the debug UI may have set in the same fields, so every new game of
+    // a level is the same game. The numbers of levers and notes are not part of a
+    // level and stay as they are.
+    const DifficultyLevel& level = difficultyLevel(newGame.difficulty);
+    m_mazeSettings.width = level.mazeWidth;
+    m_mazeSettings.height = level.mazeHeight;
+    m_mazeSettings.crystalCount = level.crystalCount;
+    m_gameplay.requiredFraction = level.requiredFraction;
+    m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
+
+    // The maze is always built again, also for the seed that is in play: the level may
+    // be another one, and the numbers of levers and notes may have been changed.
     m_mazeSettings.seed = newGame.seed;
     m_mazeSettings.regenerate = false;
     regenerateMaze();
+    m_playedDifficultyName = level.name;
+
+    // The difficulty that was just played is the one the main menu starts with next
+    // time, so it is written to the settings file now.
+    saveSettings();
+}
+
+void NightMazeApp::fillMainMenuDocument() {
+    // The chosen one of the three difficulty buttons carries a class.
+    for (const Difficulty difficulty : ALL_DIFFICULTIES) {
+        m_ui.setClass(m_mainMenuDocument,
+                      std::string(DIFFICULTY_ID_PREFIX) + difficultyLevel(difficulty).key,
+                      CHOSEN_CLASS, difficulty == m_newGame.difficulty);
+    }
+
+    // The info block: what the chosen level means in numbers.
+    const DifficultyLevel& level = difficultyLevel(m_newGame.difficulty);
+    m_ui.setText(m_mainMenuDocument, INFO_MAZE_ID,
+                 std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
+    m_ui.setText(m_mainMenuDocument, INFO_CRYSTALS_ID,
+                 std::to_string(requiredCrystalCount(level.crystalCount, level.requiredFraction)) +
+                     " of " + std::to_string(level.crystalCount));
+    m_ui.setText(m_mainMenuDocument, INFO_BATTERY_ID, timeText(level.batteryLifetimeSeconds));
+}
+
+void NightMazeApp::fillPauseDocument() {
+    m_ui.setText(m_pauseDocument, DIFFICULTY_ID, m_playedDifficultyName);
+    m_ui.setText(m_pauseDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
 }
 
 void NightMazeApp::fillRoundEndDocument() {
-    m_ui.setText(m_roundEndDocument, ROUND_END_TIME_ID, timeText(m_round.elapsedSeconds));
-    m_ui.setText(m_roundEndDocument, ROUND_END_CRYSTALS_ID,
-                 std::to_string(m_round.collectedCount) + " / " +
+    m_ui.setText(m_roundEndDocument, TIME_ID, timeText(m_round.elapsedSeconds));
+    m_ui.setText(m_roundEndDocument, CRYSTALS_ID,
+                 std::to_string(m_round.collectedCount) + " of " +
                      std::to_string(m_round.crystals.size()));
+    // The difficulty and the seed together name the maze: with both, a friend plays
+    // the same one.
+    m_ui.setText(m_roundEndDocument, DIFFICULTY_ID, m_playedDifficultyName);
+    m_ui.setText(m_roundEndDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
+}
+
+void NightMazeApp::fillSettingsDocument() {
+    // The two sliders and the numbers next to them. The id of a slider is the name of
+    // its setting, and the value it gets is the text the settings file would hold.
+    const std::string sensitivityId(MOUSE_SENSITIVITY_SETTING);
+    const std::string sensitivity = mouseSensitivityLabel(m_settings.mouseSensitivity);
+    m_ui.setValue(m_settingsDocument, sensitivityId, sensitivity);
+    m_ui.setText(m_settingsDocument, sensitivityId + TEXT_ID_SUFFIX, sensitivity);
+
+    const std::string fieldOfViewId(FIELD_OF_VIEW_SETTING);
+    m_ui.setValue(m_settingsDocument, fieldOfViewId,
+                  std::to_string(std::lround(m_settings.fieldOfViewDegrees)));
+    m_ui.setText(m_settingsDocument, fieldOfViewId + TEXT_ID_SUFFIX,
+                 fieldOfViewLabel(m_settings.fieldOfViewDegrees));
+
+    // The switch of the fullscreen: a class moves its knob.
+    m_ui.setClass(m_settingsDocument, FULLSCREEN_ID, ON_CLASS, m_settings.fullscreen);
+    m_ui.setText(m_settingsDocument, std::string(FULLSCREEN_ID) + TEXT_ID_SUFFIX,
+                 m_settings.fullscreen ? "On" : "Off");
+
+    // The size of the window. While the game is fullscreen it covers the screen, so
+    // the row shows the resolution of the desktop and is dimmed.
+    m_ui.setClass(m_settingsDocument, WINDOW_SIZE_ROW_ID, OFF_CLASS, m_settings.fullscreen);
+    if (m_settings.fullscreen) {
+        const core::Size desktop = window().desktopSize();
+        m_ui.setText(m_settingsDocument, WINDOW_SIZE_ID,
+                     windowSizeLabel({.width = desktop.width, .height = desktop.height}));
+    } else {
+        m_ui.setText(m_settingsDocument, WINDOW_SIZE_ID, windowSizeLabel(m_settings.windowSize));
+    }
+}
+
+void NightMazeApp::applyViewSettings() {
+    m_mouseSensitivity = mouseDegreesPerUnit(m_settings.mouseSensitivity);
+    m_camera.fovDegrees = m_settings.fieldOfViewDegrees;
+}
+
+void NightMazeApp::applyWindowSettings() {
+    // The size first: while the window is fullscreen it is only remembered, and
+    // switching fullscreen off then goes back to a window of that size.
+    window().setWindowedSize(
+        {.width = m_settings.windowSize.width, .height = m_settings.windowSize.height});
+    window().setFullscreen(m_settings.fullscreen);
+}
+
+void NightMazeApp::saveSettings() {
+    if (m_settings == m_savedSettings) {
+        return;
+    }
+    if (core::writeTextFile(SETTINGS_FILE_NAME, formatSettings(m_settings))) {
+        m_savedSettings = m_settings;
+        core::logInfo(std::string("Saved settings: ") + SETTINGS_FILE_NAME);
+    } else {
+        // The game goes on with the settings it has. They are tried again at the next
+        // change.
+        core::logError(std::string("The settings file cannot be written: ") + SETTINGS_FILE_NAME);
+    }
 }
 
 void NightMazeApp::regenerateMaze() {
@@ -352,10 +695,10 @@ void NightMazeApp::regenerateMaze() {
     // the crystals, the levers and the notes in one assignment. A new maze is a new
     // round.
     m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
-                                 m_heightmap, m_terrainSettings.heightScale, interactables);
-    // The button "Play" starts the maze that is in play again, also when this one was
-    // asked for by the debug UI with another seed.
-    m_newGame.seed = m_mazeSettings.seed;
+                                 m_heightmap, m_terrainSettings.heightScale, interactables,
+                                 m_mazeSettings.crystalCount);
+    // Until a new game says otherwise (startNewGame), this is a maze of no level.
+    m_playedDifficultyName = CUSTOM_DIFFICULTY_NAME;
     uploadGround();
     beginRound();
     // The menu camera walks the corridors of the maze, so a new maze is a new path.
@@ -541,16 +884,36 @@ void NightMazeApp::onUpdate(double fixedDt) {
 }
 
 void NightMazeApp::onRender(double alpha) {
-    // The menu buttons that were clicked since the last frame. The clicks arrived
-    // while the events of this frame were read, so the screen they lead to is drawn
-    // in this very frame.
+    // The menu buttons that were clicked since the last frame, and the controls of the
+    // settings screen that were moved. The clicks arrived while the events of this
+    // frame were read, so the screen they lead to is drawn in this very frame.
     handleMenuActions();
+    handleControlChanges();
+
+    // A player who switches to another program does not want the round to go on: the
+    // frame in which the window stops being the active one pauses it (game::nextMode,
+    // FocusLost). Asked once per frame and compared with the frame before, so it
+    // happens once. The menu camera is a recording tool, and the program that records
+    // it is the active one then: it is left alone.
+    const bool windowFocused = window().isFocused();
+    if (m_windowWasFocused && !windowFocused && !m_menuCamera.enabled) {
+        if (updatesRound(m_mode)) {
+            core::logInfo("The window is no longer the active one: the round is paused");
+        }
+        handleGameEvent(GameEvent::FocusLost);
+    }
+    m_windowWasFocused = windowFocused;
 
     // A new maze asked for by the debug UI is built here, at the start of a frame and
-    // outside of the fixed steps, so no step ever sees a half replaced maze.
+    // outside of the fixed steps, so no step ever sees a half replaced maze. When that
+    // happens on the result screen, the screen is left: its numbers belong to the
+    // round that is gone. Restart is the event that leads from there into the game.
     if (m_mazeSettings.regenerate) {
         m_mazeSettings.regenerate = false;
         regenerateMaze();
+        if (m_mode == GameMode::RoundEnd) {
+            handleGameEvent(GameEvent::Restart);
+        }
     }
 
     // The menu camera: its key, and what has to happen when it was just switched on.
@@ -574,7 +937,13 @@ void NightMazeApp::onRender(double alpha) {
     // wasKeyPressed is true for one frame, so the key is read once per frame.
     if (m_gameplay.restart || (roundInput && input().wasKeyPressed(RESTART_KEY))) {
         m_gameplay.restart = false;
-        beginRound();
+        if (m_mode == GameMode::RoundEnd) {
+            // The debug UI asked on the result screen: the button "Play again" of that
+            // screen does the same, a new round and the screen left.
+            handleGameEvent(GameEvent::Restart);
+        } else {
+            beginRound();
+        }
     }
 
     // Every lever at once, asked for by a button of the debug UI. Handled here like the

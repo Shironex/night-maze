@@ -19,6 +19,7 @@ Thumbs.db
 
 # Runtime files
 imgui.ini
+night-maze-settings.txt
 
 # Python virtual environment used to regenerate GLAD
 .glad-venv/

@@ -5,6 +5,7 @@
 #include "assets/AssetCache.hpp"
 #include "core/Application.hpp"
 #include "game/ColliderLines.hpp"
+#include "game/Difficulty.hpp"
 #include "game/EnvironmentMapping.hpp"
 #include "game/GameState.hpp"
 #include "game/GameplayRenderer.hpp"
@@ -23,6 +24,7 @@
 #include "game/PostProcess.hpp"
 #include "game/PuddleRenderer.hpp"
 #include "game/Round.hpp"
+#include "game/Settings.hpp"
 #include "game/ShadowMap.hpp"
 #include "game/Shadows.hpp"
 #include "game/Skybox.hpp"
@@ -39,6 +41,8 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <string>
 #include <vector>
 
 namespace game {
@@ -81,10 +85,15 @@ namespace game {
 /// the keys and the mouse of the round are ignored.
 ///
 /// The game is always on one screen (game/GameState.hpp): the main menu, a round being
-/// played, the pause menu or the result of a won round. The round runs only while it
-/// is played. The menus are documents drawn by RmlUi (ui::UiLayer) on top of the
-/// finished frame. Their buttons and the Escape key are events, and game::nextMode
-/// says which screen follows.
+/// played, the pause menu, the result of a won round or the settings. The round runs
+/// only while it is played. The menus are documents drawn by RmlUi (ui::UiLayer) on top
+/// of the finished frame. Their buttons and the Escape key are events, and
+/// game::nextMode says which screen follows.
+///
+/// A new game has a difficulty (game/Difficulty.hpp), which decides the size of the
+/// maze, its crystals, the gate and the battery, and a seed, which decides the maze.
+/// What the player sets on the settings screen (game/Settings.hpp) is used at once and
+/// kept in a small text file in the working directory.
 ///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels and the HUD on top of the frame.
@@ -96,6 +105,10 @@ public:
     /// settings the menu camera starts with and whether the main menu is skipped. Left
     /// out, the game starts in the main menu.
     explicit NightMazeApp(const StartOptions& options = {});
+
+    /// Writes the settings file when a setting changed and was not written yet: the
+    /// last chance when the window is closed while the settings screen is open.
+    ~NightMazeApp() override;
 
 protected:
     void onUpdate(double fixedDt) override;
@@ -336,25 +349,66 @@ private:
     void updateMenuCameraSwitch();
 
     /// Sends an event to the screen of the game (game::nextMode) and does what the new
-    /// screen needs: a round from the beginning, a new maze for a new game, the window
-    /// closed. Then showScreen.
+    /// screen needs: a round from the beginning, a new maze for a new game, the
+    /// settings file written, a fresh seed for the main menu, the window closed. Then
+    /// showScreen.
     void handleGameEvent(GameEvent event);
 
     /// Takes the names of the menu buttons that were clicked since the last frame
-    /// (ui::UiLayer::takeActions) and sends each one as its event.
+    /// (ui::UiLayer::takeActions). A name that changes the screen is sent as its event
+    /// (game::eventForAction), every other name is a command of the screen it is on
+    /// (handleMenuCommand).
     void handleMenuActions();
 
+    /// Does what a button asks for that does not change the screen: choose a difficulty
+    /// or roll a new seed in the main menu, switch fullscreen, step the window size or
+    /// reset the settings on the settings screen. False for a name it does not know.
+    bool handleMenuCommand(const std::string& action);
+
+    /// Takes the controls of the settings screen that were moved since the last frame
+    /// (ui::UiLayer::takeChanges), writes their values into m_settings
+    /// (game::applySetting) and uses them at once.
+    void handleControlChanges();
+
+    /// Reads the seed field of the main menu into m_newGame.seed. An empty field takes
+    /// a random seed. False when the field holds something that is not a seed: a hint
+    /// is then shown next to it, and the game is not started.
+    bool readSeedField();
+
+    /// Chooses a random seed for the next game and writes it into the seed field of
+    /// the main menu.
+    void rollSeed();
+
     /// Makes the window match m_mode: shows the document of the screen (or none while
-    /// playing) and captures the cursor for the game or gives it back to the menu.
+    /// playing), filled with what it shows, and captures the cursor for the game or
+    /// gives it back to the menu.
     void showScreen();
 
-    /// Builds the maze of a new game and starts its round. The difficulty has no
-    /// numbers yet and changes nothing.
+    /// Starts a new game: the numbers of its difficulty level go into the request for
+    /// the maze and into the rules of the round (they overwrite what the debug UI set
+    /// there), the maze is built from the seed and its round starts.
     void startNewGame(const NewGame& newGame);
 
-    /// Writes the result of the round (its time and its crystals) into the document of
-    /// the result screen.
+    /// The four functions that write what a screen shows into its document. The main
+    /// menu: the chosen difficulty and its numbers. The pause menu: the difficulty and
+    /// the seed of the round. The result screen: the time, the crystals, the
+    /// difficulty and the seed. The settings screen: where its controls stand.
+    void fillMainMenuDocument();
+    void fillPauseDocument();
     void fillRoundEndDocument();
+    void fillSettingsDocument();
+
+    /// Uses the mouse sensitivity and the field of view of m_settings: they are copied
+    /// to m_mouseSensitivity and to the camera. Called when a setting changed, not in
+    /// every frame, so the debug UI can still edit both numbers by itself.
+    void applyViewSettings();
+
+    /// Gives the window the size and the fullscreen state of m_settings.
+    void applyWindowSettings();
+
+    /// Writes m_settings into the settings file, unless they are what the file holds
+    /// already. An error is in the log, and the game goes on.
+    void saveSettings();
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed, no lever pulled, every
@@ -511,7 +565,14 @@ private:
     // The framebuffer the minimap is drawn into and the buffer of its triangles.
     MinimapRenderer m_minimapRenderer;
 
-    // The request for the next maze (edited by the debug UI).
+    // What the player has set: read from the settings file at start-up (the defaults
+    // without a file) and written back when it changed. m_savedSettings is what the
+    // file holds. Both are declared before m_mazeSettings, because the first maze has
+    // the size of the difficulty the settings name.
+    GameSettings m_settings;
+    GameSettings m_savedSettings;
+
+    // The request for the next maze (edited by the debug UI, and written by a new game).
     MazeSettings m_mazeSettings;
 
     // The heightmap of the terrain, read from its picture once at start-up, and the
@@ -633,16 +694,25 @@ private:
     // The screen the game is on. It starts with the main menu, or straight in a round
     // when the command line asked for that.
     GameMode m_mode = GameMode::MainMenu;
-    // The game the button "Play" starts: its seed is the seed of the maze in play.
+    // The game the button "Play" starts: the difficulty chosen in the main menu and
+    // the seed its seed field shows.
     NewGame m_newGame;
+    // The name of the difficulty of the game in play, for the pause menu and the
+    // result screen: the name of a level, or "Custom" for a maze the debug UI asked for.
+    std::string m_playedDifficultyName;
 
-    // The menu: RmlUi and the three documents, one per screen with a menu. Each
+    // Whether the window was the active one in the frame before: the frame in which it
+    // stops being active pauses a running round.
+    bool m_windowWasFocused = true;
+
+    // The menu: RmlUi and the four documents, one per screen with a menu. Each
     // DocumentId is ui::NO_DOCUMENT when its file could not be loaded.
     ui::UiLayer m_ui;
     ui::DocumentId m_mainMenuDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_pauseDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_roundEndDocument = ui::NO_DOCUMENT;
-    // True when all three documents are loaded. Without them a menu screen would show
+    ui::DocumentId m_settingsDocument = ui::NO_DOCUMENT;
+    // True when all four documents are loaded. Without them a menu screen would show
     // nothing and could not be left, so the game then never enters one.
     bool m_menusLoaded = false;
 };
