@@ -77,6 +77,8 @@ add_library(engine STATIC
     src/scene/LightBlock.hpp
     src/scene/LightSpace.cpp
     src/scene/LightSpace.hpp
+    src/scene/Raycast.cpp
+    src/scene/Raycast.hpp
     src/scene/Transform.cpp
     src/scene/Transform.hpp
 )
@@ -237,6 +239,7 @@ add_executable(night_maze_tests
     tests/MazeWorldTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
+    tests/RaycastTests.cpp
     tests/RoundTests.cpp
     tests/ShaderSourceTests.cpp
     tests/ShadowTests.cpp
