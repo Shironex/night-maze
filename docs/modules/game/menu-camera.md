@@ -131,7 +131,7 @@ Ziarno czyta `parseSeed` cyfra po cyfrze w 64 bitach i odrzuca wszystko, co nie 
 
 ### 2.10 Co znaczy "runda stoi" w pętli klatki
 
-Gra ma dwie pętle w jednej: **stały krok** (`onUpdate`, 60 razy na sekundę, zero lub więcej razy na klatkę) liczy symulację, a **klatka** (`onRender`, raz na narysowanie) rysuje i czyta klawisze ([`../core/main-loop.md`](../core/main-loop.md)). W trybie menu:
+Gra ma dwie pętle w jednej: **stały krok** (`onUpdate`, 120 razy na sekundę, bo `FIXED_DT` to 1/120 s, zero lub więcej razy na klatkę) liczy symulację, a **klatka** (`onRender`, raz na narysowanie) rysuje i czyta klawisze ([`../core/main-loop.md`](../core/main-loop.md)). W trybie menu:
 
 - `onUpdate` kończy się **wcześnie**. Po zapamiętaniu poprzedniej pozycji gracza dodaje stały krok do `m_round.animationSeconds` i wraca. Nie woła `m_player.update` ani `updateRound`: gracz stoi, bateria nie spada, kryształy nie są zbierane, `elapsedSeconds` nie rośnie, a brama i ściany po dźwigniach **zatrzymują się w połowie opadania**, jeśli opadały w chwili włączenia trybu (postęp opadania liczy `updateRound`), i dokończą po wyłączeniu. Odkrywanie minimapy też stoi.
 - Zegar animacji idzie dalej, więc kryształy się kołyszą, a ich światła pulsują (`crystalBobPosition` i `crystalPulse` biorą `animationSeconds`). Ta jedna linia jest powtórzona w `onUpdate`, bo `updateRound`, która normalnie ją liczy, jest pominięta.

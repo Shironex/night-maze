@@ -43,7 +43,7 @@ Labirynt dostaje jeden kryształ na 8 komórek (`CELLS_PER_CRYSTAL`), zaokrąglo
 
 - `crystalCountFor` liczy na liczbach całkowitych: dodaje połowę dzielnika przed dzieleniem.
 - `placeCrystals` daje mniej kryształów, gdy wolnych komórek jest mniej: labirynt z jedną albo dwiema komórkami nie dostaje żadnego.
-- `requiredCrystalCount` odejmuje przed zaokrągleniem w górę mały zapas (`ROUNDING_GUARD`), bo `0,7F * 10` w typie `float` wychodzi minimalnie powyżej 7 i dałoby 8.
+- `requiredCrystalCount` odejmuje przed zaokrągleniem w górę mały zapas (`ROUNDING_GUARD`), bo iloczyn w typie `float` bywa minimalnie większy od liczby całkowitej, którą powinien dać: `0,3F * 50` wychodzi 15,000001 i bez zapasu dałoby 16 zamiast 15 (przykład z komentarza w `Round.cpp`). Samo `0,7F * 10` wychodzi dokładnie 7.
 - Wymagana liczba jest liczona w każdym kroku od nowa, więc suwak działa w trakcie rundy. Brama raz otwarta zostaje otwarta.
 - Labirynt bez kryształów zaczyna z otwartą bramą.
 - Światło wisi nad każdym niezebranym kryształem. Zebrany traci je od razu.
