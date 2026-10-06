@@ -123,14 +123,14 @@ z gwiazdami i księżycem (skybox), a wokół labiryntu wzgórza. Od czwartej cz
 słupki, brama, kryształy i wzgórza rzucają cień w świetle księżyca. Latarka i światła
 kryształów cieni nie rzucają: świecą przez ściany. U góry okna,
 na środku, jest pasek HUD:
-`Crystals`, `0 / 10`, `(of 13)`, czas rundy i pasek baterii. Paneli jest dwanaście
-(jedenasty, "Framebuffers", i dwunasty, "Shadows", stoją zwinięte w trzecim i czwartym
-rzędzie pasków tytułu): "Renderer"
+`Crystals`, `0 / 10`, `(of 13)`, czas rundy i pasek baterii. Paneli jest trzynaście
+(jedenasty, "Framebuffers", dwunasty, "Shadows", i trzynasty, "Environment", stoją zwinięte
+w trzecim, czwartym i piątym rzędzie pasków tytułu): "Renderer"
 nad "Lights" w
 lewej kolumnie, "Maze" nad "Assets" w prawej, "Collision" i "Shaders" na dole między
 kolumnami, a "Camera" i "Gameplay" u góry, między kolumnami, zwinięte do pasków tytułu,
 z drugim rzędem zwiniętych pasków pod nimi: "Terrain" i "Grass". Pasek HUD stoi pod
-wszystkimi czterema rzędami.
+wszystkimi pięcioma rzędami (przy schowanych panelach stoi przy górnej krawędzi okna).
 Kostki z M1, która do M4 wisiała nad komórką w rogu
 przeciwległym do startu, już nie ma, tak samo jak kostek oznaczających światła w ślepych
 zaułkach: M5 je usunął. Po dwóch liniach z `core::Window` pamięć podręczna assetów wypisuje
@@ -447,8 +447,8 @@ pomiarów na Windowsie. Opis kodu: [`../modules/game/player.md`](../modules/game
 - [ ] **Retina a układ paneli**: panel Renderer pokazuje `Framebuffer` dwa razy większy niż
       `Window` (dla okna 1280 x 720 oczekiwane 2560 x 1440). Miejsca startowe paneli
       (`src/debug/PanelLayout.hpp`) są w jednostkach okna i ułożone dla 1280 x 720, więc po
-      usunięciu `imgui.ini` dwanaście paneli powinno stać tak samo jak na Windowsie i nie
-      zasłaniać się (panele Camera i Gameplay, pod nimi Terrain i Grass, a pod nimi Framebuffers, zwinięte do pasków tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
+      usunięciu `imgui.ini` trzynaście paneli powinno stać tak samo jak na Windowsie i nie
+      zasłaniać się (panele Camera i Gameplay, pod nimi Terrain i Grass, a pod nimi Framebuffers, Shadows i Environment, zwinięte do pasków tytułu). Zapisać, czy plan w panelu Maze i podglądy tekstur w panelu Assets mają
       poprawny rozmiar i ostrość
 - [ ] **budowanie motywu pod clang**: `src/debug/Theme.cpp` i `src/debug/PanelLayout.cpp`
       kompilują się z `-Wall -Wextra -Wpedantic` bez ostrzeżeń. Na Windowsie są zbudowane w
@@ -518,10 +518,10 @@ Camera trzeba najpierw rozwinąć strzałką w pasku tytułu.
       uruchomić `./build/debug/night_maze`
 - [ ] start: widok z wnętrza labiryntu, tekstury stoją prosto i nie są odbite lustrzanie,
       w terminalu nie ma linii `[error]`
-- [ ] okno 1280 x 720: dwanaście paneli nie zasłania się nawzajem (Renderer nad Lights po
+- [ ] okno 1280 x 720: trzynaście paneli nie zasłania się nawzajem (Renderer nad Lights po
       lewej, Maze nad Assets po prawej, Collision i Shaders na dole między kolumnami,
       Camera i Gameplay zwinięte u góry, Terrain i Grass zwinięte w drugim rzędzie pod
-      nimi, Framebuffers w trzecim i Shadows w czwartym). Zapisać, czy panele Renderer,
+      nimi, Framebuffers w trzecim, Shadows w czwartym i Environment w piątym). Zapisać, czy panele Renderer,
       Lights, Maze, Collision i
       Shaders pokazują całą zawartość bez przewijania: nazwa karty Apple w panelu Renderer
       ma inną długość niż na Windowsie, a wysokości paneli są dobrane do zawartości
@@ -587,8 +587,8 @@ shaderach, panel Lights, układ siedmiu paneli) powstała na Windowsie 2026-10-0
 zbudowana i częściowo sprawdzona ([`build-windows.md`](build-windows.md), sekcja 13).
 Lista powstała dla stanu M4, w którym światła punktowe wisiały w ślepych zaułkach i były
 oznaczone kostkami. M5 przeniósł je nad kryształy i usunął kostki, więc punkty poniżej
-są przepisane na dzisiejszy program: paneli jest dwanaście, programów shaderów
-jedenaście, źródłem światła punktowego jest kryształ, podłogą jest teren (M6), scena jest
+są przepisane na dzisiejszy program: paneli jest trzynaście, programów shaderów
+czternaście, źródłem światła punktowego jest kryształ, podłogą jest teren (M6), scena jest
 rysowana do bufora HDR z nowymi wartościami świateł (M7), a księżyc rzuca cienie (czwarta
 część M7, `Moon intensity` 0,2).
 **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest

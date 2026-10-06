@@ -586,9 +586,11 @@ datą swojego pomiaru: jego postać się nie zmienia, inny może być tylko czas
 
 W pliku [`Makefile`](../../Makefile) są do tego skróty: `make test` (build Debug i testy),
 `make test-release`, a `make check` uruchamia oba razem z resztą kontroli
-([`../guides/project-structure.md`](../guides/project-structure.md), sekcja 3.12). Skrótów
-nikt jeszcze nie uruchomił: na PC nie ma programu `make`, a na Macu ten kod nie był jeszcze
-budowany.
+([`../guides/project-structure.md`](../guides/project-structure.md), sekcja 3.12). Na
+Windowsie skróty działają: jest tam GNU Make 4.4.1 (scoop), `make test` przeszedł naprawdę,
+a bramka `make check` jest zgłaszana jako zielona w każdej części
+([`../guides/build-windows.md`](../guides/build-windows.md), sekcja 3). Na Macu skrótów nikt
+jeszcze nie uruchomił, bo ten kod nie był tam jeszcze budowany.
 
 ### Bezpośrednio
 

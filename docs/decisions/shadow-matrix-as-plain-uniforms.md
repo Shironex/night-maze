@@ -13,6 +13,8 @@ Ograniczenie języka: sampler jest w GLSL typem nieprzezroczystym i **nie może 
 
 Wszystkie siedem danych jednej mapy to zwykłe uniformy, zadeklarowane obok siebie w `common/shadows.glsl` i ustawiane jedną funkcją, `setShadowUniforms`, dla każdego programu, który ten plik włącza (`lit`, `gouraud`, `grass`). Blok `LightBlock` nie zmienia się.
 
+**Dopisek z 2026-10-06:** decyzja się nie zmieniła, ale programów, które włączają `common/shadows.glsl`, jest dziś cztery: `lit`, `gouraud`, `grass` i `reflect` (kryształy przy włączonym environment mappingu). `NightMazeApp::setShadowUniformsOf` jest wołane w przebiegu `lit` albo `gouraud` (jeden z nich na klatkę, zależnie od trybu oświetlenia), dla `reflect` i dla `grass`, więc w jednej klatce dostają je trzy programy. Wzmianki o trzech programach w dalszej części notatki (tabela, uzasadnienie, dopisek w sekcji 5 sprzed M8) opisują stan z ich dat.
+
 ## 3. Rozważane możliwości
 
 | Możliwość | Zalety | Wady |

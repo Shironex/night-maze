@@ -43,7 +43,7 @@ Architektura projektu (PRD, sekcja 6) ma warstwy z zależnościami w jedną stro
 
 ```mermaid
 flowchart TD
-    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, DebugContext, Hud, dwanaście paneli"]
+    Main["main.cpp<br/>DebugNightMazeApp, main"] --> Debug["debug/<br/>DebugUI, DebugContext, Hud, trzynaście paneli"]
     Main --> Game["game/<br/>NightMazeApp, Player, MazeWorld, Round, MazeRenderer, GameplayRenderer, ColliderLines, Lighting, LightRig"]
     Debug --> Core["core/<br/>Application, Window, Input, Time, Log, GL_CHECK, Paths"]
     Debug --> Game

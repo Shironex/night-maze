@@ -33,7 +33,7 @@ Labirynt dostaje jeden kryształ na 8 komórek (`CELLS_PER_CRYSTAL`), zaokrąglo
 
 **Skąd 8 komórek.** Labirynt startowy 10 na 10 dostaje 13 kryształów: `(100 + 4) / 8`. Miał 11 ślepych zaułków poza startem, jeden z nich jest dziś wyjściem, więc kryształy wypełniają zaułki i zostają jeszcze 3 na inne komórki (to wyliczenie, nie wynik przypięty testem). Labirynt wzorcowy 4 na 4 dostaje 2.
 
-**Skąd limit 16.** To nie liczba z gry, tylko z shadera: `MAX_POINT_LIGHTS` w `scene/Light.hpp` i tablica tej samej długości w `common/lighting.glsl`. Skoro kryształów nigdy nie jest więcej niż miejsc w tablicy, `buildLightSet` nigdy żadnego nie pomija. Limit jest osiągany od 124 komórek, czyli od labiryntu 12 na 12.
+**Skąd limit 16.** To nie liczba z gry, tylko z shadera: `MAX_POINT_LIGHTS` w `scene/Light.hpp` i tablica tej samej długości w `common/lighting.glsl`. Skoro kryształów nigdy nie jest więcej niż miejsc w tablicy, `buildLightSet` nigdy żadnego nie pomija. Limit jest osiągany od 124 komórek (wzór `(komórki + 4) / 8` dzieli całkowitoliczbowo i po obcięciu do 16 daje 16 dla 124 i więcej, a dla 123 jeszcze 15), więc liczy się liczba komórek, nie wymiar: 11 na 11 (121 komórek) ma jeszcze 15 kryształów, a 12 na 11 (132) i 12 na 12 (144) już 16.
 
 **Skąd 70 procent, w górę i co najmniej 1.** Zapas ma być wyraźny, ale większość kryształów trzeba znaleźć. Zaokrąglenie w górę sprawia, że "70 procent" nigdy nie znaczy mniej niż 70 procent. Dolna granica 1 pilnuje, żeby brama nigdy nie była otwarta bez żadnego kryształu, także gdy suwak stoi na minimum. Dla 13 kryształów wychodzi 10, dla 16 wychodzi 12, dla 2 wychodzą 2.
 

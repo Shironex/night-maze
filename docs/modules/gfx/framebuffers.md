@@ -601,7 +601,7 @@ void Framebuffer::create() {
 | `glBindFramebuffer(GL_FRAMEBUFFER, m_id)` | podpinanie i sprawdzanie działają na związanym framebufferze, tak jak `glTexImage2D` na związanej teksturze |
 | `createAttachmentTexture(..., GL_LINEAR)` | tekstura koloru z filtrem liniowym |
 | `glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_colorTexture, BASE_LEVEL)` | pięć argumentów: który framebuffer (związany), który punkt, jaki rodzaj tekstury, która tekstura, który jej poziom. Framebuffer rysuje do **jednego poziomu** tekstury |
-| gałąź `else` | framebuffer bez koloru (sekcja 3.3). Niewykonana dotąd ani razu |
+| gałąź `else` | framebuffer bez koloru (sekcja 3.3). Do trzeciej części M7 niewykonana ani razu, od czwartej wykonuje ją `game::ShadowMap` (sekcja 5.15) |
 
 ```cpp
     if (m_spec.depth != DepthFormat::None) {

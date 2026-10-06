@@ -330,14 +330,15 @@ z kodu i ze zgłoszonych pomiarów (sekcje 15.1, 16.1, 17.1, 18.1 i 20.1).
   po dodaniu oświetlenia (2026-10-05, stan M4). Dla M5 tego wyniku nie zapisano (punkt
   otwarty w sekcji 14.2). Dokładnej liczby linii `[info]` przy tych pomiarach
   nie zapisałem.
-- Widocznych jest dwanaście paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
+- Widocznych jest trzynaście paneli w ciemnym, granatowym motywie: Renderer nad Lights w lewej
   kolumnie, Maze nad Assets w prawej, Collision i Shaders na dole między kolumnami, a
   Camera i Gameplay u góry, między kolumnami, obok siebie, zwinięte do samych pasków tytułu
   (panel rozwija kliknięcie strzałki w jego pasku). Tuż pod nimi jest drugi rząd pasków
   tytułu: Terrain pod Camera i Grass pod Gameplay, też zwinięte (od drugiej części M6).
   Pod nimi jest trzeci rząd: jeden szeroki pasek Framebuffers, też zwinięty (od pierwszej
   części M7), a pod nim czwarty: pasek Shadows tej samej szerokości, też zwinięty (od
-  czwartej części M7). Zwiniętych paneli jest więc sześć. Pasek HUD stoi pod tymi czterema
+  czwartej części M7), a pod nim piąty: pasek Environment tej samej szerokości, też zwinięty (od
+  pierwszej części M8). Zwiniętych paneli jest więc siedem. Pasek HUD stoi pod tymi pięcioma
   rzędami
   pasków tytułu i nie jest panelem: nie znika razem z panelami i nie reaguje na mysz.
   Każdy panel ma w kodzie miejsce i rozmiar startowy, ułożone
@@ -702,16 +703,17 @@ sekund po zmianie układu, a nie tylko przy zamykaniu. Przy wcześniejszych pomi
 był zabijany wcześniej i plik nie powstawał. Wiersze o dwukliku i o Visual Studio pozostają
 przewidywaniem.
 
-Bez tego pliku dwanaście paneli otwiera się w układzie zapisanym w kodzie (stałe
+Bez tego pliku trzynaście paneli otwiera się w układzie zapisanym w kodzie (stałe
 `..._PLACEMENT` w `src/debug/PanelLayout.hpp`, funkcja `placePanelOnFirstUse`, warunek
 `ImGuiCond_FirstUseEver`). Ten sam warunek obejmuje trzy rzeczy: pozycję, rozmiar i to, czy
 panel startuje zwinięty do paska tytułu (`ImGui::SetNextWindowCollapsed`). Zwinięte startuje
-sześć paneli: Camera i Gameplay (pole `collapsed = true` w stałych `CAMERA_PLACEMENT` i
+siedem paneli: Camera i Gameplay (pole `collapsed = true` w stałych `CAMERA_PLACEMENT` i
 `GAMEPLAY_PLACEMENT`), a od drugiej części M6 także Terrain i Grass w drugim rzędzie pod
 nimi (`TERRAIN_PLACEMENT` i `GRASS_PLACEMENT`, z polem `foldedRowsBefore = 1`), od
 pierwszej części M7 Framebuffers w trzecim rzędzie (`FRAMEBUFFERS_PLACEMENT`,
 `foldedRowsBefore = 2`), a od czwartej części M7 Shadows w czwartym (`SHADOWS_PLACEMENT`,
-`foldedRowsBefore = 3`). Gdy plik istnieje
+`foldedRowsBefore = 3`), a od pierwszej części M8 Environment w piątym
+(`ENVIRONMENT_PLACEMENT`, `foldedRowsBefore = 4`). Gdy plik istnieje
 i ma wpis panelu, wygrywa wpis: także stan zwinięcia jest potem brany z pliku. Plik
 `imgui.ini` zapisany przez program sprzed M4 ma wpisy sześciu paneli w starym układzie
 (Camera pod Rendererem) i nie ma wpisu panelu Lights. Z takim plikiem sześć paneli zostaje
@@ -924,7 +926,7 @@ dokumentacji narzędzi (przewidywane).
 | Ostrzeżenie `Manually-specified variables were not used by the project: CMAKE_BUILD_TYPE` przy konfiguracji | generator Visual Studio ignoruje `CMAKE_BUILD_TYPE` | nic, to oczekiwane (sekcja 3) | zmierzone |
 | `LINK : fatal error LNK1168` przy `cmake --build --preset debug` | program `night_maze.exe` działa, a Windows blokuje jego plik | zamknij program i zbuduj ponownie. Do odświeżenia samych shaderów użyj `cmake --build --preset debug --target copy_assets` (sekcja 7) | zmierzone |
 | Panele leżą jeden na drugim albo w dziwnych miejscach, na przykład panel Lights zasłania panel Camera | w katalogu roboczym jest `imgui.ini` zapisany przez starszą wersję programu albo przy innym rozmiarze okna: jego wpisy wygrywają z układem startowym z kodu | usuń `imgui.ini` z katalogu, z którego startuje program (sekcja 7), albo rozsuń panele myszą za paski tytułu | przewidywane (w stanie M1, bez pozycji startowych w kodzie, trzy panele leżały jeden na drugim: zmierzone) |
-| Nie widać panelu Camera, Gameplay, Terrain, Grass, Framebuffers albo Shadows, są tylko wąskie paski z tymi napisami u góry okna, w czterech rzędach | te sześć paneli startuje zwinięte do paska tytułu: w oknie 1280 x 720 nie ma miejsca na dwanaście otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
+| Nie widać panelu Camera, Gameplay, Terrain, Grass, Framebuffers, Shadows albo Environment, są tylko wąskie paski z tymi napisami u góry okna, w pięciu rzędach | te siedem paneli startuje zwinięte do paska tytułu: w oknie 1280 x 720 nie ma miejsca na trzynaście otwartych paneli | kliknij strzałkę w pasku tytułu panelu | przewidywane |
 | Latarka nie daje się włączyć klawiszem F ani polem `Flashlight on (key F)` | bateria jest pusta: na pasku HUD jest `0%` i napis `Battery empty. Find a crystal.`. To reguła gry, nie błąd | zbierz kryształ (daje 25% baterii), potem naciśnij F. Do testów: suwak `Battery` w panelu Gameplay albo klawisz R (nowa runda) | przewidywane (z kodu `game::updateRound`, sekcja 14.2) |
 | Podłoże albo ściany są białe, w konsoli linia `[error]` o pliku obrazu | obok `night_maze.exe` brakuje pliku z `assets\textures\` albo nie da się go zdekodować. Część modelu (albo teren, gdy chodzi o `ground.png`) dostaje wtedy białą teksturę zastępczą | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (pamięć podręczna nie ponawia nieudanego wczytania) | zmierzone dla modelu (zrzut ekranu z celowo usuniętą teksturą ówczesnej płytki podłogi, sekcja 12), dla terenu przewidywane z kodu `game::TerrainRenderer` |
 | Podłoże jest zupełnie płaskie, a w konsoli jest linia `[error]` o pliku `heightmap.png` | mapy wysokości nie udało się wczytać. Gra używa wtedy płaskiej mapy (wszystkie wysokości 0) i działa dalej | `cmake --build --preset debug --target copy_assets`, potem ponowne uruchomienie (mapa jest czytana raz, przy starcie). Płaskie podłoże bez linii `[error]` to suwak `Height scale` w panelu Terrain ustawiony na 0 | przewidywane (z kodu `loadHeightmap` w `src/game/NightMazeApp.cpp`) |
@@ -5195,7 +5197,7 @@ macierze modeli, podświetlenie), `src/game/InteractableRenderer.*` (rysowanie d
 `note.obj`), tekstury `lever_iron`, `lever_brass` i `note_paper` (każda z mapą normalnych) oraz
 skrypty `tools/blender/build_lever.py` i `build_note.py`. Zmieniły się: `Input.*` (odczyt
 pozycji kursora), `MazeWorld.*`, `Round.*`, `Minimap.*`, `MazeRenderer.*`, `ColliderLines.*`,
-`NightMazeApp.*`, `DebugContext.hpp` (47 pól, doszły `pick` i `pickDebug`), `DebugUI.cpp`,
+`NightMazeApp.*`, `DebugContext.hpp` (47 pól w tej części, doszły `pick` i `pickDebug`; od M9, części 1 jest ich 49), `DebugUI.cpp`,
 `Hud.*`, `Theme.hpp`, panele Collision, Gameplay i Maze, `main.cpp`, `CMakeLists.txt`,
 `make_all.py` i `make_textures.py`. Liczba programów shaderów (14) i paneli (13) się nie zmieniła.
 Opis kodu: [`../modules/scene/picking.md`](../modules/scene/picking.md) i
