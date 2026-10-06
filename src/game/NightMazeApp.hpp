@@ -17,6 +17,7 @@
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/MenuBackgroundRenderer.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
@@ -90,6 +91,11 @@ namespace game {
 /// of the finished frame. Their buttons and the Escape key are events, and
 /// game::nextMode says which screen follows.
 ///
+/// Behind the main menu plays a recorded video loop of the game
+/// (game::MenuBackgroundRenderer), or a still picture when the video cannot be played.
+/// Such a background covers the whole window, so in those frames the scene is not drawn
+/// at all (game::drawsScene): no shadow maps, no HDR picture, no bloom.
+///
 /// A new game has a difficulty (game/Difficulty.hpp), which decides the size of the
 /// maze, its crystals, the gate and the battery, and a seed, which decides the maze.
 /// What the player sets on the settings screen (game/Settings.hpp) is used at once and
@@ -102,8 +108,8 @@ public:
     /// Creates the window (through core::Application), loads the shaders and the models,
     /// generates the first maze and starts the first round in it. options comes from
     /// the command line (game::parseStartOptions): the seed of that first maze, the
-    /// settings the menu camera starts with and whether the main menu is skipped. Left
-    /// out, the game starts in the main menu.
+    /// settings the menu camera starts with, whether the main menu is skipped and what
+    /// is behind it. Left out, the game starts in the main menu with its video.
     explicit NightMazeApp(const StartOptions& options = {});
 
     /// Writes the settings file when a setting changed and was not written yet: the
@@ -564,6 +570,9 @@ private:
     ShadowMap m_flashlightShadowMap;
     // The framebuffer the minimap is drawn into and the buffer of its triangles.
     MinimapRenderer m_minimapRenderer;
+    // What is behind the main menu: the video loop, its still picture, or nothing of
+    // its own when the live scene is shown there.
+    MenuBackgroundRenderer m_menuBackground;
 
     // What the player has set: read from the settings file at start-up (the defaults
     // without a file) and written back when it changed. m_savedSettings is what the

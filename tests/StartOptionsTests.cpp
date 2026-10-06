@@ -25,8 +25,25 @@ TEST_CASE("without switches the game starts as always") {
     CHECK_FALSE(result.options.menuCamera.enabled);
     CHECK(result.options.menuCamera.shot == game::MenuShot::CorridorWalk);
     CHECK(result.options.menuCamera.timeOffset == 0.0F);
-    // The game then opens with the main menu.
+    // The game then opens with the main menu, and the menu has its video behind it.
     CHECK_FALSE(result.options.play);
+    CHECK(result.options.menuBackground == game::MenuBackground::Video);
+}
+
+TEST_CASE("the background of the main menu can be named, and only by its three names") {
+    CHECK(parse({"--menu-background", "scene"}).options.menuBackground ==
+          game::MenuBackground::LiveScene);
+    CHECK(parse({"--menu-background", "still"}).options.menuBackground ==
+          game::MenuBackground::Still);
+    const game::StartOptionsResult video = parse({"--menu-background", "video"});
+    CHECK(video.error.empty());
+    CHECK(video.options.menuBackground == game::MenuBackground::Video);
+    // It changes nothing else: the game still opens with the main menu.
+    CHECK_FALSE(video.options.play);
+    CHECK_FALSE(video.options.menuCamera.enabled);
+
+    CHECK_FALSE(parse({"--menu-background", "live"}).error.empty());
+    CHECK_FALSE(parse({"--menu-background"}).error.empty());
 }
 
 TEST_CASE("the play switch skips the main menu and changes nothing else") {
@@ -96,6 +113,7 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--menu-shot") != std::string::npos);
     CHECK(usage.find("--menu-time") != std::string::npos);
     CHECK(usage.find("--play") != std::string::npos);
+    CHECK(usage.find("--menu-background") != std::string::npos);
 }
 
 TEST_CASE("a seed on the command line is remembered as given, also the default one") {

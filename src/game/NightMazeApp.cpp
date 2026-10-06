@@ -289,6 +289,9 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_interactableRenderer(m_assets),
       m_terrainRenderer(m_assets),
       m_puddleRenderer(m_assets),
+      // The background of the main menu: the video unless the command line asked for
+      // something else. Opening the video waits for its first frame.
+      m_menuBackground(options.menuBackground),
       // The settings file is read before the first maze is built: the maze has the size
       // of the difficulty that was chosen last.
       m_settings(loadSettings()),
@@ -921,8 +924,9 @@ void NightMazeApp::onRender(double alpha) {
     // Two questions the rest of the frame asks. roundInput: do the keys and the mouse
     // of the round work? Only while a round is played and the menu camera is off, so
     // under a menu no key of the round does anything. menuCamera: is the picture taken
-    // by the menu camera? While it is switched on, and in the main menu, where it
-    // stands in for the background the menu will get later.
+    // by the menu camera? While it is switched on, and in the main menu when the live
+    // scene is its background (--menu-background scene, or neither the video nor the
+    // still could be loaded).
     const bool roundInput = updatesRound(m_mode) && !m_menuCamera.enabled;
     const bool menuCamera = m_menuCamera.enabled || usesMenuCamera(m_mode);
     // The settings the menu camera uses in this frame. The main menu always shows the
@@ -1020,6 +1024,27 @@ void NightMazeApp::onRender(double alpha) {
     // a matrix with NaN in it in a Release build. So the whole frame is skipped. The
     // scene framebuffer keeps its last size and is used again when the window is back.
     if (framebuffer.width == 0 || framebuffer.height == 0) {
+        return;
+    }
+
+    // The main menu (and the settings opened from it) with its video or its still
+    // picture: that background covers the whole window, so nothing of the scene could
+    // be seen and none of it is drawn (game::drawsScene). The frame is the picture and
+    // the menu on top, and it ends here: no shadow maps, no scene, no bloom, no
+    // composite pass, no minimap. The video moves on by the real time of the frame, and
+    // only here, so it stands still while a round is played. update comes before the
+    // question: a video whose decoder gave up is replaced by the still or by the live
+    // scene there, and the live scene is drawn below like any other frame.
+    if (usesMenuCamera(m_mode)) {
+        m_menuBackground.update(time().deltaSeconds());
+    }
+    if (!drawsScene(m_mode, coversWindow(m_menuBackground.background()))) {
+        // Nothing is picked under a menu, as in the frames that draw the scene.
+        m_pick = pickNothing(m_round);
+        // The picture goes straight into the window, like the composite pass does.
+        gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
+        m_menuBackground.draw(framebuffer);
+        m_ui.draw(framebuffer);
         return;
     }
 

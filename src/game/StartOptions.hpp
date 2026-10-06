@@ -3,6 +3,7 @@
 #pragma once
 
 #include "game/MazeWorld.hpp"
+#include "game/MenuBackground.hpp"
 #include "game/MenuCamera.hpp"
 
 #include <cstdint>
@@ -33,6 +34,12 @@ struct StartOptions {
     /// True: skip the main menu and start straight in a round. For tests, for scripts
     /// and for recording. The menu camera (--menu-camera) skips the main menu too.
     bool play = false;
+
+    /// What the main menu shows behind itself (game::chooseMenuBackground): the
+    /// recorded video unless --menu-background asks for the still picture or for the
+    /// live scene. The live scene is what the video is recorded from, and the way to
+    /// compare the two.
+    MenuBackground menuBackground = MenuBackground::Video;
 };
 
 /// What parseStartOptions found.
@@ -62,6 +69,7 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --menu-shot <name>     the shot of the menu camera: walk or glide
 ///     --menu-time <seconds>  start the shot that many seconds into its loop
 ///     --play                 skip the main menu and start in a round
+///     --menu-background <name>  behind the main menu: video, still or scene
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start.

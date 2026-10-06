@@ -18,6 +18,7 @@ constexpr std::string_view MENU_CAMERA_SWITCH = "--menu-camera";
 constexpr std::string_view MENU_SHOT_SWITCH = "--menu-shot";
 constexpr std::string_view MENU_TIME_SWITCH = "--menu-time";
 constexpr std::string_view PLAY_SWITCH = "--play";
+constexpr std::string_view MENU_BACKGROUND_SWITCH = "--menu-background";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -67,7 +68,7 @@ bool parseSeed(std::string_view text, std::uint32_t& seed) {
 
 const char* const START_OPTIONS_USAGE =
     "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
-    "--menu-time <seconds>";
+    "--menu-time <seconds>, --menu-background <video|still|scene>";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -87,8 +88,8 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         }
 
         // Every other switch takes the next word as its value.
-        const bool known =
-            name == SEED_SWITCH || name == MENU_SHOT_SWITCH || name == MENU_TIME_SWITCH;
+        const bool known = name == SEED_SWITCH || name == MENU_SHOT_SWITCH ||
+                           name == MENU_TIME_SWITCH || name == MENU_BACKGROUND_SWITCH;
         if (!known) {
             result.error = "Unknown switch: " + std::string(name);
             return result;
@@ -106,6 +107,8 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
             options.seedGiven = understood;
         } else if (name == MENU_TIME_SWITCH) {
             understood = parseSeconds(value, options.menuCamera.timeOffset);
+        } else if (name == MENU_BACKGROUND_SWITCH) {
+            understood = parseMenuBackground(value, options.menuBackground);
         } else if (std::string_view(value) == WALK_SHOT_NAME) {
             options.menuCamera.shot = MenuShot::CorridorWalk;
             understood = true;
