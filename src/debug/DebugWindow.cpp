@@ -7,6 +7,7 @@
 #include "debug/Hud.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
+#include "debug/categories/DiagnosticsCategory.hpp"
 #include "debug/categories/GameplayCategory.hpp"
 #include "debug/categories/LightCategory.hpp"
 #include "debug/categories/PlayerCategory.hpp"
@@ -173,15 +174,6 @@ void drawWordmark(float centerX, float top, float bottom, float scale) {
         }
         y += wordGap;
     }
-}
-
-// The page of a category that has not moved into the window yet: its controls are
-// still in the old panels.
-void drawNotMovedYet(Page& page) {
-    page.setPlace("");
-    page.beginCard("Not here yet");
-    page.note("The controls of this category are still in the old panels.");
-    page.endCard();
 }
 
 } // namespace
@@ -372,7 +364,8 @@ void DebugWindow::drawCategory(Category category, Page& page, const DebugContext
         drawGameplayCategory(page, context);
         break;
     case Category::Diagnostics:
-        drawNotMovedYet(page);
+        drawDiagnosticsCategory(page, context, m_rawTextureSampler,
+                                static_cast<DiagnosticsTab>(tabOf(category)));
         break;
     }
 }

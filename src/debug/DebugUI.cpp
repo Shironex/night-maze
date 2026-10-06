@@ -6,25 +6,12 @@
 #include "debug/DebugContext.hpp"
 #include "debug/Hud.hpp"
 #include "debug/Theme.hpp"
-#include "debug/panels/AssetsPanel.hpp"
-#include "debug/panels/CollisionPanel.hpp"
-#include "debug/panels/RendererPanel.hpp"
-#include "debug/panels/ShadersPanel.hpp"
-#include "game/Interaction.hpp"
-#include "game/Lighting.hpp"
-#include "game/MazeWorld.hpp"
-#include "game/MenuCamera.hpp"
-#include "game/Minimap.hpp"
-#include "game/MinimapRenderer.hpp"
 #include "game/PostProcess.hpp"
 #include "game/Shadows.hpp"
-#include "game/Skybox.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
-#include <array>
 
 namespace debug {
 
@@ -102,28 +89,8 @@ void DebugUI::draw(const DebugContext& context) {
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
                                      ImGuiDockNodeFlags_PassthruCentralNode);
 
-        // Each panel gets exactly the members it needs, so its signature still shows
-        // what it reads and what it edits.
-        drawRendererPanel(context.time, context.window);
-
-        // The Shaders panel takes a list, so that a new program is one more entry here
-        // and no change in the panel. The array holds pointers, because a reference
-        // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 14;
-        const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader,       &context.colorShader,       &context.litShader,
-            &context.gouraudShader,        &context.skyboxShader,      &context.grassShader,
-            &context.compositeShader,      &context.previewShader,     &context.brightPassShader,
-            &context.blurShader,           &context.shadowDepthShader, &context.minimapShader,
-            &context.minimapOverlayShader, &context.reflectShader};
-        drawShadersPanel(shaders);
-
-        drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders,
-                           context.pick, context.pickDebug);
-        drawAssetsPanel(context.assets, m_rawTextureSampler);
-
-        // The debug window, which takes the place of the panels above one category at
-        // a time.
+        // The debug window: every debug control and every readout, in seven
+        // categories.
         m_window.draw(context);
     }
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "debug/Categories.hpp"
+#include "debug/RawTextureSampler.hpp"
 
 #include <array>
 #include <cstddef>
@@ -20,8 +21,9 @@ class Page;
 /// picture stays free. It cannot be moved, resized or docked: its place and its size
 /// are computed from the size of the game window in every frame, so it always fits.
 ///
-/// The object only keeps what the user chose (the category, the tab of every
-/// category). Everything it shows comes from the DebugContext of the frame.
+/// The object keeps what the user chose (the category, the tab of every category) and
+/// one OpenGL object, the sampler of its texture previews. Everything it shows comes
+/// from the DebugContext of the frame.
 class DebugWindow {
 public:
     /// Builds the window and the status strip for this frame. Call it inside an ImGui
@@ -45,6 +47,10 @@ private:
     // The tab that is chosen in the given category.
     int& tabOf(Category category) { return m_tabs[static_cast<std::size_t>(category)]; }
     int tabOf(Category category) const { return m_tabs[static_cast<std::size_t>(category)]; }
+
+    // The sampler the Diagnostics category shows sRGB textures with. It owns an OpenGL
+    // object, so this window has to be destroyed while the OpenGL context exists.
+    RawTextureSampler m_rawTextureSampler;
 
     Category m_category = Category::Render;
     // The chosen tab of every category, so a category opens on the tab it was left on.

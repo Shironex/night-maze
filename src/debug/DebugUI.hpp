@@ -3,7 +3,6 @@
 #pragma once
 
 #include "debug/DebugWindow.hpp"
-#include "debug/RawTextureSampler.hpp"
 
 #include <vector>
 
@@ -66,16 +65,15 @@ private:
     // The debug UI starts hidden: the game opens with its main menu, and the window
     // would cover a part of it. The panel key (main.cpp) shows it.
     bool m_visible = false;
-    // The window with the seven categories. It only keeps what the user chose in it.
+    // The window with the seven categories. It keeps what the user chose in it and owns
+    // one OpenGL object (the sampler of its texture previews). It is created with this
+    // class, so after the OpenGL context exists, and it is destroyed with the members,
+    // while the window of the game is still there (see main.cpp).
     DebugWindow m_window;
     // The bytes of the panel font file. ImGui only keeps a pointer to them, so they live
     // here. The body of the destructor destroys the ImGui context first and the members
     // are destroyed after it, so the bytes outlive every use of the pointer.
     std::vector<unsigned char> m_fontBytes;
-    // The sampler the Assets panel shows sRGB textures with. It is created by the
-    // constructor of this class, so after the OpenGL context exists, and it is destroyed
-    // with the members, while the window is still there (see main.cpp).
-    RawTextureSampler m_rawTextureSampler;
 };
 
 } // namespace debug
