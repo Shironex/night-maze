@@ -23,6 +23,26 @@ TEST_CASE("without switches the game starts as always") {
     CHECK_FALSE(result.options.menuCamera.enabled);
     CHECK(result.options.menuCamera.shot == game::MenuShot::CorridorWalk);
     CHECK(result.options.menuCamera.timeOffset == 0.0F);
+    // The game then opens with the main menu.
+    CHECK_FALSE(result.options.play);
+}
+
+TEST_CASE("the play switch skips the main menu and changes nothing else") {
+    const game::StartOptionsResult result = parse({"--play"});
+    CHECK(result.error.empty());
+    CHECK(result.options.play);
+    CHECK_FALSE(result.options.menuCamera.enabled);
+    CHECK(result.options.seed == game::DEFAULT_MAZE_SEED);
+
+    // Together with other switches, in any place.
+    const game::StartOptionsResult mixed = parse({"--seed", "7", "--play", "--menu-camera"});
+    CHECK(mixed.error.empty());
+    CHECK(mixed.options.play);
+    CHECK(mixed.options.seed == 7U);
+    CHECK(mixed.options.menuCamera.enabled);
+
+    // It takes no value: the next word is read as a switch of its own.
+    CHECK_FALSE(parse({"--play", "now"}).error.empty());
 }
 
 TEST_CASE("every switch sets its field, in any order") {
@@ -73,4 +93,5 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--menu-camera") != std::string::npos);
     CHECK(usage.find("--menu-shot") != std::string::npos);
     CHECK(usage.find("--menu-time") != std::string::npos);
+    CHECK(usage.find("--play") != std::string::npos);
 }

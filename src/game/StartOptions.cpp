@@ -17,6 +17,7 @@ constexpr std::string_view SEED_SWITCH = "--seed";
 constexpr std::string_view MENU_CAMERA_SWITCH = "--menu-camera";
 constexpr std::string_view MENU_SHOT_SWITCH = "--menu-shot";
 constexpr std::string_view MENU_TIME_SWITCH = "--menu-time";
+constexpr std::string_view PLAY_SWITCH = "--play";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -66,7 +67,8 @@ bool parseSeconds(const char* text, float& seconds) {
 } // namespace
 
 const char* const START_OPTIONS_USAGE =
-    "Switches: --seed <number>, --menu-camera, --menu-shot <walk|glide>, --menu-time <seconds>";
+    "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
+    "--menu-time <seconds>";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -75,9 +77,13 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     for (std::size_t i = 0; i < arguments.size(); ++i) {
         const std::string_view name = arguments[i];
 
-        // The only switch without a value.
+        // The two switches without a value.
         if (name == MENU_CAMERA_SWITCH) {
             options.menuCamera.enabled = true;
+            continue;
+        }
+        if (name == PLAY_SWITCH) {
+            options.play = true;
             continue;
         }
 

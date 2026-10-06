@@ -24,6 +24,10 @@ struct StartOptions {
 
     /// The settings of the menu camera the game starts with.
     MenuCameraSettings menuCamera;
+
+    /// True: skip the main menu and start straight in a round. For tests, for scripts
+    /// and for recording. The menu camera (--menu-camera) skips the main menu too.
+    bool play = false;
 };
 
 /// What parseStartOptions found.
@@ -46,6 +50,7 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --menu-camera          start with the menu camera switched on
 ///     --menu-shot <name>     the shot of the menu camera: walk or glide
 ///     --menu-time <seconds>  start the shot that many seconds into its loop
+///     --play                 skip the main menu and start in a round
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start.
