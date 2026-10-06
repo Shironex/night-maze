@@ -235,6 +235,8 @@ add_executable(night_maze
     src/debug/Hud.hpp
     src/debug/Icons.cpp
     src/debug/Icons.hpp
+    src/debug/MazePlan.cpp
+    src/debug/MazePlan.hpp
     src/debug/PanelLayout.cpp
     src/debug/PanelLayout.hpp
     src/debug/Pictures.cpp
@@ -255,26 +257,20 @@ add_executable(night_maze
     src/debug/categories/PostProcessCategory.hpp
     src/debug/categories/RenderCategory.cpp
     src/debug/categories/RenderCategory.hpp
+    src/debug/categories/WorldCategory.cpp
+    src/debug/categories/WorldCategory.hpp
     src/debug/panels/AssetsPanel.cpp
     src/debug/panels/AssetsPanel.hpp
     src/debug/panels/CollisionPanel.cpp
     src/debug/panels/CollisionPanel.hpp
-    src/debug/panels/EnvironmentPanel.cpp
-    src/debug/panels/EnvironmentPanel.hpp
-    src/debug/panels/GrassPanel.cpp
-    src/debug/panels/GrassPanel.hpp
     src/debug/panels/LightsPanel.cpp
     src/debug/panels/LightsPanel.hpp
-    src/debug/panels/MazePanel.cpp
-    src/debug/panels/MazePanel.hpp
     src/debug/panels/RendererPanel.cpp
     src/debug/panels/RendererPanel.hpp
     src/debug/panels/ShadersPanel.cpp
     src/debug/panels/ShadersPanel.hpp
     src/debug/panels/ShadowsPanel.cpp
     src/debug/panels/ShadowsPanel.hpp
-    src/debug/panels/TerrainPanel.cpp
-    src/debug/panels/TerrainPanel.hpp
 )
 target_link_libraries(night_maze PRIVATE engine game_logic ui imgui)
 night_maze_enable_warnings(night_maze)

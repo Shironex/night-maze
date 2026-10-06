@@ -1,10 +1,8 @@
-// "Maze" debug panel: size and seed of the maze, the numbers of levers and notes,
-// regeneration and a plan seen from above with the crystals, the levers, the notes, the
-// gate and the exit on it.
+// Maze plan of the debug window: the maze seen from above, with the crystals, the
+// levers, the notes, the gate, the exit and the player on it.
 // See docs/modules/game/maze-generator.md
-#include "debug/panels/MazePanel.hpp"
+#include "debug/MazePlan.hpp"
 
-#include "debug/PanelLayout.hpp"
 #include "debug/Theme.hpp"
 #include "game/Interactables.hpp"
 #include "game/MazeLayout.hpp"
@@ -20,22 +18,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
-#include <random>
 #include <vector>
 
 namespace debug {
 
 namespace {
-
-// Limits of the size sliders, in cells. The game draws every wall and pillar with its
-// own draw call, about two per cell, and the terrain has 32 triangles per cell, so a much
-// larger maze would make the frame slow. game::Maze itself accepts up to Maze::MAX_SIZE.
-constexpr int MIN_MAZE_SIZE = 2;
-constexpr int MAX_MAZE_SIZE = 40;
-
-// The seed field changes by this much for one click on its + or - button.
-constexpr std::uint32_t SEED_STEP = 1;
 
 // Sizes on the plan, in pixels: the dot of the player and the line that shows where the
 // camera looks.
@@ -54,19 +41,19 @@ constexpr float MOUNT_MARK_HALF_SIZE = 2.5F;
 // of the reserved area.
 constexpr float PLAN_PADDING = 4.0F;
 
-// Draws the walls of the maze as seen from above, north (-Z) at the top, with the gate,
-// the exit zone, the crystals, the levers, the notes and the player on it. World x runs to the
-// right of the screen and world z down the screen. Screen y grows downwards and z grows towards the
-// south, so neither axis has to be flipped.
-void drawPlan(const game::MazeWorld& world, const game::Round& round, const game::Player& player,
-              const scene::Camera& camera) {
+} // namespace
+
+// World x runs to the right of the screen and world z down the screen. Screen y grows
+// downwards and z grows towards the south, so neither axis has to be flipped.
+void drawMazePlan(const game::MazeWorld& world, const game::Round& round,
+                  const game::Player& player, const scene::Camera& camera, float width) {
     // Size of the maze in metres.
     const float worldWidth = static_cast<float>(world.maze.width()) * game::CELL_SIZE;
     const float worldDepth = static_cast<float>(world.maze.height()) * game::CELL_SIZE;
 
-    // The plan is as wide as the panel allows. One scale (pixels per metre) for both axes
-    // keeps the cells square. The longer side of the maze decides it.
-    const float availableWidth = ImGui::GetContentRegionAvail().x - 2.0F * PLAN_PADDING;
+    // One scale (pixels per metre) for both axes keeps the cells square. The longer side
+    // of the maze decides it: that side fills the width the caller gave.
+    const float availableWidth = width - 2.0F * PLAN_PADDING;
     const float scale = std::max(availableWidth, 1.0F) / std::max(worldWidth, worldDepth);
 
     // The top left corner of the plan on the screen. The cursor is the place where ImGui
@@ -80,8 +67,8 @@ void drawPlan(const game::MazeWorld& world, const game::Round& round, const game
         return ImVec2{origin.x + point.x * scale, origin.y + point.z * scale};
     };
 
-    // The draw list of the panel takes shapes in screen coordinates. They are drawn
-    // with the panel and clipped to it.
+    // The draw list of the window takes shapes in screen coordinates. They are drawn
+    // with the window and clipped to it.
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     // A draw list takes a colour packed into one 32 bit number. GetColorU32 packs a
@@ -165,68 +152,10 @@ void drawPlan(const game::MazeWorld& world, const game::Round& round, const game
     drawList->AddCircleFilled(dot, PLAYER_DOT_RADIUS, playerColor);
 
     // The draw list does not move the cursor. Dummy is an invisible widget of the given
-    // size: it reserves the area of the plan, so the panel knows how tall its contents
-    // are and scrolls correctly.
+    // size: it reserves the area of the plan, so the card knows how tall its contents
+    // are.
     ImGui::Dummy(
         {worldWidth * scale + 2.0F * PLAN_PADDING, worldDepth * scale + 2.0F * PLAN_PADDING});
-}
-
-} // namespace
-
-void drawMazePanel(game::MazeSettings& settings, const game::MazeWorld& world,
-                   const game::Round& round, const game::Player& player,
-                   const scene::Camera& camera) {
-    // First run only: the top right corner of the window (the constant is in
-    // PanelLayout.hpp). Later ImGui remembers the panel in imgui.ini.
-    placePanelOnFirstUse(MAZE_PLACEMENT);
-    if (ImGui::Begin("Maze")) {
-        // The widgets edit the request, not the maze: nothing happens until one of the
-        // buttons sets settings.regenerate.
-        ImGui::SliderInt("Width", &settings.width, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells",
-                         ImGuiSliderFlags_AlwaysClamp);
-        ImGui::SliderInt("Height", &settings.height, MIN_MAZE_SIZE, MAX_MAZE_SIZE, "%d cells",
-                         ImGuiSliderFlags_AlwaysClamp);
-        // InputScalar edits a number of any type through a pointer: the type is named by
-        // the second argument and must match the variable, here a 32 bit unsigned.
-        ImGui::InputScalar("Seed", ImGuiDataType_U32, &settings.seed, &SEED_STEP);
-        // How many levers and notes the next maze should get. A maze can end up with
-        // fewer: it only gets a lever for a wall that is worth opening.
-        ImGui::SliderInt("Levers", &settings.interactables.leverCount, 0, game::MAX_LEVER_COUNT,
-                         "%d", ImGuiSliderFlags_AlwaysClamp);
-        ImGui::SliderInt("Notes", &settings.interactables.noteCount, 0, game::MAX_NOTE_COUNT, "%d",
-                         ImGuiSliderFlags_AlwaysClamp);
-
-        if (ImGui::Button("Regenerate")) {
-            settings.regenerate = true;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Random seed")) {
-            // std::random_device asks the operating system for a number that cannot be
-            // predicted. It only picks the seed: the maze itself is still built by the
-            // seeded generator, so writing the seed down brings the same maze back.
-            std::random_device device;
-            settings.seed = static_cast<std::uint32_t>(device());
-            settings.regenerate = true;
-        }
-
-        ImGui::Separator();
-        // The maze in play, which may differ from the request above until a button
-        // is clicked.
-        ImGui::Text("In play: %d x %d cells, seed %u", world.maze.width(), world.maze.height(),
-                    static_cast<unsigned int>(world.seed));
-        ImGui::Text("Walls: %d, pillars: %d", static_cast<int>(world.walls.size()),
-                    static_cast<int>(world.pillars.size()));
-        // The crystals are chosen from the seed together with the maze. How many of them
-        // open the gate is a rule of the round (the Gameplay panel).
-        ImGui::Text("Crystals: %d, exit in cell (%d, %d)", static_cast<int>(world.crystals.size()),
-                    world.exitCell.x, world.exitCell.z);
-        // The levers and the notes the maze really got, which can be fewer than asked.
-        ImGui::Text("Levers: %d, notes: %d", static_cast<int>(world.interactables.levers.size()),
-                    static_cast<int>(world.interactables.notes.size()));
-
-        drawPlan(world, round, player, camera);
-    }
-    ImGui::End();
 }
 
 } // namespace debug

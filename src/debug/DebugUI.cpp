@@ -8,14 +8,10 @@
 #include "debug/Theme.hpp"
 #include "debug/panels/AssetsPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
-#include "debug/panels/EnvironmentPanel.hpp"
-#include "debug/panels/GrassPanel.hpp"
 #include "debug/panels/LightsPanel.hpp"
-#include "debug/panels/MazePanel.hpp"
 #include "debug/panels/RendererPanel.hpp"
 #include "debug/panels/ShadersPanel.hpp"
 #include "debug/panels/ShadowsPanel.hpp"
-#include "debug/panels/TerrainPanel.hpp"
 #include "game/Interaction.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
@@ -124,8 +120,6 @@ void DebugUI::draw(const DebugContext& context) {
             &context.minimapOverlayShader, &context.reflectShader};
         drawShadersPanel(shaders);
 
-        drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
-        drawGrassPanel(context.grass, context.grassTuftCount);
         drawShadowsPanel({.settings = context.moonShadowSettings,
                           .map = context.moonShadowMap,
                           .lightSpace = context.moonLightSpace,
@@ -134,13 +128,10 @@ void DebugUI::draw(const DebugContext& context) {
                           .map = context.flashlightShadowMap,
                           .lightSpace = context.flashlightLightSpace,
                           .drawn = context.flashlightShadowDrawn});
-        drawMazePanel(context.mazeSettings, context.mazeWorld, context.round, context.player,
-                      context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders,
                            context.pick, context.pickDebug);
         drawAssetsPanel(context.assets, m_rawTextureSampler);
         drawLightsPanel(context.lighting, context.round);
-        drawEnvironmentPanel(context.environment, context.puddleCount);
 
         // The debug window, which takes the place of the panels above one category at
         // a time.

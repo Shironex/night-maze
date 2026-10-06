@@ -11,6 +11,7 @@
 #include "debug/categories/PlayerCategory.hpp"
 #include "debug/categories/PostProcessCategory.hpp"
 #include "debug/categories/RenderCategory.hpp"
+#include "debug/categories/WorldCategory.hpp"
 #include "game/GameState.hpp"
 #include "game/MazeWorld.hpp"
 
@@ -361,7 +362,7 @@ void DebugWindow::drawCategory(Category category, Page& page, const DebugContext
         drawPostProcessCategory(page, context);
         break;
     case Category::World:
-        drawNotMovedYet(page);
+        drawWorldCategory(page, context, static_cast<WorldTab>(tabOf(category)));
         break;
     case Category::Player:
         drawPlayerCategory(page, context);
