@@ -1,0 +1,192 @@
+// Minimap: the settings of the small map in a corner of the screen, where it stands, and
+// the flat shapes it is drawn from (floors, walls, gate, crystals, player).
+// See docs/modules/renderer/minimap.md
+#pragma once
+
+#include "game/Maze.hpp"
+#include "game/MazeWorld.hpp"
+#include "game/Round.hpp"
+
+#include <glm/glm.hpp>
+
+#include <vector>
+
+namespace game {
+
+// Plain data and math without OpenGL, like the rest of the game_logic library: what the
+// map shows is decided here and covered by tests. game::MinimapRenderer only copies the
+// result to the graphics card and draws it.
+//
+// The map is a schematic drawn from the data of the maze, not a picture of the 3D scene.
+// North is up and the map never turns: the maze axis x (the columns, towards the east)
+// runs to the right, and the maze axis z (the rows, towards the south) runs DOWN the
+// picture. Row 0 of the maze is its north edge (-Z), so it is the top row of the map.
+
+/// The corner of the window the minimap stands in. The debug UI shows the entries in
+/// this order.
+enum class MinimapCorner {
+    TopLeft = 0,
+    TopRight = 1,
+    BottomLeft = 2,
+    BottomRight = 3,
+};
+
+/// Limits of the settings below. The debug UI uses them for its sliders, and
+/// minimapRect brings the numbers into them: a slider accepts typed numbers too.
+constexpr float MIN_MINIMAP_SIZE = 0.1F;
+constexpr float MAX_MINIMAP_SIZE = 0.6F;
+constexpr float MIN_MINIMAP_MARGIN = 0.0F;
+constexpr float MAX_MINIMAP_MARGIN = 0.1F;
+constexpr float MIN_MINIMAP_OPACITY = 0.1F;
+constexpr float MAX_MINIMAP_OPACITY = 1.0F;
+
+/// What can be changed about the minimap while the game runs. The debug UI edits the
+/// fields, and the minimap key switches enabled.
+struct MinimapSettings {
+    /// Whether the minimap is drawn at all.
+    bool enabled = true;
+
+    /// A switch for debugging: true shows the whole maze, also the cells the player has
+    /// not discovered. It changes only what is drawn: the discovery of the round goes on
+    /// underneath and is back when the switch is cleared.
+    bool revealAll = false;
+
+    /// The side of the square map as a part of the HEIGHT of the framebuffer of the
+    /// window: 0.28 of 720 pixels is 202 pixels. A part and not a number of pixels, so
+    /// the map covers the same share of the picture in every window and on a Retina
+    /// display, where the framebuffer has twice as many pixels.
+    float size = 0.28F;
+
+    /// The free space between the map and the two edges of its corner, as a part of
+    /// the height of the framebuffer too: 0.02 of 720 pixels is 14 pixels.
+    float margin = 0.02F;
+
+    /// The corner the map stands in. A bottom corner by default: the HUD stands at the
+    /// top of the window, in the middle, and grows downwards with its hints.
+    MinimapCorner corner = MinimapCorner::BottomRight;
+
+    /// How much the map hides of the scene behind it: 1 hides it completely, lower
+    /// values let it show through.
+    float opacity = 0.85F;
+};
+
+/// Where the minimap stands in the framebuffer of the window: a square, in framebuffer
+/// pixels, as glViewport wants it. x and y are its BOTTOM left corner, counted from the
+/// bottom left corner of the framebuffer (OpenGL counts y upwards).
+struct MinimapRect {
+    int x = 0;
+    int y = 0;
+    /// Side of the square. 0 means that there is no room for a map at all.
+    int size = 0;
+};
+
+/// The square of the minimap for a framebuffer of the given size (in framebuffer
+/// pixels, never the size of the window in screen coordinates). The side and the margin
+/// are settings.size and settings.margin of the height, rounded to whole pixels. In
+/// a window that is too small for both, the map is made smaller until it fits, and when
+/// even that is not enough the margin is dropped. A framebuffer without pixels gives
+/// a square of size 0.
+MinimapRect minimapRect(int framebufferWidth, int framebufferHeight,
+                        const MinimapSettings& settings);
+
+/// One corner of a triangle of the map, exactly as it lies in the vertex buffer:
+/// 5 floats, 20 bytes.
+struct MinimapVertex {
+    /// A place in the maze seen from above, in metres: x is the world x (towards the
+    /// east) and y is the world z (towards the south). post/minimap.vert turns it into
+    /// a place in the picture (minimapProjection).
+    glm::vec2 position{0.0F};
+
+    /// The colour of the shape, as an sRGB value: the numbers the screen gets. They are
+    /// written into the picture as they are (post/minimap.frag), never lit and never
+    /// converted.
+    glm::vec3 color{0.0F};
+};
+
+/// Number of floats in each field, the "size" parameter of glVertexAttribPointer.
+constexpr int MINIMAP_POSITION_COMPONENTS = 2;
+constexpr int MINIMAP_COLOR_COMPONENTS = 3;
+
+// The vertex buffer is described to OpenGL as "5 floats per vertex, one after another".
+// The line turns that into a compile error where the compiler adds padding (the same
+// check as for gfx::Vertex).
+static_assert(sizeof(MinimapVertex) ==
+                  (MINIMAP_POSITION_COMPONENTS + MINIMAP_COLOR_COMPONENTS) * sizeof(float),
+              "MinimapVertex must be 5 tightly packed floats");
+
+// The colours of the map (red, green, blue), all sRGB values chosen on a screen. The
+// wall, the gate, the crystal and the player have the colours the plan of the Maze
+// panel uses for them (debug/Theme.hpp).
+
+/// What is not discovered, and the land around the maze: a very dark blue. The picture
+/// is cleared to it before the shapes are drawn.
+constexpr glm::vec3 MINIMAP_BACKGROUND_COLOR{0.03F, 0.04F, 0.07F};
+/// The floor of a cell that is shown.
+constexpr glm::vec3 MINIMAP_FLOOR_COLOR{0.15F, 0.18F, 0.25F};
+/// The floor of the start cell: a lighter blue.
+constexpr glm::vec3 MINIMAP_START_COLOR{0.24F, 0.33F, 0.52F};
+/// The floor of the exit cell: a dark green.
+constexpr glm::vec3 MINIMAP_EXIT_COLOR{0.17F, 0.42F, 0.24F};
+/// A wall: a light grey blue.
+constexpr glm::vec3 MINIMAP_WALL_COLOR{0.69F, 0.75F, 0.85F};
+/// The gate of the exit while it blocks the way: the orange of its wood.
+constexpr glm::vec3 MINIMAP_GATE_COLOR{0.84F, 0.56F, 0.32F};
+/// The gate once it has opened: a dim blue green, close to the floor.
+constexpr glm::vec3 MINIMAP_GATE_OPEN_COLOR{0.17F, 0.41F, 0.44F};
+/// A crystal that is still there: turquoise.
+constexpr glm::vec3 MINIMAP_CRYSTAL_COLOR{0.34F, 0.84F, 0.79F};
+/// The arrow of the player: a warm yellow.
+constexpr glm::vec3 MINIMAP_PLAYER_COLOR{1.0F, 0.72F, 0.33F};
+
+/// Half of the side of the square piece of the world the map shows, in metres. The
+/// square is centred on the maze and a little larger than its longer side, so the walls
+/// on the border, which reach half of their thickness out of the maze, are not cut off.
+/// A maze that is not square is shown with empty strips beside its shorter side: the
+/// cells stay square.
+float minimapHalfExtent(const Maze& maze);
+
+/// The matrix that takes a MinimapVertex position (metres) to clip space, where the
+/// picture is the square from -1 to 1: an orthographic projection of the square of
+/// minimapHalfExtent around the middle of the maze. It also turns the picture the right
+/// way up: the north edge of the maze (z = 0) lands at the top (y = +1), although z
+/// grows towards the south.
+glm::mat4 minimapProjection(const Maze& maze);
+
+/// How many metres of the maze one pixel of a map picture of pixels by pixels covers.
+/// The builder below needs it to keep thin things at least a pixel wide. pixels below
+/// 1 is taken as 1.
+float minimapMetresPerPixel(const Maze& maze, int pixels);
+
+/// Where the player is drawn on the map and which way the arrow points.
+struct MinimapPlayer {
+    /// The feet of the player in the world. Only x and z are used.
+    glm::vec3 position{0.0F};
+    /// The yaw of the camera in degrees: 0 looks north (up on the map), 90 east (right).
+    float yawDegrees = 0.0F;
+};
+
+/// Builds everything the minimap shows as a list of triangles: every three vertices are
+/// one triangle (GL_TRIANGLES), and later triangles are drawn over earlier ones. In
+/// this order:
+///   1. the floor of every shown cell: the start cell and the exit cell in colours of
+///      their own,
+///   2. the walls of the shown cells, as thin rectangles on the cell edges. A wall is
+///      drawn when at least one of the two cells it stands between is shown. The walls
+///      are asked from the maze (Maze::hasWall) in every call,
+///   3. the gate, when the exit cell is shown: across the open side of that cell, in
+///      one colour while it blocks the way and in another once it has opened,
+///   4. a small diamond for every crystal that is not collected and whose cell is shown,
+///   5. the player: a triangle that points where the camera looks. It is always drawn,
+///      also outside the maze (where the picture may cut it off).
+///
+/// A cell is "shown" when it is discovered in the round (Round::discovery), or always
+/// with revealAll set. metresPerPixel (minimapMetresPerPixel) keeps the walls, the
+/// crystals and the player from getting thinner than a pixel or two in a large maze.
+///
+/// The round must have been started on this world. With another round nothing breaks:
+/// cells its grid does not have count as not discovered.
+std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Round& round,
+                                                bool revealAll, const MinimapPlayer& player,
+                                                float metresPerPixel);
+
+} // namespace game

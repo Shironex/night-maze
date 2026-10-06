@@ -21,6 +21,8 @@ struct GrassSettings;
 struct LightingSettings;
 struct MazeSettings;
 struct MazeWorld;
+class MinimapRenderer;
+struct MinimapSettings;
 struct Player;
 class PostProcess;
 struct PostProcessSettings;
@@ -149,6 +151,17 @@ struct DebugContext {
     /// its shadows switched off, and not while the flashlight is off. A plain value,
     /// copied when the context is built: the Shadows panel only shows it.
     bool flashlightShadowDrawn;
+    /// Shader program that draws the minimap into its framebuffer, editable: reloaded
+    /// like texturedShader.
+    gfx::Shader& minimapShader;
+    /// Shader program that puts the picture of the minimap into the window, editable:
+    /// reloaded like texturedShader.
+    gfx::Shader& minimapOverlayShader;
+    /// The settings of the minimap (switch, reveal all, size, margin, corner, opacity),
+    /// editable.
+    game::MinimapSettings& minimapSettings;
+    /// The minimap, read only: the size, the format and the picture of its framebuffer.
+    const game::MinimapRenderer& minimap;
 };
 
 } // namespace debug

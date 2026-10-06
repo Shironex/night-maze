@@ -66,6 +66,16 @@ struct WallSegment {
 /// the world and covers x from 0 to width * CELL_SIZE and z from 0 to height * CELL_SIZE.
 glm::vec3 cellCenter(int x, int z);
 
+/// The other way round: the cell whose square a point of the world lies in, seen from
+/// above. Only x and z of the point are used, so the height does not matter: a point
+/// high above the ground is in the cell below it. The west and the north edge of
+/// a square belong to its cell.
+///
+/// The function knows no maze, so the answer can be a cell that no maze has: a negative
+/// column or row for a point west or north of the origin, a number past the last one
+/// for a point beyond the maze. The caller asks Maze::contains.
+MazeCell cellAt(const glm::vec3& position);
+
 /// The segment that stands on one side of the cell in column x and row z: on its north
 /// or south edge it runs along X, on its west or east edge along Z. The function does
 /// not ask whether the maze has a wall there: the gate of the exit uses it for a side

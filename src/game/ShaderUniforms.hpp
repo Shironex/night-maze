@@ -174,6 +174,15 @@ constexpr const char* PREVIEW_NEAR_UNIFORM = "uNear";
 constexpr const char* PREVIEW_FAR_UNIFORM = "uFar";
 constexpr const char* PREVIEW_DEPTH_RANGE_UNIFORM = "uDepthRange";
 
+/// post/minimap.vert: the matrix that takes a place in the maze (metres, seen from
+/// above) to clip space (game::minimapProjection).
+constexpr const char* MINIMAP_MAP_TO_CLIP_UNIFORM = "uMapToClip";
+
+/// post/minimap_overlay.frag: the sampler of the picture of the minimap and how much
+/// the map hides of the scene behind it (0 to 1).
+constexpr const char* MINIMAP_OVERLAY_MAP_UNIFORM = "uMap";
+constexpr const char* MINIMAP_OVERLAY_OPACITY_UNIFORM = "uOpacity";
+
 /// skybox.frag: the sampler of the cube map (it holds the number of a texture unit) and
 /// the number the colour of the sky is multiplied by.
 constexpr const char* SKYBOX_UNIFORM = "uSkybox";

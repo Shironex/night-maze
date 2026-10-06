@@ -57,4 +57,4 @@ Wyjściem jest komórka najdalsza od startu, gdy odległość liczy się w przej
 
 - Gdy labirynt przestanie być doskonały (pętle albo komórki odcięte). Najdalsza komórka nie musi wtedy być zaułkiem, a `placeExit` stawia bramę tylko na pierwszym otwartym boku: drugi bok zostałby otwarty.
 - Gdy start przestanie być stałą komórką `(0, 0)`: wtedy warto wrócić do średnicy labiryntu.
-- Gdy dojdzie przeciwnik ([`enemy-after-m5.md`](enemy-after-m5.md)) albo minimapa i miejsce wyjścia zacznie mieć znaczenie dla czegoś więcej niż długość drogi.
+- Gdy dojdzie przeciwnik ([`enemy-after-m5.md`](enemy-after-m5.md)) albo minimapa i miejsce wyjścia zacznie mieć znaczenie dla czegoś więcej niż długość drogi. (Minimapa z 2026-10-06 koloruje komórkę wyjścia, ale ustawia ją tam, gdzie stoi `MazeWorld::exitCell`, i nie zmienia wyboru wyjścia.)

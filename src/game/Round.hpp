@@ -2,6 +2,7 @@
 // See docs/modules/game/gameplay.md
 #pragma once
 
+#include "game/Discovery.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
 #include "scene/Collider.hpp"
@@ -108,6 +109,10 @@ struct Round {
     /// the flicker of the flashlight). It keeps running after the round is won, so the
     /// scene behind the "You escaped" card does not freeze.
     float animationSeconds = 0.0F;
+
+    /// Which cells of the maze the player has seen in this round (game/Discovery.hpp):
+    /// what the minimap shows. A round that was not started has a grid without cells.
+    Discovery discovery;
 };
 
 /// How many of total crystals open the gate: fraction of them, rounded up, at least 1
@@ -118,6 +123,8 @@ int requiredCrystalCount(int total, float fraction);
 /// A fresh round on the maze: every crystal in its place, a full battery, the gate
 /// closed and the clocks at 0. A maze without crystals needs none, and a maze without
 /// a gate has nothing to open: in both cases the round starts with the way out open.
+/// Nothing of the maze is discovered except what the player sees from the start
+/// (game::discoverAround of MazeWorld::startPosition).
 Round startRound(const MazeWorld& world, const GameplaySettings& settings);
 
 /// Puts every crystal of the round on the ground of the world again: its resting place
@@ -131,6 +138,8 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 
 /// Advances the round by one fixed step of stepSeconds seconds:
 ///   - the clocks run (the round time only while the round is being played),
+///   - the cells the player sees from feetPosition become discovered (also after the
+///     round is won),
 ///   - an open gate keeps sinking,
 ///   - the battery drains while the flashlight is on,
 ///   - every crystal whose pickup sphere the player reaches is collected and charges

@@ -1,4 +1,4 @@
-// Buffer: a block of memory on the graphics card, filled once with vertices or indices.
+// Buffer: a block of memory on the graphics card, filled with vertices or indices.
 // See docs/modules/gfx/buffers-vao.md
 #include "gfx/Buffer.hpp"
 
@@ -6,15 +6,17 @@
 
 namespace gfx {
 
-Buffer::Buffer(GLenum target, const void* data, std::size_t sizeInBytes) : m_target(target) {
+Buffer::Buffer(GLenum target, const void* data, std::size_t sizeInBytes, GLenum usage)
+    : m_target(target), m_usage(usage) {
     // glGenBuffers writes new ids into an array. Here the array is the one member.
     GL_CHECK(glGenBuffers(1, &m_id));
     // OpenGL 4.1 can only fill the buffer that is bound, so bind first.
     GL_CHECK(glBindBuffer(m_target, m_id));
     // Allocates sizeInBytes bytes on the graphics card and copies the data there.
     // The size parameter is a signed type (GLsizeiptr), hence the cast.
-    // GL_STATIC_DRAW is a hint: the data is set once and used for drawing many times.
-    GL_CHECK(glBufferData(m_target, static_cast<GLsizeiptr>(sizeInBytes), data, GL_STATIC_DRAW));
+    // The usage is a hint. GL_STATIC_DRAW, the default: the data is set once and used
+    // for drawing many times.
+    GL_CHECK(glBufferData(m_target, static_cast<GLsizeiptr>(sizeInBytes), data, m_usage));
 }
 
 Buffer::~Buffer() {
@@ -24,7 +26,8 @@ Buffer::~Buffer() {
 }
 
 // Move constructor: the new object takes the buffer id, and other gives it up.
-Buffer::Buffer(Buffer&& other) noexcept : m_target(other.m_target), m_id(other.m_id) {
+Buffer::Buffer(Buffer&& other) noexcept
+    : m_target(other.m_target), m_usage(other.m_usage), m_id(other.m_id) {
     // Two objects must never hold the same id. With 0 the destructor of other
     // deletes nothing.
     other.m_id = 0;
@@ -42,6 +45,7 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept {
     GL_CHECK(glDeleteBuffers(1, &m_id));
 
     m_target = other.m_target;
+    m_usage = other.m_usage;
     m_id = other.m_id;
     other.m_id = 0;
     return *this;
@@ -49,6 +53,14 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept {
 
 void Buffer::bind() const {
     GL_CHECK(glBindBuffer(m_target, m_id));
+}
+
+void Buffer::setData(const void* data, std::size_t sizeInBytes) {
+    // OpenGL 4.1 can only fill the buffer that is bound, as in the constructor.
+    GL_CHECK(glBindBuffer(m_target, m_id));
+    // The same call as in the constructor: the old memory of the buffer is given up and
+    // new memory of the new size is filled.
+    GL_CHECK(glBufferData(m_target, static_cast<GLsizeiptr>(sizeInBytes), data, m_usage));
 }
 
 } // namespace gfx

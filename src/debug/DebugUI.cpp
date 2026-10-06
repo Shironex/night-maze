@@ -20,6 +20,8 @@
 #include "debug/panels/TerrainPanel.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/Minimap.hpp"
+#include "game/MinimapRenderer.hpp"
 #include "game/PostProcess.hpp"
 #include "game/Shadows.hpp"
 #include "game/Skybox.hpp"
@@ -113,19 +115,21 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 11;
+        constexpr int SHADER_COUNT = 13;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader,  &context.colorShader,      &context.litShader,
-            &context.gouraudShader,   &context.skyboxShader,     &context.grassShader,
-            &context.compositeShader, &context.previewShader,    &context.brightPassShader,
-            &context.blurShader,      &context.shadowDepthShader};
+            &context.texturedShader,      &context.colorShader,       &context.litShader,
+            &context.gouraudShader,       &context.skyboxShader,      &context.grassShader,
+            &context.compositeShader,     &context.previewShader,     &context.brightPassShader,
+            &context.blurShader,          &context.shadowDepthShader, &context.minimapShader,
+            &context.minimapOverlayShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
         drawGameplayPanel(context.round, context.gameplay);
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
-        drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
+        drawFramebuffersPanel(context.postProcessSettings, context.postProcess,
+                              context.minimapSettings, context.minimap.target());
         drawShadowsPanel({.settings = context.moonShadowSettings,
                           .map = context.moonShadowMap,
                           .lightSpace = context.moonLightSpace,

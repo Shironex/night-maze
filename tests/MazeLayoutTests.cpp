@@ -47,6 +47,26 @@ int countPositions(const std::vector<glm::vec3>& positions, const glm::vec3& pos
 
 } // namespace
 
+TEST_CASE("cellAt finds the cell a point of the world lies in") {
+    // The centre of a cell lies in that cell: cellAt is the way back from cellCenter.
+    CHECK(game::cellAt(game::cellCenter(0, 0)) == game::MazeCell{.x = 0, .z = 0});
+    CHECK(game::cellAt(game::cellCenter(3, 7)) == game::MazeCell{.x = 3, .z = 7});
+
+    // Anywhere in the square of the cell, at any height.
+    CHECK(game::cellAt({2.1F, 40.0F, 5.9F}) == game::MazeCell{.x = 1, .z = 2});
+
+    // The west and the north edge of a square belong to its cell, so the east and the
+    // south edge belong to the next one.
+    CHECK(game::cellAt({2.0F, 0.0F, 4.0F}) == game::MazeCell{.x = 1, .z = 2});
+    CHECK(game::cellAt({0.0F, 0.0F, 0.0F}) == game::MazeCell{.x = 0, .z = 0});
+
+    // West or north of the origin the numbers are negative: half a metre outside is
+    // cell -1, not cell 0.
+    CHECK(game::cellAt({-0.5F, 0.0F, 1.0F}) == game::MazeCell{.x = -1, .z = 0});
+    CHECK(game::cellAt({1.0F, 0.0F, -0.5F}) == game::MazeCell{.x = 0, .z = -1});
+    CHECK(game::cellAt({-2.0F, 0.0F, -4.5F}) == game::MazeCell{.x = -1, .z = -3});
+}
+
 TEST_CASE("the layout constants are the agreed sizes in metres") {
     CHECK(game::CELL_SIZE == 2.0F);
     CHECK(game::WALL_LENGTH == 2.0F);

@@ -394,6 +394,8 @@ void DebugUI::draw(const DebugContext& context) {
 }
 ```
 
+*Uwaga (2026-10-06):* listing pokazuje `DebugUI::draw` po drugiej części M7. Od szóstej części M7 `SHADER_COUNT` jest równe 13 (doszły `shadow_depth` z czwartej części oraz `minimap` i `minimap_overlay`, a lista kończy się wpisami `&context.minimapShader` i `&context.minimapOverlayShader`), a `drawFramebuffersPanel` dostaje cztery argumenty: `(context.postProcessSettings, context.postProcess, context.minimapSettings, context.minimap.target())`. Zakładek panelu Framebuffers jest trzy (`Tone and bloom`, `Fog and vignette`, `Minimap`).
+
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
 panele i HUD pokazują i edytują (trzydzieści osiem pól: od `time` i `window` po `grass`

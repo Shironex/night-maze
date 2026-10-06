@@ -12,6 +12,8 @@
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/Minimap.hpp"
+#include "game/MinimapRenderer.hpp"
 #include "game/Player.hpp"
 #include "game/PostProcess.hpp"
 #include "game/Round.hpp"
@@ -49,6 +51,10 @@ namespace game {
 /// (game::PostProcess). Its bright parts are blurred into a glow (bloom), and a last
 /// pass brings the picture to the window with fog near the ground, that glow, exposure,
 /// tone mapping, a vignette and gamma correction.
+///
+/// On top of that finished picture comes the minimap (game::MinimapRenderer): a schematic
+/// of the corridors the player has discovered, drawn into a framebuffer of its own and
+/// shown in a corner of the window.
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
@@ -110,6 +116,22 @@ protected:
 
     /// Shader program of the depth pass of the shadow maps, exposed for the same reason.
     gfx::Shader& shadowDepthShader() { return m_shadowDepthShader; }
+
+    /// Shader program that draws the minimap into its framebuffer, exposed for the same
+    /// reason.
+    gfx::Shader& minimapShader() { return m_minimapShader; }
+
+    /// Shader program that puts the picture of the minimap into the window, exposed for
+    /// the same reason.
+    gfx::Shader& minimapOverlayShader() { return m_minimapOverlayShader; }
+
+    /// The settings of the minimap (switch, reveal all, size, margin, corner, opacity),
+    /// exposed so the debug UI can edit them live.
+    MinimapSettings& minimapSettings() { return m_minimapSettings; }
+
+    /// The minimap, read only: the debug UI shows the size, the format and the picture
+    /// of its framebuffer.
+    const MinimapRenderer& minimapRenderer() const { return m_minimapRenderer; }
 
     /// The settings of the shadows of the moon (switch, resolution, bias, PCF,
     /// strength), exposed so the debug UI can edit them live.
@@ -281,6 +303,15 @@ private:
     /// for the uniform uEmissive: game::crystalGlow of the colour of the crystal lights.
     glm::vec3 crystalEmissive() const;
 
+    /// The minimap, the last thing of a frame the game draws: after the composite pass,
+    /// so the fog, the bloom and the tone mapping do not touch it. It builds the shapes
+    /// of the map (game::buildMinimapVertices), draws them into the framebuffer of the
+    /// minimap and puts that picture into its corner of the window. framebuffer is the
+    /// framebuffer size of the window and feet the place the frame is drawn from (the
+    /// feet of the player, blended between two fixed steps). With the minimap switched
+    /// off it does nothing. It leaves the window bound, with the viewport over all of it.
+    void drawMinimap(core::Size framebuffer, const glm::vec3& feet);
+
     // The colour every frame starts with: a very dark blue, darker than the ambient
     // light on the stone. The sky is drawn over it wherever no wall is, so it shows
     // only when the skybox is switched off or its pictures could not be loaded. It is
@@ -307,6 +338,10 @@ private:
     gfx::Shader m_blurShader;
     // Draws depth only, from the view of a light: the program of the shadow pass.
     gfx::Shader m_shadowDepthShader;
+    // Draws the flat shapes of the minimap into its framebuffer, and puts the finished
+    // picture of the minimap into the window.
+    gfx::Shader m_minimapShader;
+    gfx::Shader m_minimapOverlayShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
@@ -321,6 +356,8 @@ private:
     ShadowMap m_moonShadowMap;
     // The depth texture the scene is drawn into from the flashlight.
     ShadowMap m_flashlightShadowMap;
+    // The framebuffer the minimap is drawn into and the buffer of its triangles.
+    MinimapRenderer m_minimapRenderer;
 
     // The request for the next maze (edited by the debug UI).
     MazeSettings m_mazeSettings;
@@ -401,6 +438,10 @@ private:
 
     // How the camera is turned. It belongs to the controls, not to the camera.
     float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;
+
+    // Whether the minimap is drawn, whether it shows the whole maze, and its size, its
+    // corner and its opacity.
+    MinimapSettings m_minimapSettings;
 };
 
 } // namespace game

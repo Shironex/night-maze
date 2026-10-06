@@ -1632,7 +1632,7 @@ Kontrolki w innych panelach, które zmieniają cienie:
 | Terrain | suwak `Height scale` | teren i pudełko światła zmieniają się razem, cienie wzgórz rosną |
 | Terrain | pole `Wireframe` | teren z linii nadal rzuca pełny cień (sekcja 5.7) |
 | Maze | przycisk `Regenerate` | nowy teren i nowe pudełko w następnej klatce |
-| Shaders | `Reload shaders` | jedenaście programów, ostatni to `shadow_depth`. Po przeładowaniu uniformy obu map wracają do 0 i są ustawiane w następnej klatce od nowa (sekcja 5.6). Z latarką zgaszoną i po przeładowaniu: **nie ćwiczone** |
+| Shaders | `Reload shaders` | jedenaście programów, ostatni to `shadow_depth` (stan po piątej części M7: od szóstej programów jest trzynaście, dwa kolejne to `minimap` i `minimap_overlay`). Po przeładowaniu uniformy obu map wracają do 0 i są ustawiane w następnej klatce od nowa (sekcja 5.6). Z latarką zgaszoną i po przeładowaniu: **nie ćwiczone** |
 
 **Uwaga przed pokazem:** stary plik `imgui.ini` nie zna panelu Shadows (z zakładką `Flashlight` nic się nie zmienia: to samo okno), więc panel dostanie położenie domyślne, ale HUD i tak stoi o rząd niżej. Najprościej usunąć `imgui.ini` przed uruchomieniem.
 

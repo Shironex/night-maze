@@ -33,7 +33,7 @@ Liczby dla wartości startowych (gęstość 0,1, baza 0,5 m, spadek 0,4), policz
 **Skutki, które przyjmuję.**
 
 - Widok z góry w noclipie nie nadaje się do oglądania labiryntu przy włączonej mgle. Kto chce zrzut ekranu z góry, odznacza `Fog`.
-- Minimapa (planowana, widok z góry w osobnym framebufferze) nie może przejść przez ten sam przebieg z włączoną mgłą.
+- Minimapa (widok z góry w osobnym framebufferze) nie może przejść przez ten sam przebieg z włączoną mgłą. **Dopisek z 2026-10-06:** minimapa jest schematem z danych labiryntu i omija przebieg składający (rysuje się po nim), więc tego ograniczenia nie ma ([`minimap-srgb-constants-after-composite.md`](minimap-srgb-constants-after-composite.md)).
 - Jedna wartość `Density` nie pasuje jednocześnie do widoku z korytarza i z góry: strojenie pod jeden psuje drugi.
 - `baseHeight` jest stałą w metrach świata i nie idzie za suwakiem skali wysokości terenu.
 
@@ -41,6 +41,6 @@ Liczby dla wartości startowych (gęstość 0,1, baza 0,5 m, spadek 0,4), policz
 
 ## 5. Kiedy wrócić do tej decyzji
 
-- Gdy powstanie minimapa albo inny widok z góry, który ma pokazywać mgłę.
+- Gdy powstanie inny widok z góry, który ma pokazywać mgłę (minimapa z 2026-10-06 jest schematem bez mgły i tego nie wymaga).
 - Gdy gra dostanie miejsca, z których patrzy się w dół z wysoka (wieża, wzgórze nad labiryntem) w zwykłej rozgrywce, a nie w noclipie.
 - Gdy mgła ma dostać nierówną gęstość (kłęby, szum): wtedy i tak potrzebny jest marsz po promieniu.

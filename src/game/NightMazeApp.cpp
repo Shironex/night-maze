@@ -55,6 +55,12 @@ constexpr const char* BRIGHT_PASS_FRAGMENT_SHADER_FILE = "shaders/post/bright.fr
 constexpr const char* BLUR_FRAGMENT_SHADER_FILE = "shaders/post/blur.frag";
 constexpr const char* SHADOW_DEPTH_VERTEX_SHADER_FILE = "shaders/shadow_depth.vert";
 constexpr const char* SHADOW_DEPTH_FRAGMENT_SHADER_FILE = "shaders/shadow_depth.frag";
+// The minimap has two programs. The first draws its flat shapes into the framebuffer of
+// the minimap. The second puts that picture into the window: one more program that
+// draws the triangle of FULLSCREEN_VERTEX_SHADER_FILE.
+constexpr const char* MINIMAP_VERTEX_SHADER_FILE = "shaders/post/minimap.vert";
+constexpr const char* MINIMAP_FRAGMENT_SHADER_FILE = "shaders/post/minimap.frag";
+constexpr const char* MINIMAP_OVERLAY_FRAGMENT_SHADER_FILE = "shaders/post/minimap_overlay.frag";
 
 // The heightmap of the terrain, relative to the assets directory: a grey picture made
 // by tools/blender/make_heightmap.py.
@@ -80,6 +86,9 @@ constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 
 // Key that starts the round again on the same maze.
 constexpr int RESTART_KEY = GLFW_KEY_R;
+
+// Key that shows and hides the minimap.
+constexpr int MINIMAP_KEY = GLFW_KEY_M;
 
 // Pitch of a level look, in degrees: how the player looks at the start.
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
@@ -135,6 +144,10 @@ NightMazeApp::NightMazeApp()
                    core::assetPath(BLUR_FRAGMENT_SHADER_FILE)),
       m_shadowDepthShader(core::assetPath(SHADOW_DEPTH_VERTEX_SHADER_FILE),
                           core::assetPath(SHADOW_DEPTH_FRAGMENT_SHADER_FILE)),
+      m_minimapShader(core::assetPath(MINIMAP_VERTEX_SHADER_FILE),
+                      core::assetPath(MINIMAP_FRAGMENT_SHADER_FILE)),
+      m_minimapOverlayShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
+                             core::assetPath(MINIMAP_OVERLAY_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
       m_terrainRenderer(m_assets),
@@ -329,6 +342,11 @@ void NightMazeApp::onRender(double alpha) {
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
 
+    // The minimap key, read once per frame like the two keys above.
+    if (input().wasKeyPressed(MINIMAP_KEY)) {
+        m_minimapSettings.enabled = !m_minimapSettings.enabled;
+    }
+
     // Mouse look. It runs here, once per frame, and not in onUpdate: a click and a mouse
     // delta describe one frame, and onUpdate runs zero or more times per frame.
     if (!input().isCursorCaptured()) {
@@ -505,6 +523,45 @@ void NightMazeApp::onRender(double alpha) {
     // the bloom, exposure, tone mapping, the vignette and the sRGB encoding. The debug
     // UI is drawn after this function returns (main.cpp), straight into the window.
     m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer, sceneView);
+
+    // The minimap comes after the composite pass, on top of the finished picture: it is
+    // a schematic, and the fog, the bloom and the tone mapping must not touch it. It is
+    // shown in the two debug views too, like the HUD. feet is the blended position the
+    // scene was drawn from, so the arrow moves as smoothly as the camera.
+    drawMinimap(framebuffer, feet);
+}
+
+void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
+    if (!m_minimapSettings.enabled) {
+        return;
+    }
+
+    // Where the map stands, in framebuffer pixels. Its picture is drawn at exactly
+    // that size, so the framebuffer of the minimap follows the window and the size
+    // setting. A size of 0: the window has no room for a map.
+    const MinimapRect rect = minimapRect(framebuffer.width, framebuffer.height, m_minimapSettings);
+    if (rect.size < 1) {
+        return;
+    }
+
+    // The shapes of the map are built again in every frame, on the CPU (plain data,
+    // covered by tests), and copied to the graphics card in one piece. Every frame and
+    // not only after a change, because the arrow of the player moves all the time, and
+    // because then nothing can be forgotten: a cell that was discovered, a crystal that
+    // was collected, the gate, a new maze or a wall that is taken away later all show
+    // up by themselves. The default maze is about 1400 vertices of 20 bytes when all
+    // of it is shown.
+    const Maze& maze = m_mazeWorld.maze;
+    const MinimapPlayer player{.position = feet, .yawDegrees = m_camera.yawDegrees};
+    const std::vector<MinimapVertex> vertices =
+        buildMinimapVertices(m_mazeWorld, m_round, m_minimapSettings.revealAll, player,
+                             minimapMetresPerPixel(maze, rect.size));
+
+    // The offscreen pass, and then the picture into its corner of the window.
+    if (m_minimapRenderer.drawMap(m_minimapShader, vertices, minimapProjection(maze), rect.size)) {
+        m_minimapRenderer.drawOverlay(m_minimapOverlayShader, rect, m_minimapSettings.opacity,
+                                      framebuffer);
+    }
 }
 
 void NightMazeApp::drawMoonShadowMap() {

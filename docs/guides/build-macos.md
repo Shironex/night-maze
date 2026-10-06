@@ -14,17 +14,18 @@ trawa z shadera geometrii, szósty program, panele Terrain i Grass), oraz pierws
 M7, też z 2026-10-05 (scena rysowana do bufora HDR, przebieg składający z mapowaniem tonów,
 korekcja gamma, siódmy i ósmy program, panel Framebuffers), drugiej (bloom, dziewiąty
 i dziesiąty program), trzeciej (mgła z bufora głębi i winieta w przebiegu składającym),
-czwartej (mapa cieni księżyca, jedenasty program, panel Shadows) i piątej, z 2026-10-06
+czwartej (mapa cieni księżyca, jedenasty program, panel Shadows) piątej, z 2026-10-06
 (mapa cieni latarki z rzutem perspektywicznym i latarka w ręce, bez nowego programu ani
-panelu).
+panelu) i szóstej, z 2026-10-06 (minimapa: drugi framebuffer, dwunasty i trzynasty program,
+zakładka w panelu Framebuffers).
 Wszystko, co ten dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
 (oświetlenie) na macOS", "M4 (mapy normalnych) na macOS", "M5 (rozgrywka) na macOS",
 "M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS", "M7, część 1
 (bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS", "M7, część 3 (mgła
-i winieta) na macOS", "M7, część 4 (cienie księżyca) na macOS" i "M7, część 5 (cień latarki)
-na macOS".
+i winieta) na macOS", "M7, część 4 (cienie księżyca) na macOS", "M7, część 5 (cień latarki)
+na macOS" i "M7, część 6 (minimapa) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -1237,7 +1238,7 @@ z testów i z tego, co zgłoszono na Windowsie. Opis kodu:
 [`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md),
 [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md). M7 jest
 rozpoczęty, nie kompletny: cienie księżyca są od czwartej części w kodzie zbudowanym na
-Windowsie, a cieni latarki i minimapy nie ma na żadnym systemie. Bloom doszedł
+Windowsie, a cieni latarki i minimapy nie ma na żadnym systemie (stan po czwartej części: cień latarki doszedł w piątej, minimapa w szóstej). Bloom doszedł
 w drugiej części, mgła i winieta w trzeciej, a cienie księżyca w czwartej: mają osobne
 listy niżej.
 
@@ -1724,8 +1725,9 @@ Windowsie zgłoszono też tylko krótki start programu Debug: nikt nie obejrzał
 na żadnym systemie, a start nie obejmował trybu `Gouraud`, podglądu zakładki `Flashlight`,
 ścieżki z wyłączoną latarką ani `Reload shaders`. Opis kodu:
 [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (sekcja 2.20) i
-[`../modules/game/flashlight.md`](../modules/game/flashlight.md). M7 jest nadal rozpoczęty,
-nie kompletny: minimapy nie ma na żadnym systemie. Kolejność sprawdzania wszystkich części
+[`../modules/game/flashlight.md`](../modules/game/flashlight.md). Stan po piątej części: M7 był
+rozpoczęty, nie kompletny, bo minimapy nie było na żadnym systemie. Od szóstej części (lista
+niżej) minimapa jest w kodzie na Windowsie. Kolejność sprawdzania wszystkich części
 na Macu: [`m7-status.md`](m7-status.md).
 
 Ta część nie używa nowej funkcji OpenGL: powtarza trzy rzeczy z części 4 (framebuffer bez
@@ -1820,6 +1822,89 @@ części 4 zatrzyma też tę część.
       zasięg i płaszczyzna daleka, patrzenie prawie prosto w górę i w dół, migotanie
       krawędzi przy ruchu, bateria, światło w ścianie w noclipie, zakładka `Flashlight`,
       tryb `Gouraud`, `Reload shaders` i pomiar kosztu drugiego przebiegu
+
+### M7, część 6 (minimapa) na macOS: lista w całości otwarta
+
+Szósta, ostatnia część kamienia milowego M7 (minimapa: pliki `src/game/Discovery.*`,
+`Minimap.*` i `MinimapRenderer.*`, `Round::discovery`, `cellAt` w `MazeLayout.*`, nowe
+parametry `gfx::Buffer` (podpowiedź użycia i `setData`), `NightMazeApp::drawMinimap` z
+klawiszem M, zakładka `Minimap` panelu Framebuffers, shadery `post/minimap.vert`,
+`post/minimap.frag` i `post/minimap_overlay.frag`; **dwa nowe programy shaderów**, razem
+trzynaście, i dwanaście paneli bez zmian) powstała na Windowsie 2026-10-06 i tam jest
+zgłoszona jako zbudowana i przetestowana ([`build-windows.md`](build-windows.md), sekcja
+22). **Na macOS nikt jej nie zbudował ani nie uruchomił, więc żaden punkt poniżej nie jest
+odhaczony.** Na Windowsie zgłoszono tylko krótki start programu Debug: **nikt nie obejrzał
+minimapy** na żadnym systemie, a start nie obejmował klawisza M, zakładki `Minimap`,
+`Reveal all`, `Reload shaders` ani zmiany rozmiaru okna. Opis kodu:
+[`../modules/renderer/minimap.md`](../modules/renderer/minimap.md). Wszystkie sześć części M7
+ma teraz kod na Windowsie i żadna nie jest zamknięta. Kolejność sprawdzania wszystkich części
+na Macu: [`m7-status.md`](m7-status.md).
+
+**Nowe dla sterownika Apple w tej części**
+
+- [ ] **drugi kolorowy framebuffer `GL_RGBA8` bez głębi.** Framebuffer minimapy jest
+      tworzony przy pierwszej klatce i przy każdej zmianie rozmiaru kwadratu mapy. Tylko
+      kolor, bez głębi: kompletność z samym załącznikiem koloru. Oczekiwane: przy starcie
+      żadnej linii `[error]` ze słowami `is not complete`. Zakładka `Minimap` panelu
+      Framebuffers pokazuje `Framebuffer: <bok> x <bok> px, GL_RGBA8`
+- [ ] **rozmiary na ekranie Retina.** Kwadrat mapy jest liczony z wysokości **framebuffera**
+      w pikselach (nie okna we współrzędnych ekranu): okno 1280 x 720 ma bufor 2560 x 1440 i
+      mapa ma mieć 403 piksele boku, a nie 202. Sprawdzić linię `Framebuffer:` w zakładce
+      i to, że mapa zajmuje około 28 procent wysokości okna. Obraz ma być ostry (kopia
+      piksel w piksel), nie rozmyty
+- [ ] **mieszanie w domyślnym framebufferze.** Nakładka rysuje do okna z `GL_BLEND` i
+      `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)` na czas jednego wywołania.
+      Oczekiwane: scena prześwituje przez mapę (przezroczystość 0,85). Jeśli mapa jest w
+      pełni kryjąca przy `Opacity` 0,5, mieszanie nie działa. Na macOS okno może mieć
+      framebuffer bez kanału alfa: alfa służy tu tylko jako współczynnik mieszania, nie jest
+      zapisywana do okna, więc to nie powinno przeszkadzać. Zapisać, co widać
+- [ ] **viewport na część okna i trójkąt z `gl_VertexID`.** Nakładka ustawia `glViewport`
+      na kwadrat w rogu i rysuje trójkąt bez bufora wierzchołków (pusta tablica `m_triangle`).
+      Oczekiwane: mapa wypełnia dokładnie kwadrat w prawym dolnym rogu, bez obcięcia i bez
+      przesunięcia. Po rysowaniu viewport wraca na całe okno: panele i HUD stoją na swoich
+      miejscach
+- [ ] **bufor `GL_DYNAMIC_DRAW` zastępowany co klatkę.** `glBufferData` jest wołane w każdej
+      klatce z listą o zmiennym rozmiarze (około 1400 wierzchołków po odkryciu całości).
+      Oczekiwane: brak `GL_INVALID_*` w buildzie Debug i brak migotania. Sterownik Apple
+      może inaczej niż Windows obsłużyć ciągłe przydzielanie pamięci: zapisać liczbę klatek
+      (punkt niżej)
+- [ ] **kolory bez konwersji.** Mapa ma te same kolory, co na Windowsie (ściany jasne
+      szaroniebieskie, podłoga ciemnoniebieska, strzałka żółta). Jeśli są wyraźnie jaśniejsze
+      i wyblakłe, system włączył kodowanie sRGB przy zapisie do okna, mimo `glDisable(GL_FRAMEBUFFER_SRGB)`
+
+**Build i testy**
+
+- [ ] `cmake --build --preset debug` i `cmake --build --preset release` bez ostrzeżeń pod
+      `-Wall -Wextra -Wpedantic`. Miejsca warte uwagi: argument domyślny `GLenum usage =
+      GL_STATIC_DRAW` w konstruktorze `Buffer`, inicjalizacja z nazwami pól w
+      `buildMinimapVertices` (`.position`, `.color`), `std::lround` w `minimapRect`
+- [ ] `./build/debug/night_maze_tests` i wersja Release: 414 przypadków testowych i 138711
+      asercji, wszystkie przechodzą (liczby zgłoszone na Windowsie; przed tą częścią 375 i
+      138506). Nowe przypadki porównują liczby zmiennoprzecinkowe przez `doctest::Approx`
+      oraz kolory przez `==` (stałe są kopiowane, nie liczone): zapisać, jeśli któryś jest
+      czerwony
+- [ ] kompilator GLSL Apple przyjmuje `post/minimap.vert`, `post/minimap.frag` i
+      `post/minimap_overlay.frag` (ten ostatni z `composite.vert`). Panel Shaders pokazuje
+      trzynaście linii `OK`
+
+**Wygląd i panel**
+
+- [ ] mapa w prawym dolnym rogu, północ u góry, strzałka obraca się za myszą. Panele ukryte
+      (klawisz akcentu), bo domyślnie panel Assets stoi w prawej kolumnie
+- [ ] klawisz M włącza i wyłącza mapę, a pole `Minimap` w zakładce `Minimap` jest z nim
+      zgodne
+- [ ] zakładka `Minimap`: siedem wierszy lewej kolumny (pole `Minimap`, pole `Reveal all`,
+      suwaki `Size`, `Margin`, lista `Corner`, suwak `Opacity`, linia `Framebuffer:`) i
+      obraz po prawej. Czy panel przewija się na ekranie MacBooka
+- [ ] cała lista ręczna z [`build-windows.md`](build-windows.md), sekcja 22.2
+
+**Retina i wydajność**
+
+- [ ] Release, ustawienia startowe, panele ukryte, okno 1280 x 720: zapisać liczbę klatek na
+      sekundę z mapą włączoną (klawisz M) i wyłączoną, w jednej sesji, każdą wartość dwa
+      razy. Mapa dodaje dwa przebiegi i kopię listy co klatkę. PRD wymaga stabilnych 60
+      klatek w 1440p na MacBooku. Dla Windowsa pomiaru tej części nie ma: nic z niego nie
+      wynika
 
 ### Skróty: `make`
 

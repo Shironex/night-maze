@@ -88,6 +88,18 @@
 > pięć części z sześciu (bufor HDR, bloom, mgła i winieta, cienie księżyca, cień latarki),
 > minimapy nie ma ([`m7-status.md`](m7-status.md)).
 >
+> **Zgłoszone 2026-10-06 (M7, część 6: minimapa):** bramka `make check` przechodzi w Debug
+> i w Release, 414 przypadków testowych i 138711 asercji (po części 5 było 375 i 138506:
+> dopisanych w tej części jest 39 przypadków, w tym 19 w `DiscoveryTests.cpp`, 19 w
+> `MinimapTests.cpp` i 1 w `MazeLayoutTests.cpp`) i start programu Debug przez około 7
+> sekund: OpenGL 4.1.0 NVIDIA, assety wczytane, puste standardowe wyjście błędów (sekcja
+> 22.1). Start **nie obejmował** poruszania graczem, klawisza M, zakładki `Minimap`, pola
+> `Reveal all`, przycisku `Reload shaders`, zmiany rozmiaru okna ani obu widoków
+> diagnostycznych. Żadnego z tych pomiarów nie powtarzałem, **nikt nie obejrzał minimapy**
+> i nikt nie zmierzył liczby klatek. Wersji kompilatora, karty graficznej i sterownika dla
+> tej części nie zapisano. M7 jest kompletny w kodzie na Windowsie (wszystkie sześć części)
+> i **nie jest zamknięty** ([`m7-status.md`](m7-status.md)).
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -97,14 +109,16 @@
 > Framebuffers z suwakiem ekspozycji, listą krzywych i podglądami, jego dwie zakładki
 > z kontrolkami bloomu, mgły i winiety, cały panel Shadows z przełączaniem rozdzielczości
 > mapy cieni w działającej grze i jego zakładka `Flashlight`, trzy nowe suwaki ręki w panelu
-> Lights, cienie latarki na ekranie, zmiana rozmiaru okna,
+> Lights, cienie latarki na ekranie, minimapa (obraz, klawisz M, trzecia zakładka panelu
+> Framebuffers), zmiana rozmiaru okna,
 > docking, przycisk "Reload shaders"), praca w Visual Studio (Open Folder, F5, Build
 > Solution), RenderDoc i clangd w edytorze. Zdania o tych rzeczach są nadal przewidywaniem i
 > są tak oznaczone. Listy kontrolne w sekcjach 11 (pierwszy build, stan M1), 12 (M2 + M3),
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
 > M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
 > 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7), 20 (cienie księżyca,
-> czwarta część M7) i 21 (cień latarki, piąta część M7) rozróżniają punkty
+> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7)
+> rozróżniają punkty
 > zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
 > Sekcje 11, 12 i 13 są zapisem stanu z 2026-10-05: liczby i teksty paneli w ich punktach
@@ -117,8 +131,8 @@
 > usunęła je i zastąpiła terenem z mapy wysokości, więc słowo "podłoga" w punktach `[x]`
 > tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
 > pokazuje dziś, opisują sekcje 2, 14, 15 i 16, koniec klatki (bufor HDR, bloom, mgłę
-> i winietę) sekcje 17, 18 i 19, cienie księżyca sekcja 20, a cień latarki i latarkę w ręce
-> sekcja 21.
+> i winietę) sekcje 17, 18 i 19, cienie księżyca sekcja 20, cień latarki i latarkę w ręce
+> sekcja 21, a minimapę sekcja 22.
 
 ## 1. Wymagania
 
@@ -1378,8 +1392,9 @@ programów, scena rysowana do bufora HDR, gamma i nowe wartości świateł) sekc
 stan po drugiej (zgłoszone 276 i 102139, dziesięć programów, bloom) sekcja 18,
 stan po trzeciej (zgłoszone 294 i 102412, nadal dziesięć programów, mgła i winieta)
 sekcja 19, po czwartej (zgłoszone 310 i 103751, dwanaście paneli, jedenaście programów,
-cienie księżyca) sekcja 20, a dzisiejszy (zgłoszone 329 i 104306, nadal dwanaście paneli
-i jedenaście programów, cień latarki) sekcja 21. Punkty otwarte `[ ]` w sekcji
+cienie księżyca) sekcja 20, po piątej (zgłoszone 329 i 104306, nadal dwanaście paneli
+i jedenaście programów, cień latarki) sekcja 21, a dzisiejszy (zgłoszone 414 i 138711,
+nadal dwanaście paneli, trzynaście programów, minimapa) sekcja 22. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie. Punkty `[x]`
 mówią o podłodze z płytek (`floor_tile.obj`, `floor_stone.png`), którą druga część M6
 usunęła.
@@ -4307,6 +4322,7 @@ Decyzje:
 i
 [`../decisions/flashlight-hand-straight-down.md`](../decisions/flashlight-hand-straight-down.md).
 
+(Stan po części piątej, 2026-10-06. Od szóstej części minimapa jest w kodzie, sekcja 22.)
 Kamień milowy M7 jest nadal **rozpoczęty i nie jest kompletny**: w kodzie jest pięć części z
 sześciu. Temat 11 wykładu (shadow mapping) ma w kodzie obie mapy, ortograficzną i
 perspektywiczną, ale **nie jest zaliczony**: części ręczne 20.2 i 21.2 są otwarte, a na
@@ -4543,7 +4559,258 @@ Na koniec:
 - [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
       zostały zapisane
 
-## 22. Powiązane dokumenty
+## 22. Lista kontrolna M7, część 6: minimapa
+
+Szósta, ostatnia część kamienia milowego M7 daje grze minimapę: kwadratową mapę labiryntu
+w prawym dolnym rogu okna, z północą u góry, która pokazuje **tylko korytarze, które gracz
+odkrył**. Dwa przebiegi po przebiegu składającym (`NightMazeApp::drawMinimap`): pierwszy
+rysuje schemat z danych labiryntu (podłogi odkrytych komórek, ściany, brama, kryształy,
+strzałkę gracza) do własnego framebuffera `GL_RGBA8` bez głębi, o boku równym kwadratowi na
+ekranie (domyślnie 0,28 wysokości framebuffera okna, czyli 202 piksele przy 720), drugi
+kopiuje ten obraz piksel w piksel w róg okna z przezroczystością 0,85. Komórka jest odkryta
+przez linię wzroku wzdłuż korytarzy: komórka gracza i komórki w linii prostej w czterech
+kierunkach aż do ściany. Doszły: `src/game/Discovery.*` (stan i reguła), `src/game/Minimap.*`
+(ustawienia, kwadrat w oknie, rzut ortograficzny, lista trójkątów), `src/game/MinimapRenderer.*`
+(framebuffer, bufor `GL_DYNAMIC_DRAW`, dwa przebiegi), `Round::discovery` w `Round.*`,
+`cellAt` w `MazeLayout.*`, czwarty parametr (podpowiedź użycia) i metoda `setData` w
+`gfx::Buffer`, trzy stałe w `ShaderUniforms.hpp`, `drawMinimap` i klawisz M w `NightMazeApp`,
+cztery nowe pola `DebugContext` (razem czterdzieści dwa), dwa programy shaderów (razem
+trzynaście: `post/minimap.vert` z `post/minimap.frag` oraz `post/minimap_overlay.frag` z
+istniejącym `post/composite.vert`) i trzecia zakładka `Minimap` panelu Framebuffers. **Nie
+doszedł** żaden panel (jest ich nadal dwanaście). Opis kodu:
+[`../modules/renderer/minimap.md`](../modules/renderer/minimap.md). Decyzje:
+[`../decisions/minimap-discovered-corridors.md`](../decisions/minimap-discovered-corridors.md)
+(reguła odkrywania i schemat z danych to decyzje właściciela, reszta to wybory wykonawcze),
+[`../decisions/minimap-srgb-constants-after-composite.md`](../decisions/minimap-srgb-constants-after-composite.md)
+i
+[`../decisions/minimap-vertices-rebuilt-every-frame.md`](../decisions/minimap-vertices-rebuilt-every-frame.md).
+
+Kamień milowy M7 jest od tej części **kompletny w kodzie na Windowsie** (wszystkie sześć
+części) i **nie jest zamknięty**: listy ręczne od 17.2 do 22.2 są otwarte, na macOS kod nie
+był budowany ([`build-macos.md`](build-macos.md)), tematy 10 i 11 nie są odhaczone w
+[`../syllabus.md`](../syllabus.md) i nie ma tagu. Stan całego M7 w jednym miejscu:
+[`m7-status.md`](m7-status.md).
+
+### 22.1. Zgłoszone (2026-10-06)
+
+Środowisko: Windows. Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru
+nie zapisano w tym dokumencie. Z uruchomienia programu zgłoszono linię `GL_VERSION`
+(OpenGL 4.1.0, NVIDIA) i linie wczytania zasobów. **Żadnego z poniższych punktów nie
+powtarzałem przy pisaniu tej sekcji.** Liczby w tabelach poniżej przepisałem z kodu albo
+policzyłem z jego stałych i testów: nie są odczytane z ekranu, a **nikt nie obejrzał
+minimapy**.
+
+Bramka i start:
+
+- [x] `make check` przechodzi w Debug i w Release (zgłoszone)
+- [x] `night_maze_tests.exe`: 414 przypadków testowych i 138711 asercji, wszystkie
+      przechodzą (zgłoszone). Względem części piątej (375 i 138506) doszło 39 przypadków i
+      205 asercji. Przypadki policzyłem z plików testów: 19 nowych w `DiscoveryTests.cpp`,
+      19 nowych w `MinimapTests.cpp` i 1 nowy w `MazeLayoutTests.cpp` (`cellAt finds the
+      cell a point of the world lies in`): `375 + 19 + 19 + 1 = 414`. Podziału 205 asercji
+      między pliki nie liczyłem: pętle w testach sprawiają, że liczba `CHECK` w pliku nie
+      jest liczbą asercji w czasie działania
+- [x] start programu Debug przez około 7 sekund (zgłoszone): `GL_VERSION` 4.1.0 NVIDIA,
+      assety wczytane, standardowe wyjście błędów puste. Minimapa jest domyślnie włączona,
+      więc z pustego wyjścia błędów wynika (**moje wnioskowanie ze zgłoszenia**, nie osobna
+      obserwacja), że oba nowe programy się skompilowały, a framebuffer mapy był kompletny.
+      Wyjście błędów nic nie mówi o wyglądzie mapy: trójkąt odrzucony przy odrzucaniu
+      tylnych ścian nie zgłasza błędu OpenGL
+
+Czego ten start **nie** obejmował (zgłoszone wprost):
+
+- poruszania graczem (odkrywania komórek w ruchu)
+- klawisza M
+- zakładki `Minimap` panelu Framebuffers
+- pola `Reveal all`
+- przycisku `Reload shaders`
+- zmiany rozmiaru okna
+- obu widoków diagnostycznych
+
+Nikt nie kliknął żadnej z nowych kontrolek i nikt nie obejrzał mapy. Liczby klatek dla tej
+części nie zostały zmierzone.
+
+Wartości startowe ustawień (`MinimapSettings`, pilnuje ich test `the minimap settings start
+with the agreed values`). Kontrolki stoją w zakładce `Minimap` panelu Framebuffers, napisy
+są takie jak w `FramebuffersPanel.cpp`:
+
+| Ustawienie | Wartość |
+|---|---|
+| `Minimap` (klawisz M) | zaznaczone |
+| `Reveal all` | odznaczone |
+| `Size` | 0,28 (suwak od 0,10 do 0,60) |
+| `Margin` | 0,020 (suwak od 0,000 do 0,100) |
+| `Corner` | `Bottom right` (lista: `Top left`, `Top right`, `Bottom left`, `Bottom right`) |
+| `Opacity` | 0,85 (suwak od 0,10 do 1,00) |
+
+Co te wartości znaczą w liczbach (policzone z kodu, jego komentarzy i testów, **nie
+zmierzone na ekranie**; część jest przypięta testami `MinimapTests.cpp`):
+
+| Okno (framebuffer) | Bok kwadratu | Margines | Lewy dolny róg kwadratu w prawym dolnym rogu okna, `x` i `y` |
+|---|---|---|---|
+| 1280 x 720 | 202 (`lround(201,6)`) | 14 (`lround(14,4)`) | 1064 i 14 |
+| 2560 x 1440 | 403 (`lround(403,2)`) | 29 (`lround(28,8)`) | 2128 i 29 |
+
+- labirynt 10 x 10 (domyślny): świat widoczny ma 21,2 m (półbok 10,6 m), przy boku 202
+  pikseli to około 0,105 m na piksel. Komórka ma około 19 pikseli, ściana (0,3 m) około 2,9
+  piksela, środek komórki `(0, 0)` leży około 15,2 piksela od lewej i od górnej krawędzi mapy
+- labirynt 40 x 40 (największy z panelu Maze): półbok 42,4 m, około 0,42 m na piksel, komórka
+  około 4,8 piksela. Działają wtedy wszystkie trzy minima w pikselach: ściana 0,63 m, romb
+  kryształu o promieniu 0,84 m i strzałka długa na 2,1 m. Czy taka mapa jest czytelna,
+  nikt nie sprawdzał
+- lista trójkątów przy pokazanym w całości labiryncie 10 x 10: około 1400 wierzchołków po 20
+  bajtów (komentarz w kodzie), moje przybliżenie z liczby podłóg i ścian to 1407, czyli około
+  28 KB kopiowane na kartę w każdej klatce. Liczby nie sprawdzono w działającym programie
+- strzałka: kierunek `(sin yaw, -cos yaw)`: yaw 0 patrzy na północ (u góry mapy), 90 na
+  wschód (w prawo). Pilnuje tego test `the arrow of the player is drawn last and points
+  where the camera looks`
+
+Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.12):
+
+- obrazu nikt nie oglądał: kolory, grubości, rozmiar strzałki i czytelność są policzone
+- w domyślnym układzie paneli panel Assets stoi w prawej kolumnie do dołu okna i **przykrywa
+  prawy dolny róg**, w którym stoi mapa. Do oglądania mapy trzeba schować panele
+- panel Framebuffers nie dostał większej wysokości (`FRAMEBUFFERS_HEIGHT` 344 bez zmian),
+  a zakładka `Minimap` jest wyższa niż dwie pozostałe: panel może się przewijać
+- panel Shaders ma trzynaście linii przy wysokości panelu 280: z rachunku (13 x 21 +
+  22 + 27, około 322) przewija się
+- mieszanie nakładki odbywa się na wartościach sRGB, a nie liniowych (jak HUD i panele)
+- ściana między komórką odkrytą a nieodkrytą jest rysowana, więc wchodzi grubością o pół
+  grubości w komórkę nieodkrytą
+- reguła nie ma zasięgu: korytarz jest odkrywany aż do ściany, także długi
+- odkrywanie zostaje po zmianie skali wysokości terenu (to nie jest nowa runda), a jest
+  zerowane przy klawiszu R i przy nowym labiryncie
+- lista wierzchołków jest odbudowywana i kopiowana co klatkę: koszt niezmierzony
+
+### 22.2. Otwarte: test ręczny na około trzydzieści minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
+nie z klikania ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/FramebuffersPanel.cpp`. Ustawień minimapy program nigdzie nie zapisuje, więc
+ponowne uruchomienie gry przywraca wartości startowe. Listy 17.2 do 21.2 też są otwarte.
+
+Przygotowanie:
+
+- [ ] usunąć stary plik `imgui.ini`, uruchomić grę z terminala. Oczekiwane w konsoli: żadnej
+      linii `[error]`, w szczególności o `minimap.vert`, `minimap.frag`,
+      `minimap_overlay.frag` ani o niekompletnym framebufferze. W buildzie Debug żadnej linii
+      `GL_...`
+- [ ] **schować panele** (klawisz akcentu, `~`) przed oglądaniem mapy: w domyślnym układzie
+      panel Assets stoi w prawej kolumnie do dołu okna i przykrywa prawy dolny róg. Panele
+      wracają tym samym klawiszem
+- [ ] panel Shaders: trzynaście linii `OK`, dwie ostatnie to `minimap.vert + minimap.frag` i
+      `composite.vert + minimap_overlay.frag`. Zapisać, czy panel się przewija (z rachunku
+      tak)
+
+Wygląd i orientacja mapy:
+
+- [ ] mapa stoi w prawym dolnym rogu, jest kwadratem, ma ciemne tło i jasne ściany. Zapisać
+      wygląd kolorów i czytelność: **tego nikt jeszcze nie widział**
+- [ ] **północ u góry.** Ustawić się twarzą na północ (strzałka na mapie wskazuje w górę), potem
+      obracać mysz: strzałka obraca się razem z kamerą, mapa stoi w miejscu. Twarzą na wschód
+      strzałka wskazuje w prawo (yaw 90 stopni)
+- [ ] strzałka porusza się płynnie podczas chodzenia (pozycja jest zmieszana między krokami
+      stałymi jak kamera), a nie skokami
+- [ ] na starcie mapa pokazuje komórkę startu (jaśniejszy niebieski kolor podłogi) i
+      korytarze, które z niej wychodzą, aż do ściany. Reszta jest ciemna
+
+Odkrywanie:
+
+- [ ] **korytarz odkryty do ściany.** Stanąć w korytarzu: na mapie pojawia się cała prosta
+      do pierwszej ściany w obu kierunkach. Nie więcej
+- [ ] **odnoga ukryta do wejścia w linię.** W ścianie korytarza jest otwór prowadzący w bok:
+      na mapie widać go jako przerwę w ścianie, ale komórki za nią są ciemne. Dopiero po
+      stanięciu w komórce na wysokości otworu (w linii z odnogą) odnoga się odkrywa. To jest
+      reguła z decyzji właściciela: zapisać, czy wygląda poprawnie
+- [ ] **róg.** Po skręcie w korytarz za rogiem komórki za rogiem są odkryte dopiero po
+      stanięciu w komórce narożnej
+- [ ] **start, wyjście i brama.** Komórka startu jest jaśniejszym niebieskim, komórka wyjścia
+      ciemnozielonym (pojawia się dopiero po odkryciu). Brama przy wyjściu ma kolor
+      pomarańczowy, gdy blokuje. Po zebraniu progu kryształów i otwarciu bramy zmienia kolor
+      na przygaszony niebieskozielony
+- [ ] **kryształy.** Turkusowe romby leżą w odkrytych komórkach. Po zebraniu kryształu jego
+      romb znika z mapy. Kryształy w nieodkrytych komórkach nie są widoczne
+- [ ] **wygrana.** Po przejściu przez bramę odkrywanie trwa dalej (spacer za kartą wygranej
+      nadal odkrywa komórki)
+- [ ] **noclip (klawisz N).** W locie nad labiryntem odkrywane są komórki pod graczem, a
+      strzałka jest na mapie w odpowiednim miejscu. Poza labiryntem strzałka może być ucięta
+      przez krawędź obrazu mapy
+- [ ] **nowy labirynt i restart.** `Regenerate` w panelu Maze i klawisz R zerują odkrycie:
+      mapa znów pokazuje tylko komórkę startu i korytarze z niej. Nowy labirynt ma inny
+      kształt mapy
+- [ ] **zmiana skali wysokości terenu** (panel Terrain): odkrycie **zostaje** (to nie jest
+      nowa runda)
+
+Położenie i rozmiar:
+
+- [ ] **położenie względem HUD.** HUD stoi na górze pośrodku. Mapa w prawym dolnym rogu nie
+      zasłania go przy 720p i przy 1440p. Zapisać, czy przy `Top right` mapa i HUD się
+      spotykają
+- [ ] rozdzielczość 1280 x 720: mapa ma mieć 202 piksele boku i margines 14 pikseli (z rachunku).
+      W zakładce `Minimap` linia `Framebuffer:` pokazuje `202 x 202 px, GL_RGBA8`
+- [ ] rozdzielczość 2560 x 1440 (większe okno albo maksymalizacja): `403 x 403 px`. Mapa
+      zajmuje ten sam ułamek wysokości okna co przy 720p
+- [ ] kopia piksel w piksel: obraz mapy jest ostry, bez rozmycia ani ząbków na krawędziach
+      ścian (zapisać, czy tak jest)
+- [ ] labirynt 40 x 40 (panel Maze, `Width` i `Height` na 40, `Regenerate`): zapisać
+      czytelność. Z rachunku komórka ma około 5 pikseli, a ściana, romb kryształu i strzałka
+      mają minima w pikselach. Czy da się z mapy czytać? Czy strzałka jest widoczna?
+
+Zakładka `Minimap` panelu Framebuffers:
+
+- [ ] panel Framebuffers ma trzy zakładki: `Tone and bloom`, `Fog and vignette`, `Minimap`
+- [ ] zakładka `Minimap`: **siedem wierszy** lewej kolumny (pole `Minimap`, pole `Reveal all`,
+      suwaki `Size` i `Margin`, lista `Corner`, suwak `Opacity` i linia `Framebuffer:`) i
+      obraz po prawej. **Czy panel się przewija** (wysokość 344 nie została zmieniona) i czy
+      obraz mieści się bez przewijania. Zapisać rozmiar obrazu
+- [ ] obraz w zakładce jest tym samym obrazem co w rogu okna, ale **bez przezroczystości**
+      (pełne krycie, tło ciemnoniebieskie) i taki, jaki leży w teksturze (sRGB pokazane tak,
+      jak zapisano). Zapisać, czy nie jest odwrócony: powinien być prosto
+- [ ] klawisz M wyłącza mapę i pole `Minimap` się odznacza. Z wyłączoną mapą linia mówi
+      `Framebuffer: not drawn (minimap off)`, a obraz zastępuje napis `(not drawn)`
+- [ ] **`Reveal all`.** Zaznaczone: cały labirynt jest na mapie, także nieodkryte komórki,
+      wyjście i brama. Odznaczone: mapa wraca dokładnie do stanu odkrycia sprzed zaznaczenia
+      (odkrycie nie zniknęło)
+- [ ] `Size` na 0,10 i na 0,60: mapa zmienia rozmiar, linia `Framebuffer:` pokazuje nowy
+      bok (72 i 432 piksele przy 720p), mapa zostaje ostra
+- [ ] `Margin` na 0 i na 0,100: odstęp od krawędzi okna zmienia się, mapa nigdy nie wychodzi
+      poza okno
+- [ ] `Corner`: wszystkie cztery rogi. Mapa stoi w wybranym rogu, a przy górnych rogach
+      zapisać, czy HUD ją nachodzi
+- [ ] `Opacity` na 1,00 i na 0,10: przy 1,00 mapa zakrywa scenę całkowicie, przy 0,10 scena
+      jest prawie w całości widoczna. Zapisać wygląd przy 0,85 (wartość startowa)
+
+Okno, shadery, tryby:
+
+- [ ] **zmiana rozmiaru okna.** Przeciągnąć krawędź: mapa zostaje w prawym dolnym rogu, jej
+      rozmiar idzie za wysokością, linia `Framebuffer:` się zmienia, w buildzie Debug żadnej
+      linii `GL_...` i żadnego `is not complete`. **Zminimalizować** okno (framebuffer
+      0 x 0) i przywrócić: bez awarii, mapa wraca
+- [ ] **`Reload shaders`.** Trzynaście linii `OK`, mapa nadal się rysuje. Po przeładowaniu
+      uniform `uMap` wraca do 0 i jest ustawiany w każdej klatce (komentarz w kodzie): zapisać,
+      czy mapa nie znika
+- [ ] **zepsuty shader.** Wprowadzić celowy błąd w `minimap.frag`, `Reload shaders`: linia
+      `minimap.vert + minimap.frag` pokazuje błąd, a mapa nie rysuje się (kod
+      `MinimapRenderer::drawMap` zwraca `false` dla nieprawidłowego programu), ale program
+      nie ulega awarii. Przywrócić plik i przeładować
+- [ ] **oba widoki diagnostyczne** (lista `View mode` w panelu Renderer): mapa jest widoczna
+      w obu, bez zmiany kolorów (jest po przebiegu składającym)
+- [ ] **mgła i bloom nie ruszają mapy.** Zwiększyć `Density` mgły i `Intensity` bloomu: kolory
+      mapy się nie zmieniają
+- [ ] **tryby `Gouraud`, `Phong` i `Unlit`** (lista `Lighting`): mapa wygląda tak samo
+
+Wydajność:
+
+- [ ] **FPS z mapą i bez niej, w jednej sesji.** Build Release, panele ukryte, okno 1280 x 720
+      i po zmaksymalizowaniu: zapisać liczbę klatek na sekundę z mapą włączoną i wyłączoną
+      (klawisz M), każdą wartość dwa razy, w tej samej sesji. Mapa dodaje budowę listy na
+      procesorze, `glBufferData` i dwa przebiegi w każdej klatce. Liczb klatek między sesjami
+      nie wolno porównywać (zob. [`m7-status.md`](m7-status.md), sekcja 5)
+- [ ] w konsoli przez cały test żadnej linii `[error]` poza wywołanymi celowo
+- [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
+      zostały zapisane
+
+## 23. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -4553,5 +4820,6 @@ Na koniec:
   [`../libraries/doctest.md`](../libraries/doctest.md) (testy jednostkowe)
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
   [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapy cieni księżyca i latarki),
-  [`../modules/game/flashlight.md`](../modules/game/flashlight.md) (latarka w ręce)
+  [`../modules/game/flashlight.md`](../modules/game/flashlight.md) (latarka w ręce),
+  [`../modules/renderer/minimap.md`](../modules/renderer/minimap.md) (minimapa)
 - Dokumentacja CMake (generatory, presety): <https://cmake.org/cmake/help/latest/>

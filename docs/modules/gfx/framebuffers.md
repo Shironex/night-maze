@@ -1,7 +1,7 @@
 # Moduł gfx: framebuffer, klasa `Framebuffer`
 
 Kamień milowy: M7, część pierwsza (bufor HDR, przebieg składający, gamma). Temat wykładu: 10 (Rendering pozaekranowy), strona obiektu OpenGL.
-Kod: [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), [`src/gfx/Framebuffer.cpp`](../../../src/gfx/Framebuffer.cpp), testy w [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp). Obiekty tej klasy tworzą dwa pliki: [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) (od drugiej części M7 osiem obiektów: scena, trzy cele bloomu i cztery podglądy) i, od czwartej części M7, [`src/game/ShadowMap.cpp`](../../../src/game/ShadowMap.cpp) (dwa: mapa cieni księżyca i jej podgląd). Czytają je także panele [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp) i [`src/debug/panels/ShadowsPanel.cpp`](../../../src/debug/panels/ShadowsPanel.cpp).
+Kod: [`src/gfx/Framebuffer.hpp`](../../../src/gfx/Framebuffer.hpp), [`src/gfx/Framebuffer.cpp`](../../../src/gfx/Framebuffer.cpp), testy w [`tests/FramebufferTests.cpp`](../../../tests/FramebufferTests.cpp). Obiekty tej klasy tworzą dwa pliki: [`src/game/PostProcess.cpp`](../../../src/game/PostProcess.cpp) (od drugiej części M7 osiem obiektów: scena, trzy cele bloomu i cztery podglądy) i, od czwartej części M7, [`src/game/ShadowMap.cpp`](../../../src/game/ShadowMap.cpp) (dwa: mapa cieni księżyca i jej podgląd) oraz, od szóstej części M7, [`src/game/MinimapRenderer.cpp`](../../../src/game/MinimapRenderer.cpp) (jeden: framebuffer minimapy, sekcja 5.16). Czytają je także panele [`src/debug/panels/FramebuffersPanel.cpp`](../../../src/debug/panels/FramebuffersPanel.cpp) i [`src/debug/panels/ShadowsPanel.cpp`](../../../src/debug/panels/ShadowsPanel.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Ten dokument stoi na [`textures.md`](textures.md): zakłada znajomość tekstur 2D (teksele, filtry, zawijanie, jednostki teksturujące, obiekt samplera, format danych a format wewnętrzny, kompletność tekstury) i opisuje to, co dochodzi, gdy do tekstury się **rysuje**, zamiast ją tylko czytać. Co gra robi z framebufferem (kolejność przebiegów klatki, trójkąt na cały ekran, mapowanie tonów, podglądy załączników), opisuje [`../renderer/post-process.md`](../renderer/post-process.md). Dlaczego bufor sceny trzyma kolory liniowe i gdzie są kodowane na sRGB, opisuje [`color-space.md`](color-space.md). Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
 
@@ -869,6 +869,28 @@ Przebieg głębi czyści tylko głębię (`glClear(GL_DEPTH_BUFFER_BIT)`): kolor
 Panel **Shadows** pokazuje stan mapy tymi samymi getterami co panel Framebuffers: linia `Map: 2048 x 2048, GL_DEPTH_COMPONENT24` bierze `width()`, `height()` i `depthFormatName(depthFormat())` z `ShadowMap::target()`, a obraz podglądu `colorTextureId()` z `ShadowMap::preview()`.
 
 Co jest sprawdzone: zgłoszone dla Windowsa (2026-10-05), build Debug bez błędów OpenGL przy obu rozmiarach mapy. Czego nie sprawdzono: przełączania rozdzielczości myszą w działającej grze i całości na macOS (sekcja 5.13).
+
+### 5.16 Framebuffer minimapy: `Rgba8` bez głębi, rozmiar równy kwadratowi na ekranie (szósta część M7)
+
+Szósta część M7 ([`../renderer/minimap.md`](../renderer/minimap.md)) dodała czwartego użytkownika klasy i znów nie zmieniła w niej ani jednej linii. `game::MinimapRenderer::drawMap` tworzy `m_target` przy pierwszej klatce i przy każdej zmianie rozmiaru kwadratu mapy:
+
+```cpp
+m_target = gfx::Framebuffer({.width = pixels,
+                             .height = pixels,
+                             .color = gfx::ColorFormat::Rgba8,
+                             .depth = gfx::DepthFormat::None});
+```
+
+| Własność | Wartość w minimapie | Dlaczego (z komentarzy w kodzie) |
+|---|---|---|
+| format koloru | `Rgba8`, nazwa w panelu `GL_RGBA8` | jeden bajt na kanał wystarcza gotowemu obrazowi, mapa nie ma kolorów jaśniejszych od bieli. To nie jest format sRGB, więc tekstura przechowuje liczby bez zmian |
+| głębia | `None` | kształty są płaskie i rysowane w kolejności listy, więc nie ma czego testować |
+| rozmiar | `pixels` x `pixels`, równy kwadratowi na ekranie | obraz jest kopiowany piksel w piksel, bez skalowania i rozmycia |
+| przypisanie | `m_target = Framebuffer(...)` | przypisanie przenoszące zwalnia stary obiekt. Przy zmianie rozmiaru powstaje nowy obiekt, a nie `resize` (sekcja 5.10) |
+| zapamiętany rozmiar `m_requestedSize` | osobno od rozmiaru framebuffera | nieudane utworzenie nie jest ponawiane w każdej klatce |
+| odczyt | `bindColorTexture(0)` w `drawOverlay`, po związaniu okna | przebieg nie czyta tekstury, do której rysuje |
+
+Tekstura koloru ma filtr `GL_LINEAR` i `GL_CLAMP_TO_EDGE` jak każda w tej klasie. Przy kopii 1:1 środek piksela okna wypada w środku teksela i filtr daje dokładnie wartość teksela. **Obrazu mapy nikt nie oglądał**, a tworzenia framebuffera przy zmianie rozmiaru okna nikt nie ćwiczył (zgłoszony start przy rozmiarze początkowym nie wypisał błędu).
 
 ## 6. Panel ImGui
 

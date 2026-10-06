@@ -93,6 +93,12 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
         round.gateOpen = true;
         round.gateProgress = 1.0F;
     }
+
+    // The minimap starts empty, except for what can be seen from the start: the start
+    // cell and the straight corridors that leave it. It is done here and not left to
+    // the first step, so that the very first frame already shows it.
+    round.discovery = Discovery(world.maze.width(), world.maze.height());
+    discoverAround(round.discovery, world.maze, world.startPosition);
     return round;
 }
 
@@ -119,6 +125,11 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
     if (round.gateOpen) {
         round.gateProgress = std::min(round.gateProgress + stepSeconds / GATE_OPEN_SECONDS, 1.0F);
     }
+
+    // What the player sees from where the feet are after this step goes onto the
+    // minimap. Also after the round is won: the player can still walk around. The walls
+    // are read from the maze in every step, so the result follows a maze that changes.
+    discoverAround(round.discovery, world.maze, feetPosition);
 
     // A won round is over: its time, its battery and its crystals stay as they were at
     // the moment of the win.

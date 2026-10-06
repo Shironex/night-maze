@@ -1,6 +1,6 @@
 # Moduł gfx: bufory i tablica wierzchołków
 
-Kamień milowy: M1. W M5 przykłady zostały przeniesione na kod, który istnieje dziś. Od M7 klasa `VertexArray` ma użytkowników poza `Mesh` (pusty VAO trójkąta na cały ekran), od czwartej części M7 dwóch. Temat wykładu: 2 (Programowalny potok).
+Kamień milowy: M1. W M5 przykłady zostały przeniesione na kod, który istnieje dziś. Od M7 klasa `VertexArray` ma użytkowników poza `Mesh` (pusty VAO trójkąta na cały ekran), od czwartej części M7 dwóch. Od szóstej części M7 klasa `Buffer` ma czwarty parametr (podpowiedź użycia) i metodę `setData`: pierwszy bufor, którego zawartość zmienia się w trakcie gry, to lista trójkątów minimapy ([`../renderer/minimap.md`](../renderer/minimap.md), sekcja 2.7). Opis klasy poniżej, w sekcjach 2.6, 5.2, 5.3 i 8, jest uzupełniony o tę zmianę. Temat wykładu: 2 (Programowalny potok).
 Kod: [`src/gfx/Buffer.hpp`](../../../src/gfx/Buffer.hpp), [`src/gfx/Buffer.cpp`](../../../src/gfx/Buffer.cpp), [`src/gfx/VertexArray.hpp`](../../../src/gfx/VertexArray.hpp), [`src/gfx/VertexArray.cpp`](../../../src/gfx/VertexArray.cpp), użycie w [`src/gfx/Mesh.hpp`](../../../src/gfx/Mesh.hpp) i [`src/gfx/Mesh.cpp`](../../../src/gfx/Mesh.cpp).
 
 Część modułu `gfx`. Wstęp do całego modułu, zasada RAII dla obiektów OpenGL i semantyka przenoszenia są w [`README.md`](README.md). Druga część tematu 2, czyli shadery i sam potok, jest w [`shaders.md`](shaders.md): ten dokument zakłada jej znajomość. Ciąg dalszy tego dokumentu to [`indexed-drawing.md`](indexed-drawing.md): indeksy, dane brył, które da się przeczytać w repozytorium, i rysowanie przez `glDrawElements`. Klasę, która dziś jako jedyna używa **obu** opisanych tu klas naraz, omawia [`mesh.md`](mesh.md). Każde wywołanie OpenGL jest opakowane w `GL_CHECK` ([`../core/gl-check.md`](../core/gl-check.md)).
@@ -166,7 +166,9 @@ Ostatni parametr `glBufferData` to **podpowiedź** (usage hint) dla sterownika: 
 | `READ` | karta zapisuje dane, program je odczytuje |
 | `COPY` | karta zapisuje dane i karta ich używa |
 
-Daje to dziewięć stałych, od `GL_STATIC_DRAW` do `GL_STREAM_COPY`. To tylko podpowiedź: sterownik może na jej podstawie wybrać rodzaj pamięci, ale nie ogranicza ona tego, co wolno z buforem zrobić. `gfx::Buffer` zawsze używa `GL_STATIC_DRAW`, bo bufor jest wypełniany raz, w konstruktorze, i klasa nie ma funkcji zmieniającej dane.
+Daje to dziewięć stałych, od `GL_STATIC_DRAW` do `GL_STREAM_COPY`. To tylko podpowiedź: sterownik może na jej podstawie wybrać rodzaj pamięci, ale nie ogranicza ona tego, co wolno z buforem zrobić. Do szóstej części M7 `gfx::Buffer` zawsze używał `GL_STATIC_DRAW`, bo bufor był wypełniany raz, w konstruktorze. Od szóstej części podpowiedź jest czwartym parametrem konstruktora (domyślnie `GL_STATIC_DRAW`, więc dotychczasowy kod się nie zmienił), a klasa ma metodę `setData`, która wypełnia bufor od nowa. Minimapa tworzy bufor z `GL_DYNAMIC_DRAW`: jego zawartość zmienia się co klatkę (strzałka gracza porusza się cały czas) i zmienia **rozmiar** (odkryta komórka dodaje trójkąty). Podpowiedź nie zmienia tego, co wolno: bufor `GL_DYNAMIC_DRAW` rysuje się i wypełnia dokładnie tak jak statyczny.
+
+**`glBufferData` jeszcze raz, a nie `glBufferSubData`.** `setData` woła ponownie `glBufferData`, a ta funkcja **przydziela nową pamięć** zamiast pisać w starej: karta może dokończyć wywołanie rysujące, które jeszcze czyta starą zawartość, a rozmiar może być inny niż poprzednio. `glBufferSubData` zapisuje w istniejącej pamięci i bufora nie powiększa (zapis poza końcem to błąd OpenGL), więc pasuje do bufora o stałym rozmiarze, jak `UniformBuffer` ze światłami ([`uniform-buffers.md`](uniform-buffers.md)), a nie do listy, która zmienia rozmiar. Mapowanie bufora (`glMapBuffer`) jest trzecią drogą, której kod nie używa: powodu kod nie podaje, a przy liście około 28 KB na klatkę to moja analiza, że nie ma czego zyskać. **Nie mierzono**, która z dróg jest szybsza. Wybór opisuje notatka [`../../decisions/minimap-vertices-rebuilt-every-frame.md`](../../decisions/minimap-vertices-rebuilt-every-frame.md).
 
 Dwa tematy teorii, które korzystają już z tych pojęć, są w [`indexed-drawing.md`](indexed-drawing.md), sekcja 2: indeksy i bufor indeksów (w tym odpowiedź, dlaczego ściana ma 60 wierzchołków, choć w pliku modelu są 24 pozycje) oraz współrzędne lokalne i kierunek nawijania.
 
@@ -317,7 +319,12 @@ public:
     /// So create the element buffer while its VertexArray is the bound one, otherwise the
     /// indices are attached to no vertex array (or to the wrong one). The VertexArray
     /// constructor binds, so creating the vertex array just before the buffer is enough.
-    Buffer(GLenum target, const void* data, std::size_t sizeInBytes);
+    ///
+    /// usage tells the driver how the buffer will be used, so it can choose the memory
+    /// for it: GL_STATIC_DRAW (the default) for data that is set once and drawn many
+    /// times, GL_DYNAMIC_DRAW for data that is replaced often. It is a hint: both kinds
+    /// can be drawn and filled in the same ways.
+    Buffer(GLenum target, const void* data, std::size_t sizeInBytes, GLenum usage = GL_STATIC_DRAW);
     ~Buffer();
 
     Buffer(const Buffer&) = delete;
@@ -331,9 +338,18 @@ public:
     /// Binds the buffer to the target it was created for (glBindBuffer).
     void bind() const;
 
+    /// Replaces the whole contents by sizeInBytes bytes copied from data. The buffer may
+    /// get another size than it had. It is left bound to its target. glBufferData gives
+    /// the buffer new memory instead of writing into the old one, so the graphics card
+    /// can still finish a draw call that reads the old contents. Meant for a buffer
+    /// created with GL_DYNAMIC_DRAW.
+    void setData(const void* data, std::size_t sizeInBytes);
+
 private:
     // Binding point given to the constructor, remembered so that bind() needs no argument.
     GLenum m_target;
+    // The usage hint given to the constructor, used again by setData.
+    GLenum m_usage;
     // Name (id) of the OpenGL buffer object. 0 is never a real buffer: it means "none".
     GLuint m_id = 0;
 };
@@ -353,15 +369,25 @@ Klasa nie jest szablonem i nie przyjmuje `std::vector` ani `std::array`. Wołaj�
 ### 5.3 `Buffer`: konstruktor, destruktor, `bind`
 
 ```cpp
-Buffer::Buffer(GLenum target, const void* data, std::size_t sizeInBytes) : m_target(target) {
+Buffer::Buffer(GLenum target, const void* data, std::size_t sizeInBytes, GLenum usage)
+    : m_target(target), m_usage(usage) {
     // glGenBuffers writes new ids into an array. Here the array is the one member.
     GL_CHECK(glGenBuffers(1, &m_id));
     // OpenGL 4.1 can only fill the buffer that is bound, so bind first.
     GL_CHECK(glBindBuffer(m_target, m_id));
     // Allocates sizeInBytes bytes on the graphics card and copies the data there.
     // The size parameter is a signed type (GLsizeiptr), hence the cast.
-    // GL_STATIC_DRAW is a hint: the data is set once and used for drawing many times.
-    GL_CHECK(glBufferData(m_target, static_cast<GLsizeiptr>(sizeInBytes), data, GL_STATIC_DRAW));
+    // The usage is a hint. GL_STATIC_DRAW, the default: the data is set once and used
+    // for drawing many times.
+    GL_CHECK(glBufferData(m_target, static_cast<GLsizeiptr>(sizeInBytes), data, m_usage));
+}
+
+void Buffer::setData(const void* data, std::size_t sizeInBytes) {
+    // OpenGL 4.1 can only fill the buffer that is bound, as in the constructor.
+    GL_CHECK(glBindBuffer(m_target, m_id));
+    // The same call as in the constructor: the old memory of the buffer is given up and
+    // new memory of the new size is filled.
+    GL_CHECK(glBufferData(m_target, static_cast<GLsizeiptr>(sizeInBytes), data, m_usage));
 }
 ```
 
@@ -372,7 +398,8 @@ Buffer::Buffer(GLenum target, const void* data, std::size_t sizeInBytes) : m_tar
 | `glBindBuffer(m_target, m_id)` | Model "zwiąż, potem edytuj" (sekcja 2.2). Dopiero przy pierwszym związaniu OpenGL tworzy właściwy obiekt bufora |
 | `static_cast<GLsizeiptr>(sizeInBytes)` | `glBufferData` przyjmuje rozmiar jako `GLsizeiptr`, typ **ze znakiem** o szerokości wskaźnika. `std::size_t` jest bez znaku, więc bez rzutowania kompilator ostrzegałby o niejawnej zmianie znaku |
 | `data` | OpenGL kopiuje bajty podczas tego wywołania. Tablica w programie może potem zniknąć |
-| `GL_STATIC_DRAW` | Podpowiedź użycia (sekcja 2.6) |
+| `m_usage` (od szóstej części M7) | Podpowiedź użycia (sekcja 2.6): domyślnie `GL_STATIC_DRAW`, minimapa podaje `GL_DYNAMIC_DRAW`. Konstruktor przenoszący i przypisanie przenoszące kopiują też to pole |
+| `setData` (od szóstej części M7) | Wiąże bufor i woła `glBufferData` jeszcze raz, z tym samym celem i podpowiedzią: nowa pamięć, nowy rozmiar, bufor zostaje związany |
 
 Po konstruktorze bufor **zostaje związany** ze swoim celem. Dla `GL_ARRAY_BUFFER` to wygodne: zaraz potem woła się `setFloatAttribute`, które potrzebuje właśnie tego wiązania. Dla `GL_ELEMENT_ARRAY_BUFFER` to jest sedno sprawy: samo utworzenie bufora indeksów zapisuje go w bieżącym VAO. Dlatego komentarz w nagłówku każe tworzyć bufor indeksów wtedy, gdy bieżącym VAO jest ten właściwy. Konstruktor `VertexArray` wiąże swój obiekt (sekcja 5.5), więc wystarcza utworzyć VAO tuż przed buforem.
 
@@ -398,7 +425,8 @@ Ogólne wyjaśnienie przenoszenia jest w [`README.md`](README.md), sekcja 2, a t
 
 ```cpp
 // Move constructor: the new object takes the buffer id, and other gives it up.
-Buffer::Buffer(Buffer&& other) noexcept : m_target(other.m_target), m_id(other.m_id) {
+Buffer::Buffer(Buffer&& other) noexcept
+    : m_target(other.m_target), m_usage(other.m_usage), m_id(other.m_id) {
     // Two objects must never hold the same id. With 0 the destructor of other
     // deletes nothing.
     other.m_id = 0;
@@ -416,6 +444,7 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept {
     GL_CHECK(glDeleteBuffers(1, &m_id));
 
     m_target = other.m_target;
+    m_usage = other.m_usage;
     m_id = other.m_id;
     other.m_id = 0;
     return *this;
@@ -658,7 +687,7 @@ Pułapki dotyczące bufora indeksów, liczby i typu indeksów, kierunku nawijani
    W profilu Core nie ma domyślnego VAO: numer 0 oznacza brak obiektu. Stan atrybutów nie ma gdzie być zapisany, a rysowanie bez związanego VAO kończy się `GL_INVALID_OPERATION`.
 
 8. **Co robi `glBufferData` i co oznacza `GL_STATIC_DRAW`?**
-   Przydziela pamięć bufora związanego z danym celem i kopiuje do niej dane z programu. `GL_STATIC_DRAW` to podpowiedź dla sterownika: dane ustawiane raz, używane wiele razy do rysowania. `DYNAMIC` oznacza częste zmiany, `STREAM` dane używane najwyżej kilka razy. To tylko podpowiedź, nie ograniczenie.
+   Przydziela pamięć bufora związanego z danym celem i kopiuje do niej dane z programu. `GL_STATIC_DRAW` to podpowiedź dla sterownika: dane ustawiane raz, używane wiele razy do rysowania. `DYNAMIC` oznacza częste zmiany, `STREAM` dane używane najwyżej kilka razy. To tylko podpowiedź, nie ograniczenie. Od szóstej części M7 podpowiedź jest parametrem konstruktora `Buffer` (domyślnie `GL_STATIC_DRAW`), a `setData` woła `glBufferData` ponownie: mapa tworzy bufor z `GL_DYNAMIC_DRAW` i zastępuje całą zawartość w każdej klatce.
 
 9. **Dlaczego rozmiar w `glBufferData` jest rzutowany?**
    Funkcja przyjmuje `GLsizeiptr`, typ ze znakiem, a `sizeof` i mój parametr dają `std::size_t`, typ bez znaku. `static_cast` czyni zamianę jawną i usuwa ostrzeżenie kompilatora.

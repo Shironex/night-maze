@@ -70,6 +70,10 @@ protected:
             .flashlightShadowMap = flashlightShadowMap(),
             .flashlightLightSpace = flashlightLightSpace(),
             .flashlightShadowDrawn = flashlightShadowDrawn(),
+            .minimapShader = minimapShader(),
+            .minimapOverlayShader = minimapOverlayShader(),
+            .minimapSettings = minimapSettings(),
+            .minimap = minimapRenderer(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

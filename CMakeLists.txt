@@ -101,8 +101,8 @@ night_maze_enable_warnings(engine)
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
 # The maze, its generator, its layout in the world, the terrain it stands on, the places
 # of the grass, the player, the settings of the lighting, of the bloom, of the fog, of
-# the vignette and of the shadows and the rules of a round (exit, crystals, battery) are
-# plain data and math.
+# the vignette and of the shadows, the rules of a round (exit, crystals, battery) and what
+# the minimap shows (the discovered cells and its shapes) are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -111,6 +111,8 @@ add_library(game_logic STATIC
     src/game/Bloom.hpp
     src/game/Crystals.cpp
     src/game/Crystals.hpp
+    src/game/Discovery.cpp
+    src/game/Discovery.hpp
     src/game/Exit.cpp
     src/game/Exit.hpp
     src/game/Fog.cpp
@@ -129,6 +131,8 @@ add_library(game_logic STATIC
     src/game/MazeLayout.hpp
     src/game/MazeWorld.cpp
     src/game/MazeWorld.hpp
+    src/game/Minimap.cpp
+    src/game/Minimap.hpp
     src/game/Player.cpp
     src/game/Player.hpp
     src/game/Round.cpp
@@ -150,9 +154,9 @@ night_maze_enable_warnings(game_logic)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer, TerrainRenderer,
-# GrassRenderer, ColliderLines, LightRig, Skybox, PostProcess, ShadowMap, with the shared
-# ModelDraw) stay in the executable: they need a window and an OpenGL context, so they
-# are not something a test can run.
+# GrassRenderer, ColliderLines, LightRig, Skybox, PostProcess, ShadowMap, MinimapRenderer,
+# with the shared ModelDraw) stay in the executable: they need a window and an OpenGL
+# context, so they are not something a test can run.
 add_executable(night_maze
     src/main.cpp
     src/game/ColliderLines.cpp
@@ -165,6 +169,8 @@ add_executable(night_maze
     src/game/LightRig.hpp
     src/game/MazeRenderer.cpp
     src/game/MazeRenderer.hpp
+    src/game/MinimapRenderer.cpp
+    src/game/MinimapRenderer.hpp
     src/game/ModelDraw.cpp
     src/game/ModelDraw.hpp
     src/game/NightMazeApp.cpp
@@ -228,6 +234,7 @@ add_executable(night_maze_tests
     tests/ColliderTests.cpp
     tests/ColorSpaceTests.cpp
     tests/CrystalTests.cpp
+    tests/DiscoveryTests.cpp
     tests/ExitTests.cpp
     tests/FogTests.cpp
     tests/FramebufferTests.cpp
@@ -240,6 +247,7 @@ add_executable(night_maze_tests
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
     tests/MazeWorldTests.cpp
+    tests/MinimapTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
     tests/RaycastTests.cpp

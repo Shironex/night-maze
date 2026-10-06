@@ -2,6 +2,8 @@
 // See docs/modules/game/maze-generator.md
 #include "game/MazeLayout.hpp"
 
+#include <cmath>
+
 namespace game {
 
 namespace {
@@ -65,6 +67,15 @@ bool cornerHasWall(const Maze& maze, int cornerX, int cornerZ) {
 
 glm::vec3 cellCenter(int x, int z) {
     return {cellMiddle(x), 0.0F, cellMiddle(z)};
+}
+
+MazeCell cellAt(const glm::vec3& position) {
+    // The column is the number of whole cells between the origin and the point. floor
+    // rounds DOWN, also below zero: -0.5 m becomes column -1. A plain conversion to int
+    // would cut the fraction off and give column 0, a cell of the maze, for a point
+    // that is outside of it.
+    return {.x = static_cast<int>(std::floor(position.x / CELL_SIZE)),
+            .z = static_cast<int>(std::floor(position.z / CELL_SIZE))};
 }
 
 WallSegment wallSegmentOn(int x, int z, Direction side) {

@@ -1,8 +1,8 @@
 # Stan M7 na koniec 2026-10-06
 
-Krótka ściąga: co z kamienia milowego M7 jest w kodzie, co zostało, jakie decyzje już zapadły dla brakującej części i w jakiej kolejności sprawdzać wszystko na Macu. Pierwsza wersja powstała na koniec 2026-10-05 (cztery części z sześciu), ta jest z końca 2026-10-06 (pięć części). Daty przy decyzjach i liczbach mówią, kiedy co zapadło. Szczegóły są w dokumentach, do których prowadzą odnośniki. Ten plik nie zastępuje list kontrolnych w [`build-windows.md`](build-windows.md) i [`build-macos.md`](build-macos.md).
+Krótka ściąga: co z kamienia milowego M7 jest w kodzie, co zostało, jakie decyzje zapadły i w jakiej kolejności sprawdzać wszystko na Macu. Pierwsza wersja powstała na koniec 2026-10-05 (cztery części z sześciu), ta jest z końca 2026-10-06 (wszystkie sześć). Daty przy decyzjach i liczbach mówią, kiedy co zapadło. Szczegóły są w dokumentach, do których prowadzą odnośniki. Ten plik nie zastępuje list kontrolnych w [`build-windows.md`](build-windows.md) i [`build-macos.md`](build-macos.md).
 
-**Jednym zdaniem:** pięć części z sześciu jest kompletnych w kodzie na Windowsie, **żadna nie jest zamknięta** (testy ręczne i macOS są otwarte dla wszystkich), tagu nie ma. Brakuje części szóstej, minimapy: jej kodu nie ma, a dwie decyzje o niej zapadły (sekcja 3).
+**Jednym zdaniem:** wszystkie sześć części jest kompletnych w kodzie na Windowsie, **żadna nie jest zamknięta** (testy ręczne i macOS są otwarte dla wszystkich), tagu nie ma. Ostatnia, szósta część, minimapa, powstała 2026-10-06: **nikt nie obejrzał jej obrazu** (sekcja 1).
 
 Poza M7 istnieją w kodzie bezokienkowe fundamenty M8 (rzutowanie promieni, rozmieszczanie dźwigni i notatek). Nie są częścią M7 i są opisane osobno, w swoich dokumentach: [`../modules/scene/picking.md`](../modules/scene/picking.md) i [`../modules/game/interactables.md`](../modules/game/interactables.md).
 
@@ -15,19 +15,20 @@ Poza M7 istnieją w kodzie bezokienkowe fundamenty M8 (rzutowanie promieni, rozm
 | 3. Mgła i winieta | mgła wykładnicza z wysokością, liczona z bufora głębi w przebiegu składającym, i winieta | `e8e1822` `feat(game): add ground fog from the depth buffer and a vignette` | [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md) | sekcja 19 |
 | 4. Cienie księżyca | mapa cieni 2048 x 2048 z rzutem ortograficznym dopasowanym do terenu, `sampler2DShadow` z obiektem samplera, filtr sprzętowy 2 x 2, PCF do 7 x 7, bias w metrach, panel Shadows | `26c21c4` `feat(game): cast moon shadows with a shadow map, pcf and bias` | [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), [`../modules/gfx/comparison-sampler.md`](../modules/gfx/comparison-sampler.md) | sekcja 20 |
 | 5. Cień latarki i latarka w ręce | druga mapa cieni 1024 x 1024 z **rzutem perspektywicznym** (`scene::spotLightSpace`), nieliniowa głębia i bias w metrach przesuwający punkt w świecie, sprawdzenie `w <= 0`, światło latarki w ręce (`flashlightPose`: 0,20 m w prawo, 0,25 m w dół, wiązka zbiega się z osią widzenia), podgląd ze zlinearyzowaną głębią, zakładka `Flashlight` w panelu Shadows i trzy suwaki ręki w panelu Lights | commitowana razem z tym dokumentem | [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (sekcja 2.20), [`../modules/game/flashlight.md`](../modules/game/flashlight.md) | sekcja 21 |
+| 6. Minimapa | kwadratowa mapa labiryntu w prawym dolnym rogu okna, tylko z odkrytych korytarzy (reguła: komórka gracza i linia prosta w czterech kierunkach aż do ściany), schemat rysowany z danych labiryntu do własnego framebuffera `GL_RGBA8` bez głębi i kopiowany piksel w piksel w róg okna z przezroczystością 0,85 (po przebiegu składającym, kolory jako stałe sRGB bez konwersji), `Round::discovery`, `cellAt`, `gfx::Buffer` z podpowiedzią użycia i `setData` (bufor `GL_DYNAMIC_DRAW` odbudowywany co klatkę), klawisz M, zakładka `Minimap` w panelu Framebuffers, dwa nowe programy (razem trzynaście) | commitowana razem z tym dokumentem | [`../modules/renderer/minimap.md`](../modules/renderer/minimap.md), [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md), [`../modules/gfx/buffers-vao.md`](../modules/gfx/buffers-vao.md) | sekcja 22 |
 
-Stan liczb po piątej części (zgłoszone dla Windowsa, 2026-10-06, nie powtarzałem): bramka `make check` zgłosiła 329 przypadków testowych i 104306 asercji, jedenaście programów shaderów (bez zmian), dwanaście paneli (bez zmian), `DebugContext` ma 38 pól (było 34). Debug exe uruchomiony na 7 sekund: OpenGL 4.1.0 NVIDIA, zasoby wczytane, stderr pusty, panele ukryte. **Nie było ćwiczone**: rysowanie w trybie Gouraud, podgląd w zakładce `Flashlight`, ścieżka ze zgaszoną latarką i `Reload shaders`. **Nikt nie oglądał obrazu** tej części. Dla porównania po czwartej części (2026-10-05): 310 i 103751.
+Stan liczb po szóstej części (zgłoszone dla Windowsa, 2026-10-06, nie powtarzałem): bramka `make check` przechodzi w Debug i Release, **414 przypadków testowych i 138711 asercji** (po piątej części 375 i 138506: 39 nowych przypadków policzonych z plików, 19 w `DiscoveryTests.cpp`, 19 w `MinimapTests.cpp` i 1 w `MazeLayoutTests.cpp`), **trzynaście programów shaderów** (było jedenaście), **dwanaście paneli** (bez zmian), `DebugContext` ma **42 pola** (było 38). Debug exe uruchomiony na 7 sekund: OpenGL 4.1.0 NVIDIA, zasoby wczytane, stderr pusty (błędy shaderów, `GL_CHECK` i framebuffera trafiają tam tylko, gdy się zdarzą; z pustego wyjścia, przy domyślnie włączonej mapie, wnioskuję, że oba nowe programy się skompilowały, a framebuffer mapy był kompletny). **Nie było ćwiczone**: poruszanie graczem, klawisz M, zakładka `Minimap`, `Reveal all`, `Reload shaders`, zmiana rozmiaru okna i oba widoki diagnostyczne. **Nikt nie oglądał obrazu** minimapy. Dla porównania po piątej części (2026-10-06): 329 i 104306 w tabeli bez plików M8 (375 i 138506 z nimi), po czwartej (2026-10-05): 310 i 103751.
 
-Tematy wykładu: 10 (rendering pozaekranowy) jest **w toku**, bo brakuje minimapy. 11 (shadow mapping) jest **w toku**: kod obu map jest kompletny, ale testy ręczne na Windowsie i cały macOS są otwarte, a obrazu cieni latarki nikt nie oglądał. Żaden nie jest odhaczony w [`../syllabus.md`](../syllabus.md).
+Tematy wykładu: 10 (rendering pozaekranowy) jest **w toku**: wszystko z listy PRD, razem z minimapą, ma kod, ale testy ręczne na Windowsie i macOS są otwarte, a minimapy nikt nie oglądał. 11 (shadow mapping) jest **w toku**: kod obu map jest kompletny, ale testy ręczne na Windowsie i cały macOS są otwarte, a obrazu cieni latarki nikt nie oglądał. Żaden nie jest odhaczony w [`../syllabus.md`](../syllabus.md).
 
 ## 2. Co zostało
 
-1. **Część 6: minimapa.** Widok labiryntu rysowany do osobnego framebuffera. Kodu nie ma, decyzje o niej są w sekcji 3.
-2. **Zamknięcie M7:**
-   - testy ręczne na Windowsie: listy 17.2, 18.2, 19.2, 20.2 i 21.2 w [`build-windows.md`](build-windows.md) (i lista części szóstej, gdy powstanie),
-   - build, testy i listy na macOS ([`build-macos.md`](build-macos.md), kolejność w sekcji 6 niżej),
-   - odhaczenie tematów 10 i 11 w [`../syllabus.md`](../syllabus.md),
-   - tag.
+Zostało **zamknięcie M7** (kod wszystkich sześciu części jest na Windowsie):
+
+- testy ręczne na Windowsie: listy 17.2, 18.2, 19.2, 20.2, 21.2 i 22.2 w [`build-windows.md`](build-windows.md),
+- build, testy i listy na macOS ([`build-macos.md`](build-macos.md), kolejność w sekcji 6 niżej),
+- odhaczenie tematów 10 i 11 w [`../syllabus.md`](../syllabus.md),
+- tag.
 
 ## 3. Decyzje właściciela
 
@@ -39,38 +40,25 @@ Tematy wykładu: 10 (rendering pozaekranowy) jest **w toku**, bo brakuje minimap
 | minimapa | komórka jest odkryta przez **linię wzroku wzdłuż korytarzy**: odkrywa się komórka, w której gracz stoi, i komórki w linii prostej w czterech kierunkach, aż do ściany | 2026-10-06 | [`../decisions/minimap-discovered-corridors.md`](../decisions/minimap-discovered-corridors.md) |
 | minimapa | minimapa to **schemat rysowany z danych labiryntu** do własnego framebuffera, a nie osobny widok sceny z góry | 2026-10-06 | [`../decisions/minimap-discovered-corridors.md`](../decisions/minimap-discovered-corridors.md) |
 
-Tabela jest listą tego, co zdecydował właściciel. **Kod minimapy nie istnieje**: dwie decyzje z 2026-10-06 są zapisane, ale nic z nich nie jest zbudowane ani sprawdzone. Rozmiar i miejsce minimapy na ekranie oraz wygląd schematu nie są ustalone.
+Tabela jest listą tego, co zdecydował właściciel. Wszystkie trzy decyzje o minimapie mają od 2026-10-06 kod (część 6), ale **obrazu nikt nie oglądał**.
+
+Wybory wykonawcze przy części szóstej (moje, **nie** decyzje właściciela; powody z komentarzy w kodzie, w notatce [`../decisions/minimap-discovered-corridors.md`](../decisions/minimap-discovered-corridors.md), sekcja 4, i w dokumencie modułu): stan odkrycia leży w rundzie (`Round::discovery`), mapa ma 0,28 wysokości framebuffera, margines 0,02, róg prawy dolny (HUD jest na górze), przezroczystość 0,85, północ u góry, framebuffer `GL_RGBA8` bez głębi o rozmiarze równym kwadratowi na ekranie, rysowana po przebiegu składającym ze stałymi sRGB bez konwersji ([`../decisions/minimap-srgb-constants-after-composite.md`](../decisions/minimap-srgb-constants-after-composite.md)), lista wierzchołków odbudowywana co klatkę ([`../decisions/minimap-vertices-rebuilt-every-frame.md`](../decisions/minimap-vertices-rebuilt-every-frame.md)), widok przechodzący przez bramę, ściana rysowana, gdy któraś z jej komórek jest pokazana, odkrywanie trwające po wygranej i w noclipie, mapa widoczna w obu widokach diagnostycznych, osobna klasa `MinimapRenderer` poza `PostProcess`.
 
 Wybory wykonawcze przy części piątej (moje, **nie** decyzje właściciela; uzasadnienia w dokumentach): "w dół" ręki to w dół w świecie i granica suwaka "w prawo" 0,25 m ([`../decisions/flashlight-hand-straight-down.md`](../decisions/flashlight-hand-straight-down.md)), bias latarki w metrach przesuwający punkt w świecie ([`../decisions/flashlight-shadow-bias-in-world-space.md`](../decisions/flashlight-shadow-bias-in-world-space.md)), zbieganie 4 m startowo, zapas kąta mapy 2 stopnie, bliska płaszczyzna 0,05 m, mapa 1024, osobny uniform z pozycją światła, podgląd w trybie `Depth`, podgląd tylko dla wybranej zakładki ([`../modules/renderer/shadows.md`](../modules/renderer/shadows.md), sekcja 2.20.9).
 
 Wyjaśnienie do decyzji o ręce (moje, nie treść decyzji): światło stojące w oku rzuca cienie dokładnie za przedmioty, więc nie byłoby ich widać.
 
-## 4. Czego potrzebuje część 6 (minimapa)
+## 4. Historia: czego potrzebowała część 6 (minimapa)
 
-To jest moja analiza dwóch decyzji z 2026-10-06 i tego, co już jest w kodzie (kodu minimapy nie ma i nie było notatek z jej implementacji). Część 5 użyła prawie wszystkiego, co część 4 zostawiła gotowe, bez zmian kształtu (klasa `ShadowMap`, `ShadowSettings`, `setShadowUniforms`, `drawShadowCasters(lightSpace)`, zakładki panelu, nowa jednostka teksturująca), więc dawna lista "do użycia w części 5" jest historią i została usunięta.
-
-**Do użycia bez zmian:**
-
-- `gfx::Framebuffer` z kolorem: cel rysowania do tekstury ([`../modules/gfx/framebuffers.md`](../modules/gfx/framebuffers.md)),
-- pokazywanie tekstury w ImGui: sposób z paneli Framebuffers i Shadows (`ImGui::Image` z teksturą koloru),
-- teren labiryntu w danych: `game::MazeWorld` i siatka komórek (układ komórek 2 m), z której schemat da się narysować bez sceny.
-
-**Do dopisania** (nic z tego nie istnieje):
-
-- stan odkrycia komórek i reguła z linii wzroku wzdłuż korytarzy (komórka gracza i komórki w czterech kierunkach do ściany),
-- rysowanie schematu z danych labiryntu do własnego framebuffera, razem z przełącznikiem debugowania, który odsłania wszystko,
-- rozmiar, miejsce na ekranie i wygląd minimapy (nieustalone),
-- panel albo sekcja panelu do przełącznika, i wiersz w liście paneli, jeśli będzie nowy panel.
-
-Ograniczenie mgły ([`../decisions/fog-height-at-the-pixel.md`](../decisions/fog-height-at-the-pixel.md)) dotyczyło widoku sceny z góry. Schemat rysowany z danych labiryntu do własnego framebuffera nie musi przechodzić przez przebieg składający, więc go **nie musi dotyczyć** (moja analiza: zależy od tego, jak powstanie kod, którego nie ma).
+Ta sekcja była listą rzeczy "do użycia" i "do dopisania" przed napisaniem minimapy. Część 6 powstała i lista jest historią. Co z niej wyszło: `gfx::Framebuffer` z kolorem i pokazywanie tekstury w ImGui (`ImGui::Image`) zostały użyte bez zmian, a z listy "do dopisania" powstały stan odkrycia i reguła (`game::Discovery`), rysowanie schematu do własnego framebuffera (`MinimapRenderer`) i przełącznik `Reveal all`, rozmiar i miejsce na ekranie (wybory wykonawcze) oraz zakładka w panelu Framebuffers zamiast nowego panelu (paneli jest nadal dwanaście). Ograniczenie mgły ([`../decisions/fog-height-at-the-pixel.md`](../decisions/fog-height-at-the-pixel.md)) minimapy nie dotyczy: schemat omija przebieg składający. Opis: [`../modules/renderer/minimap.md`](../modules/renderer/minimap.md).
 
 ## 5. Znane ograniczenia i otwarte obserwacje
 
-Zebrane ze wszystkich pięciu części. "Znane" znaczy: zapisane, świadomie zostawione albo czekające na sprawdzenie.
+Zebrane ze wszystkich sześciu części. "Znane" znaczy: zapisane, świadomie zostawione albo czekające na sprawdzenie.
 
 | Co | Skąd | Stan |
 |---|---|---|
-| mgła z góry zakrywa labirynt: wysokość jest brana w miejscu piksela, bez całki wzdłuż promienia (z 30 m około 95 procent mgły zamiast około 22) | część 3, [`../decisions/fog-height-at-the-pixel.md`](../decisions/fog-height-at-the-pixel.md) | świadomie zostawione. Dotknie minimapy: jej widok nie może przejść przez przebieg z mgłą |
+| mgła z góry zakrywa labirynt: wysokość jest brana w miejscu piksela, bez całki wzdłuż promienia (z 30 m około 95 procent mgły zamiast około 22) | część 3, [`../decisions/fog-height-at-the-pixel.md`](../decisions/fog-height-at-the-pixel.md) | świadomie zostawione. Minimapy nie dotyczy: schemat jest rysowany po przebiegu składającym |
 | mgła na niebie tuż nad horyzontem zależy od miejsca na ekranie: daleka płaszczyzna jest płaska i obraca się z kamerą | część 3, [`../decisions/fog-no-special-case-for-sky.md`](../decisions/fog-no-special-case-for-sky.md) | policzone, nikt tego nie oglądał |
 | plama latarki na ścianie nie daje poświaty, nawet z metra | część 2, [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md) | otwarta obserwacja |
 | poświata jest względnie o połowę cieńsza w 1440p niż w 720p: jądro rozmycia ma promień w pikselach celu | część 2, [`../modules/renderer/post-process.md`](../modules/renderer/post-process.md) | otwarta obserwacja, w 1440p sprawdzono tylko wycinek obrazu |
@@ -87,11 +75,18 @@ Zebrane ze wszystkich pięciu części. "Znane" znaczy: zapisane, świadomie zos
 | shader sprawdza cień latarki dla każdego fragmentu, także poza stożkiem światła (nie ma wczesnego wyjścia), a przebieg głębi rysuje te same obiekty trzeci raz w klatce | część 5, sekcja 2.20.5 i 2.20.7 | koszt niezmierzony. Lista 21.2, pomiar FPS w jednej sesji |
 | pozycji ręki nie obcina nic poza zakresem suwaka: kod albo `noclip` mogą postawić światło w ścianie | część 5, [`../decisions/flashlight-hand-straight-down.md`](../decisions/flashlight-hand-straight-down.md) | nikt tego nie sprawdzał. Lista 21.2 |
 | panel Shadows pokazuje obraz mapy księżyca według ustawienia, a mapy latarki według faktu (`flashlightShadowDrawn`), więc zakładki zachowują się inaczej | część 5, sekcja 2.19 | znane, drobne |
-| żadnej kontrolki paneli z M7 nikt nie kliknął myszą | wszystkie części | listy 17.2 do 21.2 |
+| żadnej kontrolki paneli z M7 nikt nie kliknął myszą | wszystkie części | listy 17.2 do 22.2 |
+| **minimapy nikt nie oglądał**: kolory, grubości kształtów, rozmiar strzałki, czytelność i położenie względem HUD są policzone z kodu | część 6, [`../modules/renderer/minimap.md`](../modules/renderer/minimap.md), sekcja 2.12 | otwarte. Lista 22.2 |
+| w domyślnym układzie paneli panel Assets przykrywa prawy dolny róg, w którym stoi mapa | część 6 | znane: do oglądania mapy trzeba schować panele (klawisz akcentu) albo zmienić `Corner` |
+| zakładka `Minimap` jest wyższa niż dwie pozostałe, a wysokość panelu Framebuffers (344) nie została zmieniona: panel może się przewijać. Panel Shaders ma trzynaście linii przy wysokości 280 i z rachunku (około 322) też się przewija | część 6, [`../modules/debug-ui.md`](../modules/debug-ui.md) | policzone, nikt tego nie oglądał. Lista 22.2 |
+| mieszanie nakładki odbywa się na wartościach sRGB, a nie liniowych, jak HUD i panele | część 6, [`../decisions/minimap-srgb-constants-after-composite.md`](../decisions/minimap-srgb-constants-after-composite.md) | świadomie zostawione, nikt nie porównywał z liniowym |
+| w labiryncie 40 x 40 komórka ma około 5 pikseli (przy 202 px): kształty mają tylko minima w pikselach, czytelność nie jest poprawiana | część 6, sekcja 2.6 dokumentu modułu | policzone, nikt tego nie oglądał. Lista 22.2 |
+| lista trójkątów jest odbudowywana i kopiowana na kartę co klatkę (około 28 KB przy 10 x 10, około 390 KB przy 40 x 40 z `Reveal all`, moje przybliżenie) | część 6, [`../decisions/minimap-vertices-rebuilt-every-frame.md`](../decisions/minimap-vertices-rebuilt-every-frame.md) | koszt niezmierzony. Lista 22.2, pomiar FPS w jednej sesji |
+| ściana między komórką odkrytą a nieodkrytą jest rysowana, więc wchodzi grubością o pół grubości w komórkę nieodkrytą | część 6 | znane, drobne |
 
 ## 6. macOS: kolejność sprawdzania
 
-Na Macu nie był budowany ani uruchamiany żaden kod od M2. Listy są w [`build-macos.md`](build-macos.md), po jednej na część (od części 1 do 5), wszystkie w całości otwarte. Poniżej kolejność od rzeczy, które najłatwiej mogą nie zadziałać na sterowniku OpenGL 4.1 firmy Apple, bo każda z nich blokuje to, co po niej.
+Na Macu nie był budowany ani uruchamiany żaden kod od M2. Listy są w [`build-macos.md`](build-macos.md), po jednej na część (od części 1 do 6), wszystkie w całości otwarte. Poniżej kolejność od rzeczy, które najłatwiej mogą nie zadziałać na sterowniku OpenGL 4.1 firmy Apple, bo każda z nich blokuje to, co po niej.
 
 | # | Co sprawdzić najpierw | Dlaczego to ryzyko | Sekcja w `build-macos.md` |
 |---|---|---|---|
@@ -101,8 +96,9 @@ Na Macu nie był budowany ani uruchamiany żaden kod od M2. Listy są w [`build-
 | 3 | **formaty tekstur sRGB i `GL_EXT_texture_sRGB_decode`** | formaty `GL_SRGB8` i `GL_SRGB8_ALPHA8` decydują o kolorach wszystkich tekstur sceny. Rozszerzenie dotyczy tylko podglądów tekstur w panelu Assets (`debug::RawTextureSampler`): bez niego podglądy są ciemniejsze, scena nie | "M7, część 1 (bufor HDR i gamma)" |
 | 4 | **framebuffer z samą głębią i sampler cieni** (`glDrawBuffer(GL_NONE)`, `sampler2DShadow` z obiektem samplera, `GL_CLAMP_TO_BORDER`, podgląd głębi) | cztery rzeczy użyte pierwszy raz w części 4. Każda może wyłączyć cienie w całości | "M7, część 4 (cienie księżyca)" |
 | 4a | **drugi framebuffer z samą głębią i odczyt mapy z rzutem perspektywicznym** (druga `ShadowMap` na jednostce 4, dwa `sampler2DShadow` w jednym programie, ramka samplera poza ostrosłupem, podgląd w trybie `Depth` z płaszczyznami światła, sprawdzenie `w <= 0` przed dzieleniem) | nowe w części 5. Sterownik, który zniesie jedną mapę, może inaczej traktować dwa samplery cieni w jednym programie albo głębię 24-bitową z bliską płaszczyzną 5 cm. Wada tu wyłącza cień latarki (albo cały obraz, jeśli program się nie zlinkuje) | "M7, część 5 (cień latarki)" |
-| 5 | **rozmiary framebufferów na ekranie Retina** | okno 1280 x 720 ma bufor 2560 x 1440: scena, cele bloomu, podglądy i `glViewport` po każdym przebiegu. Do tego wydajność: PRD wymaga 60 klatek w 1440p na MacBooku | listy części 1 do 4 M7, punkty o Retinie |
+| 4b | **drugi kolorowy framebuffer `GL_RGBA8`, nakładka z mieszaniem w oknie i bufor `GL_DYNAMIC_DRAW`** (viewport na część okna, trójkąt z `gl_VertexID`, `glBufferData` co klatkę z listą o zmiennym rozmiarze) | nowe w części 6. Wada wyłącza minimapę, a nie resztę klatki, bo jest po przebiegu składającym, ale nikt nie widział jej na żadnym systemie | "M7, część 6 (minimapa)" |
+| 5 | **rozmiary framebufferów na ekranie Retina** | okno 1280 x 720 ma bufor 2560 x 1440: scena, cele bloomu, podglądy i `glViewport` po każdym przebiegu. Do tego wydajność: PRD wymaga 60 klatek w 1440p na MacBooku | listy części 1 do 4 M7, punkty o Retinie. Od części 6 także kwadrat minimapy: liczy się z wysokości framebuffera w pikselach (403 piksele boku przy 1440p, nie 202) |
 | 6 | **`glPolygonMode`** (pole `Wireframe` terenu) | tryb linii w profilu Core na sterowniku Apple | "M6, część 2 (teren i trawa)" |
-| 7 | reszta list, od M2 do części 5 M7, w kolejności dokumentu | wygląd, panele, sterowanie | wszystkie sekcje "na macOS: lista w całości otwarta" |
+| 7 | reszta list, od M2 do części 6 M7, w kolejności dokumentu | wygląd, panele, sterowanie | wszystkie sekcje "na macOS: lista w całości otwarta" |
 
 Wskazówka do punktu 0: jeśli `make` nie działa, wszystkie kroki da się wykonać samymi presetami CMake, które są opisane w tym samym dokumencie.
