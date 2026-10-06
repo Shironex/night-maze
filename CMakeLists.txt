@@ -106,8 +106,9 @@ night_maze_enable_warnings(engine)
 # the vignette and of the shadows, the rules of a round (exit, crystals, battery), the
 # levers and the notes with the picking of a frame, what the minimap shows (the
 # discovered cells and its shapes), the path of the menu camera, the screens of the
-# game (menu, playing, paused, round end) and the switches of the command line are plain
-# data and math.
+# game (menu, playing, paused, round end, settings), the three difficulty levels, the
+# settings of the player with the text of their file and the switches of the command
+# line are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -154,6 +155,8 @@ add_library(game_logic STATIC
     src/game/Puddles.hpp
     src/game/Round.cpp
     src/game/Round.hpp
+    src/game/Settings.cpp
+    src/game/Settings.hpp
     src/game/Shadows.cpp
     src/game/Shadows.hpp
     src/game/StartOptions.cpp
@@ -303,6 +306,7 @@ add_executable(night_maze_tests
     tests/RaycastTests.cpp
     tests/RoundTests.cpp
     tests/SearchTests.cpp
+    tests/SettingsTests.cpp
     tests/ShaderSourceTests.cpp
     tests/ShadowTests.cpp
     tests/SkyboxTests.cpp

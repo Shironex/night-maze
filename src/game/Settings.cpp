@@ -1,0 +1,247 @@
+// Settings: what the player changes on the settings screen, and the text of the file
+// they are kept in.
+#include "game/Settings.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+
+namespace game {
+
+namespace {
+
+// The two values of a switch, as the file writes them.
+constexpr std::string_view ON_VALUE = "on";
+constexpr std::string_view OFF_VALUE = "off";
+
+// A line that starts with this character is a comment.
+constexpr char COMMENT_SIGN = '#';
+// Between the name and the value of a setting.
+constexpr char ASSIGN_SIGN = '=';
+// Between the width and the height of a window size.
+constexpr char SIZE_SIGN = 'x';
+
+// The three bytes some editors (Notepad) put in front of a UTF-8 text: the byte order
+// mark. They are not part of the first name.
+constexpr std::string_view BYTE_ORDER_MARK = "\xEF\xBB\xBF";
+
+// A number in the file is never longer than this many characters. A longer text is not
+// read: it keeps the sum below far away from the limits of its type.
+constexpr std::size_t MAX_NUMBER_LENGTH = 12;
+
+constexpr int DECIMAL_BASE = 10;
+
+// The text without the spaces, tabs and line end characters at its two ends.
+std::string_view trimmed(std::string_view text) {
+    constexpr std::string_view BLANKS = " \t\r\n";
+    const std::size_t first = text.find_first_not_of(BLANKS);
+    if (first == std::string_view::npos) {
+        return {};
+    }
+    const std::size_t last = text.find_last_not_of(BLANKS);
+    return text.substr(first, last - first + 1);
+}
+
+// Reads a number written with digits and at most one point: "60", "4.5", ".5". No sign
+// and no exponent. False for anything else.
+//
+// Written by hand on purpose. The functions of the C library (strtof) read "4,5" in
+// place of "4.5" when the system is set to a language that writes a comma, so a file
+// would mean one thing on one computer and another thing on the next.
+bool parseNumber(std::string_view text, float& number) {
+    if (text.empty() || text.size() > MAX_NUMBER_LENGTH) {
+        return false;
+    }
+    double value = 0.0;
+    // The worth of the next digit after the point: a tenth, a hundredth and so on.
+    double place = 1.0;
+    bool afterPoint = false;
+    bool anyDigit = false;
+    for (const char character : text) {
+        if (character == '.') {
+            if (afterPoint) {
+                return false;
+            }
+            afterPoint = true;
+            continue;
+        }
+        if (character < '0' || character > '9') {
+            return false;
+        }
+        anyDigit = true;
+        const double digit = character - '0';
+        if (afterPoint) {
+            place /= DECIMAL_BASE;
+            value += digit * place;
+        } else {
+            value = value * DECIMAL_BASE + digit;
+        }
+    }
+    if (!anyDigit) {
+        return false;
+    }
+    number = static_cast<float>(value);
+    return true;
+}
+
+// Reads a window size, "1280x720": two whole numbers with an x between them. Each is
+// brought into the limits of a window size. False for anything else.
+bool parseWindowSize(std::string_view text, WindowSize& size) {
+    const std::size_t sign = text.find(SIZE_SIGN);
+    if (sign == std::string_view::npos) {
+        return false;
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    if (!parseNumber(trimmed(text.substr(0, sign)), width) ||
+        !parseNumber(trimmed(text.substr(sign + 1)), height)) {
+        return false;
+    }
+    size.width = std::clamp(static_cast<int>(std::lround(width)), MIN_WINDOW_SIZE.width,
+                            MAX_WINDOW_SIZE.width);
+    size.height = std::clamp(static_cast<int>(std::lround(height)), MIN_WINDOW_SIZE.height,
+                             MAX_WINDOW_SIZE.height);
+    return true;
+}
+
+// A number with one digit after the point, "4.0". Built from whole numbers, so the
+// point is a point on every system.
+std::string oneDecimalText(float number) {
+    const long tenths = std::lround(number * static_cast<float>(DECIMAL_BASE));
+    return std::to_string(tenths / DECIMAL_BASE) + "." + std::to_string(tenths % DECIMAL_BASE);
+}
+
+// One line of the file.
+std::string settingLine(std::string_view name, const std::string& value) {
+    return std::string(name) + " = " + value + "\n";
+}
+
+} // namespace
+
+bool applySetting(GameSettings& settings, std::string_view name, std::string_view value) {
+    if (name == MOUSE_SENSITIVITY_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        settings.mouseSensitivity =
+            std::clamp(number, MIN_MOUSE_SENSITIVITY, MAX_MOUSE_SENSITIVITY);
+        return true;
+    }
+    if (name == FIELD_OF_VIEW_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        settings.fieldOfViewDegrees =
+            std::clamp(number, MIN_FIELD_OF_VIEW_DEGREES, MAX_FIELD_OF_VIEW_DEGREES);
+        return true;
+    }
+    if (name == FULLSCREEN_SETTING) {
+        if (value != ON_VALUE && value != OFF_VALUE) {
+            return false;
+        }
+        settings.fullscreen = value == ON_VALUE;
+        return true;
+    }
+    if (name == WINDOW_SIZE_SETTING) {
+        return parseWindowSize(value, settings.windowSize);
+    }
+    if (name == DIFFICULTY_SETTING) {
+        return difficultyFromKey(value, settings.difficulty);
+    }
+    return false;
+}
+
+GameSettings parseSettings(std::string_view text) {
+    GameSettings settings;
+    if (text.starts_with(BYTE_ORDER_MARK)) {
+        text.remove_prefix(BYTE_ORDER_MARK.size());
+    }
+
+    // Line after line: the text up to the next line end, then the rest.
+    while (!text.empty()) {
+        const std::size_t lineEnd = text.find('\n');
+        const std::string_view line = trimmed(text.substr(0, lineEnd));
+        // Without a line end this was the last line: nothing is left.
+        text = lineEnd == std::string_view::npos ? std::string_view{} : text.substr(lineEnd + 1);
+
+        if (line.empty() || line.front() == COMMENT_SIGN) {
+            continue;
+        }
+        const std::size_t sign = line.find(ASSIGN_SIGN);
+        if (sign == std::string_view::npos) {
+            continue;
+        }
+        // A line that cannot be read changes nothing: applySetting returns false.
+        applySetting(settings, trimmed(line.substr(0, sign)), trimmed(line.substr(sign + 1)));
+    }
+    return settings;
+}
+
+std::string formatSettings(const GameSettings& settings) {
+    std::string text = "# Night Maze settings. One \"name = value\" per line, a line that starts "
+                       "with # is a comment.\n";
+    text +=
+        settingLine(MOUSE_SENSITIVITY_SETTING, mouseSensitivityLabel(settings.mouseSensitivity));
+    text += settingLine(FIELD_OF_VIEW_SETTING,
+                        std::to_string(std::lround(settings.fieldOfViewDegrees)));
+    text +=
+        settingLine(FULLSCREEN_SETTING, std::string(settings.fullscreen ? ON_VALUE : OFF_VALUE));
+    text += settingLine(WINDOW_SIZE_SETTING, windowSizeValue(settings.windowSize));
+    text += settingLine(DIFFICULTY_SETTING, difficultyLevel(settings.difficulty).key);
+    return text;
+}
+
+float mouseDegreesPerUnit(float sensitivity) {
+    return sensitivity * MOUSE_DEGREES_PER_SENSITIVITY;
+}
+
+std::string mouseSensitivityLabel(float sensitivity) {
+    return oneDecimalText(sensitivity);
+}
+
+std::string fieldOfViewLabel(float degrees) {
+    return std::to_string(std::lround(degrees)) + " deg";
+}
+
+std::string windowSizeValue(WindowSize size) {
+    return std::to_string(size.width) + SIZE_SIGN + std::to_string(size.height);
+}
+
+std::string windowSizeLabel(WindowSize size) {
+    return std::to_string(size.width) + " x " + std::to_string(size.height);
+}
+
+std::vector<WindowSize> windowSizeChoices(WindowSize desktop, WindowSize current) {
+    std::vector<WindowSize> choices;
+    for (const WindowSize& size : WINDOW_SIZES) {
+        const bool fits = size.width <= desktop.width && size.height <= desktop.height;
+        if (fits || size == DEFAULT_WINDOW_SIZE || size == current) {
+            choices.push_back(size);
+        }
+    }
+    if (std::ranges::find(choices, current) == choices.end()) {
+        // A size of its own: it goes in front of the first larger one. Wider counts as
+        // larger, and of two sizes of the same width the higher one.
+        const auto larger = std::ranges::find_if(choices, [current](WindowSize size) {
+            return size.width > current.width ||
+                   (size.width == current.width && size.height > current.height);
+        });
+        choices.insert(larger, current);
+    }
+    return choices;
+}
+
+WindowSize steppedWindowSize(const std::vector<WindowSize>& choices, WindowSize current, int step) {
+    const auto found = std::ranges::find(choices, current);
+    if (found == choices.end()) {
+        return current;
+    }
+    // The place in the list as a whole number, moved by the step and kept in the list.
+    const auto last = static_cast<int>(choices.size()) - 1;
+    const int place = std::clamp(static_cast<int>(found - choices.begin()) + step, 0, last);
+    return choices[static_cast<std::size_t>(place)];
+}
+
+} // namespace game
