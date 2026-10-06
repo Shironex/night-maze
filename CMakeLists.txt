@@ -116,6 +116,8 @@ add_library(game_logic STATIC
     src/game/Bloom.hpp
     src/game/Crystals.cpp
     src/game/Crystals.hpp
+    src/game/Difficulty.cpp
+    src/game/Difficulty.hpp
     src/game/Discovery.cpp
     src/game/Discovery.hpp
     src/game/EnvironmentMapping.cpp
@@ -276,6 +278,7 @@ add_executable(night_maze_tests
     tests/ColliderTests.cpp
     tests/ColorSpaceTests.cpp
     tests/CrystalTests.cpp
+    tests/DifficultyTests.cpp
     tests/DiscoveryTests.cpp
     tests/EnvironmentMappingTests.cpp
     tests/ExitTests.cpp

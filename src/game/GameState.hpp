@@ -2,6 +2,7 @@
 // rules for going from one to the next.
 #pragma once
 
+#include "game/Difficulty.hpp"
 #include "game/MazeWorld.hpp"
 
 #include <cstdint>
@@ -33,14 +34,6 @@ enum class GameEvent {
     Quit,       ///< button "Quit" of the main menu
     Escape,     ///< the Escape key
     RoundWon,   ///< the player walked through the open gate (RoundState::Won)
-};
-
-/// How hard a new game is. The numbers behind the three levels (size of the maze,
-/// crystals, battery) are not chosen yet: until they are, every level plays the same.
-enum class Difficulty {
-    Easy = 0,
-    Normal,
-    Hard,
 };
 
 /// What the button "Play" asks for: the game that is started next.
