@@ -126,7 +126,7 @@ kolor = kolor_powierzchni * (otoczenie + suma po światłach: światło * Lamber
 
 | Pytanie | Odpowiedź |
 |---|---|
-| gdzie jest `uEmissive` | w trzech shaderach fragmentów: `lit.frag`, `gouraud.frag` i `textured.frag`. **Nie** w `common/lighting.glsl` i nie w bloku świateł: to cecha rysowanego obiektu, a nie światło sceny |
+| gdzie jest `uEmissive` | w czterech shaderach fragmentów: `lit.frag`, `gouraud.frag`, `textured.frag` i, od M8, części 1, `reflect.frag`. **Nie** w `common/lighting.glsl` i nie w bloku świateł: to cecha rysowanego obiektu, a nie światło sceny |
 | kto go ustawia | klasy rysujące, przed swoimi obiektami: `MazeRenderer::draw` na czerń (kamień nie świeci), `GameplayRenderer::draw` na czerń dla bramy i na `game::crystalGlow(...)` dla kryształów |
 | jaką ma wartość dla kryształów | kolor świateł punktowych (`LightingSettings::pointColor`, startowo turkus `(0,2, 0,9, 0,8)`) (od M7 przeliczony na wartości liniowe) razy `CRYSTAL_GLOW_STRENGTH` (dziś 4,0, do M6 było 1) razy puls (od 0,7 do 1) |
 | dlaczego jest **dodany do światła rozproszonego**, a nie do gotowego koloru | emisja zachowuje się wtedy jak światło, które powierzchnia dostaje sama od siebie: w ciemnym kącie `otoczenie + Lambert` jest bliskie zera, a `emisja` zostaje. Dla wszystkiego poza kryształami wyraz jest zerem i wzór jest dokładnie tym z M4 |
@@ -392,7 +392,7 @@ OpenGL w profilu Core **nie ma świateł**. Stare funkcje `glLight` i `glMateria
 | normalna wierzchołka | atrybut numer 1 w `gfx::Vertex` | ustawione raz w VAO siatki | 0 |
 | styczna wierzchołka (tylko dla mapowania normalnych) | atrybut numer 3 w `gfx::Vertex` | ustawione raz w VAO siatki | 0 |
 | mapa normalnych i jej przełącznik (tylko program `lit`) | tekstura na jednostce 1, uniformy `uNormalMap` i `uNormalMapEnabled` | `glActiveTexture`, `glBindTexture`, `glBindSampler`, `glUniform1i` | raz na część modelu i po 1 ([`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 3) |
-| mapa cieni księżyca (od czwartej części M7; programy `lit`, `gouraud` i `grass`) | tekstura głębi z samplerem porównującym na jednostce 3 (`MOON_SHADOW_TEXTURE_UNIT`) i siedem zwykłych uniformów `uMoonShadow...` | wiązanie w `ShadowMap::bindForSampling`, uniformy w `game::setShadowUniforms`: trzy razy `glUniform1i`, raz `glUniformMatrix4fv`, trzy razy `glUniform1f` | wiązanie raz, uniformy raz w `drawLitMaze` i raz w `drawGrass`, gdy trawa jest włączona ([`../renderer/shadows.md`](../renderer/shadows.md), sekcje 3 i 4) |
+| mapa cieni księżyca (od czwartej części M7; programy `lit`, `gouraud` i `grass`, od M8, części 1 także `reflect`) | tekstura głębi z samplerem porównującym na jednostce 3 (`MOON_SHADOW_TEXTURE_UNIT`) i siedem zwykłych uniformów `uMoonShadow...` | wiązanie w `ShadowMap::bindForSampling`, uniformy w `game::setShadowUniforms` (od piątej części M7 wołanej dwa razy, dla księżyca i dla latarki, przez `NightMazeApp::setShadowUniformsOf`): trzy razy `glUniform1i`, raz `glUniformMatrix4fv`, trzy razy `glUniform1f` | wiązanie raz, uniformy raz w `drawLitMaze` i raz w `drawGrass`, gdy trawa jest włączona ([`../renderer/shadows.md`](../renderer/shadows.md), sekcje 3 i 4) |
 
 Blok uniformów czytają oba programy oświetlenia (`lit` i `gouraud`), a od M6 także program trawy `grass`, wszystkie z tego samego bufora na karcie. Dlaczego blok, a nie 60 osobnych uniformów, i jak bajty z C++ trafiają dokładnie tam, gdzie shader ich szuka, omawia [`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md).
 
@@ -402,7 +402,7 @@ Wszystkie obliczenia światła są w **przestrzeni świata**: pozycje świateł,
 
 ## 4. Shadery
 
-Wzory z sekcji 2 są w jednym pliku: [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). **To nie jest samodzielny shader.** Nie ma linii `#version` ani funkcji `main`. Loader shaderów wstawia jego tekst w miejsce linii `#include "common/lighting.glsl"` w trzech plikach: `lit.frag` i, od M6, `grass.frag` (światło liczone dla każdego fragmentu) oraz `gouraud.vert` (dla każdego wierzchołka). Jeden plik, trzy miejsca użycia: oba tryby cieniowania ścian liczą dokładnie tymi samymi wzorami, a różni je tylko miejsce wywołania. Pierwsze linie pliku mówią to od czwartej części M7 wprost:
+Wzory z sekcji 2 są w jednym pliku: [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). **To nie jest samodzielny shader.** Nie ma linii `#version` ani funkcji `main`. Loader shaderów wstawia jego tekst w miejsce linii `#include "common/lighting.glsl"` w czterech plikach: `lit.frag` i, od M6, `grass.frag` (światło liczone dla każdego fragmentu), od M8, części 1 `reflect.frag` (też dla każdego fragmentu, z nagłówkiem pliku, który go nie wymienia) oraz `gouraud.vert` (dla każdego wierzchołka). Jeden plik, cztery miejsca użycia (cztery programy: `lit`, `grass`, `reflect`, `gouraud`): oba tryby cieniowania ścian liczą dokładnie tymi samymi wzorami, a różni je tylko miejsce wywołania. Pierwsze linie pliku mówią to od czwartej części M7 wprost:
 
 ```glsl
 // Lighting shared by lit.frag and grass.frag (per fragment) and gouraud.vert (per
@@ -589,7 +589,7 @@ float moonFacing(vec3 normal) {
 | wynik 1, 0, poniżej 0 | powierzchnia zwrócona wprost do księżyca, muśnięta jego światłem, odwrócona |
 | po co osobna funkcja | wynik nie trafia do światła, tylko do **biasu cienia**: im bardziej powierzchnia jest pochylona względem księżyca, tym większą poprawkę głębi dostaje przy porównaniu z mapą cieni (`slopeScaledBias` w `common/shadows.glsl`, która sama obcina wartość do zakresu od 0 do 1). Funkcja leży w tym pliku, a nie w `shadows.glsl`, bo czyta składową bloku świateł |
 
-Wołają ją trzy miejsca, każde z inną normalną: `lit.frag` z normalną **modelu** (`moonFacing(normalize(vNormal))`, nie z mapy normalnych), `gouraud.vert` z normalną wierzchołka (wynik idzie do fragmentów jako `vMoonFacing`) i `grass.frag` ze stałą `GRASS_NORMAL`. Teoria biasu: [`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.10 i 2.11.
+Wołają ją cztery miejsca, każde z inną normalną (od M8, części 1 także `reflect.frag`, z normalną modelu jak `lit.frag`): `lit.frag` z normalną **modelu** (`moonFacing(normalize(vNormal))`, nie z mapy normalnych), `gouraud.vert` z normalną wierzchołka (wynik idzie do fragmentów jako `vMoonFacing`) i `grass.frag` ze stałą `GRASS_NORMAL`. Teoria biasu: [`../renderer/shadows.md`](../renderer/shadows.md), sekcje 2.10 i 2.11.
 
 ### 4.5 `addLight`: jedno światło do wyniku
 

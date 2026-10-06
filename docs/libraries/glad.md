@@ -214,13 +214,21 @@ Przykład: [`src/core/GlCheck.hpp`](../../src/core/GlCheck.hpp) dołącza go, ż
 dostaje go pośrednio przez `core/GlCheck.hpp` i woła:
 
 ```cpp
-    GL_CHECK(glViewport(0, 0, framebuffer.width, framebuffer.height));
-
     GL_CHECK(glEnable(GL_DEPTH_TEST));
 
-    GL_CHECK(glClearColor(m_clearColor[0], m_clearColor[1], m_clearColor[2], 1.0F));
+    const glm::vec3 clearColor =
+        gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]});
+    GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 ```
+
+Uwaga (2026-10-06): do M7 w tym miejscu stało jeszcze `glViewport(0, 0, framebuffer.width,
+framebuffer.height)`, a kolor czyszczenia szedł do `glClearColor` bez przeliczenia. Dziś
+viewport ustawia `m_postProcess.beginScene` razem z wiązaniem framebuffera HDR sceny, a kolor
+z panelu (wartość sRGB) jest przed czyszczeniem przeliczany na liniowy przez
+`gfx::srgbToLinear`. Przed tymi liniami stoją jeszcze przebiegi cieni (`drawMoonShadowMap`,
+`drawFlashlightShadowMap`), opisane w [`../modules/core/window-context.md`](../modules/core/window-context.md),
+sekcja 3.2.
 
 Typy i stałe (`GLenum`, `GLubyte`, `GL_VERSION`, `GL_COLOR_BUFFER_BIT`) też pochodzą z
 `gl.h`. Przykład z `Window.cpp`:

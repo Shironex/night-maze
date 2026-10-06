@@ -400,17 +400,21 @@ Dla labiryntu startowego to 9409 wierzchołków po 44 bajty (413 996 bajtów) i 
 | 4 | `drawMesh(...)`: wiąże `ground_normal.png` na jednostce 1 i `ground.png` na jednostce 0, ustawia `uTint`, `uModel`, `uNormalMatrix`, woła `mesh.draw()` | `glActiveTexture`, `glBindTexture`, `glBindSampler`, `glUniform*`, `glBindVertexArray`, `glDrawElements(GL_TRIANGLES, 55296, GL_UNSIGNED_INT, ...)` |
 | 5 | `glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)`, tylko gdy `wireframe` | stan wraca do wypełniania |
 
-Jedno wywołanie rysujące na cały teren w przebiegu sceny. Od czwartej części M7 dochodzi drugie, takie samo, w przebiegu cieni: teren jest rysowany do mapy cieni programem `shadow_depth` tą samą funkcją `TerrainRenderer::draw`, więc przy włączonych cieniach kosztuje dwa `glDrawElements` na klatkę (kroki 3 i 5 w przebiegu cieni nie występują, bo `wireframe` jest tam zawsze `false`). Dla porównania: płytki podłogi kosztowały jedno wywołanie na komórkę, czyli 100 w labiryncie startowym.
+Jedno wywołanie rysujące na cały teren w przebiegu sceny. Od czwartej części M7 dochodzi drugie, takie samo, w przebiegu cieni: teren jest rysowany do mapy cieni programem `shadow_depth` tą samą funkcją `TerrainRenderer::draw`, więc przy włączonych cieniach kosztuje dwa `glDrawElements` na klatkę, a od piątej części M7 do trzech (trzecie jest w przebiegu cieni latarki, `drawFlashlightShadowMap`, tylko gdy latarka świeci i jej cienie są włączone; kroki 3 i 5 w przebiegu cieni nie występują, bo `wireframe` jest tam zawsze `false`). Dla porównania: płytki podłogi kosztowały jedno wywołanie na komórkę, czyli 100 w labiryncie startowym.
 
 ### 3.3 Miejsce w klatce
 
 Teren jest rysowany jako pierwsza rzecz sceny, w `drawUnlitMaze` albo `drawLitMaze`, tym samym programem co ściany. Od czwartej części M7 jest też pierwszą rzeczą przebiegu cieni, który stoi przed sceną. Kolejność w `onRender`:
 
-1. przebieg cieni księżyca do mapy cieni (`drawMoonShadowMap`, przy włączonych cieniach): teren, ściany i słupki, brama i kryształy, bez trawy,
-2. teren, ściany i słupki, kryształy i brama (`drawMaze`),
-3. trawa (`drawGrass`),
-4. linie pudełek kolizji, jeśli włączone,
-5. niebo.
+1. przebieg cieni księżyca do mapy cieni (`drawMoonShadowMap`, przy włączonych cieniach): teren, ściany i słupki, brama, kryształy, dźwignie i kartki, bez trawy,
+2. przebieg cieni latarki do jej mapy cieni (`drawFlashlightShadowMap`, od piątej części M7, gdy latarka świeci i jej cienie są włączone): to samo `drawShadowCasters`, z macierzami światła z dłoni gracza, więc teren jest tu rysowany po raz drugi z rzędu,
+3. teren, ściany i słupki, brama, dźwignie i kartki oraz kryształy (`drawMaze`; kryształy rysuje tu tylko gdy nie rysuje ich program `reflect`),
+4. trawa (`drawGrass`),
+5. przebieg odbić (`drawReflections`, od M8, części 1): kryształy i kałuże programem `reflect`, gdy environment mapping jest włączony (domyślnie jest),
+6. linie pudełek kolizji i linie promienia wyboru, jeśli włączone,
+7. niebo.
+
+Teren jest więc rysowany do trzech razy w klatce: raz do mapy księżyca, raz do mapy latarki (obie programem `shadow_depth`, zawsze wypełniony) i raz w scenie.
 
 Kolejność terenu względem ścian nie zmienia obrazu, bo o tym, co jest z przodu, decyduje test głębi. Komentarz w kodzie mówi to wprost: "ziemia najpierw, potem to, co na niej stoi" to tylko porządek zgodny z budową sceny.
 
@@ -428,7 +432,7 @@ Uniformy, które `TerrainRenderer::draw` ustawia dla terenu:
 | `uEmissive` | `(0, 0, 0)` | ziemia nie świeci. Uniform zachowuje wartość między wywołaniami, a kryształy go ustawiają, więc trzeba go zerować w każdej klatce |
 | `uTexture`, `uNormalMap` | 0 i 1 | numery jednostek teksturujących |
 
-Materiał (siła i wykładnik odbłysku, `uSpecularStrength` i `uShininess`) jest ustawiany raz na program w `drawLitMaze`, więc podłoże dzieli go z kamieniem ścian. Tak samo siedem uniformów mapy cieni księżyca (`setShadowUniforms`, od czwartej części M7): raz na program, przed terenem.
+Materiał (siła i wykładnik odbłysku, `uSpecularStrength` i `uShininess`) jest ustawiany raz na program w `drawLitMaze`, więc podłoże dzieli go z kamieniem ścian. Tak samo siedem uniformów mapy cieni księżyca (`setShadowUniforms`, od czwartej części M7): raz na program, przed terenem (od piątej części M7 także osiem uniformów mapy latarki: `drawLitMaze` woła `setShadowUniformsOf`, które dwa razy woła `setShadowUniforms`).
 
 W przebiegu cieni ta sama funkcja ustawia te same uniformy w programie `shadow_depth`. Ten program ma z nich tylko `uModel` (i dwie macierze światła, ustawione wcześniej w `drawShadowCasters`). Pozostałych nie ma, więc `glUniform*` dostaje lokalizację -1 i OpenGL takie wywołanie po cichu pomija. Tekstury gruntu są mimo to wiązane w jednostkach 0 i 1, choć program głębi ich nie czyta: to cena użycia klasy rysującej bez zmian.
 
@@ -798,10 +802,14 @@ Obrys pudełka nie zależy od jego wysokości, więc o pudełko można zapytać,
         lowerToGround(terrain, world.gate);
         world.gateBox = wallBox(world.gate);
     }
+
+    placeInteractablesOnTerrain(world.interactables, terrain);
 }
 ```
 
 `groundHeightAt(world, cell)` to `heightAt` w środku komórki. `crystalRestPosition` i `exitZone` nie znają terenu: dostają wysokość gruntu jako liczbę, więc `Crystals.cpp` i `Exit.cpp` nie muszą dołączać `Terrain.hpp`.
+
+**Dźwignie i kartki (M8, część 2).** Ostatnia linia `placeOnTerrain` woła `placeInteractablesOnTerrain(world.interactables, terrain)`: dźwignie i kartki wiszą na ścianach na stałej wysokości nad gruntem, więc każda z nich dostaje wysokość gruntu pod punktem swojej ściany (`Terrain::heightAt` w starym `x` i `z`), a jej pozycja i pudełko wyboru są liczone od nowa. Nic się nie przesuwa w bok. Dlatego `placeOnTerrain` nie zostawia już dźwigni i kartek na wysokości płaskiego gruntu po zmianie skali w panelu Terrain.
 
 `buildMazeWorld` ma dwie wersje. Trzyargumentowa (szerokość, wysokość, ziarno) woła pięcioargumentową z pustą `Heightmap`, czyli daje labirynt na płaskim gruncie: używają jej starsze testy. Pięcioargumentowa najpierw liczy plan (ściany, słupki, wyjście, brama, kryształy), a na końcu woła `placeOnTerrain`.
 
@@ -904,7 +912,9 @@ Kolejność pól ma znaczenie, bo pola są tworzone z góry na dół:
 ```cpp
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
-                                 m_heightmap, m_terrainSettings.heightScale)) {
+                                 m_heightmap, m_terrainSettings.heightScale,
+                                 m_mazeSettings.interactables)),
+      m_menuCamera(options.menuCamera) {
 ```
 
 Trzy drogi, którymi teren trafia na kartę:
@@ -933,6 +943,7 @@ void NightMazeApp::rebuildTerrain() {
     }
 
     uploadGround();
+    m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
 }
 ```
 
@@ -942,10 +953,11 @@ Runda trwa dalej: nic nie jest zbierane ani zerowane. Kryształy zachowują stan
 void NightMazeApp::uploadGround() {
     m_terrainRenderer.upload(buildTerrainMesh(m_mazeWorld.terrain));
     plantGrass();
+    layPuddles();
 }
 ```
 
-Trawa stoi na terenie, więc nowy grunt oznacza nowe miejsca kępek.
+Trawa stoi na terenie, więc nowy grunt oznacza nowe miejsca kępek, a kałuże (M8, część 1) leżą na najniższym gruncie swoich komórek, więc też są układane od nowa. Ostatnia linia `rebuildTerrain` przebudowuje ścieżkę kamery menu (M9), która biegnie po gruncie: bez niej kamera szłaby po starej wysokości.
 
 Żądanie z panelu jest obsługiwane na początku `onRender`, zaraz po żądaniu nowego labiryntu:
 
@@ -1119,7 +1131,7 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
 14. **Tekstura podłoża jest sRGB.** Do M6 `ground.png` była dobrana na oko dla obrazu bez korekcji gamma ([`../../decisions/no-gamma-until-m7.md`](../../decisions/no-gamma-until-m7.md), dziś zastąpiona przez [`../../decisions/gamma-linear-pipeline.md`](../../decisions/gamma-linear-pipeline.md)). Od M7 jest wczytywana jako sRGB, a jej mapa normalnych jako dane liniowe. Zamiana tych dwóch argumentów w `TerrainRenderer` nie zgłasza błędu: podłoże wyszłoby wyblakłe, a jego nierówności oświetlone krzywo. `AssetCache::texture` loguje błąd tylko wtedy, gdy ten sam plik zostanie zamówiony raz jako sRGB, a raz jako liniowy.
 15. **macOS, niesprawdzone.** `glPolygonMode` z `GL_LINE` należy do profilu Core 4.1, ale sterownik Apple jeszcze tego kodu nie widział.
 16. **"Wireframe wyłącza cienie terenu".** Nie wyłącza. Do mapy cieni teren idzie zawsze wypełniony (sekcja 2.12), więc wzgórza rzucają cień także wtedy, gdy w scenie widać z nich same linie.
-17. **"Teren kosztuje jedno wywołanie rysujące".** Od czwartej części M7 dwa na klatkę przy włączonych cieniach: jedno do mapy cieni, jedno do sceny (sekcja 3.2).
+17. **"Teren kosztuje jedno wywołanie rysujące".** Od czwartej części M7 dwa na klatkę przy włączonych cieniach: jedno do mapy cieni, jedno do sceny, a od piątej części do trzech, gdy świeci też latarka z włączonymi cieniami (sekcje 3.2 i 3.3).
 
 ## 8. Ćwiczenia
 
@@ -1217,7 +1229,7 @@ void drawTerrainPanel(game::TerrainSettings& settings, const game::Terrain& terr
     Loader wypisuje błąd, `loadHeightmap` zwraca pustą `Heightmap` (jedna wartość 0) i świat jest płaski. Gra działa.
 
 26. **Ile wywołań rysujących kosztuje teren i ile kosztowały płytki?**
-    Jedno w przebiegu sceny, niezależnie od rozmiaru labiryntu. Od czwartej części M7 drugie w przebiegu cieni, gdy cienie są włączone. Płytki kosztowały jedno na komórkę, czyli 100 w labiryncie startowym.
+    Jedno w przebiegu sceny, niezależnie od rozmiaru labiryntu. Od czwartej części M7 drugie w przebiegu cieni księżyca, gdy cienie są włączone, a od piątej trzecie w przebiegu cieni latarki, gdy latarka świeci i jej cienie są włączone. Płytki kosztowały jedno na komórkę, czyli 100 w labiryncie startowym.
 
 27. **Co teren ma wspólnego z mapą cieni księżyca?**
     Trzy rzeczy. Jest rysowany do mapy cieni, zawsze wypełniony, więc wzgórza rzucają cień. Przyjmuje cień jak ściany, bo rysują go te same programy `lit` i `gouraud`. I wyznacza obszar mapy: `shadowCasterBounds` bierze z niego sześć granic (`minX`, `maxX`, `minZ`, `maxZ`, `minHeight`, `maxHeight` plus wysokość słupka), a `directionalLightSpace` dopasowuje do tego pudełka rzut ortograficzny księżyca. Liczone w każdej klatce, więc nowy labirynt i nowa skala wysokości nie wymagają osobnego kodu.

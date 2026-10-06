@@ -326,7 +326,7 @@ Drugi odczyt tej samej tekstury, podgląd, **nie** używa tej klasy: `ShadowMap:
 - **Testów jednostkowych nie ma**: klasa potrzebuje kontekstu OpenGL. Program testowy ma dziś 329 przypadków i 104306 asercji (zgłoszone dla Windowsa, 2026-10-06; po czwartej części było 310 i 103751), a żaden nie tworzy tego obiektu.
 - **Osobnego programu pomiarowego nie było.** Nikt nie odczytał parametrów samplera przez `glGetSamplerParameteriv` ani nie zmierzył, co naprawdę zwraca `texture()` przy filtrze liniowym na brzegu cienia.
 - **Gra, Windows** (zgłoszone 2026-10-05): build Debug nie zapisał błędów OpenGL przy mapie 2048 i 1024, bramka `make check` przechodzi. To potwierdza, że wywołania mają poprawne argumenty, a nie to, że obraz jest poprawny w każdym miejscu.
-- **Niesprawdzone:** przełączanie pola `Hardware 2 x 2 filter` i rozdzielczości myszą w działającej grze, przeładowanie shaderów (od szóstej części M7 trzynaście programów).
+- **Niesprawdzone:** przełączanie pola `Hardware 2 x 2 filter` i rozdzielczości myszą w działającej grze, przeładowanie shaderów (od szóstej części M7 trzynaście programów, od M8, części 1 czternaście).
 - **macOS:** nic. Otwarte pytania są w nagłówku tego dokumentu.
 
 ## 6. Panel ImGui

@@ -208,15 +208,13 @@ Każdy zwraca referencję do jednego pola, więc panel edytuje oryginał, a nie 
 `onRender` zaczyna się od czterech krótkich bloków, które nie dotyczą myszy: zbudowania nowego labiryntu, jeśli panel o to poprosił ([`../game/maze-rendering.md`](../game/maze-rendering.md), sekcja 5), restartu rundy (klawisz R albo prośba z panelu Gameplay, sekcja 5.2), klawisza N ([`../game/player.md`](../game/player.md), sekcja 5) i klawisza F, który przełącza latarkę ([`../game/flashlight.md`](../game/flashlight.md)). Zaraz po nich stoi obrót:
 
 ```cpp
-    // Mouse look. It runs here, once per frame, and not in onUpdate: a click and a mouse
-    // delta describe one frame, and onUpdate runs zero or more times per frame.
-    if (!input().isCursorCaptured()) {
-        // A click on a debug panel does not arrive here: main.cpp blocks the mouse for
-        // the game while the debug UI is using it.
-        if (input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
-            input().setCursorCaptured(true);
-        }
-    } else {
+    // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
+    // describes one frame, and onUpdate runs zero or more times per frame. It comes
+    // before the view matrix is built, so the picture and the picking ray of this frame
+    // already use the new angles. The click that captures a free cursor is read further
+    // down (handleInteraction), because it first has to be known what the click hit.
+    const bool cursorCaptured = input().isCursorCaptured();
+    if (cursorCaptured && !menuCamera) {
         // Mouse movement to the right is positive and positive yaw turns right, so x is
         // used as it is. Screen y grows downwards while pitch grows upwards, hence the
         // minus sign: moving the mouse up (negative y) looks up.
@@ -226,14 +224,12 @@ Każdy zwraca referencję do jednego pola, więc panel edytuje oryginał, a nie 
     }
 ```
 
-Ten blok nie zmienił się od M1.
+Uwaga (2026-10-06): ten blok jest dziś krótszy niż w M1. Kliknięcie, które przechwytuje wolny kursor, nie stoi już tu: obsługuje je `handleInteraction`, wołane dalej w `onRender` (sekcja 5.11 w [`picking.md`](picking.md)). Najpierw trzeba wiedzieć, w co kliknięcie trafiło: kliknięcie w dźwignię albo kartkę używa jej, a dopiero każde inne kliknięcie w scenę (`clicked && !cursorCaptured`) wywołuje `input().setCursorCaptured(true)`. Obrót nie działa też przy kamerze menu (`menuCamera`), bo wtedy kamerą steruje program, nie mysz. Excerpt pokazuje dzisiejszy kod, opis niżej dotyczy go w całości.
 
 | Linia | Znaczenie |
 |---|---|
-| `if (!input().isCursorCaptured())` | dwa stany: kursor wolny (czekam na kliknięcie) albo przechwycony (obracam kamerę). Nigdy oba naraz |
-| `input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)` | zbocze: prawda tylko w klatce, w której przycisk został wciśnięty. Kliknięcie w panel debug tu nie dociera, bo `main.cpp` blokuje grze mysz, gdy używa jej ImGui ([`../core/input.md`](../core/input.md), sekcja 5.10) |
-| `input().setCursorCaptured(true);` | tryb `GLFW_CURSOR_DISABLED`: kursor znika i jego ruch nie jest ograniczony krawędzią ekranu ([`../core/input.md`](../core/input.md), sekcja 5.9) |
-| `else` | w klatce kliknięcia kamera się nie obraca: przesunięcie z tej klatki to jeszcze ruch widocznego kursora po ekranie |
+| `const bool cursorCaptured = input().isCursorCaptured();` | dwa stany: kursor wolny (panele, kliknięcie w scenę) albo przechwycony (obracam kamerę). Nigdy oba naraz. Ta sama wartość idzie do `handleInteraction` |
+| `if (cursorCaptured && !menuCamera)` | kamera obraca się tylko przy przechwyconym kursorze i gdy nie leci kamera menu |
 | `static_cast<float>(input().mouseDeltaX()) * m_mouseSensitivity` | przesunięcie w poziomie razy czułość daje zmianę yaw w stopniach. `Input` zwraca `double` (tak podaje GLFW), kamera liczy na `float`, stąd jawne rzutowanie |
 | `-static_cast<float>(input().mouseDeltaY()) * m_mouseSensitivity` | to samo dla pitch, z minusem: y ekranu rośnie w dół, pitch rośnie w górę (sekcja 2.1) |
 | `m_camera.rotate(yawDelta, pitchDelta);` | dodaje zmiany, zawija yaw i przycina pitch ([`camera.md`](camera.md), sekcja 5.4) |
@@ -366,7 +362,7 @@ Zdarzenia myszy w dwóch ostatnich wierszach były podawane wprost do ImGui (`Im
 
 Panel **Camera** jest pokazem tematu 3 (PRD, sekcja 3: "Pozycja/rotacja kamery, FOV"). Kod: [`src/debug/panels/CameraPanel.cpp`](../../../src/debug/panels/CameraPanel.cpp). Jak panel jest podpięty do `DebugUI` i skąd dostaje dane, opisuje [`../debug-ui.md`](../debug-ui.md), sekcja 5.
 
-**Gdzie panel stoi.** Od M5 paneli było osiem, od M6 dziesięć, od pierwszej części M7 jedenaście, od czwartej części M7 jest dwanaście, a dwie kolumny i dolny rząd mieszczą sześć. Pozostałe sześć startuje zwinięte (do trzeciej części M7 było ich pięć). Miejsce panelu Camera w lewej kolumnie, pod panelem Renderer, zajął w M4 panel Lights. Panele Camera i Gameplay przy pierwszym uruchomieniu są **zwinięte** do samych pasków tytułu i stoją obok siebie przy górnej krawędzi okna, między kolumnami. W oknie 1280 x 720 pasek Camera zaczyna się w x 352, y 8 i ma 280 jednostek szerokości, a pasek Gameplay zaczyna się w x 640 i ma 324. Od M6 tuż pod nimi stoi drugi rząd zwiniętych pasków: Terrain pod Camera i Grass pod Gameplay, każdy tak szeroki jak pasek nad nim (`TERRAIN_PLACEMENT` i `GRASS_PLACEMENT` z `foldedRowsBefore = 1`). Od pierwszej części M7 pod nimi jest trzeci rząd: jeden pasek panelu Framebuffers, zaczynający się w x 352 i szeroki na oba paski nad nim razem z odstępem, czyli 612 jednostek (`FRAMEBUFFERS_PLACEMENT` z `foldedRowsBefore = 2`). Od czwartej części M7 pod nim jest czwarty rząd: pasek panelu Shadows, w tym samym miejscu w poziomie i tak samo szeroki jak pasek Framebuffers (`SHADOWS_PLACEMENT` z `foldedRowsBefore = 3` i rozmiarem `FRAMEBUFFERS_WIDTH` na `SHADOWS_HEIGHT`, czyli 612 na 324 jednostki po rozwinięciu). Pod czterema rzędami, na środku, stoi pasek HUD (`foldedRowsHeight(FOLDED_ROW_COUNT, scale)` plus `HUD_TOP_OFFSET` w `src/debug/Hud.cpp`, `FOLDED_ROW_COUNT` równe 4, do trzeciej części M7 3). Kliknięcie strzałki w pasku rozwija panel Camera do prostokąta 280 na 416 jednostek, który sięga w dół do dolnego rzędu paneli i zasłania swoją część sceny oraz zwinięte paski pod sobą (Terrain i swoją część pasków Framebuffers i Shadows), ale żadnego otwartego panelu. Jest trochę niższy niż jego zawartość, więc po rozwinięciu ma pasek przewijania (tak mówi komentarz w `PanelLayout.hpp`). Po rozwinięciu ImGui zapamiętuje ten stan w `imgui.ini`. Rozwijania kliknięciem nikt jeszcze nie sprawdził ręcznie: opis wynika z kodu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7).
+**Gdzie panel stoi.** Od M5 paneli było osiem, od M6 dziesięć, od pierwszej części M7 jedenaście, od czwartej części M7 jest dwanaście, a dwie kolumny i dolny rząd mieszczą sześć. Uwaga (2026-10-06): od M8, części 1, jest ich trzynaście (doszedł Environment, piąty zwinięty pasek w tej samej kolumnie, `ENVIRONMENT_PLACEMENT` z `foldedRowsBefore = 4`, `FOLDED_ROW_COUNT` równe 5), więc pasek HUD przy widocznych panelach stoi pod pięcioma rzędami, nie pod czterema. Pozostałe sześć startuje zwinięte (do trzeciej części M7 było ich pięć). Miejsce panelu Camera w lewej kolumnie, pod panelem Renderer, zajął w M4 panel Lights. Panele Camera i Gameplay przy pierwszym uruchomieniu są **zwinięte** do samych pasków tytułu i stoją obok siebie przy górnej krawędzi okna, między kolumnami. W oknie 1280 x 720 pasek Camera zaczyna się w x 352, y 8 i ma 280 jednostek szerokości, a pasek Gameplay zaczyna się w x 640 i ma 324. Od M6 tuż pod nimi stoi drugi rząd zwiniętych pasków: Terrain pod Camera i Grass pod Gameplay, każdy tak szeroki jak pasek nad nim (`TERRAIN_PLACEMENT` i `GRASS_PLACEMENT` z `foldedRowsBefore = 1`). Od pierwszej części M7 pod nimi jest trzeci rząd: jeden pasek panelu Framebuffers, zaczynający się w x 352 i szeroki na oba paski nad nim razem z odstępem, czyli 612 jednostek (`FRAMEBUFFERS_PLACEMENT` z `foldedRowsBefore = 2`). Od czwartej części M7 pod nim jest czwarty rząd: pasek panelu Shadows, w tym samym miejscu w poziomie i tak samo szeroki jak pasek Framebuffers (`SHADOWS_PLACEMENT` z `foldedRowsBefore = 3` i rozmiarem `FRAMEBUFFERS_WIDTH` na `SHADOWS_HEIGHT`, czyli 612 na 324 jednostki po rozwinięciu). Pod czterema rzędami, na środku, stoi pasek HUD (`foldedRowsHeight(FOLDED_ROW_COUNT, scale)` plus `HUD_TOP_OFFSET` w `src/debug/Hud.cpp`, `FOLDED_ROW_COUNT` równe 4, do trzeciej części M7 3). Kliknięcie strzałki w pasku rozwija panel Camera do prostokąta 280 na 416 jednostek, który sięga w dół do dolnego rzędu paneli i zasłania swoją część sceny oraz zwinięte paski pod sobą (Terrain i swoją część pasków Framebuffers i Shadows), ale żadnego otwartego panelu. Jest trochę niższy niż jego zawartość, więc po rozwinięciu ma pasek przewijania (tak mówi komentarz w `PanelLayout.hpp`). Po rozwinięciu ImGui zapamiętuje ten stan w `imgui.ini`. Rozwijania kliknięciem nikt jeszcze nie sprawdził ręcznie: opis wynika z kodu ([`../debug-ui.md`](../debug-ui.md), sekcja 5.7).
 
 PRD w sekcji 10 wymienia dla panelu Camera: "Pozycja, FOV, czułość myszy, tryb noclip". Wszystkie cztery są w programie, z jedną różnicą w rozmieszczeniu: panel Camera **pokazuje** tryb (linia `Mode:`), a przełącza go klawisz N albo pole wyboru `Noclip (key N)` w panelu Collision ([`collision.md`](collision.md), sekcja 6), bo noclip znaczy "wyłącz kolizje".
 

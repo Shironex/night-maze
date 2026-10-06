@@ -560,7 +560,7 @@ flowchart LR
 |---|---|---|
 | `tools/blender/make_textures.py` | pole wysokości i funkcja `normal_map` | sekcja 5.2, całość w [`../../guides/blender.md`](../../guides/blender.md) |
 | `tools/blender/blender_common.py` | materiał z węzłem Normal Map | [`../../guides/blender.md`](../../guides/blender.md) |
-| `assets/textures/*_normal.png` | cztery mapy normalnych 512 x 512, RGB: dwie kamienne z M4 oraz `crystal_normal.png` i `gate_wood_normal.png` z M5 | sekcja 5.2 |
+| `assets/textures/*_normal.png` | mapy normalnych 512 x 512, RGB: dwie kamienne z M4, `crystal_normal.png` i `gate_wood_normal.png` z M5 oraz od M8, części 2 `lever_iron_normal.png`, `lever_brass_normal.png` i `note_paper_normal.png` (razem siedem, sprawdzone w katalogu) | sekcja 5.2 |
 | `assets/models/*.mtl` | linia `map_Bump` | sekcja 5.3 |
 | `src/assets/ObjLoader.*` | parser linii, `normalTexture`, wywołanie `computeTangents` | [`../assets/obj-loader.md`](../assets/obj-loader.md) |
 | `src/gfx/Vertex.hpp`, `src/gfx/Mesh.*` | pole `tangent`, czwarty atrybut | [`mesh.md`](mesh.md) |
@@ -802,7 +802,7 @@ glm::vec3 orthonormalTangent(const glm::vec3& normal, const glm::vec3& tangent) 
 | `leastAlignedAxis(unitNormal)` | oś współrzędnych, wzdłuż której normalna ma **najmniejszą** składową. Taka oś na pewno nie jest równoległa do normalnej, więc po odjęciu części wzdłuż normalnej zostaje wektor niezerowy |
 | `glm::normalize(inSurface)` | długość 1. Bezpieczne: obie gałęzie gwarantują długość wyraźnie większą od zera |
 
-Wynik **nigdy nie zawiera `NaN`**. To jest celowe: jedno `NaN` w atrybucie daje czarne albo migające piksele na całym trójkącie. Wierzchołek z wartością zastępczą jest nadal oświetlany przez mapę normalnych, tylko z reliefem obróconym o nieznany kąt. W modelach gry żaden wierzchołek tej gałęzi nie potrzebuje: wszystkie trójkąty sześciu plików OBJ mają niezdegenerowane UV (dla trzech modeli z M5 policzone z plików, sekcja 2.9). Testy sprawdzają ją na danych zdegenerowanych: te same UV w każdym rogu, normalna równoległa do stycznej, trójkąt bez pola, wierzchołek bez normalnej i bez trójkąta.
+Wynik **nigdy nie zawiera `NaN`**. To jest celowe: jedno `NaN` w atrybucie daje czarne albo migające piksele na całym trójkącie. Wierzchołek z wartością zastępczą jest nadal oświetlany przez mapę normalnych, tylko z reliefem obróconym o nieznany kąt. W modelach gry żaden wierzchołek tej gałęzi nie potrzebuje: wszystkie trójkąty ośmiu plików OBJ (sześciu z M5 i trzech z M8, części 2, bez płytki podłogi, którą usunął M6; sprawdzone skryptem na plikach: żaden z 8 modeli nie ma trójkąta o zerowym polu w UV) mają niezdegenerowane UV (dla trzech modeli z M5 policzone z plików, sekcja 2.9). Testy sprawdzają ją na danych zdegenerowanych: te same UV w każdym rogu, normalna równoległa do stycznej, trójkąt bez pola, wierzchołek bez normalnej i bez trójkąta.
 
 ### 5.7 `countMirroredTriangles`: sprawdzenie skrętności
 
@@ -976,8 +976,8 @@ Przełącznik jest w panelu **Assets**, zaraz pod listą `View mode`, bo te dwie
 
 ### 6.2 Listy modeli i tekstur
 
-- W liście **Models** każda część modelu ma pod sobą linię `normal map: wall_stone_normal.png` albo `normal map: none (flat)`, gdy używa płaskiej tekstury zastępczej. Modeli jest dziś sześć i każdy ma jedną część z własną mapą.
-- W liście **Textures** jest dziś osiem tekstur z podglądem: cztery obrazy koloru i cztery mapy normalnych (kamień ściany, podłoże, kryształ, drewno bramy. Do M5 w miejscu podłoża był kamień płytek podłogi). Do M4 były cztery. Mapy są w tej samej liście, bo dla pamięci podręcznej to tekstury jak inne. Ich podgląd jest jasnoniebieski, z kolorowymi kreskami na skosach (sekcja 2.4).
+- W liście **Models** każda część modelu ma pod sobą linię `normal map: wall_stone_normal.png` albo `normal map: none (flat)`, gdy używa płaskiej tekstury zastępczej. Modeli jest dziś osiem (do M8, części 2 pięć, do M6 sześć) i każdy ma jedną część z własną mapą.
+- W liście **Textures** jest dziś czternaście tekstur z podglądem: siedem obrazów koloru i siedem map normalnych (kamień ściany, podłoże, kryształ, drewno bramy i od M8, części 2 żelazo i mosiądz dźwigni oraz papier kartki; do M8, części 2 było ich osiem, po cztery. Do M5 w miejscu podłoża był kamień płytek podłogi). Do M4 były cztery. Mapy są w tej samej liście, bo dla pamięci podręcznej to tekstury jak inne. Ich podgląd jest jasnoniebieski, z kolorowymi kreskami na skosach (sekcja 2.4).
 - Lista `Filter` i suwak anizotropii działają także na mapy normalnych: to te same obiekty samplera.
 
 Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
@@ -993,7 +993,7 @@ Kod panelu omawia [`../assets/asset-cache.md`](../assets/asset-cache.md).
 5. **Ta sama mapa, różne orientacje.** W widoku normalnych pokazuję ścianę wzdłuż X, ścianę wzdłuż Z i wierzch słupka. Kolor podstawowy jest inny (inna normalna modelu), rysunek fug ten sam. Podłoże ma dziś własną mapę (`ground_normal.png`: kamyki i mech zamiast fug), więc do tego porównania się nie nadaje. Mówię o przestrzeni stycznej i macierzy TBN.
 6. **Gouraud dla kontrastu.** Wracam do `Textured`. W panelu Renderer przełączam `Lighting` na `Gouraud`: relief znika, niezależnie od pola `Normal mapping`. Mówię: światło jest liczone w 4 wierzchołkach ściany, a mapa ma normalną na teksel. Wracam na `Phong`.
 7. **Widok normalnych w trybie Gouraud.** Przy `Gouraud` wybieram jeszcze `Normals as colour`: ściany są jednolite, mimo zaznaczonego pola. Mówię: widok pokazuje normalne, których użyłby wybrany tryb.
-8. **Tekstury.** Przewijam panel Assets do listy Textures: osiem pozycji, cztery niebieskie. Mówię o kodowaniu `n * 0,5 + 0,5` i o tym, dlaczego mapa jest niebieska. W liście Models pokazuję linię `normal map:` pod częścią modelu.
+8. **Tekstury.** Przewijam panel Assets do listy Textures: czternaście pozycji (do M8, części 2 osiem), siedem map niebieskich (do M8, części 2 cztery). Mówię o kodowaniu `n * 0,5 + 0,5` i o tym, dlaczego mapa jest niebieska. W liście Models pokazuję linię `normal map:` pod częścią modelu.
 9. **Testy.** `ctest --test-dir build/debug -C Debug --output-on-failure`: styczne, parser linii `map_Bump` i konwencja zielonego kanału są sprawdzone liczbami.
 
 ## 7. Pułapki

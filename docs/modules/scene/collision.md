@@ -377,7 +377,7 @@ Kula ma więc ten sam zasięg we wszystkich kierunkach, a pudełko o tym samym r
 - **Nie przemiatają drogi.** W teorii bryłę do zebrania dałoby się przeskoczyć (sekcja 2.5). W grze nie: krok symulacji przy sprincie to około 4,6 cm, a suma promieni zasięgu gracza i kryształu to 0,9 m.
 - **Nie mają tolerancji styku.** Tolerancja należy do ruchu (sekcja 2.7), a kule niczego nie przesuwają.
 
-Poza zakresem projektu zostają: bryły obrócone (OBB), kapsuły, siatki trójkątów, struktury przyspieszające (siatka, drzewo BVH) i pełna symulacja fizyki z masą, pędem i odbiciami ([`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md)). Promienie (raycast) istnieją od M8 jako osobna matematyka bez okna w `src/scene/Raycast.*`, opisana w [`picking.md`](picking.md): nie należą do kolizji, panel Collision ich nie pokazuje, a działający program ich nie używa. Oba testy kul opisuje Ericson (sekcja 10), a wersję 2D rozdział "Collision detection" z LearnOpenGL.
+Poza zakresem projektu zostają: bryły obrócone (OBB), kapsuły, siatki trójkątów, struktury przyspieszające (siatka, drzewo BVH) i pełna symulacja fizyki z masą, pędem i odbiciami ([`../../decisions/collision-aabb-sliding.md`](../../decisions/collision-aabb-sliding.md)). Promienie (raycast) istnieją od M8 jako osobna matematyka bez okna w `src/scene/Raycast.*`, opisana w [`picking.md`](picking.md): nie należą do kolizji, panel Collision ich nie pokazuje, a działający program używa ich od M8, części 2, do wskazywania dźwigni i kartek (`pickForFrame`), nie do ruchu gracza ani do zbierania kryształów. Oba testy kul opisuje Ericson (sekcja 10), a wersję 2D rozdział "Collision detection" z LearnOpenGL.
 
 ### 2.13 Pudełka na nierównym gruncie: co się zmieniło w M6, a co nie
 
@@ -792,7 +792,19 @@ Do M4 listą przeszkód była `m_mazeWorld.colliders`, czyli same ściany i słu
 
 ```cpp
 std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& round) {
-    std::vector<scene::Aabb> obstacles = world.colliders;
+    // world.colliders holds the box of every wall first, in the order of world.walls,
+    // and the boxes of the pillars after them. So box number i belongs to wall number
+    // i as long as i is below the number of walls. An opened wall is left out at once,
+    // also while its model is still sinking (see pullRoundLever).
+    const std::vector<bool> opened = openedWallFlags(world, round);
+    std::vector<scene::Aabb> obstacles;
+    obstacles.reserve(world.colliders.size() + 1);
+    for (std::size_t i = 0; i < world.colliders.size(); ++i) {
+        if (i < opened.size() && opened[i]) {
+            continue;
+        }
+        obstacles.push_back(world.colliders[i]);
+    }
     if (gateBlocks(world, round)) {
         obstacles.push_back(world.gateBox);
     }
@@ -802,13 +814,14 @@ std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& rou
 
 | Linia | Znaczenie |
 |---|---|
-| `std::vector<scene::Aabb> obstacles = world.colliders;` | kopia listy labiryntu: pudełka wszystkich ścian, potem wszystkich słupków. Ta część nie zmienia się przez cały czas życia labiryntu |
+| `openedWallFlags(world, round)` | od M8, części 2: dla każdej ściany flaga, czy otworzyła ją dźwignia (`world.walls` w tej samej kolejności co pierwsze pudełka `world.colliders`) |
+| pętla po `world.colliders` z `continue` | kopia listy labiryntu bez pudełek otwartych ścian: pudełko numer `i` jest pomijane, gdy `i < opened.size() && opened[i]`, a pudełka słupków (numery od liczby ścian wzwyż) zostają zawsze. Lista `world.colliders` się nie zmienia przez cały czas życia labiryntu, zmienia się tylko jej kopia |
 | `if (gateBlocks(world, round))` | brama blokuje, gdy labirynt ją ma i jeszcze się nie otworzyła (`world.hasGate && !round.gateOpen`) |
 | `obstacles.push_back(world.gateBox);` | pudełko bramy jako ostatnie na liście. `gateBox` to wynik `wallBox` dla segmentu bramy, czyli dokładnie takie pudełko, jakie miałaby ściana w tym miejscu: 2 m długości, 3 m wysokości, 0,3 m grubości. Od M6 brama, tak jak ściana, stoi na najniższym gruncie pod swoim obrysem i pudełko jest liczone po jej opuszczeniu |
 
 Brama nie jest w `MazeWorld::colliders`, bo w trakcie rundy przestaje być przeszkodą, a `MazeWorld` opisuje to, co się w labiryncie nie zmienia. Dla `moveAndSlide` brama niczym się nie różni od ściany: to jeszcze jedno `Aabb` na liście.
 
-Lista jest budowana w trzech miejscach `NightMazeApp`: w `beginRound` (nowa runda, także po nowym labiryncie), od M6 w `rebuildTerrain` (zmiana skali wysokości terenu przesuwa wszystkie pudełka w pionie) i w `onUpdate`, w kroku, w którym brama się otworzyła:
+Lista jest budowana w pięciu miejscach `NightMazeApp` (trzy opisane niżej i dwa z M8, części 2: zaraz po pociągnięciu dźwigni, w `handleInteraction`, i po przycisku `Pull all levers` z panelu Gameplay), a opis trzech pierwszych brzmi tak: w `beginRound` (nowa runda, także po nowym labiryncie), od M6 w `rebuildTerrain` (zmiana skali wysokości terenu przesuwa wszystkie pudełka w pionie) i w `onUpdate`, w kroku, w którym brama się otworzyła:
 
 > Uwaga (2026-10-06, M9 część 1): fragment `onUpdate` poniżej pochodzi sprzed kamery menu. Dziś, gdy tryb menu jest włączony, `onUpdate` po zapamiętaniu poprzedniej pozycji gracza dodaje krok do `m_round.animationSeconds` i **wraca**: gracz, `updateRound` i bateria stoją. Opis: [`menu-camera.md`](../game/menu-camera.md), sekcja 2.10.
 
@@ -831,7 +844,7 @@ Trzy elementy spotykają się w jednym kroku symulacji:
 |---|---|---|
 | chciane przesunięcie `wanted` | kierunek z klawiszy razy prędkość razy `stepSeconds`, a `stepSeconds` to zawsze `fixedDt` | co krok |
 | pudełko `box()` | z pozycji stóp gracza: 0,6 x 1,8 x 0,6 m | co krok, od nowa |
-| lista przeszkód `obstacles` | `m_obstacles`, wynik `game::roundObstacles`: pudełka labiryntu i pudełko bramy, dopóki brama jest zamknięta | na początku rundy i w chwili otwarcia bramy |
+| lista przeszkód `obstacles` | `m_obstacles`, wynik `game::roundObstacles`: pudełka labiryntu bez ścian otwartych dźwigniami i pudełko bramy, dopóki brama jest zamknięta | na początku rundy, w chwili otwarcia bramy i po każdej otwartej ścianie |
 
 Kod pilnuje więc trzech rzeczy, o których mówi teoria: przesunięcie powstaje ze stałego kroku (sekcja 2.8), pudełko jest budowane od nowa z pozycji, a lista przeszkód nie jest liczona w każdym kroku. W trybie noclip gracz w ogóle nie woła `moveAndSlide`. Testy kul z `updateRound` działają jednak także w noclip (sekcja 5.10). Całą funkcję linia po linii omawia [`../game/player.md`](../game/player.md), sekcja 5.
 
@@ -1405,13 +1418,16 @@ void drawCollisionPanel(const game::MazeWorld& world, const game::Round& round,
         ImGui::Separator();
         // world.colliders holds the box of every wall first and the box of every pillar
         // after them, so the two counts are the sizes of the lists they were made from.
-        // The gate is one more box while it is closed (game::roundObstacles).
+        // The gate is one more box while it is closed, and every wall that a lever has
+        // opened is one box less (game::roundObstacles).
         const int gateBoxes = game::gateBlocks(world, round) ? 1 : 0;
-        ImGui::Text("Boxes: %d walls, %d pillars, %d gate", static_cast<int>(world.walls.size()),
+        const int openedWalls = game::pulledLeverCount(round);
+        ImGui::Text("Boxes: %d walls (%d opened by levers), %d pillars, %d gate",
+                    static_cast<int>(world.walls.size()) - openedWalls, openedWalls,
                     static_cast<int>(world.pillars.size()), gateBoxes);
         // One pickup sphere around every crystal that is not collected yet.
         ImGui::Text("All boxes: %d, pickup spheres: %d",
-                    static_cast<int>(world.colliders.size()) + gateBoxes,
+                    static_cast<int>(world.colliders.size()) - openedWalls + gateBoxes,
                     static_cast<int>(round.crystals.size()) - round.collectedCount);
         ImGui::TextWrapped("Wall box: %.2f m thick (the visible wall: %.2f m)",
                            game::WALL_COLLISION_THICKNESS, game::WALL_VISUAL_THICKNESS);
@@ -1423,6 +1439,9 @@ void drawCollisionPanel(const game::MazeWorld& world, const game::Round& round,
         ImGui::TextUnformatted("Player box");
         ImGui::Text("min: %.2f, %.2f, %.2f", box.min.x, box.min.y, box.min.z);
         ImGui::Text("max: %.2f, %.2f, %.2f", box.max.x, box.max.y, box.max.z);
+
+        ImGui::Separator();
+        drawPicking(pick, pickDebug);
     }
     ImGui::End();
 }
@@ -1439,8 +1458,9 @@ void drawCollisionPanel(const game::MazeWorld& world, const game::Round& round,
 | `ImGui::TextWrapped("Yellow: ... Magenta: exit zone.")` | legenda pięciu kolorów (sekcja 4.2). Dwa sąsiednie literały napisów kompilator skleja w jeden |
 | `ImGui::Checkbox("Noclip (key N)", &player.noclip)` | to samo pole, które przełącza klawisz N. Dwa sposoby zmiany jednej zmiennej, więc nie mogą się rozjechać |
 | `game::gateBlocks(world, round) ? 1 : 0` | 1, dopóki brama jest przeszkodą, potem 0. To ten sam warunek, którego używają `roundObstacles` i rysowanie pomarańczowego pudełka |
-| `world.walls.size()`, `world.pillars.size()` | liczby ścian i słupków. `mazeColliders` dodaje jedno pudełko na ścianę i jedno na słupek |
-| `world.colliders.size() + gateBoxes` | `All boxes`: tyle pudełek ma lista `m_obstacles`, którą sprawdza każdy krok chodzenia. Panel nie czyta samej listy, tylko liczy ją tak samo, jak powstaje |
+| `game::pulledLeverCount(round)` | liczba ścian otwartych dźwigniami (każda pociągnięta dźwignia otwiera jedną ścianę): `roundObstacles` ma o tyle pudełek ścian mniej |
+| `world.walls.size() - openedWalls`, `world.pillars.size()` | liczby ścian (bez otwartych dźwigniami) i słupków. `mazeColliders` dodaje jedno pudełko na ścianę i jedno na słupek |
+| `world.colliders.size() - openedWalls + gateBoxes` | `All boxes`: tyle pudełek ma lista `m_obstacles`, którą sprawdza każdy krok chodzenia. Panel nie czyta samej listy, tylko liczy ją tak samo, jak powstaje |
 | `round.crystals.size() - round.collectedCount` | liczba kul zbierania: jedna na każdy kryształ, który jeszcze wisi |
 | `static_cast<int>(...)` | `%d` oczekuje `int`, a `size()` zwraca `std::size_t` |
 | `game::WALL_COLLISION_THICKNESS`, `game::WALL_VISUAL_THICKNESS` | 0,30 i 0,20: panel sam mówi, że pudełko ściany jest grubsze niż widoczna ściana (pułapka 1) |
@@ -1461,7 +1481,7 @@ Czego panel **nie** liczy: strefy wyjścia (to pudełko, ale nie przeszkoda, wi�
 | `Freeze the drawn ray` | pole wyboru (`pickDebug.freezeRay`) | rysowany promień zostaje tam, gdzie był, a wskazywanie toczy się dalej: dopiero zatrzymany promień da się obejrzeć z boku (chodzi o kopię `m_shownPick`, nie o sam wynik, którego używa gra) |
 | `All boxes: ..., pickup spheres: ...` | odczyt | (po M8, części 2 pierwsza liczba maleje też o każdą ścianę otwartą dźwignią) ile przeszkód sprawdza każdy krok i ile kul sprawdza każdy krok rundy. Na początku: `All boxes: 243, pickup spheres: 13`. Po otwarciu bramy pierwsza liczba spada do 242, a druga maleje z każdym kryształem |
 | `Wall box: 0.30 m thick (the visible wall: 0.20 m)` | odczyt | bryła kolizji nie musi mieć wymiarów modelu |
-| `Player box`, `min`, `max` | odczyt | pudełko jest liczone z pozycji: na starcie `min: 0.70, 0.00, 0.70` i `max: 1.30, 1.80, 1.30` |
+| `Player box`, `min`, `max` | odczyt | pudełko jest liczone z pozycji: na starcie `min: 0.70, 0.12, 0.70` i `max: 1.30, 1.92, 1.30`: stopy stoją na gruncie, który w komórce startowej ma 0,124 m (domyślna skala wysokości terenu, [`../renderer/terrain.md`](../renderer/terrain.md), sekcja 5), a pudełko ma 1,8 m wysokości, więc `min.y = 0,124` i `max.y = 1,924` (policzone z pozycji i `BODY_HEIGHT`, panel pokazuje dwa miejsca po przecinku). Przy płaskim gruncie byłoby `0.00` i `1.80` |
 
 Promień kul zbierania zmienia suwak `Pickup radius` w panelu Gameplay ([`../game/gameplay.md`](../game/gameplay.md), sekcja 6): cyjanowe okręgi rosną i maleją razem z nim.
 
@@ -1631,7 +1651,7 @@ Kroki nie były jeszcze wykonane ręcznie. Opisują to, co wynika z kodu i z tes
     Suma promieni to 0,9 m. Kryształ wisi 0,25 m nad środkiem kuli gracza, więc w poziomie zostaje około 0,86 m od środka komórki. To wystarcza wzdłuż ścian i w rogach komórki kryształu (tam gracz jest najwyżej 0,55 m od środka na każdej osi) i nie wystarcza z sąsiedniej komórki ani zza ściany. Wchodząc przez otwarty bok, gracz zbiera kryształ około 14 cm za granicą komórki.
 
 31. **Co się zmieniło w liście przeszkód gracza w M5?**
-    Do M4 była to lista `MazeWorld::colliders`: ściany i słupki. Teraz to `m_obstacles` z funkcji `roundObstacles`: ta sama lista plus pudełko bramy, dopóki brama jest zamknięta. Lista jest budowana na początku rundy i ponownie w kroku, w którym brama się otworzyła.
+    Do M4 była to lista `MazeWorld::colliders`: ściany i słupki. Teraz to `m_obstacles` z funkcji `roundObstacles`: ta sama lista plus pudełko bramy, dopóki brama jest zamknięta. Lista jest budowana na początku rundy i ponownie w kroku, w którym brama się otworzyła, a od M8, części 2, także po pociągnięciu dźwigni (ściana wypada z listy).
 
 32. **Czym różnią się brama i strefa wyjścia, skoro obie są `Aabb`?**
     Rolą. Pudełko bramy jest na liście przeszkód i zatrzymuje ruch w `moveAndSlide`. Pudełko strefy nie jest na żadnej liście przeszkód: służy tylko do testu z kulą zasięgu gracza, a wejście w nie kończy rundę.

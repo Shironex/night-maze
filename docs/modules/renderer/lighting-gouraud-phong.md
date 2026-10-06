@@ -5,7 +5,7 @@ Kod: shadery [`assets/shaders/lit.vert`](../../../assets/shaders/lit.vert), [`li
 
 Dlaczego ten dokument stoi w katalogu `renderer`, chociaż kod leży w `game/` i `assets/shaders/`, wyjaśnia [`README.md`](README.md). Dokument zakłada znajomość świateł i wzorów oświetlenia: [`../scene/lights.md`](../scene/lights.md). Tam jest omówiony linia po linii plik `common/lighting.glsl`, który oba programy z tego dokumentu dołączają. Przydają się też [`../gfx/shaders.md`](../gfx/shaders.md) (potok, interpolacja wyjść shadera wierzchołków) i [`../gfx/textures.md`](../gfx/textures.md) (shadery `textured`, na których wzorowane są `lit` i `gouraud`).
 
-**Stan na dziś:** gra ma cztery tryby cieniowania sceny, przełączane listą `Lighting` w panelu Renderer: `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong`. Startuje w trybie `Blinn-Phong`. Od M5 tymi samymi programami co labirynt rysowane są kryształy i brama wyjścia, a wzór końcowy obu programów ma składnik emisyjny: `surface * (diffuse + uEmissive) + specular`.
+**Stan na dziś:** gra ma cztery tryby cieniowania sceny, przełączane listą `Lighting` w panelu Renderer: `Unlit`, `Gouraud`, `Phong` i `Blinn-Phong`. Startuje w trybie `Blinn-Phong`. Od M5 tymi samymi programami co labirynt rysowane są kryształy i brama wyjścia (od M8, części 1, kryształy domyślnie rysuje program `reflect`, patrz sekcja 5.3), a wzór końcowy obu programów ma składnik emisyjny: `surface * (diffuse + uEmissive) + specular`.
 
 **Co zmieniła pierwsza część M7 (2026-10-05).** Wzory cieniowania są te same, ale liczą teraz na wartościach **liniowych**: tekstura koloru jest teksturą sRGB dekodowaną przez kartę, kolory świateł i `uEmissive` są przeliczane w C++ przez `gfx::srgbToLinear`, a wynik obu programów trafia do bufora HDR sceny (`GL_RGBA16F`) bez obcinania do 1. Ekspozycja, mapowanie tonów i kodowanie do sRGB (korekcja gamma) są robione raz, dla całej klatki, w przebiegu składającym. Opis: [`post-process.md`](post-process.md) i [`../gfx/color-space.md`](../gfx/color-space.md). Zmieniły się komentarze w `lit.frag` i `gouraud.frag` (sekcje 4.2 i 4.4), a wartość `uEmissive` podaje nowa funkcja `NightMazeApp::crystalEmissive` (sekcja 5). Zrzuty ekranu, na których opiera się ten dokument, pochodzą sprzed tej zmiany: różnic między trybami po M7 nikt nie oglądał osobno.
 
@@ -23,7 +23,7 @@ M5 jest gotowy w kodzie na Windowsie i **nie jest zamknięty**. Zgłoszone dla W
 - Tryb `Unlit` i oba podglądy diagnostyczne rysuje program `textured`, który mapy cieni nie czyta: cieni tam nie widać.
 - Startowa intensywność księżyca wzrosła z 0,12 do 0,2, żeby powierzchnia w świetle księżyca była wyraźnie jaśniejsza od powierzchni w cieniu ściany ([`../game/flashlight.md`](../game/flashlight.md)).
 
-Programów shaderów jest dziś jedenaście: doszedł `shadow_depth`, program przebiegu głębi mapy cieni. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi (310 przypadków testowych i 103751 asercji), a przy wyłączonych cieniach i intensywności księżyca cofniętej do 0,12 obraz jest identyczny co do piksela z obrazem sprzed tej części poza paskiem HUD (w trybie `Phong` różnice nie przekraczają 1/255). Nie sprawdzone: kontrolki panelu Shadows myszą, przeładowanie shaderów przy jedenastu programach, macOS (nic nie było budowane ani uruchamiane).
+Po tej części programów shaderów było jedenaście (dziś czternaście, patrz sekcja 3): doszedł `shadow_depth`, program przebiegu głębi mapy cieni. Zgłoszone dla Windowsa, 2026-10-05: bramka `make check` przechodzi (310 przypadków testowych i 103751 asercji), a przy wyłączonych cieniach i intensywności księżyca cofniętej do 0,12 obraz jest identyczny co do piksela z obrazem sprzed tej części poza paskiem HUD (w trybie `Phong` różnice nie przekraczają 1/255). Nie sprawdzone: kontrolki panelu Shadows myszą, przeładowanie shaderów przy jedenastu programach (wtedy tyle ich było), macOS (nic nie było budowane ani uruchamiane).
 
 ## 1. Po co to jest
 
@@ -105,7 +105,7 @@ To zgadza się z tym, co widać na zrzutach ekranu z Windowsa: **w trybie `Goura
 
 Latarka skierowana w środek bramy z odległości `d` daje plamę o promieniu `0,38 * d`. Krawędzie bramy są metr od jej środka, więc dopóki stoję bliżej niż około 2,6 m (`1 / 0,38`), w stożku nie ma żadnego wierzchołka: interpolowane jest zero z zerem i z latarki na bramie nie zostaje nic. Z większej odległości w wierzchołki trafia najpierw tylko słaby brzeg stożka (pełna jasność sięga krawędzi dopiero z około 4,3 m, `1 / 0,23`), a tam światło jest już osłabione tłumieniem. Zostają księżyc i światło otoczenia, które dla płaskiego lica są w obu trybach takie same, oraz światła kryształów, jeśli któryś wisi w pobliżu (w samej komórce wyjścia kryształu nigdy nie ma). Ściana obok bramy ma tę samą wadę. Przypuszczam, że brama rzuca się w oczy bardziej, bo to do niej gracz podchodzi na wprost i świeci w sam środek. Jak to sprawdzić samemu, mówi ćwiczenie 12.
 
-**Kryształy są widoczne w każdym trybie.** Ich jasność nie zależy od tego, czy jakieś światło trafiło w wierzchołek: świecą składnikiem emisyjnym `uEmissive`, który oba programy dodają w shaderze **fragmentów** (sekcje 4.2 i 4.4). W trybie `Gouraud` kryształ jest więc tak samo jasny jak w trybie `Phong`, a różni się tylko to, co pada na niego z zewnątrz.
+**Kryształy są widoczne w każdym trybie.** Ich jasność nie zależy od tego, czy jakieś światło trafiło w wierzchołek: świecą składnikiem emisyjnym `uEmissive`, który oba programy dodają w shaderze **fragmentów** (sekcje 4.2 i 4.4). W trybie `Gouraud` kryształ jest więc tak samo jasny jak w trybie `Phong`, a różni się tylko to, co pada na niego z zewnątrz. **Uwaga (2026-10-06): od M8, części 1, ten opis dotyczy kryształów rysowanych programami `lit` i `gouraud`, czyli przy wyłączonym environment mappingu. Domyślnie (pole `Environment mapping` zaznaczone) rysuje je program `reflect`, który liczy światło na fragment w każdym trybie, także w `Gouraud` ([`env-mapping.md`](env-mapping.md)), więc w trybie `Gouraud` kryształ w domyślnych ustawieniach nie jest cieniowany po wierzchołkach.**
 
 Co w Gouraudzie zostaje dobre: **tekstura**. Jest nadal czytana dla każdego fragmentu (`gouraud.frag`), więc rysunek kamienia jest ostry. Na wierzchołek przypada tylko światło. Dobre zostaje też światło kierunkowe na płaskiej ścianie: wszystkie cztery wierzchołki lica mają tę samą normalną i ten sam kierunek do księżyca, więc część rozproszona jest w nich identyczna i interpolacja niczego nie psuje.
 
@@ -225,16 +225,20 @@ Podgląd `Normals as colour` z panelu Assets pokazuje **normalną faktycznie uż
 
 Od czwartej części M7 (2026-10-05) księżyc rzuca cienie. Mapę cieni, bias i filtrowanie opisuje [`shadows.md`](shadows.md). Tutaj jest tylko to, co dotyczy różnicy między Gouraudem a Phongiem.
 
-**Cień jest odejmowany, a nie wliczany.** `computeLighting` liczy każde światło tak, jakby nic nie stało mu na drodze. Struktura wyniku ma od tej części dwa dodatkowe pola: `moonDiffuse` i `moonSpecular`, czyli udział księżyca, który **już jest zawarty** w `diffuse` i `specular` ([`../scene/lights.md`](../scene/lights.md), sekcja 4). Wywołujący pyta funkcję `moonShadow` z pliku `common/shadows.glsl`, jaką część światła księżyca fragment traci (0 poza cieniem, `uMoonShadowStrength` w środku cienia, wartości pośrednie na miękkim brzegu), i tę część odejmuje:
+**Cień jest odejmowany, a nie wliczany.** `computeLighting` liczy każde światło tak, jakby nic nie stało mu na drodze. Struktura wyniku ma od tej części dwa dodatkowe pola: `moonDiffuse` i `moonSpecular`, czyli udział księżyca, który **już jest zawarty** w `diffuse` i `specular` ([`../scene/lights.md`](../scene/lights.md), sekcja 4). Wywołujący pyta funkcję `moonShadow` z pliku `common/shadows.glsl`, jaką część światła księżyca fragment traci (0 poza cieniem, `uMoonShadowStrength` w środku cienia, wartości pośrednie na miękkim brzegu), i tę część odejmuje. Od piątej części M7 (2026-10-06) to samo robi osobno `flashlightShadow` dla latarki, z jej własnej mapy, więc odejmowania są dwa (tak wygląda `lit.frag` dziś):
 
 ```glsl
-    vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
-    vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow, 0.0);
+    vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow -
+                           lighting.flashlightDiffuse * flashlightShade,
+                       0.0);
+    vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow -
+                            lighting.flashlightSpecular * flashlightShade,
+                        0.0);
 ```
 
-Odejmowany jest tylko udział księżyca (od piątej części M7 także, osobno, udział latarki w jej własnym cieniu). W cieniu księżyca światło otoczenia, latarka i światła kryształów świecą więc tak samo jak poza nim, a `uEmissive` nie bierze w tym udziału wcale. Uzasadnienie: [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md) i [`shadows.md`](shadows.md), sekcja 2.14. Światła kryształów cieni nie rzucają: ich światło przechodzi przez ściany jak dawniej (latarka rzuca cień od piątej części M7). `max(..., 0.0)` jest zabezpieczeniem: na papierze różnica nie jest ujemna, ale dwie liczby zmiennoprzecinkowe, które powinny być równe, mogą się różnić ostatnią cyfrą.
+Odejmowane są tylko udział księżyca i, osobno, udział latarki, każdy w swoim cieniu. W cieniu księżyca światło otoczenia, latarka i światła kryształów świecą więc tak samo jak poza nim, a `uEmissive` nie bierze w tym udziału wcale. Uzasadnienie: [`../../decisions/shadow-takes-only-moon-light.md`](../../decisions/shadow-takes-only-moon-light.md) i [`shadows.md`](shadows.md), sekcja 2.14. Światła kryształów cieni nie rzucają: ich światło przechodzi przez ściany jak dawniej (latarka rzuca cień od piątej części M7). `max(..., 0.0)` jest zabezpieczeniem: na papierze różnica nie jest ujemna, ale dwie liczby zmiennoprzecinkowe, które powinny być równe, mogą się różnić ostatnią cyfrą.
 
-**Dlaczego Gouraud pyta o cień na fragment.** To jest uczciwy wyjątek od zasady "w trybie `Gouraud` wszystko dzieje się w wierzchołkach". W `gouraud.vert` światło nadal jest liczone raz na wierzchołek, razem z udziałem księżyca. Ale pytanie "czy ten punkt leży w cieniu" zadaje `gouraud.frag`, dla każdego fragmentu. Powód: lico ściany ma cztery wierzchołki, a krawędź cienia przecina je w dowolnym miejscu. Test w wierzchołkach dałby lico zacienione w całości albo wcale (gdy wszystkie cztery wierzchołki dostają tę samą odpowiedź), albo cień rozmazany od narożnika do narożnika. Żadna z tych rzeczy nie wygląda jak cień. Zgubiona plama latarki jest słabością metody, którą da się pokazać i wytłumaczyć. Cienie, które nie przypominają cieni, byłyby po prostu zepsutym obrazem. `gouraud.vert` przekazuje więc cztery dodatkowe wyjścia:
+**Dlaczego Gouraud pyta o cień na fragment.** To jest uczciwy wyjątek od zasady "w trybie `Gouraud` wszystko dzieje się w wierzchołkach". W `gouraud.vert` światło nadal jest liczone raz na wierzchołek, razem z udziałem księżyca. Ale pytanie "czy ten punkt leży w cieniu" zadaje `gouraud.frag`, dla każdego fragmentu. Powód: lico ściany ma cztery wierzchołki, a krawędź cienia przecina je w dowolnym miejscu. Test w wierzchołkach dałby lico zacienione w całości albo wcale (gdy wszystkie cztery wierzchołki dostają tę samą odpowiedź), albo cień rozmazany od narożnika do narożnika. Żadna z tych rzeczy nie wygląda jak cień. Zgubiona plama latarki jest słabością metody, którą da się pokazać i wytłumaczyć. Cienie, które nie przypominają cieni, byłyby po prostu zepsutym obrazem. `gouraud.vert` przekazuje więc dodatkowe wyjścia: cztery dla księżyca (czwarta część M7) i trzy dla latarki (piąta część), w tabeli poniżej wszystkie siedem:
 
 | Wyjście `gouraud.vert` | Co niesie | Do czego służy w `gouraud.frag` |
 |---|---|---|
@@ -242,10 +246,12 @@ Odejmowany jest tylko udział księżyca (od piątej części M7 także, osobno,
 | `vMoonSpecularLight` | część `vSpecularLight`, która pochodzi od księżyca | to samo dla odbłysku |
 | `vWorldPosition` | pozycja w przestrzeni świata | miejsce, którego `moonShadow` szuka w mapie cieni |
 | `vMoonFacing` | cosinus kąta między normalną a kierunkiem do księżyca (`moonFacing(normal)`) | bias: im bardziej powierzchnia jest odwrócona bokiem do księżyca, tym większy |
+| `vFlashlightDiffuseLight`, `vFlashlightSpecularLight` | część `vDiffuseLight` i `vSpecularLight`, która pochodzi od latarki | odejmowane tak samo, pomnożone przez `flashlightShade` |
+| `vFlashlightFacing` | cosinus kąta między normalną a kierunkiem do latarki (`flashlightFacing(normal, worldPosition.xyz)`) | bias mapy latarki. `vWorldPosition` służy obu mapom |
 
 Co z tego wynika dla obrazu. **Krawędź cienia** jest w trybie `Gouraud` tak samo ostra (albo tak samo zmiękczona przez PCF) jak w trybie `Phong`, bo liczy ją ten sam kod dla tego samego fragmentu. **Ilość odejmowanego światła** jest natomiast interpolowana z wierzchołków, jak całe światło w tym trybie. Na płaskim licu ściany część rozproszona księżyca jest we wszystkich czterech wierzchołkach taka sama (ta sama normalna, ten sam kierunek do księżyca), więc wynik zgadza się z Phongiem. Odbłysk księżyca zależy od kierunku do oka, innego w każdym wierzchołku: tu Gouraud zostaje Gouraudem. Szczegóły: [`shadows.md`](shadows.md), sekcja 2.15, i decyzja [`../../decisions/gouraud-shadow-test-per-fragment.md`](../../decisions/gouraud-shadow-test-per-fragment.md). Wyglądu cieni w trybie `Gouraud` nikt nie porównywał ręcznie z trybem `Phong`: to wniosek z kodu obu shaderów.
 
-**Która normalna do biasu.** Bias zależy od tego, jak powierzchnia jest nachylona do księżyca. `lit.frag` pyta o to **normalną modelu** (`moonFacing(normalize(vNormal))`), a nie normalną z mapy normalnych, chociaż światło liczy tą drugą. Bias należy do trójkąta, który został narysowany do mapy cieni, a wypukłości mapy normalnych w tym trójkącie nie ma. W `gouraud.vert` jest to normalna wierzchołka, ta sama, którą dostaje `computeLighting`.
+**Która normalna do biasu.** Bias zależy od tego, jak powierzchnia jest nachylona do księżyca. `lit.frag` pyta o to **normalną modelu** (zmienna `modelNormal = normalize(vNormal)`, przekazywana do `moonFacing` i do `flashlightFacing`), a nie normalną z mapy normalnych, chociaż światło liczy tą drugą. Bias należy do trójkąta, który został narysowany do mapy cieni, a wypukłości mapy normalnych w tym trójkącie nie ma. W `gouraud.vert` jest to normalna wierzchołka, ta sama, którą dostaje `computeLighting`.
 
 | Tryb | Program | Światło księżyca liczone | Test cienia księżyca |
 |---|---|---|---|
@@ -253,13 +259,13 @@ Co z tego wynika dla obrazu. **Krawędź cienia** jest w trybie `Gouraud` tak sa
 | `Gouraud` | `gouraud` | wierzchołek (`gouraud.vert`) | **fragment** (`gouraud.frag`) |
 | `Phong`, `Blinn-Phong` | `lit` | fragment (`lit.frag`) | fragment (`lit.frag`) |
 
-Podglądy `Normals as colour` i `UVs as colour` rysuje program `textured`, więc cieni w nich nie ma, niezależnie od trybu. Trawa ma własny program i cień księżyca przyjmuje we wszystkich trybach z oświetleniem ([`grass-geometry.md`](grass-geometry.md)).
+Dla latarki tabela wygląda tak samo (jej mapa i jej test cienia): `textured` jej nie czyta, `gouraud` testuje na fragment, `lit` też. Podglądy `Normals as colour` i `UVs as colour` rysuje program `textured`, więc cieni w nich nie ma, niezależnie od trybu. Trawa ma własny program i cień księżyca przyjmuje we wszystkich trybach z oświetleniem ([`grass-geometry.md`](grass-geometry.md)).
 
 ## 3. Jak to działa w OpenGL
 
 Z punktu widzenia OpenGL oba sposoby to zwykłe programy shaderów. Nie ma przełącznika "cieniowanie Gourauda": stare `glShadeModel(GL_SMOOTH)` należało do potoku stałego i w profilu Core nie istnieje. Różnica jest tylko w tym, do którego shadera wpisałem wywołanie `computeLighting`.
 
-Wywołania w jednej klatce dla trybu z oświetleniem (labirynt startowy 10 na 10 na początku rundy: teren, 121 odcinków ścian, 121 słupków, do tego brama i 13 kryształów; do M5 zamiast terenu było 100 płytek podłogi):
+Wywołania w jednej klatce dla trybu z oświetleniem (labirynt startowy 10 na 10 na początku rundy: teren, 121 odcinków ścian, 121 słupków, do tego brama, 13 kryształów oraz, od M8, części 2, dźwignie i kartki: domyślnie 2 dźwignie i 3 kartki, bo test `the default maze size gets all its levers, in cells without a crystal` w `tests/InteractablesTests.cpp` sprawdza to dla ziaren od 0 do 39 labiryntu 10 na 10 (z ziarnem 1 włącznie), a ten sam test potwierdza 13 kryształów; do M5 zamiast terenu było 100 płytek podłogi). **Uwaga (2026-10-06): w tabeli kryształy są policzone tak, jakby je rysował program `lit` albo `gouraud`, a od M8, części 1, przy domyślnie włączonym environment mappingu rysuje je program `reflect` ([`env-mapping.md`](env-mapping.md)), więc `drawLitMaze` rysuje wtedy o 13 obiektów mniej, a te 13 wywołań `glDrawElements` ma przebieg odbić.**
 
 | Krok | Wywołania OpenGL | Ile razy |
 |---|---|---|
@@ -269,32 +275,34 @@ Wywołania w jednej klatce dla trybu z oświetleniem (labirynt startowy 10 na 10
 | `uSpecularModel` | `glGetUniformLocation`, `glUniform1i` | 1 |
 | `uSpecularStrength`, `uShininess` | `glGetUniformLocation`, `glUniform1f` | po 1 |
 | `uNormalMapEnabled` (istnieje tylko w `lit`) | `glGetUniformLocation`, `glUniform1i` | 1 |
-| `game::setShadowUniforms` (czwarta część M7): `uMoonShadowMap`, `uMoonShadowEnabled`, `uMoonShadowPcfRadius` | `glGetUniformLocation`, `glUniform1i` | po 1 |
+| `NightMazeApp::setShadowUniformsOf` woła `game::setShadowUniforms` dwa razy, najpierw dla księżyca (czwarta część M7): `uMoonShadowMap`, `uMoonShadowEnabled`, `uMoonShadowPcfRadius` | `glGetUniformLocation`, `glUniform1i` | po 1 |
 | `game::setShadowUniforms`: `uMoonShadowMatrix` | `glGetUniformLocation`, `glUniformMatrix4fv` | 1 |
 | `game::setShadowUniforms`: `uMoonShadowConstantBias`, `uMoonShadowSlopeBias`, `uMoonShadowStrength` | `glGetUniformLocation`, `glUniform1f` | po 1 |
+| `game::setShadowUniforms` drugi raz, dla latarki (piąta część M7, jednostka tekstur 4): te same siedem uniformów z przedrostkiem `uFlashlight` (sampler, przełącznik i promień PCF przez `glUniform1i`, macierz, dwa biasy i siła) | jak wyżej | po 1 |
+| `game::setShadowUniforms`: `uFlashlightShadowLightPosition` (tylko mapa latarki ma pozycję światła) | `glGetUniformLocation`, `glUniform3fv` | 1 |
 | `game::setModelSamplers`: `uTexture` i `uNormalMap` (drugi tylko w `lit`) | `glGetUniformLocation`, `glUniform1i` | po 3: raz w `TerrainRenderer::draw`, raz w `MazeRenderer::draw`, raz w `GameplayRenderer::draw` |
-| `uEmissive` | `glGetUniformLocation`, `glUniform3fv` | 4: czerń przed terenem, czerń przed labiryntem, czerń przed bramą, blask przed kryształami |
-| `game::drawMesh` i `game::drawModel`: mapa normalnych na jednostkę 1, obraz koloru na jednostkę 0 | `glActiveTexture`, `glBindTexture`, `glBindSampler` | raz dla terenu (`drawMesh`) i raz na część modelu w każdym wywołaniu `drawModel`: 2 razy dla labiryntu, 1 raz dla bramy, 13 razy dla kryształów (każdy kryształ to osobne wywołanie) |
-| `game::drawMesh` i `game::drawModel`: `uModel` i `uNormalMatrix` | `glUniformMatrix4fv`, `glUniformMatrix3fv` | po 257: raz na obiekt (teren, 242 obiekty labiryntu, brama, 13 kryształów). Każdy z pięciu modeli ma jedną część |
-| rysowanie | `glDrawElements` | 257 |
+| `uEmissive` | `glGetUniformLocation`, `glUniform3fv` | czerń przed terenem, czerń przed labiryntem, czerń przed bramą, blask przed kryształami (gdy rysuje je ten program), od M8, części 2, po jednym przed każdą dźwignią i kartką (czerń albo, dla wybranej, blask podświetlenia) i czerń na końcu |
+| `game::drawMesh` i `game::drawModel`: mapa normalnych na jednostkę 1, obraz koloru na jednostkę 0 | `glActiveTexture`, `glBindTexture`, `glBindSampler` | raz dla terenu (`drawMesh`) i raz na część modelu w każdym wywołaniu `drawModel`: 2 razy dla labiryntu, 1 raz dla bramy, 13 razy dla kryształów (każdy kryształ to osobne wywołanie), a od M8, części 2, 2 razy dla każdej dźwigni (płytka i rączka) i raz dla każdej kartki |
+| `game::drawMesh` i `game::drawModel`: `uModel` i `uNormalMatrix` | `glUniformMatrix4fv`, `glUniformMatrix3fv` | po 264 (257 do M8, części 2): raz na obiekt (teren, 242 obiekty labiryntu, brama, 13 kryształów, 2 dźwignie po dwa obiekty i 3 kartki). Każdy z ośmiu modeli ma jedną część (po jednej grupie `o` i jednym `usemtl` w pliku `.obj`) |
+| rysowanie | `glDrawElements` | 264 (13 mniej, gdy kryształy rysuje program `reflect`) |
 
-Liczby 13 i 257 maleją w trakcie rundy: zebrany kryształ nie jest rysowany, a brama znika z listy, gdy po otwarciu schowa się cała pod grunt. Trawa i niebo są rysowane potem, własnymi programami, i w tej tabeli ich nie ma.
+Liczby 13 i 264 maleją w trakcie rundy: zebrany kryształ nie jest rysowany, a brama znika z listy, gdy po otwarciu schowa się cała pod grunt. Trawa i niebo są rysowane potem, własnymi programami, i w tej tabeli ich nie ma.
 
-**Czego tabela nie liczy: przebieg cieni (czwarta część M7).** Tabela obejmuje jedno wywołanie `drawLitMaze`, czyli przebieg sceny programem `lit` albo `gouraud`. Przy włączonych cieniach te same obiekty są w tej samej klatce rysowane jeszcze raz, wcześniej, programem `shadow_depth` do mapy cieni księżyca (`NightMazeApp::drawShadowCasters`): `glUseProgram`, `uView` i `uProjection` (tym razem macierze księżyca, nie kamery), a potem te same trzy klasy rysujące, `TerrainRenderer`, `MazeRenderer` i `GameplayRenderer`. To kolejne 257 wywołań `glDrawElements` na początku rundy (teren, 242 obiekty labiryntu, brama, 13 kryształów), razem 514 dla terenu i modeli w klatce. Klasy rysujące nie wiedzą, którym programem rysują, więc ustawiają w przebiegu cieni te same uniformy i podpinają te same tekstury co w tabeli. Program głębi ma z nich tylko `uModel`: wywołania dla `uNormalMatrix`, `uTint`, `uEmissive` i samplerów dostają położenie -1, które OpenGL ignoruje bez błędu. Sama mapa cieni jest podpinana do jednostki tekstur 3 raz na klatkę, zaraz po przebiegu cieni (`ShadowMap::bindForSampling`), i zostaje tam na cały przebieg sceny. Jednostki 0 i 1 należą do tekstur modeli. Pełny opis przebiegu: [`shadows.md`](shadows.md), sekcje 3 i 2.18.
+**Czego tabela nie liczy: przebieg cieni (czwarta część M7).** Tabela obejmuje jedno wywołanie `drawLitMaze`, czyli przebieg sceny programem `lit` albo `gouraud`. Przy włączonych cieniach te same obiekty są w tej samej klatce rysowane jeszcze raz, wcześniej, programem `shadow_depth` do mapy cieni księżyca (`NightMazeApp::drawShadowCasters`): `glUseProgram`, `uView` i `uProjection` (tym razem macierze księżyca, nie kamery), a potem te same trzy klasy rysujące, `TerrainRenderer`, `MazeRenderer` i `GameplayRenderer`. To kolejne 264 wywołania `glDrawElements` na początku rundy (teren, 242 obiekty labiryntu, brama, 13 kryształów, 2 dźwignie po dwa obiekty i 3 kartki: przebieg cieni rysuje też dźwignie i kartki, bez podświetlenia), razem 528 dla terenu i modeli w klatce, a od piątej części M7 jeszcze raz tyle w przebiegu cieni latarki (`drawFlashlightShadowMap`, gdy latarka świeci i jej cienie są włączone): do 792. W tym przebiegu kryształy rysuje zawsze `drawShadowCasters`, także gdy w scenie rysuje je `reflect`. Klasy rysujące nie wiedzą, którym programem rysują, więc ustawiają w przebiegu cieni te same uniformy i podpinają te same tekstury co w tabeli. Program głębi ma z nich tylko `uModel`: wywołania dla `uNormalMatrix`, `uTint`, `uEmissive` i samplerów dostają położenie -1, które OpenGL ignoruje bez błędu. Mapa cieni księżyca jest podpinana do jednostki tekstur 3, a od piątej części mapa latarki do jednostki 4, raz na klatkę, zaraz po swoim przebiegu (`ShadowMap::bindForSampling`), i obie zostają tam na cały przebieg sceny. Jednostki 0 i 1 należą do tekstur modeli. Pełny opis przebiegu: [`shadows.md`](shadows.md), sekcje 3 i 2.18.
 
 Blok `LightBlock` nie pojawia się w tabeli między krokami drugim a ostatnim: program czyta go z punktu wiązania 1 bez żadnego wywołania w klatce. Połączenie programu z punktem wiązania jest robione raz, po zlinkowaniu ([`../gfx/uniform-buffers.md`](../gfx/uniform-buffers.md)).
 
-Przełączenie trybu nie tworzy ani nie usuwa żadnego obiektu OpenGL. Wszystkie programy gry powstają przy starcie (cztery, o których mowa w tym dokumencie: `textured`, `color`, `lit`, `gouraud`, a od M6 także piąty, `skybox`, który rysuje niebo i nie zależy od trybu, i szósty, `grass`, który rysuje trawę i z trybu bierze tylko jedno: czy jest nim `Unlit`), a tryb wybiera, który z trójki `textured`, `lit`, `gouraud` dostanie `glUseProgram` dla sceny. Dziś programów jest jedenaście: pierwsza część M7 dodała `composite` i `preview`, druga `bright` i `blur`, a czwarta `shadow_depth`. Ten ostatni też nie zależy od trybu: przebieg cieni jest wykonywany także w trybie `Unlit`, chociaż program `textured` mapy cieni nie czyta. Rysowanie obiekt po obiekcie omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), a kryształy i bramę [`../game/gameplay.md`](../game/gameplay.md).
+Przełączenie trybu nie tworzy ani nie usuwa żadnego obiektu OpenGL. Wszystkie programy gry powstają przy starcie (cztery, o których mowa w tym dokumencie: `textured`, `color`, `lit`, `gouraud`, a od M6 także piąty, `skybox`, który rysuje niebo i nie zależy od trybu, i szósty, `grass`, który rysuje trawę i z trybu bierze tylko jedno: czy jest nim `Unlit`), a tryb wybiera, który z trójki `textured`, `lit`, `gouraud` dostanie `glUseProgram` dla sceny. Dziś programów jest czternaście: pierwsza część M7 dodała `composite` i `preview`, druga `bright` i `blur`, czwarta `shadow_depth`, szósta część M7 `minimap` i `minimap_overlay`, a M8, część 1, `reflect` (policzone w polach `NightMazeApp`: czternaście obiektów `gfx::Shader`). `shadow_depth` też nie zależy od trybu: przebieg cieni jest wykonywany także w trybie `Unlit`, chociaż program `textured` mapy cieni nie czyta. `reflect` rysuje kryształy i kałuże w każdym trybie, w `Unlit` z pełną jasnością, niezależnie od wyboru z trójki `textured`, `lit`, `gouraud`. Rysowanie obiekt po obiekcie omawia [`../game/maze-rendering.md`](../game/maze-rendering.md), a kryształy i bramę [`../game/gameplay.md`](../game/gameplay.md).
 
 ## 4. Shadery
 
-Cztery pliki, dwa programy. Oba dołączają [`common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) (omówiony w [`../scene/lights.md`](../scene/lights.md), sekcja 4) linią `#include`, której GLSL sam nie zna: obsługuje ją loader ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). `lit.frag` dołącza jeszcze drugi plik, [`common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl) z funkcją `surfaceNormal`, omówiony linia po linii w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.1. Od czwartej części M7 oba shadery **fragmentów** dołączają jeszcze [`common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl) z mapą cieni księżyca i funkcją `moonShadow`, omówiony w [`shadows.md`](shadows.md), sekcja 4.
+Cztery pliki, dwa programy. Oba dołączają [`common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) (omówiony w [`../scene/lights.md`](../scene/lights.md), sekcja 4) linią `#include`, której GLSL sam nie zna: obsługuje ją loader ([`../gfx/shader-includes.md`](../gfx/shader-includes.md)). `lit.frag` dołącza jeszcze drugi plik, [`common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl) z funkcją `surfaceNormal`, omówiony linia po linii w [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 4.1. Od czwartej części M7 oba shadery **fragmentów** dołączają jeszcze [`common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl) z mapami cieni księżyca i (od piątej części) latarki oraz funkcjami `moonShadow` i `flashlightShadow`, omówiony w [`shadows.md`](shadows.md), sekcja 4.
 
 | Plik | Dołącza `lighting.glsl` | Woła `computeLighting` | Dołącza `normal_map.glsl` | Dołącza `shadows.glsl`, woła `moonShadow` |
 |---|---|---|---|---|
 | `lit.vert` | nie | nie | nie (tylko przekazuje styczną) | nie |
 | `lit.frag` | **tak** | **tak**, dla fragmentu | **tak**, woła `surfaceNormal` | **tak**, dla fragmentu |
-| `gouraud.vert` | **tak** | **tak**, dla wierzchołka | nie | nie (woła tylko `moonFacing` z `lighting.glsl`) |
+| `gouraud.vert` | **tak** | **tak**, dla wierzchołka | nie | nie (woła tylko `moonFacing` i `flashlightFacing` z `lighting.glsl`) |
 | `gouraud.frag` | nie | nie | nie | **tak**, dla fragmentu |
 
 ### 4.1 `lit.vert`: shader wierzchołków, światło na fragment
@@ -372,8 +380,8 @@ void main() {
 // The normal map and the function surfaceNormal. The same file is included by
 // textured.frag, for its debug view of the normals.
 #include "common/normal_map.glsl"
-// The shadow map of the moon and the function moonShadow. The same file is included by
-// gouraud.frag and grass.frag.
+// The shadow maps of the moon and of the flashlight and the functions moonShadow and
+// flashlightShadow. The same file is included by gouraud.frag and grass.frag.
 #include "common/shadows.glsl"
 
 // Inputs from the vertex shader, already blended for this fragment.
@@ -420,9 +428,23 @@ void main() {
     //
     // max(): the difference is never below 0 on paper, but two floats that should be
     // equal can differ in their last digit.
-    float shadow = moonShadow(vWorldPosition, moonFacing(normalize(vNormal)));
-    vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);
-    vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow, 0.0);
+    vec3 modelNormal = normalize(vNormal);
+    float shadow = moonShadow(vWorldPosition, moonFacing(modelNormal));
+
+    // The shadow of the flashlight, in the same way and from a map of its own: the
+    // share of the flashlight light that something on the way from the hand of the
+    // player keeps from this fragment. Only the light of the flashlight is taken away
+    // by it. A fragment in the shadow of the moon AND of the flashlight loses both
+    // shares and keeps the ambient light and the crystals.
+    float flashlightShade =
+        flashlightShadow(vWorldPosition, flashlightFacing(modelNormal, vWorldPosition));
+
+    vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow -
+                           lighting.flashlightDiffuse * flashlightShade,
+                       0.0);
+    vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow -
+                            lighting.flashlightSpecular * flashlightShade,
+                        0.0);
 
     // The colour of the surface takes part in the diffuse light only: a red wall
     // reflects the red part of the light. The highlight is added on top in the colour
@@ -446,15 +468,17 @@ void main() {
 |---|---|
 | `#include "common/lighting.glsl"` | w tym miejscu loader wstawia blok `LightBlock`, uniformy `uSpecularModel`, `uSpecularStrength`, `uShininess` i funkcje oświetlenia. Linia stoi po `#version`, bo `#version` musi być pierwszą dyrektywą shadera |
 | `#include "common/normal_map.glsl"` | drugi plik dołączany: sampler `uNormalMap`, przełącznik `uNormalMapEnabled` i funkcja `surfaceNormal`. Ten sam plik dołącza `textured.frag` dla podglądu normalnych, więc podgląd i oświetlenie liczą normalną tym samym kodem |
-| `#include "common/shadows.glsl"` (czwarta część M7) | trzeci plik dołączany: sampler `uMoonShadowMap` typu `sampler2DShadow`, sześć zwykłych uniformów mapy cieni księżyca i funkcja `moonShadow`. Ten sam plik dołączają `gouraud.frag` i `grass.frag`. Kolejność wobec `lighting.glsl` nie ma znaczenia, bo plik niczego z niego nie używa ([`shadows.md`](shadows.md), sekcja 4) |
+| `#include "common/shadows.glsl"` (czwarta część M7, od piątej z drugim zestawem) | trzeci plik dołączany: sampler `uMoonShadowMap` typu `sampler2DShadow`, sześć zwykłych uniformów mapy cieni księżyca i funkcja `moonShadow`. Od piątej części M7 plik ma drugi taki zestaw, dla latarki: sampler `uFlashlightShadowMap`, siedem zwykłych uniformów (sześć jak u księżyca i pozycja światła) i funkcja `flashlightShadow`. Ten sam plik dołączają `gouraud.frag`, `grass.frag` i `reflect.frag`. Kolejność wobec `lighting.glsl` nie ma znaczenia, bo plik niczego z niego nie używa ([`shadows.md`](shadows.md), sekcja 4) |
 | `in vec3 vNormal;`, `in vec3 vTangent;`, `in vec3 vWorldPosition;` | para do wyjść `lit.vert`. Wartości są już zinterpolowane dla tego fragmentu |
 | `uniform sampler2D uTexture;`, `uniform vec3 uTint;` | te same dwa uniformy co w `textured.frag` ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4.2), ustawiane przy rysowaniu modeli (`game::setModelSamplers` i `game::drawModel`). Uniformu `uViewMode` tu nie ma: podglądy normalnych i UV rysuje program `textured` |
 | `uniform vec3 uEmissive;` | **składnik emisyjny** (M5): światło, które powierzchnia oddaje sama, jako kolor. Czerń `(0, 0, 0)` dla wszystkiego, co tylko odbija światło: ścian, podłoża, słupków i bramy. Niezerowy tylko dla kryształów. Komentarz podaje powód: światło punktowe kryształu wisi poza jego siatką i oświetla jego ścianki tylko z jednej strony, więc bez własnego blasku źródło światła byłoby najciemniejszą rzeczą w okolicy. Teoria: [`../scene/lights.md`](../scene/lights.md), sekcja 2.2 |
 | `vec3 normal = surfaceNormal(vNormal, vTangent, vUv);` | normalna tego fragmentu, w przestrzeni świata, o długości 1. Bez mapowania normalnych funkcja zwraca `normalize(vNormal)`: przywraca długość 1 po interpolacji (sekcja 2.3), dokładnie jak ta linia robiła wcześniej. Z mapowaniem zwraca normalną z mapy normalnych (sekcja 2.7). Komentarz nad linią mówi rzecz najważniejszą: **to jedyne miejsce, w którym mapowanie normalnych wchodzi do oświetlenia**, bo wzory `computeLighting` nie wiedzą, skąd jest ich normalna |
 | `Lighting lighting = computeLighting(vWorldPosition, normal);` | **to jest cieniowanie Phonga**: wzór oświetlenia wykonany dla tego jednego fragmentu, z jego własną pozycją i normalną. Wynik nie uwzględnia cieni: funkcja liczy każde światło tak, jakby nic nie stało mu na drodze |
-| `float shadow = moonShadow(vWorldPosition, moonFacing(normalize(vNormal)));` (czwarta część M7) | część światła księżyca, której ten fragment **nie** dostaje: od 0 (poza cieniem) do 1 (cały udział księżyca, przy sile cienia 1). Pierwszy argument to pozycja, której funkcja szuka w mapie cieni. Drugi służy do biasu i jest liczony z **normalnej modelu**, a nie ze zmiennej `normal` z mapy normalnych: bias należy do trójkąta narysowanego do mapy cieni, a wypukłości mapy normalnych w tym trójkącie nie ma. Przy wyłączonych cieniach funkcja zwraca 0 i dwie następne linie niczego nie zmieniają |
-| `vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow, 0.0);` | światło rozproszone bez zacienionej części księżyca. Odejmowany jest tylko udział księżyca (stan po czwartej części): otoczenie, latarka i kryształy zostają. Od piątej części dochodzi drugi składnik, `lighting.flashlightDiffuse * flashlightShade`. `max` chroni przed wartością o ostatnią cyfrę poniżej zera |
-| `vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow, 0.0);` | to samo dla odbłysku: w cieniu księżyca nie ma odbłysku księżyca |
+| `vec3 modelNormal = normalize(vNormal);` | **normalna modelu** o długości 1, osobna od zmiennej `normal` z mapy normalnych. Obie mapy cieni dostają bias właśnie z niej: bias należy do trójkąta narysowanego do mapy cieni, a wypukłości mapy normalnych w tym trójkącie nie ma |
+| `float shadow = moonShadow(vWorldPosition, moonFacing(modelNormal));` (czwarta część M7) | część światła księżyca, której ten fragment **nie** dostaje: od 0 (poza cieniem) do 1 (cały udział księżyca, przy sile cienia 1). Pierwszy argument to pozycja, której funkcja szuka w mapie cieni, drugi służy do biasu. Przy wyłączonych cieniach funkcja zwraca 0 i odejmowanie niczego nie zmienia |
+| `float flashlightShade = flashlightShadow(vWorldPosition, flashlightFacing(modelNormal, vWorldPosition));` (piąta część M7) | to samo dla latarki, z jej własnej mapy cieni: część światła latarki, której fragment nie dostaje. `flashlightFacing` zna pozycję fragmentu, bo kierunek do latarki zależy od miejsca (latarka jest punktem, księżyc kierunkiem) |
+| `vec3 diffuse = max(lighting.diffuse - lighting.moonDiffuse * shadow - lighting.flashlightDiffuse * flashlightShade, 0.0);` | światło rozproszone bez zacienionej części księżyca i, osobno, bez zacienionej części latarki. Odejmowane są tylko te dwa udziały: otoczenie i światła kryształów zostają, w cieniu księżyca zostaje latarka (i odwrotnie). `max` chroni przed wartością o ostatnią cyfrę poniżej zera |
+| `vec3 specular = max(lighting.specular - lighting.moonSpecular * shadow - lighting.flashlightSpecular * flashlightShade, 0.0);` | to samo dla odbłysku: w cieniu księżyca nie ma odbłysku księżyca, w cieniu latarki odbłysku latarki |
 | `out vec4 fragColor;` | od M7 wyjście trafia do bufora HDR sceny, a nie do okna. Komentarz mówi dwie rzeczy: kolor jest **liniowy** i **może być jaśniejszy niż 1** |
 | `vec3 surface = texture(uTexture, vUv).rgb * uTint;` | kolor powierzchni: tekstura razy kolor materiału, dokładnie jak w `textured.frag`. Od M7 tekstura jest sRGB (`GL_SRGB8`), więc `texture()` zwraca wartość już zdekodowaną do liniowej. `uTint` (kolor `Kd` materiału) nie jest przeliczany: wszystkie modele gry mają `Kd` białe, a biel to 1 w obu przestrzeniach |
 | `fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);` | **wzór końcowy**. Od czwartej części M7 stoją w nim zmienne `diffuse` i `specular` (po odjęciu cienia), a nie pola `lighting.diffuse` i `lighting.specular`. Nawias to całe światło, które powierzchnia ma do odbicia: rozproszone ze wszystkich świateł sceny (z otoczeniem) plus własny blask. Kolor powierzchni mnoży cały nawias, odbłysk jest dodany na wierzch w kolorze światła. Alfa 1: modele są nieprzezroczyste |
@@ -463,9 +487,9 @@ void main() {
 
 | Wyraz | Skąd | Od czego zależy |
 |---|---|---|
-| `surface * diffuse` | `computeLighting`: otoczenie plus Lambert każdego światła, pomniejszone o zacienioną część księżyca | od świateł, normalnej i odległości, a od czwartej części M7 także od tego, czy coś zasłania księżyc |
+| `surface * diffuse` | `computeLighting`: otoczenie plus Lambert każdego światła, pomniejszone o zacienione części księżyca i latarki | od świateł, normalnej i odległości, a od czwartej części M7 także od tego, czy coś zasłania księżyc, a od piątej latarkę |
 | `surface * uEmissive` | uniform ustawiany przez klasę rysującą | od niczego w scenie: ten sam w najciemniejszym kącie i pod latarką |
-| `specular` | `computeLighting`: odbłysk każdego światła, pomniejszony o zacienioną część odbłysku księżyca | od świateł, normalnej i oka. Nie przechodzi przez kolor powierzchni |
+| `specular` | `computeLighting`: odbłysk każdego światła, pomniejszony o zacienione części odbłysku księżyca i latarki | od świateł, normalnej i oka. Nie przechodzi przez kolor powierzchni |
 
 Dla ścian `uEmissive` jest czarny i środkowy wyraz znika: wzór ma wtedy postać z M4, `surface * diffuse + specular` (w M4 obie wartości szły wprost z `computeLighting`, bez odejmowania cienia). Emisja jest w nawiasie, a nie dodana na końcu, żeby przeszła przez teksturę i kolor materiału: rysunek tekstury kryształu zostaje widoczny, zamiast utonąć pod jedną stałą dodaną do każdego fragmentu. Emisja **nie jest światłem sceny**: nie ma jej w bloku `LightBlock` i nie zmienia koloru żadnego innego obiektu. Ściany wokół kryształu oświetla osobne światło punktowe ([`../game/flashlight.md`](../game/flashlight.md), sekcja 2.5).
 
@@ -519,6 +543,13 @@ out vec3 vMoonSpecularLight; // the part of vSpecularLight that comes from the m
 out vec3 vWorldPosition;     // position in world space
 out float vMoonFacing;       // cosine between the normal and the direction to the moon
 
+// The same three for the shadow of the flashlight, which has a shadow map of its own:
+// its share of the two light values, and how much the surface faces it. The position
+// above serves both maps.
+out vec3 vFlashlightDiffuseLight;  // the part of vDiffuseLight from the flashlight
+out vec3 vFlashlightSpecularLight; // the part of vSpecularLight from the flashlight
+out float vFlashlightFacing;       // cosine between the normal and the way to the flashlight
+
 void main() {
     vec4 worldPosition = uModel * vec4(aPosition, 1.0);
     // The normal of a vertex comes straight from the model with length 1, but the
@@ -532,6 +563,9 @@ void main() {
     vMoonSpecularLight = lighting.moonSpecular;
     vWorldPosition = worldPosition.xyz;
     vMoonFacing = moonFacing(normal);
+    vFlashlightDiffuseLight = lighting.flashlightDiffuse;
+    vFlashlightSpecularLight = lighting.flashlightSpecular;
+    vFlashlightFacing = flashlightFacing(normal, worldPosition.xyz);
     vUv = aUv;
 
     gl_Position = uProjection * uView * worldPosition;
@@ -546,10 +580,12 @@ void main() {
 | `vec3 normal = normalize(uNormalMatrix * aNormal);` | tutaj `normalize` jest potrzebne od razu: normalna idzie prosto do wzoru. Atrybut ma długość 1, ale macierz normalnych przy skali ją zmienia |
 | `Lighting lighting = computeLighting(worldPosition.xyz, normal);` | **to jest cieniowanie Gourauda**: ten sam wzór, wykonany dla wierzchołka |
 | `vDiffuseLight = ...`, `vSpecularLight = ...` | wynik idzie do rasteryzatora |
-| cztery linie `out` pod komentarzem "Outputs for the shadow of the moon" (czwarta część M7) | to, czego `gouraud.frag` potrzebuje do cienia księżyca. Komentarz mówi najważniejsze: **światło zostaje na wierzchołek, ale o cień pyta shader fragmentów**, bo krawędź cienia biegnie przez lico ściany, gdzie chce, a lico ma tylko cztery wierzchołki |
+| cztery linie `out` pod komentarzem "Outputs for the shadow of the moon" (czwarta część M7) i trzy pod komentarzem "The same three for the shadow of the flashlight" (piąta część) | to, czego `gouraud.frag` potrzebuje do cieni: udział księżyca, udział latarki, pozycja w świecie (jedna dla obu map) i dwa cosinusy do biasu. Komentarz mówi najważniejsze: **światło zostaje na wierzchołek, ale o cień pyta shader fragmentów**, bo krawędź cienia biegnie przez lico ściany, gdzie chce, a lico ma tylko cztery wierzchołki |
 | `vMoonDiffuseLight = lighting.moonDiffuse;`, `vMoonSpecularLight = lighting.moonSpecular;` | udział księżyca w dwóch wartościach wyżej, policzony w wierzchołku jak one. Jest już w nich zawarty: te dwa wyjścia mówią tylko, ile da się z powrotem odjąć |
 | `vWorldPosition = worldPosition.xyz;` | pozycja w świecie, interpolowana liniowo, więc dokładna dla każdego fragmentu. Tę samą rolę ma `vWorldPosition` w `lit.vert`, tylko tam służy także do światła |
 | `vMoonFacing = moonFacing(normal);` | cosinus kąta między normalną wierzchołka a kierunkiem do księżyca (funkcja z `lighting.glsl`). Na płaskim licu jest taki sam we wszystkich wierzchołkach, więc interpolacja go nie zmienia |
+| `vFlashlightDiffuseLight = lighting.flashlightDiffuse;`, `vFlashlightSpecularLight = lighting.flashlightSpecular;` | to samo dla latarki: jej udział w dwóch wartościach wyżej, już w nich zawarty |
+| `vFlashlightFacing = flashlightFacing(normal, worldPosition.xyz);` | cosinus kąta między normalną a kierunkiem do latarki, dla biasu jej mapy. Latarka stoi w jednym punkcie, więc kierunek zależy od miejsca i wartość różni się między wierzchołkami (u księżyca, który jest kierunkiem, na płaskim licu jest stała) |
 
 Porównanie z `lit.vert`: uniformy macierzy są identyczne, wejścia różnią się o styczną, której `gouraud.vert` nie czyta. Różnią się wyjścia (normalna, styczna i pozycja albo gotowe światło) i jedno wywołanie funkcji. Od czwartej części M7 `gouraud.vert` też przekazuje pozycję w świecie (`vWorldPosition`), ale tylko po to, żeby shader fragmentów mógł znaleźć fragment w mapie cieni: do światła jej tam nie używa.
 
@@ -558,11 +594,11 @@ Porównanie z `lit.vert`: uniformy macierzy są identyczne, wejścia różnią s
 ```glsl
 #version 410 core
 // Fragment shader of lit models, lighting per vertex (Gouraud shading): the light was
-// computed in gouraud.vert, here it meets the texture and the shadow of the moon.
+// computed in gouraud.vert, here it meets the texture and the two shadows.
 // See docs/modules/renderer/lighting-gouraud-phong.md
 
-// The shadow map of the moon and the function moonShadow: the same file lit.frag
-// includes.
+// The shadow maps of the moon and of the flashlight and the functions moonShadow and
+// flashlightShadow: the same file lit.frag includes.
 #include "common/shadows.glsl"
 
 // Inputs from the vertex shader: the light of the three vertices of the triangle,
@@ -578,6 +614,11 @@ in vec3 vMoonDiffuseLight;
 in vec3 vMoonSpecularLight;
 in vec3 vWorldPosition;
 in float vMoonFacing;
+
+// The same for the shadow of the flashlight.
+in vec3 vFlashlightDiffuseLight;
+in vec3 vFlashlightSpecularLight;
+in float vFlashlightFacing;
 
 // The texture (the number of a texture unit) and the colour of the material, as in
 // textured.frag.
@@ -599,13 +640,19 @@ void main() {
     // lit.frag. All values are linear, and the result is encoded for the screen later,
     // in the composite pass (see lit.frag).
     //
-    // The one thing computed per fragment is the shadow of the moon: whether this
-    // fragment lies in it is looked up in the shadow map here, and the share of the
-    // moon light it loses is taken away from the blended light, as in lit.frag. The
-    // ambient light and the other lights stay as they are.
+    // The one thing computed per fragment is the shadow test, for the moon and for the
+    // flashlight: whether this fragment lies in a shadow is looked up in the two
+    // shadow maps here, and the share of the moon light and of the flashlight light it
+    // loses is taken away from the blended light, as in lit.frag. The ambient light
+    // and the crystal lights stay as they are.
     float shadow = moonShadow(vWorldPosition, vMoonFacing);
-    vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow, 0.0);
-    vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow, 0.0);
+    float flashlightShade = flashlightShadow(vWorldPosition, vFlashlightFacing);
+    vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow -
+                           vFlashlightDiffuseLight * flashlightShade,
+                       0.0);
+    vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow -
+                            vFlashlightSpecularLight * flashlightShade,
+                        0.0);
 
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
     fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);
@@ -614,18 +661,18 @@ void main() {
 
 | Linia | Znaczenie |
 |---|---|
-| `#include "common/shadows.glsl"` (czwarta część M7) | mapa cieni księżyca i funkcja `moonShadow`, ten sam plik co w `lit.frag`. To jedyny plik, który ten shader dołącza |
+| `#include "common/shadows.glsl"` (czwarta część M7) | mapy cieni księżyca i latarki oraz funkcje `moonShadow` i `flashlightShadow`, ten sam plik co w `lit.frag`. To jedyny plik, który ten shader dołącza |
 | `in vec3 vDiffuseLight;`, `in vec3 vSpecularLight;` | światło policzone w trzech wierzchołkach trójkąta, zinterpolowane dla tego fragmentu |
-| `in vec3 vMoonDiffuseLight;`, `in vec3 vMoonSpecularLight;`, `in vec3 vWorldPosition;`, `in float vMoonFacing;` | para do czterech nowych wyjść `gouraud.vert` (sekcja 4.3): udział księżyca w świetle, pozycja fragmentu i nachylenie powierzchni do księżyca |
+| `in vec3 vMoonDiffuseLight;`, `in vec3 vMoonSpecularLight;`, `in vec3 vWorldPosition;`, `in float vMoonFacing;` oraz `in vec3 vFlashlightDiffuseLight;`, `in vec3 vFlashlightSpecularLight;`, `in float vFlashlightFacing;` | para do siedmiu nowych wyjść `gouraud.vert` (sekcja 4.3): udział księżyca w świetle, pozycja fragmentu i nachylenie powierzchni do księżyca, a od piątej części to samo dla latarki (bez drugiej pozycji) |
 | `uniform vec3 uEmissive;` | ten sam składnik emisyjny co w `lit.frag`: blask kryształów, czerń dla reszty |
-| `float shadow = moonShadow(vWorldPosition, vMoonFacing);` (czwarta część M7) | **jedyna rzecz, którą ten program liczy na fragment poza teksturą**: czy fragment leży w cieniu księżyca. Odczyt mapy cieni (z biasem i PCF) jest robiony tutaj, dla pozycji tego fragmentu |
-| `vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow, 0.0);`, `vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow, 0.0);` | te same dwa odejmowania co w `lit.frag`, tylko na wartościach zinterpolowanych z wierzchołków |
+| `float shadow = moonShadow(vWorldPosition, vMoonFacing);`, `float flashlightShade = flashlightShadow(vWorldPosition, vFlashlightFacing);` | **jedyna rzecz, którą ten program liczy na fragment poza teksturą**: czy fragment leży w cieniu księżyca i czy w cieniu latarki. Odczyt obu map cieni (z biasem i PCF) jest robiony tutaj, dla pozycji tego fragmentu |
+| `vec3 diffuse = max(vDiffuseLight - vMoonDiffuseLight * shadow - vFlashlightDiffuseLight * flashlightShade, 0.0);`, `vec3 specular = max(vSpecularLight - vMoonSpecularLight * shadow - vFlashlightSpecularLight * flashlightShade, 0.0);` | te same dwa odejmowania co w `lit.frag`, tylko na wartościach zinterpolowanych z wierzchołków |
 | `vec3 surface = texture(uTexture, vUv).rgb * uTint;` | kolor powierzchni, czytany dla fragmentu |
 | `fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);` | **ten sam wzór końcowy** co w `lit.frag`, tylko światło pochodzi z interpolacji, a nie z obliczenia w tym miejscu |
 
 Shader nie dołącza `lighting.glsl` i nie zna żadnego światła: blok świateł i uniformy materiału program `gouraud` ma tylko w shaderze wierzchołków. Dostaje zinterpolowane kolory światła i łączy je z teksturą **tym samym wzorem** co `lit.frag`. Tekstura jest czytana dla fragmentu, więc jej rysunek jest ostry w obu programach.
 
-**Nagłówek pliku a stan po czwartej części M7.** Pierwszy komentarz pliku mówił do trzeciej części M7 "here it only meets the texture". Dziś mówi "here it meets the texture and the shadow of the moon": światło spotyka tu teksturę **i** przechodzi test cienia księżyca. Komentarz w `main` mówi to samo dokładniej ("The one thing computed per fragment is the shadow of the moon"). Od tej części shader dołącza `common/shadows.glsl`, więc program `gouraud` ma w shaderze fragmentów sampler mapy cieni i jej sześć uniformów. Kierunku do księżyca shader fragmentów nadal nie zna: potrzebny do biasu cosinus dostaje gotowy w `vMoonFacing`. Dlaczego test stoi tutaj, a nie w `gouraud.vert`: sekcja 2.8.
+**Nagłówek pliku a stan po czwartej części M7.** Pierwszy komentarz pliku mówił do trzeciej części M7 "here it only meets the texture". Dziś mówi "here it meets the texture and the two shadows": światło spotyka tu teksturę **i** przechodzi dwa testy cieni, księżyca i (od piątej części) latarki. Komentarz w `main` mówi to samo dokładniej ("The one thing computed per fragment is the shadow test, for the moon and for the flashlight"). Od czwartej części shader dołącza `common/shadows.glsl`, więc program `gouraud` ma w shaderze fragmentów samplery map cieni i ich uniformy. Kierunków do księżyca i do latarki shader fragmentów nadal nie zna: potrzebne do biasu cosinusy dostaje gotowe w `vMoonFacing` i `vFlashlightFacing`. Dlaczego testy stoją tutaj, a nie w `gouraud.vert`: sekcja 2.8.
 
 **Dlaczego słabość Gourauda nie dotyczy emisji.** Gouraud gubi to, co zmienia się **między** wierzchołkami: plamę stożka, odbłysk, krzywą tłumienia. Emisja nie zmienia się wcale: to jedna liczba dla całego rysowanego obiektu, niezależna od pozycji, normalnej i świateł. Stałej nie da się zgubić interpolacją, więc **kryształy są w trybie `Gouraud` tak samo jasne jak w trybie `Phong`**. Miejsce dodania nie ma tu znaczenia: `uEmissive` dopisany do `vDiffuseLight` w `gouraud.vert` dałby ten sam obraz, bo interpolacja stałej zwraca tę samą stałą. Stoi w shaderze fragmentów, bo tam spotyka się z tekselem i dzięki temu linia końcowa jest taka sama jak w `lit.frag`. Brama nie ma tego ratunku: jej `uEmissive` jest czarny, więc w trybie `Gouraud` dostaje tylko światło, które trafiło w jej wierzchołki.
 
@@ -640,7 +687,7 @@ Shader nie dołącza `lighting.glsl` i nie zna żadnego światła: blok świate�
 | udział księżyca w świetle (`moonDiffuse`, `moonSpecular`), od czwartej części M7 | brak | wierzchołek | fragment |
 | udział latarki w świetle (`flashlightDiffuse`, `flashlightSpecular`), od piątej części M7 | brak | wierzchołek (zmienne `vFlashlightDiffuseLight`, `vFlashlightSpecularLight`, `vFlashlightFacing`) | fragment |
 | test cienia księżyca (odczyt mapy cieni), od czwartej części M7 | brak: cieni nie ma | **fragment** | fragment |
-| normalna do biasu cienia | brak | normalna wierzchołka, cosinus interpolowany (`vMoonFacing`) | normalna modelu po `normalize`, nie normalna z mapy |
+| normalna do biasu cienia | brak | normalna wierzchołka, cosinusy interpolowane (`vMoonFacing`, `vFlashlightFacing`) | normalna modelu po `normalize` (`modelNormal`), nie normalna z mapy |
 | odczyt tekstury | fragment | fragment | fragment |
 | połączenie światła z teksturą | brak | fragment | fragment |
 | składnik emisyjny `uEmissive` | fragment, tylko w zwykłym obrazie: `texel * uTint * (vec3(1.0) + uEmissive)` | fragment | fragment |
@@ -655,7 +702,7 @@ Shader nie dołącza `lighting.glsl` i nie zna żadnego światła: blok świate�
 | [`assets/shaders/gouraud.vert`](../../../assets/shaders/gouraud.vert), [`gouraud.frag`](../../../assets/shaders/gouraud.frag) | program `gouraud`: światło na wierzchołek (sekcje 4.3 i 4.4) |
 | [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl) | wspólne wzory, w tym wybór wzoru odbłysku: [`../scene/lights.md`](../scene/lights.md), sekcja 4. Od czwartej części M7 także pola `moonDiffuse` i `moonSpecular` oraz funkcja `moonFacing` |
 | [`assets/shaders/common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl) (czwarta część M7) | mapa cieni księżyca i funkcja `moonShadow`, dołączane przez `lit.frag` i `gouraud.frag`: [`shadows.md`](shadows.md), sekcja 4 |
-| [`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp), [`.cpp`](../../../src/game/ShadowMap.cpp) (czwarta część M7) | funkcja `game::setShadowUniforms`, którą `drawLitMaze` ustawia siedem uniformów mapy cieni w programie `lit` albo `gouraud`: [`shadows.md`](shadows.md), sekcja 5 |
+| [`src/game/ShadowMap.hpp`](../../../src/game/ShadowMap.hpp), [`.cpp`](../../../src/game/ShadowMap.cpp) (czwarta część M7) | funkcja `game::setShadowUniforms`, którą `NightMazeApp::setShadowUniformsOf` (wołana w `drawLitMaze`) ustawia uniformy obu map cieni, księżyca (siedem) i latarki (osiem), w programie `lit` albo `gouraud`: [`shadows.md`](shadows.md), sekcja 5 |
 | [`src/game/Lighting.hpp`](../../../src/game/Lighting.hpp), [`.cpp`](../../../src/game/Lighting.cpp) | `LightingMode`, `SpecularModel`, `specularModelOf`. Cały plik omawia [`../game/flashlight.md`](../game/flashlight.md) |
 | [`src/game/NightMazeApp.hpp`](../../../src/game/NightMazeApp.hpp), [`.cpp`](../../../src/game/NightMazeApp.cpp) | pola `m_litShader`, `m_gouraudShader`, `m_lighting`, funkcje `drawMaze`, `drawUnlitMaze`, `drawLitMaze` |
 | [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp) | nazwy `uNormalMatrix`, `uSpecularModel`, `uSpecularStrength`, `uShininess`, `uEmissive` (`EMISSIVE_UNIFORM`), a od czwartej części M7 struktura `MOON_SHADOW_UNIFORMS` z siedmioma nazwami uniformów mapy cieni i stała `MOON_SHADOW_TEXTURE_UNIT` (jednostka 3) |
@@ -710,7 +757,7 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
 | podgląd `Normals as colour` albo `UVs as colour` z panelu Assets, przy dowolnym trybie | `drawUnlitMaze` | gałęzie podglądu istnieją tylko w `textured.frag`. Pokazują dane, a nie światło, więc oświetlenie by je tylko zafałszowało |
 | pozostałe przypadki | `drawLitMaze` | `gouraud` albo `lit` |
 
-Obie funkcje rysują **całą scenę z modeli i terenu**: od M6 najpierw teren przez `TerrainRenderer`, potem labirynt przez `MazeRenderer`, a zaraz po nim kryształy i bramę przez `GameplayRenderer`, wszystko tym samym programem. Teren dostaje więc ten sam tryb cieniowania i te same podglądy co ściany. Kryształy i brama są więc widoczne także w trybie `Unlit` i w obu podglądach. W zwykłym obrazie programu `textured` kryształ jest jaśniejszy od ścian o swój blask (`texel * uTint * (vec3(1.0) + uEmissive)`), w podglądach normalnych i UV blasku nie ma: `textured.frag` używa `uEmissive` tylko w widoku 0.
+Obie funkcje rysują **całą scenę z modeli i terenu**: od M6 najpierw teren przez `TerrainRenderer`, potem labirynt przez `MazeRenderer` (od piątej części M7 z listą macierzy ścian tej klatki, `m_wallMatrices`, bo ściana otwarta dźwignią się zapada), a zaraz po nim bramę i kryształy (`drawGateAndCrystals`) oraz, od M8, części 2, dźwignie i kartki (`drawInteractables`), wszystko tym samym programem. Teren dostaje więc ten sam tryb cieniowania i te same podglądy co ściany. Brama jest widoczna także w trybie `Unlit` i w obu podglądach. **Kryształy** idą tą drogą tylko wtedy, gdy ich nie rysuje przebieg odbić: od M8, części 1, przy włączonym environment mappingu (pole `Environment mapping` w panelu Environment, domyślnie zaznaczone) i widoku `Textured` rysuje je program `reflect` ([`env-mapping.md`](env-mapping.md)), także w trybach `Unlit` i `Gouraud`, a światło liczy wtedy na fragment tak jak `lit.frag`. Programy `lit`, `gouraud` i `textured` rysują kryształy więc po wyłączeniu environment mappingu albo w podglądach normalnych i UV. W zwykłym obrazie programu `textured` kryształ jest jaśniejszy od ścian o swój blask (`texel * uTint * (vec3(1.0) + uEmissive)`), w podglądach normalnych i UV blasku nie ma: `textured.frag` używa `uEmissive` tylko w widoku 0.
 
 ### 5.4 Rysowanie z oświetleniem: `drawLitMaze`
 
@@ -736,17 +783,19 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     // Normal mapping, the switch of the lit program (1 on, 0 off). The Gouraud program
     // has no such uniform, and usesNormalMap is false for it anyway.
     shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
-    // The shadow map of the moon: where it is bound, the matrix it was drawn with and
-    // the numbers of the comparison. Set in every frame, also with the shadows off.
-    setShadowUniforms(shader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT, m_moonShadowDrawn,
-                      m_moonShadow, m_moonLightSpace);
+    // The two shadow maps (the moon and the flashlight). Set in every frame, also with
+    // the shadows off.
+    setShadowUniformsOf(shader);
 
     // The ground first, then what stands on it, as in drawUnlitMaze.
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(shader, m_mazeWorld);
+    m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices);
     // The crystals and the gate, with the same program and so the same lighting mode.
-    // The crystals glow in the colour of their lights.
-    drawGateAndCrystals(shader); // od M8, części 1: brama, a kryształy tylko gdy ich nie rysuje przebieg odbić
+    // The crystals glow in the colour of their lights. (The crystals may be left to the
+    // reflection pass, see drawGateAndCrystals.)
+    drawGateAndCrystals(shader);
+    // The levers and the notes, lit like the walls they hang on.
+    drawInteractables(shader);
 }
 ```
 
@@ -759,10 +808,11 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 | `setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)))` | **cały przełącznik Phong a Blinn-Phong**: liczba 0 albo 1 w jednym uniformie. Shader wybiera wzór instrukcją `if` w `specularFactor` |
 | `setFloat(SPECULAR_STRENGTH_UNIFORM, ...)`, `setFloat(SHININESS_UNIFORM, ...)` | dwa suwaki z grupy `Highlight (specular)` panelu Lights. `setFloat` to nowy setter (`glUniform1f`) |
 | `setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0)` | przełącznik mapowania normalnych programu `lit`. Uniform ma w shaderze typ `bool`, a taki ustawia się przez `glUniform1i`: 0 to fałsz, 1 to prawda. Program `gouraud` tego uniformu nie ma (wywołanie jest ignorowane), a `usesNormalMap` i tak zwraca dla niego fałsz |
-| `setShadowUniforms(shader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT, m_moonShadowDrawn, m_moonShadow, m_moonLightSpace);` (czwarta część M7) | siedem uniformów mapy cieni księżyca w programie, którym zaraz będzie rysowana scena: numer jednostki tekstur samplera (3), przełącznik, macierz, dwie części biasu, promień PCF i siła cienia. Oba programy mają te same nazwy (z `common/shadows.glsl`), więc linia jest wspólna jak reszta funkcji. Komentarz podkreśla "also with the shadows off": po przeładowaniu shaderów każdy uniform wraca do 0, a sampler cienia zostawiony na jednostce 0 dzieliłby ją z teksturą koloru, czego OpenGL nie pozwala narysować. `m_moonShadowDrawn` mówi, czy przebieg cieni wypełnił mapę w tej klatce. Funkcję opisuje [`shadows.md`](shadows.md), sekcja 5 |
+| `setShadowUniformsOf(shader);` (czwarta część M7, od piątej dla dwóch map) | uniformy map cieni w programie, którym zaraz będzie rysowana scena. Funkcja woła `game::setShadowUniforms` dwa razy: dla księżyca (`MOON_SHADOW_UNIFORMS`, jednostka tekstur 3, `m_moonShadowDrawn`, `m_moonShadow`, `m_moonLightSpace`) i dla latarki (`FLASHLIGHT_SHADOW_UNIFORMS`, jednostka 4, i jej odpowiedniki). Każde wywołanie ustawia numer jednostki samplera, przełącznik, macierz, dwie części biasu, promień PCF i siłę cienia, a mapa latarki jeszcze pozycję światła. Oba programy mają te same nazwy (z `common/shadows.glsl`), więc linia jest wspólna jak reszta funkcji. Komentarz podkreśla "also with the shadows off": po przeładowaniu shaderów każdy uniform wraca do 0, a sampler cienia zostawiony na jednostce 0 dzieliłby ją z teksturą koloru, czego OpenGL nie pozwala narysować. `m_moonShadowDrawn` i `m_flashlightShadowDrawn` mówią, czy przebieg cieni wypełnił mapę w tej klatce. Funkcje opisuje [`shadows.md`](shadows.md), sekcja 5 |
 | `m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);` (od M6) | podłoże tym samym programem i w tym samym trybie cieniowania co ściany: funkcja ustawia samplery i `uEmissive` (czerń) i rysuje siatkę terenu przez `game::drawMesh`. Drugi argument to przełącznik `Wireframe` z panelu Terrain ([`terrain.md`](terrain.md)) |
-| `m_mazeRenderer.draw(shader, m_mazeWorld);` | ta sama funkcja, która rysuje programem `textured`: ustawia `uTexture`, `uNormalMap`, `uEmissive` (na czerń), `uTint`, `uModel` i `uNormalMatrix`, podpina obie tekstury i rysuje obiekt po obiekcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)) |
-| `drawGateAndCrystals(shader)` (od M8, części 1; wcześniej `m_gameplayRenderer.draw(...)`: bramę rysuje `drawGate`, kryształy `drawCrystals`, ale tylko gdy nie rysuje ich przebieg odbić, `crystalsReflect()`) | kryształy i brama **tym samym programem**, a więc w tym samym trybie cieniowania co ściany: `use()` i uniformy klatki ustawione wyżej nadal obowiązują. Funkcja ustawia `uEmissive` na czerń dla bramy i na podany blask dla kryształów ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
+| `m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices);` | ta sama funkcja, która rysuje programem `textured`: ustawia `uTexture`, `uNormalMap`, `uEmissive` (na czerń), `uTint`, `uModel` i `uNormalMatrix`, podpina obie tekstury i rysuje obiekt po obiekcie ([`../game/maze-rendering.md`](../game/maze-rendering.md)). Trzeci argument to macierze ścian tej klatki (`m_wallMatrices`, liczone raz na początku `onRender` przez `roundWallMatrices`): ściana otwarta dźwignią jest w drodze pod grunt, a ta sama lista idzie do przebiegów cieni |
+| `drawGateAndCrystals(shader)` (od M8, części 1; wcześniej `m_gameplayRenderer.draw(...)`: bramę rysuje `drawGate`, kryształy `drawCrystals`, ale tylko gdy nie rysuje ich przebieg odbić, `crystalsReflect()`) | brama **tym samym programem**, a więc w tym samym trybie cieniowania co ściany: `use()` i uniformy klatki ustawione wyżej nadal obowiązują. Kryształy też, ale tylko gdy `crystalsReflect()` jest fałszem (environment mapping wyłączony, widok inny niż `Textured` albo program `reflect` nieważny). Funkcja ustawia `uEmissive` na czerń dla bramy i na podany blask dla kryształów ([`../game/gameplay.md`](../game/gameplay.md), sekcja 5) |
+| `drawInteractables(shader)` (od M8, części 2) | dźwignie i kartki tym samym programem, lit jak ściany, na których wiszą. Każda dostaje `uEmissive` czarny, a wybrana promieniem (`m_pick`) puls podświetlenia `highlightGlow(...)`; po ostatniej wraca czerń ([`../game/interactables.md`](../game/interactables.md)) |
 | `crystalEmissive()` | wartość `uEmissive` kryształów. Funkcja `NightMazeApp::crystalEmissive` (od M7, wydzielona z dwóch identycznych wywołań w `drawLitMaze` i `drawUnlitMaze`) zwraca `crystalGlow(gfx::srgbToLinear(m_lighting.pointColor), m_round.animationSeconds)`: kolor świateł punktowych z panelu (liczby sRGB) przeliczony na liniowy, razy `CRYSTAL_GLOW_STRENGTH` (dziś 4,0, w pierwszej części M7 2,5, do M6 1,0) razy puls tej chwili. Przeliczenie jest tym samym, które `buildLightSet` robi dla samych świateł, więc siatka świeci w kolorze światła wokół niej. Wynik może być jaśniejszy niż 1 |
 
 Komentarz nad `setInt(SPECULAR_MODEL_UNIFORM, ...)` mówi o "materiale kamienia" i od M6 dodaje "which the ground shares": ziemia ma tę samą siłę odbłysku i ten sam wykładnik co kamień. Te same trzy liczby dostają też drewniana brama i kryształy: osobnych ustawień materiału dla nich nie ma.
@@ -778,18 +828,18 @@ Komentarz nad `setInt(SPECULAR_MODEL_UNIFORM, ...)` mówi o "materiale kamienia"
 
 Trawa nie ma wersji "światło na wierzchołek". Powód stoi w komentarzu: kępka to w buforze jeden punkt, a wierzchołki źdźbeł powstają dopiero w shaderze geometrii, więc nie ma wierzchołków, w których `gouraud.vert` mógłby policzyć światło. `grass.frag` woła `computeLighting` dla każdego fragmentu ze stałą normalną `(0, 1, 0)` i bierze z wyniku tylko część rozproszoną. Od czwartej części M7 odejmuje od niej zacieniony udział księżyca tak samo jak `lit.frag`: trawa cień księżyca przyjmuje, ale sama go nie rzuca ([`shadows.md`](shadows.md), sekcja 2.16). Odbłysku trawa nie ma: `GrassRenderer` ustawia `uSpecularStrength` na 0 i `uShininess` na 1 (wykładnik 1 jest bezpieczny do policzenia, a siła 0 i tak nie jest używana), a `uSpecularModel` nie ustawia wcale. W trybie `Unlit` uniform `uLit` jest fałszem i trawa ma pełną jasność, jak reszta sceny. Skutek na pokazie: po przełączeniu na `Gouraud` ściany i grunt zmieniają wygląd, a trawa nie. Całość opisuje [`grass-geometry.md`](grass-geometry.md), a wybór stałej normalnej [`../../decisions/grass-lit-with-up-normal.md`](../../decisions/grass-lit-with-up-normal.md).
 
-Świateł tu nie ma: są w buforze uniformów, który `onRender` wypełnił przed wywołaniem `drawMaze` ([`../game/flashlight.md`](../game/flashlight.md)). Dzięki temu przełączenie programu nie wymaga wysłania świateł drugi raz. Mapa cieni księżyca w tym buforze nie siedzi: sampler nie może być składnikiem bloku uniformów, więc jej macierz i liczby jadą jako zwykłe uniformy, ustawiane w każdym programie osobno przez `setShadowUniforms` ([`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md)).
+Świateł tu nie ma: są w buforze uniformów, który `onRender` wypełnił przed wywołaniem `drawMaze` ([`../game/flashlight.md`](../game/flashlight.md)). Dzięki temu przełączenie programu nie wymaga wysłania świateł drugi raz. Map cieni (księżyca i latarki) w tym buforze nie ma: sampler nie może być składnikiem bloku uniformów, więc macierze i liczby jadą jako zwykłe uniformy, ustawiane w każdym programie osobno przez `setShadowUniformsOf`, która dwa razy woła `setShadowUniforms` ([`../../decisions/shadow-matrix-as-plain-uniforms.md`](../../decisions/shadow-matrix-as-plain-uniforms.md)).
 
 **Dlaczego Phong i Blinn-Phong to jeden program z `if`, a Gouraud osobny.** Phong i Blinn-Phong różnią się dwiema liniami w jednej funkcji: osobna para plików powielałaby cały shader. Gouraud różni się **etapem potoku**, w którym stoi wywołanie: tego nie da się wybrać uniformem, bo shader wierzchołków i shader fragmentów to osobne programy źródłowe z innymi wyjściami. Wspólny kod trafił więc do pliku dołączanego, a programy są dwa.
 
 ### 5.5 Jak to zostało sprawdzone
 
 - **Testy jednostkowe** obejmują tylko stronę C++: liczby typów wyliczeniowych i `specularModelOf` (dwa przypadki w `tests/LightingTests.cpp`), wartość startową trybu (`the lighting starts as a night scene shaded with Blinn-Phong`) oraz regułę `usesNormalMap` (`normal mapping is on by default and applies to every mode except Gouraud`). Shaderów i wyboru programu test nie widzi: wymagają kontekstu OpenGL.
-- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego programu (dziś jedenastu) linię zakończoną `OK` (tak wynika z kodu panelu).
+- **Kompilacja shaderów.** Na Windowsie oba programy kompilują się i linkują przy starcie: w konsoli nie ma linii `[error]` ani `GL_`. Bez błędu wczytania panel Shaders pokazuje dla każdego programu (dziś czternastu) linię zakończoną `OK` (tak wynika z kodu panelu).
 - **Obraz.** Cztery tryby z trzech miejsc w labiryncie są sprawdzone na zrzutach ekranu: widać opisane w sekcji 2 różnice (znikająca i rozmazana plama latarki w `Gouraud`, szersza gorąca plama `Blinn-Phong` na wprost ściany, mała różnica wzdłuż korytarza).
 - **Mapy normalnych a tryb** (zrzuty ekranu, Windows, 2026-10-05): w trybach `Phong` i `Blinn-Phong` fugi czytają się jako rowki, a zrzuty trybów `Gouraud` i `Unlit` są identyczne co do piksela przy włączonym i wyłączonym mapowaniu normalnych. Szczegóły i liczby: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 5.11.
 - **M5** (zgłoszone dla Windowsa, 2026-10-05): build bez ostrzeżeń i 215 przypadków testowych z 85098 asercjami w Debug i Release (po drugiej części M6 256 i 101232). Obraz z kryształami i bramą był oglądany na zrzutach ekranu robionych przez tymczasowe zaczepy, których w kodzie już nie ma. Stamtąd pochodzi obserwacja, że brama jest ciemna w trybie `Gouraud`. Przyczyny nie mierzyłem: sekcja 2.2 podaje najbardziej prawdopodobną. Wzór z `uEmissive` nie ma testu jednostkowego (to kod GLSL). Test ma tylko wartość, którą C++ do niego wysyła: przypadek `the glow of a crystal has the colour of its light and pulses with it` w `tests/CrystalTests.cpp`.
-- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem (dziś przy jedenastu programach), wygląd kryształów i bramy w każdym z czterech trybów.
+- **Nie sprawdzone ręcznie:** przełączanie listy `Lighting` kliknięciem, suwaki `Strength` i `Shininess`, pole wyboru `Normal mapping`, przeładowanie shaderów przyciskiem (dziś przy czternastu programach), wygląd kryształów i bramy w każdym z czterech trybów.
 - **Pierwsza część M7** (zgłoszone dla Windowsa, 2026-10-05): bramka `make check` przechodzi, 269 przypadków testowych i 102103 asercje w Debug i Release, a po drugiej części M7 276 i 102139, po trzeciej 294 i 102412, zero ostrzeżeń. Test `buildLightSet converts the colours from sRGB to linear and leaves the rest` w `tests/LightingTests.cpp` sprawdza, że do shaderów trafiają kolory liniowe, a intensywności bez zmian. Czterech trybów cieniowania w nowym potoku (bufor HDR, krzywa ACES, nowe wartości świateł) nikt nie porównał na zrzutach ekranu.
 - **Piąta część M7** (cień latarki, zgłoszone dla Windowsa, 2026-10-06): bramka `make check` przechodzi, 329 przypadków testowych i 104306 asercji. Nie sprawdzone: rysowanie w trybie `Gouraud` z cieniem latarki (zmienne `vFlashlight...` w `gouraud.vert` i `gouraud.frag`), ścieżka ze zgaszoną latarką i `Reload shaders`. Wzory światła się nie zmieniły.
 - **Czwarta część M7** (cienie księżyca, zgłoszone dla Windowsa, 2026-10-05): bramka `make check` przechodzi, 310 przypadków testowych i 103751 asercji. Wszystkie 16 nowych przypadków jest w `tests/ShadowTests.cpp` i dotyczy strony C++ (pudełko światła, bias, rozmiar teksela, kierunek księżyca): odejmowania cienia w `lit.frag` i `gouraud.frag` żaden test nie widzi, bo to kod GLSL. Przy wyłączonych cieniach i intensywności księżyca cofniętej do 0,12 obraz jest identyczny co do piksela z obrazem sprzed tej części poza paskiem HUD, a w trybie `Phong` różnice nie przekraczają 1/255. Build Debug nie zgłosił błędów OpenGL przy mapie 2048 i 1024. **Nie sprawdzone:** wygląd cieni w trybie `Gouraud` obok trybu `Phong` (sekcja 2.8 jest wnioskiem z kodu), kontrolki panelu Shadows myszą, zmiana rozdzielczości mapy w trakcie gry, przeładowanie shaderów przy jedenastu programach. Lista testów: [`shadows.md`](shadows.md), sekcje 5.10 i 5.11.
@@ -829,7 +879,7 @@ Kontrolki, które biorą udział w pokazie:
 | Lights | `Flashlight on (key F)`, klawisz F | latarka | bez latarki widać odbłyski księżyca i świateł punktowych |
 | Assets | pole wyboru `Normal mapping` | `m_lighting.normalMapping` | w trybach `Phong` i `Blinn-Phong` fugi i nierówności kamienia pojawiają się i znikają. W trybie `Gouraud` nie zmienia się nic |
 | Assets | lista `View mode` | podgląd | `Normals as colour` pokazuje normalne, z których liczone jest światło w wybranym trybie (rysowane programem `textured`): z map normalnych przy `Unlit`, `Phong` i `Blinn-Phong` z zaznaczonym `Normal mapping`, normalne siatki przy `Gouraud` albo odznaczonym polu |
-| Shaders | `Reload shaders` | przeładowanie wszystkich programów (dziś jedenastu) | zmiana w `lit.frag` albo `common/lighting.glsl` bez restartu |
+| Shaders | `Reload shaders` | przeładowanie wszystkich programów (dziś czternastu) | zmiana w `lit.frag` albo `common/lighting.glsl` bez restartu |
 | Lights | `Point colour` | `m_lighting.pointColor` | kolor świateł kryształów i jednocześnie ich własny blask (`uEmissive`), w każdym trybie |
 | Shadows (od czwartej części M7) | pole `Shadows`, suwak `Strength` | `m_moonShadow.enabled`, `m_moonShadow.strength` | cienie księżyca w trybach `Gouraud`, `Phong` i `Blinn-Phong`. W trybie `Unlit` i w podglądach nie zmienia się nic. Cały panel: [`shadows.md`](shadows.md), sekcja 6 |
 
@@ -847,8 +897,8 @@ Kontrolki, które biorą udział w pokazie:
 8. **Wzdłuż korytarza.** Patrzę w głąb korytarza i przełączam oba tryby: różnicy prawie nie ma. Mówię dlaczego (sekcja 2.6).
 9. **Światło z boku.** Naciskam F, żeby zgasić latarkę. Staję tak, żeby mieć światło kryształu przed sobą, i patrzę płasko na grunt między mną a światłem. Przełączam `Phong` i `Blinn-Phong`: w Blinnie-Phongu odbłysk rozciąga się w smugę w moją stronę, w Phongu jest krótszy i kończy się ostrzej.
 10. **Mapy normalnych: czego Gouraud nie pokaże.** `Lighting`: `Phong`, staję blisko ściany i świecę na nią pod płaskim kątem: fugi są rowkami, skosy kamieni od strony światła są jasne. Przełączam na `Gouraud`: relief znika, zostają fugi namalowane w teksturze. Odznaczam i zaznaczam `Normal mapping` w panelu Assets w trybie `Gouraud`: obraz się nie zmienia. Mówię: mapa ma normalną na teksel, a ten program liczy światło w czterech wierzchołkach lica. Potem `View mode`: `Normals as colour` w trybie `Phong` (widać rysunek fug) i w trybie `Gouraud` (gładki kolor): podgląd pokazuje normalną, którą tryb naprawdę cieniuje. Pełny scenariusz map normalnych: [`../gfx/normal-mapping.md`](../gfx/normal-mapping.md), sekcja 6.
-11. **Brama i kryształy.** Brama musi być jeszcze zamknięta: otwarta chowa się pod grunt w 1,5 s i nie ma czego oglądać. Nie zbieram więc wymaganej liczby kryształów (albo podnoszę suwak `Crystals needed` w panelu Gameplay do końca), lecę do wyjścia w trybie noclip (klawisz N), wyłączam noclip i staję 2 m przed bramą, twarzą do niej, z latarką w jej środek. Przełączam `Phong` i `Gouraud`. Zgłoszona obserwacja: w `Gouraud` brama jest ciemna. Mówię: model ma wierzchołki tylko na dwóch pionowych krawędziach, metr od środka, a plama ma tu promień 0,77 m. Pokazuję kryształ w tym samym trybie: świeci tak samo jak w `Phong`, bo jego blask jest dodawany w shaderze fragmentów. (Przyczyny ciemnej bramy nie mierzyłem: to wniosek z pliku modelu.)
-12. **Jedna linia kodu.** Pokazuję `drawLitMaze`: wybór programu to jedna linia, wybór wzoru odbłysku to jeden uniform, a kryształy i brama idą tym samym programem co ściany.
+11. **Brama i kryształy.** Brama musi być jeszcze zamknięta: otwarta chowa się pod grunt w 1,5 s i nie ma czego oglądać. Nie zbieram więc wymaganej liczby kryształów (albo podnoszę suwak `Crystals needed` w panelu Gameplay do końca), lecę do wyjścia w trybie noclip (klawisz N), wyłączam noclip i staję 2 m przed bramą, twarzą do niej, z latarką w jej środek. Przełączam `Phong` i `Gouraud`. Zgłoszona obserwacja: w `Gouraud` brama jest ciemna. Mówię: model ma wierzchołki tylko na dwóch pionowych krawędziach, metr od środka, a plama ma tu promień 0,77 m. Pokazuję kryształ w tym samym trybie (po odznaczeniu `Environment mapping` w panelu Environment, bo domyślnie kryształ rysuje program `reflect`): świeci tak samo jak w `Phong`, bo jego blask jest dodawany w shaderze fragmentów. (Przyczyny ciemnej bramy nie mierzyłem: to wniosek z pliku modelu.)
+12. **Jedna linia kodu.** Pokazuję `drawLitMaze`: wybór programu to jedna linia, wybór wzoru odbłysku to jeden uniform, a brama (i, przy wyłączonym environment mappingu, kryształy) idzie tym samym programem co ściany.
 13. **Cień w obu trybach (czwarta część M7).** Gaszę latarkę (F) i staję tak, żeby widzieć cień ściany na gruncie. Przełączam `Phong` i `Gouraud`: krawędź cienia zostaje w tym samym miejscu i jest tak samo ostra. Mówię: w trybie `Gouraud` światło jest liczone w wierzchołkach, ale o cień pyta shader fragmentów, bo lico ściany ma cztery wierzchołki, a krawędź cienia przecina je w dowolnym miejscu. Przełączam na `Unlit`: cienie znikają, bo program `textured` mapy cieni nie czyta. Zapalam latarkę w cieniu: plama latarki jest tak samo jasna jak poza cieniem, bo cień zabiera tylko światło księżyca. (Tego kroku też nikt jeszcze nie wykonał ręcznie.)
 
 ## 7. Pułapki
@@ -974,13 +1024,13 @@ Kontrolki, które biorą udział w pokazie:
     `surface * (diffuse + uEmissive) + specular`. Kolor powierzchni mnoży światło rozproszone razem z własnym blaskiem powierzchni, odbłysk jest dodany na wierzch. Dla ścian, podłoża, słupków i bramy `uEmissive` jest czarny i zostaje wzór z M4.
 
 25. **Dlaczego kryształy są widoczne w trybie `Gouraud`, skoro ten tryb gubi światło między wierzchołkami?**
-    Bo ich jasność nie pochodzi ze świateł sceny. `uEmissive` jest dodawany w shaderze fragmentów (`gouraud.frag`), poza obliczeniem światła na wierzchołek.
+    Bo ich jasność nie pochodzi ze świateł sceny. `uEmissive` jest dodawany w shaderze fragmentów (`gouraud.frag`), poza obliczeniem światła na wierzchołek. Dotyczy to kryształów rysowanych programem `gouraud`, czyli przy wyłączonym environment mappingu: od M8, części 1, domyślnie rysuje je program `reflect`, który liczy światło na fragment.
 
 26. **Dlaczego brama jest ciemna w trybie `Gouraud`?**
     To obserwacja ze zrzutów ekranu, a przyczyna jest wnioskiem z pliku modelu, nie pomiarem: wszystkie 56 pozycji wierzchołków bramy leży na jej dwóch pionowych krawędziach, 2 m od siebie. Plama latarki skierowana w środek z bliska nie obejmuje żadnego wierzchołka, więc interpolowane światło jest zerem. To ten sam mechanizm co przy licu ściany.
 
 27. **Którym programem rysowane są kryształy i brama?**
-    Tym samym co labirynt w danej klatce: `drawLitMaze` i `drawUnlitMaze` wołają `GameplayRenderer::draw` zaraz po `MazeRenderer::draw` z tym samym obiektem `Shader`. Kryształy i brama zmieniają więc tryb cieniowania razem ze ścianami.
+    Brama: tym samym co labirynt w danej klatce (`drawLitMaze` i `drawUnlitMaze` wołają `drawGateAndCrystals` zaraz po `MazeRenderer::draw` z tym samym obiektem `Shader`), więc zmienia tryb cieniowania razem ze ścianami. Kryształy: od M8, części 1, domyślnie programem `reflect` w osobnym przebiegu `drawReflections`, po trawie i przed niebem. Tym samym programem co ściany rysuje je dopiero `drawGateAndCrystals`, gdy `crystalsReflect()` jest fałszem (environment mapping wyłączony albo widok `Normals as colour` lub `UVs as colour`).
 
 28. **Czy `computeLighting` wie o cieniach?**
     Nie. Liczy każde światło tak, jakby nic nie stało mu na drodze, i zwraca osobno udział księżyca (`moonDiffuse`, `moonSpecular`), który jest już zawarty w `diffuse` i `specular`. Cień nakłada wywołujący: pyta `moonShadow` o część światła księżyca, której fragment nie dostaje, i tę część odejmuje.
@@ -989,7 +1039,7 @@ Kontrolki, które biorą udział w pokazie:
     Lico ściany ma cztery wierzchołki, a krawędź cienia przecina je w dowolnym miejscu. Test w wierzchołkach dałby lico zacienione w całości, wcale albo z cieniem rozmazanym od narożnika do narożnika. `gouraud.vert` przekazuje więc udział księżyca, pozycję w świecie i cosinus nachylenia do księżyca, a `gouraud.frag` woła `moonShadow`. To jedyny wyjątek od zasady "wszystko w wierzchołkach".
 
 30. **Co cień księżyca zabiera, a czego nie?**
-    Zabiera część rozproszoną i odbłysk księżyca. Nie zabiera światła otoczenia, latarki, świateł kryształów ani blasku `uEmissive`. Latarka i kryształy same cieni nie rzucają.
+    Zabiera część rozproszoną i odbłysk księżyca, a od piątej części M7 osobno, z drugiej mapy, część rozproszoną i odbłysk latarki. Nie zabiera światła otoczenia, świateł kryształów ani blasku `uEmissive`, a księżycowy cień nie zabiera latarki (i odwrotnie). Światła kryształów same cieni nie rzucają: ich światło przechodzi przez ściany. Siatki kryształów cienie rzucają (są w `drawShadowCasters`), a latarka ma własną mapę.
 
 31. **Której normalnej używa `lit.frag` do biasu cienia i dlaczego nie tej z mapy normalnych?**
     Normalnej modelu, `normalize(vNormal)`. Bias należy do trójkąta narysowanego do mapy cieni, a wypukłości mapy normalnych w tym trójkącie nie ma.

@@ -94,7 +94,9 @@ if (framebuffer.width == 0 || framebuffer.height == 0) {
     return;
 }
 
+// (tu: oko, kamera, promień wyboru, światła klatki)
 drawMoonShadowMap();
+drawFlashlightShadowMap(frameLighting, flashlight);
 
 if (!m_postProcess.beginScene(framebuffer)) {
     return;
@@ -111,7 +113,8 @@ GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 | Wywołanie | Rodzaj | Co robi |
 |---|---|---|
 | `if (framebuffer.width == 0 \|\| framebuffer.height == 0) return;` | nic w OpenGL | Zminimalizowane okno może mieć framebuffer 0 x 0. Nie ma wtedy czego rysować ani do czego: tekstury o rozmiarze 0 nie da się podpiąć do framebuffera, a proporcje obrazu wyszłyby 0 / 0. Cała klatka jest pomijana. Do pierwszej części M7 ten warunek stał po czyszczeniu ekranu |
-| `drawMoonShadowMap()` | ustawia stan i rysuje | Od czwartej części M7 (cienie księżyca, 2026-10-05): przebieg cieni. Wiąże framebuffer mapy cieni (kwadrat 2048 x 2048 albo 1024 x 1024 tekseli, niezależny od rozmiaru okna), ustawia `glViewport` na ten rozmiar, czyści jego głębię i rysuje scenę z kierunku księżyca. Zostawia związany własny framebuffer i własny viewport, dlatego `beginScene` w następnej linii ustawia oba od nowa ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.18) |
+| `drawMoonShadowMap()` | ustawia stan i rysuje | Stoi po obliczeniu oka, kamery, promienia wyboru i świateł klatki, bo korzysta z listy ścian klatki. Od czwartej części M7 (cienie księżyca, 2026-10-05): przebieg cieni. Wiąże framebuffer mapy cieni (kwadrat 2048 x 2048 albo 1024 x 1024 tekseli, niezależny od rozmiaru okna), ustawia `glViewport` na ten rozmiar, czyści jego głębię i rysuje scenę z kierunku księżyca. Zostawia związany własny framebuffer i własny viewport, dlatego `beginScene` po obu przebiegach cieni ustawia oba od nowa ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.18) |
+| `drawFlashlightShadowMap(frameLighting, flashlight)` | ustawia stan i rysuje | Od piątej części M7 (cień latarki, 2026-10-06): drugi przebieg cieni, zaraz po pierwszym. Rysuje tę samą scenę z miejsca latarki do jej własnej mapy cieni. Pozę latarki (`flashlight`) liczy `onRender` raz, przed obydwoma przebiegami, żeby cień należał do światła, które jest rysowane. Tak samo zostawia związany własny framebuffer i viewport, więc `beginScene` ustawia je od nowa ([`../renderer/shadows.md`](../renderer/shadows.md)) |
 | `m_postProcess.beginScene(framebuffer)` | ustawia stan | Od pierwszej części M7 scena nie trafia prosto do okna. To wywołanie wiąże framebuffer HDR sceny (`glBindFramebuffer`) i ustawia `glViewport(0, 0, w, h)` na jego rozmiar, równy rozmiarowi framebuffera okna. `glViewport` określa prostokąt bufora (w pikselach, początek w lewym dolnym rogu), na który mapowane są współrzędne znormalizowane (NDC) z zakresu od -1 do 1. Oba wywołania stoją w `gfx::Framebuffer::bind` ([`../gfx/framebuffers.md`](../gfx/framebuffers.md)). Gdy framebuffera nie udało się utworzyć, funkcja zwraca fałsz i klatka jest pomijana |
 | `glEnable(GL_DEPTH_TEST)` | ustawia stan | Włącza test głębi: fragment trafia do bufora tylko wtedy, gdy jest bliżej kamery niż to, co już tam jest. Potrzebny od chwili, gdy na ekranie jest bryła ([`../scene/camera.md`](../scene/camera.md), sekcje 3 i 5.7) |
 | `glClearColor(r, g, b, a)` | ustawia stan | Zapamiętuje kolor czyszczenia. Niczego nie rysuje. Kolor z panelu jest wartością sRGB, a bufor sceny trzyma wartości liniowe, więc linia wyżej przelicza go przez `gfx::srgbToLinear` ([`../gfx/color-space.md`](../gfx/color-space.md)) |
@@ -120,7 +123,7 @@ GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 | `m_debugUI.draw(...)` | wykonuje | Wołane już poza grą, w `DebugNightMazeApp::onRender` w [`main.cpp`](../../../src/main.cpp), po powrocie z `NightMazeApp::onRender`: rysuje panele ImGui na wierzchu (opis w [`../debug-ui.md`](../debug-ui.md)) |
 | `glfwSwapBuffers(m_handle)` | wykonuje | Wołane w `Application::run` po `onRender`: zamienia bufory, przy vsync czeka na odświeżenie monitora |
 
-Po tych czterech wywołaniach `onRender` wysyła do bufora uniformów światła klatki, a potem rysuje scenę w częściach: labirynt z bramą i kryształami (z oświetleniem albo bez) i, na życzenie, linie pudełek i kul kolizji. Do M4 były jeszcze dwie części, znaczniki świateł punktowych i kostka z M1 nad komórką wyjścia: obie usunięto w M5. Każda część to `glUseProgram`, macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Kolejność i kod tej części klatki opisuje [`README.md`](README.md), sekcje 6.6 i 6.7, a drogę od danych do pikseli [`../gfx/README.md`](../gfx/README.md), sekcja 6.
+Po tych wywołaniach `onRender` wysyła do bufora uniformów światła klatki, a potem rysuje scenę w częściach: labirynt z bramą i kryształami (z oświetleniem albo bez) i, na życzenie, linie pudełek i kul kolizji. Do M4 były jeszcze dwie części, znaczniki świateł punktowych i kostka z M1 nad komórką wyjścia: obie usunięto w M5. Każda część to `glUseProgram`, macierze przez `glUniformMatrix4fv`, `glBindVertexArray` (wszystko przez klasy `gfx`) i `glDrawElements`. Kolejność i kod tej części klatki opisuje [`README.md`](README.md), sekcje 6.6 i 6.7, a drogę od danych do pikseli [`../gfx/README.md`](../gfx/README.md), sekcja 6.
 
 Viewport ustawiam w każdej klatce, a nie raz przy starcie, i biorę go z `glfwGetFramebufferSize`. Dzięki temu bez żadnego callbacku obsługuję zmianę rozmiaru okna oraz ekrany Retina (sekcja 7). Makro `GL_CHECK` wokół każdego wywołania opisuje [`gl-check.md`](gl-check.md).
 

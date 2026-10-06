@@ -77,9 +77,10 @@ Prawdziwy odpowiednik tej drugiej postaci jest w
         }
 ```
 
-`shaders` to lista jedenastu programów gry (sześć do M6, od pierwszej części M7 także
-`composite` i `preview`, od drugiej `bright` i `blur`, od czwartej `shadow_depth`): jeden
-przycisk przeładowuje wszystkie.
+`shaders` to lista czternastu programów gry (sześć do M6, od pierwszej części M7 także
+`composite` i `preview`, od drugiej `bright` i `blur`, od czwartej `shadow_depth`, od szóstej
+`minimap` i `minimap_overlay`, od M8, części 1 `reflect`): jeden przycisk przeładowuje
+wszystkie.
 
 Skutki praktyczne:
 
@@ -401,7 +402,7 @@ void DebugUI::draw(const DebugContext& context) {
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
-panele i HUD pokazują i edytują (trzydzieści osiem pól: od `time` i `window` po `grass`
+panele i HUD pokazują i edytują (dziś czterdzieści dziewięć pól, a po piątej części M7 było ich trzydzieści osiem: od `time` i `window` po `grass`
 i `grassTuftCount`, jedyne pole, które jest liczbą, a nie referencją, cztery pola z
 pierwszej części M7: `compositeShader`, `previewShader`, `postProcessSettings` i
 `postProcess`, dwa z drugiej: `brightPassShader` i `blurShader`, oraz cztery z czwartej,
@@ -417,7 +418,7 @@ Cztery etapy, zawsze w tej kolejności:
 | Etap | Wywołania | Co się dzieje |
 |---|---|---|
 | 1. Początek klatki | `ImGui_ImplOpenGL3_NewFrame()`, `ImGui_ImplGlfw_NewFrame()`, `ImGui::NewFrame()` | backend renderera przygotowuje swoje zasoby (przy pierwszym użyciu tworzy shadery), backend platformy przekazuje rozmiar okna, skalę framebuffera, czas i stan myszy, a rdzeń zaczyna nową klatkę |
-| 2. Widżety | `DockSpaceOverViewport`, a potem dwanaście funkcji paneli (jedenasta, `drawFramebuffersPanel`, od pierwszej części M7, w drugiej rozbudowana o `BeginTable`, `TableNextColumn`, `Checkbox` i `SliderInt`, w trzeciej o `BeginTabBar` i `BeginTabItem`: sekcje 3.16 i 3.17. Dwunasta, `drawShadowsPanel`, od czwartej części M7: `BeginTabBar`, `BeginTabItem`, `BeginTable`, `Checkbox`, `Combo`, `SliderFloat` z `ImGuiSliderFlags_AlwaysClamp`, `SameLine` z `SetNextItemWidth`, `Separator`, `Text`, `Image` i `SetItemTooltip`: sekcja 3.17) i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
+| 2. Widżety | `DockSpaceOverViewport`, a potem trzynaście funkcji paneli (od M8, części 1; trzynasta, `drawEnvironmentPanel`, doszła z panelem Environment; jedenasta, `drawFramebuffersPanel`, od pierwszej części M7, w drugiej rozbudowana o `BeginTable`, `TableNextColumn`, `Checkbox` i `SliderInt`, w trzeciej o `BeginTabBar` i `BeginTabItem`: sekcje 3.16 i 3.17. Dwunasta, `drawShadowsPanel`, od czwartej części M7: `BeginTabBar`, `BeginTabItem`, `BeginTable`, `Checkbox`, `Combo`, `SliderFloat` z `ImGuiSliderFlags_AlwaysClamp`, `SameLine` z `SetNextItemWidth`, `Separator`, `Text`, `Image` i `SetItemTooltip`: sekcja 3.17) i, już poza warunkiem `m_visible`, `drawHud`. Każda woła (przez naszą funkcję `placePanelOnFirstUse`) `SetNextWindowPos`, `SetNextWindowSize` i `SetNextWindowCollapsed`, potem `Begin`, swoje widżety i `End`: `drawRendererPanel` (`Text`, `ColorEdit3`, `Combo`, od M6 `Checkbox`, `SetItemTooltip` i `SliderFloat`), `drawShadersPanel` (`Button`, `Text`, `TextWrapped`, `SetItemTooltip`), `drawCameraPanel` (`DragFloat3`, `SliderFloat`), `drawGameplayPanel` (`Text`, `Button`, `SliderFloat`, `Checkbox`), od M6 `drawTerrainPanel` (`SliderFloat`, `SetItemTooltip`, `Checkbox`, `Separator`, `Text`) i `drawGrassPanel` (`Checkbox`, `SliderFloat`, `SetItemTooltip`, `Separator`, `Text`), `drawMazePanel` (`SliderInt`, `InputScalar`, `Button`, lista rysowania), `drawCollisionPanel` (`Checkbox`, `TextWrapped`), `drawAssetsPanel` (`Combo`, `Checkbox`, `SliderFloat`, `Image`), `drawLightsPanel` (`ColorEdit3`, `CollapsingHeader`, `SliderFloat`, `Checkbox`, `DragFloatRange2`, `SetItemTooltip`). HUD: `ProgressBar`, `TextColored`, `TextDisabled`, `PushFont`. Widżety paneli z M2 + M3: sekcja 3.11, widżety panelu Lights: sekcja 3.13, HUD i panel Gameplay: sekcja 3.14, panele Terrain i Grass: sekcja 3.15 | opisujemy interfejs, ImGui od razu odpowiada na interakcje i zbiera geometrię |
 | 3. Zamknięcie klatki | `ImGui::Render()` | kończy klatkę i układa zebrane dane w listy rysowania (draw lists). Wbrew nazwie nie wywołuje OpenGL |
 | 4. Rysowanie | `ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData())` | backend renderera wysyła listy do OpenGL: tu naprawdę pojawiają się piksele |
 
@@ -579,7 +580,7 @@ tekstowym `imgui.ini`. Nazwa pochodzi z pola `ImGuiIO::IniFilename`, którego ni
   komputera, a nie część projektu.
 - Skasowanie pliku przywraca układ domyślny. To pierwsza rzecz do zrobienia, gdy panel
   "zniknął" albo wyjechał poza okno.
-- Układ domyślny naszych dwunastu paneli ustawiają trójki `SetNextWindowPos`,
+- Układ domyślny naszych trzynastu paneli (dwunastu do M8, części 1) ustawiają trójki `SetNextWindowPos`,
   `SetNextWindowSize` i `SetNextWindowCollapsed` z warunkiem `ImGuiCond_FirstUseEver`
   (sekcje 3.11 i 3.13). Ten warunek działa tylko dla okna, którego w `imgui.ini` jeszcze
   nie ma. Stary plik zatrzyma panele na starych miejscach i w starych rozmiarach: plik
@@ -722,7 +723,7 @@ Spełniamy go, bo `DebugUI` dostaje w konstruktorze gotowe `core::Window`.
 ### 3.10. Jak dodać nowy panel
 
 Krótko: nowy plik w `src/debug/panels/`, funkcja `draw...Panel` z parą `Begin`/`End`,
-wywołanie w `DebugUI::draw` obok pozostałych dwunastu funkcji `draw...Panel`, dopisanie plików
+wywołanie w `DebugUI::draw` obok pozostałych trzynastu funkcji `draw...Panel` (dwunastu do M8, części 1), dopisanie plików
 do `add_executable` w `CMakeLists.txt`. Przed `Begin` wywołanie `placePanelOnFirstUse` z nową
 stałą dopisaną w `src/debug/PanelLayout.hpp`, żeby panel przy pierwszym uruchomieniu nie
 przykrył innych. Nowe dane dla panelu to dodatkowo jedno pole w `debug::DebugContext` i
@@ -974,7 +975,7 @@ Deklaracje i komentarze przytaczam z `build/debug/_deps/imgui-src/imgui.h` w nas
 | Element | Znaczenie |
 |---|---|
 | deklaracja | `void SetNextWindowCollapsed(bool collapsed, ImGuiCond cond = 0);` z komentarzem "set next window collapsed state. call before Begin()" |
-| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` ma sześć paneli: Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`), od M5 Gameplay (`GAMEPLAY_PLACEMENT`), który stoi obok niego przy górnej krawędzi, od M6 Terrain i Grass (`TERRAIN_PLACEMENT`, `GRASS_PLACEMENT`), które stoją rząd niżej, pod tymi dwoma (sekcja 3.15), od pierwszej części M7 Framebuffers (`FRAMEBUFFERS_PLACEMENT`), jeden szeroki pasek w trzecim rzędzie (sekcja 3.16), i od czwartej części M7 Shadows (`SHADOWS_PLACEMENT`), taki sam pasek w czwartym rzędzie (sekcja 3.17) |
+| `placement.collapsed` | `true` zwija okno do paska tytułu, `false` zostawia je rozwinięte. W projekcie `true` ma siedem paneli (sześć do M8, części 1): Camera (`CAMERA_PLACEMENT` w `PanelLayout.hpp`), od M5 Gameplay (`GAMEPLAY_PLACEMENT`), który stoi obok niego przy górnej krawędzi, od M6 Terrain i Grass (`TERRAIN_PLACEMENT`, `GRASS_PLACEMENT`), które stoją rząd niżej, pod tymi dwoma (sekcja 3.15), od pierwszej części M7 Framebuffers (`FRAMEBUFFERS_PLACEMENT`), jeden szeroki pasek w trzecim rzędzie (sekcja 3.16), i od czwartej części M7 Shadows (`SHADOWS_PLACEMENT`), taki sam pasek w czwartym rzędzie (sekcja 3.17), i od M8, części 1 Environment (`ENVIRONMENT_PLACEMENT`), taki sam pasek w piątym rzędzie |
 | `ImGuiCond_FirstUseEver` | ten sam warunek co przy pozycji i rozmiarze: tylko gdy okno nie ma wpisu w `imgui.ini`. Bez warunku panel zwijałby się z powrotem w każdej klatce i nie dałoby się go otworzyć |
 
 Zwinięte okno to zwykły stan okna ImGui, nie osobny widżet. Użytkownik przełącza go

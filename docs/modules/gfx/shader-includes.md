@@ -19,7 +19,7 @@ Dwie kopie mają znaną wadę: poprawka w jednej, zapomniana w drugiej, i porów
 | dyrektywy `#line` wstawiane wokół dołączonego pliku | numery linii w błędach sterownika zostają numerami linii **oryginalnych plików**, a nie sklejonego tekstu |
 | `gfx::nameSourceFiles` | w dzienniku sterownika zamienia numer pliku na jego nazwę: `1(63)` staje się `common/lighting.glsl(63)` |
 
-Pierwszy wspólny plik to [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). Dołączają go `lit.frag` i `gouraud.vert`, a od drugiej części M6 także `grass.frag`: trawa jest oświetlana tymi samymi światłami i tym samym wzorem co ściany, bez kopii kodu. Od drugiej części M4 jest drugi, [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl): dołączają go `lit.frag` (do oświetlenia) i `textured.frag` (do widoku normalnych), żeby widok pokazywał dokładnie tę normalną, której używa światło. W M7 doszły trzy następne: `common/color.glsl` (sRGB i jasność, [`color-space.md`](color-space.md)) i `common/depth.glsl` (głębia na metry) w pierwszej części, a w czwartej [`assets/shaders/common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl) (mapa cieni księżyca, [`../renderer/shadows.md`](../renderer/shadows.md)). Stan na dziś, odczytany z linii `#include` w plikach:
+Pierwszy wspólny plik to [`assets/shaders/common/lighting.glsl`](../../../assets/shaders/common/lighting.glsl). Dołączają go `lit.frag` i `gouraud.vert`, od drugiej części M6 także `grass.frag`, a od M8, części 1 `reflect.frag` (cztery programy): trawa jest oświetlana tymi samymi światłami i tym samym wzorem co ściany, bez kopii kodu. Od drugiej części M4 jest drugi, [`assets/shaders/common/normal_map.glsl`](../../../assets/shaders/common/normal_map.glsl): dołączają go `lit.frag` (do oświetlenia), `textured.frag` (do widoku normalnych) i, od M8, części 1, `reflect.frag`, żeby widok pokazywał dokładnie tę normalną, której używa światło. W M7 doszły trzy następne: `common/color.glsl` (sRGB i jasność, [`color-space.md`](color-space.md)) i `common/depth.glsl` (głębia na metry) w pierwszej części, a w czwartej [`assets/shaders/common/shadows.glsl`](../../../assets/shaders/common/shadows.glsl) (mapa cieni księżyca, [`../renderer/shadows.md`](../renderer/shadows.md)). Stan na dziś, odczytany z linii `#include` w plikach:
 
 | Plik shadera | Co dołącza, w tej kolejności | Numery napisów źródłowych |
 |---|---|---|
@@ -28,11 +28,12 @@ Pierwszy wspólny plik to [`assets/shaders/common/lighting.glsl`](../../../asset
 | `gouraud.frag` (od czwartej części M7) | `common/shadows.glsl` | 0 = `gouraud.frag`, 1 = `common/shadows.glsl` |
 | `textured.frag` | `common/normal_map.glsl`, od M7 `common/color.glsl` | 0 = `textured.frag`, 1 = `common/normal_map.glsl`, 2 = `common/color.glsl` |
 | `grass.frag` (od drugiej części M6) | `common/lighting.glsl`, od M7 `common/color.glsl`, od czwartej części M7 `common/shadows.glsl` | 0 = `grass.frag`, 1 = `common/lighting.glsl`, 2 = `common/color.glsl`, 3 = `common/shadows.glsl` |
+| `reflect.frag` (od M8, części 1) | `common/lighting.glsl`, `common/normal_map.glsl`, `common/shadows.glsl` | 0 = `reflect.frag`, 1 = `common/lighting.glsl`, 2 = `common/normal_map.glsl`, 3 = `common/shadows.glsl` |
 | `skybox.frag` (od M7) | `common/color.glsl` | 0 = `skybox.frag`, 1 = `common/color.glsl` |
 | `post/composite.frag` i `post/bright.frag` (od M7) | `../common/color.glsl` | 0 = plik shadera, 1 = `../common/color.glsl` |
 | `post/preview.frag` (od M7) | `../common/color.glsl`, `../common/depth.glsl` | 0 = `preview.frag`, 1 = `../common/color.glsl`, 2 = `../common/depth.glsl` |
 
-Numery w trzeciej kolumnie wynikają z kodu (`files[1]` to pierwszy dołączony plik, sekcja 5.2): ten sam plik `normal_map.glsl` ma numer 2 w jednym programie i 1 w drugim, a `shadows.glsl` numer 3 w `lit.frag` i w `grass.frag`, ale 1 w `gouraud.frag`. `lit.frag` był pierwszym shaderem projektu z dwoma dołączeniami, a od czwartej części M7 jest, razem z `grass.frag`, pierwszym z trzema. Pozostałe jedenaście plików shaderów (`lit.vert`, `textured.vert`, `color.vert`, `color.frag`, `skybox.vert`, `grass.vert`, `grass.geom`, `post/composite.vert`, `post/blur.frag`, `shadow_depth.vert`, `shadow_depth.frag`) niczego nie dołącza, ale przechodzi przez ten sam kod: dla nich `expandIncludes` oddaje tekst bez zmian, a `nameSourceFiles` wstawia do błędu nazwę jedynego pliku.
+Numery w trzeciej kolumnie wynikają z kodu (`files[1]` to pierwszy dołączony plik, sekcja 5.2): ten sam plik `normal_map.glsl` ma numer 2 w jednym programie i 1 w drugim, a `shadows.glsl` numer 3 w `lit.frag`, `grass.frag` i `reflect.frag`, ale 1 w `gouraud.frag`. `lit.frag` był pierwszym shaderem projektu z dwoma dołączeniami, a od czwartej części M7 jest, razem z `grass.frag` (a od M8, części 1 także `reflect.frag`), pierwszym z trzema. Pozostałe piętnaście plików shaderów (`lit.vert`, `textured.vert`, `color.vert`, `color.frag`, `skybox.vert`, `grass.vert`, `grass.geom`, `post/composite.vert`, `post/blur.frag`, `shadow_depth.vert`, `shadow_depth.frag`, `reflect.vert`, `post/minimap.vert`, `post/minimap.frag` i `post/minimap_overlay.frag`) niczego nie dołącza, ale przechodzi przez ten sam kod: dla nich `expandIncludes` oddaje tekst bez zmian, a `nameSourceFiles` wstawia do błędu nazwę jedynego pliku.
 
 **Każdy etap idzie tą samą drogą.** Preprocesor nie wie, jakiego rodzaju shader rozwija: pracuje na tekście. O rodzaju decyduje dopiero argument `type` funkcji `compileShader`, a `buildProgram` woła ją w pętli dla każdego etapu programu: `GL_VERTEX_SHADER`, dla trawy `GL_GEOMETRY_SHADER`, i `GL_FRAGMENT_SHADER` ([`shader-class.md`](shader-class.md), sekcja 5.7). Mówi to komentarz w tej pętli: "Every stage goes through the same loader: the same #include lines, the same file names in its compile errors." Z tego wynikają dwie rzeczy. Plik `.geom` **mógłby** zawierać linię `#include` i zostałaby rozwinięta tak samo jak w `lit.frag` (dziś `grass.geom` żadnej nie ma, więc to wniosek z kodu, a nie pomiar). A błąd kompilacji w pliku `.geom` dostaje nazwę pliku w miejscu numeru: zgłoszony pomiar z Windowsa to `grass.geom(84)` zamiast `0(84)`.
 
@@ -48,7 +49,7 @@ Zostaje rozwiązanie po stronie programu: wczytać plik, znaleźć w nim linie `
 
 ### 2.2 Problem numerów linii
 
-Samo wklejenie ma skutek uboczny. `lit.frag` ma dziś 80 linii, `common/lighting.glsl` 180, `common/normal_map.glsl` 53, a `common/shadows.glsl` 120 (stan po czwartej części M7, policzone z plików). Po wklejeniu sterownik widzi jeden tekst i liczy linie po swojemu: błąd w linii 72 pliku `lighting.glsl` zgłosiłby jako błąd w linii 80 (8 linii `lit.frag` przed dołączeniem plus 72), a błąd w linii 18 pliku `lit.frag` jako błąd w linii 368 (8 linii, 180 linii pierwszego pliku, 2 linie komentarza, 53 linie drugiego pliku, 2 linie komentarza, 120 linii trzeciego pliku i 3 linie do osiemnastej). Żaden z tych numerów nie istnieje w żadnym pliku, który mam otwarty w edytorze.
+Samo wklejenie ma skutek uboczny. `lit.frag` ma dziś 94 linie, `common/lighting.glsl` 201, `common/normal_map.glsl` 53, a `common/shadows.glsl` 191 (stan po M8, części 1, policzone z plików; po czwartej części M7 było to 80, 180, 53 i 120). Po wklejeniu sterownik widzi jeden tekst i liczy linie po swojemu: błąd w linii 76 pliku `lighting.glsl` zgłosiłby jako błąd w linii 84 (8 linii `lit.frag` przed dołączeniem plus 76), a błąd w linii 18 pliku `lit.frag` jako błąd w linii 460 (8 linii, 201 linii pierwszego pliku, 2 linie komentarza, 53 linie drugiego pliku, 2 linie komentarza, 191 linii trzeciego pliku i 3 linie do osiemnastej). Żaden z tych numerów nie istnieje w żadnym pliku, który mam otwarty w edytorze.
 
 ### 2.3 Numer napisu źródłowego i dyrektywa `#line`
 
@@ -174,7 +175,7 @@ const int MAX_POINT_LIGHTS = 16;
 
 | Co widać | Dlaczego tak |
 |---|---|
-| trzy linie `#include` w `lit.frag`, jedna pod drugą (dwie do trzeciej części M7) | pliki są wklejane w tej kolejności. Tutaj kolejność nie ma znaczenia dla kompilacji, bo żaden z trzech plików nie używa niczego z pozostałych: `normal_map.glsl` deklaruje własny sampler, własny przełącznik i jedną funkcję, a `shadows.glsl` własny sampler, sześć uniformów i trzy funkcje. Łączy je dopiero `main` w `lit.frag`, które woła `moonFacing` z pierwszego pliku i `moonShadow` z trzeciego. Kolejność ma znaczenie dla numerów: pierwszy dołączony plik dostaje numer 1, drugi 2, trzeci 3 |
+| trzy linie `#include` w `lit.frag`, jedna pod drugą (dwie do trzeciej części M7) | pliki są wklejane w tej kolejności. Tutaj kolejność nie ma znaczenia dla kompilacji, bo żaden z trzech plików nie używa niczego z pozostałych: `normal_map.glsl` deklaruje własny sampler, własny przełącznik i jedną funkcję, a `shadows.glsl` własne samplery i uniformy obu świateł (piętnaście uniformów, od piątej części M7 także latarki) i cztery funkcje. Łączy je dopiero `main` w `lit.frag`, które woła `moonFacing` z pierwszego pliku i `moonShadow` z trzeciego (oraz `flashlightShadow`). Kolejność ma znaczenie dla numerów: pierwszy dołączony plik dostaje numer 1, drugi 2, trzeci 3 |
 | `#version 410 core` jest pierwszą linią obu shaderów i stoi **przed** `#include` | specyfikacja wymaga `#version` przed wszystkim poza komentarzami i białymi znakami. Preprocesor tego pilnuje: `#include` przed `#version` w pliku shadera jest błędem (sekcja 5.6) |
 | nazwa w cudzysłowach: `"common/lighting.glsl"` | ścieżka względem katalogu pliku shadera, czyli `assets/shaders` (sekcja 5.8). Zapis z nawiasami ostrymi, `<plik>`, nie jest obsługiwany |
 | `lighting.glsl` **nie ma** linii `#version` | po wklejeniu stałaby w środku tekstu, a nie na początku. Preprocesor zgłasza `#version` w pliku dołączanym jako błąd (sekcja 5.6) |
@@ -776,7 +777,7 @@ Legenda jest zabezpieczeniem na nieznany format: gdyby sterownik napisał numer 
 
 ### 5.10 Przykład: `lit.frag` po rozwinięciu
 
-Liczby pochodzą z plików w repozytorium w stanie po czwartej części M7 (do trzeciej części `lit.frag` miał dwa dołączenia, a przykład był krótszy): `lit.frag` ma 80 linii, a linie `#include` stoją w liniach 9, 12 i 15. `common/lighting.glsl` ma 180 linii, `common/normal_map.glsl` 53, `common/shadows.glsl` 120. `ShaderSource::files` po rozwinięciu to `{"lit.frag", "common/lighting.glsl", "common/normal_map.glsl", "common/shadows.glsl"}`. Tekst, który dostaje `glShaderSource` (środki plików skrócone wielokropkiem, numery po lewej to **fizyczne** linie sklejonego tekstu i nie należą do niego). Tabela jest policzona z kodu `appendFile` i z plików, nie odczytana z działającego programu:
+Liczby pochodzą z plików w repozytorium w stanie po M8, części 1 (do trzeciej części M7 `lit.frag` miał dwa dołączenia, a przykład był krótszy; po czwartej części M7 plik miał 80 linii, a trzy pliki dołączane 180, 53 i 120 linii): `lit.frag` ma 94 linie, a linie `#include` stoją w liniach 9, 12 i 15. `common/lighting.glsl` ma 201 linii, `common/normal_map.glsl` 53, `common/shadows.glsl` 191. `ShaderSource::files` po rozwinięciu to `{"lit.frag", "common/lighting.glsl", "common/normal_map.glsl", "common/shadows.glsl"}`. Tekst, który dostaje `glShaderSource` (środki plików skrócone wielokropkiem, numery po lewej to **fizyczne** linie sklejonego tekstu i nie należą do niego). Tabela jest policzona z kodu `appendFile` i z plików, nie odczytana z działającego programu:
 
 ```text
   1  #version 410 core
@@ -789,51 +790,51 @@ Liczby pochodzą z plików w repozytorium w stanie po czwartej części M7 (do t
 ...
  19  const int MAX_POINT_LIGHTS = 16;
 ...
- 81      return max(dot(normal, toLight), 0.0);
+ 85      return max(dot(normal, toLight), 0.0);
 ...
-189  }
-190  #line 10 0
-191  // The normal map and the function surfaceNormal. The same file is included by
-192  // textured.frag, for its debug view of the normals.
-193  #line 1 2
-194  // Normal mapping shared by lit.frag and textured.frag: the sampler of the normal map, its
+210  }
+211  #line 10 0
+212  // The normal map and the function surfaceNormal. The same file is included by
+213  // textured.frag, for its debug view of the normals.
+214  #line 1 2
+215  // Normal mapping shared by lit.frag and textured.frag: the sampler of the normal map, its
 ...
-246  }
-247  #line 13 0
-248  // The shadow map of the moon and the function moonShadow. The same file is included by
-249  // gouraud.frag and grass.frag.
-250  #line 1 3
-251  // Shadow mapping shared by lit.frag, gouraud.frag and grass.frag: the shadow map of the
+267  }
+268  #line 13 0
+269  // The shadow maps of the moon and of the flashlight and the functions moonShadow and
+270  // flashlightShadow. The same file is included by gouraud.frag and grass.frag.
+271  #line 1 3
+272  // Shadow mapping shared by lit.frag, gouraud.frag and grass.frag: the shadow maps of the
 ...
-370  }
-371  #line 16 0
-372
-373  // Inputs from the vertex shader, already blended for this fragment.
-374  in vec2 vUv;            // texture coordinate
+462  }
+463  #line 16 0
+464
+465  // Inputs from the vertex shader, already blended for this fragment.
+466  in vec2 vUv;            // texture coordinate
 ...
-436  }
+542  }
 ```
 
 | Fizyczna linia | Co to jest | Jak liczy ją sterownik po dyrektywach |
 |---|---|---|
 | od 1 do 8 | linie od 1 do 8 pliku `lit.frag` | napis 0, linie od 1 do 8 |
 | 9 | `#line 1 1`, w miejscu linii `#include` | dyrektywa |
-| od 10 do 189 | 180 linii pliku `lighting.glsl` | napis 1, linie od 1 do 180 |
-| 81 | linia 72 pliku `lighting.glsl` (9 + 72) | napis 1, linia 72 |
-| 190 | `#line 10 0`, powrót do `lit.frag` | dyrektywa |
-| 191 i 192 | linie 10 i 11 pliku `lit.frag` (komentarz nad drugim dołączeniem) | napis 0, linie 10 i 11 |
-| 193 | `#line 1 2`, w miejscu drugiej linii `#include` | dyrektywa |
-| od 194 do 246 | 53 linie pliku `normal_map.glsl` | napis 2, linie od 1 do 53 |
-| 247 | `#line 13 0` | dyrektywa |
-| 248 i 249 | linie 13 i 14 pliku `lit.frag` (komentarz nad trzecim dołączeniem) | napis 0, linie 13 i 14 |
-| 250 | `#line 1 3`, w miejscu trzeciej linii `#include` | dyrektywa |
-| od 251 do 370 | 120 linii pliku `shadows.glsl` | napis 3, linie od 1 do 120 |
-| 371 | `#line 16 0` | dyrektywa |
-| od 372 do 436 | linie od 16 do 80 pliku `lit.frag` (65 linii) | napis 0, linie od 16 do 80 |
+| od 10 do 210 | 201 linii pliku `lighting.glsl` | napis 1, linie od 1 do 201 |
+| 85 | linia 76 pliku `lighting.glsl` (9 + 76) | napis 1, linia 76 |
+| 211 | `#line 10 0`, powrót do `lit.frag` | dyrektywa |
+| 212 i 213 | linie 10 i 11 pliku `lit.frag` (komentarz nad drugim dołączeniem) | napis 0, linie 10 i 11 |
+| 214 | `#line 1 2`, w miejscu drugiej linii `#include` | dyrektywa |
+| od 215 do 267 | 53 linie pliku `normal_map.glsl` | napis 2, linie od 1 do 53 |
+| 268 | `#line 13 0` | dyrektywa |
+| 269 i 270 | linie 13 i 14 pliku `lit.frag` (komentarz nad trzecim dołączeniem) | napis 0, linie 13 i 14 |
+| 271 | `#line 1 3`, w miejscu trzeciej linii `#include` | dyrektywa |
+| od 272 do 462 | 191 linii pliku `shadows.glsl` | napis 3, linie od 1 do 191 |
+| 463 | `#line 16 0` | dyrektywa |
+| od 464 do 542 | linie od 16 do 94 pliku `lit.frag` (79 linii) | napis 0, linie od 16 do 94 |
 
-Razem 436 linii: 80 linii `lit.frag` bez trzech linii `#include`, plus 180, plus 53, plus 120, plus sześć dyrektyw. Fizyczne numery różnią się od numerów z sekcji 2.2 (80 i 368), bo tam liczone było samo wklejenie, a tutaj w tekście stoi jeszcze sześć dyrektyw: linia 72 pliku `lighting.glsl` jest fizyczną linią 81, a linia 18 pliku `lit.frag` (`in vec2 vUv;`) fizyczną linią 374. Żadnej z tych liczb sterownik nie wypisuje: dzięki dyrektywom podaje 72 i 18. Do trzeciej części M7, z dwoma dołączeniami i krótszymi plikami, ten sam rachunek dawał 269 linii i cztery dyrektywy.
+Razem 542 linie: 94 linie `lit.frag` bez trzech linii `#include`, plus 201, plus 53, plus 191, plus sześć dyrektyw. Fizyczne numery różnią się od numerów z sekcji 2.2 (84 i 460), bo tam liczone było samo wklejenie, a tutaj w tekście stoi jeszcze sześć dyrektyw: linia 76 pliku `lighting.glsl` jest fizyczną linią 85, a linia 18 pliku `lit.frag` (`in vec2 vUv;`) fizyczną linią 466. Żadnej z tych liczb sterownik nie wypisuje: dzięki dyrektywom podaje 76 i 18. Po czwartej części M7 ten sam rachunek dawał 436 linii (80 + 180 + 53 + 120 + sześć dyrektyw), a do trzeciej części M7, z dwoma dołączeniami i krótszymi plikami, 269 linii i cztery dyrektywy.
 
-W `gouraud.vert` (62 linie) `#include` stoi w linii 8, więc dyrektywy to `#line 1 1` i `#line 9 0`, a lista plików to `{"gouraud.vert", "common/lighting.glsl"}`. `gouraud.frag` (54 linie) ma od czwartej części M7 to samo z innym plikiem: `#include` w linii 8, te same dwie dyrektywy i lista `{"gouraud.frag", "common/shadows.glsl"}`. W `grass.frag` (79 linii) linie `#include` stoją w liniach 8, 10 i 13: sześć dyrektyw (`#line 1 1`, `#line 9 0`, `#line 1 2`, `#line 11 0`, `#line 1 3`, `#line 14 0`) i lista `{"grass.frag", "common/lighting.glsl", "common/color.glsl", "common/shadows.glsl"}`. W `textured.frag` (76 linii) stoją w liniach 10 i 12: dyrektywy to `#line 1 1`, `#line 11 0`, `#line 1 2` i `#line 13 0`, a lista plików to `{"textured.frag", "common/normal_map.glsl", "common/color.glsl"}`. Numery są nadawane osobno dla każdego shadera: `lighting.glsl` ma we wszystkich trzech swoich shaderach numer 1, bo w każdym jest pierwszym dołączonym, `normal_map.glsl` ma numer 2 w `lit.frag` i numer 1 w `textured.frag`, a `shadows.glsl` numer 3 w `lit.frag` i w `grass.frag`, ale 1 w `gouraud.frag`. Te liczby też są policzone z plików, nie odczytane z działającego programu.
+W `gouraud.vert` (72 linie) `#include` stoi w linii 8, więc dyrektywy to `#line 1 1` i `#line 9 0`, a lista plików to `{"gouraud.vert", "common/lighting.glsl"}`. `gouraud.frag` (65 linii) ma od czwartej części M7 to samo z innym plikiem: `#include` w linii 8, te same dwie dyrektywy i lista `{"gouraud.frag", "common/shadows.glsl"}`. W `grass.frag` (86 linii) linie `#include` stoją w liniach 8, 10 i 14: sześć dyrektyw (`#line 1 1`, `#line 9 0`, `#line 1 2`, `#line 11 0`, `#line 1 3`, `#line 15 0`) i lista `{"grass.frag", "common/lighting.glsl", "common/color.glsl", "common/shadows.glsl"}`. W `textured.frag` (76 linii) stoją w liniach 10 i 12: dyrektywy to `#line 1 1`, `#line 11 0`, `#line 1 2` i `#line 13 0`, a lista plików to `{"textured.frag", "common/normal_map.glsl", "common/color.glsl"}`. Numery są nadawane osobno dla każdego shadera: `lighting.glsl` ma we wszystkich czterech swoich shaderach (`lit.frag`, `gouraud.vert`, `grass.frag`, `reflect.frag`) numer 1, bo w każdym jest pierwszym dołączonym, `normal_map.glsl` ma numer 2 w `lit.frag` i w `reflect.frag` oraz numer 1 w `textured.frag`, a `shadows.glsl` numer 3 w `lit.frag`, `grass.frag` i `reflect.frag`, ale 1 w `gouraud.frag`. Te liczby też są policzone z plików, nie odczytane z działającego programu.
 
 **Zmierzony błąd.** Na Windowsie (2026-10-05, sterownik NVIDIA 610.74) w pliku `common/lighting.glsl` został celowo wprowadzony błąd składni. Surowa linia sterownika i linia po `nameSourceFiles`:
 
@@ -853,7 +854,7 @@ common/lighting.glsl(63) : error C0000: syntax error, unexpected ';', expecting 
 Source files: 0 = lit.frag, 1 = common/lighting.glsl
 ```
 
-Pomiar pochodzi z pierwszej części M4, gdy `lit.frag` dołączał jeden plik, a `common/lighting.glsl` miał 158 linii. Do trzeciej części M7 ten plik się nie zmieniał. W czwartej urósł do 180 linii (dłuższy nagłówek, dwa nowe pola struktury `Lighting`, funkcja `moonFacing`), więc linia kodu, która w chwili pomiaru miała numer 63, ma dziś numer 72 i ten sam błąd byłby zgłoszony jako `common/lighting.glsl(72)`. Dzisiejszy `lit.frag` dołącza trzy pliki, więc jego legenda ma według kodu cztery pozycje: `Source files: 0 = lit.frag, 1 = common/lighting.glsl, 2 = common/normal_map.glsl, 3 = common/shadows.glsl`. Numer 1 się nie zmienia, bo `lighting.glsl` jest nadal pierwszym dołączeniem. Tego błędu z dzisiejszymi plikami nie powtarzałem, a błędu wstawionego do `common/normal_map.glsl` nikt jeszcze nie oglądał: komunikat zaczynałby się od `common/normal_map.glsl(...)` w programie `lit` (numer 2) i w programie `textured` (numer 1). To samo dotyczy `common/shadows.glsl`: błąd w nim zaczynałby się od `common/shadows.glsl(...)` w trzech programach naraz, `lit`, `gouraud` i `grass`.
+Pomiar pochodzi z pierwszej części M4, gdy `lit.frag` dołączał jeden plik, a `common/lighting.glsl` miał 158 linii. Do trzeciej części M7 ten plik się nie zmieniał. W czwartej urósł do 180 linii (dłuższy nagłówek, dwa nowe pola struktury `Lighting`, funkcja `moonFacing`), a potem do dzisiejszych 201 (M7, część 5 i M8, część 1), więc linia kodu, która w chwili pomiaru miała numer 63, miała po czwartej części numer 72, a dziś ma numer 76, i ten sam błąd byłby zgłoszony jako `common/lighting.glsl(76)`. Dzisiejszy `lit.frag` dołącza trzy pliki, więc jego legenda ma według kodu cztery pozycje: `Source files: 0 = lit.frag, 1 = common/lighting.glsl, 2 = common/normal_map.glsl, 3 = common/shadows.glsl`. Numer 1 się nie zmienia, bo `lighting.glsl` jest nadal pierwszym dołączeniem. Tego błędu z dzisiejszymi plikami nie powtarzałem, a błędu wstawionego do `common/normal_map.glsl` nikt jeszcze nie oglądał: komunikat zaczynałby się od `common/normal_map.glsl(...)` w programie `lit` (numer 2) i w programie `textured` (numer 1). To samo dotyczy `common/shadows.glsl`: błąd w nim zaczynałby się od `common/shadows.glsl(...)` w trzech programach naraz, `lit`, `gouraud` i `grass`.
 
 Ten sam zepsuty plik dołącza `gouraud.vert`, więc program `gouraud` dostaje własny komunikat z pierwszą linią `Shader compilation failed: ...gouraud.vert` i legendą `Source files: 0 = gouraud.vert, 1 = common/lighting.glsl`. Od drugiej części M6 dołącza go też `grass.frag`, więc trzeci komunikat dostaje program `grass`, z legendą, która dziś ma cztery pozycje: `Source files: 0 = grass.frag, 1 = common/lighting.glsl, 2 = common/color.glsl, 3 = common/shadows.glsl` (do M6 miała dwie). To wnioski z kodu.
 
@@ -989,7 +990,7 @@ Stan sprawdzenia: taki stan panelu (błąd z nazwą `common/lighting.glsl`, labi
 2. **Zagnieżdżenie na kartce.** `main.frag` ma 6 linii i w linii 4 dołącza `a.glsl`. `a.glsl` ma 5 linii i w linii 2 dołącza `b.glsl`, które ma 3 linie. Wypisz wszystkie dyrektywy `#line` w kolejności, w jakiej stoją w wyniku, i stan stosu `openFiles` w chwili wypisywania każdej z nich. Sprawdź się na teście 5.
 3. **Nowy test.** Dopisz przypadek testowy dla pułapki 3: `a.glsl` o treści `#include "./a.glsl"`, w mapie plików pod oboma kluczami `a.glsl` i `./a.glsl`. Zanim uruchomisz, zapisz na kartce oczekiwany tekst błędu. Czy się zgadza?
 4. **Komentarz blokowy.** Dopisz test: plik shadera z liniami `#version 410 core`, `/*`, `#include "a.glsl"`, `*/`, `float b;` i plik `a.glsl` z jedną linią. Jaki tekst wychodzi? Jaki numer linii dostałby błąd w `float b;` od sterownika i jaki jest prawdziwy?
-5. **Błąd w pliku dołączanym.** Przy działającym programie usuń średnik na końcu linii 72 (`return max(dot(normal, toLight), 0.0);`, do trzeciej części M7 linia 63) w `common/lighting.glsl` (na Windowsie odśwież kopię) i naciśnij `Reload shaders`. Które programy pokazują `FAILED`? Która nazwa stoi w każdej z trzech pierwszych linii czerwonego tekstu i dlaczego są różne? Co rysuje labirynt? Przywróć plik i przeładuj.
+5. **Błąd w pliku dołączanym.** Przy działającym programie usuń średnik na końcu linii 76 (`return max(dot(normal, toLight), 0.0);`, po czwartej części M7 linia 72, do trzeciej części M7 linia 63) w `common/lighting.glsl` (na Windowsie odśwież kopię) i naciśnij `Reload shaders`. Które programy pokazują `FAILED`? Która nazwa stoi w każdej z czterech pierwszych linii czerwonego tekstu (`lit`, `gouraud`, `grass`, `reflect`) i dlaczego są różne? Co rysuje labirynt? Przywróć plik i przeładuj.
 6. **Brak pliku dołączanego.** Zmień w `lit.frag` nazwę w `#include` na `"common/nie_ma.glsl"` i przeładuj. Jaki przedrostek ma komunikat i czym różni się od komunikatu z ćwiczenia 5? Czy sterownik w ogóle zobaczył ten shader? Wskaż w `compileShader` linię, która to rozstrzyga.
 7. **Strażnik dołączeń.** Dołącz `lighting.glsl` w `lit.frag` dwa razy i przeczytaj błąd sterownika. Potem owiń treść `lighting.glsl` w `#ifndef LIGHTING_GLSL`, `#define LIGHTING_GLSL`, `#endif` i przeładuj. Dlaczego to działa, skoro mój preprocesor wkleja plik dwa razy? Kto wykonuje te trzy dyrektywy?
 
@@ -999,7 +1000,7 @@ Stan sprawdzenia: taki stan panelu (błąd z nazwą `common/lighting.glsl`, labi
    Kompilator GLSL jest w sterowniku i dostaje przez `glShaderSource` tekst w pamięci, a nie plik. Nie zna systemu plików ani katalogu, z którego tekst pochodzi. Lista dyrektyw w specyfikacji (sekcja 3.3) nie zawiera `#include`, a dyrektywa spoza listy czyni shader niepoprawnym.
 
 2. **Po co projektowi dołączanie plików?**
-   Programy `lit` i `gouraud` liczą światło tym samym kodem, w dwóch różnych etapach potoku. Kod jest w jednym pliku, `common/lighting.glsl`, dołączanym przez `lit.frag` i `gouraud.vert`. Dzięki temu oba programy różnią się tylko miejscem wywołania funkcji `computeLighting`. Od drugiej części M6 ten sam plik dołącza trzeci program, `grass` (w `grass.frag`): trawa bierze z niego blok świateł i tę samą funkcję, z której używa tylko części rozproszonej. Od czwartej części M7 tak samo dzielony jest kod cienia: `common/shadows.glsl` dołączają `lit.frag`, `gouraud.frag` i `grass.frag`, więc wszystkie trzy programy sprawdzają cień księżyca tą samą funkcją `moonShadow`.
+   Programy `lit` i `gouraud` liczą światło tym samym kodem, w dwóch różnych etapach potoku. Kod jest w jednym pliku, `common/lighting.glsl`, dołączanym przez `lit.frag` i `gouraud.vert` (a od innych części także przez `grass.frag` i `reflect.frag`). Dzięki temu oba programy różnią się tylko miejscem wywołania funkcji `computeLighting`. Od drugiej części M6 ten sam plik dołącza trzeci program, `grass` (w `grass.frag`): trawa bierze z niego blok świateł i tę samą funkcję, z której używa tylko części rozproszonej. Od czwartej części M7 tak samo dzielony jest kod cienia: `common/shadows.glsl` dołączają `lit.frag`, `gouraud.frag` i `grass.frag`, więc wszystkie trzy programy sprawdzają cień księżyca tą samą funkcją `moonShadow`.
 
 3. **Co to jest numer napisu źródłowego?**
    Numer napisu w tablicy podanej do `glShaderSource`, liczony od 0. Sterownik wypisuje go w błędach obok numeru linii. Podaję jeden napis, więc bez dyrektyw `#line` jest to zawsze 0. Dyrektywa `#line L N` ustawia go na dowolną liczbę `N`, której ja używam jako numeru pliku.

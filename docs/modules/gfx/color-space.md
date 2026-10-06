@@ -148,11 +148,11 @@ Reguła: **sRGB jest obraz, który ktoś oglądał na ekranie i dobierał na oko
 
 | Tekstura | `ColorSpace` | Format wewnętrzny | Kto wybiera | Dlaczego |
 |---|---|---|---|---|
-| `wall_stone.png`, `gate_wood.png`, `crystal.png` (`map_Kd` materiałów) | `Srgb` | `GL_SRGB8` | `AssetCache::model` | kolor powierzchni, namalowany dla ekranu |
+| `wall_stone.png`, `gate_wood.png`, `crystal.png` i, od M8, części 2, `lever_iron.png`, `lever_brass.png`, `note_paper.png` (`map_Kd` materiałów) | `Srgb` | `GL_SRGB8` | `AssetCache::model` | kolor powierzchni, namalowany dla ekranu |
 | `ground.png` | `Srgb` | `GL_SRGB8` | `TerrainRenderer` | kolor ziemi |
 | sześć ścian nieba `assets/skybox/*.png` | `Srgb` | `GL_SRGB8` | `loadSkyCubemap` w `Skybox.cpp` | niebo jest obrazem dobranym na oko (komentarz w `tools/blender/make_skybox.py`) |
 | biała tekstura zastępcza 1 x 1 | `Srgb` | `GL_SRGB8` | konstruktor `AssetCache` | zastępuje obrazy koloru, więc ma ich rodzaj. Biel to 1 w obu przestrzeniach |
-| `wall_stone_normal.png`, `gate_wood_normal.png`, `crystal_normal.png`, `ground_normal.png` | `Linear` | `GL_RGB8` | `AssetCache::model`, `TerrainRenderer` | bajty są **kierunkami**, nie kolorami |
+| `wall_stone_normal.png`, `gate_wood_normal.png`, `crystal_normal.png`, `ground_normal.png` i, od M8, części 2, `lever_iron_normal.png`, `lever_brass_normal.png`, `note_paper_normal.png` (siedem) | `Linear` | `GL_RGB8` | `AssetCache::model`, `TerrainRenderer` | bajty są **kierunkami**, nie kolorami |
 | płaska mapa normalnych zastępcza 1 x 1 | `Linear` | `GL_RGB8` | konstruktor `AssetCache` | teksel `(128, 128, 255)` ma znaczyć kierunek `(0, 0, 1)` |
 | `heightmap.png` | nie dotyczy | nie jest teksturą OpenGL | `loadHeightmap` w `NightMazeApp.cpp` | bajty są **wysokościami**. Obraz jest czytany na procesorze (`assets::loadImage`, potem `heightmapFromImage`) i nigdy nie trafia na kartę, więc nikt go nie dekoduje |
 | tekstura koloru bufora sceny | nie dotyczy | `GL_RGBA16F` | `PostProcess::beginScene` | trzyma wynik rachunku, liniowy. Nie jest formatem sRGB, więc przy odczycie nic się nie dzieje |
@@ -191,7 +191,7 @@ Czego się **nie** przelicza i dlaczego:
 | Co | Dlaczego bez przeliczenia |
 |---|---|
 | intensywności świateł (`moonIntensity`, `flashlightIntensity`, `pointIntensity`), `CRYSTAL_GLOW_STRENGTH`, `uSpecularStrength`, `uBrightness` nieba, ekspozycja | to mnożniki, nie kolory. Mnożą wartość już liniową |
-| `Kd` materiału (uniform `uTint`) | wszystkie pięć materiałów gry ma `Kd 1.0 1.0 1.0`, a biel to 1 w obu przestrzeniach. `uTint` mnoży więc liniowy kolor tekstury bez przeliczenia. **To znane ograniczenie**: model z kolorowym `Kd` dostałby odcień ciemniejszy, niż widać w Blenderze (komentarz przy `drawModel` w `ModelDraw.hpp`) |
+| `Kd` materiału (uniform `uTint`) | wszystkie osiem materiałów gry ma `Kd 1.0 1.0 1.0`, a biel to 1 w obu przestrzeniach. `uTint` mnoży więc liniowy kolor tekstury bez przeliczenia. **To znane ograniczenie**: model z kolorowym `Kd` dostałby odcień ciemniejszy, niż widać w Blenderze (komentarz przy `drawModel` w `ModelDraw.hpp`) |
 | kolory motywu ImGui i HUD | ImGui rysuje po ostatnim przebiegu, prosto do okna. Jego kolory nigdy nie wchodzą do bufora liniowego, więc trafiają na ekran takie, jakie zapisano w motywie |
 
 ### 2.9 Dokładna krzywa a potęga 2,2
@@ -534,7 +534,7 @@ Moduł nie ma własnego panelu. Jego skutki widać w czterech:
 
 | Panel | Kontrolka | Związek z przestrzenią kolorów |
 |---|---|---|
-| **Assets** | lista `Textures` | przy każdej teksturze stoi `sRGB` albo `linear`: wartość `Texture2D::colorSpace()`. Cztery obrazy koloru mają `sRGB`, cztery mapy normalnych `linear`. Podgląd tekstury sRGB jest czytany bez dekodowania, żeby wyglądał jak plik ([`../debug-ui.md`](../debug-ui.md)) |
+| **Assets** | lista `Textures` | przy każdej teksturze stoi `sRGB` albo `linear`: wartość `Texture2D::colorSpace()`. Siedem obrazów koloru ma `sRGB`, siedem map normalnych `linear` (do M8, części 2 po cztery). Podgląd tekstury sRGB jest czytany bez dekodowania, żeby wyglądał jak plik ([`../debug-ui.md`](../debug-ui.md)) |
 | **Lights** | selektory koloru i suwaki intensywności | selektor pokazuje i zapisuje liczby sRGB. `buildLightSet` przelicza je co klatkę. Suwaki intensywności są mnożnikami wartości liniowej |
 | **Renderer** | `Clear color`, `Sky brightness` | kolor tła jest liczbą sRGB, przeliczaną w `onRender`. Jasność nieba mnoży liniowy kolor z tekstury sześciennej |
 | **Framebuffers** | `Tone mapping`, `Exposure`, podgląd `HDR colour` (w pierwszej części M7 podpisany `Colour (HDR, cut off at 1)`) | tryb `None (clamp)` z ekspozycją 1 pokazuje samo kodowanie, bez krzywej, pod warunkiem że trzy efekty przebiegu składającego są wyłączone: pole `Bloom` (od drugiej części M7) oraz pola `Fog` i `Vignette` w zakładce `Fog and vignette` (od trzeciej). Wszystkie trzy startują zaznaczone. Podgląd koloru to zawartość bufora liniowego po samym `linearToSrgb`, bez żadnego z tych efektów ([`../renderer/post-process.md`](../renderer/post-process.md)) |
@@ -597,7 +597,7 @@ Zmiany w shaderach widać po `Reload shaders` w panelu Shaders, bez przebudowy. 
    Bajty na karcie są te same. Różni się odczyt: z `GL_SRGB8` shader dostaje wartość zdekodowaną do liniowej. Alfa w `GL_SRGB8_ALPHA8` nie jest dekodowana.
 
 8. **Które tekstury gry są sRGB, a które liniowe?**
-   sRGB: obrazy koloru ścian, bramy, kryształów i ziemi, sześć ścian nieba, biała tekstura zastępcza. Liniowe: cztery mapy normalnych i płaska mapa zastępcza. Mapa wysokości nie jest teksturą OpenGL, czyta ją procesor.
+   sRGB: obrazy koloru ścian, bramy, kryształów, ziemi, dźwigni i kartki, sześć ścian nieba, biała tekstura zastępcza. Liniowe: siedem map normalnych i płaska mapa zastępcza. Mapa wysokości nie jest teksturą OpenGL, czyta ją procesor.
 
 9. **Dlaczego mapa normalnych nie może być sRGB?**
    Jej bajty są kierunkami. Bajt 128 ma znaczyć składową 0. Zdekodowany jako sRGB dałby 0,216, czyli po rozkodowaniu -0,57: każda normalna byłaby wychylona i oświetlenie błędne.

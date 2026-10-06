@@ -508,7 +508,7 @@ Wynik `sky * uBrightness` nie jest przycinany w shaderze i od M7 nie przycina go
 
 ### 4.3 Strona C++: kto ustawia uniformy
 
-Wszystkie pięć uniformów programu ustawia jedna funkcja, `Skybox::draw` (sekcja 5.5), w każdej klatce. Nazwy są w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp):
+Wszystkie pięć uniformów programu nieba (dwa w `skybox.vert`, trzy w `skybox.frag`) ustawia jedna funkcja, `Skybox::draw` (sekcja 5.5), w każdej klatce. Nazwy są w [`src/game/ShaderUniforms.hpp`](../../../src/game/ShaderUniforms.hpp):
 
 | Uniform w GLSL | Stała w C++ | Setter | Wartość |
 |---|---|---|---|
@@ -518,7 +518,7 @@ Wszystkie pięć uniformów programu ustawia jedna funkcja, `Skybox::draw` (sekc
 | `uViewMode` | `VIEW_MODE_UNIFORM` | `setInt` | `static_cast<int>(viewMode)` |
 | `uSkybox` | `SKYBOX_UNIFORM` | `setInt` | `SKYBOX_TEXTURE_UNIT`, czyli 0 |
 
-Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Po tej części nagłówek miał szesnaście nazw zwykłych uniformów pięciu programów. Druga część M6 dodała cztery uniformy trawy (`uTime`, `uBladeHeight`, `uWindStrength`, `uLit`), a `uViewMode` czyta od niej także `grass.frag`. Pierwsza część M7 dodała osiem nazw dla programów `composite` i `preview` ([`post-process.md`](post-process.md), sekcja 4.5), więc po pierwszej części M7 było dwadzieścia osiem nazw zwykłych uniformów dla ośmiu programów (i osobno nazwa bloku `LightBlock`). Druga część M7 dodała osiem stałych dla bloomu: po niej było trzydzieści sześć stałych z nazwami dla dziesięciu programów. Trzecia część M7 dodała jedenaście nazw dla mgły i winiety, wszystkie dla programu `composite`: po niej było ich czterdzieści siedem, nadal dla dziesięciu programów. Czwarta część M7 (cienie księżyca, 2026-10-05) nie dopisała żadnej pojedynczej stałej z nazwą. Dodała strukturę `ShadowUniformNames` i jedną stałą tego typu, `MOON_SHADOW_UNIFORMS`, która trzyma **siedem** nazw uniformów mapy cieni księżyca (`uMoonShadowMap`, `uMoonShadowEnabled`, `uMoonShadowMatrix`, `uMoonShadowConstantBias`, `uMoonShadowSlopeBias`, `uMoonShadowPcfRadius`, `uMoonShadowStrength`) dla programów `lit`, `gouraud` i `grass`, oraz stałą `MOON_SHADOW_TEXTURE_UNIT = 3`, która jest numerem jednostki teksturującej, a nie nazwą. Jedenasty program, `shadow_depth`, nie dostał własnych nazw: używa trzech istniejących stałych macierzy (`MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM`). Dziś nagłówek ma więc czterdzieści siedem pojedynczych stałych z nazwami zwykłych uniformów, siedem nazw w `MOON_SHADOW_UNIFORMS` i osobno nazwę bloku `LightBlock`, dla jedenastu programów. Niebo nie używa żadnej z nowych.
+Dwie stałe są nowe: `SKYBOX_UNIFORM` i `SKYBOX_BRIGHTNESS_UNIFORM`. Po tej części nagłówek miał szesnaście nazw zwykłych uniformów pięciu programów. Druga część M6 dodała cztery uniformy trawy (`uTime`, `uBladeHeight`, `uWindStrength`, `uLit`), a `uViewMode` czyta od niej także `grass.frag`. Pierwsza część M7 dodała osiem nazw dla programów `composite` i `preview` ([`post-process.md`](post-process.md), sekcja 4.5), więc po pierwszej części M7 było dwadzieścia osiem nazw zwykłych uniformów dla ośmiu programów (i osobno nazwa bloku `LightBlock`). Druga część M7 dodała osiem stałych dla bloomu: po niej było trzydzieści sześć stałych z nazwami dla dziesięciu programów. Trzecia część M7 dodała jedenaście nazw dla mgły i winiety, wszystkie dla programu `composite`: po niej było ich czterdzieści siedem, nadal dla dziesięciu programów. Czwarta część M7 (cienie księżyca, 2026-10-05) nie dopisała żadnej pojedynczej stałej z nazwą. Dodała strukturę `ShadowUniformNames` i jedną stałą tego typu, `MOON_SHADOW_UNIFORMS`, która trzyma **siedem** nazw uniformów mapy cieni księżyca (`uMoonShadowMap`, `uMoonShadowEnabled`, `uMoonShadowMatrix`, `uMoonShadowConstantBias`, `uMoonShadowSlopeBias`, `uMoonShadowPcfRadius`, `uMoonShadowStrength`) dla programów `lit`, `gouraud` i `grass`, oraz stałą `MOON_SHADOW_TEXTURE_UNIT = 3`, która jest numerem jednostki teksturującej, a nie nazwą. Jedenasty program, `shadow_depth`, nie dostał własnych nazw: używa trzech istniejących stałych macierzy (`MODEL_UNIFORM`, `VIEW_UNIFORM`, `PROJECTION_UNIFORM`). Dziś nagłówek ma więc czterdzieści siedem pojedynczych stałych z nazwami zwykłych uniformów, siedem nazw w `MOON_SHADOW_UNIFORMS` i osobno nazwę bloku `LightBlock`, dla jedenastu programów. Niebo nie używa żadnej z nowych. **Uwaga (2026-10-06): rachunek wyżej kończy się na czwartej części M7. Dziś nagłówek `ShaderUniforms.hpp` ma 64 stałe `const char*` z nazwami zwykłych uniformów (policzone w pliku; doszły m.in. nazwy minimapy, uniformy programu `reflect` i `uLit` jego trybu) i `LIGHT_BLOCK_NAME`, plus dwie stałe typu `ShadowUniformNames` (księżyca i latarki) i numery jednostek tekstur 3 i 4 (mapy cieni) oraz 5 (sześcian nieba w programie `reflect`), dla czternastu programów.**
 
 ## 5. Kod w projekcie
 
@@ -731,8 +731,14 @@ Do M6 niebo było ostatnią rzeczą w `onRender` i funkcja kończyła się zaraz
 ```cpp
     drawMaze(view, projection);
     drawGrass(view, projection);
+    // The reflection pass: the crystals and the puddles, which show the sky. They are
+    // opaque and write depth like the walls, so they belong before the sky as well.
+    drawReflections(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
+    }
+    if (m_pickDebug.drawShapes) {
+        drawPickLines(view, projection);
     }
 
     // The sky comes LAST, after everything that writes depth. It is drawn at the largest
@@ -754,7 +760,7 @@ Do M6 niebo było ostatnią rzeczą w `onRender` i funkcja kończyła się zaraz
 
 | Linia | Znaczenie |
 |---|---|
-| miejsce: po `drawMaze`, po `drawGrass` (od drugiej części M6) i po `drawColliderLines` | po wszystkim, co zapisuje głębię: po terenie, ścianach, bramie, kryształach i trawie. Linie kolizji też ją zapisują, więc niebo ich nie zamalowuje |
+| miejsce: po `drawMaze`, po `drawGrass` (od drugiej części M6), po `drawReflections` (od M8, części 1) i po liniach (`drawColliderLines`, a od M8, części 2, `drawPickLines`) | po wszystkim, co zapisuje głębię: po terenie, ścianach, bramie, dźwigniach i kartkach, trawie oraz po kryształach i kałużach z przebiegu odbić (kryształy rysuje `drawReflections` zamiast `drawMaze`, gdy environment mapping jest włączony). Linie kolizji i promienia też ją zapisują, więc niebo ich nie zamalowuje. |
 | komentarz nad `if` | mówi trzy rzeczy. Niebo jest na największej głębi i przechodzi test tylko tam, gdzie nic nie narysowano. Ściany i wzgórza są już w buforze głębi, więc karta **może** odrzucić zasłonięte fragmenty nieba przed uruchomieniem `skybox.frag` (wczesny test głębi, dozwolony tu, bo shader nie używa `discard` i nie zapisuje głębi). Obraz byłby ten sam przy niebie narysowanym wcześniej, a po niebie musiałoby stać tylko coś, co głębi nie zapisuje, na przykład efekt przezroczysty (sekcja 2.7) |
 | `if (m_skyboxSettings.enabled)` | cały przełącznik z PRD: jedno pole logiczne. Wyłączone niebo to brak jednego wywołania rysującego, a tłem jest znów kolor czyszczenia |
 | `view`, `projection` | te same zmienne, z którymi narysowane zostały teren, labirynt i trawa |
@@ -822,7 +828,7 @@ Czego testy **nie** sprawdzają:
 - **Po pierwszej części M7** (zgłoszone dla Windowsa, 2026-10-05): przy porównaniu z poprzednim commitem jasność nieba różni się celowo (nowa wartość startowa). Osobnego sprawdzenia nieba po zmianie na teksturę sRGB i bufor HDR nie zgłoszono.
 - **Obraz** (zgłoszone, zrzuty ekranu z Windowsa): księżyc w środku ekranu przy kamerze na yaw 205 i pitch 50, horyzont poziomy, bez widocznych szwów.
 - **Pliki** (sprawdzone przeze mnie na plikach z repozytorium): sześć nagłówków PNG mówi 1024 x 1024, 8 bitów, RGB bez alfy. Razem 5 278 627 bajtów. Piksel księżyca jest tam, gdzie wskazuje rachunek z sekcji 2.3.
-- **Nie sprawdzone ręcznie:** kliknięcie pola `Skybox`, przeciągnięcie suwaka `Sky brightness`, `Reload shaders` (dziś przy jedenastu programach), widoki diagnostyczne nieba, wygląd nieba przy nowej jasności 2,2 i przy każdej z trzech krzywych mapowania tonów, układ paneli po zmianie wysokości. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 15.
+- **Nie sprawdzone ręcznie:** kliknięcie pola `Skybox`, przeciągnięcie suwaka `Sky brightness`, `Reload shaders` (dziś przy czternastu programach), widoki diagnostyczne nieba, wygląd nieba przy nowej jasności 2,2 i przy każdej z trzech krzywych mapowania tonów, układ paneli po zmianie wysokości. Lista do odhaczenia: [`../../guides/build-windows.md`](../../guides/build-windows.md), sekcja 15.
 - **Nie zmierzone:** czas klatki z niebem i bez, zysk z rysowania na końcu, czas wczytania sześciu plików przy starcie, powtarzalność skryptu.
 - **macOS:** nic. Kompilator GLSL Apple nie widział jeszcze `skybox.vert` ani `skybox.frag`, a niebo na ekranie Retina nie było oglądane ([`../../guides/build-macos.md`](../../guides/build-macos.md)).
 
@@ -860,7 +866,7 @@ Kontrolki, które zmieniają niebo:
 | Renderer | suwak `Sky brightness` | `uBrightness` | jasność nieba. Co dzieje się z tarczą księżyca powyżej 1, zależy od krzywej w panelu Framebuffers: ACES ściska ją łagodnie, `None` przepala do bieli (liczby pod tabelą kolorów w sekcji 4.2) |
 | Renderer | `Clear color` | `m_clearColor` | **tylko przy odznaczonym `Skybox`**: z niebem żaden piksel nie zostaje w kolorze czyszczenia |
 | Assets | lista `View mode` | `uViewMode` | `Normals as colour` i `UVs as colour` zamieniają niebo w mapę kierunków (tabela kolorów w sekcji 4.2) |
-| Shaders | `Reload shaders` | przeładowanie jedenastu programów | piąta linia panelu: `skybox.vert + skybox.frag: OK` (szósta, od drugiej części M6: `grass.vert + grass.geom + grass.frag: OK`, cztery następne, od M7: programy `composite`, `preview`, `bright` i `blur`, a jedenasta i ostatnia, od czwartej części M7: program głębi mapy cieni, `shadow_depth.vert + shadow_depth.frag`) |
+| Shaders | `Reload shaders` | przeładowanie czternastu programów (jedenastu do piątej części M7) | piąta linia panelu: `skybox.vert + skybox.frag: OK` (szósta, od drugiej części M6: `grass.vert + grass.geom + grass.frag: OK`, cztery następne, od M7: programy `composite`, `preview`, `bright` i `blur`, a jedenasta, od czwartej części M7: program głębi mapy cieni, `shadow_depth.vert + shadow_depth.frag`; dalej `minimap`, `minimap_overlay` i, od M8, części 1, czternasty, `reflect`) |
 | Framebuffers | `Exposure`, `Tone mapping` | przebieg składający | niebo jest częścią sceny, więc ekspozycja i krzywa zmieniają je tak samo jak ściany ([`post-process.md`](post-process.md), sekcja 6) |
 | Framebuffers, zakładka `Fog and vignette` (trzecia część M7) | pole `Fog`, suwaki `Density`, `Base height`, `Height falloff`, próbnik `Fog colour` | mgła przebiegu składającego | przy ustawieniach startowych pas nieba przy horyzoncie ma kolor mgły, a księżyc i gwiazdy są czyste. `Height falloff` równe 0 daje tę samą mgłę na każdej wysokości i zakrywa całe niebo (podpowiedź suwaka: `0 gives the same fog at every height, the sky included.`). Odznaczone `Fog` razem z odznaczonym `Vignette` przywraca niebo z drugiej części M7 (sekcja 2.7, [`post-process.md`](post-process.md), sekcja 2.21) |
 | Framebuffers, zakładka `Fog and vignette` (trzecia część M7) | pole `Vignette`, suwaki `Strength`, `Radius` | winieta przebiegu składającego | niebo ciemnieje ku rogom ekranu tak samo jak reszta obrazu: winieta mnoży gotowy piksel i nie wie, co na nim jest ([`post-process.md`](post-process.md), sekcja 2.22) |

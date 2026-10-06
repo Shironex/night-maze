@@ -13,10 +13,10 @@ a od czwartej części M7 (plik `src/scene/LightSpace.cpp`) także `ortho`, `min
 `Shader::setMat4` w [`src/gfx/Shader.cpp`](../../src/gfx/Shader.cpp) woła `value_ptr`
 (sekcja 3.9), żeby wysłać macierz do shadera, a `Shader::setVec3` tak samo wysyła wektor.
 Wszystko spotyka się w `game::NightMazeApp`, które co klatkę liczy macierz widoku i macierz
-rzutowania, wysyła je do programów shaderów (macierze kamery dostaje sześć programów sceny,
-z których w jednej klatce pracują najwyżej cztery, a od czwartej części M7 siódmy program,
-`shadow_depth`, dostaje macierze widoku i rzutowania światła księżyca. Wszystkich programów
-jest dziś jedenaście) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
+rzutowania, wysyła je do programów shaderów (macierze kamery dostaje siedem programów sceny, a od
+M8, części 1 w tym `reflect`; w jednej klatce pracuje ich najwyżej pięć. Od czwartej części
+M7 ósmy program, `shadow_depth`, dostaje macierze widoku i rzutowania światła księżyca, a od
+piątej także światła latarki. Wszystkich programów jest dziś czternaście) i woła `mix` przy liczeniu pozycji oka (sekcja 3.8). Panel Camera (`src/debug/panels/CameraPanel.cpp`) woła `value_ptr`, żeby ImGui
 mogło edytować pozycję gracza. Od kamienia milowego M2 + M3 typu `glm::vec3` używają też
 kolizje (`scene::Aabb` w [`src/scene/Collider.hpp`](../../src/scene/Collider.hpp): dwa
 narożniki, dodawanie i odejmowanie wektorów, dostęp do składowej numerem, sekcja 3.2), układ
