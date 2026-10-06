@@ -645,8 +645,11 @@ void NightMazeApp::onRender(double alpha) {
 
     drawMaze(view, projection);
     drawGrass(view, projection);
-    // The reflection pass: the crystals and the puddles, which show the sky. They are
-    // opaque and write depth like the walls, so they belong before the sky as well.
+    // The reflection pass: the crystals and the puddles, which show the sky. The
+    // crystals are opaque and write depth like the walls. The puddles are blended over
+    // the ground that is already drawn and write no depth (game::PuddleRenderer), so
+    // they need the ground first. The sky comes after both: the ground under a puddle
+    // has written its depth, so the sky does not show through.
     drawReflections(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
@@ -1100,7 +1103,7 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     m_gameplayRenderer.drawCrystals(m_reflectShader, m_round,
                                     crystalEmissive() * m_environment.crystalGlowShare);
 
-    // The puddles: level mirrors. Their normal is the one of the disc (no normal map),
+    // The puddles: level mirrors. Their normal points straight up (no normal map),
     // their highlight is the one of water, and they show the mirrored sky only, more of
     // it the flatter they are looked at. The refraction ratio stays as the crystals
     // left it: with a reflect share of 1 the refracted picture is not shown.

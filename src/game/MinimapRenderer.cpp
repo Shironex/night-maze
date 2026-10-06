@@ -90,8 +90,8 @@ bool MinimapRenderer::drawMap(const gfx::Shader& shader, std::span<const Minimap
 
     // The order of the list decides what is on top, not a depth test: this framebuffer
     // has no depth to test against. No blending either: every shape is opaque and
-    // replaces what is under it. The game never switches blending on, the line says
-    // that the pass relies on it.
+    // replaces what is under it. Blending is switched off here, and not just assumed
+    // to be off: the puddle pass of the scene and the overlay of this minimap use it.
     GL_CHECK(glDisable(GL_DEPTH_TEST));
     GL_CHECK(glDisable(GL_BLEND));
 
