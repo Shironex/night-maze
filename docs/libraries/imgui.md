@@ -394,7 +394,7 @@ void DebugUI::draw(const DebugContext& context) {
 }
 ```
 
-*Uwaga (2026-10-06):* listing pokazuje `DebugUI::draw` po drugiej części M7. Od szóstej części M7 `SHADER_COUNT` jest równe 13 (doszły `shadow_depth` z czwartej części oraz `minimap` i `minimap_overlay`, a lista kończy się wpisami `&context.minimapShader` i `&context.minimapOverlayShader`), a `drawFramebuffersPanel` dostaje cztery argumenty: `(context.postProcessSettings, context.postProcess, context.minimapSettings, context.minimap.target())`. Zakładek panelu Framebuffers jest trzy (`Tone and bloom`, `Fog and vignette`, `Minimap`).
+*Uwaga (2026-10-06):* listing pokazuje `DebugUI::draw` po drugiej części M7. Od szóstej części M7 `SHADER_COUNT` jest równe 13 (doszły `shadow_depth` z czwartej części oraz `minimap` i `minimap_overlay`, a lista kończy się wpisami `&context.minimapShader` i `&context.minimapOverlayShader`), a `drawFramebuffersPanel` dostaje cztery argumenty: `(context.postProcessSettings, context.postProcess, context.minimapSettings, context.minimap.target())`. Zakładek panelu Framebuffers jest trzy (`Tone and bloom`, `Fog and vignette`, `Minimap`). Od M8, części 1, `SHADER_COUNT` jest równe 14: na końcu listy doszedł `&context.reflectShader` (program `reflect`), a `DebugContext` ma 45 pól.
 
 Parametr `context` to struktura `debug::DebugContext` z
 [`src/debug/DebugContext.hpp`](../../src/debug/DebugContext.hpp): referencje do danych, które
@@ -731,7 +731,7 @@ jedna linia w `main.cpp`. Pełna instrukcja krok po kroku jest w
 Panele z M2 + M3 używają kilkunastu funkcji ImGui, których wcześniej w projekcie nie było.
 Każdy fragment niżej jest skopiowany z pliku podanego w tabeli.
 
-**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie dwanaście paneli woła przed `Begin`
+**Pozycja i rozmiar na pierwsze uruchomienie.** Wszystkie dwanaście paneli (od M8, części 1, trzynaście: doszedł Environment) woła przed `Begin`
 jedną naszą funkcję, na przykład `placePanelOnFirstUse(RENDERER_PLACEMENT);`. Trzy wywołania
 ImGui są w niej ([`PanelLayout.cpp`](../../src/debug/PanelLayout.cpp)):
 
@@ -1361,7 +1361,7 @@ float foldedRowsHeight(int count, float gapScale) {
 | Kto woła `foldedRowsHeight` | Z czym | Po co |
 |---|---|---|
 | `placePanelOnFirstUse` | `placement.foldedRowsBefore` (0, 1, od pierwszej części M7 także 2, a od czwartej 3) i `layoutScale` | panele Terrain i Grass stają o jeden rząd pasków niżej niż Camera i Gameplay, panel Framebuffers o dwa, a panel Shadows o trzy |
-| `drawStatus` w `Hud.cpp` | `FOLDED_ROW_COUNT` (2 w M6, 3 od pierwszej części M7, 4 od czwartej) i skala ekranu | HUD staje pod wszystkimi rzędami pasków |
+| `drawStatus` w `Hud.cpp` | `FOLDED_ROW_COUNT` (2 w M6, 3 od pierwszej części M7, 4 od czwartej, 5 od M8, części 1) i skala ekranu | HUD staje pod wszystkimi rzędami pasków |
 
 Dlaczego pytać ImGui, a nie wpisać 22: wysokość paska idzie za czcionką, a czcionka za skalą
 ekranu (`FontScaleDpi`, sekcja 3.12). Przy skali 150% pasek ma 33 jednostki. Stała wpisana w
@@ -1521,7 +1521,7 @@ sekcja 6. Tutaj jest tylko to, co w nim nowe albo dotąd nieopisane po stronie I
 **Czwarty rząd pasków.** Panel startuje zwinięty (`SHADOWS_PLACEMENT`, `collapsed = true`,
 `foldedRowsBefore = 3`) jako jeden pasek pod paskiem Framebuffers, tak samo szeroki.
 Zwiniętych paneli jest sześć, rzędy pasków są cztery, stała `FOLDED_ROW_COUNT` ma wartość 4,
-a HUD staje o kolejny pasek tytułu niżej (jeszcze raz 22 + 8 przy skali 100%). Tak jak panel
+a HUD staje o kolejny pasek tytułu niżej (jeszcze raz 22 + 8 przy skali 100%). (Od M8, części 1, zwiniętych paneli jest siedem, rzędów pięć i `FOLDED_ROW_COUNT` ma wartość 5: panel Environment stoi w piątym rzędzie.) Tak jak panel
 Framebuffers używa wyniku `Begin` jako czujnika: `moon.preview = open;` włącza rysowanie
 obrazu mapy cieni tylko wtedy, gdy panel jest rozwinięty.
 

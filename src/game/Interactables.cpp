@@ -18,9 +18,10 @@ namespace {
 
 // The generators of the levers and of the notes are seeded with the seed of the maze
 // plus these numbers, so they repeat neither the numbers the maze was carved with nor
-// those of the crystals (which add 1000003) nor each other. Any three different numbers
+// those of the crystals (which add 1000003), of the grass (2000003) or of the puddles
+// (4000037), nor each other. Any numbers that differ from those and from each other
 // would do. Adding to an unsigned number wraps around at 2^32, which is well defined.
-constexpr std::uint32_t LEVER_SEED_OFFSET = 2000003U;
+constexpr std::uint32_t LEVER_SEED_OFFSET = 5000011U;
 constexpr std::uint32_t NOTE_SEED_OFFSET = 3000017U;
 
 // The two sides a cell reports its interior walls on. The wall on its north side is the

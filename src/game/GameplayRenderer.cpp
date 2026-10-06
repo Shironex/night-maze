@@ -34,6 +34,12 @@ GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
 
 void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
                             const glm::vec3& crystalGlow) const {
+    drawGate(shader, world, round);
+    drawCrystals(shader, round, crystalGlow);
+}
+
+void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& world,
+                                const Round& round) const {
     setModelSamplers(shader);
 
     // The gate, as long as some of it is above the ground. It is a wall segment that
@@ -50,6 +56,12 @@ void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, c
         // 1 is a list with this one matrix in it.
         drawModel(shader, m_gate, std::span<const glm::mat4>(&gateMatrix, 1));
     }
+}
+
+void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const Round& round,
+                                    const glm::vec3& crystalGlow) const {
+    // Set here too: the crystals may be drawn with another program than the gate.
+    setModelSamplers(shader);
 
     // The crystals glow. One uniform for all of them: they pulse together.
     shader.setVec3(EMISSIVE_UNIFORM, crystalGlow);

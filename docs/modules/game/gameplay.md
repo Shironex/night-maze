@@ -610,7 +610,7 @@ Czego restart **nie** zmienia:
 
 `Exit.*`, `Crystals.*` i `Round.*` nie dołączają GLAD i nie wołają żadnej funkcji `gl*`: to dane i matematyka. OpenGL jest w dwóch miejscach: w `GameplayRenderer::draw` (przez funkcje z `ModelDraw.*` i klasy `gfx`) oraz w liniach brył kolizji.
 
-Rundę rysuje **ten sam program** co labirynt i w tym samym przejściu: `drawUnlitMaze` i `drawLitMaze` wołają najpierw `m_mazeRenderer.draw(...)`, a zaraz potem `m_gameplayRenderer.draw(...)` z tym samym obiektem `gfx::Shader`. Nie ma nowego programu, nowego bufora ani nowego stanu OpenGL.
+Rundę rysuje **ten sam program** co labirynt i w tym samym przejściu: `drawUnlitMaze` i `drawLitMaze` wołają najpierw `m_mazeRenderer.draw(...)`, a zaraz potem `drawGateAndCrystals(...)` (do M8, części 1, było to `m_gameplayRenderer.draw(...)`) z tym samym obiektem `gfx::Shader`. Od M8, części 1, kryształy rysuje program `reflect` w przebiegu `drawReflections`, gdy efekt jest włączony i widok to `Textured` ([`../renderer/env-mapping.md`](../renderer/env-mapping.md), sekcja 2.13), a funkcja `drawGateAndCrystals` rysuje wtedy tylko bramę. Poza tym nie ma nowego bufora ani nowego stanu OpenGL.
 
 **Drugie rysowanie do mapy cieni (czwarta część M7).** Od czwartej części M7 `m_gameplayRenderer.draw(...)` jest wołane w klatce dwa razy. Pierwszy raz, przed sceną, w `NightMazeApp::drawShadowCasters`: `m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive())`, z programem `shadow_depth` i macierzami księżyca zamiast kamery, do tekstury głębi mapy cieni. Drugi raz tak jak dotąd, w `drawUnlitMaze` albo `drawLitMaze`. Klasa nie ma dla cieni osobnej ścieżki: liczy te same macierze modelu z tego samego stanu rundy, więc w mapie cieni brama jest opuszczona dokładnie tak jak na obrazie, a kryształy są w tej samej fazie unoszenia i obrotu. Program głębi nie ma samplerów, `uTint`, `uNormalMatrix` ani `uEmissive`: te uniformy są ustawiane tak samo i ignorowane (`glGetUniformLocation` zwraca -1, a `glUniform*` z lokalizacją -1 nic nie robi i nie zgłasza błędu). Przebieg cieni jest pomijany, gdy cienie są wyłączone w panelu Shadows albo program `shadow_depth` się nie skompilował ([`../renderer/shadows.md`](../renderer/shadows.md), sekcja 2.18).
 
@@ -1119,7 +1119,7 @@ Dwie rzeczy są tu ważne.
 
 **Brama nie jest na liście `colliders`.** `MazeWorld::colliders` to przeszkody, które nie zmieniają się nigdy: pudełka ścian, a po nich pudełka słupków. Brama przestaje być przeszkodą w czasie rundy, więc gdyby była na tej liście, trzeba by ją z niej wyjmować i "stały" labirynt przestałby być stały. Listę przeszkód rundy buduje `roundObstacles` (sekcja 5.10). Test `a maze world carries the exit, the gate box and the exit zone of its maze` sprawdza, że brama nie jest ani ścianą, ani stałą przeszkodą, i że po obu jej końcach stoją słupki.
 
-**`START_CELL`** to stała `MazeCell{0, 0}` w `MazeWorld.cpp`: komórka w północno-zachodnim rogu. Ta sama stała wyznacza pozycję startową gracza, początek BFS i komórkę bez kryształu.
+**`START_CELL`** to stała `MazeCell{0, 0}` w `MazeWorld.hpp` (do M8, części 1, w `MazeWorld.cpp`; przeniesiona, bo używają jej `puddlesOnGround` i testy kałuż): komórka w północno-zachodnim rogu. Ta sama stała wyznacza pozycję startową gracza, początek BFS i komórkę bez kryształu.
 
 `wallModelMatrix(segment)` była funkcją lokalną pliku, a jest publiczna, bo woła ją teraz także `GameplayRenderer` dla bramy.
 
@@ -1512,7 +1512,7 @@ W M4 `buildLightSet` dostawało `m_lighting` i stałą listę pozycji z labirynt
     m_mazeRenderer.draw(shader, m_mazeWorld);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights.
-    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalEmissive());
+    drawGateAndCrystals(shader); // od M8, części 1: brama, a kryształy tylko gdy ich nie rysuje przebieg odbić
 ```
 
 Ostatni argument liczy od pierwszej części M7 osobna, prywatna funkcja klasy:

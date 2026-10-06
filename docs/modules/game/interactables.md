@@ -48,7 +48,7 @@ Kod leży w bibliotece `game_logic` i nie potrzebuje okna ani OpenGL. Test potra
 | nic nie wisi na ścianie, którą otwiera któraś dźwignia | komentarz: zniknęłoby razem ze ścianą |
 | dźwignia ma osobną komórkę, nigdy start ani wyjście; najpierw komórki **bez** kryształu | komentarz: komórki z kryształem tylko wtedy, gdy innych zabraknie. Powodu nie ma. **Analiza:** rzeczy do wskazania nie leżą wtedy w tym samym miejscu co światło i blask kryształu |
 | dwa osobne generatory: dla dźwigni i dla kartek | komentarz: inna liczba kartek nigdy nie przesuwa dźwigni |
-| przesunięcia ziarna 2000003 i 3000017 | komentarz: nie powtarzają ani liczb, którymi wycięto labirynt, ani liczb kryształów (które dodają 1000003), ani siebie nawzajem. Dowolne trzy różne liczby by pasowały |
+| przesunięcia ziarna 5000011 i 3000017 | komentarz: nie powtarzają ani liczb, którymi wycięto labirynt, ani liczb kryształów (które dodają 1000003), trawy (2000003) i kałuż (4000037), ani siebie nawzajem. Dowolne liczby różne od tamtych i od siebie by pasowały. Dźwignie miały wcześniej 2000003, czyli tyle samo co trawa: kolizję usunęła zmiana na 5000011 |
 | domyślnie 2 dźwignie i 3 kartki | komentarz: dwa skróty zmieniają drogi w labiryncie 10 na 10, nie robiąc z niego otwartego pola, a trzy kartki to po jednej z każdego rodzaju |
 | najwyżej 16 dźwigni i 16 kartek | komentarz: tylko chroni przed błędnym ustawieniem, które zapełniłoby labirynt |
 | zasięg 2,5 m (`INTERACTION_REACH`) | komentarz: trochę więcej niż jedna komórka (2 m), więc dźwignia na dalszej ścianie własnej komórki jest zawsze w zasięgu, a dwie komórki dalej już nie |
@@ -185,7 +185,7 @@ Wybór ścian do otwarcia nie jest losowy. Losowy jest dopiero wybór **komórki
 
 1. Najpierw `chooseShortcutWalls` daje listę ścian do otwarcia: `shortcuts` (od najlepszej).
 2. Kandydaci to komórki przeglądane wiersz po wierszu, **bez startu i bez wyjścia** i bez komórek, które nie mają żadnej ściany do powieszenia (komórka na skrzyżowaniu bez ścian). Dzielą się na dwie listy: **bez kryształu** i **z kryształem**.
-3. Generator `std::mt19937` zasiany `seed + 2000003` tasuje najpierw listę bez kryształu, potem listę z kryształem. Obie listy są sklejone: **wszystkie komórki bez kryształu przed wszystkimi z kryształem**.
+3. Generator `std::mt19937` zasiany `seed + 5000011` tasuje najpierw listę bez kryształu, potem listę z kryształem. Obie listy są sklejone: **wszystkie komórki bez kryształu przed wszystkimi z kryształem**.
 4. Liczba dźwigni to `min(liczba skrótów, liczba kandydatów)`. Dźwignia numer `i` dostaje komórkę numer `i` z sklejonej listy i otwiera skrót numer `i`, więc **najlepsze skróty mają swoje dźwignie**, gdy komórek zabraknie.
 5. Strona ściany: spośród czterech stron komórki zostają te, które mają ścianę i **nie są ścianą otwieraną przez żadną dźwignię** (`sameWall` z listą `shortcuts`), w stałej kolejności `North, East, South, West`. Z nich `randomBelow` wybiera jedną, z równymi szansami.
 
@@ -199,7 +199,7 @@ Wybór ścian do otwarcia nie jest losowy. Losowy jest dopiero wybór **komórki
 
 **Dlaczego dwa generatory.** Kolejność losowań jest **częścią wyniku**: ta sama liczba wywołań `randomBelow` w tej samej kolejności daje te same komórki i strony. Komentarz w kodzie podaje jeden powód osobnych generatorów: inna liczba kartek nie rusza dźwigni. Test `the number of notes does not move the levers` sprawdza to: 0 kartek i 9 kartek dają dokładnie te same dźwignie (`sameLever`). **Analiza:** przy jednym generatorze i dźwigniach losowanych jako pierwsze ta własność też by zachodziła, więc osobne generatory są raczej zabezpieczeniem: własność nie zależy od tego, w jakiej kolejności kod losuje.
 
-**Dlaczego różne przesunięcia ziarna.** Generator labiryntu używa samego ziarna, kryształy `seed + 1000003`, a dźwignie i kartki `seed + 2000003` i `seed + 3000017`. Komentarz w kodzie: dzięki temu nie powtarzają ani liczb, którymi wycięto labirynt, ani liczb kryształów, ani siebie nawzajem; pasowałyby dowolne trzy różne liczby. Dodawanie do `std::uint32_t` zawija się przy `2^32` i jest dobrze zdefiniowane.
+**Dlaczego różne przesunięcia ziarna.** Generator labiryntu używa samego ziarna, kryształy `seed + 1000003`, a dźwignie i kartki `seed + 5000011` i `seed + 3000017`. Komentarz w kodzie: dzięki temu nie powtarzają ani liczb, którymi wycięto labirynt, ani liczb kryształów (dodają 1000003), trawy (2000003) i kałuż (4000037), ani siebie nawzajem; pasowałyby dowolne liczby różne od tamtych i od siebie. Dźwignie miały wcześniej 2000003, czyli przesunięcie trawy, i dlatego zmieniono je na 5000011. Dodawanie do `std::uint32_t` zawija się przy `2^32` i jest dobrze zdefiniowane.
 
 Testy potwierdzają zachowanie, a nie konkretne komórki: `the same maze and seed give the same levers and notes` (to samo wejście, to samo wyjście dla 10 ziaren), `another seed gives other levers and notes` (inne ziarno daje inne rozmieszczenie, ale **te same ściany do otwarcia**, bo te wynikają tylko z labiryntu) i `a lever goes into a cell with a crystal only when no other cell is left`. **Nie ma testu "złotego"** z konkretnymi komórkami dźwigni dla konkretnego ziarna, takiego jak złoty labirynt generatora. Zgodność macOS i Windows opiera się więc na `std::mt19937` i `randomBelow` (sekcja 7, pułapka 4).
 
@@ -373,7 +373,7 @@ Nie dotyczy: ten kod nie ma shadera. Dźwignie i kartki nie są jeszcze rysowane
 | `MOUNT_BOX_MIN_DEPTH` | `(0,3 - 0,2) / 2 = 0,05 m` | o tyle pudełko kolizji ściany wystaje przed widoczne lico |
 | `INTERACTION_REACH` | 2,5 m | zasięg wskazywania |
 | `NOTE_KIND_COUNT` | 3 | liczba rodzajów kartek |
-| `LEVER_SEED_OFFSET`, `NOTE_SEED_OFFSET` (w `.cpp`) | 2000003, 3000017 | dodawane do ziarna labiryntu |
+| `LEVER_SEED_OFFSET`, `NOTE_SEED_OFFSET` (w `.cpp`) | 5000011, 3000017 | dodawane do ziarna labiryntu. Różne od przesunięć kryształów (1000003), trawy (2000003) i kałuż (4000037) |
 | `STRAIGHT_FACTOR` (w `.cpp`) | 2 | granica kompasu: przesunięcie "więcej niż dwa razy" większe od drugiego |
 | `REPORTED_SIDES` (w `.cpp`) | `East, South` | strony, z których nazywane są wybrane ściany |
 
@@ -739,7 +739,7 @@ Nie ma kodu panelu dla tego modułu. Komentarz przy `InteractableSettings` mówi
    Wygrywa pierwsza ściana w kolejności przeglądania: wiersz po wierszu od zachodu na wschód, w komórce `East` przed `South`. Działa tak, bo porównanie jest ostre (`>`), więc równa nie zastępuje wcześniejszej. Wynik zależy tylko od labiryntu.
 
 8. **Jak wybierana jest komórka dźwigni?**
-   Kandydaci to komórki bez startu, wyjścia i bez komórek bez ściany do powieszenia. Dzielą się na bez kryształu i z kryształem, każda lista jest tasowana generatorem zasianym `seed + 2000003`, a obie są sklejone: najpierw bez kryształu. Dźwignia `i` dostaje komórkę `i` z listy.
+   Kandydaci to komórki bez startu, wyjścia i bez komórek bez ściany do powieszenia. Dzielą się na bez kryształu i z kryształem, każda lista jest tasowana generatorem zasianym `seed + 5000011`, a obie są sklejone: najpierw bez kryształu. Dźwignia `i` dostaje komórkę `i` z listy.
 
 9. **Dlaczego dźwignie i kartki mają osobne generatory?**
    Żeby inna liczba kartek nigdy nie przesuwała dźwigni. Jeden wspólny generator rozjechałby kolejność losowań.

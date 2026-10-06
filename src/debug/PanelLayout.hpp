@@ -106,12 +106,18 @@ inline constexpr float FRAMEBUFFERS_HEIGHT = 344.0F;
 // columns, but no other panel.
 inline constexpr float SHADOWS_HEIGHT = 324.0F;
 
+// Environment: the thirteenth panel. It starts folded in a fifth row of title bars, as
+// wide as the Shadows bar above it (PanelPlacement::foldedRowsBefore is 4). Unfolded it
+// reaches down to just above the bottom row and covers the scene between the columns,
+// but no other panel.
+inline constexpr float ENVIRONMENT_HEIGHT = 296.0F;
+
 // The number of rows of folded title bars at the top edge. The HUD starts below them
 // (Hud.cpp).
-inline constexpr int FOLDED_ROW_COUNT = 4;
+inline constexpr int FOLDED_ROW_COUNT = 5;
 
-// The twelve panels. No two rectangles overlap in a window of the reference size, with
-// the six folded panels counted as their title bars.
+// The thirteen panels. No two rectangles overlap in a window of the reference size, with
+// the seven folded panels counted as their title bars.
 inline constexpr PanelPlacement RENDERER_PLACEMENT{
     .corner = TOP_LEFT,
     .offset = {PANEL_GAP, PANEL_GAP},
@@ -161,6 +167,13 @@ inline constexpr PanelPlacement SHADOWS_PLACEMENT{
     .size = {FRAMEBUFFERS_WIDTH, SHADOWS_HEIGHT},
     .collapsed = true,
     .foldedRowsBefore = 3,
+};
+inline constexpr PanelPlacement ENVIRONMENT_PLACEMENT{
+    .corner = TOP_LEFT,
+    .offset = {BOTTOM_ROW_LEFT, PANEL_GAP},
+    .size = {FRAMEBUFFERS_WIDTH, ENVIRONMENT_HEIGHT},
+    .collapsed = true,
+    .foldedRowsBefore = 4,
 };
 inline constexpr PanelPlacement MAZE_PLACEMENT{
     .corner = TOP_RIGHT,

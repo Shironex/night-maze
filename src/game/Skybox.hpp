@@ -49,6 +49,11 @@ public:
     /// True when the six pictures were loaded.
     bool isValid() const { return m_cubemap.isValid(); }
 
+    /// The cube map of the sky, read only: the reflect program reads the same six
+    /// pictures to show the sky on the crystals and the puddles (environment mapping).
+    /// Not valid when the pictures could not be loaded.
+    const gfx::Cubemap& cubemap() const { return m_cubemap; }
+
     /// Draws the sky with the skybox program (skybox.vert and skybox.frag). It selects
     /// the program and sets all of its uniforms itself. Call it after everything opaque
     /// in the frame has been drawn, with the depth test switched on.

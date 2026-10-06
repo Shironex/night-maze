@@ -198,4 +198,32 @@ constexpr const char* GRASS_WIND_STRENGTH_UNIFORM = "uWindStrength";
 /// brightness (0).
 constexpr const char* GRASS_LIT_UNIFORM = "uLit";
 
+/// reflect.frag: whether the surface is lit by the lights of the scene (1) or shown at
+/// full brightness (0), like the grass.
+constexpr const char* REFLECT_LIT_UNIFORM = "uLit";
+
+/// reflect.frag, the sky a surface shows: the sampler of the cube map of the sky (it
+/// holds the number of a texture unit), the number its colour is multiplied by, whether
+/// there is a sky to show (1) or only the clear colour (0), and that colour, a linear one.
+constexpr const char* ENVIRONMENT_MAP_UNIFORM = "uEnvironmentMap";
+constexpr const char* ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM = "uSkyBrightness";
+constexpr const char* ENVIRONMENT_SKY_VISIBLE_UNIFORM = "uSkyVisible";
+constexpr const char* ENVIRONMENT_BACKGROUND_UNIFORM = "uBackground";
+
+/// reflect.frag, how a surface shows the sky: how much of its colour is the sky (0 to
+/// 1), whether that share grows at flat angles (1, the Fresnel effect) or not (0), the
+/// share of the mirrored picture in it (the rest is the refracted one) and the ratio the
+/// refracted ray is bent with.
+constexpr const char* ENVIRONMENT_STRENGTH_UNIFORM = "uEnvironmentStrength";
+constexpr const char* ENVIRONMENT_FRESNEL_ENABLED_UNIFORM = "uFresnelEnabled";
+constexpr const char* ENVIRONMENT_REFLECT_SHARE_UNIFORM = "uReflectShare";
+constexpr const char* ENVIRONMENT_REFRACTION_RATIO_UNIFORM = "uRefractionRatio";
+
+/// The texture unit of the cube map of the sky while the reflect program draws: the
+/// next free one after the two shadow maps (3 and 4). It must not share a unit with the
+/// 2D textures of that program (0 and 1) or with the shadow maps: OpenGL refuses to
+/// draw when samplers of different kinds (sampler2D, sampler2DShadow, samplerCube) of
+/// one program point at the same unit.
+constexpr GLuint ENVIRONMENT_TEXTURE_UNIT = 5;
+
 } // namespace game

@@ -10,9 +10,6 @@ namespace game {
 
 namespace {
 
-// The start cell: the north-west corner of the maze.
-constexpr MazeCell START_CELL{.x = 0, .z = 0};
-
 // Yaw grows by a quarter turn from one compass direction to the next one clockwise.
 constexpr float QUARTER_TURN_DEGREES = 90.0F;
 

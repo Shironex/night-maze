@@ -113,6 +113,8 @@ add_library(game_logic STATIC
     src/game/Crystals.hpp
     src/game/Discovery.cpp
     src/game/Discovery.hpp
+    src/game/EnvironmentMapping.cpp
+    src/game/EnvironmentMapping.hpp
     src/game/Exit.cpp
     src/game/Exit.hpp
     src/game/Fog.cpp
@@ -135,6 +137,8 @@ add_library(game_logic STATIC
     src/game/Minimap.hpp
     src/game/Player.cpp
     src/game/Player.hpp
+    src/game/Puddles.cpp
+    src/game/Puddles.hpp
     src/game/Round.cpp
     src/game/Round.hpp
     src/game/Shadows.cpp
@@ -177,6 +181,8 @@ add_executable(night_maze
     src/game/NightMazeApp.hpp
     src/game/PostProcess.cpp
     src/game/PostProcess.hpp
+    src/game/PuddleRenderer.cpp
+    src/game/PuddleRenderer.hpp
     src/game/ShaderUniforms.hpp
     src/game/ShadowMap.cpp
     src/game/ShadowMap.hpp
@@ -201,6 +207,8 @@ add_executable(night_maze
     src/debug/panels/CameraPanel.hpp
     src/debug/panels/CollisionPanel.cpp
     src/debug/panels/CollisionPanel.hpp
+    src/debug/panels/EnvironmentPanel.cpp
+    src/debug/panels/EnvironmentPanel.hpp
     src/debug/panels/FramebuffersPanel.cpp
     src/debug/panels/FramebuffersPanel.hpp
     src/debug/panels/GameplayPanel.cpp
@@ -235,6 +243,7 @@ add_executable(night_maze_tests
     tests/ColorSpaceTests.cpp
     tests/CrystalTests.cpp
     tests/DiscoveryTests.cpp
+    tests/EnvironmentMappingTests.cpp
     tests/ExitTests.cpp
     tests/FogTests.cpp
     tests/FramebufferTests.cpp
@@ -250,6 +259,7 @@ add_executable(night_maze_tests
     tests/MinimapTests.cpp
     tests/ObjLoaderTests.cpp
     tests/PlayerTests.cpp
+    tests/PuddleTests.cpp
     tests/RaycastTests.cpp
     tests/RoundTests.cpp
     tests/ShaderSourceTests.cpp

@@ -7,6 +7,7 @@
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 #include "game/Crystals.hpp"
+#include "game/Puddles.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
 
@@ -61,6 +62,9 @@ constexpr const char* SHADOW_DEPTH_FRAGMENT_SHADER_FILE = "shaders/shadow_depth.
 constexpr const char* MINIMAP_VERTEX_SHADER_FILE = "shaders/post/minimap.vert";
 constexpr const char* MINIMAP_FRAGMENT_SHADER_FILE = "shaders/post/minimap.frag";
 constexpr const char* MINIMAP_OVERLAY_FRAGMENT_SHADER_FILE = "shaders/post/minimap_overlay.frag";
+// The reflect program draws the crystals and the puddles with the sky on them.
+constexpr const char* REFLECT_VERTEX_SHADER_FILE = "shaders/reflect.vert";
+constexpr const char* REFLECT_FRAGMENT_SHADER_FILE = "shaders/reflect.frag";
 
 // The heightmap of the terrain, relative to the assets directory: a grey picture made
 // by tools/blender/make_heightmap.py.
@@ -98,6 +102,16 @@ constexpr float MIN_HEIGHT_SCALE = 0.0F;
 
 // An exposure that changes nothing: the composite pass multiplies the colours by it.
 constexpr float NEUTRAL_EXPOSURE = 1.0F;
+
+// The highlight of a puddle. Water is smooth: its highlight is as bright as the light
+// that makes it (strength 1) and small and sharp (a large exponent), unlike the weak,
+// wide highlight of the rough stone (LightingSettings::specularStrength and shininess).
+constexpr float PUDDLE_SPECULAR_STRENGTH = 1.0F;
+constexpr float PUDDLE_SHININESS = 128.0F;
+
+// A puddle only mirrors the sky: all of what it shows is the reflected picture, none
+// the refracted one (the uniform uReflectShare of reflect.frag).
+constexpr float MIRROR_ONLY = 1.0F;
 
 // Reads the heightmap picture. When it cannot be loaded the ground is flat: the error is
 // in the log and the game is still playable.
@@ -148,9 +162,12 @@ NightMazeApp::NightMazeApp()
                       core::assetPath(MINIMAP_FRAGMENT_SHADER_FILE)),
       m_minimapOverlayShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
                              core::assetPath(MINIMAP_OVERLAY_FRAGMENT_SHADER_FILE)),
+      m_reflectShader(core::assetPath(REFLECT_VERTEX_SHADER_FILE),
+                      core::assetPath(REFLECT_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
       m_terrainRenderer(m_assets),
+      m_puddleRenderer(m_assets),
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale)) {
@@ -160,6 +177,8 @@ NightMazeApp::NightMazeApp()
     m_lightRig.connect(m_litShader);
     m_lightRig.connect(m_gouraudShader);
     m_lightRig.connect(m_grassShader);
+    // The reflect program lights the crystals and the puddles with the same lights.
+    m_lightRig.connect(m_reflectShader);
 
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
@@ -217,6 +236,15 @@ void NightMazeApp::uploadGround() {
     m_terrainRenderer.upload(buildTerrainMesh(m_mazeWorld.terrain));
     // The grass stands on the terrain, so new ground means new places for it.
     plantGrass();
+    // The puddles lie on the terrain too: new ground means new water levels, and a new
+    // maze new cells.
+    layPuddles();
+}
+
+void NightMazeApp::layPuddles() {
+    m_environment.puddleShare = std::clamp(m_environment.puddleShare, 0.0F, MAX_PUDDLE_SHARE);
+    const std::vector<Puddle> puddles = puddlesOnGround(m_mazeWorld, m_environment.puddleShare);
+    m_puddleRenderer.upload(puddles);
 }
 
 void NightMazeApp::plantGrass() {
@@ -325,6 +353,11 @@ void NightMazeApp::onRender(double alpha) {
     if (m_grassSettings.replant) {
         m_grassSettings.replant = false;
         plantGrass();
+    }
+    // A new share of cells with a puddle, asked for by the debug UI in the same way.
+    if (m_environment.replacePuddles) {
+        m_environment.replacePuddles = false;
+        layPuddles();
     }
 
     // The noclip key. wasKeyPressed is true for one frame, so it is read here, once per
@@ -465,6 +498,9 @@ void NightMazeApp::onRender(double alpha) {
 
     drawMaze(view, projection);
     drawGrass(view, projection);
+    // The reflection pass: the crystals and the puddles, which show the sky. They are
+    // opaque and write depth like the walls, so they belong before the sky as well.
+    drawReflections(view, projection);
     if (m_drawColliders) {
         drawColliderLines(view, projection);
     }
@@ -708,8 +744,9 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
     // The crystals and the gate, with the same program: they show up in the debug
-    // views like the walls do.
-    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round, crystalEmissive());
+    // views like the walls do. (In the picture without lighting the crystals may be
+    // left to the reflection pass, see drawGateAndCrystals.)
+    drawGateAndCrystals(m_texturedShader);
 }
 
 void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const {
@@ -741,8 +778,112 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
     m_mazeRenderer.draw(shader, m_mazeWorld);
     // The crystals and the gate, with the same program and so the same lighting mode.
-    // The crystals glow in the colour of their lights.
-    m_gameplayRenderer.draw(shader, m_mazeWorld, m_round, crystalEmissive());
+    // The crystals glow in the colour of their lights. (The crystals may be left to the
+    // reflection pass, see drawGateAndCrystals.)
+    drawGateAndCrystals(shader);
+}
+
+bool NightMazeApp::crystalsReflect() const {
+    return m_environment.enabled && m_viewMode == ViewMode::Textured && m_reflectShader.isValid();
+}
+
+void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
+    m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round);
+    // Every crystal is drawn exactly once per frame: here, with the program of the
+    // walls, or later by drawReflections with the reflect program.
+    if (!crystalsReflect()) {
+        m_gameplayRenderer.drawCrystals(shader, m_round, crystalEmissive());
+    }
+}
+
+void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& projection) const {
+    if (!m_environment.enabled) {
+        return;
+    }
+    const bool puddlesDrawn = m_environment.puddles && m_puddleRenderer.puddleCount() > 0;
+
+    // The two debug views show data, not light or sky. The crystals were drawn by
+    // drawUnlitMaze with the textured program. The puddles follow here with the same
+    // program, whose uniforms of this frame (the matrices and the view mode) that
+    // function has already set: a uniform keeps its value while other programs draw.
+    if (m_viewMode != ViewMode::Textured) {
+        if (puddlesDrawn && m_texturedShader.isValid()) {
+            m_texturedShader.use();
+            m_puddleRenderer.draw(m_texturedShader);
+        }
+        return;
+    }
+
+    if (!m_reflectShader.isValid()) {
+        return;
+    }
+
+    // The uniforms belong to the program in use, so use() comes before the setters.
+    m_reflectShader.use();
+    m_reflectShader.setMat4(VIEW_UNIFORM, view);
+    m_reflectShader.setMat4(PROJECTION_UNIFORM, projection);
+
+    // The lighting, as drawLitMaze sets it for the lit program. The reflect program
+    // computes the light per fragment in every lit mode, also in the mode Gouraud (the
+    // sky has to be looked up per fragment anyway), and shows the surface at full
+    // brightness in the mode Unlit, like the grass program.
+    const bool lit = m_lighting.mode != LightingMode::Unlit;
+    m_reflectShader.setInt(REFLECT_LIT_UNIFORM, lit ? 1 : 0);
+    m_reflectShader.setInt(SPECULAR_MODEL_UNIFORM,
+                           static_cast<int>(specularModelOf(m_lighting.mode)));
+    m_reflectShader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
+    m_reflectShader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+    m_reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    setShadowUniformsOf(m_reflectShader);
+
+    // The sky the surfaces show: the cube map of the skybox on a texture unit of its
+    // own, as bright as the skybox draws it. With the skybox switched off (or without
+    // its pictures) the background of the frame is the clear colour, so that colour is
+    // what a mirror shows. The sampler gets its unit in every case: left at 0 it would
+    // share a unit with the colour texture, which OpenGL does not allow.
+    const bool skyVisible = m_skyboxSettings.enabled && m_skybox.isValid();
+    m_reflectShader.setInt(ENVIRONMENT_MAP_UNIFORM, static_cast<int>(ENVIRONMENT_TEXTURE_UNIT));
+    m_reflectShader.setInt(ENVIRONMENT_SKY_VISIBLE_UNIFORM, skyVisible ? 1 : 0);
+    m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM, m_skyboxSettings.brightness);
+    m_reflectShader.setVec3(
+        ENVIRONMENT_BACKGROUND_UNIFORM,
+        gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]}));
+    if (m_skybox.isValid()) {
+        m_skybox.cubemap().bind(ENVIRONMENT_TEXTURE_UNIT);
+        // Blend the texels of two faces at the border between them, see Skybox::draw. It
+        // is switched on here too: this pass reads the cube map before the sky is drawn.
+        GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
+    }
+
+    // The crystals: a blend of the mirrored and of the refracted sky, the same share at
+    // every angle. Their glow can be turned down for this pass, to see the sky on them.
+    m_reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, m_environment.crystalStrength);
+    m_reflectShader.setInt(ENVIRONMENT_FRESNEL_ENABLED_UNIFORM, 0);
+    m_reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, m_environment.crystalReflectShare);
+    m_reflectShader.setFloat(ENVIRONMENT_REFRACTION_RATIO_UNIFORM,
+                             m_environment.crystalRefractionRatio);
+    m_gameplayRenderer.drawCrystals(m_reflectShader, m_round,
+                                    crystalEmissive() * m_environment.crystalGlowShare);
+
+    // The puddles: level mirrors. Their normal is the one of the disc (no normal map),
+    // their highlight is the one of water, and they show the mirrored sky only, more of
+    // it the flatter they are looked at. The refraction ratio stays as the crystals
+    // left it: with a reflect share of 1 the refracted picture is not shown.
+    if (puddlesDrawn) {
+        m_reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, 0);
+        m_reflectShader.setFloat(SPECULAR_STRENGTH_UNIFORM, PUDDLE_SPECULAR_STRENGTH);
+        m_reflectShader.setFloat(SHININESS_UNIFORM, PUDDLE_SHININESS);
+        m_reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, m_environment.puddleReflectivity);
+        m_reflectShader.setInt(ENVIRONMENT_FRESNEL_ENABLED_UNIFORM,
+                               m_environment.puddleFresnel ? 1 : 0);
+        m_reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, MIRROR_ONLY);
+        m_puddleRenderer.draw(m_reflectShader);
+    }
+
+    // Binding the cube map made its texture unit the active one. The draws above put
+    // unit 0 back, but with no crystal left and no puddle nothing was drawn, so it is
+    // put back here: the rest of the frame expects unit 0 to be the active one.
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));
 }
 
 void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection) const {

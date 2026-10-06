@@ -9,6 +9,7 @@
 #include "debug/panels/AssetsPanel.hpp"
 #include "debug/panels/CameraPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
+#include "debug/panels/EnvironmentPanel.hpp"
 #include "debug/panels/FramebuffersPanel.hpp"
 #include "debug/panels/GameplayPanel.hpp"
 #include "debug/panels/GrassPanel.hpp"
@@ -115,13 +116,13 @@ void DebugUI::draw(const DebugContext& context) {
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
         // cannot be an element of an array.
-        constexpr int SHADER_COUNT = 13;
+        constexpr int SHADER_COUNT = 14;
         const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-            &context.texturedShader,      &context.colorShader,       &context.litShader,
-            &context.gouraudShader,       &context.skyboxShader,      &context.grassShader,
-            &context.compositeShader,     &context.previewShader,     &context.brightPassShader,
-            &context.blurShader,          &context.shadowDepthShader, &context.minimapShader,
-            &context.minimapOverlayShader};
+            &context.texturedShader,       &context.colorShader,       &context.litShader,
+            &context.gouraudShader,        &context.skyboxShader,      &context.grassShader,
+            &context.compositeShader,      &context.previewShader,     &context.brightPassShader,
+            &context.blurShader,           &context.shadowDepthShader, &context.minimapShader,
+            &context.minimapOverlayShader, &context.reflectShader};
         drawShadersPanel(shaders);
 
         drawCameraPanel(context.camera, context.player, context.mouseSensitivity);
@@ -144,6 +145,7 @@ void DebugUI::draw(const DebugContext& context) {
         drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping,
                         m_rawTextureSampler);
         drawLightsPanel(context.lighting, context.round);
+        drawEnvironmentPanel(context.environment, context.puddleCount);
     }
 
     // The HUD belongs to the game and not to the tools, so it is drawn whether or not

@@ -5,6 +5,7 @@
 #include "assets/AssetCache.hpp"
 #include "core/Application.hpp"
 #include "game/ColliderLines.hpp"
+#include "game/EnvironmentMapping.hpp"
 #include "game/GameplayRenderer.hpp"
 #include "game/Grass.hpp"
 #include "game/GrassRenderer.hpp"
@@ -16,6 +17,7 @@
 #include "game/MinimapRenderer.hpp"
 #include "game/Player.hpp"
 #include "game/PostProcess.hpp"
+#include "game/PuddleRenderer.hpp"
 #include "game/Round.hpp"
 #include "game/ShadowMap.hpp"
 #include "game/Shadows.hpp"
@@ -132,6 +134,16 @@ protected:
     /// The minimap, read only: the debug UI shows the size, the format and the picture
     /// of its framebuffer.
     const MinimapRenderer& minimapRenderer() const { return m_minimapRenderer; }
+    /// Shader program of the surfaces that show the sky (crystals and puddles), exposed
+    /// for the same reason.
+    gfx::Shader& reflectShader() { return m_reflectShader; }
+
+    /// The settings of the environment mapping (the sky on the crystals and on the
+    /// puddles), exposed so the debug UI can edit them live.
+    EnvironmentSettings& environmentSettings() { return m_environment; }
+
+    /// How many puddles lie in the maze, for the debug UI.
+    std::size_t puddleCount() const { return m_puddleRenderer.puddleCount(); }
 
     /// The settings of the shadows of the moon (switch, resolution, bias, PCF,
     /// strength), exposed so the debug UI can edit them live.
@@ -250,6 +262,11 @@ private:
     /// the graphics card.
     void plantGrass();
 
+    /// Chooses the puddles again (game::puddlesOnGround) and hands them to the class
+    /// that draws them. The same seed gives the same puddles, so after a new height
+    /// scale they only move up or down with the ground.
+    void layPuddles();
+
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed and the player at the
     /// start, looking down an open passage. It runs for the first maze, after every
@@ -299,6 +316,22 @@ private:
     void drawGrass(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 
+    /// The reflection pass, after the maze and the grass and before the sky: the
+    /// crystals and the puddles, drawn with the reflect program, which shows the sky on
+    /// them (environment mapping). It handles all four lighting modes itself, like
+    /// drawGrass. In the two debug views it only draws the puddles, as data, with the
+    /// textured program. With the environment mapping switched off it draws nothing.
+    void drawReflections(const glm::mat4& view, const glm::mat4& projection) const;
+
+    /// True when the crystals of this frame are drawn by drawReflections. False when
+    /// drawMaze draws them with the program of the walls: with the environment mapping
+    /// switched off, in the two debug views and when the reflect program failed to load.
+    bool crystalsReflect() const;
+
+    /// Draws the gate with the given program of the maze, and the crystals too unless
+    /// drawReflections draws them in this frame (crystalsReflect).
+    void drawGateAndCrystals(const gfx::Shader& shader) const;
+
     /// The light the crystals give off by themselves at this moment, as a linear colour
     /// for the uniform uEmissive: game::crystalGlow of the colour of the crystal lights.
     glm::vec3 crystalEmissive() const;
@@ -342,11 +375,14 @@ private:
     // picture of the minimap into the window.
     gfx::Shader m_minimapShader;
     gfx::Shader m_minimapOverlayShader;
+    // Draws the crystals and the puddles with the sky on them: the reflection pass.
+    gfx::Shader m_reflectShader;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
     TerrainRenderer m_terrainRenderer;
     GrassRenderer m_grassRenderer;
+    PuddleRenderer m_puddleRenderer;
     ColliderLines m_colliderLines;
     LightRig m_lightRig;
     Skybox m_skybox;
@@ -431,6 +467,11 @@ private:
 
     // Whether the sky is drawn and how bright it is.
     SkyboxSettings m_skyboxSettings;
+
+    // How the crystals and the puddles show the sky (edited by the debug UI). The
+    // puddles themselves are not kept: they are placed, handed to m_puddleRenderer and
+    // forgotten, like the tufts of the grass.
+    EnvironmentSettings m_environment;
 
     // The exposure and the tone mapping of the composite pass and the settings of the
     // bloom, the fog and the vignette.

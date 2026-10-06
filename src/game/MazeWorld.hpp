@@ -21,6 +21,9 @@ constexpr int DEFAULT_MAZE_WIDTH = 10;
 constexpr int DEFAULT_MAZE_HEIGHT = 10;
 constexpr std::uint32_t DEFAULT_MAZE_SEED = 1;
 
+/// The start cell of every maze: its north-west corner. The player starts in its centre.
+constexpr MazeCell START_CELL{.x = 0, .z = 0};
+
 /// What the next maze should be like. The debug UI edits the three numbers and sets
 /// regenerate. The application reads the request at the start of the next frame, builds
 /// the maze and clears the flag. A plain struct: the panel only writes data, and the

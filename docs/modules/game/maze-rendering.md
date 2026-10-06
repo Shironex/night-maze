@@ -297,7 +297,7 @@ W programie `textured` nie ma oświetlenia: kolor fragmentu to tekstura razy kol
 | Plik | Co zawiera |
 |---|---|
 | [`src/game/MazeWorld.hpp`](../../../src/game/MazeWorld.hpp) | stałe labiryntu domyślnego, struktury `MazeSettings` i `MazeWorld`, deklaracje `yawTowards` i `wallModelMatrix`, od M6 stała `FOOTPRINT_MARGIN`, deklaracje `groundHeightAt` i `placeOnTerrain` oraz dwa przeciążenia `buildMazeWorld` |
-| [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) | stała `START_CELL`, funkcje pomocnicze `placedAt`, `startYaw` i od M6 `lowestGroundUnder` i `lowerToGround` oraz definicje funkcji publicznych |
+| [`src/game/MazeWorld.cpp`](../../../src/game/MazeWorld.cpp) | (do M8, części 1 także stała `START_CELL`, dziś w `MazeWorld.hpp`), funkcje pomocnicze `placedAt`, `startYaw` i od M6 `lowestGroundUnder` i `lowerToGround` oraz definicje funkcji publicznych |
 | [`src/game/MazeRenderer.hpp`](../../../src/game/MazeRenderer.hpp), [`.cpp`](../../../src/game/MazeRenderer.cpp) | wyliczenie `ViewMode`, klasa `MazeRenderer` |
 | [`src/game/ModelDraw.hpp`](../../../src/game/ModelDraw.hpp), [`.cpp`](../../../src/game/ModelDraw.cpp) | funkcje `setModelSamplers`, `drawModel` i od M6 `drawMesh`, stałe `TEXTURE_UNIT` i `NORMAL_MAP_UNIT` (sekcja 5.6) |
 | [`src/game/GameplayRenderer.hpp`](../../../src/game/GameplayRenderer.hpp), [`.cpp`](../../../src/game/GameplayRenderer.cpp) | rysowanie bramy i kryształów tymi samymi funkcjami. Opis w [`gameplay.md`](gameplay.md), sekcja 5 |
@@ -440,6 +440,8 @@ float startYaw(const Maze& maze) {
 // The start cell: the north-west corner of the maze.
 constexpr MazeCell START_CELL{.x = 0, .z = 0};
 ```
+
+(Od M8, części 1 stała stoi w `MazeWorld.hpp`, z komentarzem "The start cell of every maze: its north-west corner", a nie w anonimowej przestrzeni nazw pliku `.cpp`: używa jej `puddlesOnGround` i test kałuż.)
 
 `START_CELL` zastąpiła w M5 dwie osobne stałe z numerem kolumny i wiersza. `MazeCell` to para `{x, z}` z `Maze.hpp` ([`maze-generator.md`](maze-generator.md), sekcja 5.2). Jedna wartość zamiast dwóch liczb jest potrzebna, bo komórkę startową dostają teraz jako parametr `placeExit` (od niej liczone są odległości) i `placeCrystals` (w niej nie może stać kryształ).
 
@@ -1044,11 +1046,11 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do.
-    m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round, crystalEmissive());
+    drawGateAndCrystals(m_texturedShader); // od M8, części 1: brama, a kryształy tylko gdy ich nie rysuje przebieg odbić
 }
 ```
 
-Od M4 `drawMaze` tylko **wybiera**, a rysują dwie funkcje. Od M5 każda z nich kończy się tak samo: po `m_mazeRenderer.draw` woła `m_gameplayRenderer.draw` z **tym samym programem**. Brama i kryształy dostają dzięki temu ten sam tryb cieniowania i te same podglądy diagnostyczne co ściany, bez żadnego dodatkowego wyboru. Od M6 przed `m_mazeRenderer.draw` stoi `m_terrainRenderer.draw` z tym samym programem, więc to samo dotyczy podłoża:
+Od M4 `drawMaze` tylko **wybiera**, a rysują dwie funkcje. Od M5 każda z nich kończy się tak samo: po `m_mazeRenderer.draw` woła `m_gameplayRenderer.draw` z **tym samym programem** (od M8, części 1, przez `drawGateAndCrystals`: bramę zawsze, a kryształy tylko gdy ich nie rysuje przebieg odbić programem `reflect`, [`../renderer/env-mapping.md`](../renderer/env-mapping.md), sekcja 2.13). Brama i kryształy dostają dzięki temu ten sam tryb cieniowania i te same podglądy diagnostyczne co ściany, bez żadnego dodatkowego wyboru. Od M6 przed `m_mazeRenderer.draw` stoi `m_terrainRenderer.draw` z tym samym programem, więc to samo dotyczy podłoża:
 
 | Tryb `Lighting` (panel Renderer) | Tryb `View mode` (panel Assets) | Funkcja | Program |
 |---|---|---|---|
@@ -1062,7 +1064,7 @@ Od M4 `drawMaze` tylko **wybiera**, a rysują dwie funkcje. Od M5 każda z nich 
 | Linia | Znaczenie |
 |---|---|
 | `m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);` (od M6) | podłoże tym samym programem, przed ścianami. Komentarz: "The order does not change the picture (the depth test sorts it out), it only follows the way the scene is built". Drugi argument to przełącznik `Wireframe` z panelu Terrain |
-| `m_gameplayRenderer.draw(m_texturedShader, m_mazeWorld, m_round, crystalEmissive())` (od M5, w tej postaci od pierwszej części M7) | brama i kryształy tym samym programem. Ostatni argument to blask kryształów na tę klatkę, liczony przez `NightMazeApp::crystalEmissive()` jako `crystalGlow` z koloru świateł punktowych przeliczonego z sRGB na liniowy: kolor świateł punktowych z ustawień (`m_lighting.pointColor`) razy siła blasku, przygaszony pulsem liczonym z zegara animacji rundy. Funkcja ustawi go jako `uEmissive` przed kryształami. Samą klasę i `crystalGlow` omawia [`gameplay.md`](gameplay.md), sekcje 4 i 5 |
+| `drawGateAndCrystals(m_texturedShader)` (od M8, części 1; wcześniej `m_gameplayRenderer.draw(...)`: bramę rysuje `drawGate`, kryształy `drawCrystals`, ale tylko gdy nie rysuje ich przebieg odbić, `crystalsReflect()`) (od M5, w tej postaci od pierwszej części M7) | brama i kryształy tym samym programem. Ostatni argument to blask kryształów na tę klatkę, liczony przez `NightMazeApp::crystalEmissive()` jako `crystalGlow` z koloru świateł punktowych przeliczonego z sRGB na liniowy: kolor świateł punktowych z ustawień (`m_lighting.pointColor`) razy siła blasku, przygaszony pulsem liczonym z zegara animacji rundy. Funkcja ustawi go jako `uEmissive` przed kryształami. Samą klasę i `crystalGlow` omawia [`gameplay.md`](gameplay.md), sekcje 4 i 5 |
 | `m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);` | przełącznik mapowania normalnych dla programu `textured`. W shaderze to `uniform bool uNormalMapEnabled`, a uniform typu `bool` ustawia się przez `glUniform1i`: 0 to fałsz, każda inna wartość to prawda. Czyta go tylko gałąź podglądu normalnych (`uViewMode == 1`). `usesNormalMap` ([`flashlight.md`](flashlight.md), sekcja 5) jest fałszywe w trybie `Gouraud`, więc podgląd `Normals as colour` pokazuje wtedy gładkie normalne siatki, a w trybach `Unlit`, `Phong` i `Blinn-Phong` (przy włączonym polu `Normal mapping`) normalne z map, z widocznymi fugami. To właśnie znaczy zdanie z komentarza `drawMaze`: podgląd idzie za trybem cieniowania w jednej rzeczy |
 
 Podgląd pokazuje "tę samą normalną, której używa światło" pod jednym warunkiem: `textured.vert` przenosi normalną przez `mat3(uModel)`, a `lit.vert` przez `uNormalMatrix`. Dla macierzy modelu labiryntu (przesunięcie i obrót o 90 stopni, skala 1) i dla macierzy jednostkowej terenu oba wyniki są równe. Przy nierównej skali podgląd i oświetlenie by się rozjechały ([`../gfx/textures.md`](../gfx/textures.md), sekcja 4.1).

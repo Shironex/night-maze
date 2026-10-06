@@ -100,6 +100,19 @@
 > tej części nie zapisano. M7 jest kompletny w kodzie na Windowsie (wszystkie sześć części)
 > i **nie jest zamknięty** ([`m7-status.md`](m7-status.md)).
 >
+> **Zgłoszone 2026-10-06 (M8, część 1: environment mapping):** bramka `make check` przechodzi
+> dla scalonego drzewa (po minimapie), 445 przypadków testowych (414 przed tą częścią plus 31:
+> 11 w `EnvironmentMappingTests.cpp` i 20 w `PuddleTests.cpp`) i 150296 asercji (138711
+> plus 11585 asercji tej części, potwierdzone bramką scalonego drzewa), a w
+> drzewie z samą tą częścią 406 i 150091. Start programu Debug przez około 8 sekund z pustym
+> standardowym wyjściem błędów (sekcja 23.1). Start obejmował **tylko ścieżkę domyślną**
+> (Blinn-Phong, widok `Textured`, niebo i efekt włączone) i **nie obejmował** trybów `Unlit`,
+> `Gouraud` i `Phong`, widoków diagnostycznych, nieba wyłączonego, efektu wyłączonego,
+> przycisku `Reload shaders` (dziś czternaście programów) ani żadnej z dziewięciu kontrolek
+> panelu Environment. Żadnego z tych pomiarów nie powtarzałem, **nikt nie obejrzał odbić na
+> kryształach ani w kałużach** i nikt nie zmierzył liczby klatek. Temat 12 jest w toku, macOS
+> otwarty ([`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md)).
+>
 > **Nadal niesprawdzone:** wszystko, co wymaga człowieka przy myszy i klawiaturze (chodzenie
 > i ślizganie po ścianach, klawisze N, F i R, obrót myszą, przyciski, listy i suwaki paneli, w
 > tym lista `Lighting`, cały panel Lights i cały panel Gameplay, zbieranie kryształów, pusta
@@ -117,7 +130,7 @@
 > 13 (oświetlenie i mapy normalnych, M4), 14 (rozgrywka, M5), 15 (skybox, pierwsza część
 > M6), 16 (teren i trawa, druga część M6), 17 (bufor HDR i gamma, pierwsza część M7),
 > 18 (bloom, druga część M7), 19 (mgła i winieta, trzecia część M7), 20 (cienie księżyca,
-> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7)
+> czwarta część M7), 21 (cień latarki, piąta część M7) i 22 (minimapa, szósta część M7) oraz 23 (M8, część 1: environment mapping)
 > rozróżniają punkty
 > zmierzone
 > (`[x]`, z wynikiem) od otwartych (`[ ]`).
@@ -132,7 +145,7 @@
 > tych sekcji oznacza tamte płytki, a plików o tych nazwach już nie ma. To, co program
 > pokazuje dziś, opisują sekcje 2, 14, 15 i 16, koniec klatki (bufor HDR, bloom, mgłę
 > i winietę) sekcje 17, 18 i 19, cienie księżyca sekcja 20, cień latarki i latarkę w ręce
-> sekcja 21, a minimapę sekcja 22.
+> sekcja 21, minimapę sekcja 22, a environment mapping (M8, część 1) sekcja 23.
 
 ## 1. Wymagania
 
@@ -1394,7 +1407,7 @@ stan po trzeciej (zgłoszone 294 i 102412, nadal dziesięć programów, mgła i 
 sekcja 19, po czwartej (zgłoszone 310 i 103751, dwanaście paneli, jedenaście programów,
 cienie księżyca) sekcja 20, po piątej (zgłoszone 329 i 104306, nadal dwanaście paneli
 i jedenaście programów, cień latarki) sekcja 21, a dzisiejszy (zgłoszone 414 i 138711,
-nadal dwanaście paneli, trzynaście programów, minimapa) sekcja 22. Punkty otwarte `[ ]` w sekcji
+trzynaście programów, dwanaście paneli, minimapa) sekcja 22, a po M8, części 1 (zgłoszone 445 i 150296 w scalonym drzewie, trzynaście paneli, czternaście programów, environment mapping) sekcja 23. Punkty otwarte `[ ]` w sekcji
 12.2 są przepisane tak, żeby dało się je wykonać w dzisiejszym programie. Punkty `[x]`
 mówią o podłodze z płytek (`floor_tile.obj`, `floor_stone.png`), którą druga część M6
 usunęła.
@@ -4810,7 +4823,227 @@ Wydajność:
 - [ ] zapisać wersję kompilatora, kartę graficzną i wersję sterownika: dla tej części nie
       zostały zapisane
 
-## 23. Powiązane dokumenty
+## 23. Lista kontrolna M8, część 1: environment mapping
+
+Pierwsza część kamienia milowego M8 daje kryształom i kałużom niebo. Kryształ odbija i załamuje
+teksturę sześcienną nocnego nieba (ta sama, z której rysuje się skybox), a suwak `Refract /
+reflect` wybiera między jednym a drugim. Płaskie kałuże leżą w części korytarzy (domyślnie 15
+procent wolnych komórek, w labiryncie startowym 13 z 85) i odbijają to samo niebo, tym mocniej,
+im bardziej płasko na nie patrzę (przybliżenie Schlicka). Obie rzeczy rysuje **nowy, czternasty
+program shaderów, `reflect`** (po jedenastu starych i dwóch programach minimapy), w osobnym przebiegu po trawie i przed niebem. Doszedł też
+**trzynasty panel, Environment**. Doszły: `src/game/EnvironmentMapping.*` (ustawienia i cztery
+funkcje), `src/game/Puddles.*` (rozmieszczenie z ziarna, poziom wody, siatka tarczy),
+`src/game/PuddleRenderer.*`, `assets/shaders/reflect.vert` i `reflect.frag`,
+`src/debug/panels/EnvironmentPanel.*`, `tests/EnvironmentMappingTests.cpp` i
+`tests/PuddleTests.cpp`. Zmieniły się: `NightMazeApp.*` (przebieg `drawReflections`, funkcje
+`crystalsReflect`, `drawGateAndCrystals` i `layPuddles`), `GameplayRenderer.*` (połówki
+`drawGate` i `drawCrystals`), `MazeWorld.*` (stała `START_CELL` w nagłówku), `ShaderUniforms.hpp`
+(dziewięć nazw uniformów i `ENVIRONMENT_TEXTURE_UNIT` równa 5), `Skybox.hpp` (`cubemap()`),
+`DebugContext.hpp` (trzy pola, razem 45 po scaleniu z minimapą), `DebugUI.cpp` (czternaście programów w panelu Shaders),
+`PanelLayout.hpp` (`FOLDED_ROW_COUNT` z 4 na 5) i `main.cpp`. Opis kodu:
+[`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md). Decyzje:
+[`../decisions/reflect-own-program-and-pass.md`](../decisions/reflect-own-program-and-pass.md),
+[`../decisions/puddle-on-lowest-ground.md`](../decisions/puddle-on-lowest-ground.md) i
+[`../decisions/visible-effect-over-physical-values.md`](../decisions/visible-effect-over-physical-values.md).
+
+Temat 12 wykładu (environment mapping) jest **w toku**, nie zaliczony: nikt nie obejrzał obrazu, a
+na macOS kod nie był budowany ([`build-macos.md`](build-macos.md)). M8 jako całość nie jest
+zamknięty.
+
+### 23.1. Zgłoszone (2026-10-06)
+
+Środowisko: Windows, scalone drzewo (po minimapie).
+Wersji kompilatora, karty graficznej ani sterownika dla tego pomiaru nie zapisano w tym
+dokumencie. **Żadnego z poniższych punktów nie powtarzałem przy pisaniu tej sekcji.** Liczby w
+tabelach poniżej przepisałem z kodu albo policzyłem z jego stałych: nie są odczytane z ekranu, a
+**nikt nie obejrzał obrazu tej części**.
+
+Bramka i start:
+
+- [x] `make check` przechodzi (zgłoszone)
+- [x] `night_maze_tests.exe` w scalonym drzewie (po szóstej części M7, minimapie): 445
+      przypadków testowych i 150296 asercji (bramka scalonego drzewa z 2026-10-06:K8711 plus 11585 asercji tej części).
+      Przypadki policzyłem z plików testów: 414 przed tą częścią plus 11 w
+      `EnvironmentMappingTests.cpp` i 20 w `PuddleTests.cpp`, razem 31 (`414 + 31 = 445`).
+      Podziału 11585 nowych asercji między pliki nie liczyłem. Przed scaleniem, w drzewie z samą
+      tą częścią, zgłoszono 406 przypadków i 150091 asercji (przed tą częścią 375 i 138506)
+- [x] start programu Debug przez około 8 sekund, standardowe wyjście błędów puste (zgłoszone)
+
+Czego ten start **nie** obejmował (zgłoszone wprost). Wykonała się **tylko ścieżka domyślna**:
+oświetlenie Blinna-Phonga, widok `Textured`, niebo włączone, efekt włączony. Nie wykonało się:
+
+- rysowanie w trybach `Unlit`, `Gouraud` i `Phong`
+- dwa widoki diagnostyczne (`Normals as colour`, `UVs as colour`)
+- niebo wyłączone
+- efekt wyłączony (pole `Environment mapping`) i kałuże wyłączone (pole `Puddles`)
+- przycisk `Reload shaders` (dziś przy czternastu programach)
+
+Nikt nie kliknął żadnej z nowych kontrolek i nikt nie obejrzał ani jednego odbicia.
+
+Wartości startowe (kontrolki panelu **Environment**; w nawiasie napis, jaki pokazuje kontrolka):
+
+| Ustawienie | Wartość |
+|---|---|
+| `Environment mapping` | zaznaczone |
+| `Sky share` | 0,50, suwak od 0 do 1 |
+| `Refract / reflect` | 0,50, suwak od 0 do 1 |
+| `Refraction ratio` | 0,67 (`AIR_TO_GLASS_RATIO` = 1 / 1,5), suwak od 0,40 do 1,50 |
+| `Glow` | 1,00, suwak od 0 do 1 |
+| `Puddles` | zaznaczone |
+| `Share of cells` | 0,15, suwak od 0 do 0,50 (`MAX_PUDDLE_SHARE`) |
+| `Reflectivity` | 0,35, suwak od 0 do 1 |
+| `Fresnel` | zaznaczone |
+| `Puddles: N` | 13 w labiryncie startowym (policzone: `lround(85 * 0,15)`, test `the default maze has 13 puddles at the default share`) |
+| `ENVIRONMENT_TEXTURE_UNIT` (stała) | 5 |
+| `PUDDLE_DEPTH`, `PUDDLE_CORNERS` (stałe) | 0,02 m i 16 |
+| `PUDDLE_MIN_RADIUS`, `PUDDLE_MAX_RADIUS`, `PUDDLE_MAX_OFFSET` (stałe) | 0,25 m, 0,45 m i 0,30 m |
+| panel Environment | zwinięty w piątym rzędzie pasków pod panelem Shadows, po rozwinięciu 296 w wysokość |
+
+Co te wartości znaczą w liczbach (policzone ze wzorów i komentarzy kodu, **nie zmierzone na
+ekranie**; część jest przypięta testami):
+
+- kałuża sięga najwyżej 0,75 m od środka komórki (0,3 przesunięcia plus 0,45 promienia), a stopa
+  ściany zaczyna się 0,8 m od środka: żadna nie dotyka ściany (test `no puddle reaches a wall`)
+- udział nieba w kałuży przy Fresnelu i `Reflectivity` 0,35, oczy 1,7 m nad gruntem: 35 procent z
+  góry, 35 procent w 2 m, 40 procent w 4 m, 55 procent w 8 m, 72 procent w 16 m. Dla 0,02: 2,5
+  procent w 2 m, 10 procent w 4 m, 33 procent w 8 m. Test przypina cztery z tych nierówności
+- kąt krytyczny szkła do powietrza: 41,81 stopnia (test), wody do powietrza 48,75 stopnia (nie
+  testowany)
+- księżyc w kałuży: kamera `Yaw` 205 i `Pitch` -50 (znak sprawdzić w panelu Camera), kałuża około
+  1,4 m przed graczem w poziomie. Przybliżona odbijalność w tym miejscu 0,35 (policzone)
+- jasność nieba na kryształach: zenit razy 2,2 to około 0,003, tarcza księżyca około 1,3 do 1,6.
+  Świecenie kryształu przed teksturą około 2,45 przy pulsie 1 i 1,72 przy 0,7 (z notatki o bloomie)
+- poziom wody: najniższy grunt z 17 punktów plus 2 cm. Maksymalna różnica gruntu pod największą
+  tarczą (środki komórek, test): około 7 cm przy skali 1,0 i około 17,5 cm przy 2,5. Mediany
+  zgłoszone przez autora, **nie mierzone ponownie**: 2,4 cm i 6,1 cm
+
+Znane ograniczenia tej części (szczegóły w dokumencie modułu, sekcja 2.15):
+
+- tylko niebo: ściany, kryształy i gracz nie są odbijane
+- kryształ ma jedno załamanie (wejście), bez tylnej powierzchni
+- przy `Glow` 1 niebo na kryształach jest słabą domieszką (policzone), a `Sky share` 0,5 zmniejsza
+  o połowę część oświetloną kryształu
+- przy włączonym efekcie Gouraud nie zmienia światła kryształów i kałuż (światło na fragment)
+- kałuża na zboczu jest częściowo ukryta, kałuże nie rzucają cienia
+- kępka trawy może stać w kałuży przy jej brzegu (pas trawy 0,57 do 0,79 m od środka komórki,
+  kałuża do 0,75 m)
+- wartości są dobrane do widoczności, nie do fizyki (`Reflectivity` 0,35, prawdziwa woda 0,02)
+
+### 23.2. Otwarte: test ręczny na około czterdzieści minut
+
+Tych kroków nikt jeszcze nie wykonał ręką. Oczekiwania wynikają z kodu, z testów i ze wzorów,
+nie z klikania ani ze zrzutów ekranu. Nazwy widżetów są zapisane tak jak w
+`src/debug/panels/EnvironmentPanel.cpp`. Ustawień efektu program nigdzie nie zapisuje, więc
+ponowne uruchomienie gry przywraca wartości startowe. Listy 17.2 do 22.2 też są otwarte.
+
+Przygotowanie:
+
+- [ ] usunąć stary plik `imgui.ini`, uruchomić grę z terminala. Oczekiwane w konsoli: żadnej
+      linii `[error]`, w szczególności o `reflect.vert`, `reflect.frag` ani o niekompletnym
+      framebufferze. W buildzie Debug żadnej linii `GL_...`
+- [ ] panel Shaders ma czternaście linii, ostatnia dla programu `reflect`, z `OK`
+- [ ] panel **Environment** jest trzynasty, zwinięty w piątym rzędzie pasków tytułowych pod panelem
+      Shadows, a pasek HUD stoi o jeden rząd niżej niż przed tą częścią. Po rozwinięciu panel ma
+      dziewięć kontrolek w dwóch grupach (`Crystals`, `Puddles`) i linię `Puddles: 13`. Żaden
+      panel nie jest zasłonięty (zapisać, jeśli któryś jest)
+- [ ] wartości startowe z tabeli powyżej
+
+Obraz bez zmian i podstawowy wygląd (tryb Blinn-Phong, `Textured`, niebo włączone):
+
+- [ ] **efekt wyłączony = obraz sprzed M8.** Odznaczyć `Environment mapping`: kryształy wyglądają
+      jak przed tą częścią (świecą, pulsują), kałuż nie ma. Zaznaczyć z powrotem
+- [ ] **kryształ z efektem.** Stanąć kilka metrów od kryształu. Zapisać, czy widać niebo na jego
+      ścianach i czy kryształ nadal świeci i ma poświatę bloomu
+- [ ] **niebo na kryształach wyraźnie.** `Glow` na 0 i `Sky share` na 1: kryształ pokazuje samo
+      niebo (gwiazdy, w odpowiednim kierunku księżyc). Zapisać, co widać. Wrócić do 1,00 i 0,50
+- [ ] `Refract / reflect` na 0, 0,5 i 1: trzy różne obrazy. Zapisać różnicę
+- [ ] **część oświetlona kryształu.** Porównać kryształ przy `Sky share` 0 i 0,5 (przy `Glow` 1):
+      zapisać, czy przy 0,5 jest widocznie ciemniejszy
+- [ ] **poświata bloomu.** Przy `Glow` 1 poświata wokół kryształu jest taka jak przed tą częścią.
+      Przy `Glow` 0 halo znika. Wrócić do 1,00
+- [ ] **brak paralaksy.** Odejść od kryształu: gwiazdy w odbiciu nie zmieniają kierunku wraz z
+      odległością. Obracać się wokół kryształu: odbite niebo obraca się razem ze światem (a nie z
+      kamerą)
+
+Załamanie i całkowite odbicie:
+
+- [ ] `Refraction ratio` na 1,00: promień nie jest zginany. Na 0,41: najsilniejsze zgięcie. Zapisać
+      różnice
+- [ ] `Refraction ratio` na 1,50 przy `Refract / reflect` 0: płaskie promienie wracają jako
+      odbicie, nie jako czarne ani losowe plamy. Zapisać, gdzie na krysztale to widać. Wrócić do
+      0,67
+
+Kałuże:
+
+- [ ] `Puddles: 13` w labiryncie startowym. Odnaleźć kałuże, zapisać, ile udało się znaleźć w
+      jednym korytarzu
+- [ ] **kałuża nie dotyka ściany ani słupka**, nie leży w komórce startu, wyjścia ani pod
+      kryształem
+- [ ] **księżyc w kałuży.** Panel Camera, `Yaw` 205 i `Pitch` -50 (sprawdzić znak i zakres):
+      kałuża około 1,4 m przed graczem powinna pokazywać tarczę księżyca. Zapisać, czy tak jest
+- [ ] **Fresnel.** Odznaczyć `Fresnel`: dalekie kałuże słabną względem bliskich. Zaznaczyć: dalekie
+      mocniej odbijają
+- [ ] **prawdziwa woda.** `Reflectivity` na 0,02 przy zaznaczonym `Fresnel`: kałuża w następnej
+      komórce prawie niewidoczna. Zapisać, w jakiej odległości zaczyna coś odbijać. Wrócić do 0,35
+- [ ] **kałuża w cieniu.** Stanąć tam, gdzie cień księżyca albo latarki pada na kałużę: odbłysk
+      znika, odbite niebo nie ciemnieje
+- [ ] **odległe kałuże we mgle.** Zapisać, czy dalekie kałuże, w których Fresnel odbija najwięcej,
+      giną razem z odbiciem w mgle. (Panel Framebuffers, zakładka `Fog and vignette`)
+- [ ] **kępka trawy w kałuży.** Przejrzeć kałuże przy ścianach: zapisać, czy źdźbła wystają z wody
+- [ ] odznaczyć `Puddles`: kałuże znikają, kryształy nadal pokazują niebo. Zaznaczyć. Linia
+      `Puddles: 13` nie zmienia się przy odznaczeniu pola
+
+Udział i ponowne rozmieszczenie:
+
+- [ ] `Share of cells` na 0: zero kałuż, linia `Puddles: 0`. Na 0,50: `Puddles: 43` (policzone).
+      Powolne przeciągnięcie z 0,15 w górę dodaje kałuże, **żadna z istniejących nie zmienia
+      miejsca ani rozmiaru**. Wrócić do 0,15
+- [ ] nowy labirynt (panel Maze, `Regenerate`): kałuże są w innych komórkach, `Puddles: N` zgadza
+      się z `lround(wolne komórki * 0,15)`. Ta sama wartość ziarna daje te same kałuże
+
+Teren i woda:
+
+- [ ] **skala wysokości.** Panel Terrain, `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z
+      gruntem, nie przeskakują do innych komórek. Przy 2,5 zapisać, ile z tarczy kałuży na zboczu
+      jest ukryte i czy ukrycie wygląda jak brzeg wody, czy jak błąd
+- [ ] **brzeg i migotanie.** Na styku kałuży i gruntu: zapisać, czy brzeg migocze (tarcza 2 cm
+      nad najniższym gruntem)
+
+Tryby oświetlenia i widoki (tu nikt jeszcze nic nie uruchomił):
+
+- [ ] **Phong.** Lista `Lighting`: `Phong`. Kryształy i kałuże: odbłysk Phonga zamiast Blinna-Phonga,
+      bez błędów w konsoli
+- [ ] **Gouraud.** `Gouraud`: ściany mają światło na wierzchołek, a kryształy i kałuże wyglądają jak
+      w Phongu (światło na fragment). Zapisać, że przełączenie nie zmienia wyglądu kryształów
+- [ ] **Unlit.** `Unlit`: kryształy i kałuże pokazane z pełną jasnością, niebo nadal domieszane.
+      Zapisać wygląd
+- [ ] **widoki diagnostyczne.** Panel Assets, `View mode`: `Normals as colour` i `UVs as colour`:
+      kryształy są rysowane jak ściany (kolor z danych), kałuże też (kolor normalnej `(0,5, 1, 0,5)`
+      albo współrzędnej tekstury), a obraz nie ma niczego z nieba na kryształach. Wrócić do `Textured`
+- [ ] **niebo wyłączone.** Panel Renderer, odznaczyć `Skybox`: kryształ i kałuża pokazują kolor
+      czyszczenia w każdym kierunku (nie czerń). Zaznaczyć z powrotem
+- [ ] **efekt wyłączony w widoku diagnostycznym.** Odznaczyć `Environment mapping` w widoku
+      `Normals as colour`: kałuże znikają
+
+Shader na żywo:
+
+- [ ] **`Reload shaders`.** Przycisk w panelu Shaders: czternaście linii z `OK`. Zmienić w `reflect.frag`
+      wzór koloru, `copy_assets`, `Reload shaders`: obraz kryształów się zmienia bez restartu.
+      Wprowadzić celowy błąd składni: linia `reflect` pokazuje błąd, kryształy wracają do programu
+      ścian (a kałuże nie są rysowane w widoku `Textured`). Wycofać zmianę
+
+Okno i granice:
+
+- [ ] zmiana rozmiaru okna do bardzo małego i minimalizacja: bez `GL_...` w konsoli i bez zmiany
+      obrazu po powrocie. Pasek HUD pod pięcioma rzędami pasków tytułowych
+- [ ] **noclip (klawisz N)**: lot nad kałużami i kryształami z góry. Fresnel przy patrzeniu w dół:
+      kałuża pokazuje głównie ciemną wodę (`F` około 0,35 przy `Reflectivity` 0,35), a nie lustro
+- [ ] **brak ostrzeżeń kompilatora** przy buildzie Debug i Release po tej części
+
+Sprawdziwszy wszystko: zaznaczyć wyniki tutaj, wpisać zapisane obserwacje, i dopiero wtedy
+zmienić stan tematu 12 w [`../syllabus.md`](../syllabus.md) z "w toku".
+
+## 24. Powiązane dokumenty
 
 - Wersja dla macOS (zweryfikowana) i opis presetów: [`build-macos.md`](build-macos.md)
 - Mapa repozytorium i plików konfiguracyjnych: [`project-structure.md`](project-structure.md)
@@ -4821,5 +5054,6 @@ Wydajność:
 - Moduły: [`../modules/core/README.md`](../modules/core/README.md) (wstęp i indeks modułu `core`), [`../modules/debug-ui.md`](../modules/debug-ui.md),
   [`../modules/renderer/shadows.md`](../modules/renderer/shadows.md) (mapy cieni księżyca i latarki),
   [`../modules/game/flashlight.md`](../modules/game/flashlight.md) (latarka w ręce),
-  [`../modules/renderer/minimap.md`](../modules/renderer/minimap.md) (minimapa)
+  [`../modules/renderer/minimap.md`](../modules/renderer/minimap.md) (minimapa),
+  [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md) (odbicia i załamania nieba)
 - Dokumentacja CMake (generatory, presety): <https://cmake.org/cmake/help/latest/>

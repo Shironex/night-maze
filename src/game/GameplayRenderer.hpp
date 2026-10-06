@@ -46,6 +46,14 @@ public:
     void draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
               const glm::vec3& crystalGlow) const;
 
+    /// The two halves of draw, for a frame that draws the gate with one program and
+    /// the crystals with another (the reflect program, which shows the sky on them).
+    /// shader is prepared as for draw. drawGate sets uEmissive to black, drawCrystals
+    /// to crystalGlow.
+    void drawGate(const gfx::Shader& shader, const MazeWorld& world, const Round& round) const;
+    void drawCrystals(const gfx::Shader& shader, const Round& round,
+                      const glm::vec3& crystalGlow) const;
+
 private:
     // Not owned. nullptr when the model could not be loaded. One crystal model per
     // variant: the number of a variant is its index here.

@@ -16,6 +16,7 @@ class Window;
 
 namespace game {
 enum class ViewMode;
+struct EnvironmentSettings;
 struct GameplaySettings;
 struct GrassSettings;
 struct LightingSettings;
@@ -162,6 +163,15 @@ struct DebugContext {
     game::MinimapSettings& minimapSettings;
     /// The minimap, read only: the size, the format and the picture of its framebuffer.
     const game::MinimapRenderer& minimap;
+    /// Shader program of the surfaces that show the sky (crystals and puddles),
+    /// editable: reloaded like texturedShader.
+    gfx::Shader& reflectShader;
+    /// The settings of the environment mapping (the sky on the crystals and on the
+    /// puddles), editable.
+    game::EnvironmentSettings& environment;
+    /// How many puddles lie in the maze. A plain number, copied when the context is
+    /// built: the panels only show it.
+    std::size_t puddleCount;
 };
 
 } // namespace debug

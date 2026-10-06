@@ -17,7 +17,7 @@ i dziesiąty program), trzeciej (mgła z bufora głębi i winieta w przebiegu sk
 czwartej (mapa cieni księżyca, jedenasty program, panel Shadows) piątej, z 2026-10-06
 (mapa cieni latarki z rzutem perspektywicznym i latarka w ręce, bez nowego programu ani
 panelu) i szóstej, z 2026-10-06 (minimapa: drugi framebuffer, dwunasty i trzynasty program,
-zakładka w panelu Framebuffers).
+zakładka w panelu Framebuffers) oraz M8, część 1, z 2026-10-06 (environment mapping: odbicia i załamania nieba na kryształach i w kałużach, czternasty program `reflect`, panel Environment).
 Wszystko, co ten dokument mówi o tym
 kodzie dla Maca, jest oczekiwaniem wynikającym z kodu i z pomiarów na Windowsie, a punkty
 do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M4
@@ -25,7 +25,7 @@ do sprawdzenia są zebrane w sekcji 2 jako listy otwarte: "M2 + M3 na macOS", "M
 "M6, część 1 (skybox) na macOS", "M6, część 2 (teren i trawa) na macOS", "M7, część 1
 (bufor HDR i gamma) na macOS", "M7, część 2 (bloom) na macOS", "M7, część 3 (mgła
 i winieta) na macOS", "M7, część 4 (cienie księżyca) na macOS", "M7, część 5 (cień latarki)
-na macOS" i "M7, część 6 (minimapa) na macOS".
+na macOS", "M7, część 6 (minimapa) na macOS" i "M8, część 1 (environment mapping) na macOS".
 
 | Element | Wersja |
 |---|---|
@@ -1905,6 +1905,83 @@ na Macu: [`m7-status.md`](m7-status.md).
       razy. Mapa dodaje dwa przebiegi i kopię listy co klatkę. PRD wymaga stabilnych 60
       klatek w 1440p na MacBooku. Dla Windowsa pomiaru tej części nie ma: nic z niego nie
       wynika
+
+### M8, część 1 (environment mapping) na macOS: lista w całości otwarta
+
+Pierwsza część kamienia milowego M8 (odbicia i załamania nieba na kryształach i w kałużach: pliki
+`src/game/EnvironmentMapping.*`, `src/game/Puddles.*`, `src/game/PuddleRenderer.*`,
+`src/game/NightMazeApp.*` (`drawReflections`), `src/game/GameplayRenderer.*`,
+`src/debug/panels/EnvironmentPanel.*`, nowy program shaderów `assets/shaders/reflect.vert` i
+`reflect.frag` (czternasty program w panelu Shaders, po jedenastu starych i dwóch programach minimapy) oraz nowy panel Environment (trzynasty)) powstała na Windowsie
+2026-10-06 i tam jest zgłoszona jako zbudowana i przetestowana ([`build-windows.md`](build-windows.md),
+sekcja 23, "Lista kontrolna M8, część 1: environment mapping"). **Na macOS nikt jej nie zbudował ani
+nie uruchomił, więc żaden punkt poniżej nie jest odhaczony.** Na Windowsie zgłoszono też tylko
+krótki start programu Debug (około 8 sekund, tylko ścieżka domyślna): nikt nie obejrzał odbić na
+żadnym systemie. Opis kodu: [`../modules/renderer/env-mapping.md`](../modules/renderer/env-mapping.md).
+M8 jest rozpoczęty i nie jest kompletny (obie części, "podstawy bez okna" i "część 1"). Kolejność sprawdzania wszystkich części na Macu:
+[`m7-status.md`](m7-status.md).
+
+Ta część używa już znanych funkcji OpenGL (teksturę sześcienną z nieba, `samplerCube`, `reflect`
+i `refract` w GLSL), ale łączy je w nowy układ: pięć samplerów trzech rodzajów w jednym programie.
+Warto sprawdzić od razu po liście nieba (M6, część 1) i cieni (M7, część 4 i 5), bo błąd w nich
+zatrzyma także tę część.
+
+**Nowe dla sterownika Apple w tej części**
+
+- [ ] **kompilacja `reflect.vert` i `reflect.frag`.** Shader fragmentów dołącza trzy pliki
+      (`common/lighting.glsl`, `common/normal_map.glsl`, `common/shadows.glsl`) i używa
+      `samplerCube`, `refract` i `reflect`. Oczekiwane: przy starcie żadnej linii `[error]` ze
+      słowami `Shader compilation failed`, a linia `reflect` w panelu Shaders z `OK`. Jeśli jest
+      błąd, zapisać linię z konsoli (numer linii i nazwę pliku)
+- [ ] **pięć samplerów trzech rodzajów w jednym programie.** `reflect.frag` ma `uTexture` (jednostka
+      0), `uNormalMap` (1), `uMoonShadowMap` i `uFlashlightShadowMap` (3 i 4, `sampler2DShadow`) i
+      `uEnvironmentMap` (5, `samplerCube`). Sterownik Apple bywa surowszy przy sprawdzaniu
+      programów: w buildzie Debug zapisać, czy konsola pokazuje `GL_INVALID_OPERATION` przy
+      rysowaniu kryształów. Sampler `uEnvironmentMap` dostaje jednostkę 5 także bez nieba. To samo
+      po `Reload shaders` i z wyłączonym niebem
+- [ ] **`GL_TEXTURE_CUBE_MAP_SEAMLESS` w przebiegu odbić.** Przebieg czyta teksturę sześcienną przed
+      narysowaniem nieba i włącza to samo co `Skybox::draw`. Oczekiwane: w odbiciu nie widać
+      szwów sześcianu (patrzeć na kryształ przy `Glow` 0 i `Sky share` 1, obracając się). Zapisać
+      wyniki na ekranie Retina
+- [ ] **`refract` zwracające wektor zerowy.** Specyfikacja GLSL mówi, że przy `k < 0` wynikiem jest
+      wektor zerowy. `refractOrReflect` porównuje wynik z `vec3(0.0)`. Sprawdzić przy `Refraction
+      ratio` 1,50 i `Refract / reflect` 0: na krysztale płaskie promienie są odbite, bez czarnych
+      ani losowych plam. Jeśli sterownik Apple zwraca coś innego niż dokładne zero, ta ścieżka
+      pokaże błąd
+- [ ] **jednostka aktywna po przebiegu.** Na końcu `drawReflections` jest `glActiveTexture(GL_TEXTURE0)`.
+      Oczekiwane: tekstury ścian i trawy w następnej klatce są poprawne (nie ma białych ścian ani
+      trawy). Sprawdzić także z efektem włączonym i zero kałuż (`Share of cells` 0)
+
+**Obraz i zachowanie (tak jak na Windowsie, lista tam jest pełniejsza)**
+
+- [ ] efekt wyłączony (`Environment mapping`): obraz jak przed M8, kryształy bez nieba, bez kałuż
+- [ ] efekt włączony, tryb `Blinn-Phong`: niebo widać na kryształach (przy `Glow` 0 i `Sky share` 1
+      wyraźnie), kryształ nadal świeci, poświata bloomu jest
+- [ ] `Refract / reflect` od 0 do 1 i `Refraction ratio` od 0,40 do 1,50: obraz się zmienia
+- [ ] kałuże: `Puddles: 13` w labiryncie startowym (policzone: `lround(85 * 0,15)`), nie dotykają
+      ścian, `Share of cells` od 0 do 0,50 dodaje kałuże i niczego nie przesuwa (na 0,50: 43)
+- [ ] księżyc w kałuży: kamera `Yaw` 205, `Pitch` -50 (znak sprawdzić), kałuża około 1,4 m przed
+      graczem
+- [ ] `Fresnel` włączony i wyłączony, `Reflectivity` 0,35 i 0,02
+- [ ] `Height scale` od 0 do 2,5: kałuże idą w górę i w dół z gruntem, na zboczach są częściowo
+      ukryte
+- [ ] tryby `Unlit`, `Gouraud`, `Phong`, widoki `Normals as colour` i `UVs as colour`, niebo
+      wyłączone, `Reload shaders`: bez błędów w konsoli, wyglądy jak w liście Windowsa
+- [ ] ekran Retina: odbicie na kryształach i kałuże przy podwójnej rozdzielczości, brak migotania
+      brzegu kałuży
+
+**Testy jednostkowe na Macu**
+
+- [ ] `ctest` albo `night_maze_tests`: wszystkie przechodzą, w tym 11 przypadków z
+      `EnvironmentMappingTests.cpp` i 20 z `PuddleTests.cpp` (razem 31). Testy kałuż korzystają z
+      `heightmap.png` z katalogu assetów (`NIGHT_MAZE_ASSETS_DIR`). Test złoty `golden maze: 4 x 4
+      cells from seed 1 has exactly these puddles` ma wartości z Windowsa: ma przejść także na
+      Macu (`std::mt19937` i `randomBelow` są takie same na każdym kompilatorze)
+- [ ] build Debug i Release bez ostrzeżeń kompilatora
+
+**Co nadal nie istnieje na żadnym systemie:** obraz tej części nikogo nie przekonał ani nie
+rozczarował: nikt go jeszcze nie zobaczył. M8 jest rozpoczęty: selekcja obiektów i dźwignie z
+kartkami mają własne części.
 
 ### Skróty: `make`
 
