@@ -166,6 +166,25 @@ add_library(game_logic STATIC
 target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 
+# ---- ui: the layer that owns RmlUi and draws the documents of the menu ----------------
+# In the order of the layers it stands beside gfx and scene, below game: it needs the
+# window, the log and the asset paths of engine, and it knows nothing about the game
+# (the game tells it which document to show and takes the names of the clicked
+# buttons). It is a library of its own and not a part of engine, so that game_logic and
+# the test program, which link engine, do not have to link RmlUi and FreeType.
+add_library(ui STATIC
+    src/ui/AssetFileInterface.cpp
+    src/ui/AssetFileInterface.hpp
+    src/ui/UiLayer.cpp
+    src/ui/UiLayer.hpp
+)
+# engine is PUBLIC: ui/UiLayer.hpp includes core/Window.hpp. RmlUi is PRIVATE: UiLayer.hpp
+# only names its classes (forward declarations), so the code that uses the layer needs
+# neither the headers of RmlUi nor its include paths.
+target_link_libraries(ui PUBLIC engine)
+target_link_libraries(ui PRIVATE rmlui_backend)
+night_maze_enable_warnings(ui)
+
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer,
 # InteractableRenderer, TerrainRenderer, GrassRenderer, ColliderLines, LightRig, Skybox,
