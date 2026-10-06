@@ -112,8 +112,7 @@ void DebugUI::draw(const DebugContext& context) {
 
         // Each panel gets exactly the members it needs, so its signature still shows
         // what it reads and what it edits.
-        drawRendererPanel(context.time, context.window, context.clearColor, context.lighting.mode,
-                          context.skybox);
+        drawRendererPanel(context.time, context.window);
 
         // The Shaders panel takes a list, so that a new program is one more entry here
         // and no change in the panel. The array holds pointers, because a reference
@@ -146,8 +145,7 @@ void DebugUI::draw(const DebugContext& context) {
                       context.camera);
         drawCollisionPanel(context.mazeWorld, context.round, context.player, context.drawColliders,
                            context.pick, context.pickDebug);
-        drawAssetsPanel(context.assets, context.viewMode, context.lighting.normalMapping,
-                        m_rawTextureSampler);
+        drawAssetsPanel(context.assets, m_rawTextureSampler);
         drawLightsPanel(context.lighting, context.round);
         drawEnvironmentPanel(context.environment, context.puddleCount);
 

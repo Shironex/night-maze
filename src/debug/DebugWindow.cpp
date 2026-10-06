@@ -7,6 +7,7 @@
 #include "debug/Hud.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
+#include "debug/categories/RenderCategory.hpp"
 #include "game/GameState.hpp"
 #include "game/MazeWorld.hpp"
 
@@ -336,14 +337,24 @@ void DebugWindow::drawBody(const DebugContext& context) {
     ImGui::EndChild();
 }
 
-void DebugWindow::drawCategory(Category /*category*/, Page& page,
-                               const DebugContext& /*context*/) const {
-    // No category has moved into the window yet: every control is still in its old
-    // panel.
-    page.setPlace("");
-    page.beginCard("Not here yet");
-    page.note("The controls of this category are still in the old panels.");
-    page.endCard();
+void DebugWindow::drawCategory(Category category, Page& page, const DebugContext& context) const {
+    switch (category) {
+    case Category::Render:
+        drawRenderCategory(page, context);
+        break;
+    case Category::Light:
+    case Category::PostProcess:
+    case Category::World:
+    case Category::Player:
+    case Category::Gameplay:
+    case Category::Diagnostics:
+        // Not moved into the window yet: the controls are still in the old panels.
+        page.setPlace("");
+        page.beginCard("Not here yet");
+        page.note("The controls of this category are still in the old panels.");
+        page.endCard();
+        break;
+    }
 }
 
 } // namespace debug

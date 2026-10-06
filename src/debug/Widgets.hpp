@@ -91,6 +91,11 @@ public:
     void beginCard(const char* title);
     void endCard();
 
+    /// Greys out the next row and makes it ignore the mouse and the keyboard, when
+    /// disabled is true: for a setting that cannot be changed on this machine. It
+    /// counts for one row only.
+    void disableNextRow(bool disabled) { m_disableNextRow = disabled; }
+
     /// A switch. help is the text of the tooltip, or nullptr for none. Like every row
     /// function below it returns true in the frame in which the user changed the value.
     bool toggle(const char* label, bool* value, const char* help = nullptr);
@@ -184,9 +189,13 @@ private:
     bool m_cardVisible = false;
     bool m_columnsOpen = false;
 
-    // The label and the help text of the row between beginRow and endRow.
+    // The label and the help text of the row between beginRow and endRow, and
+    // whether that row is greyed out.
     const char* m_rowLabel = "";
     const char* m_rowHelp = nullptr;
+    bool m_rowDisabled = false;
+    // What disableNextRow asked for. beginRow takes it over and clears it.
+    bool m_disableNextRow = false;
 };
 
 } // namespace debug

@@ -442,6 +442,9 @@ bool Page::openCard() {
 }
 
 bool Page::beginRow(const char* label, const char* help, float controlWidth) {
+    // The request to grey the row out counts for this row, shown or not.
+    const bool disabled = m_disableNextRow;
+    m_disableNextRow = false;
     if (!passes(label, help)) {
         return false;
     }
@@ -451,6 +454,13 @@ bool Page::beginRow(const char* label, const char* help, float controlWidth) {
     }
     m_rowLabel = label;
     m_rowHelp = help;
+    m_rowDisabled = disabled;
+    // BeginDisabled fades everything up to EndDisabled (in endRow) and makes it ignore
+    // input. It is called after the card is open: what it starts has to end inside the
+    // same window.
+    if (m_rowDisabled) {
+        ImGui::BeginDisabled();
+    }
     // The label is part of the id of everything in the row, so the controls of two rows
     // can have the same hidden name ("##bar").
     ImGui::PushID(label);
@@ -479,6 +489,9 @@ void Page::endRow() {
     // was drawn last, which is the control.
     tooltipCard(m_rowLabel, m_rowHelp);
     ImGui::PopID();
+    if (m_rowDisabled) {
+        ImGui::EndDisabled();
+    }
 }
 
 bool Page::toggle(const char* label, bool* value, const char* help) {
