@@ -23,8 +23,25 @@ constexpr std::string_view PLAY_SWITCH = "--play";
 constexpr std::string_view WALK_SHOT_NAME = "walk";
 constexpr std::string_view GLIDE_SHOT_NAME = "glide";
 
-// Reads a whole number from 0 to the largest std::uint32_t. False when the text is
-// anything else: empty, negative, too large or with other characters in it.
+// Reads a number of seconds, with or without a fraction. False when the text is not
+// a number.
+bool parseSeconds(const char* text, float& seconds) {
+    // strtof and not from_chars: the standard library of Apple clang cannot read
+    // a float with from_chars yet. strtof sets end to the first character it did not
+    // use, so the text was a number only if that is the end of the text and something
+    // was read at all.
+    char* end = nullptr;
+    const float value = std::strtof(text, &end);
+    if (end == text || *end != '\0' || !std::isfinite(value)) {
+        return false;
+    }
+    seconds = value;
+    return true;
+}
+
+} // namespace
+
+// Digits only: no sign, no spaces, and not more than a std::uint32_t holds.
 bool parseSeed(std::string_view text, std::uint32_t& seed) {
     if (text.empty()) {
         return false;
@@ -47,24 +64,6 @@ bool parseSeed(std::string_view text, std::uint32_t& seed) {
     seed = static_cast<std::uint32_t>(value);
     return true;
 }
-
-// Reads a number of seconds, with or without a fraction. False when the text is not
-// a number.
-bool parseSeconds(const char* text, float& seconds) {
-    // strtof and not from_chars: the standard library of Apple clang cannot read
-    // a float with from_chars yet. strtof sets end to the first character it did not
-    // use, so the text was a number only if that is the end of the text and something
-    // was read at all.
-    char* end = nullptr;
-    const float value = std::strtof(text, &end);
-    if (end == text || *end != '\0' || !std::isfinite(value)) {
-        return false;
-    }
-    seconds = value;
-    return true;
-}
-
-} // namespace
 
 const char* const START_OPTIONS_USAGE =
     "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
@@ -104,6 +103,7 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         bool understood = false;
         if (name == SEED_SWITCH) {
             understood = parseSeed(value, options.seed);
+            options.seedGiven = understood;
         } else if (name == MENU_TIME_SWITCH) {
             understood = parseSeconds(value, options.menuCamera.timeOffset);
         } else if (std::string_view(value) == WALK_SHOT_NAME) {

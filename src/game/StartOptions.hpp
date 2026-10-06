@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace game {
 
@@ -21,6 +22,10 @@ namespace game {
 struct StartOptions {
     /// The seed of the first maze (MazeSettings::seed).
     std::uint32_t seed = DEFAULT_MAZE_SEED;
+
+    /// True when the seed above was named on the command line (--seed). The main menu
+    /// then offers that seed for the first game, and not a random one.
+    bool seedGiven = false;
 
     /// The settings of the menu camera the game starts with.
     MenuCameraSettings menuCamera;
@@ -39,6 +44,12 @@ struct StartOptionsResult {
     /// that was not, for the log.
     std::string error;
 };
+
+/// Reads a seed: a whole number from 0 to the largest std::uint32_t (4294967295),
+/// written with digits only. False, and seed left as it was, when the text is anything
+/// else: empty, negative, too large or with other characters in it. The command line
+/// (--seed) and the seed field of the main menu both read their text with it.
+bool parseSeed(std::string_view text, std::uint32_t& seed);
 
 /// The switches the game understands, one per line: main.cpp logs it after an error.
 extern const char* const START_OPTIONS_USAGE;

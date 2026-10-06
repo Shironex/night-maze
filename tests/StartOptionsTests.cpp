@@ -4,6 +4,7 @@
 
 #include <doctest/doctest.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,7 @@ TEST_CASE("without switches the game starts as always") {
     const game::StartOptionsResult result = parse({});
     CHECK(result.error.empty());
     CHECK(result.options.seed == game::DEFAULT_MAZE_SEED);
+    CHECK_FALSE(result.options.seedGiven);
     CHECK_FALSE(result.options.menuCamera.enabled);
     CHECK(result.options.menuCamera.shot == game::MenuShot::CorridorWalk);
     CHECK(result.options.menuCamera.timeOffset == 0.0F);
@@ -94,4 +96,37 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--menu-shot") != std::string::npos);
     CHECK(usage.find("--menu-time") != std::string::npos);
     CHECK(usage.find("--play") != std::string::npos);
+}
+
+TEST_CASE("a seed on the command line is remembered as given, also the default one") {
+    CHECK(parse({"--seed", "42"}).options.seedGiven);
+    // Seed 1 is the default, but asking for it by name is still asking.
+    const game::StartOptionsResult one = parse({"--seed", "1"});
+    CHECK(one.options.seed == game::DEFAULT_MAZE_SEED);
+    CHECK(one.options.seedGiven);
+    CHECK_FALSE(parse({"--play"}).options.seedGiven);
+}
+
+TEST_CASE("a seed is read from digits only, up to the largest 32 bit number") {
+    std::uint32_t seed = 7;
+    CHECK(game::parseSeed("0", seed));
+    CHECK(seed == 0U);
+    CHECK(game::parseSeed("482913", seed));
+    CHECK(seed == 482913U);
+    CHECK(game::parseSeed("4294967295", seed));
+    CHECK(seed == 4294967295U);
+    // Leading zeros are digits like any other.
+    CHECK(game::parseSeed("007", seed));
+    CHECK(seed == 7U);
+
+    // Everything else is refused and leaves the seed as it was.
+    seed = 7;
+    CHECK_FALSE(game::parseSeed("", seed));
+    CHECK_FALSE(game::parseSeed("4294967296", seed));
+    CHECK_FALSE(game::parseSeed("99999999999999999999999", seed));
+    CHECK_FALSE(game::parseSeed("-1", seed));
+    CHECK_FALSE(game::parseSeed("12a", seed));
+    CHECK_FALSE(game::parseSeed(" 12", seed));
+    CHECK_FALSE(game::parseSeed("1.5", seed));
+    CHECK(seed == 7U);
 }
