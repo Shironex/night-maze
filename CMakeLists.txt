@@ -251,6 +251,8 @@ add_executable(night_maze
     src/debug/categories/GameplayCategory.hpp
     src/debug/categories/PlayerCategory.cpp
     src/debug/categories/PlayerCategory.hpp
+    src/debug/categories/PostProcessCategory.cpp
+    src/debug/categories/PostProcessCategory.hpp
     src/debug/categories/RenderCategory.cpp
     src/debug/categories/RenderCategory.hpp
     src/debug/panels/AssetsPanel.cpp
@@ -259,8 +261,6 @@ add_executable(night_maze
     src/debug/panels/CollisionPanel.hpp
     src/debug/panels/EnvironmentPanel.cpp
     src/debug/panels/EnvironmentPanel.hpp
-    src/debug/panels/FramebuffersPanel.cpp
-    src/debug/panels/FramebuffersPanel.hpp
     src/debug/panels/GrassPanel.cpp
     src/debug/panels/GrassPanel.hpp
     src/debug/panels/LightsPanel.cpp

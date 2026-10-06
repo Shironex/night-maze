@@ -9,7 +9,6 @@
 #include "debug/panels/AssetsPanel.hpp"
 #include "debug/panels/CollisionPanel.hpp"
 #include "debug/panels/EnvironmentPanel.hpp"
-#include "debug/panels/FramebuffersPanel.hpp"
 #include "debug/panels/GrassPanel.hpp"
 #include "debug/panels/LightsPanel.hpp"
 #include "debug/panels/MazePanel.hpp"
@@ -95,8 +94,9 @@ void DebugUI::draw(const DebugContext& context) {
     ImGui::NewFrame();
 
     // The preview pictures of the framebuffer attachments are drawn by the game only
-    // while the Framebuffers panel is open. The panel sets the flag again below. With
-    // the panels hidden nobody does, and the game stops drawing the pictures.
+    // while the card that shows them is drawn (the Post process category). That card
+    // sets the flag again below. With the debug UI hidden nobody does, and the game
+    // stops drawing the pictures.
     context.postProcessSettings.previews = false;
     // The same for the preview pictures of the two shadow maps and the Shadows panel.
     context.moonShadowSettings.preview = false;
@@ -126,7 +126,6 @@ void DebugUI::draw(const DebugContext& context) {
 
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
-        drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
         drawShadowsPanel({.settings = context.moonShadowSettings,
                           .map = context.moonShadowMap,
                           .lightSpace = context.moonLightSpace,
