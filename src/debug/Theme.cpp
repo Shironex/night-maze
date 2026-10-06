@@ -2,6 +2,7 @@
 // See docs/modules/debug-ui.md
 #include "debug/Theme.hpp"
 
+#include "core/Files.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 
@@ -9,8 +10,6 @@
 #include <array>
 #include <cstddef>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <limits>
 
 namespace debug {
@@ -107,8 +106,7 @@ constexpr float DISABLED_ALPHA = 0.45F;
 
 // ---- Font ------------------------------------------------------------------------------
 
-// The font file, relative to the assets directory. Licence: assets/fonts/OFL.txt.
-constexpr const char* FONT_FILE = "fonts/AtkinsonHyperlegible-Regular.ttf";
+// The font file is core::TEXT_FONT_FILE: the menu of the game uses the same one.
 
 // ImGui refuses (with an assertion) data of 100 bytes or less: no font file is that small.
 constexpr std::size_t SMALLEST_FONT_FILE = 101;
@@ -119,18 +117,6 @@ constexpr std::array<unsigned char, 4> TRUETYPE_SIGNATURE{0x00, 0x01, 0x00, 0x00
 
 // Size 0 tells ImGui to take the size of the text from the style (FontSizeBase).
 constexpr float SIZE_FROM_STYLE = 0.0F;
-
-// Reads a whole file into bytes. Returns false when the file cannot be opened.
-bool readBinaryFile(const std::filesystem::path& path, std::vector<unsigned char>& bytes) {
-    // The stream takes the path object itself, so on Windows a letter outside the local
-    // code page is not damaged (same reason as in assets/ImageLoader.cpp).
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
-        return false;
-    }
-    bytes.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-    return true;
-}
 
 // True when the bytes can be handed to ImGui: their number is above its lower limit and
 // fits the int it takes the size in, and they start like a TrueType font. In a debug
@@ -287,9 +273,9 @@ void applyTheme(float scale) {
 
 void loadFont(std::vector<unsigned char>& fontBytes) {
     ImFontAtlas* fonts = ImGui::GetIO().Fonts;
-    const std::filesystem::path path = core::assetPath(FONT_FILE);
+    const std::filesystem::path path = core::assetPath(core::TEXT_FONT_FILE);
 
-    if (readBinaryFile(path, fontBytes) && looksLikeFont(fontBytes)) {
+    if (core::readBinaryFile(path, fontBytes) && looksLikeFont(fontBytes)) {
         // By default ImGui takes the bytes over and frees them with its own allocator.
         // They belong to a std::vector, so ImGui must only use them, not free them.
         ImFontConfig config;

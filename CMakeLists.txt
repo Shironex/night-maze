@@ -30,6 +30,8 @@ add_library(engine STATIC
     src/assets/Tangents.hpp
     src/core/Application.cpp
     src/core/Application.hpp
+    src/core/Files.cpp
+    src/core/Files.hpp
     src/core/GlCheck.cpp
     src/core/GlCheck.hpp
     src/core/Input.cpp
