@@ -129,7 +129,7 @@
 > z trzynastu obcięte do 54 do 69 procent, czarne dziury w wiązce latarki, ukryte linie panelu Environment), po
 > czym właściciel zdecydował (2026-10-06): kałuże idą za gruntem, woda ma być lepiej widoczna, pasek HUD stoi
 > przy górnej krawędzi, dopóki panele są schowane. Poprawki (17 plików w `src/`, `assets/shaders/` i `tests/`)
-> są w drzewie roboczym, **nie w commicie**. Bramka scalonego drzewa z poprawkami: `make check` przechodzi,
+> są w commicie `ee093c2`. Bramka scalonego drzewa z poprawkami: `make check` przechodzi,
 > **467 przypadków testowych i 158006 asercji** (przed poprawkami 466 i 152264), start Debug przez 8 sekund bez
 > linii błędu (zgłoszone przez bramkę, nie powtarzałem). Rzędy liczby klatek z jednej sesji (około 1250 ze wszystkim
 > włączonym, około 1920 przy wyłączonych dwóch cieniach, mapie i environment mapping, około 578 w buildzie Debug)
