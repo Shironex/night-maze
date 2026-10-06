@@ -5,7 +5,6 @@
 #include "debug/panels/FramebuffersPanel.hpp"
 
 #include "debug/PanelLayout.hpp"
-#include "game/Minimap.hpp"
 #include "game/PostProcess.hpp"
 #include "gfx/Framebuffer.hpp"
 
@@ -72,14 +71,6 @@ constexpr int SETTING_COLUMNS = 2;
 
 // The four previews stand side by side.
 constexpr float PREVIEW_COLUMNS = 4.0F;
-
-// The entries of the corner list of the minimap, in the order of the enum
-// game::MinimapCorner: the number of the chosen entry is the value of the enum.
-constexpr const char* MINIMAP_CORNER_ITEMS = "Top left\0Top right\0Bottom left\0Bottom right\0";
-
-// The picture of the minimap in its tab is at most as high as this many rows of
-// widgets: the six widgets that stand next to it.
-constexpr float MINIMAP_PICTURE_ROWS = 6.0F;
 
 // One preview: a caption and the picture under it, width pixels wide. tooltip says what
 // the picture shows. With drawn false the picture is not up to date (the pass that
@@ -230,61 +221,9 @@ void drawFogAndVignetteSettings(game::PostProcessSettings& settings) {
     ImGui::EndTable();
 }
 
-// The third tab: the widgets of the minimap (game::MinimapSettings) and the facts of its
-// framebuffer on the left, the picture of that framebuffer on the right.
-void drawMinimapSettings(game::MinimapSettings& minimap, const gfx::Framebuffer& target) {
-    if (!ImGui::BeginTable("minimap", SETTING_COLUMNS)) {
-        return;
-    }
-
-    ImGui::TableNextColumn();
-    ImGui::Checkbox("Minimap", &minimap.enabled);
-    ImGui::SetItemTooltip("The map in a corner of the window (key M). It is drawn into\n"
-                          "a framebuffer of its own, after the composite pass.");
-    ImGui::Checkbox("Reveal all", &minimap.revealAll);
-    ImGui::SetItemTooltip("Debug switch: show the whole maze. Without it the map shows\n"
-                          "only the cells the player has seen along the corridors.");
-    ImGui::SliderFloat("Size", &minimap.size, game::MIN_MINIMAP_SIZE, game::MAX_MINIMAP_SIZE,
-                       "%.2f", ImGuiSliderFlags_AlwaysClamp);
-    ImGui::SetItemTooltip("The side of the map as a part of the height of the window.\n"
-                          "Its framebuffer gets exactly that many pixels.");
-    ImGui::SliderFloat("Margin", &minimap.margin, game::MIN_MINIMAP_MARGIN,
-                       game::MAX_MINIMAP_MARGIN, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-    ImGui::SetItemTooltip("The free space between the map and the edges of its corner,\n"
-                          "as a part of the height of the window.");
-    int cornerIndex = static_cast<int>(minimap.corner);
-    if (ImGui::Combo("Corner", &cornerIndex, MINIMAP_CORNER_ITEMS)) {
-        minimap.corner = static_cast<game::MinimapCorner>(cornerIndex);
-    }
-    ImGui::SetItemTooltip("The corner of the window the map stands in. The HUD is at the\n"
-                          "top in the middle, so a wide map in a top corner can meet it.");
-    ImGui::SliderFloat("Opacity", &minimap.opacity, game::MIN_MINIMAP_OPACITY,
-                       game::MAX_MINIMAP_OPACITY, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-    ImGui::SetItemTooltip("How much the map hides of the scene behind it. 1 hides it\n"
-                          "completely.");
-    if (minimap.enabled && target.isValid()) {
-        ImGui::Text("Framebuffer: %d x %d px, %s", target.width(), target.height(),
-                    gfx::colorFormatName(target.colorFormat()));
-    } else {
-        ImGui::TextUnformatted("Framebuffer: not drawn (minimap off)");
-    }
-
-    ImGui::TableNextColumn();
-    // As wide as the column, but not higher than the widgets next to it.
-    // GetFrameHeightWithSpacing is the height of one row of widgets.
-    const float side = std::min(ImGui::GetContentRegionAvail().x,
-                                MINIMAP_PICTURE_ROWS * ImGui::GetFrameHeightWithSpacing());
-    drawPreview("Minimap", "The framebuffer of the minimap: sRGB colours, shown as stored.", target,
-                side, minimap.enabled);
-
-    ImGui::EndTable();
-}
-
-// The settings, in three tabs so that the panel stays short enough to show the pictures
-// under them without scrolling: the first two tabs have four rows of widgets. The tab
-// of the minimap is higher, because the picture of the minimap stands in it.
-void drawSettings(game::PostProcessSettings& settings, game::MinimapSettings& minimapSettings,
-                  const gfx::Framebuffer& minimapTarget) {
+// The settings, in two tabs so that the panel stays short enough to show the pictures
+// under them without scrolling: each tab has four rows of widgets.
+void drawSettings(game::PostProcessSettings& settings) {
     // BeginTabBar returns false when the bar cannot be seen. EndTabBar must not be
     // called then. BeginTabItem returns true for the tab that is selected, and only
     // that one draws its widgets.
@@ -299,19 +238,13 @@ void drawSettings(game::PostProcessSettings& settings, game::MinimapSettings& mi
         drawFogAndVignetteSettings(settings);
         ImGui::EndTabItem();
     }
-    if (ImGui::BeginTabItem("Minimap")) {
-        drawMinimapSettings(minimapSettings, minimapTarget);
-        ImGui::EndTabItem();
-    }
     ImGui::EndTabBar();
 }
 
 } // namespace
 
 void drawFramebuffersPanel(game::PostProcessSettings& settings,
-                           const game::PostProcess& postProcess,
-                           game::MinimapSettings& minimapSettings,
-                           const gfx::Framebuffer& minimapTarget) {
+                           const game::PostProcess& postProcess) {
     // First run only: the third row of title bars at the top edge of the window, folded
     // (the constant is in PanelLayout.hpp). Later ImGui remembers the panel in
     // imgui.ini.
@@ -321,7 +254,7 @@ void drawFramebuffersPanel(game::PostProcessSettings& settings,
     const bool open = ImGui::Begin("Framebuffers");
     settings.previews = open;
     if (open) {
-        drawSettings(settings, minimapSettings, minimapTarget);
+        drawSettings(settings);
 
         // The framebuffer the scene is drawn into, and the smaller targets of the bloom.
         const gfx::Framebuffer& scene = postProcess.sceneTarget();

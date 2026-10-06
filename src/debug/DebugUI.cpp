@@ -10,7 +10,6 @@
 #include "debug/panels/CollisionPanel.hpp"
 #include "debug/panels/EnvironmentPanel.hpp"
 #include "debug/panels/FramebuffersPanel.hpp"
-#include "debug/panels/GameplayPanel.hpp"
 #include "debug/panels/GrassPanel.hpp"
 #include "debug/panels/LightsPanel.hpp"
 #include "debug/panels/MazePanel.hpp"
@@ -125,11 +124,9 @@ void DebugUI::draw(const DebugContext& context) {
             &context.minimapOverlayShader, &context.reflectShader};
         drawShadersPanel(shaders);
 
-        drawGameplayPanel(context.round, context.gameplay);
         drawTerrainPanel(context.terrain, context.mazeWorld.terrain);
         drawGrassPanel(context.grass, context.grassTuftCount);
-        drawFramebuffersPanel(context.postProcessSettings, context.postProcess,
-                              context.minimapSettings, context.minimap.target());
+        drawFramebuffersPanel(context.postProcessSettings, context.postProcess);
         drawShadowsPanel({.settings = context.moonShadowSettings,
                           .map = context.moonShadowMap,
                           .lightSpace = context.moonLightSpace,

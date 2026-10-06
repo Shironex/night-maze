@@ -237,6 +237,8 @@ add_executable(night_maze
     src/debug/Icons.hpp
     src/debug/PanelLayout.cpp
     src/debug/PanelLayout.hpp
+    src/debug/Pictures.cpp
+    src/debug/Pictures.hpp
     src/debug/RawTextureSampler.cpp
     src/debug/RawTextureSampler.hpp
     src/debug/Search.cpp
@@ -245,6 +247,8 @@ add_executable(night_maze
     src/debug/Theme.hpp
     src/debug/Widgets.cpp
     src/debug/Widgets.hpp
+    src/debug/categories/GameplayCategory.cpp
+    src/debug/categories/GameplayCategory.hpp
     src/debug/categories/PlayerCategory.cpp
     src/debug/categories/PlayerCategory.hpp
     src/debug/categories/RenderCategory.cpp
@@ -257,8 +261,6 @@ add_executable(night_maze
     src/debug/panels/EnvironmentPanel.hpp
     src/debug/panels/FramebuffersPanel.cpp
     src/debug/panels/FramebuffersPanel.hpp
-    src/debug/panels/GameplayPanel.cpp
-    src/debug/panels/GameplayPanel.hpp
     src/debug/panels/GrassPanel.cpp
     src/debug/panels/GrassPanel.hpp
     src/debug/panels/LightsPanel.cpp

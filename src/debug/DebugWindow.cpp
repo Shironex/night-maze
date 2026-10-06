@@ -7,6 +7,7 @@
 #include "debug/Hud.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
+#include "debug/categories/GameplayCategory.hpp"
 #include "debug/categories/PlayerCategory.hpp"
 #include "debug/categories/RenderCategory.hpp"
 #include "game/GameState.hpp"
@@ -365,7 +366,7 @@ void DebugWindow::drawCategory(Category category, Page& page, const DebugContext
         drawPlayerCategory(page, context);
         break;
     case Category::Gameplay:
-        drawNotMovedYet(page);
+        drawGameplayCategory(page, context);
         break;
     case Category::Diagnostics:
         drawNotMovedYet(page);

@@ -5,14 +5,9 @@
 #pragma once
 
 namespace game {
-struct MinimapSettings;
 class PostProcess;
 struct PostProcessSettings;
 } // namespace game
-
-namespace gfx {
-class Framebuffer;
-} // namespace gfx
 
 namespace debug {
 
@@ -25,13 +20,7 @@ namespace debug {
 /// settings.previews: true while it is open, so the game draws the four preview
 /// pictures only when somebody looks at them. postProcess is read only: the sizes and
 /// the formats of the scene framebuffer and of the bloom targets, and the pictures.
-///
-/// The third tab, "Minimap", edits minimapSettings (switch, reveal all, size, margin,
-/// corner, opacity) and shows minimapTarget, the framebuffer the minimap is drawn into:
-/// its size, its format and its picture, as it is before it is put into the window.
 void drawFramebuffersPanel(game::PostProcessSettings& settings,
-                           const game::PostProcess& postProcess,
-                           game::MinimapSettings& minimapSettings,
-                           const gfx::Framebuffer& minimapTarget);
+                           const game::PostProcess& postProcess);
 
 } // namespace debug
