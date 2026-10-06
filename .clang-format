@@ -17,4 +17,26 @@ PackConstructorInitializers: NextLine
 InsertBraces: true
 SortIncludes: CaseSensitive
 IncludeBlocks: Preserve
+---
+# The same rules once more for Objective-C++: the one .mm file of the project, the
+# video decoder for macOS (src/video/VideoDecoderApple.mm). clang-format keeps one
+# section per language and does not share the options between them.
+Language: ObjC
+BasedOnStyle: LLVM
+Standard: c++20
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+AccessModifierOffset: -4
+PointerAlignment: Left
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: NextLine
+InsertBraces: true
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
 ...

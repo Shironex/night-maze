@@ -50,10 +50,14 @@ add_library(engine STATIC
     src/gfx/ColorSpace.hpp
     src/gfx/ComparisonSampler.cpp
     src/gfx/ComparisonSampler.hpp
+    src/gfx/CoverFit.cpp
+    src/gfx/CoverFit.hpp
     src/gfx/Cubemap.cpp
     src/gfx/Cubemap.hpp
     src/gfx/Extensions.cpp
     src/gfx/Extensions.hpp
+    src/gfx/FrameTexture.cpp
+    src/gfx/FrameTexture.hpp
     src/gfx/Framebuffer.cpp
     src/gfx/Framebuffer.hpp
     src/gfx/Mesh.cpp
@@ -106,9 +110,9 @@ night_maze_enable_warnings(engine)
 # the vignette and of the shadows, the rules of a round (exit, crystals, battery), the
 # levers and the notes with the picking of a frame, what the minimap shows (the
 # discovered cells and its shapes), the path of the menu camera, the screens of the
-# game (menu, playing, paused, round end, settings), the three difficulty levels, the
-# settings of the player with the text of their file and the switches of the command
-# line are plain data and math.
+# game (menu, playing, paused, round end, settings), the rule that chooses what is
+# behind the main menu, the three difficulty levels, the settings of the player with
+# the text of their file and the switches of the command line are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
 # the test program can link them too: a test cannot link code that is inside another
 # executable.
@@ -145,6 +149,8 @@ add_library(game_logic STATIC
     src/game/MazeLayout.hpp
     src/game/MazeWorld.cpp
     src/game/MazeWorld.hpp
+    src/game/MenuBackground.cpp
+    src/game/MenuBackground.hpp
     src/game/MenuCamera.cpp
     src/game/MenuCamera.hpp
     src/game/Minimap.cpp
@@ -193,10 +199,79 @@ target_link_libraries(ui PUBLIC engine)
 target_link_libraries(ui PRIVATE rmlui_backend)
 night_maze_enable_warnings(ui)
 
+# ---- video: plays a video file into a texture with the decoder of the operating system --
+# In the order of the layers it stands beside ui, above gfx: it needs the textures of
+# engine and knows nothing about the game (the game tells it which file to play and
+# draws its texture). It is a library of its own and not a part of engine for the same
+# reason as ui: game_logic and the test program link engine, and they should link neither
+# the media libraries of an operating system nor a file in another language.
+#
+# The decoder is the only code of the project that is written twice, once per system,
+# behind one interface (video/VideoDecoder.hpp). VideoDecoderWindows.cpp is in the list
+# on every system and empty outside of Windows, so the checks that run over all .cpp
+# files find it in the list of compiled files everywhere. The macOS file is
+# Objective-C++, a language CMake has to be told about, and is added below.
+add_library(video STATIC
+    src/video/VideoClock.cpp
+    src/video/VideoClock.hpp
+    src/video/VideoDecoder.hpp
+    src/video/VideoDecoderWindows.cpp
+    src/video/VideoPlayer.cpp
+    src/video/VideoPlayer.hpp
+)
+# engine is PUBLIC: video/VideoPlayer.hpp includes gfx/FrameTexture.hpp.
+target_link_libraries(video PUBLIC engine)
+# The player decodes on a thread of its own. Threads::Threads is whatever the system
+# needs for std::thread: nothing on Windows and macOS, -pthread elsewhere.
+find_package(Threads REQUIRED)
+target_link_libraries(video PUBLIC Threads::Threads)
+if(WIN32)
+    # Media Foundation, the part of Windows that decodes video files, and COM, which it
+    # is built on. They are libraries of Windows itself: nothing is downloaded and
+    # nothing is added to the folder of the game.
+    target_link_libraries(video PRIVATE mfplat mfreadwrite mfuuid ole32)
+    # The N editions of Windows have no Media Foundation until the Media Feature Pack
+    # is installed. A program that needs a missing DLL does not start at all, so the
+    # two DLLs are "delay loaded": Windows loads them at the first call into them and
+    # not at the start of the program. The decoder asks whether they exist before that
+    # first call (VideoDecoderWindows.cpp), and without them the menu shows its still
+    # picture. delayimp is the small library of the linker that does the late loading.
+    # INTERFACE: a static library is not linked itself, so the switches are passed on
+    # to the program that links it.
+    target_link_options(video INTERFACE "/DELAYLOAD:mfplat.dll" "/DELAYLOAD:mfreadwrite.dll")
+    target_link_libraries(video INTERFACE delayimp)
+elseif(APPLE)
+    # AVFoundation, the part of macOS that decodes video files, is used from
+    # Objective-C++: C++ that can also call the Objective-C classes of Apple. The
+    # language is switched on here and only here, so Windows never looks for a compiler
+    # of it.
+    enable_language(OBJCXX)
+    target_sources(video PRIVATE src/video/VideoDecoderApple.mm)
+    # The same C++ standard as the rest of the project, said again for this language.
+    set_target_properties(video PROPERTIES
+        OBJCXX_STANDARD 20
+        OBJCXX_STANDARD_REQUIRED ON
+        OBJCXX_EXTENSIONS OFF
+    )
+    # Automatic reference counting: the compiler releases the Objective-C objects the
+    # file holds, there is no retain and no release in it.
+    set_source_files_properties(src/video/VideoDecoderApple.mm PROPERTIES
+        COMPILE_OPTIONS "-fobjc-arc"
+    )
+    # Frameworks are the libraries of macOS. They are part of the system.
+    target_link_libraries(video PRIVATE
+        "-framework AVFoundation"
+        "-framework CoreMedia"
+        "-framework CoreVideo"
+        "-framework Foundation"
+    )
+endif()
+night_maze_enable_warnings(video)
+
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer,
 # InteractableRenderer, TerrainRenderer, GrassRenderer, ColliderLines, LightRig, Skybox,
-# PostProcess, ShadowMap, MinimapRenderer,
+# PostProcess, ShadowMap, MinimapRenderer, MenuBackgroundRenderer,
 # with the shared ModelDraw) stay in the executable: they need a window and an OpenGL
 # context, so they are not something a test can run.
 add_executable(night_maze
@@ -213,6 +288,8 @@ add_executable(night_maze
     src/game/LightRig.hpp
     src/game/MazeRenderer.cpp
     src/game/MazeRenderer.hpp
+    src/game/MenuBackgroundRenderer.cpp
+    src/game/MenuBackgroundRenderer.hpp
     src/game/MinimapRenderer.cpp
     src/game/MinimapRenderer.hpp
     src/game/ModelDraw.cpp
@@ -267,7 +344,7 @@ add_executable(night_maze
     src/debug/categories/WorldCategory.cpp
     src/debug/categories/WorldCategory.hpp
 )
-target_link_libraries(night_maze PRIVATE engine game_logic ui imgui)
+target_link_libraries(night_maze PRIVATE engine game_logic ui video imgui)
 night_maze_enable_warnings(night_maze)
 
 # ---- night_maze_tests: unit tests of the code that runs without a window --------------
@@ -280,6 +357,7 @@ add_executable(night_maze_tests
     tests/BloomTests.cpp
     tests/ColliderTests.cpp
     tests/ColorSpaceTests.cpp
+    tests/CoverFitTests.cpp
     tests/CrystalTests.cpp
     tests/DifficultyTests.cpp
     tests/DiscoveryTests.cpp
@@ -298,6 +376,7 @@ add_executable(night_maze_tests
     tests/MazeLayoutTests.cpp
     tests/MazeTests.cpp
     tests/MazeWorldTests.cpp
+    tests/MenuBackgroundTests.cpp
     tests/MenuCameraTests.cpp
     tests/MinimapTests.cpp
     tests/ObjLoaderTests.cpp
@@ -314,11 +393,17 @@ add_executable(night_maze_tests
     tests/TangentTests.cpp
     tests/TerrainTests.cpp
     tests/TransformTests.cpp
+    tests/VideoClockTests.cpp
     tests/VignetteTests.cpp
     # The one file of the debug UI that needs neither ImGui nor a window: the text
     # search of the debug window. It is compiled into the test program directly.
     src/debug/Search.cpp
     src/debug/Search.hpp
+    # The same for the video library: the arithmetic of its clock needs neither
+    # a decoder nor OpenGL. Linking the library itself would bring Media Foundation
+    # into the test program.
+    src/video/VideoClock.cpp
+    src/video/VideoClock.hpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)

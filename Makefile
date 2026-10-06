@@ -28,6 +28,17 @@ else
     HEADERS := $(shell find src tests -name '*.hpp')
 endif
 
+# The Objective-C++ files (.mm): the video decoder for macOS is the only one. They are
+# formatted like everything else, on both systems: clang-format only reads the text.
+# They are NOT given to clang-tidy. clang-tidy compiles what it checks, and an
+# Objective-C++ file needs the headers of macOS: on Windows it cannot be checked at
+# all, and on macOS the check was never run, because the file was written on Windows.
+ifeq ($(OS),Windows_NT)
+    OBJCXX_SOURCES := $(wildcard src/*.mm src/*/*.mm src/*/*/*.mm)
+else
+    OBJCXX_SOURCES := $(shell find src -name '*.mm')
+endif
+
 # clang-format and clang-tidy.
 # Windows: both come with the Visual Studio C++ tools but are not added to PATH, not even
 # in the developer shell. That shell sets VCINSTALLDIR (it ends with a backslash), so the
@@ -114,10 +125,10 @@ test-release: release
 	ctest --test-dir build/release -C Release --output-on-failure
 
 format:
-	$(CLANG_FORMAT) -i $(SOURCES) $(HEADERS)
+	$(CLANG_FORMAT) -i $(SOURCES) $(HEADERS) $(OBJCXX_SOURCES)
 
 format-check:
-	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES) $(HEADERS)
+	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES) $(HEADERS) $(OBJCXX_SOURCES)
 
 # clang-tidy needs compile_commands.json (see TIDY_BUILD_DIR above), so the Debug
 # configuration has to exist first. On Windows the extra step configures the Ninja
