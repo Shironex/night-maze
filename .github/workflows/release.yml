@@ -1,0 +1,237 @@
+# THIS WORKFLOW HAS NEVER RUN.
+#
+# It was written while the repository was private and before the first tag.
+# Nothing in it has been executed on a GitHub runner: not the builds, not the
+# `if:` conditions, not the publish step. The scripts it calls were run on a
+# developer machine (Windows) and have tests, and this file was parsed as YAML.
+# Expect to fix something on the first real run, and read the result before
+# sending the link to anyone.
+#
+# What it does: on a tag `v<major>.<minor>.<patch>` it builds the game for
+# Windows and for macOS on Apple Silicon, packs each into a zip, and publishes a
+# GitHub Release holding the zips, `manifest.json` and `news.json`. The launcher
+# reads `https://github.com/<owner>/<repo>/releases/latest/download/manifest.json`,
+# so the release must be a normal one: a draft or a prerelease is never "latest".
+#
+# The repository has to be public for the launcher to download from it without
+# a token.
+#
+# If publishing fails: delete the release and the tag, fix, and push the tag
+# again. Re-running the failed run would use this file as it was at the tag.
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: 'Also build the macOS package'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # The version has one source: project(NightMaze VERSION ...) in CMakeLists.txt.
+      # A tag that says something else stops the release in its first minute.
+      - name: Read the version and compare it with the tag
+        id: version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^project(NightMaze VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt)"
+          if [ -z "$version" ]; then
+            echo "::error::Could not read the version from CMakeLists.txt"
+            exit 1
+          fi
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match version ${version} in CMakeLists.txt"
+            exit 1
+          fi
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            echo "::error::Run this workflow on a tag (choose the tag under 'Use workflow from')"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the downloaded dependencies
+        uses: actions/cache@v6
+        with:
+          path: build/release/_deps
+          key: deps-windows-${{ hashFiles('cmake/Dependencies.cmake') }}
+
+      # Static C++ runtime, for the release package only: the exe then needs no
+      # Visual C++ redistributable on a friend's PC. The first variable switches
+      # the game and Dear ImGui to /MT, the second tells GLFW to do the same.
+      # Measured locally on 2026-10-06 with MSVC from Build Tools 2022: the
+      # build links, the tests pass, and `dumpbin /dependents` lists no
+      # VCRUNTIME or MSVCP DLL.
+      - name: Configure
+        run: cmake --preset release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DUSE_MSVC_RUNTIME_LIBRARY_DLL=OFF
+
+      - name: Build
+        run: cmake --build --preset release
+
+      - name: Unit tests
+        run: ctest --test-dir build/release -C Release --output-on-failure
+
+      - name: Tests of the packaging scripts
+        run: node --test launcher/scripts/lib/feed.test.mjs
+
+      # Assets and the notices file come from the repository, not from the
+      # build directory.
+      - name: Package
+        shell: bash
+        run: |
+          node launcher/scripts/package-game.mjs \
+            --exe build/release/Release/night_maze.exe \
+            --version "${{ steps.version.outputs.version }}" \
+            --platform windows-x64 \
+            --out dist-release
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-windows-x64
+          path: dist-release/*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  macos:
+    name: macOS arm64
+    # `inputs` is empty on a tag push, so the job runs there.
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.macos }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Read the version
+        id: version
+        run: |
+          version="$(sed -n 's/^project(NightMaze VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt)"
+          test -n "$version"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the downloaded dependencies
+        uses: actions/cache@v6
+        with:
+          path: build/release/_deps
+          key: deps-macos-${{ hashFiles('cmake/Dependencies.cmake') }}
+
+      # Without a deployment target the binary only starts on the macOS version
+      # of the runner or newer.
+      - name: Configure
+        run: cmake --preset release -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DCMAKE_OSX_ARCHITECTURES=arm64
+
+      - name: Build
+        run: cmake --build --preset release
+
+      - name: Unit tests
+        run: ctest --test-dir build/release --output-on-failure
+
+      # Apple Silicon refuses unsigned code. The linker signs ad hoc already;
+      # signing again as the last step before packing makes sure nothing after
+      # the link left a stale signature.
+      - name: Ad hoc signature
+        run: |
+          codesign --force --sign - build/release/night_maze
+          codesign --verify --verbose build/release/night_maze
+
+      # build/release/assets is a link into the checkout on macOS, so the
+      # packager reads the assets folder of the repository itself.
+      - name: Package
+        run: |
+          node launcher/scripts/package-game.mjs \
+            --exe build/release/night_maze \
+            --version "${{ steps.version.outputs.version }}" \
+            --platform macos-arm64 \
+            --out dist-release
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-macos-arm64
+          path: dist-release/*.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish the release
+    needs: [windows, macos]
+    # One job creates the release, so two jobs cannot race to create it. A
+    # skipped macOS job would skip this job as well, so the condition is spelled
+    # out: Windows must have succeeded and macOS must not have failed.
+    if: ${{ !cancelled() && needs.windows.result == 'success' && needs.macos.result != 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.windows.outputs.version }}
+      TAG: v${{ needs.windows.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download the packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: package-*
+          path: release-assets
+          merge-multiple: true
+
+      # The files are named after the tag, so the URLs in the manifest are the
+      # permanent ones of this release, not the moving "latest" address.
+      # CHANGELOG.md is optional: without a section for this version the notes
+      # carry the version, the date and the tag message.
+      - name: Write manifest.json and news.json
+        run: |
+          node launcher/scripts/build-feed.mjs \
+            --dir release-assets \
+            --version "${VERSION}" \
+            --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/" \
+            --changelog CHANGELOG.md \
+            --title "$(git tag -l --format='%(contents:subject)' "${TAG}")"
+          cat release-assets/manifest.json
+
+      # Not a draft and not a prerelease: only a normal release becomes
+      # "latest", which is the address the launcher reads.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Night Maze ${VERSION}" \
+            --notes "Install and update through the Night Maze launcher. The zip files are the same builds the launcher downloads." \
+            --latest \
+            --verify-tag \
+            release-assets/*.zip release-assets/manifest.json release-assets/news.json
+
+  # TODO (not done): build and publish the launcher itself.
+  #
+  # The launcher must not be published as a release of this repository's main
+  # release line without care: "latest" has to stay the newest GAME release, or
+  # the manifest address stops resolving. Before adding this job, decide where
+  # launcher installers live (see launcher/README.md, "Not done yet"). The job
+  # would run `pnpm install --frozen-lockfile` and `pnpm tauri build` in
+  # launcher/ on windows-latest and macos-15 and upload the NSIS installer and
+  # the dmg. Self update needs a signing key that does not exist yet.
