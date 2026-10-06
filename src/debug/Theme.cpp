@@ -1,4 +1,4 @@
-// Theme of the debug panels: night colours, soft metrics and the panel font.
+// Theme of the debug window: night colours, calm metrics and the panel font.
 // See docs/modules/debug-ui.md
 #include "debug/Theme.hpp"
 
@@ -17,15 +17,11 @@ namespace debug {
 namespace {
 
 // ---- Palette: a stone maze at night ---------------------------------------------------
-// Red, green and blue from 0 to 255. Text is always MOONLIGHT, so every background that
-// text is drawn on is dark enough for a contrast of at least 7 to 1 (table in the
-// document). The one exception is the small handle of a slider, which the digits of the
-// value cross.
-
-// Text: the pale, slightly blue white of moonlight.
-constexpr ImVec4 MOONLIGHT = colorFromBytes(226, 234, 246);
-// Greyed out text (hints, disabled entries): moonlight behind a cloud.
-constexpr ImVec4 MOON_DIM = colorFromBytes(140, 154, 182);
+// Red, green and blue from 0 to 255. The colours the widgets of the debug window name
+// directly (text, card, accent, track) are in Theme.hpp. Here are the ones only the
+// style table below uses. Text is always TEXT_COLOR, so every background that text is
+// drawn on is dark. The one exception is a filled accent button, which gets dark text
+// (ON_ACCENT_COLOR).
 
 // How much of a panel hides the scene behind it. A little of the scene shows through.
 constexpr float PANEL_OPACITY = 0.94F;
@@ -39,29 +35,28 @@ constexpr ImVec4 NIGHT_DEEP = colorFromBytes(9, 13, 26, POPUP_OPACITY);
 // Title bar of a panel that is not focused, and the tab of a hidden docked panel.
 constexpr ImVec4 NIGHT_RAISED = colorFromBytes(22, 31, 56);
 
-// Resting widgets (sliders, number fields, checkboxes, tabs): muted slate.
+// Tabs of docked panels at rest: muted slate.
 constexpr ImVec4 SLATE = colorFromBytes(36, 47, 74);
-// Resting things that are clicked (buttons, list entries, scrollbar grab): lighter slate.
+// Resting scrollbar grab and resize grip: lighter slate.
 constexpr ImVec4 SLATE_LIGHT = colorFromBytes(48, 62, 94);
 // Resting handle of a slider, hovered scrollbar grab: the brightest slate.
 constexpr ImVec4 SLATE_BRIGHT = colorFromBytes(92, 112, 156);
-// Soft outline of panels and popups: the brightest slate, mostly transparent.
-constexpr ImVec4 SOFT_BORDER = colorFromBytes(92, 112, 156, 0.45F);
 
-// A widget under the mouse: the dark, warm edge of the flashlight patch. It is dark,
+// A button under the mouse: the dark, warm edge of the flashlight patch. It is dark,
 // not bright, because the pale text is drawn on top of it.
 constexpr ImVec4 EMBER = colorFromBytes(78, 54, 22);
-// A widget that is being pressed or dragged: a slightly brighter ember.
+// A button that is being pressed: a slightly brighter ember.
 constexpr ImVec4 EMBER_BRIGHT = colorFromBytes(98, 66, 20);
 // Small bright marks without text on them (check mark, line over the selected tab,
-// dragged scrollbar): the amber of the flashlight.
-constexpr ImVec4 AMBER = colorFromBytes(255, 184, 84);
+// dragged scrollbar): the amber of the flashlight, the action colour.
+constexpr ImVec4 AMBER = ACCENT_COLOR;
 // The handle of a slider while it is dragged: a darker amber, because the digits of the
 // value are drawn across the handle and must stay readable.
 constexpr ImVec4 AMBER_DEEP = colorFromBytes(172, 110, 28);
 
-// Sparing accent (keyboard focus frame, plots, links, dragged splitter): crystal cyan.
-constexpr ImVec4 CRYSTAL = colorFromBytes(86, 214, 202);
+// Sparing second accent (keyboard focus frame, plots, links, dragged splitter): crystal
+// teal.
+constexpr ImVec4 CRYSTAL = SECONDARY_COLOR;
 // Title bar of the focused panel, selected tab, ticked checkbox: deep crystal teal.
 constexpr ImVec4 CRYSTAL_DEEP = colorFromBytes(18, 68, 76);
 // Separator lines: dim crystal teal.
@@ -78,28 +73,33 @@ constexpr ImVec4 INVISIBLE = colorFromBytes(0, 0, 0, 0.0F);
 
 // ---- Metrics, in pixels at 100 % display scaling ---------------------------------------
 
-// Height of the text. The built-in font of ImGui is 13 pixels high.
-constexpr float FONT_SIZE = 16.0F;
+// The height of the text is FONT_SIZE in Theme.hpp.
 
 // Free space between the edge of a panel and its contents.
-constexpr ImVec2 WINDOW_PADDING{10.0F, 10.0F};
-// Free space between the edge of a widget (button, slider) and its text.
-constexpr ImVec2 FRAME_PADDING{8.0F, 3.0F};
-// Distance between two widgets: to the next one in a line, and to the next line.
-constexpr ImVec2 ITEM_SPACING{8.0F, 5.0F};
-// Distance between the parts of one widget, for example a slider and its label.
+constexpr ImVec2 WINDOW_PADDING{12.0F, 12.0F};
+// Free space between the edge of a widget (button, number field) and its text. With the
+// font it makes a widget 22 pixels high.
+constexpr ImVec2 FRAME_PADDING{8.0F, 4.0F};
+// Distance between two widgets: to the next one in a line, and to the next line. With
+// the height of a widget it makes a setting row 28 pixels high.
+constexpr ImVec2 ITEM_SPACING{8.0F, 6.0F};
+// Distance between the parts of one widget, for example the two fields of a range.
 constexpr ImVec2 ITEM_INNER_SPACING{6.0F, 4.0F};
 
-// Radius of the corners of panels.
-constexpr float WINDOW_ROUNDING = 8.0F;
-// Radius of the corners of widgets, popups, tabs and scrollbars.
-constexpr float WIDGET_ROUNDING = 5.0F;
-// Thickness of the outline of panels and popups.
+// Radius of the corners of the debug window and of a pinned panel.
+constexpr float WINDOW_ROUNDING = 14.0F;
+// Radius of the corners of a card (a child window inside the debug window).
+constexpr float CARD_ROUNDING = 12.0F;
+// Radius of the corners of tooltips and of opened lists.
+constexpr float POPUP_ROUNDING = 9.0F;
+// Radius of the corners of widgets, tabs and scrollbars.
+constexpr float WIDGET_ROUNDING = 7.0F;
+// Thickness of every outline: panels, cards, popups and widgets. One thin line.
 constexpr float BORDER_SIZE = 1.0F;
-// Width of a scrollbar.
-constexpr float SCROLLBAR_SIZE = 12.0F;
+// Width of a scrollbar: thin, it only hints at where the page is.
+constexpr float SCROLLBAR_SIZE = 8.0F;
 // Smallest width of the handle of a slider.
-constexpr float GRAB_MIN_SIZE = 12.0F;
+constexpr float GRAB_MIN_SIZE = 10.0F;
 
 // Opacity of widgets inside ImGui::BeginDisabled: low enough to tell them apart at once.
 constexpr float DISABLED_ALPHA = 0.45F;
@@ -137,18 +137,19 @@ void applyColors(ImGuiStyle& style) {
     // Colors is an array with one ImVec4 for every value of the enum ImGuiCol_.
     ImVec4* colors = style.Colors;
 
-    colors[ImGuiCol_Text] = MOONLIGHT;
-    colors[ImGuiCol_TextDisabled] = MOON_DIM;
+    colors[ImGuiCol_Text] = TEXT_COLOR;
+    colors[ImGuiCol_TextDisabled] = TEXT_DIM_COLOR;
     colors[ImGuiCol_TextLink] = CRYSTAL;
     colors[ImGuiCol_TextSelectedBg] = CRYSTAL_OVERLAY;
-    colors[ImGuiCol_InputTextCursor] = MOONLIGHT;
+    colors[ImGuiCol_InputTextCursor] = TEXT_COLOR;
 
-    // Backgrounds and outlines.
+    // Backgrounds and outlines. A child window has no background of its own: a card
+    // pushes CARD_COLOR for itself (Widgets.cpp).
     colors[ImGuiCol_WindowBg] = NIGHT;
     colors[ImGuiCol_ChildBg] = INVISIBLE;
     colors[ImGuiCol_PopupBg] = NIGHT_DEEP;
     colors[ImGuiCol_MenuBarBg] = NIGHT_RAISED;
-    colors[ImGuiCol_Border] = SOFT_BORDER;
+    colors[ImGuiCol_Border] = LINE_COLOR;
     colors[ImGuiCol_BorderShadow] = INVISIBLE;
 
     // Title bars: only the focused panel gets the crystal accent.
@@ -156,23 +157,25 @@ void applyColors(ImGuiStyle& style) {
     colors[ImGuiCol_TitleBgActive] = CRYSTAL_DEEP;
     colors[ImGuiCol_TitleBgCollapsed] = NIGHT_RAISED;
 
-    // Widgets with a frame: slate at rest, ember under the mouse, brighter ember when used.
-    colors[ImGuiCol_FrameBg] = SLATE;
-    colors[ImGuiCol_FrameBgHovered] = EMBER;
-    colors[ImGuiCol_FrameBgActive] = EMBER_BRIGHT;
+    // Widgets with a frame (number fields, lists, the search box): one step lighter than
+    // the card they lie on at rest, the two colours of a slider track under the mouse
+    // and while they are used. All three are dark, because the pale text is drawn on them.
+    colors[ImGuiCol_FrameBg] = CONTROL_COLOR;
+    colors[ImGuiCol_FrameBgHovered] = TRACK_COLOR;
+    colors[ImGuiCol_FrameBgActive] = TRACK_HOVER_COLOR;
     colors[ImGuiCol_CheckboxSelectedBg] = CRYSTAL_DEEP;
     colors[ImGuiCol_CheckMark] = AMBER;
     colors[ImGuiCol_SliderGrab] = SLATE_BRIGHT;
     colors[ImGuiCol_SliderGrabActive] = AMBER_DEEP;
 
-    colors[ImGuiCol_Button] = SLATE_LIGHT;
+    // A button does something, so it answers in the warm colour: ember under the mouse.
+    colors[ImGuiCol_Button] = CONTROL_COLOR;
     colors[ImGuiCol_ButtonHovered] = EMBER;
     colors[ImGuiCol_ButtonActive] = EMBER_BRIGHT;
 
-    // Header colours are used by the entries of an opened list (Combo) and by the title
-    // bars of foldable groups (CollapsingHeader).
-    colors[ImGuiCol_Header] = SLATE_LIGHT;
-    colors[ImGuiCol_HeaderHovered] = EMBER;
+    // Header colours are used by the entries of an opened list (Combo).
+    colors[ImGuiCol_Header] = TRACK_COLOR;
+    colors[ImGuiCol_HeaderHovered] = TRACK_HOVER_COLOR;
     colors[ImGuiCol_HeaderActive] = EMBER_BRIGHT;
 
     colors[ImGuiCol_ScrollbarBg] = INVISIBLE;
@@ -227,7 +230,8 @@ void applyColors(ImGuiStyle& style) {
     colors[ImGuiCol_ModalWindowDimBg] = NIGHT_OVERLAY;
 }
 
-// Sets paddings, spacings, roundings and sizes: softer and a little roomier than stock.
+// Sets paddings, spacings, roundings and sizes: rounder and roomier than stock, with one
+// thin outline around every panel, card, popup and widget.
 void applyMetrics(ImGuiStyle& style) {
     style.WindowPadding = WINDOW_PADDING;
     style.FramePadding = FRAME_PADDING;
@@ -235,15 +239,17 @@ void applyMetrics(ImGuiStyle& style) {
     style.ItemInnerSpacing = ITEM_INNER_SPACING;
 
     style.WindowRounding = WINDOW_ROUNDING;
-    style.ChildRounding = WIDGET_ROUNDING;
-    style.PopupRounding = WIDGET_ROUNDING;
+    style.ChildRounding = CARD_ROUNDING;
+    style.PopupRounding = POPUP_ROUNDING;
     style.FrameRounding = WIDGET_ROUNDING;
     style.GrabRounding = WIDGET_ROUNDING;
     style.TabRounding = WIDGET_ROUNDING;
     style.ScrollbarRounding = WIDGET_ROUNDING;
 
     style.WindowBorderSize = BORDER_SIZE;
+    style.ChildBorderSize = BORDER_SIZE;
     style.PopupBorderSize = BORDER_SIZE;
+    style.FrameBorderSize = BORDER_SIZE;
     style.ScrollbarSize = SCROLLBAR_SIZE;
     style.GrabMinSize = GRAB_MIN_SIZE;
 

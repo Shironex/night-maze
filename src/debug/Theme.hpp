@@ -1,4 +1,4 @@
-// Theme of the debug panels: night colours, soft metrics and the panel font.
+// Theme of the debug window: night colours, calm metrics and the panel font.
 // See docs/modules/debug-ui.md
 #pragma once
 
@@ -19,8 +19,52 @@ constexpr ImVec4 colorFromBytes(int red, int green, int blue, float alpha = 1.0F
             static_cast<float>(blue) / BYTE_MAX, alpha};
 }
 
-// The colours below have a meaning of their own, so the panels name them directly
-// (ImGui::PushStyleColor, draw lists). All other colours of the theme are in Theme.cpp.
+// The colours below have a meaning of their own, so the code of the debug window names
+// them directly (ImGui::PushStyleColor, draw lists). All other colours of the theme are
+// in Theme.cpp.
+
+// ---- Tokens of the debug window --------------------------------------------------------
+// The widgets drawn by hand (Widgets.cpp, Icons.cpp, DebugWindow.cpp) take every colour
+// from this list, so the window has one look: the amber of the flashlight for what acts
+// or is switched on, the teal of the crystals for what is only shown, on night navy.
+
+/// Height of the text of the debug window in pixels at 100 % display scaling. One size
+/// for everything. The built-in font of ImGui is 13 pixels high.
+inline constexpr float FONT_SIZE = 14.0F;
+
+/// Text: the pale, slightly blue white of moonlight.
+inline constexpr ImVec4 TEXT_COLOR = colorFromBytes(226, 234, 246);
+/// Quieter text (labels of read only lines, hints, units): moonlight behind a cloud.
+inline constexpr ImVec4 TEXT_DIM_COLOR = colorFromBytes(140, 154, 182);
+/// The quietest text that is still meant to be read (the path of a card in the search
+/// results, an icon of the rail at rest).
+inline constexpr ImVec4 TEXT_FAINT_COLOR = colorFromBytes(104, 118, 150);
+
+/// Background of a card: one step lighter than the night navy of the window.
+inline constexpr ImVec4 CARD_COLOR = colorFromBytes(19, 27, 51);
+/// Background of a widget on a card (number field, list, button): one more step lighter.
+inline constexpr ImVec4 CONTROL_COLOR = colorFromBytes(26, 36, 65);
+/// The thin outline of windows, cards and widgets: slate, mostly transparent.
+inline constexpr ImVec4 LINE_COLOR = colorFromBytes(92, 112, 156, 0.3F);
+
+/// The action colour: the amber of the flashlight. A switch that is on, the filled part
+/// of a slider, the chosen category, the chosen tab.
+inline constexpr ImVec4 ACCENT_COLOR = colorFromBytes(255, 184, 84);
+/// A faint amber wash behind something chosen (the icon of the current category).
+inline constexpr ImVec4 ACCENT_SOFT_COLOR = colorFromBytes(255, 184, 84, 0.14F);
+/// Text and marks drawn on top of the action colour: dark, because pale text on bright
+/// amber cannot be read.
+inline constexpr ImVec4 ON_ACCENT_COLOR = colorFromBytes(14, 20, 38);
+/// The second colour: the teal of the crystals. Values that are only shown, and the
+/// frame of the keyboard focus.
+inline constexpr ImVec4 SECONDARY_COLOR = colorFromBytes(86, 214, 202);
+
+/// The empty part of a slider and a switch that is off.
+inline constexpr ImVec4 TRACK_COLOR = colorFromBytes(46, 61, 104);
+/// The same under the mouse.
+inline constexpr ImVec4 TRACK_HOVER_COLOR = colorFromBytes(66, 87, 143);
+
+// ---- Colours with a meaning in the game ------------------------------------------------
 
 /// Text of a failed load (Shaders and Assets panels): a soft red that stays readable on
 /// the dark panel background.

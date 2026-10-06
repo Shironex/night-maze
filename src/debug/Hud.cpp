@@ -30,6 +30,11 @@ namespace {
 // the distance of the HUD from the top edge of the window.
 constexpr float HUD_TOP_OFFSET = 2.0F * PANEL_GAP;
 
+// Height of the text of the HUD in pixels. The HUD is read while playing, from further
+// away than the debug window is worked with, so it keeps a larger text than FONT_SIZE
+// of the theme.
+constexpr float HUD_FONT_SIZE = 16.0F;
+
 // Width of the battery bar, which is also what makes the HUD as wide as it is.
 constexpr float BATTERY_BAR_WIDTH = 230.0F;
 
@@ -193,9 +198,8 @@ void drawWinCard(const game::Round& round, float scale) {
                         {CARD_PADDING.x * scale, CARD_PADDING.y * scale});
 
     if (ImGui::Begin("You escaped", nullptr, CARD_WINDOW_FLAGS)) {
-        // The same font, larger. The size is given without the display scale: ImGui
-        // multiplies it by FontScaleDpi itself.
-        ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * CARD_TITLE_SCALE);
+        // The same font, larger than the rest of the HUD.
+        ImGui::PushFont(nullptr, HUD_FONT_SIZE * CARD_TITLE_SCALE);
         ImGui::TextColored(HUD_CRYSTAL_COLOR, "You escaped");
         ImGui::PopFont();
 
@@ -287,6 +291,11 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
              bool panelsVisible) {
     const float scale = ImGui::GetStyle().FontScaleDpi;
 
+    // The same font as the debug window, in the size of the HUD, for everything below.
+    // nullptr keeps the font. The size is given without the display scale: ImGui
+    // multiplies it by FontScaleDpi itself.
+    ImGui::PushFont(nullptr, HUD_FONT_SIZE);
+
     drawStatus(round, settings, scale, panelsVisible);
     drawCrosshair(pick, scale);
     drawPrompt(pick);
@@ -296,6 +305,8 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
     if (round.state == game::RoundState::Won) {
         drawWinCard(round, scale);
     }
+
+    ImGui::PopFont();
 }
 
 } // namespace debug
