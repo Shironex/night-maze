@@ -484,9 +484,10 @@ void NightMazeApp::onUpdate(double fixedDt) {
         return;
     }
 
-    // The keys reach the player only while the cursor is captured: one click in the scene
-    // switches on both mouse look and movement, Escape switches both off. Without the
-    // capture the struct stays as it is created: nothing is held.
+    // The keys reach the player only while the cursor is captured. It is captured when
+    // a round starts or goes on (showScreen). Showing the debug panels gives it back, and
+    // one click in the scene then switches on both mouse look and movement again.
+    // Without the capture the struct stays as it is created: nothing is held.
     PlayerInput wanted;
     if (input().isCursorCaptured()) {
         wanted.forward = input().isKeyDown(GLFW_KEY_W);
