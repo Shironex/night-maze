@@ -230,12 +230,18 @@ add_executable(night_maze
     src/debug/DebugUI.hpp
     src/debug/Hud.cpp
     src/debug/Hud.hpp
+    src/debug/Icons.cpp
+    src/debug/Icons.hpp
     src/debug/PanelLayout.cpp
     src/debug/PanelLayout.hpp
     src/debug/RawTextureSampler.cpp
     src/debug/RawTextureSampler.hpp
+    src/debug/Search.cpp
+    src/debug/Search.hpp
     src/debug/Theme.cpp
     src/debug/Theme.hpp
+    src/debug/Widgets.cpp
+    src/debug/Widgets.hpp
     src/debug/panels/AssetsPanel.cpp
     src/debug/panels/AssetsPanel.hpp
     src/debug/panels/CameraPanel.cpp
@@ -300,6 +306,7 @@ add_executable(night_maze_tests
     tests/PuddleTests.cpp
     tests/RaycastTests.cpp
     tests/RoundTests.cpp
+    tests/SearchTests.cpp
     tests/ShaderSourceTests.cpp
     tests/ShadowTests.cpp
     tests/SkyboxTests.cpp
@@ -308,6 +315,10 @@ add_executable(night_maze_tests
     tests/TerrainTests.cpp
     tests/TransformTests.cpp
     tests/VignetteTests.cpp
+    # The one file of the debug UI that needs neither ImGui nor a window: the text
+    # search of the debug window. It is compiled into the test program directly.
+    src/debug/Search.cpp
+    src/debug/Search.hpp
 )
 # game_logic brings engine with it (scene/Collider is part of engine).
 target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
