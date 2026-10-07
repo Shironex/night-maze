@@ -69,6 +69,11 @@ constexpr float MAX_REFILL_DELAY_SECONDS = 5.0F;
 constexpr float MIN_WINDED_RECOVERY = 0.05F;
 constexpr float MAX_WINDED_RECOVERY = 1.0F;
 
+// How long the tea of a flask stops the drain, in seconds: from a moment, to see the
+// effect end while watching, to two minutes.
+constexpr float MIN_FLASK_SECONDS = 1.0F;
+constexpr float MAX_FLASK_SECONDS = 120.0F;
+
 constexpr float PERCENT = 100.0F;
 
 // The shots of the menu camera, in the order of the enum game::MenuShot: the number of
@@ -181,6 +186,10 @@ void drawMovement(Page& page, const DebugContext& context) {
                 "is back at this part of it: 0.5 is half.");
     page.stat("Stamina", "%.0f%% %s", player.stamina.level * PERCENT,
               player.stamina.winded ? "(winded)" : "(can sprint)");
+    page.slider("Flask effect", &rule.flaskSeconds, MIN_FLASK_SECONDS, MAX_FLASK_SECONDS, "%.0f s",
+                "How long sprinting costs no stamina after a flask of tea is picked up. "
+                "A flask that is picked up later uses the new number.");
+    page.stat("Flask effect left", "%.1f s", player.stamina.noDrainSecondsLeft);
     page.slider("Fly speed", &player.flySpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED, "%.1f m/s",
                 "The speed of the player in noclip mode.");
 

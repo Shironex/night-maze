@@ -77,6 +77,8 @@ void drawRound(Page& page, const DebugContext& context) {
     page.stat("Levers", "%d pulled of %d", game::pulledLeverCount(round),
               static_cast<int>(round.interactables.leverPulled.size()));
     page.stat("Note card", "%s", round.noteOpen ? "open" : "closed");
+    page.stat("Flasks", "%d picked up of %d", round.flasksCollected,
+              static_cast<int>(round.flasks.size()));
 
     // The buttons only ask: the game starts the round, or pulls the levers, at the
     // start of its next frame. Pulling every lever is a switch for testing: it opens
@@ -131,6 +133,10 @@ void drawRules(Page& page, const DebugContext& context) {
                 "%.2f m",
                 "How near the player has to be to collect a crystal. At 2 m a crystal is "
                 "collected from the neighbouring cell, through the wall.");
+    page.sliderInt("Flasks", &settings.flaskCount, 0, game::MAX_FLASK_COUNT, "%d",
+                   "How many flasks of tea lie in the maze, in dead ends without a crystal. "
+                   "A new number shows when the round starts again (key R). A new game sets "
+                   "the number of its difficulty level.");
     page.endCard();
 }
 
