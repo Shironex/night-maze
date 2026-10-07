@@ -1,5 +1,5 @@
 // "Player" category of the debug window: position and noclip, the angles and the
-// projection of the camera, the speeds and the menu camera.
+// projection of the camera, the speeds, the stamina and the menu camera.
 // See docs/modules/scene/camera-controls.md
 #include "debug/categories/PlayerCategory.hpp"
 
@@ -58,6 +58,19 @@ constexpr float MAX_MOUSE_SENSITIVITY = 1.0F;
 constexpr float MIN_MOVE_SPEED = 0.5F;
 constexpr float MAX_MOVE_SPEED = 20.0F;
 
+// Limits of the numbers of the stamina rule. The three times are divided by or waited
+// for, so they stay above 0 (the delay may be 0: refill at once). The recovery level is
+// a part of the bar: at 0.05 a winded player sprints again almost at once, at 1 only
+// with a full bar.
+constexpr float MIN_STAMINA_SECONDS = 0.5F;
+constexpr float MAX_STAMINA_SECONDS = 30.0F;
+constexpr float MIN_REFILL_DELAY_SECONDS = 0.0F;
+constexpr float MAX_REFILL_DELAY_SECONDS = 5.0F;
+constexpr float MIN_WINDED_RECOVERY = 0.05F;
+constexpr float MAX_WINDED_RECOVERY = 1.0F;
+
+constexpr float PERCENT = 100.0F;
+
 // The shots of the menu camera, in the order of the enum game::MenuShot: the number of
 // the chosen entry is the value of the enum. One string, each entry ended by a zero
 // character. A new shot is one more entry here: the check below then fails until it is
@@ -100,7 +113,8 @@ void drawPosition(Page& page, const DebugContext& context) {
     const scene::Camera& camera = context.camera;
     page.stat("Eye", "%.2f, %.2f, %.2f", camera.position.x, camera.position.y, camera.position.z);
     page.note("Click the scene to capture the mouse, Esc releases it. While captured the "
-              "mouse looks around. Walking: W A S D walk level, Left Shift sprints.");
+              "mouse looks around. Walking: W A S D walk level, Left Shift sprints "
+              "while there is stamina.");
 
     page.endCard();
 }
@@ -148,7 +162,25 @@ void drawMovement(Page& page, const DebugContext& context) {
     page.slider("Walk speed", &player.walkSpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED, "%.1f m/s",
                 "The speed of the player when walking.");
     page.slider("Sprint speed", &player.sprintSpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED, "%.1f m/s",
-                "The speed of the player while Left Shift is held.");
+                "The speed of the player while Left Shift is held, a direction key is "
+                "held and the stamina allows it.");
+
+    // The four numbers of the stamina rule, next to the speed they limit.
+    game::StaminaSettings& rule = player.staminaSettings;
+    page.slider("Stamina drain", &rule.drainSeconds, MIN_STAMINA_SECONDS, MAX_STAMINA_SECONDS,
+                "%.1f s", "How long a full stamina bar lasts while sprinting.");
+    page.slider("Stamina refill delay", &rule.refillDelaySeconds, MIN_REFILL_DELAY_SECONDS,
+                MAX_REFILL_DELAY_SECONDS, "%.1f s",
+                "How long the bar waits after the last sprinted moment before it starts "
+                "to refill.");
+    page.slider("Stamina refill", &rule.refillSeconds, MIN_STAMINA_SECONDS, MAX_STAMINA_SECONDS,
+                "%.1f s", "How long an empty bar takes to get full once it refills.");
+    page.slider("Winded recovery", &rule.windedRecovery, MIN_WINDED_RECOVERY, MAX_WINDED_RECOVERY,
+                "%.2f",
+                "A player who ran the bar empty is winded and cannot sprint until the bar "
+                "is back at this part of it: 0.5 is half.");
+    page.stat("Stamina", "%.0f%% %s", player.stamina.level * PERCENT,
+              player.stamina.winded ? "(winded)" : "(can sprint)");
     page.slider("Fly speed", &player.flySpeed, MIN_MOVE_SPEED, MAX_MOVE_SPEED, "%.1f m/s",
                 "The speed of the player in noclip mode.");
 
