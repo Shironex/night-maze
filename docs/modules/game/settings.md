@@ -1,9 +1,11 @@
 # Moduł game: ustawienia gracza, plik `night-maze-settings.txt`, pełny ekran i pauza po utracie fokusu
 
 Kamień milowy: M9, część 3 (2026-10-06). Temat wykładu: brak własnego (to dodatek do gry, poza listą 15 tematów). Dokument korzysta z okna ([`../core/window-context.md`](../core/window-context.md): `core::Window`, GLFW), z plików ([`../core/paths.md`](../core/paths.md)), z ekranów ([`game-states.md`](game-states.md)), z poziomów trudności ([`difficulty.md`](difficulty.md)) i z warstwy menu ([`../ui/menu-screens.md`](../ui/menu-screens.md): suwaki i przełącznik ekranu ustawień).
-Kod: [`src/game/Settings.hpp`](../../../src/game/Settings.hpp) i [`Settings.cpp`](../../../src/game/Settings.cpp) (dane, odczyt i zapis tekstu pliku, rozmiary okna), [`src/core/Files.hpp`](../../../src/core/Files.hpp) i [`Files.cpp`](../../../src/core/Files.cpp) (`readTextFile`, `writeTextFile`), [`src/core/Window.hpp`](../../../src/core/Window.hpp) i [`Window.cpp`](../../../src/core/Window.cpp) (`setWindowedSize`, `setFullscreen`, `isFullscreen`, `desktopSize`, `isFocused`), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`loadSettings`, `saveSettings`, `applyViewSettings`, `applyWindowSettings`, `handleControlChanges`, `handleMenuCommand`, `fillSettingsDocument`, `onRender`) i dokument [`assets/ui/settings.rml`](../../../assets/ui/settings.rml). Testy: [`tests/SettingsTests.cpp`](../../../tests/SettingsTests.cpp) (17 przypadków).
+Kod: [`src/game/Settings.hpp`](../../../src/game/Settings.hpp) i [`Settings.cpp`](../../../src/game/Settings.cpp) (dane, odczyt i zapis tekstu pliku, rozmiary okna), [`src/core/Files.hpp`](../../../src/core/Files.hpp) i [`Files.cpp`](../../../src/core/Files.cpp) (`readTextFile`, `writeTextFile`), [`src/core/Window.hpp`](../../../src/core/Window.hpp) i [`Window.cpp`](../../../src/core/Window.cpp) (`setWindowedSize`, `setFullscreen`, `isFullscreen`, `desktopSize`, `isFocused`), użycie w [`src/game/NightMazeApp.cpp`](../../../src/game/NightMazeApp.cpp) (`loadSettings`, `saveSettings`, `applyViewSettings`, `applyWindowSettings`, `handleControlChanges`, `handleMenuCommand`, `fillSettingsDocument`, `onRender`) i dokument [`assets/ui/settings.rml`](../../../assets/ui/settings.rml). Testy: [`tests/SettingsTests.cpp`](../../../tests/SettingsTests.cpp) (19 przypadków; 17 w chwili pisania dokumentu, dwa doszły 2026-10-07 z głośnością).
 
-**Stan na dziś:** gra ma **ekran ustawień** (z menu głównego i z pauzy) z pięcioma rzeczami do zmiany: czułość myszy, pole widzenia, pełny ekran, rozmiar okna, poziom trudności (ten wybiera się w menu głównym). Ustawienia leżą w **pliku tekstowym** `night-maze-settings.txt` w katalogu roboczym procesu, który gra czyta raz przy starcie i zapisuje, gdy się zmieniły. Czysta część (struktura, odczyt i zapis tekstu pliku, listy rozmiarów) jest w bibliotece `game_logic` i ma testy, a plik i okno są w `NightMazeApp` i `core::Window`. Gra **wstrzymuje rundę, gdy okno traci fokus**. **Kod pełnego ekranu, rozmiaru okna i fokusu nie był budowany ani uruchamiany na macOS.**
+**Uzupełnienie z 2026-10-07: głośność.** Szóstym ustawieniem jest `master_volume` (głośność główna dźwięku, od 0 do 100, domyślnie 100), opisane w sekcji 2.1a. Dalsze zdania tego dokumentu o „pięciu ustawieniach” opisują stan sprzed głośności.
+
+**Stan na dziś:** gra ma **ekran ustawień** (z menu głównego i z pauzy) z pięcioma rzeczami do zmiany: czułość myszy, pole widzenia, pełny ekran, rozmiar okna, poziom trudności (ten wybiera się w menu głównym). *(Od 2026-10-07 szóstą jest głośność, suwak `Volume` na ekranie ustawień.)* Ustawienia leżą w **pliku tekstowym** `night-maze-settings.txt` w katalogu roboczym procesu, który gra czyta raz przy starcie i zapisuje, gdy się zmieniły. Czysta część (struktura, odczyt i zapis tekstu pliku, listy rozmiarów) jest w bibliotece `game_logic` i ma testy, a plik i okno są w `NightMazeApp` i `core::Window`. Gra **wstrzymuje rundę, gdy okno traci fokus**. **Kod pełnego ekranu, rozmiaru okna i fokusu nie był budowany ani uruchamiany na macOS.**
 
 **Uczciwie o tym, co sprawdzono.** Trzy rodzaje dowodów trzymam osobno (tak jak w [`../../guides/build-windows.md`](../../guides/build-windows.md)):
 
@@ -64,6 +66,16 @@ struct GameSettings {
 
 **Czułość 1 do 10 jest liczbą dla człowieka**, a gra mnoży ją przez stałą `MOUSE_DEGREES_PER_SENSITIVITY` = 0,025. Dzięki temu domyślne 4 daje dokładnie dawną czułość 0,1 stopnia na jednostkę, a suwak ma wygodny zakres od 0,025 do 0,25 stopnia na jednostkę.
 
+### 2.1a Głośność (`master_volume`, 2026-10-07)
+
+| Nazwa w pliku | Wartości | Domyślnie | Do czego służy |
+|---|---|---|---|
+| `master_volume` | liczba całkowita od 0 do 100 (`MIN_MASTER_VOLUME`, `MAX_MASTER_VOLUME`), liczba spoza granic jest przycinana, ułamek zaokrąglany (`62.6` daje 63) | 100 (`DEFAULT_MASTER_VOLUME`) | `audio::AudioEngine::setMasterVolume(masterVolumeGain(...))` |
+
+`masterVolumeGain(volume)` zwraca **kwadrat** z `volume / 100`: 0 daje 0, 50 daje 0,25, 80 daje 0,64, 100 daje 1. Powód z komentarza w kodzie: ucho słyszy głośność w stosunkach, więc prosta linia sprawiłaby, że dolna połowa suwaka brzmiałaby prawie tak samo głośno, a kwadrat zostawia oba końce na miejscu. Wartość 100 to gra taka, jaka brzmiała, zanim to ustawienie istniało. Plik zapisany przez starszą wersję gry, bez linii `master_volume`, daje głośność domyślną (jest na to test). Gra stosuje głośność w konstruktorze po wczytaniu pliku, po każdej zmianie suwaka i po `Reset defaults` (`applyAudioSettings`).
+
+Na ekranie ustawień głośność jest trzecim wierszem (`Volume`), po polu widzenia, i suwakiem `input type="range"` od 0 do 100 z krokiem 1. Podczas przeciągania suwaka gra odtwarza próbkę, żeby gracz usłyszał nową głośność: dźwięk `FlashlightOn`, najwyżej raz na 0,2 s (`VOLUME_SAMPLE_SECONDS`), bo suwak zgłasza wartość prawie w każdej klatce ([`sound-cues.md`](sound-cues.md), sekcja 5.5). Karta Audio w oknie debug głośność tylko pokazuje.
+
 ### 2.2 Plik: format, miejsce, moment zapisu
 
 Przykład pliku, tak jak zapisuje go `formatSettings` dla ustawień domyślnych (to nie jest fragment kodu, tylko tekst zapisany w teście `the file is plain text a person can read and edit`):
@@ -75,7 +87,10 @@ field_of_view = 60
 fullscreen = off
 window_size = 1280x720
 difficulty = normal
+master_volume = 100
 ```
+
+(Linia `master_volume` doszła 2026-10-07; test `the file is plain text a person can read and edit` sprawdza teraz sześć linii po komentarzu.)
 
 **Miejsce.** Plik nazywa się `night-maze-settings.txt` (`SETTINGS_FILE_NAME`) i leży w **katalogu roboczym procesu**. Launcher uruchamia grę w swoim katalogu `data/`, więc plik zostaje tam, gdy sama gra zostanie zastąpiona nową wersją (komentarz w `Settings.hpp`, według autora). Gdy gra jest uruchomiona z repozytorium przez `make run`, plik powstaje w korzeniu repozytorium i `.gitignore` go ignoruje (wpis `night-maze-settings.txt` w sekcji "Runtime files"). Ścieżka jest **względna** i niczego nie pyta system o katalog użytkownika: to jest wybór wykonawczy, który zakłada, że gra ma prawo pisać w swoim katalogu roboczym (jeśli nie ma, zapis kończy się błędem w logu i gra działa dalej na ustawieniach w pamięci).
 
@@ -373,6 +388,9 @@ Przycisk ekranu ustawień jest **poleceniem** (`handleMenuCommand`: `toggle-full
 ```cpp
 void NightMazeApp::handleControlChanges() {
     const std::vector<ui::ControlChange> changes = m_ui.takeChanges();
+    // The wait of the sample click runs down with the real time of the frames. This
+    // function is called once per frame.
+    m_volumeSampleWait = std::max(m_volumeSampleWait - time().deltaSeconds(), 0.0);
     // Only the settings screen has controls that report: a change that arrives on
     // another screen is a late echo of fillSettingsDocument and is dropped.
     if (m_mode != GameMode::SettingsFromMenu && m_mode != GameMode::SettingsFromPause) {
@@ -385,14 +403,26 @@ void NightMazeApp::handleControlChanges() {
         if (!applySetting(changed, change.name, change.value) || changed == m_settings) {
             continue;
         }
+        // Asked before the new settings are taken over: was it the volume that moved?
+        const bool volumeChanged = changed.masterVolume != m_settings.masterVolume;
         m_settings = changed;
         applyViewSettings();
+        applyAudioSettings();
+        // The new loudness is heard at once, as the click of the flashlight. The UI
+        // layer reports every value of a dragged slider and not its release, so the
+        // click is held back to a few per second.
+        if (volumeChanged && m_volumeSampleWait <= 0.0) {
+            playCue(SoundCue::FlashlightOn);
+            m_volumeSampleWait = VOLUME_SAMPLE_SECONDS;
+        }
         // Only the numbers next to the sliders: the sliders themselves already stand
         // where the player put them.
         m_ui.setText(m_settingsDocument, std::string(MOUSE_SENSITIVITY_SETTING) + TEXT_ID_SUFFIX,
                      mouseSensitivityLabel(m_settings.mouseSensitivity));
         m_ui.setText(m_settingsDocument, std::string(FIELD_OF_VIEW_SETTING) + TEXT_ID_SUFFIX,
                      fieldOfViewLabel(m_settings.fieldOfViewDegrees));
+        m_ui.setText(m_settingsDocument, std::string(MASTER_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                     masterVolumeLabel(m_settings.masterVolume));
     }
 }
 ```
@@ -439,12 +469,14 @@ bool writeTextFile(const std::filesystem::path& path, std::string_view text);
 
 ### 5.3 Testy
 
-`SettingsTests.cpp` (17 przypadków), wszystkie bez okna i bez plików:
+`SettingsTests.cpp` (19 przypadków; dwa nowe wiersze tabeli, o pliku bez linii głośności i o współczynniku głośności, doszły 2026-10-07), wszystkie bez okna i bez plików:
 
 | Test | Co sprawdza |
 |---|---|
 | `without a file the settings are the game as it always was` | wartości domyślne |
-| `a settings file is read line by line` | pięć linii daje pięć wartości |
+| `a settings file is read line by line` | linie pliku dają ich wartości (od 2026-10-07 plik w teście ma też linię `master_volume = 35`) |
+| `a file of an older version, without the volume line, plays at the default volume` | plik bez linii głośności daje głośność domyślną, a pozostałe linie nadal działają (2026-10-07) |
+| `the volume of the screen becomes a gain that grows with its square` | `masterVolumeGain`: 0, 100, 50 daje 0,25, 80 daje 0,64, rośnie z suwakiem, poza granicami przycinane (2026-10-07) |
 | `what is written is read back the same` | zapis i odczyt, także dla wartości domyślnych (ten sam tekst dwa razy) |
 | `the file is plain text a person can read and edit` | dokładny tekst pliku domyślnego |
 | `spaces, Windows line ends and a byte order mark do not matter` | tolerancja |

@@ -1,4 +1,5 @@
 // SoundCues: which short sounds the game plays and the rules that decide when.
+// See docs/modules/game/sound-cues.md
 #include "game/SoundCues.hpp"
 
 #include <array>

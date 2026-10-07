@@ -44,7 +44,7 @@ Kolory są kolorami HUD i okna debug: biel księżyca `#e2eaf6`, przygaszony nie
 | menu główne | `main_menu.rml` | `left` | tytuł, hasło, `Play`, trzy przyciski poziomu, pole ziarna z `New seed`, linia podpowiedzi, `Settings`, `Quit`, blok informacji (rozmiar, kryształy do znalezienia, bateria), podpowiedź klawiszy | `fillMainMenuDocument`, `rollSeed`, `readSeedField` |
 | pauza | `pause.rml` | `left paused` | `Paused`, `Resume`, `Restart maze`, `Settings`, `Back to menu`, notatka "Normal, seed 7. Press Esc to resume." | `fillPauseDocument` |
 | koniec rundy | `round_end.rml` | `dim` | karta "You escaped", wiersze Time, Crystals, Difficulty, Seed, trzy przyciski | `fillRoundEndDocument` |
-| ustawienia | `settings.rml` | `dim` | panel: czułość myszy, pole widzenia, pełny ekran, rozmiar okna, `Back`, `Reset defaults` | `fillSettingsDocument` |
+| ustawienia | `settings.rml` | `dim` | panel: czułość myszy, pole widzenia, głośność (`Volume`, od 2026-10-07), pełny ekran, rozmiar okna, `Back`, `Reset defaults` | `fillSettingsDocument` |
 
 Dwie klasy `body` w arkuszu decydują o tym, co leży **między sceną a menu**: `body.left` ciemni obraz po lewej i zostawia go czystym po prawej (i trochę u dołu, pod blokiem informacji), `body.left.paused` przyciemnia całość mocniej, żeby zatrzymany obraz czytał się jako "nie biegnie", a `body.dim` przyciemnia cały obraz jednym kolorem pod własnym panelem ekranu:
 
@@ -218,7 +218,7 @@ body.dim {
 <body class="dim">
 <!-- A control names its setting with data-setting: when it changes, the game gets the
      name and the new value (game::applySetting), uses the value at once and writes the
-     settings file. The limits of the two sliders are the ones in game/Settings.hpp. The
+     settings file. The limits of the three sliders are the ones in game/Settings.hpp. The
      elements with an id are written by the game. -->
 <div class="panel">
     <h2 class="panel-title">Settings</h2>
@@ -232,6 +232,11 @@ body.dim {
         <span class="field-name">Field of view</span>
         <input type="range" id="field_of_view" data-setting="field_of_view" min="45" max="90" step="1" value="60"/>
         <span class="field-value" id="field_of_view-text">60 deg</span>
+    </div>
+    <div class="field">
+        <span class="field-name">Volume</span>
+        <input type="range" id="master_volume" data-setting="master_volume" min="0" max="100" step="1" value="100"/>
+        <span class="field-value" id="master_volume-text">100</span>
     </div>
     <div class="field">
         <span class="field-name">Fullscreen</span>
@@ -255,7 +260,7 @@ body.dim {
 </rml>
 ```
 
-(Plik: `assets/ui/settings.rml`, w całości.) Suwaki są elementami `input type="range"` z atrybutami `min`, `max`, `step` i `data-setting`; granice 1 do 10 i 45 do 90 są **powtórzeniem** granic z `game/Settings.hpp` (komentarz w dokumencie to mówi). Przełącznik pełnego ekranu to przycisk (`data-action`), nie pole wyboru: jego stan pokazuje klasa `on`, którą ustawia gra. Element `<span id="saved">` jest **pusty i nieużywany**: kod gry niczego do niego nie pisze.
+(Plik: `assets/ui/settings.rml`, w całości.) Suwaki są elementami `input type="range"` z atrybutami `min`, `max`, `step` i `data-setting`; granice 1 do 10, 45 do 90 i (od 2026-10-07, suwak `Volume`) 0 do 100 są **powtórzeniem** granic z `game/Settings.hpp` (komentarz w dokumencie to mówi). Przełącznik pełnego ekranu to przycisk (`data-action`), nie pole wyboru: jego stan pokazuje klasa `on`, którą ustawia gra. Element `<span id="saved">` jest **pusty i nieużywany**: kod gry niczego do niego nie pisze.
 
 ### 2.3 Od przycisku do gry: `data-action`
 
