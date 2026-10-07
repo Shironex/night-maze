@@ -2,6 +2,16 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.10.1 (2026-10-07)
+
+Fullscreen that a screenshot can see.
+
+### What's new
+
+- On Windows, fullscreen is now a borderless window that covers the screen. Screenshots, screen sharing and recordings show the game as it is. Before, they showed one frozen picture.
+- On Windows, the fullscreen game no longer minimizes when you switch to another program with Alt+Tab. It stays on its screen, paused, until you come back.
+- The fullscreen switch on the settings screen no longer slides from off to on when you open the settings, and it now lights up under the mouse when it is on, too.
+
 ## 0.10.0 (2026-10-07)
 
 The maze is no longer silent: the first sounds.
