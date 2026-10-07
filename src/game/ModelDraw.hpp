@@ -44,8 +44,9 @@ void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
                std::span<const glm::mat4> modelMatrices);
 
 /// Draws a whole mesh once, with the given colour texture and normal map. For a mesh
-/// that does not come from a model file, like the terrain. shader is prepared as for
-/// drawModel. The function binds the two textures and sets uTint, uModel and
+/// that does not come from a model file, like the terrain, and for a model that is
+/// drawn with other textures than its file names, like a worn wall. shader is prepared
+/// as for drawModel. The function binds the two textures and sets uTint, uModel and
 /// uNormalMatrix.
 void drawMesh(const gfx::Shader& shader, const gfx::Mesh& mesh, const gfx::Texture2D& texture,
               const gfx::Texture2D& normalMap, const glm::vec3& tint, const glm::mat4& modelMatrix);

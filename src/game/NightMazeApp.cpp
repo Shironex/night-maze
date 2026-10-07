@@ -1607,7 +1607,8 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     // at the ground, and a ground of lines would cast a shadow of lines.
     constexpr bool NO_WIREFRAME = false;
     m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
-    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices);
+    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices,
+                        m_mazeSettings.wallVariants);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
     m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round);
     // The levers and the notes cast shadows too. An empty PickState: nothing is
@@ -1661,7 +1662,7 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     // The ground first, then what stands on it. The order does not change the picture
     // (the depth test sorts it out), it only follows the way the scene is built.
     m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices);
+    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do. (In the picture without lighting the crystals may be
     // left to the reflection pass, see drawGateAndCrystals.)
@@ -1698,7 +1699,7 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 
     // The ground first, then what stands on it, as in drawUnlitMaze.
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices);
+    m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights. (The crystals may be left to the
     // reflection pass, see drawGateAndCrystals.)
