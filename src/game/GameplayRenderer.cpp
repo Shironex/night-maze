@@ -26,11 +26,9 @@ constexpr const char* CRYSTAL_A_MODEL_FILE = "models/crystal_a.obj";
 constexpr const char* CRYSTAL_B_MODEL_FILE = "models/crystal_b.obj";
 constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
 
-// The model of a flask of tea. The real one (models/flask.obj) is not in the repository
-// yet, so the brass handle of a lever stands in for it: a small brass thing with a knob
-// at one end. Changing this one line is all the real model needs, as long as it is
-// built like the crystals: in metres, upright, with its origin at its base.
-constexpr const char* FLASK_MODEL_FILE = "models/lever_handle.obj";
+// The model of a flask of tea: in metres, upright, with its origin at its base, built like
+// the crystals.
+constexpr const char* FLASK_MODEL_FILE = "models/flask.obj";
 
 } // namespace
 
