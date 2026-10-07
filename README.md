@@ -22,7 +22,7 @@ The game needs a graphics card and driver with OpenGL 4.1.
 | Left Shift | Sprint, while there is stamina |
 | F | Flashlight on and off |
 | E or left click | Use what you look at (pull a lever, read a note, close a note) |
-| M | Minimap on and off |
+| Hold M | Show the map; you stand still while you read it |
 | R | Start the round again |
 | Esc | Pause; in the menus, go back |
 
@@ -38,7 +38,7 @@ Debug keys, not meant for play: the key left of 1 (`) shows the debug window, N 
 - A gate that opens when you have enough crystals, and an exit in the far corner
 - Levers that open shortcuts and notes that point you somewhere
 - Moon and flashlight shadows, fog, glow, a night sky and uneven ground
-- A minimap that shows only the corridors you have already seen
+- A map, shown while you hold M, with only the corridors you have already seen
 - A main menu with a looping video background, pause, a round summary and a settings screen (mouse sensitivity, field of view, fullscreen, window size, volume)
 - The first sounds: flashlight, crystals, levers, the gate and a low battery pulse
 
