@@ -1,7 +1,8 @@
 # Generates the textures of the game into assets/textures: the colour pictures
-# wall_stone.png, ground.png, gate_wood.png, crystal.png, lever_iron.png, lever_brass.png
-# and note_paper.png, and one normal map for each of them (the same name with _normal).
-# All fourteen are 512 x 512 pixels, 8 bits per channel, RGB.
+# wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
+# gate_wood.png, crystal.png, lever_iron.png, lever_brass.png and note_paper.png, and one
+# normal map for each of them (the same name with _normal).
+# All twenty are 512 x 512 pixels, 8 bits per channel, RGB.
 # See docs/guides/blender.md
 #
 # Run from the repository root:
@@ -55,6 +56,23 @@ CRYSTAL_SEED = 41
 LEVER_SEED = 53
 LEVER_BRASS_SEED = 71
 NOTE_SEED = 29
+# The worn walls show the same stones as the plain wall (WALL_SEED). These seeds only
+# place what was added to them: the cracks, the moss and the rubble in the niches.
+WALL_CRACKED_SEED = 83
+WALL_MOSSY_SEED = 89
+WALL_DAMAGED_SEED = 97
+
+# The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
+# the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
+# top. The four courses above it are seen once. Something that must not show twice, like
+# a missing stone, goes there.
+WALL_COURSE_HEIGHT = 64
+WALL_FIRST_SINGLE_COURSE = 4
+
+# The stones that are missing in the damaged wall, as (course, stone in the course).
+# Both lie in the courses that are seen once, at 1.0 m and at 1.5 m above the ground,
+# and they do not touch.
+WALL_MISSING_STONES = ((4, 3), (6, 0))
 
 # The iron bands of the gate, in pixels: the rows of the band centres and half of the band
 # height. One repeat of the texture is 2 m high and the gate is taller, so the lower band
@@ -850,6 +868,249 @@ def paper_height(pattern, crumple_depth, grain_depth):
     return crumple + grain
 
 
+def wall_stones():
+    """Returns the stone pattern of the wall: every wall texture is made from it.
+
+    Neutral grey blocks, 0.5 m long and 0.25 m high, in a running bond. Twelve rows fit
+    the 3 m wall exactly and the 0.25 m plinth of the wall is one row. Calling it again
+    gives the same stones, so the courses of a worn wall line up with the plain wall next
+    to it.
+    """
+    return stone_pattern(
+        seed=WALL_SEED,
+        stone_width=128,
+        stone_height=WALL_COURSE_HEIGHT,
+        running_bond=True,
+        stone_variation=0.16,
+    )
+
+
+def wall_picture(wall, joint_color=(0.20, 0.20, 0.20)):
+    """Returns the colour picture of the wall stones. wall: the result of wall_stones."""
+    return stone_color(
+        wall,
+        joint_width=6,
+        rim_width=7,
+        stone_color=(0.62, 0.62, 0.60),
+        joint_color=joint_color,
+    )
+
+
+def wall_relief(wall, joint_depth=2.5):
+    """Returns the height field of the wall stones. wall: the result of wall_stones.
+
+    Joints about 1 cm deep (2.5 pixels of 1 / 256 m), blocks that lean by up to 1.5
+    pixels from edge to edge, soft bumps and fine grain. The two depths of the noise look
+    large, but they are the range the noise had before its second blur: after it, most of
+    the surface moves by a fraction of a pixel.
+    """
+    return stone_height(
+        wall,
+        joint_width=6,
+        bevel_width=5,
+        joint_depth=joint_depth,
+        tilt=1.5,
+        bump_depth=6.0,
+        grain_depth=0.5,
+    )
+
+
+def draw_crack(mask, centre, width):
+    """Returns mask with one crack added. mask is SIZE x SIZE, 1 on a crack, 0 beside it.
+
+    centre: for every row of the picture, the x of the crack in that row, in pixels.
+    width: for every row, half of the width of the crack in pixels. 0 leaves the row out.
+    """
+    x = np.arange(SIZE)[None, :] + 0.5
+
+    # From one row to the next the crack may jump sideways by several pixels. Each row
+    # therefore paints the whole piece between its own x and the x of the row below it,
+    # so the crack is one unbroken line. np.roll takes the row below row 0 from the top
+    # of the picture: a crack that runs through every row closes across that edge.
+    below = np.roll(centre, 1)
+    middle = (centre + below) / 2.0
+    half_step = np.abs(centre - below) / 2.0
+
+    # The distance to the middle of the piece, taken the short way around, so a crack
+    # that crosses the left or right edge continues on the other side.
+    offset = np.abs((x - middle[:, None] + SIZE / 2) % SIZE - SIZE / 2)
+    distance = np.maximum(offset - half_step[:, None], 0.0)
+
+    # 1 in the core of the crack, falling to 0 over its last pixel: a soft edge.
+    line = np.clip(width[:, None] - distance, 0.0, 1.0)
+    return np.maximum(mask, line)
+
+
+def crack_mask(rng):
+    """Returns a SIZE x SIZE array: 1 on a crack, 0 beside it.
+
+    Two long cracks run through the whole height of the picture, and three short ones
+    branch off them.
+    """
+    rows = np.arange(SIZE)
+    # One full turn over the height of the picture: a sine of this angle, or of a whole
+    # multiple of it, ends where it began, so the crack meets itself at the top edge.
+    turn = rows / SIZE * 2.0 * np.pi
+    mask = np.zeros((SIZE, SIZE))
+
+    long_cracks = []
+    for start in (rng.uniform(70.0, 190.0), rng.uniform(310.0, 440.0)):
+        # A slow wander, a faster one and a small one, each with a random phase.
+        phases = rng.uniform(0.0, 2.0 * np.pi, 3)
+        centre = start + 30.0 * np.sin(turn + phases[0])
+        centre = centre + 12.0 * np.sin(3.0 * turn + phases[1])
+        centre = centre + 5.0 * np.sin(7.0 * turn + phases[2])
+        # Stone breaks in straight pieces with sharp corners: every 16 rows the crack
+        # steps sideways by a random amount.
+        centre = centre + np.repeat(rng.uniform(-5.0, 5.0, SIZE // 16), 16)
+        # The crack is wider in some places than in others, from 1.4 to 2.6 pixels.
+        width = 2.0 + 0.6 * np.sin(2.0 * turn + rng.uniform(0.0, 2.0 * np.pi))
+        mask = draw_crack(mask, centre, width)
+        long_cracks.append(centre)
+
+    first_row = WALL_FIRST_SINGLE_COURSE * WALL_COURSE_HEIGHT
+    for branch in range(3):
+        # A branch starts on a long crack, in the courses that are seen once, and runs
+        # up and to one side for 70 to 120 rows. It gets thinner and ends in a point.
+        parent = long_cracks[branch % 2]
+        start_row = int(rng.integers(first_row, first_row + 2 * WALL_COURSE_HEIGHT))
+        length = int(rng.integers(70, 120))
+        slope = rng.uniform(0.5, 1.2) * rng.choice((-1.0, 1.0))
+        steps = np.repeat(rng.uniform(-3.0, 3.0, SIZE // 8), 8)
+
+        along = rows - start_row
+        centre = parent[start_row] + slope * along + steps - steps[start_row]
+        inside = (along >= 0) & (along < length)
+        width = np.where(inside, 1.9 * (1.0 - along / length), 0.0)
+        mask = draw_crack(mask, centre, width)
+
+    return mask
+
+
+def build_worn_wall_textures():
+    """Writes the textures of the three worn walls, each with its normal map.
+
+    Every one starts as the plain wall: the same stones in the same places. Only what is
+    added differs, so a worn wall next to a plain one looks like the same building. What
+    is added is a mask (where the cracks, the moss or the niches are), and the colour
+    picture and the height field are both changed with that one mask.
+
+    To make only these six pictures, run from the repository root (one line):
+      blender --background --factory-startup --python-expr "import sys;
+      sys.path.append('tools/blender'); import make_textures;
+      make_textures.build_worn_wall_textures()"
+    """
+    build_cracked_wall_textures()
+    build_mossy_wall_textures()
+    build_damaged_wall_textures()
+
+
+def build_cracked_wall_textures():
+    """Writes wall_cracked.png and its normal map: deep joints and a few long cracks."""
+    # The mortar has washed out: the joints are darker and almost twice as deep.
+    wall = wall_stones()
+    color = wall_picture(wall, joint_color=(0.13, 0.13, 0.13))
+    height = wall_relief(wall, joint_depth=4.5)
+
+    cracks = crack_mask(np.random.default_rng(WALL_CRACKED_SEED))
+
+    # A crack is nearly black in the picture and a groove 6 pixels (about 2 cm) deep in
+    # the relief. The groove is what catches the light of the flashlight.
+    color = color * (1.0 - 0.85 * cracks[..., None])
+    height = height - 6.0 * cracks
+
+    save_png(color, "wall_cracked.png")
+    save_png(normal_map(height), "wall_cracked_normal.png")
+
+
+def build_mossy_wall_textures():
+    """Writes wall_mossy.png and its normal map: a dark, damp wall overgrown with moss."""
+    wall = wall_stones()
+    color = wall_picture(wall)
+    height = wall_relief(wall)
+    rng = np.random.default_rng(WALL_MOSSY_SEED)
+
+    # Water has run down the wall: the stone is darker everywhere, in long upright
+    # streaks (random pixels blurred far along y, like the grain of the gate). There is
+    # no "wetter at the bottom": the picture repeats above 2 m, and a ramp along the
+    # height would end in a hard line there.
+    streaks = stretch(blur_along(blur_along(rng.random((SIZE, SIZE)), 40, axis=0), 4, axis=1))
+    color = color * (0.48 + 0.26 * streaks)[..., None]
+
+    # Moss grows in patches, like on the ground (see ground_pattern), and it grows first
+    # where water stays: in the joints. So the joints are green also outside the patches.
+    moss_noise = stretch(blur(smooth_noise(rng, 24), 16))
+    patches = smooth_step(np.clip((moss_noise - 0.38) / 0.20, 0.0, 1.0))
+    in_joints = 1.0 - np.clip(wall["edge_distance"] / 12.0, 0.0, 1.0)
+    in_joints = in_joints * smooth_step(np.clip((moss_noise - 0.15) / 0.20, 0.0, 1.0))
+    # Fine noise frays the edge of every patch, so it does not look painted on.
+    fray = 0.55 + 0.45 * smooth_noise(rng, 2)
+    moss = np.clip(patches + 0.8 * in_joints, 0.0, 1.0) * fray
+
+    # Mix towards the moss colour: moss = 0 keeps the stone, moss = 1 replaces it.
+    moss_shade = (0.65 + 0.70 * wall["grain"])[..., None] * np.array((0.17, 0.26, 0.11))
+    color = color + moss[..., None] * (moss_shade - color)
+
+    # Moss is a soft cushion on the stone. It fills the joints and has a grain of its own.
+    height = height + 3.0 * blur(moss, 2) + 1.2 * moss * (blur(wall["grain"], 1) - 0.5)
+
+    save_png(np.clip(color, 0.0, 1.0), "wall_mossy.png")
+    save_png(normal_map(height), "wall_mossy_normal.png")
+
+
+def build_damaged_wall_textures():
+    """Writes wall_damaged.png and its normal map: two stones have broken out.
+
+    The wall model stays flat: a missing stone is a niche in the relief only. It is
+    shallow (12 pixels, under 5 cm), so it reads as a stone that broke off its face, not
+    as a hole through the wall. A stub of each stone is left at one end, with a ragged
+    edge: a clean rectangle would look like a window, not like damage.
+    """
+    wall = wall_stones()
+    color = wall_picture(wall)
+    height = wall_relief(wall)
+    rng = np.random.default_rng(WALL_DAMAGED_SEED)
+
+    # 1 inside the missing stones, 0 elsewhere. A stone is named by its course and its
+    # number in the course, so a stone that crosses the edge of the picture stays whole.
+    missing = np.zeros((SIZE, SIZE), dtype=bool)
+    for course, stone in WALL_MISSING_STONES:
+        missing = missing | ((wall["row"] == course) & (wall["column"] == stone))
+
+    # Soft noise that pushes the outline of a niche in and out by up to 4 pixels, so it
+    # is not a straight line.
+    ragged = smooth_noise(rng, 6)
+    edge = wall["edge_distance"] + 8.0 * (ragged - 0.5)
+
+    # The stub that is left: the first eighth to two fifths of the stone, measured along
+    # its length, with the same noise moving the break line. In one of the two courses
+    # the stub is at the left end, in the other at the right end.
+    along = wall["inside_x"] / wall["stone_width"]
+    along = np.where(wall["row"] % 4 == 0, along, 1.0 - along)
+    broken_off = smooth_step(np.clip((along - (0.12 + 0.30 * ragged)) / 0.05, 0.0, 1.0))
+
+    # How deep in the niche a pixel lies: 0 at its outline and on the stub, rising over
+    # 6 pixels to 1 on the floor of the niche.
+    depth = smooth_step(np.clip(edge / 6.0, 0.0, 1.0)) * broken_off * missing
+
+    # What is left behind the stone: rough mortar and rubble, lumps of two sizes.
+    rubble = 0.6 * smooth_noise(rng, 5) + 0.4 * smooth_noise(rng, 2)
+
+    # The colour of the niche: dark rubble, and darker still towards its rim, where the
+    # stones around it keep the light out. This shading is painted, like the darker rim
+    # of every stone.
+    shade = (0.55 + 0.45 * np.clip(edge / 20.0, 0.0, 1.0)) * (0.55 + 0.9 * rubble)
+    niche_color = shade[..., None] * np.array((0.20, 0.19, 0.18))
+    color = color + depth[..., None] * (niche_color - color)
+
+    # The relief: the floor of the niche lies 12 pixels behind the mortar bed, with the
+    # lumps of the rubble on it. The step at the rim is the slope the normal map shows.
+    height = height * (1.0 - depth) + depth * (-12.0 + 3.5 * (blur(rubble, 1) - 0.5))
+
+    save_png(np.clip(color, 0.0, 1.0), "wall_damaged.png")
+    save_png(normal_map(height), "wall_damaged_normal.png")
+
+
 def save_png(color, file_name):
     """Saves a SIZE x SIZE x 3 array of colors from 0 to 1 as an 8-bit RGB PNG."""
     # Round to the 256 levels of an 8-bit channel here, so the bytes in the file do not
@@ -872,38 +1133,14 @@ def save_png(color, file_name):
 
 
 def build():
-    # Wall: neutral grey blocks, 0.5 m long and 0.25 m high, in a running bond. Twelve rows
-    # fit the 3 m wall exactly and the 0.25 m plinth of the wall is one row.
-    wall = stone_pattern(
-        seed=WALL_SEED,
-        stone_width=128,
-        stone_height=64,
-        running_bond=True,
-        stone_variation=0.16,
-    )
-    wall_color = stone_color(
-        wall,
-        joint_width=6,
-        rim_width=7,
-        stone_color=(0.62, 0.62, 0.60),
-        joint_color=(0.20, 0.20, 0.20),
-    )
-    save_png(wall_color, "wall_stone.png")
+    # Wall: the plain stone, as it was built (see wall_stones, wall_picture, wall_relief).
+    wall = wall_stones()
+    save_png(wall_picture(wall), "wall_stone.png")
+    save_png(normal_map(wall_relief(wall)), "wall_stone_normal.png")
 
-    # The relief of the wall: joints about 1 cm deep (2.5 pixels of 1 / 256 m), blocks
-    # that lean by up to 1.5 pixels from edge to edge, soft bumps and fine grain. The two
-    # depths of the noise look large, but they are the range the noise had before its
-    # second blur: after it, most of the surface moves by a fraction of a pixel.
-    wall_height = stone_height(
-        wall,
-        joint_width=6,
-        bevel_width=5,
-        joint_depth=2.5,
-        tilt=1.5,
-        bump_depth=6.0,
-        grain_depth=0.5,
-    )
-    save_png(normal_map(wall_height), "wall_stone_normal.png")
+    # The same wall worn in three ways: cracked, mossy and damaged. They are in a
+    # function of their own, so they can also be made alone.
+    build_worn_wall_textures()
 
     # Ground: packed earth with patches of moss and small stones, for the terrain. The
     # colours are sRGB values (the game loads the picture as an sRGB texture) and are
