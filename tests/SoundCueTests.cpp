@@ -1,5 +1,6 @@
 // Tests of game/SoundCues.hpp: the table of the cues, the cue of the flashlight key, the
-// cues of a fixed step and the clock of the low battery pulse.
+// cues of a fixed step, the clock of the low battery pulse and the clock of the breathing
+// of a winded player.
 #include "game/SoundCues.hpp"
 
 #include "game/MazeWorld.hpp"
@@ -68,7 +69,7 @@ TEST_CASE("every cue has a file and a name of its own") {
     CHECK(files.size() == game::SOUND_CUE_COUNT);
     CHECK(names.size() == game::SOUND_CUE_COUNT);
     // The last entry of the enum is the last entry of the table.
-    CHECK(game::soundCueIndex(game::SoundCue::GateOpen) == game::SOUND_CUE_COUNT - 1);
+    CHECK(game::soundCueIndex(game::SoundCue::WindedBreath) == game::SOUND_CUE_COUNT - 1);
 }
 
 TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
@@ -268,4 +269,59 @@ TEST_CASE("switching the light off holds the pulse, a charged battery and a new 
     CHECK_FALSE(game::advanceLowBatteryPulse(pulse, low, true, settings, STEP));
     pulse = game::LowBatteryPulse{};
     CHECK(game::advanceLowBatteryPulse(pulse, low, true, settings, STEP));
+}
+
+TEST_CASE("a winded player breathes at once and then every 1.1 seconds") {
+    game::WindedBreath breath;
+    CHECK(game::advanceWindedBreath(breath, true, STEP));
+    // Not again in the next step, and not for a second.
+    int breaths = 0;
+    for (int i = 0; i < 120; ++i) {
+        breaths += game::advanceWindedBreath(breath, true, STEP) ? 1 : 0;
+    }
+    CHECK(breaths == 0);
+    // Ten more seconds: 11 s in all hold 11 / 1.1 = 10 waits, give or take the one
+    // that ends right at the edge.
+    for (int i = 0; i < 1200; ++i) {
+        breaths += game::advanceWindedBreath(breath, true, STEP) ? 1 : 0;
+    }
+    CHECK(breaths >= 9);
+    CHECK(breaths <= 10);
+}
+
+TEST_CASE("a player who is not winded does not breathe, and recovering resets the clock") {
+    game::WindedBreath breath;
+    bool breathed = false;
+    for (int i = 0; i < 1200; ++i) {
+        breathed = breathed || game::advanceWindedBreath(breath, false, STEP);
+    }
+    CHECK_FALSE(breathed);
+
+    // Winded, one breath, recovered half a second later: silence in between.
+    REQUIRE(game::advanceWindedBreath(breath, true, STEP));
+    for (int i = 0; i < 60; ++i) {
+        breathed = breathed || game::advanceWindedBreath(breath, true, STEP);
+    }
+    CHECK_FALSE(breathed);
+    CHECK_FALSE(game::advanceWindedBreath(breath, false, STEP));
+    // Winded again: the first breath comes at once, not after the rest of the old wait.
+    CHECK(game::advanceWindedBreath(breath, true, STEP));
+}
+
+TEST_CASE("one very long winded step is one breath, and a new round resets the clock") {
+    game::WindedBreath breath;
+    CHECK(game::advanceWindedBreath(breath, true, STEP));
+    // A step of a whole minute: many waits long, still one breath, and no burst after.
+    CHECK(game::advanceWindedBreath(breath, true, 60.0F));
+    CHECK_FALSE(game::advanceWindedBreath(breath, true, STEP));
+
+    // A new round: the application assigns a new clock.
+    breath = game::WindedBreath{};
+    CHECK(game::advanceWindedBreath(breath, true, STEP));
+}
+
+TEST_CASE("the breath of a winded player has its own sound file") {
+    CHECK(std::string(game::soundCueFile(game::SoundCue::WindedBreath)) ==
+          "audio/winded_breath.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::WindedBreath)) == "winded breath");
 }

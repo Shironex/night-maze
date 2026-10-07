@@ -757,6 +757,8 @@ private:
     // The clock of the low battery pulse. It is simulation state like the round:
     // onUpdate advances it in fixed steps, and beginRound starts it anew.
     LowBatteryPulse m_lowBatteryPulse;
+    // The clock of the breathing of a winded player: the same kind of state.
+    WindedBreath m_windedBreath;
     // What playCue remembers for the debug UI: the name of the last cue (a text of the
     // cue table, which lives as long as the program) and the number of cues so far.
     const char* m_lastCueName = "none";

@@ -26,6 +26,7 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/crystal_pickup.wav", .name = "crystal pickup"},
     {.file = "audio/lever_pull.wav", .name = "lever pull"},
     {.file = "audio/gate_open.wav", .name = "gate open"},
+    {.file = "audio/winded_breath.wav", .name = "winded breath"},
 }};
 
 } // namespace
@@ -130,6 +131,23 @@ bool advanceLowBatteryPulse(LowBatteryPulse& pulse, const Round& round, bool fla
     // a very long step it would leave a negative wait and the next steps would beat
     // one after the other until it is used up.
     pulse.secondsToNextBeat = lowBatteryPulseInterval(round.battery, settings);
+    return true;
+}
+
+bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds) {
+    // Not winded: the clock goes back to "breathe at once", for the next time.
+    if (!winded) {
+        breath.secondsToNextBreath = 0.0F;
+        return false;
+    }
+
+    breath.secondsToNextBreath -= stepSeconds;
+    if (breath.secondsToNextBreath > 0.0F) {
+        return false;
+    }
+    // A breath. The wait is SET and what the step overshot is dropped, as in
+    // advanceLowBatteryPulse.
+    breath.secondsToNextBreath = WINDED_BREATH_SECONDS;
     return true;
 }
 

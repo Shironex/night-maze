@@ -28,10 +28,11 @@ enum class SoundCue {
     CrystalPickup,   ///< a crystal was collected
     LeverPull,       ///< a lever was pulled and its wall starts to sink
     GateOpen,        ///< enough crystals are collected: the gate starts to sink
+    WindedBreath,    ///< the breath that repeats while the player is winded
 };
 
 /// How many cues there are: the number of entries of SoundCue.
-constexpr std::size_t SOUND_CUE_COUNT = 7;
+constexpr std::size_t SOUND_CUE_COUNT = 8;
 
 /// The place of a cue in the list of sounds: its number as an index.
 std::size_t soundCueIndex(SoundCue cue);
@@ -130,5 +131,32 @@ struct LowBatteryPulse {
 /// a second beat. A new round resets the clock by assigning a new LowBatteryPulse.
 bool advanceLowBatteryPulse(LowBatteryPulse& pulse, const Round& round, bool flashlightOn,
                             const GameplaySettings& settings, float stepSeconds);
+
+/// How long a winded player waits between two breaths, in seconds. The audio layer only
+/// plays sounds from start to end and has no loops, so the heavy breathing is one
+/// breath played again and again on a clock, like the low battery pulse. The wait is
+/// a little longer than the sound of the breath (0.95 s, tools/make_sounds.py): a sound
+/// that starts again before it ended is cut off.
+constexpr float WINDED_BREATH_SECONDS = 1.1F;
+
+/// The clock of the breathing of a winded player, counted in fixed steps like
+/// LowBatteryPulse.
+struct WindedBreath {
+    /// Seconds until the next breath. 0 means that the next step in which the player
+    /// is winded breathes at once.
+    float secondsToNextBreath = 0.0F;
+};
+
+/// Advances the clock of the breathing by one fixed step of stepSeconds seconds. winded
+/// is Stamina::winded after the step (game/Player.hpp). Returns true when a breath is
+/// due in this step: play SoundCue::WindedBreath then.
+///
+///   - While the player is not winded the clock is reset: the next time the stamina
+///     runs out, the first breath comes at once.
+///   - Otherwise it runs, and after a breath the wait is WINDED_BREATH_SECONDS.
+///
+/// One call gives at most one breath, however long the step is, for the same reason as
+/// advanceLowBatteryPulse. A new round resets the clock by assigning a new WindedBreath.
+bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds);
 
 } // namespace game

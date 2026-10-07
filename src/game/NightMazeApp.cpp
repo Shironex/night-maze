@@ -865,6 +865,11 @@ void NightMazeApp::beginRound() {
     // a step need no reset: onUpdate compares every step with the moment right before
     // it, so a new round, also one that starts with its gate open, fires nothing.
     m_lowBatteryPulse = {};
+    // The same for the breathing, and the stamina it follows: a round starts with a full
+    // bar and a player who is not winded. Only the state is new. The numbers of the rule
+    // (Player::staminaSettings), which the debug UI may have changed, stay.
+    m_windedBreath = {};
+    m_player.stamina = {};
 
     // The player goes to the start, feet on the ground there. After a regeneration the
     // old position may be inside a wall of the new maze, or outside of it.
@@ -908,12 +913,15 @@ void NightMazeApp::onUpdate(double fixedDt) {
         wanted.up = input().isKeyDown(GLFW_KEY_SPACE);
         // Left Shift has one meaning per mode: sprint when walking, down when flying.
         // The player uses the field that belongs to its mode and ignores the other.
+        // Whether the sprint really happens is decided by the stamina (Player::update).
         wanted.down = input().isKeyDown(GLFW_KEY_LEFT_SHIFT);
         wanted.sprint = input().isKeyDown(GLFW_KEY_LEFT_SHIFT);
     }
 
     // The step runs also with nothing held: it is what brings the feet back to the
-    // ground after noclip was switched off in a panel.
+    // ground after noclip was switched off in a panel. It also drains and refills the
+    // stamina, so the stamina stands still wherever the round does: no step gets here
+    // under a menu, in the pause, on the result screen or while the menu camera runs.
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
                     m_obstacles, m_mazeWorld.terrain);
 
@@ -951,6 +959,11 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (advanceLowBatteryPulse(m_lowBatteryPulse, m_round, m_lighting.flashlightOn, m_gameplay,
                                static_cast<float>(fixedDt))) {
         playCue(SoundCue::LowBatteryPulse);
+    }
+    // The heavy breathing of a winded player: one breath, again and again on a clock
+    // of the same kind, for as long as the stamina says winded.
+    if (advanceWindedBreath(m_windedBreath, m_player.stamina.winded, static_cast<float>(fixedDt))) {
+        playCue(SoundCue::WindedBreath);
     }
     // The gate has just opened (the only change a step can make here): its box leaves
     // the obstacle list, and the way into the exit cell is free.
