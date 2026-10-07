@@ -271,6 +271,28 @@ elseif(APPLE)
 endif()
 night_maze_enable_warnings(video)
 
+# ---- audio: plays short sounds through the sound device, with miniaudio ---------------
+# In the order of the layers it stands beside ui and video: it needs the log, the file
+# reader and the paths of engine, and it knows nothing about the game (the game hands it
+# a list of files and later the number of the sound to play; which sound belongs to
+# what is a rule of game_logic, game/SoundCues.hpp). It is a library of its own and not
+# a part of engine for the same reason as ui and video: game_logic and the test program
+# link engine, and they should not link miniaudio, which opens the sound device of the
+# computer. So it is linked into night_maze only, and no test needs a sound card.
+add_library(audio STATIC
+    src/audio/AudioEngine.cpp
+    src/audio/AudioEngine.hpp
+)
+# engine is PUBLIC only for the src/ include root, which comes from it: the header of
+# audio includes nothing but the standard library. miniaudio is PRIVATE:
+# audio/AudioEngine.hpp hides it behind a pointer to a struct that only the .cpp file
+# knows, so the code that uses the library needs neither the header of miniaudio nor
+# its include path. What miniaudio itself links on each system is said at its target
+# (cmake/Dependencies.cmake).
+target_link_libraries(audio PUBLIC engine)
+target_link_libraries(audio PRIVATE miniaudio)
+night_maze_enable_warnings(audio)
+
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer,
 # InteractableRenderer, TerrainRenderer, GrassRenderer, ColliderLines, LightRig, Skybox,
