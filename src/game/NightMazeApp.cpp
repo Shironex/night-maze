@@ -360,6 +360,10 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
         core::logError("The menus cannot be shown: the game starts straight in a round");
         m_mode = GameMode::Playing;
     }
+    // The settings screen is filled once now, while it is hidden. Its switch slides
+    // when its class changes: filled only when the screen comes up, a fullscreen that
+    // was saved as on would slide from off to on before the eyes of the player.
+    fillSettingsDocument();
 
     // The sounds: one file per cue, in the order of the enum, so the number of a cue is
     // the number of its sound (game::soundCueIndex). A missing file is in the log and

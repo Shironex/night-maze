@@ -531,6 +531,12 @@ button.toggle.on {
     background-color: #12444c;
     border-color: #12444c;
 }
+/* The rule above comes after the hover rule and would win over it, so the hover of a
+   switch that is on is named on its own, like the one of the chosen chip. */
+button.toggle.on:hover {
+    background-color: #4e3616;
+    border-color: #4e3616;
+}
 button.toggle.on .knob {
     left: 4.1vh;
     background-color: #ffb854;
