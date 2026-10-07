@@ -15,6 +15,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <random>
 
@@ -125,7 +126,7 @@ void drawMazeRequest(Page& page, game::MazeSettings& settings) {
 }
 
 // The maze in play, which may differ from the request until a button is clicked.
-void drawMazeInPlay(Page& page, const game::MazeWorld& world) {
+void drawMazeInPlay(Page& page, const game::MazeWorld& world, game::MazeSettings& settings) {
     page.beginCard("In play");
     page.stat("Maze", "%d x %d cells, seed %u", world.maze.width(), world.maze.height(),
               static_cast<unsigned int>(world.seed));
@@ -139,6 +140,15 @@ void drawMazeInPlay(Page& page, const game::MazeWorld& world) {
     page.stat("Levers, notes", "%d levers, %d notes",
               static_cast<int>(world.interactables.levers.size()),
               static_cast<int>(world.interactables.notes.size()));
+    // The worn walls. The switch only changes what is drawn: the looks stay chosen, so
+    // the numbers below it do not change with it.
+    page.toggle("Wall variants", &settings.wallVariants,
+                "Some walls are drawn cracked, mossy or damaged: the same model with "
+                "other textures, chosen from the seed. Off: every wall is plain stone.");
+    const std::array<int, game::WALL_VARIANT_COUNT> looks =
+        game::countWallVariants(world.wallVariants);
+    page.stat("Wall looks", "%d plain, %d cracked, %d mossy, %d damaged", looks[0], looks[1],
+              looks[2], looks[3]);
     page.endCard();
 }
 
@@ -162,7 +172,7 @@ void drawMazeTab(Page& page, const DebugContext& context) {
     page.setPlace("World / Maze");
     page.beginColumns();
     drawMazeRequest(page, context.mazeSettings);
-    drawMazeInPlay(page, context.mazeWorld);
+    drawMazeInPlay(page, context.mazeWorld, context.mazeSettings);
     page.nextColumn();
     drawPlan(page, context);
     page.endColumns();

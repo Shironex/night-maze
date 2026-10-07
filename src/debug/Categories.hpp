@@ -68,7 +68,7 @@ inline constexpr std::array<CategoryInfo, CATEGORY_COUNT> CATEGORIES = {{
     {.name = "World",
      .description = "The maze, the terrain, the grass, and the sky on crystals and puddles.",
      .icon = Icon::World,
-     .controlCount = 22,
+     .controlCount = 23,
      .tabCount = 3,
      .tabs = {"Maze", "Terrain and grass", "Reflections"}},
     {.name = "Player",
@@ -108,8 +108,9 @@ constexpr int totalControlCount() {
 }
 
 // The thirteen panels this window replaced held 114 controls, and every one of them
-// moved into a category. A control that is added or removed changes this number and
-// the count of its category above.
-static_assert(totalControlCount() == 114);
+// moved into a category. The switch of the wall variants was added later, which makes
+// 115. A control that is added or removed changes this number and the count of its
+// category above.
+static_assert(totalControlCount() == 115);
 
 } // namespace debug
