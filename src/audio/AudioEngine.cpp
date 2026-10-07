@@ -15,27 +15,51 @@ namespace audio {
 
 namespace {
 
-// One loaded sound: the decoded samples (the buffer) and the voice that plays them (the
-// sound). miniaudio keeps pointers to both while the engine runs, so an object of this
-// struct must never move in memory: each one lives behind a std::unique_ptr.
-struct LoadedSound {
-    ma_audio_buffer buffer{};
+// How many copies of one sound can ring at the same moment. A sound that is played
+// again while it still rings is not cut off: the next voice starts and the one before
+// rings out. Cutting a ringing sound makes the loudspeaker jump, which is heard as
+// a click. Three are enough for the game: its longest sounds last under two seconds,
+// and nothing plays the same one four times within that.
+constexpr std::size_t VOICE_COUNT = 3;
+
+// One voice: something that can play a sound once at a time. The reader knows where in
+// the samples this voice is, the sound is the part of the engine that mixes what the
+// reader gives it.
+struct Voice {
+    ma_audio_buffer_ref reader{};
     ma_sound sound{};
-    // Which of the two were initialized, so the destructor releases exactly those.
-    bool bufferReady = false;
-    bool soundReady = false;
+    // True once both were initialized: the destructor of LoadedSound releases them.
+    bool ready = false;
+};
+
+// One loaded sound: its decoded samples, once, and the voices that play them. Every
+// voice has a reader of its own, because the place a sound has reached is kept in the
+// reader (the field cursor of ma_audio_buffer_ref): two voices on one reader would
+// share one place and could not play apart from each other. A reader does not copy the
+// samples, it only points at them.
+//
+// miniaudio keeps pointers to the readers and the sounds while the engine runs, so an
+// object of this struct must never move in memory: each one lives behind
+// a std::unique_ptr.
+struct LoadedSound {
+    std::vector<float> samples;
+    std::array<Voice, VOICE_COUNT> voices;
+    // The voice the next play takes: they are used in turn, so it is always the one
+    // that was started the longest time ago.
+    std::size_t nextVoice = 0;
 
     LoadedSound() = default;
     LoadedSound(const LoadedSound&) = delete;
     LoadedSound& operator=(const LoadedSound&) = delete;
 
-    // The voice first, because it reads from the buffer.
+    // The sound of a voice before its reader, because the sound reads from it. The
+    // samples go last, by themselves (members are destroyed after this body has run).
     ~LoadedSound() {
-        if (soundReady) {
-            ma_sound_uninit(&sound);
-        }
-        if (bufferReady) {
-            ma_audio_buffer_uninit(&buffer);
+        for (Voice& voice : voices) {
+            if (voice.ready) {
+                ma_sound_uninit(&voice.sound);
+                ma_audio_buffer_ref_uninit(&voice.reader);
+            }
         }
     }
 };
@@ -70,29 +94,39 @@ std::unique_ptr<LoadedSound> loadSound(ma_engine& engine, const std::filesystem:
     }
 
     auto loaded = std::make_unique<LoadedSound>();
-    // init_copy: the buffer gets a copy of the samples that it owns and releases
-    // itself, so the block from the decoder can be given back right here.
-    ma_audio_buffer_config bufferConfig =
-        ma_audio_buffer_config_init(ma_format_f32, channels, frameCount, frames, nullptr);
-    bufferConfig.sampleRate = ma_engine_get_sample_rate(&engine);
-    result = ma_audio_buffer_init_copy(&bufferConfig, &loaded->buffer);
+    // The samples are copied into a vector of ours, which releases them by itself, and
+    // the block from the decoder is given back right here. One frame holds one float
+    // per channel.
+    const auto* decoded = static_cast<const float*>(frames);
+    loaded->samples.assign(decoded, decoded + frameCount * channels);
     ma_free(frames, nullptr);
-    if (result != MA_SUCCESS) {
-        error = std::string("no memory for its samples (") + ma_result_description(result) + ")";
-        return nullptr;
-    }
-    loaded->bufferReady = true;
 
-    // The voice. The two flags switch off what a click does not need: a place in a 3D
-    // world (every sound is as loud in both ears) and a changeable pitch.
-    result = ma_sound_init_from_data_source(
-        &engine, &loaded->buffer, MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH, nullptr,
-        &loaded->sound);
-    if (result != MA_SUCCESS) {
-        error = std::string("the engine does not take it (") + ma_result_description(result) + ")";
-        return nullptr;
+    for (Voice& voice : loaded->voices) {
+        // The reader of this voice: a place in the samples, starting at their beginning.
+        result = ma_audio_buffer_ref_init(ma_format_f32, channels, loaded->samples.data(),
+                                          frameCount, &voice.reader);
+        if (result != MA_SUCCESS) {
+            error = std::string("no reader for it (") + ma_result_description(result) + ")";
+            return nullptr;
+        }
+        // This version of miniaudio leaves the sample rate of a reader at 0 (its source
+        // says so), and the engine asks the reader for it: it is written here by hand.
+        voice.reader.sampleRate = ma_engine_get_sample_rate(&engine);
+
+        // The part of the engine that plays what the reader gives. The two flags switch
+        // off what a click does not need: a place in a 3D world (every sound is as loud
+        // in both ears) and a changeable pitch.
+        result = ma_sound_init_from_data_source(
+            &engine, &voice.reader, MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH,
+            nullptr, &voice.sound);
+        if (result != MA_SUCCESS) {
+            ma_audio_buffer_ref_uninit(&voice.reader);
+            error =
+                std::string("the engine does not take it (") + ma_result_description(result) + ")";
+            return nullptr;
+        }
+        voice.ready = true;
     }
-    loaded->soundReady = true;
     return loaded;
 }
 
@@ -180,14 +214,18 @@ void AudioEngine::play(std::size_t index) {
         m_backend->sounds[index] == nullptr) {
         return;
     }
-    ma_sound& sound = m_backend->sounds[index]->sound;
-    // Back to the first frame, then start. For a sound that is playing the start does
-    // nothing and the seek makes it begin again. For one that has ended the seek
-    // rewinds it and the start plays it. Both calls only leave a note for the audio
+    // The next voice in turn: the one that has been ringing the longest, and nearly
+    // always one that has ended. The voice before it is left alone and rings out.
+    LoadedSound& loaded = *m_backend->sounds[index];
+    ma_sound& sound = loaded.voices.at(loaded.nextVoice).sound;
+    loaded.nextVoice = (loaded.nextVoice + 1) % VOICE_COUNT;
+    // Back to the first frame, then start. For a voice that has ended the seek rewinds
+    // it and the start plays it. For one that is still playing the start does nothing
+    // and the seek makes it begin again. Both calls only leave a note for the audio
     // thread, which acts on it when it mixes its next piece.
-    // A known limit: one voice per sound. Cutting a sound that is still ringing can be heard
-    // as a small pop (two crystals within half a second). When that matters, give the
-    // long sounds two or three voices and take them in turn.
+    // A known limit: that second case cuts a ringing voice and can be heard as a small
+    // click. It takes VOICE_COUNT + 1 plays of one sound within the length of that
+    // sound, which the game does not do. If it ever does, raise VOICE_COUNT.
     ma_sound_seek_to_pcm_frame(&sound, 0);
     ma_sound_start(&sound);
 }

@@ -53,10 +53,13 @@ public:
     /// the list. Does nothing without a device.
     void load(std::span<const std::filesystem::path> files);
 
-    /// Plays sound number index from its beginning. A sound that is still playing
-    /// starts again: there is one voice per sound, which is right for clicks and
-    /// keeps the same sound from piling up on itself. Different sounds play over each
-    /// other. Does nothing without a device, for a number that was not loaded and for
+    /// Plays sound number index from its beginning. A sound that is still ringing is
+    /// not cut off: every sound has a few voices that are used in turn, so the new copy
+    /// plays over the one before, which rings out (cutting a ringing sound would be
+    /// heard as a click). Only when one sound is played more often within its own
+    /// length than it has voices does the oldest copy start again. Different sounds
+    /// always play over each other. A sound that was started plays to its end: there is
+    /// no stop. Does nothing without a device, for a number that was not loaded and for
     /// a sound whose file failed to load.
     void play(std::size_t index);
 
