@@ -37,7 +37,7 @@ Debug keys, not meant for play: the key left of 1 (`) shows the debug window, N 
 - Crystals to collect, and a flashlight battery that drains and that crystals charge
 - A gate that opens when you have enough crystals, and an exit in the far corner
 - Levers that open shortcuts and notes that point you somewhere
-- Flasks of tea in dead ends: walk into one and sprinting costs no stamina for 20 seconds
+- Flasks of tea hidden in the maze: walk into one and sprinting costs no stamina for 20 seconds
 - Moon and flashlight shadows, fog, glow, a night sky and uneven ground
 - A map, shown while you hold M, with only the corridors you have already seen
 - A main menu with a looping video background, pause, a round summary and a settings screen (mouse sensitivity, field of view, fullscreen, window size, volume)
