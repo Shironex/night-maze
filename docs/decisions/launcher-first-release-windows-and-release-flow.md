@@ -1,6 +1,6 @@
 # Pierwsze wydanie dla znajomych jest tylko na Windowsa, a wydania powstają lokalnie i przez ręczny workflow ze szkicem
 
-Data: 2026-10-07. Stan: obowiązuje, z kodem i skryptami; **żadne wydanie nie powstało**, workflow nigdy nie działał. Z tej notatki tylko jedno zdanie jest decyzją właściciela: pierwsze wydanie jest tylko na Windowsa (sekcja 2). **Cały przepływ wydania w sekcji 4 to przyjęte założenia, do potwierdzenia przez właściciela**, bo właściciela o nie nie pytano. Kontekst, tabela i skutki to moja analiza. Rozstrzyga punkt otwarty z [`launcher-tauri-in-this-repo.md`](launcher-tauri-in-this-repo.md) ("proces wydania").
+Data: 2026-10-07, uzupełniona wieczorem tego dnia (sekcja 4a). Stan wieczorem 2026-10-07: obowiązuje, z kodem i skryptami; **pierwsze wydania powstały lokalnie** (launcher 0.1.0 i 0.1.1, gra 0.10.0, sekcja 4a), a workflow **nadal nigdy nie działał** i jest tylko ręczny. Rano tego dnia stan był inny: żadne wydanie nie powstało. Z tej notatki tylko jedno zdanie jest decyzją właściciela: pierwsze wydanie jest tylko na Windowsa (sekcja 2). **Cały przepływ wydania w sekcji 4 to przyjęte założenia, do potwierdzenia przez właściciela**, bo właściciela o nie nie pytano. Kontekst, tabela i skutki to moja analiza. Rozstrzyga punkt otwarty z [`launcher-tauri-in-this-repo.md`](launcher-tauri-in-this-repo.md) ("proces wydania").
 Kod: [`.github/workflows/release.yml`](../../.github/workflows/release.yml), skrypty w [`launcher/scripts/`](../../launcher/scripts/) (`package-game.mjs`, `build-feed.mjs`, `sign-file.mjs`, `build-latest.mjs`), przykład [`verify_manifest.rs`](../../launcher/crates/core/examples/verify_manifest.rs). Dokładne polecenia: [`launcher/README.md`](../../launcher/README.md), sekcje "Releasing" i "Before the first friend gets a link".
 
 ## 1. Kontekst
@@ -54,10 +54,22 @@ To jest analiza, nie decyzja. Dla pierwszego zdania (tylko Windows) nie znam inn
 
 **Czego ta notatka nie przesądza.** Daty pierwszego wydania, tego, czy po przetestowaniu workflow wróci wyzwalacz tagu (komentarz w `release.yml` opisuje, co trzeba dopisać), ani numeru pierwszej wersji gry dla znajomych.
 
+## 4a. Uzupełnienie z wieczoru 2026-10-07: jak poszły pierwsze wydania
+
+Opis stanu i analiza; decyzji właściciela tu nie przybyło poza cytatem "Release now" o wydaniu gry (zgłoszone przez zlecającego, nie powtarzałem; oznaczam, co sprawdziłem poleceniami tylko do odczytu).
+
+- **Droga lokalna z założeń z sekcji 4 została przejechana dla trzech wydań.** Launcher 0.1.0 i 0.1.1 zbudował właściciel na Windowsie, podpisał kluczem aktualizacji A i opublikował jako zwykłe wydania w `Shironex/night-maze-launcher`. Grę 0.10.0 zbudował lokalnie w osobnym worktree ze statycznym środowiskiem uruchomieniowym, a jej `manifest.json` i `news.json` podpisał kluczem manifestu A. Sprawdziłem `gh release view`: `v0.10.0` ma pięć plików (zip, manifest, news, dwa podpisy), nie jest szkicem.
+- **Workflow nie brał w tym udziału.** `gh run list --workflow release.yml` nie pokazuje przebiegów, więc zadanie macOS, warunki `if:` i krok publikacji nadal nie były wykonane na runnerze. Założenie "wydania lokalne, workflow jako druga droga" zadziałało tak, jak je zapisano.
+- **Pierwsze wydanie gry było pierwszą próbą prawdziwego klucza** (skutek z sekcji 4) i ta próba się udała: przykład `verify_manifest` napisał "verified: manifest of version 0.10.0 is signed by the first (manifest-a) release key", a zainstalowany launcher 0.1.1 pokazał notatki, zainstalował grę i ją uruchomił.
+- **Kolejność przed pierwszym linkiem została wykonana tak, jak opisano**, z jednym odstępstwem co do czystego komputera: 0.1.0 zainstalowano i zaktualizowano do 0.1.1 przyciskiem w ustawieniach na jednym komputerze z Windows 11, bez czystego drugiego.
+- **Repozytorium gry jest od tego wieczoru publiczne** (sprawdziłem `gh repo view`), więc warunek z sekcji 4 ("launcher nie zainstaluje niczego, dopóki repozytorium jest prywatne") nie obowiązuje. Sekcja 4 i sekcja 5 zostają jako historia.
+- **Nie wiadomo, czy właściciel posłuchał dźwięków z 0.10.0**: wydał bez słuchania. Nie zapisuję ich jako zatwierdzonych.
+- **Nadal nie uruchomiono:** aktualizacji na czystym drugim komputerze, zachowania SmartScreena na komputerze, który nigdy nie widział launchera, rotacji kluczy, niczego na macOS.
+
 ## 5. Kiedy wrócić do tej decyzji
 
 - Po **zbudowaniu i uruchomieniu gry oraz launchera na Macu**: dopisać macOS do wydań i usunąć ten warunek.
 - Po **pierwszym przebiegu workflow na runnerze**: zapisać, co trzeba było naprawić. Plik sam mówi, że spodziewać się trzeba poprawek.
-- Gdy repozytorium przestanie być prywatne: przemyśleć, czy wyzwalacz tagu ma wrócić.
+- Gdy repozytorium przestanie być prywatne: przemyśleć, czy wyzwalacz tagu ma wrócić. (Od wieczoru 2026-10-07 jest publiczne, a pierwsze wydania były lokalne; punkt czeka na pierwszy przebieg workflow na runnerze.)
 - Gdy znajomi zaczną **skarżyć się na SmartScreen** albo antywirus: wrócić do założenia o braku podpisu kodu.
 - Gdy właściciel zdecyduje inaczej niż któreś z przyjętych założeń (sekrety, budowanie na GitHubie, podpisywanie).

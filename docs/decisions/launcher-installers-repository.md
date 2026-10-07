@@ -1,6 +1,6 @@
 # Instalatory launchera w repozytorium `Shironex/night-maze-launcher`, a ten adres jest wkompilowany w każdy zainstalowany launcher
 
-Data: 2026-10-07. Stan: obowiązuje, z kodem. Nazwa repozytorium jest decyzją właściciela projektu (sekcja 2). To, że adres wynikający z tej nazwy jest wkompilowany w zainstalowane launchery, jest faktem sprawdzonym w kodzie, a nie uzasadnieniem właściciela. Kontekst, tabela i skutki to moja analiza. Rozstrzyga punkt otwarty z [`launcher-tauri-in-this-repo.md`](launcher-tauri-in-this-repo.md) ("nazwa drugiego repozytorium").
+Data: 2026-10-07, uzupełniona wieczorem tego dnia (sekcja 5a). Stan wieczorem 2026-10-07: obowiązuje, z kodem; repozytorium ma już dwa wydania, 0.1.0 i 0.1.1, a adres aktualizacji odpowiada. Nazwa repozytorium jest decyzją właściciela projektu (sekcja 2). To, że adres wynikający z tej nazwy jest wkompilowany w zainstalowane launchery, jest faktem sprawdzonym w kodzie, a nie uzasadnieniem właściciela. Kontekst, tabela i skutki to moja analiza. Rozstrzyga punkt otwarty z [`launcher-tauri-in-this-repo.md`](launcher-tauri-in-this-repo.md) ("nazwa drugiego repozytorium").
 Kod: [`launcher/src-tauri/tauri.conf.json`](../../launcher/src-tauri/tauri.conf.json) (`plugins.updater.endpoints`, `identifier`), [`launcher/src-tauri/src/updater.rs`](../../launcher/src-tauri/src/updater.rs) (test `updates_come_from_the_launcher_repository_over_https`), [`launcher/scripts/build-latest.mjs`](../../launcher/scripts/build-latest.mjs) (parametr `--repo`). Opis kroków: [`launcher/README.md`](../../launcher/README.md), sekcje "Releasing" i "Keys".
 
 ## 1. Kontekst
@@ -45,8 +45,12 @@ To jest analiza, nie decyzja. Pierwszy wiersz jest decyzją właściciela. Innyc
 
 **Czego ta notatka nie przesądza.** Czy repozytorium gry stanie się publiczne w tym samym dniu co pierwsze wydanie, ani czy kiedyś w drugim repozytorium zamieszka własny workflow wydania launchera.
 
+## 5a. Uzupełnienie z wieczoru 2026-10-07: repozytorium ma wydania
+
+Opis stanu (zgłoszone przez zlecającego; sprawdziłem `gh release list` i `curl` na adres z konfiguracji): właściciel opublikował w `Shironex/night-maze-launcher` zwykłe wydania `v0.1.0` i `v0.1.1`, każde z instalatorem i `latest.json`, oba nie są szkicem ani wydaniem wstępnym. Adres `https://github.com/Shironex/night-maze-launcher/releases/latest/download/latest.json` zwraca wersję 0.1.1. Instalator 0.1.0 zaktualizował się z niego do 0.1.1 na jednym komputerze z Windows 11 (zgłoszone). Repozytorium gry jest od tego wieczoru też publiczne. Nazwy repozytorium nikt nie zmieniał, więc skutki zmiany nazwy po wydaniu (sekcja 4) pozostają niesprawdzone. Sekcja 4 ("dopóki repozytorium gry jest prywatne") i sekcja 5 zostają jako historia.
+
 ## 5. Kiedy wrócić do tej decyzji
 
-- Przed **pierwszym wydaniem launchera**: odczytać `latest.json` spod prawdziwego adresu (README, krok 8 wydania launchera). Do tego czasu adres odpowiada błędem, bo wydania nie ma.
+- Przed **pierwszym wydaniem launchera**: odczytać `latest.json` spod prawdziwego adresu (README, krok 8 wydania launchera). Do tego czasu adres odpowiada błędem, bo wydania nie ma. (Zrobione wieczorem 2026-10-07, sekcja 5a: adres zwraca 0.1.1.)
 - Gdy ktoś chce **zmienić nazwę albo przenieść** repozytorium: najpierw sprawdzić, co robią już zainstalowane launchery, bo adres da się zmienić tylko aktualizacją, którą przyjmą.
 - Gdy repozytorium launchera dostanie **własny workflow** albo **drugi system** (macOS): `build-latest.mjs` pisze dziś wpis tylko dla Windowsa.

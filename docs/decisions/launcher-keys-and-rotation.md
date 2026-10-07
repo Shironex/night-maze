@@ -1,6 +1,6 @@
 # Klucze launchera: który co podpisuje, kto je trzyma i co znaczy utrata każdego
 
-Data: 2026-10-07. Stan: obowiązuje, z kodem. Sesję kluczy wykonał i opisał właściciel projektu (sekcja 2); projekt rotacji z kluczem B jest w kodzie, ale nie ma go na liście decyzji właściciela, więc traktuję go jako wybór wykonawczy do potwierdzenia. Kontekst, tabela, skutki i warunki powrotu to moja analiza. Rozstrzyga punkt otwarty z [`launcher-tauri-in-this-repo.md`](launcher-tauri-in-this-repo.md) ("samoaktualizacja i podpis manifestu przed pierwszym wydaniem").
+Data: 2026-10-07, uzupełniona wieczorem tego dnia (sekcja 5a). Stan wieczorem 2026-10-07: obowiązuje, z kodem; klucze A aktualizacji i manifestu A podpisały pierwsze prawdziwe wydania i zostały przyjęte, rotacji z kluczem B nikt nie uruchomił. Sesję kluczy wykonał i opisał właściciel projektu (sekcja 2); projekt rotacji z kluczem B jest w kodzie, ale nie ma go na liście decyzji właściciela, więc traktuję go jako wybór wykonawczy do potwierdzenia. Kontekst, tabela, skutki i warunki powrotu to moja analiza. Rozstrzyga punkt otwarty z [`launcher-tauri-in-this-repo.md`](launcher-tauri-in-this-repo.md) ("samoaktualizacja i podpis manifestu przed pierwszym wydaniem").
 Kod: [`launcher/crates/core/src/signature.rs`](../../launcher/crates/core/src/signature.rs) (`RELEASE_KEYS`, `trusted_keys`, `verify`), [`launcher/src-tauri/src/updater.rs`](../../launcher/src-tauri/src/updater.rs) (`ROTATION_KEY`, `fetch`), [`launcher/src-tauri/tauri.conf.json`](../../launcher/src-tauri/tauri.conf.json) (`plugins.updater.pubkey`, `requireSignedVersion`), [`launcher/dev-keys/`](../../launcher/dev-keys/), skrypty `sign-file.mjs`, `build-feed.mjs`, `build-latest.mjs` w [`launcher/scripts/`](../../launcher/scripts/), przykład [`verify_manifest.rs`](../../launcher/crates/core/examples/verify_manifest.rs). Opis kroków: [`launcher/README.md`](../../launcher/README.md), sekcja "Keys" i "Releasing".
 
 ## 1. Kontekst
@@ -73,10 +73,19 @@ Ponieważ właściciel usunął klucze B z komputera, każde użycie B zaczyna s
 
 **Czego ta notatka nie przesądza.** Terminu pierwszej rotacji, tego, czy kiedyś pojawi się trzecia para, ani sposobu przechowywania haseł.
 
+## 5a. Uzupełnienie z wieczoru 2026-10-07: klucze A użyte w prawdziwych wydaniach
+
+Opis stanu (zgłoszone przez zlecającego, nie powtarzałem; oznaczam, co sprawdziłem poleceniami tylko do odczytu). Decyzji właściciela tu nie przybyło.
+
+- **Klucz aktualizacji A podpisał launcher 0.1.0 i 0.1.1** (budowane lokalnie na Windowsie przez właściciela). Podpis niesie wersję: w `latest.json` spod prawdziwego adresu komentarz podpisu 0.1.1 zawiera `version:0.1.1` (sprawdziłem). Zainstalowany 0.1.0 przyjął aktualizację do 0.1.1 przy włączonym `requireSignedVersion` (zgłoszone). Droga "klucz A podpisuje, zainstalowana kopia przyjmuje" jest więc dowiedziona raz, na jednym komputerze z Windows 11.
+- **Klucz manifestu A podpisał `manifest.json` i `news.json` gry 0.10.0.** Przykład `verify_manifest` napisał: "verified: manifest of version 0.10.0 is signed by the first (manifest-a) release key". To pierwszy raz, gdy podpis prawdziwego klucza wydania sprawdził kod launchera. Zainstalowany launcher 0.1.1 pokazał potem notatki 0.10.0, zainstalował grę i ją uruchomił (zgłoszone). Wydanie `v0.10.0` ma oba pliki `.sig` (sprawdziłem `gh release view`).
+- **Klucze B nie były używane.** Droga rotacji z kluczem B, w tym drugie podejście w `fetch` w `updater.rs` przeciw prawdziwemu wydaniu, nadal nie była uruchomiona, tak samo rotacja którejkolwiek pary. Odtworzenie klucza B z kopii poza komputerem nadal nie było sprawdzane poza testem podpisania z dnia sesji.
+- **Nie zajrzałem do katalogu z prawdziwymi kluczami** ani teraz, ani wcześniej.
+
 ## 5. Kiedy wrócić do tej decyzji
 
-- Przy **pierwszym prawdziwym wydaniu gry**: sprawdzić, że launcher przyjmuje podpis prawdziwego klucza manifestu A. Do tej pory podpis sprawdzały tylko klucze testowe i klucz deweloperski.
-- Przy **pierwszym wydaniu launchera** i próbie 0.1.0 do 0.1.1: pierwszy raz zadziała (albo nie) cała droga aktualizacji z kluczem A.
+- Przy **pierwszym prawdziwym wydaniu gry**: sprawdzić, że launcher przyjmuje podpis prawdziwego klucza manifestu A. Do tej pory podpis sprawdzały tylko klucze testowe i klucz deweloperski. (Zrobione wieczorem 2026-10-07, sekcja 5a.)
+- Przy **pierwszym wydaniu launchera** i próbie 0.1.0 do 0.1.1: pierwszy raz zadziała (albo nie) cała droga aktualizacji z kluczem A. (Zadziałała wieczorem 2026-10-07 na jednym komputerze, sekcja 5a; czystego drugiego komputera nie było.)
 - Przed **jakąkolwiek rotacją**: wykonać kolejność z README (nowa para, kopia w dwóch miejscach, nowe połowy publiczne w konfiguracji lub stałych, wydanie podpisane kluczem, któremu zainstalowane kopie jeszcze ufają, sprawdzenie na kopii starej wersji, dopiero potem wycofanie starego klucza). Rotacji, ani drugiego podejścia z kluczem B w `fetch`, nikt dotąd nie uruchomił.
 - Gdy **ujawni się** któryś klucz albo hasło zginie.
 - Gdy zacznie się wydawać launcher na **macOS**: kluczy aktualizacji dotyczy to samo, ale `build-latest.mjs` nie pisze dziś wpisu macOS.

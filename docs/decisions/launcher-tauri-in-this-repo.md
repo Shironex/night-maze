@@ -1,6 +1,6 @@
 # Launcher w Tauri 2 w katalogu `launcher/` tego repozytorium, tylko dla Night Maze
 
-Data: 2026-10-06, uzupełniona 2026-10-07 (sekcja 2a: repozytorium instalatorów, klucze, podpis, samoaktualizacja, licencja, pierwsze wydanie tylko na Windowsa). Stan: obowiązuje jako decyzja, **kod launchera jest** (commity od `c5b3cbd` do `0c87e4d`, od 2026-10-07 także podpisy, samoaktualizacja i skrypty wydania, lista w sekcji 2a), ale **nic nie zostało opublikowane**, workflow wydania **nigdy nie działał**, prawdziwa aktualizacja launchera i rotacja kluczy **nigdy nie były uruchomione**, a macOS jest **nieprzetestowany**. Decyzje właściciela projektu są w sekcjach 2 i 2a; opis stanu, tabela możliwości i skutki to moja analiza. Launcher leży poza ocenianym kodem C++ kursu ([`../guides/launcher.md`](../guides/launcher.md)).
+Data: 2026-10-06, uzupełniona 2026-10-07 (sekcja 2a: repozytorium instalatorów, klucze, podpis, samoaktualizacja, licencja, pierwsze wydanie tylko na Windowsa) i wieczorem 2026-10-07 (sekcja 2b: pierwsze wydania). Stan wieczorem 2026-10-07: obowiązuje jako decyzja, **kod launchera jest** (commity od `c5b3cbd` do `0c87e4d`, od 2026-10-07 także podpisy, samoaktualizacja i skrypty wydania, lista w sekcji 2a), **pierwsze wydania są opublikowane** (launcher 0.1.0 i 0.1.1, gra 0.10.0), prawdziwa samoaktualizacja launchera została uruchomiona **raz, na jednym komputerze z Windows 11**, a workflow wydania **nigdy nie działał**, rotacja kluczy, aktualizacja na czystym drugim komputerze i SmartScreen na komputerze, który launchera nie widział, **nigdy nie były uruchomione**, a macOS jest **nieprzetestowany**. Rano tego samego dnia stan był inny: nic nie było opublikowane i żadna aktualizacja nie była uruchomiona. Decyzje właściciela projektu są w sekcjach 2 i 2a; opis stanu, tabela możliwości i skutki to moja analiza. Launcher leży poza ocenianym kodem C++ kursu ([`../guides/launcher.md`](../guides/launcher.md)).
 Kod: [`launcher/`](../../launcher/) (biblioteka reguł `crates/core` w Rust, powłoka `src-tauri`, okno w React i TypeScript w `src`, skrypty pakujące w `scripts/`), [`.github/workflows/release.yml`](../../.github/workflows/release.yml). Opis szczegółowy po angielsku: [`launcher/README.md`](../../launcher/README.md).
 
 ## 1. Kontekst
@@ -63,6 +63,21 @@ Zaproponował je zlecający prace, a nie właściciel. Są w kodzie i w README, 
 
 Szczegóły i rozróżnienie rodzajów dowodów: [`../guides/launcher.md`](../guides/launcher.md), sekcja 2. Zgłoszone przez zlecającego, nie powtarzałem: testy Rust i okna, build wydaniowy launchera z kluczem deweloperskim, suchy przebieg wydania gry w osobnym worktree z kluczem deweloperskim. **Nigdy nie uruchomione:** prawdziwa aktualizacja launchera z wersji do wersji, rotacja kluczy, podpis prawdziwym kluczem wydania sprawdzony przez launcher (pierwsze prawdziwe wydanie jest tym sprawdzeniem), workflow wydania na runnerze, cokolwiek na macOS, zachowanie SmartScreen na czystym komputerze.
 
+## 2b. Uzupełnienie z wieczoru 2026-10-07: pierwsze wydania
+
+Decyzje właściciela projektu (2026-10-07, wieczór), cytowane: o wydaniu gry **"Release now"**; o dokumentach kursu w `docs/` **"Yes, publish everything"**. Nic ponad to nie jest tu decyzją. Reszta tej sekcji to opis stanu i analiza.
+
+Co zrobił właściciel (zgłoszone przez zlecającego, nie powtarzałem; to, co sprawdziłem poleceniami tylko do odczytu, jest oznaczone):
+
+- zbudował lokalnie na Windowsie launcher 0.1.0 i 0.1.1, podpisał kluczem aktualizacji A i opublikował jako zwykłe wydania w `Shironex/night-maze-launcher`. Sprawdziłem `gh release list`: oba wydania są, 0.1.1 jako najnowsze, każde z instalatorem i `latest.json`. Sprawdziłem też `latest.json` spod prawdziwego adresu z konfiguracji: wersja 0.1.1, a komentarz podpisu niesie `version:0.1.1`, zgodnie z `requireSignedVersion` (to, że wtyczka przyjęła podpisy, jest zgłoszone),
+- zainstalował 0.1.0 i zaktualizował go do 0.1.1 przyciskiem w ustawieniach; launcher uruchomił się jako 0.1.1 i napisał, że jest aktualny. Prawdziwa droga samoaktualizacji jest więc dowiedziona **jeden raz, na jednym komputerze z Windows 11**,
+- upublicznił repozytorium gry (sprawdziłem `gh repo view`: `PUBLIC`), wypchnął `main` i opisany tag `v0.10.0` na commit `7b5e0b1` (sprawdziłem `git`),
+- zbudował grę 0.10.0 lokalnie w osobnym worktree ze statycznym środowiskiem uruchomieniowym, spakował ją i podpisał `manifest.json` i `news.json` kluczem manifestu A. Przykład `verify_manifest` napisał: "verified: manifest of version 0.10.0 is signed by the first (manifest-a) release key". To pierwszy raz, gdy podpis prawdziwego klucza wydania sprawdził kod launchera. Wydanie `v0.10.0` ma pięć plików: zip, manifest, news i dwa podpisy (sprawdziłem `gh release view`; adres manifestu `releases/latest/download/manifest.json` zwraca wersję 0.10.0). Zainstalowany launcher 0.1.1 pokazał notatki 0.10.0 i przycisk instalacji, zainstalował grę i ją uruchomił (zgłoszone).
+
+Czego to nie zmienia (analiza): workflow `release.yml` **nadal nigdy nie działał** (pierwsze wydania były lokalne, jak założono; `gh run list --workflow release.yml` nie pokazuje przebiegów) i jest dziś tylko ręczny. **Nadal nie uruchomiono:** rotacji kluczy z kluczem B, aktualizacji na czystym drugim komputerze, zachowania SmartScreena na komputerze, który nigdy nie widział launchera, ani niczego na macOS. Nie wiem, czy właściciel od wydania posłuchał dźwięków z 0.10.0 (wydał bez słuchania), więc nie zapisuję ich jako zatwierdzonych.
+
+Otwarte sprawy po wydaniach: dwa alerty Dependabota w `launcher/` (`source-map-js`, wysoki, `pnpm-lock.yaml`; `glib`, średni, `Cargo.lock`), których automatyczne aktualizacje zakończyły się błędem; nagłówek okna launchera mówi "Windows · macOS", a wydawany jest tylko Windows (właściciel: zostawić na razie); angielskie README obu repozytoriów planuje właściciel razem ze swoim zestawem do prezentacji, w tym w repozytorium launchera wyjaśnienie, dlaczego jest osobne, i plan przeniesienia tam później źródeł launchera.
+
 ## 3. Rozważane możliwości
 
 To jest analiza. Pierwszy wiersz każdej grupy jest decyzją właściciela.
@@ -78,6 +93,8 @@ To jest analiza. Pierwszy wiersz każdej grupy jest decyzją właściciela.
 ## 4. Uzasadnienie i skutki
 
 **Dlaczego tak.** Powodów właściciela poza samą decyzją nie podano, więc ich nie zapisuję.
+
+**Uwaga z wieczoru 2026-10-07: poniższy opis stanu i skutki dotyczą stanu z rana, bez zmian jako historia; aktualny stan jest w sekcji 2b.**
 
 **Stan faktyczny z 2026-10-06 (sprawdzony w plikach; historia: samoaktualizacja, podpis manifestu i nazwa drugiego repozytorium są od 2026-10-07 opisane w sekcji 2a, a reszta zdań poniżej nadal się zgadza):**
 
@@ -96,7 +113,7 @@ To jest analiza. Pierwszy wiersz każdej grupy jest decyzją właściciela.
 
 ## 5. Kiedy wrócić do tej decyzji
 
-Stan z 2026-10-07. Dawne punkty "ustawić podpisywanie i samoaktualizację" i "założyć drugie repozytorium" są zrobione (sekcja 2a). Zostają:
+Stan z 2026-10-07. Dawne punkty "ustawić podpisywanie i samoaktualizację" i "założyć drugie repozytorium" są zrobione (sekcja 2a). Wieczorem tego dnia zrobiono też pierwsze dwa z poniższych punktów (pierwsze prawdziwe wydanie z podpisem kluczem manifestu A oraz wydanie launchera 0.1.0 i 0.1.1 z aktualizacją na jednym komputerze) i upubliczniono repozytorium gry (sekcja 2b). Zostają:
 
 - Przy **pierwszym prawdziwym wydaniu**: sprawdzić, że launcher przyjmuje podpis prawdziwego klucza manifestu (`verify_manifest` przed publikacją, potem launcher z prawdziwego instalatora). To jest pierwsza próba tej drogi.
 - Po **pierwszym wydaniu launchera**: wykonać kroki z README ("Before the first friend gets a link"), w tym aktualizację z 0.1.0 do 0.1.1 na zainstalowanej kopii. Dopóki to się nie stało, żaden zainstalowany launcher nie zaktualizował się naprawdę.
