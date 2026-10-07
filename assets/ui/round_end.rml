@@ -6,7 +6,7 @@
 <body class="dim">
 <div class="center">
     <div class="card">
-        <h2 class="card-title">You escaped</h2>
+        <h2 class="card-title">Through the gate</h2>
         <div class="sep"></div>
         <!-- The four values are written by the game when the screen comes up
              (NightMazeApp::fillRoundEndDocument). The seed and the difficulty together

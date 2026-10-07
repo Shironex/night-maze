@@ -87,6 +87,12 @@ struct GameSettings {
     /// From MIN_MASTER_VOLUME to MAX_MASTER_VOLUME, a whole number.
     float masterVolume = DEFAULT_MASTER_VOLUME;
 
+    /// The "next unread line" of the story: the line the first story note of the next
+    /// maze shows, from 0 to flavourLineCount() - 1. It moves on when a maze is finished
+    /// (advanceStoryLine). It is not edited on the settings screen, but it is part of the
+    /// file, so it is kept between two starts of the game.
+    int nextStoryLine = 0;
+
     bool operator==(const GameSettings& other) const = default;
 };
 
@@ -98,6 +104,7 @@ constexpr std::string_view FULLSCREEN_SETTING = "fullscreen";
 constexpr std::string_view WINDOW_SIZE_SETTING = "window_size";
 constexpr std::string_view DIFFICULTY_SETTING = "difficulty";
 constexpr std::string_view MASTER_VOLUME_SETTING = "master_volume";
+constexpr std::string_view NEXT_STORY_LINE_SETTING = "next_story_line";
 
 /// Sets one setting from text, the way the file and the controls of the settings screen
 /// write it:
@@ -108,9 +115,11 @@ constexpr std::string_view MASTER_VOLUME_SETTING = "master_volume";
 ///     window_size         width and height with an x between them, "1280x720"
 ///     difficulty          "easy", "normal" or "hard"
 ///     master_volume       a number from 0 to 100, "80" (rounded to a whole number)
+///     next_story_line     a whole number, "5" (rounded; a number past the last story
+///                         line is wrapped round to the start of the table)
 ///
-/// A number outside its limits is brought to the nearest limit. Returns false, and
-/// changes nothing, when the name is not a setting or the value cannot be read.
+/// A number outside its limits is brought to the nearest limit (next_story_line: wrapped). Returns
+/// false, and changes nothing, when the name is not a setting or the value cannot be read.
 bool applySetting(GameSettings& settings, std::string_view name, std::string_view value);
 
 /// Reads the text of a settings file: one "name = value" per line, with any spaces

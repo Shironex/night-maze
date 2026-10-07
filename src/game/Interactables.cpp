@@ -36,14 +36,27 @@ constexpr std::array<Direction, 2> REPORTED_SIDES = {Direction::East, Direction:
 // needs whole numbers only.
 constexpr int STRAIGHT_FACTOR = 2;
 
-// The lines a note of the kind Flavour can show. English, like the rest of the HUD.
-constexpr std::array<std::string_view, 6> FLAVOUR_LINES = {
+// The lines a story note (the kind Flavour) can show, in the order of the story: a maze
+// reads them one after the other and starts again at the first one after the last.
+// English, like the rest of the HUD. The lines about the shadow are not here yet, there
+// is no shadow in the game.
+constexpr std::array<std::string_view, 16> FLAVOUR_LINES = {
     "The moon sees every corridor. You see one.",
+    "A splinter remembers being moon. The lamp believes it.",
     "Dead ends are where the light hides.",
-    "Count your steps. The maze does not.",
+    "The gate counts what you carry. It never asks for all.",
+    "Leave a few. The moon comes back to look for them.",
     "A lever moves a wall. Somewhere.",
-    "The gate listens for crystals.",
-    "Save your battery for the way back.",
+    "Shepherds roped their gates under the turf. Pull. Listen.",
+    "Chalk ground from a splinter. It leans. It ignores walls.",
+    "The gate grows as far from the stile as it can.",
+    "Puddles hold stars. Stars are no use. Walk on.",
+    "When the lamp stutters, it is forgetting. Feed it.",
+    "Count your steps. The maze does not.",
+    "My hands shake now. The lamp does not mind whose hand.",
+    "I wrote these for whoever came next. I hoped for you.",
+    "There is no way back. The gate is the way home.",
+    "One lamp is enough, if it is the one still lit.",
 };
 
 // Position of a cell in a list that holds the rows one after another, like in Maze.
@@ -179,7 +192,7 @@ MazeCell nearestCell(MazeCell from, std::span<const MazeCell> cells) {
 }
 
 // The sentence of a hint: who, what it does, then the direction. For example
-// hintSentence("The exit", "lies", Compass::North) is "The exit lies to the north.".
+// hintSentence("The gate", "waits", Compass::North) is "The gate waits to the north.".
 std::string hintSentence(std::string_view subject, std::string_view verb, Compass direction) {
     std::string text{subject};
     text += ' ';
@@ -358,18 +371,14 @@ Interactables placeInteractables(const Maze& maze, std::uint32_t seed, MazeCell 
         }
     }
 
-    // The order of the draws: the shuffle of the cells, one draw for the first flavour
-    // line, then one draw per note for its side.
+    // The order of the draws: the shuffle of the cells, then one draw per note for its
+    // side.
     std::mt19937 noteGenerator(seed + NOTE_SEED_OFFSET);
     shuffleCells(noteCells, noteGenerator);
-    const auto lineCount = static_cast<std::uint32_t>(flavourLineCount());
-    const std::uint32_t firstLine = randomBelow(noteGenerator, lineCount);
 
     const std::size_t noteCount =
         std::min(clampedCount(settings.noteCount, MAX_NOTE_COUNT), noteCells.size());
     interactables.notes.reserve(noteCount);
-    // How many flavour notes there are so far: the next one takes the next line.
-    std::uint32_t flavourNotes = 0;
     for (std::size_t i = 0; i < noteCount; ++i) {
         Note note;
         note.mount.cell = noteCells[i];
@@ -378,13 +387,27 @@ Interactables placeInteractables(const Maze& maze, std::uint32_t seed, MazeCell 
         note.box = noteBox(note.position, note.mount.side);
         // The kinds take turns: exit hint, crystal hint, flavour, exit hint and so on.
         note.kind = static_cast<NoteKind>(i % static_cast<std::size_t>(NOTE_KIND_COUNT));
-        if (note.kind == NoteKind::Flavour) {
-            // The lines are taken in the order of the table, starting with the one the
-            // seed chose. "%" goes on with line 0 after the last line.
-            note.flavourIndex = static_cast<int>((firstLine + flavourNotes) % lineCount);
-            ++flavourNotes;
-        }
         interactables.notes.push_back(note);
+    }
+
+    // The story notes (the kind Flavour) get their lines nearest to the start first. The
+    // numbers of these notes are put in the order of their distance. The sort is stable,
+    // so two notes the same number of passages away keep the order they have in the list
+    // (the order of the shuffle): the result never depends on the standard library.
+    const std::vector<int> distances = passageDistances(maze, start);
+    std::vector<std::size_t> storyNotes;
+    for (std::size_t i = 0; i < interactables.notes.size(); ++i) {
+        if (interactables.notes[i].kind == NoteKind::Flavour) {
+            storyNotes.push_back(i);
+        }
+    }
+    std::ranges::stable_sort(storyNotes, [&](std::size_t first, std::size_t second) {
+        return distances[cellIndex(maze, interactables.notes[first].mount.cell)] <
+               distances[cellIndex(maze, interactables.notes[second].mount.cell)];
+    });
+    for (std::size_t rank = 0; rank < storyNotes.size(); ++rank) {
+        interactables.notes[storyNotes[rank]].flavourIndex =
+            storyLineFor(settings.firstStoryLine, static_cast<int>(rank));
     }
     return interactables;
 }
@@ -559,6 +582,28 @@ std::string_view compassName(Compass direction) {
     return "here";
 }
 
+int storyLineFor(int firstLine, int rank) {
+    // The first line is brought into the table first, so a negative or a huge number
+    // cannot give a place outside of it (% of a negative number is negative).
+    const int count = flavourLineCount();
+    const int first = ((firstLine % count) + count) % count;
+    return (first + rank % count) % count;
+}
+
+int storyNoteCount(const Interactables& interactables) {
+    int count = 0;
+    for (const Note& note : interactables.notes) {
+        if (note.kind == NoteKind::Flavour) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int advanceStoryLine(int firstLine, int storyNotes) {
+    return storyLineFor(firstLine, storyNotes);
+}
+
 int flavourLineCount() {
     return static_cast<int>(FLAVOUR_LINES.size());
 }
@@ -572,14 +617,14 @@ std::string_view flavourLine(int index) {
 
 std::string noteText(const Note& note, MazeCell exit, std::span<const MazeCell> crystalCells) {
     if (note.kind == NoteKind::ExitHint) {
-        return hintSentence("The exit", "lies", compassTowards(note.mount.cell, exit));
+        return hintSentence("The gate", "waits", compassTowards(note.mount.cell, exit));
     }
     if (note.kind == NoteKind::CrystalHint) {
         if (crystalCells.empty()) {
-            return "No crystal is left to find.";
+            return "You took every one. The moon will look harder.";
         }
         const MazeCell nearest = nearestCell(note.mount.cell, crystalCells);
-        return hintSentence("A crystal", "glows", compassTowards(note.mount.cell, nearest));
+        return hintSentence("A splinter", "glows", compassTowards(note.mount.cell, nearest));
     }
     // Flavour is what is left.
     return std::string{flavourLine(note.flavourIndex)};

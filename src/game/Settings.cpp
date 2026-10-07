@@ -2,6 +2,8 @@
 // they are kept in.
 #include "game/Settings.hpp"
 
+#include "game/Interactables.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -161,6 +163,18 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
             std::clamp(std::round(number), MIN_MASTER_VOLUME, MAX_MASTER_VOLUME);
         return true;
     }
+    if (name == NEXT_STORY_LINE_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        // A number past the end of the table (a hand written file) goes round to the
+        // start, the way the counter does when a maze is finished.
+        // fmod and not %, because a 12 digit number does not fit a whole number.
+        settings.nextStoryLine =
+            static_cast<int>(std::fmod(std::round(number), static_cast<float>(flavourLineCount())));
+        return true;
+    }
     return false;
 }
 
@@ -202,6 +216,7 @@ std::string formatSettings(const GameSettings& settings) {
     text += settingLine(WINDOW_SIZE_SETTING, windowSizeValue(settings.windowSize));
     text += settingLine(DIFFICULTY_SETTING, difficultyLevel(settings.difficulty).key);
     text += settingLine(MASTER_VOLUME_SETTING, masterVolumeLabel(settings.masterVolume));
+    text += settingLine(NEXT_STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
     return text;
 }
 

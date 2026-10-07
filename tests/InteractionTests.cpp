@@ -101,7 +101,7 @@ TEST_CASE("a maze world holds the levers and notes of its seed and the wall of e
     REQUIRE(world.interactables.levers.size() == expected.levers.size());
     REQUIRE(world.interactables.notes.size() == expected.notes.size());
     REQUIRE_FALSE(world.interactables.levers.empty());
-    CHECK(world.interactables.notes.size() == 3);
+    CHECK(world.interactables.notes.size() == 6);
     CHECK(world.leverWalls.size() == world.interactables.levers.size());
 
     for (std::size_t i = 0; i < expected.levers.size(); ++i) {
@@ -560,7 +560,7 @@ TEST_CASE("the card of a crystal hint counts only the crystals that are left") {
     for (game::RoundCrystal& crystal : round.crystals) {
         crystal.collected = true;
     }
-    CHECK(game::openNoteText(world, round) == "No crystal is left to find.");
+    CHECK(game::openNoteText(world, round) == "You took every one. The moon will look harder.");
 }
 
 TEST_CASE("a won round has nothing to interact with and closes the card") {

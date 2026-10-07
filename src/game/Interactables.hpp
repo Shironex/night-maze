@@ -30,9 +30,10 @@ namespace game {
 
 /// How many levers and notes a maze gets when nothing else is asked for. The default maze
 /// has 10 by 10 cells: two shortcuts change the ways through it without turning it into
-/// an open field, and three notes are one of each kind (see NoteKind).
+/// an open field, and six notes are two of each kind (see NoteKind), so two of them
+/// tell a part of the story.
 constexpr int DEFAULT_LEVER_COUNT = 2;
-constexpr int DEFAULT_NOTE_COUNT = 3;
+constexpr int DEFAULT_NOTE_COUNT = 6;
 
 /// The largest numbers that can be asked for. They only keep a wrong setting from
 /// filling the maze: nothing else depends on them.
@@ -87,6 +88,12 @@ struct InteractableSettings {
     /// Wanted number of notes, from 0 to MAX_NOTE_COUNT. A maze gets fewer when it has
     /// fewer free cells.
     int noteCount = DEFAULT_NOTE_COUNT;
+
+    /// The story line the first story note of the maze shows: "the next unread line" that
+    /// the settings file keeps (GameSettings::nextStoryLine). The story notes take this
+    /// line and the lines after it (see storyLineFor). Any whole number is allowed: it is
+    /// wrapped into the table.
+    int firstStoryLine = 0;
 };
 
 /// One side of one cell: the name of a wall (or of the place where a wall could stand).
@@ -209,9 +216,13 @@ struct Interactables {
 ///     never the exit cell and never a cell with a lever,
 ///   - it hangs on a wall of its cell like a lever does,
 ///   - note number i has the kind number i % NOTE_KIND_COUNT, so the first three notes
-///     are one of each kind. The seed chooses the flavour line of the first flavour
-///     note, the next ones take the lines that follow it in the table, so none repeats
-///     before all were used.
+///     are one of each kind,
+///   - the notes of the kind Flavour are the story notes. The one nearest to the start
+///     (the fewest passages, game::passageDistances) shows the line
+///     settings.firstStoryLine, the next one the line after it, and so on (storyLineFor).
+///     Two notes the same number of passages away are ordered by the seed. The seed does
+///     not choose the lines: which lines a maze shows depends on the story line counter
+///     and on nothing else, so no line repeats inside a maze.
 ///
 /// The levers and the notes use two generators of their own, so asking for another
 /// number of notes never moves a lever.
@@ -344,6 +355,21 @@ Compass compassTowards(MazeCell from, MazeCell to);
 /// The direction as words for a sentence: "north", "north-east", and "here" for Here.
 std::string_view compassName(Compass direction);
 
+/// The story line that story note number rank of a maze shows (0 is the note nearest to
+/// the start). firstLine is the line the maze starts with (InteractableSettings::
+/// firstStoryLine). The table is used round and round, so after the last line comes line
+/// 0 again. firstLine and rank can be any whole numbers; a negative firstLine is wrapped
+/// like a large one. The result is from 0 to flavourLineCount() - 1.
+int storyLineFor(int firstLine, int rank);
+
+/// How many notes of the maze tell the story (the notes of the kind Flavour).
+int storyNoteCount(const Interactables& interactables);
+
+/// The "next unread line" after a maze was finished: firstLine moved on by the number of
+/// story notes the maze had, and wrapped round at the end of the table. The result is
+/// from 0 to flavourLineCount() - 1.
+int advanceStoryLine(int firstLine, int storyNotes);
+
 /// The number of flavour lines in the table, and one of them. index runs from 0 to
 /// flavourLineCount() - 1. Throws std::out_of_range for another index.
 int flavourLineCount();
@@ -357,9 +383,9 @@ std::string_view flavourLine(int index);
 /// be a lie. "Nearest" is the straight line on the grid, like the compass direction. Of
 /// two crystals equally near the earlier one in the list wins.
 ///
-///   - ExitHint: "The exit lies to the north-east."
-///   - CrystalHint: "A crystal glows to the south.", or "No crystal is left to find."
-///     when crystalCells is empty,
+///   - ExitHint: "The gate waits to the north-east."
+///   - CrystalHint: "A splinter glows to the south.", or a line about the splinters the
+///     player took when crystalCells is empty,
 ///   - Flavour: flavourLine(note.flavourIndex).
 std::string noteText(const Note& note, MazeCell exit, std::span<const MazeCell> crystalCells);
 

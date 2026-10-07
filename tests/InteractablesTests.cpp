@@ -4,6 +4,7 @@
 #include "game/Interactables.hpp"
 
 #include "game/Crystals.hpp"
+#include "game/Difficulty.hpp"
 #include "game/Exit.hpp"
 #include "game/MazeGenerator.hpp"
 #include "game/MazeLayout.hpp"
@@ -252,9 +253,9 @@ scene::Ray rayFromCell(game::MazeCell cell, const glm::vec3& target) {
 
 } // namespace
 
-TEST_CASE("the default maze gets two levers and three notes, one of each kind") {
+TEST_CASE("the default maze gets two levers and six notes, two of each kind") {
     CHECK(game::DEFAULT_LEVER_COUNT == 2);
-    CHECK(game::DEFAULT_NOTE_COUNT == 3);
+    CHECK(game::DEFAULT_NOTE_COUNT == 6);
     const game::InteractableSettings settings;
     CHECK(settings.leverCount == game::DEFAULT_LEVER_COUNT);
     CHECK(settings.noteCount == game::DEFAULT_NOTE_COUNT);
@@ -264,10 +265,11 @@ TEST_CASE("the default maze gets two levers and three notes, one of each kind") 
     const game::Interactables placed = placeIn(test, game::DEFAULT_MAZE_SEED);
 
     REQUIRE(placed.levers.size() == 2U);
-    REQUIRE(placed.notes.size() == 3U);
+    REQUIRE(placed.notes.size() == 6U);
     CHECK(placed.notes[0].kind == game::NoteKind::ExitHint);
     CHECK(placed.notes[1].kind == game::NoteKind::CrystalHint);
     CHECK(placed.notes[2].kind == game::NoteKind::Flavour);
+    CHECK(game::storyNoteCount(placed) == 2);
     checkPlacement(test, placed, settings);
 }
 
@@ -410,14 +412,14 @@ TEST_CASE("a maze without a wall worth opening gets no lever") {
             const TestMaze row = testMaze(7, 1, seed);
             const game::Interactables inRow = placeIn(row, seed);
             CHECK(inRow.levers.empty());
-            // The five cells between the start and the exit can still hold the notes.
-            CHECK(inRow.notes.size() == 3U);
+            // The five cells between the start and the exit hold five of the six notes.
+            CHECK(inRow.notes.size() == 5U);
             checkPlacement(row, inRow, settings);
 
             const TestMaze column = testMaze(1, 7, seed);
             const game::Interactables inColumn = placeIn(column, seed);
             CHECK(inColumn.levers.empty());
-            CHECK(inColumn.notes.size() == 3U);
+            CHECK(inColumn.notes.size() == 5U);
             checkPlacement(column, inColumn, settings);
         }
     }
@@ -481,7 +483,7 @@ TEST_CASE("the default maze size gets all its levers, in cells without a crystal
         const game::Interactables placed = placeIn(test, seed);
 
         CHECK(placed.levers.size() == 2U);
-        CHECK(placed.notes.size() == 3U);
+        CHECK(placed.notes.size() == 6U);
         // 100 cells and 13 crystals: there is always a cell without a crystal.
         for (const game::Lever& lever : placed.levers) {
             CHECK_FALSE(holdsCrystal(test, lever.mount.cell));
@@ -622,7 +624,7 @@ TEST_CASE("the largest maze gets its levers and notes") {
     const game::Interactables placed = placeIn(test, 1U);
 
     CHECK(placed.levers.size() == 2U);
-    CHECK(placed.notes.size() == 3U);
+    CHECK(placed.notes.size() == 6U);
     checkPlacement(test, placed, settings);
 }
 
@@ -1020,10 +1022,10 @@ TEST_CASE("a note says where the exit is, where the nearest crystal is, or a fla
 
     SUBCASE("the exit hint") {
         const game::Note note = noteOn(cell, game::Direction::North, game::NoteKind::ExitHint);
-        CHECK(game::noteText(note, exit, {}) == "The exit lies to the north-east.");
-        CHECK(game::noteText(note, {.x = 5, .z = 0}, {}) == "The exit lies to the north.");
+        CHECK(game::noteText(note, exit, {}) == "The gate waits to the north-east.");
+        CHECK(game::noteText(note, {.x = 5, .z = 0}, {}) == "The gate waits to the north.");
         // Not possible in the game (no note hangs in the exit cell), but it has an answer.
-        CHECK(game::noteText(note, cell, {}) == "The exit lies right here.");
+        CHECK(game::noteText(note, cell, {}) == "The gate waits right here.");
     }
 
     SUBCASE("the crystal hint points at the nearest crystal that is left") {
@@ -1031,21 +1033,21 @@ TEST_CASE("a note says where the exit is, where the nearest crystal is, or a fla
 
         // One far away in the west and one near in the south.
         const std::vector<game::MazeCell> crystals = {{.x = 0, .z = 5}, {.x = 5, .z = 7}};
-        CHECK(game::noteText(note, exit, crystals) == "A crystal glows to the south.");
+        CHECK(game::noteText(note, exit, crystals) == "A splinter glows to the south.");
 
         // The near one was collected: the caller passes only what is left.
         const std::vector<game::MazeCell> left = {{.x = 0, .z = 5}};
-        CHECK(game::noteText(note, exit, left) == "A crystal glows to the west.");
+        CHECK(game::noteText(note, exit, left) == "A splinter glows to the west.");
 
         // Of two equally near crystals the earlier one in the list is named.
         const std::vector<game::MazeCell> equal = {{.x = 5, .z = 3}, {.x = 7, .z = 5}};
-        CHECK(game::noteText(note, exit, equal) == "A crystal glows to the north.");
+        CHECK(game::noteText(note, exit, equal) == "A splinter glows to the north.");
 
         // A crystal in the cell of the note.
         const std::vector<game::MazeCell> here = {{.x = 0, .z = 5}, cell};
-        CHECK(game::noteText(note, exit, here) == "A crystal glows right here.");
+        CHECK(game::noteText(note, exit, here) == "A splinter glows right here.");
 
-        CHECK(game::noteText(note, exit, {}) == "No crystal is left to find.");
+        CHECK(game::noteText(note, exit, {}) == "You took every one. The moon will look harder.");
     }
 
     SUBCASE("the flavour line") {
@@ -1073,4 +1075,132 @@ TEST_CASE("the flavour notes of a maze take different lines until the table runs
         used.push_back(note.flavourIndex);
     }
     CHECK(used.size() == 4U);
+}
+
+TEST_CASE("the story lines are the sixteen lines without the shadow, in story order") {
+    REQUIRE(game::flavourLineCount() == 16);
+    CHECK(game::flavourLine(0) == "The moon sees every corridor. You see one.");
+    CHECK(game::flavourLine(8) == "The gate grows as far from the stile as it can.");
+    CHECK(game::flavourLine(9) == "Puddles hold stars. Stars are no use. Walk on.");
+    CHECK(game::flavourLine(15) == "One lamp is enough, if it is the one still lit.");
+}
+
+TEST_CASE("a story note takes the line after the one before it, and the table goes round") {
+    CHECK(game::storyLineFor(0, 0) == 0);
+    CHECK(game::storyLineFor(0, 1) == 1);
+    CHECK(game::storyLineFor(5, 2) == 7);
+    // Wrapping at the end of the 16 lines.
+    CHECK(game::storyLineFor(15, 1) == 0);
+    CHECK(game::storyLineFor(14, 3) == 1);
+    // A number that is too large or negative is wrapped into the table too.
+    CHECK(game::storyLineFor(16, 0) == 0);
+    CHECK(game::storyLineFor(35, 0) == 3);
+    CHECK(game::storyLineFor(-1, 0) == 15);
+    CHECK(game::storyLineFor(-17, 2) == 1);
+}
+
+TEST_CASE("the counter moves on by the story notes of a finished maze and wraps") {
+    CHECK(game::advanceStoryLine(0, 2) == 2);
+    CHECK(game::advanceStoryLine(2, 2) == 4);
+    CHECK(game::advanceStoryLine(14, 2) == 0);
+    CHECK(game::advanceStoryLine(15, 2) == 1);
+    // A maze without story notes leaves the counter where it is.
+    CHECK(game::advanceStoryLine(9, 0) == 9);
+    // Eight mazes of two lines show every line once, then start again.
+    int counter = 0;
+    for (int maze = 0; maze < 8; ++maze) {
+        counter = game::advanceStoryLine(counter, 2);
+    }
+    CHECK(counter == 0);
+}
+
+TEST_CASE("the story notes of a maze show the counter's lines, nearest to the start first") {
+    const TestMaze test = testMaze(10, 10, 4U);
+    const std::vector<int> distances = game::passageDistances(test.maze, START);
+    const auto width = static_cast<std::size_t>(test.maze.width());
+
+    for (const int firstLine : {0, 5, 15}) {
+        CAPTURE(firstLine);
+        const game::InteractableSettings settings{
+            .leverCount = 2, .noteCount = 12, .firstStoryLine = firstLine};
+        const game::Interactables placed = placeIn(test, 4U, settings);
+
+        // The story notes by distance: line first, first + 1, first + 2 and so on.
+        std::vector<std::pair<int, int>> byDistance; // distance, line
+        for (const game::Note& note : placed.notes) {
+            if (note.kind == game::NoteKind::Flavour) {
+                const auto place = static_cast<std::size_t>(note.mount.cell.z) * width +
+                                   static_cast<std::size_t>(note.mount.cell.x);
+                byDistance.emplace_back(distances[place], note.flavourIndex);
+            }
+        }
+        REQUIRE(byDistance.size() == 4U);
+        std::ranges::stable_sort(byDistance,
+                                 [](const auto& a, const auto& b) { return a.first < b.first; });
+        for (std::size_t rank = 0; rank < byDistance.size(); ++rank) {
+            CHECK(byDistance[rank].second ==
+                  (firstLine + static_cast<int>(rank)) % game::flavourLineCount());
+        }
+    }
+}
+
+TEST_CASE(
+    "the same seed, difficulty and counter give the same notes, another counter other lines") {
+    const TestMaze test = testMaze(10, 10, 7U);
+    const game::InteractableSettings three{.firstStoryLine = 3};
+    const game::Interactables first = placeIn(test, 7U, three);
+    const game::Interactables second = placeIn(test, 7U, three);
+    CHECK(sameInteractables(first, second));
+
+    // Another counter moves no note, only the lines of the story notes.
+    const game::Interactables other = placeIn(test, 7U, {.firstStoryLine = 4});
+    REQUIRE(other.notes.size() == first.notes.size());
+    bool aLineChanged = false;
+    for (std::size_t i = 0; i < first.notes.size(); ++i) {
+        CHECK(first.notes[i].mount == other.notes[i].mount);
+        CHECK(first.notes[i].kind == other.notes[i].kind);
+        aLineChanged = aLineChanged || first.notes[i].flavourIndex != other.notes[i].flavourIndex;
+    }
+    CHECK(aLineChanged);
+}
+
+TEST_CASE("every difficulty gets six notes for many seeds, and no line repeats in a maze") {
+    constexpr int SEED_COUNT = 200;
+    for (const game::Difficulty difficulty : game::ALL_DIFFICULTIES) {
+        const game::DifficultyLevel& level = game::difficultyLevel(difficulty);
+        CAPTURE(level.name);
+        for (int seed = 1; seed <= SEED_COUNT; ++seed) {
+            CAPTURE(seed);
+            const TestMaze test =
+                testMaze(level.mazeWidth, level.mazeHeight, static_cast<std::uint32_t>(seed));
+            // The counter at the end of the table: the lines wrap inside the maze.
+            const game::InteractableSettings settings{.firstStoryLine = 15};
+            const game::Interactables placed =
+                placeIn(test, static_cast<std::uint32_t>(seed), settings);
+
+            // All six are placed, so the counter advances by two every time.
+            REQUIRE(placed.notes.size() == 6U);
+            CHECK(game::storyNoteCount(placed) == 2);
+            CHECK(game::advanceStoryLine(15, game::storyNoteCount(placed)) == 1);
+
+            std::vector<int> lines;
+            for (const game::Note& note : placed.notes) {
+                if (note.kind == game::NoteKind::Flavour) {
+                    CHECK(std::ranges::find(lines, note.flavourIndex) == lines.end());
+                    lines.push_back(note.flavourIndex);
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("a maze with fewer free cells than notes counts the story notes it really has") {
+    // A 2 by 2 maze: the start and the exit take two cells, so at most two notes can hang.
+    const TestMaze test = testMaze(2, 2, 1U);
+    const game::Interactables placed = placeIn(test, 1U, {.leverCount = 0});
+    REQUIRE(placed.notes.size() <= 2U);
+    // Notes 0 and 1 are the two hints, so no story note was placed, and the counter
+    // stays where it is.
+    CHECK(game::storyNoteCount(placed) == 0);
+    CHECK(game::advanceStoryLine(6, game::storyNoteCount(placed)) == 6);
 }
