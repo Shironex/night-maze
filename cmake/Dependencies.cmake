@@ -191,3 +191,68 @@ target_compile_definitions(rmlui_backend PRIVATE
     # GLFW must not include an OpenGL header of its own next to GLAD.
     GLFW_INCLUDE_NONE
 )
+
+# ---- miniaudio: opens the sound card and mixes the sounds of the game ------------------
+# miniaudio is one header that also contains its implementation, like stb_image. Unlike
+# stb its repository does bring a CMakeLists.txt, and that file must NOT run here:
+#   - it defines a target that is itself called "miniaudio", the name of the small
+#     library defined below, and two targets cannot share a name,
+#   - it adds install rules (its option MINIAUDIO_INSTALL is ON by default) and looks on
+#     the computer for libvorbis and libopus to build extra decoders around them, so the
+#     build would depend on what happens to be installed.
+# Switching its options off would still leave the name clash. So SOURCE_SUBDIR points at
+# a directory the repository does not have: FetchContent then downloads the source and
+# adds nothing of it to the build ("cmake" is only a name that does not exist there).
+FetchContent_Declare(
+    miniaudio
+    GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+    GIT_TAG 0.11.25
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR cmake
+)
+FetchContent_MakeAvailable(miniaudio)
+
+# The implementation is compiled exactly once, in external/miniaudio/miniaudio.c, into
+# this small library. It is a C file, and a target of its own for the same reason as
+# stb_image: it is built with the compiler's default warnings and not with the strict
+# ones of our code (night_maze_enable_warnings is never called for it).
+add_library(miniaudio STATIC ${CMAKE_CURRENT_LIST_DIR}/../external/miniaudio/miniaudio.c)
+# SYSTEM: the header must not produce warnings in the file of ours that includes it, and
+# clang-tidy must not check it (its header filter matches every path with "src/" in it,
+# and the downloaded source lies in a directory called miniaudio-src).
+target_include_directories(miniaudio SYSTEM PUBLIC ${miniaudio_SOURCE_DIR})
+# The parts of miniaudio the game does not use are left out of the build. PUBLIC, and
+# that matters more than for stb: the macros change which fields the structs of
+# miniaudio have, so the implementation file and the file of ours that includes the
+# header must see the same set, or the two would disagree about the size of a struct.
+target_compile_definitions(miniaudio PUBLIC
+    # No writing of sound files: the game only plays.
+    MA_NO_ENCODING
+    # No built-in decoders for FLAC and MP3: every sound of the game is a WAV file. The
+    # WAV decoder stays.
+    MA_NO_FLAC
+    MA_NO_MP3
+    # No generators of sine waves and noise: the sounds come from files.
+    MA_NO_GENERATION
+    # No resource manager, the part that opens sound files by name, decodes them on
+    # a thread of its own and can stream long ones. The audio library reads each file
+    # itself (core::readBinaryFile), like the image loader does for stb, and has
+    # miniaudio decode the bytes in one go (see src/audio/AudioEngine.cpp). What stays is
+    # the high level engine (ma_engine, ma_sound), the mixer under it and the device.
+    MA_NO_RESOURCE_MANAGER
+)
+# What miniaudio has to be linked with, as its documentation says (miniaudio.h, section
+# 2 "Building"):
+#   - Windows: nothing. The sound libraries of Windows are loaded while the program runs.
+#   - macOS: nothing either. miniaudio loads the Core Audio frameworks while the program
+#     runs. The documentation names one catch: a program built this way may not pass the
+#     notarization of Apple. The way around it is the macro MA_NO_RUNTIME_LINKING together
+#     with the frameworks CoreFoundation, CoreAudio and AudioToolbox. It is not used
+#     here, because the game is not notarized.
+#   - Linux: dl (for loading ALSA or PulseAudio while the program runs), pthread and m
+#     (the math library). CMAKE_DL_LIBS and Threads::Threads are the names CMake has for
+#     the first two on whatever system it runs on.
+if(UNIX AND NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(miniaudio PUBLIC Threads::Threads ${CMAKE_DL_LIBS} m)
+endif()
