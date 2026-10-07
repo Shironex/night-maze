@@ -116,7 +116,10 @@ constexpr ImGuiWindowFlags STATUS_WINDOW_FLAGS =
 // 1 at the right edge, y is 0 at the top edge.
 constexpr ImVec2 TOP_RIGHT{1.0F, 0.0F};
 
-// The screen the game is on, in words.
+// The screen the game is on, in words. Every screen has a case of its own and the
+// switch has no "default": a screen that is added to the enum and not here is then
+// a compiler warning (C4062 on Windows, switched on in night_maze_enable_warnings, and
+// -Wswitch elsewhere), and does not silently get the name of another screen.
 const char* screenName(game::GameMode mode) {
     switch (mode) {
     case game::GameMode::MainMenu:
@@ -128,9 +131,14 @@ const char* screenName(game::GameMode mode) {
     case game::GameMode::RoundEnd:
         return "Round end";
     case game::GameMode::Quitting:
-        break;
+        return "Quitting";
+    case game::GameMode::SettingsFromMenu:
+        return "Settings (from menu)";
+    case game::GameMode::SettingsFromPause:
+        return "Settings (from pause)";
     }
-    return "Quitting";
+    // Only reached with a number that is no screen at all.
+    return "Unknown";
 }
 
 // A small dot on the line of the status strip, with a gap on both sides: it separates
