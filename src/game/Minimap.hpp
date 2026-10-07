@@ -1,5 +1,6 @@
 // Minimap: the settings of the map in the middle of the screen, where it stands, and the
-// flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
+// flat shapes it is drawn from (floors, walls, gate, crystals, flasks, levers, notes,
+// player).
 // See docs/modules/renderer/minimap.md
 #pragma once
 
@@ -128,6 +129,10 @@ constexpr glm::vec3 MINIMAP_GATE_COLOR{0.84F, 0.56F, 0.32F};
 constexpr glm::vec3 MINIMAP_GATE_OPEN_COLOR{0.17F, 0.41F, 0.44F};
 /// A crystal that is still there: turquoise.
 constexpr glm::vec3 MINIMAP_CRYSTAL_COLOR{0.34F, 0.84F, 0.79F};
+/// A flask of tea that is still there: a light rose, the one colour of the map that is
+/// neither a cold blue green nor one of the oranges of the gate, the levers and the
+/// player. Its shape is a plus sign, which nothing else on the map has.
+constexpr glm::vec3 MINIMAP_FLASK_COLOR{0.95F, 0.62F, 0.72F};
 /// A lever that is not pulled yet: a strong orange red, the colour of a switch.
 constexpr glm::vec3 MINIMAP_LEVER_COLOR{0.93F, 0.36F, 0.24F};
 /// A lever that is pulled: the same colour, dim. Its wall is no longer on the map.
@@ -176,9 +181,11 @@ struct MinimapPlayer {
 ///   3. the gate, when the exit cell is shown: across the open side of that cell, in
 ///      one colour while it blocks the way and in another once it has opened,
 ///   4. a small diamond for every crystal that is not collected and whose cell is shown,
-///   5. a small square for every lever and every note whose cell is shown, at the wall
+///   5. a small plus sign for every flask that is not picked up and whose cell is
+///      shown: the same rule as for the crystals,
+///   6. a small square for every lever and every note whose cell is shown, at the wall
 ///      it hangs on: a lever in one colour until it is pulled and in a dim one after,
-///   6. the player: a triangle that points where the camera looks. It is always drawn,
+///   7. the player: a triangle that points where the camera looks. It is always drawn,
 ///      also outside the maze (where the picture may cut it off).
 ///
 /// A cell is "shown" when it is discovered in the round (Round::discovery), or always

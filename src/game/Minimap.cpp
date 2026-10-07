@@ -1,5 +1,6 @@
 // Minimap: the settings of the map in the middle of the screen, where it stands, and the
-// flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
+// flat shapes it is drawn from (floors, walls, gate, crystals, flasks, levers, notes,
+// player).
 // See docs/modules/renderer/minimap.md
 #include "game/Minimap.hpp"
 
@@ -33,6 +34,14 @@ constexpr float MIN_WALL_PIXELS = 1.5F;
 // pixels, so it stays a visible dot.
 constexpr float CRYSTAL_RADIUS = 0.4F;
 constexpr float MIN_CRYSTAL_PIXELS = 2.0F;
+
+// A flask is a plus sign: two bars that cross in the middle of its cell. Each reaches
+// this far from the middle, in metres, and is this thick. And at least these many
+// pixels, so the sign stays a sign on the map of a large maze.
+constexpr float FLASK_MARK_REACH = 0.36F;
+constexpr float FLASK_MARK_HALF_THICKNESS = 0.12F;
+constexpr float MIN_FLASK_REACH_PIXELS = 3.0F;
+constexpr float MIN_FLASK_HALF_THICKNESS_PIXELS = 1.0F;
 
 // A lever or a note is a square with this half side, in metres, and at least this many
 // pixels: smaller than a crystal, because it hangs on a wall and must not cover it.
@@ -245,7 +254,23 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
         addTriangle(vertices, north, south, west, MINIMAP_CRYSTAL_COLOR);
     }
 
-    // 5. The levers and the notes, where they hang. A lever shows whether it is pulled.
+    // 5. The flasks that are still there, by the rule of the crystals: not picked up,
+    // and the cell is shown. A plus sign is a bar from west to east and a bar from
+    // north to south, both through the middle of the cell.
+    const float flaskReach =
+        atLeastPixels(FLASK_MARK_REACH, MIN_FLASK_REACH_PIXELS, metresPerPixel);
+    const float flaskHalfThickness =
+        atLeastPixels(FLASK_MARK_HALF_THICKNESS, MIN_FLASK_HALF_THICKNESS_PIXELS, metresPerPixel);
+    for (const RoundFlask& flask : round.flasks) {
+        if (flask.collected || !shown(flask.cell.x, flask.cell.z)) {
+            continue;
+        }
+        const glm::vec2 center = mapPoint(cellCenter(flask.cell.x, flask.cell.z));
+        addRectangle(vertices, center, {flaskReach, flaskHalfThickness}, MINIMAP_FLASK_COLOR);
+        addRectangle(vertices, center, {flaskHalfThickness, flaskReach}, MINIMAP_FLASK_COLOR);
+    }
+
+    // 6. The levers and the notes, where they hang. A lever shows whether it is pulled.
     const float markHalfSize =
         atLeastPixels(MOUNT_MARK_HALF_SIZE, MIN_MOUNT_MARK_PIXELS, metresPerPixel);
     const glm::vec2 markHalf{markHalfSize, markHalfSize};
@@ -268,7 +293,7 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
         }
     }
 
-    // 6. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
+    // 7. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
     // smaller z, and the yaw grows clockwise seen from above. So "forward" on the map
     // is (sin yaw, -cos yaw), the x and z of scene::Camera::forward for a level look,
     // and "to the right" is that direction turned by a quarter: (cos yaw, sin yaw).

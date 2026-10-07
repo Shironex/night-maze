@@ -348,6 +348,32 @@ TEST_CASE("a crystal is drawn while it is not collected and its cell is discover
     CHECK(countColor(vertices, game::MINIMAP_CRYSTAL_COLOR) == 0);
 }
 
+TEST_CASE("the map shows a flask while it is there and its cell is discovered") {
+    const game::MazeWorld world = game::buildMazeWorld(16, 16, 1U);
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    REQUIRE(round.flasks.size() == 1);
+    const float scale = game::minimapMetresPerPixel(world.maze, 504);
+    // A flask is a plus sign: two rectangles of two triangles each.
+    constexpr int PLUS = 12;
+
+    // Its dead end is far from the start: not discovered, not on the map.
+    const game::MazeCell cell = round.flasks[0].cell;
+    REQUIRE_FALSE(round.discovery.isDiscovered(cell.x, cell.z));
+    std::vector<game::MinimapVertex> vertices =
+        game::buildMinimapVertices(world, round, false, PLAYER, scale);
+    CHECK(countColor(vertices, game::MINIMAP_FLASK_COLOR) == 0);
+
+    // Seen (here: with everything revealed), it is on the map, like a crystal.
+    vertices = game::buildMinimapVertices(world, round, true, PLAYER, scale);
+    CHECK(countColor(vertices, game::MINIMAP_FLASK_COLOR) == PLUS);
+
+    // Picked up, it leaves the map.
+    round.flasks[0].collected = true;
+    vertices = game::buildMinimapVertices(world, round, true, PLAYER, scale);
+    CHECK(countColor(vertices, game::MINIMAP_FLASK_COLOR) == 0);
+}
+
 TEST_CASE("the arrow of the player is drawn last and points where the camera looks") {
     const game::MazeWorld world = corridorWorld();
     const game::Round round = emptyRound(world);
