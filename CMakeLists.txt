@@ -2,16 +2,21 @@ cmake_minimum_required(VERSION 3.24)
 
 project(NightMaze VERSION 0.10.0 LANGUAGES C CXX)
 
-# Objective-C++, the language of the one file that talks to the video decoder of macOS
-# (src/video/VideoDecoderApple.mm). It is switched on here, right after project() and
+# Objective-C and Objective-C++, the two languages of Apple that C and C++ code is mixed
+# with on macOS. Objective-C++ is the language of the one file of ours that talks to the
+# video decoder of macOS (src/video/VideoDecoderApple.mm). Objective-C is the language of
+# the macOS files of GLFW (.m). Both are switched on here, right after project() and
 # before any target or downloaded library exists, and only on macOS, so Windows never
-# looks for a compiler of it. It used to be switched on further down, next to the video
-# library. The first build on macOS with that (2026-10-07, on a GitHub runner) found the
-# compiler and then stopped while generating, with "Missing variable is:
-# CMAKE_OBJCXX_COMPILE_OBJECT". Switching a language on at the top, like the languages
-# named in project(), is the usual place for it.
+# looks for a compiler of them. Two things went wrong before, both seen on a GitHub
+# runner on 2026-10-07, the first builds on macOS with this code:
+#   - Objective-C++ switched on further down, next to the video library: CMake found the
+#     compiler and then stopped while generating, with "Missing variable is:
+#     CMAKE_OBJCXX_COMPILE_OBJECT".
+#   - Objective-C++ alone switched on here: the .m files of GLFW were then compiled as
+#     Objective-C++, which is stricter about pointer types than Objective-C, and failed
+#     with dozens of errors. With Objective-C switched on too, a .m file is Objective-C.
 if(APPLE)
-    enable_language(OBJCXX)
+    enable_language(OBJC OBJCXX)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
