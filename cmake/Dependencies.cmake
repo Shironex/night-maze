@@ -1,7 +1,7 @@
 # Third-party dependencies, downloaded at configure time and pinned to release tags
 # (stb, which has no tags, to a commit). The licences of FreeType and RmlUi ask for
 # a notice in what is distributed, like the others: THIRD-PARTY-NOTICES.txt, which is
-# generated (launcher/scripts/build-notices.mjs) and has to be generated again when
+# generated (tools/build-notices.mjs) and has to be generated again when
 # a version here changes.
 # GLAD is not here: it is generated code that lives in external/glad.
 include(FetchContent)
