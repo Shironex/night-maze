@@ -7,35 +7,58 @@
 # Expect to fix something on the first real run, and read the result before
 # sending the link to anyone.
 #
-# What it does: on a tag `v<major>.<minor>.<patch>` it builds the game for
-# Windows and for macOS on Apple Silicon, packs each into a zip, and publishes a
-# GitHub Release holding the zips, `manifest.json` and `news.json`. The launcher
-# reads `https://github.com/<owner>/<repo>/releases/latest/download/manifest.json`,
-# so the release must be a normal one: a draft or a prerelease is never "latest".
+# What it does: it runs by hand only. You give it an existing tag
+# `v<major>.<minor>.<patch>`; it builds the game for Windows (and, if you ask,
+# for macOS on Apple Silicon), packs each build into a zip, and creates a DRAFT
+# GitHub Release holding the zips, `manifest.json` and `news.json`. The two json
+# files are NOT signed here. The launcher reads
+# `https://github.com/<owner>/<repo>/releases/latest/download/manifest.json` and
+# refuses a manifest without a valid signature, so the owner signs the two files
+# on his own PC (the key never goes to GitHub), uploads the two `.sig` files and
+# only then publishes the draft. A draft is never "latest", so the launcher
+# cannot see a release that is still half finished. The commands are in the
+# comment above the "Create the release" step.
+#
+# The launcher installer is not built here, see the end of this file.
 #
 # The repository has to be public for the launcher to download from it without
 # a token.
 #
-# If publishing fails: delete the release and the tag, fix, and push the tag
-# again. Re-running the failed run would use this file as it was at the tag.
+# If something fails after the draft exists: delete the draft release (not the
+# tag), fix the problem, and run the workflow again for the same tag. A run uses
+# this file as it is on the branch you pick under "Use workflow from", but it
+# builds the code of the tag.
 
 name: release
 
+# There is no `push: tags` trigger on purpose. While the repository is private
+# every run is paid minutes, and pushing a tag must not start a release by
+# itself until the owner decides the repository is public and the signing steps
+# above work. To bring the tag trigger back, add under `on:`
+#     push:
+#       tags: ['v*']
+# and then make the `tag` input fall back to the pushed tag: use
+# `${{ inputs.tag || github.ref_name }}` where `inputs.tag` is used below (the
+# concurrency group, the checkout steps and the TAG_INPUT variable), and
+# `${{ github.event_name != 'workflow_dispatch' || inputs.macos }}` in the
+# `if:` of the macOS job.
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
+      tag:
+        description: 'The tag to build and release, for example v0.10.0. It must exist already and equal v plus the version in CMakeLists.txt'
+        type: string
+        required: true
       macos:
         description: 'Also build the macOS package'
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -46,26 +69,31 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
+      # Builds the code of the tag from the input, whatever branch the workflow
+      # file itself was taken from. `refs/tags/` makes a missing tag, or a
+      # branch with the same name, fail here instead of building the wrong code.
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
 
       # The version has one source: project(NightMaze VERSION ...) in CMakeLists.txt.
       # A tag that says something else stops the release in its first minute.
+      # The input goes through an environment variable, not into the script
+      # text, so a strange tag name cannot become a command.
       - name: Read the version and compare it with the tag
         id: version
         shell: bash
+        env:
+          TAG_INPUT: ${{ inputs.tag }}
         run: |
           version="$(sed -n 's/^project(NightMaze VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt)"
           if [ -z "$version" ]; then
             echo "::error::Could not read the version from CMakeLists.txt"
             exit 1
           fi
-          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match version ${version} in CMakeLists.txt"
-            exit 1
-          fi
-          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
-            echo "::error::Run this workflow on a tag (choose the tag under 'Use workflow from')"
+          if [ "${TAG_INPUT}" != "v${version}" ]; then
+            echo "::error::Tag ${TAG_INPUT} does not match version ${version} in CMakeLists.txt"
             exit 1
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
@@ -121,13 +149,15 @@ jobs:
 
   macos:
     name: macOS arm64
-    # `inputs` is empty on a tag push, so the job runs there.
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.macos }}
+    # Off by default: the first friend release is Windows only.
+    if: ${{ inputs.macos }}
     runs-on: macos-15
     timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
 
       - name: Read the version
         id: version
@@ -200,8 +230,12 @@ jobs:
       VERSION: ${{ needs.windows.outputs.version }}
       TAG: v${{ needs.windows.outputs.version }}
     steps:
+      # The tag is fetched too, because the release title below is read from
+      # the tag message.
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -219,6 +253,10 @@ jobs:
       # permanent ones of this release, not the moving "latest" address.
       # CHANGELOG.md is optional: without a section for this version the notes
       # carry the version, the date and the tag message.
+      # `--no-sign`: for a github.com address build-feed.mjs refuses to run
+      # without a key or this flag. The signing key never goes to GitHub, so the
+      # files leave this job unsigned (no .sig files). The owner signs them on
+      # his PC before the release is published, see the next step.
       - name: Write manifest.json and news.json
         run: |
           node launcher/scripts/build-feed.mjs \
@@ -226,11 +264,26 @@ jobs:
             --version "${VERSION}" \
             --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/" \
             --changelog CHANGELOG.md \
+            --no-sign \
             --title "$(git tag -l --format='%(contents:subject)' "${TAG}")"
           cat release-assets/manifest.json
 
-      # Not a draft and not a prerelease: only a normal release becomes
-      # "latest", which is the address the launcher reads.
+      # A DRAFT, on purpose. Only a published, normal release can become
+      # "latest", which is the address the launcher reads, and the launcher
+      # needs the two signature files that are not here yet. Nobody sees a
+      # draft but the people with write access to the repository. The download
+      # links inside manifest.json start to work when the draft is published.
+      #
+      # What the owner does next, on his PC, in a checkout of the repository
+      # with `pnpm install` done in launcher/ (the key password goes in the
+      # environment variable TAURI_SIGNING_PRIVATE_KEY_PASSWORD):
+      #
+      #   gh release download <tag> --repo Shironex/night-maze --pattern "*.json" --dir build/sign
+      #   node launcher/scripts/sign-file.mjs --file build/sign/manifest.json --key <path to manifest-a.key>
+      #   node launcher/scripts/sign-file.mjs --file build/sign/news.json --key <path to manifest-a.key>
+      #   cargo run --manifest-path launcher/Cargo.toml -p night-maze-launcher-core --example verify_manifest -- build/sign/manifest.json
+      #   gh release upload <tag> build/sign/manifest.json.sig build/sign/news.json.sig --repo Shironex/night-maze
+      #   gh release edit <tag> --repo Shironex/night-maze --draft=false --latest
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -239,16 +292,12 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --title "Night Maze ${VERSION}" \
             --notes "Install and update through the Night Maze launcher. The zip files are the same builds the launcher downloads." \
-            --latest \
+            --draft \
             --verify-tag \
             release-assets/*.zip release-assets/manifest.json release-assets/news.json
 
-  # TODO (not done): build and publish the launcher itself.
-  #
-  # The launcher must not be published as a release of this repository's main
-  # release line without care: "latest" has to stay the newest GAME release, or
-  # the manifest address stops resolving. Before adding this job, decide where
-  # launcher installers live (see launcher/README.md, "Not done yet"). The job
-  # would run `pnpm install --frozen-lockfile` and `pnpm tauri build` in
-  # launcher/ on windows-latest and macos-15 and upload the NSIS installer and
-  # the dmg. Self update needs a signing key that does not exist yet.
+  # The launcher installer is not built here. It is released from a second,
+  # public repository, Shironex/night-maze-launcher, and the first releases are
+  # built on the owner's PC. This repository only holds the game releases, so
+  # "latest" here always means the newest game release and the manifest address
+  # keeps resolving.
