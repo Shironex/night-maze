@@ -12,7 +12,12 @@ include(cmake/Dependencies.cmake)
 # Strict warnings for our own targets only (third-party code is built with its defaults).
 function(night_maze_enable_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /permissive-)
+        # /w14062 switches on warning C4062, which /W4 leaves off: a switch over an
+        # enum that has no "default" and misses one of the enumerators. Clang and GCC
+        # report the same with -Wall (-Wswitch), so both systems now notice a new entry
+        # of an enum that a switch forgot (the name of a screen in the debug window,
+        # for example).
+        target_compile_options(${target} PRIVATE /W4 /w14062 /permissive-)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
     endif()
