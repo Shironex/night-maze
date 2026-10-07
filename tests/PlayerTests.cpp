@@ -1,4 +1,5 @@
-// Tests of game::Player: walking, sprinting, sliding along walls and noclip flight.
+// Tests of game::Player: walking, sprinting and its stamina, sliding along walls and
+// noclip flight.
 // See docs/modules/game/player.md
 #include "game/Player.hpp"
 
@@ -9,6 +10,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <random>
 #include <span>
@@ -323,4 +325,216 @@ TEST_CASE("switching noclip off brings the feet back to the ground") {
     player.update({}, YAW_NORTH, NO_PITCH, STEP_SECONDS, NO_OBSTACLES, flatGround);
 
     checkVector(player.position, {1.0F, 0.0F, 1.0F});
+}
+
+// ---- Stamina ---------------------------------------------------------------------------
+// The times below are checked a tenth of a second before and after the moment the rule
+// names: 720 additions of a float do not land exactly on 0 or on 1.
+
+namespace {
+
+// Advances a stamina by itself for a number of seconds, with the sprint wanted or not.
+void runStamina(game::Stamina& stamina, const game::StaminaSettings& settings, bool wantsSprint,
+                float seconds) {
+    // lround rounds to the nearest whole number: 2.9 s are 348 steps, not 347.
+    const long stepCount = std::lround(seconds * static_cast<float>(STEPS_PER_SECOND));
+    for (long i = 0; i < stepCount; ++i) {
+        game::advanceStamina(stamina, settings, wantsSprint, STEP_SECONDS);
+    }
+}
+
+} // namespace
+
+TEST_CASE("a new stamina is full, not winded, and its bar is hidden") {
+    const game::Stamina stamina;
+    CHECK(stamina.level == 1.0F);
+    CHECK_FALSE(stamina.winded);
+    CHECK_FALSE(game::staminaBarVisible(stamina));
+
+    // The agreed starting numbers of the rule.
+    const game::StaminaSettings settings;
+    CHECK(settings.drainSeconds == 6.0F);
+    CHECK(settings.refillDelaySeconds == 1.0F);
+    CHECK(settings.refillSeconds == 4.0F);
+    CHECK(settings.windedRecovery == 0.5F);
+}
+
+TEST_CASE("sprinting empties a full bar in 6 seconds and leaves the player winded") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+
+    // Half way: half of the bar, and the step still counts as a sprint.
+    runStamina(stamina, settings, true, 3.0F);
+    CHECK(stamina.level == doctest::Approx(0.5F).epsilon(0.01));
+    CHECK(game::advanceStamina(stamina, settings, true, STEP_SECONDS));
+
+    runStamina(stamina, settings, true, 2.9F);
+    CHECK(stamina.level > 0.0F);
+    CHECK_FALSE(stamina.winded);
+
+    runStamina(stamina, settings, true, 0.2F);
+    CHECK(stamina.level == 0.0F);
+    CHECK(stamina.winded);
+    // Empty and winded: no sprint, whatever the key says.
+    CHECK_FALSE(game::advanceStamina(stamina, settings, true, STEP_SECONDS));
+}
+
+TEST_CASE("the bar waits one second after the last drain, then refills in 4 seconds") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    runStamina(stamina, settings, true, 3.0F);
+    const float afterSprint = stamina.level;
+
+    // The delay: nothing comes back yet.
+    runStamina(stamina, settings, false, 0.9F);
+    CHECK(stamina.level == afterSprint);
+    // A little into the refill.
+    runStamina(stamina, settings, false, 0.2F);
+    CHECK(stamina.level > afterSprint);
+
+    // Half a bar is missing: 2 of the 4 seconds, which end 3.0 s after the release.
+    runStamina(stamina, settings, false, 1.8F);
+    CHECK(stamina.level < 1.0F);
+    runStamina(stamina, settings, false, 0.2F);
+    CHECK(stamina.level == 1.0F);
+}
+
+TEST_CASE("a short sprint during the refill starts the delay again") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    runStamina(stamina, settings, true, 3.0F);
+    runStamina(stamina, settings, false, 1.5F);
+
+    CHECK(game::advanceStamina(stamina, settings, true, STEP_SECONDS));
+    const float afterSprint = stamina.level;
+    runStamina(stamina, settings, false, 0.9F);
+    CHECK(stamina.level == afterSprint);
+}
+
+TEST_CASE("a winded player cannot sprint until the bar is back at half, also with the key held") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    runStamina(stamina, settings, true, 6.1F);
+    REQUIRE(stamina.winded);
+
+    // The key stays held the whole time. Holding it is no drain, so the delay runs out
+    // and the bar refills: half of it takes 1 s of delay and 2 s of refill. The 6.1 s
+    // above were 0.1 s into the delay already.
+    runStamina(stamina, settings, true, 2.8F);
+    CHECK(stamina.winded);
+    CHECK(stamina.level < settings.windedRecovery);
+    CHECK_FALSE(game::advanceStamina(stamina, settings, true, STEP_SECONDS));
+
+    runStamina(stamina, settings, true, 0.2F);
+    CHECK_FALSE(stamina.winded);
+    // The sprint is back, and it drains again.
+    const float recovered = stamina.level;
+    CHECK(game::advanceStamina(stamina, settings, true, STEP_SECONDS));
+    CHECK(stamina.level < recovered);
+}
+
+TEST_CASE("the stamina bar shows while it is not full and for 2 seconds after") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+
+    // One sprinted step is enough to show it.
+    game::advanceStamina(stamina, settings, true, STEP_SECONDS);
+    CHECK(game::staminaBarVisible(stamina));
+
+    // Full again after the delay and a moment of refill. The bar lingers, then hides.
+    runStamina(stamina, settings, false, 1.2F);
+    REQUIRE(stamina.level == 1.0F);
+    CHECK(game::staminaBarVisible(stamina));
+    runStamina(stamina, settings, false, 1.7F);
+    CHECK(game::staminaBarVisible(stamina));
+    runStamina(stamina, settings, false, 0.4F);
+    CHECK_FALSE(game::staminaBarVisible(stamina));
+}
+
+TEST_CASE("the player drains stamina only while it sprints somewhere") {
+    SUBCASE("sprinting forward drains") {
+        game::Player player;
+        const game::PlayerInput sprint{.forward = true, .sprint = true};
+        runSteps(player, sprint, YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND, NO_OBSTACLES);
+        CHECK(player.stamina.level == doctest::Approx(0.5F).epsilon(0.01));
+    }
+
+    SUBCASE("the sprint key alone, with no direction key, drains nothing") {
+        game::Player player;
+        runSteps(player, {.sprint = true}, YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND, NO_OBSTACLES);
+        CHECK(player.stamina.level == 1.0F);
+    }
+
+    SUBCASE("opposite direction keys cancel: the player stands, nothing drains") {
+        game::Player player;
+        const game::PlayerInput both{.forward = true, .backward = true, .sprint = true};
+        runSteps(player, both, YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND, NO_OBSTACLES);
+        CHECK(player.stamina.level == 1.0F);
+    }
+
+    SUBCASE("walking without the sprint key drains nothing") {
+        game::Player player;
+        runSteps(player, {.forward = true}, YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND,
+                 NO_OBSTACLES);
+        CHECK(player.stamina.level == 1.0F);
+    }
+
+    SUBCASE("sprinting into a wall counts as moving: it drains") {
+        // The closed cell of the wall test. The body stops at the east wall after
+        // a fraction of a second, the keys stay held.
+        const std::vector<scene::Aabb> obstacles = game::mazeColliders(game::Maze(1, 1));
+        game::Player player;
+        player.position = game::cellCenter(0, 0);
+        const game::PlayerInput sprint{.forward = true, .sprint = true};
+        runSteps(player, sprint, YAW_EAST, NO_PITCH, 3 * STEPS_PER_SECOND, obstacles);
+        CHECK(player.stamina.level == doctest::Approx(0.5F).epsilon(0.01));
+    }
+}
+
+TEST_CASE("noclip drains no stamina, and the bar refills there") {
+    game::Player player;
+    player.noclip = true;
+    // Left Shift is both fields at once, as the application fills them.
+    const game::PlayerInput flyDown{.forward = true, .down = true, .sprint = true};
+    runSteps(player, flyDown, YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND, NO_OBSTACLES);
+    CHECK(player.stamina.level == 1.0F);
+
+    // A bar that was used up on foot comes back in flight like on the ground.
+    player.stamina.level = 0.5F;
+    runSteps(player, flyDown, YAW_NORTH, NO_PITCH, 4 * STEPS_PER_SECOND, NO_OBSTACLES);
+    CHECK(player.stamina.level == 1.0F);
+}
+
+TEST_CASE("a winded player walks at the walking speed with the sprint key held") {
+    game::Player player;
+    const game::PlayerInput sprint{.forward = true, .sprint = true};
+    // Sprint the bar empty, a little over 6 seconds.
+    runSteps(player, sprint, YAW_NORTH, NO_PITCH, 6 * STEPS_PER_SECOND + 12, NO_OBSTACLES);
+    REQUIRE(player.stamina.winded);
+
+    // The next second is inside the winded time (it lasts about 3 s): 3 metres, not 5.5.
+    // Over 30 metres from the origin a float keeps fewer digits, hence the epsilon.
+    const float before = player.position.z;
+    runSteps(player, sprint, YAW_NORTH, NO_PITCH, STEPS_PER_SECOND, NO_OBSTACLES);
+    CHECK(before - player.position.z == doctest::Approx(game::Player::WALK_SPEED).epsilon(0.001));
+}
+
+TEST_CASE("a new round gives a full bar and keeps the tuned numbers") {
+    game::Player player;
+    player.staminaSettings.drainSeconds = 2.0F;
+    const game::PlayerInput sprint{.forward = true, .sprint = true};
+    runSteps(player, sprint, YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND, NO_OBSTACLES);
+    REQUIRE(player.stamina.winded);
+
+    // What the application does when a round starts or starts again.
+    player.stamina = {};
+
+    CHECK(player.stamina.level == 1.0F);
+    CHECK_FALSE(player.stamina.winded);
+    CHECK_FALSE(game::staminaBarVisible(player.stamina));
+    CHECK(player.staminaSettings.drainSeconds == 2.0F);
+    // And the sprint works at once.
+    const float before = player.position.z;
+    runSteps(player, sprint, YAW_NORTH, NO_PITCH, STEPS_PER_SECOND, NO_OBSTACLES);
+    CHECK(before - player.position.z == doctest::Approx(game::Player::SPRINT_SPEED));
 }
