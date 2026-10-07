@@ -1,11 +1,13 @@
 // "Diagnostics" category of the debug window: frame statistics and driver info, the
-// shader programs with a reload button and their errors, the collision boxes and the
-// picking ray, and the loaded models and textures.
+// sound device with the last sound cue, the shader programs with a reload button and
+// their errors, the collision boxes and the picking ray, and the loaded models and
+// textures.
 // See docs/modules/gfx/shader-hot-reload.md, docs/modules/scene/collision.md and
 // docs/modules/assets/asset-cache.md
 #include "debug/categories/DiagnosticsCategory.hpp"
 
 #include "assets/AssetCache.hpp"
+#include "audio/AudioEngine.hpp"
 #include "core/Paths.hpp"
 #include "core/Time.hpp"
 #include "core/Window.hpp"
@@ -57,6 +59,25 @@ void drawFrame(Page& page, const DebugContext& context) {
     page.stat("Window", "%d x %d", windowSize.width, windowSize.height);
     page.stat("OpenGL", "%s", context.window.glVersion().c_str());
     page.stat("GPU", "%s", context.window.glRenderer().c_str());
+    page.endCard();
+}
+
+// The sound device, the last sound cue and the master volume.
+void drawAudio(Page& page, const DebugContext& context) {
+    page.beginCard("Audio");
+    // The device with its format and the number of loaded sounds, or why there is no
+    // sound (audio::AudioEngine::status).
+    page.stat("Device", "%s", context.audio.status().c_str());
+    page.stat("Last cue", "%s", context.lastCueName);
+    page.stat("Cues played", "%d", context.cuesPlayed);
+    // The slider works on a copy, because the engine takes the volume through
+    // a function. It is not kept in the settings file: it starts at 1 with the program.
+    float volume = context.audio.masterVolume();
+    if (page.slider("Master volume", &volume, 0.0F, 1.0F, "%.2f",
+                    "The loudness of all sounds together. Not saved: it is 1 again at "
+                    "the next start.")) {
+        context.audio.setMasterVolume(volume);
+    }
     page.endCard();
 }
 
@@ -150,6 +171,7 @@ void drawFrameAndShadersTab(Page& page, const DebugContext& context) {
     page.setPlace("Diagnostics / Frame and shaders");
     page.beginColumns();
     drawFrame(page, context);
+    drawAudio(page, context);
     page.nextColumn();
     drawShaders(page, context);
     page.endColumns();

@@ -9,6 +9,10 @@ namespace assets {
 class AssetCache;
 } // namespace assets
 
+namespace audio {
+class AudioEngine;
+} // namespace audio
+
 namespace core {
 class Time;
 class Window;
@@ -198,6 +202,14 @@ struct DebugContext {
     /// The screen the game is on (main menu, playing, paused, round end). A plain value,
     /// copied when the context is built: the status strip of the debug window shows it.
     game::GameMode gameMode;
+    /// The sound device and the loaded sounds, editable: the Diagnostics category shows
+    /// its status and sets the master volume.
+    audio::AudioEngine& audio;
+    /// The name of the sound cue that was played last ("none" before the first one) and
+    /// how many were played since the start. Plain values, copied when the context is
+    /// built: the Diagnostics category only shows them.
+    const char* lastCueName;
+    int cuesPlayed;
 };
 
 } // namespace debug

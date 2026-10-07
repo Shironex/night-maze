@@ -118,6 +118,9 @@ protected:
             .hudVisible = hudVisible(),
             .menuCameraLoopSeconds = menuCameraLoopSeconds(),
             .gameMode = gameMode(),
+            .audio = audio(),
+            .lastCueName = lastCueName(),
+            .cuesPlayed = cuesPlayed(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
