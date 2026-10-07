@@ -49,10 +49,11 @@ struct LightingSettings {
     /// How the maze is shaded.
     LightingMode mode = LightingMode::BlinnPhong;
 
-    /// Light that reaches every surface: low, so that corners no light shines into are
-    /// dark but not black. A cold blue, like the night sky. As an sRGB value it looks
-    /// like a lot, but only a tenth to a fifth of each number is left as linear light.
-    glm::vec3 ambient{0.105F, 0.135F, 0.225F};
+    /// Light that reaches every surface: very low, so that a wall no light shines on is
+    /// a dark shape that can just be told from the sky. A cold blue, like the night sky.
+    /// As an sRGB value it looks like more than it is: only about a tenth of each number
+    /// is left as linear light.
+    glm::vec3 ambient{0.055F, 0.07F, 0.115F};
 
     /// The moon, a directional light. The two angles say which way its light TRAVELS,
     /// with the conventions of scene::directionFromAngles: yaw like a compass (0 towards
@@ -74,12 +75,12 @@ struct LightingSettings {
     /// it is.
     float moonYawDegrees = 25.0F;
     float moonPitchDegrees = -50.0F;
-    /// A cool, dim blue-white. The intensity is low on purpose (it is night), but high
-    /// enough that a surface in the moon light is clearly brighter than one in the
-    /// shadow of a wall, which only has the ambient light: about five times on level
+    /// A cool, dim blue-white. The intensity is low on purpose (it is a dark night), but
+    /// high enough that a surface in the moon light is clearly brighter than one in the
+    /// shadow of a wall, which only has the ambient light: about seven times on level
     /// ground.
     glm::vec3 moonColor{0.55F, 0.65F, 1.0F};
-    float moonIntensity = 0.2F;
+    float moonIntensity = 0.12F;
 
     /// The flashlight, a spot light in the hand of the player (flashlightPose). Key
     /// F switches it. An empty battery switches it off and keeps it off
@@ -92,9 +93,10 @@ struct LightingSettings {
     /// Half angles of the cone in degrees, see scene::SpotLight.
     float flashlightInnerDegrees = 13.0F;
     float flashlightOuterDegrees = 21.0F;
-    /// How far the flashlight reaches, in metres (scene::attenuationForRadius). It is
-    /// also the far plane of its shadow map.
-    float flashlightRange = 16.0F;
+    /// How far the flashlight reaches, in metres (scene::attenuationForRadius): five
+    /// cells of the maze, so the end of a long corridor stays in the dark. It is also the
+    /// far plane of its shadow map.
+    float flashlightRange = 10.0F;
     /// Where the hand holds the flashlight, measured from the eye in metres: this far
     /// to the right of it (along the right vector of the camera, which is always level)
     /// and this far below it (straight down in the world, whatever the pitch is).

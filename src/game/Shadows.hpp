@@ -124,7 +124,7 @@ constexpr float FLASHLIGHT_SHADOW_SLOPE_BIAS = 0.13F;
 /// The settings the shadow map of the flashlight starts with: the small map and the bias
 /// above, everything else as for the moon. The small map is enough, because the pyramid
 /// of the flashlight covers far less than the box of the moon: even at the end of its
-/// default reach of 16 m a texel is 1.3 cm, less than half of the 3.2 cm of the moon.
+/// default reach of 10 m a texel is 0.8 cm, a quarter of the 3.2 cm of the moon.
 ShadowSettings flashlightShadowDefaults();
 
 /// The box that holds everything that can cast a shadow of the moon: the whole land of

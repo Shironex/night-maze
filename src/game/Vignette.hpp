@@ -21,8 +21,9 @@ constexpr glm::vec2 SCREEN_CENTER{0.5F, 0.5F};
 constexpr float VIGNETTE_CORNER_DISTANCE = 0.70710678F;
 
 /// What can be changed about the vignette while the game runs. The debug UI edits the
-/// fields. The defaults are subtle on purpose: the eye is led to the middle of the
-/// picture, where the flashlight shines, without a visible dark frame.
+/// fields. With the defaults the corners lose almost half of their light: the eye is
+/// led to the middle of the picture, where the flashlight shines, and the edges of the
+/// view close in like the dark does.
 ///
 /// The vignette multiplies the finished picture (after tone mapping) by
 ///
@@ -38,7 +39,7 @@ struct VignetteSettings {
     bool enabled = true;
 
     /// How much of the light the corners lose: 0 nothing, 1 all of it (black corners).
-    float strength = 0.3F;
+    float strength = 0.45F;
 
     /// Where the darkening starts, as a distance from the middle of the screen in
     /// texture coordinates. 0.5 is the middle of an edge, so with the default the
