@@ -156,9 +156,19 @@ void drawBatteryBar(const game::Round& round, const game::GameplaySettings& sett
     ImGui::Text("%.0f%%", round.battery * PERCENT);
 }
 
-// The bar of the stamina, or the empty room where it would be.
-void drawStaminaBar(const game::Stamina& stamina, float animationSeconds, float scale) {
+// The bar of the stamina, or the empty room where it would be. flaskFraction is how much
+// of the effect of a flask is left (game::flaskEffectFraction).
+void drawStaminaBar(const game::Stamina& stamina, float flaskFraction, float animationSeconds,
+                    float scale) {
     const ImVec2 size{BATTERY_BAR_WIDTH * scale, STAMINA_BAR_HEIGHT * scale};
+    // The tea of a flask works: the stamina is full and stays full, so the bar shows
+    // something else, in another colour: the time that is left, running down.
+    if (stamina.noDrainSecondsLeft > 0.0F) {
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, HUD_FLASK_COLOR);
+        ImGui::ProgressBar(flaskFraction, size, "");
+        ImGui::PopStyleColor();
+        return;
+    }
     // A full bar that nobody uses is hidden. Dummy takes the same room without drawing
     // anything, so the strip keeps its height and the hints below do not jump.
     if (!game::staminaBarVisible(stamina)) {
@@ -190,10 +200,16 @@ void drawStaminaBar(const game::Stamina& stamina, float animationSeconds, float 
     ImGui::PopStyleColor(2);
 }
 
-// Up to two lines that tell the player what to do next, or nothing.
-void drawHint(const game::Round& round) {
+// Up to three lines that tell the player what is going on, or nothing.
+void drawHint(const game::Round& round, const game::Stamina& stamina) {
     if (round.state != game::RoundState::Playing) {
         return;
+    }
+    // The tea, first: it explains the bar right above it. ceil rounds up, so the line
+    // counts 20, 19 ... 1 and is gone at 0.
+    if (stamina.noDrainSecondsLeft > 0.0F) {
+        ImGui::TextColored(HUD_FLASK_COLOR, "Warm tea. Sprinting costs nothing for %.0f s.",
+                           std::ceil(stamina.noDrainSecondsLeft));
     }
     if (round.gateOpen) {
         ImGui::TextColored(HUD_CRYSTAL_COLOR, "The gate is open. Find the exit.");
@@ -205,7 +221,7 @@ void drawHint(const game::Round& round) {
 
 // The strip at the top of the window.
 void drawStatus(const game::Round& round, const game::GameplaySettings& settings,
-                const game::Stamina& stamina, float scale) {
+                const game::Player& player, float scale) {
     // The third argument is the pivot: the point of the HUD that is put at the given
     // position. (0.5, 0) is the middle of its top edge, so the HUD is centred whatever
     // its width turns out to be.
@@ -224,8 +240,10 @@ void drawStatus(const game::Round& round, const game::GameplaySettings& settings
         ImGui::TextDisabled("  %s", timeText(round.elapsedSeconds).data());
 
         drawBatteryBar(round, settings, scale);
-        drawStaminaBar(stamina, round.animationSeconds, scale);
-        drawHint(round);
+        drawStaminaBar(player.stamina,
+                       game::flaskEffectFraction(player.stamina, player.staminaSettings),
+                       round.animationSeconds, scale);
+        drawHint(round, player.stamina);
     }
     ImGui::End();
 }
@@ -330,7 +348,7 @@ void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float 
 } // namespace
 
 void drawHud(const game::MazeWorld& world, const game::Round& round,
-             const game::GameplaySettings& settings, const game::Stamina& stamina,
+             const game::GameplaySettings& settings, const game::Player& player,
              const game::PickState& pick) {
     const float scale = ImGui::GetStyle().FontScaleDpi;
 
@@ -339,7 +357,7 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
     // multiplies it by FontScaleDpi itself.
     ImGui::PushFont(nullptr, HUD_FONT_SIZE);
 
-    drawStatus(round, settings, stamina, scale);
+    drawStatus(round, settings, player, scale);
     drawCrosshair(pick, scale);
     drawPrompt(pick);
     if (round.noteOpen) {
@@ -356,12 +374,12 @@ float hudReservedHeight() {
     const float scale = ImGui::GetStyle().FontScaleDpi;
     const ImGuiStyle& style = ImGui::GetStyle();
 
-    // The strip is a window with five lines in it: the counter, the battery bar, the
-    // stamina bar and two hints. A line of text is as high as the font, and the battery
+    // The strip is a window with six lines in it: the counter, the battery bar, the
+    // stamina bar and three hints. A line of text is as high as the font, and the battery
     // bar is a widget: the font plus the frame padding above and below. The stamina bar
     // has a height of its own, and keeps its room also while it is hidden.
-    constexpr float TEXT_LINE_COUNT = 3.0F;
-    constexpr float GAP_COUNT = 4.0F;
+    constexpr float TEXT_LINE_COUNT = 4.0F;
+    constexpr float GAP_COUNT = 5.0F;
     const float textLine = HUD_FONT_SIZE * scale;
     const float bar = textLine + 2.0F * style.FramePadding.y;
     const float strip = 2.0F * style.WindowPadding.y + TEXT_LINE_COUNT * textLine + bar +

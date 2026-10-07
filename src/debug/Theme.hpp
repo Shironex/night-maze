@@ -102,6 +102,11 @@ inline constexpr ImVec4 HUD_BATTERY_LOW_COLOR = ERROR_TEXT_COLOR;
 inline constexpr ImVec4 HUD_STAMINA_COLOR = SECONDARY_COLOR;
 inline constexpr ImVec4 HUD_STAMINA_WINDED_COLOR = colorFromBytes(58, 138, 140);
 
+/// The stamina bar while the tea of a flask works, and the line of hint that says so:
+/// the copper of strong tea. Warm, so one look tells it from the teal bar of the
+/// stamina it replaces, and darker and redder than the amber of the battery bar above.
+inline constexpr ImVec4 HUD_FLASK_COLOR = colorFromBytes(226, 124, 58);
+
 /// A lever on the plan of the maze while it can still be pulled: the red of
 /// a switch. A pulled lever is drawn like a collected crystal.
 inline constexpr ImVec4 PLAN_LEVER_COLOR = colorFromBytes(238, 92, 62);
