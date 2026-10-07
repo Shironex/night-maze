@@ -2,6 +2,19 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.10.0 (2026-10-07)
+
+The maze is no longer silent: the first sounds.
+
+### What's new
+
+- The flashlight clicks when you switch it on and off with F.
+- When the battery is empty the switch only gives a dull click, and you hear the same click at the moment the light dies.
+- A low battery now warns you with a slow pulse, like a heartbeat. It gets faster as the battery runs down, and it stops when a crystal charges the battery again.
+- Picking up a crystal chimes.
+- A lever clunks when you pull it, and the gate grinds open when you have collected enough crystals.
+- A volume slider on the settings screen, from 0 to 100. It is saved with your other settings, and a short click lets you hear the level while you move it.
+
 ## 0.9.0 (2026-10-06)
 
 The game gets a front door: menus, difficulty levels and settings.
