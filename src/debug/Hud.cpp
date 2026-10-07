@@ -315,7 +315,7 @@ void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float 
                         {CARD_PADDING.x * scale, CARD_PADDING.y * scale});
 
     if (ImGui::Begin("Note", nullptr, CARD_WINDOW_FLAGS)) {
-        ImGui::TextColored(HUD_NOTE_COLOR, "A note on the wall");
+        ImGui::TextColored(HUD_NOTE_COLOR, "Chalk on the stone");
         ImGui::Separator();
         // "%s" and the text as an argument: the text itself is never read as a format.
         ImGui::Text("%s", text.c_str());
