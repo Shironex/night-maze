@@ -3,6 +3,7 @@
 #pragma once
 
 #include "assets/AssetCache.hpp"
+#include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
 #include "game/ColliderLines.hpp"
 #include "game/Difficulty.hpp"
@@ -29,6 +30,7 @@
 #include "game/ShadowMap.hpp"
 #include "game/Shadows.hpp"
 #include "game/Skybox.hpp"
+#include "game/SoundCues.hpp"
 #include "game/StartOptions.hpp"
 #include "game/Terrain.hpp"
 #include "game/TerrainRenderer.hpp"
@@ -100,6 +102,11 @@ namespace game {
 /// maze, its crystals, the gate and the battery, and a seed, which decides the maze.
 /// What the player sets on the settings screen (game/Settings.hpp) is used at once and
 /// kept in a small text file in the working directory.
+///
+/// The game has short sounds (the click of the flashlight, a crystal, a lever, the
+/// gate, the warning of a low battery). WHICH sound belongs to what happened is decided
+/// by the rules in game/SoundCues.hpp. This class asks them at the few places where
+/// something happens and hands the answer to audio::AudioEngine (playCue).
 ///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels and the HUD on top of the frame.
@@ -320,6 +327,15 @@ protected:
         return game::menuCameraLoopSeconds(m_menuCameraPath, m_mazeWorld, m_menuCamera);
     }
 
+    /// The sound device and the loaded sounds, exposed so the debug UI can show their
+    /// status and set the master volume.
+    audio::AudioEngine& audio() { return m_audio; }
+
+    /// The name of the cue that was played last (game::soundCueName), "none" before the
+    /// first one, and how many cues were played since the start, for the debug UI.
+    const char* lastCueName() const { return m_lastCueName; }
+    int cuesPlayed() const { return m_cuesPlayed; }
+
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
@@ -415,6 +431,10 @@ private:
     /// Writes m_settings into the settings file, unless they are what the file holds
     /// already. An error is in the log, and the game goes on.
     void saveSettings();
+
+    /// Plays the sound of a cue and remembers it for the debug UI. Without a sound
+    /// device nothing is heard, and the cue is counted all the same.
+    void playCue(SoundCue cue);
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed, no lever pulled, every
@@ -724,6 +744,17 @@ private:
     // True when all four documents are loaded. Without them a menu screen would show
     // nothing and could not be left, so the game then never enters one.
     bool m_menusLoaded = false;
+
+    // The sound device with the sounds of the cues, loaded once in the constructor in
+    // the order of game::SoundCue. Without a device it does nothing (audio::AudioEngine).
+    audio::AudioEngine m_audio;
+    // The clock of the low battery pulse. It is simulation state like the round:
+    // onUpdate advances it in fixed steps, and beginRound starts it anew.
+    LowBatteryPulse m_lowBatteryPulse;
+    // What playCue remembers for the debug UI: the name of the last cue (a text of the
+    // cue table, which lives as long as the program) and the number of cues so far.
+    const char* m_lastCueName = "none";
+    int m_cuesPlayed = 0;
 };
 
 } // namespace game

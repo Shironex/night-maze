@@ -369,7 +369,7 @@ add_executable(night_maze
     src/debug/categories/WorldCategory.cpp
     src/debug/categories/WorldCategory.hpp
 )
-target_link_libraries(night_maze PRIVATE engine game_logic ui video imgui)
+target_link_libraries(night_maze PRIVATE engine game_logic ui video audio imgui)
 night_maze_enable_warnings(night_maze)
 
 # ---- night_maze_tests: unit tests of the code that runs without a window --------------

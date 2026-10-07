@@ -17,6 +17,7 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <filesystem>
 #include <random>
@@ -353,6 +354,15 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
         m_mode = GameMode::Playing;
     }
 
+    // The sounds: one file per cue, in the order of the enum, so the number of a cue is
+    // the number of its sound (game::soundCueIndex). A missing file is in the log and
+    // its cue is silent (audio::AudioEngine).
+    std::array<std::filesystem::path, SOUND_CUE_COUNT> soundFiles;
+    for (std::size_t i = 0; i < SOUND_CUE_COUNT; ++i) {
+        soundFiles.at(i) = core::assetPath(soundCueFile(static_cast<SoundCue>(i)));
+    }
+    m_audio.load(soundFiles);
+
     // The seed the main menu offers for the first game: the one of the command line, or
     // a random one.
     if (options.seedGiven) {
@@ -365,6 +375,12 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
 
 NightMazeApp::~NightMazeApp() {
     saveSettings();
+}
+
+void NightMazeApp::playCue(SoundCue cue) {
+    m_audio.play(soundCueIndex(cue));
+    m_lastCueName = soundCueName(cue);
+    ++m_cuesPlayed;
 }
 
 void NightMazeApp::onEscapePressed() {
@@ -800,6 +816,10 @@ void NightMazeApp::beginRound() {
     m_shownPick = m_pick;
     // A round starts with the light on, also after one that ended in the dark.
     m_lighting.flashlightOn = true;
+    // The low battery pulse of the round before must not go on in this one. The cues of
+    // a step need no reset: onUpdate compares every step with the moment right before
+    // it, so a new round, also one that starts with its gate open, fires nothing.
+    m_lowBatteryPulse = {};
 
     // The player goes to the start, feet on the ground there. After a regeneration the
     // old position may be inside a wall of the new maze, or outside of it.
@@ -871,8 +891,22 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // battery, the crystals within reach, the gate and the exit. The switch of the
     // flashlight goes in by reference, because an empty battery turns it off.
     const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);
+    // What the round looked like before the step, to hear afterwards what the step did.
+    const RoundSoundSnapshot soundBefore = soundSnapshot(m_round, m_lighting.flashlightOn);
     updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,
                 static_cast<float>(fixedDt));
+    // The sounds of this step: a crystal, the gate, the battery that ran out
+    // (game::roundStepCues), and the beat of a low battery when one is due. Both are
+    // counted in fixed steps and only here, below the early return above: under a menu,
+    // in the pause and while the menu camera runs no step gets this far, so nothing
+    // sounds there and the clock of the pulse stands still.
+    for (const SoundCue cue : roundStepCues(soundBefore, m_round, m_lighting.flashlightOn)) {
+        playCue(cue);
+    }
+    if (advanceLowBatteryPulse(m_lowBatteryPulse, m_round, m_lighting.flashlightOn, m_gameplay,
+                               static_cast<float>(fixedDt))) {
+        playCue(SoundCue::LowBatteryPulse);
+    }
     // The gate has just opened (the only change a step can make here): its box leaves
     // the obstacle list, and the way into the exit cell is free.
     if (gateBlocks(m_mazeWorld, m_round) != gateBlockedBefore) {
@@ -951,11 +985,17 @@ void NightMazeApp::onRender(double alpha) {
     }
 
     // Every lever at once, asked for by a button of the debug UI. Handled here like the
-    // restart: between two fixed steps. Open walls leave the obstacle list.
+    // restart: between two fixed steps. Open walls leave the obstacle list. One sound
+    // for all of them, because the walls open in the same moment, and none under a menu
+    // or the menu camera (the debug window is open there too): no cue sounds while the
+    // round stands still.
     if (m_gameplay.pullAllLevers) {
         m_gameplay.pullAllLevers = false;
         if (pullAllLevers(m_round, m_mazeWorld) > 0) {
             m_obstacles = roundObstacles(m_mazeWorld, m_round);
+            if (roundInput) {
+                playCue(SoundCue::LeverPull);
+            }
         }
     }
 
@@ -987,8 +1027,11 @@ void NightMazeApp::onRender(double alpha) {
     // it works whether or not the cursor is captured. With an empty battery the key
     // still sets the switch, but the next fixed step turns it off again
     // (game::updateRound), and no frame is drawn with the light of an empty battery
-    // (game::lightingForFrame).
+    // (game::lightingForFrame). The sound of the key is chosen before the switch moves:
+    // a click on, a click off, or the dull click of an empty battery
+    // (game::flashlightKeyCue).
     if (roundInput && input().wasKeyPressed(FLASHLIGHT_KEY)) {
+        playCue(flashlightKeyCue(m_round.battery, m_lighting.flashlightOn));
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
 
@@ -1328,9 +1371,11 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
 
     if ((keyPressed || clicked) && m_pick.action != Interaction::None) {
         // There is something to do: pull the lever, read the note or close the card.
-        // A wall that opened is no obstacle any more.
+        // A wall that opened is no obstacle any more. interact is true only then: for
+        // the first pull of a lever, so that is the moment of its sound.
         if (interact(m_round, m_mazeWorld, m_pick)) {
             m_obstacles = roundObstacles(m_mazeWorld, m_round);
+            playCue(SoundCue::LeverPull);
         }
         // The round has changed, so the action is asked again: the lever that was just
         // pulled is not highlighted in this frame, and an opened card can be closed.
