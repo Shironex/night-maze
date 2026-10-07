@@ -13,6 +13,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import build_crystal
+import build_flask
 import build_gate
 import build_lever
 import build_note
@@ -34,6 +35,7 @@ build_crystal.build(shots)
 build_gate.build(shots)
 build_lever.build(shots)
 build_note.build(shots)
+build_flask.build(shots)
 
 # The six faces of the sky. They depend on nothing above: no model uses them.
 make_skybox.build()

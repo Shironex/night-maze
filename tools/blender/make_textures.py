@@ -1,8 +1,8 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
-# gate_wood.png, crystal.png, lever_iron.png, lever_brass.png and note_paper.png, and one
-# normal map for each of them (the same name with _normal).
-# All twenty are 512 x 512 pixels, 8 bits per channel, RGB.
+# gate_wood.png, crystal.png, lever_iron.png, lever_brass.png, note_paper.png and
+# flask.png, and one normal map for each of them (the same name with _normal).
+# All twenty-two are 512 x 512 pixels, 8 bits per channel, RGB.
 # See docs/guides/blender.md
 #
 # Run from the repository root:
@@ -13,9 +13,10 @@
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
 # and the distances between the cells of the crystal and to the stones of the ground are
 # measured across the edges.
-# The one exception is note_paper.png: the model of the note shows the whole picture
-# exactly once, so its ink lines do not have to continue across the edges. Its noise still
-# wraps around, because it comes from the same helpers.
+# The exceptions are note_paper.png and flask.png: the model of the note shows the whole
+# picture exactly once, so its ink lines do not have to continue across the edges, and the
+# picture of the flask goes once around the flask, so only its left and right edges meet.
+# Their noise still wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
 # same joints, the same noise), so the relief lies exactly where the picture shows it.
@@ -61,6 +62,7 @@ NOTE_SEED = 29
 WALL_CRACKED_SEED = 83
 WALL_MOSSY_SEED = 89
 WALL_DAMAGED_SEED = 97
+FLASK_SEED = 101
 
 # The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
 # the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
@@ -68,6 +70,17 @@ WALL_DAMAGED_SEED = 97
 # a missing stone, goes there.
 WALL_COURSE_HEIGHT = 64
 WALL_FIRST_SINGLE_COURSE = 4
+
+# The bands of the picture of the flask, in pixel rows from the bottom. The model
+# (build_flask.py) puts the height of the flask on the y axis of the picture: 512 rows
+# are its 0.25 m, so 1 cm is about 20 rows.
+# Below this row, on average, the body is bare clay, above it glazed.
+FLASK_GLAZE_ROW = 150
+# The cord around the neck, from 16.5 cm to 19 cm, and the height of one turn of it.
+FLASK_CORD_ROWS = (338, 389)
+FLASK_CORD_TURN_HEIGHT = 8.5
+# From this row up the picture shows the cork (the lip ends at 21.2 cm).
+FLASK_CORK_ROW = 433
 
 # The stones that are missing in the damaged wall, as (course, stone in the course).
 # Both lie in the courses that are seen once, at 1.0 m and at 1.5 m above the ground,
@@ -1111,6 +1124,60 @@ def build_damaged_wall_textures():
     save_png(normal_map(height), "wall_damaged_normal.png")
 
 
+def build_flask_textures():
+    """Writes the texture of the flask with its normal map.
+
+    The picture is used once on the model (see build_flask.py): x goes once around the
+    flask and y is the height on it. So the picture is painted in bands, from the bottom
+    up: the stoneware body, the cord wound around the neck, the lip and the cork.
+    """
+    rng = np.random.default_rng(FLASK_SEED)
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+    # One full turn around the flask: a sine of this angle, or of a whole multiple of
+    # it, meets itself where the left and the right edge of the picture meet.
+    turn = x / SIZE * 2.0 * np.pi
+
+    patches = smooth_noise(rng, 12)
+    grain = smooth_noise(rng, 1)
+
+    # The body. The potter held the flask by its foot and dipped it into the glaze, so
+    # the lower third is bare clay and the rest is glazed. The line between them is
+    # uneven: two waves around the flask and a little noise.
+    dip_row = FLASK_GLAZE_ROW + 12.0 * np.sin(2.0 * turn + 1.0) + 16.0 * (patches - 0.5)
+    glazed = smooth_step(np.clip((y - dip_row) / 8.0, 0.0, 1.0))
+    clay = np.array((0.80, 0.72, 0.56))
+    glaze = np.array((0.66, 0.43, 0.17))
+    # The glaze ran before it set: it is darker in long drips (noise blurred along y).
+    drips = stretch(blur_along(blur_along(rng.random((SIZE, SIZE)), 30, axis=0), 3, axis=1))
+    glaze_shade = (0.80 + 0.35 * drips)[..., None] * glaze
+    clay_shade = (0.90 + 0.20 * grain)[..., None] * clay
+    color = clay_shade + glazed[..., None] * (glaze_shade - clay_shade)
+    color = color * (0.88 + 0.24 * patches)[..., None]
+    height = 1.5 * glazed + 5.0 * (blur(patches, BUMP_BLUR_RADIUS) - 0.5)
+    height = height + 0.6 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5)
+
+    # The cord around the neck: a few turns lying on top of each other. Across the band
+    # every turn is a round ridge, and along it the strands of the cord slant.
+    cord_low, cord_high = FLASK_CORD_ROWS
+    in_cord = (y >= cord_low) & (y < cord_high)
+    across = np.abs(np.sin((y - cord_low) / FLASK_CORD_TURN_HEIGHT * np.pi))
+    strands = 0.5 + 0.5 * np.sin(24.0 * turn + y * 0.9)
+    cord_shade = (0.45 + 0.45 * across) * (0.80 + 0.20 * strands) * (0.90 + 0.20 * grain)
+    color[in_cord] = cord_shade[in_cord][..., None] * np.array((0.62, 0.50, 0.31))
+    height[in_cord] = (4.0 * across + 1.0 * strands)[in_cord]
+
+    # The cork: light brown, with the small dark pits of real cork (the upper part of
+    # a fine noise, and a pit is a dent in the relief too).
+    in_cork = y >= FLASK_CORK_ROW
+    pits = smooth_step(np.clip((smooth_noise(rng, 2) - 0.62) / 0.12, 0.0, 1.0))
+    cork_shade = (0.85 + 0.30 * patches) * (1.0 - 0.55 * pits)
+    color[in_cork] = cork_shade[in_cork][..., None] * np.array((0.70, 0.55, 0.37))
+    height[in_cork] = (-2.5 * pits + 1.0 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5))[in_cork]
+
+    save_png(np.clip(color, 0.0, 1.0), "flask.png")
+    save_png(normal_map(height), "flask_normal.png")
+
+
 def save_png(color, file_name):
     """Saves a SIZE x SIZE x 3 array of colors from 0 to 1 as an 8-bit RGB PNG."""
     # Round to the 256 levels of an 8-bit channel here, so the bytes in the file do not
@@ -1219,23 +1286,24 @@ def build():
     )
     save_png(normal_map(crystal_relief), "crystal_normal.png")
 
-    # The textures of the lever and the note. They are in a function of their own, so
-    # they can also be made without writing the eight pictures above again.
+    # The textures of the lever, the note and the flask. They are in a function of their
+    # own, so they can also be made without writing the pictures above again.
     build_interactable_textures()
 
 
 def build_interactable_textures():
-    """Writes the textures of the things the player uses: the lever and the note.
+    """Writes the textures of the things the player uses: the lever, the note, the flask.
 
-    To make only these six pictures, run from the repository root (one line):
+    To make only these eight pictures, run from the repository root (one line):
       blender --background --factory-startup --python-expr "import sys;
       sys.path.append('tools/blender'); import make_textures;
       make_textures.build_interactable_textures()"
-    The two functions it calls can be run alone in the same way, to make only the four
-    pictures of the lever or only the two pictures of the note.
+    The three functions it calls can be run alone in the same way, to make only the four
+    pictures of the lever, only the two of the note or only the two of the flask.
     """
     build_lever_textures()
     build_note_textures()
+    build_flask_textures()
 
 
 def build_lever_textures():

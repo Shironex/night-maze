@@ -859,6 +859,38 @@ TEST_CASE("loadObj: wall_pillar.obj") {
     checkVec3(bounds.max, {0.2F, 3.15F, 0.2F});
 }
 
+TEST_CASE("loadObj: flask.obj") {
+    // Not through loadGameModel: that helper wants normals of length exactly 1, and the
+    // slanted faces of the flask have normals the file rounds to four decimals.
+    assets::ObjModel model;
+    std::string error;
+    const bool ok = assets::loadObj(modelsDirectory() / "flask.obj", model, error);
+    CAPTURE(error);
+    REQUIRE(ok);
+    CHECK(model.unknownLineCount == 0U);
+    for (const gfx::Vertex& vertex : model.vertices) {
+        CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
+    }
+
+    // One material, and the two pictures it names are there.
+    REQUIRE(model.parts.size() == 1U);
+    CHECK(model.parts[0].material == "flask");
+    REQUIRE(model.materials.size() == 1U);
+    CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
+    CHECK(std::filesystem::exists(model.materials[0].normalTexture));
+
+    // 192 triangles: a small thing has to stay cheap.
+    CHECK(model.indices.size() == 192U * 3U);
+
+    // 0.25 m tall, standing on the floor with its origin under the middle of its base,
+    // and as wide as its belly: the cord loop ends exactly above the widest place.
+    const Bounds bounds = boundsOf(model);
+    CHECK(bounds.min.y == doctest::Approx(0.0F));
+    CHECK(bounds.max.y == doctest::Approx(0.25F));
+    CHECK(bounds.min.x == doctest::Approx(-0.088F));
+    CHECK(bounds.max.x == doctest::Approx(0.088F));
+}
+
 TEST_CASE("loadObj: material libraries and texture paths of files written by the test") {
     // A scratch directory of its own, removed again at the end of the test case.
     const std::filesystem::path directory =
