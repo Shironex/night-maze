@@ -17,6 +17,8 @@ Decyzja właściciela projektu (2026-10-06), w całości:
 
 Nic ponad to nie zostało rozstrzygnięte w tej decyzji.
 
+**Uzupełnienie z 2026-10-07:** treść premisy rozwija szkic [`../story/the-last-lamp.md`](../story/the-last-lamp.md), a decyzje właściciela o kierunku ("Inheritance"), słownictwie, kolejności budowy, intro na żywo i płci latarnika zapisuje [`story-inheritance-and-build-order.md`](story-inheritance-and-build-order.md). Zdania powyżej, że treści premisy nie ma w repozytorium, opisują stan z 2026-10-06.
+
 ## 3. Rozważane możliwości
 
 To jest analiza, nie decyzja. Pierwszy wiersz jest decyzją właściciela.
