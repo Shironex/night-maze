@@ -152,6 +152,8 @@ add_library(game_logic STATIC
     src/game/EnvironmentMapping.hpp
     src/game/Exit.cpp
     src/game/Exit.hpp
+    src/game/Flasks.cpp
+    src/game/Flasks.hpp
     src/game/Fog.cpp
     src/game/Fog.hpp
     src/game/GameState.cpp
@@ -408,6 +410,7 @@ add_executable(night_maze_tests
     tests/DiscoveryTests.cpp
     tests/EnvironmentMappingTests.cpp
     tests/ExitTests.cpp
+    tests/FlaskTests.cpp
     tests/FogTests.cpp
     tests/FramebufferTests.cpp
     tests/GameStateTests.cpp
