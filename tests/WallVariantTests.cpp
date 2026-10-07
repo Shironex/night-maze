@@ -95,12 +95,13 @@ TEST_CASE("the same seed gives the same wall looks, another seed gives others") 
 
 TEST_CASE("golden wall looks: the counts of seed 1 are the same on every system") {
     // The numbers come from std::mt19937 and randomBelow alone, so these counts must be
-    // the same on Windows and on macOS. They were written down from a run on Windows.
+    // the same on Windows and on macOS. They were written down from a run on Windows, and
+    // again when the six notes came: a wall that carries a note stays plain.
     const game::MazeWorld world = worldOf(1U);
     const std::array<int, game::WALL_VARIANT_COUNT> counts =
         game::countWallVariants(world.wallVariants);
     CHECK(counts[0] + counts[1] + counts[2] + counts[3] == static_cast<int>(world.walls.size()));
-    CHECK(counts == std::array<int, game::WALL_VARIANT_COUNT>{92, 7, 13, 9});
+    CHECK(counts == std::array<int, game::WALL_VARIANT_COUNT>{93, 7, 13, 8});
 }
 
 TEST_CASE("walls near the start and walls that carry a lever or a note stay plain") {
