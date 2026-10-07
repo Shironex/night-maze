@@ -645,9 +645,11 @@ Niesprawdzone. CLion też czyta `CMakePresets.json`. Dwie rzeczy do ustawienia:
   jest inną konfiguracją niż ta opisana tutaj.
 - Włączyć profile CMake z presetów zamiast domyślnego `cmake-build-debug`.
 
-## 5. Ostrzeżenia: `/W4 /permissive-`
+## 5. Ostrzeżenia: `/W4 /w14062 /permissive-`
 
-Fragment [`CMakeLists.txt`](../../CMakeLists.txt):
+**Zmiana z 2026-10-07:** flagi MSVC to teraz `/W4 /w14062 /permissive-` (dodana `/w14062`, opis niżej). Fragment poniżej pokazuje pierwotną postać funkcji, `/W4 /permissive-`; bieżąca jest w [`CMakeLists.txt`](../../CMakeLists.txt). Historyczne pozycje list kontrolnych w tym dokumencie, które mówią o `/W4 /permissive-`, opisują pomiary z czasów tej flagi i nie zostały zmienione. Przy pisaniu tego dokumentu nie budowałem programu z `/w14062` i nie mam wyniku takiego buildu: wiem tylko, że commit `a571c64` dodał flagę.
+
+Fragment [`CMakeLists.txt`](../../CMakeLists.txt) (postać pierwotna):
 
 ```cmake
 # Strict warnings for our own targets only (third-party code is built with its defaults).
@@ -669,9 +671,10 @@ endfunction()
   konstrukcje niezgodne ze standardem, a ta flaga je wyłącza. Odpowiednik `-Wpedantic` w tym
   sensie, że kod, który przejdzie na MSVC, ma większą szansę skompilować się w clang, i
   odwrotnie. To ważne w projekcie na dwa systemy.
+- **`/w14062`** (od 2026-10-07): włącza ostrzeżenie C4062, które `/W4` zostawia wyłączone. Według komentarza w `CMakeLists.txt` jest to ostrzeżenie o `switch` na wyliczeniu, który **nie ma `default`** i pomija jedną z wartości. Clang i GCC zgłaszają to samo pod `-Wall` (`-Wswitch`), więc po tej fladze oba systemy zauważają nową wartość wyliczenia, o której `switch` zapomniał (komentarz podaje przykład: nazwa ekranu w oknie debug). Zapis `/w1nnnn` składa się z `/w`, cyfry poziomu i numeru ostrzeżenia; **znaczenia cyfry `1` nie sprawdzałem w dokumentacji MSVC** (wyszukiwanie dokumentacji nic nie dało), opieram się wyłącznie na komentarzu w kodzie. Przykład z historii: `screenName` w `src/debug/DebugWindow.cpp` ma `switch` bez `default` na `game::GameMode`, więc nowy ekran bez nazwy jest teraz ostrzeżeniem, a nie cichym „Unknown”.
 - `PRIVATE`: flagi dotyczą tylko wskazanego targetu i nie przenoszą się na jego użytkowników.
-- Funkcję wywołujemy tylko dla naszych czterech targetów: `engine`, `game_logic`,
-  `night_maze` i `night_maze_tests`. GLFW, ImGui, GLAD i stb_image kompilują się ze swoimi
+- Funkcję wywołujemy tylko dla naszych targetów (w czasie tego opisu czterech: `engine`, `game_logic`,
+  `night_maze` i `night_maze_tests`; od późniejszych kawałków także `ui`, `video` i, od 2026-10-07, `audio`). GLFW, ImGui, GLAD i stb_image kompilują się ze swoimi
   domyślnymi ustawieniami. GLM i doctest nie mają własnych plików do skompilowania (same nagłówki).
 
 Nagłówki bibliotek są oznaczone jako systemowe (`SYSTEM` w `target_include_directories`,

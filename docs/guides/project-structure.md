@@ -217,6 +217,8 @@ Poza tym doszła M9, część 3: ekrany menu, poziomy trudności i ustawienia (2
 
 Poza tym doszła M9, część 4: wideo w tle menu (2026-10-06, HEAD `fc8324e`: dziesięć commitów od `0f8d3b9`). Nowe pliki: biblioteka **`video`** (`src/video/VideoClock.*`, `VideoDecoder.hpp`, `VideoDecoderWindows.cpp`, `VideoPlayer.*`, a na Apple także `VideoDecoderApple.mm`, **nigdy nie skompilowany**), `src/gfx/CoverFit.*` i `src/gfx/FrameTexture.*` (w `engine`), `src/game/MenuBackground.*` (w `game_logic`), `src/game/MenuBackgroundRenderer.*` (w programie), `assets/shaders/post/menu_background.frag`, `assets/video/menu_loop.mp4` (17 646 243 bajtów) i `menu_still.png`, `tools/record_menu_loop.py`, `tests/CoverFitTests.cpp` (5 przypadków), `tests/VideoClockTests.cpp` (7) i `tests/MenuBackgroundTests.cpp` (6). Zmieniły się: `CMakeLists.txt` (biblioteka `video` z `/DELAYLOAD` dla `mfplat.dll` i `mfreadwrite.dll`, a na Apple `enable_language(OBJCXX)`, `-fobjc-arc` i cztery frameworki; `src/video/VideoClock.cpp` także w programie testowym), `Makefile` (`OBJCXX_SOURCES` tylko w `format` i `format-check`, nie w `tidy`), `.clang-format` (druga sekcja `Language: ObjC` z tymi samymi opcjami), `.gitattributes` (`*.mp4 binary`), `src/game/StartOptions.*` (pole `menuBackground`, szósty przełącznik `--menu-background`; `StartOptions` ma **pięć pól**, `StartOptionsTests.cpp` **11** przypadków), `src/game/NightMazeApp.*` (składowa `m_menuBackground`, wczesna gałąź w `onRender`) i `tests/StartOptionsTests.cpp`. Liczba bibliotek: `engine`, `game_logic`, `ui`, **`video`**, `night_maze`, `night_maze_tests`. Pliki z kodem zależnym od systemu są teraz trzy: `src/core/Paths.cpp`, `src/video/VideoDecoderWindows.cpp` i `src/video/VideoDecoderApple.mm` (wcześniej jeden). Listy plików w `CMakeLists.txt` mają na HEAD (policzone z pliku): `engine` 67 plików, `game_logic` 54, `ui` 4, `video` 6 (7 na Apple z plikiem `.mm`), `night_maze` 68 i `night_maze_tests` 46 (`tests/main.cpp`, czterdzieści jeden plików z testami, dwa pliki `src/debug/Search.*` i dwa pliki `src/video/VideoClock.*`). Decyzji w katalogu `docs/decisions/` jest 68 (policzone poleceniem `ls`; cztery nowe z 2026-10-06 to `story-premise-the-last-lamp.md`, `enemy-light-shy-shadow.md`, `audio-on-miniaudio.md` i `build-for-the-portfolio-not-the-defence.md`, wszystkie bez kodu). `DebugContext` (51 pól), zależności (7) i `docs/modules/` bez zmian poza nowym `video/`. Przybył jeden program shaderów (`post/composite.vert` z `post/menu_background.frag`, własność `MenuBackgroundRenderer`); **sumy programów nie przeliczałem**, więc liczba (14) z części 3 nie jest tu zaktualizowana. Nowy dokument: [`../modules/video/README.md`](../modules/video/README.md). **Zgłoszone przez bramkę (nie powtarzałem):** `make check` przeszedł na `0f8d3b9` (564 przypadki testowe i 220119 asercji) i na gałęzi wideo (583 i 220420). Gałąź `main` została wypchnięta do prywatnego zdalnego repozytorium na `0f8d3b9` na słowo właściciela (2026-10-06); wydanie i upublicznienie repozytorium nadal czekają. Listy plików w części 4.x tego dokumentu (kopie `CMakeLists.txt`) opisują stan z wcześniejszych części i nie zostały przepisane.
 
+Poza tym doszedł dźwięk, wersja 0.10.0 (2026-10-07). Nowe pliki: biblioteka **`audio`** (`src/audio/AudioEngine.hpp` i `.cpp`, obok `ui` i `video`), `external/miniaudio/miniaudio.c` i `README.md` (jedyny plik z implementacją miniaudio), ósma zależność w `cmake/Dependencies.cmake` (miniaudio 0.11.25, `SOURCE_SUBDIR`, makra `MA_NO_*`, target `miniaudio`), `src/game/SoundCues.*` (w `game_logic`), siedem plików `assets/audio/*.wav` z `README.md`, `tools/make_sounds.py` (generator, tylko biblioteka standardowa Pythona) i `tests/SoundCueTests.cpp` (15 przypadków). Zmieniły się: `src/game/Settings.*` (ustawienie `master_volume`, `masterVolumeGain`), `assets/ui/settings.rml` (wiersz `Volume`), `src/game/NightMazeApp.*` (składowe `m_audio`, `m_lowBatteryPulse`, funkcje `playCue` i `applyAudioSettings`), `src/debug/` (karta Audio w Diagnostics, cztery pola `DebugContext`, nazwy obu ekranów ustawień w pasku stanu), `THIRD-PARTY-NOTICES.txt` i `launcher/scripts/build-notices.mjs` (sekcja miniaudio), `CMakeLists.txt` (flagi MSVC `/W4 /w14062 /permissive-`, wersja projektu `0.10.0`). Liczba bibliotek: `engine`, `game_logic`, `ui`, `video`, **`audio`**, `night_maze`, `night_maze_tests`, a pomocniczy target `miniaudio`. Opis: [`../modules/audio/README.md`](../modules/audio/README.md), [`../modules/game/sound-cues.md`](../modules/game/sound-cues.md), [`../libraries/miniaudio.md`](../libraries/miniaudio.md). Tabele i drzewo niżej uzupełniono o nowe pozycje; reszta dokumentu opisuje stan sprzed dźwięku.
+
 Docelową strukturę (z `renderer/`) opisuje PRD w sekcji 6.
 
 Polecenia budowania są w [`build-macos.md`](build-macos.md) i
@@ -243,6 +245,8 @@ night-maze/
 │   ├── extensions.json         # rekomendowane rozszerzenia
 │   └── settings.json           # clangd, presety CMake, formatowanie przy zapisie, GLSL
 ├── assets/                     # pliki wczytywane przez program w czasie działania
+│   ├── audio/                  # siedem dźwięków WAV i README z tabelą źródło, licencja, autor (2026-10-07)
+│   │   └── *.wav, README.md        # flashlight_on, flashlight_off, flashlight_dead, low_battery_pulse, crystal_pickup, lever_pull, gate_open; generuje je tools/make_sounds.py
 │   ├── fonts/                  # czcionka okna debug (cudzy materiał, licencja OFL)
 │   │   ├── AtkinsonHyperlegible-Regular.ttf  # Atkinson Hyperlegible 1.006, plik niezmieniony
 │   │   ├── OFL.txt                 # licencja czcionki: SIL Open Font License 1.1
@@ -318,12 +322,12 @@ night-maze/
 │   │   ├── menu.rcss               # wspólny arkusz stylów czterech dokumentów, długości w vh (część 3)
 │   │   ├── pause.rml               # pauza: Resume, Restart maze, Settings, Back to menu
 │   │   ├── round_end.rml           # ekran wyniku: czas, kryształy, poziom, ziarno, Play again, New maze, Back to menu
-│   │   └── settings.rml            # ustawienia: czułość myszy, pole widzenia, pełny ekran, rozmiar okna (część 3)
+│   │   └── settings.rml            # ustawienia: czułość myszy, pole widzenia, głośność (2026-10-07), pełny ekran, rozmiar okna (część 3)
 │   └── video/                  # tło menu głównego (M9, część 4)
 │       ├── menu_loop.mp4           # pętla 30 s, 1280 x 720, H.264, 17 646 243 bajtów (nagrywa ją tools/record_menu_loop.py)
 │       └── menu_still.png          # klatka 0 pętli: tło, gdy wideo nie gra
 ├── cmake/
-│   └── Dependencies.cmake      # FetchContent: GLFW, GLM, Dear ImGui, doctest, stb, FreeType i RmlUi (siedem), targety imgui, stb_image i rmlui_backend
+│   └── Dependencies.cmake      # FetchContent: GLFW, GLM, Dear ImGui, doctest, stb, FreeType, RmlUi i miniaudio (osiem), targety imgui, stb_image, rmlui_backend i miniaudio
 ├── external/
 │   ├── glad/                   # wygenerowany loader OpenGL 4.1 Core (kod w repozytorium)
 │   │   ├── CMakeLists.txt      # target glad (napisany ręcznie)
@@ -332,6 +336,9 @@ night-maze/
 │   │   │   ├── KHR/khrplatform.h   # typy zależne od platformy
 │   │   │   └── glad/gl.h           # deklaracje API OpenGL
 │   │   └── src/gl.c            # loader wypełniający wskaźniki funkcji
+│   ├── miniaudio/              # miniaudio: w repozytorium tylko plik z implementacją (2026-10-07)
+│   │   ├── README.md           # skąd jest nagłówek, wersja, licencja, jak zmienić wersję
+│   │   └── miniaudio.c         # dwie linie: makro MINIAUDIO_IMPLEMENTATION i #include pobranego nagłówka
 │   └── stb/                    # stb_image: w repozytorium tylko plik z implementacją
 │       ├── README.md           # skąd jest nagłówek i jak zmienić wersję
 │       └── stb_image.c         # dwie linie: makro i #include pobranego nagłówka
@@ -343,6 +350,8 @@ night-maze/
 │   │   ├── ImageLoader.hpp/.cpp    # plik obrazu na piksele, dolny wiersz pierwszy (albo górny: RowOrder)
 │   │   ├── ObjLoader.hpp/.cpp      # parser OBJ i MTL: wierzchołki, indeksy, części, materiały
 │   │   └── Tangents.hpp/.cpp       # styczne wierzchołków z pozycji i UV, dla map normalnych
+│   ├── audio/                  # odtwarzanie krótkich dźwięków przez miniaudio (2026-10-07): biblioteka obok ui i video
+│   │   └── AudioEngine.hpp/.cpp    # urządzenie, wczytanie plików do pamięci, trzy głosy na dźwięk, głośność główna
 │   ├── core/                   # warstwa bazowa: okno, wejście, czas, logi, ścieżki, GL_CHECK
 │   │   ├── Application.hpp/.cpp    # klasa bazowa programu, pętla główna
 │   │   ├── Files.hpp/.cpp          # core::readBinaryFile, core::readTextFile, core::writeTextFile i core::TEXT_FONT_FILE (M9, część 2 i 3)
@@ -413,6 +422,7 @@ night-maze/
 │   │   ├── ShadowMap.hpp/.cpp      # mapa cieni: framebuffer z samą głębią, sampler z porównaniem, podgląd (M7, część 4)
 │   │   ├── Shadows.hpp/.cpp        # cienie bez OpenGL: ustawienia, rozmiar mapy, bias, promień PCF, pudełko rzucających cień (M7, część 4)
 │   │   ├── StartOptions.hpp/.cpp   # przełączniki wiersza poleceń: ziarno, kamera menu, ujęcie, przesunięcie czasu (M9, część 1), --play (część 2), seedGiven i parseSeed (część 3)
+│   │   ├── SoundCues.hpp/.cpp      # dźwięki gry bez karty dźwiękowej: siedem SoundCue, tablica plików, zdarzenia kroku, puls słabej baterii (2026-10-07)
 │   │   ├── Skybox.hpp/.cpp         # niebo: tekstura sześcienna na sześcianie, rysowane na końcu klatki
 │   │   ├── Terrain.hpp/.cpp        # teren: mapa wysokości, siatka wysokości, heightAt, siatka trójkątów
 │   │   ├── TerrainRenderer.hpp/.cpp # rysowanie terenu: jedna siatka, tekstura gruntu, wireframe
@@ -555,6 +565,9 @@ night-maze/
     │   ├── skybox-in-game-layer.md     # niebo jako game::Skybox, bez warstwy renderer
     │   ├── small-calls-after-m6.md     # cztery drobne rozstrzygnięcia po M6: klawisz okna debug, Esc, latarka, rozmiar nieba
     │   ├── srgb-encode-in-shader.md    # kodowanie sRGB w shaderze, GL_FRAMEBUFFER_SRGB wyłączone (M7)
+    │   ├── sounds-generated-by-script.md # dźwięki generuje skrypt w repozytorium (2026-10-07)
+    │   ├── story-inheritance-and-build-order.md # fabuła: kierunek Inheritance, słowa, kolejność budowy, intro na żywo (2026-10-07)
+    │   ├── versions-m9-and-the-sound-slice.md # numery wersji: 0.9.0 to M9, 0.10.0 to dźwięk (2026-10-07)
     │   ├── story-premise-the-last-lamp.md # premisa fabularna "The Last Lamp", bez kodu i tekstu (2026-10-06)
     │   ├── tangents-on-load.md         # styczne liczone przy wczytaniu, bez znaku skrętności
     │   ├── video-through-os-decoders-with-still-fallback.md # wideo przez dekodery systemu, nieruchomy obraz na wypadek porażki (2026-10-06)
@@ -573,9 +586,14 @@ night-maze/
     │   ├── glfw.md
     │   ├── glm.md
     │   ├── imgui.md
+    │   ├── miniaudio.md            # miniaudio: pobranie bez jej CMake, makra MA_NO_*, licencja (2026-10-07)
     │   ├── rmlui.md                # RmlUi i FreeType: menu gry, CMake, backendy, RML i RCSS (M9, część 2)
     │   └── stb_image.md
+    ├── story/                  # szkic fabuły do gry, po angielsku (2026-10-07)
+    │   └── the-last-lamp.md
     └── modules/                # dokumenty modułów
+        ├── audio/                  # moduł audio: odtwarzanie krótkich dźwięków (2026-10-07)
+        │   └── README.md               # biblioteka audio, głosy, wątki, głośność, pliki i skrypt
         ├── assets/                 # moduł assets: wczytywanie plików
         │   ├── README.md               # wstęp, dane procesora bez OpenGL, warstwy, indeks
         │   ├── asset-cache.md          # AssetCache, dwie tekstury zastępcze, Diagnostics / Assets
@@ -597,7 +615,9 @@ night-maze/
         │   ├── menu-camera.md          # kamera menu: spacer po labiryncie, wysoki przelot, przełączniki wiersza poleceń (M9, część 1)
         │   ├── maze-generator.md       # labirynt, generator, układ w świecie, World / Maze
         │   ├── maze-rendering.md       # MazeWorld, MazeRenderer, ModelDraw, macierze modelu, regeneracja
-        │   └── player.md               # gracz: chodzenie, noclip, oczy a stopy, testy
+        │   ├── player.md               # gracz: chodzenie, noclip, oczy a stopy, testy
+        │   ├── settings.md             # ustawienia gracza, plik night-maze-settings.txt, głośność
+        │   └── sound-cues.md           # dźwięki gry: reguły i miejsca wywołań (2026-10-07)
         ├── gfx/                    # moduł gfx, podzielony na dokumenty tematyczne
         │   ├── README.md               # wstęp, RAII i przenoszenie, warstwy, indeks
         │   ├── buffers-vao.md          # VBO, VAO, krok i przesunięcie, Buffer, VertexArray
@@ -640,7 +660,7 @@ night-maze/
         └── debug-ui.md             # okno debug ImGui i HUD w projekcie
 ```
 
-Drzewo nie pokazuje katalogu `tools/`: od M9, części 4 leży w nim `tools/record_menu_loop.py` (nagrywa pętlę tła menu z gry, tylko Windows, [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.9), a w podkatalogu `tools/blender/` skrypty Pythona dla Blendera, które budują
+Drzewo nie pokazuje katalogu `tools/`: od 2026-10-07 leży w nim `tools/make_sounds.py` (generuje siedem dźwięków do `assets/audio/`, [`../modules/audio/README.md`](../modules/audio/README.md), sekcja 5.6), od M9, części 4 `tools/record_menu_loop.py` (nagrywa pętlę tła menu z gry, tylko Windows, [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.9), a w podkatalogu `tools/blender/` skrypty Pythona dla Blendera, które budują
 modele, tekstury, obrazy nieba i mapę wysokości z `assets/`. Program ich nie czyta i CMake ich nie uruchamia. Opisuje je
 [`blender.md`](blender.md). Pliki katalogu, z rolą z komentarza na początku każdego:
 
@@ -789,6 +809,10 @@ wypisane na początku drzewa, przed katalogami.
 | `assets/skybox/*.png` | sześć ścian nieba (M6): `px`, `nx`, `py`, `ny`, `pz`, `nz`, każda 1024 x 1024, RGB, razem 5 278 627 bajtów. Nie należą do żadnego modelu ani materiału. Wczytuje je `game::Skybox`, bez odwracania wierszy i bez pamięci podręcznej assetów. Buduje je `tools/blender/make_skybox.py`, a ich zawartość sprawdza `tests/SkyboxTests.cpp` | [`../modules/renderer/skybox.md`](../modules/renderer/skybox.md), [`blender.md`](blender.md), sekcja 7.7 |
 | `src/ui/UiLayer.*`, `src/ui/AssetFileInterface.*` | `ui::UiLayer`: własność RmlUi (RAII), `loadDocument`, `show`, `setText`, `takeActions` (nazwy kliknięć `data-action`), `wantsKeyboard`, `setMouseEnabled`, `draw`. `ui::AssetFileInterface`: `Rml::FileInterface` z katalogu `assets/`. Biblioteka `ui`, obok `gfx` i `scene`, poniżej `game`; nie dołącza nagłówków `gfx`, `scene` ani `game` | [`../modules/ui/README.md`](../modules/ui/README.md) |
 | `src/video/*` (M9, część 4) | biblioteka `video` obok `ui`, nad `gfx`, pod `game`: `VideoDecoder.hpp` (jeden interfejs platformy), `VideoDecoderWindows.cpp` (Media Foundation, delay load), `VideoDecoderApple.mm` (AVFoundation, **nigdy nie skompilowany**), `VideoPlayer.*` (wątek dekodujący, kolejka czterech klatek) i `VideoClock.*` (czysta arytmetyka zegara, także w programie testowym) | [`../modules/video/README.md`](../modules/video/README.md) |
+| `src/audio/*` (2026-10-07) | biblioteka `audio` obok `ui` i `video`: klasa `audio::AudioEngine` (konstruktor, który nie rzuca bez karty dźwiękowej, `load`, `play`, `setMasterVolume`, `masterVolume`, `isAvailable`, `status`). Nagłówek nie dołącza miniaudio. Dwa pliki, bez testów | [`../modules/audio/README.md`](../modules/audio/README.md) |
+| `src/game/SoundCues.*` (2026-10-07) | `game::SoundCue` (siedem wartości), `SOUND_CUE_COUNT`, tablica plików, `flashlightKeyCue`, `RoundSoundSnapshot`, `roundStepCues`, puls słabej baterii (`LOW_BATTERY_PULSE_SLOW_SECONDS`, `LOW_BATTERY_PULSE_FAST_SECONDS`, `advanceLowBatteryPulse`). Czyste dane i funkcje, w `game_logic`, 15 przypadków w `tests/SoundCueTests.cpp` | [`../modules/game/sound-cues.md`](../modules/game/sound-cues.md) |
+| `external/miniaudio/miniaudio.c` i `README.md` (2026-10-07) | jedyny plik z implementacją miniaudio (`MINIAUDIO_IMPLEMENTATION` i `#include`); `README.md` mówi, skąd jest nagłówek i jak zmienić wersję | [`../libraries/miniaudio.md`](../libraries/miniaudio.md) |
+| `assets/audio/*.wav`, `README.md`, `tools/make_sounds.py` (2026-10-07) | siedem dźwięków (16 bitów, 44100 próbek na sekundę, razem 698852 bajty) i generujący je skrypt | [`../modules/audio/README.md`](../modules/audio/README.md), sekcja 5.6, [`../decisions/sounds-generated-by-script.md`](../decisions/sounds-generated-by-script.md) |
 | `src/game/MenuBackground.*`, `src/game/MenuBackgroundRenderer.*` (M9, część 4) | `game::MenuBackground`, `chooseMenuBackground` (reguła wideo, obraz, żywa scena, w `game_logic`) i renderer, który otwiera wideo i obraz, loguje wybór jedną linią i rysuje tło (w programie) | [`../modules/video/README.md`](../modules/video/README.md) |
 | `assets/video/menu_loop.mp4`, `menu_still.png` (M9, część 4) | pętla 30 s (H.264, 1280 x 720, 17 646 243 bajtów) i jej klatka 0 jako PNG. Nagrywa je `tools/record_menu_loop.py` (tylko Windows; nadpisuje te pliki, jeśli nie podać `--out-dir`) | [`../modules/game/menu-camera.md`](../modules/game/menu-camera.md), sekcja 5.9 |
 | `src/game/GameState.*` | `game::GameMode` (siedem wartości), `GameEvent` (jedenaście), `NewGame`, `nextMode`, `startsRound`, `startsNewGame`, `eventForAction` i pytania `updatesRound`, `animatesScene`, `isMenuOpen`, `showsHud`, `showsMinimap`, `usesMenuCamera`, `drawsScene`. Czyste dane i funkcje, w `game_logic` | [`../modules/game/game-states.md`](../modules/game/game-states.md) |
@@ -1106,10 +1130,12 @@ dojdzie warstwa `renderer/`, a `debug/` nadal będzie zależeć od wszystkich i 
 | Target | Rodzaj | Pliki | Linkuje |
 |---|---|---|---|
 | `engine` | biblioteka statyczna | `src/assets/*`, `src/core/*`, `src/gfx/*`, `src/scene/*` (od M8 także `Raycast.*`, od M9, części 2 `src/core/Files.*`) | `glad`, `glfw`, `glm::glm-header-only` (`PUBLIC`), `stb_image` (`PRIVATE`) |
-| `game_logic` | biblioteka statyczna | `src/game/Bloom.*` (M7, część druga), `src/game/Crystals.*`, `src/game/Discovery.*` (M7, część szósta), `src/game/EnvironmentMapping.*` (M8, część 1), `src/game/Exit.*`, `src/game/Fog.*` (M7, część trzecia), `src/game/GameState.*` (M9, część 2), `src/game/Grass.*`, `src/game/Interactables.*` (M8, podstawy bez okna), `src/game/Interaction.*` (M8, część 2), `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Minimap.*` (M7, część szósta), `src/game/Player.*`, `src/game/Puddles.*` (M8, część 1), `src/game/Round.*`, `src/game/Shadows.*` (M7, część czwarta), `src/game/Terrain.*`, `src/game/Vignette.*` (M7, część trzecia) | `engine` (`PUBLIC`) |
-| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/GameplayRenderer.*`, `src/game/InteractableRenderer.*` (M8, część 2), `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*`, `src/game/ModelDraw.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/Skybox.*`, `src/game/PostProcess.*`, `src/game/ShadowMap.*` (M7, część czwarta), `src/game/MinimapRenderer.*` (M7, część szósta), `src/game/PuddleRenderer.*` (M8, część 1), `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, okno debug, kategorie, widżety, ikony, szukanie, HUD, motyw, sampler podglądów; 22 pliki i 14 w `categories/`) | `engine`, `game_logic`, `ui`, `imgui` (`PRIVATE`) |
+| `game_logic` | biblioteka statyczna | `src/game/Bloom.*` (M7, część druga), `src/game/Crystals.*`, `src/game/Discovery.*` (M7, część szósta), `src/game/EnvironmentMapping.*` (M8, część 1), `src/game/Exit.*`, `src/game/Fog.*` (M7, część trzecia), `src/game/GameState.*` (M9, część 2), `src/game/Grass.*`, `src/game/Interactables.*` (M8, podstawy bez okna), `src/game/Interaction.*` (M8, część 2), `src/game/Lighting.*`, `src/game/Maze.*`, `src/game/MazeGenerator.*`, `src/game/MazeLayout.*`, `src/game/MazeWorld.*`, `src/game/Minimap.*` (M7, część szósta), `src/game/Player.*`, `src/game/Puddles.*` (M8, część 1), `src/game/Round.*`, `src/game/Shadows.*` (M7, część czwarta), `src/game/SoundCues.*` (2026-10-07), `src/game/Terrain.*`, `src/game/Vignette.*` (M7, część trzecia) | `engine` (`PUBLIC`) |
+| `night_maze` | program | `src/main.cpp`, `src/game/NightMazeApp.*`, `src/game/MazeRenderer.*`, `src/game/GameplayRenderer.*`, `src/game/InteractableRenderer.*` (M8, część 2), `src/game/TerrainRenderer.*`, `src/game/GrassRenderer.*`, `src/game/ModelDraw.*`, `src/game/ColliderLines.*`, `src/game/LightRig.*`, `src/game/Skybox.*`, `src/game/PostProcess.*`, `src/game/ShadowMap.*` (M7, część czwarta), `src/game/MinimapRenderer.*` (M7, część szósta), `src/game/PuddleRenderer.*` (M8, część 1), `src/game/ShaderUniforms.hpp`, `src/debug/*` (kontekst, `DebugUI`, okno debug, kategorie, widżety, ikony, szukanie, HUD, motyw, sampler podglądów; 22 pliki i 14 w `categories/`) | `engine`, `game_logic`, `ui`, `video`, `audio` (od 2026-10-07), `imgui` (`PRIVATE`) |
 | `ui` (M9, część 2) | biblioteka statyczna | `src/ui/UiLayer.*`, `src/ui/AssetFileInterface.*` (cztery pliki) | `engine` (`PUBLIC`), `rmlui_backend` (`PRIVATE`) |
 | `video` (M9, część 4) | biblioteka statyczna | `src/video/VideoClock.*`, `VideoDecoder.hpp`, `VideoDecoderWindows.cpp`, `VideoPlayer.*` (sześć plików; na Apple także `VideoDecoderApple.mm`) | `engine` (`PUBLIC`), `Threads::Threads` (`PUBLIC`), na Windowsie `mfplat`, `mfreadwrite`, `mfuuid`, `ole32` (`PRIVATE`) i `delayimp` z `/DELAYLOAD` (`INTERFACE`), na Apple cztery frameworki (`PRIVATE`) |
+| `audio` (2026-10-07) | biblioteka statyczna | `src/audio/AudioEngine.cpp` i `.hpp` (dwa pliki) | `engine` (`PUBLIC`), `miniaudio` (`PRIVATE`) |
+| `miniaudio` (2026-10-07) | biblioteka statyczna | `external/miniaudio/miniaudio.c`, nagłówek pobrany przez FetchContent z `SOURCE_SUBDIR`. Target zdefiniowany w `Dependencies.cmake`, makra `MA_NO_*` jako `PUBLIC`; na Linuksie `Threads::Threads`, `dl`, `m` | nic na Windowsie i macOS |
 | `night_maze_tests` | program | `tests/*.cpp` i `src/debug/Search.*` (od 2026-10-06 z `SearchTests.cpp`; od M8, części 1, z `EnvironmentMappingTests.cpp` i `PuddleTests.cpp`, od części 2 z `InteractionTests.cpp`, od M9, części 2 z `GameStateTests.cpp`; 39 plików z `tests/main.cpp` i `Search.*`) | `game_logic`, `doctest::doctest` (`PRIVATE`) |
 | `glad` | biblioteka statyczna | `external/glad/src/gl.c` | nic |
 | `glfw` | biblioteka statyczna | pobrana przez FetchContent | biblioteki systemowe |
@@ -1283,8 +1309,10 @@ Główny opis buildu. CMake czyta go od góry do dołu. Plik:
 ```cmake
 cmake_minimum_required(VERSION 3.24)
 
-project(NightMaze VERSION 0.1.0 LANGUAGES C CXX)
+project(NightMaze VERSION 0.10.0 LANGUAGES C CXX)
 ```
+
+(Do 2026-10-07 wersja wynosiła `0.1.0`; zmienił ją commit `74256ef`, [`../decisions/versions-m9-and-the-sound-slice.md`](../decisions/versions-m9-and-the-sound-slice.md). To jedyne źródło wersji, z którym workflow wydania porównuje tag.)
 
 - `cmake_minimum_required` musi być pierwszą instrukcją. Odrzuca starszy CMake i ustawia
   zachowanie (polityki) zgodne z wersją 3.24.
@@ -1328,12 +1356,14 @@ zakresem zmiennych. `include` wykonuje plik tak, jakby jego treść stała w tym
 # Strict warnings for our own targets only (third-party code is built with its defaults).
 function(night_maze_enable_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /permissive-)
+        target_compile_options(${target} PRIVATE /W4 /w14062 /permissive-)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 endfunction()
 ```
+
+**Uwaga z 2026-10-07:** od commita `a571c64` flagi MSVC to `/W4 /w14062 /permissive-` ([`build-windows.md`](build-windows.md), sekcja 5); fragment wyżej jest już w tej postaci (w repozytorium funkcja ma też komentarz o C4062).
 
 Własna funkcja CMake, żeby nie powtarzać tych samych flag przy każdym targecie. Wywołujemy
 ją tylko dla naszych czterech targetów: `engine`, `game_logic`, `night_maze` i
@@ -1345,7 +1375,7 @@ oznaczenie nagłówków jako systemowe ([`../libraries/glm.md`](../libraries/glm
 
 - clang i GCC: `-Wall -Wextra` włączają szeroki zestaw ostrzeżeń, `-Wpedantic` ostrzega przed
   odstępstwami od standardu.
-- MSVC: `/W4` i `/permissive-`, opis w [`build-windows.md`](build-windows.md).
+- MSVC: `/W4` i `/permissive-` (od 2026-10-07 także `/w14062`), opis w [`build-windows.md`](build-windows.md).
 - `PRIVATE`: flagi dotyczą tylko tego targetu, nie przenoszą się na targety, które go linkują.
 
 **Blok 5: target `engine`**
@@ -1913,6 +1943,8 @@ Pierwsza linia komentarza w pliku przypomina, dlaczego nie ma tu GLAD: to kod wy
 który leży w `external/glad`.
 
 Zmiana wersji biblioteki to zmiana jednej linii `GIT_TAG` i ponowna konfiguracja.
+
+**Blok miniaudio (2026-10-07)** jest ostatni w pliku: `FetchContent_Declare(miniaudio ... GIT_TAG 0.11.25 ... SOURCE_SUBDIR cmake)` pobiera źródło bez uruchamiania jego `CMakeLists.txt`, `add_library(miniaudio STATIC ...)` kompiluje `external/miniaudio/miniaudio.c`, a `target_compile_definitions(miniaudio PUBLIC MA_NO_ENCODING MA_NO_FLAC MA_NO_MP3 MA_NO_GENERATION MA_NO_RESOURCE_MANAGER)` wycina to, czego gra nie używa. Opis: [`../libraries/miniaudio.md`](../libraries/miniaudio.md). Tabela wyżej nie ma wierszy dla FreeType, RmlUi i miniaudio.
 
 Obok bloku stb leży w repozytorium katalog `external/stb/` z dwoma plikami: `stb_image.c`
 (dwie linie, które kompilują implementację pobranego nagłówka) i `README.md` (skąd jest

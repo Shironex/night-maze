@@ -82,7 +82,7 @@ target_include_directories(glad SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 Podłączenie w głównym [`CMakeLists.txt`](../../CMakeLists.txt):
 
 ```cmake
-project(NightMaze VERSION 0.1.0 LANGUAGES C CXX)
+project(NightMaze VERSION 0.10.0 LANGUAGES C CXX)
 ...
 add_subdirectory(external/glad)
 include(cmake/Dependencies.cmake)

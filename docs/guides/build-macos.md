@@ -2317,6 +2317,23 @@ Dodatkowo, zapisać: liczbę przypadków testowych i asercji tego komputera po `
 
 **Co nadal nie istnieje na żadnym systemie:** wideo w ruchu nie oglądał okiem nikt (na Windowsie agent oglądał zrzuty), a na macOS nikt nie zbudował dekodera.
 
+### Dźwięk (0.10.0, 2026-10-07) na macOS: lista w całości otwarta
+
+Zmiana z 2026-10-07 (biblioteka `audio`, miniaudio 0.11.25 pobrane w `cmake/Dependencies.cmake`, reguły `game/SoundCues.*`, głośność w ustawieniach, siedem plików w `assets/audio/`, karta Audio w oknie debug). **Nic z tego nie było budowane ani uruchamiane na macOS**, więc żaden punkt poniżej nie jest sprawdzony. Gałąź macOS w CMake (nic do linkowania, miniaudio ładuje ramy Core Audio w czasie działania) jest odczytana z komentarza w pliku i z dokumentacji miniaudio, nie wypróbowana ([`../libraries/miniaudio.md`](../libraries/miniaudio.md), sekcja 4.4).
+
+1. [ ] **`cmake --preset debug` działa:** `FetchContent` pobiera miniaudio z `SOURCE_SUBDIR cmake` (bez uruchamiania jej `CMakeLists.txt`) i powstaje target `miniaudio`.
+2. [ ] **`miniaudio.c` i `AudioEngine.cpp` kompilują się:** pierwszy bez ostrzeżeń kompilatora wymaganych od innych (cudzy kod, bez naszych ostrzeżeń), drugi bez ostrzeżeń pod `-Wall -Wextra -Wpedantic`.
+3. [ ] **`make format-check` i `make tidy` przechodzą** dla `src/audio/`, `src/game/SoundCues.*` i testów.
+4. [ ] **`make check`:** zapisać liczbę przypadków testowych i asercji tego komputera. Nowe pliki testów (`SoundCueTests.cpp`, zmiany w `SettingsTests.cpp`) nie zależą od systemu.
+5. [ ] **linia w logu** `[info] Audio: opened <urządzenie>, <częstotliwość> Hz, <kanały> channels` i `[info] Audio: 7 of 7 sounds loaded`. Jeśli zamiast tego jest `[warn] Audio: the sound device cannot be opened (...)`, powód jest w nawiasie.
+6. [ ] **dźwięk jest słyszalny** z głośników i ze słuchawek: klik latarki (F), zebranie kryształu, dźwignia, brama, puls przy słabej baterii (ok. 0,2 i mniej). Na Windowsie też nikt tego nie słyszał.
+7. [ ] **suwak `Volume`** na ekranie ustawień zmienia głośność, a przeciąganie gra próbkę najwyżej co 0,2 s.
+8. [ ] **karta Audio** w oknie debug (Diagnostics, Frame and shaders) pokazuje urządzenie macOS i liczby.
+9. [ ] **zamknięcie programu** przy grającym dźwięku kończy się bez zawieszenia.
+10. [ ] **ewentualna notaryzacja:** komentarz w CMake mówi, że program zbudowany z ładowaniem ram w czasie działania może jej nie przejść i że gra nie jest notaryzowana; jeśli to się zmieni, trzeba `MA_NO_RUNTIME_LINKING` i trzech ram.
+
+**Co nadal nie istnieje na żadnym systemie:** nikt nie słyszał dźwięków wydawanych przez ten kod. Sprawdzono je logami, testami reguł i pomiarami plików.
+
 
 ### Skróty: `make`
 
