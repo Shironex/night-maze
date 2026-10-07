@@ -1,6 +1,8 @@
 // Tests of game/Settings: the settings of the player and the text of their file.
 #include "game/Settings.hpp"
 
+#include "game/Interactables.hpp"
+
 #include <doctest/doctest.h>
 
 #include <string>
@@ -59,6 +61,44 @@ TEST_CASE("a file of an older version, without the volume line, plays at the def
     CHECK(settings.fieldOfViewDegrees == 75.0F);
 }
 
+TEST_CASE("a file of game 0.10, without the story line, starts the story at line 0") {
+    const GameSettings settings = game::parseSettings("mouse_sensitivity = 6.5\n"
+                                                      "field_of_view = 75\n"
+                                                      "fullscreen = on\n"
+                                                      "window_size = 1920x1080\n"
+                                                      "difficulty = hard\n"
+                                                      "master_volume = 42\n");
+    CHECK(settings.nextStoryLine == 0);
+    // Everything else is as the file says.
+    CHECK(settings.mouseSensitivity == doctest::Approx(6.5F));
+    CHECK(settings.fieldOfViewDegrees == 75.0F);
+    CHECK(settings.fullscreen);
+    CHECK(settings.windowSize == WindowSize{.width = 1920, .height = 1080});
+    CHECK(settings.difficulty == game::Difficulty::Hard);
+    CHECK(settings.masterVolume == 42.0F);
+}
+
+TEST_CASE("the story line counter is a number that goes round the table") {
+    const int lines = game::flavourLineCount();
+    CHECK(game::parseSettings("next_story_line = 7\n").nextStoryLine == 7);
+    CHECK(game::parseSettings("next_story_line = " + std::to_string(lines - 1)).nextStoryLine ==
+          lines - 1);
+    // Past the end: wrapped, not clamped.
+    CHECK(game::parseSettings("next_story_line = " + std::to_string(lines)).nextStoryLine == 0);
+    CHECK(game::parseSettings("next_story_line = " + std::to_string(lines + 3)).nextStoryLine == 3);
+    CHECK(game::parseSettings("next_story_line = 99999999999\n").nextStoryLine < lines);
+    // Not a number (a minus sign included): the counter stays at 0 and the rest still loads.
+    const GameSettings broken = game::parseSettings("next_story_line = soon\n"
+                                                    "next_story_line = -4\n"
+                                                    "fullscreen = on\n");
+    CHECK(broken.nextStoryLine == 0);
+    CHECK(broken.fullscreen);
+
+    GameSettings settings;
+    CHECK_FALSE(game::applySetting(settings, "next_story_line", "x"));
+    CHECK(settings.nextStoryLine == 0);
+}
+
 TEST_CASE("what is written is read back the same") {
     GameSettings settings;
     settings.mouseSensitivity = 7.3F;
@@ -67,6 +107,7 @@ TEST_CASE("what is written is read back the same") {
     settings.windowSize = {.width = 2560, .height = 1440};
     settings.difficulty = game::Difficulty::Easy;
     settings.masterVolume = 42.0F;
+    settings.nextStoryLine = 11;
 
     const GameSettings readBack = game::parseSettings(game::formatSettings(settings));
     CHECK(readBack.mouseSensitivity == doctest::Approx(7.3F));
@@ -75,6 +116,7 @@ TEST_CASE("what is written is read back the same") {
     CHECK(readBack.windowSize == settings.windowSize);
     CHECK(readBack.difficulty == game::Difficulty::Easy);
     CHECK(readBack.masterVolume == 42.0F);
+    CHECK(readBack.nextStoryLine == 11);
 
     // The defaults too, and exactly: writing them twice gives the same text.
     const std::string defaults = game::formatSettings(GameSettings{});
@@ -91,7 +133,8 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "fullscreen = off\n"
           "window_size = 1280x720\n"
           "difficulty = normal\n"
-          "master_volume = 100\n");
+          "master_volume = 100\n"
+          "next_story_line = 0\n");
 }
 
 TEST_CASE("spaces, Windows line ends and a byte order mark do not matter") {

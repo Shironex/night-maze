@@ -3,7 +3,7 @@ Wybory właściciela zapisują [`decisions/story-inheritance-and-build-order.md`
 
 # The Last Lamp: story design for Night Maze
 
-Status: proposal for the owner. Nothing here is in the repo. The premise ("The Last Lamp", quiet folk tale, moon splinters, hedge-stone maze, lamplighter's grandchild) and the enemy rules (moves only when unlit and unseen, caught means back to the start of the same maze, no loss screen, Calm has no enemy) are the owner's decisions and are taken as fixed.
+Status: proposal for the owner. Built so far: the 16 shadow-free story lines with the line counter (section 5, items 1 and 4), six notes per maze, the hint wording and the round end title; everything else here is not in the repo. The premise ("The Last Lamp", quiet folk tale, moon splinters, hedge-stone maze, lamplighter's grandchild) and the enemy rules (moves only when unlit and unseen, caught means back to the start of the same maze, no loss screen, Calm has no enemy) are the owner's decisions and are taken as fixed.
 
 Limits read from the code, which every line below respects:
 

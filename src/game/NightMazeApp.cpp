@@ -209,14 +209,16 @@ GameSettings loadSettings() {
 }
 
 // The request for the maze of a new game: the size and the crystals of its difficulty
-// level and its seed. The numbers of levers and notes keep their defaults.
-MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed) {
+// level and its seed. The numbers of levers and notes keep their defaults, and the story
+// notes start with the line the settings file says is the next unread one.
+MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed, int nextStoryLine) {
     const DifficultyLevel& level = difficultyLevel(difficulty);
     MazeSettings settings;
     settings.width = level.mazeWidth;
     settings.height = level.mazeHeight;
     settings.crystalCount = level.crystalCount;
     settings.seed = seed;
+    settings.interactables.firstStoryLine = nextStoryLine;
     return settings;
 }
 
@@ -304,7 +306,8 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_savedSettings(m_settings),
       // The first maze: the seed of the command line and the level of the settings. It
       // is the maze behind the main menu, and the maze of the round --play starts in.
-      m_mazeSettings(mazeSettingsFor(m_settings.difficulty, options.seed)),
+      m_mazeSettings(
+          mazeSettingsFor(m_settings.difficulty, options.seed, m_settings.nextStoryLine)),
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale,
@@ -515,10 +518,12 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
     }
     if (action == RESET_SETTINGS_ACTION) {
         // Everything this screen shows goes back to its default. The difficulty is
-        // chosen in the main menu and stays.
+        // chosen in the main menu and stays, and so does the story line counter.
         const Difficulty difficulty = m_settings.difficulty;
+        const int nextStoryLine = m_settings.nextStoryLine;
         m_settings = GameSettings{};
         m_settings.difficulty = difficulty;
+        m_settings.nextStoryLine = nextStoryLine;
         applyViewSettings();
         applyWindowSettings();
         applyAudioSettings();
@@ -750,6 +755,9 @@ void NightMazeApp::regenerateMaze() {
     InteractableSettings& interactables = m_mazeSettings.interactables;
     interactables.leverCount = std::clamp(interactables.leverCount, 0, MAX_LEVER_COUNT);
     interactables.noteCount = std::clamp(interactables.noteCount, 0, MAX_NOTE_COUNT);
+    // Every maze starts its story notes at the next unread line, also a maze built again
+    // for the same seed (the counter only moves when a maze is finished).
+    interactables.firstStoryLine = m_settings.nextStoryLine;
 
     // The height scale can be typed into its slider too.
     m_terrainSettings.heightScale =
@@ -974,6 +982,14 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // This step took the player through the open gate: the result screen comes up. The
     // steps that may follow in the same frame then find the round stopped.
     if (m_round.state == RoundState::Won) {
+        // The maze is finished: the story goes on after the lines this maze showed. The
+        // counter is written now, once, and not at every frame (saveSettings writes only
+        // when something changed). The counter is moved on from the line THIS maze started
+        // with, so winning the same maze twice ("Play again") does not skip a line. The
+        // maze keeps its lines until a new one is built.
+        m_settings.nextStoryLine = advanceStoryLine(m_mazeSettings.interactables.firstStoryLine,
+                                                    storyNoteCount(m_mazeWorld.interactables));
+        saveSettings();
         handleGameEvent(GameEvent::RoundWon);
     }
 }
