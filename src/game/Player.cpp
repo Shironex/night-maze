@@ -5,6 +5,8 @@
 #include "game/Terrain.hpp"
 #include "scene/Camera.hpp"
 
+#include <algorithm>
+
 namespace game {
 
 namespace {
@@ -17,6 +19,43 @@ constexpr glm::vec3 BODY_HALF_EXTENTS{Player::BODY_WIDTH / 2.0F, Player::BODY_HE
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
 
 } // namespace
+
+bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool wantsSprint,
+                    float stepSeconds) {
+    const bool sprinting = wantsSprint && !stamina.winded && stamina.level > 0.0F;
+
+    if (sprinting) {
+        // The drain. A step is stepSeconds / drainSeconds of the whole bar, so
+        // drainSeconds of sprinting empty it. max keeps the last step from going
+        // below 0.
+        stamina.level = std::max(stamina.level - stepSeconds / settings.drainSeconds, 0.0F);
+        stamina.secondsSinceDrain = 0.0F;
+        stamina.secondsFull = 0.0F;
+        if (stamina.level <= 0.0F) {
+            stamina.winded = true;
+        }
+        return true;
+    }
+
+    // No drain in this step: the wait for the refill runs, and after it the refill.
+    stamina.secondsSinceDrain += stepSeconds;
+    if (stamina.secondsSinceDrain >= settings.refillDelaySeconds) {
+        stamina.level = std::min(stamina.level + stepSeconds / settings.refillSeconds, 1.0F);
+    }
+    if (stamina.winded && stamina.level >= settings.windedRecovery) {
+        stamina.winded = false;
+    }
+    // The clock of the HUD counts only while the bar is full. The drain above sets it
+    // back to 0.
+    if (stamina.level >= 1.0F) {
+        stamina.secondsFull += stepSeconds;
+    }
+    return false;
+}
+
+bool staminaBarVisible(const Stamina& stamina) {
+    return stamina.level < 1.0F || stamina.secondsFull < STAMINA_BAR_LINGER_SECONDS;
+}
 
 scene::Aabb Player::box() const {
     // position is at the feet, the centre of the box is half of the body height above it.
@@ -67,9 +106,15 @@ void Player::update(const PlayerInput& input, float yawDegrees, float pitchDegre
     // Two keys at once give a vector longer than 1 (about 1.41 for W and D), which would
     // make diagonal movement faster. Normalizing brings the length back to 1. With no key
     // held the vector is zero and must be left alone: normalizing it divides by zero.
-    if (glm::length(direction) > 0.0F) {
+    const bool moving = glm::length(direction) > 0.0F;
+    if (moving) {
         direction = glm::normalize(direction);
     }
+
+    // The stamina, before the two modes part: in noclip the sprint key means "down", so
+    // nothing is drained there, but the bar still refills.
+    const bool sprinting =
+        advanceStamina(stamina, staminaSettings, !noclip && input.sprint && moving, stepSeconds);
 
     if (noclip) {
         // Distance of one step: metres per second times seconds. Nothing is in the way.
@@ -85,7 +130,9 @@ void Player::update(const PlayerInput& input, float yawDegrees, float pitchDegre
 
     // The keys move the player in the horizontal plane only: direction has no vertical
     // part here, so the speed over the ground is the same uphill and downhill.
-    const float speed = input.sprint ? sprintSpeed : walkSpeed;
+    // The sprint speed only while the stamina allows it: not when winded, and not when
+    // no direction key is held.
+    const float speed = sprinting ? sprintSpeed : walkSpeed;
     const glm::vec3 wanted = direction * (speed * stepSeconds);
 
     // The walls take away the part of the movement that would go into them and leave the
