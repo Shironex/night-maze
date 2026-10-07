@@ -2,6 +2,22 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.9.0 (2026-10-06)
+
+The game gets a front door: menus, difficulty levels and settings.
+
+### What's new
+
+- The game now starts in a main menu with Play, Settings and Quit. Move with the arrow keys or Tab and choose with Enter.
+- Behind the main menu a short video of the maze loops. If the video cannot play, a still picture of the same scene is shown instead.
+- Three difficulty levels, Easy, Normal and Hard, chosen in the main menu. A higher level gives you a bigger maze, more crystals to find and a shorter flashlight battery. Easy is the game as it was before.
+- You can type a seed in the main menu, or press New seed for another one. The same seed and difficulty always give the same maze.
+- Press Escape while you play to pause. From the pause screen you can resume, restart the maze, open the settings or go back to the menu.
+- The round now ends with a screen that shows your time, your crystals, the difficulty and the seed. From there you can play the same maze again, start a new maze or go back to the menu.
+- A settings screen with mouse sensitivity, field of view, fullscreen and window size. Your choices are saved to a file and are still there the next time you start the game.
+- The round pauses by itself when the window loses focus.
+- The panels that show information about the game are now one window, with search and pinning.
+
 ## 0.8.0 (2026-10-06)
 
 Levers, notes and a sky you can see in the water.
