@@ -384,6 +384,15 @@ NightMazeApp::~NightMazeApp() {
     saveSettings();
 }
 
+// A cue that was started plays to its end, also when the pause menu comes up or the
+// round is left in that moment (back to the main menu, a restart, a new maze). Nothing
+// stops it on purpose: every cue is a one shot of under two seconds, so the longest
+// thing that can be heard over a menu is the tail of the gate, and stopping sounds for
+// the pause would need a way to go on with them afterwards. No new cue OF THE ROUND
+// starts under a menu: those come from onUpdate, which returns early there, and the
+// keys of the round are not read (roundInput in onRender). The one cue a menu itself
+// plays is the sample click of the volume slider on the settings screen, which is
+// there to be heard (handleControlChanges).
 void NightMazeApp::playCue(SoundCue cue) {
     m_audio.play(soundCueIndex(cue));
     m_lastCueName = soundCueName(cue);
@@ -1019,8 +1028,8 @@ void NightMazeApp::onRender(double alpha) {
     // Every lever at once, asked for by a button of the debug UI. Handled here like the
     // restart: between two fixed steps. Open walls leave the obstacle list. One sound
     // for all of them, because the walls open in the same moment, and none under a menu
-    // or the menu camera (the debug window is open there too): no cue sounds while the
-    // round stands still.
+    // or the menu camera (the debug window is open there too): no cue of the round
+    // sounds while the round stands still.
     if (m_gameplay.pullAllLevers) {
         m_gameplay.pullAllLevers = false;
         if (pullAllLevers(m_round, m_mazeWorld) > 0) {
