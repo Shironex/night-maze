@@ -6,7 +6,7 @@ Launcher to mały program na pulpit, który instaluje najnowszą wersję Night M
 
 Decyzje właściciela o launcherze są w [`../decisions/launcher-tauri-in-this-repo.md`](../decisions/launcher-tauri-in-this-repo.md) (technika, miejsce kodu, skąd wydania, uzupełnienie z 2026-10-07) i w czterech notatkach z tego dnia: [`../decisions/launcher-installers-repository.md`](../decisions/launcher-installers-repository.md), [`../decisions/launcher-keys-and-rotation.md`](../decisions/launcher-keys-and-rotation.md), [`../decisions/licence-mit-code-assets-excluded.md`](../decisions/licence-mit-code-assets-excluded.md) i [`../decisions/launcher-first-release-windows-and-release-flow.md`](../decisions/launcher-first-release-windows-and-release-flow.md).
 
-Stan na 2026-10-07: kod jest, **nic nie jest opublikowane** (repozytorium gry jest prywatne, nie ma tagu ani wydania), a prawdziwy klucz nie podpisał jeszcze żadnego pliku, który launcher by sprawdził.
+Stan na wieczór 2026-10-07: kod jest i **pierwsze wydania są opublikowane**. Właściciel zbudował lokalnie na Windowsie i opublikował launcher 0.1.0 i 0.1.1 (publiczne repozytorium `Shironex/night-maze-launcher`), repozytorium gry `Shironex/night-maze` jest od tego wieczoru publiczne, a wydanie gry 0.10.0 (tag `v0.10.0`) podpisał kluczem manifestu A. Prawdziwa samoaktualizacja launchera została uruchomiona **raz, na jednym komputerze z Windows 11**. Dalej nie uruchomiono rotacji kluczy, aktualizacji na czystym drugim komputerze, SmartScreena na komputerze, który nigdy nie widział launchera, workflow wydania ani niczego na macOS (sekcja 2). Rano tego samego dnia stan był inny (nic nie było opublikowane); notatki o decyzjach mają dopisane daty.
 
 ## 1. Co launcher robi
 
@@ -32,20 +32,32 @@ Trzy rodzaje dowodów trzymam osobno, tak jak w [`build-windows.md`](build-windo
 **Zgłoszone z repozytorium i od zlecającego (2026-10-07, Windows, nie powtarzałem):**
 
 - zestawy testów Rust (`cargo test --workspace`) i okna (`pnpm test`); lista poleceń jest w README launchera, sekcja "Checks",
-- **build wydaniowy launchera z kluczem deweloperskim** (nigdy do publikacji). README launchera w sekcji "Checks" mówi jeszcze, że taki build "has not been run"; to zdanie jest starsze niż to zgłoszenie. W katalogu `launcher/target/release/bundle/nsis` leży instalator `0.1.0` z tego dnia (zobaczyłem plik, nie uruchamiałem go),
+- **build wydaniowy launchera z kluczem deweloperskim** (nigdy do publikacji). README launchera w sekcji "Checks" zapisuje już ten jeden build próbny. W katalogu `launcher/target/release/bundle/nsis` leży instalator `0.1.0` z tego dnia (zobaczyłem plik, nie uruchamiałem go),
 - **pełny suchy przebieg wydania gry** w osobnym worktree z kluczem deweloperskim: statyczne środowisko uruchomieniowe i brak zależności od bibliotek DLL Visual C++, zip zawiera plik wykonywalny, 86 plików assetów i plik z notami (liczbę 86 plików w `assets/` sprawdziłem poleceniem `find`, reszta jest zgłoszona), rozmiar, suma i nazwa pliku w manifeście zgadzają się z zipem, przykład `verify_manifest` odrzuca podpis kluczem deweloperskim, a gra startuje z rozpakowanego katalogu z dźwiękiem i filmem w menu.
+
+**Uruchomione wieczorem 2026-10-07 przez właściciela (zgłoszone przeze mnie od zlecającego, nie powtarzałem; to, co dało się sprawdzić poleceniami tylko do odczytu, jest oznaczone):**
+
+- **launcher 0.1.0 i 0.1.1 zbudowane lokalnie na Windowsie przez właściciela, podpisane kluczem aktualizacji A i opublikowane jako zwykłe wydania** w publicznym repozytorium `Shironex/night-maze-launcher`. Sprawdziłem `gh release list` i `gh release view`: oba wydania istnieją, nie są szkicem ani wydaniem wstępnym, 0.1.1 jest oznaczone jako najnowsze, każde ma instalator i `latest.json`. Że podpisy niosą wersję i że `requireSignedVersion` je przyjęło, jest zgłoszone,
+- **prawdziwa samoaktualizacja, raz.** Właściciel zainstalował 0.1.0 i zaktualizował go do 0.1.1 przyciskiem w ustawieniach; launcher uruchomił się ponownie jako 0.1.1 i napisał, że jest aktualny. To jest jedyny dowód całej drogi (kod aktualizacji, sprawdzenie podpisu z `requireSignedVersion`, pasywny instalator, restart), z jednego komputera z Windows 11,
+- **wydanie gry 0.10.0.** Zbudowane lokalnie w osobnym worktree ze statycznym środowiskiem uruchomieniowym, spakowane, a `manifest.json` i `news.json` podpisał właściciel kluczem manifestu A. Przykład `verify_manifest` napisał: "verified: manifest of version 0.10.0 is signed by the first (manifest-a) release key". To **pierwszy raz, gdy podpis prawdziwego klucza wydania sprawdził kod launchera**. Wydanie `v0.10.0` ma pięć plików (zip, manifest, news, dwa podpisy): sprawdziłem `gh release view`. Zainstalowany launcher 0.1.1 pokazał potem notatki 0.10.0 i przycisk instalacji, zainstalował grę i ją uruchomił (zgłoszone),
+- **repozytorium gry jest publiczne** od tego wieczoru (sprawdziłem `gh repo view`: `PUBLIC`), `main` jest wypchnięty, a opisany tag `v0.10.0` wskazuje commit `7b5e0b1` (sprawdziłem `git`). Decyzje właściciela, cytat: "Release now" i, o dokumentach kursu w `docs/`, "Yes, publish everything".
 
 **Wcześniej, widziane na zrzucie ekranu przez agenta (2026-10-06), nie przez właściciela:** na Windowsie 11, przeciw lokalnemu serwerowi testowemu, agent obejrzał na zrzutach ekranu **pięć przepływów** okna. Które to były przepływy, zgłoszono mi tylko jako liczbę, a w repozytorium takiej listy nie ma, więc ich nie wymieniam. README launchera wylicza stany, które okno umie pokazać (`ready`, `update`, `downloading`, `installing`, `running`, `offline`, `first-run`, `first-run-offline`, `rolled-back`, `update-failed`, `launcher-too-old`, `launcher-update`, `launcher-downloading`), ale nie mówi, że każdy z nich obejrzano. To **nie jest** test właściciela.
 
 **Nigdy nie uruchomione:**
 
-- **prawdziwa aktualizacja launchera z jednej wersji do następnej.** Kod aktualizacji, sprawdzenie podpisu z `requireSignedVersion`, pasywny instalator i restart są napisane z dokumentacji i testowane we fragmentach. Jedyny test całej drogi to kroki z README ("Before the first friend gets a link"),
+- **aktualizacja launchera na czystym drugim komputerze.** Jedyna prawdziwa aktualizacja (0.1.0 do 0.1.1) poszła na jednym komputerze z Windows 11; nie zapisano, czy był czysty, i nie ma drugiego,
 - **rotacja kluczy**, dla żadnej z dwóch par, w tym drugie podejście z kluczem B w `updater.rs` (`fetch`) przeciw prawdziwemu wydaniu,
-- **podpis zrobiony prawdziwym kluczem wydania i sprawdzony przez launcher.** Pierwsze prawdziwe wydanie jest tym sprawdzeniem. Dotąd podpis sprawdzały tylko klucze testowe i klucz deweloperski,
-- **workflow wydania na runnerze GitHuba** (`.github/workflows/release.yml`). Został sparsowany jako YAML, a skrypty uruchomiono lokalnie. Zadanie macOS, warunki `if:` i krok publikacji nie były wykonane,
+- **workflow wydania na runnerze GitHuba** (`.github/workflows/release.yml`). Został sparsowany jako YAML, a skrypty uruchomiono lokalnie; pierwsze wydania były lokalne. Jest dziś tylko ręczny. Sprawdziłem `gh run list --workflow release.yml`: brak przebiegów. Zadanie macOS, warunki `if:` i krok publikacji nie były wykonane,
 - **cokolwiek na macOS**: budowanie launchera i gry, uruchamianie, aktualizacja launchera, podpis ad hoc pakietu, bit wykonywalny rozpakowanej gry, półprzezroczysty pasek tytułu (`src-tauri/tauri.macos.conf.json`). Jest to napisane tylko z dokumentacji,
-- **SmartScreen i programy antywirusowe na czystym komputerze.** Launcher i jego instalator nie mają podpisu kodu, więc Windows ostrzeże przy pierwszym starcie. Jak zachowa się SmartScreen i czy antywirus sprzeciwi się programowi, który pobiera i uruchamia inny program, nikt nie sprawdził,
-- **prawdziwy adres wydań gry**: nic nie jest opublikowane, repozytorium gry jest prywatne, więc przeciw prawdziwemu adresowi launcher pokazuje "offline".
+- **SmartScreen i programy antywirusowe na komputerze, który nigdy nie widział launchera.** Launcher i jego instalator nie mają podpisu kodu, więc Windows ostrzeże przy pierwszym starcie. Jak zachowa się SmartScreen i czy antywirus sprzeciwi się programowi, który pobiera i uruchamia inny program, nikt nie sprawdził (na komputerze właściciela, gdzie launcher był budowany i instalowany, nie zapisano ostrzeżenia).
+
+**Otwarte sprawy po wydaniach (stan z 2026-10-07):**
+
+- dwa alerty Dependabota w `launcher/`: `source-map-js` (wysoki, w `pnpm-lock.yaml`) i `glib` (średni, w `Cargo.lock`); sprawdziłem `gh api` (alerty otwarte) i `gh run list` (automatyczne aktualizacje obu zakończyły się błędem),
+- nagłówek okna launchera mówi "Windows · macOS" (`launcher/src/App.tsx`), a wydawany jest tylko Windows; decyzja właściciela: zostawić na razie,
+- właściciel planuje angielskie README obu repozytoriów razem ze swoim zestawem do prezentacji, w tym w repozytorium launchera wyjaśnienie, dlaczego jest osobne, i plan przeniesienia tam później źródeł launchera,
+- nie wiem, czy właściciel od wydania posłuchał dźwięków z 0.10.0: wydał bez słuchania, więc nie zapisuję ich jako zatwierdzonych.
 
 ## 3. Uruchomienie lokalne
 
@@ -61,7 +73,7 @@ Dokładne kroki, w kolejności, są w README launchera (sekcja "Releasing"), wi�
 - **launcher** buduje się na komputerze właściciela poleceniem `pnpm tauri build`, które potrzebuje klucza aktualizacji, a `scripts/build-latest.mjs` pisze `latest.json`,
 - **gra** ma dwie drogi: lokalną (`package-game.mjs`, `build-feed.mjs` z podpisem, sprawdzenie przykładem `verify_manifest`, `gh release create`) i przez workflow, który działa tylko ręcznie i zostawia **szkic** wydania bez podpisów; właściciel podpisuje pliki json u siebie (`scripts/sign-file.mjs`) i dopiero potem publikuje szkic ([`../decisions/launcher-first-release-windows-and-release-flow.md`](../decisions/launcher-first-release-windows-and-release-flow.md)),
 - **pierwsze wydanie dla znajomych jest tylko na Windowsa**,
-- przed pierwszym linkiem dla znajomego README podaje listę ośmiu kroków, w tym próbę prawdziwej aktualizacji launchera z 0.1.0 do 0.1.1.
+- przed pierwszym linkiem dla znajomego README podaje listę ośmiu kroków, w tym próbę prawdziwej aktualizacji launchera z 0.1.0 do 0.1.1. Lista zostaje jako procedura na kolejne wydania; dla 0.1.0 i 0.1.1 wykonał ją właściciel wieczorem 2026-10-07 (bez czystego komputera i bez SmartScreena na komputerze, który launchera nie widział). Do pierwszej wersji gry pierwszy krok to było wydanie 0.10.0, tak jak opisano w sekcji 2.
 
 ## 5. Powiązane
 
