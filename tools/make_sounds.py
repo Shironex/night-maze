@@ -1,4 +1,4 @@
-# Makes the sounds of the game: seven short WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: eight short WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -77,6 +77,8 @@ MAX_SAMPLE = 32767
 # pulse is the quietest of all because it repeats for as long as the battery is low.
 # A low tone also needs a far higher level than a high one to be heard at all, so the
 # pulse is quieter to the ear than its number says (see the dBA column of --report).
+# The breath repeats too, while the player is winded, and it lies where the ear hears
+# best: it gets the lowest number of all and is still easier to hear than the pulse.
 PEAK_DB = {
     "flashlight_on.wav": -11.0,
     "flashlight_off.wav": -12.5,
@@ -85,6 +87,7 @@ PEAK_DB = {
     "crystal_pickup.wav": -3.0,
     "lever_pull.wav": -6.0,
     "gate_open.wav": -3.0,
+    "winded_breath.wav": -24.0,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -600,6 +603,47 @@ def gate_open():
     return finish(channels)
 
 
+# ---- the breath of a winded player -----------------------------------------------------------
+
+
+def winded_breath():
+    # One heavy breath through the open mouth: in, a short stop, out. A breath has no
+    # tone, it is air rushing through a narrow place, so both halves are noise behind
+    # band passes with a low Q (a high Q would whistle).
+    #
+    #   - In, 0.32 s: a band around 1500 Hz. Air that is drawn in is the thinner and
+    #     brighter of the two, and the quieter one.
+    #   - Out, 0.5 s, starting at 0.4 s: two bands, around 650 and 1250 Hz. Lower and
+    #     fuller, with a fast start and a long tail: the air is pushed out and then
+    #     runs out.
+    #   - Both swell and fade along smooth curves, and a little wander of the loudness
+    #     keeps them from being a clean hiss.
+    #
+    # A low pass at 2600 Hz keeps the breath soft (no "s" in it) and a high pass at
+    # 250 Hz keeps it from rumbling. The whole sound is 0.95 s long: the breaths come
+    # every 1.1 s (WINDED_BREATH_SECONDS in src/game/SoundCues.hpp), and a breath that
+    # started again before the last one ended would be cut off.
+    generator = random.Random(8)
+    sound = silence(0.95)
+
+    in_count = count_of(0.32)
+    air_in = biquad(noise(generator, in_count), "band", 1500.0, 0.9)
+    air_in = scaled(scaled(air_in, swell_curve(in_count, 0.15, 0.13)),
+                    wander_curve(generator, in_count, 22.0, lowest=0.7))
+
+    out_count = count_of(0.5)
+    raw = noise(generator, out_count)
+    air_out = [low + 0.5 * high for low, high in zip(biquad(raw, "band", 650.0, 1.0),
+                                                     biquad(raw, "band", 1250.0, 1.4))]
+    air_out = scaled(scaled(air_out, swell_curve(out_count, 0.08, 0.36)),
+                     wander_curve(generator, out_count, 22.0, lowest=0.7))
+
+    # The mix: breathing out at a loudness of 1, breathing in at half of it.
+    place(sound, with_level(air_in, 0.5), 0.0)
+    place(sound, with_level(air_out, 1.0), 0.4)
+    return finish([biquad(biquad(sound, "low", 2600.0), "high", 250.0)])
+
+
 # The file of every sound. The names are the ones in src/game/SoundCues.cpp.
 SOUNDS = [
     ("flashlight_on.wav", flashlight_on),
@@ -609,6 +653,7 @@ SOUNDS = [
     ("crystal_pickup.wav", crystal_pickup),
     ("lever_pull.wav", lever_pull),
     ("gate_open.wav", gate_open),
+    ("winded_breath.wav", winded_breath),
 ]
 
 
@@ -808,6 +853,7 @@ def checks(m, together):
     on, off, dead = m["flashlight_on.wav"], m["flashlight_off.wav"], m["flashlight_dead.wav"]
     pulse, crystal = m["low_battery_pulse.wav"], m["crystal_pickup.wav"]
     lever, gate = m["lever_pull.wav"], m["gate_open.wav"]
+    breath = m["winded_breath.wav"]
     result = []
     for name, one in m.items():
         result.append((f"{name}: peak at or below -3 dBFS", one["peak"] <= -2.99))
@@ -837,6 +883,13 @@ def checks(m, together):
         ("gate: loudness is not flat (swings by more than 10 dB while it sinks)",
          gate["swing"] is not None and gate["swing"] > 10.0),
         ("gate: loudest at the settling thud (1.3 to 1.5 s)", 1.3 <= gate["loud_at"] <= 1.5),
+        ("breath: shorter than the wait between two breaths (1.1 s)", breath["seconds"] < 1.1),
+        ("breath: air and no rumble, under 5 % of its energy below 250 Hz",
+         breath["below250"] < 0.05),
+        ("breath: soft, under 15 % of its energy above 2 kHz", breath["above2k"] < 0.15),
+        ("breath: quieter to the ear than every sound but the pulse",
+         breath["dba"] < min(one["dba"] for name, one in m.items()
+                             if name not in ("low_battery_pulse.wav", "winded_breath.wav"))),
         (f"crystal and gate started together: peak {together:.2f} dBFS, at or below -1",
          together <= -1.0),
     ]
