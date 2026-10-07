@@ -22,6 +22,16 @@ namespace {
 // title bar, which is above the contents.
 constexpr int TITLE_BAR_ROOM = 32;
 
+#if !defined(__APPLE__)
+// How much higher than its screen the fullscreen window is on Windows, in screen
+// coordinates. A borderless window of EXACTLY the size of the screen is treated by the
+// driver like a window that owns the monitor, and screenshots are frozen again
+// (measured on an NVIDIA card, 2026-10-07). One row more is enough to stop that. The
+// row hangs out under the bottom edge of the screen: it is not seen, except as one line
+// on a second screen that stands right below this one.
+constexpr int BORDERLESS_EXTRA_HEIGHT = 1;
+#endif
+
 // GLFW calls this whenever one of its functions fails, with a readable description.
 void onGlfwError(int code, const char* description) {
     logError("GLFW error " + std::to_string(code) + ": " + description);
@@ -208,12 +218,31 @@ void Window::setFullscreen(bool fullscreen) {
         // Where the window is now: the way back.
         glfwGetWindowPos(m_handle, &m_windowedX, &m_windowedY);
         glfwGetWindowSize(m_handle, &m_windowedSize.width, &m_windowedSize.height);
-        // A window with a monitor is fullscreen on it. Asking for the size and the
-        // refresh rate the screen already has keeps its video mode as it is.
+#if defined(__APPLE__)
+        // macOS: a window with a monitor is fullscreen on it. Asking for the size and
+        // the refresh rate the screen already has keeps its video mode as it is.
         glfwSetWindowMonitor(m_handle, screen, 0, 0, mode->width, mode->height, mode->refreshRate);
+#else
+        // Windows: a window WITHOUT a monitor that has no title bar and no border and
+        // lies over its screen (a borderless window). It is not given to the monitor
+        // like on macOS: the graphics driver then puts the frames on the screen without
+        // the desktop of Windows seeing them, and every screenshot, screen share and
+        // recording got one old frame for as long as the game was the active window.
+        int screenX = 0;
+        int screenY = 0;
+        glfwGetMonitorPos(screen, &screenX, &screenY);
+        glfwSetWindowAttrib(m_handle, GLFW_DECORATED, GLFW_FALSE);
+        // glfwSetWindowMonitor without a monitor moves and resizes in one call. The
+        // last argument is the refresh rate, which only a window with a monitor has.
+        glfwSetWindowMonitor(m_handle, nullptr, screenX, screenY, mode->width,
+                             mode->height + BORDERLESS_EXTRA_HEIGHT, GLFW_DONT_CARE);
+#endif
     } else {
-        // A window without a monitor is an ordinary window again. The last argument is
-        // the refresh rate, which only a fullscreen window has.
+        // The title bar and the border come back first, so the place and the size that
+        // follow are again the ones of the contents of a window with a frame. On macOS
+        // the window never lost them and this changes nothing.
+        glfwSetWindowAttrib(m_handle, GLFW_DECORATED, GLFW_TRUE);
+        // A window without a monitor is an ordinary window again.
         glfwSetWindowMonitor(m_handle, nullptr, m_windowedX, m_windowedY, m_windowedSize.width,
                              m_windowedSize.height, GLFW_DONT_CARE);
     }

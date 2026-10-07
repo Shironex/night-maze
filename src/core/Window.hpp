@@ -57,7 +57,10 @@ public:
 
     /// Switches between a window and fullscreen. Fullscreen covers the whole screen the
     /// window is on, at the resolution that screen has at that moment: the video mode
-    /// of the desktop is not changed, so nothing else on the desktop moves. Switching
+    /// of the desktop is not changed, so nothing else on the desktop moves. On Windows
+    /// it is a window without a title bar and a border that lies over the screen, so
+    /// screenshots and recordings show it, and windowSize() is one row higher than the
+    /// screen (see Window.cpp). On macOS the window is given to the monitor. Switching
     /// back gives the window the place and the size it had before. Does nothing when
     /// the state does not change.
     void setFullscreen(bool fullscreen);
