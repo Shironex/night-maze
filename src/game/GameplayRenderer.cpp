@@ -1,4 +1,5 @@
-// GameplayRenderer: draws the things of a round, the crystals and the gate, with their models.
+// GameplayRenderer: draws the things of a round, the crystals, the flasks and the gate, with
+// their models.
 // See docs/modules/game/gameplay.md
 #include "game/GameplayRenderer.hpp"
 
@@ -25,11 +26,18 @@ constexpr const char* CRYSTAL_A_MODEL_FILE = "models/crystal_a.obj";
 constexpr const char* CRYSTAL_B_MODEL_FILE = "models/crystal_b.obj";
 constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
 
+// The model of a flask of tea. The real one (models/flask.obj) is not in the repository
+// yet, so the brass handle of a lever stands in for it: a small brass thing with a knob
+// at one end. Changing this one line is all the real model needs, as long as it is
+// built like the crystals: in metres, upright, with its origin at its base.
+constexpr const char* FLASK_MODEL_FILE = "models/lever_handle.obj";
+
 } // namespace
 
 GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
     : m_crystals{assets.model(core::assetPath(CRYSTAL_A_MODEL_FILE)),
                  assets.model(core::assetPath(CRYSTAL_B_MODEL_FILE))},
+      m_flask(assets.model(core::assetPath(FLASK_MODEL_FILE))),
       m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))) {}
 
 void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
@@ -85,6 +93,34 @@ void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const Round& roun
         drawModel(shader, m_crystals[static_cast<std::size_t>(crystal.variant)],
                   std::span<const glm::mat4>(&crystalMatrix, 1));
     }
+}
+
+void GameplayRenderer::drawFlasks(const gfx::Shader& shader, const MazeWorld& world,
+                                  const Round& round) const {
+    setModelSamplers(shader);
+
+    // A dim warm glow, the same for every flask and steady: it does not pulse.
+    shader.setVec3(EMISSIVE_UNIFORM, FLASK_GLOW);
+    for (std::size_t i = 0; i < round.flasks.size(); ++i) {
+        const RoundFlask& flask = round.flasks[i];
+        if (flask.collected) {
+            continue;
+        }
+
+        // Where the flask rests is asked from the terrain of the world in every frame:
+        // a flask keeps only its cell. It moves like a crystal (the same slow bob and
+        // turn), which is what tells the player that it can be picked up.
+        const int index = static_cast<int>(i);
+        const glm::vec3 rest = flaskRestPosition(flask.cell, groundHeightAt(world, flask.cell));
+        scene::Transform transform;
+        transform.position = crystalBobPosition(rest, index, round.animationSeconds);
+        transform.rotationDegrees = {0.0F, crystalSpinDegrees(index, round.animationSeconds), 0.0F};
+        const glm::mat4 flaskMatrix = transform.matrix();
+
+        drawModel(shader, m_flask, std::span<const glm::mat4>(&flaskMatrix, 1));
+    }
+    // Back to black: what is drawn next with this program must not glow by accident.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 }
 
 } // namespace game

@@ -1609,6 +1609,7 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
+    m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round);
     // The levers and the notes cast shadows too. An empty PickState: nothing is
     // highlighted, the depth program has no colours.
     m_interactableRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, PickState{},
@@ -1718,6 +1719,9 @@ bool NightMazeApp::crystalsReflect() const {
 
 void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
     m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round);
+    // The flasks, always with the program of the walls: they are brass, not glass, and
+    // show no sky.
+    m_gameplayRenderer.drawFlasks(shader, m_mazeWorld, m_round);
     // Every crystal is drawn exactly once per frame: here, with the program of the
     // walls, or later by drawReflections with the reflect program.
     if (!crystalsReflect()) {
