@@ -1,6 +1,6 @@
 # Numery wersji: 0.9.0 to kamień M9, 0.10.0 to kawałek z dźwiękiem
 
-Data: 2026-10-07. Stan: obowiązuje, z kodem. Decyzja właściciela projektu jest w sekcji 2; kontekst, tabela, skutki i warunki powrotu to moja analiza.
+Data: 2026-10-07, uzupełniona wieczorem tego dnia (sekcja 4a). Stan wieczorem 2026-10-07: obowiązuje, z kodem; tag `v0.10.0` istnieje i wydanie 0.10.0 jest opublikowane (rano nie było żadnego tagu). Decyzja właściciela projektu jest w sekcji 2; kontekst, tabela, skutki i warunki powrotu to moja analiza.
 Kod: [`CMakeLists.txt`](../../CMakeLists.txt) (linia `project(NightMaze VERSION 0.10.0 ...)`), [`.github/workflows/release.yml`](../../.github/workflows/release.yml) (porównanie tagu z wersją), [`CHANGELOG.md`](../../CHANGELOG.md). Dokument modułu: [`../guides/launcher.md`](../guides/launcher.md) (wydania).
 
 ## 1. Kontekst
@@ -41,7 +41,11 @@ To jest analiza, nie decyzja. Opcji, z których wybierał właściciel, nie znam
 
 **Czego ta notatka nie przesądza.** Numeru następnego kawałka, daty pierwszego wydania ani tego, czy kamień M9 dostanie tag `v0.9.0` po fakcie.
 
+## 4a. Uzupełnienie z wieczoru 2026-10-07: tag `v0.10.0` istnieje
+
+Opis stanu (zgłoszone przez zlecającego; sprawdziłem `git tag` i `gh release view`). Zdanie z sekcji 4, że żaden tag nie istnieje, opisuje stan z rana. Wieczorem właściciel wypchnął `main` i opisany (annotated) tag `v0.10.0`, który wskazuje commit `7b5e0b1` (`CMakeLists.txt` ma wtedy `0.10.0`, więc tag zgadza się z wersją, jak wymaga workflow). Wydanie `v0.10.0` w `Shironex/night-maze` jest opublikowane, nie jest szkicem i ma pięć plików (zip, manifest, news, dwa podpisy). Zbudowano je lokalnie, nie przez workflow. Tagu `v0.9.0` nadal nie ma i nic nie wskazuje, że będzie: ostatni punkt "Czego ta notatka nie przesądza" pozostaje otwarty.
+
 ## 5. Kiedy wrócić do tej decyzji
 
 - Przy następnym kawałku: wybrać kolejny numer i zmienić linię w `CMakeLists.txt`.
-- Przy pierwszym tagu: sprawdzić, że tag równa się `v` plus wersja z `CMakeLists.txt`.
+- Przy pierwszym tagu: sprawdzić, że tag równa się `v` plus wersja z `CMakeLists.txt`. (Zrobione wieczorem 2026-10-07: `v0.10.0` na `7b5e0b1`, sekcja 4a.)

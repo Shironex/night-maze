@@ -1,6 +1,6 @@
 # Licencja: MIT dla kodu, assety nią nie są objęte
 
-Data: 2026-10-07. Stan: obowiązuje jako decyzja, plik `LICENSE` jest utworzony i dodany do historii gita, a nazwę właściciela praw w pliku właściciel potwierdził 2026-10-07 (sekcja 4). Decyzja właściciela projektu jest w sekcji 2; kontekst, tabela, skutki i pytania otwarte to moja analiza.
+Data: 2026-10-07, uzupełniona wieczorem tego dnia (sekcja 4a). Stan wieczorem 2026-10-07: obowiązuje jako decyzja, repozytorium gry jest od tego wieczoru publiczne, więc licencja obowiązuje w praktyce; rano repozytorium było prywatne (sekcja 1 opisuje ten stan). Plik `LICENSE` jest utworzony i dodany do historii gita, a nazwę właściciela praw w pliku właściciel potwierdził 2026-10-07 (sekcja 4). Decyzja właściciela projektu jest w sekcji 2; kontekst, tabela, skutki i pytania otwarte to moja analiza.
 Kod: [`LICENSE`](../../LICENSE) w korzeniu repozytorium, [`THIRD-PARTY-NOTICES.txt`](../../THIRD-PARTY-NOTICES.txt) (noty bibliotek gry), [`launcher/THIRD-PARTY-NOTICES.txt`](../../launcher/THIRD-PARTY-NOTICES.txt) (noty launchera).
 
 ## 1. Kontekst
@@ -39,6 +39,8 @@ To jest analiza, nie decyzja. Pierwszy wiersz jest decyzją właściciela; innyc
 
 **Nazwa właściciela praw (rozstrzygnięte 2026-10-07).** Właściciel wybrał z trzech możliwości (nazwa konta, imię i nazwisko, oba) trzecią i podał nazwisko: "as for name use Kacper Lachowicz". Linia w pliku brzmi `Copyright (c) 2026 Kacper Lachowicz (Shironex)`. Tego samego dnia właściciel potwierdził podział: shadery i pliki menu (RML, RCSS) w `assets/` są kodem i podlegają MIT, a modele, tekstury, skybox, dźwięki, wideo i tekst fabuły pozostają zastrzeżone.
 
+**Stan po upublicznieniu (wieczór 2026-10-07; opis i analiza, nie decyzja).** Repozytorium gry jest publiczne (sprawdziłem `gh repo view`: `PUBLIC`, a pole licencji ma klucz `other`, nazwę "Other"; `gh api repos/Shironex/night-maze/license` zwraca `NOASSERTION`, czyli GitHub nie rozpoznaje typu licencji pliku). Obserwacja, bez przesądzania przyczyny: plik ma po tekście MIT akapit o assetach, który może być tym, co przeszkadza rozpoznaniu. Linia praw w pliku to `Copyright (c) 2026 Kacper Lachowicz (Shironex)`. Katalog `docs/` został upubliczniony razem z resztą: o dokumentach kursu właściciel napisał (cytat) "Yes, publish everything". To rozstrzyga publikację, a nie licencję: pytanie poniżej, czy `docs/` jest objęty MIT, nadal nie ma odpowiedzi od właściciela.
+
 **Pytania, które plik zostawia otwarte** (analiza, nie decyzje):
 
 - **Katalog `docs/`.** Wyłączony jest tylko `docs/story/`. Polskie dokumenty kursu w reszcie `docs/` nie są wymienione ani jako objęte, ani jako wyłączone. Sformułowanie "source code" ich wprost nie obejmuje. Do rozstrzygnięcia przez właściciela.
@@ -48,8 +50,12 @@ To jest analiza, nie decyzja. Pierwszy wiersz jest decyzją właściciela; innyc
 
 **Czego ta notatka nie przesądza.** Daty upublicznienia, tego, czy `docs/` będzie objęty licencją, ani brzmienia nazwy właściciela praw.
 
+## 4a. Uzupełnienie z wieczoru 2026-10-07: repozytorium jest publiczne
+
+Decyzja właściciela (cytat, wieczór 2026-10-07): o wydaniu gry **"Release now"**, o dokumentach kursu **"Yes, publish everything"**. Skutek (sprawdzony: `gh repo view`, `git`): `Shironex/night-maze` jest publiczne, `main` jest wypchnięty, tag `v0.10.0` wskazuje commit `7b5e0b1`, plik `LICENSE` jest w historii od commitu `c19f4f4`. Warunek z sekcji 2 ("gdy repozytorium gry stanie się publiczne") jest więc spełniony, a zdanie z sekcji 1 o stanie prywatnym opisuje stan z rana. Nie sprawdzałem, czy paczka z wydania 0.10.0 niesie plik `LICENSE` (pytanie o paczkę w sekcji 4 jest bez zmian), ani czy w `assets/` jest więcej plików z cudzą licencją.
+
 ## 5. Kiedy wrócić do tej decyzji
 
-- Przed **upublicznieniem repozytorium gry**: potwierdzić nazwę właściciela praw w `LICENSE`, rozstrzygnąć status `docs/` i dodać plik do historii.
+- Przed **upublicznieniem repozytorium gry**: potwierdzić nazwę właściciela praw w `LICENSE`, rozstrzygnąć status `docs/` i dodać plik do historii. (Nazwa potwierdzona i plik w historii; repozytorium upublicznione wieczorem 2026-10-07; status `docs/` w sensie licencji nadal nierozstrzygnięty, sekcja 4a.)
 - Gdy do repozytorium trafi **asset z cudzej licencji**, albo gdy właściciel zechce **udostępnić** któryś asset: dopisać go do wyjątków.
 - Gdy zmieni się **zestaw bibliotek**: odświeżyć `THIRD-PARTY-NOTICES.txt` (`node launcher/scripts/build-notices.mjs --deps build/release/_deps`), a dla launchera `pnpm notices` w `launcher/`.
