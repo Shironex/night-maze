@@ -96,6 +96,12 @@ inline constexpr ImVec4 PLAN_EXIT_COLOR = colorFromBytes(132, 220, 140);
 inline constexpr ImVec4 HUD_BATTERY_COLOR = PLAN_PLAYER_COLOR;
 inline constexpr ImVec4 HUD_BATTERY_LOW_COLOR = ERROR_TEXT_COLOR;
 
+/// The stamina bar of the HUD: the teal of the crystals, so one look tells it from the
+/// amber battery bar above it. While the player is winded it is drawn in a dimmer teal
+/// (and pulses, see Hud.cpp): the bar is there, but it cannot be used.
+inline constexpr ImVec4 HUD_STAMINA_COLOR = SECONDARY_COLOR;
+inline constexpr ImVec4 HUD_STAMINA_WINDED_COLOR = colorFromBytes(58, 138, 140);
+
 /// A lever on the plan of the maze while it can still be pulled: the red of
 /// a switch. A pulled lever is drawn like a collected crystal.
 inline constexpr ImVec4 PLAN_LEVER_COLOR = colorFromBytes(238, 92, 62);

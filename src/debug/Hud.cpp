@@ -1,16 +1,20 @@
-// Game HUD: the crystal counter, the battery bar, hints, the crosshair with its prompt,
-// the card of a note and the "You escaped" card.
+// Game HUD: the crystal counter, the battery bar, the stamina bar, hints, the crosshair
+// with its prompt, the card of a note and the "You escaped" card.
 // See docs/modules/game/gameplay.md
 #include "debug/Hud.hpp"
 
 #include "debug/Theme.hpp"
 #include "game/Interaction.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/Player.hpp"
 #include "game/Round.hpp"
+
+#include <glm/gtc/constants.hpp>
 
 #include <imgui.h>
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <string>
@@ -34,6 +38,19 @@ constexpr float HUD_FONT_SIZE = 16.0F;
 
 // Width of the battery bar, which is also what makes the HUD as wide as it is.
 constexpr float BATTERY_BAR_WIDTH = 230.0F;
+
+// Height of the stamina bar: a thin line under the battery bar, as wide as it. The two
+// bars differ in height and in colour, so they are told apart at a glance.
+constexpr float STAMINA_BAR_HEIGHT = 5.0F;
+
+// How many times per second the stamina bar of a winded player goes faint and back,
+// and its opacity at the faintest moment (1 hides what is behind, 0 is invisible).
+constexpr float WINDED_PULSES_PER_SECOND = 2.0F;
+constexpr float WINDED_FAINTEST = 0.3F;
+
+// The empty part of the bar of a winded player has this share of the opacity of the
+// filled part, so the two stay apart while both pulse.
+constexpr float WINDED_TRACK_OPACITY = 0.4F;
 
 // How much of the scene shows through the HUD and through the card. The card hides
 // more: it is meant to be read, and the round behind it is over.
@@ -139,6 +156,40 @@ void drawBatteryBar(const game::Round& round, const game::GameplaySettings& sett
     ImGui::Text("%.0f%%", round.battery * PERCENT);
 }
 
+// The bar of the stamina, or the empty room where it would be.
+void drawStaminaBar(const game::Stamina& stamina, float animationSeconds, float scale) {
+    const ImVec2 size{BATTERY_BAR_WIDTH * scale, STAMINA_BAR_HEIGHT * scale};
+    // A full bar that nobody uses is hidden. Dummy takes the same room without drawing
+    // anything, so the strip keeps its height and the hints below do not jump.
+    if (!game::staminaBarVisible(stamina)) {
+        ImGui::Dummy(size);
+        return;
+    }
+
+    // FrameBg is the colour of the empty part of a progress bar, its track.
+    ImVec4 color = HUD_STAMINA_COLOR;
+    ImVec4 track = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+    if (stamina.winded) {
+        // Winded: a dimmer colour whose opacity pulses. The sine swings from -1 to 1,
+        // and the line below brings that to the range from WINDED_FAINTEST to 1. The
+        // clock is the animation clock of the round, which stands still in the pause.
+        const float wave =
+            std::sin(animationSeconds * WINDED_PULSES_PER_SECOND * glm::two_pi<float>());
+        const float pulse = WINDED_FAINTEST + (1.0F - WINDED_FAINTEST) * (0.5F + 0.5F * wave);
+        color = HUD_STAMINA_WINDED_COLOR;
+        color.w = pulse;
+        // The track pulses along, fainter: right after the bar ran empty there is no
+        // filled part, and the player must still see that something is wrong.
+        track = HUD_STAMINA_WINDED_COLOR;
+        track.w = pulse * WINDED_TRACK_OPACITY;
+    }
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, color);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, track);
+    ImGui::ProgressBar(stamina.level, size, "");
+    // The argument is how many colours are given back.
+    ImGui::PopStyleColor(2);
+}
+
 // Up to two lines that tell the player what to do next, or nothing.
 void drawHint(const game::Round& round) {
     if (round.state != game::RoundState::Playing) {
@@ -153,7 +204,8 @@ void drawHint(const game::Round& round) {
 }
 
 // The strip at the top of the window.
-void drawStatus(const game::Round& round, const game::GameplaySettings& settings, float scale) {
+void drawStatus(const game::Round& round, const game::GameplaySettings& settings,
+                const game::Stamina& stamina, float scale) {
     // The third argument is the pivot: the point of the HUD that is put at the given
     // position. (0.5, 0) is the middle of its top edge, so the HUD is centred whatever
     // its width turns out to be.
@@ -172,6 +224,7 @@ void drawStatus(const game::Round& round, const game::GameplaySettings& settings
         ImGui::TextDisabled("  %s", timeText(round.elapsedSeconds).data());
 
         drawBatteryBar(round, settings, scale);
+        drawStaminaBar(stamina, round.animationSeconds, scale);
         drawHint(round);
     }
     ImGui::End();
@@ -277,7 +330,8 @@ void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float 
 } // namespace
 
 void drawHud(const game::MazeWorld& world, const game::Round& round,
-             const game::GameplaySettings& settings, const game::PickState& pick) {
+             const game::GameplaySettings& settings, const game::Stamina& stamina,
+             const game::PickState& pick) {
     const float scale = ImGui::GetStyle().FontScaleDpi;
 
     // The same font as the debug window, in the size of the HUD, for everything below.
@@ -285,7 +339,7 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
     // multiplies it by FontScaleDpi itself.
     ImGui::PushFont(nullptr, HUD_FONT_SIZE);
 
-    drawStatus(round, settings, scale);
+    drawStatus(round, settings, stamina, scale);
     drawCrosshair(pick, scale);
     drawPrompt(pick);
     if (round.noteOpen) {
@@ -302,15 +356,16 @@ float hudReservedHeight() {
     const float scale = ImGui::GetStyle().FontScaleDpi;
     const ImGuiStyle& style = ImGui::GetStyle();
 
-    // The strip is a window with four lines in it: the counter, the battery bar and
-    // two hints. A line of text is as high as the font, and the bar is a widget: the
-    // font plus the frame padding above and below.
+    // The strip is a window with five lines in it: the counter, the battery bar, the
+    // stamina bar and two hints. A line of text is as high as the font, and the battery
+    // bar is a widget: the font plus the frame padding above and below. The stamina bar
+    // has a height of its own, and keeps its room also while it is hidden.
     constexpr float TEXT_LINE_COUNT = 3.0F;
-    constexpr float GAP_COUNT = 3.0F;
+    constexpr float GAP_COUNT = 4.0F;
     const float textLine = HUD_FONT_SIZE * scale;
     const float bar = textLine + 2.0F * style.FramePadding.y;
     const float strip = 2.0F * style.WindowPadding.y + TEXT_LINE_COUNT * textLine + bar +
-                        GAP_COUNT * style.ItemSpacing.y;
+                        STAMINA_BAR_HEIGHT * scale + GAP_COUNT * style.ItemSpacing.y;
     return HUD_TOP_OFFSET * scale + strip;
 }
 
