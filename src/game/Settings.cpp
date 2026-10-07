@@ -150,6 +150,17 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
     if (name == DIFFICULTY_SETTING) {
         return difficultyFromKey(value, settings.difficulty);
     }
+    if (name == MASTER_VOLUME_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        // Whole numbers only: the screen and the file show no decimal places, so a value
+        // with some would not come back the same after it was written and read.
+        settings.masterVolume =
+            std::clamp(std::round(number), MIN_MASTER_VOLUME, MAX_MASTER_VOLUME);
+        return true;
+    }
     return false;
 }
 
@@ -190,6 +201,7 @@ std::string formatSettings(const GameSettings& settings) {
         settingLine(FULLSCREEN_SETTING, std::string(settings.fullscreen ? ON_VALUE : OFF_VALUE));
     text += settingLine(WINDOW_SIZE_SETTING, windowSizeValue(settings.windowSize));
     text += settingLine(DIFFICULTY_SETTING, difficultyLevel(settings.difficulty).key);
+    text += settingLine(MASTER_VOLUME_SETTING, masterVolumeLabel(settings.masterVolume));
     return text;
 }
 
@@ -203,6 +215,15 @@ std::string mouseSensitivityLabel(float sensitivity) {
 
 std::string fieldOfViewLabel(float degrees) {
     return std::to_string(std::lround(degrees)) + " deg";
+}
+
+std::string masterVolumeLabel(float volume) {
+    return std::to_string(std::lround(volume));
+}
+
+float masterVolumeGain(float volume) {
+    const float share = std::clamp(volume / MAX_MASTER_VOLUME, 0.0F, 1.0F);
+    return share * share;
 }
 
 std::string windowSizeValue(WindowSize size) {

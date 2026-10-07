@@ -22,6 +22,9 @@ TEST_CASE("without a file the settings are the game as it always was") {
     CHECK_FALSE(settings.fullscreen);
     CHECK(settings.windowSize == WindowSize{.width = 1280, .height = 720});
     CHECK(settings.difficulty == game::Difficulty::Normal);
+    // Full volume: the sound files as loud as they are.
+    CHECK(settings.masterVolume == 100.0F);
+    CHECK(game::masterVolumeGain(settings.masterVolume) == 1.0F);
 
     // An empty text, and one of comments only, give the same.
     CHECK(game::parseSettings("") == settings);
@@ -34,12 +37,26 @@ TEST_CASE("a settings file is read line by line") {
                                                       "field_of_view = 75\n"
                                                       "fullscreen = on\n"
                                                       "window_size = 1920x1080\n"
-                                                      "difficulty = hard\n");
+                                                      "difficulty = hard\n"
+                                                      "master_volume = 35\n");
     CHECK(settings.mouseSensitivity == doctest::Approx(6.5F));
     CHECK(settings.fieldOfViewDegrees == 75.0F);
     CHECK(settings.fullscreen);
     CHECK(settings.windowSize == WindowSize{.width = 1920, .height = 1080});
     CHECK(settings.difficulty == game::Difficulty::Hard);
+    CHECK(settings.masterVolume == 35.0F);
+}
+
+TEST_CASE("a file of an older version, without the volume line, plays at the default volume") {
+    // The file as the game wrote it before it had sound.
+    const GameSettings settings = game::parseSettings("mouse_sensitivity = 6.5\n"
+                                                      "field_of_view = 75\n"
+                                                      "fullscreen = on\n"
+                                                      "window_size = 1920x1080\n"
+                                                      "difficulty = hard\n");
+    CHECK(settings.masterVolume == game::DEFAULT_MASTER_VOLUME);
+    // The lines it has still count.
+    CHECK(settings.fieldOfViewDegrees == 75.0F);
 }
 
 TEST_CASE("what is written is read back the same") {
@@ -49,6 +66,7 @@ TEST_CASE("what is written is read back the same") {
     settings.fullscreen = true;
     settings.windowSize = {.width = 2560, .height = 1440};
     settings.difficulty = game::Difficulty::Easy;
+    settings.masterVolume = 42.0F;
 
     const GameSettings readBack = game::parseSettings(game::formatSettings(settings));
     CHECK(readBack.mouseSensitivity == doctest::Approx(7.3F));
@@ -56,6 +74,7 @@ TEST_CASE("what is written is read back the same") {
     CHECK(readBack.fullscreen);
     CHECK(readBack.windowSize == settings.windowSize);
     CHECK(readBack.difficulty == game::Difficulty::Easy);
+    CHECK(readBack.masterVolume == 42.0F);
 
     // The defaults too, and exactly: writing them twice gives the same text.
     const std::string defaults = game::formatSettings(GameSettings{});
@@ -71,7 +90,8 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "field_of_view = 60\n"
           "fullscreen = off\n"
           "window_size = 1280x720\n"
-          "difficulty = normal\n");
+          "difficulty = normal\n"
+          "master_volume = 100\n");
 }
 
 TEST_CASE("spaces, Windows line ends and a byte order mark do not matter") {
@@ -138,6 +158,10 @@ TEST_CASE("numbers outside their limits are brought to the nearest limit") {
     CHECK(settings.windowSize == game::MIN_WINDOW_SIZE);
     CHECK(game::applySetting(settings, "window_size", "99999x99999"));
     CHECK(settings.windowSize == game::MAX_WINDOW_SIZE);
+    CHECK(game::applySetting(settings, "master_volume", "250"));
+    CHECK(settings.masterVolume == game::MAX_MASTER_VOLUME);
+    CHECK(game::applySetting(settings, "master_volume", "0"));
+    CHECK(settings.masterVolume == game::MIN_MASTER_VOLUME);
 }
 
 TEST_CASE("one setting is set from the text a control of the settings screen sends") {
@@ -155,6 +179,11 @@ TEST_CASE("one setting is set from the text a control of the settings screen sen
     CHECK(settings.windowSize == WindowSize{.width = 1366, .height = 768});
     CHECK(game::applySetting(settings, "difficulty", "hard"));
     CHECK(settings.difficulty == game::Difficulty::Hard);
+    // The volume is kept as a whole number, whatever a hand written file says.
+    CHECK(game::applySetting(settings, "master_volume", "37.00000153"));
+    CHECK(settings.masterVolume == 37.0F);
+    CHECK(game::applySetting(settings, "master_volume", "62.6"));
+    CHECK(settings.masterVolume == 63.0F);
 }
 
 TEST_CASE("a value that cannot be read changes nothing and says so") {
@@ -175,6 +204,9 @@ TEST_CASE("a value that cannot be read changes nothing and says so") {
     CHECK_FALSE(game::applySetting(settings, "window_size", "1280x"));
     CHECK_FALSE(game::applySetting(settings, "window_size", "x720"));
     CHECK_FALSE(game::applySetting(settings, "difficulty", "HARD"));
+    CHECK_FALSE(game::applySetting(settings, "master_volume", "loud"));
+    CHECK_FALSE(game::applySetting(settings, "master_volume", "-10"));
+    CHECK_FALSE(game::applySetting(settings, "master_volume", "80%"));
     CHECK_FALSE(game::applySetting(settings, "sound_volume", "5"));
     CHECK_FALSE(game::applySetting(settings, "", "5"));
     CHECK(settings == before);
@@ -241,6 +273,23 @@ TEST_CASE("the numbers of the settings screen are written like in the file") {
     CHECK(game::mouseSensitivityLabel(10.0F) == "10.0");
     CHECK(game::fieldOfViewLabel(60.0F) == "60 deg");
     CHECK(game::fieldOfViewLabel(74.6F) == "75 deg");
+    CHECK(game::masterVolumeLabel(80.0F) == "80");
+    CHECK(game::masterVolumeLabel(0.0F) == "0");
+    CHECK(game::masterVolumeLabel(100.0F) == "100");
+}
+
+TEST_CASE("the volume of the screen becomes a gain that grows with its square") {
+    // Both ends stay where they are.
+    CHECK(game::masterVolumeGain(0.0F) == 0.0F);
+    CHECK(game::masterVolumeGain(100.0F) == 1.0F);
+    // The middle of the slider is a quarter of the loudness, not a half.
+    CHECK(game::masterVolumeGain(50.0F) == doctest::Approx(0.25F));
+    CHECK(game::masterVolumeGain(80.0F) == doctest::Approx(0.64F));
+    // More volume is never less gain.
+    CHECK(game::masterVolumeGain(30.0F) < game::masterVolumeGain(31.0F));
+    // A number outside of the limits cannot make the sound louder than the files.
+    CHECK(game::masterVolumeGain(250.0F) == 1.0F);
+    CHECK(game::masterVolumeGain(-5.0F) == 0.0F);
 }
 
 TEST_CASE("the window size steps through the choices and stops at both ends") {

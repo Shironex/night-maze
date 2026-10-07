@@ -34,6 +34,13 @@ constexpr float MIN_FIELD_OF_VIEW_DEGREES = 45.0F;
 constexpr float MAX_FIELD_OF_VIEW_DEGREES = 90.0F;
 constexpr float DEFAULT_FIELD_OF_VIEW_DEGREES = 60.0F;
 
+/// The master volume as the settings screen shows it: a whole number from 0 (silent) to
+/// 100 (the sound files as loud as they are). 100 is the game as it sounded before it
+/// had this setting. What the audio engine gets is masterVolumeGain of it.
+constexpr float MIN_MASTER_VOLUME = 0.0F;
+constexpr float MAX_MASTER_VOLUME = 100.0F;
+constexpr float DEFAULT_MASTER_VOLUME = 100.0F;
+
 /// The size of the window, in screen coordinates (the units of core::Window::windowSize).
 struct WindowSize {
     int width = 0;
@@ -77,6 +84,9 @@ struct GameSettings {
     /// The difficulty the main menu starts with: the one that was chosen last.
     Difficulty difficulty = Difficulty::Normal;
 
+    /// From MIN_MASTER_VOLUME to MAX_MASTER_VOLUME, a whole number.
+    float masterVolume = DEFAULT_MASTER_VOLUME;
+
     bool operator==(const GameSettings& other) const = default;
 };
 
@@ -87,6 +97,7 @@ constexpr std::string_view FIELD_OF_VIEW_SETTING = "field_of_view";
 constexpr std::string_view FULLSCREEN_SETTING = "fullscreen";
 constexpr std::string_view WINDOW_SIZE_SETTING = "window_size";
 constexpr std::string_view DIFFICULTY_SETTING = "difficulty";
+constexpr std::string_view MASTER_VOLUME_SETTING = "master_volume";
 
 /// Sets one setting from text, the way the file and the controls of the settings screen
 /// write it:
@@ -96,6 +107,7 @@ constexpr std::string_view DIFFICULTY_SETTING = "difficulty";
 ///     fullscreen          "on" or "off"
 ///     window_size         width and height with an x between them, "1280x720"
 ///     difficulty          "easy", "normal" or "hard"
+///     master_volume       a number from 0 to 100, "80" (rounded to a whole number)
 ///
 /// A number outside its limits is brought to the nearest limit. Returns false, and
 /// changes nothing, when the name is not a setting or the value cannot be read.
@@ -126,6 +138,18 @@ float mouseDegreesPerUnit(float sensitivity);
 /// "60 deg". The first one is also the text the file holds.
 std::string mouseSensitivityLabel(float sensitivity);
 std::string fieldOfViewLabel(float degrees);
+
+/// The master volume as the settings screen shows it next to its slider and as the
+/// file holds it: a whole number, "80".
+std::string masterVolumeLabel(float volume);
+
+/// The loudness the audio engine is given for a master volume of the settings: a factor
+/// from 0 (silent) to 1 (the sound files as they are). Not a straight line but the
+/// square of volume / 100, so 50 gives 0.25. The ear hears loudness in ratios: with
+/// a straight line everything below the middle of the slider would sound almost equally
+/// loud and the last few points would do all the work. With the square the lower half
+/// of the slider is useful too, and both ends stay where they are.
+float masterVolumeGain(float volume);
 
 /// A window size as the settings write it, "1280x720", and as a menu shows it,
 /// "1280 x 720".
