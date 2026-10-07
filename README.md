@@ -82,7 +82,8 @@ I built and ran the earlier milestones on a Mac (Apple Silicon). The newer code,
 - `tests/`: unit tests
 - `tools/`: scripts that make assets (sounds, the menu loop, Blender scripts)
 - `docs/`: guides, module notes and decision notes (mostly Polish)
-- `launcher/`: the source of the game launcher (Tauri 2 and Rust)
+
+The launcher that installs and updates the game has its own repository: [night-maze-launcher](https://github.com/Shironex/night-maze-launcher). Its source lived in a `launcher/` folder here until 2026-10-07.
 
 ## What is next
 

@@ -1,5 +1,6 @@
 # Records the video loop behind the launcher window from the game itself and writes the
-# two files the launcher ships: launcher/src/assets/menu-loop.mp4 and menu-poster.jpg.
+# two files the launcher ships: src/assets/menu-loop.mp4 and menu-poster.jpg in the launcher's
+# own repository (Shironex/night-maze-launcher), expected in a folder next to this one.
 #
 # Run from the repository root, on Windows, after a Release build (make release):
 #   python tools/record_launcher_loop.py
@@ -53,7 +54,9 @@ SIZE = "960:600"
 QUALITY_CRF = 29
 
 LOCK_FILE = os.path.join(tempfile.gettempdir(), "nm-input.lock")
-OUT_DIR = os.path.join(menu.REPOSITORY, "launcher", "src", "assets")
+# The launcher has its own repository since 2026-10-07. Its clone is expected beside this
+# repository, under the name of the repository.
+OUT_DIR = os.path.join(menu.REPOSITORY, "..", "night-maze-launcher", "src", "assets")
 LOOP_FILE = os.path.join(OUT_DIR, "menu-loop.mp4")
 POSTER_FILE = os.path.join(OUT_DIR, "menu-poster.jpg")
 

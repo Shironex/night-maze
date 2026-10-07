@@ -24,5 +24,5 @@ text is the file `LICENSE` of the downloaded source and is part of `THIRD-PARTY-
 ## Updating
 
 Change the tag in `cmake/Dependencies.cmake`, configure again and generate
-`THIRD-PARTY-NOTICES.txt` again (`launcher/scripts/build-notices.mjs`). Nothing in this
+`THIRD-PARTY-NOTICES.txt` again (`tools/build-notices.mjs`). Nothing in this
 directory has to change.
