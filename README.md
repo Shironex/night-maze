@@ -33,12 +33,13 @@ Debug keys, not meant for play: the key left of 1 (`) shows the debug window, N 
 ## What is in the game today
 
 - A maze generated from a seed: the same seed and difficulty always give the same maze
-- Three difficulty levels (Easy, Normal, Hard) that change the size of the maze, the number of crystals and the battery
+- Three difficulty levels (Easy, Normal, Hard) that change the size of the maze, the number of crystals and flasks, and the battery
 - Crystals to collect, and a flashlight battery that drains and that crystals charge
+- Sprinting costs stamina: it runs out after a few seconds, then you have to walk until it comes back
 - A gate that opens when you have enough crystals, and an exit in the far corner
-- Levers that open shortcuts and notes that point you somewhere
+- Levers that open shortcuts, and six notes chalked on the walls: some point to the exit or to the nearest crystal, the rest are a line of story
 - Flasks of tea hidden in the maze: walk into one and sprinting costs no stamina for 20 seconds
-- Moon and flashlight shadows, fog, glow, a night sky and uneven ground
+- Moon and flashlight shadows, fog, glow, a night sky, uneven ground and walls that are plain, cracked, mossy or damaged
 - A map, shown while you hold M, with only the corridors you have already seen
 - A main menu with a looping video background, pause, a round summary and a settings screen (mouse sensitivity, field of view, fullscreen, window size, volume)
 - The first sounds: flashlight, crystals, levers, the gate and a low battery pulse
