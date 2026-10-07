@@ -38,6 +38,10 @@ struct DifficultyLevel {
     /// How many crystals float in the maze (MazeSettings::crystalCount).
     int crystalCount;
 
+    /// How many flasks of tea lie in the maze (GameplaySettings::flaskCount). A larger
+    /// maze has more of them, because it has more ground to run over.
+    int flaskCount;
+
     /// The part of the crystals that opens the gate (GameplaySettings::requiredFraction).
     float requiredFraction;
 
@@ -56,6 +60,9 @@ struct DifficultyLevel {
 ///     Easy    10 x 10  13        70 % (10)      180 s    135 m            211 m, 1:10
 ///     Normal  16 x 16  26        70 % (19)      150 s    312 m            538 m, 2:59
 ///     Hard    22 x 22  40        80 % (32)      120 s    527 m            1081 m, 6:00
+///
+/// The levels also have 1, 2 and 3 flasks of tea. Those numbers are a first guess and
+/// were not measured.
 ///
 /// Easy is the game as it was before the levels existed. Each step up makes the maze
 /// larger (more to search), asks for more crystals and shortens the battery, so on Hard

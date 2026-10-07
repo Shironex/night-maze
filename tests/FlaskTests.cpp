@@ -1,4 +1,6 @@
-// Tests of game/Flasks.hpp: where the flasks of tea of a maze lie.
+// Tests of the flasks of tea: where the flasks of a maze lie (game/Flasks.hpp) and how
+// a round picks them up (game/Round.hpp). What the tea does to the stamina is tested
+// in PlayerTests.cpp.
 #include "game/Flasks.hpp"
 
 #include "game/Crystals.hpp"
@@ -6,6 +8,7 @@
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/Round.hpp"
 
 #include <doctest/doctest.h>
 
@@ -15,6 +18,12 @@
 #include <vector>
 
 namespace {
+
+// The fixed step of the game: core::Time::FIXED_DT as a float. 120 steps are one second.
+constexpr float STEP = 1.0F / 120.0F;
+
+// A place far away from everything in the mazes used here.
+constexpr glm::vec3 NOWHERE{-50.0F, 0.0F, -50.0F};
 
 // The maze of the Normal level: 16 x 16 cells with 26 crystals.
 game::MazeWorld normalWorld(std::uint32_t seed) {
@@ -31,6 +40,11 @@ std::vector<game::MazeCell> flasksOf(const game::MazeWorld& world, int count) {
 bool holdsCrystal(const game::MazeWorld& world, game::MazeCell cell) {
     return std::ranges::any_of(
         world.crystals, [cell](const game::CrystalSpawn& crystal) { return crystal.cell == cell; });
+}
+
+// Where the feet of a player stand who is in the middle of a cell, on flat ground.
+glm::vec3 feetIn(game::MazeCell cell) {
+    return game::cellCenter(cell.x, cell.z);
 }
 
 } // namespace
@@ -165,4 +179,105 @@ TEST_CASE("a flask rests above the centre of its cell, low over the ground") {
     CHECK(rest.y == doctest::Approx(GROUND + game::FLASK_FLOAT_HEIGHT));
     // Lower than a crystal: something left on the ground.
     CHECK(game::FLASK_FLOAT_HEIGHT < game::CRYSTAL_FLOAT_HEIGHT);
+}
+
+TEST_CASE("the three levels have 1, 2 and 3 flasks") {
+    CHECK(game::difficultyLevel(game::Difficulty::Easy).flaskCount == 1);
+    CHECK(game::difficultyLevel(game::Difficulty::Normal).flaskCount == 2);
+    CHECK(game::difficultyLevel(game::Difficulty::Hard).flaskCount == 3);
+    // The rules start with the number of the easy level, like their other numbers.
+    CHECK(game::GameplaySettings{}.flaskCount == 1);
+}
+
+TEST_CASE("placing flasks does not move the crystals or the notes of a seed") {
+    // The flasks are placed when a round starts, with a generator of their own, after
+    // the world is built. Whatever number of flasks a round asks for, the world it was
+    // started on is the world of a game without flasks.
+    for (const std::uint32_t seed : {1U, 2U, 42U, 2026U}) {
+        CAPTURE(seed);
+        const game::MazeWorld without = normalWorld(seed);
+        const game::MazeWorld with = normalWorld(seed);
+        game::GameplaySettings settings;
+        settings.flaskCount = 0;
+        const game::Round roundWithout = game::startRound(without, settings);
+        settings.flaskCount = 3;
+        const game::Round roundWith = game::startRound(with, settings);
+        REQUIRE(roundWithout.flasks.empty());
+        REQUIRE(roundWith.flasks.size() == 3);
+
+        REQUIRE(with.crystals.size() == without.crystals.size());
+        for (std::size_t i = 0; i < with.crystals.size(); ++i) {
+            CHECK(with.crystals[i].cell == without.crystals[i].cell);
+            CHECK(with.crystals[i].variant == without.crystals[i].variant);
+        }
+        REQUIRE(with.interactables.notes.size() == without.interactables.notes.size());
+        for (std::size_t i = 0; i < with.interactables.notes.size(); ++i) {
+            CHECK(with.interactables.notes[i].mount == without.interactables.notes[i].mount);
+            CHECK(with.interactables.notes[i].kind == without.interactables.notes[i].kind);
+        }
+        REQUIRE(with.interactables.levers.size() == without.interactables.levers.size());
+        for (std::size_t i = 0; i < with.interactables.levers.size(); ++i) {
+            CHECK(with.interactables.levers[i].mount == without.interactables.levers[i].mount);
+        }
+        // And the crystals of the two rounds rest in the same places.
+        for (std::size_t i = 0; i < roundWith.crystals.size(); ++i) {
+            CHECK(roundWith.crystals[i].restPosition == roundWithout.crystals[i].restPosition);
+        }
+    }
+}
+
+TEST_CASE("a new round has the flasks of its settings, none of them collected") {
+    const game::MazeWorld world = normalWorld(1U);
+    game::GameplaySettings settings;
+    settings.flaskCount = 2;
+    const game::Round round = game::startRound(world, settings);
+
+    const std::vector<game::MazeCell> cells = flasksOf(world, 2);
+    REQUIRE(round.flasks.size() == 2);
+    CHECK(round.flasks[0].cell == cells[0]);
+    CHECK(round.flasks[1].cell == cells[1]);
+    CHECK_FALSE(round.flasks[0].collected);
+    CHECK_FALSE(round.flasks[1].collected);
+    CHECK(round.flasksCollected == 0);
+}
+
+TEST_CASE("a flask is picked up by walking into its cell, once") {
+    const game::MazeWorld world = normalWorld(1U);
+    game::GameplaySettings settings;
+    settings.flaskCount = 2;
+    game::Round round = game::startRound(world, settings);
+    bool flashlightOn = true;
+
+    // Standing somewhere else picks up nothing.
+    game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+    CHECK(round.flasksCollected == 0);
+
+    const glm::vec3 feet = feetIn(round.flasks[0].cell);
+    game::updateRound(round, world, settings, feet, flashlightOn, STEP);
+    CHECK(round.flasks[0].collected);
+    CHECK_FALSE(round.flasks[1].collected);
+    CHECK(round.flasksCollected == 1);
+
+    // Staying there does not pick it up a second time.
+    game::updateRound(round, world, settings, feet, flashlightOn, STEP);
+    CHECK(round.flasksCollected == 1);
+
+    // A flask is no crystal: it does not count for the gate and charges no battery.
+    CHECK(round.collectedCount == 0);
+}
+
+TEST_CASE("a new round puts the flasks back") {
+    const game::MazeWorld world = normalWorld(1U);
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    bool flashlightOn = true;
+    REQUIRE(round.flasks.size() == 1);
+    game::updateRound(round, world, settings, feetIn(round.flasks[0].cell), flashlightOn, STEP);
+    REQUIRE(round.flasksCollected == 1);
+
+    // What the application does for R, "Restart maze" and "Play again".
+    round = game::startRound(world, settings);
+    CHECK(round.flasksCollected == 0);
+    REQUIRE(round.flasks.size() == 1);
+    CHECK_FALSE(round.flasks[0].collected);
 }

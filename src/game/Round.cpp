@@ -64,6 +64,24 @@ void collectCrystals(Round& round, const GameplaySettings& settings, const scene
     }
 }
 
+// Picks up every flask whose pickup sphere the reach of the player overlaps, like
+// collectCrystals. A flask is small, so the sphere is centred on the place it rests at.
+void collectFlasks(Round& round, const MazeWorld& world, const GameplaySettings& settings,
+                   const scene::Sphere& reach) {
+    for (RoundFlask& flask : round.flasks) {
+        if (flask.collected) {
+            continue;
+        }
+        const scene::Sphere pickup{
+            .center = flaskRestPosition(flask.cell, groundHeightAt(world, flask.cell)),
+            .radius = settings.pickupRadius};
+        if (scene::overlaps(reach, pickup)) {
+            flask.collected = true;
+            ++round.flasksCollected;
+        }
+    }
+}
+
 // Closes the card of the open note when the player has walked away from it. The
 // distance is measured on the ground (x and z only), so a slope does not count.
 void closeNoteFarAway(Round& round, const MazeWorld& world, const glm::vec3& feetPosition) {
@@ -99,6 +117,13 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     }
     round.requiredCount =
         requiredCrystalCount(static_cast<int>(round.crystals.size()), settings.requiredFraction);
+
+    // The flasks, in the cells the seed of the maze gives them. They know the crystals:
+    // a flask never lies in the cell of one.
+    for (const MazeCell cell : placeFlasks(world.maze, world.seed, START_CELL, world.exitCell,
+                                           world.crystals, settings.flaskCount)) {
+        round.flasks.push_back({.cell = cell});
+    }
 
     // Nothing to collect: the gate does not wait for anything.
     round.gateOpen = round.requiredCount == 0;
@@ -177,6 +202,7 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
 
         const scene::Sphere reach = playerReach(feetPosition);
         collectCrystals(round, settings, reach);
+        collectFlasks(round, world, settings, reach);
 
         // The number needed is computed again in every step, because the debug UI can
         // change the fraction in the middle of a round. An open gate stays open.

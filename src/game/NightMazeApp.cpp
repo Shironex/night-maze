@@ -335,6 +335,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     const DifficultyLevel& level = difficultyLevel(m_settings.difficulty);
     m_gameplay.requiredFraction = level.requiredFraction;
     m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
+    m_gameplay.flaskCount = level.flaskCount;
 
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
@@ -620,7 +621,8 @@ void NightMazeApp::showScreen() {
 
 void NightMazeApp::startNewGame(const NewGame& newGame) {
     // The numbers of the level: the size of the maze and its crystals go into the
-    // request for the maze, the gate and the battery into the rules of the round. They
+    // request for the maze, the gate, the battery and the flasks into the rules of the
+    // round. They
     // overwrite what the debug UI may have set in the same fields, so every new game of
     // a level is the same game. The numbers of levers and notes are not part of a
     // level and stay as they are.
@@ -630,6 +632,7 @@ void NightMazeApp::startNewGame(const NewGame& newGame) {
     m_mazeSettings.crystalCount = level.crystalCount;
     m_gameplay.requiredFraction = level.requiredFraction;
     m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
+    m_gameplay.flaskCount = level.flaskCount;
 
     // The maze is always built again, also for the seed that is in play: the level may
     // be another one, and the numbers of levers and notes may have been changed.
@@ -860,8 +863,8 @@ void NightMazeApp::plantGrass() {
 }
 
 void NightMazeApp::beginRound() {
-    // The state of the round: every crystal back, a full battery, the gate closed, no
-    // lever pulled and so every wall back in the obstacle list.
+    // The state of the round: every crystal and every flask back, a full battery, the
+    // gate closed, no lever pulled and so every wall back in the obstacle list.
     m_round = startRound(m_mazeWorld, m_gameplay);
     m_obstacles = roundObstacles(m_mazeWorld, m_round);
     // The picking of the round before may name a lever the new maze does not have.
@@ -874,7 +877,8 @@ void NightMazeApp::beginRound() {
     // it, so a new round, also one that starts with its gate open, fires nothing.
     m_lowBatteryPulse = {};
     // The same for the breathing, and the stamina it follows: a round starts with a full
-    // bar and a player who is not winded. Only the state is new. The numbers of the rule
+    // bar and a player who is not winded, and the tea of a flask of the round before
+    // works no longer. Only the state is new. The numbers of the rule
     // (Player::staminaSettings), which the debug UI may have changed, stay.
     m_windedBreath = {};
     m_player.stamina = {};
@@ -958,8 +962,14 @@ void NightMazeApp::onUpdate(double fixedDt) {
     const bool gateBlockedBefore = gateBlocks(m_mazeWorld, m_round);
     // What the round looked like before the step, to hear afterwards what the step did.
     const RoundSoundSnapshot soundBefore = soundSnapshot(m_round, m_lighting.flashlightOn);
+    const int flasksBefore = m_round.flasksCollected;
     updateRound(m_round, m_mazeWorld, m_gameplay, m_player.position, m_lighting.flashlightOn,
                 static_cast<float>(fixedDt));
+    // A flask was picked up in this step: the player drinks it at once. The round only
+    // counts the flasks. What the tea does belongs to the stamina (game::drinkFlask).
+    if (m_round.flasksCollected > flasksBefore) {
+        drinkFlask(m_player.stamina, m_player.staminaSettings);
+    }
     // The sounds of this step: a crystal, the gate, the battery that ran out
     // (game::roundStepCues), and the beat of a low battery when one is due. Both are
     // counted in fixed steps and only here, below the early return above: under a menu,

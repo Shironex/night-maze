@@ -4,6 +4,7 @@
 #pragma once
 
 #include "game/Discovery.hpp"
+#include "game/Flasks.hpp"
 #include "game/Interactables.hpp"
 #include "game/Lighting.hpp"
 #include "game/Maze.hpp"
@@ -66,6 +67,11 @@ struct GameplaySettings {
     /// to collect it, in metres.
     float pickupRadius = 0.6F;
 
+    /// How many flasks of tea the maze gets when a round starts (game::placeFlasks):
+    /// from 0 to MAX_FLASK_COUNT. A new game writes the number of its difficulty level
+    /// here. A new number shows when the round is started again.
+    int flaskCount = 1;
+
     /// False stops the battery from draining: a switch for testing in the debug UI.
     bool batteryDrains = true;
 
@@ -99,6 +105,17 @@ struct RoundCrystal {
     bool collected = false;
 };
 
+/// One flask of tea of a round.
+struct RoundFlask {
+    /// The cell it lies in (game::placeFlasks). Where exactly it floats is computed
+    /// from the cell and the terrain when it is needed (game::flaskRestPosition), so
+    /// nothing has to be moved when the terrain is rebuilt.
+    MazeCell cell;
+
+    /// True once the player has picked it up: it is no longer drawn.
+    bool collected = false;
+};
+
 /// The state of one round: everything that changes while a maze is played and starts
 /// again when the round is restarted. The maze itself (MazeWorld) does not change.
 struct Round {
@@ -110,6 +127,13 @@ struct Round {
     /// How many crystals are collected, and how many are needed to open the gate.
     int collectedCount = 0;
     int requiredCount = 0;
+
+    /// The flasks of tea, and how many of them the player has picked up. The count only
+    /// grows within a round, so comparing it before and after a step tells that a flask
+    /// was picked up in that step: the application then lets the player drink it
+    /// (game::drinkFlask), and the sound cues hear it (game::roundStepCues).
+    std::vector<RoundFlask> flasks;
+    int flasksCollected = 0;
 
     /// True from the moment enough crystals are collected: the gate no longer blocks
     /// the way and starts to sink. It never goes back to false within a round.
@@ -168,6 +192,10 @@ int requiredCrystalCount(int total, float fraction);
 /// Nothing of the maze is discovered except what the player sees from the start
 /// (game::discoverAround of MazeWorld::startPosition). No lever is pulled, every wall
 /// stands and no note is open.
+///
+/// The flasks are placed here, GameplaySettings::flaskCount of them, from the seed of
+/// the maze (game::placeFlasks), and not when the world is built: so a new round puts
+/// every flask back, and the world of a seed is the same with and without flasks.
 Round startRound(const MazeWorld& world, const GameplaySettings& settings);
 
 /// The maze with the walls of this round: Round::maze, or the maze of the world for
@@ -193,6 +221,9 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 ///   - the battery drains while the flashlight is on,
 ///   - every crystal whose pickup sphere the player reaches is collected and charges
 ///     the battery,
+///   - every flask the player reaches in the same way is picked up
+///     (Round::flasksCollected). What the tea does is not decided here: the round
+///     knows nothing about the stamina of the player,
 ///   - the gate opens when enough crystals are collected,
 ///   - the round is won when the player is inside the exit zone with the gate open.
 ///
