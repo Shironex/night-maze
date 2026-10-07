@@ -442,7 +442,14 @@ jobs:
           for file in "NightMaze-${VERSION}-windows-x64.zip" manifest.json manifest.json.sig news.json news.json.sig; do
             echo "${file} $(stat -c %s "release-assets/${file}")"
           done | sort > local.txt
-          gh release view "${TAG}" --json assets --jq '.assets[] | "\(.name) \(.size)"' | sort > uploaded.txt
+          # A draft that was just created can be invisible for a few seconds
+          # (seen on the first real run of the launcher's workflow, v0.1.2), so
+          # it is asked for up to six times.
+          for attempt in 1 2 3 4 5 6; do
+            if gh release view "${TAG}" --json assets --jq '.assets[] | "\(.name) \(.size)"' > uploaded-raw.txt; then break; fi
+            sleep 5
+          done
+          sort uploaded-raw.txt > uploaded.txt
           cat uploaded.txt
           diff local.txt uploaded.txt
 
