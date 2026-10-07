@@ -1,5 +1,5 @@
 // MinimapRenderer: draws the minimap into a framebuffer of its own (offscreen rendering)
-// and puts that picture into a corner of the window.
+// and puts that picture into the middle of the window.
 // See docs/modules/renderer/minimap.md
 #pragma once
 
@@ -27,7 +27,7 @@ namespace game {
 ///      GL_RGBA8 texture. The triangles of the map are drawn into it with the minimap
 ///      program (post/minimap.vert and post/minimap.frag).
 ///   2. drawOverlay: the window becomes the target again, and that texture is drawn
-///      into the corner of the window with the overlay program (post/composite.vert
+///      into the middle of the window with the overlay program (post/composite.vert
 ///      and post/minimap_overlay.frag).
 ///
 /// Both run AFTER the composite pass of game::PostProcess. The map must not pass through

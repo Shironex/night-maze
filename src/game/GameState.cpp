@@ -137,9 +137,9 @@ bool showsHud(GameMode mode) {
     return mode == GameMode::Playing;
 }
 
-bool showsMinimap(GameMode mode) {
-    return mode == GameMode::Playing || mode == GameMode::Paused ||
-           mode == GameMode::SettingsFromPause;
+bool showsMap(GameMode mode, const MapRequest& request) {
+    return mode == GameMode::Playing && (request.keyHeld || request.pinned) && !request.noteOpen &&
+           !request.menuCamera;
 }
 
 bool usesMenuCamera(GameMode mode) {

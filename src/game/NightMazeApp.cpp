@@ -108,7 +108,7 @@ constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 // Key that starts the round again on the same maze.
 constexpr int RESTART_KEY = GLFW_KEY_R;
 
-// Key that shows and hides the minimap.
+// Key that shows the map for as long as it is held.
 constexpr int MINIMAP_KEY = GLFW_KEY_M;
 
 // Key that uses what the picking ray points at: pulls a lever, reads a note, closes the
@@ -925,6 +925,10 @@ void NightMazeApp::onUpdate(double fixedDt) {
         wanted.down = input().isKeyDown(GLFW_KEY_LEFT_SHIFT);
         wanted.sprint = input().isKeyDown(GLFW_KEY_LEFT_SHIFT);
     }
+    // A player who reads the map stands still: the keys are dropped for this step
+    // (game::movementInput). The step below still runs, and so does the rest of the
+    // round: the battery drains, the crystals bob and the stamina refills.
+    wanted = movementInput(wanted, mapShown());
 
     // The step runs also with nothing held: it is what brings the feet back to the
     // ground after noclip was switched off in a panel. It also drains and refills the
@@ -1109,10 +1113,10 @@ void NightMazeApp::onRender(double alpha) {
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
 
-    // The minimap key, read once per frame like the two keys above.
-    if (roundInput && input().wasKeyPressed(MINIMAP_KEY)) {
-        m_minimapSettings.enabled = !m_minimapSettings.enabled;
-    }
+    // The map: on the screen while its key is held (mapShown). Asked once here for the
+    // whole frame. While it is shown the mouse does not turn the camera and nothing can
+    // be used: looking at the map is a stop, and the round goes on behind it.
+    const bool map = mapShown();
 
     // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
     // describes one frame, and onUpdate runs zero or more times per frame. It comes
@@ -1120,7 +1124,7 @@ void NightMazeApp::onRender(double alpha) {
     // already use the new angles. The click that captures a free cursor is read further
     // down (handleInteraction), because it first has to be known what the click hit.
     const bool cursorCaptured = input().isCursorCaptured();
-    if (cursorCaptured && roundInput) {
+    if (cursorCaptured && roundInput && !map) {
         // Mouse movement to the right is positive and positive yaw turns right, so x is
         // used as it is. Screen y grows downwards while pitch grows upwards, hence the
         // minus sign: moving the mouse up (negative y) looks up.
@@ -1217,7 +1221,9 @@ void NightMazeApp::onRender(double alpha) {
     // pulled here changes the round between two fixed steps, never inside one.
     // Under a menu and in the picture of the menu camera nothing is picked and nothing
     // is used: no lever is highlighted, and a click or the key does not reach the round.
-    if (!roundInput) {
+    // The same while the map is shown: it covers the middle of the picture, so there is
+    // no crosshair, no prompt, and the interaction key does nothing.
+    if (!roundInput || map) {
         m_pick = pickNothing(m_round);
     } else {
         m_pick = pickForFrame(view, projection, eye, cursorCaptured);
@@ -1377,20 +1383,19 @@ void NightMazeApp::onRender(double alpha) {
     // UI is drawn after this function returns (main.cpp), straight into the window.
     m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer, sceneView);
 
-    // The minimap comes after the composite pass, on top of the finished picture: it is
+    // The map comes after the composite pass, on top of the finished picture: it is
     // a schematic, and the fog, the bloom and the tone mapping must not touch it. It is
     // shown in the two debug views too, like the HUD. feet is the blended position the
-    // scene was drawn from, so the arrow moves as smoothly as the camera. The picture of
-    // the menu camera has no minimap: it is part of the HUD of a round. In the pause
-    // menu it stays, as a part of the stopped picture (game::showsMinimap).
-    if (showsMinimap(m_mode) && !m_menuCamera.enabled) {
+    // scene was drawn from. Only while the key is held in a round (game::showsMap): the
+    // pause menu, the result screen and the menu camera have no map.
+    if (map) {
         drawMinimap(framebuffer, feet);
     }
 
-    // The menu comes last in this function, on top of the finished frame and of the
-    // minimap: a menu covers the game and its map. The debug UI is drawn after this
-    // function returns (main.cpp), so its panels stay usable on top of a menu. While
-    // a round is played no document is shown and this call does nothing.
+    // The menu comes last in this function, on top of the finished frame. The debug UI
+    // is drawn after this function returns (main.cpp), so its panels stay usable on top
+    // of a menu. While a round is played no document is shown and this call does
+    // nothing.
     m_ui.draw(framebuffer);
 }
 
@@ -1462,14 +1467,17 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
     }
 }
 
-void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
-    if (!m_minimapSettings.enabled) {
-        return;
-    }
+bool NightMazeApp::mapShown() {
+    return showsMap(m_mode, {.keyHeld = input().isKeyDown(MINIMAP_KEY),
+                             .pinned = m_minimapSettings.pinned,
+                             .noteOpen = m_round.noteOpen,
+                             .menuCamera = m_menuCamera.enabled});
+}
 
-    // Where the map stands, in framebuffer pixels. Its picture is drawn at exactly
-    // that size, so the framebuffer of the minimap follows the window and the size
-    // setting. A size of 0: the window has no room for a map.
+void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
+    // Where the map stands, in framebuffer pixels: a square in the middle. Its picture
+    // is drawn at exactly that size, so the framebuffer of the minimap follows the
+    // window and the size setting. A size of 0: the window has no room for a map.
     const MinimapRect rect = minimapRect(framebuffer.width, framebuffer.height, m_minimapSettings);
     if (rect.size < 1) {
         return;
@@ -1488,7 +1496,7 @@ void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
         buildMinimapVertices(m_mazeWorld, m_round, m_minimapSettings.revealAll, player,
                              minimapMetresPerPixel(maze, rect.size));
 
-    // The offscreen pass, and then the picture into its corner of the window.
+    // The offscreen pass, and then the picture into the middle of the window.
     if (m_minimapRenderer.drawMap(m_minimapShader, vertices, minimapProjection(maze), rect.size)) {
         m_minimapRenderer.drawOverlay(m_minimapOverlayShader, rect, m_minimapSettings.opacity,
                                       framebuffer);

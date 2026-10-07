@@ -1,5 +1,5 @@
 // MinimapRenderer: draws the minimap into a framebuffer of its own (offscreen rendering)
-// and puts that picture into a corner of the window.
+// and puts that picture into the middle of the window.
 // See docs/modules/renderer/minimap.md
 #include "game/MinimapRenderer.hpp"
 
@@ -127,7 +127,7 @@ void MinimapRenderer::drawOverlay(const gfx::Shader& shader, const MinimapRect& 
 
     // The viewport is the square of the minimap instead of the whole window. The
     // triangle of post/composite.vert covers "the whole target", which now is that
-    // square: the picture lands in the corner without a mesh for a rectangle. All
+    // square: the picture lands in its square without a mesh for a rectangle. All
     // three numbers are framebuffer pixels.
     GL_CHECK(glViewport(rect.x, rect.y, rect.size, rect.size));
 

@@ -1,5 +1,5 @@
 #version 410 core
-// Fragment shader that puts the picture of the minimap on the screen, in its corner of
+// Fragment shader that puts the picture of the minimap on the screen, in the middle of
 // the window. Used with post/composite.vert.
 // See docs/modules/renderer/minimap.md
 

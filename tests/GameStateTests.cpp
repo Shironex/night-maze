@@ -235,20 +235,40 @@ TEST_CASE("a screen never runs the round under an open menu") {
     }
 }
 
-TEST_CASE("the HUD belongs to the running game, the minimap also to the pause") {
+TEST_CASE("the HUD belongs to the running game") {
     CHECK(game::showsHud(GameMode::Playing));
     CHECK_FALSE(game::showsHud(GameMode::Paused));
     CHECK_FALSE(game::showsHud(GameMode::MainMenu));
     CHECK_FALSE(game::showsHud(GameMode::RoundEnd));
     CHECK_FALSE(game::showsHud(GameMode::SettingsFromMenu));
     CHECK_FALSE(game::showsHud(GameMode::SettingsFromPause));
+}
 
-    CHECK(game::showsMinimap(GameMode::Playing));
-    CHECK(game::showsMinimap(GameMode::Paused));
-    CHECK(game::showsMinimap(GameMode::SettingsFromPause));
-    CHECK_FALSE(game::showsMinimap(GameMode::MainMenu));
-    CHECK_FALSE(game::showsMinimap(GameMode::SettingsFromMenu));
-    CHECK_FALSE(game::showsMinimap(GameMode::RoundEnd));
+TEST_CASE("the map is shown while its key is held in a round, and gone when it is released") {
+    constexpr game::MapRequest HELD{.keyHeld = true};
+    CHECK(game::showsMap(GameMode::Playing, HELD));
+    // Released: no map. There is no switch that remembers the key.
+    CHECK_FALSE(game::showsMap(GameMode::Playing, game::MapRequest{}));
+}
+
+TEST_CASE("only a round that is being played shows the map") {
+    // The pause (also the one of a window that lost the focus), the result screen and
+    // the menus take the map away, with the key held and with the debug pin.
+    constexpr game::MapRequest HELD_AND_PINNED{.keyHeld = true, .pinned = true};
+    for (const GameMode mode : ALL_MODES) {
+        CHECK(game::showsMap(mode, HELD_AND_PINNED) == (mode == GameMode::Playing));
+    }
+}
+
+TEST_CASE("the debug pin shows the map without the key") {
+    CHECK(game::showsMap(GameMode::Playing, {.pinned = true}));
+}
+
+TEST_CASE("an open note card and the menu camera keep the map away") {
+    CHECK_FALSE(game::showsMap(GameMode::Playing, {.keyHeld = true, .noteOpen = true}));
+    CHECK_FALSE(game::showsMap(GameMode::Playing, {.pinned = true, .noteOpen = true}));
+    CHECK_FALSE(game::showsMap(GameMode::Playing, {.keyHeld = true, .menuCamera = true}));
+    CHECK_FALSE(game::showsMap(GameMode::Playing, {.pinned = true, .menuCamera = true}));
 }
 
 TEST_CASE("only the main menu and its settings are shown through the menu camera") {
@@ -262,13 +282,12 @@ TEST_CASE("only the main menu and its settings are shown through the menu camera
 
 TEST_CASE("the settings screen keeps the picture of the screen it was opened from") {
     // Opening and closing the settings must not change what is behind the menu: the
-    // same camera, the same minimap, and a scene that moves or stands as before.
+    // same camera, and a scene that moves or stands as before.
     const std::array<std::array<GameMode, 2>, 2> pairs = {
         {{GameMode::MainMenu, GameMode::SettingsFromMenu},
          {GameMode::Paused, GameMode::SettingsFromPause}}};
     for (const std::array<GameMode, 2>& pair : pairs) {
         CHECK(game::usesMenuCamera(pair[0]) == game::usesMenuCamera(pair[1]));
-        CHECK(game::showsMinimap(pair[0]) == game::showsMinimap(pair[1]));
         CHECK(game::animatesScene(pair[0]) == game::animatesScene(pair[1]));
         CHECK(game::drawsScene(pair[0], true) == game::drawsScene(pair[1], true));
     }

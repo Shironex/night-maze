@@ -81,8 +81,8 @@ constexpr float CROSSHAIR_RING_THICKNESS = 1.5F;
 
 // The prompt ("E: pull lever") stands near the bottom edge of the window, in the
 // middle. The thing the player points at is around the crosshair, so down there the
-// prompt never covers it. It is also below the card of a note (BELOW_CENTER) and
-// beside the minimap, which stands in a corner.
+// prompt never covers it. It is also below the card of a note (BELOW_CENTER). While
+// the map is held nothing can be used, so the prompt and the map never meet.
 constexpr ImVec2 PROMPT_PLACE{MIDDLE, 0.9F};
 
 // How much of the scene shows through the prompt: more than through the HUD, so the

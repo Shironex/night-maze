@@ -69,7 +69,7 @@ namespace game {
 ///
 /// On top of that finished picture comes the minimap (game::MinimapRenderer): a schematic
 /// of the corridors the player has discovered, drawn into a framebuffer of its own and
-/// shown in a corner of the window.
+/// shown in the middle of the window while the player holds the map key.
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
@@ -196,8 +196,8 @@ protected:
     /// the same reason.
     gfx::Shader& minimapOverlayShader() { return m_minimapOverlayShader; }
 
-    /// The settings of the minimap (switch, reveal all, size, margin, corner, opacity),
-    /// exposed so the debug UI can edit them live.
+    /// The settings of the minimap (pin, reveal all, size, opacity), exposed so the debug
+    /// UI can edit them live.
     MinimapSettings& minimapSettings() { return m_minimapSettings; }
 
     /// The minimap, read only: the debug UI shows the size, the format and the picture
@@ -540,11 +540,18 @@ private:
     /// The minimap, the last thing of a frame the game draws: after the composite pass,
     /// so the fog, the bloom and the tone mapping do not touch it. It builds the shapes
     /// of the map (game::buildMinimapVertices), draws them into the framebuffer of the
-    /// minimap and puts that picture into its corner of the window. framebuffer is the
+    /// minimap and puts that picture into the middle of the window. framebuffer is the
     /// framebuffer size of the window and feet the place the frame is drawn from (the
-    /// feet of the player, blended between two fixed steps). With the minimap switched
-    /// off it does nothing. It leaves the window bound, with the viewport over all of it.
+    /// feet of the player, blended between two fixed steps). It is called only while
+    /// the map is shown (mapShown). It leaves the window bound, with the viewport over
+    /// all of it.
     void drawMinimap(core::Size framebuffer, const glm::vec3& feet);
+
+    /// True while the map is on the screen: game::showsMap for the screen the game is
+    /// on, the map key as it is held in this moment, the debug pin, the card of a note
+    /// and the menu camera. onUpdate asks it to stop the player, onRender to stop the
+    /// mouse look and the picking and to draw the map.
+    bool mapShown();
 
     // The colour every frame starts with: a very dark blue, darker than the ambient
     // light on the stone. The sky is drawn over it wherever no wall is, so it shows
@@ -710,8 +717,8 @@ private:
     // How the camera is turned. It belongs to the controls, not to the camera.
     float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;
 
-    // Whether the minimap is drawn, whether it shows the whole maze, and its size, its
-    // corner and its opacity.
+    // The map: whether the debug UI pins it open, whether it shows the whole maze, and
+    // its size and its opacity.
     MinimapSettings m_minimapSettings;
 
     // The menu camera: its settings (edited by the debug UI and set by the command

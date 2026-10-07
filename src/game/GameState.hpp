@@ -117,10 +117,36 @@ bool isMenuOpen(GameMode mode);
 /// lie on top of the buttons.
 bool showsHud(GameMode mode);
 
-/// True while the minimap is drawn: while playing, and in the pause menu (also under the
-/// settings opened from it), where it is part of the stopped picture under the menu. It
-/// is drawn before the menu documents.
-bool showsMinimap(GameMode mode);
+/// What decides whether the map is on the screen, besides the screen the game is on.
+struct MapRequest {
+    /// The map key is down in this moment. The map is held, not switched: it is gone
+    /// when the key is released.
+    bool keyHeld = false;
+
+    /// The debug switch that keeps the map open without the key (MinimapSettings::pinned).
+    bool pinned = false;
+
+    /// The card of a note is open (Round::noteOpen).
+    bool noteOpen = false;
+
+    /// The menu camera shows the game (MenuCameraSettings::enabled): its picture has no
+    /// HUD and no map.
+    bool menuCamera = false;
+};
+
+/// True while the map is on the screen: a round is being played, and the map key is
+/// held or the debug switch pins the map.
+///
+///   - Only while playing: the pause menu and the result screen take the map away, and
+///     so does a window that stops being the active one, because that pauses the round
+///     (FocusLost).
+///   - Not while the card of a note is open. The card came first and stays: the player
+///     closes it, and then the key shows the map.
+///   - Not in the picture of the menu camera.
+///
+/// While the map is shown the player stands still and does not look around
+/// (game::movementInput), and nothing can be used. The round itself goes on.
+bool showsMap(GameMode mode, const MapRequest& request);
 
 /// True while the picture is taken by the menu camera and not from the eyes of the
 /// player: in the main menu, which has no round to show, and in the settings opened

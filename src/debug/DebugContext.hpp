@@ -169,8 +169,7 @@ struct DebugContext {
     /// Shader program that puts the picture of the minimap into the window, editable:
     /// reloaded like texturedShader.
     gfx::Shader& minimapOverlayShader;
-    /// The settings of the minimap (switch, reveal all, size, margin, corner, opacity),
-    /// editable.
+    /// The settings of the minimap (pin, reveal all, size, opacity), editable.
     game::MinimapSettings& minimapSettings;
     /// The minimap, read only: the size, the format and the picture of its framebuffer.
     const game::MinimapRenderer& minimap;

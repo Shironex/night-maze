@@ -48,12 +48,8 @@ constexpr float MAX_PICKUP_RADIUS = 2.0F;
 
 constexpr float PERCENT = 100.0F;
 
-// The entries of the corner list of the minimap, in the order of the enum
-// game::MinimapCorner: the number of the chosen entry is the value of the enum.
-constexpr const char* MINIMAP_CORNER_ITEMS = "Top left\0Top right\0Bottom left\0Bottom right\0";
-
 // The picture of the minimap in its card is at most this wide, in pixels at 100 %
-// display scaling: the map itself is about that large in a 720 pixel high window.
+// display scaling.
 constexpr float MAX_MINIMAP_PICTURE_WIDTH = 200.0F;
 
 // What the round is doing, in words.
@@ -145,43 +141,35 @@ void drawMinimap(Page& page, const DebugContext& context) {
     const gfx::Framebuffer& target = context.minimap.target();
     page.beginCard("Minimap");
 
-    page.toggle("Minimap", &minimap.enabled,
-                "The map in a corner of the window (key M). It is drawn into "
-                "a framebuffer of its own, after the composite pass.");
+    page.toggle("Pin map open", &minimap.pinned,
+                "Debug switch: keep the map on the screen without holding M, for "
+                "screenshots and tuning. It counts like the held key: the player stands "
+                "still and does not look around until it is cleared.");
     page.toggle("Reveal all", &minimap.revealAll,
                 "Debug switch: show the whole maze. Without it the map shows only the "
                 "cells the player has seen along the corridors.");
     page.slider("Size", &minimap.size, game::MIN_MINIMAP_SIZE, game::MAX_MINIMAP_SIZE, "%.2f",
                 "The side of the map as a part of the height of the window. Its "
                 "framebuffer gets exactly that many pixels.");
-    page.slider("Margin", &minimap.margin, game::MIN_MINIMAP_MARGIN, game::MAX_MINIMAP_MARGIN,
-                "%.3f",
-                "The free space between the map and the edges of its corner, as a part "
-                "of the height of the window.");
-    int cornerIndex = static_cast<int>(minimap.corner);
-    if (page.combo("Corner", &cornerIndex, MINIMAP_CORNER_ITEMS,
-                   "The corner of the window the map stands in. The HUD is at the top in "
-                   "the middle, so a wide map in a top corner can meet it. The debug "
-                   "window covers the right side while it is shown.")) {
-        minimap.corner = static_cast<game::MinimapCorner>(cornerIndex);
-    }
     page.slider("Opacity", &minimap.opacity, game::MIN_MINIMAP_OPACITY, game::MAX_MINIMAP_OPACITY,
                 "%.2f", "How much the map hides of the scene behind it. 1 hides it completely.");
 
-    if (minimap.enabled && target.isValid()) {
+    // The framebuffer is filled only in the frames that show the map, so the picture
+    // below is the map as it was shown the last time.
+    if (target.isValid()) {
         page.stat("Framebuffer", "%d x %d px, %s", target.width(), target.height(),
                   gfx::colorFormatName(target.colorFormat()));
     } else {
-        page.stat("Framebuffer", "not drawn (minimap off)");
+        page.stat("Framebuffer", "not drawn yet (hold M in a round)");
     }
 
     if (page.beginBlock("minimap picture framebuffer")) {
-        // As wide as the card, but not larger than the map is on the screen.
         const float width =
             std::min(ImGui::GetContentRegionAvail().x, MAX_MINIMAP_PICTURE_WIDTH * displayScale());
         drawFramebufferPicture("Minimap framebuffer",
-                               "The framebuffer of the minimap: sRGB colours, shown as stored.",
-                               target, width, minimap.enabled);
+                               "The framebuffer of the minimap: sRGB colours, shown as stored. "
+                               "It is the map as it was shown the last time.",
+                               target, width, target.isValid());
     }
 
     page.endCard();

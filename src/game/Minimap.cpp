@@ -1,5 +1,5 @@
-// Minimap: the settings of the small map in a corner of the screen, where it stands, and
-// the flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
+// Minimap: the settings of the map in the middle of the screen, where it stands, and the
+// flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
 // See docs/modules/renderer/minimap.md
 #include "game/Minimap.hpp"
 
@@ -105,32 +105,18 @@ MinimapRect minimapRect(int framebufferWidth, int framebufferHeight,
         return {};
     }
 
-    // Both numbers are parts of the HEIGHT, also the margin to the left or the right
-    // edge: the map is then a square with the same free space on both sides of its
-    // corner. The settings come from sliders, where anything can be typed.
-    const auto height = static_cast<float>(framebufferHeight);
+    // The side is a part of the HEIGHT. The setting comes from a slider, where anything
+    // can be typed, so it is brought into its limits first. A window that is narrower
+    // than the map is high gets a map as wide as the window.
     const float sizePart = std::clamp(settings.size, MIN_MINIMAP_SIZE, MAX_MINIMAP_SIZE);
-    const float marginPart = std::clamp(settings.margin, MIN_MINIMAP_MARGIN, MAX_MINIMAP_MARGIN);
-    int size = static_cast<int>(std::lround(height * sizePart));
-    int margin = static_cast<int>(std::lround(height * marginPart));
+    const int wanted =
+        static_cast<int>(std::lround(static_cast<float>(framebufferHeight) * sizePart));
+    const int size = std::clamp(wanted, 1, std::min(framebufferWidth, framebufferHeight));
 
-    // The longest side that fits into the framebuffer with a margin on both sides. In
-    // a window so small that the margins alone fill it, the margin is given up.
-    const int shorterSide = std::min(framebufferWidth, framebufferHeight);
-    if (shorterSide - 2 * margin < 1) {
-        margin = 0;
-    }
-    size = std::clamp(size, 1, shorterSide - 2 * margin);
-
-    // The corner. OpenGL counts y from the BOTTOM edge of the framebuffer, so a top
-    // corner is the one with the large y.
-    const bool left =
-        settings.corner == MinimapCorner::TopLeft || settings.corner == MinimapCorner::BottomLeft;
-    const bool bottom = settings.corner == MinimapCorner::BottomLeft ||
-                        settings.corner == MinimapCorner::BottomRight;
-    return {.x = left ? margin : framebufferWidth - margin - size,
-            .y = bottom ? margin : framebufferHeight - margin - size,
-            .size = size};
+    // The middle: the free pixels are shared between the two sides. Whole number
+    // division rounds down, so with an odd number the extra pixel is on the right and
+    // at the top.
+    return {.x = (framebufferWidth - size) / 2, .y = (framebufferHeight - size) / 2, .size = size};
 }
 
 float minimapHalfExtent(const Maze& maze) {

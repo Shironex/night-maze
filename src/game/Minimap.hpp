@@ -1,5 +1,5 @@
-// Minimap: the settings of the small map in a corner of the screen, where it stands, and
-// the flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
+// Minimap: the settings of the map in the middle of the screen, where it stands, and the
+// flat shapes it is drawn from (floors, walls, gate, crystals, levers, notes, player).
 // See docs/modules/renderer/minimap.md
 #pragma once
 
@@ -22,29 +22,20 @@ namespace game {
 // runs to the right, and the maze axis z (the rows, towards the south) runs DOWN the
 // picture. Row 0 of the maze is its north edge (-Z), so it is the top row of the map.
 
-/// The corner of the window the minimap stands in. The debug UI shows the entries in
-/// this order.
-enum class MinimapCorner {
-    TopLeft = 0,
-    TopRight = 1,
-    BottomLeft = 2,
-    BottomRight = 3,
-};
-
 /// Limits of the settings below. The debug UI uses them for its sliders, and
 /// minimapRect brings the numbers into them: a slider accepts typed numbers too.
-constexpr float MIN_MINIMAP_SIZE = 0.1F;
-constexpr float MAX_MINIMAP_SIZE = 0.6F;
-constexpr float MIN_MINIMAP_MARGIN = 0.0F;
-constexpr float MAX_MINIMAP_MARGIN = 0.1F;
+constexpr float MIN_MINIMAP_SIZE = 0.3F;
+constexpr float MAX_MINIMAP_SIZE = 0.95F;
 constexpr float MIN_MINIMAP_OPACITY = 0.1F;
 constexpr float MAX_MINIMAP_OPACITY = 1.0F;
 
-/// What can be changed about the minimap while the game runs. The debug UI edits the
-/// fields, and the minimap key switches enabled.
+/// What can be changed about the map while the game runs. The debug UI edits the
+/// fields. Whether the map is on the screen is not a setting: it is shown while the
+/// player holds the map key (game::showsMap).
 struct MinimapSettings {
-    /// Whether the minimap is drawn at all.
-    bool enabled = true;
+    /// A switch for debugging: true keeps the map on the screen without the key, for
+    /// screenshots and for tuning. It counts like a held key, so the player stands still.
+    bool pinned = false;
 
     /// A switch for debugging: true shows the whole maze, also the cells the player has
     /// not discovered. It changes only what is drawn: the discovery of the round goes on
@@ -52,26 +43,18 @@ struct MinimapSettings {
     bool revealAll = false;
 
     /// The side of the square map as a part of the HEIGHT of the framebuffer of the
-    /// window: 0.28 of 720 pixels is 202 pixels. A part and not a number of pixels, so
+    /// window: 0.7 of 720 pixels is 504 pixels. A part and not a number of pixels, so
     /// the map covers the same share of the picture in every window and on a Retina
     /// display, where the framebuffer has twice as many pixels.
-    float size = 0.28F;
-
-    /// The free space between the map and the two edges of its corner, as a part of
-    /// the height of the framebuffer too: 0.02 of 720 pixels is 14 pixels.
-    float margin = 0.02F;
-
-    /// The corner the map stands in. A bottom corner by default: the HUD stands at the
-    /// top of the window, in the middle, and grows downwards with its hints. The left
-    /// one, because the debug window stands at the right edge while it is shown.
-    MinimapCorner corner = MinimapCorner::BottomLeft;
+    float size = 0.7F;
 
     /// How much the map hides of the scene behind it: 1 hides it completely, lower
-    /// values let it show through.
-    float opacity = 0.85F;
+    /// values let it show through. High enough to read the map, and not 1: the player
+    /// still sees a little of the corridor and knows that the game goes on behind it.
+    float opacity = 0.88F;
 };
 
-/// Where the minimap stands in the framebuffer of the window: a square, in framebuffer
+/// Where the map stands in the framebuffer of the window: a square, in framebuffer
 /// pixels, as glViewport wants it. x and y are its BOTTOM left corner, counted from the
 /// bottom left corner of the framebuffer (OpenGL counts y upwards).
 struct MinimapRect {
@@ -81,12 +64,11 @@ struct MinimapRect {
     int size = 0;
 };
 
-/// The square of the minimap for a framebuffer of the given size (in framebuffer
-/// pixels, never the size of the window in screen coordinates). The side and the margin
-/// are settings.size and settings.margin of the height, rounded to whole pixels. In
-/// a window that is too small for both, the map is made smaller until it fits, and when
-/// even that is not enough the margin is dropped. A framebuffer without pixels gives
-/// a square of size 0.
+/// The square of the map for a framebuffer of the given size (in framebuffer pixels,
+/// never the size of the window in screen coordinates): in the middle of the picture,
+/// with a side of settings.size of the height, rounded to whole pixels. In a window
+/// that is narrower than that, the map is as wide as the window. A framebuffer without
+/// pixels gives a square of size 0.
 MinimapRect minimapRect(int framebufferWidth, int framebufferHeight,
                         const MinimapSettings& settings);
 

@@ -1,4 +1,4 @@
-// Tests of game::Minimap: where the minimap stands on the screen, how the maze is mapped
+// Tests of game::Minimap: where the map stands on the screen, how the maze is mapped
 // into its picture and which shapes it is drawn from.
 // See docs/modules/renderer/minimap.md
 #include "game/Minimap.hpp"
@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdlib>
 #include <initializer_list>
 #include <vector>
 
@@ -77,77 +76,62 @@ constexpr game::MinimapPlayer PLAYER{.position = {1.0F, 0.0F, 1.0F}, .yawDegrees
 
 } // namespace
 
-TEST_CASE("the minimap settings start with the agreed values") {
+TEST_CASE("the map settings start with the agreed values") {
     const game::MinimapSettings settings;
-    CHECK(settings.enabled);
+    CHECK_FALSE(settings.pinned);
     CHECK_FALSE(settings.revealAll);
-    CHECK(settings.size == 0.28F);
-    CHECK(settings.margin == 0.02F);
-    CHECK(settings.corner == game::MinimapCorner::BottomLeft);
-    CHECK(settings.opacity == 0.85F);
+    CHECK(settings.size == 0.7F);
+    CHECK(settings.opacity == 0.88F);
 }
 
-TEST_CASE("the minimap is a square in its corner, measured in framebuffer pixels") {
-    game::MinimapSettings settings;
+TEST_CASE("the map is a square in the middle, measured in framebuffer pixels") {
+    const game::MinimapSettings settings;
 
-    // 0.28 of 720 is 201.6 and 0.02 of 720 is 14.4: 202 and 14 pixels.
-    settings.corner = game::MinimapCorner::BottomRight;
-    game::MinimapRect rect = game::minimapRect(1280, 720, settings);
-    CHECK(rect.size == 202);
-    CHECK(rect.x == 1280 - 14 - 202);
-    CHECK(rect.y == 14);
+    // 0.7 of 720 is 504 pixels. 776 pixels are free to the left and right of it and
+    // 216 above and below, half of them on each side. y counts from the bottom edge.
+    const game::MinimapRect rect = game::minimapRect(1280, 720, settings);
+    CHECK(rect.size == 504);
+    CHECK(rect.x == 388);
+    CHECK(rect.y == 108);
 
-    settings.corner = game::MinimapCorner::BottomLeft;
-    rect = game::minimapRect(1280, 720, settings);
-    CHECK(rect.x == 14);
-    CHECK(rect.y == 14);
-
-    // y counts from the bottom edge, so a top corner has the large y.
-    settings.corner = game::MinimapCorner::TopLeft;
-    rect = game::minimapRect(1280, 720, settings);
-    CHECK(rect.x == 14);
-    CHECK(rect.y == 720 - 14 - 202);
-
-    settings.corner = game::MinimapCorner::TopRight;
-    rect = game::minimapRect(1280, 720, settings);
-    CHECK(rect.x == 1280 - 14 - 202);
-    CHECK(rect.y == 720 - 14 - 202);
+    // The same free space on both sides.
+    CHECK(rect.x == 1280 - rect.x - rect.size);
+    CHECK(rect.y == 720 - rect.y - rect.size);
 }
 
-TEST_CASE("the minimap covers the same share of a Retina framebuffer") {
+TEST_CASE("the map covers the same share of a Retina framebuffer") {
     const game::MinimapSettings settings;
     const game::MinimapRect normal = game::minimapRect(1280, 720, settings);
     // The same window on a Retina display: twice the pixels in each direction.
     const game::MinimapRect retina = game::minimapRect(2560, 1440, settings);
 
-    // Twice as many pixels, give or take the one pixel of rounding.
-    CHECK(std::abs(retina.size - 2 * normal.size) <= 1);
-    CHECK(std::abs(retina.x - 2 * normal.x) <= 2);
-    CHECK(std::abs(retina.y - 2 * normal.y) <= 1);
+    CHECK(retina.size == 2 * normal.size);
+    CHECK(retina.x == 2 * normal.x);
+    CHECK(retina.y == 2 * normal.y);
 }
 
-TEST_CASE("the minimap follows the height of the framebuffer, not its width") {
+TEST_CASE("the map follows the height of the framebuffer, not its width") {
     const game::MinimapSettings settings;
     CHECK(game::minimapRect(1280, 720, settings).size ==
           game::minimapRect(1920, 720, settings).size);
-    CHECK(game::minimapRect(1280, 1440, settings).size == 403);
+    CHECK(game::minimapRect(1280, 1440, settings).size == 1008);
 }
 
-TEST_CASE("the minimap shrinks to fit a small framebuffer and never leaves it") {
-    game::MinimapSettings settings;
-    settings.corner = game::MinimapCorner::BottomRight;
+TEST_CASE("the map shrinks to fit a narrow framebuffer and never leaves it") {
+    const game::MinimapSettings settings;
 
-    // A narrow window: 202 pixels do not fit into 50. Margins of 14 leave 22.
+    // A narrow window: 504 pixels do not fit into 50. The map is as wide as the window
+    // and stays in the middle of its height.
     game::MinimapRect rect = game::minimapRect(50, 720, settings);
-    CHECK(rect.size == 22);
-    CHECK(rect.x == 14);
-    CHECK(rect.y == 14);
-
-    // Narrower than the two margins: the margin is given up.
-    rect = game::minimapRect(20, 720, settings);
-    CHECK(rect.size == 20);
+    CHECK(rect.size == 50);
     CHECK(rect.x == 0);
-    CHECK(rect.y == 0);
+    CHECK(rect.y == 335);
+
+    // An odd number of free pixels: the extra one is on the right and at the top.
+    rect = game::minimapRect(1281, 721, settings);
+    CHECK(rect.size == 505);
+    CHECK(rect.x == 388);
+    CHECK(rect.y == 108);
 
     // One pixel, and none: a square of one pixel, and no square.
     CHECK(game::minimapRect(1, 1, settings).size == 1);
@@ -155,17 +139,14 @@ TEST_CASE("the minimap shrinks to fit a small framebuffer and never leaves it") 
     CHECK(game::minimapRect(1280, 0, settings).size == 0);
 }
 
-TEST_CASE("settings outside their limits are brought into them") {
+TEST_CASE("a size outside its limits is brought into them") {
     game::MinimapSettings settings;
-    settings.size = 5.0F;
-    settings.margin = -1.0F;
-    settings.corner = game::MinimapCorner::BottomLeft;
 
-    // The largest size is 0.6 of the height, and the smallest margin is 0.
-    const game::MinimapRect rect = game::minimapRect(1280, 720, settings);
-    CHECK(rect.size == 432);
-    CHECK(rect.x == 0);
-    CHECK(rect.y == 0);
+    // The largest size is 0.95 of the height, the smallest 0.3.
+    settings.size = 5.0F;
+    CHECK(game::minimapRect(1280, 720, settings).size == 684);
+    settings.size = -1.0F;
+    CHECK(game::minimapRect(1280, 720, settings).size == 216);
 }
 
 TEST_CASE("the picture shows a square a little larger than the longer side of the maze") {
