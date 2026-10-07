@@ -116,6 +116,7 @@ protected:
             .pickDebug = pickDebug(),
             .menuCamera = menuCameraSettings(),
             .hudVisible = hudVisible(),
+            .mapOnScreen = mapOnScreen(),
             .menuCameraLoopSeconds = menuCameraLoopSeconds(),
             .gameMode = gameMode(),
             .audio = audio(),

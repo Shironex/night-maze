@@ -1127,6 +1127,7 @@ void NightMazeApp::onRender(double alpha) {
     // whole frame. While it is shown the mouse does not turn the camera and nothing can
     // be used: looking at the map is a stop, and the round goes on behind it.
     const bool map = mapShown();
+    m_mapOnScreen = map;
 
     // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
     // describes one frame, and onUpdate runs zero or more times per frame. It comes

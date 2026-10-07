@@ -28,7 +28,9 @@ namespace debug {
 ///     winded; while the tea of a flask works it is a copper bar that shrinks with the
 ///     seconds that are left, game::flaskEffectFraction), and a line of hint for each
 ///     thing there is to say (the tea works and for how long, the gate has opened, the
-///     battery is empty),
+///     battery is empty). While the map is on the screen (mapOnScreen) the hint lines
+///     are left out: the map stands in the middle of the window and the lines would
+///     reach into its top edge,
 ///   - in the middle of the window, while the cursor is captured: a small crosshair,
 ///     the point the picking ray goes through. It changes when the ray points at a lever
 ///     or a note the player can use, and a line near the bottom of the window then
@@ -45,7 +47,7 @@ namespace debug {
 /// debug UI is shown or hidden.
 void drawHud(const game::MazeWorld& world, const game::Round& round,
              const game::GameplaySettings& settings, const game::Player& player,
-             const game::PickState& pick);
+             const game::PickState& pick, bool mapOnScreen);
 
 /// The height of the room at the top edge of the window that the strip of the HUD can
 /// take, in pixels of the screen: its distance from the edge plus its height with all

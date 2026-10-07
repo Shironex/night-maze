@@ -139,6 +139,12 @@ protected:
     /// (main.cpp), which asks here.
     bool hudVisible() const { return showsHud(m_mode) && !m_menuCamera.enabled; }
 
+    /// True when the map was on the screen in the last frame drawn. The HUD asks it
+    /// (main.cpp passes it on): while the map covers the middle of the window, the hint
+    /// lines under the HUD strip are left out, because with them the strip would reach
+    /// into the top of the map.
+    bool mapOnScreen() const { return m_mapOnScreen; }
+
     /// The layer that draws the menu documents, exposed so main.cpp can keep the mouse
     /// away from it while a debug panel is under the cursor and can ask whether a text
     /// field of a menu has the keyboard.
@@ -687,6 +693,9 @@ private:
     ShadowSettings m_moonShadow;
     scene::LightSpace m_moonLightSpace;
     bool m_moonShadowDrawn = false;
+
+    // Whether the map was drawn in the last frame (mapOnScreen). Set in onRender.
+    bool m_mapOnScreen = false;
 
     // The same three for the shadows of the flashlight, set by drawFlashlightShadowMap
     // in every frame. The settings start with a smaller map and a bias of their own

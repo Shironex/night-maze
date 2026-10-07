@@ -221,7 +221,7 @@ void drawHint(const game::Round& round, const game::Stamina& stamina) {
 
 // The strip at the top of the window.
 void drawStatus(const game::Round& round, const game::GameplaySettings& settings,
-                const game::Player& player, float scale) {
+                const game::Player& player, bool mapOnScreen, float scale) {
     // The third argument is the pivot: the point of the HUD that is put at the given
     // position. (0.5, 0) is the middle of its top edge, so the HUD is centred whatever
     // its width turns out to be.
@@ -243,7 +243,11 @@ void drawStatus(const game::Round& round, const game::GameplaySettings& settings
         drawStaminaBar(player.stamina,
                        game::flaskEffectFraction(player.stamina, player.staminaSettings),
                        round.animationSeconds, scale);
-        drawHint(round, player.stamina);
+        // The hints are left out while the map is shown: the strip would grow down into
+        // the top of the map, which is centred in the window.
+        if (!mapOnScreen) {
+            drawHint(round, player.stamina);
+        }
     }
     ImGui::End();
 }
@@ -349,7 +353,7 @@ void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float 
 
 void drawHud(const game::MazeWorld& world, const game::Round& round,
              const game::GameplaySettings& settings, const game::Player& player,
-             const game::PickState& pick) {
+             const game::PickState& pick, bool mapOnScreen) {
     const float scale = ImGui::GetStyle().FontScaleDpi;
 
     // The same font as the debug window, in the size of the HUD, for everything below.
@@ -357,7 +361,7 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
     // multiplies it by FontScaleDpi itself.
     ImGui::PushFont(nullptr, HUD_FONT_SIZE);
 
-    drawStatus(round, settings, player, scale);
+    drawStatus(round, settings, player, mapOnScreen, scale);
     drawCrosshair(pick, scale);
     drawPrompt(pick);
     if (round.noteOpen) {

@@ -102,7 +102,8 @@ void DebugUI::draw(const DebugContext& context) {
     // The game says when: not under a menu, where it would lie on top of the buttons,
     // and not in the picture of the menu camera, which shows no round.
     if (context.hudVisible) {
-        drawHud(context.mazeWorld, context.round, context.gameplay, context.player, context.pick);
+        drawHud(context.mazeWorld, context.round, context.gameplay, context.player, context.pick,
+                context.mapOnScreen);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.
