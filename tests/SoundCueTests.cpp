@@ -1,0 +1,271 @@
+// Tests of game/SoundCues.hpp: the table of the cues, the cue of the flashlight key, the
+// cues of a fixed step and the clock of the low battery pulse.
+#include "game/SoundCues.hpp"
+
+#include "game/MazeWorld.hpp"
+#include "game/Round.hpp"
+
+#include <doctest/doctest.h>
+
+#include <cstddef>
+#include <set>
+#include <string>
+#include <vector>
+
+namespace {
+
+// The fixed step of the game: core::Time::FIXED_DT as a float. 120 steps are one second.
+constexpr float STEP = 1.0F / 120.0F;
+
+// A place far away from every crystal and from the exit of the maze used here.
+constexpr glm::vec3 NOWHERE{-50.0F, 0.0F, -50.0F};
+
+// The golden maze: 4 x 4 cells from seed 1, with a gate and two crystals.
+game::MazeWorld goldenWorld() {
+    return game::buildMazeWorld(4, 4, 1U);
+}
+
+// A round by hand, for the rules that only read a few of its numbers: it is being
+// played, with the given charge.
+game::Round roundWithBattery(float battery) {
+    game::Round round;
+    round.battery = battery;
+    return round;
+}
+
+// Runs the clock of the pulse for a number of fixed steps and counts the beats.
+int beatsIn(game::LowBatteryPulse& pulse, const game::Round& round, bool flashlightOn,
+            const game::GameplaySettings& settings, int steps) {
+    int beats = 0;
+    for (int i = 0; i < steps; ++i) {
+        if (game::advanceLowBatteryPulse(pulse, round, flashlightOn, settings, STEP)) {
+            ++beats;
+        }
+    }
+    return beats;
+}
+
+} // namespace
+
+TEST_CASE("every cue has a file and a name of its own") {
+    std::set<std::string> files;
+    std::set<std::string> names;
+    for (std::size_t i = 0; i < game::SOUND_CUE_COUNT; ++i) {
+        const auto cue = static_cast<game::SoundCue>(i);
+        CHECK(game::soundCueIndex(cue) == i);
+        // A cue that was added to the enum but not to the table has null pointers.
+        REQUIRE(game::soundCueFile(cue) != nullptr);
+        REQUIRE(game::soundCueName(cue) != nullptr);
+        const std::string file = game::soundCueFile(cue);
+        // Every sound lies in assets/audio and is a WAV file: the only format the
+        // build of miniaudio decodes.
+        CHECK(file.starts_with("audio/"));
+        CHECK(file.ends_with(".wav"));
+        files.insert(file);
+        names.insert(game::soundCueName(cue));
+    }
+    // A set keeps one copy of equal texts, so equal names would make it smaller.
+    CHECK(files.size() == game::SOUND_CUE_COUNT);
+    CHECK(names.size() == game::SOUND_CUE_COUNT);
+    // The last entry of the enum is the last entry of the table.
+    CHECK(game::soundCueIndex(game::SoundCue::GateOpen) == game::SOUND_CUE_COUNT - 1);
+}
+
+TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
+    CHECK(game::flashlightKeyCue(0.5F, false) == game::SoundCue::FlashlightOn);
+    CHECK(game::flashlightKeyCue(0.5F, true) == game::SoundCue::FlashlightOff);
+    // A battery that is almost empty still works.
+    CHECK(game::flashlightKeyCue(0.001F, false) == game::SoundCue::FlashlightOn);
+    // Empty: dead, whatever the switch says.
+    CHECK(game::flashlightKeyCue(0.0F, false) == game::SoundCue::FlashlightDead);
+    CHECK(game::flashlightKeyCue(0.0F, true) == game::SoundCue::FlashlightDead);
+}
+
+TEST_CASE("a step that changes nothing has no cue") {
+    const game::Round round = roundWithBattery(0.5F);
+    CHECK(game::roundStepCues(game::soundSnapshot(round, true), round, true).empty());
+}
+
+TEST_CASE("a collected crystal is one cue, also when the step collected two") {
+    game::Round round = roundWithBattery(0.5F);
+    const game::RoundSoundSnapshot before = game::soundSnapshot(round, true);
+
+    round.collectedCount = 1;
+    CHECK(game::roundStepCues(before, round, true) ==
+          std::vector<game::SoundCue>{game::SoundCue::CrystalPickup});
+
+    round.collectedCount = 2;
+    CHECK(game::roundStepCues(before, round, true) ==
+          std::vector<game::SoundCue>{game::SoundCue::CrystalPickup});
+}
+
+TEST_CASE("the gate that opens is a cue, the gate that stays open is not") {
+    game::Round round = roundWithBattery(0.5F);
+    const game::RoundSoundSnapshot closed = game::soundSnapshot(round, true);
+    round.gateOpen = true;
+    CHECK(game::roundStepCues(closed, round, true) ==
+          std::vector<game::SoundCue>{game::SoundCue::GateOpen});
+    // The step after: open before and open now.
+    CHECK(game::roundStepCues(game::soundSnapshot(round, true), round, true).empty());
+}
+
+TEST_CASE("the crystal that opens the gate gives both cues, the pickup first") {
+    game::Round round = roundWithBattery(0.5F);
+    const game::RoundSoundSnapshot before = game::soundSnapshot(round, true);
+    round.collectedCount = 1;
+    round.gateOpen = true;
+    CHECK(game::roundStepCues(before, round, true) ==
+          std::vector<game::SoundCue>{game::SoundCue::CrystalPickup, game::SoundCue::GateOpen});
+}
+
+TEST_CASE("a new round fires nothing, whatever the round before looked like") {
+    const game::MazeWorld world = goldenWorld();
+    const game::GameplaySettings settings;
+
+    // The application takes the snapshot right before every step, so the first step of
+    // a new round compares the new round with itself.
+    const game::Round fresh = game::startRound(world, settings);
+    CHECK(game::roundStepCues(game::soundSnapshot(fresh, true), fresh, true).empty());
+
+    // A maze without crystals starts with its gate open: that is not "the gate opens".
+    const game::MazeWorld empty = game::buildMazeWorld(4, 4, 1U, game::InteractableSettings{}, 0);
+    const game::Round open = game::startRound(empty, settings);
+    REQUIRE(open.gateOpen);
+    CHECK(game::roundStepCues(game::soundSnapshot(open, true), open, true).empty());
+
+    // Even a snapshot of the round BEFORE the restart, compared with the new round,
+    // is silent: the count went down and the gate closed, and neither is a cue.
+    game::Round old = game::startRound(world, settings);
+    old.collectedCount = 2;
+    old.gateOpen = true;
+    old.battery = 0.4F;
+    CHECK(game::roundStepCues(game::soundSnapshot(old, false), fresh, true).empty());
+}
+
+TEST_CASE("the battery that runs out with the light on clicks dead, once") {
+    const game::MazeWorld world = goldenWorld();
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    // Less charge than one step drains.
+    round.battery = 0.5F * STEP / settings.batteryLifetimeSeconds;
+    bool flashlightOn = true;
+
+    game::RoundSoundSnapshot before = game::soundSnapshot(round, flashlightOn);
+    game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+    REQUIRE(round.battery == 0.0F);
+    REQUIRE_FALSE(flashlightOn);
+    CHECK(game::roundStepCues(before, round, flashlightOn) ==
+          std::vector<game::SoundCue>{game::SoundCue::FlashlightDead});
+
+    // The next step: empty before and empty now.
+    before = game::soundSnapshot(round, flashlightOn);
+    game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+    CHECK(game::roundStepCues(before, round, flashlightOn).empty());
+
+    // The key on the empty battery: its own cue, and the switch is set. The step that
+    // turns the switch off again must not click a second time.
+    CHECK(game::flashlightKeyCue(round.battery, flashlightOn) == game::SoundCue::FlashlightDead);
+    flashlightOn = true;
+    before = game::soundSnapshot(round, flashlightOn);
+    game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+    REQUIRE_FALSE(flashlightOn);
+    CHECK(game::roundStepCues(before, round, flashlightOn).empty());
+}
+
+TEST_CASE("a battery that is empty with the light off made no sound of dying") {
+    // The debug UI can write 0 into the battery while the light is off.
+    game::Round round = roundWithBattery(0.1F);
+    const game::RoundSoundSnapshot before = game::soundSnapshot(round, false);
+    round.battery = 0.0F;
+    CHECK(game::roundStepCues(before, round, false).empty());
+}
+
+TEST_CASE("the low battery pulse sounds only while a played round has a low, lit battery") {
+    const game::GameplaySettings settings; // threshold 0.2
+    CHECK(game::lowBatteryPulseSounds(roundWithBattery(0.1F), true, settings));
+    // The light is off.
+    CHECK_FALSE(game::lowBatteryPulseSounds(roundWithBattery(0.1F), false, settings));
+    // Exactly empty, exactly at the threshold, and above it.
+    CHECK_FALSE(game::lowBatteryPulseSounds(roundWithBattery(0.0F), true, settings));
+    CHECK_FALSE(game::lowBatteryPulseSounds(roundWithBattery(0.2F), true, settings));
+    CHECK_FALSE(game::lowBatteryPulseSounds(roundWithBattery(0.9F), true, settings));
+    // The round is won.
+    game::Round won = roundWithBattery(0.1F);
+    won.state = game::RoundState::Won;
+    CHECK_FALSE(game::lowBatteryPulseSounds(won, true, settings));
+    // A threshold of 0 switches the warning off.
+    game::GameplaySettings never;
+    never.lowBatteryThreshold = 0.0F;
+    CHECK_FALSE(game::lowBatteryPulseSounds(roundWithBattery(0.1F), true, never));
+}
+
+TEST_CASE("the pulse gets faster as the battery runs down") {
+    const game::GameplaySettings settings; // threshold 0.2
+    const float nearThreshold = game::lowBatteryPulseInterval(0.199F, settings);
+    const float half = game::lowBatteryPulseInterval(0.1F, settings);
+    const float nearEmpty = game::lowBatteryPulseInterval(0.001F, settings);
+    CHECK(nearThreshold == doctest::Approx(game::LOW_BATTERY_PULSE_SLOW_SECONDS).epsilon(0.01));
+    // Half of the low range: half way between the two ends, 1.4 s.
+    CHECK(half == doctest::Approx(1.4F));
+    CHECK(nearEmpty == doctest::Approx(game::LOW_BATTERY_PULSE_FAST_SECONDS).epsilon(0.01));
+    CHECK(nearThreshold > half);
+    CHECK(half > nearEmpty);
+    // Outside of the low range, and with a threshold of 0, there is no division.
+    CHECK(game::lowBatteryPulseInterval(0.5F, settings) == game::LOW_BATTERY_PULSE_SLOW_SECONDS);
+    game::GameplaySettings never;
+    never.lowBatteryThreshold = 0.0F;
+    CHECK(game::lowBatteryPulseInterval(0.1F, never) == game::LOW_BATTERY_PULSE_SLOW_SECONDS);
+}
+
+TEST_CASE("the pulse beats at once when the battery gets low and then at its interval") {
+    const game::GameplaySettings settings;
+    const game::Round round = roundWithBattery(0.1F); // interval 1.4 s: 168 steps
+    game::LowBatteryPulse pulse;
+
+    CHECK(game::advanceLowBatteryPulse(pulse, round, true, settings, STEP));
+    // Not again in the next step, and not for a second.
+    CHECK(beatsIn(pulse, round, true, settings, 120) == 0);
+    // Ten seconds hold 10 / 1.4 = 7 whole intervals.
+    CHECK(beatsIn(pulse, round, true, settings, 1200) == 7);
+}
+
+TEST_CASE("the pulse is silent with the light off and with a full or an empty battery") {
+    const game::GameplaySettings settings;
+    game::LowBatteryPulse pulse;
+    CHECK(beatsIn(pulse, roundWithBattery(0.1F), false, settings, 1200) == 0);
+    CHECK(beatsIn(pulse, roundWithBattery(0.9F), true, settings, 1200) == 0);
+    CHECK(beatsIn(pulse, roundWithBattery(0.0F), true, settings, 1200) == 0);
+}
+
+TEST_CASE("one very long step is one beat, and no burst follows it") {
+    const game::GameplaySettings settings;
+    const game::Round round = roundWithBattery(0.1F);
+    game::LowBatteryPulse pulse;
+    CHECK(game::advanceLowBatteryPulse(pulse, round, true, settings, STEP));
+    // A step of a whole minute: many intervals long, still one beat.
+    CHECK(game::advanceLowBatteryPulse(pulse, round, true, settings, 60.0F));
+    // The steps after it wait a full interval again.
+    CHECK(beatsIn(pulse, round, true, settings, 120) == 0);
+}
+
+TEST_CASE("switching the light off holds the pulse, a charged battery and a new round reset it") {
+    const game::GameplaySettings settings;
+    const game::Round low = roundWithBattery(0.1F);
+    game::LowBatteryPulse pulse;
+    REQUIRE(game::advanceLowBatteryPulse(pulse, low, true, settings, STEP));
+
+    // The light off for ten seconds, then on again: the clock stood still, so the wait
+    // goes on where it was and there is no beat at once.
+    CHECK(beatsIn(pulse, low, false, settings, 1200) == 0);
+    CHECK_FALSE(game::advanceLowBatteryPulse(pulse, low, true, settings, STEP));
+
+    // A crystal charged the battery above the threshold: the clock is reset, and the
+    // next time the battery is low the first beat comes at once.
+    CHECK_FALSE(game::advanceLowBatteryPulse(pulse, roundWithBattery(0.5F), true, settings, STEP));
+    CHECK(game::advanceLowBatteryPulse(pulse, low, true, settings, STEP));
+
+    // A new round: the application assigns a new clock.
+    CHECK_FALSE(game::advanceLowBatteryPulse(pulse, low, true, settings, STEP));
+    pulse = game::LowBatteryPulse{};
+    CHECK(game::advanceLowBatteryPulse(pulse, low, true, settings, STEP));
+}

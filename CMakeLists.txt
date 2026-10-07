@@ -108,9 +108,10 @@ night_maze_enable_warnings(engine)
 # The maze, its generator, its layout in the world, the terrain it stands on, the places
 # of the grass, the player, the settings of the lighting, of the bloom, of the fog, of
 # the vignette and of the shadows, the rules of a round (exit, crystals, battery), the
-# levers and the notes with the picking of a frame, what the minimap shows (the
-# discovered cells and its shapes), the path of the menu camera, the screens of the
-# game (menu, playing, paused, round end, settings), the rule that chooses what is
+# levers and the notes with the picking of a frame, the sound cues (which short sound
+# belongs to what happened, and the clock of the low battery pulse), what the minimap
+# shows (the discovered cells and its shapes), the path of the menu camera, the screens
+# of the game (menu, playing, paused, round end, settings), the rule that chooses what is
 # behind the main menu, the three difficulty levels, the settings of the player with
 # the text of their file and the switches of the command line are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that
@@ -165,6 +166,8 @@ add_library(game_logic STATIC
     src/game/Settings.hpp
     src/game/Shadows.cpp
     src/game/Shadows.hpp
+    src/game/SoundCues.cpp
+    src/game/SoundCues.hpp
     src/game/StartOptions.cpp
     src/game/StartOptions.hpp
     src/game/Terrain.cpp
@@ -389,6 +392,7 @@ add_executable(night_maze_tests
     tests/ShaderSourceTests.cpp
     tests/ShadowTests.cpp
     tests/SkyboxTests.cpp
+    tests/SoundCueTests.cpp
     tests/StartOptionsTests.cpp
     tests/TangentTests.cpp
     tests/TerrainTests.cpp
