@@ -29,7 +29,17 @@ bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool want
                     float stepSeconds) {
     const bool sprinting = wantsSprint && !stamina.winded && stamina.level > 0.0F;
 
+    // The tea of a flask runs down with the time, whatever the player does. max keeps
+    // the last step from going below 0.
+    stamina.noDrainSecondsLeft = std::max(stamina.noDrainSecondsLeft - stepSeconds, 0.0F);
+
     if (sprinting) {
+        // While the tea works a sprint costs nothing: the step is sprinted, and the bar
+        // stays as it is.
+        if (stamina.noDrainSecondsLeft > 0.0F) {
+            return true;
+        }
+
         // The drain. A step is stepSeconds / drainSeconds of the whole bar, so
         // drainSeconds of sprinting empty it. max keeps the last step from going
         // below 0.
@@ -58,8 +68,24 @@ bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool want
     return false;
 }
 
+void drinkFlask(Stamina& stamina, const StaminaSettings& settings) {
+    stamina.level = 1.0F;
+    stamina.winded = false;
+    // Set, not added: a second flask starts the whole time again.
+    stamina.noDrainSecondsLeft = settings.flaskSeconds;
+}
+
+float flaskEffectFraction(const Stamina& stamina, const StaminaSettings& settings) {
+    // A length of 0 (typed into the debug UI) has no parts, and must not be divided by.
+    if (settings.flaskSeconds <= 0.0F) {
+        return 0.0F;
+    }
+    return std::clamp(stamina.noDrainSecondsLeft / settings.flaskSeconds, 0.0F, 1.0F);
+}
+
 bool staminaBarVisible(const Stamina& stamina) {
-    return stamina.level < 1.0F || stamina.secondsFull < STAMINA_BAR_LINGER_SECONDS;
+    return stamina.level < 1.0F || stamina.secondsFull < STAMINA_BAR_LINGER_SECONDS ||
+           stamina.noDrainSecondsLeft > 0.0F;
 }
 
 scene::Aabb Player::box() const {

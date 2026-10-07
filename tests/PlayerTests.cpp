@@ -579,3 +579,119 @@ TEST_CASE("a player who reads the map stands still while the stamina refills") {
     checkVector(player.position, placeBefore);
     CHECK(player.stamina.level > levelBefore);
 }
+
+// ---- The flask of tea --------------------------------------------------------------------
+
+TEST_CASE("the tea of a flask works for 20 seconds, and a new stamina has none") {
+    CHECK(game::StaminaSettings{}.flaskSeconds == 20.0F);
+    CHECK(game::Stamina{}.noDrainSecondsLeft == 0.0F);
+}
+
+TEST_CASE("a flask fills the bar, ends winded and starts the effect") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    // Sprint the bar empty: a little over 6 seconds.
+    runStamina(stamina, settings, true, 6.5F);
+    REQUIRE(stamina.winded);
+    REQUIRE(stamina.level < 0.5F);
+
+    game::drinkFlask(stamina, settings);
+    CHECK(stamina.level == 1.0F);
+    CHECK_FALSE(stamina.winded);
+    CHECK(stamina.noDrainSecondsLeft == 20.0F);
+    CHECK(game::flaskEffectFraction(stamina, settings) == 1.0F);
+    // The sprint works at once.
+    CHECK(game::advanceStamina(stamina, settings, true, STEP_SECONDS));
+}
+
+TEST_CASE("sprinting drains nothing while the tea works, and drains again after it") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    game::drinkFlask(stamina, settings);
+
+    // 19 seconds of sprinting, three times as long as a full bar lasts: still full.
+    runStamina(stamina, settings, true, 19.0F);
+    CHECK(stamina.level == 1.0F);
+    CHECK_FALSE(stamina.winded);
+    CHECK(stamina.noDrainSecondsLeft == doctest::Approx(1.0F).epsilon(0.01));
+    // And every one of those steps is a sprinted one.
+    CHECK(game::advanceStamina(stamina, settings, true, STEP_SECONDS));
+
+    // Two more seconds: the effect ended a second ago, and that second was drained.
+    runStamina(stamina, settings, true, 2.0F);
+    CHECK(stamina.noDrainSecondsLeft == 0.0F);
+    CHECK(stamina.level == doctest::Approx(1.0F - 1.0F / settings.drainSeconds).epsilon(0.02));
+}
+
+TEST_CASE("the effect of a flask runs down also while the player stands still") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    game::drinkFlask(stamina, settings);
+    runStamina(stamina, settings, false, 5.0F);
+    CHECK(stamina.noDrainSecondsLeft == doctest::Approx(15.0F).epsilon(0.001));
+    CHECK(game::flaskEffectFraction(stamina, settings) == doctest::Approx(0.75F).epsilon(0.001));
+}
+
+TEST_CASE("a second flask during the effect starts the 20 seconds again") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    game::drinkFlask(stamina, settings);
+    runStamina(stamina, settings, true, 12.0F);
+    REQUIRE(stamina.noDrainSecondsLeft < 9.0F);
+
+    game::drinkFlask(stamina, settings);
+    // 20 again, not 20 on top of what was left.
+    CHECK(stamina.noDrainSecondsLeft == 20.0F);
+}
+
+TEST_CASE("the effect of a flask lasts as long as the settings say") {
+    game::StaminaSettings settings;
+    settings.flaskSeconds = 5.0F;
+    game::Stamina stamina;
+    game::drinkFlask(stamina, settings);
+    CHECK(stamina.noDrainSecondsLeft == 5.0F);
+    runStamina(stamina, settings, true, 6.0F);
+    CHECK(stamina.level < 1.0F);
+}
+
+TEST_CASE("the stamina bar is shown for as long as the tea works") {
+    const game::StaminaSettings settings;
+    game::Stamina stamina;
+    REQUIRE_FALSE(game::staminaBarVisible(stamina));
+
+    game::drinkFlask(stamina, settings);
+    CHECK(game::staminaBarVisible(stamina));
+    // Standing still with a full bar for 10 seconds: without the tea the bar would be
+    // hidden long ago.
+    runStamina(stamina, settings, false, 10.0F);
+    CHECK(game::staminaBarVisible(stamina));
+    // After the effect it is hidden again.
+    runStamina(stamina, settings, false, 13.0F);
+    CHECK_FALSE(game::staminaBarVisible(stamina));
+}
+
+TEST_CASE("the share of the effect that is left stays between 0 and 1") {
+    game::StaminaSettings settings;
+    game::Stamina stamina;
+    CHECK(game::flaskEffectFraction(stamina, settings) == 0.0F);
+
+    // The debug UI shortened the effect while one was running: more seconds are left
+    // than a whole effect has.
+    game::drinkFlask(stamina, settings);
+    settings.flaskSeconds = 5.0F;
+    CHECK(game::flaskEffectFraction(stamina, settings) == 1.0F);
+    // A length of 0 must not divide by zero.
+    settings.flaskSeconds = 0.0F;
+    CHECK(game::flaskEffectFraction(stamina, settings) == 0.0F);
+}
+
+TEST_CASE("a new round ends the effect of a flask") {
+    game::Player player;
+    game::drinkFlask(player.stamina, player.staminaSettings);
+    REQUIRE(player.stamina.noDrainSecondsLeft > 0.0F);
+
+    // What the application does when a round starts or starts again.
+    player.stamina = {};
+    CHECK(player.stamina.noDrainSecondsLeft == 0.0F);
+    CHECK(game::flaskEffectFraction(player.stamina, player.staminaSettings) == 0.0F);
+}

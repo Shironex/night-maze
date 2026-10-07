@@ -45,6 +45,9 @@ struct StaminaSettings {
 
     /// A winded player can sprint again when the bar is back at this level: 0.5 is half.
     float windedRecovery = 0.5F;
+
+    /// How long sprinting costs no stamina after a flask of tea, in seconds (drinkFlask).
+    float flaskSeconds = 20.0F;
 };
 
 /// How long the stamina bar of the HUD stays on the screen after it got full again, in
@@ -68,6 +71,10 @@ struct Stamina {
     /// Seconds the bar has been full without a break, only for the HUD. It starts at
     /// the linger time, so a new round does not show a bar nobody has used yet.
     float secondsFull = STAMINA_BAR_LINGER_SECONDS;
+
+    /// Seconds for which sprinting still costs nothing: the tea of a flask is working
+    /// (drinkFlask). 0 means that no effect runs.
+    float noDrainSecondsLeft = 0.0F;
 };
 
 /// Advances the stamina by one fixed step of stepSeconds seconds and returns true when
@@ -79,6 +86,9 @@ struct Stamina {
 ///
 ///   - Sprinting drains the bar: from full to empty in drainSeconds. The step that
 ///     empties it makes the player winded.
+///   - Not while the tea of a flask works (Stamina::noDrainSecondsLeft): then the step
+///     is sprinted and the bar stays as it is. That time runs down in every step,
+///     whether the player sprints, walks or stands.
 ///   - Otherwise the bar refills, from empty to full in refillSeconds, but only after
 ///     refillDelaySeconds have passed since the last drain.
 ///   - Winded ends when the refill reaches windedRecovery. Holding the sprint key while
@@ -86,8 +96,21 @@ struct Stamina {
 bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool wantsSprint,
                     float stepSeconds);
 
-/// True while the HUD shows the stamina bar: while it is not full, and for
-/// STAMINA_BAR_LINGER_SECONDS after it got full.
+/// The player drinks a flask of tea: the bar is full at once, a winded player is not
+/// winded any more, and for StaminaSettings::flaskSeconds sprinting drains nothing.
+/// A second flask while the first one still works starts that time again from the
+/// beginning: the seconds are set, not added.
+void drinkFlask(Stamina& stamina, const StaminaSettings& settings);
+
+/// How much of the effect of a flask is left, from 1 (just drunk) down to 0 (no effect):
+/// Stamina::noDrainSecondsLeft as a part of StaminaSettings::flaskSeconds. The HUD
+/// draws its bar with it. Always between 0 and 1, also when the debug UI changed the
+/// length of the effect while one was running.
+float flaskEffectFraction(const Stamina& stamina, const StaminaSettings& settings);
+
+/// True while the HUD shows the stamina bar: while it is not full, for
+/// STAMINA_BAR_LINGER_SECONDS after it got full, and for as long as the tea of a flask
+/// works.
 bool staminaBarVisible(const Stamina& stamina);
 
 /// The player: a box standing on the ground, plus the settings of its movement.
