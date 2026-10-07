@@ -134,7 +134,8 @@ void drawRules(Page& page, const DebugContext& context) {
                 "How near the player has to be to collect a crystal. At 2 m a crystal is "
                 "collected from the neighbouring cell, through the wall.");
     page.sliderInt("Flasks", &settings.flaskCount, 0, game::MAX_FLASK_COUNT, "%d",
-                   "How many flasks of tea lie in the maze, in dead ends without a crystal. "
+                   "How many flasks of tea lie in the maze: in dead ends without a crystal "
+                   "first, and in other free cells when none is left. "
                    "A new number shows when the round starts again (key R). A new game sets "
                    "the number of its difficulty level.");
     page.endCard();
