@@ -1,4 +1,5 @@
-/* The one translation unit that holds the implementation of miniaudio. */
+/* The one translation unit that holds the implementation of miniaudio.
+   See docs/libraries/miniaudio.md */
 
 /* miniaudio.h is a single header. Included normally it only declares its functions.
    With this macro defined first, the same header also emits their definitions. That must

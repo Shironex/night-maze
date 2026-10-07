@@ -1,4 +1,5 @@
 // AudioEngine: opens the sound card and plays short sounds that were loaded at start.
+// See docs/modules/audio/README.md
 #pragma once
 
 #include <cstddef>
