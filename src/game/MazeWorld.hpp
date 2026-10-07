@@ -7,6 +7,7 @@
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/Terrain.hpp"
+#include "game/WallVariants.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>
@@ -46,6 +47,11 @@ struct MazeSettings {
     /// How many levers and notes the maze should get (see game/Interactables.hpp). They
     /// are placed when the maze is built, so a new number shows after "regenerate" too.
     InteractableSettings interactables;
+
+    /// Whether the worn walls are drawn with their own textures (MazeWorld::wallVariants).
+    /// Unlike the fields above it needs no new maze: switched off, every wall is drawn
+    /// plain from the next frame on.
+    bool wallVariants = true;
 
     /// True when a new maze was asked for and has not been built yet.
     bool regenerate = false;
@@ -125,6 +131,10 @@ struct MazeWorld {
     /// opens in walls. The same number finds the matrix of that wall in wallMatrices and
     /// its box in colliders, because the three lists are in the same order.
     std::vector<std::size_t> leverWalls;
+
+    /// The look of every wall (plain, cracked, mossy or damaged), chosen from the seed
+    /// (game::chooseWallVariants). Same order as walls.
+    std::vector<WallVariant> wallVariants;
 };
 
 /// Camera yaw, in degrees, that looks in the given direction: 0 for North (-Z), 90 for

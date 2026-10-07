@@ -198,6 +198,8 @@ add_library(game_logic STATIC
     src/game/Terrain.hpp
     src/game/Vignette.cpp
     src/game/Vignette.hpp
+    src/game/WallVariants.cpp
+    src/game/WallVariants.hpp
 )
 # PUBLIC: the headers of this library (Crystals.hpp, Exit.hpp, Lighting.hpp,
 # MazeLayout.hpp, MazeWorld.hpp, Player.hpp, Round.hpp, Shadows.hpp, Terrain.hpp) include
@@ -444,6 +446,7 @@ add_executable(night_maze_tests
     tests/TransformTests.cpp
     tests/VideoClockTests.cpp
     tests/VignetteTests.cpp
+    tests/WallVariantTests.cpp
     # The one file of the debug UI that needs neither ImGui nor a window: the text
     # search of the debug window. It is compiled into the test program directly.
     src/debug/Search.cpp

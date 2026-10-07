@@ -166,6 +166,8 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
     for (const Lever& lever : world.interactables.levers) {
         world.leverWalls.push_back(wallIndexOf(world.walls, lever));
     }
+    // The looks of the walls come last: a wall with a lever or a note on it stays plain.
+    world.wallVariants = chooseWallVariants(maze, seed, START_CELL, world.interactables);
 
     // The heights: the terrain, and everything above standing on it.
     placeOnTerrain(world, heightmap, heightScale);
