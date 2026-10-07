@@ -27,6 +27,7 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/lever_pull.wav", .name = "lever pull"},
     {.file = "audio/gate_open.wav", .name = "gate open"},
     {.file = "audio/winded_breath.wav", .name = "winded breath"},
+    {.file = "audio/flask_pickup.wav", .name = "flask pickup"},
 }};
 
 } // namespace
@@ -56,6 +57,7 @@ SoundCue flashlightKeyCue(float battery, bool wasOn) {
 
 RoundSoundSnapshot soundSnapshot(const Round& round, bool flashlightOn) {
     return {.collectedCount = round.collectedCount,
+            .flasksCollected = round.flasksCollected,
             .gateOpen = round.gateOpen,
             .battery = round.battery,
             .flashlightOn = flashlightOn};
@@ -82,6 +84,10 @@ std::vector<SoundCue> roundStepCues(const RoundSoundSnapshot& before, const Roun
     // asked, so the light it saved makes no sound of dying.
     if (before.flashlightOn && before.battery > 0.0F && round.battery <= 0.0F && !flashlightOn) {
         cues.push_back(SoundCue::FlashlightDead);
+    }
+    // "More than before", for the same reason as with the crystals.
+    if (round.flasksCollected > before.flasksCollected) {
+        cues.push_back(SoundCue::FlaskPickup);
     }
     return cues;
 }

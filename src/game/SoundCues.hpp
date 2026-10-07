@@ -29,10 +29,11 @@ enum class SoundCue {
     LeverPull,       ///< a lever was pulled and its wall starts to sink
     GateOpen,        ///< enough crystals are collected: the gate starts to sink
     WindedBreath,    ///< the breath that repeats while the player is winded
+    FlaskPickup,     ///< a flask of tea was picked up
 };
 
 /// How many cues there are: the number of entries of SoundCue.
-constexpr std::size_t SOUND_CUE_COUNT = 8;
+constexpr std::size_t SOUND_CUE_COUNT = 9;
 
 /// The place of a cue in the list of sounds: its number as an index.
 std::size_t soundCueIndex(SoundCue cue);
@@ -56,6 +57,7 @@ SoundCue flashlightKeyCue(float battery, bool wasOn);
 /// did, so game::updateRound needs no extra way to report it.
 struct RoundSoundSnapshot {
     int collectedCount = 0;    ///< Round::collectedCount
+    int flasksCollected = 0;   ///< Round::flasksCollected
     bool gateOpen = false;     ///< Round::gateOpen
     float battery = 1.0F;      ///< Round::battery
     bool flashlightOn = false; ///< the switch of the flashlight
@@ -74,6 +76,8 @@ RoundSoundSnapshot soundSnapshot(const Round& round, bool flashlightOn);
 ///   - GateOpen when the gate was closed before and is open now.
 ///   - FlashlightDead when the battery ran out in this step with the light on: it held
 ///     a charge before, it is empty now, and the switch went from on to off.
+///   - FlaskPickup when more flasks are picked up than before, once per step like the
+///     crystal. It has a sound of its own, so a flask is never taken for a crystal.
 ///
 /// The list is empty for most steps. Its order is the order above.
 ///

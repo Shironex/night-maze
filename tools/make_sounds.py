@@ -1,4 +1,4 @@
-# Makes the sounds of the game: eight short WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: nine short WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -79,6 +79,8 @@ MAX_SAMPLE = 32767
 # pulse is quieter to the ear than its number says (see the dBA column of --report).
 # The breath repeats too, while the player is winded, and it lies where the ear hears
 # best: it gets the lowest number of all and is still easier to hear than the pulse.
+# The flask is a pickup like the crystal, but a small comfort and not the goal of the
+# round: it stands a step behind the crystal.
 PEAK_DB = {
     "flashlight_on.wav": -11.0,
     "flashlight_off.wav": -12.5,
@@ -88,6 +90,7 @@ PEAK_DB = {
     "lever_pull.wav": -6.0,
     "gate_open.wav": -3.0,
     "winded_breath.wav": -24.0,
+    "flask_pickup.wav": -9.0,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -644,6 +647,40 @@ def winded_breath():
     return finish([biquad(biquad(sound, "low", 2600.0), "high", 250.0)])
 
 
+# ---- the flask of tea -------------------------------------------------------------------------
+
+
+def flask_pickup():
+    # A flask is opened and the tea warms: a cork pop, then a soft warm note. It must
+    # not be mistaken for the crystal, which is a struck glass far above 1 kHz and
+    # inharmonic, so everything here is low, round and in tune.
+    #
+    #   - The pop, at the start: the air in the neck of the flask. A thump that falls
+    #     from 950 to 330 Hz within a few milliseconds and is gone after a twentieth of
+    #     a second, with 6 ms of noise around 1700 Hz on top, the cork leaving the neck.
+    #   - The warm note, from 0.11 s: three sine waves that ARE whole multiples of each
+    #     other on purpose (392, 588 and 784 Hz: a note, its fifth and its octave), so
+    #     the ear hears one soft chord. It rises over 30 ms instead of being struck and
+    #     dies away within half a second.
+    generator = random.Random(9)
+    sound = silence(0.62)
+
+    pop = falling_thump(0.09, 950.0, 330.0, 0.012, 0.022)
+    cork_count = count_of(0.006)
+    cork = biquad(scaled(noise(generator, cork_count), decay_curve(cork_count, 0.0015)),
+                  "band", 1700.0, 1.2)
+
+    warm = modes(0.5, [(392.0, 1.0, 0.15), (588.0, 0.45, 0.12), (784.0, 0.2, 0.08)],
+                 start_seconds=0.03)
+
+    # The mix: the pop is the loudest moment, the cork a small part of it, and the
+    # note a little below the pop.
+    place(sound, with_peak(pop, 1.0), 0.0)
+    place(sound, with_peak(cork, 0.3), 0.0)
+    place(sound, with_peak(warm, 0.7), 0.11)
+    return finish([biquad(sound, "low", 3000.0)])
+
+
 # The file of every sound. The names are the ones in src/game/SoundCues.cpp.
 SOUNDS = [
     ("flashlight_on.wav", flashlight_on),
@@ -654,6 +691,7 @@ SOUNDS = [
     ("lever_pull.wav", lever_pull),
     ("gate_open.wav", gate_open),
     ("winded_breath.wav", winded_breath),
+    ("flask_pickup.wav", flask_pickup),
 ]
 
 
@@ -854,6 +892,7 @@ def checks(m, together):
     pulse, crystal = m["low_battery_pulse.wav"], m["crystal_pickup.wav"]
     lever, gate = m["lever_pull.wav"], m["gate_open.wav"]
     breath = m["winded_breath.wav"]
+    flask = m["flask_pickup.wav"]
     result = []
     for name, one in m.items():
         result.append((f"{name}: peak at or below -3 dBFS", one["peak"] <= -2.99))
@@ -890,6 +929,11 @@ def checks(m, together):
         ("breath: quieter to the ear than every sound but the pulse",
          breath["dba"] < min(one["dba"] for name, one in m.items()
                              if name not in ("low_battery_pulse.wav", "winded_breath.wav"))),
+        ("flask: warm, at least 90 % of its energy below 1 kHz (the crystal lies above)",
+         flask["above1k"] < 0.1),
+        ("flask: a note and not a bell (its strongest frequencies are in tune)",
+         not inharmonic(flask["peaks"])),
+        ("flask: quieter to the ear than the crystal", flask["dba"] < crystal["dba"]),
         (f"crystal and gate started together: peak {together:.2f} dBFS, at or below -1",
          together <= -1.0),
     ]

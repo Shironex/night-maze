@@ -1,8 +1,9 @@
 // Tests of game/SoundCues.hpp: the table of the cues, the cue of the flashlight key, the
-// cues of a fixed step, the clock of the low battery pulse and the clock of the breathing
-// of a winded player.
+// cues of a fixed step (with the one of a flask), the clock of the low battery pulse and
+// the clock of the breathing of a winded player.
 #include "game/SoundCues.hpp"
 
+#include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Round.hpp"
 
@@ -69,7 +70,7 @@ TEST_CASE("every cue has a file and a name of its own") {
     CHECK(files.size() == game::SOUND_CUE_COUNT);
     CHECK(names.size() == game::SOUND_CUE_COUNT);
     // The last entry of the enum is the last entry of the table.
-    CHECK(game::soundCueIndex(game::SoundCue::WindedBreath) == game::SOUND_CUE_COUNT - 1);
+    CHECK(game::soundCueIndex(game::SoundCue::FlaskPickup) == game::SOUND_CUE_COUNT - 1);
 }
 
 TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
@@ -324,4 +325,51 @@ TEST_CASE("the breath of a winded player has its own sound file") {
     CHECK(std::string(game::soundCueFile(game::SoundCue::WindedBreath)) ==
           "audio/winded_breath.wav");
     CHECK(std::string(game::soundCueName(game::SoundCue::WindedBreath)) == "winded breath");
+}
+
+TEST_CASE("a flask that is picked up is one cue with its own sound file") {
+    game::Round round = roundWithBattery(0.5F);
+    const game::RoundSoundSnapshot before = game::soundSnapshot(round, true);
+
+    round.flasksCollected = 1;
+    CHECK(game::roundStepCues(before, round, true) ==
+          std::vector<game::SoundCue>{game::SoundCue::FlaskPickup});
+    // Two in one step are one sound, like two crystals.
+    round.flasksCollected = 2;
+    CHECK(game::roundStepCues(before, round, true) ==
+          std::vector<game::SoundCue>{game::SoundCue::FlaskPickup});
+    // The step after: as many as before, no cue.
+    CHECK(game::roundStepCues(game::soundSnapshot(round, true), round, true).empty());
+
+    // Not the chime of a crystal.
+    CHECK(std::string(game::soundCueFile(game::SoundCue::FlaskPickup)) == "audio/flask_pickup.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::FlaskPickup)) == "flask pickup");
+}
+
+TEST_CASE("a crystal and a flask in one step give both cues, the crystal first") {
+    game::Round round = roundWithBattery(0.5F);
+    const game::RoundSoundSnapshot before = game::soundSnapshot(round, true);
+    round.collectedCount = 1;
+    round.flasksCollected = 1;
+    CHECK(game::roundStepCues(before, round, true) ==
+          std::vector<game::SoundCue>{game::SoundCue::CrystalPickup, game::SoundCue::FlaskPickup});
+}
+
+TEST_CASE("walking into a flask in a round plays its cue, and a new round is silent") {
+    const game::MazeWorld world = game::buildMazeWorld(16, 16, 1U);
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    REQUIRE(round.flasks.size() == 1);
+    bool flashlightOn = true;
+
+    const game::RoundSoundSnapshot before = game::soundSnapshot(round, flashlightOn);
+    const glm::vec3 feet = game::cellCenter(round.flasks[0].cell.x, round.flasks[0].cell.z);
+    game::updateRound(round, world, settings, feet, flashlightOn, STEP);
+    CHECK(game::roundStepCues(before, round, flashlightOn) ==
+          std::vector<game::SoundCue>{game::SoundCue::FlaskPickup});
+
+    // The round is started again: the count went down, and that is not a pickup.
+    const game::RoundSoundSnapshot old = game::soundSnapshot(round, flashlightOn);
+    const game::Round fresh = game::startRound(world, settings);
+    CHECK(game::roundStepCues(old, fresh, flashlightOn).empty());
 }
