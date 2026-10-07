@@ -1,108 +1,114 @@
-# THIS WORKFLOW HAS NEVER RUN.
+# How to release the game (Windows only):
+#  1. Bump the version in CMakeLists.txt (line 3) and add its `## x.y.z (date)`
+#     section to CHANGELOG.md. Commit, push, wait for ci to be green.
+#  2. Push the tag: `git tag v<x.y.z>` and `git push origin v<x.y.z>`.
+#  3. After `build`, GitHub asks you to approve the `release` environment (it
+#     lets `sign` use the key). `verify` and `publish` then run by themselves.
+#  4. If a job fails, at most a DRAFT is left, which the launcher cannot see.
+#     Use "Re-run failed jobs". A fix in the code needs a new version and tag.
+#  5. Rehearsal: "Run workflow" on main. It builds, packs and uploads the files
+#     as an artifact of the run, and signs and publishes nothing.
 #
-# It was written while the repository was private and before the first tag.
-# Nothing in it has been executed on a GitHub runner: not the builds, not the
-# `if:` conditions, not the publish step. The scripts it calls were run on a
-# developer machine (Windows) and have tests, and this file was parsed as YAML.
-# Expect to fix something on the first real run, and read the result before
-# sending the link to anyone.
+# FIRST RUNS: until one rehearsal and one tag have gone through, expect to fix
+# something here. The scripts were run on a developer machine (Windows) and
+# this file was parsed as YAML; the jobs themselves were never run before.
 #
-# What it does: it runs by hand only. You give it an existing tag
-# `v<major>.<minor>.<patch>`; it builds the game for Windows (and, if you ask,
-# for macOS on Apple Silicon), packs each build into a zip, and creates a DRAFT
-# GitHub Release holding the zips, `manifest.json` and `news.json`. The two json
-# files are NOT signed here. The launcher reads
-# `https://github.com/<owner>/<repo>/releases/latest/download/manifest.json` and
-# refuses a manifest without a valid signature, so the owner signs the two files
-# on his own PC (the key never goes to GitHub), uploads the two `.sig` files and
-# only then publishes the draft. A draft is never "latest", so the launcher
-# cannot see a release that is still half finished. The commands are in the
-# comment above the "Create the release" step.
+# The packaging, feed and signing scripts and the signature check live in the
+# launcher repository. `.github/launcher-pin.json` names the commit they are
+# taken from, and it is the only file to change to move to a newer one.
 #
-# The launcher installer is not built here, see the end of this file.
-#
-# The repository has to be public for the launcher to download from it without
-# a token.
-#
-# If something fails after the draft exists: delete the draft release (not the
-# tag), fix the problem, and run the workflow again for the same tag. A run uses
-# this file as it is on the branch you pick under "Use workflow from", but it
-# builds the code of the tag.
+# No job uses a cache: a cache is a way to put foreign files into a signed
+# release. Every action is pinned to a commit and owned by `actions/`.
 
 name: release
 
-# There is no `push: tags` trigger on purpose. While the repository is private
-# every run is paid minutes, and pushing a tag must not start a release by
-# itself until the owner decides the repository is public and the signing steps
-# above work. To bring the tag trigger back, add under `on:`
-#     push:
-#       tags: ['v*']
-# and then make the `tag` input fall back to the pushed tag: use
-# `${{ inputs.tag || github.ref_name }}` where `inputs.tag` is used below (the
-# concurrency group, the checkout steps and the TAG_INPUT variable), and
-# `${{ github.event_name != 'workflow_dispatch' || inputs.macos }}` in the
-# `if:` of the macOS job.
 on:
+  push:
+    tags: ['v*.*.*']
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'The tag to build and release, for example v0.10.0. It must exist already and equal v plus the version in CMakeLists.txt'
-        type: string
-        required: true
-      macos:
-        description: 'Also build the macOS package'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
 
+# One release at a time, in the order they were started.
 concurrency:
-  group: release-${{ inputs.tag }}
+  group: release
   cancel-in-progress: false
 
 jobs:
-  windows:
-    name: Windows x64
+  # Builds and packs. No secrets, read-only token.
+  build:
+    name: Build and package (Windows x64)
     runs-on: windows-latest
     timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.version }}
+      launcher_repository: ${{ steps.pin.outputs.repository }}
+      launcher_ref: ${{ steps.pin.outputs.ref }}
     steps:
-      # Builds the code of the tag from the input, whatever branch the workflow
-      # file itself was taken from. `refs/tags/` makes a missing tag, or a
-      # branch with the same name, fail here instead of building the wrong code.
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: refs/tags/${{ inputs.tag }}
+      # Text files with LF, as on the developer machine (core.autocrlf is
+      # "input" there). The default of Git on a Windows runner would check
+      # them out with CRLF, and then the shaders, the menu documents and the
+      # files the tests read would not be the bytes of the 0.10.0 package.
+      - name: Check out text files with LF
+        run: git config --global core.autocrlf input
 
-      # The version has one source: project(NightMaze VERSION ...) in CMakeLists.txt.
-      # A tag that says something else stops the release in its first minute.
-      # The input goes through an environment variable, not into the script
-      # text, so a strange tag name cannot become a command.
+      # The code of the tag for a pushed tag, the code of the chosen branch
+      # for a rehearsal.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The version has one source: project(NightMaze VERSION ...) in
+      # CMakeLists.txt. A tag that says something else stops the release in
+      # its first minute. A rehearsal has no tag and uses the CMake version.
       - name: Read the version and compare it with the tag
         id: version
         shell: bash
-        env:
-          TAG_INPUT: ${{ inputs.tag }}
         run: |
           version="$(sed -n 's/^project(NightMaze VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt)"
           if [ -z "$version" ]; then
             echo "::error::Could not read the version from CMakeLists.txt"
             exit 1
           fi
-          if [ "${TAG_INPUT}" != "v${version}" ]; then
-            echo "::error::Tag ${TAG_INPUT} does not match version ${version} in CMakeLists.txt"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match version ${version} in CMakeLists.txt"
             exit 1
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
-      - name: Cache the downloaded dependencies
-        uses: actions/cache@v6
+      # Which commit of the launcher repository the scripts are taken from.
+      # The values are checked because they end up in commands.
+      - name: Read the launcher pin
+        id: pin
+        shell: bash
+        run: |
+          node -e '
+            const pin = require("./.github/launcher-pin.json");
+            if (!/^[\w.-]+\/[\w.-]+$/.test(pin.repository)) throw new Error("launcher-pin.json: repository is not owner/name");
+            if (!/^[0-9a-f]{40}$/.test(pin.ref)) throw new Error("launcher-pin.json: ref is not a full commit sha");
+            if (!/^\d+\.\d+\.\d+$/.test(pin.launcherMin)) throw new Error("launcher-pin.json: launcherMin is not a version");
+            console.log(`repository=${pin.repository}\nref=${pin.ref}\nlauncher_min=${pin.launcherMin}`);
+          ' >> "$GITHUB_OUTPUT"
+
+      # The packaging scripts use zlib.crc32, which needs Node 22.
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          path: build/release/_deps
-          key: deps-windows-${{ hashFiles('cmake/Dependencies.cmake') }}
+          node-version: 22
+          package-manager-cache: false
+
+      # Before the long build: a version without a changelog section has no
+      # release text, and that should cost one minute, not ten.
+      - name: Write the release notes
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir dist-release
+          node tools/release-notes.mjs --version "${VERSION}" > dist-release/release-notes.md
+          cat dist-release/release-notes.md
 
       # Static C++ runtime, for the release package only: the exe then needs no
       # Visual C++ redistributable on a friend's PC. The first variable switches
@@ -119,185 +125,343 @@ jobs:
       - name: Unit tests
         run: ctest --test-dir build/release -C Release --output-on-failure
 
-      # The packaging scripts use zlib.crc32, which needs Node 22.
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
+      # The proof that the two flags above worked. dumpbin comes with the
+      # compiler but is not on the PATH (the developer shell is not active on
+      # a runner), so vswhere, which has a fixed address, is asked where Visual
+      # Studio is. KERNEL32 must be in the list: an empty list would otherwise
+      # look like a clean one.
+      - name: The exe needs no Visual C++ runtime DLL
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $dumpbin = & $vswhere -latest -products * -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' | Select-Object -Last 1
+          if (-not $dumpbin) { throw 'dumpbin was not found in Visual Studio' }
+          $dependents = & $dumpbin /dependents build\release\Release\night_maze.exe
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin failed with exit code $LASTEXITCODE" }
+          $dependents
+          if (-not ($dependents -match 'KERNEL32')) { throw 'dumpbin listed no KERNEL32.dll: the output is not a dependency list' }
+          $runtime = $dependents -match 'VCRUNTIME|MSVCP|ucrtbase|api-ms-win-crt'
+          if ($runtime) {
+            Write-Output "::error::night_maze.exe depends on a C or C++ runtime DLL: $($runtime.Trim() -join ', ')"
+            exit 1
+          }
 
-      - name: Tests of the packaging scripts
-        run: node --test launcher/scripts/lib/feed.test.mjs
-
-      # Assets and the notices file come from the repository, not from the
-      # build directory.
-      - name: Package
+      # The zip ships THIRD-PARTY-NOTICES.txt as it is committed. ci checks it
+      # on every push, but a tag can be pushed while ci is red.
+      - name: The committed notices match the dependencies
         shell: bash
         run: |
-          node launcher/scripts/package-game.mjs \
-            --exe build/release/Release/night_maze.exe \
-            --version "${{ steps.version.outputs.version }}" \
-            --platform windows-x64 \
-            --out dist-release
+          node tools/build-notices.mjs --deps build/release/_deps --out "$RUNNER_TEMP/THIRD-PARTY-NOTICES.txt"
+          diff --strip-trailing-cr THIRD-PARTY-NOTICES.txt "$RUNNER_TEMP/THIRD-PARTY-NOTICES.txt"
 
-      - name: Upload the package
-        uses: actions/upload-artifact@v7
+      # Into a folder of its own inside the checkout of the game, under a name
+      # that says what it is. No token is left in its git config.
+      - name: Checkout the pinned launcher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          name: package-windows-x64
-          path: dist-release/*.zip
-          if-no-files-found: error
-          retention-days: 1
+          repository: ${{ steps.pin.outputs.repository }}
+          ref: ${{ steps.pin.outputs.ref }}
+          path: launcher-pinned
+          persist-credentials: false
 
-  macos:
-    name: macOS arm64
-    # Off by default: the first friend release is Windows only.
-    if: ${{ inputs.macos }}
-    runs-on: macos-15
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: refs/tags/${{ inputs.tag }}
-
-      - name: Read the version
-        id: version
-        run: |
-          version="$(sed -n 's/^project(NightMaze VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt)"
-          test -n "$version"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-
-      - name: Cache the downloaded dependencies
-        uses: actions/cache@v6
-        with:
-          path: build/release/_deps
-          key: deps-macos-${{ hashFiles('cmake/Dependencies.cmake') }}
-
-      # Without a deployment target the binary only starts on the macOS version
-      # of the runner or newer.
-      - name: Configure
-        run: cmake --preset release -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DCMAKE_OSX_ARCHITECTURES=arm64
-
-      - name: Build
-        run: cmake --build --preset release
-
-      - name: Unit tests
-        run: ctest --test-dir build/release --output-on-failure
-
-      # Apple Silicon refuses unsigned code. The linker signs ad hoc already;
-      # signing again as the last step before packing makes sure nothing after
-      # the link left a stale signature.
-      - name: Ad hoc signature
-        run: |
-          codesign --force --sign - build/release/night_maze
-          codesign --verify --verbose build/release/night_maze
-
-      # The packaging scripts use zlib.crc32, which needs Node 22.
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      # build/release/assets is a link into the checkout on macOS, so the
-      # packager reads the assets folder of the repository itself.
+      # Every path is given, so nothing depends on where the scripts think the
+      # game repository is. Assets and the notices file come from the checkout,
+      # not from the build directory, whose copy can hold stale files.
       - name: Package
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          node launcher/scripts/package-game.mjs \
-            --exe build/release/night_maze \
-            --version "${{ steps.version.outputs.version }}" \
-            --platform macos-arm64 \
+          node launcher-pinned/scripts/package-game.mjs \
+            --exe build/release/Release/night_maze.exe \
+            --version "${VERSION}" \
+            --platform windows-x64 \
+            --assets assets \
+            --notices THIRD-PARTY-NOTICES.txt \
             --out dist-release
 
-      - name: Upload the package
-        uses: actions/upload-artifact@v7
-        with:
-          name: package-macos-arm64
-          path: dist-release/*.zip
-          if-no-files-found: error
-          retention-days: 1
+      # The address is named after the tag, so the URLs in the manifest are
+      # the permanent ones of this release, not the moving "latest" address.
+      # `--no-sign`: this job has no key. The `sign` job signs both files.
+      # There is no `--title`: it was the fallback headline for a version
+      # without a changelog section, and such a version stops above.
+      - name: Write manifest.json and news.json
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          LAUNCHER_MIN: ${{ steps.pin.outputs.launcher_min }}
+        run: |
+          node launcher-pinned/scripts/build-feed.mjs \
+            --dir dist-release \
+            --out dist-release \
+            --version "${VERSION}" \
+            --base-url "https://github.com/Shironex/night-maze/releases/download/v${VERSION}/" \
+            --changelog CHANGELOG.md \
+            --launcher-min "${LAUNCHER_MIN}" \
+            --no-sign
+          cat dist-release/manifest.json
+          ls -l dist-release
 
-  publish:
-    name: Publish the release
-    needs: [windows, macos]
-    # One job creates the release, so two jobs cannot race to create it. A
-    # skipped macOS job would skip this job as well, so the condition is spelled
-    # out: Windows must have succeeded and macOS must not have failed.
-    if: ${{ !cancelled() && needs.windows.result == 'success' && needs.macos.result != 'failure' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    env:
-      VERSION: ${{ needs.windows.outputs.version }}
-      TAG: v${{ needs.windows.outputs.version }}
-    steps:
-      # The tag is fetched too, because the release title below is read from
-      # the tag message.
-      - name: Checkout
-        uses: actions/checkout@v6
+      # The zip, manifest.json, news.json and release-notes.md. After
+      # a rehearsal this artifact is the result: download it from the page of
+      # the run. `overwrite`: a second attempt of this job replaces the files
+      # of the first one instead of failing on the name.
+      - name: Upload the release files
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          ref: refs/tags/${{ inputs.tag }}
+          name: release-files
+          path: |
+            dist-release/NightMaze-${{ steps.version.outputs.version }}-windows-x64.zip
+            dist-release/manifest.json
+            dist-release/news.json
+            dist-release/release-notes.md
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  # The only job that sees the signing key. It waits for the owner's approval
+  # of the `release` environment, which holds the two secrets and only accepts
+  # `v*` tags. It runs no code of this repository: only actions owned by
+  # `actions/` and the launcher scripts of the pinned commit.
+  sign:
+    name: Sign manifest.json and news.json
+    needs: build
+    if: github.ref_type == 'tag'
+    # windows-latest: the signing was done and proven on Windows. On Linux the
+    # native binary of the Tauri CLI after `--ignore-scripts` is untried.
+    runs-on: windows-latest
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - name: Checkout the pinned launcher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ needs.build.outputs.launcher_repository }}
+          ref: ${{ needs.build.outputs.launcher_ref }}
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
+          package-manager-cache: false
 
-      - name: Download the packages
-        uses: actions/download-artifact@v8
+      # The Tauri CLI, which does the signing, is a dependency of the launcher.
+      # corepack (part of Node 22) starts the pnpm version named in the
+      # `packageManager` field of the launcher's package.json, so no action of
+      # a third party is needed. `--frozen-lockfile`: exactly the versions of
+      # the pinned lockfile. `--ignore-scripts`: no package runs code while it
+      # is installed. This step runs before the key exists on the disk.
+      - name: Install the launcher's Node packages
+        shell: bash
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Download the release files
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: package-*
+          name: release-files
+          path: ${{ runner.temp }}/release-files
+
+      # The secret is the content of the key file as the Tauri CLI wrote it:
+      # one line of base64, which may have picked up a line ending when it was
+      # pasted. The signer wants a file, so it is written outside the checkout
+      # and deleted two steps below.
+      - name: Write the key to a file
+        shell: bash
+        env:
+          MANIFEST_SIGNING_PRIVATE_KEY: ${{ secrets.MANIFEST_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "${MANIFEST_SIGNING_PRIVATE_KEY}" ]; then
+            echo "::error::The secret MANIFEST_SIGNING_PRIVATE_KEY is empty or not in the release environment"
+            exit 1
+          fi
+          printf '%s' "${MANIFEST_SIGNING_PRIVATE_KEY}" | tr -d '\r\n' > "${RUNNER_TEMP}/manifest.key"
+
+      # The password exists only in the environment of this step. The script
+      # hands it to the Tauri CLI through the environment too, never as an
+      # argument.
+      - name: Sign
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.MANIFEST_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          node scripts/sign-file.mjs --file "${RUNNER_TEMP}/release-files/manifest.json" --key "${RUNNER_TEMP}/manifest.key"
+          node scripts/sign-file.mjs --file "${RUNNER_TEMP}/release-files/news.json" --key "${RUNNER_TEMP}/manifest.key"
+
+      - name: Delete the key file
+        if: always()
+        shell: bash
+        run: rm -f "${RUNNER_TEMP}/manifest.key"
+
+      - name: Upload the signatures
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-signatures
+          path: |
+            ${{ runner.temp }}/release-files/manifest.json.sig
+            ${{ runner.temp }}/release-files/news.json.sig
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  # Checks what `sign` made with the launcher's own code, before anybody can
+  # download it. No secrets: the public halves of the release keys are in the
+  # launcher source.
+  verify:
+    name: Verify the signatures and the manifest
+    needs: [build, sign]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout the pinned launcher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ needs.build.outputs.launcher_repository }}
+          ref: ${{ needs.build.outputs.launcher_ref }}
+          path: launcher-pinned
+          persist-credentials: false
+
+      # Both artifacts into one folder: the five files of the release and the
+      # notes.
+      - name: Download the release files and the signatures
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-*
           path: release-assets
           merge-multiple: true
 
-      # The files are named after the tag, so the URLs in the manifest are the
-      # permanent ones of this release, not the moving "latest" address.
-      # CHANGELOG.md is optional: without a section for this version the notes
-      # carry the version, the date and the tag message.
-      # `--no-sign`: for a github.com address build-feed.mjs refuses to run
-      # without a key or this flag. The signing key never goes to GitHub, so the
-      # files leave this job unsigned (no .sig files). The owner signs them on
-      # his PC before the release is published, see the next step.
-      - name: Write manifest.json and news.json
+      # The check the launcher runs: manifest.json.sig is a signature of
+      # manifest.json by one of the release keys, and the manifest parses. The
+      # development key is not a release key, so a file signed with it fails.
+      # When the example of the pinned commit also checks a news.json that lies
+      # next to the manifest, this step covers news.json without a change here.
+      - name: The launcher accepts the signed manifest
         run: |
-          node launcher/scripts/build-feed.mjs \
-            --dir release-assets \
-            --version "${VERSION}" \
-            --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/" \
-            --changelog CHANGELOG.md \
-            --no-sign \
-            --title "$(git tag -l --format='%(contents:subject)' "${TAG}")"
-          cat release-assets/manifest.json
+          test -s release-assets/news.json.sig
+          cargo run --locked --manifest-path launcher-pinned/Cargo.toml \
+            -p night-maze-launcher-core --example verify_manifest -- \
+            release-assets/manifest.json
 
-      # A DRAFT, on purpose. Only a published, normal release can become
-      # "latest", which is the address the launcher reads, and the launcher
-      # needs the two signature files that are not here yet. Nobody sees a
-      # draft but the people with write access to the repository. The download
-      # links inside manifest.json start to work when the draft is published.
-      #
-      # What the owner does next, on his PC, in a checkout of the repository
-      # with `pnpm install` done in launcher/ (the key password goes in the
-      # environment variable TAURI_SIGNING_PRIVATE_KEY_PASSWORD):
-      #
-      #   gh release download <tag> --repo Shironex/night-maze --pattern "*.json" --dir build/sign
-      #   node launcher/scripts/sign-file.mjs --file build/sign/manifest.json --key <path to manifest-a.key>
-      #   node launcher/scripts/sign-file.mjs --file build/sign/news.json --key <path to manifest-a.key>
-      #   cargo run --manifest-path launcher/Cargo.toml -p night-maze-launcher-core --example verify_manifest -- build/sign/manifest.json
-      #   gh release upload <tag> build/sign/manifest.json.sig build/sign/news.json.sig --repo Shironex/night-maze
-      #   gh release edit <tag> --repo Shironex/night-maze --draft=false --latest
-      - name: Create the release
+      # The manifest was written in another job, and the zip has travelled
+      # through an artifact since: the size and the checksum are computed again
+      # from the file that will be published.
+      - name: The manifest describes the zip that will be published
         env:
-          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          node - <<'EOF'
+          const { createHash } = require('node:crypto');
+          const { readFileSync } = require('node:fs');
+          const version = process.env.VERSION;
+          const zipName = `NightMaze-${version}-windows-x64.zip`;
+          const manifest = JSON.parse(readFileSync('release-assets/manifest.json', 'utf8'));
+          const build = manifest.game['windows-x64'];
+          const zip = readFileSync(`release-assets/${zipName}`);
+          const problems = [];
+          const same = (what, actual, expected) => {
+            console.log(`${what}: ${actual}`);
+            if (actual !== expected) problems.push(`${what} is ${actual}, expected ${expected}`);
+          };
+          same('version', manifest.version, version);
+          same('file name in the url', new URL(build.url).pathname.split('/').pop(), zipName);
+          same('url', build.url, `https://github.com/Shironex/night-maze/releases/download/v${version}/${zipName}`);
+          same('size', build.size, zip.length);
+          same('sha256', build.sha256, createHash('sha256').update(zip).digest('hex'));
+          if (problems.length > 0) {
+            for (const problem of problems) console.log(`::error::manifest.json: ${problem}`);
+            process.exit(1);
+          }
+          EOF
+
+  # The only job that may write to the repository. The release is a draft
+  # until its last step: only a published, normal release can become "latest",
+  # which is the address the launcher reads, so the launcher never sees
+  # a release that is still half uploaded.
+  publish:
+    name: Publish the release
+    needs: [build, sign, verify]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.build.outputs.version }}
+      TAG: v${{ needs.build.outputs.version }}
+    steps:
+      - name: Download the release files and the signatures
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      # A published release is never replaced: launchers may have installed it
+      # already, and a changed file under the same version would not reach
+      # them. A draft can only be the rest of a failed run of this workflow,
+      # so it is deleted (the release, not the tag) and made again. Drafts are
+      # looked up in the list of releases: the address of a release by tag
+      # does not know them.
+      - name: Refuse a published release, delete a leftover draft
+        run: |
+          gh api "repos/${GH_REPO}/releases" --paginate \
+            --jq ".[] | select(.tag_name == \"${TAG}\") | \"\(.id) \(.draft)\"" > existing.txt
+          while read -r id draft; do
+            if [ "${draft}" != "true" ]; then
+              echo "::error::Release ${TAG} is already published. A change needs a new version."
+              exit 1
+            fi
+            echo "Deleting the draft release ${id} of ${TAG} left by an earlier run"
+            gh api -X DELETE "repos/${GH_REPO}/releases/${id}"
+          done < existing.txt
+
+      # `--verify-tag`: the tag must exist already, gh must not create one.
+      - name: Create the draft release
         run: |
           gh release create "${TAG}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "Night Maze ${VERSION}" \
-            --notes "Install and update through the Night Maze launcher. The zip files are the same builds the launcher downloads." \
             --draft \
             --verify-tag \
-            release-assets/*.zip release-assets/manifest.json release-assets/news.json
+            --title "Night Maze ${VERSION}" \
+            --notes-file release-assets/release-notes.md \
+            "release-assets/NightMaze-${VERSION}-windows-x64.zip" \
+            release-assets/manifest.json \
+            release-assets/manifest.json.sig \
+            release-assets/news.json \
+            release-assets/news.json.sig
 
-  # The launcher installer is not built here. It is released from a second,
-  # public repository, Shironex/night-maze-launcher, and the first releases are
-  # built on the owner's PC. This repository only holds the game releases, so
-  # "latest" here always means the newest game release and the manifest address
-  # keeps resolving.
+      # Five files, with the sizes they have here. A missing or cut off upload
+      # stops the release while it is still a draft.
+      - name: The draft holds the five files
+        run: |
+          export LC_ALL=C
+          for file in "NightMaze-${VERSION}-windows-x64.zip" manifest.json manifest.json.sig news.json news.json.sig; do
+            echo "${file} $(stat -c %s "release-assets/${file}")"
+          done | sort > local.txt
+          gh release view "${TAG}" --json assets --jq '.assets[] | "\(.name) \(.size)"' | sort > uploaded.txt
+          cat uploaded.txt
+          diff local.txt uploaded.txt
+
+      # From here on the launchers see the release.
+      - name: Publish as the latest release
+        run: gh release edit "${TAG}" --draft=false --latest
+
+      # The address the launcher reads. It can take a moment until "latest"
+      # points at the new release, so the check waits and tries again.
+      - name: The latest manifest is the one of this release
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsSL -o live-manifest.json "https://github.com/Shironex/night-maze/releases/latest/download/manifest.json" \
+              && cmp -s live-manifest.json release-assets/manifest.json; then
+              echo "The latest manifest is the manifest of ${TAG}."
+              exit 0
+            fi
+            echo "Attempt ${attempt}: not yet"
+            sleep 10
+          done
+          echo "::error::Release ${TAG} is published, but the latest manifest is not its manifest. Look at the releases page."
+          exit 1
