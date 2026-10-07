@@ -19,7 +19,7 @@ The game needs a graphics card and driver with OpenGL 4.1.
 | --- | --- |
 | Mouse | Look around |
 | W, A, S, D | Walk |
-| Left Shift | Sprint |
+| Left Shift | Sprint, while there is stamina |
 | F | Flashlight on and off |
 | E or left click | Use what you look at (pull a lever, read a note, close a note) |
 | M | Minimap on and off |
