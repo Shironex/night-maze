@@ -32,21 +32,6 @@ constexpr float FULL_TURN_RADIANS = glm::two_pi<float>();
 // a quarter), so however many crystals there are, no two of them move in step.
 constexpr float PHASE_STEP = 0.382F;
 
-// Puts the cells into a random order: every order is equally likely.
-//
-// Fisher-Yates shuffle, written out by hand. std::shuffle would do the same job, but
-// like the distributions it may use the generator differently in each standard library,
-// and then the same seed would give other crystals on macOS than on Windows.
-void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator) {
-    // Going from the back: the last place gets one of all the cells, the place before
-    // it one of the cells that are left, and so on. Place 0 keeps the cell that remains.
-    for (std::size_t last = cells.size(); last > 1; --last) {
-        const auto chosen =
-            static_cast<std::size_t>(randomBelow(generator, static_cast<std::uint32_t>(last)));
-        std::swap(cells[last - 1], cells[chosen]);
-    }
-}
-
 // The part of a cycle that has passed at a moment in time, from 0 to 1. A cycle takes
 // cycleSeconds, and offset (in cycles) moves the starting point.
 float cyclePhase(float seconds, float cycleSeconds, float offset) {
@@ -56,6 +41,16 @@ float cyclePhase(float seconds, float cycleSeconds, float offset) {
 }
 
 } // namespace
+
+void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator) {
+    // Going from the back: the last place gets one of all the cells, the place before
+    // it one of the cells that are left, and so on. Place 0 keeps the cell that remains.
+    for (std::size_t last = cells.size(); last > 1; --last) {
+        const auto chosen =
+            static_cast<std::size_t>(randomBelow(generator, static_cast<std::uint32_t>(last)));
+        std::swap(cells[last - 1], cells[chosen]);
+    }
+}
 
 int crystalCountFor(int cellCount) {
     // Whole number division rounds down. Adding half of the divisor first makes it round

@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include <cstdint>
+#include <random>
 #include <vector>
 
 namespace game {
@@ -81,6 +82,16 @@ struct CrystalSpawn {
 /// 1 and at most MAX_CRYSTAL_COUNT. The three difficulty levels of the game do ask for
 /// a number of their own (game/Difficulty.hpp).
 int crystalCountFor(int cellCount);
+
+/// Puts the cells into a random order: every order is equally likely. Everything that
+/// is placed from the seed of a maze shuffles its cells with this one function: the
+/// crystals, the levers, the notes and the flasks.
+///
+/// It is the Fisher-Yates shuffle, written out by hand. std::shuffle would do the same
+/// job, but like the distributions it may use the generator differently in each
+/// standard library, and then the same seed would give other crystals on macOS than on
+/// Windows.
+void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator);
 
 /// Chooses the cells of the crystals of a maze. The same maze, seed, start and exit
 /// always give the same crystals, on every compiler: the choice uses std::mt19937 and

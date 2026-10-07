@@ -3,6 +3,7 @@
 // See docs/modules/renderer/env-mapping.md
 #include "game/Puddles.hpp"
 
+#include "game/Crystals.hpp"
 #include "game/MazeGenerator.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
@@ -15,7 +16,6 @@
 #include <cstddef>
 #include <random>
 #include <stdexcept>
-#include <utility>
 
 namespace game {
 
@@ -48,19 +48,6 @@ constexpr std::size_t INDICES_PER_TRIANGLE = 3U;
 // is the middle of the picture, and the rim is half a picture away from it.
 constexpr glm::vec2 UV_CENTER{0.5F, 0.5F};
 constexpr float UV_RADIUS = 0.5F;
-
-// Puts the cells into a random order: every order is equally likely. Fisher-Yates
-// shuffle, written out by hand for the reason given at the same function in
-// Crystals.cpp: std::shuffle may use the generator differently in each standard library.
-void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator) {
-    // Going from the back: the last place gets one of all the cells, the place before
-    // it one of the cells that are left, and so on.
-    for (std::size_t last = cells.size(); last > 1; --last) {
-        const auto chosen =
-            static_cast<std::size_t>(randomBelow(generator, static_cast<std::uint32_t>(last)));
-        std::swap(cells[last - 1], cells[chosen]);
-    }
-}
 
 // A random number from low to high, both ends included, in RANDOM_STEPS equal steps.
 // A whole number from randomBelow turned into a float: the same value on every system,

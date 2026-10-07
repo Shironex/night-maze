@@ -10,7 +10,6 @@
 #include <cstdlib>
 #include <random>
 #include <stdexcept>
-#include <utility>
 
 namespace game {
 
@@ -93,19 +92,6 @@ bool isOneOf(MazeCell cell, std::span<const MazeCell> cells) {
         }
     }
     return false;
-}
-
-// Puts the cells into a random order: every order is equally likely. The Fisher-Yates
-// shuffle of Crystals.cpp, written out by hand for the reason given there: std::shuffle
-// may use the generator differently in each standard library.
-void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator) {
-    // Going from the back: the last place gets one of all the cells, the place before
-    // it one of the cells that are left, and so on. Place 0 keeps the cell that remains.
-    for (std::size_t last = cells.size(); last > 1; --last) {
-        const auto chosen =
-            static_cast<std::size_t>(randomBelow(generator, static_cast<std::uint32_t>(last)));
-        std::swap(cells[last - 1], cells[chosen]);
-    }
 }
 
 // The sides of a cell something can hang on: every side that has a wall, except a wall
