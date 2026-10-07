@@ -159,6 +159,11 @@ constexpr const char* RESET_SETTINGS_ACTION = "reset-settings";
 // The button that starts a game: its seed is read from the seed field first.
 constexpr const char* PLAY_ACTION = "play";
 
+// While the volume slider of the settings screen is moved, a short click lets the
+// player hear the new loudness: at most one in this many seconds. A dragged slider
+// reports a new value in almost every frame, and a click per frame would be a buzz.
+constexpr double VOLUME_SAMPLE_SECONDS = 0.2;
+
 // What the hint next to the seed field says when the field cannot be read.
 constexpr const char* SEED_HINT_TEXT = "Digits only, up to 4294967295";
 
@@ -334,9 +339,11 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     beginRound();
     m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
 
-    // What the settings file says about the mouse, the camera and the window.
+    // What the settings file says about the mouse, the camera, the window and the
+    // loudness of the sound.
     applyViewSettings();
     applyWindowSettings();
+    applyAudioSettings();
     // A window that starts in the background must not pause the game by "losing" a
     // focus it never had.
     m_windowWasFocused = window().isFocused();
@@ -501,6 +508,7 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         m_settings.difficulty = difficulty;
         applyViewSettings();
         applyWindowSettings();
+        applyAudioSettings();
         fillSettingsDocument();
         return true;
     }
@@ -509,6 +517,9 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
 
 void NightMazeApp::handleControlChanges() {
     const std::vector<ui::ControlChange> changes = m_ui.takeChanges();
+    // The wait of the sample click runs down with the real time of the frames. This
+    // function is called once per frame.
+    m_volumeSampleWait = std::max(m_volumeSampleWait - time().deltaSeconds(), 0.0);
     // Only the settings screen has controls that report: a change that arrives on
     // another screen is a late echo of fillSettingsDocument and is dropped.
     if (m_mode != GameMode::SettingsFromMenu && m_mode != GameMode::SettingsFromPause) {
@@ -521,14 +532,26 @@ void NightMazeApp::handleControlChanges() {
         if (!applySetting(changed, change.name, change.value) || changed == m_settings) {
             continue;
         }
+        // Asked before the new settings are taken over: was it the volume that moved?
+        const bool volumeChanged = changed.masterVolume != m_settings.masterVolume;
         m_settings = changed;
         applyViewSettings();
+        applyAudioSettings();
+        // The new loudness is heard at once, as the click of the flashlight. The UI
+        // layer reports every value of a dragged slider and not its release, so the
+        // click is held back to a few per second.
+        if (volumeChanged && m_volumeSampleWait <= 0.0) {
+            playCue(SoundCue::FlashlightOn);
+            m_volumeSampleWait = VOLUME_SAMPLE_SECONDS;
+        }
         // Only the numbers next to the sliders: the sliders themselves already stand
         // where the player put them.
         m_ui.setText(m_settingsDocument, std::string(MOUSE_SENSITIVITY_SETTING) + TEXT_ID_SUFFIX,
                      mouseSensitivityLabel(m_settings.mouseSensitivity));
         m_ui.setText(m_settingsDocument, std::string(FIELD_OF_VIEW_SETTING) + TEXT_ID_SUFFIX,
                      fieldOfViewLabel(m_settings.fieldOfViewDegrees));
+        m_ui.setText(m_settingsDocument, std::string(MASTER_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                     masterVolumeLabel(m_settings.masterVolume));
     }
 }
 
@@ -637,7 +660,7 @@ void NightMazeApp::fillRoundEndDocument() {
 }
 
 void NightMazeApp::fillSettingsDocument() {
-    // The two sliders and the numbers next to them. The id of a slider is the name of
+    // The three sliders and the numbers next to them. The id of a slider is the name of
     // its setting, and the value it gets is the text the settings file would hold.
     const std::string sensitivityId(MOUSE_SENSITIVITY_SETTING);
     const std::string sensitivity = mouseSensitivityLabel(m_settings.mouseSensitivity);
@@ -649,6 +672,11 @@ void NightMazeApp::fillSettingsDocument() {
                   std::to_string(std::lround(m_settings.fieldOfViewDegrees)));
     m_ui.setText(m_settingsDocument, fieldOfViewId + TEXT_ID_SUFFIX,
                  fieldOfViewLabel(m_settings.fieldOfViewDegrees));
+
+    const std::string volumeId(MASTER_VOLUME_SETTING);
+    const std::string volume = masterVolumeLabel(m_settings.masterVolume);
+    m_ui.setValue(m_settingsDocument, volumeId, volume);
+    m_ui.setText(m_settingsDocument, volumeId + TEXT_ID_SUFFIX, volume);
 
     // The switch of the fullscreen: a class moves its knob.
     m_ui.setClass(m_settingsDocument, FULLSCREEN_ID, ON_CLASS, m_settings.fullscreen);
@@ -670,6 +698,10 @@ void NightMazeApp::fillSettingsDocument() {
 void NightMazeApp::applyViewSettings() {
     m_mouseSensitivity = mouseDegreesPerUnit(m_settings.mouseSensitivity);
     m_camera.fovDegrees = m_settings.fieldOfViewDegrees;
+}
+
+void NightMazeApp::applyAudioSettings() {
+    m_audio.setMasterVolume(masterVolumeGain(m_settings.masterVolume));
 }
 
 void NightMazeApp::applyWindowSettings() {

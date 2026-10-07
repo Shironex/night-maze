@@ -327,9 +327,12 @@ protected:
         return game::menuCameraLoopSeconds(m_menuCameraPath, m_mazeWorld, m_menuCamera);
     }
 
-    /// The sound device and the loaded sounds, exposed so the debug UI can show their
-    /// status and set the master volume.
-    audio::AudioEngine& audio() { return m_audio; }
+    /// The sound device and the loaded sounds, read only: the debug UI shows their
+    /// status and the loudness in use.
+    const audio::AudioEngine& audio() const { return m_audio; }
+
+    /// The master volume of the settings, 0 to 100, for the debug UI.
+    float masterVolumeSetting() const { return m_settings.masterVolume; }
 
     /// The name of the cue that was played last (game::soundCueName), "none" before the
     /// first one, and how many cues were played since the start, for the debug UI.
@@ -427,6 +430,9 @@ private:
 
     /// Gives the window the size and the fullscreen state of m_settings.
     void applyWindowSettings();
+
+    /// Gives the audio engine the master volume of m_settings (game::masterVolumeGain).
+    void applyAudioSettings();
 
     /// Writes m_settings into the settings file, unless they are what the file holds
     /// already. An error is in the log, and the game goes on.
@@ -755,6 +761,9 @@ private:
     // cue table, which lives as long as the program) and the number of cues so far.
     const char* m_lastCueName = "none";
     int m_cuesPlayed = 0;
+    // Seconds until the volume slider of the settings screen may play its next sample
+    // click (handleControlChanges). 0: the next change is heard at once.
+    double m_volumeSampleWait = 0.0;
 };
 
 } // namespace game

@@ -6,7 +6,7 @@
 <body class="dim">
 <!-- A control names its setting with data-setting: when it changes, the game gets the
      name and the new value (game::applySetting), uses the value at once and writes the
-     settings file. The limits of the two sliders are the ones in game/Settings.hpp. The
+     settings file. The limits of the three sliders are the ones in game/Settings.hpp. The
      elements with an id are written by the game. -->
 <div class="panel">
     <h2 class="panel-title">Settings</h2>
@@ -20,6 +20,11 @@
         <span class="field-name">Field of view</span>
         <input type="range" id="field_of_view" data-setting="field_of_view" min="45" max="90" step="1" value="60"/>
         <span class="field-value" id="field_of_view-text">60 deg</span>
+    </div>
+    <div class="field">
+        <span class="field-name">Volume</span>
+        <input type="range" id="master_volume" data-setting="master_volume" min="0" max="100" step="1" value="100"/>
+        <span class="field-value" id="master_volume-text">100</span>
     </div>
     <div class="field">
         <span class="field-name">Fullscreen</span>

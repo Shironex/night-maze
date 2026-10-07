@@ -62,7 +62,7 @@ void drawFrame(Page& page, const DebugContext& context) {
     page.endCard();
 }
 
-// The sound device, the last sound cue and the master volume.
+// The sound device, the last sound cue and the master volume, all read only.
 void drawAudio(Page& page, const DebugContext& context) {
     page.beginCard("Audio");
     // The device with its format and the number of loaded sounds, or why there is no
@@ -70,14 +70,11 @@ void drawAudio(Page& page, const DebugContext& context) {
     page.stat("Device", "%s", context.audio.status().c_str());
     page.stat("Last cue", "%s", context.lastCueName);
     page.stat("Cues played", "%d", context.cuesPlayed);
-    // The slider works on a copy, because the engine takes the volume through
-    // a function. It is not kept in the settings file: it starts at 1 with the program.
-    float volume = context.audio.masterVolume();
-    if (page.slider("Master volume", &volume, 0.0F, 1.0F, "%.2f",
-                    "The loudness of all sounds together. Not saved: it is 1 again at "
-                    "the next start.")) {
-        context.audio.setMasterVolume(volume);
-    }
+    // The volume is a setting of the player (game/Settings.hpp): it is changed on the
+    // settings screen, which also saves it, and only shown here. The second number is
+    // what the engine was given for it (game::masterVolumeGain).
+    page.stat("Master volume", "%.0f of 100 (gain %.2f), set on the settings screen",
+              context.masterVolume, context.audio.masterVolume());
     page.endCard();
 }
 

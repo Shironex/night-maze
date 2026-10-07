@@ -121,6 +121,7 @@ protected:
             .audio = audio(),
             .lastCueName = lastCueName(),
             .cuesPlayed = cuesPlayed(),
+            .masterVolume = masterVolumeSetting(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited
