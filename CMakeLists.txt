@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.24)
 
 project(NightMaze VERSION 0.10.0 LANGUAGES C CXX)
 
+# Objective-C++, the language of the one file that talks to the video decoder of macOS
+# (src/video/VideoDecoderApple.mm). It is switched on here, right after project() and
+# before any target or downloaded library exists, and only on macOS, so Windows never
+# looks for a compiler of it. It used to be switched on further down, next to the video
+# library. The first build on macOS with that (2026-10-07, on a GitHub runner) found the
+# compiler and then stopped while generating, with "Missing variable is:
+# CMAKE_OBJCXX_COMPILE_OBJECT". Switching a language on at the top, like the languages
+# named in project(), is the usual place for it.
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -251,9 +263,7 @@ if(WIN32)
 elseif(APPLE)
     # AVFoundation, the part of macOS that decodes video files, is used from
     # Objective-C++: C++ that can also call the Objective-C classes of Apple. The
-    # language is switched on here and only here, so Windows never looks for a compiler
-    # of it.
-    enable_language(OBJCXX)
+    # language itself is switched on at the top of this file.
     target_sources(video PRIVATE src/video/VideoDecoderApple.mm)
     # The same C++ standard as the rest of the project, said again for this language.
     set_target_properties(video PROPERTIES
