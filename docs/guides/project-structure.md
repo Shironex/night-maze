@@ -239,8 +239,9 @@ night-maze/
 ├── .gitattributes              # normalizacja końców linii
 ├── .gitignore                  # czego nie wersjonujemy
 ├── .github/
-│   └── workflows/release.yml   # workflow wydania launchera i gry (M9; nigdy nie działał, nic nieopublikowane)
+│   └── workflows/release.yml   # ręczny workflow wydania gry: buduje, pakuje i zostawia szkic bez podpisów (od 2026-10-07; nigdy nie działał, nic nieopublikowane)
 ├── THIRD-PARTY-NOTICES.txt     # noty licencyjne bibliotek w paczce, generowane: node launcher/scripts/build-notices.mjs --deps build/release/_deps
+├── LICENSE                     # MIT dla kodu, assety wyłączone (od 2026-10-07; nazwa właściciela praw czeka na potwierdzenie, plik jeszcze nie w historii gita)
 ├── .vscode/                    # ustawienia obszaru roboczego Cursor i VS Code
 │   ├── extensions.json         # rekomendowane rozszerzenia
 │   └── settings.json           # clangd, presety CMake, formatowanie przy zapisie, GLSL
@@ -343,6 +344,24 @@ night-maze/
 │       ├── README.md           # skąd jest nagłówek i jak zmienić wersję
 │       └── stb_image.c         # dwie linie: makro i #include pobranego nagłówka
 ├── launcher/                   # launcher w Tauri 2 (M9): Rust, React i TypeScript, poza ocenianym kodem C++ (opis: guides/launcher.md i launcher/README.md)
+│   ├── README.md               # po angielsku: uruchamianie, sprawdzenia, format wydania, wydanie launchera i gry, klucze, czego nie zrobiono
+│   ├── Cargo.toml              # przestrzeń robocza Rust; [workspace.package] to jedyne źródło wersji launchera
+│   ├── THIRD-PARTY-NOTICES.txt # noty skrzynek Rust, pakietów npm i czcionek launchera, instalowane obok niego; generowane: pnpm notices
+│   ├── dev-keys/               # klucz deweloperski (dev.key z pustym hasłem i dev.key.pub), w repozytorium celowo; ufa mu tylko build deweloperski
+│   ├── crates/core/            # reguły bez okna: manifest, instalacja, wycofanie, sieć
+│   │   ├── src/signature.rs    # sprawdzanie podpisu minisign manifestu i news.json; dwa klucze wydania (RELEASE_KEYS), klucz deweloperski tylko w buildzie deweloperskim
+│   │   └── examples/verify_manifest.rs # brama przed publikacją: czy manifest jest podpisany kluczem wydania
+│   ├── src-tauri/              # powłoka Tauri łącząca reguły z oknem
+│   │   ├── tauri.conf.json     # konfiguracja, w tym klucz A aktualizacji, adres latest.json i requireSignedVersion
+│   │   └── src/updater.rs      # aktualizacja samego launchera przez tauri-plugin-updater, klucz B jako stała rotacyjna
+│   ├── src/                    # okno w React i TypeScript
+│   └── scripts/                # skrypty Node pakujące i podpisujące wydania
+│       ├── package-game.mjs    # zip gry; z --base-url pisze też manifest i news.json
+│       ├── build-feed.mjs      # manifest.json i news.json, podpisane (dla adresu github.com klucz podany jawnie albo --no-sign)
+│       ├── sign-file.mjs       # podpisuje jeden plik poleceniem Tauri CLI i zostawia plik .sig
+│       ├── build-latest.mjs    # latest.json i instalator launchera pod nazwą bez spacji (tylko wpis Windows)
+│       ├── build-notices.mjs   # THIRD-PARTY-NOTICES.txt w korzeniu (noty gry)
+│       └── build-launcher-notices.mjs # launcher/THIRD-PARTY-NOTICES.txt
 ├── src/
 │   ├── main.cpp                # punkt wejścia, łączy game/ z debug/
 │   ├── assets/                 # wczytywanie plików z assets/: loadery bez OpenGL i pamięć podręczna
@@ -542,7 +561,11 @@ night-maze/
     │   ├── grass-lit-with-up-normal.md # trawa oświetlana normalną gruntu, jeden program na wszystkie tryby
     │   ├── height-scale-rebuilds-terrain.md # skala wysokości przebudowuje teren na procesorze, nie jest uniformem
     │   ├── heightmap-tiled-in-world-metres.md # mapa wysokości powtarzana co 48 m świata
-    │   ├── launcher-tauri-in-this-repo.md # launcher w Tauri 2 w launcher/, tylko Night Maze, nic nieopublikowane (2026-10-06)
+    │   ├── launcher-first-release-windows-and-release-flow.md # pierwsze wydanie tylko na Windowsa, przepływ wydania jako przyjęte założenia (2026-10-07)
+    │   ├── launcher-installers-repository.md # instalatory launchera w Shironex/night-maze-launcher, adres wkompilowany w launcher (2026-10-07)
+    │   ├── launcher-keys-and-rotation.md # cztery klucze launchera, rotacja z kluczem B, utrata każdego (2026-10-07)
+    │   ├── launcher-tauri-in-this-repo.md # launcher w Tauri 2 w launcher/, tylko Night Maze; uzupełnienie z 2026-10-07, nic nieopublikowane (2026-10-06)
+    │   ├── licence-mit-code-assets-excluded.md # MIT dla kodu, assety wyłączone (2026-10-07)
     │   ├── menu-background-prerendered-loop.md # tło menu to nagrana pętla wideo (2026-10-06)
     │   ├── menu-camera-closed-walk.md  # kamera menu: jedna zamknięta pętla przez kryształy (2026-10-06)
     │   ├── menu-in-rmlui.md            # menu w RmlUi już w M9 (2026-10-06)
@@ -577,7 +600,7 @@ night-maze/
     │   ├── blender.md              # modele i tekstury: skrypty Blendera, eksport OBJ
     │   ├── build-macos.md          # budowanie na macOS
     │   ├── build-windows.md        # budowanie na Windowsie
-    │   ├── launcher.md             # launcher w Tauri 2: czym jest, co sprawdzono, odnośnik do launcher/README.md (M9)
+    │   ├── launcher.md             # launcher w Tauri 2: czym jest, podpisy i samoaktualizacja, co sprawdzono i czego nigdy nie uruchomiono, odnośnik do launcher/README.md (M9)
     │   ├── m7-status.md            # gdzie stoi M7: co jest, co zostało, decyzje, ograniczenia, sprawdzenia na macOS
     │   └── project-structure.md    # ten dokument
     ├── libraries/              # dokumenty bibliotek
