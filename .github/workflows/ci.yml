@@ -1,0 +1,233 @@
+# Checks on every push to main and on every pull request. Nothing here signs or
+# publishes: that is release.yml. The repository is public, so the standard
+# runners cost nothing.
+#
+# What is NOT here: clang-tidy. It needs a second configure with Ninja for
+# compile_commands.json and then compiles every file once more, it cannot read
+# the Objective-C++ file at all, and with `--warnings-as-errors` a runner with
+# another LLVM version than the developer machine would fail for reasons that
+# have nothing to do with the push. It stays a local step: `make check`.
+#
+# There is no cache of the downloaded dependencies. FetchContent decides from
+# its own stamp files (in `<name>-subbuild`) whether a source folder is up to
+# date, so restoring only the `*-src` folders makes it clone again, and
+# restoring the stamp files too means trusting a cache to say what was
+# downloaded. Eight shallow clones (stb is a full one) are cheap next to the
+# compile, so every run starts cold.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request replaces the run before it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows build, tests and notices
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      # Text files with LF, as on the developer machine (core.autocrlf is
+      # "input" there). The default of Git on a Windows runner would check
+      # them out with CRLF, and then the shaders, the menu documents and the
+      # files the tests read would not be the bytes that were tested locally.
+      - name: Check out text files with LF
+        run: git config --global core.autocrlf input
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The same two flags as the release (see release.yml), so the build that
+      # is tested on every push is the build that is shipped.
+      - name: Configure
+        run: cmake --preset release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DUSE_MSVC_RUNTIME_LIBRARY_DLL=OFF
+
+      - name: Build
+        run: cmake --build --preset release
+
+      - name: Unit tests
+        run: ctest --test-dir build/release -C Release --output-on-failure
+
+      # THIRD-PARTY-NOTICES.txt is generated from the licence files of the
+      # downloaded libraries and committed. A dependency bump that forgets to
+      # generate it again fails here. This is a step and not a job of its own
+      # because the downloaded sources only exist where CMake has configured.
+      # Line endings are ignored: a checkout on Windows may hold CRLF.
+      - name: The committed notices match the dependencies
+        shell: bash
+        run: |
+          node tools/build-notices.mjs --deps build/release/_deps --out "$RUNNER_TEMP/THIRD-PARTY-NOTICES.txt"
+          if ! diff --strip-trailing-cr THIRD-PARTY-NOTICES.txt "$RUNNER_TEMP/THIRD-PARTY-NOTICES.txt"; then
+            echo "::error file=THIRD-PARTY-NOTICES.txt::The notices are out of date. Run: node tools/build-notices.mjs --deps build/release/_deps"
+            exit 1
+          fi
+
+  # A changelog entry or a manifest the launcher would refuse fails here, on
+  # a normal push, and not on the day of the tag. The feed is written by the
+  # pinned launcher scripts from the real CHANGELOG.md, exactly as release.yml
+  # does it, around a stand-in for the zip, and then read by the launcher's own
+  # parser.
+  feed:
+    name: Release notes and feed
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Read the version
+        id: version
+        run: |
+          version="$(sed -n 's/^project(NightMaze VERSION \([0-9][0-9.]*\).*/\1/p' CMakeLists.txt)"
+          test -n "$version"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      # Which commit of the launcher repository the scripts and the parser are
+      # taken from. The values are checked because they end up in commands.
+      - name: Read the launcher pin
+        id: pin
+        run: |
+          node -e '
+            const pin = require("./.github/launcher-pin.json");
+            if (!/^[\w.-]+\/[\w.-]+$/.test(pin.repository)) throw new Error("launcher-pin.json: repository is not owner/name");
+            if (!/^[0-9a-f]{40}$/.test(pin.ref)) throw new Error("launcher-pin.json: ref is not a full commit sha");
+            if (!/^\d+\.\d+\.\d+$/.test(pin.launcherMin)) throw new Error("launcher-pin.json: launcherMin is not a version");
+            console.log(`repository=${pin.repository}\nref=${pin.ref}\nlauncher_min=${pin.launcherMin}`);
+          ' >> "$GITHUB_OUTPUT"
+
+      # Into a folder of its own inside the checkout of the game, under a name
+      # that says what it is.
+      - name: Checkout the pinned launcher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.pin.outputs.repository }}
+          ref: ${{ steps.pin.outputs.ref }}
+          path: launcher-pinned
+          persist-credentials: false
+
+      - name: Tests of the scripts in tools/
+        run: node --test "tools/*.test.mjs"
+
+      # build-feed.mjs does not fail when the changelog has no section for the
+      # version (it falls back to a title), release-notes.mjs does. So a
+      # version bump without its changelog section fails here.
+      - name: The changelog has a section for the version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: node tools/release-notes.mjs --version "${VERSION}"
+
+      # The stand-in zip only has to have the right name and a size: the
+      # manifest records its size and checksum, nobody unpacks it.
+      - name: Write manifest.json and news.json
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          LAUNCHER_MIN: ${{ steps.pin.outputs.launcher_min }}
+        run: |
+          mkdir feed
+          echo "not a real package" > "feed/NightMaze-${VERSION}-windows-x64.zip"
+          node launcher-pinned/scripts/build-feed.mjs \
+            --dir feed \
+            --out feed \
+            --version "${VERSION}" \
+            --base-url "https://github.com/Shironex/night-maze/releases/download/v${VERSION}/" \
+            --changelog CHANGELOG.md \
+            --launcher-min "${LAUNCHER_MIN}" \
+            --no-sign
+          cat feed/manifest.json
+
+      # The launcher's own parsers (Manifest::parse and NewsFeed::parse of its
+      # core crate), through the example `parse_feed` of the pinned commit.
+      # `--locked`: the crates of the pinned Cargo.lock and no others.
+      - name: The launcher can read both files
+        run: |
+          cargo run --locked --manifest-path launcher-pinned/Cargo.toml \
+            -p night-maze-launcher-core --example parse_feed -- \
+            feed/manifest.json feed/news.json
+
+  # Reports and does not block, for now: the check has never run on a runner.
+  # The binary is the clang-format that comes with Visual Studio, the same
+  # family the developer machine formats with (19.1.5 there on 2026-10-07),
+  # and not the newer LLVM on the PATH of the runner: two versions of
+  # clang-format do not always agree. The step prints the version it used.
+  # When it has been green for a while, remove `continue-on-error`.
+  format:
+    name: clang-format (reports, does not block)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      # Text files with LF, as on the developer machine (core.autocrlf is
+      # "input" there). The default of Git on a Windows runner would check
+      # them out with CRLF, and then the shaders, the menu documents and the
+      # files the tests read would not be the bytes that were tested locally.
+      - name: Check out text files with LF
+        run: git config --global core.autocrlf input
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Makefile builds the path from the developer shell, which is not
+      # active here, so vswhere is asked where Visual Studio is. The files are
+      # the ones `make format-check` checks.
+      - name: Check the formatting
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $clangFormat = & $vswhere -latest -products * -find 'VC\Tools\Llvm\x64\bin\clang-format.exe' | Select-Object -First 1
+          if (-not $clangFormat) { throw 'clang-format was not found in Visual Studio' }
+          & $clangFormat --version
+          $files = git ls-files -- 'src/*.cpp' 'src/*.hpp' 'src/*.mm' 'tests/*.cpp' 'tests/*.hpp'
+          & $clangFormat --dry-run --Werror $files
+          exit $LASTEXITCODE
+
+  # NOT a release and not a promise that the game runs on macOS. No macOS
+  # build has been made since the video decoder (AVFoundation, Objective-C++)
+  # and miniaudio were added, so this job is expected to fail at first, and
+  # `continue-on-error` keeps that from failing the run. `-k` makes the build
+  # go on after the first error, so one log shows every file that does not
+  # compile.
+  macos:
+    name: macOS compile check (not a release)
+    runs-on: macos-15
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compiler and CMake versions
+        run: |
+          cmake --version
+          clang++ --version
+
+      - name: Configure
+        run: cmake --preset release
+
+      - name: Build
+        run: cmake --build --preset release --parallel 3 -- -k
+
+      - name: Unit tests
+        run: ctest --test-dir build/release --output-on-failure
