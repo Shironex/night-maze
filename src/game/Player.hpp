@@ -25,6 +25,12 @@ struct PlayerInput {
     bool sprint = false;   ///< Left Shift, used only in walking mode
 };
 
+/// The keys that reach the player in a fixed step: held as it is, or nothing at all
+/// while the map is on the screen (mapShown, game::showsMap). Reading the map is
+/// a stop: no walking, no sprint and no flight. The step itself still runs with the
+/// empty input, so the stamina refills as it does for a player who stands still.
+PlayerInput movementInput(const PlayerInput& held, bool mapShown);
+
 /// The numbers of the stamina rule. The debug UI edits them, the values here are the
 /// defaults: starting values that are meant to be tuned by playing.
 struct StaminaSettings {

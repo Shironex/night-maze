@@ -538,3 +538,44 @@ TEST_CASE("a new round gives a full bar and keeps the tuned numbers") {
     runSteps(player, sprint, YAW_NORTH, NO_PITCH, STEPS_PER_SECOND, NO_OBSTACLES);
     CHECK(before - player.position.z == doctest::Approx(game::Player::SPRINT_SPEED));
 }
+
+TEST_CASE("while the map is shown no key reaches the player") {
+    const game::PlayerInput held{.forward = true,
+                                 .backward = true,
+                                 .left = true,
+                                 .right = true,
+                                 .up = true,
+                                 .down = true,
+                                 .sprint = true};
+
+    // Without the map the keys pass as they are.
+    const game::PlayerInput free = game::movementInput(held, false);
+    CHECK(free.forward);
+    CHECK(free.sprint);
+
+    // With the map every field is false, also the two of the flight.
+    const game::PlayerInput stopped = game::movementInput(held, true);
+    CHECK_FALSE(stopped.forward);
+    CHECK_FALSE(stopped.backward);
+    CHECK_FALSE(stopped.left);
+    CHECK_FALSE(stopped.right);
+    CHECK_FALSE(stopped.up);
+    CHECK_FALSE(stopped.down);
+    CHECK_FALSE(stopped.sprint);
+}
+
+TEST_CASE("a player who reads the map stands still while the stamina refills") {
+    game::Player player;
+    const game::PlayerInput sprint{.forward = true, .sprint = true};
+    runSteps(player, sprint, YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND, NO_OBSTACLES);
+    const float levelBefore = player.stamina.level;
+    const glm::vec3 placeBefore = player.position;
+    REQUIRE(levelBefore < 1.0F);
+
+    // Three seconds with the map up and the same keys held: the steps still run.
+    runSteps(player, game::movementInput(sprint, true), YAW_NORTH, NO_PITCH, 3 * STEPS_PER_SECOND,
+             NO_OBSTACLES);
+
+    checkVector(player.position, placeBefore);
+    CHECK(player.stamina.level > levelBefore);
+}

@@ -20,6 +20,11 @@ constexpr float LEVEL_PITCH_DEGREES = 0.0F;
 
 } // namespace
 
+PlayerInput movementInput(const PlayerInput& held, bool mapShown) {
+    // A new PlayerInput has every field false: no key is held.
+    return mapShown ? PlayerInput{} : held;
+}
+
 bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool wantsSprint,
                     float stepSeconds) {
     const bool sprinting = wantsSprint && !stamina.winded && stamina.level > 0.0F;
