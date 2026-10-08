@@ -92,6 +92,12 @@ bool sameOrJoined(const game::Maze& maze, game::MazeCell from, game::MazeCell to
     return false;
 }
 
+// The place of a cell in a list that holds the rows one after another, like in Maze.
+std::size_t placeOf(const game::Maze& maze, game::MazeCell cell) {
+    return static_cast<std::size_t>(cell.z) * static_cast<std::size_t>(maze.width()) +
+           static_cast<std::size_t>(cell.x);
+}
+
 // The maze of a difficulty level.
 game::MazeWorld worldOf(game::Difficulty difficulty, std::uint32_t seed) {
     const game::DifficultyLevel& level = game::difficultyLevel(difficulty);
@@ -283,9 +289,8 @@ TEST_CASE("the shade follows the passages and never crosses a wall") {
                                                  world.terrain, settings);
             REQUIRE(shade.present);
             const glm::vec3 player = world.startPosition;
-            const int passages = game::passageDistances(maze,
-                                                        game::START_CELL)[static_cast<std::size_t>(
-                game::cellAt(shade.position).z * maze.width() + game::cellAt(shade.position).x)];
+            const int passages = game::passageDistances(
+                maze, game::START_CELL)[placeOf(maze, game::cellAt(shade.position))];
 
             game::MazeCell cell = game::cellAt(shade.position);
             bool caught = false;
@@ -395,9 +400,8 @@ TEST_CASE("the shade starts in a far cell that is neither the start nor the exit
             CHECK_FALSE(cell == world.exitCell);
 
             const std::vector<int> distances = game::passageDistances(maze, game::START_CELL);
-            const int farthest = distances[static_cast<std::size_t>(
-                world.exitCell.z * maze.width() + world.exitCell.x)];
-            const int own = distances[static_cast<std::size_t>(cell.z * maze.width() + cell.x)];
+            const int farthest = distances[placeOf(maze, world.exitCell)];
+            const int own = distances[placeOf(maze, cell)];
             CHECK(own * 10 >= farthest * game::SHADE_START_FAR_TENTHS);
             // Far in metres too: more than the lamp reaches, on every level.
             CHECK(static_cast<float>(own) * game::CELL_SIZE > 2.0F * RANGE);
