@@ -304,9 +304,10 @@ night_maze_enable_warnings(video)
 # reader and the paths of engine, and it knows nothing about the game (the game hands it
 # a list of files and later the number of the sound to play; which sound belongs to
 # what is a rule of game_logic, game/SoundCues.hpp). It is a library of its own and not
-# a part of engine for the same reason as ui and video: game_logic and the test program
-# link engine, and they should not link miniaudio, which opens the sound device of the
-# computer. So it is linked into night_maze only, and no test needs a sound card.
+# a part of engine for the same reason as ui and video: game_logic links engine, and it
+# should not link miniaudio, which opens the sound device of the computer. The game
+# links it, and so does the test program, which makes the audio engine without a device
+# (audio::AudioOutput::None): no test needs a sound card, and none is heard.
 add_library(audio STATIC
     src/audio/AudioEngine.cpp
     src/audio/AudioEngine.hpp
@@ -407,6 +408,7 @@ enable_testing()
 
 add_executable(night_maze_tests
     tests/main.cpp
+    tests/AudioEngineTests.cpp
     tests/BloomTests.cpp
     tests/ColliderTests.cpp
     tests/ColorSpaceTests.cpp
@@ -463,8 +465,10 @@ add_executable(night_maze_tests
     src/video/VideoClock.cpp
     src/video/VideoClock.hpp
 )
-# game_logic brings engine with it (scene/Collider is part of engine).
-target_link_libraries(night_maze_tests PRIVATE game_logic doctest::doctest)
+# game_logic brings engine with it (scene/Collider is part of engine). audio is linked
+# for the tests of the audio engine, which make it without a sound device
+# (audio::AudioOutput::None): nothing is opened and nothing is heard.
+target_link_libraries(night_maze_tests PRIVATE game_logic audio doctest::doctest)
 night_maze_enable_warnings(night_maze_tests)
 # The loader tests (of images and of OBJ models) read the real files of the game. A test
 # must not depend on the directory it is started from, so the absolute path of assets/ in

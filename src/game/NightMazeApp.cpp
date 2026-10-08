@@ -482,10 +482,15 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
 
     // The sounds: one file per cue, in the order of the enum, so the number of a cue is
     // the number of its sound (game::soundCueIndex). A missing file is in the log and
-    // its cue is silent (audio::AudioEngine).
-    std::array<std::filesystem::path, SOUND_CUE_COUNT> soundFiles;
+    // its cue is silent (audio::AudioEngine). The winds go into the ambient group of
+    // the engine and everything else into the effects group: each group has a volume
+    // of its own (applyAudioSettings).
+    std::array<audio::SoundFile, SOUND_CUE_COUNT> soundFiles;
     for (std::size_t i = 0; i < SOUND_CUE_COUNT; ++i) {
-        soundFiles.at(i) = core::assetPath(soundCueFile(static_cast<SoundCue>(i)));
+        const auto cue = static_cast<SoundCue>(i);
+        soundFiles.at(i) = {.path = core::assetPath(soundCueFile(cue)),
+                            .group = soundCueIsAmbient(cue) ? audio::SoundGroup::Ambient
+                                                            : audio::SoundGroup::Effects};
     }
     m_audio.load(soundFiles);
 
