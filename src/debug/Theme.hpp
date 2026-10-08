@@ -80,6 +80,15 @@ inline constexpr ImVec4 PLAN_PLAYER_COLOR = colorFromBytes(255, 184, 84);
 inline constexpr ImVec4 PLAN_CRYSTAL_COLOR = colorFromBytes(86, 214, 202);
 inline constexpr ImVec4 HUD_CRYSTAL_COLOR = PLAN_CRYSTAL_COLOR;
 
+/// The inside of the little crystal in front of the crystal counter of the HUD: a deep
+/// teal. Its outline is the colour of the crystals.
+inline constexpr ImVec4 HUD_GEM_COLOR = colorFromBytes(18, 68, 76);
+
+/// The dark things of the HUD: the copy under every text that keeps it readable over
+/// a bright wall, the disc behind the ring of the lamp and the pill of the prompt.
+/// Nearly black, with a little of the blue of the night. Each use sets its own opacity.
+inline constexpr ImVec4 HUD_SHADOW_COLOR = colorFromBytes(3, 5, 11);
+
 /// A crystal that is already collected, on the plan: only a dim trace of where it was.
 inline constexpr ImVec4 PLAN_COLLECTED_COLOR = colorFromBytes(44, 104, 112);
 
@@ -90,20 +99,20 @@ inline constexpr ImVec4 PLAN_GATE_COLOR = colorFromBytes(214, 142, 82);
 /// The exit zone on the plan: a soft green, the colour of "this way out".
 inline constexpr ImVec4 PLAN_EXIT_COLOR = colorFromBytes(132, 220, 140);
 
-/// The battery bar of the HUD: the warm light of the flashlight while there is charge,
+/// The lamp gauge of the HUD: the warm light of the flashlight while there is charge,
 /// the soft red of an error once it is low.
 inline constexpr ImVec4 HUD_BATTERY_COLOR = PLAN_PLAYER_COLOR;
 inline constexpr ImVec4 HUD_BATTERY_LOW_COLOR = ERROR_TEXT_COLOR;
 
-/// The stamina bar of the HUD: the teal of the crystals, so one look tells it from the
-/// amber battery bar above it. While the player is winded it is drawn in a dimmer teal
-/// (and pulses, see Hud.cpp): the bar is there, but it cannot be used.
+/// The stamina line of the HUD: the teal of the crystals, so one look tells it from the
+/// amber lamp gauge. While the player is winded it is drawn in a dimmer teal (and
+/// pulses, see Hud.cpp): the stamina is there, but it cannot be used.
 inline constexpr ImVec4 HUD_STAMINA_COLOR = SECONDARY_COLOR;
 inline constexpr ImVec4 HUD_STAMINA_WINDED_COLOR = colorFromBytes(58, 138, 140);
 
-/// The stamina bar while the tea of a flask works, and the line of hint that says so:
-/// the copper of strong tea. Warm, so one look tells it from the teal bar of the
-/// stamina it replaces, and darker and redder than the amber of the battery bar above.
+/// The stamina line while the tea of a flask works, and the sentence that says so: the
+/// copper of strong tea. Warm, so one look tells it from the teal line of the stamina
+/// it replaces, and darker and redder than the amber of the lamp gauge.
 inline constexpr ImVec4 HUD_FLASK_COLOR = colorFromBytes(226, 124, 58);
 
 /// A lever on the plan of the maze while it can still be pulled: the red of

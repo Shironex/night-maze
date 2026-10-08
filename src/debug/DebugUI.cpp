@@ -102,7 +102,7 @@ void DebugUI::draw(const DebugContext& context) {
     // and not in the picture of the menu camera, which shows no round.
     if (context.hudVisible) {
         drawHud(context.mazeWorld, context.round, context.gameplay, context.player, context.pick,
-                context.mapOnScreen, context.keys);
+                context.mapOnScreen, context.keys, context.playedNight);
     }
 
     // Render turns the widgets into draw lists, the backend sends them to OpenGL.

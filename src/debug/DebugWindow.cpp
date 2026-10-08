@@ -3,7 +3,6 @@
 
 #include "core/Time.hpp"
 #include "debug/DebugContext.hpp"
-#include "debug/Hud.hpp"
 #include "debug/Search.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
@@ -178,14 +177,12 @@ void drawTitle(const char* title) {
     ImGui::PopFont();
 }
 
-// The y coordinate below which the debug window and a new pinned panel start. In
-// a narrow game window they reach the middle of the picture, where the HUD of the round
-// stands at the top edge. So they start below the room the HUD can take, always:
-// a window that moved whenever the HUD grew by a line of hint would be hard to work
-// with.
-float topBelowHud() {
-    return ImGui::GetMainViewport()->WorkPos.y + hudReservedHeight() +
-           WINDOW_MARGIN * displayScale();
+// The y coordinate at which the debug window and a new pinned panel start: a margin
+// below the top edge of the game window. The HUD of the round keeps no room free for
+// them: its instruments stand in the corners, and the window, which is a tool, may cover
+// one while it is open.
+float windowTop() {
+    return ImGui::GetMainViewport()->WorkPos.y + WINDOW_MARGIN * displayScale();
 }
 
 // The category that stands step places after the given one on the rail (before it for
@@ -250,7 +247,7 @@ void DebugWindow::drawMainWindow(const DebugContext& context) {
     const float right = viewport->WorkPos.x + viewport->WorkSize.x - margin;
     const float bottom = viewport->WorkPos.y + viewport->WorkSize.y - margin;
 
-    const float top = topBelowHud();
+    const float top = windowTop();
     const float width =
         std::min(WINDOW_WIDTH * scale, viewport->WorkSize.x * MAX_WINDOW_WIDTH_SHARE);
     const float height = std::max(bottom - top, MIN_WINDOW_HEIGHT * scale);
@@ -300,13 +297,13 @@ void DebugWindow::drawPinnedPanel(const DebugContext& context) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const CategoryInfo& info = categoryInfo(m_category);
 
-    // Where the panel appears the first time it is used: at the right edge, below the
-    // HUD, like the window. ImGuiCond_FirstUseEver: only while ImGui has no place for
+    // Where the panel appears the first time it is used: at the right edge, as far
+    // from the top as the window. ImGuiCond_FirstUseEver: only while ImGui has no place for
     // it in imgui.ini. After that the user decides: the panel can be moved, resized and
     // docked to an edge of the game window, and ImGui remembers it.
     const ImVec2 size{PINNED_WIDTH * scale, PINNED_HEIGHT * scale};
     ImGui::SetNextWindowPos(
-        {viewport->WorkPos.x + viewport->WorkSize.x - margin - size.x, topBelowHud()},
+        {viewport->WorkPos.x + viewport->WorkSize.x - margin - size.x, windowTop()},
         ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
 
