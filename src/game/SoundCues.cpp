@@ -13,6 +13,8 @@ namespace {
 struct SoundCueInfo {
     const char* file; // relative to the assets directory
     const char* name; // for the debug window
+    // True for the two winds (soundCueIsAmbient). Left out, it is false.
+    bool ambient = false;
 };
 
 // The table of the cues, in the order of the enum SoundCue: entry number i belongs to
@@ -31,9 +33,35 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/flask_pickup.wav", .name = "flask pickup"},
     {.file = "audio/shade_near.wav", .name = "shade near"},
     {.file = "audio/caught.wav", .name = "caught"},
-    {.file = "audio/intro_wind.wav", .name = "intro wind"},
+    {.file = "audio/intro_wind.wav", .name = "intro wind", .ambient = true},
     {.file = "audio/intro_bell.wav", .name = "intro bell"},
+    {.file = "audio/footstep_1.wav", .name = "footstep 1"},
+    {.file = "audio/footstep_2.wav", .name = "footstep 2"},
+    {.file = "audio/footstep_3.wav", .name = "footstep 3"},
+    {.file = "audio/shade_step_1.wav", .name = "shade step 1"},
+    {.file = "audio/shade_step_2.wav", .name = "shade step 2"},
+    {.file = "audio/maze_wind.wav", .name = "maze wind", .ambient = true},
 }};
+
+// The first sound of the steps of the player and of the shade: the others follow it in
+// the enum.
+constexpr std::size_t FIRST_FOOTSTEP = static_cast<std::size_t>(SoundCue::Footstep1);
+constexpr std::size_t FIRST_SHADE_STEP = static_cast<std::size_t>(SoundCue::ShadeStep1);
+
+// Takes metres off the way of a clock. True when a step is due: sound then is the
+// number of its sound (counted from 0), the clock moves on to the next of soundCount,
+// and the way is SET to stride. What the step overshot is dropped, as in
+// advanceLowBatteryPulse: one call is at most one step.
+bool walkStepClock(StepClock& clock, float metres, float stride, int soundCount, int& sound) {
+    clock.metresToNextStep -= metres;
+    if (clock.metresToNextStep > 0.0F) {
+        return false;
+    }
+    clock.metresToNextStep = stride;
+    sound = clock.nextSound;
+    clock.nextSound = (clock.nextSound + 1) % soundCount;
+    return true;
+}
 
 } // namespace
 
@@ -49,6 +77,10 @@ const char* soundCueFile(SoundCue cue) {
 
 const char* soundCueName(SoundCue cue) {
     return SOUND_CUES.at(soundCueIndex(cue)).name;
+}
+
+bool soundCueIsAmbient(SoundCue cue) {
+    return SOUND_CUES.at(soundCueIndex(cue)).ambient;
 }
 
 SoundCue flashlightKeyCue(float battery, bool wasOn) {
@@ -189,6 +221,73 @@ bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds) {
     // advanceLowBatteryPulse.
     hum.secondsToNextHum = shadeHumInterval(round.shade.wayMetres);
     return true;
+}
+
+bool advanceFootsteps(StepClock& clock, const FootstepInput& input, CuePlay& play) {
+    if (input.flying) {
+        clock = {};
+        return false;
+    }
+    // Nothing walked, or a step without a length: the clock stands still. The second
+    // question also keeps the division below safe.
+    if (input.metres <= 0.0F || input.stepSeconds <= 0.0F) {
+        return false;
+    }
+    // Sprinted or walked is asked from the speed the feet really had.
+    const float speed = input.metres / input.stepSeconds;
+    const bool sprinted = speed > (input.walkSpeed + input.sprintSpeed) / 2.0F;
+    int sound = 0;
+    if (!walkStepClock(clock, input.metres,
+                       sprinted ? FOOTSTEP_SPRINT_METRES : FOOTSTEP_WALK_METRES,
+                       FOOTSTEP_SOUND_COUNT, sound)) {
+        return false;
+    }
+    play = {.cue = static_cast<SoundCue>(FIRST_FOOTSTEP + static_cast<std::size_t>(sound)),
+            .volume = sprinted ? FOOTSTEP_SPRINT_VOLUME : FOOTSTEP_WALK_VOLUME};
+    return true;
+}
+
+float shadeStepMetres(const Round& round) {
+    if (!round.shade.present) {
+        return 0.0F;
+    }
+    const glm::vec3 moved = round.shade.position - round.shade.previousPosition;
+    return glm::length(glm::vec2{moved.x, moved.z});
+}
+
+float shadeStepVolume(float wayMetres) {
+    // The same share of the distance as in shadeHumInterval: 0 here, 1 at the edge.
+    const float share = std::clamp(wayMetres / SHADE_STEP_DISTANCE, 0.0F, 1.0F);
+    return SHADE_STEP_NEAR_VOLUME + (SHADE_STEP_FAR_VOLUME - SHADE_STEP_NEAR_VOLUME) * share;
+}
+
+bool advanceShadeSteps(StepClock& clock, const Round& round, CuePlay& play) {
+    if (round.state != RoundState::Playing || !round.shade.present) {
+        clock = {};
+        return false;
+    }
+    const float metres = shadeStepMetres(round);
+    if (metres <= 0.0F) {
+        return false;
+    }
+    int sound = 0;
+    if (!walkStepClock(clock, metres, SHADE_STEP_METRES, SHADE_STEP_SOUND_COUNT, sound)) {
+        return false;
+    }
+    // The step was taken, but too far away to be heard.
+    if (round.shade.wayMetres > SHADE_STEP_DISTANCE) {
+        return false;
+    }
+    play = {.cue = static_cast<SoundCue>(FIRST_SHADE_STEP + static_cast<std::size_t>(sound)),
+            .volume = shadeStepVolume(round.shade.wayMetres)};
+    return true;
+}
+
+bool mazeWindPlays(const MazeWindRequest& request) {
+    if (request.mode == GameMode::Intro || !request.windowFocused) {
+        return false;
+    }
+    return request.sample || (updatesRound(request.mode) && !request.menuCamera);
 }
 
 } // namespace game
