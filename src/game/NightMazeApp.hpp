@@ -756,6 +756,16 @@ private:
     /// for the uniform uEmissive: game::crystalGlow of the colour of the crystal lights.
     glm::vec3 crystalEmissive() const;
 
+    /// Counts the passages from the exit cell to every cell again, in the maze of the
+    /// round (m_exitDistances): when a round begins, and when a lever has opened a wall,
+    /// which can make a way shorter.
+    void measureExitDistances();
+
+    /// How loud a toll of the bell of the gate is where the player stands now
+    /// (game::gateBellVolume of the passages to the exit). A player outside the maze
+    /// (noclip) hears the far volume.
+    float gateBellVolumeHere() const;
+
     /// The minimap, the last thing of a frame the game draws: after the composite pass,
     /// so the fog, the bloom and the tone mapping do not touch it. It builds the shapes
     /// of the map (game::buildMinimapVertices), draws them into the framebuffer of the
@@ -1048,6 +1058,17 @@ private:
     WindedBreath m_windedBreath;
     // The clock of the hum of the shade: the same kind of state.
     ShadeHum m_shadeHum;
+    // The clock of the bell of the open gate: the same kind of state.
+    GateBell m_gateBell;
+    // For every cell of the maze, the passages from it to the exit cell
+    // (game::passageDistances, row after row): how loud a toll of the bell is played.
+    // Counted once per round and again when a lever opens a wall (measureExitDistances).
+    std::vector<int> m_exitDistances;
+    // The glow of the lanterns of the gate in the frame that is being drawn, as a linear
+    // colour for the uniform uEmissive: the colour of the lamp times its strength
+    // (game::gateLampColor, game::gateLampStrength). onRender sets it before the shadow
+    // passes, and every pass of the frame draws the lanterns with it.
+    glm::vec3 m_gateLampGlow{0.0F};
     // True when the player has pulled a lever since the last fixed step: the next step
     // tells the shade, which may hear it (game::playerNoise). Keys are read once per
     // frame and the shade moves in fixed steps, so the pull waits here in between.

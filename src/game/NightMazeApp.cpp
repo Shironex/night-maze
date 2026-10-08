@@ -7,6 +7,8 @@
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 #include "game/Crystals.hpp"
+#include "game/Exit.hpp"
+#include "game/GateLamp.hpp"
 #include "game/Interactables.hpp"
 #include "game/Puddles.hpp"
 #include "game/Shade.hpp"
@@ -1683,6 +1685,10 @@ void NightMazeApp::beginRound() {
     // The hum of the shade starts anew as well. The shade itself is part of the round:
     // startRound has put it back in its start cell, with its grace time ahead of it.
     m_shadeHum = {};
+    // The bell of the gate is silent until the gate opens again, and every wall a lever
+    // had opened is back, so the ways to the exit are counted anew.
+    m_gateBell = {};
+    measureExitDistances();
     // A lever pulled in the round before is not a noise of this one.
     m_leverPulled = false;
     // A restart in the middle of a fade to black ends the fade.
@@ -1836,6 +1842,12 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (advanceWindedBreath(m_windedBreath, m_player.stamina.winded, static_cast<float>(fixedDt))) {
         playCue(SoundCue::WindedBreath);
     }
+    // The bell of the open gate, on a clock of the same kind: a toll every few seconds,
+    // louder the fewer passages lie between the player and the exit.
+    if (advanceGateBell(m_gateBell, m_round, m_gameplay.gate.bellSeconds,
+                        static_cast<float>(fixedDt))) {
+        playCue(SoundCue::GateBell, gateBellVolumeHere());
+    }
     // The gate has just opened (the only change a step can make here): its box leaves
     // the obstacle list, and the way into the exit cell is free.
     if (gateBlocks(m_mazeWorld, m_round) != gateBlockedBefore) {
@@ -1901,8 +1913,27 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // This step took the player through the open gate: the result screen comes up. The
     // steps that may follow in the same frame then find the round stopped.
     if (m_round.state == RoundState::Won) {
+        // One full toll for walking through, whatever the clock of the bell says.
+        playCue(SoundCue::GateBell, GATE_BELL_NEAR_VOLUME);
         finishRound();
     }
+}
+
+void NightMazeApp::measureExitDistances() {
+    m_exitDistances = passageDistances(roundMaze(m_mazeWorld, m_round), m_mazeWorld.exitCell);
+}
+
+float NightMazeApp::gateBellVolumeHere() const {
+    const Maze& maze = roundMaze(m_mazeWorld, m_round);
+    const MazeCell cell = cellAt(m_player.position);
+    if (!maze.contains(cell.x, cell.z)) {
+        return gateBellVolume(UNREACHABLE);
+    }
+    // The list holds the rows one after another (game::passageDistances).
+    const std::size_t index =
+        static_cast<std::size_t>(cell.z) * static_cast<std::size_t>(maze.width()) +
+        static_cast<std::size_t>(cell.x);
+    return gateBellVolume(m_exitDistances.at(index));
 }
 
 void NightMazeApp::finishRound() {
@@ -2074,6 +2105,7 @@ void NightMazeApp::onRender(double alpha) {
         m_gameplay.pullAllLevers = false;
         if (pullAllLevers(m_round, m_mazeWorld) > 0) {
             m_obstacles = roundObstacles(m_mazeWorld, m_round);
+            measureExitDistances();
             if (roundInput) {
                 playCue(SoundCue::LeverPull);
             }
@@ -2322,6 +2354,23 @@ void NightMazeApp::onRender(double alpha) {
         }
     }
 
+    // The lamp of the gate in this frame: how bright and in which colour, by the rule of
+    // the round (game::gateLampStrength: a cold ember while the gate is closed, amber once
+    // it is open). The menu camera and the live scene behind the main menu show it fully
+    // lit, whatever the round says, so the glide over the maze has its one warm light.
+    // The intro does not: it tells that the lamps of the village have gone out, so its
+    // pictures keep the cold ember of a night that has not begun.
+    const bool lampShownLit = menuCamera && !intro;
+    const float lampProgress = lampShownLit ? 1.0F : m_round.gateProgress;
+    const float lampStrength = lampShownLit
+                                   ? 1.0F
+                                   : gateLampStrength(m_round.collectedCount, m_round.requiredCount,
+                                                      m_round.gateProgress, m_gameplay.gate);
+    // The colour is an sRGB value and the glow a linear colour, like the one of the
+    // crystals (crystalEmissive).
+    m_gateLampGlow = gfx::srgbToLinear(gateLampColor(lampProgress)) *
+                     (m_gameplay.gate.glowStrength * lampStrength);
+
     // Where the flashlight is and where it points in this frame: in the hand, a little
     // to the right of the eye and below it, aimed at a point in front of the eye. It is
     // computed here, after the mouse has turned the camera and from the same eye the
@@ -2376,9 +2425,21 @@ void NightMazeApp::onRender(double alpha) {
     // to the graphics card happens once, and the two lit programs and the grass program
     // read it. It takes the EYE, not the hand: the highlights are computed for the place
     // the picture is taken from.
-    const std::vector<PointLightSpot> crystalLights =
-        nearestPointLights(crystalLightPositions(m_round), eye);
-    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, crystalLights);
+    //
+    // The lamp of the gate is one more light in the same list, with a colour and
+    // a radius of its own. So it takes one of the places only while it is among the
+    // nearest: at the gate it lights the stone, and far away it leaves its place to
+    // a crystal while its glass still glows.
+    std::vector<PointLightSpot> pointLights;
+    for (const glm::vec3& position : crystalLightPositions(m_round)) {
+        pointLights.push_back({.position = position});
+    }
+    if (m_mazeWorld.hasGate) {
+        pointLights.push_back(gateLampLight(gateScenery(m_mazeWorld).lightPosition, lampStrength,
+                                            lampProgress, m_gameplay.gate));
+    }
+    const std::vector<PointLightSpot> frameLights = nearestPointLightSpots(pointLights, eye);
+    const scene::LightSet lights = buildLightSet(frameLighting, flashlight, frameLights);
     m_lightRig.upload(lights, eye);
 
     drawMaze(view, projection);
@@ -2526,6 +2587,8 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
         // the first pull of a lever, so that is the moment of its sound.
         if (interact(m_round, m_mazeWorld, m_pick)) {
             m_obstacles = roundObstacles(m_mazeWorld, m_round);
+            // An open wall can be a shorter way to the exit: the bell follows it.
+            measureExitDistances();
             playCue(SoundCue::LeverPull);
             // The shade may hear it, in the next fixed step.
             m_leverPulled = true;
@@ -2673,7 +2736,8 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices,
                         m_mazeSettings.wallVariants);
-    m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
+    m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive(),
+                            m_gateLampGlow);
     m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round);
     // The shade casts a shadow like everything that stands in the maze.
     if (m_shadeDrawn) {
@@ -2787,7 +2851,7 @@ bool NightMazeApp::crystalsReflect() const {
 }
 
 void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
-    m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round);
+    m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_gateLampGlow);
     // The flasks, always with the program of the walls: they are brass, not glass, and
     // show no sky.
     m_gameplayRenderer.drawFlasks(shader, m_mazeWorld, m_round);

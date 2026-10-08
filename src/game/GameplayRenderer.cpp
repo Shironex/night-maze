@@ -1,9 +1,10 @@
-// GameplayRenderer: draws the things of a round, the crystals, the flasks and the gate, with
-// their models.
+// GameplayRenderer: draws the things of a round, the crystals, the flasks and the gate with
+// its gatehouse, with their models.
 #include "game/GameplayRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
+#include "game/GateLamp.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/ModelDraw.hpp"
 #include "game/Round.hpp"
@@ -25,6 +26,15 @@ constexpr const char* CRYSTAL_A_MODEL_FILE = "models/crystal_a.obj";
 constexpr const char* CRYSTAL_B_MODEL_FILE = "models/crystal_b.obj";
 constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
 
+// What stands around the gate and never moves. The gatehouse is built like the gate:
+// along X, with its origin in the middle of its base, and the same seen from both sides.
+// The lantern is 0.2 m wide and upright, with its origin in the middle of its base, and
+// the same seen from all four sides. The milestone is a knee high stone with its origin
+// on the ground under it.
+constexpr const char* GATE_ARCH_MODEL_FILE = "models/gate_arch.obj";
+constexpr const char* GATE_LANTERN_MODEL_FILE = "models/gate_lantern.obj";
+constexpr const char* MILESTONE_MODEL_FILE = "models/milestone.obj";
+
 // The model of a flask of tea: in metres, upright, with its origin at its base, built like
 // the crystals.
 constexpr const char* FLASK_MODEL_FILE = "models/flask.obj";
@@ -41,17 +51,41 @@ GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
                  assets.model(core::assetPath(CRYSTAL_B_MODEL_FILE))},
       m_flask(assets.model(core::assetPath(FLASK_MODEL_FILE))),
       m_shade(assets.model(core::assetPath(SHADE_MODEL_FILE))),
-      m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))) {}
+      m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))),
+      m_gateArch(assets.model(core::assetPath(GATE_ARCH_MODEL_FILE))),
+      m_gateLantern(assets.model(core::assetPath(GATE_LANTERN_MODEL_FILE))),
+      m_milestone(assets.model(core::assetPath(MILESTONE_MODEL_FILE))) {}
 
 void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-                            const glm::vec3& crystalGlow) const {
-    drawGate(shader, world, round);
+                            const glm::vec3& crystalGlow, const glm::vec3& lampGlow) const {
+    drawGate(shader, world, round, lampGlow);
     drawCrystals(shader, round, crystalGlow);
 }
 
 void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& world,
-                                const Round& round) const {
+                                const Round& round, const glm::vec3& lampGlow) const {
+    // A maze of one cell has no gate, and so no gatehouse.
+    if (!world.hasGate) {
+        return;
+    }
     setModelSamplers(shader);
+
+    // The gatehouse, the milestone and the lanterns. They are drawn whatever the door
+    // does: the door sinks, the house around it stays. Where they stand is asked from
+    // the world in every call (a few sums), so a rebuilt terrain needs no extra step.
+    const GateScenery scenery = gateScenery(world);
+    // Stone gives off no light.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+    drawModel(shader, m_gateArch, std::span<const glm::mat4>(&scenery.arch, 1));
+    if (scenery.hasMilestone) {
+        drawModel(shader, m_milestone, std::span<const glm::mat4>(&scenery.milestone, 1));
+    }
+    // The lanterns glow, all three alike. The glass is the pale part of their texture
+    // and the iron the dark part, so one glow value lights the glass and not the frame.
+    shader.setVec3(EMISSIVE_UNIFORM, lampGlow);
+    drawModel(shader, m_gateLantern, scenery.lanterns);
+    // Back to black: what is drawn next with this program must not glow by accident.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 
     // The gate, as long as some of it is above the ground. It is a wall segment that
     // moves: the same matrix as a wall there, with the position lowered by how far the
