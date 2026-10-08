@@ -39,10 +39,10 @@ import time
 from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from record_menu_loop import (DEFAULT_EXE, HEIGHT, HWND_TOPMOST, LEAD_IN_SECONDS,  # noqa: E402
-                              REPOSITORY, SETTINGS_FILE_NAME, SWP_NOACTIVATE, SWP_NOSIZE,
-                              SWP_SHOWWINDOW, WIDTH, WINDOW_LEFT, WINDOW_TOP, client_size,
-                              find_window, grab_arguments, run, use_real_pixels, user32)
+from record_menu_loop import (DEFAULT_EXE, HEIGHT, LEAD_IN_SECONDS, REPOSITORY,  # noqa: E402
+                              SETTINGS_FILE_NAME, WIDTH, WINDOW_LEFT, WINDOW_TOP, client_size,
+                              find_window, grab_arguments, put_on_top, run, use_real_pixels,
+                              user32)
 
 OUT_DIR = os.path.join(REPOSITORY, "showcase-out", "raw")
 WORK = os.path.join(tempfile.gettempdir(), "nm-showcase-work")
@@ -269,13 +269,7 @@ class Game:
             raise RuntimeError("the game window did not appear")
 
         left, top = self.place()
-        # Both handles as HWND: a plain -1 (HWND_TOPMOST) would be passed as 32 bits, and
-        # a 64 bit Windows then does not know the handle and leaves the window alone.
-        moved = user32.SetWindowPos(ctypes.wintypes.HWND(window),
-                                    ctypes.wintypes.HWND(HWND_TOPMOST), left, top, 0, 0,
-                                    SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW)
-        if not moved:
-            raise RuntimeError("the game window could not be moved")
+        put_on_top(window, left, top)
         time.sleep(max(0.0, LEAD_IN_SECONDS - (time.monotonic() - started)))
         width, height = client_size(window)
         if width != WIDTH or height != HEIGHT:

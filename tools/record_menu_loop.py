@@ -139,6 +139,13 @@ SWP_NOSIZE = 0x0001
 SWP_NOACTIVATE = 0x0010
 SWP_SHOWWINDOW = 0x0040
 
+# The types of the call. Without them ctypes passes every argument as a 32 bit number, so
+# the handle -1 of HWND_TOPMOST becomes 0xFFFFFFFF on a 64 bit Windows, which names no
+# window, and the call fails without a word.
+user32.SetWindowPos.argtypes = [ctypes.wintypes.HWND, ctypes.wintypes.HWND, ctypes.c_int,
+                                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+user32.SetWindowPos.restype = ctypes.wintypes.BOOL
+
 
 def use_real_pixels():
     # Without this Windows would give this script scaled sizes on a display with scaling
@@ -147,6 +154,15 @@ def use_real_pixels():
         ctypes.windll.shcore.SetProcessDpiAwareness(2)
     except OSError:
         pass
+
+
+def put_on_top(window, left, top):
+    # Moves the window to this place and above all other windows, without taking the
+    # keyboard focus. Stops the run when Windows does not do it: a window that stayed
+    # where it was could have another program over it, and that would be in the picture.
+    if not user32.SetWindowPos(window, ctypes.wintypes.HWND(HWND_TOPMOST), left, top, 0, 0,
+                               SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW):
+        raise RuntimeError("the game window could not be moved")
 
 
 def find_window(process_id):
@@ -210,8 +226,7 @@ class Game:
         if window is None:
             raise RuntimeError("the game window did not appear")
 
-        user32.SetWindowPos(window, HWND_TOPMOST, WINDOW_LEFT, WINDOW_TOP, 0, 0,
-                            SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW)
+        put_on_top(window, WINDOW_LEFT, WINDOW_TOP)
         # The rest of the lead-in: the picture runs, and the window is on top.
         time.sleep(max(0.0, LEAD_IN_SECONDS - (time.monotonic() - started)))
 
