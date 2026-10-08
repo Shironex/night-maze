@@ -418,6 +418,10 @@ void UiLayer::onKey(GLFWwindow* window, int key, int /*scancode*/, int action, i
             layer->m_capturedKey == NO_CAPTURED_KEY) {
             layer->m_capturedKey = key;
             layer->m_swallowedKey = key;
+        } else if (action == GLFW_RELEASE && key == layer->m_swallowedKey) {
+            // Let go while the capture still waits (a key that was refused): there is
+            // nothing left of that press to keep from the document later.
+            layer->m_swallowedKey = NO_CAPTURED_KEY;
         }
         return;
     }
