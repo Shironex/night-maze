@@ -97,6 +97,13 @@ struct GameSettings {
     /// the main menu, next to the difficulty.
     bool calmNight = false;
 
+    /// True once the intro was shown, to its end or until the player skipped it: the
+    /// game then starts with the main menu (game::startMode). Like the story line it is
+    /// not edited on the settings screen, but it is part of the file. A file written
+    /// before the intro existed has no such line, so the intro is shown once after the
+    /// update.
+    bool introSeen = false;
+
     bool operator==(const GameSettings& other) const = default;
 };
 
@@ -113,6 +120,7 @@ constexpr std::string_view CALM_NIGHT_SETTING = "calm_night";
 /// The name the story line counter had while the story had no lines about the shadow.
 /// It is still read, from a file that has no STORY_LINE_SETTING, and never written.
 constexpr std::string_view OLD_STORY_LINE_SETTING = "next_story_line";
+constexpr std::string_view INTRO_SEEN_SETTING = "intro_seen";
 
 /// Sets one setting from text, the way the file and the controls of the settings screen
 /// write it:
@@ -126,6 +134,7 @@ constexpr std::string_view OLD_STORY_LINE_SETTING = "next_story_line";
 ///     story_line          a whole number, "5" (rounded; a number past the last story
 ///                         line is wrapped round to the start of the table)
 ///     calm_night          "on" or "off"
+///     intro_seen          "on" or "off"
 ///     next_story_line     the story line counter of a file written before the story had
 ///                         its lines about the shadow: a place in the shorter table of
 ///                         that time, moved to the same line in the table of today

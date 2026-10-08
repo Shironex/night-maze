@@ -194,6 +194,13 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
         settings.calmNight = value == ON_VALUE;
         return true;
     }
+    if (name == INTRO_SEEN_SETTING) {
+        if (value != ON_VALUE && value != OFF_VALUE) {
+            return false;
+        }
+        settings.introSeen = value == ON_VALUE;
+        return true;
+    }
     return false;
 }
 
@@ -254,6 +261,7 @@ std::string formatSettings(const GameSettings& settings) {
     text += settingLine(MASTER_VOLUME_SETTING, masterVolumeLabel(settings.masterVolume));
     text += settingLine(STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
     text += settingLine(CALM_NIGHT_SETTING, std::string(settings.calmNight ? ON_VALUE : OFF_VALUE));
+    text += settingLine(INTRO_SEEN_SETTING, std::string(settings.introSeen ? ON_VALUE : OFF_VALUE));
     return text;
 }
 

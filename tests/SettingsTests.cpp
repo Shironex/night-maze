@@ -175,6 +175,7 @@ TEST_CASE("what is written is read back the same") {
     settings.masterVolume = 42.0F;
     settings.nextStoryLine = 21;
     settings.calmNight = true;
+    settings.introSeen = true;
 
     const GameSettings readBack = game::parseSettings(game::formatSettings(settings));
     CHECK(readBack.mouseSensitivity == doctest::Approx(7.3F));
@@ -185,6 +186,7 @@ TEST_CASE("what is written is read back the same") {
     CHECK(readBack.masterVolume == 42.0F);
     CHECK(readBack.nextStoryLine == 21);
     CHECK(readBack.calmNight);
+    CHECK(readBack.introSeen);
 
     // The defaults too, and exactly: writing them twice gives the same text.
     const std::string defaults = game::formatSettings(GameSettings{});
@@ -203,7 +205,48 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "difficulty = normal\n"
           "master_volume = 100\n"
           "story_line = 0\n"
-          "calm_night = off\n");
+          "calm_night = off\n"
+          "intro_seen = off\n");
+}
+
+TEST_CASE("a file from before the intro means not seen, and nothing else changes") {
+    // The file as it was written before the intro: every line but intro_seen.
+    const std::string old = "mouse_sensitivity = 7.3\n"
+                            "field_of_view = 82\n"
+                            "fullscreen = on\n"
+                            "window_size = 1600x900\n"
+                            "difficulty = hard\n"
+                            "master_volume = 42\n"
+                            "story_line = 5\n"
+                            "calm_night = on\n";
+    const GameSettings settings = game::parseSettings(old);
+    CHECK_FALSE(settings.introSeen);
+    CHECK(settings.mouseSensitivity == doctest::Approx(7.3F));
+    CHECK(settings.fieldOfViewDegrees == 82.0F);
+    CHECK(settings.fullscreen);
+    CHECK(settings.windowSize == WindowSize{.width = 1600, .height = 900});
+    CHECK(settings.difficulty == game::Difficulty::Hard);
+    CHECK(settings.masterVolume == 42.0F);
+    CHECK(settings.nextStoryLine == 5);
+    CHECK(settings.calmNight);
+
+    // Marking the intro as seen changes that one field, and in the file that one line:
+    // what is written is the old file with the new line at its end.
+    GameSettings seen = settings;
+    seen.introSeen = true;
+    CHECK(game::parseSettings(old + "intro_seen = on\n") == seen);
+    const std::string written = game::formatSettings(seen);
+    CHECK(written.ends_with(old + "intro_seen = on\n"));
+}
+
+TEST_CASE("the intro line reads on and off and nothing else") {
+    GameSettings settings;
+    CHECK(game::applySetting(settings, "intro_seen", "on"));
+    CHECK(settings.introSeen);
+    CHECK_FALSE(game::applySetting(settings, "intro_seen", "yes"));
+    CHECK(settings.introSeen);
+    CHECK(game::applySetting(settings, "intro_seen", "off"));
+    CHECK_FALSE(settings.introSeen);
 }
 
 TEST_CASE("spaces, Windows line ends and a byte order mark do not matter") {
