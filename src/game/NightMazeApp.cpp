@@ -187,6 +187,10 @@ constexpr const char* PLAY_ACTION = "play";
 // reports a new value in almost every frame, and a click per frame would be a buzz.
 constexpr double VOLUME_SAMPLE_SECONDS = 0.2;
 
+// How long the wind of the maze is heard after the button of the debug window asked for
+// it, in seconds: long enough to hear it move.
+constexpr double WIND_PREVIEW_SECONDS = 5.0;
+
 // What the hint next to the seed field says when the field cannot be read.
 constexpr const char* SEED_HINT_TEXT = "Digits only, up to 4294967295";
 
@@ -523,10 +527,37 @@ NightMazeApp::~NightMazeApp() {
 // keys of the round are not read (roundInput in onRender). The one cue a menu itself
 // plays is the sample click of the volume slider on the settings screen, which is
 // there to be heard (handleControlChanges).
-void NightMazeApp::playCue(SoundCue cue) {
-    m_audio.play(soundCueIndex(cue));
+//
+// The wind of the maze is not played here. It is a loop, and it does stop for a menu:
+// updateAmbience fades it out and in.
+void NightMazeApp::playCue(SoundCue cue, float volume) {
+    m_audio.play(soundCueIndex(cue), volume);
     m_lastCueName = soundCueName(cue);
+    m_lastCueVolume = volume;
     ++m_cuesPlayed;
+}
+
+void NightMazeApp::updateAmbience(bool windowFocused) {
+    // A sample of the wind: asked for by the debug window, or still running after the
+    // ambient slider was moved (handleControlChanges). Its time runs down with the real
+    // time of the frames.
+    if (m_windSampleRequested) {
+        m_windSampleRequested = false;
+        m_windSampleLeft = WIND_PREVIEW_SECONDS;
+    }
+    const bool sample = m_windSampleLeft > 0.0;
+    m_windSampleLeft = std::max(m_windSampleLeft - time().deltaSeconds(), 0.0);
+
+    // Said in every frame: the engine does something only in the frame the answer
+    // changes, and then fades the loop in or out (audio::AudioEngine::setLoop). A sample
+    // comes in fast, because it is short.
+    const bool wind = mazeWindPlays({.mode = m_mode,
+                                     .windowFocused = windowFocused,
+                                     .menuCamera = m_menuCamera.enabled,
+                                     .sample = sample});
+    const float fadeIn = sample ? MAZE_WIND_SAMPLE_FADE_IN_SECONDS : MAZE_WIND_FADE_IN_SECONDS;
+    m_audio.setLoop(soundCueIndex(SoundCue::MazeWind), wind,
+                    wind ? fadeIn : MAZE_WIND_FADE_OUT_SECONDS);
 }
 
 void NightMazeApp::onEscapePressed() {
@@ -696,7 +727,10 @@ void NightMazeApp::handleControlChanges() {
             continue;
         }
         // Asked before the new settings are taken over: was it the volume that moved?
-        const bool volumeChanged = changed.masterVolume != m_settings.masterVolume;
+        // The master volume and the effects volume are both heard through an effect.
+        const bool volumeChanged = changed.masterVolume != m_settings.masterVolume ||
+                                   changed.effectsVolume != m_settings.effectsVolume;
+        const bool ambientChanged = changed.ambientVolume != m_settings.ambientVolume;
         m_settings = changed;
         applyViewSettings();
         applyAudioSettings();
@@ -707,6 +741,11 @@ void NightMazeApp::handleControlChanges() {
             playCue(SoundCue::FlashlightOn);
             m_volumeSampleWait = VOLUME_SAMPLE_SECONDS;
         }
+        // The ambient volume is heard as what it changes: the wind of the maze comes up
+        // on this screen and stays for a moment after the last change (updateAmbience).
+        if (ambientChanged) {
+            m_windSampleLeft = MAZE_WIND_SAMPLE_SECONDS;
+        }
         // Only the numbers next to the sliders: the sliders themselves already stand
         // where the player put them.
         m_ui.setText(m_settingsDocument, std::string(MOUSE_SENSITIVITY_SETTING) + TEXT_ID_SUFFIX,
@@ -715,6 +754,10 @@ void NightMazeApp::handleControlChanges() {
                      fieldOfViewLabel(m_settings.fieldOfViewDegrees));
         m_ui.setText(m_settingsDocument, std::string(MASTER_VOLUME_SETTING) + TEXT_ID_SUFFIX,
                      masterVolumeLabel(m_settings.masterVolume));
+        m_ui.setText(m_settingsDocument, std::string(EFFECTS_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                     masterVolumeLabel(m_settings.effectsVolume));
+        m_ui.setText(m_settingsDocument, std::string(AMBIENT_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                     masterVolumeLabel(m_settings.ambientVolume));
     }
 }
 
@@ -945,6 +988,17 @@ void NightMazeApp::fillSettingsDocument() {
     m_ui.setValue(m_settingsDocument, volumeId, volume);
     m_ui.setText(m_settingsDocument, volumeId + TEXT_ID_SUFFIX, volume);
 
+    // The two volumes under it, in the same way.
+    const std::string effectsId(EFFECTS_VOLUME_SETTING);
+    const std::string effects = masterVolumeLabel(m_settings.effectsVolume);
+    m_ui.setValue(m_settingsDocument, effectsId, effects);
+    m_ui.setText(m_settingsDocument, effectsId + TEXT_ID_SUFFIX, effects);
+
+    const std::string ambientId(AMBIENT_VOLUME_SETTING);
+    const std::string ambient = masterVolumeLabel(m_settings.ambientVolume);
+    m_ui.setValue(m_settingsDocument, ambientId, ambient);
+    m_ui.setText(m_settingsDocument, ambientId + TEXT_ID_SUFFIX, ambient);
+
     // The switch of the fullscreen: a class moves its knob.
     m_ui.setClass(m_settingsDocument, FULLSCREEN_ID, ON_CLASS, m_settings.fullscreen);
     m_ui.setText(m_settingsDocument, std::string(FULLSCREEN_ID) + TEXT_ID_SUFFIX,
@@ -969,6 +1023,9 @@ void NightMazeApp::applyViewSettings() {
 
 void NightMazeApp::applyAudioSettings() {
     m_audio.setMasterVolume(masterVolumeGain(m_settings.masterVolume));
+    // The two groups under it, each with the same curve from its own slider.
+    m_audio.setGroupVolume(audio::SoundGroup::Effects, masterVolumeGain(m_settings.effectsVolume));
+    m_audio.setGroupVolume(audio::SoundGroup::Ambient, masterVolumeGain(m_settings.ambientVolume));
 }
 
 void NightMazeApp::applyWindowSettings() {
@@ -1135,6 +1192,9 @@ void NightMazeApp::beginRound() {
     m_shadeHum = {};
     // A restart in the middle of a fade to black ends the fade.
     m_catchSeconds = -1.0F;
+    // The steps of the player and of the shade count their metres from the beginning.
+    m_footsteps = {};
+    m_shadeSteps = {};
 
     // The player goes to the start, feet on the ground there. After a regeneration the
     // old position may be inside a wall of the new maze, or outside of it.
@@ -1216,6 +1276,22 @@ void NightMazeApp::onUpdate(double fixedDt) {
     m_player.update(wanted, m_camera.yawDegrees, m_camera.pitchDegrees, static_cast<float>(fixedDt),
                     m_obstacles, m_mazeWorld.terrain);
 
+    // The steps of the player, counted in the metres the feet really moved over the
+    // ground in this step (m_previousPlayerPosition is the position before it, set at
+    // the top). A player who stands, holds the map or pushes against a wall moved
+    // nothing, and a flying one is silent (game::advanceFootsteps).
+    const glm::vec3 walked = m_player.position - m_previousPlayerPosition;
+    CuePlay step;
+    if (advanceFootsteps(m_footsteps,
+                         {.metres = glm::length(glm::vec2{walked.x, walked.z}),
+                          .stepSeconds = static_cast<float>(fixedDt),
+                          .walkSpeed = m_player.walkSpeed,
+                          .sprintSpeed = m_player.sprintSpeed,
+                          .flying = m_player.noclip},
+                         step)) {
+        playCue(step.cue, step.volume);
+    }
+
     // Walking changes the height all the time, because the ground is uneven, and that
     // change is blended in onRender like the movement itself: the eyes then glide over
     // the ground instead of moving up and down in steps. One change must not be
@@ -1283,6 +1359,10 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (advanceShadeHum(m_shadeHum, m_round, static_cast<float>(fixedDt))) {
         playCue(SoundCue::ShadeNear);
     }
+    // Its steps, while it walks and is near: quieter the farther it still has to go.
+    if (advanceShadeSteps(m_shadeSteps, m_round, step)) {
+        playCue(step.cue, step.volume);
+    }
     // Caught: back to the start of the same maze. A player who flies (noclip, a tool for
     // looking around) is left alone. The steps that may follow in the same frame play
     // the new round.
@@ -1345,6 +1425,8 @@ void NightMazeApp::onRender(double alpha) {
         handleGameEvent(GameEvent::FocusLost);
     }
     m_windowWasFocused = windowFocused;
+    // The wind of the maze: on or off for the screen the game is on now.
+    updateAmbience(windowFocused);
 
     // A new maze asked for by the debug UI is built here, at the start of a frame and
     // outside of the fixed steps, so no step ever sees a half replaced maze. When that

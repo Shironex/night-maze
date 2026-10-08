@@ -116,7 +116,9 @@ namespace game {
 /// The game has short sounds (the click of the flashlight, a crystal, a lever, the
 /// gate, the warning of a low battery). WHICH sound belongs to what happened is decided
 /// by the rules in game/SoundCues.hpp. This class asks them at the few places where
-/// something happens and hands the answer to audio::AudioEngine (playCue).
+/// something happens and hands the answer to audio::AudioEngine (playCue). The steps
+/// of the player and of the shade are such sounds too, and under all of them lies the
+/// wind of the maze, a loop that is heard while a round is played (updateAmbience).
 ///
 /// It knows nothing about the debug UI: main.cpp derives from this class and draws the
 /// debug panels and the HUD on top of the frame.
@@ -350,10 +352,23 @@ protected:
     /// The master volume of the settings, 0 to 100, for the debug UI.
     float masterVolumeSetting() const { return m_settings.masterVolume; }
 
+    /// The effects volume and the ambient volume of the settings, 0 to 100, for the
+    /// debug UI.
+    float effectsVolumeSetting() const { return m_settings.effectsVolume; }
+    float ambientVolumeSetting() const { return m_settings.ambientVolume; }
+
     /// The name of the cue that was played last (game::soundCueName), "none" before the
     /// first one, and how many cues were played since the start, for the debug UI.
     const char* lastCueName() const { return m_lastCueName; }
     int cuesPlayed() const { return m_cuesPlayed; }
+
+    /// How loud the last cue was played, from 0 to 1 (game::CuePlay::volume), for the
+    /// debug UI: the steps of the shade are quieter the farther away it is.
+    float lastCueVolume() const { return m_lastCueVolume; }
+
+    /// The request to hear the wind of the maze for a few seconds, exposed so the debug
+    /// UI can ask for it on any screen but the intro: set it to true.
+    bool& windSampleRequest() { return m_windSampleRequested; }
 
     /// True when the mazes of this run have a shade: the switch "Calm night" of the main
     /// menu is off and the command line did not ask for a calm run (--calm). Texts that
@@ -459,16 +474,26 @@ private:
     /// Gives the window the size and the fullscreen state of m_settings.
     void applyWindowSettings();
 
-    /// Gives the audio engine the master volume of m_settings (game::masterVolumeGain).
+    /// Gives the audio engine the three volumes of m_settings: the master volume and
+    /// the volumes of the effects and of the ambient sounds (game::masterVolumeGain of
+    /// each).
     void applyAudioSettings();
+
+    /// Switches the wind of the maze on or off for the screen the game is on
+    /// (game::mazeWindPlays): on while a round is played, off under every menu, in the
+    /// intro and while the window is not the active one (windowFocused), and on for
+    /// a moment when a sample was asked for. The audio engine fades it. Called once
+    /// per frame.
+    void updateAmbience(bool windowFocused);
 
     /// Writes m_settings into the settings file, unless they are what the file holds
     /// already. An error is in the log, and the game goes on.
     void saveSettings();
 
-    /// Plays the sound of a cue and remembers it for the debug UI. Without a sound
-    /// device nothing is heard, and the cue is counted all the same.
-    void playCue(SoundCue cue);
+    /// Plays the sound of a cue and remembers it for the debug UI. volume is how loud
+    /// this one play is, from 0 to 1: 1 is the file as it is. Without a sound device
+    /// nothing is heard, and the cue is counted all the same.
+    void playCue(SoundCue cue, float volume = 1.0F);
 
     /// Starts the intro from its beginning, on whatever screen the game is: builds the
     /// maze of the intro and shows the card. For the request of the debug UI
@@ -864,6 +889,10 @@ private:
     WindedBreath m_windedBreath;
     // The clock of the hum of the shade: the same kind of state.
     ShadeHum m_shadeHum;
+    // The clocks of the steps of the player and of the shade. They count metres and
+    // not seconds, and are the same kind of state too.
+    StepClock m_footsteps;
+    StepClock m_shadeSteps;
     // The caught line that was shown last (game::caughtLine), so the next catch shows
     // the next one. It lives as long as the program: a new round does not reset it, and
     // it is not saved.
@@ -872,6 +901,14 @@ private:
     // cue table, which lives as long as the program) and the number of cues so far.
     const char* m_lastCueName = "none";
     int m_cuesPlayed = 0;
+    // How loud that last cue was played (playCue).
+    float m_lastCueVolume = 1.0F;
+    // Seconds for which a sample of the wind of the maze is still heard on a screen
+    // that has no wind (updateAmbience): set when the ambient slider of the settings
+    // screen moves. 0: no sample runs.
+    double m_windSampleLeft = 0.0;
+    // Set by the debug UI: play a sample of the wind (windSampleRequest).
+    bool m_windSampleRequested = false;
     // Seconds until the volume slider of the settings screen may play its next sample
     // click (handleControlChanges). 0: the next change is heard at once.
     double m_volumeSampleWait = 0.0;
