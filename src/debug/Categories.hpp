@@ -81,7 +81,7 @@ inline constexpr std::array<CategoryInfo, CATEGORY_COUNT> CATEGORIES = {{
      .description = "The state of the round, the battery, the rules of a round, the shade "
                     "and the minimap.",
      .icon = Icon::Gameplay,
-     .controlCount = 20,
+     .controlCount = 21,
      .tabCount = 0,
      .tabs = {}},
     {.name = "Diagnostics",
@@ -109,8 +109,8 @@ constexpr int totalControlCount() {
 
 // The thirteen panels this window replaced held 114 controls, and every one of them
 // moved into a category. The switch of the wall variants was added later, which makes
-// 115, and the five controls of the shade make 120. A control that is added or removed
+// 115, and the six controls of the shade make 121. A control that is added or removed
 // changes this number and the count of its category above.
-static_assert(totalControlCount() == 120);
+static_assert(totalControlCount() == 121);
 
 } // namespace debug

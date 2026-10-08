@@ -63,6 +63,10 @@ constexpr float MAX_SHADE_GRACE = 30.0F;
 constexpr float MIN_SHADE_CATCH_DISTANCE = 0.3F;
 constexpr float MAX_SHADE_CATCH_DISTANCE = 2.0F;
 
+// How long the shade stands still after the light has left it, in seconds.
+constexpr float MIN_SHADE_THAW = 0.0F;
+constexpr float MAX_SHADE_THAW = 10.0F;
+
 // The picture of the minimap in its card is at most this wide, in pixels at 100 %
 // display scaling.
 constexpr float MAX_MINIMAP_PICTURE_WIDTH = 200.0F;
@@ -167,8 +171,12 @@ void drawShade(Page& page, const DebugContext& context) {
         page.stat("Shade", "none in this round");
     } else if (shade.graceLeft > 0.0F) {
         page.stat("Shade", "waiting, %.1f s of grace left", shade.graceLeft);
+    } else if (shade.lit) {
+        page.stat("Shade", "lit: standing still");
+    } else if (shade.thawLeft > 0.0F) {
+        page.stat("Shade", "unlit: still standing for %.1f s", shade.thawLeft);
     } else {
-        page.stat("Shade", "%s", shade.lit ? "lit: standing still" : "unlit: walking");
+        page.stat("Shade", "unlit: walking");
     }
     if (shade.present) {
         // Straight through the walls, and along the passages it has to walk.
@@ -194,6 +202,9 @@ void drawShade(Page& page, const DebugContext& context) {
                 MAX_SHADE_CATCH_DISTANCE, "%.2f m",
                 "The shade has caught the player when it is this near, measured on the "
                 "ground from middle to middle.");
+    page.slider("Wait after light", &settings.thawSeconds, MIN_SHADE_THAW, MAX_SHADE_THAW, "%.1f s",
+                "How long the shade goes on standing still after the flashlight has left "
+                "it. 0: it walks at once, and nobody gets past it in a corridor.");
     page.toggle("Show shade on the map", &settings.showOnMap,
                 "Debug switch: mark the shade on the map (key M). The map of the game "
                 "never shows it.");
