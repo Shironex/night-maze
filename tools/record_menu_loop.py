@@ -75,14 +75,13 @@ class Shot:
 # seed 1 on the easy level, so the corridors are the ones the glide shows from above.
 SHOTS = [
     # High over the maze: the walls in the moonlight and the glow of the crystals.
-    Shot("glide", seed=1, difficulty="easy", shot="glide", time=14.0, seconds=8.5),
-    # A long corridor in the cone of the flashlight, with the shadows of the pillars,
-    # then round a corner to a lever on the wall.
-    Shot("lever", seed=1, difficulty="easy", shot="walk", time=72.0, seconds=8.5),
-    # Towards a crystal that glows at the end of a corridor, over the grass.
-    Shot("crystal", seed=1, difficulty="easy", shot="walk", time=474.0, seconds=8.5),
-    # Past the wooden gate of the exit and on to three crystals close by.
-    Shot("gate", seed=1, difficulty="easy", shot="walk", time=244.0, seconds=8.5),
+    Shot("glide", seed=1, difficulty="easy", shot="glide", time=18.0, seconds=8.5),
+    # The cone of the flashlight on a worn wall, with a patch of broken stones.
+    Shot("worn", seed=1, difficulty="easy", shot="walk", time=60.0, seconds=8.5),
+    # A long dark corridor with a crystal glowing at its end.
+    Shot("corridor", seed=1, difficulty="easy", shot="walk", time=440.0, seconds=8.5),
+    # Close to a crystal in the cone of the flashlight.
+    Shot("crystal", seed=1, difficulty="easy", shot="walk", time=40.0, seconds=8.5),
 ]
 
 # ---- the numbers of the recording ---------------------------------------------------------
