@@ -65,44 +65,44 @@ struct NamedKey {
 };
 
 constexpr std::array NAMED_KEYS = {
-    NamedKey{GLFW_KEY_SPACE, "Space"},
-    NamedKey{GLFW_KEY_APOSTROPHE, "Apostrophe"},
-    NamedKey{GLFW_KEY_COMMA, "Comma"},
-    NamedKey{GLFW_KEY_MINUS, "Minus"},
-    NamedKey{GLFW_KEY_PERIOD, "Period"},
-    NamedKey{GLFW_KEY_SLASH, "Slash"},
-    NamedKey{GLFW_KEY_SEMICOLON, "Semicolon"},
-    NamedKey{GLFW_KEY_EQUAL, "Equals"},
-    NamedKey{GLFW_KEY_LEFT_BRACKET, "Left Bracket"},
-    NamedKey{GLFW_KEY_BACKSLASH, "Backslash"},
-    NamedKey{GLFW_KEY_RIGHT_BRACKET, "Right Bracket"},
-    NamedKey{GLFW_KEY_GRAVE_ACCENT, "Backquote"},
-    NamedKey{GLFW_KEY_ESCAPE, "Escape"},
-    NamedKey{GLFW_KEY_ENTER, "Enter"},
-    NamedKey{GLFW_KEY_TAB, "Tab"},
-    NamedKey{GLFW_KEY_BACKSPACE, "Backspace"},
-    NamedKey{GLFW_KEY_INSERT, "Insert"},
-    NamedKey{GLFW_KEY_DELETE, "Delete"},
-    NamedKey{GLFW_KEY_RIGHT, "Right"},
-    NamedKey{GLFW_KEY_LEFT, "Left"},
-    NamedKey{GLFW_KEY_DOWN, "Down"},
-    NamedKey{GLFW_KEY_UP, "Up"},
-    NamedKey{GLFW_KEY_PAGE_UP, "Page Up"},
-    NamedKey{GLFW_KEY_PAGE_DOWN, "Page Down"},
-    NamedKey{GLFW_KEY_HOME, "Home"},
-    NamedKey{GLFW_KEY_END, "End"},
-    NamedKey{GLFW_KEY_KP_DECIMAL, "Num Decimal"},
-    NamedKey{GLFW_KEY_KP_DIVIDE, "Num Divide"},
-    NamedKey{GLFW_KEY_KP_MULTIPLY, "Num Multiply"},
-    NamedKey{GLFW_KEY_KP_SUBTRACT, "Num Minus"},
-    NamedKey{GLFW_KEY_KP_ADD, "Num Plus"},
-    NamedKey{GLFW_KEY_KP_ENTER, "Num Enter"},
-    NamedKey{GLFW_KEY_LEFT_SHIFT, "Left Shift"},
-    NamedKey{GLFW_KEY_LEFT_CONTROL, "Left Ctrl"},
-    NamedKey{GLFW_KEY_LEFT_ALT, "Left Alt"},
-    NamedKey{GLFW_KEY_RIGHT_SHIFT, "Right Shift"},
-    NamedKey{GLFW_KEY_RIGHT_CONTROL, "Right Ctrl"},
-    NamedKey{GLFW_KEY_RIGHT_ALT, "Right Alt"},
+    NamedKey{.key = GLFW_KEY_SPACE, .name = "Space"},
+    NamedKey{.key = GLFW_KEY_APOSTROPHE, .name = "Apostrophe"},
+    NamedKey{.key = GLFW_KEY_COMMA, .name = "Comma"},
+    NamedKey{.key = GLFW_KEY_MINUS, .name = "Minus"},
+    NamedKey{.key = GLFW_KEY_PERIOD, .name = "Period"},
+    NamedKey{.key = GLFW_KEY_SLASH, .name = "Slash"},
+    NamedKey{.key = GLFW_KEY_SEMICOLON, .name = "Semicolon"},
+    NamedKey{.key = GLFW_KEY_EQUAL, .name = "Equals"},
+    NamedKey{.key = GLFW_KEY_LEFT_BRACKET, .name = "Left Bracket"},
+    NamedKey{.key = GLFW_KEY_BACKSLASH, .name = "Backslash"},
+    NamedKey{.key = GLFW_KEY_RIGHT_BRACKET, .name = "Right Bracket"},
+    NamedKey{.key = GLFW_KEY_GRAVE_ACCENT, .name = "Backquote"},
+    NamedKey{.key = GLFW_KEY_ESCAPE, .name = "Escape"},
+    NamedKey{.key = GLFW_KEY_ENTER, .name = "Enter"},
+    NamedKey{.key = GLFW_KEY_TAB, .name = "Tab"},
+    NamedKey{.key = GLFW_KEY_BACKSPACE, .name = "Backspace"},
+    NamedKey{.key = GLFW_KEY_INSERT, .name = "Insert"},
+    NamedKey{.key = GLFW_KEY_DELETE, .name = "Delete"},
+    NamedKey{.key = GLFW_KEY_RIGHT, .name = "Right"},
+    NamedKey{.key = GLFW_KEY_LEFT, .name = "Left"},
+    NamedKey{.key = GLFW_KEY_DOWN, .name = "Down"},
+    NamedKey{.key = GLFW_KEY_UP, .name = "Up"},
+    NamedKey{.key = GLFW_KEY_PAGE_UP, .name = "Page Up"},
+    NamedKey{.key = GLFW_KEY_PAGE_DOWN, .name = "Page Down"},
+    NamedKey{.key = GLFW_KEY_HOME, .name = "Home"},
+    NamedKey{.key = GLFW_KEY_END, .name = "End"},
+    NamedKey{.key = GLFW_KEY_KP_DECIMAL, .name = "Num Decimal"},
+    NamedKey{.key = GLFW_KEY_KP_DIVIDE, .name = "Num Divide"},
+    NamedKey{.key = GLFW_KEY_KP_MULTIPLY, .name = "Num Multiply"},
+    NamedKey{.key = GLFW_KEY_KP_SUBTRACT, .name = "Num Minus"},
+    NamedKey{.key = GLFW_KEY_KP_ADD, .name = "Num Plus"},
+    NamedKey{.key = GLFW_KEY_KP_ENTER, .name = "Num Enter"},
+    NamedKey{.key = GLFW_KEY_LEFT_SHIFT, .name = "Left Shift"},
+    NamedKey{.key = GLFW_KEY_LEFT_CONTROL, .name = "Left Ctrl"},
+    NamedKey{.key = GLFW_KEY_LEFT_ALT, .name = "Left Alt"},
+    NamedKey{.key = GLFW_KEY_RIGHT_SHIFT, .name = "Right Shift"},
+    NamedKey{.key = GLFW_KEY_RIGHT_CONTROL, .name = "Right Ctrl"},
+    NamedKey{.key = GLFW_KEY_RIGHT_ALT, .name = "Right Alt"},
 };
 
 // The place of an action in the two arrays.
@@ -149,7 +149,10 @@ std::string keyName(int key) {
     // GLFW gives the letter and the digit keys the numbers of their characters: the
     // key A is 'A' (65), the key 1 is '1' (49). So the name is that one character.
     if ((key >= GLFW_KEY_A && key <= GLFW_KEY_Z) || (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)) {
-        return std::string(1, static_cast<char>(key));
+        // Round brackets: one copy of the character. Curly ones would read the two
+        // values as a list of two characters.
+        std::string name(1, static_cast<char>(key));
+        return name;
     }
     // The function keys and the digits of the number pad are numbered in a row.
     if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F12) {
