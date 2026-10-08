@@ -160,7 +160,7 @@ float minimapMetresPerPixel(const Maze& maze, int pixels) {
 
 std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Round& round,
                                                 bool revealAll, const MinimapPlayer& player,
-                                                float metresPerPixel) {
+                                                float metresPerPixel, bool showShade) {
     // The walls of the ROUND: the maze of the world without the walls that pulled
     // levers have opened.
     const Maze& maze = roundMaze(world, round);
@@ -291,6 +291,13 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
         if (shown(note.mount.cell.x, note.mount.cell.z)) {
             addRectangle(vertices, mapPoint(note.position), markHalf, MINIMAP_NOTE_COLOR);
         }
+    }
+
+    // The shade, only for the debug switch: a square as large as a crystal, where it is.
+    if (showShade && round.shade.present) {
+        const float halfSize = atLeastPixels(CRYSTAL_RADIUS, MIN_CRYSTAL_PIXELS, metresPerPixel);
+        addRectangle(vertices, mapPoint(round.shade.position), {halfSize, halfSize},
+                     MINIMAP_SHADE_COLOR);
     }
 
     // 7. The player, last, so nothing covers it. Yaw 0 looks north, which is towards

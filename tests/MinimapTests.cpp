@@ -442,3 +442,30 @@ TEST_CASE("the map of the largest maze can be built") {
     CHECK(countColor(vertices, game::MINIMAP_FLOOR_COLOR) == (cells - 1) * QUAD);
     CHECK(countColor(vertices, game::MINIMAP_EXIT_COLOR) == QUAD);
 }
+
+TEST_CASE("the map never shows the shade, except with the debug switch") {
+    const game::MazeWorld world = game::buildMazeWorld(10, 10, 1U);
+    const game::GameplaySettings settings;
+    const game::Round round = game::startRound(world, settings);
+    REQUIRE(round.shade.present);
+
+    // The map of the game, with the whole maze revealed: no mark of the shade.
+    const std::vector<game::MinimapVertex> plain =
+        game::buildMinimapVertices(world, round, true, PLAYER, FINE);
+    CHECK(countColor(plain, game::MINIMAP_SHADE_COLOR) == 0);
+
+    // The debug switch adds one square and changes nothing else. It needs no discovery.
+    const std::vector<game::MinimapVertex> marked =
+        game::buildMinimapVertices(world, round, false, PLAYER, FINE, true);
+    const std::vector<game::MinimapVertex> unmarked =
+        game::buildMinimapVertices(world, round, false, PLAYER, FINE, false);
+    CHECK(countColor(marked, game::MINIMAP_SHADE_COLOR) == QUAD);
+    CHECK(marked.size() == unmarked.size() + static_cast<std::size_t>(QUAD));
+
+    // A calm round has nothing to mark.
+    game::GameplaySettings calm;
+    calm.shade.enabled = false;
+    const game::Round calmRound = game::startRound(world, calm);
+    CHECK(countColor(game::buildMinimapVertices(world, calmRound, true, PLAYER, FINE, true),
+                     game::MINIMAP_SHADE_COLOR) == 0);
+}

@@ -141,6 +141,8 @@ constexpr glm::vec3 MINIMAP_LEVER_PULLED_COLOR{0.42F, 0.24F, 0.22F};
 constexpr glm::vec3 MINIMAP_NOTE_COLOR{0.90F, 0.86F, 0.70F};
 /// The arrow of the player: a warm yellow.
 constexpr glm::vec3 MINIMAP_PLAYER_COLOR{1.0F, 0.72F, 0.33F};
+/// The shade, only with the debug switch that shows it: a colour no other mark has.
+constexpr glm::vec3 MINIMAP_SHADE_COLOR{0.86F, 0.30F, 0.95F};
 
 /// Half of the side of the square piece of the world the map shows, in metres. The
 /// square is centred on the maze and a little larger than its longer side, so the walls
@@ -188,6 +190,10 @@ struct MinimapPlayer {
 ///   7. the player: a triangle that points where the camera looks. It is always drawn,
 ///      also outside the maze (where the picture may cut it off).
 ///
+/// The shade is NOT on the map: the player has to find it with the flashlight. Only with
+/// showShade set (the debug switch ShadeSettings::showOnMap) a square marks where it
+/// is, drawn right before the player, whether or not its cell is discovered.
+///
 /// A cell is "shown" when it is discovered in the round (Round::discovery), or always
 /// with revealAll set. metresPerPixel (minimapMetresPerPixel) keeps the walls, the
 /// crystals and the player from getting thinner than a pixel or two in a large maze.
@@ -196,6 +202,6 @@ struct MinimapPlayer {
 /// cells its grid does not have count as not discovered.
 std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Round& round,
                                                 bool revealAll, const MinimapPlayer& player,
-                                                float metresPerPixel);
+                                                float metresPerPixel, bool showShade = false);
 
 } // namespace game
