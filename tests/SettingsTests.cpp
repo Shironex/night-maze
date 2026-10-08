@@ -208,7 +208,16 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "ambient_volume = 100\n"
           "story_line = 0\n"
           "calm_night = off\n"
-          "intro_seen = off\n");
+          "intro_seen = off\n"
+          "key_forward = W\n"
+          "key_back = S\n"
+          "key_left = A\n"
+          "key_right = D\n"
+          "key_sprint = Left Shift\n"
+          "key_use = E\n"
+          "key_flashlight = F\n"
+          "key_map = M\n"
+          "key_restart = R\n");
 }
 
 TEST_CASE("a file from before the intro means not seen, and nothing else changes") {
@@ -233,15 +242,16 @@ TEST_CASE("a file from before the intro means not seen, and nothing else changes
     CHECK(settings.calmNight);
 
     // Marking the intro as seen changes that one field, and in the file that one line:
-    // what is written is the old file with the new line at its end. (The two volumes
-    // that came after the intro stand behind the master volume, at their default.)
+    // what is written is the old file with the new line after it. (The two volumes that
+    // came after the intro stand behind the master volume, at their default, and the
+    // lines of the keys follow.)
     GameSettings seen = settings;
     seen.introSeen = true;
     CHECK(game::parseSettings(old + "intro_seen = on\n") == seen);
     const std::string written = game::formatSettings(seen);
     const std::string masterLine = "master_volume = 42\n";
     const std::size_t afterMaster = old.find(masterLine) + masterLine.size();
-    CHECK(written.ends_with(old.substr(0, afterMaster) +
+    CHECK(written.find(old.substr(0, afterMaster) +
                             "effects_volume = 100\nambient_volume = 100\n" +
                             old.substr(afterMaster) + "intro_seen = on\n"));
 }

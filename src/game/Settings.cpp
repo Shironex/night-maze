@@ -212,6 +212,11 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
         settings.introSeen = value == ON_VALUE;
         return true;
     }
+    if (name.starts_with(KEY_SETTING_PREFIX)) {
+        // False for a name that is no action, for a text that is no key and for a key
+        // with a fixed meaning: the action keeps the key it has.
+        return applyKeySetting(settings.keys, name, value);
+    }
     return false;
 }
 
@@ -275,6 +280,10 @@ std::string formatSettings(const GameSettings& settings) {
     text += settingLine(STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
     text += settingLine(CALM_NIGHT_SETTING, std::string(settings.calmNight ? ON_VALUE : OFF_VALUE));
     text += settingLine(INTRO_SEEN_SETTING, std::string(settings.introSeen ? ON_VALUE : OFF_VALUE));
+    // The keys, by their names: one line per action, in the order of the settings screen.
+    for (const KeyActionInfo& info : keyActions()) {
+        text += settingLine(info.settingName, boundKeyName(settings.keys, info.action));
+    }
     return text;
 }
 

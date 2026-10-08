@@ -3,6 +3,7 @@
 #pragma once
 
 #include "game/Difficulty.hpp"
+#include "game/KeyBindings.hpp"
 
 #include <array>
 #include <string>
@@ -112,6 +113,11 @@ struct GameSettings {
     /// update.
     bool introSeen = false;
 
+    /// The key of every action of the player (game/KeyBindings.hpp), edited in the
+    /// part "Controls" of the settings screen. A file written before the keys could be
+    /// chosen has no such lines, so the game keeps the keys it always had.
+    KeyBindings keys = defaultKeyBindings();
+
     bool operator==(const GameSettings& other) const = default;
 };
 
@@ -131,6 +137,9 @@ constexpr std::string_view CALM_NIGHT_SETTING = "calm_night";
 /// It is still read, from a file that has no STORY_LINE_SETTING, and never written.
 constexpr std::string_view OLD_STORY_LINE_SETTING = "next_story_line";
 constexpr std::string_view INTRO_SEEN_SETTING = "intro_seen";
+/// The names of the key bindings all start like this: "key_forward", "key_sprint" and
+/// so on, one per action (game::keyActions).
+constexpr std::string_view KEY_SETTING_PREFIX = "key_";
 
 /// Sets one setting from text, the way the file and the controls of the settings screen
 /// write it:
@@ -147,6 +156,10 @@ constexpr std::string_view INTRO_SEEN_SETTING = "intro_seen";
 ///                         line is wrapped round to the start of the table)
 ///     calm_night          "on" or "off"
 ///     intro_seen          "on" or "off"
+///     key_forward, key_back, key_left, key_right, key_sprint, key_use, key_flashlight,
+///     key_map, key_restart
+///                         the name of a key, "W" or "Left Shift" (game::keyName). A key
+///                         another action is on is swapped with it (game::bindKey)
 ///     next_story_line     the story line counter of a file written before the story had
 ///                         its lines about the shadow: a place in the shorter table of
 ///                         that time, moved to the same line in the table of today
