@@ -161,9 +161,9 @@ protected:
     bool hudVisible() const { return showsHud(m_mode) && !m_menuCamera.enabled; }
 
     /// True when the map was on the screen in the last frame drawn. The HUD asks it
-    /// (main.cpp passes it on): while the map covers the middle of the window, the hint
-    /// lines under the HUD strip are left out, because with them the strip would reach
-    /// into the top of the map.
+    /// (main.cpp passes it on): while the map covers the middle of the window, the timed
+    /// sentence of the HUD waits, because its place is where the bottom edge of the map
+    /// is. Everything else of the HUD stands in the corners and stays.
     bool mapOnScreen() const { return m_mapOnScreen; }
 
     /// The layer that draws the menu documents, exposed so main.cpp can keep the mouse
