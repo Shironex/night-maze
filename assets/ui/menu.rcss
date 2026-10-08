@@ -1,5 +1,5 @@
 /* The style sheet of the four menu documents: main_menu.rml, pause.rml, round_end.rml
-   and settings.rml.
+   and settings.rml, and of the card of text the intro is told with: card.rml.
 
    RCSS is the style language of RmlUi: it looks like CSS and knows a part of it. What
    differs from a browser and matters here:
@@ -549,4 +549,119 @@ button.toggle.on .knob {
     left: 4.1vh;
     background-color: #ffb854;
     box-shadow: #ffb85466 0 0 1vh 0.3vh;
+}
+
+/* ---- the card of text (card.rml) and what the main menu shows after the intro -------- */
+
+/* A screen that is there at once, without the fade of "body" above. The card is a film:
+   its first frame is black, and a body that fades in would let the picture behind it
+   shine through for a quarter of a second. The main menu gets the class from the game
+   when it follows the intro, for the same reason: its curtain (below) has to be black
+   from the first frame. */
+body.cut {
+    opacity: 1;
+    transition: none;
+}
+
+/* The black over the picture: as large as the window. The game sets its opacity. The
+   colour is the darkest one of the menus, almost black with a little of the night in
+   it. */
+.black {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #03050b;
+}
+
+/* The card: a soft dark band over the lower part of the window and two lines of text
+   in it. The band is a gradient from the bottom edge upwards that ends in nothing, so
+   the text reads over a bright picture and the picture has no edge. The game sets the
+   opacity of the whole card. */
+.story {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 52vh;
+    opacity: 0;
+}
+.story-band {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    decorator: linear-gradient(0deg, #03050bf2 0%, #050812d9 30%, #05081299 55%, #05081200 100%);
+}
+.story-lines {
+    position: absolute;
+    left: 0;
+    bottom: 12.5vh;
+    width: 100%;
+    text-align: center;
+}
+/* A short line in the colour of the crystals above the text, like the gem above the
+   title of the main menu. */
+.story-mark {
+    width: 7vh;
+    height: 0.3vh;
+    margin: 0 auto 2.6vh auto;
+    background-color: #56d6ca;
+}
+/* The first line in moon white, the second in the amber of the flashlight. */
+.story-line {
+    font-size: 3.7vh;
+    line-height: 1.75;
+    letter-spacing: 0.1em;
+    color: #e2eaf6;
+    font-effect: shadow(0dp 2dp #03050bcc);
+}
+.story-line.second {
+    color: #ffb854;
+}
+/* The hint in the corner starts invisible: the game sets its opacity too. */
+#hint {
+    opacity: 0;
+}
+
+/* The black the main menu comes out of after the intro. Without the class "drawn" it
+   is not there at all. With it, it covers the background of the menu and lifts when
+   the menu opens. It lies under the column of the menu, which rises in over it. */
+.curtain {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #03050b;
+    opacity: 1;
+    transition: opacity 1.6s 0.1s cubic-in-out;
+}
+.curtain.drawn {
+    display: block;
+}
+body.open .curtain.drawn {
+    opacity: 0;
+}
+
+/* The name of the story under the wordmark. Like the curtain it is only there after
+   the intro (the class "shown"), and it comes in last, when the menu already stands. */
+.subtitle {
+    display: none;
+    margin-top: 1.6vh;
+    font-size: 3.3vh;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: #ffb854;
+    opacity: 0;
+    transition: opacity 1.4s 0.9s cubic-out;
+}
+.subtitle.shown {
+    display: block;
+}
+body.open .subtitle.shown {
+    opacity: 1;
 }

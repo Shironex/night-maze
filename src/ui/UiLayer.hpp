@@ -100,9 +100,16 @@ public:
 
     /// Adds a class to the element with this id attribute (on true) or takes it away
     /// (on false). The style sheet decides what the class looks like: a chosen
-    /// difficulty, a switch that is on.
+    /// difficulty, a switch that is on. The id "#document" names the document itself,
+    /// its body: RmlUi knows that name.
     void setClass(DocumentId document, const std::string& elementId, const std::string& className,
                   bool on);
+
+    /// Sets how much of the element with this id attribute is there: 0 is nothing, 1 is
+    /// all of it, with everything inside the element. Values outside of that range are
+    /// brought into it. For what the code moves by itself in every frame, where
+    /// a transition of the style sheet cannot do the work: the cards of the intro.
+    void setOpacity(DocumentId document, const std::string& elementId, float opacity);
 
     /// The data-action names of the elements that were clicked since the last call, in
     /// the order of the clicks. The list is empty again afterwards. Enter in a text

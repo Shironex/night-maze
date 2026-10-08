@@ -14,6 +14,7 @@
 #include <RmlUi_Platform_GLFW.h>
 #include <RmlUi_Renderer_GL3.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <utility>
 
@@ -319,6 +320,19 @@ void UiLayer::setClass(DocumentId document, const std::string& elementId,
     }
     if (Rml::Element* element = target->GetElementById(elementId)) {
         element->SetClass(className, on);
+    }
+}
+
+void UiLayer::setOpacity(DocumentId document, const std::string& elementId, float opacity) {
+    Rml::ElementDocument* target = documentOf(document);
+    if (target == nullptr) {
+        return;
+    }
+    if (Rml::Element* element = target->GetElementById(elementId)) {
+        // A property set on the element itself wins over the style sheet, like the
+        // attribute "style" in a document. A plain number is the unit of an opacity.
+        element->SetProperty(Rml::PropertyId::Opacity,
+                             Rml::Property(std::clamp(opacity, 0.0F, 1.0F), Rml::Unit::NUMBER));
     }
 }
 
