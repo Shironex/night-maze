@@ -82,7 +82,7 @@ Every picture is the game window as it is, at 1280 x 720. The corridor, the crac
 
 | Feature | What it does |
 | --- | --- |
-| Mazes from a seed | Every maze is generated from a number. The same seed and difficulty always give the same maze, with the same crystals, levers, notes and worn walls. The main menu offers a random seed, and you can type your own. |
+| Mazes from a seed | Every maze is generated from a number. The same seed and difficulty always give the same maze, with the crystals, flasks, levers, notes and worn walls in the same places. The main menu offers a random seed, and you can type your own. |
 | Three difficulty levels | Easy, Normal and Hard change the size of the maze, the number of crystals and flasks, how many crystals the gate asks for and how long the battery lasts (table below). |
 | Flashlight and battery | F switches the flashlight on and off. The battery only drains while the light is on, and each crystal gives back a quarter of it. Under 20 % the light flickers, the bar turns red and a slow pulse starts. At zero the light goes out until you find a crystal. |
 | Crystals and the gate | The gate opens by itself once you carry enough crystals: you never need all of them. The exit is the cell farthest from the start, counted in steps. Walking through the open gate ends the round with "Through the gate": your time, your crystals, the difficulty and the seed. |
@@ -121,7 +121,7 @@ Debug keys, not meant for play: the key left of 1 (`) shows the debug window, N 
 
 ## How it is drawn
 
-Everything here is in `src/gfx`, `src/game` and `assets/shaders`.
+Everything here is in `src/gfx`, `src/game`, `src/assets` and `assets/shaders`.
 
 | Technique | In this game |
 | --- | --- |
@@ -135,7 +135,7 @@ Everything here is in `src/gfx`, `src/game` and `assets/shaders`.
 | Skybox | A cube map of the night sky with stars and a painted moon. |
 | Reflections | Puddles and crystals mirror the sky: they sample the cube map of the skybox (environment mapping), not the scene around them. |
 | Grass | A geometry shader turns every point into a tuft of three blades that move in the wind. |
-| Terrain | The ground is built from a height map, so the corridors are not flat. |
+| Terrain | The ground is built from a height map, so the floor of the corridors is gently uneven. |
 | Models | OBJ models, made in Blender by the scripts in `tools/blender` and read by a loader of my own. |
 
 ## Built with
@@ -214,7 +214,7 @@ pnpm showcase                      # frames and banner, into docs/showcase/
 
 The kit cannot start a native game, so the capture is a script of mine. It starts the Release build in a 1280 x 720 window, with fixed seeds, in a folder of its own (your settings are not touched), and saves what the window shows. The views without a HUD come from the menu camera, set with command line switches. The views from a round need a few key presses and mouse turns. The script sends them only while the game window is the active one, so leave the mouse and the keyboard alone while it runs. It needs Python 3, ffmpeg on `PATH` and Windows.
 
-`pnpm showcase` only reads those pictures: from the same raw pictures it writes the same files, byte for byte. It needs Node 22, pnpm 10 and the Chromium of Playwright, downloaded once with `pnpm exec playwright install chromium`. The game itself is not a still picture (the crystals turn, a clock runs in the HUD), so a new capture is never identical to the last one.
+`pnpm showcase` only reads those pictures: from the same raw pictures it wrote the same files, byte for byte, every time I ran it on my PC. It needs Node 22, pnpm 10 and the Chromium of Playwright, downloaded once with `pnpm exec playwright install chromium`. The game itself is not a still picture (the crystals turn, a clock runs in the HUD), so a new capture is never identical to the last one.
 
 The pictures live in `docs/showcase/` and not under `assets/`, because everything under `assets/` is packed into the game.
 
