@@ -62,10 +62,17 @@ struct StartOptions {
     /// run has a shade. The settings are neither read for it nor changed by it.
     bool calm = false;
 
+    /// The night of the campaign the game starts in at once (--night), 1 to
+    /// CAMPAIGN_NIGHT_COUNT, or 0 for none. Like --play it skips the main menu, and it
+    /// shows no title card. The campaign of such a run is one of its own: its seed is
+    /// the seed of the command line (--seed) or TOOL_CAMPAIGN_SEED, so the maze is always
+    /// the same, and the campaign in the settings file is neither read nor changed.
+    int night = 0;
+
     /// True when one of the switches above was on the command line (--seed, --play,
     /// --menu-camera, --menu-shot, --menu-time, --menu-background, --start-cell,
-    /// --start-yaw, --collect-all or --calm): a tool or a test is driving the game. Such a run
-    /// never opens with the intro (game::startMode). Scripts start the game in fresh folders
+    /// --start-yaw, --collect-all, --calm or --night): a tool or a test is driving the game. Such a
+    /// run never opens with the intro (game::startMode). Scripts start the game in fresh folders
     /// without a settings file, where the intro would count as not seen.
     bool toolSwitch = false;
 
@@ -109,6 +116,7 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --start-yaw <degrees>  the direction the player looks in at the start
 ///     --collect-all          the first round starts with every crystal collected
 ///     --calm                 no shade in this run (a calm night), settings untouched
+///     --night <1..5>         start that night of the campaign at once, settings untouched
 ///     --skip-intro           never play the intro in this run
 ///     --intro                play the intro now, also when it was seen
 ///

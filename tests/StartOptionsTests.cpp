@@ -33,13 +33,14 @@ TEST_CASE("without switches the game starts as always") {
     CHECK_FALSE(result.options.startYawDegrees.has_value());
     CHECK_FALSE(result.options.collectAll);
     CHECK_FALSE(result.options.calm);
+    CHECK(result.options.night == 0);
     // Nothing says that a tool drives the game, and nothing about the intro.
     CHECK_FALSE(result.options.toolSwitch);
     CHECK_FALSE(result.options.skipIntro);
     CHECK_FALSE(result.options.intro);
 }
 
-TEST_CASE("each of the ten switches of a tool marks the run as driven by a tool") {
+TEST_CASE("each of the eleven switches of a tool marks the run as driven by a tool") {
     CHECK(parse({"--play"}).options.toolSwitch);
     CHECK(parse({"--seed", "1"}).options.toolSwitch);
     CHECK(parse({"--menu-camera"}).options.toolSwitch);
@@ -53,6 +54,7 @@ TEST_CASE("each of the ten switches of a tool marks the run as driven by a tool"
     CHECK(parse({"--start-yaw", "90"}).options.toolSwitch);
     CHECK(parse({"--collect-all"}).options.toolSwitch);
     CHECK(parse({"--calm"}).options.toolSwitch);
+    CHECK(parse({"--night", "2"}).options.toolSwitch);
 }
 
 TEST_CASE("the two switches of the intro set their fields and are no switches of a tool") {
@@ -167,6 +169,7 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--start-yaw") != std::string::npos);
     CHECK(usage.find("--collect-all") != std::string::npos);
     CHECK(usage.find("--calm") != std::string::npos);
+    CHECK(usage.find("--night") != std::string::npos);
     CHECK(usage.find("--skip-intro") != std::string::npos);
     // With the space in front it is not the end of --skip-intro.
     CHECK(usage.find(" --intro") != std::string::npos);
@@ -275,4 +278,34 @@ TEST_CASE("collect-all is a switch without a value") {
     CHECK(result.options.play);
     CHECK(result.options.seed == 5U);
     CHECK_FALSE(parse({"--play"}).options.collectAll);
+}
+
+TEST_CASE("the night switch names a night of the campaign, 1 to 5") {
+    for (const char* text : {"1", "2", "3", "4", "5"}) {
+        const game::StartOptionsResult result = parse({"--night", text});
+        CHECK(result.error.empty());
+        CHECK(result.options.night == text[0] - '0');
+        // It changes nothing else: the seed is not given, and no round is asked for
+        // by --play.
+        CHECK_FALSE(result.options.seedGiven);
+        CHECK_FALSE(result.options.play);
+        CHECK_FALSE(result.options.calm);
+    }
+    // A night the campaign does not have, and anything that is not a whole number.
+    for (const char* text : {"0", "6", "12", "-1", "two", "2.0", ""}) {
+        CAPTURE(text);
+        const game::StartOptionsResult result = parse({"--night", text});
+        CHECK_FALSE(result.error.empty());
+        CHECK(result.error.find("--night") != std::string::npos);
+    }
+    CHECK_FALSE(parse({"--night"}).error.empty());
+
+    // Next to the switches that set up a picture, in any order.
+    const game::StartOptionsResult all =
+        parse({"--collect-all", "--night", "5", "--seed", "42", "--start-cell", "3,4"});
+    CHECK(all.error.empty());
+    CHECK(all.options.night == 5);
+    CHECK(all.options.seed == 42U);
+    CHECK(all.options.seedGiven);
+    CHECK(all.options.collectAll);
 }

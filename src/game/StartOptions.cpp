@@ -2,6 +2,8 @@
 // See docs/modules/game/menu-camera.md
 #include "game/StartOptions.hpp"
 
+#include "game/Campaign.hpp"
+
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
@@ -25,6 +27,7 @@ constexpr std::string_view COLLECT_ALL_SWITCH = "--collect-all";
 constexpr std::string_view CALM_SWITCH = "--calm";
 constexpr std::string_view SKIP_INTRO_SWITCH = "--skip-intro";
 constexpr std::string_view INTRO_SWITCH = "--intro";
+constexpr std::string_view NIGHT_SWITCH = "--night";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -99,7 +102,7 @@ const char* const START_OPTIONS_USAGE =
     "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
     "--menu-time <seconds>, --menu-background <video|still|scene>, "
     "--start-cell <column>,<row>, --start-yaw <degrees>, --collect-all, --calm, "
-    "--skip-intro, --intro";
+    "--night <1..5>, --skip-intro, --intro";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -144,7 +147,8 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         // Every other switch takes the next word as its value.
         const bool known = name == SEED_SWITCH || name == MENU_SHOT_SWITCH ||
                            name == MENU_TIME_SWITCH || name == MENU_BACKGROUND_SWITCH ||
-                           name == START_CELL_SWITCH || name == START_YAW_SWITCH;
+                           name == START_CELL_SWITCH || name == START_YAW_SWITCH ||
+                           name == NIGHT_SWITCH;
         if (!known) {
             result.error = "Unknown switch: " + std::string(name);
             return result;
@@ -155,7 +159,7 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         }
         ++i;
         const char* const value = arguments[i];
-        // All six are switches of a tool.
+        // All seven are switches of a tool.
         options.toolSwitch = true;
 
         bool understood = false;
@@ -171,6 +175,13 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
             understood = parseCell(value, cell);
             if (understood) {
                 options.startCell = cell;
+            }
+        } else if (name == NIGHT_SWITCH) {
+            // A whole number written with digits only, and a night the campaign has.
+            std::uint32_t night = 0;
+            understood = parseSeed(value, night) && night >= 1 && night <= CAMPAIGN_NIGHT_COUNT;
+            if (understood) {
+                options.night = static_cast<int>(night);
             }
         } else if (name == START_YAW_SWITCH) {
             // A number of degrees is read like a number of seconds: any finite number.
