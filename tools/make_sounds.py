@@ -1,4 +1,4 @@
-# Makes the sounds of the game: thirteen WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: nineteen WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -33,7 +33,8 @@
 #
 #   - No DC OFFSET: the samples swing around 0 and not around some other value, which
 #     would waste room and click at the start and the end.
-#   - Every file starts and ends at exactly 0, with a short fade.
+#   - Every file starts and ends at exactly 0, with a short fade. (The one loop, the
+#     wind of the maze, has no fade: it ends where it begins. See maze_wind.)
 #   - The loudest sample of a file sits at a level that is chosen per sound (the table
 #     PEAK_DB): the loudest ones at -3 dBFS, never higher, and the others below that on
 #     purpose, so the game plays them at the right loudness against each other without
@@ -66,7 +67,8 @@ import struct
 import wave
 import zlib
 
-# Samples per second of every file: the rate of a CD, which every sound device plays.
+# Samples per second of every file but the loop (RATES): the rate of a CD, which every
+# sound device plays.
 SAMPLE_RATE = 44100
 
 # The largest value of a signed 16 bit sample.
@@ -102,6 +104,20 @@ PEAK_DB = {
     # loudest sample says, so its number is not the lowest. The bell is far away.
     "intro_wind.wav": -11.0,
     "intro_bell.wav": -10.0,
+    # The steps of the player are heard twice a second for a whole round, so they are
+    # among the quietest sounds: about as present as the breath, and below the hum of
+    # the shade, which is a warning. (A walked step is played at 0.6 of this, a sprinted
+    # one in full: FOOTSTEP_WALK_VOLUME in src/game/SoundCues.hpp.)
+    "footstep_1.wav": -14.0,
+    "footstep_2.wav": -14.0,
+    "footstep_3.wav": -14.0,
+    # The steps of the shade are quieter than the ones of the player also right next to
+    # it, and the game turns them down further with the distance.
+    "shade_step_1.wav": -21.0,
+    "shade_step_2.wav": -21.0,
+    # The wind of the maze lies under everything for the whole round: quieter to the
+    # ear than every sound that tells the player something.
+    "maze_wind.wav": -27.5,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -320,10 +336,11 @@ def finish(channels, out_seconds=0.006):
             for channel in channels]
 
 
-def write_wav(path, channels, peak_db):
+def write_wav(path, channels, peak_db, rate=SAMPLE_RATE):
     # Brings the loudest sample of all channels to peak_db and writes the file. The
     # samples of the channels alternate in the file (left, right, left, right). "<h" is
     # one signed 16 bit number with its low byte first, the order a WAV file uses.
+    # rate is how many samples per second the file says it has.
     loudest = max(abs(sample) for channel in channels for sample in channel)
     scale = 10.0 ** (peak_db / 20.0) * MAX_SAMPLE / loudest
     frames = bytearray()
@@ -334,9 +351,9 @@ def write_wav(path, channels, peak_db):
     with wave.open(path, "wb") as file:
         file.setnchannels(len(channels))
         file.setsampwidth(2)
-        file.setframerate(SAMPLE_RATE)
+        file.setframerate(rate)
         file.writeframes(bytes(frames))
-    seconds = len(channels[0]) / SAMPLE_RATE
+    seconds = len(channels[0]) / rate
     print(f"wrote {path} ({seconds:.2f} s, {len(channels)} ch, {len(frames) + 44} bytes)")
 
 
@@ -810,6 +827,159 @@ def intro_bell():
     return finish([one_pole_low_pass(one_pole_low_pass(ring, 1500.0), 1500.0)], out_seconds=0.8)
 
 
+# ---- steps: the player and the shade ---------------------------------------------------------
+
+
+def footstep(seed, pitch, brush_at):
+    # One step of the player on the ground of the maze: earth with grass on it. Three
+    # files are made from this function, each with its own noise, a slightly other
+    # pitch and its brush a little earlier or later, and the game plays them in turn:
+    # the same step again and again would sound like a machine.
+    #
+    #   - The heel: a thump that falls from about 240 to 110 Hz within a few hundredths
+    #     of a second and is gone at once. The weight of the body arriving. It rises
+    #     over 3 ms: sudden enough for a step, and no click. It lies above the heartbeat
+    #     of the low battery (below 120 Hz), so the two are not taken for each other.
+    #   - The earth: a short burst of dull noise around 300 Hz with the heel, the soil
+    #     giving way a little.
+    #   - The grass: noise in a wide band around 1500 Hz that swells and fades within
+    #     a tenth of a second, a moment after the heel. The sole rolling over the
+    #     blades. Quiet, and its loudness wanders, so it rustles and does not hiss.
+    #
+    # The file is 0.26 s long: shorter than the wait between two steps of a sprint
+    # (0.36 s, FOOTSTEP_SPRINT_METRES in src/game/SoundCues.hpp at 5.5 m/s).
+    generator = random.Random(seed)
+    sound = silence(0.26)
+
+    heel_count = count_of(0.14)
+    heel = scaled(falling_thump(0.14, 240.0 * pitch, 110.0 * pitch, 0.02, 0.03),
+                  swell_curve(heel_count, 0.003, 0.06))
+    earth_count = count_of(0.06)
+    earth = biquad(scaled(noise(generator, earth_count), decay_curve(earth_count, 0.012)),
+                   "band", 300.0 * pitch, 0.9)
+
+    grass_count = count_of(0.16)
+    grass = biquad(noise(generator, grass_count), "band", 1500.0 * pitch, 0.7)
+    grass = scaled(scaled(grass, swell_curve(grass_count, 0.03, 0.11)),
+                   wander_curve(generator, grass_count, 45.0, lowest=0.4))
+
+    # The mix: the heel is the step, the earth a good half of it, the grass below both.
+    place(sound, with_peak(heel, 1.0), 0.0)
+    place(sound, with_peak(earth, 0.6), 0.002)
+    place(sound, with_peak(grass, 0.25), brush_at)
+    return finish([biquad(sound, "low", 3500.0)])
+
+
+def shade_step(seed, pitch):
+    # One step of the shade: something heavy and soft set down without a sound of its
+    # own. No heel, no grass and no edge anywhere, so it cannot be taken for a step of
+    # the player, and it is not the low battery pulse either, which is two thumps below
+    # 120 Hz: this is one, and most of it lies above that.
+    #
+    #   - The weight: a thump that falls from about 250 to 125 Hz and rises over 30 ms,
+    #     like a hand laid on a table.
+    #   - The cloth: a little dull noise around 420 Hz that swells and fades with it.
+    #
+    # Two files, a little apart in pitch, played in turn. Each is 0.32 s long, and the
+    # steps of the shade come every 0.65 s (SHADE_STEP_METRES in src/game/SoundCues.hpp
+    # at 4 m/s).
+    generator = random.Random(seed)
+    sound = silence(0.32)
+
+    weight_count = count_of(0.26)
+    weight = scaled(falling_thump(0.26, 250.0 * pitch, 125.0 * pitch, 0.035, 0.07),
+                    swell_curve(weight_count, 0.03, 0.16))
+    cloth_count = count_of(0.2)
+    cloth = biquad(noise(generator, cloth_count), "band", 420.0 * pitch, 1.0)
+    cloth = scaled(cloth, swell_curve(cloth_count, 0.04, 0.14))
+
+    place(sound, with_peak(weight, 1.0), 0.0)
+    place(sound, with_peak(cloth, 0.12), 0.01)
+    return finish([biquad(sound, "low", 1000.0)])
+
+
+# ---- the wind of the maze: a loop ------------------------------------------------------------
+
+# How long one round of the loop is, in seconds, and how much of its end is laid over
+# its beginning to close it.
+MAZE_WIND_SECONDS = 10.0
+MAZE_WIND_OVERLAP_SECONDS = 2.0
+
+
+def maze_wind():
+    # The wind of the maze at night, as a LOOP: the game plays the file again and again
+    # for as long as a round lasts, so its end has to run into its beginning without
+    # anything to hear. It is the wind of the intro (intro_wind above) made smaller:
+    # quieter, with less movement, and without the low ground, which belongs to the
+    # heartbeat of the low battery.
+    #
+    #   - The body: noise through a band pass whose centre moves between 240 and 480 Hz.
+    #   - The air: the same noise through a wide band around 1200 Hz, quiet.
+    #   - The movement: the centre and the loudness follow one slow curve. In the intro
+    #     that curve is a random walk. Here it is two sine waves, one that takes the
+    #     whole loop and one that takes a third of it: both are back where they began
+    #     when the loop ends, so the wind rises and falls without a pattern the ear
+    #     could count, and the movement has no seam either.
+    #
+    # Closing the loop. Twelve seconds are made, two more than the loop is long. The
+    # last two are laid over the first two: where the loop begins, the extra end is at
+    # full strength and the beginning at none, and over two seconds they change places
+    # (a CROSSFADE). So the first sample of the file is the very sample that would have
+    # followed its last one, and the file goes round as if it had never been cut. The
+    # two curves of the crossfade are a quarter of a sine and of a cosine: their
+    # squares add up to 1, which keeps the loudness of two different noises steady
+    # (with straight lines the middle of the crossfade would be quieter).
+    #
+    # The file has none of the fades of finish(): a loop must not start and end at 0.
+    # The game fades it in and out itself. It is written at half the sample rate of
+    # the other files. Nothing in it lies above 3 kHz, and a file at 22 050 samples per
+    # second holds everything up to 11 kHz, so the only difference is half the size.
+    generator = random.Random(14)
+    count = count_of(MAZE_WIND_SECONDS)
+    overlap = count_of(MAZE_WIND_OVERLAP_SECONDS)
+    total = count + overlap
+    raw = noise(generator, total)
+
+    # From 0 to 1, and the same again after count samples.
+    turn = 2.0 * math.pi / count
+    gust = [0.5 + 0.3 * math.sin(turn * i + 1.0) + 0.2 * math.sin(3.0 * turn * i + 2.3)
+            for i in range(total)]
+
+    body = moving_band_pass(raw, [240.0 + 240.0 * g for g in gust], 1.5)
+    air = biquad(raw, "band", 1200.0, 0.6)
+    loudness = [0.6 + 0.4 * g for g in gust]
+    sound = scaled(with_level(body, 1.0), loudness)
+    place(sound, scaled(with_level(air, 0.2), loudness))
+    # Two low passes keep it soft and make the halving of the sample rate safe. The
+    # high pass takes away what lies under 120 Hz (and with it any DC offset).
+    sound = biquad(biquad(biquad(sound, "low", 2400.0), "low", 4000.0), "high", 120.0)
+
+    loop = sound[:count]
+    for i in range(overlap):
+        angle = 0.5 * math.pi * i / overlap
+        loop[i] = sound[i] * math.sin(angle) + sound[count + i] * math.cos(angle)
+    # Every second sample: half the sample rate.
+    loop = loop[::2]
+    # A loop has no beginning, so the file may start at any of its samples. It starts
+    # where the wave crosses 0 most gently: of all pairs of neighbours, at the one that
+    # lies nearest to 0. That is not for looks. The game converts the file to the
+    # sample rate of the sound device when it loads it, and that conversion starts from
+    # silence: its first few samples are pulled towards 0. With the seam at a loud
+    # sample the loop ticked on every round (measured: a jump of 0.040 in a sound whose
+    # loudest sample is 0.042). With the seam at 0 there is nothing to pull.
+    start = min(range(len(loop)), key=lambda i: abs(loop[i]) + abs(loop[i - 1]))
+    return [loop[start:] + loop[:start]]
+
+
+# The files that are not written at SAMPLE_RATE, with their rate. A sound without
+# anything high in it needs fewer samples per second (see maze_wind).
+RATES = {"maze_wind.wav": SAMPLE_RATE // 2}
+
+# The files the game plays as loops: they do not start and end at 0, they end where
+# they begin.
+LOOPS = ("maze_wind.wav",)
+
+
 # The file of every sound. The names are the ones in src/game/SoundCues.cpp.
 SOUNDS = [
     ("flashlight_on.wav", flashlight_on),
@@ -825,6 +995,12 @@ SOUNDS = [
     ("caught.wav", caught),
     ("intro_wind.wav", intro_wind),
     ("intro_bell.wav", intro_bell),
+    ("footstep_1.wav", lambda: footstep(11, 1.0, 0.035)),
+    ("footstep_2.wav", lambda: footstep(12, 0.95, 0.05)),
+    ("footstep_3.wav", lambda: footstep(13, 1.08, 0.028)),
+    ("shade_step_1.wav", lambda: shade_step(15, 1.0)),
+    ("shade_step_2.wav", lambda: shade_step(16, 0.95)),
+    ("maze_wind.wav", maze_wind),
 ]
 
 
@@ -917,11 +1093,46 @@ def frame_levels(samples, seconds):
             for i in range(0, max(len(samples) - size, 0) + 1, size)]
 
 
+def seam_numbers(samples):
+    # How a file goes round as a loop, in steps of a 16 bit sample. A STEP is the
+    # difference between two samples that follow each other, a BEND the change of that
+    # difference from one pair to the next (how sharply the line through three samples
+    # turns). Both are measured over the seam, from the last samples of the file to its
+    # first ones, and compared with what is ordinary inside the file: the root of the
+    # mean square of all steps and of all bends, and the largest of each. A loop that
+    # is closed well has a seam like any other place. A cut that was not closed shows
+    # as a step several times the ordinary one, and is heard as a tick.
+    def rms(values):
+        return math.sqrt(sum(value * value for value in values) / len(values))
+
+    steps = [b - a for a, b in zip(samples, samples[1:])]
+    bends = [b - a for a, b in zip(steps, steps[1:])]
+    over = samples[0] - samples[-1]
+    return {
+        "step": abs(over) * 32768,
+        "step_rms": rms(steps) * 32768,
+        "step_max": max(abs(step) for step in steps) * 32768,
+        "bend": max(abs(over - steps[-1]), abs(steps[0] - over)) * 32768,
+        "bend_rms": rms(bends) * 32768,
+        "bend_max": max(abs(bend) for bend in bends) * 32768,
+    }
+
+
 def measure(path):
     # Everything --report prints about one file, as a dictionary.
     channels, rate = read_wav(path)
+    if rate not in (SAMPLE_RATE, SAMPLE_RATE // 2):
+        raise ValueError(f"{path}: {rate} samples per second, expected {SAMPLE_RATE} or half")
+    # The seam is measured on the samples the file holds, before anything else.
+    seam = seam_numbers(channels[0])
+    stored_seconds = len(channels[0]) / rate
     if rate != SAMPLE_RATE:
-        raise ValueError(f"{path}: {rate} samples per second, expected {SAMPLE_RATE}")
+        # A file at half the rate is brought to the full rate for everything below, so
+        # one set of measuring code serves both: between every two samples goes the
+        # value half way between them. That is how the simplest player would do it. It
+        # costs a third of a decibel at 2 kHz and nothing below.
+        channels = [[value for a, b in zip(channel, channel[1:] + channel[-1:])
+                     for value in (a, 0.5 * (a + b))] for channel in channels]
     count = len(channels[0])
     # The spectrum is taken from the sum of the channels: what a mono device plays.
     mono = [sum(frame) / len(channels) for frame in zip(*channels)]
@@ -993,6 +1204,14 @@ def measure(path):
         # asked of a sound that lasts that long.
         "swing": decibels(max(middle) / max(min(middle), 1e-9)) if count > 1.3 * rate else None,
         "loud_at": loud_at,
+        # For a loop: the seam, the length as the file states it, the loudness of every
+        # half second, and of its first and of its last twentieth of a second.
+        "seam": seam,
+        "stored_seconds": stored_seconds,
+        "rate": rate,
+        "halves": [decibels(level) for level in frame_levels(mono, 0.5)],
+        "ends": [decibels(level) for level in (frame_levels(mono[:count_of(0.05)], 0.05)
+                                               + frame_levels(mono[-count_of(0.05):], 0.05))],
     }
 
 
@@ -1031,12 +1250,22 @@ def checks(m, together):
     # The two sounds of the intro are not sounds of a round: they are left out where
     # the sounds of a round are compared with each other.
     intro = ("intro_wind.wav", "intro_bell.wav")
+    # The steps and the wind of the maze came later, and they are not events either:
+    # they sound all the time. The two old rules that compare the pulse and the breath
+    # with "every other sound" leave them out, and they have rules of their own below.
+    steps = [m[f"footstep_{number}.wav"] for number in (1, 2, 3)]
+    shade_steps = [m[f"shade_step_{number}.wav"] for number in (1, 2)]
+    maze = m["maze_wind.wav"]
+    constant = ("footstep_1.wav", "footstep_2.wav", "footstep_3.wav", "shade_step_1.wav",
+                "shade_step_2.wav", "maze_wind.wav")
+    intro = intro + constant
     result = []
     for name, one in m.items():
         result.append((f"{name}: peak at or below -3 dBFS", one["peak"] <= -2.99))
         result.append((f"{name}: no DC offset (below 0.001)", abs(one["dc"]) < 0.001))
-        result.append((f"{name}: starts and ends at 0",
-                       not any(one["first"]) and not any(one["last"])))
+        if name not in LOOPS:
+            result.append((f"{name}: starts and ends at 0",
+                           not any(one["first"]) and not any(one["last"])))
     others = [one["dba"] for name, one in m.items()
               if name != "low_battery_pulse.wav" and name not in intro]
     result += [
@@ -1100,6 +1329,60 @@ def checks(m, together):
         ("bell: loudest at its strike (within the first quarter of a second)",
          bell["loud_at"] < 0.25),
     ]
+
+    # The steps of the player, the steps of the shade and the wind of the maze. What
+    # carries information: every sound of a round but these, and the steps themselves.
+    # The pulse is left out wherever loudness to the ear is compared: it lies so low
+    # that the measure of the ear (dBA) hardly counts it, and it has its own rule above.
+    seam = maze["seam"]
+    telling = [one["dba"] for name, one in m.items()
+               if name not in intro and name != "low_battery_pulse.wav"]
+    telling += [one["dba"] for one in steps + shade_steps]
+    step_levels = [one["dba"] for one in steps]
+    shade_levels = [one["dba"] for one in shade_steps]
+    result += [
+        ("steps: quieter to the ear than the chime of a crystal, by at least 15 dBA",
+         max(step_levels) < crystal["dba"] - 15.0),
+        ("steps: quieter to the ear than the hum of the shade, which is a warning",
+         max(step_levels) < hum["dba"]),
+        ("steps: the three are one kind of step, within 3 dBA of each other",
+         max(step_levels) - min(step_levels) < 3.0),
+        ("steps: the three are not the same file (their strongest frequency differs)",
+         len({round(one["peaks"][0][0]) for one in steps}) == 3),
+        ("steps: a thump, at least 80 % of their energy below 500 Hz",
+         all(one["below500"] > 0.8 for one in steps)),
+        ("steps: not the heartbeat of the battery, under half of their energy below 120 Hz",
+         all(one["below120"] < 0.5 for one in steps)),
+        ("steps: shorter than the wait between two steps of a sprint (0.36 s)",
+         all(one["seconds"] < 0.36 for one in steps)),
+        ("shade steps: quieter to the ear than the steps of the player, by at least 3 dBA",
+         max(shade_levels) < min(step_levels) - 3.0),
+        ("shade steps: soft, under 2 % of their energy above 1 kHz",
+         all(one["above1k"] < 0.02 for one in shade_steps)),
+        ("shade steps: no sudden start, loudest later than 0.01 s after their start",
+         all(one["loud_at"] > 0.01 for one in shade_steps)),
+        ("shade steps: not the heartbeat of the battery, under half of their energy below 120 Hz",
+         all(one["below120"] < 0.5 for one in shade_steps)),
+        ("shade steps: shorter than the wait between two of them (0.65 s)",
+         all(one["seconds"] < 0.65 for one in shade_steps)),
+        ("maze wind: a loop of 8 to 12 seconds", 8.0 <= maze["stored_seconds"] <= 12.0),
+        ("maze wind: mono", maze["channels"] == 1),
+        ("maze wind: quieter to the ear than every sound that carries information",
+         maze["dba"] < min(telling)),
+        ("maze wind: leaves the heartbeat of the battery its place, under 5 % of its energy "
+         "below 120 Hz", maze["below120"] < 0.05),
+        ("maze wind: no hiss, under 10 % of its energy above 2 kHz", maze["above2k"] < 0.1),
+        (f"maze wind: no step at the seam ({seam['step']:.0f} against an ordinary "
+         f"{seam['step_rms']:.0f}, at most 3 times that)", seam["step"] <= 3.0 * seam["step_rms"]),
+        (f"maze wind: no bend at the seam ({seam['bend']:.0f} against an ordinary "
+         f"{seam['bend_rms']:.0f}, at most 3 times that)", seam["bend"] <= 3.0 * seam["bend_rms"]),
+        (f"maze wind: as loud before the seam as after it ({maze['ends'][1]:.1f} and "
+         f"{maze['ends'][0]:.1f} dBFS, within 4 dB)", abs(maze["ends"][0] - maze["ends"][1]) < 4.0),
+        ("maze wind: it moves, its half seconds differ by more than 3 dB",
+         max(maze["halves"]) - min(maze["halves"]) > 3.0),
+        ("maze wind: it never drops out, its half seconds differ by less than 12 dB",
+         max(maze["halves"]) - min(maze["halves"]) < 12.0),
+    ]
     return result
 
 
@@ -1119,6 +1402,15 @@ def report(directory):
         swing = "-" if m["swing"] is None else f"{m['swing']:.1f}"
         print(f"{name:<22} {m['below120']:>8.1%} {m['below500']:>8.1%} {m['above1k']:>8.1%}"
               f" {m['above2k']:>8.1%} {swing:>9} {m['loud_at']:>9.2f} s  {peaks}")
+    print()
+    for name in LOOPS:
+        m = measured[name]
+        seam = m["seam"]
+        print(f"{name}: a loop of {m['stored_seconds']:.3f} s at {m['rate']} samples per second."
+              f" Over the seam: step {seam['step']:.0f} (inside the file: ordinary"
+              f" {seam['step_rms']:.0f}, largest {seam['step_max']:.0f}), bend {seam['bend']:.0f}"
+              f" (ordinary {seam['bend_rms']:.0f}, largest {seam['bend_max']:.0f}), in steps of"
+              f" a 16 bit sample. Last sample {m['last']}, first {m['first']}.")
     print()
     missed = 0
     together = together_peak(directory, ["crystal_pickup.wav", "gate_open.wav"])
@@ -1228,7 +1520,8 @@ def main():
 
     os.makedirs(arguments.out_dir, exist_ok=True)
     for name, make in SOUNDS:
-        write_wav(os.path.join(arguments.out_dir, name), make(), PEAK_DB[name])
+        write_wav(os.path.join(arguments.out_dir, name), make(), PEAK_DB[name],
+                  RATES.get(name, SAMPLE_RATE))
 
 
 if __name__ == "__main__":
