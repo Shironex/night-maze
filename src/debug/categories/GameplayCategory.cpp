@@ -1,5 +1,5 @@
 // "Gameplay" category of the debug window: the state of the round, the battery, the
-// numbers of the rules and the minimap.
+// numbers of the rules, the shade and the minimap.
 // See docs/modules/game/gameplay.md
 #include "debug/categories/GameplayCategory.hpp"
 
@@ -8,6 +8,7 @@
 #include "debug/Widgets.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
+#include "game/Player.hpp"
 #include "game/Round.hpp"
 #include "gfx/Framebuffer.hpp"
 
@@ -47,6 +48,20 @@ constexpr float MIN_PICKUP_RADIUS = 0.1F;
 constexpr float MAX_PICKUP_RADIUS = 2.0F;
 
 constexpr float PERCENT = 100.0F;
+
+// The speed of the shade in metres per second: from standing still to faster than the
+// player sprints (5.5).
+constexpr float MIN_SHADE_SPEED = 0.0F;
+constexpr float MAX_SHADE_SPEED = 8.0F;
+
+// How long the shade stands still after a round starts, in seconds.
+constexpr float MIN_SHADE_GRACE = 0.0F;
+constexpr float MAX_SHADE_GRACE = 30.0F;
+
+// How near the shade has to come to catch the player, in metres. At 2 m it catches from
+// the middle of the next cell.
+constexpr float MIN_SHADE_CATCH_DISTANCE = 0.3F;
+constexpr float MAX_SHADE_CATCH_DISTANCE = 2.0F;
 
 // The picture of the minimap in its card is at most this wide, in pixels at 100 %
 // display scaling.
@@ -141,6 +156,45 @@ void drawRules(Page& page, const DebugContext& context) {
     page.endCard();
 }
 
+// The shade: where it is, whether the flashlight is on it, and its numbers
+// (game::ShadeSettings).
+void drawShade(Page& page, const DebugContext& context) {
+    const game::Shade& shade = context.round.shade;
+    game::ShadeSettings& settings = context.gameplay.shade;
+    page.beginCard("Shade");
+
+    if (!shade.present) {
+        page.stat("Shade", "none in this round");
+    } else if (shade.graceLeft > 0.0F) {
+        page.stat("Shade", "waiting, %.1f s of grace left", shade.graceLeft);
+    } else {
+        page.stat("Shade", "%s", shade.lit ? "lit: standing still" : "unlit: walking");
+    }
+    if (shade.present) {
+        page.stat("Distance", "%.1f m", game::shadeDistance(shade, context.player.position));
+    }
+
+    page.toggle("Shade in the round", &settings.enabled,
+                "Off: the shade is gone at once, like on a calm night. On: it comes with the "
+                "next round (key R). A new game sets the switch from the menu: off for "
+                "a calm night.");
+    page.slider("Speed", &settings.speed, MIN_SHADE_SPEED, MAX_SHADE_SPEED, "%.1f m/s",
+                "How fast the shade walks while it is not lit. The player walks 3.0 and "
+                "sprints 5.5 m/s.");
+    page.slider("Grace time", &settings.graceSeconds, MIN_SHADE_GRACE, MAX_SHADE_GRACE, "%.0f s",
+                "How long the shade stands still after a round starts or starts again. "
+                "A new number counts from the next round.");
+    page.slider("Catch distance", &settings.catchDistance, MIN_SHADE_CATCH_DISTANCE,
+                MAX_SHADE_CATCH_DISTANCE, "%.2f m",
+                "The shade has caught the player when it is this near, measured on the "
+                "ground from middle to middle.");
+    page.toggle("Show shade on the map", &settings.showOnMap,
+                "Debug switch: mark the shade on the map (key M). The map of the game "
+                "never shows it.");
+
+    page.endCard();
+}
+
 // The minimap: its settings (game::MinimapSettings), the facts of its framebuffer and
 // the picture of that framebuffer.
 void drawMinimap(Page& page, const DebugContext& context) {
@@ -191,6 +245,7 @@ void drawGameplayCategory(Page& page, const DebugContext& context) {
     drawBattery(page, context);
     drawRules(page, context);
     page.nextColumn();
+    drawShade(page, context);
     drawMinimap(page, context);
     page.endColumns();
 }
