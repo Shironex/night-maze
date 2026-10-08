@@ -115,6 +115,12 @@ public:
     /// a transition of the style sheet cannot do the work: the cards of the intro.
     void setOpacity(DocumentId document, const std::string& elementId, float opacity);
 
+    /// Gives the keyboard focus to the element with this id attribute of a document, with
+    /// the frame that shows where the keyboard is. For a screen whose first choice is not
+    /// always the same element: the attribute autofocus is fixed in the document. Call
+    /// it after show, which puts the focus on the autofocus element.
+    void focus(DocumentId document, const std::string& elementId);
+
     /// The data-action names of the elements that were clicked since the last call, in
     /// the order of the clicks. The list is empty again afterwards. Enter in a text
     /// field with the attribute data-submit="name" puts that name on the list too.

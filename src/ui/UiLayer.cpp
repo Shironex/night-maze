@@ -338,6 +338,18 @@ void UiLayer::setOpacity(DocumentId document, const std::string& elementId, floa
     }
 }
 
+void UiLayer::focus(DocumentId document, const std::string& elementId) {
+    Rml::ElementDocument* target = documentOf(document);
+    if (target == nullptr) {
+        return;
+    }
+    if (Rml::Element* element = target->GetElementById(elementId)) {
+        // True: also show the focus frame (the pseudo class focus-visible), which RmlUi
+        // otherwise leaves out for a focus that did not come from the keyboard.
+        element->Focus(true);
+    }
+}
+
 std::vector<std::string> UiLayer::takeActions() {
     // std::exchange hands out the list and leaves an empty one in its place.
     return std::exchange(m_actions, {});
