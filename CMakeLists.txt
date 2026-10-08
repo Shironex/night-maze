@@ -188,6 +188,8 @@ add_library(game_logic STATIC
     src/game/Round.hpp
     src/game/Settings.cpp
     src/game/Settings.hpp
+    src/game/Shade.cpp
+    src/game/Shade.hpp
     src/game/Shadows.cpp
     src/game/Shadows.hpp
     src/game/SoundCues.cpp
@@ -436,6 +438,7 @@ add_executable(night_maze_tests
     tests/RoundTests.cpp
     tests/SearchTests.cpp
     tests/SettingsTests.cpp
+    tests/ShadeTests.cpp
     tests/ShaderSourceTests.cpp
     tests/ShadowTests.cpp
     tests/SkyboxTests.cpp

@@ -9,12 +9,14 @@
 #include "game/Lighting.hpp"
 #include "game/Maze.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/Shade.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>
 
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -71,6 +73,11 @@ struct GameplaySettings {
     /// from 0 to MAX_FLASK_COUNT. A new game writes the number of its difficulty level
     /// here. A new number shows when the round is started again.
     int flaskCount = 1;
+
+    /// The numbers of the shade, the enemy of the round (game/Shade.hpp), and the switch
+    /// that says whether the round has one at all. A new game switches it off for a calm
+    /// night.
+    ShadeSettings shade;
 
     /// False stops the battery from draining: a switch for testing in the debug UI.
     bool batteryDrains = true;
@@ -179,6 +186,17 @@ struct Round {
     /// noteIndex is its number in Interactables::notes (it means nothing otherwise).
     bool noteOpen = false;
     std::size_t noteIndex = 0;
+
+    /// The shade of the round (game/Shade.hpp): where it is and whether it is lit. Not
+    /// present in a calm round. updateRoundShade moves it.
+    Shade shade;
+
+    /// The line the player reads after being caught (game::caughtLine), or
+    /// NO_CAUGHT_LINE. The application sets it in the round it starts after a catch
+    /// (showCaughtLine), and caughtSeconds counts the seconds of play since then: the
+    /// line is taken away after CAUGHT_LINE_SECONDS.
+    int caughtLine = NO_CAUGHT_LINE;
+    float caughtSeconds = 0.0F;
 };
 
 /// How many of total crystals open the gate: fraction of them, rounded up, at least 1
@@ -225,7 +243,12 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 ///     (Round::flasksCollected). What the tea does is not decided here: the round
 ///     knows nothing about the stamina of the player,
 ///   - the gate opens when enough crystals are collected,
-///   - the round is won when the player is inside the exit zone with the gate open.
+///   - the round is won when the player is inside the exit zone with the gate open,
+///   - the seconds of a caught line count, and the line is taken away when its time is
+///     over (showCaughtLine).
+///
+/// The shade is not moved here: it needs the flashlight of the step, so it has a call of
+/// its own that follows this one (updateRoundShade).
 ///
 /// feetPosition is the position of the player after the movement of this step.
 /// flashlightOn is the switch of the flashlight (LightingSettings::flashlightOn). It is
@@ -234,6 +257,36 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 /// a checkbox of the debug UI).
 void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& settings,
                  const glm::vec3& feetPosition, bool& flashlightOn, float stepSeconds);
+
+/// The flashlight as the shade of the round sees it (game::shadeLit): it gives light
+/// when the switch of settings is on AND the battery of the round is not empty, it
+/// stands and points as pose says (game::flashlightPose), and its cone and its range
+/// are the ones of settings. The flicker of a low battery does not count: a light that
+/// flickers is still on.
+ShadeLamp roundShadeLamp(const LightingSettings& settings, const Round& round,
+                         const FlashlightPose& pose);
+
+/// Advances the shade of the round by one fixed step (game::advanceShade) and returns
+/// true when it has caught the player in this step. Call it after updateRound, with the
+/// same position of the feet. lamp is the flashlight of the step (roundShadeLamp) and
+/// obstacles what blocks its light (roundObstacles).
+///
+/// The shade walks through the maze of the ROUND (roundMaze), so a wall that a lever
+/// has opened is a way for it too. It only moves while the round is being played: after
+/// the win it stands where it was and catches nobody. The round is not changed by
+/// a catch: the caller starts it again (startRound) and shows the caught line.
+bool updateRoundShade(Round& round, const MazeWorld& world, const GameplaySettings& settings,
+                      const glm::vec3& feetPosition, const ShadeLamp& lamp,
+                      std::span<const scene::Aabb> obstacles, float stepSeconds);
+
+/// Shows a caught line in the round from now on (game::caughtLine of line), for
+/// CAUGHT_LINE_SECONDS seconds of play.
+void showCaughtLine(Round& round, int line);
+
+/// How bright the picture of the round is drawn, from 0 (black) to 1: 1, except in the
+/// first moments after the player was carried back, when the picture comes back from
+/// black (game::caughtBrightness).
+float roundBrightness(const Round& round);
 
 /// True while the gate stands in the way: the maze has one and it has not opened yet.
 /// The box of the gate stops being an obstacle at the moment the gate opens, while the

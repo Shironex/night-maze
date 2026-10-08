@@ -144,6 +144,11 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     round.interactables = startInteractables(world.interactables);
     round.wallProgress.assign(world.interactables.levers.size(), 0.0F);
     round.maze = world.maze;
+
+    // The shade, in the cell the seed of the maze gives it, far from the start. Placed
+    // here like the flasks, so a new round puts it back. A calm round has none.
+    round.shade = startShade(world.maze, world.seed, START_CELL, world.exitCell, world.terrain,
+                             settings.shade);
     return round;
 }
 
@@ -200,6 +205,14 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
         round.elapsedSeconds += stepSeconds;
         drainBattery(round, settings, flashlightOn, stepSeconds);
 
+        // The caught line stays for a few seconds of play, then it is gone.
+        if (round.caughtLine != NO_CAUGHT_LINE) {
+            round.caughtSeconds += stepSeconds;
+            if (round.caughtSeconds >= CAUGHT_LINE_SECONDS) {
+                round.caughtLine = NO_CAUGHT_LINE;
+            }
+        }
+
         const scene::Sphere reach = playerReach(feetPosition);
         collectCrystals(round, settings, reach);
         collectFlasks(round, world, settings, reach);
@@ -229,6 +242,38 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
     if (round.battery <= 0.0F) {
         flashlightOn = false;
     }
+}
+
+ShadeLamp roundShadeLamp(const LightingSettings& settings, const Round& round,
+                         const FlashlightPose& pose) {
+    return {.on = settings.flashlightOn && round.battery > 0.0F,
+            .position = pose.position,
+            .direction = pose.direction,
+            .outerDegrees = settings.flashlightOuterDegrees,
+            .range = settings.flashlightRange};
+}
+
+bool updateRoundShade(Round& round, const MazeWorld& world, const GameplaySettings& settings,
+                      const glm::vec3& feetPosition, const ShadeLamp& lamp,
+                      std::span<const scene::Aabb> obstacles, float stepSeconds) {
+    if (round.state != RoundState::Playing) {
+        return false;
+    }
+    const ShadeStep step{.playerFeet = feetPosition,
+                         .lamp = lamp,
+                         .obstacles = obstacles,
+                         .openedWalls = pulledLeverCount(round)};
+    return advanceShade(round.shade, settings.shade, roundMaze(world, round), world.terrain, step,
+                        stepSeconds);
+}
+
+void showCaughtLine(Round& round, int line) {
+    round.caughtLine = line;
+    round.caughtSeconds = 0.0F;
+}
+
+float roundBrightness(const Round& round) {
+    return round.caughtLine == NO_CAUGHT_LINE ? 1.0F : caughtBrightness(round.caughtSeconds);
 }
 
 bool gateBlocks(const MazeWorld& world, const Round& round) {
