@@ -64,9 +64,9 @@ struct StartOptions {
 
     /// True when one of the switches above was on the command line (--seed, --play,
     /// --menu-camera, --menu-shot, --menu-time, --menu-background, --start-cell,
-    /// --start-yaw, --collect-all or --calm): a tool or a test is driving the game. Such a run never opens with the intro (game::startMode).
-    /// Scripts start the game in fresh folders without a settings file, where the intro
-    /// would count as not seen.
+    /// --start-yaw, --collect-all or --calm): a tool or a test is driving the game. Such a run
+    /// never opens with the intro (game::startMode). Scripts start the game in fresh folders
+    /// without a settings file, where the intro would count as not seen.
     bool toolSwitch = false;
 
     /// True: never play the intro in this run (--skip-intro), also when it was not seen.
