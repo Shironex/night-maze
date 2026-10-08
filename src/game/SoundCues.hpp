@@ -32,10 +32,14 @@ enum class SoundCue {
     FlaskPickup,     ///< a flask of tea was picked up
     ShadeNear,       ///< the hum that repeats while the shade is near
     Caught,          ///< the shade reached the player and carries them back to the start
+    /// The wind under the intro: one long file, as long as the intro itself, with its
+    /// fade in and its fade out inside the file (game/Intro.hpp).
+    IntroWind,
+    IntroBell, ///< one far bell of the village, in the intro
 };
 
 /// How many cues there are: the number of entries of SoundCue.
-constexpr std::size_t SOUND_CUE_COUNT = 11;
+constexpr std::size_t SOUND_CUE_COUNT = 13;
 
 /// The place of a cue in the list of sounds: its number as an index.
 std::size_t soundCueIndex(SoundCue cue);

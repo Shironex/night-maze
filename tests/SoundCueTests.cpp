@@ -70,7 +70,7 @@ TEST_CASE("every cue has a file and a name of its own") {
     CHECK(files.size() == game::SOUND_CUE_COUNT);
     CHECK(names.size() == game::SOUND_CUE_COUNT);
     // The last entry of the enum is the last entry of the table.
-    CHECK(game::soundCueIndex(game::SoundCue::Caught) == game::SOUND_CUE_COUNT - 1);
+    CHECK(game::soundCueIndex(game::SoundCue::IntroBell) == game::SOUND_CUE_COUNT - 1);
 }
 
 TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
@@ -495,4 +495,11 @@ TEST_CASE("the hum follows the way the shade has to walk, not the straight line"
     CHECK(caught);
     CHECK(hummed);
     CHECK(round.shade.wayMetres <= settings.shade.catchDistance);
+}
+
+TEST_CASE("the wind and the bell of the intro have sound files of their own") {
+    CHECK(std::string(game::soundCueFile(game::SoundCue::IntroWind)) == "audio/intro_wind.wav");
+    CHECK(std::string(game::soundCueFile(game::SoundCue::IntroBell)) == "audio/intro_bell.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::IntroWind)) == "intro wind");
+    CHECK(std::string(game::soundCueName(game::SoundCue::IntroBell)) == "intro bell");
 }

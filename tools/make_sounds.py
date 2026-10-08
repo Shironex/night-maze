@@ -1,4 +1,4 @@
-# Makes the sounds of the game: eleven short WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: thirteen WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -6,7 +6,8 @@
 #   python tools/make_sounds.py
 # It needs nothing but Python: only the standard library is used (no numpy, no package
 # for pictures). That is why the filters below are plain loops over lists of numbers.
-# The whole run takes a few seconds.
+# The whole run takes a few seconds. --report takes most of a minute: the wind of the
+# intro is half a minute long, and measuring it is far more work than making it.
 #
 # The sounds are not recordings and nothing is downloaded. Each one is computed here
 # from sine waves and noise, so nobody else holds a right in them and they can be
@@ -96,6 +97,11 @@ PEAK_DB = {
     "flask_pickup.wav": -9.0,
     "shade_near.wav": -13.0,
     "caught.wav": -10.0,
+    # The two sounds of the intro. The wind lies under spoken text (the cards) for half
+    # a minute and must never be in front. Noise is far quieter to the ear than its
+    # loudest sample says, so its number is not the lowest. The bell is far away.
+    "intro_wind.wav": -11.0,
+    "intro_bell.wav": -10.0,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -738,6 +744,70 @@ def caught():
     place(sound, with_peak(first, 0.8), 0.0)
     place(sound, with_peak(second, 1.0), 0.35)
     return finish([biquad(sound, "low", 1500.0)])
+# ---- the intro: the wind and the bell --------------------------------------------------------
+
+# How long the intro is, in seconds: the five cards of src/game/Intro.cpp (INTRO_CARDS)
+# add up to this. The wind is exactly as long, because the game cannot fade a sound: it
+# starts the file with the first card and the file ends with the last one.
+INTRO_SECONDS = 30.0
+
+
+def intro_wind():
+    # Night wind over open ground, for the whole intro. Wind has no tone: it is air
+    # that rushes past things, noise whose colour and loudness move slowly.
+    #
+    #   - The body: noise through a band pass whose centre wanders between 180 and
+    #     520 Hz (a random walk with a new target every three seconds). The moving
+    #     centre is the "whoo" of wind: a gust is higher AND louder.
+    #   - The air: the same noise through a wide band around 1100 Hz, quiet. It keeps
+    #     the wind from sounding like something behind a door.
+    #   - The gusts: the loudness of both follows the same random walk as the centre,
+    #     and never falls below a third, so the bed does not drop out.
+    #   - The ground: noise below 90 Hz, steady and quiet. The size of the place.
+    #
+    # The fades are in the file: it rises over three seconds and falls over the last
+    # four, so the wind is already going when the first card is read and gone when the
+    # main menu comes in.
+    generator = random.Random(10)
+    count = count_of(INTRO_SECONDS)
+    raw = noise(generator, count)
+    gust = wander_curve(generator, count, 0.33, lowest=0.0)
+
+    body = moving_band_pass(raw, [180.0 + 340.0 * g for g in gust], 1.6)
+    air = biquad(raw, "band", 1100.0, 0.6)
+    ground = biquad(biquad(noise(generator, count), "low", 90.0), "high", 30.0)
+
+    loudness = [0.34 + 0.66 * g for g in gust]
+    sound = scaled(with_level(body, 1.0), loudness)
+    place(sound, scaled(with_level(air, 0.16), loudness))
+    place(sound, with_level(ground, 0.22))
+    sound = scaled(biquad(sound, "low", 2400.0), swell_curve(count, 3.0, 4.0))
+    return finish([sound])
+
+
+# How the partials of a church bell lie above its "prime", the note the ear names. The
+# names are the ones bell founders use: the hum an octave below, then the prime, the
+# tierce (a minor third, which is what makes a bell sound sad), the quint, the nominal
+# an octave above and two more above that. They are tuned by the founder and still are
+# no harmonic series: that is the sound of a bell.
+BELL_PARTIALS = [(0.5, 0.55, 3.2), (1.0, 1.0, 2.4), (1.2, 0.7, 1.7), (1.5, 0.3, 1.2),
+                 (2.0, 0.55, 0.9), (2.51, 0.18, 0.55), (3.01, 0.12, 0.4)]
+
+
+def intro_bell():
+    # One bell of the village, far away. The prime is at 311 Hz (a small tower bell).
+    #
+    #   - The ring: the seven partials above, each with its own strength and decay
+    #     time. The low ones ring for seconds, the high ones are gone within a second.
+    #   - Far: the strike has a slow start of 12 ms and no clapper noise at all, and
+    #     a low pass at 1500 Hz takes the brightness away. Air does that over
+    #     a distance: the high part of a sound arrives last and weakest.
+    #
+    # The file is 5.5 s long, and its end is a slow fade: the hum still rings then.
+    prime = 311.0
+    ring = modes(5.5, [(prime * ratio, strength, decay) for ratio, strength, decay in BELL_PARTIALS],
+                 start_seconds=0.012)
+    return finish([one_pole_low_pass(one_pole_low_pass(ring, 1500.0), 1500.0)], out_seconds=0.8)
 
 
 # The file of every sound. The names are the ones in src/game/SoundCues.cpp.
@@ -753,6 +823,8 @@ SOUNDS = [
     ("flask_pickup.wav", flask_pickup),
     ("shade_near.wav", shade_near),
     ("caught.wav", caught),
+    ("intro_wind.wav", intro_wind),
+    ("intro_bell.wav", intro_bell),
 ]
 
 
@@ -955,13 +1027,18 @@ def checks(m, together):
     breath = m["winded_breath.wav"]
     flask = m["flask_pickup.wav"]
     hum, caught_sound = m["shade_near.wav"], m["caught.wav"]
+    wind, bell = m["intro_wind.wav"], m["intro_bell.wav"]
+    # The two sounds of the intro are not sounds of a round: they are left out where
+    # the sounds of a round are compared with each other.
+    intro = ("intro_wind.wav", "intro_bell.wav")
     result = []
     for name, one in m.items():
         result.append((f"{name}: peak at or below -3 dBFS", one["peak"] <= -2.99))
         result.append((f"{name}: no DC offset (below 0.001)", abs(one["dc"]) < 0.001))
         result.append((f"{name}: starts and ends at 0",
                        not any(one["first"]) and not any(one["last"])))
-    others = [one["dba"] for name, one in m.items() if name != "low_battery_pulse.wav"]
+    others = [one["dba"] for name, one in m.items()
+              if name != "low_battery_pulse.wav" and name not in intro]
     result += [
         ("on: a metallic ring, most energy above 2 kHz", on["above2k"] > 0.5),
         ("off: lower than on (centroid)", off["centroid"] < 0.85 * on["centroid"]),
@@ -990,7 +1067,8 @@ def checks(m, together):
         ("breath: soft, under 15 % of its energy above 2 kHz", breath["above2k"] < 0.15),
         ("breath: quieter to the ear than every sound but the pulse",
          breath["dba"] < min(one["dba"] for name, one in m.items()
-                             if name not in ("low_battery_pulse.wav", "winded_breath.wav"))),
+                             if name not in ("low_battery_pulse.wav", "winded_breath.wav")
+                             and name not in intro)),
         ("flask: warm, at least 90 % of its energy below 1 kHz (the crystal lies above)",
          flask["above1k"] < 0.1),
         ("flask: a note and not a bell (its strongest frequencies are in tune)",
@@ -1009,6 +1087,18 @@ def checks(m, together):
          caught_sound["loud_at"] > 0.1),
         ("caught: quieter to the ear than the crystal and the gate",
          caught_sound["dba"] < min(crystal["dba"], gate["dba"])),
+        ("wind: exactly as long as the intro (30 s)", abs(wind["seconds"] - INTRO_SECONDS) < 0.001),
+        ("wind: no hiss, under 10 % of its energy above 2 kHz", wind["above2k"] < 0.1),
+        ("wind: a bed, its loudest tenth of a second quieter to the ear than the crystal",
+         wind["dba"] < crystal["dba"]),
+        ("bell: its three strongest partials are the hum, the prime and the tierce "
+         "(0.5, 1 and 1.2 times the strongest)",
+         all(abs(ratio - wanted) < 0.02 for ratio, wanted in zip(
+             sorted(frequency / bell["peaks"][0][0] for frequency, _ in bell["peaks"]),
+             (0.5, 1.0, 1.2)))),
+        ("bell: far away, under 5 % of its energy above 2 kHz", bell["above2k"] < 0.05),
+        ("bell: loudest at its strike (within the first quarter of a second)",
+         bell["loud_at"] < 0.25),
     ]
     return result
 

@@ -31,6 +31,8 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/flask_pickup.wav", .name = "flask pickup"},
     {.file = "audio/shade_near.wav", .name = "shade near"},
     {.file = "audio/caught.wav", .name = "caught"},
+    {.file = "audio/intro_wind.wav", .name = "intro wind"},
+    {.file = "audio/intro_bell.wav", .name = "intro bell"},
 }};
 
 } // namespace
