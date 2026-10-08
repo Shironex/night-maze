@@ -44,6 +44,7 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/maze_wind.wav", .name = "maze wind", .ambient = true},
     {.file = "audio/shade_alert.wav", .name = "shade alert"},
     {.file = "audio/shade_banish.wav", .name = "shade banish"},
+    {.file = "audio/gate_bell.wav", .name = "gate bell"},
 }};
 
 // The first sound of the steps of the player and of the shade: the others follow it in
@@ -224,6 +225,40 @@ bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds) {
     // A hum. The wait is SET and what the step overshot is dropped, as in
     // advanceLowBatteryPulse.
     hum.secondsToNextHum = shadeHumInterval(round.shade.wayMetres);
+    return true;
+}
+
+float gateBellVolume(int passagesToExit) {
+    // How far away the player is as a part of the distance at which the bell is at its
+    // quietest: 0 at the exit, 1 there and beyond. No way at all counts as far.
+    float share = 1.0F;
+    if (passagesToExit >= 0) {
+        share = std::clamp(static_cast<float>(passagesToExit) /
+                               static_cast<float>(GATE_BELL_FAR_PASSAGES),
+                           0.0F, 1.0F);
+    }
+    return GATE_BELL_NEAR_VOLUME + (GATE_BELL_FAR_VOLUME - GATE_BELL_NEAR_VOLUME) * share;
+}
+
+bool gateBellTolls(const Round& round) {
+    return round.state == RoundState::Playing && round.gateOpen;
+}
+
+bool advanceGateBell(GateBell& bell, const Round& round, float intervalSeconds, float stepSeconds) {
+    // Closed, or the round is over: the clock goes back to the wait before the first
+    // toll, for the moment the gate opens.
+    if (!gateBellTolls(round)) {
+        bell.secondsToNextToll = GATE_BELL_FIRST_SECONDS;
+        return false;
+    }
+
+    bell.secondsToNextToll -= stepSeconds;
+    if (bell.secondsToNextToll > 0.0F) {
+        return false;
+    }
+    // A toll. The wait is SET and what the step overshot is dropped, as in
+    // advanceLowBatteryPulse.
+    bell.secondsToNextToll = std::max(intervalSeconds, GATE_BELL_MIN_SECONDS);
     return true;
 }
 

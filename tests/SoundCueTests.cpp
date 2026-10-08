@@ -1,9 +1,10 @@
 // Tests of game/SoundCues.hpp: the table of the cues, the cue of the flashlight key, the
 // cues of a fixed step (with the one of a flask), the clock of the low battery pulse,
 // the clock of the breathing of a winded player, the hum and the steps of the shade, the
-// steps of the player and the rule of the wind of the maze.
+// steps of the player, the rule of the wind of the maze and the bell of the open gate.
 #include "game/SoundCues.hpp"
 
+#include "game/Exit.hpp"
 #include "game/GameState.hpp"
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
@@ -75,12 +76,14 @@ TEST_CASE("every cue has a file and a name of its own") {
     CHECK(files.size() == game::SOUND_CUE_COUNT);
     CHECK(names.size() == game::SOUND_CUE_COUNT);
     // The last entry of the enum is the last entry of the table.
-    CHECK(game::soundCueIndex(game::SoundCue::ShadeBanish) == game::SOUND_CUE_COUNT - 1);
+    CHECK(game::soundCueIndex(game::SoundCue::GateBell) == game::SOUND_CUE_COUNT - 1);
     // New cues are added after the old ones, so every old cue keeps its number: the
-    // nineteen that were there before the shade learned to hunt end with the wind.
+    // nineteen that were there before the shade learned to hunt end with the wind, and
+    // the two of the hunting shade come before the bell of the gate.
     CHECK(game::soundCueIndex(game::SoundCue::MazeWind) == 18U);
     CHECK(game::soundCueIndex(game::SoundCue::ShadeAlert) == 19U);
-    CHECK(game::SOUND_CUE_COUNT == 21U);
+    CHECK(game::soundCueIndex(game::SoundCue::ShadeBanish) == 20U);
+    CHECK(game::SOUND_CUE_COUNT == 22U);
 }
 
 TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
@@ -904,4 +907,157 @@ TEST_CASE("a sample of the wind is heard on a menu, but never over the intro") {
     // Coming is slower than going, and a sample comes in fast.
     CHECK(game::MAZE_WIND_FADE_OUT_SECONDS < game::MAZE_WIND_FADE_IN_SECONDS);
     CHECK(game::MAZE_WIND_SAMPLE_FADE_IN_SECONDS < game::MAZE_WIND_SAMPLE_SECONDS);
+}
+
+TEST_CASE("the bell of the gate is the last cue and has a sound file of its own") {
+    CHECK(game::soundCueIndex(game::SoundCue::GateBell) == game::SOUND_CUE_COUNT - 1);
+    CHECK(std::string(game::soundCueFile(game::SoundCue::GateBell)) == "audio/gate_bell.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::GateBell)) == "gate bell");
+    // It tells the player something, so it follows the effects volume, not the ambient one.
+    CHECK_FALSE(game::soundCueIsAmbient(game::SoundCue::GateBell));
+    // The cues before it kept their numbers: the audio layer loads the files by them.
+    CHECK(game::soundCueIndex(game::SoundCue::ShadeBanish) == 20);
+    CHECK(game::soundCueIndex(game::SoundCue::IntroBell) == 12);
+}
+
+TEST_CASE("the bell is loudest at the exit and fainter with every passage") {
+    CHECK(game::gateBellVolume(0) == game::GATE_BELL_NEAR_VOLUME);
+    CHECK(game::gateBellVolume(game::GATE_BELL_FAR_PASSAGES) ==
+          doctest::Approx(game::GATE_BELL_FAR_VOLUME));
+    CHECK(game::gateBellVolume(game::GATE_BELL_FAR_PASSAGES / 2) ==
+          doctest::Approx((game::GATE_BELL_NEAR_VOLUME + game::GATE_BELL_FAR_VOLUME) / 2.0F));
+
+    // One passage nearer is always louder, until the far distance.
+    for (int passages = 1; passages <= game::GATE_BELL_FAR_PASSAGES; ++passages) {
+        CHECK(game::gateBellVolume(passages) < game::gateBellVolume(passages - 1));
+    }
+    // Beyond it, and with no way at all, the bell is faint but never silent.
+    CHECK(game::gateBellVolume(500) == doctest::Approx(game::GATE_BELL_FAR_VOLUME));
+    CHECK(game::gateBellVolume(game::UNREACHABLE) == doctest::Approx(game::GATE_BELL_FAR_VOLUME));
+    CHECK(game::GATE_BELL_FAR_VOLUME > 0.0F);
+}
+
+TEST_CASE("the bell is silent while the gate is closed and after the round is won") {
+    game::Round round;
+    CHECK_FALSE(game::gateBellTolls(round));
+    round.gateOpen = true;
+    CHECK(game::gateBellTolls(round));
+    round.state = game::RoundState::Won;
+    CHECK_FALSE(game::gateBellTolls(round));
+
+    // A closed gate never tolls, however long it stays closed.
+    game::GateBell bell;
+    const game::Round closed;
+    int tolls = 0;
+    for (int i = 0; i < 120 * 30; ++i) {
+        tolls += game::advanceGateBell(bell, closed, game::GATE_BELL_SECONDS, STEP) ? 1 : 0;
+    }
+    CHECK(tolls == 0);
+    CHECK(bell.secondsToNextToll == game::GATE_BELL_FIRST_SECONDS);
+}
+
+TEST_CASE("the bell first tolls two seconds after the gate opens and then every six") {
+    game::Round round;
+    round.gateOpen = true;
+    game::GateBell bell;
+
+    // The steps at which a toll is due, over 21 seconds.
+    std::vector<int> tollSteps;
+    for (int i = 1; i <= 120 * 21; ++i) {
+        if (game::advanceGateBell(bell, round, game::GATE_BELL_SECONDS, STEP)) {
+            tollSteps.push_back(i);
+        }
+    }
+
+    // At 2 s, 8 s, 14 s and 20 s, each to within a step or two of rounding.
+    REQUIRE(tollSteps.size() == 4);
+    CHECK(tollSteps[0] == doctest::Approx(240).epsilon(0.01));
+    CHECK(tollSteps[1] - tollSteps[0] == doctest::Approx(720).epsilon(0.01));
+    CHECK(tollSteps[2] - tollSteps[1] == doctest::Approx(720).epsilon(0.01));
+    CHECK(tollSteps[3] - tollSteps[2] == doctest::Approx(720).epsilon(0.01));
+}
+
+TEST_CASE("the wait between two tolls is the one of the settings, and never under a second") {
+    game::Round round;
+    round.gateOpen = true;
+
+    // 10 s between tolls: three tolls in 25 s (at 2, 12 and 22 s).
+    game::GateBell slow;
+    int tolls = 0;
+    for (int i = 0; i < 120 * 25; ++i) {
+        tolls += game::advanceGateBell(slow, round, 10.0F, STEP) ? 1 : 0;
+    }
+    CHECK(tolls == 3);
+
+    // An interval of 0 typed into the slider does not toll in every step.
+    game::GateBell typed;
+    tolls = 0;
+    for (int i = 0; i < 120 * 10; ++i) {
+        tolls += game::advanceGateBell(typed, round, 0.0F, STEP) ? 1 : 0;
+    }
+    CHECK(tolls <= 10);
+    CHECK(game::GATE_BELL_MIN_SECONDS >= 1.0F);
+}
+
+TEST_CASE("one very long step is one toll, and a new round resets the bell") {
+    game::Round round;
+    round.gateOpen = true;
+    game::GateBell bell;
+
+    CHECK(game::advanceGateBell(bell, round, game::GATE_BELL_SECONDS, 100.0F));
+    CHECK_FALSE(game::advanceGateBell(bell, round, game::GATE_BELL_SECONDS, STEP));
+    CHECK(bell.secondsToNextToll > game::GATE_BELL_SECONDS - 1.0F);
+
+    // A new round has a closed gate: the clock goes back to the first wait.
+    const game::Round fresh;
+    CHECK_FALSE(game::advanceGateBell(bell, fresh, game::GATE_BELL_SECONDS, STEP));
+    CHECK(bell.secondsToNextToll == game::GATE_BELL_FIRST_SECONDS);
+    // And a new clock starts there too.
+    CHECK(game::GateBell{}.secondsToNextToll == game::GATE_BELL_FIRST_SECONDS);
+}
+
+TEST_CASE("in a real round the bell starts with the gate and is louder next to the exit") {
+    const game::MazeWorld world = goldenWorld();
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    bool flashlightOn = true;
+    game::GateBell bell;
+
+    // Closed: three seconds of silence.
+    int tolls = 0;
+    for (int i = 0; i < 360; ++i) {
+        game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+        tolls += game::advanceGateBell(bell, round, settings.gate.bellSeconds, STEP) ? 1 : 0;
+    }
+    CHECK(tolls == 0);
+
+    // Every crystal is collected: the gate opens, and the bell follows two seconds later.
+    for (const game::RoundCrystal& crystal : std::vector<game::RoundCrystal>(round.crystals)) {
+        game::updateRound(round, world, settings, crystal.restPosition, flashlightOn, STEP);
+    }
+    REQUIRE(round.gateOpen);
+    for (int i = 0; i < 360; ++i) {
+        game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+        tolls += game::advanceGateBell(bell, round, settings.gate.bellSeconds, STEP) ? 1 : 0;
+    }
+    CHECK(tolls == 1);
+
+    // The passages from the exit: 0 in the exit cell and many at the start, so the
+    // bell is louder at the exit than where the night began.
+    const std::vector<int> distances =
+        game::passageDistances(game::roundMaze(world, round), world.exitCell);
+    const auto passagesFrom = [&distances, &world](game::MazeCell cell) {
+        return distances[static_cast<std::size_t>(cell.z) *
+                             static_cast<std::size_t>(world.maze.width()) +
+                         static_cast<std::size_t>(cell.x)];
+    };
+    CHECK(passagesFrom(world.exitCell) == 0);
+    CHECK(game::gateBellVolume(passagesFrom(world.exitCell)) == game::GATE_BELL_NEAR_VOLUME);
+    CHECK(game::gateBellVolume(passagesFrom(game::START_CELL)) <
+          game::gateBellVolume(passagesFrom(world.exitCell)));
+
+    // Walking into the exit wins the round, and the bell stops.
+    game::updateRound(round, world, settings, world.exitPosition, flashlightOn, STEP);
+    REQUIRE(round.state == game::RoundState::Won);
+    CHECK_FALSE(game::advanceGateBell(bell, round, settings.gate.bellSeconds, 100.0F));
 }

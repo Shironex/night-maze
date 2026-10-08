@@ -1,4 +1,4 @@
-# Makes the sounds of the game: twenty-one WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: twenty-two WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -123,6 +123,10 @@ PEAK_DB = {
     "maze_wind.wav": -27.5,
     "shade_alert.wav": -11.0,
     "shade_banish.wav": -14.0,
+    # The bell of the open gate tolls every few seconds until the round ends, so it is
+    # softer than the one bell of the intro, and the game turns it down further with
+    # the distance (gateBellVolume in src/game/SoundCues.hpp).
+    "gate_bell.wav": -12.0,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -886,6 +890,24 @@ def intro_bell():
     return finish([one_pole_low_pass(one_pole_low_pass(ring, 1500.0), 1500.0)], out_seconds=0.8)
 
 
+def gate_bell():
+    # The bell that tolls while the gate is open: the same bell of the village as in the
+    # intro (the same partials on the same prime of 311 Hz), heard from the maze, so it
+    # is the one sound of the night the player already knows.
+    #
+    #   - Shorter: every partial dies away in half the time, and the file is 2.6 s long.
+    #     The bell tolls every 6 s and is never cut off by its next toll.
+    #   - Farther: the strike takes 20 ms to arrive, and the low pass sits at 1100 Hz
+    #     instead of 1500 Hz.
+    #
+    # Its end is a slow fade, like the end of the bell of the intro. It uses no noise,
+    # so it needs no random generator.
+    prime = 311.0
+    ring = modes(2.6, [(prime * ratio, strength, 0.5 * decay)
+                       for ratio, strength, decay in BELL_PARTIALS], start_seconds=0.02)
+    return finish([one_pole_low_pass(one_pole_low_pass(ring, 1100.0), 1100.0)], out_seconds=0.5)
+
+
 # ---- steps: the player and the shade ---------------------------------------------------------
 
 
@@ -1065,6 +1087,7 @@ SOUNDS = [
     # what they were.
     ("shade_alert.wav", shade_alert),
     ("shade_banish.wav", shade_banish),
+    ("gate_bell.wav", gate_bell),
 ]
 
 
@@ -1321,6 +1344,7 @@ def checks(m, together):
     shade_steps = [m[f"shade_step_{number}.wav"] for number in (1, 2)]
     maze = m["maze_wind.wav"]
     alert, banish = m["shade_alert.wav"], m["shade_banish.wav"]
+    toll = m["gate_bell.wav"]
     constant = ("footstep_1.wav", "footstep_2.wav", "footstep_3.wav", "shade_step_1.wav",
                 "shade_step_2.wav", "maze_wind.wav")
     intro = intro + constant
@@ -1409,6 +1433,22 @@ def checks(m, together):
         ("bell: far away, under 5 % of its energy above 2 kHz", bell["above2k"] < 0.05),
         ("bell: loudest at its strike (within the first quarter of a second)",
          bell["loud_at"] < 0.25),
+        ("gate bell: the bell of the intro, its three strongest partials are the hum, the "
+         "prime and the tierce",
+         all(abs(ratio - wanted) < 0.02 for ratio, wanted in zip(
+             sorted(frequency / toll["peaks"][0][0] for frequency, _ in toll["peaks"]),
+             (0.5, 1.0, 1.2)))),
+        ("gate bell: on the same prime as the bell of the intro (within 2 Hz)",
+         abs(toll["peaks"][0][0] - bell["peaks"][0][0]) < 2.0),
+        ("gate bell: shorter than the shortest wait between two tolls (3 s)",
+         toll["seconds"] < 3.0),
+        ("gate bell: farther away than the bell of the intro: duller (centroid) and quieter "
+         "to the ear", toll["centroid"] < bell["centroid"] and toll["dba"] < bell["dba"]),
+        ("gate bell: far away, under 5 % of its energy above 2 kHz", toll["above2k"] < 0.05),
+        ("gate bell: a soft strike, loudest between 10 ms and a quarter of a second",
+         0.01 < toll["loud_at"] < 0.25),
+        ("gate bell: quieter to the ear than the crystal and the gate",
+         toll["dba"] < min(crystal["dba"], gate["dba"])),
     ]
 
     # The steps of the player, the steps of the shade and the wind of the maze. What

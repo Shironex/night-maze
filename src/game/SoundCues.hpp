@@ -54,10 +54,14 @@ enum class SoundCue {
     /// The beam has burned the shade away (game::ShadeEvents::banished): soft, like
     /// breath going out.
     ShadeBanish,
+    /// The bell of the open gate: one soft, far toll, again and again while the gate is
+    /// open (advanceGateBell), louder the nearer the player is to the exit
+    /// (gateBellVolume), and once at full volume when the player walks through.
+    GateBell,
 };
 
 /// How many cues there are: the number of entries of SoundCue.
-constexpr std::size_t SOUND_CUE_COUNT = 21;
+constexpr std::size_t SOUND_CUE_COUNT = 22;
 
 /// The place of a cue in the list of sounds: its number as an index.
 std::size_t soundCueIndex(SoundCue cue);
@@ -237,6 +241,57 @@ struct ShadeHum {
 /// One call gives at most one hum, for the same reason as advanceLowBatteryPulse. A new
 /// round resets the clock by assigning a new ShadeHum.
 bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds);
+
+/// Once the gate is open a far bell tolls, again and again, and every toll is played
+/// louder the fewer passages lie between the player and the exit. The engine has no left
+/// and right, so the bell does not say where the gate is: it says warmer and colder,
+/// which is the game people play in a maze anyway.
+///
+/// GATE_BELL_FIRST_SECONDS: the wait before the first toll, counted from the moment the
+/// gate opens. The sound of the gate itself (1.7 s, tools/make_sounds.py) is over by then.
+/// The wait between two tolls is a setting (GateSettings::bellSeconds, 6 s): a little
+/// more than twice the sound of the bell (2.6 s), so there is silence between two tolls.
+/// GATE_BELL_FAR_PASSAGES: from this many passages away the bell is at its quietest.
+/// The two volumes are the ones at the exit and at that distance. In between the volume
+/// falls evenly with the passages.
+constexpr float GATE_BELL_FIRST_SECONDS = 2.0F;
+/// The shortest wait between two tolls: a shorter one that is typed into the slider of
+/// the debug UI counts as this.
+constexpr float GATE_BELL_MIN_SECONDS = 1.0F;
+constexpr int GATE_BELL_FAR_PASSAGES = 40;
+constexpr float GATE_BELL_NEAR_VOLUME = 1.0F;
+constexpr float GATE_BELL_FAR_VOLUME = 0.12F;
+
+/// How loud a toll is played for a player who is passagesToExit passages away from the
+/// exit cell (game::passageDistances from the exit, in the maze of the round):
+/// GATE_BELL_NEAR_VOLUME at 0, GATE_BELL_FAR_VOLUME at GATE_BELL_FAR_PASSAGES and
+/// beyond. A negative number (game::UNREACHABLE, or a player outside the maze) gives the
+/// far volume: the bell is heard everywhere, only faintly.
+float gateBellVolume(int passagesToExit);
+
+/// True while the bell tolls: the round is being played and its gate is open. A maze
+/// without a gate, or one that needs no crystal, has it open from the start.
+bool gateBellTolls(const Round& round);
+
+/// The clock of the bell, counted in fixed steps like LowBatteryPulse.
+struct GateBell {
+    /// Seconds until the next toll.
+    float secondsToNextToll = GATE_BELL_FIRST_SECONDS;
+};
+
+/// Advances the clock of the bell by one fixed step of stepSeconds seconds, for the
+/// round as it is AFTER game::updateRound. intervalSeconds is the wait between two tolls
+/// (GateSettings::bellSeconds). Returns true when a toll is due in this step: play
+/// SoundCue::GateBell then, at gateBellVolume of where the player is.
+///
+///   - While the bell does not toll (gateBellTolls) the clock is set back to
+///     GATE_BELL_FIRST_SECONDS.
+///   - Otherwise it runs, and after a toll the wait is intervalSeconds, or
+///     GATE_BELL_MIN_SECONDS when that is shorter.
+///
+/// One call gives at most one toll, for the same reason as advanceLowBatteryPulse. A new
+/// round resets the clock by assigning a new GateBell.
+bool advanceGateBell(GateBell& bell, const Round& round, float intervalSeconds, float stepSeconds);
 
 /// A sound together with how loud it is played: 1 is the file as it is, 0.5 half of its
 /// amplitude. The audio layer takes the number with every play, so one file serves for
