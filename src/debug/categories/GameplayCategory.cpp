@@ -277,8 +277,16 @@ void drawShade(Page& page, const DebugContext& context) {
             page.stat("Way to the player", "none");
         }
         // Where it is going, the last noise it heard and where that came from.
-        page.stat("Goal", "cell %d, %d (waits %.1f s there)", shade.goal.x, shade.goal.z,
-                  std::max(shade.searchLeft, 0.0F));
+        // A shade that has not chosen a cell yet (grace time, quiet time) has none. One
+        // that came for the player also shows how long it will still wait at its goal.
+        if (shade.goal.x < 0) {
+            page.stat("Goal", "none yet");
+        } else if (shade.hunt == game::ShadeHunt::Wandering) {
+            page.stat("Goal", "cell %d, %d", shade.goal.x, shade.goal.z);
+        } else {
+            page.stat("Goal", "cell %d, %d, waits %.1f s there", shade.goal.x, shade.goal.z,
+                      std::max(shade.searchLeft, 0.0F));
+        }
         if (shade.lastHeard == game::Noise::None) {
             page.stat("Last heard", "nothing yet");
         } else {
