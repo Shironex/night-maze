@@ -9,7 +9,7 @@ This folder holds the English documentation of Night Maze.
 
 The other things in this folder are not documentation of the code:
 
-- [story/the-last-lamp.md](story/the-last-lamp.md) is a story draft. Its own header calls it a proposal for me to choose from, not an approved game text. Only the 16 shadow-free story lines with their counter, six notes per maze, the hint wording and the title of the round end card are in the game. The rest is not.
+- [story/the-last-lamp.md](story/the-last-lamp.md) is the story design the game follows: the premise, every line of text, and the plan of the five nights. Its sections are kept as first written, so some remarks about what is not built yet are out of date; the decision records say what I chose.
 - `PRD.pdf` and `syllabus.md` are course material for the course this game was written for. Both are in Polish and I keep them as they are. The syllabus links to notes that no longer exist in the tree, so those links are dead.
 - `showcase/` holds the pictures of the root README. `pnpm showcase` frames them again from the raw captures made by `tools/capture_showcase.py`, and the README has the full steps.
 

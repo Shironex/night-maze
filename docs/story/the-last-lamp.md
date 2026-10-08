@@ -1,9 +1,11 @@
-Szkic z 2026-10-07, propozycja do wyboru, nie zatwierdzony tekst gry. Tekst poniżej jest po angielsku, bo to treść do gry, i zostaje bez zmian.
-Wybory właściciela zapisują [`decisions/story-inheritance-and-build-order.md`](../decisions/story-inheritance-and-build-order.md) i [`decisions/enemy-light-shy-shadow.md`](../decisions/enemy-light-shy-shadow.md) (sekcja 2a): tam są odpowiedzi na pytania z sekcji 6 szkicu (1, 2, 3, 4, 6 i część 5), a ta sekcja nie została przepisana.
+Draft of 2026-10-07. It began as a proposal to choose from; what I decided since is recorded in
+[`decisions/the-shade.md`](../decisions/the-shade.md), [`decisions/story-notes-in-order.md`](../decisions/story-notes-in-order.md),
+[`decisions/intro-played-live.md`](../decisions/intro-played-live.md) and [`decisions/campaign-of-five-nights.md`](../decisions/campaign-of-five-nights.md).
+The sections below are kept as written, so some of their "not built" remarks and file references are out of date.
 
 # The Last Lamp: story design for Night Maze
 
-Status: proposal for the owner. Built so far: the 16 shadow-free story lines with the line counter (section 5, items 1 and 4), six notes per maze, the hint wording and the round end title; everything else here is not in the repo. The premise ("The Last Lamp", quiet folk tale, moon splinters, hedge-stone maze, lamplighter's grandchild) and the enemy rules (moves only when unlit and unseen, caught means back to the start of the same maze, no loss screen, Calm has no enemy) are the owner's decisions and are taken as fixed.
+Status: the design the game follows. Built from it so far (2026-10-08): all 24 story lines with a saved place, the shadow and the calm night, the caught lines, the intro of five cards, the campaign of five nights with its title cards, night end lines and ending card, the hint wording and the round end title. The premise ("The Last Lamp", quiet folk tale, moon splinters, hedge-stone maze, lamplighter's grandchild) and the enemy rules (moves only when unlit and unseen, caught means back to the start of the same maze, no loss screen, Calm has no enemy) are the owner's decisions and are taken as fixed.
 
 Limits read from the code, which every line below respects:
 
