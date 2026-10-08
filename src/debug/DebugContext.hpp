@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 namespace assets {
 class AssetCache;
@@ -21,6 +22,7 @@ class Window;
 } // namespace core
 
 namespace game {
+struct CampaignRequest;
 enum class GameMode;
 enum class ViewMode;
 struct EnvironmentSettings;
@@ -232,6 +234,19 @@ struct DebugContext {
     /// The key of every action of the player, read only (NightMazeApp::keyBindings):
     /// the HUD names the key of "use" and of "restart" in its prompts.
     const game::KeyBindings& keys;
+    /// The campaign as the settings file has it: the next night (1 to 5, 6 when it is
+    /// finished), its seed (0: no campaign yet) and the best time of every night in
+    /// seconds (0: none). Plain values, copied when the context is built: the Gameplay
+    /// category only shows them.
+    int campaignNight;
+    std::uint32_t campaignSeed;
+    std::array<int, 5> campaignBestSeconds;
+    /// The night of the campaign that is in play, or 0 for free play. A plain value.
+    int playedNight;
+    /// What the Gameplay category asks of the campaign, editable: set the next night,
+    /// forget the campaign, win the round at once. The game does it at the start of its
+    /// next frame (NightMazeApp::campaignRequest).
+    game::CampaignRequest& campaignRequest;
 };
 
 } // namespace debug

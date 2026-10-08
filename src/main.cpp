@@ -39,9 +39,9 @@ protected:
         // panels are hidden, and in the frame it is switched off they come back as they
         // were. In between the panel key below still works, so the settings of the
         // camera can be changed while it runs. The HUD is left out by DebugUI::draw.
-        // The intro is a film too: while it runs the panels are hidden in the same way.
-        const bool menuCameraOn =
-            menuCameraSettings().enabled || gameMode() == game::GameMode::Intro;
+        // The intro and the cards of the campaign are films too: while one runs the
+        // panels are hidden in the same way.
+        const bool menuCameraOn = menuCameraSettings().enabled || game::isFilm(gameMode());
         if (menuCameraOn != m_menuCameraWasOn) {
             m_menuCameraWasOn = menuCameraOn;
             if (menuCameraOn) {
@@ -131,6 +131,11 @@ protected:
             .sampleWind = windSampleRequest(),
             .playIntro = introRequest(),
             .keys = keyBindings(),
+            .campaignNight = settings().campaignNight,
+            .campaignSeed = settings().campaignSeed,
+            .campaignBestSeconds = settings().campaignBestSeconds,
+            .playedNight = playedNight(),
+            .campaignRequest = campaignRequest(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

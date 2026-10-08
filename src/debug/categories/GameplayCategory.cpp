@@ -1,11 +1,13 @@
 // "Gameplay" category of the debug window: the state of the round, the battery, the
-// numbers of the rules, the shade, the minimap and the button that plays the intro again.
+// numbers of the rules, the shade, the minimap, the button that plays the intro again
+// and the campaign.
 // See docs/modules/game/gameplay.md
 #include "debug/categories/GameplayCategory.hpp"
 
 #include "debug/DebugContext.hpp"
 #include "debug/Pictures.hpp"
 #include "debug/Widgets.hpp"
+#include "game/Campaign.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/Player.hpp"
@@ -15,6 +17,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
 
 namespace debug {
 
@@ -134,6 +137,55 @@ void drawIntro(Page& page, const DebugContext& context) {
                      "menu, and any key skips it.") == 1) {
         context.playIntro = true;
     }
+    page.endCard();
+}
+
+// The campaign: how far it is, and three controls for testing it without playing five
+// nights.
+void drawCampaign(Page& page, const DebugContext& context) {
+    page.beginCard("Campaign");
+
+    if (context.campaignNight >= game::CAMPAIGN_FINISHED) {
+        page.stat("Campaign", "finished");
+    } else {
+        page.stat("Campaign", "night %d is next", context.campaignNight);
+    }
+    if (context.campaignSeed == game::NO_CAMPAIGN_SEED) {
+        page.stat("Campaign seed", "none yet");
+    } else {
+        page.stat("Campaign seed", "%u", context.campaignSeed);
+    }
+    // The best times in seconds, night 1 first. 0: no time yet.
+    const std::array<int, game::CAMPAIGN_NIGHT_COUNT>& best = context.campaignBestSeconds;
+    page.stat("Best times", "%d, %d, %d, %d, %d s", best[0], best[1], best[2], best[3], best[4]);
+    if (context.playedNight == 0) {
+        page.stat("In play", "free play");
+    } else {
+        page.stat("In play", "night %d", context.playedNight);
+    }
+
+    // The controls only ask: the game does it at the start of its next frame.
+    game::CampaignRequest& request = context.campaignRequest;
+    int night = context.campaignNight;
+    if (page.sliderInt("Next night", &night, 1, game::CAMPAIGN_FINISHED, "%d",
+                       "The next night of the campaign in the settings file: the nights "
+                       "before it count as won, without a best time. 6 is a finished "
+                       "campaign. Written to the settings file at once.")) {
+        request.setNight = night;
+    }
+    const int clicked = page.buttons("Campaign actions", "Clear campaign", "Win this round",
+                                     "Clear campaign forgets the campaign of the settings "
+                                     "file: no night won, no seed, no best time. Win this "
+                                     "round ends the round that is being played as won, "
+                                     "with the crystals it has, for testing what follows "
+                                     "a night.");
+    if (clicked == 1) {
+        request.clear = true;
+    }
+    if (clicked == 2) {
+        request.winRound = true;
+    }
+
     page.endCard();
 }
 
@@ -294,6 +346,7 @@ void drawGameplayCategory(Page& page, const DebugContext& context) {
     drawBattery(page, context);
     drawRules(page, context);
     page.nextColumn();
+    drawCampaign(page, context);
     drawShade(page, context);
     drawMinimap(page, context);
     drawIntro(page, context);
