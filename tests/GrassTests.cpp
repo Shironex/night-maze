@@ -1,6 +1,7 @@
 // Tests of game::placeGrass: how many tufts a world gets and where they stand.
 #include "game/Grass.hpp"
 
+#include "game/GateLamp.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Terrain.hpp"
@@ -9,9 +10,11 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <vector>
 
 namespace {
@@ -42,10 +45,35 @@ game::MazeWorld testWorld() {
     return game::buildMazeWorld(WIDTH, HEIGHT, SEED, roughHeightmap(), 1.0F);
 }
 
+// The same world with no trampled ground in front of its exit: a maze without a gate has
+// none (game::grassIsTrampled). The tests that count the tufts of every wall use it,
+// because the trampled ground takes some of those tufts away again.
+game::MazeWorld withoutTrampledGround(game::MazeWorld world) {
+    world.hasGate = false;
+    return world;
+}
+
 // How many tufts the walls of a world get at a density: on both sides of every wall.
 std::size_t wallTuftCount(const game::MazeWorld& world, float density) {
     const auto perSide = static_cast<std::size_t>(std::lround(density * game::WALL_LENGTH));
     return world.walls.size() * 2U * perSide;
+}
+
+// A checksum of a list of tufts: every number of every tuft, in order, as the 32 bits it
+// is stored in (FNV-1a, a simple hash). Two lists have the same checksum only when they
+// hold the same tufts in the same order, down to the last bit.
+std::uint64_t tuftChecksum(const std::vector<game::GrassTuft>& tufts) {
+    constexpr std::uint64_t FNV_START = 14695981039346656037ULL;
+    constexpr std::uint64_t FNV_PRIME = 1099511628211ULL;
+    std::uint64_t checksum = FNV_START;
+    for (const game::GrassTuft& tuft : tufts) {
+        for (const float value : {tuft.position.x, tuft.position.y, tuft.position.z, tuft.random}) {
+            std::uint32_t bits = 0;
+            std::memcpy(&bits, &value, sizeof(bits));
+            checksum = (checksum ^ bits) * FNV_PRIME;
+        }
+    }
+    return checksum;
 }
 
 // True when the point (x, z) lies inside the footprint of the box, made wider by margin
@@ -107,7 +135,7 @@ TEST_CASE("another seed grows the grass in other places") {
 }
 
 TEST_CASE("the tufts of the walls come first: density per metre, on both sides") {
-    const game::MazeWorld world = testWorld();
+    const game::MazeWorld world = withoutTrampledGround(testWorld());
     constexpr float DENSITY = 2.5F;
     const std::vector<game::GrassTuft> tufts = game::placeGrass(world, DENSITY);
 
@@ -147,7 +175,7 @@ TEST_CASE("the tufts of the walls come first: density per metre, on both sides")
 }
 
 TEST_CASE("twice the density plants twice the tufts along the walls") {
-    const game::MazeWorld world = testWorld();
+    const game::MazeWorld world = withoutTrampledGround(testWorld());
     CHECK(wallTuftCount(world, 2.0F) == world.walls.size() * 8U);
     CHECK(wallTuftCount(world, 4.0F) == world.walls.size() * 16U);
 
@@ -236,4 +264,96 @@ TEST_CASE("the hills get a sparse scatter that keeps away from the maze") {
     const auto onHills = static_cast<float>(tufts.size() - onWalls);
     CHECK(onHills > expected * 0.8F);
     CHECK(onHills < expected * 1.2F);
+}
+
+TEST_CASE("no grass grows in the exit cell and in the cell in front of its gate") {
+    const game::MazeWorld world = testWorld();
+    REQUIRE(world.hasGate);
+    const game::MazeCell approach = game::approachCell(world);
+    const std::vector<game::GrassTuft> tufts = game::placeGrass(world, game::MAX_GRASS_DENSITY);
+    REQUIRE(tufts.size() > 1000U);
+
+    bool bare = true;
+    for (const game::GrassTuft& tuft : tufts) {
+        const game::MazeCell cell = game::cellAt(tuft.position);
+        bare = bare && cell != world.exitCell && cell != approach;
+    }
+    CHECK(bare);
+
+    // The rule by itself: the middle of the two cells is trampled, the next cell is not.
+    const glm::vec3 exitMiddle = game::cellCenter(world.exitCell.x, world.exitCell.z);
+    const glm::vec3 approachMiddle = game::cellCenter(approach.x, approach.z);
+    const glm::vec3 beyond = approachMiddle + (approachMiddle - exitMiddle);
+    CHECK(game::grassIsTrampled(world, exitMiddle.x, exitMiddle.z));
+    CHECK(game::grassIsTrampled(world, approachMiddle.x, approachMiddle.z));
+    CHECK_FALSE(game::grassIsTrampled(world, beyond.x, beyond.z));
+}
+
+TEST_CASE("a maze without a gate has no trampled ground") {
+    game::MazeWorld world = testWorld();
+    world.hasGate = false;
+    const glm::vec3 exitMiddle = game::cellCenter(world.exitCell.x, world.exitCell.z);
+    CHECK_FALSE(game::grassIsTrampled(world, exitMiddle.x, exitMiddle.z));
+}
+
+TEST_CASE("the trampled ground takes tufts away and moves no other tuft of a seed") {
+    // The numbers on the right were printed by the game BEFORE the trampled ground
+    // existed: how many tufts each of these mazes had at the default density, and
+    // a checksum of all their places and random numbers, in order.
+    struct Before {
+        std::uint32_t seed;
+        int size;
+        std::size_t count;
+        std::uint64_t checksum;
+    };
+    constexpr std::array<Before, 12> BEFORE = {{
+        {.seed = 1U, .size = 6, .count = 988U, .checksum = 12846973796199066704ULL},
+        {.seed = 1U, .size = 10, .count = 1843U, .checksum = 1274205875857258424ULL},
+        {.seed = 1U, .size = 16, .count = 3751U, .checksum = 582719257039279581ULL},
+        {.seed = 2U, .size = 6, .count = 988U, .checksum = 3280749841988392614ULL},
+        {.seed = 2U, .size = 10, .count = 1855U, .checksum = 7800287520340244509ULL},
+        {.seed = 2U, .size = 16, .count = 3754U, .checksum = 2751831958979162322ULL},
+        {.seed = 3U, .size = 6, .count = 987U, .checksum = 3599750614337085532ULL},
+        {.seed = 3U, .size = 10, .count = 1855U, .checksum = 13498469288475344034ULL},
+        {.seed = 3U, .size = 16, .count = 3750U, .checksum = 6539662837113689136ULL},
+        {.seed = 21U, .size = 6, .count = 989U, .checksum = 4831811329703863142ULL},
+        {.seed = 21U, .size = 10, .count = 1847U, .checksum = 965332957266023376ULL},
+        {.seed = 21U, .size = 16, .count = 3766U, .checksum = 1175280531423276338ULL},
+    }};
+
+    for (const Before& before : BEFORE) {
+        CAPTURE(before.seed);
+        CAPTURE(before.size);
+        const game::MazeWorld world =
+            game::buildMazeWorld(before.size, before.size, before.seed, roughHeightmap(), 1.0F);
+        REQUIRE(world.hasGate);
+
+        // The same world without a gate has no trampled ground, so its grass is the
+        // grass as it was: the same count and the same checksum as before the rule.
+        game::MazeWorld ungated = world;
+        ungated.hasGate = false;
+        const std::vector<game::GrassTuft> all =
+            game::placeGrass(ungated, game::DEFAULT_GRASS_DENSITY);
+        CHECK(all.size() == before.count);
+        CHECK(tuftChecksum(all) == before.checksum);
+
+        // With the gate: exactly those tufts, in the same order, without the ones on
+        // the trampled ground. Nothing else moved and nothing was added.
+        std::vector<game::GrassTuft> expected;
+        for (const game::GrassTuft& tuft : all) {
+            if (!game::grassIsTrampled(world, tuft.position.x, tuft.position.z)) {
+                expected.push_back(tuft);
+            }
+        }
+        const std::vector<game::GrassTuft> tufts =
+            game::placeGrass(world, game::DEFAULT_GRASS_DENSITY);
+        CHECK(tufts.size() < all.size());
+        REQUIRE(tufts.size() == expected.size());
+        bool same = true;
+        for (std::size_t i = 0; i < tufts.size(); ++i) {
+            same = same && tufts[i].position == expected[i].position &&
+                   tufts[i].random == expected[i].random;
+        }
+        CHECK(same);
+    }
 }

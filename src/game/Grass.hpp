@@ -87,11 +87,20 @@ struct GrassSettings {
 ///   - never inside a wall or a pillar: the strip starts outside the box of the wall and
 ///     ends GRASS_END_CLEARANCE before each corner,
 ///   - none at the gate: the open side of the exit cell has no wall, so no strip,
+///   - none on the trampled ground in front of the exit (grassIsTrampled). Those tufts
+///     are chosen like all the others and then left out, so the rule moves no other
+///     tuft of a seed,
 ///   - a sparse scatter on the land outside the maze, never closer to it than
 ///     GRASS_HILL_CLEARANCE,
 ///   - every tuft stands on the ground: its y is the height of the terrain there.
 ///
 /// A density of 0 or less gives no tufts at all.
 std::vector<GrassTuft> placeGrass(const MazeWorld& world, float density);
+
+/// True for a point of the ground where no grass grows because feet have worn it bare:
+/// inside the exit cell, and inside the cell in front of its gate (game::approachCell),
+/// the last one every lamplighter walked through. The bare ground is one of the signs
+/// that tell the exit from an ordinary dead end. Always false in a maze without a gate.
+bool grassIsTrampled(const MazeWorld& world, float x, float z);
 
 } // namespace game

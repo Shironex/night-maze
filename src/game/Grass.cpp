@@ -1,6 +1,7 @@
 // Grass: where the tufts of grass stand, one point per tuft, chosen from the seed of the maze.
 #include "game/Grass.hpp"
 
+#include "game/GateLamp.hpp"
 #include "game/MazeGenerator.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
@@ -113,7 +114,24 @@ std::vector<GrassTuft> placeGrass(const MazeWorld& world, float density) {
         plantAlongWall(wall, world.terrain, tuftsPerSide, generator, tufts);
     }
     plantOnHills(world, density, generator, tufts);
+
+    // The trampled ground comes last, and it only takes tufts away. Every tuft above was
+    // chosen with the next numbers of the generator, so leaving a wall out up there
+    // would move all the grass that comes after it. Removing afterwards keeps every
+    // other tuft of a seed exactly where it was. erase_if keeps the order of the rest.
+    std::erase_if(tufts, [&world](const GrassTuft& tuft) {
+        return grassIsTrampled(world, tuft.position.x, tuft.position.z);
+    });
     return tufts;
+}
+
+bool grassIsTrampled(const MazeWorld& world, float x, float z) {
+    // A maze of one cell has no gate, so nobody walks up to one.
+    if (!world.hasGate) {
+        return false;
+    }
+    const MazeCell cell = cellAt({x, 0.0F, z});
+    return cell == world.exitCell || cell == approachCell(world);
 }
 
 } // namespace game
