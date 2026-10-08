@@ -25,8 +25,8 @@ struct StartOptions {
     /// The seed of the first maze (MazeSettings::seed).
     std::uint32_t seed = DEFAULT_MAZE_SEED;
 
-    /// True when the seed above was named on the command line (--seed). The main menu
-    /// then offers that seed for the first game, and not a random one.
+    /// True when the seed above was named on the command line (--seed). Free play then
+    /// offers that seed for the first game, and not a random one.
     bool seedGiven = false;
 
     /// The settings of the menu camera the game starts with.
@@ -97,7 +97,7 @@ struct StartOptionsResult {
 /// Reads a seed: a whole number from 0 to the largest std::uint32_t (4294967295),
 /// written with digits only. False, and seed left as it was, when the text is anything
 /// else: empty, negative, too large or with other characters in it. The command line
-/// (--seed) and the seed field of the main menu both read their text with it.
+/// (--seed) and the seed field of free play both read their text with it.
 bool parseSeed(std::string_view text, std::uint32_t& seed);
 
 /// The switches the game understands, one per line: main.cpp logs it after an error.

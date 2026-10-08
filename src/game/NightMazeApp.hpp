@@ -378,9 +378,10 @@ protected:
     /// UI can ask for it on any screen but the intro: set it to true.
     bool& windSampleRequest() { return m_windSampleRequested; }
 
-    /// True when the mazes of this run have a shade: the switch "Calm night" of the main
-    /// menu is off and the command line did not ask for a calm run (--calm). Texts that
-    /// differ between a night with and without the shadow ask here.
+    /// True when the mazes of free play have a shade in this run: its switch "Calm night"
+    /// is off and the command line did not ask for a calm run (--calm). Texts that differ
+    /// between a night with and without the shadow ask here. A night of the campaign says
+    /// itself whether it has a shade (startNight).
     bool shadeInGame() const { return !m_settings.calmNight && !m_calmRun; }
 
     /// The request to play the intro again, exposed so the debug UI can ask for it: set

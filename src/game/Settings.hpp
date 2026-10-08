@@ -84,7 +84,7 @@ struct GameSettings {
     /// The size of the window while the game is not fullscreen.
     WindowSize windowSize = DEFAULT_WINDOW_SIZE;
 
-    /// The difficulty the main menu starts with: the one that was chosen last.
+    /// The difficulty free play starts with: the one that was chosen last.
     Difficulty difficulty = Difficulty::Normal;
 
     /// From MIN_MASTER_VOLUME to MAX_MASTER_VOLUME, a whole number.
@@ -105,7 +105,7 @@ struct GameSettings {
     int nextStoryLine = 0;
 
     /// True: a calm night. The maze has no shade, on every difficulty. The switch is in
-    /// the main menu, next to the difficulty.
+    /// free play screen, next to the difficulty. The campaign does not ask it.
     bool calmNight = false;
 
     /// True once the intro was shown, to its end or until the player skipped it: the

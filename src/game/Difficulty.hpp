@@ -16,7 +16,7 @@ enum class Difficulty {
     Hard,
 };
 
-/// Every level, in the order the main menu shows them.
+/// Every level, in the order the free play screen shows them.
 constexpr std::array<Difficulty, 3> ALL_DIFFICULTIES = {Difficulty::Easy, Difficulty::Normal,
                                                         Difficulty::Hard};
 

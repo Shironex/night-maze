@@ -50,7 +50,7 @@ enum class GameMode {
 /// Something that can change the screen: a button of a menu, the Escape key, or the
 /// round itself.
 enum class GameEvent {
-    Play = 0,      ///< button "Play" of the main menu: start a new game
+    Play = 0,      ///< button "Play" of free play: start a new game
     Resume,        ///< button "Resume" of the pause menu
     Restart,       ///< button "Restart": the same maze again, from the start
     BackToMenu,    ///< button "Back to menu"
