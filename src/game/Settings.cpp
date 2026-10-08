@@ -3,6 +3,7 @@
 #include "game/Settings.hpp"
 
 #include "game/Interactables.hpp"
+#include "game/StartOptions.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -212,6 +213,36 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
         settings.introSeen = value == ON_VALUE;
         return true;
     }
+    if (name == CAMPAIGN_NIGHT_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        // Clamped as a float first: a 12 digit number does not fit a whole number.
+        settings.campaignNight = static_cast<int>(
+            std::clamp(std::round(number), 1.0F, static_cast<float>(CAMPAIGN_FINISHED)));
+        return true;
+    }
+    if (name == CAMPAIGN_SEED_SETTING) {
+        // Digits only and exact: parseNumber reads a float, which cannot hold every seed.
+        return parseSeed(value, settings.campaignSeed);
+    }
+    if (name.starts_with(CAMPAIGN_BEST_SETTING_PREFIX)) {
+        // What follows the prefix is the number of the night: one digit, 1 to 5.
+        const std::string_view digits = name.substr(CAMPAIGN_BEST_SETTING_PREFIX.size());
+        if (digits.size() != 1 || digits.front() < '1' ||
+            digits.front() > '0' + CAMPAIGN_NIGHT_COUNT) {
+            return false;
+        }
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        settings.campaignBestSeconds.at(static_cast<std::size_t>(digits.front() - '1')) =
+            static_cast<int>(std::clamp(std::round(number), static_cast<float>(NO_BEST_TIME),
+                                        static_cast<float>(MAX_BEST_SECONDS)));
+        return true;
+    }
     if (name.starts_with(KEY_SETTING_PREFIX)) {
         // False for a name that is no action, for a text that is no key and for a key
         // with a fixed meaning: the action keeps the key it has.
@@ -260,6 +291,13 @@ GameSettings parseSettings(std::string_view text) {
     if (hasOldStoryLine && !hasStoryLine) {
         applySetting(settings, OLD_STORY_LINE_SETTING, oldStoryLine);
     }
+    // A night that is not won has no best time, whatever a hand edited file says: a time
+    // that stayed would be the one a real win has to beat.
+    for (int night = 1; night <= CAMPAIGN_NIGHT_COUNT; ++night) {
+        if (nightStatus(settings.campaignNight, night) != NightStatus::Finished) {
+            settings.campaignBestSeconds.at(static_cast<std::size_t>(night - 1)) = NO_BEST_TIME;
+        }
+    }
     return settings;
 }
 
@@ -280,11 +318,26 @@ std::string formatSettings(const GameSettings& settings) {
     text += settingLine(STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
     text += settingLine(CALM_NIGHT_SETTING, std::string(settings.calmNight ? ON_VALUE : OFF_VALUE));
     text += settingLine(INTRO_SEEN_SETTING, std::string(settings.introSeen ? ON_VALUE : OFF_VALUE));
+    text += settingLine(CAMPAIGN_NIGHT_SETTING, std::to_string(settings.campaignNight));
+    // The seed and the best times only once they exist.
+    if (settings.campaignSeed != NO_CAMPAIGN_SEED) {
+        text += settingLine(CAMPAIGN_SEED_SETTING, std::to_string(settings.campaignSeed));
+    }
+    for (int night = 1; night <= CAMPAIGN_NIGHT_COUNT; ++night) {
+        const int best = settings.campaignBestSeconds.at(static_cast<std::size_t>(night - 1));
+        if (best != NO_BEST_TIME) {
+            text += settingLine(campaignBestSetting(night), std::to_string(best));
+        }
+    }
     // The keys, by their names: one line per action, in the order of the settings screen.
     for (const KeyActionInfo& info : keyActions()) {
         text += settingLine(info.settingName, boundKeyName(settings.keys, info.action));
     }
     return text;
+}
+
+std::string campaignBestSetting(int night) {
+    return std::string(CAMPAIGN_BEST_SETTING_PREFIX) + std::to_string(night);
 }
 
 float mouseDegreesPerUnit(float sensitivity) {

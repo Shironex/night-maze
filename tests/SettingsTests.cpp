@@ -5,7 +5,9 @@
 
 #include <doctest/doctest.h>
 
+#include <array>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -209,6 +211,7 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "story_line = 0\n"
           "calm_night = off\n"
           "intro_seen = off\n"
+          "campaign_night = 1\n");
           "key_forward = W\n"
           "key_back = S\n"
           "key_left = A\n"
@@ -530,4 +533,123 @@ TEST_CASE("the window size steps through the choices and stops at both ends") {
     const WindowSize other{.width = 800, .height = 600};
     CHECK(game::steppedWindowSize(choices, other, 1) == other);
     CHECK(game::steppedWindowSize({}, other, 1) == other);
+}
+
+TEST_CASE("a file of game 0.12, without the campaign lines, means no campaign yet") {
+    // The file exactly as game 0.12.0 wrote it.
+    const std::string old = "# Night Maze settings. One \"name = value\" per line, a line that "
+                            "starts with # is a comment.\n"
+                            "mouse_sensitivity = 7.3\n"
+                            "field_of_view = 82\n"
+                            "fullscreen = on\n"
+                            "window_size = 1600x900\n"
+                            "difficulty = hard\n"
+                            "master_volume = 42\n"
+                            "story_line = 5\n"
+                            "calm_night = on\n"
+                            "intro_seen = on\n";
+    const GameSettings settings = game::parseSettings(old);
+    CHECK(settings.campaignNight == 1);
+    CHECK(settings.campaignSeed == game::NO_CAMPAIGN_SEED);
+    for (const int best : settings.campaignBestSeconds) {
+        CHECK(best == game::NO_BEST_TIME);
+    }
+    CHECK(game::campaignStage(settings.campaignNight) == game::CampaignStage::NotStarted);
+
+    // Everything the file did say is still there.
+    CHECK(settings.mouseSensitivity == doctest::Approx(7.3F));
+    CHECK(settings.difficulty == game::Difficulty::Hard);
+    CHECK(settings.masterVolume == 42.0F);
+    CHECK(settings.nextStoryLine == 5);
+    CHECK(settings.calmNight);
+    CHECK(settings.introSeen);
+
+    // Written again, it is the old file with one more line: the seed and the best times
+    // have no line before they exist.
+    CHECK(game::formatSettings(settings) == old + "campaign_night = 1\n");
+}
+
+TEST_CASE("the campaign is written and read back: night, seed and best times") {
+    GameSettings settings;
+    settings.campaignNight = 3;
+    settings.campaignSeed = 482113;
+    settings.campaignBestSeconds = {95, 204, 0, 0, 0};
+    const std::string text = game::formatSettings(settings);
+    CHECK(text.ends_with("campaign_night = 3\n"
+                         "campaign_seed = 482113\n"
+                         "campaign_best_1 = 95\n"
+                         "campaign_best_2 = 204\n"));
+    CHECK(game::parseSettings(text) == settings);
+
+    // A finished campaign, with the largest seed a seed can be.
+    settings.campaignNight = game::CAMPAIGN_FINISHED;
+    settings.campaignSeed = 4294967295U;
+    settings.campaignBestSeconds = {95, 204, 388, 512, 5999};
+    CHECK(game::parseSettings(game::formatSettings(settings)) == settings);
+    CHECK(game::campaignBestSetting(5) == "campaign_best_5");
+}
+
+TEST_CASE("broken campaign lines fall back to something that can be played") {
+    // A night outside the campaign is brought to its nearest end.
+    CHECK(game::parseSettings("campaign_night = 0\n").campaignNight == 1);
+    CHECK(game::parseSettings("campaign_night = 99\n").campaignNight == game::CAMPAIGN_FINISHED);
+    CHECK(game::parseSettings("campaign_night = 999999999999\n").campaignNight ==
+          game::CAMPAIGN_FINISHED);
+    CHECK(game::parseSettings("campaign_night = 2.6\n").campaignNight == 3);
+    // A line that is no number at all is skipped: no campaign yet.
+    for (const std::string_view value : {"-2", "three", "", "2 nights"}) {
+        GameSettings settings;
+        CHECK_FALSE(game::applySetting(settings, "campaign_night", value));
+        CHECK(settings.campaignNight == 1);
+    }
+
+    // A seed is digits only, and not more than a seed can be.
+    for (const std::string_view value : {"-1", "12.5", "4294967296", "abc", ""}) {
+        GameSettings settings;
+        CHECK_FALSE(game::applySetting(settings, "campaign_seed", value));
+        CHECK(settings.campaignSeed == game::NO_CAMPAIGN_SEED);
+    }
+
+    // A best time: a whole number of seconds, at most 99:59, and only for nights 1 to 5.
+    GameSettings settings;
+    CHECK(game::applySetting(settings, "campaign_best_1", "95.4"));
+    CHECK(settings.campaignBestSeconds[0] == 95);
+    CHECK(game::applySetting(settings, "campaign_best_5", "999999"));
+    CHECK(settings.campaignBestSeconds[4] == game::MAX_BEST_SECONDS);
+    CHECK_FALSE(game::applySetting(settings, "campaign_best_2", "fast"));
+    CHECK_FALSE(game::applySetting(settings, "campaign_best_0", "10"));
+    CHECK_FALSE(game::applySetting(settings, "campaign_best_6", "10"));
+    CHECK_FALSE(game::applySetting(settings, "campaign_best_12", "10"));
+    CHECK_FALSE(game::applySetting(settings, "campaign_best_", "10"));
+    CHECK(settings.campaignBestSeconds[1] == game::NO_BEST_TIME);
+}
+
+TEST_CASE("a night that is not won has no best time, whatever the file says") {
+    // The third night is next: a time for it or for a later night cannot be real.
+    const GameSettings settings = game::parseSettings("campaign_best_1 = 95\n"
+                                                      "campaign_best_3 = 10\n"
+                                                      "campaign_best_5 = 10\n"
+                                                      "campaign_night = 3\n"
+                                                      "campaign_best_2 = 204\n");
+    CHECK(settings.campaignNight == 3);
+    CHECK(settings.campaignBestSeconds ==
+          std::array<int, game::CAMPAIGN_NIGHT_COUNT>{95, 204, 0, 0, 0});
+
+    // No campaign line at all: no night is won, so no time counts.
+    const GameSettings none = game::parseSettings("campaign_best_1 = 95\n");
+    CHECK(none.campaignBestSeconds[0] == game::NO_BEST_TIME);
+}
+
+TEST_CASE("progress without a seed still loads, and the nights that were won stay won") {
+    // The seed line is lost. The game draws a seed when the next night is started.
+    const GameSettings noSeed = game::parseSettings("campaign_night = 4\n"
+                                                    "campaign_seed = oops\n"
+                                                    "campaign_best_1 = 95\n");
+    CHECK(noSeed.campaignNight == 4);
+    CHECK(noSeed.campaignSeed == game::NO_CAMPAIGN_SEED);
+    CHECK(noSeed.campaignBestSeconds ==
+          std::array<int, game::CAMPAIGN_NIGHT_COUNT>{95, 0, 0, 0, 0});
+    CHECK(game::nightStatus(noSeed.campaignNight, 2) == game::NightStatus::Finished);
+    // And it is written back in a form that reads the same.
+    CHECK(game::parseSettings(game::formatSettings(noSeed)) == noSeed);
 }

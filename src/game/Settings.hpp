@@ -2,10 +2,12 @@
 // they are kept in.
 #pragma once
 
+#include "game/Campaign.hpp"
 #include "game/Difficulty.hpp"
 #include "game/KeyBindings.hpp"
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -118,6 +120,21 @@ struct GameSettings {
     /// chosen has no such lines, so the game keeps the keys it always had.
     KeyBindings keys = defaultKeyBindings();
 
+    /// The campaign (game/Campaign.hpp): the next night to play, from 1 to
+    /// CAMPAIGN_NIGHT_COUNT, and CAMPAIGN_FINISHED once the last night is won. It moves
+    /// on only when a night is won. Like the story line it is not edited on the settings
+    /// screen, but it is part of the file.
+    int campaignNight = 1;
+
+    /// The seed of the campaign: the seeds of its five mazes follow from it
+    /// (game::campaignNightSeed), so every night keeps its maze. NO_CAMPAIGN_SEED until
+    /// a campaign is started: the first night that is started draws it.
+    std::uint32_t campaignSeed = NO_CAMPAIGN_SEED;
+
+    /// The best time of every night, in whole seconds: entry 0 is night 1. NO_BEST_TIME
+    /// until the night is won.
+    std::array<int, CAMPAIGN_NIGHT_COUNT> campaignBestSeconds{};
+
     bool operator==(const GameSettings& other) const = default;
 };
 
@@ -141,6 +158,15 @@ constexpr std::string_view INTRO_SEEN_SETTING = "intro_seen";
 /// so on, one per action (game::keyActions).
 constexpr std::string_view KEY_SETTING_PREFIX = "key_";
 
+constexpr std::string_view CAMPAIGN_NIGHT_SETTING = "campaign_night";
+constexpr std::string_view CAMPAIGN_SEED_SETTING = "campaign_seed";
+/// The best time of a night: this name with the number of the night after it,
+/// "campaign_best_1" to "campaign_best_5".
+constexpr std::string_view CAMPAIGN_BEST_SETTING_PREFIX = "campaign_best_";
+
+/// The name of the best time of a night in the file: "campaign_best_3".
+std::string campaignBestSetting(int night);
+
 /// Sets one setting from text, the way the file and the controls of the settings screen
 /// write it:
 ///
@@ -156,6 +182,11 @@ constexpr std::string_view KEY_SETTING_PREFIX = "key_";
 ///                         line is wrapped round to the start of the table)
 ///     calm_night          "on" or "off"
 ///     intro_seen          "on" or "off"
+///     campaign_night      a whole number from 1 to 6, "3": the next night of the
+///                         campaign, 6 when it is finished
+///     campaign_seed       a seed, digits only, "482113" (game::parseSeed)
+///     campaign_best_1 to campaign_best_5   the best time of a night in whole seconds,
+///                         "95"
 ///     key_forward, key_back, key_left, key_right, key_sprint, key_use, key_flashlight,
 ///     key_map, key_restart
 ///                         the name of a key, "W" or "Left Shift" (game::keyName). A key
@@ -180,12 +211,18 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
 /// story_line at all, wherever the two lines stand: a file of the version before is
 /// carried over once, and after that the new name is the only one that counts.
 ///
+/// The campaign is tidied up after the last line: a best time of a night that is not
+/// won yet (a file edited by hand) is dropped, so it cannot become the time to beat.
+/// A file written before the campaign existed has none of its lines and loads as "no
+/// campaign yet": the first night is next, no seed, no best time.
+///
 /// The text may come from any editor: a byte order mark at its start and the \r of
 /// Windows line ends are ignored.
 GameSettings parseSettings(std::string_view text);
 
 /// The text of a settings file with these settings: a comment line and one line per
-/// setting. parseSettings of the result gives the same settings back (the mouse
+/// setting. The seed of the campaign and the best time of a night have a line only once
+/// they exist. parseSettings of the result gives the same settings back (the mouse
 /// sensitivity rounded to one decimal place, the field of view to whole degrees).
 /// Numbers are always written with a point, whatever the language of the system is.
 std::string formatSettings(const GameSettings& settings);
