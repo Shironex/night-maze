@@ -1,12 +1,13 @@
 // "Gameplay" category of the debug window: the state of the round, the battery, the
-// numbers of the rules, the shade, the minimap, the button that plays the intro again
-// and the campaign.
+// numbers of the rules, the lamp and the bell of the gate, the shade, the minimap, the
+// button that plays the intro again and the campaign.
 #include "debug/categories/GameplayCategory.hpp"
 
 #include "debug/DebugContext.hpp"
 #include "debug/Pictures.hpp"
 #include "debug/Widgets.hpp"
 #include "game/Campaign.hpp"
+#include "game/GateLamp.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/Player.hpp"
@@ -50,6 +51,14 @@ constexpr float MIN_PICKUP_RADIUS = 0.1F;
 constexpr float MAX_PICKUP_RADIUS = 2.0F;
 
 constexpr float PERCENT = 100.0F;
+
+// The lamp of the gate. Its glow: from none to twice the default (5), far into the
+// bloom. Its ember: any part of the full glow. The reach of its light in metres: from
+// nothing to five cells. The wait between two tolls of the bell, in seconds.
+constexpr float MAX_GATE_GLOW = 10.0F;
+constexpr float MAX_GATE_LIGHT_RADIUS = 10.0F;
+constexpr float MIN_GATE_BELL_SECONDS = 3.0F;
+constexpr float MAX_GATE_BELL_SECONDS = 30.0F;
 
 // The speed of the shade in metres per second: from standing still to faster than the
 // player sprints (5.5).
@@ -248,6 +257,37 @@ void drawRules(Page& page, const DebugContext& context) {
     page.endCard();
 }
 
+// The lamp and the bell of the gate (game::GateSettings), with how brightly the lamp
+// burns at this moment.
+void drawGate(Page& page, const DebugContext& context) {
+    const game::Round& round = context.round;
+    game::GateSettings& gate = context.gameplay.gate;
+    page.beginCard("Gate lamp and bell");
+
+    // The rule of the round. The menu camera shows the lamp fully lit whatever this is.
+    page.stat("Lamp strength", "%.2f of 1",
+              game::gateLampStrength(round.collectedCount, round.requiredCount, round.gateProgress,
+                                     gate));
+    page.slider("Lamp glow", &gate.glowStrength, 0.0F, MAX_GATE_GLOW, "%.1f",
+                "How strongly the glass of a fully lit lantern glows. The crystals glow at "
+                "4. Above the bloom threshold the lantern gets a halo.");
+    page.slider("Ember, no crystal", &gate.emberMin, 0.0F, 1.0F, "%.2f",
+                "The strength of the lamp while the gate is closed and no crystal is "
+                "collected, as a part of the full glow.");
+    page.slider("Ember, all needed", &gate.emberMax, 0.0F, 1.0F, "%.2f",
+                "The strength of the lamp while the gate is closed, at the moment the last "
+                "needed crystal is collected. From here it rises to 1 while the gate sinks.");
+    page.slider("Lamp light radius", &gate.lightRadius, 0.0F, MAX_GATE_LIGHT_RADIUS, "%.1f m",
+                "How far the light of the lamp reaches on the stone around the gate. It "
+                "passes through walls: point lights cast no shadows.");
+    page.slider("Bell interval", &gate.bellSeconds, MIN_GATE_BELL_SECONDS, MAX_GATE_BELL_SECONDS,
+                "%.0f s",
+                "The wait between two tolls of the bell once the gate is open. The next "
+                "toll already uses the new number.");
+
+    page.endCard();
+}
+
 // The shade: what it is doing, where it is, what it heard last, its burn clock and its
 // numbers (game::ShadeSettings).
 void drawShade(Page& page, const DebugContext& context) {
@@ -410,6 +450,7 @@ void drawGameplayCategory(Page& page, const DebugContext& context) {
     drawRound(page, context);
     drawBattery(page, context);
     drawRules(page, context);
+    drawGate(page, context);
     page.nextColumn();
     drawCampaign(page, context);
     drawShade(page, context);
