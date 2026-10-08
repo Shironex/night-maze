@@ -4,7 +4,7 @@
 
 <h1>Night Maze</h1>
 
-**A first person maze game in C++20 and OpenGL 4.1: a stone maze at night, one flashlight, crystals to find, and a shadow that walks when the light is off it.**
+**A first person maze game in C++20 and OpenGL 4.1: a stone maze at night, one flashlight, crystals to find, and a shadow that hunts by sound and is burned away by the light.**
 
 [![Latest release](https://img.shields.io/github/v/release/Shironex/night-maze?style=flat&color=ffb854)](https://github.com/Shironex/night-maze/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/Shironex/night-maze/ci.yml?branch=main&style=flat&label=ci)](https://github.com/Shironex/night-maze/actions/workflows/ci.yml)
@@ -25,11 +25,11 @@
 
 You stand in a stone maze at night with a flashlight. Crystals are scattered through the corridors. Collect enough of them and the gate at the far end sinks into the ground. Walk through it and the round is over.
 
-The battery of the flashlight runs down while the light is on, and every crystal charges it a little. You are not alone in the maze: a shadow walks towards you whenever your light is not on it. Shine at it and it stands still. If it reaches you it does not hurt you: it carries you back to the start, and the round begins again. So the lamp is worth saving, and switching it off has a price.
+The battery of the flashlight runs down while the light is on, and every crystal charges it a little. You are not alone in the maze: a shadow wanders through it. It hears you when you sprint, pull a lever, pick something up or even walk close by, and it comes to the place of the noise. If it sees you it runs at you. While your light is on it, it stands still, and a long enough beam burns it away for a while, at the price of battery. If it reaches you it does not hurt you: it carries you back to the start, and the round begins again. So being quiet and saving the lamp both pay.
 
 No clock runs against you. If you only want to walk the maze, the switch "Calm night" in the main menu takes the shadow out of it.
 
-The first time you start the game, a short intro tells where the crystals come from: five cards of text over pictures of the maze. Any key skips it.
+The story is told as a campaign of five nights, each in a bigger maze than the one before. When a campaign begins, a short intro tells where the crystals come from: five cards of text over pictures of the maze. Any key skips it. Free play, with a difficulty, a calm night and a seed of your choice, is still in the main menu.
 
 I write the game to learn how real time graphics work, so most of what is on the screen is written by hand on top of OpenGL: the lighting, the shadows, the fog, the glow. There is no game engine underneath.
 
@@ -95,19 +95,23 @@ Every picture is the game window as it is, at 1280 x 720. The corridor and the w
 | Feature | What it does |
 | --- | --- |
 | Mazes from a seed | Every maze is generated from a number. The same seed and difficulty always give the same maze, with the crystals, flasks, levers, notes and worn walls in the same places. The main menu offers a random seed, and you can type your own. |
-| Three difficulty levels | Easy, Normal and Hard change the size of the maze, the number of crystals and flasks, how many crystals the gate asks for and how long the battery lasts (table below). |
+| Three difficulty levels | In free play, Easy, Normal and Hard change the size of the maze, the number of crystals and flasks, how many crystals the gate asks for and how long the battery lasts (table below). |
 | Flashlight and battery | F switches the flashlight on and off. The battery only drains while the light is on, and each crystal gives back a quarter of it. Under 20 % the light flickers, the bar turns red and a slow pulse starts. At zero the light goes out until you find a crystal. |
 | Crystals and the gate | The gate opens by itself once you carry enough crystals: you never need all of them. The exit is the cell farthest from the start, counted in steps. Walking through the open gate ends the round with "Through the gate": your time, your crystals, the difficulty and the seed. |
-| The shadow | A dark hooded figure starts far from you in every maze and walks to you through the corridors at 4 m per second: faster than you walk (3), slower than you sprint (5.5). It stands still for the first 8 seconds of a round, for as long as the beam of your flashlight is on it (the light reaches 10 m and no wall may stand between), and for 2 more seconds after the light has left it. Looking at it with the lamp off does not stop it. A low hum warns you from 14 m of walking distance and comes faster the nearer it is. If it reaches you, it carries you back to the start and the round begins again: crystals back, battery full, and one line on the screen that says what happened. The map never shows it. |
-| Calm night | A switch in the main menu, kept with your settings. A calm night has no shadow, on every difficulty. The notes then leave out the lines about it, and the intro changes one line and leaves its corridor empty. |
-| Intro | On the first start the game opens with five cards of text, six seconds each, over pictures it takes live in one fixed maze, with wind and a far bell. Any key or mouse button skips it. It is shown once: the settings file remembers that you saw it. |
+| Campaign | Five nights from the main menu: First Frost, The Shepherds' Gates, Lamp's Back, What the Moon Misses and The Last Lamp, in mazes from 10 x 10 to 22 x 22 with a shorter battery each night. Each night has a title card, a line of the story when you win it, and the next one waits behind "Next night". "Nights" lists them with your best times, and a finished campaign ends with a card of four lines. The first night has no shadow. The numbers are not balanced by many players yet. |
+| The Lamplighter's Gate | The exit is a gatehouse with three lanterns, cold and blue while the gate is shut and warm when it opens. Once it is open a bell tolls every 6 seconds, louder the nearer you are. The map has a small tick that points to the open gate and a lantern in the exit cell. |
+| The shadow | A dark hooded figure starts far from you in every maze. It wanders slowly and it hears you: a sprint from 14 m, a lever from 10, a pickup from 8 and a walk from 6, measured along the corridors. It goes to the place of a noise, and when it sees you along a straight row or column of the maze (up to 12 m) it chases you at 4 m per second: faster than you walk (3), slower than you sprint (5.5). After 6 seconds without finding you it gives up and wanders again. It stands still for the first 8 seconds of a round and for as long as the beam of your flashlight is on it. Hold the beam on it for 2.5 seconds and it is burned away: it goes to a far cell for 20 seconds, and the battery drains three times as fast meanwhile. A low hum warns you from 14 m of walking distance, and it alerts with a cold sound when it notices you. If it reaches you, the screen fades out, you are back at the start and the round begins again: crystals back, battery full, and one line on the screen that says what happened. The map never shows it. |
+| Calm night | A switch in the free play menu, kept with your settings. A calm night has no shadow, on every difficulty. The notes then leave out the lines about it, and the intro changes one line and leaves its corridor empty. The campaign ignores the switch. |
+| Intro | When a campaign begins, the game plays five cards of text, six seconds each, over pictures it takes live in one fixed maze, with wind and a far bell, and then the title card of night 1 follows. Any key or mouse button skips it. The game itself opens with the main menu, and Continue and the list of nights never play the intro. |
 | Levers | A maze has up to two levers. Pull one with E and a wall somewhere else sinks into the ground, which opens a shortcut. |
 | Notes and a story | Six notes are chalked on the walls of every maze. Two point towards the gate, two towards the nearest crystal, and two carry a line of story. The story has 24 lines, read in order: when you finish a maze, the next one carries on where you stopped, also after you close the game. Eight of the lines are about the shadow. A calm night skips them, which leaves 16. |
 | Stamina and tea | Sprinting empties a thin bar in about six seconds. Run it empty and you are winded: no sprint until the bar is half full again. A flask of tea fills the bar and makes sprinting free for 20 seconds. A maze has one, two or three flasks, and each lies in a dead end, the dead ends far from the start first. |
 | The map | Hold M and the map opens in the middle of the screen. It shows only the corridors you have already seen. While you hold it you stand still and cannot look around, and the battery keeps draining. |
 | Worn walls | Some walls are cracked, mossy or have stones missing. Which ones is decided by the seed. The walls near the start are whole. |
-| Sound | Thirteen sounds: the flashlight switch (on, off, empty), the low battery pulse, a crystal, a flask, a lever, the gate, the breathing of a winded player, the hum of the shadow, two soft notes when it has caught you, and the wind and the bell of the intro. One volume slider. There is no music yet. |
-| Menus and settings | A main menu over a video loop recorded from the game, with the difficulty, the calm night switch and the seed, a pause menu, the round end screen and a settings screen: mouse sensitivity, field of view, volume, fullscreen and window size. The settings are kept in a text file. |
+| Sound | Twenty-two sounds: the flashlight switch (on, off, empty), the low battery pulse, a crystal, a flask, a lever, the gate and the bell of the gate, your steps, the breathing of a winded player, the wind of the maze, the hum, the steps, the alert and the burning away of the shadow, two soft notes when it has caught you, and the wind and the bell of the intro. Three sliders: the main volume, the effects and the ambient sound (the wind). There is no music yet. |
+| HUD | Instruments in the corners: a ring for the lamp, the crystals against the number the gate needs, the time, a stamina line, three ticks that show how loud you are (in a maze with a shadow), short sentences for the tea, the open gate and an empty battery, the name of the night, and a prompt that names the key. It grows with the size of the window. |
+| Keys | The Controls part of the settings screen lets you pick a key for each of the nine actions. A key that is already in use swaps with the one you choose. The prompts in the game name your keys. |
+| Menus and settings | A main menu over a video loop recorded from the game, with the campaign, the list of nights, free play (difficulty, calm night and seed), a pause menu, the round end screen and a settings screen: mouse sensitivity, field of view, volumes, fullscreen, window size and keys. The settings are kept in a text file. |
 
 | Level | Maze | Crystals | Gate opens at | Flasks of tea | Battery |
 | --- | --- | --- | --- | --- | --- |
@@ -118,6 +122,8 @@ Every picture is the game window as it is, at 1280 x 720. The corridor and the w
 [CHANGELOG.md](CHANGELOG.md) has the details for every version.
 
 ## Controls
+
+These are the keys at the start. You can change them in the settings.
 
 | Key | Action |
 | --- | --- |
