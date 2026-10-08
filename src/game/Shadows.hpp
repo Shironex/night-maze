@@ -127,10 +127,10 @@ constexpr float FLASHLIGHT_SHADOW_SLOPE_BIAS = 0.13F;
 ShadowSettings flashlightShadowDefaults();
 
 /// The box that holds everything that can cast a shadow of the moon: the whole land of
-/// the terrain, from its lowest ground up to PILLAR_HEIGHT above its highest ground. The
-/// walls, the pillars, the gate and the crystals all stand on the ground and are no
-/// higher than a pillar, so they are inside. The moon fits its shadow map to this box
-/// (scene::directionalLightSpace).
+/// the terrain, from its lowest ground up to GATE_HOUSE_HEIGHT above its highest ground.
+/// The walls, the pillars, the gate with its gatehouse and the crystals all stand on the
+/// ground and are no higher than the gatehouse, so they are inside. The moon fits its shadow map to
+/// this box (scene::directionalLightSpace).
 scene::Aabb shadowCasterBounds(const Terrain& terrain);
 
 /// The bias of a surface in metres:

@@ -27,12 +27,12 @@ ShadowSettings flashlightShadowDefaults() {
 }
 
 scene::Aabb shadowCasterBounds(const Terrain& terrain) {
-    // The pillars are the tallest things that stand on the ground. One of them on the
-    // highest point of the land is higher than anything really is: the maze lies in
+    // The gatehouse of the exit is the tallest thing that stands on the ground. One on
+    // the highest point of the land is higher than anything really is: the maze lies in
     // the low middle. That costs a little depth range and keeps the rule simple.
     return {
         .min = {terrain.minX(), terrain.minHeight(), terrain.minZ()},
-        .max = {terrain.maxX(), terrain.maxHeight() + PILLAR_HEIGHT, terrain.maxZ()},
+        .max = {terrain.maxX(), terrain.maxHeight() + GATE_HOUSE_HEIGHT, terrain.maxZ()},
     };
 }
 
