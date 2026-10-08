@@ -22,6 +22,7 @@
 #include <filesystem>
 #include <random>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -342,6 +343,50 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     uploadGround();
     beginRound();
     m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
+
+    // The switches for captures change the first round only: beginRound above is the
+    // normal start, and R and "Play again" call it again, so they go back to it.
+    if (options.collectAll) {
+        // The crystals are picked up by the rules of the round: one step of no length
+        // with the player standing in each of them, which also opens the gate. The step
+        // would also discover the cells around the crystals and pick up the flasks near
+        // them, which the player has not earned, so those two are put back as they were.
+        const Discovery discoveredBefore = m_round.discovery;
+        const std::vector<RoundFlask> flasksBefore = m_round.flasks;
+        const int flasksCollectedBefore = m_round.flasksCollected;
+        for (const RoundCrystal& crystal : m_round.crystals) {
+            const glm::vec3 feet =
+                crystal.restPosition - glm::vec3(0.0F, PLAYER_REACH_HEIGHT, 0.0F);
+            updateRound(m_round, m_mazeWorld, m_gameplay, feet, m_lighting.flashlightOn, 0.0F);
+        }
+        m_round.discovery = discoveredBefore;
+        m_round.flasks = flasksBefore;
+        m_round.flasksCollected = flasksCollectedBefore;
+    }
+    if (options.startCell) {
+        // The maze is known only now, so this is where a cell that is not in it is
+        // refused: main prints the message and ends the program.
+        const MazeCell cell = *options.startCell;
+        if (!m_mazeWorld.maze.contains(cell.x, cell.z)) {
+            throw std::invalid_argument(
+                "The switch --start-cell does not accept " + std::to_string(cell.x) + "," +
+                std::to_string(cell.z) + ": the maze has " +
+                std::to_string(m_mazeWorld.maze.width()) + " columns and " +
+                std::to_string(m_mazeWorld.maze.height()) + " rows, counted from 0");
+        }
+        // The middle of the cell, feet on the ground there, like beginRound does it for
+        // the start cell.
+        m_player.position = cellCenter(cell.x, cell.z);
+        m_player.position.y =
+            m_mazeWorld.terrain.heightAt(m_player.position.x, m_player.position.z);
+        m_previousPlayerPosition = m_player.position;
+        m_camera.position = m_player.eyePosition();
+        // What the player sees from the new place is on the minimap from the first frame.
+        discoverAround(m_round.discovery, roundMaze(m_mazeWorld, m_round), m_player.position);
+    }
+    if (options.startYawDegrees) {
+        m_camera.yawDegrees = *options.startYawDegrees;
+    }
 
     // What the settings file says about the mouse, the camera, the window and the
     // loudness of the sound.
