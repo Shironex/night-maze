@@ -84,7 +84,7 @@ def camera(name, seed, shot, at):
     # A picture of the menu camera: the game shows itself, without HUD and without menu.
     # The picture is taken LEAD_IN_SECONDS after the start, so the shot starts that much
     # earlier than the moment that is wanted.
-    return Run(name, ["--menu-camera", "--seed", str(seed), "--menu-shot", shot,
+    return Run(name, ["--menu-camera", "--calm", "--seed", str(seed), "--menu-shot", shot,
                       "--menu-time", str(at - LEAD_IN_SECONDS)],
                steps=[("grab", name)])
 
@@ -100,23 +100,30 @@ def camera(name, seed, shot, at):
 #
 # Seed 98, easy: the start cell looks east down a corridor of four cells with a lever on
 # the north wall of the last one. The lever opens the wall at the end of that corridor.
+#
+# Every run that plays a round has the switch --calm: the maze then has no shade, so no
+# picture has a catch in the middle of its walk. The one picture OF the shade is the run
+# "shade", which leaves the switch out.
 RUNS = [
-    # The main menu over its video, then the settings screen: Tab six times goes from
-    # "Play" over the difficulty buttons and the seed to "Settings".
+    # The main menu over its video, then the settings screen: Tab seven times goes from
+    # "Play" over the difficulty buttons, the calm night switch and the seed to
+    # "Settings". The menu shows the switch of the settings file, so this run is the one
+    # without --calm: it starts no round.
     Run("menu", ["--seed", "76"], {"difficulty": "normal", "master_volume": 100}, [
         ("wait", 2.0), ("pointer_out",), ("grab", "menu"),
         ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"),
-        ("tap", "TAB"), ("tap", "ENTER"), ("wait", 1.0), ("pointer_out",),
+        ("tap", "TAB"), ("tap", "TAB"), ("tap", "ENTER"), ("wait", 1.0), ("pointer_out",),
         ("grab", "settings")]),
-    # A corridor in the beam, a crystal glowing at its end and a flask on the ground.
-    camera("corridor", 1, "walk", 287.5),
-    # A cracked wall in the beam behind a crystal.
-    camera("cracked-wall", 1, "walk", 383.5),
+    # A corridor with a crystal glowing in front of the lit wall at its end.
+    camera("corridor", 1, "walk", 75.0),
+    # A crystal in a corner of worn walls: stones missing on the left, moss in the
+    # middle, cracks on the right.
+    camera("worn-walls", 1, "walk", 91.0),
     # High over the maze.
     camera("glide", 1, "glide", 35.0),
     # A round: the note is read from one cell away, then the flask is picked up and the
     # tea pays for a sprint through six corridors, and the map shows what was seen.
-    Run("round", ["--play", "--seed", "76"], {"next_story_line": 13}, [
+    Run("round", ["--play", "--calm", "--seed", "76"], {"story_line": 21}, [
         ("hold", "W", 0.667), ("turn", 24.2, 0), ("wait", 0.4),
         ("tap", "E"), ("wait", 0.4), ("grab", "note"), ("tap", "E"), ("turn", -24.2, 0),
         ("hold", "W", 1.5), ("turn", -90, 0), ("hold", "W+SHIFT", 0.7),
@@ -127,7 +134,7 @@ RUNS = [
         ("down", "M"), ("wait", 0.6), ("grab", "map"), ("up", "M")]),
     # A sprint until the stamina is gone, a few steps back, a look at the lever and a pull:
     # the picture is taken while the wall it opens is sinking.
-    Run("lever", ["--play", "--seed", "98"], {}, [
+    Run("lever", ["--play", "--calm", "--seed", "98"], {}, [
         ("hold", "W+SHIFT", 6.4), ("hold", "S", 0.8), ("turn", -25.9, -13.6),
         ("wait", 0.2), ("tap", "E"), ("wait", 0.7), ("grab", "lever")]),
     # The places below are reached with the start switches (--start-cell, --start-yaw and
@@ -136,23 +143,38 @@ RUNS = [
     # open side to the north, towards the cell (9, 5). The maze of a seed is printed
     # by building it (game::buildMazeWorld) and looking at its cells.
     # A flask at the end of a dead end corridor, four metres ahead, in the beam.
-    Run("flask", ["--play", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"], {}, [
-        ("wait", 0.5), ("grab", "flask")]),
+    Run("flask", ["--play", "--calm", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"],
+        {}, [("wait", 0.5), ("grab", "flask")]),
     # The gate across the last corridor, closed, with no crystal collected.
-    Run("gate-closed", ["--play", "--seed", "76", "--start-cell", "9,4", "--start-yaw", "180"],
-        {}, [("wait", 0.5), ("grab", "gate-closed")]),
+    Run("gate-closed", ["--play", "--calm", "--seed", "76", "--start-cell", "9,4",
+                        "--start-yaw", "180"], {}, [("wait", 0.5), ("grab", "gate-closed")]),
     # The same place with every crystal collected: the gate has sunk into the ground.
-    Run("gate-open", ["--play", "--seed", "76", "--start-cell", "9,4", "--start-yaw", "180",
-                      "--collect-all"], {}, [("wait", 0.5), ("grab", "gate-open")]),
+    Run("gate-open", ["--play", "--calm", "--seed", "76", "--start-cell", "9,4",
+                      "--start-yaw", "180", "--collect-all"], {}, [
+        ("wait", 0.5), ("grab", "gate-open")]),
     # Every crystal collected, a few seconds of waiting so that the time of the round is
     # not 0:00, and a walk through the open gate (4 m at 3 m per second) into the exit:
     # the card "Through the gate" is on the screen.
-    Run("round-end", ["--play", "--seed", "76", "--start-cell", "9,4", "--start-yaw", "180",
-                      "--collect-all"], {}, [
+    Run("round-end", ["--play", "--calm", "--seed", "76", "--start-cell", "9,4",
+                      "--start-yaw", "180", "--collect-all"], {}, [
         ("wait", 5.0), ("hold", "W", 2.0), ("wait", 1.0), ("grab", "round-end")]),
+    # The shade, in the one run without --calm. Seed 6, easy: the shade starts in the
+    # cell (1, 9), at the west end of a corridor of seven cells along the last row. The
+    # player starts three cells east of it and looks west, so the beam is on it. It
+    # stands still for the first eight seconds of a round anyway (its grace time), and
+    # for as long as the light is on it after that.
+    Run("shade", ["--play", "--seed", "6", "--start-cell", "4,9", "--start-yaw", "270"], {}, [
+        ("wait", 0.5), ("grab", "shade")]),
+    # The third card of the intro, 3.5 seconds after the cut to it: its text stands, and
+    # the crystal at the end of the corridor is in view. --intro plays the intro whatever
+    # the settings file says. The intro counts real time from the first frame, about
+    # a second after the start of the game, so the moment is hit within half a second,
+    # and the text stands for four seconds.
+    Run("intro", ["--intro"], {}, [("wait", 13.5), ("grab", "intro")]),
     # The tea at work: the flask is picked up by walking into the dead end, and the bar
     # of the tea is on the HUD. The player turns round to look back down the corridor.
-    Run("tea", ["--play", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"], {}, [
+    Run("tea", ["--play", "--calm", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"],
+        {}, [
         ("hold", "W", 1.5), ("turn", 180, 0), ("wait", 0.5), ("grab", "tea")]),
 ]
 
@@ -272,7 +294,7 @@ class Game:
         os.makedirs(WORK, exist_ok=True)
         settings = {"fullscreen": "off", "window_size": f"{WIDTH}x{HEIGHT}",
                     "difficulty": "easy", "mouse_sensitivity": MOUSE_SENSITIVITY,
-                    "master_volume": 0, "next_story_line": 0} | self.run.settings
+                    "master_volume": 0, "story_line": 0} | self.run.settings
         with open(os.path.join(WORK, SETTINGS_FILE_NAME), "w", encoding="utf-8") as file:
             for name, value in settings.items():
                 file.write(f"{name} = {value}\n")

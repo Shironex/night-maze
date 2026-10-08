@@ -32,7 +32,9 @@ export default defineConfig({
   // The raw pictures are the game window as it is, 1280 x 720, one pixel per pixel.
   deviceScaleFactor: 1,
   langs: ['en'],
-  // One entry per picture that tools/capture_showcase.py writes, in the order of the README.
+  // One entry per picture of the README, in its order, as tools/capture_showcase.py writes it.
+  // The script takes a few more (the flask, the open gate, the tea, the view from above,
+  // the settings): they stay in showcase-out/raw/ and are not framed.
   shots: [
     {
       id: 'menu',
@@ -40,14 +42,29 @@ export default defineConfig({
       caption: 'The main menu, over a video loop recorded from the game.',
     },
     {
-      id: 'corridor',
-      title: 'A corridor',
-      caption: 'A crystal glows at the end of a corridor, and a flask of tea lies on the way.',
+      id: 'shade',
+      title: 'The shadow',
+      caption: 'The shadow at the end of a corridor. It stands still while the light is on it.',
     },
     {
-      id: 'cracked-wall',
-      title: 'A cracked wall',
-      caption: 'A cracked wall behind a crystal. The seed decides which walls are worn.',
+      id: 'intro',
+      title: 'The intro',
+      caption: 'The third of the five cards of the intro, over a walk through the maze.',
+    },
+    {
+      id: 'corridor',
+      title: 'A corridor',
+      caption: 'A crystal glows in front of the wall at the end of a corridor.',
+    },
+    {
+      id: 'gate-closed',
+      title: 'The gate',
+      caption: 'The gate, still closed, with a crystal in front of it.',
+    },
+    {
+      id: 'worn-walls',
+      title: 'Worn walls',
+      caption: 'Stones missing, moss and cracks. The seed decides which walls are worn.',
     },
     {
       id: 'note',
@@ -62,17 +79,12 @@ export default defineConfig({
     {
       id: 'map',
       title: 'The map',
-      caption: 'The map while M is held: the corridors seen so far, two levers and a note.',
+      caption: 'The map while M is held: the corridors seen so far, a lever and a note.',
     },
     {
-      id: 'glide',
-      title: 'From above',
-      caption: 'The maze from above, the way the camera behind the menu sees it.',
-    },
-    {
-      id: 'settings',
-      title: 'Settings',
-      caption: 'Settings: mouse sensitivity, field of view, volume, fullscreen and window size.',
+      id: 'round-end',
+      title: 'Through the gate',
+      caption: 'The end of a round: the time, the crystals, the difficulty and the seed.',
     },
   ],
   frame: {
@@ -89,7 +101,7 @@ export default defineConfig({
     layout: 'stack',
     // The line under the title of the main menu.
     tagline: 'The moon sees every corridor. You see one.',
-    shots: ['menu', 'corridor', 'cracked-wall'],
+    shots: ['menu', 'corridor', 'shade'],
     background: BACKGROUND,
     theme: 'dark',
     output: 'docs/showcase/hero.webp',
