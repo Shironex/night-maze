@@ -1341,3 +1341,35 @@ TEST_CASE("a maze with fewer free cells than notes counts the story notes it rea
     CHECK(game::storyNoteCount(placed) == 0);
     CHECK(game::advanceStoryLine(6, game::storyNoteCount(placed)) == 6);
 }
+
+TEST_CASE("golden notes: the notes of twenty seeds on every difficulty add up to one number") {
+    // One number for every note of sixty mazes, each with and without the lines about the
+    // shadow: the cell, the side, the kind and the line of each note go into it. It was
+    // written down from game 0.12.0. A change in how the notes are placed or how their
+    // kinds and lines are chosen changes it, so free play shows the same notes for the
+    // same seed as long as this test passes.
+    constexpr std::uint32_t SEED_COUNT = 20;
+    constexpr std::uint32_t MULTIPLIER = 16777619U;
+    std::uint32_t sum = 2166136261U;
+    const auto add = [&sum](int number) {
+        sum = (sum ^ static_cast<std::uint32_t>(number)) * MULTIPLIER;
+    };
+    for (const game::Difficulty difficulty : game::ALL_DIFFICULTIES) {
+        const game::DifficultyLevel& level = game::difficultyLevel(difficulty);
+        for (std::uint32_t seed = 1; seed <= SEED_COUNT; ++seed) {
+            const TestMaze test = testMaze(level.mazeWidth, level.mazeHeight, seed);
+            for (const bool shadeLines : {true, false}) {
+                const game::InteractableSettings settings{.firstStoryLine = static_cast<int>(seed),
+                                                          .shadeLines = shadeLines};
+                for (const game::Note& note : placeIn(test, seed, settings).notes) {
+                    add(note.mount.cell.x);
+                    add(note.mount.cell.z);
+                    add(static_cast<int>(note.mount.side));
+                    add(static_cast<int>(note.kind));
+                    add(note.kind == game::NoteKind::Flavour ? note.flavourIndex : 0);
+                }
+            }
+        }
+    }
+    CHECK(sum == 1092795213U);
+}
