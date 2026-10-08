@@ -130,6 +130,30 @@ RUNS = [
     Run("lever", ["--play", "--seed", "98"], {}, [
         ("hold", "W+SHIFT", 6.4), ("hold", "S", 0.8), ("turn", -25.9, -13.6),
         ("wait", 0.2), ("tap", "E"), ("wait", 0.7), ("grab", "lever")]),
+    # The places below are reached with the start switches (--start-cell, --start-yaw and
+    # --collect-all), so nothing has to be walked. Seed 76, easy: the flask lies in the
+    # dead end (6, 6), open to the south. The exit is (9, 6), and its gate stands in the
+    # open side to the north, towards the cell (9, 5). The maze of a seed is printed
+    # by building it (game::buildMazeWorld) and looking at its cells.
+    # A flask at the end of a dead end corridor, four metres ahead, in the beam.
+    Run("flask", ["--play", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"], {}, [
+        ("wait", 0.5), ("grab", "flask")]),
+    # The gate across the last corridor, closed, with no crystal collected.
+    Run("gate-closed", ["--play", "--seed", "76", "--start-cell", "9,4", "--start-yaw", "180"],
+        {}, [("wait", 0.5), ("grab", "gate-closed")]),
+    # The same place with every crystal collected: the gate has sunk into the ground.
+    Run("gate-open", ["--play", "--seed", "76", "--start-cell", "9,4", "--start-yaw", "180",
+                      "--collect-all"], {}, [("wait", 0.5), ("grab", "gate-open")]),
+    # Every crystal collected, a few seconds of waiting so that the time of the round is
+    # not 0:00, and a walk through the open gate (4 m at 3 m per second) into the exit:
+    # the card "Through the gate" is on the screen.
+    Run("round-end", ["--play", "--seed", "76", "--start-cell", "9,4", "--start-yaw", "180",
+                      "--collect-all"], {}, [
+        ("wait", 5.0), ("hold", "W", 2.0), ("wait", 1.0), ("grab", "round-end")]),
+    # The tea at work: the flask is picked up by walking into the dead end, and the bar
+    # of the tea is on the HUD. The player turns round to look back down the corridor.
+    Run("tea", ["--play", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"], {}, [
+        ("hold", "W", 1.5), ("turn", 180, 0), ("wait", 0.5), ("grab", "tea")]),
 ]
 
 # ---- keys and mouse (Windows only) --------------------------------------------------------
@@ -270,6 +294,8 @@ class Game:
 
         left, top = self.place()
         put_on_top(window, left, top)
+        if "--play" in self.run.switches:
+            bring_to_front(window)
         time.sleep(max(0.0, LEAD_IN_SECONDS - (time.monotonic() - started)))
         width, height = client_size(window)
         if width != WIDTH or height != HEIGHT:
@@ -298,6 +324,22 @@ class Game:
         if "--play" in self.run.switches:
             user32.SetCursorPos(self.pointer.x, self.pointer.y)
         return False
+
+
+def bring_to_front(window):
+    # A game that a script starts is not always the active window: Windows keeps another
+    # program's window in front when the person is working in it. A round pauses when
+    # its window is not the active one, so the window is asked for the front: the thread
+    # of the window in front lends its right to do that. No key and no click is sent.
+    if user32.GetForegroundWindow() == window:
+        return
+    front_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
+    own_thread = ctypes.windll.kernel32.GetCurrentThreadId()
+    user32.AttachThreadInput(own_thread, front_thread, True)
+    user32.BringWindowToTop(window)
+    user32.SetForegroundWindow(window)
+    user32.AttachThreadInput(own_thread, front_thread, False)
+    time.sleep(0.3)
 
 
 def screen_corners():
