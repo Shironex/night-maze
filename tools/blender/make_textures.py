@@ -1,8 +1,8 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
 # gate_wood.png, crystal.png, lever_iron.png, lever_brass.png, note_paper.png,
-# flask.png and shade.png, and one normal map for each of them (the same name with
-# _normal). All twenty-four are 512 x 512 pixels, 8 bits per channel, RGB.
+# flask.png, shade.png and lantern.png, and one normal map for each of them (the same
+# name with _normal). All twenty-six are 512 x 512 pixels, 8 bits per channel, RGB.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_textures.py
@@ -12,10 +12,11 @@
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
 # and the distances between the cells of the crystal and to the stones of the ground are
 # measured across the edges.
-# The exceptions are note_paper.png, flask.png and shade.png: the model of the note shows
-# the whole picture exactly once, so its ink lines do not have to continue across the edges,
-# and the pictures of the flask and of the shade go once around their models, so only their
-# left and right edges meet.
+# The exceptions are note_paper.png, flask.png, shade.png and lantern.png: the model of
+# the note shows the whole picture exactly once, so its ink lines do not have to continue
+# across the edges, the pictures of the flask and of the shade go once around their models,
+# so only their left and right edges meet, and the lantern only uses a small piece from
+# the middle of each half of its picture.
 # Their noise still wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
@@ -64,6 +65,8 @@ WALL_MOSSY_SEED = 89
 WALL_DAMAGED_SEED = 97
 FLASK_SEED = 101
 SHADE_SEED = 103
+LANTERN_IRON_SEED = 107
+LANTERN_GLASS_SEED = 109
 
 # The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
 # the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
@@ -1305,6 +1308,9 @@ def build():
     # The two pictures of the shade, in a function of their own for the same reason.
     build_shade_textures()
 
+    # The two pictures of the lantern of the exit gate, in a function of their own too.
+    build_lantern_textures()
+
 
 def build_interactable_textures():
     """Writes the textures of the things the player uses: the lever, the note, the flask.
@@ -1422,6 +1428,41 @@ def build_shade_textures():
 
     save_png(np.clip(color, 0.0, 1.0), "shade.png")
     save_png(normal_map(height), "shade_normal.png")
+
+
+def build_lantern_textures():
+    """Writes the texture of the lantern of the exit gate with its normal map.
+
+    The picture has two halves, and the model gives every face a small piece from the
+    middle of one of them (see build_gate_lantern.py): the left half is the glass and the
+    right half the iron of the frame.
+
+    The glass is pale and the iron is dark, and that difference is what lights the
+    lantern. The game makes a surface glow by multiplying its colour with a glow value
+    (uEmissive in lit.frag). One value for the whole model then gives a bright pane, and
+    a frame that stays a dark outline around it.
+    """
+    # The iron of the frame: darker than the plate of the lever (0.17), because here the
+    # dark is the point.
+    iron = metal_pattern(seed=LANTERN_IRON_SEED)
+    iron_picture = metal_color(iron, metal_color=(0.09, 0.09, 0.10), patch_strength=0.30)
+    iron_relief = metal_height(iron, bump_depth=5.0, grain_depth=0.6)
+
+    # The glass: old, a little yellow and not quite even. It has no stones or planks
+    # either, so the pattern of a metal with weak patches does for it. The colour stays
+    # below 1 with the lightest patch and the lightest grain (0.86 * 1.06 * 1.08).
+    glass = metal_pattern(seed=LANTERN_GLASS_SEED)
+    glass_picture = metal_color(glass, metal_color=(0.86, 0.84, 0.76), patch_strength=0.12)
+    glass_relief = metal_height(glass, bump_depth=1.5, grain_depth=0.2)
+
+    # x is the column of every pixel. The columns of the left half take the glass.
+    _, x = np.mgrid[0:SIZE, 0:SIZE]
+    is_glass = x < SIZE // 2
+    color = np.where(is_glass[..., None], glass_picture, iron_picture)
+    height = np.where(is_glass, glass_relief, iron_relief)
+
+    save_png(color, "lantern.png")
+    save_png(normal_map(height), "lantern_normal.png")
 
 
 if __name__ == "__main__":

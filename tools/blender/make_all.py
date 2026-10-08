@@ -14,7 +14,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import build_crystal
 import build_flask
 import build_gate
+import build_gate_arch
+import build_gate_lantern
 import build_lever
+import build_milestone
 import build_note
 import build_shade
 import build_wall_pillar
@@ -33,6 +36,9 @@ build_wall_straight.build(shots)
 build_wall_pillar.build(shots)
 build_crystal.build(shots)
 build_gate.build(shots)
+build_gate_arch.build(shots)
+build_gate_lantern.build(shots)
+build_milestone.build(shots)
 build_lever.build(shots)
 build_note.build(shots)
 build_flask.build(shots)
