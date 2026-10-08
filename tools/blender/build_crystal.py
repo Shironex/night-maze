@@ -1,7 +1,6 @@
 # Builds the two crystal models the player collects: crystal_a is one tall shard with a
 # point at both ends, crystal_b is a cluster of three shards standing on a flat base.
 # Output: assets/models/crystal_a.obj, crystal_a.mtl, crystal_b.obj and crystal_b.mtl.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_crystal.py

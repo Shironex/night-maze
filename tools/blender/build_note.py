@@ -1,6 +1,5 @@
 # Builds the model note: a sheet of old paper pinned to a wall, with lines of ink on it.
 # Output: assets/models/note.obj and note.mtl.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_note.py

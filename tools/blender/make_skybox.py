@@ -1,7 +1,6 @@
 # Generates the six pictures of the night sky into assets/skybox: px.png, nx.png, py.png,
 # ny.png, pz.png and nz.png, the faces +X, -X, +Y, -Y, +Z and -Z of a cube map. All six are
 # SIZE x SIZE pixels, 8 bits per channel, RGB.
-# See docs/modules/renderer/skybox.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_skybox.py

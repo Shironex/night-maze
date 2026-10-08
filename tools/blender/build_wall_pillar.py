@@ -1,7 +1,6 @@
 # Builds the model wall_pillar: a square post for the grid corners of the maze, where wall
 # segments meet. It hides the ends of the segments.
 # Output: assets/models/wall_pillar.obj and wall_pillar.mtl.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_wall_pillar.py

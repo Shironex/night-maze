@@ -1,6 +1,5 @@
 # Builds the model wall_straight: one wall segment of the maze, 2 m long and 3 m high.
 # Output: assets/models/wall_straight.obj and wall_straight.mtl.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_wall_straight.py

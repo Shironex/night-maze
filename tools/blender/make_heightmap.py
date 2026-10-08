@@ -1,6 +1,5 @@
 # Generates the heightmap of the terrain into assets/textures: heightmap.png, a grey picture
 # of SIZE x SIZE pixels, 8 bits per channel, saved as RGB with three equal channels.
-# See docs/modules/renderer/terrain.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_heightmap.py

@@ -1,6 +1,5 @@
 # Regenerates every generated asset of the game in one Blender process: the textures first,
 # then the models, then the sky and the heightmap of the terrain.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_all.py

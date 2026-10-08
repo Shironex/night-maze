@@ -32,9 +32,9 @@ import time
 
 import record_menu_loop as menu
 
-# One round of the glide takes about 45.7 seconds on the easy level (docs/modules/game/
-# menu-camera.md, section 2.8). The recording is longer: the exact length of the round is
-# measured in the recording, and the crossfade needs the start of the second round.
+# One round of the glide takes about 45.7 seconds on the easy level. The recording is longer:
+# the exact length of the round is measured in the recording, and the crossfade needs the
+# start of the second round.
 SHOT = menu.Shot("launcher_glide", seed=1, difficulty="easy", shot="glide", time=0.0, seconds=49.0)
 
 # Where in the recording the end of the round is looked for, in frames (38 to 48 seconds).

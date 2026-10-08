@@ -1,6 +1,5 @@
 # Shared helpers of the Blender scripts: scene reset, box building, UV projection, textured
 # material with a normal map, OBJ export with fixed options and review renders.
-# See docs/guides/blender.md
 #
 # Two coordinate systems meet in this file:
 #   Blender: right-handed, Z up. All geometry in the scripts is written in this system.

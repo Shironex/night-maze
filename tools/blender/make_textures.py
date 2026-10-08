@@ -3,7 +3,6 @@
 # gate_wood.png, crystal.png, lever_iron.png, lever_brass.png, note_paper.png,
 # flask.png and shade.png, and one normal map for each of them (the same name with
 # _normal). All twenty-four are 512 x 512 pixels, 8 bits per channel, RGB.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_textures.py

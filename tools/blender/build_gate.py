@@ -1,7 +1,6 @@
 # Builds the model gate: a closed wooden gate that fills one side of a maze cell, between
 # two pillars, in the place of a wall segment.
 # Output: assets/models/gate.obj and gate.mtl.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_gate.py

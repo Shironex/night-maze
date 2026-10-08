@@ -2,7 +2,6 @@
 # that is fixed to the wall, lever_handle is the brass handle that the game turns up and
 # down.
 # Output: assets/models/lever.obj, lever.mtl, lever_handle.obj and lever_handle.mtl.
-# See docs/guides/blender.md
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_lever.py
