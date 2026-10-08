@@ -150,11 +150,11 @@ flowchart TD
 
 | Mode | What it is | Leaves on |
 |---|---|---|
-| `Intro` | five cards over live pictures, first start only | `IntroFinished`, `Escape` to `MainMenu` |
+| `CampaignIntro` | five cards over live pictures, when a campaign begins | `IntroFinished`, `Escape` to `NightCard` |
 | `MainMenu` | the hub | `StartNight`, `AskNewCampaign`, `OpenNights`, `OpenFreePlay`, `OpenSettings`, `Quit` |
 | `FreePlay` | one maze: difficulty, calm night, seed | `Play` to `Playing`; `BackToMenu`, `Escape` |
 | `Nights` | list of the five nights | `StartNight` to `NightCard`; `BackToMenu`, `Escape` |
-| `NewCampaign` | question before a finished campaign is replaced | `StartNight`; `BackToMenu`, `Escape` |
+| `NewCampaign` | question before a finished campaign is replaced | `BeginCampaign` to `CampaignIntro`; `StartNight`; `BackToMenu`, `Escape` |
 | `NightCard` | title card of a night | `CardFinished`, `Escape` to `Playing` |
 | `Playing` | the round runs | `Escape`, `FocusLost` to `Paused`; `RoundWon` to `RoundEnd`; `CampaignWon` to `EndingCard` |
 | `Paused` | pause menu over the round | `Resume`, `Restart`, `Escape` to `Playing`; `OpenSettings`; `BackToMenu` |

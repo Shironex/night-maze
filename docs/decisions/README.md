@@ -37,7 +37,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [sprint-stamina-and-flasks](sprint-stamina-and-flasks.md): stamina and tea flasks
 
 ## Enemy and story
-- [the-shade](the-shade.md): moves only when unlit
+- [the-shade](the-shade.md): wanders, hunts by sound and sight, burned away by the lamp
 - [calm-night](calm-night.md): a switch without the shade
 - [campaign-of-five-nights](campaign-of-five-nights.md): own table of nights
 - [story-notes-in-order](story-notes-in-order.md): lines read nearest first
