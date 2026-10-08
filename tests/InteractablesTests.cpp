@@ -1373,3 +1373,62 @@ TEST_CASE("golden notes: the notes of twenty seeds on every difficulty add up to
     }
     CHECK(sum == 1092795213U);
 }
+
+TEST_CASE("a maze can name how many of its notes tell the story") {
+    const TestMaze test = testMaze(13, 13, 5U);
+    // What the kinds of the notes are, counted.
+    const auto kinds = [](const game::Interactables& placed) {
+        std::array<int, game::NOTE_KIND_COUNT> counts{};
+        for (const game::Note& note : placed.notes) {
+            ++counts.at(static_cast<std::size_t>(note.kind));
+        }
+        return counts;
+    };
+
+    // Five story notes of eight: the three hints point to the exit, to a crystal and to
+    // the exit again.
+    const game::Interactables night =
+        placeIn(test, 5U, {.leverCount = 2, .noteCount = 8, .storyNoteCount = 5});
+    REQUIRE(night.notes.size() == 8U);
+    CHECK(kinds(night) == std::array<int, game::NOTE_KIND_COUNT>{2, 1, 5});
+    CHECK(game::storyNoteCount(night) == 5);
+
+    // The two ends: no story note at all, and nothing but story notes. A number larger
+    // than the number of notes means all of them.
+    CHECK(kinds(placeIn(test, 5U, {.noteCount = 6, .storyNoteCount = 0})) ==
+          std::array<int, game::NOTE_KIND_COUNT>{3, 3, 0});
+    CHECK(kinds(placeIn(test, 5U, {.noteCount = 6, .storyNoteCount = 6})) ==
+          std::array<int, game::NOTE_KIND_COUNT>{0, 0, 6});
+    CHECK(kinds(placeIn(test, 5U, {.noteCount = 6, .storyNoteCount = 99})) ==
+          std::array<int, game::NOTE_KIND_COUNT>{0, 0, 6});
+
+    // A third of the notes, named as a number, is the mix that is not named at all.
+    const game::Interactables byTurns = placeIn(test, 5U, {.noteCount = 9});
+    CHECK(sameInteractables(byTurns, placeIn(test, 5U, {.noteCount = 9, .storyNoteCount = 3})));
+}
+
+TEST_CASE("the mix of the notes moves no note and no lever") {
+    const TestMaze test = testMaze(16, 16, 9U);
+    const game::Interactables byTurns = placeIn(test, 9U, {.leverCount = 2, .noteCount = 9});
+    const game::Interactables story =
+        placeIn(test, 9U, {.leverCount = 2, .noteCount = 9, .storyNoteCount = 5});
+    REQUIRE(story.notes.size() == byTurns.notes.size());
+    REQUIRE(story.levers.size() == byTurns.levers.size());
+    for (std::size_t i = 0; i < story.levers.size(); ++i) {
+        CHECK(sameLever(story.levers[i], byTurns.levers[i]));
+    }
+    // Only what the notes say differs: where they hang does not.
+    for (std::size_t i = 0; i < story.notes.size(); ++i) {
+        CHECK(story.notes[i].mount == byTurns.notes[i].mount);
+        CHECK(story.notes[i].position == byTurns.notes[i].position);
+    }
+    // No line shows twice: the five story notes take five lines in a row.
+    std::vector<int> lines;
+    for (const game::Note& note : story.notes) {
+        if (note.kind == game::NoteKind::Flavour) {
+            CHECK(std::ranges::find(lines, note.flavourIndex) == lines.end());
+            lines.push_back(note.flavourIndex);
+        }
+    }
+    CHECK(lines.size() == 5U);
+}

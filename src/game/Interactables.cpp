@@ -385,14 +385,36 @@ Interactables placeInteractables(const Maze& maze, std::uint32_t seed, MazeCell 
     const std::size_t noteCount =
         std::min(clampedCount(settings.noteCount, MAX_NOTE_COUNT), noteCells.size());
     interactables.notes.reserve(noteCount);
+
+    // The mix: how many of the notes tell the story, and how many are hints. Without
+    // a number of its own every third note is a story note.
+    const std::size_t kindCount = NOTE_KIND_COUNT;
+    std::size_t storyLeft =
+        settings.storyNoteCount == NOTE_MIX_BY_TURNS
+            ? noteCount / kindCount
+            : std::min(clampedCount(settings.storyNoteCount, MAX_NOTE_COUNT), noteCount);
+    std::size_t hintsLeft = noteCount - storyLeft;
+    std::size_t hintsPlaced = 0;
     for (std::size_t i = 0; i < noteCount; ++i) {
         Note note;
         note.mount.cell = noteCells[i];
         note.mount.side = randomMountSide(maze, note.mount.cell, shortcuts, noteGenerator);
         note.position = notePosition(note.mount, 0.0F);
         note.box = noteBox(note.position, note.mount.side);
-        // The kinds take turns: exit hint, crystal hint, flavour, exit hint and so on.
-        note.kind = static_cast<NoteKind>(i % static_cast<std::size_t>(NOTE_KIND_COUNT));
+        // The kinds take turns: exit hint, crystal hint, story, exit hint and so on.
+        // The turn of a kind that is used up goes to the other: a story note takes the
+        // turn of a hint when no hint is left, and a hint the turn of a story note.
+        const bool storyTurn = static_cast<NoteKind>(i % kindCount) == NoteKind::Flavour;
+        if ((storyTurn && storyLeft > 0) || hintsLeft == 0) {
+            note.kind = NoteKind::Flavour;
+            --storyLeft;
+        } else {
+            // The hints take turns among themselves: the first one points to the exit,
+            // the second to a crystal.
+            note.kind = hintsPlaced % 2 == 0 ? NoteKind::ExitHint : NoteKind::CrystalHint;
+            ++hintsPlaced;
+            --hintsLeft;
+        }
         interactables.notes.push_back(note);
     }
 

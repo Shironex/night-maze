@@ -40,6 +40,10 @@ constexpr int DEFAULT_NOTE_COUNT = 6;
 constexpr int MAX_LEVER_COUNT = 16;
 constexpr int MAX_NOTE_COUNT = 16;
 
+/// InteractableSettings::storyNoteCount for "every third note": the mix of a maze of free
+/// play, whose notes take turns (exit hint, crystal hint, story).
+constexpr int NOTE_MIX_BY_TURNS = -1;
+
 /// A wall is worth a lever only when opening it brings the cell behind it at least this
 /// many passages closer to the start (see chooseShortcutWalls). The number is always
 /// even, so 6 means: a walk of at least 7 passages becomes a walk of 1.
@@ -88,6 +92,12 @@ struct InteractableSettings {
     /// Wanted number of notes, from 0 to MAX_NOTE_COUNT. A maze gets fewer when it has
     /// fewer free cells.
     int noteCount = DEFAULT_NOTE_COUNT;
+
+    /// How many of those notes tell the story. The rest are hints, half of them towards
+    /// the exit and half towards a crystal. NOTE_MIX_BY_TURNS: every third note, the mix
+    /// of free play. A night of the campaign names its own number (game/Campaign.hpp).
+    /// A number larger than noteCount means all of them.
+    int storyNoteCount = NOTE_MIX_BY_TURNS;
 
     /// The story line the first story note of the maze shows: "the next unread line" that
     /// the settings file keeps (GameSettings::nextStoryLine). The story notes take this
@@ -219,8 +229,14 @@ struct Interactables {
 ///   - every note gets a cell of its own, shuffled by the seed: never the start cell,
 ///     never the exit cell and never a cell with a lever,
 ///   - it hangs on a wall of its cell like a lever does,
-///   - note number i has the kind number i % NOTE_KIND_COUNT, so the first three notes
-///     are one of each kind,
+///   - the kinds take turns along the list of notes: exit hint, crystal hint, story.
+///     With settings.storyNoteCount left at NOTE_MIX_BY_TURNS that is all: note number
+///     i has the kind number i % NOTE_KIND_COUNT, so the first three notes are one of
+///     each kind. With a number there, exactly that many notes tell the story: the
+///     turn of a story note goes to a hint once the story notes are used up, and the
+///     turn of a hint goes to a story note once the hints are. The hints go on taking
+///     turns among themselves (exit, crystal). No random number is drawn for a kind, so
+///     the mix never moves a note,
 ///   - the notes of the kind Flavour are the story notes. The one nearest to the start
 ///     (the fewest passages, game::passageDistances) shows the line
 ///     settings.firstStoryLine, the next one the line after it, and so on (storyLineFor).
