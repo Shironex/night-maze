@@ -30,10 +30,12 @@ enum class SoundCue {
     GateOpen,        ///< enough crystals are collected: the gate starts to sink
     WindedBreath,    ///< the breath that repeats while the player is winded
     FlaskPickup,     ///< a flask of tea was picked up
+    ShadeNear,       ///< the hum that repeats while the shade is near
+    Caught,          ///< the shade reached the player and carries them back to the start
 };
 
 /// How many cues there are: the number of entries of SoundCue.
-constexpr std::size_t SOUND_CUE_COUNT = 9;
+constexpr std::size_t SOUND_CUE_COUNT = 11;
 
 /// The place of a cue in the list of sounds: its number as an index.
 std::size_t soundCueIndex(SoundCue cue);
@@ -162,5 +164,50 @@ struct WindedBreath {
 /// One call gives at most one breath, however long the step is, for the same reason as
 /// advanceLowBatteryPulse. A new round resets the clock by assigning a new WindedBreath.
 bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds);
+
+/// The shade is heard before it is seen: a low hum, again and again, the faster the
+/// nearer the shade is. It is the same kind of clock as the low battery pulse, because
+/// the audio layer plays sounds from start to end and cannot make one louder: what
+/// grows is how often the hum comes.
+///
+/// SHADE_HUM_DISTANCE: from this many metres the hum is heard, measured on the ground in
+/// a straight line, also through walls (seven cells of the maze). Farther away there is
+/// silence. The two waits are the ones at that distance and at no distance at all. In
+/// between the wait shrinks evenly. The short one is a little longer than the sound of
+/// the hum (0.62 s, tools/make_sounds.py): a sound that starts again before it ended is
+/// cut off.
+constexpr float SHADE_HUM_DISTANCE = 14.0F;
+constexpr float SHADE_HUM_SLOW_SECONDS = 2.4F;
+constexpr float SHADE_HUM_FAST_SECONDS = 0.7F;
+
+/// True while the hum sounds: the round is being played, it has a shade, and the shade
+/// is not farther from playerFeet than SHADE_HUM_DISTANCE. A calm round is silent. The
+/// hum does not ask whether the shade moves: a shade that stands in the light is as near
+/// as one that walks.
+bool shadeHumSounds(const Round& round, const glm::vec3& playerFeet);
+
+/// The wait between two hums for a distance in metres: SHADE_HUM_FAST_SECONDS at 0,
+/// SHADE_HUM_SLOW_SECONDS at SHADE_HUM_DISTANCE and beyond.
+float shadeHumInterval(float distance);
+
+/// The clock of the hum, counted in fixed steps like LowBatteryPulse.
+struct ShadeHum {
+    /// Seconds until the next hum. 0 means that the next step in which the hum sounds
+    /// hums at once: the first one comes at the moment the shade gets near.
+    float secondsToNextHum = 0.0F;
+};
+
+/// Advances the clock of the hum by one fixed step of stepSeconds seconds, for the round
+/// and the feet of the player as they are AFTER the step. Returns true when a hum is due
+/// in this step: play SoundCue::ShadeNear then.
+///
+///   - While the hum does not sound (shadeHumSounds) the clock is reset.
+///   - Otherwise it runs, and after a hum the wait is the interval of the present
+///     distance (shadeHumInterval).
+///
+/// One call gives at most one hum, for the same reason as advanceLowBatteryPulse. A new
+/// round resets the clock by assigning a new ShadeHum.
+bool advanceShadeHum(ShadeHum& hum, const Round& round, const glm::vec3& playerFeet,
+                     float stepSeconds);
 
 } // namespace game

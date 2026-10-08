@@ -2,6 +2,7 @@
 // See docs/modules/game/sound-cues.md
 #include "game/SoundCues.hpp"
 
+#include <algorithm>
 #include <array>
 
 namespace game {
@@ -28,6 +29,8 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/gate_open.wav", .name = "gate open"},
     {.file = "audio/winded_breath.wav", .name = "winded breath"},
     {.file = "audio/flask_pickup.wav", .name = "flask pickup"},
+    {.file = "audio/shade_near.wav", .name = "shade near"},
+    {.file = "audio/caught.wav", .name = "caught"},
 }};
 
 } // namespace
@@ -154,6 +157,36 @@ bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds) {
     // A breath. The wait is SET and what the step overshot is dropped, as in
     // advanceLowBatteryPulse.
     breath.secondsToNextBreath = WINDED_BREATH_SECONDS;
+    return true;
+}
+
+bool shadeHumSounds(const Round& round, const glm::vec3& playerFeet) {
+    return round.state == RoundState::Playing && round.shade.present &&
+           shadeDistance(round.shade, playerFeet) <= SHADE_HUM_DISTANCE;
+}
+
+float shadeHumInterval(float distance) {
+    // How far away the shade is as a part of the distance it is heard from: 0 when it
+    // is here, 1 at the edge of hearing and beyond.
+    const float share = std::clamp(distance / SHADE_HUM_DISTANCE, 0.0F, 1.0F);
+    return SHADE_HUM_FAST_SECONDS + (SHADE_HUM_SLOW_SECONDS - SHADE_HUM_FAST_SECONDS) * share;
+}
+
+bool advanceShadeHum(ShadeHum& hum, const Round& round, const glm::vec3& playerFeet,
+                     float stepSeconds) {
+    // Not near, or no shade at all: the clock goes back to "hum at once".
+    if (!shadeHumSounds(round, playerFeet)) {
+        hum.secondsToNextHum = 0.0F;
+        return false;
+    }
+
+    hum.secondsToNextHum -= stepSeconds;
+    if (hum.secondsToNextHum > 0.0F) {
+        return false;
+    }
+    // A hum. The wait is SET and what the step overshot is dropped, as in
+    // advanceLowBatteryPulse.
+    hum.secondsToNextHum = shadeHumInterval(shadeDistance(round.shade, playerFeet));
     return true;
 }
 

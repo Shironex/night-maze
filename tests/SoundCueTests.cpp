@@ -70,7 +70,7 @@ TEST_CASE("every cue has a file and a name of its own") {
     CHECK(files.size() == game::SOUND_CUE_COUNT);
     CHECK(names.size() == game::SOUND_CUE_COUNT);
     // The last entry of the enum is the last entry of the table.
-    CHECK(game::soundCueIndex(game::SoundCue::FlaskPickup) == game::SOUND_CUE_COUNT - 1);
+    CHECK(game::soundCueIndex(game::SoundCue::Caught) == game::SOUND_CUE_COUNT - 1);
 }
 
 TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
@@ -372,4 +372,90 @@ TEST_CASE("walking into a flask in a round plays its cue, and a new round is sil
     const game::RoundSoundSnapshot old = game::soundSnapshot(round, flashlightOn);
     const game::Round fresh = game::startRound(world, settings);
     CHECK(game::roundStepCues(old, fresh, flashlightOn).empty());
+}
+
+TEST_CASE("the hum of the shade has a file and a name, and so has the catch") {
+    CHECK(std::string(game::soundCueFile(game::SoundCue::ShadeNear)) == "audio/shade_near.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::ShadeNear)) == "shade near");
+    CHECK(std::string(game::soundCueFile(game::SoundCue::Caught)) == "audio/caught.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::Caught)) == "caught");
+}
+
+TEST_CASE("the hum is heard from 14 m, and not in a round without a shade") {
+    game::Round round;
+    round.shade.present = true;
+    round.shade.position = {10.0F, 0.0F, 10.0F};
+
+    CHECK(game::SHADE_HUM_DISTANCE == 14.0F);
+    CHECK(game::shadeHumSounds(round, {10.0F, 0.0F, 10.0F}));
+    CHECK(game::shadeHumSounds(round, {10.0F, 0.0F, 23.9F}));
+    CHECK_FALSE(game::shadeHumSounds(round, {10.0F, 0.0F, 24.1F}));
+    // Measured on the ground: the height does not count.
+    CHECK(game::shadeHumSounds(round, {10.0F, 30.0F, 20.0F}));
+
+    // A won round is silent, and so is a calm one.
+    round.state = game::RoundState::Won;
+    CHECK_FALSE(game::shadeHumSounds(round, {10.0F, 0.0F, 10.0F}));
+    round.state = game::RoundState::Playing;
+    round.shade.present = false;
+    CHECK_FALSE(game::shadeHumSounds(round, {10.0F, 0.0F, 10.0F}));
+}
+
+TEST_CASE("the hum comes more often the nearer the shade is") {
+    CHECK(game::shadeHumInterval(14.0F) == doctest::Approx(game::SHADE_HUM_SLOW_SECONDS));
+    CHECK(game::shadeHumInterval(40.0F) == doctest::Approx(game::SHADE_HUM_SLOW_SECONDS));
+    CHECK(game::shadeHumInterval(0.0F) == doctest::Approx(game::SHADE_HUM_FAST_SECONDS));
+    CHECK(game::shadeHumInterval(-1.0F) == doctest::Approx(game::SHADE_HUM_FAST_SECONDS));
+    float before = game::shadeHumInterval(0.0F);
+    for (int metres = 1; metres <= 14; ++metres) {
+        const float now = game::shadeHumInterval(static_cast<float>(metres));
+        CHECK(now > before);
+        before = now;
+    }
+    // The sound of the hum is 0.62 s long: it must be over before the next one starts.
+    CHECK(game::SHADE_HUM_FAST_SECONDS > 0.62F);
+}
+
+TEST_CASE("the clock of the hum starts at once, waits its interval and is silent far away") {
+    game::Round round;
+    round.shade.present = true;
+    round.shade.position = {0.0F, 0.0F, 0.0F};
+    const glm::vec3 near{0.0F, 0.0F, 7.0F};
+    const glm::vec3 far{0.0F, 0.0F, 30.0F};
+    game::ShadeHum hum;
+
+    // Far away: never.
+    for (int i = 0; i < 600; ++i) {
+        CHECK_FALSE(game::advanceShadeHum(hum, round, far, STEP));
+    }
+    // Near: at once, and then again after the interval of 7 m (1.55 s), not before.
+    CHECK(game::advanceShadeHum(hum, round, near, STEP));
+    const float interval = game::shadeHumInterval(7.0F);
+    CHECK(interval == doctest::Approx(1.55F));
+    int steps = 0;
+    while (!game::advanceShadeHum(hum, round, near, STEP)) {
+        ++steps;
+        REQUIRE(steps < 1000);
+    }
+    CHECK(static_cast<float>(steps + 1) * STEP == doctest::Approx(interval).epsilon(0.02));
+
+    // Twenty seconds right next to the shade: one hum every 0.7 s or so, never two in
+    // one step and never faster than the sound is long.
+    int hums = 0;
+    for (int i = 0; i < 20 * 120; ++i) {
+        if (game::advanceShadeHum(hum, round, {0.0F, 0.0F, 0.5F}, STEP)) {
+            ++hums;
+        }
+    }
+    CHECK(hums >= 25);
+    CHECK(hums <= 29);
+
+    // A calm round: the clock never fires.
+    round.shade.present = false;
+    for (int i = 0; i < 600; ++i) {
+        CHECK_FALSE(game::advanceShadeHum(hum, round, near, STEP));
+    }
+    // Back in range it hums at once again: the clock was reset.
+    round.shade.present = true;
+    CHECK(game::advanceShadeHum(hum, round, near, STEP));
 }

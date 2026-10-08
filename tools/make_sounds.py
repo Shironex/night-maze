@@ -1,4 +1,4 @@
-# Makes the sounds of the game: nine short WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: eleven short WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -81,6 +81,9 @@ MAX_SAMPLE = 32767
 # best: it gets the lowest number of all and is still easier to hear than the pulse.
 # The flask is a pickup like the crystal, but a small comfort and not the goal of the
 # round: it stands a step behind the crystal.
+# The hum of the shade repeats like the pulse and the breath, but it is the one warning
+# that must not be missed, so it stands above both. The sound of being caught is heard
+# once and is meant to be soft: well below the crystal and the gate.
 PEAK_DB = {
     "flashlight_on.wav": -11.0,
     "flashlight_off.wav": -12.5,
@@ -91,6 +94,8 @@ PEAK_DB = {
     "gate_open.wav": -3.0,
     "winded_breath.wav": -24.0,
     "flask_pickup.wav": -9.0,
+    "shade_near.wav": -13.0,
+    "caught.wav": -10.0,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -681,6 +686,60 @@ def flask_pickup():
     return finish([biquad(sound, "low", 3000.0)])
 
 
+# ---- the shade --------------------------------------------------------------------------------
+
+
+def shade_near():
+    # The shade is near: a cold hum that swells and fades, with no beat and no breath in
+    # it. It must not be taken for the low battery pulse (two thumps below 120 Hz) or for
+    # the breath of a winded player (noise around 1 kHz), so it is neither: steady tones
+    # between them, with no knock at the start.
+    #
+    #   - The drone: 147 Hz and its fifth at 220 Hz, with no third between them. A chord
+    #     without a third is neither glad nor sad, only empty.
+    #   - Each of the two has a second sine a little beside it (147 against 148.3, 220
+    #     against 221.7). Two tones that close do not sound like two: they swell and
+    #     thin out against each other about once a second, so the hum is never still.
+    #   - A thin band of noise around 440 Hz, far below the tones: a little air, like
+    #     wind in a pipe.
+    #   - The loudness rises for a quarter of a second and falls for longer. Nothing
+    #     starts suddenly.
+    #
+    # The whole sound is 0.62 s long: the hums come as fast as every 0.7 s
+    # (SHADE_HUM_FAST_SECONDS in src/game/SoundCues.hpp), and a hum that started again
+    # before the last one ended would be cut off.
+    generator = random.Random(10)
+    seconds = 0.62
+    count = count_of(seconds)
+    # Decay times far longer than the sound: the tones do not die away by themselves,
+    # the swell curve shapes them.
+    drone = modes(seconds, [(147.0, 1.0, 30.0), (148.3, 0.8, 30.0),
+                            (220.0, 0.55, 30.0), (221.7, 0.45, 30.0)])
+    air = biquad(noise(generator, count), "band", 440.0, 3.0)
+
+    sound = silence(seconds)
+    place(sound, with_level(drone, 1.0))
+    place(sound, with_level(air, 0.08))
+    sound = scaled(sound, swell_curve(count, 0.25, 0.33))
+    return finish([biquad(sound, "low", 900.0)])
+
+
+def caught():
+    # The shade has reached you and sets you down at the stile: soft, not a fright. Two
+    # low round notes, the second a fifth below the first (330 Hz, then 220 Hz), like
+    # a breath let go. Each rises slowly instead of being struck, and both have their
+    # octave above them at a quarter of the strength, so they sound like a note and not
+    # like a test tone. The first note is still fading when the second one comes.
+    sound = silence(1.5)
+    first = scaled(modes(0.9, [(330.0, 1.0, 0.45), (660.0, 0.25, 0.3)], start_seconds=0.12),
+                   swell_curve(count_of(0.9), 0.12, 0.5))
+    second = scaled(modes(1.15, [(220.0, 1.0, 0.6), (440.0, 0.25, 0.4)], start_seconds=0.15),
+                    swell_curve(count_of(1.15), 0.15, 0.7))
+    place(sound, with_peak(first, 0.8), 0.0)
+    place(sound, with_peak(second, 1.0), 0.35)
+    return finish([biquad(sound, "low", 1500.0)])
+
+
 # The file of every sound. The names are the ones in src/game/SoundCues.cpp.
 SOUNDS = [
     ("flashlight_on.wav", flashlight_on),
@@ -692,6 +751,8 @@ SOUNDS = [
     ("gate_open.wav", gate_open),
     ("winded_breath.wav", winded_breath),
     ("flask_pickup.wav", flask_pickup),
+    ("shade_near.wav", shade_near),
+    ("caught.wav", caught),
 ]
 
 
@@ -893,6 +954,7 @@ def checks(m, together):
     lever, gate = m["lever_pull.wav"], m["gate_open.wav"]
     breath = m["winded_breath.wav"]
     flask = m["flask_pickup.wav"]
+    hum, caught_sound = m["shade_near.wav"], m["caught.wav"]
     result = []
     for name, one in m.items():
         result.append((f"{name}: peak at or below -3 dBFS", one["peak"] <= -2.99))
@@ -936,6 +998,17 @@ def checks(m, together):
         ("flask: quieter to the ear than the crystal", flask["dba"] < crystal["dba"]),
         (f"crystal and gate started together: peak {together:.2f} dBFS, at or below -1",
          together <= -1.0),
+        ("hum: shorter than the fastest wait between two hums (0.7 s)", hum["seconds"] < 0.7),
+        ("hum: not a heartbeat, under 10 % of its energy below 120 Hz", hum["below120"] < 0.1),
+        ("hum: not a breath, under 5 % of its energy above 1 kHz", hum["above1k"] < 0.05),
+        ("hum: a swell, loudest later than 0.15 s after its start", hum["loud_at"] > 0.15),
+        ("hum: easier to hear than the pulse and the breath",
+         hum["dba"] > max(pulse["dba"], breath["dba"])),
+        ("caught: soft, at least 90 % of its energy below 1 kHz", caught_sound["above1k"] < 0.1),
+        ("caught: no sudden start, loudest later than 0.1 s after its start",
+         caught_sound["loud_at"] > 0.1),
+        ("caught: quieter to the ear than the crystal and the gate",
+         caught_sound["dba"] < min(crystal["dba"], gate["dba"])),
     ]
     return result
 
