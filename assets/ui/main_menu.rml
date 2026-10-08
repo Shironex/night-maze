@@ -9,13 +9,13 @@
      with an id are written by the game: the chosen difficulty, the seed and the numbers
      of the info block. -->
 <!-- The black the menu comes out of when it follows the intro. The game sets the class
-     "drawn" on it then, and "shown" on the subtitle under the wordmark. -->
+     "drawn" on it then. -->
 <div class="curtain" id="curtain"></div>
 <div class="column">
     <div class="rise">
         <div class="gem"></div>
         <h1 class="wordmark">NIGHT MAZE</h1>
-        <p class="subtitle" id="subtitle">The Last Lamp</p>
+        <p class="subtitle">The Last Lamp</p>
         <p class="tagline">The moon sees every corridor. You see one.</p>
     </div>
     <div class="menu">

@@ -158,20 +158,18 @@ constexpr const char* CARD_FIRST_LINE_ID = "line-first";
 constexpr const char* CARD_SECOND_LINE_ID = "line-second";
 constexpr const char* CARD_HINT_ID = "hint";
 // The main menu after the intro: the document itself (a name RmlUi knows, see
-// ui::UiLayer::setClass), the black it comes out of and the line under its title.
+// ui::UiLayer::setClass) and the black it comes out of.
 constexpr const char* DOCUMENT_ID = "#document";
 constexpr const char* CURTAIN_ID = "curtain";
-constexpr const char* SUBTITLE_ID = "subtitle";
 
 // The classes the code sets on elements. The style sheet says what they look like.
 constexpr const char* CHOSEN_CLASS = "chosen";
 constexpr const char* ON_CLASS = "on";
 constexpr const char* OFF_CLASS = "off";
-// The main menu after the intro: no fade of the whole document, the curtain is there
-// and the subtitle is shown.
+// The main menu after the intro: no fade of the whole document, and the curtain is
+// there.
 constexpr const char* CUT_CLASS = "cut";
 constexpr const char* DRAWN_CLASS = "drawn";
-constexpr const char* SHOWN_CLASS = "shown";
 
 // The buttons that do not change the screen: their data-action names. A difficulty
 // button is named by the same prefix as its id.
@@ -889,12 +887,10 @@ void NightMazeApp::fillMainMenuDocument() {
                      " of " + std::to_string(level.crystalCount));
     m_ui.setText(m_mainMenuDocument, INFO_BATTERY_ID, timeText(level.batteryLifetimeSeconds));
 
-    // The menu that follows the intro comes in out of black, and the name of the story
-    // stands under its title. Every other time the three classes are taken away, and
-    // the menu is the one it always was.
+    // The menu that follows the intro comes in out of black. Every other time the two
+    // classes are taken away, and the menu fades in like every screen.
     m_ui.setClass(m_mainMenuDocument, DOCUMENT_ID, CUT_CLASS, m_menuAfterIntro);
     m_ui.setClass(m_mainMenuDocument, CURTAIN_ID, DRAWN_CLASS, m_menuAfterIntro);
-    m_ui.setClass(m_mainMenuDocument, SUBTITLE_ID, SHOWN_CLASS, m_menuAfterIntro);
 }
 
 void NightMazeApp::fillPauseDocument() {

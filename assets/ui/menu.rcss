@@ -647,21 +647,12 @@ body.open .curtain.drawn {
     opacity: 0;
 }
 
-/* The name of the story under the wordmark. Like the curtain it is only there after
-   the intro (the class "shown"), and it comes in last, when the menu already stands. */
+/* The name of the story under the wordmark, in the amber of the flashlight. It is part
+   of the title and always there: it rises in with the wordmark. */
 .subtitle {
-    display: none;
     margin-top: 1.6vh;
     font-size: 3.3vh;
     letter-spacing: 0.42em;
     text-transform: uppercase;
     color: #ffb854;
-    opacity: 0;
-    transition: opacity 1.4s 0.9s cubic-out;
-}
-.subtitle.shown {
-    display: block;
-}
-body.open .subtitle.shown {
-    opacity: 1;
 }
