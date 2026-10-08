@@ -828,7 +828,9 @@ TEST_CASE("the wind of the maze is heard while a round is played and nowhere els
     CHECK(game::mazeWindPlays({.mode = GameMode::Playing}));
     for (const GameMode mode :
          {GameMode::MainMenu, GameMode::Paused, GameMode::RoundEnd, GameMode::Quitting,
-          GameMode::SettingsFromMenu, GameMode::SettingsFromPause, GameMode::Intro}) {
+          GameMode::SettingsFromMenu, GameMode::SettingsFromPause, GameMode::Intro,
+          GameMode::FreePlay, GameMode::Nights, GameMode::NewCampaign, GameMode::NightCard,
+          GameMode::EndingCard}) {
         CHECK_FALSE(game::mazeWindPlays({.mode = mode}));
     }
     // The window is not the active one, or the menu camera shows the game.
@@ -839,13 +841,18 @@ TEST_CASE("the wind of the maze is heard while a round is played and nowhere els
 TEST_CASE("a sample of the wind is heard on a menu, but never over the intro") {
     using game::GameMode;
     for (const GameMode mode : {GameMode::MainMenu, GameMode::Paused, GameMode::RoundEnd,
-                                GameMode::SettingsFromMenu, GameMode::SettingsFromPause}) {
+                                GameMode::SettingsFromMenu, GameMode::SettingsFromPause,
+                                GameMode::FreePlay, GameMode::Nights, GameMode::NewCampaign}) {
         CHECK(game::mazeWindPlays({.mode = mode, .sample = true}));
     }
     // Also under the menu camera: the sample is asked for by a person at the window.
     CHECK(game::mazeWindPlays({.mode = GameMode::Playing, .menuCamera = true, .sample = true}));
     // The intro has its own wind, and a window in the background is silent.
     CHECK_FALSE(game::mazeWindPlays({.mode = GameMode::Intro, .sample = true}));
+    // The cards of the campaign are silent as well: a sample that still runs when a night
+    // is started stops under its title card.
+    CHECK_FALSE(game::mazeWindPlays({.mode = GameMode::NightCard, .sample = true}));
+    CHECK_FALSE(game::mazeWindPlays({.mode = GameMode::EndingCard, .sample = true}));
     CHECK_FALSE(game::mazeWindPlays(
         {.mode = GameMode::SettingsFromMenu, .windowFocused = false, .sample = true}));
 

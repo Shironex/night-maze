@@ -368,11 +368,14 @@ struct MazeWindRequest {
 /// tells the audio layer the answer, which fades the loop in or out when it changes.
 ///
 ///   - Never during the intro: the intro has a wind of its own, and the two must not be
-///     heard together.
+///     heard together. Never over the title card of a night or the ending card either:
+///     a card is text on black, and the round has not started or is over
+///     (game::isFilm).
 ///   - Never while the window is not the active one.
 ///   - While a round is played (game::updatesRound) and the menu camera is off. So the
-///     wind fades out in the pause menu, on the result screen, in the main menu and on
-///     the settings screen, and comes back with the round.
+///     wind fades out in the pause menu, on the result screen, in the main menu and
+///     its pages (free play, the list of nights) and on the settings screen, and comes
+///     back with the round.
 ///   - On every other screen only while a sample runs.
 bool mazeWindPlays(const MazeWindRequest& request);
 

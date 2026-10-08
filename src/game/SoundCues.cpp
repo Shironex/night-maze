@@ -284,7 +284,7 @@ bool advanceShadeSteps(StepClock& clock, const Round& round, CuePlay& play) {
 }
 
 bool mazeWindPlays(const MazeWindRequest& request) {
-    if (request.mode == GameMode::Intro || !request.windowFocused) {
+    if (isFilm(request.mode) || !request.windowFocused) {
         return false;
     }
     return request.sample || (updatesRound(request.mode) && !request.menuCamera);
