@@ -48,10 +48,16 @@ enum class SoundCue {
     /// once, it is switched on and off (mazeWindPlays), and its file ends where it
     /// begins.
     MazeWind,
+    /// The shade has noticed the player: it was wandering, and now it heard a noise or
+    /// saw them (game::ShadeEvents::alerted). One short, cold sound.
+    ShadeAlert,
+    /// The beam has burned the shade away (game::ShadeEvents::banished): soft, like
+    /// breath going out.
+    ShadeBanish,
 };
 
 /// How many cues there are: the number of entries of SoundCue.
-constexpr std::size_t SOUND_CUE_COUNT = 19;
+constexpr std::size_t SOUND_CUE_COUNT = 21;
 
 /// The place of a cue in the list of sounds: its number as an index.
 std::size_t soundCueIndex(SoundCue cue);
@@ -203,8 +209,10 @@ constexpr float SHADE_HUM_FAST_SECONDS = 0.7F;
 
 /// True while the hum sounds: the round is being played, it has a shade, and the way of
 /// the shade to the player is not longer than SHADE_HUM_DISTANCE. A calm round is
-/// silent. The hum does not ask whether the shade moves: a shade that stands in the
-/// light is as near as one that walks.
+/// silent, and so is a shade that is quiet after a banish (game::ShadeState::Banished).
+/// The hum does not ask whether the shade moves or what it is after: a shade that stands
+/// in the light is as near as one that walks, and one that wanders past is as near as
+/// one that hunts.
 bool shadeHumSounds(const Round& round);
 
 /// The wait between two hums for a distance in metres: SHADE_HUM_FAST_SECONDS at 0,
@@ -316,7 +324,8 @@ constexpr float SHADE_STEP_FAR_VOLUME = 0.3F;
 /// How far the shade walked over the ground in its last step, in metres: the distance
 /// between Shade::previousPosition and Shade::position, without the height. 0 while it
 /// stands: in its grace time, in the light and for a moment after the light has left
-/// it. 0 for a round without a shade.
+/// it, while it waits at the place of a noise and while it is quiet after a banish (the
+/// step of the banish itself is no walk either). 0 for a round without a shade.
 float shadeStepMetres(const Round& round);
 
 /// How loud a step of the shade is played for a way in metres: SHADE_STEP_NEAR_VOLUME at

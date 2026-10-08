@@ -75,7 +75,12 @@ TEST_CASE("every cue has a file and a name of its own") {
     CHECK(files.size() == game::SOUND_CUE_COUNT);
     CHECK(names.size() == game::SOUND_CUE_COUNT);
     // The last entry of the enum is the last entry of the table.
-    CHECK(game::soundCueIndex(game::SoundCue::MazeWind) == game::SOUND_CUE_COUNT - 1);
+    CHECK(game::soundCueIndex(game::SoundCue::ShadeBanish) == game::SOUND_CUE_COUNT - 1);
+    // New cues are added after the old ones, so every old cue keeps its number: the
+    // nineteen that were there before the shade learned to hunt end with the wind.
+    CHECK(game::soundCueIndex(game::SoundCue::MazeWind) == 18U);
+    CHECK(game::soundCueIndex(game::SoundCue::ShadeAlert) == 19U);
+    CHECK(game::SOUND_CUE_COUNT == 21U);
 }
 
 TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
@@ -386,6 +391,37 @@ TEST_CASE("the hum of the shade has a file and a name, and so has the catch") {
     CHECK(std::string(game::soundCueName(game::SoundCue::Caught)) == "caught");
 }
 
+TEST_CASE("the alert and the banish of the shade have sounds of their own") {
+    CHECK(std::string(game::soundCueFile(game::SoundCue::ShadeAlert)) == "audio/shade_alert.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::ShadeAlert)) == "shade alert");
+    CHECK(std::string(game::soundCueFile(game::SoundCue::ShadeBanish)) == "audio/shade_banish.wav");
+    CHECK(std::string(game::soundCueName(game::SoundCue::ShadeBanish)) == "shade banish");
+    // They tell the player something, so they follow the effects volume.
+    CHECK_FALSE(game::soundCueIsAmbient(game::SoundCue::ShadeAlert));
+    CHECK_FALSE(game::soundCueIsAmbient(game::SoundCue::ShadeBanish));
+}
+
+TEST_CASE("a shade that is quiet after a banish does not hum, however near it stands") {
+    game::Round round;
+    round.shade.present = true;
+    round.shade.wayMetres = 3.0F;
+    REQUIRE(game::shadeHumSounds(round));
+    round.shade.quietLeft = 5.0F;
+    CHECK_FALSE(game::shadeHumSounds(round));
+    game::ShadeHum hum;
+    for (int i = 0; i < 600; ++i) {
+        CHECK_FALSE(game::advanceShadeHum(hum, round, STEP));
+    }
+    // And it makes no step: it stands.
+    game::StepClock clock;
+    game::CuePlay play;
+    CHECK(game::shadeStepMetres(round) == 0.0F);
+    CHECK_FALSE(game::advanceShadeSteps(clock, round, play));
+    // The quiet time is over: the hum is back at once.
+    round.shade.quietLeft = 0.0F;
+    CHECK(game::advanceShadeHum(hum, round, STEP));
+}
+
 TEST_CASE("the hum is heard from 14 m of way, and not in a round without a shade") {
     game::Round round;
     round.shade.present = true;
@@ -473,7 +509,9 @@ TEST_CASE("the hum follows the way the shade has to walk, not the straight line"
     // A real maze: at the start of the round the shade can stand a few metres away
     // behind walls and still be a long walk away.
     const game::MazeWorld world = game::buildMazeWorld(10, 10, 168U, {}, 13);
-    const game::GameplaySettings settings;
+    game::GameplaySettings settings;
+    // Ears for the whole maze: the player sprints on the spot, and the shade comes.
+    settings.shade.hearSprintMetres = 100000.0F;
     game::Round round = game::startRound(world, settings);
     REQUIRE(round.shade.present);
     const std::vector<scene::Aabb> obstacles = game::roundObstacles(world, round);
@@ -491,7 +529,9 @@ TEST_CASE("the hum follows the way the shade has to walk, not the straight line"
     bool hummed = false;
     bool caught = false;
     for (int i = 0; i < 60 * 120 && !caught; ++i) {
-        caught = game::updateRoundShade(round, world, settings, feet, {}, obstacles, STEP);
+        caught = game::updateRoundShade(round, world, settings, feet, {}, obstacles, STEP,
+                                        game::Noise::Sprint)
+                     .caught;
         CHECK(round.shade.wayMetres <= before + 0.001F);
         before = round.shade.wayMetres;
         CHECK(game::shadeHumSounds(round) == (round.shade.wayMetres <= game::SHADE_HUM_DISTANCE));
@@ -785,9 +825,11 @@ TEST_CASE("a shade that stands makes no step, near or far, and a round without o
 }
 
 TEST_CASE("the shade of a real round steps only while it walks, and only near the player") {
-    // The maze of the hum test: the shade starts 88 m of way from the player.
+    // The maze of the hum test: the shade starts 88 m of way from the player, who
+    // sprints on the spot and is heard across the whole maze.
     const game::MazeWorld world = game::buildMazeWorld(10, 10, 168U, {}, 13);
-    const game::GameplaySettings settings;
+    game::GameplaySettings settings;
+    settings.shade.hearSprintMetres = 100000.0F;
     game::Round round = game::startRound(world, settings);
     REQUIRE(round.shade.present);
     const std::vector<scene::Aabb> obstacles = game::roundObstacles(world, round);
@@ -809,7 +851,9 @@ TEST_CASE("the shade of a real round steps only while it walks, and only near th
     float lastVolume = 0.0F;
     bool caught = false;
     for (int i = 0; i < 60 * 120 && !caught; ++i) {
-        caught = game::updateRoundShade(round, world, settings, feet, {}, obstacles, STEP);
+        caught = game::updateRoundShade(round, world, settings, feet, {}, obstacles, STEP,
+                                        game::Noise::Sprint)
+                     .caught;
         if (game::advanceShadeSteps(clock, round, play)) {
             ++heard;
             CHECK(round.shade.wayMetres <= game::SHADE_STEP_DISTANCE);

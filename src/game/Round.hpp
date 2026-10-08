@@ -235,7 +235,9 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 ///   - an open gate keeps sinking, and so does the wall of every pulled lever,
 ///   - the card of a note closes when the player walks away from the note
 ///     (NOTE_READ_DISTANCE) or the round is won,
-///   - the battery drains while the flashlight is on,
+///   - the battery drains while the flashlight is on, faster while its beam is on the
+///     shade (game::batteryDrainFactor, with the light the shade had in the step before:
+///     the shade is moved after this call),
 ///   - every crystal whose pickup sphere the player reaches is collected and charges
 ///     the battery,
 ///   - every flask the player reaches in the same way is picked up
@@ -265,18 +267,20 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
 ShadeLamp roundShadeLamp(const LightingSettings& settings, const Round& round,
                          const FlashlightPose& pose);
 
-/// Advances the shade of the round by one fixed step (game::advanceShade) and returns
-/// true when it has caught the player in this step. Call it after updateRound, with the
-/// same position of the feet. lamp is the flashlight of the step (roundShadeLamp) and
-/// obstacles what blocks its light (roundObstacles).
+/// Advances the shade of the round by one fixed step (game::advanceShade) and tells
+/// what happened in it: a catch, the moment it noticed the player, a banish. Call it
+/// after updateRound, with the same position of the feet. lamp is the flashlight of the
+/// step (roundShadeLamp), obstacles what blocks its light (roundObstacles) and noise
+/// what the player did in the step that can be heard (game::playerNoise).
 ///
 /// The shade walks through the maze of the ROUND (roundMaze), so a wall that a lever
 /// has opened is a way for it too. It only moves while the round is being played: after
 /// the win it stands where it was and catches nobody. The round is not changed by
 /// a catch: the caller starts it again (startRound) and shows the caught line.
-bool updateRoundShade(Round& round, const MazeWorld& world, const GameplaySettings& settings,
-                      const glm::vec3& feetPosition, const ShadeLamp& lamp,
-                      std::span<const scene::Aabb> obstacles, float stepSeconds);
+ShadeEvents updateRoundShade(Round& round, const MazeWorld& world, const GameplaySettings& settings,
+                             const glm::vec3& feetPosition, const ShadeLamp& lamp,
+                             std::span<const scene::Aabb> obstacles, float stepSeconds,
+                             Noise noise = Noise::None);
 
 /// Shows a caught line in the round from now on (game::caughtLine of line), for
 /// CAUGHT_LINE_SECONDS seconds of play.

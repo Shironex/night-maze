@@ -381,6 +381,10 @@ Heightmap loadHeightmap() {
 // How long the drawn shade takes to change between the standing and the walking pose.
 constexpr float SHADE_SWAY_BLEND_SECONDS = 0.3F;
 
+// The smallest height the dissolving figure is drawn with, as a part of its own: a model
+// matrix must not scale by 0 (it could not be inverted for the normals).
+constexpr float MIN_SHADE_DISSOLVE_SCALE = 0.02F;
+
 // Puts the pose of the shade (game::shadeSwayPose) on its transform: a rise, and two
 // turns around the feet, the forward lean after the turn to the player (Transform turns
 // y, then x, then z).
@@ -1679,6 +1683,8 @@ void NightMazeApp::beginRound() {
     // The hum of the shade starts anew as well. The shade itself is part of the round:
     // startRound has put it back in its start cell, with its grace time ahead of it.
     m_shadeHum = {};
+    // A lever pulled in the round before is not a noise of this one.
+    m_leverPulled = false;
     // A restart in the middle of a fade to black ends the fade.
     m_catchSeconds = -1.0F;
     // The steps of the player and of the shade count their metres from the beginning.
@@ -1772,9 +1778,10 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // the top). A player who stands, holds the map or pushes against a wall moved
     // nothing, and a flying one is silent (game::advanceFootsteps).
     const glm::vec3 walked = m_player.position - m_previousPlayerPosition;
+    const float walkedMetres = glm::length(glm::vec2{walked.x, walked.z});
     CuePlay step;
     if (advanceFootsteps(m_footsteps,
-                         {.metres = glm::length(glm::vec2{walked.x, walked.z}),
+                         {.metres = walkedMetres,
                           .stepSeconds = static_cast<float>(fixedDt),
                           .walkSpeed = m_player.walkSpeed,
                           .sprintSpeed = m_player.sprintSpeed,
@@ -1843,9 +1850,33 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // and goes on while the map or a note card is on the screen.
     const FlashlightPose lampPose =
         flashlightPose(m_lighting, m_player.eyePosition(), m_camera.forward(), m_camera.right());
-    const bool caught = updateRoundShade(m_round, m_mazeWorld, m_gameplay, m_player.position,
-                                         roundShadeLamp(m_lighting, m_round, lampPose), m_obstacles,
-                                         static_cast<float>(fixedDt));
+    // What the shade can hear of this step: the feet by the speed they really had,
+    // a crystal or a flask that was picked up, and a lever pulled since the step before
+    // (game::playerNoise). A player who stands or reads the map is silent.
+    const Noise noise =
+        playerNoise({.metres = walkedMetres,
+                     .stepSeconds = static_cast<float>(fixedDt),
+                     .walkSpeed = m_player.walkSpeed,
+                     .sprintSpeed = m_player.sprintSpeed,
+                     .flying = m_player.noclip,
+                     .pickedUp = m_round.collectedCount > soundBefore.collectedCount ||
+                                 m_round.flasksCollected > flasksBefore,
+                     .pulledLever = m_leverPulled},
+                    m_gameplay.shade);
+    m_leverPulled = false;
+    const ShadeEvents shadeEvents =
+        updateRoundShade(m_round, m_mazeWorld, m_gameplay, m_player.position,
+                         roundShadeLamp(m_lighting, m_round, lampPose), m_obstacles,
+                         static_cast<float>(fixedDt), noise);
+    const bool caught = shadeEvents.caught;
+    // The moment it noticed the player, and the moment the beam burned it away: one
+    // sound each. A round without a shade has neither.
+    if (shadeEvents.alerted) {
+        playCue(SoundCue::ShadeAlert);
+    }
+    if (shadeEvents.banished) {
+        playCue(SoundCue::ShadeBanish);
+    }
     // Its hum, on a clock like the pulse: more often the nearer the shade is.
     if (advanceShadeHum(m_shadeHum, m_round, static_cast<float>(fixedDt))) {
         playCue(SoundCue::ShadeNear);
@@ -2230,7 +2261,16 @@ void NightMazeApp::onRender(double alpha) {
         scene::Transform shade;
         shade.position = glm::mix(m_round.shade.previousPosition, m_round.shade.position,
                                   static_cast<float>(alpha));
-        shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, feet), 0.0F};
+        // It looks at the player it knows of, and otherwise the way it walks.
+        shade.rotationDegrees = {0.0F, shadeFacingDegrees(m_round.shade, feet), 0.0F};
+        // Right after a banish the figure is still drawn where it was burned away, and
+        // sinks into the ground there: its height is scaled, which needs no shader. The
+        // shade of the rules is already in its new cell.
+        if (m_round.shade.dissolveLeft > 0.0F) {
+            shade.position = m_round.shade.banishedFrom;
+            shade.scale.y =
+                std::max(shadeDissolveHeight(m_round.shade.dissolveLeft), MIN_SHADE_DISSOLVE_SCALE);
+        }
         // The sway is drawing only: it moves the picture of the figure, not the shade of
         // the round. It walks more or less as the state says, blended over a third of a
         // second (the frame time, as the pose is a picture and not a rule).
@@ -2238,7 +2278,8 @@ void NightMazeApp::onRender(double alpha) {
             static_cast<float>(time().deltaSeconds()) / SHADE_SWAY_BLEND_SECONDS;
         const float target = shadeWalking(m_round.shade) && m_catchSeconds < 0.0F ? 1.0F : 0.0F;
         m_shadeWalkAmount += std::clamp(target - m_shadeWalkAmount, -blendStep, blendStep);
-        applyShadeSway(shade, shadeSwayPose(m_shadeWalkAmount, m_gameplay.shade.speed,
+        applyShadeSway(shade, shadeSwayPose(m_shadeWalkAmount,
+                                            shadeSpeed(m_round.shade.hunt, m_gameplay.shade),
                                             m_round.animationSeconds, m_gameplay.shade.sway));
         m_shadeMatrix = shade.matrix();
     }
@@ -2486,6 +2527,8 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
         if (interact(m_round, m_mazeWorld, m_pick)) {
             m_obstacles = roundObstacles(m_mazeWorld, m_round);
             playCue(SoundCue::LeverPull);
+            // The shade may hear it, in the next fixed step.
+            m_leverPulled = true;
         }
         // The round has changed, so the action is asked again: the lever that was just
         // pulled is not highlighted in this frame, and an opened card can be closed.

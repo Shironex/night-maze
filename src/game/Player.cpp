@@ -24,6 +24,14 @@ PlayerInput movementInput(const PlayerInput& held, bool mapShown) {
     return mapShown ? PlayerInput{} : held;
 }
 
+bool sprintedStep(float metres, float stepSeconds, float walkSpeed, float sprintSpeed) {
+    // The first question also keeps the division safe.
+    if (stepSeconds <= 0.0F) {
+        return false;
+    }
+    return metres / stepSeconds > (walkSpeed + sprintSpeed) / 2.0F;
+}
+
 bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool wantsSprint,
                     float stepSeconds) {
     const bool sprinting = wantsSprint && !stamina.winded && stamina.level > 0.0F;

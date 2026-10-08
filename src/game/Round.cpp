@@ -33,13 +33,14 @@ constexpr float FLICKER_SLOW_SPEED = 7.3F;
 constexpr float FLICKER_DEPTH = 0.85F;
 
 // The battery loses the same share of its charge in every step the light is on: all of
-// it in batteryLifetimeSeconds.
+// it in batteryLifetimeSeconds. While the beam is on the shade that share is several
+// times larger (game::batteryDrainFactor): burning the shade away costs light.
 void drainBattery(Round& round, const GameplaySettings& settings, bool flashlightOn,
                   float stepSeconds) {
     if (flashlightOn && settings.batteryDrains) {
         const float lifetime =
             std::max(settings.batteryLifetimeSeconds, MIN_BATTERY_LIFETIME_SECONDS);
-        round.battery -= stepSeconds / lifetime;
+        round.battery -= stepSeconds * batteryDrainFactor(round.shade, settings.shade) / lifetime;
     }
     // The debug UI can write any number into the battery, so both ends are held here.
     round.battery = std::clamp(round.battery, 0.0F, 1.0F);
@@ -252,16 +253,18 @@ ShadeLamp roundShadeLamp(const LightingSettings& settings, const Round& round,
             .range = settings.flashlightRange};
 }
 
-bool updateRoundShade(Round& round, const MazeWorld& world, const GameplaySettings& settings,
-                      const glm::vec3& feetPosition, const ShadeLamp& lamp,
-                      std::span<const scene::Aabb> obstacles, float stepSeconds) {
+ShadeEvents updateRoundShade(Round& round, const MazeWorld& world, const GameplaySettings& settings,
+                             const glm::vec3& feetPosition, const ShadeLamp& lamp,
+                             std::span<const scene::Aabb> obstacles, float stepSeconds,
+                             Noise noise) {
     if (round.state != RoundState::Playing) {
-        return false;
+        return {};
     }
     const ShadeStep step{.playerFeet = feetPosition,
                          .lamp = lamp,
                          .obstacles = obstacles,
-                         .openedWalls = pulledLeverCount(round)};
+                         .openedWalls = pulledLeverCount(round),
+                         .noise = noise};
     return advanceShade(round.shade, settings.shade, roundMaze(world, round), world.terrain, step,
                         stepSeconds);
 }

@@ -1,6 +1,8 @@
 // SoundCues: which short sounds the game plays and the rules that decide when.
 #include "game/SoundCues.hpp"
 
+#include "game/Player.hpp"
+
 #include <algorithm>
 #include <array>
 
@@ -40,6 +42,8 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/shade_step_1.wav", .name = "shade step 1"},
     {.file = "audio/shade_step_2.wav", .name = "shade step 2"},
     {.file = "audio/maze_wind.wav", .name = "maze wind", .ambient = true},
+    {.file = "audio/shade_alert.wav", .name = "shade alert"},
+    {.file = "audio/shade_banish.wav", .name = "shade banish"},
 }};
 
 // The first sound of the steps of the player and of the shade: the others follow it in
@@ -195,6 +199,7 @@ bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds) {
 
 bool shadeHumSounds(const Round& round) {
     return round.state == RoundState::Playing && round.shade.present &&
+           shadeState(round.shade) != ShadeState::Banished &&
            round.shade.wayMetres <= SHADE_HUM_DISTANCE;
 }
 
@@ -233,8 +238,8 @@ bool advanceFootsteps(StepClock& clock, const FootstepInput& input, CuePlay& pla
         return false;
     }
     // Sprinted or walked is asked from the speed the feet really had.
-    const float speed = input.metres / input.stepSeconds;
-    const bool sprinted = speed > (input.walkSpeed + input.sprintSpeed) / 2.0F;
+    const bool sprinted =
+        sprintedStep(input.metres, input.stepSeconds, input.walkSpeed, input.sprintSpeed);
     int sound = 0;
     if (!walkStepClock(clock, input.metres,
                        sprinted ? FOOTSTEP_SPRINT_METRES : FOOTSTEP_WALK_METRES,

@@ -1048,6 +1048,10 @@ private:
     WindedBreath m_windedBreath;
     // The clock of the hum of the shade: the same kind of state.
     ShadeHum m_shadeHum;
+    // True when the player has pulled a lever since the last fixed step: the next step
+    // tells the shade, which may hear it (game::playerNoise). Keys are read once per
+    // frame and the shade moves in fixed steps, so the pull waits here in between.
+    bool m_leverPulled = false;
     // The clocks of the steps of the player and of the shade. They count metres and
     // not seconds, and are the same kind of state too.
     StepClock m_footsteps;

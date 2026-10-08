@@ -30,6 +30,14 @@ struct PlayerInput {
 /// empty input, so the stamina refills as it does for a player who stands still.
 PlayerInput movementInput(const PlayerInput& held, bool mapShown);
 
+/// True when feet that moved metres over the ground in a fixed step of stepSeconds
+/// seconds were sprinting: they really moved faster than half way between walkSpeed and
+/// sprintSpeed. The speed the feet had is asked, not the key: a player who sprints into
+/// a wall and only slides along it slowly is walking. The sound of the steps asks it
+/// (game::advanceFootsteps), and so does the noise the shade hears (game::playerNoise).
+/// False for a step without a length.
+bool sprintedStep(float metres, float stepSeconds, float walkSpeed, float sprintSpeed);
+
 /// The numbers of the stamina rule. The debug UI edits them, the values here are the
 /// defaults: starting values that are meant to be tuned by playing.
 struct StaminaSettings {
