@@ -199,12 +199,14 @@ TEST_CASE("the shade settings start with the agreed numbers") {
     // A chase is faster than the player walks, slower than the player sprints.
     CHECK(settings.speed > game::Player::WALK_SPEED);
     CHECK(settings.speed < game::Player::SPRINT_SPEED);
-    // Wandering is slower than the player walks, and going to a noise is no faster.
+    // Wandering is slowest. Going to a noise is faster, and still slower than the player
+    // walks.
     CHECK(settings.wanderSpeed == game::SHADE_WANDER_SPEED);
-    CHECK(settings.wanderSpeed < game::Player::WALK_SPEED);
     CHECK(settings.investigateSpeed == game::SHADE_INVESTIGATE_SPEED);
-    CHECK(settings.investigateSpeed <= game::Player::WALK_SPEED);
     CHECK(settings.investigateSpeed > settings.wanderSpeed);
+    CHECK(settings.investigateSpeed < game::Player::WALK_SPEED);
+    // A walk that is just heard leaves three seconds until the shade is there.
+    CHECK(settings.hearWalkMetres / settings.investigateSpeed == doctest::Approx(3.0F));
     // What it hears and sees.
     CHECK(settings.hearSprintMetres == game::SHADE_HEAR_SPRINT_METRES);
     CHECK(settings.hearLeverMetres == game::SHADE_HEAR_LEVER_METRES);
@@ -308,8 +310,8 @@ TEST_CASE("a noise is heard when it carries as far as the way to it") {
     CHECK(game::shadeHears(13.9F, game::Noise::Sprint, settings));
     CHECK(game::shadeHears(14.0F, game::Noise::Sprint, settings));
     CHECK_FALSE(game::shadeHears(14.1F, game::Noise::Sprint, settings));
-    CHECK(game::shadeHears(3.0F, game::Noise::Walk, settings));
-    CHECK_FALSE(game::shadeHears(3.1F, game::Noise::Walk, settings));
+    CHECK(game::shadeHears(6.0F, game::Noise::Walk, settings));
+    CHECK_FALSE(game::shadeHears(6.1F, game::Noise::Walk, settings));
     CHECK(game::shadeHears(10.0F, game::Noise::Lever, settings));
     CHECK_FALSE(game::shadeHears(10.1F, game::Noise::Lever, settings));
     CHECK(game::shadeHears(8.0F, game::Noise::Pickup, settings));
@@ -346,7 +348,7 @@ TEST_CASE("hearing is measured along the passages, so a wall between the two hel
         return shade;
     };
 
-    // A walk is heard from 3 m, a pickup from 8 m and a lever from 10 m: all of them
+    // A walk is heard from 6 m, a pickup from 8 m and a lever from 10 m: all of them
     // are too far along the way.
     for (const game::Noise noise :
          {game::Noise::None, game::Noise::Walk, game::Noise::Pickup, game::Noise::Lever}) {

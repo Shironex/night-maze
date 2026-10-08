@@ -56,17 +56,19 @@ constexpr float SHADE_SPEED = 4.0F;
 /// player less often than a faster one would.
 constexpr float SHADE_WANDER_SPEED = 1.5F;
 
-/// How fast it walks to a noise, in metres per second: as fast as the player walks. It
-/// comes with purpose, but a player who walks on does not lose ground to it.
-constexpr float SHADE_INVESTIGATE_SPEED = 3.0F;
+/// How fast it walks to a noise, in metres per second: faster than it wanders and slower
+/// than the player walks. It comes with purpose, but the player who has heard it notice
+/// them (the alert sound) has a few seconds to turn the lamp its way, or to walk on.
+constexpr float SHADE_INVESTIGATE_SPEED = 2.0F;
 
 /// How far each noise of the player carries, in metres along the passages (Noise):
-/// a sprint seven cells, a lever five, a pickup four, and a walk a cell and a half, so
-/// walking is heard only by a shade that is almost there.
+/// a sprint seven cells, a lever five, a pickup four and a walk three. A walk is heard
+/// only from close by, but not from so close that the alert sound comes too late: at
+/// 6 m the shade still needs three seconds to arrive.
 constexpr float SHADE_HEAR_SPRINT_METRES = 14.0F;
 constexpr float SHADE_HEAR_LEVER_METRES = 10.0F;
 constexpr float SHADE_HEAR_PICKUP_METRES = 8.0F;
-constexpr float SHADE_HEAR_WALK_METRES = 3.0F;
+constexpr float SHADE_HEAR_WALK_METRES = 6.0F;
 
 /// How far the shade sees down a straight corridor, in metres: a little farther than the
 /// flashlight reaches (10 m), so it has seen the player before the beam can stop it.
