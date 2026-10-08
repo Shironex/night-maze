@@ -105,16 +105,15 @@ def camera(name, seed, shot, at):
 # in the middle of its walk. The two exceptions: the one picture OF the shade is the run
 # "shade", and the run "intro" plays the intro as a first start shows it.
 RUNS = [
-    # The main menu over its video, then the settings screen: Tab seven times goes from
-    # "Play" over the difficulty buttons, the calm night switch and the seed to
-    # "Settings". --calm changes nothing in these two pictures (the switch on the menu
-    # shows the settings file, and no round is started): it is there so that no run but
-    # "shade" can ever have a shade.
+    # The main menu over its video, then the settings screen: Tab three times goes from
+    # the first entry (the campaign) over "Nights" and "Free play" to "Settings". --calm
+    # changes nothing in these two pictures (no round is started): it is there so that
+    # no run but "shade" can ever have a shade. A picture of a night of the campaign would
+    # start with --night <1..5> in place of --play (no such picture is taken yet).
     Run("menu", ["--calm", "--seed", "76"], {"difficulty": "normal", "master_volume": 100}, [
         ("wait", 2.0), ("pointer_out",), ("grab", "menu"),
-        ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"),
-        ("tap", "TAB"), ("tap", "TAB"), ("tap", "ENTER"), ("wait", 1.0), ("pointer_out",),
-        ("grab", "settings")]),
+        ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "ENTER"), ("wait", 1.0),
+        ("pointer_out",), ("grab", "settings")]),
     # A corridor with a crystal glowing in front of the lit wall at its end.
     camera("corridor", 1, "walk", 75.0),
     # A crystal in a corner of worn walls: stones missing on the left, moss in the
