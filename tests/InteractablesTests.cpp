@@ -1077,41 +1077,178 @@ TEST_CASE("the flavour notes of a maze take different lines until the table runs
     CHECK(used.size() == 4U);
 }
 
-TEST_CASE("the story lines are the sixteen lines without the shadow, in story order") {
-    REQUIRE(game::flavourLineCount() == 16);
+TEST_CASE("the story lines are the twenty-four lines of the story, in story order") {
+    REQUIRE(game::flavourLineCount() == 24);
     CHECK(game::flavourLine(0) == "The moon sees every corridor. You see one.");
     CHECK(game::flavourLine(8) == "The gate grows as far from the stile as it can.");
-    CHECK(game::flavourLine(9) == "Puddles hold stars. Stars are no use. Walk on.");
-    CHECK(game::flavourLine(15) == "One lamp is enough, if it is the one still lit.");
+    CHECK(game::flavourLine(9) == "Lamp off saves the lamp. Something else is glad of it.");
+    CHECK(game::flavourLine(10) == "It walks when you turn. It walks when the lamp sleeps.");
+    CHECK(game::flavourLine(11) == "Shine on it and it is only ground. Look, and it waits.");
+    CHECK(game::flavourLine(12) == "We played this as children. It learned the rules from us.");
+    CHECK(game::flavourLine(13) == "If it reaches you, it only carries you back. Begin again.");
+    CHECK(game::flavourLine(14) == "It does not mind the moon. The moon is where it lives.");
+    CHECK(game::flavourLine(15) == "Each piece that falls leaves a hole. The hole comes after.");
+    CHECK(game::flavourLine(16) == "It is not hunting you. It is looking in your pockets.");
+    CHECK(game::flavourLine(17) == "Puddles hold stars. Stars are no use. Walk on.");
+    CHECK(game::flavourLine(23) == "One lamp is enough, if it is the one still lit.");
+}
+
+TEST_CASE("the eight lines about the shadow are flagged, and no other line is") {
+    for (int index = 0; index < game::flavourLineCount(); ++index) {
+        CAPTURE(index);
+        CHECK(game::flavourLineNeedsShade(index) == (index >= 9 && index <= 16));
+    }
+    CHECK(game::oldStoryLineCount() == 16);
+    CHECK_THROWS_AS(game::flavourLineNeedsShade(-1), std::out_of_range);
+    CHECK_THROWS_AS(game::flavourLineNeedsShade(24), std::out_of_range);
 }
 
 TEST_CASE("a story note takes the line after the one before it, and the table goes round") {
     CHECK(game::storyLineFor(0, 0) == 0);
     CHECK(game::storyLineFor(0, 1) == 1);
     CHECK(game::storyLineFor(5, 2) == 7);
-    // Wrapping at the end of the 16 lines.
-    CHECK(game::storyLineFor(15, 1) == 0);
-    CHECK(game::storyLineFor(14, 3) == 1);
+    // With the shade in the game the lines about it are lines like the others.
+    CHECK(game::storyLineFor(8, 1) == 9);
+    CHECK(game::storyLineFor(8, 9) == 17);
+    // Wrapping at the end of the 24 lines.
+    CHECK(game::storyLineFor(23, 1) == 0);
+    CHECK(game::storyLineFor(22, 3) == 1);
     // A number that is too large or negative is wrapped into the table too.
-    CHECK(game::storyLineFor(16, 0) == 0);
-    CHECK(game::storyLineFor(35, 0) == 3);
-    CHECK(game::storyLineFor(-1, 0) == 15);
-    CHECK(game::storyLineFor(-17, 2) == 1);
+    CHECK(game::storyLineFor(24, 0) == 0);
+    CHECK(game::storyLineFor(51, 0) == 3);
+    CHECK(game::storyLineFor(-1, 0) == 23);
+    CHECK(game::storyLineFor(-25, 2) == 1);
+}
+
+TEST_CASE("a maze without a shade skips the lines about the shadow") {
+    constexpr bool NO_SHADE = false;
+    // Before them nothing changes.
+    CHECK(game::storyLineFor(0, 0, NO_SHADE) == 0);
+    CHECK(game::storyLineFor(6, 2, NO_SHADE) == 8);
+    // The note after line 8 shows line 17, the first one after the shadow.
+    CHECK(game::storyLineFor(8, 1, NO_SHADE) == 17);
+    CHECK(game::storyLineFor(7, 3, NO_SHADE) == 18);
+    // A counter that stands ON a line about the shadow starts with the first line after
+    // them, and goes on from there.
+    CHECK(game::storyLineFor(9, 0, NO_SHADE) == 17);
+    CHECK(game::storyLineFor(13, 0, NO_SHADE) == 17);
+    CHECK(game::storyLineFor(16, 1, NO_SHADE) == 18);
+    // Round the end of the table.
+    CHECK(game::storyLineFor(23, 1, NO_SHADE) == 0);
+    CHECK(game::storyLineFor(22, 11, NO_SHADE) == 17);
+
+    // Whatever the counter and the note: never a line about the shadow, and sixteen
+    // notes in a row are sixteen different lines.
+    for (int first = 0; first < game::flavourLineCount(); ++first) {
+        std::vector<int> lines;
+        for (int rank = 0; rank < game::oldStoryLineCount(); ++rank) {
+            const int line = game::storyLineFor(first, rank, NO_SHADE);
+            CHECK_FALSE(game::flavourLineNeedsShade(line));
+            CHECK(std::ranges::find(lines, line) == lines.end());
+            lines.push_back(line);
+        }
+    }
+    // With the shade, twenty-four notes in a row are all twenty-four lines.
+    for (int first = 0; first < game::flavourLineCount(); ++first) {
+        std::vector<int> lines;
+        for (int rank = 0; rank < game::flavourLineCount(); ++rank) {
+            const int line = game::storyLineFor(first, rank);
+            CHECK(std::ranges::find(lines, line) == lines.end());
+            lines.push_back(line);
+        }
+    }
 }
 
 TEST_CASE("the counter moves on by the story notes of a finished maze and wraps") {
     CHECK(game::advanceStoryLine(0, 2) == 2);
     CHECK(game::advanceStoryLine(2, 2) == 4);
-    CHECK(game::advanceStoryLine(14, 2) == 0);
-    CHECK(game::advanceStoryLine(15, 2) == 1);
+    CHECK(game::advanceStoryLine(8, 2) == 10);
+    CHECK(game::advanceStoryLine(22, 2) == 0);
+    CHECK(game::advanceStoryLine(23, 2) == 1);
     // A maze without story notes leaves the counter where it is.
     CHECK(game::advanceStoryLine(9, 0) == 9);
-    // Eight mazes of two lines show every line once, then start again.
+    CHECK(game::advanceStoryLine(33, 0) == 9);
+    // Twelve mazes of two lines show every line once, then start again.
     int counter = 0;
-    for (int maze = 0; maze < 8; ++maze) {
+    for (int maze = 0; maze < 12; ++maze) {
         counter = game::advanceStoryLine(counter, 2);
     }
     CHECK(counter == 0);
+}
+
+TEST_CASE("after a maze without a shade the counter stands right after its last line") {
+    constexpr bool NO_SHADE = false;
+    // No line was skipped: as with the shade.
+    CHECK(game::advanceStoryLine(0, 2, NO_SHADE) == 2);
+    // Lines 7 and 8 were shown. The counter stops at 9, the first line about the shadow:
+    // it was not read, and a later game with the shade shows it.
+    CHECK(game::advanceStoryLine(7, 2, NO_SHADE) == 9);
+    // Lines 8 and 17 were shown, the eight between them were stepped over: 18 is next.
+    CHECK(game::advanceStoryLine(8, 2, NO_SHADE) == 18);
+    // The counter stood on a line about the shadow: lines 17 and 18 were shown.
+    CHECK(game::advanceStoryLine(9, 2, NO_SHADE) == 19);
+    CHECK(game::advanceStoryLine(12, 1, NO_SHADE) == 18);
+    // Round the end of the table.
+    CHECK(game::advanceStoryLine(23, 2, NO_SHADE) == 1);
+    // No story notes: the counter stays, also on a line about the shadow.
+    CHECK(game::advanceStoryLine(11, 0, NO_SHADE) == 11);
+
+    // Eight calm mazes of two lines show the sixteen lines without the shadow once and
+    // come round to where they started.
+    int counter = 0;
+    std::vector<int> shown;
+    for (int maze = 0; maze < 8; ++maze) {
+        shown.push_back(game::storyLineFor(counter, 0, NO_SHADE));
+        shown.push_back(game::storyLineFor(counter, 1, NO_SHADE));
+        counter = game::advanceStoryLine(counter, 2, NO_SHADE);
+    }
+    CHECK(counter == 0);
+    std::ranges::sort(shown);
+    CHECK(std::ranges::adjacent_find(shown) == shown.end());
+    CHECK(shown.size() == 16U);
+}
+
+TEST_CASE("a line of the old table of sixteen is found again in the table of today") {
+    for (int old = 0; old < 16; ++old) {
+        CAPTURE(old);
+        CHECK(game::storyLineFromOldTable(old) == (old <= 8 ? old : old + 8));
+        CHECK_FALSE(game::flavourLineNeedsShade(game::storyLineFromOldTable(old)));
+    }
+    // Any other number goes round the old table first.
+    CHECK(game::storyLineFromOldTable(16) == 0);
+    CHECK(game::storyLineFromOldTable(-1) == 23);
+}
+
+TEST_CASE("the notes of a calm maze never show a line about the shadow, and none twice") {
+    const TestMaze test = testMaze(16, 16, 3U);
+    for (int firstLine = 0; firstLine < game::flavourLineCount(); ++firstLine) {
+        CAPTURE(firstLine);
+        // Sixteen notes, the most a maze can have: five of them tell the story.
+        const game::InteractableSettings settings{
+            .leverCount = 2, .noteCount = 16, .firstStoryLine = firstLine, .shadeLines = false};
+        const game::Interactables placed = placeIn(test, 3U, settings);
+        std::vector<int> lines;
+        for (const game::Note& note : placed.notes) {
+            if (note.kind != game::NoteKind::Flavour) {
+                continue;
+            }
+            CHECK_FALSE(game::flavourLineNeedsShade(note.flavourIndex));
+            CHECK(std::ranges::find(lines, note.flavourIndex) == lines.end());
+            lines.push_back(note.flavourIndex);
+        }
+        CHECK(lines.size() == 5U);
+
+        // The same maze with the shade: the same notes in the same places, and lines
+        // about the shadow among them when the counter is near them.
+        game::InteractableSettings withShade = settings;
+        withShade.shadeLines = true;
+        const game::Interactables other = placeIn(test, 3U, withShade);
+        REQUIRE(other.notes.size() == placed.notes.size());
+        for (std::size_t i = 0; i < placed.notes.size(); ++i) {
+            CHECK(placed.notes[i].mount == other.notes[i].mount);
+            CHECK(placed.notes[i].kind == other.notes[i].kind);
+        }
+    }
 }
 
 TEST_CASE("the story notes of a maze show the counter's lines, nearest to the start first") {
@@ -1119,7 +1256,7 @@ TEST_CASE("the story notes of a maze show the counter's lines, nearest to the st
     const std::vector<int> distances = game::passageDistances(test.maze, START);
     const auto width = static_cast<std::size_t>(test.maze.width());
 
-    for (const int firstLine : {0, 5, 15}) {
+    for (const int firstLine : {0, 5, 15, 23}) {
         CAPTURE(firstLine);
         const game::InteractableSettings settings{
             .leverCount = 2, .noteCount = 12, .firstStoryLine = firstLine};
@@ -1174,14 +1311,14 @@ TEST_CASE("every difficulty gets six notes for many seeds, and no line repeats i
             const TestMaze test =
                 testMaze(level.mazeWidth, level.mazeHeight, static_cast<std::uint32_t>(seed));
             // The counter at the end of the table: the lines wrap inside the maze.
-            const game::InteractableSettings settings{.firstStoryLine = 15};
+            const game::InteractableSettings settings{.firstStoryLine = 23};
             const game::Interactables placed =
                 placeIn(test, static_cast<std::uint32_t>(seed), settings);
 
             // All six are placed, so the counter advances by two every time.
             REQUIRE(placed.notes.size() == 6U);
             CHECK(game::storyNoteCount(placed) == 2);
-            CHECK(game::advanceStoryLine(15, game::storyNoteCount(placed)) == 1);
+            CHECK(game::advanceStoryLine(23, game::storyNoteCount(placed)) == 1);
 
             std::vector<int> lines;
             for (const game::Note& note : placed.notes) {

@@ -94,6 +94,10 @@ struct InteractableSettings {
     /// line and the lines after it (see storyLineFor). Any whole number is allowed: it is
     /// wrapped into the table.
     int firstStoryLine = 0;
+
+    /// False in a maze without a shade (a calm night): the story notes then skip the
+    /// lines that are about the shadow (flavourLineNeedsShade).
+    bool shadeLines = true;
 };
 
 /// One side of one cell: the name of a wall (or of the place where a wall could stand).
@@ -222,7 +226,8 @@ struct Interactables {
 ///     settings.firstStoryLine, the next one the line after it, and so on (storyLineFor).
 ///     Two notes the same number of passages away are ordered by the seed. The seed does
 ///     not choose the lines: which lines a maze shows depends on the story line counter
-///     and on nothing else, so no line repeats inside a maze.
+///     and on nothing else, so no line repeats inside a maze. With settings.shadeLines
+///     false the lines about the shadow are left out.
 ///
 /// The levers and the notes use two generators of their own, so asking for another
 /// number of notes never moves a lever.
@@ -358,22 +363,44 @@ std::string_view compassName(Compass direction);
 /// The story line that story note number rank of a maze shows (0 is the note nearest to
 /// the start). firstLine is the line the maze starts with (InteractableSettings::
 /// firstStoryLine). The table is used round and round, so after the last line comes line
-/// 0 again. firstLine and rank can be any whole numbers; a negative firstLine is wrapped
-/// like a large one. The result is from 0 to flavourLineCount() - 1.
-int storyLineFor(int firstLine, int rank);
+/// 0 again. firstLine can be any whole number; a negative one is wrapped like a large
+/// one. rank is 0 or more. The result is from 0 to flavourLineCount() - 1.
+///
+/// shadeLines false is a maze without a shade: the lines about the shadow
+/// (flavourLineNeedsShade) are skipped. Note 0 then shows firstLine itself or, when that
+/// is a line about the shadow, the first line after it that is not, and every further
+/// note the next line that is not.
+int storyLineFor(int firstLine, int rank, bool shadeLines = true);
 
 /// How many notes of the maze tell the story (the notes of the kind Flavour).
 int storyNoteCount(const Interactables& interactables);
 
-/// The "next unread line" after a maze was finished: firstLine moved on by the number of
-/// story notes the maze had, and wrapped round at the end of the table. The result is
-/// from 0 to flavourLineCount() - 1.
-int advanceStoryLine(int firstLine, int storyNotes);
+/// The "next unread line" after a maze was finished: the line right after the last line
+/// the maze showed, wrapped round at the end of the table. Without a shade
+/// (shadeLines false) the maze has skipped lines, and the counter moves past the ones
+/// it skipped BEFORE its last line only: lines about the shadow that come after the last
+/// shown line are not counted as read, so a later game with the shade still shows them.
+/// A maze without story notes leaves the counter where it is. The result is from 0 to
+/// flavourLineCount() - 1.
+int advanceStoryLine(int firstLine, int storyNotes, bool shadeLines = true);
 
 /// The number of flavour lines in the table, and one of them. index runs from 0 to
 /// flavourLineCount() - 1. Throws std::out_of_range for another index.
 int flavourLineCount();
 std::string_view flavourLine(int index);
+
+/// True for a line that is about the shadow: a maze without a shade does not show it.
+/// Throws std::out_of_range for an index outside the table.
+bool flavourLineNeedsShade(int index);
+
+/// How many lines the table had before the lines about the shadow were added: the
+/// lines that need no shade. A settings file of that time counts in that shorter table.
+int oldStoryLineCount();
+
+/// The place in the table of today of a line counted in the table of before
+/// (oldStoryLineCount lines: the same lines in the same order, without the ones about
+/// the shadow). oldLine can be any whole number: it is wrapped into the old table first.
+int storyLineFromOldTable(int oldLine);
 
 /// The text of a note, in English like the rest of the HUD.
 ///

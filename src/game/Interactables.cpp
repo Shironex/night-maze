@@ -35,28 +35,48 @@ constexpr std::array<Direction, 2> REPORTED_SIDES = {Direction::East, Direction:
 // needs whole numbers only.
 constexpr int STRAIGHT_FACTOR = 2;
 
+// One line of the story.
+struct StoryLine {
+    std::string_view text;
+    // True for a line about the shadow: a maze without a shade leaves it out.
+    bool needsShade;
+};
+
 // The lines a story note (the kind Flavour) can show, in the order of the story: a maze
 // reads them one after the other and starts again at the first one after the last.
-// English, like the rest of the HUD. The lines about the shadow are not here yet, there
-// is no shadow in the game.
-constexpr std::array<std::string_view, 16> FLAVOUR_LINES = {
-    "The moon sees every corridor. You see one.",
-    "A splinter remembers being moon. The lamp believes it.",
-    "Dead ends are where the light hides.",
-    "The gate counts what you carry. It never asks for all.",
-    "Leave a few. The moon comes back to look for them.",
-    "A lever moves a wall. Somewhere.",
-    "Shepherds roped their gates under the turf. Pull. Listen.",
-    "Chalk ground from a splinter. It leans. It ignores walls.",
-    "The gate grows as far from the stile as it can.",
-    "Puddles hold stars. Stars are no use. Walk on.",
-    "When the lamp stutters, it is forgetting. Feed it.",
-    "Count your steps. The maze does not.",
-    "My hands shake now. The lamp does not mind whose hand.",
-    "I wrote these for whoever came next. I hoped for you.",
-    "There is no way back. The gate is the way home.",
-    "One lamp is enough, if it is the one still lit.",
-};
+// English, like the rest of the HUD. Eight of them are about the shadow.
+constexpr std::array<StoryLine, 24> FLAVOUR_LINES = {{
+    {.text = "The moon sees every corridor. You see one.", .needsShade = false},
+    {.text = "A splinter remembers being moon. The lamp believes it.", .needsShade = false},
+    {.text = "Dead ends are where the light hides.", .needsShade = false},
+    {.text = "The gate counts what you carry. It never asks for all.", .needsShade = false},
+    {.text = "Leave a few. The moon comes back to look for them.", .needsShade = false},
+    {.text = "A lever moves a wall. Somewhere.", .needsShade = false},
+    {.text = "Shepherds roped their gates under the turf. Pull. Listen.", .needsShade = false},
+    {.text = "Chalk ground from a splinter. It leans. It ignores walls.", .needsShade = false},
+    {.text = "The gate grows as far from the stile as it can.", .needsShade = false},
+    {.text = "Lamp off saves the lamp. Something else is glad of it.", .needsShade = true},
+    {.text = "It walks when you turn. It walks when the lamp sleeps.", .needsShade = true},
+    {.text = "Shine on it and it is only ground. Look, and it waits.", .needsShade = true},
+    {.text = "We played this as children. It learned the rules from us.", .needsShade = true},
+    {.text = "If it reaches you, it only carries you back. Begin again.", .needsShade = true},
+    {.text = "It does not mind the moon. The moon is where it lives.", .needsShade = true},
+    {.text = "Each piece that falls leaves a hole. The hole comes after.", .needsShade = true},
+    {.text = "It is not hunting you. It is looking in your pockets.", .needsShade = true},
+    {.text = "Puddles hold stars. Stars are no use. Walk on.", .needsShade = false},
+    {.text = "When the lamp stutters, it is forgetting. Feed it.", .needsShade = false},
+    {.text = "Count your steps. The maze does not.", .needsShade = false},
+    {.text = "My hands shake now. The lamp does not mind whose hand.", .needsShade = false},
+    {.text = "I wrote these for whoever came next. I hoped for you.", .needsShade = false},
+    {.text = "There is no way back. The gate is the way home.", .needsShade = false},
+    {.text = "One lamp is enough, if it is the one still lit.", .needsShade = false},
+}};
+
+// A whole number brought into the range from 0 to count - 1 by going round: -1 becomes
+// count - 1 (% of a negative number is negative, so count is added once).
+int wrapped(int number, int count) {
+    return ((number % count) + count) % count;
+}
 
 // Position of a cell in a list that holds the rows one after another, like in Maze.
 std::size_t cellIndex(const Maze& maze, MazeCell cell) {
@@ -393,7 +413,7 @@ Interactables placeInteractables(const Maze& maze, std::uint32_t seed, MazeCell 
     });
     for (std::size_t rank = 0; rank < storyNotes.size(); ++rank) {
         interactables.notes[storyNotes[rank]].flavourIndex =
-            storyLineFor(settings.firstStoryLine, static_cast<int>(rank));
+            storyLineFor(settings.firstStoryLine, static_cast<int>(rank), settings.shadeLines);
     }
     return interactables;
 }
@@ -568,12 +588,31 @@ std::string_view compassName(Compass direction) {
     return "here";
 }
 
-int storyLineFor(int firstLine, int rank) {
+int storyLineFor(int firstLine, int rank, bool shadeLines) {
     // The first line is brought into the table first, so a negative or a huge number
-    // cannot give a place outside of it (% of a negative number is negative).
+    // cannot give a place outside of it.
     const int count = flavourLineCount();
-    const int first = ((firstLine % count) + count) % count;
-    return (first + rank % count) % count;
+    int line = wrapped(firstLine, count);
+
+    // How many lines this maze may show at all, and how many of them are passed before
+    // the wanted one: the rank, going round when a maze has more notes than lines.
+    const int shown = shadeLines ? count : oldStoryLineCount();
+    int toPass = wrapped(rank, shown);
+
+    // Line after line from the first one. A line this maze may show counts, a line
+    // about the shadow in a maze without one is stepped over. The loop ends: there are
+    // more lines a maze may show than toPass.
+    while (true) {
+        const bool mayShow =
+            shadeLines || !FLAVOUR_LINES[static_cast<std::size_t>(line)].needsShade;
+        if (mayShow) {
+            if (toPass == 0) {
+                return line;
+            }
+            --toPass;
+        }
+        line = (line + 1) % count;
+    }
 }
 
 int storyNoteCount(const Interactables& interactables) {
@@ -586,8 +625,13 @@ int storyNoteCount(const Interactables& interactables) {
     return count;
 }
 
-int advanceStoryLine(int firstLine, int storyNotes) {
-    return storyLineFor(firstLine, storyNotes);
+int advanceStoryLine(int firstLine, int storyNotes, bool shadeLines) {
+    const int count = flavourLineCount();
+    if (storyNotes <= 0) {
+        return wrapped(firstLine, count);
+    }
+    // One past the line the last story note showed.
+    return (storyLineFor(firstLine, storyNotes - 1, shadeLines) + 1) % count;
 }
 
 int flavourLineCount() {
@@ -598,7 +642,31 @@ std::string_view flavourLine(int index) {
     if (index < 0 || index >= flavourLineCount()) {
         throw std::out_of_range("flavourLine: there is no flavour line with this number");
     }
-    return FLAVOUR_LINES[static_cast<std::size_t>(index)];
+    return FLAVOUR_LINES[static_cast<std::size_t>(index)].text;
+}
+
+bool flavourLineNeedsShade(int index) {
+    if (index < 0 || index >= flavourLineCount()) {
+        throw std::out_of_range("flavourLineNeedsShade: there is no flavour line with this number");
+    }
+    return FLAVOUR_LINES[static_cast<std::size_t>(index)].needsShade;
+}
+
+int oldStoryLineCount() {
+    int count = 0;
+    for (const StoryLine& line : FLAVOUR_LINES) {
+        if (!line.needsShade) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int storyLineFromOldTable(int oldLine) {
+    // The old table was the lines without the shadow, in the same order. So old line
+    // number n is the line a maze without a shade shows as its note number n when it
+    // starts at the top of the table.
+    return storyLineFor(0, wrapped(oldLine, oldStoryLineCount()), false);
 }
 
 std::string noteText(const Note& note, MazeCell exit, std::span<const MazeCell> crystalCells) {
