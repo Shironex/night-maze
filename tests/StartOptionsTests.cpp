@@ -121,6 +121,25 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--start-cell") != std::string::npos);
     CHECK(usage.find("--start-yaw") != std::string::npos);
     CHECK(usage.find("--collect-all") != std::string::npos);
+    CHECK(usage.find("--calm") != std::string::npos);
+}
+
+TEST_CASE("the calm switch asks for a run without a shade and changes nothing else") {
+    CHECK_FALSE(parse({}).options.calm);
+    const game::StartOptionsResult result = parse({"--calm"});
+    CHECK(result.error.empty());
+    CHECK(result.options.calm);
+    CHECK_FALSE(result.options.play);
+    CHECK_FALSE(result.options.menuCamera.enabled);
+    CHECK_FALSE(result.options.seedGiven);
+    // Together with the others, in any place.
+    const game::StartOptionsResult both = parse({"--play", "--calm", "--seed", "7"});
+    CHECK(both.error.empty());
+    CHECK(both.options.calm);
+    CHECK(both.options.play);
+    CHECK(both.options.seed == 7U);
+    // It takes no value.
+    CHECK_FALSE(parse({"--calm", "on"}).error.empty());
 }
 
 TEST_CASE("a seed on the command line is remembered as given, also the default one") {

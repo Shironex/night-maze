@@ -57,6 +57,9 @@ struct StartOptions {
     /// True: the first round starts with every crystal collected, so the gate is open
     /// (--collect-all). The crystals are picked up by the rules of the round, not set.
     bool collectAll = false;
+    /// True: a calm night for this run, whatever the settings file says: no maze of the
+    /// run has a shade. The settings are neither read for it nor changed by it.
+    bool calm = false;
 };
 
 /// What parseStartOptions found.
@@ -90,6 +93,7 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --start-cell <column>,<row>  the cell the first round starts in (with --play)
 ///     --start-yaw <degrees>  the direction the player looks in at the start
 ///     --collect-all          the first round starts with every crystal collected
+///     --calm                 no shade in this run (a calm night), settings untouched
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start.
