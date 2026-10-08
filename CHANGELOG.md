@@ -2,6 +2,23 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.12.0 (2026-10-08)
+
+Something walks in the maze now, and the game opens with its story.
+
+### What's new
+
+- The shadow. One dark hooded figure starts far from you in every maze and comes for you. It stands still only while your flashlight is on it, with no wall between, and for two seconds after the light leaves it. Looking at it with the lamp off does not stop it. It is faster than your walk and slower than your sprint.
+- You hear it before you see it: a low hum that pulses faster as it gets closer along the corridors.
+- When it reaches you it carries you back to the start. The round begins again with your crystals, battery and levers reset, and a short line tells you what happened. There is still no losing screen.
+- Calm night: a switch in the main menu for a maze without the shadow. It works on every difficulty and is saved with your settings.
+- An intro of five short cards plays the first time you start the game. Any key skips it. "The Last Lamp" is now the subtitle on the main menu.
+- The notes carry the whole story: eight more lines, about the shadow, bring it to twenty four. In a calm night those eight are left out. Your place in the story from 0.11.0 is kept.
+- Flasks of tea are now always hidden in dead ends, the ones far from the start first.
+- The same seed no longer gives the same maze contents as in 0.11.0: the walls are the same, but crystals, notes, levers and puddles moved to make room for the flasks.
+- The video behind the main menu is recorded again, so it shows the darker night and the worn walls.
+- Four new sounds: the hum of the shadow, the moment it takes you, and the wind and a far bell in the intro.
+
 ## 0.11.0 (2026-10-08)
 
 A darker night, and the first changes that come straight from friends who played: sprinting now costs breath, and the map is no longer always in the corner.
