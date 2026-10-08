@@ -145,7 +145,7 @@ The tests need no sound card and no OpenGL context. Some read real files from `a
 
 ## The gate: make check
 
-`make check` is what I run before a commit. It checks the formatting, builds Debug and Release, runs the unit tests of both, and runs clang-tidy over every file. Start it in the developer shell. I have not timed it carefully: a warm tree takes a few minutes, and clang-tidy is the slow part, because it compiles every file once more.
+`make check` is what I run before a commit. It checks the formatting, builds Debug and Release, runs the unit tests of both, and runs clang-tidy over every file. Start it in the developer shell. On my PC it takes about 35 minutes, most of it clang-tidy, which compiles every file once more.
 
 What CI runs is smaller on purpose (`.github/workflows/ci.yml`, on every push to `main` and every pull request):
 
