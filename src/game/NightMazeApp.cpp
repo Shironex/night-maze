@@ -1098,7 +1098,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
                                          roundShadeLamp(m_lighting, m_round, lampPose), m_obstacles,
                                          static_cast<float>(fixedDt));
     // Its hum, on a clock like the pulse: more often the nearer the shade is.
-    if (advanceShadeHum(m_shadeHum, m_round, m_player.position, static_cast<float>(fixedDt))) {
+    if (advanceShadeHum(m_shadeHum, m_round, static_cast<float>(fixedDt))) {
         playCue(SoundCue::ShadeNear);
     }
     // Caught: back to the start of the same maze. A player who flies (noclip, a tool for

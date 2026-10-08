@@ -381,24 +381,27 @@ TEST_CASE("the hum of the shade has a file and a name, and so has the catch") {
     CHECK(std::string(game::soundCueName(game::SoundCue::Caught)) == "caught");
 }
 
-TEST_CASE("the hum is heard from 14 m, and not in a round without a shade") {
+TEST_CASE("the hum is heard from 14 m of way, and not in a round without a shade") {
     game::Round round;
     round.shade.present = true;
-    round.shade.position = {10.0F, 0.0F, 10.0F};
 
     CHECK(game::SHADE_HUM_DISTANCE == 14.0F);
-    CHECK(game::shadeHumSounds(round, {10.0F, 0.0F, 10.0F}));
-    CHECK(game::shadeHumSounds(round, {10.0F, 0.0F, 23.9F}));
-    CHECK_FALSE(game::shadeHumSounds(round, {10.0F, 0.0F, 24.1F}));
-    // Measured on the ground: the height does not count.
-    CHECK(game::shadeHumSounds(round, {10.0F, 30.0F, 20.0F}));
+    // A shade that has not taken a step yet knows no way: silence.
+    CHECK_FALSE(game::shadeHumSounds(round));
+    round.shade.wayMetres = 0.5F;
+    CHECK(game::shadeHumSounds(round));
+    round.shade.wayMetres = 13.9F;
+    CHECK(game::shadeHumSounds(round));
+    round.shade.wayMetres = 14.1F;
+    CHECK_FALSE(game::shadeHumSounds(round));
 
     // A won round is silent, and so is a calm one.
+    round.shade.wayMetres = 3.0F;
     round.state = game::RoundState::Won;
-    CHECK_FALSE(game::shadeHumSounds(round, {10.0F, 0.0F, 10.0F}));
+    CHECK_FALSE(game::shadeHumSounds(round));
     round.state = game::RoundState::Playing;
     round.shade.present = false;
-    CHECK_FALSE(game::shadeHumSounds(round, {10.0F, 0.0F, 10.0F}));
+    CHECK_FALSE(game::shadeHumSounds(round));
 }
 
 TEST_CASE("the hum comes more often the nearer the shade is") {
@@ -419,21 +422,20 @@ TEST_CASE("the hum comes more often the nearer the shade is") {
 TEST_CASE("the clock of the hum starts at once, waits its interval and is silent far away") {
     game::Round round;
     round.shade.present = true;
-    round.shade.position = {0.0F, 0.0F, 0.0F};
-    const glm::vec3 near{0.0F, 0.0F, 7.0F};
-    const glm::vec3 far{0.0F, 0.0F, 30.0F};
     game::ShadeHum hum;
 
     // Far away: never.
+    round.shade.wayMetres = 30.0F;
     for (int i = 0; i < 600; ++i) {
-        CHECK_FALSE(game::advanceShadeHum(hum, round, far, STEP));
+        CHECK_FALSE(game::advanceShadeHum(hum, round, STEP));
     }
     // Near: at once, and then again after the interval of 7 m (1.55 s), not before.
-    CHECK(game::advanceShadeHum(hum, round, near, STEP));
+    round.shade.wayMetres = 7.0F;
+    CHECK(game::advanceShadeHum(hum, round, STEP));
     const float interval = game::shadeHumInterval(7.0F);
     CHECK(interval == doctest::Approx(1.55F));
     int steps = 0;
-    while (!game::advanceShadeHum(hum, round, near, STEP)) {
+    while (!game::advanceShadeHum(hum, round, STEP)) {
         ++steps;
         REQUIRE(steps < 1000);
     }
@@ -441,9 +443,10 @@ TEST_CASE("the clock of the hum starts at once, waits its interval and is silent
 
     // Twenty seconds right next to the shade: one hum every 0.7 s or so, never two in
     // one step and never faster than the sound is long.
+    round.shade.wayMetres = 0.5F;
     int hums = 0;
     for (int i = 0; i < 20 * 120; ++i) {
-        if (game::advanceShadeHum(hum, round, {0.0F, 0.0F, 0.5F}, STEP)) {
+        if (game::advanceShadeHum(hum, round, STEP)) {
             ++hums;
         }
     }
@@ -451,11 +454,45 @@ TEST_CASE("the clock of the hum starts at once, waits its interval and is silent
     CHECK(hums <= 29);
 
     // A calm round: the clock never fires.
+    round.shade.wayMetres = 7.0F;
     round.shade.present = false;
     for (int i = 0; i < 600; ++i) {
-        CHECK_FALSE(game::advanceShadeHum(hum, round, near, STEP));
+        CHECK_FALSE(game::advanceShadeHum(hum, round, STEP));
     }
     // Back in range it hums at once again: the clock was reset.
     round.shade.present = true;
-    CHECK(game::advanceShadeHum(hum, round, near, STEP));
+    CHECK(game::advanceShadeHum(hum, round, STEP));
+}
+
+TEST_CASE("the hum follows the way the shade has to walk, not the straight line") {
+    // A real maze: at the start of the round the shade can stand a few metres away
+    // behind walls and still be a long walk away.
+    const game::MazeWorld world = game::buildMazeWorld(10, 10, 168U, {}, 13);
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    REQUIRE(round.shade.present);
+    const std::vector<scene::Aabb> obstacles = game::roundObstacles(world, round);
+    const glm::vec3 feet = world.startPosition;
+    REQUIRE(game::shadeDistance(round.shade, feet) < game::SHADE_HUM_DISTANCE);
+
+    // One step, still in the grace time: the way is known, and it is long.
+    game::updateRoundShade(round, world, settings, feet, {}, obstacles, STEP);
+    CHECK(round.shade.wayMetres == doctest::Approx(88.0F));
+    CHECK_FALSE(game::shadeHumSounds(round));
+
+    // It walks until it has caught the player. The way only gets shorter, and the hum
+    // starts when 14 m of it are left.
+    float before = round.shade.wayMetres;
+    bool hummed = false;
+    bool caught = false;
+    for (int i = 0; i < 60 * 120 && !caught; ++i) {
+        caught = game::updateRoundShade(round, world, settings, feet, {}, obstacles, STEP);
+        CHECK(round.shade.wayMetres <= before + 0.001F);
+        before = round.shade.wayMetres;
+        CHECK(game::shadeHumSounds(round) == (round.shade.wayMetres <= game::SHADE_HUM_DISTANCE));
+        hummed = hummed || game::shadeHumSounds(round);
+    }
+    CHECK(caught);
+    CHECK(hummed);
+    CHECK(round.shade.wayMetres <= settings.shade.catchDistance);
 }

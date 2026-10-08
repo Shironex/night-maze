@@ -171,7 +171,13 @@ void drawShade(Page& page, const DebugContext& context) {
         page.stat("Shade", "%s", shade.lit ? "lit: standing still" : "unlit: walking");
     }
     if (shade.present) {
+        // Straight through the walls, and along the passages it has to walk.
         page.stat("Distance", "%.1f m", game::shadeDistance(shade, context.player.position));
+        if (shade.wayMetres < game::SHADE_NO_WAY) {
+            page.stat("Way to the player", "%.1f m", shade.wayMetres);
+        } else {
+            page.stat("Way to the player", "none");
+        }
     }
 
     page.toggle("Shade in the round", &settings.enabled,

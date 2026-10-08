@@ -51,6 +51,9 @@ constexpr float SHADE_HEIGHT = 2.1F;
 /// them, so a beam that only catches its head over a rise of the ground still stops it.
 constexpr std::array<float, 3> SHADE_LIT_HEIGHTS = {0.5F, 1.2F, 1.9F};
 
+/// The length of a way that does not exist, in metres: farther than any maze is long.
+constexpr float SHADE_NO_WAY = 1.0e9F;
+
 /// Where a shade may start: a cell counts as far from the start of the maze when it is
 /// at least this many tenths of the way to the farthest cell, counted in passages.
 constexpr int SHADE_START_FAR_TENTHS = 6;
@@ -95,6 +98,13 @@ struct Shade {
 
     /// Whether the flashlight was on it in the last step (shadeLit).
     bool lit = false;
+
+    /// How far it still has to WALK to the player, in metres, along the passages
+    /// (advanceShade keeps it up to date, also while the shade stands still).
+    /// SHADE_NO_WAY before the first step and when there is no way. The hum of the shade
+    /// is told this number and not the straight distance: a shade behind the next wall
+    /// can be a long walk away.
+    float wayMetres = SHADE_NO_WAY;
 
     /// The way to the player, kept from step to step: for every cell the number of
     /// passages to pathGoal (game::passageDistances from the cell of the player). It is

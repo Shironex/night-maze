@@ -212,62 +212,81 @@ bool advanceShade(Shade& shade, const ShadeSettings& settings, const Maze& maze,
     shade.previousPosition = shade.position;
     shade.lit = shadeLit(shade, step.lamp, step.obstacles);
 
-    if (shade.graceLeft > 0.0F) {
+    // It stands still in its grace time and while it is lit. The way to the player is
+    // kept up to date all the same, because the hum is told how long that way is.
+    const bool waiting = shade.graceLeft > 0.0F;
+    if (waiting) {
         shade.graceLeft -= stepSeconds;
-        return false;
     }
-    if (shade.lit) {
-        return false;
-    }
+    const bool walks = !waiting && !shade.lit;
 
-    const MazeCell own = cellAt(shade.position);
+    MazeCell own = cellAt(shade.position);
     const MazeCell playerCell = cellAt(step.playerFeet);
     // Both have to be cells of the maze for a way to exist. A player who flies out of
     // the maze is not followed and not caught, and passageDistances would throw for
     // such a cell.
     if (!maze.contains(own.x, own.z) || !maze.contains(playerCell.x, playerCell.z)) {
+        shade.wayMetres = SHADE_NO_WAY;
         return false;
     }
-    float reach = std::max(settings.speed, 0.0F) * stepSeconds;
-    if (own == playerCell) {
-        // The same cell: nothing stands inside a cell, so straight at the player.
-        shade.target = own;
-        shade.position = walkTowards(shade.position, step.playerFeet, reach);
-    } else {
-        // The way is searched again only when it can have changed. Then the shade
-        // also chooses its next cell anew, wherever it is: the player may be behind
-        // it now.
-        if (!(shade.pathGoal == playerCell) || shade.pathOpenings != step.openedWalls) {
-            shade.pathDistances = passageDistances(maze, playerCell);
-            shade.pathGoal = playerCell;
-            shade.pathOpenings = step.openedWalls;
-            shade.target = nextCellTowardsPlayer(shade, maze, own);
-        }
-        // From centre to centre. A step can end exactly on a centre, and a fast shade
-        // can pass one within a step, so the walk goes on with what is left of the
-        // step. The limit only guards against a walk that gets nowhere.
-        constexpr int MAX_CENTRES_PER_STEP = 4;
-        for (int i = 0; i < MAX_CENTRES_PER_STEP && reach > 0.0F; ++i) {
-            const glm::vec3 centre = cellCenter(shade.target.x, shade.target.z);
-            shade.position = walkTowards(shade.position, centre, reach);
-            if (reach <= 0.0F) {
-                break;
-            }
-            // The centre is reached: on to the next cell, or stay when this is as
-            // near as the shade can get.
-            const MazeCell next = nextCellTowardsPlayer(shade, maze, shade.target);
-            if (next == shade.target) {
-                break;
-            }
-            shade.target = next;
-        }
+
+    // The way is searched again only when it can have changed. Then the shade also
+    // chooses its next cell anew, wherever it is: the player may be behind it now.
+    if (!(shade.pathGoal == playerCell) || shade.pathOpenings != step.openedWalls) {
+        shade.pathDistances = passageDistances(maze, playerCell);
+        shade.pathGoal = playerCell;
+        shade.pathOpenings = step.openedWalls;
+        shade.target = nextCellTowardsPlayer(shade, maze, own);
     }
-    shade.position = onGround(terrain, shade.position);
+
+    if (walks) {
+        float reach = std::max(settings.speed, 0.0F) * stepSeconds;
+        if (own == playerCell) {
+            // The same cell: nothing stands inside a cell, so straight at the player.
+            shade.target = own;
+            shade.position = walkTowards(shade.position, step.playerFeet, reach);
+        } else {
+            // From centre to centre. A step can end exactly on a centre, and a fast
+            // shade can pass one within a step, so the walk goes on with what is left
+            // of the step. The limit only guards against a walk that gets nowhere.
+            constexpr int MAX_CENTRES_PER_STEP = 4;
+            for (int i = 0; i < MAX_CENTRES_PER_STEP && reach > 0.0F; ++i) {
+                const glm::vec3 centre = cellCenter(shade.target.x, shade.target.z);
+                shade.position = walkTowards(shade.position, centre, reach);
+                if (reach <= 0.0F) {
+                    break;
+                }
+                // The centre is reached: on to the next cell, or stay when this is as
+                // near as the shade can get.
+                const MazeCell next = nextCellTowardsPlayer(shade, maze, shade.target);
+                if (next == shade.target) {
+                    break;
+                }
+                shade.target = next;
+            }
+        }
+        shade.position = onGround(terrain, shade.position);
+        own = cellAt(shade.position);
+    }
+
+    // How far it still has to walk: straight to the player in the same cell, otherwise
+    // to the centre it is heading for and from there cell by cell (2 m each).
+    const int passagesLeft = shade.pathDistances[cellIndex(maze, shade.target)];
+    if (own == playerCell) {
+        shade.wayMetres = shadeDistance(shade, step.playerFeet);
+    } else if (passagesLeft == UNREACHABLE) {
+        shade.wayMetres = SHADE_NO_WAY;
+    } else {
+        const glm::vec3 centre = cellCenter(shade.target.x, shade.target.z);
+        shade.wayMetres =
+            glm::length(glm::vec2{centre.x - shade.position.x, centre.z - shade.position.z}) +
+            static_cast<float>(passagesLeft) * CELL_SIZE;
+    }
 
     // Near enough, and nothing between the two: a player who stands against the other
     // side of a wall is not caught through it.
-    return shadeDistance(shade, step.playerFeet) <= settings.catchDistance &&
-           sameOrJoined(maze, cellAt(shade.position), playerCell);
+    return walks && shadeDistance(shade, step.playerFeet) <= settings.catchDistance &&
+           sameOrJoined(maze, own, playerCell);
 }
 
 std::string_view caughtLine(int index) {

@@ -160,9 +160,9 @@ bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds) {
     return true;
 }
 
-bool shadeHumSounds(const Round& round, const glm::vec3& playerFeet) {
+bool shadeHumSounds(const Round& round) {
     return round.state == RoundState::Playing && round.shade.present &&
-           shadeDistance(round.shade, playerFeet) <= SHADE_HUM_DISTANCE;
+           round.shade.wayMetres <= SHADE_HUM_DISTANCE;
 }
 
 float shadeHumInterval(float distance) {
@@ -172,10 +172,9 @@ float shadeHumInterval(float distance) {
     return SHADE_HUM_FAST_SECONDS + (SHADE_HUM_SLOW_SECONDS - SHADE_HUM_FAST_SECONDS) * share;
 }
 
-bool advanceShadeHum(ShadeHum& hum, const Round& round, const glm::vec3& playerFeet,
-                     float stepSeconds) {
+bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds) {
     // Not near, or no shade at all: the clock goes back to "hum at once".
-    if (!shadeHumSounds(round, playerFeet)) {
+    if (!shadeHumSounds(round)) {
         hum.secondsToNextHum = 0.0F;
         return false;
     }
@@ -186,7 +185,7 @@ bool advanceShadeHum(ShadeHum& hum, const Round& round, const glm::vec3& playerF
     }
     // A hum. The wait is SET and what the step overshot is dropped, as in
     // advanceLowBatteryPulse.
-    hum.secondsToNextHum = shadeHumInterval(shadeDistance(round.shade, playerFeet));
+    hum.secondsToNextHum = shadeHumInterval(round.shade.wayMetres);
     return true;
 }
 

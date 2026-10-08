@@ -170,21 +170,22 @@ bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds);
 /// the audio layer plays sounds from start to end and cannot make one louder: what
 /// grows is how often the hum comes.
 ///
-/// SHADE_HUM_DISTANCE: from this many metres the hum is heard, measured on the ground in
-/// a straight line, also through walls (seven cells of the maze). Farther away there is
-/// silence. The two waits are the ones at that distance and at no distance at all. In
-/// between the wait shrinks evenly. The short one is a little longer than the sound of
-/// the hum (0.62 s, tools/make_sounds.py): a sound that starts again before it ended is
-/// cut off.
+/// SHADE_HUM_DISTANCE: from this many metres the hum is heard, measured along the
+/// passages the shade has to walk (Shade::wayMetres, seven cells of the maze), not in
+/// a straight line: a shade behind the next wall with a long way round is not a danger
+/// yet, and one that is coming down the corridor is. Farther away there is silence. The two waits
+/// are the ones at that distance and at no distance at all. In between the wait shrinks evenly. The
+/// short one is a little longer than the sound of the hum (0.62 s, tools/make_sounds.py): a sound
+/// that starts again before it ended is cut off.
 constexpr float SHADE_HUM_DISTANCE = 14.0F;
 constexpr float SHADE_HUM_SLOW_SECONDS = 2.4F;
 constexpr float SHADE_HUM_FAST_SECONDS = 0.7F;
 
-/// True while the hum sounds: the round is being played, it has a shade, and the shade
-/// is not farther from playerFeet than SHADE_HUM_DISTANCE. A calm round is silent. The
-/// hum does not ask whether the shade moves: a shade that stands in the light is as near
-/// as one that walks.
-bool shadeHumSounds(const Round& round, const glm::vec3& playerFeet);
+/// True while the hum sounds: the round is being played, it has a shade, and the way of
+/// the shade to the player is not longer than SHADE_HUM_DISTANCE. A calm round is
+/// silent. The hum does not ask whether the shade moves: a shade that stands in the
+/// light is as near as one that walks.
+bool shadeHumSounds(const Round& round);
 
 /// The wait between two hums for a distance in metres: SHADE_HUM_FAST_SECONDS at 0,
 /// SHADE_HUM_SLOW_SECONDS at SHADE_HUM_DISTANCE and beyond.
@@ -198,7 +199,7 @@ struct ShadeHum {
 };
 
 /// Advances the clock of the hum by one fixed step of stepSeconds seconds, for the round
-/// and the feet of the player as they are AFTER the step. Returns true when a hum is due
+/// as it is AFTER the step of the shade (game::updateRoundShade). Returns true when a hum is due
 /// in this step: play SoundCue::ShadeNear then.
 ///
 ///   - While the hum does not sound (shadeHumSounds) the clock is reset.
@@ -207,7 +208,6 @@ struct ShadeHum {
 ///
 /// One call gives at most one hum, for the same reason as advanceLowBatteryPulse. A new
 /// round resets the clock by assigning a new ShadeHum.
-bool advanceShadeHum(ShadeHum& hum, const Round& round, const glm::vec3& playerFeet,
-                     float stepSeconds);
+bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds);
 
 } // namespace game
