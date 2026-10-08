@@ -87,18 +87,18 @@ bool interact(Round& round, const MazeWorld& world, const PickState& pick) {
     return false;
 }
 
-const char* interactionPrompt(Interaction action) {
+std::string interactionPrompt(Interaction action, std::string_view key) {
     switch (action) {
     case Interaction::PullLever:
-        return "E: pull lever";
+        return std::string(key) + ": pull lever";
     case Interaction::ReadNote:
-        return "E: read note";
+        return std::string(key) + ": read note";
     case Interaction::CloseNote:
-        return "E: close";
+        return std::string(key) + ": close";
     case Interaction::None:
         break;
     }
-    return "";
+    return {};
 }
 
 glm::vec3 highlightGlow(float seconds) {

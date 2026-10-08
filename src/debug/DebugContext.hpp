@@ -2,6 +2,8 @@
 // See docs/modules/debug-ui.md
 #pragma once
 
+#include "game/KeyBindings.hpp"
+
 #include <array>
 #include <cstddef>
 
@@ -227,6 +229,9 @@ struct DebugContext {
     /// true and the game starts the intro at the start of its next frame
     /// (NightMazeApp::introRequest).
     bool& playIntro;
+    /// The key of every action of the player, read only (NightMazeApp::keyBindings):
+    /// the HUD names the key of "use" and of "restart" in its prompts.
+    const game::KeyBindings& keys;
 };
 
 } // namespace debug

@@ -258,7 +258,7 @@ void drawStatus(const game::Round& round, const game::GameplaySettings& settings
 }
 
 // The card in the middle of the window, shown once the round is won.
-void drawWinCard(const game::Round& round, float scale) {
+void drawWinCard(const game::Round& round, const game::KeyBindings& keys, float scale) {
     ImGui::SetNextWindowPos(windowPoint(CENTER), ImGuiCond_Always, CENTER);
     ImGui::SetNextWindowBgAlpha(CARD_OPACITY);
     // PushStyleVar changes a metric of the style until the matching PopStyleVar. It
@@ -277,7 +277,9 @@ void drawWinCard(const game::Round& round, float scale) {
         ImGui::Text("Crystals: %d of %d", round.collectedCount,
                     static_cast<int>(round.crystals.size()));
         ImGui::Spacing();
-        ImGui::TextColored(HUD_BATTERY_COLOR, "R: play again");
+        // "%s" and the name as an argument: the name itself is never read as a format.
+        ImGui::TextColored(HUD_BATTERY_COLOR, "%s: play again",
+                           game::boundKeyName(keys, game::KeyAction::Restart).c_str());
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -317,7 +319,7 @@ void drawCrosshair(const game::PickState& pick, float scale) {
 
 // The line near the bottom of the window that names the key, while there is something
 // to use.
-void drawPrompt(const game::PickState& pick) {
+void drawPrompt(const game::PickState& pick, const game::KeyBindings& keys) {
     if (!pointsAtSomethingUsable(pick)) {
         return;
     }
@@ -325,13 +327,16 @@ void drawPrompt(const game::PickState& pick) {
     ImGui::SetNextWindowBgAlpha(PROMPT_OPACITY);
 
     if (ImGui::Begin("Interaction prompt", nullptr, STATUS_WINDOW_FLAGS)) {
-        ImGui::TextColored(HUD_CROSSHAIR_ACTIVE_COLOR, "%s", game::interactionPrompt(pick.action));
+        const std::string prompt =
+            game::interactionPrompt(pick.action, game::boundKeyName(keys, game::KeyAction::Use));
+        ImGui::TextColored(HUD_CROSSHAIR_ACTIVE_COLOR, "%s", prompt.c_str());
     }
     ImGui::End();
 }
 
 // The card of the note that is being read: its text and the key that closes it.
-void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float scale) {
+void drawNoteCard(const game::MazeWorld& world, const game::Round& round,
+                  const game::KeyBindings& keys, float scale) {
     // The text is asked for in every frame: a hint towards a crystal changes when that
     // crystal is collected.
     const std::string text = game::openNoteText(world, round);
@@ -347,8 +352,9 @@ void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float 
         // "%s" and the text as an argument: the text itself is never read as a format.
         ImGui::Text("%s", text.c_str());
         ImGui::Spacing();
-        ImGui::TextColored(HUD_BATTERY_COLOR, "%s",
-                           game::interactionPrompt(game::Interaction::CloseNote));
+        const std::string close = game::interactionPrompt(
+            game::Interaction::CloseNote, game::boundKeyName(keys, game::KeyAction::Use));
+        ImGui::TextColored(HUD_BATTERY_COLOR, "%s", close.c_str());
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -374,7 +380,7 @@ void drawCaughtLine(const game::Round& round) {
 
 void drawHud(const game::MazeWorld& world, const game::Round& round,
              const game::GameplaySettings& settings, const game::Player& player,
-             const game::PickState& pick, bool mapOnScreen) {
+             const game::PickState& pick, bool mapOnScreen, const game::KeyBindings& keys) {
     const float scale = ImGui::GetStyle().FontScaleDpi;
 
     // The same font as the debug window, in the size of the HUD, for everything below.
@@ -384,13 +390,13 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
 
     drawStatus(round, settings, player, mapOnScreen, scale);
     drawCrosshair(pick, scale);
-    drawPrompt(pick);
+    drawPrompt(pick, keys);
     if (round.noteOpen) {
-        drawNoteCard(world, round, scale);
+        drawNoteCard(world, round, keys, scale);
     }
     drawCaughtLine(round);
     if (round.state == game::RoundState::Won) {
-        drawWinCard(round, scale);
+        drawWinCard(round, keys, scale);
     }
 
     ImGui::PopFont();

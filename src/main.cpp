@@ -130,6 +130,7 @@ protected:
             .lastCueVolume = lastCueVolume(),
             .sampleWind = windSampleRequest(),
             .playIntro = introRequest(),
+            .keys = keyBindings(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

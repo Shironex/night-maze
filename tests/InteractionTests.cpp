@@ -581,10 +581,13 @@ TEST_CASE("a won round has nothing to interact with and closes the card") {
 }
 
 TEST_CASE("every action has its prompt") {
-    CHECK(std::string(game::interactionPrompt(game::Interaction::PullLever)) == "E: pull lever");
-    CHECK(std::string(game::interactionPrompt(game::Interaction::ReadNote)) == "E: read note");
-    CHECK(std::string(game::interactionPrompt(game::Interaction::CloseNote)) == "E: close");
-    CHECK(std::string(game::interactionPrompt(game::Interaction::None)).empty());
+    CHECK(game::interactionPrompt(game::Interaction::PullLever, "E") == "E: pull lever");
+    CHECK(game::interactionPrompt(game::Interaction::ReadNote, "E") == "E: read note");
+    CHECK(game::interactionPrompt(game::Interaction::CloseNote, "E") == "E: close");
+    CHECK(game::interactionPrompt(game::Interaction::None, "E").empty());
+    // The prompt names the key "use" is on, whatever the player has chosen.
+    CHECK(game::interactionPrompt(game::Interaction::PullLever, "Left Shift") ==
+          "Left Shift: pull lever");
 }
 
 TEST_CASE("the highlight pulses between its weakest and its strongest glow") {

@@ -14,6 +14,8 @@
 
 #include <cstddef>
 #include <span>
+#include <string>
+#include <string_view>
 
 namespace game {
 
@@ -102,8 +104,9 @@ PickState pickNothing(const Round& round);
 bool interact(Round& round, const MazeWorld& world, const PickState& pick);
 
 /// The line the HUD shows for an action: "E: pull lever", "E: read note", "E: close".
-/// An empty text for None.
-const char* interactionPrompt(Interaction action);
+/// key is the name of the key the player has put "use" on (game::boundKeyName), E in
+/// a game with the default keys. An empty text for None.
+std::string interactionPrompt(Interaction action, std::string_view key);
 
 /// The light the picked lever or note gives off by itself at a moment (seconds on the
 /// animation clock of the round), as a linear colour for the uniform uEmissive: a warm

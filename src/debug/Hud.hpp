@@ -3,6 +3,8 @@
 // See docs/modules/game/gameplay.md
 #pragma once
 
+#include "game/KeyBindings.hpp"
+
 namespace game {
 struct GameplaySettings;
 struct MazeWorld;
@@ -43,13 +45,16 @@ namespace debug {
 ///     crystals and the key that starts a new round.
 ///
 /// The HUD takes no input: the mouse and the keyboard pass through it to the game.
+/// Where it names a key it names the one the player has chosen (keys): the key of "use"
+/// in the prompt and on the card of a note, the key of "restart" on the card of a won
+/// round.
 ///
 /// The strip always stands at the top edge of the window, in the middle. The debug
 /// window keeps clear of it (hudReservedHeight), so the strip does not move when the
 /// debug UI is shown or hidden.
 void drawHud(const game::MazeWorld& world, const game::Round& round,
              const game::GameplaySettings& settings, const game::Player& player,
-             const game::PickState& pick, bool mapOnScreen);
+             const game::PickState& pick, bool mapOnScreen, const game::KeyBindings& keys);
 
 /// The height of the room at the top edge of the window that the strip of the HUD can
 /// take, in pixels of the screen: its distance from the edge plus its height with all
