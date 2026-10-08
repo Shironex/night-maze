@@ -2,6 +2,7 @@
 // playing, paused, round end, settings, cards) and the rules for going from one to the next.
 #pragma once
 
+#include "game/Campaign.hpp"
 #include "game/Difficulty.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/StartOptions.hpp"
@@ -28,8 +29,9 @@ enum class GameMode {
     /// leads and what is shown behind it.
     SettingsFromMenu,
     SettingsFromPause, ///< the settings screen, opened from the pause menu
-    /// The intro: five cards of text over pictures of the maze, before the main menu
-    /// (game/Intro.hpp). It ends by itself, and any key ends it earlier.
+    /// The intro played by itself: five cards of text over pictures of the maze
+    /// (game/Intro.hpp), asked for by the switch --intro or by the debug window. It ends
+    /// by itself, and any key ends it earlier. The main menu follows.
     Intro,
     /// The screen of free play, opened from the main menu: the difficulty, the calm
     /// night, the seed and the button that starts a game.
@@ -45,6 +47,10 @@ enum class GameMode {
     /// The ending card: four lines on black after the last night is won, in the place
     /// of the result screen. It ends by itself, and any key ends it earlier.
     EndingCard,
+    /// The intro at the beginning of a campaign: the same five cards, and the title card
+    /// of the first night follows. It is a screen of its own for the same reason as the
+    /// two settings screens: the screen itself remembers where its end leads.
+    CampaignIntro,
 };
 
 /// Something that can change the screen: a button of a menu, the Escape key, or the
@@ -73,6 +79,10 @@ enum class GameEvent {
     StartNight,
     CardFinished, ///< a title card or the ending card reached its end, or was skipped
     CampaignWon,  ///< the player walked through the gate of the last night
+    /// A campaign is begun from its first night with the intro before it: the entry
+    /// "Begin" of the main menu, or the answer "yes" to a new campaign
+    /// (campaignEntryEvent).
+    BeginCampaign,
 };
 
 /// What the button "Play" asks for: the game that is started next.
@@ -89,6 +99,7 @@ struct NewGame {
 /// screen as it is, so a caller can send any event at any time.
 ///
 ///     screen             event          next screen
+///     MainMenu           BeginCampaign  CampaignIntro
 ///     MainMenu           StartNight     NightCard
 ///     MainMenu           AskNewCampaign NewCampaign
 ///     MainMenu           OpenNights     Nights
@@ -101,6 +112,7 @@ struct NewGame {
 ///     Nights             StartNight     NightCard
 ///     Nights             BackToMenu     MainMenu
 ///     Nights             Escape         MainMenu
+///     NewCampaign        BeginCampaign  CampaignIntro
 ///     NewCampaign        StartNight     NightCard
 ///     NewCampaign        BackToMenu     MainMenu
 ///     NewCampaign        Escape         MainMenu
@@ -127,6 +139,8 @@ struct NewGame {
 ///     SettingsFromPause  Escape         Paused
 ///     Intro              IntroFinished  MainMenu
 ///     Intro              Escape         MainMenu
+///     CampaignIntro      IntroFinished  NightCard
+///     CampaignIntro      Escape         NightCard
 ///
 /// Escape goes one screen back: out of the game into the pause menu, out of the pause
 /// menu back into the game, out of the result to the main menu, out of the settings to
@@ -140,28 +154,45 @@ struct NewGame {
 /// main menu. Like the intro, a card runs on a clock of its own and is not touched by
 /// a lost focus.
 ///
-/// The intro is left in one direction only, to the main menu. Losing the focus does not
-/// touch it: it runs on a clock of its own and ends by itself, so a player who switches
-/// to another program comes back to the rest of it or to the main menu, never to
-/// a screen that waits for something. No event leads back into the intro: the
-/// application starts it (startMode at the start, a button of the debug window later).
+/// The intro belongs to the campaign: it plays when a campaign begins (BeginCampaign),
+/// and the title card of the first night follows it. It is left in one direction only,
+/// at its end or by a key, and Escape is such a key. Losing the focus does not touch it:
+/// it runs on a clock of its own and ends by itself, so a player who switches to another
+/// program comes back to the rest of it or to what follows, never to a screen that waits
+/// for something. The intro played by itself (Intro) ends in the main menu, and no event
+/// leads into it: the application starts it (startMode at the start, a button of the
+/// debug window later).
 GameMode nextMode(GameMode mode, GameEvent event);
 
-/// The screen the game starts on. options is what the command line asked for and
-/// introSeen what the settings file says (GameSettings::introSeen). The first row that
-/// fits decides:
+/// The screen the game starts on. options is what the command line asked for. The first
+/// row that fits decides:
 ///
 ///     --intro without --skip-intro         Intro, whatever else was given
 ///     --play, --menu-camera or --night     Playing
-///     --skip-intro                         MainMenu
-///     a switch of a tool (toolSwitch)      MainMenu
-///     the intro was seen                   MainMenu
-///     otherwise                            Intro
+///     otherwise                            MainMenu
 ///
-/// A run driven by a tool never opens with the intro: its scripts start the game in
-/// fresh folders, where nothing says that it was seen. --skip-intro means never, also
-/// next to --intro.
-GameMode startMode(const StartOptions& options, bool introSeen);
+/// The game opens with the main menu, also on its very first start: the intro waits for
+/// the campaign (campaignEntryEvent). The settings file is not asked. --intro plays the
+/// intro at the start all the same, for tools, and --skip-intro means never, also next
+/// to --intro.
+GameMode startMode(const StartOptions& options);
+
+/// True when a campaign that is begun in this run plays the intro before its first
+/// night. Not with --skip-intro, and not in a run driven by a tool
+/// (StartOptions::toolSwitch): a script that starts a night wants the night.
+bool campaignIntroPlays(const StartOptions& options);
+
+/// What the first entry of the main menu does, for a campaign that is this far.
+/// introPlays is campaignIntroPlays of the run.
+///
+///     NotStarted ("Begin")         BeginCampaign: the intro, then the first night.
+///                                  StartNight when the intro does not play
+///     Running ("Continue")         StartNight: the next night, never the intro
+///     Finished ("New campaign")    AskNewCampaign: the question comes first
+///
+/// The answer "yes" to that question forgets the finished campaign, and what follows is
+/// the row NotStarted. A night of the list of nights is always StartNight.
+GameEvent campaignEntryEvent(CampaignStage stage, bool introPlays);
 
 /// True when the event, sent on this screen, starts a round from the beginning on the
 /// maze that is in play: Restart in the pause menu or on the result screen.
@@ -191,6 +222,10 @@ bool animatesScene(GameMode mode);
 /// True while a menu document is shown. The cursor is then free and the mouse and the
 /// keys of the round do not reach the game.
 bool isMenuOpen(GameMode mode);
+
+/// True for the two screens that play the intro: by itself (Intro) and at the beginning
+/// of a campaign (CampaignIntro).
+bool isIntro(GameMode mode);
 
 /// True for a screen that is a film: the intro, the title card of a night and the ending
 /// card. It has no cursor and no debug window in its picture, nothing can be clicked, and

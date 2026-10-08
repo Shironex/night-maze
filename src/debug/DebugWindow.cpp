@@ -147,6 +147,8 @@ const char* screenName(game::GameMode mode) {
         return "ending card";
     case game::GameMode::Intro:
         return "Intro";
+    case game::GameMode::CampaignIntro:
+        return "campaign intro";
     }
     // Only reached with a number that is no screen at all.
     return "Unknown";

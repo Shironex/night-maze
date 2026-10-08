@@ -70,15 +70,16 @@ struct StartOptions {
 
     /// True when one of the switches above was on the command line (--seed, --play,
     /// --menu-camera, --menu-shot, --menu-time, --menu-background, --start-cell,
-    /// --start-yaw, --collect-all, --calm or --night): a tool or a test is driving the game. Such a
-    /// run never opens with the intro (game::startMode). Scripts start the game in fresh folders
-    /// without a settings file, where the intro would count as not seen.
+    /// --start-yaw, --collect-all, --calm or --night): a tool or a test is driving the game. In
+    /// such a run a campaign begins without the intro (game::campaignIntroPlays): a script that
+    /// starts a night wants the night.
     bool toolSwitch = false;
 
-    /// True: never play the intro in this run (--skip-intro), also when it was not seen.
+    /// True: never play the intro in this run (--skip-intro), neither at the start nor
+    /// when a campaign begins.
     bool skipIntro = false;
 
-    /// True: play the intro now, also when it was seen and next to the switches of
+    /// True: play the intro at the start of this run, also next to the switches of
     /// a tool (--intro). --skip-intro wins over it when both are given.
     bool intro = false;
 };
@@ -117,7 +118,7 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --calm                 no shade in this run (a calm night), settings untouched
 ///     --night <1..5>         start that night of the campaign at once, settings untouched
 ///     --skip-intro           never play the intro in this run
-///     --intro                play the intro now, also when it was seen
+///     --intro                play the intro at the start of this run
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start.

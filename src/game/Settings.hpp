@@ -108,11 +108,11 @@ struct GameSettings {
     /// free play screen, next to the difficulty. The campaign does not ask it.
     bool calmNight = false;
 
-    /// True once the intro was shown, to its end or until the player skipped it: the
-    /// game then starts with the main menu (game::startMode). Like the story line it is
-    /// not edited on the settings screen, but it is part of the file. A file written
-    /// before the intro existed has no such line, so the intro is shown once after the
-    /// update.
+    /// True once the intro was shown, to its end or until the player skipped it. It
+    /// decides nothing any more: the intro used to play once, on the first start of the
+    /// game, and now it plays whenever a campaign begins (game::campaignEntryEvent). The
+    /// line is still read and written, so a file of an older version stays valid and
+    /// a file of this one is read by an older game.
     bool introSeen = false;
 
     /// The key of every action of the player (game/KeyBindings.hpp), edited in the

@@ -103,7 +103,7 @@ def camera(name, seed, shot, at):
 #
 # Every run has the switch --calm: the maze then has no shade, so no picture has a catch
 # in the middle of its walk. The two exceptions: the one picture OF the shade is the run
-# "shade", and the run "intro" plays the intro as a first start shows it.
+# "shade", and the run "intro" plays the intro (the switch --intro).
 RUNS = [
     # The main menu over its video, then the settings screen: Tab three times goes from
     # the first entry (the campaign) over "Nights" and "Free play" to "Settings". --calm
@@ -166,8 +166,8 @@ RUNS = [
     Run("shade", ["--play", "--seed", "6", "--start-cell", "4,9", "--start-yaw", "270"], {}, [
         ("wait", 0.5), ("grab", "shade")]),
     # The third card of the intro, 3.5 seconds after the cut to it: its text stands, and
-    # the crystal at the end of the corridor is in view. --intro plays the intro whatever
-    # the settings file says. The intro counts real time from the first frame, about
+    # the crystal at the end of the corridor is in view. --intro plays the intro at the
+    # start of the run. The intro counts real time from the first frame, about
     # a second after the start of the game, so the moment is hit within half a second,
     # and the text stands for four seconds.
     Run("intro", ["--intro"], {}, [("wait", 13.5), ("grab", "intro")]),

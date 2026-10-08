@@ -315,15 +315,15 @@ MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed, int next
     return settings;
 }
 
-// The request for the first maze. A game that opens with the intro (game::startMode)
-// builds the maze of the intro, whatever the settings and the command line say: the
-// shots of the intro were picked in that maze. The maze of the player is built when the
-// intro is over. Every other start builds the maze behind the main menu, which is also
-// the maze of the round --play starts in: the seed of the command line and the level of
-// the settings.
+// The request for the first maze. A game that opens with the intro (game::startMode,
+// the switch --intro) builds the maze of the intro, whatever the settings and the
+// command line say: the shots of the intro were picked in that maze. The maze of the
+// player is built when the intro is over. Every other start builds the maze behind the
+// main menu, which is also the maze of the round --play starts in: the seed of the
+// command line and the level of the settings.
 MazeSettings firstMazeSettings(const StartOptions& options, const GameSettings& settings,
                                bool shadeLines) {
-    if (startMode(options, settings.introSeen) == GameMode::Intro) {
+    if (startMode(options) == GameMode::Intro) {
         return mazeSettingsFor(INTRO_DIFFICULTY, INTRO_MAZE_SEED, settings.nextStoryLine,
                                shadeLines);
     }
@@ -437,13 +437,14 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
                                  m_heightmap, m_terrainSettings.heightScale,
                                  m_mazeSettings.interactables, m_mazeSettings.crystalCount)),
       m_menuCamera(options.menuCamera),
-      // The first screen: the intro on the very first start, a round for the tools
-      // that record the game, and otherwise the main menu.
-      m_mode(startMode(options, m_settings.introSeen)),
+      // The first screen: the main menu, a round for the tools that record the game,
+      // or the intro when the command line asked for it.
+      m_mode(startMode(options)),
       // The game "Play" starts: the difficulty of the settings, and the seed of the
       // command line when one was named there. Otherwise the menu rolls one (below).
       m_newGame{.difficulty = m_settings.difficulty, .seed = options.seed},
       m_startSeed(options.seed),
+      m_campaignIntroPlays(campaignIntroPlays(options)),
       m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
       m_ui(window()) {
     // The two lit programs and the grass program read the lights from the uniform buffer
@@ -666,9 +667,9 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
         return;
     }
     // The intro is over: at its end, skipped by a key or left with Escape. All three
-    // arrive here.
-    if (before == GameMode::Intro) {
-        leaveIntro();
+    // arrive here. The intro of a campaign leads on to the first night.
+    if (isIntro(before)) {
+        leaveIntro(before == GameMode::CampaignIntro);
     }
     // The ending card is over, at its end or skipped: its bell must not ring on over
     // the main menu.
@@ -737,22 +738,19 @@ void NightMazeApp::handleMenuActions() {
 }
 
 bool NightMazeApp::handleMenuCommand(const std::string& action) {
-    // The first entry of the main menu: the next night of the campaign, or the question
-    // about a new campaign once the last night is won.
+    // The first entry of the main menu: the intro and the first night of a campaign
+    // that has not been started, the next night of one that runs, or the question about
+    // a new campaign once the last night is won.
     if (action == CAMPAIGN_ACTION) {
-        if (campaignStage(m_settings.campaignNight) == CampaignStage::Finished) {
-            handleGameEvent(GameEvent::AskNewCampaign);
-        } else {
-            beginCampaignNight(nightToOffer(m_settings.campaignNight));
-        }
+        enterCampaign();
         return true;
     }
-    // "Yes" to a new campaign: the finished one is forgotten, and the first night of
-    // the new one starts with mazes of its own.
+    // "Yes" to a new campaign: the finished one is forgotten, and the new one begins
+    // like any campaign that has not been started, with mazes of its own.
     if (action == NEW_CAMPAIGN_ACTION) {
         if (m_mode == GameMode::NewCampaign) {
             forgetCampaign();
-            beginCampaignNight(1);
+            enterCampaign();
         }
         return true;
     }
@@ -1023,8 +1021,7 @@ void NightMazeApp::showScreen() {
 
 void NightMazeApp::startIntro() {
     // Not without the card, not twice and not while the program is closing.
-    if (m_cardDocument == ui::NO_DOCUMENT || m_mode == GameMode::Intro ||
-        m_mode == GameMode::Quitting) {
+    if (m_cardDocument == ui::NO_DOCUMENT || isIntro(m_mode) || m_mode == GameMode::Quitting) {
         return;
     }
     // The maze of the intro, built like a new game of its level: the shots were picked
@@ -1155,7 +1152,7 @@ void NightMazeApp::updateIntro() {
         m_introCardShown = frame.card;
         // Whether the shadow, the enemy of the game, takes part in it: the fourth card
         // has another second line for a calm night (game::introLines).
-        const IntroLines lines = introLines(frame.card, shadeInGame());
+        const IntroLines lines = introLines(frame.card, introTellsOfShade());
         writeCardLines({lines.first, lines.second, "", ""}, false);
     }
     // The two lines of a card of the intro come and go together, as the card: each line
@@ -1164,14 +1161,27 @@ void NightMazeApp::updateIntro() {
                   frame.hintOpacity);
 }
 
-void NightMazeApp::leaveIntro() {
+bool NightMazeApp::introTellsOfShade() const {
+    return m_mode == GameMode::CampaignIntro ? !m_calmRun : shadeInGame();
+}
+
+void NightMazeApp::leaveIntro(bool intoNight) {
     // The wind is one sound of half a minute: without this it would go on over the
-    // main menu after a skip.
+    // main menu or the title card of the night after a skip.
     m_audio.stopAll();
-    // Seen, to its end or to the key that skipped it: the next start opens with the
-    // main menu. An intro that could not be shown at all was not seen.
+    // Seen, to its end or to the key that skipped it. The settings file keeps the line,
+    // so files of older versions stay valid, but nothing asks it any more: the intro
+    // plays when a campaign begins. An intro that could not be shown at all was not seen.
     if (m_cardDocument != ui::NO_DOCUMENT) {
         m_settings.introSeen = true;
+    }
+    if (intoNight) {
+        // The maze of the first night takes the place of the maze of the intro. The
+        // seed of the campaign was drawn before the intro began (beginCampaignIntro).
+        // startNight does not write the settings file, so it is written here.
+        startNight(1, m_settings.campaignSeed, true);
+        saveSettings();
+        return;
     }
     // The maze of the player again: the level the main menu shows and the seed the
     // game was started with. It is built like a new game, which also writes the
@@ -1244,6 +1254,15 @@ void NightMazeApp::beginCampaignNight(int night) {
     if (nextMode(m_mode, GameEvent::StartNight) != GameMode::NightCard) {
         return;
     }
+    drawCampaignSeed();
+    startNight(night, m_settings.campaignSeed, true);
+    // The seed is written now: a player who leaves the night and comes back another day
+    // finds the same maze. The progress itself is written when a night is won.
+    saveSettings();
+    handleGameEvent(GameEvent::StartNight);
+}
+
+void NightMazeApp::drawCampaignSeed() {
     // The first night that is started draws the seed of the campaign: its five mazes are
     // fixed from here on. std::random_device asks the operating system for a number
     // nobody can predict, like for a seed of free play.
@@ -1251,11 +1270,37 @@ void NightMazeApp::beginCampaignNight(int night) {
         std::random_device device;
         m_settings.campaignSeed = drawnCampaignSeed(static_cast<std::uint32_t>(device()));
     }
-    startNight(night, m_settings.campaignSeed, true);
-    // The seed is written now: a player who leaves the night and comes back another day
-    // finds the same maze. The progress itself is written when a night is won.
-    saveSettings();
-    handleGameEvent(GameEvent::StartNight);
+}
+
+void NightMazeApp::enterCampaign() {
+    // Without the card the intro cannot be shown: the campaign then begins with its
+    // first night, like in a run that skips the intro.
+    const bool introPlays = m_campaignIntroPlays && m_cardDocument != ui::NO_DOCUMENT;
+    const GameEvent event = campaignEntryEvent(campaignStage(m_settings.campaignNight), introPlays);
+    if (event == GameEvent::AskNewCampaign) {
+        handleGameEvent(event);
+    } else if (event == GameEvent::BeginCampaign) {
+        beginCampaignIntro();
+    } else {
+        beginCampaignNight(nightToOffer(m_settings.campaignNight));
+    }
+}
+
+void NightMazeApp::beginCampaignIntro() {
+    // A click that arrives on a screen that begins no campaign builds nothing.
+    if (nextMode(m_mode, GameEvent::BeginCampaign) != GameMode::CampaignIntro) {
+        return;
+    }
+    // The seed is drawn and written now, like when a night is started without the
+    // intro: a player who leaves during the intro finds the same mazes another day.
+    drawCampaignSeed();
+    // The maze of the intro, built like a new game of its level (startIntro). It also
+    // writes the settings file. The maze of the first night follows when the intro is
+    // left (leaveIntro).
+    startNewGame({.difficulty = INTRO_DIFFICULTY, .seed = INTRO_MAZE_SEED});
+    m_introSeconds = 0.0;
+    m_introCardShown = INTRO_CARD_COUNT;
+    handleGameEvent(GameEvent::BeginCampaign);
 }
 
 void NightMazeApp::forgetCampaign() {
@@ -1877,7 +1922,7 @@ void NightMazeApp::onRender(double alpha) {
         m_introRequested = false;
         startIntro();
     }
-    if (m_mode == GameMode::Intro) {
+    if (isIntro(m_mode)) {
         updateIntro();
     }
     // What the debug UI asked of the campaign, and the frame of the title card of a night
@@ -1926,7 +1971,7 @@ void NightMazeApp::onRender(double alpha) {
     const bool roundInput = updatesRound(m_mode) && !m_menuCamera.enabled && m_catchSeconds < 0.0F;
     // The intro takes its pictures with the menu camera too, but it says itself which
     // shot, at which moment and with which light (game::introCamera).
-    const bool intro = m_mode == GameMode::Intro;
+    const bool intro = isIntro(m_mode);
     const bool menuCamera = m_menuCamera.enabled || usesMenuCamera(m_mode) || intro;
     // The settings the menu camera uses in this frame. The main menu always shows the
     // high glide over the maze, whatever shot the recording tool is set to.
@@ -2168,7 +2213,8 @@ void NightMazeApp::onRender(double alpha) {
     // shade of the round is not moved or asked, so nothing hums and nobody is caught.
     // A calm night has none (game::introShadeCell).
     if (intro) {
-        if (const std::optional<MazeCell> cell = introShadeCell(introMoment.card, shadeInGame())) {
+        if (const std::optional<MazeCell> cell =
+                introShadeCell(introMoment.card, introTellsOfShade())) {
             scene::Transform shade;
             shade.position = cellCenter(cell->x, cell->z);
             shade.position.y = m_mazeWorld.terrain.heightAt(shade.position.x, shade.position.z);

@@ -1,4 +1,4 @@
-// Intro: the five cards the game opens with on its first start, as a script of plain data.
+// Intro: the five cards a campaign begins with, as a script of plain data.
 #include "game/Intro.hpp"
 
 #include <algorithm>

@@ -25,6 +25,9 @@ GameMode nextMode(GameMode mode, GameEvent event) {
     // falls through to the last line and changes nothing.
     switch (mode) {
     case GameMode::MainMenu:
+        if (event == GameEvent::BeginCampaign) {
+            return GameMode::CampaignIntro;
+        }
         if (event == GameEvent::StartNight) {
             return GameMode::NightCard;
         }
@@ -106,9 +109,14 @@ GameMode nextMode(GameMode mode, GameEvent event) {
             return GameMode::MainMenu;
         }
         break;
-    case GameMode::Nights:
     case GameMode::NewCampaign:
-        // A night of the list, or "yes" to a new campaign: both begin with a title card.
+        // "Yes" to a new campaign: the intro comes before its first night.
+        if (event == GameEvent::BeginCampaign) {
+            return GameMode::CampaignIntro;
+        }
+        [[fallthrough]];
+    case GameMode::Nights:
+        // A night of the list, or a new campaign without the intro: a title card.
         if (event == GameEvent::StartNight) {
             return GameMode::NightCard;
         }
@@ -128,11 +136,18 @@ GameMode nextMode(GameMode mode, GameEvent event) {
             return GameMode::MainMenu;
         }
         break;
+    case GameMode::CampaignIntro:
+        // On to the title card of the first night, at its end or when it is skipped.
+        // FocusLost is not named, for the same reason as in the intro above.
+        if (event == GameEvent::IntroFinished || event == GameEvent::Escape) {
+            return GameMode::NightCard;
+        }
+        break;
     }
     return mode;
 }
 
-GameMode startMode(const StartOptions& options, bool introSeen) {
+GameMode startMode(const StartOptions& options) {
     if (options.intro && !options.skipIntro) {
         return GameMode::Intro;
     }
@@ -142,10 +157,21 @@ GameMode startMode(const StartOptions& options, bool introSeen) {
     if (options.play || options.menuCamera.enabled || options.night != 0) {
         return GameMode::Playing;
     }
-    if (options.skipIntro || options.toolSwitch || introSeen) {
-        return GameMode::MainMenu;
+    return GameMode::MainMenu;
+}
+
+bool campaignIntroPlays(const StartOptions& options) {
+    return !options.skipIntro && !options.toolSwitch;
+}
+
+GameEvent campaignEntryEvent(CampaignStage stage, bool introPlays) {
+    if (stage == CampaignStage::Finished) {
+        return GameEvent::AskNewCampaign;
     }
-    return GameMode::Intro;
+    if (stage == CampaignStage::NotStarted && introPlays) {
+        return GameEvent::BeginCampaign;
+    }
+    return GameEvent::StartNight;
 }
 
 bool startsRound(GameMode mode, GameEvent event) {
@@ -206,8 +232,12 @@ bool isMenuOpen(GameMode mode) {
            mode == GameMode::FreePlay || mode == GameMode::Nights || mode == GameMode::NewCampaign;
 }
 
+bool isIntro(GameMode mode) {
+    return mode == GameMode::Intro || mode == GameMode::CampaignIntro;
+}
+
 bool isFilm(GameMode mode) {
-    return mode == GameMode::Intro || mode == GameMode::NightCard || mode == GameMode::EndingCard;
+    return isIntro(mode) || mode == GameMode::NightCard || mode == GameMode::EndingCard;
 }
 
 bool showsHud(GameMode mode) {

@@ -13,7 +13,7 @@ using game::GameEvent;
 using game::GameMode;
 
 // Every screen and every event, for the tests that go through all of them.
-constexpr std::array<GameMode, 13> ALL_MODES = {GameMode::MainMenu,
+constexpr std::array<GameMode, 14> ALL_MODES = {GameMode::MainMenu,
                                                 GameMode::Playing,
                                                 GameMode::Paused,
                                                 GameMode::RoundEnd,
@@ -25,14 +25,16 @@ constexpr std::array<GameMode, 13> ALL_MODES = {GameMode::MainMenu,
                                                 GameMode::Nights,
                                                 GameMode::NewCampaign,
                                                 GameMode::NightCard,
-                                                GameMode::EndingCard};
-constexpr std::array<GameEvent, 18> ALL_EVENTS = {
+                                                GameMode::EndingCard,
+                                                GameMode::CampaignIntro};
+constexpr std::array<GameEvent, 19> ALL_EVENTS = {
     GameEvent::Play,         GameEvent::Resume,       GameEvent::Restart,
     GameEvent::BackToMenu,   GameEvent::Quit,         GameEvent::Escape,
     GameEvent::RoundWon,     GameEvent::OpenSettings, GameEvent::CloseSettings,
     GameEvent::NewMaze,      GameEvent::FocusLost,    GameEvent::IntroFinished,
     GameEvent::OpenFreePlay, GameEvent::OpenNights,   GameEvent::AskNewCampaign,
-    GameEvent::StartNight,   GameEvent::CardFinished, GameEvent::CampaignWon};
+    GameEvent::StartNight,   GameEvent::CardFinished, GameEvent::CampaignWon,
+    GameEvent::BeginCampaign};
 
 // The three screens that are opened from the main menu and lead back to it.
 constexpr std::array<GameMode, 3> MENU_PAGES = {GameMode::FreePlay, GameMode::Nights,
@@ -347,26 +349,102 @@ TEST_CASE("a new game asks for the normal difficulty and the default seed") {
     CHECK(newGame.seed == game::DEFAULT_MAZE_SEED);
 }
 
-TEST_CASE("the intro ends in the main menu, at its end, when skipped and with Escape") {
+TEST_CASE("the intro played by itself ends in the main menu, also skipped and with Escape") {
     CHECK(game::nextMode(GameMode::Intro, GameEvent::IntroFinished) == GameMode::MainMenu);
     CHECK(game::nextMode(GameMode::Intro, GameEvent::Escape) == GameMode::MainMenu);
 }
 
-TEST_CASE("nothing else leaves the intro, and losing the focus does not stop it") {
-    for (const GameEvent event : ALL_EVENTS) {
-        if (event == GameEvent::IntroFinished || event == GameEvent::Escape) {
-            continue;
-        }
-        CHECK(game::nextMode(GameMode::Intro, event) == GameMode::Intro);
-    }
-    // Named once more, because it is a decision: the intro goes on behind another
-    // program and ends by itself. It is never paused, so it cannot be left stuck.
-    CHECK(game::nextMode(GameMode::Intro, GameEvent::FocusLost) == GameMode::Intro);
+TEST_CASE("the intro of a campaign leads to the title card, also skipped and with Escape") {
+    CHECK(game::nextMode(GameMode::CampaignIntro, GameEvent::IntroFinished) == GameMode::NightCard);
+    CHECK(game::nextMode(GameMode::CampaignIntro, GameEvent::Escape) == GameMode::NightCard);
+    // The title card then leads into the round: the whole way of "Begin".
+    CHECK(game::nextMode(GameMode::NightCard, GameEvent::CardFinished) == GameMode::Playing);
 }
 
-TEST_CASE("no event leads into the intro, and its end means nothing on another screen") {
+TEST_CASE("a campaign begins with the intro, from the main menu and from the question") {
+    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::BeginCampaign) == GameMode::CampaignIntro);
+    CHECK(game::nextMode(GameMode::NewCampaign, GameEvent::BeginCampaign) ==
+          GameMode::CampaignIntro);
+    // From nowhere else. The list of nights never plays the intro, and neither does
+    // a result screen or a pause.
     for (const GameMode mode : ALL_MODES) {
-        if (mode == GameMode::Intro) {
+        if (mode != GameMode::MainMenu && mode != GameMode::NewCampaign) {
+            CHECK(game::nextMode(mode, GameEvent::BeginCampaign) == mode);
+        }
+        // No other event leads into it.
+        for (const GameEvent event : ALL_EVENTS) {
+            if (event != GameEvent::BeginCampaign && mode != GameMode::CampaignIntro) {
+                CHECK(game::nextMode(mode, event) != GameMode::CampaignIntro);
+            }
+        }
+    }
+}
+
+TEST_CASE("the first entry of the main menu plays the intro only for a campaign not started") {
+    using game::CampaignStage;
+    // "Begin": the intro, then the first night.
+    CHECK(game::campaignEntryEvent(CampaignStage::NotStarted, true) == GameEvent::BeginCampaign);
+    // "Continue" never plays it.
+    CHECK(game::campaignEntryEvent(CampaignStage::Running, true) == GameEvent::StartNight);
+    // "New campaign" asks first. After "yes" the campaign is one that has not been
+    // started, so the first row decides.
+    CHECK(game::campaignEntryEvent(CampaignStage::Finished, true) == GameEvent::AskNewCampaign);
+    CHECK(game::campaignStage(1) == CampaignStage::NotStarted);
+
+    // A run that does not play the intro begins with the title card of the night.
+    CHECK(game::campaignEntryEvent(CampaignStage::NotStarted, false) == GameEvent::StartNight);
+    CHECK(game::campaignEntryEvent(CampaignStage::Running, false) == GameEvent::StartNight);
+    CHECK(game::campaignEntryEvent(CampaignStage::Finished, false) == GameEvent::AskNewCampaign);
+}
+
+TEST_CASE("--skip-intro and the switches of a tool keep the intro out of a campaign") {
+    CHECK(game::campaignIntroPlays(game::StartOptions{}));
+
+    game::StartOptions skip;
+    skip.skipIntro = true;
+    CHECK_FALSE(game::campaignIntroPlays(skip));
+
+    game::StartOptions tool;
+    tool.toolSwitch = true;
+    CHECK_FALSE(game::campaignIntroPlays(tool));
+
+    // --intro plays the intro at the start and changes nothing about the campaign.
+    game::StartOptions intro;
+    intro.intro = true;
+    CHECK(game::campaignIntroPlays(intro));
+    intro.skipIntro = true;
+    CHECK_FALSE(game::campaignIntroPlays(intro));
+
+    // The whole way, from the words of the command line.
+    const auto plays = [](std::initializer_list<const char*> words) {
+        const std::vector<const char*> list(words);
+        return game::campaignIntroPlays(game::parseStartOptions(list).options);
+    };
+    CHECK(plays({}));
+    CHECK(plays({"--intro"}));
+    CHECK_FALSE(plays({"--skip-intro"}));
+    CHECK_FALSE(plays({"--seed", "7"}));
+    CHECK_FALSE(plays({"--menu-background", "scene"}));
+    CHECK_FALSE(plays({"--calm"}));
+}
+
+TEST_CASE("nothing else leaves the intro, and losing the focus does not stop it") {
+    for (const GameMode intro : {GameMode::Intro, GameMode::CampaignIntro}) {
+        for (const GameEvent event : ALL_EVENTS) {
+            if (event == GameEvent::IntroFinished || event == GameEvent::Escape) {
+                continue;
+            }
+            CHECK(game::nextMode(intro, event) == intro);
+        }
+        // Named once more, because it is a decision: the intro goes on behind another
+        // program and ends by itself. It is never paused, so it cannot be left stuck.
+        CHECK(game::nextMode(intro, GameEvent::FocusLost) == intro);
+    }
+}
+
+TEST_CASE("no event leads into the intro played by itself, and its end means nothing elsewhere") {
+    for (const GameMode mode : ALL_MODES) {
+        if (game::isIntro(mode)) {
             continue;
         }
         for (const GameEvent event : ALL_EVENTS) {
@@ -378,8 +456,10 @@ TEST_CASE("no event leads into the intro, and its end means nothing on another s
 
 TEST_CASE("the end of the intro starts no round and no game") {
     for (const GameEvent event : ALL_EVENTS) {
-        CHECK_FALSE(game::startsRound(GameMode::Intro, event));
-        CHECK_FALSE(game::startsNewGame(GameMode::Intro, event));
+        for (const GameMode intro : {GameMode::Intro, GameMode::CampaignIntro}) {
+            CHECK_FALSE(game::startsRound(intro, event));
+            CHECK_FALSE(game::startsNewGame(intro, event));
+        }
     }
     for (const GameMode mode : ALL_MODES) {
         CHECK_FALSE(game::startsRound(mode, GameEvent::IntroFinished));
@@ -388,94 +468,97 @@ TEST_CASE("the end of the intro starts no round and no game") {
 }
 
 TEST_CASE("the intro is a film: no round, no menu, no HUD, no map, a scene that moves") {
-    CHECK_FALSE(game::updatesRound(GameMode::Intro));
-    CHECK_FALSE(game::isMenuOpen(GameMode::Intro));
-    CHECK_FALSE(game::showsHud(GameMode::Intro));
-    CHECK_FALSE(game::showsMap(GameMode::Intro, {.keyHeld = true, .pinned = true}));
-    CHECK(game::animatesScene(GameMode::Intro));
-    // It places the camera itself, and the scene is drawn also when the main menu has
-    // a video that covers the window.
-    CHECK_FALSE(game::usesMenuCamera(GameMode::Intro));
-    CHECK(game::drawsScene(GameMode::Intro, true));
-    CHECK(game::drawsScene(GameMode::Intro, false));
+    for (const GameMode intro : {GameMode::Intro, GameMode::CampaignIntro}) {
+        CHECK(game::isIntro(intro));
+        CHECK_FALSE(game::updatesRound(intro));
+        CHECK_FALSE(game::isMenuOpen(intro));
+        CHECK_FALSE(game::showsHud(intro));
+        CHECK_FALSE(game::showsMap(intro, {.keyHeld = true, .pinned = true}));
+        CHECK(game::animatesScene(intro));
+        // It places the camera itself, and the scene is drawn also when the main menu has
+        // a video that covers the window.
+        CHECK_FALSE(game::usesMenuCamera(intro));
+        CHECK(game::drawsScene(intro, true));
+        CHECK(game::drawsScene(intro, false));
+    }
+    // No other screen plays the intro.
+    for (const GameMode mode : ALL_MODES) {
+        CHECK(game::isIntro(mode) == (mode == GameMode::Intro || mode == GameMode::CampaignIntro));
+    }
 }
 
-TEST_CASE("the first start opens with the intro, every later one with the main menu") {
+TEST_CASE("the game opens with the main menu, also on its very first start") {
+    // Nothing but the command line decides: the settings file is not asked, so a fresh
+    // folder and an old one start alike.
     const game::StartOptions none;
-    CHECK(game::startMode(none, false) == GameMode::Intro);
-    CHECK(game::startMode(none, true) == GameMode::MainMenu);
+    CHECK(game::startMode(none) == GameMode::MainMenu);
 }
 
-TEST_CASE("a run driven by a tool never opens with the intro") {
+TEST_CASE("a run driven by a tool starts in its round or in the main menu") {
     game::StartOptions play;
     play.play = true;
     play.toolSwitch = true;
-    CHECK(game::startMode(play, false) == GameMode::Playing);
+    CHECK(game::startMode(play) == GameMode::Playing);
 
     game::StartOptions menuCamera;
     menuCamera.menuCamera.enabled = true;
     menuCamera.toolSwitch = true;
-    CHECK(game::startMode(menuCamera, false) == GameMode::Playing);
+    CHECK(game::startMode(menuCamera) == GameMode::Playing);
 
     // A night of the campaign named on the command line starts in its round.
     game::StartOptions night;
     night.night = 3;
     night.toolSwitch = true;
-    CHECK(game::startMode(night, false) == GameMode::Playing);
-    CHECK(game::startMode(night, true) == GameMode::Playing);
+    CHECK(game::startMode(night) == GameMode::Playing);
 
     // --seed, --menu-shot, --menu-time and --menu-background leave the main menu as the
-    // first screen: what they have in common is the mark of a tool.
+    // first screen.
     game::StartOptions tool;
     tool.toolSwitch = true;
-    CHECK(game::startMode(tool, false) == GameMode::MainMenu);
-    CHECK(game::startMode(tool, true) == GameMode::MainMenu);
+    CHECK(game::startMode(tool) == GameMode::MainMenu);
 }
 
 TEST_CASE("--skip-intro never plays the intro and --intro always does") {
     game::StartOptions skip;
     skip.skipIntro = true;
-    CHECK(game::startMode(skip, false) == GameMode::MainMenu);
-    CHECK(game::startMode(skip, true) == GameMode::MainMenu);
+    CHECK(game::startMode(skip) == GameMode::MainMenu);
 
     game::StartOptions intro;
     intro.intro = true;
-    CHECK(game::startMode(intro, true) == GameMode::Intro);
-    CHECK(game::startMode(intro, false) == GameMode::Intro);
+    CHECK(game::startMode(intro) == GameMode::Intro);
     // Also next to the switches of a tool, and before --play.
     intro.toolSwitch = true;
-    CHECK(game::startMode(intro, true) == GameMode::Intro);
+    CHECK(game::startMode(intro) == GameMode::Intro);
     intro.play = true;
     intro.menuCamera.enabled = true;
-    CHECK(game::startMode(intro, true) == GameMode::Intro);
+    CHECK(game::startMode(intro) == GameMode::Intro);
 
     // Both together: "never" wins, and the rest of the line decides.
     intro.skipIntro = true;
-    CHECK(game::startMode(intro, false) == GameMode::Playing);
+    CHECK(game::startMode(intro) == GameMode::Playing);
     game::StartOptions both;
     both.intro = true;
     both.skipIntro = true;
-    CHECK(game::startMode(both, false) == GameMode::MainMenu);
+    CHECK(game::startMode(both) == GameMode::MainMenu);
 }
 
 TEST_CASE("the switches of the command line give the start screen they describe") {
     // The whole way, from the words to the screen.
-    const auto screen = [](std::initializer_list<const char*> words, bool introSeen) {
+    const auto screen = [](std::initializer_list<const char*> words) {
         const std::vector<const char*> list(words);
-        return game::startMode(game::parseStartOptions(list).options, introSeen);
+        return game::startMode(game::parseStartOptions(list).options);
     };
-    CHECK(screen({}, false) == GameMode::Intro);
-    CHECK(screen({"--seed", "1"}, false) == GameMode::MainMenu);
-    CHECK(screen({"--menu-background", "scene"}, false) == GameMode::MainMenu);
-    CHECK(screen({"--menu-shot", "walk"}, false) == GameMode::MainMenu);
-    CHECK(screen({"--menu-time", "14"}, false) == GameMode::MainMenu);
-    CHECK(screen({"--play"}, false) == GameMode::Playing);
-    CHECK(screen({"--night", "2"}, false) == GameMode::Playing);
-    CHECK(screen({"--menu-camera"}, false) == GameMode::Playing);
-    CHECK(screen({"--skip-intro"}, false) == GameMode::MainMenu);
-    CHECK(screen({"--intro"}, true) == GameMode::Intro);
-    CHECK(screen({"--intro", "--seed", "1", "--menu-background", "scene"}, true) ==
-          GameMode::Intro);
+    CHECK(screen({}) == GameMode::MainMenu);
+    CHECK(screen({"--seed", "1"}) == GameMode::MainMenu);
+    CHECK(screen({"--menu-background", "scene"}) == GameMode::MainMenu);
+    CHECK(screen({"--menu-shot", "walk"}) == GameMode::MainMenu);
+    CHECK(screen({"--menu-time", "14"}) == GameMode::MainMenu);
+    CHECK(screen({"--play"}) == GameMode::Playing);
+    CHECK(screen({"--night", "2"}) == GameMode::Playing);
+    CHECK(screen({"--menu-camera"}) == GameMode::Playing);
+    CHECK(screen({"--skip-intro"}) == GameMode::MainMenu);
+    CHECK(screen({"--intro"}) == GameMode::Intro);
+    CHECK(screen({"--intro", "--seed", "1", "--menu-background", "scene"}) == GameMode::Intro);
 }
 
 TEST_CASE("free play, the list of nights and the question lead back to the main menu") {
@@ -560,6 +643,7 @@ TEST_CASE("the last night ends with the ending card, and the card with the main 
 
 TEST_CASE("the intro and the two cards are films: no round, no menu, no HUD, no map") {
     CHECK(game::isFilm(GameMode::Intro));
+    CHECK(game::isFilm(GameMode::CampaignIntro));
     CHECK(game::isFilm(GameMode::NightCard));
     CHECK(game::isFilm(GameMode::EndingCard));
     for (const GameMode mode : ALL_MODES) {

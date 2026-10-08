@@ -105,10 +105,11 @@ namespace game {
 /// Such a background covers the whole window, so in those frames the scene is not drawn
 /// at all (game::drawsScene): no shadow maps, no HDR picture, no bloom.
 ///
-/// The very first start opens with the intro (game/Intro.hpp): five cards of text, the
-/// first on black and the others over pictures the menu camera takes in one fixed maze,
-/// with a wind and a few sounds under them. It is played live, by the same code that
-/// draws a round. Any key ends it, and it is shown once: the settings file remembers.
+/// A campaign begins with the intro (game/Intro.hpp): five cards of text, the first on
+/// black and the others over pictures the menu camera takes in one fixed maze, with
+/// a wind and a few sounds under them. It is played live, by the same code that draws
+/// a round. Any key ends it, and the title card of the first night follows. The game
+/// itself opens with the main menu.
 ///
 /// The game is played as a campaign of five nights (game/Campaign.hpp): the first entry
 /// of the main menu starts the next night, each night begins with a title card and has
@@ -386,9 +387,9 @@ protected:
 
     /// The request to play the intro again, exposed so the debug UI can ask for it: set
     /// it to true, and the next frame starts the intro, on whatever screen the game is.
-    /// A round that is being played is given up for it, and the intro ends in the main
-    /// menu as always. Besides the switch --intro this is the only way to see the intro
-    /// a second time.
+    /// A round that is being played is given up for it, and this intro ends in the main
+    /// menu. Besides the switch --intro and the beginning of a campaign this is the only
+    /// way to see the intro.
     bool& introRequest() { return m_introRequested; }
 
     /// The key of every action of the player, as the settings hold them, for the HUD:
@@ -567,9 +568,30 @@ private:
 
     /// Starts the intro from its beginning, on whatever screen the game is: builds the
     /// maze of the intro and shows the card. For the request of the debug UI
-    /// (introRequest). The first start of the game needs no call: the constructor
+    /// (introRequest). A start with the switch --intro needs no call: the constructor
     /// builds that maze and begins on the screen of the intro (game::startMode).
     void startIntro();
+
+    /// What the first entry of the main menu does, and the answer "yes" to a new
+    /// campaign after it has forgotten the old one (game::campaignEntryEvent): the
+    /// question about a new campaign, the intro and then the first night, or the next
+    /// night at once.
+    void enterCampaign();
+
+    /// Begins a campaign with the intro: draws the seed of the campaign, builds the maze
+    /// of the intro and goes to the screen GameMode::CampaignIntro. The first night is
+    /// started when the intro is left (leaveIntro).
+    void beginCampaignIntro();
+
+    /// Draws the seed of the campaign when it has none yet: its five mazes are fixed
+    /// from here on.
+    void drawCampaignSeed();
+
+    /// True when the intro that is playing tells of the shadow on its fourth card
+    /// (game::introLines, game::introShadeCell). The intro of a campaign always does,
+    /// because the campaign has the shadow from its second night on. The intro played by
+    /// itself follows free play (shadeInGame). A calm run of the command line never does.
+    bool introTellsOfShade() const;
 
     /// One frame of the intro, called once per frame while the game is on its screen.
     /// A key or a mouse button ends it. Otherwise its clock moves on by the time of the
@@ -623,9 +645,10 @@ private:
     /// What has to happen when the intro is left, at its end, by a key or by Escape:
     /// called by handleGameEvent, the one place all three come through. Every sound
     /// stops (the wind is as long as the whole intro), the settings file remembers that
-    /// the intro was seen, and the maze of the intro makes room for the one the player
-    /// has chosen.
-    void leaveIntro();
+    /// the intro was seen, and the maze of the intro makes room for the next one: the
+    /// maze of the first night when intoNight is true (the intro of a campaign),
+    /// otherwise the one behind the main menu.
+    void leaveIntro(bool intoNight);
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed, no lever pulled, every
@@ -968,6 +991,9 @@ private:
     // The seed of the command line (StartOptions::seed): the maze behind the main menu
     // is built from it again when the intro, which has a maze of its own, is over.
     std::uint32_t m_startSeed = DEFAULT_MAZE_SEED;
+    // True when a campaign that is begun in this run plays the intro first
+    // (game::campaignIntroPlays of the command line).
+    bool m_campaignIntroPlays = true;
     // The name of the difficulty of the game in play, for the pause menu and the
     // result screen: the name of a level, or "Custom" for a maze the debug UI asked for.
     std::string m_playedDifficultyName;
