@@ -28,6 +28,10 @@ TEST_CASE("without switches the game starts as always") {
     // The game then opens with the main menu, and the menu has its video behind it.
     CHECK_FALSE(result.options.play);
     CHECK(result.options.menuBackground == game::MenuBackground::Video);
+    // And the round starts where it always started, with no crystal collected.
+    CHECK_FALSE(result.options.startCell.has_value());
+    CHECK_FALSE(result.options.startYawDegrees.has_value());
+    CHECK_FALSE(result.options.collectAll);
 }
 
 TEST_CASE("the background of the main menu can be named, and only by its three names") {
@@ -114,6 +118,9 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--menu-time") != std::string::npos);
     CHECK(usage.find("--play") != std::string::npos);
     CHECK(usage.find("--menu-background") != std::string::npos);
+    CHECK(usage.find("--start-cell") != std::string::npos);
+    CHECK(usage.find("--start-yaw") != std::string::npos);
+    CHECK(usage.find("--collect-all") != std::string::npos);
 }
 
 TEST_CASE("a seed on the command line is remembered as given, also the default one") {
@@ -147,4 +154,58 @@ TEST_CASE("a seed is read from digits only, up to the largest 32 bit number") {
     CHECK_FALSE(game::parseSeed(" 12", seed));
     CHECK_FALSE(game::parseSeed("1.5", seed));
     CHECK(seed == 7U);
+}
+
+TEST_CASE("the start cell is two whole numbers with a comma, and only the form is checked here") {
+    const game::StartOptionsResult result = parse({"--play", "--start-cell", "3,12"});
+    CHECK(result.error.empty());
+    REQUIRE(result.options.startCell.has_value());
+    const game::MazeCell cell = result.options.startCell.value_or(game::MazeCell{});
+    CHECK(cell.x == 3);
+    CHECK(cell.z == 12);
+    // It changes nothing else.
+    CHECK(result.options.play);
+    CHECK_FALSE(result.options.startYawDegrees.has_value());
+    CHECK_FALSE(result.options.collectAll);
+
+    // Whether a cell is in the maze depends on its size, which is not known here.
+    CHECK(parse({"--start-cell", "0,0"}).error.empty());
+    CHECK(parse({"--start-cell", "999,999"}).error.empty());
+
+    CHECK_FALSE(parse({"--start-cell"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "3"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "3,"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", ",3"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "3 4"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "3,4,5"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "-1,2"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "1.5,2"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "a,b"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "99999999999,1"}).error.empty());
+    CHECK_FALSE(parse({"--start-cell", "4294967295,1"}).error.empty());
+}
+
+TEST_CASE("the start direction is any number of degrees") {
+    const game::StartOptionsResult result = parse({"--start-yaw", "90"});
+    CHECK(result.error.empty());
+    CHECK(result.options.startYawDegrees.value_or(0.0F) == 90.0F);
+    CHECK_FALSE(result.options.startCell.has_value());
+
+    CHECK(parse({"--start-yaw", "-45.5"}).options.startYawDegrees.value_or(0.0F) == -45.5F);
+    // A direction of 0 is a direction: North, not "not given".
+    CHECK(parse({"--start-yaw", "0"}).options.startYawDegrees.has_value());
+
+    CHECK_FALSE(parse({"--start-yaw"}).error.empty());
+    CHECK_FALSE(parse({"--start-yaw", "north"}).error.empty());
+    CHECK_FALSE(parse({"--start-yaw", "90deg"}).error.empty());
+    CHECK_FALSE(parse({"--start-yaw", "inf"}).error.empty());
+}
+
+TEST_CASE("collect-all is a switch without a value") {
+    const game::StartOptionsResult result = parse({"--play", "--collect-all", "--seed", "5"});
+    CHECK(result.error.empty());
+    CHECK(result.options.collectAll);
+    CHECK(result.options.play);
+    CHECK(result.options.seed == 5U);
+    CHECK_FALSE(parse({"--play"}).options.collectAll);
 }

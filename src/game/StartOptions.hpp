@@ -7,6 +7,7 @@
 #include "game/MenuCamera.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -40,6 +41,22 @@ struct StartOptions {
     /// live scene. The live scene is what the video is recorded from, and the way to
     /// compare the two.
     MenuBackground menuBackground = MenuBackground::Video;
+
+    /// The cell of the first round the player starts in (--start-cell, with --play): in
+    /// the middle of it. Empty: the start cell of the maze. Only the first round of the
+    /// program starts there. The switch only checks that the text is two whole numbers:
+    /// whether they are a cell of the maze is known once the maze is built, and the
+    /// application then refuses a cell that is not one.
+    std::optional<MazeCell> startCell;
+
+    /// The direction the player looks in at the start of the first round (--start-yaw),
+    /// in degrees like Camera::yawDegrees. Empty: towards the first open side of the
+    /// start cell.
+    std::optional<float> startYawDegrees;
+
+    /// True: the first round starts with every crystal collected, so the gate is open
+    /// (--collect-all). The crystals are picked up by the rules of the round, not set.
+    bool collectAll = false;
 };
 
 /// What parseStartOptions found.
@@ -70,6 +87,9 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --menu-time <seconds>  start the shot that many seconds into its loop
 ///     --play                 skip the main menu and start in a round
 ///     --menu-background <name>  behind the main menu: video, still or scene
+///     --start-cell <column>,<row>  the cell the first round starts in (with --play)
+///     --start-yaw <degrees>  the direction the player looks in at the start
+///     --collect-all          the first round starts with every crystal collected
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start.

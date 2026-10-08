@@ -19,6 +19,9 @@ constexpr std::string_view MENU_SHOT_SWITCH = "--menu-shot";
 constexpr std::string_view MENU_TIME_SWITCH = "--menu-time";
 constexpr std::string_view PLAY_SWITCH = "--play";
 constexpr std::string_view MENU_BACKGROUND_SWITCH = "--menu-background";
+constexpr std::string_view START_CELL_SWITCH = "--start-cell";
+constexpr std::string_view START_YAW_SWITCH = "--start-yaw";
+constexpr std::string_view COLLECT_ALL_SWITCH = "--collect-all";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -37,6 +40,29 @@ bool parseSeconds(const char* text, float& seconds) {
         return false;
     }
     seconds = value;
+    return true;
+}
+
+// Reads a cell as "<column>,<row>": two whole numbers written with digits only, with
+// a comma between them. False, and cell left as it was, for anything else. Whether the
+// cell exists is not known here (it depends on the size of the maze).
+bool parseCell(std::string_view text, MazeCell& cell) {
+    const std::size_t comma = text.find(',');
+    if (comma == std::string_view::npos) {
+        return false;
+    }
+    // parseSeed reads digits only and refuses a number that is too large, which is what
+    // a column or a row needs as well.
+    std::uint32_t column = 0;
+    std::uint32_t row = 0;
+    if (!parseSeed(text.substr(0, comma), column) || !parseSeed(text.substr(comma + 1), row)) {
+        return false;
+    }
+    constexpr std::uint32_t LARGEST_NUMBER = std::numeric_limits<int>::max();
+    if (column > LARGEST_NUMBER || row > LARGEST_NUMBER) {
+        return false;
+    }
+    cell = MazeCell{.x = static_cast<int>(column), .z = static_cast<int>(row)};
     return true;
 }
 
@@ -68,7 +94,8 @@ bool parseSeed(std::string_view text, std::uint32_t& seed) {
 
 const char* const START_OPTIONS_USAGE =
     "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
-    "--menu-time <seconds>, --menu-background <video|still|scene>";
+    "--menu-time <seconds>, --menu-background <video|still|scene>, "
+    "--start-cell <column>,<row>, --start-yaw <degrees>, --collect-all";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -86,10 +113,15 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
             options.play = true;
             continue;
         }
+        if (name == COLLECT_ALL_SWITCH) {
+            options.collectAll = true;
+            continue;
+        }
 
         // Every other switch takes the next word as its value.
         const bool known = name == SEED_SWITCH || name == MENU_SHOT_SWITCH ||
-                           name == MENU_TIME_SWITCH || name == MENU_BACKGROUND_SWITCH;
+                           name == MENU_TIME_SWITCH || name == MENU_BACKGROUND_SWITCH ||
+                           name == START_CELL_SWITCH || name == START_YAW_SWITCH;
         if (!known) {
             result.error = "Unknown switch: " + std::string(name);
             return result;
@@ -109,6 +141,19 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
             understood = parseSeconds(value, options.menuCamera.timeOffset);
         } else if (name == MENU_BACKGROUND_SWITCH) {
             understood = parseMenuBackground(value, options.menuBackground);
+        } else if (name == START_CELL_SWITCH) {
+            MazeCell cell;
+            understood = parseCell(value, cell);
+            if (understood) {
+                options.startCell = cell;
+            }
+        } else if (name == START_YAW_SWITCH) {
+            // A number of degrees is read like a number of seconds: any finite number.
+            float degrees = 0.0F;
+            understood = parseSeconds(value, degrees);
+            if (understood) {
+                options.startYawDegrees = degrees;
+            }
         } else if (std::string_view(value) == WALK_SHOT_NAME) {
             options.menuCamera.shot = MenuShot::CorridorWalk;
             understood = true;
